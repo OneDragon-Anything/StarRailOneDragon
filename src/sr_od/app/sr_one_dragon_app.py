@@ -3,6 +3,7 @@ from typing import List
 from one_dragon.base.operation.one_dragon_app import OneDragonApp
 from sr_od.app.assignments.assignments_app import AssignmentsApp
 from sr_od.app.buy_xianzhou_parcel.buy_xianzhou_parcel_app import BuyXianzhouParcelApp
+from sr_od.app.memory_crystal_shard.memory_crystal_shard_app import MemoryCrystalShardApp
 from sr_od.app.claim_email.email_app import EmailApp
 from sr_od.app.daily_training.daily_training_app import DailyTrainingApp
 from sr_od.app.echo_of_war.echo_of_war_app import EchoOfWarApp
@@ -42,6 +43,7 @@ class SrOneDragonApp(OneDragonApp, SrApplication):
             RelicSalvageApp(self.ctx),
             EmailApp(self.ctx),
             BuyXianzhouParcelApp(self.ctx),
+            MemoryCrystalShardApp(self.ctx),
             TrickSnackApp(self.ctx),
             SupportCharacterApp(self.ctx),
             DailyTrainingApp(self.ctx),
