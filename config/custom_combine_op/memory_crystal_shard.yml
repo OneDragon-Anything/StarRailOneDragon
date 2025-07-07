@@ -1,0 +1,30 @@
+name: '领取记忆残晶'
+ops:
+  - op: 'back_to_world_plus'
+    data: []
+  - op: 'transport'
+    data: ['翁法罗斯', '「永恒圣城」奥赫玛', '1', '流憩大厅']
+  - op: 'wait'
+    data: ['in_world', '20']
+  - op: 'move'
+    data: ['2401', '1420']
+  - op: 'move'
+    data: ['2442', '1433']
+  - op: 'wait'
+    data: ['seconds', '3']
+  - op: 'slow_move'
+    data: ['2456', '1456']
+  - op: 'slow_move'
+    data: ['2456', '1456']
+  - op: 'slow_move'
+    data: ['2472', '1471']
+  - op: 'interact'
+    data: ['world_single_line', '开启追忆残像']
+  - op: 'wait'
+    data: ['seconds', '3']
+  - op: 'click'
+    data: [ '960', '980' ]
+  - op: 'wait'
+    data: ['seconds', '3']
+  - op: 'click'
+    data: [ '960', '980' ]
