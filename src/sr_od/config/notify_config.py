@@ -15,6 +15,7 @@ class NotifyConfig(BasicNotifyConfig):
         'email': '邮件',
         'buy_xianzhou_parcel': '仙舟过期邮包',
         'trick_snack': '奇巧零食',
+        'memory_crystal_shard': '记忆残晶',
         'support_character': '支援角色奖励',
         'daily_training': '每日实训',
         'nameless_honor': '无名勋礼',
