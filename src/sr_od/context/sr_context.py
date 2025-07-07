@@ -22,6 +22,7 @@ from sr_od.app.trailblaze_power.trailblaze_power_config import TrailblazePowerCo
 from sr_od.app.trailblaze_power.trailblaze_power_run_record import TrailblazePowerRunRecord
 from sr_od.app.trick_snack.trick_snack_config import TrickSnackConfig
 from sr_od.app.trick_snack.trick_snack_record import TrickSnackRunRecord
+from sr_od.app.memory_crystal_shard.memory_crystal_shard_run_record import MemoryCrystalShardRunRecord
 from sr_od.app.world_patrol.world_patrol_config import WorldPatrolConfig
 from sr_od.app.world_patrol.world_patrol_route_data import WorldPatrolRouteData
 from sr_od.app.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
@@ -256,6 +257,7 @@ class SrContext(OneDragonContext):
         self.daily_training_run_record: DailyTrainingRunRecord = DailyTrainingRunRecord(self.current_instance_idx, game_refresh_hour_offset)
         self.email_run_record: EmailRunRecord = EmailRunRecord(self.current_instance_idx, game_refresh_hour_offset)
         self.buy_xz_parcel_run_record: BuyXianZhouParcelRunRecord = BuyXianZhouParcelRunRecord(self.current_instance_idx, game_refresh_hour_offset)
+        self.memory_crystal_shard_run_record: MemoryCrystalShardRunRecord = MemoryCrystalShardRunRecord(self.current_instance_idx, game_refresh_hour_offset)
         self.support_character_run_record: SupportCharacterRunRecord = SupportCharacterRunRecord(self.current_instance_idx, game_refresh_hour_offset)
 
         self.relic_salvage_config: RelicSalvageConfig = RelicSalvageConfig(self.current_instance_idx)
