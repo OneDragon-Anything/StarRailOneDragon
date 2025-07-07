@@ -9,6 +9,7 @@ app_order:
   - 'nameless_honor'
   - 'daily_training'
   - 'buy_xianzhou_parcel'
+  - 'memory_crystal_shard'
   - 'treasures_lightward'
   - 'trick_snack'
 app_run:
