@@ -1,7 +1,5 @@
 from cv2.typing import MatLike
-from typing import List
 
-from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -52,12 +50,20 @@ class DailyTrainingApp(SrApplication):
     @operation_node(name='领取点数')
     def claim_score(self) -> OperationRoundResult:
         screen: MatLike = self.screenshot()
-        result: MatchResult = phone_menu_utils.get_training_activity_claim_btn_pos(self.ctx, screen)
-        if result is None:
-            return self.round_retry(wait=0.5)
+
+        target_cn_list: list[str] = [
+            '领取',
+            '已领取',
+        ]
+        ignore_cn_list: list[str] = [
+            '已领取'
+        ]
+
+        result = self.round_by_ocr_and_click_by_priority(screen, target_cn_list, ignore_cn_list)
+        if result.is_success:
+            return self.round_wait(status=result.status, wait=1)
         else:
-            self.ctx.controller.click(result.center)
-            return self.round_wait(wait=1)
+            return self.round_retry(status=result.status, wait=0.5)
 
     @node_from(from_name='领取点数')
     @node_from(from_name='领取点数', success=False)
@@ -76,7 +82,7 @@ class DailyTrainingApp(SrApplication):
             return self.round_retry('未找到奖励按钮', wait=0.5)
         else:
             self.ctx.controller.click(pos.center)
-            return self.round_success()
+            return self.round_success(wait=1)
 
     @node_from(from_name='领取奖励')
     @operation_node(name='结束后返回')

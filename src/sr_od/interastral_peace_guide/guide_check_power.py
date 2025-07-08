@@ -50,20 +50,55 @@ class GuideCheckPower(SrOperation):
 
         return self.round_success(data=GuidePowerResult(x, y))
 
-    def get_power_and_qty(self, screen: MatLike) -> Tuple[int, int]:
+    def get_power_and_qty(self, screen: MatLike) -> tuple[int | None, int | None]:
         """
         获取开拓力和沉浸器数量
         :param screen: 屏幕截图
         :return:
         """
         area1 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-体力')
-        part = cv2_utils.crop_image_only(screen, area1.rect)
-        ocr_result = self.ctx.ocr.run_ocr_single_line(part)
-        power = str_utils.get_positive_digits(ocr_result, err=None)
+        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area1.rect)
+        if len(ocr_result_list) > 0:
+            power_str = ocr_result_list[0].data
+            if power_str[-1] == '+':
+                power_str = power_str[:-1]
+            if power_str[-3:] == '300':
+                power_str = power_str[:-3]
+            if power_str[-1] == '/':
+                power_str = power_str[:-1]
+            power = str_utils.get_positive_digits(power_str, err=None)
+        else:
+            part = cv2_utils.crop_image_only(screen, area1.rect)
+            ocr_result = self.ctx.ocr.run_ocr_single_line(part)
+            power = str_utils.get_positive_digits(ocr_result, err=None)
 
         area2 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-沉浸器数量')
-        part = cv2_utils.crop_image_only(screen, area2.rect)
-        ocr_result = self.ctx.ocr.run_ocr_single_line(part)
-        qty = str_utils.get_positive_digits(ocr_result, err=None)
+        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area2.rect)
+        if len(ocr_result_list) > 0:
+            qty_str = ocr_result_list[0].data
+            if qty_str[-1] == '+':
+                qty_str = qty_str[:-1]
+            if qty_str[-2:] == '12':
+                qty_str = qty_str[:-2]
+            if qty_str[-1] == '/':
+                qty_str = qty_str[:-1]
+            qty = str_utils.get_positive_digits(qty_str, err=None)
+        else:
+            part = cv2_utils.crop_image_only(screen, area2.rect)
+            ocr_result = self.ctx.ocr.run_ocr_single_line(part)
+            qty = str_utils.get_positive_digits(ocr_result, err=None)
 
         return power, qty
+
+
+def __debug_get_power_and_qty() -> None:
+    ctx = SrContext()
+    ctx.init_ocr()
+    op = GuideCheckPower(ctx)
+    from one_dragon.utils import debug_utils
+    screen = debug_utils.get_debug_image('_1751896720203')
+    print(op.get_power_and_qty(screen))
+
+
+if __name__ == '__main__':
+    __debug_get_power_and_qty()

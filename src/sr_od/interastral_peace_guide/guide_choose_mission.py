@@ -141,12 +141,30 @@ class GuideChooseMission(SrOperation):
                     continue
 
             if tp_point is None or abs(mr.center.y - mission_pos.y) < abs(tp_point.y - mission_pos.y):
-                tp_point = mr.center
+                # issue 487 有时候会连着前面的体力一起识别 如 '30进入' 因此点击横坐标4/5的位置
+                tp_point = mr.rect.left_top + Point(mr.rect.width * 4 // 5, mr.rect.height // 2)
 
         if tp_point is not None:
             return tp_point + area.left_top
         else:
             return None
+
+
+def __debug_find_transport_btn():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_ocr()
+
+    from one_dragon.utils import debug_utils
+    screen = debug_utils.get_debug_image('487')
+    tab = ctx.guide_data.best_match_tab_by_name('生存索引')
+    category = ctx.guide_data.best_match_category_by_name('凝滞虚影', tab)
+    mission = ctx.guide_data.best_match_mission_by_name('凛月之形', category, '「呓语密林」神悟树庭')
+
+    op = GuideChooseMission(ctx, mission)
+    point = op.find_transport_btn(screen)
+    print(point)
+
 
 
 def __debug():
@@ -164,4 +182,4 @@ def __debug():
 
 
 if __name__ == '__main__':
-    __debug()
+    __debug_find_transport_btn()
