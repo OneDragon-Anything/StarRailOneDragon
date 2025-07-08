@@ -1,6 +1,6 @@
 from typing import Optional
 
-from one_dragon.base.operation.application_run_record import AppRunRecord
+from one_dragon.base.operation.application_run_record import AppRunRecord, AppRunRecordPeriod
 
 
 class MemoryCrystalShardRunRecord(AppRunRecord):
