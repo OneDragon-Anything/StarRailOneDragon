@@ -8,6 +8,7 @@ from typing import Optional, ClassVar, Callable, List, Any, Tuple
 from io import BytesIO
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.matcher.match_result import MatchResultList
 from one_dragon.base.matcher.ocr import ocr_utils
 from one_dragon.base.operation.one_dragon_context import OneDragonContext, ContextRunningStateEventEnum
@@ -358,6 +359,9 @@ class Operation(OperationBase):
         if self._current_node is None:
             return self.round_fail('当前节点为空')
 
+        if self._check_disconnect_and_reconnect():
+            return self.round_wait(status='网络重连', wait=5)
+
         if self._current_node.timeout_seconds is not None \
                 and self._current_node_start_time is not None \
                 and time.time() - self._current_node_start_time > self._current_node.timeout_seconds:
@@ -505,6 +509,32 @@ class Operation(OperationBase):
             return BytesIO(buffer.tobytes())
         else:
             return None
+
+    def _check_disconnect_and_reconnect(self) -> bool:
+        """
+        检测是否出现与服务器断开提示并重新进入游戏
+        :return: 是否进行了重连
+        """
+        try:
+            screen = self.ctx.controller.screenshot()
+        except Exception:
+            return False
+
+        rect = Rect(780, 480, 1150, 550)
+        part = cv2_utils.crop_image_only(screen, rect)
+        ocr_result_map = self.ctx.ocr.run_ocr(part)
+        target = gt('与服务器断开连接，请重新登录', 'game')
+        for word in ocr_result_map.keys():
+            if str_utils.find_by_lcs(target, word, percent=0.6):
+                self.ctx.controller.click(Point(985, 645))
+                time.sleep(1)
+                if self.op_to_enter_game is not None:
+                    self.op_to_enter_game.execute()
+                self._current_node = self._start_node
+                self._reset_status_for_new_node()
+                self.ctx.screen_loader.update_current_screen_name(None)
+                return True
+        return False
 
     @property
     def display_name(self) -> str:
