@@ -108,3 +108,12 @@
   template_id: "mm_boss_07"
   lm_pos: [1419, 1009]
   tp_pos: [1424, 1014]
+
+  - uid: "JRZXNZXY"
+  cn: "烬日之形·凝滞虚影"
+  planet_name: "翁法罗斯"
+  region_name: "「穹顶关塞」晨昏之眼"
+  region_floor: 2
+  template_id: "mm_tp_06"
+  lm_pos: [770, 821]
+  tp_pos: [788, 833]

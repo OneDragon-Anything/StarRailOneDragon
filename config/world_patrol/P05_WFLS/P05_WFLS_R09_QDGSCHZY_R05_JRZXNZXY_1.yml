@@ -1,0 +1,85 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「穹顶关塞」晨昏之眼'
+floor: 2
+tp: '烬日之形·凝滞虚影'
+route:
+  - idx: 1
+    op: 'move'
+    data: [762, 842]
+  - idx: 2
+    op: 'move'
+    data: [580, 842]
+  - idx: 3
+    op: 'move'
+    data: [572, 886]
+  - idx: 4
+    op: 'patrol'
+  - idx: 5
+    op: 'move'
+    data: [513, 885]
+  - idx: 6
+    op: 'disposable'
+  - idx: 7
+    op: 'move'
+    data: [579, 843]
+  - idx: 8
+    op: 'disposable'
+  - idx: 9
+    op: 'move'
+    data: [696, 845]
+  - idx: 10
+    op: 'move'
+    data: [703, 854]
+  - idx: 11
+    op: 'disposable'
+  - idx: 12
+    op: 'move'
+    data: [691, 879]
+  - idx: 13
+    op: 'move'
+    data: [690, 1012]
+  - idx: 14
+    op: 'move'
+    data: [644, 1012]
+  - idx: 15
+    op: 'move'
+    data: [645, 1187]
+  - idx: 16
+    op: 'disposable'
+  - idx: 17
+    op: 'move'
+    data: [531, 1193]
+  - idx: 18
+    op: 'patrol'
+  - idx: 19
+    op: 'move'
+    data: [468, 1197]
+  - idx: 20
+    op: 'patrol'
+  - idx: 21
+    op: 'move'
+    data: [476, 1141]
+  - idx: 22
+    op: 'interact'
+    data: '跨入密径'
+  - idx: 23
+    op: 'wait'
+    data: ['seconds', '8']
+  - idx: 24
+    op: 'gameplay_interact'
+    data: ['0']
+  - idx: 25
+    op: 'wait'
+    data: ['in_world', '4']
+  - idx: 26
+    op: 'update_pos'
+    data: [482, 895, 3]
+  - idx: 27
+    op: 'move'
+    data: [483, 843]
+  - idx: 28
+    op: 'move'
+    data: [555, 852]
+  - idx: 29
+    op: 'patrol'
