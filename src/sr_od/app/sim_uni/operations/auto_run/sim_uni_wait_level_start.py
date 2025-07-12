@@ -25,8 +25,8 @@ class SimUniWaitLevelStart(SrOperation):
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' %
-                                     (gt('模拟宇宙', 'ui'),
-                                      gt('等待楼层加载', 'ui'))
+                                     (gt('模拟宇宙', 'game'),
+                                      gt('等待楼层加载'))
                              )
 
         self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config

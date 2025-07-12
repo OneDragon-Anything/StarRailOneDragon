@@ -27,7 +27,7 @@ class WorldPatrolApp(SrApplication):
                  whitelist: Optional[WorldPatrolWhitelist] = None,
                  ignore_record: bool = False,
                  team_num: Optional[int] = None):
-        SrApplication.__init__(self, ctx, 'world_patrol', op_name=gt('锄大地', 'ui'),
+        SrApplication.__init__(self, ctx, 'world_patrol', op_name=gt('锄大地'),
                                run_record=ctx.world_patrol_record if not ignore_record else None,
                                need_notify=True)
         self.route_list: List[WorldPatrolRoute] = []

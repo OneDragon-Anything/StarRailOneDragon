@@ -14,7 +14,7 @@ class ChooseOeFile(SrOperation):
         """
         选择存档 最终返回【位面饰品提取】画面
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择存档', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择存档'))
 
         self.num: int = num  # 需要选择的存档编号 0代表不选
 

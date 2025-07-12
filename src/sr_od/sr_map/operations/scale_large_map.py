@@ -14,7 +14,7 @@ class ScaleLargeMap(SrOperation):
         :param to_scale: 目标缩放比例
         :param is_main_region: 是否主区域
         """
-        super().__init__(ctx, 5, op_name=gt('缩放地图至 %d', 'ui') % to_scale)
+        super().__init__(ctx, 5, op_name=gt('缩放地图至 %d') % to_scale)
         self.is_main_region: bool = is_main_region
         self.to_scale: int = to_scale
         self.scale_per_time: int = -1 if to_scale < self.ctx.pos_info.pos_lm_scale else 1  # 负数为缩小，正数为放大

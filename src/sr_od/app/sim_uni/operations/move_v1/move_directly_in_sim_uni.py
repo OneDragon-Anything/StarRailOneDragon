@@ -43,7 +43,7 @@ class MoveDirectlyInSimUni(MoveDirectly):
             next_lm_info=next_lm_info, stop_afterwards=stop_afterwards,
             no_run=no_run, no_battle=no_battle,
             op_callback=op_callback)
-        self.op_name = '%s %s' % (gt('模拟宇宙', 'ui'), gt('移动 %s -> %s') % (start, target))
+        self.op_name = '%s %s' % (gt('模拟宇宙', 'game'), gt('移动 %s -> %s', 'game') % (start, target))
         self.config: SimUniChallengeConfig = config
 
     def get_fight_op(self, in_world: bool = True) -> SrOperation:

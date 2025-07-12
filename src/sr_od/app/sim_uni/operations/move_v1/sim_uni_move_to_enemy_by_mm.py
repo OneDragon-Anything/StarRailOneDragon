@@ -34,7 +34,7 @@ class SimUniMoveToEnemyByMiniMap(SrOperation):
         :param no_attack: 不主动发起攻击
         :param stop_after_arrival: 到达后停止 如果明确知道到达后会发起攻击 则可以不停止
         """
-        SrOperation.__init__(self, ctx, op_name=gt('向红点移动', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('向红点移动'))
 
         self.current_pos: Point = Point(0, 0)
         """当前距离 默认是远点"""

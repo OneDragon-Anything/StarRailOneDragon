@@ -20,7 +20,7 @@ class ChooseFloor(SrOperation):
         self.target_floor_str = gt('%d层' % self.floor, 'ocr')
         self.neg_target_floor_str = gt('%d层' % (-self.floor), 'ocr')
         self.sub_region: bool = sub_region  # 是否子地图
-        SrOperation.__init__(self, ctx, op_name='%s %d' % (gt('选择楼层', 'ui'), floor))
+        SrOperation.__init__(self, ctx, op_name='%s %d' % (gt('选择楼层'), floor))
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:

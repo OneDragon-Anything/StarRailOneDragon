@@ -25,7 +25,7 @@ class ResetSimUniLevel(SrOperation):
         """
         SrOperation.__init__(
             self, ctx,
-            op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('暂离重进', 'ui')),
+            op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('暂离重进')),
         )
 
     @operation_node(name='暂离', node_max_retry_times=10, is_start_node=True)

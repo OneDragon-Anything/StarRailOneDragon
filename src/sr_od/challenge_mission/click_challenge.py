@@ -18,7 +18,7 @@ class ClickChallenge(SrOperation):
     CHALLENGE_BTN_RECT: ClassVar[Rect] = Rect(1360, 950, 1890, 1010)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name=gt('点击挑战', 'ui'))  # 交互后打开副本页面大概需要3秒 所以重试设置5次
+        SrOperation.__init__(self, ctx, op_name=gt('点击挑战'))  # 交互后打开副本页面大概需要3秒 所以重试设置5次
 
     @operation_node(name='点击', is_start_node=True)
     def click(self) -> OperationRoundResult:

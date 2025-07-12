@@ -18,7 +18,7 @@ class OpenPhoneMenu(SrOperation):
     """
 
     def __init__(self, ctx: SrContext):
-        super().__init__(ctx, op_name=gt('打开菜单', 'ui'))
+        super().__init__(ctx, op_name=gt('打开菜单'))
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:

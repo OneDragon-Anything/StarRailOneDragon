@@ -21,10 +21,10 @@ class TransportByMap(SrOperation):
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %s %s' % (
-                                 gt('传送'),
-                                 gt(tp.planet.display_name),
-                                 gt(tp.region.display_name),
-                                 gt(tp.display_name)
+                                 gt('传送', 'game'),
+                                 gt(tp.planet.display_name, 'game'),
+                                 gt(tp.region.display_name, 'game'),
+                                 gt(tp.display_name, 'game')
                              ))
 
         self.tp: SpecialPoint = tp

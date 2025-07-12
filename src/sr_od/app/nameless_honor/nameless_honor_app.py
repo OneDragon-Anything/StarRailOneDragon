@@ -28,7 +28,7 @@ class NamelessHonorApp(SrApplication):
         3. 到Tab-1领取奖励 如果有的话
         4. 返回菜单
         """
-        SrApplication.__init__(self, ctx, 'nameless_honor', op_name=gt('无名勋礼', 'ui'),
+        SrApplication.__init__(self, ctx, 'nameless_honor', op_name=gt('无名勋礼', 'game'),
                                run_record=ctx.nameless_honor_run_record, need_notify=True)
 
     @operation_node(name='开始前返回', is_start_node=True)

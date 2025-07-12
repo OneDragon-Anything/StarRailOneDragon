@@ -27,7 +27,7 @@ class TransportToRecover(SrOperation):
         SrOperation.__init__(
             self, ctx,
             op_name='%s %s %s %s' % (
-                gt('传送恢复', 'ui'),
+                gt('传送恢复'),
                 self.tp.planet.display_name,
                 self.tp.region.display_name,
                 self.tp.display_name

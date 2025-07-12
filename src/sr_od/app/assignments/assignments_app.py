@@ -22,7 +22,7 @@ class AssignmentsApp(SrApplication):
     STATUS_NO_CLAIM: ClassVar[str] = '无领取'
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, 'assignments', op_name=gt('委托', 'ui'),
+        SrApplication.__init__(self, ctx, 'assignments', op_name=gt('委托'),
                                run_record=ctx.assignments_run_record,
                                need_notify=True)
 

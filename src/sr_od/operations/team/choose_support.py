@@ -26,7 +26,7 @@ class ChooseSupport(SrOperation):
         :param ctx:
         :param character_id:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择支援', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择支援'))
 
         self.character_id: str = character_id
         """需要选择的角色ID"""

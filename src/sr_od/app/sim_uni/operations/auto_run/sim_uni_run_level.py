@@ -44,9 +44,9 @@ class SimUniRunLevel(SrOperation):
         - 战斗失败
         """
         op_name = '%s %s %s' % (
-            gt('模拟宇宙', 'ui'),
-            gt('第%s世界' % UNI_NUM_CN[world_num], 'ui'),
-            gt('挑战楼层', 'ui')
+            gt('模拟宇宙', 'game'),
+            gt('第%s世界' % UNI_NUM_CN[world_num], 'game'),
+            gt('挑战楼层')
         )
 
         SrOperation.__init__(self, ctx, op_name=op_name, op_callback=op_callback)

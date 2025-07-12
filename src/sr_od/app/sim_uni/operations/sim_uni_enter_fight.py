@@ -39,7 +39,7 @@ class SimUniEnterFight(SrOperation):
         模拟宇宙中 主动进入战斗
         根据小地图的红圈 判断是否被敌人锁定
         """
-        super().__init__(ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('进入战斗', 'ui')))
+        super().__init__(ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('进入战斗')))
 
         self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config  # 挑战配置
         self.disposable: bool = disposable  # 攻击可破坏物

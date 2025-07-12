@@ -30,7 +30,7 @@ class SimUniUpgradeBless(SrOperation):
         模拟宇宙 强化祝福
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('强化祝福', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('强化祝福')))
 
         self.left_num: int = 0  # 剩余碎片数量
         self.upgrade_list: List[MatchResult] = []  # 可升级的祝福的点击位置

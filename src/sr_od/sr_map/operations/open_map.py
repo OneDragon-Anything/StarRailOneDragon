@@ -14,7 +14,7 @@ class OpenMap(SrOperation):
         """
         通过按 esc 和 m 打开大地图
         """
-        SrOperation.__init__(self, ctx, op_name=gt('打开地图', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('打开地图'))
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:

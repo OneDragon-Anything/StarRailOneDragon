@@ -9,7 +9,7 @@ from sr_od.screen_state import battle_screen_state, common_screen_state
 class WaitBattleResult(SrOperation):
 
     def __init__(self, ctx: SrContext, try_attack: bool = False):
-        super().__init__(ctx, op_name=gt('等待战斗结果', 'ui'))
+        super().__init__(ctx, op_name=gt('等待战斗结果'))
 
         self.try_attack: bool = try_attack
         """未进入战斗时 是否尝试攻击"""

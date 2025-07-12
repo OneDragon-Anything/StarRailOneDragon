@@ -330,7 +330,7 @@ def filter_character_list(destiny_id: Optional[str] = None,
             continue
         if level is not None and c.level != level:
             continue
-        if character_name is not None and not str_utils.find_by_lcs(character_name, gt(c.cn, 'ui'), percent=1):
+        if character_name is not None and not str_utils.find_by_lcs(character_name, gt(c.cn), percent=1):
             continue
 
         filter_list.append(c)

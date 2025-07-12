@@ -33,7 +33,7 @@ class GuideCheckPower(SrOperation):
     @node_from(from_name='打开指南')
     @operation_node(name='选择生存索引')
     def choose_guide_tab(self) -> OperationRoundResult:
-        tab = self.ctx.guide_data.best_match_tab_by_name(gt('生存索引'))
+        tab = self.ctx.guide_data.best_match_tab_by_name(gt('生存索引', 'game'))
         op = GuideChooseTab(self.ctx, tab)
         return self.round_by_op_result(op.execute())
 

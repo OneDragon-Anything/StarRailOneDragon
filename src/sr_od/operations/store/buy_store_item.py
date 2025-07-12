@@ -22,7 +22,7 @@ class BuyStoreItem(SrOperation):
         :param item: 要购买的商品
         :param buy_num: 要购买的数量 0的话代表最大值
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('购买商品', 'ui'), gt(item.cn, 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('购买商品'), gt(item.cn, 'game')))
 
         self.item: StoreItem = item  # 要购买的商品
         self.buy_num: int = buy_num  # 要购买的数量

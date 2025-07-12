@@ -66,8 +66,8 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         self.init_with_plan(plan)
 
     def init_mission_combo_box(self) -> None:
-        tab = self.ctx.guide_data.best_match_tab_by_name(gt('生存索引'))
-        category = self.ctx.guide_data.best_match_category_by_name(gt('历战余响'), tab)
+        tab = self.ctx.guide_data.best_match_tab_by_name(gt('生存索引', 'game'))
+        category = self.ctx.guide_data.best_match_category_by_name(gt('历战余响', 'game'), tab)
         config_list = self.ctx.guide_data.get_mission_list_in_power_plan(category)
         target_mission = config_list[0].value
         for i in config_list:

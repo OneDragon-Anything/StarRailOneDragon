@@ -44,7 +44,7 @@ class SrOdSettingInterface(VerticalScrollInterface):
         return group
 
     def get_trick_snack_group(self) -> QWidget:
-        group = SettingCardGroup(gt('奇巧零食'))
+        group = SettingCardGroup(gt('奇巧零食', 'game'))
 
         self.route_yll6_xzq_opt = SwitchSettingCard(icon=FluentIcon.GAME, title='雅利洛-VI 行政区 罗纳德')
         group.addSettingCard(self.route_yll6_xzq_opt)

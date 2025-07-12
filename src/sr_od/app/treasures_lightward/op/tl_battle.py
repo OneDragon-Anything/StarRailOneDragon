@@ -55,7 +55,7 @@ class TlNodeFight(StateOperation):
         edges.append(StateOperationEdge(enter_fight, check_screen))
 
         super().__init__(ctx, try_times=10,
-                         op_name=gt('逐光捡金 节点挑战', 'ui'),
+                         op_name=gt('逐光捡金 节点挑战'),
                          edges=edges,
                          timeout_seconds=600,
                          op_callback=op_callback)
@@ -129,7 +129,7 @@ class TlAfterNodeFight(StateOperation):
         edges.append(StateOperationEdge(quick_empty_close, check_screen))
 
         super().__init__(ctx, try_times=10,
-                         op_name=gt('逐光捡金 结算后返回', 'ui'),
+                         op_name=gt('逐光捡金 结算后返回', 'game'),
                          edges=edges
                          )
         self.phase: int = 0

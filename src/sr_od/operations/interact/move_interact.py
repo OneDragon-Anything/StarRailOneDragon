@@ -28,7 +28,7 @@ class MoveInteract(SrOperation):
         :param single_line: 是否确认只有一行的交互 此时可以缩小文本识别范围
         :param no_move: 不移动触发交互 适用于确保能站在交互点的情况。例如 各种体力本、模拟宇宙事件点
         """
-        SrOperation.__init__(self, ctx, op_name=gt('交互 %s', 'ui') % gt(cn, 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('交互 %s') % gt(cn))
         self.cn: str = cn
         self.lcs_percent: float = lcs_percent
         self.single_line: bool = single_line

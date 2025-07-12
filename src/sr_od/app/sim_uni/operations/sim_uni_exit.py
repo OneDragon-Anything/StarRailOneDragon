@@ -23,8 +23,8 @@ class SimUniExit(SrOperation):
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' %
-                                     (gt('模拟宇宙', 'ui'),
-                                      gt('结束并结算', 'ui'))
+                                     (gt('模拟宇宙', 'game'),
+                                      gt('结束并结算'))
                              )
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)

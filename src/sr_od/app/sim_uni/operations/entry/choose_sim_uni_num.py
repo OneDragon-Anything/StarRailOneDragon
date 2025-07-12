@@ -33,7 +33,7 @@ class ChooseSimUniNum(SrOperation):
         :param num: 第几宇宙 支持 1~8
         """
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s %d' % (gt('模拟宇宙', 'ui'), gt('选择宇宙', 'ui'), num),
+                             op_name='%s %s %d' % (gt('模拟宇宙', 'game'), gt('选择宇宙'), num),
                              op_callback=op_callback)
 
         self.num: int = num

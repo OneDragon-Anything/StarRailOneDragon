@@ -17,7 +17,7 @@ class GuideTransport(SrOperation):
         """
         使用指南进行传送
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('指南传送'), gt(mission.display_name)))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('指南传送'), gt(mission.display_name, 'game')))
 
         self.mission: GuideMission = mission
 

@@ -23,7 +23,7 @@ class GetRidOfStuck(SrOperation):
         :param ctx:
         :param stuck_times: 被困次数 1~12
         """
-        super().__init__(ctx, op_name='%s %d' % (gt('尝试脱困', 'ui'), stuck_times))
+        super().__init__(ctx, op_name='%s %d' % (gt('尝试脱困'), stuck_times))
         self.stuck_times: int = stuck_times
 
     @operation_node(name='脱困', is_start_node=True)

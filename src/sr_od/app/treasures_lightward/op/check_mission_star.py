@@ -16,7 +16,7 @@ class CheckMissionStar(Operation):
         :param ctx: 应用上下文
         :param mission_num: 扫描哪个关卡 1~12
         """
-        super().__init__(ctx, try_times=20, op_name='%s %d' % (gt('逐光捡金 获取关卡星数', 'ui'), mission_num))
+        super().__init__(ctx, try_times=20, op_name='%s %d' % (gt('逐光捡金 获取关卡星数'), mission_num))
         self.mission_num: int = mission_num
 
     def _execute_one_round(self) -> OperationOneRoundResult:

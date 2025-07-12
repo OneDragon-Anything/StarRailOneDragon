@@ -75,7 +75,7 @@ class ChooseTeamInForgottenHall(Operation):
         :param cal_team_member_func:
         :param choose_team_callback: 计算得到配队后的回调
         """
-        super().__init__(ctx, op_name=gt('逐光捡金 选择配队', 'ui'))
+        super().__init__(ctx, op_name=gt('逐光捡金 选择配队'))
         self.cal_team_func: Callable = cal_team_member_func
         self.phase: int = 0
         self.teams: List[List[Character]] = []

@@ -87,9 +87,9 @@ class WorldPatrolRoute:
         :return:
         """
         old_name = '%s_%s_%s_%02d' % (
-            gt(self.tp.planet.cn, 'ui'),
-            gt(self.tp.region.cn, 'ui'),
-            gt(self.tp.cn, 'ui'),
+            gt(self.tp.planet.cn),
+            gt(self.tp.region.cn),
+            gt(self.tp.cn),
             self.route_num_in_region
         )
         if self.is_personal:

@@ -3,7 +3,7 @@ from typing import Optional, List
 import yaml
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from cv2.typing import MatLike
-from qfluentwidgets import PushButton, PlainTextEdit, SettingCardGroup, FluentIcon, LineEdit
+from qfluentwidgets import PushButton, PlainTextEdit, SettingCardGroup, ToolButton, FluentIcon, LineEdit
 
 from one_dragon.base.config.config_item import ConfigItem
 from one_dragon.base.operation.context_event_bus import ContextEventItem
@@ -82,17 +82,17 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
         Row()
 
         self.planet_btn = ComboBox()
-        self.planet_btn.setPlaceholderText(gt('选择星球', 'ui'))
+        self.planet_btn.setPlaceholderText(gt('选择星球'))
         self.planet_btn.currentIndexChanged.connect(self.on_planet_changed)
         region_row.add_widget(self.planet_btn)
 
         self.region_without_level_opt = ComboBox()
-        self.region_without_level_opt.setPlaceholderText(gt('选择区域', 'ui'))
+        self.region_without_level_opt.setPlaceholderText(gt('选择区域'))
         self.region_without_level_opt.currentIndexChanged.connect(self.on_region_without_level_selected)
         region_row.add_widget(self.region_without_level_opt)
 
         self.region_level_opt = ComboBox()
-        self.region_level_opt.setPlaceholderText(gt('切换子区域或楼层', 'ui'))
+        self.region_level_opt.setPlaceholderText(gt('切换子区域或楼层'))
         self.region_level_opt.currentIndexChanged.connect(self.on_region_level_selected)
         region_row.add_widget(self.region_level_opt)
 
@@ -103,7 +103,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
         tp_row = Row()
 
         self.tp_opt = ComboBox()
-        self.tp_opt.setPlaceholderText(gt('选择传送点', 'ui'))
+        self.tp_opt.setPlaceholderText(gt('选择传送点'))
         self.tp_opt.currentIndexChanged.connect(self.on_tp_changed)
         tp_row.add_widget(self.tp_opt)
 
@@ -114,7 +114,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
         route_row = Row()
 
         self.existed_route_opt = ComboBox()
-        self.existed_route_opt.setPlaceholderText(gt('选择路线', 'ui'))
+        self.existed_route_opt.setPlaceholderText(gt('选择路线'))
         self.existed_route_opt.currentIndexChanged.connect(self.on_route_selected)
         route_row.add_widget(self.existed_route_opt)
 
@@ -124,19 +124,19 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
         # 保存按钮行
         save_btn_row = Row()
 
-        self.create_btn = PushButton(text=gt('新建', 'ui'))
+        self.create_btn = PushButton(text=gt('新建'))
         self.create_btn.clicked.connect(self.on_create_clicked)
         save_btn_row.add_widget(self.create_btn)
 
-        self.save_btn = PushButton(text=gt('保存', 'ui'))
+        self.save_btn = PushButton(text=gt('保存'))
         self.save_btn.clicked.connect(self.on_save_clicked)
         save_btn_row.add_widget(self.save_btn)
 
-        self.delete_btn = PushButton(text=gt('删除', 'ui'))
+        self.delete_btn = ToolButton(FluentIcon.DELETE)
         self.delete_btn.clicked.connect(self.on_delete_clicked)
         save_btn_row.add_widget(self.delete_btn)
 
-        self.cancel_btn = PushButton(text=gt('取消', 'ui'))
+        self.cancel_btn = PushButton(text=gt('取消'))
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
         save_btn_row.add_widget(self.cancel_btn)
 
@@ -264,7 +264,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
         gameplay_interaction_row = Row()
 
         self.gameplay_interact_seconds = LineEdit()
-        self.gameplay_interact_seconds.setPlaceholderText('按键秒数')
+        self.gameplay_interact_seconds.setPlaceholderText(gt('按键秒数'))
         gameplay_interaction_row.add_widget(self.gameplay_interact_seconds)
 
         self.gameplay_interact_btn = PushButton(text=gt('玩法交互'))
@@ -281,7 +281,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
     def get_middle_layout(self) -> QVBoxLayout:
         layout = QVBoxLayout()
 
-        layout.addWidget(SettingCardGroup('路线指令'))
+        layout.addWidget(SettingCardGroup(gt('路线指令')))
         self.route_text = PlainTextEdit()
         self.route_text.textChanged
         self.route_text.setMinimumWidth(200)
@@ -295,7 +295,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
     def get_right_layout(self) -> QVBoxLayout:
         layout = QVBoxLayout()
 
-        layout.addWidget(SettingCardGroup('大地图'))
+        layout.addWidget(SettingCardGroup(gt('大地图')))
 
         self.large_map_image = ImageViewerWidget()
         self.large_map_image.point_clicked.connect(self.on_large_map_clicked)
@@ -416,7 +416,7 @@ class WorldPatrolDrawRouteInterface(VerticalScrollInterface):
                     break
 
         self.region_without_level_opt.set_items(
-            [ConfigItem(gt(r.cn), r) for r in region_list],
+            [ConfigItem(gt(r.cn, 'game'), r) for r in region_list],
             self.chosen_region_without_level
         )
 

@@ -27,7 +27,7 @@ class ChooseTeam(SrOperation):
         :param team_num: 队伍编号
         :param on: 是否需要点击【启用】
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择配队', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择配队'))
         self.team_num: int = team_num
         self.on: bool = on
 

@@ -34,7 +34,7 @@ class SimUniMoveToEnemyByDetect(SrOperation):
         - 被怪物锁定
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('向怪物移动', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('向怪物移动'))
 
         self.no_enemy_times: int = 0  # 没有发现敌人的次数
         self.start_move_time: float = 0  # 开始移动的时间

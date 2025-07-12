@@ -39,7 +39,7 @@ class CustomCombineOp(SrOperation):
         self.op_idx: int = 0  # 当前指定的指令下标
         self.no_battle: bool = no_battle
 
-        SrOperation.__init__(self, ctx, op_name=gt(self.config.config_name, 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt(self.config.config_name))
 
     @node_from(from_name='执行指令')
     @operation_node(name='执行指令', is_start_node=True)
@@ -92,7 +92,7 @@ class CustomCombineOp(SrOperation):
         region_floor = int(op_item.data[2])
         tp_name = op_item.data[3]
 
-        tp = self.ctx.map_data.best_match_sp_by_all_name(gt(planet_name), gt(region_name), gt(tp_name), region_floor)
+        tp = self.ctx.map_data.best_match_sp_by_all_name(gt(planet_name, 'game'), gt(region_name, 'game'), gt(tp_name, 'game'), region_floor)
 
         return TransportByMap(self.ctx, tp)
 

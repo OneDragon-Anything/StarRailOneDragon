@@ -22,7 +22,7 @@ class ClickStoreItem(Operation):
 
     def __init__(self, ctx: Context, item_name: str, lcs_percent: float):
         super().__init__(ctx, try_times=5,
-                         op_name='%s %s' % (gt('点击商品', 'ui'), gt(item_name, 'ui')))
+                         op_name='%s %s' % (gt('点击商品'), gt(item_name, 'game')))
         self.item_name: str = item_name
         self.lcs_percent: float = lcs_percent
 

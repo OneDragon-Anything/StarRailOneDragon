@@ -21,7 +21,7 @@ class GuideChooseCategory(SrOperation):
         :param target: 目标类目
         :param skip_wait: 跳过等待加载
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('指南', 'ui'), gt(target.cn, 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('指南'), gt(target.cn)))
 
         self.target: GuideCategory = target
         self.skip_wait: bool = skip_wait

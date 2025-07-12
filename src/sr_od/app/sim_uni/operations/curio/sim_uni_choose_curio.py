@@ -54,7 +54,7 @@ class SimUniChooseCurio(SrOperation):
         :param config: 挑战配置
         :param skip_first_screen_check: 是否跳过第一次画面状态检查
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('选择奇物', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择奇物')))
 
         self.config: Optional[SimUniChallengeConfig] = config
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速
@@ -232,7 +232,7 @@ class SimUniDropCurio(SrOperation):
         :param config: 挑战配置
         :param skip_first_screen_check: 是否跳过第一次画面状态检查
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('丢弃奇物', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('丢弃奇物', 'game')))
 
         self.config: Optional[SimUniChallengeConfig] = config
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速

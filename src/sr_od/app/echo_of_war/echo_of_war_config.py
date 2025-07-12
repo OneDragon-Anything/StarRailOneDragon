@@ -17,8 +17,8 @@ class EchoOfWarConfig(YamlConfig):
         self.init_plan_list()
 
     def init_plan_list(self):
-        tab = self.guide_data.best_match_tab_by_name(gt('生存索引'))
-        category = self.guide_data.best_match_category_by_name(gt('历战余响'), tab)
+        tab = self.guide_data.best_match_tab_by_name(gt('生存索引', 'game'))
+        category = self.guide_data.best_match_category_by_name(gt('历战余响', 'game'), tab)
         war_list: List[GuideMission] = self.guide_data.category_2_mission.get(category.unique_id, [])
 
         id_2_plan = {}

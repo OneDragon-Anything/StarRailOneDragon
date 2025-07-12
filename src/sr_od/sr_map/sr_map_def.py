@@ -32,7 +32,7 @@ class Planet:
 
     @property
     def display_name(self):
-        return gt(self.cn, 'ui')
+        return gt(self.cn)
 
 
 class RegionSet:
@@ -134,9 +134,9 @@ class Region:
     @property
     def display_name(self) -> str:
         if self.another_floor:
-            return '%s %s' % (gt(self.cn, 'ui'), gt('%d层' % self.floor, 'ocr'))
+            return '%s %s' % (gt(self.cn, 'game'), gt('%d层' % self.floor, 'ocr'))
         else:
-            return gt(self.cn, 'ui')
+            return gt(self.cn, 'game')
 
 
 class SpecialPoint:
@@ -155,7 +155,7 @@ class SpecialPoint:
 
     @property
     def display_name(self):
-        return gt(self.cn, 'ui')
+        return gt(self.cn, 'game')
 
     @property
     def unique_id(self):

@@ -18,7 +18,7 @@ class DailyTrainingApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, 'daily_training',
-                               op_name=gt('每日实训'),
+                               op_name=gt('每日实训', 'game'),
                                run_record=ctx.daily_training_run_record,
                                need_notify=True)
 
@@ -42,7 +42,7 @@ class DailyTrainingApp(SrApplication):
     @node_from(from_name='点击指南')
     @operation_node(name='选择每日实训')
     def guide_choose_tab(self) -> OperationRoundResult:
-        tab = self.ctx.guide_data.best_match_tab_by_name(gt('每日实训'))
+        tab = self.ctx.guide_data.best_match_tab_by_name(gt('每日实训', 'game'))
         op = GuideChooseTab(self.ctx, tab)
         return self.round_by_op_result(op.execute())
 

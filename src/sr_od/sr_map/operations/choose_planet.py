@@ -27,7 +27,7 @@ class ChoosePlanet(SrOperation):
         """
         self.planet: Planet = planet  # 目标星球
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s' % (gt('选择星球', 'ui'), self.planet.display_name))
+                             op_name='%s %s' % (gt('选择星球'), self.planet.display_name))
 
     @operation_node(name='选择', node_max_retry_times=10, is_start_node=True)
     def choose(self) -> OperationRoundResult:

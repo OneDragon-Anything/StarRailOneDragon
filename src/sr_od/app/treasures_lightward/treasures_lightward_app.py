@@ -89,7 +89,7 @@ class TreasuresLightwardApp(Application):
 
         edges.append(StateOperationEdge(challenge_mission, finished, ignore_status=True))  # 没满星就不挑战下一个了
 
-        super().__init__(ctx, op_name=gt('逐光捡金', 'ui'),
+        super().__init__(ctx, op_name=gt('逐光捡金', 'game'),
                          run_record=self.run_record, edges=edges)
 
         self.schedule_type: TreasuresLightwardTypeEnum = TreasuresLightwardTypeEnum.FORGOTTEN_HALL  # 当前挑战类型

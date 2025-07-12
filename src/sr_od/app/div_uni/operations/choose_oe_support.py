@@ -16,7 +16,7 @@ class ChooseOeSupport(SrOperation):
         在位面饰品提取画面 选择支援
         执行后停留在 位面饰品提取画面
         """
-        SrOperation.__init__(self, ctx, op_name=f"{gt('饰品提取', 'ui')} {gt('选择支援', 'ui')}")
+        SrOperation.__init__(self, ctx, op_name=f"{gt('饰品提取', 'game')} {gt('选择支援')}")
 
         self.character_id: str = character_id
         """支援角色ID"""

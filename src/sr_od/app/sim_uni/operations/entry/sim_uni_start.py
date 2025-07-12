@@ -22,7 +22,7 @@ class SimUniStart(SrOperation):
         :param ctx:
         """
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('开始挑战', 'ui'))
+                             op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('开始挑战'))
                              )
 
     @operation_node(name='开始', is_start_node=True)

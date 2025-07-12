@@ -31,7 +31,7 @@ class CheckMaxUnlockMission(StateOperation):
         edges.append(StateOperationEdge(wait, get))
 
         super().__init__(ctx, try_times=5,
-                         op_name='%s %s' % (gt('逐光捡金', 'ui'), gt('最大解锁关卡', 'ui')),
+                         op_name='%s %s' % (gt('逐光捡金', 'game'), gt('最大解锁关卡')),
                          op_callback=op_callback,
                          edges=edges
                          )

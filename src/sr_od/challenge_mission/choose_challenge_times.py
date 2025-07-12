@@ -21,7 +21,7 @@ class ChooseChallengeTimes(SrOperation):
         :param ctx:
         :param total_times: 总共挑战次数 <=6
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择挑战次数', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择挑战次数'))
         self.total_times: int = total_times
 
     @operation_node(name='选择', node_max_retry_times=5, is_start_node=True)

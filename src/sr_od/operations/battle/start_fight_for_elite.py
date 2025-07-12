@@ -34,7 +34,7 @@ class StartFightForElite(SrOperation):
         :param skip_point_check: 跳过使用秘技时检测秘技点 逐光捡金可用
         :param skip_resurrection_check: 跳过切换角色时检测复活 逐光捡金可用
         """
-        SrOperation.__init__(self, ctx, op_name=gt('使用秘技 进入战斗', 'ui'),)
+        SrOperation.__init__(self, ctx, op_name=gt('使用秘技 进入战斗'),)
         self.character_list_from_param: Optional[List[Character]] = character_list
         self.character_list: List[Character] = []
         self.technique_order: List[int] = []

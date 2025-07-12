@@ -25,7 +25,7 @@ class TlCheckTotalStar(Operation):
     def __init__(self, ctx: Context, schedule_type: TreasuresLightwardTypeEnum,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         super().__init__(ctx, try_times=5,
-                         op_name='%s %s' % (gt(schedule_type.value, 'ui'), gt('获取总星数', 'ui')),
+                         op_name='%s %s' % (gt(schedule_type.value), gt('获取总星数')),
                          op_callback=op_callback
                          )
         self.schedule_type: TreasuresLightwardTypeEnum = schedule_type

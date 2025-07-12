@@ -20,7 +20,7 @@ class CancelMissionTrace(SrOperation):
         尝试取消任务追踪 在需要使用大地图的app启动时调用
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('取消任务追踪', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('取消任务追踪'))
 
         self.in_world_times: int = 0  # 判断在大世界的次数
 

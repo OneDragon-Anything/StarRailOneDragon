@@ -20,7 +20,7 @@ class CheckTeamMembersInWorld(SrOperation):
         获取组队角色
         :param ctx: 上下文
         """
-        SrOperation.__init__(self, ctx, op_name=gt('组队角色判断', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('组队角色判断'))
 
         self.character_list: List[Character] = [None, None, None, None] if character_list is None else character_list
 
