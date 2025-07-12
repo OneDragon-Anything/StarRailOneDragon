@@ -29,7 +29,7 @@ class MoveWithoutPos(SrOperation):
         返回 data = 目标点坐标
         """
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s -> %s' % (gt('机械移动', 'ui'), start, target),
+                             op_name='%s %s -> %s' % (gt('机械移动'), start, target),
                              op_callback=op_callback)
 
         self.start: Point = start

@@ -10,7 +10,7 @@ class BuyXianzhouParcelApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, 'buy_xianzhou_parcel',
-                               op_name=gt('仙舟过期邮包', 'ui'),
+                               op_name=gt('仙舟过期邮包'),
                                run_record=ctx.buy_xz_parcel_run_record,
                                need_notify=True)
 

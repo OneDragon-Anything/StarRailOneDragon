@@ -10,7 +10,7 @@ from sr_od.operations.custom_combine_op.custom_combine_op import CustomCombineOp
 class TrickSnackApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, 'trick_snack', op_name=gt('奇巧零食', 'ui'),
+        SrApplication.__init__(self, ctx, 'trick_snack', op_name=gt('奇巧零食', 'game'),
                                run_record=ctx.trick_snack_run_record, need_notify=True)
 
     @operation_node(name='购买路线1', is_start_node=True)

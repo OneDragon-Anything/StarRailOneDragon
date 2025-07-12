@@ -26,7 +26,7 @@ class SimUniChoosePath(SrOperation):
         :param path: 目标命途
         """
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('选择命途', 'ui')),
+                             op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择命途')),
                              )
         self.path: SimUniPath = path
 

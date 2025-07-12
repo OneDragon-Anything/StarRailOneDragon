@@ -52,7 +52,7 @@ class SimUniRoute:
         planet = self.map_data.get_planet_by_cn(planet_name)
         region_name = data['region']
         floor = data['floor']
-        self.region = self.map_data.best_match_region_by_name(gt(region_name), planet=planet, target_floor=floor)
+        self.region = self.map_data.best_match_region_by_name(gt(region_name, 'game'), planet=planet, target_floor=floor)
         self.start_pos = Point(data['start_pos'][0], data['start_pos'][1])
         self.op_list = [WorldPatrolRouteOperation(**i) for i in data.get('op_list', [])]
         self.next_pos_list = [Point(i[0], i[1]) for i in data.get('next_pos_list', [])]
@@ -242,7 +242,7 @@ class SimUniRoute:
             if op.op in [operation_const.OP_MOVE, operation_const.OP_SLOW_MOVE, operation_const.OP_NO_POS_MOVE]:
                 pos = Point(op.data[0], op.data[1])
                 if len(op.data) > 2 and op.data[2] != region.floor:
-                    region = self.map_data.best_match_region_by_name(gt(region.cn), planet=region.planet, target_floor=op.data[2])
+                    region = self.map_data.best_match_region_by_name(gt(region.cn, 'game'), planet=region.planet, target_floor=op.data[2])
         return region, pos
 
     @property

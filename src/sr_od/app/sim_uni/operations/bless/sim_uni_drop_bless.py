@@ -33,7 +33,7 @@ class SimUniDropBless(SrOperation):
         SrOperation.__init__(
             self,
             ctx,
-            op_name='%s %s' % (gt('模拟宇宙'), gt('丢弃祝福')),
+            op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('丢弃祝福')),
         )
 
         self.config: Optional[SimUniChallengeConfig] = config

@@ -18,7 +18,7 @@ class GuideChooseTab(SrOperation):
         选择对应的TAB
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (
-                gt('指南TAB', 'ui'), gt(target.cn, 'ui')
+                gt('指南TAB'), gt(target.cn)
         ))
 
         self.target: GuideTab = target  # 需要选择的TAB

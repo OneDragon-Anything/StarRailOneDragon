@@ -23,7 +23,7 @@ class EnterGame(SrOperation):
         进入游戏后 进行登陆
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('进入游戏', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('进入游戏'))
 
         self.force_login: bool = (self.ctx.one_dragon_config.instance_run == InstanceRun.ALL.value.value
             and len(self.ctx.one_dragon_config.instance_list_in_od) > 1)
@@ -177,7 +177,7 @@ class EnterGame(SrOperation):
         to_match_list: list[str] = []
         for idx, target_word in enumerate(target_word_list):
             target_word_idx_map[target_word] = idx
-            to_match_list.append(gt(target_word))
+            to_match_list.append(gt(target_word, 'game'))
 
         match_word, match_word_mrl = ocr_utils.match_word_list_by_priority(
             ocr_result_map,

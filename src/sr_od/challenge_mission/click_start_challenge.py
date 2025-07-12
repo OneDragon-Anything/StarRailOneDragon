@@ -19,7 +19,7 @@ class ClickStartChallenge(SrOperation):
         在队伍页面
         点击【开始挑战】
         """
-        SrOperation.__init__(self, ctx, op_name=gt('点击开始挑战', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('点击开始挑战'))
 
     @operation_node(name='点击', is_start_node=True)
     def click(self) -> OperationRoundResult:

@@ -24,7 +24,7 @@ class SwitchMember(SrOperation):
         :param skip_first_screen_check: 是否跳过第一次画面状态检查
         :param skip_resurrection_check: 跳过复活检测 逐光捡金中可跳过
         """
-        SrOperation.__init__(self, ctx, op_name='%s %d' % (gt('切换角色', 'ui'), num))
+        SrOperation.__init__(self, ctx, op_name='%s %d' % (gt('切换角色'), num))
 
         self.num: int = num
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速

@@ -129,7 +129,7 @@ def level_type_from_id(level_type_id: str) -> Optional[SimUniLevelType]:
 
 def level_type_from_name(level_type_name: str) -> Optional[SimUniLevelType]:
     for enum in SimUniLevelTypeEnum:
-        if gt(enum.value.type_name, 'ui') == level_type_name:
+        if gt(enum.value.type_name) == level_type_name:
             return enum.value
     return None
 
@@ -195,7 +195,7 @@ class SimUniBless:
         self.level: SimUniBlessLevel = level
 
     def __repr__(self) -> str:
-        return '%s %s' % (gt(self.path.value, 'ui'), gt(self.title, 'ui'))
+        return '%s %s' % (gt(self.path.value, 'game'), gt(self.title, 'game'))
 
 
 # https://bbs.mihoyo.com/sr/wiki/content/767/detail?bbs_presentation_style=no_header

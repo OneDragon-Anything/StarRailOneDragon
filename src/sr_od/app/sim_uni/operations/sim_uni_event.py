@@ -46,7 +46,7 @@ class SimUniEvent(SrOperation):
         模拟宇宙 事件
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('事件', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('事件', 'game')))
 
         self.opt_list: List[SimUniEventOption] = []
         self.chosen_opt_set: set[str] = set()  # 已经选择过的选项名称
@@ -78,7 +78,7 @@ class SimUniEvent(SrOperation):
         self.opt_list = self._get_opt_list(screen)
         if self.ctx.env_config.is_debug:
             title = self._get_event_title(screen)
-            if str_utils.find_by_lcs(gt('孤独太空美虫'), title, percent=0.5):
+            if str_utils.find_by_lcs(gt('孤独太空美虫', 'game'), title, percent=0.5):
                 pass
                 # return self.round_fail('遇到需要测试的事件啦')
 

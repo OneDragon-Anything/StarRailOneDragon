@@ -10,7 +10,7 @@ from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 class RelicSalvageApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, 'relic_salvage', op_name=gt('遗器分解', 'ui'),
+        SrApplication.__init__(self, ctx, 'relic_salvage', op_name=gt('遗器分解'),
                                run_record=ctx.relic_salvage_run_record, need_notify=True)
 
     @operation_node(name='开始前返回', is_start_node=True)

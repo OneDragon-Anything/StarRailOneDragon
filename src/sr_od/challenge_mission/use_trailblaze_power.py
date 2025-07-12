@@ -41,8 +41,8 @@ class UseTrailblazePower(SrOperation):
 
         SrOperation.__init__(
             self, ctx, op_name='%s %s %d' % (
-                gt(mission.unique_id, 'ui'),
-                gt('次数', 'ui'),
+                gt(mission.unique_id),
+                gt('次数'),
                 plan_times)
         )
 

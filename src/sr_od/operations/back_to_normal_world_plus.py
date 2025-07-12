@@ -21,7 +21,7 @@ class BackToNormalWorldPlus(SrOperation):
         已考虑场景如下
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('返回普通大世界', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('返回普通大世界'))
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:

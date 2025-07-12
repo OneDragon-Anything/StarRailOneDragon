@@ -16,7 +16,7 @@ class SwitchAccount(SrOperation):
         """
         登出当前账号
         """
-        SrOperation.__init__(self, ctx, op_name=gt('切换账号', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('切换账号'))
 
     @operation_node(name='打开菜单', is_start_node=True)
     def open_menu(self) -> OperationRoundResult:

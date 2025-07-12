@@ -38,8 +38,8 @@ class SimUniRunRouteOp(SrOperation):
 
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %s' % (
-                                 gt('模拟宇宙', 'ui'),
-                                 gt('执行路线指令', 'ui'),
+                                 gt('模拟宇宙', 'game'),
+                                 gt('执行路线指令'),
                                  route.display_name
                              ),
                              op_callback=op_callback)
@@ -93,7 +93,7 @@ class SimUniRunRouteOp(SrOperation):
         current_lm_info = self.ctx.map_data.get_large_map_info(self.current_region)
         if len(current_op.data) > 2:
             next_region = self.ctx.map_data.best_match_region_by_name(
-                gt(self.current_region.cn), planet=self.current_region.planet,
+                gt(self.current_region.cn, 'game'), planet=self.current_region.planet,
                 target_floor=current_op.data[2])
             next_lm_info = self.ctx.map_data.get_large_map_info(next_region)
         else:
@@ -128,7 +128,7 @@ class SimUniRunRouteOp(SrOperation):
         route_item = self.route.op_list[self.op_idx]
         if len(route_item.data) > 2:
             self.current_region = self.ctx.map_data.best_match_region_by_name(
-                gt(self.current_region.cn), planet=self.current_region.planet,
+                gt(self.current_region.cn, 'game'), planet=self.current_region.planet,
                 target_floor=route_item.data[2])
 
     @node_from(from_name='执行路线指令', status=STATUS_ALL_OP_DONE)

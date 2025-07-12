@@ -113,7 +113,7 @@ class LargeMapRecorder(SrApplication):
             if self.floor_list_to_record is not None and floor not in self.floor_list_to_record:
                 continue
             current_region = self.ctx.map_data.best_match_region_by_name(
-                gt(self.region.cn),
+                gt(self.region.cn, 'game'),
                 planet=self.region.planet,
                 target_floor=floor
             )
@@ -504,7 +504,7 @@ class LargeMapRecorder(SrApplication):
 
         for floor in _FLOOR_LIST:
             floor_region = self.ctx.map_data.best_match_region_by_name(
-                gt(region.cn),
+                gt(region.cn, 'game'),
                 planet=region.planet,
                 target_floor=floor
             )
@@ -540,7 +540,7 @@ class LargeMapRecorder(SrApplication):
 
         for floor in _FLOOR_LIST:
             floor_region = self.ctx.map_data.best_match_region_by_name(
-                gt(region.cn),
+                gt(region.cn, 'game'),
                 planet=region.planet,
                 target_floor=floor
             )
@@ -653,8 +653,8 @@ class LargeMapRecorder(SrApplication):
 def __debug(planet_name, region_name, run_mode: str = 'all'):
     ctx = SrContext()
 
-    planet = ctx.map_data.best_match_planet_by_name(gt(planet_name))
-    region = ctx.map_data.best_match_region_by_name(gt(region_name), planet=planet)
+    planet = ctx.map_data.best_match_planet_by_name(gt(planet_name, 'game'))
+    region = ctx.map_data.best_match_region_by_name(gt(region_name, 'game'), planet=planet)
 
     key = f'{region.planet.cn} {region.cn}'
     log.info('当前录制 %s', key)

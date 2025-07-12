@@ -41,7 +41,7 @@ class WorldPatrolRunRoute(SrOperation):
 
         self.feixiao_attack: bool = True  # 飞霄是否进行了攻击 路线开始的时候不需要攻击 因此设置为已经攻击
 
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('锄地路线', 'ui'), self.route.display_name))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('锄地路线'), self.route.display_name))
 
     def handle_init(self):
         """
@@ -323,7 +323,7 @@ class WorldPatrolRunRoute(SrOperation):
         next_lm_info = None
         if len(route_item.data) > 2:  # 需要切换层数
             next_region = self.ctx.map_data.best_match_region_by_name(
-                gt(current_lm_info.region.cn), current_lm_info.region.planet, target_floor=route_item.data[2])
+                gt(current_lm_info.region.cn, 'game'), current_lm_info.region.planet, target_floor=route_item.data[2])
             next_lm_info = self.ctx.map_data.get_large_map_info(next_region)
 
         stop_afterwards = not (
@@ -366,7 +366,7 @@ class WorldPatrolRunRoute(SrOperation):
         route_item = self.route.route_list[self.op_idx]
         if len(route_item.data) > 2:
             self.current_region = self.ctx.map_data.best_match_region_by_name(
-                gt(self.current_region.cn), self.current_region.planet, target_floor=route_item.data[2])
+                gt(self.current_region.cn, 'game'), self.current_region.planet, target_floor=route_item.data[2])
 
     def wait(self, wait_type: str, seconds: float) -> SrOperation:
         """

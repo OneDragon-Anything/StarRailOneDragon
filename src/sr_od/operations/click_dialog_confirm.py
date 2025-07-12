@@ -18,7 +18,7 @@ class ClickDialogConfirm(SrOperation):
         :param ctx:
         :param wait_after_success: 点击成功后等待的秒数
         """
-        SrOperation.__init__(self, ctx, op_name=gt('点击确认', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('点击确认'))
         self.wait_after_success: Optional[int] = wait_after_success
 
     @operation_node(name='点击', is_start_node=True)

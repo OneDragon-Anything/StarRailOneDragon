@@ -17,7 +17,7 @@ class ClickPoint(SrOperation):
         SrOperation.__init__(
             self, ctx,
             op_name='%s %s' % (
-                gt('点击', 'ui'),
+                gt('点击'),
                 point
             ),
         )

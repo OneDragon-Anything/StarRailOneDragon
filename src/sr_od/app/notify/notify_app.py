@@ -16,7 +16,7 @@ class NotifyApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, 'notify',
-                              op_name=gt('通知', 'ui'),
+                              op_name=gt('通知'),
                               need_check_game_win=True,
                               run_record=ctx.notify_record)
 

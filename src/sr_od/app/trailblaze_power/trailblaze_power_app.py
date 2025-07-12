@@ -29,7 +29,7 @@ class TrailblazePowerApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, 'trailblaze_power',
-                               op_name=gt('开拓力', 'ui'),
+                               op_name=gt('开拓力'),
                                run_record=ctx.power_record,
                                need_notify=True)
 

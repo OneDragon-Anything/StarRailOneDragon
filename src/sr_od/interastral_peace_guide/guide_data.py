@@ -92,7 +92,7 @@ class SrGuideData:
         """
         根据OCR结果匹配TAB
         """
-        target_list = [gt(i.cn) for i in self.tab_list]
+        target_list = [gt(i.cn, 'game') for i in self.tab_list]
 
         idx = str_utils.find_best_match_by_difflib(ocr_word, target_word_list=target_list)
         if idx is None:
@@ -105,7 +105,7 @@ class SrGuideData:
         根据OCR结果匹配GuideCategory
         """
         category_list = self.tab_2_category.get(tab.unique_id, [])
-        target_list = [gt(i.cn) for i in category_list]
+        target_list = [gt(i.cn, 'game') for i in category_list]
         idx = str_utils.find_best_match_by_difflib(ocr_word, target_word_list=target_list)
         if idx is None:
             return None
@@ -120,7 +120,7 @@ class SrGuideData:
         if region_name is not None:
             mission_list = [i for i in mission_list if i.region_name == region_name]
 
-        target_list = [gt(i.mission_name) for i in mission_list]
+        target_list = [gt(i.mission_name, 'game') for i in mission_list]
         idx = str_utils.find_best_match_by_difflib(ocr_word, target_word_list=target_list)
         if idx is None:
             return None

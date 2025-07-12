@@ -28,7 +28,7 @@ class TalkInteract(SrOperation):
         """
 
         super().__init__(ctx, timeout_seconds=conversation_seconds,
-                         op_name=gt('交谈', 'ui') + ' ' + gt(option, 'ocr'))
+                         op_name=gt('交谈') + ' ' + gt(option, 'ocr'))
 
         self.option: str = option
         self.lcs_percent: float = lcs_percent

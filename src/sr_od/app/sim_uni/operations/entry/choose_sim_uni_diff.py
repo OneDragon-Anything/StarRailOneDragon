@@ -29,8 +29,8 @@ class ChooseSimUniDiff(SrOperation):
         :param num: 难度 支持 1~5
         """
         SrOperation.__init__(self, ctx,
-                             op_name='%s %s %s' % (gt('模拟宇宙', 'ui'), gt('选择难度', 'ui'),
-                                                   gt('默认', 'ui') if num == 0 else str(num))
+                             op_name='%s %s %s' % (gt('模拟宇宙', 'game'), gt('选择难度'),
+                                                   gt('默认') if num == 0 else str(num))
                              )
 
         self.num: int = num

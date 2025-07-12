@@ -15,7 +15,7 @@ class SimUniClaimWeeklyReward(SrOperation):
         需要在模拟宇宙的主页面中使用
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('获取每周积分奖励', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('获取每周积分奖励')))
 
     @operation_node(name='等待画面', is_start_node=True)
     def _wait_ui(self) -> OperationRoundResult:

@@ -21,7 +21,7 @@ class ClickPhoneMenuItem(SrOperation):
         点击菜单中的某个特定的项（中间大图标那块）
         需要先保证在菜单页面上
         """
-        super().__init__(ctx, op_name=gt('点击菜单 %s', 'ui') % gt(item.cn, 'ui'))
+        super().__init__(ctx, op_name=gt('点击菜单 %s') % gt(item.cn))
 
         self.item: PhoneMenuItem = item
         """需要点击的菜单"""

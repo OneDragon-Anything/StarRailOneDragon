@@ -33,9 +33,9 @@ class ChallengeEchoOfWar(SrOperation):
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %s %d' % (
-                                 gt('历战余响', 'ui'),
+                                 gt('历战余响', 'game'),
                                  mission.display_name,
-                                 gt('次数', 'ui'),
+                                 gt('次数'),
                                  plan_times
                              ))
 

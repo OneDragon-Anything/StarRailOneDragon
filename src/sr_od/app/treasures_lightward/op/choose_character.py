@@ -26,7 +26,7 @@ class TlChooseCharacter(Operation):
         """
         self.character: Character = character_const.get_character_by_id(character_id)
         super().__init__(ctx, try_times=6,
-                         op_name='%s %s' % (gt('选择角色', 'ui'), gt(self.character.cn, 'ui')))
+                         op_name='%s %s' % (gt('选择角色'), gt(self.character.cn)))
 
     def _execute_one_round(self) -> OperationOneRoundResult:
         pos = self._get_character_pos()

@@ -53,7 +53,7 @@ class MoveToNextLevel(SrOperation):
         :param current_pos: 当前人物的位置
         :param config: 挑战配置
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('向下一层移动', 'ui')),)
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('向下一层移动')),)
         self.level_type: SimUniLevelType = level_type
         self.route: SimUniRoute = route
         self.current_pos: Optional[Point] = current_pos

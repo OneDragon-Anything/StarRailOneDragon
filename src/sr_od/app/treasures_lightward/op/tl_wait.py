@@ -22,7 +22,7 @@ class TlWaitNodeStart(StateOperation):
         edges.append(StateOperationEdge(click_empty, wait))
 
         super().__init__(ctx, try_times=15,
-                         op_name=gt('逐光捡金 等待节点加载', 'ui'),
+                         op_name=gt('逐光捡金 等待节点加载'),
                          edges=edges,
                          specified_start_node=click_empty if first else wait
                          )

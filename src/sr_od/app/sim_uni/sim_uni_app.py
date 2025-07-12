@@ -36,7 +36,7 @@ class SimUniApp(SrApplication):
         :param ctx:
         """
         SrApplication.__init__(self, ctx, 'sim_universe',
-                               op_name=gt('模拟宇宙', 'ui'),
+                               op_name=gt('模拟宇宙', 'game'),
                                run_record=ctx.sim_uni_record,
                                need_notify=True)
 
@@ -90,8 +90,8 @@ class SimUniApp(SrApplication):
     @node_from(from_name='识别初始画面')
     @operation_node(name='传送')
     def transport(self) -> OperationRoundResult:
-        tab = self.ctx.guide_data.best_match_tab_by_name(gt('模拟宇宙'))
-        category = self.ctx.guide_data.best_match_category_by_name(gt('模拟宇宙'), tab)
+        tab = self.ctx.guide_data.best_match_tab_by_name(gt('模拟宇宙', 'game'))
+        category = self.ctx.guide_data.best_match_category_by_name(gt('模拟宇宙', 'game'), tab)
         mission = self.ctx.guide_data.best_match_mission_by_name('模拟宇宙', category)
         op = GuideTransport(self.ctx, mission)
         return self.round_by_op_result(op.execute())

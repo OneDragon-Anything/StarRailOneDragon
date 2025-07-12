@@ -29,7 +29,7 @@ class MoveToNextLevelV3(SrOperation):
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType, with_entry: bool = True,
                  turn_direction: int = 0):
-        SrOperation.__init__(self, ctx, op_name=gt('向下层移动v3', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('向下层移动v3'))
         self.level_type: SimUniLevelType = level_type
         self.start_with_entry: bool = with_entry  # 开始前是否识别到入口
         self.turn_direction: int = turn_direction  # 转动找下层入口的方向 1=右边 -1=左边

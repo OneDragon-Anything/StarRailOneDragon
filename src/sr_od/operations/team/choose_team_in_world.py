@@ -19,7 +19,7 @@ class ChooseTeamInWorld(SrOperation):
         :param ctx: 上下文
         :param team_num: 队伍编号 从1开始
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择配队', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择配队'))
         self.team_num: int = team_num
 
     @operation_node(name='返回大世界', is_start_node=True)

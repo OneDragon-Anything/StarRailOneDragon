@@ -97,7 +97,7 @@ class UseTechnique(SrOperation):
         :param trick_snack: 只使用奇巧零食
         :param exit_after_use: 当能使用秘技的情况下 一定要使用了秘技再退出
         """
-        SrOperation.__init__(self, ctx, op_name=gt('施放秘技', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('施放秘技'))
 
         self.no_dialog_times: int = 0  # 没有出现快速恢复对话框的次数
         self.max_consumable_cnt: int = max_consumable_cnt  # 最多使用的消耗品个数
@@ -219,7 +219,7 @@ class CheckTechniquePoint(SrOperation):
         返回附加状态为秘技点数
         :param ctx:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('检测秘技点数', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('检测秘技点数'))
 
     @operation_node(name='识别画面', node_max_retry_times=10, is_start_node=True)
     def check(self) -> OperationRoundResult:
@@ -252,7 +252,7 @@ class FastRecover(SrOperation):
         :param max_consumable_cnt: 秘技点不足时最多使用的消耗品个数
         :param quirky_snacks: 只使用奇巧零食
         """
-        SrOperation.__init__(self, ctx, op_name=gt('快速恢复', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('快速恢复'))
 
         self.max_consumable_cnt: int = max_consumable_cnt  # 最多使用的消耗品个数
         self.quirky_snacks: bool = quirky_snacks  # 只使用奇巧零食

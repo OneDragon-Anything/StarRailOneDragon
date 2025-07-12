@@ -26,7 +26,7 @@ class Synthesize(SrOperation):
         :param item: 要合成的物品
         :param num: 要合成的数量 0为最大值。当前只支持最大值
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('合成', 'ui'), ''))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('合成', 'game'), ''))
 
         self.item: SynthesizeItem = item  # 要合成的物品
         self.num: int = num  # 要合成的数量 0为最大值

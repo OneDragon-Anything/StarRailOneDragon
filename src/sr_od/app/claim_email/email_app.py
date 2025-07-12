@@ -24,7 +24,7 @@ class EmailApp(SrApplication):
         2023-11-12 中英文最高画质测试通过
         """
         SrApplication.__init__(self, ctx, 'email',
-                               op_name=gt('邮件', 'ui'),
+                               op_name=gt('邮件', 'game'),
                                run_record=ctx.email_run_record,
                                need_notify=True)
 

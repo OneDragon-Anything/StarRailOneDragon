@@ -26,7 +26,7 @@ class ChooseSupportInTeam(SrOperation):
         :param ctx:
         :param character_id:
         """
-        SrOperation.__init__(self, ctx, op_name=gt('选择支援', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('选择支援'))
 
         self.character_id: Optional[str] = character_id
         self.no_find_character_times: int = 0

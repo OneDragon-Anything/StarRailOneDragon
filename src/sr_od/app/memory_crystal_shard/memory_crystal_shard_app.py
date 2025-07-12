@@ -10,7 +10,7 @@ class MemoryCrystalShardApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, 'memory_crystal_shard',
-                               op_name=gt('领取记忆残晶', 'ui'),
+                               op_name=gt('领取记忆残晶'),
                                run_record=ctx.memory_crystal_shard_run_record,
                                need_notify=True)
 

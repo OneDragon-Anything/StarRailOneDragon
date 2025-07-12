@@ -35,8 +35,8 @@ class SimUniRunCombatRoute(SrOperation):
 
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (
-                                 gt('模拟宇宙', 'ui'),
-                                 gt('区域-%s' % level_type.type_name, 'ui')
+                                 gt('模拟宇宙', 'game'),
+                                 gt('区域-%s' % level_type.type_name)
                              ),
                              )
 

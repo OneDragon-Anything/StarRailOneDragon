@@ -21,7 +21,7 @@ class ChallengeOrnamentExtraction(SrOperation):
     def __init__(self, ctx: SrContext, mission: GuideMission, run_times: int,
                  diff: int, file_num: int, support_character: str,
                  get_reward_callback: Optional[Callable[[int], None]] = None):
-        SrOperation.__init__(self, ctx, op_name=gt('饰品提取', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('饰品提取', 'game'))
 
         self.mission: GuideMission = mission
         """需要挑战的副本"""

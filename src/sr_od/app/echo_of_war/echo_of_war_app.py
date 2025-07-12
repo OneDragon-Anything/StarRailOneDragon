@@ -19,7 +19,7 @@ from sr_od.interastral_peace_guide.guide_def import GuideMission
 class EchoOfWarApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, 'echo_of_war', op_name=gt('历战余响', 'ui'),
+        SrApplication.__init__(self, ctx, 'echo_of_war', op_name=gt('历战余响', 'game'),
                                run_record=ctx.echo_of_war_run_record, need_notify=True)
         self.power: int = 0
 

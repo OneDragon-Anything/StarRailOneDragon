@@ -23,8 +23,8 @@ class GuideChooseMission(SrOperation):
     def __init__(self, ctx: SrContext, mission: GuideMission):
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (
-                                 gt('指南选择副本', 'ui'),
-                                 gt(mission.mission_name, 'ui')
+                                 gt('指南选择副本'),
+                                 gt(mission.mission_name)
                              ))
         self.mission: GuideMission = mission
 
@@ -75,7 +75,7 @@ class GuideChooseMission(SrOperation):
 
         if self.mission.region_name is not None:
             # 有限制区域时 只保留区域附近一定距离的文本
-            region_idx = str_utils.find_best_match_by_difflib(gt(self.mission.region_name), word_list, cutoff=0.5)
+            region_idx = str_utils.find_best_match_by_difflib(gt(self.mission.region_name, 'game'), word_list, cutoff=0.5)
             if region_idx is None:
                 log.error('匹配失败 %s', self.mission.region_name)
                 return None
@@ -111,15 +111,15 @@ class GuideChooseMission(SrOperation):
 
             log.info('过滤后文本 %s', word_list)
 
-        mission_idx = str_utils.find_best_match_by_difflib(gt(self.mission.mission_name), word_list, cutoff=0.5)
+        mission_idx = str_utils.find_best_match_by_difflib(gt(self.mission.mission_name, 'game'), word_list, cutoff=0.5)
         if mission_idx is None:
             log.error('匹配失败 %s', self.mission.mission_name)
             return None
         log.info('匹配副本名称 %s', word_list[mission_idx])
 
-        tp_idx = str_utils.find_best_match_by_difflib(gt('传送'), word_list, cutoff=0.5)  # 模拟宇宙
+        tp_idx = str_utils.find_best_match_by_difflib(gt('传送', 'game'), word_list, cutoff=0.5)  # 模拟宇宙
         if tp_idx is None:
-            tp_idx = str_utils.find_best_match_by_difflib(gt('进入'), word_list, cutoff=0.5)  # 普通副本
+            tp_idx = str_utils.find_best_match_by_difflib(gt('进入', 'game'), word_list, cutoff=0.5)  # 普通副本
         if tp_idx is None:
             log.error('匹配失败 传送/进入')
             return None

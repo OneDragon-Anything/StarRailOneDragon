@@ -39,8 +39,8 @@ if __name__ == '__main__':
     planet_name: str = '翁法罗斯'
     region_name: str = '「永恒圣城」奥赫玛'
 
-    planet = ctx.map_data.best_match_planet_by_name(gt(planet_name))
-    region = ctx.map_data.best_match_region_by_name(gt(region_name), planet=planet)
+    planet = ctx.map_data.best_match_planet_by_name(gt(planet_name, 'game'))
+    region = ctx.map_data.best_match_region_by_name(gt(region_name, 'game'), planet=planet)
 
     sp_name_list = [
         '三季海庭',
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         '_1751785143340',
     ]
     for i in range(len(sp_name_list)):
-        sp = ctx.map_data.best_match_sp_by_name(region, gt(sp_name_list[i]))
+        sp = ctx.map_data.best_match_sp_by_name(region, gt(sp_name_list[i], 'game'))
         if sp is None:
             log.error(f'找不到 {sp_name_list[i]}')
         cal_one(sp, debug_image=img_list[i], show=True)

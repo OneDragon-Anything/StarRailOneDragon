@@ -66,23 +66,23 @@ class SimUniChallengeConfigInterface(VerticalScrollInterface):
         layout.addWidget(btn_row)
 
         self.existed_yml_btn = ComboBox()
-        self.existed_yml_btn.setPlaceholderText(gt('选择已有', 'ui'))
+        self.existed_yml_btn.setPlaceholderText(gt('选择已有'))
         self.existed_yml_btn.currentIndexChanged.connect(self.on_config_chosen)
         btn_row.add_widget(self.existed_yml_btn)
 
-        self.create_btn = PushButton(text=gt('新建', 'ui'))
+        self.create_btn = PushButton(text=gt('新建'))
         self.create_btn.clicked.connect(self.on_create_clicked)
         btn_row.add_widget(self.create_btn)
 
-        self.copy_btn = PushButton(text=gt('复制', 'ui'))
+        self.copy_btn = PushButton(text=gt('复制'))
         self.create_btn.clicked.connect(self.on_copy_clicked)
         btn_row.add_widget(self.copy_btn)
 
-        self.delete_btn = PushButton(text=gt('删除', 'ui'))
+        self.delete_btn = ToolButton(FluentIcon.DELETE)
         self.delete_btn.clicked.connect(self.on_delete_clicked)
         btn_row.add_widget(self.delete_btn)
 
-        self.cancel_btn = PushButton(text=gt('取消', 'ui'))
+        self.cancel_btn = PushButton(text=gt('取消'))
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
         btn_row.add_widget(self.cancel_btn)
 
@@ -179,8 +179,8 @@ class SimUniChallengeConfigInterface(VerticalScrollInterface):
         self.bless_table.setColumnWidth(0, 350)
         self.bless_table.setColumnWidth(1, 50)
         self.bless_table.setHorizontalHeaderLabels([
-            gt('祝福', 'ui'),
-            gt('添加', 'ui'),
+            gt('祝福', 'game'),
+            gt('添加'),
         ])
         self.bless_table.setMinimumHeight(600)
         layout.addWidget(self.bless_table)
@@ -195,8 +195,8 @@ class SimUniChallengeConfigInterface(VerticalScrollInterface):
         self.curio_table.setColumnWidth(0, 350)
         self.curio_table.setColumnWidth(1, 50)
         self.curio_table.setHorizontalHeaderLabels([
-            gt('奇物', 'ui'),
-            gt('添加', 'ui'),
+            gt('奇物', 'game'),
+            gt('添加'),
         ])
         self.curio_table.setMinimumHeight(600)
         layout.addWidget(self.curio_table)
@@ -207,8 +207,8 @@ class SimUniChallengeConfigInterface(VerticalScrollInterface):
         self.level_type_table.setColumnWidth(0, 350)
         self.level_type_table.setColumnWidth(1, 50)
         self.level_type_table.setHorizontalHeaderLabels([
-            gt('楼层类型', 'ui'),
-            gt('添加', 'ui'),
+            gt('楼层类型'),
+            gt('添加'),
         ])
         self.level_type_table.setMinimumHeight(600)
         layout.addWidget(self.level_type_table)

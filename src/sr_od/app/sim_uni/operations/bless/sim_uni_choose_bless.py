@@ -45,7 +45,7 @@ class SimUniChooseBless(SrOperation):
         :param before_level_start: 是否在楼层开始的选择
         :param fast_back_to_world 需要快速判断返回世界
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('选择祝福', 'ui')))
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择祝福')))
 
         self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config  # 祝福优先级
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速

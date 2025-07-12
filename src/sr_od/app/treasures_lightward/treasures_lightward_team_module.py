@@ -279,11 +279,11 @@ class TreasuresLightwardTeamModule:
         :return:
         """
         if len(self.combat_type_list) == len(CHARACTER_COMBAT_TYPE_LIST):
-            return gt('全部', 'ui')
+            return gt('全部')
         elif len(self.combat_type_list) == 0:
-            return gt('无', 'ui')
+            return gt('无')
         else:
-            return ','.join([gt(ct.cn, 'ui') for ct in self.combat_type_list])
+            return ','.join([gt(ct.cn) for ct in self.combat_type_list])
 
 
 class TreasuresLightwardNodeTeam:

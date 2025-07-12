@@ -64,19 +64,19 @@ class WorldPatrolWhitelistInterface(VerticalScrollInterface):
         layout.addWidget(btn_row)
 
         self.existed_yml_btn = ComboBox()
-        self.existed_yml_btn.setPlaceholderText(gt('选择已有', 'ui'))
+        self.existed_yml_btn.setPlaceholderText(gt('选择已有'))
         self.existed_yml_btn.currentIndexChanged.connect(self.on_choose_existed)
         btn_row.add_widget(self.existed_yml_btn)
 
-        self.create_btn = PushButton(text=gt('新建', 'ui'))
+        self.create_btn = PushButton(text=gt('新建'))
         self.create_btn.clicked.connect(self.on_create_clicked)
         btn_row.add_widget(self.create_btn)
 
-        self.delete_btn = PushButton(text=gt('删除', 'ui'))
+        self.ToolButton(FluentIcon.DELETE)
         self.delete_btn.clicked.connect(self.on_delete_clicked)
         btn_row.add_widget(self.delete_btn)
 
-        self.cancel_btn = PushButton(text=gt('取消', 'ui'))
+        self.cancel_btn = PushButton(text=gt('取消'))
         self.cancel_btn.clicked.connect(self.on_cancel_clicked)
         btn_row.add_widget(self.cancel_btn)
 
@@ -87,17 +87,17 @@ class WorldPatrolWhitelistInterface(VerticalScrollInterface):
         layout.addWidget(route_row)
 
         self.planet_btn = ComboBox()
-        self.planet_btn.setPlaceholderText(gt('选择星球', 'ui'))
+        self.planet_btn.setPlaceholderText(gt('选择星球'))
         self.planet_btn.currentIndexChanged.connect(self.on_choose_planet)
         route_row.add_widget(self.planet_btn)
 
         self.region_btn = ComboBox()
-        self.region_btn.setPlaceholderText(gt('选择区域', 'ui'))
+        self.region_btn.setPlaceholderText(gt('选择区域'))
         self.region_btn.currentIndexChanged.connect(self.on_choose_region)
         route_row.add_widget(self.region_btn)
 
         self.route_btn = ComboBox()
-        self.route_btn.setPlaceholderText(gt('选择路线', 'ui'))
+        self.route_btn.setPlaceholderText(gt('选择路线'))
         self.route_btn.currentIndexChanged.connect(self.on_choose_route)
         route_row.add_widget(self.route_btn)
 
@@ -107,15 +107,15 @@ class WorldPatrolWhitelistInterface(VerticalScrollInterface):
         add_row = Row()
         layout.addWidget(add_row)
 
-        self.add_planet_btn = PushButton(text=gt('添加星球', 'ui'))
+        self.add_planet_btn = PushButton(text=gt('添加星球'))
         self.add_planet_btn.clicked.connect(self.on_add_planet_clicked)
         add_row.add_widget(self.add_planet_btn)
 
-        self.add_region_btn = PushButton(text=gt('添加区域', 'ui'))
+        self.add_region_btn = PushButton(text=gt('添加区域'))
         self.add_region_btn.clicked.connect(self.on_add_region_clicked)
         add_row.add_widget(self.add_region_btn)
 
-        self.add_route_btn = PushButton(text=gt('添加路线', 'ui'))
+        self.add_route_btn = PushButton(text=gt('添加路线'))
         self.add_route_btn.clicked.connect(self.on_add_route_clicked)
         add_row.add_widget(self.add_route_btn)
 
@@ -142,9 +142,9 @@ class WorldPatrolWhitelistInterface(VerticalScrollInterface):
         self.route_table.setColumnWidth(1, 50)
         self.route_table.setColumnWidth(2, 50)
         self.route_table.setHorizontalHeaderLabels([
-            gt('路线', 'ui'),
-            gt('移动', 'ui'),
-            gt('删除', 'ui'),
+            gt('路线'),
+            gt('移动'),
+            gt('删除'),
         ])
         self.route_table.setMinimumHeight(600)
 

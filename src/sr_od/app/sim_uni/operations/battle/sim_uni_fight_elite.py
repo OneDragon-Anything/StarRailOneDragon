@@ -22,8 +22,8 @@ class SimUniFightElite(SrOperation):
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (
-                                 gt('模拟宇宙', 'ui'),
-                                 gt('挑战精英首领', 'ui'),
+                                 gt('模拟宇宙', 'game'),
+                                 gt('挑战精英首领'),
                              ),
                              )
         self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config

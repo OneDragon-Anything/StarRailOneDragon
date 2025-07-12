@@ -29,8 +29,8 @@ class SimUniRunWorld(SrOperation):
         最后退出
         """
         op_name = '%s %s' % (
-            gt('模拟宇宙', 'ui'),
-            gt('第%s世界' % UNI_NUM_CN[world_num], 'ui')
+            gt('模拟宇宙', 'game'),
+            gt('第%s世界' % UNI_NUM_CN[world_num])
         )
 
 

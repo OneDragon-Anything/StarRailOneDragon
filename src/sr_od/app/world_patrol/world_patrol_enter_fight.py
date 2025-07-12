@@ -32,7 +32,7 @@ class WorldPatrolEnterFight(SrOperation):
         """
         根据小地图的红圈 判断是否被敌人锁定 进行主动攻击
         """
-        SrOperation.__init__(self, ctx, op_name=gt('进入战斗', 'ui'))
+        SrOperation.__init__(self, ctx, op_name=gt('进入战斗'))
         self.technique_fight: bool = technique_fight  # 使用秘技开怪
         self.technique_only: bool = technique_only  # 仅使用秘技开怪
         self.first_state: Optional[str] = first_state  # 初始画面状态 传入后会跳过第一次画面状态判断

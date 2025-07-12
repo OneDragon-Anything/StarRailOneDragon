@@ -32,7 +32,7 @@ class SimUniReward(SrOperation):
         :param max_to_get: 最多获取多少次奖励
         :param on_reward: 获取奖励时的回调
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'ui'), gt('沉浸奖励', 'ui')),)
+        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('沉浸奖励')),)
 
         self.max_to_get: int = max_to_get  # 最多获取多少次奖励
         self.get_reward_cnt: int = 0  # 当前获取了多少次奖励
