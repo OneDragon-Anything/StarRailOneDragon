@@ -362,19 +362,22 @@ jobs:
         $category_names = @{
           "feat" = "✨ 新功能"
           "fix" = "🐛 Bug 修复"
-          "docs" = "📚 文档更新"
-          "style" = "💄 样式调整"
-          "refactor" = "♻️ 代码重构"
-          "test" = "✅ 测试相关"
-          "chore" = "🔧 其他杂项"
           "perf" = "⚡ 性能优化"
+          "refactor" = "♻️ 代码重构"
+          "style" = "💄 样式调整"
+          "docs" = "📄 文档更新"
+          "test" = "✅ 测试"
           "ci" = "👷 CI/CD"
-          "build" = "📦 构建相关"
+          "build" = "📦 构建"
+          "chore" = "🔧 杂项"
           "revert" = "⏪ 回滚"
           "other" = "📝 其他更改"
         }
 
-        foreach ($key in $categories.Keys) {
+        # 定义输出顺序
+        $ordered_keys = @("feat", "fix", "perf", "refactor", "style", "docs", "test", "ci", "build", "chore", "revert", "other")
+
+        foreach ($key in $ordered_keys) {
           if ($categories[$key].Count -gt 0) {
             if ($changelog_content -ne "") {
               $changelog_content += "`n`n"
