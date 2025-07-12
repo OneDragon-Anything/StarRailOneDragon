@@ -177,31 +177,7 @@ jobs:
         $tempDir = "temp_models"
         New-Item -ItemType Directory -Path $tempDir -Force
 
-        # 从GitHub releases获取最新模型资源的函数
-        function Get-LatestModelAsset {
-            param (
-                [string]$repo,
-                [string]$pattern
-            )
-            $apiUrl = "https://api.github.com/repos/$repo/releases"
-            $releases = Invoke-RestMethod -Uri $apiUrl -Headers @{ "Accept" = "application/vnd.github.v3+json" }
-            foreach ($release in $releases) {
-                foreach ($asset in $release.assets) {
-                    if ($asset.name -match $pattern) {
-                        # 从资源名称中提取下载数量或找到下载数量最高的资源
-                        $downloadCount = $asset.download_count
-                        return @{
-                            url = $asset.browser_download_url
-                            name = $asset.name
-                            download_count = $downloadCount
-                        }
-                    }
-                }
-            }
-            return $null
-        }
-
-        # 通过文件末尾最高8位数字获取最新模型的函数
+        # 通过文件末尾最高8位数字获取最新模型
         function Get-LatestModelByNumber {
             param (
                 [string]$repo,
