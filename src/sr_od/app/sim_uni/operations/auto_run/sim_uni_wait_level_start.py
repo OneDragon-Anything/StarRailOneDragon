@@ -58,12 +58,12 @@ class SimUniWaitLevelStart(SrOperation):
                 return self.round_wait(wait=1)
             else:
                 return self.round_fail(status=op_result.status, data=op_result.data)
-        elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
-            op = SimUniChooseCurio(self.ctx, self.config)
-            op_result = op.execute()
-            if op_result.success:
-                return self.round_wait()
-            else:
-                return self.round_by_op_result(op_result)
+        # elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
+        #     op = SimUniChooseCurio(self.ctx, self.config)
+        #     op_result = op.execute()
+        #     if op_result.success:
+        #         return self.round_wait()
+        #     else:
+        #         return self.round_by_op_result(op_result)
         else:
             return self.round_retry('无法判断当前画面状态', wait=1)

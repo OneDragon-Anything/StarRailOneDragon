@@ -46,6 +46,7 @@ class TemplateMatcher:
             mask_usage = cv2.bitwise_or(mask_usage, template.mask) if mask_usage is not None else template.mask
         if mask is not None:
             mask_usage = cv2.bitwise_or(mask_usage, mask) if mask_usage is not None else mask
+        # cv2.imwrite('y:/template.png', template.get_image(template_type))
         return cv2_utils.match_template(source, template.get_image(template_type), threshold, mask=mask_usage,
                                         only_best=only_best, ignore_inf=ignore_inf)
 

@@ -117,7 +117,9 @@ class GuideChooseMission(SrOperation):
             return None
         log.info('匹配副本名称 %s', word_list[mission_idx])
 
-        tp_idx = str_utils.find_best_match_by_difflib(gt('传送', 'game'), word_list, cutoff=0.5)  # 模拟宇宙
+        tp_idx = str_utils.find_best_match_by_difflib(gt('前往参与', 'game'), word_list, cutoff=0.5)  # 差分宇宙
+        if tp_idx is None:
+            tp_idx = str_utils.find_best_match_by_difflib(gt('传送', 'game'), word_list, cutoff=0.5)  # 模拟宇宙
         if tp_idx is None:
             tp_idx = str_utils.find_best_match_by_difflib(gt('进入', 'game'), word_list, cutoff=0.5)  # 普通副本
         if tp_idx is None:

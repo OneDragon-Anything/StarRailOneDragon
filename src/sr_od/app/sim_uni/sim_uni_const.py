@@ -51,6 +51,7 @@ class SimUniWorldEnum(Enum):
     WORLD_07 = SimUniWorld(7, '第七宇宙', 4)
     WORLD_08 = SimUniWorld(8, '第八宇宙', 4)
     WORLD_09 = SimUniWorld(9, '第九宇宙', 4)
+    WORLD_X = SimUniWorld(100, '差分宇宙', -1)
 
 
 class OrnamentExtraction:

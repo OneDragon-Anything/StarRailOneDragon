@@ -21,10 +21,16 @@ class ScreenState(Enum):
     SIM_TYPE_NORMAL: str = '模拟宇宙'  # 模拟宇宙 - 普通
     SIM_TYPE_EXTEND: str = '扩展装置'  # 模拟宇宙 - 拓展装置
     SIM_TYPE_GOLD: str = '黄金与机械'  # 模拟宇宙 - 黄金与机械
-    SIM_BLESS: str = '选择祝福'
+    SIM_TYPE_X: str = '差分宇宙'  # 差分宇宙
+
+    # 选择xxx都走这 (老板模拟宇宙都跑不起来, 于是选择buff的功能暂时改为看到哪个祝福选哪个)
+    SIM_BLESS: str = '选择'  # 选择金血祝颂 选择祝福 选择方程 选择奇物 (哪有字就点哪)
+    # SIM_BLESS: str = '选择祝福'
+    # SIM_EQUATION: str = '选择方程'
     SIM_DROP_BLESS: str = '丢弃祝福'
     SIM_UPGRADE_BLESS: str = '祝福强化'
-    SIM_CURIOS: str = '选择奇物'
+    # 选择奇物合并到选择xxx中
+    # SIM_CURIOS: str = '选择奇物'
     SIM_DROP_CURIOS: str = '丢弃奇物'
     SIM_EVENT: str = '事件'
     SIM_UNI_REGION: str = '模拟宇宙-区域'
@@ -44,7 +50,7 @@ def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]
     region_name = ctx.ocr.run_ocr_single_line(part)
     level_type_list: List[SimUniLevelType] = [enum.value for enum in SimUniLevelTypeEnum]
     target_list = [gt(level_type.type_name, 'game') for level_type in level_type_list]
-    target_idx = str_utils.find_best_match_by_difflib(region_name, target_list)
+    target_idx = str_utils.find_best_match_by_lcs(region_name, target_list)
 
     if target_idx is None or target_idx < 0:
         return None
@@ -110,8 +116,12 @@ def get_sim_uni_screen_state(
     titles = common_screen_state.get_ui_titles(ctx, screen, '模拟宇宙', '左上角标题')
     sim_uni_idx = str_utils.find_best_match_by_lcs(ScreenState.SIM_TYPE_NORMAL.value, titles)
     gold_idx = str_utils.find_best_match_by_lcs(ScreenState.SIM_TYPE_GOLD.value, titles)  # 不知道是不是游戏bug 游戏内正常的模拟宇宙也会显示这个
+    # 差分宇宙
+    sim_uni_x_idx = str_utils.find_best_match_by_lcs(ScreenState.SIM_TYPE_X.value, titles)
+    # 金血祝颂 - 选择效果
+    sim_uni_x_gold_idx = str_utils.find_best_match_by_lcs(ScreenState.SIM_BLESS.value, titles)
 
-    if sim_uni_idx is None and gold_idx is None:
+    if sim_uni_idx is None and gold_idx is None and sim_uni_x_idx is None and sim_uni_x_gold_idx is None:
         if battle:  # 有判断的时候 不在前面的情况 就认为是战斗
             return battle_screen_state.ScreenState.BATTLE.value
         return None
@@ -119,7 +129,8 @@ def get_sim_uni_screen_state(
     if sim_uni and str_utils.find_best_match_by_lcs(ScreenState.SIM_TYPE_NORMAL.value, titles, lcs_percent_threshold=0.51) is not None:
         return ScreenState.SIM_TYPE_NORMAL.value
 
-    if bless and str_utils.find_best_match_by_lcs(ScreenState.SIM_BLESS.value, titles, lcs_percent_threshold=0.51) is not None:
+    # 选择xxx都走这 (老板模拟宇宙都跑不起来, 于是选择buff的功能暂时改为看到哪个祝福选哪个)
+    if bless and str_utils.find_best_match_by_lcs(ScreenState.SIM_BLESS.value, titles, lcs_percent_threshold=0.15) is not None:
         return ScreenState.SIM_BLESS.value
 
     if drop_bless and str_utils.find_best_match_by_lcs(ScreenState.SIM_DROP_BLESS.value, titles, lcs_percent_threshold=0.51) is not None:
@@ -128,8 +139,9 @@ def get_sim_uni_screen_state(
     if upgrade_bless and str_utils.find_best_match_by_lcs(ScreenState.SIM_UPGRADE_BLESS.value, titles, lcs_percent_threshold=0.51) is not None:
         return ScreenState.SIM_UPGRADE_BLESS.value
 
-    if curio and str_utils.find_best_match_by_lcs(ScreenState.SIM_CURIOS.value, titles, lcs_percent_threshold=0.51):
-        return ScreenState.SIM_CURIOS.value
+    # 选择奇物合并到选择xxx中
+    # if curio and str_utils.find_best_match_by_lcs(ScreenState.SIM_CURIOS.value, titles, lcs_percent_threshold=0.51):
+    #     return ScreenState.SIM_CURIOS.value
 
     if drop_curio and str_utils.find_best_match_by_lcs(ScreenState.SIM_DROP_CURIOS.value, titles, lcs_percent_threshold=0.51):
         return ScreenState.SIM_DROP_CURIOS.value
@@ -173,14 +185,14 @@ def in_sim_uni_choose_bless(ctx: SrContext, screen: MatLike) -> bool:
     return common_screen_state.in_secondary_ui(ctx, screen, ScreenState.SIM_BLESS.value, lcs_percent=0.55)
 
 
-def in_sim_uni_choose_curio(ctx: SrContext, screen: MatLike) -> bool:
-    """
-    是否在模拟宇宙-选择奇物页面
-    :param ctx: 上下文
-    :param screen: 游戏画面
-    :return:
-    """
-    return common_screen_state.in_secondary_ui(ctx, screen, ScreenState.SIM_CURIOS.value, lcs_percent=0.55)
+# def in_sim_uni_choose_curio(ctx: SrContext, screen: MatLike) -> bool:
+#     """
+#     是否在模拟宇宙-选择奇物页面
+#     :param ctx: 上下文
+#     :param screen: 游戏画面
+#     :return:
+#     """
+#     return common_screen_state.in_secondary_ui(ctx, screen, ScreenState.SIM_CURIOS.value, lcs_percent=0.55)
 
 
 def in_sim_uni_event(ctx: SrContext, screen: MatLike) -> bool:

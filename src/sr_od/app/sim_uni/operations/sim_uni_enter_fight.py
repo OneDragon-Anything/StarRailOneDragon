@@ -290,8 +290,8 @@ class SimUniEnterFight(SrOperation):
         )
         if state == sim_uni_screen_state.ScreenState.SIM_BLESS.value:
             return self._choose_bless()
-        elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
-            return self._choose_curio()
+        # elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
+        #     return self._choose_curio()
         elif state == sim_uni_screen_state.ScreenState.EMPTY_TO_CLOSE.value:
             self.round_by_click_area('模拟宇宙', '点击空白处关闭')
             return self.round_wait(wait=1)

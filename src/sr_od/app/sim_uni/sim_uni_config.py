@@ -49,12 +49,16 @@ class SimUniConfig(YamlConfig):
         return self.get('sim_uni_09', '05')
 
     @property
+    def sim_uni_100(self) -> str:
+        return self.get('sim_uni_100', '05')
+
+    @property
     def weekly_uni_num(self) -> str:
         """
         每周挑战的第几宇宙设置
         :return:
         """
-        return self.get('weekly_uni_num', SimUniWorldEnum.WORLD_08.name)
+        return self.get('weekly_uni_num', SimUniWorldEnum.WORLD_X.name)
 
     @weekly_uni_num.setter
     def weekly_uni_num(self, new_value: str):
@@ -62,7 +66,7 @@ class SimUniConfig(YamlConfig):
 
     @property
     def weekly_uni_num_adapter(self) -> YamlConfigAdapter:
-        return YamlConfigAdapter(self, 'weekly_uni_num', SimUniWorldEnum.WORLD_08.name)
+        return YamlConfigAdapter(self, 'weekly_uni_num', SimUniWorldEnum.WORLD_X.name)
 
     @property
     def weekly_uni_diff(self) -> int:

@@ -1,18 +1,25 @@
+import os
+import shutil
+import time
 from typing import Optional, ClassVar, Callable
 
+from one_dragon.base.operation.one_dragon_context import ContextRunStateEnum
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import os_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from script_chainer.config.script_config import ScriptConfig
+from script_chainer.win_exe.script_runner import run_script
 from sr_od.app.sim_uni import sim_uni_screen_state
+from sr_od.app.sim_uni.operations.auto_run.sim_uni_run_world import SimUniRunWorld
 from sr_od.app.sim_uni.operations.bless.sim_uni_choose_path import SimUniChoosePath
 from sr_od.app.sim_uni.operations.entry.choose_sim_uni_diff import ChooseSimUniDiff
 from sr_od.app.sim_uni.operations.entry.choose_sim_uni_num import ChooseSimUniNum
-from sr_od.app.sim_uni.operations.entry.sim_uni_start import SimUniStart
 from sr_od.app.sim_uni.operations.entry.sim_uni_claim_weekly_reward import SimUniClaimWeeklyReward
+from sr_od.app.sim_uni.operations.entry.sim_uni_start import SimUniStart
 from sr_od.app.sim_uni.operations.sim_uni_exit import SimUniExit
-from sr_od.app.sim_uni.operations.auto_run.sim_uni_run_world import SimUniRunWorld
 from sr_od.app.sim_uni.sim_uni_const import SimUniWorldEnum, SimUniPath
 from sr_od.app.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
@@ -78,12 +85,16 @@ class SimUniApp(SrApplication):
     @node_from(from_name='检查运行次数')
     @operation_node(name='识别初始画面')
     def _check_initial_screen(self) -> OperationRoundResult:
+        BackToNormalWorldPlus(self.ctx).execute()
+
         screen = self.screenshot()
         state = sim_uni_screen_state.get_sim_uni_initial_screen_state(self.ctx, screen)
 
         if state == sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value:
             if self.all_finished:
                 return self.round_success(SimUniApp.STATUS_TO_WEEKLY_REWARD)
+            if self.ctx.sim_uni_config.weekly_uni_num == 'WORLD_X':
+                state = sim_uni_screen_state.ScreenState.SIM_TYPE_X.value # 差分宇宙
 
         return self.round_success(state)
 
@@ -91,13 +102,91 @@ class SimUniApp(SrApplication):
     @operation_node(name='传送')
     def transport(self) -> OperationRoundResult:
         tab = self.ctx.guide_data.best_match_tab_by_name(gt('模拟宇宙', 'game'))
-        category = self.ctx.guide_data.best_match_category_by_name(gt('模拟宇宙', 'game'), tab)
-        mission = self.ctx.guide_data.best_match_mission_by_name('模拟宇宙', category)
-        op = GuideTransport(self.ctx, mission)
-        return self.round_by_op_result(op.execute())
+        # 差分宇宙, 传送之后调用模拟宇宙自动化脚本
+        if self.ctx.sim_uni_config.weekly_uni_num == 'WORLD_X':
+            category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
+            mission = self.ctx.guide_data.best_match_mission_by_name('前往参与', category)
+            op = GuideTransport(self.ctx, mission)
+            op.execute()
+            # return self.round_by_op_result(op.execute())
+            state = sim_uni_screen_state.ScreenState.SIM_TYPE_X.value
+            return self.round_success(state)
+        else:
+            category = self.ctx.guide_data.best_match_category_by_name(gt('模拟宇宙', 'game'), tab)
+            mission = self.ctx.guide_data.best_match_mission_by_name('模拟宇宙', category)
+            op = GuideTransport(self.ctx, mission)
+            op.execute()
+            # return self.round_by_op_result(op.execute())
+            state = sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value
+            return self.round_success(state)
+
+    @node_from(from_name='识别初始画面', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 最开始已经在模拟宇宙入口了
+    @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
+    @operation_node(name='调用差分宇宙自动化')
+    def _execute_sim_universe_x(self) -> OperationRoundResult:
+        work_dir = os_utils.get_work_dir()
+        plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
+
+        # 使用自身的 python 环境启动脚本
+        script_config = ScriptConfig(
+            script_path=self.ctx.python_service.env_config.python_path,
+            script_arguments=os.path.join(plugin_path, 'diver.py'),
+            script_working_directory=plugin_path,
+            script_process_name='None',  # 脚本退出检测需要使用 pid 而不是 python.exe, 故此处填 None
+            game_process_name='',
+            run_timeout_seconds=2000,
+            check_done='script_closed',
+            kill_script_after_done=False,
+            kill_game_after_done=False,
+            notify_start=False,
+            notify_done=False,
+        )
+        BackToNormalWorldPlus(self.ctx).execute()
+
+        # 删除运行记录
+        plugin_run_result_path = os.path.join(plugin_path, 'logs', 'notif.txt')
+        if os.path.exists(plugin_run_result_path):
+            with open(plugin_run_result_path, 'w', encoding='utf-8') as file:
+                pass  # 不写入任何内容，仅清空
+            # os.remove(plugin_run_result_path)
+
+        # 复制配置文件
+        config_file_path = os.path.join(work_dir,
+                                        *['config', '%02d' % self.ctx.current_instance_idx, 'sim_universe_plugin.yml'])
+        # 如果没有此用户的配置文件, 则复制默认配置文件到用户文件夹中; 默认 info_example.yml 存在
+        if not os.path.exists(config_file_path):
+            shutil.copy(os.path.join(plugin_path, 'info_example.yml'), config_file_path)
+        plugin_config_file_path = os.path.join(plugin_path, 'info.yml')
+        shutil.copy(config_file_path, plugin_config_file_path)
+
+        # 运行脚本, 重试次数 = 3
+        for i in range(3):
+            if self.ctx.context_running_state == ContextRunStateEnum.STOP:
+                break
+            elif self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
+                time.sleep(1)
+                i -= 1
+                continue
+            run_script(script_config, self.ctx)
+            if self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
+                time.sleep(1)
+                i -= 1
+
+            # 进程退出, 检查运行情况
+            with open(plugin_run_result_path, 'r', encoding='utf-8') as file:
+                completed_num = int(file.readline())
+
+            if completed_num > 0:
+                # 记录完成次数 (todo 用户界面中是精英怪于是这里也记录精英怪)
+                self.ctx.sim_uni_record.add_elite_times()
+                return self.round_by_op_result(self.op_success("成功"))
+
+        op = BackToNormalWorldPlus(self.ctx)
+        op.execute()
+        return self.round_by_op_result(self.op_fail("失败"))
 
     @node_from(from_name='识别初始画面', status=sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value)  # 最开始已经在模拟宇宙入口了
-    @node_from(from_name='传送')
+    @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value)
     @operation_node(name='选择宇宙')
     def _choose_sim_uni_num(self) -> OperationRoundResult:
         if self.specified_uni_num is None:

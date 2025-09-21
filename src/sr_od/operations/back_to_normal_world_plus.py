@@ -28,12 +28,16 @@ class BackToNormalWorldPlus(SrOperation):
         screen = self.screenshot()
 
         # 先看看左上角是否退出按钮
-        result = self.round_by_find_area(screen, '模拟宇宙', '大世界返回按钮')
+        result = self.round_by_find_area(screen, '模拟宇宙', '差分宇宙返回按钮')
+        # 差分宇宙退出要点返回主界面
+        is_in_x = result.is_success
+        if not result.is_success:
+            result = self.round_by_find_area(screen, '模拟宇宙', '大世界返回按钮')
         if result.is_success:
             # 判断是否在模拟宇宙内
             sim_uni_level_type = sim_uni_screen_state.get_level_type(self.ctx, screen)
             if sim_uni_level_type is not None:
-                return self.sim_uni_exit()
+                return self.sim_uni_exit(is_in_x)
 
             # 如果有返回按钮 又不是在模拟宇宙 则就是在逐光捡金内
             result = self.round_by_find_and_click_area(screen, '模拟宇宙', '大世界返回按钮')
@@ -70,8 +74,8 @@ class BackToNormalWorldPlus(SrOperation):
         if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_BLESS.value:
             return self.sim_uni_drop_bless()
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
-            return self.sim_uni_choose_curio()
+        # if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
+        #     return self.sim_uni_choose_curio()
 
         if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_CURIOS.value:
             return self.sim_uni_drop_curio()
@@ -104,11 +108,12 @@ class BackToNormalWorldPlus(SrOperation):
             return self.round_wait(result.status, wait=2)
 
         # 其他情况 - 均点击右上角触发返回上一级
+        # result = self.ctx.controller.esc()
         result = self.round_by_click_area('菜单', '右上角返回')
         return self.round_wait(result.status, wait=1)
 
-    def sim_uni_exit(self) -> OperationRoundResult:
-        op = SimUniExit(self.ctx)
+    def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
+        op = SimUniExit(self.ctx, is_in_x)
         op_result = op.execute()
         if op_result.success:
             return self.round_wait(wait=1)

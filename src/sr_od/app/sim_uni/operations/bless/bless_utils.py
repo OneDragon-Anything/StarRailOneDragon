@@ -41,6 +41,23 @@ def get_bless_pos(ctx: SrContext, screen: MatLike) -> list[MatchResult]:
             )
         )
 
+    # 如果没找到选项, 直接找固定高度范围内的字, 直接点
+    if len(result_list) == 0:
+        rect = [100, 400, 1700, 900]
+        for ocr_result in ocr_result_list:
+            if ocr_result.rect.x1 > rect[0] and ocr_result.rect.y1 > rect[1] \
+                    and ocr_result.rect.x2 < rect[2] and ocr_result.rect.y2 < rect[3]:
+                result_list.append(
+                    MatchResult(
+                        c=ocr_result.confidence,
+                        x=ocr_result.x,
+                        y=ocr_result.y,
+                        w=ocr_result.w,
+                        h=ocr_result.h,
+                        data=ocr_result.data
+                    )
+                )
+
     return result_list
 
 
@@ -95,10 +112,14 @@ def get_bless_by_priority(bless_list: List[SimUniBless], config: Optional[SimUni
         # 优先级无法命中的情况 随便选最高级的祝福
         for bless_level in SimUniBlessLevel:
             for idx, opt_bless in enumerate(bless_list):
-                if opt_bless.level == bless_level:
-                    if idx_priority[idx] == 99:
-                        idx_priority[idx] = cnt
-                        cnt += 1
+                try:
+                    if opt_bless.level == bless_level:
+                        if idx_priority[idx] == 99:
+                            idx_priority[idx] = cnt
+                            cnt += 1
+                except:
+                    pass
+
 
     target_idx: Optional[int] = None
     target_priority: Optional[int] = None

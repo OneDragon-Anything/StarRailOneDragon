@@ -510,6 +510,12 @@
 - tab_name: "模拟宇宙"
   category_list:
     - category_name: "差分宇宙"
+      show_in_power_plan: true
+      mission_list:
+        - mission_name: "前往参与"
+          display_name: "前往参与"
+          show_in_power_plan: true
+          power: 0
     - category_name: "模拟宇宙"
       show_in_power_plan: true
       mission_list:

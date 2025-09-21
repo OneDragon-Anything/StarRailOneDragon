@@ -47,9 +47,12 @@ class GuideTransport(SrOperation):
     @node_from(from_name='选择副本')
     @operation_node(name='等待加载', node_max_retry_times=20)
     def wait_at_last(self) -> OperationRoundResult:
-        screen = self.screenshot()
-        return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn,
-                                       retry_wait=1)
+        if self.mission.cate.cn == '差分宇宙':
+            return self.round_by_op_result(self.op_success("成功"))
+        else:
+            screen = self.screenshot()
+            return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn,
+                                           retry_wait=1)
 
 
 def __debug():

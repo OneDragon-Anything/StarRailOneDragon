@@ -62,6 +62,7 @@ def find_area_in_screen(ctx: OneDragonContext, screen: MatLike, area: ScreenArea
         else:
             rect = area.rect
             part = cv2_utils.crop_image_only(screen, rect)
+            # cv2.imwrite('y:/part.png', part)
 
             if area.color_range is None:
                 to_ocr = part
@@ -81,6 +82,8 @@ def find_area_in_screen(ctx: OneDragonContext, screen: MatLike, area: ScreenArea
     elif area.is_template_area:
         rect = area.rect
         part = cv2_utils.crop_image_only(screen, rect)
+        # cv2.imwrite('y:/screen.png', screen)
+        # cv2.imwrite('y:/part.png', part)
 
         mrl = ctx.tm.match_template(part, area.template_sub_dir, area.template_id,
                                     threshold=area.template_match_threshold)
@@ -109,6 +112,7 @@ def find_and_click_area(ctx: OneDragonContext, screen: MatLike, screen_name: str
             mask = cv2_utils.dilate(mask, 5)
             to_ocr_part = cv2.bitwise_and(to_ocr_part, to_ocr_part, mask=mask)
         # cv2_utils.show_image(to_ocr_part, win_name='debug', wait=1)
+        # cv2.imwrite('y:/part.png', to_ocr_part)
 
         ocr_result_map = ctx.ocr.run_ocr(to_ocr_part)
         for ocr_result, mrl in ocr_result_map.items():

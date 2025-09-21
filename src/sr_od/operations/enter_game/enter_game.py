@@ -9,7 +9,7 @@ from one_dragon.base.controller.pc_clipboard import PcClipboard
 from one_dragon.base.matcher.ocr import ocr_utils
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
 from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
@@ -90,7 +90,7 @@ class EnterGame(SrOperation):
         else:
             result = self.round_by_find_and_click_area(screen, '进入游戏', '文本-点击进入')
             if result.is_success:
-                return self.round_wait(result.status, wait=1)
+                return self.round_success(result.status, wait=1)
 
             result = self.round_by_find_and_click_area(screen, '进入游戏', '提示-确认')
             if result.is_success:

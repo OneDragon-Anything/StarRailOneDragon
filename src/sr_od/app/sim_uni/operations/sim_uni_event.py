@@ -294,16 +294,17 @@ class SimUniEvent(SrOperation):
         op = SimUniUpgradeBless(self.ctx)
         return self.round_by_op_result(op.execute())
 
-    @node_from(from_name='确定后判断', status=sim_uni_screen_state.ScreenState.SIM_CURIOS.value)
-    @operation_node(name='选择奇物')
-    def _choose_curio(self) -> OperationRoundResult:
-        op = SimUniChooseCurio(self.ctx, config=self.config)
-        op_result = op.execute()
-
-        if op_result.success:
-            return self.round_success()
-        else:
-            return self.round_retry(status=op_result.status)
+    # 选择奇物合并到选择祝福中, 并且固定选择第一项
+    # @node_from(from_name='确定后判断', status=sim_uni_screen_state.ScreenState.SIM_CURIOS.value)
+    # @operation_node(name='选择奇物')
+    # def _choose_curio(self) -> OperationRoundResult:
+    #     op = SimUniChooseCurio(self.ctx, config=self.config)
+    #     op_result = op.execute()
+    #
+    #     if op_result.success:
+    #         return self.round_success()
+    #     else:
+    #         return self.round_retry(status=op_result.status)
 
     @node_from(from_name='确定后判断', status=sim_uni_screen_state.ScreenState.SIM_DROP_CURIOS.value)
     @operation_node(name='丢弃奇物')
