@@ -36,7 +36,7 @@ area_list:
   - 99
   - 37
   - 214
-  - 59
+  - 64
   text: 队伍
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -48,8 +48,8 @@ area_list:
   id_mark: false
   pc_rect:
   - 1740
-  - 720
-  - 1830
+  - 700
+  - 1850
   - 750
   text: 支援
   lcs_percent: 0.5
