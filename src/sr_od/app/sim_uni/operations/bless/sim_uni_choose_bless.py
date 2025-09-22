@@ -104,10 +104,11 @@ class SimUniChooseBless(SrOperation):
         else:
             self.ctx.controller.click(target_bless_pos.center)
             time.sleep(0.25)
-            confirm_point = SimUniChooseBless.CONFIRM_BEFORE_LEVEL_BTN.center
+            # 选择祝福时先点右下角再点中间, 防止点到查看已有方程
+            confirm_point = SimUniChooseBless.CONFIRM_BTN.center
             self.ctx.controller.click(confirm_point)
             time.sleep(0.28)
-            confirm_point = SimUniChooseBless.CONFIRM_BTN.center
+            confirm_point = SimUniChooseBless.CONFIRM_BEFORE_LEVEL_BTN.center
             self.ctx.controller.click(confirm_point)
             self.choose_bless_time = time.time()
             return self.round_success(wait=0.1)
