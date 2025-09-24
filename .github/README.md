@@ -39,6 +39,10 @@ __崩坏：星穹铁道 - 一条龙__
 
 - 若您遇到商家使用本软件进行代练并收费，产生的任何问题及后果与本软件无关。
 
+## 相关项目
+
+模拟宇宙自动化 [https://github.com/CHNZYX/Auto_Simulated_Universe](https://github.com/CHNZYX/Auto_Simulated_Universe)
+
 ## 贡献/参与者
 
 感谢所有参与到开发的朋友们~
