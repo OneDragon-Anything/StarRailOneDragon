@@ -6,7 +6,7 @@ from typing import Optional, ClassVar, Callable
 from one_dragon.base.operation.one_dragon_context import ContextRunStateEnum
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
 from one_dragon.utils import os_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
@@ -57,6 +57,24 @@ class SimUniApp(SrApplication):
         self.exception_times: int = 0  # 异常出现次数
         self.not_found_in_survival_times: int = 0  # 在生存索引中找不到模拟宇宙的次数
         self.all_finished: bool = False
+
+    # 在差分宇宙入口处检查周期奖励
+    def _check_period_reward(self) -> OperationRoundResult:
+        ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-每周奖励')
+        # 找到了2个 14000 的算过 (完成进度 14000/14000)
+        # 找不到 14000 的也算过 (防止死循环)
+        count_14000 = 0
+        for ocr_result, mrl in ocr_result_map.items():
+            count_14000 += ocr_result.count('14000')
+        if count_14000 == 0:
+            return self.round_retry('未找到周奖励', wait=1)
+        elif count_14000 == 2:
+            # 如果周计划未完成, 设置为已完成
+            if not self.ctx.sim_uni_record.period_reward_complete:
+                self.ctx.sim_uni_record.period_reward_complete = True
+            return self.round_success('已打满周奖励')
+
+        return self.round_fail('未打满周奖励')
 
     @node_from(from_name='自动宇宙')
     @node_from(from_name='异常退出')
@@ -124,6 +142,17 @@ class SimUniApp(SrApplication):
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
+        # 如果只要求打满奖励, 识别是否 14000/14000了
+        if self.ctx.sim_uni_config.only_period_reward:
+            for i in range(30):
+                period_reward = self._check_period_reward()
+                if period_reward.result == OperationRoundResultEnum.SUCCESS:
+                    self.ctx.controller.esc()
+                    return self.round_by_op_result(self.op_success("成功"))
+                if period_reward.result == OperationRoundResultEnum.FAIL:
+                    break
+
+
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
 
@@ -153,10 +182,10 @@ class SimUniApp(SrApplication):
         # 复制配置文件
         config_file_path = os.path.join(work_dir,
                                         *['config', '%02d' % self.ctx.current_instance_idx, 'sim_universe_plugin.yml'])
-        # 如果没有此用户的配置文件, 则复制默认配置文件到用户文件夹中; 默认 info_example.yml 存在
-        if not os.path.exists(config_file_path):
-            shutil.copy(os.path.join(plugin_path, 'info_example.yml'), config_file_path)
+        # 如果没有此用户的配置文件, 则复制默认配置文件到用户文件夹中; 默认 info.yml 存在
         plugin_config_file_path = os.path.join(plugin_path, 'info.yml')
+        if not os.path.exists(config_file_path):
+            shutil.copy(plugin_config_file_path, config_file_path)
         shutil.copy(config_file_path, plugin_config_file_path)
 
         # 运行脚本, 重试次数 = 3

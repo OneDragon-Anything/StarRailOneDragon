@@ -85,6 +85,22 @@ class SimUniConfig(YamlConfig):
         return YamlConfigAdapter(self, 'weekly_uni_diff', 0)
 
     @property
+    def only_period_reward(self) -> int:
+        """
+        每周挑战精英的次数
+        :return:
+        """
+        return self.get('only_period_reward', True)
+
+    @only_period_reward.setter
+    def only_period_reward(self, new_value: int):
+        self.update('only_period_reward', new_value)
+
+    @property
+    def only_period_reward_adapter(self) -> YamlConfigAdapter:
+        return YamlConfigAdapter(self, 'only_period_reward', True)
+
+    @property
     def elite_weekly_times(self) -> int:
         """
         每周挑战精英的次数
