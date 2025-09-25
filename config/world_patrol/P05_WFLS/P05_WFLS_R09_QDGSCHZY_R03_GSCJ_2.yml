@@ -30,138 +30,165 @@ route:
     data: [2395, 967]
   - idx: 9
     op: 'wait'
-    data: ['seconds', '3']
+    data: ['seconds', '2']
   - idx: 10
     op: 'move'
-    data: [2436, 966]
+    data: [2430, 967]
   - idx: 11
-    op: 'slow_move'
-    data: [2442, 999]
+    op: 'move'
+    data: [2406, 973]
   - idx: 12
-    op: 'interact'
-    data: '激活'
+    op: 'disposable'
   - idx: 13
     op: 'move'
-    data: [2445, 967]
+    data: [2436, 966]
   - idx: 14
-    op: 'move'
-    data: [2582, 965]
+    op: 'slow_move'
+    data: [2442, 999]
   - idx: 15
-    op: 'move'
-    data: [2563, 1004]
+    op: 'interact'
+    data: '激活'
   - idx: 16
-    op: 'patrol'
+    op: 'move'
+    data: [2445, 967]
   - idx: 17
     op: 'move'
-    data: [2553, 994]
+    data: [2582, 965]
   - idx: 18
-    op: 'disposable'
+    op: 'move'
+    data: [2563, 1004]
   - idx: 19
-    op: 'disposable'
+    op: 'patrol'
   - idx: 20
-    op: 'disposable'
+    op: 'move'
+    data: [2553, 994]
   - idx: 21
+    op: 'disposable'
+  - idx: 22
+    op: 'disposable'
+  - idx: 23
+    op: 'disposable'
+  - idx: 24
     op: 'move'
     data: [2518, 967]
-  - idx: 22
-    op: 'move'
-    data: [2472, 967]
-  - idx: 23
-    op: 'move'
-    data: [2468, 1022]
-  - idx: 24
-    op: 'gameplay_interact'
-    data: ['0']
   - idx: 25
     op: 'move'
-    data: [2470, 1098]
+    data: [2472, 967]
   - idx: 26
     op: 'move'
-    data: [2486, 1102]
+    data: [2468, 1022]
   - idx: 27
-    op: 'disposable'
+    op: 'gameplay_interact'
+    data: ['0']
   - idx: 28
     op: 'move'
-    data: [2472, 1135]
+    data: [2470, 1098]
   - idx: 29
     op: 'move'
-    data: [2562, 1136]
+    data: [2486, 1102]
   - idx: 30
-    op: 'move'
-    data: [2559, 1199, -1]
+    op: 'disposable'
   - idx: 31
     op: 'move'
-    data: [2584, 1201]
+    data: [2472, 1135]
   - idx: 32
     op: 'move'
-    data: [2585, 1246]
+    data: [2562, 1136]
   - idx: 33
     op: 'move'
-    data: [2604, 1246]
+    data: [2559, 1199, -1]
   - idx: 34
-    op: 'disposable'
+    op: 'move'
+    data: [2584, 1201]
   - idx: 35
     op: 'move'
-    data: [2621, 1245]
+    data: [2585, 1246]
   - idx: 36
     op: 'move'
-    data: [2624, 1214]
+    data: [2604, 1246]
   - idx: 37
-    op: 'gameplay_interact'
-    data: ['0']
+    op: 'disposable'
   - idx: 38
     op: 'move'
-    data: [2734, 1165]
+    data: [2621, 1245]
   - idx: 39
     op: 'move'
-    data: [2738, 1111]
+    data: [2624, 1214]
   - idx: 40
-    op: 'patrol'
+    op: 'gameplay_interact'
+    data: ['0']
   - idx: 41
     op: 'move'
-    data: [2736, 1183]
+    data: [2734, 1165]
   - idx: 42
-    op: 'gameplay_interact'
-    data: ['0']
-  - idx: 43
     op: 'move'
-    data: [2623, 1245]
+    data: [2738, 1111]
+  - idx: 43
+    op: 'patrol'
   - idx: 44
     op: 'move'
-    data: [2585, 1244]
+    data: [2700, 1136]
   - idx: 45
-    op: 'move'
-    data: [2585, 1199]
-  - idx: 46
-    op: 'move'
-    data: [2556, 1199]
-  - idx: 47
-    op: 'move'
-    data: [2558, 1264]
-  - idx: 48
-    op: 'move'
-    data: [2456, 1262]
-  - idx: 49
-    op: 'move'
-    data: [2456, 1132, -2]
-  - idx: 50
-    op: 'move'
-    data: [2620, 1134]
-  - idx: 51
-    op: 'move'
-    data: [2624, 1186]
-  - idx: 52
     op: 'gameplay_interact'
     data: ['0']
+  - idx: 46
+    op: 'wait'
+    data: ['seconds', '3']
+  - idx: 47
+    op: 'move'
+    data: [2734, 1136]
+  - idx: 48
+    op: 'move'
+    data: [2733, 1183]
+  - idx: 49
+    op: 'gameplay_interact'
+    data: ['0']
+  - idx: 50
+    op: 'move'
+    data: [2619, 1244]
+  - idx: 51
+    op: 'move'
+    data: [2584, 1243]
+  - idx: 52
+    op: 'move'
+    data: [2583, 1200]
   - idx: 53
     op: 'move'
-    data: [2689, 1132]
+    data: [2559, 1199]
   - idx: 54
-    op: 'patrol'
-  - idx: 55
     op: 'move'
-    data: [2691, 1238]
+    data: [2555, 1267]
+  - idx: 55
+    op: 'disposable'
   - idx: 56
-    op: 'disposable'
+    op: 'move'
+    data: [2465, 1266]
   - idx: 57
-    op: 'disposable'
+    op: 'move'
+    data: [2465, 1203]
+  - idx: 58
+    op: 'move'
+    data: [2465, 1143]
+  - idx: 59
+    op: 'move'
+    data: [2524, 1140]
+  - idx: 60
+    op: 'update_pos'
+    data: [2524, 1140, -2]
+  - idx: 61
+    op: 'move'
+    data: [2591, 1143]
+  - idx: 62
+    op: 'move'
+    data: [2623, 1154]
+  - idx: 63
+    op: 'move'
+    data: [2623, 1184]
+  - idx: 64
+    op: 'gameplay_interact'
+    data: ['0']
+  - idx: 65
+    op: 'move'
+    data: [2689, 1121]
+  - idx: 66
+    op: 'patrol'

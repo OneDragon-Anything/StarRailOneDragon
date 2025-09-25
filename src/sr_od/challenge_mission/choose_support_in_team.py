@@ -145,7 +145,7 @@ class ChooseSupportInTeam(SrOperation):
 
     @node_from(from_name='点击入队')
     @node_from(from_name='点击入队', success=False)
-    @operation_node(name='选择后等待画面加载')
+    @operation_node(name='选择后等待画面加载', node_max_retry_times=10)
     def wait_at_last(self) -> OperationRoundResult:
         screen = self.screenshot()
         result = self.round_by_find_area(screen, '挑战副本', '队伍标题')

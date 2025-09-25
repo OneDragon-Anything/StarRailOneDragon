@@ -1,16 +1,16 @@
 import time
+from typing import ClassVar, List, Optional
 
-from typing import Optional, List, ClassVar
-
-from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.app.sim_uni import sim_uni_screen_state
 from sr_od.app.sim_uni.operations.bless import bless_utils
+from sr_od.app.sim_uni.operations.bless.bless_utils import SimUniBlessPos
 from sr_od.app.sim_uni.operations.bless.sim_uni_choose_bless import SimUniChooseBless
 from sr_od.app.sim_uni.sim_uni_challenge_config import SimUniChallengeConfig
+from sr_od.app.sim_uni.sim_uni_const import SimUniBless
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.click_dialog_confirm import ClickDialogConfirm
 from sr_od.operations.sr_operation import SrOperation
@@ -73,13 +73,13 @@ class SimUniDropBless(SrOperation):
     def choose_bless(self) -> OperationRoundResult:
         screen = self.screenshot()
 
-        bless_pos_list: List[MatchResult] = bless_utils.get_bless_pos(self.ctx, screen)
+        bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
         if len(bless_pos_list) == 0:
             return self.round_retry('未识别到祝福', wait=1)
 
-        bless_list = [bless.data for bless in bless_pos_list]
+        bless_list: list[SimUniBless] = [i.bless for i in bless_pos_list]
         target_idx: int = bless_utils.get_bless_by_priority(bless_list, self.config, can_reset=False, asc=False)
-        self.ctx.controller.click(bless_pos_list[target_idx].center)
+        self.ctx.controller.click(bless_pos_list[target_idx].rect.center)
         time.sleep(0.25)
         self.ctx.controller.click(SimUniChooseBless.CONFIRM_BTN.center)
         return self.round_success(wait=1)

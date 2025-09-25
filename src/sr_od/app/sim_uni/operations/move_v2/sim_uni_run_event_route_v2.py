@@ -187,3 +187,18 @@ class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
     @operation_node(name='转动找目标')
     def turn_when_nothing(self) -> OperationRoundResult:
         return SimUniRunRouteBaseV2.turn_when_nothing(self)
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_ocr()
+
+    op = SimUniRunEventRouteV2(ctx)
+    ctx.start_running()
+    op.execute()
+    ctx.stop_running()
+
+
+if __name__ == '__main__':
+    __debug()

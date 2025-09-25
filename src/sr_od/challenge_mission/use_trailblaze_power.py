@@ -113,7 +113,7 @@ class UseTrailblazePower(SrOperation):
             if self.on_battle_success is not None:
                 self.on_battle_success(0, 200)  # 清空开拓力
             return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消',
-                                                     retry_wait=1)
+                                                     success_wait=1, retry_wait=1)
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
@@ -230,7 +230,7 @@ class UseTrailblazePower(SrOperation):
             if self.on_battle_success is not None:
                 self.on_battle_success(0, 200)  # 清空开拓力
             return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消',
-                                                     retry_wait=1)
+                                                     success_wait=1, retry_wait=1)
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
