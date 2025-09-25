@@ -11,6 +11,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
+from sr_od.app.sim_uni import sim_uni_screen_state
+from sr_od.app.sim_uni.operations.auto_run.sim_uni_wait_level_start import SimUniWaitLevelStart
+from sr_od.app.sim_uni.operations.sim_uni_enter_fight import SimUniEnterFight
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.sr_operation import SrOperation
@@ -165,6 +168,10 @@ class EnterGame(SrOperation):
         :param screen: 游戏画面
         :return: 是否有相关操作 有的话返回对应操作结果
         """
+        result = self.check_sim_uni(screen)
+        if result is not None:
+            return result
+
         ocr_result_map = self.ctx.ocr.run_ocr(screen)
 
         target_word_list: list[str] = [
@@ -191,6 +198,30 @@ class EnterGame(SrOperation):
             return self.round_wait(status=match_word)
 
         return None
+
+    def check_sim_uni(self, screen: MatLike) -> Optional[OperationRoundResult]:
+        """
+        判断是否有模拟宇宙相关的画面
+
+        Args:
+            screen: 游戏画面
+
+        Returns:
+            是否有相关操作 有的话返回对应操作结果
+        """
+        state = sim_uni_screen_state.get_sim_uni_screen_state(
+            self.ctx, screen,
+            bless=True, drop_bless=True,
+            sim_uni=True,
+        )
+        if state is not None:
+            if state == sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value:
+                op = SimUniWaitLevelStart(self.ctx)
+            else:
+                op = SimUniEnterFight(self.ctx)
+            return self.round_by_op_result(op.execute())
+        else:
+            return None
 
     @node_from(from_name='画面识别', status='大世界')
     @operation_node(name='等待画面加载')

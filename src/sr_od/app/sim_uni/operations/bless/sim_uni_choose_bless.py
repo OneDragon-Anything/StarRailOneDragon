@@ -1,12 +1,11 @@
 import time
+from typing import ClassVar, List, Optional
 
 import cv2
 import numpy as np
 from cv2.typing import MatLike
-from typing import Optional, List, ClassVar
 
 from one_dragon.base.geometry.rectangle import Rect
-from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -14,6 +13,7 @@ from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from sr_od.app.sim_uni import sim_uni_screen_state
 from sr_od.app.sim_uni.operations.bless import bless_utils
+from sr_od.app.sim_uni.operations.bless.bless_utils import SimUniBlessPos
 from sr_od.app.sim_uni.sim_uni_challenge_config import SimUniChallengeConfig
 from sr_od.app.sim_uni.sim_uni_const import SimUniBless
 from sr_od.context.sr_context import SrContext
@@ -63,8 +63,6 @@ class SimUniChooseBless(SrOperation):
         """
         self.first_screen_check = True
         self.choose_bless_time: Optional[float] = None  # 选择祝福的时间
-        self.last_bless_pos_list: List[MatchResult] = []  # 上一次识别到的祝福
-        self.bless_cnt_type: int = 3  # 祝福数量
 
         return None
 
@@ -84,25 +82,17 @@ class SimUniChooseBless(SrOperation):
     def choose(self) -> OperationRoundResult:
         screen = self.screenshot()
 
-        bless_pos_list: List[MatchResult] = bless_utils.get_bless_pos(self.ctx, screen)
+        bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
 
         if len(bless_pos_list) == 0:
             return self.round_retry('未识别到祝福', wait=1)
 
-        if self._same_as_last(bless_pos_list):
-            if self.bless_cnt_type <= 0:
-                return self.round_fail('祝福与之前识别一致')
-            else:
-                return self.round_retry('祝福与之前识别一致', wait=1)
-
-        self.last_bless_pos_list = bless_pos_list
-
-        target_bless_pos: Optional[MatchResult] = self._get_bless_to_choose(screen, bless_pos_list)
+        target_bless_pos: Optional[SimUniBlessPos] = self._get_bless_to_choose(screen, bless_pos_list)
         if target_bless_pos is None:
             self.ctx.controller.click(SimUniChooseBless.RESET_BTN.center)
             return self.round_wait('重置祝福', wait=1)
         else:
-            self.ctx.controller.click(target_bless_pos.center)
+            self.ctx.controller.click(target_bless_pos.rect.center)
             time.sleep(0.25)
             if self.before_level_start:
                 confirm_point = SimUniChooseBless.CONFIRM_BEFORE_LEVEL_BTN.center
@@ -111,33 +101,6 @@ class SimUniChooseBless(SrOperation):
             self.ctx.controller.click(confirm_point)
             self.choose_bless_time = time.time()
             return self.round_success(wait=0.1)
-
-    def _same_as_last(self, bless_pos_list: List[MatchResult]) -> bool:
-        """
-        识别的祝福内容是否跟上一次一致
-        正常情况下基本不可能，只可能是识别错了，一直没有选择到祝福
-        例如：
-        只有2个祝福的时候，使用3个祝福的第1个位置 可能会识别到祝福(名字位置重叠) 这时候点击第1个位置是会失败的
-        所以每次出现一致 bless_cnt_type-=1 即重试的时候 需要排除调3个祝福的位置 尝试2个祝福的位置
-        :param bless_pos_list:
-        :return: 是否一致
-        """
-        same: bool = True
-        if len(self.last_bless_pos_list) != len(bless_pos_list):
-            same = False
-        else:
-            for i in range(len(self.last_bless_pos_list)):
-                b1: SimUniBless = self.last_bless_pos_list[i].data
-                b2: SimUniBless = bless_pos_list[i].data
-                if b1 != b2:
-                    same = False
-
-        if same:
-            self.bless_cnt_type -= 1
-        else:
-            self.bless_cnt_type = 3
-
-        return same
 
     def _can_reset(self, screen: MatLike) -> bool:
         """
@@ -155,13 +118,13 @@ class SimUniChooseBless(SrOperation):
 
         return str_utils.find_by_lcs(gt('重置祝福', 'ocr'), ocr_result)
 
-    def _get_bless_to_choose(self, screen: MatLike, bless_pos_list: List[MatchResult]) -> Optional[MatchResult]:
+    def _get_bless_to_choose(self, screen: MatLike, bless_pos_list: List[SimUniBlessPos]) -> Optional[SimUniBlessPos]:
         """
         根据优先级选择对应的祝福
         :param bless_pos_list: 祝福列表
         :return:
         """
-        bless_list = [bless.data for bless in bless_pos_list]
+        bless_list: list[SimUniBless] = [i.bless for i in bless_pos_list]
         can_reset = self._can_reset(screen)
         target_idx = bless_utils.get_bless_by_priority(bless_list, self.config, can_reset, asc=True)
         if target_idx is None:
@@ -192,3 +155,19 @@ class SimUniChooseBless(SrOperation):
                 return self.round_success()
         else:
             return self.round_success(wait=1)
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_ocr()
+    ctx.init_by_config()
+    ctx.init_for_sim_uni()
+
+    ctx.start_running()
+    op = SimUniChooseBless(ctx)
+    op.execute()
+    ctx.stop_running()
+
+
+if __name__ == '__main__':
+    __debug()

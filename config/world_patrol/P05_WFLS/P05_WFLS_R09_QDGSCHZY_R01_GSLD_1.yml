@@ -1,0 +1,55 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「穹顶关塞」晨昏之眼'
+floor: 3
+tp: '关塞颅顶'
+route:
+  - idx: 1
+    op: 'move'
+    data: [1514, 1040]
+  - idx: 2
+    op: 'interact'
+    data: '交互浮台'
+  - idx: 3
+    op: 'wait'
+    data: ['seconds', '37']
+  - idx: 4
+    op: 'move'
+    data: [1561, 998]
+  - idx: 5
+    op: 'update_pos'
+    data: [1561, 998, 2]
+  - idx: 6
+    op: 'move'
+    data: [1625, 934]
+  - idx: 7
+    op: 'disposable'
+  - idx: 8
+    op: 'move'
+    data: [1643, 913]
+  - idx: 9
+    op: 'update_pos'
+    data: [1643, 913]
+  - idx: 10
+    op: 'move'
+    data: [1684, 969]
+  - idx: 11
+    op: 'update_pos'
+    data: [1684, 969]
+  - idx: 12
+    op: 'move'
+    data: [1696, 1032]
+  - idx: 13
+    op: 'move'
+    data: [1687, 1091]
+  - idx: 14
+    op: 'update_pos'
+    data: [1687, 1091]
+  - idx: 15
+    op: 'move'
+    data: [1645, 1162]
+  - idx: 16
+    op: 'move'
+    data: [1698, 1215]
+  - idx: 17
+    op: 'patrol'

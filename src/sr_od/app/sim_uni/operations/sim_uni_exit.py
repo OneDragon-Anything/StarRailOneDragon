@@ -102,3 +102,19 @@ class SimUniExit(SrOperation):
         screen = self.screenshot()
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '点击空白处继续',
                                                  success_wait=2, retry_wait=1)
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_ocr()
+    ctx.init_by_config()
+    ctx.init_for_sim_uni()
+
+    ctx.start_running()
+    op = SimUniExit(ctx)
+    op.execute()
+    ctx.stop_running()
+
+
+if __name__ == '__main__':
+    __debug()

@@ -136,6 +136,8 @@ class TrailblazePowerApp(SrApplication):
         """
         log.info('挑战成功 完成次数 %d 使用体力 %d', finished_times, use_power)
         self.power -= use_power
+        if self.power < 0:
+            self.power = 0
         self.ctx.power_config.add_run_times(self.last_mission.unique_id, finished_times)
 
     def _on_sim_uni_get_reward(self, use_power: int, user_qty: int):
@@ -147,7 +149,11 @@ class TrailblazePowerApp(SrApplication):
         self.ctx.power_config.add_run_times(self.last_mission.unique_id, 1)
 
         self.power -= use_power
+        if self.power < 0:
+            self.power = 0
         self.qty -= user_qty
+        if self.qty < 0:
+            self.qty = 0
 
     def on_oe_get_reward(self, qty: int):
         """

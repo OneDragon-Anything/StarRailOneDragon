@@ -282,6 +282,12 @@
           region_name: "铁卫禁区"
           power: 30
 
+        - mission_name: "塞壬之形"
+          show_in_power_plan: true
+          display_name: "冰-塞壬之形"
+          region_name: "「酣歌海垠」斯缇科西亚"
+          power: 30
+
         - mission_name: "冰酿之形"
           show_in_power_plan: true
           display_name: "冰-冰酿之形"
@@ -316,6 +322,12 @@
           show_in_power_plan: true
           display_name: "雷-鸣雷之形"
           region_name: "廻星港"
+          power: 30
+
+        - mission_name: "烬日之形"
+          show_in_power_plan: true
+          display_name: "风-烬日之形"
+          region_name: "「穹顶关塞」晨昏之眼"
           power: 30
 
         - mission_name: "今宵之形"
@@ -360,6 +372,12 @@
           region_name: "基座舱段"
           power: 30
 
+        - mission_name: "役轮之形"
+          show_in_power_plan: true
+          display_name: "虚数-役轮之形"
+          region_name: "「命运重渊」雅努萨波利斯"
+          power: 30
+
         - mission_name: "弦音之形"
           show_in_power_plan: true
           display_name: "虚数-弦音之形"
@@ -383,6 +401,12 @@
       remark_in_game: "遗器"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "隐救之径"
+          show_in_power_plan: true
+          display_name: "再创天地的救世主 自匿星芒的隐士"
+          region_name: "「全世矩阵」无名泰坦大墓"
+          power: 40
+
         - mission_name: "雳涌之径"
           show_in_power_plan: true
           display_name: "烈阳惊雷的女武神 恶海逐波的船长"
