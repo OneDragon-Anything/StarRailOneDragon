@@ -1,0 +1,22 @@
+name: mirrorchyan_uploading
+
+on:
+  workflow_dispatch:
+  release:
+    types: [released]
+
+jobs:
+
+  mirrorchyan:
+    runs-on: macos-latest
+    steps:
+      - uses: MirrorChyan/uploading-action@v1
+        with:
+          filetype: latest-release
+          filename: "StarRail-OneDragon-*.zip"
+          mirrorchyan_rid: SR-OneDragon
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          owner: DoctorReid
+          repo: StarRailOneDragon
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
