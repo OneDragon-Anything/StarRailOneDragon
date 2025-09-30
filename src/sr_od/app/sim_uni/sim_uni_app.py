@@ -101,9 +101,10 @@ class SimUniApp(SrApplication):
             return self.round_success()
 
     @node_from(from_name='检查运行次数')
+    @node_from(from_name='调用差分宇宙自动化', success=False)
     @operation_node(name='识别初始画面')
     def _check_initial_screen(self) -> OperationRoundResult:
-        BackToNormalWorldPlus(self.ctx).execute()
+        # BackToNormalWorldPlus(self.ctx).execute()
 
         screen = self.screenshot()
         state = sim_uni_screen_state.get_sim_uni_initial_screen_state(self.ctx, screen)
@@ -147,7 +148,6 @@ class SimUniApp(SrApplication):
             for i in range(30):
                 period_reward = self._check_period_reward()
                 if period_reward.result == OperationRoundResultEnum.SUCCESS:
-                    self.ctx.controller.esc()
                     return self.round_by_op_result(self.op_success("成功"))
                 if period_reward.result == OperationRoundResultEnum.FAIL:
                     break
@@ -208,7 +208,7 @@ class SimUniApp(SrApplication):
             if completed_num > 0:
                 # 记录完成次数 (todo 用户界面中是精英怪于是这里也记录精英怪)
                 self.ctx.sim_uni_record.add_elite_times()
-                return self.round_by_op_result(self.op_success("成功"))
+                return self.round_by_op_result(self.op_fail("已打完, 前往领奖励"))
 
         op = BackToNormalWorldPlus(self.ctx)
         op.execute()
@@ -290,6 +290,7 @@ class SimUniApp(SrApplication):
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='识别初始画面', status=STATUS_TO_WEEKLY_REWARD)
+    @node_from(from_name='调用差分宇宙自动化', success=True)
     @operation_node(name='领取每周奖励')
     def check_reward_before_exit(self) -> OperationRoundResult:
         op = SimUniClaimWeeklyReward(self.ctx)

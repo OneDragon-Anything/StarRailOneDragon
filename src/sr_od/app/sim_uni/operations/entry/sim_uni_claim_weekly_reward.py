@@ -1,6 +1,6 @@
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
 from one_dragon.utils.i18_utils import gt
 from sr_od.app.sim_uni import sim_uni_screen_state
 from sr_od.context.sr_context import SrContext
@@ -39,7 +39,7 @@ class SimUniClaimWeeklyReward(SrOperation):
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '每周奖励红点',
                                                  success_wait=1, retry_wait=1)
 
-    @node_from(from_name='检查奖励', status='STATUS_WITH_REWARD')
+    @node_from(from_name='检查奖励', success=True)
     @operation_node(name='领取奖励')
     def _claim_reward(self) -> OperationRoundResult:
         screen = self.screenshot()
