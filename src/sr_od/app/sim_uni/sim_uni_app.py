@@ -206,7 +206,7 @@ class SimUniApp(SrApplication):
                 completed_num = int(file.readline())
 
             if completed_num > 0:
-                # 记录完成次数 (todo 用户界面中是精英怪于是这里也记录精英怪)
+                # 记录完成次数, 返回失败然后下次运行即可领奖励
                 self.ctx.sim_uni_record.add_elite_times()
                 return self.round_by_op_result(self.op_fail("已打完, 前往领奖励"))
 
