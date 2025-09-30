@@ -203,21 +203,49 @@ class TrailblazePowerConfig(YamlConfig):
     def loop_adapter(self) -> YamlConfigAdapter:
         return YamlConfigAdapter(self, 'loop', True)
 
-    @property
-    def next_plan_item(self) -> Optional[TrailblazePowerPlanItem]:
-        """
-        按规划配置列表，找到第一个还没有完成的去执行
-        如果都完成了 选择第一个
-        :return: 下一个需要执行的计划
-        """
-        plan_list: List[TrailblazePowerPlanItem] = self.plan_list
-        for item in plan_list:
-            if item.run_times < item.plan_times:
-                return item
+    def _is_same_plan(self, x: TrailblazePowerPlanItem, y: TrailblazePowerPlanItem) -> bool:
+        if x is None or y is None:
+            return False
 
-        if len(plan_list) > 0:
-            return plan_list[0]
+        # 直接比较ID
+        return x.mission_id == y.mission_id
 
+    def get_next_plan(self, last_tried_plan: Optional[TrailblazePowerPlanItem] = None) -> Optional[
+        TrailblazePowerPlanItem]:
+        """
+        获取下一个未完成的计划任务。
+        如果提供了 last_tried_plan，则从该任务之后开始查找。
+        如果未提供，则从列表的开头查找第一个未完成任务。
+        不再在此方法内调用 reset_plans，重置逻辑由调用方（ChargePlanApp）管理。
+        """
+        if len(self.plan_list) == 0:
+            return None
+
+        start_index = 0
+        if last_tried_plan is not None:
+            # 1. 从上次尝试的计划之后开始查找
+            last_tried_index = -1
+            for i, plan in enumerate(self.plan_list):
+                if self._is_same_plan(plan, last_tried_plan):
+                    last_tried_index = i
+                    break
+
+            if last_tried_index != -1:
+                start_index = last_tried_index + 1
+                # 如果已到达列表末尾，返回 None
+                if start_index >= len(self.plan_list):
+                    return None
+            else:
+                # 2. 找不到上次计划则从头开始
+                start_index = 0
+
+        # 3. 从指定位置开始遍历查找符合条件的计划
+        for i in range(start_index, len(self.plan_list)):
+            plan = self.plan_list[i]
+            if plan.run_times < plan.plan_times:
+                return plan
+
+        # 4. 检查完一轮都没找到合适的计划
         return None
 
     def check_plan_run_times(self) -> None:
