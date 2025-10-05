@@ -21,13 +21,13 @@ class SimUniRunRecord(AppRunRecord):
         if self._should_reset_by_dt():
             if os_utils.is_monday(self.get_current_dt()):
                 return AppRunRecord.STATUS_WAIT
-            elif (self.period_reward_complete and self.config.only_period_reward) \
+            elif (self.points_reward_complete and self.config.only_points_reward) \
                     or self.elite_weekly_times >= self.config.elite_weekly_times:  # 已完成本周次数
                 return AppRunRecord.STATUS_SUCCESS
             else:
                 return AppRunRecord.STATUS_WAIT
         else:
-            if (self.period_reward_complete and self.config.only_period_reward) \
+            if (self.points_reward_complete and self.config.only_points_reward) \
                     or self.elite_weekly_times >= self.config.elite_weekly_times or \
                     self.elite_daily_times >= self.config.elite_daily_times:  # 已完成次数
                 return AppRunRecord.STATUS_SUCCESS
@@ -44,7 +44,7 @@ class SimUniRunRecord(AppRunRecord):
         if os_utils.get_monday_dt(current_dt) != os_utils.get_monday_dt(self.dt):
             self.weekly_times = 0
             self.elite_weekly_times = 0
-            self.period_reward_complete = False
+            self.points_reward_complete = False
         self.daily_times = 0
         self.elite_daily_times = 0
 
@@ -93,16 +93,16 @@ class SimUniRunRecord(AppRunRecord):
         self.update('elite_weekly_times', new_value)
 
     @property
-    def period_reward_complete(self) -> bool:
+    def points_reward_complete(self) -> bool:
         """
         每周挑战精英的次数
         :return:
         """
-        return self.get('period_reward_complete', False)
+        return self.get('points_reward_complete', False)
 
-    @period_reward_complete.setter
-    def period_reward_complete(self, new_value: bool):
-        self.update('period_reward_complete', new_value)
+    @points_reward_complete.setter
+    def points_reward_complete(self, new_value: bool):
+        self.update('points_reward_complete', new_value)
 
     @property
     def elite_daily_times(self) -> int:

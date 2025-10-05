@@ -79,10 +79,10 @@ class SimUniSettingInterface(VerticalScrollInterface):
         self.auto_simulated_universe_settings.clicked.connect(self._on_auto_simulated_universe_settings_clicked)
         group_x.addSettingCard(self.auto_simulated_universe_settings)
 
-        self.only_period_reward = SwitchSettingCard(
+        self.only_points_reward = SwitchSettingCard(
             icon=FluentIcon.GAME, title='每周只打满14000', content='勾选此处的话, Auto_Simulated_Universe 的每周次数可以设置成1',
         )
-        group_x.addSettingCard(self.only_period_reward)
+        group_x.addSettingCard(self.only_points_reward)
 
         self.save_auto_simulated_universe_settings = PushSettingCard(
             icon=FluentIcon.SAVE_AS,
@@ -138,7 +138,7 @@ class SimUniSettingInterface(VerticalScrollInterface):
         self.weekly_sim_uni_diff_opt.set_options_by_list(diff_opts)
         self.weekly_sim_uni_diff_opt.init_with_adapter(self.ctx.sim_uni_config.weekly_uni_diff_adapter)
 
-        self.only_period_reward.init_with_adapter(self.ctx.sim_uni_config.only_period_reward_adapter)
+        self.only_points_reward.init_with_adapter(self.ctx.sim_uni_config.only_points_reward_adapter)
         self.weekly_plan_times_opt.init_with_adapter(self.ctx.sim_uni_config.elite_weekly_times_adapter)
         self.daily_plan_times_opt.init_with_adapter(self.ctx.sim_uni_config.elite_daily_times_adapter)
 

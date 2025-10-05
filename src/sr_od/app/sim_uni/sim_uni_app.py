@@ -58,23 +58,23 @@ class SimUniApp(SrApplication):
         self.not_found_in_survival_times: int = 0  # 在生存索引中找不到模拟宇宙的次数
         self.all_finished: bool = False
 
-    # 在差分宇宙入口处检查周期奖励
-    def _check_period_reward(self) -> OperationRoundResult:
-        ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-每周奖励')
-        # 找到了2个 14000 的算过 (完成进度 14000/14000)
-        # 找不到 14000 的也算过 (防止死循环)
+    # 在差分宇宙入口处检查积分奖励
+    def _check_points_reward(self) -> OperationRoundResult:
+        ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
         count_14000 = 0
         for ocr_result, mrl in ocr_result_map.items():
             count_14000 += ocr_result.count('14000')
         if count_14000 == 0:
-            return self.round_retry('未找到周奖励', wait=1)
+            # 找不到 14000 的重试
+            return self.round_retry('未找到周积分奖励', wait=1)
         elif count_14000 == 2:
+            # 找到了2个 14000 的算过 (完成进度 14000/14000)
             # 如果周计划未完成, 设置为已完成
-            if not self.ctx.sim_uni_record.period_reward_complete:
-                self.ctx.sim_uni_record.period_reward_complete = True
-            return self.round_success('已打满周奖励')
+            if not self.ctx.sim_uni_record.points_reward_complete:
+                self.ctx.sim_uni_record.points_reward_complete = True
+            return self.round_success('已打满周积分奖励')
 
-        return self.round_fail('未打满周奖励')
+        return self.round_fail('未打满周积分奖励')
 
     @node_from(from_name='自动宇宙')
     @node_from(from_name='异常退出')
@@ -144,12 +144,12 @@ class SimUniApp(SrApplication):
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
         # 如果只要求打满奖励, 识别是否 14000/14000了
-        if self.ctx.sim_uni_config.only_period_reward:
+        if self.ctx.sim_uni_config.only_points_reward:
             for i in range(30):
-                period_reward = self._check_period_reward()
-                if period_reward.result == OperationRoundResultEnum.SUCCESS:
+                points_reward = self._check_points_reward()
+                if points_reward.result == OperationRoundResultEnum.SUCCESS:
                     return self.round_by_op_result(self.op_success("成功"))
-                if period_reward.result == OperationRoundResultEnum.FAIL:
+                if points_reward.result == OperationRoundResultEnum.FAIL:
                     break
 
 
