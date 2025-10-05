@@ -225,6 +225,6 @@ def get_training_reward_completed_num(ctx: SrContext, screen: MatLike) -> bool:
     """
     part, _ = cv2_utils.crop_image(screen, GUIDE_TRAINING_REWARD_CLAIM_RECT)
 
-    result_list: MatchResultList = ctx.tm.match_template(part, 'phone_menu', 'training_reward_gift', ignore_template_mask=True)
+    result_list: MatchResultList = ctx.tm.match_template(part, 'phone_menu', 'training_reward_completed', only_best=False, ignore_template_mask=True)
 
     return len(result_list) >= 5
