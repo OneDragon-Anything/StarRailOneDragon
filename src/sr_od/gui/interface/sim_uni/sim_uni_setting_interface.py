@@ -38,11 +38,16 @@ class SimUniSettingInterface(VerticalScrollInterface):
         """
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
+        gui_script = os.path.join(plugin_path, 'gui.py')
+
+        if not os.path.exists(gui_script):
+            log.error(f'GUI脚本不存在: {gui_script}')
+            # 可以考虑显示一个提示对话框给用户
+            return
+
         command = [self.ctx.python_service.env_config.python_path]
-        args = os.path.join(plugin_path, 'gui.py')
         script_working_directory = plugin_path
-        if args and args.strip():
-            command.extend(args.split())
+        command.append(gui_script)
         subprocess.Popen(command, cwd=script_working_directory)
 
     def _on_save_auto_simulated_universe_settings_clicked(self) -> None:
@@ -55,9 +60,16 @@ class SimUniSettingInterface(VerticalScrollInterface):
 
         config_file_path = os.path.join(work_dir,
                                         *['config', '%02d' % self.ctx.current_instance_idx, 'sim_universe_plugin.yml'])
-
-        shutil.copy(plugin_config_file_path, config_file_path)
-        log.info('差分宇宙配置保存成功')
+        try:
+            if not os.path.exists(plugin_config_file_path):
+                log.error(f'差分宇宙默认配置文件不存在: {plugin_config_file_path}')
+                return
+            # 确保目标目录存在
+            os.makedirs(os.path.dirname(config_file_path), exist_ok=True)
+            shutil.copy(plugin_config_file_path, config_file_path)
+            log.info('差分宇宙配置保存成功')
+        except Exception as e:
+            log.error(f'保存差分宇宙配置失败: {e}')
 
     def get_content_widget(self) -> QWidget:
         content_widget = Column()

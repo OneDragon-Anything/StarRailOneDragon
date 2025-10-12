@@ -110,7 +110,8 @@ def get_bless_pos(ctx: SrContext, screen: MatLike) -> list[SimUniBlessPos]:
                         y=ocr_result.y,
                         w=ocr_result.w,
                         h=ocr_result.h,
-                        data=ocr_result.data
+                        # 标记为未知，避免后续当作 Bless 对象使用
+                        data=None
                     )
                 )
 
@@ -188,10 +189,11 @@ def get_bless_by_priority(bless_list: List[SimUniBless], config: Optional[SimUni
             if bless.name.endswith('000'):  # 命途内选最高级的祝福
                 for bless_level in SimUniBlessLevel:
                     for idx, opt_bless in enumerate(bless_list):
-                        if opt_bless.level == bless_level and opt_bless.path == bless.value.path:
-                            if idx_priority[idx] == 99:
-                                idx_priority[idx] = cnt
-                                cnt += 1
+                        if hasattr(opt_bless, "level") and hasattr(opt_bless, "path") \
+                                and opt_bless.level == bless_level and opt_bless.path == bless.value.path and \
+                                idx_priority[idx] == 99:
+                            idx_priority[idx] = cnt
+                            cnt += 1
             else:  # 命中优先级的
                 for idx, opt_bless in enumerate(bless_list):
                     if opt_bless == bless.value:
@@ -205,10 +207,11 @@ def get_bless_by_priority(bless_list: List[SimUniBless], config: Optional[SimUni
                 if bless.name.endswith('000'):  # 命途内选最高级的祝福
                     for bless_level in SimUniBlessLevel:
                         for idx, opt_bless in enumerate(bless_list):
-                            if opt_bless.level == bless_level and opt_bless.path == bless.value.path:
-                                if idx_priority[idx] == 99:
-                                    idx_priority[idx] = cnt
-                                    cnt += 1
+                            if hasattr(opt_bless, "level") and hasattr(opt_bless, "path") \
+                                    and opt_bless.level == bless_level and opt_bless.path == bless.value.path and \
+                                    idx_priority[idx] == 99:
+                                idx_priority[idx] = cnt
+                                cnt += 1
                 else:  # 命中优先级的
                     for idx, opt_bless in enumerate(bless_list):
                         if opt_bless == bless.value:
@@ -220,14 +223,11 @@ def get_bless_by_priority(bless_list: List[SimUniBless], config: Optional[SimUni
         # 优先级无法命中的情况 随便选最高级的祝福
         for bless_level in SimUniBlessLevel:
             for idx, opt_bless in enumerate(bless_list):
-                try:
-                    if opt_bless.level == bless_level:
-                        if idx_priority[idx] == 99:
-                            idx_priority[idx] = cnt
-                            cnt += 1
-                except:
-                    pass
-
+                # 仅处理有效的 Bless
+                if hasattr(opt_bless, "level"):
+                    if opt_bless.level == bless_level and idx_priority[idx] == 99:
+                        idx_priority[idx] = cnt
+                        cnt += 1
 
     target_idx: Optional[int] = None
     target_priority: Optional[int] = None

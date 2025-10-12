@@ -85,15 +85,15 @@ class SimUniConfig(YamlConfig):
         return YamlConfigAdapter(self, 'weekly_uni_diff', 0)
 
     @property
-    def only_points_reward(self) -> int:
+    def only_points_reward(self) -> bool:
         """
-        每周挑战精英的次数
+        是否仅完成周期奖励（打满14000点后退出）
         :return:
         """
         return self.get('only_points_reward', True)
 
     @only_points_reward.setter
-    def only_points_reward(self, new_value: int):
+    def only_points_reward(self, new_value: bool):
         self.update('only_points_reward', new_value)
 
     @property

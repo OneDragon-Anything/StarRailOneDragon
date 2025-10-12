@@ -94,39 +94,37 @@ def ocr_in_screen(ctx: OneDragonContext, screen: MatLike, area: ScreenArea) -> d
     :param area: 区域
     :return: 结果
     """
-    if area is None:
+    if (area is None) or (not area.is_text_area):
         return {}
 
-    if area.is_text_area:
-        if ctx.env_config.ocr_cache:
-            ocr_result_map = ctx.ocr_service.get_ocr_result_map(
-                image=screen,
-                color_range=area.color_range,
-                rect=area.rect
-            )
+    if ctx.env_config.ocr_cache:
+        ocr_result_map = ctx.ocr_service.get_ocr_result_map(
+            image=screen,
+            color_range=area.color_range,
+            rect=area.rect
+        )
+    else:
+        rect = area.rect
+        part = cv2_utils.crop_image_only(screen, rect)
+
+        if area.color_range is None:
+            to_ocr = part
         else:
-            rect = area.rect
-            part = cv2_utils.crop_image_only(screen, rect)
+            mask = cv2.inRange(part,
+                               np.array(area.color_range[0], dtype=np.uint8),
+                               np.array(area.color_range[1], dtype=np.uint8))
+            mask = cv2_utils.dilate(mask, 2)
+            to_ocr = cv2.bitwise_and(part, part, mask=mask)
 
-            if area.color_range is None:
-                to_ocr = part
-            else:
-                mask = cv2.inRange(part,
-                                   np.array(area.color_range[0], dtype=np.uint8),
-                                   np.array(area.color_range[1], dtype=np.uint8))
-                mask = cv2_utils.dilate(mask, 2)
-                to_ocr = cv2.bitwise_and(part, part, mask=mask)
+        ocr_result_map = ctx.ocr.run_ocr(to_ocr)
+        for mrl in ocr_result_map.values():
+            mrl.add_offset(rect.left_top)
 
-            ocr_result_map = ctx.ocr.run_ocr(to_ocr)
+    # cv2.imwrite('y:/part.png', part)
 
-        # cv2.imwrite('y:/part.png', part)
-        # for ocr_result, mrl in ocr_result_map.items():
-        #     if str_utils.find_by_lcs(gt(area.text, 'game'), ocr_result, percent=area.lcs_percent):
-        #         find = True
-        #         break
-        return ocr_result_map
-
-    return {}
+    if ocr_result_map is None:
+        ocr_result_map = {}
+    return ocr_result_map
 
 
 def find_and_click_area(ctx: OneDragonContext, screen: MatLike, screen_name: str, area_name: str) -> OcrClickResultEnum:

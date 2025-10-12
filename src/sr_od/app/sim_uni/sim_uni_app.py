@@ -60,21 +60,31 @@ class SimUniApp(SrApplication):
 
     # 在差分宇宙入口处检查积分奖励
     def _check_points_reward(self) -> OperationRoundResult:
-        ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
-        count_14000 = 0
-        for ocr_result, mrl in ocr_result_map.items():
-            count_14000 += ocr_result.count('14000')
-        if count_14000 == 0:
-            # 找不到 14000 的重试
-            return self.round_retry('未找到周积分奖励', wait=1)
-        elif count_14000 == 2:
-            # 找到了2个 14000 的算过 (完成进度 14000/14000)
-            # 如果周计划未完成, 设置为已完成
-            if not self.ctx.sim_uni_record.points_reward_complete:
-                self.ctx.sim_uni_record.points_reward_complete = True
-            return self.round_success('已打满周积分奖励')
+        last_count_14000 = -1
+        # 默认设置找不到 14000 返回重试
+        result = self.round_retry('未找到积分奖励', wait=0.2)
+        # 识别到两次一致的结果就退出循环
+        for _ in range(10):
+            ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
 
-        return self.round_fail('未打满周积分奖励')
+            count_14000 = 0
+            for ocr_result, _mrl in ocr_result_map.items():
+                count_14000 += ocr_result.count('14000')
+            if last_count_14000 != count_14000:
+                last_count_14000 = count_14000
+                time.sleep(1)
+                continue
+
+            if count_14000 == 1:
+                # 只有一个 14000
+                result = self.round_fail('未打满积分奖励')
+            elif count_14000 == 2:
+                # 如果周计划未完成, 设置为已完成
+                if not self.ctx.sim_uni_record.points_reward_complete:
+                    self.ctx.sim_uni_record.points_reward_complete = True
+                result = self.round_success('已打满积分奖励')
+            break
+        return result
 
     @node_from(from_name='自动宇宙')
     @node_from(from_name='异常退出')
@@ -145,21 +155,22 @@ class SimUniApp(SrApplication):
     def _execute_sim_universe_x(self) -> OperationRoundResult:
         # 如果只要求打满奖励, 识别是否 14000/14000了
         if self.ctx.sim_uni_config.only_points_reward:
-            for i in range(30):
-                points_reward = self._check_points_reward()
-                if points_reward.result == OperationRoundResultEnum.SUCCESS:
-                    return self.round_by_op_result(self.op_success("成功"))
-                if points_reward.result == OperationRoundResultEnum.FAIL:
-                    break
-
+            points_reward = self._check_points_reward()
+            if points_reward.result == OperationRoundResultEnum.SUCCESS:
+                return self.round_by_op_result(self.op_success("成功"))
 
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
+        script_file = os.path.join(plugin_path, 'diver.py')
+        if not os.path.exists(plugin_path):
+            return self.round_fail(f'差分宇宙插件目录不存在: {plugin_path}')
+        if not os.path.exists(script_file):
+            return self.round_fail(f'差分宇宙脚本不存在: {script_file}')
 
         # 使用自身的 python 环境启动脚本
         script_config = ScriptConfig(
             script_path=self.ctx.python_service.env_config.python_path,
-            script_arguments=os.path.join(plugin_path, 'diver.py'),
+            script_arguments=script_file,
             script_working_directory=plugin_path,
             script_process_name='None',  # 脚本退出检测需要使用 pid 而不是 python.exe, 故此处填 None
             game_process_name='',
@@ -176,7 +187,7 @@ class SimUniApp(SrApplication):
         plugin_run_result_path = os.path.join(plugin_path, 'logs', 'notif.txt')
         if os.path.exists(plugin_run_result_path):
             with open(plugin_run_result_path, 'w', encoding='utf-8') as file:
-                pass  # 不写入任何内容，仅清空
+                pass  # 不写入任何内容, 仅清空
             # os.remove(plugin_run_result_path)
 
         # 复制配置文件
@@ -184,26 +195,38 @@ class SimUniApp(SrApplication):
                                         *['config', '%02d' % self.ctx.current_instance_idx, 'sim_universe_plugin.yml'])
         # 如果没有此用户的配置文件, 则复制默认配置文件到用户文件夹中; 默认 info.yml 存在
         plugin_config_file_path = os.path.join(plugin_path, 'info.yml')
+        if not os.path.exists(plugin_config_file_path):
+            return self.round_fail(f'差分宇宙默认配置文件不存在: {plugin_config_file_path}')
         if not os.path.exists(config_file_path):
             shutil.copy(plugin_config_file_path, config_file_path)
         shutil.copy(config_file_path, plugin_config_file_path)
 
         # 运行脚本, 重试次数 = 3
-        for i in range(3):
+        retry_count = 0
+        max_retries = 3
+        while retry_count < max_retries:
             if self.ctx.context_running_state == ContextRunStateEnum.STOP:
                 break
             elif self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
                 time.sleep(1)
-                i -= 1
                 continue
             run_script(script_config, self.ctx)
             if self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
                 time.sleep(1)
-                i -= 1
+                continue
+            retry_count += 1
 
             # 进程退出, 检查运行情况
-            with open(plugin_run_result_path, 'r', encoding='utf-8') as file:
-                completed_num = int(file.readline())
+            for _ in range(3):
+                try:
+                    with open(plugin_run_result_path, 'r', encoding='utf-8') as file:
+                        line = file.readline().strip()
+                        completed_num = int(line) if line else 0
+                    break
+                except (ValueError, FileNotFoundError) as e:
+                    log.error(f'读取运行结果文件失败: {e}')
+                    completed_num = 0
+                    time.sleep(5)
 
             if completed_num > 0:
                 # 记录完成次数, 返回失败然后下次运行即可领奖励
