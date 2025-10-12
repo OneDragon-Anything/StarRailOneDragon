@@ -111,7 +111,7 @@ def __debug_get_power_and_qty() -> None:
     ctx.init_ocr()
     op = GuideCheckPower(ctx)
     from one_dragon.utils import debug_utils
-    screen = debug_utils.get_debug_image('_1754184727832')
+    screen = debug_utils.get_debug_image('_1760254683683')
     print(op.get_power_and_qty(screen))
 
 

@@ -216,7 +216,7 @@ def get_training_reward_claim_btn_pos(ctx: SrContext, screen: MatLike) -> Option
     return result
 
 
-def get_training_reward_completed_num(ctx: SrContext, screen: MatLike) -> bool:
+def is_training_reward_completed(ctx: SrContext, screen: MatLike) -> bool:
     """
     指南实训页面 获取领完的奖励个数
     :param ctx: 上下文

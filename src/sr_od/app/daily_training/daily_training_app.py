@@ -78,13 +78,13 @@ class DailyTrainingApp(SrApplication):
             return self.round_retry('未在每日实训页面', wait=1)
 
         pos = phone_menu_utils.get_training_reward_claim_btn_pos(self.ctx, screen)
-        completed = phone_menu_utils.get_training_reward_completed_num(self.ctx, screen)
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, screen)
         if completed:
             return self.round_success('已领取过每日实训奖励', wait=1)
         if pos is None:
             return self.round_retry('未找到奖励按钮', wait=0.5)
         self.ctx.controller.click(pos.center)
-        completed = phone_menu_utils.get_training_reward_completed_num(self.ctx, screen)
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, screen)
         if not completed:
             return self.round_fail('每日实训还未完成')
         return self.round_success('每日实训已完成', wait=1)
