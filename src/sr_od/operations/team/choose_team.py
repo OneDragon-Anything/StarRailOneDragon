@@ -44,6 +44,15 @@ class ChooseTeam(SrOperation):
         num_pos = self.get_all_num_pos(screen)
 
         if self.team_num not in num_pos:
+            # 正常情况应该识别到这么多数字
+            # 如果没有的话 可能会是别角色遮挡了 issue #522
+            # 先按间距推理补全数字的位置 点击后高亮了就能识别了
+            if len(num_pos) < 7:
+                new_num_pos = self.infer_num_pos(num_pos)
+                if self.team_num in new_num_pos:
+                    self.ctx.controller.click(new_num_pos[self.team_num])
+                    return self.round_retry(status='推测位置点击', wait=0.5)
+
             with_larger: bool = False  # 是否有存在比目标数字大的
             for num in num_pos.keys():
                 if num > self.team_num:
@@ -110,3 +119,84 @@ class ChooseTeam(SrOperation):
             team_num_pos[team_num] = mrl.max.center + ChooseTeam.TEAM_NUM_RECT.left_top
 
         return team_num_pos
+
+    def infer_num_pos(self, num_pos: dict[int, Point]) -> dict[int, Point]:
+        """
+        根据已有的数字位置 推测识别不到的数字位置
+
+
+        Args:
+            num_pos:
+
+        Returns:
+
+        """
+        if num_pos is None or len(num_pos) == 0:
+            return {}
+
+        new_num_pos = {}
+
+        # 先找出最小值和最大值
+        min_num: int = 100
+        max_num: int = 0
+
+        for num in num_pos.keys():
+            new_num_pos[num] = num_pos[num]
+            if num < min_num:
+                min_num = num
+            if num > max_num:
+                max_num = num
+
+        # 计算两个相邻数字的平均横坐标间隔
+        x_dis_list: list[int] = []
+        for num in range(min_num, max_num):
+            if num not in num_pos:
+                continue
+
+            if num + 1 not in num_pos:
+                continue
+
+            x_dis_list.append(num_pos[num + 1].x - num_pos[num].x)
+
+        # 没有足够数字计算距离
+        if len(x_dis_list) == 0:
+            return num_pos
+
+        avg_x_dis: int = int(sum(x_dis_list) / len(x_dis_list))
+
+        # 先在最小值到最大值范围内 找出缺失位置的补全
+        for num in range(min_num, max_num + 1):
+            if num in new_num_pos:  # 已经有坐标的 跳过
+                continue
+
+            prev_pos = new_num_pos[num - 1]
+            curr_pos = prev_pos + Point(avg_x_dis, 0)
+            new_num_pos[num] = curr_pos
+
+        # 如果数字还不足 就往两边补全
+        while len(new_num_pos) < 7:
+            min_num = min_num - 1
+            if min_num > 0:
+                next_pos = new_num_pos[min_num + 1]
+                curr_pos = next_pos - Point(avg_x_dis, 0)
+                new_num_pos[min_num] = curr_pos
+
+            max_num = max_num + 1
+            prev_pos = new_num_pos[max_num - 1]
+            curr_pos = prev_pos + Point(avg_x_dis, 0)
+            new_num_pos[max_num] = curr_pos
+
+        return new_num_pos
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_ocr()
+    ctx.start_running()
+    op = ChooseTeam(ctx, 1)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()
