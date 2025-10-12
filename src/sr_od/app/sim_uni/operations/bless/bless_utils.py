@@ -103,17 +103,16 @@ def get_bless_pos(ctx: SrContext, screen: MatLike) -> list[SimUniBlessPos]:
         for ocr_result in ocr_result_list:
             if ocr_result.rect.x1 > rect[0] and ocr_result.rect.y1 > rect[1] \
                     and ocr_result.rect.x2 < rect[2] and ocr_result.rect.y2 < rect[3]:
-                result_list.append(
-                    MatchResult(
-                        c=ocr_result.confidence,
-                        x=ocr_result.x,
-                        y=ocr_result.y,
-                        w=ocr_result.w,
-                        h=ocr_result.h,
-                        # 标记为未知，避免后续当作 Bless 对象使用
-                        data=None
+                pos = SimUniBlessPos(
+                    bless=bless_list[0],
+                    rect=Rect(
+                        ocr_result.x,
+                        ocr_result.y,
+                        ocr_result.x+ocr_result.w,
+                        ocr_result.y+ocr_result.h
                     )
                 )
+                result_list.append(pos)
 
     return result_list
 
