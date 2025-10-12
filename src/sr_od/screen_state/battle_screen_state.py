@@ -52,6 +52,7 @@ def get_tp_battle_screen_state(
             '挑战成功-有奖励',
             '挑战成功-双倍奖励',
             '挑战成功-无奖励',
+            '挑战成功-遗器自动分解的双倍奖励',
         ]
 
         for area_name in success_area_list:

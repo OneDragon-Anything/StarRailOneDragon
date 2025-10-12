@@ -57,6 +57,17 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+- area_name: 挑战成功-遗器自动分解的双倍奖励
+  pc_rect:
+  - 820
+  - 160
+  - 1100
+  - 240
+  text: 挑战成功
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
 - area_name: 挑战成功-无奖励
   pc_rect:
   - 820
