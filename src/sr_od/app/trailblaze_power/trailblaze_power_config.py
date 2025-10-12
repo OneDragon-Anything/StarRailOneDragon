@@ -207,8 +207,8 @@ class TrailblazePowerConfig(YamlConfig):
         if x is None or y is None:
             return False
 
-        # 直接比较ID
-        return x.mission_id == y.mission_id
+        # 比较ID, 运行次数, 计划次数
+        return (x.mission_id == y.mission_id) and (x.plan_times == y.plan_times) and (x.run_times == y.run_times)
 
     def get_next_plan(self, last_tried_plan: Optional[TrailblazePowerPlanItem] = None) -> Optional[
         TrailblazePowerPlanItem]:
@@ -218,14 +218,18 @@ class TrailblazePowerConfig(YamlConfig):
         如果未提供，则从列表的开头查找第一个未完成任务。
         不再在此方法内调用 reset_plans，重置逻辑由调用方（ChargePlanApp）管理。
         """
-        if len(self.plan_list) == 0:
+        len_plan_list = len(self.plan_list)
+        if len_plan_list == 0:
             return None
 
         start_index = 0
         if last_tried_plan is not None:
             # 1. 从上次尝试的计划之后开始查找
+            # 倒序查找避免用户配置两个相同关卡后循环查找到前一个关卡从而无法达到计划末尾
             last_tried_index = -1
-            for i, plan in enumerate(self.plan_list):
+            for j in range(len_plan_list):
+                i = len_plan_list - 1 - j
+                plan = self.plan_list[i]
                 if self._is_same_plan(plan, last_tried_plan):
                     last_tried_index = i
                     break

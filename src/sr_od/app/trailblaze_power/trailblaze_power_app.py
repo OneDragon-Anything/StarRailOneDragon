@@ -68,7 +68,7 @@ class TrailblazePowerApp(SrApplication):
     def execute_plan(self) -> OperationRoundResult:
         self.ctx.power_config.check_plan_run_times()
         plan: Optional[TrailblazePowerPlanItem] = self.ctx.power_config.get_next_plan()
-        while True:
+        for _ in range(100):
             if plan is None:
                 return self.round_success(TrailblazePowerApp.STATUS_NO_PLAN)
 
