@@ -42,13 +42,16 @@ class SimUniSettingInterface(VerticalScrollInterface):
 
         if not os.path.exists(gui_script):
             log.error(f'GUI脚本不存在: {gui_script}')
-            # 可以考虑显示一个提示对话框给用户
             return
 
         command = [self.ctx.python_service.env_config.python_path]
         script_working_directory = plugin_path
         command.append(gui_script)
-        subprocess.Popen(command, cwd=script_working_directory)
+        try:
+            subprocess.Popen(command, cwd=script_working_directory)
+            log.info('差分宇宙GUI已启动')
+        except Exception as e:
+            log.error(f'启动差分宇宙GUI失败: {e}')
 
     def _on_save_auto_simulated_universe_settings_clicked(self) -> None:
         """
