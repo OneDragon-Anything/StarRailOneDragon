@@ -87,7 +87,13 @@ class SimUniConfig(YamlConfig):
     @property
     def only_points_reward(self) -> bool:
         """
-        是否仅完成周期奖励（打满14000点后退出）
+ @property
+ def only_points_reward(self) -> bool:
+     """
+     是否仅完成周期奖励(打满14000点后退出)
+     :return:
+     """
+     return self.get('only_points_reward', True)
         :return:
         """
         return self.get('only_points_reward', True)
