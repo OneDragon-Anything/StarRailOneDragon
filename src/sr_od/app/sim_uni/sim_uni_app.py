@@ -62,7 +62,7 @@ class SimUniApp(SrApplication):
     def _check_points_reward(self) -> OperationRoundResult:
         last_count_14000 = -1
         # 默认设置找不到 14000 返回重试
-        result = self.round_retry('未找到积分奖励', wait=0.2)
+        result = self.round_retry('未找到积分奖励', wait=1)
         # 识别到两次一致的结果就退出循环
         for _ in range(10):
             ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
