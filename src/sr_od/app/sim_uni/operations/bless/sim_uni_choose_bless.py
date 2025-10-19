@@ -11,6 +11,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 from sr_od.app.sim_uni import sim_uni_screen_state
 from sr_od.app.sim_uni.operations.bless import bless_utils
 from sr_od.app.sim_uni.operations.bless.bless_utils import SimUniBlessPos
@@ -75,7 +76,7 @@ class SimUniChooseBless(SrOperation):
             if not sim_uni_screen_state.in_sim_uni_choose_bless(screen, self.ctx.ocr):
                 return self.round_retry('未在模拟宇宙-选择祝福页面', wait=1)
 
-        return self.round_success()
+        return self.round_success(wait=1)  # 稍微等待祝福都出现了
 
     @node_from(from_name='等待画面')
     @operation_node(name='选择祝福')
@@ -90,13 +91,22 @@ class SimUniChooseBless(SrOperation):
         target_bless_pos: Optional[SimUniBlessPos] = self._get_bless_to_choose(screen, bless_pos_list)
         if target_bless_pos is None:
             self.ctx.controller.click(SimUniChooseBless.RESET_BTN.center)
-            return self.round_wait('重置祝福', wait=1)
+            return self.round_wait('重置祝福', wait=2)
         else:
             self.ctx.controller.click(target_bless_pos.rect.center)
             time.sleep(0.25)
+
+            result = self.round_by_ocr_and_click(
+                screen=screen,
+                target_cn='确认',
+            )
+            if result.is_success:
+                return self.round_success(status=result.status, wait=0.1)
             if self.before_level_start:
+                log.info('选择祝福后未识别到确认 尝试固定位置点击 第一间开始前')
                 confirm_point = SimUniChooseBless.CONFIRM_BEFORE_LEVEL_BTN.center
             else:
+                log.info('选择祝福后未识别到确认 尝试固定位置点击')
                 confirm_point = SimUniChooseBless.CONFIRM_BTN.center
             self.ctx.controller.click(confirm_point)
             self.choose_bless_time = time.time()
@@ -145,16 +155,14 @@ class SimUniChooseBless(SrOperation):
             now = time.time()
             screen = self.screenshot()
             if sim_uni_screen_state.in_sim_uni_choose_bless(self.ctx, screen):
-
-                # OCR需要时间 这里就不等待了
                 if now - self.choose_bless_time >= 2:
-                    return self.round_success(status=SimUniChooseBless.STATUS_STILL_BLESS)
+                    return self.round_success(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
                 else:
-                    return self.round_wait(status=SimUniChooseBless.STATUS_STILL_BLESS)
+                    return self.round_wait(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
             else:
-                return self.round_success()
+                return self.round_success(status='离开祝福画面')
         else:
-            return self.round_success(wait=1)
+            return self.round_success(status='等待1秒', wait=1)
 
 
 def __debug():
