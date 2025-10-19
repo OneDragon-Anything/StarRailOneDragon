@@ -39,7 +39,7 @@ class SimUniClaimWeeklyReward(SrOperation):
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '每周奖励红点',
                                                  success_wait=1, retry_wait=1)
 
-    @node_from(from_name='检查奖励', status='STATUS_WITH_REWARD')
+    @node_from(from_name='检查奖励', status='每周奖励红点')
     @operation_node(name='领取奖励')
     def _claim_reward(self) -> OperationRoundResult:
         screen = self.screenshot()
