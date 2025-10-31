@@ -89,7 +89,6 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
             )
         )
         self.ocr_service: OcrService | None = None  # 延迟初始化
-        self.controller: ControllerBase = controller
 
         self.keyboard_controller = keyboard.Controller()
         self.mouse_controller = mouse.Controller()

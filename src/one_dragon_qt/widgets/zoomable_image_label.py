@@ -199,7 +199,7 @@ class ZoomableClickImageLabel(QLabel):
 
     def wheelEvent(self, event: QWheelEvent):
         """
-        实现以鼠标位置为基点的滚轮缩放
+        实现以鼠标位置为基点的滚轮缩���
         """
         if self.original_pixmap is None or self.original_pixmap.isNull():
             return
