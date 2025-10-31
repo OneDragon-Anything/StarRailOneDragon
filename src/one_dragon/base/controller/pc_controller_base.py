@@ -117,12 +117,14 @@ class PcControllerBase(ControllerBase):
             self.keyboard_controller.keyboard.release(keyboard.Key.alt)
         return True
 
-    def get_screenshot(self, independent: bool = False) -> MatLike:
+    def get_screenshot(self, independent: bool = False) -> MatLike | None:
         """
         截图 如果分辨率和默认不一样则进行缩放
         :return: 截图
         """
         rect: Rect = self.game_win.win_rect
+        if rect is None:
+            return None
 
         left = rect.x1
         top = rect.y1
@@ -206,6 +208,11 @@ class PcControllerBase(ControllerBase):
         win_pos = self.game_win.game2win_pos(game_pos)
         if win_pos is not None:
             pyautogui.moveTo(win_pos.x, win_pos.y)
+
+    @property
+    def center_point(self) -> Point:
+        return Point(self.standard_width // 2, self.standard_height // 2)
+
 
 
 def win_click(pos: Point = None, press_time: float = 0, primary: bool = True):

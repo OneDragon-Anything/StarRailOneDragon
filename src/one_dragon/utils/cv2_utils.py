@@ -70,7 +70,7 @@ def get_image_file_type(file_path: str) -> str:
 
 def show_image(
         img: MatLike,
-        rects: Union[MatchResult, MatchResultList] = None,
+        rects: Union[MatchResult, MatchResultList, list[Rect]] = None,
         win_name: str = 'DEBUG',
         wait: Optional[int] = None,
         destroy_after: bool = False,
@@ -109,6 +109,12 @@ def show_image(
         elif type(rects) == MatchResultList:
             for i in rects:
                 cv2.rectangle(to_show, (i.x, i.y), (i.x + i.w, i.y + i.h), (255, 0, 0), 1)
+        elif isinstance(rects, list):
+            for rect in rects:
+                if isinstance(rect, MatchResult):
+                    cv2.rectangle(to_show, (rect.x, rect.y), (rect.x + rect.w, rect.y + rect.h), (255, 0, 0), 1)
+                elif type(rect) == Rect:
+                    cv2.rectangle(to_show, (rect.x1, rect.y1), (rect.x2, rect.y2), (255, 0, 0), 1)
 
     if max_width is not None and to_show.shape[1] > max_width:
         scale = max_width / to_show.shape[1]
@@ -316,6 +322,7 @@ def show_overlap(
         win_name: str = 'DEBUG', wait: int = 1,
         max_width: int | None = None,
         max_height: int | None = None,
+        template_mask: MatLike | None = None,
 ):
     to_show_source = source.copy()
 
@@ -329,7 +336,7 @@ def show_overlap(
     else:
         to_show_template = template
 
-    source_overlap_template(to_show_source, to_show_template, x, y)
+    source_overlap_template(to_show_source, to_show_template, x, y, copy_img=False, template_mask=template_mask)
     show_image(to_show_source, win_name=win_name, wait=wait,
                max_width=max_width,
                max_height=max_height,)
@@ -679,7 +686,7 @@ def convert_to_standard(origin, mask, width: int = 51, height: int = 51, bg_colo
     return final_origin, final_mask
 
 
-def source_overlap_template(source, template, x, y, copy_img: bool = False):
+def source_overlap_template(source, template, x, y, copy_img: bool = False, template_mask: MatLike | None = None):
     """
     在原图上覆盖模板图
     :param source: 原图
@@ -687,16 +694,27 @@ def source_overlap_template(source, template, x, y, copy_img: bool = False):
     :param x: 偏移量
     :param y: 偏移量
     :param copy_img: 是否复制新图片
+    :param template_mask: 模板图掩码
     :return:
     """
     to_overlap_source = source.copy() if copy_img else source
+    if template_mask is None:
+        template_mask = np.full_like(template, 255, dtype=np.uint8)
 
     rect1, rect2 = get_overlap_rect(source, template, x, y)
     sx_start, sy_start, sx_end, sy_end = rect1
     tx_start, ty_start, tx_end, ty_end = rect2
 
-    # 将覆盖图像放置到底图的指定位置
-    to_overlap_source[sy_start:sy_end, sx_start:sx_end] = template[ty_start:ty_end, tx_start:tx_end]
+    # 定义目标图像中的感兴趣区域 (ROI)
+    source_roi = to_overlap_source[sy_start:sy_end, sx_start:sx_end]
+    template_roi = template[ty_start:ty_end, tx_start:tx_end]
+    template_mask_roi = template_mask[ty_start:ty_end, tx_start:tx_end]
+
+    mask_condition = template_mask_roi > 0
+
+    # 使用布尔索引，只将模板中掩码为 True 的像素复制到 ROI。
+    # NumPy 会自动将这个二维的布尔掩码应用到三维的彩色图像上。
+    source_roi[mask_condition] = template_roi[mask_condition]
 
     return to_overlap_source
 
@@ -931,3 +949,82 @@ def find_character_avatar_center_with_offset(img: MatLike, area_offset: Tuple[in
     center_y = y + h // 2 + area_offset[1] + click_offset[1]
 
     return (center_x, center_y)
+
+
+def filter_by_color(
+    image: MatLike,
+    mode: str,
+    lower_rgb: Optional[Union[List[int], Tuple[int, int, int], np.ndarray]] = None,
+    upper_rgb: Optional[Union[List[int], Tuple[int, int, int], np.ndarray]] = None,
+    hsv_color: Optional[Union[List[int], Tuple[int, int, int], np.ndarray]] = None,
+    hsv_diff: Optional[Union[List[int], Tuple[int, int, int], np.ndarray]] = None
+) -> MatLike:
+    """
+    根据指定的模式和颜色范围，对图像进行颜色过滤。
+    能正确处理HSV空间H通道的循环问题。
+    :param image:       待过滤的图像 (RGB格式)
+    :param mode:        颜色模式 'rgb' 或 'hsv'
+    :param lower_rgb:   RGB下限
+    :param upper_rgb:   RGB上限
+    :param hsv_color:   HSV基准颜色
+    :param hsv_diff:    HSV颜色容差
+    :return:            二值化的 mask 图像。白色为符合条件，黑色为不符合。
+    """
+    if mode == 'hsv':
+        if hsv_color is None or hsv_diff is None:
+            return np.full((image.shape[0], image.shape[1]), 0, dtype=np.uint8)
+
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+
+        _hsv_color = np.array(hsv_color, dtype=np.int32)
+        _hsv_diff = np.array(hsv_diff, dtype=np.int32)
+
+        lower_s = np.clip(_hsv_color[1] - _hsv_diff[1], 0, 255)
+        upper_s = np.clip(_hsv_color[1] + _hsv_diff[1], 0, 255)
+        lower_v = np.clip(_hsv_color[2] - _hsv_diff[2], 0, 255)
+        upper_v = np.clip(_hsv_color[2] + _hsv_diff[2], 0, 255)
+
+        lower_h = _hsv_color[0] - _hsv_diff[0]
+        upper_h = _hsv_color[0] + _hsv_diff[0]
+
+        if lower_h < 0:
+            # H值回绕到180附近
+            lower1 = np.array([lower_h + 180, lower_s, lower_v], dtype=np.uint8)
+            upper1 = np.array([179, upper_s, upper_v], dtype=np.uint8)
+            mask1 = cv2.inRange(hsv_image, lower1, upper1)
+
+            lower2 = np.array([0, lower_s, lower_v], dtype=np.uint8)
+            upper2 = np.array([upper_h, upper_s, upper_v], dtype=np.uint8)
+            mask2 = cv2.inRange(hsv_image, lower2, upper2)
+
+            mask = cv2.bitwise_or(mask1, mask2)
+        elif upper_h > 179:
+            # H值回绕到0附近
+            lower1 = np.array([lower_h, lower_s, lower_v], dtype=np.uint8)
+            upper1 = np.array([179, upper_s, upper_v], dtype=np.uint8)
+            mask1 = cv2.inRange(hsv_image, lower1, upper1)
+
+            lower2 = np.array([0, lower_s, lower_v], dtype=np.uint8)
+            upper2 = np.array([upper_h - 180, upper_s, upper_v], dtype=np.uint8)
+            mask2 = cv2.inRange(hsv_image, lower2, upper2)
+
+            mask = cv2.bitwise_or(mask1, mask2)
+        else:
+            # H值没有回绕
+            lower = np.array([lower_h, lower_s, lower_v], dtype=np.uint8)
+            upper = np.array([upper_h, upper_s, upper_v], dtype=np.uint8)
+            mask = cv2.inRange(hsv_image, lower, upper)
+
+        return mask
+    elif mode == 'rgb':
+        if lower_rgb is None or upper_rgb is None:
+            return np.full((image.shape[0], image.shape[1]), 0, dtype=np.uint8)
+
+        # cv2.inRange 需要 np.array
+        _lower_rgb = np.array(lower_rgb, dtype=np.uint8)
+        _upper_rgb = np.array(upper_rgb, dtype=np.uint8)
+        mask = cv2.inRange(image, _lower_rgb, _upper_rgb)
+        return mask
+    else:
+        # 未知模式，或者没有提供足够的参数，返回全黑的mask
+        return np.full((image.shape[0], image.shape[1]), 0, dtype=np.uint8)

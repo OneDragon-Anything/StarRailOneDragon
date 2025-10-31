@@ -1,5 +1,6 @@
 import os
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QLabel
+from PySide6.QtCore import Qt
 from qfluentwidgets import FluentIcon, HyperlinkCard, ImageLabel
 
 from one_dragon.base.operation.one_dragon_env_context import OneDragonEnvContext
@@ -28,12 +29,12 @@ class LikeInterface(VerticalScrollInterface):
 
         help_opt = HyperlinkCard(icon=FluentIcon.HELP, title='访问GitHub指南', text=gt('前往'),
                                  content=gt('没法访问GitHub可以查看帮助文档'),
-                                 url='https://onedragon-anything.github.io/other/zh/visit_github.html')
+                                 url='https://one-dragon.com/other/zh/visit_github.html')
         content.add_widget(help_opt)
 
         cafe_opt = HyperlinkCard(icon=FluentIcon.CAFE, title='赞赏', text=gt('前往'),
                                  content=gt('如果喜欢本项目，你也可以为作者赞助一点维护费用~'),
-                                 url='https://onedragon-anything.github.io/other/zh/like/like.html')
+                                 url='https://one-dragon.com/other/zh/like/like.html')
         content.add_widget(cafe_opt)
 
         img_label = ImageLabel()
@@ -44,10 +45,22 @@ class LikeInterface(VerticalScrollInterface):
         img_label.setFixedHeight(250)
         content.add_widget(img_label)
 
+        # 添加遥测说明文字
+        telemetry_label = QLabel(gt('我们匿名收集你的信息用于改进我们的产品，感谢您的参与！'))
+        telemetry_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        telemetry_label.setStyleSheet("""
+            QLabel {
+                color: #666666;
+                font-size: 12px;
+                padding: 10px;
+                background-color: transparent;
+            }
+        """)
+        content.add_widget(telemetry_label)
+
         content.add_stretch(1)
         return content
 
 
     def on_interface_shown(self) -> None:
         VerticalScrollInterface.on_interface_shown(self)
-
