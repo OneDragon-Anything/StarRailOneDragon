@@ -33,7 +33,7 @@ pip-compile --annotation-style=line --index-url=https://pypi.tuna.tsinghua.edu.c
 生成spec文件
 
 ```shell
-pyinstaller --onefile --windowed --uac-admin --icon="../assets/ui/installer_logo.ico" ../src/sr_od/gui/sr_installer_app.py -n "OneDragon-Installer"
+pyinstaller --onefile --windowed --uac-admin --icon="../assets/ui/logo.ico" ../src/sr_od/gui/sr_installer_app.py -n "OneDragon-Installer"
 ```
 
 spec打包
@@ -67,4 +67,3 @@ spec打包
 ```shell
 pyinstaller "OneDragon Scheduler.spec"
 ```
-

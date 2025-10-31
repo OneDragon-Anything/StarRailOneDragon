@@ -223,14 +223,7 @@ class SrContext(OneDragonContext):
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)
         from one_dragon.base.config.game_account_config import GameAccountConfig
-        self.game_account_config: GameAccountConfig = GameAccountConfig(
-            self.current_instance_idx,
-            default_platform=self.game_config.get('platform'),  # 迁移旧配置 2025-07 时候删除
-            default_game_region=self.game_config.get('game_region'),
-            default_game_path=self.game_config.get('game_path'),
-            default_account=self.game_config.get('game_account'),
-            default_password=self.game_config.get('game_account_password'),
-        )
+        self.game_account_config: GameAccountConfig = GameAccountConfig(self.current_instance_idx)
 
         game_refresh_hour_offset = self.game_account_config.game_refresh_hour_offset
 
