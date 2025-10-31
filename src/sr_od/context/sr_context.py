@@ -187,6 +187,10 @@ class SrContext(OneDragonContext):
         # 共用配置
         from sr_od.config.model_config import ModelConfig
         self.model_config: ModelConfig = ModelConfig()
+
+        # 服务
+        from one_dragon.base.cv_process.cv_service import CvService
+        self.cv_service: CvService = CvService(self)
         self.yolo_detector: YoloScreenDetector = YoloScreenDetector(
             standard_resolution_h=self.project_config.screen_standard_height,
             standard_resolution_w=self.project_config.screen_standard_width
