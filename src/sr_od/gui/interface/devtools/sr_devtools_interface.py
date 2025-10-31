@@ -3,6 +3,7 @@ from qfluentwidgets import FluentIcon
 from one_dragon_qt.view.devtools.devtools_image_analysis_interface import DevtoolsImageAnalysisInterface
 from one_dragon_qt.view.devtools.devtools_screen_manage_interface import DevtoolsScreenManageInterface
 from one_dragon_qt.view.devtools.devtools_template_helper_interface import DevtoolsTemplateHelperInterface
+from one_dragon_qt.view.devtools.devtools_image_analysis_interface import DevtoolsImageAnalysisInterface
 from one_dragon_qt.widgets.pivot_navi_interface import PivotNavigatorInterface
 from sr_od.context.sr_context import SrContext
 
@@ -24,3 +25,4 @@ class SrDevtoolsInterface(PivotNavigatorInterface):
         self.add_sub_interface(DevtoolsImageAnalysisInterface(self.ctx))
         self.add_sub_interface(DevtoolsTemplateHelperInterface(self.ctx))
         self.add_sub_interface(DevtoolsScreenManageInterface(self.ctx))
+        self.add_sub_interface(DevtoolsImageAnalysisInterface(self.ctx))
