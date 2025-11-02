@@ -4,6 +4,15 @@
 
 - tab_name: "生存索引"
   category_list:
+    - category_name: "培养目标"
+      remark_in_game: "角色培养"
+      show_in_power_plan: true
+      mission_list:
+        - mission_name: "培养目标"
+          show_in_power_plan: true
+          display_name: "培养目标"
+          power: 20
+
     - category_name: "饰品提取"
       remark_in_game: "位面饰品"
       show_in_power_plan: true
