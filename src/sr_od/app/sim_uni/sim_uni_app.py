@@ -130,7 +130,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='识别初始画面')
     @operation_node(name='传送')
     def transport(self) -> OperationRoundResult:
-        tab = self.ctx.guide_data.best_match_tab_by_name(gt('模拟宇宙', 'game'))
+        tab = self.ctx.guide_data.best_match_tab_by_name(gt('旷宇纷争', 'game'))
         # 差分宇宙, 传送之后调用模拟宇宙自动化脚本
         if self.ctx.sim_uni_config.weekly_uni_num == 'WORLD_X':
             category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
@@ -141,8 +141,8 @@ class SimUniApp(SrApplication):
             state = sim_uni_screen_state.ScreenState.SIM_TYPE_X.value
             return self.round_success(state)
         else:
-            category = self.ctx.guide_data.best_match_category_by_name(gt('模拟宇宙', 'game'), tab)
-            mission = self.ctx.guide_data.best_match_mission_by_name('模拟宇宙', category)
+            category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
+            mission = self.ctx.guide_data.best_match_mission_by_name('前往模拟宇宙', category)
             op = GuideTransport(self.ctx, mission)
             op.execute()
             # return self.round_by_op_result(op.execute())
