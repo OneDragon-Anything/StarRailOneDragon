@@ -159,7 +159,15 @@ class MoveToNextLevelV3(SrOperation):
         self.ctx.controller.turn_from_angle(current_angle, self.detect_entry_angle)
 
         time.sleep(1)
-        self.ctx.controller.move('w', 1)
+        # 先判断当前画面YOLO能否看到入口
+        screen = self.screenshot()
+        type_list = sim_uni_screen_state.match_next_level_entry(self.ctx, screen)
+        if len(type_list) > 0:
+            # 如果能识别 则说明离入口有点远 特征匹配失败 往前移动一段距离后重新尝试
+            self.ctx.controller.move('w', 0.5)
+        else:
+            # 如果不能识别 则可能是之前移动超过了入口 往后一段距离后重新尝试
+            self.ctx.controller.move('s', 0.5)
 
         return self.round_success()
 

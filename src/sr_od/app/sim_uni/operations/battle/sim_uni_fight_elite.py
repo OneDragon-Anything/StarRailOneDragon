@@ -1,3 +1,4 @@
+import time
 from typing import ClassVar, Optional
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -34,13 +35,18 @@ class SimUniFightElite(SrOperation):
         判断当前是否有敌人
         :return:
         """
+        now = time.time()
         screen = self.screenshot()
         result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
 
         if result.is_success:
-            return self.round_success()
-        else:
-            return self.round_success(SimUniFightElite.STATUS_ENEMY_NOT_FOUND)
+            return self.round_success(status=result.status)
+
+        # 使用 YOLO 判断红色锁定
+        if self.ctx.yolo_detector.should_attack_in_world(screen, now):
+            return self.round_success(status="检测到攻击锁定")
+
+        return self.round_retry(SimUniFightElite.STATUS_ENEMY_NOT_FOUND, wait=1)
 
     @node_from(from_name='检测敌人')
     @operation_node(name='秘技进入战斗')
@@ -56,12 +62,12 @@ class SimUniFightElite(SrOperation):
         result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
         if result.is_success:  # 还没有进入战斗 可能是使用近战角色没有攻击到
             self.ctx.controller.initiate_attack()
-            return self.round_retry('尝试攻击进入战斗画面')
+            return self.round_retry('尝试攻击进入战斗画面', wait=1)
         else:
             op = SimUniEnterFight(self.ctx, config=self.config, no_attack=True)  # 前面已经进行攻击了 这里不需要 且不额外使用秘技
             return self.round_by_op_result(op.execute())
 
-    @node_from(from_name='检测敌人', status=STATUS_ENEMY_NOT_FOUND)
+    @node_from(from_name='检测敌人', status=STATUS_ENEMY_NOT_FOUND, success=False)
     @node_from(from_name='战斗')
     @operation_node(name='切换1号位')
     def _switch_1(self) -> OperationRoundResult:

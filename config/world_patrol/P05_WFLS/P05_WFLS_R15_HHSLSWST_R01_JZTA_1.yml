@@ -1,0 +1,94 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「辉痕圣林」神悟树庭'
+floor: 2
+tp: '金枝堂奥'
+route:
+  - idx: 1
+    op: 'move'
+    data: [380, 782]
+  - idx: 2
+    op: 'disposable'
+  - idx: 3
+    op: 'move'
+    data: [394, 876]
+  - idx: 4
+    op: 'wait'
+    data: ['seconds', '4']
+  - idx: 5
+    op: 'move'
+    data: [394, 961]
+  - idx: 6
+    op: 'move'
+    data: [375, 951]
+  - idx: 7
+    op: 'disposable'
+  - idx: 8
+    op: 'move'
+    data: [368, 974]
+  - idx: 9
+    op: 'move'
+    data: [326, 956]
+  - idx: 10
+    op: 'disposable'
+  - idx: 11
+    op: 'move'
+    data: [246, 864]
+  - idx: 12
+    op: 'move'
+    data: [286, 737]
+  - idx: 13
+    op: 'move'
+    data: [287, 697]
+  - idx: 14
+    op: 'patrol'
+  - idx: 15
+    op: 'move'
+    data: [324, 690]
+  - idx: 16
+    op: 'disposable'
+  - idx: 17
+    op: 'move'
+    data: [273, 714]
+  - idx: 18
+    op: 'disposable'
+  - idx: 19
+    op: 'slow_move'
+    data: [306, 714]
+  - idx: 20
+    op: 'interact'
+    data: '下降'
+  - idx: 21
+    op: 'wait'
+    data: ['seconds', '15']
+  - idx: 22
+    op: 'move'
+    data: [341, 620]
+  - idx: 23
+    op: 'disposable'
+  - idx: 24
+    op: 'slow_move'
+    data: [325, 627]
+  - idx: 25
+    op: 'move'
+    data: [359, 532]
+  - idx: 26
+    op: 'move'
+    data: [331, 526]
+  - idx: 27
+    op: 'patrol'
+  - idx: 28
+    op: 'move'
+    data: [339, 496]
+  - idx: 29
+    op: 'patrol'
+  - idx: 30
+    op: 'move'
+    data: [348, 472]
+  - idx: 31
+    op: 'patrol'
+  - idx: 32
+    op: 'move'
+    data: [390, 470]
+  - idx: 33
+    op: 'patrol'

@@ -111,6 +111,17 @@ class GuideChooseMission(SrOperation):
 
             log.info('过滤后文本 %s', word_list)
 
+        # 培养目标特殊处理：直接找进入按钮
+        if self.mission.mission_name == '培养目标':
+            tp_idx = str_utils.find_best_match_by_difflib(gt('进入', 'game'), word_list, cutoff=0.5)
+            if tp_idx is None:
+                log.error('匹配失败 进入')
+                return None
+            log.info('培养目标 - 匹配进入按钮')
+            # 直接返回第一个进入按钮的位置
+            tp_point = mrl_list[tp_idx][0].center
+            return tp_point + area.left_top
+
         mission_idx = str_utils.find_best_match_by_difflib(gt(self.mission.mission_name, 'game'), word_list, cutoff=0.5)
         if mission_idx is None:
             log.error('匹配失败 %s', self.mission.mission_name)

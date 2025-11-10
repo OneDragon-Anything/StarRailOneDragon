@@ -95,3 +95,15 @@ class EchoOfWarApp(SrApplication):
             return self.round_wait()
         else:  # 挑战
             return self.round_retry('挑战失败')
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_for_sim_uni()
+    ctx.start_running()
+    op = EchoOfWarApp(ctx)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()

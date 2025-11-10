@@ -20,9 +20,24 @@
   - -2
   - -1
   - 1
+- num: 15
+  uid: HHSLSWST
+  cn: 「辉痕圣林」神悟树庭
+  floors:
+  - -1
+  - 1
+  - 2
+  - 3
+  - 4
 - num: 8
   uid: BSYYLMYY
   cn: 「半神议院」黎明云崖
+- num: 16
+  uid: HGHYSTKXY
+  cn: 「酣歌海垠」 斯缇科西亚
+  floors:
+  - -1
+  - 1
 - num: 9
   uid: QDGSCHZY
   cn: 「穹顶关塞」晨昏之眼
@@ -32,6 +47,12 @@
   - 1
   - 2
   - 3
+- num: 17
+  uid: QSJZWMTTDM
+  cn: 「全世矩阵」无名泰坦大墓
+  floors:
+  - 1
+  - 2
 - num: 10
   uid: CLMCAHM
   cn: 「沉沦暮城」奥赫玛

@@ -1,0 +1,60 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「辉痕圣林」神悟树庭'
+floor: 1
+tp: '焚心创口'
+route:
+  - idx: 1
+    op: 'move'
+    data: [835, 729]
+  - idx: 2
+    op: 'disposable'
+  - idx: 3
+    op: 'move'
+    data: [818, 710]
+  - idx: 4
+    op: 'slow_move'
+    data: [787, 730]
+  - idx: 5
+    op: 'slow_move'
+    data: [726, 747]
+  - idx: 6
+    op: 'move'
+    data: [714, 782]
+  - idx: 7
+    op: 'disposable'
+  - idx: 8
+    op: 'move'
+    data: [678, 832]
+  - idx: 9
+    op: 'move'
+    data: [596, 867]
+  - idx: 10
+    op: 'move'
+    data: [557, 915]
+  - idx: 11
+    op: 'wait'
+    data: ['seconds', '4']
+  - idx: 12
+    op: 'move'
+    data: [542, 939]
+  - idx: 13
+    op: 'move'
+    data: [535, 922]
+  - idx: 14
+    op: 'disposable'
+  - idx: 15
+    op: 'move'
+    data: [554, 934]
+  - idx: 16
+    op: 'disposable'
+  - idx: 17
+    op: 'move'
+    data: [494, 999]
+  - idx: 18
+    op: 'patrol'
+  - idx: 19
+    op: 'move'
+    data: [484, 977]
+  - idx: 20
+    op: 'patrol'

@@ -49,10 +49,26 @@ class GuideTransport(SrOperation):
     def wait_at_last(self) -> OperationRoundResult:
         if self.mission.cate.cn == '差分宇宙':
             return self.round_by_op_result(self.op_success("成功"))
-        else:
-            screen = self.screenshot()
-            return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn,
-                                           retry_wait=1)
+
+        screen = self.screenshot()
+
+        # 培养目标特殊处理：尝试匹配任意一个等待加载区域
+        if self.mission.mission_name == '培养目标':
+            # 动态获取所有等待加载区域
+            guide_screen_info = self.ctx.screen_loader.get_screen('星际和平指南')
+            if guide_screen_info is not None:
+                wait_areas = [area.area_name for area in guide_screen_info.area_list if area.area_name.startswith('等待加载-')]
+
+                for area_name in wait_areas:
+                    result = self.round_by_find_area(screen, '星际和平指南', area_name, retry_wait=0.1)
+                    if result.is_success:
+                        return result
+
+            # 如果都没匹配到，重试
+            return self.round_retry(wait=1)
+
+        return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn,
+                                       retry_wait=1)
 
 
 def __debug():

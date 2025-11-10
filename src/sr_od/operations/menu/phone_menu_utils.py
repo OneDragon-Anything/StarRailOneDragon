@@ -214,3 +214,17 @@ def get_training_reward_claim_btn_pos(ctx: SrContext, screen: MatLike) -> Option
     result.y += GUIDE_TRAINING_REWARD_CLAIM_RECT.y1
 
     return result
+
+
+def is_training_reward_completed(ctx: SrContext, screen: MatLike) -> bool:
+    """
+    指南实训页面 获取领完的奖励个数
+    :param ctx: 上下文
+    :param screen:
+    :return:
+    """
+    part, _ = cv2_utils.crop_image(screen, GUIDE_TRAINING_REWARD_CLAIM_RECT)
+
+    result_list: MatchResultList = ctx.tm.match_template(part, 'phone_menu', 'training_reward_completed', only_best=False, ignore_template_mask=True)
+
+    return len(result_list) >= 5

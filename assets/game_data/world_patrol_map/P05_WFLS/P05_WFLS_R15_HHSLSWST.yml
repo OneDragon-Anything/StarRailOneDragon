@@ -1,0 +1,44 @@
+- uid: "JZTA"
+  cn: "金枝堂奥"
+  planet_name: "翁法罗斯"
+  region_name: "「辉痕圣林」神悟树庭"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [373, 768]
+  tp_pos: [401, 786]
+
+- uid: "DTYH"
+  cn: "蝶蜕余火"
+  planet_name: "翁法罗斯"
+  region_name: "「辉痕圣林」神悟树庭"
+  region_floor: 3
+  template_id: "mm_tp_03"
+  lm_pos: [685, 652]
+  tp_pos: [694, 663]
+
+- uid: "HJWZ"
+  cn: "灰烬王座"
+  planet_name: "翁法罗斯"
+  region_name: "「辉痕圣林」神悟树庭"
+  region_floor: 4
+  template_id: "mm_tp_03"
+  lm_pos: [762, 712]
+  tp_pos: [763, 657]
+
+- uid: "FXCK"
+  cn: "焚心创口"
+  planet_name: "翁法罗斯"
+  region_name: "「辉痕圣林」神悟树庭"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [863, 700]
+  tp_pos: [842, 685]
+
+- uid: "CLCT"
+  cn: "垂泪残庭"
+  planet_name: "翁法罗斯"
+  region_name: "「辉痕圣林」神悟树庭"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [1199, 855]
+  tp_pos: [1214, 873]

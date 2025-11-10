@@ -201,10 +201,10 @@ area_list:
 - area_name: 提示弹框-次数用完
   id_mark: false
   pc_rect:
-  - 521
-  - 507
-  - 1394
-  - 551
+  - 511
+  - 500
+  - 1410
+  - 560
   text: 本周内获取「历战余响」奖励的次数已耗尽，无法获得挑战奖励。是否继续挑战？
   lcs_percent: 0.5
   template_sub_dir: ''

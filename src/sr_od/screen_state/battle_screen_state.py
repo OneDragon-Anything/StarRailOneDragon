@@ -49,9 +49,7 @@ def get_tp_battle_screen_state(
 
     if battle_success:
         success_area_list = [
-            '挑战成功-有奖励',
-            '挑战成功-双倍奖励',
-            '挑战成功-无奖励',
+            '挑战成功'
         ]
 
         for area_name in success_area_list:
@@ -61,9 +59,7 @@ def get_tp_battle_screen_state(
 
     if battle_fail:
         fail_area_list = [
-            '战斗失败-有奖励',
-            '战斗失败-双倍奖励',
-            '战斗失败-无奖励',
+            '战斗失败'
         ]
 
         for area_name in fail_area_list:

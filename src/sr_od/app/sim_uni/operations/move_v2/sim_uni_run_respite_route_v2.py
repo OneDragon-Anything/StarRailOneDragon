@@ -155,7 +155,7 @@ class SimUniRunRespiteRouteV2(SimUniRunRouteBaseV2):
         尝试交互
         :return:
         """
-        op = MoveInteract(self.ctx, '黑塔', lcs_percent=0.1, single_line=True)
+        op = MoveInteract(self.ctx, '黑塔', lcs_percent=0.1, single_line=True, possible_ahead=False)
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='交互')  # 交互了之后开始事件判断

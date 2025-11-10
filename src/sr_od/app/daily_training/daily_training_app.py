@@ -78,11 +78,16 @@ class DailyTrainingApp(SrApplication):
             return self.round_retry('未在每日实训页面', wait=1)
 
         pos = phone_menu_utils.get_training_reward_claim_btn_pos(self.ctx, screen)
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, screen)
+        if completed:
+            return self.round_success('已领取过每日实训奖励', wait=1)
         if pos is None:
             return self.round_retry('未找到奖励按钮', wait=0.5)
-        else:
-            self.ctx.controller.click(pos.center)
-            return self.round_success(wait=1)
+        self.ctx.controller.click(pos.center)
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, screen)
+        if not completed:
+            return self.round_fail('每日实训还未完成')
+        return self.round_success('每日实训已完成', wait=1)
 
     @node_from(from_name='领取奖励')
     @operation_node(name='结束后返回')
@@ -90,3 +95,16 @@ class DailyTrainingApp(SrApplication):
         self.notify_screenshot = self.save_screenshot_bytes()  # 结束后通知的截图
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_for_sim_uni()
+    ctx.start_running()
+    op = DailyTrainingApp(ctx)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()

@@ -153,7 +153,7 @@ class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
         进入这里代码已经识别到事件了 则必须要交互才能进入下一层
         :return:
         """
-        op = MoveInteract(self.ctx, '事件', lcs_percent=0.1, single_line=True)
+        op = MoveInteract(self.ctx, '事件', lcs_percent=0.1, single_line=True, possible_ahead=False)
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='按画面朝事件移动', status=SimUniMoveToInteractByDetect.STATUS_INTERACT)  # 移动时已经按了交互键

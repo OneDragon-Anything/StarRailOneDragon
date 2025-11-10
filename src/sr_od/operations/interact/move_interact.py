@@ -17,22 +17,34 @@ class MoveInteract(SrOperation):
     移动场景的交互 即跟人物、点位交互
     """
 
-    TRY_INTERACT_MOVE: ClassVar[str] = 'sssaaawwwdddsssdddwwwaaawwwaaasssdddwwwdddsssaaa'  # 分别往四个方向绕圈
+    TRY_INTERACT_MOVE: ClassVar[str] = 'sssaaawwwdddsssdddwwwaaawwwaaasssdddwwwdddsssaaa'  # 分别往四个方向绕圈 走过的情况
+    TRY_INTERACT_MOVE_2: ClassVar[str] = 'wwwaaasssdddwwwdddsssaaasssaaawwwdddsssdddwwwaaa'  # 分别往四个方向绕圈 走不到的情况
 
-    def __init__(self, ctx: SrContext, cn: str, lcs_percent: float = -1,
-                 single_line: bool = False, no_move: bool = False):
+    def __init__(
+        self,
+        ctx: SrContext,
+        cn: str,
+        lcs_percent: float = -1,
+        single_line: bool = False,
+        no_move: bool = False,
+        possible_ahead: bool = True,
+    ):
         """
-        :param ctx:
-        :param cn: 需要交互的中文
-        :param lcs_percent: ocr匹配阈值
-        :param single_line: 是否确认只有一行的交互 此时可以缩小文本识别范围
-        :param no_move: 不移动触发交互 适用于确保能站在交互点的情况。例如 各种体力本、模拟宇宙事件点
+
+        Args:
+            ctx: 上下文
+            cn: 需要交互的中文
+            lcs_percent: ocr匹配阈值
+            single_line: 是否确认只有一行的交互 此时可以缩小文本识别范围
+            no_move: 不移动触发交互 适用于确保能站在交互点的情况。例如 各种体力本、模拟宇宙事件点
+            possible_ahead: 估计可能是走过了。 锄大地疾跑情况容易走过，模拟宇宙无坐标去交互事件容易走不到
         """
         SrOperation.__init__(self, ctx, op_name=gt('交互 %s') % gt(cn))
         self.cn: str = cn
         self.lcs_percent: float = lcs_percent
         self.single_line: bool = single_line
         self.no_move: bool = no_move
+        self.possible_ahead: bool = possible_ahead
 
         self.move_idx: int = 0
 
@@ -51,7 +63,11 @@ class MoveInteract(SrOperation):
 
         if word_pos is None:  # 目前没有交互按钮 尝试挪动触发交互
             if not self.no_move and self.move_idx < len(MoveInteract.TRY_INTERACT_MOVE):
-                self.ctx.controller.move(MoveInteract.TRY_INTERACT_MOVE[self.move_idx])
+                if self.possible_ahead:
+                    d = MoveInteract.TRY_INTERACT_MOVE[self.move_idx]
+                else:
+                    d = MoveInteract.TRY_INTERACT_MOVE_2[self.move_idx]
+                self.ctx.controller.move(d)  # 不需要时间 相当于点按 小小移动一步
                 self.move_idx += 1
                 return self.round_wait()
             else:
