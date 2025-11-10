@@ -101,11 +101,7 @@ class TrailblazePowerApp(SrApplication):
         self.ctx.sim_uni_record.check_and_update_status()
         self.last_mission = mission
 
-        if mission.cate.cn not in ['模拟宇宙', '饰品提取']:
-            op = UseTrailblazePower(self.ctx, mission, plan.team_num, run_times,
-                                    support=plan.support if plan.support != 'none' else None,
-                                    on_battle_success=self._on_normal_task_success)
-        elif mission.cate.cn == '模拟宇宙':
+        if mission.cate.cn == '模拟宇宙':
             sim_num = 0
             for i in SimUniWorldEnum:
                 if i.value.name == mission.mission_name:
@@ -130,7 +126,9 @@ class TrailblazePowerApp(SrApplication):
                                              support_character=plan.support if plan.support != 'none' else None,
                                              get_reward_callback=self.on_oe_get_reward)
         else:
-            return self.round_fail('未知副本类型')
+            op = UseTrailblazePower(self.ctx, mission, plan.team_num, run_times,
+                                    support=plan.support if plan.support != 'none' else None,
+                                    on_battle_success=self._on_normal_task_success)
 
         return self.round_by_op_result(op.execute())
 

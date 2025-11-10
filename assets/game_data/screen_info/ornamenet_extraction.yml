@@ -103,10 +103,10 @@ area_list:
   template_match_threshold: 0.7
 - area_name: 按钮-支援
   pc_rect:
-  - 1067
-  - 812
-  - 1120
-  - 838
+  - 927
+  - 870
+  - 1050
+  - 928
   text: 支援
   lcs_percent: 0.5
   template_sub_dir: ''
