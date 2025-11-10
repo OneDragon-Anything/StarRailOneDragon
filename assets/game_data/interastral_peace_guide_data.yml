@@ -540,7 +540,7 @@
           region_name: "支援舱段"
           power: 30
 
-- tab_name: "模拟宇宙"
+- tab_name: "旷宇纷争"
   category_list:
     - category_name: "差分宇宙"
       show_in_power_plan: true
@@ -549,17 +549,13 @@
           display_name: "前往参与"
           show_in_power_plan: true
           power: 0
-    - category_name: "模拟宇宙"
-      show_in_power_plan: true
-      mission_list:
-        - mission_name: "模拟宇宙"
-          region_name: "首通奖励"
-
-        - mission_name: "第三宇宙"
-          display_name: "太空封印站 不老者的仙舟"
+#    - category_name: "模拟宇宙"
+#      show_in_power_plan: true
+#      mission_list:
+        - mission_name: "前往模拟宇宙"
+          display_name: "前往模拟宇宙"
           show_in_power_plan: true
-          power: 40
-
+          power: 0
         - mission_name: "第四宇宙"
           display_name: "盗贼公园塔利亚 生命的翁瓦克"
           show_in_power_plan: true
