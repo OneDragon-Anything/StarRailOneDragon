@@ -542,20 +542,26 @@
 
 - tab_name: "旷宇纷争"
   category_list:
+    # 新版本 模拟宇宙/差分宇宙 入口
     - category_name: "差分宇宙"
-      show_in_power_plan: true
+      show_in_power_plan: false
       mission_list:
         - mission_name: "前往参与"
           display_name: "前往参与"
           show_in_power_plan: true
           power: 0
-#    - category_name: "模拟宇宙"
-#      show_in_power_plan: true
-#      mission_list:
+    # # 老版本模拟宇宙入口, 在新版本已被合并到差分宇宙界面
+    # - category_name: "模拟宇宙"
+    #   show_in_power_plan: false
+    #   mission_list:
+
+        # todo 新版本模拟宇宙入口需要点击的框(但是貌似不识别这个框, 还是会一直滑动查找 '第x宇宙' 界面)
         - mission_name: "前往模拟宇宙"
           display_name: "前往模拟宇宙"
           show_in_power_plan: true
           power: 0
+
+        # 以下内容在这个界面中已经没了
         - mission_name: "第四宇宙"
           display_name: "盗贼公园塔利亚 生命的翁瓦克"
           show_in_power_plan: true
