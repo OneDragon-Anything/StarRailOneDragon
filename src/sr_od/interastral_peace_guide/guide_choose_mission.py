@@ -134,7 +134,7 @@ class GuideChooseMission(SrOperation):
         if tp_idx is None:
             tp_idx = str_utils.find_best_match_by_difflib(gt('进入', 'game'), word_list, cutoff=0.5)  # 普通副本
         if tp_idx is None:
-            log.error('匹配失败 传送/进入')
+            log.error('匹配失败 前往参与/传送/进入')
             return None
 
         mission_pos = mrl_list[mission_idx].max.center

@@ -131,23 +131,22 @@ class SimUniApp(SrApplication):
     @operation_node(name='传送')
     def transport(self) -> OperationRoundResult:
         tab = self.ctx.guide_data.best_match_tab_by_name(gt('旷宇纷争', 'game'))
-        # 差分宇宙, 传送之后调用模拟宇宙自动化脚本
+        category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
+
         if self.ctx.sim_uni_config.weekly_uni_num == 'WORLD_X':
-            category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
+            # 差分宇宙
             mission = self.ctx.guide_data.best_match_mission_by_name('前往参与', category)
-            op = GuideTransport(self.ctx, mission)
-            op.execute()
-            # return self.round_by_op_result(op.execute())
             state = sim_uni_screen_state.ScreenState.SIM_TYPE_X.value
-            return self.round_success(state)
         else:
-            category = self.ctx.guide_data.best_match_category_by_name(gt('差分宇宙', 'game'), tab)
+            # 模拟宇宙
             mission = self.ctx.guide_data.best_match_mission_by_name('前往模拟宇宙', category)
-            op = GuideTransport(self.ctx, mission)
-            op.execute()
-            # return self.round_by_op_result(op.execute())
             state = sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value
-            return self.round_success(state)
+
+        op = GuideTransport(self.ctx, mission)
+        op_result = op.execute()
+        if not op_result.success:
+            return self.round_by_op_result(op_result)
+        return self.round_success(state)
 
     @node_from(from_name='识别初始画面', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 最开始已经在模拟宇宙入口了
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
