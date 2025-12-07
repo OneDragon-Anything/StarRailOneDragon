@@ -37,7 +37,7 @@ class ChooseSupportInTeam(SrOperation):
         等待加载 左上角有【队伍】
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '挑战副本', '队伍标题')
         if result.is_success:
             if self.character_id is None:
@@ -54,7 +54,7 @@ class ChooseSupportInTeam(SrOperation):
         点击支援按钮
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '挑战副本', '支援按钮',
                                                  success_wait=1, retry_wait=1)
 
@@ -65,7 +65,7 @@ class ChooseSupportInTeam(SrOperation):
         点击头像
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         pos = self._get_character_pos(screen)
 
         if pos is None:
@@ -94,7 +94,7 @@ class ChooseSupportInTeam(SrOperation):
         点击入队
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '挑战副本', '支援入队按钮',
                                                  success_wait=1, retry_wait=1)
 
@@ -147,7 +147,7 @@ class ChooseSupportInTeam(SrOperation):
     @node_from(from_name='点击入队', success=False)
     @operation_node(name='选择后等待画面加载', node_max_retry_times=10)
     def wait_at_last(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '挑战副本', '队伍标题')
         if result.is_success:
             return self.round_success()

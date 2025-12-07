@@ -107,7 +107,7 @@ class NamelessHonorApp(SrApplication):
         可能出现选择奖励的框 通过判断左上角标题判断
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.in_secondary_ui(self.ctx, screen, '无名勋礼'):
             return self.round_success(wait=0.2)
 

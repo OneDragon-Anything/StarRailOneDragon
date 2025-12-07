@@ -34,7 +34,7 @@ class ChooseSpecialPoint(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 判断地图中间是否有目标点中文可选
         if self.check_and_click_sp_cn(screen):

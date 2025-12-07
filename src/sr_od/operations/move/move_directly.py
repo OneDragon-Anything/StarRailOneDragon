@@ -108,6 +108,7 @@ class MoveDirectly(SrOperation):
         if stuck is not None:  # 只有脱困失败的情况会返回 round_fail
             return stuck
 
+        # todo 这一句是否有必要
         screen = self.screenshot()
 
         if common_screen_state.is_normal_in_world(self.ctx, screen):

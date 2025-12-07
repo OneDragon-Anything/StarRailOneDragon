@@ -28,7 +28,7 @@ class GuideChooseCategory(SrOperation):
 
     @operation_node(name='等待画面加载', node_max_retry_times=5, is_start_node=True)
     def wait_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self.skip_wait or common_screen_state.in_secondary_ui(self.ctx, screen, self.target.tab.cn):
             return self.round_success()
@@ -38,7 +38,7 @@ class GuideChooseCategory(SrOperation):
     @node_from(from_name='等待画面加载')
     @operation_node(name='选择')
     def choose(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         area = self.ctx.screen_loader.get_area('星际和平指南', '分类列表')
 
         # 下方的小文本可以区分花萼金/赤

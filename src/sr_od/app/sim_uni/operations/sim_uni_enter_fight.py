@@ -81,7 +81,7 @@ class SimUniEnterFight(SrOperation):
 
     @operation_node(name='进入战斗', is_start_node=True)
     def enter_fight(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         self.last_state = self.current_state
 

@@ -50,7 +50,7 @@ class GuideTransport(SrOperation):
         if self.mission.cate.cn == '差分宇宙':
             return self.round_by_op_result(self.op_success("成功"))
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 培养目标特殊处理：尝试匹配任意一个等待加载区域
         if self.mission.mission_name == '培养目标':

@@ -51,7 +51,7 @@ class AssignmentsApp(SrApplication):
     @node_from(from_name='点击委托', status=STATUS_WITH_ALERT)
     @operation_node(name='选择专属材料')
     def choose_tab(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         area = self.ctx.screen_loader.get_area('画面-委托', 'TAB列表')
         return self.round_by_ocr_and_click(screen, target_cn='专属材料', area=area,
                                            success_wait=1, retry_wait=1)
@@ -59,7 +59,7 @@ class AssignmentsApp(SrApplication):
     @node_from(from_name='选择专属材料')
     @operation_node(name='一键领取')
     def _claim_all(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '菜单', '委托-一键领取')
         if result.is_success:
             return self.round_by_find_and_click_area(screen, '菜单', '委托-一键领取',
@@ -70,14 +70,14 @@ class AssignmentsApp(SrApplication):
     @node_from(from_name='一键领取')
     @operation_node(name='再次派遣')
     def assign_again(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '菜单', '委托-再次派遣',
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='点击空白')
     @operation_node(name='领取')
     def _claim(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_area(screen, '菜单', '委托-领取')
         if result.is_success:
@@ -89,7 +89,7 @@ class AssignmentsApp(SrApplication):
     @node_from(from_name='领取')
     @operation_node(name='点击空白')
     def _click_empty(self):
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '菜单', '委托-点击空白区域继续',
                                                  success_wait=1, retry_wait=1)
 

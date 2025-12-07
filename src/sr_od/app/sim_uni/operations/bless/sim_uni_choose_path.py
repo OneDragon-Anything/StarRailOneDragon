@@ -36,7 +36,7 @@ class SimUniChoosePath(SrOperation):
         选择命途
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not sim_uni_screen_state.in_sim_uni_choose_path(self.ctx, screen):
             return self.round_retry('未在模拟宇宙命途页面', wait=1)
@@ -55,6 +55,6 @@ class SimUniChoosePath(SrOperation):
     @node_from(from_name='选择命途')
     @operation_node(name='确认命途')
     def _confirm_path(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '入口-确认命途',
                                                  success_wait=1, retry_wait=1)

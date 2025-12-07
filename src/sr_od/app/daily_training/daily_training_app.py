@@ -67,7 +67,7 @@ class DailyTrainingApp(SrApplication):
     @node_from(from_name='领取点数', success=False)
     @operation_node(name='领取奖励')
     def claim_reward(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.in_secondary_ui(self.ctx, screen,'指南'):
             return self.round_retry('未在指南页面', wait=1)

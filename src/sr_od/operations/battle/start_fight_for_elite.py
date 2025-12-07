@@ -195,7 +195,7 @@ class StartFightForElite(SrOperation):
         发起攻击
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         # 仍在大世界的话 就尝试攻击
         if common_screen_state.is_normal_in_world(self.ctx, screen) \
                 or common_screen_state.is_mission_in_world(self.ctx, screen):

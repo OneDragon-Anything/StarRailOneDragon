@@ -35,7 +35,7 @@ class ResetSimUniLevel(SrOperation):
         暂离
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_and_click_area(screen, '模拟宇宙', '菜单-暂离')
         if result.is_success:
             return self.round_success(result.status, wait=5)

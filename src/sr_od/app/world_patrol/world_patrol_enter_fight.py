@@ -67,7 +67,7 @@ class WorldPatrolEnterFight(SrOperation):
 
     @operation_node(name='运行', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.last_state = self.current_state
 
         if self.first_screen_check and self.first_state is not None:

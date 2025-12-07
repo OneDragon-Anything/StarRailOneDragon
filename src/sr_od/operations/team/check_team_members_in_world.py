@@ -26,7 +26,7 @@ class CheckTeamMembersInWorld(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=5, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             return self.round_retry('未在大世界画面', wait=1)

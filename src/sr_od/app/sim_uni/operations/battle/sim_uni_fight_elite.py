@@ -36,7 +36,7 @@ class SimUniFightElite(SrOperation):
         :return:
         """
         now = time.time()
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
 
         if result.is_success:
@@ -58,7 +58,7 @@ class SimUniFightElite(SrOperation):
     @node_from(from_name='秘技进入战斗', success=False)
     @operation_node(name='战斗')
     def _fight(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
         if result.is_success:  # 还没有进入战斗 可能是使用近战角色没有攻击到
             self.ctx.controller.initiate_attack()

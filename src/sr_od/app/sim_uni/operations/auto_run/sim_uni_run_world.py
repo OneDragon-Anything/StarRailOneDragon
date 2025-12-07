@@ -87,7 +87,7 @@ class SimUniRunWorld(SrOperation):
         战斗失败后 点击结算
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '战斗失败-终止战斗并结算',
                                                  success_wait=1, retry_wait=1)
 
@@ -98,7 +98,7 @@ class SimUniRunWorld(SrOperation):
         战斗失败后 点击结算后 确认
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '战斗失败-确认',
                                                  success_wait=6, retry_wait=1)
 
@@ -109,7 +109,7 @@ class SimUniRunWorld(SrOperation):
         结算画面点击空白
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '点击空白处继续',
                                                  success_wait=1, retry_wait=1)
 

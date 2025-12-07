@@ -36,7 +36,7 @@ class SimUniExit(SrOperation):
         这个指令作为兜底的退出模拟宇宙的指令 应该兼容当前处于模拟宇宙的任何一种场景
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_screen_state(
             self.ctx, screen,
             in_world=True,
@@ -70,7 +70,7 @@ class SimUniExit(SrOperation):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击结算')
     def click_exit(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         area_list = [
             ('模拟宇宙', '菜单-结束并结算'),
@@ -90,7 +90,7 @@ class SimUniExit(SrOperation):
         确认退出模拟宇宙
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '退出对话框-确认',
                                                  success_wait=6, retry_wait=1)
 
@@ -100,7 +100,7 @@ class SimUniExit(SrOperation):
         """
         结算画面点击空白; 差分宇宙中需要点击返回主界面
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if self.is_in_x:
             return self.round_by_find_and_click_area(screen, '模拟宇宙', '差分宇宙返回主界面',
                                                      success_wait=2, retry_wait=1)

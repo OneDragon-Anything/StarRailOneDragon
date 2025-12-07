@@ -108,7 +108,7 @@ class SimUniRunLevel(SrOperation):
         识别楼层类型
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         self.level_type = sim_uni_screen_state.get_level_type(self.ctx, screen)
 
@@ -130,7 +130,7 @@ class SimUniRunLevel(SrOperation):
                 or self.level_type != SimUniLevelTypeEnum.COMBAT.value):
             return self.round_success()
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         another_route = False  # 是否匹配到另一条路线
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)

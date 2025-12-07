@@ -68,7 +68,7 @@ class SimUniMoveToInteractByDetect(SrOperation):
     @operation_node(name='移动', timeout_seconds=20, is_start_node=True)  # 理论上移动目标都比较近 不可能20秒还没有到达
     def move(self) -> OperationRoundResult:
         now = time.time()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self.existed_interact_word is None:
             self._check_interact_word(screen)

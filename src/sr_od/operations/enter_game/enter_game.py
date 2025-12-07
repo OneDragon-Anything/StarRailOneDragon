@@ -42,7 +42,7 @@ class EnterGame(SrOperation):
     @node_from(from_name='登陆其他账号')
     @operation_node(name='画面识别', node_max_retry_times=60, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         login_result = self.check_login_related(screen)
         if login_result is not None:
@@ -116,7 +116,7 @@ class EnterGame(SrOperation):
         if self.ctx.game_account_config.account == '' or self.ctx.game_account_config.password == '':
             return self.round_fail('未配置账号密码')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.round_by_click_area('进入游戏', '国服-账号输入区域')
         time.sleep(0.5)
         if self.use_clipboard:
@@ -150,7 +150,7 @@ class EnterGame(SrOperation):
     @node_from(from_name='画面识别', status='标题-退出登录')
     @operation_node(name='退出并保留登陆记录')
     def logout_with_account_kept(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.round_by_click_area('进入游戏-退出登陆', '按钮-退出并保留登陆记录', success_wait=1)
         return self.round_by_find_and_click_area(screen, '进入游戏-退出登陆', '按钮-退出',
                                                  success_wait=1, retry_wait=1)
@@ -158,7 +158,7 @@ class EnterGame(SrOperation):
     @node_from(from_name='退出并保留登陆记录')
     @operation_node(name='登陆其他账号')
     def choose_other_account(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '进入游戏-选择账号', '按钮-登陆其他账号',
                                                  success_wait=1, retry_wait=1)
 

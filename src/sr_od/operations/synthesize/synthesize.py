@@ -55,7 +55,7 @@ class Synthesize(SrOperation):
         识别画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_area(screen, '合成', '标题-合成')
 
         if result.is_success:
@@ -71,7 +71,7 @@ class Synthesize(SrOperation):
         选择合成类别
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         area = self.ctx.screen_loader.get_area('合成', '标题-合成分类')
         result = self.round_by_ocr(screen, self.item.category, area=area)
@@ -89,7 +89,7 @@ class Synthesize(SrOperation):
         选择合成物品
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         result = self.get_item_pos(screen)
 
         if result is None:
@@ -129,7 +129,7 @@ class Synthesize(SrOperation):
         选择合成数量 当前只支持最大值
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_area(screen, '合成', '合成所需材料不足')
         if result.is_success:
@@ -145,7 +145,7 @@ class Synthesize(SrOperation):
         进行合成
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '合成', '按钮-合成',
                                                  success_wait=1, retry_wait=1)
 
@@ -156,7 +156,7 @@ class Synthesize(SrOperation):
         合成出现的对话框 点击确认
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '合成', '按钮-合成确认',
                                                  success_wait=5, retry_wait=1)
 
@@ -167,7 +167,7 @@ class Synthesize(SrOperation):
         确认后 点击空白关闭
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '合成', '点击空白处关闭',
                                                  success_wait=1, retry_wait=1)
 

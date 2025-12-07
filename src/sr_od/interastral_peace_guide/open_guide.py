@@ -18,7 +18,7 @@ class GuideOpen(SrOperation):
 
     @operation_node(name='画面识别', is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.in_secondary_ui(self.ctx, screen, '星际和平指南'):
             return self.round_success('星际和平指南')
         else:
@@ -45,7 +45,7 @@ class GuideOpen(SrOperation):
     @node_from(from_name='选择指南')
     @operation_node(name='等待加载')
     def wait(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.in_secondary_ui(self.ctx, screen, '星际和平指南'):
             return self.round_success()
         else:

@@ -18,7 +18,7 @@ class OpenMap(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if common_screen_state.is_normal_in_world(self.ctx, screen):  # 主界面
             log.info('尝试打开地图')

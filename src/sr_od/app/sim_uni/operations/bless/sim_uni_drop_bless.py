@@ -55,7 +55,7 @@ class SimUniDropBless(SrOperation):
 
     @operation_node(name='画面识别', is_start_node=True)
     def check_screen_state(self):
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self.first_screen_check and self.skip_first_screen_check:
             self.first_screen_check = False
@@ -71,7 +71,7 @@ class SimUniDropBless(SrOperation):
     @node_from(from_name='画面识别')
     @operation_node(name='选择祝福')
     def choose_bless(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
         if len(bless_pos_list) == 0:

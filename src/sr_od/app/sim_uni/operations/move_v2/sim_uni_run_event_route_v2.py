@@ -41,7 +41,7 @@ class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
         1. 按照小地图识别初始的朝向
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.check_angle(screen)
         return self.round_success()
 
@@ -60,7 +60,7 @@ class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
         if self.event_handled:  # 已经交互过事件了
             return self.round_success(status=SimUniRunRouteBaseV2.STATUS_HAD_EVENT)
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         mm_info: MiniMapInfo = mini_map_utils.analyse_mini_map(mm)
         mrl = self.ctx.tm.match_template(mm_info.raw_del_radio, 'sim_uni', 'mm_sp_event', threshold=0.7)
@@ -89,7 +89,7 @@ class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='识别小地图事件', status=SimUniRunRouteBaseV2.STATUS_NO_MM_EVENT)
-    @operation_node(name='识别画面事件')
+    @operation_node(name='识别画面事件', screenshot_before_round=False)
     def _detect_screen(self) -> OperationRoundResult:
         """
         识别游戏画面上是否有事件牌

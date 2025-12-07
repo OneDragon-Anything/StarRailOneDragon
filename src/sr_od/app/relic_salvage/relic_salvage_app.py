@@ -26,14 +26,14 @@ class RelicSalvageApp(SrApplication):
     @node_from(from_name='前往分解画面')
     @operation_node(name='快速选择')
     def click_filter(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '背包-遗器分解', '按钮-快速选择',
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='快速选择')
     @operation_node(name='选择等级')
     def choose_level(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, '背包-遗器分解-快速选择', self.ctx.relic_salvage_config.salvage_level,
             success_wait=1, retry_wait=1
@@ -43,7 +43,7 @@ class RelicSalvageApp(SrApplication):
     @operation_node(name='选择弃置')
     def choose_abandon(self) -> OperationRoundResult:
         if self.ctx.relic_salvage_config.salvage_abandon:
-            screen = self.screenshot()
+            screen = self.last_screenshot
             return self.round_by_find_and_click_area(screen, '背包-遗器分解-快速选择', '全选已弃置',
                                                      success_wait=1, retry_wait=1)
         else:
@@ -54,21 +54,21 @@ class RelicSalvageApp(SrApplication):
     @node_from(from_name='选择弃置', success=False)
     @operation_node(name='快速选择确认')
     def click_filter_confirm(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '背包-遗器分解-快速选择', '按钮-确认',
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='快速选择确认')
     @operation_node(name='点击分解')
     def click_salvage(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '背包-遗器分解', '按钮-分解',
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='点击分解')
     @operation_node(name='点击分解确认')
     def click_salvage_confirm(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '背包-遗器分解', '按钮-分解确认',
                                                  success_wait=1, retry_wait=1)
 
