@@ -28,7 +28,7 @@ class ClickPhoneMenuItem(SrOperation):
 
     @operation_node(name='点击菜单', node_max_retry_times=10, is_start_node=True)
     def click_item(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos(self.ctx, screen, self.item)
 

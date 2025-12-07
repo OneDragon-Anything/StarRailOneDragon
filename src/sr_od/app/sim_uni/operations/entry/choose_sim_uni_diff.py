@@ -39,7 +39,7 @@ class ChooseSimUniDiff(SrOperation):
     def choose(self) -> OperationRoundResult:
         if self.num == 0:  # 默认难度
             return self.round_success()
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.in_secondary_ui(
                 self.ctx, screen,

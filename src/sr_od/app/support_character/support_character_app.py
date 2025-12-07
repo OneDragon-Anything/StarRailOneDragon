@@ -35,7 +35,7 @@ class SupportCharacterApp(SrApplication):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击省略号')
     def _click_ellipsis(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_ellipsis_pos(self.ctx, screen, alert=True)
         if result is None:
             return self.round_success(SupportCharacterApp.STATUS_NO_ALERT)
@@ -46,7 +46,7 @@ class SupportCharacterApp(SrApplication):
     @node_from(from_name='点击省略号', status=STATUS_WITH_ALERT)
     @operation_node(name='点击漫游签证')
     def _click_profile(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_ellipsis_item_pos(self.ctx, screen, '漫游签证', alert=True)
         if result is None:
             return self.round_success(SupportCharacterApp.STATUS_NO_ALERT)

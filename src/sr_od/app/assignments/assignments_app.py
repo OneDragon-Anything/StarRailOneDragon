@@ -40,7 +40,7 @@ class AssignmentsApp(SrApplication):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击委托')
     def _click_assignment(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos(self.ctx, screen, phone_menu_const.ASSIGNMENTS, alert=False)
         if result is None:
             return self.round_success(AssignmentsApp.STATUS_NO_ALERT)

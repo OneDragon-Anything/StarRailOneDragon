@@ -36,7 +36,7 @@ class TalkInteract(SrOperation):
 
     @operation_node(name='交互', is_start_node=True)
     def interact(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         part = cv2_utils.crop_image_only(screen, TalkInteract.INTERACT_RECT)
         # cv2_utils.show_image(part, wait=0)
 
