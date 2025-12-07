@@ -50,11 +50,11 @@ class ControllerBase:
         """
         pass
 
-    def screenshot(self, independent: bool = False) -> tuple[float, MatLike | None]:
+    def screenshot(self, independent: bool = False, dont_move_mouse: bool = False) -> tuple[float, MatLike | None]:
         """
         截图并保存在内存中
         """
-        self.before_screenshot()
+        self.before_screenshot(dont_move_mouse=dont_move_mouse)
         screenshot_time = time.time()
         screen = self.get_screenshot(independent)
         if screen is None:
@@ -72,7 +72,7 @@ class ControllerBase:
 
         return screenshot_time, fix_screen
 
-    def before_screenshot(self) -> None:
+    def before_screenshot(self, dont_move_mouse: bool = False) -> None:
         """
         截图前的操作 由子类实现
         """

@@ -621,7 +621,7 @@ class Operation(OperationBase):
         """
         return time.time() - self.operation_start_time - self.pause_total_time
 
-    def screenshot(self):
+    def screenshot(self, dont_move_mouse: bool = False):
         """截图并保存在内存中。
 
         此方法包装截图功能并将最后一张截图保存在内存中
@@ -630,7 +630,7 @@ class Operation(OperationBase):
         Returns:
             np.ndarray: 截图图像。
         """
-        self.last_screenshot_time, self.last_screenshot = self.ctx.controller.screenshot()
+        self.last_screenshot_time, self.last_screenshot = self.ctx.controller.screenshot(dont_move_mouse=dont_move_mouse)
         return self.last_screenshot
 
     def save_screenshot(self, prefix: Optional[str] = None) -> str:

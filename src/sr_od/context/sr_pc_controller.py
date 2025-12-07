@@ -40,8 +40,9 @@ class SrPcController(PcControllerBase):
         cv2.rectangle(screen, lt, rb, (114, 114, 114), -1)
         return screen
 
-    def before_screenshot(self) -> None:
-        self.mouse_move(Point(30, 1030))
+    def before_screenshot(self, dont_move_mouse: bool = False) -> None:
+        if not dont_move_mouse:
+            self.mouse_move(Point(30, 1030))
 
     def esc(self) -> bool:
         self.btn_controller.tap(self.game_config.key_esc)

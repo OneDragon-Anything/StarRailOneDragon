@@ -177,13 +177,13 @@ class UseTrailblazePower(SrOperation):
     @node_from(from_name='开始挑战后')
     @node_from(from_name='再来一次后确认')
     @node_from(from_name='再来一次后确认', success=False, status='无对话框')
-    @operation_node(name='等待战斗结果', timeout_seconds=600)
+    @operation_node(name='等待战斗结果', timeout_seconds=600, screenshot_before_round=False)
     def _wait_battle_result(self) -> OperationRoundResult:
         """
         等待战斗结果
         :return:
         """
-        screen = self.screenshot()
+        screen = self.screenshot(dont_move_mouse=True)
 
         state = battle_screen_state.get_tp_battle_screen_state(
             self.ctx, screen,
