@@ -320,7 +320,7 @@ def run():
         #         _push_instance.ctx.after_app_shutdown()
         #     except Exception as e:
         #         log.error(f'清理Push资源失败: {e}')
-        return
+        pass
 
 
 if __name__ == '__main__':
