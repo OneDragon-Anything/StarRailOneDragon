@@ -65,7 +65,7 @@ class SimUniApp(SrApplication):
         result = self.round_retry('未找到积分奖励', wait=1)
         # 识别到两次一致的结果就退出循环
         for _ in range(10):
-            ocr_result_map = self.ocr(self.ctx.controller.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
+            ocr_result_map = self.ocr(self.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
 
             count_14000 = 0
             for ocr_result, _mrl in ocr_result_map.items():
