@@ -1,0 +1,72 @@
+- uid: "DMGJZ"
+  cn: "德谬歌矩阵"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [2532, 1407]
+  tp_pos: [2509, 1412]
+
+- uid: "ZYQDT"
+  cn: "中央区渡台"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [2527, 3483]
+  tp_pos: [2508, 3469]
+
+- uid: "SJLPSQRK"
+  cn: "数据流平扇区·入口"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [1832, 3293]
+  tp_pos: [1838, 3310]
+
+- uid: "SJLPSQJKC"
+  cn: "数据流平扇区·接口处"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [1004, 3425]
+  tp_pos: [985, 3416]
+
+- uid: "YJZZQSSD"
+  cn: "隐救之径·侵蚀隧洞"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 1
+  template_id: "mm_tp_09"
+  lm_pos: [985, 3683]
+  tp_pos: [985, 3683]
+
+- uid: "CXHRSQRK"
+  cn: "潮汐换热扇区·入口"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [3452, 3337]
+  tp_pos: [3466, 3318]
+
+- uid: "CXHRSQJKC"
+  cn: "潮汐换热扇区·接口处"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [3920, 3468]
+  tp_pos: [3932, 3446]
+
+- uid: "JYMM"
+  cn: "静域墓门"
+  planet_name: "翁法罗斯"
+  region_name: "「全世矩阵」无名泰坦大墓"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [2572, 4020]
+  tp_pos: [2509, 4067]
+

@@ -1,29 +1,18 @@
 try:
     import sys
     from typing import Tuple
-    from PySide6.QtCore import QThread, Signal
+    from PySide6.QtCore import Qt, QThread, Signal
     from PySide6.QtWidgets import QApplication
     from qfluentwidgets import NavigationItemPosition, setTheme, Theme
-    from one_dragon_qt.view.like_interface import LikeInterface
+
     from one_dragon.base.operation.one_dragon_context import ContextInstanceEventEnum
-
-    from one_dragon_qt.services.styles_manager import OdQtStyleSheet
-
-    from one_dragon_qt.view.code_interface import CodeInterface
-    from one_dragon_qt.view.context_event_signal import ContextEventSignal
-    from one_dragon_qt.windows.app_window_base import AppWindowBase
     from one_dragon.utils import app_utils
     from one_dragon.utils.i18_utils import gt
-
+    from one_dragon_qt.services.styles_manager import OdQtStyleSheet
+    from one_dragon_qt.view.context_event_signal import ContextEventSignal
+    from one_dragon_qt.windows.app_window_base import AppWindowBase
+    from one_dragon_qt.windows.window import PhosTitleBar
     from sr_od.context.sr_context import SrContext
-    from sr_od.gui.widget.sr_welcome_dialog import SrWelcomeDialog
-    from sr_od.gui.interface.accounts.app_accounts_interface import AccountsInterface
-    from sr_od.gui.interface.devtools.sr_devtools_interface import SrDevtoolsInterface
-    from sr_od.gui.interface.game_assistant.game_assistant_interface import GameAssistantInterface
-    from sr_od.gui.interface.one_dragon.sr_one_dragon_interface import SrOneDragonInterface
-    from sr_od.gui.interface.setting.sr_setting_interface import SrSettingInterface
-    from sr_od.gui.interface.sim_uni.sim_uni_interface import SimUniInterface
-    from sr_od.gui.interface.world_patrol.world_patrol_interface import WorldPatrolInterface
 
     _init_error = None
 
@@ -45,17 +34,21 @@ try:
 
     # 定义应用程序的主窗口类
     class AppWindow(AppWindowBase):
+        titleBar: PhosTitleBar
 
         def __init__(self, ctx: SrContext, parent=None):
             """初始化主窗口类，设置窗口标题和图标"""
             self.ctx: SrContext = ctx
             AppWindowBase.__init__(
                 self,
-                win_title='%s %s' % (
-                gt(ctx.project_config.project_name), ctx.one_dragon_config.current_active_instance.name),
+                win_title="%s %s"
+                % (
+                    gt(ctx.project_config.project_name),
+                    ctx.one_dragon_config.current_active_instance.name,
+                ),
                 project_config=ctx.project_config,
-                app_icon='app_logo.ico',
-                parent=parent
+                app_icon="logo.ico",
+                parent=parent,
             )
 
             self.ctx.listen_event(ContextInstanceEventEnum.instance_active.value, self._on_instance_active_event)
@@ -70,13 +63,16 @@ try:
 
         # 继承初始化函数
         def init_window(self):
-            self.resize(1050, 700)
+            self.resize(1095, 730)  # 3:2比例
 
             # 初始化位置
-            self.move(100, 100)
+            screen = QApplication.primaryScreen()
+            geometry = screen.availableGeometry()
+            w, h = geometry.width(), geometry.height()
+            self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
 
             # 设置配置ID
-            self.setObjectName("OneDragonWindow")
+            self.setObjectName("PhosWindow")
             self.navigationInterface.setObjectName("NavigationInterface")
             self.stackedWidget.setObjectName("StackedWidget")
             self.titleBar.setObjectName("TitleBar")
@@ -99,25 +95,53 @@ try:
             # 主页
             # self.add_sub_interface(HomeInterface(self.ctx, parent=self))
 
+            from sr_od.gui.interface.one_dragon.sr_one_dragon_interface import SrOneDragonInterface
             self.add_sub_interface(SrOneDragonInterface(self.ctx, parent=self))
+
+            from sr_od.gui.interface.world_patrol.world_patrol_interface import WorldPatrolInterface
             self.add_sub_interface(WorldPatrolInterface(self.ctx, parent=self))
+
+            from sr_od.gui.interface.sim_uni.sim_uni_interface import SimUniInterface
             self.add_sub_interface(SimUniInterface(self.ctx, parent=self))
+
+            from sr_od.gui.interface.game_assistant.game_assistant_interface import GameAssistantInterface
             self.add_sub_interface(GameAssistantInterface(self.ctx, parent=self))
 
+
             # 点赞
-            self.add_sub_interface(LikeInterface(self.ctx, parent=self), position=NavigationItemPosition.BOTTOM)
+            from one_dragon_qt.view.like_interface import LikeInterface
+            self.add_sub_interface(
+                LikeInterface(self.ctx, parent=self),
+                position=NavigationItemPosition.BOTTOM,
+            )
 
             # 开发工具
-            self.add_sub_interface(SrDevtoolsInterface(self.ctx, parent=self), position=NavigationItemPosition.BOTTOM)
+            from sr_od.gui.interface.devtools.sr_devtools_interface import SrDevtoolsInterface
+            self.add_sub_interface(
+                SrDevtoolsInterface(self.ctx, parent=self),
+                position=NavigationItemPosition.BOTTOM,
+            )
 
             # 代码同步
-            self.add_sub_interface(CodeInterface(self.ctx, parent=self), position=NavigationItemPosition.BOTTOM)
+            from one_dragon_qt.view.code_interface import CodeInterface
+            self.add_sub_interface(
+                CodeInterface(self.ctx, parent=self),
+                position=NavigationItemPosition.BOTTOM,
+            )
 
             # 多账号管理
-            self.add_sub_interface(AccountsInterface(self.ctx, parent=self),position=NavigationItemPosition.BOTTOM,)
+            from sr_od.gui.interface.accounts.app_accounts_interface import AccountsInterface
+            self.add_sub_interface(
+                AccountsInterface(self.ctx, parent=self),
+                position=NavigationItemPosition.BOTTOM,
+            )
 
             # 设置
-            self.add_sub_interface(SrSettingInterface(self.ctx, parent=self), position=NavigationItemPosition.BOTTOM)
+            from sr_od.gui.interface.setting.sr_setting_interface import SrSettingInterface
+            self.add_sub_interface(
+                SrSettingInterface(self.ctx, parent=self),
+                position=NavigationItemPosition.BOTTOM,
+            )
 
         def _on_instance_active_event(self, event) -> None:
             """
@@ -132,9 +156,10 @@ try:
             :return:
             """
             self.setWindowTitle(
-                '%s %s' % (
+                "%s %s"
+                % (
                     gt(self.ctx.project_config.project_name),
-                    self.ctx.one_dragon_config.current_active_instance.name
+                    self.ctx.one_dragon_config.current_active_instance.name,
                 )
             )
 
@@ -144,12 +169,14 @@ try:
             @param ver:
             @return:
             """
-            self.titleBar.setVersion(versions[0], versions[1])
+            self.titleBar.setLauncherVersion(versions[0])
+            self.titleBar.setCodeVersion(versions[1])
 
         def _check_first_run(self):
             """首次运行时显示防倒卖弹窗"""
             if self.ctx.env_config.is_first_run:
-                dialog = SrWelcomeDialog(self)
+                from one_dragon_qt.widgets.welcome_dialog import WelcomeDialog
+                dialog = WelcomeDialog(self, gt('欢迎使用星穹铁道一条龙'))
                 if dialog.exec():
                     self.ctx.env_config.is_first_run = False
 
@@ -166,7 +193,12 @@ if __name__ == '__main__':
     if _init_error is not None:
         ctypes.windll.user32.MessageBoxW(0, _init_error, "错误", 0x10)
         sys.exit(1)
+
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
 
     _ctx = SrContext()
 
@@ -175,6 +207,9 @@ if __name__ == '__main__':
 
     # 异步加载OCR
     _ctx.async_init_ocr()
+
+    # 异步更新免费代理
+    _ctx.async_update_gh_proxy()
 
     # 设置主题
     setTheme(Theme[_ctx.custom_config.theme.upper()])
@@ -187,3 +222,5 @@ if __name__ == '__main__':
 
     # 启动应用程序事件循环
     app.exec()
+
+    _ctx.after_app_shutdown()

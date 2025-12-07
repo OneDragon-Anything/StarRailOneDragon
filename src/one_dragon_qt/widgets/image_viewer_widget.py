@@ -5,7 +5,7 @@ import numpy as np
 from PySide6.QtCore import Qt, Signal, QRect, QPoint, QSize
 from PySide6.QtGui import QPixmap, QPainter, QPen, QColor, QMouseEvent, QPaintEvent, QImage
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QSizePolicy
-from qfluentwidgets import FluentIcon, PushButton, SpinBox, ComboBox, ToolButton
+from qfluentwidgets import FluentIcon, PushButton, SpinBox, ComboBox, ToolButton, BodyLabel
 
 from one_dragon.utils.i18_utils import gt
 
@@ -165,21 +165,31 @@ class OptimizedImageDisplayLabel(QScrollArea):
             转换后的QPixmap对象，转换失败时返回None
         """
         try:
-            if len(image_array.shape) != 3 or image_array.shape[2] != 3:
-                return None
-
-            height, width, channel = image_array.shape
-            bytes_per_line = 3 * width
-
             # 确保数据类型为uint8
             if image_array.dtype != np.uint8:
                 image_array = image_array.astype(np.uint8)
 
-            # 创建QImage (RGB888格式)
-            q_image = QImage(image_array.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+            # 确保数据在内存中是连续的，这对于QImage从内存缓冲区创建很重要
+            if not image_array.flags['C_CONTIGUOUS']:
+                image_array = np.ascontiguousarray(image_array)
 
-            # 转换为QPixmap
-            return QPixmap.fromImage(q_image)
+            if image_array.ndim == 3 and image_array.shape[2] == 3:  # 彩色RGB图
+                height, width, _ = image_array.shape
+                bytes_per_line = 3 * width
+                q_format = QImage.Format.Format_RGB888
+            elif image_array.ndim == 2:  # 灰度图
+                height, width = image_array.shape
+                bytes_per_line = width
+                q_format = QImage.Format.Format_Grayscale8
+            else:
+                # 不支持的数组形状
+                return None
+
+            # 创建QImage
+            q_image = QImage(image_array.data, width, height, bytes_per_line, q_format)
+
+            # 创建QImage的深拷贝，以防原始numpy数组被回收导致图像数据丢失
+            return QPixmap.fromImage(q_image.copy())
         except Exception:
             return None
 
@@ -293,7 +303,7 @@ class OptimizedImageDisplayLabel(QScrollArea):
                     self.image_label.update()
 
         QScrollArea.mousePressEvent(self, event)
-        
+
     def mouseMoveEvent(self, event: QMouseEvent):
         if self.interaction_mode == "select" and self.is_selecting:
             # 框选模式：更新选择区域
@@ -454,22 +464,22 @@ class ImageViewerWidget(QWidget):
         """
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # 工具栏
         toolbar_layout = QHBoxLayout()
 
         # 模式选择
-        toolbar_layout.addWidget(QLabel(gt("模式:")))
+        toolbar_layout.addWidget(BodyLabel(gt("模式:")))
         self.mode_combo = ComboBox()
-        self.mode_combo.addItem(gt("点击模式"), "click")
-        self.mode_combo.addItem(gt("框选模式"), "select")
+        self.mode_combo.addItem(gt("点击模式"), userData="click")
+        self.mode_combo.addItem(gt("框选模式"), userData="select")
         self.mode_combo.currentTextChanged.connect(self.on_mode_changed)
         toolbar_layout.addWidget(self.mode_combo)
 
-        toolbar_layout.addWidget(QLabel("  "))  # 分隔符
+        toolbar_layout.addWidget(BodyLabel("  "))  # 分隔符
 
         # 缩放控制
-        toolbar_layout.addWidget(QLabel(gt("缩放比例:")))
+        toolbar_layout.addWidget(BodyLabel(gt("缩放比例:")))
 
         # 缩小按钮（放在输入框左侧）
         self.zoom_out_btn = ToolButton(FluentIcon.ZOOM_OUT, None)
@@ -480,6 +490,7 @@ class ImageViewerWidget(QWidget):
         self.scale_spinbox.setRange(10, 1000)
         self.scale_spinbox.setValue(100)
         self.scale_spinbox.setSuffix("%")
+        self.scale_spinbox.setMinimumWidth(160)
         self.scale_spinbox.valueChanged.connect(self.on_scale_changed)
         toolbar_layout.addWidget(self.scale_spinbox)
 
@@ -487,7 +498,7 @@ class ImageViewerWidget(QWidget):
         self.zoom_in_btn = ToolButton(FluentIcon.ZOOM_IN, None)
         self.zoom_in_btn.clicked.connect(self.zoom_in)
         toolbar_layout.addWidget(self.zoom_in_btn)
-        
+
         # 适应窗口按钮
         self.fit_btn = PushButton(FluentIcon.FIT_PAGE, gt("适应窗口"))
         self.fit_btn.clicked.connect(self.fit_to_window)
@@ -509,9 +520,9 @@ class ImageViewerWidget(QWidget):
         self.clear_selection_btn.clicked.connect(self.clear_selection)
         self.clear_selection_btn.setVisible(False)
         toolbar_layout.addWidget(self.clear_selection_btn)
-        
+
         layout.addLayout(toolbar_layout)
-        
+
         # 图片显示区域（OptimizedImageDisplayLabel本身就是QScrollArea）
         self.image_label = OptimizedImageDisplayLabel()
         self.image_label.set_interaction_mode("click")  # 默认为点击模式

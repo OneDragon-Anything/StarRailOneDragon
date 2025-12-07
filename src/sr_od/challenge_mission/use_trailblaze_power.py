@@ -75,7 +75,7 @@ class UseTrailblazePower(SrOperation):
         self.current_challenge_times = self._get_current_challenge_times()
         log.info('本次挑战次数 %d', self.current_challenge_times)
         if self.current_challenge_times > 1:
-            op = ChooseChallengeTimes(self.ctx, self.current_challenge_times)
+            op = ChooseChallengeTimes(self.ctx, self.current_challenge_times, mission_type='其他')
             return self.round_by_op_result(op.execute())
         else:
             return self.round_success()
@@ -85,13 +85,14 @@ class UseTrailblazePower(SrOperation):
         获取当前的挑战次数
         :return:
         """
+        current_challenge_times = self.plan_times - self.finish_times
         if self.mission.cate.cn in ['拟造花萼（金）', '拟造花萼（赤）']:
-            current_challenge_times = self.plan_times - self.finish_times
-            if current_challenge_times > 6:
-                current_challenge_times = 6
-            return current_challenge_times
-        else:
-            return 1
+            return min(24, current_challenge_times)
+        elif self.mission.cate.cn == '凝滞虚影':
+            return min(8, current_challenge_times)
+        elif self.mission.cate.cn == '侵蚀隧洞':
+            return min(6, current_challenge_times)
+        return 1
 
     @node_from(from_name='选择次数')
     @operation_node(name='点击挑战')

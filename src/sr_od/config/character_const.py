@@ -246,6 +246,7 @@ CERYDRA = Character(id='cerydra', cn='刻律德菈', path=CHARACTER_PATH_HARMONY
 MYDEI = Character(id='mydei', cn='万敌', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 EVERNIGHT = Character(id='evernight', cn='长夜月', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF)
 DANHENGPERMANSORTERRAE = Character(id='danhengpermansorterrae', cn='丹恒·腾荒', path=CHARACTER_PATH_PRESERVATION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF)
+CYRENE = Character(id='cyrene', cn='昔涟', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_AREA)
 
 
 CHARACTER_LIST: List[Character] = [
@@ -330,6 +331,7 @@ CHARACTER_LIST: List[Character] = [
     MYDEI,
     EVERNIGHT,
     DANHENGPERMANSORTERRAE,
+    CYRENE,
 ]
 
 

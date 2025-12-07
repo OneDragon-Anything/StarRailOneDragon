@@ -49,8 +49,6 @@ class DailyTrainingApp(SrApplication):
     @node_from(from_name='选择每日实训')
     @operation_node(name='领取点数')
     def claim_score(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
-
         target_cn_list: list[str] = [
             '领取',
             '已领取',
@@ -59,7 +57,7 @@ class DailyTrainingApp(SrApplication):
             '已领取'
         ]
 
-        result = self.round_by_ocr_and_click_by_priority(screen, target_cn_list, ignore_cn_list)
+        result = self.round_by_ocr_and_click_by_priority(target_cn_list, ignore_cn_list=ignore_cn_list)
         if result.is_success:
             return self.round_wait(status=result.status, wait=1)
         else:
@@ -84,9 +82,6 @@ class DailyTrainingApp(SrApplication):
         if pos is None:
             return self.round_retry('未找到奖励按钮', wait=0.5)
         self.ctx.controller.click(pos.center)
-        completed = phone_menu_utils.is_training_reward_completed(self.ctx, screen)
-        if not completed:
-            return self.round_fail('每日实训还未完成')
         return self.round_success('每日实训已完成', wait=1)
 
     @node_from(from_name='领取奖励')

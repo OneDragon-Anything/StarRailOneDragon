@@ -99,6 +99,7 @@ class SimUniRunLevel(SrOperation):
 
     @node_from(from_name='切换1号位')
     @node_from(from_name='按类型运行路线指令v1', success=False, status=SimUniRunRouteBaseV2.STATUS_WRONG_LEVEL_TYPE) # 有可能是楼层类型判断错了
+    @node_from(from_name='按类型运行路线指令v1', success=False, status=SimUniRunRouteBaseV2.STATUS_NO_ENEMY) # 识别不到敌人
     @node_from(from_name='按类型运行路线指令v2', success=False, status=SimUniRunRouteBaseV2.STATUS_WRONG_LEVEL_TYPE) # 有可能是楼层类型判断错了
     @node_from(from_name='重置')  # 重置后完全重新来一遍
     @operation_node(name='识别楼层类型')

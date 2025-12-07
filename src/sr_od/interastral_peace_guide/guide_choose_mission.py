@@ -67,7 +67,7 @@ class GuideChooseMission(SrOperation):
         ocr_result_map = self.ctx.ocr.run_ocr(part)
 
         word_list = []
-        mrl_list = []
+        mrl_list: list[MatchResultList] = []
 
         for ocr_word, mrl in ocr_result_map.items():
             word_list.append(ocr_word)
@@ -90,11 +90,7 @@ class GuideChooseMission(SrOperation):
             for ocr_word, mrl in ocr_result_map.items():
                 mrl2 = MatchResultList(only_best=False)
                 for mr in mrl:
-                    if self.mission.mission_name == '模拟宇宙':
-                        # 取区域上方350距离内的 (模拟宇宙的标题) 和 下方全部内容 (传送)
-                        if region_right_bottom_pos.y - mr.right_bottom.y < 350:
-                            mrl2.append(mr)
-                    elif self.mission.cate.cn == '历战余响':
+                    if self.mission.cate.cn == '历战余响':
                         # 取区域上方50距离内的 (副本名称) 和 下方全部内容 (进入)
                         if region_right_bottom_pos.y - mr.right_bottom.y < 50:
                             mrl2.append(mr)
@@ -110,6 +106,14 @@ class GuideChooseMission(SrOperation):
                 mrl_list.append(mrl2)
 
             log.info('过滤后文本 %s', word_list)
+
+        # 模拟宇宙没有传送前往按钮 直接点击副本即可
+        if self.mission.mission_name == '前往模拟宇宙':
+            mission_idx = str_utils.find_best_match_by_difflib(gt(self.mission.mission_name, 'game'), word_list, cutoff=0.5)
+            if mission_idx is None:
+                log.error('匹配失败 %s', self.mission.mission_name)
+                return None
+            return mrl_list[mission_idx].max.center + area.left_top
 
         # 培养目标特殊处理：直接找进入按钮
         if self.mission.mission_name == '培养目标':

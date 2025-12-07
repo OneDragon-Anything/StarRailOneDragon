@@ -23,7 +23,7 @@ class ProxyTypeEnum(Enum):
 
     NONE = ConfigItem('无', 'None')
     PERSONAL = ConfigItem('个人代理', 'personal')
-    GHPROXY = ConfigItem('GitHub免费代理', 'ghproxy')
+    GHPROXY = ConfigItem('GitHub 代理', 'ghproxy')
 
 
 class RepositoryTypeEnum(Enum):
@@ -34,7 +34,8 @@ class RepositoryTypeEnum(Enum):
 
 class RegionEnum(Enum):
 
-    CHINA = ConfigItem('中国', 'china')
+    CHINA_GITEE = ConfigItem('中国 - Gitee', 'china_gitee')
+    CHINA_GHPROXY = ConfigItem('中国 - GitHub 代理', 'china_ghproxy')
     OVERSEA = ConfigItem('海外', 'oversea')
 
 
@@ -167,22 +168,6 @@ class EnvConfig(YamlConfig):
         :return:
         """
         self.update('personal_proxy', new_value)
-
-    @property
-    def requirement_time(self) -> str:
-        """
-        安装依赖时 使用的 requirement.txt 的最后修改时间
-        :return:
-        """
-        return self.get('requirement_time', '')
-
-    @requirement_time.setter
-    def requirement_time(self, new_value: str) -> None:
-        """
-        安装依赖时 使用的 requirement.txt 的最后修改时间
-        :return:
-        """
-        self.update('requirement_time', new_value)
 
     @property
     def repository_type(self) -> str:

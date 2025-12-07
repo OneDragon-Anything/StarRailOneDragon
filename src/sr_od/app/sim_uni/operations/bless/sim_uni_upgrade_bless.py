@@ -174,6 +174,7 @@ class SimUniUpgradeBless(SrOperation):
             self.round_by_click_area('模拟宇宙', '点击空白处关闭')
             return self.round_success(SimUniUpgradeBless.STATUS_UPGRADE, wait=1)
 
+    @node_from(from_name='识别剩余碎片', success=False)
     @node_from(from_name='升级', status=STATUS_NO_UPGRADE)
     @node_from(from_name='选择祝福', status=STATUS_NO_UPGRADE)
     @operation_node(name='退出')

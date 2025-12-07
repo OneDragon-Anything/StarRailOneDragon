@@ -17,6 +17,11 @@
       remark_in_game: "位面饰品"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "西风丛中"
+          show_in_power_plan: true
+          display_name: "永恒之地翁法罗斯 天国@直播间"
+          power: 40
+
         - mission_name: "月下朱殷"
           show_in_power_plan: true
           display_name: "妖精织梦的乐园 沉欢醉饮的海隅"
@@ -498,6 +503,12 @@
       remark_in_game: "行迹高级材料/光锥"
       show_in_power_plan: false
       mission_list:
+        - mission_name: "铁骸的锈冢·历战余响"
+          show_in_power_plan: true
+          display_name: "晨昏的回眸"
+          region_name: "「葬忆彼岸」时光归墟"
+          power: 30
+
         - mission_name: "晨昏的回眸·历战余响"
           show_in_power_plan: true
           display_name: "晨昏的回眸"
@@ -550,12 +561,7 @@
           display_name: "前往参与"
           show_in_power_plan: true
           power: 0
-    # # 老版本模拟宇宙入口, 在新版本已被合并到差分宇宙界面
-    # - category_name: "模拟宇宙"
-    #   show_in_power_plan: false
-    #   mission_list:
 
-        # todo 新版本模拟宇宙入口需要点击的框(但是貌似不识别这个框, 还是会一直滑动查找 '第x宇宙' 界面)
         - mission_name: "前往模拟宇宙"
           display_name: "前往模拟宇宙"
           show_in_power_plan: true

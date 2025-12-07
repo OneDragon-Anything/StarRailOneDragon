@@ -69,9 +69,10 @@ class YamlConfig(YamlOperator):
 
         # 最后看是否有示例文件
         sample_yml_path = os.path.join(dir_path, f'{self.module_name}.sample.yml')
-        if self._sample and self._copy_from_sample and os.path.exists(sample_yml_path):
-            shutil.copyfile(sample_yml_path, yml_path)
-            return yml_path
+        if self._sample and os.path.exists(sample_yml_path):
+            if self._copy_from_sample:
+                shutil.copyfile(sample_yml_path, yml_path)
+            return sample_yml_path
 
         return yml_path
 

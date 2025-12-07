@@ -1,0 +1,27 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「全世矩阵」无名泰坦大墓'
+floor: 1
+tp: '数据流平扇区·入口'
+route:
+  - idx: 1
+    op: 'move'
+    data: [1780, 3304]
+  - idx: 2
+    op: 'move'
+    data: [1780, 3257]
+  - idx: 3
+    op: 'disposable'
+  - idx: 4
+    op: 'move'
+    data: [1757, 3254]
+  - idx: 5
+    op: 'move'
+    data: [1750, 3204]
+  - idx: 6
+    op: 'disposable'
+  - idx: 7
+    op: 'move'
+    data: [1695, 3203]
+  - idx: 8
+    op: 'patrol'

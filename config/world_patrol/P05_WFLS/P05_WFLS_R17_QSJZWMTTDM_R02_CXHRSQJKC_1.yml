@@ -1,0 +1,58 @@
+author: ['DoctorReid']
+planet: '翁法罗斯'
+region: '「全世矩阵」无名泰坦大墓'
+floor: 1
+tp: '潮汐换热扇区·接口处'
+route:
+  - idx: 1
+    op: 'move'
+    data: [4007, 3451]
+  - idx: 2
+    op: 'disposable'
+  - idx: 3
+    op: 'move'
+    data: [4025, 3457]
+  - idx: 4
+    op: 'disposable'
+  - idx: 5
+    op: 'move'
+    data: [4040, 3422]
+  - idx: 6
+    op: 'patrol'
+  - idx: 7
+    op: 'move'
+    data: [4089, 3392]
+  - idx: 8
+    op: 'disposable'
+  - idx: 9
+    op: 'move'
+    data: [4062, 3386]
+  - idx: 10
+    op: 'move'
+    data: [4059, 3313]
+  - idx: 11
+    op: 'move'
+    data: [4048, 3327]
+  - idx: 12
+    op: 'disposable'
+  - idx: 13
+    op: 'move'
+    data: [4062, 3293]
+  - idx: 14
+    op: 'move'
+    data: [4060, 3236]
+  - idx: 15
+    op: 'move'
+    data: [4086, 3228]
+  - idx: 16
+    op: 'disposable'
+  - idx: 17
+    op: 'move'
+    data: [4043, 3215]
+  - idx: 18
+    op: 'patrol'
+  - idx: 19
+    op: 'move'
+    data: [4019, 3166]
+  - idx: 20
+    op: 'patrol'

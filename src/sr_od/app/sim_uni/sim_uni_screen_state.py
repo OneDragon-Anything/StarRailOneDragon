@@ -162,7 +162,12 @@ def is_empty_to_close(ctx: SrContext, screen: MatLike) -> bool:
     :param screen: 游戏画面
     :return:
     """
-    return screen_utils.find_area(ctx, screen, '模拟宇宙', '点击空白处关闭') == FindAreaResultEnum.TRUE
+    return (
+        screen_utils.find_area(ctx, screen, '模拟宇宙', '点击空白处关闭') == FindAreaResultEnum.TRUE
+        or
+        # 可能版本更新导致了有一个新的位置
+        screen_utils.find_area(ctx, screen, '模拟宇宙', '点击空白处关闭2') == FindAreaResultEnum.TRUE
+    )
 
 
 def is_sim_uni_get_reward(ctx: SrContext, screen: MatLike) -> bool:

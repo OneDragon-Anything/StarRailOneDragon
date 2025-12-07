@@ -4,9 +4,11 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 from sr_od.app.div_uni.operations.choose_oe_file import ChooseOeFile
 from sr_od.app.div_uni.operations.choose_oe_support import ChooseOeSupport
 from sr_od.app.sim_uni.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
+from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 from sr_od.interastral_peace_guide.guide_transport import GuideTransport
@@ -96,11 +98,12 @@ class ChallengeOrnamentExtraction(SrOperation):
     #
     #     return self.round_success()
 
-    @node_from(from_name='传送')
-    @operation_node(name='选择存档')
-    def choose_file(self) -> OperationRoundResult:
-        op = ChooseOeFile(self.ctx, self.file_num)
-        return self.round_by_op_result(op.execute())
+    # todo 这个函数是不是没用
+    # @node_from(from_name='传送')
+    # @operation_node(name='选择存档')
+    # def choose_file(self) -> OperationRoundResult:
+    #     op = ChooseOeFile(self.ctx, self.file_num)
+    #     return self.round_by_op_result(op.execute())
 
     @node_from(from_name='传送')
     @operation_node(name='选择支援')
@@ -110,6 +113,16 @@ class ChallengeOrnamentExtraction(SrOperation):
 
     @node_from(from_name='选择支援')
     @node_from(from_name='选择支援', success=False)
+    @operation_node(name='选择挑战次数')
+    def click_challenge_times(self) -> OperationRoundResult:
+        log.info('本次挑战次数 %d', self.run_times)
+        if self.run_times > 1:
+            op = ChooseChallengeTimes(self.ctx, min(6, self.run_times), mission_type='饰品提取')
+            return self.round_by_op_result(op.execute())
+        else:
+            return self.round_success()
+
+    @node_from(from_name='选择挑战次数')
     @operation_node(name='点击挑战')
     def click_challenge(self) -> OperationRoundResult:
         """

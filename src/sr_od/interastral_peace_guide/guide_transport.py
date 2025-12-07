@@ -67,8 +67,11 @@ class GuideTransport(SrOperation):
             # 如果都没匹配到，重试
             return self.round_retry(wait=1)
 
-        return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn,
-                                       retry_wait=1)
+        # 模拟宇宙的cate是差分宇宙 需要特殊判断
+        if self.mission.mission_name == '前往模拟宇宙':
+            return self.round_by_find_area(screen, '星际和平指南', '等待加载-模拟宇宙', retry_wait=1)
+
+        return self.round_by_find_area(screen, '星际和平指南', '等待加载-' + self.mission.cate.cn, retry_wait=1)
 
 
 def __debug():
