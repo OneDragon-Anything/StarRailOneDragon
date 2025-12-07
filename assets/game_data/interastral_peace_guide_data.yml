@@ -11,7 +11,7 @@
         - mission_name: "培养目标"
           show_in_power_plan: true
           display_name: "培养目标"
-          power: 20
+          power: 40
 
     - category_name: "饰品提取"
       remark_in_game: "位面饰品"
