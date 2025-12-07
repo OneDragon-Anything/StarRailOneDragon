@@ -42,7 +42,7 @@ class SimUniUpgradeBless(SrOperation):
         识别剩余的碎片数量
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, self.ctx.ocr, upgrade_bless=True)
 
@@ -72,7 +72,7 @@ class SimUniUpgradeBless(SrOperation):
         识别可升级的祝福 按剩余碎片数量保留
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self._get_bless_pos_list(screen)
 
         return self.round_success()
@@ -120,7 +120,7 @@ class SimUniUpgradeBless(SrOperation):
         if self.upgrade_idx >= len(self.upgrade_list):
             return self.round_success(SimUniUpgradeBless.STATUS_NO_UPGRADE)
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, self.ctx.ocr, upgrade_bless=True)
 
@@ -138,7 +138,7 @@ class SimUniUpgradeBless(SrOperation):
         升级
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self._can_upgrade(screen):
             click = self.ctx.controller.click(SimUniUpgradeBless.UPGRADE_BTN.center)
@@ -164,7 +164,7 @@ class SimUniUpgradeBless(SrOperation):
         点击空白继续
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, self.ctx.ocr,
                                                               upgrade_bless=True, empty_to_close=True)
 

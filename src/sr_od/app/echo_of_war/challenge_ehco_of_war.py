@@ -67,7 +67,7 @@ class ChallengeEchoOfWar(SrOperation):
         点击挑战后 判断当前有没有对话框 需保证点击挑战1秒后再触发
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.check_dialog(screen)
         if result is not None:
@@ -136,7 +136,7 @@ class ChallengeEchoOfWar(SrOperation):
     @node_from(from_name='点击开始挑战')
     @operation_node(name='点击开始挑战后确认')
     def after_click_start_challenge(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.check_dialog(screen)
         if result is not None:
@@ -174,7 +174,7 @@ class ChallengeEchoOfWar(SrOperation):
         战斗结果出来后 点击再来一次或退出
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if self.battle_fail_times >= 5 or self.battle_success_times >= self.plan_times:  # 失败过多或者完成指定次数了 退出
             return self.round_by_find_and_click_area(screen, '战斗画面', '退出关卡按钮',
                                                      success_wait=2, retry_wait=1)
@@ -189,7 +189,7 @@ class ChallengeEchoOfWar(SrOperation):
         再来一次的确认 在有角色阵亡时候会弹出来
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.check_dialog(screen)
         if result is not None:

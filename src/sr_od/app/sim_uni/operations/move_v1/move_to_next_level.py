@@ -96,7 +96,7 @@ class MoveToNextLevel(SrOperation):
                 return self.round_fail('未配置下层入口')
             else:
                 return self.round_success()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             log.error('找下层入口时进入战斗 请反馈给作者 %s', self.route.display_name)
@@ -118,7 +118,7 @@ class MoveToNextLevel(SrOperation):
     @node_from(from_name='转向入口')
     @operation_node(name='移动交互')
     def _move_and_interact(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         in_world = common_screen_state.is_normal_in_world(self.ctx, screen)
 
@@ -258,7 +258,7 @@ class MoveToNextLevel(SrOperation):
         """
         if self.level_type != SimUniLevelTypeEnum.ELITE.value:
             return self.round_success()
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             click_confirm = screen_utils.find_and_click_area(self.ctx, screen, '模拟宇宙', '前往下层-确认')
             if click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_SUCCESS:

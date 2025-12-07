@@ -29,7 +29,7 @@ class BuyStoreItem(SrOperation):
 
     @operation_node(name='选择商品', is_start_node=True)
     def choose_item(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         pos = self.get_item_pos(screen)
         if pos is None:  # 找不到的时候 向下滑动
             area = self.ctx.screen_loader.get_area('商店', '商品列表')
@@ -63,7 +63,7 @@ class BuyStoreItem(SrOperation):
         选择购买数量 暂时只支持全量
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '商店', '按钮-购买最大值',
                                                  success_wait=0.5, retry_wait=1)
 
@@ -74,7 +74,7 @@ class BuyStoreItem(SrOperation):
         点击确认 不能购买时点击取消
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result1 = self.round_by_find_area(screen, '商店', '购买-已售罄')
         result2 = self.round_by_find_area(screen, '商店', '购买-兑换材料不足')
@@ -93,6 +93,6 @@ class BuyStoreItem(SrOperation):
         够买后 点击空白处关闭
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '大世界', '点击空白处关闭',
                                                  success_wait=1, retry_wait=1)

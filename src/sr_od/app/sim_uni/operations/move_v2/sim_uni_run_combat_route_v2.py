@@ -48,7 +48,7 @@ class SimUniRunCombatRouteV2(SimUniRunRouteBaseV2):
         2. 如果是 buff秘技 且需要 秘技开怪，先使用秘技
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.check_angle(screen)
 
         if (self.ctx.sim_uni_challenge_config.technique_fight
@@ -73,7 +73,7 @@ class SimUniRunCombatRouteV2(SimUniRunRouteBaseV2):
         检测屏幕
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 为了保证及时攻击 外层仅判断是否在大世界画面 非大世界画面时再细分处理
         self.current_state = sim_uni_screen_state.get_sim_uni_screen_state(

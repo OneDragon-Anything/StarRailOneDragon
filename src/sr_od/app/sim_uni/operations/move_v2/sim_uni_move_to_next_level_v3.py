@@ -71,7 +71,7 @@ class MoveToNextLevelV3(SrOperation):
         靠YOLO识别 先大概转到下层入口方向
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         frame_result = self.ctx.yolo_detector.sim_uni_yolo.run(screen)
 
@@ -100,7 +100,7 @@ class MoveToNextLevelV3(SrOperation):
         记录YOLO识别入口的方向
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         self.detect_entry_angle = mini_map_utils.analyse_angle(mm)
 
@@ -129,7 +129,7 @@ class MoveToNextLevelV3(SrOperation):
         使用特征匹配识别当前有没有下层入口的图标
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         type_list = sim_uni_screen_state.match_next_level_entry(self.ctx, screen)
 
         if len(type_list) == 0:
@@ -153,7 +153,7 @@ class MoveToNextLevelV3(SrOperation):
         先转到原来YOLO可以识别的视角 往前移动一段距离后重新尝试
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         current_angle = mini_map_utils.analyse_angle(mm)
         self.ctx.controller.turn_from_angle(current_angle, self.detect_entry_angle)
@@ -178,7 +178,7 @@ class MoveToNextLevelV3(SrOperation):
         移动前的初始化
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.check_interact_word(screen)
 
         return self.round_success()
@@ -202,7 +202,7 @@ class MoveToNextLevelV3(SrOperation):
         :return:
         """
         now = time.time()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         in_world = common_screen_state.is_normal_in_world(self.ctx, screen)
 
@@ -318,7 +318,7 @@ class MoveToNextLevelV3(SrOperation):
         self.ctx.controller.stop_moving_forward()
         if self.level_type != SimUniLevelTypeEnum.ELITE.value:
             return self.round_success()
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             click_confirm = screen_utils.find_and_click_area(self.ctx, screen, '模拟宇宙', '前往下层-确认')
             if click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_SUCCESS:

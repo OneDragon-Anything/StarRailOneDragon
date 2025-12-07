@@ -44,7 +44,7 @@ class CancelMissionTrace(SrOperation):
         根据当前屏幕状态 尝试取消追踪
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.is_normal_in_world(self.ctx, screen):  # 依旧在大地图 说明没有追踪任务
             self.ctx.pos_info.pos_cancel_mission_trace = True
             return self.round_success()

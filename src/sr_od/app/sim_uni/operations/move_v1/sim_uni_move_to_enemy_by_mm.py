@@ -61,7 +61,7 @@ class SimUniMoveToEnemyByMiniMap(SrOperation):
             return stuck
 
         now = time.time()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.is_normal_in_world(self.ctx, screen):  # 不在大世界 可能被袭击了
             return self.enter_battle(False)

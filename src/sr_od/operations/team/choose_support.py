@@ -46,7 +46,7 @@ class ChooseSupport(SrOperation):
         if self.character_id is None:
             return self.round_success('无需支援')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_area(screen, '队伍', '左上角标题-队伍', retry_wait=1)
 
     @node_from(from_name='识别画面', status='左上角标题-队伍')
@@ -56,7 +56,7 @@ class ChooseSupport(SrOperation):
         点击头像
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         round_result = ChooseSupport.click_avatar(self, screen, self.character_id)
         if round_result.is_success:
             self.found_character = True
@@ -69,7 +69,7 @@ class ChooseSupport(SrOperation):
         点击入队 点击后会返回上级画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '队伍', '按钮-入队',
                                                  success_wait=1, retry_wait=1)
 

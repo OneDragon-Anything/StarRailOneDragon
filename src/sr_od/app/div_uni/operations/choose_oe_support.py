@@ -33,7 +33,7 @@ class ChooseOeSupport(SrOperation):
         if self.character_id is None:
             return self.round_success('无需支援')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         return self.round_by_find_area(screen, '饰品提取', '左上角标题-饰品提取', retry_wait=1)
 
@@ -44,7 +44,7 @@ class ChooseOeSupport(SrOperation):
         点击支援按钮
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-支援',
                                                  success_wait=1, retry_wait=1)
 
@@ -55,7 +55,7 @@ class ChooseOeSupport(SrOperation):
         选择支援角色
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         round_result = ChooseSupport.click_avatar(self, screen, self.character_id)
         if round_result.is_success:
             self.found_character = True

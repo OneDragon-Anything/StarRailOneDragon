@@ -24,7 +24,7 @@ class ChooseFloor(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 已经选好了区域 还需要选择层数
         if self.floor != 0:

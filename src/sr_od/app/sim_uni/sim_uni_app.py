@@ -78,7 +78,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='检查运行次数')
     @operation_node(name='识别初始画面')
     def _check_initial_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_initial_screen_state(self.ctx, screen)
 
         if state == sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value:

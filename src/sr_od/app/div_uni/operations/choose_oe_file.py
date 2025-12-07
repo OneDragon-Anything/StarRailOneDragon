@@ -30,7 +30,7 @@ class ChooseOeFile(SrOperation):
         if self.num == 0:
             return self.round_success('使用默认档案')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_area(screen, '饰品提取', '左上角标题-饰品提取')
         if result.is_success:
@@ -49,7 +49,7 @@ class ChooseOeFile(SrOperation):
         点击切换存档
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-切换存档入口',
                                                  success_wait=1.5, retry_wait=1)
 
@@ -60,13 +60,13 @@ class ChooseOeFile(SrOperation):
         等待选择存档的画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         return self.round_by_find_area(screen, '饰品提取', '左上角标题-存档管理', retry_wait=1)
 
     @node_from(from_name='识别画面', status='左上角标题-存档管理')
     @node_from(from_name='等待存档管理画面')
-    @operation_node(name='选择存档')
+    @operation_node(name='选择存档', screenshot_before_round=False)
     def choose_file(self) -> OperationRoundResult:
         """
         选择存档

@@ -129,7 +129,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         点击挑战
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-开始挑战',
                                                  success_wait=2, retry_wait=1)
 
@@ -140,7 +140,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         等待副本加载
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
     @node_from(from_name='等待副本加载')
@@ -186,7 +186,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         战斗结果出来后 点击再来一次或退出
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if self.battle_fail_times >= 5 or self.battle_success_times >= self.run_times:  # 失败过多或者完成指定次数了 退出
             area_name = '退出关卡按钮'
         else:  # 还需要继续挑战
@@ -202,5 +202,5 @@ class ChallengeOrnamentExtraction(SrOperation):
         等待退出到大世界
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)

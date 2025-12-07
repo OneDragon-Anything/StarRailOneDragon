@@ -31,7 +31,7 @@ class ChoosePlanet(SrOperation):
 
     @operation_node(name='选择', node_max_retry_times=10, is_start_node=True)
     def choose(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         # 根据左上角判断当前星球是否正确
         planet = large_map_utils.get_planet(self.ctx, screen)
         if planet is not None and planet.np_id == self.planet.np_id:

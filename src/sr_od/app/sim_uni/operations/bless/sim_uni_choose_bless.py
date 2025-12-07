@@ -69,7 +69,7 @@ class SimUniChooseBless(SrOperation):
 
     @operation_node(name='等待画面', node_max_retry_times=5, is_start_node=True)
     def first_wait(self):
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not self.first_screen_check or not self.skip_first_screen_check:
             self.first_screen_check = False
@@ -81,7 +81,7 @@ class SimUniChooseBless(SrOperation):
     @node_from(from_name='等待画面')
     @operation_node(name='选择祝福')
     def choose(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
 
@@ -153,7 +153,7 @@ class SimUniChooseBless(SrOperation):
         """
         if self.fast_back_to_world:
             now = time.time()
-            screen = self.screenshot()
+            screen = self.last_screenshot
             if sim_uni_screen_state.in_sim_uni_choose_bless(self.ctx, screen):
                 if now - self.choose_bless_time >= 2:
                     return self.round_success(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)

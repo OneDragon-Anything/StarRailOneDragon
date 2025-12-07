@@ -25,7 +25,7 @@ class BackToNormalWorldPlus(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 先看看左上角是否退出按钮
         result = self.round_by_find_area(screen, '模拟宇宙', '大世界返回按钮')

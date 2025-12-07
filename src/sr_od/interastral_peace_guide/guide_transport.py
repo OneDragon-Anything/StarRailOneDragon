@@ -47,7 +47,7 @@ class GuideTransport(SrOperation):
     @node_from(from_name='选择副本')
     @operation_node(name='等待加载', node_max_retry_times=20)
     def wait_at_last(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 培养目标特殊处理：尝试匹配任意一个等待加载区域
         if self.mission.mission_name == '培养目标':

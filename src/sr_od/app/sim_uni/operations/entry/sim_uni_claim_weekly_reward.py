@@ -23,7 +23,7 @@ class SimUniClaimWeeklyReward(SrOperation):
         等待加载页面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_initial_screen_state(self.ctx, screen)
 
         if state in [sim_uni_screen_state.ScreenState.SIM_TYPE_EXTEND.value,
@@ -35,13 +35,13 @@ class SimUniClaimWeeklyReward(SrOperation):
     @node_from(from_name='等待画面')
     @operation_node(name='检查奖励')
     def _check_reward(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '每周奖励红点',
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='检查奖励', status='每周奖励红点')
     @operation_node(name='领取奖励')
     def _claim_reward(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '每周奖励-一键领取',
                                                  success_wait=1, retry_wait=1)

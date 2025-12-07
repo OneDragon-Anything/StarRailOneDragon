@@ -107,7 +107,7 @@ class UseTrailblazePower(SrOperation):
         点击挑战后 判断当前有没有对话框 需保证点击挑战1秒后再触发
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result1 = self.round_by_find_area(screen, '挑战副本', '开拓力弹框-标题')
         if result1.is_success:
@@ -154,7 +154,7 @@ class UseTrailblazePower(SrOperation):
         点击开始挑战后 进入战斗前
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         # 有阵亡角色
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
@@ -208,7 +208,7 @@ class UseTrailblazePower(SrOperation):
         战斗结果出来后 点击再来一次或退出
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if self.battle_fail_times >= 5 or self.finish_times >= self.plan_times:  # 失败过多或者完成指定次数了 退出
             return self.round_by_find_and_click_area(screen, '战斗画面', '退出关卡按钮',
                                                      success_wait=2, retry_wait=1)
@@ -224,7 +224,7 @@ class UseTrailblazePower(SrOperation):
     @node_from(from_name='战斗结果处理', status='再来一次按钮')
     @operation_node(name='再来一次后确认')
     def confirm_after_challenge_again(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result1 = self.round_by_find_area(screen, '挑战副本', '开拓力弹框-标题')
         if result1.is_success:

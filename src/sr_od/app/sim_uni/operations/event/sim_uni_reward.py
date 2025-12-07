@@ -41,7 +41,7 @@ class SimUniReward(SrOperation):
     @node_from(from_name='检查画面', status=sim_uni_screen_state.ScreenState.SIM_REWARD.value)
     @operation_node(name='获取奖励', is_start_node=True)
     def _get_reward(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, reward=True)
 
@@ -91,7 +91,7 @@ class SimUniReward(SrOperation):
         领取奖励后点击空白继续
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, empty_to_close=True)
 
         if state != sim_uni_screen_state.ScreenState.EMPTY_TO_CLOSE.value:
@@ -107,7 +107,7 @@ class SimUniReward(SrOperation):
         每轮后检查状态
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_screen_state(self.ctx, screen, in_world=True, reward=True)
         if state is None:
             return self.round_retry('判断画面状态失败', wait=1)
