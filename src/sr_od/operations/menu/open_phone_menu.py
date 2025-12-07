@@ -22,7 +22,7 @@ class OpenPhoneMenu(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_area(screen, '菜单', '开拓等级')
         if result.is_success:

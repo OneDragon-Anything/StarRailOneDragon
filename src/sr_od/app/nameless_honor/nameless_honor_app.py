@@ -45,7 +45,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击无名勋礼')
     def _click_honor(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos(self.ctx, screen, phone_menu_const.NAMELESS_HONOR, alert=True)
         if result is None:
             return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
@@ -56,7 +56,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击无名勋礼', status=STATUS_WITH_ALERT)
     @operation_node(name='点击任务')
     def _click_tab_2(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_nameless_honor_tab_pos(self.ctx, screen, 2, alert=True)
         if result is None:
             return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
@@ -67,7 +67,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击任务')
     @operation_node(name='领取任务奖励')
     def _claim_task(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-任务-一键领取')
 
         if result.is_success:
@@ -83,7 +83,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='领取任务奖励', success=False)  # 有新任务的时候这里会有红点 但不会有领取按钮 因此失败也继续
     @operation_node(name='点击奖励')
     def _click_tab_1(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_nameless_honor_tab_pos(self.ctx, screen, 1, alert=True)
         if result is None:
             return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
@@ -94,7 +94,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击奖励')
     @operation_node(name='领取奖励')
     def _claim_reward(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         return self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-奖励-一键领取',
                                                  success_wait=2, retry_wait=0.5)

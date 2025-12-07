@@ -30,7 +30,7 @@ class GuideChooseMission(SrOperation):
 
     @operation_node(name='等待画面加载', node_max_retry_times=5, is_start_node=True)
     def wait_screen(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if common_screen_state.in_secondary_ui(self.ctx, screen, self.mission.cate.tab.cn):
             return self.round_success()
@@ -40,7 +40,7 @@ class GuideChooseMission(SrOperation):
     @node_from(from_name='等待画面加载')
     @operation_node(name='选择', node_max_retry_times=10)
     def choose(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         tp_point = self.find_transport_btn(screen)
         if tp_point is None:

@@ -27,7 +27,7 @@ class SimUniStart(SrOperation):
 
     @operation_node(name='开始', is_start_node=True)
     def _restart_or_continue(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if not sim_uni_screen_state.in_sim_uni_secondary_ui(self.ctx, screen):
             return self.round_retry('未在模拟宇宙页面', wait=1)
@@ -49,7 +49,7 @@ class SimUniStart(SrOperation):
         启动模拟宇宙
         :return:
         """
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '模拟宇宙', '入口-启动模拟宇宙',
                                                  success_wait=2, retry_wait=1)
 
@@ -60,7 +60,7 @@ class SimUniStart(SrOperation):
         低等级确认
         :return:
         """
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if sim_uni_screen_state.in_sim_uni_choose_path(self.ctx, screen):
             return self.round_success()

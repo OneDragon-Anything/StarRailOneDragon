@@ -40,7 +40,7 @@ class ChooseSimUniNum(SrOperation):
 
     @operation_node(name='选择', node_max_retry_times=10, is_start_node=True)
     def choose(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.in_secondary_ui(self.ctx, screen,
                                                    sim_uni_screen_state.ScreenState.SIM_TYPE_NORMAL.value):

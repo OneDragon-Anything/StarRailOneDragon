@@ -42,7 +42,7 @@ class EmailApp(SrApplication):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击邮件')
     def _click_email(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos_at_right(self.ctx, screen, phone_menu_const.EMAILS, alert=True)
         if result is None:
             return self.round_success(EmailApp.STATUS_NO_ALERT)
@@ -53,7 +53,7 @@ class EmailApp(SrApplication):
     @node_from(from_name='点击邮件', status=STATUS_WITH_ALERT)
     @operation_node(name='全部领取')
     def _claim(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '菜单', '邮件-全部领取',
                                                  success_wait=1, retry_wait=1)
 
