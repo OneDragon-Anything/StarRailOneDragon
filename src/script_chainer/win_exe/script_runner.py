@@ -199,10 +199,11 @@ def run_script(script_config: ScriptConfig, ctx: SrContext = None) -> None:
 
     script_ever_existed: bool = False  # 脚本进程是否存在
     game_ever_existed: bool = False  # 游戏进程是否存在
+    is_done: bool = False
     while True:
-        if ctx.context_running_state == ContextRunStateEnum.STOP:
+        if ((script_config.stop_chain_when_pause_pressed and ctx.context_running_state == ContextRunStateEnum.PAUSE)
+                or ctx.context_running_state == ContextRunStateEnum.STOP):
             break
-        is_done: bool = False
 
         game_current_existed: bool = is_process_existed(script_config.game_process_name)
         game_closed = game_ever_existed and not game_current_existed
@@ -254,7 +255,7 @@ def run_script(script_config: ScriptConfig, ctx: SrContext = None) -> None:
 
         time.sleep(1)
 
-    if script_config.kill_script_after_done or (ctx.context_running_state == ContextRunStateEnum.STOP):
+    if script_config.kill_script_after_done:
         print_message(f'尝试关闭脚本进程 {script_config.script_process_name}')
         try:
             process.kill()

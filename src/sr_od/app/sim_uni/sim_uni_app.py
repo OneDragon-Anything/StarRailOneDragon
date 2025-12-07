@@ -91,7 +91,7 @@ class SimUniApp(SrApplication):
     @operation_node(name='检查运行次数', is_start_node=True)
     def _check_times(self) -> OperationRoundResult:
         self.ctx.init_for_sim_uni()
-
+        return self.round_success()
         if self.specified_uni_num is not None:
             if self.get_reward_cnt < self.max_reward_to_get:
                 return self.round_success()
@@ -152,11 +152,11 @@ class SimUniApp(SrApplication):
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
-        # 如果只要求打满奖励, 识别是否 14000/14000了
-        if self.ctx.sim_uni_config.only_points_reward:
-            points_reward = self._check_points_reward()
-            if points_reward.result != OperationRoundResultEnum.FAIL:
-                return points_reward
+        # # 如果只要求打满奖励, 识别是否 14000/14000了
+        # if self.ctx.sim_uni_config.only_points_reward:
+        #     points_reward = self._check_points_reward()
+        #     if points_reward.result != OperationRoundResultEnum.FAIL:
+        #         return points_reward
 
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
@@ -166,7 +166,7 @@ class SimUniApp(SrApplication):
         if not os.path.exists(script_file):
             return self.round_fail(f'差分宇宙脚本不存在: {script_file}')
 
-        # 使用自身的 python 环境启动脚本
+        # 使用自身的 python 环境链式启动脚本
         script_config = ScriptConfig(
             script_path=self.ctx.python_service.env_config.python_path,
             script_arguments=script_file,
@@ -175,7 +175,8 @@ class SimUniApp(SrApplication):
             game_process_name='',
             run_timeout_seconds=2000,
             check_done='script_closed',
-            kill_script_after_done=False,
+            stop_chain_when_pause_pressed=True,  # 在按下暂停键时停止链式启动的脚本运行
+            kill_script_after_done=True,
             kill_game_after_done=False,
             notify_start=False,
             notify_done=False,
@@ -204,12 +205,15 @@ class SimUniApp(SrApplication):
         retry_count = 0
         max_retries = 3
         while retry_count < max_retries:
+            # auto_simulated_universe 运行前, 检查是否按了暂停/停止
             if self.ctx.context_running_state == ContextRunStateEnum.STOP:
                 break
             elif self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
                 time.sleep(1)
                 continue
+            # 阻塞式运行 auto_simulated_universe, 并在按下暂停键时结束其运行
             run_script(script_config, self.ctx)
+            # auto_simulated_universe 运行结束, 检查是否按了暂停键, 如果按了暂停键则认为是人为中止其运行从而忽略其返回值
             if self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
                 time.sleep(1)
                 continue

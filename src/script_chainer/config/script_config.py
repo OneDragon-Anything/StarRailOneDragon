@@ -35,6 +35,7 @@ class ScriptConfig:
                  game_process_name: str,
                  run_timeout_seconds: int,
                  check_done: str,
+                 stop_chain_when_pause_pressed: bool,
                  kill_script_after_done: bool,
                  kill_game_after_done: bool,
                  script_arguments: str,
@@ -49,6 +50,7 @@ class ScriptConfig:
         self.game_process_name: str = game_process_name  # 运行游戏的真实进程名称
         self.run_timeout_seconds: int = run_timeout_seconds  # 脚本超时时间
         self.check_done: str = check_done  # 怎么判断脚本已经运行完毕
+        self.stop_chain_when_pause_pressed: bool = stop_chain_when_pause_pressed  # 是否在按下暂停键时关闭链式调用的脚本
         self.kill_script_after_done: bool = kill_script_after_done  # 是否在运行完毕之后关闭脚本
         self.kill_game_after_done: bool = kill_game_after_done  # 是否在运行完毕之后关闭游戏
         self.script_arguments: str = script_arguments  # 运行脚本的附加参数
