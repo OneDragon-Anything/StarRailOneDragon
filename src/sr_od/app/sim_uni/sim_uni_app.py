@@ -91,7 +91,7 @@ class SimUniApp(SrApplication):
     @operation_node(name='检查运行次数', is_start_node=True)
     def _check_times(self) -> OperationRoundResult:
         self.ctx.init_for_sim_uni()
-        return self.round_success()
+
         if self.specified_uni_num is not None:
             if self.get_reward_cnt < self.max_reward_to_get:
                 return self.round_success()
@@ -152,11 +152,11 @@ class SimUniApp(SrApplication):
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
-        # # 如果只要求打满奖励, 识别是否 14000/14000了
-        # if self.ctx.sim_uni_config.only_points_reward:
-        #     points_reward = self._check_points_reward()
-        #     if points_reward.result != OperationRoundResultEnum.FAIL:
-        #         return points_reward
+        # 如果只要求打满奖励, 识别是否 14000/14000了
+        if self.ctx.sim_uni_config.only_points_reward:
+            points_reward = self._check_points_reward()
+            if points_reward.result != OperationRoundResultEnum.FAIL:
+                return points_reward
 
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
