@@ -94,13 +94,12 @@ def parse_args():
 
 
 def print_message(message: str, level="INFO"):
-    # 打印消息，带有时间戳和日志级别
-    time.sleep(0.1)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S,%f")[:-3]
-    colors = {"INFO": Fore.CYAN, "ERROR": Fore.YELLOW + Style.BRIGHT, "PASS": Fore.GREEN}
-    color = colors.get(level, Fore.WHITE)
-    print(f"{timestamp} | {color}{level}{Style.RESET_ALL} | {message}")
-    log.info(message)
+    if level == "INFO":
+        log.info(message)
+    elif level == "WARN":
+        log.warn(message)
+    elif level == "ERROR":
+        log.error(message)
 
 
 def is_pid_running(pid):
@@ -222,7 +221,7 @@ def run_script(script_config: ScriptConfig, ctx: SrContext = None) -> None:
         # 添加进程退出的 pid 检测方式
         if script_config.script_process_name == 'None':
             pid_status = is_pid_running(process.pid)
-            script_current_existed: bool = pid_status.get('alive') and pid_status.get('create_time') < subprocess_create_time + 5
+            script_current_existed: bool = pid_status.get('alive') and (pid_status.get('create_time') is not None) and pid_status.get('create_time') < subprocess_create_time + 5
         else:
             script_current_existed: bool = is_process_existed(script_config.script_process_name)
         script_closed = script_ever_existed and not script_current_existed
