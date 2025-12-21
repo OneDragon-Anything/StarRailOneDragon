@@ -1,23 +1,14 @@
 # 添加进程退出的 pid 检测方式
 
 import argparse
-import datetime
 import subprocess
 import time
 
 import psutil
-from colorama import init, Fore, Style
 
 from one_dragon.base.operation.one_dragon_context import ContextRunStateEnum
-from one_dragon.utils import cmd_utils
 from one_dragon.utils.log_utils import log
 from script_chainer.config.script_config import ScriptConfig, ScriptChainConfig, CheckDoneMethods
-import os
-import errno
-
-# from script_chainer.context.script_chainer_context import ScriptChainerContext
-
-
 # # 全局变量用于Push实例
 # _push_instance = None
 #
@@ -51,6 +42,10 @@ import errno
 #
 # log = get_logger()
 from sr_od.context.sr_context import SrContext
+
+
+# from colorama import init, Fore, Style
+# from script_chainer.context.script_chainer_context import ScriptChainerContext
 
 
 def is_process_existed(process_name) -> bool:
@@ -277,7 +272,7 @@ def run_script(script_config: ScriptConfig, ctx: SrContext = None) -> None:
 
 
 def run():
-    init(autoreset=True)
+    # colorama。init(autoreset=True)
     args = parse_args()
     module_name: str = args.chain
     chain_config: ScriptChainConfig = ScriptChainConfig(module_name)
