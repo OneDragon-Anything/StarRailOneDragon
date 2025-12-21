@@ -90,7 +90,7 @@ class UseTrailblazePower(SrOperation):
             return min(24, current_challenge_times)
         elif self.mission.cate.cn == '凝滞虚影':
             return min(8, current_challenge_times)
-        elif self.mission.cate.cn == '侵蚀隧洞':
+        elif self.mission.cate.cn in ['侵蚀隧洞', '培养目标']:
             return min(6, current_challenge_times)
         return 1
 
