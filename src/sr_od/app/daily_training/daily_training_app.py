@@ -1,3 +1,5 @@
+import time
+
 from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -83,8 +85,10 @@ class DailyTrainingApp(SrApplication):
             return self.round_retry('未找到奖励按钮', wait=0.5)
         # 领奖励
         self.ctx.controller.click(pos.center)
+        time.sleep(1)
         # 再点一遍领奖励的地方, 点掉奖励弹窗
         self.ctx.controller.click(pos.center)
+        time.sleep(0.5)
         # 点掉奖励弹窗之后复核奖励是否已领完
         completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
         if not completed:
