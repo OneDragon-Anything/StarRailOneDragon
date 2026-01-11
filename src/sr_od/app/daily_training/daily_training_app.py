@@ -81,7 +81,14 @@ class DailyTrainingApp(SrApplication):
             return self.round_success('已领取过每日实训奖励', wait=1)
         if pos is None:
             return self.round_retry('未找到奖励按钮', wait=0.5)
+        # 领奖励
         self.ctx.controller.click(pos.center)
+        # 再点一遍领奖励的地方, 点掉奖励弹窗
+        self.ctx.controller.click(pos.center)
+        # 点掉奖励弹窗之后复核奖励是否已领完
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
+        if not completed:
+            return self.round_fail('每日实训还未完成')
         return self.round_success('每日实训已完成', wait=1)
 
     @node_from(from_name='领取奖励')
