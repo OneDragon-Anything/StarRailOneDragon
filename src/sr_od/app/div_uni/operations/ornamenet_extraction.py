@@ -31,6 +31,9 @@ class ChallengeOrnamentExtraction(SrOperation):
         self.run_times: int = run_times
         """需要挑战的次数"""
 
+        self.completed_times: int = -1
+        """需要挑战的次数"""
+
         self.file_num: int = file_num
         """需要使用的存档 0为不选择"""
 
@@ -117,6 +120,7 @@ class ChallengeOrnamentExtraction(SrOperation):
     def click_challenge_times(self) -> OperationRoundResult:
         log.info('本次挑战次数 %d', self.run_times)
         if self.run_times > 1:
+            self.completed_times = min(6, self.run_times)
             op = ChooseChallengeTimes(self.ctx, min(6, self.run_times), mission_type='饰品提取')
             return self.round_by_op_result(op.execute())
         else:
@@ -169,12 +173,12 @@ class ChallengeOrnamentExtraction(SrOperation):
             return self.round_by_op_result(op_result)
 
         if op_result.status == battle_screen_state.ScreenState.BATTLE_FAIL.value:
-            self.battle_fail_times += 1
+            self.battle_fail_times += self.completed_times
             return self.round_by_op_result(op_result)
         elif op_result.status == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
-            self.battle_success_times += 1
+            self.battle_success_times += self.completed_times
             if self.get_reward_callback is not None:
-                self.get_reward_callback(1)
+                self.get_reward_callback(self.completed_times)
             return self.round_by_op_result(op_result)
         else:
             return self.round_fail('未知状态')
