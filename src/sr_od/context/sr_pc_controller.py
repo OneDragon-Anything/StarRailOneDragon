@@ -37,14 +37,21 @@ class SrPcController(PcControllerBase):
     def close_game(self):
         """
         关闭游戏
+        适配新版本游戏,需要多次点击关闭按钮才能成功关闭
         :return:
         """
         win = self.game_win.get_win()
         if win is None:
             return
         try:
-            import subprocess
-            subprocess.run(["taskkill", "/f", "/fi", f"WINDOWTITLE eq {win.title}"], check=True, capture_output=True)
+            # 尝试多次点击关闭按钮,新版本游戏需要多次点击才能关闭
+            for i in range(5):
+                try:
+                    win.close()
+                    time.sleep(0.5)
+                except Exception:
+                    # 窗口已关闭会抛出异常,这是正常的
+                    break
             log.info('关闭游戏成功')
         except Exception:
             log.error('关闭游戏失败', exc_info=True)
