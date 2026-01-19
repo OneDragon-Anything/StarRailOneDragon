@@ -49,8 +49,9 @@ class SrPcController(PcControllerBase):
                 try:
                     win.close()
                     time.sleep(0.5)
-                except Exception:
+                except Exception as e:
                     # 窗口已关闭会抛出异常,这是正常的
+                    log.debug('窗口关闭循环中断: %s', str(e))
                     break
             log.info('关闭游戏成功')
         except Exception:
