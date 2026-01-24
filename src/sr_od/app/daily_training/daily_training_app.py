@@ -88,12 +88,8 @@ class DailyTrainingApp(SrApplication):
         time.sleep(1)
         # 再点一遍领奖励的地方, 点掉奖励弹窗
         self.ctx.controller.click(pos.center)
-        time.sleep(0.5)
         # 点掉奖励弹窗之后复核奖励是否已领完
-        completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
-        if not completed:
-            return self.round_fail('每日实训还未完成')
-        return self.round_success('每日实训已完成', wait=1)
+        return self.round_wait('检查每日实训领取情况', wait=0.5)
 
     @node_from(from_name='领取奖励')
     @operation_node(name='结束后返回')
