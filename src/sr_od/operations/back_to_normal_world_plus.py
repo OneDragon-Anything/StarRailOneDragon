@@ -46,6 +46,10 @@ class BackToNormalWorldPlus(SrOperation):
         # 在可以移动的画面 - 普通大世界
         result = self.round_by_find_area(screen, '大世界', '角色图标')
         if result.is_success:  # 右上角有角色图标
+            # 检测弹窗 "点击空白处关闭" 弹窗不会遮挡角色图标 需要先关闭
+            result = self.round_by_find_and_click_area(screen, '大世界', '点击空白处关闭')
+            if result.is_success:
+                return self.round_wait(wait=1)
             return self.round_success()
 
         # 手机菜单
