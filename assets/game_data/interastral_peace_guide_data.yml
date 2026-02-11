@@ -278,6 +278,12 @@
           region_name: "大矿区"
           power: 30
 
+        - mission_name: "残灰之形"
+          show_in_power_plan: true
+          display_name: "火-残灰之形"
+          region_name: "「神谕圣地」雅努萨波利斯"
+          power: 30
+
         - mission_name: "嗔怒之形"
           show_in_power_plan: true
           display_name: "火-嗔怒之形"
