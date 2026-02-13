@@ -1,5 +1,5 @@
 from cv2.typing import MatLike
-from typing import Optional, ClassVar
+from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
@@ -18,8 +18,9 @@ class ChooseSupportInTeam(SrOperation):
 
     STATUS_SUPPORT_NOT_FOUND: ClassVar[str] = '未找到支援角色'
     STATUS_SUPPORT_NEEDED: ClassVar[str] = '需要支援角色'
+    STATUS_DUPLICATE_REPLACED: ClassVar[str] = '已替换重复角色'
 
-    def __init__(self, ctx: SrContext, character_id: Optional[str]):
+    def __init__(self, ctx: SrContext, character_id: str | None):
         """
         需要在管理配队页面使用 选择对应支援角色
         如果不传入支援角色 则直接返回成功
@@ -28,7 +29,7 @@ class ChooseSupportInTeam(SrOperation):
         """
         SrOperation.__init__(self, ctx, op_name=gt('选择支援'))
 
-        self.character_id: Optional[str] = character_id
+        self.character_id: str | None = character_id
         self.no_find_character_times: int = 0
 
     @operation_node(name='等待画面加载', node_max_retry_times=10, is_start_node=True)
@@ -56,16 +57,49 @@ class ChooseSupportInTeam(SrOperation):
         """
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '挑战副本', '支援按钮',
-                                                 success_wait=2, retry_wait=1)
+                                                 success_wait=1, retry_wait=1)
 
     @node_from(from_name='点击支援')
+    @operation_node(name='检测替换图标', node_max_retry_times=10)
+    def check_duplicate_replaced(self) -> OperationRoundResult:
+        """
+        检查目标角色头像是否有替换图标
+        如果有，说明游戏会自动替换重复角色，跳过踢人
+        找不到角色时滑动列表重试
+        """
+        screen = self.screenshot()
+        pos = self._get_character_pos(screen)
+
+        if pos is None:
+            area = self.ctx.screen_loader.get_area('挑战副本', '支援角色列表')
+            drag_from = area.center
+            drag_to = drag_from + Point(0, -400)
+            self.ctx.controller.drag_to(drag_to, drag_from)
+            return self.round_retry(wait=2)
+
+        avatar_part = cv2_utils.crop_image_only(
+            screen, Rect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h)
+        )
+        area = self.ctx.screen_loader.get_area('挑战副本', '支援角色替换图标')
+        mrl = self.ctx.tm.match_template(
+            avatar_part, area.template_sub_dir, area.template_id,
+            threshold=area.template_match_threshold
+        )
+        if mrl.max is not None:
+            return self.round_success(status=ChooseSupportInTeam.STATUS_DUPLICATE_REPLACED)
+
+        return self.round_success()
+
+    @node_from(from_name='检测替换图标')
+    @node_from(from_name='检测替换图标', success=False)
     @operation_node(name='踢掉自己的角色', node_max_retry_times=10)
     def remove_chara(self) -> OperationRoundResult:
         """
-        todo 暂时延续之前版本做法, 实现踢掉4号位
+        游戏内的角色不能直接替换, 可以踢掉4号位让支援角色入队
         """
         return self.round_by_click_area('挑战副本', '支援入队踢4号位角色')
 
+    @node_from(from_name='检测替换图标', status=STATUS_DUPLICATE_REPLACED)
     @node_from(from_name='踢掉自己的角色')
     @operation_node(name='点击头像', node_max_retry_times=10)
     def click_avatar(self) -> OperationRoundResult:
@@ -78,7 +112,7 @@ class ChooseSupportInTeam(SrOperation):
 
         if pos is None:
             self.no_find_character_times += 1
-            if self.no_find_character_times >= 5:
+            if self.no_find_character_times >= 10:
                 # 找不到支援角色 点击右边返回 按特殊状态返回成功
                 self.round_by_click_area('挑战副本', '支援按钮')
                 return self.round_fail(ChooseSupportInTeam.STATUS_SUPPORT_NOT_FOUND, wait=1.5)
@@ -106,7 +140,7 @@ class ChooseSupportInTeam(SrOperation):
         return self.round_by_find_and_click_area(screen, '挑战副本', '支援入队按钮',
                                                  success_wait=1, retry_wait=1)
 
-    def _get_character_pos(self, screen: Optional[MatLike] = None) -> Optional[MatchResult]:
+    def _get_character_pos(self, screen: MatLike | None = None) -> MatchResult | None:
         """
         找到角色头像的位置
         :return:

@@ -1,0 +1,8 @@
+sub_dir: challenge_mission
+template_id: duplicate_character_replaced
+template_name: 已替换重复角色
+template_shape: rectangle
+auto_mask: true
+point_list:
+- 126, 751
+- 147, 771

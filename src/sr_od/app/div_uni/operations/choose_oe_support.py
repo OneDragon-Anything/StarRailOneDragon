@@ -1,8 +1,11 @@
-from typing import Optional
+from typing import ClassVar
 
+from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -11,14 +14,16 @@ from sr_od.operations.team.choose_support import ChooseSupport
 
 class ChooseOeSupport(SrOperation):
 
-    def __init__(self, ctx: SrContext, character_id: Optional[str]):
+    STATUS_DUPLICATE_REPLACED: ClassVar[str] = '已替换重复角色'
+
+    def __init__(self, ctx: SrContext, character_id: str | None):
         """
         在位面饰品提取画面 选择支援
         执行后停留在 位面饰品提取画面
         """
         SrOperation.__init__(self, ctx, op_name=f"{gt('饰品提取', 'game')} {gt('选择支援')}")
 
-        self.character_id: str = character_id
+        self.character_id: str | None = character_id
         """支援角色ID"""
 
         self.found_character: bool = False
@@ -49,13 +54,45 @@ class ChooseOeSupport(SrOperation):
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='点击支援按钮')
+    @operation_node(name='检测替换图标', node_max_retry_times=10)
+    def check_duplicate_replaced(self) -> OperationRoundResult:
+        """
+        检查目标角色头像是否有替换图标
+        找不到角色时滑动列表重试
+        """
+        screen = self.screenshot()
+        pos = ChooseSupport.get_character_pos(self, screen, self.character_id)
+
+        if pos is None:
+            area = self.ctx.screen_loader.get_area('队伍', '角色列表')
+            drag_from = area.center
+            drag_to = drag_from + Point(0, -400)
+            self.ctx.controller.drag_to(drag_to, drag_from)
+            return self.round_retry(wait=1)
+
+        avatar_part = cv2_utils.crop_image_only(
+            screen, Rect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h)
+        )
+        area = self.ctx.screen_loader.get_area('饰品提取', '支援角色替换图标')
+        mrl = self.ctx.tm.match_template(
+            avatar_part, area.template_sub_dir, area.template_id,
+            threshold=area.template_match_threshold
+        )
+        if mrl.max is not None:
+            return self.round_success(status=ChooseOeSupport.STATUS_DUPLICATE_REPLACED)
+
+        return self.round_success()
+
+    @node_from(from_name='检测替换图标')
+    @node_from(from_name='检测替换图标', success=False)
     @operation_node(name='踢掉自己的角色', node_max_retry_times=10)
     def remove_chara(self) -> OperationRoundResult:
         """
-        todo 暂时延续之前版本做法, 实现踢掉4号位
+        游戏内的角色不能直接替换, 可以踢掉4号位让支援角色入队
         """
         return self.round_by_click_area('饰品提取', '支援入队踢4号位角色')
 
+    @node_from(from_name='检测替换图标', status=STATUS_DUPLICATE_REPLACED)
     @node_from(from_name='踢掉自己的角色')
     @operation_node(name='选择支援角色')
     def choose_support(self) -> OperationRoundResult:
