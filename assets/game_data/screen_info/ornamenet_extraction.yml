@@ -103,15 +103,22 @@ area_list:
   template_match_threshold: 0.7
 - area_name: 按钮-支援
   pc_rect:
-  - 927
+  - 672
   - 870
-  - 1050
+  - 750
   - 928
   text: 支援
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+- area_name: 支援入队踢4号位角色
+  id_mark: false
+  pc_rect:
+  - 933
+  - 816
+  - 933
+  - 816
 - area_name: 按钮-开始挑战
   pc_rect:
   - 1478

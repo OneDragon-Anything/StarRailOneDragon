@@ -49,6 +49,14 @@ class ChooseOeSupport(SrOperation):
                                                  success_wait=1, retry_wait=1)
 
     @node_from(from_name='点击支援按钮')
+    @operation_node(name='踢掉自己的角色', node_max_retry_times=10)
+    def remove_chara(self) -> OperationRoundResult:
+        """
+        todo 暂时延续之前版本做法, 实现踢掉4号位
+        """
+        return self.round_by_click_area('饰品提取', '支援入队踢4号位角色')
+
+    @node_from(from_name='踢掉自己的角色')
     @operation_node(name='选择支援角色')
     def choose_support(self) -> OperationRoundResult:
         """

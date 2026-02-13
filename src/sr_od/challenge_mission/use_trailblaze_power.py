@@ -270,7 +270,7 @@ def __debug_op():
     category = ctx.guide_data.best_match_category_by_name('拟造花萼（赤）', tab)
     mission = ctx.guide_data.best_match_mission_by_name('存护之蕾', category, '克劳克影视乐园')
 
-    op = UseTrailblazePower(ctx, mission, 2, 7)
+    op = UseTrailblazePower(ctx, mission, 2, 2, support='hyacine')
 
     op.execute()
 

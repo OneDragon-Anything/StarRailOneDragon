@@ -56,9 +56,17 @@ class ChooseSupportInTeam(SrOperation):
         """
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '挑战副本', '支援按钮',
-                                                 success_wait=1, retry_wait=1)
+                                                 success_wait=2, retry_wait=1)
 
     @node_from(from_name='点击支援')
+    @operation_node(name='踢掉自己的角色', node_max_retry_times=10)
+    def remove_chara(self) -> OperationRoundResult:
+        """
+        todo 暂时延续之前版本做法, 实现踢掉4号位
+        """
+        return self.round_by_click_area('挑战副本', '支援入队踢4号位角色')
+
+    @node_from(from_name='踢掉自己的角色')
     @operation_node(name='点击头像', node_max_retry_times=10)
     def click_avatar(self) -> OperationRoundResult:
         """
