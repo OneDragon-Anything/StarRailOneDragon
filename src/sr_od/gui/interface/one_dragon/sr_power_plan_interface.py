@@ -111,7 +111,7 @@ class PowerPlanCard(MultiLineSettingCard):
 
     def init_character_box(self) -> None:
         config_list = (
-                [ConfigItem('无', 'none')]
+                [ConfigItem('无', 'none'), ConfigItem('随机', 'random')]
                 + [ConfigItem(i.cn, i.id) for i in CHARACTER_LIST]
         )
         self.character_combo_box.set_items(config_list, self.plan.support)
@@ -313,7 +313,7 @@ class PowerPlanInterface(VerticalScrollInterface):
         dialog.cancelButton.setText('取消')
         if dialog.exec():
             self.plan_list_backup = self.ctx.power_config.plan_list.copy()
-            not_completed_plans = [plan for plan in self.ctx.power_config.plan_list 
+            not_completed_plans = [plan for plan in self.ctx.power_config.plan_list
                                 if plan.run_times < plan.plan_times]
             self.ctx.power_config.plan_list = not_completed_plans.copy()
             self.ctx.power_config.save()

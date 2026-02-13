@@ -123,6 +123,16 @@ class ChooseSupportInTeam(SrOperation):
             log.error('找不到等级')
             return None
 
+        # 随机模式：直接选择第一个找到的角色
+        if self.character_id == 'random':
+            for v in ocr_result_map.values():
+                if v:
+                    pos = v[0]
+                    center = area.rect.left_top + pos.center
+                    return MatchResult(1, center.x - 42, center.y - 100, 97, 90)
+            return None
+
+        # 指定角色模式：通过头像 ORB 特征匹配找到目标角色
         template = self.ctx.template_loader.get_template('character_avatar', self.character_id)
         if template is None:
             log.error('找不到角色头像模板 %s', self.character_id)
