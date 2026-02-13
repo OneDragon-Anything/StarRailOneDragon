@@ -15,7 +15,6 @@ from sr_od.operations.menu.open_phone_menu import OpenPhoneMenu
 
 
 class AssignmentsApp(SrApplication):
-
     STATUS_WITH_ALERT: ClassVar[str] = '委托红点'
     STATUS_NO_ALERT: ClassVar[str] = '无委托红点'
     STATUS_NO_ALL_CLAIM: ClassVar[str] = '无一键领取'
@@ -43,20 +42,12 @@ class AssignmentsApp(SrApplication):
         screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos(self.ctx, screen, phone_menu_const.ASSIGNMENTS, alert=False)
         if result is None:
-            return self.round_success(AssignmentsApp.STATUS_NO_ALERT)
+            return self.round_retry()
         else:
             self.ctx.controller.click(result.center)
             return self.round_success(AssignmentsApp.STATUS_WITH_ALERT, wait=2)
 
-    @node_from(from_name='点击委托', status=STATUS_WITH_ALERT)
-    @operation_node(name='选择专属材料')
-    def choose_tab(self) -> OperationRoundResult:
-        screen = self.last_screenshot
-        area = self.ctx.screen_loader.get_area('画面-委托', 'TAB列表')
-        return self.round_by_ocr_and_click(screen, target_cn='专属材料', area=area,
-                                           success_wait=1, retry_wait=1)
-
-    @node_from(from_name='选择专属材料')
+    @node_from(from_name='点击委托')
     @operation_node(name='一键领取')
     def _claim_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -68,36 +59,21 @@ class AssignmentsApp(SrApplication):
             return self.round_success(status=AssignmentsApp.STATUS_NO_ALL_CLAIM)
 
     @node_from(from_name='一键领取')
-    @operation_node(name='再次派遣')
-    def assign_again(self) -> OperationRoundResult:
-        screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, '菜单', '委托-再次派遣',
-                                                 success_wait=1, retry_wait=1)
-
-    @node_from(from_name='点击空白')
-    @operation_node(name='领取')
-    def _claim(self) -> OperationRoundResult:
-        screen = self.last_screenshot
-
-        result = self.round_by_find_area(screen, '菜单', '委托-领取')
-        if result.is_success:
-            return self.round_by_find_and_click_area(screen, '菜单', '委托-领取',
-                                                     success_wait=1, retry_wait=1)
-        else:
-            return self.round_success(status=AssignmentsApp.STATUS_NO_CLAIM)
-
-    @node_from(from_name='领取')
-    @operation_node(name='点击空白')
-    def _click_empty(self):
-        screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, '菜单', '委托-点击空白区域继续',
-                                                 success_wait=1, retry_wait=1)
-
-    @node_from(from_name='再次派遣')
-    @node_from(from_name='点击委托', status=STATUS_NO_ALERT)
-    @node_from(from_name='一键领取', status=STATUS_NO_ALL_CLAIM)
     @operation_node(name='完成后返回大世界')
     def back_at_last(self) -> OperationRoundResult:
         self.notify_screenshot = self.save_screenshot_bytes()  # 结束后通知的截图
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.init_for_sim_uni()
+    ctx.start_running()
+    op = AssignmentsApp(ctx)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()

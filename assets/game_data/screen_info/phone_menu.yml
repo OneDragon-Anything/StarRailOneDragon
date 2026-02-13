@@ -70,11 +70,11 @@ area_list:
 - area_name: 委托-一键领取
   id_mark: false
   pc_rect:
-  - 370
-  - 886
-  - 573
-  - 933
-  text: 一键领取
+  - 1400
+  - 900
+  - 1600
+  - 960
+  text: 领取奖励
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
