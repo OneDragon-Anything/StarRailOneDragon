@@ -112,7 +112,7 @@
           region_name: '「纷争荒墟」悬锋城'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-翁法罗斯"
           region_name: '「呓语密林」神悟树庭'
@@ -130,7 +130,7 @@
           region_name: '稚子的梦'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-匹诺康尼"
           region_name: '「白日梦」酒店-梦境'
@@ -148,7 +148,7 @@
           region_name: '太卜司'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-仙舟「罗浮」"
           region_name: '工造司'
@@ -166,7 +166,7 @@
           region_name: '边缘通路'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-雅利洛-VI"
           region_name: '大矿区'
