@@ -12,6 +12,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+from sr_od.operations.team.choose_support import ChooseSupport
 
 
 class ChooseSupportInTeam(SrOperation):
@@ -69,26 +70,12 @@ class ChooseSupportInTeam(SrOperation):
         """
         screen = self.screenshot()
         pos = self._get_character_pos(screen)
-
-        if pos is None:
-            area = self.ctx.screen_loader.get_area('挑战副本', '支援角色列表')
-            drag_from = area.center
-            drag_to = drag_from + Point(0, -400)
-            self.ctx.controller.drag_to(drag_to, drag_from)
-            return self.round_retry(wait=2)
-
-        avatar_part = cv2_utils.crop_image_only(
-            screen, Rect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h)
+        return ChooseSupport.check_replace_icon(
+            self, screen, pos,
+            '挑战副本', '支援角色列表',
+            '挑战副本', '支援角色替换图标',
+            ChooseSupportInTeam.STATUS_DUPLICATE_REPLACED
         )
-        area = self.ctx.screen_loader.get_area('挑战副本', '支援角色替换图标')
-        mrl = self.ctx.tm.match_template(
-            avatar_part, area.template_sub_dir, area.template_id,
-            threshold=area.template_match_threshold
-        )
-        if mrl.max is not None:
-            return self.round_success(status=ChooseSupportInTeam.STATUS_DUPLICATE_REPLACED)
-
-        return self.round_success()
 
     @node_from(from_name='检测替换图标')
     @node_from(from_name='检测替换图标', success=False)
