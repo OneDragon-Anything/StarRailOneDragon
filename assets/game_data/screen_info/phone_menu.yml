@@ -119,6 +119,19 @@ area_list:
   template_id: ''
   template_match_threshold: 0.7
   goto_list: []
+- area_name: 无名勋礼-开启无名勋礼
+  id_mark: false
+  pc_rect:
+  - 1437
+  - 763
+  - 1600
+  - 800
+  text: 开启无名勋礼
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  goto_list: []
 - area_name: 无名勋礼-奖励-一键领取
   id_mark: false
   pc_rect:
