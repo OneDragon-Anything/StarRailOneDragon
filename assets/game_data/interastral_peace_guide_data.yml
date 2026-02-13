@@ -91,13 +91,13 @@
         - mission_name: "以太之蕾"
           show_in_power_plan: true
           display_name: "光锥经验-二相乐园"
-          region_name: '鸥川区'
+          region_name: '鸽川区'
           power: 10
 
         - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-二相乐园"
-          region_name: '鸥川区'
+          region_name: '鸽川区'
           power: 10
 
         - mission_name: "回忆之蕾"
@@ -359,7 +359,7 @@
         - mission_name: "音爆之形"
           show_in_power_plan: true
           display_name: "雷-音爆之形"
-          region_name: "鸥川区"
+          region_name: "鸽川区"
           power: 30
 
         - mission_name: "机狼之形"
@@ -460,6 +460,7 @@
         - mission_name: "魔占之径"
           show_in_power_plan: true
           display_name: "闪耀功勋的魔法少女/应天涉远的卜者"
+          region_name: "绘世学院"
           power: 40
 
         - mission_name: "隐救之径"
