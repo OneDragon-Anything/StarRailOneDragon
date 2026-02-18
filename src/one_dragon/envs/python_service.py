@@ -122,7 +122,6 @@ class PythonService:
         command = [
             self.env_config.uv_path,
             'sync',
-            '--frozen',
             '--find-links',
             DEFAULT_WHEELS_DIR_PATH,
             '--default-index',
