@@ -26,26 +26,15 @@ class ChooseOeSupport(SrOperation):
         self.found_character: bool = False
         """是否找到支援角色"""
 
-    @operation_node(name='识别画面', is_start_node=True)
-    def check_screen(self) -> OperationRoundResult:
-        """
-        识别画面
-        :return:
-        """
-        if self.character_id is None:
-            return self.round_success('无需支援')
-
-        screen = self.last_screenshot
-
-        return self.round_by_find_area(screen, '饰品提取', '左上角标题-饰品提取', retry_wait=1)
-
-    @node_from(from_name='识别画面', status='左上角标题-饰品提取')
-    @operation_node(name='点击支援按钮')
+    @operation_node(name='点击支援按钮', is_start_node=True)
     def click_support(self) -> OperationRoundResult:
         """
         点击支援按钮
         :return:
         """
+        if self.character_id is None:
+            return self.round_success('无需支援')
+
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-支援',
                                                  success_wait=1, retry_wait=1)

@@ -101,6 +101,23 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+- area_name: 按钮-预设编队
+  pc_rect:
+  - 365
+  - 60
+  - 500
+  - 100
+  text: 预设编队
+  lcs_percent: 0.55
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+- area_name: 区域-预设编队名称
+  pc_rect:
+  - 30
+  - 100
+  - 300
+  - 1000
 - area_name: 按钮-支援
   pc_rect:
   - 672

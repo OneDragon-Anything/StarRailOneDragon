@@ -24,7 +24,7 @@ class ChooseOeFile(SrOperation):
         识别当前所在的画面
         :return:
         """
-        if self.num < 1 or self.num > 4:
+        if self.num > 4:
             return self.round_fail('存档编号只能是1~4')
 
         if self.num == 0:
@@ -91,7 +91,7 @@ class ChooseOeFile(SrOperation):
 
         result = self.round_by_find_area(screen, '饰品提取', '按钮-存档使用中')
         if result.is_success:
-            self.round_by_click_area('菜单', '')
+            self.round_by_click_area('菜单', '右上角返回')
             return self.round_success(result.status, wait=1.5)  # 已经在使用了 返回即可
 
         return self.round_retry(result.status, wait=1)

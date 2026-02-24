@@ -13,7 +13,7 @@ from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiPush
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
 from sr_od.app.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
 from sr_od.config.character_const import CHARACTER_LIST
-from sr_od.config.team_config import TeamNumEnum
+from sr_od.config.team_config import TeamNumEnum, FileNumEnum
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 
@@ -37,8 +37,18 @@ class PowerPlanCard(MultiLineSettingCard):
         self.mission_combo_box = ComboBox()
         self.mission_combo_box.currentIndexChanged.connect(self.on_mission_changed)
 
-        self.team_opt = ComboBox()
-        self.team_opt.currentIndexChanged.connect(self.on_team_changed)
+        # 编队序号 (1-9)
+        self.team_num_opt = ComboBox()
+        self.team_num_opt.currentIndexChanged.connect(self.on_team_changed)
+        # 饰品提取的存档编号
+        self.file_num_opt = ComboBox()
+        self.file_num_opt.currentIndexChanged.connect(self.on_file_changed)
+        # 编队名称 (用于饰品提取)
+        self.team_name_input = LineEdit()
+        self.team_name_input.setFixedWidth(88)
+        self.team_name_input.setPlaceholderText('编队名称')
+        self.team_name_input.textChanged.connect(self._on_team_name_changed)
+        self.team_name_input.hide()
 
         self.character_combo_box = EditableComboBox()
         self.character_combo_box.currentIndexChanged.connect(self.on_character_changed)
@@ -66,7 +76,9 @@ class PowerPlanCard(MultiLineSettingCard):
                 [
                     self.category_combo_box,
                     self.mission_combo_box,
-                    self.team_opt,
+                    self.team_num_opt,
+                    self.file_num_opt,
+                    self.team_name_input,
                     self.character_combo_box,
                 ],
                 [
@@ -86,6 +98,10 @@ class PowerPlanCard(MultiLineSettingCard):
     def init_category_combo_box(self) -> None:
         config_list = self.ctx.guide_data.get_category_list_in_power_plan()
         self.category_combo_box.set_items(config_list, self.plan.mission.cate)
+        # 饰品提取时输入队伍名称, 为空则为系统默认配队
+        self.team_num_opt.setVisible(self.plan.mission.cate.cn != '饰品提取')
+        self.file_num_opt.setVisible(self.plan.mission.cate.cn == '饰品提取')
+        self.team_name_input.setVisible(self.plan.mission.cate.cn == '饰品提取')
 
     def init_mission_combo_box(self) -> None:
         category = self.category_combo_box.currentData()
@@ -102,12 +118,17 @@ class PowerPlanCard(MultiLineSettingCard):
 
         self.mission_combo_box.set_items(config_list, self.plan.mission)
 
-    def init_team_opt(self) -> None:
+    def init_team(self) -> None:
         """
-        初始化预备编队的下拉框
+        初始化预备编队/饰品提取文件与队伍的下拉框
         """
-        config_list = [i.value for i in TeamNumEnum]
-        self.team_opt.set_items(config_list, self.plan.team_num)
+        # 编队
+        self.team_num_opt.set_items([i.value for i in TeamNumEnum], self.plan.team_num)
+
+        # 饰品提取文件
+        self.file_num_opt.set_items([i.value for i in FileNumEnum], self.plan.file_num)
+        # 饰品提取队伍
+        self.team_name_input.setText(self.plan.team_name)
 
     def init_character_box(self) -> None:
         config_list = (
@@ -134,7 +155,7 @@ class PowerPlanCard(MultiLineSettingCard):
 
         self.init_category_combo_box()
         self.init_mission_combo_box()
-        self.init_team_opt()
+        self.init_team()
         self.init_character_box()
 
         self.init_run_times_input()
@@ -142,6 +163,11 @@ class PowerPlanCard(MultiLineSettingCard):
 
     def on_category_changed(self, idx: int) -> None:
         self.init_mission_combo_box()
+
+        # 饰品提取时输入队伍名称, 为空则为系统默认配队
+        self.team_num_opt.setVisible(self.plan.mission.cate.cn != '饰品提取')
+        self.file_num_opt.setVisible(self.plan.mission.cate.cn == '饰品提取')
+        self.team_name_input.setVisible(self.plan.mission.cate.cn == '饰品提取')
 
         self.update_by_history()
 
@@ -156,7 +182,15 @@ class PowerPlanCard(MultiLineSettingCard):
         self._emit_value()
 
     def on_team_changed(self, idx: int) -> None:
-        self.plan.team_num = self.team_opt.currentData()
+        self.plan.team_num = self.team_num_opt.currentData()
+        self._emit_value()
+
+    def on_file_changed(self, idx: int) -> None:
+        self.plan.file_num = self.file_num_opt.currentData()
+        self._emit_value()
+
+    def _on_team_name_changed(self) -> None:
+        self.plan.team_name = self.team_name_input.text()
         self._emit_value()
 
     def on_character_changed(self, idx: int) -> None:
@@ -197,7 +231,7 @@ class PowerPlanCard(MultiLineSettingCard):
         self.plan.plan_times = history.plan_times
         self.plan.run_times = 0
 
-        self.init_team_opt()
+        self.init_team()
         self.init_character_box()
         self.init_plan_times_input()
 

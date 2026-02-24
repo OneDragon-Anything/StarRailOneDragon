@@ -122,7 +122,8 @@ class TrailblazePowerApp(SrApplication):
             op = ChallengeOrnamentExtraction(self.ctx, mission,
                                              run_times=run_times,
                                              diff=0,
-                                             file_num=plan.team_num,
+                                             file_num=plan.file_num,
+                                             team_name=plan.team_name,
                                              support_character=plan.support if plan.support != 'none' else None,
                                              get_reward_callback=self.on_oe_get_reward)
         else:

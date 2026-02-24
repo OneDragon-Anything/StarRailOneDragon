@@ -9,9 +9,11 @@ from sr_od.interastral_peace_guide.guide_def import GuideMission, GuideCategory
 class TrailblazePowerPlanItem:
 
     def __init__(self, mission_id: str, team_num: int, support: str, plan_times: int,
-                 run_times: int = 0, diff: int = 0):
+                 run_times: int = 0, diff: int = 0, file_num: int = '', team_name: str = ''):
         self.mission_id: str = mission_id  # 关卡id - 新
         self.team_num: int = team_num  # 使用配队 0代表游戏内当前配队
+        self.file_num: int = file_num  # 饰品提取 存档编号 0代表游戏内当前编号
+        self.team_name: str = team_name  # 用于饰品提取选择配队
         self.support: str = support  # 支援角色 'none'或者None就是没有
         self.plan_times: int = plan_times  # 计划通关次数
         self.run_times: int = run_times  # 已经通关次数
@@ -61,6 +63,8 @@ class TrailblazePowerConfig(YamlConfig):
         item = TrailblazePowerPlanItem(
             mission.unique_id,
             team_num=0 if history is None else history.team_num,
+            file_num=0 if history is None else history.file_num,
+            team_name='' if history is None else history.team_name,
             support='none' if history is None else history.support,
             plan_times=1 if history is None else history.plan_times,
             run_times=0,
@@ -135,6 +139,8 @@ class TrailblazePowerConfig(YamlConfig):
             {
                 'mission_id': i.mission_id,
                 'team_num': i.team_num,
+                'file_num': i.file_num,
+                'team_name': i.team_name,
                 'support': i.support,
                 'plan_times': i.plan_times,
                 'run_times': i.run_times,
@@ -152,6 +158,8 @@ class TrailblazePowerConfig(YamlConfig):
                     continue
 
                 history_data['team_num'] = i.team_num
+                history_data['file_num'] = i.file_num
+                history_data['team_name'] = i.team_name
                 history_data['support'] = i.support
                 history_data['plan_times'] = i.plan_times
                 history_data['diff'] = i.diff
@@ -162,6 +170,8 @@ class TrailblazePowerConfig(YamlConfig):
                 history_teams.append({
                     'mission_id': i.mission_id,
                     'team_num': i.team_num,
+                    'file_num': i.file_num,
+                    'team_name': i.team_name,
                     'support': i.support,
                     'plan_times': i.plan_times,
                     'diff': i.diff

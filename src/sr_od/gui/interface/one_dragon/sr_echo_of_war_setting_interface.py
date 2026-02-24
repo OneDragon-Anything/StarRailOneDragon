@@ -30,8 +30,8 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         self.mission_combo_box = ComboBox()
         self.mission_combo_box.currentIndexChanged.connect(self.on_mission_changed)
 
-        self.team_opt = ComboBox()
-        self.team_opt.currentIndexChanged.connect(self.on_team_changed)
+        self.team_num_opt = ComboBox()
+        self.team_num_opt.currentIndexChanged.connect(self.on_team_changed)
 
         self.character_combo_box = EditableComboBox()
         self.character_combo_box.currentIndexChanged.connect(self.on_character_changed)
@@ -51,7 +51,7 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
             line_list=[
                 [
                     self.mission_combo_box,
-                    self.team_opt,
+                    self.team_num_opt,
                     self.character_combo_box,
                 ],
                 [
@@ -81,12 +81,12 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
 
         self.mission_combo_box.set_items(config_list, self.plan.mission)
 
-    def init_team_opt(self) -> None:
+    def init_team_num_opt(self) -> None:
         """
         初始化预备编队的下拉框
         """
         config_list = [i.value for i in TeamNumEnum]
-        self.team_opt.set_items(config_list, self.plan.team_num)
+        self.team_num_opt.set_items(config_list, self.plan.team_num)
 
     def init_character_box(self) -> None:
         config_list = (
@@ -112,7 +112,7 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         self.plan = plan
 
         self.init_mission_combo_box()
-        self.init_team_opt()
+        self.init_team_num_opt()
         self.init_character_box()
 
         self.init_run_times_input()
@@ -134,7 +134,7 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         self._emit_value()
 
     def on_team_changed(self, idx: int) -> None:
-        self.plan.team_num = self.team_opt.currentData()
+        self.plan.team_num = self.team_num_opt.currentData()
         self._emit_value()
 
     def on_character_changed(self, idx: int) -> None:
@@ -166,7 +166,7 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         self.plan.plan_times = history.plan_times
         self.plan.run_times = 0
 
-        self.init_team_opt()
+        self.init_team_num_opt()
         self.init_character_box()
         self.init_plan_times_input()
 

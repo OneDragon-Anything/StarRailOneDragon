@@ -293,6 +293,8 @@ def __debug_op():
     tab = ctx.guide_data.best_match_tab_by_name('生存索引')
     category = ctx.guide_data.best_match_category_by_name('拟造花萼（赤）', tab)
     mission = ctx.guide_data.best_match_mission_by_name('存护之蕾', category, '克劳克影视乐园')
+    # category = ctx.guide_data.best_match_category_by_name('培养目标', tab)
+    # mission = ctx.guide_data.best_match_mission_by_name('培养目标', category, None)
 
     op = UseTrailblazePower(ctx, mission, 2, 2, support='hyacine')
 
