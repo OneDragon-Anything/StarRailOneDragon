@@ -135,16 +135,17 @@ class UseTrailblazePower(SrOperation):
         screen = self.last_screenshot
 
         result1 = self.round_by_find_area(screen, '挑战副本', '开拓力弹框-标题')
+        if not result1.is_success:
+            # 培养目标-周本 挑战次数用完
+            result1 = self.round_by_find_area(screen, '挑战副本', '提示弹框-次数用完')
         if result1.is_success:
             if self.on_battle_success is not None:
                 self.on_battle_success(0, 200)  # 清空开拓力
-            return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消',
-                                                     success_wait=1, retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消', success_wait=1, retry_wait=1)
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', retry_wait=1)
 
         return self.round_retry('无对话框', wait=0.3)
 
@@ -183,8 +184,7 @@ class UseTrailblazePower(SrOperation):
         # 有阵亡角色
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     success_wait=1, retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', success_wait=1, retry_wait=1)
 
 
         if self.mission.cate.cn == '凝滞虚影':
@@ -260,8 +260,7 @@ class UseTrailblazePower(SrOperation):
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', retry_wait=1)
 
         return self.round_retry('无对话框', wait=0.5)
 
