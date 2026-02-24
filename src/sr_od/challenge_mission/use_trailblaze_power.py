@@ -107,10 +107,14 @@ class UseTrailblazePower(SrOperation):
                     power_unit_str = ocr_result_list[0].data
                     if power_unit_str[0] in ['×', 'x']:
                         power_unit_str = power_unit_str[1:]
-                    self.mission_power_ocr = str_utils.get_positive_digits(power_unit_str, err=None)
-                    if not self.mission_power_ocr:
+                    mission_power_ocr = str_utils.get_positive_digits(power_unit_str, err=None)
+                    if mission_power_ocr is None:
                         log.error('识别体力单位失败:' + power_unit_str)
+                    elif self.mission.power < mission_power_ocr:
+                        log.error('哪个本体力消耗>40? 识别的体力为: ' + power_unit_str)
+                        return 1
                     else:
+                        self.mission_power_ocr = mission_power_ocr
                         # 根据单次体力消耗计算真实一次可以打的次数 (替换掉默认的40体力一次)
                         self.mission_challenge_times = math.floor(self.mission_challenge_times * self.mission.power / self.mission_power_ocr)
                         self.plan_times = math.floor(self.plan_times * self.mission.power / self.mission_power_ocr)

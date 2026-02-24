@@ -9,7 +9,7 @@ from sr_od.interastral_peace_guide.guide_def import GuideMission, GuideCategory
 class TrailblazePowerPlanItem:
 
     def __init__(self, mission_id: str, team_num: int, support: str, plan_times: int,
-                 run_times: int = 0, diff: int = 0, file_num: int = '', team_name: str = ''):
+                 run_times: int = 0, diff: int = 0, file_num: int = 0, team_name: str = ''):
         self.mission_id: str = mission_id  # 关卡id - 新
         self.team_num: int = team_num  # 使用配队 0代表游戏内当前配队
         self.file_num: int = file_num  # 饰品提取 存档编号 0代表游戏内当前编号

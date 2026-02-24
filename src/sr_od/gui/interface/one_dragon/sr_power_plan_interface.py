@@ -128,7 +128,9 @@ class PowerPlanCard(MultiLineSettingCard):
         # 饰品提取文件
         self.file_num_opt.set_items([i.value for i in FileNumEnum], self.plan.file_num)
         # 饰品提取队伍
+        self.team_name_input.blockSignals(True)
         self.team_name_input.setText(self.plan.team_name)
+        self.team_name_input.blockSignals(False)
 
     def init_character_box(self) -> None:
         config_list = (

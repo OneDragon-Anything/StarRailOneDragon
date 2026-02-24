@@ -25,7 +25,7 @@ class ChooseOeFile(SrOperation):
         :return:
         """
         if self.num > 4:
-            return self.round_fail('存档编号只能是1~4')
+            return self.round_fail('存档编号只能是0~4, 0代表使用默认档案')
 
         if self.num == 0:
             return self.round_success('使用默认档案')
@@ -91,7 +91,9 @@ class ChooseOeFile(SrOperation):
 
         result = self.round_by_find_area(screen, '饰品提取', '按钮-存档使用中')
         if result.is_success:
-            self.round_by_click_area('菜单', '右上角返回')
+            result = self.round_by_click_area('菜单', '右上角返回')
+            if not result.is_success:
+                return result
             return self.round_success(result.status, wait=1.5)  # 已经在使用了 返回即可
 
         return self.round_retry(result.status, wait=1)
