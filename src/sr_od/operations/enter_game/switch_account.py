@@ -24,7 +24,7 @@ class SwitchAccount(SrOperation):
         return self.round_by_op_result(op.execute())
 
     @node_from('打开菜单')
-    @operation_node(name='返回登陆')
+    @operation_node(name='返回登陆', screenshot_before_round=False)
     def _back_to_login(self) -> OperationRoundResult:
         """
         返回登陆页面

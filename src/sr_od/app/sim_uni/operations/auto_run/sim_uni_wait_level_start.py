@@ -35,7 +35,7 @@ class SimUniWaitLevelStart(SrOperation):
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         state = sim_uni_screen_state.get_sim_uni_screen_state(
             self.ctx, screen,

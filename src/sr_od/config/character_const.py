@@ -247,6 +247,7 @@ MYDEI = Character(id='mydei', cn='万敌', path=CHARACTER_PATH_DESTRUCTION, comb
 EVERNIGHT = Character(id='evernight', cn='长夜月', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF)
 DANHENGPERMANSORTERRAE = Character(id='danhengpermansorterrae', cn='丹恒·腾荒', path=CHARACTER_PATH_PRESERVATION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF)
 CYRENE = Character(id='cyrene', cn='昔涟', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_AREA)
+THE_DAHLIA = Character(id='the_dahlia', cn='大丽花', path=CHARACTER_PATH_NIHILITY, combat_type=FIRE, level=5, technique_type=TECHNIQUE_AREA)
 
 
 CHARACTER_LIST: List[Character] = [
@@ -332,6 +333,7 @@ CHARACTER_LIST: List[Character] = [
     EVERNIGHT,
     DANHENGPERMANSORTERRAE,
     CYRENE,
+    THE_DAHLIA,
 ]
 
 

@@ -23,6 +23,6 @@ class ClickDialogConfirm(SrOperation):
 
     @operation_node(name='点击', is_start_node=True)
     def click(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '通用画面', '对话框-确认',
                                                  success_wait=self.wait_after_success, retry_wait=1)

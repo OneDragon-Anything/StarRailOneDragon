@@ -28,7 +28,7 @@ class WaitInWorld(SrOperation):
 
     @operation_node(name='画面识别', is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.is_normal_in_world(self.ctx, screen):
             return self.round_success(wait=self.wait_after_success)
 

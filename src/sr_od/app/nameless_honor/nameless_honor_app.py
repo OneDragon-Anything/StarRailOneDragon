@@ -45,7 +45,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='打开菜单')
     @operation_node(name='点击无名勋礼')
     def _click_honor(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_phone_menu_item_pos(self.ctx, screen, phone_menu_const.NAMELESS_HONOR, alert=True)
         if result is None:
             return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
@@ -56,10 +56,20 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击无名勋礼', status=STATUS_WITH_ALERT)
     @operation_node(name='点击任务')
     def _click_tab_2(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
+        # 跳转第二页
         result: MatchResult = phone_menu_utils.get_nameless_honor_tab_pos(self.ctx, screen, 2, alert=True)
+        # 没有第二页
         if result is None:
-            return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
+            # 是否是版本更新后第一次打开此页面
+            result_new_ver = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-开启无名勋礼')
+            if result_new_ver.is_success:
+                time.sleep(1)
+                # 再点一遍, 点掉更新详情
+                self.ctx.controller.click()
+                return self.round_wait()
+            # 啥都找不到
+            return self.round_retry(NamelessHonorApp.STATUS_NO_ALERT)
         else:
             self.ctx.controller.click(result.center)
             return self.round_success(NamelessHonorApp.STATUS_WITH_ALERT, wait=1)
@@ -67,7 +77,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击任务')
     @operation_node(name='领取任务奖励')
     def _claim_task(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-任务-一键领取')
 
         if result.is_success:
@@ -78,12 +88,12 @@ class NamelessHonorApp(SrApplication):
         else:
             return self.round_retry(wait=1)
 
-    @node_from(from_name='点击任务', status=STATUS_NO_ALERT)  # 任务没有红点时 返回奖励
+    @node_from(from_name='点击任务', success=False)  # 任务没有红点时 返回奖励
     @node_from(from_name='领取任务奖励')  # 领取任务奖励后 返回奖励
     @node_from(from_name='领取任务奖励', success=False)  # 有新任务的时候这里会有红点 但不会有领取按钮 因此失败也继续
     @operation_node(name='点击奖励')
     def _click_tab_1(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
         result: MatchResult = phone_menu_utils.get_nameless_honor_tab_pos(self.ctx, screen, 1, alert=True)
         if result is None:
             return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
@@ -94,7 +104,7 @@ class NamelessHonorApp(SrApplication):
     @node_from(from_name='点击奖励')
     @operation_node(name='领取奖励')
     def _claim_reward(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         return self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-奖励-一键领取',
                                                  success_wait=2, retry_wait=0.5)
@@ -107,7 +117,7 @@ class NamelessHonorApp(SrApplication):
         可能出现选择奖励的框 通过判断左上角标题判断
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.in_secondary_ui(self.ctx, screen, '无名勋礼'):
             return self.round_success(wait=0.2)
 
@@ -130,3 +140,15 @@ class NamelessHonorApp(SrApplication):
         self.notify_screenshot = self.save_screenshot_bytes()  # 结束后通知的截图
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.start_running()
+    op = NamelessHonorApp(ctx)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()

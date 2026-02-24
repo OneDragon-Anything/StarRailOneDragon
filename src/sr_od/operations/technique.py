@@ -113,7 +113,7 @@ class UseTechnique(SrOperation):
     @operation_node(name='检测秘技点', is_start_node=True)
     def _check_technique_point(self) -> OperationRoundResult:
         if self.need_check_point:
-            screen = self.screenshot()
+            screen = self.last_screenshot
             point = get_technique_point(self.ctx, screen)
             if point is not None and point > 0:  # 有秘技点 随便用
                 return self.round_success(UseTechnique.STATUS_CAN_USE)
@@ -129,7 +129,7 @@ class UseTechnique(SrOperation):
     def _use(self) -> OperationRoundResult:
         if self.need_check_available and not self.op_result.with_dialog:
             # 之前出现过消耗品对话框的话 这里就不需要判断了
-            screen = self.screenshot()
+            screen = self.last_screenshot
             if not pc_can_use_technique(self.ctx, screen, self.ctx.game_config.key_technique):
                 return self.round_retry(wait=0.1)
 
@@ -150,7 +150,7 @@ class UseTechnique(SrOperation):
         if self.ctx.team_info.is_attack_technique:  # 攻击类的 使用完就取消标记
             self.ctx.technique_used = False
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         # cv2_utils.show_image(screen, win_name='technique')
         if common_screen_state.is_normal_in_world(self.ctx, screen):
             # 没有出现消耗品的情况 要尽快返回继续原来的指令 因此不等待
@@ -193,7 +193,7 @@ class UseTechnique(SrOperation):
         if not self.op_result.with_dialog:
             return self.round_success(data=self.op_result)
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.is_normal_in_world(self.ctx, screen):
             if self.exit_after_use:  # 要求使用了秘技才能退出
                 if self.op_result.use_tech:  # 已经使用了秘技 可以退出
@@ -223,7 +223,7 @@ class CheckTechniquePoint(SrOperation):
 
     @operation_node(name='识别画面', node_max_retry_times=10, is_start_node=True)
     def check(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             return self.round_retry('未在大世界界面', wait=1)
 
@@ -260,7 +260,7 @@ class FastRecover(SrOperation):
 
     @operation_node(name='使用消耗品', is_start_node=True)
     def use(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return FastRecover.handle_consumable_dialog(self, self.ctx, screen, self.op_result,
                                                     max_consumable_cnt=self.max_consumable_cnt,
                                                     quirky_snacks=self.quirky_snacks)
@@ -277,7 +277,7 @@ class FastRecover(SrOperation):
         if not self.op_result.with_dialog:
             return self.round_success(data=self.op_result)
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.is_normal_in_world(self.ctx, screen):
             return self.round_success(data=self.op_result)
         else:
@@ -291,7 +291,7 @@ class FastRecover(SrOperation):
         部分战斗场景会被误识别为 快速恢复，这时 use 方法会失败，此时再兜底判断是不是在对话框中，
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_area(screen, '快速恢复对话框', '快速恢复标题')
 

@@ -76,7 +76,7 @@ class SwitchMember(SrOperation):
         等待回到大世界画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         if common_screen_state.is_normal_in_world(self.ctx, screen):
             return self.round_success()
         else:

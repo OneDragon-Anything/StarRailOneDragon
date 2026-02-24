@@ -77,7 +77,7 @@ class SimUniChooseCurio(SrOperation):
     @node_from(from_name='确认后画面判断', status=sim_uni_screen_state.ScreenState.SIM_CURIOS.value)
     @operation_node(name='选择奇物', is_start_node=True)
     def _choose_curio(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if not self.first_screen_check or not self.skip_first_screen_check:
             self.first_screen_check = False
@@ -181,7 +181,7 @@ class SimUniChooseCurio(SrOperation):
         确认后判断画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = sim_uni_screen_state.get_sim_uni_screen_state(
             self.ctx, screen,
             in_world=True,
@@ -253,7 +253,7 @@ class SimUniDropCurio(SrOperation):
 
     @operation_node(name='画面检测', is_start_node=True)
     def _check_screen_state(self):
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self.first_screen_check and self.skip_first_screen_check:
             self.first_screen_check = False
@@ -270,7 +270,7 @@ class SimUniDropCurio(SrOperation):
     @node_from(from_name='确认', status=STATUS_RETRY)
     @operation_node(name='选择奇物')
     def _choose_curio(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         curio_pos_list: List[MatchResult] = self._get_curio_pos(screen)
         if len(curio_pos_list) == 0:

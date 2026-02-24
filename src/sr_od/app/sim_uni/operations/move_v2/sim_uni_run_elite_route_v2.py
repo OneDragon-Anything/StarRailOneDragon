@@ -48,7 +48,7 @@ class SimUniRunEliteRouteV2(SimUniRunRouteBaseV2):
         1. 按照小地图识别初始的朝向
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.check_angle(screen)
         return self.round_success()
 
@@ -62,7 +62,7 @@ class SimUniRunEliteRouteV2(SimUniRunRouteBaseV2):
         """
         if self.had_fight:
             return self.round_success(status=SimUniRunRouteBaseV2.STATUS_HAD_FIGHT)
-        screen = self.screenshot()
+        screen = self.last_screenshot
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         mm_info = mini_map_utils.analyse_mini_map(mm)
         pos_list = mini_map_utils.get_enemy_pos(mm_info)
@@ -138,7 +138,7 @@ class SimUniRunEliteRouteV2(SimUniRunRouteBaseV2):
             return self.round_success(status=SimUniRunRouteBaseV2.STATUS_NO_NEED_REWARD)
 
         # self._view_down()  # 入口和下层奖励 都比较大 应该不需要视角往下
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         frame_result = self.ctx.yolo_detector.sim_uni_yolo.run(screen)
 

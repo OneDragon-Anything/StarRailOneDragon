@@ -44,7 +44,7 @@ class SimUniMoveToEnemyByDetect(SrOperation):
     @operation_node(name='移动', timeout_seconds=20, is_start_node=True)  # 理论上移动目标都比较近 不可能20秒还没有到达
     def move(self) -> OperationRoundResult:
         now = time.time()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         # 不在大世界 可能被袭击了
         if not common_screen_state.is_normal_in_world(self.ctx, screen):

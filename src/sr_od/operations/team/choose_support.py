@@ -46,7 +46,7 @@ class ChooseSupport(SrOperation):
         if self.character_id is None:
             return self.round_success('无需支援')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_area(screen, '队伍', '左上角标题-队伍', retry_wait=1)
 
     @node_from(from_name='识别画面', status='左上角标题-队伍')
@@ -56,7 +56,7 @@ class ChooseSupport(SrOperation):
         点击头像
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         round_result = ChooseSupport.click_avatar(self, screen, self.character_id)
         if round_result.is_success:
             self.found_character = True
@@ -69,7 +69,7 @@ class ChooseSupport(SrOperation):
         点击入队 点击后会返回上级画面
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '队伍', '按钮-入队',
                                                  success_wait=1, retry_wait=1)
 
@@ -89,6 +89,38 @@ class ChooseSupport(SrOperation):
             return self.round_success(wait_round_time=1.5)
         else:
             return self.round_fail(ChooseSupport.STATUS_SUPPORT_NOT_FOUND, wait_round_time=1.5)
+
+    @staticmethod
+    def check_replace_icon(op: SrOperation, screen: MatLike,
+                           pos: MatchResult | None,
+                           scroll_screen: str, scroll_area: str,
+                           icon_screen: str, icon_area: str,
+                           status: str) -> OperationRoundResult:
+        """
+        检查头像区域是否有替换图标
+        :param pos: 角色头像位置 (None时滚动列表重试)
+        :param scroll_screen/scroll_area: 滚动区域的 screen/area 名
+        :param icon_screen/icon_area: 替换图标区域的 screen/area 名
+        :param status: 检测到图标时返回的状态
+        """
+        if pos is None:
+            area = op.ctx.screen_loader.get_area(scroll_screen, scroll_area)
+            drag_from = area.center
+            drag_to = drag_from + Point(0, -400)
+            op.ctx.controller.drag_to(drag_to, drag_from)
+            return op.round_retry(wait=1)
+
+        avatar_part = cv2_utils.crop_image_only(
+            screen, Rect(pos.x, pos.y, pos.x + pos.w, pos.y + pos.h)
+        )
+        area = op.ctx.screen_loader.get_area(icon_screen, icon_area)
+        mrl = op.ctx.tm.match_template(
+            avatar_part, area.template_sub_dir, area.template_id,
+            threshold=area.template_match_threshold
+        )
+        if mrl.max is not None:
+            return op.round_success(status=status)
+        return op.round_success()
 
     @staticmethod
     def click_avatar(op: SrOperation, screen: MatLike, character_id: str) -> OperationRoundResult:

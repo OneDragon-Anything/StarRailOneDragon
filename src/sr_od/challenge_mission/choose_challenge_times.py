@@ -26,7 +26,7 @@ class ChooseChallengeTimes(SrOperation):
 
     @operation_node(name='选择', node_max_retry_times=5, is_start_node=True)
     def choose(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         current = self._get_current_times(screen)
         if current == 0:  # 可能界面还没有加载出来 等等

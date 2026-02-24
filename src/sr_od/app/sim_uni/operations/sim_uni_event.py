@@ -58,7 +58,7 @@ class SimUniEvent(SrOperation):
         self.ctx.detect_info.view_down = False  # 进入事件后 重置视角
         if self.skip_first_screen_check:
             return self.round_success()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if sim_uni_screen_state.in_sim_uni_event(self.ctx, screen):
             return self.round_success()
@@ -74,7 +74,7 @@ class SimUniEvent(SrOperation):
         目前固定选第一个
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         self.opt_list = self._get_opt_list(screen)
         if self.ctx.env_config.is_debug:
             title = self._get_event_title(screen)
@@ -166,7 +166,7 @@ class SimUniEvent(SrOperation):
     @node_from(from_name='选择离开')
     @operation_node(name='确定')
     def _confirm(self):
-        screen = self.screenshot()
+        screen = self.last_screenshot
         fake_area = ScreenArea(pc_rect=self.chosen_opt.confirm_rect, area_name='选项确定')
 
         result = self.round_by_ocr_and_click(screen, '确定', area=fake_area)
@@ -239,7 +239,7 @@ class SimUniEvent(SrOperation):
         确定后判断下一步动作
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         state = self._get_screen_state(screen)
         if state is None:
             return self.round_retry('未能判断当前页面', wait=1)

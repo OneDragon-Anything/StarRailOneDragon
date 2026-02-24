@@ -41,7 +41,7 @@ class MoveWithoutPos(SrOperation):
 
     @operation_node(name='转向', is_start_node=True)
     def _turn(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         angle = mini_map_utils.analyse_angle(mm)
