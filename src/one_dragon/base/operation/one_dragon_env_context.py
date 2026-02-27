@@ -35,6 +35,9 @@ class OneDragonEnvContext:
         异步更新gh proxy
         :return:
         """
+        # 只有在配置了 ghproxy 代理时才更新代理地址
+        if not self.env_config.is_gh_proxy:
+            return
         future = ONE_DRAGON_CONTEXT_EXECUTOR.submit(self.gh_proxy_service.update_proxy_url)
         future.add_done_callback(thread_utils.handle_future_result)
 
