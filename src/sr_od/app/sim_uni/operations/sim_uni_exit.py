@@ -70,6 +70,10 @@ class SimUniExit(SrOperation):
     def click_exit(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
+        result = self.round_by_find_and_click_area(screen, '模拟宇宙', '差分宇宙-暂离')
+        if result.is_success:
+            return self.round_success(result.status)
+
         area_list = [
             ('模拟宇宙', '菜单-结束并结算'),
             ('模拟宇宙', '终止战斗并结算'),

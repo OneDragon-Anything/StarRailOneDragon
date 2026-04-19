@@ -30,6 +30,11 @@ class ScreenState(Enum):
     SIM_UNI_REGION: str = '模拟宇宙-区域'
     SIM_PATH: str = '命途'
     GUIDE: str = '星际和平指南'
+    # 差分宇宙4.0
+    SELECT_STATION: str = '选择站点卡'
+    SELECT_NEXT_STATION: str = '选择下一站'
+    CHOOSE_WILL_POWER: str = '愿力满盈'
+    AHA_MASK: str = '欢愉假面'
 
 
 def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]:
@@ -44,12 +49,12 @@ def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]
     region_name = ctx.ocr.run_ocr_single_line(part)
     level_type_list: List[SimUniLevelType] = [enum.value for enum in SimUniLevelTypeEnum]
     target_list = [gt(level_type.type_name, 'game') for level_type in level_type_list]
-    target_idx = str_utils.find_best_match_by_difflib(region_name, target_list)
+    targets = [i for i, w in enumerate(target_list) if w in region_name]
 
-    if target_idx is None or target_idx < 0:
+    if len(targets) == 0:
         return None
     else:
-        return level_type_list[target_idx]
+        return level_type_list[targets[0]]
 
 
 def get_sim_uni_screen_state(
@@ -136,6 +141,15 @@ def get_sim_uni_screen_state(
 
     if event and str_utils.find_best_match_by_lcs(ScreenState.SIM_EVENT.value, titles):
         return ScreenState.SIM_EVENT.value
+
+    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_STATION.value, titles, lcs_percent_threshold=1):
+        return ScreenState.SELECT_STATION.value
+    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_NEXT_STATION.value, titles, lcs_percent_threshold=1):
+        return ScreenState.SELECT_NEXT_STATION.value
+    if str_utils.find_best_match_by_lcs(ScreenState.CHOOSE_WILL_POWER.value, titles, lcs_percent_threshold=0.7):
+        return ScreenState.CHOOSE_WILL_POWER.value
+    if str_utils.find_best_match_by_lcs(ScreenState.AHA_MASK.value, titles, lcs_percent_threshold=0.7):
+        return ScreenState.AHA_MASK.value
 
     if battle:  # 有判断的时候 不在前面的情况 就认为是战斗
         return battle_screen_state.ScreenState.BATTLE.value

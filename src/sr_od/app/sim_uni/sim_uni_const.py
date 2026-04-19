@@ -119,6 +119,9 @@ class SimUniLevelTypeEnum(Enum):
     TRANSACTION = SimUniLevelType('transaction', '区域-交易', route_id='event')
     RESPITE = SimUniLevelType('respite', '区域-休整')
 
+    # 在差分宇宙4.0中的识别标志
+    ANY = SimUniLevelType('any', '位面')
+
 
 def level_type_from_id(level_type_id: str) -> Optional[SimUniLevelType]:
     for enum in SimUniLevelTypeEnum:
