@@ -121,6 +121,17 @@ def get_sim_uni_screen_state(
             return battle_screen_state.ScreenState.BATTLE.value
         return None
 
+    # region 差分宇宙4.0
+    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_STATION.value, titles, lcs_percent_threshold=1):
+        return ScreenState.SELECT_STATION.value
+    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_NEXT_STATION.value, titles, lcs_percent_threshold=1):
+        return ScreenState.SELECT_NEXT_STATION.value
+    if str_utils.find_best_match_by_lcs(ScreenState.CHOOSE_WILL_POWER.value, titles, lcs_percent_threshold=0.7):
+        return ScreenState.CHOOSE_WILL_POWER.value
+    if str_utils.find_best_match_by_lcs(ScreenState.AHA_MASK.value, titles, lcs_percent_threshold=0.7):
+        return ScreenState.AHA_MASK.value
+    # endregion
+
     if sim_uni and str_utils.find_best_match_by_lcs(ScreenState.SIM_TYPE_NORMAL.value, titles, lcs_percent_threshold=0.51) is not None:
         return ScreenState.SIM_TYPE_NORMAL.value
 
@@ -141,15 +152,6 @@ def get_sim_uni_screen_state(
 
     if event and str_utils.find_best_match_by_lcs(ScreenState.SIM_EVENT.value, titles):
         return ScreenState.SIM_EVENT.value
-
-    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_STATION.value, titles, lcs_percent_threshold=1):
-        return ScreenState.SELECT_STATION.value
-    if str_utils.find_best_match_by_lcs(ScreenState.SELECT_NEXT_STATION.value, titles, lcs_percent_threshold=1):
-        return ScreenState.SELECT_NEXT_STATION.value
-    if str_utils.find_best_match_by_lcs(ScreenState.CHOOSE_WILL_POWER.value, titles, lcs_percent_threshold=0.7):
-        return ScreenState.CHOOSE_WILL_POWER.value
-    if str_utils.find_best_match_by_lcs(ScreenState.AHA_MASK.value, titles, lcs_percent_threshold=0.7):
-        return ScreenState.AHA_MASK.value
 
     if battle:  # 有判断的时候 不在前面的情况 就认为是战斗
         return battle_screen_state.ScreenState.BATTLE.value
