@@ -1,3 +1,5 @@
+import time
+
 from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -81,8 +83,13 @@ class DailyTrainingApp(SrApplication):
             return self.round_success('已领取过每日实训奖励', wait=1)
         if pos is None:
             return self.round_retry('未找到奖励按钮', wait=0.5)
+        # 领奖励
         self.ctx.controller.click(pos.center)
-        return self.round_success('每日实训已完成', wait=1)
+        time.sleep(1)
+        # 再点一遍领奖励的地方, 点掉奖励弹窗
+        self.ctx.controller.click(pos.center)
+        # 点掉奖励弹窗之后复核奖励是否已领完
+        return self.round_wait('检查每日实训领取情况', wait=0.5)
 
     @node_from(from_name='领取奖励')
     @operation_node(name='结束后返回')
@@ -95,7 +102,6 @@ class DailyTrainingApp(SrApplication):
 def __debug():
     ctx = SrContext()
     ctx.init_by_config()
-    ctx.init_for_sim_uni()
     ctx.start_running()
     op = DailyTrainingApp(ctx)
     op.execute()

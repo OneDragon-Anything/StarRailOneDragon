@@ -1,19 +1,18 @@
 - num: 1
-  uid: "KJZHT"
-  cn: "空间站「黑塔」"
-
+  uid: KJZHT
+  cn: 空间站「黑塔」
 - num: 2
-  uid: "YLL6"
-  cn: "雅利洛-VI"
-
+  uid: YLL6
+  cn: 雅利洛-VI
 - num: 3
-  uid: "XZLF"
-  cn: "仙舟「罗浮」"
-
+  uid: XZLF
+  cn: 仙舟「罗浮」
 - num: 4
-  uid: "PNKN"
-  cn: "匹诺康尼"
-
+  uid: PNKN
+  cn: 匹诺康尼
 - num: 5
-  uid: "WFLS"
-  cn: "翁法罗斯"
+  uid: WFLS
+  cn: 翁法罗斯
+- num: 6
+  uid: EXLY
+  cn: 二相乐园

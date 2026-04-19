@@ -55,7 +55,7 @@ class SimUniMoveToEnemyByMiniMap(SrOperation):
         """到达后停止"""
 
     @operation_node(name='移动', is_start_node=True, timeout_seconds=60)
-    def _execute_one_round(self) -> OperationRoundResult:
+    def move(self) -> OperationRoundResult:
         stuck = self.move_in_stuck()  # 先尝试脱困 再进行移动
         if stuck is not None:  # 只有脱困失败的时候会有返回结果
             return stuck

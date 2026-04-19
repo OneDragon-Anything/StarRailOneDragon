@@ -13,6 +13,7 @@ from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.config import game_const
+from sr_od.sr_map.operations.scale_large_map import ScaleLargeMap
 from sr_od.config.game_config import GameLanguageEnum
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -54,6 +55,10 @@ class ChooseSpecialPoint(SrOperation):
         screen_part, offset = large_map_utils.match_screen_in_large_map(self.ctx, screen, self.tp.region)
         if offset is None:
             log.error('匹配大地图失败')
+            # 可能缩放不对 强制缩到最小
+            self.ctx.pos_info.pos_lm_scale = 5
+            op = ScaleLargeMap(self.ctx, 0, is_main_region=True)
+            op.execute()
             large_map_utils.drag_in_large_map(self.ctx)
             return self.round_retry(wait=0.5)
 

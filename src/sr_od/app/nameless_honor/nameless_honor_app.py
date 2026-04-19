@@ -57,9 +57,19 @@ class NamelessHonorApp(SrApplication):
     @operation_node(name='点击任务')
     def _click_tab_2(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        # 跳转第二页
         result: MatchResult = phone_menu_utils.get_nameless_honor_tab_pos(self.ctx, screen, 2, alert=True)
+        # 没有第二页
         if result is None:
-            return self.round_success(NamelessHonorApp.STATUS_NO_ALERT)
+            # 是否是版本更新后第一次打开此页面
+            result_new_ver = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-开启无名勋礼')
+            if result_new_ver.is_success:
+                time.sleep(1)
+                # 再点一遍, 点掉更新详情
+                self.ctx.controller.click()
+                return self.round_wait()
+            # 啥都找不到
+            return self.round_retry(NamelessHonorApp.STATUS_NO_ALERT)
         else:
             self.ctx.controller.click(result.center)
             return self.round_success(NamelessHonorApp.STATUS_WITH_ALERT, wait=1)
@@ -78,7 +88,7 @@ class NamelessHonorApp(SrApplication):
         else:
             return self.round_retry(wait=1)
 
-    @node_from(from_name='点击任务', status=STATUS_NO_ALERT)  # 任务没有红点时 返回奖励
+    @node_from(from_name='点击任务', success=False)  # 任务没有红点时 返回奖励
     @node_from(from_name='领取任务奖励')  # 领取任务奖励后 返回奖励
     @node_from(from_name='领取任务奖励', success=False)  # 有新任务的时候这里会有红点 但不会有领取按钮 因此失败也继续
     @operation_node(name='点击奖励')
@@ -130,3 +140,15 @@ class NamelessHonorApp(SrApplication):
         self.notify_screenshot = self.save_screenshot_bytes()  # 结束后通知的截图
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
+
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_by_config()
+    ctx.start_running()
+    op = NamelessHonorApp(ctx)
+    op.execute()
+
+
+if __name__ == '__main__':
+    __debug()

@@ -34,6 +34,29 @@ class SrPcController(PcControllerBase):
         self.is_running: bool = False  # 是否在疾跑
         self.start_move_time: float = 0
 
+    def close_game(self):
+        """
+        关闭游戏
+        适配新版本游戏,需要多次点击关闭按钮才能成功关闭
+        :return:
+        """
+        win = self.game_win.get_win()
+        if win is None:
+            return
+        try:
+            # 尝试多次点击关闭按钮,新版本游戏需要多次点击才能关闭
+            for i in range(5):
+                try:
+                    win.close()
+                    time.sleep(0.5)
+                except Exception as e:
+                    # 窗口已关闭会抛出异常,这是正常的
+                    log.debug('窗口关闭循环中断: %s', str(e))
+                    break
+            log.info('关闭游戏成功')
+        except Exception:
+            log.error('关闭游戏失败', exc_info=True)
+
     def fill_uid_black(self, screen: MatLike) -> MatLike:
         lt = (30, 1030)
         rb = (200, 1080)
