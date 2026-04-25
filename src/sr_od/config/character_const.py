@@ -27,6 +27,7 @@ CHARACTER_PATH_NIHILITY = CharacterPath(id='nihility', cn='虚无')
 CHARACTER_PATH_ERUDITION = CharacterPath(id='erudition', cn='智识')
 CHARACTER_PATH_HARMONY = CharacterPath(id='harmony', cn='同谐')
 CHARACTER_PATH_REMEMBRANCE = CharacterPath(id='remembrance', cn='记忆')
+CHARACTER_PATH_ELATION = CharacterPath(id='elation', cn='欢愉')
 
 CHARACTER_PATH_LIST: List[CharacterPath] = [
     CHARACTER_PATH_DESTRUCTION,
@@ -37,9 +38,11 @@ CHARACTER_PATH_LIST: List[CharacterPath] = [
     CHARACTER_PATH_ERUDITION,
     CHARACTER_PATH_HARMONY,
     CHARACTER_PATH_REMEMBRANCE,
+    CHARACTER_PATH_ELATION,
 ]
 
-ATTACK_PATH_LIST: List[CharacterPath] = [CHARACTER_PATH_DESTRUCTION, CHARACTER_PATH_HUNT, CHARACTER_PATH_ERUDITION, CHARACTER_PATH_REMEMBRANCE]
+ATTACK_PATH_LIST: List[CharacterPath] = [CHARACTER_PATH_DESTRUCTION, CHARACTER_PATH_HUNT, CHARACTER_PATH_ERUDITION,
+                                         CHARACTER_PATH_REMEMBRANCE, CHARACTER_PATH_ELATION]
 """输出命途"""
 
 SURVIVAL_PATH_LIST: List[CharacterPath] = [CHARACTER_PATH_PRESERVATION, CHARACTER_PATH_ABUNDANCE]
@@ -171,6 +174,7 @@ CAELUM_DESTRUCTION = Character(id='caelum_destruction', cn='男主毁灭', path=
 CAELUM_PRESERVATION = Character(id='caelum_preservation', cn='男主存护', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
 CAELUM_HARMONY = Character(id='caelum_harmony', cn='男主同谐', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
 CAELUM_REMEMBRANCE = Character(id='caelum_remembrance', cn='男主记忆', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
+CAELUM_ELATION = Character(id='caelum_elation', cn='男主欢愉', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 CLARA = Character(id='clara', cn='克拉拉', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_ATTACK)
 DANHENG = Character(id='danheng', cn='丹恒', path=CHARACTER_PATH_HUNT, combat_type=WIND, level=4, technique_type=TECHNIQUE_BUFF)
 DANHENGIMBIBITORLUNAE = Character(id='danhengimbibitorlunae', cn='丹恒·饮月', path=CHARACTER_PATH_DESTRUCTION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
@@ -196,10 +200,13 @@ SAMPO = Character(id='sampo', cn='桑博', path=CHARACTER_PATH_NIHILITY, combat_
 SEELE = Character(id='seele', cn='希儿', path=CHARACTER_PATH_HUNT, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 SERVAL = Character(id='serval', cn='希露瓦', path=CHARACTER_PATH_ERUDITION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_ATTACK)
 SILVERWOLF = Character(id='silverwolf', cn='银狼', path=CHARACTER_PATH_NIHILITY, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_ATTACK)
+SILVERWOLF_999 = Character(id='silverwolf_999', cn='银狼999', path=CHARACTER_PATH_ELATION, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF,
+                    buff_lasting_seconds=999)
 STELLE_DESTRUCTION = Character(id='stelle_destruction', cn='女主毁灭', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
 STELLE_PRESERVATION = Character(id='stelle_preservation', cn='女主存护', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
 STELLE_HARMONY = Character(id='stelle_harmony', cn='女主同谐', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
 STELLE_REMEMBRANCE = Character(id='stelle_remembrance', cn='女主记忆', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
+STELLE_ELATION = Character(id='stelle_elation', cn='女主欢愉', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 SUSHANG = Character(id='sushang', cn='素裳', path=CHARACTER_PATH_HUNT, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_ATTACK)
 TINGYUN = Character(id='tingyun', cn='停云', path=CHARACTER_PATH_HARMONY, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 TOPAZNUMBY = Character(id='topaznumby', cn='托帕&账账', path=CHARACTER_PATH_HUNT, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF)
@@ -260,6 +267,7 @@ CHARACTER_LIST: List[Character] = [
     CAELUM_PRESERVATION,
     CAELUM_HARMONY,
     CAELUM_REMEMBRANCE,
+    CAELUM_ELATION,
     CLARA,
     DANHENG,
     DANHENGIMBIBITORLUNAE,
@@ -289,6 +297,7 @@ CHARACTER_LIST: List[Character] = [
     STELLE_PRESERVATION,
     STELLE_HARMONY,
     STELLE_REMEMBRANCE,
+    STELLE_ELATION,
     SUSHANG,
     TINGYUN,
     TOPAZNUMBY,
@@ -334,6 +343,7 @@ CHARACTER_LIST: List[Character] = [
     DANHENGPERMANSORTERRAE,
     CYRENE,
     THE_DAHLIA,
+    SILVERWOLF_999,
 ]
 
 
