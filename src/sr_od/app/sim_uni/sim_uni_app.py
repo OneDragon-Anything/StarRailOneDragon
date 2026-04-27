@@ -60,25 +60,25 @@ class SimUniApp(SrApplication):
 
     # 在差分宇宙入口处检查积分奖励
     def _check_points_reward(self) -> OperationRoundResult:
-        last_count_14000 = -1
-        # 默认设置找不到 14000 返回重试
+        last_count_18000 = -1
+        # 默认设置找不到 18000 返回重试
         result = self.round_retry('未找到积分奖励', wait=1)
         # 识别到两次一致的结果就退出循环
         for _ in range(10):
             ocr_result_map = self.ocr(self.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
 
-            count_14000 = 0
+            count_18000 = 0
             for ocr_result, _mrl in ocr_result_map.items():
-                count_14000 += ocr_result.count('14000')
-            if last_count_14000 != count_14000:
-                last_count_14000 = count_14000
+                count_18000 += ocr_result.count('18000')
+            if last_count_18000 != count_18000:
+                last_count_18000 = count_18000
                 time.sleep(1)
                 continue
 
-            if count_14000 == 1:
-                # 只有一个 14000
+            if count_18000 == 1:
+                # 只有一个 18000
                 result = self.round_fail('未打满积分奖励')
-            elif count_14000 == 2:
+            elif count_18000 == 2:
                 # 如果周计划未完成, 设置为已完成
                 if not self.ctx.sim_uni_record.points_reward_complete:
                     self.ctx.sim_uni_record.points_reward_complete = True
@@ -150,7 +150,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
-        # 如果只要求打满奖励, 识别是否 14000/14000了
+        # 如果只要求打满奖励, 识别是否 18000/18000了
         if self.ctx.sim_uni_config.only_points_reward:
             points_reward = self._check_points_reward()
             if points_reward.result != OperationRoundResultEnum.FAIL:
