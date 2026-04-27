@@ -164,6 +164,10 @@ class SimUniApp(SrApplication):
         if not os.path.exists(script_file):
             return self.round_fail(f'差分宇宙脚本不存在: {script_file}')
 
+        # (前面带一个空格) 运行参数
+        args: str = ' --speed --cpu'  # 强制使用cpu避免卡死机
+        script_file += args
+
         # 使用自身的 python 环境链式启动脚本
         script_config = ScriptConfig(
             script_path=self.ctx.python_service.env_config.python_path,
