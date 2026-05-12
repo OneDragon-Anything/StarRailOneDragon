@@ -3,8 +3,9 @@ from typing import Optional
 
 from one_dragon_qt.view.app_run_interface import AppRunInterface
 from one_dragon_qt.widgets.row import Row
-from sr_od.app.calibrator import Calibrator
-from sr_od.app.sr_application import SrApplication
+from sr_od.application.calibrator import calibrator_const
+from sr_od.application.calibrator.calibrator import Calibrator
+from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 
 
@@ -19,6 +20,7 @@ class CalibratorRunInterface(AppRunInterface):
         AppRunInterface.__init__(
             self,
             ctx=ctx,
+            app_id=calibrator_const.APP_ID,
             object_name='sr_calibrator_run_interface',
             nav_text_cn='校准',
             parent=parent,
@@ -36,3 +38,4 @@ class CalibratorRunInterface(AppRunInterface):
         :return:
         """
         return Calibrator(self.ctx)
+

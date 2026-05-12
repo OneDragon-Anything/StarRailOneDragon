@@ -12,7 +12,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cal_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.app.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
+from sr_od.application.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
 from sr_od.config.game_config import RunModeEnum
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.move import cal_pos_utils, record_pos_utils

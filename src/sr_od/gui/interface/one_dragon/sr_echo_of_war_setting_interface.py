@@ -10,7 +10,7 @@ from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterf
 from one_dragon.utils.i18_utils import gt
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.combo_box import ComboBox
-from sr_od.app.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
+from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.config.team_config import TeamNumEnum
 from sr_od.context.sr_context import SrContext
@@ -225,3 +225,4 @@ class EchoOfWarSettingInterface(VerticalScrollInterface):
 
     def on_plan_item_changed(self, idx: int, plan: TrailblazePowerPlanItem) -> None:
         self.ctx.echo_of_war_config.update_plan(idx, plan)
+

@@ -5,7 +5,7 @@ description = "星穹铁道 一条龙 | 全自动 | 自动闪避 | 自动每日 
 requires-python = ">=3.11.9,<=3.11.12"
 dependencies = [
     "pyside6==6.8.0.2",
-    "pyside6-fluent-widgets==1.7.0",
+    "pyside6-fluent-widgets==1.11.1",
     "pyyaml==6.0.1",
     "opencv-python==4.10.0.84",
     "pyautogui==0.9.54",
@@ -17,6 +17,7 @@ dependencies = [
     "soundcard==0.4.3",
     "librosa==0.10.2.post1",
     "gensim==4.3.3",
+    "pygit2==1.19.0",
 ]
 
 [dependency-groups]
@@ -25,6 +26,7 @@ dev = [
     "polib==1.2.0",
     "pyinstaller==6.7.0",
     "pypinyin==0.54.0",
+    "pyuac==0.0.3",
 ]
 
 [tool.uv]

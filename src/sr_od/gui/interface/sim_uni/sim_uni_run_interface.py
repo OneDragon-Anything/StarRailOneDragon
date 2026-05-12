@@ -5,8 +5,9 @@ from typing import Optional
 from one_dragon.base.operation.application_base import Application
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.view.app_run_interface import AppRunInterface
-from sr_od.app.sim_uni.sim_uni_app import SimUniApp
-from sr_od.app.sr_application import SrApplication
+from sr_od.application.sim_universe import sim_universe_const
+from sr_od.application.sim_universe.sim_uni_app import SimUniApp
+from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 
 
@@ -21,6 +22,7 @@ class SimUniRunInterface(AppRunInterface):
         AppRunInterface.__init__(
             self,
             ctx=ctx,
+            app_id=sim_universe_const.APP_ID,
             object_name='sr_sim_uni_run_interface',
             nav_text_cn='运行',
             parent=parent,
@@ -37,3 +39,4 @@ class SimUniRunInterface(AppRunInterface):
 
     def get_app(self) -> Application:
         return SimUniApp(self.ctx)
+

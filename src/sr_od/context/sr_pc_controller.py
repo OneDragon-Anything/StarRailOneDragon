@@ -1,6 +1,6 @@
+import ctypes
 import time
 
-import ctypes
 import cv2
 from cv2.typing import MatLike
 from typing import Optional, ClassVar
@@ -18,11 +18,11 @@ class SrPcController(PcControllerBase):
     TALK_INTERACT_TYPE: ClassVar[int] = 1
 
     def __init__(self, game_config: GameConfig,
-                 win_title: str,
+                 screenshot_method: str,
                  standard_width: int = 1920,
                  standard_height: int = 1080):
         PcControllerBase.__init__(self,
-                                  win_title=win_title,
+                                  screenshot_method=screenshot_method,
                                   standard_width=standard_width,
                                   standard_height=standard_height)
 
@@ -67,11 +67,11 @@ class SrPcController(PcControllerBase):
         self.mouse_move(Point(30, 1030))
 
     def esc(self) -> bool:
-        self.btn_controller.tap(self.game_config.key_esc)
+        self.btn_tap(self.game_config.key_esc)
         return True
 
     def open_map(self) -> bool:
-        self.btn_controller.tap(self.game_config.key_open_map)
+        self.btn_tap(self.game_config.key_open_map)
         return True
 
     def move(self, direction: str, press_time: float = 0, run: bool = False):
@@ -87,14 +87,14 @@ class SrPcController(PcControllerBase):
             return False
         self.start_move_time = time.time()
         if press_time > 0:
-            self.btn_controller.press(direction)
+            self.btn_press(direction)
             self.is_moving = True
             self.enter_running(run)
             time.sleep(press_time)
-            self.btn_controller.release(direction)
+            self.btn_release(direction)
             self.stop_moving_forward()
         else:
-            self.btn_controller.tap(direction)
+            self.btn_tap(direction)
         return True
 
     def enter_running(self, run: bool):
@@ -105,11 +105,11 @@ class SrPcController(PcControllerBase):
         """
         if run and not self.is_running:
             time.sleep(0.02)
-            self.btn_controller.tap('mouse_right')
+            self.btn_tap('mouse_right')
             self.is_running = True
         elif not run and self.is_running:
             time.sleep(0.02)
-            self.btn_controller.tap('mouse_right')
+            self.btn_tap('mouse_right')
             self.is_running = False
 
     def get_move_time(self) -> float:
@@ -125,14 +125,16 @@ class SrPcController(PcControllerBase):
         :param run: 是否启用疾跑
         :return:
         """
+        if self.is_moving:
+            return
         self.is_moving = True
-        self.btn_controller.press('w')
+        self.btn_press('w')
         self.enter_running(run)
 
     def stop_moving_forward(self):
         if not self.is_moving:
             return
-        self.btn_controller.release('w')
+        self.btn_release('w')
         self.is_moving = False
         self.is_running = False
 
@@ -189,7 +191,7 @@ class SrPcController(PcControllerBase):
         :param d: 正数往右转 人物角度增加；负数往左转 人物角度减少
         :return:
         """
-        ctypes.windll.user32.mouse_event(PcControllerBase.MOUSEEVENTF_MOVE, int(d), 0)
+        self.move_mouse_relative(d, 0)
 
     def turn_down(self, distance: float):
         """
@@ -197,7 +199,12 @@ class SrPcController(PcControllerBase):
         :param distance: 正往下 负往上
         :return:
         """
-        ctypes.windll.user32.mouse_event(PcControllerBase.MOUSEEVENTF_MOVE, 0, int(distance * self.turn_dx))
+        self.move_mouse_relative(0, distance * self.turn_dx)
+
+    def move_mouse_relative(self, dx: float, dy: float) -> None:
+        if dx == 0 and dy == 0:
+            return
+        ctypes.windll.user32.mouse_event(self.MOUSEEVENTF_MOVE, int(dx), int(dy))
 
     def cal_move_distance_by_time(self, seconds: float):
         """
@@ -214,7 +221,7 @@ class SrPcController(PcControllerBase):
         :return:
         """
         log.info('切换角色 %s', str(idx))
-        self.btn_controller.tap(str(idx))
+        self.btn_tap(str(idx))
 
     def initiate_attack(self):
         """
@@ -232,17 +239,17 @@ class SrPcController(PcControllerBase):
         :return:
         """
         if interact_type == SrPcController.MOVE_INTERACT_TYPE:
-            self.btn_controller.tap(self.game_config.key_interact)
+            self.btn_tap(self.game_config.key_interact)
         else:
             self.click(pos)
         return True
 
     def use_technique(self) -> bool:
-        self.btn_controller.tap(self.game_config.key_technique)
+        self.btn_tap(self.game_config.key_technique)
         return True
 
     def gameplay_interact(self, press_time: float = 0):
         if press_time > 0:
-            self.btn_controller.press(self.game_config.key_gameplay_interaction, press_time)
+            self.btn_press(self.game_config.key_gameplay_interaction, press_time)
         else:
-            self.btn_controller.tap(self.game_config.key_gameplay_interaction)
+            self.btn_tap(self.game_config.key_gameplay_interaction)
