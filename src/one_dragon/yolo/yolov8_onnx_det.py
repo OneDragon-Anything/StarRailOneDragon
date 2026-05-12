@@ -48,21 +48,35 @@ class Yolov8Detector(OnnxModelLoader):
 
         self.keep_result_seconds: float = keep_result_seconds  # 保留识别结果的秒数
         self.run_result_history: List[DetectFrameResult] = []  # 历史识别结果
+        self.overlay_debug_bus = None
 
         self.idx_2_class: dict[int, DetectClass] = {}  # 分类
         self.class_2_idx: dict[str, int] = {}
         self.category_2_idx: dict[str, List[int]] = {}
         self._load_detect_classes(self.model_dir_path)
 
-    def run(self, image: MatLike, conf: float = 0.6, iou: float = 0.5, run_time: Optional[float] = None,
-            label_list: Optional[List[str]] = None,
-            category_list: Optional[List[str]] = None) -> DetectFrameResult:
+    def run(
+        self,
+        image: MatLike,
+        conf: float = 0.6,
+        iou: float = 0.5,
+        run_time: Optional[float] = None,
+        label_list: Optional[List[str]] = None,
+        category_list: Optional[List[str]] = None,
+    ) -> DetectFrameResult:
         """
         对图片进行识别
-        :param image: 使用 opencv 读取的图片 RGB通道
-        :param conf: 置信度阈值
-        :param iou: iou阈值
-        :return: 识别结果
+
+        Args:
+            image: 图片 [h, w, c] rgb通道
+            conf: 置信度阈值
+            iou: iou阈值
+            run_time: 识别时间
+            label_list: 限定识别的标签
+            category_list: 限定识别的标签分类
+
+        Returns:
+            DetectFrameResult: 识别结果
         """
         t1 = time.time()
         context = DetectContext(image, run_time)
@@ -82,7 +96,15 @@ class Yolov8Detector(OnnxModelLoader):
 
         # log.info(f'识别完毕 得到结果 {len(results)}个。预处理耗时 {t2 - t1:.3f}s, 推理耗时 {t3 - t2:.3f}s, 后处理耗时 {t4 - t3:.3f}s')
 
-        return self.record_result(context, results)
+        frame_result = self.record_result(context, results)
+        self._emit_overlay_vision(frame_result)
+        self._emit_overlay_perf_and_timeline(
+            preprocess_ms=(t2 - t1) * 1000.0,
+            infer_ms=(t3 - t2) * 1000.0,
+            postprocess_ms=(t4 - t3) * 1000.0,
+            result_count=len(results),
+        )
+        return frame_result
 
     def prepare_input(self, context: DetectContext) -> np.ndarray:
         """
@@ -175,6 +197,76 @@ class Yolov8Detector(OnnxModelLoader):
                                    if context.run_time - i.run_time <= self.keep_result_seconds]
 
         return new_frame
+
+    def _emit_overlay_vision(self, frame_result: DetectFrameResult) -> None:
+        bus = getattr(self, "overlay_debug_bus", None)
+        if bus is None or frame_result is None:
+            return
+
+        try:
+            from one_dragon.base.operation.overlay_debug_bus import VisionDrawItem
+        except Exception:
+            return
+
+        for result in frame_result.results[:50]:
+            label = result.detect_class.class_name
+            if len(label) > 36:
+                label = label[:33] + "..."
+            bus.add_vision(
+                VisionDrawItem(
+                    source="yolo",
+                    label=label,
+                    x1=result.x1,
+                    y1=result.y1,
+                    x2=result.x2,
+                    y2=result.y2,
+                    score=result.score,
+                    color="#35d4ff",
+                    ttl_seconds=1.6,
+                    meta={
+                        "class_id": result.detect_class.class_id,
+                        "category": result.detect_class.class_category or "",
+                    },
+                )
+            )
+
+    def _emit_overlay_perf_and_timeline(
+        self,
+        preprocess_ms: float,
+        infer_ms: float,
+        postprocess_ms: float,
+        result_count: int,
+    ) -> None:
+        bus = getattr(self, "overlay_debug_bus", None)
+        if bus is None:
+            return
+        try:
+            from one_dragon.base.operation.overlay_debug_bus import (
+                PerfMetricSample,
+                TimelineItem,
+            )
+        except Exception:
+            return
+
+        total_ms = preprocess_ms + infer_ms + postprocess_ms
+        bus.add_performance(
+            PerfMetricSample(
+                metric="yolo_ms",
+                value=total_ms,
+                unit="ms",
+                ttl_seconds=20.0,
+                meta={"result_count": result_count},
+            )
+        )
+        bus.add_timeline(
+            TimelineItem(
+                category="vision",
+                title="yolo",
+                detail=f"{result_count} objects / {total_ms:.1f}ms",
+                level="DEBUG",
+                ttl_seconds=15.0,
+            )
+        )
 
     @property
     def last_run_result(self) -> Optional[DetectFrameResult]:

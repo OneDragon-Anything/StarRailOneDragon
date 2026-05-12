@@ -9,8 +9,8 @@ from one_dragon_qt.widgets.setting_card.text_setting_card import TextSettingCard
 from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
 from sr_od.sr_map.sr_map_def import Planet, Region
-from sr_od.app.world_patrol.world_patrol_route import WorldPatrolRoute
-from sr_od.app.world_patrol.world_patrol_whitelist_config import WorldPatrolWhitelist, create_new_whitelist, \
+from sr_od.application.world_patrol.world_patrol_route import WorldPatrolRoute
+from sr_od.application.world_patrol.world_patrol_whitelist_config import WorldPatrolWhitelist, create_new_whitelist, \
     load_all_whitelist_list, WorldPatrolWhiteListType
 
 

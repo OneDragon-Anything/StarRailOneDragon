@@ -10,11 +10,21 @@ try:
     from one_dragon.utils.i18_utils import gt
     from one_dragon_qt.services.styles_manager import OdQtStyleSheet
     from one_dragon_qt.view.context_event_signal import ContextEventSignal
-    from one_dragon_qt.windows.app_window_base import AppWindowBase
+    from one_dragon_qt.windows.main_app_window_base import MainAppWindowBase
     from one_dragon_qt.windows.window import PhosTitleBar
     from sr_od.context.sr_context import SrContext
 
     _init_error = None
+
+
+    class CtxInitRunner(QThread):
+
+        def __init__(self, ctx: SrContext, parent=None):
+            super().__init__(parent)
+            self.ctx = ctx
+
+        def run(self):
+            self.ctx.init()
 
 
     class CheckVersionRunner(QThread):
@@ -33,14 +43,15 @@ try:
 
 
     # 定义应用程序的主窗口类
-    class AppWindow(AppWindowBase):
+    class AppWindow(MainAppWindowBase):
         titleBar: PhosTitleBar
 
         def __init__(self, ctx: SrContext, parent=None):
             """初始化主窗口类，设置窗口标题和图标"""
             self.ctx: SrContext = ctx
-            AppWindowBase.__init__(
+            MainAppWindowBase.__init__(
                 self,
+                ctx=ctx,
                 win_title="%s %s"
                 % (
                     gt(ctx.project_config.project_name),
@@ -57,13 +68,10 @@ try:
 
             self._check_version_runner = CheckVersionRunner(self.ctx)
             self._check_version_runner.get.connect(self._update_version)
-            self._check_version_runner.start()
-
-            self._check_first_run()
 
         # 继承初始化函数
         def init_window(self):
-            self.resize(1095, 730)  # 3:2比例
+            self.resize(1140, 760)  # 3:2比例
 
             # 初始化位置
             screen = QApplication.primaryScreen()
@@ -83,7 +91,6 @@ try:
             self.navigationInterface.setContentsMargins(0, 0, 0, 0)
 
             # 配置样式
-            OdQtStyleSheet.APP_WINDOW.apply(self)
             OdQtStyleSheet.NAVIGATION_INTERFACE.apply(self.navigationInterface)
             OdQtStyleSheet.STACKED_WIDGET.apply(self.stackedWidget)
             OdQtStyleSheet.AREA_WIDGET.apply(self.areaWidget)
@@ -91,9 +98,14 @@ try:
 
         def create_sub_interface(self):
             """创建和添加各个子界面"""
+            super().create_sub_interface()
 
             # 主页
-            # self.add_sub_interface(HomeInterface(self.ctx, parent=self))
+            from sr_od.gui.interface.home.home_interface import HomeInterface
+            self.add_sub_interface(HomeInterface(self.ctx, parent=self))
+
+            from sr_od.gui.interface.game_assistant.game_assistant_interface import GameAssistantInterface
+            self.add_sub_interface(GameAssistantInterface(self.ctx, parent=self))
 
             from sr_od.gui.interface.one_dragon.sr_one_dragon_interface import SrOneDragonInterface
             self.add_sub_interface(SrOneDragonInterface(self.ctx, parent=self))
@@ -104,8 +116,9 @@ try:
             from sr_od.gui.interface.sim_uni.sim_uni_interface import SimUniInterface
             self.add_sub_interface(SimUniInterface(self.ctx, parent=self))
 
-            from sr_od.gui.interface.game_assistant.game_assistant_interface import GameAssistantInterface
-            self.add_sub_interface(GameAssistantInterface(self.ctx, parent=self))
+            from one_dragon_qt.widgets.pip_button import PipButton
+            self.pip_btn = PipButton(self.ctx, parent=self)
+            self.add_nav_widget(self.pip_btn)
 
 
             # 点赞
@@ -142,6 +155,13 @@ try:
                 SrSettingInterface(self.ctx, parent=self),
                 position=NavigationItemPosition.BOTTOM,
             )
+
+        def on_ctx_ready(self) -> None:
+            if not self.ctx.ready_for_application:
+                return
+            MainAppWindowBase.on_ctx_ready(self)
+            self._check_version_runner.start()
+            self._check_first_run()
 
         def _on_instance_active_event(self, event) -> None:
             """
@@ -180,6 +200,12 @@ try:
                 if dialog.exec():
                     self.ctx.env_config.is_first_run = False
 
+        def closeEvent(self, event):
+            if hasattr(self, 'pip_btn') and self.pip_btn:
+                self.pip_btn.dispose()
+
+            super().closeEvent(event)
+
 # 调用Windows错误弹窗
 except Exception as e:
     import ctypes
@@ -188,8 +214,7 @@ except Exception as e:
     _init_error = f"启动一条龙失败，报错信息如下:\n{stack_trace}"
 
 
-# 初始化应用程序，并启动主窗口
-if __name__ == '__main__':
+def main() -> None:
     if _init_error is not None:
         ctypes.windll.user32.MessageBoxW(0, _init_error, "错误", 0x10)
         sys.exit(1)
@@ -202,15 +227,6 @@ if __name__ == '__main__':
 
     _ctx = SrContext()
 
-    # 加载配置
-    _ctx.init_by_config()
-
-    # 异步加载OCR
-    _ctx.async_init_ocr()
-
-    # 异步更新免费代理
-    _ctx.async_update_gh_proxy()
-
     # 设置主题
     setTheme(Theme[_ctx.custom_config.theme.upper()])
 
@@ -220,7 +236,17 @@ if __name__ == '__main__':
     w.show()
     w.activateWindow()
 
+    init_runner = CtxInitRunner(_ctx)
+    init_runner.finished.connect(w.on_ctx_ready)
+    init_runner.start()
+
     # 启动应用程序事件循环
-    app.exec()
+    quit_code = app.exec()
 
     _ctx.after_app_shutdown()
+    sys.exit(quit_code)
+
+
+# 初始化应用程序，并启动主窗口
+if __name__ == '__main__':
+    main()

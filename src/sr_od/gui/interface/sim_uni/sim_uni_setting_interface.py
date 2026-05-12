@@ -1,5 +1,4 @@
 from PySide6.QtWidgets import QWidget
-from numpy.core.defchararray import title
 from qfluentwidgets import FluentIcon, SettingCardGroup
 
 from one_dragon.base.config.config_item import ConfigItem
@@ -7,7 +6,7 @@ from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import ComboBoxSettingCard
 from one_dragon_qt.widgets.setting_card.text_setting_card import TextSettingCard
-from sr_od.app.sim_uni.sim_uni_const import SimUniWorldEnum
+from sr_od.application.sim_universe.sim_uni_data import SimUniWorldEnum
 from sr_od.context.sr_context import SrContext
 
 

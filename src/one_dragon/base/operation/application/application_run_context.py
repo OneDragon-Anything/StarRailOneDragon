@@ -1,15 +1,26 @@
+from __future__ import annotations
+
+import time
 from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, TypeVar
 
-from one_dragon.base.controller.controller_base import ControllerBase
-from one_dragon.base.operation.application.application_config import ApplicationConfig
-from one_dragon.base.operation.application.application_factory import ApplicationFactory
-from one_dragon.base.operation.application_base import Application
-from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.base.operation.context_event_bus import ContextEventBus
+from one_dragon.base.operation.notify_pool import NotifyPool
 from one_dragon.utils import thread_utils
+from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+
+if TYPE_CHECKING:
+    from one_dragon.base.operation.application.application_config import (
+        ApplicationConfig,
+    )
+    from one_dragon.base.operation.application.application_factory import (
+        ApplicationFactory,
+    )
+    from one_dragon.base.operation.application_base import Application
+    from one_dragon.base.operation.application_run_record import AppRunRecord
+    from one_dragon.base.operation.one_dragon_context import OneDragonContext
 
 
 class ApplicationRunContextStateEnum(StrEnum):
@@ -29,6 +40,9 @@ class ApplicationRunContextStateEventEnum(StrEnum):
     STOP = "stop"  # 停止运行事件
 
 
+CONFIG = TypeVar('CONFIG', bound="ApplicationConfig")
+RECORD = TypeVar('RECORD', bound="AppRunRecord")
+
 class ApplicationRunContext:
     """应用运行上下文管理类。
 
@@ -39,8 +53,6 @@ class ApplicationRunContext:
         _application_factory_map: 应用工厂映射表，存储app_id到工厂的对应关系
         _run_state: 当前运行状态
         _executor: 线程池执行器，用于异步运行应用
-        _controller: 游戏控制器，用于发送游戏指令
-        _event_bus: 事件总线，用于状态变更通知
         current_app_id: 当前运行的应用ID
         current_instance_idx: 当前运行的实例下标
         current_group_id: 当前运行的组ID
@@ -48,12 +60,14 @@ class ApplicationRunContext:
 
     def __init__(
         self,
+        ctx: OneDragonContext
     ):
         """
         初始化应用运行上下文。
 
         创建空的工厂映射表、设置初始状态为停止、初始化线程池和事件总线。
         """
+        self.ctx: OneDragonContext = ctx
         self._application_factory_map: dict[str, ApplicationFactory] = {}
         self._run_state: ApplicationRunContextStateEnum = (
             ApplicationRunContextStateEnum.STOP
@@ -61,25 +75,22 @@ class ApplicationRunContext:
         self._executor = ThreadPoolExecutor(
             thread_name_prefix="one_dragon_app_run_context", max_workers=1
         )
-        self._controller: Optional[ControllerBase] = None  # 这个在后续初始化后设置
-        self._event_bus: ContextEventBus = ContextEventBus()
+        self.event_bus: ContextEventBus = ContextEventBus()
+        self.default_group_apps: list = []  # 默认应用组的应用ID列表
 
         # 当前运行的应用
         self.current_app_id: Optional[str] = None
         self.current_instance_idx: Optional[int] = None
         self.current_group_id: Optional[str] = None
+        self.current_application: Optional[Application] = None
 
-    def set_controller(self, controller: ControllerBase):
-        """
-        设置游戏控制器。
-
-        Args:
-            controller: 游戏控制器实例，用于发送游戏指令
-        """
-        self._controller = controller
+        # 通知池，应用开始时清空重用
+        self.notify_pool: NotifyPool = NotifyPool()
 
     def registry_application(
-        self, factory: ApplicationFactory | list[ApplicationFactory]
+        self,
+        factory: ApplicationFactory | list[ApplicationFactory],
+        default_group: bool = False,
     ):
         """
         注册应用工厂。
@@ -88,12 +99,44 @@ class ApplicationRunContext:
 
         Args:
             factory: 应用工厂实例或工厂列表
+            default_group: 应用是否属于默认应用组，默认为False
         """
         if isinstance(factory, list):
             for f in factory:
                 self._application_factory_map[f.app_id] = f
+                if default_group:
+                    self.default_group_apps.append(f.app_id)
         else:
             self._application_factory_map[factory.app_id] = factory
+            if default_group:
+                self.default_group_apps.append(factory.app_id)
+
+    def clear_applications(self) -> None:
+        """清空所有已注册的应用工厂
+
+        在刷新应用注册前调用，清空现有的注册信息。
+        """
+        self._application_factory_map.clear()
+        self.default_group_apps.clear()
+
+    @property
+    def notify_app_map(self) -> dict[str, str]:
+        """返回需要通知的应用字典: {app_id: app_name}。
+
+        说明:
+            1. 通过工厂的 need_notify 标记判断是否需要通知。
+            2. 若应用没有设置 app_name，则使用 app_id 作为值兜底。
+
+        Returns:
+            dict[str,str]: need_notify 为 True 的应用映射，按 app_id 排序。
+        """
+        tmp: list[tuple[str, str]] = []
+        for app_id, factory in self._application_factory_map.items():
+            if factory.need_notify:
+                app_name = factory.app_name or app_id
+                tmp.append((app_id, app_name))
+
+        return dict(sorted(tmp, key=lambda x: x[0]))
 
     def is_app_registered(self, app_id: str) -> bool:
         """
@@ -107,9 +150,22 @@ class ApplicationRunContext:
         """
         return app_id in self._application_factory_map
 
+    def is_app_need_notify(self, app_id: str) -> bool:
+        """
+        检查应用是否需要通知。
+
+        Args:
+            app_id: 应用ID
+
+        Returns:
+            bool: 应用是否需要通知，如果应用未注册则返回False
+        """
+        factory = self._application_factory_map.get(app_id)
+        return factory.need_notify if factory else False
+
     def get_application(
         self, app_id: str, instance_idx: int, group_id: str
-    ) -> Optional[Application]:
+    ) -> Application:
         """
         创建应用实例。
 
@@ -121,19 +177,34 @@ class ApplicationRunContext:
             group_id: 应用组ID，可将应用分组运行
 
         Returns:
-            Optional[Application]: 创建的应用实例，如果应用未注册则返回None
+            Application: 创建的应用实例
         """
         if app_id not in self._application_factory_map:
-            return None
+            raise Exception(f"应用未注册 {app_id}")
         factory = self._application_factory_map[app_id]
         return factory.create_application(instance_idx=instance_idx, group_id=group_id)
+
+    def get_application_name(self, app_id: str) -> str:
+        """
+        获取应用名称
+
+        Args:
+            app_id: 应用ID
+
+        Returns:
+            str: 应用名称
+        """
+        if app_id not in self._application_factory_map:
+            raise Exception(f"应用未注册 {app_id}")
+
+        return self._application_factory_map[app_id].app_name
 
     def get_config(
         self,
         app_id: Optional[str] = None,
         instance_idx: Optional[int] = None,
         group_id: Optional[str] = None,
-    ) -> Optional[ApplicationConfig]:
+    ) -> CONFIG:
         """
         获取配置实例。
 
@@ -145,7 +216,10 @@ class ApplicationRunContext:
             group_id: 应用组ID 为空时使用当前运行的，不同应用组可以有不同的应用配置
 
         Returns:
-            Optional[ApplicationConfig]: 应用配置对象，如果应用未注册则返回None
+            ApplicationConfig: 应用配置对象
+
+        Raises:
+            Exception: 如果注册应用无需配置(ApplicationFactory.create_config未实现)时，调用本方法会抛出异常
         """
         if app_id is None:
             app_id = self.current_app_id
@@ -155,10 +229,10 @@ class ApplicationRunContext:
             group_id = self.current_group_id
 
         if app_id is None or instance_idx is None or group_id is None:
-            return None
+            raise Exception("参数不能为空")
 
         if app_id not in self._application_factory_map:
-            return None
+            raise Exception(f"应用未注册 {app_id}")
 
         factory = self._application_factory_map[app_id]
         return factory.get_config(instance_idx, group_id)
@@ -167,7 +241,7 @@ class ApplicationRunContext:
         self,
         app_id: Optional[str] = None,
         instance_idx: Optional[int] = None,
-    ) -> Optional[AppRunRecord]:
+    ) -> RECORD:
         """
         获取运行记录实例。
 
@@ -178,7 +252,10 @@ class ApplicationRunContext:
             instance_idx: 账号实例下标 为空时使用当前运行的
 
         Returns:
-            Optional[AppRunRecord]: 运行记录对象，如果应用未注册则返回None
+            AppRunRecord: 运行记录对象
+
+        Raises:
+            Exception: 如果子类应用无需配置(ApplicationFactory.create_run_record未实现)时，调用本方法会抛出异常
         """
         if app_id is None:
             app_id = self.current_app_id
@@ -186,10 +263,10 @@ class ApplicationRunContext:
             instance_idx = self.current_instance_idx
 
         if app_id is None or instance_idx is None:
-            return None
+            raise Exception("参数不能为空")
 
         if app_id not in self._application_factory_map:
-            return None
+            raise Exception(f"应用未注册 {app_id}")
 
         factory = self._application_factory_map[app_id]
         return factory.get_run_record(instance_idx)
@@ -237,13 +314,13 @@ class ApplicationRunContext:
         if not self.is_context_stop:
             log.error("请先结束其他运行中的功能 再启动")
             return False
-        if self._controller is None:
+        if self.ctx.controller is None:
             log.error("未初始化控制器")
             return False
 
-        if self._controller.init_before_context_run():
+        if self.ctx.controller.init_before_context_run():
             self._run_state = ApplicationRunContextStateEnum.RUNNING
-            self._event_bus.dispatch_event(
+            self.event_bus.dispatch_event(
                 ApplicationRunContextStateEventEnum.START, self._run_state
             )
             return True
@@ -262,7 +339,7 @@ class ApplicationRunContext:
             self.switch_context_pause_and_run()
         self._run_state = ApplicationRunContextStateEnum.STOP
         log.info("停止运行")
-        self._event_bus.dispatch_event(
+        self.event_bus.dispatch_event(
             ApplicationRunContextStateEventEnum.STOP, self._run_state
         )
 
@@ -275,17 +352,34 @@ class ApplicationRunContext:
         if self._run_state == ApplicationRunContextStateEnum.RUNNING:
             log.info("暂停运行")
             self._run_state = ApplicationRunContextStateEnum.PAUSE
-            self._event_bus.dispatch_event(
+            self.event_bus.dispatch_event(
                 ApplicationRunContextStateEventEnum.PAUSE, self._run_state
             )
         elif self._run_state == ApplicationRunContextStateEnum.PAUSE:
             log.info("恢复运行")
             self._run_state = ApplicationRunContextStateEnum.RUNNING
-            self._event_bus.dispatch_event(
+            self.event_bus.dispatch_event(
                 ApplicationRunContextStateEventEnum.RESUME, self._run_state
             )
 
-    def run_application(self, app_id: str, instance_idx: int, group_id: str) -> bool:
+    @property
+    def run_status_text(self) -> str:
+        if self._run_state == ApplicationRunContextStateEnum.STOP:
+            return gt('空闲')
+        elif self._run_state == ApplicationRunContextStateEnum.RUNNING:
+            return gt('运行中')
+        elif self._run_state == ApplicationRunContextStateEnum.PAUSE:
+            return gt('暂停中')
+        else:
+            return gt('未知')
+
+    def run_application(
+        self,
+        app_id: str,
+        instance_idx: int,
+        group_id: str,
+        init_timeout: int = 60,
+    ) -> bool:
         """
         同步运行指定的应用。
 
@@ -295,10 +389,20 @@ class ApplicationRunContext:
             app_id: 应用ID
             instance_idx: 账号实例下标
             group_id: 应用组ID，可将应用分组运行
+            init_timeout: 等待初始化的超时时间(秒)
 
         Returns:
             bool: 是否成功启动运行（不关心运行结果）
         """
+        start_time = time.time()
+        while not self.ctx.ready_for_application:
+            now = time.time()
+            if now - start_time >= init_timeout:
+                log.error("等待应用 {} 初始化超时", app_id)
+                return False
+
+            time.sleep(1)
+
         if not self.is_app_registered(app_id):
             log.error("应用 {} 未注册", app_id)
             return False
@@ -315,6 +419,7 @@ class ApplicationRunContext:
             self.current_app_id = app_id
             self.current_instance_idx = instance_idx
             self.current_group_id = group_id
+            self.current_application = app
 
             op_result = app.execute()
         except Exception:
@@ -324,11 +429,16 @@ class ApplicationRunContext:
             self.current_app_id = None
             self.current_instance_idx = None
             self.current_group_id = None
+            self.current_application = None
 
         return True
 
     def run_application_async(
-        self, app_id: str, instance_idx: int, group_id: str
+        self,
+        app_id: str,
+        instance_idx: int,
+        group_id: str,
+        init_timeout: int = 60,
     ) -> bool:
         """
         异步运行指定的应用。
@@ -340,6 +450,7 @@ class ApplicationRunContext:
             app_id: 应用ID
             instance_idx: 账号实例下标
             group_id: 应用组ID，可将应用分组运行
+            init_timeout: 等待初始化的超时时间(秒)
 
         Returns:
             bool: 是否成功提交到线程池（不关心运行结果）
@@ -350,7 +461,33 @@ class ApplicationRunContext:
         if not self.is_app_registered(app_id):
             return False
 
-        future = self._executor.submit(self.run_application, app_id, instance_idx, group_id)
+        future = self._executor.submit(self.run_application, app_id, instance_idx, group_id, init_timeout)
         future.add_done_callback(thread_utils.handle_future_result)
 
         return True
+
+    def check_and_update_all_run_record(self, instance_idx: int) -> None:
+        """
+        检查并刷新账号实例下的所有运行记录
+        Args:
+            instance_idx: 账号实例下标
+        """
+        for app_id in self._application_factory_map.keys():
+            try:
+                run_record = self.get_run_record(app_id=app_id, instance_idx=instance_idx)
+                run_record.check_and_update_status()
+            except Exception:
+                # 部分应用没有运行记录 跳过即可
+                pass
+
+    def after_app_shutdown(self) -> None:
+        """
+        整个脚本运行结束后的清理
+
+        关闭应用运行上下文，包括停止当前运行任务、清除运行状态。
+        """
+        # 首先停止当前运行的应用，清除运行状态
+        self.stop_running()
+
+        # 关闭执行器
+        self._executor.shutdown(wait=False, cancel_futures=True)

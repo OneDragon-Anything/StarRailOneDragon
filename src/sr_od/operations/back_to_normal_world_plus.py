@@ -1,12 +1,12 @@
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.app.sim_uni import sim_uni_screen_state
-from sr_od.app.sim_uni.operations.bless.sim_uni_choose_bless import SimUniChooseBless
-from sr_od.app.sim_uni.operations.bless.sim_uni_drop_bless import SimUniDropBless
-from sr_od.app.sim_uni.operations.curio.sim_uni_choose_curio import SimUniChooseCurio, SimUniDropCurio
-from sr_od.app.sim_uni.operations.sim_uni_event import SimUniEvent
-from sr_od.app.sim_uni.operations.sim_uni_exit import SimUniExit
+from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import SimUniChooseBless
+from sr_od.application.sim_universe.operations.bless.sim_uni_drop_bless import SimUniDropBless
+from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import SimUniChooseCurio, SimUniDropCurio
+from sr_od.application.sim_universe.operations.sim_uni_event import SimUniEvent
+from sr_od.application.sim_universe.operations.sim_uni_exit import SimUniExit
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.screen_state import common_screen_state
@@ -46,6 +46,10 @@ class BackToNormalWorldPlus(SrOperation):
         # 在可以移动的画面 - 普通大世界
         result = self.round_by_find_area(screen, '大世界', '角色图标')
         if result.is_success:  # 右上角有角色图标
+            # 检测弹窗 "点击空白处关闭" 弹窗不会遮挡角色图标 需要先关闭
+            result = self.round_by_find_and_click_area(screen, '大世界', '点击空白处关闭')
+            if result.is_success:
+                return self.round_wait(wait=1)
             return self.round_success()
 
         # 手机菜单
@@ -154,3 +158,4 @@ class BackToNormalWorldPlus(SrOperation):
             return self.round_wait(wait=1)
         else:
             return self.round_retry(wait=1)
+

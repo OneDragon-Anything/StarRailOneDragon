@@ -84,6 +84,24 @@
       mission_list:
         - mission_name: "回忆之蕾"
           show_in_power_plan: true
+          display_name: "角色经验-二相乐园"
+          region_name: '绘世学院'
+          power: 10
+
+        - mission_name: "以太之蕾"
+          show_in_power_plan: true
+          display_name: "光锥经验-二相乐园"
+          region_name: '鸽川区'
+          power: 10
+
+        - mission_name: "藏珍之蕾"
+          show_in_power_plan: true
+          display_name: "信用点-二相乐园"
+          region_name: '鸽川区'
+          power: 10
+
+        - mission_name: "回忆之蕾"
+          show_in_power_plan: true
           display_name: "角色经验-翁法罗斯"
           region_name: '「神谕圣地」雅努萨波利斯'
           power: 10
@@ -94,7 +112,7 @@
           region_name: '「纷争荒墟」悬锋城'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-翁法罗斯"
           region_name: '「呓语密林」神悟树庭'
@@ -112,7 +130,7 @@
           region_name: '稚子的梦'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-匹诺康尼"
           region_name: '「白日梦」酒店-梦境'
@@ -130,7 +148,7 @@
           region_name: '太卜司'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-仙舟「罗浮」"
           region_name: '工造司'
@@ -148,7 +166,7 @@
           region_name: '边缘通路'
           power: 10
 
-        - mission_name: "珍藏之蕾"
+        - mission_name: "藏珍之蕾"
           show_in_power_plan: true
           display_name: "信用点-雅利洛-VI"
           region_name: '大矿区'
@@ -159,6 +177,12 @@
       remark_in_game: "行迹材料"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "欢愉之蕾"
+          show_in_power_plan: true
+          display_name: "欢愉-「世界尽头」酒馆"
+          region_name: '「世界尽头」酒馆'
+          power: 10
+
         - mission_name: "毁灭之蕾"
           show_in_power_plan: true
           display_name: "毁灭-麟渊境"
@@ -181,6 +205,12 @@
           show_in_power_plan: true
           display_name: "存护-支援舱段"
           region_name: '支援舱段'
+          power: 10
+
+        - mission_name: "巡猎之蕾"
+          show_in_power_plan: true
+          display_name: "巡猎-「葬忆彼岸」时光归墟"
+          region_name: '「葬忆彼岸」时光归墟'
           power: 10
 
         - mission_name: "巡猎之蕾"
@@ -278,6 +308,12 @@
           region_name: "大矿区"
           power: 30
 
+        - mission_name: "残灰之形"
+          show_in_power_plan: true
+          display_name: "火-残灰之形"
+          region_name: "「神谕圣地」雅努萨波利斯"
+          power: 30
+
         - mission_name: "嗔怒之形"
           show_in_power_plan: true
           display_name: "火-嗔怒之形"
@@ -318,6 +354,12 @@
           show_in_power_plan: true
           display_name: "冰-霜晶之形"
           region_name: "残响回廊"
+          power: 30
+
+        - mission_name: "音爆之形"
+          show_in_power_plan: true
+          display_name: "雷-音爆之形"
+          region_name: "鸽川区"
           power: 30
 
         - mission_name: "机狼之形"
@@ -415,6 +457,12 @@
       remark_in_game: "遗器"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "魔占之径"
+          show_in_power_plan: true
+          display_name: "闪耀功勋的魔法少女/应天涉远的卜者"
+          region_name: "绘世学院"
+          power: 40
+
         - mission_name: "隐救之径"
           show_in_power_plan: true
           display_name: "再创天地的救世主 自匿星芒的隐士"

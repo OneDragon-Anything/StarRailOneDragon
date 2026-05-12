@@ -11,7 +11,7 @@ from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterf
 from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiLineSettingCard
 from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiPushSettingCard
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
-from sr_od.app.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
+from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.config.team_config import TeamNumEnum
 from sr_od.context.sr_context import SrContext
@@ -111,7 +111,7 @@ class PowerPlanCard(MultiLineSettingCard):
 
     def init_character_box(self) -> None:
         config_list = (
-                [ConfigItem('无', 'none')]
+                [ConfigItem('无', 'none'), ConfigItem('随机', 'random')]
                 + [ConfigItem(i.cn, i.id) for i in CHARACTER_LIST]
         )
         self.character_combo_box.set_items(config_list, self.plan.support)
@@ -313,7 +313,7 @@ class PowerPlanInterface(VerticalScrollInterface):
         dialog.cancelButton.setText('取消')
         if dialog.exec():
             self.plan_list_backup = self.ctx.power_config.plan_list.copy()
-            not_completed_plans = [plan for plan in self.ctx.power_config.plan_list 
+            not_completed_plans = [plan for plan in self.ctx.power_config.plan_list
                                 if plan.run_times < plan.plan_times]
             self.ctx.power_config.plan_list = not_completed_plans.copy()
             self.ctx.power_config.save()
@@ -336,3 +336,4 @@ class PowerPlanInterface(VerticalScrollInterface):
         self.ctx.power_config.plan_list = self.plan_list_backup.copy()
         self.cancel_btn.setEnabled(False)
         self.update_plan_list_display()
+

@@ -7,7 +7,7 @@ from one_dragon_qt.widgets.setting_card.editable_combo_box_setting_card import E
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import ComboBoxSettingCard
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
-from sr_od.app.world_patrol.world_patrol_whitelist_config import load_all_whitelist_list, WorldPatrolWhitelist
+from sr_od.application.world_patrol.world_patrol_whitelist_config import load_all_whitelist_list, WorldPatrolWhitelist
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.context.sr_context import SrContext
 
