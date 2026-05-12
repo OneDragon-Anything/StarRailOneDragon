@@ -6,7 +6,7 @@ import time
 
 import psutil
 
-from one_dragon.base.operation.one_dragon_context import ContextRunStateEnum
+from one_dragon.base.operation.application.application_run_context import ApplicationRunContextStateEventEnum
 from one_dragon.utils.log_utils import log
 from script_chainer.config.script_config import ScriptConfig, ScriptChainConfig, CheckDoneMethods
 # # 全局变量用于Push实例
@@ -195,8 +195,8 @@ def run_script(script_config: ScriptConfig, ctx: SrContext = None) -> None:
     game_ever_existed: bool = False  # 游戏进程是否存在
     is_done: bool = False
     while True:
-        if ((script_config.stop_chain_when_pause_pressed and ctx.context_running_state == ContextRunStateEnum.PAUSE)
-                or ctx.context_running_state == ContextRunStateEnum.STOP):
+        if ((script_config.stop_chain_when_pause_pressed and ctx.run_context.is_context_pause)
+                or ctx.run_context.is_context_stop):
             break
 
         game_current_existed: bool = is_process_existed(script_config.game_process_name)

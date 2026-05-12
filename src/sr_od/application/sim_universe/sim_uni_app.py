@@ -3,12 +3,11 @@ import shutil
 import time
 from typing import Optional, ClassVar, Callable
 
-from one_dragon.base.operation.one_dragon_context import ContextRunStateEnum
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
-from one_dragon.utils import os_utils
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import os_utils, cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from script_chainer.config.script_config import ScriptConfig
@@ -61,31 +60,30 @@ class SimUniApp(SrApplication):
 
     # 在差分宇宙入口处检查积分奖励
     def _check_points_reward(self) -> OperationRoundResult:
-        last_count_18000 = -1
-        # 默认设置找不到 18000 返回重试
-        result = self.round_retry('未找到积分奖励', wait=1)
-        # 识别到两次一致的结果就退出循环
-        for _ in range(10):
-            ocr_result_map = self.ocr(self.screenshot(), '模拟宇宙', '差分宇宙-积分奖励')
+        TARGET_SCORE = '18000'  # 目标分数文本
 
-            count_18000 = 0
-            for ocr_result, _mrl in ocr_result_map.items():
-                count_18000 += ocr_result.count('18000')
-            if last_count_18000 != count_18000:
-                last_count_18000 = count_18000
-                time.sleep(1)
-                continue
+        # 裁剪悬赏委托进度区域
+        area = self.ctx.screen_loader.get_area('模拟宇宙', '差分宇宙-积分奖励')
+        part = cv2_utils.crop_image_only(self.last_screenshot, area.rect)
 
-            if count_18000 == 1:
-                # 只有一个 18000
-                result = self.round_fail('未打满积分奖励')
-            elif count_18000 == 2:
-                # 如果周计划未完成, 设置为已完成
-                if not self.ctx.sim_uni_record.points_reward_complete:
-                    self.ctx.sim_uni_record.points_reward_complete = True
-                result = self.round_success('已打满积分奖励')
-            break
-        return result
+        # OCR识别
+        ocr_result_list = self.ctx.ocr.ocr(part)
+
+        # 统计 '18000' 出现次数
+        target_count = sum(ocr_text.data.count(TARGET_SCORE) for ocr_text in ocr_result_list)
+
+        # 根据次数判断完成状态
+        if target_count == 1:
+            # 只有一个 18000,表示 xxxx/18000 (未完成)
+            return self.round_success('未打满积分奖励')
+        elif target_count == 2:
+            # 两个1 8000,表示 18000/18000 (已完成)
+            if not self.run_record.points_reward_complete:
+                self.run_record.points_reward_complete = True
+            return self.round_success('已打满积分奖励')
+        else:
+            # 未识别到预期的结果(0次或3次以上),返回重试
+            return self.round_retry(wait=0.5)
 
     @node_from(from_name='自动宇宙')
     @node_from(from_name='异常退出')
@@ -154,7 +152,7 @@ class SimUniApp(SrApplication):
         # 如果只要求打满奖励, 识别是否 18000/18000了
         if self.ctx.sim_uni_config.only_points_reward:
             points_reward = self._check_points_reward()
-            if points_reward.result != OperationRoundResultEnum.FAIL:
+            if points_reward.status == '已打满积分奖励':
                 return points_reward
 
         work_dir = os_utils.get_work_dir()
@@ -209,15 +207,15 @@ class SimUniApp(SrApplication):
         max_retries = 3
         while retry_count < max_retries:
             # auto_simulated_universe 运行前, 检查是否按了暂停/停止
-            if self.ctx.context_running_state == ContextRunStateEnum.STOP:
+            if self.ctx.run_context.is_context_stop:
                 break
-            elif self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
+            elif self.ctx.run_context.is_context_pause:
                 time.sleep(1)
                 continue
             # 阻塞式运行 auto_simulated_universe, 并在按下暂停键时结束其运行
             run_script(script_config, self.ctx)
             # auto_simulated_universe 运行结束, 检查是否按了暂停键, 如果按了暂停键则认为是人为中止其运行从而忽略其返回值
-            if self.ctx.context_running_state == ContextRunStateEnum.PAUSE:
+            if self.ctx.run_context.is_context_pause:
                 time.sleep(1)
                 continue
             retry_count += 1
@@ -337,9 +335,9 @@ class SimUniApp(SrApplication):
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
-    ctx.init_for_sim_uni()
-    ctx.start_running()
+    ctx.init()
+    ctx.run_context.current_app_id = sim_universe_const.APP_ID
+    ctx.run_context.start_running()
     op = SimUniApp(ctx)
     op.execute()
 
