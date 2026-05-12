@@ -6,7 +6,7 @@ from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSetting
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon.utils.i18_utils import gt
 from one_dragon_qt.widgets.column import Column
-from sr_od.app.relic_salvage.relic_salvage_config import RelicLevelEnum
+from sr_od.application.relic_salvage.relic_salvage_config import RelicLevelEnum
 from sr_od.context.sr_context import SrContext
 
 
@@ -66,3 +66,4 @@ class SrOdSettingInterface(VerticalScrollInterface):
         self.route_yll6_xzq_opt.init_with_adapter(self.ctx.trick_snack_config.get_prop_adapter('route_yll6_xzq'))
         self.route_xzlf_xchzs_opt.init_with_adapter(self.ctx.trick_snack_config.get_prop_adapter('route_xzlf_xchzs'))
         self.synthesize_trick_snack.init_with_adapter(self.ctx.trick_snack_config.get_prop_adapter('synthesize_trick_snack'))
+

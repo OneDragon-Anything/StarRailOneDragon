@@ -1,0 +1,1 @@
+"""StarRail application factory packages."""

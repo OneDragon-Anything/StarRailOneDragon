@@ -4,28 +4,28 @@ from typing import Optional, List
 
 from one_dragon.base.operation.one_dragon_context import OneDragonContext
 from one_dragon.utils import i18_utils
-from sr_od.app.assignments.assignments_run_record import AssignmentsRunRecord
-from sr_od.app.buy_xianzhou_parcel.buy_xianzhou_parcel_run_record import BuyXianZhouParcelRunRecord
-from sr_od.app.claim_email.email_run_record import EmailRunRecord
-from sr_od.app.daily_training.daily_training_run_record import DailyTrainingRunRecord
-from sr_od.app.echo_of_war.echo_of_war_config import EchoOfWarConfig
-from sr_od.app.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
-from sr_od.app.nameless_honor.nameless_honor_run_record import NamelessHonorRunRecord
-from sr_od.app.relic_salvage.relic_salvage_config import RelicSalvageConfig
-from sr_od.app.relic_salvage.relic_salvage_run_record import RelicSalvageRunRecord
-from sr_od.app.sim_uni.sim_uni_challenge_config import SimUniChallengeConfig, SimUniChallengeConfigData
-from sr_od.app.sim_uni.sim_uni_config import SimUniConfig
-from sr_od.app.sim_uni.sim_uni_route_data import SimUniRouteData
-from sr_od.app.sim_uni.sim_uni_run_record import SimUniRunRecord
-from sr_od.app.support_character.support_character_run_record import SupportCharacterRunRecord
-from sr_od.app.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig
-from sr_od.app.trailblaze_power.trailblaze_power_run_record import TrailblazePowerRunRecord
-from sr_od.app.trick_snack.trick_snack_config import TrickSnackConfig
-from sr_od.app.trick_snack.trick_snack_record import TrickSnackRunRecord
-from sr_od.app.memory_crystal_shard.memory_crystal_shard_run_record import MemoryCrystalShardRunRecord
-from sr_od.app.world_patrol.world_patrol_config import WorldPatrolConfig
-from sr_od.app.world_patrol.world_patrol_route_data import WorldPatrolRouteData
-from sr_od.app.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
+from sr_od.application.assignments.assignments_run_record import AssignmentsRunRecord
+from sr_od.application.buy_xianzhou_parcel.buy_xianzhou_parcel_run_record import BuyXianZhouParcelRunRecord
+from sr_od.application.email.email_run_record import EmailRunRecord
+from sr_od.application.daily_training.daily_training_run_record import DailyTrainingRunRecord
+from sr_od.application.echo_of_war.echo_of_war_config import EchoOfWarConfig
+from sr_od.application.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
+from sr_od.application.nameless_honor.nameless_honor_run_record import NamelessHonorRunRecord
+from sr_od.application.relic_salvage.relic_salvage_config import RelicSalvageConfig
+from sr_od.application.relic_salvage.relic_salvage_run_record import RelicSalvageRunRecord
+from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig, SimUniChallengeConfigData
+from sr_od.application.sim_universe.sim_uni_config import SimUniConfig
+from sr_od.application.sim_universe.sim_uni_route_data import SimUniRouteData
+from sr_od.application.sim_universe.sim_uni_run_record import SimUniRunRecord
+from sr_od.application.support_character.support_character_run_record import SupportCharacterRunRecord
+from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig
+from sr_od.application.trailblaze_power.trailblaze_power_run_record import TrailblazePowerRunRecord
+from sr_od.application.trick_snack.trick_snack_config import TrickSnackConfig
+from sr_od.application.trick_snack.trick_snack_record import TrickSnackRunRecord
+from sr_od.application.memory_crystal_shard.memory_crystal_shard_run_record import MemoryCrystalShardRunRecord
+from sr_od.application.world_patrol.world_patrol_config import WorldPatrolConfig
+from sr_od.application.world_patrol.world_patrol_route_data import WorldPatrolRouteData
+from sr_od.application.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
 from sr_od.config.character_const import Character, TECHNIQUE_ATTACK, TECHNIQUE_BUFF, TECHNIQUE_BUFF_ATTACK, FEIXIAO, \
     TECHNIQUE_BUFF_ATTACK_DISAPPEAR
 from sr_od.context.context_pos_info import ContextPosInfo
@@ -198,25 +198,53 @@ class SrContext(OneDragonContext):
         self.preheat_context = SrPreheatContext(self)
 
         # 实例独有的配置
-        self.load_instance_config()
+        self.reload_instance_config()
+
+    def register_application_factory(self) -> None:
+        OneDragonContext.register_application_factory(self)
+        self.app_group_manager.set_default_apps(self.run_context.default_group_apps)
+        self.app_group_manager.clear_config_cache()
+
+        from one_dragon.base.config.notify_config import NotifyConfig
+        self.notify_config = NotifyConfig(self.current_instance_idx, self.run_context.notify_app_map)
+
+    def refresh_application_registration(self) -> None:
+        OneDragonContext.refresh_application_registration(self)
+
+        from one_dragon.base.config.notify_config import NotifyConfig
+        self.notify_config = NotifyConfig(self.current_instance_idx, self.run_context.notify_app_map)
 
     def init_by_config(self) -> None:
         """
         根据配置进行初始化
         :return:
         """
-        OneDragonContext.init_by_config(self)
+        self.init()
+
+    def init_controller(self) -> None:
         i18_utils.update_default_lang(self.game_config.lang)
+
+        if self.controller is not None:
+            self.controller.cleanup_after_app_shutdown()
 
         self.controller = SrPcController(
             game_config=self.game_config,
-            win_title=self.game_config.win_title,
+            screenshot_method=self.env_config.screenshot_method,
             standard_width=self.project_config.screen_standard_width,
             standard_height=self.project_config.screen_standard_height
         )
+        self.controller.set_window_title(self._get_win_title())
+
+    def _get_win_title(self) -> str:
+        if self.game_account_config.use_custom_win_title:
+            return self.game_account_config.custom_win_title
+        return self.game_config.win_title
 
     def load_instance_config(self) -> None:
-        OneDragonContext.load_instance_config(self)
+        self.reload_instance_config()
+
+    def reload_instance_config(self) -> None:
+        OneDragonContext.reload_instance_config(self)
 
         # 切换实例后 所有信息都需要重置
         self.pos_info: ContextPosInfo = ContextPosInfo()
@@ -228,12 +256,11 @@ class SrContext(OneDragonContext):
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)
         from one_dragon.base.config.game_account_config import GameAccountConfig
         self.game_account_config: GameAccountConfig = GameAccountConfig(self.current_instance_idx)
+        from one_dragon.base.config.notify_config import NotifyConfig
+        self.notify_config: NotifyConfig = NotifyConfig(self.current_instance_idx, self.run_context.notify_app_map)
 
         game_refresh_hour_offset = self.game_account_config.game_refresh_hour_offset
-
-        from sr_od.config.notify_config import NotifyConfig
-        self.notify_config: NotifyConfig = NotifyConfig(self.current_instance_idx)
-        from sr_od.app.notify.notify_run_record import NotifyRunRecord
+        from sr_od.application.notify.notify_run_record import NotifyRunRecord
         self.notify_record: NotifyRunRecord = NotifyRunRecord(self.current_instance_idx, game_refresh_hour_offset)
 
         self.world_patrol_config: WorldPatrolConfig = WorldPatrolConfig(self.current_instance_idx)
@@ -262,6 +289,9 @@ class SrContext(OneDragonContext):
 
         self.trick_snack_config: TrickSnackConfig = TrickSnackConfig(self.current_instance_idx)
         self.trick_snack_run_record: TrickSnackRunRecord = TrickSnackRunRecord(self.current_instance_idx, game_refresh_hour_offset)
+
+    def on_switch_instance(self) -> None:
+        self.init_controller()
 
     @property
     def sim_uni_challenge_config(self) -> Optional[SimUniChallengeConfig]:
@@ -333,3 +363,4 @@ class SrContext(OneDragonContext):
         if self.ban_technique:
             return False
         return self.is_fx_world_patrol_tech and time.time() - self.last_use_tech_time > self.team_info.get_buff_lasting_seconds(1)
+

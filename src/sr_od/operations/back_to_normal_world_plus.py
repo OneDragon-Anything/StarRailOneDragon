@@ -1,12 +1,12 @@
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.app.sim_uni import sim_uni_screen_state
-from sr_od.app.sim_uni.operations.bless.sim_uni_choose_bless import SimUniChooseBless
-from sr_od.app.sim_uni.operations.bless.sim_uni_drop_bless import SimUniDropBless
-from sr_od.app.sim_uni.operations.curio.sim_uni_choose_curio import SimUniChooseCurio, SimUniDropCurio
-from sr_od.app.sim_uni.operations.sim_uni_event import SimUniEvent
-from sr_od.app.sim_uni.operations.sim_uni_exit import SimUniExit
+from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import SimUniChooseBless
+from sr_od.application.sim_universe.operations.bless.sim_uni_drop_bless import SimUniDropBless
+from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import SimUniChooseCurio, SimUniDropCurio
+from sr_od.application.sim_universe.operations.sim_uni_event import SimUniEvent
+from sr_od.application.sim_universe.operations.sim_uni_exit import SimUniExit
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.screen_state import common_screen_state
@@ -158,3 +158,4 @@ class BackToNormalWorldPlus(SrOperation):
             return self.round_wait(wait=1)
         else:
             return self.round_retry(wait=1)
+

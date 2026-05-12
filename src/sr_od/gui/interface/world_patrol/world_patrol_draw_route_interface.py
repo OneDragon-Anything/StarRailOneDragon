@@ -15,10 +15,10 @@ from one_dragon_qt.widgets.image_viewer_widget import ImageViewerWidget
 from one_dragon_qt.widgets.row import Row
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
-from sr_od.app.world_patrol import world_patrol_route_draw_utils
-from sr_od.app.world_patrol.world_patrol_app import WorldPatrolApp
-from sr_od.app.world_patrol.world_patrol_route import WorldPatrolRoute
-from sr_od.app.world_patrol.world_patrol_whitelist_config import WorldPatrolWhitelist
+from sr_od.application.world_patrol import world_patrol_route_draw_utils
+from sr_od.application.world_patrol.world_patrol_app import WorldPatrolApp
+from sr_od.application.world_patrol.world_patrol_route import WorldPatrolRoute
+from sr_od.application.world_patrol.world_patrol_whitelist_config import WorldPatrolWhitelist
 from sr_od.config import operation_const
 from sr_od.context.sr_context import SrContext
 from sr_od.sr_map.sr_map_def import Planet, Region, SpecialPoint
