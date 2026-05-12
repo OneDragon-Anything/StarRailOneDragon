@@ -5,9 +5,9 @@ area_list:
 - area_name: 每周奖励红点
   id_mark: false
   pc_rect:
-  - 360
-  - 950
-  - 410
+  - 375
+  - 940
+  - 435
   - 1000
   text: ''
   lcs_percent: 0.5
@@ -19,10 +19,10 @@ area_list:
 - area_name: 每周奖励-一键领取
   id_mark: false
   pc_rect:
-  - 1425
-  - 740
-  - 1765
-  - 782
+  - 1600
+  - 700
+  - 1720
+  - 750
   text: 一键领取
   lcs_percent: 0.5
   template_sub_dir: ''
