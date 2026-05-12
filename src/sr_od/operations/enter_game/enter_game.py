@@ -11,9 +11,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.app.sim_uni import sim_uni_screen_state
-from sr_od.app.sim_uni.operations.auto_run.sim_uni_wait_level_start import SimUniWaitLevelStart
-from sr_od.app.sim_uni.operations.sim_uni_enter_fight import SimUniEnterFight
+from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe.operations.auto_run.sim_uni_wait_level_start import SimUniWaitLevelStart
+from sr_od.application.sim_universe.operations.sim_uni_enter_fight import SimUniEnterFight
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.sr_operation import SrOperation
@@ -241,3 +241,4 @@ def __debug():
 
 if __name__ == '__main__':
     __debug()
+

@@ -1,14 +1,12 @@
-from typing import List, Dict, Type
-
 import cv2
 import numpy as np
 
 from one_dragon.base.cv_process.cv_code_generator import CvCodeGenerator
 from one_dragon.base.cv_process.cv_pipeline import CvPipeline, CvPipelineContext
 from one_dragon.base.cv_process.cv_step import CvStep
+from one_dragon.base.operation.one_dragon_context import OneDragonContext
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.utils import cv2_utils
-from sr_od.context.sr_context import SrContext
 
 
 class ImageAnalysisLogic:
@@ -17,24 +15,24 @@ class ImageAnalysisLogic:
     负责响应界面事件，调用核心CV服务，并管理界面状态
     """
 
-    def __init__(self, ctx: SrContext):
+    def __init__(self, ctx: OneDragonContext):
         """
         业务逻辑的初始化
         """
-        self.ctx: SrContext = ctx
+        self.ctx: OneDragonContext = ctx
         self.cv_service = ctx.cv_service  # 从上下文中获取核心服务
 
         self.pipeline: CvPipeline = CvPipeline()
         self.context: CvPipelineContext = None
         self.active_pipeline_name: str = None  # 当前激活的流水线名称
 
-        self.view_options: List[str] = ['原始图像', '遮罩', '最终结果']
+        self.view_options: list[str] = ['原始图像', '遮罩', '最终结果']
         self.current_view_index: int = 0
 
         # UI层仍然需要知道有哪些可用的步骤，以便在界面上显示
-        self.available_steps: Dict[str, Type[CvStep]] = self.cv_service.available_steps
+        self.available_steps: dict[str, type[CvStep]] = self.cv_service.available_steps
 
-    def get_available_step_names(self) -> List[str]:
+    def get_available_step_names(self) -> list[str]:
         """
         获取所有可用步骤的名称
         """
@@ -69,7 +67,7 @@ class ImageAnalysisLogic:
         if index >= 0 and index < len(self.pipeline.steps) - 1:
             self.pipeline.steps.insert(index + 1, self.pipeline.steps.pop(index))
 
-    def execute_pipeline(self) -> tuple[np.ndarray, List[str]]:
+    def execute_pipeline(self) -> tuple[np.ndarray, list[str]]:
         """
         执行流水线
         """
@@ -101,7 +99,7 @@ class ImageAnalysisLogic:
             return "无"
         return self.view_options[self.current_view_index]
 
-    def load_image(self, file_path: str) -> bool:
+    def load_image_from_path(self, file_path: str) -> bool:
         """
         从文件路径加载图片，并初始化相关状态
         """
@@ -110,15 +108,35 @@ class ImageAnalysisLogic:
             if source_image is None:
                 return False
 
-            self.context = CvPipelineContext(source_image, service=self.cv_service, debug_mode=True)
-
-            height, width, _ = source_image.shape
-            self.context.mask_image = np.full((height, width), 255, dtype=np.uint8)
-
-            self.current_view_index = 0
-            return True
+            return self._init_context_with_image(source_image)
         except Exception:
             return False
+
+    def load_image_from_array(self, image_array: np.ndarray) -> bool:
+        """
+        从 numpy 数组加载图片，并初始化相关状态
+        :param image_array: RGB 格式的 numpy 数组
+        """
+        try:
+            if image_array is None:
+                return False
+
+            return self._init_context_with_image(image_array)
+        except Exception:
+            return False
+
+    def _init_context_with_image(self, source_image: np.ndarray) -> bool:
+        """
+        使用图片初始化 context
+        :param source_image: RGB 格式的图片
+        """
+        self.context = CvPipelineContext(source_image, service=self.cv_service, debug_mode=True)
+
+        height, width = source_image.shape[:2]
+        self.context.mask_image = np.full((height, width), 255, dtype=np.uint8)
+
+        self.current_view_index = 0
+        return True
 
     def get_display_image(self) -> np.ndarray:
         """
@@ -198,7 +216,7 @@ class ImageAnalysisLogic:
 
     # ==================== 流水线文件操作(委托给CvService) ====================
 
-    def get_pipeline_names(self) -> List[str]:
+    def get_pipeline_names(self) -> list[str]:
         return self.cv_service.get_pipeline_names()
 
     def save_pipeline(self, name: str) -> bool:
@@ -228,13 +246,13 @@ class ImageAnalysisLogic:
 
     # ==================== 模板文件操作(委托给CvService) ====================
 
-    def get_screen_names(self) -> List[str]:
+    def get_screen_names(self) -> list[str]:
         """
         获取所有画面的名称，用于UI下拉框
         """
         return list(self.ctx.screen_loader.screen_info_map.keys())
 
-    def get_area_names_by_screen(self, screen_name: str) -> List[str]:
+    def get_area_names_by_screen(self, screen_name: str) -> list[str]:
         """
         根据画面名称，获取其下所有区域的名称
         """
@@ -243,10 +261,10 @@ class ImageAnalysisLogic:
             return []
         return [area.area_name for area in screen.area_list]
 
-    def get_template_names(self) -> List[str]:
+    def get_template_names(self) -> list[str]:
         return self.cv_service.get_template_names()
 
-    def get_template_info_list(self) -> List[TemplateInfo]:
+    def get_template_info_list(self) -> list[TemplateInfo]:
         """
         获取所有模板的信息
         """
@@ -296,7 +314,6 @@ class ImageAnalysisLogic:
         source_bottom = bottom + offset_y
 
         # 对原始图像进行HSV分析
-        from one_dragon.utils import cv2_utils
         hsv_result = cv2_utils.get_hsv_range_in_rect(
             self.context.source_image,
             source_left, source_top, source_right, source_bottom

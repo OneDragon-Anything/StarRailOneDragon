@@ -7,7 +7,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.app.div_uni.operations.choose_oe_file import ChooseOeFile
 from sr_od.app.div_uni.operations.choose_oe_support import ChooseOeSupport
-from sr_od.app.sim_uni.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
+from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
@@ -204,3 +204,4 @@ class ChallengeOrnamentExtraction(SrOperation):
         """
         screen = self.last_screenshot
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
+

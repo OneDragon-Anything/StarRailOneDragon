@@ -4,13 +4,15 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import FluentIcon, SettingCardGroup
 
 from one_dragon.base.config.config_item import ConfigItem
-from one_dragon.base.operation.application_base import Application
+from one_dragon.base.operation.application import application_const
 from one_dragon.utils.log_utils import log
 from one_dragon_qt.view.app_run_interface import AppRunInterface
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import ComboBoxSettingCard
 from one_dragon_qt.widgets.setting_card.text_setting_card import TextSettingCard
-from sr_od.app.large_map_recorder.large_map_recorder_app import LargeMapRecorder
+from sr_od.application.large_map_recorder import large_map_recorder_const
+from sr_od.application.large_map_recorder.large_map_recorder_config import LargeMapRecorderConfig
+from sr_od.application.large_map_recorder.large_map_recorder_app import LargeMapRecorder
 from sr_od.context.sr_context import SrContext
 from sr_od.sr_map.sr_map_def import Planet, Region
 
@@ -26,6 +28,7 @@ class LargeMapRecorderRunInterface(AppRunInterface):
         AppRunInterface.__init__(
             self,
             ctx=ctx,
+            app_id=large_map_recorder_const.APP_ID,
             object_name='sr_large_map_recorder_run_interface',
             nav_text_cn='大地图录制',
             parent=parent,
@@ -103,6 +106,11 @@ class LargeMapRecorderRunInterface(AppRunInterface):
         AppRunInterface.on_interface_shown(self)
         self.init_planet_options()
         self.init_run_mode_options()
+        self.load_config()
+
+    def on_interface_hidden(self) -> None:
+        self.save_config()
+        AppRunInterface.on_interface_hidden(self)
 
     def init_planet_options(self):
         """初始化星球选择选项"""
@@ -126,18 +134,18 @@ class LargeMapRecorderRunInterface(AppRunInterface):
     def init_run_mode_options(self):
         """初始化运行模式选项"""
         run_mode_options = [
-            ConfigItem('完整录制', 'all'),
-            ConfigItem('仅截图', 'screenshot'),
-            ConfigItem('仅合并', 'merge'),
-            ConfigItem('仅调整大小', 'adjust_size'),
-            ConfigItem('仅保存', 'save')
+            ConfigItem('完整录制', LargeMapRecorder.RUN_MODE_ALL),
+            ConfigItem('仅截图', LargeMapRecorder.RUN_MODE_SCREENSHOT),
+            ConfigItem('仅合并', LargeMapRecorder.RUN_MODE_MERGE),
+            ConfigItem('仅调整大小', LargeMapRecorder.RUN_MODE_ADJUST_SIZE),
+            ConfigItem('仅保存', LargeMapRecorder.RUN_MODE_SAVE)
         ]
 
         # 设置选项
         self.run_mode_opt.set_options_by_list(run_mode_options)
 
         # 默认选择完整录制
-        self.run_mode_opt.setValue('all', emit_signal=False)
+        self.run_mode_opt.setValue(LargeMapRecorder.RUN_MODE_ALL, emit_signal=False)
 
     def on_planet_changed(self, index: int, planet: Planet):
         """星球选择变化"""
@@ -186,8 +194,8 @@ class LargeMapRecorderRunInterface(AppRunInterface):
             self.region_opt.set_options_by_list(region_options)
 
             # 默认选择第一个区域
-            if region_list:
-                self.current_region = region_list[0]
+            if region_options:
+                self.current_region = region_options[0].value
                 self.region_opt.setValue(self.current_region, emit_signal=False)
 
         except Exception as e:
@@ -215,29 +223,66 @@ class LargeMapRecorderRunInterface(AppRunInterface):
         except ValueError:
             return None
 
-    def get_app(self) -> Application:
-        """获取要运行的应用"""
+    def load_config(self) -> None:
+        config = self.get_config()
+        target_region = self._get_region_by_prl_id(config.region_prl_id)
+        if target_region is not None:
+            self.current_planet = target_region.planet
+            self.planet_opt.setValue(target_region.planet, emit_signal=False)
+            self.update_region_options()
+            self.current_region = target_region
+            self.region_opt.setValue(target_region, emit_signal=False)
+
+        self.run_mode_opt.setValue(config.run_mode, emit_signal=False)
+        self.floor_list_opt.setValue(config.floor_list_text, emit_signal=False)
+        self.row_list_opt.setValue(config.row_list_text, emit_signal=False)
+        self.col_list_opt.setValue(config.col_list_text, emit_signal=False)
+
+    def save_config(self) -> bool:
+        if self.current_region is None:
+            return False
+
+        floor_list_text = self.floor_list_opt.getValue().strip()
+        row_list_text = self.row_list_opt.getValue().strip()
+        col_list_text = self.col_list_opt.getValue().strip()
+
+        if self.parse_int_list(floor_list_text) is None and floor_list_text:
+            log.error('指定楼层格式错误')
+            return False
+        if self.parse_int_list(row_list_text) is None and row_list_text:
+            log.error('指定行格式错误')
+            return False
+        if self.parse_int_list(col_list_text) is None and col_list_text:
+            log.error('指定列格式错误')
+            return False
+
+        config = self.get_config()
+        config.region_prl_id = self.current_region.prl_id
+        config.run_mode = self.run_mode_opt.getValue()
+        config.floor_list_text = floor_list_text
+        config.row_list_text = row_list_text
+        config.col_list_text = col_list_text
+        config.save()
+        return True
+
+    def get_config(self) -> LargeMapRecorderConfig:
+        return self.ctx.run_context.get_config(
+            app_id=self.app_id,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+
+    def _get_region_by_prl_id(self, region_prl_id: str) -> Region | None:
+        for region in self.ctx.map_data.region_list:
+            if region.prl_id == region_prl_id:
+                return region
+        return None
+
+    def run_app(self) -> None:
         if self.current_region is None:
             log.error('请先选择要录制的区域')
-            return None
-            
-        try:
-            # 获取参数
-            floor_list = self.parse_int_list(self.floor_list_opt.line_edit.text())
-            row_list = self.parse_int_list(self.row_list_opt.line_edit.text())
-            col_list = self.parse_int_list(self.col_list_opt.line_edit.text())
-            
-            # 创建应用实例
-            app = LargeMapRecorder(
-                ctx=self.ctx,
-                region=self.current_region,
-                floor_list_to_record=floor_list,
-                row_list_to_record=row_list,
-                col_list_to_record=col_list
-            )
-            
-            return app
-            
-        except Exception as e:
-            log.error(f'创建大地图录制应用失败: {e}', exc_info=True)
-            return None
+            return
+        if not self.save_config():
+            return
+        AppRunInterface.run_app(self)
+
