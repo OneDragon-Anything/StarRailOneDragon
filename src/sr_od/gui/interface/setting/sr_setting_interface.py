@@ -1,5 +1,6 @@
 from qfluentwidgets import FluentIcon
 
+from one_dragon_qt.view.setting.setting_custom_interface import SettingCustomInterface
 from one_dragon_qt.widgets.pivot_navi_interface import PivotNavigatorInterface
 from one_dragon_qt.view.setting.setting_env_interface import SettingEnvInterface
 from one_dragon_qt.view.setting.setting_push_interface import SettingPushInterface
@@ -24,3 +25,4 @@ class SrSettingInterface(PivotNavigatorInterface):
         self.add_sub_interface(SrResourceDownloadInterface(ctx=self.ctx))
         self.add_sub_interface(SettingEnvInterface(ctx=self.ctx))
         self.add_sub_interface(SettingPushInterface(ctx=self.ctx))
+        self.add_sub_interface(SettingCustomInterface(ctx=self.ctx))

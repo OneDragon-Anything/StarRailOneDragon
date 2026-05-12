@@ -12,8 +12,8 @@ from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSetting
 from one_dragon_qt.widgets.setting_card.text_setting_card import TextSettingCard
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
-from sr_od.app.sim_uni.sim_uni_challenge_config import SimUniChallengeConfig
-from sr_od.app.sim_uni.sim_uni_const import SimUniPath, SimUniBlessLevel, SimUniBlessEnum, SimUniCurioEnum, \
+from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
+from sr_od.application.sim_universe.sim_uni_data import SimUniPath, SimUniBlessLevel, SimUniBlessEnum, SimUniCurioEnum, \
     SimUniLevelTypeEnum, level_type_from_id
 from sr_od.context.sr_context import SrContext
 
@@ -557,3 +557,4 @@ class SimUniChallengeConfigInterface(VerticalScrollInterface):
             level_type_name = btn.property('level_type_name')
             level_type = SimUniLevelTypeEnum[level_type_name]
             self.level_type_input.setPlainText(self.level_type_input.toPlainText() + '\n' + level_type.value.type_name)
+

@@ -3,20 +3,23 @@ from __future__ import annotations
 import difflib
 import inspect
 import time
+from collections.abc import Callable
 from functools import cached_property
-from io import BytesIO
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional
+from typing import TYPE_CHECKING, Any, ClassVar
 
-import cv2
 import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.matcher.match_result import MatchResultList
 from one_dragon.base.matcher.ocr import ocr_utils
+from one_dragon.base.operation.application.application_run_context import (
+    ApplicationRunContextStateEventEnum,
+)
 from one_dragon.base.operation.operation_base import OperationBase, OperationResult
 from one_dragon.base.operation.operation_edge import OperationEdge, OperationEdgeDesc
 from one_dragon.base.operation.operation_node import OperationNode
+from one_dragon.base.operation.operation_notify import send_node_notify
 from one_dragon.base.operation.operation_round_result import (
     OperationRoundResult,
     OperationRoundResultEnum,
@@ -24,67 +27,57 @@ from one_dragon.base.operation.operation_round_result import (
 from one_dragon.base.screen import screen_utils
 from one_dragon.base.screen.screen_area import ScreenArea
 from one_dragon.base.screen.screen_utils import FindAreaResultEnum, OcrClickResultEnum
-from one_dragon.utils import cv2_utils, debug_utils, str_utils
+from one_dragon.utils import debug_utils, str_utils
 from one_dragon.utils.i18_utils import coalesce_gt, gt
 from one_dragon.utils.log_utils import log
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.one_dragon_context import OneDragonContext
 
-class PreviousNodeStateProxy:
+
+class NodeStateProxy:
     """
-    一个代理类，用于安全、便捷地访问上一个节点的静态信息和动态执行结果。
+    一个代理类，用于安全、便捷地访问节点的静态信息和动态执行结果。
     """
 
-    def __init__(self, node: Optional[OperationNode], result: Optional[OperationRoundResult]):
-        self._node = node
-        self._result = result
+    def __init__(self, node: OperationNode | None, result: OperationRoundResult | None = None):
+        self.node = node
+        self.result = result
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """
-        上一个节点的名称
+        节点的名称
         """
-        return self._node.cn if self._node else None
+        return self.node.cn if self.node is not None else None
 
     @property
-    def status(self) -> Optional[str]:
+    def status(self) -> str | None:
         """
-        上一个节点的返回状态
+        节点的返回状态
         """
-        return self._result.status if self._result else None
+        return self.result.status if self.result is not None else None
 
     @property
-    def data(self) -> Optional[Any]:
+    def data(self) -> Any | None:
         """
-        上一个节点的返回数据
+        节点的返回数据
         """
-        return self._result.data if self._result else None
+        return self.result.data if self.result is not None else None
 
     @property
     def is_success(self) -> bool:
         """
-        上一个节点是否成功
+        节点是否成功
         """
-        if self._result is None:
-            return False
-        return self._result.result == OperationRoundResultEnum.SUCCESS
+        return self.result.is_success if self.result is not None else False
 
     @property
     def is_fail(self) -> bool:
         """
-        上一个节点是否失败
+        节点是否失败
         """
-        if self._result is None:
-            return False
-        return self._result.result == OperationRoundResultEnum.FAIL
-
-    @property
-    def raw_node(self) -> Optional[OperationNode]:
-        """
-        获取原始的 OperationNode 对象，用于高级访问
-        """
-        return self._node
+        return self.result.is_fail if self.result is not None else False
 
 
 class Operation(OperationBase):
@@ -98,9 +91,9 @@ class Operation(OperationBase):
             node_max_retry_times: int = 3,
             op_name: str = '',
             timeout_seconds: float = -1,
-            op_callback: Optional[Callable[[OperationResult], None]] = None,
+            op_callback: Callable[[OperationResult], None] | None = None,
             need_check_game_win: bool = True,
-            op_to_enter_game: Optional[OperationBase] = None
+            op_to_enter_game: OperationBase | None = None
     ):
         """初始化操作实例。
 
@@ -128,13 +121,13 @@ class Operation(OperationBase):
         self.timeout_seconds: float = timeout_seconds
         """指令超时时间"""
 
-        self.op_callback: Optional[Callable[[OperationResult], None]] = op_callback
+        self.op_callback: Callable[[OperationResult], None] | None = op_callback
         """指令结束后的回调"""
 
         self.need_check_game_win: bool = need_check_game_win
         """是否检测游戏窗口"""
 
-        self.op_to_enter_game: OperationBase = op_to_enter_game
+        self.op_to_enter_game: OperationBase | None = op_to_enter_game
         """用于打开游戏的指令"""
 
         # 指令节点网络相关属性
@@ -163,7 +156,7 @@ class Operation(OperationBase):
         self.round_start_time: float = 0
         """本轮指令的开始时间"""
 
-        self._current_node_start_time: Optional[float] = None
+        self._current_node_start_time: float | None = None
         """当前节点的开始运行时间"""
 
         self._current_node: OperationNode | None = None
@@ -187,7 +180,7 @@ class Operation(OperationBase):
         self.last_screenshot_time: float = 0
         """上一次截图的时间"""
 
-        self.node_status: dict[str, PreviousNodeStateProxy] = {}
+        self.node_status: dict[str, NodeStateProxy] = {}
         """已保存节点状态的字典"""
 
     def _init_before_execute(self):
@@ -216,12 +209,9 @@ class Operation(OperationBase):
         self.node_status.clear()
 
         # 监听事件
-        self.ctx.unlisten_all_event(self)
-        from one_dragon.base.operation.one_dragon_context import (
-            ContextRunningStateEventEnum,
-        )
-        self.ctx.listen_event(ContextRunningStateEventEnum.PAUSE_RUNNING.value, self._on_pause)
-        self.ctx.listen_event(ContextRunningStateEventEnum.RESUME_RUNNING.value, self._on_resume)
+        self.ctx.run_context.event_bus.unlisten_all_event(self)
+        self.ctx.run_context.event_bus.listen_event(ApplicationRunContextStateEventEnum.PAUSE, self._on_pause)
+        self.ctx.run_context.event_bus.listen_event(ApplicationRunContextStateEventEnum.RESUME, self._on_resume)
 
         self.handle_init()
 
@@ -409,16 +399,16 @@ class Operation(OperationBase):
             log.error('初始化失败', exc_info=True)
             return self.op_fail('初始化失败')
 
-        op_result: Optional[OperationResult] = None
+        op_result: OperationResult | None = None
         while True:
             self.round_start_time = time.time()
             if self.timeout_seconds != -1 and self.operation_usage_time >= self.timeout_seconds:
                 op_result = self.op_fail(Operation.STATUS_TIMEOUT)
                 break
-            if self.ctx.is_context_stop:
+            if self.ctx.run_context.is_context_stop:
                 op_result = self.op_fail('人工结束')
                 break
-            elif self.ctx.is_context_pause:
+            elif self.ctx.run_context.is_context_pause:
                 time.sleep(1)
                 continue
 
@@ -437,7 +427,12 @@ class Operation(OperationBase):
                     else:
                         arrow = f"{from_node_name} -> {node_name}" if self._previous_node is not None else node_name
                         log.info('%s 节点 %s 返回状态 %s', self.display_name, arrow, round_result_status)
-                if self.ctx.is_context_pause:  # 有可能触发暂停的时候仍在执行指令 执行完成后 再次触发暂停回调 保证操作的暂停回调真正生效
+                    self._emit_overlay_round_trace(
+                        from_node_name=from_node_name,
+                        node_name=node_name,
+                        status_text=round_result_status,
+                    )
+                if self.ctx.run_context.is_context_pause:  # 有可能触发暂停的时候仍在执行指令 执行完成后 再次触发暂停回调 保证操作的暂停回调真正生效
                     self._on_pause()
             except Exception as e:
                 round_result: OperationRoundResult = self.round_retry('异常')
@@ -446,6 +441,14 @@ class Operation(OperationBase):
                     log.error('%s 执行出错 相关截图保存至 %s', self.display_name, file_name, exc_info=True)
                 else:
                     log.error('%s 执行出错', self.display_name, exc_info=True)
+                self._emit_overlay_timeline(
+                    category="node",
+                    title=self.display_name,
+                    detail=f"异常: {type(e).__name__}",
+                    level="ERROR",
+                    ttl_seconds=60.0,
+                )
+            self._emit_overlay_round_perf((time.time() - self.round_start_time) * 1000.0)
 
             # 重试或者等待的
             if round_result.result == OperationRoundResultEnum.RETRY:
@@ -462,6 +465,10 @@ class Operation(OperationBase):
 
             # 成功或者失败的 找下一个节点
             next_node = self._get_next_node(round_result)
+
+            # 结束后发送节点通知
+            send_node_notify(self, round_result, self._current_node, next_node)
+
             if next_node is None:  # 没有下一个节点了 当前返回什么就是什么
                 if round_result.result == OperationRoundResultEnum.SUCCESS:
                     op_result = self.op_success(round_result.status, round_result.data)
@@ -477,7 +484,7 @@ class Operation(OperationBase):
                 self._previous_round_result = round_result
                 self._previous_node = self._current_node
                 self._current_node = next_node
-                self._reset_status_for_new_node()  # 充值状态
+                self._reset_status_for_new_node()  # 重置状态
                 continue
 
         self.after_operation_done(op_result)
@@ -515,7 +522,7 @@ class Operation(OperationBase):
         if self._current_node.save_status and current_round_result.result in (
             OperationRoundResultEnum.SUCCESS, OperationRoundResultEnum.FAIL
         ):
-            self.node_status[self._current_node.cn] = PreviousNodeStateProxy(self._current_node, current_round_result)
+            self.node_status[self._current_node.cn] = NodeStateProxy(self._current_node, current_round_result)
 
         return current_round_result
 
@@ -534,8 +541,8 @@ class Operation(OperationBase):
         if edges is None or len(edges) == 0:  # 没有下一个节点了
             return None
 
-        next_node_id: Optional[str] = None
-        final_next_node_id: Optional[str] = None  # 兜底指令
+        next_node_id: str | None = None
+        final_next_node_id: str | None = None  # 兜底指令
         for edge in edges:
             if edge.success != (current_round_result.result == OperationRoundResultEnum.SUCCESS):
                 continue
@@ -579,7 +586,7 @@ class Operation(OperationBase):
         Args:
             e: 事件参数（可选）。
         """
-        if not self.ctx.is_context_pause:
+        if self.ctx.run_context.is_context_running:
             return
         self.current_pause_time = 0
         self.pause_start_time = time.time()
@@ -598,7 +605,7 @@ class Operation(OperationBase):
         Args:
             e: 事件参数（可选）。
         """
-        if not self.ctx.is_context_running:
+        if not self.ctx.run_context.is_context_running:
             return
         self.current_pause_time = time.time() - self.pause_start_time
         self.pause_total_time += self.current_pause_time
@@ -633,7 +640,7 @@ class Operation(OperationBase):
         self.last_screenshot_time, self.last_screenshot = self.ctx.controller.screenshot()
         return self.last_screenshot
 
-    def save_screenshot(self, prefix: Optional[str] = None) -> str:
+    def save_screenshot(self, prefix: str | None = None) -> str:
         """保存最后一张截图并对UID进行遮罩。
 
         Args:
@@ -647,19 +654,6 @@ class Operation(OperationBase):
         if prefix is None:
             prefix = self.__class__.__name__
         return debug_utils.save_debug_image(self.last_screenshot, prefix=prefix)
-
-    def save_screenshot_bytes(self) -> Optional[BytesIO]:
-        """截图并保存为字节。
-
-        Returns:
-            BytesIO or None: 字节流对象，如果截图不存在则为None。
-        """
-        screen = self.screenshot()
-        retval, buffer = cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))
-        if retval:
-            return BytesIO(buffer.tobytes())
-        else:
-            return None
 
     @cached_property
     def display_name(self) -> str:
@@ -681,12 +675,107 @@ class Operation(OperationBase):
             log.info('%s 执行成功 返回状态 %s', self.display_name, coalesce_gt(result.status, '成功', model='ui'))
         else:
             log.error('%s 执行失败 返回状态 %s', self.display_name, coalesce_gt(result.status, '失败', model='ui'))
+        self._emit_overlay_timeline(
+            category="operation",
+            title=self.display_name,
+            detail=f"完成: {coalesce_gt(result.status, '成功' if result.success else '失败', model='ui')}",
+            level="INFO" if result.success else "ERROR",
+            ttl_seconds=90.0,
+        )
 
         if self.op_callback is not None:
             self.op_callback(result)
 
-    def round_success(self, status: str = None, data: Any = None,
-                      wait: Optional[float] = None, wait_round_time: Optional[float] = None) -> OperationRoundResult:
+    def _emit_overlay_round_trace(self, from_node_name: str, node_name: str, status_text: str) -> None:
+        arrow = f"{from_node_name} -> {node_name}" if from_node_name != "none" else node_name
+        self._emit_overlay_timeline(
+            category="node",
+            title=self.display_name,
+            detail=f"{arrow} => {status_text}",
+            level="INFO",
+            ttl_seconds=45.0,
+        )
+        self._emit_overlay_decision(
+            source="operation",
+            trigger=from_node_name,
+            expression=node_name,
+            operation=self.op_name,
+            status=status_text,
+            ttl_seconds=45.0,
+        )
+
+    def _emit_overlay_decision(
+        self,
+        source: str,
+        trigger: str,
+        expression: str,
+        operation: str,
+        status: str,
+        ttl_seconds: float,
+    ) -> None:
+        bus = getattr(self.ctx, "overlay_debug_bus", None)
+        if bus is None:
+            return
+        try:
+            from one_dragon.base.operation.overlay_debug_bus import DecisionTraceItem
+        except Exception:
+            return
+        bus.add_decision(
+            DecisionTraceItem(
+                source=source,
+                trigger=str(trigger or "-"),
+                expression=str(expression or "-"),
+                operation=str(operation or "-"),
+                status=str(status or "-"),
+                ttl_seconds=ttl_seconds,
+            )
+        )
+
+    def _emit_overlay_timeline(
+        self,
+        category: str,
+        title: str,
+        detail: str,
+        level: str,
+        ttl_seconds: float,
+    ) -> None:
+        bus = getattr(self.ctx, "overlay_debug_bus", None)
+        if bus is None:
+            return
+        try:
+            from one_dragon.base.operation.overlay_debug_bus import TimelineItem
+        except Exception:
+            return
+        bus.add_timeline(
+            TimelineItem(
+                category=category,
+                title=str(title or "-"),
+                detail=str(detail or "-"),
+                level=level,
+                ttl_seconds=ttl_seconds,
+            )
+        )
+
+    def _emit_overlay_round_perf(self, elapsed_ms: float) -> None:
+        bus = getattr(self.ctx, "overlay_debug_bus", None)
+        if bus is None:
+            return
+        try:
+            from one_dragon.base.operation.overlay_debug_bus import PerfMetricSample
+        except Exception:
+            return
+        bus.add_performance(
+            PerfMetricSample(
+                metric="operation_round_ms",
+                value=float(elapsed_ms),
+                unit="ms",
+                ttl_seconds=20.0,
+                meta={"operation": self.op_name},
+            )
+        )
+
+    def round_success(self, status: str | None = None, data: Any = None,
+                      wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
         """创建成功的轮次结果。
 
         Args:
@@ -701,8 +790,8 @@ class Operation(OperationBase):
         self._after_round_wait(wait=wait, wait_round_time=wait_round_time)
         return OperationRoundResult(result=OperationRoundResultEnum.SUCCESS, status=status, data=data)
 
-    def round_wait(self, status: str = None, data: Any = None,
-                   wait: Optional[float] = None, wait_round_time: Optional[float] = None) -> OperationRoundResult:
+    def round_wait(self, status: str | None = None, data: Any = None,
+                   wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
         """创建等待的轮次结果。
 
         Args:
@@ -717,8 +806,8 @@ class Operation(OperationBase):
         self._after_round_wait(wait=wait, wait_round_time=wait_round_time)
         return OperationRoundResult(result=OperationRoundResultEnum.WAIT, status=status, data=data)
 
-    def round_retry(self, status: str = None, data: Any = None,
-                    wait: Optional[float] = None, wait_round_time: Optional[float] = None) -> OperationRoundResult:
+    def round_retry(self, status: str | None = None, data: Any = None,
+                    wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
         """创建重试的轮次结果。
 
         Args:
@@ -733,8 +822,8 @@ class Operation(OperationBase):
         self._after_round_wait(wait=wait, wait_round_time=wait_round_time)
         return OperationRoundResult(result=OperationRoundResultEnum.RETRY, status=status, data=data)
 
-    def round_fail(self, status: str = None, data: Any = None,
-                   wait: Optional[float] = None, wait_round_time: Optional[float] = None) -> OperationRoundResult:
+    def round_fail(self, status: str | None = None, data: Any = None,
+                   wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
         """创建失败的轮次结果。
 
         Args:
@@ -749,7 +838,7 @@ class Operation(OperationBase):
         self._after_round_wait(wait=wait, wait_round_time=wait_round_time)
         return OperationRoundResult(result=OperationRoundResultEnum.FAIL, status=status, data=data)
 
-    def _after_round_wait(self, wait: Optional[float] = None, wait_round_time: Optional[float] = None):
+    def _after_round_wait(self, wait: float | None = None, wait_round_time: float | None = None):
         """每轮操作后的等待。
 
         Args:
@@ -763,12 +852,13 @@ class Operation(OperationBase):
             if to_wait > 0:
                 time.sleep(to_wait)
 
-    def round_by_op_result(self, op_result: OperationResult, retry_on_fail: bool = False,
-                           wait: Optional[float] = None, wait_round_time: Optional[float] = None) -> OperationRoundResult:
+    def round_by_op_result(self, op_result: OperationResult, status: str | None = None, retry_on_fail: bool = False,
+                           wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
         """根据操作结果获取当前轮次结果。
 
         Args:
             op_result: 要转换的操作结果。
+            status: 可选的状态覆盖值。如果提供，则优先使用此值代替 op_result.status。默认为None。
             retry_on_fail: 失败时是否重试。默认为False。
             wait: 等待时间（秒）。默认为None。
             wait_round_time: 等待直到轮次时间达到此值，如果设置了wait则忽略。默认为None。
@@ -776,24 +866,33 @@ class Operation(OperationBase):
         Returns:
             OperationRoundResult: 转换后的轮次结果。
         """
+        # 使用提供的 status 覆盖 op_result.status
+        status = status if status is not None else op_result.status
+
         if op_result.success:
-            return self.round_success(status=op_result.status, data=op_result.data, wait=wait,
+            return self.round_success(status=status, data=op_result.data, wait=wait,
                                       wait_round_time=wait_round_time)
         elif retry_on_fail:
-            return self.round_retry(status=op_result.status, data=op_result.data, wait=wait,
+            return self.round_retry(status=status, data=op_result.data, wait=wait,
                                     wait_round_time=wait_round_time)
         else:
-            return self.round_fail(status=op_result.status, data=op_result.data, wait=wait,
+            return self.round_fail(status=status, data=op_result.data, wait=wait,
                                    wait_round_time=wait_round_time)
 
     def round_by_find_and_click_area(
-            self,
-            screen: np.ndarray = None,
-            screen_name: str = None, area_name: str = None,
-            success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-            retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None,
-            until_find_all: list[tuple[str, str]] = None,
-            until_not_find_all: list[tuple[str, str]] = None,
+        self,
+        screen: MatLike | None = None,
+        screen_name: str | None = None,
+        area_name: str | None = None,
+        pre_delay: float = 0.3,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        until_find_all: list[tuple[str, str]] = None,
+        until_not_find_all: list[tuple[str, str]] = None,
+        crop_first: bool = True,
+        center_x: bool = False,
     ) -> OperationRoundResult:
         """在屏幕上查找并点击目标区域。
 
@@ -801,12 +900,15 @@ class Operation(OperationBase):
             screen: 截图图像。默认为None（将截取新截图）。
             screen_name: 屏幕名称。默认为None。
             area_name: 区域名称。默认为None。
+            pre_delay: 点击前等待时间（秒）。默认为0.3秒。
             success_wait: 成功后等待时间（秒）。默认为None。
             success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
             retry_wait: 失败后等待时间（秒）。默认为None。
             retry_wait_round: 失败后等待直到轮次时间达到此值，如果设置了retry_wait则忽略。默认为None。
             until_find_all: 点击直到找到所有目标 [(屏幕, 区域)]。默认为None。
             until_not_find_all: 点击直到未找到所有目标 [(屏幕, 区域)]。默认为None。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别
+            center_x: 模板区域点击时是否固定使用游戏中心点的 x 坐标
 
         Returns:
             OperationRoundResult: 点击结果。
@@ -820,7 +922,13 @@ class Operation(OperationBase):
         if until_find_all is not None and self.node_clicked:
             all_found: bool = True
             for (until_screen_name, until_area_name) in until_find_all:
-                result = screen_utils.find_area(ctx=self.ctx, screen=screen, screen_name=until_screen_name, area_name=until_area_name)
+                result = screen_utils.find_area(
+                    ctx=self.ctx,
+                    screen=screen,
+                    screen_name=until_screen_name,
+                    area_name=until_area_name,
+                    crop_first=crop_first,
+                )
                 if result != FindAreaResultEnum.TRUE:
                     all_found = False
                     break
@@ -831,7 +939,13 @@ class Operation(OperationBase):
         if until_not_find_all is not None and self.node_clicked:
             any_found: bool = False
             for (until_screen_name, until_area_name) in until_not_find_all:
-                result = screen_utils.find_area(ctx=self.ctx, screen=screen, screen_name=until_screen_name, area_name=until_area_name)
+                result = screen_utils.find_area(
+                    ctx=self.ctx,
+                    screen=screen,
+                    screen_name=until_screen_name,
+                    area_name=until_area_name,
+                    crop_first=crop_first,
+                )
                 if result == FindAreaResultEnum.TRUE:
                     any_found = True
                     break
@@ -839,7 +953,15 @@ class Operation(OperationBase):
             if not any_found:
                 return self.round_success(status=area_name, wait=success_wait, wait_round_time=success_wait_round)
 
-        click = screen_utils.find_and_click_area(ctx=self.ctx, screen=screen, screen_name=screen_name, area_name=area_name)
+        time.sleep(pre_delay)
+        click = screen_utils.find_and_click_area(
+            ctx=self.ctx,
+            screen=screen,
+            screen_name=screen_name,
+            area_name=area_name,
+            crop_first=crop_first,
+            center_x=center_x,
+        )
         if click == OcrClickResultEnum.OCR_CLICK_SUCCESS:
             self.node_clicked = True
             self.update_screen_after_operation(screen_name, area_name)
@@ -856,11 +978,19 @@ class Operation(OperationBase):
         else:
             return self.round_retry(status='未知状态', wait=retry_wait, wait_round_time=retry_wait_round)
 
-    def round_by_find_area(self, screen: np.ndarray, screen_name: str, area_name: str,
-                           success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-                           retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None
-                           ) -> OperationRoundResult:
-        """检查是否能在屏幕上找到目标区域。
+    def round_by_find_area(
+        self,
+        screen: MatLike,
+        screen_name: str,
+        area_name: str,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        crop_first: bool = True,
+    ) -> OperationRoundResult:
+        """
+        检查是否能在屏幕上找到目标区域。
 
         Args:
             screen: 截图图像。
@@ -870,11 +1000,18 @@ class Operation(OperationBase):
             success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
             retry_wait: 失败后等待时间（秒）。默认为None。
             retry_wait_round: 失败后等待直到轮次时间达到此值，如果设置了retry_wait则忽略。默认为None。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别
 
         Returns:
             OperationRoundResult: 匹配结果。
         """
-        result = screen_utils.find_area(ctx=self.ctx, screen=screen, screen_name=screen_name, area_name=area_name)
+        result = screen_utils.find_area(
+            ctx=self.ctx,
+            screen=screen,
+            screen_name=screen_name,
+            area_name=area_name,
+            crop_first=crop_first,
+        )
         if result == FindAreaResultEnum.AREA_NO_CONFIG:
             return self.round_fail(status=f'区域未配置 {area_name}')
         elif result == FindAreaResultEnum.TRUE:
@@ -882,10 +1019,81 @@ class Operation(OperationBase):
         else:
             return self.round_retry(status=f'未找到 {area_name}', wait=retry_wait, wait_round_time=retry_wait_round)
 
+    def round_by_find_area_binary(
+        self,
+        screen: MatLike,
+        screen_name: str,
+        area_name: str,
+        binary_threshold: int = 127,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        crop_first: bool = True,
+    ) -> OperationRoundResult:
+        """
+        使用二值化图像检查是否能在屏幕上找到目标区域。
+
+        Args:
+            screen: 截图图像。
+            screen_name: 屏幕名称。
+            area_name: 区域名称。
+            binary_threshold: 二值化阈值，默认为127。
+            success_wait: 成功后等待时间（秒）。默认为None。
+            success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
+            retry_wait: 失败后等待时间（秒）。默认为None。
+            retry_wait_round: 失败后等待直到轮次时间达到此值，如果设置了retry_wait则忽略。默认为None。
+            crop_first: 在传入区域时 是否先裁剪再进行识别
+
+        Returns:
+            OperationRoundResult: 匹配结果。
+        """
+        result = screen_utils.find_area_binary(
+            ctx=self.ctx,
+            screen=screen,
+            screen_name=screen_name,
+            area_name=area_name,
+            binary_threshold=binary_threshold,
+            crop_first=crop_first,
+        )
+        if result == FindAreaResultEnum.AREA_NO_CONFIG:
+            return self.round_fail(status=f'区域未配置 {area_name}')
+        elif result == FindAreaResultEnum.TRUE:
+            return self.round_success(status=area_name, wait=success_wait, wait_round_time=success_wait_round)
+        else:
+            return self.round_retry(status=f'未找到 {area_name}', wait=retry_wait, wait_round_time=retry_wait_round)
+
+    def scroll_area(
+            self,
+            screen_name: str | None = None,
+            area_name: str | None = None,
+            direction: str = 'down',
+            start_ratio: float = 0.9,
+            end_ratio: float = 0.1,
+    ) -> None:
+        """在指定区域内滚动屏幕。
+
+        Args:
+            screen_name: 屏幕名称。默认为None。
+            area_name: 区域名称。默认为None。
+            direction: 滚动方向，'down' 表示往下滚（从下往上滑），'up' 表示往上滚（从上往下滑）
+            start_ratio: 起始位置比例（距顶部的比例）。默认0.9，即区域底部10%处
+            end_ratio: 结束位置比例（距顶部的比例）。默认0.1，即区域顶部10%处
+        """
+        if screen_name is None or area_name is None:
+            return
+
+        area = self.ctx.screen_loader.get_area(screen_name, area_name)
+        if area is None:
+            return
+
+        screen_utils.scroll_area(self.ctx, area, direction, start_ratio, end_ratio)
+
     def round_by_click_area(
             self, screen_name: str, area_name: str, click_left_top: bool = False,
-            success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-            retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None
+            pre_delay: float = 0.0,
+            success_wait: float | None = None, success_wait_round: float | None = None,
+            retry_wait: float | None = None, retry_wait_round: float | None = None
     ) -> OperationRoundResult:
         """点击特定区域。
 
@@ -893,6 +1101,7 @@ class Operation(OperationBase):
             screen_name: 屏幕名称。
             area_name: 区域名称。
             click_left_top: 是否点击左上角。默认为False。
+            pre_delay: 点击前等待时间（秒）。默认为0.0秒。
             success_wait: 成功后等待时间（秒）。默认为None。
             success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
             retry_wait: 失败后等待时间（秒）。默认为None。
@@ -909,7 +1118,8 @@ class Operation(OperationBase):
             to_click = area.left_top
         else:
             to_click = area.center
-        click = self.ctx.controller.click(pos=to_click, pc_alt=area.pc_alt)
+        time.sleep(pre_delay)
+        click = self.ctx.controller.click(pos=to_click, pc_alt=area.pc_alt, gamepad_key=area.gamepad_key)
         if click:
             self.update_screen_after_operation(screen_name, area_name)
             return self.round_success(status=area_name, wait=success_wait, wait_round_time=success_wait_round)
@@ -917,13 +1127,20 @@ class Operation(OperationBase):
             return self.round_retry(status=f'点击失败 {area_name}', wait=retry_wait, wait_round_time=retry_wait_round)
 
     def round_by_ocr_and_click(
-            self,
-            screen: np.ndarray, target_cn: str,
-            area: Optional[ScreenArea] = None, lcs_percent: float = 0.5,
-            success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-            retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None,
-            color_range: Optional[list] = None,
-            offset: Optional[Point] = None,
+        self,
+        screen: np.ndarray,
+        target_cn: str,
+        area: ScreenArea | None = None,
+        lcs_percent: float = 0.5,
+        pre_delay: float = 0.3,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        color_range: list[list[int]] | None = None,
+        offset: Point | None = None,
+        crop_first: bool = True,
+        remove_whitespace: bool = False,
     ) -> OperationRoundResult:
         """使用OCR在区域内查找目标文本并点击。
 
@@ -931,36 +1148,39 @@ class Operation(OperationBase):
             screen: 游戏截图。
             target_cn: 要查找的目标文本。
             area: 要搜索的目标区域。默认为None（搜索整个屏幕）。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别
             lcs_percent: 文本匹配阈值。默认为0.5。
+            pre_delay: 点击前等待时间（秒）。默认为0.3秒。
             success_wait: 成功后等待时间（秒）。默认为None。
             success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
             retry_wait: 失败后等待时间（秒）。默认为None。
             retry_wait_round: 失败后等待直到轮次时间达到此值，如果设置了retry_wait则忽略。默认为None。
             color_range: 文本匹配的颜色范围。默认为None。
             offset: 点击位置的偏移量。默认为None。
+            remove_whitespace: 文本匹配前是否清洗空白字符。默认为False。
 
         Returns:
             OperationRoundResult: 点击结果。
         """
-        # 优先使用OCR缓存服务
-        if self.ctx.env_config.ocr_cache:
-            ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(
-                image=screen,
-                color_range=color_range,
-                rect=area.rect if area is not None else None
-            )
-        else:
-            # 回退到原有方法
-            to_ocr_part = screen if area is None else cv2_utils.crop_image_only(screen, area.rect)
-            if color_range is not None:
-                mask = cv2.inRange(to_ocr_part, color_range[0], color_range[1])
-                mask = cv2_utils.dilate(mask, 5)
-                to_ocr_part = cv2.bitwise_and(to_ocr_part, to_ocr_part, mask=mask)
-                # cv2_utils.show_image(to_ocr_part, win_name='round_by_ocr_and_click', wait=0)
+        if color_range is None and area is not None:
+            color_range = area.color_range
+        ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen,
+            rect=area.rect if area is not None else None,
+            color_range=color_range,
+            crop_first=crop_first,
+        )
+        if remove_whitespace:
+            # 移除空白字符，提升文本匹配兼容性
+            target_cn = str_utils.remove_whitespace(target_cn)
+            # 清理OCR结果字典的键：移除所有键中的空白字符
+            # 若清理后出现重复键，后遍历到的键值对会覆盖先遍历到的
+            ocr_result_map = {
+                str_utils.remove_whitespace(key): val
+                for key, val in ocr_result_map.items()
+            }
 
-            ocr_result_map = self.ctx.ocr.run_ocr(to_ocr_part)
-
-        to_click: Optional[Point] = None
+        to_click: Point | None = None
         ocr_result_list: list[str] = []
         mrl_list: list[MatchResultList] = []
 
@@ -985,12 +1205,10 @@ class Operation(OperationBase):
         if to_click is None:
             return self.round_retry(f'找不到 {target_cn}', wait=retry_wait, wait_round_time=retry_wait_round)
 
-        if area is not None:
-            to_click = to_click + area.left_top
-
         if offset is not None:
             to_click = to_click + offset
 
+        time.sleep(pre_delay)
         click = self.ctx.controller.click(to_click)
         if click:
             return self.round_success(target_cn, wait=success_wait, wait_round_time=success_wait_round)
@@ -998,15 +1216,19 @@ class Operation(OperationBase):
             return self.round_retry(f'点击 {target_cn} 失败', wait=retry_wait, wait_round_time=retry_wait_round)
 
     def round_by_ocr_and_click_by_priority(
-            self,
-            target_cn_list: list[str],
-            screen: MatLike | None = None,
-            ignore_cn_list: list[str] = None,
-            area: Optional[ScreenArea] = None,
-            success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-            retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None,
-            color_range: Optional[list[list[int]]] = None,
-            offset: Optional[Point] = None,
+        self,
+        target_cn_list: list[str],
+        screen: MatLike | None = None,
+        ignore_cn_list: list[str] | None = None,
+        area: ScreenArea | None = None,
+        pre_delay: float = 0.3,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        color_range: list[list[int]] | None = None,
+        offset: Point | None = None,
+        crop_first: bool = True,
     ) -> OperationRoundResult:
         """使用OCR按优先级在区域内查找文本并点击。
 
@@ -1015,6 +1237,8 @@ class Operation(OperationBase):
             target_cn_list: 按优先级排序的目标文本列表。
             ignore_cn_list: 要忽略的文本列表。目标列表中的某些元素仅用于防止匹配错误，例如["领取", "已领取"]可以防止"已领取*1"匹配到"领取"，而"已领取"不需要实际匹配。默认为None。
             area: 要搜索的目标区域。默认为None。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别
+            pre_delay: 点击前等待时间（秒）。默认为0.3秒。
             success_wait: 成功后等待时间（秒）。默认为None。
             success_wait_round: 成功后等待直到轮次时间达到此值，如果设置了success_wait则忽略。默认为None。
             retry_wait: 失败后等待时间（秒）。默认为None。
@@ -1028,26 +1252,14 @@ class Operation(OperationBase):
         if screen is None:
             screen = self.last_screenshot
 
-        # 优先使用OCR缓存服务
-        if self.ctx.env_config.ocr_cache:
-            ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(
-                image=screen,
-                color_range=color_range,
-                rect=area.rect if area is not None else None
-            )
-        else:
-            # 回退到原有方法
-            to_ocr_part = screen if area is None else cv2_utils.crop_image_only(screen, area.rect)
-            if color_range is not None:
-                mask = cv2.inRange(to_ocr_part, np.array(color_range[0]), np.array(color_range[1]))
-                mask = cv2_utils.dilate(mask, 5)
-                to_ocr_part = cv2.bitwise_and(to_ocr_part, to_ocr_part, mask=mask)
-                # cv2_utils.show_image(to_ocr_part, win_name='round_by_ocr_and_click', wait=0)
-
-            ocr_result_map = self.ctx.ocr.run_ocr(to_ocr_part)
-            if area is not None:
-                for _, mrl in ocr_result_map.items():
-                    mrl.add_offset(area.left_top)
+        if color_range is None and area is not None:
+            color_range = area.color_range
+        ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen,
+            rect=area.rect if area is not None else None,
+            color_range=color_range,
+            crop_first=crop_first,
+        )
 
         match_word, match_word_mrl = ocr_utils.match_word_list_by_priority(
             ocr_result_map,
@@ -1060,20 +1272,100 @@ class Operation(OperationBase):
             if offset is not None:
                 to_click = to_click + offset
 
+            time.sleep(pre_delay)
             self.ctx.controller.click(to_click)
             return self.round_success(status=match_word, wait=success_wait, wait_round_time=success_wait_round)
 
         return self.round_retry(status='未匹配到目标文本', wait=retry_wait, wait_round_time=retry_wait_round)
 
+    def round_by_ocr_and_click_with_action(
+        self,
+        target_action_list: list[tuple[str, OperationRoundResultEnum]],
+        screen: MatLike | None = None,
+        area: ScreenArea | None = None,
+        pre_delay: float = 0.3,
+        success_wait: float | None = None,
+        success_wait_round: float | None = None,
+        wait_wait: float | None = None,
+        wait_wait_round: float | None = None,
+        retry_wait: float | None = None,
+        retry_wait_round: float | None = None,
+        color_range: list[list[int]] | None = None,
+        offset: Point | None = None,
+        crop_first: bool = True,
+    ) -> OperationRoundResult:
+        """使用OCR按优先级查找文本并点击，支持为不同目标指定不同的返回动作。
+
+        Args:
+            target_action_list: 目标文本和动作的元组列表。列表顺序决定优先级。
+                每个元组为 (目标文本, OperationRoundResultEnum)。
+                支持的动作: SUCCESS（进入下一节点）、WAIT（继续当前节点）、RETRY（重试）。
+                示例: [('出战', OperationRoundResultEnum.SUCCESS), ('下一步', OperationRoundResultEnum.WAIT)]
+            screen: 游戏截图。默认为None（使用 last_screenshot）。
+            area: 要搜索的目标区域。默认为None（搜索整个屏幕）。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别。默认为True。
+            pre_delay: 点击前等待时间（秒）。默认为0.3秒。
+            success_wait: 匹配到 SUCCESS 动作后等待时间（秒）。默认为None。
+            success_wait_round: 匹配到 SUCCESS 动作后等待直到轮次时间达到此值。默认为None。
+            wait_wait: 匹配到 WAIT 动作后等待时间（秒）。默认为None。
+            wait_wait_round: 匹配到 WAIT 动作后等待直到轮次时间达到此值。默认为None。
+            retry_wait: 未匹配到任何目标时等待时间（秒）。默认为None。
+            retry_wait_round: 未匹配到任何目标时等待直到轮次时间达到此值。默认为None。
+            color_range: 文本匹配的颜色范围。默认为None。
+            offset: 点击位置的偏移量。默认为None。
+
+        Returns:
+            OperationRoundResult: 根据匹配目标返回对应的结果类型。
+        """
+        if screen is None:
+            screen = self.last_screenshot
+
+        if color_range is None and area is not None:
+            color_range = area.color_range
+
+        ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen,
+            rect=area.rect if area is not None else None,
+            color_range=color_range,
+            crop_first=crop_first,
+        )
+
+        # 从元组列表构建目标列表和动作映射
+        target_cn_list = [target for target, _ in target_action_list]
+        action_map = dict(target_action_list)
+
+        match_word, match_word_mrl = ocr_utils.match_word_list_by_priority(
+            ocr_result_map,
+            target_cn_list,
+        )
+
+        if match_word is not None and match_word_mrl is not None and match_word_mrl.max is not None:
+            to_click = match_word_mrl.max.center
+            if offset is not None:
+                to_click = to_click + offset
+
+            time.sleep(pre_delay)
+            self.ctx.controller.click(to_click)
+
+            action = action_map.get(match_word, OperationRoundResultEnum.SUCCESS)
+            if action == OperationRoundResultEnum.WAIT:
+                return self.round_wait(status=match_word, wait=wait_wait, wait_round_time=wait_wait_round)
+            elif action == OperationRoundResultEnum.RETRY:
+                return self.round_retry(status=match_word, wait=retry_wait, wait_round_time=retry_wait_round)
+            else:  # SUCCESS
+                return self.round_success(status=match_word, wait=success_wait, wait_round_time=success_wait_round)
+
+        return self.round_retry(status='未匹配到目标文本', wait=retry_wait, wait_round_time=retry_wait_round)
+
     def round_by_ocr(
-            self,
-            screen: np.ndarray,
-            target_cn: str,
-            area: Optional[ScreenArea] = None,
-            lcs_percent: float = 0.5,
-            success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-            retry_wait: Optional[float] = None, retry_wait_round: Optional[float] = None,
-            color_range: Optional[list] = None,
+        self,
+        screen: np.ndarray,
+        target_cn: str,
+        area: ScreenArea | None = None,
+        lcs_percent: float = 0.5,
+        success_wait: float | None = None, success_wait_round: float | None = None,
+        retry_wait: float | None = None, retry_wait_round: float | None = None,
+        color_range: list[list[int]] | None = None,
     ) -> OperationRoundResult:
         """使用OCR在区域内查找目标文本。
 
@@ -1098,10 +1390,9 @@ class Operation(OperationBase):
         else:
             return self.round_retry(f'找不到 {target_cn}', wait=retry_wait, wait_round_time=retry_wait_round)
 
-
-    def round_by_goto_screen(self, screen: Optional[np.ndarray] = None, screen_name: Optional[str] = None,
-                             success_wait: Optional[float] = None, success_wait_round: Optional[float] = None,
-                             retry_wait: Optional[float] = 1, retry_wait_round: Optional[float] = None) -> OperationRoundResult:
+    def round_by_goto_screen(self, screen: np.ndarray | None = None, screen_name: str | None = None,
+                             success_wait: float | None = None, success_wait_round: float | None = None,
+                             retry_wait: float | None = 1, retry_wait_round: float | None = None) -> OperationRoundResult:
         """从当前屏幕导航到目标屏幕。
 
         Args:
@@ -1148,20 +1439,31 @@ class Operation(OperationBase):
         if area.goto_list is not None and len(area.goto_list) > 0:
             self.ctx.screen_loader.update_current_screen_name(area.goto_list[0])
 
-    def check_and_update_current_screen(self, screen: np.ndarray | None = None, screen_name_list: Optional[list[str]] = None) -> str:
-        """识别当前画面的名称并保存起来。
+    def check_and_update_current_screen(
+        self,
+        screen: np.ndarray | None = None,
+        screen_name_list: list[str] | None = None,
+        crop_first: bool = True,
+    ) -> str:
+        """
+        识别当前画面的名称并保存起来。
 
         Args:
             screen: 游戏截图。默认为None。
             screen_name_list: 传入时只判断这里的画面。默认为None。
+            crop_first: 是否先裁剪再进行文本识别
 
         Returns:
             str: 画面名称。
         """
         if screen is None:
             screen = self.last_screenshot
-        current_screen_name = screen_utils.get_match_screen_name(self.ctx, screen,
-                                                                 screen_name_list=screen_name_list)
+        current_screen_name = screen_utils.get_match_screen_name(
+            self.ctx,
+            screen,
+            screen_name_list=screen_name_list,
+            crop_first=crop_first,
+        )
         self.ctx.screen_loader.update_current_screen_name(current_screen_name)
         return current_screen_name
 
@@ -1194,7 +1496,7 @@ class Operation(OperationBase):
         return route is not None and route.can_go
 
     @property
-    def previous_node(self) -> PreviousNodeStateProxy:
+    def previous_node(self) -> NodeStateProxy:
         """
         获取一个代理对象，用于安全地访问上一个节点的执行状态和结果。
 
@@ -1202,7 +1504,7 @@ class Operation(OperationBase):
         这对于根据上一步的结果来决定当前步骤的行为非常有用。
 
         Returns:
-            PreviousNodeStateProxy: 一个包含上一个节点状态和结果的代理对象。
+            NodeStateProxy: 一个包含上一个节点状态和结果的代理对象。
 
         Example:
             @operation_node(name='处理节点')
@@ -1215,4 +1517,13 @@ class Operation(OperationBase):
                     # ... 进行处理 ...
                 return self.round_success()
         """
-        return PreviousNodeStateProxy(self._previous_node, self._previous_round_result)
+        return NodeStateProxy(self._previous_node, self._previous_round_result)
+
+    @property
+    def current_node(self) -> NodeStateProxy:
+        """获取当前执行的节点的代理对象。
+
+        Returns:
+            NodeStateProxy: 一个包含当前节点的代理对象。
+        """
+        return NodeStateProxy(self._current_node)

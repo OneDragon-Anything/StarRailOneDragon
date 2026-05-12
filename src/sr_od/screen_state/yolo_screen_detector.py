@@ -7,8 +7,9 @@ from typing import Optional, Tuple, List
 from one_dragon.base.config.yaml_operator import YamlOperator
 from one_dragon.utils import yolo_config_utils, os_utils
 from one_dragon.yolo.detect_utils import DetectFrameResult
-from one_dragon.yolo.yolo_utils import SR_MODEL_DOWNLOAD_URL
+from one_dragon.yolo.yolo_utils import get_github_model_download_url
 from one_dragon.yolo.yolov8_onnx_det import Yolov8Detector
+from sr_od.config.model_config import YOLO_RELEASE_TAG
 from sr_od.config.game_const import OPPOSITE_DIRECTION
 
 _EXECUTOR = concurrent.futures.ThreadPoolExecutor(thread_name_prefix='sr_yolo_detector', max_workers=1)
@@ -38,7 +39,7 @@ class YoloScreenDetector:
         self.sim_uni_model_name: str = sim_uni_model_name
         if sim_uni_model_name is not None:
             self.sim_uni_yolo = Yolov8Detector(
-                model_download_url=SR_MODEL_DOWNLOAD_URL,
+                model_download_url=get_github_model_download_url(YOLO_RELEASE_TAG),
                 model_parent_dir_path=yolo_config_utils.get_model_category_dir('sim_uni'),
                 model_name=sim_uni_model_name,
             )
@@ -47,7 +48,7 @@ class YoloScreenDetector:
         self.world_patrol_model_name: str = world_patrol_model_name
         if world_patrol_model_name is not None:
             self.world_patrol_yolo = Yolov8Detector(
-                model_download_url=SR_MODEL_DOWNLOAD_URL,
+                model_download_url=get_github_model_download_url(YOLO_RELEASE_TAG),
                 model_parent_dir_path=yolo_config_utils.get_model_category_dir('world_patrol'),
                 model_name=world_patrol_model_name
             )
@@ -69,7 +70,7 @@ class YoloScreenDetector:
             return
         self.world_patrol_model_name = model_name
         self.world_patrol_yolo = Yolov8Detector(
-            model_download_url=SR_MODEL_DOWNLOAD_URL,
+            model_download_url=get_github_model_download_url(YOLO_RELEASE_TAG),
             model_parent_dir_path=yolo_config_utils.get_model_category_dir('world_patrol'),
             model_name=model_name,
             gpu=gpu
@@ -83,7 +84,7 @@ class YoloScreenDetector:
             return
         self.sim_uni_model_name = model_name
         self.sim_uni_yolo = Yolov8Detector(
-            model_download_url=SR_MODEL_DOWNLOAD_URL,
+            model_download_url=get_github_model_download_url(YOLO_RELEASE_TAG),
             model_parent_dir_path=yolo_config_utils.get_model_category_dir('sim_uni'),
             model_name=model_name,
             gpu=gpu
