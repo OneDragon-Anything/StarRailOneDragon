@@ -4,13 +4,17 @@ from qfluentwidgets import CaptionLabel, FluentIcon, LineEdit
 from typing import List
 
 from one_dragon.base.config.config_item import ConfigItem
+from one_dragon.base.operation.application import application_const
 from one_dragon_qt.widgets.editable_combo_box import EditableComboBox
 from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiLineSettingCard
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon.utils.i18_utils import gt
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.combo_box import ComboBox
-from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
+from sr_od.application.echo_of_war import echo_of_war_const
+from sr_od.application.echo_of_war.echo_of_war_config import EchoOfWarConfig
+from sr_od.application.trailblaze_power import trailblaze_power_const
+from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig, TrailblazePowerPlanItem
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.config.team_config import TeamNumEnum
 from sr_od.context.sr_context import SrContext
@@ -157,7 +161,12 @@ class EchoOfWarPlanCard(MultiLineSettingCard):
         根据历史记录更新
         """
         mission: GuideMission = self.mission_combo_box.currentData()
-        history = self.ctx.power_config.get_history_by_uid(mission.unique_id)
+        power_config: TrailblazePowerConfig = self.ctx.run_context.get_config(
+            app_id=trailblaze_power_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        history = power_config.get_history_by_uid(mission.unique_id)
         if history is None:
             return
 
@@ -175,6 +184,7 @@ class EchoOfWarSettingInterface(VerticalScrollInterface):
 
     def __init__(self, ctx: SrContext, parent=None):
         self.ctx: SrContext = ctx
+        self.config: EchoOfWarConfig
 
         VerticalScrollInterface.__init__(
             self,
@@ -193,10 +203,15 @@ class EchoOfWarSettingInterface(VerticalScrollInterface):
     def on_interface_shown(self) -> None:
         VerticalScrollInterface.on_interface_shown(self)
 
+        self.config = self.ctx.run_context.get_config(
+            app_id=echo_of_war_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
         self.update_plan_list_display()
 
-    def update_plan_list_display(self):
-        plan_list = self.ctx.echo_of_war_config.plan_list
+    def update_plan_list_display(self) -> None:
+        plan_list = self.config.plan_list
 
         if len(plan_list) > len(self.card_list):
 
@@ -224,5 +239,5 @@ class EchoOfWarSettingInterface(VerticalScrollInterface):
         self.content_widget.add_stretch(1)
 
     def on_plan_item_changed(self, idx: int, plan: TrailblazePowerPlanItem) -> None:
-        self.ctx.echo_of_war_config.update_plan(idx, plan)
+        self.config.update_plan(idx, plan)
 

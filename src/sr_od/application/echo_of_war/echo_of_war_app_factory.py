@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from one_dragon.base.config.game_account_config import GameAccountConfig
+from one_dragon.base.operation.application.application_config import ApplicationConfig
 from one_dragon.base.operation.application.application_factory import ApplicationFactory
 from one_dragon.base.operation.application_base import Application
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from sr_od.application.echo_of_war import echo_of_war_const
+from sr_od.application.echo_of_war.echo_of_war_config import EchoOfWarConfig
 from sr_od.application.echo_of_war.echo_of_war_app import EchoOfWarApp
 from sr_od.application.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
 
@@ -22,6 +24,9 @@ class EchoOfWarAppFactory(ApplicationFactory):
 
     def create_application(self, instance_idx: int, group_id: str) -> Application:
         return EchoOfWarApp(self.ctx)
+
+    def create_config(self, instance_idx: int, group_id: str) -> ApplicationConfig:
+        return EchoOfWarConfig(self.ctx.guide_data, instance_idx)
 
     def create_run_record(self, instance_idx: int) -> AppRunRecord:
         return EchoOfWarRunRecord(

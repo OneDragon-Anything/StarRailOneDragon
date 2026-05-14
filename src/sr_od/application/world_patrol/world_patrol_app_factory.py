@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from one_dragon.base.config.game_account_config import GameAccountConfig
+from one_dragon.base.operation.application.application_config import ApplicationConfig
 from one_dragon.base.operation.application.application_factory import ApplicationFactory
 from one_dragon.base.operation.application_base import Application
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from sr_od.application.world_patrol import world_patrol_const
 from sr_od.application.world_patrol.world_patrol_app import WorldPatrolApp
+from sr_od.application.world_patrol.world_patrol_config import WorldPatrolConfig
 from sr_od.application.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
 
 if TYPE_CHECKING:
@@ -22,6 +24,9 @@ class WorldPatrolAppFactory(ApplicationFactory):
 
     def create_application(self, instance_idx: int, group_id: str) -> Application:
         return WorldPatrolApp(self.ctx)
+
+    def create_config(self, instance_idx: int, group_id: str) -> ApplicationConfig:
+        return WorldPatrolConfig(instance_idx)
 
     def create_run_record(self, instance_idx: int) -> AppRunRecord:
         return WorldPatrolRunRecord(

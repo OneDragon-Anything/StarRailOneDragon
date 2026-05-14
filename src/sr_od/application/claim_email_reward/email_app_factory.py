@@ -6,9 +6,9 @@ from one_dragon.base.config.game_account_config import GameAccountConfig
 from one_dragon.base.operation.application.application_factory import ApplicationFactory
 from one_dragon.base.operation.application_base import Application
 from one_dragon.base.operation.application_run_record import AppRunRecord
-from sr_od.application.email import email_const
-from sr_od.application.email.email_app import EmailApp
-from sr_od.application.email.email_run_record import EmailRunRecord
+from sr_od.application.claim_email_reward import email_const
+from sr_od.application.claim_email_reward.email_app import EmailApp
+from sr_od.application.claim_email_reward.email_run_record import EmailRunRecord
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext

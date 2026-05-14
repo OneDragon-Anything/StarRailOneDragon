@@ -6,12 +6,14 @@ from typing import ClassVar, Optional, Callable, List, Tuple
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.matcher.match_result import MatchResult
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils import cal_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.world_patrol import world_patrol_const
 from sr_od.application.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
 from sr_od.config.game_config import RunModeEnum
 from sr_od.context.sr_context import SrContext
@@ -147,10 +149,15 @@ class MoveDirectly(SrOperation):
         :return:
         """
         if self.ctx.world_patrol_fx_should_use_tech:
+            world_patrol_config = self.ctx.run_context.get_config(
+                app_id=world_patrol_const.APP_ID,
+                instance_idx=self.ctx.current_instance_idx,
+                group_id=application_const.DEFAULT_GROUP_ID,
+            )
             # 特殊处理飞霄逻辑 使用秘技
             op = UseTechnique(
                 self.ctx,
-                max_consumable_cnt=self.ctx.world_patrol_config.max_consumable_cnt,
+                max_consumable_cnt=world_patrol_config.max_consumable_cnt,
                 need_check_point=True,  # 检查秘技点是否足够 可以在没有或者不能用药的情况加快判断
                 trick_snack=self.ctx.game_config.use_quirky_snacks,
             )

@@ -2,11 +2,14 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import FluentIcon
 
 from one_dragon.base.config.config_item import ConfigItem
+from one_dragon.base.operation.application import application_const
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.setting_card.editable_combo_box_setting_card import EditableComboBoxSettingCard
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import ComboBoxSettingCard
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
+from sr_od.application.world_patrol import world_patrol_const
+from sr_od.application.world_patrol.world_patrol_config import WorldPatrolConfig
 from sr_od.application.world_patrol.world_patrol_whitelist_config import load_all_whitelist_list, WorldPatrolWhitelist
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.context.sr_context import SrContext
@@ -16,6 +19,7 @@ class WorldPatrolSettingInterface(VerticalScrollInterface):
 
     def __init__(self, ctx: SrContext, parent=None):
         self.ctx: SrContext = ctx
+        self.config: WorldPatrolConfig
 
         VerticalScrollInterface.__init__(
             self,
@@ -56,17 +60,23 @@ class WorldPatrolSettingInterface(VerticalScrollInterface):
     def on_interface_shown(self) -> None:
         VerticalScrollInterface.on_interface_shown(self)
 
-        self.team_num_opt.init_with_adapter(self.ctx.world_patrol_config.team_num_adapter)
+        self.config = self.ctx.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+
+        self.team_num_opt.init_with_adapter(self.config.team_num_adapter)
         config_list = (
                 [ConfigItem('游戏识别', 'none')]
                 + [ConfigItem(i.cn, i.id) for i in CHARACTER_LIST]
         )
         self.character_1_opt.set_options_by_list(config_list)
-        self.character_1_opt.init_with_adapter(self.ctx.world_patrol_config.character_1_adapter)
+        self.character_1_opt.init_with_adapter(self.config.character_1_adapter)
 
-        self.tech_fight_opt.init_with_adapter(self.ctx.world_patrol_config.technique_fight_adapter)
-        self.tech_only_opt.init_with_adapter(self.ctx.world_patrol_config.technique_only_adapter)
-        self.max_consumable_cnt_opt.init_with_adapter(self.ctx.world_patrol_config.max_consumable_cnt_adapter)
+        self.tech_fight_opt.init_with_adapter(self.config.technique_fight_adapter)
+        self.tech_only_opt.init_with_adapter(self.config.technique_only_adapter)
+        self.max_consumable_cnt_opt.init_with_adapter(self.config.max_consumable_cnt_adapter)
 
         config_list = [WorldPatrolWhitelist(i) for i in load_all_whitelist_list()]
         self.whitelist_id_opt.set_options_by_list(
@@ -74,4 +84,4 @@ class WorldPatrolSettingInterface(VerticalScrollInterface):
             +
             [ConfigItem(i.name, i.module_name) for i in config_list]
         )
-        self.whitelist_id_opt.init_with_adapter(self.ctx.world_patrol_config.whitelist_id_adapter)
+        self.whitelist_id_opt.init_with_adapter(self.config.whitelist_id_adapter)

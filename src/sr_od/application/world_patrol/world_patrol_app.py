@@ -2,6 +2,7 @@ import time
 
 from typing import List, Optional, ClassVar
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_edge import node_from
@@ -29,11 +30,17 @@ class WorldPatrolApp(SrApplication):
                  whitelist: Optional[WorldPatrolWhitelist] = None,
                  ignore_record: bool = False,
                  team_num: Optional[int] = None):
-        SrApplication.__init__(self, ctx, world_patrol_const.APP_ID, op_name=gt('锄大地'),
-                       run_record=ctx.world_patrol_record if not ignore_record else None)
+        SrApplication.__init__(self, ctx, world_patrol_const.APP_ID, op_name=gt('锄大地'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
         self.route_list: List[WorldPatrolRoute] = []
         self.current_route_idx: int = 0
         self.ignore_record: bool = ignore_record
+        if self.ignore_record:
+            self.run_record = None
         self.current_route_start_time = time.time()  # 当前路线开始时间
         self.current_fail_times: int = 0  # 当前路线的失败次数
 
@@ -45,14 +52,14 @@ class WorldPatrolApp(SrApplication):
         whitelist = self.param_whitelist
 
         if whitelist is None:
-            whitelist_id = self.ctx.world_patrol_config.whitelist_id
+            whitelist_id = self.config.whitelist_id
             valid_whitelist_id_list = load_all_whitelist_list()
             if whitelist_id in valid_whitelist_id_list:
                 whitelist = WorldPatrolWhitelist(whitelist_id)
 
         self.route_list = self.ctx.world_patrol_route_data.load_all_route(
             whitelist=whitelist,
-            finished=[] if self.ignore_record else self.ctx.world_patrol_record.finished
+            finished=[] if self.ignore_record or self.run_record is None else self.run_record.finished
         )
         self.current_route_idx = 0
 
@@ -81,7 +88,7 @@ class WorldPatrolApp(SrApplication):
         选择配队
         :return:
         """
-        team_num = self.ctx.world_patrol_config.team_num if self.team_num is None else self.team_num
+        team_num = self.config.team_num if self.team_num is None else self.team_num
         if team_num == 0:
             return self.round_success('无配队配置')
         op = ChooseTeamInWorld(self.ctx, team_num)
@@ -128,7 +135,8 @@ class WorldPatrolApp(SrApplication):
         :param time_cost: 使用时间
         :return:
         """
-        self.ctx.world_patrol_record.add_record(route_id, time_cost)
+        if self.run_record is not None:
+            self.run_record.add_record(route_id, time_cost)
 
     # def estimate_end_time(self):
     #     """
@@ -137,7 +145,7 @@ class WorldPatrolApp(SrApplication):
     #     """
     #     total = - (time.time() - self.current_route_start_time)
     #     for i in range(self.current_route_idx, len(self.route_id_list)):
-    #         total += self.ctx.world_patrol_record.get_estimate_time(self.route_id_list[i])
+    #         total += self.run_record.get_estimate_time(self.route_id_list[i])
     #
     #         if total < 0:  # 只有第一条，也就是当前线路时会为负
     #             total = 0
@@ -149,16 +157,16 @@ class WorldPatrolApp(SrApplication):
         if self.ignore_record:
             return
         if not result.success:
-            self.ctx.world_patrol_record.update_status(AppRunRecord.STATUS_FAIL)
+            self.run_record.update_status(AppRunRecord.STATUS_FAIL)
             return
 
         for route in self.route_list:
             route_id = route.unique_id
-            if route_id not in self.ctx.world_patrol_record.finished:
-                self.ctx.world_patrol_record.update_status(AppRunRecord.STATUS_FAIL)
+            if route_id not in self.run_record.finished:
+                self.run_record.update_status(AppRunRecord.STATUS_FAIL)
                 return
 
-        self.ctx.world_patrol_record.update_status(AppRunRecord.STATUS_SUCCESS)
+        self.run_record.update_status(AppRunRecord.STATUS_SUCCESS)
 
 
 def __debug():

@@ -7,7 +7,7 @@ from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.application.email import email_const
+from sr_od.application.claim_email_reward import email_const
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
@@ -26,8 +26,7 @@ class EmailApp(SrApplication):
         2023-11-12 中英文最高画质测试通过
         """
         SrApplication.__init__(self, ctx, email_const.APP_ID,
-                               op_name=gt('邮件', 'game'),
-                               run_record=ctx.email_run_record)
+                               op_name=gt('邮件', 'game'))
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:

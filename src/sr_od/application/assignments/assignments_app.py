@@ -21,8 +21,7 @@ class AssignmentsApp(SrApplication):
     STATUS_ASSIGNING: ClassVar[str] = '委托派遣中'
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, assignments_const.APP_ID, op_name=gt('委托'),
-                               run_record=ctx.assignments_run_record)
+        SrApplication.__init__(self, ctx, assignments_const.APP_ID, op_name=gt('委托'))
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:

@@ -1,5 +1,6 @@
 from typing import Optional, ClassVar, Callable
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
@@ -38,8 +39,12 @@ class SimUniApp(SrApplication):
         :param ctx:
         """
         SrApplication.__init__(self, ctx, sim_universe_const.APP_ID,
-                               op_name=gt('模拟宇宙', 'game'),
-                               run_record=ctx.sim_uni_record)
+                               op_name=gt('模拟宇宙', 'game'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=sim_universe_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
 
         self.current_uni_num: int = 0  # 当前运行的第几宇宙 启动时会先完成运行中的宇宙
 
@@ -68,9 +73,9 @@ class SimUniApp(SrApplication):
         if self.exception_times >= 10:
             return self.round_success(SimUniApp.STATUS_EXCEPTION)
 
-        log.info('本日精英次数 %d 本周精英次数 %d', self.ctx.sim_uni_record.elite_daily_times, self.ctx.sim_uni_record.elite_weekly_times)
-        if (self.ctx.sim_uni_record.elite_daily_times >= self.ctx.sim_uni_config.elite_daily_times
-                or self.ctx.sim_uni_record.elite_weekly_times >= self.ctx.sim_uni_config.elite_weekly_times):
+        log.info('本日精英次数 %d 本周精英次数 %d', self.run_record.elite_daily_times, self.run_record.elite_weekly_times)
+        if (self.run_record.elite_daily_times >= self.config.elite_daily_times
+                or self.run_record.elite_weekly_times >= self.config.elite_weekly_times):
             self.all_finished = True
             return self.round_success(SimUniApp.STATUS_ALL_FINISHED)
         else:
@@ -102,7 +107,7 @@ class SimUniApp(SrApplication):
     @operation_node(name='选择宇宙')
     def _choose_sim_uni_num(self) -> OperationRoundResult:
         if self.specified_uni_num is None:
-            world = SimUniWorldEnum[self.ctx.sim_uni_config.weekly_uni_num]
+            world = SimUniWorldEnum[self.config.weekly_uni_num]
         else:
             world = SimUniWorldEnum['WORLD_%02d' % self.specified_uni_num]
 
@@ -119,7 +124,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='选择宇宙', status=ChooseSimUniNum.STATUS_RESTART)
     @operation_node(name='选择难度')
     def _choose_sim_uni_diff(self) -> OperationRoundResult:
-        op = ChooseSimUniDiff(self.ctx, self.ctx.sim_uni_config.weekly_uni_diff)
+        op = ChooseSimUniDiff(self.ctx, self.config.weekly_uni_diff)
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='选择宇宙', status=ChooseSimUniNum.STATUS_CONTINUE)
@@ -132,7 +137,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='开始挑战', status=SimUniStart.STATUS_RESTART)
     @operation_node(name='选择命途')
     def _choose_path(self) -> OperationRoundResult:
-        cfg = self.ctx.sim_uni_config.get_challenge_config(self.current_uni_num)
+        cfg = self.config.get_challenge_config(self.current_uni_num)
         op = SimUniChoosePath(self.ctx, SimUniPath[cfg.path])
         return self.round_by_op_result(op.execute())
 
@@ -140,7 +145,7 @@ class SimUniApp(SrApplication):
     @node_from(from_name='选择命途')
     @operation_node(name='自动宇宙')
     def _run_world(self) -> OperationRoundResult:
-        uni_challenge_config = self.ctx.sim_uni_config.get_challenge_config(self.current_uni_num)
+        uni_challenge_config = self.config.get_challenge_config(self.current_uni_num)
         get_reward = self.current_uni_num == self.specified_uni_num  # 只有当前宇宙和开拓力需要的宇宙是同一个 才能拿奖励
 
         op = SimUniRunWorld(self.ctx, self.current_uni_num,

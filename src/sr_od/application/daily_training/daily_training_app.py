@@ -22,8 +22,7 @@ class DailyTrainingApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, daily_training_const.APP_ID,
-                               op_name=gt('每日实训', 'game'),
-                               run_record=ctx.daily_training_run_record)
+                               op_name=gt('每日实训', 'game'))
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:

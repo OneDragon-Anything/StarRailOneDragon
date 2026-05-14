@@ -2,10 +2,13 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import FluentIcon, SettingCardGroup
 
 from one_dragon.base.config.config_item import ConfigItem
+from one_dragon.base.operation.application import application_const
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterface
 from one_dragon_qt.widgets.setting_card.combo_box_setting_card import ComboBoxSettingCard
 from one_dragon_qt.widgets.setting_card.text_setting_card import TextSettingCard
+from sr_od.application.sim_universe import sim_universe_const
+from sr_od.application.sim_universe.sim_uni_config import SimUniConfig
 from sr_od.application.sim_universe.sim_uni_data import SimUniWorldEnum
 from sr_od.context.sr_context import SrContext
 
@@ -15,6 +18,7 @@ class SimUniSettingInterface(VerticalScrollInterface):
 
     def __init__(self, ctx: SrContext, parent=None):
         self.ctx: SrContext = ctx
+        self.config: SimUniConfig
 
         VerticalScrollInterface.__init__(
             self,
@@ -57,6 +61,11 @@ class SimUniSettingInterface(VerticalScrollInterface):
 
     def on_interface_shown(self) -> None:
         VerticalScrollInterface.on_interface_shown(self)
+        self.config = self.ctx.run_context.get_config(
+            app_id=sim_universe_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
 
         sim_uni_num_opts = [
             ConfigItem(label=i.value.name, value=i.name)
@@ -64,18 +73,18 @@ class SimUniSettingInterface(VerticalScrollInterface):
             if i.name not in ['WORLD_00', 'WORLD_01', 'WORLD_02']
         ]
         self.weekly_sim_uni_num_opt.set_options_by_list(sim_uni_num_opts)
-        self.weekly_sim_uni_num_opt.init_with_adapter(self.ctx.sim_uni_config.weekly_uni_num_adapter)
+        self.weekly_sim_uni_num_opt.init_with_adapter(self.config.weekly_uni_num_adapter)
 
         diff_opts = [ConfigItem(label='默认难度', value=0)]
         for i in SimUniWorldEnum:
-            if i.name == self.ctx.sim_uni_config.weekly_uni_num:
+            if i.name == self.config.weekly_uni_num:
                 for j in range(1, i.value.max_diff + 1):
                     diff_opts.append(ConfigItem(label=str(j), value=j))
         self.weekly_sim_uni_diff_opt.set_options_by_list(diff_opts)
-        self.weekly_sim_uni_diff_opt.init_with_adapter(self.ctx.sim_uni_config.weekly_uni_diff_adapter)
+        self.weekly_sim_uni_diff_opt.init_with_adapter(self.config.weekly_uni_diff_adapter)
 
-        self.weekly_plan_times_opt.init_with_adapter(self.ctx.sim_uni_config.elite_weekly_times_adapter)
-        self.daily_plan_times_opt.init_with_adapter(self.ctx.sim_uni_config.elite_daily_times_adapter)
+        self.weekly_plan_times_opt.init_with_adapter(self.config.elite_weekly_times_adapter)
+        self.daily_plan_times_opt.init_with_adapter(self.config.elite_daily_times_adapter)
 
         for idx, opt in self.challenge_opt_list.items():
             opt.set_options_by_list([
@@ -83,4 +92,4 @@ class SimUniSettingInterface(VerticalScrollInterface):
                 for i in self.ctx.sim_uni_challenge_config_data.load_all_challenge_config()
             ])
 
-            opt.init_with_adapter(self.ctx.sim_uni_config.get_challenge_config_adapter(idx))
+            opt.init_with_adapter(self.config.get_challenge_config_adapter(idx))

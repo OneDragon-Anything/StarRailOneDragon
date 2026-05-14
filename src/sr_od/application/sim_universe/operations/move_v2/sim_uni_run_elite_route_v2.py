@@ -6,6 +6,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
 from one_dragon.yolo import detect_utils
+from sr_od.application.sim_universe import sim_universe_const
 from sr_od.application.sim_universe.operations.battle.sim_uni_fight_elite import SimUniFightElite
 from sr_od.application.sim_universe.operations.event.sim_uni_reward import SimUniReward
 from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
@@ -116,7 +117,11 @@ class SimUniRunEliteRouteV2(SimUniRunRouteBaseV2):
         :return:
         """
         self.had_fight = True
-        self.ctx.sim_uni_record.add_elite_times()
+        run_record = self.ctx.run_context.get_run_record(
+            app_id=sim_universe_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+        )
+        run_record.add_elite_times()
         self._turn_to_previous_angle()
         self.moved_to_target = True  # 与精英战斗后 该识别的目标都在附近了 就算识别不到也不需要往前走了
 

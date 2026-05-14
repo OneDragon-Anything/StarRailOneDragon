@@ -1,6 +1,7 @@
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -8,6 +9,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
+from sr_od.application.world_patrol import world_patrol_const
 from sr_od.application.world_patrol.world_patrol_route import WorldPatrolRoute, WorldPatrolRouteOperation
 from sr_od.config import operation_const
 from sr_od.config.character_const import get_character_by_id
@@ -38,6 +40,11 @@ class WorldPatrolRunRoute(SrOperation):
         :param route: 路线
         """
         self.route: WorldPatrolRoute = route
+        self.config = ctx.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
 
         self.feixiao_attack: bool = True  # 飞霄是否进行了攻击 路线开始的时候不需要攻击 因此设置为已经攻击
 
@@ -91,7 +98,7 @@ class WorldPatrolRunRoute(SrOperation):
         :return:
         """
         c1 = None
-        c1_id = self.ctx.world_patrol_config.character_1
+        c1_id = self.config.character_1
         if c1_id != 'none':
             c1 = get_character_by_id(c1_id)
         op = CheckTeamMembersInWorld(self.ctx, [c1, None, None, None])
@@ -132,7 +139,7 @@ class WorldPatrolRunRoute(SrOperation):
 
         # 判断是否需要用buff
         should_use_tech: bool = False
-        if (self.ctx.world_patrol_config.technique_fight
+        if (self.config.technique_fight
                 and self.ctx.team_info.is_buff_technique
                 and not self.ctx.tech_used_in_lasting):
             for i in range(self.op_idx, len(self.route.route_list)):
@@ -153,7 +160,7 @@ class WorldPatrolRunRoute(SrOperation):
 
         if should_use_tech:
             op = UseTechnique(self.ctx,
-                              max_consumable_cnt=self.ctx.world_patrol_config.max_consumable_cnt,
+                              max_consumable_cnt=self.config.max_consumable_cnt,
                               need_check_point=True,  # 检查秘技点是否足够 可以在没有或者不能用药的情况加快判断
                               trick_snack=self.ctx.game_config.use_quirky_snacks
                               )
@@ -167,8 +174,8 @@ class WorldPatrolRunRoute(SrOperation):
             op = self.no_pos_move(route_item)
         elif route_item.op == operation_const.OP_PATROL:
             op = WorldPatrolEnterFight(self.ctx,
-                                       technique_fight=self.ctx.world_patrol_config.technique_fight,
-                                       technique_only=self.ctx.world_patrol_config.technique_only,
+                                       technique_fight=self.config.technique_fight,
+                                       technique_only=self.config.technique_only,
                                        first_state=common_screen_state.ScreenState.NORMAL_IN_WORLD.value)
         elif route_item.op == operation_const.OP_DISPOSABLE:
             op = WorldPatrolEnterFight(self.ctx,
@@ -262,8 +269,8 @@ class WorldPatrolRunRoute(SrOperation):
         op = None
         if should_attack:
             op = WorldPatrolEnterFight(self.ctx,
-                                       technique_fight=self.ctx.world_patrol_config.technique_fight,
-                                       technique_only=self.ctx.world_patrol_config.technique_only,
+                                       technique_fight=self.config.technique_fight,
+                                       technique_only=self.config.technique_only,
                                        first_state=common_screen_state.ScreenState.NORMAL_IN_WORLD.value)
             # 由于是中途插入的指令 需要特殊处理下标
             op_result = op.execute()
@@ -341,8 +348,8 @@ class WorldPatrolRunRoute(SrOperation):
         return MoveDirectly(self.ctx, current_lm_info, next_lm_info=next_lm_info,
                             target=next_pos, start=current_pos,
                             stop_afterwards=stop_afterwards, no_run=no_run,
-                            technique_fight=self.ctx.world_patrol_config.technique_fight,
-                            technique_only=self.ctx.world_patrol_config.technique_only,
+                            technique_fight=self.config.technique_fight,
+                            technique_only=self.config.technique_only,
                             op_callback=self._update_pos_after_op)
 
     def no_pos_move(self, route_item: WorldPatrolRouteOperation) -> SrOperation:
@@ -389,8 +396,8 @@ class WorldPatrolRunRoute(SrOperation):
         """
         if self.ctx.is_fx_world_patrol_tech:  # 飞霄需要在结束时候攻击
             op = WorldPatrolEnterFight(self.ctx,
-                                       technique_fight=self.ctx.world_patrol_config.technique_fight,
-                                       technique_only=self.ctx.world_patrol_config.technique_only,
+                                       technique_fight=self.config.technique_fight,
+                                       technique_only=self.config.technique_only,
                                        first_state=common_screen_state.ScreenState.NORMAL_IN_WORLD.value)
             return self.round_by_op_result(op.execute())
         return self.round_success()

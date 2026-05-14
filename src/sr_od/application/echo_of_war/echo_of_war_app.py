@@ -1,5 +1,6 @@
 from typing import Optional
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
@@ -11,6 +12,7 @@ from sr_od.application.echo_of_war import echo_of_war_const
 from sr_od.application.echo_of_war.challenge_ehco_of_war import ChallengeEchoOfWar
 from sr_od.application.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
 from sr_od.application.sr_application import SrApplication
+from sr_od.application.trailblaze_power import trailblaze_power_const
 from sr_od.application.trailblaze_power.trailblaze_power_app import TrailblazePowerApp
 from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
 from sr_od.context.sr_context import SrContext
@@ -21,8 +23,17 @@ from sr_od.interastral_peace_guide.guide_def import GuideMission
 class EchoOfWarApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, echo_of_war_const.APP_ID, op_name=gt('历战余响', 'game'),
-                       run_record=ctx.echo_of_war_run_record)
+        SrApplication.__init__(self, ctx, echo_of_war_const.APP_ID, op_name=gt('历战余响', 'game'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=echo_of_war_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        self.power_config = self.ctx.run_context.get_config(
+            app_id=trailblaze_power_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
         self.power: int = 0
 
     @operation_node(name='检查当前需要挑战的关卡', is_start_node=True)
@@ -31,13 +42,13 @@ class EchoOfWarApp(SrApplication):
         判断下一个是什么副本
         :return:
         """
-        self.ctx.power_config.check_plan_run_times()
-        plan: Optional[TrailblazePowerPlanItem] = self.ctx.echo_of_war_config.next_plan_item
+        self.power_config.check_plan_run_times()
+        plan: Optional[TrailblazePowerPlanItem] = self.config.next_plan_item
 
         if plan is None:
             return self.round_success(status=TrailblazePowerApp.STATUS_NO_PLAN)
 
-        if self.ctx.echo_of_war_run_record.left_times <= 0:
+        if self.run_record.left_times <= 0:
             return self.round_success(status=TrailblazePowerApp.STATUS_NO_PLAN)
 
         return self.round_success(status=TrailblazePowerApp.STATUS_WITH_PLAN)
@@ -56,7 +67,7 @@ class EchoOfWarApp(SrApplication):
     @node_notify(when=NotifyTiming.CURRENT_SUCCESS)
     @operation_node(name='挑战')
     def _use_power(self) -> OperationRoundResult:
-        config = self.ctx.echo_of_war_config
+        config = self.config
         config.check_plan_finished()
         plan: Optional[TrailblazePowerPlanItem] = config.next_plan_item
         if plan is None:
@@ -65,7 +76,7 @@ class EchoOfWarApp(SrApplication):
 
         run_times: int = self.power // mission.power
 
-        record: EchoOfWarRunRecord = self.ctx.echo_of_war_run_record
+        record: EchoOfWarRunRecord = self.run_record
         if record.left_times < run_times:
             run_times = record.left_times
 

@@ -1,31 +1,14 @@
 import time
 
+from functools import cached_property
 from typing import Optional, List
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.one_dragon_context import OneDragonContext
 from one_dragon.utils import i18_utils
-from sr_od.application.assignments.assignments_run_record import AssignmentsRunRecord
-from sr_od.application.buy_xianzhou_parcel.buy_xianzhou_parcel_run_record import BuyXianZhouParcelRunRecord
-from sr_od.application.email.email_run_record import EmailRunRecord
-from sr_od.application.daily_training.daily_training_run_record import DailyTrainingRunRecord
-from sr_od.application.echo_of_war.echo_of_war_config import EchoOfWarConfig
-from sr_od.application.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
-from sr_od.application.nameless_honor.nameless_honor_run_record import NamelessHonorRunRecord
-from sr_od.application.relic_salvage.relic_salvage_config import RelicSalvageConfig
-from sr_od.application.relic_salvage.relic_salvage_run_record import RelicSalvageRunRecord
 from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig, SimUniChallengeConfigData
-from sr_od.application.sim_universe.sim_uni_config import SimUniConfig
 from sr_od.application.sim_universe.sim_uni_route_data import SimUniRouteData
-from sr_od.application.sim_universe.sim_uni_run_record import SimUniRunRecord
-from sr_od.application.support_character.support_character_run_record import SupportCharacterRunRecord
-from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig
-from sr_od.application.trailblaze_power.trailblaze_power_run_record import TrailblazePowerRunRecord
-from sr_od.application.trick_snack.trick_snack_config import TrickSnackConfig
-from sr_od.application.trick_snack.trick_snack_record import TrickSnackRunRecord
-from sr_od.application.memory_crystal_shard.memory_crystal_shard_run_record import MemoryCrystalShardRunRecord
-from sr_od.application.world_patrol.world_patrol_config import WorldPatrolConfig
 from sr_od.application.world_patrol.world_patrol_route_data import WorldPatrolRouteData
-from sr_od.application.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
 from sr_od.config.character_const import Character, TECHNIQUE_ATTACK, TECHNIQUE_BUFF, TECHNIQUE_BUFF_ATTACK, FEIXIAO, \
     TECHNIQUE_BUFF_ATTACK_DISAPPEAR
 from sr_od.context.context_pos_info import ContextPosInfo
@@ -243,6 +226,10 @@ class SrContext(OneDragonContext):
     def load_instance_config(self) -> None:
         self.reload_instance_config()
 
+    @cached_property
+    def sim_uni_challenge_config_data(self) -> SimUniChallengeConfigData:
+        return SimUniChallengeConfigData()
+
     def reload_instance_config(self) -> None:
         OneDragonContext.reload_instance_config(self)
 
@@ -259,46 +246,27 @@ class SrContext(OneDragonContext):
         from one_dragon.base.config.notify_config import NotifyConfig
         self.notify_config: NotifyConfig = NotifyConfig(self.current_instance_idx, self.run_context.notify_app_map)
 
-        game_refresh_hour_offset = self.game_account_config.game_refresh_hour_offset
-        from sr_od.application.notify.notify_run_record import NotifyRunRecord
-        self.notify_record: NotifyRunRecord = NotifyRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-
-        self.world_patrol_config: WorldPatrolConfig = WorldPatrolConfig(self.current_instance_idx)
-        self.world_patrol_record: WorldPatrolRunRecord = WorldPatrolRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-
-        self.power_config: TrailblazePowerConfig = TrailblazePowerConfig(self.guide_data, self.current_instance_idx)
-        self.power_record: TrailblazePowerRunRecord = TrailblazePowerRunRecord(self.power_config, self.current_instance_idx, game_refresh_hour_offset)
-
-        self.echo_of_war_config: EchoOfWarConfig = EchoOfWarConfig(self.guide_data, self.current_instance_idx)
-        self.echo_of_war_run_record: EchoOfWarRunRecord = EchoOfWarRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-
-        self.sim_uni_challenge_config_data: SimUniChallengeConfigData = SimUniChallengeConfigData()
-        self.sim_uni_config: SimUniConfig = SimUniConfig(self.current_instance_idx)
-        self.sim_uni_record: SimUniRunRecord = SimUniRunRecord(self.sim_uni_config, self.current_instance_idx, game_refresh_hour_offset)
-
-        self.assignments_run_record: AssignmentsRunRecord = AssignmentsRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.nameless_honor_run_record: NamelessHonorRunRecord = NamelessHonorRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.daily_training_run_record: DailyTrainingRunRecord = DailyTrainingRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.email_run_record: EmailRunRecord = EmailRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.buy_xz_parcel_run_record: BuyXianZhouParcelRunRecord = BuyXianZhouParcelRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.memory_crystal_shard_run_record: MemoryCrystalShardRunRecord = MemoryCrystalShardRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-        self.support_character_run_record: SupportCharacterRunRecord = SupportCharacterRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-
-        self.relic_salvage_config: RelicSalvageConfig = RelicSalvageConfig(self.current_instance_idx)
-        self.relic_salvage_run_record: RelicSalvageRunRecord = RelicSalvageRunRecord(self.current_instance_idx, game_refresh_hour_offset)
-
-        self.trick_snack_config: TrickSnackConfig = TrickSnackConfig(self.current_instance_idx)
-        self.trick_snack_run_record: TrickSnackRunRecord = TrickSnackRunRecord(self.current_instance_idx, game_refresh_hour_offset)
+        for prop in [
+            'sim_uni_challenge_config_data',
+        ]:
+            if prop in self.__dict__:
+                del self.__dict__[prop]
 
     def on_switch_instance(self) -> None:
         self.init_controller()
 
     @property
     def sim_uni_challenge_config(self) -> Optional[SimUniChallengeConfig]:
-        if self.sim_uni_info.world_num == 0 or self.sim_uni_config is None:
+        from sr_od.application.sim_universe import sim_universe_const
+        sim_uni_config = self.run_context.get_config(
+            app_id=sim_universe_const.APP_ID,
+            instance_idx=self.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        if self.sim_uni_info.world_num == 0 or sim_uni_config is None:
             return None
         else:
-            return self.sim_uni_config.get_challenge_config(self.sim_uni_info.world_num)
+            return sim_uni_config.get_challenge_config(self.sim_uni_info.world_num)
 
     def init_for_world_patrol(self) -> None:
         self.ocr.init_model()
@@ -342,7 +310,13 @@ class SrContext(OneDragonContext):
         """
         if self.ban_technique:
             return False
-        return self.team_info.is_first_feixiao and self.world_patrol_config.technique_fight
+        from sr_od.application.world_patrol import world_patrol_const
+        world_patrol_config = self.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        return world_patrol_config is not None and self.team_info.is_first_feixiao and world_patrol_config.technique_fight
 
     @property
     def fx_had_used_tech(self) -> bool:

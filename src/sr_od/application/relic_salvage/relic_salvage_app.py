@@ -1,4 +1,5 @@
 from one_dragon.base.operation.operation_edge import node_from
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -12,8 +13,12 @@ from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 class RelicSalvageApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, relic_salvage_const.APP_ID, op_name=gt('遗器分解'),
-                       run_record=ctx.relic_salvage_run_record)
+        SrApplication.__init__(self, ctx, relic_salvage_const.APP_ID, op_name=gt('遗器分解'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=relic_salvage_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:
@@ -37,14 +42,14 @@ class RelicSalvageApp(SrApplication):
     def choose_level(self) -> OperationRoundResult:
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
-            screen, '背包-遗器分解-快速选择', self.ctx.relic_salvage_config.salvage_level,
+            screen, '背包-遗器分解-快速选择', self.config.salvage_level,
             success_wait=1, retry_wait=1
         )
 
     @node_from(from_name='选择等级')
     @operation_node(name='选择弃置')
     def choose_abandon(self) -> OperationRoundResult:
-        if self.ctx.relic_salvage_config.salvage_abandon:
+        if self.config.salvage_abandon:
             screen = self.last_screenshot
             return self.round_by_find_and_click_area(screen, '背包-遗器分解-快速选择', '全选已弃置',
                                                      success_wait=1, retry_wait=1)

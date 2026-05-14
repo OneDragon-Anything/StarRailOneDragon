@@ -3,11 +3,12 @@ import time
 from cv2.typing import MatLike
 from typing import ClassVar, Optional, List
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.application.world_patrol import world_patrol_screen_state
+from sr_od.application.world_patrol import world_patrol_const, world_patrol_screen_state
 from sr_od.config import game_const
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -33,6 +34,11 @@ class WorldPatrolEnterFight(SrOperation):
         根据小地图的红圈 判断是否被敌人锁定 进行主动攻击
         """
         SrOperation.__init__(self, ctx, op_name=gt('进入战斗'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
         self.technique_fight: bool = technique_fight  # 使用秘技开怪
         self.technique_only: bool = technique_only  # 仅使用秘技开怪
         self.first_state: Optional[str] = first_state  # 初始画面状态 传入后会跳过第一次画面状态判断
@@ -141,7 +147,7 @@ class WorldPatrolEnterFight(SrOperation):
 
             current_use_tech = False  # 当前这轮使用了秘技 ctx中的状态会在攻击秘技使用后重置
             if will_use_tech:  # 识别到秘技类型才能使用
-                op = UseTechnique(self.ctx, max_consumable_cnt=self.ctx.world_patrol_config.max_consumable_cnt,
+                op = UseTechnique(self.ctx, max_consumable_cnt=self.config.max_consumable_cnt,
                                   need_check_available=self.ctx.is_pc and self.first_tech_after_battle,  # 只有战斗结束刚出来的时候可能用不了秘技
                                   trick_snack=self.ctx.game_config.use_quirky_snacks,
                                   )
@@ -252,7 +258,7 @@ class WorldPatrolEnterFight(SrOperation):
         :return:
         """
         op = FastRecover(self.ctx,
-                         max_consumable_cnt=self.ctx.world_patrol_config.max_consumable_cnt,
+                         max_consumable_cnt=self.config.max_consumable_cnt,
                          quirky_snacks=self.ctx.game_config.use_quirky_snacks
                          )
         # 可能把战斗中的文字错误识别成【快速恢复】 因此允许失败

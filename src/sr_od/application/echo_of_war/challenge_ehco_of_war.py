@@ -5,6 +5,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
+from sr_od.application.echo_of_war import echo_of_war_const
 from sr_od.challenge_mission.choose_support_in_team import ChooseSupportInTeam
 from sr_od.challenge_mission.click_challenge import ClickChallenge
 from sr_od.challenge_mission.click_start_challenge import ClickStartChallenge
@@ -99,7 +100,11 @@ class ChallengeEchoOfWar(SrOperation):
         点击挑战后 奖励次数用完退出
         :return:
         """
-        self.ctx.echo_of_war_run_record.left_times = 0  # 清空剩余次数
+        run_record = self.ctx.run_context.get_run_record(
+            app_id=echo_of_war_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+        )
+        run_record.left_times = 0  # 清空剩余次数
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
 

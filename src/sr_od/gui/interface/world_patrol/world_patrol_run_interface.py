@@ -48,6 +48,11 @@ class WorldPatrolRunInterface(AppRunInterface):
         return WorldPatrolApp(self.ctx)
 
     def on_reset_clicked(self) -> None:
-        self.ctx.world_patrol_record.reset_record()
+        from sr_od.application.world_patrol import world_patrol_const
+        run_record = self.ctx.run_context.get_run_record(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+        )
+        run_record.reset_record()
         log.info('运行记录已重置')
 

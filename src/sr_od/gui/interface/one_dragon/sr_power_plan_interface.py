@@ -4,6 +4,7 @@ from qfluentwidgets import PrimaryPushButton, PushButton, FluentIcon, CaptionLab
 from typing import List
 
 from one_dragon.base.config.config_item import ConfigItem
+from one_dragon.base.operation.application import application_const
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.combo_box import ComboBox
 from one_dragon_qt.widgets.editable_combo_box import EditableComboBox
@@ -11,7 +12,8 @@ from one_dragon_qt.widgets.vertical_scroll_interface import VerticalScrollInterf
 from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiLineSettingCard
 from one_dragon_qt.widgets.setting_card.multi_push_setting_card import MultiPushSettingCard
 from one_dragon_qt.widgets.setting_card.switch_setting_card import SwitchSettingCard
-from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
+from sr_od.application.trailblaze_power import trailblaze_power_const
+from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig, TrailblazePowerPlanItem
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.config.team_config import TeamNumEnum
 from sr_od.context.sr_context import SrContext
@@ -188,7 +190,12 @@ class PowerPlanCard(MultiLineSettingCard):
         根据历史记录更新
         """
         mission: GuideMission = self.mission_combo_box.currentData()
-        history = self.ctx.power_config.get_history_by_uid(mission.unique_id)
+        power_config: TrailblazePowerConfig = self.ctx.run_context.get_config(
+            app_id=trailblaze_power_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        history = power_config.get_history_by_uid(mission.unique_id)
         if history is None:
             return
 
@@ -206,6 +213,7 @@ class PowerPlanInterface(VerticalScrollInterface):
 
     def __init__(self, ctx: SrContext, parent=None):
         self.ctx: SrContext = ctx
+        self.config: TrailblazePowerConfig
 
         VerticalScrollInterface.__init__(
             self,
@@ -252,14 +260,19 @@ class PowerPlanInterface(VerticalScrollInterface):
     def on_interface_shown(self) -> None:
         VerticalScrollInterface.on_interface_shown(self)
 
-        self.loop_opt.init_with_adapter(self.ctx.power_config.loop_adapter)
+        self.config = self.ctx.run_context.get_config(
+            app_id=trailblaze_power_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        self.loop_opt.init_with_adapter(self.config.loop_adapter)
         self.update_plan_list_display()
 
     def on_interface_hidden(self) -> None:
         VerticalScrollInterface.on_interface_hidden(self)
 
-    def update_plan_list_display(self):
-        plan_list = self.ctx.power_config.plan_list
+    def update_plan_list_display(self) -> None:
+        plan_list = self.config.plan_list
 
         if len(plan_list) > len(self.card_list):
             self.content_widget.remove_widget(self.plus_btn)
@@ -288,22 +301,22 @@ class PowerPlanInterface(VerticalScrollInterface):
             self.card_list.pop(-1)
 
     def _on_add_clicked(self) -> None:
-        self.ctx.power_config.add_plan()
+        self.config.add_plan()
         self.update_plan_list_display()
 
     def _on_plan_item_changed(self, idx: int, plan: TrailblazePowerPlanItem) -> None:
-        self.ctx.power_config.update_plan(idx, plan)
+        self.config.update_plan(idx, plan)
 
     def _on_plan_item_deleted(self, idx: int) -> None:
-        self.ctx.power_config.delete_plan(idx)
+        self.config.delete_plan(idx)
         self.update_plan_list_display()
 
     def _on_plan_item_move_up(self, idx: int) -> None:
-        self.ctx.power_config.move_up(idx)
+        self.config.move_up(idx)
         self.update_plan_list_display()
 
     def _on_plan_item_move_top(self, idx: int) -> None:
-        self.ctx.power_config.move_top(idx)
+        self.config.move_top(idx)
         self.update_plan_list_display()
 
     def _on_remove_all_completed_clicked(self) -> None:
@@ -312,11 +325,11 @@ class PowerPlanInterface(VerticalScrollInterface):
         dialog.yesButton.setText('确定')
         dialog.cancelButton.setText('取消')
         if dialog.exec():
-            self.plan_list_backup = self.ctx.power_config.plan_list.copy()
-            not_completed_plans = [plan for plan in self.ctx.power_config.plan_list
+            self.plan_list_backup = self.config.plan_list.copy()
+            not_completed_plans = [plan for plan in self.config.plan_list
                                 if plan.run_times < plan.plan_times]
-            self.ctx.power_config.plan_list = not_completed_plans.copy()
-            self.ctx.power_config.save()
+            self.config.plan_list = not_completed_plans.copy()
+            self.config.save()
             self.cancel_btn.setEnabled(True)
         self.update_plan_list_display()
 
@@ -326,14 +339,14 @@ class PowerPlanInterface(VerticalScrollInterface):
         dialog.yesButton.setText('确定')
         dialog.cancelButton.setText('取消')
         if dialog.exec():
-            self.plan_list_backup = self.ctx.power_config.plan_list.copy()
-            self.ctx.power_config.plan_list.clear()
-            self.ctx.power_config.save()
+            self.plan_list_backup = self.config.plan_list.copy()
+            self.config.plan_list.clear()
+            self.config.save()
             self.cancel_btn.setEnabled(True)
         self.update_plan_list_display()
 
     def _on_cancel_clicked(self) -> None:
-        self.ctx.power_config.plan_list = self.plan_list_backup.copy()
+        self.config.plan_list = self.plan_list_backup.copy()
         self.cancel_btn.setEnabled(False)
         self.update_plan_list_display()
 

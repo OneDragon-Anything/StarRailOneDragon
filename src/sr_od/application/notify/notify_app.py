@@ -15,8 +15,7 @@ class NotifyApp(SrApplication):
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, notify_const.APP_ID,
                               op_name=gt('通知'),
-                              need_check_game_win=True,
-                              run_record=ctx.notify_record)
+                              need_check_game_win=True)
 
     @operation_node(name='发送通知', is_start_node=True)
     def notify(self) -> OperationRoundResult:

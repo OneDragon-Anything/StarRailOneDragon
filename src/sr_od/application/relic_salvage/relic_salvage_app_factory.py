@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from one_dragon.base.config.game_account_config import GameAccountConfig
+from one_dragon.base.operation.application.application_config import ApplicationConfig
 from one_dragon.base.operation.application.application_factory import ApplicationFactory
 from one_dragon.base.operation.application_base import Application
 from one_dragon.base.operation.application_run_record import AppRunRecord
 from sr_od.application.relic_salvage import relic_salvage_const
 from sr_od.application.relic_salvage.relic_salvage_app import RelicSalvageApp
+from sr_od.application.relic_salvage.relic_salvage_config import RelicSalvageConfig
 from sr_od.application.relic_salvage.relic_salvage_run_record import RelicSalvageRunRecord
 
 if TYPE_CHECKING:
@@ -22,6 +24,9 @@ class RelicSalvageAppFactory(ApplicationFactory):
 
     def create_application(self, instance_idx: int, group_id: str) -> Application:
         return RelicSalvageApp(self.ctx)
+
+    def create_config(self, instance_idx: int, group_id: str) -> ApplicationConfig:
+        return RelicSalvageConfig(instance_idx)
 
     def create_run_record(self, instance_idx: int) -> AppRunRecord:
         return RelicSalvageRunRecord(

@@ -1,11 +1,13 @@
 from typing import Optional, List, ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.world_patrol import world_patrol_const
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.click_point import ClickPoint
@@ -143,12 +145,17 @@ class CustomCombineOp(SrOperation):
 
         no_run = op_item.op == OpEnum.SLOW_MOVE.value
 
+        world_patrol_config = self.ctx.run_context.get_config(
+            app_id=world_patrol_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
         return MoveDirectly(self.ctx, current_lm_info, next_lm_info=next_lm_info,
                             target=next_pos, start=current_pos,
                             stop_afterwards=not dont_stop_afterwards, no_run=no_run,
                             no_battle=self.no_battle,
-                            technique_fight=self.ctx.world_patrol_config.technique_fight,
-                            technique_only=self.ctx.world_patrol_config.technique_only
+                            technique_fight=world_patrol_config.technique_fight,
+                            technique_only=world_patrol_config.technique_only
                             )
 
     def op_interact(self, op_item: CustomCombineOpItem) -> SrOperation:

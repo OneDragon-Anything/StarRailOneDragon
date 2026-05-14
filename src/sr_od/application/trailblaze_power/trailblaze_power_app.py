@@ -1,5 +1,6 @@
 from typing import ClassVar, Optional
 
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
@@ -8,6 +9,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.trailblaze_power import trailblaze_power_const
 from sr_od.app.div_uni.operations.ornamenet_extraction import ChallengeOrnamentExtraction
+from sr_od.application.sim_universe import sim_universe_const
 from sr_od.application.sim_universe.sim_uni_app import SimUniApp
 from sr_od.application.sim_universe.sim_uni_data import SimUniWorldEnum
 from sr_od.application.sr_application import SrApplication
@@ -31,8 +33,12 @@ class TrailblazePowerApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, trailblaze_power_const.APP_ID,
-                               op_name=gt('开拓力'),
-                               run_record=ctx.power_record)
+                               op_name=gt('开拓力'))
+        self.config = self.ctx.run_context.get_config(
+            app_id=trailblaze_power_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
 
         self.last_mission: Optional[GuideMission] = None  # 上一个挑战副本
         self.power: int = 0  # 剩余开拓力
@@ -44,8 +50,8 @@ class TrailblazePowerApp(SrApplication):
         判断下一个是什么副本
         :return:
         """
-        self.ctx.power_config.check_plan_run_times()
-        plan: Optional[TrailblazePowerPlanItem] = self.ctx.power_config.get_next_plan()
+        self.config.check_plan_run_times()
+        plan: Optional[TrailblazePowerPlanItem] = self.config.get_next_plan()
 
         if plan is None:
             return self.round_success(status=TrailblazePowerApp.STATUS_NO_PLAN)
@@ -67,8 +73,8 @@ class TrailblazePowerApp(SrApplication):
     @node_from(from_name='执行开拓力计划')
     @operation_node(name='执行开拓力计划')
     def execute_plan(self) -> OperationRoundResult:
-        self.ctx.power_config.check_plan_run_times()
-        plan: Optional[TrailblazePowerPlanItem] = self.ctx.power_config.get_next_plan()
+        self.config.check_plan_run_times()
+        plan: Optional[TrailblazePowerPlanItem] = self.config.get_next_plan()
         for _ in range(100):
             if plan is None:
                 return self.round_success(TrailblazePowerApp.STATUS_NO_PLAN)
@@ -83,7 +89,7 @@ class TrailblazePowerApp(SrApplication):
 
             if can_run_times > 0:
                 break
-            plan = self.ctx.power_config.get_next_plan(plan)
+            plan = self.config.get_next_plan(plan)
             if plan is None:
                 break
 
@@ -99,7 +105,11 @@ class TrailblazePowerApp(SrApplication):
         if run_times == 0:
             return self.round_success(TrailblazePowerApp.STATUS_PLAN_FINISHED)
 
-        self.ctx.sim_uni_record.check_and_update_status()
+        sim_uni_record = self.ctx.run_context.get_run_record(
+            app_id=sim_universe_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+        )
+        sim_uni_record.check_and_update_status()
         self.last_mission = mission
 
         if mission.cate.cn == '模拟宇宙':
@@ -142,7 +152,7 @@ class TrailblazePowerApp(SrApplication):
         self.power -= use_power
         if self.power < 0:
             self.power = 0
-        self.ctx.power_config.add_run_times(self.last_mission.unique_id, finished_times)
+        self.config.add_run_times(self.last_mission.unique_id, finished_times)
 
     def _on_sim_uni_get_reward(self, use_power: int, user_qty: int):
         """
@@ -150,7 +160,7 @@ class TrailblazePowerApp(SrApplication):
         :return:
         """
         log.info('获取沉浸奖励 使用体力 %d 使用沉浸器 %d', use_power, user_qty)
-        self.ctx.power_config.add_run_times(self.last_mission.unique_id, 1)
+        self.config.add_run_times(self.last_mission.unique_id, 1)
 
         self.power -= use_power
         if self.power < 0:
@@ -171,7 +181,7 @@ class TrailblazePowerApp(SrApplication):
             elif self.power >= self.last_mission.power:
                 self.power -= self.last_mission.power
 
-            self.ctx.power_config.add_run_times(self.last_mission.unique_id, 1)
+            self.config.add_run_times(self.last_mission.unique_id, 1)
 
     @node_from(from_name='检查当前需要挑战的关卡')
     @node_from(from_name='执行开拓力计划', status=STATUS_NO_PLAN)
