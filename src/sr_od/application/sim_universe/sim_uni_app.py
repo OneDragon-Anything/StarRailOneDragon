@@ -31,6 +31,7 @@ from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 class SimUniApp(SrApplication):
 
     STATUS_NOT_FOUND_IN_SI: ClassVar[str] = '生存索引中未找到模拟宇宙'
+    PREPARE_TO_RUN: ClassVar[str] = '准备运行'
     STATUS_ALL_FINISHED: ClassVar[str] = '已完成通关次数'
     STATUS_EXCEPTION: ClassVar[str] = '异常次数过多'
     STATUS_TO_WEEKLY_REWARD: ClassVar[str] = '领取每周奖励'
@@ -91,9 +92,12 @@ class SimUniApp(SrApplication):
     def _check_times(self) -> OperationRoundResult:
         self.ctx.init_for_sim_uni()
 
+        # 周奖励已领取
+        if self.ctx.sim_uni_config.only_points_reward and  self.run_record.points_reward_complete:
+            return self.round_success(SimUniApp.STATUS_ALL_FINISHED)
         if self.specified_uni_num is not None:
             if self.get_reward_cnt < self.max_reward_to_get:
-                return self.round_success()
+                return self.round_success(SimUniApp.PREPARE_TO_RUN)
             else:
                 self.all_finished = True
                 return self.round_success(SimUniApp.STATUS_ALL_FINISHED)
@@ -107,9 +111,9 @@ class SimUniApp(SrApplication):
             self.all_finished = True
             return self.round_success(SimUniApp.STATUS_ALL_FINISHED)
         else:
-            return self.round_success()
+            return self.round_success(SimUniApp.PREPARE_TO_RUN)
 
-    @node_from(from_name='检查运行次数')
+    @node_from(from_name='检查运行次数', status=PREPARE_TO_RUN)
     @node_from(from_name='调用差分宇宙自动化', success=False)
     @operation_node(name='识别初始画面')
     def _check_initial_screen(self) -> OperationRoundResult:

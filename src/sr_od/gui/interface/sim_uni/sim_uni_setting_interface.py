@@ -94,7 +94,7 @@ class SimUniSettingInterface(VerticalScrollInterface):
         group_x.addSettingCard(self.auto_simulated_universe_settings)
 
         self.only_points_reward = SwitchSettingCard(
-            icon=FluentIcon.GAME, title='每周只打满14000', content='勾选此处的话, Auto_Simulated_Universe 的每周次数可以设置成1',
+            icon=FluentIcon.GAME, title='每周只打满18000', content='勾选此处的话, Auto_Simulated_Universe 的每周次数可以设置成1',
         )
         group_x.addSettingCard(self.only_points_reward)
 
