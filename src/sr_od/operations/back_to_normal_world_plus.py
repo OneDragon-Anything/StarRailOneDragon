@@ -78,14 +78,16 @@ class BackToNormalWorldPlus(SrOperation):
                 return self.round_wait(sim_uni_state, wait=2)
             if sim_uni_state == sim_uni_screen_state.ScreenState.SELECT_NEXT_STATION.value:  # 选择下一站
                 self.ctx.controller.click(Point(867, 589))  # 中间偏左
-                time.sleep(0.2)
+                time.sleep(0.1)
                 self.ctx.controller.click(Point(701, 589))  # 第一个
-                time.sleep(0.2)
+                time.sleep(0.1)
                 self.ctx.controller.click(Point(1152, 969))  # 确认
                 return self.round_wait(sim_uni_state, wait=3)
             if sim_uni_state == sim_uni_screen_state.ScreenState.CHOOSE_WILL_POWER.value:  # 选择奇迹
+                self.ctx.controller.click(Point(867, 589))  # 中间偏左
+                time.sleep(0.1)
                 self.ctx.controller.click(Point(475, 483))  # 第一个
-                time.sleep(0.2)
+                time.sleep(0.1)
                 self.ctx.controller.click(Point(953, 969))  # 确认
                 return self.round_wait(sim_uni_state, wait=1)
             if sim_uni_state == sim_uni_screen_state.ScreenState.AHA_MASK.value:  # 选择面具
