@@ -59,33 +59,6 @@ class SimUniApp(SrApplication):
         self.not_found_in_survival_times: int = 0  # 在生存索引中找不到模拟宇宙的次数
         self.all_finished: bool = False
 
-    # 在差分宇宙入口处检查积分奖励
-    def _check_points_reward(self) -> OperationRoundResult:
-        TARGET_SCORE = '18000'  # 目标分数文本
-
-        # 裁剪悬赏委托进度区域
-        area = self.ctx.screen_loader.get_area('模拟宇宙', '差分宇宙-积分奖励')
-        part = cv2_utils.crop_image_only(self.last_screenshot, area.rect)
-
-        # OCR识别
-        ocr_result_list = self.ctx.ocr.ocr(part)
-
-        # 统计 '18000' 出现次数
-        target_count = sum(ocr_text.data.count(TARGET_SCORE) for ocr_text in ocr_result_list)
-
-        # 根据次数判断完成状态
-        if target_count == 1:
-            # 只有一个 18000,表示 xxxx/18000 (未完成)
-            return self.round_success('未打满积分奖励')
-        elif target_count == 2:
-            # 两个1 8000,表示 18000/18000 (已完成)
-            if not self.run_record.points_reward_complete:
-                self.run_record.points_reward_complete = True
-            return self.round_success('已打满积分奖励')
-        else:
-            # 未识别到预期的结果(0次或3次以上),返回重试
-            return self.round_retry(wait=0.5)
-
     @node_from(from_name='自动宇宙')
     @node_from(from_name='异常退出')
     @operation_node(name='检查运行次数', is_start_node=True)
@@ -151,14 +124,41 @@ class SimUniApp(SrApplication):
 
     @node_from(from_name='识别初始画面', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 最开始已经在模拟宇宙入口了
     @node_from(from_name='传送', status=sim_uni_screen_state.ScreenState.SIM_TYPE_X.value)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
+    @operation_node(name='检查积分奖励')
+    def _check_points_reward(self) -> OperationRoundResult:
+        """
+            在差分宇宙入口处检查积分奖励
+        """
+        # 如果只要求打满奖励, 识别是否 18000/18000了
+        if not self.ctx.sim_uni_config.only_points_reward:
+            return self.round_success(SimUniApp.PREPARE_TO_RUN)
+
+        TARGET_SCORE = '18000'  # 目标分数文本
+
+        # 裁剪悬赏委托进度区域
+        area = self.ctx.screen_loader.get_area('模拟宇宙', '差分宇宙-积分奖励')
+        part = cv2_utils.crop_image_only(self.last_screenshot, area.rect)
+
+        # OCR识别
+        ocr_result_list = self.ctx.ocr.ocr(part)
+
+        # 统计 '18000' 出现次数
+        target_count = sum(ocr_text.data.count(TARGET_SCORE) for ocr_text in ocr_result_list)
+
+        # 根据次数判断完成状态
+        if target_count == 1:
+            # 只有一个 18000,表示 xxxx/18000 (未完成)
+            return self.round_success(SimUniApp.PREPARE_TO_RUN)
+        elif target_count == 2:
+            # 两个1 8000,表示 18000/18000 (已完成)
+            return self.round_success(SimUniApp.STATUS_ALL_FINISHED)
+        else:
+            # 未识别到预期的结果(0次或3次以上),返回重试
+            return self.round_retry(SimUniApp.PREPARE_TO_RUN, wait=1)
+
+    @node_from(from_name='检查积分奖励', status=PREPARE_TO_RUN)  # 传送到差分宇宙, 调用差分宇宙自动化脚本
     @operation_node(name='调用差分宇宙自动化')
     def _execute_sim_universe_x(self) -> OperationRoundResult:
-        # 如果只要求打满奖励, 识别是否 18000/18000了
-        if self.ctx.sim_uni_config.only_points_reward:
-            points_reward = self._check_points_reward()
-            if points_reward.status == '已打满积分奖励':
-                return points_reward
-
         work_dir = os_utils.get_work_dir()
         plugin_path = os.path.join(work_dir, *['plugins', 'Auto_Simulated_Universe'])
         script_file = os.path.join(plugin_path, 'diver.py')
@@ -321,11 +321,15 @@ class SimUniApp(SrApplication):
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='识别初始画面', status=STATUS_TO_WEEKLY_REWARD)
+    @node_from(from_name='检查积分奖励', status=STATUS_ALL_FINISHED)
     @node_from(from_name='调用差分宇宙自动化', success=True)
     @operation_node(name='领取每周奖励')
     def check_reward_before_exit(self) -> OperationRoundResult:
         op = SimUniClaimWeeklyReward(self.ctx)
-        return self.round_by_op_result(op.execute())
+        result = self.round_by_op_result(op.execute())
+        if not self.run_record.points_reward_complete:
+            self.run_record.points_reward_complete = True
+        return result
 
     @node_from(from_name='检查运行次数', status=STATUS_EXCEPTION)
     @node_from(from_name='领取每周奖励')
