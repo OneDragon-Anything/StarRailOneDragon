@@ -200,7 +200,6 @@ SAMPO = Character(id='sampo', cn='桑博', path=CHARACTER_PATH_NIHILITY, combat_
 SEELE = Character(id='seele', cn='希儿', path=CHARACTER_PATH_HUNT, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 SERVAL = Character(id='serval', cn='希露瓦', path=CHARACTER_PATH_ERUDITION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_ATTACK)
 SILVERWOLF = Character(id='silverwolf', cn='银狼', path=CHARACTER_PATH_NIHILITY, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_ATTACK)
-SILVERWOLF_999 = Character(id='silverwolf_999', cn='银狼999', path=CHARACTER_PATH_ELATION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK_DISAPPEAR)
 STELLE_DESTRUCTION = Character(id='stelle_destruction', cn='女主毁灭', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
 STELLE_PRESERVATION = Character(id='stelle_preservation', cn='女主存护', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
 STELLE_HARMONY = Character(id='stelle_harmony', cn='女主同谐', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
@@ -256,6 +255,7 @@ CYRENE = Character(id='cyrene', cn='昔涟', path=CHARACTER_PATH_REMEMBRANCE, co
 THE_DAHLIA = Character(id='the_dahlia', cn='大丽花', path=CHARACTER_PATH_NIHILITY, combat_type=FIRE, level=5, technique_type=TECHNIQUE_AREA)
 YAO_GUANG = Character(id='yao_guang', cn='爻光', path=CHARACTER_PATH_ELATION, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=999)
 SPARXIE = Character(id='sparxie', cn='火花', path=CHARACTER_PATH_ELATION, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=10)
+SILVERWOLF_999 = Character(id='silverwolf_999', cn='银狼Lv.999', path=CHARACTER_PATH_ELATION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK_DISAPPEAR)
 
 
 CHARACTER_LIST: List[Character] = [
@@ -344,9 +344,9 @@ CHARACTER_LIST: List[Character] = [
     DANHENGPERMANSORTERRAE,
     CYRENE,
     THE_DAHLIA,
-    SILVERWOLF_999,
     YAO_GUANG,
-    SPARXIE
+    SPARXIE,
+    SILVERWOLF_999
 ]
 
 
@@ -426,4 +426,3 @@ def is_support_character(character_id: str) -> bool:
     if character is None:
         return False
     return character.path in SUPPORT_PATH_LIST
-
