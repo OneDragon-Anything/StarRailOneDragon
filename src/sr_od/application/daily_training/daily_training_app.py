@@ -3,10 +3,12 @@ import time
 from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_edge import node_from
+from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.app.sr_application import SrApplication
+from sr_od.application.daily_training import daily_training_const
+from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guid_choose_tab import GuideChooseTab
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
@@ -19,10 +21,9 @@ from sr_od.screen_state import common_screen_state
 class DailyTrainingApp(SrApplication):
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, 'daily_training',
+        SrApplication.__init__(self, ctx, daily_training_const.APP_ID,
                                op_name=gt('每日实训', 'game'),
-                               run_record=ctx.daily_training_run_record,
-                               need_notify=True)
+                               run_record=ctx.daily_training_run_record)
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:
@@ -93,21 +94,21 @@ class DailyTrainingApp(SrApplication):
         completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
         if not completed:
             return self.round_fail('每日实训还未完成')
-        return self.round_success('每日实训已完成', wait=1)
+        return self.round_success('每日实训已完成')
 
     @node_from(from_name='领取奖励')
+    @node_notify(when=NotifyTiming.CURRENT_DONE)
     @operation_node(name='结束后返回')
     def back_at_last(self) -> OperationRoundResult:
-        self.notify_screenshot = self.save_screenshot_bytes()  # 结束后通知的截图
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
 
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
-    ctx.init_for_sim_uni()
-    ctx.start_running()
+    ctx.init()
+    ctx.run_context.current_app_id = daily_training_const.APP_ID
+    ctx.run_context.start_running()
     op = DailyTrainingApp(ctx)
     op.execute()
 
