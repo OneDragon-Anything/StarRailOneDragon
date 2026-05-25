@@ -2,7 +2,7 @@ mini_map:
   r: 93
   x: 141
   y: 151
-turn_dx: 0
+turn_dx: 27
 server_region: CN
 run_mode: 0
 key_interact: 'f'

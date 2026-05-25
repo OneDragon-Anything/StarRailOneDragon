@@ -1,0 +1,296 @@
+- num: 1
+  uid: EWS
+  cn: 二维市
+  floors:
+  - -1
+  - 1
+- num: 2
+  uid: HSXY
+  cn: 绘世学院
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 3
+  uid: GCQ
+  cn: 鸽川区
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 4
+  uid: HYMT
+  cn: 幻月秘庭
+- num: 5
+  uid: SJJTJG
+  cn: 「世界尽头」酒馆
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 6
+  uid: SJJTJGDQ
+  cn: 「世界尽头」酒馆灯球
+- num: 7
+  uid: EWSY1
+  cn: 二维市右1
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 8
+  uid: EWSY2
+  cn: 二维市右2
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+- num: 9
+  uid: EWSY3
+  cn: 二维市右3
+- num: 10
+  uid: EWSY4
+  cn: 二维市右4
+  floors:
+  - 1
+  - 2
+- num: 11
+  uid: EWSY5
+  cn: 二维市右5
+  floors:
+  - 1
+  - 2
+- num: 12
+  uid: EWSY6
+  cn: 二维市右6
+- num: 13
+  uid: EWSY7
+  cn: 二维市右7
+  floors:
+  - 1
+  - 2
+- num: 14
+  uid: EWSY8
+  cn: 二维市右8
+- num: 15
+  uid: EWSZ1
+  cn: 二维市左1
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 16
+  uid: EWSZ2
+  cn: 二维市左2
+  floors:
+  - 1
+  - 2
+- num: 17
+  uid: EWSZ3
+  cn: 二维市左3
+- num: 18
+  uid: EWSZ4
+  cn: 二维市左4
+  floors:
+  - 1
+  - 2
+- num: 19
+  uid: EWSZ5
+  cn: 二维市左5
+  floors:
+  - 1
+  - 2
+- num: 20
+  uid: HSXYYC1
+  cn: 绘世学院一层1
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 21
+  uid: HSXYYC2
+  cn: 绘世学院一层2
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+- num: 22
+  uid: HSXYYC3
+  cn: 绘世学院一层3
+- num: 23
+  uid: HSXYYC4
+  cn: 绘世学院一层4
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+- num: 24
+  uid: HSXYYC5
+  cn: 绘世学院一层5
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+- num: 25
+  uid: HSXYYC6
+  cn: 绘世学院一层6
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+- num: 26
+  uid: HSXYYC7
+  cn: 绘世学院一层7
+- num: 27
+  uid: HSXYYC8
+  cn: 绘世学院一层8
+  floors:
+  - 1
+  - 2
+- num: 28
+  uid: HSXYEC1
+  cn: 绘世学院二层1
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 29
+  uid: HSXYEC2
+  cn: 绘世学院二层2
+  floors:
+  - 1
+  - 2
+- num: 30
+  uid: HSXYEC3
+  cn: 绘世学院二层3
+- num: 31
+  uid: HSXYEC4
+  cn: 绘世学院二层4
+- num: 32
+  uid: GCQYC1
+  cn: 鸽川区一层1
+- num: 33
+  uid: GCQYC2
+  cn: 鸽川区一层2
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+- num: 34
+  uid: GCQYC3
+  cn: 鸽川区一层3
+  floors:
+  - 1
+  - 2
+- num: 35
+  uid: GCQYC4
+  cn: 鸽川区一层4
+  floors:
+  - 1
+  - 2
+- num: 36
+  uid: GCQYC5
+  cn: 鸽川区一层5
+  floors:
+  - 1
+  - 2
+- num: 37
+  uid: GCQYC6
+  cn: 鸽川区一层6
+  floors:
+  - 1
+  - 2
+- num: 38
+  uid: GCQYC7
+  cn: 鸽川区一层7
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 39
+  uid: GCQEC1
+  cn: 鸽川区二层1
+  floors:
+  - 1
+  - 2
+- num: 40
+  uid: GCQEC2
+  cn: 鸽川区二层2
+- num: 41
+  uid: GCQSC1
+  cn: 鸽川区三层1
+- num: 42
+  uid: SJJTJGYC1
+  cn: 「世界尽头」酒馆一层1
+- num: 43
+  uid: SJJTJGYC2
+  cn: 「世界尽头」酒馆一层2
+- num: 44
+  uid: SJJTJGYC3
+  cn: 「世界尽头」酒馆一层3
+- num: 45
+  uid: SJJTJGYC4
+  cn: 「世界尽头」酒馆一层4
+- num: 46
+  uid: SJJTJGYC5
+  cn: 「世界尽头」酒馆一层5
+- num: 47
+  uid: SJJTJGYC6
+  cn: 「世界尽头」酒馆一层6
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+- num: 48
+  uid: SJJTJGYC7
+  cn: 「世界尽头」酒馆一层7
+- num: 49
+  uid: SJJTJGEC1
+  cn: 「世界尽头」酒馆二层1
+  floors:
+  - 1
+  - 2
+- num: 50
+  uid: SJJTJGEC2
+  cn: 「世界尽头」酒馆二层2
+  floors:
+  - 1
+  - 2
+  - 3
+- num: 51
+  uid: SJJTJGEC3
+  cn: 「世界尽头」酒馆二层3
+- num: 52
+  uid: SJJTJGEC4
+  cn: 「世界尽头」酒馆二层4
+- num: 53
+  uid: SJJTJGEC5
+  cn: 「世界尽头」酒馆二层5
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+- num: 54
+  uid: SJJTJGSC1
+  cn: 「世界尽头」酒馆三层1
+- num: 55
+  uid: SJJTJGSC2
+  cn: 「世界尽头」酒馆三层2
+  floors:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5

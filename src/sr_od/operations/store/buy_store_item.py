@@ -94,5 +94,5 @@ class BuyStoreItem(SrOperation):
         :return:
         """
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, '大世界', '点击空白处关闭',
+        return self.round_by_find_and_click_area(screen, '商店', '点击空白处关闭',
                                                  success_wait=1, retry_wait=1)

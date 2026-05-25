@@ -106,7 +106,7 @@ class GameConfig(BasicGameConfig):
 
     @property
     def turn_dx(self) -> float:
-        return self.get('turn_dx', 0)
+        return self.get('turn_dx', 27)
 
     @turn_dx.setter
     def turn_dx(self, new_value: float):

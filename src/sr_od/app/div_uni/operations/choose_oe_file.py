@@ -24,8 +24,8 @@ class ChooseOeFile(SrOperation):
         识别当前所在的画面
         :return:
         """
-        if self.num < 1 or self.num > 4:
-            return self.round_fail('存档编号只能是1~4')
+        if self.num > 4:
+            return self.round_fail('存档编号只能是0~4, 0代表使用默认档案')
 
         if self.num == 0:
             return self.round_success('使用默认档案')
@@ -80,7 +80,7 @@ class ChooseOeFile(SrOperation):
         ]
 
         # 点击存档 由于每个存档的名字都不一样 就不使用OCR识别了
-        area = self.ctx.screen_loader.get_area('饰品提取', file_areas[self.num-1])
+        area = self.ctx.screen_loader.get_area('饰品提取', file_areas[self.num - 1])
         self.ctx.controller.click(area.center)
         time.sleep(0.25)
 
@@ -90,8 +90,10 @@ class ChooseOeFile(SrOperation):
             return self.round_success(result.status, wait=1.5)  # 选择后 等待一会返回外层界面
 
         result = self.round_by_find_area(screen, '饰品提取', '按钮-存档使用中')
-        if result.is_success:
-            self.round_by_click_area('菜单', '')
-            return self.round_success(result.status, wait=1.5)  # 已经在使用了 返回即可
+        if not result.is_success:
+            return self.round_retry(result.status, wait=1)
 
-        return self.round_retry(result.status, wait=1)
+        result = self.round_by_click_area('菜单', '右上角返回')
+        if not result.is_success:
+            return result
+        return self.round_success(result.status, wait=1.5)  # 已经在使用了 返回即可

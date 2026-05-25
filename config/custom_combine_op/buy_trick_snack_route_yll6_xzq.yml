@@ -7,7 +7,7 @@ ops:
   - op: 'wait'
     data: ['in_world', '20']
   - op: 'move'
-    data: [ '638', '900' ]
+    data: [ '635', '906' ]
   - op: 'interact'
     data: ['world_single_line', '罗纳德']
   - op: 'interact'

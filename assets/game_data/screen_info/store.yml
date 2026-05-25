@@ -3,6 +3,7 @@ screen_name: 商店
 pc_alt: false
 area_list:
 - area_name: 商品列表
+  id_mark: false
   pc_rect:
   - 290
   - 110
@@ -13,7 +14,10 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: 按钮-购买最大值
+  id_mark: false
   pc_rect:
   - 1400
   - 600
@@ -24,7 +28,10 @@ area_list:
   template_sub_dir: store
   template_id: store_buy_max
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: BUY_DIALOG_ADD_BTN
+  id_mark: false
   pc_rect:
   - 1330
   - 600
@@ -35,7 +42,10 @@ area_list:
   template_sub_dir: store
   template_id: store_buy_add
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: 购买-已售罄
+  id_mark: false
   pc_rect:
   - 830
   - 659
@@ -46,7 +56,10 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: 购买-兑换材料不足
+  id_mark: false
   pc_rect:
   - 830
   - 659
@@ -57,7 +70,10 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: 按钮-购买取消
+  id_mark: false
   pc_rect:
   - 592
   - 714
@@ -68,7 +84,10 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
 - area_name: 按钮-购买确认
+  id_mark: false
   pc_rect:
   - 1011
   - 714
@@ -79,3 +98,19 @@ area_list:
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 点击空白处关闭
+  id_mark: false
+  pc_rect:
+  - 866
+  - 760
+  - 1062
+  - 800
+  text: 点击空白处关闭
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

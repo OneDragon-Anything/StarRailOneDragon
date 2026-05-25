@@ -27,7 +27,7 @@ __崩坏：星穹铁道 - 一条龙__
 
 ## 快速开始
 
-点击这里看看[如何安装和使用吧](https://one-dragon.org/sr/zh/quickstart.html)
+[一条龙官网](https://one-dragon.com/sr/zh/quickstart.html)
 
 ## 免责声明
 

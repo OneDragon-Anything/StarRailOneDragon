@@ -71,12 +71,14 @@ class DevtoolsImageAnalysisInterface(VerticalScrollInterface):
         self.open_btn.clicked.connect(self._on_open_image)
         self.image_label.right_clicked_with_pos.connect(self._on_image_right_clicked)
         self.image_label.rect_selected.connect(self._on_image_rect_selected)
+        self.image_label.image_pasted.connect(self._on_image_pasted)
         self.del_btn.clicked.connect(self._on_delete_step)
         self.copy_btn.clicked.connect(self._on_copy_code_clicked)
         self.up_btn.clicked.connect(self._on_move_step_up)
         self.down_btn.clicked.connect(self._on_move_step_down)
         self.add_step_combo.currentIndexChanged.connect(self._on_add_step_by_combo)
         self.run_btn.clicked.connect(self._on_run_pipeline)
+        self.screenshot_btn.clicked.connect(self._on_screenshot_clicked)
         self.toggle_view_btn.clicked.connect(self._on_toggle_view)
         self.color_channel_btn.clicked.connect(self._on_color_channel_clicked)
         self.pipeline_list_widget.currentItemChanged.connect(self._on_pipeline_selection_changed)
@@ -170,6 +172,8 @@ class DevtoolsImageAnalysisInterface(VerticalScrollInterface):
         layout.addStretch(1)
         self.open_btn = PushButton(text=gt('打开图片'), icon=FluentIcon.DOCUMENT)
         layout.addWidget(self.open_btn)
+        self.screenshot_btn = PushButton(text=gt('截图'), icon=FluentIcon.CAMERA)
+        layout.addWidget(self.screenshot_btn)
         self.toggle_view_btn = PushButton(text=gt('切换视图'))
         layout.addWidget(self.toggle_view_btn)
         self.run_btn = PushButton(text=gt('执行'), icon=FluentIcon.PLAY_SOLID)
@@ -656,9 +660,36 @@ class DevtoolsImageAnalysisInterface(VerticalScrollInterface):
         if not file_path:
             return
 
-        if self.logic.load_image(file_path):
+        if self.logic.load_image_from_path(file_path):
             self._display_image(self.logic.get_display_image())
             self._update_toggle_button_text()
+
+    def _on_screenshot_clicked(self) -> None:
+        """
+        响应截图按钮
+        """
+        _, screen = self.ctx.controller.screenshot()
+        if screen is not None:
+            if self.logic.load_image_from_array(screen):
+                self._display_image(self.logic.get_display_image())
+                self._update_toggle_button_text()
+
+    def _on_image_pasted(self, image_data) -> None:
+        """
+        通过拖放或粘贴加载图片后的回调
+        :param image_data: 文件路径 (str) 或 numpy 数组 (RGB 格式)
+        :return:
+        """
+        if isinstance(image_data, str):
+            # 文件路径，使用 logic 的加载方法
+            if self.logic.load_image_from_path(image_data):
+                self._display_image(self.logic.get_display_image())
+                self._update_toggle_button_text()
+        else:
+            # numpy 数组，直接设置到 context
+            if self.logic.load_image_from_array(image_data):
+                self._display_image(self.logic.get_display_image())
+                self._update_toggle_button_text()
 
     def _display_image(self, image_np: np.ndarray):
         """

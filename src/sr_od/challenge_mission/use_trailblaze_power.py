@@ -1,9 +1,12 @@
+import math
+
 from PIL.ImageChops import screen
 from typing import Optional, Callable, ClassVar
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
@@ -54,6 +57,9 @@ class UseTrailblazePower(SrOperation):
         self.current_challenge_times: int = 1  # 当前挑战的次数
         self.finish_times: int = 0  # 已经完成的次数
         self.battle_fail_times: int = 0  # 战斗失败次数
+        # 培养目标识别单次体力和关卡连续运行上限
+        self.mission_power_ocr: int = 0
+        self.mission_challenge_times: int = 6
 
     @node_from(from_name='阵亡传送恢复')
     @operation_node(name='传送', is_start_node=True)
@@ -90,8 +96,31 @@ class UseTrailblazePower(SrOperation):
             return min(24, current_challenge_times)
         elif self.mission.cate.cn == '凝滞虚影':
             return min(8, current_challenge_times)
-        elif self.mission.cate.cn in ['侵蚀隧洞', '培养目标']:
+        elif self.mission.cate.cn in ['侵蚀隧洞']:
             return min(6, current_challenge_times)
+        elif self.mission.cate.cn == '培养目标':
+            if self.mission_power_ocr == 0:
+                # 识别单次体力消耗
+                area1 = self.ctx.screen_loader.get_area('挑战副本', '预计消耗体力-其他')
+                ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(self.last_screenshot, rect=area1.rect)
+                if len(ocr_result_list) > 0:
+                    power_unit_str = ocr_result_list[0].data
+                    if power_unit_str[0] in ['×', 'x']:
+                        power_unit_str = power_unit_str[1:]
+                    mission_power_ocr = str_utils.get_positive_digits(power_unit_str, err=None)
+                    if mission_power_ocr is None:
+                        log.error('识别体力单位失败:' + power_unit_str)
+                    elif self.mission.power < mission_power_ocr:
+                        log.error('哪个本体力消耗>40? 识别的体力为: ' + power_unit_str)
+                        return 1
+                    else:
+                        self.mission_power_ocr = mission_power_ocr
+                        # 根据单次体力消耗计算真实一次可以打的次数 (替换掉默认的40体力一次)
+                        self.mission_challenge_times = math.floor(self.mission_challenge_times * self.mission.power / self.mission_power_ocr)
+                        self.plan_times = math.floor(self.plan_times * self.mission.power / self.mission_power_ocr)
+                        current_challenge_times = math.floor(current_challenge_times * self.mission.power / self.mission_power_ocr)
+                        self.mission.power = self.mission_power_ocr
+            return min(self.mission_challenge_times, current_challenge_times)
         return 1
 
     @node_from(from_name='选择次数')
@@ -110,16 +139,17 @@ class UseTrailblazePower(SrOperation):
         screen = self.last_screenshot
 
         result1 = self.round_by_find_area(screen, '挑战副本', '开拓力弹框-标题')
+        if not result1.is_success:
+            # 培养目标-周本 挑战次数用完
+            result1 = self.round_by_find_area(screen, '挑战副本', '提示弹框-次数用完')
         if result1.is_success:
             if self.on_battle_success is not None:
                 self.on_battle_success(0, 200)  # 清空开拓力
-            return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消',
-                                                     success_wait=1, retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '开拓力弹框-取消', success_wait=1, retry_wait=1)
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', retry_wait=1)
 
         return self.round_retry('无对话框', wait=0.3)
 
@@ -158,8 +188,7 @@ class UseTrailblazePower(SrOperation):
         # 有阵亡角色
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     success_wait=1, retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', success_wait=1, retry_wait=1)
 
 
         if self.mission.cate.cn == '凝滞虚影':
@@ -235,8 +264,7 @@ class UseTrailblazePower(SrOperation):
 
         result2 = self.round_by_find_area(screen, '挑战副本', '阵亡弹框-标题')
         if result2.is_success:
-            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消',
-                                                     retry_wait=1)
+            return self.round_by_find_and_click_area(screen, '挑战副本', '阵亡弹框-取消', retry_wait=1)
 
         return self.round_retry('无对话框', wait=0.5)
 
@@ -269,8 +297,10 @@ def __debug_op():
     tab = ctx.guide_data.best_match_tab_by_name('生存索引')
     category = ctx.guide_data.best_match_category_by_name('拟造花萼（赤）', tab)
     mission = ctx.guide_data.best_match_mission_by_name('存护之蕾', category, '克劳克影视乐园')
+    # category = ctx.guide_data.best_match_category_by_name('培养目标', tab)
+    # mission = ctx.guide_data.best_match_mission_by_name('培养目标', category, None)
 
-    op = UseTrailblazePower(ctx, mission, 2, 7)
+    op = UseTrailblazePower(ctx, mission, 2, 2, support='hyacine')
 
     op.execute()
 

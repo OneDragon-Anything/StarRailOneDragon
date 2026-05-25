@@ -28,3 +28,5 @@ ops:
     data: ['seconds', '3']
   - op: 'click'
     data: [ '960', '980' ]
+  - op: 'back_to_world_plus'
+    data: []

@@ -122,7 +122,12 @@ class GuideChooseMission(SrOperation):
                 log.error('匹配失败 进入')
                 return None
             log.info('培养目标 - 匹配进入按钮')
-            # 直接返回第一个进入按钮的位置
+            #  判断第一个 '进入' 是否在 '本周可领取奖励次数:0/3' 下面
+            no_times_idx = str_utils.find_best_match_by_difflib(gt('本周可领取奖励次数:0/3', 'game'), word_list, cutoff=1)
+            if no_times_idx is not None and mrl_list[tp_idx][0].center.y > mrl_list[no_times_idx][0].center.y:
+                mrl_list[tp_idx] = mrl_list[tp_idx][1:]
+
+            # 返回第一个进入按钮的位置
             tp_point = mrl_list[tp_idx][0].center
             return tp_point + area.left_top
 

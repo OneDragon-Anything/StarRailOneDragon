@@ -199,6 +199,10 @@ class ChooseRegion(SrOperation):
         screen_part, offset = large_map_utils.match_screen_in_large_map(self.ctx, screen, self.region_to_choose_1)
         if offset is None:
             log.error('匹配大地图失败')
+            # 可能缩放不对 强制缩到最小
+            self.ctx.pos_info.pos_lm_scale = 5
+            op = ScaleLargeMap(self.ctx, 0, is_main_region=True)
+            op.execute()
             large_map_utils.drag_in_large_map(self.ctx)
             return self.round_retry(wait=0.5)
         else:

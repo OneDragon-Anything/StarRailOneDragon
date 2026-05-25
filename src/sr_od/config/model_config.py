@@ -5,9 +5,14 @@ from one_dragon.base.config.config_item import ConfigItem
 from one_dragon.base.config.basic_model_config import BasicModelConfig
 from one_dragon.base.web.common_downloader import CommonDownloaderParam
 from one_dragon.utils import yolo_config_utils
+from one_dragon.yolo.yolo_utils import (
+    get_gitee_model_download_url,
+    get_github_model_download_url,
+)
 
-_GITHUB_MODEL_DOWNLOAD_URL = 'https://github.com/OneDragon-Anything/OneDragon-YOLO/releases/download/sr_model'
-_GITEE_MODEL_DOWNLOAD_URL = 'https://gitee.com/OneDragon-Anything/OneDragon-YOLO/releases/download/sr_model'
+YOLO_RELEASE_TAG = 'sr_model'
+YOLO_GITHUB_MODEL_DOWNLOAD_URL = get_github_model_download_url(YOLO_RELEASE_TAG)
+YOLO_GITEE_MODEL_DOWNLOAD_URL = get_gitee_model_download_url(YOLO_RELEASE_TAG)
 
 _DEFAULT_WORLD_PATROL = 'yolov8n-640-simuni-0601'
 _BACKUP_WORLD_PATROL = 'yolov8n-640-simuni-0601'
@@ -100,8 +105,8 @@ def get_world_patrol_opts() -> List[ConfigItem]:
         param = CommonDownloaderParam(
             save_file_path=model_dir,
             save_file_name=zip_file_name,
-            github_release_download_url=f'{_GITHUB_MODEL_DOWNLOAD_URL}/{zip_file_name}',
-            gitee_release_download_url=f'{_GITEE_MODEL_DOWNLOAD_URL}/{zip_file_name}',
+            github_release_download_url=f'{YOLO_GITHUB_MODEL_DOWNLOAD_URL}/{zip_file_name}',
+            gitee_release_download_url=f'{YOLO_GITEE_MODEL_DOWNLOAD_URL}/{zip_file_name}',
             check_existed_list=[
                 os.path.join(model_dir, 'model.onnx'),
                 os.path.join(model_dir, 'labels.csv'),
@@ -133,8 +138,8 @@ def get_sim_uni_opts() -> List[ConfigItem]:
         param = CommonDownloaderParam(
             save_file_path=model_dir,
             save_file_name=zip_file_name,
-            github_release_download_url=f'{_GITHUB_MODEL_DOWNLOAD_URL}/{zip_file_name}',
-            gitee_release_download_url=f'{_GITEE_MODEL_DOWNLOAD_URL}/{zip_file_name}',
+            github_release_download_url=f'{YOLO_GITHUB_MODEL_DOWNLOAD_URL}/{zip_file_name}',
+            gitee_release_download_url=f'{YOLO_GITEE_MODEL_DOWNLOAD_URL}/{zip_file_name}',
             check_existed_list=[
                 os.path.join(model_dir, 'model.onnx'),
                 os.path.join(model_dir, 'labels.csv'),
