@@ -16,7 +16,7 @@ class SimUniExit(SrOperation):
     STATUS_EXIT_CLICKED: ClassVar[str] = '点击结算'
     STATUS_BACK_MENU: ClassVar[str] = '返回菜单'
 
-    def __init__(self, ctx: SrContext):
+    def __init__(self, ctx: SrContext, is_in_x: bool = False, temporarily_leave: bool = False ):
         """
         模拟宇宙 结束并结算
         :param ctx:
@@ -26,6 +26,9 @@ class SimUniExit(SrOperation):
                                      (gt('模拟宇宙', 'game'),
                                       gt('结束并结算'))
                              )
+        # 差分宇宙中需要点一个返回主界面
+        self.is_in_x = is_in_x
+        self.temporarily_leave = temporarily_leave
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
@@ -70,9 +73,10 @@ class SimUniExit(SrOperation):
     def click_exit(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        result = self.round_by_find_and_click_area(screen, '模拟宇宙', '差分宇宙-暂离')
-        if result.is_success:
-            return self.round_success(result.status)
+        if self.temporarily_leave:
+            result = self.round_by_find_and_click_area(screen, '模拟宇宙', '差分宇宙-暂离')
+            if result.is_success:
+                return self.round_success(result.status)
 
         area_list = [
             ('模拟宇宙', '菜单-结束并结算'),

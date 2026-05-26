@@ -140,8 +140,8 @@ class BackToNormalWorldPlus(SrOperation):
         result = self.round_by_click_area('菜单', '右上角返回')
         return self.round_wait(result.status, wait=1)
 
-    def sim_uni_exit(self) -> OperationRoundResult:
-        op = SimUniExit(self.ctx)
+    def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
+        op = SimUniExit(self.ctx, is_in_x, temporarily_leave=True)
         op_result = op.execute()
         if op_result.success:
             return self.round_wait(wait=1)
