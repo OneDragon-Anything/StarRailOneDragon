@@ -91,7 +91,7 @@ class BackToNormalWorldPlus(SrOperation):
                 self.ctx.controller.click(Point(953, 969))  # 确认
                 return self.round_wait(sim_uni_state, wait=1)
             if sim_uni_state == sim_uni_screen_state.ScreenState.AHA_MASK.value:  # 选择面具
-                self.ctx.controller.click(Point(343, 567))  # 第一个
+                self.ctx.controller.click(Point(314, 914))  # 第一个
                 time.sleep(1)
                 self.ctx.controller.click(Point(1576, 982))  # 确认
                 return self.round_wait(sim_uni_state, wait=1)
