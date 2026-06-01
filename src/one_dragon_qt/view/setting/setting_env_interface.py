@@ -171,6 +171,13 @@ class SettingEnvInterface(VerticalScrollInterface):
         )
         key_group.addSettingCard(self.key_stop_running_input)
 
+        self.manual_stop_skip_after_done_opt = SwitchSettingCard(
+            icon=FluentIcon.CLOSE,
+            title='手动停止跳过收尾动作',
+            content='开启后，按停止热键或停止按钮手动结束时，不执行一条龙“结束后”里的关闭游戏或关机'
+        )
+        key_group.addSettingCard(self.manual_stop_skip_after_done_opt)
+
         self.key_screenshot_input = KeySettingCard(
             icon=FluentIcon.CAMERA, title='游戏截图', content='用于开发、提交bug。会自动对UID打码，保存在 .debug/images/ 文件夹中'
         )
@@ -196,6 +203,9 @@ class SettingEnvInterface(VerticalScrollInterface):
 
         self.key_start_running_input.init_with_adapter(self.ctx.env_config.get_prop_adapter('key_start_running'))
         self.key_stop_running_input.init_with_adapter(self.ctx.env_config.get_prop_adapter('key_stop_running'))
+        self.manual_stop_skip_after_done_opt.init_with_adapter(
+            self.ctx.one_dragon_config.get_prop_adapter('skip_after_done_when_manual_stop')
+        )
         self.key_screenshot_input.init_with_adapter(self.ctx.env_config.get_prop_adapter('key_screenshot'))
         self.key_debug_input.init_with_adapter(self.ctx.env_config.get_prop_adapter('key_debug'))
 

@@ -177,11 +177,30 @@ class OneDragonRunInterface(SplitAppRunInterface):
         SplitAppRunInterface.on_context_state_changed(self)
         self.app_run_list.update_cards_display()
 
-        if self.ctx.run_context.is_context_stop and self.need_after_done_opt:
-            if self.ctx.one_dragon_config.after_done == AfterDoneOpEnum.SHUTDOWN.value.value:
+        if self._should_run_after_done():
+            after_done = self.ctx.one_dragon_config.after_done
+            if after_done == AfterDoneOpEnum.SHUTDOWN.value.value:
                 cmd_utils.shutdown_sys(60)
-            elif self.ctx.one_dragon_config.after_done == AfterDoneOpEnum.CLOSE_GAME.value.value:
+            elif after_done == AfterDoneOpEnum.CLOSE_GAME.value.value:
                 self.ctx.controller.close_game()
+
+    def _should_run_after_done(self) -> bool:
+        if not self.ctx.run_context.is_context_stop or not self.need_after_done_opt:
+            return False
+
+        after_done = self.ctx.one_dragon_config.after_done
+        if (
+            self.ctx.run_context.manual_stop_requested
+            and self.ctx.one_dragon_config.skip_after_done_when_manual_stop
+            and after_done in (
+                AfterDoneOpEnum.SHUTDOWN.value.value,
+                AfterDoneOpEnum.CLOSE_GAME.value.value,
+            )
+        ):
+            log.info('手动停止，跳过结束后关闭游戏或关机')
+            return False
+
+        return True
 
     def _on_app_state_changed(self, event) -> None:
         self.app_run_list.update_cards_display()

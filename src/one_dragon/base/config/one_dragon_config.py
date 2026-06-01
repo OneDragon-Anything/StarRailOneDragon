@@ -188,3 +188,11 @@ class OneDragonConfig(YamlConfig):
     @after_done.setter
     def after_done(self, new_value: str):
         self.update('after_done', new_value)
+
+    @property
+    def skip_after_done_when_manual_stop(self) -> bool:
+        return self.get('skip_after_done_when_manual_stop', False)
+
+    @skip_after_done_when_manual_stop.setter
+    def skip_after_done_when_manual_stop(self, new_value: bool):
+        self.update('skip_after_done_when_manual_stop', new_value)

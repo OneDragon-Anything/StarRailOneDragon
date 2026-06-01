@@ -86,6 +86,7 @@ class ApplicationRunContext:
 
         # 通知池，应用开始时清空重用
         self.notify_pool: NotifyPool = NotifyPool()
+        self.manual_stop_requested: bool = False
 
     def registry_application(
         self,
@@ -319,6 +320,7 @@ class ApplicationRunContext:
             return False
 
         if self.ctx.controller.init_before_context_run():
+            self.manual_stop_requested = False
             self._run_state = ApplicationRunContextStateEnum.RUNNING
             self.event_bus.dispatch_event(
                 ApplicationRunContextStateEventEnum.START, self._run_state
@@ -327,7 +329,7 @@ class ApplicationRunContext:
         else:
             return False
 
-    def stop_running(self):
+    def stop_running(self, manual: bool = False):
         """
         停止运行。
 
@@ -335,6 +337,8 @@ class ApplicationRunContext:
         """
         if self.is_context_stop:
             return
+        if manual:
+            self.manual_stop_requested = True
         if self.is_context_running:  # 先触发暂停 让执行中的指令停止
             self.switch_context_pause_and_run()
         self._run_state = ApplicationRunContextStateEnum.STOP
