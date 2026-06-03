@@ -1,0 +1,89 @@
+- uid: "JXLDT"
+  cn: "教学楼大厅"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [730, 432]
+  tp_pos: [752, 408]
+
+- uid: "ZLZL"
+  cn: "主楼走廊"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [568, 544]
+  tp_pos: [551, 559]
+
+- uid: "XYZT"
+  cn: "学院中庭"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [779, 585]
+  tp_pos: [752, 609]
+
+- uid: "ZLXG"
+  cn: "主楼玄关"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_03"
+  lm_pos: [782, 796]
+  tp_pos: [754, 776]
+
+- uid: "HHSDXS"
+  cn: "黄昏时的校舍"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [1110, 121]
+  tp_pos: [1115, 121]
+
+- uid: "XSYCQ"
+  cn: "学生用餐区"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [884, 394]
+  tp_pos: [906, 390]
+
+- uid: "MSJS"
+  cn: "美术教室"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_tp_03"
+  lm_pos: [901, 714]
+  tp_pos: [903, 718]
+
+- uid: "HYZLNZHEJ"
+  cn: "回忆之蕾·拟造花萼（金）"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_08"
+  lm_pos: [1014, 151]
+  tp_pos: [1012, 147]
+
+- uid: "MZZJQSSD"
+  cn: "魔占之径·侵蚀隧洞"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_09"
+  lm_pos: [433, 377]
+  tp_pos: [437, 377]
+
+- uid: "DBY"
+  cn: "大本营"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_tp_22"
+  lm_pos: [776, 375]
+  tp_pos: [768, 388]

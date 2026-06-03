@@ -1,0 +1,21 @@
+author: ['Kimoju']
+planet: '二相乐园'
+region: '绘世学院'
+floor: 2
+tp: '学生用餐区'
+route:
+  - idx: 1
+    op: 'disposable'
+  - idx: 2
+    op: 'move'
+    data: [941, 396]
+  - idx: 3
+    op: 'patrol'
+  - idx: 4
+    op: 'move'
+    data: [962, 384]
+  - idx: 5
+    op: 'move'
+    data: [1101, 386]
+  - idx: 6
+    op: 'patrol'
