@@ -49,8 +49,8 @@ area_list:
   pc_rect:
   - 1180
   - 930
-  - 1330
-  - 960
+  - 1400
+  - 1000
   text: 再来一次
   lcs_percent: 0.7
   template_sub_dir: ''

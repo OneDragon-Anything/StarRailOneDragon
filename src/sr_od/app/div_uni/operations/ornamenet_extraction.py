@@ -34,6 +34,9 @@ class ChallengeOrnamentExtraction(SrOperation):
         self.run_times: int = run_times
         """需要挑战的次数"""
 
+        self.choose_times: int = 1
+        """单次挑战选择的次数"""
+
         self.file_num: int = file_num
         """需要使用的存档 0为不选择"""
 
@@ -67,6 +70,7 @@ class ChallengeOrnamentExtraction(SrOperation):
 
         return None
 
+    @node_from(from_name='等待退出', status='重新选择次数')
     @operation_node(name='传送', is_start_node=True, screenshot_before_round=False)
     def tp(self) -> OperationRoundResult:
         """
@@ -159,6 +163,7 @@ class ChallengeOrnamentExtraction(SrOperation):
     def click_challenge_times(self) -> OperationRoundResult:
         log.info('本次挑战次数 %d', self.run_times)
         if self.run_times > 1:
+            self.choose_times = min(6, self.run_times)
             op = ChooseChallengeTimes(self.ctx, min(6, self.run_times), mission_type='饰品提取')
             return self.round_by_op_result(op.execute())
         else:
@@ -214,9 +219,9 @@ class ChallengeOrnamentExtraction(SrOperation):
             self.battle_fail_times += 1
             return self.round_by_op_result(op_result)
         elif op_result.status == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
-            self.battle_success_times += 1
+            self.battle_success_times += self.choose_times
             if self.get_reward_callback is not None:
-                self.get_reward_callback(1)
+                self.get_reward_callback(self.choose_times)
             return self.round_by_op_result(op_result)
         else:
             return self.round_fail('未知状态')
@@ -229,7 +234,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         :return:
         """
         screen = self.last_screenshot
-        if self.battle_fail_times >= 5 or self.battle_success_times >= self.run_times:  # 失败过多或者完成指定次数了 退出
+        if self.battle_fail_times >= 5 or self.battle_success_times + self.choose_times > self.run_times:  # 失败过多或者再来一次就会超出指定次数 退出
             area_name = '退出关卡按钮'
         else:  # 还需要继续挑战
             area_name = '再来一次按钮'
@@ -245,5 +250,10 @@ class ChallengeOrnamentExtraction(SrOperation):
         :return:
         """
         screen = self.last_screenshot
-        return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
+        result = self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
+
+        # 如果未完成指定次数, 则继续打
+        if result.is_success and self.battle_fail_times < 5 and self.battle_success_times < self.run_times:
+            return self.round_success('重新选择次数')
+        return result
 
