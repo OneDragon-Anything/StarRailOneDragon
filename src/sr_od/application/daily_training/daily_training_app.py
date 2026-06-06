@@ -1,11 +1,12 @@
 import time
+from unittest import result
 
 from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.daily_training import daily_training_const
 from sr_od.application.sr_application import SrApplication
@@ -24,6 +25,7 @@ class DailyTrainingApp(SrApplication):
         SrApplication.__init__(self, ctx, daily_training_const.APP_ID,
                                op_name=gt('每日实训', 'game'),
                                run_record=ctx.daily_training_run_record)
+        self.failed: bool = False
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:
@@ -68,6 +70,7 @@ class DailyTrainingApp(SrApplication):
 
     @node_from(from_name='领取点数')
     @node_from(from_name='领取点数', success=False)
+    @node_notify(when=NotifyTiming.CURRENT_DONE)
     @operation_node(name='领取奖励')
     def claim_reward(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -89,21 +92,30 @@ class DailyTrainingApp(SrApplication):
         time.sleep(1)
         # 再点一遍领奖励的地方, 点掉奖励弹窗
         self.ctx.controller.click(pos.center)
-        # 点掉奖励弹窗之后复核奖励是否已领完
-        return self.round_wait('检查每日实训领取情况', wait=0.5)
+        time.sleep(0.5)
+        # 点掉奖励弹窗之后复核奖励是否已领完, 不能 round_wait 会死循环
+        completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
+        if not completed:
+            self.failed = True
+            return self.round_fail('每日实训还未完成')
+        return self.round_success('每日实训已完成')
 
     @node_from(from_name='领取奖励')
-    @node_notify(when=NotifyTiming.CURRENT_DONE)
+    @node_from(from_name='领取奖励',success=False)
     @operation_node(name='结束后返回')
     def back_at_last(self) -> OperationRoundResult:
         op = BackToNormalWorldPlus(self.ctx)
-        return self.round_by_op_result(op.execute())
+        result = self.round_by_op_result(op.execute())
+        if self.failed:
+            result.result = OperationRoundResultEnum.FAIL
+        return result
 
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
-    ctx.start_running()
+    ctx.init()
+    ctx.run_context.current_app_id = daily_training_const.APP_ID
+    ctx.run_context.start_running()
     op = DailyTrainingApp(ctx)
     op.execute()
 
