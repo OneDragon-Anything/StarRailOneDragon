@@ -1,3 +1,5 @@
+import time
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
@@ -67,21 +69,48 @@ class BackToNormalWorldPlus(SrOperation):
             curio=True,
             drop_curio=True
         )
+        if sim_uni_state is not None:
+            # region 差分宇宙4.0
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SELECT_STATION.value:  # 选择站点卡
+                self.ctx.controller.click(Point(160, 343))  # 第一个
+                time.sleep(0.2)
+                self.ctx.controller.click(Point(1626, 939))  # 确认
+                return self.round_wait(sim_uni_state, wait=2)
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SELECT_NEXT_STATION.value:  # 选择下一站
+                self.ctx.controller.click(Point(867, 589))  # 中间偏左
+                time.sleep(0.1)
+                self.ctx.controller.click(Point(701, 589))  # 第一个
+                time.sleep(0.1)
+                self.ctx.controller.click(Point(1152, 969))  # 确认
+                return self.round_wait(sim_uni_state, wait=3)
+            if sim_uni_state == sim_uni_screen_state.ScreenState.CHOOSE_WILL_POWER.value:  # 选择奇迹
+                self.ctx.controller.click(Point(867, 589))  # 中间偏左
+                time.sleep(0.1)
+                self.ctx.controller.click(Point(475, 483))  # 第一个
+                time.sleep(0.1)
+                self.ctx.controller.click(Point(953, 969))  # 确认
+                return self.round_wait(sim_uni_state, wait=1)
+            if sim_uni_state == sim_uni_screen_state.ScreenState.AHA_MASK.value:  # 选择面具
+                self.ctx.controller.click(Point(314, 914))  # 第一个
+                time.sleep(1)
+                self.ctx.controller.click(Point(1576, 982))  # 确认
+                return self.round_wait(sim_uni_state, wait=1)
+            # endregion
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_BLESS.value:
-            return self.sim_uni_choose_bless()
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_BLESS.value:
+                return self.sim_uni_choose_bless()
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_BLESS.value:
-            return self.sim_uni_drop_bless()
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_BLESS.value:
+                return self.sim_uni_drop_bless()
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
-            return self.sim_uni_choose_curio()
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
+                return self.sim_uni_choose_curio()
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_CURIOS.value:
-            return self.sim_uni_drop_curio()
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_DROP_CURIOS.value:
+                return self.sim_uni_drop_curio()
 
-        if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_EVENT.value:
-            return self.sim_uni_event()
+            if sim_uni_state == sim_uni_screen_state.ScreenState.SIM_EVENT.value:
+                return self.sim_uni_event()
 
         # 对话框 - 逐光捡金 退出确认
         result = self.round_by_find_and_click_area(screen, '逐光捡金', '退出对话框确认')
@@ -111,8 +140,8 @@ class BackToNormalWorldPlus(SrOperation):
         result = self.round_by_click_area('菜单', '右上角返回')
         return self.round_wait(result.status, wait=1)
 
-    def sim_uni_exit(self) -> OperationRoundResult:
-        op = SimUniExit(self.ctx)
+    def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
+        op = SimUniExit(self.ctx, is_in_x, temporarily_leave=True)
         op_result = op.execute()
         if op_result.success:
             return self.round_wait(wait=1)
@@ -159,3 +188,17 @@ class BackToNormalWorldPlus(SrOperation):
         else:
             return self.round_retry(wait=1)
 
+
+def __debug():
+    ctx = SrContext()
+    ctx.init_ocr()
+    ctx.init_by_config()
+
+    ctx.start_running()
+    op = BackToNormalWorldPlus(ctx)
+    op.execute()
+    ctx.stop_running()
+
+
+if __name__ == '__main__':
+    __debug()
