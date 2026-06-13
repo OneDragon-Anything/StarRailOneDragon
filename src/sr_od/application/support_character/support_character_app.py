@@ -54,12 +54,12 @@ class SupportCharacterApp(SrApplication):
             return self.round_success(SupportCharacterApp.STATUS_NO_ALERT)
         else:
             self.ctx.controller.click(result.center)
-            return self.round_success(SupportCharacterApp.STATUS_WITH_ALERT, wait=1)
+            return self.round_success(SupportCharacterApp.STATUS_WITH_ALERT, wait=1.5)
 
     @node_from(from_name='点击漫游签证', status=STATUS_WITH_ALERT)
     @operation_node(name='领取奖励')
     def _click_character(self) -> OperationRoundResult:
-        self.ctx.controller.click(Point(1659, 286))
+        self.ctx.controller.click(Point(1862, 358))
         return self.round_success(wait=1)
 
     @node_from(from_name='领取奖励')
