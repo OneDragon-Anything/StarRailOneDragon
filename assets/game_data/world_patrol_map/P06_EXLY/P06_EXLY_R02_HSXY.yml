@@ -87,3 +87,119 @@
   template_id: "mm_tp_22"
   lm_pos: [776, 375]
   tp_pos: [768, 388]
+
+- uid: "XGZT"
+  cn: "星轨之兔"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_27"
+  lm_pos: [736, 487]
+
+- uid: "ECYJUMP_F1_01"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [619, 421]
+
+- uid: "ECYJUMP_F1_02"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [943, 429]
+
+- uid: "ECYJUMP_F1_03"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [539, 468]
+
+- uid: "ECYJUMP_F1_04"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [274, 535]
+
+- uid: "ECYJUMP_F1_05"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [274, 572]
+
+- uid: "ECYJUMP_F1_06"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [875, 632]
+
+- uid: "ECYJUMP_F1_07"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [548, 669]
+
+- uid: "ECYJUMP_F1_08"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 1
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [787, 752]
+
+- uid: "ECYJUMP_F2_01"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [1094, 399]
+
+- uid: "ECYJUMP_F2_02"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [949, 548]
+
+- uid: "ECYJUMP_F2_03"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [1031, 704]
+
+- uid: "ECYJUMP_F2_04"
+  cn: "「二次元JUMP!」"
+  planet_name: "二相乐园"
+  region_name: "绘世学院"
+  region_floor: 2
+  template_id: "mm_sp_29"
+  template_id_aliases: ["mm_sp_30"]
+  lm_pos: [751, 791]
