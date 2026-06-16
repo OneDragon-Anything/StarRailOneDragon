@@ -239,6 +239,15 @@ class BackgroundImageDownloader(BaseThread):
                 if game.get('game', {}).get('biz') not in game_biz_set:
                     continue
                 backgrounds = game.get('backgrounds', [])
+                # 优先选择非视频的静态背景 (BACKGROUND_TYPE_UNSPECIFIED)。
+                # API 中视频类型(海报)排在第一个，直接取 backgrounds[0] 会拿到视频封面而非静态背景。
+                for background in backgrounds:
+                    if background.get('type') == 'BACKGROUND_TYPE_VIDEO':
+                        continue
+                    url = background.get('background', {}).get('url')
+                    if url:
+                        return url
+                # 没有静态背景时 兜底取第一个的封面
                 if backgrounds:
                     return backgrounds[0].get('background', {}).get('url')
 
