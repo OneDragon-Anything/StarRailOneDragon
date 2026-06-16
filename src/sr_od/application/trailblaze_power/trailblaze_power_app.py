@@ -7,7 +7,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.trailblaze_power import trailblaze_power_const
-from sr_od.app.div_uni.operations.ornamenet_extraction import ChallengeOrnamentExtraction
+from sr_od.application.div_uni.operations.ornamenet_extraction import ChallengeOrnamentExtraction
 from sr_od.application.sim_universe.sim_uni_app import SimUniApp
 from sr_od.application.sim_universe.sim_uni_data import SimUniWorldEnum
 from sr_od.application.sr_application import SrApplication

@@ -265,7 +265,11 @@ class TrailblazePowerConfig(YamlConfig):
     def check_plan_run_times(self) -> None:
         """
         检查计划的运行次数 如果都完成了就重置
+        未开启循环时 不重置 这样 get_next_plan 会返回 None 结束体力计划
         """
+        if not self.loop:  # 未开启循环 保留已完成的计划 不再重置
+            return
+
         changed = False
         while True:
             plan_list: List[TrailblazePowerPlanItem] = self.plan_list

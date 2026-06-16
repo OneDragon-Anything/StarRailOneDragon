@@ -35,7 +35,7 @@ class BackToNormalWorldPlus(SrOperation):
             # 判断是否在模拟宇宙内
             sim_uni_level_type = sim_uni_screen_state.get_level_type(self.ctx, screen)
             if sim_uni_level_type is not None:
-                return self.sim_uni_exit()
+                return self.sim_uni_exit(is_in_x=False)  # 差分宇宙的暂离由 temporarily_leave 处理
 
             # 如果有返回按钮 又不是在模拟宇宙 则就是在逐光捡金内
             result = self.round_by_find_and_click_area(screen, '模拟宇宙', '大世界返回按钮')
