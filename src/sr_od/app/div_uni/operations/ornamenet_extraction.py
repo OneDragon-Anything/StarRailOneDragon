@@ -145,9 +145,11 @@ class ChallengeOrnamentExtraction(SrOperation):
             return self.round_success(wait=0.5)
 
         # 没找到, 向上滑动翻页
-        drag_start = Point(area.rect.x1 + 100, area.rect.y2 - 100)
+        drag_start = Point(area.rect.x1 + 100, area.rect.y2 - 300)
         drag_end = Point(area.rect.x1 + 100, area.rect.y1 + 100)
         self.ctx.controller.drag_to(start=drag_start, end=drag_end)
+        # 拖动之后列表会有惯性, 鼠标点一下消除惯性, 防止拖过头
+        self.ctx.controller.click()
         return self.round_retry('未找到编队: ' + self.team_name, wait=1)
 
     @node_from(from_name='点击预设编队按钮', status='使用默认编队')
