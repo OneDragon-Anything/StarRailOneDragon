@@ -1,28 +1,13 @@
 # 1.开发环境
 
-## 1.1.Python
+开发环境与常用命令见根目录 [AGENTS.md](../AGENTS.md)。要点：
 
-推荐使用 [3.11.9](https://www.python.org/downloads/release/python-3119/)
-
-## 1.2.虚拟环境
-
-普通运行
-
-```shell
-pip install -r requirements-dev.txt
-```
-
-开发额外
-
-```shell
-pip install -r requirements-dev-ext.txt
-```
-
-生成最终使用
-
-```shell
-pip-compile --annotation-style=line --index-url=https://pypi.tuna.tsinghua.edu.cn/simple --output-file=requirements-prod.txt requirements-dev.txt
-```
+- Python 3.11.9；包管理用 uv。
+- 安装依赖（含 ruff/pytest/pyright 等 dev 工具）：`uv sync --group dev`
+- 运行：`uv run python src/sr_od/gui/sr_full_app.py`（需 `PYTHONPATH=src`，详见 AGENTS.md）
+- Lint：`uv run ruff check src/<你修改的文件>.py`
+- 测试：`uv run pytest sr-od-test/`
+- 也可用 `debug.bat` 交互式调试。
 
 # 2.打包
 
