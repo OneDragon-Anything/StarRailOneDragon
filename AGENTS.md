@@ -40,6 +40,8 @@ uv run ruff check --fix src/你修改的文件.py
 - `src/onnxocr/`：OCR 引擎。
 - `src/sr_od/`：星穹铁道业务代码，包括 application、operation、context、gui 等。
 
+`one_dragon` / `one_dragon_qt` / `onnxocr` 是游戏无关的公共框架包（OneDragon 系列跨项目共享），星铁业务只在 `sr_od/`；公共框架的同步维护见 [common-package-sync.md](docs/develop/one_dragon/common-package-sync.md)。
+
 ### 2. 功能开发优先路径
 
 - 新功能优先评估是否应做成 `SrApplication`，放在 `src/sr_od/application/`，并通过 `ApplicationFactory` 接入（参考现有 `world_patrol`、`sim_universe`、`trailblaze_power` 等 `XxxAppFactory`）。
@@ -63,6 +65,7 @@ uv run ruff check --fix src/你修改的文件.py
 - GUI 优先复用 `pyside6-fluent-widgets` 与现有项目组件，保持 Fluent Design。
 - 配置改动优先落到 YAML 与对应 `YamlConfig` 子类，不要随意散落硬编码配置。
 - 1080p 坐标属于项目既有前提，可以按现有模式硬编码，不要额外做分辨率适配设计。
+- 模型文件（`.onnx` 等）走运行时资源下载，`.gitignore` 已忽略 `models/`，勿 `git add` 模型文件。
 
 ## 文档与测试要求
 
