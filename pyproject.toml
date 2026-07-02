@@ -23,7 +23,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "colorama==0.4.6",
+    "mcp>=1.0.0",
     "polib==1.2.0",
+    "psutil>=7.2.2",
     "pyinstaller==6.7.0",
     "pypinyin==0.54.0",
     "pyuac==0.0.3",
@@ -31,6 +33,7 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "ruff>=0.12.10",
     "pyright>=1.1.411",
+    "uvicorn>=0.30.0",
 ]
 
 [tool.uv]
