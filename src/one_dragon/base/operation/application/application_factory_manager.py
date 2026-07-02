@@ -3,7 +3,7 @@
 提供插件式的应用注册机制，支持动态发现和刷新应用工厂。
 
 支持两种插件来源：
-- BUILTIN: 内置插件，位于 src/zzz_od/application 目录
+- BUILTIN: 内置插件，位于 src/sr_od/application 目录
 - THIRD_PARTY: 第三方插件，位于项目根目录 plugins 目录
 """
 
@@ -258,7 +258,7 @@ class ApplicationFactoryManager:
         """获取热更新时需要卸载的模块前缀
 
         - THIRD_PARTY: 卸载整个插件包（如 my_plugin 及其所有子模块）
-        - BUILTIN: 仅卸载当前应用目录（如 zzz_od.application.xxx 下的模块）
+        - BUILTIN: 仅卸载当前应用目录（如 sr_od.application.xxx 下的模块）
 
         Args:
             module_name: 完整模块名
@@ -273,7 +273,7 @@ class ApplicationFactoryManager:
             return rel_parts[0] if rel_parts else None
         else:
             # BUILTIN: 仅卸载当前 factory 所在的父包
-            # 例如 zzz_od.application.xxx.xxx_factory -> zzz_od.application.xxx
+            # 例如 sr_od.application.xxx.xxx_factory -> sr_od.application.xxx
             parent, _, _ = module_name.rpartition('.')
             return parent or None
 

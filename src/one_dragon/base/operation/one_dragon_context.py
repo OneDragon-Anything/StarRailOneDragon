@@ -106,8 +106,8 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         1. 子类所在目录的同级 'application' 目录（内置应用）
         2. 项目根目录下的 'plugins' 目录（外部插件，支持相对导入）
 
-        例如：如果子类在 zzz_od/context/zzz_context.py，则返回：
-        - (zzz_od/application, BUILTIN)
+        例如：如果子类在 sr_od/context/sr_context.py，则返回：
+        - (sr_od/application, BUILTIN)
         - ({project_root}/plugins, THIRD_PARTY)
 
         Returns:
@@ -120,7 +120,7 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         parent_dir = Path(cls_file).parent.parent
 
         # 计算 application 目录：子类文件所在目录的上级目录下的 application 目录
-        # 例如：zzz_od/context/zzz_context.py -> zzz_od/application
+        # 例如：sr_od/context/sr_context.py -> sr_od/application
         application_dir = parent_dir / 'application'
         if application_dir.is_dir():
             dirs.append((application_dir, PluginSource.BUILTIN))
