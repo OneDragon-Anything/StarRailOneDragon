@@ -93,7 +93,10 @@ New-Item -ItemType HardLink -Path "CLAUDE.md" -Target "AGENTS.md"
 ## MCP
 
 - **推荐**：[context7](https://github.com/upstash/context7) — 查询库文档；建议在 `.claude/settings.json` 启用（见上）。
-- **项目自有游戏操作 MCP**：SR 目前**尚未实现**。未来计划把游戏感知/操作（窗口状态 / 截图 / OCR / 进游戏）经 MCP 暴露给 agent，辅助开发与调试，设计将另行补文档。
+- **项目自有游戏操作 MCP**：**已实现**。把游戏感知/操作（窗口状态 / 截图 / OCR / 进游戏）经 MCP 暴露给 agent，辅助开发与调试。
+  - 启动：`uv run --env-file .env python -m sr_od.backend.entry.server --port 24001`（`.env` 需含 `PYTHONPATH=src`）。
+  - 接入 Claude Code：`claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp`。
+  - 详见 [backend 文档](../sr_od/backend/README.md)（架构 / MCP / HTTP / 入口 / 远程 SSH daemon）。
 
 ## Skills
 
