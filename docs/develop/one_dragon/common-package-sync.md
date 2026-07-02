@@ -68,3 +68,33 @@ OCR / YOLO 等模型文件走**运行时资源下载**，不进 git：
 - 当前分支的 common 包是否真的落后（对比文件数 / 关键文件存在性）。
 - `main` 是否已含最新框架同步（避免重复或倒退——历史上有分支做过的较浅同步，其成果可能已被 `main` 后续同步超越）。
 - sr_od 业务侧是否需要适配（API 变化）——通常 `main` 的 sr_od 已适配最新框架，整包同步后启动即可验证；若有失配，只修到能启动，业务架构调整另算。
+
+## 5. 从 ZZZ 照搬代码的替换 token 清单
+
+无论是同步公共框架（§2）还是从 `zzz_od/` 照搬业务模块（如 `backend/`）到 `sr_od/`，都要把别游戏标识替换成本项目语境。**易错点在于 token 形式多样，单一 `sed` / `grep` pattern 覆盖不全**——下面是实战验证的完整清单，照搬后逐条 `sed`，再用合集 pattern 做残留检查。
+
+### 5.1 替换 token（按 sed 顺序）
+
+| 类别 | 旧 → 新 | 说明 |
+|---|---|---|
+| 进游戏 import | `zzz_od.operation.enter_game` → `sr_od.operations.enter_game` | **单数→复数**；须先于全局 `zzz_od` 替换，否则被吞成 `sr_od.operation.enter_game`（漏 s） |
+| 包名 | `zzz_od` → `sr_od` | 覆盖 import 路径、特征串、日志目录（`zzz_od_mcp`→`sr_od_mcp`）、tool/函数名、命令 |
+| 模块文件名 | `zzz_context` → `sr_context` | **易漏**：`zzz_od`→`sr_od` 覆盖不到（`zzz_context` 不含 `zzz_od`） |
+| Context 类名 | `ZContext` → `SrContext` | 大写类名，与上面的模块文件名成对 |
+| 业务层类名 | `ZzzBackendContext` → `SrBackendContext` | 业务侧自定义类名（按实际类名替换） |
+| 游戏名文案 | `绝区零` → `星穹铁道` | docstring / 返回文案 |
+| 项目缩写 | `ZZZ` → `SR` | log 文案、标题（大写，`zzz_od` 覆盖不到） |
+| 文档路径形式 | `zzz/backend` → `sr_od/backend` | **易漏**：文档里 `docs/develop/zzz/backend` 这类路径，`zzz_od` 覆盖不到 `zzz/` |
+| 端口（照搬 server/daemon 时） | `23000`→`24000`、`23001`→`24001` | 避与 ZZZ 同机并存冲突 |
+
+> 公共框架同步（§2）通常只需前 4 行（注释里的 `zzz_od` / `zzz_context` / `ZContext`）；业务模块照搬需全集。
+
+### 5.2 验证纪律
+
+1. **残留检查的 grep pattern 必须覆盖所有 token 形式**（含小写 `zzz`、路径形式 `zzz/`），不只 `zzz_od`：
+   ```bash
+   grep -rn -E "zzz_od|zzz_context|ZContext|ZzzBackendContext|绝区零|ZZZ|zzz/|23000|23001" <目标目录>
+   ```
+   实战曾因 pattern 只写 `zzz_od|ZContext|...` 而漏掉 `zzz_context`（模块名）和 `zzz/backend`（文档路径）——前者靠 pyright 才抓到，后者靠通读才抓到。
+2. **pyright 是最终兜底**：`uv run pyright <目标目录>`，import 解析失败（如 `sr_od.context.zzz_context`）会报 warning，能抓到 sed 遗漏的模块名。
+3. **文档要单独通读**：pyright 不查 `.md`，文档里的路径/文案残留只能靠 grep（pattern 含 `zzz/`）+ 人工通读。
