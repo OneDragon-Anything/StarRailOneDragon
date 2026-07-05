@@ -85,16 +85,21 @@ OCR / YOLO 等模型文件走**运行时资源下载**，不进 git：
 | 游戏名文案 | `绝区零` → `星穹铁道` | docstring / 返回文案 |
 | 项目缩写 | `ZZZ` → `SR` | log 文案、标题（大写，`zzz_od` 覆盖不到） |
 | 文档路径形式 | `zzz/backend` → `sr_od/backend` | **易漏**：文档里 `docs/develop/zzz/backend` 这类路径，`zzz_od` 覆盖不到 `zzz/` |
-| 端口（照搬 server/daemon 时） | `23000`→`24000`、`23001`→`24001` | 避与 ZZZ 同机并存冲突 |
+| 端口（照搬 server/daemon 时） | `23000`→`24000`、`23001`→`24001` | 避与 ZZZ 同机并存冲突；sed 用**裸形式**（不带反引号），否则 `` `23001` `` 这种带包裹的 pattern 命中不到裸端口 |
+| 小写前缀（线程/日志等） | `zzz_backend_run` → `sr_backend_run` | **易漏**：小写 `zzz_*` 前缀（如 `ThreadPoolExecutor(thread_name_prefix=...)`），不在 `zzz_od` / `ZZZ` / `绝区零` 覆盖内 |
+| 业务子类（Z 前缀） | `ZPcController` → `SrPcController` | **易漏**：`Z` 开头的业务子类（PcController 等），`ZzzBackendContext` 规则覆盖不到 `ZPc*`，按 SR 实际类名替换 |
+| 游戏名英文字面量 | `"ZenlessZoneZero"` → `"StarRail"` | **易漏**：测试数据 / 窗口标题里的英文字面量，中文 `绝区零` 与大写 `ZZZ` 都覆盖不到 |
+| 端口片段（findstr 等） | `:2300` → `:2400` | **易漏**：`netstat | findstr :2300` 这类端口片段（匹配 24000/24001），独立于完整端口号 |
+| spec / 文件名引用 | `2026-07-02-mcp-async-operation-design` → `2026-07-05-mcp-run-state-design` | **易漏**：docstring / 文档里引用的 spec 等文件名；常只改 spec 文件内部、漏了代码里对它的引用 |
 
 > 公共框架同步（§2）通常只需前 4 行（注释里的 `zzz_od` / `zzz_context` / `ZContext`）；业务模块照搬需全集。
 
 ### 5.2 验证纪律
 
-1. **残留检查的 grep pattern 必须覆盖所有 token 形式**（含小写 `zzz`、路径形式 `zzz/`），不只 `zzz_od`：
+1. **残留检查的 grep pattern 必须覆盖所有 token 形式**（含小写 `zzz`、路径形式 `zzz/`、英文游戏名、端口片段），不只 `zzz_od`：
    ```bash
-   grep -rn -E "zzz_od|zzz_context|ZContext|ZzzBackendContext|绝区零|ZZZ|zzz/|23000|23001" <目标目录>
+   grep -rn -E "zzz_od|zzz_context|ZContext|ZzzBackendContext|绝区零|ZZZ|zzz/|Zenless|ZPc|zzz_backend|23000|23001|:2300" <目标目录>
    ```
-   实战曾因 pattern 只写 `zzz_od|ZContext|...` 而漏掉 `zzz_context`（模块名）和 `zzz/backend`（文档路径）——前者靠 pyright 才抓到，后者靠通读才抓到。
+   实战曾因 pattern 只写 `zzz_od|ZContext|...` 而漏掉 `zzz_context`（模块名）和 `zzz/backend`（文档路径）——前者靠 pyright 才抓到，后者靠通读才抓到。MCP backend 同步轮又补出 `Zenless`（英文字面量）、`ZPc`（Z 前缀子类）、`zzz_backend`（小写前缀）、`:2300`（端口片段）四类——皆靠通读 / final review 才抓到，sed 集 grep 都没覆盖。
 2. **pyright 是最终兜底**：`uv run pyright <目标目录>`，import 解析失败（如 `sr_od.context.zzz_context`）会报 warning，能抓到 sed 遗漏的模块名。
 3. **文档要单独通读**：pyright 不查 `.md`，文档里的路径/文案残留只能靠 grep（pattern 含 `zzz/`）+ 人工通读。
