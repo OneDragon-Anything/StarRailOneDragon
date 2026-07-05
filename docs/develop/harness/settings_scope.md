@@ -45,7 +45,7 @@
 
 ## 3. 四个坑
 
-1. **MCP server 定义 ≠ MCP 权限**:`.mcp.json` 放 server **定义**(commit),`~/.claude.json` 放 user/local scope 的 server;settings.json 里的 `mcp__plugin_context7_context7` 只是"**允许调用**"的**权限规则**。两件事分开,server 定义塞进 settings.json 不生效。
+1. **MCP server 定义 ≠ MCP 权限**:`.mcp.json` 放 server **定义**(commit),`~/.claude.json` 放 user/local scope 的 server;settings.json 里的 `mcp__sr_od` 只是"**允许调用**"的**权限规则**。两件事分开,server 定义塞进 settings.json 不生效。
 2. **"repo 不能给自己授权"**:`defaultMode:auto`、`enableArtifact`、`skipDangerousModePermissionPrompt`、`autoMode` 等安全敏感 key 在 project/local **被官方刻意忽略**,只能 user/managed。防的是 clone 一个恶意 repo 就自动拿到高危模式。
 3. **secret 进 committed settings.json = 泄露**:用 `env` 的 `${VAR}` 引用,或挪进 `.local.json` / `~/.claude.json`(这俩 gitignore)。
 4. **managed-only 的天花板**:`claudeMd`、`forceRemoteSettingsRefresh`、各种 `strict*/allow*Only` 只认 managed settings,project 写了静默无效——别指望在 repo 里强制团队策略。
@@ -57,12 +57,12 @@ SR 的 `.claude/settings.json` **为个人本地文件**（`.gitignore` 规则 `
 | 推荐 `.claude/settings.json` 内容 | 判定 |
 |---|---|
 | `env.ENABLE_LSP_TOOL` | ✅ 团队级合理（个人本地复制即可） |
-| `allow: Bash(uv *)` + `mcp__plugin_context7_context7` | ✅ 公用工具合理（SR 无项目自有 MCP，故无 `mcp__sr_*`） |
+| `allow: Bash(uv *)` + 3 个 `mcp__*`（context7 / `sr_od` / `sr_od_daemon`） | ✅ 团队公用工具合理（`mcp__*` 是权限规则；项目 MCP server 定义在 `.mcp.json` 或 `~/.claude.json`） |
 | `deny: Bash(python *)` / `python3 *` | ✅ 强制走 uv；仅拦 Claude 的 Bash 工具调用，不影响 `debug.bat`/`env.bat` 自身 |
 | `enabledPlugins`: context7、uv-pyright-lsp、superpowers | ✅ 建议（实际 trust 需个人操作） |
 | `lspServers.uv-pyright` | ✅ 统一 LSP 配置合理（配合 `pyproject.toml` 的 `[tool.pyright] extraPaths=["src"]`） |
 
-**整体归口正确**：`.claude/` 下进版本库的只有 `CLAUDE.md`；settings.json/hooks 均个人本地，secret（如 `GH_TOKEN`）只放 `settings.local.json`（gitignore）。
+**整体归口正确**：`.claude/` 下进版本库的只有 `CLAUDE.md`；settings.json/hooks 均个人本地，secret（如 `GH_TOKEN`）只放 `settings.local.json`（gitignore）。`sr_od` / `sr_od_daemon` 的 server **定义**应落在 `.mcp.json`（commit）或 `~/.claude.json`（若含本机端口），当前 settings.json 里只有它们的权限规则，没塞定义——对的。
 
 ## 来源
 
