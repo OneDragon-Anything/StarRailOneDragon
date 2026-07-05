@@ -37,8 +37,11 @@ def find_sr_od_mcp_server_process() -> psutil.Process | None:
     for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
         try:
             cmdline = proc.info['cmdline']
-            if cmdline and any('sr_od.backend.entry.server' in arg for arg in cmdline):
-                return proc
+            if not cmdline:
+                continue
+            for i, arg in enumerate(cmdline):
+                if arg == '-m' and i + 1 < len(cmdline) and cmdline[i + 1] == 'sr_od.backend.entry.server':
+                    return proc
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return None

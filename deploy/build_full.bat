@@ -25,6 +25,7 @@ rem Copy source code for RuntimeLauncher
 xcopy /E /I /Y "..\src" "%DIST_DIR%\OneDragon-RuntimeLauncher\src\"
 
 rem Copy additional resources from spec file
+if not exist "%TARGET_DIR%\config" mkdir "%TARGET_DIR%\config"
 copy "..\config\project.yml" "%TARGET_DIR%\config\"
 xcopy /E /I /Y "..\assets\text" "%TARGET_DIR%\assets\text\"
 xcopy /E /I /Y "..\assets\ui" "%TARGET_DIR%\assets\ui\"

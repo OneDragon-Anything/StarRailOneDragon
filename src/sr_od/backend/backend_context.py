@@ -191,6 +191,15 @@ class RunSlot:
         self._ctx.run_context.stop_running()
         return True, source
 
+    def shutdown(self) -> None:
+        """关闭运行槽:停掉单跑道线程池,释放其后台线程。
+
+        backend 关闭时调用;不等待在跑的 operation(ThreadPoolExecutor 无法中断
+        在跑任务,仍在跑的会在进程退出时随线程结束)。``cancel_futures`` 取消排队
+        中的 future。
+        """
+        self._executor.shutdown(wait=False, cancel_futures=True)
+
 
 class BackendNotReadyError(Exception):
     """后端未就绪。
@@ -392,5 +401,7 @@ class SrBackendContext:
 
         ``SrContext.after_app_shutdown()`` 是同步的清理流程（遥测、战斗上下文、
         框架服务等），同样通过 ``asyncio.to_thread`` 避免阻塞事件循环。
+        并关闭 ``RunSlot`` 的单跑道线程池,释放其后台线程。
         """
+        self.run_slot.shutdown()
         await asyncio.to_thread(self._ctx.after_app_shutdown)

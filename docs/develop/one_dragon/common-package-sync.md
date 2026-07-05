@@ -89,7 +89,7 @@ OCR / YOLO 等模型文件走**运行时资源下载**，不进 git：
 | 小写前缀（线程/日志等） | `zzz_backend_run` → `sr_backend_run` | **易漏**：小写 `zzz_*` 前缀（如 `ThreadPoolExecutor(thread_name_prefix=...)`），不在 `zzz_od` / `ZZZ` / `绝区零` 覆盖内 |
 | 业务子类（Z 前缀） | `ZPcController` → `SrPcController` | **易漏**：`Z` 开头的业务子类（PcController 等），`ZzzBackendContext` 规则覆盖不到 `ZPc*`，按 SR 实际类名替换 |
 | 游戏名英文字面量 | `"ZenlessZoneZero"` → `"StarRail"` | **易漏**：测试数据 / 窗口标题里的英文字面量，中文 `绝区零` 与大写 `ZZZ` 都覆盖不到 |
-| 端口片段（findstr 等） | `:2300` → `:2400` | **易漏**：`netstat | findstr :2300` 这类端口片段（匹配 24000/24001），独立于完整端口号 |
+| 端口片段（findstr 等） | `:2300` → `:2400` | **易漏**：`netstat \| findstr :2300` 这类端口片段（匹配 24000/24001），独立于完整端口号 |
 | spec / 文件名引用 | `2026-07-02-mcp-async-operation-design` → `2026-07-05-mcp-run-state-design` | **易漏**：docstring / 文档里引用的 spec 等文件名；常只改 spec 文件内部、漏了代码里对它的引用 |
 
 > 公共框架同步（§2）通常只需前 4 行（注释里的 `zzz_od` / `zzz_context` / `ZContext`）；业务模块照搬需全集。
