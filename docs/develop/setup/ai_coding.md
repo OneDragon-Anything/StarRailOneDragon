@@ -102,14 +102,20 @@ New-Item -ItemType HardLink -Path "CLAUDE.md" -Target "AGENTS.md"
 
 Skill 是 Claude Code（及 Codex 等少数工具）的可调用能力。要点：**每个工具只读自己目录下的 skill**——Claude Code 读 `.claude/skills/`，**不读**根目录 `skills/`；且 skill 没有 `@import` 之类的引入逃逸口。
 
+### 推荐安装 superpowers
+
+**项目已统一采用 [superpowers](https://github.com/anthropics/superpowers)**（团队共识）—— 它是一整套**开发流程方法论**，指导从需求探索（`brainstorming`）、写计划（`writing-plans`）、TDD 实现（`test-driven-development`）、调试（`systematic-debugging`）、code review、到分支收尾合并（`finishing-a-development-branch`）的全链路；本项目按这套流程开发。
+
+本项目 dev skill（`sr-od-dev-*`）是叠加在 superpowers 之上的**项目特定补充**（PR 收尾适配 CodeRabbit、本项目 skill 写作硬规范、修复决策框架等），非替代 —— 使用者需同时具备 superpowers。Claude Code 安装：插件市场搜 `superpowers`，或 `/plugin install superpowers`。
+
 ### Skill 分类与命名
 
 Skill 分两类，统一用 `sr-od-` 项目前缀，开发类再加 `dev-`：
 
-| 类别 | 前缀 | 用途 | 命名示例 |
+| 类别 | 前缀 | 用途 | 现有 skill |
 |---|---|---|---|
-| **开发** | `sr-od-dev-` | 指引 AI 在本项目开发/配置/构建 | `sr-od-dev-build`、`sr-od-dev-config` |
-| **使用** | `sr-od-` | 指引使用本项目做游戏自动化 | `sr-od-player` |
+| **开发** | `sr-od-dev-` | 指引 AI 在本项目开发/配置/构建 | `sr-od-dev-pr-finishing`、`sr-od-dev-deciding-a-fix`、`sr-od-dev-skill-guide`（superpowers 风格） |
+| **使用** | `sr-od-` | 指引使用本项目做游戏自动化 | （暂无，命名如 `sr-od-player`） |
 
 > `sr-od-` 兼作**项目命名空间**——避免和插件/个人 skill 撞名，`/` 列表里本项目 skill 聚一起。将来若出现第 3 类（如调试），加对应中缀（`sr-od-debug-*`）即可。
 
@@ -125,11 +131,11 @@ Skill 分两类，统一用 `sr-od-` 项目前缀，开发类再加 `dev-`：
 
 **晋升路径**：① 个人试做 →（验证有用）→ ② 提交到 `.claude/skills/` →（多工具都要）→ ③ 根 `skills/` 作跨工具源。
 
-> ⚠️ 根 `skills/` 不会被工具自动发现，只是③的单一源；要**符号链接**（symlink，目录级）进各工具目录（如 `.claude/skills/`）。Windows 符号链接需管理员或开发者模式。只有 Claude Code 一个消费者时，停在②即可。
+> ⚠️ 根 `skills/` 不会被工具自动发现，只是③的单一源；要**目录联接**（junction，`mklink /J`，目录级）进各工具目录（如 `.claude/skills/`）。Windows junction 免管理员（symlink 需特权/开发者模式）。只有 Claude Code 一个消费者时，停在②即可。
 
 ### 现状
 
-SR 目前**暂无 skill**。新增 skill 按 `sr-od-` 前缀命名（开发类加 `sr-od-dev-`），并遵循上表三级晋升。
+仓库根 `skills/` 现有 3 个开发类 skill（`sr-od-dev-pr-finishing` / `sr-od-dev-deciding-a-fix` / `sr-od-dev-skill-guide`，superpowers 风格），经 junction（`.claude/skills/<name>` → 根 `skills/<name>`）被 Claude Code 自动加载。新 skill 按 `sr-od-` 前缀命名，遵循上表三级晋升。
 
 ## AI 辅助提交的署名（推荐）
 
