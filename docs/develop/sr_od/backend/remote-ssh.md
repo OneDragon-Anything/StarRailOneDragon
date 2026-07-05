@@ -35,7 +35,7 @@ daemon 就是那个**常驻 Session 1、握有管理员权限**的管理者—�
 
 ## 排查
 
-- 端口:daemon **24000**、主 server **24001**;用 `get_sr_od_mcp_server_status` 看 server 状态,或 `netstat -ano | findstr :2300`。
+- 端口:daemon **24000**、主 server **24001**;用 `get_sr_od_mcp_server_status` 看 server 状态,或 `netstat -ano | findstr :2400`。
 - 主 server 起不来:看 `start_sr_od_mcp_server` 返回里指向的日志(`.debug/sr_od_mcp/main_server.log`)。
 - daemon 自身要常驻;它重启不影响已起的主 server(psutil 按 cmdline 重新发现)。
 
