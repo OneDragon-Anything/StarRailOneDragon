@@ -61,7 +61,7 @@ class RunSlot:
     """单跑道运行槽:MCP/HTTP 共享,固化终态,运行中读 operation 实例。
 
     状态判据用固化字段 terminal_state(单一事实源),不读 run_context 推中间态。
-    详见 docs/superpowers/specs/2026-07-02-mcp-async-operation-design.md。
+    详见 docs/superpowers/specs/2026-07-05-mcp-run-state-design.md。
     """
 
     def __init__(self, ctx: 'SrContext') -> None:
