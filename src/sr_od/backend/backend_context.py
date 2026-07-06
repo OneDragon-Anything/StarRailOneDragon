@@ -18,10 +18,18 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from one_dragon.base.config.basic_game_config import TypeInputWay
+from one_dragon.base.controller.pc_clipboard import PcClipboard
+from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_base import OperationResult
+from one_dragon.base.screen.screen_area import ScreenArea
 from one_dragon.base.screen.screen_match import find_screen_matches
+from one_dragon.utils import cv2_utils, debug_utils
+from one_dragon.utils.log_utils import mask_text
 from sr_od.backend.schemas import (
     AnalyzeScreenResult,
     OcrText,
@@ -41,6 +49,30 @@ def _iso(ts: float | None) -> str | None:
     if ts is None:
         return None
     return datetime.fromtimestamp(ts).isoformat()
+
+
+def _validate_pc_rect(pc_rect: list[int]) -> str | None:
+    """校验 pc_rect=[x1,y1,x2,y2];合法返 None,否则返错误描述。"""
+    if (not isinstance(pc_rect, list) or len(pc_rect) != 4
+            or not all(isinstance(v, int) for v in pc_rect)):
+        return f'pc_rect 非法(需 4 个整数): {pc_rect}'
+    x1, y1, x2, y2 = pc_rect
+    if not (0 <= x1 < x2 <= 1920 and 0 <= y1 < y2 <= 1080):
+        return f'pc_rect 越界或非正(需 1920×1080 内、x2>x1、y2>y1): {pc_rect}'
+    return None
+
+
+def _area_result(success: bool, screen_name: str, area_name: str, action: str | None,
+                 error: str | None = None, count: int | None = None) -> dict:
+    """构造 area CRUD 的统一返回 dict。"""
+    return {
+        'success': success,
+        'screen_name': screen_name,
+        'area_name': area_name,
+        'action': action,
+        'area_count': count,
+        'error': error,
+    }
 
 
 class RunState(str, Enum):
@@ -196,7 +228,7 @@ class RunSlot:
 
         backend 关闭时调用;不等待在跑的 operation(ThreadPoolExecutor 无法中断
         在跑任务,仍在跑的会在进程退出时随线程结束)。``cancel_futures`` 取消排队
-        中的 future。
+        中的 future(Py3.9+,本项目 3.11 满足)。
         """
         self._executor.shutdown(wait=False, cancel_futures=True)
 
@@ -291,27 +323,55 @@ class SrBackendContext:
             raise BackendNotReadyError('截图返回 None')
         return image
 
-    def analyze(self) -> AnalyzeScreenResult:
-        """分析游戏画面:截图 + 全图 OCR + 画面匹配(精准/模糊)。
+    @staticmethod
+    def _resolve_screenshot(screenshot: str) -> 'tuple[MatLike | None, str]':
+        """把 screenshot(绝对路径或 debug 图名)解析为(图像, 解析后完整路径)。
 
-        精准命中(``screens[0].is_precise=True``)后回写
-        ``ctx.screen_loader.update_current_screen_name``,为下次 BFS 提供起点;
-        模糊 / 异常不回写。
+        绝对路径按路径读;否则当 ``.debug/images`` 下的 debug 图名,自动补 ``.png``。
+        图像读不到时返回 ``(None, 解析后路径)``,由调用方报错。
 
-        对外无副作用(MCP tool annotations readOnly —— 回写的是 ctx 内存识别状态,
-        非外部资源)。Python GIL 下并发回写容忍(见 spec §2.3,无内存撕裂,
-        逻辑竞态由 BFS 全量兜底吸收)。
+        Args:
+            screenshot: 截图绝对路径,或 ``.debug/images`` 下的图名(不带后缀)。
+
+        Returns:
+            (image, resolved_path):image 为 RGB ndarray,文件不存在/不可读时为 None。
+        """
+        if Path(screenshot).is_absolute():
+            resolved = screenshot
+        else:
+            resolved = debug_utils.get_debug_image_path(screenshot)
+        return cv2_utils.read_image(resolved), resolved
+
+    def analyze(self, screenshot: str | None = None) -> AnalyzeScreenResult:
+        """分析画面:截图 + 全图 OCR + 画面匹配(精准/模糊)。
+
+        screenshot 省略 → 截当前游戏画面(需游戏窗口就绪);精准命中回写
+        ``ctx.screen_loader.update_current_screen_name``,为下次 BFS 提供起点。
+        screenshot 传入 → 解析指定截图,**无需游戏窗口就绪**:绝对路径按路径读,
+        纯名字到 ``.debug/images/<名字>.png`` 读;读不到返失败(error 带解析后完整路径)。
+        **不回写**识别状态(离线 / 可能是旧图,不污染实时识别)。
+
+        Args:
+            screenshot: 截图绝对路径,或 ``.debug/images`` 下的图名(不带后缀);
+                None 表示实时截当前画面。
 
         Returns:
             分析结果:成功标志、OCR 文本列表、画面匹配列表、错误描述。
         """
         self._ensure_ready()
-        controller = self._ctx.controller
-        if controller is None or not controller.is_game_window_ready:
-            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='游戏窗口未就绪')
-        image = controller.get_screenshot(independent=False)
-        if image is None:
-            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='截图失败')
+        if screenshot is None:
+            controller = self._ctx.controller
+            if controller is None or not controller.is_game_window_ready:
+                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='游戏窗口未就绪')
+            image = controller.get_screenshot(independent=False)
+            if image is None:
+                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='截图失败')
+            write_back = True
+        else:
+            image, resolved = self._resolve_screenshot(screenshot)
+            if image is None:
+                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=f'读取截图失败: {resolved}')
+            write_back = False
         try:
             # crop_first=False:与下方 find_screen_matches 内 find_area_with_detail(color_range=None)复用
             # 同一份全图 OCR 缓存(cache key 含 crop_first;True/False 不复用会触发两次全图 OCR)。
@@ -322,11 +382,103 @@ class SrBackendContext:
                 for r in ocr_result_list
             ]
             screens = find_screen_matches(self._ctx, image)
-            if screens and screens[0].is_precise:
+            if write_back and screens and screens[0].is_precise:
                 self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
             return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None)
-        except Exception as e:  # noqa: BLE001 OCR/匹配异常兜底:不回写,返失败(对齐 spec §2.3;OCR 也纳入兜底更稳,调用方统一见 error 字段)
+        except Exception as e:  # noqa: BLE001 OCR/匹配异常兜底:不回写,返失败
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
+
+    def upsert_screen_area(
+        self,
+        screen_name: str,
+        area_name: str,
+        pc_rect: list[int],
+        text: str = '',
+        lcs_percent: float = 0.5,
+        template_sub_dir: str = '',
+        template_id: str = '',
+        template_match_threshold: float = 0.7,
+        color_range: list[list[int]] | None = None,
+        goto_list: list[str] | None = None,
+        id_mark: bool = False,
+        gamepad_key: str | None = None,
+    ) -> dict:
+        """按 area_name 在指定 screen 插入或更新一个 area(写 yml + reload)。操作类。
+
+        area_name 已存在 → 整体更新;不存在 → 追加。写回 screen_info yml 并重载,
+        下次 analyze_screen 即生效。无需游戏窗口在线。
+
+        Args:
+            screen_name: 目标画面名(中文,对齐 get_screen / analyze 返回)。
+            area_name: 区域名(同 screen 内唯一,作匹配键)。
+            pc_rect: ``[x1, y1, x2, y2]``,1920×1080 内、x2>x1、y2>y1。
+            text: 文本区域的 OCR 文本(空则非文本区)。
+            lcs_percent: 文本匹配阈值。
+            template_sub_dir / template_id: 模板引用;template_id 非空时模板必须存在,否则阻断。
+            template_match_threshold: 模板匹配阈值。
+            color_range: 文本颜色筛选 ``[[lower], [upper]]`` 或 None。
+            goto_list: 交互后可能跳转的画面名列表。
+            id_mark: 是否画面唯一标识。
+            gamepad_key: 手柄动作名。
+
+        Returns:
+            ``{success, screen_name, area_name, action(inserted/updated), area_count, error}``。
+        """
+        try:
+            if not area_name:
+                return _area_result(False, screen_name, area_name, None, error='area_name 不能为空')
+            rect_msg = _validate_pc_rect(pc_rect)
+            if rect_msg is not None:
+                return _area_result(False, screen_name, area_name, None, error=rect_msg)
+            if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
+                return _area_result(False, screen_name, area_name, None,
+                                    error=f'模板不存在: {template_sub_dir}/{template_id}')
+            area = ScreenArea(
+                area_name=area_name,
+                pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
+                text=text, lcs_percent=lcs_percent,
+                template_id=template_id, template_sub_dir=template_sub_dir,
+                template_match_threshold=template_match_threshold,
+                color_range=color_range, goto_list=goto_list or [],
+                id_mark=id_mark, gamepad_key=gamepad_key,
+            )
+            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+            action = screen_info.upsert_area(area)
+            self._ctx.screen_loader.save_screen(screen_info)
+            return _area_result(True, screen_name, area_name, action, count=len(screen_info.area_list))
+        except Exception as e:  # noqa: BLE001 工具层兜底,不向 MCP 透传
+            return _area_result(False, screen_name, area_name, None, error=str(e),
+                                count=self._safe_area_count(screen_name))
+
+    def delete_screen_area(self, screen_name: str, area_name: str) -> dict:
+        """按 area_name 删除指定 screen 的一个 area(写 yml + reload)。操作类。
+
+        Args:
+            screen_name: 目标画面名。
+            area_name: 要删除的区域名;不存在则报错。
+
+        Returns:
+            ``{success, screen_name, area_name, action(deleted), area_count, error}``。
+        """
+        try:
+            if not area_name:
+                return _area_result(False, screen_name, area_name, None, error='area_name 不能为空')
+            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+            if not screen_info.remove_area_by_name(area_name):
+                return _area_result(False, screen_name, area_name, None,
+                                    error=f'未找到 area: {area_name}', count=len(screen_info.area_list))
+            self._ctx.screen_loader.save_screen(screen_info)
+            return _area_result(True, screen_name, area_name, 'deleted', count=len(screen_info.area_list))
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return _area_result(False, screen_name, area_name, None, error=str(e),
+                                count=self._safe_area_count(screen_name))
+
+    def _safe_area_count(self, screen_name: str) -> int | None:
+        """异常路径下尽量取 area 数(取不到返 None,不再抛)。"""
+        try:
+            return len(self._ctx.screen_loader.get_screen(screen_name).area_list)
+        except Exception:  # noqa: BLE001
+            return None
 
     def close_game(self) -> str:
         """关闭游戏(发关闭窗口信号,秒级,不走 RunSlot)。
@@ -346,6 +498,67 @@ class SrBackendContext:
             raise BackendNotReadyError('游戏窗口未就绪')
         controller.close_game()
         return '已发送关闭游戏信号,可用 check_game_window 验证'
+
+    def click_game(self, x: int | float, y: int | float, press_time: float = 0.0) -> dict:
+        """点击游戏窗口内指定坐标(1080p 游戏空间,同源 screen_info pc_rect)。操作类。
+
+        坐标经控制器自动缩放到真实屏幕。坐标不在游戏窗口内时控制器返 False(不点击)。
+
+        Args:
+            x, y: 默认分辨率(1920×1080)下的游戏窗口坐标。
+            press_time: >0 时长按若干秒。
+
+        Returns:
+            ``{success, x, y, in_window}``:``success/in_window=False`` 表示坐标不在窗口内。
+
+        Raises:
+            BackendNotReadyError: SrContext 未就绪或游戏窗口未就绪时抛。
+        """
+        self._ensure_ready()
+        controller = self._ctx.controller
+        if controller is None or not controller.is_game_window_ready:
+            raise BackendNotReadyError('游戏窗口未就绪')
+        controller.active_window()
+        clicked = controller.click(Point(int(x), int(y)), press_time=press_time)
+        return {'success': clicked, 'x': int(x), 'y': int(y), 'in_window': clicked}
+
+    def input_text(self, text: str, use_clipboard: bool | None = None) -> dict:
+        """向当前焦点输入框输入文本(账号/密码等)。操作类。
+
+        use_clipboard=None → 跟随 ``game_config.type_input_way``(同 ``EnterGame``);
+        True/False → 强制剪贴板/逐键。输入前激活游戏窗口(键盘注入 / Ctrl+V 均需前台焦点)。
+
+        Args:
+            text: 要输入的文本。
+            use_clipboard: True=剪贴板(copy_and_paste,支持中文/特殊字符);
+                False=逐键(controller.input_str);None=跟随全局配置。
+
+        Returns:
+            ``{success, method, masked_text}``:method ∈ {'clipboard','keyboard'};
+            masked_text 为脱敏文本。
+
+        Raises:
+            BackendNotReadyError: SrContext 未就绪或游戏窗口未就绪时抛。
+        """
+        self._ensure_ready()
+        controller = self._ctx.controller
+        if controller is None or not controller.is_game_window_ready:
+            raise BackendNotReadyError('游戏窗口未就绪')
+        use_cb = self._resolve_use_clipboard(use_clipboard)
+        controller.active_window()
+        if use_cb:
+            PcClipboard.copy_and_paste(text)
+            method = 'clipboard'
+        else:
+            controller.input_str(text)
+            method = 'keyboard'
+        return {'success': True, 'method': method, 'masked_text': mask_text(text)}
+
+    def _resolve_use_clipboard(self, use_clipboard: bool | None) -> bool:
+        """解析输入方式:非 None 原样返回;None 读 game_config.type_input_way(== CLIPBOARD 则 True)。"""
+        if use_clipboard is not None:
+            return use_clipboard
+        return self._ctx.game_config.type_input_way == TypeInputWay.CLIPBOARD.value.value
 
     def start_run(self, source: str, op_factory: 'Callable[[SrContext], Operation]') -> tuple[bool, Future | None]:
         """触发运行(供 MCP/HTTP 适配器调用,返回 future 供 block=True 时 await)。

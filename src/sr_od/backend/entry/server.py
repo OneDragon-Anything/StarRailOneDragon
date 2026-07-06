@@ -27,7 +27,7 @@ DEFAULT_PORT = 24001
 def create_app(backend: SrBackendContext) -> "Starlette":
     """装配应用：同一 FastMCP 同时挂 MCP tool 与 ``/game/*`` custom_route。
 
-    先创建 MCP 服务器（注册 7 个 game 工具），再把 ``/game/*`` HTTP 端点挂到
+    先创建 MCP 服务器（注册 11 个 game 工具），再把 ``/game/*`` HTTP 端点挂到
     同一实例上，最后返回 ``streamable_http_app()`` 产生的 Starlette app。
     这样 MCP ``/mcp`` 端点与 HTTP ``/game/*`` 端点同进程、同 app 共存。
 
