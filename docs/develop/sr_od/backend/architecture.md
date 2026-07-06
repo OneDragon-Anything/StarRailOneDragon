@@ -109,3 +109,4 @@ backend 独占持有 `SrContext`，适配器 / 前端不可并发直调其内部
 - [http.md](http.md) — HTTP 适配器
 - [design-principles.md](design-principles.md) — MCP tool 设计规范（P1–P12）
 - [entry.md](entry.md) — 服务入口
+- [一条龙整体架构](../../one_dragon/one_dragon_architecture.md) — Layer 0 运行层

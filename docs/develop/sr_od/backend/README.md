@@ -14,7 +14,7 @@
 | 收敛层 | `SrBackendContext`：持有 ctx、管生命周期、感知 / 操作方法 |
 | 适配器 | MCP（`@mcp.tool`）+ HTTP（`/game/*`），并行、共享 backend |
 
-当前已实现：**7 个感知 / 操作方法**（窗口状态 / 截图 / OCR / 进游戏 / 运行态查询 / 运行态停止 / 关游戏）+ MCP / HTTP 适配器 + 服务入口 + 远程 SSH daemon。其余（run-as-service、事件桥、多实例、GUI 收敛）见各文档的「路线图」。
+当前已实现：**4 个感知 / 操作方法**（窗口状态 / 截图 / OCR / 进游戏）+ MCP / HTTP 适配器 + 服务入口 + 远程 SSH daemon。其余（run-as-service、事件桥、多实例、GUI 收敛）见各文档的「路线图」。
 
 ## 怎么跑
 
@@ -39,5 +39,6 @@ uv run --env-file .env python -m sr_od.backend.entry.server --port 24001
 
 ## 相关文档
 
+- [一条龙整体架构](../../one_dragon/one_dragon_architecture.md) — Layer 0 运行层
 - [AI 编码助手接入](../../setup/ai_coding.md) — MCP / skill 接入
 - [AI Coding Harness 工程](../../harness/README.md) — 方向 B 路线图
