@@ -15,41 +15,16 @@
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import FastMCP
 
-from one_dragon.utils import os_utils
 from one_dragon.utils.log_utils import log
-from sr_od.backend.backend_context import SrBackendContext
+from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
 from sr_od.backend.schemas import AnalyzeScreenResult, RunStatusResult
 
 if TYPE_CHECKING:
-    from cv2.typing import MatLike
-
     from one_dragon.base.operation.operation_base import OperationResult
-
-
-def _save_screenshot(image: 'MatLike') -> str:
-    """将 RGB 截图以 BGR 写盘，返回绝对路径。
-
-    Args:
-        image: backend ``capture`` 返回的 RGB ``ndarray``。
-
-    Returns:
-        保存后的截图文件绝对路径。
-    """
-    import cv2
-
-    screenshot_dir = Path(os_utils.get_path_under_work_dir(".debug", "sr_od_mcp", "screenshot"))
-    screenshot_dir.mkdir(parents=True, exist_ok=True)
-    img_path = screenshot_dir / f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.png"
-    bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    if not cv2.imwrite(str(img_path), bgr_image):
-        raise RuntimeError(f"截图写盘失败: {img_path}")
-    return str(img_path)
 
 
 def make_open_game(backend: SrBackendContext) -> Callable:
@@ -174,20 +149,24 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         return path
 
     @mcp.tool()
-    def analyze_screen(screenshot: str | None = None) -> AnalyzeScreenResult:
+    def analyze_screen(screenshot: str | None = None, save_image: bool = False) -> AnalyzeScreenResult:
         """分析画面(截图 + OCR + 画面匹配),返回结构化结果。观察类,不改游戏状态。
 
         screenshot 省略 → 截当前游戏画面(需游戏在线),精准命中回写当前画面名;
         screenshot 传入 → 解析指定截图、**无需游戏在线**:绝对路径按路径读 / 纯名字到
         ``.debug/images/<名字>.png`` 读;**不回写**识别状态。用于离线校验/反哺 screen_info。
 
+        save_image=True(**仅实时模式**)→ 把截图落盘并把路径放进 ``screenshot_path``
+        返回,供 vision 复用(省掉另调 capture_game_screen)。离线模式忽略。
+
         Returns:
-            ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述)。
+            ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述、
+            screenshot_path)。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
             需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
         """
         try:
-            return backend.analyze(screenshot)
+            return backend.analyze(screenshot, save_image)
         except Exception as e:  # noqa: BLE001 工具层统一兜底，避免异常透传到 MCP 框架
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
 

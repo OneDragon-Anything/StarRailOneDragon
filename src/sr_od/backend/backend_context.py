@@ -28,7 +28,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.screen.screen_area import ScreenArea
 from one_dragon.base.screen.screen_match import find_screen_matches
-from one_dragon.utils import cv2_utils, debug_utils
+from one_dragon.utils import cv2_utils, debug_utils, os_utils
 from one_dragon.utils.log_utils import mask_text
 from sr_od.backend.schemas import (
     AnalyzeScreenResult,
@@ -241,6 +241,29 @@ class BackendNotReadyError(Exception):
     """
 
 
+def _save_screenshot(image: 'MatLike') -> str:
+    """将 RGB 截图以 BGR 写盘到 ``.debug/sr_od_mcp/screenshot/``,返回绝对路径。
+
+    Args:
+        image: backend ``capture`` / ``analyze`` 截到的 RGB ``ndarray``。
+
+    Returns:
+        保存后的截图文件绝对路径。
+
+    Raises:
+        RuntimeError: ``cv2.imwrite`` 写盘失败时抛出。
+    """
+    import cv2
+
+    screenshot_dir = Path(os_utils.get_path_under_work_dir('.debug', 'sr_od_mcp', 'screenshot'))
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+    img_path = screenshot_dir / f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.png"
+    bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    if not cv2.imwrite(str(img_path), bgr_image):
+        raise RuntimeError(f'截图写盘失败: {img_path}')
+    return str(img_path)
+
+
 class SrBackendContext:
     """后端 context：持有 ``SrContext``，管理生命周期，暴露传输无关方法。
 
@@ -342,7 +365,7 @@ class SrBackendContext:
             resolved = debug_utils.get_debug_image_path(screenshot)
         return cv2_utils.read_image(resolved), resolved
 
-    def analyze(self, screenshot: str | None = None) -> AnalyzeScreenResult:
+    def analyze(self, screenshot: str | None = None, save_image: bool = False) -> AnalyzeScreenResult:
         """分析画面:截图 + 全图 OCR + 画面匹配(精准/模糊)。
 
         screenshot 省略 → 截当前游戏画面(需游戏窗口就绪);精准命中回写
@@ -351,14 +374,22 @@ class SrBackendContext:
         纯名字到 ``.debug/images/<名字>.png`` 读;读不到返失败(error 带解析后完整路径)。
         **不回写**识别状态(离线 / 可能是旧图,不污染实时识别)。
 
+        save_image=True(**仅实时模式生效**)→ 把截到的内存图落盘到
+        ``.debug/sr_od_mcp/screenshot/``,路径写入 ``screenshot_path`` 返回,
+        供调用方喂给 vision 复用(省掉第二次截图)。离线模式忽略(调用方本就有路径)。
+
         Args:
             screenshot: 截图绝对路径,或 ``.debug/images`` 下的图名(不带后缀);
                 None 表示实时截当前画面。
+            save_image: 实时模式下是否把截图落盘并回传路径(默认 False)。
 
         Returns:
-            分析结果:成功标志、OCR 文本列表、画面匹配列表、错误描述。
+            分析结果:成功标志、OCR 文本列表、画面匹配列表、错误描述、
+            screenshot_path(本次新存的截图路径,实时+save_image=True 时有值)。
         """
         self._ensure_ready()
+        should_save: bool = save_image and screenshot is None
+        saved_path: str | None = None
         if screenshot is None:
             controller = self._ctx.controller
             if controller is None or not controller.is_game_window_ready:
@@ -373,6 +404,8 @@ class SrBackendContext:
                 return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=f'读取截图失败: {resolved}')
             write_back = False
         try:
+            if should_save:
+                saved_path = _save_screenshot(image)  # 写盘失败抛错,由本 except 兜住
             # crop_first=False:与下方 find_screen_matches 内 find_area_with_detail(color_range=None)复用
             # 同一份全图 OCR 缓存(cache key 含 crop_first;True/False 不复用会触发两次全图 OCR)。
             # rect=None 时 crop_first 不影响 OCR 结果(都全图),只改 cache key。
@@ -384,9 +417,9 @@ class SrBackendContext:
             screens = find_screen_matches(self._ctx, image)
             if write_back and screens and screens[0].is_precise:
                 self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
-            return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None)
-        except Exception as e:  # noqa: BLE001 OCR/匹配异常兜底:不回写,返失败
-            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
+            return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None, screenshot_path=saved_path)
+        except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:不回写,返失败(存盘已成功的仍回传路径排障)
+            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e), screenshot_path=saved_path)
 
     def upsert_screen_area(
         self,

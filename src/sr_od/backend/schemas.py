@@ -32,12 +32,15 @@ class AnalyzeScreenResult:
         error: 失败时的错误描述。
         screens: 画面匹配结果(精准命中=[1 个 is_precise=True];否则 top_n 个
             is_precise=False 候选)。决策优先看 screens;需看散落文本再看 ocr_texts。
+        screenshot_path: 本次 analyze 新存的截图绝对路径;实时+save_image=True 时有值,
+            其余 None。**有值 ⟺ 这次实时模式新存了张图**(离线模式不存)。
     """
 
     success: bool
     ocr_texts: list[OcrText]
     error: str | None = None
     screens: list[ScreenMatch] = field(default_factory=list)
+    screenshot_path: str | None = None
 
 
 @dataclass
