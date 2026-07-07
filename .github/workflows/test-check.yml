@@ -9,11 +9,14 @@ on:
 jobs:
   test-check:
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Install uv
         shell: pwsh
@@ -39,6 +42,7 @@ jobs:
           path: sr-od-test
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
           fetch-depth: 1
+          persist-credentials: false
         continue-on-error: true
 
       - name: Checkout test repo (default branch)
@@ -50,6 +54,7 @@ jobs:
           path: sr-od-test
           ref: main
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Run tests
         shell: pwsh

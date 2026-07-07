@@ -14,11 +14,11 @@ if not exist "%TARGET_DIR%" (
     mkdir "%TARGET_DIR%"
 )
 
-copy "%DIST_DIR%\OneDragon-Installer.exe" "%TARGET_DIR%"
-copy "%DIST_DIR%\OneDragon-Launcher.exe" "%TARGET_DIR%"
+copy /Y "%DIST_DIR%\OneDragon-Installer.exe" "%TARGET_DIR%"
+copy /Y "%DIST_DIR%\OneDragon-Launcher.exe" "%TARGET_DIR%"
 
 rem 集成启动器: exe + .runtime 目录
-copy "%DIST_DIR%\OneDragon-RuntimeLauncher\OneDragon-RuntimeLauncher.exe" "%TARGET_DIR%"
+copy /Y "%DIST_DIR%\OneDragon-RuntimeLauncher\OneDragon-RuntimeLauncher.exe" "%TARGET_DIR%"
 xcopy /E /I /Y "%DIST_DIR%\OneDragon-RuntimeLauncher\.runtime" "%TARGET_DIR%\.runtime\"
 
 rem Copy source code for RuntimeLauncher
@@ -26,10 +26,10 @@ xcopy /E /I /Y "..\src" "%DIST_DIR%\OneDragon-RuntimeLauncher\src\"
 
 rem Copy additional resources from spec file
 if not exist "%TARGET_DIR%\config" mkdir "%TARGET_DIR%\config"
-copy "..\config\project.yml" "%TARGET_DIR%\config\"
+copy /Y "..\config\project.yml" "%TARGET_DIR%\config\"
 xcopy /E /I /Y "..\assets\text" "%TARGET_DIR%\assets\text\"
 xcopy /E /I /Y "..\assets\ui" "%TARGET_DIR%\assets\ui\"
-copy "..\pyproject.toml" "%TARGET_DIR%\"
+copy /Y "..\pyproject.toml" "%TARGET_DIR%\"
 
 rem Make zip files
 powershell -Command "Compress-Archive -Path '%TARGET_DIR%' -DestinationPath '%DIST_DIR%\StarRailOneDragon.zip' -Force"
