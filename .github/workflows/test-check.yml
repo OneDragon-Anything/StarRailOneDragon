@@ -56,6 +56,21 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Pre-download YOLO model (CI bypasses ghfast.top proxy; direct github)
+        shell: pwsh
+        run: |
+          # cal_pos/sim_uni 集成测试需 YOLO 模型；loader 默认走 ghfast.top 代理在 CI 会失败。
+          # CI 直连 github release 预下载到 loader 期望的目录，check_model_exists 通过 → 不触发下载。
+          $url = "https://github.com/OneDragon-Anything/OneDragon-YOLO/releases/download/sr_model/yolov8n-640-simuni-0601.zip"
+          $tmp = "$env:TEMP\yolo.zip"
+          Invoke-WebRequest -Uri $url -OutFile $tmp
+          foreach ($cat in @("world_patrol", "sim_uni")) {
+            $dst = "assets\models\$cat\yolov8n-640-simuni-0601"
+            New-Item -ItemType Directory -Force -Path $dst | Out-Null
+            Expand-Archive -Path $tmp -DestinationPath $dst -Force
+          }
+          Write-Host "YOLO model pre-downloaded to world_patrol + sim_uni"
+
       - name: Run tests
         shell: pwsh
         run: |
