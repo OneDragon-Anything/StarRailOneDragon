@@ -91,7 +91,7 @@ LauncherBase          → 基础参数解析、run() 入口
 ### 生成时机
 
 - **打包时**：spec 文件通过 `importlib` 动态加载 `generate_module_manifest.py`，在 Analysis 阶段生成 `module_manifest.py`
-- **本地打包**：SR 当前无 CI，开发者在 `deploy/` 跑 `build_full.bat`（内部调 `generate_module_manifest.py` 生成清单）后手动发布
+- **本地打包**：SR 无打包/发布 CI（有 `test-check.yml` 测试 CI 跑 pytest，无自动打包）；开发者在 `deploy/` 跑 `build_full.bat`（内部调 `generate_module_manifest.py` 生成清单）后手动发布
 
 ## 代码同步流程
 

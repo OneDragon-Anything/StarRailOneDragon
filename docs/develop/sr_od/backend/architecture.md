@@ -21,7 +21,7 @@ src/sr_od/backend/
   backend_context.py     # SrBackendContext + BackendNotReadyError + RunState + RunSlot
   mcp/
     __init__.py
-    app.py               # create_mcp_server + 7 个 @mcp.tool + _save_screenshot
+    app.py               # create_mcp_server + 11 个 @mcp.tool + _save_screenshot
   http/
     __init__.py
     routes.py            # register_http_routes + 7 个 /game/* 处理器
