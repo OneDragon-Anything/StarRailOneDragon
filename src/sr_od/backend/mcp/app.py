@@ -21,6 +21,15 @@ from mcp.server.fastmcp import FastMCP
 
 from one_dragon.utils.log_utils import log
 from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
+from sr_od.backend.mcp.prompts import register_prompt_tools, register_prompts
+from sr_od.backend.mcp.service_app import (
+    make_describe_operation,
+    make_list_applications,
+    make_list_operations,
+    make_run_one_dragon,
+    make_run_operation,
+    make_run_standalone_app,
+)
 from sr_od.backend.schemas import AnalyzeScreenResult, RunStatusResult
 
 if TYPE_CHECKING:
@@ -93,7 +102,7 @@ def make_stop_run(backend: SrBackendContext) -> Callable[[], dict]:
 
 
 def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP:
-    """创建 MCP 服务器并注册 game 工具。
+    """创建 MCP 服务器并注册 game 工具与 prompt。
 
     通过闭包将 ``backend`` 注入到各工具函数中，使工具调用最终落到 backend 的
     game 切片方法（``check_window``/``capture``/``analyze``）；运行类操作
@@ -228,18 +237,23 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             return f"错误: {e}"
 
     @mcp.tool()
-    def click_game(x: float, y: float, press_time: float = 0.0) -> dict:
+    def click_game(x: float, y: float, press_time: float = 0.1, pc_alt: bool = False) -> dict:
         """点击游戏窗口内坐标(1080p 游戏空间,同 screen_info pc_rect 中心)。操作类。
 
         坐标经控制器缩放到真实屏幕;不在窗口内则不点击(in_window=False)。需游戏窗口就绪。
 
+        pc_alt=True 时点击前先按住 Alt 解锁光标 —— 大世界等 pc_alt=true 画面必需
+        (星穹铁道锁光标,不按 Alt 点击落空)。判断依据:目标画面对应 screen_info
+        的 ``pc_alt`` 字段;框架内部点击(跑 application)会自动带,经 MCP 手动点击
+        pc_alt 画面时需显式传 True。其余画面保持 False。
+
         Returns:
-            ``{success, x, y, in_window, error?}``;backend 抛错时 success=False + error。
+            ``{success, x, y, in_window, pc_alt, error?}``;backend 抛错时 success=False + error。
         """
         try:
-            return backend.click_game(x, y, press_time)
+            return backend.click_game(x, y, press_time, pc_alt)
         except Exception as e:  # noqa: BLE001 工具层兜底
-            return {'success': False, 'x': x, 'y': y, 'in_window': False, 'error': str(e)}
+            return {'success': False, 'x': x, 'y': y, 'in_window': False, 'pc_alt': pc_alt, 'error': str(e)}
 
     @mcp.tool()
     def input_text(text: str, use_clipboard: bool | None = None) -> dict:
@@ -257,7 +271,15 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             return {'success': False, 'method': None, 'masked_text': None, 'error': str(e)}
 
     mcp.tool()(make_open_game(backend))
+    mcp.tool()(make_run_one_dragon(backend))
+    mcp.tool()(make_run_standalone_app(backend))
+    mcp.tool()(make_list_applications(backend))
     mcp.tool()(make_get_run_status(backend))
     mcp.tool()(make_stop_run(backend))
+    mcp.tool()(make_list_operations(backend))
+    mcp.tool()(make_describe_operation(backend))
+    mcp.tool()(make_run_operation(backend))
+    register_prompts(mcp)
+    register_prompt_tools(mcp)
 
     return mcp

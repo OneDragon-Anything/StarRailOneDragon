@@ -20,6 +20,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from sr_od.backend.backend_context import BackendNotReadyError, SrBackendContext
+from sr_od.backend.http.service_routes import register_service_routes
 
 
 def _err(msg: str, status: int = 503) -> JSONResponse:
@@ -219,6 +220,8 @@ def register_http_routes(mcp: FastMCP, backend: SrBackendContext) -> None:
         mcp: 目标 ``FastMCP`` 实例。
         backend: 已就绪的 ``SrBackendContext``，提供 game 切片能力。
     """
+    register_service_routes(mcp, backend)
+
     @mcp.custom_route("/game/window", methods=["GET"])
     async def _game_window(request: Request) -> Response:
         """GET /game/window 路由分发：委托 ``handle_game_window``。"""
