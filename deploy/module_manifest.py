@@ -34,6 +34,7 @@ if not getattr(sys, 'frozen', False):
     import os
     import platform
     import polib
+    import psutil
     import pyautogui
     import pyclipper
     import pyuac
@@ -51,6 +52,7 @@ if not getattr(sys, 'frozen', False):
     import threading
     import time
     import traceback
+    import urllib.error
     import urllib.parse
     import urllib.request
     import uuid
@@ -67,7 +69,7 @@ if not getattr(sys, 'frozen', False):
     from PIL.ImageChops import screen
     from PySide6 import QtCore
     from PySide6.QtCore import QEasingCurve, QEvent, QEventLoop, QMimeData, QObject, QPoint, QPointF, QPropertyAnimation, QRect, QRectF, QRegularExpression, QSize, QThread, QTimer, QUrl, Qt, Signal
-    from PySide6.QtGui import QCloseEvent, QColor, QDesktopServices, QDrag, QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent, QFont, QFontMetrics, QGuiApplication, QIcon, QImage, QKeyEvent, QLinearGradient, QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen, QPixmap, QResizeEvent, QShowEvent, QSyntaxHighlighter, QTextCharFormat, QWheelEvent, Qt
+    from PySide6.QtGui import QCloseEvent, QColor, QDesktopServices, QDrag, QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent, QFont, QFontMetrics, QGuiApplication, QIcon, QImage, QKeyEvent, QKeySequence, QLinearGradient, QMouseEvent, QPaintEvent, QPainter, QPainterPath, QPen, QPixmap, QResizeEvent, QShowEvent, QSyntaxHighlighter, QTextCharFormat, QWheelEvent, Qt
     from PySide6.QtMultimedia import QMediaPlayer
     from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
     from PySide6.QtWidgets import QAbstractButton, QAbstractItemView, QAbstractScrollArea, QApplication, QCompleter, QDialog, QFileDialog, QFrame, QGraphicsDropShadowEffect, QGraphicsEffect, QGraphicsOpacityEffect, QGraphicsScene, QGraphicsView, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListView, QListWidgetItem, QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSpacerItem, QStackedWidget, QStyle, QStyledItemDelegate, QTableWidgetItem, QTextEdit, QToolButton, QVBoxLayout, QWidget
