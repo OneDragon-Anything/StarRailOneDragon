@@ -17,6 +17,16 @@
       remark_in_game: "位面饰品"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "虫虫来袭"
+          show_in_power_plan: true
+          display_name: "坠星启航地 寰宇生研院"
+          power: 40
+
+        - mission_name: "鎏金追忆"
+          show_in_power_plan: true
+          display_name: "零号关卡朋克洛德 千星荟萃之城"
+          power: 40
+
         - mission_name: "西风丛中"
           show_in_power_plan: true
           display_name: "永恒之地翁法罗斯 天国@直播间"
@@ -185,6 +195,12 @@
 
         - mission_name: "毁灭之蕾"
           show_in_power_plan: true
+          display_name: "毁灭-渡画泉隐"
+          region_name: '渡画泉隐'
+          power: 10
+
+        - mission_name: "毁灭之蕾"
+          show_in_power_plan: true
           display_name: "毁灭-麟渊境"
           region_name: '麟渊境'
           power: 10
@@ -239,6 +255,12 @@
 
         - mission_name: "智识之蕾"
           show_in_power_plan: true
+          display_name: "智识-海原电视塔"
+          region_name: '海原电视塔'
+          power: 10
+
+        - mission_name: "智识之蕾"
+          show_in_power_plan: true
           display_name: "智识-匹诺康尼大剧院"
           region_name: '匹诺康尼大剧院'
           power: 10
@@ -259,6 +281,12 @@
           show_in_power_plan: true
           display_name: "同谐-机械聚落"
           region_name: '机械聚落'
+          power: 10
+
+        - mission_name: "虚无之蕾"
+          show_in_power_plan: true
+          display_name: "虚无-「辉痕圣林」神悟树庭"
+          region_name: '「辉痕圣林」神悟树庭'
           power: 10
 
         - mission_name: "虚无之蕾"
@@ -404,6 +432,12 @@
           region_name: "铆钉阵"
           power: 30
 
+        - mission_name: "吞噬之形"
+          show_in_power_plan: true
+          display_name: "量子-吞噬之形"
+          region_name: "渡画泉隐"
+          power: 30
+
         - mission_name: "凛月之形"
           show_in_power_plan: true
           display_name: "量子-凛月之形"
@@ -457,6 +491,12 @@
       remark_in_game: "遗器"
       show_in_power_plan: true
       mission_list:
+        - mission_name: "观火之径"
+          show_in_power_plan: true
+          display_name: "星如我见的领航员/叩问天工的名冶"
+          region_name: "观览云岛站"
+          power: 40
+
         - mission_name: "魔占之径"
           show_in_power_plan: true
           display_name: "闪耀功勋的魔法少女/应天涉远的卜者"
@@ -551,6 +591,12 @@
       remark_in_game: "行迹高级材料/光锥"
       show_in_power_plan: false
       mission_list:
+        - mission_name: "坏灭的喜剧·历战余响"
+          show_in_power_plan: true
+          display_name: "坏灭的喜剧"
+          region_name: "寂灭空飧妖都"
+          power: 30
+
         - mission_name: "铁骸的锈冢·历战余响"
           show_in_power_plan: true
           display_name: "铁骸的锈冢"
