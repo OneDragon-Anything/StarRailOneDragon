@@ -23,7 +23,7 @@ class ClickStartChallenge(SrOperation):
 
     @operation_node(name='点击', is_start_node=True)
     def click(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         return self.round_by_find_and_click_area(screen, '挑战副本', '开始挑战按钮',
                                                  success_wait=1, retry_wait=1)

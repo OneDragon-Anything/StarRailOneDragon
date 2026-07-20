@@ -1,13 +1,16 @@
 from typing import Optional, Callable
 
+from one_dragon.base.geometry.point import Point
+from one_dragon.base.matcher.match_result import MatchResultList
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import str_utils, cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.app.div_uni.operations.choose_oe_file import ChooseOeFile
 from sr_od.app.div_uni.operations.choose_oe_support import ChooseOeSupport
-from sr_od.app.sim_uni.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
+from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
@@ -21,7 +24,7 @@ from sr_od.screen_state import battle_screen_state
 class ChallengeOrnamentExtraction(SrOperation):
 
     def __init__(self, ctx: SrContext, mission: GuideMission, run_times: int,
-                 diff: int, file_num: int, support_character: str,
+                 diff: int, file_num: int, team_name: str, support_character: str,
                  get_reward_callback: Optional[Callable[[int], None]] = None):
         SrOperation.__init__(self, ctx, op_name=gt('饰品提取', 'game'))
 
@@ -31,8 +34,14 @@ class ChallengeOrnamentExtraction(SrOperation):
         self.run_times: int = run_times
         """需要挑战的次数"""
 
+        self.choose_times: int = 1
+        """单次挑战选择的次数"""
+
         self.file_num: int = file_num
         """需要使用的存档 0为不选择"""
+
+        self.team_name: str = team_name
+        """预设编队名称"""
 
         self.diff: int = diff
         """需要挑战的难度 0为不选择"""
@@ -61,7 +70,8 @@ class ChallengeOrnamentExtraction(SrOperation):
 
         return None
 
-    @operation_node(name='传送', is_start_node=True)
+    @node_from(from_name='等待退出', status='重新选择次数')
+    @operation_node(name='传送', is_start_node=True, screenshot_before_round=False)
     def tp(self) -> OperationRoundResult:
         """
         TODO 未加入难度选择
@@ -98,14 +108,52 @@ class ChallengeOrnamentExtraction(SrOperation):
     #
     #     return self.round_success()
 
-    # todo 这个函数是不是没用
-    # @node_from(from_name='传送')
-    # @operation_node(name='选择存档')
-    # def choose_file(self) -> OperationRoundResult:
-    #     op = ChooseOeFile(self.ctx, self.file_num)
-    #     return self.round_by_op_result(op.execute())
-
     @node_from(from_name='传送')
+    @operation_node(name='选择存档', screenshot_before_round=False)
+    def choose_file(self) -> OperationRoundResult:
+        op = ChooseOeFile(self.ctx, self.file_num)
+        return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='选择存档')
+    @operation_node(name='点击预设编队按钮', screenshot_before_round=False)
+    def click_predefined_team(self) -> OperationRoundResult:
+        if len(self.team_name) == 0:
+            return self.round_success('使用默认编队')
+        result = self.round_by_click_area('饰品提取', '支援入队踢4号位角色')
+        if result.is_success:
+            return self.round_by_find_and_click_area(self.screenshot(), '饰品提取', '按钮-预设编队',
+                                                     success_wait=1, retry_wait=1)
+        return result
+
+    @node_from(from_name='点击预设编队按钮')
+    @operation_node(name='选择预设编队')
+    def choose_predefined_team(self) -> OperationRoundResult:
+        area = self.ctx.screen_loader.get_area('饰品提取', '区域-预设编队名称')
+        part = cv2_utils.crop_image_only(self.last_screenshot, area.rect)
+        ocr_result_map = self.ctx.ocr.run_ocr(part)
+
+        name_list = []
+        mrl_list: list[MatchResultList] = []
+        for ocr_word, mrl in ocr_result_map.items():
+            name_list.append(ocr_word)
+            mrl_list.append(mrl)
+
+        # 找队伍
+        team_idx = str_utils.find_best_match_by_difflib(gt(self.team_name), name_list, cutoff=0.5)
+        if team_idx is not None:
+            self.ctx.controller.click(area.left_top + mrl_list[team_idx][0].center)
+            return self.round_success(wait=0.5)
+
+        # 没找到, 向上滑动翻页
+        drag_start = Point(area.rect.x1 + 100, area.rect.y2 - 300)
+        drag_end = Point(area.rect.x1 + 100, area.rect.y1 + 100)
+        self.ctx.controller.drag_to(start=drag_start, end=drag_end)
+        # 拖动之后列表会有惯性, 鼠标点一下消除惯性, 防止拖过头
+        self.ctx.controller.click()
+        return self.round_retry('未找到编队: ' + self.team_name, wait=1)
+
+    @node_from(from_name='点击预设编队按钮', status='使用默认编队')
+    @node_from(from_name='选择预设编队')
     @operation_node(name='选择支援')
     def choose_support(self) -> OperationRoundResult:
         op = ChooseOeSupport(self.ctx, self.support_character)
@@ -117,6 +165,7 @@ class ChallengeOrnamentExtraction(SrOperation):
     def click_challenge_times(self) -> OperationRoundResult:
         log.info('本次挑战次数 %d', self.run_times)
         if self.run_times > 1:
+            self.choose_times = min(6, self.run_times)
             op = ChooseChallengeTimes(self.ctx, min(6, self.run_times), mission_type='饰品提取')
             return self.round_by_op_result(op.execute())
         else:
@@ -129,7 +178,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         点击挑战
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-开始挑战',
                                                  success_wait=2, retry_wait=1)
 
@@ -140,7 +189,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         等待副本加载
         :return:
         """
-        screen = self.screenshot()
+        screen = self.last_screenshot
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
     @node_from(from_name='等待副本加载')
@@ -172,9 +221,9 @@ class ChallengeOrnamentExtraction(SrOperation):
             self.battle_fail_times += 1
             return self.round_by_op_result(op_result)
         elif op_result.status == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
-            self.battle_success_times += 1
+            self.battle_success_times += self.choose_times
             if self.get_reward_callback is not None:
-                self.get_reward_callback(1)
+                self.get_reward_callback(self.choose_times)
             return self.round_by_op_result(op_result)
         else:
             return self.round_fail('未知状态')
@@ -186,8 +235,8 @@ class ChallengeOrnamentExtraction(SrOperation):
         战斗结果出来后 点击再来一次或退出
         :return:
         """
-        screen = self.screenshot()
-        if self.battle_fail_times >= 5 or self.battle_success_times >= self.run_times:  # 失败过多或者完成指定次数了 退出
+        screen = self.last_screenshot
+        if self.battle_fail_times >= 5 or self.battle_success_times + self.choose_times > self.run_times:  # 失败过多或者再来一次就会超出指定次数 退出
             area_name = '退出关卡按钮'
         else:  # 还需要继续挑战
             area_name = '再来一次按钮'
@@ -202,5 +251,11 @@ class ChallengeOrnamentExtraction(SrOperation):
         等待退出到大世界
         :return:
         """
-        screen = self.screenshot()
-        return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
+        screen = self.last_screenshot
+        result = self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
+
+        # 如果未完成指定次数, 则继续打
+        if result.is_success and self.battle_fail_times < 5 and self.battle_success_times < self.run_times:
+            return self.round_success('重新选择次数')
+        return result
+

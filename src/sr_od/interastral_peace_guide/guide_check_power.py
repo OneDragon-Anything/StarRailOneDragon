@@ -40,7 +40,7 @@ class GuideCheckPower(SrOperation):
     @node_from(from_name='选择生存索引')
     @operation_node(name='识别开拓力和沉浸器数量')
     def check_power(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
         x, y = self.get_power_and_qty(screen)
 
         if x is None or y is None:

@@ -176,7 +176,7 @@ def mark_area_as_color(image: MatLike, pos: List, color, new_image: bool = False
 
 
 def match_template(source: MatLike, template: MatLike, threshold,
-                   mask: np.ndarray = None, only_best: bool = True,
+                   mask: np.ndarray | None = None, only_best: bool = True,
                    ignore_inf: bool = False) -> MatchResultList:
     """
     在原图中匹配模板 注意无法从负偏移量开始匹配 即需要保证目标模板不会在原图边缘位置导致匹配不到
@@ -443,7 +443,7 @@ def feature_match_for_one(source_kp, source_desc, template_kp, template_desc,
     source_points = np.float32([source_kp[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)  # 原图的
 
     # 使用RANSAC算法估计模板位置和尺度
-    _, mask = cv2.findHomography(template_points, source_points, cv2.RANSAC, 5.0, mask=source_mask)
+    homography_matrix, mask = cv2.findHomography(template_points, source_points, cv2.RANSAC, 5.0, mask=source_mask)
     # 获取内点的索引 拿最高置信度的
     inlier_indices = np.where(mask.ravel() == 1)[0]
     if len(inlier_indices) == 0:  # mask 里没找到就算了 再用good_matches的结果也是很不准的
@@ -470,7 +470,22 @@ def feature_match_for_one(source_kp, source_desc, template_kp, template_desc,
     scaled_width = int(template_width * template_scale)
     scaled_height = int(template_height * template_scale)
 
-    return MatchResult(1, offset_x, offset_y, scaled_width, scaled_height, template_scale)
+    # 计算综合置信度
+    # 1. 内点比例 - RANSAC内点占总good_matches的比例
+    inlier_ratio = len(inlier_indices) / len(good_matches)
+    # 2. 距离因子 - 距离越小越好，但要处理0距离的情况
+    distance_factor = 1.0 / (1.0 + best_match.distance / 100.0) if best_match.distance > 0 else 1.0
+    # 3. 内点数量因子 - 内点越多越好
+    inlier_count_factor = min(1.0, len(inlier_indices) / 10.0)
+
+    confidence = (
+        0.4 * inlier_ratio +
+        0.4 * distance_factor +
+        0.2 * inlier_count_factor
+    )
+    confidence = np.clip(confidence, 0.0, 1.0)
+
+    return MatchResult(confidence, offset_x, offset_y, scaled_width, scaled_height, template_scale)
 
 
 def feature_match_for_multi(
@@ -888,7 +903,7 @@ def color_in_hsv_range(
     return part
 
 
-def find_character_avatars(img: MatLike, min_area: int = 800, 
+def find_character_avatars(img: MatLike, min_area: int = 800,
                           hsv_lower_bound: Tuple[int, int, int] = (0, 0, 0),
                           hsv_upper_bound: Tuple[int, int, int] = (10, 10, 255)) -> List[Tuple[int, int, int, int]]:
     """
@@ -1159,3 +1174,63 @@ def get_hsv_range_in_contour(image: MatLike, contour: np.ndarray) -> dict:
         'center_hsv': (int(h_center), int(s_center), int(v_center)),
         'diff_hsv': (int(h_diff), int(s_diff), int(v_diff))
     }
+
+
+def to_binary(img: MatLike, threshold: int = 127) -> MatLike:
+    """
+    将图像转换为二值化图像
+    Args:
+        img: 输入图像（可以是彩色或灰度图像）
+        threshold: 二值化阈值，默认为127
+    Returns:
+        二值化图像（单通道，只有0和255两个值）
+    """
+    if len(img.shape) == 3:  # 彩色图像
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img
+    _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
+    return binary
+
+
+def is_colorful(img: MatLike, saturation_threshold: int = 30, color_ratio_threshold: float = 0.1) -> bool:
+    """
+    判断图像是否为彩色（不是灰度）
+
+    彩色图像的判断依据：
+    1. 饱和度：HSV空间中的S通道平均值高于阈值
+    2. 颜色占比：具有明显饱和度的像素占比高于阈值
+
+    Args:
+        img: 输入图像（RGB格式）
+        saturation_threshold: 饱和度阈值，低于此值认为是不饱和的（灰度）。默认30
+        color_ratio_threshold: 彩色像素占比阈值。默认0.1（10%）
+
+    Returns:
+        bool: True 表示是彩色的，False 表示接近灰度
+    """
+    if img is None or img.size == 0:
+        return False
+
+    # 确保是彩色图像
+    if len(img.shape) != 3 or img.shape[2] != 3:
+        return False
+
+    # 转换为HSV颜色空间
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+
+    # 获取饱和度通道（S通道）
+    s_channel = hsv[:, :, 1]
+
+    # 方法1：计算饱和度均值
+    mean_saturation = np.mean(s_channel)
+
+    # 方法2：计算具有明显饱和度的像素比例
+    saturated_pixels = np.sum(s_channel > saturation_threshold)
+    total_pixels = s_channel.size
+    color_ratio = saturated_pixels / total_pixels
+
+    # 判断条件：饱和度均值高于阈值 且 彩色像素占比高于阈值
+    is_colorful = mean_saturation > saturation_threshold and color_ratio > color_ratio_threshold
+
+    return is_colorful

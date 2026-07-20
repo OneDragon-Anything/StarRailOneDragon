@@ -36,8 +36,7 @@ if __name__ == '__main__':
     from sr_od.gui.sr_installer_window import SrInstallerWindow
 
     _ctx = OneDragonEnvContext()
-    _ctx.installer_dir = installer_dir
-    _ctx.async_update_gh_proxy()
+    _ctx.installer_dir = str(installer_dir)
     detect_and_set_default_language()
     w = SrInstallerWindow(_ctx, gt(f'{_ctx.project_config.project_name}-installer'))
     w.show()

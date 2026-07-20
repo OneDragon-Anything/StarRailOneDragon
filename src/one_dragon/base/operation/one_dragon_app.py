@@ -1,15 +1,17 @@
-from typing import List, Optional, ClassVar
+from typing import ClassVar, List, Optional
 
-from one_dragon.base.config.one_dragon_config import OneDragonInstance, InstanceRun
+from one_dragon.base.config.game_account_config import GameAccountConfig
+from one_dragon.base.config.one_dragon_config import InstanceRun, OneDragonInstance
+from one_dragon.base.controller.controller_base import ControllerBase
+from one_dragon.base.operation.application import application_const
+from one_dragon.base.operation.application.group_application import GroupApplication
 from one_dragon.base.operation.application_base import Application
-from one_dragon.base.operation.application_run_record import AppRunRecord
 from one_dragon.base.operation.one_dragon_context import OneDragonContext
 from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 
 
@@ -17,45 +19,29 @@ class OneDragonApp(Application):
 
     STATUS_ALL_DONE: ClassVar[str] = '全部结束'
     STATUS_NEXT: ClassVar[str] = '下一个'
-    STATUS_NO_LOGIN: ClassVar[str] = '下一个'
+    STATUS_NO_LOGIN: ClassVar[str] = "下一个"
 
-    def __init__(self, ctx: OneDragonContext, app_id: str,
-                 op_name: str = '一条龙',
-                 op_to_enter_game: Optional[Operation] = None,
-                 op_to_switch_account: Optional[Operation] = None):
+    def __init__(
+        self,
+        ctx: OneDragonContext,
+        op_to_enter_game: Optional[Operation] = None,
+        op_to_switch_account: Optional[Operation] = None,
+    ):
         Application.__init__(
             self,
-            ctx, app_id,
-            op_name=gt(op_name),
-            op_to_enter_game=op_to_enter_game
+            ctx,
+            app_id=application_const.ONE_DRAGON_APP_ID,
+            op_name=application_const.ONE_DRAGON_APP_NAME,
+            op_to_enter_game=op_to_enter_game,
         )
 
-        self._to_run_app_list: List[Application] = []  # 需要执行的app列表 有序
-        self._current_app_idx: int = 0  # 当前运行的app 下标
         self._instance_list: List[OneDragonInstance] = []  # 需要运行的实例
         self._instance_idx: int = 0  # 当前运行的实例下标
         self._instance_start_idx: int = 0  # 最初开始的实例下标
         self._op_to_switch_account: Operation = op_to_switch_account  # 切换账号的op
-        self._fail_app_idx: List[int] = []  # 失败的app下标
-        self._current_retry_app_idx: int = 0  # 当前重试的_fail_app_idx的下标
 
-    def get_app_list(self) -> List[Application]:
-        return []
-
-    def get_app_order_list(self) -> List[str]:
-        """
-        获取应用运行顺序
-        :return: app id list
-        """
-        return self.ctx.one_dragon_app_config.app_order
-
-    def update_app_order_list(self, new_app_orders: List[str]) -> None:
-        """
-        更新引用运行顺序
-        :param new_app_orders: app id list
-        :return:
-        """
-        self.ctx.one_dragon_app_config.app_order = new_app_orders
+        self._last_account_config: GameAccountConfig | None = None
+        self._last_controller: ControllerBase | None = None
 
     def handle_init(self) -> None:
         """
@@ -64,126 +50,76 @@ class OneDragonApp(Application):
         """
         current_instance = self.ctx.one_dragon_config.current_active_instance
         if self.ctx.one_dragon_config.instance_run == InstanceRun.ALL.value.value:
-            self._instance_list = []
-            for i in self.ctx.one_dragon_config.instance_list:
-                if not i.active_in_od:
-                    continue
-                self._instance_list.append(i)
-                if i.idx == current_instance.idx:
-                    self._instance_start_idx = len(self._instance_list) - 1
+            self._instance_list = self.ctx.one_dragon_config.instance_list_in_od
+
+            if not self._instance_list:
+                if current_instance is not None:
+                    self._instance_list = [current_instance]
+                else:
+                    raise RuntimeError('未找到可以在一条龙中运行的实例')
+
+            self._instance_start_idx = 0
+            if current_instance is not None:
+                for idx, instance in enumerate(self._instance_list):
+                    if instance.idx == current_instance.idx:
+                        self._instance_start_idx = idx
+                        break
         else:
             self._instance_list = [current_instance]
             self._instance_start_idx = 0
 
         self._instance_idx = self._instance_start_idx
 
-    def get_one_dragon_apps_in_order(self) -> List[Application]:
-        """
-        按运行顺序配置 返回需要在一条龙中运行的app
-        :return:
-        """
-        all_apps = self.get_app_list()
-        app_orders = self.get_app_order_list()
-
-        result_list: List[Application] = []
-        # 按顺序加入
-        for app_order in app_orders:
-            for app in all_apps:
-                if app.app_id == app_order:
-                    result_list.append(app)
-                    break
-
-        # 把没有在顺序里的加入
-        for app in all_apps:
-            if app.app_id not in app_orders:
-                result_list.append(app)
-
-        # 每次都更新配置
-        new_app_orders = [app.app_id for app in result_list]
-        self.update_app_order_list(new_app_orders)
-
-        return result_list
+        if current_instance not in self._instance_list:
+            self.ctx.switch_instance(self._instance_list[self._instance_idx].idx)
 
     @node_from(from_name='切换账号后处理', status=STATUS_NEXT)  # 切换实例后重新开始
-    @operation_node(name='检测任务状态', is_start_node=True)
-    def check_app(self) -> OperationRoundResult:
-        """
-        找出需要运行的app
-        :return:
-        """
-        order_app_list = self.get_one_dragon_apps_in_order()
-        self._fail_app_idx = []
+    @operation_node(name='运行应用组', is_start_node=True)
+    def run_group_app(self) -> OperationRoundResult:
+        op = GroupApplication(
+            ctx=self.ctx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+            op_to_enter_game=self.op_to_enter_game
+        )
+        return self.round_by_op_result(op.execute())
 
-        self._to_run_app_list = []
-        for app in order_app_list:
-            if app.app_id not in self.ctx.one_dragon_app_config.app_run_list:
-                continue
-            app.run_record.check_and_update_status()
-            if app.run_record.run_status_under_now == AppRunRecord.STATUS_SUCCESS:
-                continue
-            self._to_run_app_list.append(app)
-
-        for app in self._to_run_app_list:  # 运行一条龙时 各app不需要改变上下文
-            app.init_context_before_start = False
-            app.stop_context_after_stop = False
-
-        self._current_app_idx = 0
-        self._current_retry_app_idx = 0
-
-        return self.round_success()
-
-    @node_from(from_name='检测任务状态')
-    @node_from(from_name='运行任务', status=STATUS_NEXT)
-    @operation_node(name='运行任务')
-    def run_app(self) -> OperationRoundResult:
-        """
-        运行任务
-        :return:
-        """
-        if self._current_app_idx < 0 or self._current_app_idx >= len(self._to_run_app_list):
-            return self.round_success(status=OneDragonApp.STATUS_ALL_DONE)
-
-        app = self._to_run_app_list[self._current_app_idx]
-        # 临时设置运行应用 后续应该在run_context中自行设置
-        self.ctx.run_context.current_instance_idx = self._instance_list[self._instance_idx].idx
-        self.ctx.run_context.current_group_id = 'one_dragon'
-        self.ctx.run_context.current_app_id = app.app_id
-        app_result = app.execute()
-        if not app_result.success:
-            self._fail_app_idx.append(self._current_app_idx)
-        self._current_app_idx += 1
-
-        return self.round_success(status=OneDragonApp.STATUS_NEXT)
-
-    @node_from(from_name='运行任务')
-    @node_from(from_name='重试失败任务', status=STATUS_NEXT)
-    @operation_node(name='重试失败任务')
-    def run_retry_app(self) -> OperationRoundResult:
-        if self._current_retry_app_idx < 0 or self._current_retry_app_idx >= len(self._fail_app_idx):
-            return self.round_success(status=OneDragonApp.STATUS_ALL_DONE)
-
-        app_idx = self._fail_app_idx[self._current_retry_app_idx]
-        app = self._to_run_app_list[app_idx]
-        app.execute()
-
-        self._current_retry_app_idx += 1
-
-        return self.round_success(status=OneDragonApp.STATUS_NEXT)
-
-    @node_from(from_name='重试失败任务')
-    @operation_node(name='切换实例配置')
+    @node_from(from_name='运行应用组')
+    @operation_node(name='切换实例配置', screenshot_before_round=False)
     def switch_instance(self) -> OperationRoundResult:
+        self._last_account_config = self.ctx.game_account_config
+        self._last_controller = self.ctx.controller
+
         self._instance_idx += 1
         if self._instance_idx >= len(self._instance_list):
             self._instance_idx = 0
-
         self.ctx.switch_instance(self._instance_list[self._instance_idx].idx)
         log.info('下一个实例 %s', self.ctx.one_dragon_config.current_active_instance.name)
 
+        if (self._last_account_config is not None
+            and self._last_account_config.game_path != self.ctx.game_account_config.game_path
+        ):
+            return self.round_success(status='游戏路径不同')
+
         return self.round_success()
 
+    @node_from(from_name='切换实例配置', status='游戏路径不同')
+    @operation_node(name='关闭游戏', screenshot_before_round=False)
+    def close_game(self) -> OperationRoundResult:
+        # 刷新窗口句柄, 避免旧缓存导致误判
+        if self._last_controller is None:
+            return self.round_success()
+
+        if self._last_controller.is_game_window_ready:
+            # 关闭游戏
+            self._last_controller.close_game()
+            return self.round_retry('检查是否关闭成功', wait=3)
+
+        # 有时候游戏关闭了, 游戏占用的配置等文件没关闭, 故需等一会
+        log.info('等待游戏占用文件释放(10s)...')
+        return self.round_success(wait=10)
+
     @node_from(from_name='切换实例配置')
-    @operation_node(name='切换账号')
+    @operation_node(name='切换账号', screenshot_before_round=False)
     def switch_account(self) -> OperationRoundResult:
         if len(self._instance_list) == 1:
             return self.round_success('无需切换账号')
@@ -193,8 +129,17 @@ class OneDragonApp(Application):
             # return self.round_success(wait=1)  # 调试用
             return self.round_by_op_result(self._op_to_switch_account.execute())
 
+    @node_from(from_name='关闭游戏')
+    @operation_node(name='切换账号重新打开游戏', screenshot_before_round=False)
+    def after_close_game(self) -> OperationRoundResult:
+        if self.op_to_enter_game is None:
+            return self.round_fail('未提供打开游戏方式')
+        else:
+            return self.round_by_op_result(self.op_to_enter_game.execute())
+
     @node_from(from_name='切换账号')
-    @operation_node(name='切换账号后处理')
+    @node_from(from_name='切换账号重新打开游戏')
+    @operation_node(name='切换账号后处理', screenshot_before_round=False)
     def after_switch_account(self) -> OperationRoundResult:
         if self._instance_idx == self._instance_start_idx:  # 已经完成一轮了
             return self.round_success(OneDragonApp.STATUS_ALL_DONE)
@@ -203,6 +148,3 @@ class OneDragonApp(Application):
 
     def after_operation_done(self, result: OperationResult):
         Application.after_operation_done(self, result)
-        for app in self._to_run_app_list:   # 一条龙结束后 各app恢复
-            app.init_context_before_start = True
-            app.stop_context_after_stop = True

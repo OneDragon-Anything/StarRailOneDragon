@@ -8,8 +8,9 @@ from one_dragon.utils.log_utils import log
 from one_dragon_qt.view.app_run_interface import AppRunInterface
 from one_dragon_qt.widgets.column import Column
 from one_dragon_qt.widgets.setting_card.push_setting_card import PushSettingCard
-from sr_od.app.sr_application import SrApplication
-from sr_od.app.world_patrol.world_patrol_app import WorldPatrolApp
+from sr_od.application.world_patrol import world_patrol_const
+from sr_od.application.sr_application import SrApplication
+from sr_od.application.world_patrol.world_patrol_app import WorldPatrolApp
 from sr_od.context.sr_context import SrContext
 
 
@@ -24,6 +25,7 @@ class WorldPatrolRunInterface(AppRunInterface):
         AppRunInterface.__init__(
             self,
             ctx=ctx,
+            app_id=world_patrol_const.APP_ID,
             object_name='sr_world_patrol_run_interface',
             nav_text_cn='运行',
             parent=parent,

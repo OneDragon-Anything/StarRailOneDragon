@@ -43,7 +43,7 @@ class ChooseRegion(SrOperation):
     def _check_planet(self) -> OperationRoundResult:
         if self.skip_planet_check:
             return self.round_success()
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         planet = large_map_utils.get_planet(self.ctx, screen)
         if planet is None or planet != self.planet:
@@ -54,7 +54,7 @@ class ChooseRegion(SrOperation):
     @node_from(from_name='检测星球')
     @operation_node(name='选择区域')
     def _choose_region(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         result = self.round_by_find_and_click_area(screen, '大地图', '按钮-传送')
         if result.is_success:
@@ -191,7 +191,7 @@ class ChooseRegion(SrOperation):
         if self.region.parent is None:
             return self.round_success('非子区域无需操作')
 
-        screen = self.screenshot()
+        screen = self.last_screenshot
 
         if self.sub_region_clicked and self._in_sub_region(screen):
             return self.round_success(wait=1)
@@ -199,6 +199,10 @@ class ChooseRegion(SrOperation):
         screen_part, offset = large_map_utils.match_screen_in_large_map(self.ctx, screen, self.region_to_choose_1)
         if offset is None:
             log.error('匹配大地图失败')
+            # 可能缩放不对 强制缩到最小
+            self.ctx.pos_info.pos_lm_scale = 5
+            op = ScaleLargeMap(self.ctx, 0, is_main_region=True)
+            op.execute()
             large_map_utils.drag_in_large_map(self.ctx)
             return self.round_retry(wait=0.5)
         else:

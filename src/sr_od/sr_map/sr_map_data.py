@@ -10,7 +10,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import os_utils, str_utils, cv2_utils, cal_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.app.world_patrol import world_patrol_route_utils
+from sr_od.application.world_patrol import world_patrol_route_utils
 from sr_od.sr_map.large_map_info import LargeMapInfo
 from sr_od.sr_map.sr_map_def import Planet, Region, RegionSet, SpecialPoint
 
@@ -665,3 +665,4 @@ if __name__ == '__main__':
     print(len(_data.planet_list))
     print(len(_data.region_list))
     print(len(_data.sp_list))
+

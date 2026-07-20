@@ -25,7 +25,7 @@ class GuideChooseTab(SrOperation):
 
     @operation_node(name='选择', node_max_retry_times=5, is_start_node=True)
     def choose(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if not common_screen_state.in_secondary_ui(self.ctx, screen, '星际和平指南'):
             return self.round_retry(status='等待指南加载', wait=1)

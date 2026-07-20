@@ -12,7 +12,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cal_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.app.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
+from sr_od.application.world_patrol.world_patrol_enter_fight import WorldPatrolEnterFight
 from sr_od.config.game_config import RunModeEnum
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.move import cal_pos_utils, record_pos_utils
@@ -108,6 +108,7 @@ class MoveDirectly(SrOperation):
         if stuck is not None:  # 只有脱困失败的情况会返回 round_fail
             return stuck
 
+        # todo 这一句是否有必要
         screen = self.screenshot()
 
         if common_screen_state.is_normal_in_world(self.ctx, screen):

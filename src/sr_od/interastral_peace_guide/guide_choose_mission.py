@@ -30,7 +30,7 @@ class GuideChooseMission(SrOperation):
 
     @operation_node(name='等待画面加载', node_max_retry_times=5, is_start_node=True)
     def wait_screen(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         if common_screen_state.in_secondary_ui(self.ctx, screen, self.mission.cate.tab.cn):
             return self.round_success()
@@ -40,7 +40,7 @@ class GuideChooseMission(SrOperation):
     @node_from(from_name='等待画面加载')
     @operation_node(name='选择', node_max_retry_times=10)
     def choose(self) -> OperationRoundResult:
-        screen: MatLike = self.screenshot()
+        screen = self.last_screenshot
 
         tp_point = self.find_transport_btn(screen)
         if tp_point is None:
@@ -122,7 +122,12 @@ class GuideChooseMission(SrOperation):
                 log.error('匹配失败 进入')
                 return None
             log.info('培养目标 - 匹配进入按钮')
-            # 直接返回第一个进入按钮的位置
+            #  判断第一个 '进入' 是否在 '本周可领取奖励次数:0/3' 下面
+            no_times_idx = str_utils.find_best_match_by_difflib(gt('本周可领取奖励次数:0/3', 'game'), word_list, cutoff=1)
+            if no_times_idx is not None and mrl_list[tp_idx][0].center.y > mrl_list[no_times_idx][0].center.y:
+                mrl_list[tp_idx] = mrl_list[tp_idx][1:]
+
+            # 返回第一个进入按钮的位置
             tp_point = mrl_list[tp_idx][0].center
             return tp_point + area.left_top
 

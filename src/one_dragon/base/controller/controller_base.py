@@ -1,7 +1,6 @@
 import time
 
 from cv2.typing import MatLike
-from typing import List
 
 from one_dragon.base.geometry.point import Point
 
@@ -21,7 +20,7 @@ class ControllerBase:
         """
         基础控制器的定义
         """
-        self.screenshot_history: List[ScreenshotWithTime] = []
+        self.screenshot_history: list[ScreenshotWithTime] = []
         self.screenshot_alive_seconds: float = screenshot_alive_seconds  # 截图在内存的存活时间
         self.max_screenshot_cnt: int = max_screenshot_cnt  # 内存中最多保持的截图数量
 
@@ -32,6 +31,12 @@ class ControllerBase:
         """
         return False
 
+    def cleanup_after_app_shutdown(self) -> None:
+        """
+        清理资源
+        """
+        pass
+
     @property
     def is_game_window_ready(self) -> bool:
         """
@@ -40,12 +45,13 @@ class ControllerBase:
         """
         return False
 
-    def click(self, pos: Point = None, press_time: float = 0, pc_alt: bool = False) -> bool:
+    def click(self, pos: Point = None, press_time: float = 0, pc_alt: bool = False, gamepad_key: str | None = None) -> bool:
         """
         点击位置
         :param pos: 点击位置 (x,y) 默认分辨率下的游戏窗口里的坐标
         :param press_time: 大于0时长按若干秒
-        :param pc_alt: 只在PC端有用 使用ALT键进行点击
+        :param pc_alt: 只在PC端有用 使用ALT键进行点击（仅前台模式）
+        :param gamepad_key: 后台模式下用手柄按键替代点击的动作名
         :return: 不在窗口区域时不点击 返回False
         """
         pass
@@ -92,7 +98,7 @@ class ControllerBase:
         """
         return screen
 
-    def scroll(self, down: int, pos: Point = None):
+    def scroll(self, down: int, pos: Point | None = None):
         """
         向下滚动
         :param down: 负数时为相上滚动
@@ -101,7 +107,7 @@ class ControllerBase:
         """
         pass
 
-    def drag_to(self, end: Point, start: Point = None, duration: float = 0.5):
+    def drag_to(self, end: Point, start: Point | None = None, duration: float = 0.5):
         """
         按住拖拽
         :param end: 拖拽目的点

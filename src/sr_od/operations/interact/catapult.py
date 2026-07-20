@@ -54,7 +54,7 @@ class Catapult(SrOperation):
         super().__init__(ctx)
         self.lcs_percent: float = lcs_percent
 
-    @operation_node(name='画面识别', is_start_node=True)
+    @operation_node(name='画面识别', is_start_node=True, screenshot_before_round=False)
     def check_on_screen(self) -> OperationRoundResult:
         """
         在屏幕上找到交互内容进行交互
