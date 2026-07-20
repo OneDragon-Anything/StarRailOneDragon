@@ -228,6 +228,7 @@ class SrContext(OneDragonContext):
             self.controller.cleanup_after_app_shutdown()
 
         self.controller = SrPcController(
+            env_config=self.env_config,
             game_config=self.game_config,
             screenshot_method=self.env_config.screenshot_method,
             standard_width=self.project_config.screen_standard_width,
