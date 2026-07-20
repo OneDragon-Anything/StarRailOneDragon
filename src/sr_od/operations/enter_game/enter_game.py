@@ -36,10 +36,13 @@ class EnterGame(SrOperation):
             self.force_login = True
 
         self.already_login: bool = False  # 是否已经登录了
+        self._is_switch: bool = switch  # 是否是切号场景
+        self._saw_oversea_server_page: bool = False  # 是否见过国际服选服页面
         self.use_clipboard: bool = self.ctx.game_config.type_input_way == TypeInputWay.CLIPBOARD.value.value  # 使用剪切板输入
 
     @node_from(from_name='国服-输入账号密码')
     @node_from(from_name='登陆其他账号')
+    @node_from(from_name='选择服务器')
     @operation_node(name='画面识别', node_max_retry_times=60, is_start_node=True)
     def check_screen(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -90,6 +93,26 @@ class EnterGame(SrOperation):
                 result2 = self.round_by_find_and_click_area(screen, '进入游戏-选择账号', '按钮-登陆其他账号')
                 if result2.is_success:
                     return self.round_wait(result2.status, wait=1)
+
+                # 国际服切号
+                if self._is_oversea_server() and self._is_switch:
+                    # 已点过登出 现在点确认
+                    if self._saw_oversea_server_page:
+                        result3 = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '按钮-登出确认')
+                        if result3.is_success:
+                            self._saw_oversea_server_page = False
+                            return self.round_wait(result3.status, wait=2)
+
+                    result2 = self.round_by_find_area(screen, '进入游戏-国际服选服', '文本-开始游戏')
+                    if result2.is_success:
+                        self._saw_oversea_server_page = True
+                        result3 = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '按钮-登出')
+                        if result3.is_success:
+                            return self.round_wait(result3.status, wait=1)
+
+                result2 = self.round_by_find_area(screen, '进入游戏', '国服-账号输入区域')
+                if result2.is_success:
+                    return self.round_success('国服-账号密码')
         else:
             result = self.round_by_find_and_click_area(screen, '进入游戏', '文本-点击进入')
             if result.is_success:
@@ -103,6 +126,16 @@ class EnterGame(SrOperation):
         result = self.round_by_find_and_click_area(screen, '进入游戏', '国服-账号密码')
         if result.is_success:
             return self.round_success(result.status, wait=1)
+
+        if self._is_oversea_server():
+            result = self.round_by_find_area(screen, '进入游戏', '国服-账号输入区域')
+            if result.is_success:
+                return self.round_success('国服-账号密码')
+
+        if self._is_oversea_server():
+            result = self.round_by_find_area(screen, '进入游戏-国际服选服', '文本-开始游戏')
+            if result.is_success:
+                return self.round_success('国际服-选服')
 
         result = self.round_by_find_and_click_area(screen, '进入游戏', '文本-开始游戏')
         if result.is_success:
@@ -228,6 +261,47 @@ class EnterGame(SrOperation):
     def wait_game(self) -> OperationRoundResult:
         op = BackToNormalWorldPlus(self.ctx)
         return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='画面识别', status='国际服-选服')
+    @operation_node(name='选择服务器', node_max_retry_times=5)
+    def choose_server(self) -> OperationRoundResult:
+        """
+        国际服选服流程：点击选服按钮 → 选择服务器 → 确认 → 点击开始游戏
+        """
+        region = self.ctx.game_account_config.game_region
+
+        server_area_map: dict[str, str] = {
+            'asia': '选项-亚服',
+            'eu': '选项-欧服',
+            'us': '选项-美服',
+            'twhkmo': '选项-港澳台',
+        }
+        area_name = server_area_map.get(region)
+        if area_name is None:
+            return self.round_fail(f'未支持的服务器区域: {region}')
+        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-选服',
+                                          success_wait=1, retry_wait=1)
+        if not result.is_success:
+            return result
+        result = self.round_by_click_area('进入游戏-国际服选服', area_name,
+                                          success_wait=0.5, retry_wait=1)
+        if not result.is_success:
+            return result
+        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-确认',
+                                          success_wait=0.5, retry_wait=1)
+        if not result.is_success:
+            return result
+        screen = self.screenshot()
+        result = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '文本-开始游戏',
+                                                   success_wait=2, retry_wait=1)
+        if not result.is_success:
+            return result
+
+        return self.round_success()
+
+    def _is_oversea_server(self) -> bool:
+        """判断当前配置是否为国际服"""
+        return self.ctx.game_account_config.game_region not in ('cn', 'cn_b')
 
 
 def __debug():
