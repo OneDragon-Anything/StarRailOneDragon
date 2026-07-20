@@ -98,7 +98,7 @@ class EnterGame(SrOperation):
                 if self._is_oversea_server() and self._is_switch:
                     # 已点过登出 现在点确认
                     if self._saw_oversea_server_page:
-                        result3 = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '按钮-登出确认')
+                        result3 = self.round_by_click_area('进入游戏-国际服选服', '按钮-登出确认')
                         if result3.is_success:
                             self._saw_oversea_server_page = False
                             return self.round_wait(result3.status, wait=2)
@@ -106,7 +106,7 @@ class EnterGame(SrOperation):
                     result2 = self.round_by_find_area(screen, '进入游戏-国际服选服', '文本-开始游戏')
                     if result2.is_success:
                         self._saw_oversea_server_page = True
-                        result3 = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '按钮-登出')
+                        result3 = self.round_by_click_area('进入游戏-国际服选服', '按钮-登出')
                         if result3.is_success:
                             return self.round_wait(result3.status, wait=1)
 
@@ -131,8 +131,6 @@ class EnterGame(SrOperation):
             result = self.round_by_find_area(screen, '进入游戏', '国服-账号输入区域')
             if result.is_success:
                 return self.round_success('国服-账号密码')
-
-        if self._is_oversea_server():
             result = self.round_by_find_area(screen, '进入游戏-国际服选服', '文本-开始游戏')
             if result.is_success:
                 return self.round_success('国际服-选服')
@@ -279,21 +277,20 @@ class EnterGame(SrOperation):
         area_name = server_area_map.get(region)
         if area_name is None:
             return self.round_fail(f'未支持的服务器区域: {region}')
-        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-选服',
-                                          success_wait=1, retry_wait=1)
+        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-选服')
         if not result.is_success:
             return result
-        result = self.round_by_click_area('进入游戏-国际服选服', area_name,
-                                          success_wait=0.5, retry_wait=1)
+        time.sleep(1)
+        result = self.round_by_click_area('进入游戏-国际服选服', area_name)
         if not result.is_success:
             return result
-        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-确认',
-                                          success_wait=0.5, retry_wait=1)
+        time.sleep(0.5)
+        result = self.round_by_click_area('进入游戏-国际服选服', '按钮-确认')
         if not result.is_success:
             return result
+        time.sleep(0.5)
         screen = self.screenshot()
-        result = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '文本-开始游戏',
-                                                   success_wait=2, retry_wait=1)
+        result = self.round_by_find_and_click_area(screen, '进入游戏-国际服选服', '文本-开始游戏')
         if not result.is_success:
             return result
 
