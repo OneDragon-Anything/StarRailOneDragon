@@ -65,11 +65,6 @@ class SettingEnvInterface(VerticalScrollInterface):
         self.screenshot_method_opt.value_changed.connect(lambda: self.ctx.init_controller())
         basic_group.addSettingCard(self.screenshot_method_opt)
 
-        self.move_mouse_before_screenshot_opt = SwitchSettingCard(
-            icon=FluentIcon.CAMERA, title='截图前先挪开鼠标',content='部分场景下(如自动战斗时)适用'
-        )
-        self.move_mouse_before_screenshot_opt.init_with_adapter(self.ctx.env_config.get_prop_adapter('move_mouse_before_screenshot'))
-        basic_group.addSettingCard(self.move_mouse_before_screenshot_opt)
 
         self.debug_opt = SwitchSettingCard(
             icon=FluentIcon.SEARCH, title='调试模式', content='正常无需开启'
