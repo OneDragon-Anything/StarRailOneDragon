@@ -4,13 +4,13 @@
 
 ## 工具
 
-21 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
+27 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
 
 | MCP tool | 委托 | 返回 |
 |---|---|---|
 | `check_game_window` | `backend.check_window()` | `WindowStatus`（结构化 JSON；backend 抛错时返 `{'error': ...}`） |
 | `capture_game_screen` | `backend.capture()` | 截图绝对路径（落盘 `.debug/sr_od_mcp/screenshot/`） |
-| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`） |
+| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示） |
 | `upsert_screen_area(screen_name, area_name, pc_rect, ...)` | `backend.upsert_screen_area()` | `{success, action(inserted/updated), area_count, error}`（写 yml + reload） |
 | `delete_screen_area(screen_name, area_name)` | `backend.delete_screen_area()` | `{success, action(deleted), area_count, error}`（写 yml + reload） |
 | `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：结果文本；`block=False`：已启动 JSON；并发拒绝时返错误 JSON |
@@ -22,8 +22,14 @@
 | `run_one_dragon(block=False)` | `backend.run_one_dragon('mcp')` | 默认立刻返回启动状态；`block=True` 等待一条龙结束 |
 | `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项 |
 | `list_operations` | `operation_registry.scan_operations(ctx)` | 可运行自定义 op 列表（`op_id` + 参数 schema，纯反射不实例化） |
-| `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + 整体 `debuggable`） |
-| `run_operation(op_id, args=None, block=False)` | `operation_registry` 校验 + `run_slot._start`（op 路径） | 默认立刻返回；`block=True` 等结束；非 Operation / 缺参 / 复杂数据类 / 并发拒绝返错误 JSON |
+| `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + `coercible` + 整体 `debuggable`） |
+| `run_operation(op_id, args=None, block=False)` | `operation_registry` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回；`block=True` 等结束；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返错误 JSON。`@dataclass`+`from_dict` 参数可从 dict 传入 |
+| `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{ok, app_id, data|key,value}`（读配置字段/全 data；只读） |
+| `set_config(app_id, key, value)` | `config_router` 路由 → 写穿 ctx + 校验只读 | `{ok, app_id, key, value}`（写简单/enum 字段；只读字段拒绝） |
+| `add_config_item(app_id, list_field, item_dict)` | `config_router` 路由 → `item_from_dict` + 校验 + add | `{ok, app_id, list_field, id}`（增改列表项；写入前校验） |
+| `delete_config_item(app_id, list_field, item_id)` | `config_router` 路由 → delete | `{ok, app_id, list_field, id}`（删列表项；可逆性低） |
+| `describe_config(app_id, category=None)` | `config_router` 路由 → schema 组装 | `{ok, set_fields, ro_fields, list_fields, ...}`（结构化 schema + add 示例；只读） |
+| `list_app_configs()` | `config_router.all_entries()` | `{ok, configs:[{app_id, description, supported_ops, item_kind, id_kind}]}`（可改配置目录；只读） |
 | `get_run_status` | `backend.query_status()` | `RunStatusResult`（运行中返当前节点/重试；终态返结果/失败定位） |
 | `stop_run` | `backend.stop()` | `{"stopped": bool, ...}`（仅表信号已发出，过渡期 `get_run_status` 仍显示 running） |
 | `close_game` | `backend.close_game()` | 文本（`str`，已发送关闭信号；controller 吞异常，用 `check_game_window` 验证） |
@@ -36,8 +42,10 @@
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
 - `analyze_screen(save_image=True)`（实时模式）把已截的内存图顺手存盘 + 回传 `screenshot_path`，供调用方喂 vision double-check；默认 `false` 不落盘，离线模式忽略。
+- `analyze_screen` 成功时返回 `vision_hint`：提醒本结果仅含 OCR + 模板匹配的部分识别，不等同完整视觉理解，需要全面判断画面时配合视觉工具 / 多模态再看（能力边界提示，[design-principles.md](design-principles.md) P14；防智能体把部分识别当画面全貌）。失败时为 `null`。
 - 所有运行（`open_game` / 一条龙 / 独立应用 / 自定义 op）经**同一个 `RunSlot`** 派发：op 路径（`open_game` / `run_operation`）槽自管 `start_running/execute/stop_running`，app 路径（`run_one_dragon` / `run_standalone_app`）委托 `run_application`（复用 GUI/CLI 共享入口）。`block=True` 用 `asyncio.wrap_future(future)` 阻塞 await 取结果，`block=False` 立刻返回已启动状态，后续用 `get_run_status` 查进度。
-- `run_operation` 是**通用 operation 运行入口**（不框死为调试）：`op_id` 格式 `<dotted module path>.<ClassName>`（可从 `list_operations` 获取）；`args` 传构造参数，以 `cls(ctx, **args)` 烤进闭包——仅限 JSON 可序列化标量/列表/字典，复杂数据类参数（`ChargePlanItem` 等）拒绝并提示走 application；先用 `describe_operation` 看参数 schema。
+- `run_operation` 是**通用 operation 运行入口**（不框死为调试）：`op_id` 格式 `<dotted module path>.<ClassName>`（可从 `list_operations` 获取）；`args` 传构造参数,以 `cls(ctx, **args)` 烤进闭包——JSON 标量/列表/字典直接传;`@dataclass`+`from_dict` 参数传 dict,实例化前用 `coerce_dataclass_params` 自动反序列化;其余复杂数据类拒绝(提示走 application);先用 `describe_operation` 看参数 schema(`coercible=True` 的可传 dict)。SR 当前业务 op 暂无 `@dataclass`+`from_dict` 参数,该能力前置就绪。
+- 配置修改工具（`get/set/add/delete_config_item` + `describe_config` + `list_app_configs`）按 `app_id` 路由到各 config 领域方法（`config_router.py`），写穿 ctx 缓存实例、写入前校验；SR 当前仅 `standalone_app` / `_group` 两条通用路由，后续接入体力计划等 `@dataclass`+`from_dict` 配置时在 `config_router._build_routes` 补 `RouterEntry`。
 - 配置刷新：app 路径在 `run_application` 前（槽线程内、`_start` 已赢锁后）刷新当前进程的 YAML 配置缓存，对齐 GUI 已保存设置；`list_applications` 与 `list_operations` 是只读路径，不刷新。
 - `get_run_status` / `stop_run` 是统一入口：无论最近一次运行来自 op 路径还是 app 路径，都通过同一组工具查询和停止。
 - 单进程内已有运行时会返回并发拒绝，避免同一个 backend 内重复操作游戏资源。
@@ -45,6 +53,22 @@
 - `close_game` / `click_game` / `key_tap` / `drag` / `input_text` 是独立同步操作，不走运行槽；`click_game` / `drag` 使用 1080p 游戏空间坐标。底层 click / key_tap / drag **无内置等待**，连续操作或 `capture` 前建议 sleep 等动画（见各 tool 描述的 ⚠️ 提醒）。
 - `list_mcp_usage_guides` / `get_mcp_usage_guide` 把 prompt 模板以普通 tool 暴露，方便不会主动消费 MCP prompts 的客户端发现。
 - 理念：MCP 只做感知 / 操作，编码 / 调试交给 AI（[design-principles.md](design-principles.md)）。
+
+## Instructions
+
+`FastMCP(name, instructions=...)` 传 server 级 `instructions`，握手时返回；客户端**通常注入** system prompt（协议 Optional/MAY，Claude Code 会注入；非协议强制）。放两边共通的操作哲学（保持精炼）：工具分类（观察/操作）、操作三件套（`analyze_screen` → 操作 → 等 ~1s 后验）、实机约束（`pc_alt`）、出错查 log、安全边界。
+
+## 引导内容三通道
+
+引导内容分三条通道，分工互补（可见性均为客户端行为，非协议强制——spec 用 Optional/MAY）：
+
+| 通道 | 智能体可见性 | 内容 |
+|---|---|---|
+| `instructions` | 客户端**通常注入** system prompt（协议 Optional/MAY；Claude Code 会） | 共通操作哲学（上节） |
+| `prompts`（`@mcp.prompt()`） | 由客户端决定；Claude Code 是 slash 命令，智能体平时不自动看到 | 按场景剧本（见下） |
+| help tool（`list_mcp_usage_guides` / `get_mcp_usage_guide`） | 通常可见（客户端一般暴露 tools） | 同 prompts 模板，给智能体 `--help` 入口 |
+
+`prompts` 协议设计给人手动选，智能体平时不自动看到 → 同份模板再做成 tool 镜像补；但 tool 要智能体「想到去调」，故核心操作哲学放 `instructions`（通常注入，最贴近常驻）。guide item 带 `mode`（`user`/`dev`）：user 项（跑龙/独立应用）也有对应 prompt，dev 项（`sr_dev_validate_op`：op 实操验证 / 战斗 op 边界）只走 tool。模式差异不进 instructions（server 级全局、不支持运行时切；且两套会膨胀违背精炼）。
 
 ## Prompts
 

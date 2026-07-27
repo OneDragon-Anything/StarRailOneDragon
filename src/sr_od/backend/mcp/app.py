@@ -26,7 +26,19 @@ from pydantic import Field
 
 from one_dragon.utils.log_utils import log
 from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
-from sr_od.backend.mcp.prompts import register_prompt_tools, register_prompts
+from sr_od.backend.mcp.config_app import (
+    make_add_config_item,
+    make_delete_config_item,
+    make_describe_config,
+    make_get_config,
+    make_list_app_configs,
+    make_set_config,
+)
+from sr_od.backend.mcp.prompts import (
+    register_prompt_tools,
+    register_prompts,
+    render_instructions,
+)
 from sr_od.backend.mcp.service_app import (
     make_describe_operation,
     make_list_applications,
@@ -124,7 +136,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     Returns:
         注册好工具的 ``FastMCP`` 实例。
     """
-    mcp = FastMCP(name)
+    mcp = FastMCP(name, instructions=render_instructions())
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="检查游戏窗口"))
     def check_game_window() -> WindowStatus | dict:
@@ -177,9 +189,12 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
         Returns:
             ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述、
-            screenshot_path)。
+            screenshot_path、vision_hint)。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
             需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
+
+            ``vision_hint``(success 时):本结果仅含 OCR + 模板匹配的部分识别,不等同完整
+            视觉理解;需要全面判断画面时配合视觉工具 / 多模态再看(能力边界提醒,非错误)。
         """
         try:
             return backend.analyze(screenshot, save_image)
@@ -346,6 +361,13 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出可运行 operation"))(make_list_operations(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查看 operation 参数"))(make_describe_operation(backend))
     mcp.tool(annotations=ToolAnnotations(title="运行 operation"))(make_run_operation(backend))
+    # 配置修改工具(通用入口,按 app_id 路由到各 config 领域方法)
+    mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取配置"))(make_get_config(backend))
+    mcp.tool(annotations=ToolAnnotations(title="修改配置字段"))(make_set_config(backend))
+    mcp.tool(annotations=ToolAnnotations(title="增改配置列表项"))(make_add_config_item(backend))
+    mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="删除配置列表项"))(make_delete_config_item(backend))
+    mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="描述配置结构"))(make_describe_config(backend))
+    mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出可改配置"))(make_list_app_configs(backend))
     register_prompts(mcp)
     register_prompt_tools(mcp)
 
