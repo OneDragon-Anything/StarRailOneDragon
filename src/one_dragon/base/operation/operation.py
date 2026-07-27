@@ -1465,6 +1465,16 @@ class Operation(OperationBase):
             crop_first=crop_first,
         )
         self.ctx.screen_loader.update_current_screen_name(current_screen_name)
+        # [临时采集] is_debug 时给迷失之地待建档画面存档(ASCII key 防 mojibake,采完删)
+        if self.ctx.env_config.is_debug:
+            _lv_cap_key = {
+                '迷失之地-入口': 'entry', '迷失之地-入口-常规': 'entry_std',
+                '迷失之地-战线肃清': 'purge',
+                '迷失之地-矩阵行动': 'matrix', '迷失之地-矩阵行动-编队选择': 'matrix_team',
+                '迷失之地-战斗失败': 'battle_fail',
+            }.get(current_screen_name)
+            if _lv_cap_key:
+                self.save_screenshot(prefix=f'lv_cap_{_lv_cap_key}')
         return current_screen_name
 
     def check_screen_with_can_go(self, screen: np.ndarray, screen_name: str) -> tuple[str, bool]:
