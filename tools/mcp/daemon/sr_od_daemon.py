@@ -98,10 +98,12 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
         # 输出重定向到日志文件:长驻 server 若用 PIPE 且不持续消费,buffer 满会阻塞子进程
         log_path = PROJECT_ROOT / '.debug' / 'sr_od_mcp' / 'main_server.log'
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            'uv', 'run', '--env-file', '.env',
-            'python', '-m', 'sr_od.backend.entry.server', '--port', str(port),
-        ]
+        cmd = ['uv', 'run']
+        # .env 存在才追加 --env-file（对齐 GUI 的 mcp_service_interface._server_command，
+        # 避免新人未建 .env 时 uv run 报 "No such file or directory"）
+        if (PROJECT_ROOT / '.env').is_file():
+            cmd.extend(['--env-file', '.env'])
+        cmd.extend(['python', '-m', 'sr_od.backend.entry.server', '--port', str(port)])
         # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
         with open(log_path, 'w', encoding='utf-8') as log_file:
             process = subprocess.Popen(

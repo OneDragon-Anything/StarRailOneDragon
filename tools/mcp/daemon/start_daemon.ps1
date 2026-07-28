@@ -37,7 +37,13 @@ Set-Location $ProjectRoot
 
 # 执行 daemon 脚本
 try {
-    uv run --env-file .env python $DaemonScript --host $HostName --port $Port
+    # .env 存在才追加 --env-file（对齐 sr_od_daemon.py 与 GUI 路径，避免未建 .env 时报错）
+    $uvArgs = @("run")
+    if (Test-Path ".env") {
+        $uvArgs += "--env-file", ".env"
+    }
+    $uvArgs += "python", $DaemonScript, "--host", $HostName, "--port", $Port
+    uv @uvArgs
 } catch {
     Write-Host "[ERROR] Daemon 启动失败: $_" -ForegroundColor Red
     exit 1
