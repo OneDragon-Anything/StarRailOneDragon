@@ -12,6 +12,7 @@ description: 当用户要把已开的 PR 推到「完善可合并」、处理 PR
 1. **CI checks**:required 全 pass;**条件触发类 check 的 `skipping` 不算失败**(如打包/签名/发布类 check,PR 上不触发属正常)—— 只看 required 是否绿。
 2. **自动化 review 完成且无新建议**:CodeRabbit 这轮 review 跑完。⚠️ **增量 review 无新建议时,它不建 check run、也不留 review 记录** —— 完成态靠它回复的 issue comment(对 `@coderabbitai review` / 自动 review 的 ack,body `<details>` 里 `✅ Action performed` → `Review finished`)确认,结合 0 unresolved。别因 `reviews` 没新记录 / 没 check run 就以为没 review(见流程 1)。
 3. **讨论区无 unresolved thread**:每条都处理过(每条最终都要 resolve,不留 —— 见流程 2)。
+4. **关联 PR(跨仓)也都 done**:跨仓同分支的关联 PR(如测试仓 PR)也按本 skill 收尾全清;**都 done 才合**(见流程 6)。
 
 ## 流程
 
@@ -29,6 +30,8 @@ description: 当用户要把已开的 PR 推到「完善可合并」、处理 PR
   - 全量重审整个 PR:`@coderabbitai full review`。
   若**未暂停**却没自动触发(罕见,如 check run 未建、或 `gh pr checks` 里那条 `Review completed` 是**旧 commit** 的),才走手动 `review` 兜底。**确保有 review**:done criteria 要求 review 完成,别空等。
 - **review 完成了吗?**(增量无建议时 API 无痕):查 CodeRabbit 最近的 ack issue comment —— `gh pr view <PR> --json comments --jq '.comments | map(select(.author.login=="coderabbitai")) | last | .body'`,body 含 `Review finished`(在 `✅ Action performed` 的 `<details>` 里)即这轮完成。⚠️ 若 body 是 `Review triggered` —— review 还在进行,**别当完成**:CodeRabbit 完成后会**编辑同一条** comment 为 `Review finished`(不另发新 comment),等几分钟再查。
+- ⚠️ **outside-diff comment(GitHub 平台限制)**:GitHub 不允许在 diff 外的行 post inline review comment,CodeRabbit 把这类 comment 放在 **review body 的「Outside diff range comments」折叠 `<details>`** 里 —— **不在 reviewThreads、不计入 unresolved**,易漏。摸现状时也要展开 review body 折叠区看,逐条处理(走流程 2,但它无法 reply 到行,用 issue comment 回复)。
+- ⚠️ **rate limit(per-developer 配额)**:push 不自动 review 且 issue comment 含「Review limit reached」+「Next review available in <时长>」—— 配额达,这轮**不 review**(只 post warning)。查:`gh pr view <PR> --json comments --jq '.comments[]|select(.body|test("Review limit reached"))'`。等指定时长后 `@coderabbitai review` 重试;频繁触发考虑开 usage-based 或暂停增量 auto-review。**和 auto-pause 区别**:rate limit 是**组织级 per-developer 配额**(等时间恢复);auto-pause 是**频繁 commit 暂停**(`resume` 恢复)。
 
 > ⏰ **时区**:GitHub API 返回的时间是 UTC(`Z` 后缀),显示给用户前转本地(维护者 UTC+8 → +8 小时,如 `03:46Z` → `11:46`),别直接甩 UTC 串让人困惑。
 
@@ -55,6 +58,14 @@ resolve 前确保 CodeRabbit 对这条「说完话了」,不抢它的判断、�
 
 ### 5. 合并前
 `mergeable` 要 `MERGEABLE`、非 `DIRTY`;dirty → rebase 到目标分支。是否 merge / 合并方式不在本 skill 范围(见 superpowers:finishing-a-development-branch)。
+
+**合并后清理(提示,不主动)**:PR 合并后,可**提示**用户删除该 PR 的本地 + remote 分支(`git branch -d <branch>` + `git push origin --delete <branch>`)。只提示,**不主动执行**——分支可能还在用(回看 / cherry-pick)、或用户想保留,由用户确认时机。`gh pr merge --delete-branch` 会同时删 remote + 本地,但只删当前 PR 的;之前遗留的分支要手动清。
+
+### 6. 关联 PR(跨仓)协同
+本项目跨仓:主仓 PR 常带配套**测试仓 PR**(同分支名,主仓描述带测试仓 PR 链接)。
+- **一起收尾**:关联 PR 都按本 skill 走(CI/review/unresolved 全清),不只当前 PR。
+- **合并顺序:测试仓先 → 主仓后**。主仓合到 main 后,main 的 `test-check` clone 测试仓 **main**;测试仓先合确保测试改动进测试仓 main,主仓 main CI 才稳(主仓先合 → 主仓 main CI clone 测试仓 main 无新改动 → 测试缺失/失败)。
+- **都 done 才合**:关联 PR 全 green + review pass + 无 unresolved 后,按顺序合(测试仓 → 主仓)。
 
 ## 边界(不做什么)
 - 单条 review 怎么 verify/回复/push back → superpowers:receiving-code-review

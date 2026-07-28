@@ -44,6 +44,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ### 2. 功能开发优先路径
 
+- **涉及游戏流程的改动先理解再动手**：新功能 / debug / 修 bug 碰到自动化与游戏交互、游戏机制时，先读相关代码 + `screen_info` 弄清「bot 当前走到哪个画面、按什么玩法逻辑走」，知识缺失或过期按 `sr-od-dev-screen-onboarding` 等 skill 补档，别凭猜改（凭猜 → 只覆盖一种情况、漏另一种 → 回归）。纯代码改动（重构 / 性能 / UI / 基建）不适用。
 - 新功能优先评估是否应做成 `SrApplication`，放在 `src/sr_od/application/`，并通过 `ApplicationFactory` 接入（参考现有 `world_patrol`、`sim_universe`、`trailblaze_power` 等 `XxxAppFactory`）。
 - 不要直接把新流程硬塞进主线逻辑；先复用现有 Application、Operation、配置体系与界面组件。
 - 新的设置界面优先沿用现有 setting card、`YamlConfigAdapter`、`AdapterInitMixin` 等模式。
@@ -69,6 +70,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 文档与测试要求
 
+- 写文档 / skill / 注释 / 入口文件用直白表述，避免自造黑话或项目内部缩写（行业通用术语可用），首次出现的项目术语给定义 + 例子。
 - 修改代码后，同步更新对应的 `docs/develop/` 文档与 `sr-od-test/` 测试。
 - 提交前至少验证自己改动直接影响的部分（`ruff check` + 相关测试）；若无法本地完成，要明确说明缺失前提。
 - 复杂功能、架构调整或新自动化流程，先补设计/说明文档，再继续实现。

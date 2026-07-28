@@ -103,3 +103,4 @@ OCR / YOLO 等模型文件走**运行时资源下载**，不进 git：
    实战曾因 pattern 只写 `zzz_od|ZContext|...` 而漏掉 `zzz_context`（模块名）和 `zzz/backend`（文档路径）——前者靠 pyright 才抓到，后者靠通读才抓到。MCP backend 同步轮又补出 `Zenless`（英文字面量）、`ZPc`（Z 前缀子类）、`zzz_backend`（小写前缀）、`:2300`（端口片段）四类——皆靠通读 / final review 才抓到，sed 集 grep 都没覆盖。
 2. **pyright 是最终兜底**：`uv run pyright <目标目录>`，import 解析失败（如 `sr_od.context.zzz_context`）会报 warning，能抓到 sed 遗漏的模块名。
 3. **文档要单独通读**：pyright 不查 `.md`，文档里的路径/文案残留只能靠 grep（pattern 含 `zzz/`）+ 人工通读。
+4. **对比 SR/ZZZ 同名文件加 `--strip-trailing-cr`**：Windows 下两边行尾常不一致（SR 多 CRLF、ZZZ 多 LF），裸 `diff` 会把整文件报成差异（假阳性），淹没真实的 token 差异。始终用 `diff --strip-trailing-cr <SR文件> <ZZZ文件>`，或先统一行尾再 diff。实战：曾因裸 `diff` 误判 13 个公共框架文件「完全不同」，加 `--strip-trailing-cr` 后 10 个字节级一致、仅 3 个有真实 token 差异。
