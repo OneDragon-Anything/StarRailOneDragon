@@ -37,6 +37,7 @@ assets/ui/dynamic_background.webm
 
 # 执行文件
 *.exe
+*.exe.bak
 
 # 用户运行时产生的文件
 .temp
