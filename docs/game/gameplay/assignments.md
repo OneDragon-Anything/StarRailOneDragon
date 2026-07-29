@@ -35,7 +35,11 @@ involves_screens: [菜单]
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:委托弹窗态(任务列表 / 派遣中 / 领取)实拍归档 + vision(委托图标 / 角色派遣槽 / 倒计时)—— 委托画面在 phone_menu 子态,待触发(有可领奖励时)实拍。
+- **已建档 fixture + 验证(2026-07-29)**:`screens/委托/委托派遣中.webp`(4 槽派遣中)。
+  验证:实跑 `AssignmentsApp` **success**(委托 area 有效,**版本未大改影响**,无需修复)。
+  测试 `sr-od-test/test/sr_od/application/assignments/test_assignments_app.py`(委托派遣中 →
+  `_check_status` → STATUS_ASSIGNING)。**「委托可领 + `_claim`」分支 fixture 待条件**
+  (委托有可领奖励时采;当前领完,派遣中)。
 - **领取后持续**:委托领取后不重开(持续运作),bot 领奖励即可(不需重新派遣)。
 - **4 槽位**:委托 4 槽位,bot 检测各槽状态(派遣中 / 可领)逐个领 —— 逻辑待 `_check_status` 细化。
 - **委托 app 简单**:AssignmentsApp 仅领奖励流程(不派遣新委托,假设用户已配),派遣配置待确认是否 bot 覆盖。

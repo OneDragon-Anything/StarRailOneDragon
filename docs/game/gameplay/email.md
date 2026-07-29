@@ -31,7 +31,12 @@ involves_screens: [菜单]
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:邮件列表 + 全部领取态实拍归档 + vision(邮件图标 / 附件 / 红点)—— 有未领邮件时实拍。
+- **已建档 fixture(2026-07-29)**:`screens/邮件/`(邮件列表-有可领 / 邮件列表-无可领 /
+  获得物品弹窗)+ `screens/菜单/`(菜单-邮件红点 / 菜单-无邮件红点)。
+  测试 `sr-od-test/test/sr_od/application/email/test_email_app.py`(节点级 4 场景:
+  有/无红点 `_click_email` + 有/无可领 `_claim`)。
 - **bot 仅领取**:`EmailApp` 一键全部领取(不删邮件 / 不处理特定邮件)。
-- **邮件红点**:phone_menu 邮件图标有未领红点提示(OCR/template 可检测,待建模)。
-- **与无名勋礼 / 委托 并列**:都是 phone_menu 子态的领奖励 app(邮件 / 委托 / 无名勋礼),bot 模式相似(进子态 → 一键领取)。
+- **邮件红点**:phone_menu 邮件图标 EMAILS template(右侧侧栏 `MENU_ITEMS_AT_RIGHT_PART`,
+  center ~1867,272)+ `is_item_with_alert` 检测红点(alert)。
+- **与无名勋礼 / 委托 并列**:都是 phone_menu 子态的领奖励 app(邮件 / 委托 / 无名勋礼),
+  bot 模式相似(进子态 → 一键领取)。
