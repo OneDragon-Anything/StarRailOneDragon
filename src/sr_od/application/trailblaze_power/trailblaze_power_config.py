@@ -269,6 +269,8 @@ class TrailblazePowerConfig(YamlConfig):
         changed = False
         while True:
             plan_list: List[TrailblazePowerPlanItem] = self.plan_list
+            if not plan_list:  # 空计划:无东西可重置,且 any_incomplete 永远 False 会死循环
+                break
             any_incomplete = False
             for item in plan_list:
                 if item.run_times < item.plan_times:
