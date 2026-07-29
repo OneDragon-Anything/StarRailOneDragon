@@ -84,7 +84,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 自维护指南
 
-修改 **AI 入口文件**——本文件（`AGENTS.md`）、`.claude/CLAUDE.md` 等——时，必须先按 [entry_files.md](docs/develop/harness/entry_files.md) 的规范来：纯指令不掺杂元信息、只放 always-on 该留的（「删了会出错吗」逐条自检）、单一信息源（`AGENTS.md` 是源，工具入口 `@import` 引入）、共享文档改动先经用户确认。
+修改 **AI 入口文件** `AGENTS.md`（团队共享 / 跨工具单一源，提交）时，必须先按 [entry_files.md](docs/develop/harness/entry_files.md) 的规范来：纯指令不掺杂元信息、只放 always-on 该留的（「删了会出错吗」逐条自检）、单一信息源（`AGENTS.md` 是源，工具入口 `@import` 引入）、共享文档改动先经用户确认。`.claude/CLAUDE.md` 是**个人本地**（`.claude/` 整个不入库，见 entry_files.md），个人随意改。
 
 ## 深入阅读
 

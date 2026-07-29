@@ -29,7 +29,7 @@
 
 | 档 | 载体 | 何时加载 | 可靠性 | 放什么 |
 |---|---|---|---|---|
-| ① always-on | `CLAUDE.md` / `AGENTS.md` | 每次会话全量 | advisory(非强制) | §1 表里 ✅ 的:全局硬约束、命令、架构、gotcha |
+| ① always-on | `AGENTS.md`(团队共享,提交)+ 各工具 `CLAUDE.md`(个人本地,不入库,如 `.claude/CLAUDE.md`) | 每次会话全量 | advisory(非强制) | §1 表里 ✅ 的:全局硬约束、命令、架构、gotcha |
 | ② on-demand 机制触发 | **path-scoped rules**(`.claude/rules/*.md` + `paths` frontmatter) | Claude 读匹配文件时**自动**加载 | 机制级,不靠自觉 | 只关系某类文件的规范(测试规范、API 约定) |
 | ③ on-demand 流程 | **skills**(`.claude/skills/`) | 模型判断相关时 / `/skill` 调用 | advisory | 多步可复用流程(发版、修 issue) |
 | ④ 确定性强制 | **hooks**(生命周期跑脚本)+ **permissions**(allow/deny) | 生命周期事件,**不经模型** | 最高,保证发生 | 必须每次发生的(lint、commit trailer、禁改某目录) |
