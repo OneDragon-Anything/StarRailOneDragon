@@ -35,6 +35,7 @@ def render_instructions() -> str:
 
 约束:
 - 输入注入到活跃游戏窗口,需游戏在线(先 check_game_window);大世界等锁光标画面,click_game 传 pc_alt=True。
+- 配置生效:server 启动时把配置(当前实例 / 账号 / 各 yml)读进内存缓存,运行时不再重读文件。故 GUI 改配置、手改 yml、改 op 代码,server 都不自动跟随 —— 经 daemon 重启 server(`restart_sr_od_mcp_server`)即生效(客户端**无需**重连)。只有改 MCP 自身元信息(instructions / tool 描述 / 增减 method)才需客户端 /mcp 重连获取新元信息。遇到"改了配置 / 代码但行为没变",先想这条。
 - 出错别猜:画面不对 / op 失败 → 先 analyze_screen 看现状 + 查 log(.debug/sr_od_mcp/main_server.log),再决定。
 - 安全:不主动改用户配置(yml);消耗周限的玩法先向用户确认再跑。
 
