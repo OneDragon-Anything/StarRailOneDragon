@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   sync:
-    if: ${{ github.repository == 'OneDragon-Anything/StarRail-OneDragon' }}
+    if: ${{ github.repository == 'OneDragon-Anything/StarRailOneDragon' }}
     runs-on: ubuntu-latest
     steps:
       - name: Push to CNB
