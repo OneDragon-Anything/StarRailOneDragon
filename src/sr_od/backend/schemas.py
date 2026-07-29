@@ -52,7 +52,9 @@ class WindowStatus:
     """游戏窗口状态。
 
     Attributes:
-        win_title: 窗口标题；获取不到时为 None。
+        win_title: controller 缓存的游戏窗口标题(预期标题,从配置来);游戏未启动时
+            仍可能为该预期常量、非 None。判窗口是否存在/游戏是否在跑请看 is_win_valid,
+            勿据 win_title 是否非空判断。
         is_win_valid: 窗口句柄是否有效。
         is_win_active: 窗口当前是否处于激活状态。
         is_win_scale: 窗口缩放比例是否符合基准（1.0）。
