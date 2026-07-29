@@ -24,9 +24,9 @@ involves_screens: [菜单]
 
 `NamelessHonorApp` 领奖励流程:
 - `open_menu`(开菜单 → 点「无名勋礼」)→ `_click_honor`(进无名勋礼)。
-- `_click_tab_1` / `_click_tab_2`(切 tab:tab1=任务、tab2=奖励,`phone_menu_utils.get_nameless_honor_tab_pos`)。
-- `_claim_task`(任务 tab 一键领取,`无名勋礼-任务-一键领取` area)。
-- `_claim_reward`(奖励 tab 一键领取,`无名勋礼-奖励-一键领取` area)→ `_check_screen_after_reward`。
+- `_click_tab_2`(切到**任务** tab)→ `_claim_task`(任务 tab 一键领取,`无名勋礼-任务-一键领取` area)。
+- `_click_tab_1`(切到**奖励** tab)→ `_claim_reward`(奖励 tab 一键领取,`无名勋礼-奖励-一键领取` area)→ `_check_screen_after_reward`。
+- tab 切换用 `phone_menu_utils.get_nameless_honor_tab_pos`(`nameless_honor_1`=奖励、`nameless_honor_2`=任务 模板)。
 - `back_at_first` / `back_at_last`:首尾返回。
 
 ## 画面(phone_menu 无名勋礼子态)
@@ -37,13 +37,16 @@ involves_screens: [菜单]
 - `无名勋礼-奖励-一键领取`(奖励 tab 一键领取)。
 - `无名勋礼-奖励-取消`(领取弹窗取消)。
 - `无名勋礼-点击空白处关闭`(关闭弹窗)。
-- tab1/2 切换(`get_nameless_honor_tab_pos`,模板匹配 tab)。
+- 3 个 tab(顶部横向,`NAMELESS_HONOR_TAB_PART=Rect(810,30,1110,100)`):**奖励**(左,圆心~863)/**任务**(中,~959)/**星海珍藏**(右,~1055),等距 ~96px、y~64。选中态 tab 背景为白色圆形(r~30,可用 CV `HoughCircles` 定位)。
+- tab 切换 `get_nameless_honor_tab_pos`(`nameless_honor_1`=奖励、`nameless_honor_2`=任务、`nameless_honor_3`=星海珍藏 模板,未选中态图标 + Otsu 形状 mask)。
 
 ## 备注 / 待查
 
 - **待实拍画面 + vision**:无名勋礼任务 / 奖励 tab + 一键领取态实拍归档 + vision(勋礼等级 / 任务列表 / 奖励图标 / tab)—— 有可领时实拍。
 - **bot 仅领奖励**:`NamelessHonorApp` 一键领取任务 + 奖励(不完成任务本身,任务靠日常玩法推进)。
-- **tab1 任务 / tab2 奖励**:tab 顺序待实拍确认(`get_nameless_honor_tab_pos(ctx, 1/2)`)。
+- **tab1=奖励、tab2=任务**:`nameless_honor_1` 模板=奖励 tab、`nameless_honor_2`=任务 tab(已实拍确认)。代码 `_click_tab_2` 切任务、`_click_tab_1` 切奖励。
+- **星海珍藏(tab3)**:版本更新后新增的第三个 tab(满级光锥自选奖励),`nameless_honor_3` 模板已加(备用);`NamelessHonorApp` 流程只切奖励/任务,暂不涉及星海珍藏。
+- **tab 模板**:`nameless_honor_1/2` 为**未选中态**图标 + Otsu 形状 mask(match 未选中 tab 去点击切换);选中态 tab 有白色圆形背景、match 不到未选中模板属正常。`NAMELESS_HONOR_TAB_PART` 已覆盖 3 tab,无需改。
 - **付费档判断**:bot 领免费奖励(付费档需用户购买,bot 不处理付费)。
 
 ## 参考来源
