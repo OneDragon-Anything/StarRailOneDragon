@@ -3,30 +3,36 @@ screen_name: 进入游戏
 screen_id: enter_game
 appears_in: [登录流程]
 last_updated: 2026-07-29
-source_image: 待实拍（open_game 自动登录到大世界,登录画面一闪未截；归档 screens/进入游戏/*.webp）
+source_image: screens/进入游戏/点击进入.webp（主态）;各子态见「识别快照」
 pc_alt: false
 multi_screens: [enter_game, enter_game_choose_account, enter_game_logout_dialog]
 ---
 
 # 进入游戏(enter_game)
 
-游戏启动登录界面。账号密码登录 / 选账号 / 开始游戏 / 登出。**不锁光标**(`pc_alt=false`)。3 个 screen 子态。
+游戏启动登录界面。账密登录 / 手机号验证码 / 选账号 / 开始游戏 / 登出 / 退出。**不锁光标**(`pc_alt=false`)。
+3 个 screen:`enter_game`(主,含多个登录子态)+ `enter_game_choose_account`(选账号)+ `enter_game_logout_dialog`(退出弹窗)。
 
 ## 何时出现 + 状态流转
 
-- **入口**:启动游戏(`open_game`)→ 进入游戏画面(账号输入态)。
+- **入口**:启动游戏(`open_game`)→ 登录界面。
 - **流转**(动作 → 下一态):
-  - 输入账号 + 密码 + 同意 → 「进入游戏」/「开始游戏」→ `enter_game_choose_account`(选账号)→ 选账号 → 加载 → 大世界。
-  - 已登录(记住)→「点击进入」/「开始游戏」→ 选账号 → 大世界。
-  - 「登出」→ `enter_game_logout_dialog`(退出登陆弹窗)→ 退出 / 退出并保留记录 → 回账号输入态。
+  - 已登录(保留记录自动):`点击进入` → 大世界。
+  - 账密登录:`手机号登录`/`账号密码` → 输账密 + 同意 → `进入游戏` → `开始游戏` → 加载 → 大世界。
+  - **退出保留**:`登出` → `退出弹窗`(退出并保留)→ **`选账号画面`**(显示当前账号 + 登陆其他)
+    → `进入游戏`(当前账号)/ `登陆其他账号` → 手机号/账密(切其他账号)。
+  - 退出清除:`登出` → `退出弹窗`(退出并清除)→ `手机号登录`(重新输账密)。
+  - **安全验证**:异地/风险登录触发(`您的账号存在安全风险,请验证身份`)→ 需人工验证
+    (短信/人机,内部 webview)→ 通过后继续登录。
 
 ## 识别特征(稳定锚点)
 
-- **文本-开始游戏**(text "开始游戏")、**文本-点击进入**(text "点击进入"):`enter_game` 已登录态锚点。
-- **国服-账号密码**(text "账号密码")、**国服-账号密码进入游戏**(text "进入游戏"):账号输入态锚点。
+- **文本-点击进入** / **文本-开始游戏**:已登录态锚点(点击进入=自动保留;开始游戏=账密登录后)。
+- **国服-账号密码**(tab)/ **国服-账号密码进入游戏**:账密登录锚点。
 - **标题-退出登录**(`enter_game_logout_dialog`):登出弹窗锚点。
+- **按钮-进入游戏** + **按钮-登陆其他账号**(`enter_game_choose_account`,均 id_mark):选账号画面锚点。
 - `pc_alt=false`。
-- 易变:账号手机号 / 邮箱、版本号、公告。
+- 易变:账号手机号(脱敏)、版本号、公告。
 
 ## 可交互元素(screen_info area)
 
@@ -34,22 +40,58 @@ multi_screens: [enter_game, enter_game_choose_account, enter_game_logout_dialog]
 | area | 说明 |
 |---|---|
 | 国服-账号输入区域 / 密码输入区域(text 输入手机号/邮箱、输入密码) | 账号密码输入 |
-| 国服-同意按钮 / 文本-同意-旧 | 同意协议 |
+| 国服-同意按钮 / 文本-同意-旧 / 文本-同意-新 | 同意协议 |
 | 国服-账号密码 / 国服-账号密码进入游戏 | 账号密码登录 tab + 进入游戏 |
 | 文本-开始游戏 / 文本-点击进入 | 已登录态开始 |
 | 按钮-登出 / 按钮-登出确定 | 登出 |
+| 提示-确认 / 错误提示-重新启动 | 登录失败/错误提示 |
 
-**enter_game_choose_account(选择账号,2 area)**:按钮-进入游戏、按钮-登陆其他账号。
+**enter_game_choose_account(选账号,2 area,均 id_mark)**:按钮-进入游戏、按钮-登陆其他账号。
 
-**enter_game_logout_dialog(退出登陆,3 area)**:标题-退出登录、按钮-退出并保留登陆记录、按钮-退出。
+**enter_game_logout_dialog(退出弹窗,3 area)**:标题-退出登录(id_mark)、按钮-退出并保留登陆记录、按钮-退出。
 
-## 识别快照(待实拍)
+## 识别快照
 
-- **未实拍**:`open_game(enter=True)` 自动登录到大世界,登录画面一闪而过未截。识别快照(匹配画面 + area + OCR + vision)待现场手动分解登录步骤实拍归档(`screens/进入游戏/账号输入态.webp` 等)。
-- 按 screen_info + enter_game op 代码记入流转(上),area 全集见各 yml。
+### 1. 点击进入(screens/进入游戏/点击进入.webp)
+- 匹配:进入游戏(`is_precise=false`,无 id_mark)。
+- 命中 area:文本-点击进入、按钮-登出。
+- OCR:点击进入、公告/更新/设置/登出/退出。
+
+### 2. 开始游戏(screens/进入游戏/开始游戏.webp)
+- 账密登录后的已登录态(清除记录首次登录走此态,非点击进入)。
+- 命中:文本-开始游戏、按钮-登出。
+- OCR:开始游戏、星穹列车、登出/退出。
+
+### 3. 手机号登录(screens/进入游戏/手机号登录.webp)
+- 命中:国服-账号输入区域、国服-账号密码(tab)、国服-账号密码进入游戏。
+- OCR:输入手机号注册/登录、验证码、账号密码、进入游戏。
+
+### 4. 账号密码-旧(screens/进入游戏/账号密码-旧.webp)
+- 命中:国服-账号密码进入游戏、文本-同意-旧。
+- OCR:同意、进入游戏、立即注册、忘记密码。
+
+### 5. 选账号(screens/进入游戏-选择账号/选账号.webp)
+- 匹配:**进入游戏-选择账号**(`is_precise=true`,id_mark:按钮-进入游戏 + 按钮-登陆其他账号)。
+- OCR:`135*****95`(当前账号脱敏)、进入游戏、登录其他账号。
+
+### 6. 退出弹窗(screens/进入游戏-退出登陆/退出弹窗.webp)
+- 匹配:**进入游戏-退出登陆**(`is_precise=true`,id_mark:标题-退出登录)。
+- OCR:退出登录、退出并清除/保留登录记录、取消/退出。弹窗背后点击进入/开始游戏仍可见
+  (force_login 分支靠背后"文本-点击进入"仍命中 + "标题-退出登录"流转 `logout_with_account_kept`)。
+
+### 7. 安全验证(screens/进入游戏/安全验证.webp)
+- 匹配:进入游戏(`is_precise=false`,命中弹窗背后的账密态 area)。
+- OCR:您的账号存在安全风险…请验证身份后再登录、确定。
+- ⚠️ 验证流程(短信/人机)是**内部 webview,MCP 截不到正确图**;op 无法自动过,需人工。
 
 ## 备注 / 待查
-- **待实拍 vision**:登录画面未截,vision(账号输入框 / 同意勾选 / 开始游戏按钮布局)待 `open_game(enter=False)` 停在登录态实拍,或手动分解登录步骤截图。
-- **国服 / 国际服差异**:`enter_game` 的 area 多带「国服-」前缀(账号密码登录),国际服可能不同(账号体系不同)—— 待核对。
-- **多子态**:enter_game 含账号输入态 / 已登录开始态(点击进入/开始游戏)→ 实拍各态 + choose_account / logout_dialog 各一张。
-- **open_game 自动登录**:bot 的 `OpenAndEnterGame` op 自动处理登录(输入账号 / 同意 / 进游戏),不停留中间态 —— 抓登录中间态要 `enter=False` 停在 ready 态或手动分解(skill「截图获取」)。
+
+- **选账号画面何时出现**:账密登录后**退出保留**才出(显示当前账号 + 登陆其他);自动保留的
+  "点击进入"态退出保留 → 直接回点击进入(自动登录,无选账号画面)。多账号时选账号画面可能显示账号列表。
+- **安全验证**:异地/风险登录触发,op 无法自动过(人工验证)。flow 测试未覆盖此分支。
+- **id_mark**:enter_game 主态无 id_mark(多视觉子态复合,`is_precise=false`,op 靠
+  `round_by_find_area` 逐 area 判,不依赖 `get_match_screen_name` 精准);choose_account /
+  logout_dialog 有 id_mark(`is_precise=true`)。
+- **国服 / 国际服差异**:area 多带"国服-"前缀(账号密码登录),国际服可能不同 —— 待核对。
+- **flow 测试**:`sr-od-test/test/sr_od/operations/enter_game/test_enter_game_flow.py` 覆盖
+  3 条 happy-path(点击进入 / 账密 / 切换账号),fixture 在 `sr-od-test/screens/`。
