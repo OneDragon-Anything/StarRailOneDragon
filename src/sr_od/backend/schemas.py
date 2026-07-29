@@ -121,6 +121,14 @@ class ApplicationListResult:
 
     用于 ``list_applications`` / ``GET /game/applications`` 返回当前实例下
     可运行应用、GUI 当前选中的独立应用，以及各应用在不同运行模式中的状态。
+
+    Attributes:
+        current_instance_idx: 当前激活实例的 idx(账号下标)。**idx N → config/0N 目录**
+            (idx 1 → config/01 账号01,idx 2 → config/02 账号02),**不是** config/0<idx+1>。
+            激活实例看 ``config/one_dragon.yml`` 的 ``instance_list`` 里 ``active: true`` 项;
+            改某实例配置前先据此定位目录,别把 idx 当目录号做偏移。
+        active_standalone_app_id: GUI「独立应用运行」当前选中的 app_id;无则 None。
+        applications: 可运行应用列表及各运行模式状态。
     """
 
     current_instance_idx: int
