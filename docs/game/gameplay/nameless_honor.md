@@ -42,11 +42,13 @@ involves_screens: [菜单]
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:无名勋礼任务 / 奖励 tab + 一键领取态实拍归档 + vision(勋礼等级 / 任务列表 / 奖励图标 / tab)—— 有可领时实拍。
+- **奖励 tab 已采**:`screens/菜单/无名勋礼-奖励.webp`(无红点态);**任务 tab + 一键领取 / 红点可领态**待红点时实拍。
+- **测试**:`sr-od-test/test/sr_od/application/nameless_honor/test_nameless_honor_app.py` —— app 引用的 `('菜单', area)` 契约 + 奖励 tab 的 `in_secondary_ui('无名勋礼')` 判定;tab 切换 / 一键领取(消耗 / 红点)不 mock。
 - **bot 仅领奖励**:`NamelessHonorApp` 一键领取任务 + 奖励(不完成任务本身,任务靠日常玩法推进)。
 - **tab1=奖励、tab2=任务**:`nameless_honor_1` 模板=奖励 tab、`nameless_honor_2`=任务 tab(已实拍确认)。代码 `_click_tab_2` 切任务、`_click_tab_1` 切奖励。
 - **星海珍藏(tab3)**:版本更新后新增的第三个 tab(满级光锥自选奖励),`nameless_honor_3` 模板已加(备用);`NamelessHonorApp` 流程只切奖励/任务,暂不涉及星海珍藏。
 - **tab 模板**:`nameless_honor_1/2` 为**未选中态**图标 + Otsu 形状 mask(match 未选中 tab 去点击切换);选中态 tab 有白色圆形背景、match 不到未选中模板属正常。`NAMELESS_HONOR_TAB_PART` 已覆盖 3 tab,无需改。
+- **fixture**:`screens/菜单/无名勋礼-奖励.webp`(奖励 tab,等级轨 19→30,本周经验 3500/8000,0/800,付费轨「无名客的荣勋」未解锁,无红点)。
 - **付费档判断**:bot 领免费奖励(付费档需用户购买,bot 不处理付费)。
 
 ## 参考来源

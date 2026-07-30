@@ -30,10 +30,12 @@ involves_screens: [菜单]
 - 省略号入口(`ui_ellipsis` template,`phone_menu_utils.get_phone_menu_ellipsis_pos`)。
 - 漫游签证项(`get_phone_menu_ellipsis_item_pos('漫游签证')`,OCR 匹配项名)。
 - 角色卡片 / 红点(alert 检测 `ui_alert` template)。
+- **漫游签证面板**(进入后):角色展示 tab —— 个人资料(昵称 / UID / 开拓等级 / 生日)+ **支援角色**栏(3 个借出角色,如飞霄 / 遐蝶 / 黄泉,等级 80)+ 战绩 / 收集展示 tab + 漫游动态。bot 的 `_click_character` 点 `Point(1862,358)` 领支援奖励。
+- **fixture**:`screens/漫游签证/角色展示.webp`(角色展示 tab,支援角色 飞霄 / 遐蝶 / 黄泉,无红点态)。
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:省略号子菜单 + 漫游签证 + 角色卡片实拍归档 + vision(角色头像 / 红点 / 信用点奖励图标)—— 有可领奖励时实拍。
+- **已采(2026-07-29)**:漫游签证面板(角色展示 tab)实拍归档(见上 fixture);**红点可领态**(`STATUS_WITH_ALERT`)待有奖励时实拍。
 - **bot 仅领奖励**:`SupportCharacterApp` 收支援奖励(不借角色本身,借角色在编队时 `team` 画面支援态处理)。
 - **漫游签证 vs 编队支援**:本 app 收漫游签证奖励(信用点);编队时借好友角色(SUPPORT_BTN in [team](../screens/team.md))是另一回事。
 - **红点检测**:`ui_alert` template 检测省略号/漫游签证红点(有奖励),`STATUS_WITH_ALERT`/`NO_ALERT` 分支。

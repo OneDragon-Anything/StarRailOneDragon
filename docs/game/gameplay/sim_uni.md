@@ -36,7 +36,7 @@ involves_screens: [模拟宇宙, 战斗画面]
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:sim_uni 各子态(入口 / 探索 / 事件 / 结算 / 战斗失败)实拍归档(`screens/模拟宇宙/*.webp`)+ vision 看图(蜂巢地图 / 祝福选择 / 奇物 / 事件 UI 等图标布局)—— 进 sim_uni 消耗体力,待用户配合切画面。
+- **已采(2026-07-29)**:**旷宇纷争入口**(指南 旷宇纷争 tab —— 差分宇宙选择 + 晋升等级 / 周期积分 / 前往参与)实拍归档 `screens/星际和平指南/旷宇纷争.webp`。**sim_uni 内部子态**(入口启动 / 蜂巢探索 / 事件 / 结算 / 战斗失败)仍待用户 —— 进 sim_uni 消耗体力,自主不触发。
 - **重 app 编排**:sim_universe 的 auto_run + move v1/v2 详细节点链(@operation_node)待读代码补 develop doc(`docs/develop/sr_od/application/sim_universe.md`)。
 - **move v1 vs v2**:两套战斗路线算法差异待确认。
 - **扩展玩法覆盖**:差分宇宙(`div_uni` app?)/ 不可知域,bot 覆盖范围待确认(div_uni application 已存在)。

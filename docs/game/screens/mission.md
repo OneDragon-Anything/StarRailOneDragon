@@ -2,8 +2,8 @@
 screen_name: 任务
 screen_id: mission
 appears_in: [任务追踪]
-last_updated: 2026-07-28
-source_image: .debug/sr_od_mcp/screenshot/screenshot_20260728_234411_620701.png（待归档 screens/任务/默认.webp）
+last_updated: 2026-07-29
+source_image: screens/任务/全部任务.webp
 pc_alt: false
 ---
 
@@ -45,4 +45,4 @@ pc_alt: false
 
 - **`mission` 与 `bag_mission`(背包-任务)关系待确认**:任务画面同时模糊命中两个 screen——`mission`(追踪按钮 2 area) + `bag_mission`(全部任务标题)。两者是同画面的不同 area 集、还是主态/子态,待读代码 + 实拍确认(可能合并建档或独立)。当前任务画面识别 `is_precise=false`(无强 id_mark),属 screen_info 可加强点(加精准锚点)。
 - **前往=传送**:「前往」按钮触发传送(加载→大世界),非简单切画面;op 链待读代码补。
-- **vision 待补**:任务分类图标、追踪状态标记、奖励图标等需 vision,工具恢复后补。
+- **fixture 已归档(2026-07-29)**:`screens/任务/全部任务.webp`(自主采,菜单→任务);任务分类图标 / 追踪状态标记 / 奖励图标细节以 OCR + screen_info 为准。

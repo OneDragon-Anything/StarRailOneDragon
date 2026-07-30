@@ -3,7 +3,7 @@ screen_name: 队伍
 screen_id: team
 appears_in: [通用系统, 战前编队]
 last_updated: 2026-07-29
-source_image: .debug/sr_od_mcp/screenshot/screenshot_20260729_000420_068189.png（待归档 screens/队伍/默认.webp）
+source_image: screens/队伍/编队.webp
 pc_alt: false
 ---
 
@@ -56,4 +56,4 @@ vision 看到 OCR/area 漏的:
 - **多候选模糊命中**:`队伍` + `挑战副本`(队伍标题)+ `背包-遗器分解`(快速编队)同帧模糊命中 —— 编队可能是多场景共用画面(菜单编队 / 战前 / 挑战副本编队),或标题/按钮 area 跨 screen 重叠。关系待读代码确认(team / challenge_mission / bag_relic_salvage 的 area 交集)。
 - **`is_precise=false`**:team 无强 id_mark,识别靠 text(队伍/支援标题),属可加强点(本 skill 建档边界:只记,不改 screen_info)。
 - **支援态**:SUPPORT_TITLE 与队伍标题同 pc_rect → 点支援切支援态(标题变"支援"),支援态实拍待补。
-- **vision 待补**:角色头像 / 命途图标 / 队伍位布局等需 vision,工具恢复后补。
+- **fixture 已归档(2026-07-29)**:`screens/队伍/编队.webp`(自主采,菜单→编队,sleep 规则);vision 见上「vision 补充」节(箭头 / 网格 / 状态标记已看)。角色头像 / 命途图标细节以 OCR + screen_info 为准。

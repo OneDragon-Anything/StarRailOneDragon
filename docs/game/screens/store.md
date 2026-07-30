@@ -3,7 +3,7 @@ screen_name: 商店
 screen_id: store
 appears_in: [通用系统]
 last_updated: 2026-07-29
-source_image: .debug/sr_od_mcp/screenshot/screenshot_20260729_001219_601214.png（待归档 screens/商店/主页.webp）
+source_image: screens/商店/推荐.webp
 pc_alt: false
 ---
 
