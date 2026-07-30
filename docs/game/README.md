@@ -13,8 +13,8 @@
 ## 现状(2026-07-29 建档 doc 阶段完成)
 
 - screen_info 32 画面(识别模型)+ ~20 app。
-- **docs/game/ 知识文档:12 画面 doc + 15 玩法 doc,32 screen_info + ~20 app 全覆盖**。
-- **画面 doc**(`screens/`):normal_world(含 basic/battle_fail 子态) / phone_menu / mission / synthesize / team / 角色(character) / store / bag(10 分类总览) / large_map / enter_game(含 choose_account/logout_dialog 子态) / battle / misc_screens(common/catapult/fast_recover_dialog)。
+- **docs/game/ 知识文档:13 画面 doc + 15 玩法 doc,32 screen_info + ~20 app 全覆盖(对话 doc 为 screen_info 缺口补档)**。
+- **画面 doc**(`screens/`):normal_world(含 basic/battle_fail 子态) / phone_menu / mission / synthesize / team / 角色(character) / store / bag(10 分类总览) / large_map / enter_game(含 choose_account/logout_dialog 子态) / battle / misc_screens(common/catapult/fast_recover_dialog) / 对话(dialog,NPC 选项对话;未在 screen_info)。
 - **玩法 doc**(`gameplay/`):sim_uni / trailblaze_power / treasures_lightward / assignments / world_patrol / echo_of_war / ornamenet_extraction / nameless_honor / div_uni / guide / email / support_character / daily_training / relic_salvage / misc_apps(calibrator/large_map_recorder/buy_xianzhou_parcel/memory_crystal_shard/trick_snack)。
 - **待实拍 + vision 归档**:登录/战斗过程态/各玩法画面(消耗开拓力或周限 / 遇敌 / 重启,需用户配合切画面);doc 的 source_image 从临时 .debug 截图 → 测试仓 `screens/<screen>/<state>.webp` 归档。
 - **已知数据缺口**(只记不改 screen_info):支援角色替换图标(challenge_mission/ornamenet_extraction)`pc_rect=[0,0,0,0]` 占位待填;合成按钮-最大值 `pc_rect` 占位;末日幻影(Apoca)screen_info 未建模;差分宇宙 Roguelike 演算 bot 未实现(仅饰品提取)。
