@@ -14,10 +14,14 @@ ops:
     data: [ '556', '570' ]
   - op: 'move'
     data: [ '565', '525' ]
-  - op: 'move'
+  # 最后减速避免跑过了交互不了
+  - op: 'slow_move'
     data: [ '578', '496' ]
   - op: 'interact'
     data: ['world_single_line', '货全']
+  # 等 NPC 对话框完全打开再 talk,避免 TalkInteract 过早点空白继续干扰(2026-07-30 timing 修复)
+  - op: 'wait'
+    data: ['seconds', '1.5']
   - op: 'interact'
     data: ['talk', '都有些什么好东西']
   - op: 'wait'

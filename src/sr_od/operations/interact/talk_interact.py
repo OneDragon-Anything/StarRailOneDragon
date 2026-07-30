@@ -1,3 +1,4 @@
+import time
 from cv2.typing import MatLike
 from typing import ClassVar
 
@@ -8,7 +9,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
-from sr_od.context.sr_pc_controller import SrPcController
 from sr_od.operations.sr_operation import SrOperation
 
 
@@ -50,7 +50,12 @@ class TalkInteract(SrOperation):
         else:
             for r in ocr_result.values():
                 to_click: Point = r.max.center + TalkInteract.INTERACT_RECT.left_top
-                if self.ctx.controller.interact(to_click, SrPcController.TALK_INTERACT_TYPE):
-                    return self.round_success()
+                # 先把鼠标移到选项上停留,再按 0.1s 点击,提高对话选项选中稳定性
+                # (直接 click 太快/无停留,部分对话选项点不中 → 后续商店打不开)
+                self.ctx.controller.mouse_move(to_click)
+                time.sleep(0.1)
+                if self.ctx.controller.click(press_time=0.1, pc_alt=True):
+                    # 点击交互后 要稍微等待 避免进入下一个op进行截图 导致鼠标瞬移 点击无法成功
+                    return self.round_success(wait=0.5)
 
         return self.round_wait(wait=1)

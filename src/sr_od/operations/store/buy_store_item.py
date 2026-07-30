@@ -1,3 +1,4 @@
+import time
 from cv2.typing import MatLike
 from typing import Optional
 
@@ -38,7 +39,11 @@ class BuyStoreItem(SrOperation):
             self.ctx.controller.drag_to(end_point, start_point)
             return self.round_retry(status=f'未找到商品{self.item.cn}', wait=0.5)
         else:
-            self.ctx.controller.click(pos)
+            # 先 mouse_move 到商品上、稍停再点当前位置 + 等待,避免下一个 op 截图(before_screenshot 移鼠标)
+            # 把这次 click 判成拖拽导致没点中(同 TalkInteract 的隐蔽 bug)
+            self.ctx.controller.mouse_move(pos)
+            time.sleep(0.1)
+            self.ctx.controller.click(press_time=0.1)
             return self.round_success(wait=0.5)
 
     def get_item_pos(self, screen: MatLike) -> Optional[Point]:
@@ -64,6 +69,10 @@ class BuyStoreItem(SrOperation):
         :return:
         """
         screen = self.last_screenshot
+        # 售罄 / 兑换材料不足时弹窗无「购买最大值」按钮,直接进确认节点(会点取消),避免空找按钮重试到超时
+        if self.round_by_find_area(screen, '商店', '购买-已售罄').is_success \
+                or self.round_by_find_area(screen, '商店', '购买-兑换材料不足').is_success:
+            return self.round_success(wait=0.5)
         return self.round_by_find_and_click_area(screen, '商店', '按钮-购买最大值',
                                                  success_wait=0.5, retry_wait=1)
 

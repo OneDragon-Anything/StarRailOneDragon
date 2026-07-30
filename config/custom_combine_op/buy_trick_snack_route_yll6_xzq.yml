@@ -7,19 +7,17 @@ ops:
   - op: 'wait'
     data: ['in_world', '20']
   - op: 'move'
-    data: [ '635', '906' ]
+    data: [ '630', '900' ]
+  # 最后减速避免跑过了交互不了
+  - op: 'slow_move'
+    data: [ '637', '908' ]
   - op: 'interact'
     data: ['world_single_line', '罗纳德']
+  # 等 NPC 对话框完全打开再 talk,避免 TalkInteract 过早点空白继续干扰(2026-07-30 timing 修复)
+  - op: 'wait'
+    data: ['seconds', '1.5']
   - op: 'interact'
     data: ['talk', '我要购物']
-  - op: 'wait'
-    data: ['seconds', '1']
-  - op: 'click'
-    data: [ '960', '980' ]
-  - op: 'wait'
-    data: ['seconds', '1']
-  - op: 'click'
-    data: [ '960', '980' ]
   - op: 'wait'
     data: ['seconds', '1']
   - op: 'buy_store_item'
