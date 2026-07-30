@@ -11,6 +11,13 @@ import zipfile
 from pathlib import Path
 
 
+_RELEASE_ASSET_PREFIX = "StarRail-OneDragon"
+
+
+def _release_asset_name(suffix: str) -> str:
+    return f"{_RELEASE_ASSET_PREFIX}-{suffix}"
+
+
 def _log(msg: str) -> None:
     print(msg, flush=True)
 
@@ -19,15 +26,13 @@ def _run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=str(cwd), check=True)
 
 
-def _download(url: str, dest: Path, *, token: str | None = None, retries: int = 3, timeout: int = 60) -> None:
+def _download(url: str, dest: Path, *, retries: int = 3, timeout: int = 60) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     headers = {
         "User-Agent": "StarRail-OneDragon CI",
         "Accept": "application/octet-stream",
     }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
 
     for attempt in range(1, retries + 1):
         try:
@@ -239,7 +244,7 @@ def _download_models(model_base: Path, temp_dir: Path, *, token: str | None) -> 
             url = cfg["fallback_url"]
 
         _log(f"Download: {url}")
-        _download(url, tmp_zip, token=token)
+        _download(url, tmp_zip)
         target = dest / folder_name
         target.mkdir(parents=True, exist_ok=True)
         _extract_zip(tmp_zip, target)
@@ -278,7 +283,7 @@ def main() -> int:
     # 2. 清理工作区（仅清理 repo 内），确保打包内容可控
     _log("Clean repo via git reset/clean")
     _run(["git", "reset", "--hard", "HEAD"], cwd=repo_root)
-    _run(["git", "clean", "-fd"], cwd=repo_root)
+    _run(["git", "clean", "-fdx"], cwd=repo_root)
 
     # 3. 准备 .install 离线资源
     env_dir = repo_root / args.env_dir
@@ -288,12 +293,10 @@ def main() -> int:
     _download(
         "https://github.com/OneDragon-Anything/OneDragon-Env/releases/download/ZenlessZoneZero-OneDragon/uv-x86_64-pc-windows-msvc.zip",
         env_dir / "uv-x86_64-pc-windows-msvc.zip",
-        token=token or None,
     )
     _download(
         "https://github.com/OneDragon-Anything/OneDragon-Env/releases/download/ZenlessZoneZero-OneDragon/cpython-3.11.zip",
         env_dir / "cpython-3.11.zip",
-        token=token or None,
     )
 
     # 4. 检查是否有已签名的可执行文件，如果有则替换
@@ -329,14 +332,14 @@ def main() -> int:
     shutil.copy2(launcher_exe, repo_root / "OneDragon-Launcher.exe")
 
     # 打包两个启动器（集成启动器不复制到 repo_root，避免混入 Full/Full-Environment）
-    launcher_zip = dist_dir / "ZenlessZoneZero-OneDragon-Launcher.zip"
+    launcher_zip = dist_dir / _release_asset_name("Launcher.zip")
     _zip_single_file(launcher_exe, launcher_zip)
 
-    runtime_launcher_zip = dist_dir / "ZenlessZoneZero-OneDragon-RuntimeLauncher.zip"
+    runtime_launcher_zip = dist_dir / _release_asset_name("RuntimeLauncher.zip")
     _zip_dir_contents(runtime_launcher_dir, runtime_launcher_zip, root_prefix="", exclude_prefixes={"src/"})
 
     # WithRuntime: 集成启动器 + src（首次安装用，无需 git clone）
-    with_runtime_zip = dist_dir / f"ZenlessZoneZero-OneDragon-{release_version}-WithRuntime.zip"
+    with_runtime_zip = dist_dir / _release_asset_name(f"{release_version}-WithRuntime.zip")
     _log(f"Create WithRuntime zip: {with_runtime_zip}")
     _zip_dir_contents(runtime_launcher_dir, with_runtime_zip, root_prefix="")
 
@@ -353,7 +356,7 @@ def main() -> int:
     shutil.rmtree(temp_dir, ignore_errors=True)
 
     # 7. WithRuntime-Full：复用 Full 已准备的模型，不重复下载或复制到构建目录
-    with_runtime_full_zip = dist_dir / f"ZenlessZoneZero-OneDragon-{release_version}-WithRuntime-Full.zip"
+    with_runtime_full_zip = dist_dir / _release_asset_name(f"{release_version}-WithRuntime-Full.zip")
     _log(f"Create WithRuntime-Full zip: {with_runtime_full_zip}")
     _zip_runtime_with_models(runtime_launcher_dir, model_dir, with_runtime_full_zip)
 
@@ -361,26 +364,26 @@ def main() -> int:
     _log("Generate install manifest (Full)")
     _run([sys.executable, "tools/ci/generate_install_manifest.py"], cwd=repo_root)
 
-    full_zip = dist_dir / f"ZenlessZoneZero-OneDragon-{release_version}-Full.zip"
+    full_zip = dist_dir / _release_asset_name(f"{release_version}-Full.zip")
     _log(f"Create Full zip: {full_zip}")
-    _zip_dir_contents(repo_root, full_zip, root_prefix=f"ZenlessZoneZero-OneDragon-{release_version}-Full")
+    _zip_dir_contents(repo_root, full_zip, root_prefix=_release_asset_name(f"{release_version}-Full"))
 
     # 9. Full-Environment：把环境包放入 .install 后重新生成清单并打包
-    env_zip = dist_dir / "ZenlessZoneZero-OneDragon-Environment.zip"
+    env_zip = dist_dir / _release_asset_name("Environment.zip")
     if not env_zip.exists():
         raise SystemExit(f"Missing {env_zip}")
 
-    shutil.copy2(env_zip, env_dir / "ZenlessZoneZero-OneDragon-Environment.zip")
+    shutil.copy2(env_zip, env_dir / _release_asset_name("Environment.zip"))
 
     _log("Generate install manifest (Full-Environment)")
     _run([sys.executable, "tools/ci/generate_install_manifest.py"], cwd=repo_root)
 
-    full_env_zip = dist_dir / f"ZenlessZoneZero-OneDragon-{release_version}-Full-Environment.zip"
+    full_env_zip = dist_dir / _release_asset_name(f"{release_version}-Full-Environment.zip")
     _log(f"Create Full-Environment zip: {full_env_zip}")
-    _zip_dir_contents(repo_root, full_env_zip, root_prefix=f"ZenlessZoneZero-OneDragon-{release_version}-Full-Environment")
+    _zip_dir_contents(repo_root, full_env_zip, root_prefix=_release_asset_name(f"{release_version}-Full-Environment"))
 
     # 10. 复制安装器到版本化文件名
-    shutil.copy2(repo_root / "OneDragon-Installer.exe", repo_root / f"ZenlessZoneZero-OneDragon-{release_version}-Installer.exe")
+    shutil.copy2(repo_root / "OneDragon-Installer.exe", repo_root / _release_asset_name(f"{release_version}-Installer.exe"))
 
     # 11. 把 dist_dir 下所有 zip 移到 repo_root，供 release step 上传
     for z in dist_dir.glob("*.zip"):

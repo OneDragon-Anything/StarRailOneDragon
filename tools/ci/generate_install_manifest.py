@@ -14,7 +14,7 @@ def sha256(path: Path) -> str:
     return h.hexdigest().upper()
 
 
-_DEFAULT_EXCLUDE_PREFIXES: list[str] = ["dist/", "deploy/build/", ".venv/", ".install/uv_cache/"]
+_DEFAULT_EXCLUDE_PREFIXES: list[str] = ["dist/", "deploy/build/", ".venv/", ".install/uv_cache/", ".git/"]
 
 
 def main() -> int:

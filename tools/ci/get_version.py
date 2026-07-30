@@ -16,34 +16,39 @@ def main() -> int:
         version = github_ref[10:]
     elif create_release:
         # 手动触发且要求创建 release：生成新的 beta 版本
-        # 获取远程 tag 列表并按版本排序
-        cmd = ['git', 'ls-remote', '--refs', '--tags', '--sort=-version:refname', 'origin', 'v*']
+        # 获取远程 tag 列表，由脚本显式解析稳定版与 beta 版本顺序
+        cmd = ['git', 'ls-remote', '--refs', '--tags', 'origin', 'v*']
         result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or 'unknown git error'
+            raise RuntimeError(f"git ls-remote failed ({result.returncode}): {detail}")
 
-        latest_tag = None
-        if result.returncode == 0 and result.stdout.strip():
-            for line in result.stdout.strip().splitlines():
-                match = re.search(r'refs/tags/(v\d+\.\d+\.\d+(?:-beta\.\d+)?)$', line)
-                if match:
-                    latest_tag = match.group(1)
-                    break
+        version_tags: list[tuple[tuple[int, int, int, int, int], str, int | None]] = []
+        for line in result.stdout.splitlines():
+            match = re.search(r'refs/tags/(v(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?)$', line)
+            if not match:
+                continue
+            beta_number = int(match.group(5)) if match.group(5) is not None else None
+            sort_key = (
+                int(match.group(2)),
+                int(match.group(3)),
+                int(match.group(4)),
+                1 if beta_number is None else 0,
+                beta_number or 0,
+            )
+            version_tags.append((sort_key, match.group(1), beta_number))
 
-        if not latest_tag:
+        if not version_tags:
             # 仓库还没有任何符合语义版本的 tag，初始化
             version = "v0.1.0-beta.1"
         else:
-            # 根据最新 tag 递增
-            beta_match = re.match(r'^(v\d+\.\d+\.\d+)-beta\.(\d+)$', latest_tag)
-            if beta_match:
-                # 最新即为 beta，在编号上 +1
-                version = f"{beta_match.group(1)}-beta.{int(beta_match.group(2)) + 1}"
+            latest_key, latest_tag, latest_beta = max(version_tags, key=lambda item: item[0])
+            print(f"Latest tag: {latest_tag}")
+            major, minor, patch = latest_key[:3]
+            if latest_beta is not None:
+                version = f"v{major}.{minor}.{patch}-beta.{latest_beta + 1}"
             else:
-                # 最新为稳定版本，从该稳定版本的下一位开始新的 beta 序列
-                stable_match = re.match(r'^(v\d+\.\d+\.)(\d+)$', latest_tag)
-                if stable_match:
-                    version = f"{stable_match.group(1)}{int(stable_match.group(2)) + 1}-beta.1"
-                else:
-                    version = "v0.1.0-beta.1"
+                version = f"v{major}.{minor}.{patch + 1}-beta.1"
 
         should_push_tag = True
     else:

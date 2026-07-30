@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, BinaryIO, cast
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import requests
 
@@ -15,6 +16,7 @@ GITHUB_API_URL = 'https://api.github.com'
 CNB_API_URL = 'https://api.cnb.cool'
 CHUNK_SIZE = 1024 * 1024
 PROGRESS_INTERVAL = 64 * 1024 * 1024
+USER_AGENT = 'StarRail-OneDragon-CNB-Release-Sync'
 
 
 class ProgressReader:
@@ -131,7 +133,7 @@ class ReleaseSynchronizer:
         self.github_session.headers.update(
             {
                 'Accept': 'application/vnd.github+json',
-                'User-Agent': 'ZenlessZoneZero-OneDragon-CNB-Release-Sync',
+                'User-Agent': USER_AGENT,
                 'X-GitHub-Api-Version': '2022-11-28',
             }
         )
@@ -143,7 +145,7 @@ class ReleaseSynchronizer:
             {
                 'Accept': 'application/vnd.cnb.api+json',
                 'Authorization': f'Bearer {cnb_token}',
-                'User-Agent': 'ZenlessZoneZero-OneDragon-CNB-Release-Sync',
+                'User-Agent': USER_AGENT,
             }
         )
 
@@ -253,17 +255,27 @@ class ReleaseSynchronizer:
         if not isinstance(upload_url, str) or not upload_url:
             raise RuntimeError(f'CNB 未返回附件上传地址: {path.name}')
 
-        with ProgressReader(path) as reader:
-            upload_response = requests.put(
-                upload_url,
-                headers={
-                    'Authorization': f'Bearer {self.cnb_token}',
-                    'Content-Length': str(reader.total),
-                },
-                data=reader,
-                timeout=(30, 600),
-            )
-        _expect_status(upload_response, {200, 201, 204})
+        upload_headers = {'Content-Length': str(path.stat().st_size)}
+        upload_host = urlparse(upload_url).hostname
+        if upload_host == 'cnb.cool' or (upload_host and upload_host.endswith('.cnb.cool')):
+            upload_headers['Authorization'] = f'Bearer {self.cnb_token}'
+
+        for attempt in range(1, 4):
+            try:
+                with ProgressReader(path) as reader:
+                    upload_response = requests.put(
+                        upload_url,
+                        headers=upload_headers,
+                        data=reader,
+                        timeout=(30, 600),
+                    )
+                _expect_status(upload_response, {200, 201, 204})
+                break
+            except (OSError, requests.RequestException, RuntimeError) as exc:
+                if attempt == 3:
+                    raise
+                print(f'上传失败，准备重试 ({attempt}/3): {path.name}: {exc}', flush=True)
+                time.sleep(2 * attempt)
 
         if isinstance(verify_url, str) and verify_url:
             verify_response = self.cnb_session.post(verify_url, timeout=60)
@@ -287,7 +299,7 @@ class ReleaseSynchronizer:
         if not isinstance(release_id, str) or not release_id:
             raise RuntimeError('CNB Release 缺少 id')
 
-        with tempfile.TemporaryDirectory(prefix='zzz-od-cnb-release-') as temp_dir:
+        with tempfile.TemporaryDirectory(prefix='sr-od-cnb-release-') as temp_dir:
             temp_path = Path(temp_dir)
             for index, asset in enumerate(assets, start=1):
                 name = cast(str, asset['name'])
