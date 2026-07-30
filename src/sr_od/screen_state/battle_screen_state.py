@@ -17,15 +17,12 @@ class ScreenState(Enum):
 def is_battle_fail(ctx: SrContext, screen: MatLike) -> bool:
     """
     是否在战斗失败画面
-    :param ctx: 上下文
-    :param screen: 游戏画面
-    :return:
+
+    战败结算页归属「大世界-战斗失败」screen(非「战斗画面」)。
+    2026-07-30 实测:拟造花萼 + 凝滞虚影战败都精准命中该 screen 的「标题-战斗失败」area。
+    (旧代码查「战斗画面」的 战斗失败-有奖励/双倍/无奖励 area,screen_info 重构时已删 → 恒返 False)
     """
-    return (
-            screen_utils.find_area(ctx, screen, '战斗画面', '战斗失败-有奖励') == FindAreaResultEnum.TRUE
-            or screen_utils.find_area(ctx, screen, '战斗画面', '战斗失败-双倍奖励') == FindAreaResultEnum.TRUE
-            or screen_utils.find_area(ctx, screen, '战斗画面', '战斗失败-无奖励') == FindAreaResultEnum.TRUE
-    )
+    return screen_utils.find_area(ctx, screen, '大世界-战斗失败', '标题-战斗失败') == FindAreaResultEnum.TRUE
 
 
 def get_tp_battle_screen_state(
