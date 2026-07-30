@@ -1,5 +1,6 @@
 import contextlib
 import ctypes
+import ctypes.wintypes
 import time
 from functools import lru_cache
 
@@ -28,6 +29,15 @@ from one_dragon.base.controller.pc_screenshot.pc_screenshot_controller import (
 )
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+
+ctypes.windll.kernel32.OpenProcess.argtypes = [ctypes.wintypes.DWORD, ctypes.wintypes.BOOL, ctypes.wintypes.DWORD]
+ctypes.windll.kernel32.OpenProcess.restype = ctypes.wintypes.HANDLE
+ctypes.windll.kernel32.TerminateProcess.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.UINT]
+ctypes.windll.kernel32.TerminateProcess.restype = ctypes.wintypes.BOOL
+ctypes.windll.kernel32.CloseHandle.argtypes = [ctypes.wintypes.HANDLE]
+ctypes.windll.kernel32.CloseHandle.restype = ctypes.wintypes.BOOL
+ctypes.windll.user32.GetWindowThreadProcessId.argtypes = [ctypes.wintypes.HWND, ctypes.POINTER(ctypes.wintypes.DWORD)]
+ctypes.windll.user32.GetWindowThreadProcessId.restype = ctypes.wintypes.DWORD
 
 
 class PcControllerBase(ControllerBase):
@@ -141,14 +151,61 @@ class PcControllerBase(ControllerBase):
         return self.game_win.is_win_valid
 
     def close_game(self) -> None:
+        """关闭游戏，优先尝试窗口关闭，失败后回退到强制终止进程。"""
         win = self.game_win.get_win()
-        if win is None:
+        if win is not None:
+            try:
+                win.close()
+                time.sleep(0.5)
+                self.game_win.refresh_win()
+                if not self.is_game_window_ready:
+                    log.info('关闭游戏成功')
+                    return
+                log.warning('窗口关闭后游戏仍在运行，尝试强制终止进程')
+            except Exception:
+                log.warning('窗口关闭失败，尝试强制终止进程', exc_info=True)
+
+        if self._terminate_game_process():
             return
+
+        log.warning('关闭游戏失败')
+
+    def _terminate_game_process(self) -> bool:
+        """通过窗口句柄找到进程并强制终止。"""
+        hwnd = self.game_win.get_hwnd()
+        if hwnd is None:
+            self.game_win.refresh_win()
+            hwnd = self.game_win.get_hwnd()
+        if hwnd is None:
+            log.info('未找到游戏窗口，视为已关闭')
+            return True
+
+        pid = ctypes.wintypes.DWORD()
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if not pid.value:
+            log.warning('无法获取游戏进程 ID')
+            return False
+
+        process_terminate = 0x0001
+        handle = ctypes.windll.kernel32.OpenProcess(
+            process_terminate, False, pid.value
+        )
+        if not handle:
+            log.warning('无法打开游戏进程 PID=%d', pid.value)
+            return False
+
         try:
-            win.close()
-            log.info('关闭游戏成功')
-        except Exception:
-            log.error('关闭游戏失败', exc_info=True)
+            result = ctypes.windll.kernel32.TerminateProcess(handle, 0)
+        finally:
+            ctypes.windll.kernel32.CloseHandle(handle)
+
+        if result:
+            log.info('已强制终止游戏进程 PID=%d', pid.value)
+            self.game_win.refresh_win()
+            return True
+
+        log.warning('强制终止游戏进程失败 PID=%d', pid.value)
+        return False
 
     def get_screenshot(self, independent: bool = False) -> MatLike | None:
         if self.is_game_window_ready:
