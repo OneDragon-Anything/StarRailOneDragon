@@ -1,3 +1,4 @@
+import time
 from cv2.typing import MatLike
 from typing import Optional
 
@@ -51,8 +52,12 @@ class GuideChooseMission(SrOperation):
 
             return self.round_retry(wait=2)
         else:
-            self.ctx.controller.click(tp_point)
-            return self.round_success()
+            # 先 mouse_move 到传送按钮、稍停再点当前位置 + 等待,避免下一个 op 截图(before_screenshot 移鼠标)
+            # 把这次 click 判成拖拽导致传送没触发(同 TalkInteract 的隐蔽 bug,per-op 补丁)
+            self.ctx.controller.mouse_move(tp_point)
+            time.sleep(0.1)
+            self.ctx.controller.click(press_time=0.1)
+            return self.round_success(wait=0.5)
 
     def find_transport_btn(self, screen: MatLike) -> Optional[Point]:
         """
