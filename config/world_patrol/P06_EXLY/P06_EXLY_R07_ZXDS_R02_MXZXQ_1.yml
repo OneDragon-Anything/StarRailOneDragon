@@ -1,0 +1,55 @@
+author: ['DoctorReid']
+planet: '二相乐园'
+region: '珠星大厦'
+floor: 0
+tp: '模型展销区'
+route:
+  - idx: 1
+    op: 'move'
+    data: [481, 705]
+  - idx: 2
+    op: 'disposable'
+  - idx: 3
+    op: 'move'
+    data: [496, 687]
+  - idx: 4
+    op: 'move'
+    data: [466, 686]
+  - idx: 5
+    op: 'disposable'
+  - idx: 6
+    op: 'move'
+    data: [407, 693]
+  - idx: 7
+    op: 'patrol'
+  - idx: 8
+    op: 'move'
+    data: [446, 679]
+  - idx: 9
+    op: 'move'
+    data: [537, 690]
+  - idx: 10
+    op: 'disposable'
+  - idx: 11
+    op: 'move'
+    data: [605, 706]
+  - idx: 12
+    op: 'disposable'
+  - idx: 13
+    op: 'move'
+    data: [596, 652]
+  - idx: 14
+    op: 'disposable'
+  - idx: 15
+    op: 'move'
+    data: [595, 624]
+  - idx: 16
+    op: 'move'
+    data: [627, 623]
+  - idx: 17
+    op: 'patrol'
+  - idx: 18
+    op: 'move'
+    data: [659, 623]
+  - idx: 19
+    op: 'patrol'

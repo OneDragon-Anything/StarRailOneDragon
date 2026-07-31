@@ -1,0 +1,53 @@
+author: ['Kimoju']
+planet: '二相乐园'
+region: '绘世学院'
+floor: 2
+tp: '美术教室'
+route:
+  - idx: 1
+    op: 'move'
+    data: [846, 718]
+  - idx: 2
+    op: 'slow_move'
+    data: [849, 681]
+  - idx: 3
+    op: 'patrol'
+  - idx: 4
+    op: 'slow_move'
+    data: [846, 719]
+  - idx: 5
+    op: 'move'
+    data: [822, 719]
+  - idx: 6
+    op: 'wait'
+    data: ['seconds', '3']
+  - idx: 7
+    op: 'move'
+    data: [804, 721]
+  - idx: 8
+    op: 'disposable'
+  - idx: 9
+    op: 'disposable'
+  - idx: 10
+    op: 'move'
+    data: [804, 783]
+  - idx: 11
+    op: 'patrol'
+  - idx: 12
+    op: 'move'
+    data: [700, 784]
+  - idx: 13
+    op: 'patrol'
+  - idx: 14
+    op: 'move'
+    data: [700, 724]
+  - idx: 15
+    op: 'patrol'
+  - idx: 16
+    op: 'move'
+    data: [700, 684]
+  - idx: 17
+    op: 'move'
+    data: [795, 684]
+  - idx: 18
+    op: 'patrol'

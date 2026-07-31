@@ -1,0 +1,83 @@
+author: ['DoctorReid']
+planet: '二相乐园'
+region: '珠星大厦'
+floor: 0
+tp: '机铠设计室'
+route:
+  - idx: 1
+    op: 'move'
+    data: [389, 571]
+  - idx: 2
+    op: 'disposable'
+  - idx: 3
+    op: 'move'
+    data: [389, 554]
+  - idx: 4
+    op: 'move'
+    data: [438, 529]
+  - idx: 5
+    op: 'disposable'
+  - idx: 6
+    op: 'move'
+    data: [437, 454]
+  - idx: 7
+    op: 'patrol'
+  - idx: 8
+    op: 'move'
+    data: [403, 450]
+  - idx: 9
+    op: 'disposable'
+  - idx: 10
+    op: 'move'
+    data: [437, 463]
+  - idx: 11
+    op: 'wait'
+    data: ['seconds', '4']
+  - idx: 12
+    op: 'slow_move'
+    data: [455, 463]
+  - idx: 13
+    op: 'move'
+    data: [471, 449]
+  - idx: 14
+    op: 'disposable'
+  - idx: 15
+    op: 'move'
+    data: [532, 450]
+  - idx: 16
+    op: 'disposable'
+  - idx: 17
+    op: 'move'
+    data: [563, 452]
+  - idx: 18
+    op: 'patrol'
+  - idx: 19
+    op: 'move'
+    data: [534, 469]
+  - idx: 20
+    op: 'move'
+    data: [565, 468]
+  - idx: 21
+    op: 'wait'
+    data: ['seconds', '4']
+  - idx: 22
+    op: 'slow_move'
+    data: [595, 469]
+  - idx: 23
+    op: 'move'
+    data: [621, 463]
+  - idx: 24
+    op: 'move'
+    data: [740, 463]
+  - idx: 25
+    op: 'disposable'
+  - idx: 26
+    op: 'move'
+    data: [741, 381]
+  - idx: 27
+    op: 'patrol'
+  - idx: 28
+    op: 'move'
+    data: [738, 311]
+  - idx: 29
+    op: 'disposable'
