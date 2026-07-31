@@ -70,7 +70,7 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
 
         self.ocr: OcrMatcher = OnnxOcrMatcher(
             OnnxOcrParam(
-                use_gpu=False,  # 目前OCR使用GPU会闪退
+                use_gpu=self.model_config.ocr_use_gpu,
                 det_limit_side_len=max(self.project_config.screen_standard_width, self.project_config.screen_standard_height),
             )
         )
@@ -106,8 +106,8 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         1. 子类所在目录的同级 'application' 目录（内置应用）
         2. 项目根目录下的 'plugins' 目录（外部插件，支持相对导入）
 
-        例如：如果子类在 zzz_od/context/zzz_context.py，则返回：
-        - (zzz_od/application, BUILTIN)
+        例如：如果子类在 sr_od/context/sr_context.py，则返回：
+        - (sr_od/application, BUILTIN)
         - ({project_root}/plugins, THIRD_PARTY)
 
         Returns:
@@ -120,7 +120,7 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         parent_dir = Path(cls_file).parent.parent
 
         # 计算 application 目录：子类文件所在目录的上级目录下的 application 目录
-        # 例如：zzz_od/context/zzz_context.py -> zzz_od/application
+        # 例如：sr_od/context/sr_context.py -> sr_od/application
         application_dir = parent_dir / 'application'
         if application_dir.is_dir():
             dirs.append((application_dir, PluginSource.BUILTIN))
@@ -201,6 +201,21 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         if default_factories:
             self.run_context.registry_application(default_factories, default_group=True)
 
+    def _load_plugin_screens(self) -> None:
+        """加载插件的 screen_info
+
+        遍历所有已注册插件，从其 screen_info/ 子目录加载 screen YAML。
+        未设 app_id 的 screen 自动使用插件的 app_id。
+        应在 screen_loader.reload() 之后调用。
+        """
+        for plugin_info in self.factory_manager.plugin_infos:
+            if plugin_info.plugin_dir is None:
+                continue
+            screen_dir = plugin_info.plugin_dir / 'screen_info'
+            self.screen_loader.load_extra_screen_dir(
+                str(screen_dir), default_app_id=plugin_info.app_id
+            )
+
     def refresh_application_registration(self) -> None:
         """刷新应用注册
 
@@ -220,6 +235,10 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
 
         if default_factories:
             self.run_context.registry_application(default_factories, default_group=True)
+
+        # 重新加载插件 screen
+        self.screen_loader.reload()
+        self._load_plugin_screens()
 
         # 更新默认应用组
         self.app_group_manager.set_default_apps(self.run_context.default_group_apps)
@@ -257,6 +276,7 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
             self.init_ocr()
 
             self.screen_loader.reload()
+            self._load_plugin_screens()
 
             # 账号实例层级的配置 不是应用特有的配置
             self.reload_instance_config()
@@ -464,7 +484,22 @@ class OneDragonContext(ContextEventBus, OneDragonEnvContext):
         初始化OCR
         :return:
         """
-        self.ocr.update_use_gpu(self.model_config.ocr_gpu)
+        # 清理旧实例资源
+        if hasattr(self, 'ocr') and self.ocr is not None:
+            if hasattr(self.ocr, 'cleanup'):
+                self.ocr.cleanup()
+
+        self.ocr = OnnxOcrMatcher(
+            OnnxOcrParam(
+                ocr_model_name=self.model_config.ocr,
+                use_gpu=self.model_config.ocr_use_gpu,
+                det_limit_side_len=max(self.project_config.screen_standard_width, self.project_config.screen_standard_height),
+            )
+        )
+        self.ocr.overlay_debug_bus = self.overlay_debug_bus
+        self.ocr_service.ocr_matcher = self.ocr
+        if 'cv_service' in self.__dict__:
+            self.cv_service.ocr = self.ocr
         self.ocr.init_model(
             ghproxy_url=self.env_config.gh_proxy_url if self.env_config.is_gh_proxy else None,
             proxy_url=self.env_config.personal_proxy if self.env_config.is_personal_proxy else None,

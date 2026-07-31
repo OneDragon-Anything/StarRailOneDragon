@@ -51,3 +51,11 @@ notice_cache/
 
 # 需自行下载的模型文件
 models/
+# AI 入口：只放行 CLAUDE.md 进版本库，其余 settings/hooks 均为个人本地
+.claude/*
+!.claude/CLAUDE.md
+CLAUDE.local.md
+
+# superpowers（规划文档/会话产物，不入库）
+docs/superpowers/
+.superpowers/

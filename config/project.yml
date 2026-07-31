@@ -6,6 +6,7 @@ github_ssh_repository: "git@github.com:OneDragon-Anything/StarRailOneDragon.git"
 gitee_https_repository: "https://gitee.com/OneDragon-Anything/StarRailOneDragon.git"
 gitee_ssh_repository: "git@gitee.com:OneDragon-Anything/StarRailOneDragon.git"
 project_git_branch: "main"
+manifest_path: "deploy/module_manifest.py"
 game_executable_name: "StarRail.exe"
 screen_standard_width: 1920
 screen_standard_height: 1080

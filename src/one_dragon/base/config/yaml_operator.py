@@ -84,7 +84,13 @@ class YamlOperator:
             os.makedirs(parent_dir, exist_ok=True)
 
         if self._copy_on_write_source_path is not None and not os.path.exists(write_path):
-            shutil.copyfile(self._copy_on_write_source_path, write_path)
+            try:
+                shutil.copyfile(self._copy_on_write_source_path, write_path)
+            except FileNotFoundError:
+                log.error(
+                    f'复制配置文件失败 来源文件不存在 source={self._copy_on_write_source_path} write_path={write_path}'
+                )
+                return False
 
         self._copy_on_write_source_path = None
         return True
@@ -94,16 +100,28 @@ class YamlOperator:
             return self.file_path if self.file_path is not None else self._write_file_path
         return self._write_file_path if self._write_file_path is not None else self.file_path
 
-    def save(self):
+    def save(self) -> None:
         if not self._ensure_write_path_ready():
             return
-
         write_path = self._get_write_path()
         if write_path is None:
             return
 
+        # 把要写入的内容转成字符串
+        new_content = yaml.dump(self.data, allow_unicode=True, sort_keys=False)
+        # 尝试读取旧文件内容
+        old_content = None
+        try:
+            with open(write_path, 'r', encoding='utf-8') as file:
+                old_content = file.read()
+        except Exception:
+            pass
+
+        # 读取报错/内容不一致时写入
+        if old_content == new_content:
+            return
         with open(write_path, 'w', encoding='utf-8') as file:
-            yaml.dump(self.data, file, allow_unicode=True, sort_keys=False)
+            file.write(new_content)
         invalidate_cache(write_path)
 
         if self.file_path != write_path:
@@ -140,7 +158,8 @@ class YamlOperator:
 
     def update(self, key: str, value, save: bool = True):
         if not isinstance(self.data, dict):
-            self.data = {}
+            # 根节点为 list 是合法 YAML；keyed update 只适用于 dict。
+            return
         if key in self.data and not isinstance(value, list) and self.data[key] == value:
             return
         self.data[key] = value
