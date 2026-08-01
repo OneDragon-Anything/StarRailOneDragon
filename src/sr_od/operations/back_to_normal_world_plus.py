@@ -1,12 +1,20 @@
 import time
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import SimUniChooseBless
-from sr_od.application.sim_universe.operations.bless.sim_uni_drop_bless import SimUniDropBless
-from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import SimUniChooseCurio, SimUniDropCurio
+from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import (
+    SimUniChooseBless,
+)
+from sr_od.application.sim_universe.operations.bless.sim_uni_drop_bless import (
+    SimUniDropBless,
+)
+from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import (
+    SimUniChooseCurio,
+    SimUniDropCurio,
+)
 from sr_od.application.sim_universe.operations.sim_uni_event import SimUniEvent
 from sr_od.application.sim_universe.operations.sim_uni_exit import SimUniExit
 from sr_od.context.sr_context import SrContext
@@ -35,7 +43,7 @@ class BackToNormalWorldPlus(SrOperation):
             # 判断是否在模拟宇宙内
             sim_uni_level_type = sim_uni_screen_state.get_level_type(self.ctx, screen)
             if sim_uni_level_type is not None:
-                return self.sim_uni_exit()
+                return self.sim_uni_exit(False)
 
             # 如果有返回按钮 又不是在模拟宇宙 则就是在逐光捡金内
             result = self.round_by_find_and_click_area(screen, '模拟宇宙', '大世界返回按钮')
