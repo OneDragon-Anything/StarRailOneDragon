@@ -9,6 +9,7 @@
 """
 
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -23,6 +24,9 @@ mcp = FastMCP("SR OD Server Manage")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 # 主 MCP server 默认端口（start tool 的 port 参数默认值；区别于 daemon 自身监听端口）
 MCP_SERVER_PORT = 24001
+
+# start/stop 主 server 的互斥锁:防「检查进程/端口 → Popen」TOCTOU 竞态(并发调用起重复进程/端口冲突)
+_start_lock = threading.Lock()
 
 
 def find_sr_od_mcp_server_process() -> psutil.Process | None:
@@ -87,40 +91,41 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
     Returns:
         启动结果信息。
     """
-    existing_proc = find_sr_od_mcp_server_process()
-    if existing_proc:
-        return f"[OK] 主 MCP server 已在运行 (PID: {existing_proc.pid})"
+    with _start_lock:
+        existing_proc = find_sr_od_mcp_server_process()
+        if existing_proc:
+            return f"[OK] 主 MCP server 已在运行 (PID: {existing_proc.pid})"
 
-    if is_port_in_use(port):
-        return f"[WARN] 端口 {port} 已被占用，可能有其他程序在使用"
+        if is_port_in_use(port):
+            return f"[WARN] 端口 {port} 已被占用，可能有其他程序在使用"
 
-    try:
-        # 输出重定向到日志文件:长驻 server 若用 PIPE 且不持续消费,buffer 满会阻塞子进程
-        log_path = PROJECT_ROOT / '.debug' / 'sr_od_mcp' / 'main_server.log'
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        cmd = ['uv', 'run']
-        # .env 存在才追加 --env-file（对齐 GUI 的 mcp_service_interface._server_command，
-        # 避免新人未建 .env 时 uv run 报 "No such file or directory"）
-        if (PROJECT_ROOT / '.env').is_file():
-            cmd.extend(['--env-file', '.env'])
-        cmd.extend(['python', '-m', 'sr_od.backend.entry.server', '--port', str(port)])
-        # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
-        with open(log_path, 'w', encoding='utf-8') as log_file:
-            process = subprocess.Popen(
-                cmd,
-                cwd=str(PROJECT_ROOT),
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-            )
+        try:
+            # 输出重定向到日志文件:长驻 server 若用 PIPE 且不持续消费,buffer 满会阻塞子进程
+            log_path = PROJECT_ROOT / '.debug' / 'sr_od_mcp' / 'main_server.log'
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            cmd = ['uv', 'run']
+            # .env 存在才追加 --env-file（对齐 GUI 的 mcp_service_interface._server_command，
+            # 避免新人未建 .env 时 uv run 报 "No such file or directory"）
+            if (PROJECT_ROOT / '.env').is_file():
+                cmd.extend(['--env-file', '.env'])
+            cmd.extend(['python', '-m', 'sr_od.backend.entry.server', '--port', str(port)])
+            # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
+            with open(log_path, 'w', encoding='utf-8') as log_file:
+                process = subprocess.Popen(
+                    cmd,
+                    cwd=str(PROJECT_ROOT),
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                )
 
-        time.sleep(2)
+            time.sleep(2)
 
-        if process.poll() is None:
-            return f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n端口: {port}\n日志: {log_path}"
-        return f"[ERROR] 启动失败(返回码 {process.returncode})\n日志: {log_path}"
+            if process.poll() is None:
+                return f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n端口: {port}\n日志: {log_path}"
+            return f"[ERROR] 启动失败(返回码 {process.returncode})\n日志: {log_path}"
 
-    except Exception as e:
-        return f"[ERROR] 启动异常: {e}"
+        except Exception as e:
+            return f"[ERROR] 启动异常: {e}"
 
 
 @mcp.tool()
