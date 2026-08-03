@@ -204,13 +204,17 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
                 break
             if dy <= 0:
                 continue
-            m = re.search(r'\d+', r2.data or '')
-            if m:
-                count = int(m.group())
+            data = r2.data or ''
+            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3");优先此格式取 X。
+            # 裸数字(无斜杠)多是 tier 链残留(如燃血 "2/4/6/8" → OCR "8" / "2141618")或邻行资源数,
+            # 旧逻辑 grab 首位数字会把它误当 count(2026-08-04 实测 燃血:8/能量:7 喂脏 eval)→ skip。
+            m_xy = re.search(r'(\d+)\s*/\s*\d+', data)
+            if m_xy:
+                count = int(m_xy.group(1))
                 break
-        # sanity bound:阵营计数应为 1-9;越界(garble —— OCR 把 "2/3" 读成 "213"、或抓到邻行资源数/badge)
-        # → 默认 1(至少 1 人在场才显示该阵营),防 synergy_score 垃圾入。
-        # 待用视觉搞清面板真实格式("X/Y" / 激活 tier 串)后重写解析。
+            # 无 "X/Y"(裸数字)→ 不当 count,继续往下找真正的 "X/Y"(可能在稍下方一行)。
+        # sanity bound:count 应 1-9;越界/未找到 → 默认 1(至少 1 人在场才显示该阵营),防 synergy_score 垃圾入。
+        # ⚠️ 残留风险:动画期面板只显示 tier 链(无 "X/Y")→ count=None→默认1(保守,优于脏 8)。
         board[faction] = count if (count is not None and 1 <= count <= 9) else 1
     return board
 
