@@ -32,6 +32,9 @@
 - [09_meta_run.md](strategy/09_meta_run.md) —— 跨局 meta-run(优势布局默认不碰)
 - [10_battle_and_enemies.md](strategy/10_battle_and_enemies.md) —— 观测反馈 PerformanceTracker + 敌人机制双向
 
+### `decisions.md` —— 决策日志(why,与正文 what 分开)
+[decisions.md](decisions.md) —— append-only `D-NN` 紧凑条目(决策/为什么/备选/状态 + `· §X` 反引正文)。备选栏防重复扯皮;反转标 `↺ 推翻 D-XX`。正文(strategy/)只讲 what,依据引"决策见 D-XX"。
+
 ## 代码引用
 
 代码注释引用本目录稳定路径,例如:
