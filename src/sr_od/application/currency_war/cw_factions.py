@@ -20,11 +20,20 @@ from dataclasses import dataclass
 
 @dataclass
 class FactionInfo:
-    """单个阵营/羁绊信息。"""
+    """单个阵营/羁绊信息(model 类;成员从 CHARACTERS 反查,单一真相源)。"""
     cn: str  # 中文名
     category: str  # "combat" | "economy" | "support" | "independent"
     tiers: tuple[int, ...]  # 激活阈值(几人激活第 N 层)
     note: str = ""  # 简述效果
+
+    def members(self, include_flows: bool = True) -> list[str]:
+        """该羁绊的成员角色名(从 CHARACTERS 反查;include_flows=True 含流派羁绊成员)。
+
+        成员关系是**派生**的(角色自报 factions/flows),不在 FactionInfo 重复硬编码 ——
+        改 CHARACTERS 自动传导,单一真相源(工程化原则)。
+        """
+        from sr_od.application.currency_war.cw_chars import chars_by_faction
+        return [c.name for c in chars_by_faction(self.cn, include_flows=include_flows)]
 
 
 # 米游社百科 V4.4 权威(cw_data/factions.md)。分类按效果归类;tiers 为逐层激活人数。

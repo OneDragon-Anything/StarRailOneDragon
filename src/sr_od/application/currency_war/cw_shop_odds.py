@@ -21,12 +21,15 @@ from __future__ import annotations
 
 import math
 
+from sr_od.application.currency_war.cw_chars import chars_by_cost
+
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
 # a:每种牌的副本数(V4.4 3费实测=18;1/2/4/5费待核,placeholder=18)
 POOL_COPIES_PER_CARD: dict[int, int] = {1: 18, 2: 18, 3: 18, 4: 18, 5: 18}
-# v:同费用的种类数(from cw_data/characters.md V4.4=74 种分布)
-DISTINCT_CARDS_PER_COST: dict[int, int] = {1: 14, 2: 13, 3: 13, 4: 12, 5: 9}
+# v:同费用的种类数 —— 从角色注册表派生(单一真相源;改 CHARACTERS 自动传导,非硬编码)
+# 注:3费=13 与 D牌期望表(77124902)实测点吻合;其余费用随注册表,实机校准
+DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}
 
 # 刷新概率 p[level][cost](V4.4;7级3费=0.4 实测点,其余 placeholder 待 77074467 折叠栏/实机核)
 # 粗规律:随等级升,高费概率提升(低级低费主导、高级高费主导)。
