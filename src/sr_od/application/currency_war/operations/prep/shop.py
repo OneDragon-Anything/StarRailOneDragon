@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_comps import make_score_context, select_comp
 from sr_od.application.currency_war.cw_decisions import plan
 from sr_od.application.currency_war.cw_observation import (
     area_center,
@@ -98,12 +99,18 @@ class BuyShopCards(SrOperation):
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
             actions = plan(state, config, config.faction_priority)
+            # A2:plan 内部 select_comp 选 target 驱动买牌,但 plan 只返回 actions 不返回 target。
+            # 此处用同一 state+config 重算 target 名,仅作 telemetry/日志可观测(deterministic → 与
+            # plan 内选的 target 一致)。让 A2 战略导向可复盘(board 收敛 / target 切换 / A-B 对比)。
+            _tgt_cands = select_comp(state, make_score_context(state), config)
+            target_name = _tgt_cands[0].name if _tgt_cands else ''
 
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
-                     f'plane={state.plane} round={state.round_num} board={state.board}')
+                     f'plane={state.plane} round={state.round_num} board={state.board} '
+                     f'target={target_name!r}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
-            cw_telemetry.record_decision(state, '', {}, {}, actions)   # 写本地 decisions.jsonl
+            cw_telemetry.record_decision(state, target_name, {}, {}, actions)   # 写本地 decisions.jsonl(含 A2 target)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)
