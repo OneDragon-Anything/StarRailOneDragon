@@ -47,6 +47,10 @@ CLOSE_TO_NEXT_TIER_BONUS: float = 0.5  # 差 1 人推层的加成系数
 SYNERGY_TIER_EXPONENT: float = 1.5     # 激活 tier 的超线性指数(收敛,task#16):深堆(高 tier)超线性奖励。
 # 2026-08-04 实跑:bot 散阵(买每阵营 1 张)因 买新 tier-1 = 深化 tier1→2 同 delta(线性)→ 无偏好→散。
 # 超线性(×1.5):深化 delta(2^1.5-1=1.83)> 散新(1^1.5=1)→ bot 偏好深化已有阵营 → 收敛(深堆>散)。
+OFF_TARGET_DISCOUNT: float = 0.3       # commitment(task#16):target 设定时,off-target 阵营 synergy 打折。
+# 2026-08-04:bot 深堆了 列车同行(target):2 但也深堆 仙舟(off-target):2 → 力量分散。打折 off-target
+# → bot 偏好深化 target 阵营 → target comp 更高 tier → 更强。off-target ×0.3(非 0)→ 仍可买/deploy(无 hold-forever),
+# 只是不优先。target_comp=None(reactive/测试)→ 不打折(向后兼容)。
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # 默认升级金价(粗估,实机校准)
@@ -81,20 +85,30 @@ def _close_factions(state: GameState) -> set[str]:
     return {f for f, c in state.board.items() if _close_to_next(f, c)}
 
 
-def synergy_score(state: GameState, faction_priority: list[str]) -> float:
-    """羁绊质量分:激活 tier × 类别 + 接近推层 + 偏好 + 高 ceiling 潜力项。"""
+def synergy_score(state: GameState, faction_priority: list[str],
+                  target_comp: Comp | None = None) -> float:
+    """羁绊质量分:激活 tier × 类别 + 接近推层 + 偏好 + 高 ceiling 潜力项。
+
+    target_comp 给定时(commitment,task#16):off-target 阵营 synergy × OFF_TARGET_DISCOUNT,
+    聚焦深化 target 阵营 → target comp 更高 tier 更强。target_comp=None(reactive/测试)→ 不打折。
+    """
+    target_factions: set[str] = set(target_comp.form_tiers.keys()) if target_comp is not None else set()
     score = 0.0
     for faction, count in state.board.items():
         if count <= 0:
             continue
         info = FACTIONS.get(faction)
         cat_w = CATEGORY_WEIGHT[info.category] if info and info.category in CATEGORY_WEIGHT else 3.0
-        score += cat_w * _activated_tiers(faction, count) ** SYNERGY_TIER_EXPONENT
+        tier_score = cat_w * _activated_tiers(faction, count) ** SYNERGY_TIER_EXPONENT
         if _close_to_next(faction, count):
-            score += cat_w * CLOSE_TO_NEXT_TIER_BONUS
+            tier_score += cat_w * CLOSE_TO_NEXT_TIER_BONUS
         mt = _max_tier(faction)
         if mt >= 6:
-            score += cat_w * (count / mt) * CEILING_BONUS_FACTOR
+            tier_score += cat_w * (count / mt) * CEILING_BONUS_FACTOR
+        # commitment:off-target 阵营打折(target 设定时),聚焦深化 target(用户 priority bonus 不打折)
+        if target_factions and faction not in target_factions:
+            tier_score *= OFF_TARGET_DISCOUNT
+        score += tier_score
         if faction in faction_priority:
             score += (len(faction_priority) - faction_priority.index(faction)) * FACTION_PRIORITY_BONUS
     return score
@@ -181,7 +195,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     """
     ws, we, wc = _phase_weights(state.plane, state.hp)
     score = (
-        ws * synergy_score(state, faction_priority)
+        ws * synergy_score(state, faction_priority, target_comp)
         + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
         + wc * char_quality_score(state, getattr(config, 'character_priority', []))
     )
