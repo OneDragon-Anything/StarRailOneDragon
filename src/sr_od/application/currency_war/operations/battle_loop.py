@@ -25,7 +25,10 @@ class CurrencyWarRunLoop(SrOperation):
     ``StartCurrencyWarMatch`` 负责,本 op 只跑对局内循环)。MAX_ITER 防失控。
     """
 
-    MAX_ITER: ClassVar[int] = 500  # 整局两 位面 多轮(备战+战斗+多类事件),200 实测不够(12min 跑到 ~iter 200)
+    MAX_ITER: ClassVar[int] = 2000  # 整局 3 位面多轮(备战+战斗+多类事件);战斗 round_wait 占大量迭代。
+    # 2026-08-04 实跑:500 不够 —— reactive 弱阵战斗慢,plane2 r5 打「蚕食者之影」时 iter 撞 500
+    # →「对局循环超时」失败(bot 一直在推进,非逻辑 bug,是迭代预算耗尽)。bump 到 2000(≈66min 预算)。
+    # 待优化:MAX_ITER 应只计「动作迭代」(备战/事件/结算),不计战斗 round_wait(战斗长短不该吃预算)。
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 选择类事件卡牌:点**中牌** x≈900 @ y550(投资环境/补给,点卡身选中)。
