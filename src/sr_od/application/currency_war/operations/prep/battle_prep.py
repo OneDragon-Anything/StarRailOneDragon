@@ -37,11 +37,13 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='出战')
     def battle(self) -> OperationRoundResult:
         # 点出战。⚠️ 框架 round 开始自动截图(before_screenshot 移鼠标到角落)→ 紧接 click
-        # 可能被判拖拽(bug#1);解法:active_window 后 sleep 0.5s 让鼠标稳定后再 click。
+        # 可能被判拖拽(bug#1);解法:active_window + sleep + **双击**(第一次可能被吞,第二次鼠标已到位必落)。
         screen = self.last_screenshot
         if self.round_by_ocr(screen, '出战').is_success:
             self.ctx.controller.active_window()
-            time.sleep(0.5)  # 让 before_screenshot 移完的鼠标稳定,避免 click 被判拖拽
+            time.sleep(0.5)
             self.ctx.controller.click(Point(1817, 749))
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1817, 749))  # 双击:bug#1 吞第一次时第二次必落
             return self.round_success(wait=3)
         return self.round_retry('找不到出战', wait=1)
