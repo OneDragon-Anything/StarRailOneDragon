@@ -47,10 +47,10 @@ CLOSE_TO_NEXT_TIER_BONUS: float = 0.5  # 差 1 人推层的加成系数
 SYNERGY_TIER_EXPONENT: float = 1.5     # 激活 tier 的超线性指数(收敛,task#16):深堆(高 tier)超线性奖励。
 # 2026-08-04 实跑:bot 散阵(买每阵营 1 张)因 买新 tier-1 = 深化 tier1→2 同 delta(线性)→ 无偏好→散。
 # 超线性(×1.5):深化 delta(2^1.5-1=1.83)> 散新(1^1.5=1)→ bot 偏好深化已有阵营 → 收敛(深堆>散)。
-OFF_TARGET_DISCOUNT: float = 0.3       # commitment(task#16):target 设定时,off-target 阵营 synergy 打折。
-# 2026-08-04:bot 深堆了 列车同行(target):2 但也深堆 仙舟(off-target):2 → 力量分散。打折 off-target
-# → bot 偏好深化 target 阵营 → target comp 更高 tier → 更强。off-target ×0.3(非 0)→ 仍可买/deploy(无 hold-forever),
-# 只是不优先。target_comp=None(reactive/测试)→ 不打折(向后兼容)。
+OFF_TARGET_DISCOUNT: float = 1.0       # 2026-08-04 revert(原 0.3):实跑发现 0.3 打折 board synergy 致 bot
+# 卖成型 off-target 深堆(churn)= regression(vs 4-fix 无 commitment 清 plane1)。改 1.0(不打折)= 恢复
+# 4-fix(super-linear synergy 单独)行为。commitment 正确实现 = prefilter(只 discount 新 off-target **buys**,
+# 不动已有堆的 board eval)—— 待后续 task#16 续。target_comp 参数保留(prefilter 复用),effect 暂关。
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # 默认升级金价(粗估,实机校准)
