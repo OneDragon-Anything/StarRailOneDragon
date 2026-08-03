@@ -18,7 +18,8 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-# 卖出回金(按星级;粗估,实机校准)
+# 卖出回金(按星级;粗估,实机校准)。⚠️ star3=5 是占位 —— 实际应为 cost×9(1星=cost、2星=cost×3、3星=cost×9,
+# review agent 🟡 推算);A4 实现时改 cost-based sell_refund(star,cost)(需 BenchChar 带 cost),替换此表。
 SELL_VALUE: dict[int, int] = {1: 1, 2: 3, 3: 5}
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 
@@ -57,6 +58,11 @@ class GameState:
     shop: list[ShopCard] = field(default_factory=list)
     bench: list[BenchChar] = field(default_factory=list)
     bosses: list[str] = field(default_factory=list)
+    # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
+    active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
+    enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)
+    # 持有装备名(OCR 装备区填;comp 相关 equip_fit 用,详 cw_comps)。阶段 4 接线前默认空。
+    equips: list[str] = field(default_factory=list)
     front_max: int = 4    # 前/后排槽位上限(满 10 = 4 前 + 6 后)
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
