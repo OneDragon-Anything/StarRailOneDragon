@@ -18,6 +18,7 @@ from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESH
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
+from sr_od.application.currency_war.cw_comps import make_score_context, select_comp
 from sr_od.application.currency_war.cw_state import (
     Action,
     BenchChar,
@@ -242,10 +243,14 @@ def _sample_shop(state: GameState, faction_priority: list[str], rng: random.Rand
                      cost=_sample_cost(state.level, rng)) for _ in range(n)]
 
 
-def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str]) -> float:
-    """给定 shop,取最优 buy+deploy 的 eval(用于蒙特卡洛 D 牌:新 shop 下能拿到的最高分)。"""
+def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
+                          target_comp: Comp | None = None) -> float:
+    """给定 shop,取最优 buy+deploy 的 eval(用于蒙特卡洛 D 牌:新 shop 下能拿到的最高分)。
+
+    target_comp: 战略层目标(A2),传给 evaluate 使 D 牌期望导向 target 成型。None=reactive。
+    """
     character_priority = getattr(config, 'character_priority', [])
-    best = evaluate(state, config, faction_priority)
+    best = evaluate(state, config, faction_priority, target_comp)
     for card in state.shop:
         if state.gold < card_cost(card):
             continue
@@ -256,7 +261,7 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str])
             if ok:
                 after = simulate(after, DeployMove(bench_idx=len(after.bench) - 1,
                                                    to_row=row, faction=bc.faction))
-        ev = evaluate(after, config, faction_priority)
+        ev = evaluate(after, config, faction_priority, target_comp)
         if card.name in character_priority:
             ev += CHAR_PRIORITY_BONUS * 2
         best = max(best, ev)
@@ -264,10 +269,14 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str])
 
 
 def _refresh_expected_delta(state: GameState, config, faction_priority: list[str],
-                            base_eval: float, rng: random.Random, k: int = REFRESH_SAMPLES) -> float:
+                            base_eval: float, rng: random.Random, k: int = REFRESH_SAMPLES,
+                            target_comp: Comp | None = None) -> float:
     """刷新商店的**期望 delta**(蒙特卡洛,A1):扣刷新金后,采样 k 个 shop,各取最优 buy+deploy
     eval,均值 − base_eval。这把"何时 D 牌"从无法建模变成可计算 —— D 牌当期望新 shop 收益 >
-    刷新成本(economy 降)时发生。simulate 已扣 refresh cost,故期望含成本惩罚。"""
+    刷新成本(economy 降)时发生。simulate 已扣 refresh cost,故期望含成本惩罚。
+
+    target_comp: 战略层目标(A2),透传给 _best_buy_deploy_eval。None=reactive。
+    """
     if state.gold < SHOP_REFRESH_COST:
         return -1e9
     after_cost = simulate(state, RefreshShop(SHOP_REFRESH_COST))  # 已扣 2 金
@@ -275,7 +284,7 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
     for _ in range(k):
         s = after_cost.copy()
         s.shop = _sample_shop(after_cost, faction_priority, rng)
-        deltas.append(_best_buy_deploy_eval(s, config, faction_priority) - base_eval)
+        deltas.append(_best_buy_deploy_eval(s, config, faction_priority, target_comp) - base_eval)
     return sum(deltas) / len(deltas) if deltas else 0.0
 
 
@@ -303,18 +312,28 @@ def plan(state: GameState, config, faction_priority: list[str],
                 actions.append(SellBench(bench_idx=idx))
                 cur = simulate(cur, actions[-1])
 
+    # —— A2 战略层接线:选 target comp(select_comp 按场面多维打分),传给 evaluate ——
+    # reactive(target=None)→ 贪心加深领先(易散阵);有 target → evaluate 的 target_progress 项导向
+    # target 成型(commit,详 strategy/03)。每回合选一次(贪心循环内不切 comp —— 一回合不转型);
+    # bosses 从 state.bosses(OCR,开局可能空 → boss_fit 中性 0.5,不影响选 target)。
+    target = None
+    _candidates = select_comp(cur, make_score_context(cur), config)
+    if _candidates:
+        target = _candidates[0]
+
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
-    base_eval = evaluate(cur, config, faction_priority)
+    base_eval = evaluate(cur, config, faction_priority, target)
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur) - refresh_used)
+                                      refresh_budget=_refresh_cap(cur) - refresh_used,
+                                      target_comp=target)
         if not step:
             break
         actions.extend(step)
         for a in step:
             cur = simulate(cur, a)
-        base_eval = evaluate(cur, config, faction_priority)
+        base_eval = evaluate(cur, config, faction_priority, target)
 
     # —— 凑整吃息:卖出能跨 10 倍数(+1 档息)的非关键 bench 牌(循环)——
     _maybe_sell_for_interest(cur, actions, character_priority, config)
@@ -323,12 +342,13 @@ def plan(state: GameState, config, faction_priority: list[str],
 
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
-    rng: random.Random, refresh_budget: int = 0,
+    rng: random.Random, refresh_budget: int = 0, target_comp: Comp | None = None,
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
     候选:买+deploy 原子组合、deploy 已有角色、升等级、**D 牌(蒙特卡洛期望)**。gold≥0/level≤10。
     refresh_budget: 本回合剩余可刷新次数(≤0 则不再生成 RefreshShop;防无限刷,review r5)。
+    target_comp: 战略层目标阵容(A2);传给 evaluate,使动作导向 target 成型。None=reactive。
     """
     character_priority = getattr(config, 'character_priority', [])
     best: list[Action] = []
@@ -354,7 +374,7 @@ def _best_improving_action(
         after = after_buy
         for a in seq[1:]:
             after = simulate(after, a)
-        delta = evaluate(after, config, faction_priority) - base_eval
+        delta = evaluate(after, config, faction_priority, target_comp) - base_eval
         if card.name and card.name in character_priority:
             delta += CHAR_PRIORITY_BONUS * 2
         beat(delta, seq)
@@ -367,18 +387,19 @@ def _best_improving_action(
         if not ok:
             continue
         mv = DeployMove(bench_idx=i, to_row=row, faction=bc.faction)
-        beat(evaluate(simulate(state, mv), config, faction_priority) - base_eval, [mv])
+        beat(evaluate(simulate(state, mv), config, faction_priority, target_comp) - base_eval, [mv])
 
     # 3) 升等级(封顶 10)
     if state.level < 10:
         cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
         if state.gold >= cost:
-            beat(evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority) - base_eval,
+            beat(evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority, target_comp) - base_eval,
                  [LevelUp(cost=cost)])
 
     # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5 修死代码)
     if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0:
-        beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng),
+        beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
+                                     target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])
 
     return best
