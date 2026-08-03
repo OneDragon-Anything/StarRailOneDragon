@@ -8,7 +8,9 @@
 拉起、继承管理员权限,才能操作游戏(绕开 SSH 的 Session 0 隔离)。
 """
 
+import os
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -24,6 +26,10 @@ mcp = FastMCP("SR OD Server Manage")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 # 主 MCP server 默认端口（start tool 的 port 参数默认值；区别于 daemon 自身监听端口）
 MCP_SERVER_PORT = 24001
+# 本 daemon 自身监听 host/port(__main__ 启动时回填,restart_daemon 自重启沿用)
+# 注:不在此处加类型注解,否则 __main__ 里 `global` 声明会 SyntaxError(annotated name can't be global)
+_DAEMON_HOST = '127.0.0.1'
+_DAEMON_PORT = 24000
 
 # start/stop 主 server 的互斥锁:防「检查进程/端口 → Popen」TOCTOU 竞态(并发调用起重复进程/端口冲突)
 _start_lock = threading.Lock()
@@ -210,6 +216,61 @@ CPU 使用: {cpu_percent}%
         return f"[STATUS] 主 MCP server 运行中 (PID: {proc.pid})\n[ERROR] 无法获取详细信息: {e}"
 
 
+# 自重启协调器(detached 子进程跑,不随旧 daemon 退出而死)。
+# 只杀 daemon 本身(不 /T → 不波及主 server 子进程,主 server 被 orphan 后继续跑)→
+# 等 daemon 端口释放 → 用同样命令拉起新 daemon。
+_RESTARTER_SCRIPT = """\
+import time, sys, os, socket, subprocess
+delay = float(sys.argv[1]); pid = int(sys.argv[2])
+host = sys.argv[3]; port = int(sys.argv[4]); script = sys.argv[5]; cwd = sys.argv[6]
+time.sleep(delay)
+try:
+    os.system('taskkill /PID {} /F'.format(pid))   # 只杀 daemon 本身,不带 /T(不波及主 server 子进程)
+except Exception:
+    pass
+for _ in range(60):                                # 等 daemon 端口释放
+    s = socket.socket()
+    try:
+        s.bind((host, port)); s.close(); break
+    except OSError:
+        s.close(); time.sleep(0.5)
+subprocess.Popen([sys.executable, script, '--host', host, '--port', str(port)],
+                 cwd=cwd, creationflags=0x00000008)  # DETACHED_PROCESS
+"""
+
+
+@mcp.tool()
+def restart_daemon(delay: float = 2.0) -> str:
+    """重启本 daemon(自重启)。改了 daemon 自身代码(``sr_od_daemon.py``)后用本 tool 加载新代码。
+
+    后台 detached restarter → 延迟 ``delay`` 秒(让本响应先回)→ 杀旧 daemon(只杀本 pid,
+    不波及主 server 子进程,主 server 被 orphan 后继续跑)→ 等 daemon 端口释放 → 用同样命令拉起新 daemon。
+
+    ⚠️ 首次使用前需手动重启 daemon 一次(本 tool 属新代码,旧 daemon 没有);之后改 daemon 代码
+    即可用本 tool 自重启。若失败(新进程没起来),需手动重启 daemon。重启期间客户端到本 daemon 的连接会短暂断开。
+
+    Args:
+        delay: restarter 杀旧进程前的等待(秒)。
+
+    Returns:
+        重启计划(host/port/旧 pid)。
+    """
+    host = _DAEMON_HOST
+    port = _DAEMON_PORT
+    script = str(Path(__file__))
+    cwd = str(PROJECT_ROOT)
+    pid = os.getpid()
+    creationflags = (getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+                     | getattr(subprocess, 'DETACHED_PROCESS', 0)
+                     | getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    subprocess.Popen([sys.executable, '-c', _RESTARTER_SCRIPT,
+                      str(delay), str(pid), host, str(port), script, cwd],
+                     cwd=cwd, creationflags=creationflags,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return (f"[RESTART] daemon 计划自重启(host={host}, port={port}, old_pid={pid})\n"
+            f"restarter 将在 {delay}s 后杀旧进程并拉起新 daemon。本 daemon 连接会短暂断开,属正常。")
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -217,6 +278,9 @@ if __name__ == "__main__":
     parser.add_argument('--host', default='127.0.0.1', help='监听地址')
     parser.add_argument('--port', type=int, default=24000, help='监听端口')
     args = parser.parse_args()
+    # 回填本 daemon 监听 host/port(模块级赋值天然改全局,无需 global;restart_daemon 自重启沿用)
+    _DAEMON_HOST = args.host
+    _DAEMON_PORT = args.port
 
     print("=" * 60)
     print("SR OD 后端管理 daemon")

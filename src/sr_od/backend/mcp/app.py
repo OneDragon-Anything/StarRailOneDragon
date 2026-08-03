@@ -205,6 +205,30 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         except Exception as e:  # noqa: BLE001 工具层统一兜底，避免异常透传到 MCP 框架
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
 
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="录屏(NVENC,dev)"))
+    def record_screen(
+        mode: Annotated[str, Field(description="'fixed'=录 duration 秒自停(默认,阻塞返回);'start'=后台开始(返 pid);'stop'=停止收尾")] = 'fixed',
+        duration: Annotated[float, Field(description="fixed 模式录制秒数")] = 10.0,
+        out_name: Annotated[str, Field(description="输出文件名(存 .debug/record/)")] = 'rec',
+        fps: Annotated[int, Field(description="帧率")] = 30,
+        capture: Annotated[str, Field(description="'window'=游戏窗口(游戏不在退回 desktop);'desktop'=全桌面")] = 'window',
+        bitrate: Annotated[str, Field(description="目标码率,如 6M")] = '6M',
+    ) -> dict:
+        """录屏(**dev-only**)。观察类,不占单跑道,可与 bot run 并行。需 dev 依赖 imageio-ffmpeg。
+
+        ffmpeg gdigrab 采集 + h264_nvenc(NVIDIA GPU)硬编码,跑在本 server(Session 1),
+        能录游戏画面。典型用法:① record_screen(mode='start', out_name='match01') → 跑 bot →
+        record_screen(mode='stop');② record_screen(mode='fixed', duration=30) 录当前画面。
+        imageio-ffmpeg 为延迟导入,缺失时本 tool 返回提示、不影响 server 启动。
+
+        Returns:
+            dict: ``{success, path?, pid?, action, error?, hint?}``。
+        """
+        try:
+            return backend.record_screen(mode, duration, out_name, fps, capture, bitrate)
+        except Exception as e:  # noqa: BLE001 工具层统一兜底
+            return {'success': False, 'error': str(e)}
+
     @mcp.tool(annotations=ToolAnnotations(title="增改画面区域"))  # 操作类:改 screen_info(写 yml + reload)
     def upsert_screen_area(
         screen_name: str, area_name: str,

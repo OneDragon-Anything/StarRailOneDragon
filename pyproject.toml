@@ -34,6 +34,9 @@ dev = [
     "ruff>=0.12.10",
     "pyright>=1.1.411",
     "uvicorn>=0.30.0",
+    "matplotlib>=3.11.1",
+    # record_screen(dev-only MCP 录屏 tool)依赖;后端经 `--group dev` 启动时可用。
+    "imageio-ffmpeg>=0.6.0",
 ]
 
 [tool.uv]

@@ -13,6 +13,8 @@ game 切片方法（``check_window``/``capture``/``analyze``）从
 """
 
 import asyncio
+import contextlib
+import subprocess
 import threading
 import time
 from collections.abc import Callable
@@ -397,6 +399,10 @@ class SrBackendContext:
         """
         self._ctx: SrContext = ctx
         self.run_slot: RunSlot = RunSlot(ctx)
+        # 录屏状态(dev-only record_screen 用);observe 类,独立于单跑道,可与 bot run 并行。
+        self._recorder_lock = threading.Lock()
+        self._recorder_proc: subprocess.Popen | None = None
+        self._recorder_path: str | None = None
 
     @property
     def ctx(self) -> SrContext:
@@ -485,6 +491,117 @@ class SrBackendContext:
         # 打码 UID:对齐 controller.screenshot()(框架流程截图本就经 fill_uid_black 打码,
         # backend 截图供 MCP/HTTP 落盘 / 外传,同样不能带账号信息)。
         return controller.fill_uid_black(image)
+
+    def record_screen(
+        self,
+        mode: str = 'fixed',
+        duration: float = 10.0,
+        out_name: str = 'rec',
+        fps: int = 30,
+        capture: str = 'window',
+        bitrate: str = '6M',
+    ) -> dict:
+        """录屏(dev-only,需 dev 依赖 imageio-ffmpeg)。观察类,不占单跑道,可与 bot run 并行。
+
+        ffmpeg gdigrab 采集 + h264_nvenc(NVIDIA GPU)硬编码,跑在本 server 进程
+        (Session 1 / 交互桌面),故能录到游戏画面 —— 从 SSH / 服务会话(Session 0)直跑
+        ffmpeg 会 BitBlt ACCESS_DENIED,录不到交互桌面,这是录屏放 backend 的根本原因。
+
+        Args:
+            mode: 'fixed'(默认)= 录 ``duration`` 秒后 ffmpeg 自停(-t,正常写 moov,mp4 干净),
+                阻塞返回; 'start'= 后台开始(返回 pid),之后调 ``mode='stop'`` 收尾
+                (用 fragmented mp4,kill 也安全可播); 'stop'= 停止进行中的录屏。
+            duration: fixed 模式录制秒数。
+            out_name: 输出文件名(可带可不带 .mp4),存 ``.debug/record/``。
+            fps: 帧率。
+            capture: 'window'= 按游戏窗口标题(游戏不在则退回 desktop);'desktop'= 全桌面。
+            bitrate: 目标码率,如 ``6M``。
+
+        Returns:
+            ``{success, path?, pid?, action, error?, hint?}``。无 ffmpeg 时 success=False +
+            error 提示装 dev 依赖(imageio-ffmpeg)。imageio-ffmpeg 为延迟导入,缺失不影响 server 启动。
+        """
+        def _resolve_ffmpeg() -> str | None:
+            """延迟解析 ffmpeg 路径(imageio_ffmpeg → PATH),缺失返回 None(不影响启动)。"""
+            try:
+                import imageio_ffmpeg
+                return imageio_ffmpeg.get_ffmpeg_exe()
+            except Exception:
+                import shutil
+                return shutil.which('ffmpeg')
+
+        with self._recorder_lock:
+            if mode == 'stop':
+                proc = self._recorder_proc
+                out = self._recorder_path
+                self._recorder_proc = None
+                self._recorder_path = None
+                if proc is None:
+                    return {'success': False, 'error': '没有正在进行的录屏'}
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=5)
+                except Exception:
+                    with contextlib.suppress(Exception):
+                        proc.kill()
+                return {'success': True, 'path': out, 'action': 'stopped'}
+
+            ffexe = _resolve_ffmpeg()
+            if not ffexe:
+                return {
+                    'success': False,
+                    'error': '未找到 ffmpeg。录屏是 dev-only,需 dev 依赖 imageio-ffmpeg',
+                    'hint': '确认已 uv sync --group dev;或把 ffmpeg 放到 PATH',
+                }
+
+            out_dir = Path('.debug/record')
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if not out_name.lower().endswith('.mp4'):
+                out_name = out_name + '.mp4'
+            out_path = str((out_dir / out_name).resolve())
+
+            input_arg = 'desktop'
+            if capture == 'window':
+                try:
+                    title = self._ctx.controller.game_win.win_title
+                    if title:
+                        input_arg = f'title={title}'
+                except Exception:
+                    input_arg = 'desktop'
+
+            cmd = [ffexe, '-hide_banner', '-loglevel', 'error',
+                   '-f', 'gdigrab', '-framerate', str(fps), '-draw_mouse', '1',
+                   '-i', input_arg,
+                   '-c:v', 'h264_nvenc', '-preset', 'fast', '-b:v', bitrate,
+                   '-pix_fmt', 'yuv420p']
+            if mode == 'fixed':
+                cmd += ['-t', str(duration)]
+            else:  # start → fragmented mp4,被 kill 也安全可播
+                cmd += ['-movflags', '+frag_keyframe+emptymoov+default_base_moof']
+            cmd += [out_path, '-y']
+
+            try:
+                proc = subprocess.Popen(cmd)
+            except Exception as e:
+                return {'success': False, 'error': f'启动 ffmpeg 失败: {e}'}
+
+            if mode == 'fixed':
+                try:
+                    proc.wait(timeout=duration + 10)
+                    ok = proc.returncode == 0
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    ok = False
+                return {'success': ok, 'path': out_path if ok else None,
+                        'action': 'fixed', 'returncode': proc.returncode}
+            elif mode == 'start':
+                self._recorder_proc = proc
+                self._recorder_path = out_path
+                return {'success': True, 'pid': proc.pid, 'path': out_path, 'action': 'started',
+                        'hint': '后台录屏中;调 record_screen(mode="stop") 收尾'}
+            with contextlib.suppress(Exception):
+                proc.kill()
+            return {'success': False, 'error': f'未知 mode={mode}(支持 fixed/start/stop)'}
 
     @staticmethod
     def _resolve_screenshot(screenshot: str) -> 'tuple[MatLike | None, str]':
