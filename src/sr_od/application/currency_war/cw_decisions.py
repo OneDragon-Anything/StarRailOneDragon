@@ -30,7 +30,9 @@ from sr_od.application.currency_war.cw_state import (
     simulate,
 )
 
-# —— eval 权重(可调;实机/版本校准)——
+# —— eval 权重 ——
+# 以下为 **V4.4 research meta 先验,冻结**(版本更新才改,不进用户调参面;review r5/r6 权重纪律)。
+# 用户可调的只有 config 口:hp_safe_threshold / obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
 CATEGORY_WEIGHT: dict[str, float] = {"combat": 10.0, "economy": 6.0, "support": 4.0, "independent": 2.0}
 INTEREST_WEIGHT: float = 2.0          # 每档(10金)利息的分
 LEVEL_WEIGHT: float = 3.0             # 每级(相对期望)的分
@@ -43,6 +45,7 @@ CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜�
 LEVEL_UP_COST_TABLE: dict[int, int] = {2: 4, 3: 10, 4: 18, 5: 30, 6: 36, 7: 48, 8: 60, 9: 70, 10: 84}
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
+MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
 
 
 def _activated_tiers(faction: str, count: int) -> int:
@@ -106,11 +109,13 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     """
     interest_tiers = min(state.gold // 10, INTEREST_THRESHOLD // 10)
     interest_val = interest_tiers * INTEREST_WEIGHT
+    level_val = (state.level - _expected_level(state.round_num, state.plane)) * LEVEL_WEIGHT
     if economy_mode == "interest_first":
         interest_val *= 1.5
     elif economy_mode == "rush_level":
         interest_val *= 0.5
-    return interest_val + (state.level - _expected_level(state.round_num, state.plane)) * LEVEL_WEIGHT
+        level_val *= 1.5   # rush_level:等级项加权(抢升语义 —— 落后等级更痛、领先更值),不只弱化守息
+    return interest_val + level_val
 
 
 def char_quality_score(state: GameState, character_priority: list[str]) -> float:
@@ -122,17 +127,39 @@ def char_quality_score(state: GameState, character_priority: list[str]) -> float
     return score
 
 
-def _phase_weights(plane: int, hp: int) -> tuple[float, float, float]:
-    """阶段键控权重 (synergy, economy, char)。A3:目标随阶段切换。
+HP_DANGER: int = 40   # 保血触发阈值(hp 低于此 → 弃息保血;A8 高难可调高,待 difficulty 字段)
 
-    前期(plane1)/低血:保血优先,economy 大幅降权、战力/角色加权;
-    后期(plane3):锁血,全力战力/星级、经济最次;中期平衡。
+
+def _phase_weights(plane: int, hp: int) -> tuple[float, float, float]:
+    """阶段键控权重 (synergy, economy, char)。A3 + review agent 经济学校准。
+
+    **2026-08-03 修正(review agent + 用户)**:前期 economy **不该压低** —— 利息越早到 5 档(50 金)
+    越好,经济滚雪球。原 "plane1 → economy 0.4" 把"前期"和"保血"混淆了。修正:
+    - **HP 危险(hp<HP_DANGER):保血** —— 任何位面,弃息提质量(战力/角色加权、经济降权)。
+    - **plane3(后期):锁血** —— 全力战力/星级(打 boss)。
+    - **其余(健康):平衡 (1,1,1)** —— economy 不压低,可 snowball 到 50。
+
+    待补:A8 difficulty 信号(高难 HP_DANGER 调高)+ win_streak(连胜中保连胜>吃息,需 read_streak)。
     """
-    if plane == 1 or hp < 40:
-        return (1.2, 0.4, 1.2)   # 保血:战力/角色优先,经济降权
+    if hp < HP_DANGER:
+        return (1.2, 0.4, 1.2)   # 保血:战力/角色优先,经济降权(任何位面 HP 危险)
     if plane == 3:
-        return (1.3, 0.3, 1.3)   # 锁血:全力战力/星级
-    return (1.0, 1.0, 1.0)       # 中期平衡
+        return (1.3, 0.3, 1.3)   # 锁血:全力战力/星级(plane3 boss 战)
+    return (1.0, 1.0, 1.0)       # 健康:平衡(economy 不压低,snowball 到 50)
+
+
+def _refresh_cap(state: GameState) -> int:
+    """本回合 D 牌(刷新)上限(动态;review agent + 用户:固定 2 太死)。
+
+    关键回合放宽:升 8 后 / plane3 搜核心、HP 危险锁血急救。
+    待补:拿刷新减费策略(砂里淘金/加油站)→ 6;需 GameState.active_strategies 字段(电表倒转)。
+    """
+    cap = MAX_REFRESH_PER_ROUND          # 基线 2
+    if state.plane == 3 or state.level >= 8:
+        cap = max(cap, 4)                # 升 8 后 / plane3:搜核心多刷
+    if state.hp < HP_DANGER:
+        cap = max(cap, 4)                # 锁血急救:多刷找质量
+    return cap
 
 
 def evaluate(state: GameState, config, faction_priority: list[str]) -> float:
@@ -250,7 +277,9 @@ def plan(state: GameState, config, faction_priority: list[str],
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority)
     for _ in range(15):
-        step = _best_improving_action(cur, config, faction_priority, base_eval, rng)
+        refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
+        step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
+                                      refresh_budget=_refresh_cap(cur) - refresh_used)
         if not step:
             break
         actions.extend(step)
@@ -265,11 +294,12 @@ def plan(state: GameState, config, faction_priority: list[str],
 
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
-    rng: random.Random,
+    rng: random.Random, refresh_budget: int = 0,
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
     候选:买+deploy 原子组合、deploy 已有角色、升等级、**D 牌(蒙特卡洛期望)**。gold≥0/level≤10。
+    refresh_budget: 本回合剩余可刷新次数(≤0 则不再生成 RefreshShop;防无限刷,review r5)。
     """
     character_priority = getattr(config, 'character_priority', [])
     best: list[Action] = []
@@ -317,8 +347,8 @@ def _best_improving_action(
             beat(evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority) - base_eval,
                  [LevelUp(cost=cost)])
 
-    # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):每回合最多刷 2 次(防无限刷)
-    if state.gold >= SHOP_REFRESH_COST and sum(1 for a in []) < 2:  # 上限由 plan 循环数隐式约束
+    # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5 修死代码)
+    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0:
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng),
              [RefreshShop(cost=SHOP_REFRESH_COST)])
 
