@@ -40,7 +40,9 @@ from sr_od.application.currency_war.cw_state import (
 # 开发者阶段 6 手调的最敏感 3-5 维(均内部,非用户 GUI;用户配置走 README A 的 4 轴优先/禁止/build_around+handoff):hp_safe_threshold(由 difficulty 派生)/ obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
 CATEGORY_WEIGHT: dict[str, float] = {"combat": 10.0, "economy": 6.0, "support": 4.0, "independent": 2.0}
 INTEREST_WEIGHT: float = 2.0          # 每档(10金)利息的分
-LEVEL_WEIGHT: float = 3.0             # 每级(相对期望)的分
+LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
+# (level benefit+3 < interest loss-6 → 不升)→ 卡 lv5-6 → 弱 comp → plane2 死。提权让升级战胜息损 → 升7-8
+# → 高费 unit → comp value↑ → 攻坚 plane2。
 CHAR_PRIORITY_BONUS: float = 8.0      # character_priority 角色分(每星)
 FACTION_PRIORITY_BONUS: float = 1.0   # faction_priority rank 分
 CLOSE_TO_NEXT_TIER_BONUS: float = 0.5  # 差 1 人推层的加成系数
