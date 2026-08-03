@@ -36,14 +36,18 @@ class BattlePrepCycle(SrOperation):
     @node_from(from_name='部署')
     @operation_node(name='出战')
     def battle(self) -> OperationRoundResult:
-        # 点出战。⚠️ 框架 round 开始自动截图(before_screenshot 移鼠标到角落)→ 紧接 click
-        # 可能被判拖拽(bug#1);解法:active_window + sleep + **双击**(第一次可能被吞,第二次鼠标已到位必落)。
+        # 点出战。⚠️ bug#1(before_screenshot 移鼠标→click 被判拖拽)间歇吞 click。
+        # 解法:active_window + sleep + 双击 + **验证 transition**(仍在备战→retry 重click,防 prep-loop)。
         screen = self.last_screenshot
         if self.round_by_ocr(screen, '出战').is_success:
             self.ctx.controller.active_window()
             time.sleep(0.5)
             self.ctx.controller.click(Point(1817, 749))
             time.sleep(0.3)
-            self.ctx.controller.click(Point(1817, 749))  # 双击:bug#1 吞第一次时第二次必落
+            self.ctx.controller.click(Point(1817, 749))
+            time.sleep(1.0)  # 等出战→战斗过渡
+            # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(不假成功,防 prep-loop stall)
+            if self.round_by_ocr(self.screenshot(), '购买经验').is_success:
+                return self.round_retry('出战 click 未落地,重试', wait=1)
             return self.round_success(wait=3)
         return self.round_retry('找不到出战', wait=1)
