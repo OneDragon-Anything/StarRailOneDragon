@@ -79,32 +79,49 @@ class ScoreContext:
 
 
 # ===== 机制表(双向:克 + 利;debuff=buff)=====
-# 来源:10_battle_and_enemies.md + cw_data/factions.md(燃血角斗场原文)。机制名跨版本稳;
-# 具体 boss/词缀属哪个机制随版本变(随 cw_data/competitors.md 实机 OCR 更新)。
+# 来源:cw_data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
+# 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
+# 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
 
 MECHANIC_COUNTERS: dict[str, list[str]] = {
     # 机制 tag → 它克制的 comp 机械属性
-    "禁速": ["速度依赖"],       # 电视机:克昼神阿雅/鞋队
-    "反伤": ["高频低单次"],     # 正当防卫/琥珀王/死龙/酒杯怪:克高频低单次(反甲白厄式)
-    "高防": ["高频低单次"],     # 高防同样克高频低单次
-    "冻结": ["慢速"],           # 急速制冷:克慢速队
-    "AoE": ["脆皮后排"],        # 群伤集火:克脆皮后排无盾
-    "集火": ["脆皮后排"],
+    "反伤": ["高频低单次"],        # 正当防卫:克高频低单次(反甲白厄式)
+    "冻结": ["慢速", "战技点依赖"],  # 极速制冷/坠入陷阱/冷冻冬眠:克慢速 + 战技点消耗队
+    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(config dot_punish_envs)
+    "掉血削上限": ["燃血"],        # 永久创伤:克燃血(掉血→减上限双损)⚠️ 燃血的反例 counter
+    "治疗削弱": ["治疗护盾"],      # 重症难题:克治疗/护盾主坦队
+    "幸运削弱": ["幸运一击"],      # 丢失幸运:克幸运一击/群攻(知更鸟)
+    "属性熄火": ["单属性队"],      # 风/火/冰/雷/物理/量子/虚数熄火:克纯色/单属性队
+    "速度抑制": ["速度依赖"],      # 忽快忽慢:克极端高速(昼神阿雅鞋队)
+    "装备依赖": ["依赖合成装备"],  # 变宝为废:克依赖合成的装备流
 }
 MECHANIC_SYNERGIES: dict[str, list[str]] = {
     # 机制 tag → 它受利的 comp 机械属性(用户:debuff=buff)
-    "反伤": ["燃血"],           # 正当防卫:反伤让燃血队掉血 → 角斗场记录 → 伤害更高(万敌例)
-    "AoE": ["燃血"],            # 群伤让燃血队掉血叠伤害
-    "持续伤害": ["燃血"],       # DoT 也喂燃血角斗场
-    "禁速": ["慢速爆发"],       # (待核)慢速队反而不怕禁速
+    "反伤": ["燃血"],             # 正当防卫:反伤让燃血掉血 → 角斗场记录 → 伤害更高(万敌例,debuff=buff 典型)
+    "爆发机会": ["爆发速杀"],     # 紧急止血:敌进战受 20% 上限伤 → 利爆发速杀
+    "高费审美": ["高费队"],       # 高费审美:4 费及以上 +5%(V4.4)
+    "低费审美": ["低费队"],       # 低费审美:3 费及以下 +5%(V4.4)
+    "成型羁绊利好": ["成型羁绊队"],  # 形单影只:羁绊全则不受罚(V4.4)
 }
 
-# 敌人词缀(OCR 原名)→ 机制 tag 映射(实机 OCR 补;未知词缀原样当 tag 透传)
+# 敌人词缀(OCR 原名)→ 机制 tag 映射(V4.4 competitors.md;未知词缀原样当 tag 透传)
 AFFIX_MECHANIC_MAP: dict[str, str] = {
     "正当防卫": "反伤", "反伤": "反伤",
-    "急速制冷": "冻结", "冻结": "冻结",
-    "禁速": "禁速", "速度封锁": "禁速",
-    # 其余词缀待实机 OCR 落 competitors.md 后补
+    "极速制冷": "冻结", "急速制冷": "冻结",   # 急速制冷=旧称/笔误变体,兼容
+    "坠入陷阱": "冻结", "冷冻冬眠": "冻结",
+    "净化身心": "净化",
+    "永久创伤": "掉血削上限",
+    "重症难题": "治疗削弱",
+    "丢失幸运": "幸运削弱",
+    "忽快忽慢": "速度抑制",
+    "变宝为废": "装备依赖",
+    "紧急止血": "爆发机会",
+    "高费审美": "高费审美", "低费审美": "低费审美",
+    "形单影只": "成型羁绊利好",
+    # 属性熄火(7):对应属性我方伤害 1 点(4 次后解除),克纯色队
+    "风之熄火": "属性熄火", "火之熄火": "属性熄火", "冰之熄火": "属性熄火",
+    "雷之熄火": "属性熄火", "物理熄火": "属性熄火", "量子熄火": "属性熄火", "虚数熄火": "属性熄火",
+    # 其余词缀(首领强化/复仇心切/倒计时类等)为纯数值/无 comp 交互,不入表;实机 OCR 按需补
 }
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
@@ -141,14 +158,16 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
-        form_tiers={"昼之半神": 4}, strength="S", form_difficulty="hard",
-        key_equips=["反重力皮靴", "反重力皮靴"],   # 需 2 靴(用户:"找鞋战争")
+        form_tiers={"昼之半神": 4}, strength="S", form_difficulty="medium",
+        # meta(71465721):超速阿格莱雅=「目前最轮椅打法,既通用又易成型还稳」→ medium(非 hard)
+        key_equips=["反重力皮靴", "反重力皮靴"],   # 2 靴("找鞋战争");光速螺旋桨由 3 昼之半神自动获得,非 find gate,不入 key_equips
         boss_weakness=["电视机"], mechanic_attributes=["速度依赖"],   # 电视机禁速克速度依赖
-        shared_chars=["风堇"], typical_form_round=8,
+        shared_chars=["风堇"], typical_form_round=7,
     ),
     Comp(
         name="击破流萤", factions=["击破"], core_chars=["流萤"],
-        form_tiers={"击破": 6}, strength="A", form_difficulty="hard",
+        form_tiers={"击破": 6}, strength="B", form_difficulty="hard",
+        # meta(71465721):V3.7「A7 稳过 A8 稳不过」→ B(A8 乏力);V3.8+ 加强但仍需姬子+忘归人
         mechanic_attributes=["击破"], typical_form_round=7,
     ),
     Comp(
@@ -160,7 +179,8 @@ COMP_LIBRARY: list[Comp] = [
         name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "长夜月"],
         form_tiers={"夜之半神": 4, "燃血": 4}, strength="A", form_difficulty="medium",
         mechanic_attributes=["燃血"],   # 【debuff=buff 典型】反伤/AoE/持续伤害 利燃血
-        key_equips=["燃血星徽"], shared_chars=["风堇", "长夜月"], typical_form_round=6,
+        key_equips=["热血沸腾拳", "高周波电锯", "火力风暴潮"],   # meta(71465721)万敌核心装备
+        shared_chars=["风堇", "长夜月"], typical_form_round=6,
     ),
     Comp(
         name="DOT队", factions=["持续伤害", "减益"], core_chars=["卡芙卡", "桑博"],
@@ -170,7 +190,8 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="反甲白厄", factions=["毁灭"], core_chars=["白厄"],
         form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard",
-        key_equips=["反甲"], boss_weakness=["琥珀王", "死龙", "酒杯怪"],
+        key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
+        boss_weakness=["红绿灯", "酒杯怪", "琥珀王", "死龙"],   # meta:怕红绿灯 + 酒杯怪
         mechanic_attributes=["高频低单次"], typical_form_round=7,
         # ⚠️ "毁灭" 不在 FACTIONS(data gap;form_progress 返回 0,待实机 OCR 确认白厄实际羁绊)
     ),
