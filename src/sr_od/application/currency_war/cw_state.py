@@ -7,7 +7,7 @@
 字段多由实机 OCR 填充(见 strategy_design.md §8 接线);未填(None/默认)时决策安全降级。
 
 **board 模型**(2026-08-03 review r1 修正):
-- ``board`` = 已上阵阵营计数(OCR 左面板 read_active_synergies 填充)。
+- ``board`` = 已上阵阵营计数(OCR 左面板 cw_observation.read_board 填充)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者应一致(deployed 按阵营聚合计数 == board)。
 - simulate(DeployMove) 同时更新 deployed(append) 与 board[faction]+=1。
@@ -181,6 +181,8 @@ def simulate(state: GameState, action: Action) -> GameState:
         s.gold -= card_cost(action.card)
         s.bench.append(_card_to_bench(action.card))
         _merge_bench(s.bench)
+        # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
+        s.shop = [c for c in s.shop if c.x != action.card.x]
     elif isinstance(action, SellBench):
         if 0 <= action.bench_idx < len(s.bench):
             sold = s.bench.pop(action.bench_idx)

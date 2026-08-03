@@ -1,0 +1,82 @@
+from typing import ClassVar
+
+from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.base.operation.operation_edge import node_from
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.context.sr_context import SrContext
+from sr_od.interastral_peace_guide.guid_choose_tab import GuideChooseTab
+from sr_od.interastral_peace_guide.open_guide import GuideOpen
+from sr_od.operations.sr_operation import SrOperation
+
+
+class EnterCurrencyWar(SrOperation):
+    """从大世界进入「货币战争」大厅(入口流程 M1)。
+
+    路径:打开指南(星际和平指南)→ 旷宇纷争 TAB → (货币战争分类默认选中)→ 前往参与
+    → 关一次性弹窗(V4.4 赛季扩充说明 / 新内容解禁)→ 货币战争大厅。
+
+    repo guide_data / screen_info 尚无货币战争,故 TAB 用现有「星际和平指南-TAB-旷宇纷争」area,
+    其余用 OCR 点击(非 GuideTransport)。详见 .debug/temp/currency_war/design.md。
+    """
+
+    # 点空白关闭「点击空白处关闭」类弹窗的区域(避开中央内容)
+    BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+
+    STATUS_AT_LOBBY: ClassVar[str] = '已在货币战争大厅'
+
+    def __init__(self, ctx: SrContext):
+        SrOperation.__init__(self, ctx, op_name='进入货币战争')
+
+    @operation_node(name='打开指南', is_start_node=True)
+    def open_guide(self) -> OperationRoundResult:
+        op = GuideOpen(self.ctx)
+        return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='打开指南')
+    @operation_node(name='选择旷宇纷争TAB')
+    def choose_tab(self) -> OperationRoundResult:
+        # 复用 GuideChooseTab:检测当前 tab + find_and_click_area 真正点击(旷宇纷争在 repo guide_data 内)
+        tab = self.ctx.guide_data.best_match_tab_by_name('旷宇纷争')
+        if tab is None:
+            return self.round_fail(status='指南数据无「旷宇纷争」TAB')
+        op = GuideChooseTab(self.ctx, tab)
+        return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='选择旷宇纷争TAB')
+    @operation_node(name='前往参与')
+    def enter(self) -> OperationRoundResult:
+        screen = self.last_screenshot
+        # success_wait 给点击落地 + 跳转加载留时间,也避免下一节点截图前移鼠标把 click 判成拖拽
+        return self.round_by_ocr_and_click(screen, '前往参与', retry_wait=1, success_wait=2)
+
+    @node_from(from_name='前往参与')
+    @operation_node(name='关闭弹窗并等待大厅', node_max_retry_times=30)
+    def wait_lobby(self) -> OperationRoundResult:
+        screen = self.last_screenshot
+
+        # 到达大厅:左菜单「创业指南」(大厅独有;不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配)
+        if self.round_by_ocr(screen, '创业指南').is_success:
+            return self.round_success(EnterCurrencyWar.STATUS_AT_LOBBY)
+
+        # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白
+        if self.round_by_ocr(screen, '点击空白处关闭').is_success:
+            self.ctx.controller.click(EnterCurrencyWar.BLANK_CLICK.center)
+            return self.round_retry(wait=1)
+
+        # 公告类弹窗(如 V4.4 赛季扩充说明,无「点击空白处关闭」)→ ESC 关
+        if (self.round_by_ocr(screen, '赛季扩充').is_success
+                or self.round_by_ocr(screen, '新内容解禁').is_success
+                or self.round_by_ocr(screen, '扩充内容概览').is_success):
+            self.ctx.controller.esc()
+            return self.round_retry(wait=1)
+
+        # 「前往参与」把角色传送到朝露公馆入口附近(大世界旷野),需按 F(交互)进货币战争大厅。
+        # 判定:画面有「货币战争」(入口交互提示)且不在指南页(无「前往参与」)→ 按 F。
+        if (self.round_by_ocr(screen, '货币战争').is_success
+                and not self.round_by_ocr(screen, '前往参与').is_success):
+            self.ctx.controller.btn_tap(self.ctx.controller.game_config.key_interact)
+            return self.round_retry(wait=2)
+
+        # 加载中或未知态 → 继续等
+        return self.round_retry(wait=1)

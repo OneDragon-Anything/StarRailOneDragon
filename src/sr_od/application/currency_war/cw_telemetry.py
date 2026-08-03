@@ -217,6 +217,64 @@ class TelemetryRecorder:
         self._difficulty.pop(run_id, None)
 
 
+# ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
+# telemetry 是横切关注点,用模块级 recorder + current_run_id,避免给 BuyShopCards / loop
+# 线程传参。CurrencyWarRunLoop 在 __init__ 调 start_run(生成 run_id),BuyShopCards 用
+# current_run_id() 取,loop 在战斗后 record_outcome、局终 record_run_summary。
+# 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
+_RECORDER: TelemetryRecorder | None = None
+_CURRENT_RUN_ID: str = ""
+_CURRENT_DIFFICULTY: str = ""
+
+
+def get_recorder() -> TelemetryRecorder:
+    """模块级 recorder 单例(默认 enabled,写 .debug/temp/currency_war/replay/)。"""
+    global _RECORDER
+    if _RECORDER is None:
+        _RECORDER = TelemetryRecorder(enabled=True)
+    return _RECORDER
+
+
+def start_run(difficulty: str = "") -> str:
+    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。loop __init__ 调。"""
+    global _CURRENT_RUN_ID, _CURRENT_DIFFICULTY
+    _CURRENT_RUN_ID = datetime.now().strftime('run_%Y%m%d_%H%M%S')
+    _CURRENT_DIFFICULTY = difficulty
+    get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
+    return _CURRENT_RUN_ID
+
+
+def current_run_id() -> str:
+    return _CURRENT_RUN_ID
+
+
+def record_decision(state: GameState, target_comp: str,
+                    candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
+                    actions: list[Action]) -> None:
+    """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。"""
+    if not _CURRENT_RUN_ID:
+        return
+    get_recorder().record_decision(_CURRENT_RUN_ID, _CURRENT_DIFFICULTY, state,
+                                   target_comp, candidate_scores, eval_breakdown, actions)
+
+
+def record_outcome(outcome) -> None:
+    """便捷:用 current_run_id 记一条观测结果。loop 战斗后调。"""
+    if not _CURRENT_RUN_ID:
+        return
+    get_recorder().record_outcome(_CURRENT_RUN_ID, outcome)
+
+
+def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
+                       final_hp: int, notes: str = "") -> None:
+    """便捷:用 current_run_id 记局终 summary。loop 局终调。"""
+    if not _CURRENT_RUN_ID:
+        return
+    get_recorder().record_run_summary(_CURRENT_RUN_ID, result, plane_reached,
+                                      rounds_survived, final_hp, notes=notes)
+
+
+
 # ===== 复盘读取(给人肉眼复盘 / 未来 ML)=====
 
 def read_jsonl(path: Path | str) -> list[dict[str, Any]]:

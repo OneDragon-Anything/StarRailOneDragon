@@ -1,0 +1,53 @@
+"""从货币战争对局中退出(放弃+结算)回大厅。
+
+高频重复操作(测试/刷开局/回滚),手动做很繁琐(Esc→放弃→结算3页→大厅)→ 建成 op 一键调用。
+支持入口:备战阶段 / 战斗中(任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
+"""
+from typing import ClassVar
+
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
+
+
+class ExitCurrencyWarMatch(SrOperation):
+    """放弃当前货币战争对局,返回大厅。"""
+
+    STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
+
+    def __init__(self, ctx: SrContext):
+        SrOperation.__init__(self, ctx, op_name='退出货币战争对局')
+
+    @operation_node(name='退出对局', is_start_node=True, node_max_retry_times=30)
+    def exit_match(self) -> OperationRoundResult:
+        screen = self.last_screenshot
+
+        # 已在大厅 → 完成
+        if self.round_by_ocr(screen, '创业指南').is_success:
+            return self.round_success(ExitCurrencyWarMatch.STATUS_AT_LOBBY)
+
+        # 放弃提示 → 放弃并结算
+        if self.round_by_ocr_and_click(screen, '放弃并结算', success_wait=3).is_success:
+            return self.round_wait(wait=2)
+
+        # 结算页 1:挑战失败/下一步
+        if self.round_by_ocr_and_click(screen, '下一步', success_wait=3).is_success:
+            return self.round_wait(wait=2)
+
+        # 结算页 2:下一页
+        if self.round_by_ocr_and_click(screen, '下一页', success_wait=3).is_success:
+            return self.round_wait(wait=2)
+
+        # 结算页 3:返回货币战争
+        if self.round_by_ocr_and_click(screen, '返回货币战争', success_wait=3).is_success:
+            return self.round_wait(wait=2)
+
+        # 备战/对局中(无放弃提示)→ Esc 弹放弃提示
+        if (self.round_by_ocr(screen, '购买经验').is_success       # 备战
+                or self.round_by_ocr(screen, '备战阶段').is_success
+                or self.round_by_ocr(screen, '出战').is_success):
+            self.ctx.controller.btn_tap('esc')
+            return self.round_wait(wait=2)
+
+        return self.round_retry(wait=1)
