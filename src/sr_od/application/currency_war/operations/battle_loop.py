@@ -145,7 +145,8 @@ class CurrencyWarRunLoop(SrOperation):
             self.round_by_ocr_and_click(self.screenshot(), '确认', success_wait=2)
             return self.round_wait(wait=2)
         # 4b. 遭遇节点(2 选 1 难度:遭遇其一/其三)→ 选左遭遇 + 选择
-        if self.round_by_ocr(screen, '遭遇节点').is_success:
+        # 2026-08-04:keyword '遭遇节点'→'遭遇'(屏显"遭遇 难度选择"非"遭遇节点",LCS borderline 不匹配→stall)
+        if self.round_by_ocr(screen, '遭遇').is_success:
             self.ctx.controller.click(Point(646, 500))  # 左遭遇(遭遇其一)中心
             time.sleep(0.6)
             self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2)
