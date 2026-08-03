@@ -36,17 +36,20 @@ class BattlePrepCycle(SrOperation):
     @node_from(from_name='部署')
     @operation_node(name='出战')
     def battle(self) -> OperationRoundResult:
-        # 点出战。⚠️ bug#1(before_screenshot 移鼠标→click 被判拖拽)间歇吞 click。
-        # 解法:active_window + sleep + 双击 + **验证 transition**(仍在备战→retry 重click,防 prep-loop)。
+        # 点出战。⚠️ bug#1:框架 before_screenshot 移鼠标到角落 → 紧接 controller.click(从角落到目标)
+        # 被游戏判拖拽 → click 落空。2026-08-04 实测:出战 click CONSISTENTLY 被吞(手动 click_game 行,
+        # 因无 before_screenshot)。
+        # 根因修复:**先 mouse_move 到目标(mouse_move 是纯移动不触发 drag 判断)→ 再 click(鼠标已在
+        # 目标 → 零移动 → 不被判 drag → 必落)**。+ verify transition(仍在备战→retry)。
         screen = self.last_screenshot
         if self.round_by_ocr(screen, '出战').is_success:
             self.ctx.controller.active_window()
-            time.sleep(0.5)
-            self.ctx.controller.click(Point(1817, 749))
             time.sleep(0.3)
-            self.ctx.controller.click(Point(1817, 749))
+            self.ctx.controller.mouse_move(Point(1817, 749))  # 先移鼠标到出战(纯移动,不触发 drag)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1817, 749))  # click(鼠标已到位 → 零移动 → 不被吞)
             time.sleep(1.0)  # 等出战→战斗过渡
-            # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(不假成功,防 prep-loop stall)
+            # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(防假成功 prep-loop)
             if self.round_by_ocr(self.screenshot(), '购买经验').is_success:
                 return self.round_retry('出战 click 未落地,重试', wait=1)
             return self.round_success(wait=3)
