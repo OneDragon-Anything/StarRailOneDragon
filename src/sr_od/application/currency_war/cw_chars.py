@@ -1,7 +1,7 @@
 """货币战争 角色领域模型(Character + CHARACTERS 注册表;meta 层,V4.4)。
 
 **来源**:米游社百科「货币战争图鉴·员工」`channel/map/209/210`(content/info API,2026-08-03),
-详 ``.debug/temp/currency_war/cw_data/characters.md``(74 名,含站位/类型/阵营/流派/source)。
+详 ``docs/game/currency_war/data/characters.md``(74 名,含站位/类型/阵营/流派/source)。
 
 **为什么建模**(用户 2026-08-03):核心实体(角色/阵营/策略/环境/装备)应是**正规 model 类 + 注册表**
 (可查询、可校验、有类型关系),而非字符串散落各处。本模块是角色域:

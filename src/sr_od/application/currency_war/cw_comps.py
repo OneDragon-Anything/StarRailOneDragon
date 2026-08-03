@@ -3,10 +3,10 @@
 战略层(阶段 2,A2):从「reactive 加深领先」升级到「围绕目标阵容 commit + 转型 + 巨星」。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
-数据与设计依据(详 ``.debug/temp/currency_war/strategy_plan/03_comp_planning.md`` +
-``10_battle_and_enemies.md`` + ``cw_data/comp_library.md``):
+数据与设计依据(详 ``docs/game/currency_war/strategy/03_comp_planning.md`` +
+``10_battle_and_enemies.md`` + ``docs/game/currency_war/data/comp_library.md``):
 - ``COMP_LIBRARY``:起步 roster(~8 套,覆盖易/中/难成型 + 各机制,含 debuff=buff 的燃血)。
-  依据 strategy_research §10(meta 横评)+ cw_data/characters.md / factions.md(米游社 V4.4)。
+  依据 strategy_research §10(meta 横评)+ docs/game/currency_war/data/characters.md / factions.md(米游社 V4.4)。
 - ``comp_score`` / ``select_comp``:按场面(gold/轮次/boss/已持牌/环境/词缀)多维打分选 target。
 
 **核心原则(用户 2026-08-03,贯彻全程)**:
@@ -52,7 +52,7 @@ class LevelGoal:
 @dataclass
 class Comp:
     """一套目标阵容(meta 数据,V4.4 起步估值待实玩校准)。"""
-    name: str                    # "巡击青雀"/"昼神阿雅"/"万敌单C"(roster 见 cw_data/comp_library.md)
+    name: str                    # "巡击青雀"/"昼神阿雅"/"万敌单C"(roster 见 docs/game/currency_war/data/comp_library.md)
     factions: list[str]          # 核心阵营组合 ["仙舟","追击"](查 FACTIONS)
     core_chars: list[str]        # 核心角色(名)["青雀","知更鸟"]
     form_tiers: dict[str, int]   # 成型 tier 目标 {"仙舟":5,"追击":3}(几人激活算成型)
@@ -80,7 +80,7 @@ class ScoreContext:
 
 
 # ===== 机制表(双向:克 + 利;debuff=buff)=====
-# 来源:cw_data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
+# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
 
@@ -138,7 +138,7 @@ ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
 
 
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
-# 详 cw_data/comp_library.md。form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
+# 详 docs/game/currency_war/data/comp_library.md。form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
 
 COMP_LIBRARY: list[Comp] = [
     Comp(

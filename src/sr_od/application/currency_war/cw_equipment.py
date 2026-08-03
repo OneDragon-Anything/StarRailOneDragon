@@ -1,7 +1,7 @@
 """货币战争 装备领域模型(Equipment + EQUIPMENTS 注册表;meta 层,V4.4)。
 
 **来源**:米游社百科「货币战争图鉴·装备」`channel/map/209/211`(content/info API,2026-08-03),
-详 ``.debug/temp/currency_war/cw_data/equipment.md``(~130 件:简易7/进阶33/特权27/星徽22/白昼6/Fate~24/工具11)。
+详 ``docs/game/currency_war/data/equipment.md``(~130 件:简易7/进阶33/特权27/星徽22/白昼6/Fate~24/工具11)。
 
 **用途**:装备规范名单一真相源 —— COMP_LIBRARY.key_equips / 补给决策 / equip_fit 都引用规范装备名。
 本注册表先收**策略相关 key 装备**(COMP_LIBRARY 引用 + meta 核心);全量 ~130 在 equipment.md,

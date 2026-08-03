@@ -16,7 +16,7 @@ DEFAULT_FACTION_PRIORITY: list[str] = [
     "贝洛伯格", "仙舟", "盛会之星", "昼之半神", "巡海游侠", "群攻", "追击", "狼狩",
 ]
 
-# 万用核心角色(出现就抓,不限流派);费用据米游社 V4.4 权威(cw_data/characters.md)
+# 万用核心角色(出现就抓,不限流派);费用据米游社 V4.4 权威(docs/game/currency_war/data/characters.md)
 DEFAULT_CHARACTER_PRIORITY: list[str] = [
     # 5 费拼图(后期找)
     "昔涟", "云璃", "流萤",  # 流萤=5费(星核猎手/击破主 C)
@@ -27,7 +27,7 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 ]
 
 # 事件选项名 → 优先级分(越高越优先选,decide_event 子串匹配)。投资环境 + 投资策略 按名字打分。
-# 名字以米游社百科 cw_data/investment_strategies.md(261 条)/investment_envs.md(74)为准。
+# 名字以米游社百科 docs/game/currency_war/data/investment_strategies.md(261 条)/investment_envs.md(74)为准。
 # (review r1 修正:删"贝洛伯格星徽/追击星徽"——那是装备/环境奖励非投资策略;"反利+"→"返利+";
 #  "模範的力量"→"榜样的力量";补棱彩 T0)
 DEFAULT_EVENT_WHITELIST: dict[str, int] = {

@@ -1,7 +1,7 @@
 """货币战争 投资策略 + 投资环境领域模型(meta 层,V4.4)。
 
 **来源**:米游社百科「货币战争图鉴」投资策略 `channel/map/209/212`(216)、投资环境 `/213`(74),
-详 ``.debug/temp/currency_war/cw_data/investment_strategies.md`` / ``investment_envs.md``。
+详 ``docs/game/currency_war/data/investment_strategies.md`` / ``investment_envs.md``。
 
 **用途**:
 - ``InvestmentEnv``(概念股/邀请…):**带 faction 字段** —— 概念股/邀请对应哪个阵营是派生 ENV_FACTION_MAP
