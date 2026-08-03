@@ -44,6 +44,9 @@ LEVEL_WEIGHT: float = 3.0             # 每级(相对期望)的分
 CHAR_PRIORITY_BONUS: float = 8.0      # character_priority 角色分(每星)
 FACTION_PRIORITY_BONUS: float = 1.0   # faction_priority rank 分
 CLOSE_TO_NEXT_TIER_BONUS: float = 0.5  # 差 1 人推层的加成系数
+SYNERGY_TIER_EXPONENT: float = 1.5     # 激活 tier 的超线性指数(收敛,task#16):深堆(高 tier)超线性奖励。
+# 2026-08-04 实跑:bot 散阵(买每阵营 1 张)因 买新 tier-1 = 深化 tier1→2 同 delta(线性)→ 无偏好→散。
+# 超线性(×1.5):深化 delta(2^1.5-1=1.83)> 散新(1^1.5=1)→ bot 偏好深化已有阵营 → 收敛(深堆>散)。
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # 默认升级金价(粗估,实机校准)
@@ -86,7 +89,7 @@ def synergy_score(state: GameState, faction_priority: list[str]) -> float:
             continue
         info = FACTIONS.get(faction)
         cat_w = CATEGORY_WEIGHT[info.category] if info and info.category in CATEGORY_WEIGHT else 3.0
-        score += cat_w * _activated_tiers(faction, count)
+        score += cat_w * _activated_tiers(faction, count) ** SYNERGY_TIER_EXPONENT
         if _close_to_next(faction, count):
             score += cat_w * CLOSE_TO_NEXT_TIER_BONUS
         mt = _max_tier(faction)
