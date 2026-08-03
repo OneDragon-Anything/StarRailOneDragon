@@ -342,12 +342,17 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
 
 # ===== comp_score(候选 comp 综合分)=====
 # 权重 V4.4 research meta 先验(占位,待实玩校准);归一化 sum=1.0。开发者阶段 6 手调(内部,非用户 GUI)。
-W_PROG: float = 0.35    # 成型进度(form + core_char)
-W_MECH: float = 0.20    # 机制契合(双向 debuff=buff)
+# 2026-08-04 实跑校准:W_PROG 0.35→0.45 / W_STR 0.10→0.05 / W_MECH 0.20→0.15。
+# 根因:select_comp 卡在无 progress 的高 strength comp(列车同行 S=1.0),但商店没刷其牌 → 不收敛、
+# 超长战斗。提 W_PROG 让 select_comp 偏好**可成型**(board 已有 progress,如 万敌 燃血:1)comp 而非
+# 高强度不可成型。算账:万敌(progress0.125,str0.4) vs 列车同行(prog0,str1.0),旧 0.084<0.1(列车同行赢);
+# 新 0.45*0.125+0.05*0.4=0.076 > 0.45*0+0.05*1.0=0.05(万敌赢)= 选可成型。
+W_PROG: float = 0.45    # 成型进度(form + core_char)—— 提权:偏好可成型 comp
+W_MECH: float = 0.15    # 机制契合(双向 debuff=buff;略降给 W_PROG)
 W_ENV: float = 0.15     # 投资环境契合
 W_BOSS: float = 0.10    # boss 克制
 W_EQUIP: float = 0.10   # 装备契合(comp 相关)
-W_STR: float = 0.10     # research meta 强度
+W_STR: float = 0.05     # research meta 强度(降:strength 不该压过可成型性)
 
 
 def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
