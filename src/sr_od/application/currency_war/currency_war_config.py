@@ -13,7 +13,7 @@ from one_dragon.base.config.yaml_config import YamlConfig
 
 # 成型快+稳的战力型阵营靠前(研究粗排:贝洛伯格/仙舟/盛会之星 > 巡海游侠/群攻 > 追击/狼狩)
 DEFAULT_FACTION_PRIORITY: list[str] = [
-    "贝洛伯格", "仙舟", "盛会之星", "巡海游侠", "群攻", "追击", "狼狩",
+    "贝洛伯格", "仙舟", "盛会之星", "昼之半神", "巡海游侠", "群攻", "追击", "狼狩",
 ]
 
 # 万用核心角色(出现就抓,不限流派);费用据米游社 V4.4 权威(cw_data/characters.md)
@@ -26,26 +26,26 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
     "阿格莱雅", "藿藿", "桑博", "艾丝妲", "风堇", "卡芙卡",  # 藿藿=1费 / 卡芙卡=2费 / 风堇=2费
 ]
 
-# 事件选项名 → 优先级分(越高越优先选)。投资环境 + 投资策略 + 补给 按名字统一打分。
-# (研究 T0/T1;版本更新后以游戏图鉴文案校准名字与效果)
+# 事件选项名 → 优先级分(越高越优先选,decide_event 子串匹配)。投资环境 + 投资策略 按名字打分。
+# 名字以米游社百科 cw_data/investment_strategies.md(261 条)/investment_envs.md(74)为准。
+# (review r1 修正:删"贝洛伯格星徽/追击星徽"——那是装备/环境奖励非投资策略;"反利+"→"返利+";
+#  "模範的力量"→"榜样的力量";补棱彩 T0)
 DEFAULT_EVENT_WHITELIST: dict[str, int] = {
-    # —— 投资环境 T0 ——
-    "昼之半神概念股": 100, "能量概念股": 100,
-    "命运礼物": 95,
-    "贝洛伯格邀请": 90, "追击邀请": 90,
-    "战技点契约": 85, "击破概念股": 85,
-    # —— 投资策略 T0(第一个)—— 找星徽 > 找装备 > 找经济
-    "贝洛伯格星徽": 95, "追击星徽": 95, "贝洛伯格星徽套组": 95, "追击星徽套组": 95,
-    "定期福利": 90, "加油站": 88, "价值投资·金": 85, "价值投资·彩": 92,
-    "装备方案A": 85, "武装突入": 82, "军备供应链": 80,
+    # —— 投资环境 T0(开局 3 选 1)——
+    "昼之半神概念股": 100, "能量概念股": 100, "命运礼物": 95,
+    "贝洛伯格邀请": 90, "追击邀请": 90, "战技点契约": 85, "击破概念股": 85,
+    # —— 投资策略 T0(局内 3 选 1)——
+    "高效决策": 93, "价值投资·彩": 92, "采购专员·彩": 92, "返利+": 90, "采购专员·金": 88,  # 凹上限后期
+    "定期福利": 90, "定点爆破": 90, "加油站": 88, "数值碾压": 88, "攻防一体": 88,
+    "价值投资·金": 85, "装备方案A": 85, "榜样的力量": 85, "羁绊的力量": 87, "基本保障": 86,
+    "战术义眼": 85, "武装突入": 82, "鲜血阶梯": 84, "野蛮成长": 83, "军备供应链": 80,
     "开源节流": 78, "黄金投资": 78,
-    # —— 投资策略 T0(凹上限,后期)——
-    "高效决策": 93, "采购专员·彩": 92, "采购专员·金": 88, "反利+": 90,
-    # —— 通用强(欢愉队等)——
-    "模範的力量": 85, "模范的力量": 85,  # 繁简容错
-    "中产阶级": 82, "黃金垃圾": 80, "黄金垃圾": 80,
-    "難度修改器": 72, "难度修改器": 72,
+    "中产阶级": 82, "黄金垃圾": 80, "难度修改器": 72,
 }
+
+# 枚举合法值(构造时校验,typo/大小写错静默落入默认)
+ALLOWED_AGGRESSION: set[str] = {"conservative", "balanced", "greedy"}
+ALLOWED_ECONOMY: set[str] = {"interest_first", "rush_level", "adaptive"}
 
 # boss 名 → 该回避的阵营/流派(阵容克制;boss 名需实机 OCR 落库)
 DEFAULT_BOSS_COUNTER: dict[str, list[str]] = {
@@ -71,10 +71,11 @@ class CurrencyWarConfig(YamlConfig):
         # —— 策略偏好(meta,版本依赖)——
         self.faction_priority: list[str] = self.get('faction_priority', DEFAULT_FACTION_PRIORITY)
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
-        # conservative(少买多存) / balanced(默认) / greedy(多买快成型)
-        self.aggression: str = self.get('aggression', 'balanced')
-        # interest_first(守 50 息) / rush_level(抢升等级) / adaptive(按阶段+血量)
-        self.economy_mode: str = self.get('economy_mode', 'adaptive')
+        # 枚举校验(review r1 #10):typo/大小写错静默落入默认,避免用户以为改了实则没生效
+        agg = self.get('aggression', 'balanced')
+        self.aggression: str = agg if agg in ALLOWED_AGGRESSION else 'balanced'
+        econ = self.get('economy_mode', 'adaptive')
+        self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
         self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
         self.boss_counter: dict = self.get('boss_counter', DEFAULT_BOSS_COUNTER)
         self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
