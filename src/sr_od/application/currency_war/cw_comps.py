@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
 from sr_od.application.currency_war.cw_state import GameState
 
 if TYPE_CHECKING:
@@ -125,14 +126,9 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 }
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
+# ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {
-    # 投资环境 → 它加成的阵营(faction-specific 概念股/邀请才填)
-    "昼之半神概念股": ["昼之半神"],
-    "贝洛伯格邀请": ["贝洛伯格"],
-    "追击邀请": ["追击"],
-    "击破概念股": ["击破"],
-    "能量概念股": ["能量"],
-    # 其余 env 待实玩补(investment_envs.md 74 条)
+    name: [e.faction] for name, e in INVESTMENT_ENVS.items() if e.faction
 }
 ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
     # T0 env → {comp_name: 亲和权重} —— 拿到应近乎硬绑该 comp(research §10.3:env 是 run 内最大单一决策)
