@@ -12,8 +12,12 @@ meta 层(阵营/角色/事件)版本依赖,以米游社百科/游戏图鉴为准
 from __future__ import annotations
 
 import random
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.cw_comps import Comp
 from sr_od.application.currency_war.cw_state import (
     Action,
     BenchChar,
@@ -32,7 +36,7 @@ from sr_od.application.currency_war.cw_state import (
 
 # —— eval 权重 ——
 # 以下为 **V4.4 research meta 先验,冻结**(版本更新才改,不进用户调参面;review r5/r6 权重纪律)。
-# 用户可调的只有 config 口:hp_safe_threshold / obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
+# 开发者阶段 6 手调的最敏感 3-5 维(均内部,非用户 GUI;用户配置走 README A 的 4 轴优先/禁止/build_around+handoff):hp_safe_threshold(由 difficulty 派生)/ obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
 CATEGORY_WEIGHT: dict[str, float] = {"combat": 10.0, "economy": 6.0, "support": 4.0, "independent": 2.0}
 INTEREST_WEIGHT: float = 2.0          # 每档(10金)利息的分
 LEVEL_WEIGHT: float = 3.0             # 每级(相对期望)的分
@@ -162,14 +166,39 @@ def _refresh_cap(state: GameState) -> int:
     return cap
 
 
-def evaluate(state: GameState, config, faction_priority: list[str]) -> float:
-    """局面总分(越高越好)= 阶段键控加权的(羁绊 + 经济 + 角色质量)。A3。"""
+def evaluate(state: GameState, config, faction_priority: list[str],
+             target_comp: Comp | None = None) -> float:
+    """局面总分(越高越好)= 阶段键控加权的(羁绊 + 经济 + 角色质量)+ target_progress(若有 target)。
+
+    target_comp 给定时加 **战略层导向**:接近 target 成型(form_tiers)的局面加分
+    (− TARGET_PROGRESS_WEIGHT × 剩余进度)。target_comp=None(reactive)→ 行为不变(A3)。
+    **接法第一步**(03):evaluate 支持 target;plan 自动 select_comp 传 target 是下一步。
+    core_chars 持有不在此重复计分(char_quality 已覆盖用户 character_priority)。
+    """
     ws, we, wc = _phase_weights(state.plane, state.hp)
-    return (
+    score = (
         ws * synergy_score(state, faction_priority)
         + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
         + wc * char_quality_score(state, getattr(config, 'character_priority', []))
     )
+    if target_comp is not None:
+        score -= TARGET_PROGRESS_WEIGHT * _target_progress_remaining(state, target_comp)
+    return score
+
+
+# target 成型剩余进度权重(战略层导向;占位,待实玩校准)。越大 → 越 commit 到 target。
+TARGET_PROGRESS_WEIGHT: float = 15.0
+
+
+def _target_progress_remaining(state: GameState, target_comp: Comp) -> float:
+    """target comp 剩余成型进度 0..1(0=已成型 form_tiers,1=完全没起步)。
+
+    只看阵营 form_tiers(core_chars 持有由 char_quality 覆盖,不重复计分,03 去三重)。
+    """
+    if not target_comp.form_tiers:
+        return 0.0
+    tot = sum(max(0, t - state.board.get(f, 0)) / t for f, t in target_comp.form_tiers.items())
+    return tot / len(target_comp.form_tiers)
 
 
 def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factions: set[str]) -> float:
