@@ -83,15 +83,10 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(Point(1159, 653))  # 确认
             return self.round_wait(wait=3)
 
-        # 0d. 遭遇节点(2 选 1 难度:overlay 在备战上,购买经验 visible)→ **必须先于备战 check**,
-        # 否则 loop 检测购买经验 → 进 prep → 出战被 overlay 挡 → stall(2026-08-04 round7 实测)。
-        if self.round_by_ocr(screen, '遭遇').is_success:
-            self.ctx.controller.click(Point(646, 500))  # 左遭遇(遭遇其一)中心
-            time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2)
-            return self.round_wait(wait=2)
-
         # 1. 备战阶段 → 单轮(买+deploy+出战)
+        # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
+        # 遭遇 round 是普通战斗(2026-08-04 vision 确认:无选项选择 UI,只有难度标签 + 出战),
+        # 走正常 prep→出战→战斗(原 遭遇 handler "2选1" 过时,且 click 干扰 prep → stall,已移除)。
         if self.round_by_ocr(screen, '购买经验').is_success:
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
