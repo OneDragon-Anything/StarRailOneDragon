@@ -38,9 +38,11 @@ class CurrencyWarRunLoop(SrOperation):
     INVEST_CARD_BOTTOM: ClassVar[Point] = Point(920, 815)
     # 投资环境:body y550 开角色对话(佩佩),需点**卡底 y≈700** 选中(实测)。
     INVEST_ENV_CARD: ClassVar[Point] = Point(900, 700)
-    # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央 ~(900,882),文案随页变。
+    # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
+    # 2026-08-04 实测(失败结算屏 OCR):「下一页」x922y882w76h33、「返回货币战争」x885y882w149h31
+    # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
     # bug#1:round_by_ocr_and_click 的 click 易被 before_screenshot 移鼠标吞掉 → 手动 active_window+sleep+click(同出战)。
-    SETTLEMENT_NEXT: ClassVar[Point] = Point(900, 882)
+    SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
