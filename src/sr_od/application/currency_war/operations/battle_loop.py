@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.operations.prep.battle_prep import BattlePrepCycle
+from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -49,6 +50,8 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter: int = 0
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 待接)
         cw_telemetry.start_run()
+        # 每局重置 A2 稳定 target(防上局 _target_comp 跨局污染;task#16)
+        BuyShopCards._target_comp = None
 
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:

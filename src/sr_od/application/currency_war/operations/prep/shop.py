@@ -7,7 +7,12 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_comps import make_score_context, select_comp
+from sr_od.application.currency_war.cw_comps import (
+    Comp,
+    make_score_context,
+    maybe_pivot,
+    select_comp,
+)
 from sr_od.application.currency_war.cw_decisions import plan
 from sr_od.application.currency_war.cw_observation import (
     area_center,
@@ -50,6 +55,9 @@ class BuyShopCards(SrOperation):
     REFRESH_FALLBACK: ClassVar[Point] = Point(1592, 472)   # 「刷新」按钮兜底(screen_info 按钮-刷新)
     # D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
     MAX_REFRESH: ClassVar[int] = 4
+    # A2 战略层稳定 target(跨回合持久,task#16):每轮 maybe_pivot 才切(非每轮 select_comp 振荡)。
+    # class attr 跨 BuyShopCards 实例(每轮新建)持久;CurrencyWarRunLoop.__init__ 每局重置防跨局污染。
+    _target_comp: ClassVar[Comp | None] = None
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-商店买牌')
@@ -91,6 +99,20 @@ class BuyShopCards(SrOperation):
         level_btn = area_center(self.ctx, BuyShopCards.BUY_EXP_AREA) or BuyShopCards.LEVEL_UP_FALLBACK
         refresh_btn = area_center(self.ctx, '按钮-刷新') or BuyShopCards.REFRESH_FALLBACK
 
+        # A2 稳定 target(task#16):跨回合持久(class attr)+ maybe_pivot 才切。每回合 shop 开后
+        # 读一次 state 决定 target(首轮 select_comp;其后 maybe_pivot,无强信号则保持)→ 传 plan。
+        # 防 2026-08-04 实跑的 target 振荡(列车同行↔DOT队)→ _maybe_sell_for_interest churn。
+        _tgt_state = read_game_state(self.ctx, self.screenshot())
+        _tgt_state.hp = hp_value
+        _tgt_ctx = make_score_context(_tgt_state)
+        if BuyShopCards._target_comp is not None:
+            _pivot = maybe_pivot(_tgt_state, _tgt_ctx, config, BuyShopCards._target_comp)
+            _target = _pivot if _pivot is not None else BuyShopCards._target_comp
+        else:
+            _cands = select_comp(_tgt_state, _tgt_ctx, config)
+            _target = _cands[0] if _cands else None
+        BuyShopCards._target_comp = _target   # 持久化供下回合
+
         total_buy = total_level = total_refresh = 0
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
@@ -98,12 +120,9 @@ class BuyShopCards(SrOperation):
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
-            actions = plan(state, config, config.faction_priority)
-            # A2:plan 内部 select_comp 选 target 驱动买牌,但 plan 只返回 actions 不返回 target。
-            # 此处用同一 state+config 重算 target 名,仅作 telemetry/日志可观测(deterministic → 与
-            # plan 内选的 target 一致)。让 A2 战略导向可复盘(board 收敛 / target 切换 / A-B 对比)。
-            _tgt_cands = select_comp(state, make_score_context(state), config)
-            target_name = _tgt_cands[0].name if _tgt_cands else ''
+            actions = plan(state, config, config.faction_priority, target_comp=_target)
+            # A2:target 由上层稳定管理(_target),日志/telemetry 直接用它(= plan 实际用的 target)。
+            target_name = _target.name if _target is not None else ''
 
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
                      f'plane={state.plane} round={state.round_num} board={state.board} '

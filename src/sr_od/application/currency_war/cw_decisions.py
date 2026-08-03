@@ -289,11 +289,14 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
 
 
 def plan(state: GameState, config, faction_priority: list[str],
-         rng: random.Random | None = None) -> list[Action]:
+         rng: random.Random | None = None,
+         target_comp: Comp | None = None) -> list[Action]:
     """一回合动作计划:硬门(必做)+ 贪心改进(买/deploy/升/卖/**D 牌蒙特卡洛**)。
 
     config: CurrencyWarConfig。rng: 蒙特卡洛 D 牌用(默认新建;测试传 seeded 保确定)。
-    硬门:bench-full 必破、gold≥0、level≤10。
+    target_comp: 战略层目标阵容(稳定,由上层 shop op 跨回合管理 + maybe_pivot 切换)。
+        传入 → 用它(不每轮重选,防 select_comp 振荡致 churn);None → 内部 select_comp
+        (向后兼容 / 测试 / reactive 退化)。硬门:bench-full 必破、gold≥0、level≤10。
     """
     rng = rng or random.Random()
     character_priority = getattr(config, 'character_priority', [])
@@ -312,14 +315,15 @@ def plan(state: GameState, config, faction_priority: list[str],
                 actions.append(SellBench(bench_idx=idx))
                 cur = simulate(cur, actions[-1])
 
-    # —— A2 战略层接线:选 target comp(select_comp 按场面多维打分),传给 evaluate ——
-    # reactive(target=None)→ 贪心加深领先(易散阵);有 target → evaluate 的 target_progress 项导向
-    # target 成型(commit,详 strategy/03)。每回合选一次(贪心循环内不切 comp —— 一回合不转型);
-    # bosses 从 state.bosses(OCR,开局可能空 → boss_fit 中性 0.5,不影响选 target)。
-    target = None
-    _candidates = select_comp(cur, make_score_context(cur), config)
-    if _candidates:
-        target = _candidates[0]
+    # —— A2 战略层:target 由上层传入(稳定,防每轮 select_comp 振荡 → churn);未传则 select_comp ——
+    # 2026-08-04 实跑:每轮 select_comp 随 board 微变翻转 target(列车同行↔DOT队)→ _maybe_sell_for_interest
+    # 按振荡 target 卖牌 → 破坏性 churn(每轮换牌)+ 零收敛 → 比 reactive 更弱。故 target 须跨回合稳定
+    # (上层 shop op 持久化 + maybe_pivot 才切),plan 只消费。详 task#16 + strategy/02 F-3。
+    target = target_comp
+    if target is None:
+        _candidates = select_comp(cur, make_score_context(cur), config)
+        if _candidates:
+            target = _candidates[0]
 
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority, target)
