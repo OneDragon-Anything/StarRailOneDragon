@@ -144,9 +144,11 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
-        #     2026-08-04:加「角色详情」(bot 点卡开出角色信息屏卡死,无其他 handler 关它)。
-        if (self.round_by_ocr(screen, '可合成列表').is_success
-                or self.round_by_ocr(screen, '角色详情').is_success):
+        #     lcs_percent=0.8:「角色详情」与 invest env 等屏的「角色」label 共享「角色」(2/4=0.5)→
+        #     不收紧则凡有"角色"标签的屏(投资环境/...)都被 1b 吞 → ESC 卡死(2026-08-04 实跑,自己上轮加
+        #     的 1b 修复引入此误匹配)。0.8 杀误匹配(真「角色详情」1.0 不受影响)。
+        if (self.round_by_ocr(screen, '可合成列表', lcs_percent=0.8).is_success
+                or self.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
