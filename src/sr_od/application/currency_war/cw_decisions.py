@@ -393,8 +393,11 @@ def _best_improving_action(
             continue
         # level_plan spending gate(task#18):target.level_plan[level]="level_up" + 金不够升级 →
         # 只买 target core chars(goal.target_chars),跳过散牌(攒金给 LevelUp,解 bot 花光金不升级)。
+        # 无 comp-specific level_plan 时用通用曲线:lv6-7="level_up"(中期该升级解锁高费)。
         if target_comp is not None:
             goal = target_comp.level_plan.get(state.level)
+            if goal is None and state.level in (6, 7):
+                goal = LevelGoal("level_up")  # 通用曲线:lv6-7 该升级
             if goal is not None and goal.action == "level_up":
                 level_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
                 if state.gold < level_cost and (not goal.target_chars or card.name not in goal.target_chars):
