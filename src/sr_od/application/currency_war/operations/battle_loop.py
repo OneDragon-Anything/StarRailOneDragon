@@ -101,13 +101,17 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(Point(1082, 898))
             return self.round_wait(wait=2)
 
-        # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
-        # 之前所有"出战卡死"的真根因 —— 非bug#1,是此确认弹窗未处理)
+        # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认。
+        # 2026-08-04:原 active_window+click 被 bug#1 吞 → 弹窗不消 → stall(round3 实测根因)。
+        # 改 mouse_move+click(同出战/遭遇/结算 bug#1 fix 模式)。
         if self.round_by_ocr(screen, '未达上限').is_success:
-            self.ctx.controller.active_window()
-            self.ctx.controller.click(Point(912, 589))  # 本局不再提示(本局永久自动确认)
+            self.ctx.controller.mouse_move(Point(912, 589))  # 本局不再提示(bug#1 fix)
             time.sleep(0.3)
-            self.ctx.controller.click(Point(1159, 653))  # 确认
+            self.ctx.controller.click(Point(912, 589))
+            time.sleep(0.3)
+            self.ctx.controller.mouse_move(Point(1159, 653))  # 确认(bug#1 fix)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1159, 653))
             return self.round_wait(wait=3)
 
         # 1. 备战阶段 → 单轮(买+deploy+出战)
