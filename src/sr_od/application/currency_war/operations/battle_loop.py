@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
+from sr_od.application.currency_war.cw_observation import reset_phase_round_cache
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
     HandleDeployNotFull,
 )
@@ -67,6 +68,8 @@ class CurrencyWarRunLoop(SrOperation):
         cw_telemetry.start_run()
         # 每局重置 A2 稳定 target(防上局 _target_comp 跨局污染;task#16)
         BuyShopCards._target_comp = None
+        # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
+        reset_phase_round_cache()
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。

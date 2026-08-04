@@ -153,21 +153,40 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     return _expected_level(plane, round_num)
 
 
+# last-known-good (plane, round):plane 单调递增、round 同位面内递增;过渡帧 OCR 失败时
+# 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(2026-08-04 实跑发现:
+# plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
+_last_phase_round: tuple[int, int] | None = None
+
+
+def reset_phase_round_cache() -> None:
+    """新对局开始时清空 last-known-good(防跨局复用上局 plane/round)。"""
+    global _last_phase_round
+    _last_phase_round = None
+
+
 def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     """位面 + 轮次(顶栏「X-Y」= 位面-轮次,如 "1-3" = 位面1 第3轮)。
 
-    :return: (plane, round_num)。读不到 → (1, 1)。
+    :return: (plane, round_num)。读不到 → 返回上次成功值(过渡帧兜底);无历史 → (1, 1)。
     """
+    global _last_phase_round
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
     m = re.search(r'(\d)\s*-\s*(\d)', blob)          # "1-3"
     if m:
-        return int(m.group(1)), int(m.group(2))
+        _last_phase_round = (int(m.group(1)), int(m.group(2)))
+        return _last_phase_round
     plane_m = re.search(r'第\s*(\d)\s*位面', blob)
     if plane_m:
-        return int(plane_m.group(1)), int(plane_m.group(1))
+        _last_phase_round = (int(plane_m.group(1)), int(plane_m.group(1)))
+        return _last_phase_round
     digits = re.findall(r'\d', blob)
     if digits:
-        return int(digits[0]), int(digits[0])
+        _last_phase_round = (int(digits[0]), int(digits[0]))
+        return _last_phase_round
+    # OCR 失败(过渡帧)→ 返回上次成功值,避免 (1,1) 误导 level_plan
+    if _last_phase_round is not None:
+        return _last_phase_round
     return 1, 1
 
 
