@@ -27,7 +27,7 @@ class StartCurrencyWarMatch(SrOperation):
     前置:已在货币战争大厅(EnterCurrencyWar 之后)。到达备战后返回 STATUS_AT_PREP。
 
     注:备战阶段的「买牌 + 部署到前台 + 出战」循环(deploy 需拖拽角色图标)受本环境
-    OCR-only 限制(vision 看不到图标位置),由上层 app 决定是否继续。
+    OCR-only 限制(视觉大模型 看不到图标位置),由上层 app 决定是否继续。
     """
 
     # 点空白关闭「点击空白处继续」教程叠层(避开中央内容)

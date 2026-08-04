@@ -43,8 +43,8 @@ pc_alt: false
 - 命中 area:左上角标题-队伍(text "队伍" 0.998)。
 - OCR(节选):队伍 / 队伍7(队伍编号);角色 银狼LV.999/爻光/Momojie/丹恒·腾荒;命途 欢愉/存护;快速编队 / 已启用。
 
-## vision 补充(analyze 后多模态看图,OCR 盲区)
-vision 看到 OCR/area 漏的:
+## 视觉大模型 补充(analyze 后多模态看图,OCR 盲区)
+视觉大模型 看到 OCR/area 漏的:
 - **左/右箭头**(画面两侧):切换队伍 01-07(共 7 支队伍配置),当前在「队伍7」。
 - **左下网格图标**:角色列表入口 / 视图切换。
 - **左上编辑图标**:队伍名 / 配置编辑入口。
@@ -56,4 +56,4 @@ vision 看到 OCR/area 漏的:
 - **多候选模糊命中**:`队伍` + `挑战副本`(队伍标题)+ `背包-遗器分解`(快速编队)同帧模糊命中 —— 编队可能是多场景共用画面(菜单编队 / 战前 / 挑战副本编队),或标题/按钮 area 跨 screen 重叠。关系待读代码确认(team / challenge_mission / bag_relic_salvage 的 area 交集)。
 - **`is_precise=false`**:team 无强 id_mark,识别靠 text(队伍/支援标题),属可加强点(本 skill 建档边界:只记,不改 screen_info)。
 - **支援态**:SUPPORT_TITLE 与队伍标题同 pc_rect → 点支援切支援态(标题变"支援"),支援态实拍待补。
-- **fixture 已归档(2026-07-29)**:`screens/队伍/编队.webp`(自主采,菜单→编队,sleep 规则);vision 见上「vision 补充」节(箭头 / 网格 / 状态标记已看)。角色头像 / 命途图标细节以 OCR + screen_info 为准。
+- **fixture 已归档(2026-07-29)**:`screens/队伍/编队.webp`(自主采,菜单→编队,sleep 规则);视觉大模型 见上「视觉大模型 补充」节(箭头 / 网格 / 状态标记已看)。角色头像 / 命途图标细节以 OCR + screen_info 为准。

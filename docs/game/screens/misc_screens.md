@@ -35,4 +35,4 @@ source: screen_info `common` / `catapult` / `fast_recover_dialog`
 - **common 兜底**:通用对话框无固定特征,靠结构(标题+确认)识别 —— 各处确认弹窗复用。
 - **catapult 弹珠机**:活动玩法,bot 是否覆盖待确认(可能是版本限时活动)。
 - **fast_recover 与零食**:快速恢复用奇巧零食(奇巧零食由 [trick_snack](../gameplay/misc_apps.md) app 购买 / 合成),体力不足时补。
-- **待实拍 + vision**:3 画面实拍归档(通用对话框 / 弹珠机 / 快速恢复弹窗)。
+- **待实拍 + 视觉大模型**:3 画面实拍归档(通用对话框 / 弹珠机 / 快速恢复弹窗)。

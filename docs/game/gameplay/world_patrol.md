@@ -42,7 +42,7 @@ involves_screens: [大世界, 战斗画面]
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:锄地跑图(路线节点 / 遇敌)+ 战斗实拍归档 + vision —— 耗时长,待用户配合 / 后台跑时截图。
+- **待实拍画面 + 视觉大模型**:锄地跑图(路线节点 / 遇敌)+ 战斗实拍归档 + 视觉大模型 —— 耗时长,待用户配合 / 后台跑时截图。
 - **路线数据格式**:`world_patrol_route_data` 的路线结构(传送点 / move press_time / 战斗触发)待细化 doc。
 - **白名单**:用户在 GUI 选路线(whitelist),bot 跑选中路线集合;`world_patrol_whitelist_config` 结构待 `describe_config`。
 - **搜索术语**:world_patrol 俗称「锄大地」(非「巡星之路」),攻略搜「锄大地 / 锄地路线」。

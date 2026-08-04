@@ -39,7 +39,7 @@ involves_screens: [逐光捡金, 挑战副本, 战斗画面, 队伍]
 ## 备注 / 待查
 
 - ⚠️ **app 代码未迁移 / 不可运行(2026-07-29 核实)**:`application/treasures_lightward/` **全部文件**(app / config / record / team_module / `op/*`)仍用旧 `sr.*` / `basic.*` 导入(如 `from sr.app.application_base import Application`、`from basic.i18_utils import gt`)。本仓库已重构为 `sr_od.*` —— `src/sr/`、`src/basic/` 不存在 → **无法导入**;且无 `_app_factory.py`、`list_applications` 不含本 app → **未注册、不运行**(sr_od 重构时漏迁移的死代码)。上方「bot 流程」「画面 area」按旧代码 / screen_info 记录,**仅供参考,不代表当前可运行**。需迁移到 `sr_od.*` 或移除,见 `.debug/temp/TODO.md`。
-- **待实拍画面 + vision**:逐光捡金入口 / FH / PC 各态 / 战斗后实拍归档 + vision(分类图标 / 星数 / 节点 / 增益 UI)—— 高难 + 周限,待用户配合切画面。
+- **待实拍画面 + 视觉大模型**:逐光捡金入口 / FH / PC 各态 / 战斗后实拍归档 + 视觉大模型(分类图标 / 星数 / 节点 / 增益 UI)—— 高难 + 周限,待用户配合切画面。
 - **末日幻影(Apoca)**:攻略提到三大玩法之一,但 `treasures_light` screen_info 只见 FH / PC area,未见 Apo —— **末日幻影可能未被 bot 建模**(新玩法或未覆盖),待确认(screen_info 数据缺口,本 skill 边界:只记,不改)。
 - **challenge_mission screen 的「支援角色替换图标」area**:`pc_rect=[0,0,0,0]` 占位待填(见 [challenge_mission](../screens/challenge_mission.md)),不删。
 - **配队**:`treasures_lightward_team_module.search_best_mission_team` 自动选队伍,逻辑待细化。

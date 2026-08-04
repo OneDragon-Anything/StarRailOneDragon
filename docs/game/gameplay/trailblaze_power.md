@@ -44,7 +44,7 @@ involves_screens: [星际和平指南, 战斗画面, 副本连续挑战次数, �
 
 ## 备注 / 待查
 
-- **待实拍画面 + vision**:花萼 / 历战 / 饰品战斗画面 + `calyx` 次数输入态实拍归档 + vision(消耗体力,待用户配合切画面)。
+- **待实拍画面 + 视觉大模型**:花萼 / 历战 / 饰品战斗画面 + `calyx` 次数输入态实拍归档 + 视觉大模型(消耗体力,待用户配合切画面)。
 - **trailblaze_power 计划配置**:`power_config`(plan_times / run_times / mission)—— 用户在 GUI 配计划,bot 按计划跑;配置结构待 `describe_config(trailblaze_power)` 细化。
 - **guide 传送**:各玩法入口经「星际和平指南」传送 —— Transport 失败多为地图未探索 / 传送点未解锁(screen-onboarding「Transport 失败排查」)。
 - **历战余响** echo_of_war 有独立 app(`application/echo_of_war`)+ `echo_of_war_config`,周限,待补 doc。

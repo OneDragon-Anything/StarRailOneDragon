@@ -35,5 +35,5 @@ source_image: screens/货币战争-战斗/in_progress.webp
 ## 备注
 
 - 战斗过程 bot **不建模 / 不预测**(观测驱动:战后 HP / 胜负是 ground truth,见 `cw_performance`)。
-- vision:动态屏,布局 = 顶部位面轮次 + 角色技能区 + 右侧伤害统计 + 底部「敌方行动中」。
+- 视觉大模型:动态屏,布局 = 顶部位面轮次 + 角色技能区 + 右侧伤害统计 + 底部「敌方行动中」。
 - 归档已完成 `screens/货币战争-战斗/in_progress.webp`。

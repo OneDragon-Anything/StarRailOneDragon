@@ -22,7 +22,7 @@ from sr_od.operations.sr_operation import SrOperation
 class HandleSelectPartner(SrOperation):
     """选择伙伴 overlay:点 stage 立绘 + 确认选择。"""
 
-    # stage 角色立绘中心(vision 定位,2026-08-04 实测)。
+    # stage 角色立绘中心(视觉大模型 定位,2026-08-04 实测)。
     STAGE_PORTRAIT: ClassVar[Point] = Point(1048, 299)
 
     def __init__(self, ctx: SrContext):

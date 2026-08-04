@@ -6,7 +6,7 @@ OCR 看不见,用颜色/饱和度 CV 检测,返回 1080p 坐标。
 - 备战栏头像:底部一行,饱和度高(角色立绘有色)。
 - 舞台空槽:浅青描边 RGB(173,216,230)≈ HSV(97,63,230);被占用后无描边 → 只检测空槽。
 
-运行时纯代码路径用 cv2(不依赖 LLM/vision);vision(GLM-4.5V grounding)用于建档/验证坐标,
+运行时纯代码路径用 cv2(不依赖 LLM/视觉大模型);视觉大模型(GLM-4.5V grounding)用于建档/验证坐标,
 见 ``.debug/temp/currency_war/article_01_vision_grounding.md``。检测「全部槽位(含空)」
 另见 skill ``od-dev-ui-region-detect`` 的逐列标准差投影法(本文件饱和度法只找有角色的填充槽)。
 """

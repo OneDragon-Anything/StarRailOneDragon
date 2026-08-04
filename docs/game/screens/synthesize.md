@@ -51,4 +51,4 @@ pc_alt: false
 - **`synthesize` 与 `bag_consumable`(背包-消耗品)关系待确认**:合成消耗品态同时模糊命中两 screen。可能是合成态复用背包消耗品的标题识别,关系待读代码确认。
 - **`is_precise=false`**:合成画面无强 id_mark(标题-合成非 id_mark),识别靠 text 匹配,属可加强点。
 - **分类标签**:CATEGORY_2-4 是哪 3 个分类(遗器合成 / 其他)待实拍切分类确认。
-- **vision 已看(2026-07-29)**:合成界面布局确认(标题 / 物品列表左 / 详情+材料右 / 底部合成按钮);分类 / 物品图标细节仍以 OCR + screen_info 为准。fixture:`screens/合成/消耗品合成.webp`。
+- **视觉大模型 已看(2026-07-29)**:合成界面布局确认(标题 / 物品列表左 / 详情+材料右 / 底部合成按钮);分类 / 物品图标细节仍以 OCR + screen_info 为准。fixture:`screens/合成/消耗品合成.webp`。
