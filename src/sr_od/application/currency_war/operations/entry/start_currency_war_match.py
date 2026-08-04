@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -7,7 +6,9 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
+    HandleInvestEnv,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -89,19 +90,12 @@ class StartCurrencyWarMatch(SrOperation):
             r = self.round_by_ocr_and_click(screen, btn, success_wait=2)
             if r.is_success:
                 return self.round_wait(wait=1)
-        # 2) 投资环境:卡底 (900,700) 选中 + 确认 (1082,982)。
-        #    bug#1(实测):bot 的 controller.click 紧跟 last_screenshot(移鼠标到角落)→ 判 drag 不落地。
-        #    手动 click_game 行(无前置截图)。缓解:active_window + sleep(1.0) 让鼠标彻底 settle 再 click。
-        #    坐标 (900,700) = 卡底(画面建档实测);select+confirm 间 sleep(0.5) 让 select 注册。
+        # 2) 投资环境 3 选 1 → HandleInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
+        #    + 确认;bug#1 mouse_move mitigation)。统一开局与主循环的投资环境处理(原 hardcoded
+        #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_ocr(screen, '投资环境').is_success:
-            self.ctx.controller.active_window()
-            time.sleep(0.5)
-            c1 = self.ctx.controller.click(Point(900, 700))
-            log.info('[投资环境] select (900,700) -> %s', c1)
-            time.sleep(0.5)
-            c2 = self.ctx.controller.click(Point(1082, 982))
-            log.info('[投资环境] confirm (1082,982) -> %s', c2)
-            return self.round_wait(wait=1.5)
+            HandleInvestEnv(self.ctx).execute()
+            return self.round_wait(wait=2)
         # 3) 位面教程叠层 → 点空白
         if self.round_by_ocr(screen, '点击空白处继续').is_success:
             self.ctx.controller.click(StartCurrencyWarMatch.BLANK_CLICK.center)

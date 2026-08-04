@@ -5,7 +5,29 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
+from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
+    HandleDeployNotFull,
+)
+from sr_od.application.currency_war.operations.handlers.handle_encounter import (
+    HandleEncounter,
+)
+from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
+    HandleInvestEnv,
+)
+from sr_od.application.currency_war.operations.handlers.handle_invest_strategy import (
+    HandleInvestStrategy,
+)
+from sr_od.application.currency_war.operations.handlers.handle_megastar import (
+    HandleMegastar,
+)
+from sr_od.application.currency_war.operations.handlers.handle_select_partner import (
+    HandleSelectPartner,
+)
+from sr_od.application.currency_war.operations.handlers.handle_supply import (
+    HandleSupply,
+)
 from sr_od.application.currency_war.operations.prep.battle_prep import BattlePrepCycle
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
@@ -32,13 +54,6 @@ class CurrencyWarRunLoop(SrOperation):
     # 待优化:MAX_ITER 应只计「动作迭代」(备战/事件/结算),不计战斗 round_wait(战斗长短不该吃预算)。
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
-    # 选择类事件卡牌:点**中牌** x≈900 @ y550(投资环境/补给,点卡身选中)。
-    # 各事件牌位 x 变化(3 张/5 张不定),中点最稳命中任一张(朴素选一张即可推进)。
-    INVEST_CARD: ClassVar[Point] = Point(900, 550)
-    # 投资策略:点卡身会开详情,需点**卡底 y≈815** 选中(实测 920 有效;900 偏左 20px 会卡)。
-    INVEST_CARD_BOTTOM: ClassVar[Point] = Point(920, 815)
-    # 投资环境:body y550 开角色对话(佩佩),需点**卡底 y≈700** 选中(实测)。
-    INVEST_ENV_CARD: ClassVar[Point] = Point(900, 700)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
     # 2026-08-04 实测(失败结算屏 OCR):「下一页」x922y882w76h33、「返回货币战争」x885y882w149h31
     # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
@@ -52,6 +67,25 @@ class CurrencyWarRunLoop(SrOperation):
         cw_telemetry.start_run()
         # 每局重置 A2 稳定 target(防上局 _target_comp 跨局污染;task#16)
         BuyShopCards._target_comp = None
+
+    def _snap(self, tag: str) -> None:
+        """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
+
+        见 sr-od-dev-gameplay-automation「开发时预留日志 + 截图开关 / 信息密度论」:让一次
+        实跑暴露尽量多的问题(选人选项长啥样 / OCR 误读 / 坐标漂移 / 漏事件),而非每次只测
+        一种情况。截图存 ``.debug/images/``(``save_screenshot``),日志带当前帧全量 OCR 文本
+        (选人/事件选项 OCR 现无策略评估 → 先靠 snap 看清每局都 offered 什么,再建评估)。
+        非关键路径:try 兜底,debug 失败不影响对局推进。
+        """
+        try:
+            ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+                image=self.last_screenshot, rect=None, color_range=None, crop_first=False,
+            )
+            texts = [k for k, mrl in ocr_map.items() if mrl.max is not None]
+            path = self.save_screenshot(prefix=f'cw_{tag}')
+            log.info(f'[cw-snap] {tag} iter={self._iter} shot={path} ocr={texts[:15]}')
+        except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
+            log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
@@ -67,51 +101,28 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2).is_success:
             return self.round_wait(wait=2)
 
-        # 0a. 选择伙伴(有"选择伙伴"标题 + "确认选择")→ 点 stage 角色立绘 + 确认选择。
-        # 2026-08-04:选择伙伴 overlay 挡住出战 → stall(round7/9 反复)。handler 点 stage 立绘
-        # (vision 定位 ~1048,299)选中 → 确认选择。mouse_move+click(bug#1 mitigation)。
-        # 必须在 0b(确认选择/巨星)之前 —— 选择伙伴也有"确认选择"但候选是 stage 立绘非 822,333。
+        # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
+        #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
         if self.round_by_ocr(screen, '选择伙伴').is_success:
-            self.ctx.controller.mouse_move(Point(1048, 299))  # stage 立绘(vision 定位)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(1048, 299))
-            time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
+            self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
+            HandleSelectPartner(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0b. 巨星强化选择轮(有"确认选择"按钮,无"选择伙伴")→ 选左候选 + 确认选择
+        # 0b. 巨星强化(有"确认选择"、无"选择伙伴")→ HandleMegastar(选候选 + 确认,详见 op)。
         if self.round_by_ocr(screen, '确认选择').is_success:
-            self.ctx.controller.click(Point(822, 333))  # 左候选(花火/大丽花位)
-            time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
+            self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
+            HandleMegastar(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点选择(有"遭遇其一" + "选择"按钮)→ 3-step 交互(2026-08-04 实测):
-        #   1) click 遭遇其一 (608,371) 选中(会打开详情子屏)→ 2) blank click (960,540) 关详情回选择 →
-        #   3) mouse_move+click 选择 (1082,898) 确认。bug#1: mouse_move 后 click 零移动不被判 drag。
+        # 0c. 遭遇节点二选一 → HandleEncounter(点卡身 + 选择;踩坑:中间不能插空白点击,详见 op)。
         if self.round_by_ocr(screen, '遭遇其一').is_success:
-            self.ctx.controller.mouse_move(Point(608, 371))  # 遭遇其一 卡(选中+开详情)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(608, 371))
-            time.sleep(0.8)
-            self.ctx.controller.click(Point(960, 540))  # blank click 关详情回选择屏
-            time.sleep(0.8)
-            self.ctx.controller.mouse_move(Point(1082, 898))  # 选择 按钮(bug#1 mitigation)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(1082, 898))
+            self._snap('encounter')  # 遭遇二选一选项 → 后续建策略评估用
+            HandleEncounter(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认。
-        # 2026-08-04:原 active_window+click 被 bug#1 吞 → 弹窗不消 → stall(round3 实测根因)。
-        # 改 mouse_move+click(同出战/遭遇/结算 bug#1 fix 模式)。
+        # 0d. 出战确认弹窗(未达上限)→ HandleDeployNotFull(勾本局不再提示 + 确认,详见 op)。
         if self.round_by_ocr(screen, '未达上限').is_success:
-            self.ctx.controller.mouse_move(Point(912, 589))  # 本局不再提示(bug#1 fix)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(912, 589))
-            time.sleep(0.3)
-            self.ctx.controller.mouse_move(Point(1159, 653))  # 确认(bug#1 fix)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(1159, 653))
+            HandleDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 
         # 1. 备战阶段 → 单轮(买+deploy+出战)
@@ -154,29 +165,19 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr(screen, '创业指南').is_success:
             return self.round_success('对局结束,回大厅')
 
-        # 4. 选择类事件(3 选 1 + 确认)→ 选一张 + 确认。
-        #  投资策略:点卡身开详情,需点**卡底 y≈815** 选中;投资环境/补给:点卡身 y≈550 选中。
+        # 4. 选择类事件(3 选 1 + 确认)→ 分派到对应 op(各 op TODO 接 decide_event/decide_supply)。
+        #    _snap 捕获 3 张卡 OCR(投资策略/环境名)→ 策略评估接线后据此挑最优卡,非盲点中卡。
         if self.round_by_ocr(screen, '投资策略').is_success:
-            # 投资策略卡位因变体不同:body(900,550)对部分变体直接选中、对部分开 detail;
-            # 先点 body → 若确认被遮(detail 开了)→ ESC + 卡底(920,815)→ 确认
-            self.ctx.controller.click(CurrencyWarRunLoop.INVEST_CARD)
-            time.sleep(0.6)
-            if not self.round_by_ocr(self.screenshot(), '确认').is_success:
-                self.ctx.controller.btn_tap('esc')
-                time.sleep(0.5)
-                self.ctx.controller.click(CurrencyWarRunLoop.INVEST_CARD_BOTTOM)
-                time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '确认', success_wait=2)
+            self._snap('invest_strategy')
+            HandleInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
         if self.round_by_ocr(screen, '投资环境').is_success:
-            self.ctx.controller.click(CurrencyWarRunLoop.INVEST_ENV_CARD)  # 卡底 y700(body 550 开佩佩对话)
-            time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '确认', success_wait=2)
+            self._snap('invest_env')
+            HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
         if self.round_by_ocr(screen, '补给阶段').is_success:
-            self.ctx.controller.click(CurrencyWarRunLoop.INVEST_CARD)  # body y550(补给卡 body 不开对话)
-            time.sleep(0.6)
-            self.round_by_ocr_and_click(self.screenshot(), '确认', success_wait=2)
+            self._snap('supply')
+            HandleSupply(self.ctx).execute()
             return self.round_wait(wait=2)
 
         # 5. 前进按钮(简报等)
