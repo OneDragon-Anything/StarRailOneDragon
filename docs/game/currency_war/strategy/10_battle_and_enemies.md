@@ -57,7 +57,7 @@ class PerformanceTracker:
     def recent_hp_loss_trend(self, comp_tag: str | None = None, window: int = 4) -> float | None:
         """归一化掉血 trend(r6 F2):hp_delta / expected_drop(node_type),全部样本进**同一条** trend
         (不按 node_type 完全划分 —— 那会让 boss 观测永久 None + obs 随节点类型震荡)。
-        expected_drop: 先验 {普通:1.0, 精英:1.5, 遭遇:1.2, boss:3.0}(相对)+ 历史该类型均值 refine。
+        expected_drop: 先验(各 node_type 相对掉血,见代码 `expected_drop`)+ 历史该类型均值 refine。
         过滤:intentional_fold=True 排除(r6 F1,防"故意输"污染);comp_tag 过滤(r6 F4,旧 comp ×0.3 降权而非全删)。
         冷启动(r6 F6):产出的 delta 数 < 1(需 ≥2 outcome 才有首个差分)→ 返回 None。"""
 
@@ -84,12 +84,12 @@ class PerformanceTracker:
 def comp_viability(state, current_comp, plane, tracker) -> float:   # 评 CURRENT(已 commit)→ pivot/eval
     obs = tracker.perf_for_comp(current_comp.name)                   # 归一化 + comp_tag 过滤;None 当冷启动
     rounds_seen = len([o for o in tracker.history if o.comp_tag == current_comp.name])
-    obs_weight = 0.0 if obs is None else clamp(0.1 + 0.4 * (rounds_seen / 18), 0.1, 0.5)
+    obs_weight = 0.0 if obs is None else obs_schedule(rounds_seen)   # 随观测轮次 0→obs_max(见代码;冷启动纯先验)
     prior_weight = 1.0 - obs_weight
-    return clamp(prior_weight * (
-        0.4 * form_progress(current_comp, state)
-      + 0.3 * equip_fit(current_comp, state)  # 装备(comp 相关:持有该 comp.key_equips + 它用的可叠加装备,详 07;非通用裸分)
-      + 0.2 * mechanics_fit(current_comp, current_enemy_mechanics(state))
+    return clamp(prior_weight * (                                 # 先验各项权重见代码(form/equip/mechanics)
+        w_form * form_progress(current_comp, state)
+      + w_equip * equip_fit(current_comp, state)  # 装备(comp 相关:持有该 comp.key_equips + 它用的可叠加装备,详 07;非通用裸分)
+      + w_mech * mechanics_fit(current_comp, current_enemy_mechanics(state))
     ) + obs_weight * obs, 0, 1)
 
 def comp_prior(candidate_comp, state, plane) -> float:              # 评 CANDIDATE(未 commit)→ select_comp
@@ -121,7 +121,7 @@ def is_run_dead(state, tracker, next_node_type) -> bool:
 - `form_progress(comp, state)` = `Σ_f min(board[f], form_tiers[f]) / form_tiers[f]`(成型度 0..1)。
 - `equip_fit(comp, state)` = 装备 comp 相关评分(持有 comp.key_equips + 它用的可叠加装备超线性 + 狼狩 bonus,详 07)。**comp 驱动,非通用裸分**。
 - `mechanics_fit(comp, mechanics)` = 1 − 命中 `MECHANIC_COUNTERS` 的克制惩罚 + 命中 `MECHANIC_SYNERGIES` 的受利加成(双向;详上"敌人机制:克+利")。
-- `research_meta_strength(comp)` = `{S:1.0, A:0.7, B:0.4}[comp.strength]`(research 先验)。
+- `research_meta_strength(comp)` = research meta 强度先验(S/A/B→分,见 `strength_base` 代码)。
 
 ## 敌人机制:克 + 利(双向,2026-08-03 用户洞察)
 

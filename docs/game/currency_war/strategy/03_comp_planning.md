@@ -60,11 +60,11 @@ progress(comp, state) =                                 # 归一化 0..1
     0.6 * Σ_f (min(board[f], form_tiers[f]) / form_tiers[f]) / len(factions)   # 阵营 tier 进度
   + 0.4 * Σ_c (c in owned_chars(state)) / len(core_chars)                      # 核心角色持有
 
-boss_fit(comp, bosses) = 1 - 0.5 * (bosses ∩ comp.boss_weakness 的数量)        # boss 克制
+boss_fit(comp, bosses) = 1 - boss_weakness_penalty(comp, bosses)              # boss 克制(命中 weakness 降分)
 env_fit(comp, envs) = 1 if comp.factions ∩ envs 概念股/邀请对应阵营 else 0.5    # 投资环境契合
-strength_base(comp) = {S:1.0, A:0.7, B:0.4}[comp.strength]
+strength_base(comp) = research meta 强度先验(S/A/B → 分)
 ```
-**权重占位**(待实机校准):w_prog=0.5, w_boss=0.2, w_env=0.15, w_str=0.1, w_weak=0.3。
+**权重值不写进文档**(单一源 = `cw_comps` 的 `W_PROG/W_MECH/W_ENV/W_BOSS/W_EQUIP/W_STR`;阶段 6 实机校准)。设计原则:**progress 主导 + 可成型优先**(D-17:W_PROG↑/W_STR↓,解 select_comp 锁高强度不可成型 comp)。
 
 `select_comp(state, config, bosses, envs)` = argmax comp_score over COMP_LIBRARY。**备选几套(N≈2-3)不冲突流派**(optionality,详下"select_comp 频率"+ P1-1),核心到了 commit 1 + 留 1 pivot。
 
@@ -80,7 +80,7 @@ target_progress_score(state, target_comp) =
 # core_chars 持有**不在此重复计分**(char_quality 已覆盖);仅作 character_priority 动态补充:
 #   若 core_char ∉ config.character_priority,evaluate 时把它临时并入(低权,≤ CHAR_PRIORITY_BONUS/2)。
 ```
-WP(target_progress 权重)占位 15.0(待校准)。这样 core_char 的总分 = synergy(tier)+ char_quality(若 priority)+ target_progress 的进度推进(买它让剩余进度↓),**不三重**。
+WP(target_progress 权重,见 `TARGET_PROGRESS_WEIGHT` 代码,待校准;不在文档写值)。这样 core_char 的总分 = synergy(tier)+ char_quality(若 priority)+ target_progress 的进度推进(买它让剩余进度↓),**不三重**。
 
 ## 巨星选择(select_megastar,完整性-2)
 
