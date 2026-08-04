@@ -406,6 +406,19 @@ def _best_improving_action(
                 level_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
                 if state.gold < level_cost and (not goal.target_chars or card.name not in goal.target_chars):
                     continue   # 抑制散牌买,攒金给 LevelUp
+            # commitment prefilter(task#16 / 续4续6 "正确 commitment = prefilter 新 off-target buys"):
+            # target 设定时,若 shop 有 target 卡(阵营∈target.factions 或 ∈core_chars)可买,跳过纯
+            # off-target 散牌(阵营∉target 且非 core_char/优先角色)→ 聚焦深化 target,防"买一切"致
+            # board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防 hold-forever
+            # 饿死,买最优可得)。区别于旧 OFF_TARGET_DISCOUNT 打折 board 的 churn 实现(d87b2a68 revert):
+            # 本 prefilter 只 gate 新 buys,不动 board synergy eval(不卖成型堆)。
+            _is_offtarget = (card.faction not in target_comp.factions
+                             and card.name not in target_comp.core_chars
+                             and card.name not in character_priority)
+            if _is_offtarget and any(
+                    c.faction in target_comp.factions or c.name in target_comp.core_chars
+                    for c in state.shop if state.gold >= card_cost(c)):
+                continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if after_buy.deployed_count() < after_buy.max_units() and after_buy.bench:
