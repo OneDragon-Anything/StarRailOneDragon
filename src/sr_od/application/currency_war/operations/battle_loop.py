@@ -67,7 +67,19 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2).is_success:
             return self.round_wait(wait=2)
 
-        # 0b. 巨星强化选择轮(有"确认选择"按钮)→ 选左候选 + 确认选择
+        # 0a. 选择伙伴(有"选择伙伴"标题 + "确认选择")→ 点 stage 角色立绘 + 确认选择。
+        # 2026-08-04:选择伙伴 overlay 挡住出战 → stall(round7/9 反复)。handler 点 stage 立绘
+        # (vision 定位 ~1048,299)选中 → 确认选择。mouse_move+click(bug#1 mitigation)。
+        # 必须在 0b(确认选择/巨星)之前 —— 选择伙伴也有"确认选择"但候选是 stage 立绘非 822,333。
+        if self.round_by_ocr(screen, '选择伙伴').is_success:
+            self.ctx.controller.mouse_move(Point(1048, 299))  # stage 立绘(vision 定位)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1048, 299))
+            time.sleep(0.6)
+            self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
+            return self.round_wait(wait=2)
+
+        # 0b. 巨星强化选择轮(有"确认选择"按钮,无"选择伙伴")→ 选左候选 + 确认选择
         if self.round_by_ocr(screen, '确认选择').is_success:
             self.ctx.controller.click(Point(822, 333))  # 左候选(花火/大丽花位)
             time.sleep(0.6)
