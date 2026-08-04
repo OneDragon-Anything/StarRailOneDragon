@@ -15,6 +15,12 @@
 
 ---
 
+## D-25 (2026-08-04) exit op 事件屏 escape(返回备战界面/Esc 关 overlay)· 入口 op
+- **决策**:`exit_currency_war_match` 加事件 overlay escape 分支 —— 「返回备战界面」(投资策略/环境)→ 点回备战;其他事件(补给/遭遇/巨星/详情/可合成列表)→ Esc 关。放备战分支后、retry 前。
+- **为什么**:实测从投资策略屏跑 exit → 卡 210s+(事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环)。修后:事件屏先 escape 回备战 → 走原 Esc→放弃→结算→大厅。
+- **备选**:① exit op 开头无脑 Esc 到备战(推翻:可能误关结算页);② 每事件单独 handler(推翻:exit 只需 escape,不必理解事件)。按文本检测 escape 最小可靠。
+- **状态**:采用(纯代码,需游戏验证)。`· 入口 op`
+
 ## D-24 (2026-08-04) level gate chicken-egg 修:落后期望等级也升(非仅 goal=level_up)· strategy/02 plan / 03 level_plan
 - **决策**:`plan()` 升级 gate 条件从「goal=level_up + 够钱」扩为「够钱 + (goal=level_up **或** 落后期望等级 `_expected_level`)」。
 - **为什么**:telemetry 6 局**全「升0次」**(gold 到 74 也不升)。根因:task#18(D-14)gate 只在 goal=level_up 时升,但 `_DEFAULT_LEVEL_GOAL[2,3,4]=roll`(非 level_up)→ gate 在这些等级不触发 → 永远到不了 5+(level_up 等级)→ **chicken-egg 卡低等级** → 弱 comp → 输。CW 起步 lv4 + goal[4]=roll → 永卡 4。「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。

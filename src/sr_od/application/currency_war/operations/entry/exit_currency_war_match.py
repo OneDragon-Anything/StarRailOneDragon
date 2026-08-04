@@ -1,7 +1,8 @@
 """从货币战争对局中退出(放弃+结算)回大厅。
 
 高频重复操作(测试/刷开局/回滚),手动做很繁琐(Esc→放弃→结算3页→大厅)→ 建成 op 一键调用。
-支持入口:备战阶段 / 战斗中(任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
+支持入口:备战阶段 / 战斗中 / **事件 overlay**(投资策略/环境/补给/遭遇/巨星 —— 先 escape 回备战)
+(任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
 """
 from typing import ClassVar
 
@@ -47,6 +48,19 @@ class ExitCurrencyWarMatch(SrOperation):
         if (self.round_by_ocr(screen, '购买经验').is_success       # 备战
                 or self.round_by_ocr(screen, '备战阶段').is_success
                 or self.round_by_ocr(screen, '出战').is_success):
+            self.ctx.controller.btn_tap('esc')
+            return self.round_wait(wait=2)
+
+        # 事件 overlay(投资策略/环境 有「返回备战界面」)→ 点回备战,下轮走备战分支 Esc→放弃。
+        # 修 bug:事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环(2026-08-04 实测卡 210s+)。
+        if self.round_by_ocr_and_click(screen, '返回备战界面', success_wait=2).is_success:
+            return self.round_wait(wait=2)
+        # 其他事件 overlay(补给/遭遇/巨星/详情/可合成列表)→ Esc 关回备战
+        if (self.round_by_ocr(screen, '补给阶段').is_success
+                or self.round_by_ocr(screen, '遭遇其一').is_success
+                or self.round_by_ocr(screen, '盛会之星').is_success
+                or self.round_by_ocr(screen, '可合成列表').is_success
+                or self.round_by_ocr(screen, '角色详情').is_success):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=2)
 
