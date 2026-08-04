@@ -58,18 +58,26 @@ LEVEL_MIN, LEVEL_MAX = 1, 10
 COL_TOLERANCE: int = 100                   # 文本 x 分配到牌位的容差
 
 
-def _area_rect(ctx: SrContext, name: str) -> Rect | None:
-    """从 screen_info 取 area 的 pc_rect(Rect);screen/area 缺失 → None。"""
-    si = ctx.screen_loader.get_screen(SCREEN_NAME)
+def _area_rect(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Rect | None:
+    """从 screen_info 取 area 的 pc_rect(Rect);screen/area 缺失 → None。
+
+    Args:
+        screen_name: 画面名(默认备战);事件态画面(投资环境/投资策略等)传其画面名。
+    """
+    si = ctx.screen_loader.get_screen(screen_name)
     if si is None:
         return None
     area = next((a for a in si.area_list if a.area_name == name), None)
     return area.pc_rect if (area is not None and area.pc_rect is not None) else None
 
 
-def area_center(ctx: SrContext, name: str) -> Point | None:
-    """从 screen_info 取 area 中心 Point(点击用);缺失 → None。"""
-    rect = _area_rect(ctx, name)
+def area_center(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Point | None:
+    """从 screen_info 取 area 中心 Point(点击用);缺失 → None。
+
+    Args:
+        screen_name: 画面名(默认备战);事件态画面(投资环境/投资策略等)传其画面名。
+    """
+    rect = _area_rect(ctx, name, screen_name)
     return rect.center if rect is not None else None
 
 

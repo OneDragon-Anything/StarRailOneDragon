@@ -22,16 +22,16 @@ source_image: screens/货币战争-投资策略/default.webp
 
 ## 可交互元素
 
-- 3 张策略卡:左/中/右,卡身点击选中。OCR 读卡标题 + 描述。
-- 「确认」:(950,967)底部。OCR 可读。
-- 「刷新次数：N」:每卡底部(可刷新该卡选项?)。
-- 「返回备战界面」:(1717,44)右上。
+- 3 张策略卡:左/中/右,点**描述区**(y≈545)选中 —— 点卡名(y≈474)开详情不选中(实测点名 540+ 次从没选中 → 确认灰 → 卡死 18min)。OCR 读卡名(y≈490 行)按 center-x 排序。
+- 「确认」:底部,screen_info ``按钮-确认`` center ≈ (978,983)。
+- 「刷新次数：N」:每卡底部 y≈841。
+- 「返回备战界面」:(1717,44)右上(取消回备战)。
 
-> 全文字(OCR),无 screen_info / 模板需求。`battle_loop` 用 `INVEST_CARD_BOTTOM=(920,815)` 点中卡底选中(朴素)。
+> screen_info ``currency_war_invest_strategy``:``标识-请选择投资策略``(id_mark)+ ``区域-卡牌描述行``(给选中 Y=545)+ ``按钮-确认``。op ``handle_invest_strategy`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
 
-## 关键数据(策略相关 —— bot 当前朴素选,缺口)
+## 关键数据(策略相关)
 
-> **策略缺口**:bot 固定点中卡底(`INVEST_CARD_BOTTOM`)。应读 3 卡 → 按 `target_comp` / 当前需求选(如缺治疗选治疗星徽、缺暴击选幸运星)。`decide_event` 白名单待接。
+> bot 已接 ``decide_event``(``handle_invest_strategy``):OCR 3 卡名 → 按事件白名单打分 → 点最优卡 + 确认(2026-08-04)。overlay 时 board 不可读 → 空 board stub。
 
 - **3 选项(本场实例)**:
   1. **幸运星祝福** — 得【幸运星】;小队 +15% 幸运一击率 + 5% 速度。
@@ -41,11 +41,13 @@ source_image: screens/货币战争-投资策略/default.webp
 
 ## 识别快照
 
-- 匹配画面:`screens=[]`(OCR 关键词检测;误命中逐光捡金确认 area,忽略)。
-- 关键 OCR:「请选择投资策略」(859,82)、3 卡标题(394/881/1405,474)+ 描述、「刷新次数1」×3、「确认」(950,967)、「返回备战界面」(1717,44)。
+- 匹配画面:`货币战争-投资策略` **精准命中**(id_mark ``标识-请选择投资策略`` + ``按钮-确认`` 全中,conf 0.999)。
+- 关键 OCR:「请选择投资策略」(859,82)、3 卡名(愚者恶作剧/量产型装甲祝福/借力打力,@y≈476)+ 描述、「刷新次数1」×3(@y841)、「确认」(951,967)、「返回备战界面」(1717,44)。
 - vision(主观):3 卡横排,各含策略图标 + 描述;默认无卡选中。
 
 ## 备注
 
-- vision 已补(2026-08-04);归档已完成 `screens/货币战争-投资策略/default.webp`。
-- screen_info 现状:无独立 screen_info(OCR 读卡标题够);bot 要按选项做决策时需加 3 卡区域 area(待策略接线)。
+- **选中 mechanics(2026-08-04 实测)**:默认无卡选中;点**卡名**(y≈474)开详情不选中(曾致卡死 18min);点**描述区**(y≈545)才选中。op 用 OCR 卡名 center-x + 描述区 Y 拼 click(screen_info ``区域-卡牌描述行`` 给 Y)。
+- 归档:`screens/货币战争-投资策略/default.webp`。
+- screen_info:`currency_war_invest_strategy`(task#20)—— ``标识-请选择投资策略`` / ``区域-卡牌描述行`` / ``按钮-确认``。
+- bug#1 mitigation:关键 click 前 mouse_move(零移动不被判 drag)。
