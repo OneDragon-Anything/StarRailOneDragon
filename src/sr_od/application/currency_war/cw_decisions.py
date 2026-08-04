@@ -18,7 +18,11 @@ from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESH
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
-from sr_od.application.currency_war.cw_comps import LevelGoal, make_score_context, select_comp
+from sr_od.application.currency_war.cw_comps import (
+    LevelGoal,
+    make_score_context,
+    select_comp,
+)
 from sr_od.application.currency_war.cw_state import (
     Action,
     BenchChar,
