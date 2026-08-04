@@ -143,8 +143,10 @@ class CurrencyWarRunLoop(SrOperation):
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
-        # 1b. 详情弹窗(点卡触发的"生命之花祝福"等:有「可合成列表」、无确认)→ ESC 关闭
-        if self.round_by_ocr(screen, '可合成列表').is_success:
+        # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
+        #     2026-08-04:加「角色详情」(bot 点卡开出角色信息屏卡死,无其他 handler 关它)。
+        if (self.round_by_ocr(screen, '可合成列表').is_success
+                or self.round_by_ocr(screen, '角色详情').is_success):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
