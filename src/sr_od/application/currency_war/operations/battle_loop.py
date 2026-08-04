@@ -86,18 +86,19 @@ class CurrencyWarRunLoop(SrOperation):
             self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点选择(有"遭遇其一" + 可能"选择"按钮)→ 两种屏:
-        #   选择屏(有"选择"按钮)→ click 选择。选择按钮 ~(1081, 898)。
-        #   详情屏(有"敌方信息",无"选择"——之前点 tab 开的)→ 点空白 (960,540) 关详情回选择屏。
-        #   ESC 不关详情(实测);blank click 关(实测 2026-08-04)。
+        # 0c. 遭遇节点选择(有"遭遇其一" + "选择"按钮)→ 3-step 交互(2026-08-04 实测):
+        #   1) click 遭遇其一 (608,371) 选中(会打开详情子屏)→ 2) blank click (960,540) 关详情回选择 →
+        #   3) mouse_move+click 选择 (1082,898) 确认。bug#1: mouse_move 后 click 零移动不被判 drag。
         if self.round_by_ocr(screen, '遭遇其一').is_success:
-            # bug#1 mitigation: mouse_move + click '选择'(同出战 fix)
-            self.ctx.controller.mouse_move(Point(1081, 898))  # 选择 按钮(实测)
+            self.ctx.controller.mouse_move(Point(608, 371))  # 遭遇其一 卡(选中+开详情)
             time.sleep(0.3)
-            self.ctx.controller.click(Point(1081, 898))
-            time.sleep(1.0)
-            if self.round_by_ocr(self.screenshot(), '选择').is_success:
-                self.ctx.controller.click(Point(960, 540))  # 仍在选择屏 → blank click 关详情回选择
+            self.ctx.controller.click(Point(608, 371))
+            time.sleep(0.8)
+            self.ctx.controller.click(Point(960, 540))  # blank click 关详情回选择屏
+            time.sleep(0.8)
+            self.ctx.controller.mouse_move(Point(1082, 898))  # 选择 按钮(bug#1 mitigation)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1082, 898))
             return self.round_wait(wait=2)
 
         # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
