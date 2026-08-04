@@ -15,6 +15,12 @@
 
 ---
 
+## D-26 (2026-08-04) app 中间态接手(state-aware resume)· currency_war_app
+- **决策**:`CurrencyWarApp` 各入口 op(`_enter_lobby`/`_start_match`)先检测当前态,已在 CW(大厅「创业指南」或对局中态)就跳过、直接进 `_run_loop`。新 `_in_match` helper(OCR 锚点:购买经验/备战阶段/投资策略/投资环境/补给/遭遇/盛会之星/出战/挑战结束/请选择投资)。
+- **为什么**:用户洞见 —— app 原线性流(EnterCurrencyWar→Start→Loop)只认大世界起点,从对局中态(投资策略/备战/战斗)重跑会卡 entry(EnterCurrencyWar 找不到 guide)。实测从投资策略跑 app 失败、只能直接跑 RunLoop 接管。bot crash/重启/手动接管后需从任意态 resume。各 op「已过就 skip」= 幂等 resume。
+- **备选**:① app 开头一个 detection node 路由(推翻:每 op 自检更模块化,符既有 node_from 流);② 总从大世界重新进(推翻:丢对局进度 + entry 卡)。
+- **状态**:采用(纯代码,需游戏验证 —— 下次从对局中态跑 app 应直接 resume 进 loop)。`· currency_war_app`。**通用洞见**:长流程 app(模拟宇宙/忘却之庭/历战等)都该支持中间态接手(crash/重启后可 resume,非总从头)。
+
 ## D-25 (2026-08-04) exit op 事件屏 escape(返回备战界面/Esc 关 overlay)· 入口 op
 - **决策**:`exit_currency_war_match` 加事件 overlay escape 分支 —— 「返回备战界面」(投资策略/环境)→ 点回备战;其他事件(补给/遭遇/巨星/详情/可合成列表)→ Esc 关。放备战分支后、retry 前。
 - **为什么**:实测从投资策略屏跑 exit → 卡 210s+(事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环)。修后:事件屏先 escape 回备战 → 走原 Esc→放弃→结算→大厅。
