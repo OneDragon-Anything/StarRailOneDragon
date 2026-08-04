@@ -30,9 +30,12 @@ from sr_od.operations.sr_operation import SrOperation
 class HandleInvestEnv(SrOperation):
     """投资环境 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡底 + 确认。"""
 
-    # 卡底点击 Y(卡名 y≈392,卡身向下;body≈550 开佩佩对话,卡底≈700 安全选中)。
+    # 卡选中点击 Y(2026-08-04 实测修正):立绘在卡顶 y≈100-400(点立绘/name y390 开角色详情,
+    # 非选中);**描述区 y≈450 才选中**(立绘下方);卡底 y700 无效。手动验证:(960,450)选中
+    # 能量概念股 → 确认 → 推进到备战。区别 invest_strategy(name y476 选中)—— invest_env 立绘
+    # 覆盖到 name,需点更下的描述区。
     # TODO(task#20):进 screen_info。
-    CARD_CLICK_Y: ClassVar[int] = 700
+    CARD_CLICK_Y: ClassVar[int] = 450
     # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈432 / 确认 y≈982)
     NAME_CY_LO: ClassVar[int] = 378
     NAME_CY_HI: ClassVar[int] = 408
