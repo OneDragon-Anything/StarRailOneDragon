@@ -76,6 +76,12 @@ class BuyShopCards(SrOperation):
         # 备战锚点「购买经验」= 底部买经验按钮,shop 开/关均可见(本 op 开 shop 后仍点它升等级)。
         if not self.round_by_ocr(screen, '购买经验').is_success:
             return self.round_fail('非备战屏(回合事件叠层?),交主循环处理')
+        # 事件 overlay 兜底(2026-08-04):投资策略/环境/补给等 overlay 叠在备战上,「购买经验」会
+        # 透出(底部左下未遮)→ 上面 guard 误放行 → overlay 遮商店 → "找不到商店"死循环。
+        # 主循环已事件前置检测(正常不到这),这是 BuyShopCards 自身的兜底:overlay 在 → fail 交主循环。
+        for _evt in ('投资策略', '投资环境', '补给阶段', '遭遇其一', '选择伙伴', '确认选择'):
+            if self.round_by_ocr(screen, _evt, lcs_percent=0.8).is_success:
+                return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。

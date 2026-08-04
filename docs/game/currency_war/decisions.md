@@ -15,6 +15,12 @@
 
 ---
 
+## D-27 (2026-08-04) RunLoop 事件 overlay 前置检测 + BuyShopCards 兜底 · battle_loop / shop
+- **决策**:① RunLoop 把 投资策略/投资环境/补给 检测**移到备战前**(原 step 4 → 0e,与 选择伙伴/巨星/遭遇/未达上限 同列前置);② BuyShopCards guard 加事件 overlay 兜底(检测 投资策略/环境/补给/遭遇/伙伴/确认选择 → fail 交主循环)。
+- **为什么**:实跑发现**投资策略屏被误派 BuyShopCards**(「购买经验」从 overlay 后透出 → 备战分支 step1 先命中 → BuyShopCards → overlay 遮商店 → "找不到商店"死循环)。根因:事件 overlay 叠备战、购买经验透出,但事件检测在备战后。事件必须前置(overlay 在就不进备战)。BuyShopCards 兜底防 loop 漏检/其他调用路径。
+- **备选**:① 只移 precedence(推翻:BuyShopCards 单查购买经验不够,需 overlay 兜底防其他路径);② BuyShopCards 单查 overlay(推翻:loop 是主路由,precedence 是主修)。两者互补。
+- **状态**:采用(纯代码,需游戏验证 —— 下次投资策略屏应路由 HandleInvestStrategy 非 BuyShopCards)。`· battle_loop / shop`。**通用**:overlay 态检测必须在 base 态前(overlay 会让 base 锚点透出)。
+
 ## D-26 (2026-08-04) app 中间态接手(state-aware resume)· currency_war_app
 - **决策**:`CurrencyWarApp` 各入口 op(`_enter_lobby`/`_start_match`)先检测当前态,已在 CW(大厅「创业指南」或对局中态)就跳过、直接进 `_run_loop`。新 `_in_match` helper(OCR 锚点:购买经验/备战阶段/投资策略/投资环境/补给/遭遇/盛会之星/出战/挑战结束/请选择投资)。
 - **为什么**:用户洞见 —— app 原线性流(EnterCurrencyWar→Start→Loop)只认大世界起点,从对局中态(投资策略/备战/战斗)重跑会卡 entry(EnterCurrencyWar 找不到 guide)。实测从投资策略跑 app 失败、只能直接跑 RunLoop 接管。bot crash/重启/手动接管后需从任意态 resume。各 op「已过就 skip」= 幂等 resume。

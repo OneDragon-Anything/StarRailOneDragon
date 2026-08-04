@@ -135,6 +135,24 @@ class CurrencyWarRunLoop(SrOperation):
             HandleDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 
+        # 0e. 选择类事件 overlay(投资策略/环境/补给,3 选 1 + 确认)→ **必须在备战(1)前检测**:
+        #     这些 overlay 叠在备战上,「购买经验」会从 overlay 后透出(底部左下未遮)→ 若先检查备战
+        #     会误派 BuyShopCards(overlay 遮商店→"找不到商店/收起"失败→死循环)。
+        #     2026-08-04 实跑发现:投资策略屏被误派 BuyShopCards(购买经验透出命中),卡死。
+        #     lcs_percent=0.8:「投资策略」与「投资环境」共享「投资」(2/4=0.5)→ 0.8 杀交叉误匹配。
+        if self.round_by_ocr(screen, '投资策略', lcs_percent=0.8).is_success:
+            self._snap('invest_strategy')
+            HandleInvestStrategy(self.ctx).execute()
+            return self.round_wait(wait=2)
+        if self.round_by_ocr(screen, '投资环境', lcs_percent=0.8).is_success:
+            self._snap('invest_env')
+            HandleInvestEnv(self.ctx).execute()
+            return self.round_wait(wait=2)
+        if self.round_by_ocr(screen, '补给阶段').is_success:
+            self._snap('supply')
+            HandleSupply(self.ctx).execute()
+            return self.round_wait(wait=2)
+
         # 1. 备战阶段 → 单轮(买+deploy+出战)
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
         # 遭遇 round 是普通战斗(2026-08-04 vision 确认:无选项选择 UI,只有难度标签 + 出战),
@@ -180,23 +198,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
         if self.round_by_ocr(screen, '创业指南').is_success:
             return self.round_success('对局结束,回大厅')
-
-        # 4. 选择类事件(3 选 1 + 确认)→ 分派到对应 op(各 op TODO 接 decide_event/decide_supply)。
-        #    _snap 捕获 3 张卡 OCR(投资策略/环境名)→ 策略评估接线后据此挑最优卡,非盲点中卡。
-        #    lcs_percent=0.8:「投资策略」与「投资环境」共享「投资」(2/4=0.5)→ 不收紧则投资环境屏
-        #    被投资策略分支(先检查)误吞。0.8 杀交叉误匹配(真屏标题 1.0 不受影响)。
-        if self.round_by_ocr(screen, '投资策略', lcs_percent=0.8).is_success:
-            self._snap('invest_strategy')
-            HandleInvestStrategy(self.ctx).execute()
-            return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '投资环境', lcs_percent=0.8).is_success:
-            self._snap('invest_env')
-            HandleInvestEnv(self.ctx).execute()
-            return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '补给阶段').is_success:
-            self._snap('supply')
-            HandleSupply(self.ctx).execute()
-            return self.round_wait(wait=2)
 
         # 5. 前进按钮(简报等)
         if self.round_by_ocr_and_click(screen, '下一步', success_wait=2).is_success:
