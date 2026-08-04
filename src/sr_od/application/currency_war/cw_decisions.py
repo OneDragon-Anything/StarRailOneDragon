@@ -445,7 +445,17 @@ def _best_improving_action(
             beat(delta_lv, [LevelUp(cost=cost)])
 
     # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5 修死代码)
-    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0:
+    # spending gate(task#18 续):level_plan="level_up" + 金不够升级 → 也不 D 牌(纯攒金,防 refresh 泄金)
+    _gate_refresh = False
+    if target_comp is not None:
+        _rg = target_comp.level_plan.get(state.level)
+        if _rg is None and state.level in (6, 7):
+            _rg = LevelGoal("level_up")
+        if _rg is not None and _rg.action == "level_up":
+            _lvl_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
+            if state.gold < _lvl_cost:
+                _gate_refresh = True  # 攒金给 LevelUp,不 D 牌
+    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0 and not _gate_refresh:
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                      target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])
