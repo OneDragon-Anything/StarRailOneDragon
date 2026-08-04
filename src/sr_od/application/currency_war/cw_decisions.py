@@ -12,6 +12,7 @@ meta 层(阵营/角色/事件)版本依赖,以米游社百科/游戏图鉴为准
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
@@ -19,8 +20,11 @@ from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESH
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
 from sr_od.application.currency_war.cw_comps import (
+    AFFIX_MECHANIC_MAP,
     LevelGoal,
+    form_progress,
     make_score_context,
+    mechanics_fit,
     select_comp,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -570,3 +574,75 @@ def decide_event(options: list[str], config, state: GameState) -> PickEvent:
         if score > best_score:
             best_score, best_idx = score, i
     return PickEvent(option_idx=best_idx, reason=f"score={best_score:.0f}")
+
+
+# ===== 遭遇节点(decide_encounter,design 08;纯逻辑骨架,handler 接线待阶段5 OCR)=====
+
+@dataclass
+class EncounterOption:
+    """一个遭遇分支:难度档 + 敌人词缀 + 奖励(OCR 读,``read_encounter_options`` 阶段5)。
+
+    difficulty:难度档 1=易/2=中/3=难(越高奖励越好但敌人越凶)。
+    affixes:敌人词缀 OCR 原名(经 ``AFFIX_MECHANIC_MAP`` → 机制 tag,再 ``mechanics_fit`` 判 comp 克/利)。
+    rewards:奖励(钻/装备/金币;带钻最优,详 design 08 / cw_comps MECHANIC 表)。
+    """
+    idx: int
+    difficulty: int = 1
+    affixes: list[str] = field(default_factory=list)
+    rewards: list[str] = field(default_factory=list)
+
+
+@dataclass
+class EncounterPick:
+    """decide_encounter 返回:选哪个分支 + 是否刷新避开。"""
+    idx: int
+    refresh: bool = False
+    reason: str = ""
+
+
+def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> float:
+    """该分支词缀对 target_comp 的契合(``mechanics_fit`` 0..1;<0.4 克、>0.5 利 debuff=buff)。
+
+    无 target_comp → 中性 0.5(纯按难度选)。
+    """
+    if target_comp is None:
+        return 0.5
+    mechs = {AFFIX_MECHANIC_MAP.get(a, a) for a in option.affixes}
+    return mechanics_fit(target_comp, mechs)
+
+
+def decide_encounter(options: list[EncounterOption], state: GameState,
+                     target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
+    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08;handler 待阶段5 ``read_encounter_options`` 接)。
+
+    决策(观测驱动 + comp 相关,debuff=buff):
+    1. **未成型**(deployed 不足 / target 成型度低)→ 偏低难度(生存优先)。
+    2. **词缀按 comp 判**(``mechanics_fit``):全分支都克 comp + 刷新未用 → **刷新换批**避开;
+       存在不克的分支 → 选最利 comp 的。
+    3. **成型 + 词缀利 comp**(debuff=buff)→ 挑高难度拿奖励(奖励权重随成型度)。
+    4. 刷新已用 → 不再刷,按 1-3 选最优分支。
+
+    config 预留(未来对策装备映射 / 偏好;当前未用)。
+    """
+    if not options:
+        return EncounterPick(idx=0, reason="no-options")
+    mechs = [_option_mechanics(o, target_comp) for o in options]
+    form = form_progress(target_comp, state) if target_comp is not None else 0.5
+    formed = form >= 0.4 and state.deployed_count() >= max(2, state.max_units() // 2)
+
+    # 全分支词缀都克 comp(mechanics_fit < 0.4)+ 刷新未用 → 刷新换批(避开高危)
+    if not refresh_used and target_comp is not None and all(m < 0.4 for m in mechs):
+        return EncounterPick(idx=options[0].idx, refresh=True,
+                             reason=f"全分支词缀克 comp(mech_max={max(mechs):.2f}),刷新换批")
+
+    # 评分:词缀契合(利 comp 加分)+ 成型→高难度值(奖励)/ 未成型→低难度安全
+    def _score(o: EncounterOption, m: float) -> float:
+        s = m
+        diff_norm = (o.difficulty - 1) / 2.0   # 0..1(难度 1→0、3→1)
+        s += (0.3 * diff_norm) if formed else (-0.3 * diff_norm)
+        return s
+
+    scored = sorted(zip(options, mechs, strict=True), key=lambda om: _score(om[0], om[1]), reverse=True)
+    best_o, best_m = scored[0]
+    return EncounterPick(idx=best_o.idx, refresh=False,
+                         reason=f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty}")

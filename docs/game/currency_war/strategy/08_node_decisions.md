@@ -21,6 +21,8 @@ decide_encounter(options, state, target_comp, config) → (idx, refresh?)
 ```
 **数据**:遭遇词缀表(急速制冷/正当防卫/同步行动/决战在即/... research §10.2)+ 对策装备映射(正当防卫→能量饮料/绝对热量)。**需游戏** OCR。
 
+> **状态(2026-08-04,D-19)**:`decide_encounter` 纯逻辑骨架**已实现 + 4 测试绿**(`cw_decisions.py`):未成型→低难度 / 全分支克 comp→刷新 / 成型+利 comp(debuff=buff)→高难度。`EncounterOption`(idx/难度/词缀/奖励)+ `EncounterPick`(idx/refresh/reason)。**handler 接线待阶段 5**(`read_encounter_options` OCR + `handle_encounter` 改调,替代 naive 选左)。
+
 ## 巨星强化(select_megastar,完整性-2,high)
 
 **详 [03 阵容规划](03_comp_planning.md#巨星选择)**:`select_megastar(state, target_comp) → char`。盛会之星羁绊核心决策(花火/星期日/知更鸟/黑天鹅 各给不同全队 buff)。target_comp.core_chars 含盛会之星 → 绑该角色;否则按 buff 契合。battle_loop「确认选择」分支改调此函数。
