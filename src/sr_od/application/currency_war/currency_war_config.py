@@ -73,6 +73,11 @@ class CurrencyWarConfig(YamlConfig):
         # —— 策略偏好(meta,版本依赖)——
         self.faction_priority: list[str] = self.get('faction_priority', DEFAULT_FACTION_PRIORITY)
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
+        # 用户 4 轴 steer(README §A):forbid 硬过滤 + build_around 必含(cw_comps._passes_steering 读)。
+        # 默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
+        self.character_forbid: list[str] = self.get('character_forbid', [])
+        self.character_build_around: list[str] = self.get('character_build_around', [])
+        self.faction_forbid: list[str] = self.get('faction_forbid', [])
         # 枚举校验(review r1 #10):typo/大小写错静默落入默认,避免用户以为改了实则没生效
         econ = self.get('economy_mode', 'adaptive')
         self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
@@ -88,6 +93,9 @@ class CurrencyWarConfig(YamlConfig):
         self.data = {
             'faction_priority': self.faction_priority,
             'character_priority': self.character_priority,
+            'character_forbid': self.character_forbid,
+            'character_build_around': self.character_build_around,
+            'faction_forbid': self.faction_forbid,
             'economy_mode': self.economy_mode,
             'event_whitelist': self.event_whitelist,
             'boss_counter': self.boss_counter,
