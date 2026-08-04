@@ -86,11 +86,12 @@ class CurrencyWarRunLoop(SrOperation):
             self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点选择(有"遭遇其一"/"遭遇其四" + "选择"按钮)→ 直接点"选择"(默认遭遇其一已选中)。
-        # 2026-08-04:d68ac45d 初版 click (646,500) 点了"遭遇其一"tab → 打开详情子屏(无"选择")→ stuck。
-        # 修正:不点 tab(遭遇其一是 tab 不是按钮),**直接 round_by_ocr_and_click '选择'**(遭遇其一默认选中)。
+        # 0c. 遭遇节点选择(有"遭遇其一" + 可能"选择"按钮)→ 两种屏:
+        #   选择屏(有"选择"按钮)→ click 选择。
+        #   详情屏(有"敌方信息",无"选择"——之前 tab 点开的)→ ESC 回选择屏,下轮再点选择。
         if self.round_by_ocr(screen, '遭遇其一').is_success:
-            self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2)
+            if not self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2).is_success:
+                self.ctx.controller.btn_tap('esc')  # 详情屏无选择 → ESC 回选择屏
             return self.round_wait(wait=2)
 
         # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
