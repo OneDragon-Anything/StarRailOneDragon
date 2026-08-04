@@ -391,6 +391,14 @@ def _best_improving_action(
         cost = card_cost(card)
         if state.gold < cost:
             continue
+        # level_plan spending gate(task#18):target.level_plan[level]="level_up" + 金不够升级 →
+        # 只买 target core chars(goal.target_chars),跳过散牌(攒金给 LevelUp,解 bot 花光金不升级)。
+        if target_comp is not None:
+            goal = target_comp.level_plan.get(state.level)
+            if goal is not None and goal.action == "level_up":
+                level_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
+                if state.gold < level_cost and (not goal.target_chars or card.name not in goal.target_chars):
+                    continue   # 抑制散牌买,攒金给 LevelUp
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if after_buy.deployed_count() < after_buy.max_units() and after_buy.bench:
