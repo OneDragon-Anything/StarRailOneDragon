@@ -91,8 +91,13 @@ class CurrencyWarRunLoop(SrOperation):
         #   详情屏(有"敌方信息",无"选择"——之前点 tab 开的)→ 点空白 (960,540) 关详情回选择屏。
         #   ESC 不关详情(实测);blank click 关(实测 2026-08-04)。
         if self.round_by_ocr(screen, '遭遇其一').is_success:
-            if not self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2).is_success:
-                self.ctx.controller.click(Point(960, 540))  # 详情屏 → blank click 关详情回选择
+            # bug#1 mitigation: mouse_move + click '选择'(同出战 fix)
+            self.ctx.controller.mouse_move(Point(1081, 898))  # 选择 按钮(实测)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(1081, 898))
+            time.sleep(1.0)
+            if self.round_by_ocr(self.screenshot(), '选择').is_success:
+                self.ctx.controller.click(Point(960, 540))  # 仍在选择屏 → blank click 关详情回选择
             return self.round_wait(wait=2)
 
         # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
