@@ -140,8 +140,8 @@ class CurrencyWarRunLoop(SrOperation):
         # 结算页 → 对局循环超时)→ 改 round_by_ocr 检测 + active_window/sleep + 直接 click(同 出战 解法)。
         for btn in ('前往结算', '下一页', '返回货币战争'):
             if self.round_by_ocr(screen, btn).is_success:
-                self.ctx.controller.active_window()
-                time.sleep(0.5)
+                self.ctx.controller.mouse_move(CurrencyWarRunLoop.SETTLEMENT_NEXT)  # bug#1 fix
+                time.sleep(0.3)
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
                 return self.round_wait(wait=2)
 
