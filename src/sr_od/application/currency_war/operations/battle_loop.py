@@ -100,8 +100,11 @@ class CurrencyWarRunLoop(SrOperation):
         self.ctx.controller.active_window()
         screen = self.last_screenshot
 
-        # 0. 备战被锁(本轮需先选投资策略,顶部有"返回投资策略选择"按钮)→ 点去选策略(check#4 接手)
-        if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2).is_success:
+        # 0. 备战被锁(顶部"返回投资策略选择"按钮)→ 点去选策略(check#4 接手)。
+        #    lcs_percent=0.9:防与「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)
+        #    误匹配 → 投资策略屏被本分支吞(点标题不动作)→ 死循环(2026-08-04 实跑发现,卡 plane1)。
+        #    真「返回投资策略选择」按钮 OCR 1.0 不受影响。
+        if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
@@ -174,11 +177,13 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 4. 选择类事件(3 选 1 + 确认)→ 分派到对应 op(各 op TODO 接 decide_event/decide_supply)。
         #    _snap 捕获 3 张卡 OCR(投资策略/环境名)→ 策略评估接线后据此挑最优卡,非盲点中卡。
-        if self.round_by_ocr(screen, '投资策略').is_success:
+        #    lcs_percent=0.8:「投资策略」与「投资环境」共享「投资」(2/4=0.5)→ 不收紧则投资环境屏
+        #    被投资策略分支(先检查)误吞。0.8 杀交叉误匹配(真屏标题 1.0 不受影响)。
+        if self.round_by_ocr(screen, '投资策略', lcs_percent=0.8).is_success:
             self._snap('invest_strategy')
             HandleInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '投资环境').is_success:
+        if self.round_by_ocr(screen, '投资环境', lcs_percent=0.8).is_success:
             self._snap('invest_env')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
