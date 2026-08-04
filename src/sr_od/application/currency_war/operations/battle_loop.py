@@ -86,7 +86,18 @@ class CurrencyWarRunLoop(SrOperation):
             self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
             return self.round_wait(wait=2)
 
-        # 0c. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
+        # 0c. 遭遇节点选择(有"遭遇其一"/"遭遇其四" + "选择")→ 选遭遇其一(低难度,bot 安全) + 选择。
+        # 2026-08-04:df9f6810 误移除(vision 误判"遭遇=普通战斗")—— 实测遭遇其二/其四是**选择屏**
+        # (click 遭遇其一 + 选择)。恢复 handler,在 0b(确认选择)之前(避免误匹配)。
+        if self.round_by_ocr(screen, '遭遇其一').is_success:
+            self.ctx.controller.mouse_move(Point(646, 500))  # 遭遇其一 中心(bug#1 mitigation)
+            time.sleep(0.3)
+            self.ctx.controller.click(Point(646, 500))
+            time.sleep(0.6)
+            self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2)
+            return self.round_wait(wait=2)
+
+        # 0d. 出战确认弹窗("可出战角色人数未达上限")→ 勾"本局不再提示"+ 确认(阵容不全出战时触发;
         # 之前所有"出战卡死"的真根因 —— 非bug#1,是此确认弹窗未处理)
         if self.round_by_ocr(screen, '未达上限').is_success:
             self.ctx.controller.active_window()
