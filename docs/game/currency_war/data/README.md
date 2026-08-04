@@ -13,10 +13,10 @@
 | 通道 | 结果 | 说明 |
 |---|---|---|
 | **chrome-devtools MCP → headless Edge(远程调试 19999)** | ✅ 可用 | 本次主通道。驱动已登录的 Edge 抓米游社百科全文。 |
-| 米游社百科 API `act-api-takumi-static.mihoyo.com/.../sr_wiki/v1/content/info?content_id=<id>` | ✅ 可用 | 通过 Edge 内 `fetch()` 顺序抓取(同一 origin,CORS 放行)。content/info 取详情,content/list 取列表。 |
+| 米游社百科 API `act-api-takumi-static.mihoyo.com/.../sr_wiki/v1/content/info?content_id=<id>` | ✅ 可用 | 通过 Edge 内 `fetch()` 顺序抓取(同一 origin,CORS 放行)。`content/info` 取详情,`home/content/list?channel_id=209` 取全树(含子频道+条目列表)。 |
 | `web_reader` / `WebFetch` / `Bash curl` | ❌ 不可用 | web_reader 拒中文 URL;WebFetch 拦 CN 域名;Bash 沙箱无网。 |
 
-**复现方法**:用 chrome-devtools 连 Edge → navigate 到 `miyoushe.com/sr/wiki/channel/map/209` → evaluate_script 内 `fetch(content/info?content_id=X)` 顺序取各条目 → 解析 `contents[0].text` 里的 URL 编码 `data-data` JSON(含 rate/type/desc/material/分级效果)。
+**复现方法**:用 chrome-devtools 连 Edge → navigate 到 `miyoushe.com/sr/wiki/channel/map/209` → evaluate_script 内 `fetch('home/content/list?channel_id=209')` 取全树(5 子频道:员工210/装备211/投资策略212/投资环境213/羁绊214,各含 content_id 列表) → 对每个 content_id 调 `fetch('content/info?content_id=X')` → 解析 `contents[0].text` 里 URL 编码的 `data-data` JSON(含 rate/type/desc/material/分级效果)。
 
 ---
 
@@ -27,10 +27,10 @@
 | [gameplay.md](gameplay.md) | 米游社官方玩法说明(content/6564 全文)+ 机制框架速查 | — | 🟢 完整 |
 | [factions.md](factions.md) | 羁绊全表:阵营13/流派12/独立6,逐层效果原文 | 31 | 🟢 完整 |
 | [characters.md](characters.md) | 角色花名册:费用/站位/类型/阵营/流派(反查) | 74 | 🟢 完整 |
-| [investment_strategies.md](investment_strategies.md) | 投资策略:棱彩/金/银三档 + 效果原文 | 216 | 🟢 完整 |
-| [investment_envs.md](investment_envs.md) | 投资环境:概念股/邀请/契约/时代/经济/规则/专家 | 74 | 🟢 完整 |
-| [equipment.md](equipment.md) | 装备:简易7/进阶33/特权27/星徽22/白昼6/Fate~24/工具11 | ~130 | 🟢 核心 |
-| [competitors.md](competitors.md) | 敌人词缀/节点机制 | — | 🟡 部分 |
+| [investment_strategies.md](investment_strategies.md) | 投资策略:棱彩114/金125/银76 + 效果原文 | 315 | 🟢 米游社图鉴315条全覆盖(游戏内334) |
+| [investment_envs.md](investment_envs.md) | 投资环境:概念股/邀请/契约/时代/经济/规则/专家 | 76 | 🟢 米游社图鉴77条已覆盖(游戏内83) |
+| [equipment.md](equipment.md) | 装备:简易7/进阶33/特权35/星徽22/白昼6/命运改件16/骇客改件16/特殊2/工具11 | 153 | 🟢 米游社图鉴153条全覆盖(游戏内155) |
+| [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制 | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益) | ~20 | ⚠️ bwiki,米游社-pending |
 
 ---
@@ -45,6 +45,7 @@
   - 投资环境: channel/map/209/213
   - 羁绊: channel/map/209/214
 - 内容详情 API: `https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id=<id>`
+- 内容列表 API(取全树): `https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/content/list?app_sn=sr_wiki&channel_id=209` → 返回 5 子频道 + 各条目 content_id 列表(⚠️ 图鉴**无「竞争对手」子频道**,该 20 项需实机补)
 - 赛季扩充说明: V3.8(article/71454150)、V4.0(73128301)、V4.2(74751746)、V4.4(76641553)
 
 ---
@@ -53,9 +54,10 @@
 
 | 缺口 | 影响 | 补法 |
 |---|---|---|
+| **米游社图鉴 vs 游戏内数据银行差额** | 策略差19(315/334)、环境差6(77/83)、装备差2(153/155) | 米游社图鉴收录 < 游戏内总量,差额疑为隐藏/成就解锁项。🔴 需实机 OCR 补全 |
+| **竞争对手阵营(20个)** | A8 boss 阵营/克制关系 | 米游社图鉴 channel/map/209 **无「竞争对手」子频道**(只有员工/装备/投资策略/投资环境/羁绊5类)。游戏内数据银行有20个竞争对手阵营 → 🔴 需实机 OCR 或米游社专页(待日后收录) |
 | 概念股"角色:/装备:"具体清单 | 概念股送的精确角色名 | 图鉴原文是图标,抓取被剥离;效果文本已含规律(送某羁绊角色+装备) |
-| Fate 系列装备(7890-7921)逐条效果 | 命运圣杯羁绊配装 | 已列名,效果待逐条 content/info 补(本次未展开) |
-| 敌人词缀完整名单+精确效果 | A8 对策配置 | 米游社图鉴未收录,需实机 OCR 落库 |
+| 敌人词缀完整名单+精确效果 | A8 对策配置 | 米游社图鉴未收录词缀(competitors.md 现为攻略统计🟡),需实机 OCR 落库 |
 | 罗刹站位/类型 | 角色表小缺口 | content/6252 单独取(本次批量漏取) |
 | **优势布局全量(钻钞 cost + 效果原文)** | 跨局 meta(R2-1 / 09) | advantage_layouts.md 暂用 bwiki;米游社图鉴 channel/map/209 **无此项**,玩法说明 6564 只有机制 → 待米游社专页(若日后收录)或实机校准 |
 | **费用刷新概率表(等级 × 1-5 费)** | A4 牌池模型精度(蒙特卡洛 D 牌) | bwiki/gachabase 均无精确表;可能游戏内才公开 → 实机 OCR 逐等级记录 OR 米游社专页(若日后收录) |

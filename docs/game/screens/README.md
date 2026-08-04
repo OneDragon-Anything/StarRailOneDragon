@@ -27,5 +27,6 @@ StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试�
 |---|---|---|
 | 模拟宇宙 | [模拟宇宙.md](模拟宇宙.md) | `sim_uni`,**20 子态**(入口流程①~⑪ / 获得弹窗 / 选择奇物 / 事件 / 沉浸奖励 / 休整 / 精英 / 战斗 / 交易·战斗失败推断),18 实拍 + 2 推断 |
 | 差分宇宙 | [差分宇宙.md](差分宇宙.md) | `div_uni`·千面英雄,**6 子态**(入口 / 探索 / 选祝福 / 选奇物 / 选方程 / 获得方程),Roguelike bot 未覆盖(screen_info 未建模) |
+| 货币战争 | [currency_war_lobby.md](currency_war_lobby.md) | `currency_war`,auto-chess 肉鸽,建档进行中(2026-08)。子屏 doc:大厅·模式选择·难度确认·简报·投资环境·备战·商店·[遭遇节点](currency_war_encounter.md)·战斗·补给·投资策略;**待补**:选择伙伴·巨星·未达上限弹窗·结算(挑战成功/失败)各子页 |
 
 > 玩法机制 doc 见 [gameplay/](../gameplay/);app 编排 develop doc 见 [develop/sr_od/application/](../../develop/sr_od/application/)。
