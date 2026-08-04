@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-write-operation
-description: 当要在一条龙(OneDragon)框架上**新建、修改或调试单个 Operation** 时用 —— 写一个 op(用 `@operation_node` 声明节点、用 `round_by_*` 做画面判定与点击、处理一个画面或一类动作、返回 round 结果),或改/修已有 op 的逻辑与 bug。Use when writing, modifying, or debugging a single Operation on the OneDragon framework — declare nodes via `@operation_node`, detect/click screens via `round_by_*`, handle one screen/action, return round results; includes fixing an op's logic/bugs. 不触发:从零做新玩法(sr-od-dev-gameplay-automation)、搭/改 app 骨架与配置(sr-od-dev-application)。
+description: 当要在一条龙(OneDragon)框架上**新建、修改或调试单个 Operation** 时用 —— 写一个 op(用 `@operation_node` 声明节点、用 `round_by_*` 做画面判定与点击、处理一个画面或一类动作、返回 round 结果),或改/修已有 op 的逻辑与 bug。Use when writing, modifying, or debugging a single Operation on the OneDragon framework — declare nodes via `@operation_node`, detect/click screens via `round_by_*`, handle one screen/action, return round results; includes fixing an op's logic/bugs. 不触发:从零做新玩法(od-dev-gameplay-automation)、搭/改 app 骨架与配置(sr-od-dev-application)。
 ---
 
 # 写 / 改 / 调试单个 Operation(OneDragon)
@@ -61,7 +61,7 @@ OneDragon 的 Operation 是**节点图状态机**:一个 op = 若干 `@operation
 
 ## 边界(这些去别的 skill)
 
-- 从零做新玩法全程 → `sr-od-dev-gameplay-automation`
+- 从零做新玩法全程 → `od-dev-gameplay-automation`
 - app 产品化(factory / config / GUI / run-record / app 编排)→ `sr-od-dev-application`
 - 建一张屏的机制 → `od-dev-screen-onboarding`
 - 通用 bug 定位 / 修复流程 → `superpowers:systematic-debugging` / `sr-od-dev-deciding-a-fix`

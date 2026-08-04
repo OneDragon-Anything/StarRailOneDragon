@@ -12,7 +12,7 @@ OneDragon 框架上「写 / 改 / 调试**单个 Operation**」的完整方法�
 
 - **op 粒度**(单 Operation)→ 本 skill(`sr-od-dev-write-operation`)。高频:写 / 改 / 修 op。
 - **app 粒度**(整个 SrApplication 产品化:factory / config / GUI / run-record / app 级编排)→ `sr-od-dev-application`(待建)。
-- **玩法粒度**(从零做新玩法的全程 pipeline)→ `sr-od-dev-gameplay-automation`(已存在,瘦身为纯 pipeline)。
+- **玩法粒度**(从零做新玩法的全程 pipeline)→ `od-dev-gameplay-automation`(已存在,瘦身为纯 pipeline)。
 
 判单项归哪层,问:这是「单个 Operation 的写 / 改 / 修」,还是「整个 app 的搭 / 配 / 编排」,还是「从零做新玩法的全程」?
 
@@ -42,7 +42,7 @@ OneDragon 框架上「写 / 改 / 调试**单个 Operation**」的完整方法�
 
 ## 范围 OUT(指针,不重复)
 
-- 从零做新玩法全程 → `sr-od-dev-gameplay-automation`
+- 从零做新玩法全程 → `od-dev-gameplay-automation`
 - app 产品化(factory / config / GUI / run-record / app 级编排)→ `sr-od-dev-application`(待建;app 节点复用本 skill 的节点图机制,不重复讲)
 - 建一张屏的机制(analyze → vision → doc → screen_info area → 存模板)→ `od-dev-screen-onboarding`
 - 检测 / 验证 UI 区域坐标(槽位网格 / 图标阵列)→ `sr-od-dev-ui-region-detect`
@@ -60,8 +60,8 @@ OneDragon 框架上「写 / 改 / 调试**单个 Operation**」的完整方法�
 
 ## 分阶段(phasing)
 
-- **MVP(本步)**:建成 `sr-od-dev-write-operation`(SKILL.md + references + design),作 op 粒度规范的**新单一源**;在 `sr-od-dev-gameplay-automation` 里把迁出的那几节(调试纪律 / 预料外画面 / 日志密度 / 重复手动建op / 证据纪律)替换为一行指针,避免双源。
-- **Follow-up**:`sr-od-dev-gameplay-automation` 全案瘦身(阶段 5/6 收窄成"策略 + 引用");建 `sr-od-dev-application`。
+- **MVP(本步)**:建成 `sr-od-dev-write-operation`(SKILL.md + references + design),作 op 粒度规范的**新单一源**;在 `od-dev-gameplay-automation` 里把迁出的那几节(调试纪律 / 预料外画面 / 日志密度 / 重复手动建op / 证据纪律)替换为一行指针,避免双源。
+- **Follow-up**:`od-dev-gameplay-automation` 全案瘦身(阶段 5/6 收窄成"策略 + 引用");建 `sr-od-dev-application`。
 
 ## 类型(RED / GREEN)
 

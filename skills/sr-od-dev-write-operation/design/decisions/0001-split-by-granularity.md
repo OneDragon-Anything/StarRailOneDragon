@@ -5,7 +5,7 @@
 
 ## Context
 
-`sr-od-dev-gameplay-automation` 原本是"从零开发新玩法自动化"的唯一 skill,装了:全程 pipeline(阶段 0-9)+ op / app mechanics 一行带过 + 一大块 op 作者方法论(调试纪律 / 预料外画面 / 密集日志 / 多样本核实 / 重复手动建op / 证据纪律)。
+`od-dev-gameplay-automation` 原本是"从零开发新玩法自动化"的唯一 skill,装了:全程 pipeline(阶段 0-9)+ op / app mechanics 一行带过 + 一大块 op 作者方法论(调试纪律 / 预料外画面 / 密集日志 / 多样本核实 / 重复手动建op / 证据纪律)。
 
 两个问题:
 
@@ -24,7 +24,7 @@
 
 ### A. 按粒度拆三层(本决策)
 
-`sr-od-dev-write-operation`(op 粒度,高频,完整 op 作者参考)+ `sr-od-dev-application`(app 粒度,产品化)+ `sr-od-dev-gameplay-automation`(瘦成纯玩法粒度 pipeline)。每层自洽完整,高层引用低层。
+`sr-od-dev-write-operation`(op 粒度,高频,完整 op 作者参考)+ `sr-od-dev-application`(app 粒度,产品化)+ `od-dev-gameplay-automation`(瘦成纯玩法粒度 pipeline)。每层自洽完整,高层引用低层。
 
 - ✅ 触发可达:写 / 改 / 修 op 进 write-operation 拿到完整 op 参考。
 - ✅ 单一源:op 粒度规范随 op 走(迁入 write-operation),gameplay-automation 引用。
@@ -62,4 +62,4 @@
 ## Links
 
 - 相关 design 章节:`../overview.md`(范围 IN/OUT、构成、phasing)
-- 相关 skill:`sr-od-dev-gameplay-automation`(将瘦身)、`sr-od-dev-application`(待建)、`od-dev-screen-onboarding`(建档前置引用)
+- 相关 skill:`od-dev-gameplay-automation`(将瘦身)、`sr-od-dev-application`(待建)、`od-dev-screen-onboarding`(建档前置引用)

@@ -1,6 +1,6 @@
 # 单个 Operation 的测试(reference)
 
-> `sr-od-dev-write-operation` 的 situational reference。测试**策略**在 SKILL.md / `sr-od-dev-gameplay-automation`,本文件给 op 级测试**机制**。
+> `sr-od-dev-write-operation` 的 situational reference。测试**策略**在 SKILL.md / `od-dev-gameplay-automation`,本文件给 op 级测试**机制**。
 
 ## 实机单跑(最快定位)
 
