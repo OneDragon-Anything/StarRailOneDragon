@@ -164,7 +164,9 @@ class CurrencyWarRunLoop(SrOperation):
         # ~(900,882)。bug#1:round_by_ocr_and_click 的 click 易被 before_screenshot 移鼠标吞掉(实测卡死在
         # 结算页 → 对局循环超时)→ 改 round_by_ocr 检测 + active_window/sleep + 直接 click(同 出战 解法)。
         for btn in ('前往结算', '下一页', '返回货币战争'):
-            if self.round_by_ocr(screen, btn).is_success:
+            # lcs_percent=0.8:「返回货币战争」与事件屏「返回备战界面」共享「返回+战」(3/6=0.5)→
+            # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
+            if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
                 self.ctx.controller.mouse_move(CurrencyWarRunLoop.SETTLEMENT_NEXT)  # bug#1 fix
                 time.sleep(0.3)
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)

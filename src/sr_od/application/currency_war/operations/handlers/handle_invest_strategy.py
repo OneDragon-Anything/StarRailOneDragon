@@ -46,19 +46,19 @@ class HandleInvestStrategy(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
 
-    def _read_options(self, screen) -> list[tuple[str, int]]:
-        """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
+    def _read_options(self, screen) -> list[tuple[str, int, int]]:
+        """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
-        opts: list[tuple[str, int]] = []
+        opts: list[tuple[str, int, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
                 continue
             cy = mrl.max.center.y
             if (HandleInvestStrategy.NAME_CY_LO <= cy <= HandleInvestStrategy.NAME_CY_HI
                     and 2 <= len(text) <= 8 and text not in HandleInvestStrategy._EXCLUDE):
-                opts.append((text, mrl.max.center.x))
+                opts.append((text, mrl.max.center.x, cy))
         opts.sort(key=lambda t: t[1])
         return opts
 
@@ -70,33 +70,25 @@ class HandleInvestStrategy(SrOperation):
 
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
-        names = [n for n, _ in opts]
+        names = [n for n, _x, _y in opts]
         pick = decide_event(names, config, types.SimpleNamespace(board={})) if names else None
         if pick is not None and 0 <= pick.option_idx < len(opts):
-            chosen, choose_x = opts[pick.option_idx]
+            chosen, choose_x, choose_y = opts[pick.option_idx]
             reason = pick.reason
         elif opts:
-            chosen, choose_x, reason = opts[0][0], opts[0][1], 'fallback(no-decision)'
+            chosen, choose_x, choose_y, reason = opts[0][0], opts[0][1], opts[0][2], 'fallback(no-decision)'
         else:
-            chosen, choose_x, reason = '?', 920, 'fallback(no-ocr)'
-        log.info(f'[cw-strat] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
+            chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
+        log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
 
-        # 点最优卡 body(bug#1 mitigation:mouse_move + click)
-        body = Point(choose_x, HandleInvestStrategy.CARD_BODY_Y)
-        self.ctx.controller.mouse_move(body)
+        # 点最优**卡名**选中(2026-08-04 实测:body 550/bottom 815 都不选中,只有卡名 y≈476 区域选中)。
+        # bug#1 mitigation:mouse_move(纯移动)+ click(零移动)→ 不被判 drag。
+        name_pos = Point(choose_x, choose_y)
+        self.ctx.controller.mouse_move(name_pos)
         time.sleep(0.3)
-        self.ctx.controller.click(body)
-        time.sleep(0.6)
-        # body 对部分变体开 detail 遮住「确认」→ ESC 关 detail + 点卡底选中
-        if not self.round_by_ocr(self.screenshot(), '确认').is_success:
-            self.ctx.controller.btn_tap('esc')
-            time.sleep(0.5)
-            bottom = Point(choose_x, HandleInvestStrategy.CARD_BOTTOM_Y)
-            self.ctx.controller.mouse_move(bottom)
-            time.sleep(0.3)
-            self.ctx.controller.click(bottom)
-            time.sleep(0.6)
-        # 确认(bug#1 mitigation:mouse_move + click 固定确认按钮中心)
+        self.ctx.controller.click(name_pos)
+        time.sleep(0.7)
+        # 确认(bug#1 mitigation:mouse_move + click 固定确认按钮中心 ~978,983)
         self.ctx.controller.mouse_move(HandleInvestStrategy.CONFIRM)
         time.sleep(0.3)
         self.ctx.controller.click(HandleInvestStrategy.CONFIRM)
