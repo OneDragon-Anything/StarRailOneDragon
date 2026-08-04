@@ -15,6 +15,12 @@
 
 ---
 
+## D-24 (2026-08-04) level gate chicken-egg 修:落后期望等级也升(非仅 goal=level_up)· strategy/02 plan / 03 level_plan
+- **决策**:`plan()` 升级 gate 条件从「goal=level_up + 够钱」扩为「够钱 + (goal=level_up **或** 落后期望等级 `_expected_level`)」。
+- **为什么**:telemetry 6 局**全「升0次」**(gold 到 74 也不升)。根因:task#18(D-14)gate 只在 goal=level_up 时升,但 `_DEFAULT_LEVEL_GOAL[2,3,4]=roll`(非 level_up)→ gate 在这些等级不触发 → 永远到不了 5+(level_up 等级)→ **chicken-egg 卡低等级** → 弱 comp → 输。CW 起步 lv4 + goal[4]=roll → 永卡 4。「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。
+- **备选**:① 改 `_DEFAULT_LEVEL_GOAL[3,4]=level_up`(推翻:rigid,只解 lv4;「落后期望」更通用,适用任何掉队);② LevelUp 回归 eval 候选(推翻:task#18 D-14 已证 eval 短视永不选;gate 更稳)。
+- **状态**:采用(7 level-up 测试绿,含新 D-24 测试)。**待干净对局验证**:下局应能看到升级(chicken-egg 解)。`· §02 plan / §03 level_plan`
+
 ## D-23 (2026-08-04) EnterCurrencyWar wait_lobby 防御性加固(前往参与仍在→重点击)· 入口 op
 - **决策**:`wait_lobby` 加分支 —— `前往参与` 仍在(transport click 没落地)→ `round_by_ocr_and_click` 重点击。放「创业指南」(大厅)之后、弹窗/F 分支之前。
 - **为什么**:全流程跑卡 `wait_lobby` 重试 37x 失败,根因:停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ F 分支(`货币战争 AND NOT 前往参与`)被跳过 → 无分支命中 → 死循环。上个节点(前往参与)的 transport click 没落地(bug#1)→ 角色没传送 → 停指南页。重点击兜底。

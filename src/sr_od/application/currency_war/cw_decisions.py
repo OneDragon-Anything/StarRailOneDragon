@@ -391,11 +391,16 @@ def plan(state: GameState, config, faction_priority: list[str],
     # level_plan 是**花费指令**非建议:说 level_up + afford → 执行,信任计划而非短视 eval。tempo 破息在所
     # 不惜(升级解锁高费刷新率 + 出战位 = 关键长期投资)。每轮最多 1 级(自然节流,防一轮烧光金)。
     _goal = _resolve_level_goal(cur, target)
-    if _goal is not None and _goal.action == "level_up" and cur.level < 10:
-        _lv_cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
-        if cur.gold >= _lv_cost:
-            actions.append(LevelUp(cost=_lv_cost))
-            cur = simulate(cur, actions[-1])
+    _lv_cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
+    # 升级条件:够钱 + (level_plan 说 level_up **或** 落后期望等级 `_expected_level`)。
+    # 修 chicken-egg bug(D-24):原 gate 只在 goal=level_up 时升,但 roll 等级(2/3/4)→ gate 不触发
+    # → 永远到不了 5+(level_up 等级)→ 卡低等级 → telemetry 6 局全「升0次」(gold 到 74 也不升)。
+    # 「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。每轮 ≤1 级。
+    _exp_lv = _expected_level(cur.round_num, cur.plane)
+    if (cur.level < 10 and cur.gold >= _lv_cost
+            and ((_goal is not None and _goal.action == "level_up") or cur.level < _exp_lv)):
+        actions.append(LevelUp(cost=_lv_cost))
+        cur = simulate(cur, actions[-1])
 
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority, target)
