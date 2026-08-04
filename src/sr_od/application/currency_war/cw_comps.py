@@ -501,8 +501,9 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             # 切成型最快的(easy 优先)
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
             return min(easy, key=lambda c: c.typical_form_round or 99)
-    # 信号 3:保命转型
-    if state.hp < 30:
+    # 信号 3:保命转型(hp < 0.75×hp_safe_threshold;D-18 unification,原硬编码 30 = 0.75×40)
+    _pivot_hp = int(0.75 * getattr(config, 'hp_safe_threshold', 40))
+    if state.hp < _pivot_hp:
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
         fastest = min(easy, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:

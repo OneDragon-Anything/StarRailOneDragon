@@ -194,7 +194,7 @@ def char_quality_score(state: GameState, character_priority: list[str]) -> float
 HP_DANGER: int = 40   # 保血触发阈值(hp 低于此 → 弃息保血;A8 高难可调高,待 difficulty 字段)
 
 
-def _phase_weights(plane: int, hp: int) -> tuple[float, float, float]:
+def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[float, float, float]:
     """阶段键控权重 (synergy, economy, char)。A3 + review agent 经济学校准。
 
     **2026-08-03 修正(review agent + 用户)**:前期 economy **不该压低** —— 利息越早到 5 档(50 金)
@@ -205,14 +205,14 @@ def _phase_weights(plane: int, hp: int) -> tuple[float, float, float]:
 
     待补:A8 difficulty 信号(高难 HP_DANGER 调高)+ win_streak(连胜中保连胜>吃息,需 read_streak)。
     """
-    if hp < HP_DANGER:
+    if hp < hp_threshold:
         return (1.2, 0.4, 1.2)   # 保血:战力/角色优先,经济降权(任何位面 HP 危险)
     if plane == 3:
         return (1.3, 0.3, 1.3)   # 锁血:全力战力/星级(plane3 boss 战)
     return (1.0, 1.0, 1.0)       # 健康:平衡(economy 不压低,snowball 到 50)
 
 
-def _refresh_cap(state: GameState) -> int:
+def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
     """本回合 D 牌(刷新)上限(动态;review agent + 用户:固定 2 太死)。
 
     关键回合放宽:升 8 后 / plane3 搜核心、HP 危险锁血急救。
@@ -221,7 +221,7 @@ def _refresh_cap(state: GameState) -> int:
     cap = MAX_REFRESH_PER_ROUND          # 基线 2
     if state.plane == 3 or state.level >= 8:
         cap = max(cap, 4)                # 升 8 后 / plane3:搜核心多刷
-    if state.hp < HP_DANGER:
+    if state.hp < hp_threshold:
         cap = max(cap, 4)                # 锁血急救:多刷找质量
     return cap
 
@@ -235,7 +235,8 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     **接法第一步**(03):evaluate 支持 target;plan 自动 select_comp 传 target 是下一步。
     core_chars 持有不在此重复计分(char_quality 已覆盖用户 character_priority)。
     """
-    ws, we, wc = _phase_weights(state.plane, state.hp)
+    ws, we, wc = _phase_weights(state.plane, state.hp,
+                                getattr(config, 'hp_safe_threshold', HP_DANGER))
     score = (
         ws * synergy_score(state, faction_priority, target_comp)
         + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
@@ -401,7 +402,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur) - refresh_used,
+                                      refresh_budget=_refresh_cap(cur, getattr(config, 'hp_safe_threshold', HP_DANGER)) - refresh_used,
                                       target_comp=target)
         if not step:
             break

@@ -79,6 +79,9 @@ class CurrencyWarConfig(YamlConfig):
         self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
         self.boss_counter: dict = self.get('boss_counter', DEFAULT_BOSS_COUNTER)
         self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
+        # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
+        # _refresh_cap / maybe_pivot(0.75×)经此派生,D-18 unification。
+        self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
 
     def save(self) -> None:
         """持久化策略字段。"""
@@ -89,5 +92,6 @@ class CurrencyWarConfig(YamlConfig):
             'event_whitelist': self.event_whitelist,
             'boss_counter': self.boss_counter,
             'dot_punish_envs': self.dot_punish_envs,
+            'hp_safe_threshold': self.hp_safe_threshold,
         }
         YamlConfig.save(self)
