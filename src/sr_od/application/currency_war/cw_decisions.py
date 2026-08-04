@@ -64,10 +64,36 @@ CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜�
 # 默认升级金价(粗估,实机校准)
 LEVEL_UP_COST_TABLE: dict[int, int] = {2: 4, 3: 10, 4: 18, 5: 30, 6: 36, 7: 48, 8: 60, 9: 70, 10: 84}
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
-LEVEL_PLAN_BONUS: float = 3.0  # level_plan 导向 bonus(task#18):target.level_plan[level]="level_up" + gold>50
-                                # → LevelUp 加此 bonus 赢过 card buy(经济统一论:超额金先升级)。
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
+
+# 通用升级曲线(task#18 经济统一论):COMP_LIBRARY 未填 level_plan 时用。
+# auto-chess meta:前期(2-4)roll 找低费核心 → 中期(5-7)level_up 推等级(解锁高费刷新率 + 出战位)
+# → lv8 roll 找 5 费核心 → lv9+ stable。comp 自带 level_plan(如列车同行)优先于此(见 _resolve_level_goal)。
+_DEFAULT_LEVEL_GOAL: dict[int, LevelGoal] = {
+    2: LevelGoal("roll", target_cost=2),
+    3: LevelGoal("roll", target_cost=3),
+    4: LevelGoal("roll", target_cost=3),
+    5: LevelGoal("level_up"),
+    6: LevelGoal("level_up"),
+    7: LevelGoal("level_up"),
+    8: LevelGoal("roll", target_cost=5),
+    9: LevelGoal("stable"),
+}
+
+
+def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | None:
+    """当前等级该做什么(comp 自带 level_plan 优先;无则通用曲线 _DEFAULT_LEVEL_GOAL)。
+
+    level_plan 是**花费指令**(经济统一论):说 ``level_up`` → plan() 硬 gate 升级;
+    ``roll`` → D 找核心;``stable`` → 吃息。comp 未填 level_plan(多数 comp)时退回通用曲线,
+    保证所有 comp 都有合理经济行为(不再依赖每 comp 手填曲线)。
+    """
+    if target is not None:
+        g = target.level_plan.get(state.level)
+        if g is not None:
+            return g
+    return _DEFAULT_LEVEL_GOAL.get(state.level)
 
 
 def _activated_tiers(faction: str, count: int) -> int:
@@ -352,6 +378,18 @@ def plan(state: GameState, config, faction_priority: list[str],
         if _candidates:
             target = _candidates[0]
 
+    # —— level_plan 硬 gate(task#18 经济统一论核心):level_plan 说 level_up + 够钱 → 升级(1 级/轮)——
+    # 根因(replay 32 局「升 0 次」):贪心 eval 对「花大金升级」的利息损失短视 —— LevelUp 候选 delta 永负
+    # (花 48 金 → 利息档 5→0 损 -20,level_val 仅 +6)→ 永不选中 → bot 卡 lv5-6 → 弱 comp → plane2 死。
+    # level_plan 是**花费指令**非建议:说 level_up + afford → 执行,信任计划而非短视 eval。tempo 破息在所
+    # 不惜(升级解锁高费刷新率 + 出战位 = 关键长期投资)。每轮最多 1 级(自然节流,防一轮烧光金)。
+    _goal = _resolve_level_goal(cur, target)
+    if _goal is not None and _goal.action == "level_up" and cur.level < 10:
+        _lv_cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
+        if cur.gold >= _lv_cost:
+            actions.append(LevelUp(cost=_lv_cost))
+            cur = simulate(cur, actions[-1])
+
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority, target)
     for _ in range(15):
@@ -377,7 +415,8 @@ def _best_improving_action(
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
-    候选:买+deploy 原子组合、deploy 已有角色、升等级、**D 牌(蒙特卡洛期望)**。gold≥0/level≤10。
+    候选:买+deploy 原子组合、deploy 已有角色、**D 牌(蒙特卡洛期望)**。升等级不由这里候选 ——
+    plan() 硬 gate 按 level_plan 执行(task#18;根因:eval 对花大金升级短视)。gold≥0/level≤10。
     refresh_budget: 本回合剩余可刷新次数(≤0 则不再生成 RefreshShop;防无限刷,review r5)。
     target_comp: 战略层目标阵容(A2);传给 evaluate,使动作导向 target 成型。None=reactive。
     """
@@ -390,28 +429,32 @@ def _best_improving_action(
         if delta > best_delta + 1e-6:
             best, best_delta = seq, delta
 
+    # 花费指令(level_plan / 通用曲线):驱动下面 buying gate + refresh gate(task#18)。
+    _goal = _resolve_level_goal(state, target_comp)
+    _lv_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)         # 升下一级金价
+    _saving_for_level = (_goal is not None and _goal.action == "level_up"
+                         and state.gold < _lv_cost)                  # 攒金升级中 → 抑制散牌买/刷
+
     # 1) 买 + 上任组合(原子)
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
-        # level_plan spending gate(task#18):target.level_plan[level]="level_up" + 金不够升级 →
-        # 只买 target core chars(goal.target_chars),跳过散牌(攒金给 LevelUp,解 bot 花光金不升级)。
-        # 无 comp-specific level_plan 时用通用曲线:lv6-7="level_up"(中期该升级解锁高费)。
+        # level_plan buying gate(task#18):攒金升级期间(_saving_for_level)抑制散牌,但仍允许 target
+        # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
+        # 这里只管"攒金期间别把金泄到散牌上"(解 replay 32 局金堆 50+ 不花/花在散牌上不升级)。
+        if _saving_for_level:
+            _is_target_card = (target_comp is not None and (
+                card.faction in target_comp.factions
+                or card.name in target_comp.core_chars
+                or card.name in character_priority))
+            if not _is_target_card:
+                continue   # 散牌:攒金给升级,跳过
+        # commitment prefilter(task#16):target 设定时,若 shop 有 target 卡(阵营∈target.factions 或
+        # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char/优先角色)→ 聚焦深化 target,
+        # 防"买一切"致 board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防
+        # hold-forever 饿死)。区别旧 OFF_TARGET_DISCOUNT 打折 board 的 churn(d87b2a68 revert):只 gate 新 buys。
         if target_comp is not None:
-            goal = target_comp.level_plan.get(state.level)
-            if goal is None and state.level in (6, 7):
-                goal = LevelGoal("level_up")  # 通用曲线:lv6-7 该升级
-            if goal is not None and goal.action == "level_up":
-                level_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
-                if state.gold < level_cost and (not goal.target_chars or card.name not in goal.target_chars):
-                    continue   # 抑制散牌买,攒金给 LevelUp
-            # commitment prefilter(task#16 / 续4续6 "正确 commitment = prefilter 新 off-target buys"):
-            # target 设定时,若 shop 有 target 卡(阵营∈target.factions 或 ∈core_chars)可买,跳过纯
-            # off-target 散牌(阵营∉target 且非 core_char/优先角色)→ 聚焦深化 target,防"买一切"致
-            # board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防 hold-forever
-            # 饿死,买最优可得)。区别于旧 OFF_TARGET_DISCOUNT 打折 board 的 churn 实现(d87b2a68 revert):
-            # 本 prefilter 只 gate 新 buys,不动 board synergy eval(不卖成型堆)。
             _is_offtarget = (card.faction not in target_comp.factions
                              and card.name not in target_comp.core_chars
                              and card.name not in character_priority)
@@ -444,31 +487,11 @@ def _best_improving_action(
         mv = DeployMove(bench_idx=i, to_row=row, faction=bc.faction)
         beat(evaluate(simulate(state, mv), config, faction_priority, target_comp) - base_eval, [mv])
 
-    # 3) 升等级(封顶 10)
-    # level_plan 导向(task#18):target.level_plan[level] 说"level_up" + gold>50 → 加 bonus,
-    # 让 level_up 赢过 card buy(经济统一论:超额金先升级解锁高费,而非买低费散牌)。
-    if state.level < 10:
-        cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
-        if state.gold >= cost:
-            delta_lv = evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority, target_comp) - base_eval
-            if target_comp is not None:
-                goal = target_comp.level_plan.get(state.level)
-                if goal is not None and goal.action == "level_up" and state.gold > INTEREST_THRESHOLD:
-                    delta_lv += LEVEL_PLAN_BONUS
-            beat(delta_lv, [LevelUp(cost=cost)])
-
-    # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5 修死代码)
-    # spending gate(task#18 续):level_plan="level_up" + 金不够升级 → 也不 D 牌(纯攒金,防 refresh 泄金)
-    _gate_refresh = False
-    if target_comp is not None:
-        _rg = target_comp.level_plan.get(state.level)
-        if _rg is None and state.level in (6, 7):
-            _rg = LevelGoal("level_up")
-        if _rg is not None and _rg.action == "level_up":
-            _lvl_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
-            if state.gold < _lvl_cost:
-                _gate_refresh = True  # 攒金给 LevelUp,不 D 牌
-    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0 and not _gate_refresh:
+    # 3) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5)。
+    # 升等级不由这里候选 —— plan() 硬 gate 按 level_plan 执行(task#18;根因:eval 对「花大金升级」
+    # 的利息损失短视 → LevelUp 候选 delta 永负 → 永不选 → 32 局升 0 次)。buying gate 同源:攒金升级期间
+    # (_saving_for_level)不 D 牌(refresh 泄金,与散牌买同理)。
+    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0 and not _saving_for_level:
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                      target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])

@@ -7,13 +7,14 @@ OCR 3 张投资策略卡名 → ``cw_decisions.decide_event`` 按事件白名单
 center)、描述下(y≈520+)、「刷新次数1」底(y≈841)、「确认」底(y≈983);取 y≈490 行
 短文本(2-8 字)即 3 张卡名,按 center-x 排序左→右。
 
-点击 mechanics(保留原 proven 逻辑,只把卡 X 换成最优卡):点 body(y550)→ 若「确认」
-被遮(detail 开了)→ ESC + 点卡底(y815)→ 确认。decide_event 仅用 state.board,投资策略
-overlay 时 board 不可读 → 空 board stub。
+点击 mechanics(2026-08-04 实测):点卡名(y≈474)**不选中**(疑似开详情,bot 点名 540+ 次从没
+选中 → 确认灰 → 卡死 18min)→ 点**描述区**(CARD_CLICK_Y=545)才选中(同 invest_env:name 不
+选中、描述区选中)。选中 → 确认。decide_event 仅用 state.board,投资策略 overlay 时 board 不可
+读 → 空 board stub。
 
 bug#1 mitigation: 关键 click 前 mouse_move(零移动不被判 drag)。
 
-TODO(task#20):body/bottom Y + 确认坐标进 screen_info(``currency_war_invest_strategy``)。
+TODO(task#20):CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``)。
 """
 import time
 import types
@@ -32,10 +33,11 @@ from sr_od.operations.sr_operation import SrOperation
 class HandleInvestStrategy(SrOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡 + 确认。"""
 
-    # 卡身/卡底点击 Y(snap 实测:卡名 y≈476,body 550 部分变体开 detail,卡底 815 安全选中)。
-    # TODO(task#20):进 screen_info。
-    CARD_BODY_Y: ClassVar[int] = 550
-    CARD_BOTTOM_Y: ClassVar[int] = 815
+    # 卡选中点击 Y(2026-08-04 实测修正):卡名 y≈474 **不选中**(bot 点名 540+ 次从没选中 → 确认灰 →
+    # 卡死 18min);**描述区 y≈545 才选中**(卡名下方)。同 invest_env(name 不选中、描述区/卡身选中):
+    # 投资策略/环境卡点名字都不触发选中(疑似开详情),点描述区才选中。手动验证:(952,549)选中武装支援
+    # → 确认可点 → 推进。choose_x 用卡名 center-x(名/描述同卡 x 一致)。TODO(task#20):进 screen_info。
+    CARD_CLICK_Y: ClassVar[int] = 545
     # 卡名行 center-y 过滤带(标题 y≈98 / 描述 y≈520+ / 刷新次数 y≈841 / 确认 y≈983)
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505
@@ -81,12 +83,12 @@ class HandleInvestStrategy(SrOperation):
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
 
-        # 点最优**卡名**选中(2026-08-04 实测:body 550/bottom 815 都不选中,只有卡名 y≈476 区域选中)。
+        # 点最优卡的**描述区**选中(2026-08-04 实测:卡名 y474 点了不选中 → 改描述区 CARD_CLICK_Y;同 invest_env)。
         # bug#1 mitigation:mouse_move(纯移动)+ click(零移动)→ 不被判 drag。
-        name_pos = Point(choose_x, choose_y)
-        self.ctx.controller.mouse_move(name_pos)
+        target = Point(choose_x, HandleInvestStrategy.CARD_CLICK_Y)
+        self.ctx.controller.mouse_move(target)
         time.sleep(0.3)
-        self.ctx.controller.click(name_pos)
+        self.ctx.controller.click(target)
         time.sleep(0.7)
         # 确认(bug#1 mitigation:mouse_move + click 固定确认按钮中心 ~978,983)
         self.ctx.controller.mouse_move(HandleInvestStrategy.CONFIRM)
