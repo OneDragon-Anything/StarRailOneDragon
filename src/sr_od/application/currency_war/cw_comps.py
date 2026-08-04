@@ -149,6 +149,18 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["冷笑话引擎", "火力风暴潮", "高周波电锯", "掩体生成枪"],   # 输出装(非反甲;攻略明言"不需要刷反甲")
         boss_weakness=[], mechanic_attributes=["护盾"],   # 三月七护盾+列车光轨反伤;重症难题(护盾削弱)克
         shared_chars=["三月七"], typical_form_round=5,
+        # level_plan(经济统一论,task#18):前期 roll 找 core(3 费)→ 中期 level_up → 后期 roll 追星级。
+        level_plan={
+            3: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七"],
+                         star_goals={"三月七": 2}),
+            4: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "花火"]),
+            5: LevelGoal("level_up"),
+            6: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "瓦尔特"],
+                         star_goals={"姬子·启行": 2}),
+            7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
+                         star_goals={"姬子·启行": 2, "花火": 2}),
+        },
     ),
     Comp(
         name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
