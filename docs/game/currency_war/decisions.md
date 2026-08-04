@@ -15,6 +15,12 @@
 
 ---
 
+## D-23 (2026-08-04) EnterCurrencyWar wait_lobby 防御性加固(前往参与仍在→重点击)· 入口 op
+- **决策**:`wait_lobby` 加分支 —— `前往参与` 仍在(transport click 没落地)→ `round_by_ocr_and_click` 重点击。放「创业指南」(大厅)之后、弹窗/F 分支之前。
+- **为什么**:全流程跑卡 `wait_lobby` 重试 37x 失败,根因:停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ F 分支(`货币战争 AND NOT 前往参与`)被跳过 → 无分支命中 → 死循环。上个节点(前往参与)的 transport click 没落地(bug#1)→ 角色没传送 → 停指南页。重点击兜底。
+- **备选**:① 提 node_max_retry(推翻:不解决根因,仍死循环);② 改 F 分支条件(推翻:不该在指南页按 F)。防御性重点击 = happy path 不受影响(传送成功则前往参与消失,分支不触发)。
+- **状态**:采用(防御性加固;**需游戏验证** —— 下个干净对局跑 EnterCurrencyWar 看是否还卡)。`· 入口 op`
+
 ## D-22 (2026-08-04) hp 阈值统一 config.hp_safe_threshold(D-18 unification 落地)· strategy/02 §A3
 - **决策**:加 `config.hp_safe_threshold`(默认 40 = HP_DANGER);`_phase_weights(plane,hp,hp_threshold=HP_DANGER)`、`_refresh_cap(state,hp_threshold)`、`maybe_pivot`(`0.75×threshold`)签名加参数带默认。evaluate/plan 经 `getattr(config,'hp_safe_threshold',HP_DANGER)` 传入。
 - **为什么**:02 §A3 要求 hp 阈值单一源(原散落 `HP_DANGER=40` + `maybe_pivot hp<30` 硬编码);A8 高难需调高阈值(difficulty 派生)。**默认 = HP_DANGER → 行为不变**(64 测试绿),但单一源 + difficulty 可调 + 偏移系数集中(转型 0.75×;死局 0.5× / 连败 1.5× 待相应函数实现时补)。

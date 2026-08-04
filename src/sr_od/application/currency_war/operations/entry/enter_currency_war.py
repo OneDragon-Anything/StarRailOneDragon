@@ -59,6 +59,12 @@ class EnterCurrencyWar(SrOperation):
         if self.round_by_ocr(screen, '创业指南').is_success:
             return self.round_success(EnterCurrencyWar.STATUS_AT_LOBBY)
 
+        # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地/被 bug#1 吞)→ 重点击。
+        # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
+        # → 无分支命中 → 死循环重试(2026-08-04 全流程跑 37x 重试失败根因)。
+        if self.round_by_ocr(screen, '前往参与').is_success:
+            return self.round_by_ocr_and_click(screen, '前往参与', success_wait=2)
+
         # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白
         if self.round_by_ocr(screen, '点击空白处关闭').is_success:
             self.ctx.controller.click(EnterCurrencyWar.BLANK_CLICK.center)
