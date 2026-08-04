@@ -86,14 +86,10 @@ class CurrencyWarRunLoop(SrOperation):
             self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点选择(有"遭遇其一"/"遭遇其四" + "选择")→ 选遭遇其一(低难度,bot 安全) + 选择。
-        # 2026-08-04:df9f6810 误移除(vision 误判"遭遇=普通战斗")—— 实测遭遇其二/其四是**选择屏**
-        # (click 遭遇其一 + 选择)。恢复 handler,在 0b(确认选择)之前(避免误匹配)。
+        # 0c. 遭遇节点选择(有"遭遇其一"/"遭遇其四" + "选择"按钮)→ 直接点"选择"(默认遭遇其一已选中)。
+        # 2026-08-04:d68ac45d 初版 click (646,500) 点了"遭遇其一"tab → 打开详情子屏(无"选择")→ stuck。
+        # 修正:不点 tab(遭遇其一是 tab 不是按钮),**直接 round_by_ocr_and_click '选择'**(遭遇其一默认选中)。
         if self.round_by_ocr(screen, '遭遇其一').is_success:
-            self.ctx.controller.mouse_move(Point(646, 500))  # 遭遇其一 中心(bug#1 mitigation)
-            time.sleep(0.3)
-            self.ctx.controller.click(Point(646, 500))
-            time.sleep(0.6)
             self.round_by_ocr_and_click(self.screenshot(), '选择', success_wait=2)
             return self.round_wait(wait=2)
 
