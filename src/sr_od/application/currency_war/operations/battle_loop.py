@@ -103,13 +103,17 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
-        if self.round_by_ocr(screen, '选择伙伴').is_success:
+        #     lcs_percent=0.7:「选择伙伴」与「请选择投资策略」共享「选择」(2/4=0.5=默认阈值)→
+        #     投资策略屏被误派发到本 handler(2026-08-04 snap 实测发现)。收紧到 0.7 杀误匹配
+        #     (真「选择伙伴」OCR 1.0 不受影响)。
+        if self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
             HandleSelectPartner(self.ctx).execute()
             return self.round_wait(wait=2)
 
         # 0b. 巨星强化(有"确认选择"、无"选择伙伴")→ HandleMegastar(选候选 + 确认,详见 op)。
-        if self.round_by_ocr(screen, '确认选择').is_success:
+        #     lcs_percent=0.7:同上,防「确认选择」与「请选择投资策略」共享「选择」误匹配。
+        if self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
             HandleMegastar(self.ctx).execute()
             return self.round_wait(wait=2)
