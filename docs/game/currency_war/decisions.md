@@ -15,6 +15,12 @@
 
 ---
 
+## D-21 (2026-08-04) optionality_score + α(t) 纯函数(承诺-期权)· strategy/02/03 P1-1+F-3
+- **决策**:实现 `optionality_score(state)`(bench 角色属 **≥2 COMP_LIBRARY comp**[``shared_chars ∪ core_chars``]→ 加分,保期权/容错)+ `alpha_t(state)`(总回合 <R_OPEN→0 纯期权 / >R_CLOSE→1 纯承诺,线性)。R_OPEN/R_CLOSE/OPTIONALITY_WEIGHT **值在代码**(阶段 6 实玩校准)。
+- **为什么**:A8 方差生存战,过早 commit 单一 comp 遇克/缺牌即死(plane2 死因之一);保 ≥2 comp 可行 → 容错。design P1-1/F-3 标 high。
+- **备选**:① 直接集成进 evaluate(推迟:改核心 eval 行为需 P0 游戏验证才稳,先做零件);② 不做(推翻:high 优先 + 直接关系 plane2 生存)。
+- **状态**:采用(纯函数 + 2 测试绿;**evaluate 集成延后** —— ``α·target_progress + (1-α)·optionality`` 混合,待 P0 解阻后集成 + 游戏验证)。`· §02/03 P1-1/F-3`
+
 ## D-20 (2026-08-04) decide_supply 纯逻辑骨架实现 · strategy/07/08
 - **决策**:实现 `decide_supply(options, state, target_comp, config, refresh_used) → SupplyPick`(纯函数,design 07/08 骨架)。规则:带钻(红/蓝)→ 选(基本赢,碾压);全无钻 + 刷新未用 → 刷新找钻;刷新已用 → ``key_equips`` 契合(+10 命脉级)+ 通用装备价值(鞋>电池>花,``_EQUIP_VALUE`` 代码表)。新 ``SupplyOption``(idx/角色/装备/带钻)+ ``SupplyPick``。
 - **为什么**:补给节点 naive「选中牌」(``handle_supply``)无视钻/key_equips;design 07/08。钻 = 拿到基本赢(用户),碾压;key_equips comp 相关(D-07)。先纯逻辑(可独立测),handler 接线(``read_supply_options`` OCR + 钻视觉判定)待阶段 5。

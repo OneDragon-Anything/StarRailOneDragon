@@ -21,7 +21,9 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
 from sr_od.application.currency_war.cw_comps import (
     AFFIX_MECHANIC_MAP,
+    COMP_LIBRARY,
     LevelGoal,
+    clamp,
     form_progress,
     make_score_context,
     mechanics_fit,
@@ -716,3 +718,49 @@ def decide_supply(options: list[SupplyOption], state: GameState,
     scored = sorted(options, key=_score, reverse=True)
     best = scored[0]
     return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
+
+
+# ===== optionality_score + α(t) 承诺-期权(design 02/03 P1-1 + F-3;纯逻辑,evaluate 集成待 P0 验证)=====
+# A8 是方差生存战:过早 commit 单一高 ceiling comp,遇克/缺关键牌即死。optionality 奖励 bench 角色
+# 同时属 ≥2 可行 comp(保期权/容错);α(t) 早灵活(保期权)→ 晚承诺(深化 target)。
+# ⚠️ **evaluate 集成延后**:改核心 eval 行为需游戏(P0)验证才稳;先纯函数 + 测试(零件)。
+
+# α(t) 总回合阈值(R_OPEN 前 α=0 纯期权 / R_CLOSE 后 α=1 纯承诺);**值在代码**(阶段6实玩校准)。
+R_OPEN: int = 2
+R_CLOSE: int = 12
+OPTIONALITY_WEIGHT: float = 8.0      # optionality 项权重(eval 集成时用;V4.4 先验,代码,实玩校准)
+OPTIONALITY_PER_CHAR: float = 1.0    # 每个属 ≥2 comp 的 bench 角色加分
+
+
+def _elapsed_rounds(state: GameState) -> int:
+    """总回合数(``round_num + (plane-1)*6``;3 位面 × 6 关 = 18)。α(t) 用。"""
+    return state.round_num + (state.plane - 1) * 6
+
+
+def alpha_t(state: GameState) -> float:
+    """承诺-期权时间衰减 α(t)(design F-3):总回合 < R_OPEN → 0(纯期权/灵活)、
+    > R_CLOSE → 1(纯承诺/commit),之间线性。eval 集成时:``α·target_progress + (1-α)·optionality``。
+    """
+    if R_CLOSE <= R_OPEN:
+        return 1.0
+    return clamp((_elapsed_rounds(state) - R_OPEN) / (R_CLOSE - R_OPEN), 0.0, 1.0)
+
+
+def optionality_score(state: GameState) -> float:
+    """灵活性分:bench 角色属 **≥2 个 COMP_LIBRARY comp**(``shared_chars ∪ core_chars``)→ 加分(保期权)。
+
+    设计 P1-1:保 ≥2 comp 可行的 bench 角色 → 遇克/缺牌可转型,容错;过早卖 shared_chars 扣分(未实现,
+    集成时在 _bench_sell_value 加)。**未含 transition_chars**(需 comp 上下文,集成时补)。
+    """
+    if not state.bench:
+        return 0.0
+    # 预算每个角色属几个 comp(shared + core 合并)
+    char_comps: dict[str, int] = {}
+    for comp in COMP_LIBRARY:
+        for c in set(comp.shared_chars) | set(comp.core_chars):
+            char_comps[c] = char_comps.get(c, 0) + 1
+    score = 0.0
+    for bc in state.bench:
+        if bc.char_id and char_comps.get(bc.char_id, 0) >= 2:
+            score += OPTIONALITY_PER_CHAR
+    return score
