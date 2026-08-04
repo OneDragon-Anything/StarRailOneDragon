@@ -646,3 +646,73 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
     best_o, best_m = scored[0]
     return EncounterPick(idx=best_o.idx, refresh=False,
                          reason=f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty}")
+
+
+# ===== 补给节点(decide_supply,design 07/08;纯逻辑骨架,handler 接线待阶段5 OCR)=====
+
+# 通用装备价值(V4.4 meta 先验;**值在代码单一源,不进 strategy doc**;实玩校准)。
+# 设计原则:带钻 > 鞋(找鞋战争;速度 comp 命脉)> 电池 > 花/通用。具体值随版本。
+_EQUIP_VALUE: dict[str, int] = {
+    "反重力皮靴": 5, "轮滑鞋": 4,
+    "永动机": 4, "光能电池": 3, "超级电池": 3,
+    "物质分解液": 3, "能量饮料": 2, "绝对热量": 2,
+}
+
+
+@dataclass
+class SupplyOption:
+    """一个补给选项:角色 + 装备 + 是否带钻(OCR/视觉读,``read_supply_options`` 阶段5)。
+
+    has_diamond:带红/蓝钻(视觉判定;钻 = 拿到基本赢,碾压一切)。
+    equip:装备名(OCR;``key_equips`` 契合 + 通用价值排序用)。
+    """
+    idx: int
+    char: str = ""
+    equip: str = ""
+    has_diamond: bool = False
+
+
+@dataclass
+class SupplyPick:
+    """decide_supply 返回:选哪个 + 是否刷新找钻。"""
+    idx: int
+    refresh: bool = False
+    reason: str = ""
+
+
+def _equip_value(equip: str) -> int:
+    """装备通用价值(0=未知/无;V4.4 先验,见 ``_EQUIP_VALUE``)。"""
+    return _EQUIP_VALUE.get(equip, 0)
+
+
+def decide_supply(options: list[SupplyOption], state: GameState,
+                  target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
+    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08;handler 待阶段5 ``read_supply_options`` 接)。
+
+    决策(comp 相关 + 钻优先):
+    1. **带钻**(红/蓝)→ 选它(拿到基本赢,碾压)。
+    2. **全无钻 + 刷新未用** → **刷新找钻**(钻价值远超装备)。
+    3. **刷新已用 / 有钻** → 按 ``target_comp.key_equips`` 契合(命脉级,+10 碾压)+ 通用装备价值
+       (鞋>电池>花)选。
+    """
+    if not options:
+        return SupplyPick(idx=0, reason="no-options")
+    # 1) 带钻 → 选第一个带钻的(基本赢)
+    diamond = [o for o in options if o.has_diamond]
+    if diamond:
+        return SupplyPick(idx=diamond[0].idx, reason="带钻(基本赢)")
+    # 2) 全无钻 + 刷新未用 → 刷新找钻
+    if not refresh_used:
+        return SupplyPick(idx=options[0].idx, refresh=True, reason="无钻,刷新找钻")
+    # 3) 刷新已用 → key_equips 契合(命脉,+10)+ 通用装备价值
+    key_equips = set(target_comp.key_equips) if target_comp is not None else set()
+
+    def _score(o: SupplyOption) -> int:
+        s = _equip_value(o.equip)
+        if o.equip in key_equips:
+            s += 10   # 契合 target_comp 命脉装备(碾压通用价值)
+        return s
+
+    scored = sorted(options, key=_score, reverse=True)
+    best = scored[0]
+    return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")

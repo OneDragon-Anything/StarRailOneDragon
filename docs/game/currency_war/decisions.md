@@ -15,6 +15,12 @@
 
 ---
 
+## D-20 (2026-08-04) decide_supply 纯逻辑骨架实现 · strategy/07/08
+- **决策**:实现 `decide_supply(options, state, target_comp, config, refresh_used) → SupplyPick`(纯函数,design 07/08 骨架)。规则:带钻(红/蓝)→ 选(基本赢,碾压);全无钻 + 刷新未用 → 刷新找钻;刷新已用 → ``key_equips`` 契合(+10 命脉级)+ 通用装备价值(鞋>电池>花,``_EQUIP_VALUE`` 代码表)。新 ``SupplyOption``(idx/角色/装备/带钻)+ ``SupplyPick``。
+- **为什么**:补给节点 naive「选中牌」(``handle_supply``)无视钻/key_equips;design 07/08。钻 = 拿到基本赢(用户),碾压;key_equips comp 相关(D-07)。先纯逻辑(可独立测),handler 接线(``read_supply_options`` OCR + 钻视觉判定)待阶段 5。
+- **备选**:① 通用 equip_score(推翻:脱 comp 无意义,D-07);② 等阶段 5 OCR 一起(推翻:纯逻辑可独立测,符合先零件后整体)。
+- **状态**:采用(纯逻辑 + 4 测试绿;handler 待 ``read_supply_options`` 阶段 5)。`· §07/08 补给`
+
 ## D-19 (2026-08-04) decide_encounter 纯逻辑骨架实现 · strategy/08
 - **决策**:实现 `decide_encounter(options, state, target_comp, config, refresh_used) → EncounterPick`(纯函数,design 08 骨架)。规则:未成型→低难度;全分支词缀克 comp(``mechanics_fit``<0.4)+ 刷新未用→刷新换批;成型 + 词缀利 comp(debuff=buff)→高难度拿奖励;刷新已用→按最优选。新 ``EncounterOption``(idx/难度/词缀/奖励)+ ``EncounterPick``(idx/refresh/reason)数据类。
 - **为什么**:遭遇节点 naive「选左」(``handle_encounter``)无法表达难度/词缀决策;design 08 标 high。词缀用 ``mechanics_fit``(debuff=buff,D-05)判克/利 comp。先做纯逻辑(阶段 2 骨架,可独立测),handler 接线(OCR ``read_encounter_options``)待阶段 5。

@@ -31,6 +31,8 @@ decide_encounter(options, state, target_comp, config) → (idx, refresh?)
 
 **详 [07 装备](07_equipment.md#补给节点决策)**:`decide_supply(options, state, config) → (idx, refresh?)`。补给角色带红/蓝钻 → 选它(拿到基本赢);无钻按 鞋(反重力靴)> 电池(永动机)> 花(分解液/能量饮料);未出钻 → 刷新 1 次。与 target_comp.key_equips 契合优先。
 
+> **状态(2026-08-04,D-20)**:`decide_supply` 纯逻辑骨架**已实现 + 4 测试绿**(带钻优先 / 无钻刷新找钻 / key_equips 契合 +10 + 通用装备价值 `_EQUIP_VALUE`)。`SupplyOption`(idx/角色/装备/带钻)+ `SupplyPick`。**handler 接线待阶段 5**(`read_supply_options` OCR + 钻视觉判定,接 `handle_supply`)。
+
 ## 接入 battle_loop
 battle_loop 的事件分支(当前各 naive「选左」)改为:
 - 遭遇分支 → `decide_encounter`。
