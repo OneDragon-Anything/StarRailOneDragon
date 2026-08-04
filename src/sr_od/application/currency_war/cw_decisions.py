@@ -60,6 +60,8 @@ CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜�
 # 默认升级金价(粗估,实机校准)
 LEVEL_UP_COST_TABLE: dict[int, int] = {2: 4, 3: 10, 4: 18, 5: 30, 6: 36, 7: 48, 8: 60, 9: 70, 10: 84}
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
+LEVEL_PLAN_BONUS: float = 3.0  # level_plan 导向 bonus(task#18):target.level_plan[level]="level_up" + gold>50
+                                # → LevelUp 加此 bonus 赢过 card buy(经济统一论:超额金先升级)。
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
 
@@ -415,11 +417,17 @@ def _best_improving_action(
         beat(evaluate(simulate(state, mv), config, faction_priority, target_comp) - base_eval, [mv])
 
     # 3) 升等级(封顶 10)
+    # level_plan 导向(task#18):target.level_plan[level] 说"level_up" + gold>50 → 加 bonus,
+    # 让 level_up 赢过 card buy(经济统一论:超额金先升级解锁高费,而非买低费散牌)。
     if state.level < 10:
         cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
         if state.gold >= cost:
-            beat(evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority, target_comp) - base_eval,
-                 [LevelUp(cost=cost)])
+            delta_lv = evaluate(simulate(state, LevelUp(cost=cost)), config, faction_priority, target_comp) - base_eval
+            if target_comp is not None:
+                goal = target_comp.level_plan.get(state.level)
+                if goal is not None and goal.action == "level_up" and state.gold > INTEREST_THRESHOLD:
+                    delta_lv += LEVEL_PLAN_BONUS
+            beat(delta_lv, [LevelUp(cost=cost)])
 
     # 4) D 牌/刷新商店(蒙特卡洛期望 delta;A1):受 refresh_budget 上限约束(防无限刷,review r5 修死代码)
     if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0:
