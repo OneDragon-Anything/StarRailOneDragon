@@ -44,7 +44,7 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 | `AGENTS.md` | 仓库根 | 统一 AI 编码入口（架构 / 硬约束 / 流程），所有工具的信息源 |
 | `.claude/CLAUDE.md` | 仓库根 | Claude Code 入口，`@../AGENTS.md` 引入 |
 | [../setup/ai_coding.md](../setup/ai_coding.md) | docs/develop/setup | 各 AI 工具的接入指引（用户向："怎么用"） |
-| [`skills/`](../../../skills/) | 仓库根 | 3 个 dev skill：`sr-od-dev-pr-finishing` / `sr-od-dev-deciding-a-fix` / `sr-od-dev-skill-guide`（superpowers 风格，经 junction 加载） |
+| [`skills/`](../../../skills/) | 仓库根 | dev skill（`sr-od-dev-*`，如 pr-finishing / deciding-a-fix / gameplay-automation 等，经 junction 加载）；写作规范 `od-dev-writing-skills` 在公共仓 `OneDragon-Skills` |
 
 > 本项目目前只使用 Claude Code（单人开发），暂无 Copilot 等其它工具入口。"怎么用"见 `setup/ai_coding.md`；本目录（harness/）记录"怎么建、为什么这么建"。
 

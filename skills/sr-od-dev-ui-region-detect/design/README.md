@@ -13,4 +13,4 @@
   - [0003 矩形/卡牌阵列用 squares 几何检测(免疫颜色变化)](decisions/0003-squares-shape-detection.md)
   - [0004 vision 颜色不可信精确值,定性可用 + CV 采样定准值](decisions/0004-vision-color-unreliable.md)
 
-> 迁移自旧版单文件 `design.md`(混合 design+decision);按 `sr-od-dev-skill-guide` 硬规范 1 拆分。
+> 迁移自旧版单文件 `design.md`(混合 design+decision);按 `od-dev-writing-skills` 硬规范 1 拆分。

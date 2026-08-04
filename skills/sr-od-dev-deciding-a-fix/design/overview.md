@@ -22,13 +22,13 @@ SKILL.md 正文给出 5 步可执行指令,每步锚定一个业界方法论:
 - 结构:SKILL.md(入口,方法论 / 判据)+ design/(overview + decisions ADR)。
 
 ## 自身一致性
-遵守 `sr-od-dev-skill-guide` 4 条硬规范:
+遵守 `od-dev-writing-skills` 4 条硬规范:
 - **规范 1**:有 `design/`(design 与 ADR 分开);设计 what 在本文件,决策 why 在 `decisions/` ADR。
 - **规范 2**:SKILL.md 指令式(祈使句 + 判据)。
 - **规范 3**:自包含 —— 只引 `superpowers:*` skill(写完整命名空间标识符),不引目录外文件、不引 memory / gitignored。
 - **规范 4**:SKILL.md 只写方法论 / 判据,具体案例(pywin32 #2428)作 ADR 论据进 `design/decisions/`,不进 always-on 正文。
 
 ## 当前状态(GREEN)
-- **draft**(GREEN-pending):按 skill-guide「两类 skill」,本 skill 为**方法论覆盖型**(见 [ADR-0001](decisions/0001-methodology-type-green-required.md)),RED 可省;**GREEN utility test 尚未跑**(跳过 GREEN 却声称合规 = 违规,故诚实标 draft)。
-- **GREEN 方法**(待跑):起干净上下文子 agent,给一个真实 bug 决策任务(如 pywin32 #2428 同型场景),扮用户只答所问、不替做,观察 agent 能否自主走完 5 步并产出可 review 的决策,记 gap → RCA 过滤 → 修 skill → 循环(见 skill-guide `references/skill-testing.md` §2)。
+- **draft**(GREEN-pending):按 od-dev-writing-skills「两类 skill」,本 skill 为**方法论覆盖型**(见 [ADR-0001](decisions/0001-methodology-type-green-required.md)),RED 可省;**GREEN utility test 尚未跑**(跳过 GREEN 却声称合规 = 违规,故诚实标 draft)。
+- **GREEN 方法**(待跑):起干净上下文子 agent,给一个真实 bug 决策任务(如 pywin32 #2428 同型场景),扮用户只答所问、不替做,观察 agent 能否自主走完 5 步并产出可 review 的决策,记 gap → RCA 过滤 → 修 skill → 循环(见 od-dev-writing-skills `references/skill-testing.md` §2)。
 - baseline(pywin32 #2428)已跑,价值不在「证明 skill 必要」(那是纠正型用法),而在沉淀两个必填槽位的论证,见 [ADR-0002](decisions/0002-five-step-structure.md)。

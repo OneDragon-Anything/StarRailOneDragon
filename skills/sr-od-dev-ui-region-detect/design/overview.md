@@ -14,13 +14,13 @@
 
 ## 定位与边界
 
-- **定位**:`sr-od-dev-screen-onboarding` 的**补充**。onboarding 管画面**建档**全流程
+- **定位**:`od-dev-screen-onboarding` 的**补充**。onboarding 管画面**建档**全流程
   (analyze → vision 理解 → 写 doc → 建模入 screen_info);本 skill 只管**「检测 / 验证坐标」
   的方法选型与纪律**(vision vs CV vs OCR 判据 + 密集网格投影峰值法 + 带框元素形状轮廓法 +
   数值验证)。
 - **建模入 screen_info**(`upsert_screen_area` 等)仍走 onboarding skill,本 skill 不重复。
 - **不记任何具体游戏坐标 / 键位 / 机制**(那归 doc);SKILL.md 正文只写方法 / 判据
-  (见 `sr-od-dev-skill-guide` 硬规范 4)。具体项目案例 / 实测数据只在本 `design/` 内作决策论据。
+  (见 `od-dev-writing-skills` 硬规范 4)。具体项目案例 / 实测数据只在本 `design/` 内作决策论据。
 - **自包含**:GLM-4.5V grounding 格式细节内联 SKILL.md(不外引个人 `.claude/` 文件 —— skill 入库
   共享,`.claude/` 不在库)。
 

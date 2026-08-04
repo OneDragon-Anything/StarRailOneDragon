@@ -111,7 +111,7 @@ OpenCV 经典 squares 法(多阈值扫描 + 几何判矩形)—— **判几何�
 - **screen_info 已有 `pc_rect`**(建档时圈好)→ 自动化**直接用坐标**,不运行时检测。本 skill 的检测方法主要用于:**建档阶段定位坐标**、**验证已圈坐标是否随版本漂移**、**定位 screen_info 未覆盖的动态元素**(如刷新的商店内容)。
 - 别为了「全自动」而在运行时重检测已有 screen_info 的元素 —— 多此一举且更脆。
 
-## 与 `sr-od-dev-screen-onboarding` 的分工
+## 与 `od-dev-screen-onboarding` 的分工
 
-- `sr-od-dev-screen-onboarding`:画面**建档**全流程(analyze → vision 理解 → 写 doc → 建模入 screen_info),其 §5 含图形按钮的 CV(圆 HoughCircles / 轮廓圆度 / 模板)。
+- `od-dev-screen-onboarding`:画面**建档**全流程(analyze → vision 理解 → 写 doc → 建模入 screen_info),其 §5 含图形按钮的 CV(圆 HoughCircles / 轮廓圆度 / 模板)。
 - 本 skill:聚焦**「检测 / 验证坐标」的方法论选型**(vision vs CV vs OCR 的判据 + 密集网格的投影峰值法 + 数值验证纪律),不重复建档流程。建模入 screen_info 仍走 onboarding skill。

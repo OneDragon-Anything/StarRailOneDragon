@@ -8,7 +8,7 @@
 
 ## 范围 / 边界
 - **覆盖**:阶段 0-9 全流程(先验现实约束 → 玩法建档 → 找兄弟 → 画面建档 → 设计 → 实现 → 验证 → 策略 → 事件长尾 → 测试文档);全程跨阶段不变量(证据纪律、知识维护、调试纪律);框架级踩坑清单。
-- **不管**(深度细则 defer 给协作 skill,不重复):画面建档/screen_info area 维护细节 → `sr-od-dev-screen-onboarding`;UI 区域坐标检测 → `sr-od-dev-ui-region-detect`;bug 决定怎么修 → `sr-od-dev-deciding-a-fix`。
+- **不管**(深度细则 defer 给协作 skill,不重复):画面建档/screen_info area 维护细节 → `od-dev-screen-onboarding`;UI 区域坐标检测 → `sr-od-dev-ui-region-detect`;bug 决定怎么修 → `sr-od-dev-deciding-a-fix`。
 - **不绑具体玩法**:方法论抽象成判据("X 条件下选 A,Y 条件下选 B"),不写"某玩法用了 A"。
 
 ## 构成
@@ -17,7 +17,7 @@
 - `design/`(本文 + ADR,给后续维护者,不进智能体执行上下文)。
 
 ## skill 类型 + 测试
-方法论覆盖型(整合业界方法论 + 实战提炼的生命周期 playbook 成系统流程)。按 `sr-od-dev-skill-guide` 两类 skill:**RED 可省,GREEN 不可省**。GREEN 方法 = utility test(干净工作空间 + 子 agent 拿本 skill 从零开发一个新玩法自动化 + 扮用户只答所问 + 观察 gap + 修 + 循环)。当前状态:draft(GREEN-pending)。
+方法论覆盖型(整合业界方法论 + 实战提炼的生命周期 playbook 成系统流程)。按 `od-dev-writing-skills` 两类 skill:**RED 可省,GREEN 不可省**。GREEN 方法 = utility test(干净工作空间 + 子 agent 拿本 skill 从零开发一个新玩法自动化 + 扮用户只答所问 + 观察 gap + 修 + 循环)。当前状态:draft(GREEN-pending)。
 
 ## 维护(何时更新本 skill)
 开发中遇到一个**可通用**的新经验/坑/方法论(不绑具体玩法),就往 SKILL.md 对应阶段或 `references/framework-pitfalls.md` 加一条,增量维护,不强求一次写全。**具体玩法细节不进本 skill**(归该玩法 docs)。

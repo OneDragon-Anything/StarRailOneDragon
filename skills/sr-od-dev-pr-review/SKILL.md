@@ -18,7 +18,7 @@ description: 当要审查/验证一个 open PR 是否可合并时用。英文 re
 - **审完再决定改不改**:看到 review comment(CodeRabbit / 人)不要先改代码——先在 merged 代码上审(理解改动 + 框架语义),再决定 comment 采纳(改)还是驳回(说明理由)。顺序:merge → 审 → 评 comment → 改。
 - 每个 PR 开一个 notes,记:背景核实 / 改动合理性 / 每级验证结果 / 结论 / 给 reviewer 的要点。
 - **测试仓也必须切到 PR 同名分支**(与主仓 `gh pr checkout` 对应):处理每个 PR 前,**无论该 PR 有无配套测试仓 PR,都先在测试仓确保有同名分支**——`git -C sr-od-test checkout <PR 同名分支>`(无则 `checkout -b` 本地新建,不必等测试 PR),再 `git -C sr-od-test fetch origin && git merge origin/main`(与主仓同理,确保测试改动在最新测试仓 main 上成立)。PR 的测试改动(新测试 / 截图 fixture)**只进该分支,绝不直接 commit/push 测试仓 `main`** —— 测试仓 `main` 是 test-check 基准,未合 PR 的测试进了 main 会让所有 PR 的 test-check 全红(正确时序:PR 合进主仓 main 后,再把测试分支合进测试仓 main)。哪怕该 PR 暂无测试,也先建分支占位,防后续补测试时忘记切分支。测试改动走 `git -C sr-od-test`(主仓 gitignore 会静默跳过)。
-  - **截图 fixture 路径契约**:与 `sr-od-dev-screen-onboarding` 一致,`screens/<screen_name>/<state>.webp`(screen_name 目录 + 可读状态名 + `.webp`,如 `战斗画面/默认.webp`、`战斗画面/精英.webp`);勿用 `.png` 或时间戳文件名。
+  - **截图 fixture 路径契约**:与 `od-dev-screen-onboarding` 一致,`screens/<screen_name>/<state>.webp`(screen_name 目录 + 可读状态名 + `.webp`,如 `战斗画面/默认.webp`、`战斗画面/精英.webp`);勿用 `.png` 或时间戳文件名。
 
 ## 1. L0 分诊
 
@@ -54,7 +54,7 @@ PR 描述 / 关联 issue 提到的游戏行为 / bug 是否属实?对 `assets/ga
 - 避开消耗周限/体力/日限的动作与"停止托管"等不可逆按钮;导航类(菜单/仓库/快捷手册)对后台托管无害。
 - **server 跑当前检出分支的代码**:要验某 PR 流程 → checkout(先 merge main)→ 经 daemon 重启 server → server 即该分支逻辑 → `run_operation` / `run_standalone_app` 驱动 + `get_run_status` 观察。
 - 大世界等需解锁光标的画面,`click_game` 传 `pc_alt=true`;子画面/菜单 `false`。
-- **沿途画面若 screen_info 未建模 → 顺便建档**(补 area/screen_info;走 `sr-od-dev-screen-onboarding`)。
+- **沿途画面若 screen_info 未建模 → 顺便建档**(补 area/screen_info;走 `od-dev-screen-onboarding`)。
 - 真无法 live(纯消耗且无低消耗切入 / 需特定账号或地区 / 需外部凭据)→ 明确标"无法 live 验证"并写明缺什么,**不要假装验过**。
 
 ## 6. 冲突解决(merge origin/main 时)

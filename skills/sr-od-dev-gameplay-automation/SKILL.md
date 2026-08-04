@@ -50,6 +50,6 @@ description: 当要从零在一条龙(OneDragon)框架上开发一个新玩法�
 **框架级踩坑**(bug #1 截图吞 click、MCP 异步、ONNX 异步、配置生效、录屏、GBK 日志等)见 `references/framework-pitfalls.md` —— 遇 op 点不中/行为怪先查这里。
 
 ## 协作 skill(深度细则 defer,不重复)
-- 画面建档 / screen_info area 维护 / 图标按钮模板建模 → `sr-od-dev-screen-onboarding`
+- 画面建档 / screen_info area 维护 / 图标按钮模板建模 → `od-dev-screen-onboarding`
 - UI 区域坐标检测(槽位网格/图标按钮阵列/卡牌阵列)→ `sr-od-dev-ui-region-detect`
 - bug 已知故障机制、决定怎么修(修哪里/根因多深/临时 vs 永久)→ `sr-od-dev-deciding-a-fix`

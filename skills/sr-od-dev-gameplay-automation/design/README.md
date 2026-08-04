@@ -8,4 +8,4 @@
   - [0001 阶段门控 playbook + 渐进式披露(what 留 SKILL.md vs 进 references)](decisions/0001-staged-playbook-progressive-disclosure.md)
   - [0002 全生命周期单 skill + 深度 defer 协作 skill(不重复)](decisions/0002-lifecycle-scope-defer-to-siblings.md)
 
-方法论细则见上级 `../references/`。本 skill 遵守 `sr-od-dev-skill-guide` 的 4 条硬规范。
+方法论细则见上级 `../references/`。本 skill 遵守 `od-dev-writing-skills` 的 4 条硬规范。

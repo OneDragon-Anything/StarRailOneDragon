@@ -33,5 +33,5 @@
 
 ## 当前状态
 - **部署**:已 unignore 并提交(目录名 `sr-od-dev-pr-finishing`)。CodeRabbit 限定不阻塞(团队各项目统一采用 CodeRabbit)。
-- **GREEN 验证状态**:**draft(GREEN-pending)** —— 本次为按 `sr-od-dev-skill-guide` 做的结构合规重构(design/ + ADR 拆分),尚未跑 utility test(方法见 skill-guide `references/skill-testing.md`)。「结构合规」(满足 4 硬规范)与「validated」(GREEN 过)独立;本 skill 目前是前者达成、后者待做。
+- **GREEN 验证状态**:**draft(GREEN-pending)** —— 本次为按 `od-dev-writing-skills` 做的结构合规重构(design/ + ADR 拆分),尚未跑 utility test(方法见 od-dev-writing-skills `references/skill-testing.md`)。「结构合规」(满足 4 硬规范)与「validated」(GREEN 过)独立;本 skill 目前是前者达成、后者待做。
 - **维护者常用时区**:UTC+8(GitHub API 返回 UTC,显示前转 +8;换维护者时按实际调整)。

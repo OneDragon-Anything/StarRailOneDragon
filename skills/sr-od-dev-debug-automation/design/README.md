@@ -8,4 +8,4 @@
   - [INDEX](decisions/INDEX.md)
   - [0001 叠加在 superpowers:systematic-debugging 之上](decisions/0001-layer-on-systematic-debugging.md)
 
-方法论细则见 `sr-od-dev-skill-guide`(`design-docs.md` / `writing-craft.md`)。
+方法论细则见 `od-dev-writing-skills`(`design-docs.md` / `writing-craft.md`)。

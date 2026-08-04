@@ -38,7 +38,7 @@ vision 数对齐 → vision 报「7/9、槽 3/9 错位、前后排对齐」。�
 - **正向**:验证客观可复现;不受 vision 计数 / 对齐幻觉影响;可写进自动化校验。
 - **负向**:需要先有 ground truth(手圈 / `click_game` 实锤 / screen_info 已有 `pc_rect`)——
   ground truth 来源要人工或建档成果。
-- **follow-up**:ground truth 标注流程归 `sr-od-dev-screen-onboarding`(建档),本 skill 只
+- **follow-up**:ground truth 标注流程归 `od-dev-screen-onboarding`(建档),本 skill 只
   消费 GT 做对拍。
 
 ## Links

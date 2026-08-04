@@ -5,7 +5,7 @@
 
 ## Context
 本 skill 管"从零开发新玩法自动化",覆盖阶段 0-9 全流程。但其中多个阶段有**更专精的协作 skill** 已存在:
-- 画面建档/screen_info area 维护 → `sr-od-dev-screen-onboarding`
+- 画面建档/screen_info area 维护 → `od-dev-screen-onboarding`
 - UI 区域坐标检测 → `sr-od-dev-ui-region-detect`
 - bug 决定怎么修 → `sr-od-dev-deciding-a-fix`
 
@@ -13,8 +13,7 @@
 
 ## Decision Drivers
 - **不重复(DRY)**:同一方法论两处写 → 漂移;协作 skill 是该方法论的单一真相源。
-- **端到端价值**:自动化开发的价值在"从理解玩法到产出可运行 app 的完整流程 + 阶段门控判据",抽掉任一段(如玩法建档/事件长尾)就断链。
-- **`sr-od-dev-skill-guide` 规范 3**:项目内 dev skill 可引用其它 skill(写完整标识符)。
+- **端到端价值**:自动化开发的价值在“从理解玩法到产出可运行 app 的完整流程 + 阶段门控判据”,抽掉任一段(如玩法建档/事件长尾)就断链。
 
 ## Considered Options
 1. **重复协作 skill 内容(自包含)**:DRY 违反,两处会漂移。
@@ -25,7 +24,7 @@
 ## Decision
 选 3:
 - 本 skill **scope = 全生命周期**(阶段 0-9),给每阶段判据 + 跨阶段不变量 + 框架踩坑。
-- 专精深度**defer 给协作 skill**(写完整标识符):`sr-od-dev-screen-onboarding`(画面建档/screen_info area)、`sr-od-dev-ui-region-detect`(坐标检测)、`sr-od-dev-deciding-a-fix`(bug 修复决策)。本 skill 只在相关阶段一句指针 + 该 skill 才管的核心判据摘要,不重复其完整方法论。
+- 专精深度**defer 给协作 skill**(写完整标识符):`od-dev-screen-onboarding`(画面建档/screen_info area)、`sr-od-dev-ui-region-detect`(坐标检测)、`sr-od-dev-deciding-a-fix`(bug 修复决策)。本 skill 只在相关阶段一句指针 + 该 skill 才管的核心判据摘要,不重复其完整方法论。
 - SKILL.md「协作 skill」节集中列指针。
 
 ## Consequences
@@ -34,5 +33,4 @@
 - **follow-up**:协作 skill 演进时核对指针仍准;若某协作 skill 长期不存在,该段深度回填本 skill references/。
 
 ## Links
-- `sr-od-dev-skill-guide` 规范 3(项目内 dev skill 可引其它 skill,完整标识符)+ [ADR-0002](../../sr-od-dev-skill-guide/design/decisions/0002-self-contained-framework-interface-names.md)。
 - 本 skill SKILL.md「协作 skill」节。

@@ -14,7 +14,7 @@ baseline(无 skill 处理 pywin32 #2428)暴露两个过程纪律缺口,对应 SK
 - **因果依赖**:根因的「修复状态」决定方案「临时/永久」,是权衡(步骤 4)的核心维度,不能在权衡之后才挖 → 因果链前置。
 - **不过度工程**:前提验证针对具体候选方案,单列早期步骤会过早(候选还没生成就验证前提无的放矢)→ 并入步骤 4。
 - **防过度挖掘**:根因可无限深挖,停在「有权且能修」的层 → actionable 层原则。
-- **通用 gap(非模型补偿)**:两槽位是任何合理模型按 RCA 方法论都该做的标准动作(baseline 漏了是过程纪律问题,不是某模型怪癖)→ 经 RCA 过滤后进共享 SKILL.md 正文(见 skill-guide `writing-craft.md` §3.1)。
+- **通用 gap(非模型补偿)**:两槽位是任何合理模型按 RCA 方法论都该做的标准动作(baseline 漏了是过程纪律问题,不是某模型怪癖)→ 经 RCA 过滤后进共享 SKILL.md 正文。
 
 ## Considered Options
 1. **前提验证单列早期步骤**:更显眼,但前提是针对具体候选方案的,早于步骤 3(生成候选)无意义 → 过早。
@@ -39,6 +39,4 @@ baseline(pywin32 #2428)案例论据(仅 design,不进正文):
 
 ## Links
 - 本 skill [ADR-0001](0001-methodology-type-green-required.md)(baseline 论证用法 / 方法论型归类)。
-- skill-guide [ADR-0003](../../sr-od-dev-skill-guide/design/decisions/0003-methodology-not-examples.md)(具体案例归 design 不归 skill 正文)。
-- skill-guide `references/writing-craft.md` §3.1(RCA 过滤:只通用 gap 进共享 skill)。
 - SKILL.md「决策流程」。

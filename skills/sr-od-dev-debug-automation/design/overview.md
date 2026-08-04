@@ -25,9 +25,9 @@ SKILL.md 4 节判据,每节对应一类项目专属坑:
 | §3 识别类 bug 专项(画面/OCR) | 分析路径 ≠ bot 路径;离线遍历裁剪×阈值×区域 | analyze 误导 / OCR 迁移 |
 | §4 采集证据 | 识别时刻截图(`is_debug` 门控)+ 离线同参数复现 | bot 当时看到的帧不可回看 |
 
-SKILL.md 只写方法论 / 判据;具体函数名、坐标、版本号是某次案例的偶然细节,留在 `case-study.md` 作论据,不进 SKILL.md(`sr-od-dev-skill-guide` 硬规范 4)。
+SKILL.md 只写方法论 / 判据;具体函数名、坐标、版本号是某次案例的偶然细节,留在 `case-study.md` 作论据,不进 SKILL.md(`od-dev-writing-skills` 硬规范 4)。
 
 ## 当前状态
 
-- **类型**:方法论覆盖型(整合「项目专属排查判据」成系统流程)。按 `sr-od-dev-skill-guide` 两类分法,RED(baseline)可省。
-- **GREEN 验证**:**待补** —— 下次排查真实运行 bug 时,确认用了本 skill 的决策比裸跑更系统;若有判据不实用 / 遗漏,回来改。当前是「写完未 GREEN 验证」,下次实战注意校准(方法见 `sr-od-dev-skill-guide` `references/skill-testing.md`)。
+- **类型**:方法论覆盖型(整合「项目专属排查判据」成系统流程)。按 `od-dev-writing-skills` 两类分法,RED(baseline)可省。
+- **GREEN 验证**:**待补** —— 下次排查真实运行 bug 时,确认用了本 skill 的决策比裸跑更系统;若有判据不实用 / 遗漏,回来改。当前是「写完未 GREEN 验证」,下次实战注意校准(方法见 `od-dev-writing-skills` `references/skill-testing.md`)。

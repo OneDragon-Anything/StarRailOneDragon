@@ -35,4 +35,3 @@
 
 ## Links
 - SKILL.md §2(L1 框架语义必查项)。
-- 边界:接口名写进 SKILL.md 是 `sr-od-dev-skill-guide` 规范 3 允许的「框架地基级接口名」(过两问判据,见 skill-guide [ADR-0002](../../../sr-od-dev-skill-guide/design/decisions/0002-self-contained-framework-interface-names.md))。

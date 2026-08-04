@@ -10,7 +10,7 @@
 - **不管**(引用而非重复):
   - PR 收尾(处理 review comment / 推可合并 / checks)→ `sr-od-dev-pr-finishing`;
   - 单条 review comment 处理 → `superpowers:receiving-code-review`;
-  - 画面建档细节 → `sr-od-dev-screen-onboarding`。
+  - 画面建档细节 → `od-dev-screen-onboarding`。
 
 ## 构成(SKILL.md 的方法论骨架)
 - **集成基线纪律**:在「PR + 当前 main」集成结果上审,不在旧 base 上审;测试仓同名分支隔离。
@@ -18,7 +18,7 @@
 - **框架语义必查项**:L1 固定查生命周期钩子 / 节点重试预算 / `@operation_node` / `execute()` 重置 / `node_from` 路由。
 - **游戏流程 PR 先建玩法理解**:L1 前查 `docs/game/gameplay/` + `docs/game/screens/` 建立玩法理解。
 - **冲突解决**:看实际不预设;逻辑纠缠先 live 建档;解完 `py_compile` + `ruff` + `import` 冒烟三连。
-- **live 三位一体**:live 不只验 PR,沿途画面未建档顺便补 screen_info(走 `sr-od-dev-screen-onboarding`)——成本最低、价值叠加。
+- **live 三位一体**:live 不只验 PR,沿途画面未建档顺便补 screen_info(走 `od-dev-screen-onboarding`)——成本最低、价值叠加。
 
 ## 落点
 - 目录:根 `skills/sr-od-dev-pr-review/`(跨工具源,提交共享)。
@@ -28,10 +28,10 @@
 
 ## 与现有 skill 的关系
 - `sr-od-dev-pr-finishing`:PR 收尾。本 skill 是**收尾前的审查验证**;审完给结论,收尾走 pr-finishing。
-- `sr-od-dev-screen-onboarding`:画面建档。本 skill L4 live 时「顺路建档」引用它。
-- `sr-od-dev-skill-guide`:本项目 skill 编写规范。本 skill 的结构 / frontmatter / 写法遵循它。
+- `od-dev-screen-onboarding`:画面建档。本 skill L4 live 时「顺路建档」引用它。
+- `od-dev-writing-skills`:本项目 skill 编写规范。本 skill 的结构 / frontmatter / 写法遵循它。
 
 ## 当前状态(GREEN 语义)
-- **类型**:方法论覆盖型(整合 PR 审查验证方法论成系统流程)。按 `sr-od-dev-skill-guide` 两类 skill,RED 可省、GREEN 不可省。
-- **GREEN**:**draft**(GREEN-pending)。方法论本体经 30 个 open PR 实操提炼(有 dogfooding 证据);但按 `sr-od-dev-skill-guide` 的 utility test(干净上下文子 agent + 扮用户只答所问 + 观察 gap)做正式 GREEN 验证待补。
-- **结构合规**:满足 skill-guide 4 硬规范(design/ 分离 / 指令式 / 自包含 / 方法论不写具体例子)。
+- **类型**:方法论覆盖型(整合 PR 审查验证方法论成系统流程)。按 `od-dev-writing-skills` 两类 skill,RED 可省、GREEN 不可省。
+- **GREEN**:**draft**(GREEN-pending)。方法论本体经 30 个 open PR 实操提炼(有 dogfooding 证据);但按 `od-dev-writing-skills` 的 utility test(干净上下文子 agent + 扮用户只答所问 + 观察 gap)做正式 GREEN 验证待补。
+- **结构合规**:满足 od-dev-writing-skills 4 硬规范(design/ 分离 / 指令式 / 自包含 / 方法论不写具体例子)。

@@ -27,4 +27,4 @@
 
 ## Links
 - SKILL.md §1(L0 分诊 → 游戏流程类先建玩法理解)。
-- 引用稳定 runtime 资产路径(`docs/game/gameplay/`、`docs/game/screens/`)是 `sr-od-dev-skill-guide` 规范 3 允许。
+- 引用稳定 runtime 资产路径(`docs/game/gameplay/`、`docs/game/screens/`)允许(本项目必有、稳定)。

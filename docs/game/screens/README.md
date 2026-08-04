@@ -1,6 +1,6 @@
 # 画面建档索引
 
-StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试仓 `sr-od-test/screens/<screen>/`。建档方法论见 skill `sr-od-dev-screen-onboarding`(客观识别 → 主观理解 → 建档 → 缺口分析 → 主动建模 → 归档)。
+StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试仓 `sr-od-test/screens/<screen>/`。建档方法论见 skill `od-dev-screen-onboarding`(客观识别 → 主观理解 → 建档 → 缺口分析 → 主动建模 → 归档)。
 
 ## 通用画面
 

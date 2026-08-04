@@ -1,7 +1,7 @@
 # 画面建档深度细则(阶段 3)
 
 > 本文件是 SKILL.md 阶段 3 的 situational 深度细则。画面建档是自动化核心环节时按需读。
-> 配合协作 skill `sr-od-dev-screen-onboarding`(analyze→vision→doc→缺口→建模→归档)与 `sr-od-dev-ui-region-detect`(坐标检测)。
+> 配合协作 skill `od-dev-screen-onboarding`(analyze→vision→doc→缺口→建模→归档)与 `sr-od-dev-ui-region-detect`(坐标检测)。
 
 ## 识别优先级(判定"当前在哪个画面")
 
@@ -22,7 +22,7 @@
 
 ## 建档只写 docs + screen_info,别改原内容
 
-`pc_rect` 占位是**待填**不是坏数据 —— 画面/玩法建档只写 docs/game 的 doc + 新增 area,不动 screen_info 已有内容(详见 `sr-od-dev-screen-onboarding`)。
+`pc_rect` 占位是**待填**不是坏数据 —— 画面/玩法建档只写 docs/game 的 doc + 新增 area,不动 screen_info 已有内容(详见 `od-dev-screen-onboarding`)。
 
 ## 每个状态都建档 + 存 fixture(防回归地基)
 

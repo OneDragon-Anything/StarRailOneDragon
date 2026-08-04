@@ -24,7 +24,7 @@
 
 ## 怎么写 flow 测试
 
-1. **采 fixture**:`screens/<screen_name>/<state>.webp`(webp q90,1080p 原生不缩放),每个 phase 一张。用 `skills/sr-od-dev-screen-onboarding/convert_to_webp.py` 转换。
+1. **采 fixture**:`screens/<screen_name>/<state>.webp`(webp q90,1080p 原生不缩放),每个 phase 一张。用 `skills/od-dev-screen-onboarding/convert_to_webp.py` 转换。
 2. **构造 phases 剧本**:
    ```python
    [

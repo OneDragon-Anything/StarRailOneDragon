@@ -44,7 +44,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ### 2. 功能开发优先路径
 
-- **涉及游戏流程的改动先理解再动手**：新功能 / debug / 修 bug 碰到自动化与游戏交互、游戏机制时，先读相关代码 + `screen_info` 弄清「bot 当前走到哪个画面、按什么玩法逻辑走」，知识缺失或过期按 `sr-od-dev-screen-onboarding` 等 skill 补档，别凭猜改（凭猜 → 只覆盖一种情况、漏另一种 → 回归）。纯代码改动（重构 / 性能 / UI / 基建）不适用。
+- **涉及游戏流程的改动先理解再动手**：新功能 / debug / 修 bug 碰到自动化与游戏交互、游戏机制时，先读相关代码 + `screen_info` 弄清「bot 当前走到哪个画面、按什么玩法逻辑走」，知识缺失或过期按 `od-dev-screen-onboarding` 等 skill 补档，别凭猜改（凭猜 → 只覆盖一种情况、漏另一种 → 回归）。纯代码改动（重构 / 性能 / UI / 基建）不适用。
 - 新功能优先评估是否应做成 `SrApplication`，放在 `src/sr_od/application/`，并通过 `ApplicationFactory` 接入（参考现有 `world_patrol`、`sim_universe`、`trailblaze_power` 等 `XxxAppFactory`）。
 - 不要直接把新流程硬塞进主线逻辑；先复用现有 Application、Operation、配置体系与界面组件。
 - 新的设置界面优先沿用现有 setting card、`YamlConfigAdapter`、`AdapterInitMixin` 等模式。
@@ -85,6 +85,16 @@ uv run ruff check --fix src/你修改的文件.py
 ## 自维护指南
 
 修改 **AI 入口文件** `AGENTS.md`（团队共享 / 跨工具单一源，提交）时，必须先按 [entry_files.md](docs/develop/harness/entry_files.md) 的规范来：纯指令不掺杂元信息、只放 always-on 该留的（「删了会出错吗」逐条自检）、单一信息源（`AGENTS.md` 是源，工具入口 `@import` 引入）、共享文档改动先经用户确认。`.claude/CLAUDE.md` 是**个人本地**（`.claude/` 整个不入库，见 entry_files.md），个人随意改。
+
+## Skills
+
+本项目开发类 skill(`sr-od-dev-*`)用公共仓的 **`od-dev-writing-skills`** 指导编写(方法论:4 硬规范 / writing-craft / testing)。
+
+- **保存**:根 `skills/<name>/`(提交)。
+- **命名**:`sr-od-dev-` 前缀(星铁专属命名空间,防撞名);使用类 `sr-od-`。
+- **挂载**:junction `skills/<name>` → `.claude/skills/<name>`(本地,`.claude/` 不入库)。
+
+`od-dev-writing-skills` 本身从公共仓 `OneDragon-Skills` 挂载进本仓 `.claude/skills/`(可通用 skill 沉淀到公共仓,SR 独有业务留本仓)。详 [docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)。
 
 ## 深入阅读
 

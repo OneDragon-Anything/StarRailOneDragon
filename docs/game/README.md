@@ -1,7 +1,7 @@
 # 星穹铁道游戏知识建档
 
 > bot 自动化所需的游戏知识(画面 + 玩法)建档。给 AI 编码时理解「bot 当前走到哪个画面、按什么玩法逻辑走」用。
-> 画面建档方法论见 skill `sr-od-dev-screen-onboarding`;玩法建档见 `sr-od-dev-gameplay-onboarding`。
+> 画面建档方法论见 skill `od-dev-screen-onboarding`;玩法建档见 `sr-od-dev-gameplay-onboarding`。
 
 ## 分层:识别模型 vs 知识文档
 
@@ -27,7 +27,7 @@
 
 ## 规范
 
-- 画面 doc:`docs/game/screens/<screen_id>.md`,结构按 sr-od-dev-screen-onboarding skill(何时出现 / 状态流转 / 识别特征 / 可交互元素 / 识别快照 / 备注)。
+- 画面 doc:`docs/game/screens/<screen_id>.md`,结构按 od-dev-screen-onboarding skill(何时出现 / 状态流转 / 识别特征 / 可交互元素 / 识别快照 / 备注)。
 - 玩法 doc:`docs/game/gameplay/<gameplay>.md`,结构按 sr-od-dev-gameplay-onboarding skill。
 - doc 写**稳定画面事实**,不写建档/排查过程产物(测试状态归 sr-od-test,bug 历史归 commit)。
 - **双向引用**(参照 ZZZ `docs/game/README.md`):
