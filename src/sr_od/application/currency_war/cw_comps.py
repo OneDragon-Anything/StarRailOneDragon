@@ -267,6 +267,21 @@ def progress(comp: Comp, state: GameState) -> float:
     return clamp(0.6 * fp + 0.4 * core_frac, 0.0, 1.0)
 
 
+def shop_supply(comp: Comp, state: GameState) -> float:
+    """comp 核心阵营在当前 shop+board 的可得性 [0,1](shop-aware,task#25 通关核心)。
+
+    comp 阵营在 shop(本回合可买)或 board(已持有)出现 → 1.0(可得);否则 0.0
+    (商店刷不出该阵营牌 → 不可成型)。select_comp 对不可得 comp 降权(×0.3),使 select
+    偏好**可得** comp,解决锁定高强度 comp(列车同行 S=1.0)但商店/场面供不上 → board 散、
+    永不成型(plane1 重伤)的不收敛问题(2026-08-04 实跑 + cw_comps.py:358 老注释)。
+    """
+    if not comp.factions:
+        return 1.0
+    shop_factions = {c.faction for c in state.shop}
+    board_factions = set(state.board.keys())
+    return 1.0 if any(f in shop_factions or f in board_factions for f in comp.factions) else 0.0
+
+
 def equip_fit(comp: Comp, state: GameState) -> float:
     """装备契合度(comp 相关,0..1):持有 comp.key_equips 越多越高(超线性 ^0.7 奖励集齐)。
 
@@ -432,6 +447,7 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
+        s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
