@@ -155,8 +155,8 @@ COMP_LIBRARY: list[Comp] = [
                          star_goals={"三月七": 2}),
             4: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "花火"]),
             5: LevelGoal("level_up"),
-            6: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "瓦尔特"],
-                         star_goals={"姬子·启行": 2}),
+            6: LevelGoal("level_up"),  # 2026-08-04:原 "roll" → 改 "level_up"(攒金升 7,解 bot 花
+                            # 光金不升级。roll 在 lv8 找 core 更合适,lv6 该先升级解锁高费刷新率)
             7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 2, "花火": 2}),
