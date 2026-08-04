@@ -7,6 +7,8 @@
 
 import argparse
 import asyncio
+import contextlib
+import sys
 from typing import TYPE_CHECKING
 
 import uvicorn
@@ -75,6 +77,11 @@ def main() -> None:
     通过 argparse 解析 ``--host`` / ``--port``（默认 ``127.0.0.1`` / ``24001``），
     随后 ``asyncio.run`` 驱动 ``_serve`` 完成整个生命周期。
     """
+    # stdout/stderr 被 daemon 重定向到 main_server.log 时,Windows 默认用 locale(GBK)
+    # 编码 → 中文(op 名/OCR)写进 UTF-8 文件变 mojibake,日志不可读。强制 UTF-8。
+    for _stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(Exception):
+            _stream.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description="启动 SR 后端服务（MCP + HTTP）")
     parser.add_argument("--host", default=DEFAULT_HOST, help="监听地址")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="监听端口")
