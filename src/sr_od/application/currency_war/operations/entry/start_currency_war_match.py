@@ -6,6 +6,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
 )
@@ -31,6 +32,8 @@ class StartCurrencyWarMatch(SrOperation):
 
     # 点空白关闭「点击空白处继续」教程叠层(避开中央内容)
     BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+    # 难度确认屏 screen_info 画面(currency_war_difficulty_confirm.yml);按钮 center 经 area_center 读
+    DIFFICULTY_SCREEN: ClassVar[str] = '货币战争-难度确认'
 
     STATUS_AT_PREP: ClassVar[str] = '到达备战阶段'
 
@@ -76,15 +79,17 @@ class StartCurrencyWarMatch(SrOperation):
         # 切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),再"开始对局"。
         # (2026-08-03 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
         if self.round_by_ocr(screen, '返回最高职级').is_success:
+            _btn = area_center(self.ctx, '按钮-返回最高职级', StartCurrencyWarMatch.DIFFICULTY_SCREEN) or Point(1392, 965)
             self.ctx.controller.active_window()
-            self.ctx.controller.click(Point(1392, 965))   # 返回最高职级 按钮(底部,开始对局左侧)
+            self.ctx.controller.click(_btn)   # 返回最高职级(screen_info center;缺失兜底)
             return self.round_wait(wait=2)
         # ⚠️ 开始对局单独处理:round_by_ocr_and_click 有 0.3s pre_delay,active_window(节点起手)到
         # click 间游戏可能失焦 → 点空(bug #1,手动 click_game 无此间隙所以有效)。
         # 改:OCR 检测 + active_window 紧贴直接 controller.click(无 pre_delay 间隙,同 click_game)。
         if self.round_by_ocr(screen, '开始对局').is_success:
+            _btn = area_center(self.ctx, '按钮-开始对局', StartCurrencyWarMatch.DIFFICULTY_SCREEN) or Point(1691, 965)
             self.ctx.controller.active_window()
-            self.ctx.controller.click(Point(1691, 965))
+            self.ctx.controller.click(_btn)
             return self.round_wait(wait=2)
         for btn in StartCurrencyWarMatch.FORWARD_BUTTONS:
             r = self.round_by_ocr_and_click(screen, btn, success_wait=2)
