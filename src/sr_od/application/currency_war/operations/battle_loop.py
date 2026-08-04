@@ -74,7 +74,7 @@ class CurrencyWarRunLoop(SrOperation):
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
 
-        见 sr-od-dev-gameplay-automation「开发时预留日志 + 截图开关 / 信息密度论」:让一次
+        见 od-dev-gameplay-automation「开发时预留日志 + 截图开关 / 信息密度论」:让一次
         实跑暴露尽量多的问题(选人选项长啥样 / OCR 误读 / 坐标漂移 / 漏事件),而非每次只测
         一种情况。截图存 ``.debug/images/``(``save_screenshot``),日志带当前帧全量 OCR 文本
         (选人/事件选项 OCR 现无策略评估 → 先靠 snap 看清每局都 offered 什么,再建评估)。
@@ -148,7 +148,7 @@ class CurrencyWarRunLoop(SrOperation):
             self._snap('invest_env')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '补给阶段').is_success:
+        if self.round_by_ocr(screen, '补给阶段', lcs_percent=0.8).is_success:
             self._snap('supply')
             HandleSupply(self.ctx).execute()
             return self.round_wait(wait=2)
