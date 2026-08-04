@@ -441,11 +441,15 @@ def _best_improving_action(
         if delta > best_delta + 1e-6:
             best, best_delta = seq, delta
 
-    # 花费指令(level_plan / 通用曲线):驱动下面 buying gate + refresh gate(task#18)。
+    # 花费指令(level_plan / 通用曲线):驱动下面 buying gate + refresh gate(task#18/D-24)。
     _goal = _resolve_level_goal(state, target_comp)
     _lv_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)         # 升下一级金价
-    _saving_for_level = (_goal is not None and _goal.action == "level_up"
-                         and state.gold < _lv_cost)                  # 攒金升级中 → 抑制散牌买/刷
+    # 想升 = goal=level_up **或** 落后期望等级(对齐 D-24 gate)。saving 对齐 gate:
+    # 想升 + 还没够钱 → 抑制散牌买/刷,攒金。否则 gate 永远付不起(bot 花光金不攒,lv4 gold12 实测)。
+    _want_level = (state.level < 10 and (
+        (_goal is not None and _goal.action == "level_up")
+        or state.level < _expected_level(state.round_num, state.plane)))
+    _saving_for_level = _want_level and state.gold < _lv_cost
 
     # 1) 买 + 上任组合(原子)
     for card in state.shop:
