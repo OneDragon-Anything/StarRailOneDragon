@@ -118,6 +118,7 @@ class BuyShopCards(SrOperation):
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
+            time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
             actions = plan(state, config, config.faction_priority, target_comp=_target)
