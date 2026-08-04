@@ -42,7 +42,7 @@ class Comp:
    - `action=stable` → 稳住吃息,不主动花。
 3. **tempo 例外**:连胜/连败 streak(额外金)、HP 危险、战力断档 → 可**破息**(花到 50 以下)抢节奏。
 
-**与战术层接法(02)**:`plan` 在 `gold > INTEREST_THRESHOLD(50)` 时,花超额金按 `target_comp.level_plan[state.level]` 导向(而非纯贪心 eval delta);`target_comp=None`(reactive)时退化为当前贪心。**当前代码缺这条接法**(economy_score 已封顶 5 档=金>50 隐式 free,但无 level_plan 导向)—— 待战略层(阶段 2 select_comp)落地 target_comp 后接。具体 level_plan 曲线随 COMP_LIBRARY 填(用户选 B:框架先定,曲线第 4 块建库时填)。
+**与战术层接法(02,2026-08-04 已落地)**:`plan()` 中 level_plan `level_up` + afford → **硬 gate 执行 LevelUp**(D-14,非纯贪心 eval delta);`target_comp=None` 时退化为通用曲线 `_DEFAULT_LEVEL_GOAL`。`select_comp`/`maybe_pivot`(cw_comps)选 target,shop.py 接线传 `_target_comp` 给 plan()。具体 level_plan 曲线:comp 自带优先,无则通用曲线兜底。
 通用曲线(research 已有):前期 4-5 级 roll 找 1 费 / 中期升 7 roll 找 4 费、2-6 回合升 8 / 后期升 8-9 找 5 费 + 关键卡追 3 星。
 来源:research meta 阵容表 + cw_data + **用户实战补充**。meta(版本依赖),做成 config 可热更。起步 ~6-10 套:巡击青雀/昼神阿雅/贝洛伯格召唤/击破流萤/欢愉/列车同行/物质分解液/反甲反震(**2026-08-03:不标"邪道 A8 专项" —— 邪道非必需,这些只是可选的强阵容之一,成型难度各异**)。**用户认同方向**:攻略 + 实战定义足够多优秀阵容,多维打分(强度 + 成型难度 + boss 契合 + 装备契合),运行时按场面灵活选易成型又够强的。
 

@@ -25,7 +25,8 @@ v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
 
 v1 范围:读 gold/plane/round/board/shop/bench_full —— 喂 plan 的买/升/经济决策。
 bench/deployed 身份不读(deploy 走 DeployBench deploy-all;buy 决策靠 board+shop+gold)。
-target_comp=None(reactive);select_comp/pivot/tracker 待 Tier 2。
+target_comp 由上层 shop op 跨回合管理(``select_comp``/``maybe_pivot`` 已接,2026-08-04,详 cw_comps);
+PerformanceTracker(comp_viability 观测)待阶段 4-5 接线。
 """
 from __future__ import annotations
 

@@ -46,7 +46,7 @@ DEFAULT_EVENT_WHITELIST: dict[str, int] = {
 }
 
 # 枚举合法值(构造时校验,typo/大小写错静默落入默认)
-ALLOWED_AGGRESSION: set[str] = {"conservative", "balanced", "greedy"}
+# aggression 已删(D-18:死字段,cw_decisions 不用);economy_mode 保留(D-18:eval 权重微调,与 level_plan 硬 gate 共存)
 ALLOWED_ECONOMY: set[str] = {"interest_first", "rush_level", "adaptive"}
 
 # boss 名 → 该回避的阵营/流派(阵容克制;boss 名需实机 OCR 落库)
@@ -74,8 +74,6 @@ class CurrencyWarConfig(YamlConfig):
         self.faction_priority: list[str] = self.get('faction_priority', DEFAULT_FACTION_PRIORITY)
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
         # 枚举校验(review r1 #10):typo/大小写错静默落入默认,避免用户以为改了实则没生效
-        agg = self.get('aggression', 'balanced')
-        self.aggression: str = agg if agg in ALLOWED_AGGRESSION else 'balanced'
         econ = self.get('economy_mode', 'adaptive')
         self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
         self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
@@ -87,7 +85,6 @@ class CurrencyWarConfig(YamlConfig):
         self.data = {
             'faction_priority': self.faction_priority,
             'character_priority': self.character_priority,
-            'aggression': self.aggression,
             'economy_mode': self.economy_mode,
             'event_whitelist': self.event_whitelist,
             'boss_counter': self.boss_counter,

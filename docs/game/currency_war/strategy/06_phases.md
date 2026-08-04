@@ -9,7 +9,7 @@
 
 ## 待做(非游戏)
 
-### 阶段 2:A2 阵容规划 + 巨星 + 节点决策骨架 + 战斗反馈 — ❌ 待做
+### 阶段 2:A2 阵容规划 + 巨星 + 节点决策骨架 + 战斗反馈 — ✅ 已落地(2026-08-04)
 - 内容:**COMP_LIBRARY**(阵容库,多维打分:强度+成型难度+契合,**不标"邪道专打"**)+ `Comp` dataclass(含 shared/transition/form_round/version 字段)+ `comp_score`(显式公式)+ `select_comp` + `target_progress_score`(去三重)+ `maybe_pivot`(比较型转型信号)+ `select_megastar`(巨星,03)+ `decide_encounter`/`decide_supply`(08 节点决策,纯逻辑骨架)+ evaluate 整合 target + **`PerformanceTracker` + `RoundOutcome`(双侧:r6 F3)+ `comp_viability`/`comp_prior`(r5 拆)+ `MECHANIC_COUNTERS` + `MECHANIC_SYNERGIES`(双向 debuff=buff,详 10)+ obs_weight schedule + 归一化 expected_drop 先验(详 10)** + 测试。
 - 依赖:阶段 1。
 - 测试:mock 阵容库 + states → 选对 target/转型/巨星/遭遇;target_progress 去三重。**r6 要求:实现前先写测试锁住交互行为** —— ① open-fold(intentional_fold=True 的 outcome 不污染 comp_viability);② 归一化(boss 掉血多但归一化后不误判弱、不 None);③ pivot 归因(换 comp 后旧 comp 战报 ×0.3 降权);④ 冷启动(delta<1 → None)。这些互配合 bug 纸面推不出,只能测试锁。

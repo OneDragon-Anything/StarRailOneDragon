@@ -54,7 +54,7 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 ### D. 已移除(及原因)
 `run_mode`(→ 字段值表达)/ `aggression`(虚)/ `economy_mode`(和 level_plan 打架,经济 comp 驱动)/ `event_whitelist`(拆成 env+strategy priority)/ `achievement_target`(→ 预设)/ `target_comp_preference`(并入 build_around+priority)/ `hp_safe_threshold`+`refresh_budget`(→ 内部派生)/ 钻钞 farming(自动激活优势布局)/ `opening_restart`(策略不依赖,见 09)/ 濒死停(无用)/ 多账号·定时·领奖(一条龙框架层,非 app)。
 
-⚠️ **现状**:`currency_war_config.py` 当前仍是旧结构(faction/character/aggression/economy_mode/event/boss/dot_punish);**实施时按本节重写**,保 README↔代码单一真相。
+⚠️ **现状(2026-08-04 对齐,D-18)**:`currency_war_config.py` 已删 `aggression`(死字段);**保留** `economy_mode`(eval 权重微调,与 level_plan 硬 gate 共存非冲突)+ `event_whitelist`/`boss_counter`/`dot_punish_envs`(decide_event/decide_boss 用)。**仍缺** `character_forbid/build_around`、`faction_forbid`、`strategy/env_*`、`handoff/difficulty/manage_meta_run`(cw_comps 已 `getattr` 防御读取,可增量加,deferred)。原 §D "economy_mode/event_whitelist 已删"计划**撤销**(见 D-18)。
 
 ## 决策点 × 层归属
 | 决策 | 层 | 状态 |
@@ -80,7 +80,7 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 |---|---|---|---|
 | 0 | 战术层内核 + r1 修 | 否 | ✅ |
 | 1 | A1 蒙特卡洛 D 牌 + A3 阶段键控 | 否 | ✅ |
-| 2 | **A2 阵容规划 + 巨星 + 节点决策骨架 + 战斗反馈(观测驱动)+ 决策迹采集** | 否 | ✅ 骨架(战略层/观测/telemetry 落地;↔战术层接法待阶段 4)|
+| 2 | **A2 阵容规划 + 巨星 + 节点决策骨架 + 战斗反馈(观测驱动)+ 决策迹采集** | 否 | ✅(战略层/观测/telemetry 落地 + ↔战术层接法已落地[D-14],2026-08-04)|
 | 3a | A4 牌池概率 + 装备模型 + 通关能力 eval | 否 | 待做 |
 | 4 | A6 对账 + OCR 接线 | 是 | 待做 |
 | 5 | op 层接线 | 是 | 待做 |

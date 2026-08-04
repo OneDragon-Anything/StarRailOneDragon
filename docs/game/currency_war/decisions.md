@@ -15,6 +15,36 @@
 
 ---
 
+## D-18 (2026-08-04) 配置层对齐:经济统一论落地后的取舍 · strategy/02 §A3 + README §A/D
+- **决策**:① `economy_mode` **保留**(作 eval 权重微调:interest_first/rush_level 调利息/等级项),不按原 README §D 删除;② `aggression` **删除**(死字段,cw_decisions 不用);③ hp 阈值统一走 `config.hp_safe_threshold`(02 §A3)+ config 重写(forbid/build_around/handoff/difficulty/manage_meta_run)**缓做**(deferred)。
+- **为什么**:① level_plan 是**硬 gate**(D-14,主导花费指令),economy_mode 只调 eval 权重(非花费决策)→ 二者**不冲突**(原 README "和 level_plan 打架"的删除理由在 hard-gate 落地后不成立);且 economy_mode 有测试锁定(test_economy_mode_effects),删 = 行为变更 + 破测试,无收益。② aggression 全代码不用,设计早判"虚"已删,代码残留。③ hp 统一 / config 重写是干净但触及 `_phase_weights` 签名 + 测试 + GUI 的重构,非"修漂移",单列任务。
+- **备选**:按原 README §A/D 全删 economy_mode/aggression + 一次重写 config(推翻:① economy_mode 删除理由失效;② config 重写大,且 cw_comps 已 `getattr` 防御读取新字段,可增量加不必一次重写)。
+- **状态**:采用(①② 已做;③ deferred,见 process_log/insights)。`· §02 §A3 / README §A/D`
+
+## D-17 (2026-08-04) eval / comp_score 权重实跑校准 · strategy/02 §A3 + 03 comp_score
+- **决策**:V4.4 research 先验权重经 2026-08-04 实跑(replay 32 局 + bot)校准:`INTEREST_WEIGHT 2→4`、`LEVEL_WEIGHT 3→6`、`SYNERGY_TIER_EXPONENT=1.5`(收敛:深化 delta>散新)、`OFF_TARGET_DISCOUNT 0.3→1.0`(revert,改用 commitment prefilter D-15)、`W_PROG 0.35→0.45` / `W_STR 0.10→0.05`(select_comp 偏好可成型而非纯高强度)、`TARGET_PROGRESS_WEIGHT=15`。
+- **为什么**:实跑发现原值致 bot 不攒金(息 delta = 牌 synergy → 无差别买)、不升等级(level benefit < interest loss)、select_comp 锁高强度但不可成型 comp(列车同行 S 但商店没牌 → 不收敛)。提权后 bot 攒到 50 + 升级 + 选可成型 comp。
+- **备选**:维持 research 先验占位值(推翻:实跑证明不收敛)。阶段 6 再用 replay 精调最敏感 3-5 维。
+- **状态**:采用(实跑驱动,待阶段 6 replay 精调)。`· §02 §A3 / §03`
+
+## D-16 (2026-08-04) shop_supply:select_comp 降权不可得 comp(task#25)· strategy/03
+- **决策**:`select_comp` 对核心阵营在当前 shop/board **不可得**的 comp ×0.3 降权(新 helper `shop_supply`)。
+- **为什么**:实跑发现 select_comp 锁高强度 comp(列车同行 S=1.0)但商店刷不出其牌 → board 散、永不成型 → plane1 重伤。降权使 select 偏好**可得** comp(万敌 燃血:1 > 列车同行 0 可得)。
+- **备选**:① 纯按 comp_score 不考虑可得性(推翻:锁死不可成型 comp);② P1-2 `ENV_COMP_AFFINITY` 硬绑(更强形式,待实玩补全 T0 env 表)。
+- **状态**:采用。`· §03 select_comp`
+
+## D-15 (2026-08-04) commitment prefilter + OFF_TARGET_DISCOUNT revert(task#16)· strategy/02
+- **决策**:target_comp 设定时,`_best_improving_action` 用 **prefilter** —— shop 有 target 卡(阵营∈target.factions / ∈core_chars)可买时,跳过纯 off-target 散牌(**只 gate 新 buys,不动已持有 board 的 eval**);`OFF_TARGET_DISCOUNT` revert 0.3→1.0(不打折 board synergy)。
+- **为什么**:原 OFF_TARGET_DISCOUNT=0.3 打折 board synergy 致 bot 卖成型 off-target 深堆(churn)= regression。prefilter 只影响"买什么新牌"不影响"已堆的怎么评分"→ 聚焦深化 target 且不破坏现有 board。target_comp 参数保留(prefilter 复用,OFF_TARGET_DISCOUNT effect 暂关)。
+- **备选**:① OFF_TARGET_DISCOUNT 打折 board(↺ 推翻,致 churn);② 无 commitment(纯 reactive,不聚焦)。
+- **状态**:采用。`· §02 commitment`
+
+## D-14 (2026-08-04) level_plan 从"导向"升级为"硬 gate"(task#18)· strategy/03 经济统一论
+- **决策**:`plan()` 中 level_plan `action="level_up"` + 够钱 → **直接执行 LevelUp**(每轮 ≤1 级),不进贪心 eval 候选。语义从 D-08 的"导向(eval 权重)"升级为"**花费指令(directive)**"。comp 无 level_plan 时退回通用曲线 `_DEFAULT_LEVEL_GOAL`。
+- **为什么**:replay 32 局「升 0 次」根因 —— 贪心 eval 对"花大金升级"的利息损失短视:LevelUp 候选 delta 永负(花 48 金 → 利息档 5→0 损 -20,level_val 仅 +6)→ 永不选中 → bot 卡 lv5-6 → 弱 comp → plane2 死。level_plan 说升 + afford → 信任计划而非短视 eval。tempo 破息在所不惜(升级 = 解锁高费刷新率 + 出战位,关键长期投资)。
+- **备选**:① 仅提 LEVEL_WEIGHT 让 eval 自发选升级(部分采用 D-17 提 3→6,但单靠 eval 权重不够稳,hard gate 兜底);② 每 comp 手填 level_plan(保留:comp 有则优先,无则通用曲线兜底,保证所有 comp 有合理经济行为)。
+- **状态**:采用。`· §03 经济统一论 / §02 plan`
+
 ## D-13 (2026-08-03) 击破 tiers V4.4 修正 2/4/6/9 · data/factions
 - **决策**:`击破` FactionInfo tiers 用 `(2,4,6,9)`(原 `(2,4,6,8,10)`)。
 - **为什么**:官方赛季文 76641553,V4.4 姬子成专家顾问,tiers 下调。
@@ -49,7 +79,7 @@
 - **决策**:D牌/买牌/买经验是"花钱的一环",非三件事。维持 ≥50 金(息引擎),**超额(>50 不生息,免费)该花**,花哪由 `target_comp.level_plan[当前等级]` 决定(level_up/roll/stable);tempo(连胜连败/HP危险/战力断档)例外破息。
 - **为什么**:用户框架 —— 超额的钱白该花,花哪由成型路线导向。
 - **备选**:D牌/买牌/买经验三件独立决策(推翻:割裂,忽略超额金的"免费"性)。
-- **状态**:采用。接法(plan 自动选 target + level_plan 花超额金)待做。
+- **状态**:采用。**接法已落地**(`plan` level_plan 硬 gate[D-14] + `select_comp`/`maybe_pivot`[cw_comps] + shop.py 接线;2026-08-04)。
 
 ## D-07 (2026-08-03) 一切评分 comp 相关 · strategy/03/07/10
 - **决策**:装备/巨星/词缀好坏都挂钩 `target_comp`(`equip_fit`/`mechanics_fit`/`select_megastar`),不设独立绝对评分项。
