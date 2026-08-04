@@ -1,24 +1,24 @@
 ---
 name: sr-od-dev-screen-onboarding
-description: 当拿到一张待建档的游戏截图时用。
+description: 当拿到一张待建档的游戏截图时用(画面建档 / screen_info area 维护 / 图标按钮模板建模;用 analyze_screen + upsert_screen_area)。英文:onboard a game screen, build screen_info areas, screenshot onboarding。
 ---
 
 # 画面建档(analyze → 建档 → 建模)
 
 拿到截图后按「客观识别 → 主观理解 → 建档 → 缺口分析 → 主动建模」推进,每步给判据。**先判建档规模**(单画面 vs 重 app,见下方「建档规模」节)。
 
-## 前置:工具用法(避免绕路)
-- MCP 工具**直调**(`mcp__sr_od__analyze_screen` / `upsert_screen_area` / `delete_screen_area`),别写 HTTP 客户端脚本绕路;连接 stale 让用户 `/mcp` 重连。
-- screen_info 的 area 改动**一律走 CRUD 工具**(`upsert_screen_area`/`delete_screen_area`)—— 它们经 `save_screen` 同步独立 yml + `_od_merged.yml` 合并缓存 + reload。**禁止手编 screen_info yml 或手改模板目录**:手编不重算合并缓存,daemon 按旧缓存加载 → 找不到模板/area。
-- **本 skill 只记建档方法论**:具体游戏知识归 doc —— 传送流程/键位见 [地图](docs/game/screens/地图.md)/[3D地图](docs/game/screens/3D地图.md),玩法机制见 [gameplay/](docs/game/gameplay/);本 skill 不记具体键位/流程/机制。
+## 守则(每步都守)
+- **MCP 工具直调 + area 走 CRUD > 手编 yml**:用 `mcp__sr_od__analyze_screen` / `upsert_screen_area` / `delete_screen_area`,别写 HTTP 客户端脚本;area 改动经 `save_screen` 同步合并缓存,**禁止手编 screen_info yml 或手改模板目录**(手编不重算 `_od_merged.yml`,daemon 按旧缓存加载 → 找不到模板 / area)。
+- **每张建档截图都要多模态 vision 看**:不只靠 MCP `analyze_screen` 的 OCR / area(OCR 看不见图形 / 布局 / 状态图标 / 模态性 / 朝向)。vision 失败必重试不跳过。
+- **本 skill 只记建档方法论**:具体游戏知识(键位 / 流程 / 机制)归 doc(传送 / 键位见 `docs/game/screens/` 与 `docs/game/gameplay/`),不记具体键位 / 流程 / 机制。
 
 ## 建档规模:单画面 vs 重 app
 
-**重 app 多子玩法**(1 app 调度多子 op、每子玩法独立画面 + `入口→子玩法→返回入口` 循环,如随便观 7+ 子玩法)→ 按 **app 维度**建档(不是逐画面零散):
+**重 app 多子玩法**(1 app 调度多子 op、每子玩法独立画面 + `入口→子玩法→返回入口` 循环)→ 按 **app 维度**建档(不是逐画面零散):
 1. **入口画面 + 各子玩法画面**各自建档(每画面独立 doc,或同 doc 多子态)。
 2. **app 编排**(节点链 / 分支 / 入口循环)单独成 **develop doc**(`docs/develop/sr_od/application/<app>.md`),不进 screen doc。
-3. **玩法机制**(目标 / 资源 / 循环)进 **gameplay doc** → 此时**触发 `sr-od-dev-gameplay-onboarding` skill 对游戏玩法进行建档**(不在本 skill 内直接写玩法,避免写成代码说明书)。
-4. **跨画面 op 联动**(子 op 委托另一个 op,如饮茶仙缺料 → 制造坊补料):screen doc 记「跨画面流转入口」,develop doc 记编排。
+3. **玩法机制**(目标 / 资源 / 循环)进 **gameplay doc** → 此时**触发 `sr-od-dev-gameplay-automation` skill 对游戏玩法进行建档**(不在本 skill 内直接写玩法,避免写成代码说明书)。
+4. **跨画面 op 联动**(子 op 委托另一个 op,如缺料 → 跳补料):screen doc 记「跨画面流转入口」,develop doc 记编排。
 
 判据:app 有 **≥3 子玩法、各独立画面** → 重 app 维度;单画面 / 独立 app 走下方 §1-§6 常规流程。
 
@@ -29,7 +29,7 @@ description: 当拿到一张待建档的游戏截图时用。
 - **玩法画面**:建档前先搜攻略 / wiki(`WebSearch` / web_reader)理解「这玩法是什么、目标 / 资源 / 循环、入口 / 走哪些画面」,再读 `application/<app>/` 代码 + `analyze_screen` 建档 —— 先有玩法理解,读代码 / 画面才高效,避免凭代码猜流程、漏画面。
 - **通用流程**:直接走下方「信息源三层」+ analyze 建档,不必深搜。
 
-玩法机制知识归 `docs/game/gameplay/`(本 skill 只记方法论,不记具体机制);重 app(多子玩法)触发 `sr-od-dev-gameplay-onboarding` skill 做玩法建档(见「建档规模」)。
+玩法机制知识归 `docs/game/gameplay/`(本 skill 只记方法论,不记具体机制);重 app(多子玩法)触发 `sr-od-dev-gameplay-automation` skill 做玩法建档(见「建档规模」)。
 
 ## 信息源:理解画面三层并用
 截图只覆盖「当前帧看得到」的;画面背后的结构信息要另外拉。建档前并读三层:
@@ -39,21 +39,21 @@ description: 当拿到一张待建档的游戏截图时用。
 
 **对齐判据**:doc 的「可交互元素」「状态流转」要与 screen_info `area_list` + 代码**逐条对齐** —— screen_info 有、doc 无 = 建档漏,补上。截图没显示的子态 area,先按 screen_info + 代码记入流转、标「待现场快照」(第 3 步子态处理)。
 
-**版本迁移核对(老 app / 大版本更新后必查)**:信息源三层之一是代码,但**代码可能落后于游戏版本**,故需核对 —— 游戏版本更新会改画面 / UI / 流程(如随便观德丰大押 2.5 移除「百通宝 / 云纹徽」tab → op 点 tab 的代码失效成死代码)。判据:**建档前核对 op 代码假设的画面元素(tab / 按钮 / 流程)在当前游戏版本还在吗** —— 不假设「代码 = 当前游戏」。发现不符:① doc 记版本差异 + 标「代码与当前版本不符」;② 搜官方更新说明确认改动版本;③ app 层若有占位短路(如 `handle_xxx` 直返「未开启」)说明已知情,标「待重写」。教训:德丰大押 op 基于 2.4、2.5 tab 移除,靠用户观察 + 搜官方说明才发现 —— 代码默认有效是建档盲区。
+**版本迁移核对(老 app / 大版本更新后必查)**:信息源三层之一是代码,但**代码可能落后于游戏版本**,故需核对 —— 游戏版本更新会改画面 / UI / 流程(如 tab / 按钮 / 流程移除 → op 点已移除元素的代码失效成死代码)。判据:**建档前核对 op 代码假设的画面元素(tab / 按钮 / 流程)在当前游戏版本还在吗** —— 不假设「代码 = 当前游戏」。发现不符:① doc 记版本差异 + 标「代码与当前版本不符」;② 搜官方更新说明确认改动版本;③ app 层若有占位短路(如 `handle_xxx` 直返「未开启」)说明已知情,标「待重写」。代码默认有效是建档盲区。
 
 ## 截图获取:手动分解动作,不靠跑 app 中途
 跑 app(`run_standalone_app`)/ 跑单个 op(`run_operation`)中途 `capture` **抓不到中间态** —— op 执行快、且会**自动消费中间画面**(如确认弹窗被 op 自己点掉),sleep 完再 capture 只能看到 op 跑完的结果(如落地入口),抓不到中间弹窗(如传送后的「自动进入交互」确认)。判据:**app/op 内部连续动作(transport→move→interact→drag→…→各弹窗)产生的画面,按 op 的 `@operation_node` 节点逻辑手动分解成单步** —— 读 op 代码,每步一个 `click_game` / `key_tap` / `drag` + `capture`,逐步截图(在 op 会自动点的弹窗处**停下、手动不点、先 capture**)。跑 app / run_operation 只用于「验证流程通」或「到位」,不用于抓中间态画面。
 
 ### transport 复现
 - **transport 后角色朝向**:传送后角色朝向**继承传送前**(若传送前已在同一地图)。app 常假设 transport 后固定朝向来 `move_w`+`interact`;手动复现时,先传送去**别的地图**、再传送回目标地图,朝向即重置到默认。
-- **补档先读 app/operation 代码 + move 距离一致**:手动复现前**先读 `src/sr_od/application/<app>/` 的 `@operation_node` 链**,弄清 transport→move→interact 的具体动作(`move_w` `press_time`?`turn_to_angle`?interact 哪个 NPC?),按 app 的距离 / 对象复现 —— 别只靠 vision 推朝向 / 距离。判据:**手动 `key_tap w` 的 `press_time` 要和 app 的 `move_w` 一致**(如 `coffee`/`random_play` POINT_1 是 `turn_to_angle`+`move_w 1s`;`suibian_temple` 无 move 就**不走**,传送点已在交互范围);走多了反而错过交互点(角色过头,提示消失)。
+- **补档先读 app/operation 代码 + move 距离一致**:手动复现前**先读 `src/sr_od/application/<app>/` 的 `@operation_node` 链**,弄清 transport→move→interact 的具体动作(`move_w` `press_time`?`turn_to_angle`?interact 哪个 NPC?),按 app 的距离 / 对象复现 —— 别只靠 vision 推朝向 / 距离。判据:**手动 `key_tap w` 的 `press_time` 要和 app 的 `move_w` 一致**(app 无 move 就**不走**,传送点已在交互范围);走多了反而错过交互点(角色过头,提示消失)。
 - **Transport 失败排查**:`run_operation Transport` 失败(尤其「执行传送」节点卡 OCR 地图、重试到超时),常见根因是**目标传送点未解锁 = 该地图未探索**(新版本玩法 / 新城区需先跑图解锁传送点;其他地图同理)。判据:Transport 打开了地图但选不中目标点 → 先确认目标地图已探索、传送点已解锁,否则换已解锁的 app 建档。
 
 ### 操作时序
 - **操作后等动画再 capture**(否则截过渡帧):底层 `click_game` / `key_tap` / `drag` **无内置等待**(等待在框架 operation round 层 `success_wait`,MCP 不经 round)。操作后画面/角色变化需 sleep 再 `capture`。关键 sleep 点:move 后等角色到位(不等就紧接 interact 会失效);interact(F)长按(`press_time>0`)非短按 tap。**sleep 建议值**:click ~1s / move ~1s / interact 1-2s / esc ~0.5s / drag ~0.5s。
 
 ### 边缘状态态(依赖游戏条件 → 人机协作)
-很多状态态会话内**创造不了** —— 需游戏特定条件(游历到期 / 材料不足 / 持有上限 / 刷新出稀有)。判据:**状态态依赖「资源消耗 / 时间 / 随机」而非「导航可达」 → 标「待条件」**,别硬刷(随机态如稀有掉落刷了空跑;消耗态如材料不足在资源充足时不出现)。处理:① doc 标「待条件」+ 已拍的核心态先归档;② **请用户帮切**(用户能调游戏状态造条件,比智能体盲操作高效);③ 后续会话条件出现时补。教训:随便观 B 类(游历收获 / 饮茶缺料 / 邦巢持有上限)全靠用户帮切 4 画面才补全。
+很多状态态会话内**创造不了** —— 需游戏特定条件(到期 / 材料不足 / 持有上限 / 刷新出稀有)。判据:**状态态依赖「资源消耗 / 时间 / 随机」而非「导航可达」 → 标「待条件」**,别硬刷(随机态如稀有掉落刷了空跑;消耗态如材料不足在资源充足时不出现)。处理:① doc 标「待条件」+ 已拍的核心态先归档;② **请用户帮切**(用户能调游戏状态造条件,比智能体盲操作高效);③ 后续会话条件出现时补。
 
 ## 1. 客观识别:跑 `analyze_screen`
 `analyze_screen(screenshot=<绝对路径 或 .debug/images 图名>)`,取三样:
@@ -68,11 +68,11 @@ description: 当拿到一张待建档的游戏截图时用。
 - 判据:提示指向某类画面 → 问该类的**典型可交互元素 + 状态文本**(而非泛泛「描述画面」);无提示 → 通用问布局 / 可交互元素 / 文字 / 图标 / 当前状态 / 模态性。
 - 明确区分**可交互元素**(按钮 / 输入 / 图标)与**展示信息**。
 
-**vision 状态推理不可信,只信客观描述**(踩坑固化):vision 不懂游戏 —— 它「描述画面有什么」(元素 / 文字 / 标记 / 颜色 / 位置 / 布局)**可信**,但「判断状态 / 作用」(已派遣 / 未派遣、按钮作用、是否可点)**不可信**(会基于看到的文字瞎猜)。prompt 要**客观描述**(「有哪些文字 / 按钮 / 图标?各自位置(x,y)?哪个元素有三角形 / 高亮 / 颜色标记?」),**别问状态推理**(❌「是已派遣还是未派遣?按钮干嘛?」);**状态判断结合代码自己做**(如 `choose_period` 检测「提前收获」=已派遣 / 检测 duration=选时间预览,而非靠 vision 看「剩余时间」猜已派遣 —— 那个时间可能只是选时预览,不是进行中倒计时)。
+**vision 状态推理不可信,只信客观描述**(踩坑固化):vision 不懂游戏 —— 它「描述画面有什么」(元素 / 文字 / 标记 / 颜色 / 位置 / 布局)**可信**,但「判断状态 / 作用」(已派遣 / 未派遣、按钮作用、是否可点)**不可信**(会基于看到的文字瞎猜)。prompt 要**客观描述**(「有哪些文字 / 按钮 / 图标?各自位置(x,y)?哪个元素有三角形 / 高亮 / 颜色标记?」),**别问状态推理**(❌「是已派遣还是未派遣?按钮干嘛?」);**状态判断结合代码自己做**(看 op 代码里的判定 area / 返回标志,如检测「提前收获」按钮 = 已派遣 / 检测 duration = 选时间预览,而非靠 vision 看「剩余时间」猜已派遣 —— 那个时间可能只是选时预览,不是进行中倒计时)。
 
-**可交互对象判据(`>` 名字 `<`)**:星穹铁道 NPC / 交互对象进入可交互范围时,名字左右出现三角形标记(如 `> 狮耶 <`),出现即在交互范围,`interact F` 即可(不需再走)。⚠️ OCR 常只识出名字漏了 `>` `<` 符号,vision 也不懂这约定 → 双双误判「没到,还要走」。判据:**画面出现 NPC 名字 + app 假设该位置可交互 → 直接试 `key_tap f`**,F 实际选中的对象看结果画面(F 提示文本未必是 F 实际交互对象,如 F 提示小贩但实际 interact 了狮耶);vision 提示词要明确「可交互对象名字左右有 `>` `<` 三角形,出现即已可交互,不要再走」。
+**可交互对象判据(`>` 名字 `<`)**:星穹铁道 NPC / 交互对象进入可交互范围时,名字左右出现三角形标记,出现即在交互范围,`interact F` 即可(不需再走)。⚠️ OCR 常只识出名字漏了 `>` `<` 符号,vision 也不懂这约定 → 双双误判「没到,还要走」。判据:**画面出现 NPC 名字 + app 假设该位置可交互 → 直接试 `key_tap f`**,F 实际选中的对象看结果画面(F 提示文本未必是 F 实际交互对象);vision 提示词要明确「可交互对象名字左右有 `>` `<` 三角形,出现即已可交互,不要再走」。
 
-**角色朝向/视角判据(vision 盲区)**:vision 对**朝向 / 视角**推断不可信 —— 不懂第 3 人称追尾语义(本游戏追尾视角下「看到角色背部 = 角色正对前方」,vision 会误判「背对」差点误导走「跨地图朝向重置」弯路)。判据:**朝向以 OCR 交互提示(如「前往 XX」)+ 实际 interact 结果为最终判据**,别轻信 vision 的朝向推断。
+**角色朝向/视角判据(vision 盲区)**:vision 对**朝向 / 视角**推断不可信 —— 不懂第 3 人称追尾语义(本游戏追尾视角下「看到角色背部 = 角色正对前方」,vision 会误判「背对」)。判据:**朝向以 OCR 交互提示(如「前往 XX」)+ 实际 interact 结果为最终判据**,别轻信 vision 的朝向推断。
 
 ## 3. 建档
 先判:**独立画面**还是**已建档画面的子态**(模态/弹窗/状态,如对话框、loading/ready 子态)?
@@ -95,17 +95,17 @@ description: 当拿到一张待建档的游戏截图时用。
 ## 3.5 screen_info 何时建 / 改 + id_mark 怎么定
 
 **何时建 screen_info**(画面建档时按 bot 需要**增量**加 area,不是每屏都建):
-- **检测要精准** → 加 **id_mark area**(画面独有稳定锚点)。框架语义(`screen_area.py` / `screen_match.py`):某画面所有 `id_mark=True` 的 area **全命中 → `is_precise=True`**(精准匹配 + 早停);无 id_mark → 只按命中数模糊 top_n。
+- **检测要精准** → 加 **id_mark area**(画面独有稳定锚点)。框架 screen_info 匹配语义:某画面所有 `id_mark=True` 的 area **全命中 → `is_precise=True`**(精准匹配 + 早停);无 id_mark → 只按命中数模糊 top_n。
 - **要点固定按钮 / 读固定区域 → 加 pc_rect area(固定坐标的单一真相源,通用规范)**。判据:**op 代码里出现硬编码 `Point(x,y)` / `Rect(...)` 去点 / 读某个固定 UI 元素(按钮、卡牌槽、选项卡、确认弹窗按钮)→ 该坐标必须进 screen_info 作 pc_rect area,op 经 `area_center(ctx, '<area_name>')` 读中心**,不能留魔法常量散在代码里。理由:screen_info 是坐标的**单一真相源**(可视化、可校验、跨 op 复用、改一处传导);魔法 `Point` 在代码里不可维护(无源、漂移无人知、多处重复硬编码易打架)。
-  - **检测用 OCR ≠ 坐标可硬编码**:即使**检测**用 `round_by_ocr`(如检测"未达上限"),只要**点击目标不是 OCR 命中的文字本身**(如检测"未达上限"但点的是旁边的"确认"按钮、检测"投资环境"但点的是第 N 张卡的卡底),**点击坐标就要进 screen_info**。只有「`round_by_ocr_and_click` 点的就是 OCR 命中的文字」(命中即给坐标)才不需单独建 area。
+  - **检测用 OCR ≠ 坐标可硬编码**:即使**检测**用 `round_by_ocr`(如检测"未达上限"),只要**点击目标不是 OCR 命中的文字本身**(如检测"未达上限"但点的是旁边的"确认"按钮、检测某对象但点的是第 N 张卡的卡底),**点击坐标就要进 screen_info**。只有「`round_by_ocr_and_click_area` 点的就是 OCR 命中的文字」(命中即给坐标)才不需单独建 area。
   - **area 命名**:用功能名(中文,如 `按钮-确认`、`事件卡-中`),别用坐标(如 `按钮-960x898`)。
 - 增量:bot 用到哪个元素才加哪个 area,别一次堆全。
 
 **id_mark 怎么定**(画面唯一标识,贵精不贵多):
 - 选 **稳定**(每次必现)+ **画面独有**(别的画面不出现)+ **可靠检测**(OCR 高 conf / 模板高匹配)的 area,标 `id_mark=True`。
-- 典型:画面独有按钮文字(如备战「购买经验」)、独有模板图标。
+- 典型:画面独有按钮文字、独有模板图标。
 - 数量:够唯一识别即可(通常 1-2 个),**别把所有 area 都标 id_mark**(要求全中才精准 → 易漏检)。
-- 改 area 一律走 CRUD 工具(`upsert_screen_area`),别手编 yml(见「前置:工具用法」)。
+- 改 area 一律走 CRUD 工具(`upsert_screen_area`),别手编 yml(见「守则」)。
 
 ## 4. 缺口分析
 对照「匹配 area」与「可交互元素 / 识别特征」:
@@ -136,14 +136,14 @@ description: 当拿到一张待建档的游戏截图时用。
 ## 6. 归档代表截图
 onboarding 的画面都要归档一张代表截图(多子态画面每子态一张)到测试仓 `screens/<screen_name>/<state>.webp`,供后续测试 fixture + 文档溯源。
 
-**测试可用性**(归档 webp = mock 测试 fixture,见 [testing/](docs/develop/testing/)):截图要让 mock 测试能稳定用 ——
+**测试可用性**(归档 webp = mock 测试 fixture,见 `docs/develop/testing/`):截图要让 mock 测试能稳定用 ——
 - **稳定态**(非过渡/动画帧):操作后 sleep 等动画完再截(底层 click/key_tap/drag 无内置等待,截过渡帧 → mock 不稳定)。
 - **覆盖该 screen 关键 area**:测试断言依赖的 id_mark / 文字 area 要在帧内 + 命中(截完用 `analyze_screen` 回验目标 area 命中再归档)。
 - **多子态每态一张**:测不同分支(如游历的收获 / 派遣、入口的自动托管中 / 关闭)。
 - **文件名 = 可读 state**:fixture 引用(如 `游历-派遣中.webp`,非截图时间戳)。
-- **写 mock 断言前先读 node 返回类型**(踩坑固化):`round_success` / `round_by_find_area` 命中判 `is_success`;`round_wait` / `round_retry` 判 `status`(匹配词)—— 先读 node 代码确认返回类型再写断言,别照搬别的 app(trigrams_collection 照搬 scratch_card 的 `is_success` 失败,因其主态返 `round_wait`)。详见 [testing/](docs/develop/testing/README.md) 第 3 节。
+- **写 mock 断言前先读 node 返回类型**(踩坑固化):`round_success` / `round_by_find_area` 命中判 `is_success`;`round_wait` / `round_retry` 判 `status`(匹配词)—— 先读 node 代码确认返回类型再写断言,别照搬别的 app(不同 app 主态返不同 `OperationRoundResult` 类型)。详见 `docs/develop/testing/`。
 
-**格式 + 路径**:webp q90(**有损压缩**,但整屏 OCR / 模板匹配实测**识别无损效**;省空间)/ 1080p 原生不缩放(同 screen_info 坐标)/ 文件名用可读 state 名(如 `ready.webp`)/ screen_name 含冒号用下划线(如 `警告_游戏前详阅`)。⚠️ webp 归档版**不能当模板裁剪源**(小区域裁剪放大 artifacts → conf 降),模板裁剪用原 PNG(见第 5 步)。⚠️ **路径是 `sr-od-test/screens/<screen_name>/<state>.webp`**(测试仓**根** `screens/`,**非** `test/screens/`)—— `conftest.load_screen` 读 `Path(__file__).parent.parent / 'screens'` = `sr-od-test/screens/`(`conftest.py` 在 `test/`,parent.parent = `sr-od-test/`)。归档到 `test/screens/` → mock 测试找不到 fixture。
+**格式 + 路径**:webp q90(**有损压缩**,但整屏 OCR / 模板匹配实测**识别无损效**;省空间)/ 1080p 原生不缩放(同 screen_info 坐标)/ 文件名用可读 state 名(如 `ready.webp`)/ screen_name 含冒号用下划线(如 `警告_游戏前详阅`)。⚠️ webp 归档版**不能当模板裁剪源**(小区域裁剪放大 artifacts → conf 降),模板裁剪用原 PNG(见第 5 步)。⚠️ **路径是 `sr-od-test/screens/<screen_name>/<state>.webp`**(测试仓**根** `screens/`,**非** `test/screens/` —— mock 测试从测试仓根 `screens/` 加载 fixture)。归档到 `test/screens/` → mock 测试找不到 fixture。
 
 **doc 不写具体 webp 数**(如「22 张」)—— 建档频繁加截图,数字易过时不一致(README / doc / screen 数处打架)。写「实拍归档(测试仓 `screens/<name>/`)」即可。
 
@@ -157,3 +157,4 @@ onboarding 的画面都要归档一张代表截图(多子态画面每子态一�
 ## 收尾判据
 - 改动经工具(MCP 直调 > 脚本;CRUD > 手编 yml);稳定特征 > 易变值;图形按钮 CV/模板 > OCR。
 - 模板改名 / 加 area 涉及多文件(目录、config、yml、合并缓存)→ 一律经工具或同步合并缓存,别只改一处。
+- 每张建档截图都过了 vision;信息源三层对齐;doc 只写画面事实。

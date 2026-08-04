@@ -1,20 +1,20 @@
 ---
 name: sr-od-dev-deciding-a-fix
-description: Use when a bug or issue is reported and the failure mechanism is known, and you must decide how to fix it—where to intervene, how deep to dig the root cause, temporary workaround vs permanent fix, or choosing among candidate fixes. 当 bug/issue 已报告且故障机制已知，需要决定怎么修（修哪里 / 根因挖多深 / 临时还是永久 / 多方案选哪个）时用。还没定位故障机制时先用 systematic-debugging。
+description: Use when a bug or issue is reported and the failure mechanism is known, and you must decide how to fix it—where to intervene, how deep to dig the root cause, temporary workaround vs permanent fix, or choosing among candidate fixes. 当 bug/issue 已报告且故障机制已知，需要决定怎么修（修哪里 / 根因挖多深 / 临时还是永久 / 多方案选哪个）时用。还没定位故障机制时先用 superpowers:systematic-debugging。
 ---
 
 # Deciding a Fix
 
-## 核心原则
+## 不变量:根因是链,介入点即方案选择
 修复的难点不是"找到 bug"，而是"在因果链的哪一环介入"。**根因是一条链，不是点；选在哪一环介入 = 选方案。** 本 skill 把"决定怎么修"拆成 5 步，每步锚定一个业界方法论，产出一份可被 review 的修复决策。
 
 ## When to use / 不适用
 - 用：bug 已定位失败机制，要在多个修法里选
-- 不用：还没定位失败机制 → `systematic-debugging`；新功能设计 → `brainstorming`
+- 不用：还没定位失败机制 → `superpowers:systematic-debugging`；新功能设计 → `superpowers:brainstorming`
 
-## 流程
+## 决策流程（5 步）
 
-**0. 确认故障机制（入口）** — 能复述"失败怎么发生"？不能 → systematic-debugging 先定位。
+**0. 确认故障机制（入口）** — 能复述"失败怎么发生"？不能 → `superpowers:systematic-debugging` 先定位。
 
 **1. 画因果链** *(RCA / 5 Whys / Fault Tree)* — 症状→直接原因→机制→包级→系统级→上游代码→流程→修复状态。每节点 = 候选介入点。**挖到 actionable 层（你有权且能修的那层），不更深。**
 

@@ -33,7 +33,7 @@ description: 当用户要把已开的 PR 推到「完善可合并」、处理 PR
 - ⚠️ **outside-diff comment(GitHub 平台限制)**:GitHub 不允许在 diff 外的行 post inline review comment,CodeRabbit 把这类 comment 放在 **review body 的「Outside diff range comments」折叠 `<details>`** 里 —— **不在 reviewThreads、不计入 unresolved**,易漏。摸现状时也要展开 review body 折叠区看,逐条处理(走流程 2,但它无法 reply 到行,用 issue comment 回复)。
 - ⚠️ **rate limit(per-developer 配额)**:push 不自动 review 且 issue comment 含「Review limit reached」+「Next review available in <时长>」—— 配额达,这轮**不 review**(只 post warning)。查:`gh pr view <PR> --json comments --jq '.comments[]|select(.body|test("Review limit reached"))'`。等指定时长后 `@coderabbitai review` 重试;频繁触发考虑开 usage-based 或暂停增量 auto-review。**和 auto-pause 区别**:rate limit 是**组织级 per-developer 配额**(等时间恢复);auto-pause 是**频繁 commit 暂停**(`resume` 恢复)。
 
-> ⏰ **时区**:GitHub API 返回的时间是 UTC(`Z` 后缀),显示给用户前转本地(维护者 UTC+8 → +8 小时,如 `03:46Z` → `11:46`),别直接甩 UTC 串让人困惑。
+> ⏰ **时区**:GitHub API 返回的时间是 UTC(`Z` 后缀),显示给用户前转**用户本地时区**(别直接甩 UTC 串让人困惑)。
 
 ### 2. 清 unresolved(逐条,每条最终都要 resolve)
 对每条 thread,**按 superpowers:receiving-code-review 的方法**(verify → 评估 → 决定);本 skill 不重复单条方法论。两条出路,**都回复 + 都 resolve,不留 unresolved**:
