@@ -153,7 +153,10 @@ class CurrencyWarRunLoop(SrOperation):
         # HandleEncounter op + decide_encounter 纯逻辑暂留(有测试),待确认无他用再删。
 
         # 0d. 出战确认弹窗(未达上限)→ HandleDeployNotFull(勾本局不再提示 + 确认,详见 op)。
-        if self.round_by_ocr(screen, '未达上限').is_success:
+        # lcs_percent=0.8:防投资策略屏的策略描述「能量上限」与「未达上限」共享子序列「上限」(LCS 2/4=0.5
+        # =默认阈值)误匹配 → 投资策略屏被本分支吞 → 反复触发 HandleDeployNotFull 卡死(2026-08-05 实跑)。
+        # 真「未达上限」弹窗 4/4 命中不受影响。同 loop 其他分支(0a/0b/0e 均 0.7-0.9)的收紧惯例。
+        if self.round_by_ocr(screen, '未达上限', lcs_percent=0.8).is_success:
             HandleDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 

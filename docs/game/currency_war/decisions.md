@@ -15,6 +15,12 @@
 
 ---
 
+## D-37 (2026-08-05) loop 0d「未达上限」LCS 误匹配「能量上限」→ 收紧 lcs 0.5→0.8 · battle_loop 0d / handle_deploy_not_full
+- **决策**:`battle_loop` branch 0d(未达上限弹窗 dispatch)+ `HandleDeployNotFull` 的检测关键词 `'未达上限'` 收紧 `lcs_percent` 默认 0.5 → 0.8。
+- **为什么**:投资策略屏的策略描述含「能量上限」(如"同于能量上限20%的能量"),与「未达上限」共享子序列「上限」(LCS 2/4 = **0.5 = 默认阈值**)→ branch 0d 误匹配 → 投资策略屏被吞,反复触发 `HandleDeployNotFull`(其点击落在错误坐标,不消 overlay)→ 对局卡死(2026-08-05 实跑,P1 验证时暴露)。真「未达上限」弹窗 4/4 命中,0.8 不影响;「能量上限」2/4=0.5 < 0.8 不再误匹配。同 loop 其他分支(0a/0b/0e)早就在 0.7-0.9,唯独 0d 漏在默认 0.5。
+- **备选**:**区域识别**(给 `currency_war_deploy_not_full` screen_info 加「未达上限」text area,loop 用 `round_by_find_area` 检测 —— 方法论首选,用户立场「round_by_ocr 全屏=偷懒」)—— 留待 deploy 弹窗建档补 text area 后改;本次最小止血用 lcs 收紧(与 loop 既有惯例一致,即解)。
+- **状态**:采用。实机验证:修复后 loop 正确走 0e → `HandleInvestStrategy`(`decide_invest` 选「正能量」)+ 继续 prep(`update_target` 列车同行 + `decide_prep` Buy/Deploy),不再卡 `HandleDeployNotFull`。· `battle_loop.py:155-159` / `handle_deploy_not_full.py:36`。
+
 ## D-36 (2026-08-05) 策略插件 P1 落地(接口 + 接线,零行为变化)· strategy/11 §11.7/§11.12
 - **决策**:D-34 设计的 **P1** 落地 —— 新建 `cw_strategy.py`(`CwStrategy` ABC 全 abstract 钩子 + `StrategySession` + `CurrencyWarMatch`)+ `cw_strategy_manager.py`(`StrategyManager` 发现,仿 `ApplicationFactoryManager` 但省 factory/const 配对)+ `strategies/default_strategy.py`(`DefaultCwStrategy` 薄委托既有 `cw_decisions`/`cw_comps`);`CurrencyWarConfig` +`strategy_id`/`strategy_seed`;`SrContext` +`cw_match`(显式声明 + reload 重置,字符串注解免运行时 import)+ `currency_war_strategy_plugin_dirs`;`battle_loop` 每局建/毁 match + `on_match_start`(_iter==1)/`on_match_end`(桩 `MatchOutcome()`);`shop` 走 `strategy.update_target`+`decide_prep`(删 `BuyShopCards._target_comp` class-attr hack);`handle_invest_*` 走 `decide_invest`。
 - **为什么**:把"散落模块函数 + `_target_comp` class-attr hack"换成"单一 strategy 对象 + session",**不动战术层逻辑**(默认策略薄委托既有函数 = 今天打法)。P1 = 零行为变化,让插件替换口子立即可用(用户/参赛者可写策略);P2 地道化(逻辑迁进方法、删模块函数)后续。
