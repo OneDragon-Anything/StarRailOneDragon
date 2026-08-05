@@ -15,6 +15,12 @@
 
 ---
 
+## D-45 (2026-08-05) ↺ 修正 D-43:bug#1 机制真(before_screenshot 移鼠标→click 判拖拽),关键 click 前 mouse_move 缓解有效(非全删) · currency_war/框架
+- **决策**:修正 D-43 对 bug#1 的过激判断。bug#1(op click 偶发不落地)**机制真**:框架 `before_screenshot` 每轮截图前移光标到角落(截图卫生)→ 紧接 click 光标移动中落下,偶被游戏判拖拽落空(间歇吞过渡按钮/结算翻页)。缓解:关键过渡 click 前 `mouse_move(target)` 再 click(零移动=不被判拖拽)。**不是 D-43 说的「根因纯抢鼠标 + 全删 mouse_move」**。
+- **为什么(用户 2026-08-05 CLAUDE.md 修正)**:D-43 把 bug#1 全归「开发时抢鼠标」并删全部 mouse_move 缓解,过激。真相:① before_screenshot 移鼠标机制真(框架行为,**自动运行也在**,非纯抢鼠标),间歇吞 click;② 多数自动运行 click 正常,只在间歇落空处加 mouse_move,别每 op 铺;③ 手动测不稳定先怀疑**自己在抢鼠标**,别急着归框架 bug。
+- **备选**:① 维持 D-43(全删 mouse_move,推翻:间歇落空处无缓解会吞 click);② 每 op 铺 mouse_move(推翻:多数正常不需,污染)。
+- **状态**:采用。bug#1 缓解策略 = 关键过渡 click 前 mouse_move(按需,非全铺)+ 手动测不稳先怀疑抢鼠标。**D-43「全删」部分推翻**(间歇落空处该保留 mouse_move;此前删的若实跑暴露间歇吞 click 再按需加回)。详见 insights I17(修正 I15)。
+
 ## D-44 (2026-08-05) 简报首领识别链路 —— read_bosses → state.bosses → boss_fit(对称 affix 链路)· start_currency_war_match/cw_observation
 - **决策**:简报屏加读 3 位面 boss 名(`read_bosses`,OCR「区域-首领行」area)→ `ctx.cw_briefing_bosses` → `session.briefing_bosses` → `state.bosses` → `boss_fit(comp, bosses)`。对称 D-43 之前的 affix 链路(read_affixes → state.enemy_affixes → mechanics_fit)。
 - **为什么(用户 2026-08-05 指出)**:简报层 review 时只识别了敌人词缀,漏了首领。简报屏 3 boss 横排卡片(立绘 + 红色阵营标签 + 名字),开局预览 3 boss 是规划投资策略的关键(攻略共识「刷开局看 boss 选投资环境」)。**3 位面是玩法结构,所有难度(A5/A8/A850)固定 3 个 boss,不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
