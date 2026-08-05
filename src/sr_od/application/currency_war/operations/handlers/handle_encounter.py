@@ -35,7 +35,7 @@ class HandleEncounter(SrOperation):
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_ocr(screen, '遭遇其一').is_success:
+        if not self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:  # 0.9 防备战屏「遭遇」误匹配(见 battle_loop 0c)
             return self.round_fail('非遭遇节点屏')
         # 默认选左卡(难度低、稳);TODO 策略化按 comp 选左/右。
         card = HandleEncounter.CARD_LEFT

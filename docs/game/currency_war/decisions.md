@@ -15,6 +15,12 @@
 
 ---
 
+## D-39 (2026-08-05) ↺ 修正 D-35:遭遇节点**有** 3 难度选择 UI → re-activate HandleEncounter dispatch(lcs 0.9)· battle_loop 0c / handle_encounter
+- **决策**:撤销 D-35 的「移除遭遇 dispatch」—— 在 `battle_loop` 0c **重新**派发遭遇节点屏到 `HandleEncounter`,检测关键词 `'遭遇其一'` 用 **lcs_percent=0.9**(非 D-35 时的默认 0.5)。
+- **为什么(D-35 是误判)**:D-35 称「遭遇 round = 普通战斗,无选项选择 UI」并删了 dispatch。**2026-08-05 实跑再证实**:遭遇节点**有** 3 难度选择 UI —— 屏「遭遇节点」+「遭遇其一/其二/其三」(难度递增)+ 奖励(金币/幸运星)+「选择」按钮。loop 删了 dispatch 后到该屏死 retry(iter75+,卡 plane1→plane2 间的遭遇节点)。D-35 删 dispatch 的**真实根因**是旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5)→ 备战屏瞎点 CARD_LEFT 卡死;**正解 = 收紧 lcs(到 0.9),非 removal**。`HandleEncounter` 自身检测本就 0.9(handler 2026-08-04 实测交互:点卡身选中 → 点选择确认),且 D-35 只删了 loop dispatch、handler 一直留着 —— 故 re-activate dispatch 即恢复。
+- **备选**:① 维持 D-35 removal(推翻:遭遇屏实有选择 UI,不处理必卡死);② 给遭遇屏建 screen_info area 用区域识别(方法论首选,留 refine —— 现沿用 handler 既有兜底坐标 CARD_LEFT/SELECT + lcs 0.9 OCR 检测即解)。
+- **状态**:采用。`HandleEncounter` 暂用启发式默认选**左卡 = 遭遇其一 = 最易**(金币×2;低风险,适合未成型 comp);`decide_encounter` 策略化(按 comp 成型度 + 词缀选难度)留 follow-up(handler TODO)。影响 strategy/11 §11.3.4⑤:`decide_encounter` 钩子**不再因「无 UI」dormant**,而是「handler 暂用启发式,OCR 选项 + 钩子接线留 refine」。· `battle_loop.py:146-156` / `handle_encounter.py`。
+
 ## D-38 (2026-08-05) P1.5 观测回路 OCR 组件:结算屏 hp_after 解析 · cw_observation
 - **决策**:P1.5(观测回路,D-36 列为 next)的第一块零件:``cw_observation.parse_settlement_hp``(纯函数)+ ``read_round_outcome``(OCR 全屏 → ``RoundOutcome``)。**组件就位 + 单测,``battle_loop`` 的 ``on_round_end`` 接线留下局**(避免杀当前验证 match;留下局部署)。
 - **结算屏形态(2026-08-05 实跑 OCR 确认)**:战斗后「挑战结束/数据统计/继续挑战」屏,展示「小队生命值<N>」(战后 HP)+ 总伤害 + 连胜。实测 OCR:`['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战',...]`(战前 84 → 战后 71,本战损 13)。

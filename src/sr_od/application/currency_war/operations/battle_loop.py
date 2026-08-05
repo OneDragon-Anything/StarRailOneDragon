@@ -19,6 +19,9 @@ from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
     HandleDeployNotFull,
 )
+from sr_od.application.currency_war.operations.handlers.handle_encounter import (
+    HandleEncounter,
+)
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
 )
@@ -143,14 +146,16 @@ class CurrencyWarRunLoop(SrOperation):
             RunMegastarNode(self.ctx).execute()  # 生命周期 owner:bug#1 缓解 + 验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
 
-        # 0c. (已移除 2026-08-05,D-35)遭遇节点二选一 dispatch。
-        # doc(currency_war_encounter.md)+ 实机 + verifier 全确认:**遭遇 round 是普通战斗**(无选项选择 UI,
-        # 只有难度标签 + 出战),走正常 prep→出战→战斗(branch 1 BattlePrepCycle)。原 HandleEncounter(2选1)
-        # obsolete。且其 `round_by_ocr('遭遇其一')` 默认 lcs 0.5 把**备战屏的「遭遇」标签**误匹配(LCS 2/4=0.5)
-        # → 误派 → 备战屏瞎点 CARD_LEFT → flat loop 卡死(iter63+,node 1-7)。移除整个 dispatch(不再误派)。
-        # 注:不泛化「派发链 fall-through」—— 0e 注释说 invest overlay 叠备战,故意不 fall-through 到 prep
-        # (否则「购买经验」透出误派 BuyShopCards)。encounter 正解是移除 obsolete,非 fall-through。
-        # HandleEncounter op + decide_encounter 纯逻辑暂留(有测试),待确认无他用再删。
+        # 0c. 遭遇节点(3 难度选择:遭遇其一/其二/其三 + 选择)→ HandleEncounter(点左卡=遭遇其一=最易 + 选择)。
+        #     ↺ D-39 修正 D-35:D-35「遭遇=普通战斗无 UI」是误判 —— 实有 3 难度选择 UI 的遭遇节点(2026-08-05
+        #     实跑再证实:屏「遭遇节点」+「遭遇其一/其二/其三」+ 难度/奖励 +「选择」)。D-35 删 dispatch 的真实
+        #     根因 = 旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5);正解是收紧 lcs 非 removal。
+        #     现 lcs 0.9:备战「遭遇」(2/4=0.5<0.9)不误匹配;真「遭遇其一」4/4 命中(HandleEncounter 自身检测亦 0.9)。
+        #     handler 2026-08-04 实测交互:点卡身选中 → 点选择确认(中间勿插空白点击会取消选中)。
+        if self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:
+            self._snap('encounter')
+            HandleEncounter(self.ctx).execute()
+            return self.round_wait(wait=2)
 
         # 0d. 出战确认弹窗(未达上限)→ HandleDeployNotFull(勾本局不再提示 + 确认,详见 op)。
         # lcs_percent=0.8:防投资策略屏的策略描述「能量上限」与「未达上限」共享子序列「上限」(LCS 2/4=0.5

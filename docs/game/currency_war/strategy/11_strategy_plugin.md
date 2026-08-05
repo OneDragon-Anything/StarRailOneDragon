@@ -166,7 +166,7 @@ def decide_encounter(self, options: list[EncounterOption], state: GameState,
 ```
 
 - 默认实现:调既有 `cw_decisions.decide_encounter(options, state, session.target_comp, config, refresh_used)`。
-- ⚠️ **D-35 后此钩子 dormant**:遭遇 round 现为**普通战斗**(无选项选择 UI,只有难度标签 + 出战,`battle_loop.py:124-131` 实证)→ 无 options 可读、无 caller。`decide_encounter` 纯逻辑 + 测试**暂留**(待确认是否还有任何带选项的 encounter-like 节点),`HandleEncounter` 已 dead(待删,见 §11.13)。钩子保留是为「将来若发现带选项 UI 的遭遇节点」留口,**不是在途决策点**(同 ⑧ boss_priority 的「零调用」态)。
+- ⚠️ **D-39 修正 D-35**:遭遇节点**有** 3 难度选择 UI(遭遇其一/其二/其三 + 选择,2026-08-05 实跑再证实),`HandleEncounter` 已 re-activate(`battle_loop` 0c,lcs 0.9 检测)。但 handler 暂用**启发式默认选左卡(遭遇其一=最易)**,`decide_encounter` 钩子 + 选项 OCR(难度/词缀/奖励)接线留 refine(handler TODO)。钩子**不再 dormant**,caller 待接(读选项 → decide_encounter → 选难度)。
 
 **⑥ `decide_megastar` —— 巨星选候选(新钩子,目前 handler 写死左候选)**
 
