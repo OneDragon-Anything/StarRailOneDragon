@@ -52,8 +52,9 @@ class GuideChooseMission(SrOperation):
 
             return self.round_retry(wait=2)
         else:
-            # 先 mouse_move 到传送按钮、稍停再点当前位置 + 等待,避免下一个 op 截图(before_screenshot 移鼠标)
-            # 把这次 click 判成拖拽导致传送没触发(同 TalkInteract 的隐蔽 bug,per-op 补丁)
+            # 先 mouse_move 到传送按钮、稍停再点 + 等待:click 后紧接的鼠标移动(下个 op 的 before_screenshot
+            # 移光标到角落做截图卫生)会被游戏判拖拽 → 传送没触发。mouse_move 让 click 零移动、sleep+wait
+            # 留间隔避开(同 TalkInteract 的隐蔽 bug,per-op 补丁)
             self.ctx.controller.mouse_move(tp_point)
             time.sleep(0.1)
             self.ctx.controller.click(press_time=0.1)
