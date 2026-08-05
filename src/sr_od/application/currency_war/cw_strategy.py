@@ -159,6 +159,8 @@ class StrategySession:
     round_num: int = 1
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
+    # 简报首领(3 位面 boss 名;loop __init__ 从 ctx.cw_briefing_bosses copy;boss_fit 输入)
+    briefing_bosses: list[str] = field(default_factory=list)
 
 
 @dataclass

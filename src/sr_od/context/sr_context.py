@@ -215,6 +215,8 @@ class SrContext(OneDragonContext):
         # 简报词缀(对局开始 debuff/boss词缀,StartCurrencyWarMatch 读 → loop 建 cw_match 时 copy 到 session.briefing_affixes)
         # 临时中转:简报在 StartCurrencyWarMatch(loop 前,cw_match=None),词缀先存此,loop __init__ 取走。
         self.cw_briefing_affixes: list[str] | None = None
+        # 简报首领(3 位面 boss 名,同上中转)→ loop __init__ copy 到 session.briefing_bosses(boss_fit 输入)
+        self.cw_briefing_bosses: list[str] | None = None
 
         # 秘技相关
         self.technique_used: bool = False  # 新一轮战斗前是否已经使用秘技了
@@ -312,6 +314,7 @@ class SrContext(OneDragonContext):
         self.detect_info: DetectInfo = DetectInfo()
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  切实例清对局态(防跨账号/跨局污染)
         self.cw_briefing_affixes = None  # 同清(防跨账号/跨局污染)
+        self.cw_briefing_bosses = None  # 同清
 
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)

@@ -1,0 +1,77 @@
+"""货币战争 简报 op(从入口大 op 拆出,一屏一 op)。
+
+简报屏(对局开始前预览):3 位面 boss + 敌人词缀 + 本场对局首领。本 op 职责:
+① 识别简报屏(id_mark ``标识-本场对局首领``,简报独有 is_precise);
+② 读敌人词缀(``read_affixes``)+ 3 boss 名(``read_bosses``)→ 存 ctx 中转
+   (待 loop 建 cw_match 时 copy 到 session);
+③ 点「下一步」进投资环境。
+
+词缀/boss 链路(下游):``ctx.cw_briefing_affixes``/``bosses`` → ``session.briefing_affixes``/``bosses``
+→ ``state.enemy_affixes``/``bosses`` → ``mechanics_fit``/``boss_fit``
+(详 ``cw_observation.read_affixes``/``read_bosses``)。简报在 loop 前(``cw_match=None``),
+故词缀/boss 先临时中转 ctx,由 ``battle_loop.__init__`` 取走。
+
+入口大 op(``StartCurrencyWarMatch.advance_to_prep``)只做调度:循环检测当前屏 → 调对应独立 op
+(本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
+"""
+import logging
+from typing import ClassVar
+
+from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.cw_observation import read_affixes, read_bosses
+from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
+
+_log = logging.getLogger(__name__)
+
+
+class HandleBriefing(SrOperation):
+    """简报屏:识别简报 + 读敌人词缀/3 boss + 点下一步进投资环境(一屏一 op)。"""
+
+    # screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领 + 按钮-下一步
+    # + 区域-词缀行 + 区域-首领行(词缀/boss 读取区)。
+    SCREEN_NAME: ClassVar[str] = '货币战争-简报'
+
+    def __init__(self, ctx: SrContext):
+        SrOperation.__init__(self, ctx, op_name='货币战争-简报')
+
+    @operation_node(name='简报', is_start_node=True, node_max_retry_times=10)
+    def handle(self) -> OperationRoundResult:
+        screen = self.last_screenshot
+        # ① 识别简报:id_mark「标识-本场对局首领」(简报独有,is_precise)。非简报 → fail。
+        _hit = self.round_by_find_area(
+            screen, HandleBriefing.SCREEN_NAME, '标识-本场对局首领', crop_first=False,
+        ).is_success
+        _log.info('[cw-briefing] enter round_by_find_area(标识-本场对局首领)=%s', _hit)
+        if not _hit:
+            return self.round_fail('非简报屏')
+
+        # ② 读敌人词缀(A8 最高 4)+ 3 位面 boss 名 → ctx 中转(下游 mechanics_fit/boss_fit 输入)。
+        # 幂等:retry 重跑同屏值不变,已存不重读(避免重复 log)。
+        if not self.ctx.cw_briefing_affixes:
+            _affixes = read_affixes(self.ctx, screen)
+            if _affixes:
+                self.ctx.cw_briefing_affixes = _affixes
+                _log.info('简报词缀读得: %s', _affixes)
+        if not self.ctx.cw_briefing_bosses:
+            _bosses = read_bosses(self.ctx, screen)
+            if _bosses:
+                self.ctx.cw_briefing_bosses = _bosses
+                _log.info('简报首领读得: %s', _bosses)
+
+        # ③ 点「下一步」离开简报(下一画面由上层 advance 调度;新局经位面过场叠层到投资环境)。
+        _click = self.round_by_find_and_click_area(
+            screen, HandleBriefing.SCREEN_NAME, '按钮-下一步',
+            success_wait=2, crop_first=False,
+        )
+        if not _click.is_success:
+            return self.round_retry('未找到「下一步」按钮')
+        # ④ 自检状态转移:op 结束以「真的离开简报」为准,非「点了」(点击可能未生效/未输入游戏)。
+        # 仍在简报(标识仍命中)= 未转移 → round_retry(重跑本节点:再识别+重点+再验);已离开 → success。
+        _screen2 = self.screenshot()
+        if self.round_by_find_area(
+                _screen2, HandleBriefing.SCREEN_NAME, '标识-本场对局首领', crop_first=False).is_success:
+            return self.round_retry('点「下一步」后仍在简报屏(点击未生效),重点')
+        _log.info('[cw-briefing] 已离开简报')
+        return self.round_success('已离开简报')

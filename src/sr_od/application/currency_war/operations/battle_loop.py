@@ -89,6 +89,10 @@ class CurrencyWarRunLoop(SrOperation):
         if self.ctx.cw_briefing_affixes:
             _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
             self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
+        # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
+        if self.ctx.cw_briefing_bosses:
+            _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
+            self.ctx.cw_briefing_bosses = None  # 取走清空(防跨局复用)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。

@@ -20,9 +20,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 200
-  - 515
+  - 800
   - 1720
-  - 575
+  - 850
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''

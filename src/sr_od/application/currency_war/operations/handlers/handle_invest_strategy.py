@@ -35,10 +35,11 @@ class HandleInvestStrategy(SrOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
-    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y(task#20);常量=screen_info 缺失兜底。
-    # 实测(2026-08-04):卡名 y≈474 **不选中**(bot 点名 540+ 次从没选中 → 确认灰 → 卡死 18min);
-    # **描述区 y≈545 才选中**(卡名下方)。同 invest_env(点名字不选中、点描述区才选中)。
-    CARD_CLICK_Y: ClassVar[int] = 545   # 兜底;首选 area_center('区域-卡牌描述行')
+    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y(实际=卡底选中区);常量=兜底。
+    # V4.4 实测(2026-08-05):点卡名(y474)/描述区(y545)**开角色详情**(角色类卡如双龙会,卡身=立绘),
+    # 不选中 → 投资策略屏不消 → loop 反复卡死。**卡底 y≈820(刷新按钮上方)才选中**(高亮+确认亮)。
+    # 旧 doc(2026-08-04「描述区 545 选中」)已过时;screen_info「区域-卡牌描述行」pc_rect 已改卡底。
+    CARD_CLICK_Y: ClassVar[int] = 820   # 兜底(卡底选中);首选 area_center('区域-卡牌描述行')
     # 卡名行 center-y 过滤带(标题 y≈98 / 描述 y≈520+ / 刷新次数 y≈841 / 确认 y≈983)
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505

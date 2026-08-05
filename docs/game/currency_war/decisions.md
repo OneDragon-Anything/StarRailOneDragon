@@ -15,6 +15,12 @@
 
 ---
 
+## D-44 (2026-08-05) 简报首领识别链路 —— read_bosses → state.bosses → boss_fit(对称 affix 链路)· start_currency_war_match/cw_observation
+- **决策**:简报屏加读 3 位面 boss 名(`read_bosses`,OCR「区域-首领行」area)→ `ctx.cw_briefing_bosses` → `session.briefing_bosses` → `state.bosses` → `boss_fit(comp, bosses)`。对称 D-43 之前的 affix 链路(read_affixes → state.enemy_affixes → mechanics_fit)。
+- **为什么(用户 2026-08-05 指出)**:简报层 review 时只识别了敌人词缀,漏了首领。简报屏 3 boss 横排卡片(立绘 + 红色阵营标签 + 名字),开局预览 3 boss 是规划投资策略的关键(攻略共识「刷开局看 boss 选投资环境」)。**3 位面是玩法结构,所有难度(A5/A8/A850)固定 3 个 boss,不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
+- **备选**:① 连阵营标签一起 OCR(推翻:红色背景白字 OCR 干扰大,阵营价值低于名字;先采名字,阵营待视觉核实后再定);② 采 boss 机制/克制(推翻:简报屏不显示 boss 机制,要查图鉴,属数据层后续浏览器补,同 competitors.md 待确定);③ 只存 boss 数量不存名字(推翻:`boss_fit` 用名字匹配 `comp.boss_weakness`,要名字非数量)。
+- **状态**:采用。识别链路通(`read_bosses` → ctx → session → `state.bosses` → `boss_fit`)。**数据层待补**:`comp.boss_weakness` 当前多为空 → `boss_fit` 暂中性 0.5;boss 机制 + 哪些 comp 怕哪个 boss 待图鉴采集(同 competitors.md,后续浏览器/实玩)。测试 `test_read_bosses_briefing`(3 boss)+ entry_flow a8 assert 3 boss,绿。· docs/game/screens/currency_war_briefing.md
+
 ## D-43 (2026-08-05) ↺ 推翻 bug#1:根因是开发时用户抢鼠标,非框架 bug → 删全部 active_window/mouse_move 缓解 · currency_war 全域
 - **决策**:撤销 bug#1 的全部缓解代码 —— 删 currency_war 10 文件的 `active_window()` + `mouse_move()` + 配套 `time.sleep(0.3)`(mouse_move→click 之间)+ bug#1 注释;删 memory `before-screenshot-moves-mouse-breaks-clicks`。
 - **为什么(用户 2026-08-05 澄清)**:bug#1(op `controller.click` 偶发不落地,手动 click_game 同坐标有效)的根因是**开发/调试时用户手动抢鼠标**干扰,非框架自动化运行问题。实际 bot 自动运行时无人抢鼠标,click 正常落地。之前三次根因判断全是误判 —— I11(失焦)/续7(server 长跑退化)/续11(pre_delay 间隙抢焦)/memory(before_screenshot 移鼠标判拖拽)都把「用户抢鼠标」的人为干扰误当框架 bug,铺了 10 文件过度防御(active_window/mouse_move 散布),污染代码且不可维护。

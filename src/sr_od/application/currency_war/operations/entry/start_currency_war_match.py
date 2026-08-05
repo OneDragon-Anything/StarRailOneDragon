@@ -5,7 +5,9 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.cw_observation import read_affixes
+from sr_od.application.currency_war.operations.handlers.handle_briefing import (
+    HandleBriefing,
+)
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
 )
@@ -101,16 +103,13 @@ class StartCurrencyWarMatch(SrOperation):
                 screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
-        if self.round_by_find_and_click_area(
-                screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '按钮-下一步',
-                success_wait=2, crop_first=False).is_success:
-            # 简报词缀(debuff/boss 词缀)→ 读得存 ctx,待 loop 建 cw_match 时 copy 到 session
-            # (mechanics_fit 输入;简报在 loop 前 cw_match=None,故临时中转 ctx.cw_briefing_affixes)
-            _affixes = read_affixes(self.ctx, screen)
-            if _affixes:
-                self.ctx.cw_briefing_affixes = _affixes
-                _log.info('简报词缀读得: %s', _affixes)
-            return self.round_wait(wait=1)
+        # 简报屏 → HandleBriefing 独立 op(识别简报 id_mark + 读词缀/boss + 点下一步进投资环境)。
+        # 入口大 op 只调度(一屏一 op);词缀/boss 链路在 HandleBriefing 内。
+        if self.round_by_find_area(
+                screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
+                crop_first=False).is_success:
+            HandleBriefing(self.ctx).execute()
+            return self.round_wait(wait=2)
         # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
         if self.round_by_ocr_and_click(screen, '继续进度', success_wait=2).is_success:
             return self.round_wait(wait=1)

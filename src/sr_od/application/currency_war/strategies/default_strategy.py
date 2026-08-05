@@ -74,6 +74,10 @@ class DefaultCwStrategy(CwStrategy):
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:
             state.enemy_affixes = list(session.briefing_affixes)
+        # 简报首领注入:3 位面 boss 名 → state.bosses → ScoreContext.bosses → comp_score 的 boss_fit。
+        # 注:当前 comp.boss_weakness 多为空(数据待采,同 competitors.md),boss_fit 暂中性;数据补上即生效。
+        if session.briefing_bosses:
+            state.bosses = list(session.briefing_bosses)
         score_ctx = cw_comps.make_score_context(state)
         if session.target_comp is None:
             cands = cw_comps.select_comp(state, score_ctx, config)
