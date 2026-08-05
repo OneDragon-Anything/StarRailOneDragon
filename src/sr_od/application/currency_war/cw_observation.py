@@ -58,6 +58,9 @@ HP_MIN, HP_MAX = 0, 200
 LEVEL_MIN, LEVEL_MAX = 1, 10
 COL_TOLERANCE: int = 100                   # 文本 x 分配到牌位的容差
 
+# 简报屏(对局开始,词缀读取;非备战)
+BRIEFING_SCREEN: str = '货币战争-简报'
+
 
 def _area_rect(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Rect | None:
     """从 screen_info 取 area 的 pc_rect(Rect);screen/area 缺失 → None。
@@ -145,6 +148,29 @@ def read_hp(ctx: SrContext, screen: MatLike) -> int:
     if v is None or not (HP_MIN <= v <= HP_MAX):
         return 100
     return v
+
+
+# ===== 简报观测(对局开始;affixes → state.enemy_affixes → mechanics_fit)=====
+def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
+    """简报词缀行 → 敌人词缀 OCR 原名列表(每局随机,A8 最高 4 个)。
+
+    读简报「区域-词缀行」area OCR → 词缀文字(滤数字/符号/短噪声)。下游
+    ``AFFIX_MECHANIC_MAP``(cw_comps)映射机制 tag;未知词缀透传(mechanics_fit 中性)。
+    读不到 / area 缺 → [](不覆盖 state.enemy_affixes)。
+
+    OCR 名 vs competitors 数据名可能差(如 OCR「后台熄火」= competitors「前后台熄火」),
+    透传原名,匹配在 AFFIX_MECHANIC_MAP(待实机校准补全,见 competitors.md 待确定)。
+    """
+    rect = _area_rect(ctx, '区域-词缀行', BRIEFING_SCREEN)
+    if rect is None:
+        return []
+    affixes: list[str] = []
+    for r in _ocr(ctx, screen, rect):
+        name = r.data.strip()
+        # 词缀名:中文为主,2-7 字(第二位面强化6/前后台熄火5/火之熄火4/同步行动4);滤数字/符号/短噪声
+        if 2 <= len(name) <= 7 and re.search(r'[一-鿿]', name) and not re.search(r'\d', name):
+            affixes.append(name)
+    return affixes
 
 
 # ===== 结算屏观测(P1.5 观测回路;on_round_end 输入)=====

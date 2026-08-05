@@ -70,6 +70,10 @@ class DefaultCwStrategy(CwStrategy):
     def update_target(self, state: GameState, session: StrategySession, config) -> None:
         """战略层:首轮 ``select_comp``;其后 ``maybe_pivot``,无 pivot 保持(等价现 shop.py 逻辑,
         但状态进 ``session.target_comp``,非 class-attr)。"""
+        # 简报词缀注入:read_game_state 不读简报(已过),从 session.briefing_affixes 设 state.enemy_affixes,
+        # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
+        if session.briefing_affixes:
+            state.enemy_affixes = list(session.briefing_affixes)
         score_ctx = cw_comps.make_score_context(state)
         if session.target_comp is None:
             cands = cw_comps.select_comp(state, score_ctx, config)

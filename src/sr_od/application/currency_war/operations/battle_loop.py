@@ -85,6 +85,10 @@ class CurrencyWarRunLoop(SrOperation):
         if self._cw_config.strategy_seed is not None:
             _session.rng = random.Random(self._cw_config.strategy_seed)
         self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
+        # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
+        if self.ctx.cw_briefing_affixes:
+            _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
+            self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。

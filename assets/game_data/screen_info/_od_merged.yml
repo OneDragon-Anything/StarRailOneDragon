@@ -5646,6 +5646,20 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+  - area_name: 区域-词缀行
+    id_mark: false
+    pc_rect:
+    - 260
+    - 950
+    - 970
+    - 1005
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: currency_war_mode_select
   screen_name: 货币战争-模式选择
   pc_alt: false

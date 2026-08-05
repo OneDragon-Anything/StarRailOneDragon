@@ -157,6 +157,8 @@ class StrategySession:
     # 进度镜像(跨步看趋势用;每回合框架刷新;P1 框架未填,策略暂勿依赖)
     plane: int = 1
     round_num: int = 1
+    # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
+    briefing_affixes: list[str] = field(default_factory=list)
 
 
 @dataclass

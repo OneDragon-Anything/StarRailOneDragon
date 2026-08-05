@@ -212,6 +212,9 @@ class SrContext(OneDragonContext):
         # 货币战争对局运行时态(策略插件,D-34):CurrencyWarRunLoop.__init__ 每局创建 CurrencyWarMatch
         # 挂此,局终置 None 防跨局污染。None = 不在对局中。reload_instance_config 也重置(同 pos_info 模式)。
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  字符串注解免运行时 import cw_strategy
+        # 简报词缀(对局开始 debuff/boss词缀,StartCurrencyWarMatch 读 → loop 建 cw_match 时 copy 到 session.briefing_affixes)
+        # 临时中转:简报在 StartCurrencyWarMatch(loop 前,cw_match=None),词缀先存此,loop __init__ 取走。
+        self.cw_briefing_affixes: list[str] | None = None
 
         # 秘技相关
         self.technique_used: bool = False  # 新一轮战斗前是否已经使用秘技了
@@ -308,6 +311,7 @@ class SrContext(OneDragonContext):
         self.sim_uni_info = SimUniInfo()
         self.detect_info: DetectInfo = DetectInfo()
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  切实例清对局态(防跨账号/跨局污染)
+        self.cw_briefing_affixes = None  # 同清(防跨账号/跨局污染)
 
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)
