@@ -475,18 +475,34 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
 
-    转型信号(比较型,03 正确性-4):
-    1. 更优 comp 涌现:存在 B 使 comp_score(B) 持续 > target + 阈值(本回合单次比较;跨回合连续性待接)。
-    2. ceiling 不可达:target.typical_form_round > 剩余轮次估算。
-    3. 保命转型:hp < 30 → 切成型最快的 comp(低 typical_form_round)。
+    转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**(D-40):
+    3. **保命转型(最优先)**:hp < 0.75×effective_hp_threshold → 切最快成型的 easy comp
+       (typical_form_round 最小,**稳定不 churn**)。hp 危险时信号 1/2 不参与(防振荡死亡螺旋)。
+    1. 更优 comp 涌现:存在 B 使 comp_score(B) > target + PIVOT_SCORE_GAP(本回合单次比较)。
+    2. ceiling 不可达:target.typical_form_round > 剩余轮次估算(已成型豁免)。
 
-    ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测。
+    ⚠️ D-40:2026-08-05 实跑,低 HP 时信号 1 先触发选 select_comp best(随 board/shop 每轮变)→ target
+    振荡 churn(列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp → 死亡螺旋。改:信号 3 提前 +
+    hp 危险时独占(返回稳定最快 easy,不让 1/2 churn)。
+    ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(占位待接)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
         return None
     best = candidates[0]
+    # 信号 3(保命转型)优先于 1/2:hp 危险(< 0.75×effective_hp_threshold;D-18/D-32)→ 切最快成型的
+    # easy comp(稳定:typical_form_round 固定 → 每轮同一 comp,不 churn)。**必须先于信号 1**(D-40):
+    # 2026-08-05 实跑,低 HP 时信号 1(更优涌现)先触发 → 选 select_comp best(随 board/shop 每轮变 →
+    # target 振荡 churn:列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
+    # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
+    _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
+    if state.hp < _pivot_hp:
+        easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
+        fastest = min(easy, key=lambda c: c.typical_form_round or 99)
+        if target is None or fastest.name != target.name:
+            return fastest
+        return None   # 已在最快 easy comp → 保持(不让信号 1/2 churn 切走)
     # 信号 1:更优涌现
     if target is None or best.name != target.name:
         target_score = comp_score(target, state, ctx) if target is not None else 0.0
@@ -501,13 +517,6 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
             return min(easy, key=lambda c: c.typical_form_round or 99)
-    # 信号 3:保命转型(hp < 0.75×effective_hp_threshold;D-18 unification + D-32 difficulty 派生)
-    _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
-    if state.hp < _pivot_hp:
-        easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
-        fastest = min(easy, key=lambda c: c.typical_form_round or 99)
-        if target is None or fastest.name != target.name:
-            return fastest
     return None
 
 

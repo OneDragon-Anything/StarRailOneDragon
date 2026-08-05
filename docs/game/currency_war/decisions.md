@@ -15,6 +15,12 @@
 
 ---
 
+## D-40 (2026-08-05) maybe_pivot 信号3(保命)优先于 1/2 —— 防低 HP target 振荡 churn · cw_comps
+- **决策**:`maybe_pivot` 把**信号3(保命转型)提到信号1/2 之前**;hp 危险(< 0.75×effective_hp_threshold)时**独占** —— 返回最快成型的 easy comp(typical_form_round 最小,稳定不 churn),信号1/2 不参与。
+- **为什么**:2026-08-05 实跑,P1 验证 match 在 plane1 末期 HP 低时,**target 振荡 churn**:列车同行→巡击青雀→DOT队→昼神阿雅(几轮内 4 次换)→ board 跟着 churn → 永不深堆成型 → HP 耗尽死亡螺旋。根因:低 HP 时**信号1(更优涌现)先于信号3 触发** —— 信号1 选 select_comp 的 best(随 board/shop 每轮变 → 振荡)+ 会选到**高难度 comp(昼神阿雅 hard)**;信号3(选最快 easy,稳定)被抢占。保命语义下,该切**稳定的最快成型 comp**,不该每轮追 volatile best。
+- **备选**:① 信号1 加 hysteresis(要求新 comp 连续 N 轮更优才切)—— 推翻:保命时根本不该追更优,该直接独占信号3;② 增大 PIVOT_SCORE_GAP —— 推翻:治标,board 波动大时仍会振;③ 信号3 仍放后面但加「hp 危险时跳过信号1」守卫 —— 等价于提前,不如直接重排清晰。
+- **状态**:采用。30 既有 cw_comps 测试全绿(5 maybe_pivot 测试兼容:低 hp 测试 hp=20 仍信号3,健康测试 hp=100 跳过信号3 走 1/2)+ 新测试 `test_maybe_pivot_low_hp_signal3_preempts_signal1` 锁定(低 HP 即使更优 comp 涌现,也只切最快 easy,非高难度 comp)。next 实跑验证:下局低 HP 时 target 应稳定(不再 churn)。· `cw_comps.py:maybe_pivot` / strategy/03 信号3。
+
 ## D-39 (2026-08-05) ↺ 修正 D-35:遭遇节点**有** 3 难度选择 UI → re-activate HandleEncounter dispatch(lcs 0.9)· battle_loop 0c / handle_encounter
 - **决策**:撤销 D-35 的「移除遭遇 dispatch」—— 在 `battle_loop` 0c **重新**派发遭遇节点屏到 `HandleEncounter`,检测关键词 `'遭遇其一'` 用 **lcs_percent=0.9**(非 D-35 时的默认 0.5)。
 - **为什么(D-35 是误判)**:D-35 称「遭遇 round = 普通战斗,无选项选择 UI」并删了 dispatch。**2026-08-05 实跑再证实**:遭遇节点**有** 3 难度选择 UI —— 屏「遭遇节点」+「遭遇其一/其二/其三」(难度递增)+ 奖励(金币/幸运星)+「选择」按钮。loop 删了 dispatch 后到该屏死 retry(iter75+,卡 plane1→plane2 间的遭遇节点)。D-35 删 dispatch 的**真实根因**是旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5)→ 备战屏瞎点 CARD_LEFT 卡死;**正解 = 收紧 lcs(到 0.9),非 removal**。`HandleEncounter` 自身检测本就 0.9(handler 2026-08-04 实测交互:点卡身选中 → 点选择确认),且 D-35 只删了 loop dispatch、handler 一直留着 —— 故 re-activate dispatch 即恢复。
