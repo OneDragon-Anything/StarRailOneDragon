@@ -28,6 +28,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
 from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_state import GameState
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -75,7 +76,16 @@ class HandleInvestStrategy(SrOperation):
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
-        pick = decide_event(names, config, types.SimpleNamespace(board={})) if names else None
+        # D-34:走策略 decide_invest(default 委托 decide_event,行为等价)。投资策略 overlay 叠备战时 board
+        # 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
+        match = self.ctx.cw_match
+        if names:
+            if match is not None:
+                pick = match.strategy.decide_invest('strategy', names, GameState(), match.session, config)
+            else:
+                pick = decide_event(names, config, types.SimpleNamespace(board={}))  # 防御:无 match(局外独立跑)
+        else:
+            pick = None
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x, choose_y = opts[pick.option_idx]
             reason = pick.reason

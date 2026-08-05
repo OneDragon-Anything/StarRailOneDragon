@@ -1,39 +1,69 @@
 import time
+from functools import cached_property
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional
 
-from typing import Optional, List
-
+from one_dragon.base.operation.application.plugin_info import PluginSource
 from one_dragon.base.operation.one_dragon_context import OneDragonContext
 from one_dragon.utils import i18_utils
 from sr_od.application.assignments.assignments_run_record import AssignmentsRunRecord
-from sr_od.application.buy_xianzhou_parcel.buy_xianzhou_parcel_run_record import BuyXianZhouParcelRunRecord
-from sr_od.application.email.email_run_record import EmailRunRecord
-from sr_od.application.daily_training.daily_training_run_record import DailyTrainingRunRecord
+from sr_od.application.buy_xianzhou_parcel.buy_xianzhou_parcel_run_record import (
+    BuyXianZhouParcelRunRecord,
+)
+from sr_od.application.daily_training.daily_training_run_record import (
+    DailyTrainingRunRecord,
+)
 from sr_od.application.echo_of_war.echo_of_war_config import EchoOfWarConfig
 from sr_od.application.echo_of_war.echo_of_war_run_record import EchoOfWarRunRecord
-from sr_od.application.nameless_honor.nameless_honor_run_record import NamelessHonorRunRecord
+from sr_od.application.email.email_run_record import EmailRunRecord
+from sr_od.application.memory_crystal_shard.memory_crystal_shard_run_record import (
+    MemoryCrystalShardRunRecord,
+)
+from sr_od.application.nameless_honor.nameless_honor_run_record import (
+    NamelessHonorRunRecord,
+)
 from sr_od.application.relic_salvage.relic_salvage_config import RelicSalvageConfig
-from sr_od.application.relic_salvage.relic_salvage_run_record import RelicSalvageRunRecord
-from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig, SimUniChallengeConfigData
+from sr_od.application.relic_salvage.relic_salvage_run_record import (
+    RelicSalvageRunRecord,
+)
+from sr_od.application.sim_universe.sim_uni_challenge_config import (
+    SimUniChallengeConfig,
+    SimUniChallengeConfigData,
+)
 from sr_od.application.sim_universe.sim_uni_config import SimUniConfig
 from sr_od.application.sim_universe.sim_uni_route_data import SimUniRouteData
 from sr_od.application.sim_universe.sim_uni_run_record import SimUniRunRecord
-from sr_od.application.support_character.support_character_run_record import SupportCharacterRunRecord
-from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerConfig
-from sr_od.application.trailblaze_power.trailblaze_power_run_record import TrailblazePowerRunRecord
+from sr_od.application.support_character.support_character_run_record import (
+    SupportCharacterRunRecord,
+)
+from sr_od.application.trailblaze_power.trailblaze_power_config import (
+    TrailblazePowerConfig,
+)
+from sr_od.application.trailblaze_power.trailblaze_power_run_record import (
+    TrailblazePowerRunRecord,
+)
 from sr_od.application.trick_snack.trick_snack_config import TrickSnackConfig
 from sr_od.application.trick_snack.trick_snack_record import TrickSnackRunRecord
-from sr_od.application.memory_crystal_shard.memory_crystal_shard_run_record import MemoryCrystalShardRunRecord
 from sr_od.application.world_patrol.world_patrol_config import WorldPatrolConfig
 from sr_od.application.world_patrol.world_patrol_route_data import WorldPatrolRouteData
 from sr_od.application.world_patrol.world_patrol_run_record import WorldPatrolRunRecord
-from sr_od.config.character_const import Character, TECHNIQUE_ATTACK, TECHNIQUE_BUFF, TECHNIQUE_BUFF_ATTACK, FEIXIAO, \
-    TECHNIQUE_BUFF_ATTACK_DISAPPEAR
+from sr_od.config.character_const import (
+    FEIXIAO,
+    TECHNIQUE_ATTACK,
+    TECHNIQUE_BUFF,
+    TECHNIQUE_BUFF_ATTACK,
+    TECHNIQUE_BUFF_ATTACK_DISAPPEAR,
+    Character,
+)
 from sr_od.context.context_pos_info import ContextPosInfo
 from sr_od.context.preheat_context import SrPreheatContext
 from sr_od.context.sr_pc_controller import SrPcController
 from sr_od.interastral_peace_guide.guide_data import SrGuideData
 from sr_od.screen_state.yolo_screen_detector import YoloScreenDetector
 from sr_od.sr_map.sr_map_data import SrMapData
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 
 
 class TeamInfo:
@@ -179,6 +209,10 @@ class SrContext(OneDragonContext):
         self.sim_uni_info = SimUniInfo()
         self.detect_info: DetectInfo = DetectInfo()
 
+        # 货币战争对局运行时态(策略插件,D-34):CurrencyWarRunLoop.__init__ 每局创建 CurrencyWarMatch
+        # 挂此,局终置 None 防跨局污染。None = 不在对局中。reload_instance_config 也重置(同 pos_info 模式)。
+        self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  字符串注解免运行时 import cw_strategy
+
         # 秘技相关
         self.technique_used: bool = False  # 新一轮战斗前是否已经使用秘技了
         self.last_use_tech_time: float = 0  # 上一次使用秘技的时间
@@ -213,6 +247,28 @@ class SrContext(OneDragonContext):
 
         from one_dragon.base.config.notify_config import NotifyConfig
         self.notify_config = NotifyConfig(self.current_instance_idx, self.run_context.notify_app_map)
+
+    @cached_property
+    def currency_war_strategy_plugin_dirs(self) -> list[tuple[Path, PluginSource]]:
+        """货币战争策略插件目录(BUILTIN 内置 + THIRD_PARTY 参赛;D-34/§11.5)。
+
+        区别 ``application_plugin_dirs``:策略扫 ``currency_war/strategies`` + ``plugins/currency_war_strategies``,
+        扫描规则也不同(无 ``*_factory`` 后缀,见 ``StrategyManager``)。仅借 ``(dir, PluginSource)`` 元组 +
+        ``is_dir()`` 守卫(目录不存在返空)的形式。来源 SR 业务(放 SrContext 不污染公共框架)。
+        """
+        from one_dragon.utils import file_utils
+        dirs: list[tuple[Path, PluginSource]] = []
+        # BUILTIN: sr_od/application/currency_war/strategies(sr_context.py 在 sr_od/context/)
+        builtin = Path(__file__).parent.parent / 'application' / 'currency_war' / 'strategies'
+        if builtin.is_dir():
+            dirs.append((builtin, PluginSource.BUILTIN))
+        # THIRD_PARTY: <project_root>/plugins/currency_war_strategies(参赛者放子目录)
+        src_dir = file_utils.find_src_dir(__file__)
+        if src_dir is not None:
+            third = src_dir.parent / 'plugins' / 'currency_war_strategies'
+            if third.is_dir():
+                dirs.append((third, PluginSource.THIRD_PARTY))
+        return dirs
 
     def init_by_config(self) -> None:
         """
@@ -251,6 +307,7 @@ class SrContext(OneDragonContext):
         self.team_info: TeamInfo = TeamInfo()
         self.sim_uni_info = SimUniInfo()
         self.detect_info: DetectInfo = DetectInfo()
+        self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  切实例清对局态(防跨账号/跨局污染)
 
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)

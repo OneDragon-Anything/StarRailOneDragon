@@ -1,3 +1,4 @@
+import random
 import time
 from typing import ClassVar
 
@@ -7,12 +8,16 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
-from sr_od.application.currency_war.cw_observation import reset_phase_round_cache
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_observation import (
+    read_game_state,
+    reset_phase_round_cache,
+)
+from sr_od.application.currency_war.cw_state import MatchOutcome
+from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
     HandleDeployNotFull,
-)
-from sr_od.application.currency_war.operations.handlers.handle_encounter import (
-    HandleEncounter,
 )
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
@@ -20,17 +25,16 @@ from sr_od.application.currency_war.operations.handlers.handle_invest_env import
 from sr_od.application.currency_war.operations.handlers.handle_invest_strategy import (
     HandleInvestStrategy,
 )
-from sr_od.application.currency_war.operations.handlers.handle_megastar import (
-    HandleMegastar,
-)
 from sr_od.application.currency_war.operations.handlers.handle_select_partner import (
     HandleSelectPartner,
 )
-from sr_od.application.currency_war.operations.handlers.handle_supply import (
-    HandleSupply,
-)
 from sr_od.application.currency_war.operations.prep.battle_prep import BattlePrepCycle
-from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
+from sr_od.application.currency_war.operations.run_nodes.run_megastar_node import (
+    RunMegastarNode,
+)
+from sr_od.application.currency_war.operations.run_nodes.run_supply_node import (
+    RunSupplyNode,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -66,10 +70,19 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter: int = 0
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 待接)
         cw_telemetry.start_run()
-        # 每局重置 A2 稳定 target(防上局 _target_comp 跨局污染;task#16)
-        BuyShopCards._target_comp = None
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
+        # 策略插件机制(D-34/§11.7):每局新建 CurrencyWarMatch(strategy+session)挂 ctx。__init__ 时
+        # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
+        # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 session.target_comp
+        # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
+        self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
+        _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
+            self._cw_config.strategy_id)
+        _session = _strategy.create_session(self._cw_config)
+        if self._cw_config.strategy_seed is not None:
+            _session.rng = random.Random(self._cw_config.strategy_seed)
+        self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
@@ -100,6 +113,12 @@ class CurrencyWarRunLoop(SrOperation):
         self.ctx.controller.active_window()
         screen = self.last_screenshot
 
+        # on_match_start(每局首次截图后调一次;D-34/§11.7):P1 默认 no-op,自定义策略可读 state 初始化。
+        # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
+        if self._iter == 1 and self.ctx.cw_match is not None:
+            self.ctx.cw_match.strategy.on_match_start(
+                read_game_state(self.ctx, screen), self.ctx.cw_match.session, self._cw_config)
+
         # 0. 备战被锁(顶部"返回投资策略选择"按钮)→ 点去选策略(check#4 接手)。
         #    lcs_percent=0.9:防与「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)
         #    误匹配 → 投资策略屏被本分支吞(点标题不动作)→ 死循环(2026-08-04 实跑发现,卡 plane1)。
@@ -121,14 +140,17 @@ class CurrencyWarRunLoop(SrOperation):
         #     lcs_percent=0.7:同上,防「确认选择」与「请选择投资策略」共享「选择」误匹配。
         if self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
-            HandleMegastar(self.ctx).execute()
+            RunMegastarNode(self.ctx).execute()  # 生命周期 owner:bug#1 缓解 + 验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点二选一 → HandleEncounter(点卡身 + 选择;踩坑:中间不能插空白点击,详见 op)。
-        if self.round_by_ocr(screen, '遭遇其一').is_success:
-            self._snap('encounter')  # 遭遇二选一选项 → 后续建策略评估用
-            HandleEncounter(self.ctx).execute()
-            return self.round_wait(wait=2)
+        # 0c. (已移除 2026-08-05,D-35)遭遇节点二选一 dispatch。
+        # doc(currency_war_encounter.md)+ 实机 + verifier 全确认:**遭遇 round 是普通战斗**(无选项选择 UI,
+        # 只有难度标签 + 出战),走正常 prep→出战→战斗(branch 1 BattlePrepCycle)。原 HandleEncounter(2选1)
+        # obsolete。且其 `round_by_ocr('遭遇其一')` 默认 lcs 0.5 把**备战屏的「遭遇」标签**误匹配(LCS 2/4=0.5)
+        # → 误派 → 备战屏瞎点 CARD_LEFT → flat loop 卡死(iter63+,node 1-7)。移除整个 dispatch(不再误派)。
+        # 注:不泛化「派发链 fall-through」—— 0e 注释说 invest overlay 叠备战,故意不 fall-through 到 prep
+        # (否则「购买经验」透出误派 BuyShopCards)。encounter 正解是移除 obsolete,非 fall-through。
+        # HandleEncounter op + decide_encounter 纯逻辑暂留(有测试),待确认无他用再删。
 
         # 0d. 出战确认弹窗(未达上限)→ HandleDeployNotFull(勾本局不再提示 + 确认,详见 op)。
         if self.round_by_ocr(screen, '未达上限').is_success:
@@ -150,12 +172,12 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)
         if self.round_by_ocr(screen, '补给阶段', lcs_percent=0.8).is_success:
             self._snap('supply')
-            HandleSupply(self.ctx).execute()
+            RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
             return self.round_wait(wait=2)
 
         # 1. 备战阶段 → 单轮(买+deploy+出战)
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
-        # 遭遇 round 是普通战斗(2026-08-04 vision 确认:无选项选择 UI,只有难度标签 + 出战),
+        # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),
         # 走正常 prep→出战→战斗(原 遭遇 handler "2选1" 过时,且 click 干扰 prep → stall,已移除)。
         if self.round_by_ocr(screen, '购买经验').is_success:
             BattlePrepCycle(self.ctx).execute()
@@ -197,6 +219,11 @@ class CurrencyWarRunLoop(SrOperation):
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
         if self.round_by_ocr(screen, '创业指南').is_success:
+            # 局终:on_match_end(P1 桩 MatchOutcome,默认 no-op;真实 outcome 填充属 P1.5)+ 清场防跨局污染(D-34/§11.7)
+            if self.ctx.cw_match is not None:
+                self.ctx.cw_match.strategy.on_match_end(
+                    self.ctx.cw_match.session, self._cw_config, MatchOutcome())
+                self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 
         # 5. 前进按钮(简报等)

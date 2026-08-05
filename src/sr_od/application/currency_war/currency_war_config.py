@@ -99,6 +99,11 @@ class CurrencyWarConfig(YamlConfig):
         # 难度 → 保血阈值覆盖(检测到 state.difficulty 时优先于 hp_safe_threshold;D-32)。
         # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。
         self.difficulty_hp_override: dict = self.get('difficulty_hp_override', DEFAULT_DIFFICULTY_HP)
+        # 策略插件(D-34/§11.8):strategy_id = 用哪套 CwStrategy(default=内置打法;StrategyManager
+        # 发现的任意 id);strategy_seed = 策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
+        # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
+        self.strategy_id: str = self.get('strategy_id', 'default')
+        self.strategy_seed: int | None = self.get('strategy_seed', None)
 
     def save(self) -> None:
         """持久化策略字段。"""
@@ -114,5 +119,7 @@ class CurrencyWarConfig(YamlConfig):
             'dot_punish_envs': self.dot_punish_envs,
             'hp_safe_threshold': self.hp_safe_threshold,
             'difficulty_hp_override': self.difficulty_hp_override,
+            'strategy_id': self.strategy_id,
+            'strategy_seed': self.strategy_seed,
         }
         YamlConfig.save(self)

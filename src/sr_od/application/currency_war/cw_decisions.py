@@ -731,6 +731,44 @@ def decide_supply(options: list[SupplyOption], state: GameState,
     return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
 
 
+# ===== 巨星节点(decide_megastar,新钩子;纯逻辑骨架,handler 待候选 char_id OCR 接)=====
+
+@dataclass
+class MegastarOption:
+    """一个巨星候选(OCR/SIFT 读角色名,``read_megastar`` 阶段5;D-34/§11.3.4⑥)。
+
+    char_id:候选角色名(空 = OCR 未就绪,匹配恒失败 → 默认 idx=0 = 今天盲点左候选)。
+    """
+    idx: int
+    char_id: str = ""
+
+
+@dataclass
+class MegastarPick:
+    """decide_megastar 返回:选第几个候选 + 原因。"""
+    idx: int
+    reason: str = ""
+
+
+# ===== 选择伙伴节点(decide_partner,新钩子;纯逻辑骨架,handler 待候选 char_id OCR 接)=====
+
+@dataclass
+class PartnerOption:
+    """一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;D-34/§11.3.4⑦)。
+
+    char_id:候选角色名(空 = OCR 未就绪 → 默认 idx=0 = 今天盲点 stage 立绘)。
+    """
+    idx: int
+    char_id: str = ""
+
+
+@dataclass
+class PartnerPick:
+    """decide_partner 返回:选第几个候选 + 原因。"""
+    idx: int
+    reason: str = ""
+
+
 # ===== optionality_score + α(t) 承诺-期权(design 02/03 P1-1 + F-3;纯逻辑,evaluate 集成待 P0 验证)=====
 # A8 是方差生存战:过早 commit 单一高 ceiling comp,遇克/缺关键牌即死。optionality 奖励 bench 角色
 # 同时属 ≥2 可行 comp(保期权/容错);α(t) 早灵活(保期权)→ 晚承诺(深化 target)。

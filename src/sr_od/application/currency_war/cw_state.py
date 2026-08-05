@@ -132,6 +132,21 @@ class PickEvent:
 Action = BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
 
 
+@dataclass
+class MatchOutcome:
+    """一局货币战争的终局结算(框架构造,传给 ``CwStrategy.on_match_end``;D-34/§11.4)。
+
+    ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(默认 ``on_match_end`` no-op,
+    字段未被读);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)属 P1.5**,依赖结算屏
+    OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。故 P1 此 dataclass 仅占位,
+    待 P1.5 接线才被真实数据填充。
+    """
+    won: bool = False        # 是否通关(3 位面全清)
+    final_plane: int = 1     # 到达位面
+    final_round: int = 1     # 位面内轮次
+    final_hp: int = 0        # 终局小队 HP
+
+
 def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
     """买的牌落 bench。"""
     return BenchChar(slot=0, char_id=card.name, faction=card.faction,

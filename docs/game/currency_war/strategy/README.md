@@ -102,3 +102,4 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 - [08 节点决策](08_node_decisions.md)—— 遭遇难度/词缀 + 巨星 + 补给出钻。
 - [09 meta-run 层](09_meta_run.md)—— round 2 新发掘:优势布局(跨局 meta)+ 攻略推荐(版本无关 ground truth)+ 超频 farming。【凹开局重开已删】
 - [10 战斗反馈+敌人机制](10_battle_and_enemies.md)—— 观测驱动(用户定调):PerformanceTracker(OCR 掉血/胜负 ground truth)+ comp_viability(先验+观测)+ 敌人机制克制(跨版本稳);不建精确战斗 sim。
+- [11 策略插件机制](11_strategy_plugin.md)—— `CwStrategy` ABC(可替换大脑,无状态+模板方法全默认)+ `StrategySession`(每局状态)+ `StrategyManager`(对标 app 插件自动发现);服务「自写策略」+「策略比赛」。why 见 decisions D-34。

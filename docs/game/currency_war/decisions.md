@@ -15,6 +15,30 @@
 
 ---
 
+## D-36 (2026-08-05) 策略插件 P1 落地(接口 + 接线,零行为变化)· strategy/11 §11.7/§11.12
+- **决策**:D-34 设计的 **P1** 落地 —— 新建 `cw_strategy.py`(`CwStrategy` ABC 全 abstract 钩子 + `StrategySession` + `CurrencyWarMatch`)+ `cw_strategy_manager.py`(`StrategyManager` 发现,仿 `ApplicationFactoryManager` 但省 factory/const 配对)+ `strategies/default_strategy.py`(`DefaultCwStrategy` 薄委托既有 `cw_decisions`/`cw_comps`);`CurrencyWarConfig` +`strategy_id`/`strategy_seed`;`SrContext` +`cw_match`(显式声明 + reload 重置,字符串注解免运行时 import)+ `currency_war_strategy_plugin_dirs`;`battle_loop` 每局建/毁 match + `on_match_start`(_iter==1)/`on_match_end`(桩 `MatchOutcome()`);`shop` 走 `strategy.update_target`+`decide_prep`(删 `BuyShopCards._target_comp` class-attr hack);`handle_invest_*` 走 `decide_invest`。
+- **为什么**:把"散落模块函数 + `_target_comp` class-attr hack"换成"单一 strategy 对象 + session",**不动战术层逻辑**(默认策略薄委托既有函数 = 今天打法)。P1 = 零行为变化,让插件替换口子立即可用(用户/参赛者可写策略);P2 地道化(逻辑迁进方法、删模块函数)后续。
+- **备选 / 行为等价说明**:
+  - **rng 合并**:`decide_prep` 用 `session.rng` 替代 `plan` 每调用新建 `random.Random()`。旧 = per-call 真随机,新 = per-session 真随机(未种子时)。两者都真随机、**分布同(均匀)、用户不可观测差异**;合并后**可种子化**(比赛公平 / replay 复现)= P1 目标之一(§11.4),非 bug。
+  - **观测回路(`on_round_end`/真实 `on_match_end` outcome)留 P1.5**:P1 框架不构造 `RoundOutcome`/真实 `MatchOutcome`(需结算屏 OCR 探查,未做)→ 这两钩子 P1 无 caller;默认方法体就位(`record`/no-op),随阶段5 OCR 落地才接。
+  - **supply/megastar/partner/boss 钩子 ABC 里就位 + 默认委托,但 handler 不 rewire**(OCR 缺 / dispatch 已删),随阶段5。
+- **状态**:采用。**验证**:130 既有 cw 测试 + 15 新 plugin 测试(`test_cw_strategy.py`:发现/去重/THIRD_PARTY/default 委托/session+rng)全绿;ruff 净(sr_context 剩 11 错误全为既有 `Optional`/`List` 旧式风格,非本次引入);实机端到端确认(`[cw-strategy] 发现 1 个策略 default` + `[cw-env] decide_invest` + `[cw] target=击破流萤 decide_prep`,新 strategy 对象经全链路执行)。· strategy/11 §11.7/§11.12;P1.5 观测回路 / P2 地道化 待续。
+
+## D-35 (2026-08-05) 遭遇 round = 普通战斗,移除 HandleEncounter 2选1 dispatch · battle_loop / handle_encounter
+- **决策**:遭遇节点 round 改判为**普通战斗**(无选项选择 UI,只有难度标签 + 出战),走正常 prep→出战→战斗(`battle_loop.py` branch 1 `BattlePrepCycle`);移除原 `HandleEncounter`(2选1)dispatch。
+- **为什么**:`doc(currency_war_encounter.md)` + 实机 + verifier 三方确认:遭遇 round **没有选项选择 UI**(原 2选1 是误判)。原 `HandleEncounter`(点卡身选难度档 + 选择)对着不存在的 UI 操作 → stall。
+- **备选**:保留 `HandleEncounter`(推翻:无选项 UI,2选1 前提不成立)。
+- **状态**:采用。`battle_loop.py` 删 `HandleEncounter` import + 0c dispatch(改注释);`HandleEncounter` op + `cw_decisions.decide_encounter` 纯逻辑 + 测试**暂留**(待确认全代码库无他用再删)。⚠️ **本条后补**(代码先改、决策日志漏记,违反「实跑演进当场记 D-NN」;strategy/11 review r2 发现此缺口 → 现补)。影响 strategy/11:`decide_encounter` 钩子按本条 dormant(见 strategy/11 §11.3.4⑤)。· `battle_loop.py:124-131` / §08。
+
+## D-34 (2026-08-05) 策略插件机制:`CwStrategy` ABC + `StrategySession` + `StrategyManager`(对标 app 插件)· strategy/11
+- **决策**:把货币战争的「决策大脑」抽象成**可替换的 `CwStrategy`**(无状态 + 模板方法全默认)+ **每局内存态 `StrategySession`**(持 target_comp/rng/performance/memory,替代 `BuyShopCards._target_comp` class-attr hack)+ **`StrategyManager`**(对标 `ApplicationFactoryManager` 的约定式文件扫描 + BUILTIN/THIRD_PARTY 双源,但无 factory 间接 —— 策略 `cls()` 即实例化,元数据走类属性)。覆盖**全部局内决策**(备战 plan + 投资策略/环境 + 补给 + 遭遇 + 巨星 + 选伙伴 + boss 克制 + target_comp 选择/转型)。内置 `DefaultCwStrategy` 分两阶段:P1 薄封装委托现有 `cw_decisions`/`cw_comps`(零行为变化),P2 地道重构(逻辑迁进方法、删模块函数)。服务「用户自写策略」+「社区策略比赛」。详 strategy/11。
+- **为什么**:用户要「封装一个基类,接收完整局面、出下一步决策、留临时数据口、为插件机制/策略比赛留缺口」。现有决策是**散落的模块函数**(`plan`/`decide_event`/`select_comp`… 各处直调)+ **跨步状态 ad-hoc**(`_target_comp` class-attr),无单一替换切口 → 换打法得 monkey-patch 多处。三大设计选择:
+  - **范围 = 全部局内决策(非仅备战)**:一个 strategy 对象 = 一整套打法,最契合「用自己的策略玩」+ 比赛(比拼完整打法)。备战只是举例。
+  - **无状态策略 + 显式 session(非有状态实例)**:策略实例不持每局可变状态,全进 `StrategySession`(框架每局新建/局终销毁)。收益:可重入、可并行(比赛批量跑 1000 局)、可种子化(`session.rng`)、可离线测、无隐藏状态跨局泄漏。这是服务比赛的关键杠杆。
+  - **发现机制 = 对标 app 插件(非 entry-points / 非 dotted-path)**:用户明问「现在的 application 怎么做」→ 照 `ApplicationFactoryManager`(文件扫描 + BUILTIN `src/.../strategies/` + THIRD_PARTY `plugins/currency_war_strategies/` + 复用 `plugin_module_loader` + 去重 + 热重载),体验与 app 插件一致;参赛者丢文件即进 GUI 下拉。省 factory 间接(策略无 config/run_record 机制)。
+- **备选**:① **entry-points**(推翻:更重、需参赛者会打包,且背离框架既有文件扫描模式);② **有状态策略实例**(推翻:隐藏状态、难重置、不能并行、跨局泄漏风险 —— 不服务比赛批量评分);③ **纯抽象 ABC 强制实现全部钩子**(推翻:参赛门槛过高;模板方法全默认让「只换个买牌策略」低门槛);④ **范围仅备战 shop**(推翻:用户「之类的」暗示不止;仅备战换不了选事件/boss,比赛维度窄);⑤ **跨局持久化 session**(推翻:YAGNI + D-04「持久化默认不碰」;跨局采集走既有 telemetry,不造第二套);⑥ **沙箱隔离第三方策略**(推翻:与第三方 app 插件同威胁模型,`plugins/` 已自动 import 执行,本机制不引入新威胁面;诚实记录「进程内全信任」,比赛在受信任环境跑)。
+- **状态**:采用(设计定案,设计文档 strategy/11 已写,经 r1 双 reviewer 审过;实现待跟进)。交付:P1 接口+接线+薄委托默认(**战术层**零行为变化,低风险)→ **P1.5 观测回路接线**(结算屏 OCR → `RoundOutcome`/`MatchOutcome`,需游戏)→ P2 内置地道化(中风险,测试保绿)→ P3 比赛基建(replay/batch_score + 参赛骨架)。**接口在 P1 冻结**,P1.5/P2/P3 不破坏它。向後兼容:`strategy_id` 默认 `"default"` = 今天战术层打法(观测钩子 P1 期 no-op,不影响行为)。· strategy/11(what)/ 落点:`cw_strategy.CwStrategy`/`StrategySession`/`CurrencyWarMatch`、`cw_strategy_manager.StrategyManager`、`strategies/default_strategy.DefaultCwStrategy`、`shop.BuyShopCards.buy`(删 `_target_comp`)+ `battle_loop.__init__`(建/毁 match)、`sr_context.cw_match`/`currency_war_strategy_plugin_dirs`、删 dead code `handle_megastar.py`、`cw_decisions`+`cw_comps` 迁进 `DefaultCwStrategy`(P2)。· §01/05/06/10。
+
 ## D-33 (2026-08-05) maybe_pivot 信号2 加「已成型守卫」(不放弃已完成 comp)· cw_comps
 - **决策**:`maybe_pivot` 信号2(ceiling 不可达 → 切 easy)加守卫 `form_progress(target, state) < 1.0` —— target 已成型(board 全 tier 达成)时**豁免**信号2,不因 `typical_form_round > remaining` 切走已完成的 comp。
 - **为什么**:原逻辑 `if target.typical_form_round > remaining:` 无视成型度 → 已成型的 target(plane3 后期 remaining 小)会被误判"来不及成型"切走 → 放弃已完成的强 comp 转切 easy,反而变弱。**正确性 bug**(不该放弃已完成 comp),非调参。补 maybe_pivot 信号1+2 测试时发现。

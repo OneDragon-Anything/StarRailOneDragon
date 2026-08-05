@@ -7,13 +7,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_comps import (
-    Comp,
-    make_score_context,
-    maybe_pivot,
-    select_comp,
-)
-from sr_od.application.currency_war.cw_decisions import plan
 from sr_od.application.currency_war.cw_observation import (
     area_center,
     read_game_state,
@@ -27,6 +20,7 @@ from sr_od.application.currency_war.cw_state import (
     RefreshShop,
     SellBench,
 )
+from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -55,9 +49,6 @@ class BuyShopCards(SrOperation):
     REFRESH_FALLBACK: ClassVar[Point] = Point(1592, 472)   # 「刷新」按钮兜底(screen_info 按钮-刷新)
     # D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
     MAX_REFRESH: ClassVar[int] = 4
-    # A2 战略层稳定 target(跨回合持久,task#16):每轮 maybe_pivot 才切(非每轮 select_comp 振荡)。
-    # class attr 跨 BuyShopCards 实例(每轮新建)持久;CurrencyWarRunLoop.__init__ 每局重置防跨局污染。
-    _target_comp: ClassVar[Comp | None] = None
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-商店买牌')
@@ -98,26 +89,26 @@ class BuyShopCards(SrOperation):
                 return self.round_retry('找不到商店/收起按钮', wait=1)
             time.sleep(0.5)
 
-        # OCR 全字段 → plan(reactive:target_comp=None;select_comp/pivot 待 Tier 2)。
-        # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。
+        # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         click_pts = shop_card_click_points(self.ctx)
         level_btn = area_center(self.ctx, BuyShopCards.BUY_EXP_AREA) or BuyShopCards.LEVEL_UP_FALLBACK
         refresh_btn = area_center(self.ctx, '按钮-刷新') or BuyShopCards.REFRESH_FALLBACK
 
-        # A2 稳定 target(task#16):跨回合持久(class attr)+ maybe_pivot 才切。每回合 shop 开后
-        # 读一次 state 决定 target(首轮 select_comp;其后 maybe_pivot,无强信号则保持)→ 传 plan。
-        # 防 2026-08-04 实跑的 target 振荡(列车同行↔DOT队)→ _maybe_sell_for_interest churn。
+        # 战略层(D-34):strategy.update_target 写 session.target_comp(首轮 select_comp;其后 maybe_pivot,
+        # 无强信号保持 —— 等价旧 _target_comp class-attr 逻辑,但状态进 session 跨回合持久)。用 shop 关闭帧
+        # hp 覆盖的 state(M6 钉死行为等价:hp 真值 → maybe_pivot 的 hp_safe 信号正确触发,非 shop 开帧的假 100)。
+        match = self.ctx.cw_match
         _tgt_state = read_game_state(self.ctx, self.screenshot())
         _tgt_state.hp = hp_value
-        _tgt_ctx = make_score_context(_tgt_state)
-        if BuyShopCards._target_comp is not None:
-            _pivot = maybe_pivot(_tgt_state, _tgt_ctx, config, BuyShopCards._target_comp)
-            _target = _pivot if _pivot is not None else BuyShopCards._target_comp
-        else:
-            _cands = select_comp(_tgt_state, _tgt_ctx, config)
-            _target = _cands[0] if _cands else None
-        BuyShopCards._target_comp = _target   # 持久化供下回合
+        if match is None:
+            # 防御:无对局态(独立 run_operation 调本 op)→ 临时 default match,不挂 ctx(局外不复用)
+            from sr_od.application.currency_war.strategies.default_strategy import (
+                DefaultCwStrategy,
+            )
+            _def = DefaultCwStrategy()
+            match = CurrencyWarMatch(_def, _def.create_session(config))
+        match.strategy.update_target(_tgt_state, match.session, config)
 
         total_buy = total_level = total_refresh = 0
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
@@ -127,9 +118,9 @@ class BuyShopCards(SrOperation):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
-            actions = plan(state, config, config.faction_priority, target_comp=_target)
-            # A2:target 由上层稳定管理(_target),日志/telemetry 直接用它(= plan 实际用的 target)。
-            target_name = _target.name if _target is not None else ''
+            actions = match.strategy.decide_prep(state, match.session, config)
+            # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
+            target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
 
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
                      f'plane={state.plane} round={state.round_num} board={state.board} '
