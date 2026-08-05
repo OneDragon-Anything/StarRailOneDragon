@@ -520,6 +520,11 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(占位待接)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
+    # D-59:pivot 倾向易成型 comp。best 比 target 更易成型(form_difficulty 低)且 target 未成型 → 阈值降
+    # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 巡击青雀[medium] gap 0.097 卡 0.10 没转,
+    # 巡击青雀 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
+    PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
+    _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
         return None
@@ -545,16 +550,25 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         target_score = comp_score(target, state, ctx) if target is not None else 0.0
         best_score = comp_score(best, state, ctx)
         gap = best_score - target_score
-        if gap > PIVOT_SCORE_GAP:
-            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f; bd=%s)',
+        # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)
+        _required_gap = PIVOT_SCORE_GAP
+        _easier = (target is not None
+                   and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
+                   and form_progress(target, state) < 1.0)
+        if _easier:
+            _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR
+        if gap > _required_gap:
+            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
                      state.plane, state.round_num, state.hp,
                      target.name if target else 'None', best.name,
-                     best_score, target_score, gap, PIVOT_SCORE_GAP,
+                     best_score, target_score, gap, _required_gap,
+                     ' [易comp降阈]' if _easier else '',
                      {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
             return best
-        log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f 保持)',
+        log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
                  state.plane, state.round_num, state.hp,
-                 best.name, target.name if target else 'None', gap, PIVOT_SCORE_GAP)
+                 best.name, target.name if target else 'None', gap, _required_gap,
+                 ' [易comp降阈]' if _easier else '')
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
         # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)

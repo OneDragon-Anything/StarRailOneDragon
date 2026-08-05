@@ -15,6 +15,13 @@
 
 ---
 
+## D-59 (2026-08-06) 弱阵:maybe_pivot 信号1 倾向易成型 comp(best 易 + target 未成型 → 阈值降) · cw_comps
+- **决策**:信号1 pivot 阈值随 best vs target 成型难度调节 —— `best.form_difficulty` 比 target 低(easy<medium<hard)**且 target 未成型**(form_progress<1)→ 阈值 ×`PIVOT_EASIER_FACTOR`(0.7,0.10→0.07),倾向转易 comp。target 已成型不降(不弃已完成 comp)。
+- **为什么(2026-08-06 实跑弱阵深化)**:08:36 局 target=巡击青雀[medium,仙舟5+追击3=8卡],r3 列车同行[easy,S,4卡] gap **+0.097 卡 0.10 没转** → 巡击青雀 慢成型(shop 不供 仙舟/追击)+ board 散(买 off-target 能量:3)+ hp 持续掉(82→58→45)。列车同行 fewer 卡 + S 强 + bot 默认首选(挂机流)→ 转了成型更快更强、少掉血。**根因 = pivot 阈值对易/难 comp 一视同仁,没偏好易成型**(慢 comp 拖死)。
+- **备选**:① 调 PIVOT_SCORE_GAP 整体(推翻:会影响所有 pivot,误伤;D-59 只对易 comp 降,精准);② commitment prefilter 收紧(已有 prefilter,shop 无 target 卡时允许 off-target 填充防饿死,收紧风险饿死/弱战力);③ 升 W_PROG 让 select_comp 偏易成型(部分,但 pivot 阈值才是 r3 没转的直接因);④ off-target filler cap(能量:3,推翻:off-target stack 也有 synergy 值,cap 未必更好;根因是慢 comp 不是 filler)。
+- **关联坑**:OFF_TARGET_DISCOUNT 曾 0.3→致卖 off-target 深堆 churn→revert 1.0(见 cw_decisions 注释);D-59 不动 board eval(只调 pivot 阈值),无 churn 风险。
+- **状态**:**实验**(PIVOT_EASIER_FACTOR 0.7 待多局校准)。40 测试绿(既有 maybe_pivot 无回归);ruff 净。log 加 `[易comp降阈]` 标记便于实机核实。**待新局验**:r3 类场景是否转 列车同行 + 存活更久。· 弱阵(D-53/56/58)+ task#16 commitment
+
 ## D-58 (2026-08-06) env_fit 接线 bug:已选投资环境从不存 state.active_env → T0 env 硬绑静默失效 · cw_strategy/handle_invest_env/default_strategy
 - **决策**:`StrategySession` 加 `active_env: str`;`HandleInvestEnv` 选后写 `session.active_env = chosen`;`update_target` copy 到 `state.active_env`(make_score_context 前,同 briefing_affixes 模式)。
 - **为什么(2026-08-06 实跑 + 代码核实)**:T0 env「昼之半神概念股」选了(score=100),board 已 昼之半神:2(向 昼神阿雅 成型),但 target=巡击青雀(0 仙舟/追击)。grep 证实 **`active_env` 只读(cw_comps:391)从不赋值** —— HandleInvestEnv 点了 chosen 卡却不存名 → state.active_env 恒空 → `env_fit` 全返 0.5 → ENV_COMP_AFFINITY(T0 env 近乎硬绑)静默失效。修后:昼神阿雅 env_fit=1.0(+board form_progress 0.5)→ comp_score ~0.375 >> 巡击青雀 ~0.075 → 会选/转向 env + board 支持的 comp。
