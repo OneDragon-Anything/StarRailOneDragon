@@ -52,7 +52,14 @@ class CurrencyWarApp(SrApplication):
 
     def _in_match(self, screen) -> bool:
         """已在货币战争对局中(备战/事件/战斗/结算任一态)。"""
-        return any(self.round_by_ocr(screen, kw).is_success for kw in self._IN_MATCH_KEYWORDS)
+        # 大厅不是对局中态:防 _IN_MATCH_KEYWORDS 短词(如「出战」)round_by_ocr 默认 lcs 0.5
+        # 误匹配大厅文字(「货币战争」含「战」→「出战」1/2=0.5 命中)→ _start_match 误判已在对局 →
+        # 跳过 start 交 loop → loop 见大厅「创业指南」→ 误「对局结束」2.4s 空跑(2026-08-06 实跑)。
+        if self._at_lobby(screen):
+            return False
+        # lcs_percent=0.8:杀短词子序列误匹配(同 D-37/D-50/D-54 round_by_ocr 默认 lcs 坑);
+        # 真在对局时这些锚点 OCR 干净 4/4 命中,0.8 不影响。
+        return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
     @operation_node(name='进入货币战争大厅', is_start_node=True)
     def _enter_lobby(self) -> OperationRoundResult:

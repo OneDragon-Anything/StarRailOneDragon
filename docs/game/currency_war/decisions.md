@@ -15,6 +15,12 @@
 
 ---
 
+## D-57 (2026-08-06) app 起局 bug:_in_match 大厅误判「已在对局」(短词 lcs 0.5 误匹配)→ 跳过 start 空跑 · currency_war_app
+- **决策**:`_in_match` 加 `_at_lobby` 短路(大厅≠对局中)+ `_IN_MATCH_KEYWORDS` 的 `round_by_ocr` 收紧 lcs 0.5→0.8。
+- **为什么(2026-08-06 实跑)**:从大厅 run_standalone_app → 2.4s 空跑「对局结束,回大厅」。日志:`_start_match` 报「已在对局中,跳过 start 交 loop」→ loop 见大厅「创业指南」→ 3c 误「对局结束」。根因 = `_in_match` 用默认 lcs 0.5 全屏 OCR 短词:「出战」(2 字)匹配大厅「货币战争」(含「战」,1/2=0.5≥0.5 命中)→ 误判对局中 → 跳过 start。**同 D-37/D-50/D-54 round_by_ocr 默认 lcs 坑第 N 次**(短词 + 全屏 LCS = 误匹配高发)。
+- **备选**:① 只收紧 lcs 不加 _at_lobby 短路(部分:其他大厅词可能仍误匹配,短路根治「大厅≠对局」语义);② 删「出战」短词(推翻:真对局时「出战」是有效锚点,收紧 lcs 即可);③ _in_match 也用 screen_info area(推翻:对局中态多(备战/事件/战斗/结算),建全 area 成本高,lobby 短路 + lcs 0.8 够)。
+- **状态**:采用。ruff 净。验证:restart server → run_standalone_app → **正常起局**(点开始→简报→投资环境选 昼之半神概念股→备战→loop running)。· D-26 中间态接手
+
 ## D-56 (2026-08-06) 决策迹:maybe_pivot 加 log(弱阵诊断要数据,非猜) · cw_comps
 - **决策**:`maybe_pivot` 3 信号(保命/涌现/ceiling)各加 INFO log —— 评估点 log 当前/最佳 comp、score、gap、决策(pivot X / 保持)。`select_comp` 暂不 log(每轮调用,select_comp top 已由 maybe_pivot 内部用)。
 - **为什么(弱阵诊断)**:2026-08-06 整跑 bot round7 巡击青雀→DOT队 pivot 后 plane2 r2 战死。**根因代码级定位** = 信号1 用 `comp_score(best) > comp_score(target)+0.10`,而 comp_score 含 shop_supply 乘数(0.3+0.7×shop_supply,可达 ~3.3×)→ shop RNG 刷出他阵营牌 → 该 comp score 暴涨 → 误涌现 pivot → 永不深 commit → 弱阵死。但**修法值(PIVOT_SCORE_GAP / commitment 权重)需实跑 score/gap 数据校准**(原 match 日志 server 重启被截断丢失 → 无数据)→ 先加 log 采数据,再据数据调(D-57),**不凭猜定值**(D-35 教训:猜值误判)。log 亦永久 telemetry(决策迹复盘 + 未来 ML side door,§11.5)。
