@@ -35,11 +35,12 @@ class HandleInvestStrategy(SrOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
-    # 卡选中点击 Y:screen_info「区域-卡牌描述行」center.y(实际=卡底选中区);常量=兜底。
-    # V4.4 实测(2026-08-05):点卡名(y474)/描述区(y545)**开角色详情**(角色类卡如双龙会,卡身=立绘),
-    # 不选中 → 投资策略屏不消 → loop 反复卡死。**卡底 y≈820(刷新按钮上方)才选中**(高亮+确认亮)。
-    # 旧 doc(2026-08-04「描述区 545 选中」)已过时;screen_info「区域-卡牌描述行」pc_rect 已改卡底。
-    CARD_CLICK_Y: ClassVar[int] = 820   # 兜底(卡底选中);首选 area_center('区域-卡牌描述行')
+    # 卡选中点击 Y:screen_info「区域-卡名行」center.y(=卡名选中行);常量=兜底。
+    # V4.4 实测(2026-08-05,↺ 推翻 I16「卡底 820 选中」):**点卡名(y≈474)选中**(白边 + 确认亮)。
+    # 实机点验:点中产阶级卡名(461,474) → 白边选中 → 点确认 → 推进备战 1-3(链路通)。
+    # I16「卡底 820 才选中」错 —— 820 是刷新区/卡底,点没选中 → handle 点 820 不选中 → loop 反复卡死投资策略
+    # (整局阻塞,实跑暴露)。旧 doc(2026-08-04「描述区 545 选中」/ I16「卡底 820」)均过时。
+    CARD_CLICK_Y: ClassVar[int] = 474   # 兜底(卡名选中);首选 area_center('区域-卡名行')
     # 卡名行 center-y 过滤带(标题 y≈98 / 描述 y≈520+ / 刷新次数 y≈841 / 确认 y≈983)
     NAME_CY_LO: ClassVar[int] = 465
     NAME_CY_HI: ClassVar[int] = 505
@@ -94,8 +95,8 @@ class HandleInvestStrategy(SrOperation):
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
 
-        # 点最优卡的**描述区**选中(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
-        _sel = area_center(self.ctx, '区域-卡牌描述行', HandleInvestStrategy.SCREEN_NAME)
+        # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
+        _sel = area_center(self.ctx, '区域-卡名行', HandleInvestStrategy.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else HandleInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
         self.ctx.controller.click(target)
