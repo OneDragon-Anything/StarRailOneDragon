@@ -268,18 +268,26 @@ def progress(comp: Comp, state: GameState) -> float:
 
 
 def shop_supply(comp: Comp, state: GameState) -> float:
-    """comp 核心阵营在当前 shop+board 的可得性 [0,1](shop-aware,task#25 通关核心)。
+    """comp 核心阵营的可得性 [0,1](shop-aware,task#25 + I14)。
 
-    comp 阵营在 shop(本回合可买)或 board(已持有)出现 → 1.0(可得);否则 0.0
-    (商店刷不出该阵营牌 → 不可成型)。select_comp 对不可得 comp 降权(×0.3),使 select
-    偏好**可得** comp,解决锁定高强度 comp(列车同行 S=1.0)但商店/场面供不上 → board 散、
-    永不成型(plane1 重伤)的不收敛问题(2026-08-04 实跑 + cw_comps.py:358 老注释)。
+    - 阵营在 **shop(本回合可买)** 出现 → **1.0**(可成型:能买到核心牌)。
+    - 仅 **board** 有、shop 无 → **0.3**(已持 1 张但买不到更多 → 成型难,弱信号;非 1.0)。
+    - 都无 → **0.0**(商店刷不出 → 不可成型)。select_comp 对低可得 comp 降权(×0.3),偏好**买得到**的 comp。
+
+    ⚠️ I14(2026-08-05):旧版 board 有 1 张就返 1.0 → select_comp 不降权「board 有但 shop 供不上」
+    的 comp(如 board 昼之半神:1 + shop 无 昼之半神 → 仍选昼神阿雅)→ 选了成型不了的 target →
+    永不成型(win-rate 核心阻塞;2026-08-05 P1 验证 match 全程 board 多样不收敛)。改:shop presence
+    主导,board-only 降为弱信号(0.3)——「board 已有 1 张 ≠ 能成型,要 shop 供得上核心」。
     """
     if not comp.factions:
         return 1.0
     shop_factions = {c.faction for c in state.shop}
+    if any(f in shop_factions for f in comp.factions):
+        return 1.0
     board_factions = set(state.board.keys())
-    return 1.0 if any(f in shop_factions or f in board_factions for f in comp.factions) else 0.0
+    if any(f in board_factions for f in comp.factions):
+        return 0.3   # 仅 board 有,shop 买不到更多 → 弱成型信号(I14)
+    return 0.0
 
 
 def equip_fit(comp: Comp, state: GameState) -> float:

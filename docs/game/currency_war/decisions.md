@@ -15,6 +15,12 @@
 
 ---
 
+## D-41 (2026-08-05) shop_supply:shop presence 主导,board-only 降为弱信号(0.3)—— 修 comp 成型弱 · cw_comps
+- **决策**:`shop_supply(comp)` 改判可成型 = **shop 出现该 comp 阵营 → 1.0;仅 board 有、shop 无 → 0.3**(旧 1.0);都无 → 0.0。
+- **为什么(I14)**:2026-08-05 P1 验证 match 全程 board **多样不收敛**(7+ 阵营×1),comp 永不深堆成型 → 弱阵 → HP 持续掉 → 死。根因:旧 `shop_supply` 把「board 持有 1 张」当「可成型」(1.0)→ select_comp 不降权「board 有但 shop 供不上核心」的 comp(如 board 昼之半神:1 + shop 无 昼之半神 → 仍选昼神阿雅)→ 选了成型不了的 target → shop 买不到核心 → 永不成型。**「board 已有 1 张 ≠ 能成型」,可成型必须看 shop 能否买到更多核心**。
+- **备选**:① shop_supply 只看 shop、board 不计(推翻:board 已有也是信号,完全不计太激进,可能频繁切 target);② 维持旧 1.0(推翻:win-rate 核心阻塞,实测致死);③ 按需求数加权(shop 有 N 张/comp 需 M 张 → M/N;更精但需牌池计数,留 refine)。
+- **状态**:采用。74 既有 cw 测试全绿(相对排序保持:成型 comp 即便 ×0.51 仍胜 unsupplied)+ 3 新 shop_supply 测试锁定(shop=1.0 / board-only=0.3 / 都无=0.0)。配合 D-40(保命优先),target 选择现在既看 shop 供给(早选可成型)又低 HP 稳定(不 churn)。next 实跑验证:下局 board 应更聚焦(target 与 shop 供得上对齐)、HP 掉得更慢。· `cw_comps.py:shop_supply` / strategy/03。
+
 ## D-40 (2026-08-05) maybe_pivot 信号3(保命)优先于 1/2 —— 防低 HP target 振荡 churn · cw_comps
 - **决策**:`maybe_pivot` 把**信号3(保命转型)提到信号1/2 之前**;hp 危险(< 0.75×effective_hp_threshold)时**独占** —— 返回最快成型的 easy comp(typical_form_round 最小,稳定不 churn),信号1/2 不参与。
 - **为什么**:2026-08-05 实跑,P1 验证 match 在 plane1 末期 HP 低时,**target 振荡 churn**:列车同行→巡击青雀→DOT队→昼神阿雅(几轮内 4 次换)→ board 跟着 churn → 永不深堆成型 → HP 耗尽死亡螺旋。根因:低 HP 时**信号1(更优涌现)先于信号3 触发** —— 信号1 选 select_comp 的 best(随 board/shop 每轮变 → 振荡)+ 会选到**高难度 comp(昼神阿雅 hard)**;信号3(选最快 easy,稳定)被抢占。保命语义下,该切**稳定的最快成型 comp**,不该每轮追 volatile best。
