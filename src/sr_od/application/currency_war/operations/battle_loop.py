@@ -11,9 +11,11 @@ from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_observation import (
     read_game_state,
+    read_phase_round,
+    read_round_outcome,
     reset_phase_round_cache,
 )
-from sr_od.application.currency_war.cw_state import MatchOutcome
+from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
@@ -113,6 +115,31 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
+    def _record_round_outcome(self, screen) -> None:
+        """P1.5 观测回路:结算屏(挑战结束 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
+
+        喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
+        记掉血 trend(观测驱动,非预测)。非结算屏(无「挑战结束」)→ 跳过。失败不阻塞对局(观测为辅)。
+        node_type 暂粗(默认普通战斗,boss/elite 节点追踪后续 refine)。plane/round 用 last-known
+        (``read_phase_round`` 结算屏不显 plane/round,返回上次备战读的)。
+        """
+        if self.ctx.cw_match is None:
+            return
+        if not self.round_by_ocr(screen, '挑战结束').is_success:
+            return  # 非结算屏(继续挑战可能在他处)→ 不调 on_round_end,免误记
+        try:
+            _session = self.ctx.cw_match.session
+            _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
+            _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
+                                      comp_tag=_comp_tag, node_type='普通战斗')
+            self.ctx.cw_match.strategy.on_round_end(
+                GameState(), _session, self._cw_config, _obs)
+            log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s',
+                     _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag)
+        except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
+            log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
+
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
         self._iter += 1
@@ -210,8 +237,9 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
-        # 3. 挑战成功/结束 → 继续挑战(过渡屏按钮可能"可见但延迟可点" → 先等再刷新点)
+        # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
         if self.round_by_ocr(screen, '继续挑战').is_success:
+            self._record_round_outcome(screen)  # P1.5: 结算屏(挑战结束)→ read_round_outcome → on_round_end
             time.sleep(1.0)
             if self.round_by_ocr_and_click(self.screenshot(), '继续挑战', success_wait=2).is_success:
                 return self.round_wait(wait=2)

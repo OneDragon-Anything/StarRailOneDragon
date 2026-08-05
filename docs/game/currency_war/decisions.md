@@ -15,6 +15,12 @@
 
 ---
 
+## D-48 (2026-08-05) P1.5 观测回路接线:battle_loop 结算屏 → read_round_outcome → on_round_end · battle_loop
+- **决策**:CurrencyWarRunLoop「继续挑战」检测处加 P1.5 观测回路:结算屏(「挑战结束」)→ `read_round_outcome`(OCR hp_after,组件 D-38)→ `strategy.on_round_end`(默认实现 `performance.record(obs)`,记掉血 trend)。非结算屏跳过;失败不阻塞对局。plane/round 用 last-known(`read_phase_round` 结算屏不显);node_type 暂粗(普通战斗,boss/elite 后续)。
+- **为什么(用户 2026-08-03 定调:观测驱动非预测)**:read_round_outcome(D-38 组件)+ on_round_end 钩子(D-34)+ PerformanceTracker 都就位,只缺 battle_loop caller。接上后 PerformanceTracker 记每回合 hp_after → 掉血 trend → 策略可据**观测结果**调 comp/mechanics 评分(而非盲预测赢率;版本鲁棒 —— V4.5 改数值,掉血照样掉)。
+- **备选**:① 结算屏 read_game_state 拿 state 传 on_round_end(推翻:on_round_end default 只用 obs + session.performance,不用 state 其他字段;read_game_state 结算屏 OCR 多区域开销大,传 `GameState()` 空);② 每屏调 on_round_end(推翻:非结算屏无 hp_after,只「挑战结束」结算屏调,免误记)。
+- **状态**:采用。battle_loop 接线(`_record_round_outcome` + 「继续挑战」前调);cw_strategy 15 测试绿(on_round_end default 不破坏)。实机验证待跑局(看 `[cw-loop] on_round_end` log hp_after 记录)。node_type 推断(boss/elite 节点追踪)+ on_match_end 真实 outcome 填充留后续。· strategy/11 §11.7(P1.5)
+
 ## D-47 (2026-08-05) 词缀效果采集:注册表单独 py(affix_effects_data) + 运行时自动写 + 固定采集对比 + 截图对账 · cw_observation/handle_briefing
 - **决策**:敌人词缀效果(游戏原文 ground truth)用单独 py 注册表 `affix_effects_data.py`(`AFFIX_EFFECTS: dict[str,str]`,从 cw_comps 迁出,cw_comps 重导出不变)。HandleBriefing **固定采集**每词缀(点词缀弹 tooltip → `read_affix_effect` OCR 效果,纯解析找标题→取下方紧邻连续行 dy≤45)→ 对比注册表**文件最新**(`load_affix_effects_from_file`,exec 读)→ 新名/描述不一致 → 截图(`affix_shots/<词缀>.png`)+ `write_affix_effects` 写回注册表(`json.dumps` 合法 py);一致→跳过。**本轮下游不生效**(mechanics_fit 用内存 import 旧值),**下轮启动重新 import 生效**。
 - **为什么(用户 2026-08-05)**:① 词缀效果要游戏原文(简报词缀只显示名字,点词缀弹 tooltip 才显效果;游戏内无词缀图鉴,网络无权威完整列表,competitors.md 攻略统计 ~50);② 注册表作"最后使用"权威源,运行时自动写(采到新/不准就校准)省人工 yml→py 同步;③ 对比跟注册表**文件最新**(非内存)→ 本轮内不重复写;④ 截图对账回查 OCR 没采错;⑤ 本轮不生效下轮生效可接受(用户明确)。
