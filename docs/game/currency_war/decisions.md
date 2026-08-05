@@ -15,6 +15,12 @@
 
 ---
 
+## D-50 (2026-08-06) ↺ D-37 复发:0e 投资策略/环境 改用 id_mark area(全屏 LCS 误匹配失败结算屏) · battle_loop
+- **决策**:battle_loop 0e 投资策略/环境检测 `round_by_ocr('投资策略/环境', lcs=0.8)` → 改 `round_by_find_area('标识-请选择投资策略'/'标识-投资环境', id_mark)`。补给阶段暂留(失败结算屏没「补给阶段」)。
+- **为什么(2026-08-06 实跑暴露)**:loop plane1 round9 boss 战死 → 失败结算屏(对局未完成)OCR 含「投资策略/投资环境」(对局信息)+「标准博弈」(A8 标签)→ 0e 全屏 LCS「投资策略」命中 → 派 HandleInvestStrategy → handle 卡名行 OCR「标准博弈/试用」→ 点标准博弈@(423,477) → 没推进 → loop 反复(iter 340+)卡死。D-37(投资策略 LCS 误匹配「能量上限」)同类复发,这次是失败结算屏的「投资策略」对局信息。
+- **备选**:① LCS 改「请选择投资策略」(推翻:子序列匹配,失败结算屏「投资策略」仍是「请选择投资策略」子序列 → LCS 高 → 误命中);② 先排失败结算屏「对局未完成」(推翻:多一分支,id_mark area 更根治);③ HandleInvestStrategy 入口核对 id_mark(部分,但 0e 派发就该准,handle 不该兜底 0e 误派)。
+- **状态**:采用。0e 用 id_mark area(固定位置全等;失败结算「投资策略」在对局信息区,不在真屏 id_mark pc_rect → 不命中)→ 落 3b「下一页」回大厅。验证:loop 从失败结算 10.9s 回大厅(下一页 → 返回货币战争 → 创业指南 round_success)。方法论印证 screen-onboarding「固定位置用 area 非全屏 LCS」+ write-operation「LCS 子序列匹配是误匹配高发,独有长关键词 + area 才稳」。· insights I20
+
 ## D-49 (2026-08-06) mechanics_fit 数据对齐 + 补全:comp 属性对齐 MECHANIC 表 + 补皮糙肉厚/榜样激励 · cw_comps(task#73)
 - **决策**:`mechanics_fit` 已接 `comp_score`(W_MECH),但 comp 属性 tag 跟 MECHANIC 表不对齐 → 命中少。对齐 + 补:① 列车同行 `[护盾]→[治疗护盾]`(对齐 counter 治疗削弱→治疗护盾);② `MECHANIC_SYNERGIES` 补「皮糙肉厚→[击破]」(利击破 comp);③ `MECHANIC_COUNTERS` 补「榜样激励→[高倍率单核]」(克单核);④ `AFFIX_MECHANIC_MAP` 补皮糙肉厚/榜样激励。
 - **为什么**:`mechanics_fit(comp, mechanics)` 经 `comp.mechanic_attributes` 查 MECHANIC_COUNTERS/SYNERGIES。comp 标的属性必须 = MECHANIC 表属性 tag 才命中。原 列车同行[护盾] ≠ counter[治疗护盾] → 不命中(重症难题不克它);击破流萤[击破]/命运圣杯[高倍率单核] 无 MECHANIC 条目 → 永不命中。对齐后真生效(皮糙肉厚利击破、榜样激励克单核、重症难题克列车同行)。

@@ -201,11 +201,15 @@ class CurrencyWarRunLoop(SrOperation):
         #     会误派 BuyShopCards(overlay 遮商店→"找不到商店/收起"失败→死循环)。
         #     2026-08-04 实跑发现:投资策略屏被误派 BuyShopCards(购买经验透出命中),卡死。
         #     lcs_percent=0.8:「投资策略」与「投资环境」共享「投资」(2/4=0.5)→ 0.8 杀交叉误匹配。
-        if self.round_by_ocr(screen, '投资策略', lcs_percent=0.8).is_success:
+        # 用 screen_info id_mark area 检测(固定位置全等),非全屏 LCS —— 失败结算屏(对局未完成)含
+        # 「投资策略/投资环境」(对局信息)会误匹配全屏 LCS(2026-08-06 实跑:loop 卡失败结算,
+        # HandleInvestStrategy 误派点「标准博弈」死循环)。id_mark area 位置不同(失败结算在对局信息区,
+        # 不在真屏 id_mark pc_rect)→ 不命中,落到 3b「下一页」回大厅。
+        if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略', crop_first=False).is_success:
             self._snap('invest_strategy')
             HandleInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '投资环境', lcs_percent=0.8).is_success:
+        if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境', crop_first=False).is_success:
             self._snap('invest_env')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
