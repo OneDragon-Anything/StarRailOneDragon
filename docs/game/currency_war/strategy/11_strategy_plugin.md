@@ -432,12 +432,12 @@ self.strategy_seed: int | None = self.get('strategy_seed', None)  # None=真随�
 
 ## 11.12 实施阶段(交付路径)
 
-> **P1 已落地(2026-08-05,D-36)** ✅:接口 + 接线全部就位,130 既有 + 15 新 plugin 测试绿 + 实机端到端确认(见 D-36)。P1.5 观测回路 next(需游戏,结算屏 OCR)。
+> **P1 已落地(2026-08-05,D-36)** ✅ + **P1.5 观测回路已落地(2026-08-06,D-48~52)** ✅:接口+接线 + on_round_end 观测回路(结算屏→read_round_outcome→performance.record 记 hp trend)+ 失败屏 hp=0 conf=1.0(D-51)+ node_type 推断「首领」→boss(D-52)。实机验证(DOT队 plane1 r1-9 记 hp 62→0)。**next**:P2 地道化 / **弱阵策略**(整局暴露 DOT队 B 级易成型但 plane1 死,comp_score 无「成型后战力」考量 → P2 comp_viability 观测 blend 或调 W_STR 偏 S 级列车同行 A850 挂机流)。
 
 | 阶段 | 内容 | 游戏? | 风险 |
 |---|---|---|---|
 | **P1 接口 + 接线(零行为变化)** ✅ | `CwStrategy` ABC + `StrategySession` + `CurrencyWarMatch` + `StrategyManager` + `DefaultCwStrategy`(薄委托)+ config 字段 + 干掉 `_target_comp` hack + 离线 unit。**P1 只 rewire 有 OCR 的**:`shop.py`(prep)+ `handle_invest_*`(invest)+ 生命周期骨架(`on_match_start` 尽力而为 / `on_match_end` 桩 / `on_round_end` 不调)。supply/megastar/partner/boss 钩子在 ABC 就位但 **handler 不动**(OCR 缺 / dispatch 已删,随阶段 5);encounter dormant(D-35) | 否 | 低(默认逻辑不动) |
-| **P1.5 观测回路接线** | 每场战斗结算 OCR → `RoundOutcome` → `on_round_end`;终局 → `MatchOutcome` → `on_match_end`(默认 `performance.record`)。依赖结算屏 OCR 探查 | **是** | 中(新 OCR + 需确认结算屏形态) |
+| **P1.5 观测回路接线** ✅ | 每场战斗结算 OCR → `RoundOutcome` → `on_round_end`(D-48);失败屏 hp=0 conf=1.0(D-51)+ node_type 推断(D-52)。终局 `MatchOutcome` 仍 P1 桩(真实 outcome 填充待) | 已接 | 中(结算屏形态已确认:挑战结束/挑战失败/继续挑战) |
 | **P2 地道化** | `cw_decisions`+`cw_comps` 逻辑迁进 `DefaultCwStrategy` 方法,删模块函数,权重转类常量 | 否 | 中(动已测战术层,测试须保绿) |
 | **P3 比赛基建** | replay harness + batch_score + 第三方策略骨架示例 + 参赛者文档 | 否(评分逻辑)/ 是(录 trace) | 低 |
 
@@ -470,7 +470,7 @@ P1 先落地 → 插件口子立刻可用(用户/参赛者可写策略);P2 是�
 - `operations/run_nodes/run_megastar_node.py`(→ decide_megastar,随候选 char_id OCR)
 - `operations/handlers/handle_select_partner.py`(→ decide_partner,随 char_id OCR)
 - boss OCR 接入点(→ decide_boss_priority,新 OCR)
-- 观测回路:每场战斗结算 OCR → `RoundOutcome` → `on_round_end`;终局填 `MatchOutcome`(P1.5)
+- 观测回路 ✅(P1.5,D-48~52):每场战斗结算 OCR → `RoundOutcome` → `on_round_end`(performance.record 记 hp trend);终局 `MatchOutcome` 仍桩(待真实 outcome 填充)
 
 **删除 dead handler**(全代码库仅注释 + 残留 `.pyc`,无实际 import)
 - `operations/handlers/handle_megastar.py`(D-31 后被 `RunMegastarNode` 替代)
