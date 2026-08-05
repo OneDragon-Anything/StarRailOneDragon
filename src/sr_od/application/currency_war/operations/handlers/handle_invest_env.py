@@ -36,9 +36,10 @@ class HandleInvestEnv(SrOperation):
     # 实测(2026-08-04):立绘在卡顶 y≈100-400(点立绘/name y390 开角色详情,非选中);
     # **描述区 y≈450 才选中**(立绘下方);卡底 y700 无效。区别 invest_strategy(描述区 y545)。
     CARD_CLICK_Y: ClassVar[int] = 450   # 兜底;首选 area_center('区域-卡牌描述行')
-    # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈432 / 确认 y≈982)
-    NAME_CY_LO: ClassVar[int] = 378
-    NAME_CY_HI: ClassVar[int] = 408
+    # 卡名行 center-y 过滤带(排除标题 y≈98 / 描述 y≈419+ / 确认 y≈982)。
+    # 卡名 y 随立绘变(实机见过 375-378 / 392),放宽 [360,410] 容变;原 [378,408] 漏 y<378 的卡名。
+    NAME_CY_LO: ClassVar[int] = 360
+    NAME_CY_HI: ClassVar[int] = 410
     # 非卡名(同 y 行可能误入或已知 UI 文本)
     _EXCLUDE: ClassVar[set[str]] = {'投资环境', '攻略', '确认', '角色', '装备', '剩余次数：1'}
     # 确认按钮:screen_info「按钮-确认」center(task#20);常量=兜底。
@@ -58,7 +59,7 @@ class HandleInvestEnv(SrOperation):
                 continue
             cy = mrl.max.center.y
             if (HandleInvestEnv.NAME_CY_LO <= cy <= HandleInvestEnv.NAME_CY_HI
-                    and 2 <= len(text) <= 6 and text not in HandleInvestEnv._EXCLUDE):
+                    and 2 <= len(text) <= 8 and text not in HandleInvestEnv._EXCLUDE):
                 opts.append((text, mrl.max.center.x))
         opts.sort(key=lambda t: t[1])
         return opts
