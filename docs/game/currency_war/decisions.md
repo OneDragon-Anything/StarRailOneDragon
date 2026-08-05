@@ -15,6 +15,11 @@
 
 ---
 
+## D-52 (2026-08-06) P1.5 refine:node_type 推断(结算屏「首领」→ boss) · battle_loop
+- **决策**:`_record_round_outcome` node_type 从固定「普通战斗」→ 推断:结算屏 OCR 含「首领」(如「1-9首领」)→ `'boss'`,否则「普通战斗」。log 加 node 字段。
+- **为什么**:P1.5 观测回路 node_type 原 all「普通战斗」(粗),boss/普通不区分 → PerformanceTracker trend 不能按节点类型分(boss 掉血 vs 普通)。2026-08-06 整跑 log:round9 结算屏「1-9首领」(boss 标签)可区分。词缀「首领强化」在简报不在结算屏 → 不误匹配。
+- **状态**:采用。node_type 推断 + log node。实机验证待下局 boss 结算(node=boss)。· P1.5(D-48)
+
 ## D-51 (2026-08-06) P1.5 refine:失败结算屏「挑战失败」→ hp_after=0 conf=1.0(团灭确定) · cw_observation
 - **决策**:`read_round_outcome` 加判:OCR 含「挑战失败」且 `parse_settlement_hp` None → `hp_after=0 conf=1.0`(团灭确定)。
 - **为什么(2026-08-06 整跑暴露)**:plane1 round9 boss 战死 → 失败结算屏 OCR「挑战失败/小队生命值❤!/对局评价/下一步」。`parse_settlement_hp` 正则 `生命值\s*(\d+)` 不匹配「生命值❤!」(❤!非数字)→ None → hp_after=0 conf=0.0。但**失败 = hp 0 是 ground truth**(团灭),该 conf=1.0 进 PerformanceTracker trend(死信号,策略学)。

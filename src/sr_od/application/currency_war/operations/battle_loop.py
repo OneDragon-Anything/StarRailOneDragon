@@ -120,8 +120,8 @@ class CurrencyWarRunLoop(SrOperation):
 
         喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
         记掉血 trend(观测驱动,非预测)。非结算屏(无「挑战结束」)→ 跳过。失败不阻塞对局(观测为辅)。
-        node_type 暂粗(默认普通战斗,boss/elite 节点追踪后续 refine)。plane/round 用 last-known
-        (``read_phase_round`` 结算屏不显 plane/round,返回上次备战读的)。
+        node_type 推断:结算屏含「首领」(如「1-9首领」)→ boss 节点,否则普通战斗(2026-08-06 refine,
+        原全粗「普通战斗」)。plane/round 用 last-known(``read_phase_round`` 结算屏不显 plane/round)。
         """
         if self.ctx.cw_match is None:
             return
@@ -131,12 +131,13 @@ class CurrencyWarRunLoop(SrOperation):
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算(词缀在简报不在结算屏,不误匹配)
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
-                                      comp_tag=_comp_tag, node_type='普通战斗')
+                                      comp_tag=_comp_tag, node_type='boss' if _is_boss else '普通战斗')
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
-            log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s',
-                     _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag)
+            log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s',
+                     _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type)
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
             log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
 
