@@ -97,6 +97,8 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
     "速度抑制": ["速度依赖"],      # 忽快忽慢:克极端高速(昼神阿雅鞋队)
     "装备依赖": ["依赖合成装备"],  # 变宝为废:克依赖合成的装备流
     "榜样激励": ["高倍率单核"],   # 榜样激励:伤害第一的 75%(其他 110%)→ 克单核(命运圣杯红A 高倍率单核)
+    "多段惩罚": ["高频低单次"],   # 忍无可忍:敌受 7 次攻击后提前 100% → 克高频低单次(反甲白厄多段打→频触→敌频动)
+    "行动延后": ["速度依赖"],     # 沉重脚步:受击我方行动延后 8% → 克速度依赖(鞋队/速度 tuning 被打乱)
 }
 MECHANIC_SYNERGIES: dict[str, list[str]] = {
     # 机制 tag → 它受利的 comp 机械属性(用户:debuff=buff)
@@ -128,12 +130,17 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 击破/单核 相关(D-49 补)
     "皮糙肉厚": "皮糙肉厚",   # 利击破 comp(未被击破受伤-30% → 击破流不受罚)
     "榜样激励": "榜样激励",   # 克单核(伤害第一的 75%)
-    # 其余词缀(首领强化/复仇心切/倒计时类等)为纯数值/无 comp 交互,不入表;实机 OCR 按需补
+    # 多段/延后 相关(D-55 补)
+    "忍无可忍": "多段惩罚",   # 敌受 7 次攻击提前 100% → 克高频低单次(反甲白厄)
+    "沉重脚步": "行动延后",   # 受击行动延后 8% → 克速度依赖
+    # 其余词缀(首领强化/复仇心切/倒计时类/灼热轰炸等)为纯数值/无 comp 交互(灼热轰炸:前排受击+DoT
+    # 均匀影响,无 comp flip),不入表;实机 OCR 按需补
 }
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件顶部 import 重导出 → 下游用 cw_comps.AFFIX_EFFECTS 不变。
-# 词缀→策略 tag(给 mechanics_fit)见下面 AFFIX_MECHANIC_MAP;TODO(task#73) 接线。
+# 词缀→策略 tag(给 mechanics_fit)见下面 AFFIX_MECHANIC_MAP(D-49/55 已接 comp_score W_MECH;
+# comp.boss_weakness 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)

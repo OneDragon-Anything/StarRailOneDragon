@@ -15,6 +15,12 @@
 
 ---
 
+## D-55 (2026-08-06) task#73 续:AFFIX_MECHANIC_MAP 补 忍无可忍/沉重脚步(灼热轰炸 纯数值不入表) · cw_comps
+- **决策**:MECHANIC_COUNTERS 补「多段惩罚」→[高频低单次]、「行动延后」→[速度依赖];AFFIX_MECHANIC_MAP 补 忍无可忍→多段惩罚、沉重脚步→行动延后。灼热轰炸**不入表**(纯数值)。
+- **为什么(task#73 余词缀)**:① 忍无可忍(敌受 7 击提前 100%)→ 克高频多段(反甲白厄 高频低单次 多打→频触→敌频动),方向强,入表;② 沉重脚步(受击延后 8%)→ 克速度依赖(鞋队 tuning 被打乱),方向性入表;③ 灼热轰炸(前排受击+火 DoT)均匀影响所有 comp(无 comp flip;治疗护盾只是"抗"非"被利"),按「纯数值怪强化无 comp 交互不入表」原则(同 首领强化)**不入表**,mechanics_fit 中性 0.5 正确。
+- **备选**:① 灼热轰炸 synergy 反甲白厄(推翻:反甲白厄 attr=高频低单次 非"受击反击",无 synergy attr 可挂;强挂伪造);② 忍无可忍 reuse「反伤」tag(推翻:机制不同 反伤=反伤 vs 多段=敌提前,语义混);③ 沉重脚步 reuse「速度抑制」tag(推翻:速度抑制=极端高速被抑 vs 行动延后=受击延后,语义混,用独立 tag「行动延后」清晰)。
+- **状态**:采用。cw_comps test +3(忍无可忍/沉重脚步 behavioral + AFFIX_MECHANIC_MAP integration),40 绿;ruff 净。**task#73 剩余**:comp.boss_weakness 俗称→规范公司名对齐(boss_fit 永不命中,需游戏数据银行 boss 图鉴核对,游戏忙暂阻)。· task#73(D-49)
+
 ## D-54 (2026-08-06) 事件长尾:battle_loop 加 0f 消耗品详情浮层 → ESC 关(plane2 supply 后 modal 遮屏死循环) · battle_loop
 - **决策**:battle_loop 加 0f 分支(0e 后、备战前):OCR 同时命中「消耗品」AND「拖动到」(均 lcs 0.9)→ `btn_tap('esc')` 关浮层 → round_wait 1.5。
 - **为什么(2026-08-06 整跑暴露,plane2 新地)**:plane2 round1 hp=1 存活(DOT队)→ 补给节点 → 投资策略「星星相印」奖励【员工投影仪】消耗品 → 游戏自动弹消耗品**介绍 modal**(「员工投影仪/消耗品/拖动到...使用/道具使用后消失」)→ modal 遮挡备战/投资策略屏 → 上面 0-6 分支全不命中 → `round_retry` flat loop ~19min → 失败。**非策略死,UI 弹窗卡死**。前三局死 plane1 从未到 plane2,故未暴露。
