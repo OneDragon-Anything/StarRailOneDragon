@@ -15,6 +15,12 @@
 
 ---
 
+## D-53 (2026-08-06) 弱阵实验:comp early_power 早期战力先验 + _difficulty_phase_factor 早期偏 · cw_comps
+- **决策**:Comp 加 `early_power`("高"/"中"/"低" 早期 plane1 战力先验)+ `_difficulty_phase_factor` 早期(round≤3 or gold<30)= `form_fac * power_fac`(偏 form_difficulty easy **且** early_power 高)。9 comp 标先验:列车同行=高 / 命运圣杯=中 / 击破流萤=中 / 贝洛伯格=中 / 万敌=中 / 巡击青雀=低 / 昼神阿雅=低 / DOT队=低 / 反甲白厄=低。
+- **为什么(2026-08-06 整局暴露弱阵)**:DOT队(form_difficulty easy + B 级)plane1 r9 boss 战死(HP 62→0)。原 `_difficulty_phase_factor` 只偏 easy 成型 → DOT队 易成型被选,但 **DoT 慢热 plane1 弱**。加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏易成型 **且** 早期战力强。
+- **备选**:① 调 W_STR 偏 S 级(推翻:strength S/A/B 太粗,列车同行 S 但 progress 0 仍不选;early_power 直接标早期战力);② comp_viability 观测 blend(推翻:candidate 无观测未 commit,只 current comp 用;early_power 静态先验可立即用);③ 只 form_difficulty 不加 early_power(推翻:DOT队 easy 弱,没区分早期战力)。
+- **状态**:**实验**(先验待多局实玩校准)。cw_comps + cw_decisions 80 测试绿。**下局验证**:早期是否选 early_power 高(列车同行)而非 DOT队 + 存活更久。若无效调权重/先验。· 整局弱阵(D-50 整跑)
+
 ## D-52 (2026-08-06) P1.5 refine:node_type 推断(结算屏「首领」→ boss) · battle_loop
 - **决策**:`_record_round_outcome` node_type 从固定「普通战斗」→ 推断:结算屏 OCR 含「首领」(如「1-9首领」)→ `'boss'`,否则「普通战斗」。log 加 node 字段。
 - **为什么**:P1.5 观测回路 node_type 原 all「普通战斗」(粗),boss/普通不区分 → PerformanceTracker trend 不能按节点类型分(boss 掉血 vs 普通)。2026-08-06 整跑 log:round9 结算屏「1-9首领」(boss 标签)可区分。词缀「首领强化」在简报不在结算屏 → 不误匹配。
