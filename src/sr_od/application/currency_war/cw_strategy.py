@@ -161,6 +161,8 @@ class StrategySession:
     briefing_affixes: list[str] = field(default_factory=list)
     # 简报首领(3 位面 boss 名;loop __init__ 从 ctx.cw_briefing_bosses copy;boss_fit 输入)
     briefing_bosses: list[str] = field(default_factory=list)
+    # 已选投资环境名(如"昼之半神概念股";HandleInvestEnv 选后写;update_target copy 到 state → env_fit 输入)。D-58
+    active_env: str = ""
 
 
 @dataclass

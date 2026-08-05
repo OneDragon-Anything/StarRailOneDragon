@@ -93,6 +93,10 @@ class HandleInvestEnv(SrOperation):
         else:
             chosen, choose_x, reason = '?', 960, 'fallback(no-ocr)'
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
+        # D-58:存已选 env 到 session → update_target copy 到 state.active_env → env_fit(T0 env 近乎硬绑)生效。
+        # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
+        if match is not None and chosen != '?':
+            match.session.active_env = chosen
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         _sel = area_center(self.ctx, '区域-卡牌描述行', HandleInvestEnv.SCREEN_NAME)

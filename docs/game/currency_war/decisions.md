@@ -15,6 +15,12 @@
 
 ---
 
+## D-58 (2026-08-06) env_fit 接线 bug:已选投资环境从不存 state.active_env → T0 env 硬绑静默失效 · cw_strategy/handle_invest_env/default_strategy
+- **决策**:`StrategySession` 加 `active_env: str`;`HandleInvestEnv` 选后写 `session.active_env = chosen`;`update_target` copy 到 `state.active_env`(make_score_context 前,同 briefing_affixes 模式)。
+- **为什么(2026-08-06 实跑 + 代码核实)**:T0 env「昼之半神概念股」选了(score=100),board 已 昼之半神:2(向 昼神阿雅 成型),但 target=巡击青雀(0 仙舟/追击)。grep 证实 **`active_env` 只读(cw_comps:391)从不赋值** —— HandleInvestEnv 点了 chosen 卡却不存名 → state.active_env 恒空 → `env_fit` 全返 0.5 → ENV_COMP_AFFINITY(T0 env 近乎硬绑)静默失效。修后:昼神阿雅 env_fit=1.0(+board form_progress 0.5)→ comp_score ~0.375 >> 巡击青雀 ~0.075 → 会选/转向 env + board 支持的 comp。
+- **备选**:① OCR 读 active_env(推翻:env 名屏上不常驻,选中后不可读;session 存是正解,同 briefing);② 只在 select_comp 用 env(推翻:update_target/maybe_pivot 都经 make_score_context,pivot 也要 env 信号);③ 存 active_strategy 投资策略(暂不:comp_score 不用投资策略,留 P2+ 视需要)。
+- **状态**:采用。60 测试绿(env_fit 逻辑既有覆盖);ruff 净。**待新局验证**:T0 env 下是否选/转向 昼神阿雅(env+board 支持)而非 env-blind 选 巡击青雀。· 弱阵(D-53/56)+ ENV_COMP_AFFINITY
+
 ## D-57 (2026-08-06) app 起局 bug:_in_match 大厅误判「已在对局」(短词 lcs 0.5 误匹配)→ 跳过 start 空跑 · currency_war_app
 - **决策**:`_in_match` 加 `_at_lobby` 短路(大厅≠对局中)+ `_IN_MATCH_KEYWORDS` 的 `round_by_ocr` 收紧 lcs 0.5→0.8。
 - **为什么(2026-08-06 实跑)**:从大厅 run_standalone_app → 2.4s 空跑「对局结束,回大厅」。日志:`_start_match` 报「已在对局中,跳过 start 交 loop」→ loop 见大厅「创业指南」→ 3c 误「对局结束」。根因 = `_in_match` 用默认 lcs 0.5 全屏 OCR 短词:「出战」(2 字)匹配大厅「货币战争」(含「战」,1/2=0.5≥0.5 命中)→ 误判对局中 → 跳过 start。**同 D-37/D-50/D-54 round_by_ocr 默认 lcs 坑第 N 次**(短词 + 全屏 LCS = 误匹配高发)。
