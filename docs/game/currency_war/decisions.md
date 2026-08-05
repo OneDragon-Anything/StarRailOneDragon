@@ -15,6 +15,12 @@
 
 ---
 
+## D-56 (2026-08-06) 决策迹:maybe_pivot 加 log(弱阵诊断要数据,非猜) · cw_comps
+- **决策**:`maybe_pivot` 3 信号(保命/涌现/ceiling)各加 INFO log —— 评估点 log 当前/最佳 comp、score、gap、决策(pivot X / 保持)。`select_comp` 暂不 log(每轮调用,select_comp top 已由 maybe_pivot 内部用)。
+- **为什么(弱阵诊断)**:2026-08-06 整跑 bot round7 巡击青雀→DOT队 pivot 后 plane2 r2 战死。**根因代码级定位** = 信号1 用 `comp_score(best) > comp_score(target)+0.10`,而 comp_score 含 shop_supply 乘数(0.3+0.7×shop_supply,可达 ~3.3×)→ shop RNG 刷出他阵营牌 → 该 comp score 暴涨 → 误涌现 pivot → 永不深 commit → 弱阵死。但**修法值(PIVOT_SCORE_GAP / commitment 权重)需实跑 score/gap 数据校准**(原 match 日志 server 重启被截断丢失 → 无数据)→ 先加 log 采数据,再据数据调(D-57),**不凭猜定值**(D-35 教训:猜值误判)。log 亦永久 telemetry(决策迹复盘 + 未来 ML side door,§11.5)。
+- **备选**:① 凭代码级根因直接调 PIVOT_SCORE_GAP/加 commitment(推翻:无 score 数据猜值,D-35 风险);② select_comp 也 log top3(推翻:每轮 noisy,maybe_pivot 已覆盖决策点);③ log 打 DEBUG(推翻:server 跑 INFO,DEBUG 不见 → 采不到)。
+- **状态**:采用。66 pivot/comp 测试绿(log 行为中性);ruff 净。**next**:起干净对局采 pivot log → 据 gap 分布调 PIVOT_SCORE_GAP / 加 commitment hysteresis(D-57)。· 弱阵(D-53)
+
 ## D-55 (2026-08-06) task#73 续:AFFIX_MECHANIC_MAP 补 忍无可忍/沉重脚步(灼热轰炸 纯数值不入表) · cw_comps
 - **决策**:MECHANIC_COUNTERS 补「多段惩罚」→[高频低单次]、「行动延后」→[速度依赖];AFFIX_MECHANIC_MAP 补 忍无可忍→多段惩罚、沉重脚步→行动延后。灼热轰炸**不入表**(纯数值)。
 - **为什么(task#73 余词缀)**:① 忍无可忍(敌受 7 击提前 100%)→ 克高频多段(反甲白厄 高频低单次 多打→频触→敌频动),方向强,入表;② 沉重脚步(受击延后 8%)→ 克速度依赖(鞋队 tuning 被打乱),方向性入表;③ 灼热轰炸(前排受击+火 DoT)均匀影响所有 comp(无 comp flip;治疗护盾只是"抗"非"被利"),按「纯数值怪强化无 comp 交互不入表」原则(同 首领强化)**不入表**,mechanics_fit 中性 0.5 正确。

@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
 from sr_od.application.currency_war.cw_state import GameState, effective_hp_threshold
 
@@ -533,13 +534,27 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
         fastest = min(easy, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:
+            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s',
+                     state.plane, state.round_num, state.hp, _pivot_hp,
+                     target.name if target else 'None', fastest.name)
             return fastest
         return None   # 已在最快 easy comp → 保持(不让信号 1/2 churn 切走)
-    # 信号 1:更优涌现
+    # 信号 1:更优涌现。**决策迹日志**(D-56):best≠target 才评 gap;log score/gap/决策(弱阵诊断:
+    # shop_supply 使 comp_score 波动 → 误涌现 pivot,数据驱动校准 PIVOT_SCORE_GAP / commitment)。
     if target is None or best.name != target.name:
         target_score = comp_score(target, state, ctx) if target is not None else 0.0
-        if comp_score(best, state, ctx) > target_score + PIVOT_SCORE_GAP:
+        best_score = comp_score(best, state, ctx)
+        gap = best_score - target_score
+        if gap > PIVOT_SCORE_GAP:
+            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f; bd=%s)',
+                     state.plane, state.round_num, state.hp,
+                     target.name if target else 'None', best.name,
+                     best_score, target_score, gap, PIVOT_SCORE_GAP,
+                     {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
             return best
+        log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f 保持)',
+                 state.plane, state.round_num, state.hp,
+                 best.name, target.name if target else 'None', gap, PIVOT_SCORE_GAP)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
         # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)
@@ -548,7 +563,11 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         if target.typical_form_round > remaining and form_progress(target, state) < 1.0:
             # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
-            return min(easy, key=lambda c: c.typical_form_round or 99)
+            new = min(easy, key=lambda c: c.typical_form_round or 99)
+            log.info('[cw-pivot] p=%s r=%s 信号2ceiling %s->%s (form_round %s>剩%s)',
+                     state.plane, state.round_num, target.name, new.name,
+                     target.typical_form_round, remaining)
+            return new
     return None
 
 
