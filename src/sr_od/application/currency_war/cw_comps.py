@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_state import GameState, effective_hp_threshold
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_performance import PerformanceTracker
@@ -501,8 +501,8 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             # 切成型最快的(easy 优先)
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
             return min(easy, key=lambda c: c.typical_form_round or 99)
-    # 信号 3:保命转型(hp < 0.75×hp_safe_threshold;D-18 unification,原硬编码 30 = 0.75×40)
-    _pivot_hp = int(0.75 * getattr(config, 'hp_safe_threshold', 40))
+    # 信号 3:保命转型(hp < 0.75×effective_hp_threshold;D-18 unification + D-32 difficulty 派生)
+    _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
     if state.hp < _pivot_hp:
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
         fastest = min(easy, key=lambda c: c.typical_form_round or 99)

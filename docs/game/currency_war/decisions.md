@@ -15,6 +15,37 @@
 
 ---
 
+## D-32 (2026-08-05) difficulty → hp_safe_threshold 派生(向后兼容,A8 高难保血地基)· cw_state / cw_decisions / config
+- **决策**:加 `GameState.difficulty`(A1..A8,匹配开始从难度确认屏检测)+ `CurrencyWarConfig.difficulty_hp_override`(难度→保血阈值映射,默认 A1-A4=40 不变 / A5+ 升阶)+ `effective_hp_threshold(state, config)`(cw_state)。3 处阈值读取统一走它:evaluate → `_phase_weights`、plan → `_refresh_cap`、`maybe_pivot`(0.75×)。**向后兼容**:difficulty 未检测("")或 override 无对应键 → 回退 `hp_safe_threshold`(默认 40 = `HP_DANGER`),行为与加 difficulty 前**完全一致**(detection 未接线时零变化)。
+- **为什么**:cw_decisions 长期 TODO(:194「待 difficulty 字段」、:206「待补 A8 difficulty 信号」)—— A8 高难敌人更凶,固定 threshold=40 偏低(过晚弃息保血 → 失血过多);高难应更早保血。**离线地基**:detection(难度确认屏 OCR → `state.difficulty`)是后续 game 接线任务;本改动先把「阈值随难度变」的 plumbing + 派生函数 + GameState 字段就位,detection 落地即生效(不再动决策代码)。关 D-18(hp 阈值统一)的 difficulty 维度。
+- **备选**:① 直接改死 `HP_DANGER` 常量(推翻:全局生效、低难也变、不向后兼容,A8/低难该不同阈值);② 加 difficulty 字段但不派生、等 detection 全做完再接(推翻:detection 时要同时改字段+函数+3 处位点,更碎;先做离线地基更稳,且向后兼容不破坏当前未验证跑)。
+- **状态**:采用。代码 + 5 新测试绿(`test_effective_hp_threshold_*` ×4 + `test_eval_difficulty_aware_hp_threshold` 集成证 difficulty 改变 eval 行为);现有 cw_decisions/cw_comps 测试向后兼容通过。`DEFAULT_DIFFICULTY_HP`(A5+ 升阶)是**保守起步,待实机校准**(detection 接线后看 A8 实际失血曲线调)。· `cw_state.effective_hp_threshold` / `currency_war_config.DEFAULT_DIFFICULTY_HP` / `cw_decisions` evaluate+plan / `cw_comps.maybe_pivot`。· §02A3。
+
+## D-31 (2026-08-04) 巨星卡死真根因 = bug#1(↺ 推翻 D-30 的"2 步缺 step2")· run_megastar_node
+- **决策**:巨星节点卡死 6min 的真根因是 **bug#1**(确认 click 走 `round_by_ocr_and_click`,其 `before_screenshot` 把鼠标移到角 → click 判 drag 被吞 → 确认永不落地 → flat loop 无限 `round_wait` 烧预算),**不是**漏选强化角色。强化角色**可选**(不选也能确认推进)。修 = `RunMegastarNode`:`mouse_move`+`click`(bug#1 零移动缓解,同 invest handler)+ RunNode 验证(overlay 消失=完成)+ 节点预算(点不动 bail,不再 2.5h 烧)。
+- **为什么(实机,MCP + VLM 结合)**:① OCR ground truth ——「强化角色未选择」持续在,点确认(MCP `click_game` 直连、无 before_screenshot)后该字消失、overlay 关 = **节点推进了**;② open-prompt VLM —— 看到花火有**金色发光边框 = 已选中**(窄 prompt 之前漏看、误报"没选中"→ 误判缺 step);③ 综上:花火早被 bot 的候选 click 选中,唯一卡点是确认 click 被 bug#1 吞,我直连点确认一发即中。
+- **备选**:D-30 的"补选强化角色 step2 / 候选选中机制不明"(↺ 推翻:强化角色可选非卡点;候选早选好了,D-30 的"选中机制不明"是窄-prompt 视觉大模型 漏看金边造成的误判)。
+- **状态**:采用。`RunMegastarNode` 代码完成(ruff 净 + 导入/结构验);**行为验证待下次巨星节点**(bug#1 缓解后应一发推进;现游戏已过我手动推进的巨星、在备战 1-6)。· `run_nodes/run_megastar_node.py` / `battle_loop` 0b。
+- **方法论(回应用户"prompt 限制 VLM" + "MCP 和 VLM 都用")**:① **VLM 探索未知画面先 OPEN prompt**(描述全部),窄/leading 问法**压制题外输出** —— 我窄 prompt 漏看金边 → 误判"没选中" → 误以为缺 step → 跑去问用户;open prompt 一眼看到金边。② **MCP(OCR ground truth)+ VLM(open 枚举/选中态)+ click(验证交互)三结合** —— 各取所长:OCR 可信、VLM 看非文本元素/状态、click 验行为。③ **这条经验 → `od-dev-screen-onboarding`(open 枚举)+ 视觉大模型 用法 memory(open prompt 先)**。
+
+## D-30 (2026-08-04) 巨星节点机制缺口 + 早期恶性循环(实机发现,待解)· handle_megastar / 策略
+- **决策(发现,非定案)**:① 巨星(位面首领,每位面第 6 关)是**2 步节点**(选候选成巨星 + 选强化角色 + 确认),`HandleMegastar` 只做第 1 步 → 确认被拒(「强化角色未选择」)→ 节点永不完成;② 但"候选怎么选中"**机制不明**(点卡片本体 (925,240) / 名字条 (820,333)/(920,343) 均不选;点「详情」能开浮层=点击落地✓;视觉大模型 状态推理不可信;web 搜索无果)→ 需用户/人肉实机观察;③ 更深:bot 早期战力弱 → 输回合 → 穷 → 升不起级 → 弱 comp → 继续输(**恶性循环**),level gate+saving(D-24/D-28)必要非充分。
+- **为什么**:实机迭代(plane1 round6)暴露 —— 卡巨星 6min(75+ retry 屏完全不变,会转到 MAX_ITER 2000 ~2.5h);round6 gold=17 lv=4 付不起升级费 30,hp 100→58 在掉血。纯代码永远看不出。
+- **备选**:① 凭 视觉大模型 猜巨星选中目标(推翻:视觉大模型 状态/交互推理不可信,memory `onboard-vision-required` 已记);② 跳过巨星(推翻:首领节点不可跳,必打)。
+- **状态**:**待解**。巨星选中机制 = 知识缺口(问用户 / 看攻略视频);恶性循环 = 早期战力 + 经济策略问题(需策略迭代)。`RunMegastarNode` 待机制明后建(预算至少 fail-fast 不再 2.5h 烧)。· `handle_megastar` / 策略早期经济。
+
+## D-29 (2026-08-04) RunNode 重构:对局内 op 按节点生命周期划分 · battle_loop / run_nodes
+- **决策**:对局内主循环从「flat loop 逐帧重新发现」重构为「外层分类+委派 + RunNode 按节点生命周期 owner」。`RunNode` 基类(**committed-but-verifying + 节点作用域预算**):每轮验证"还在本节点?"(`_in_node`)→ 否=节点完成 `round_success`;是→`_do_action` 做一动作→`round_retry`(计 `node_max_retry_times` 预算;超→FAIL bail,不无限烧)。pilot = `RunSupplyNode`(从 `HandleSupply` 升级,动作不变只套验证+预算)。
+- **为什么**:旧 `Handle*` 全是**盲单发**(做一次动作就无条件 `round_success`,从不验证节点真完成 / overlay 消失)→ 动作失败也回 success → 外层 flat loop `round_wait`(**不计 retry**)无限重派 → 卡死烧预算(巨星 6min / invest_strategy 18min / invest_env 卡死,**全这一个模式**)。flat loop 还把"我在哪种节点"和"节点哪一步"两条正交问题塞进一条优先级阶梯 → LCS 噪音 / precedence 脆弱。RunNode 分开:外层只分类(小集合稳定),RunNode 管节点内多阶段 + 验证完成 + 预算。
+- **备选**:① 保留 flat loop 只加全局超时(推翻:治标,优先级阶梯/LCS 噪音/无节点作用域卡死判据的根因没解);② 大改成显式状态机(推翻:OneDragon 节点图 + committed-but-verifying 已够,无需另造)。
+- **状态**:采用。基类 + `RunSupplyNode` pilot 代码完成(ruff 净 + 导入/结构验),**行为验证待补给屏**(被巨星 D-30 卡,推进不到补给);其余节点(encounter/partner/invest_strategy/invest_env/megastar/combat)待逐个迁移(先零件后整体)。方法论 + 完整设计:`.debug/temp/currency_war/runnode_decomposition.md`(**后续提炼进 od-dev skills** —— op 划分通用方法论)。· `battle_loop` 0e supply 分支 / `run_nodes/run_node.py` / `run_supply_node.py`。
+
+## D-28 (2026-08-04) `_saving_for_level` 对齐 D-24 gate · cw_decisions
+- **决策**:`_saving_for_level` = 想升(`level<10 AND (goal=level_up OR level<_expected_level)`)AND `gold<升级费` → 抑制散牌买/刷,攒钱升等级。
+- **为什么**:D-24 gate 已按"落后期望也升"(修 chicken-egg:`_DEFAULT_LEVEL_GOAL[4]=roll` → lv4 不升 → 永远到不了 lv5),但 saving 仍按旧"goal=level_up"→ lv4 不攒 → gate 想升却付不起。saving 须与 gate **同口径**。
+- **备选**:saving 按 goal=level_up(推翻:与 D-24 gate 不一致,lv4 永远不攒,gate 形同虚设)。
+- **状态**:采用(代码 `d5e0aea7`)。· `cw_decisions._saving_for_level`/`_want_level`。**注:必要非充分** —— 实跑 round6 gold=17 仍升 0(太穷付不起 30,见 D-30 恶性循环)。
+
 ## D-27 (2026-08-04) RunLoop 事件 overlay 前置检测 + BuyShopCards 兜底 · battle_loop / shop
 - **决策**:① RunLoop 把 投资策略/投资环境/补给 检测**移到备战前**(原 step 4 → 0e,与 选择伙伴/巨星/遭遇/未达上限 同列前置);② BuyShopCards guard 加事件 overlay 兜底(检测 投资策略/环境/补给/遭遇/伙伴/确认选择 → fail 交主循环)。
 - **为什么**:实跑发现**投资策略屏被误派 BuyShopCards**(「购买经验」从 overlay 后透出 → 备战分支 step1 先命中 → BuyShopCards → overlay 遮商店 → "找不到商店"死循环)。根因:事件 overlay 叠备战、购买经验透出,但事件检测在备战后。事件必须前置(overlay 在就不进备战)。BuyShopCards 兜底防 loop 漏检/其他调用路径。

@@ -41,6 +41,7 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     ShopCard,
     card_cost,
+    effective_hp_threshold,
     sell_refund,
     simulate,
 )
@@ -236,7 +237,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     core_chars 持有不在此重复计分(char_quality 已覆盖用户 character_priority)。
     """
     ws, we, wc = _phase_weights(state.plane, state.hp,
-                                getattr(config, 'hp_safe_threshold', HP_DANGER))
+                                effective_hp_threshold(state, config))
     score = (
         ws * synergy_score(state, faction_priority, target_comp)
         + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
@@ -407,7 +408,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur, getattr(config, 'hp_safe_threshold', HP_DANGER)) - refresh_used,
+                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config)) - refresh_used,
                                       target_comp=target)
         if not step:
             break

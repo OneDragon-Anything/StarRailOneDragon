@@ -59,6 +59,15 @@ DEFAULT_BOSS_COUNTER: dict[str, list[str]] = {
 # 克制 DoT/减益 的投资环境(遇此环境不走 DoT 路线)
 DEFAULT_DOT_PUNISH_ENVS: list[str] = ["净化身心"]
 
+# 难度 → 保血阈值覆盖(A1..A8;effective_hp_threshold 用)。
+# **保守起步,待实机校准**:A1-A4 = 40(= HP_DANGER,低难不变,可适当卖血保经济);
+# A5+ 升阶(高难敌人更凶 → 更早弃息保血)。detection(state.difficulty)接线后生效;
+# 未检测 / 用户置空 → 回退 hp_safe_threshold。D-32。
+DEFAULT_DIFFICULTY_HP: dict[str, int] = {
+    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
+    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
+}
+
 
 class CurrencyWarConfig(YamlConfig):
     """货币战争配置(入口流程 + 策略偏好)。
@@ -87,6 +96,9 @@ class CurrencyWarConfig(YamlConfig):
         # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
         # _refresh_cap / maybe_pivot(0.75×)经此派生,D-18 unification。
         self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
+        # 难度 → 保血阈值覆盖(检测到 state.difficulty 时优先于 hp_safe_threshold;D-32)。
+        # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。
+        self.difficulty_hp_override: dict = self.get('difficulty_hp_override', DEFAULT_DIFFICULTY_HP)
 
     def save(self) -> None:
         """持久化策略字段。"""
@@ -101,5 +113,6 @@ class CurrencyWarConfig(YamlConfig):
             'boss_counter': self.boss_counter,
             'dot_punish_envs': self.dot_punish_envs,
             'hp_safe_threshold': self.hp_safe_threshold,
+            'difficulty_hp_override': self.difficulty_hp_override,
         }
         YamlConfig.save(self)
