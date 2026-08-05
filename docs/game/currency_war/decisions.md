@@ -15,6 +15,13 @@
 
 ---
 
+## D-38 (2026-08-05) P1.5 观测回路 OCR 组件:结算屏 hp_after 解析 · cw_observation
+- **决策**:P1.5(观测回路,D-36 列为 next)的第一块零件:``cw_observation.parse_settlement_hp``(纯函数)+ ``read_round_outcome``(OCR 全屏 → ``RoundOutcome``)。**组件就位 + 单测,``battle_loop`` 的 ``on_round_end`` 接线留下局**(避免杀当前验证 match;留下局部署)。
+- **结算屏形态(2026-08-05 实跑 OCR 确认)**:战斗后「挑战结束/数据统计/继续挑战」屏,展示「小队生命值<N>」(战后 HP)+ 总伤害 + 连胜。实测 OCR:`['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战',...]`(战前 84 → 战后 71,本战损 13)。
+- **为什么(解析用「紧邻数字」)**:``parse_settlement_hp`` 用 ``re.search(r'生命值\\s*(\\d+)', t)`` 取「生命值」**紧邻后方**数字,而非首部/尾部 —— 防投资策略描述「每损失20点小队生命值获得5」(偶同屏/同 OCR)误取 20/5。「紧邻」语义:数字紧跟「生命值」(允空格),隔汉字即不算。越界(HP_MIN..HP_MAX)丢弃。
+- **备选**:① 区域 OCR(给结算屏建 screen_info area for 小队生命值)—— 方法论首选,但需结算屏建档(本次用全屏 OCR 解析即解,区域留 refine);② 尾部数字 ``(\d+)\D*$`` —— 推翻:「每损失...生命值获得5」尾部是 5,误取;紧邻数字才区分得开。
+- **状态**:采用。6 单测全绿(``test_cw_observation.py``:结算 71、无噪声 84、拒非紧邻、无文本 None、越界丢弃、0 允许)。next:``battle_loop`` 接 on_round_end(结算检测 → read_round_outcome → ``strategy.on_round_end``)+ node_type 推断(boss/elite 节点追踪)。· strategy/11 §11.7/§11.12 P1.5。
+
 ## D-37 (2026-08-05) loop 0d「未达上限」LCS 误匹配「能量上限」→ 收紧 lcs 0.5→0.8 · battle_loop 0d / handle_deploy_not_full
 - **决策**:`battle_loop` branch 0d(未达上限弹窗 dispatch)+ `HandleDeployNotFull` 的检测关键词 `'未达上限'` 收紧 `lcs_percent` 默认 0.5 → 0.8。
 - **为什么**:投资策略屏的策略描述含「能量上限」(如"同于能量上限20%的能量"),与「未达上限」共享子序列「上限」(LCS 2/4 = **0.5 = 默认阈值**)→ branch 0d 误匹配 → 投资策略屏被吞,反复触发 `HandleDeployNotFull`(其点击落在错误坐标,不消 overlay)→ 对局卡死(2026-08-05 实跑,P1 验证时暴露)。真「未达上限」弹窗 4/4 命中,0.8 不影响;「能量上限」2/4=0.5 < 0.8 不再误匹配。同 loop 其他分支(0a/0b/0e)早就在 0.7-0.9,唯独 0d 漏在默认 0.5。
