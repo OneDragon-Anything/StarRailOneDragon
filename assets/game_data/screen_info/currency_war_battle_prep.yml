@@ -3,7 +3,7 @@ screen_name: 货币战争-备战
 pc_alt: false
 area_list:
 - area_name: 备战标识-购买经验
-  id_mark: false
+  id_mark: true
   pc_rect:
   - 229
   - 841
