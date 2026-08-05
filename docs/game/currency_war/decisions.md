@@ -15,6 +15,12 @@
 
 ---
 
+## D-49 (2026-08-06) mechanics_fit 数据对齐 + 补全:comp 属性对齐 MECHANIC 表 + 补皮糙肉厚/榜样激励 · cw_comps(task#73)
+- **决策**:`mechanics_fit` 已接 `comp_score`(W_MECH),但 comp 属性 tag 跟 MECHANIC 表不对齐 → 命中少。对齐 + 补:① 列车同行 `[护盾]→[治疗护盾]`(对齐 counter 治疗削弱→治疗护盾);② `MECHANIC_SYNERGIES` 补「皮糙肉厚→[击破]」(利击破 comp);③ `MECHANIC_COUNTERS` 补「榜样激励→[高倍率单核]」(克单核);④ `AFFIX_MECHANIC_MAP` 补皮糙肉厚/榜样激励。
+- **为什么**:`mechanics_fit(comp, mechanics)` 经 `comp.mechanic_attributes` 查 MECHANIC_COUNTERS/SYNERGIES。comp 标的属性必须 = MECHANIC 表属性 tag 才命中。原 列车同行[护盾] ≠ counter[治疗护盾] → 不命中(重症难题不克它);击破流萤[击破]/命运圣杯[高倍率单核] 无 MECHANIC 条目 → 永不命中。对齐后真生效(皮糙肉厚利击破、榜样激励克单核、重症难题克列车同行)。
+- **备选**:① 不对齐维持现状(mechanics_fit 大半中性,词缀克制没生效 → 策略不适配词缀);② comp 逐词缀列举克制(推翻:数据驱动,comp 标属性 tag + MECHANIC 表查,不必逐词缀)。
+- **状态**:采用。comp 属性对齐 + MECHANIC 补 2 条 + AFFIX_MECHANIC_MAP 补 2 词缀。test_cw_comps +3(击破+皮糙肉厚 synergy / 命运圣杯+榜样激励 counter / 列车+治疗削弱 counter),37 绿。**剩余**:召唤[召唤]无明确词缀交互暂不补;AFFIX_MECHANIC_MAP 仍部分(沉重脚步/忍无可忍/灼热轰炸 等待游戏知识);**comp.boss_weakness 名对齐 bosses.md/read_bosses OCR 名**(boss_fit 已接,但 comp 标的红绿灯/电视机/琥珀王/死龙 是简称,要核对 bosses.md 规范名)留。· competitors.md 策略映射
+
 ## D-48 (2026-08-05) P1.5 观测回路接线:battle_loop 结算屏 → read_round_outcome → on_round_end · battle_loop
 - **决策**:CurrencyWarRunLoop「继续挑战」检测处加 P1.5 观测回路:结算屏(「挑战结束」)→ `read_round_outcome`(OCR hp_after,组件 D-38)→ `strategy.on_round_end`(默认实现 `performance.record(obs)`,记掉血 trend)。非结算屏跳过;失败不阻塞对局。plane/round 用 last-known(`read_phase_round` 结算屏不显);node_type 暂粗(普通战斗,boss/elite 后续)。
 - **为什么(用户 2026-08-03 定调:观测驱动非预测)**:read_round_outcome(D-38 组件)+ on_round_end 钩子(D-34)+ PerformanceTracker 都就位,只缺 battle_loop caller。接上后 PerformanceTracker 记每回合 hp_after → 掉血 trend → 策略可据**观测结果**调 comp/mechanics 评分(而非盲预测赢率;版本鲁棒 —— V4.5 改数值,掉血照样掉)。
