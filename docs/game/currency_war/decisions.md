@@ -15,6 +15,12 @@
 
 ---
 
+## D-47 (2026-08-05) 词缀效果采集:注册表单独 py(affix_effects_data) + 运行时自动写 + 固定采集对比 + 截图对账 · cw_observation/handle_briefing
+- **决策**:敌人词缀效果(游戏原文 ground truth)用单独 py 注册表 `affix_effects_data.py`(`AFFIX_EFFECTS: dict[str,str]`,从 cw_comps 迁出,cw_comps 重导出不变)。HandleBriefing **固定采集**每词缀(点词缀弹 tooltip → `read_affix_effect` OCR 效果,纯解析找标题→取下方紧邻连续行 dy≤45)→ 对比注册表**文件最新**(`load_affix_effects_from_file`,exec 读)→ 新名/描述不一致 → 截图(`affix_shots/<词缀>.png`)+ `write_affix_effects` 写回注册表(`json.dumps` 合法 py);一致→跳过。**本轮下游不生效**(mechanics_fit 用内存 import 旧值),**下轮启动重新 import 生效**。
+- **为什么(用户 2026-08-05)**:① 词缀效果要游戏原文(简报词缀只显示名字,点词缀弹 tooltip 才显效果;游戏内无词缀图鉴,网络无权威完整列表,competitors.md 攻略统计 ~50);② 注册表作"最后使用"权威源,运行时自动写(采到新/不准就校准)省人工 yml→py 同步;③ 对比跟注册表**文件最新**(非内存)→ 本轮内不重复写;④ 截图对账回查 OCR 没采错;⑤ 本轮不生效下轮生效可接受(用户明确)。
+- **备选**:① yml 缓冲 + 人工同步进 py(推翻:多一步人工同步,用户要自动);② 对比跟内存 import(推翻:本轮写后内存不更新 → 本轮内重复采重复写);③ 只采注册表缺的(推翻:用户要固定采集校准,描述不一致也记录);④ read_affix_effect 限 y<960(推翻:硬编码不鲁棒,改标题下方紧邻连续行 dy≤45)。
+- **状态**:采用。实机验证通过(HandleBriefing 采 4 词缀:软弱无力注册表故意改错→采到原文→写回正确+截图,其他 3 一致跳过;点下一步+自检离开简报)。15 测试绿。`load_affix_effects_from_file` exec 解析(**TODO 后续换 importlib.reload/ast**,不优雅)。mechanics_fit 接线留 task#73(注册表 effect 原文不喂策略,tag 走 `AFFIX_MECHANIC_MAP`)。· docs/game/screens/currency_war_briefing.md
+
 ## D-46 (2026-08-05) ↺ 推翻 I16「卡底 820 选中」:投资策略点卡名(y≈474)选中(白边+确认亮) · handle_invest_strategy
 - **决策**:投资策略 3 选 1 点卡选中位置 = **卡名行(y≈474)**,非 I16 的「卡底 820」。`CARD_CLICK_Y` 820→474;screen_info「区域-卡牌描述行」(卡底)→「区域-卡名行」[200,455,1720,505];handle 改读 `area_center('区域-卡名行')`。
 - **为什么(2026-08-05 实跑暴露 + 实机点验)**:loop 卡投资策略 ~4min(整局阻塞)。stop 后实机点验:点中产阶级卡名(461,474)→ 视觉白边选中 → 点确认(951,967)→ 推进备战 1-3(链路通)。**卡名 y474 选中**,非 I16「卡底 820」—— I16 凭「820 高亮+刷新次数变 0」误判(实际是刷新反馈,非选中)。点卡底 820 没选中 → handle 点 820 → loop 反复卡死投资策略。

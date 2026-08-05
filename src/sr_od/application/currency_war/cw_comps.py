@@ -125,6 +125,10 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 其余词缀(首领强化/复仇心切/倒计时类等)为纯数值/无 comp 交互,不入表;实机 OCR 按需补
 }
 
+# AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
+# 自动写入采到的新词缀/校准)。本文件顶部 import 重导出 → 下游用 cw_comps.AFFIX_EFFECTS 不变。
+# 词缀→策略 tag(给 mechanics_fit)见下面 AFFIX_MECHANIC_MAP;TODO(task#73) 接线。
+
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {

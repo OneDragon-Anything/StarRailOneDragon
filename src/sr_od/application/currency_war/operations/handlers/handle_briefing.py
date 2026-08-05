@@ -15,11 +15,20 @@
 (本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
 """
 import logging
+import time
 from typing import ClassVar
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.cw_observation import read_affixes, read_bosses
+from sr_od.application.currency_war.cw_observation import (
+    load_affix_effects_from_file,
+    read_affix_effect,
+    read_affixes_with_pos,
+    read_bosses,
+    save_affix_screenshot,
+    write_affix_effects,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -47,13 +56,19 @@ class HandleBriefing(SrOperation):
         if not _hit:
             return self.round_fail('非简报屏')
 
-        # ② 读敌人词缀(A8 最高 4)+ 3 位面 boss 名 → ctx 中转(下游 mechanics_fit/boss_fit 输入)。
+        # ② 读敌人词缀(名+center,A8 最高 4)+ 3 位面 boss 名 → ctx 中转(下游 mechanics_fit/boss_fit 输入)。
         # 幂等:retry 重跑同屏值不变,已存不重读(避免重复 log)。
         if not self.ctx.cw_briefing_affixes:
-            _affixes = read_affixes(self.ctx, screen)
-            if _affixes:
-                self.ctx.cw_briefing_affixes = _affixes
-                _log.info('简报词缀读得: %s', _affixes)
+            _affixes_pos = read_affixes_with_pos(self.ctx, screen)
+            if _affixes_pos:
+                self.ctx.cw_briefing_affixes = [n for n, _ in _affixes_pos]
+                _log.info('简报词缀读得: %s', self.ctx.cw_briefing_affixes)
+                # 固定采集:每词缀点采 OCR 效果 → 跟注册表文件(affix_effects_data.py 最新)比,新名/描述不一致
+                # → 存 tooltip 截图 + 写回注册表(write_affix_effects;本轮内存不生效,下轮 import 生效)。
+                _updates = self._collect_affix_effects(dict(_affixes_pos))
+                if _updates and write_affix_effects(_updates):
+                    _log.info('[cw-briefing] %d 个词缀(新名/与注册表不一致)已写回注册表: %s',
+                              len(_updates), list(_updates))
         if not self.ctx.cw_briefing_bosses:
             _bosses = read_bosses(self.ctx, screen)
             if _bosses:
@@ -75,3 +90,29 @@ class HandleBriefing(SrOperation):
             return self.round_retry('点「下一步」后仍在简报屏(点击未生效),重点')
         _log.info('[cw-briefing] 已离开简报')
         return self.round_success('已离开简报')
+
+    def _collect_affix_effects(self, affixes_pos: dict[str, Point]) -> dict[str, str]:
+        """固定采集:每词缀点采 OCR 效果 → 跟注册表文件(``affix_effects_data.py`` 最新)比,新名/不一致 → 截图 + 收集(写回注册表)。
+
+        **对比目标 = 注册表文件最新**(``load_affix_effects_from_file``,跨轮+本轮内都准);下游 mechanics_fit
+        用内存 import(本轮旧,**下轮 import 生效**)。注册表文件没该词缀(新名)或有但效果不一致 → 存 tooltip
+        截图(``affix_shots/<词缀>.png``,对账回查)+ 收集;一致 → 跳过。``write_affix_effects`` 写回注册表
+        (本轮内存不更新,下轮生效)。tooltip 机制(2026-08-05 实机):点词缀弹效果 tooltip(词缀条上方,切换不关旧)。
+        """
+        _registered = load_affix_effects_from_file()       # 注册表文件最新(对比目标)
+        updates: dict[str, str] = {}
+        for name, center in affixes_pos.items():
+            self.ctx.controller.click(center)
+            time.sleep(1.2)  # MCP click 异步(~1s 落地)+ tooltip 弹出动画
+            _shot = self.screenshot()
+            _effect = read_affix_effect(self.ctx, _shot, name)
+            if not _effect:
+                _log.info('[cw-briefing] 词缀 %s 效果未采到(tooltip 未弹/OCR 失败)', name)
+                continue
+            if _effect == _registered.get(name, ''):
+                continue  # 注册表有且采到一致 → 跳过(已准,不用对账)
+            save_affix_screenshot(_shot, name)             # 存截图(对账,文件名=词缀名)
+            updates[name] = _effect
+            _log.info('[cw-briefing] 词缀 %s 与注册表不一致/新名(注册:%r 采到:%r)→ 截图 + 收集',
+                      name, _registered.get(name, ''), _effect)
+        return updates
