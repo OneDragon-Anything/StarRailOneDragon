@@ -497,8 +497,8 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)
         elapsed = state.round_num + (state.plane - 1) * 6
         remaining = max(18 - elapsed, 0)
-        if target.typical_form_round > remaining:
-            # 切成型最快的(easy 优先)
+        if target.typical_form_round > remaining and form_progress(target, state) < 1.0:
+            # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
             return min(easy, key=lambda c: c.typical_form_round or 99)
     # 信号 3:保命转型(hp < 0.75×effective_hp_threshold;D-18 unification + D-32 difficulty 派生)

@@ -15,6 +15,12 @@
 
 ---
 
+## D-33 (2026-08-05) maybe_pivot 信号2 加「已成型守卫」(不放弃已完成 comp)· cw_comps
+- **决策**:`maybe_pivot` 信号2(ceiling 不可达 → 切 easy)加守卫 `form_progress(target, state) < 1.0` —— target 已成型(board 全 tier 达成)时**豁免**信号2,不因 `typical_form_round > remaining` 切走已完成的 comp。
+- **为什么**:原逻辑 `if target.typical_form_round > remaining:` 无视成型度 → 已成型的 target(plane3 后期 remaining 小)会被误判"来不及成型"切走 → 放弃已完成的强 comp 转切 easy,反而变弱。**正确性 bug**(不该放弃已完成 comp),非调参。补 maybe_pivot 信号1+2 测试时发现。
+- **备选**:① 不修(推翻:已成型 comp 是最强态,切走=自毁);② 守卫用 `< 0.9` 而非 `< 1.0`(推翻:0.9 近成型仍可能来不及,该让 `form_round>remaining` 判定;只有全成型 1.0 才确定不该切)。
+- **状态**:采用。+ 1 测试(`test_maybe_pivot_formed_target_no_ceiling_pivot`:阿雅成型 board={昼之半神:4}+ plane3 round5 remaining≈1 → 不切);cw_comps 30 测试绿。· `cw_comps.maybe_pivot` 信号2。· §03。
+
 ## D-32 (2026-08-05) difficulty → hp_safe_threshold 派生(向后兼容,A8 高难保血地基)· cw_state / cw_decisions / config
 - **决策**:加 `GameState.difficulty`(A1..A8,匹配开始从难度确认屏检测)+ `CurrencyWarConfig.difficulty_hp_override`(难度→保血阈值映射,默认 A1-A4=40 不变 / A5+ 升阶)+ `effective_hp_threshold(state, config)`(cw_state)。3 处阈值读取统一走它:evaluate → `_phase_weights`、plan → `_refresh_cap`、`maybe_pivot`(0.75×)。**向后兼容**:difficulty 未检测("")或 override 无对应键 → 回退 `hp_safe_threshold`(默认 40 = `HP_DANGER`),行为与加 difficulty 前**完全一致**(detection 未接线时零变化)。
 - **为什么**:cw_decisions 长期 TODO(:194「待 difficulty 字段」、:206「待补 A8 difficulty 信号」)—— A8 高难敌人更凶,固定 threshold=40 偏低(过晚弃息保血 → 失血过多);高难应更早保血。**离线地基**:detection(难度确认屏 OCR → `state.difficulty`)是后续 game 接线任务;本改动先把「阈值随难度变」的 plumbing + 派生函数 + GameState 字段就位,detection 落地即生效(不再动决策代码)。关 D-18(hp 阈值统一)的 difficulty 维度。
