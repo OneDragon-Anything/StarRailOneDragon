@@ -344,6 +344,11 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     ocr_texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(
         image=screen, rect=None, crop_first=False)]
     hp = parse_settlement_hp(ocr_texts)
+    # 失败结算屏(「挑战失败」= 团灭)→ hp_after=0 确定(parse_settlement_hp 在失败屏常读到
+    # 「生命值❤!」等非数字 → None,但失败 = hp 0 是 ground truth)。boss 结算屏「挑战结束」无
+    # 「生命值」前缀(只裸数字)→ 暂 conf=0(后续实机核实 boss 结算屏 hp 位置 refine)。
+    if hp is None and any('挑战失败' in t for t in ocr_texts):
+        hp = 0
     return RoundOutcome(
         round_num=round_num, plane=plane, node_type=node_type, comp_tag=comp_tag,
         hp_after=hp if hp is not None else 0,

@@ -15,6 +15,12 @@
 
 ---
 
+## D-51 (2026-08-06) P1.5 refine:失败结算屏「挑战失败」→ hp_after=0 conf=1.0(团灭确定) · cw_observation
+- **决策**:`read_round_outcome` 加判:OCR 含「挑战失败」且 `parse_settlement_hp` None → `hp_after=0 conf=1.0`(团灭确定)。
+- **为什么(2026-08-06 整跑暴露)**:plane1 round9 boss 战死 → 失败结算屏 OCR「挑战失败/小队生命值❤!/对局评价/下一步」。`parse_settlement_hp` 正则 `生命值\s*(\d+)` 不匹配「生命值❤!」(❤!非数字)→ None → hp_after=0 conf=0.0。但**失败 = hp 0 是 ground truth**(团灭),该 conf=1.0 进 PerformanceTracker trend(死信号,策略学)。
+- **备选**:① 失败屏不记 conf=0(推翻:死是重要信号,该进 trend);② OCR「生命值」后取任意(推翻:❤!非数字,取 0 因「挑战失败」判,非解析)。
+- **状态**:采用。失败屏 hp 0 conf 1.0。test_cw_observation +1,16 绿。**boss 结算屏「挑战结束」无「生命值」前缀**(只裸数字如「70」)→ 暂 conf=0,后续实机核实 boss 结算屏 hp 位置 refine。· P1.5(D-48)
+
 ## D-50 (2026-08-06) ↺ D-37 复发:0e 投资策略/环境 改用 id_mark area(全屏 LCS 误匹配失败结算屏) · battle_loop
 - **决策**:battle_loop 0e 投资策略/环境检测 `round_by_ocr('投资策略/环境', lcs=0.8)` → 改 `round_by_find_area('标识-请选择投资策略'/'标识-投资环境', id_mark)`。补给阶段暂留(失败结算屏没「补给阶段」)。
 - **为什么(2026-08-06 实跑暴露)**:loop plane1 round9 boss 战死 → 失败结算屏(对局未完成)OCR 含「投资策略/投资环境」(对局信息)+「标准博弈」(A8 标签)→ 0e 全屏 LCS「投资策略」命中 → 派 HandleInvestStrategy → handle 卡名行 OCR「标准博弈/试用」→ 点标准博弈@(423,477) → 没推进 → loop 反复(iter 340+)卡死。D-37(投资策略 LCS 误匹配「能量上限」)同类复发,这次是失败结算屏的「投资策略」对局信息。
