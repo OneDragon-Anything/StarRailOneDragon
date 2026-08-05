@@ -47,8 +47,8 @@ class CurrencyWarApp(SrApplication):
         )
 
     def _at_lobby(self, screen) -> bool:
-        """已在货币战争大厅(「创业指南」大厅独有锚点)。"""
-        return self.round_by_ocr(screen, '创业指南').is_success
+        """已在货币战争大厅(「创业指南」大厅独有锚点,lobby screen_info area)。"""
+        return self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success
 
     def _in_match(self, screen) -> bool:
         """已在货币战争对局中(备战/事件/战斗/结算任一态)。"""

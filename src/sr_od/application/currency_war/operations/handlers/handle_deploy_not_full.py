@@ -1,9 +1,6 @@
 """货币战争 出战确认弹窗(「可出战角色人数未达上限」)处理 op(从主循环拆出)。
 
-勾「本局不再提示」+ 确认,解除 bench-full 警告阻塞出战。原 active_window+click 被 bug#1
-吞 → 弹窗不消 → stall(round3 实测根因);改 mouse_move+click。
-
-bug#1 mitigation: 关键 click 前 mouse_move。
+勾「本局不再提示」+ 确认,解除 bench-full 警告阻塞出战。
 
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
 ``按钮-确认``,task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,缺失才用兜底常量。
@@ -38,11 +35,7 @@ class HandleDeployNotFull(SrOperation):
             return self.round_fail('非未达上限弹窗')
         _check = area_center(self.ctx, '勾选-本局不再提示', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.CHECKBOX_NO_PROMPT
         _confirm = area_center(self.ctx, '按钮-确认', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.BTN_CONFIRM
-        self.ctx.controller.mouse_move(_check)  # bug#1 mitigation
-        time.sleep(0.3)
         self.ctx.controller.click(_check)
-        time.sleep(0.3)
-        self.ctx.controller.mouse_move(_confirm)
         time.sleep(0.3)
         self.ctx.controller.click(_confirm)
         return self.round_success(wait=3)

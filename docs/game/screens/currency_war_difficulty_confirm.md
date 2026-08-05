@@ -31,7 +31,7 @@ source_image: screens/货币战争-难度确认/a5.webp(子态:a5.webp / a8.webp
 - 「开始对局」按钮:底部最右、白色圆角。OCR 可读。点 → 开局(按当前选择难度)。
 - (中部难度效果行、中上部圆形选项 —— bot 不需操作,仅展示。)
 
-> screen_info ``currency_war_difficulty_confirm``:``标识-当前职级难度效果``(id_mark)+ ``按钮-返回最高职级`` + ``按钮-开始对局``。op ``start_currency_war_match`` 检测按钮文字 + 经 ``area_center`` 点(screen_info 缺失才用兜底常量)。
+> screen_info ``currency_war_difficulty_confirm``:``标识-当前职级难度效果``(id_mark)+ ``按钮-返回最高职级`` + ``按钮-开始对局``。op ``start_currency_war_match`` 用 ``round_by_find_and_click_area`` 检测+点击两按钮(2026-08-05 方向 1,替代全屏 OCR,根治「开始对局」与简报「开局不利」的 LCS 误匹配)+ ``crop_first=False``。
 
 ## 识别快照
 
@@ -51,4 +51,4 @@ source_image: screens/货币战争-难度确认/a5.webp(子态:a5.webp / a8.webp
 - **screen_info**:`currency_war_difficulty_confirm`(task#20)—— ``标识-当前职级难度效果`` / ``按钮-返回最高职级`` / ``按钮-开始对局``;返回最高职级 area 仅"未在最高"子态命中(在最高子态该按钮消失,area 检测不到,正常)。
 - **A8 修复已落地**(`start_currency_war_match.py`):检测「返回最高职级」→ 点 → 再「开始对局」。
 - **赛季状态(本号 2026-08-03)**:周额外晋升点 1500/1500、积分 18000/18000 均满 → 再跑不给晋升点(但"通关多次"为验证胜率,不为积分,可继续)。
-- 待办:归档 A5/A8 子态代表截图到测试仓 `screens/货币战争-难度确认/`(webp)。
+- fixture 已归档测试仓 `screens/货币战争-难度确认/a5.webp` + `a8.webp`(行为测试 `test_currency_war_entry_flow` 使用,A5/A8 两子态)。

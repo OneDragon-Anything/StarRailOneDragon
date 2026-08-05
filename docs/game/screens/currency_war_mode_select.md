@@ -25,7 +25,7 @@ source_image: screens/货币战争-模式选择/default.webp
 - 顶部 tab:「标准博弈」「超频博弈」(bot 走标准)。
 - 底部:「对局记录」「职级奖励」(bot 不操作)。
 
-> 全文字,OCR 够,无 screen_info / 模板需求。`StartCurrencyWarMatch` 用「进入标准博弈」OCR 检测 + 点击。
+> 全文字。**screen_info 已建**(2026-08-05,`currency_war_mode_select`):id_mark `按钮-进入标准博弈`(检测 + 点击);analyze_screen **is_precise 验证通过**。op 已改 `round_by_find_and_click_area`(2026-08-05 方向 1,替代全屏 OCR)+ `crop_first=False`(全屏 OCR 避免 crop 漏字)。
 
 ## 识别快照
 
@@ -37,4 +37,4 @@ source_image: screens/货币战争-模式选择/default.webp
 
 - **当前职级 = A8 财富造物主**(玩家最高);但下一屏(难度确认)默认开 A5,需「返回最高职级」才打 A8 —— 详见 [货币战争-难度确认](currency_war_difficulty_confirm.md)。
 - **周额外晋升点 1500/1500 满**(本号)→ 再跑不给周额外晋升点。
-- 待办:归档代表截图到测试仓 `screens/货币战争-模式选择/`(webp)。
+- fixture 已归档测试仓 `screens/货币战争-模式选择/default.webp`(行为测试 `test_currency_war_entry_flow` 使用)。

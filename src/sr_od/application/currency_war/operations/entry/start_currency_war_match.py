@@ -1,12 +1,10 @@
 import logging
 from typing import ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
 )
@@ -32,13 +30,15 @@ class StartCurrencyWarMatch(SrOperation):
 
     # 点空白关闭「点击空白处继续」教程叠层(避开中央内容)
     BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
-    # 难度确认屏 screen_info 画面(currency_war_difficulty_confirm.yml);按钮 center 经 area_center 读
+    # 入口链路 screen_info 画面名;按钮经 round_by_find_and_click_area / area_center 读(替代全屏 ocr)
     DIFFICULTY_SCREEN: ClassVar[str] = '货币战争-难度确认'
+    LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
+    MODE_SELECT_SCREEN: ClassVar[str] = '货币战争-模式选择'
+    BRIEFING_SCREEN: ClassVar[str] = '货币战争-简报'
+    PREP_SCREEN: ClassVar[str] = '货币战争-备战'
 
     STATUS_AT_PREP: ClassVar[str] = '到达备战阶段'
 
-    # 前进按钮(按优先级;投资环境/弹窗的「确认」单独处理,避免误点备战内的确认)
-    FORWARD_BUTTONS: ClassVar[list[str]] = ['继续进度', '进入标准博弈', '开始对局', '下一步']
     # 推进步数上限(防死循环)
     MAX_ADVANCE_STEPS: ClassVar[int] = 60
 
@@ -47,20 +47,24 @@ class StartCurrencyWarMatch(SrOperation):
         self._advance_steps: int = 0
 
     def _at_prep(self, screen) -> bool:
-        """是否到达备战阶段(用备战独有的「购买经验」按钮判定)。"""
-        return self.round_by_ocr(screen, '购买经验').is_success
+        """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
+        return self.round_by_find_area(screen, StartCurrencyWarMatch.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
 
     @operation_node(name='点开始', is_start_node=True)
     def click_start(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
-        return self.round_by_ocr_and_click(screen, '开始「货币战争」', retry_wait=1, success_wait=2)
+        # lobby screen_info area(按钮-开始货币战争)替代全屏 ocr(根治 LCS 误匹配)。
+        # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
+        return self.round_by_find_and_click_area(
+            screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-开始货币战争',
+            retry_wait=1, success_wait=2, crop_first=False,
+        )
 
     @node_from(from_name='点开始')
     @operation_node(name='推进到备战阶段', node_max_retry_times=60)
     def advance_to_prep(self) -> OperationRoundResult:
-        self.ctx.controller.active_window()  # 防失焦点空(开始对局/继续进度等;同 click_game)
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
@@ -78,25 +82,33 @@ class StartCurrencyWarMatch(SrOperation):
         # 难度确认屏:默认开"当前选择"难度(本号 = A5 紫金);"返回最高职级"按钮在 = 未在最高 → 先点它
         # 切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),再"开始对局"。
         # (2026-08-03 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
-        if self.round_by_ocr(screen, '返回最高职级').is_success:
-            _btn = area_center(self.ctx, '按钮-返回最高职级', StartCurrencyWarMatch.DIFFICULTY_SCREEN) or Point(1392, 965)
-            self.ctx.controller.active_window()
-            self.ctx.controller.click(_btn)   # 返回最高职级(screen_info center;缺失兜底)
+        # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
+        # 全屏 ocr 有 LCS 误匹配:「开始对局」与简报 boss 词缀「开局不利」共享「开局」(2/4=0.5=默认阈值)
+        # → 简报屏误触发开始对局分支点错(行为测试暴露)。area.rect 限定位置根治。
+        # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
+        if self.round_by_find_and_click_area(
+                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '按钮-返回最高职级',
+                success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=2)
-        # ⚠️ 开始对局单独处理:round_by_ocr_and_click 有 0.3s pre_delay,active_window(节点起手)到
-        # click 间游戏可能失焦 → 点空(bug #1,手动 click_game 无此间隙所以有效)。
-        # 改:OCR 检测 + active_window 紧贴直接 controller.click(无 pre_delay 间隙,同 click_game)。
-        if self.round_by_ocr(screen, '开始对局').is_success:
-            _btn = area_center(self.ctx, '按钮-开始对局', StartCurrencyWarMatch.DIFFICULTY_SCREEN) or Point(1691, 965)
-            self.ctx.controller.active_window()
-            self.ctx.controller.click(_btn)
+        if self.round_by_find_and_click_area(
+                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '按钮-开始对局',
+                success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=2)
-        for btn in StartCurrencyWarMatch.FORWARD_BUTTONS:
-            r = self.round_by_ocr_and_click(screen, btn, success_wait=2)
-            if r.is_success:
-                return self.round_wait(wait=1)
+        # 1a) 有 screen_info 的前进按钮 → area 点击(替代全屏 ocr,根治 LCS 误匹配)。
+        #     「开始对局」已在上面难度确认段单独处理(因要先判「返回最高职级」切最高难度)。
+        if self.round_by_find_and_click_area(
+                screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
+                success_wait=2, crop_first=False).is_success:
+            return self.round_wait(wait=1)
+        if self.round_by_find_and_click_area(
+                screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '按钮-下一步',
+                success_wait=2, crop_first=False).is_success:
+            return self.round_wait(wait=1)
+        # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
+        if self.round_by_ocr_and_click(screen, '继续进度', success_wait=2).is_success:
+            return self.round_wait(wait=1)
         # 2) 投资环境 3 选 1 → HandleInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
-        #    + 确认;bug#1 mouse_move mitigation)。统一开局与主循环的投资环境处理(原 hardcoded
+        #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_ocr(screen, '投资环境').is_success:
             HandleInvestEnv(self.ctx).execute()

@@ -15,6 +15,18 @@
 
 ---
 
+## D-43 (2026-08-05) ↺ 推翻 bug#1:根因是开发时用户抢鼠标,非框架 bug → 删全部 active_window/mouse_move 缓解 · currency_war 全域
+- **决策**:撤销 bug#1 的全部缓解代码 —— 删 currency_war 10 文件的 `active_window()` + `mouse_move()` + 配套 `time.sleep(0.3)`(mouse_move→click 之间)+ bug#1 注释;删 memory `before-screenshot-moves-mouse-breaks-clicks`。
+- **为什么(用户 2026-08-05 澄清)**:bug#1(op `controller.click` 偶发不落地,手动 click_game 同坐标有效)的根因是**开发/调试时用户手动抢鼠标**干扰,非框架自动化运行问题。实际 bot 自动运行时无人抢鼠标,click 正常落地。之前三次根因判断全是误判 —— I11(失焦)/续7(server 长跑退化)/续11(pre_delay 间隙抢焦)/memory(before_screenshot 移鼠标判拖拽)都把「用户抢鼠标」的人为干扰误当框架 bug,铺了 10 文件过度防御(active_window/mouse_move 散布),污染代码且不可维护。
+- **备选**:① 保留缓解(推翻:基于错误根因,active_window 散布每个 op 不可维护);② 只删 active_window 保留 mouse_move(推翻:mouse_move 同基于 bug#1「判拖拽」误判,一并删);③ 保留作「防御性」(推翻:用户立场「自动化运行不该考虑窗口被抢,否则到处 active_window」)。
+- **状态**:采用。删 2 active_window + 14 mouse_move + 15 sleep + bug#1 注释(battle_loop/battle_prep/handle_invest_env/strategy/deploy_not_full/select_partner/encounter/run_supply/megastar + enter_currency_war 注释);ruff 全净;grep 无残留;memory 删。**注:op 残留的 verify-retry(battle_prep 出战后检测仍在备战→retry)保留 —— 那是「等动画/加载」的安全网,非 bug#1 缓解。** 详见 insights I15(推翻 I11/续7/续11)。
+
+## D-42 (2026-08-05) 「开始对局/返回最高职级」检测 area 化 —— 根治「开局不利」LCS 误匹配 · start_currency_war_match
+- **决策**:`advance_to_prep` 的「返回最高职级」「开始对局」检测从全屏 `round_by_ocr` 改 `round_by_find_and_click_area`(crop 难度确认 area),删手动 `area_center`+click(改用 helper 一体)。
+- **为什么**:全屏 `round_by_ocr`(lcs 0.5)误匹配 —— 「开始对局」与简报 boss 词缀「开局不利」共享「开局」(2/4=0.5=默认阈值)→ **简报屏误触发难度确认的「开始对局」分支** → click 开始对局 area(1691,965)60 次死循环超时(行为测试 recorded_clicks 暴露)。方向 1(area 化)根治:crop 难度确认 area 限定位置,简报上该 area 无「开始对局」→ 不误命中。
+- **备选**:① 收紧 lcs 0.8(D-37 惯例,治标);② area 化(采用,方法论首选,根治)。crop area OCR 对小 area 有漏字风险(见测试 refine)。
+- **状态**:采用。ruff 净。行为测试验证中(mock 暴露 crop OCR 漏字新问题,refine)。· `start_currency_war_match.py:advance_to_prep`。
+
 ## D-41 (2026-08-05) shop_supply:shop presence 主导,board-only 降为弱信号(0.3)—— 修 comp 成型弱 · cw_comps
 - **决策**:`shop_supply(comp)` 改判可成型 = **shop 出现该 comp 阵营 → 1.0;仅 board 有、shop 无 → 0.3**(旧 1.0);都无 → 0.0。
 - **为什么(I14)**:2026-08-05 P1 验证 match 全程 board **多样不收敛**(7+ 阵营×1),comp 永不深堆成型 → 弱阵 → HP 持续掉 → 死。根因:旧 `shop_supply` 把「board 持有 1 张」当「可成型」(1.0)→ select_comp 不降权「board 有但 shop 供不上核心」的 comp(如 board 昼之半神:1 + shop 无 昼之半神 → 仍选昼神阿雅)→ 选了成型不了的 target → shop 买不到核心 → 永不成型。**「board 已有 1 张 ≠ 能成型」,可成型必须看 shop 能否买到更多核心**。

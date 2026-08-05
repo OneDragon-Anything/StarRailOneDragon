@@ -42,4 +42,4 @@ source_image: screens/货币战争-简报/default.webp
 
 - **视觉大模型 已补(2026-08-04)**:3 阵营卡 = 势力展示(非可选);首领 = 骷髅头图形像(无 OCR 名)。
 - 归档已完成:`screens/货币战争-简报/default.webp`。
-- screen_info 现状:无独立 screen_info(词缀 OCR 可读);首领识别若要做需图形模板(待定)。
+- screen_info 现状:**已建**(2026-08-05,`currency_war_briefing`):id_mark `标识-本场对局首领`(简报独有检测)+ `按钮-下一步`(通用词 → 区域识别);analyze_screen **is_precise 验证通过**。op 用 `round_by_find_and_click_area`(按钮-下一步,2026-08-05 方向 1)+ `crop_first=False`(简报「下一步」小 area crop 易漏字,全屏 OCR 稳)。首领图形识别 + 词缀/阵营数据读取 = 策略缺口(待接线,boss_counter/mechanics_fit/faction_priority 输入源)。

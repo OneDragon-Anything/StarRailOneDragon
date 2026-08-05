@@ -4,8 +4,6 @@
 (见 ``docs/game/screens/currency_war_encounter.md``):
   点卡身(选中)→ 点选择(确认),**中间不要插空白点击**(会取消选中 → 死循环)。
 
-bug#1 mitigation: 关键 click 前 ``mouse_move``(零移动 click 不被 before_screenshot 判 drag)。
-
 TODO(Stage C2):接 ``cw_decisions.decide_encounter``(待实现,design 08§遭遇)按 comp 成型度 +
   遭遇词缀选卡(避开急速制冷/正当防卫等克 comp 的),替代当前默认选左卡(难度低、稳)。
 TODO(task#20):卡身/选择坐标进 screen_info(遭遇屏 ``currency_war_encounter`` 未建模)。
@@ -39,11 +37,7 @@ class HandleEncounter(SrOperation):
             return self.round_fail('非遭遇节点屏')
         # 默认选左卡(难度低、稳);TODO 策略化按 comp 选左/右。
         card = HandleEncounter.CARD_LEFT
-        self.ctx.controller.mouse_move(card)  # bug#1 mitigation
-        time.sleep(0.3)
         self.ctx.controller.click(card)
         time.sleep(0.8)
-        self.ctx.controller.mouse_move(HandleEncounter.SELECT_BTN)
-        time.sleep(0.3)
         self.ctx.controller.click(HandleEncounter.SELECT_BTN)
         return self.round_success(wait=2)

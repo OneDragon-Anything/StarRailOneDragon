@@ -8,9 +8,6 @@ OCR 3 张投资环境卡名 → ``cw_decisions.decide_event`` 按事件白名单
 左→右。decide_event 仅用 ``state.board`` 做克制判定,投资环境常在开局/局内 overlay、
 board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策略不依赖 board)。
 
-踩坑(bug#1,实测卡死):controller.click 紧跟 last_screenshot(移鼠标到角落)→ 判 drag
-不落地 → 卡在投资环境屏超时。缓解:mouse_move(纯移动,无 drag 判定)+ click(零移动)。
-
 卡底 Y + 确认坐标进 screen_info(``currency_war_invest_env``):``区域-卡牌描述行``(给 Y)
 + ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,
 缺失才用兜底常量。
@@ -97,18 +94,13 @@ class HandleInvestEnv(SrOperation):
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
-        # bug#1 mitigation:mouse_move(纯移动)+ click(零移动)→ 不被判 drag。
         _sel = area_center(self.ctx, '区域-卡牌描述行', HandleInvestEnv.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else HandleInvestEnv.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        self.ctx.controller.mouse_move(target)
-        time.sleep(0.3)
         self.ctx.controller.click(target)
         time.sleep(0.7)
 
         # 确认(task#20:center 从 screen_info「按钮-确认」读;缺失兜底 CONFIRM)。
         _confirm = area_center(self.ctx, '按钮-确认', HandleInvestEnv.SCREEN_NAME) or HandleInvestEnv.CONFIRM
-        self.ctx.controller.mouse_move(_confirm)
-        time.sleep(0.3)
         self.ctx.controller.click(_confirm)
         return self.round_success(wait=2)

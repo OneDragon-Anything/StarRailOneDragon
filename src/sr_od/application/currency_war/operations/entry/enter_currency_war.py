@@ -22,6 +22,8 @@ class EnterCurrencyWar(SrOperation):
 
     # 点空白关闭「点击空白处关闭」类弹窗的区域(避开中央内容)
     BLANK_CLICK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
+    # 大厅 screen_info 画面名;到达判定经 round_by_find_area(替代全屏 ocr)
+    LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
 
     STATUS_AT_LOBBY: ClassVar[str] = '已在货币战争大厅'
 
@@ -47,7 +49,7 @@ class EnterCurrencyWar(SrOperation):
     @operation_node(name='前往参与')
     def enter(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # success_wait 给点击落地 + 跳转加载留时间,也避免下一节点截图前移鼠标把 click 判成拖拽
+        # success_wait 给点击落地 + 跳转加载留时间
         return self.round_by_ocr_and_click(screen, '前往参与', retry_wait=1, success_wait=2)
 
     @node_from(from_name='前往参与')
@@ -55,11 +57,12 @@ class EnterCurrencyWar(SrOperation):
     def wait_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        # 到达大厅:左菜单「创业指南」(大厅独有;不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配)
-        if self.round_by_ocr(screen, '创业指南').is_success:
+        # 到达大厅:左菜单「创业指南」(大厅独有锚点;lobby screen_info area 判定,替代全屏 ocr)。
+        # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
+        if self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success:
             return self.round_success(EnterCurrencyWar.STATUS_AT_LOBBY)
 
-        # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地/被 bug#1 吞)→ 重点击。
+        # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地,仍在加载)→ 重点击。
         # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
         # → 无分支命中 → 死循环重试(2026-08-04 全流程跑 37x 重试失败根因)。
         if self.round_by_ocr(screen, '前往参与').is_success:

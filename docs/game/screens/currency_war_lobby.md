@@ -26,7 +26,7 @@ source_image: screens/货币战争-大厅/lobby.webp
 - 左侧菜单:「创业指南」「优势布局」「攻略大全」(均带专属图标,OCR 读文字)。bot 不操作。
 - 右侧信息卡:晋升等级 / 羁绊链路 / 数据银行 / 预期收益(展示,bot 不操作)。
 
-> 元素全为文字按钮 / 展示卡(OCR 可读),**无图形按钮需建模板 / screen_info area**。bot 用「开始「货币战争」」OCR 检测 + 点击(`StartCurrencyWarMatch.click_start`)。
+> 元素全为文字按钮 / 展示卡(OCR 可读),**无图形按钮需建模板**。bot 用 screen_info area「按钮-开始货币战争」检测+点击(`round_by_find_and_click_area`,`StartCurrencyWarMatch.click_start`;2026-08-05 方向 1 改造,替代全屏 OCR 根治 LCS 误匹配)。
 
 ## 识别快照
 
@@ -37,5 +37,5 @@ source_image: screens/货币战争-大厅/lobby.webp
 ## 备注
 
 - **赛季状态(本号 2026-08-03)**:积分 18000/18000(满)、晋升等级 160、本期剩余 6 天 4 小时、下次扩充 99 天。
-- screen_info 现状:本屏无独立 screen_info(OCR 够),非缺口。
-- 待办:归档代表截图到测试仓 `screens/货币战争-大厅/`(webp)。
+- screen_info 现状:**已建**(2026-08-05,`currency_war_lobby`):id_mark `标识-创业指南`(大厅独有检测锚)+ `按钮-开始货币战争`(开始按钮 pc_rect);analyze_screen **is_precise 验证通过**。op 已改 `round_by_find_and_click_area`(2026-08-05 方向 1,替代全屏 OCR)+ `crop_first=False`(全屏 OCR 避免 crop 漏字)。
+- fixture 已归档测试仓 `screens/货币战争-大厅/lobby.webp`(行为测试 `test_currency_war_entry_flow` 使用)。

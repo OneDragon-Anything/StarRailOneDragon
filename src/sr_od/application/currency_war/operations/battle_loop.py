@@ -65,7 +65,6 @@ class CurrencyWarRunLoop(SrOperation):
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
     # 2026-08-04 实测(失败结算屏 OCR):「下一页」x922y882w76h33、「返回货币战争」x885y882w149h31
     # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
-    # bug#1:round_by_ocr_and_click 的 click 易被 before_screenshot 移鼠标吞掉 → 手动 active_window+sleep+click(同出战)。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
     def __init__(self, ctx: SrContext):
@@ -111,9 +110,6 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter += 1
         if self._iter > CurrencyWarRunLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
-        # 游戏窗口可能失焦(后台进程抢焦)→ controller.click 不 active_window 会点空,
-        # 每轮迭代先聚焦游戏(同 click_game 的 active_window),保证后续点击落地。
-        self.ctx.controller.active_window()
         screen = self.last_screenshot
 
         # on_match_start(每局首次截图后调一次;D-34/§11.7):P1 默认 no-op,自定义策略可读 state 初始化。
@@ -143,7 +139,7 @@ class CurrencyWarRunLoop(SrOperation):
         #     lcs_percent=0.7:同上,防「确认选择」与「请选择投资策略」共享「选择」误匹配。
         if self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
-            RunMegastarNode(self.ctx).execute()  # 生命周期 owner:bug#1 缓解 + 验证 overlay 消失,超预算 bail
+            RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
 
         # 0c. 遭遇节点(3 难度选择:遭遇其一/其二/其三 + 选择)→ HandleEncounter(点左卡=遭遇其一=最易 + 选择)。
@@ -212,15 +208,11 @@ class CurrencyWarRunLoop(SrOperation):
             if self.round_by_ocr_and_click(self.screenshot(), '继续挑战', success_wait=2).is_success:
                 return self.round_wait(wait=2)
 
-        # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央
-        # ~(900,882)。bug#1:round_by_ocr_and_click 的 click 易被 before_screenshot 移鼠标吞掉(实测卡死在
-        # 结算页 → 对局循环超时)→ 改 round_by_ocr 检测 + active_window/sleep + 直接 click(同 出战 解法)。
+        # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
         for btn in ('前往结算', '下一页', '返回货币战争'):
             # lcs_percent=0.8:「返回货币战争」与事件屏「返回备战界面」共享「返回+战」(3/6=0.5)→
             # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
             if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
-                self.ctx.controller.mouse_move(CurrencyWarRunLoop.SETTLEMENT_NEXT)  # bug#1 fix
-                time.sleep(0.3)
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
                 return self.round_wait(wait=2)
 

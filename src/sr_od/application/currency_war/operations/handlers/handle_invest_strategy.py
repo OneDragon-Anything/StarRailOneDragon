@@ -12,8 +12,6 @@ center)、描述下(y≈520+)、「刷新次数1」底(y≈841)、「确认」�
 选中、描述区选中)。选中 → 确认。decide_event 仅用 state.board,投资策略 overlay 时 board 不可
 读 → 空 board stub。
 
-bug#1 mitigation: 关键 click 前 mouse_move(零移动不被判 drag)。
-
 CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``):``区域-卡牌描述行``
 + ``按钮-确认``,task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,缺失才用兜底常量。
 """
@@ -96,17 +94,12 @@ class HandleInvestStrategy(SrOperation):
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
 
         # 点最优卡的**描述区**选中(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
-        # bug#1 mitigation:mouse_move(纯移动)+ click(零移动)→ 不被判 drag。
         _sel = area_center(self.ctx, '区域-卡牌描述行', HandleInvestStrategy.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else HandleInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        self.ctx.controller.mouse_move(target)
-        time.sleep(0.3)
         self.ctx.controller.click(target)
         time.sleep(0.7)
         # 确认(task#20:center 从 screen_info「按钮-确认」读;缺失兜底 CONFIRM ~978,983)
         _confirm = area_center(self.ctx, '按钮-确认', HandleInvestStrategy.SCREEN_NAME) or HandleInvestStrategy.CONFIRM
-        self.ctx.controller.mouse_move(_confirm)
-        time.sleep(0.3)
         self.ctx.controller.click(_confirm)
         return self.round_success(wait=2)
