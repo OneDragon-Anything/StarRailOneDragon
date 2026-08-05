@@ -219,6 +219,17 @@ class CurrencyWarRunLoop(SrOperation):
             RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
             return self.round_wait(wait=2)
 
+        # 0f. 消耗品详情浮层 → ESC 关。获消耗品奖励(投资策略「星星相印」给【员工投影仪】等)后游戏自动弹
+        #     介绍 modal,遮挡备战/投资策略屏 → 上面所有分支都不命中 → round_retry 死循环(2026-08-06 实跑:
+        #     plane2 supply 后弹「员工投影仪」modal,flat retry ~19min 失败;**非策略死,UI 弹窗卡死**)。
+        #     ESC 实测可关(见 decisions D-54)→ 露出下层屏(投资策略/备战),loop 再分类推进。
+        #     签名「消耗品」(类型 label) AND 「拖动到」(拖动使用说明 —— 只出现在消耗品详情 modal,备战底部
+        #     消耗品栏无)→ 双条件精确,不误匹配备战。装备类详情 modal(无「拖动到」)是长尾,观察到再补。
+        if (self.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
+                and self.round_by_ocr(screen, '拖动到', lcs_percent=0.9).is_success):
+            self.ctx.controller.btn_tap('esc')
+            return self.round_wait(wait=1.5)
+
         # 1. 备战阶段 → 单轮(买+deploy+出战)
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
         # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),

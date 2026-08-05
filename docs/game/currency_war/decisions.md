@@ -15,6 +15,13 @@
 
 ---
 
+## D-54 (2026-08-06) 事件长尾:battle_loop 加 0f 消耗品详情浮层 → ESC 关(plane2 supply 后 modal 遮屏死循环) · battle_loop
+- **决策**:battle_loop 加 0f 分支(0e 后、备战前):OCR 同时命中「消耗品」AND「拖动到」(均 lcs 0.9)→ `btn_tap('esc')` 关浮层 → round_wait 1.5。
+- **为什么(2026-08-06 整跑暴露,plane2 新地)**:plane2 round1 hp=1 存活(DOT队)→ 补给节点 → 投资策略「星星相印」奖励【员工投影仪】消耗品 → 游戏自动弹消耗品**介绍 modal**(「员工投影仪/消耗品/拖动到...使用/道具使用后消失」)→ modal 遮挡备战/投资策略屏 → 上面 0-6 分支全不命中 → `round_retry` flat loop ~19min → 失败。**非策略死,UI 弹窗卡死**。前三局死 plane1 从未到 plane2,故未暴露。
+- **验证(实机 probe,游戏 parked 在 modal)**:`analyze_screen` 仅抓到 modal 文字(无备战元素)= modal 全遮挡;`key_tap esc` → modal 关,露出「请选择投资策略」屏(分类器能识别)→ ESC 是有效 dismiss。视觉大模型确认 modal 右上有 X 关闭键 + 是模态遮挡。
+- **备选**:① 点 X 关闭键(推翻:需稳定坐标,modal 居中但 X 坐标会随物品变;ESC 非定位无漂移,且 1b 详情弹窗已用 ESC 建惯例);② 建模 screen_info + close button area(推翻:transient dismiss overlay 非常驻屏,1b/2 已确立 OCR-dismiss 惯例,screen_info 过重;长尾若 item modal 繁多再升级);③ 只「消耗品」单条件(推翻:备战底部消耗品栏可能也有「消耗品」label → 误匹配备战 → ESC 打断备战;加「拖动到」(拖动使用说明只出现在详情 modal)双条件精确)。
+- **状态**:采用。170 cw 测试绿;ruff 净。**装备类详情 modal**(无「拖动到」,如星星相印 也给简易装备)是长尾,观察到再补签名。验证待新局到 plane2 supply + modal → 0f ESC → 续跑。· §11 事件长尾 · insights(I21 待补:transient dismiss overlay 归类)
+
 ## D-53 (2026-08-06) 弱阵实验:comp early_power 早期战力先验 + _difficulty_phase_factor 早期偏 · cw_comps
 - **决策**:Comp 加 `early_power`("高"/"中"/"低" 早期 plane1 战力先验)+ `_difficulty_phase_factor` 早期(round≤3 or gold<30)= `form_fac * power_fac`(偏 form_difficulty easy **且** early_power 高)。9 comp 标先验:列车同行=高 / 命运圣杯=中 / 击破流萤=中 / 贝洛伯格=中 / 万敌=中 / 巡击青雀=低 / 昼神阿雅=低 / DOT队=低 / 反甲白厄=低。
 - **为什么(2026-08-06 整局暴露弱阵)**:DOT队(form_difficulty easy + B 级)plane1 r9 boss 战死(HP 62→0)。原 `_difficulty_phase_factor` 只偏 easy 成型 → DOT队 易成型被选,但 **DoT 慢热 plane1 弱**。加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏易成型 **且** 早期战力强。
