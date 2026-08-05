@@ -241,3 +241,14 @@ class GameConfig(BasicGameConfig):
         游戏窗口名称 只有区服有关
         """
         return '崩坏：星穹铁道'
+
+    @property
+    def move_mouse_before_screenshot(self) -> bool:
+        """
+        截图前是否挪开鼠标
+        """
+        return self.get('move_mouse_before_screenshot', True)
+
+    @move_mouse_before_screenshot.setter
+    def move_mouse_before_screenshot(self, new_value: bool) -> None:
+        self.update('move_mouse_before_screenshot', new_value)

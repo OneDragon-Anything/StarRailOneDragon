@@ -7,6 +7,7 @@ from typing import Optional, ClassVar
 
 from one_dragon.base.controller.pc_controller_base import PcControllerBase
 from one_dragon.base.geometry.point import Point
+from one_dragon.envs.env_config import EnvConfig
 from one_dragon.utils import cal_utils
 from one_dragon.utils.log_utils import log
 from sr_od.config.game_config import GameConfig
@@ -17,7 +18,9 @@ class SrPcController(PcControllerBase):
     MOVE_INTERACT_TYPE: ClassVar[int] = 0
     TALK_INTERACT_TYPE: ClassVar[int] = 1
 
-    def __init__(self, game_config: GameConfig,
+    def __init__(self,
+                 env_config: EnvConfig,
+                 game_config: GameConfig,
                  screenshot_method: str,
                  standard_width: int = 1920,
                  standard_height: int = 1080):
@@ -26,6 +29,7 @@ class SrPcController(PcControllerBase):
                                   standard_width=standard_width,
                                   standard_height=standard_height)
 
+        self.env_config: EnvConfig = env_config
         self.game_config: GameConfig = game_config
         self.turn_dx: float = self.game_config.turn_dx
         self.run_speed: float = 30
@@ -63,7 +67,9 @@ class SrPcController(PcControllerBase):
         cv2.rectangle(screen, lt, rb, (114, 114, 114), -1)
         return screen
 
-    def before_screenshot(self) -> None:
+    def before_screenshot(self, dont_move_mouse: bool = False) -> None:
+        if not self.env_config.move_mouse_before_screenshot and dont_move_mouse:
+            return
         self.mouse_move(Point(30, 1030))
 
     def esc(self) -> bool:

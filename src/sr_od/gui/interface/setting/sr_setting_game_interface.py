@@ -43,6 +43,11 @@ class SrSettingGameInterface(VerticalScrollInterface):
                                                  options_enum=TypeInputWay)
         basic_group.addSettingCard(self.input_way_opt)
 
+        self.move_mouse_before_screenshot_opt = SwitchSettingCard(
+            icon=FluentIcon.CAMERA, title='截图前先挪开鼠标', content='部分场景下(如自动战斗时)适用'
+        )
+        basic_group.addSettingCard(self.move_mouse_before_screenshot_opt)
+
         self.run_opt = ComboBoxSettingCard(icon=FluentIcon.GAME, title='疾跑', options_enum=RunModeEnum)
         basic_group.addSettingCard(self.run_opt)
 
@@ -102,6 +107,7 @@ class SrSettingGameInterface(VerticalScrollInterface):
         VerticalScrollInterface.on_interface_shown(self)
 
         self.input_way_opt.init_with_adapter(self.ctx.game_config.type_input_way_adapter)
+        self.move_mouse_before_screenshot_opt.init_with_adapter(self.ctx.game_config.get_prop_adapter('move_mouse_before_screenshot'))
         self.run_opt.init_with_adapter(self.ctx.game_config.run_mode_adapter)
         self.use_quirky_snacks_opt.init_with_adapter(self.ctx.game_config.use_quirky_snacks_adapter)
 

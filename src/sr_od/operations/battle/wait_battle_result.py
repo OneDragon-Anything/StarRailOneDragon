@@ -14,9 +14,9 @@ class WaitBattleResult(SrOperation):
         self.try_attack: bool = try_attack
         """未进入战斗时 是否尝试攻击"""
 
-    @operation_node(name='等待', timeout_seconds=1200, is_start_node=True)
+    @operation_node(name='等待', timeout_seconds=1200, is_start_node=True, screenshot_before_round=False)
     def wait(self) -> OperationRoundResult:
-        screen = self.screenshot()
+        screen = self.screenshot(dont_move_mouse=True)
 
         state = battle_screen_state.get_tp_battle_screen_state(
             self.ctx, screen,

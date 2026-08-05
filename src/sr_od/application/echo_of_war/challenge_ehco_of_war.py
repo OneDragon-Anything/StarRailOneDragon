@@ -146,13 +146,13 @@ class ChallengeEchoOfWar(SrOperation):
 
     @node_from(from_name='点击开始挑战后确认')
     @node_from(from_name='点击再来一次后确认')
-    @operation_node(name='等待战斗结果')
+    @operation_node(name='等待战斗结果', screenshot_before_round=False)
     def _wait_battle_result(self) -> OperationRoundResult:
         """
         等待战斗结果
         :return:
         """
-        screen = self.screenshot()
+        screen = self.screenshot(dont_move_mouse=True)
 
         state = battle_screen_state.get_tp_battle_screen_state(self.ctx, screen, battle_success=True, battle_fail=True)
 
