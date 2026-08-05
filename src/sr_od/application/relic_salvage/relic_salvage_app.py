@@ -85,7 +85,7 @@ class RelicSalvageApp(SrApplication):
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
+    ctx.init()
     app = RelicSalvageApp(ctx)
     app.execute()
 

@@ -28,7 +28,7 @@ class SrOneDragonApp(OneDragonApp, SrApplication):
 def __debug():
     ctx = SrContext()
     # 加载配置
-    ctx.init_by_config()
+    ctx.init()
 
     # 异步加载OCR
     ctx.async_init_ocr()

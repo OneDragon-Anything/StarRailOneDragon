@@ -163,7 +163,7 @@ class WorldPatrolApp(SrApplication):
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
+    ctx.init()
     app = WorldPatrolApp(ctx)
     app.execute()
 

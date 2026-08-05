@@ -704,13 +704,14 @@ def __debug(planet_name, region_name, run_mode: str = 'all'):
 
     app = LargeMapRecorder(**sc)
 
-    ctx.init_by_config()
+    ctx.init()
     ctx.init_for_world_patrol()
+    ctx.run_context.current_app_id = large_map_recorder_const.APP_ID
 
     if run_mode == 'all':
         app.execute()  # 正常录制
     elif run_mode == 'screenshot':  # 只进行截图
-        ctx.start_running()
+        ctx.run_context.start_running()
         app.open_map()
         app.choose_planet()
 

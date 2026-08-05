@@ -102,7 +102,7 @@ class NotifyApp(SrApplication):
 
 def __debug():
     ctx = SrContext()
-    ctx.init_by_config()
+    ctx.init()
     app = NotifyApp(ctx)
     app.execute()
 
