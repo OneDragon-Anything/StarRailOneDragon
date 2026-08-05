@@ -95,8 +95,8 @@ WP(target_progress 权重,见 `TARGET_PROGRESS_WEIGHT` 代码,待校准;不在�
 
 **转型信号(比较型,删「N 回合无推进」)**:
 1. **更优 comp 涌现**:存在 comp B,`comp_score(B)` 持续 > `comp_score(target)` 超阈值且差距扩大(连续 2 回合)。
-2. **ceiling 不可达**:target 的 form_tiers 所需轮次 > 剩余轮次(typical_form_round 估算)。
-3. **保命转型**:hp < 30 → 切成型最快的 comp(低 typical_form_round)。
+2. **ceiling 不可达**:target 的 form_tiers 所需轮次 > 剩余轮次(typical_form_round 估算)。**已成型(form_progress=1.0)豁免** —— 不切走已完成 comp(D-33)。
+3. **保命转型**:hp < 0.75×`effective_hp_threshold`(D-18 阈值统一 + D-32 difficulty 派生;原硬编码 30=0.75×40)→ 切成型最快的 comp(低 typical_form_round)。
 
 **转型实现(分阶段,正确性-5)**:
 - **阶段 2(当前)启发式**:转型触发 → 切 target_comp;eval 改用新 target;战术层贪心自然开始买新 comp 牌;**卖旧 comp 的 transition_chars + 非共享 core**(规则化,_bench_sell_value 已保留通用 + 接近推层,转型时旧 comp 牌不再是「接近推层」→ 可卖)。转型成本用**规则估算**(transition_chars 卖出回金 vs 新 comp 典型成型轮次),**不用多步搜索**。
@@ -121,7 +121,7 @@ WP(target_progress 权重,见 `TARGET_PROGRESS_WEIGHT` 代码,待校准;不在�
 
 ## 测试(纯逻辑)
 - mock COMP_LIBRARY + states → select_comp 选对(boss 克制降分、进度高的优先、成型难度按场面权衡:早期/穷 → 偏 easy 成型)。
-- 转型信号:更优 comp 涌现 / ceiling 不可达 / hp<30 → pivot。
+- 转型信号:更优 comp 涌现 / ceiling 不可达(已成型豁免 D-33)/ hp<0.75×effective_hp_threshold(D-18/D-32)→ pivot。
 - target_progress:去三重(core_char 总分 = synergy+char_quality+进度,不重复)。
 - select_megastar:target.core_chars 含盛会之星 → 绑该角色。
 
