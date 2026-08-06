@@ -59,3 +59,6 @@ CLAUDE.local.md
 # superpowers（规划文档/会话产物，不入库）
 docs/superpowers/
 .superpowers/
+
+# 装备图标采集调试标注(临时,不入库)
+assets/template/cw_equip/_debug/

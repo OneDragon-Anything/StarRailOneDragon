@@ -44,10 +44,17 @@ REPO = Path(__file__).resolve().parents[2]
 GRID_X0, GRID_Y0, GRID_X1, GRID_Y1 = 30, 230, 1270, 970
 # 图标"完整可见"的 y 范围(超出=被面板顶/底裁切,跳过)
 ICON_VISIBLE_TOP, ICON_VISIBLE_BOT = 240, 960
+
+# ===== CV 确立的网格常量(2026-08-06 全部视图 page-1 检测 + vision 验证 21/21 干净;网格固定,跨分类 tab / 滚动不变)=====
+# 7 列中心 x(图标紫框方块中心,非名字中心)、图标 size、图标中心相对名 top 的偏移。
+# ⚠️ 版本更新若改网格 → 跑 ``--calibrate``(CV squares 检测)重确立(见 detect_squares)。
+COLS_CV: list[int] = [130, 306, 482, 656, 832, 1006, 1176]
+HALF_CV: int = 46            # size 92 / 2
+OFFSET_CV: int = -78         # icon 中心 = 名 top + OFFSET_CV
+
 AREA_MIN, AREA_MAX = 5000, 18000
 ASPECT_LO, ASPECT_HI = 0.65, 1.5
 CLOSE_KERN = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-DEFAULT_OFFSET = -78   # 图标中心相对名 top 的偏移(page-1 CV 校准:icon 347 vs 名 425);UI 属性稳定
 
 
 def save_png(img, path: Path) -> None:
@@ -115,28 +122,29 @@ def main():
     ap.add_argument("--row-ys", required=True, help="各行名 top-y(OCR),逗号分隔,行数需与 names 行数一致")
     ap.add_argument("--out", default="assets/template/cw_equip")
     ap.add_argument("--page", default="1")
+    ap.add_argument("--half", type=int, default=HALF_CV, help="裁切半边(基型 tier=46 无V;升级 tier=58 含V 徽)")
+    ap.add_argument("--calibrate", action="store_true", help="不裁切,只跑 CV 检测打印列中心/size,用于版本更新后核对常量")
     args = ap.parse_args()
 
     shot = cv2.imread(args.shot)
     assert shot is not None, f"读图失败: {args.shot}"
     grid = shot[GRID_Y0:GRID_Y1, GRID_X0:GRID_X1]
     gray = cv2.cvtColor(grid, cv2.COLOR_BGR2GRAY)
-    boxes = detect_squares(gray)
+    if args.calibrate:
+        boxes = detect_squares(gray)
+        cxs = cluster([round((b[0] + b[2]) / 2) + GRID_X0 for b in boxes], 25)
+        size = int(median([b[2] - b[0] for b in boxes])) if boxes else 92
+        print(f"--calibrate: 检出 {len(boxes)} 方块 → 列中心 {cxs}  size={size}")
+        print(f"  对照常量 COLS_CV={COLS_CV} HALF_CV={HALF_CV}(检测 size/2={size // 2});")
+        print("  不符 = 版本改了网格 → 更新常量后重跑。偏移(icon center vs 名 top)手测。")
+        return
 
-    box_cxs = [(b[0] + b[2]) / 2 + GRID_X0 for b in boxes]
-    box_cys = [(b[1] + b[3]) / 2 + GRID_Y0 for b in boxes]
-    cols_full = cluster([round(c) for c in box_cxs], 25)
-    size = int(median([b[2] - b[0] for b in boxes])) if boxes else 93
-    half = size // 2
+    cols_full, half, offset = COLS_CV, args.half, OFFSET_CV
+    print(f"用 CV 常量 cols={cols_full} half={half} offset={offset}(网格变则 --calibrate 重确立)")
 
     row_ys = [int(y) for y in args.row_ys.split(",")]
     rows = [r.split(",") for r in args.names.split("|")]
     assert len(row_ys) == len(rows), f"--row-ys 行数 {len(row_ys)} ≠ names 行数 {len(rows)}"
-    # 校准 offset:检出图标中心 vs 最近名 y(只取近的,排除跨行噪声)
-    near = [cy - min(row_ys, key=lambda ry: abs(cy - ry)) for cy in box_cys
-            if abs(cy - min(row_ys, key=lambda ry: abs(cy - ry))) < 120]
-    offset = int(median(near)) if near else DEFAULT_OFFSET
-    print(f"检测 {len(boxes)} 方块 → 列中心 {cols_full} size={size} offset={offset}")
 
     out_dir = REPO / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
