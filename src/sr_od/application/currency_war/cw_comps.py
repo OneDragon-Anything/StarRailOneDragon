@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 阵容库 + 战略层评分(comp_score / select_comp;纯逻辑,可测,不碰游戏)。
 
 战略层(阶段 2,A2):从「reactive 加深领先」升级到「围绕目标阵容 commit + 转型 + 巨星」。
@@ -528,6 +530,10 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # (强粘,不弃已成型 comp;防 flit 弃正在堆的 comp)。2026-08-06 实跑:bot board spread + 低 hp 弃成型
     # comp → 弱死;commit 后该深堆不弃。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。
     COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
+    # T#97 round-based commitment:spread board 的 form_progress 永不达 COMMIT_FRAC → target 永不 commit →
+    # flit(2026-08-07 live:target 巡击青雀/万敌单C/DOT队 跨轮 flit → 每轮买不同阵营 = spread 根因)。
+    # 加累计轮门槛:≥COMMIT_ROUND 也算 commit → 强 sticky → plan 一致买 target 阵营深 stack。
+    COMMIT_ROUND: int = 4              # 累计轮 (plane-1)*9+round ≥4 → commit(plane1 r4 起 sticky;仅递增不回退)
     COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → 阈值 ×1.5(0.10→0.15),更难弃成型 comp
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
@@ -563,7 +569,9 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)。
         # F1(strategy/12):target 已 commit(form_progress≥COMMIT_FRAC)→ 提阈值强粘(不弃成型),优先于 easier。
         _required_gap = PIVOT_SCORE_GAP
-        _committed = (target is not None and form_progress(target, state) >= COMMIT_FRAC)
+        _committed = (target is not None and (
+            form_progress(target, state) >= COMMIT_FRAC
+            or (state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND))
         _easier = (target is not None
                    and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
                    and form_progress(target, state) < 1.0)

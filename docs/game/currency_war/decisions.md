@@ -15,6 +15,19 @@
 
 ---
 
+## D-86 (2026-08-07) T#97 round-based comp commitment —— 防 spread-flit(累计轮≥4 commit)· cw_comps.maybe_pivot
+
+- **决策**:`maybe_pivot._committed` 加 round 门槛:累计轮 `(plane-1)*9+round ≥ COMMIT_ROUND(4)` 也算 commit(原仅 `form_progress≥COMMIT_FRAC`)。
+- **为什么**:全 match live 观测(2026-08-07):bot board 全程 8 阵营 spread → `form_progress` 永不达 `COMMIT_FRAC(0.4)` → target 永不 commit → **flit**(巡击青雀/万敌单C/DOT队 跨轮变 → 每轮买不同阵营 = spread 根因)→ 弱 comp → 死 plane2 r1。spread 致 form_progress 低 → commit 触发不了 → 死循环。round 门槛破环:round4 强 commit → target sticky → plan 一致买 target 阵营深 stack。
+- **备选**:① `select_comp` favor board-aligned(清 log 方向)—— 更根治但 weight 改动大风险;本条先最小止血 flit,board-align 后续。② 降 `COMMIT_FRAC` —— 推翻:spread 时各 comp form_progress 极低(<0.2),降阈值会误 commit 任意 comp。
+- **状态**:采用。ruff 净;200 cw 测试绿。live 验待(下局 target round4 sticky + 深 stack + 能否过 plane2)。· cw_comps.maybe_pivot / strategy/12
+
+## D-85 (2026-08-07) gold blocker 解除 —— read_gold 裁区+放大3x(paddle native 漏小 stylized 数字)· cw_observation.read_gold / 文本-金币数
+
+- **决策**:`read_gold` 改 裁 `文本-金币数` area(收紧 [1610,890,1690,945] 只含 gold 数字,排除隔壁 G0/0 货币)+ `cv2.resize 3x` + OCR(弃 native `_ocr`)。
+- **为什么**:gold 数字小+stylized,paddle OCR **det native 几乎总漏**(read 0/空,click-test 实锤 gold≥1)→ bot 读 gold=0 不买 → 备战卡死。裁+放大破 det 天花板(实测定区稳读 3/2)。**同 I24**(小 stylized 数字 paddle 漏 → 放大 OCR)。推翻 T-#96「cost OCR 不可行」(放大后可行,2/4 读对)。
+- **状态**:采用。commit `0d68635b`。live 验:gold 读对 → bot 买(round1:2 / round2:4 追击)。· cw_observation.read_gold
+
 ## D-84 (2026-08-07) char identity:SIFT 屏幕识别不可行(主游脸库 + 图鉴立绘都不 match 备战半身)→ 改 bot tracking(buy OCR 名持久化)· cw_identity_obs / read_game_state
 
 - **决策**:bench/deployed 角色身份**不走 SIFT 屏幕识别**;改 **bot tracking**(buy/deploy 时 OCR 的角色名持久化进 session,跨轮 seed `state.bench`/`deployed`)。
