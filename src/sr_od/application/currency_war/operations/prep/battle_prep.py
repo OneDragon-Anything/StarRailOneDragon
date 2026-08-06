@@ -45,6 +45,10 @@ class BattlePrepCycle(SrOperation):
         screen = self.last_screenshot
         if self.round_by_ocr(screen, '出战').is_success:
             _btn = area_center(self.ctx, '按钮-出战') or BattlePrepCycle.BATTLE_FALLBACK
+            # bug#1 缓解(D-62):click 前 mouse_move 到出战键(零移动),防 before_screenshot 移光标到角落 →
+            # click 落在移动中 → 被游戏判拖拽落空。2026-08-06 r9 实跑:出战 click ×4 未落地(手动 click 即开战)
+            # → bug#1 间歇连发(此前 r1-8 出战正常)。同 buy_store_item 的 mouse_move 缓解。verify 仍在(下行)。
+            self.ctx.controller.mouse_move(_btn)
             self.ctx.controller.click(_btn)
             time.sleep(1.0)  # 等出战→战斗过渡
             # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(防假成功 prep-loop)

@@ -15,6 +15,12 @@
 
 ---
 
+## D-62 (2026-08-06) bug#1 缓解:出战 click 前 mouse_move(r9 出战 click ×4 未落地) · battle_prep
+- **决策**:`BattlePrepCycle.battle` 点出战前加 `controller.mouse_move(_btn)`(零移动 click),同 `buy_store_item` 的 bug#1 缓解。
+- **为什么(2026-08-06 r9 实跑)**:r9 boss prep 出战 click ×4「未落地」→ 备战单轮 fail → 循环。**手动 click(1784,731)即开战** → bot click 系统性落空,非按钮不存在。根因 = bug#1(`SrPcController.before_screenshot` 截图前移光标到角落 → op 截图后紧接 click,光标移动中落下,被游戏判拖拽落空)。出战 click 直接 `controller.click` 无 mouse_move → bug#1 裸露。r1-8 出战正常 = 间歇(bug#1 偶发),r9 连发(运气/时机)。
+- **备选**:① 不改,靠 verify+retry(下行 round_retry 已有 ADR-0009 verify)兜底(部分:retry 的 click 也 bug#1 裸露 → 连发时 retry 也落空,mouse_move 治本);② 每 op 铺 mouse_move(推翻:CLAUDE.md「多数 click 正常,只间歇落空处加」,出战是已观察落空点);③ 改 before_screenshot 不移光标(推翻:框架级,跨项目,非本仓范围)。
+- **状态**:采用。ruff 净。**待新局验**:出战 click 不再连发落空。· bug#1(`SrPcController.before_screenshot` 移光标)+ CLAUDE.md 缓解惯例
+
 ## D-60 (2026-08-06) 事件长尾:HandleSelectPartner 硬编码立绘坐标落候选间隙 → flat-loop · handle_select_partner
 - **决策**:`HandleSelectPartner` 弃硬编码 `STAGE_PORTRAIT=(1048,299)` → OCR 候选阵营标签(label 行 y~362,2-4 字过滤)定位候选 → 点最左候选立绘 `(label_x, label_y-60)`(立绘在 label 上方~60px)→ 确认选择(OCR click,原已工作)。无候选兜底 (960,300)。
 - **为什么(2026-08-06 实跑 flat-loop)**:08:36 局 1-7 节点 choose_partner iter131+ 反复「成功」画面不变(31 snap)。**probe 实测**(游戏 parked 在该屏):2 候选 护盾(label x890)/能量(label x1127),立绘 y~300;硬编码 (1048,299) **x=1048 落两候选间隙** → 点不中 → 确认选择无效 → flat-loop。点 (1127,300) 命中 能量 候选(高亮选中)→ 点 确认选择(1441,582)→ overlay 关闭回备战。**根因 = 硬编码 x 不随候选数/位置变**(2/3 候选间隙不同)。
