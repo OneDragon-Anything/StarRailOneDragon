@@ -35,8 +35,20 @@ source_image: screens/货币战争-备战/(多子态,见下)
 
 ## 关键 reader(`cw_observation`,区域全在 screen_info)
 
-- `read_hp`(⚠️ shop 关闭态才准)、`read_gold`(shop 开态准)、`read_level`(OCR+启发式兜底)、`read_phase_round`(位面-轮次)、`read_board`(左面板阵营计数,**解析脆,已加 sanity bound**)、`read_shop_cards`(5 牌:阵营/名/cost)、`read_deployed_count`(舞台「X/Y」已部署数)、`read_bench_full`(席满警告)。
-- **不读**:bench/deployed **角色身份**(无名字,纯立绘 → 需 SIFT 模板,见 `currency_war_char_id`;现有忘却之庭脸近景模板错来源,待建货币战争立绘库)。
+**OCR/area 字段层(全接,doc 13 §13.2 备战可采字段)**:
+- 进度/节点:`read_phase_round`(位面-轮次,区域-阶段)、`read_node_type`(当前节点类型,顶部标签 首领→boss 等;D-73,仅 boss 实机核实)
+- 经济:`read_gold`(文本-金币数)、`read_level`(文本-等级,OCR+`_expected_level` 兜底)、`read_xp_progress`(文本-升级所需经验 "X/Y";D-72)、`read_level_up_cost`(文本-购买经验金币数;D-74)、`read_shop_refresh_cost`(文本-刷新金币数,默认 2;D-74)、`read_streak`(文本-连胜数;D-74)
+- 难度:`read_enemy_difficulty`(文本-难度 左上角;D-74,⚠️ stylized OCR 常空,可靠读待 vision/digit-CV)
+- 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板 "X/Y"→count + 下个 tier 阈值;D-69,聚焦 OCR 治了旧"213"误读脆)、`read_deployed_count`(区域-部署数「X/Y」)
+- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost)、`read_bench_full`(席满警告)
+- 生命:`read_hp`(⚠️ shop 关闭态才准,文本-剩余血量)
+
+**未接(前沿,需 icon/立绘库 或 bot 跟踪)**:
+- bench/deployed **角色身份** + `Unit.equips`(纯立绘无名字 → SIFT 立绘库,见 `currency_war_char_id`;或 bot 跟踪 buy/deploy)
+- `active_strategies`(右面板图标列,vision 探到 ~x1797-1918 y172-404;identity 需策略图标库 / bot 跟踪 decide_invest 拾取)
+- `inventory.available_equips`(区域-道具装备 [1252,90,1918,710],icon → 装备图标库 / bot 跟踪)
+- `node_path`(顶部节点行图标序列 → 节点类型图标库 + 多态实机定 icon↔类型映射)
+- `shop_locked`:备战未见独立 lock 控件(商店/收起=开关非锁)→ 非备战字段
 
 ## 识别快照
 
@@ -52,6 +64,6 @@ source_image: screens/货币战争-备战/(多子态,见下)
 ## 备注
 
 - **read_hp shop 态依赖(已修)**:HP 只 shop 关闭时显示;`BuyShopCards` 在 shop 关闭帧读 hp 覆盖 state.hp。回归测试 `test_read_hp_shop_state`。
-- **read_board 解析脆**:面板格式复杂("X/Y" 或激活 tier 串),已加 count∈[1,9] sanity bound 防 213 垃圾;真实格式待视觉核实后重写。
+- **read_board 脆已治(D-69)**:旧全屏 OCR 把 "2/3" 误读 "213" 显脆;根因=全屏密度。`_board_pairs` 区域 OCR 读对 "X/Y" → count=X + next_tier=Y(`read_board_next_tier`,doc 13 FactionState.next_tier)。
 - **bench/deployed 身份**:无名字 → SIFT 模板(待建货币战争立绘库);deploy 现走位置式(`DeployBench`)。
 - 策略接法详 `docs/game/currency_war/strategy/`;reader 详 `cw_observation.py`。
