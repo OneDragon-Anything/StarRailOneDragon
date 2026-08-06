@@ -295,11 +295,17 @@ def _sample_cost(level: int, rng: random.Random) -> int:
 
 
 def _sample_shop(state: GameState, faction_priority: list[str], rng: random.Random,
-                 n: int = 5) -> list[ShopCard]:
-    """采样 n 张可能的刷新牌(近似牌池模型)。阵营从 FACTIONS 采样(faction_priority 加权),
-    费用按等级。近似(无真实牌池计数);D 牌决策用其期望值。"""
+                 n: int = 5, target_comp: Comp | None = None) -> list[ShopCard]:
+    """采样 n 张可能的刷新牌(近似牌池模型)。阵营从 FACTIONS 采样(faction_priority + target_comp
+    阵营加权),费用按等级。近似(无真实牌池计数);D 牌决策用其期望值。
+
+    D-63/F2:target 阵营加权 —— 蒙特卡洛 D 牌估值该考虑「roll 出 target 卡」的价值,否则 target 阵营
+    不在 user priority 时 roll 估值偏低 → bot 不 roll → shop 无 target 卡时纯攒金/买 off-target →
+    target 永不深成型(plane2 弱死)。加权 2×(同 priority)让 roll-for-target 进决策。
+    """
     factions = list(FACTIONS.keys())
-    weights = [2.0 if f in faction_priority else 1.0 for f in factions]
+    target_factions = set(target_comp.factions) if target_comp is not None and target_comp.factions else set()
+    weights = [2.0 if (f in faction_priority or f in target_factions) else 1.0 for f in factions]
     return [ShopCard(x=0, faction=rng.choices(factions, weights=weights, k=1)[0],
                      cost=_sample_cost(state.level, rng)) for _ in range(n)]
 
@@ -344,7 +350,7 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
     deltas = []
     for _ in range(k):
         s = after_cost.copy()
-        s.shop = _sample_shop(after_cost, faction_priority, rng)
+        s.shop = _sample_shop(after_cost, faction_priority, rng, target_comp=target_comp)
         deltas.append(_best_buy_deploy_eval(s, config, faction_priority, target_comp) - base_eval)
     return sum(deltas) / len(deltas) if deltas else 0.0
 
@@ -508,7 +514,13 @@ def _best_improving_action(
     # 升等级不由这里候选 —— plan() 硬 gate 按 level_plan 执行(task#18;根因:eval 对「花大金升级」
     # 的利息损失短视 → LevelUp 候选 delta 永负 → 永不选 → 32 局升 0 次)。buying gate 同源:攒金升级期间
     # (_saving_for_level)不 D 牌(refresh 泄金,与散牌买同理)。
-    if state.gold >= SHOP_REFRESH_COST and refresh_budget > 0 and not _saving_for_level:
+    # D-63/F2 例外:攒金期若 shop 无 target 卡,允许 roll 找 target(否则纯攒金 + shop 无 target →
+    # target 永不深成型 → plane2 弱秒死,2026-08-06 实跑)。_refresh_expected_delta 已加 target 阵营采样权重。
+    _shop_has_target = (target_comp is not None and any(
+        c.faction in target_comp.factions or c.name in target_comp.core_chars
+        for c in state.shop))
+    if (state.gold >= SHOP_REFRESH_COST and refresh_budget > 0
+            and (not _saving_for_level or not _shop_has_target)):
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                      target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])

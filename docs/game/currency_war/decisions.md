@@ -15,6 +15,13 @@
 
 ---
 
+## D-63 (2026-08-06) P2/F2:plan roll 找 target(_sample_shop 加 target 权重 + 攒金期 shop 无 target 时允许 roll) · cw_decisions
+- **决策**:① `_sample_shop` 加 `target_comp` 参,target 阵营采样权重 2×(同 user priority);② `_best_improving_action` roll gate:攒金期(`_saving_for_level`)shop **无 target 卡**时允许 roll 找 target(原 `not _saving_for_level` 一刀切阻 roll)。
+- **为什么(2026-08-06 plane2 r1 秒死暴露)**:bot 存活过 plane1 但 plane2 r1 hp100→0 一回合死。根因:shop 无 target(击破流萤)阵营卡 + gold44<升7级48 → `_saving_for_level` 阻 roll + plan 不买 off-target(攒金)→ `plan=[]` 带 spread board 进 plane2(高伤)→ 秒死。**蒙特卡洛 `_sample_shop` 只按 user faction_priority 加权,target 阵营不在 priority 时 roll 估值偏低 → bot 永不 roll 找 target → target 永不深成型**。
+- **备选**:① 纯 directive roll(不评 delta,推翻:浪费 gold,target 真不供时白刷;蒙特卡洛估值 + target 权重更稳);② 不改采样只放宽 gate(推翻:采样不加权时 roll delta 仍低 → 放宽也不 roll,无效);③ F1 先(commit  supplied comp,推翻:F1 设计更大,F2 小步可独立验证 + 直接解 plane2 攒金不 roll)。
+- **关联**:F1(track board commit)/ F3(深 stack 接线)/ comp_viability 是后续 P2 步(strategy/12)。本步(F2)是 P2 第一小步,实机验证。
+- **状态**:**实验**(target 采样权重 2× + roll 放宽,待新局验证 roll 行为是否让 target 更深成型)。44 decisions 测试绿(+1 _sample_shop target 加权);ruff 净。· strategy/12 F2(P2 comp 成型)
+
 ## D-62 (2026-08-06) bug#1 缓解:出战 click 前 mouse_move(r9 出战 click ×4 未落地) · battle_prep
 - **决策**:`BattlePrepCycle.battle` 点出战前加 `controller.mouse_move(_btn)`(零移动 click),同 `buy_store_item` 的 bug#1 缓解。
 - **为什么(2026-08-06 r9 实跑)**:r9 boss prep 出战 click ×4「未落地」→ 备战单轮 fail → 循环。**手动 click(1784,731)即开战** → bot click 系统性落空,非按钮不存在。根因 = bug#1(`SrPcController.before_screenshot` 截图前移光标到角落 → op 截图后紧接 click,光标移动中落下,被游戏判拖拽落空)。出战 click 直接 `controller.click` 无 mouse_move → bug#1 裸露。r1-8 出战正常 = 间歇(bug#1 偶发),r9 连发(运气/时机)。
