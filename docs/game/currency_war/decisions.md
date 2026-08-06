@@ -15,6 +15,13 @@
 
 ---
 
+## D-83 (2026-08-07) board_next_tier 不接线 —— 静态 FACTIONS.tiers 与 live ground truth 一致(冗余)· cw_factions / synergy_score
+
+- **决策**:**不**把 `board_next_tier`(live OCR 下个 tier 阈值)接进 `synergy_score` / `_close_to_next`;静态 `FACTIONS[faction].tiers` 已与实机 ground truth 一致 → board_next_tier 冗余。
+- **为什么**:T#91/T#92 曾定 board_next_tier 为「接线优先」(reliable + 未用 + 关系 comp 成型)。cross-check 静态 tiers vs live board_next_tier(T#92 dump,5 fixture 全 faction/count 组合):**全部一致** —— 仙舟 (3,5,7,10) count1→next3 ✓ / 巡海游侠 (1,2,3,4) count1→next2 ✓ / 能量 (3,5,7,10) count2→next3 ✓ / 贝洛伯格 (2,4) count1→next2 ✓ …。静态数据(米游社 V4.4)准确,live 只确认不增信息。接线 = 同值信号塞进评分 = 无行为变化 + 给未验证策略代码添复杂度。**且** board_next_tier 只对**当前态**准,simulate(买牌后 count 变)live 快照失效 → 接进 synergy_score(评 simulated 态)反而不对。
+- **备选**:① 接线 board_next_tier 覆盖静态 —— 推翻:live=静态,覆盖无意义 + simulate 语义错。② 修静态 tiers(若不一致)—— 不需要,已一致。
+- **状态**:采用。T#93(board_next_tier 接线)撤销。synergy 评分 tier 基础(静态)经 ground truth 核实**可靠**。余 read-but-unused:cost 字段 OCR 不可行(T#96)、node_type/streak 弱、xp_progress(可靠但收益边际 —— level-up 时机微调,可选)。· cw_factions.FACTIONS / cw_decisions.synergy_score
+
 ## D-82 (2026-08-06) 备战 3 op 补执行日志 + 部署验落地 + 删 #未验证(用户 /loop 护栏)· cw_ops prep / 备战 doc
 
 - **决策**:`BuyShopCards`/`DeployBench`/`BattlePrepCycle` 按 `od-dev-write-operation` review,补执行期日志(决策点信息密度,invariant#5);`DeployBench` 加拖后重读已部署数验落地;删三 op 的 `# 未验证` 注释。审计 `read_game_state` → 发现 7 字段 **已读未用**(plan 未消费),记进备战 doc 待 wiring。
