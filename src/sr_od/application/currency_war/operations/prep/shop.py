@@ -10,6 +10,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_observation import (
     area_center,
     read_game_state,
+    read_gold,
     read_hp,
     shop_card_click_points,
 )
@@ -139,6 +140,16 @@ class BuyShopCards(SrOperation):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
+            # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏(同帧读 3/0/空;实锤 click-test
+            # 买牌成功 gold≥1 但 reader 读 0,见 process_log)→ 读 0 时重读几帧取首个 >0(deterministic 同帧
+            # 重读无意义,故重截图)。不根治(stylized 漏读),但把「读 0 不买」概率降到「连读 0 才认 0」。
+            if state.gold == 0:
+                for _ in range(4):
+                    time.sleep(0.4)
+                    gv = read_gold(self.ctx, self.screenshot())
+                    if gv > 0:
+                        state.gold = gv
+                        break
             # D-84 char identity:跨轮 seed state.bench(buy OCR 名持久化;SIFT 屏幕识别不可行)。
             if match.session.tracked_bench:
                 state.bench = _tracked_bench_chars(match.session.tracked_bench)
