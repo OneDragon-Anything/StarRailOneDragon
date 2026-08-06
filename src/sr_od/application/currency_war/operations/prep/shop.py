@@ -14,6 +14,7 @@ from sr_od.application.currency_war.cw_observation import (
     shop_card_click_points,
 )
 from sr_od.application.currency_war.cw_state import (
+    BenchChar,
     BuyCard,
     DeployMove,
     LevelUp,
@@ -23,6 +24,26 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+
+def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
+    """D-84:tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
+
+    SIFT 屏幕识别立绘不可行(主游脸库 + 图鉴立绘都不 match 备战 half-body,D-84)→ 用 buy 时
+    ``read_shop_cards`` OCR 的规范名(已验证可靠,T#92)持久化,跨轮 seed bench →
+    plan / char_quality / comp core check 知 bot 自有角色(reset 根因之解)。
+    """
+    from sr_od.application.currency_war.cw_chars import get_char
+    out: list[BenchChar] = []
+    for i, n in enumerate(names):
+        if not n:
+            continue
+        ch = get_char(n)
+        out.append(BenchChar(
+            slot=i, char_id=n,
+            faction=(ch.factions[0] if (ch is not None and ch.factions) else '?'),
+        ))
+    return out
 
 
 class BuyShopCards(SrOperation):
@@ -118,6 +139,10 @@ class BuyShopCards(SrOperation):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
+            # D-84 char identity:跨轮 seed state.bench(buy OCR 名持久化;SIFT 屏幕识别不可行)。
+            if match.session.tracked_bench:
+                state.bench = _tracked_bench_chars(match.session.tracked_bench)
+                log.info(f'[cw] tracked_bench(seed state.bench)={match.session.tracked_bench}')
             actions = match.strategy.decide_prep(state, match.session, config)
             # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
             target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
@@ -147,6 +172,9 @@ class BuyShopCards(SrOperation):
                              f'{action.card.faction}/{action.card.name}/{action.card.cost}')
                     time.sleep(0.4)
                     total_buy += 1
+                    # D-84:记下买的角色名 → tracked_bench 跨轮 seed(下轮 state.bench)
+                    if action.card.name:
+                        match.session.tracked_bench.append(action.card.name)
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
                     log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')

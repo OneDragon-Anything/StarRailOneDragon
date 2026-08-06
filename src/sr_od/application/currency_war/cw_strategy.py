@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 策略插件机制(CwStrategy ABC + StrategySession + CurrencyWarMatch)。
 
 把货币战争的「决策大脑」抽象成**可替换的 ``CwStrategy`` 对象**(对标 app 插件):
@@ -163,6 +165,9 @@ class StrategySession:
     briefing_bosses: list[str] = field(default_factory=list)
     # 已选投资环境名(如"昼之半神概念股";HandleInvestEnv 选后写;update_target copy 到 state → env_fit 输入)。D-58
     active_env: str = ""
+    # D-84 char identity(bot tracking):buy OCR 名持久化 → 跨轮 seed state.bench(SIFT 屏幕识别不可行)。
+    # deploy/sell 同步待补(deploy=DeployBench 位置式 / sell=_handle_bench_full 位置式,后续接)。
+    tracked_bench: list[str] = field(default_factory=list)
 
 
 @dataclass
