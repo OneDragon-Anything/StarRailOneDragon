@@ -15,6 +15,22 @@
 
 ---
 
+## D-73 (2026-08-06) 第二轮攻略调研驱动策略更新计划(V4.4 meta + 概念股送件 + 词缀对策 + 商店保底)· strategy/03 round5 + research/
+- **决策**:第二轮 V4.4/V4.5 深度调研完成(知识库 `.debug/temp/currency_war/strategy_research/`,9 文件分主题),据此定策略更新方向,记入 strategy/03 round5:**① COMP_LIBRARY** —— 「列车同行」= **姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**(core 姬子启行+三月七,key_equips 反震四件套,**boss_weakness 加「正当防卫」**);补 命运圣杯流/欢愉队/万敌单C/减益黄泉。**② 新角色+命运圣杯阵营**(CHARACTER_ROSTER/FACTIONS 补)。**③ 词缀对策表**(正当防卫克反震/反甲/高频;同步行动克拉条利DOT;沉重脚步刚需护盾…)。**④ 概念股送装备件 = decide_invest(env) 新维度**(选与 target_comp 核心装备合成件匹配的概念股)。**⑤ 装备合成配方**(cw_equipment 基础件×2→进阶)。**⑥ 商店保底**(每5刷出5张同费,建模进 D牌逻辑)。**⑦ 姬子启行选择伙伴按最缺羁绊选**(升级 decide_partner,随 read_partner OCR)。
+- **为什么(用户 2026-08-06「重新调研 + 总结优化策略」)**:第一轮(research round1,V4.4 基线)后实机推进到 V4.4/V4.5,meta 已演进(姬子·启行反震=顶层、Fate 联动命运圣杯),需新一轮调研校准策略方向 + 补 V4.4 新内容。用户定调「调研越多越好」,2 个研究子 agent 并发(≤2 上限内)分头深挖阵容/角色/装备/经济/投资/boss/节点,NGA 403、米游社 JS-only 靠搜索摘要+其它源交叉,每条标来源+版本+置信度。
+- **用户澄清(2026-08-06,定方向)**:① **刷新费默认 2 金**(备战画面识别;部分条件触发后变 → 读 `state.shop_refresh_cost`;bwiki "4金"疑混淆,代码 `SHOP_REFRESH_COST=2` 对);② 升级金价表/连胜阶梯 → 实机采集(非设计问题);③ **列车同行 = 姬子·启行**(确认);④ 角色图鉴补全(任务)。
+- **备选**:① 直接改代码实现上述(推翻:用户明确「只更新设计方法 + 进度待办,之后有人跟进」,本轮不改代码);② 只写 PROGRESS 待办不更新设计 doc(推翻:研究对 strategy/03 阵容规划层有实质设计影响,需 round5 补充落 doc 才不漂);③ 把装备/词缀细节也全写进 strategy/07、10(推迟:03 是战略核心先落,07/10 细节在 research dir,跟进人按 round5 + research 执行即可,避免本轮盲目改未读 doc)。
+- **状态**:**计划(待跟进人实现)**。strategy/03 round5 已落;research/ 9 文件已落;PROGRESS_autonomous 已加待办。实现优先级(跟进人参考):COMP_LIBRARY 扩 + 词缀对策表 + 新角色/阵营注册表(纯逻辑、影响识别+选comp)→ 概念股送件决策(纯逻辑)→ 数值实机校准 → 装备配方/商店保底/选择伙伴(部分需OCR)。· strategy/03 round5 + research/(用户「调研越多越好 + 只更设计/待办」)
+
+---
+
+## D-73 (2026-08-06) 备战字段采集:node_type(当前节点类型,顶部标签 OCR)+ vision 修复(img_to_vision_url 脚本)· cw_state/cw_observation
+- **决策**:① **node_type 字段**(`str | None`)+ `read_node_type`(顶部节点行标签带 OCR → 关键词 map:首领→boss/补给→supply/遭遇→encounter/巨星→megastar/战斗/精英/奖励/投资);`read_game_state` 接线。② **vision 修复**(本条前置):新建 `.claude/scripts/img_to_vision_url.py`(本地路径[+crop]→base64→print→harness 拦截上传 CDN 用 hash key→干净 URL→喂 analyze_image);CLAUDE.md 记「用 analyze_image 前必跑此脚本」+「项目用 uv run python 不用 python」;memory 更新(旧 Read→CDN 路径已失效)。
+- **为什么(用户 2026-08-06「完成备战」+ vision 修复诉求)**:node_type(当前)驱动节点前决策(boss 前保战力/补给前无战)。vision 400(Read 的 CDN URL 带反斜杠)卡了 icon 字段 + 整个 screen-onboarding 主线无数次,用户要脚本一劳永逸。
+- **备选**:① 全节点类型 node_path(图标→类型)需建节点图标模板库(本条只当前节点 + 文字标签);② vision 修法用 file:// / 编码 URL(都实测 400,推翻;只有 base64→harness 上传干净 key 通)。
+- **状态**:采用。64 测试绿(+1 node_type);ruff 净。**仅 boss(首领)实机核实**;其它节点类型标签措辞待多态实机补全(map 已覆盖常见词)。· 备战可采字段到顶(见下)。
+- **备战字段全图(D-73 收尾)**:✅ 可采全接 —— gold/hp/level/plane/round/shop/bench_full + board tier(D-69)+ xp_progress(D-72)+ node_type(本条);❌ **不在备战屏** —— level_up_cost(购买经验区"5"是**等级**非 cost,实据;cost 不显示)、enemy_difficulty(是简报/结算"敌人难度 108",非备战);🟡 **需图标/立绘库**(下步大方向)—— active_strategies(右面板图标列,vision 探到但 identity 要策略图标库)、inventory equips(未持有/要装备图标库)、deployed/bench 身份(SIFT 立绘库)、node_path 全节点类型(节点图标库)。**备战"完成"= 建 icon/立绘库**(identity 类),非更多 OCR。
+
 ## D-72 (2026-08-06) 备战字段采集:xp_progress(购买经验 "X/Y"→cur/next;文本字段到顶)· cw_state/cw_observation
 - **决策**:备战文本字段采集第二切片 = `xp_progress: tuple[int,int] | None`(``cur_xp, xp_to_next_level``),购买经验按钮下方 "X/Y"(如 "4/20"→(4,20))。`read_xp_progress`(硬编码 Rect,同 read_bench_full,后续移 screen_info area)+ `read_game_state` 接线。
 - **为什么(用户 2026-08-06「继续备战文本字段采集」)**:xp_progress 是 level 升级时机决策的输入(cur 接近 next → 即将升级,影响 level_plan/买经验优先级),替代纯 `_expected_level` 估。

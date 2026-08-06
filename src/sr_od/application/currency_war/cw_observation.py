@@ -122,6 +122,30 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     return _expected_level(plane, round_num)
 
 
+# 备战顶部节点类型标签 → 关键词。doc 13 §13.2A node_type。⚠️ 仅 boss(首领)实机核实;
+# 其它节点类型(补给/遭遇/巨星/投资/战斗/精英/奖励)的标签措辞待多子态实机核实补全。
+_NODE_TYPE_KEYWORDS: dict[str, str] = {
+    '首领': 'boss', '补给': 'supply', '遭遇': 'encounter', '巨星': 'megastar',
+    '战斗': 'battle', '精英': 'elite', '奖励': 'reward', '投资': 'invest',
+}
+
+
+def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
+    """备战顶部「当前节点类型」标签 → node_type(boss/补给/遭遇/...;doc 13 §13.2A)。
+
+    OCR 顶部节点行下方的类型标签带 → 关键词映射(首领→boss 等)。读不到 / 无已知关键词 → None。
+    标签在当前节点图标下方(x 随当前节点位置变),故扫整条节点行宽。
+
+    ⚠️ 仅 boss(首领)实机核实;其它节点类型标签措辞待多子态实机核实(现 map 覆盖常见词,
+    命中即返,未核实的不影响 boss 检测)。区域暂硬编码(同 read_xp_progress,后续移 screen_info)。
+    """
+    blob = ''.join(r.data for r in _ocr(ctx, screen, Rect(500, 65, 1700, 115)))
+    for kw, nt in _NODE_TYPE_KEYWORDS.items():
+        if kw in blob:
+            return nt
+    return None
+
+
 def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
 
@@ -315,6 +339,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.gold = read_gold(ctx, screen)
     state.hp = read_hp(ctx, screen)
     state.plane, state.round_num = read_phase_round(ctx, screen)
+    state.node_type = read_node_type(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
     state.xp_progress = read_xp_progress(ctx, screen)
     # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。

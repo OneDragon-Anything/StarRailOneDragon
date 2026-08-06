@@ -49,6 +49,7 @@ class GameState:
     """一回合决策时的局面快照(由 OCR 填充 + bot 跟踪)。"""
     gold: int = 0
     round_num: int = 1     # 位面内轮次 1-6
+    node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
     level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
     # 购买经验进度 (cur_xp, xp_to_next_level),如 (4,20);购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
