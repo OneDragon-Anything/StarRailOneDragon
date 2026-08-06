@@ -22,6 +22,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
+from sr_od.application.currency_war.cw_investments import is_known_env
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.context.sr_context import SrContext
@@ -75,6 +76,11 @@ class HandleInvestEnv(SrOperation):
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _ in opts]
+        # D-68:未建模环境不静默 —— OCR 命中注册表外的名字 → log warn(数据缺口可见信号,防假绿;
+        # 见 od-dev-gameplay-automation 完成判据反馈)。可能是赛季新增 / OCR 误识 / 锁定未命名。
+        for _n in names:
+            if not is_known_env(_n):
+                log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
         # D-34:走策略 decide_invest(kind='env';default 委托 decide_event,行为等价)。overlay 叠备战时
         # board 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match

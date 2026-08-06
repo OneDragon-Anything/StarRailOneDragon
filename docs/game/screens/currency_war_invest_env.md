@@ -36,7 +36,7 @@ source_image: screens/货币战争-投资环境/default.webp
   1. **昼之半神概念股** — 开局得【昼之半神】角色 + 初始简易装备,昼之半神角色刷新率提高。(阵营 buff)
   2. **特邀专家：银狼** — 首次得【银狼LV.999】时,银狼以专家顾问加入商店。(关键角色)
   3. **列车同行概念股** — 开局得【列车同行】角色 + 装备,列车同行刷新率提高。(阵营 buff)
-- **投资环境池**:米游社 V4.4 共 74 个(详 `docs/game/currency_war/data/investment_envs.md`),每场随机出 3。
+- **投资环境池**:游戏内总 83 / 解锁 68(D-68 数据银行核对),每场随机出 3。全集见代码 `src/sr_od/application/currency_war/cw_investments.py::INVESTMENT_ENVS`。
 - **剩余次数**:本局还可选次数(本场 = 1)。
 
 ## 识别快照

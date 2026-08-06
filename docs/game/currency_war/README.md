@@ -14,7 +14,7 @@
 - [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类)
 - [equipment.md](data/equipment.md) —— ~130 装备(简易/进阶/特权/星徽/白昼/Fate/工具)
 - [investment_strategies.md](data/investment_strategies.md) —— 216 投资策略
-- [investment_envs.md](data/investment_envs.md) —— 74 投资环境(概念股/邀请/契约…)
+- 投资环境(~82,概念股/邀请/契约/时代/经济/规则/专家)—— **代码单一源** `src/sr_od/application/currency_war/cw_investments.py::INVESTMENT_ENVS`(D-68 全量;原 doc 已删,代码已建模不存 doc)
 - [comp_library.md](data/comp_library.md) —— 起步阵容 roster 8+ 套 + V4.4 评级 + S 级运营要点
 - [economy_research.md](data/economy_research.md) —— 牌池/买卖退金/刷新概率/boss HP 缩放(实据)
 - [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta,bwiki pending 米游社)

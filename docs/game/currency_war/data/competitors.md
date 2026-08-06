@@ -10,7 +10,7 @@
 > - V4.2 词缀一览交叉:[article/75627078](https://www.miyoushe.com/sr/article/75627078)。
 >
 > **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;按**机制分类**便于 comp 克制/受利判断(mechanics_fit 双向)。
-> 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 investment_envs.md)。
+> 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 `cw_investments.py::INVESTMENT_ENVS` 敌后破坏)。
 
 ---
 

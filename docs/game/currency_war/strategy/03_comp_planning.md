@@ -131,7 +131,7 @@ COMP_LIBRARY 加 version_tag;README checklist:版本更新 → 重抓 cw_data �
 ## round 2 补充(新发掘)
 - **R2-3 攻略推荐作 select_comp 先验(high,详 09)**:gameplay 确认游戏自带"攻略"实时给 comp 推荐(高亮角色+推荐装备),**跨版本有效**(game 自更新)。select_comp 把 `read_game_guide()→recommended_comp` 作**先验/运行时校准**:COMP_LIBRARY 为先验、攻略为校准;**版本过期(version_tag 不匹配)时攻略接管**(R2-12 staleness 运行时解)。攻略高亮角色也作 character_priority 动态补充。
 - **R2-12 COMP_LIBRARY 运行时 staleness(med)**:version_check(game 内版本号 vs version_tag)→ 不匹配 select_comp 权重 ×0.5 混 reactive + 日志 warn;config 加 `trust_comp_library: float`。与 R2-3 攻略互补。
-- **R2-9 env_fit 显式表(med)**:comp_score 的 env_fit 缺 env→faction 可执行映射。加 `ENV_FACTION_MAP: dict[env_name, list[faction]]`(从 investment_envs.md 提,faction-specific 概念股/邀请才填);非映射 env 走通用增益分而非 0.5 默认。
+- **R2-9 env_fit 显式表(med)**:comp_score 的 env_fit 缺 env→faction 可执行映射。`ENV_FACTION_MAP: dict[env_name, list[faction]]` **已从 `INVESTMENT_ENVS` 派生(`cw_comps.py`,单一真相源;概念股/邀请/命运圣杯的 faction 字段)**;非映射 env(契约/时代/经济/规则/专家)目前走 0.5 中性,待分类建模(阶段 3a)。
 - **R2-10 站位阵型(med)**:position_pref 只有 front/back,无列内排序/阵型。research"A8 谁吃第一击关乎生存"。Comp 加 `formation: dict[slot, role_requirement]`(如前排 slot1=存护);DeployMove 带 slot;`_pick_deploy_row` 升级 `_pick_deploy_slot`(主坦放前排首位等)。
 - **R2-19 comp_score vs target_progress core_char 口径(low)**:comp_score.progress 用 0.4·core_char;target_progress 显式排除 core_char。分层:选 target 时算 core_char(评估契合),eval 驱动买牌时不算(避免三重)。注释清楚即可。
 
