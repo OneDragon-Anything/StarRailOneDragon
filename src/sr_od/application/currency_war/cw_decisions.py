@@ -457,16 +457,28 @@ def _best_improving_action(
         (_goal is not None and _goal.action == "level_up")
         or state.level < _expected_level(state.round_num, state.plane)))
     _saving_for_level = _want_level and state.gold < _lv_cost
+    # D-67 经济统一论(用户 2026-08-06 反馈「没早凑 50 金拿满利息」):维持 ≥50 金息引擎。gold<50 + 板位满
+    # (deployed≥max_units,非战力断档)+ 健康(hp≥threshold,非 tempo)→ 攒息(抑散牌买/刷)。CLAUDE.md
+    # 「维持≥50 金,超出才花;tempo(HP 危险/战力断档)破息」。实跑 bot 花光金到 0 → 无息引擎 → 弱死。
+    _saving_for_interest = (state.gold < INTEREST_THRESHOLD
+                            and state.deployed_count() >= state.max_units()
+                            and state.hp >= effective_hp_threshold(state, config))
+    _saving = _saving_for_level or _saving_for_interest
 
     # 1) 买 + 上任组合(原子)
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
-        # level_plan buying gate(task#18):攒金升级期间(_saving_for_level)抑制散牌,但仍允许 target
+        # D-67 bench 空间(用户反馈「没判断备战席满」):deploy 满 + bench 满 → 买的牌无处放,skip(防 overfill
+        # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
+        if state.deployed_count() >= state.max_units() and len(state.bench) >= GameState.BENCH_CAPACITY:
+            continue
+        # level_plan buying gate(task#18):攒金升级期间(_saving)抑制散牌,但仍允许 target
         # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
         # 这里只管"攒金期间别把金泄到散牌上"(解 replay 32 局金堆 50+ 不花/花在散牌上不升级)。
-        if _saving_for_level:
+        # D-67:_saving 含 _saving_for_interest(攒息,gold<50),同抑散牌。
+        if _saving:
             _is_target_card = (target_comp is not None and (
                 card.faction in target_comp.factions
                 or card.name in target_comp.core_chars
@@ -516,11 +528,14 @@ def _best_improving_action(
     # (_saving_for_level)不 D 牌(refresh 泄金,与散牌买同理)。
     # D-63/F2 例外:攒金期若 shop 无 target 卡,允许 roll 找 target(否则纯攒金 + shop 无 target →
     # target 永不深成型 → plane2 弱秒死,2026-08-06 实跑)。_refresh_expected_delta 已加 target 阵营采样权重。
+    # D-67:但 _saving_for_interest(攒息,gold<50)时全阻 roll(息引擎优先,tempo 例外已在 _saving_for_interest
+    # 的 hp 判定排除)。
     _shop_has_target = (target_comp is not None and any(
         c.faction in target_comp.factions or c.name in target_comp.core_chars
         for c in state.shop))
     if (state.gold >= SHOP_REFRESH_COST and refresh_budget > 0
-            and (not _saving_for_level or not _shop_has_target)):
+            and (not _saving_for_level or not _shop_has_target)
+            and not _saving_for_interest):
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                      target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])

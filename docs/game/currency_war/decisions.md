@@ -15,6 +15,12 @@
 
 ---
 
+## D-67 (2026-08-06) 经济统一论接线 + bench 空间检查(用户反馈:没早凑 50 金 + 没判断备战席满 + 无脑填备战席) · cw_decisions
+- **决策**:① **_saving_for_interest**:gold<INTEREST_THRESHOLD(50) + 板位满(deployed≥max_units,非战力断档)+ 健康(hp≥threshold,非 tempo)→ 攒息(抑 off-target 买 + 阻 roll),并入 `_saving`(同 _saving_for_level 抑散牌);② **bench 空间检查**:buy loop 里 deploy 满 + bench 满(≥BENCH_CAPACITY 9)→ skip 买(防 overfill)。
+- **为什么(用户 2026-08-06 看对局反馈)**:①「没早凑 50 金拿满利息」—— bot greedy buy-delta 见 synergy(+10/牌)> interest(4/tier,**单轮视图低估复利**)→ 买空金到 0 → 无息引擎(每回合白拿5)→ 弱死。CLAUDE.md「经济统一论:维持≥50,超出才花;tempo(HP危险/战力断档)破息」是设计但**未接线强制**。②「没判断备战席满 + 无脑填备战席」—— buy loop 无 bench 空间检查,deploy 满时买的牌堆 bench → overfill;off-target 散牌买致 spread。
+- **备选**:① 提 INTEREST_WEIGHT(4→8,推翻:单轮 eval 仍会买,synergy>interest;hard floor 才根治);② off-target cap(推翻:D-67 初版试过,破坏 synergy push,已撤);③ 全阻 target 买也(推翻:target 深化 + level_plan 该花,只阻 off-target + roll)。
+- **状态**:采用。44 decisions 测试绿;ruff 净。**tempo 例外**:hp<threshold 或板位未满(战力断档)→ 不攒息(可买保命/填板)。**待新局验**:bot 是否早达 ≥50 金(息引擎)+ bench 不 overfill + 少 spread。· CLAUDE.md 经济统一论 + 用户反馈
+
 ## D-66 (2026-08-06) P2/F1:maybe_pivot commit 阈值(target form_progress≥0.4 → 强粘,不弃成型 comp) · cw_comps
 - **决策**:信号1 pivot 阈值加 commit 层 —— `target` 的 `form_progress ≥ COMMIT_FRAC(0.4)` = 已 commit → 阈值 ×`COMMIT_STICK_FACTOR(1.5)`(0.10→0.15,强粘)。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。未 commit + best 易 → D-59 降阈(0.07);已 commit → 强粘(0.15);else 正常(0.10)。
 - **为什么(strategy/12 F1 + 2026-08-06 实跑 spread)**:bot board spread + 低 hp 弃正在成型的 comp → 弱死。F2(roll)让 bot roll 找 target,但 target flit(微 score 波动切走)→ 深堆被打断。F1 让已 commit(40%+ 成型)的 target 强粘,best 需大幅优于(0.15)才转 → bot 深堆一个 comp 不轻易弃。语义:「已在堆 X,继续堆,别因 shop 这轮波动弃」。
