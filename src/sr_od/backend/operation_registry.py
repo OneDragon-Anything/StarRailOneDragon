@@ -28,8 +28,15 @@ if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
 
-# 扫描根(枚举 operation 承载包;application/ 全是 Application 子类会被过滤,不纳入)
-_SCAN_ROOTS: list[str] = ['sr_od.operations']
+# 扫描根(枚举 operation 承载包)。
+# - ``sr_od.operations``:通用 SR operation(与大世界/菜单/战斗等共用流程)。
+# - ``sr_od.application``:各 app 包内的工具型 operation(约定放 ``<app>/tools/`` 子包,
+#   如 currency_war/tools/)。app 本身的 Application 子类被 _ABSTRACT_BASES 过滤,不纳入;
+#   只有 bare Operation(工具 op)被收。新增 app 的 tools/ 自动被发现,无需改这里。
+_SCAN_ROOTS: list[str] = [
+    'sr_od.operations',
+    'sr_od.application',
+]
 # 显式排除的抽象/中间基类(已按 SR 业务裁剪,去掉上游专属基类)
 _ABSTRACT_BASES: set[str] = {
     'Operation', 'Application', 'SrOperation', 'SrApplication',
