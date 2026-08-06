@@ -421,40 +421,58 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
-    """OCR 左面板 → {阵营名: 在场人数}。
+def _board_pairs(ctx: SrContext, screen: MatLike) -> dict[str, tuple[int, int]]:
+    """OCR 左面板 → {阵营: (count, next_tier)},从 "X/Y" 解析(X=在场人数,Y=下个 tier 阈值)。
 
-    每个激活阵营一行:阵营名 + 其下的激活人数(如 "3",或 "3/5" 取首数)。list OCR 不聚合
-    (两阵营同人数不撞键);逐结果匹配 FACTIONS 名,取其**正下方最近**的纯数字当人数;
-    有阵营名无下方数字 → 默认 1(至少 1 人在场才显示)。
+    聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
+    区域裁切可读对)。next_tier 未解析到 → 记 0(未知,read_board_next_tier 滤掉)。
     """
     results = _ocr(ctx, screen, _area_rect(ctx, A_BOARD))
     results.sort(key=lambda r: r.center.y)
-    board: dict[str, int] = {}
+    pairs: dict[str, tuple[int, int]] = {}
     for i, r in enumerate(results):
         faction = next((f for f in FACTIONS if f in (r.data or '')), None)
-        if faction is None or faction in board:
+        if faction is None or faction in pairs:
             continue
-        count: int | None = None
+        xy: tuple[int, int] | None = None
         for r2 in results[i + 1:]:
             dy = r2.center.y - r.center.y
             if dy > 45:
                 break
             if dy <= 0:
                 continue
-            data = r2.data or ''
-            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3");优先此格式取 X。
-            # 裸数字(无斜杠)多是 tier 链残留(如燃血 "2/4/6/8" → OCR "8" / "2141618")或邻行资源数,
-            # 旧逻辑 grab 首位数字会把它误当 count(2026-08-04 实测 燃血:8/能量:7 喂脏 eval)→ skip。
-            m_xy = re.search(r'(\d+)\s*/\s*\d+', data)
+            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3");取 X=count + Y=next_tier。
+            # 裸数字(无斜杠)多是 tier 链残留(如燃血 "2/4/6/8" → OCR "8")或邻行资源数,不当 count → skip。
+            m_xy = re.search(r'(\d+)\s*/\s*(\d+)', r2.data or '')
             if m_xy:
-                count = int(m_xy.group(1))
+                xy = (int(m_xy.group(1)), int(m_xy.group(2)))
                 break
-            # 无 "X/Y"(裸数字)→ 不当 count,继续往下找真正的 "X/Y"(可能在稍下方一行)。
-        # sanity bound:count 应 1-9;越界/未找到 → 默认 1(至少 1 人在场才显示该阵营),防 synergy_score 垃圾入。
-        # ⚠️ 残留风险:动画期面板只显示 tier 链(无 "X/Y")→ count=None→默认1(保守,优于脏 8)。
-        board[faction] = count if (count is not None and 1 <= count <= 9) else 1
-    return board
+        if xy is not None:
+            cnt, nt = xy
+            # sanity:count 1-9;next_tier 1-12(阵营 tier 最高 ~9,留余量)。越界 → 兜底。
+            cnt = cnt if 1 <= cnt <= 9 else 1
+            nt = nt if 1 <= nt <= 12 else 0
+            pairs[faction] = (cnt, nt)
+        else:
+            # 无 "X/Y"(动画期只显 tier 链等)→ count 默认 1(至少 1 人在场才显示该阵营),无 next_tier。
+            pairs[faction] = (1, 0)
+    return pairs
+
+
+def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
+    """OCR 左面板 → {阵营名: 在场人数}(= ``_board_pairs`` 的 X;向后兼容)。
+
+    每个激活阵营一行:阵营名 + 其下的 "X/Y"(X=在场人数,Y=下个 tier 阈值)。详见 ``_board_pairs``。
+    """
+    return {f: c for f, (c, _nt) in _board_pairs(ctx, screen).items()}
+
+
+def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
+    """OCR 左面板 → {阵营名: 下个 tier 阈值}(= ``_board_pairs`` 的 Y;doc 13 ``FactionState.next_tier``)。
+
+    只含 Y 解析到的阵营(0/未显阈值的不进 dict)。聚焦裁切 OCR 才稳(见 ``_board_pairs``)。
+    """
+    return {f: nt for f, (_c, nt) in _board_pairs(ctx, screen).items() if nt > 0}
 
 
 def _match_char(text: str) -> str:
@@ -531,7 +549,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.hp = read_hp(ctx, screen)
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
-    state.board = read_board(ctx, screen)
+    # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
+    _bp = _board_pairs(ctx, screen)
+    state.board = {f: c for f, (c, _nt) in _bp.items()}
+    state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     return state

@@ -55,6 +55,9 @@ class GameState:
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
     # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
     board: dict[str, int] = field(default_factory=dict)
+    # board_next_tier = 各阵营「下个 tier 阈值」(左面板 "X/Y" 的 Y;doc 13 FactionState.next_tier)。
+    # 聚焦裁切 OCR 才稳读(全屏把 "2/3" 误读 "213")。comp/progress 评分用「距下个 tier 几人」;默认空(未接/未读到)。
+    board_next_tier: dict[str, int] = field(default_factory=dict)
     deployed: list[BenchChar] = field(default_factory=list)
     shop: list[ShopCard] = field(default_factory=list)
     bench: list[BenchChar] = field(default_factory=list)
