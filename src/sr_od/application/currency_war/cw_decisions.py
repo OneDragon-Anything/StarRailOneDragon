@@ -71,7 +71,10 @@ OFF_TARGET_DISCOUNT: float = 1.0       # 2026-08-04 revert(原 0.3):实跑发现
 # 不动已有堆的 board eval)—— 待后续 task#16 续。target_comp 参数保留(prefilter 复用),effect 暂关。
 # T#97 step-2:target 阵营**正向 bonus**(激励深 stack target;off-target 保持 OFF_TARGET_DISCOUNT=1.0 不惩罚,
 # 避 churn —— 清 log 的 0.3 打折致 churn)。F3 超线性(SYNERGY_TIER_EXPONENT=1.5)+ target bonus → 深 stack target >> 散 off-target。
-TARGET_FACTION_BONUS: float = 1.5      # target 阵营 synergy ×1.5(2026-08-07 live 验 spread 后加正向激励)
+# ⚠️ 2026-08-07 live 验:1.5× **counterproductive**(over-commit 弱-early 追击 via close-to-next bonus → HP 掉快
+# → 死 plane2 r1,vs step-1-only 死 plane2 r4)。**设 1.0(= disable,恢复 step-1-only best-known)**;
+# 待 fresh context 仔细 tune(更低 1.2 / conditional 只 tier-activated / 不 ×close-to-next)。
+TARGET_FACTION_BONUS: float = 1.0      # 1.0 = disabled(1.5 counterproductive,见上);待 tune
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # 默认升级金价(粗估,实机校准)
