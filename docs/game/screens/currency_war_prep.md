@@ -48,11 +48,13 @@ source_image: screens/货币战争-备战/(多子态,见下)
 - 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost)、`read_bench_full`(席满警告)
 - 生命:`read_hp`(⚠️ shop 关闭态才准,文本-剩余血量)
 
-**⚠️ 已读未用(read-but-unused,2026-08-06 审计)**:`read_game_state` 读了但 `cw_decisions.plan` **未消费** ——
-`xp_progress` / `enemy_difficulty` / `level_up_cost` / `shop_refresh_cost` / `streak` / `node_type` / `board_next_tier`
-(plan 只用 gold/hp/level/board/bench/deployed/shop/plane/round)。其中 **`board_next_tier`**(下个羁绊 tier 阈值)直接关系
-comp 成型度评分(核心弱项,见 process_log D-54~D-67 spread 根因)、**`level_up_cost`/`shop_refresh_cost`** 关系经济精算
-(plan 现用 `LEVEL_UP_COST_TABLE` 估 + 硬编码刷新价)→ 接线优先。待 wiring(进策略后此条更新/删)。
+**⚠️ 已读未用 + 可靠性(2026-08-06 审计 T#91 + 实图核实 T#92)**:`read_game_state` 读了但 `cw_decisions.plan` **未消费**。
+对 5 个备战 fixture 跑真实 OCR dump(`.debug/temp/prep_obs_dump.txt`)核实:
+- **可靠(可直接接线)**:`board_next_tier`(下个羁绊 tier 阈值,5 fixture 都读对)→ **接线优先**,直接关系 comp 成型度评分(核心弱项);`xp_progress`(读对)。
+- **reader 不可靠(先修 area 再接线)**:`level_up_cost`(5 fixture 全 None → `文本-购买经验金币数` area 没读到)、`shop_refresh_cost`(飘 0/2 真值 2 → `文本-刷新金币数` area 误读)、`streak`(全 None → `文本-连胜数` area 没读到)、`node_type`(battle/boss 对、reward 误读 a8_start / shop_open 漏 → 顶部 band `Rect(500,65,1700,115)` 不稳)。
+- **本就弱(设计如此)**:`enemy_difficulty`(stylized OCR 常空,飘 8/39/None)。
+- plan 现用 9 字段(gold/hp/level/board/shop/plane/round + bench/deployed)实图核实可靠 ✓(`read_shop_cards` shop-open 读对 5 真名:翡翠/丹恒·腾荒/不死途/飞霄/三月七)。
+- **结论**:策略不用那些字段非疏漏 —— 多数因 reader 不可靠。**先修 reader area → 再接线**(`board_next_tier` 例外,可靠直接接)。
 
 **视觉身份层(SIFT,`cw_identity_obs`,D-75 已接线 + 实测验证)**:
 - bench/deployed **角色身份**(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位
