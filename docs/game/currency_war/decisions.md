@@ -15,6 +15,14 @@
 
 ---
 
+## D-79 (2026-08-06) 弱阵 fix:commitment prefilter 不再豁免 character_priority 的 off-target 角色(comp-aware)· cw_decisions · task#88
+- **决策**:`cw_decisions._best_improving_action` 的 commitment prefilter(target 设定时跳过 off-target 散牌)off-target 测试**去掉 `card.name not in character_priority` 豁免** —— off-target = `阵营∉target.factions 且非 core`,与 priority 无关。priority 仍享 buy-delta 加成(`CHAR_PRIORITY_BONUS×2`)+ 未 commit 时(`target=None`)prefilter 不跑 → 早期 stopgap 保留;只堵「已 commit + shop 有 target 卡可买时,off-target priority 角色仍被买」这个洞。
+- **为什么(D-56 live log 实证,非盲调)**:resume plane1-9 死局跑 bot 采 D-56 决策迹 → `target='DOT队'` 全程稳定(D-40 防振荡生效),但 gold=8 时买 **藿藿+阿格莱雅(能量,纯 off-target for DOT)** 填充 → board 7 阵营零成型(能量/仙舟/群攻/贝洛伯格/列车同行/银河学者都非 DOT)→ plane1 boss 战 **hp 60→26 重伤**;plane2 r1 仍 8 阵营 spread。根因:`DEFAULT_CHARACTER_PRIORITY` 含「藿藿/阿格莱雅」(1-2 费前期基石),prefilter 第三条件 `name not in character_priority` 把它们豁免 → commitment 名存实亡。违反 CLAUDE.md 铁律「**一切评分 comp 相关**」(装备/巨星/词缀都挂钩 target_comp,priority 不该绝对豁免 commitment)。
+- **备选**:① 改 `DEFAULT_CHARACTER_PRIORITY` 删 藿藿/阿格莱雅 —— 推翻:治标(用户自定义 priority 会再撞)+ 这些角色对能量队等仍是有效 early stopgap;根因是 priority 绝对豁免,该治本(prefilter)。② priority 完全 comp-aware(连 eval 加成也去)—— 推翻过激:priority 的 eval 加成是用户 steer(未 commit / shop 无 target 卡时该 grab 强角色),只需堵 committed 态。③ 同步改 `_saving` gate 的 priority 豁免 —— 推迟:`_saving` 是经济维度,prefilter 已在 committed+target-可买 态拦住 off-target priority buy(saving 放行→prefilter 拦),功能够;若 `_saving` 豁免也致 spread 待后续数据。
+- **状态**:采用。1 新测试绿(`gold=3 + [阿格莱雅(能量,off-target priority), 黄泉(减益,target core)]` → 买黄泉、不买阿格莱雅;旧码 priority 豁免 + buy-delta `+16` → 先买阿格莱雅→gold 剩 2 买不起黄泉→漏 target);全 currency_war **199 绿**;ruff 净。**待验证**:restart server(载 fix)+ 新局跑,看 committed 态 board 是否聚焦 target faction(不再 spread);旧码 bot 实跑已确认 bug(hp 60→26)。· task#88 / strategy/02 commitment / CLAUDE.md「一切评分 comp 相关」
+
+---
+
 ## D-78 (2026-08-06) GameState 加法建模块:strategy/13 §13.2 补字段 + NodeInfo + BenchChar.equips + current_boss 派生(零行为变化)· strategy/13 §13.10 step1
 - **决策**:`cw_state.py` 落 strategy/13 §13.10 step1 的**安全加法子集** —— ① 新 `NodeInfo` 类型(node_path 元素);② `BenchChar`(= §13.2 `Unit`)加 `equips: list[str]`(身上装备,有序);③ `GameState` 加 7 个 §13.2 新字段(`node_path`/`match_type`/`plane_modifiers`/`shop_locked`/`active_strategies`/`megastar_char`/`partner_char`,**均 None/空兜底**,OCR 未接→安全降级);④ `current_boss` 派生属性(= `bosses[plane-1]`,越界/空→None)。**零行为变化**:不 rename、不删字段、不改默认值、不 rewiring 策略层。
 - **为什么(PROGRESS 顶优先 + 风险分层)**:strategy/13 §13.10 step1「建模」是纯逻辑、不需游戏的头号待办;GameState 经前期补全已较完整(node_type/enemy_difficulty/xp_progress/level_up_cost/shop_refresh_cost/streak/board_next_tier 等已加),本次补剩余 §13.2 新字段让后续 OCR 接线可填(接一个填一个)。**加法子集先落地** = 零风险(长上下文 / post-compact 不宜一次做大行为变化);**行为变化部分(rename `round_num→node_index`/`difficulty→selected_difficulty`/`bosses→plane_bosses`/`equips→inventory` 拆 + 去谎言默认 `hp→None`/`board` 编 + 策略层 `None` 降级 + 测试调绿)留后续统一迁移块**(§13.8),避免半截迁移破坏策略层。

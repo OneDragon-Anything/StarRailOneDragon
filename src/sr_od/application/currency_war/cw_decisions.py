@@ -486,13 +486,17 @@ def _best_improving_action(
             if not _is_target_card:
                 continue   # 散牌:攒金给升级,跳过
         # commitment prefilter(task#16):target 设定时,若 shop 有 target 卡(阵营∈target.factions 或
-        # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char/优先角色)→ 聚焦深化 target,
+        # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char)→ 聚焦深化 target,
         # 防"买一切"致 board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防
         # hold-forever 饿死)。区别旧 OFF_TARGET_DISCOUNT 打折 board 的 churn(d87b2a68 revert):只 gate 新 buys。
+        # D-79:off-target 测试**不再豁免 character_priority**(原含 `card.name not in character_priority`
+        # → 藿藿/阿格莱雅 等 priority 列里的 off-target 角色被放行 → board spread;plane1-9 实采 7 阵营零成型、
+        # gold=8 买 能量 藿藿/阿格莱雅 填 off-target)。违反「一切评分 comp 相关」(CLAUDE.md):priority 不该
+        # 绝对豁免 commitment。priority 仍享 eval 加成(CHAR_PRIORITY_BONUS,下文)+ 未 commit 时(target=None)
+        # 本 prefilter 不跑 → 早期 stopgap 保留。
         if target_comp is not None:
             _is_offtarget = (card.faction not in target_comp.factions
-                             and card.name not in target_comp.core_chars
-                             and card.name not in character_priority)
+                             and card.name not in target_comp.core_chars)
             if _is_offtarget and any(
                     c.faction in target_comp.factions or c.name in target_comp.core_chars
                     for c in state.shop if state.gold >= card_cost(c)):
