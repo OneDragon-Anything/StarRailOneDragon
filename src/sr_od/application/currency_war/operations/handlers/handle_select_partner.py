@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
 「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → 点候选立绘选中 → 确认选择。
@@ -105,8 +107,28 @@ class HandleSelectPartner(SrOperation):
         self.ctx.controller.mouse_move(confirm)
         self.ctx.controller.click(confirm)
         time.sleep(1.0)
-        # D-64(ADR-0009):验 overlay 关(选择伙伴 消失 = 推进);没关 → confirm 未落地 → retry(兜底,不盲目 success)。
+        # D-64(ADR-0009):验 overlay 关(选择伙伴 消失 = 推进);没关 → 分情况。
         if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
+            # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
+            # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。
+            if self.round_by_ocr(self.screenshot(), '请选择强化角色').is_success:
+                from sr_od.application.currency_war.cw_obs_core import area_center
+                target = area_center(self.ctx, '前排-1')
+                log.info(f'[cw-partner] step2 请选择强化角色 → 点前排-1 {target}')
+                if target is not None:
+                    self.ctx.controller.mouse_move(target)
+                    self.ctx.controller.click(target)
+                    time.sleep(0.7)
+                confirm2 = self._find_text_center(self.screenshot(), '确认选择')
+                if confirm2 is not None:
+                    self.ctx.controller.mouse_move(confirm2)
+                    self.ctx.controller.click(confirm2)
+                    time.sleep(1.0)
+                if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
+                    log.info('[cw-partner] step2 后 overlay 仍在 → round_retry')
+                    return self.round_retry(wait=1)
+                log.info('[cw-partner] step2 完成 → overlay 关')
+                return self.round_success(wait=2)
             log.info('[cw-partner] 确认后 overlay 仍在 → round_retry(confirm 未落地,bug#1)')
             return self.round_retry(wait=1)
         return self.round_success(wait=2)
