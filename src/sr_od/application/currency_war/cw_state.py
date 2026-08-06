@@ -70,7 +70,7 @@ class GameState:
     shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
     streak: int | None = None             # 连胜/连败数(文本-连胜数;正=连胜?待核;None=未读到)
     plane: int = 1         # 位面 1/2/3
-    difficulty: str = ""   # 本局难度 A1..A8(匹配开始从难度确认屏检测;"" = 未检测 → 阈值回退默认;effective_hp_threshold 用)
+    selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;strategy/13 §13.7 两阶难度:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
     # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
     board: dict[str, int] = field(default_factory=dict)
@@ -227,15 +227,15 @@ def sell_refund(star: int) -> int:
 
 
 def effective_hp_threshold(state: GameState, config) -> int:
-    """实际保血阈值:difficulty 检测到且 ``config.difficulty_hp_override`` 有对应键 → 取覆盖值;
+    """实际保血阈值:selected_difficulty(职级)检测到且 ``config.difficulty_hp_override`` 有对应键 → 取覆盖值;
     否则回退 ``config.hp_safe_threshold``(默认 40 = cw_decisions.HP_DANGER)。
 
-    向后兼容:difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
+    向后兼容:selected_difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
     前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
     (决策见 docs/game/currency_war/decisions.md D-32)。detection 接线(难度确认屏 OCR →
-    state.difficulty)是后续 game 接线任务;本函数 + GameState.difficulty 是其离线地基。
+    state.selected_difficulty)是后续 game 接线任务;本函数 + GameState.selected_difficulty 是其离线地基。
     """
-    diff = (getattr(state, "difficulty", "") or "").strip()
+    diff = (getattr(state, "selected_difficulty", "") or "").strip()
     override = getattr(config, "difficulty_hp_override", None) or {}
     if diff and diff in override:
         return int(override[diff])

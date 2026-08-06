@@ -15,6 +15,14 @@
 
 ---
 
+## D-80 (2026-08-06) strategy/13 迁移块第一步:GameState.difficulty → selected_difficulty(职级)rename · cw_state §13.7/§13.8
+- **决策**:`GameState.difficulty` → `selected_difficulty`(本局职级 A1..A8 / A8-1..A8-50),`effective_hp_threshold` reader 同步(`getattr(state, "selected_difficulty", "")`)。落 §13.7 **两阶难度模型**:`selected_difficulty`(职级,决定起始敌难 + 额外敌人词缀)+ `enemy_difficulty`(数值,随节点递增 + 可被投资策略压低,D-78 前已加)。
+- **为什么(strategy/13 §13.8 迁移块,安全子集先行)**:原 `difficulty` 名模糊(职级 vs 数值混淆)→ rename 区分(§13.7 两阶)。选**最小风险子集**先迁(1 runtime reader `effective_hp_threshold` + 2 测试,bounded、机械 rename),把行为变化大的部分(hp→None 去谎言 / bosses→plane_bosses / equips→inventory 拆 / round_num→node_index / session 粘性字段迁入)留后续块。
+- **备选**:① 保留 `difficulty` 作 alias(向后兼容)—— 推翻:无外部 caller(只 `effective_hp_threshold` + 测试 import),clean rename 更清晰(单一真相源,无 alias 双源漂移);② 一次性全迁(rename + 去谎言 + session 迁 + 策略层 None 降级)—— 推翻:行为变化大 + 长上下文易错,分块独立验证更稳(D-78 加法 → D-80 rename → 后续去谎言/session)。
+- **状态**:采用。全 currency_war **199 绿**;ruff 净。迁移块进度:✅ 加法子集(D-78)/ ✅ difficulty rename(D-80)/ ⏳ hp→None 去谎言 + bosses/equips/round_num rename + session 迁入 + 策略层 None 降级(后续块)。· strategy/13 §13.7/§13.8
+
+---
+
 ## D-79 (2026-08-06) 弱阵 fix:commitment prefilter 不再豁免 character_priority 的 off-target 角色(comp-aware)· cw_decisions · task#88
 - **决策**:`cw_decisions._best_improving_action` 的 commitment prefilter(target 设定时跳过 off-target 散牌)off-target 测试**去掉 `card.name not in character_priority` 豁免** —— off-target = `阵营∉target.factions 且非 core`,与 priority 无关。priority 仍享 buy-delta 加成(`CHAR_PRIORITY_BONUS×2`)+ 未 commit 时(`target=None`)prefilter 不跑 → 早期 stopgap 保留;只堵「已 commit + shop 有 target 卡可买时,off-target priority 角色仍被买」这个洞。
 - **为什么(D-56 live log 实证,非盲调)**:resume plane1-9 死局跑 bot 采 D-56 决策迹 → `target='DOT队'` 全程稳定(D-40 防振荡生效),但 gold=8 时买 **藿藿+阿格莱雅(能量,纯 off-target for DOT)** 填充 → board 7 阵营零成型(能量/仙舟/群攻/贝洛伯格/列车同行/银河学者都非 DOT)→ plane1 boss 战 **hp 60→26 重伤**;plane2 r1 仍 8 阵营 spread。根因:`DEFAULT_CHARACTER_PRIORITY` 含「藿藿/阿格莱雅」(1-2 费前期基石),prefilter 第三条件 `name not in character_priority` 把它们豁免 → commitment 名存实亡。违反 CLAUDE.md 铁律「**一切评分 comp 相关**」(装备/巨星/词缀都挂钩 target_comp,priority 不该绝对豁免 commitment)。
