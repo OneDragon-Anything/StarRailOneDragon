@@ -65,8 +65,14 @@ class HandleSelectPartner(SrOperation):
         screen = self.last_screenshot
         if not self.round_by_ocr(screen, '选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
-        # D-60:OCR 候选 label 定位(原硬编码 STAGE_PORTRAIT=(1048,299) 落 2 候选间隙 → 点不中 →
-        # 确认选择无效 → flat-loop iter131+,2026-08-06 实跑)。点候选立绘(label_x, label_y-60)选中。
+        # D-61(ADR-0009 完成验证):已选择态(candidate 已选,如上轮选了没确认 / 复现 overlay)→
+        # 直接确认,跳过 candidate click。避免重复点 candidate 反而取消选中 → 确认无效 → flat-loop。
+        if self.round_by_ocr(screen, '已选择').is_success:
+            log.info('[cw-partner] 已选择态 → 直接确认选择(跳过 candidate click)')
+            if self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2).is_success:
+                return self.round_success(wait=2)
+            return self.round_retry(wait=1)   # 确认没点中 → retry(不盲目 success)
+        # 未选 → 点 candidate(D-60:OCR label 定位,原硬编码 STAGE_PORTRAIT 落间隙 flat-loop)。
         cands = self._read_candidates(screen)
         if cands:
             _name, cx, cy = cands[0]   # 取最左候选(TODO:策略化按 target_comp.core_chars 选)
@@ -76,6 +82,12 @@ class HandleSelectPartner(SrOperation):
             portrait = HandleSelectPartner.FALLBACK_PORTRAIT
             log.info(f'[cw-partner] no candidate OCR, fallback@{portrait}')
         self.ctx.controller.click(portrait)
-        time.sleep(0.6)
+        time.sleep(0.7)
+        # D-61(ADR-0009):验「已选择」出现才算选中;未选中 → round_retry(下轮换 OCR/重试,计 node_max_retry
+        # 兜底,不盲目 success flat-loop)。原 bug:fallback(960,300) 偶尔点不中 → 不验 → 确认无效 →
+        # overlay 不关 → 备战出战 被挡 flat-loop(2026-08-06 r9 boss prep stall)。
+        if not self.round_by_ocr(self.screenshot(), '已选择').is_success:
+            log.info('[cw-partner] candidate click 未选中(无「已选择」)→ round_retry')
+            return self.round_retry(wait=1)
         self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
         return self.round_success(wait=2)
