@@ -12,6 +12,10 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+    confirm_and_verify,
+    safe_click,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -35,7 +39,9 @@ class HandleDeployNotFull(SrOperation):
             return self.round_fail('非未达上限弹窗')
         _check = area_center(self.ctx, '勾选-本局不再提示', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.CHECKBOX_NO_PROMPT
         _confirm = area_center(self.ctx, '按钮-确认', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.BTN_CONFIRM
-        self.ctx.controller.click(_check)
+        safe_click(self, _check, tag='cw-deploywarn')
         time.sleep(0.3)
-        self.ctx.controller.click(_confirm)
-        return self.round_success(wait=3)
+        # 确认 + 验关(未达上限 消失 = 弹窗关)。原「点了就 success」不验 → bug#1/勾选未生效 flat-loop
+        # (partner reset 根因同类;write-operation「点了≠成了」)。lcs 0.8 防「能量上限」误匹配(见 entry 注释)。
+        return confirm_and_verify(self, confirm_point=_confirm, entry_keyword='未达上限',
+                                  lcs_percent=0.8, success_wait=3.0, tag='cw-deploywarn')

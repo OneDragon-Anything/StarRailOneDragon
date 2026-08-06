@@ -13,6 +13,12 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+    confirm_and_verify,
+    find_text_center,
+    safe_click,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -30,7 +36,13 @@ class HandleSupply(SrOperation):
         screen = self.last_screenshot
         if not self.round_by_ocr(screen, '补给阶段').is_success:
             return self.round_fail('非补给阶段屏')
-        self.ctx.controller.click(HandleSupply.CARD_BODY)
+        safe_click(self, HandleSupply.CARD_BODY, tag='cw-supply')
         time.sleep(0.6)
-        self.round_by_ocr_and_click(self.screenshot(), '确认', success_wait=2)
-        return self.round_success(wait=2)
+        # 确认 + 验关(补给阶段 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
+        # (partner reset 根因同类;write-operation「点了≠成了」)。确认坐标未进 screen_info → OCR 定位「确认」。
+        confirm = find_text_center(self, '确认')
+        if confirm is None:
+            log.info('[cw-supply] 未找到 确认 → round_retry')
+            return self.round_retry(wait=1)
+        return confirm_and_verify(self, confirm_point=confirm, entry_keyword='补给阶段',
+                                  lcs_percent=0.7, tag='cw-supply')

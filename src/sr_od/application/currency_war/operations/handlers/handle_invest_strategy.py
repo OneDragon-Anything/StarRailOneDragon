@@ -27,6 +27,10 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+    confirm_and_verify,
+    safe_click,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -96,12 +100,15 @@ class HandleInvestStrategy(SrOperation):
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
+        # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。
         _sel = area_center(self.ctx, '区域-卡名行', HandleInvestStrategy.SCREEN_NAME)
         _click_y = _sel.y if _sel is not None else HandleInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
-        self.ctx.controller.click(target)
+        safe_click(self, target, tag='cw-strat')
         time.sleep(0.7)
-        # 确认(task#20:center 从 screen_info「按钮-确认」读;缺失兜底 CONFIRM ~978,983)
+        # 确认 + 验关(投资策略 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
+        # (partner reset 根因同类;write-operation「点了≠成了」;本 op docstring 已记「点名 540+ 次不选中→卡死 18min」)。
+        # 确认 center 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', HandleInvestStrategy.SCREEN_NAME) or HandleInvestStrategy.CONFIRM
-        self.ctx.controller.click(_confirm)
-        return self.round_success(wait=2)
+        return confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
+                                  tag='cw-strat')

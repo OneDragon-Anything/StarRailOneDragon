@@ -14,6 +14,10 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+    confirm_and_verify,
+    safe_click,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -37,7 +41,9 @@ class HandleEncounter(SrOperation):
             return self.round_fail('非遭遇节点屏')
         # 默认选左卡(难度低、稳);TODO 策略化按 comp 选左/右。
         card = HandleEncounter.CARD_LEFT
-        self.ctx.controller.click(card)
+        safe_click(self, card, tag='cw-encounter')
         time.sleep(0.8)
-        self.ctx.controller.click(HandleEncounter.SELECT_BTN)
-        return self.round_success(wait=2)
+        # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
+        # (partner reset 根因同类;write-operation「点了≠成了」;docstring 已记「插空白点击取消选中→死循环」风险)。
+        return confirm_and_verify(self, confirm_point=HandleEncounter.SELECT_BTN,
+                                  entry_keyword='遭遇其一', lcs_percent=0.9, tag='cw-encounter')
