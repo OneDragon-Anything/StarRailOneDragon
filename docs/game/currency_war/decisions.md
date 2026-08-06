@@ -15,6 +15,12 @@
 
 ---
 
+## D-60 (2026-08-06) 事件长尾:HandleSelectPartner 硬编码立绘坐标落候选间隙 → flat-loop · handle_select_partner
+- **决策**:`HandleSelectPartner` 弃硬编码 `STAGE_PORTRAIT=(1048,299)` → OCR 候选阵营标签(label 行 y~362,2-4 字过滤)定位候选 → 点最左候选立绘 `(label_x, label_y-60)`(立绘在 label 上方~60px)→ 确认选择(OCR click,原已工作)。无候选兜底 (960,300)。
+- **为什么(2026-08-06 实跑 flat-loop)**:08:36 局 1-7 节点 choose_partner iter131+ 反复「成功」画面不变(31 snap)。**probe 实测**(游戏 parked 在该屏):2 候选 护盾(label x890)/能量(label x1127),立绘 y~300;硬编码 (1048,299) **x=1048 落两候选间隙** → 点不中 → 确认选择无效 → flat-loop。点 (1127,300) 命中 能量 候选(高亮选中)→ 点 确认选择(1441,582)→ overlay 关闭回备战。**根因 = 硬编码 x 不随候选数/位置变**(2/3 候选间隙不同)。
+- **备选**:① 改硬编码 x 到某候选(推翻:候选数/位置随事件变,硬编码必再间隙);② screen_info 建候选区(task#20,推翻:候选是动态横排,label OCR 更自适应,同 invest_env/card 模式);③ 点 label(card)而非立绘(推翻:probe 点立绘 y300 选中,label 362 未验证;立绘(label_y-60)自适应布局位移)。
+- **状态**:采用。173 cw 测试绿;ruff 净。**待新局验**:choose_partner 是否一次过(不再 flat-loop)。TODO:策略化选伙伴(按 target_comp.core_chars,现取最左)。· 事件长尾(D-39 encounter 同类 flat-loop)
+
 ## D-59 (2026-08-06) 弱阵:maybe_pivot 信号1 倾向易成型 comp(best 易 + target 未成型 → 阈值降) · cw_comps
 - **决策**:信号1 pivot 阈值随 best vs target 成型难度调节 —— `best.form_difficulty` 比 target 低(easy<medium<hard)**且 target 未成型**(form_progress<1)→ 阈值 ×`PIVOT_EASIER_FACTOR`(0.7,0.10→0.07),倾向转易 comp。target 已成型不降(不弃已完成 comp)。
 - **为什么(2026-08-06 实跑弱阵深化)**:08:36 局 target=巡击青雀[medium,仙舟5+追击3=8卡],r3 列车同行[easy,S,4卡] gap **+0.097 卡 0.10 没转** → 巡击青雀 慢成型(shop 不供 仙舟/追击)+ board 散(买 off-target 能量:3)+ hp 持续掉(82→58→45)。列车同行 fewer 卡 + S 强 + bot 默认首选(挂机流)→ 转了成型更快更强、少掉血。**根因 = pivot 阈值对易/难 comp 一视同仁,没偏好易成型**(慢 comp 拖死)。
