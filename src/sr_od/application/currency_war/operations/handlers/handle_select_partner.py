@@ -24,6 +24,11 @@ class HandleSelectPartner(SrOperation):
     # 实测(2026-08-06 1-7 节点):候选 label 护盾/能量 在 y≈362;放宽 [340,400] 容变。
     LABEL_CY_LO: ClassVar[int] = 340
     LABEL_CY_HI: ClassVar[int] = 400
+    # 候选 x 过滤带(候选立绘在画面中央 overlay,~450-1550)。**必须过滤 x**:左侧备战面板阵营 label
+    # (列车同行/能量/仙舟/213... 在 x~106)也落在候选 y 行 → 不滤 x 会把 board label 当候选 → 点错(2026-08-06
+    # 复看 OCR 发现 D-60 初版漏 x 过滤)。
+    LABEL_CX_LO: ClassVar[int] = 450
+    LABEL_CX_HI: ClassVar[int] = 1550
     # 候选立绘在 label 上方约 60px(label 362 → 立绘 302;实测点 (1127,300) 命中选中)。
     PORTRAIT_DY_ABOVE_LABEL: ClassVar[int] = 60
     # OCR 无候选时兜底(点画面中央立绘区;2026-08-06 实测 2 候选间隙 x≈1010,中央 x=960 可能落间隙,
@@ -46,10 +51,12 @@ class HandleSelectPartner(SrOperation):
         for text, mrl in ocr_map.items():
             if mrl.max is None:
                 continue
+            cx = mrl.max.center.x
             cy = mrl.max.center.y
             if (HandleSelectPartner.LABEL_CY_LO <= cy <= HandleSelectPartner.LABEL_CY_HI
+                    and HandleSelectPartner.LABEL_CX_LO <= cx <= HandleSelectPartner.LABEL_CX_HI
                     and 2 <= len(text) <= 4 and text not in HandleSelectPartner._EXCLUDE):
-                opts.append((text, mrl.max.center.x, cy))
+                opts.append((text, cx, cy))
         opts.sort(key=lambda t: t[1])
         return opts
 
