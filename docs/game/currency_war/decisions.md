@@ -15,6 +15,14 @@
 
 ---
 
+## D-78 (2026-08-06) GameState 加法建模块:strategy/13 §13.2 补字段 + NodeInfo + BenchChar.equips + current_boss 派生(零行为变化)· strategy/13 §13.10 step1
+- **决策**:`cw_state.py` 落 strategy/13 §13.10 step1 的**安全加法子集** —— ① 新 `NodeInfo` 类型(node_path 元素);② `BenchChar`(= §13.2 `Unit`)加 `equips: list[str]`(身上装备,有序);③ `GameState` 加 7 个 §13.2 新字段(`node_path`/`match_type`/`plane_modifiers`/`shop_locked`/`active_strategies`/`megastar_char`/`partner_char`,**均 None/空兜底**,OCR 未接→安全降级);④ `current_boss` 派生属性(= `bosses[plane-1]`,越界/空→None)。**零行为变化**:不 rename、不删字段、不改默认值、不 rewiring 策略层。
+- **为什么(PROGRESS 顶优先 + 风险分层)**:strategy/13 §13.10 step1「建模」是纯逻辑、不需游戏的头号待办;GameState 经前期补全已较完整(node_type/enemy_difficulty/xp_progress/level_up_cost/shop_refresh_cost/streak/board_next_tier 等已加),本次补剩余 §13.2 新字段让后续 OCR 接线可填(接一个填一个)。**加法子集先落地** = 零风险(长上下文 / post-compact 不宜一次做大行为变化);**行为变化部分(rename `round_num→node_index`/`difficulty→selected_difficulty`/`bosses→plane_bosses`/`equips→inventory` 拆 + 去谎言默认 `hp→None`/`board` 编 + 策略层 `None` 降级 + 测试调绿)留后续统一迁移块**(§13.8),避免半截迁移破坏策略层。
+- **备选**:① 一次性做全部(renames + 去谎言 + 策略层 None 降级 + 测试)—— 推翻:行为变化大 + 长上下文易错,分块更稳且可独立验证;② 加 `inventory` 字段(§13.2 G,equips 拆 available_equips + diamonds)—— **推迟**:与现有 `equips: list[str]` 双源(违反 CLAUDE.md 单一真相源),留「equips→inventory」统一迁移时一起做,避免过渡期双写漂移;③ 不加 `current_boss` 派生 —— 保留:派生属性无副作用,boss_fit/策略可直接用,免去各处重算 `bosses[plane-1]`;④ 加 `NodeRecord`(§13.3 观测日志)—— 推迟:属 `PerformanceTracker.history`(cw_performance),与 GameState 分离,不在本块。
+- **状态**:采用。5 测试绿(新字段默认 + BenchChar.equips + NodeInfo + current_boss 派生 + 既有字段/方法零回归);全 currency_war **193 绿**;ruff 净。§13.2 字段补到剩:rename/去谎言默认/inventory 拆/NodeRecord/FactionState(board 重构)—— 后续迁移块(§13.8,需同步改策略层 + 测试)。· strategy/13 §13.10 step1 / §13.2
+
+---
+
 ## D-77 (2026-08-06) 装备合成图谱:7 标准基础件完整 K7 两两合成图(28 进阶,逻辑闭合)+ 光能电池孤立节点(待核实)· cw_synthesis
 - **决策**:建 `cw_synthesis.py` 合成图谱 —— **7 件标准基础件(以太钻头/和平手枪/幸运星/折叠小刀/生命之花/轮滑鞋/量产型装甲)构成完整 K7 两两合成图**:C(7,2)=**21 交叉配方**(每两件不同基础件→1 进阶,**双组件经图鉴「合成公式」列表交集核实 = 确证**)+ **7 自配配方**(每件×2→1 进阶;反重力皮靴=2×轮滑鞋 攻略确证,余 6 由 K7 闭合逻辑确证 —— 每件列表恰 7 项,6 项交叉用尽,第 7 项无其他件可配→只能自配)= **28 进阶,合成图完整闭合**。光能电池 7 进阶与标准 7 零交叉(孤立节点,机理不同)→ `GUANGNENG_ONLY` 标注,**待游戏内人工核实**后另建。
 - **为什么(D-73⑤ 装备合成配方 + 证据纪律)**:`extract_synthesis.py` OCR 数据银行图鉴「合成公式」区(每基础件→可合成进阶名单)派生图谱;进阶名出现在 2 件基础件列表交集 = 那两件即组件。**OCR↔米游社 equipment.md 双源对拍**:42 个名字(7 基础件+28 结果+7 光能)全在 `EQUIPMENT_ROSTER`,无缺。**视觉大模型读图标配对被否** —— GLM-4.5V 对光能电池页编造自相矛盾链(战场进化手册既是结果又被当组件,7 结果漏 1),印证 CLAUDE.md VLM 边界(计数/对齐/状态推理不可信);故光能电池不靠 VLM,标待游戏内核实,不强入码(拿假设当论据=违反证据纪律)。

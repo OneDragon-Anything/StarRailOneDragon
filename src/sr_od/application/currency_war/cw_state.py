@@ -36,12 +36,23 @@ class ShopCard:
 
 @dataclass
 class BenchChar:
-    """备战栏/已上阵角色。"""
+    """备战栏/已上阵角色(= strategy/13 §13.2 的 ``Unit``;D-78 加 ``equips``)。"""
     slot: int
     char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
     faction: str = "?"   # 阵营
     star: int = 1        # 星级
     position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
+    equips: list[str] = field(default_factory=list)   # 装在身上的装备规范名(有序;D-78;OCR 未接→空)
+
+
+@dataclass
+class NodeInfo:
+    """位面节点序列中的一项(strategy/13 §13.2 node_path;D-78)。
+
+    纯图标无文字 → 需视觉/CV 建图标模板(§13.9 待核);未接 OCR 时 node_path 为空。
+    """
+    type: str = ""                          # 节点类型:战斗/精英/boss/补给/遭遇/投资/奖励
+    status: str = "future"                  # "past"/"current"/"future"
 
 
 @dataclass
@@ -79,6 +90,14 @@ class GameState:
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
     bench_full_flag: bool | None = None
+    # —— strategy/13 §13.2 补字段(D-78 加法块;均 None/空兜底,OCR 未接→安全降级)——
+    node_path: list[NodeInfo] = field(default_factory=list)   # 本位面节点序列(纯图标,需视觉;§13.9 待核)
+    match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
+    plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
+    shop_locked: bool = False                # 商店是否锁定
+    active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
+    megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
+    partner_char: str | None = None          # 选择的伙伴(选择伙伴节点)
 
     def copy(self) -> GameState:
         return deepcopy(self)
@@ -101,6 +120,16 @@ class GameState:
         if self.bench_full_flag is not None:
             return self.bench_full_flag
         return len(self.bench) >= BENCH_CAPACITY
+
+    @property
+    def current_boss(self) -> str | None:
+        """当前位面 boss(派生 = bosses[plane-1];strategy/13 §13.2)。无 boss 数据/越界 → None。"""
+        if not self.bosses:
+            return None
+        idx = self.plane - 1
+        if 0 <= idx < len(self.bosses):
+            return self.bosses[idx]
+        return None
 
 
 # ===== Action(动作;simulate 前瞻用) =====
