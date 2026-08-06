@@ -1,91 +1,84 @@
 ---
 screen_name: 货币战争-备战
 appears_in: [currency_war]
-last_updated: 2026-08-04
-source_image: screens/货币战争-备战/(多子态,见下)
+last_updated: 2026-08-07
+source_image: screens/货币战争-备战/(多子态,见识别快照)
 ---
 
 # 货币战争-备战(策略主战场)
 
-每个位面每轮的备战:买牌 / 升等级 / D 牌 / 部署 / 出战。bot 策略(`cw_decisions.plan`)在此运行,是自动化核心画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`。
+每个位面每轮的备战:买牌 / 升等级 / D 牌 / 部署 / 出战。bot 策略(`cw_decisions.plan`)在此运行,是自动化核心画面,也是货币战争出现最多的画面。screen_info:`assets/game_data/screen_info/currency_war_battle_prep.yml`(screen_id `currency_war_battle_prep`)。
 
 ## 何时出现 + 状态流转
 
 - **入口**:投资环境「确认」→ 本屏(Plane 1 Round 1);每轮战斗后 → 事件/下一轮 → 回本屏。
 - **出口**:点「出战」→ 自动战斗 → 结算 → (事件/下一轮)→ 下一备战 或 位面切换。
 - **子态**(同屏,差异 = 商店开关,**影响 reader 可读性**):
-  - **shop 关闭**:右上角 HP 可读(`read_hp` 真值);右下金币区空。bot 入口默认此态(上轮收起)。
-  - **shop 开启**:右上 HP 区**空**(`read_hp`→100);右下金币可读;商店牌区显示刷新概率%。plan-time 此态。
-  - → `BuyShopCards` 修复:shop 关闭帧读 HP 覆盖 state.hp(见 `cw_observation.read_hp`)。
+
+  | 子态 | 入口 | HP(右上 文本-剩余血量) | 金币(右下 文本-金币数) | 商店按钮 | 商店牌区 |
+  |---|---|---|---|---|---|
+  | shop 关闭 | 上轮收起 / 入口默认 | **可见**(真值) | 空(不可读) | 「商店」 | 隐藏 |
+  | shop 开启 | 点「商店」 | 空(read_hp→100) | **可见** | 「收起」 | 5 张牌 + 刷新概率% |
+
+  - plan 在 shop 开启态运行;HP 须在 shop 关闭帧读(见下 reader)。
 
 ## 识别特征(稳定锚点)
 
 - 独有文字:「备战阶段」(顶栏)+「购买经验」(左下)+「出战」(右)+ 位面-轮次「X-Y」。
-- screen_info:`货币战争-备战` 匹配(命中 购买经验/商店/出战 area)。
+- id_mark area:`备战标识-购买经验` → 精准匹配(`is_precise`)。
 
 ## 可交互元素(screen_info area,坐标见 yml)
 
-- 「商店」/「收起」:底部右,切换 shop 开/关。
-- 「购买经验」:左下,买经验升等级(= 上阵数上限)。
-- 「刷新」:中右,D 牌(刷新商店)。
-- 「商店牌-1..5」:顶部 5 张可买牌(点击购买)。
+- 「商店」/「收起」(按钮-商店):底部右,切换 shop 开/关。
+- 「购买经验」(备战标识-购买经验):左下,买经验升等级(= 上阵数上限)。
+- 「刷新」(按钮-刷新):中右,D 牌(刷新商店)。
+- 「商店牌-1..5」:顶部 5 张可买牌(点击购买);部分牌带「试用」红标。
 - 「备战栏-1..9」:底部,持有角色(拖拽源)。
-- 「前排-1..4 / 后排-1..6」:舞台部署槽(拖拽目标)。
-- 「出战」:右,进自动战斗。
-- **顶栏按钮**(攻略 / 教学 / 数据银行 / 数据统计,screen_info `按钮-*`):**数据银行**(右上)开
-  **非破坏性 overlay** —— 进图鉴分类菜单(角色 71/71 / 羁绊 / 装备 / 投资环境 / 投资策略 / 竞争对手),
-  **对局保留**(不退出备战,关掉即回备战;2026-08-06 实测)。bot 不自动化它,但作**手动查图鉴 / 数据采集
-  入口** —— 图鉴 = canonical 模板 + 数据源(装备/投资环境等全量图标 + 效果;D-68 投资环境、D-76 装备
-  采集均经此),bot 开发者建档 / 核对数据用。
+- 「前排-1..4 / 后排-1..6」:舞台部署槽(拖拽目标);舞台带「前台区域/后台区域」文字标签(~906,288 / ~906,564)。
+- 「出战」(按钮-出战):右,进自动战斗。
+- **顶栏按钮**(按钮-攻略/教学/数据银行/数据统计):**数据银行**(右上)开**非破坏性 overlay** → 图鉴分类菜单(角色/羁绊/装备/投资环境/投资策略/竞争对手),**对局保留**(关掉即回备战)。bot 不自动化,但作手动查图鉴 / 数据采集入口(图鉴 = canonical 模板 + 数据源)。
 
-## 关键 reader(`cw_observation`,区域全在 screen_info)
+## 关键 reader(`cw_observation`,区域走 screen_info)
 
-**OCR/area 字段层(全接,doc 13 §13.2 备战可采字段)**:
-- 进度/节点:`read_phase_round`(位面-轮次,区域-阶段)、`read_node_type`(当前节点类型,顶部标签 首领→boss 等;D-73,仅 boss 实机核实)
-- 经济:`read_gold`(文本-金币数)、`read_level`(文本-等级,OCR+`_expected_level` 兜底)、`read_xp_progress`(文本-升级所需经验 "X/Y";D-72)、`read_level_up_cost`(文本-购买经验金币数;D-74)、`read_shop_refresh_cost`(文本-刷新金币数,默认 2;D-74)、`read_streak`(文本-连胜数;D-74)
-- 难度:`read_enemy_difficulty`(文本-难度 左上角;D-74,⚠️ stylized OCR 常空,可靠读待 vision/digit-CV)
-- 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板 "X/Y"→count + 下个 tier 阈值;D-69,聚焦 OCR 治了旧"213"误读脆)、`read_deployed_count`(区域-部署数「X/Y」)
-- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost)、`read_bench_full`(席满警告)
-- 生命:`read_hp`(⚠️ shop 关闭态才准,文本-剩余血量)
+**可靠(实图跨子态核实)**:
+- 进度/节点:`read_phase_round`(区域-阶段「X-Y」)、`read_node_type`(顶部节点标签 首领→boss / 战斗→battle 等;**仅 battle/boss 稳**,见备注)。
+- 经济:`read_gold`(文本-金币数,shop 开启态)、`read_level`(文本-等级「LV.N」)、`read_xp_progress`(文本-升级所需经验「X/Y」)。
+- 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板「X/Y」→ 阵营 count + 下个 tier 阈值)、`read_deployed_count`(区域-部署数「X/Y」,如 5/5)。
+- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)。
+- 生命:`read_hp`(文本-剩余血量,**仅 shop 关闭态可读**;shop 开启态该区空 → 返 100)。
 
-**⚠️ 已读未用 + 可靠性(2026-08-06 审计 T#91 + 实图核实 T#92)**:`read_game_state` 读了但 `cw_decisions.plan` **未消费**。
-对 5 个备战 fixture 跑真实 OCR dump(`.debug/temp/prep_obs_dump.txt`)核实:
-- **可靠(可直接接线)**:`board_next_tier`(下个羁绊 tier 阈值,5 fixture 都读对)→ **接线优先**,直接关系 comp 成型度评分(核心弱项);`xp_progress`(读对)。
-- **OCR 不可行(T#96 聚焦 OCR + VLM 查明,推翻「移 area」假设)**:`shop_refresh_cost` / `level_up_cost` —— 费用是按钮底部的小 + stylized **彩色印刷数字**(刷新「2」、购买经验「4」),但 **paddle OCR det 阶段检测不到**(聚焦 OCR 按钮区只读到标签文字「刷新」/「购买经验」/「LV.」/「0/6」,漏掉费用数字;VLM 放大确认数字在)。**非 area 错、非 rec 错 —— det 看不见**。→ OCR reader 根本不可行;用**静态估**(`LEVEL_UP_COST_TABLE` + refresh 默认 2,= 固定游戏机制常量,本就该静态)是对的;要精确值需 colored-digit CV 模板(低优)。**别修 area、别接线 cost reader。** `文本-刷新金币数 [1556,824,1687,887]` / `文本-购买经验金币数` 两 area 实为无效 OCR 目标(留作存档或删)。`streak`(全 None,`文本-连胜数` area 待核)、`node_type`(battle/boss 对、reward 误读 a8_start / shop_open 漏 → 顶部 band `Rect(500,65,1700,115)` 不稳)。
-- **本就弱(设计如此)**:`enemy_difficulty`(stylized OCR 常空,飘 8/39/None)。
-- plan 现用 9 字段(gold/hp/level/board/shop/plane/round + bench/deployed)实图核实可靠 ✓(`read_shop_cards` shop-open 读对 5 真名:翡翠/丹恒·腾荒/不死途/飞霄/三月七)。
-- **结论**:策略不用那些字段非疏漏 —— 多数因 reader 不可靠。**先修 reader area → 再接线**(`board_next_tier` 例外,可靠直接接)。
+**不可行(paddle OCR det 检测不到)**:
+- `read_level_up_cost` / `read_shop_refresh_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」、刷新「2」),paddle **det 阶段看不见**(聚焦 OCR 按钮区只读到标签文字「购买经验」/「刷新」/「LV.」/「0/6」,漏掉费用数字;VLM 放大确认数字在)。**OCR reader 不可行,非 area 错** → plan 用**静态估**(`LEVEL_UP_COST_TABLE` + refresh 默认 2;固定游戏机制常量,本就该静态);要精确值需 colored-digit CV 模板(低优)。`文本-购买经验金币数` / `文本-刷新金币数` 两 area 实为无效 OCR 目标。
 
-**视觉身份层(SIFT,`cw_identity_obs`,D-75 已接线 + 实测验证)**:
-- bench/deployed **角色身份**(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位
-  (前排-1..4 / 后排-1..6 / 备战栏-1..9)→ SIFT 对 `character_avatar` 脸近景库 → `resolve_char_name`
-  → 规范名。**D-75 实测扭转旧结论**:脸近景库对备战半身立绘强命中(4/4 前排:佩拉/黑塔/Saber/藿藿,
-  inliers 23-30 vs 第二名 3-4;备战栏 8/9),**无需从零采半身模板**。与 bot 跟踪(deployed/bench
-  默认由 buy/deploy 推演)互补 —— 视觉 reads 是离线重建 / 漂移恢复旁路(不进 read_game_state)。
-  待核:配饰/帽子重角色(黑天鹅)、货币战争变体(姬子·启行 共脸异名 → 归一基础名,子串消歧)。
+**弱**:
+- `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。
+- `read_streak`(文本-连胜数):实图全 None(数字未显或 area 待核)。
 
-**未接(前沿,需图标库 或 bot 跟踪)**:
-- `Unit.equips`(角色身上装备,纯图标 → 装备图标库 / bot 跟踪 equip 动作)
-- `active_strategies`(右面板图标列,vision 探到 ~x1797-1918 y172-404;identity 需策略图标库 / bot 跟踪 decide_invest 拾取)
-- `inventory.available_equips`(区域-道具装备 [1252,90,1918,710],icon → 装备图标库 / bot 跟踪)
-- `node_path`(顶部节点行图标序列 → 节点类型图标库 + 多态实机定 icon↔类型映射)
-- `shop_locked`:备战未见独立 lock 控件(商店/收起=开关非锁)→ 非备战字段
+**视觉身份层(SIFT,`cw_identity_obs`)**:
+- bench/deployed 角色身份(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位(前排/后排/备战栏)→ SIFT 对 `character_avatar` 脸近景库 → 规范名。脸近景库对备战半身立绘强命中;与 bot 跟踪(buy/deploy 推演)互补,作离线重建 / 漂移恢复旁路(不进 read_game_state)。
+
+**未接(需图标库 或 bot 跟踪)**:
+- `Unit.equips`(角色身上装备,纯图标)、`active_strategies`(右面板图标列 ~x1797-1918)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)。
 
 ## 识别快照
 
-### 1. shop 关闭态(默认 / 入口)
-- 命中:screen「货币战争-备战」+ area 购买经验/商店/出战。
-- OCR:备战阶段 / 1-1 / HP(右上,如 60/84/29)/ 购买经验 / 出战 / 商店(= 关)。
-- fixture:`screens/货币战争-备战/shop_closed.webp`(HP84)、`shop_closed_lowhp.webp`(HP29,<HP_DANGER)、`shop_closed_a8_start.webp`(A8 起 HP60)。
+### 1. shop 开启态(plan-time)— `screens/货币战争-备战/shop_open.webp`
+- 命中:screen「货币战争-备战」`is_precise=True`(备战标识-购买经验 conf 0.9999 + 按钮-出战 conf 0.999)。
+- OCR:备战阶段 / 1-3 / 购买经验 / **收起**(= 开)/ 商店牌 5 张(群攻·翡翠 / 护盾·丹恒·腾荒 / 追击·不死途 / 追击·飞霄 / 护盾·三月七)/ 刷新概率 ■65% ■25% ■10% / 金币 5 / 刷新 / 出战。board 7 阵营(仙舟/追击/夜之半神/群攻/欢愉/减益/银河学者)。
 
-### 2. shop 开启态(plan-time)
-- OCR:备战阶段 / 购买经验 / **收起**(= 开)/ 商店牌 5 张(名+阵营)/ 刷新概率%(65/25/10…)/ 金币(右下)。
-- fixture:`screens/货币战争-备战/shop_open.webp`。
+### 2. shop 关闭态(默认 / 入口)— `screens/货币战争-备战/shop_closed.webp`
+- 命中:`is_precise=True`(购买经验 + 按钮-商店 + 按钮-出战)。
+- OCR:备战阶段 / 1-3 / 战斗(node=battle)/ **HP 84**(右上 文本-剩余血量)/ 购买经验 / 商店(= 关)/ 出战。board 6 阵营。金币区空。fixture 变体:`shop_closed_lowhp.webp`(HP 29)、`shop_closed_a8_start.webp`(A8 起 HP 60、board 空)。
 
-## 备注
+### 3. 部署后 + boss 节点 — `screens/货币战争-备战/deployed_p1r9.webp`
+- 命中:`is_precise=True`(购买经验 + 按钮-商店 + 按钮-出战)。
+- OCR:备战阶段 / 1-9 / **首领**(node=boss)/ HP 60 / deployed **5/5**(区域-部署数)/ 金币 20 / Lv.5 / 4/20(xp)/ 前台区域·后台区域(舞台前后排标签)。board 8 阵营。
 
-- **read_hp shop 态依赖(已修)**:HP 只 shop 关闭时显示;`BuyShopCards` 在 shop 关闭帧读 hp 覆盖 state.hp。回归测试 `test_read_hp_shop_state`。
-- **read_board 脆已治(D-69)**:旧全屏 OCR 把 "2/3" 误读 "213" 显脆;根因=全屏密度。`_board_pairs` 区域 OCR 读对 "X/Y" → count=X + next_tier=Y(`read_board_next_tier`,doc 13 FactionState.next_tier)。
-- **bench/deployed 身份(D-75 已接)**:脸近景库 SIFT 强命中(见上「视觉身份层」);reader 在
-  `cw_identity_obs`,与 bot 跟踪互补(离线重建 / 漂移恢复)。deploy 运行时仍走位置式(`DeployBench`)。
-- 策略接法详 `docs/game/currency_war/strategy/`;reader 详 `cw_observation.py`。
+## 备注 / 待查
+
+- **HP shop 态依赖**:HP 只 shop 关闭时显示右上;shop 开启态该区空,调用方需在 shop 关闭帧读 hp 覆盖。
+- **board「X/Y」聚焦读**:全屏 OCR 会把 "2/3" 误读 "213"(密度);`_board_pairs` 区域裁切 OCR 读对 → count=X + next_tier=Y。
+- **node_type band 不稳**:顶部标签 band 偶把非当前节点(如 reward)或 shop 开启态漏读;仅 battle/boss 稳,其余节点类型待多子态实机核全。
+- **费用字段 OCR 不可行**:见上「不可行」;静态估是对的,别建/修 area、别接线 cost reader。
+- **streak / enemy_difficulty**:实图读不到(streak 全 None;difficulty stylized 常空);待核实显示条件 / 改 digit-CV。
+- 策略接法详 `docs/game/currency_war/strategy/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。
