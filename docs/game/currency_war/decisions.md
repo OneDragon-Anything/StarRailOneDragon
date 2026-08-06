@@ -24,6 +24,12 @@
 
 ---
 
+## D-74 (2026-08-06) 备战字段采集收尾批:enemy_difficulty/level_up_cost/shop_refresh_cost/streak + xp 改用 screen_info area(用户纠误判)· cw_state/cw_observation
+- **决策**:接 4 个备战字段(各用 screen_info area,单一源坐标):`enemy_difficulty`(文本-难度,左上角)、`level_up_cost`(文本-购买经验金币数)、`shop_refresh_cost`(文本-刷新金币数,默认 2)、`streak`(文本-连胜数);+ `read_xp_progress` 改用 `文本-升级所需经验` area(去掉 D-72 的硬编码 Rect);`read_game_state` 接线。
+- **为什么(用户 2026-08-06 纠正)**:我 D-73 误判"level_up_cost/enemy_difficulty 不在备战屏"——**它们在 screen_info 有 area**(文本-难度/购买经验金币数/刷新金币数/连胜数/升级所需经验),我漏 grep area 名了。用户:"升级所需金币在 screen_info 应该有;敌人难度在左上角"。核实后全在 → 按用户「完成备战」全接。
+- **备选**:① enemy_difficulty stylized OCR 常空 → 不接(推翻:area + scaffold 就位,OCR 能读到即生效,stylized 留 vision/digit-CV 后续);② 保 xp 硬编码 Rect(推翻:screen_info area 是单一源,改用它)。
+- **状态**:采用。65 测试绿(+1 numeric batch);ruff 净。**caveat**:enemy_difficulty 数字 stylized,OCR 常空(可靠读待 vision/digit-CV);level_up_cost/streak/refresh_cost shop-态相关(读到填真值,读不到 None/2 兜底)。**子agent 确认**:base64 vision 脚本是官方 harness 特性(GH #36511,harness 拦截 `data:image/` stdout→图片块),非 hack;Read 的 CDN 反斜杠 key 是**定制环境 bug**(报环境维护者:上传 key 该用 hash 如 data-URL 路,非 raw 路径)。· 用户纠误判 + 「完成备战」
+
 ## D-73 (2026-08-06) 备战字段采集:node_type(当前节点类型,顶部标签 OCR)+ vision 修复(img_to_vision_url 脚本)· cw_state/cw_observation
 - **决策**:① **node_type 字段**(`str | None`)+ `read_node_type`(顶部节点行标签带 OCR → 关键词 map:首领→boss/补给→supply/遭遇→encounter/巨星→megastar/战斗/精英/奖励/投资);`read_game_state` 接线。② **vision 修复**(本条前置):新建 `.claude/scripts/img_to_vision_url.py`(本地路径[+crop]→base64→print→harness 拦截上传 CDN 用 hash key→干净 URL→喂 analyze_image);CLAUDE.md 记「用 analyze_image 前必跑此脚本」+「项目用 uv run python 不用 python」;memory 更新(旧 Read→CDN 路径已失效)。
 - **为什么(用户 2026-08-06「完成备战」+ vision 修复诉求)**:node_type(当前)驱动节点前决策(boss 前保战力/补给前无战)。vision 400(Read 的 CDN URL 带反斜杠)卡了 icon 字段 + 整个 screen-onboarding 主线无数次,用户要脚本一劳永逸。

@@ -152,15 +152,53 @@ def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     OCR 购买经验(y848)下方 ~y935 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
     level 升级时机决策用(cur 接近 next → 即将升级,影响 level_plan/买经验优先级)。
 
-    ⚠️ 区域暂硬编码(同 ``read_bench_full``;稳定 HUD 文本,后续移 screen_info area「区域-经验进度」)。
-    shop 态依赖待核(同 hp,xp 文本是否 shop 开启态也显待多样本确认)。
+    OCR ``文本-升级所需经验`` 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
     """
-    blob = ''.join(r.data for r in _ocr(ctx, screen, Rect(240, 920, 325, 962)))
+    blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-升级所需经验')))
     m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
     if m:
         cur, nxt = int(m.group(1)), int(m.group(2))
         if 0 <= cur <= nxt <= 100:      # sanity:cur≤next,XP 上限合理(封顶 10 级,每级 XP 个位~十几)
             return cur, nxt
+    return None
+
+
+def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
+    """当前敌人难度(左上角 ``文本-难度``;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
+
+    OCR ``文本-难度`` → int。⚠️ 难度数字 **stylized,OCR 常空** → None(可靠读需 vision / digit-CV,
+    后续;现 area + scaffold 就位,OCR 能读到即生效)。读不到 / 越界 → None。
+    """
+    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-难度'))])
+    if v is not None and 0 <= v <= 300:
+        return v
+    return None
+
+
+def read_level_up_cost(ctx: SrContext, screen: MatLike) -> int | None:
+    """买一次经验的花费(``文本-购买经验金币数``;替代 ``LEVEL_UP_COST_TABLE`` 估,doc 13 §13.2C)。
+
+    OCR ``文本-购买经验金币数`` → int。读不到(shop 态不显 / stylized)→ None(plan 用 ``LEVEL_UP_COST_TABLE`` 兜底)。
+    """
+    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-购买经验金币数'))])
+    if v is not None and 0 <= v <= 20:
+        return v
+    return None
+
+
+def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int:
+    """刷新商店一次的花费(``文本-刷新金币数``;默认 2,投资策略可减免;未读到保 2)。"""
+    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-刷新金币数'))])
+    if v is not None and 0 <= v <= 10:
+        return v
+    return 2
+
+
+def read_streak(ctx: SrContext, screen: MatLike) -> int | None:
+    """连胜/连败数(``文本-连胜数``;**正负语义待核**(正=连胜?),现读 magnitude;None=未读到)。"""
+    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-连胜数'))])
+    if v is not None and 0 <= v <= 20:      # magnitude(符号待核);连胜/连败一般 ≤20
+        return v
     return None
 
 
@@ -342,6 +380,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.node_type = read_node_type(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
     state.xp_progress = read_xp_progress(ctx, screen)
+    state.enemy_difficulty = read_enemy_difficulty(ctx, screen)
+    state.level_up_cost = read_level_up_cost(ctx, screen)
+    state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
+    state.streak = read_streak(ctx, screen)
     # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
     _bp = _board_pairs(ctx, screen)
     state.board = {f: c for f, (c, _nt) in _bp.items()}

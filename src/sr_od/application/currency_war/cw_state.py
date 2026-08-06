@@ -50,10 +50,14 @@ class GameState:
     gold: int = 0
     round_num: int = 1     # 位面内轮次 1-6
     node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
+    enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度;boss 血量 base×1.052^难度)。None=未读到(stylized OCR 常空)
     level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
-    # 购买经验进度 (cur_xp, xp_to_next_level),如 (4,20);购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
+    # 购买经验进度 (cur_xp, xp_to_next_level),如 (4,20);文本-升级所需经验 "X/Y"(D-69 备战字段采集)。
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
+    level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,plan 用 LEVEL_UP_COST_TABLE 兜底)
+    shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
+    streak: int | None = None             # 连胜/连败数(文本-连胜数;正=连胜?待核;None=未读到)
     plane: int = 1         # 位面 1/2/3
     difficulty: str = ""   # 本局难度 A1..A8(匹配开始从难度确认屏检测;"" = 未检测 → 阈值回退默认;effective_hp_threshold 用)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
