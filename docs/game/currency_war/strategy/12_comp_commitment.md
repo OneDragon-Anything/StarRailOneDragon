@@ -1,7 +1,7 @@
 # 12. comp 成型深化(commitment)— P2 真正通关 blocker
 
 > 总见 [README](README.md)。本文:P2 核心 —— bot **commit 一个可成型 comp + 深 stack(不散)**,解「board 全程 spread → 弱 → plane2 秒死」。
-> 状态:**设计(2026-08-06,待实现)**。触发:整局 bot 存活过 plane1(D-54~D-62 事件/bug 修)但 plane2 r1 hp100→0 秒死 —— board 8 阵营各 1-2 无深堆,target(击破流萤)阵营 shop 不供,攒金/买 off-target 不 roll 找 target → 永不深成型。
+> 状态:**F2 已实现+live 验证(D-63,bot roll 找 target 阵营 + 买)/ F3 已验证 wired(D-64 阶段确认超线性 1.83>1.0 偏深堆,无需改)/ F1(commit 阈值)待做(据 plane2 结果)**。触发:整局 bot 存活过 plane1(D-54~D-62 事件/bug 修)但 plane2 r1 hp100→0 秒死 —— board 8 阵营各 1-2 无深堆,target(击破流萤)阵营 shop 不供,攒金/买 off-target 不 roll 找 target → 永不深成型。
 
 ## 问题(2026-08-06 整局实测)
 
