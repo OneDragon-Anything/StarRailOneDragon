@@ -580,6 +580,11 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         elif _easier:
             _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易 comp → 降阈
         _tag = ' [commit强粘]' if _committed else (' [易comp降阈]' if _easier else '')
+        # T#97 step-3 (comp_viability,P1.5 接线):comp 观测 losing(trend bad)→ 降阈值(更易转走;obs-driven;
+        # hp garble fix e440e496 使 trend 可信)。committed+losing → ×1.5×0.7=×1.05(几乎不粘,该转)。
+        if tracker is not None and target is not None and tracker.is_losing_streak(target.name):
+            _required_gap *= 0.7
+            _tag += ' [viability losing]'
         if gap > _required_gap:
             log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
                      state.plane, state.round_num, state.hp,
