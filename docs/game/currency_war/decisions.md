@@ -15,6 +15,16 @@
 
 ---
 
+## D-84 (2026-08-07) char identity:SIFT 屏幕识别不可行(主游脸库 + 图鉴立绘都不 match 备战半身)→ 改 bot tracking(buy OCR 名持久化)· cw_identity_obs / read_game_state
+
+- **决策**:bench/deployed 角色身份**不走 SIFT 屏幕识别**;改 **bot tracking**(buy/deploy 时 OCR 的角色名持久化进 session,跨轮 seed `state.bench`/`deployed`)。
+- **为什么**:实测 SIFT 不可行(两源都验):
+  - ① 主游 `character_avatar` 脸库 vs 备战 slot:`cw_identity_obs` SIFT 与 VLM char ID 不一致(佩拉 vs 停云)→ 不可信。
+  - ② 货币战争**图鉴角色卡立绘** vs 备战 slot:CV(detect_gallery_cards **正确检测卡矩形**)裁对后 SIFT **全低 inliers**(top 4 < min 10)→ 仍不 match。
+  - **根因**:备战显示的是 **half-body 立绘**,与任何模板库(主游脸近景 / 图鉴卡 portrait)美术 + 裁剪都不同 → SIFT 特征不匹配。**屏幕识别立绘 = 不可靠,与模板源无关。**
+- **备选**:① SIFT 图鉴立绘模板替主游脸库 —— 推翻(实测仍不 match,art/crop 差异)。② 每帧 VLM —— 推翻(最终 bot 纯代码无 LLM)。③ **bot tracking** —— 采用:buy 时 `read_shop_cards` OCR 名(**已验证可靠**,T#92:翡翠/丹恒·腾荒/…)→ 持久化 session.bench;deploy 时记录 → session.deployed;`read_game_state`/shop 跨轮 seed。可靠(buy OCR 验证)+ 小改。deploy 有 bug#1 drag 漂移风险,但 buy 可靠 + deploy 经 T#90 日志可观测 + 可用 OCR deployed_count 校验。
+- **状态**:采用。实现:① `StrategySession` 加 `persisted_bench`/`persisted_deployed`;② `BuyShopCards` 买后 append `card.name`;③ shop 跨轮 seed `state.bench/deployed`。待实现(autonomous 代码,谨慎 + 测试)。**`cw_identity_obs` SIFT 留作离线漂移恢复旁路(非主路径)。** · cw_identity_obs / cw_strategy.StrategySession / shop.py
+
 ## D-83 (2026-08-07) board_next_tier 不接线 —— 静态 FACTIONS.tiers 与 live ground truth 一致(冗余)· cw_factions / synergy_score
 
 - **决策**:**不**把 `board_next_tier`(live OCR 下个 tier 阈值)接进 `synergy_score` / `_close_to_next`;静态 `FACTIONS[faction].tiers` 已与实机 ground truth 一致 → board_next_tier 冗余。
