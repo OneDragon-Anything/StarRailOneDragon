@@ -546,7 +546,16 @@ def _best_improving_action(
     _shop_has_target = (target_comp is not None and any(
         c.faction in target_comp.factions or c.name in target_comp.core_chars
         for c in state.shop))
+    # D-90:shop 有**买得起**的 target 卡 → 先买,别 Refresh 把它刷掉。根因(2026-08-07 实跑 round1):
+    # simulate(RefreshShop) 不建模换 shop(只扣金、shop 不变)→ 贪心误以为「Refresh 后还能买当前 shop 的 target」,
+    # 故 plan 选 Refresh 作第一动作;但实跑 Refresh 换 shop → target 卡(追击×3)全没 → 只能买 off-target → spread。
+    # 规则:auto-chess 基本功 —— target 卡在场且买得起 = 确定收益,Refresh 找 target 是赌注(蒙特卡洛乐观);
+    # 取确定不取赌。买完所有买得起的 target(本字段转 False)才 Refresh 找更多。
+    _shop_has_buyable_target = (target_comp is not None and any(
+        c.faction in target_comp.factions or c.name in target_comp.core_chars
+        for c in state.shop if state.gold >= card_cost(c)))
     if (state.gold >= SHOP_REFRESH_COST and refresh_budget > 0
+            and not _shop_has_buyable_target
             and (not _saving_for_level or not _shop_has_target)
             and not _saving_for_interest):
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,

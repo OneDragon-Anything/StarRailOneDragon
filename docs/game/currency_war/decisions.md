@@ -15,6 +15,34 @@
 
 ---
 
+## D-90 (2026-08-07) Refresh 门:shop 有买得起的 target 卡 → 先买别刷掉(simulate RefreshShop 不建模换 shop)· cw_decisions._best_improving_action
+
+- **决策**:Refresh 候选加门 `not _shop_has_buyable_target` —— shop 有买得起的 target 卡(target 阵营/core)时抑制 Refresh,先买;买完(无买得起的 target)才 Refresh 找更多。
+- **为什么**:实跑 round1 live 观察(用户叫停):shop=[追击/飞霄×3,…] target=巡击青雀(追击/仙舟),plan 却选 `['Refresh','Refresh','Buy(追击)',…]` → Refresh 换 shop → 追击全没 → 只能买 off-target(艾丝妲/阿格莱雅/万敌)→ spread。根因:`simulate(RefreshShop)` **不建模换 shop**(只扣金,shop 不变)→ 贪心误以为 Refresh 后还能买当前 shop 的 target,故 Refresh 赢首动作;实跑 Refresh 清空 target。auto-chess 基本功:target 在场且买得起 = 确定收益,Refresh 找 target 是蒙特卡洛乐观赌注 → 取确定不取赌。
+- **备选**:① 改 simulate(RefreshShop) 建模换 shop(采样新 shop)—— 但 plan 贪心序列里 Refresh 后的 buy 仍基于旧 shop(采样无法预知真 shop),治标;且蒙特卡洛 _refresh_expected_delta 已采样,这里问题是贪心序列层。② Refresh 后重 plan(实跑已是:Refresh 后重读 shop 重 plan)—— 但首轮 Refresh 已损失 target,迟。本门在「首动作别 Refresh 掉 target」根治。③ 禁止首轮 Refresh —— 太死(无 target 时该 Refresh 找)。
+- **状态**:采用。45 cw_decisions 测试绿。live 验待(下局 round1 shop 有 target → 直接买不 Refresh)。· cw_decisions._best_improving_action / strategy/02
+
+## D-89 (2026-08-07) 事件 handler 全加出口验证(bug#1/多步 overlay flat-loop,partner reset 根因同类)· handlers/_overlay_confirm + 6 handler
+
+- **决策**:加共享助手 `_overlay_confirm`(`safe_click`=bug#1 mouse_move 缓解;`confirm_and_verify`=点确认→验入口词消失→没关 `round_retry` 计节点预算兜底;`find_text_center` OCR 定位确认)+ megastar/supply/encounter/invest_env/invest_strategy/deploy_not_full 6 handler 接入;briefing 已正确验关(id_mark 重检)仅去 tag。
+- **为什么**:静态 review 7 事件 handler(write-operation 出口验证护栏)发现 **6/7 是 partner reset 同类 flat-loop** —— click+confirm→`round_success` 无 overlay 关验证、无 bug#1 mouse_move → bug#1 吞 click / 隐藏多步 overlay → 无限 flat-loop(不计 retry → MAX_ITER 才超时)。partner(T#98)已证这类 bug 是 reset 根因;余 6 是未爆同类地雷,battle_loop de-tag 后调它们 → bug 必浮(guardrail 教训)。
+- **备选**:① 每 handler 内联 verify(像 partner)—— 6×重复 = 屎山,弃,提共享助手。② 只加 mouse_move 不 verify —— 隐藏多步 overlay 仍 flat-loop,弃。③ 盲补多步 handler(猜 step2)—— 无 live 证据猜交互 = 自主盲操作(reset 教训);只 verify+retry 边界 + rich log,隐藏多步下次 match 日志可见再补。
+- **状态**:采用。commit `cf0663c4`。ruff 净;201 测试绿(2 次)。live 验待(下局事件节点不卡)。· handlers/_overlay_confirm / write-operation「反模式:点了≠成了」
+
+## D-88 (2026-08-07) ↺ D-87 T#97 step-2 target bonus 改 tier-only(不×close-to-next,避 over-rush 弱-early)· cw_decisions.synergy_score
+
+- **决策**:`TARGET_FACTION_BONUS` 1.5× **只加在 `_base_tier`**(已激活 tier 深化),close-to-next 不加。D-87 原(1.5× on whole tier_score,含 close-to-next)live 验 counterproductive(disabled `bde28379`)后改 tier-only(`ab90e9c0`)。
+- **为什么**:live 5-match:1.5× on whole → 追击 count2 冲 tier3(弱-early)over-commit → HP 掉快(82→21 vs step-1-only 84→24)→ 死 plane2 **r1**(vs step-1-only **r4**)。tier-only 奖励深化(count≥阈值)非 rush(接近阈值)→ 早期 HP 峰值 86(首增)+ 不 over-rush。
+- **备选**:① 1.5× on whole(D-87 原版)—— over-rush 弱-early,弃。② disabled 1.0 —— 安全但丢早期 HP 峰值增益。③ 1.2× on whole —— 仍 over-rush 只是更慢。tier-only 既保增益又避 rush。
+- **状态**:采用(tier-only)。单 match noisy(comp 依赖 shop RNG),多 match 均值待验。· cw_decisions.synergy_score / strategy/03
+
+## D-87 (2026-08-07) T#97 step-2 target-faction buy bonus(synergy ×1.5 target,正向避 churn)· cw_decisions.synergy_score
+
+- **决策**:`synergy_score` target 阵营加分(`TARGET_FACTION_BONUS`),正向激励买 target 阵营卡深 stack,替代 `OFF_TARGET_DISCOUNT` 打折。
+- **为什么**:spread 根因 = off-target discount 1.0(无偏好)→ target 阵营卡无优先 → 散买。清 log 析:惩罚 off-target(0.3)致卖成型 off-target churn(D-15);正向 bonus 激励 target 避 churn。具体倍数/作用域经 D-88 调(tier-only)。
+- **备选**:① `OFF_TARGET_DISCOUNT`<1.0 打折 —— D-15 证 churn,弃。② `select_comp` favor board-aligned —— 更根治但改动大,后续。③ comp_viability(step-3,`9db4c814`)—— 平行项,观测 hp trend 弃掉血 comp。
+- **状态**:↺ 推翻 D-87 原(1.5× whole)by D-88(tier-only);bonus 正向激励思路采用。· cw_decisions.synergy_score
+
 ## D-86 (2026-08-07) T#97 round-based comp commitment —— 防 spread-flit(累计轮≥4 commit)· cw_comps.maybe_pivot
 
 - **决策**:`maybe_pivot._committed` 加 round 门槛:累计轮 `(plane-1)*9+round ≥ COMMIT_ROUND(4)` 也算 commit(原仅 `form_progress≥COMMIT_FRAC`)。
