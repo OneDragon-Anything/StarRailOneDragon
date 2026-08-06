@@ -112,13 +112,13 @@ class HandleSelectPartner(SrOperation):
             # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
             # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。
             if self.round_by_ocr(self.screenshot(), '请选择强化角色').is_success:
-                from sr_od.application.currency_war.cw_obs_core import area_center
-                target = area_center(self.ctx, '前排-1')
-                log.info(f'[cw-partner] step2 请选择强化角色 → 点前排-1 {target}')
-                if target is not None:
-                    self.ctx.controller.mouse_move(target)
-                    self.ctx.controller.click(target)
-                    time.sleep(0.7)
+                # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
+                # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
+                target = Point(960, 300)
+                log.info(f'[cw-partner] step2 请选择强化角色 → 点中心立绘 {target}')
+                self.ctx.controller.mouse_move(target)
+                self.ctx.controller.click(target)
+                time.sleep(0.7)
                 confirm2 = self._find_text_center(self.screenshot(), '确认选择')
                 if confirm2 is not None:
                     self.ctx.controller.mouse_move(confirm2)
