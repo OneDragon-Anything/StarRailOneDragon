@@ -15,6 +15,12 @@
 
 ---
 
+## D-64 (2026-08-06) choose_partner confirm mouse_move + 验 overlay 关(bug#1 + ADR-0009) · handle_select_partner
+- **决策**:candidate + confirm click 前 `mouse_move`(bug#1 缓解);confirm 改 OCR 定位(`_find_text_center`)+ mouse_move + click(弃 `round_by_ocr_and_click` 裸 click);confirm 后验 overlay 关(选择伙伴 消失),没关 `round_retry`(ADR-0009 兜底)。
+- **为什么(2026-08-06 r6 stall)**:choose_partner iter102+ flat-loop:`已选择→直接确认` round_success 但 overlay 不关。**probe 实测**:手动 click candidate(945,301)→已选择→手动 click 确认(1441,582)→**overlay 关回备战**。bot 的 `round_by_ocr_and_click` confirm 被 bug#1 吞(before_screenshot 移光标→click 落空)→ overlay 持留 → flat-loop。r9 同型(手动 click 即关)。
+- **备选**:① 保留 round_by_ocr_and_click 只加 verify(推翻:click 仍 bug#1 吞,verify 只能 retry 不能让 click 落地;mouse_move 治本);② 弃 confirm 改 ESC(推翻:probe 验 confirm 关 overlay 是正解,ESC 行为未验);③ 两步事件假说(推翻:probe 验 confirm 直接关 overlay,非两步)。
+- **状态**:采用。ruff 净。**同 D-62(出战)模式:关键 click 前 mouse_move 缓解 bug#1**。待新局验 choose_partner 不再 flat-loop。· bug#1 + ADR-0009(三层完成验证,就地用)
+
 ## D-63 (2026-08-06) P2/F2:plan roll 找 target(_sample_shop 加 target 权重 + 攒金期 shop 无 target 时允许 roll) · cw_decisions
 - **决策**:① `_sample_shop` 加 `target_comp` 参,target 阵营采样权重 2×(同 user priority);② `_best_improving_action` roll gate:攒金期(`_saving_for_level`)shop **无 target 卡**时允许 roll 找 target(原 `not _saving_for_level` 一刀切阻 roll)。
 - **为什么(2026-08-06 plane2 r1 秒死暴露)**:bot 存活过 plane1 但 plane2 r1 hp100→0 一回合死。根因:shop 无 target(击破流萤)阵营卡 + gold44<升7级48 → `_saving_for_level` 阻 roll + plan 不买 off-target(攒金)→ `plan=[]` 带 spread board 进 plane2(高伤)→ 秒死。**蒙特卡洛 `_sample_shop` 只按 user faction_priority 加权,target 阵营不在 priority 时 roll 估值偏低 → bot 永不 roll 找 target → target 永不深成型**。
