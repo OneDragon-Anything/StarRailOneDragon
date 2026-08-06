@@ -15,6 +15,14 @@
 
 ---
 
+## D-76 (2026-08-06) 装备图标库:CV 形状检测裁切工具(tools/cw/harvest_equip_icons.py,可复用)+ 位置对齐法· task#87
+- **决策**:数据银行装备图鉴采图标库,建**可复用裁剪工具** `tools/cw/harvest_equip_icons.py`(CV 形状检测定位紫色边框方块 → 紧贴裁 → 按规范名存 `assets/template/cw_equip/`),版本更新重跑补采。方法(od-dev-ui-region-detect §形状轮廓法 squares):灰度多阈值扫描 + 填洞(`drawContours FILLED`)+ 4 顶点凸 + 面积/长宽比 + IoU 去重 → 检出图标方块(精度完美);召回 ~50%(图标内容差异大)→ 聚类检出锚点推全 7×3 网格(列中心 + 尺寸)。**标签↔图标位置对齐**(OCR 名 top-y + CV 校准偏移 + CV 列中心;顶/底行图标越出面板自动跳过)。
+- **为什么(用户「去数据银行」+ 教方法,2026-08-06)**:建 icon/立绘库(任务#87);用户逐点纠方法:① **别用名字中心推坐标**(名字长短不一→偏心)→ CV 形状检测判几何;② **别按行索引对齐**(滚动后顶行图标被面板裁切→CV 漏检顶行→索引整行错位贴错,实测 page-2 错标一整行已删)→ **位置对齐**(OCR 名 y + 偏移);③ **裁剪脚本存可复用工具**(版本更新补采,别扔 .debug/temp);④ Windows 中文路径 `cv2.imwrite` 挂 → `imencode+tofile`。
+- **备选**:① 硬编码名字中心 + 固定 116 框(推翻:外围背景 + 偏心,用户首否);② 检测行索引 ↔ 名行索引对齐(推翻:滚动裁切→错位);③ 一次性脚本扔 .debug(推翻:版本更新要重写 → 存 `tools/cw/` 复用);④ 完全不建库走 bot-tracking(保留:装备身份默认 bot 跟踪,视觉库作恢复/校验旁路,同 D-75 角色身份设计)。
+- **状态**:采用。工具 ruff 净;page-1(21)+ page-2 干净行(14)= **35/125 初始入库**(动能激发剑行被裁切跳过,待他处补);squares 精度完美(21/21 紧贴居中,vision 校验)。**采全待续**(滚动 + OCR 名 y 流程,~4-5 页;含 ·特权 变体需选读全名)。**skill 反馈已写**(「采库裁剪脚本存复用工具 + 位置对齐法」→ skill-improver 后台处理中)。· 任务#87 / strategy/13 `inventory.available_equips`·`Unit.equips`
+
+---
+
 ## D-75 (2026-08-06) 角色立绘库:脸近景库对备战半身立绘强命中(免采半身模板)+ identity reader 接线· cw_identity_obs/currency_war_char_id
 - **决策**:备战角色身份识别**复用现有 `character_avatar` 脸近景库(88)**(推翻 char_id.py / D-73 旧结论"脸近景≠备战半身,需货币战争专属半身模板")。新建 `cw_identity_obs`:`identify_slots`(纯 CV 核心,裁 screen_info 槽位 → SIFT → `resolve_char_name` → 规范名,离线可测)+ `read_deployed_chars` / `read_bench_chars`(ctx 薄包装,从 screen_info 取 `前排-1..4`/`后排-1..6`/`备战栏-1..9` rect)。`resolve_char_name`:`avatar_id` → `get_character_by_id().cn` → `CHARACTER_ROSTER`(变体子串消歧)。
 - **为什么(用户「建 icon/立绘库」+ 实证优先)**:用实机 P1R9 截图实测 SIFT,脸库对备战半身立绘**强命中** —— 前排 4/4(佩拉/黑塔/Saber/藿藿,inliers 23-30 vs 第二名 3-4,巨大间隔)、备战栏 8/9(inliers 21-36)、后排空(正确返空;VLM 曾幻觉"1 个后排",印证 VLM 计数不可信)。旧"配饰角色不可靠"基于不同/旧样本,**过于悲观**。用户要建库 → 实证发现**库已存在且对面部独特角色够用,免从零采 74 张半身模板**的大工程。
