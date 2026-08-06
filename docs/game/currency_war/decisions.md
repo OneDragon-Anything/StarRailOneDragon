@@ -15,6 +15,12 @@
 
 ---
 
+## D-71 (2026-08-06) 拆分 cw_observation(备战/简报/结算/core;D-70 备战字段采集铺路)· cw_obs_*
+- **决策**:`cw_observation.py` 558 行混了备战/简报/结算三类 reads。按**画面**拆成 4 文件:`cw_obs_core.py`(共享 helper `_ocr`/`_area_rect`/`area_center`/`shop_card_click_points`/`_first_int` + 常量,无兄弟依赖断循环)+ `cw_briefing_obs.py`(简报 reads + 词缀文件操作)+ `cw_settlement_obs.py`(结算 reads)+ `cw_observation.py`(只留备战 reads + `read_game_state` + **re-export** 简报/结算)。
+- **为什么(用户 2026-08-06)**:「cw_observation 太大就拆」。备战字段采集(D-69/D-70)会让它涨到 750+,趁早拆、新 reads 直接进对模块。**零 importer churn**:所有 `from cw_observation import X`(8 处:shop/deploy_bench/battle_prep/handle_*/battle_loop)经 re-export 仍可用。
+- **备选**:① 4 文件全平铺无 core(推翻:briefing/settlement 需 `_ocr`/`_area_rect` → 循环导入;必须抽 core);② importer 改从子模块 import(推翻:8 处 churn,re-export 更省);③ 暂不拆(推翻:备战字段会让它更大,越拖越难)。
+- **状态**:采用。180 currency_war 测试全绿(含 entry_flow 全 handler 链);ruff 净。**1 测试触点**:`test_cw_observation` 的 affix-effects 测试 monkeypatch `_AFFIX_EFFECTS_PATH`(随 file-ops 挪到 `cw_briefing_obs`,测试改用 `cw_briefing_obs._AFFIX_EFFECTS_PATH`)。`area_center` 在 observation 内不用、只 re-export → `# noqa: F401`(防 ruff 删)。· 用户「太大就拆」+ D-70 备战字段采集铺路
+
 ## D-70 (2026-08-06) 策略入参 = 完整局内信息(GameState 重做:全量字段 + 整局固定归位 + None 不说谎) · strategy/13
 - **决策**:`GameState` 重做成**完整的局内信息单一入口** —— ① 把一局货币战争所有可能有用的信息全建字段(进度/节点/经济/棋盘/商店/投资/装备/资源/生命 + 整局固定事实 + 节点观测日志 + 游戏参考数据注册表);② 开局读一次、整局不变的事实(3 boss/敌人词缀/投资环境/位面修正/难度)从 `session` 迁入 `state`(修「同一信息两个家」);③ **`None` = 未观测,不用 plausible 默认值说谎**(hp=100/count=1/level 兜底 → 全改 None);④ 节点序列(备战顶部图标行)、已持投资策略、持有装备+钻等之前漏读的信息补建。详 strategy/13。
 - **为什么(用户 2026-08-06 定调)**:**「要完成决策,提供的信息越多越好;是否使用是策略决策的事」**。现状 `GameState` 是「策略现在用到啥才补啥」,大量有用信息没字段(`active_strategies`/`streak`/`node_type`/`node_path`/`inventory`...)或读默认值说谎(策略分不清真值 vs 没读到,「完整提供」是空话)。信息层与决策层解耦:信息层只管完整准确提供,字段先全建,接不接 OCR 是画面建档的事(接了填真值,没接 None)。另:难度两阶(职级 A8-1..A8-50 决定起始敌难 + 节点递增的 enemy_difficulty,boss 血量 base×1.052^难度)记进 gameplay。
