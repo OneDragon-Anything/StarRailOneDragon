@@ -143,16 +143,20 @@ class BuyShopCards(SrOperation):
                     pt = (min(click_pts, key=lambda p: abs(p.x - action.card.x))
                           if click_pts else Point(action.card.x, 288))
                     self.ctx.controller.click(pt)
+                    log.info(f'[cw-shop] Buy click @({pt.x},{pt.y}) '
+                             f'{action.card.faction}/{action.card.name}/{action.card.cost}')
                     time.sleep(0.4)
                     total_buy += 1
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
+                    log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')
                     time.sleep(0.6)   # 升级动画/扣金
                     total_level += 1
                 elif isinstance(action, RefreshShop):
                     if total_refresh >= BuyShopCards.MAX_REFRESH:
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
                     self.ctx.controller.click(refresh_btn)
+                    log.info(f'[cw-shop] Refresh click @({refresh_btn.x},{refresh_btn.y})')
                     time.sleep(0.8)   # 刷新动画
                     total_refresh += 1
                     did_refresh = True

@@ -4,6 +4,7 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_observation import read_deployed_count
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -45,12 +46,14 @@ class DeployBench(SrOperation):
     def deploy(self) -> OperationRoundResult:
         si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
         if si is None:
+            log.warning('[cw-deploy] 未加载「货币战争-备战」screen_info,跳过部署')
             return self.round_fail(status=DeployBench.STATUS_NO_SCREEN)
 
         bench = self._centers('备战栏', 9)
         front = self._centers('前排', 4)
         back = self._centers('后排', 6)
         if len(bench) == 0:
+            log.info('[cw-deploy] 备战栏无槽坐标(screen_info 缺 备战栏-1..9?),跳过')
             return self.round_success(DeployBench.STATUS_NO_BENCH)
 
         targets = front + back  # 前排优先,满后再后排
@@ -59,8 +62,17 @@ class DeployBench(SrOperation):
         deployed = read_deployed_count(self.ctx, self.last_screenshot)
         start = deployed if deployed is not None else 0
         n = max(0, min(len(bench), len(targets) - start))
+        log.info(f'[cw-deploy] bench槽={len(bench)} 前/后排={len(front)}/{len(back)} '
+                 f'已部署={deployed} 从槽{start}起 拖{n}个')
         for i in range(n):
             self.ctx.controller.drag_to(end=targets[start + i], start=bench[i], duration=1.0)
             time.sleep(0.4)
+        # 验落地(bug#1:drag 被判拖拽落空 / 拖到已占槽被拒 → 角色没上去,曾因无日志没察觉;D-43 重置根因之一)。
+        # 重读已部署数比 delta;**仅观测供复盘不硬 fail**(部分部署仍可出战;且备战栏空槽 drag 是 no-op,
+        # 增量<拖数也可能是空槽而非 bug)。deployed_after=None = 读不到「X/Y」,无法验。
+        time.sleep(0.5)
+        deployed_after = read_deployed_count(self.ctx, self.screenshot())
+        log.info(f'[cw-deploy] 拖完 已部署 {deployed or 0}->{deployed_after}(拖了{n}个;'
+                 f'空槽 no-op / bug#1 落空都让增量<拖数)')
 
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)

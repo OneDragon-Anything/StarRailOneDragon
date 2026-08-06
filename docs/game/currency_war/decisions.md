@@ -15,6 +15,13 @@
 
 ---
 
+## D-82 (2026-08-06) 备战 3 op 补执行日志 + 部署验落地 + 删 #未验证(用户 /loop 护栏)· cw_ops prep / 备战 doc
+
+- **决策**:`BuyShopCards`/`DeployBench`/`BattlePrepCycle` 按 `od-dev-write-operation` review,补执行期日志(决策点信息密度,invariant#5);`DeployBench` 加拖后重读已部署数验落地;删三 op 的 `# 未验证` 注释。审计 `read_game_state` → 发现 7 字段 **已读未用**(plan 未消费),记进备战 doc 待 wiring。
+- **为什么**:用户 `/loop` 重启自主推进带硬护栏「运行 op 前查 `# 未验证` → 按 skill 补日志/截图 → 删注释」。重置根因之一 = `DeployBench` bug#1 drag 落空乱 board **无日志没察觉**(D-43);op 缺日志违反 write-operation(invariant#5)。补日志让每步可观测、bug#1 drag 可见。`DeployBench` 零日志 + drag 是 bug#1 高发点 → 加「拖完重读已部署数」观测 delta。
+- **备选**:① deploy 验落地硬 fail(delta<n 则 retry)—— 推翻:空槽 no-op + 部分部署合法 → 误判 retry 死循环;仅观测更稳。② 不删 `# 未验证` 等实机验再删 —— 推翻:护栏明示「补日志后可删」;实机验是下一步(T#92),失败再回炉,不阻塞。
+- **状态**:采用。ruff 净;全 currency_war **199 绿**。已读未用审计记进 `docs/game/screens/currency_war_prep.md`(`board_next_tier` 接线优先,关系 comp 成型度核心弱项 D-54~D-67)。· 备战 op / od-dev-write-operation invariant#5
+
 ## D-81 (2026-08-06) strategy/13 迁移块第二步:GameState.bosses → plane_bosses(3 位面 boss)rename · cw_state §13.2/§13.5
 - **决策**:`GameState.bosses` → `plane_bosses`(3 位面 boss 名 = 简报屏「3 阵营」;`current_boss` 派生),reader/赋值处同步:`cw_comps.make_score_context`(`list(state.plane_bosses)`→ ScoreContext.bosses)+ `default_strategy`(`state.plane_bosses = list(session.briefing_bosses)`,即 §13.5 session→state 迁移点)。
 - **为什么(§13.2/§13.5 迁移块第二步,类 D-80)**:`current_boss` 派生(D-78 已加)读 `bosses`;§13.2 字段名应为 `plane_bosses`(原 `bosses` 模糊)。`default_strategy:80` 正是 §13.5 `session.briefing_bosses → state` 迁移点,rename 对齐(为后续 session 粘性字段全迁入 state 铺路)。范围小(1 字段 + 2 reader + 2 测试)。

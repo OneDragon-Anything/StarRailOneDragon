@@ -48,6 +48,12 @@ source_image: screens/货币战争-备战/(多子态,见下)
 - 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost)、`read_bench_full`(席满警告)
 - 生命:`read_hp`(⚠️ shop 关闭态才准,文本-剩余血量)
 
+**⚠️ 已读未用(read-but-unused,2026-08-06 审计)**:`read_game_state` 读了但 `cw_decisions.plan` **未消费** ——
+`xp_progress` / `enemy_difficulty` / `level_up_cost` / `shop_refresh_cost` / `streak` / `node_type` / `board_next_tier`
+(plan 只用 gold/hp/level/board/bench/deployed/shop/plane/round)。其中 **`board_next_tier`**(下个羁绊 tier 阈值)直接关系
+comp 成型度评分(核心弱项,见 process_log D-54~D-67 spread 根因)、**`level_up_cost`/`shop_refresh_cost`** 关系经济精算
+(plan 现用 `LEVEL_UP_COST_TABLE` 估 + 硬编码刷新价)→ 接线优先。待 wiring(进策略后此条更新/删)。
+
 **视觉身份层(SIFT,`cw_identity_obs`,D-75 已接线 + 实测验证)**:
 - bench/deployed **角色身份**(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位
   (前排-1..4 / 后排-1..6 / 备战栏-1..9)→ SIFT 对 `character_avatar` 脸近景库 → `resolve_char_name`

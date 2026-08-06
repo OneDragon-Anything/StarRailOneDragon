@@ -5,6 +5,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
@@ -31,11 +32,13 @@ class BattlePrepCycle(SrOperation):
 
     @operation_node(name='买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
+        log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
 
     @node_from(from_name='买牌')
     @operation_node(name='部署')
     def deploy(self) -> OperationRoundResult:
+        log.info('[cw-prep] 备战单轮 ② 部署(DeployBench)')
         return self.round_by_op_result(DeployBench(self.ctx).execute())
 
     @node_from(from_name='部署')
@@ -50,9 +53,13 @@ class BattlePrepCycle(SrOperation):
             # → bug#1 间歇连发(此前 r1-8 出战正常)。同 buy_store_item 的 mouse_move 缓解。verify 仍在(下行)。
             self.ctx.controller.mouse_move(_btn)
             self.ctx.controller.click(_btn)
+            log.info(f'[cw-prep] 备战单轮 ③ 出战 click @({_btn.x},{_btn.y})')
             time.sleep(1.0)  # 等出战→战斗过渡
             # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(防假成功 prep-loop)
             if self.round_by_ocr(self.screenshot(), '购买经验').is_success:
+                log.warning('[cw-prep] ⚠️ 出战后仍在备战(click 未落地 / bug#1?),retry')
                 return self.round_retry('出战 click 未落地,重试', wait=1)
+            log.info('[cw-prep] 出战成功 → 自动战斗')
             return self.round_success(wait=3)
+        log.info('[cw-prep] 找不到出战按钮,retry')
         return self.round_retry('找不到出战', wait=1)
