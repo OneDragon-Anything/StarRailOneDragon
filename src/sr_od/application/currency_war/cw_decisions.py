@@ -69,6 +69,9 @@ OFF_TARGET_DISCOUNT: float = 1.0       # 2026-08-04 revert(原 0.3):实跑发现
 # 卖成型 off-target 深堆(churn)= regression(vs 4-fix 无 commitment 清 plane1)。改 1.0(不打折)= 恢复
 # 4-fix(super-linear synergy 单独)行为。commitment 正确实现 = prefilter(只 discount 新 off-target **buys**,
 # 不动已有堆的 board eval)—— 待后续 task#16 续。target_comp 参数保留(prefilter 复用),effect 暂关。
+# T#97 step-2:target 阵营**正向 bonus**(激励深 stack target;off-target 保持 OFF_TARGET_DISCOUNT=1.0 不惩罚,
+# 避 churn —— 清 log 的 0.3 打折致 churn)。F3 超线性(SYNERGY_TIER_EXPONENT=1.5)+ target bonus → 深 stack target >> 散 off-target。
+TARGET_FACTION_BONUS: float = 1.5      # target 阵营 synergy ×1.5(2026-08-07 live 验 spread 后加正向激励)
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # 默认升级金价(粗估,实机校准)
@@ -151,9 +154,10 @@ def synergy_score(state: GameState, faction_priority: list[str],
         mt = _max_tier(faction)
         if mt >= 6:
             tier_score += cat_w * (count / mt) * CEILING_BONUS_FACTOR
-        # commitment:off-target 阵营打折(target 设定时),聚焦深化 target(用户 priority bonus 不打折)
-        if target_factions and faction not in target_factions:
-            tier_score *= OFF_TARGET_DISCOUNT
+        # commitment(T#97 step-2):target 阵营**正向 bonus**(激励深 stack target;off-target 保持 OFF_TARGET_DISCOUNT=1.0
+        # 不惩罚,避 churn —— 清 log 0.3 致 churn / 1.0 致 spread)。F3 超线性 + target bonus → 深 stack target >> 散 off-target。
+        if target_factions:
+            tier_score *= TARGET_FACTION_BONUS if faction in target_factions else OFF_TARGET_DISCOUNT
         score += tier_score
         if faction in faction_priority:
             score += (len(faction_priority) - faction_priority.index(faction)) * FACTION_PRIORITY_BONUS
