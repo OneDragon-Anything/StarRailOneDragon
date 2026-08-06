@@ -51,7 +51,7 @@ source_image: screens/货币战争-备战/(多子态,见下)
 **⚠️ 已读未用 + 可靠性(2026-08-06 审计 T#91 + 实图核实 T#92)**:`read_game_state` 读了但 `cw_decisions.plan` **未消费**。
 对 5 个备战 fixture 跑真实 OCR dump(`.debug/temp/prep_obs_dump.txt`)核实:
 - **可靠(可直接接线)**:`board_next_tier`(下个羁绊 tier 阈值,5 fixture 都读对)→ **接线优先**,直接关系 comp 成型度评分(核心弱项);`xp_progress`(读对)。
-- **reader 不可靠(先修 area 再接线)**:`level_up_cost`(5 fixture 全 None → `文本-购买经验金币数` area 没读到)、`shop_refresh_cost`(飘 0/2 真值 2 → `文本-刷新金币数` area 误读)、`streak`(全 None → `文本-连胜数` area 没读到)、`node_type`(battle/boss 对、reward 误读 a8_start / shop_open 漏 → 顶部 band `Rect(500,65,1700,115)` 不稳)。
+- **OCR 不可行(T#96 聚焦 OCR + VLM 查明,推翻「移 area」假设)**:`shop_refresh_cost` / `level_up_cost` —— 费用是按钮底部的小 + stylized **彩色印刷数字**(刷新「2」、购买经验「4」),但 **paddle OCR det 阶段检测不到**(聚焦 OCR 按钮区只读到标签文字「刷新」/「购买经验」/「LV.」/「0/6」,漏掉费用数字;VLM 放大确认数字在)。**非 area 错、非 rec 错 —— det 看不见**。→ OCR reader 根本不可行;用**静态估**(`LEVEL_UP_COST_TABLE` + refresh 默认 2,= 固定游戏机制常量,本就该静态)是对的;要精确值需 colored-digit CV 模板(低优)。**别修 area、别接线 cost reader。** `文本-刷新金币数 [1556,824,1687,887]` / `文本-购买经验金币数` 两 area 实为无效 OCR 目标(留作存档或删)。`streak`(全 None,`文本-连胜数` area 待核)、`node_type`(battle/boss 对、reward 误读 a8_start / shop_open 漏 → 顶部 band `Rect(500,65,1700,115)` 不稳)。
 - **本就弱(设计如此)**:`enemy_difficulty`(stylized OCR 常空,飘 8/39/None)。
 - plan 现用 9 字段(gold/hp/level/board/shop/plane/round + bench/deployed)实图核实可靠 ✓(`read_shop_cards` shop-open 读对 5 真名:翡翠/丹恒·腾荒/不死途/飞霄/三月七)。
 - **结论**:策略不用那些字段非疏漏 —— 多数因 reader 不可靠。**先修 reader area → 再接线**(`board_next_tier` 例外,可靠直接接)。
