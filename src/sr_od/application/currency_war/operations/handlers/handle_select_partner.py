@@ -60,34 +60,53 @@ class HandleSelectPartner(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
+    def _find_text_center(self, screen, text: str) -> Point | None:
+        """OCR 找 ``text`` 的 center(没找到 None)。用于「确认选择」定位(避开 round_by_ocr_and_click 的
+        bug#1 裸 click —— D-64 改 mouse_move + click)。"""
+        ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen, rect=None, color_range=None, crop_first=False,
+        )
+        mrl = ocr_map.get(text)
+        if mrl and mrl.max:
+            return mrl.max.center
+        return None
+
     @operation_node(name='选择伙伴', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if not self.round_by_ocr(screen, '选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
-        # D-61(ADR-0009 完成验证):已选择态(candidate 已选,如上轮选了没确认 / 复现 overlay)→
-        # 直接确认,跳过 candidate click。避免重复点 candidate 反而取消选中 → 确认无效 → flat-loop。
-        if self.round_by_ocr(screen, '已选择').is_success:
-            log.info('[cw-partner] 已选择态 → 直接确认选择(跳过 candidate click)')
-            if self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2).is_success:
-                return self.round_success(wait=2)
-            return self.round_retry(wait=1)   # 确认没点中 → retry(不盲目 success)
-        # 未选 → 点 candidate(D-60:OCR label 定位,原硬编码 STAGE_PORTRAIT 落间隙 flat-loop)。
-        cands = self._read_candidates(screen)
-        if cands:
-            _name, cx, cy = cands[0]   # 取最左候选(TODO:策略化按 target_comp.core_chars 选)
-            portrait = Point(cx, cy - HandleSelectPartner.PORTRAIT_DY_ABOVE_LABEL)
-            log.info(f'[cw-partner] candidates={[c[0] for c in cands]} chose={_name}@{portrait}')
+        # D-61:已选择态(上轮选了没确认 / overlay 复现)→ 跳 candidate click(避免反取消);否则点 candidate。
+        if not self.round_by_ocr(screen, '已选择').is_success:
+            cands = self._read_candidates(screen)
+            if cands:
+                _name, cx, cy = cands[0]   # 取最左候选(TODO:策略化按 target_comp.core_chars 选)
+                portrait = Point(cx, cy - HandleSelectPartner.PORTRAIT_DY_ABOVE_LABEL)
+                log.info(f'[cw-partner] candidates={[c[0] for c in cands]} chose={_name}@{portrait}')
+            else:
+                portrait = HandleSelectPartner.FALLBACK_PORTRAIT
+                log.info(f'[cw-partner] no candidate OCR, fallback@{portrait}')
+            # D-64(bug#1 缓解):click 前 mouse_move(零移动),防 before_screenshot 移光标 → click 落空。
+            self.ctx.controller.mouse_move(portrait)
+            self.ctx.controller.click(portrait)
+            time.sleep(0.7)
+            # D-61(ADR-0009):验「已选择」才算选中;未选中 → retry(计 node_max_retry 兜底,不盲目 success)。
+            if not self.round_by_ocr(self.screenshot(), '已选择').is_success:
+                log.info('[cw-partner] candidate click 未选中(无「已选择」)→ round_retry')
+                return self.round_retry(wait=1)
         else:
-            portrait = HandleSelectPartner.FALLBACK_PORTRAIT
-            log.info(f'[cw-partner] no candidate OCR, fallback@{portrait}')
-        self.ctx.controller.click(portrait)
-        time.sleep(0.7)
-        # D-61(ADR-0009):验「已选择」出现才算选中;未选中 → round_retry(下轮换 OCR/重试,计 node_max_retry
-        # 兜底,不盲目 success flat-loop)。原 bug:fallback(960,300) 偶尔点不中 → 不验 → 确认无效 →
-        # overlay 不关 → 备战出战 被挡 flat-loop(2026-08-06 r9 boss prep stall)。
-        if not self.round_by_ocr(self.screenshot(), '已选择').is_success:
-            log.info('[cw-partner] candidate click 未选中(无「已选择」)→ round_retry')
+            log.info('[cw-partner] 已选择态 → 跳 candidate click')
+        # 确认(D-64:mouse_move + click 缓解 bug#1 + 验 overlay 关)。原 round_by_ocr_and_click 的 click 被
+        # bug#1 吞(before_screenshot 移光标)→ overlay 不关 flat-loop(2026-08-06 r6 stall;手动 click 即关)。
+        confirm = self._find_text_center(self.screenshot(), '确认选择')
+        if confirm is None:
+            log.info('[cw-partner] 未找到 确认选择 → round_retry')
             return self.round_retry(wait=1)
-        self.round_by_ocr_and_click(self.screenshot(), '确认选择', success_wait=2)
+        self.ctx.controller.mouse_move(confirm)
+        self.ctx.controller.click(confirm)
+        time.sleep(1.0)
+        # D-64(ADR-0009):验 overlay 关(选择伙伴 消失 = 推进);没关 → confirm 未落地 → retry(兜底,不盲目 success)。
+        if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
+            log.info('[cw-partner] 确认后 overlay 仍在 → round_retry(confirm 未落地,bug#1)')
+            return self.round_retry(wait=1)
         return self.round_success(wait=2)
