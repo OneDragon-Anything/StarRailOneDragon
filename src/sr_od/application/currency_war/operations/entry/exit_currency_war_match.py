@@ -8,6 +8,7 @@ from typing import ClassVar
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -30,6 +31,7 @@ class ExitCurrencyWarMatch(SrOperation):
 
         # 放弃提示 → 放弃并结算
         if self.round_by_ocr_and_click(screen, '放弃并结算', success_wait=3).is_success:
+            log.info('[cw-exit] 放弃并结算 → 结算页')
             return self.round_wait(wait=2)
 
         # 结算页 1:挑战失败/下一步

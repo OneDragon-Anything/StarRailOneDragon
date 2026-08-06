@@ -108,6 +108,7 @@ class StartCurrencyWarMatch(SrOperation):
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
+            _log.info('[cw-entry] 到达简报屏 → HandleBriefing(读词缀/boss + 下一步)')
             HandleBriefing(self.ctx).execute()
             return self.round_wait(wait=2)
         # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
@@ -117,6 +118,7 @@ class StartCurrencyWarMatch(SrOperation):
         #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_ocr(screen, '投资环境').is_success:
+            _log.info('[cw-entry] 到达投资环境 → HandleInvestEnv(3 选 1 + 确认)')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
         # 3) 位面教程叠层 → 点空白
