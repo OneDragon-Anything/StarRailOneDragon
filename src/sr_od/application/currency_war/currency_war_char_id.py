@@ -1,11 +1,19 @@
-"""货币战争角色识别:SIFT 特征匹配 character_avatar 模板库。
+"""货币战争角色识别:SIFT 特征匹配 ``assets/template/character_avatar/`` 模板库(主游脸近景)。
 
-实测(2026-08-02,任务 10):仓库已有 ``assets/template/character_avatar/``(~90 角色,
-忘却之庭配队画面截的**脸近景**)。SIFT 匹配备战槽内角色:
-- 脸部独特角色(herta 28 内点)→ 清晰命中;
-- 配饰/半身角色(黑天鹅等)→ 模糊(脸近景 ≠ 备战半身立绘,显著特征如帽子不在模板)。
-故本模块对「脸部独特」角色可靠、对配饰角色不可靠 → 可靠识别需货币战争专属模板
-(从备战/商店截)或 OCR 名字兜底。``min_inliers`` + 歧义比过滤低置信结果。
+**2026-08-06 实测复盘(D-75,扭转旧结论)**:用实机备战**半身立绘**真图重测,脸近景库对面部独特
+角色**强命中**(4/4:佩拉/黑塔/Saber/藿藿,best inliers 23-30 vs 第二名 3-4,巨大间隔)。旧结论
+(2026-08-02「配饰角色不可靠,需货币战争专属半身模板」)**过于悲观** —— 至少对面部独特角色,脸库
+直接复用即可,**无需从零采 74 张半身模板**。仍待多样本核:配饰/帽子重角色(黑天鹅等)、货币战争
+专属变体(姬子·启行/千冶·刃/丹恒·腾荒,与基础角色共脸但异名 → SIFT 归一到基础名,需 roster
+子串消歧,见 ``cw_identity_obs.resolve_char_name``)。
+
+匹配要点:``min_inliers`` 最低内点 + ``ambiguity_ratio`` 歧义比过滤低置信结果(空槽位/非角色特征
+少 → 自然落 None,无需额外「槽位是否填充」预判)。
+
+本模块**纯 CV**(无 ctx/screen_info 依赖,可离线测):``load_avatar_templates`` 预计算 SIFT 关键点/
+描述子;``identify_character`` 返回 ``(avatar_id, inliers)``,avatar_id = 模板目录名(主游英文 id,
+如 ``pela``)。avatar_id → 货币战争规范名的映射在 ``cw_identity_obs.resolve_char_name``(查
+``character_const.get_character_by_id`` 得 cn 名 → 校验/消歧到 ``CHARACTER_ROSTER``)。
 
 部署/循环 op 用本模块时,模板由 ``ctx.ih`` 预加载传入(避免每次重算);离线测试用
 ``load_avatar_templates`` 从磁盘加载。

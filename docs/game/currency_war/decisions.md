@@ -15,6 +15,14 @@
 
 ---
 
+## D-75 (2026-08-06) 角色立绘库:脸近景库对备战半身立绘强命中(免采半身模板)+ identity reader 接线· cw_identity_obs/currency_war_char_id
+- **决策**:备战角色身份识别**复用现有 `character_avatar` 脸近景库(88)**(推翻 char_id.py / D-73 旧结论"脸近景≠备战半身,需货币战争专属半身模板")。新建 `cw_identity_obs`:`identify_slots`(纯 CV 核心,裁 screen_info 槽位 → SIFT → `resolve_char_name` → 规范名,离线可测)+ `read_deployed_chars` / `read_bench_chars`(ctx 薄包装,从 screen_info 取 `前排-1..4`/`后排-1..6`/`备战栏-1..9` rect)。`resolve_char_name`:`avatar_id` → `get_character_by_id().cn` → `CHARACTER_ROSTER`(变体子串消歧)。
+- **为什么(用户「建 icon/立绘库」+ 实证优先)**:用实机 P1R9 截图实测 SIFT,脸库对备战半身立绘**强命中** —— 前排 4/4(佩拉/黑塔/Saber/藿藿,inliers 23-30 vs 第二名 3-4,巨大间隔)、备战栏 8/9(inliers 21-36)、后排空(正确返空;VLM 曾幻觉"1 个后排",印证 VLM 计数不可信)。旧"配饰角色不可靠"基于不同/旧样本,**过于悲观**。用户要建库 → 实证发现**库已存在且对面部独特角色够用,免从零采 74 张半身模板**的大工程。
+- **备选**:① 从零采货币战争专属半身模板(推翻:实测脸库够用;且备战/商店槽位 RNG 累积采全 74 张慢、数据银行图鉴采有跨视图风险 + 用户对局中不能导航)。② 接进 `read_game_state`(推翻:每帧 SIFT 慢 + 与 bot 跟踪 deployed/bench 双写冲突);**保留 bot 跟踪为默认**(deployed/bench 由 buy/deploy 推演,plan-time 快),视觉 reads 作**离线重建 / 漂移恢复旁路**(不进 read_game_state)。③ 完全不建视觉身份(推翻:离线从截图重建 GameState 对测试/replay 有值 + 漂移恢复)。
+- **状态**:采用。4 测试绿(`resolve_char_name` 单元 + `identify_slots` 纯 CV + `read_deployed_chars` 经 ctx 集成,fixture `deployed_p1r9.webp`);全 currency_war **187 绿**;ruff 净。**待多样本核**:配饰/帽子重角色(黑天鹅等)、货币战争变体(姬子·启行/千冶·刃/丹恒·腾荒 共脸异名 → SIFT 归一基础名,子串消歧对"基础+变体并存"roster 可能不准,需星级/阵营旁证)。**部分解决 D-73 备战字段全图 🟡 deployed/bench 身份**;余 `Unit.equips`/`active_strategies`/`inventory`/`node_path` 仍需图标库(任务#87)。· strategy/13 §13.2 deployed/bench 身份
+
+---
+
 ## D-73 (2026-08-06) 第二轮攻略调研驱动策略更新计划(V4.4 meta + 概念股送件 + 词缀对策 + 商店保底)· strategy/03 round5 + research/
 - **决策**:第二轮 V4.4/V4.5 深度调研完成(知识库 `.debug/temp/currency_war/strategy_research/`,9 文件分主题),据此定策略更新方向,记入 strategy/03 round5:**① COMP_LIBRARY** —— 「列车同行」= **姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**(core 姬子启行+三月七,key_equips 反震四件套,**boss_weakness 加「正当防卫」**);补 命运圣杯流/欢愉队/万敌单C/减益黄泉。**② 新角色+命运圣杯阵营**(CHARACTER_ROSTER/FACTIONS 补)。**③ 词缀对策表**(正当防卫克反震/反甲/高频;同步行动克拉条利DOT;沉重脚步刚需护盾…)。**④ 概念股送装备件 = decide_invest(env) 新维度**(选与 target_comp 核心装备合成件匹配的概念股)。**⑤ 装备合成配方**(cw_equipment 基础件×2→进阶)。**⑥ 商店保底**(每5刷出5张同费,建模进 D牌逻辑)。**⑦ 姬子启行选择伙伴按最缺羁绊选**(升级 decide_partner,随 read_partner OCR)。
 - **为什么(用户 2026-08-06「重新调研 + 总结优化策略」)**:第一轮(research round1,V4.4 基线)后实机推进到 V4.4/V4.5,meta 已演进(姬子·启行反震=顶层、Fate 联动命运圣杯),需新一轮调研校准策略方向 + 补 V4.4 新内容。用户定调「调研越多越好」,2 个研究子 agent 并发(≤2 上限内)分头深挖阵容/角色/装备/经济/投资/boss/节点,NGA 403、米游社 JS-only 靠搜索摘要+其它源交叉,每条标来源+版本+置信度。

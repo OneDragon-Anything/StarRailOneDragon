@@ -43,8 +43,16 @@ source_image: screens/货币战争-备战/(多子态,见下)
 - 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost)、`read_bench_full`(席满警告)
 - 生命:`read_hp`(⚠️ shop 关闭态才准,文本-剩余血量)
 
-**未接(前沿,需 icon/立绘库 或 bot 跟踪)**:
-- bench/deployed **角色身份** + `Unit.equips`(纯立绘无名字 → SIFT 立绘库,见 `currency_war_char_id`;或 bot 跟踪 buy/deploy)
+**视觉身份层(SIFT,`cw_identity_obs`,D-75 已接线 + 实测验证)**:
+- bench/deployed **角色身份**(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位
+  (前排-1..4 / 后排-1..6 / 备战栏-1..9)→ SIFT 对 `character_avatar` 脸近景库 → `resolve_char_name`
+  → 规范名。**D-75 实测扭转旧结论**:脸近景库对备战半身立绘强命中(4/4 前排:佩拉/黑塔/Saber/藿藿,
+  inliers 23-30 vs 第二名 3-4;备战栏 8/9),**无需从零采半身模板**。与 bot 跟踪(deployed/bench
+  默认由 buy/deploy 推演)互补 —— 视觉 reads 是离线重建 / 漂移恢复旁路(不进 read_game_state)。
+  待核:配饰/帽子重角色(黑天鹅)、货币战争变体(姬子·启行 共脸异名 → 归一基础名,子串消歧)。
+
+**未接(前沿,需图标库 或 bot 跟踪)**:
+- `Unit.equips`(角色身上装备,纯图标 → 装备图标库 / bot 跟踪 equip 动作)
 - `active_strategies`(右面板图标列,vision 探到 ~x1797-1918 y172-404;identity 需策略图标库 / bot 跟踪 decide_invest 拾取)
 - `inventory.available_equips`(区域-道具装备 [1252,90,1918,710],icon → 装备图标库 / bot 跟踪)
 - `node_path`(顶部节点行图标序列 → 节点类型图标库 + 多态实机定 icon↔类型映射)
@@ -65,5 +73,6 @@ source_image: screens/货币战争-备战/(多子态,见下)
 
 - **read_hp shop 态依赖(已修)**:HP 只 shop 关闭时显示;`BuyShopCards` 在 shop 关闭帧读 hp 覆盖 state.hp。回归测试 `test_read_hp_shop_state`。
 - **read_board 脆已治(D-69)**:旧全屏 OCR 把 "2/3" 误读 "213" 显脆;根因=全屏密度。`_board_pairs` 区域 OCR 读对 "X/Y" → count=X + next_tier=Y(`read_board_next_tier`,doc 13 FactionState.next_tier)。
-- **bench/deployed 身份**:无名字 → SIFT 模板(待建货币战争立绘库);deploy 现走位置式(`DeployBench`)。
+- **bench/deployed 身份(D-75 已接)**:脸近景库 SIFT 强命中(见上「视觉身份层」);reader 在
+  `cw_identity_obs`,与 bot 跟踪互补(离线重建 / 漂移恢复)。deploy 运行时仍走位置式(`DeployBench`)。
 - 策略接法详 `docs/game/currency_war/strategy/`;reader 详 `cw_observation.py`。
