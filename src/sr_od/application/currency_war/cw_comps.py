@@ -386,7 +386,7 @@ def current_enemy_mechanics(state: GameState) -> set[str]:
 def make_score_context(state: GameState, bosses: list[str] | None = None) -> ScoreContext:
     """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
     return ScoreContext(
-        bosses=bosses or list(state.bosses),
+        bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
         plane=state.plane, round_num=state.round_num, gold=state.gold,

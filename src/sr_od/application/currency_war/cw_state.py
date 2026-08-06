@@ -80,7 +80,7 @@ class GameState:
     deployed: list[BenchChar] = field(default_factory=list)
     shop: list[ShopCard] = field(default_factory=list)
     bench: list[BenchChar] = field(default_factory=list)
-    bosses: list[str] = field(default_factory=list)
+    plane_bosses: list[str] = field(default_factory=list)   # 3 位面 boss 名(= 简报屏「3 阵营」;current_boss 派生;strategy/13 §13.2/§13.5)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
     active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
     enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)
@@ -123,12 +123,12 @@ class GameState:
 
     @property
     def current_boss(self) -> str | None:
-        """当前位面 boss(派生 = bosses[plane-1];strategy/13 §13.2)。无 boss 数据/越界 → None。"""
-        if not self.bosses:
+        """当前位面 boss(派生 = plane_bosses[plane-1];strategy/13 §13.2)。无 boss 数据/越界 → None。"""
+        if not self.plane_bosses:
             return None
         idx = self.plane - 1
-        if 0 <= idx < len(self.bosses):
-            return self.bosses[idx]
+        if 0 <= idx < len(self.plane_bosses):
+            return self.plane_bosses[idx]
         return None
 
 

@@ -15,6 +15,14 @@
 
 ---
 
+## D-81 (2026-08-06) strategy/13 迁移块第二步:GameState.bosses → plane_bosses(3 位面 boss)rename · cw_state §13.2/§13.5
+- **决策**:`GameState.bosses` → `plane_bosses`(3 位面 boss 名 = 简报屏「3 阵营」;`current_boss` 派生),reader/赋值处同步:`cw_comps.make_score_context`(`list(state.plane_bosses)`→ ScoreContext.bosses)+ `default_strategy`(`state.plane_bosses = list(session.briefing_bosses)`,即 §13.5 session→state 迁移点)。
+- **为什么(§13.2/§13.5 迁移块第二步,类 D-80)**:`current_boss` 派生(D-78 已加)读 `bosses`;§13.2 字段名应为 `plane_bosses`(原 `bosses` 模糊)。`default_strategy:80` 正是 §13.5 `session.briefing_bosses → state` 迁移点,rename 对齐(为后续 session 粘性字段全迁入 state 铺路)。范围小(1 字段 + 2 reader + 2 测试)。
+- **备选**:① 留 `bosses` alias —— 推翻:无外部 caller,clean rename 更清晰(单一真相源);② 同步 rename `ScoreContext.bosses` —— 保留:`ScoreContext.bosses` 是「评分输入 boss 列表」(语义 OK),与 `GameState.plane_bosses`(数据源)分工,只 GameState 字段 rename,bridge 处 `list(state.plane_bosses)` 衔接。
+- **状态**:采用。全 currency_war **199 绿**;ruff 净。迁移块进度:✅ 加法子集(D-78)/ ✅ difficulty→selected_difficulty(D-80)/ ✅ bosses→plane_bosses(D-81)/ ⏳ equips→inventory 拆 + round_num→node_index + hp→None 去谎言 + session 粘性字段全迁入 + 策略层 None 降级(后续块)。· strategy/13 §13.2/§13.5
+
+---
+
 ## D-80 (2026-08-06) strategy/13 迁移块第一步:GameState.difficulty → selected_difficulty(职级)rename · cw_state §13.7/§13.8
 - **决策**:`GameState.difficulty` → `selected_difficulty`(本局职级 A1..A8 / A8-1..A8-50),`effective_hp_threshold` reader 同步(`getattr(state, "selected_difficulty", "")`)。落 §13.7 **两阶难度模型**:`selected_difficulty`(职级,决定起始敌难 + 额外敌人词缀)+ `enemy_difficulty`(数值,随节点递增 + 可被投资策略压低,D-78 前已加)。
 - **为什么(strategy/13 §13.8 迁移块,安全子集先行)**:原 `difficulty` 名模糊(职级 vs 数值混淆)→ rename 区分(§13.7 两阶)。选**最小风险子集**先迁(1 runtime reader `effective_hp_threshold` + 2 测试,bounded、机械 rename),把行为变化大的部分(hp→None 去谎言 / bosses→plane_bosses / equips→inventory 拆 / round_num→node_index / session 粘性字段迁入)留后续块。
