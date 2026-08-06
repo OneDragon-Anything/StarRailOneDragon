@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 **备战屏**观测:备战截图 → ``GameState``(``read_game_state``)。
 
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
@@ -29,6 +31,7 @@ from __future__ import annotations
 import difflib
 import re
 
+import cv2
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
@@ -87,8 +90,20 @@ def _expected_level(plane: int, round_num: int) -> int:
 
 # ===== 备战单字段读取(失败 → 安全默认)=====
 def read_gold(ctx: SrContext, screen: MatLike) -> int:
-    """当前金币(底部右侧数字)。读不到 / 越界 → 0(plan 不买,安全保守)。"""
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_GOLD))])
+    """当前金币(底部右侧数字)。读不到 / 越界 → 0(plan 不买,安全保守)。
+
+    gold 数字小 + stylized,paddle native det 几乎总漏(读 0/空,实锤见 process_log)→
+    裁 area 后 **放大 3x** 再 OCR(破小目标 det 天花板)。area 已收紧到只含 gold 数字
+    (排除隔壁 G0/0 货币;2026-08-07 实测 [1610,890,1690,945] 放大后稳读 3/2)。
+    """
+    rect = _area_rect(ctx, A_GOLD)
+    if rect is None:
+        return 0
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return 0
+    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
+    v = _first_int([r.data for r in ctx.ocr_service.get_ocr_result_list(image=up)])
     if v is None or not (GOLD_MIN <= v <= GOLD_MAX):
         return 0
     return v

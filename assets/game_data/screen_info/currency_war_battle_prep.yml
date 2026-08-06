@@ -481,10 +481,10 @@ area_list:
 - area_name: 文本-金币数
   id_mark: false
   pc_rect:
-  - 1555
-  - 889
-  - 1689
-  - 948
+  - 1610
+  - 890
+  - 1690
+  - 945
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
