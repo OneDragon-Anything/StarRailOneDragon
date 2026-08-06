@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 结算屏观测(P1.5 观测回路):战后小队 HP。
 
 结算屏(战斗后「挑战结束/数据统计/继续挑战」)展示战后小队 HP「小队生命值<N>」+ 总伤害等
@@ -25,12 +27,14 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     防「每损失20点小队生命值获得5」(投资策略描述,偶同屏)误取 20/5。越界(HP_MIN..HP_MAX)→ 丢弃。
     """
     for t in ocr_texts:
-        if '生命值' in t:
-            m = re.search(r'生命值\s*(\d+)', t)
-            if m:
-                v = int(m.group(1))
-                if HP_MIN <= v <= HP_MAX:
-                    return v
+        # OCR 偶 garble「生命值」→「命值」(missing 生);两形态都匹配(2026-08-07 实跑 on_round_end hp=0 根因)。
+        for kw in ('生命值', '命值'):
+            if kw in t:
+                m = re.search(kw + r'\s*(\d+)', t)
+                if m:
+                    v = int(m.group(1))
+                    if HP_MIN <= v <= HP_MAX:
+                        return v
     return None
 
 
