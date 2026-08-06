@@ -50,6 +50,9 @@ class GameState:
     gold: int = 0
     round_num: int = 1     # 位面内轮次 1-6
     level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
+    # 购买经验进度 (cur_xp, xp_to_next_level),如 (4,20);购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
+    # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
+    xp_progress: tuple[int, int] | None = None
     plane: int = 1         # 位面 1/2/3
     difficulty: str = ""   # 本局难度 A1..A8(匹配开始从难度确认屏检测;"" = 未检测 → 阈值回退默认;effective_hp_threshold 用)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)

@@ -122,6 +122,24 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     return _expected_level(plane, round_num)
 
 
+def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
+    """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
+
+    OCR 购买经验(y848)下方 ~y935 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
+    level 升级时机决策用(cur 接近 next → 即将升级,影响 level_plan/买经验优先级)。
+
+    ⚠️ 区域暂硬编码(同 ``read_bench_full``;稳定 HUD 文本,后续移 screen_info area「区域-经验进度」)。
+    shop 态依赖待核(同 hp,xp 文本是否 shop 开启态也显待多样本确认)。
+    """
+    blob = ''.join(r.data for r in _ocr(ctx, screen, Rect(240, 920, 325, 962)))
+    m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
+    if m:
+        cur, nxt = int(m.group(1)), int(m.group(2))
+        if 0 <= cur <= nxt <= 100:      # sanity:cur≤next,XP 上限合理(封顶 10 级,每级 XP 个位~十几)
+            return cur, nxt
+    return None
+
+
 # last-known-good (plane, round):plane 单调递增、round 同位面内递增;过渡帧 OCR 失败时
 # 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(2026-08-04 实跑发现:
 # plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
@@ -298,6 +316,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.hp = read_hp(ctx, screen)
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
+    state.xp_progress = read_xp_progress(ctx, screen)
     # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
     _bp = _board_pairs(ctx, screen)
     state.board = {f: c for f, (c, _nt) in _bp.items()}

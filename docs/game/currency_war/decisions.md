@@ -15,6 +15,12 @@
 
 ---
 
+## D-72 (2026-08-06) 备战字段采集:xp_progress(购买经验 "X/Y"→cur/next;文本字段到顶)· cw_state/cw_observation
+- **决策**:备战文本字段采集第二切片 = `xp_progress: tuple[int,int] | None`(``cur_xp, xp_to_next_level``),购买经验按钮下方 "X/Y"(如 "4/20"→(4,20))。`read_xp_progress`(硬编码 Rect,同 read_bench_full,后续移 screen_info area)+ `read_game_state` 接线。
+- **为什么(用户 2026-08-06「继续备战文本字段采集」)**:xp_progress 是 level 升级时机决策的输入(cur 接近 next → 即将升级,影响 level_plan/买经验优先级),替代纯 `_expected_level` 估。
+- **备选**:① 同切片接 `level_up_cost`(推翻:购买经验的 "5" OCR 不稳,cost 还是 level 不清,需 vision 核实,暂不接);② 用 screen_info area(推迟:先硬编码验稳再移,同 read_bench_full 先例)。
+- **状态**:采用。63 cw_observation+decisions 测试绿(+1 xp_progress);ruff 净。**备战文本字段采集到顶**:干净文本字段 = board tier(D-69)+ xp_progress(本条);**余皆阻塞** —— active_strategies/inventory 图标、node 行图标、deployed/bench 身份 = vision(400)/SIFT 立绘库;enemy_difficulty 备战屏未见(可能在节点子态)。下一解锁靠修 vision / 建 SIFT 库。· D-70 备战字段采集 + 用户「继续文本字段」
+
 ## D-71 (2026-08-06) 拆分 cw_observation(备战/简报/结算/core;D-70 备战字段采集铺路)· cw_obs_*
 - **决策**:`cw_observation.py` 558 行混了备战/简报/结算三类 reads。按**画面**拆成 4 文件:`cw_obs_core.py`(共享 helper `_ocr`/`_area_rect`/`area_center`/`shop_card_click_points`/`_first_int` + 常量,无兄弟依赖断循环)+ `cw_briefing_obs.py`(简报 reads + 词缀文件操作)+ `cw_settlement_obs.py`(结算 reads)+ `cw_observation.py`(只留备战 reads + `read_game_state` + **re-export** 简报/结算)。
 - **为什么(用户 2026-08-06)**:「cw_observation 太大就拆」。备战字段采集(D-69/D-70)会让它涨到 750+,趁早拆、新 reads 直接进对模块。**零 importer churn**:所有 `from cw_observation import X`(8 处:shop/deploy_bench/battle_prep/handle_*/battle_loop)经 re-export 仍可用。
