@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 策略决策(评估函数 + 贪心改进 + 蒙特卡洛 D 牌;纯逻辑,可测,不碰游戏)。
 
 架构(strategy_design.md / strategy_research.md / review r2 架构评审):
@@ -30,6 +32,7 @@ from sr_od.application.currency_war.cw_comps import (
     select_comp,
 )
 from sr_od.application.currency_war.cw_state import (
+    BENCH_CAPACITY,
     Action,
     BenchChar,
     BuyCard,
@@ -472,7 +475,7 @@ def _best_improving_action(
             continue
         # D-67 bench 空间(用户反馈「没判断备战席满」):deploy 满 + bench 满 → 买的牌无处放,skip(防 overfill
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
-        if state.deployed_count() >= state.max_units() and len(state.bench) >= GameState.BENCH_CAPACITY:
+        if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue
         # level_plan buying gate(task#18):攒金升级期间(_saving)抑制散牌,但仍允许 target
         # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
