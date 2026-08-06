@@ -524,6 +524,11 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 巡击青雀[medium] gap 0.097 卡 0.10 没转,
     # 巡击青雀 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
+    # F1(commit 阈值,strategy/12):target form_progress 越过 COMMIT_FRAC = 已 commit → pivot 阈值提高
+    # (强粘,不弃已成型 comp;防 flit 弃正在堆的 comp)。2026-08-06 实跑:bot board spread + 低 hp 弃成型
+    # comp → 弱死;commit 后该深堆不弃。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。
+    COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
+    COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → 阈值 ×1.5(0.10→0.15),更难弃成型 comp
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
@@ -555,25 +560,28 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         target_score = comp_score(target, state, ctx) if target is not None else 0.0
         best_score = comp_score(best, state, ctx)
         gap = best_score - target_score
-        # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)
+        # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)。
+        # F1(strategy/12):target 已 commit(form_progress≥COMMIT_FRAC)→ 提阈值强粘(不弃成型),优先于 easier。
         _required_gap = PIVOT_SCORE_GAP
+        _committed = (target is not None and form_progress(target, state) >= COMMIT_FRAC)
         _easier = (target is not None
                    and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
                    and form_progress(target, state) < 1.0)
-        if _easier:
-            _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR
+        if _committed:
+            _required_gap = PIVOT_SCORE_GAP * COMMIT_STICK_FACTOR   # 已 commit → 强粘(不弃成型)
+        elif _easier:
+            _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易 comp → 降阈
+        _tag = ' [commit强粘]' if _committed else (' [易comp降阈]' if _easier else '')
         if gap > _required_gap:
             log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
                      state.plane, state.round_num, state.hp,
                      target.name if target else 'None', best.name,
-                     best_score, target_score, gap, _required_gap,
-                     ' [易comp降阈]' if _easier else '',
+                     best_score, target_score, gap, _required_gap, _tag,
                      {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
             return best
         log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
                  state.plane, state.round_num, state.hp,
-                 best.name, target.name if target else 'None', gap, _required_gap,
-                 ' [易comp降阈]' if _easier else '')
+                 best.name, target.name if target else 'None', gap, _required_gap, _tag)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
         # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)

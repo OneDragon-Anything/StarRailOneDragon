@@ -15,6 +15,12 @@
 
 ---
 
+## D-66 (2026-08-06) P2/F1:maybe_pivot commit 阈值(target form_progress≥0.4 → 强粘,不弃成型 comp) · cw_comps
+- **决策**:信号1 pivot 阈值加 commit 层 —— `target` 的 `form_progress ≥ COMMIT_FRAC(0.4)` = 已 commit → 阈值 ×`COMMIT_STICK_FACTOR(1.5)`(0.10→0.15,强粘)。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。未 commit + best 易 → D-59 降阈(0.07);已 commit → 强粘(0.15);else 正常(0.10)。
+- **为什么(strategy/12 F1 + 2026-08-06 实跑 spread)**:bot board spread + 低 hp 弃正在成型的 comp → 弱死。F2(roll)让 bot roll 找 target,但 target flit(微 score 波动切走)→ 深堆被打断。F1 让已 commit(40%+ 成型)的 target 强粘,best 需大幅优于(0.15)才转 → bot 深堆一个 comp 不轻易弃。语义:「已在堆 X,继续堆,别因 shop 这轮波动弃」。
+- **备选**:① 不加 F1 靠 D-40/D-59 稳(推翻:实跑仍 flit/spread,F1 显式 commit 阈值更稳);② COMMIT_FRAC 调高(0.6,推翻:0.4 已能防弃 1 阵营过半的 comp,0.6 太晚);③ commit 也阻信号3(推翻:信号3 保命该能切,D-65 已让保命 board-align,F1 只管信号1 涌现)。
+- **状态**:**实验**(COMMIT_FRAC 0.4 / STICK_FACTOR 1.5 待多局校准)。40 cw_comps 测试绿;ruff 净。log 加 `[commit强粘]` 标记。**待新局验**:已 commit 的 target 是否不被微波动弃 → 深堆成型 → 存活久。· strategy/12 F1(P2 comp 成型)
+
 ## D-65 (2026-08-06) 弱阵:信号3 保命优先 board 有 progress 的 easy comp(防切 board 不支持的 fast-easy) · cw_comps
 - **决策**:信号3(保命,hp<0.75×threshold)选最快 easy comp 时,**优先 board 有 form_progress>0 的 easy comp**(无则 fallback 全 easy)。log 加 `[board有progress优先]` 标记。
 - **为什么(2026-08-06 实跑 plane1 r8 死)**:hp 流血到 1(hp<30 保命触发)→ 信号3 切 **DOT队**(fast easy,form_round 4),但 board 是 追击/群攻(**无 DOT队 的 持续伤害/减益**)→ DOT队 无法成型 → 仍死。切到一个 board 不支持的 fast-easy = 无效保命(成型不了还是死)。该优先 board 已有 progress 的 easy comp(如 列车同行,board 有 列车同行:1 → 能继续堆成型)。
