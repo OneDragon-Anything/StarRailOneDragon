@@ -432,7 +432,9 @@ self.strategy_seed: int | None = self.get('strategy_seed', None)  # None=真随�
 
 ## 11.12 实施阶段(交付路径)
 
-> **P1 已落地(2026-08-05,D-36)** ✅ + **P1.5 观测回路已落地(2026-08-06,D-48~52)** ✅:接口+接线 + on_round_end 观测回路(结算屏→read_round_outcome→performance.record 记 hp trend)+ 失败屏 hp=0 conf=1.0(D-51)+ node_type 推断「首领」→boss(D-52)。实机验证(DOT队 plane1 r1-9 记 hp 62→0)。**next**:P2 地道化 / **弱阵策略**(整局暴露 DOT队 B 级易成型但 plane1 死,comp_score 无「成型后战力」考量 → P2 comp_viability 观测 blend 或调 W_STR 偏 S 级列车同行 A850 挂机流)。
+> **P1 已落地(2026-08-05,D-36)** ✅ + **P1.5 观测回路已落地(2026-08-06,D-48~52)** ✅:接口+接线 + on_round_end 观测回路(结算屏→read_round_outcome→performance.record 记 hp trend)+ 失败屏 hp=0 conf=1.0(D-51)+ node_type 推断「首领」→boss(D-52)。实机验证(DOT队 plane1 r1-9 记 hp 62→0)。
+>
+> **弱阵 + 事件长尾修(2026-08-06,D-54~60)**:① **D-58** env 接线 bug(已选投资环境从不存 `state.active_env` → `env_fit`/T0 硬绑静默失效)→ StrategySession 加 `active_env` + HandleInvestEnv 写 + update_target copy;② **D-59** 弱阵:maybe_pivot 信号1 阈值随 best vs target 成型难度调节(best 易 + target 未成型 → ×0.7,倾向易成型 comp,慢 comp 拖死);③ **D-54/57/60** 事件 flat-loop(消耗品 modal / app _in_match 大厅误判 / choose_partner 硬编码坐标落间隙)。**待新局全验**(env 绑定 + 易 comp pivot + choose_partner)。**next**:据新局结果迭代弱阵(commitment/roll-for-target:target 过粘时 plan 该 roll 找 target 阵营不买 off-target 散牌)+ P2 comp_viability 观测 blend。
 
 | 阶段 | 内容 | 游戏? | 风险 |
 |---|---|---|---|
