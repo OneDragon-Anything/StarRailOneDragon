@@ -537,11 +537,16 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
     if state.hp < _pivot_hp:
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
-        fastest = min(easy, key=lambda c: c.typical_form_round or 99)
+        # D-65:保命优先 board 有 progress 的 easy comp(防切到 board 不支持的 comp → 无法成型 → 还是死)。
+        # 2026-08-06 实跑:hp1 时切 DOT队(board 无 持续伤害/减益)→ 无法成型 → 死;该优先 board 有 progress 的。
+        with_progress = [c for c in easy if form_progress(c, state) > 0]
+        pool = with_progress if with_progress else easy
+        fastest = min(pool, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:
-            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s',
+            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s%s',
                      state.plane, state.round_num, state.hp, _pivot_hp,
-                     target.name if target else 'None', fastest.name)
+                     target.name if target else 'None', fastest.name,
+                     ' [board有progress优先]' if with_progress else '')
             return fastest
         return None   # 已在最快 easy comp → 保持(不让信号 1/2 churn 切走)
     # 信号 1:更优涌现。**决策迹日志**(D-56):best≠target 才评 gap;log score/gap/决策(弱阵诊断:

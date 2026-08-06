@@ -15,6 +15,12 @@
 
 ---
 
+## D-65 (2026-08-06) 弱阵:信号3 保命优先 board 有 progress 的 easy comp(防切 board 不支持的 fast-easy) · cw_comps
+- **决策**:信号3(保命,hp<0.75×threshold)选最快 easy comp 时,**优先 board 有 form_progress>0 的 easy comp**(无则 fallback 全 easy)。log 加 `[board有progress优先]` 标记。
+- **为什么(2026-08-06 实跑 plane1 r8 死)**:hp 流血到 1(hp<30 保命触发)→ 信号3 切 **DOT队**(fast easy,form_round 4),但 board 是 追击/群攻(**无 DOT队 的 持续伤害/减益**)→ DOT队 无法成型 → 仍死。切到一个 board 不支持的 fast-easy = 无效保命(成型不了还是死)。该优先 board 已有 progress 的 easy comp(如 列车同行,board 有 列车同行:1 → 能继续堆成型)。
+- **备选**:① 保命切当前 target 若正在成型(推翻:target 可能 medium/hard,保命该偏 easy 快成型;D-65 在 easy 池内筛 progress 更稳);② 完全弃保命切换(推翻:D-40 实跑证明低 hp 不稳 churn 死亡螺旋,保命切稳定 easy 是对的,D-65 只加 board-progress 约束);③ 信号3 也看 comp_viability 观测(将来,P2)。
+- **状态**:采用。40 cw_comps 测试绿(改 test_maybe_pivot_low_hp_signal3:board full 成型 easy → 保命选它,非弃成型);ruff 净。**关联**:F1(commit 阈值)尚未做(strategy/12);D-65 是保命的 board-alignment 细化。· 弱阵(D-40 保命 + D-59 易comp + strategy/12)
+
 ## D-64 (2026-08-06) choose_partner confirm mouse_move + 验 overlay 关(bug#1 + ADR-0009) · handle_select_partner
 - **决策**:candidate + confirm click 前 `mouse_move`(bug#1 缓解);confirm 改 OCR 定位(`_find_text_center`)+ mouse_move + click(弃 `round_by_ocr_and_click` 裸 click);confirm 后验 overlay 关(选择伙伴 消失),没关 `round_retry`(ADR-0009 兜底)。
 - **为什么(2026-08-06 r6 stall)**:choose_partner iter102+ flat-loop:`已选择→直接确认` round_success 但 overlay 不关。**probe 实测**:手动 click candidate(945,301)→已选择→手动 click 确认(1441,582)→**overlay 关回备战**。bot 的 `round_by_ocr_and_click` confirm 被 bug#1 吞(before_screenshot 移光标→click 落空)→ overlay 持留 → flat-loop。r9 同型(手动 click 即关)。
