@@ -15,6 +15,16 @@
 
 ---
 
+## D-109 (2026-08-08) select_comp board-aware + shop_supply 收紧(策略子agent P1,治 target/board 不匹配)· §03/§12
+
+- **决策**:① select_comp 加 `_board_alignment`(comp 阵营 board count≥2 → ×1.2 deep-stack boost;全无 → ×0.7 penalty;count≥1 → ×1.0);② `shop_supply` 收紧(核心阵营 form_tiers keys 在 shop 才 1.0;非核心 0.5;旧 any faction=1.0 太松)。
+- **为什么**:策略子agent a9a0a871 分析 bot die plane1 根因 **P1 = select_comp 不跟 board**:spread board 下所有 comp form_progress 低且相近 → target 被 shop_supply/strength 主导(非 board)→ 选 board 不支持的 comp → deployed-lock 下永不成型。shop_supply 太松(any faction=1.0)放大 shop 噪声。
+- **robust to board OCR 噪声(P4)**:board-alignment 用 count≥1 判 has_any(faction 在板 = ≥1 deployed,可靠);count≥2 是 bonus 非 penalty(OCR 误读 count 不降权)。
+- **备选**:COMMIT_ROUND=2 + deploy target-only(子agent B,需 A 先行 + 多局验,tempo 风险);_board_pairs denoise(D,地基)。
+- **状态**:采用。214 测试绿。live 验待:target 跟 board 走 → comp 成型改善。· T#97 / `_board_alignment` / `shop_supply` / 策略子agent P1
+
+---
+
 ## D-108 (2026-08-08) deploy 优先级:target 阵营先 deploy(CW deployed 锁定 + board=deployed 模型)· §12
 
 - **决策**:`DeployBench._deploy_by_identity` 加 `target_factions` 参数 → target 阵营角色 sorted **先 deploy**(限槽时 target 先占,off-target 溢出留 bench sellable)。无 target(早期/reactive)→ 不排序(原行为)。

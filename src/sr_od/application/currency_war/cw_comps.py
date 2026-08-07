@@ -302,8 +302,13 @@ def shop_supply(comp: Comp, state: GameState) -> float:
     if not comp.factions:
         return 1.0
     shop_factions = {c.faction for c in state.shop}
-    if any(f in shop_factions for f in comp.factions):
+    # D-109:收紧 —— 核心(form_tiers keys)阵营在 shop 才 1.0;仅非核心阵营 → 0.5(旧 any faction=1.0 太松,
+    # 1 张非核心牌就让 comp 看似可成型 → select_comp 被 shop 噪声主导;策略子agent P1)。
+    core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)
+    if any(f in shop_factions for f in core):
         return 1.0
+    if any(f in shop_factions for f in comp.factions):
+        return 0.5   # 仅非核心阵营在 shop → 半信号
     board_factions = set(state.board.keys())
     if any(f in board_factions for f in comp.factions):
         return 0.3   # 仅 board 有,shop 买不到更多 → 弱成型信号(I14)
@@ -469,6 +474,24 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     return form_fac * power_fac
 
 
+def _board_alignment(comp: Comp, state: GameState) -> float:
+    """D-109:board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
+
+    comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.7(deployed-lock 下不可成型);
+    count≥1 → ×1.0(中性)。**robust to board OCR 噪声**:count≥1 判 has_any 可靠(faction 在板 = ≥1
+    deployed);count≥2 是 bonus 非 penalty(OCR 误读 count 不降权)。策略子agent P1:spread board 下
+    select_comp 不跟 board → 选 board 不支持的 comp → 永不成型。
+    """
+    if not comp.factions:
+        return 1.0
+    board = state.board
+    if any(board.get(f, 0) >= 2 for f in comp.factions):
+        return 1.2   # deep-stack → boost
+    if not any(board.get(f, 0) >= 1 for f in comp.factions):
+        return 0.7   # 全不在 board → penalty
+    return 1.0
+
+
 def select_comp(state: GameState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
@@ -483,6 +506,7 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
         s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
+        s *= _board_alignment(comp, state)   # D-109:board-aware(deployed-lock → 选 board 支持的 comp)
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
