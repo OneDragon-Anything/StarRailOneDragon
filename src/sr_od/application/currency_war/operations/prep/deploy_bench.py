@@ -21,7 +21,10 @@ from sr_od.application.currency_war.currency_war_char_id import (
     load_avatar_templates,
 )
 from sr_od.application.currency_war.cw_chars import get_char
-from sr_od.application.currency_war.cw_identity_obs import read_bench_chars
+from sr_od.application.currency_war.cw_identity_obs import (
+    read_bench_chars,
+    read_deployed_chars,
+)
 from sr_od.application.currency_war.cw_observation import read_deployed_count
 from sr_od.application.currency_war.cw_state import DeployMove
 from sr_od.context.sr_context import SrContext
@@ -80,7 +83,12 @@ class DeployBench(SrOperation):
         # D-108d:cap-limited deploy。CW deploy cap=level(max_units);旧码拖**全部**识别 bench(7),cap(level 4)
         # 只落 4,余 drag-to-occupied 被拒浪费(每轮多 3 drag)。cap_remaining=level-已部署 → 仅拖 cap_remaining 个
         # (D-108c target-first 占有限额,off-target 不再浪费 drag 也避免误 lock)。level/deployed 读不到 → None(全 deploy 兜底)。
-        _deployed_before = read_deployed_count(self.ctx, self.last_screenshot)
+        # D-108f:SIFT deployed count(read_deployed_chars → occupied 槽 len)替 OCR read_deployed_count。
+        # OCR 死胡同(3 法全败:rect-scope/crop+zoom None,full-screen 读错元素);SIFT 同 read_bench_chars D-102
+        # 管线 robust。无 templates → OCR 兜底(退化,可能 None)。
+        _dep_sift = read_deployed_chars(self.ctx, self.last_screenshot, templates) if templates else None
+        _deployed_before: int | None = (len(_dep_sift) if _dep_sift is not None
+                                        else read_deployed_count(self.ctx, self.last_screenshot))
         _lv = (match.session.last_state.level
                if (match is not None and match.session is not None
                    and match.session.last_state is not None) else None)
