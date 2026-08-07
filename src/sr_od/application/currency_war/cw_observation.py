@@ -418,7 +418,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # D-107(RC1,治 T#97 战术层 desync):deployed 从 board 真值重建 → deployed_count() 对齐实际阵上数。
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
-    state.deployed = rebuild_deployed_from_board(state.board, state.back_max)
+    state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     return state

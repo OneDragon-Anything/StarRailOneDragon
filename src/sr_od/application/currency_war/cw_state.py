@@ -134,23 +134,22 @@ class GameState:
         return None
 
 
-def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6) -> list[BenchChar]:
+def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
+                               max_count: int | None = None) -> list[BenchChar]:
     """从 board(OCR 阵营计数真值)重建 ``deployed`` 列表 → ``deployed_count()`` 对齐实际阵上数。
 
-    D-107(RC1 fix,治 T#97 战术层 desync):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` →
-    ``deployed_count()`` 恒 0 → ① ``_saving_for_interest``(需 ``deployed≥max_units``)永不触发
-    → bot 不攒息、散买 off-target(gold→0 spread 根因);② 买+deploy 门(``deployed<max``)恒真 →
-    每买必发 DeployMove;③ deploy-from-bench 把幻影 bench 全 deploy。本 helper 在读屏边界把 deployed
-    从 board 真值重建,计数门恢复正确。
-
-    identity(char_id)/star OCR 只给阵营计数读不到 → 占位("" / 1);前后排近似(back 先填至 back_max
-    再 front,近真实布局)。**计数门**(``_saving_for_interest``/买+deploy/deploy-from-bench)用
-    ``deployed_count()``;实际槽位 + 身份由 DeployBench SIFT 处理(char_quality 仍受影响 = RC2 后续)。
+    D-107(RC1 fix):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效。本 helper 从 board
+    重建 deployed。
+    **D-114**:max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
+    sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
+    **误触**(board 没满却当满 → 不买 target 到 bench → D-113 被 block)。cap at level = 实际 deployed 上限。
     """
     deployed: list[BenchChar] = []
     back_left = back_max
     for faction, count in board.items():
         for _ in range(count):
+            if max_count is not None and len(deployed) >= max_count:
+                return deployed   # D-114: cap at level(multi-faction overcount guard)
             pref = "back" if back_left > 0 else "front"
             if back_left > 0:
                 back_left -= 1
