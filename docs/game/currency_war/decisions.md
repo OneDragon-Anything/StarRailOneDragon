@@ -15,6 +15,16 @@
 
 ---
 
+## D-107 (2026-08-08) 战术层 desync 真根因:deployed 恒 [] → 经济/deploy 门全失效(RC1 首修)· §12
+
+- **决策**:`read_game_state` 从 board 真值重建 `deployed`(新 `rebuild_deployed_from_board` helper)→ `deployed_count()` 对齐实际阵上数。修 **RC1**(子agent a5a4c3358 查实)。
+- **为什么**:D-106(commit 拒 off-target)只解 buy-spread-at-commit,但 live 仍死 → 子agent 深查发现**战术执行模型整体 desync**(非单点):旧 `read_game_state` 不填 deployed(docstring「v1 不读 deployed 身份」)→ 恒 [] → `deployed_count()` 恒 0 → ① **`_saving_for_interest`(需 deployed≥max_units)永不触发 → bot 不攒息、散买 off-target(gold→0,T#97 spread 真根因之一)**;② 买+deploy 门(`deployed<max`)恒真 → 每买必 DeployMove;③ deploy-from-bench 把幻影 bench 全 deploy。board=OCR 真值(每轮重读),deployed 旧从不从 board 重建 → 计数脱节。同批查实 RC2(tracked_bench append-only 幻影)/RC3(DeployBench 拖已占槽)/RC4(bench 溢出位置卖),RC1 = 计数门失效 = 经济崩溃根因,优先修。
+- **修法**:`rebuild_deployed_from_board(board, back_max)` 从 board 重建 deployed(back 先填至 back_max 再 front 近真实布局;identity/star 占位 —— OCR 只给阵营计数读不到 char_id,计数门用,实际槽位 DeployBench SIFT 处理)。`read_game_state` 调用它填 `state.deployed`。
+- **备选**:① 改 `deployed_count()` 返 `sum(board.values())`(推翻:破坏 test 显式设 deployed 的用例);② 重建含真 identity(推翻:SIFT 不可靠,OCR 读不到 char_id)。
+- **状态**:采用。214 cw 测试绿(+ 2 新单测:rebuild 计数/前后排 + board 满+gold<50 → 攒息不散买)。**RC1 首修;RC2/RC3/RC4 待续**(子agent 报告见 process_log 2026-08-08)。live 验待:bot 攒息(gold 不再→0)+ deployed 门恢复 → 配 D-106 减 spread。· T#97 / `rebuild_deployed_from_board` / `cw_observation.read_game_state`
+
+---
+
 ## D-106 (2026-08-08) commit 后买牌拒 off-target(prefilter 加 commitment gate,治 T#97 spread 根因)· §03/§08
 
 - **决策**:`cw_decisions` 买牌 prefilter 加 commitment gate —— 已 commit(`target_committed`)时,off-target 卡**也拒**(不仅「shop 有买得起 target」时拒)。`COMMIT_FRAC`/`COMMIT_ROUND`/`COMMIT_STICK_FACTOR` 提 `cw_comps` 模块级 + 新 `target_committed()` helper(maybe_pivot 强粘 + prefilter 拒 off-target **共用单一判据**)。

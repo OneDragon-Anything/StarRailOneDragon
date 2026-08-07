@@ -71,7 +71,11 @@ from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     parse_settlement_hp,
     read_round_outcome,
 )
-from sr_od.application.currency_war.cw_state import GameState, ShopCard
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    ShopCard,
+    rebuild_deployed_from_board,
+)
 from sr_od.context.sr_context import SrContext
 
 
@@ -403,6 +407,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _bp = _board_pairs(ctx, screen)
     state.board = {f: c for f, (c, _nt) in _bp.items()}
     state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
+    # D-107(RC1,治 T#97 战术层 desync):deployed 从 board 真值重建 → deployed_count() 对齐实际阵上数。
+    # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
+    # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
+    state.deployed = rebuild_deployed_from_board(state.board, state.back_max)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     return state

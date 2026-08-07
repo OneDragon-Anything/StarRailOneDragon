@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 策略状态模型(GameState + Action + 前瞻 simulate)。
 
 策略采用「评估函数 + 贪心改进」架构(见 cw_decisions.evaluate / plan):
@@ -130,6 +132,30 @@ class GameState:
         if 0 <= idx < len(self.plane_bosses):
             return self.plane_bosses[idx]
         return None
+
+
+def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6) -> list[BenchChar]:
+    """从 board(OCR 阵营计数真值)重建 ``deployed`` 列表 → ``deployed_count()`` 对齐实际阵上数。
+
+    D-107(RC1 fix,治 T#97 战术层 desync):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` →
+    ``deployed_count()`` 恒 0 → ① ``_saving_for_interest``(需 ``deployed≥max_units``)永不触发
+    → bot 不攒息、散买 off-target(gold→0 spread 根因);② 买+deploy 门(``deployed<max``)恒真 →
+    每买必发 DeployMove;③ deploy-from-bench 把幻影 bench 全 deploy。本 helper 在读屏边界把 deployed
+    从 board 真值重建,计数门恢复正确。
+
+    identity(char_id)/star OCR 只给阵营计数读不到 → 占位("" / 1);前后排近似(back 先填至 back_max
+    再 front,近真实布局)。**计数门**(``_saving_for_interest``/买+deploy/deploy-from-bench)用
+    ``deployed_count()``;实际槽位 + 身份由 DeployBench SIFT 处理(char_quality 仍受影响 = RC2 后续)。
+    """
+    deployed: list[BenchChar] = []
+    back_left = back_max
+    for faction, count in board.items():
+        for _ in range(count):
+            pref = "back" if back_left > 0 else "front"
+            if back_left > 0:
+                back_left -= 1
+            deployed.append(BenchChar(slot=len(deployed), faction=faction, star=1, position_pref=pref))
+    return deployed
 
 
 # ===== Action(动作;simulate 前瞻用) =====
