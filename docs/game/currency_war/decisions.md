@@ -15,6 +15,14 @@
 
 ---
 
+## D-105 (2026-08-07) supply 接 decide_supply(read_supply_options OCR 装备/角色列 → key_equips 契合选)· T#99 决策接线
+
+- **决策**:`RunSupplyNode._do_action` 接 `strategy.decide_supply` —— 新建 `read_supply_options`(cw_node_obs)OCR 补给每列(装备名 y≈680 + 角色名 y≈545,按 x 聚列)→ `SupplyOption` 列表 → `decide_supply` 按 `target_comp.key_equips` 契合 + 装备通用价值(`_EQUIP_VALUE`)选最优列 → 点该列卡身 + 确认。替代原盲点 `CARD_BODY`(900,550)= 永远第一列。
+- **为什么**:用户指正「还是没接决策」—— supply handler 盲点 CARD_BODY,策略 `decide_supply` 钩子空悬。补给每轮都遇(高频)+ 装备/钻选择直接影响战力 → 必须策略化。实捕 round1-5 补给(视觉大模型 + OCR 核实):5 列,每列 = 角色 + 装备,无刷新按钮(故 `decide_supply` 传 `refresh_used=True` 跳过刷新逻辑),钻(红/蓝)此帧无。
+- **状态**:采用。supply/megastar/deploy 决策接线完成(megastar 早接 read_megastar_options 正则抽「盛会之星一X先生/女士」char_id;deploy D-100/D-102)。**partner 未接**:候选只有立绘、名字/标签不可读(视觉大模型 2026-08-07 核实)→ OCR 路不通,需 SIFT 立绘识别(同 read_bench_chars,CW 立绘库)才能喂 `decide_partner` 真角色名 → 独立子项。钻视觉判定(has_diamond)+ 装备 y 带多样本核 = TODO。· T#99 / `decide_supply` / `read_supply_options`
+
+---
+
 ## D-104 (2026-08-07) 修 _record_round_outcome gate「挑战结束」→实屏「挑战成功」(激活 P1.5 观测回路 + D-94 last_hp)· battle_loop
 
 - **决策**:`_record_round_outcome` 删错误的结算屏 gate(`round_by_ocr('挑战结束')`)。它仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用,gate 冗余;且 gate 查「挑战结束」与**实屏「挑战成功」**不符 → 永不命中 → on_round_end 从不调。

@@ -16,7 +16,12 @@ import re
 
 from cv2.typing import MatLike
 
-from sr_od.application.currency_war.cw_decisions import EncounterOption, MegastarOption
+from one_dragon.base.geometry.point import Point
+from sr_od.application.currency_war.cw_decisions import (
+    EncounterOption,
+    MegastarOption,
+    SupplyOption,
+)
 from sr_od.context.sr_context import SrContext
 
 # 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 易 … 其六=6);decide_encounter 按难度选。
@@ -96,3 +101,47 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
         cands.append((mrl.max.center.x, m.group(1)))
     cands.sort(key=lambda c: c[0])
     return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]
+
+
+# 补给选项 y 带(实捕 round1-5:角色名 y≈545 / 装备名 y≈680;TODO 多样本核,布局可能随补给类型微变)。
+_SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
+_SUPPLY_EQUIP_Y: tuple[int, int] = (640, 735)
+_SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 RunSupplyNode.CARD_BODY;点卡身不开对话直接选中)
+_SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
+
+
+def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
+    """OCR 补给选项(每列 = 角色卡 + 装备)→ ``[(SupplyOption, 卡身点击点)]``,按 x 左→右。
+
+    布局(实捕 round1-5 补给,视觉大模型 + OCR 核实):N 列(实测 5;docstring 旧「3 选 1」过时),每列 =
+    角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 + 右下「确认」。**无刷新按钮**(decide_supply
+    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻(红/蓝 = 基本赢)视觉判定待补(``has_diamond`` 恒 False,TODO)。
+
+    装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
+    (handler 退默认 ``CARD_BODY``)。
+    """
+    from sr_od.application.currency_war.cw_chars import get_char
+    ocr_map = ctx.ocr_service.get_ocr_result_map(
+        image=screen, rect=None, color_range=None, crop_first=False,
+    )
+    equips: list[tuple[int, str]] = []   # (cx, name)
+    chars: list[tuple[int, str]] = []    # (cx, name) roster-validated
+    for text, mrl in ocr_map.items():
+        if mrl.max is None or not text:
+            continue
+        cx, cy = mrl.max.center.x, mrl.max.center.y
+        if _SUPPLY_EQUIP_Y[0] <= cy <= _SUPPLY_EQUIP_Y[1]:
+            equips.append((cx, text))
+        elif _SUPPLY_CHAR_Y[0] <= cy <= _SUPPLY_CHAR_Y[1] and get_char(text) is not None:
+            chars.append((cx, text))
+    equips.sort(key=lambda e: e[0])
+    out: list[tuple[SupplyOption, Point]] = []
+    for i, (ex, ename) in enumerate(equips):
+        ch = ''
+        if chars:
+            ncx, nname = min(chars, key=lambda c: abs(c[0] - ex))
+            if abs(ncx - ex) < _SUPPLY_COL_X_TOL:
+                ch = nname
+        out.append((SupplyOption(idx=i, char=ch, equip=ename, has_diamond=False),
+                    Point(ex, _SUPPLY_CARD_CLICK_Y)))
+    return out
