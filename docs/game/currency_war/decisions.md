@@ -15,6 +15,26 @@
 
 ---
 
+## D-102 (2026-08-07) deploy 身份驱动(采 CW 立绘库 + read_bench_chars,修 D-100 bench_idx 错位)· deploy_bench / cw_identity_obs / collect_portraits_op
+
+- **决策**:deploy_bench 改用 `read_bench_chars`(CW 立绘库 SIFT 识别实际 bench 每槽角色)→ 按角色 `position_pref` deploy(front/back),替代 D-100 的 tracked_bench idx(tracked_bench 顺序 ≠ 实际槽位 → 拖错角色)。
+- **为什么**:D-100 deploy bug 根因 —— `bench_idx`(tracked_bench 顺序)索引固定槽位坐标,但实际槽位角色顺序 ≠ tracked_bench append 顺序(sell/合成/deploy 后槽位变)→ 拖错。用户引导:① 别偷懒用现成 avatar 脸库(D-75 配饰/变体弱),采图鉴 canonical 半身立绘;② `read_bench_chars` 从没在 op 集成(cw_identity_obs 旁路离线用),D-100 没用它。
+- **实现链**:① 采全 71 角色图鉴半身立绘(`CollectPortraits` op,白框法:点卡片 → CV 定位选中白框 → crop 立绘;对齐 `HarvestEquipCodex` 模式;多帧 OCR 补 det 漏)② `load_avatar_templates` 修中文路径(np.fromfile+imdecode,cv2.imread 中文挂)③ `resolve_char_name` 加 CW 库中文 key 直接返(CW 库 key 是中文名非主游英文 id;否则 `get_character_by_id(中文)=None` 全 skip)④ deploy_bench `_get_templates` 切 CW 库(character_cw_portrait,比 avatar 脸库强:卡芙卡 avatar 9 临界 → CW 25 STRONG)。
+- **验证**:read_bench_chars 实机识别 5(藿藿/艾丝妲/大丽花/飞霄/那刻夏 STRONG 22-54);deploy 身份驱动(按 position_pref 拖 back/front,非 tracked_bench 错位)。D-100 bug 解。
+- **备选**:① tracked_bench(全错位,否);② avatar 脸库(配饰/变体弱 D-75,否);③ 采图鉴 canonical 立绘(强,采用)。
+- **状态**:采用。CW 库 71 canonical,SIFT 匹配备战栏 STRONG;deploy 身份驱动实机验证。· §deploy / cw_identity_obs
+
+---
+
+## D-99 (2026-08-07) 巨星触发 = 持有盛会之星角色时进备战弹(↺ 推翻早期「round6/位面首领」假设)· 玩法认知
+
+- **决策**:巨星(盛会之星选择 overlay)触发条件 = 【假设·待正向验证】玩家持有盛会之星角色时,进入备战回合弹出;候选 = 持有的盛会之星角色(每局不同);**非固定节点**。
+- **为什么**:用户质问「巨星何时出现你搞懂没」→ 查 research/wiki/3 个实机样本。证据(均为**观察相关**,非正向验证):① 局A `iter=1`(开局备战,绝非首领)就弹,候选盛会之星 → 持有即弹;② 局B 全程 0 个盛会之星角色 → 全程无巨星(plane1 走 9 关都没弹);③ 旧图 1-6 持有花火+星期日 → 1-6 弹。攻略/wiki 均未提「固定节点」→ 支持动态触发。早期代码注释「位面首领 round6」「每面 r6」(D-95 docstring / D-97c 注释)是瞎猜,D-30「plane1 round6」是巧合观察非规律。
+- **备选**:① 固定每面第 6 关首领(research 称)—— 局B 1-6 无巨星 + 局A 开局弹,否定;② 首领节点触发 —— 局A `iter=1` 非首领,否定;③ 持有盛会之星触发 —— 3 样本相关支持,**但未正向验证**(没主动买盛会之星看出战下关弹)。
+- **状态**:**【假设·待正向验证】**(用户 2026-08-07 指正:未验证就下结论 + 删了 TODO 是错的)。3 样本相关推断,非因果验证;**正向验证前不当事实**。已把 docstring / gameplay doc 措辞改回「假设·待验证 TODO」。**dispatch 不受影响**(loop 0b OCR 反应式检测「确认选择」,不管何时弹都接得住;该机制是真是假 bot 都靠 OCR 反应处理)。`decide_megastar` 按 buff 契合选候选(机制验证与否不影响)。**正向验证 todo**:主动买盛会之星角色(大丽花 1费,准坐标 商店牌 center)→ 出战 → 看下关备战弹巨星 overlay。· §08 巨星 / `gameplay/currency_war.md`
+
+---
+
 ## D-97 (2026-08-07) 巨星候选**只点一次**(flag 防 RunNode retry re-click toggle 反选)—— 真根因 + step2 强化角色实为可选 · RunMegastarNode._do_action
 
 - **决策**:`_do_action` 加 `_candidate_clicked` flag → 候选只点一次(首次点 + 设 flag;retry 跳过候选只重 confirm)。删 D-96 的 step2 必需假设(step2 实可选,转安全网)。

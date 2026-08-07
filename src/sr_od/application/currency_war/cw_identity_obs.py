@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 **备战屏 视觉身份观测**(SIFT,非 OCR)。
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
@@ -47,6 +49,8 @@ def resolve_char_name(avatar_id: str) -> str | None:
     ⚠️ 变体消歧对「基础名 + 变体名并存」的 roster(姬子/姬子·启行、刃/千冶·刃)子串命中**第一个**,
     可能不准 —— 变体与基础角色共脸,SIFT 本身无法区分,需结合星级 / 阵营等旁证(待多样本核)。
     """
+    if avatar_id in CHARACTER_ROSTER:
+        return avatar_id   # CW 立绘库 key 是中文规范名(白框法采),直接返(非主游英文 id)
     c = get_character_by_id(avatar_id)
     if c is None:
         return None

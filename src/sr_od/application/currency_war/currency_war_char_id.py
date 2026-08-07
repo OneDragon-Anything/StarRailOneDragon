@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争角色识别:SIFT 特征匹配 ``assets/template/character_avatar/`` 模板库(主游脸近景)。
 
 **2026-08-06 实测复盘(D-75,扭转旧结论)**:用实机备战**半身立绘**真图重测,脸近景库对面部独特
@@ -41,7 +43,7 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
         raw = child / 'raw.png'
         if not raw.is_file():
             continue
-        img = cv2.imread(str(raw))
+        img = cv2.imdecode(np.fromfile(str(raw), dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

@@ -9,12 +9,18 @@
 槽位坐标固定在 screen_info「货币战争-备战」(备战栏-1..9 / 前排-1..4 / 后排-1..6)。
 """
 import time
+from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_char_id import (
+    AvatarTemplates,
+    load_avatar_templates,
+)
+from sr_od.application.currency_war.cw_identity_obs import read_bench_chars
 from sr_od.application.currency_war.cw_observation import read_deployed_count
 from sr_od.application.currency_war.cw_state import DeployMove
 from sr_od.context.sr_context import SrContext
@@ -59,18 +65,26 @@ class DeployBench(SrOperation):
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
             return self.round_success(DeployBench.STATUS_NO_BENCH)
 
-        # D-98:策略驱动部署 —— 读 session.pending_deploys(plan 算出的 DeployMove 列表)。
-        match = self.ctx.cw_match
-        moves: list[DeployMove] = (
-            list(match.session.pending_deploys) if match is not None else []
-        )
-
-        if moves:
-            log.info(f'[cw-deploy] 策略驱动:plan 给了 {len(moves)} 个 DeployMove')
-            self._deploy_strategic(moves, bench, front, back)
+        # D-102:实际 bench 身份识别(read_bench_chars SIFT)→ 按角色 position_pref deploy,
+        # 替代 tracked_bench idx(tracked_bench 与实际槽位错位 → 拖错角色,旧 D-98 bug 根因)。
+        # 配饰/变体角色 SIFT 漏识别(D-75 待核)→ 漏的 naive 补舞台剩余;后续采图鉴立绘补全。
+        templates = self._get_templates()
+        actual = read_bench_chars(self.ctx, self.last_screenshot, templates) if templates else []
+        if actual:
+            log.info(f'[cw-deploy] 身份驱动:识别 {len(actual)} 个 '
+                     f'{[(b.char_id, b.position_pref) for b in actual]}')
+            self._deploy_by_identity(actual, bench, front, back)
         else:
-            log.info('[cw-deploy] 无 pending_deploys → naive 填位(前排优先)')
-            self._deploy_naive(bench, front, back)
+            match = self.ctx.cw_match
+            moves: list[DeployMove] = (
+                list(match.session.pending_deploys) if match is not None else []
+            )
+            if moves:
+                log.info(f'[cw-deploy] 识别失败 → 退 plan DeployMove({len(moves)},tracked_bench idx 可能错位)')
+                self._deploy_strategic(moves, bench, front, back)
+            else:
+                log.info('[cw-deploy] 识别失败且无 pending_deploys → naive 填位')
+                self._deploy_naive(bench, front, back)
 
         # 验落地(bug#1:drag 落空观测)。
         time.sleep(0.5)
@@ -78,6 +92,64 @@ class DeployBench(SrOperation):
         log.info(f'[cw-deploy] 拖完 已部署={deployed_after}')
 
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
+
+    def _get_templates(self) -> AvatarTemplates | None:
+        """加载 avatar SIFT 模板(缓存到 ctx.cw_avatar_templates,首次 load 后复用)。
+
+        ``read_bench_chars`` 从没在 op 集成过(cw_identity_obs 是旁路离线用),故 op 里无现成预加载;
+        首次 deploy 时 load,挂 ctx 缓存供本局后续 deploy/识别复用。
+        """
+        cached = getattr(self.ctx, 'cw_portrait_templates', None)
+        if cached is not None:
+            return cached
+        portrait_dir = Path(__file__).resolve().parents[6] / 'assets/template/character_cw_portrait'
+        if not portrait_dir.is_dir():
+            log.warning(f'[cw-deploy] 立绘库目录不存在 {portrait_dir},退非身份 deploy')
+            return None
+        templates = load_avatar_templates(portrait_dir)
+        self.ctx.cw_portrait_templates = templates
+        log.info(f'[cw-deploy] 加载 {len(templates)} 个 avatar 模板(缓存 ctx)')
+        return templates
+
+    def _deploy_by_identity(self, actual: list, bench: list[Point],
+                            front: list[Point], back: list[Point]) -> None:
+        """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
+
+        每个识别成功的角色(STRONG):按 ``position_pref``(front/back)拖到对应排下一个空槽。
+        未识别槽(配饰/变体 SIFT 漏,D-75 待核):naive 补舞台剩余空槽(位置式,不靠身份)。
+        绕过旧 bug(tracked_bench 顺序 ≠ 实际槽位 → 拖错)。
+        """
+        front_idx = back_idx = 0
+        dragged = 0
+        for bc in actual:
+            if bc.slot < 1 or bc.slot > len(bench):
+                continue
+            src = bench[bc.slot - 1]
+            pref = bc.position_pref or 'back'
+            if pref == 'front' and front_idx < len(front):
+                dst, front_idx = front[front_idx], front_idx + 1
+            elif back_idx < len(back):
+                dst, back_idx = back[back_idx], back_idx + 1
+            elif front_idx < len(front):   # back 满,溢出 front
+                dst, front_idx = front[front_idx], front_idx + 1
+            else:
+                break
+            self.ctx.controller.drag_to(end=dst, start=src, duration=1.0)
+            time.sleep(0.4)
+            dragged += 1
+            log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → '
+                     f'{pref}槽(前{front_idx}/后{back_idx})')
+        # 未识别槽(配饰/变体漏)naive 补舞台剩余空槽
+        deployed_slots = {bc.slot for bc in actual}
+        remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
+        targets = front[front_idx:] + back[back_idx:]
+        for i, slot_i in enumerate(remaining):
+            if i >= len(targets):
+                break
+            self.ctx.controller.drag_to(end=targets[i], start=bench[slot_i - 1], duration=1.0)
+            time.sleep(0.4)
+            dragged += 1
+        log.info(f'[cw-deploy] 身份拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
 
     def _deploy_strategic(self, moves: list[DeployMove], bench: list[Point],
                           front: list[Point], back: list[Point]) -> None:

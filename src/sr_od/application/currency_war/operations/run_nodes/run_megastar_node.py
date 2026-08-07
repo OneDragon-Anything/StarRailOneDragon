@@ -1,11 +1,22 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
-"""货币战争 巨星节点 RunNode(位面首领 round6 的巨星选择 overlay)。
+"""货币战争 巨星节点 RunNode(盛会之星羁绊的「选巨星」overlay)。
 
-实机(2026-08-04):强化角色**可选**,不选也能确认推进 —— 点确认后 overlay 消失、回备战 1-6
-出战。套 RunNode 验证(overlay 消失=完成)+ 预算(点不动 bail,不再无限烧预算)。
+**玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
+- 盛会之星 = 阵营羁绊(花火/星期日/知更鸟/黑天鹅/大丽花/加拉赫 + 盛会之星星徽)。
+- 「巨星」= 选 1 名盛会之星角色当巨星,**给全队独特 buff**(各巨星不同,随羁绊等级 2/3/4/5/6 递增):
+  花火=进战给战技点+普攻/战技增伤;星期日=前台首位前台强度+后台首位后台强度;
+  知更鸟=幸运一击;黑天鹅=5费增伤;大丽花/加拉赫=击破伤害增幅+治疗强度。
+- **触发条件【待实机验证 TODO】**:强指向 = **盛会之星羁绊激活时**(≥2 名上阵前排/后台凑够激活数)弹出 —— 非固定节点。
+  依据:① 用户 2026-08-07 给机制(羁绊激活=角色上阵凑数,盛会之星是羁绊);② 受控实验:上阵 1 个星期日(未激活)2-2 不弹;
+  ③ 旧样本(局A/旧图 2 个上阵→弹)。**但尚未亲眼看到 bot 上阵 ≥2 盛会之星激活→弹巨星**(用户告知 ≠ 实机验证),验证前不当事实。
+  候选=持有的盛会之星角色(每局不同)。overlay 叠备战屏:`请选择1名角色成为巨星`+候选立绘(左右)+
+  可选`请选择强化角色`+`确认选择`。
+- **dispatch 是 OCR 反应式**(battle_loop 0b 检测「确认选择」就接)→ 不管何时弹 bot 都接得住。
+- 强化角色**可选**(不选也能确认推进)—— 点确认后 overlay 消失回备战出战。套 RunNode 验证
+  (overlay 消失=完成)+ 预算(点不动 bail,不再无限烧预算)。
 
-TODO(策略):候选按 target_comp 选(现默认左=花火);强化角色可后续接(可选,不影响推进)。
+TODO(策略):候选按 target_comp 选(decide_megastar 已接,按 buff 契合);强化角色可后续接。
 TODO(task#20):候选/确认坐标进 screen_info。
 """
 import time
@@ -45,7 +56,7 @@ class RunMegastarNode(RunNode):
         still_in = (self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success
                     and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
         # D-97c:节点完成(overlay 关)→ 重置 session flag(下个 megastar 节点可重新点候选)。
-        # megastar 每 plane 至少 1 个(plane1 r6 + plane2 r6…),flag 不能跨节点保持 True。
+        # megastar 一局可能多次(每次持有盛会之星角色触发,见模块 docstring),flag 不能跨节点保持 True。
         if not still_in:
             _match = self.ctx.cw_match
             if _match is not None:
