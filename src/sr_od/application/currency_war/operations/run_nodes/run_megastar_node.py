@@ -46,32 +46,36 @@ class RunMegastarNode(RunNode):
                 and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
 
     def _do_action(self, screen) -> None:
-        # D-95 决策接线:read 巨星候选 → decide_megastar(select_megastar 按 target.core_chars / buff 契合)
-        # → 点选中 idx(替代默认左候选)。候选名位置 = 点击位置(实测)。bug#1 mouse_move 缓解。
-        options = read_megastar_options(self.ctx, screen)
-        match = self.ctx.cw_match
-        idx = 0
-        if match is not None and options:
-            _state = match.session.last_state or GameState()   # overlay 时用上次备战快照
-            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-            pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
-            if 0 <= pick.idx < len(options):
-                idx = pick.idx
-            log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
-        else:
-            log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
-        candidate = RunMegastarNode.CANDIDATE_LEFT if idx == 0 else RunMegastarNode.CANDIDATE_RIGHT
-        self.ctx.controller.mouse_move(candidate)
-        self.ctx.controller.click(candidate)
-        time.sleep(0.6)
+        # D-97:候选只点**一次**(防 RunNode retry re-click 把候选 toggle 反选 → confirm 无候选失效 → 卡死)。
+        # 2026-08-07 实测:星期日选中(金边)后 confirm@(1490,560) **即关 overlay** —— step2「强化角色」**可选**,
+        # 直接跳过。旧 D-96 误判 step2 必需(实为 toggle bug 致 confirm 无候选失效);根因是 RunNode retry re-click。
+        # megastar 选中态是**视觉**(金边,非 OCR「已选择」)→ 用 flag 保证候选只点一次(类 partner「已选择」守卫)。
+        if not getattr(self, '_candidate_clicked', False):
+            # D-95:read 候选 → decide_megastar(select_megastar 按 target.core_chars)→ 点选中 idx。bug#1 mouse_move。
+            options = read_megastar_options(self.ctx, screen)
+            match = self.ctx.cw_match
+            idx = 0
+            if match is not None and options:
+                _state = match.session.last_state or GameState()   # overlay 时用上次备战快照
+                _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+                pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
+                if 0 <= pick.idx < len(options):
+                    idx = pick.idx
+                log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
+            else:
+                log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
+            candidate = RunMegastarNode.CANDIDATE_LEFT if idx == 0 else RunMegastarNode.CANDIDATE_RIGHT
+            self.ctx.controller.mouse_move(candidate)
+            self.ctx.controller.click(candidate)
+            self._candidate_clicked = True   # 只点一次(防 retry toggle 反选)
+            time.sleep(0.6)
+        # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
         self.ctx.controller.click(RunMegastarNode.CONFIRM)
         time.sleep(0.9)
-        # D-96:巨星**两步** —— step1 confirm 后出 step2「请选择强化角色」(强化角色可选)→ 再 confirm 跳过强化,
-        # overlay 才关。旧码只 1 次 confirm → step2 残 → overlay 不关 → 主循环误判 prep、出战 click 落 overlay 空
-        # → 死循环(live round8 卡 9min;partner overlay reset 同类)。实测 confirm@(1490,560) 跳过强化推进。
+        # D-96 step2 安全网:正常 candidate-confirm 已关 overlay;若罕见仍在 + 有「请选择强化角色」→ 再 confirm。
         if self.round_by_ocr(self.screenshot(), '请选择强化角色', lcs_percent=0.7).is_success:
-            log.info('[cw-megastar] step2 请选择强化角色 → 再 confirm 跳过强化(可选),关 overlay')
+            log.info('[cw-megastar] step2 请选择强化角色 仍在(罕见)→ 再 confirm(安全网)')
             self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
             self.ctx.controller.click(RunMegastarNode.CONFIRM)
             time.sleep(0.9)

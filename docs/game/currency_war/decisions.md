@@ -15,6 +15,13 @@
 
 ---
 
+## D-97 (2026-08-07) 巨星候选**只点一次**(flag 防 RunNode retry re-click toggle 反选)—— 真根因 + step2 强化角色实为可选 · RunMegastarNode._do_action
+
+- **决策**:`_do_action` 加 `_candidate_clicked` flag → 候选只点一次(首次点 + 设 flag;retry 跳过候选只重 confirm)。删 D-96 的 step2 必需假设(step2 实可选,转安全网)。
+- **为什么**:D-96(再 confirm)是**错诊** —— step2「强化角色」**可选**(选完盛会之星 → confirm 直接跳过 → overlay 关)。真根因:RunNode retry **re-click 候选 → toggle 反选** → confirm 时无候选选中 → 不推进 → 卡。用户点醒关键:**别见「强化角色未选择」文本不变就假设交互失败/确认 disabled**;该文本是**非阻断状态**,确认钮 active。实测(星期日选中金边后 confirm@1490,560)即关 overlay。megastar 选中态是视觉(金边,非 OCR「已选择」)→ flag 保证只点一次(类 partner「已选择」守卫的视觉版)。
+- **备选**:① D-96 再 confirm(错诊,治标)—— 实为 toggle 反选致 confirm 失效,再 confirm 仍无候选无效。② CV 检测金边选中态 → 跳过已选候选 —— 更鲁棒但重(每轮 CV);flag 简单够(单 op 生命周期内候选只点一次)。③ 重写为 Handle* op(类 partner)—— 改动大;flag + RunNode 够。
+- **状态**:采用。ruff 净;211 cw 测试绿。**真根因解**(toggle);step2 非阻断(D-96 降级安全网)。live 验:下局 megastar 节点候选点一次 + confirm → overlay 关(不再 toggle 卡)。· RunMegastarNode / skill 反馈(状态文本≠失败)
+
 ## D-96 (2026-08-07) 巨星节点 step2「请选择强化角色」→ 再 confirm 跳过强化(两步 overlay,partner reset 同类)· RunMegastarNode._do_action
 
 - **决策**:`RunMegastarNode._do_action` step1 confirm 后,若 OCR 见「请选择强化角色」(step2)→ 再 click CONFIRM 跳过强化(可选),overlay 关。
