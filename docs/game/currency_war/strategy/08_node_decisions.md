@@ -13,7 +13,7 @@
 | 投资环境/策略 | `decide_invest`→`decide_event` ✅ | OCR 卡名 ✅ | HandleInvest* ✅ | ✅ 接入 |
 | **遭遇** | `decide_encounter` ✅ | `read_encounter_options` ✅(D-91) | HandleEncounter ✅(D-91) | ✅ **接入**(D-91) |
 | 补给 | `decide_supply` ✅ | `read_supply_options` ❌缺 | RunSupplyNode ❌(默认中牌) | ❌ 待接 |
-| 巨星 | `select_megastar` ✅ | 候选名 OCR ❌缺 | RunMegastarNode ❌(char_id 空→idx0) | ❌ 待接 |
+| 巨星 | `select_megastar` ✅ | `read_megastar_options` ✅(D-95) | RunMegastarNode ✅(D-95 选+D-96 两步) | ✅ **接入**(D-95/D-96) |
 | 伙伴 | (PartnerOption,fn 待写) | 候选名 OCR ❌缺 | HandleSelectPartner ❌(取最左) | ❌ 待接 |
 | 部署 | plan 的 `DeployMove`(被 shop.py 跳过) | 备战席身份 ❌(SIFT 失败 D-84) | DeployBench ❌(naive 填位) | ❌ blocked by 身份 |
 
