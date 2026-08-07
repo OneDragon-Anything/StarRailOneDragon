@@ -99,7 +99,7 @@ class DeployBench(SrOperation):
                      f'{[(b.char_id, b.position_pref) for b in actual]} '
                      f'target_factions={target_factions or "(无 target)"} '
                      f'cap_remaining={cap_remaining}(lv={_lv} deployed={_deployed_before})')
-            self._deploy_by_identity(actual, bench, front, back, target_factions, cap_remaining, _deployed_before)
+            self._deploy_by_identity(actual, bench, front, back, target_factions, cap_remaining, _deployed_before, _dep_sift)
         else:
             match = self.ctx.cw_match
             moves: list[DeployMove] = (
@@ -141,7 +141,8 @@ class DeployBench(SrOperation):
                             front: list[Point], back: list[Point],
                             target_factions: set[str] | None = None,
                             cap_remaining: int | None = None,
-                            deployed_before: int | None = None) -> None:
+                            deployed_before: int | None = None,
+                            _dep_sift: list | None = None) -> None:
         """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
 
         每个识别成功的角色(STRONG):按 ``position_pref``(front/back)拖到对应排下一个空槽。
@@ -168,47 +169,65 @@ class DeployBench(SrOperation):
                     bonds.add(ch.independent)
                 return bool(bonds & target_factions)
             actual = sorted(actual, key=lambda bc: (0 if _is_target(bc) else 1, bc.slot))
-        # D-108e:offset by deployed_before(front-filled-first 假设)—— r2+ 别拖 occupied 槽(否则 swap churn,
-        # 板每轮换)。deployed_before None(r1 空 board OCR fail)→ offset 0(空板 front 0 空,正确)。
-        if deployed_before is not None and deployed_before > 0:
-            front_idx = min(deployed_before, len(front))
-            back_idx = max(0, deployed_before - len(front))
-        else:
-            front_idx = back_idx = 0
+        # D-116:SIFT slot-level occupied detection(替 D-108e front-first offset 猜测)。
+        # deployed_sift(D-108f)的 BenchChar.slot = 排内 1-based idx;position_pref="front"/"back"。
+        # 用 occupied set 跳过已占槽,只拖到空槽(不猜 offset → 不拖 occupied → 不 swap churn/target 不升)。
+        occupied_front: set[int] = set()
+        occupied_back: set[int] = set()
+        if _dep_sift:
+            for d in _dep_sift:
+                if d.position_pref == 'front':
+                    occupied_front.add(d.slot)
+                else:
+                    occupied_back.add(d.slot)
+            log.info(f'[cw-deploy] occupied(SIFT) front={sorted(occupied_front)} back={sorted(occupied_back)} '
+                     f'(共 {len(occupied_front) + len(occupied_back)} occupied)')
         dragged = 0
         for bc in actual:
             if cap_remaining is not None and dragged >= cap_remaining:
-                break   # D-108d:cap(level)满 → 停(target-first 已占有限额)
+                break
             if bc.slot < 1 or bc.slot > len(bench):
                 continue
             src = bench[bc.slot - 1]
             pref = bc.position_pref or 'back'
-            if pref == 'front' and front_idx < len(front):
-                dst, front_idx = front[front_idx], front_idx + 1
-            elif back_idx < len(back):
-                dst, back_idx = back[back_idx], back_idx + 1
-            elif front_idx < len(front):   # back 满,溢出 front
-                dst, front_idx = front[front_idx], front_idx + 1
-            else:
-                break
+            dst = self._find_empty_slot(pref, front, back, occupied_front, occupied_back)
+            if dst is None:
+                continue
             self.ctx.controller.drag_to(end=dst, start=src, duration=1.0)
             time.sleep(0.4)
             dragged += 1
-            log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → '
-                     f'{pref}槽(前{front_idx}/后{back_idx})')
-        # 未识别槽(配饰/变体漏)naive 补舞台剩余空槽
+            log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
+        # 未识别槽 naive 补空槽
         deployed_slots = {bc.slot for bc in actual}
         remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
-        targets = front[front_idx:] + back[back_idx:]
-        for i, slot_i in enumerate(remaining):
+        for slot_i in remaining:
             if cap_remaining is not None and dragged >= cap_remaining:
-                break   # D-108d:cap 满 → naive 补剩余也停
-            if i >= len(targets):
                 break
-            self.ctx.controller.drag_to(end=targets[i], start=bench[slot_i - 1], duration=1.0)
+            dst = (self._find_empty_slot('back', front, back, occupied_front, occupied_back)
+                   or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
+            if dst is None:
+                break
+            self.ctx.controller.drag_to(end=dst, start=bench[slot_i - 1], duration=1.0)
             time.sleep(0.4)
             dragged += 1
         log.info(f'[cw-deploy] 身份拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
+
+    @staticmethod
+    def _find_empty_slot(pref: str, front: list[Point], back: list[Point],
+                         occupied_front: set[int], occupied_back: set[int]) -> Point | None:
+        """D-116:在 pref 排找第一个空槽(不在 occupied set 中的 idx 1..len)。无空槽 → 尝试另一排 → None。"""
+        slots, occupied = (front, occupied_front) if pref == 'front' else (back, occupied_back)
+        for i in range(1, len(slots) + 1):
+            if i not in occupied:
+                occupied.add(i)   # 标记已占(本函数调用方可能多次 deploy)
+                return slots[i - 1]
+        # pref 排满 → 尝试另一排
+        other_slots, other_occ = (back, occupied_back) if pref == 'front' else (front, occupied_front)
+        for i in range(1, len(other_slots) + 1):
+            if i not in other_occ:
+                other_occ.add(i)
+                return other_slots[i - 1]
+        return None
 
     def _deploy_strategic(self, moves: list[DeployMove], bench: list[Point],
                           front: list[Point], back: list[Point]) -> None:
