@@ -132,6 +132,12 @@ class BuyShopCards(SrOperation):
         # 无强信号保持 —— 等价旧 _target_comp class-attr 逻辑,但状态进 session 跨回合持久)。用 shop 关闭帧
         # hp 覆盖的 state(M6 钉死行为等价:hp 真值 → maybe_pivot 的 hp_safe 信号正确触发,非 shop 开帧的假 100)。
         match = self.ctx.cw_match
+        # D-94:优先用结算屏 HP(可靠)。prep 帧 HP 区**常持续空**(read_hp 误读 100,D-93 retry 救不了,
+        # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
+        # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
+        if match is not None and match.session.last_hp is not None:
+            log.info(f'[cw] hp 用结算屏真值 {match.session.last_hp}(prep read_hp={hp_value} 不可靠,覆盖)')
+            hp_value = match.session.last_hp
         _tgt_state = read_game_state(self.ctx, self.screenshot())
         _tgt_state.hp = hp_value
         if match is None:

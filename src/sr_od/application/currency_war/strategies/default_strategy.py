@@ -27,7 +27,10 @@ from sr_od.application.currency_war.cw_decisions import (
     SupplyOption,
     SupplyPick,
 )
-from sr_od.application.currency_war.cw_performance import RoundOutcome
+from sr_od.application.currency_war.cw_performance import (
+    HP_CONFIDENCE_THRESHOLD,
+    RoundOutcome,
+)
 from sr_od.application.currency_war.cw_state import (
     Action,
     GameState,
@@ -63,6 +66,10 @@ class DefaultCwStrategy(CwStrategy):
                      obs: RoundOutcome) -> None:
         """观测驱动:喂掉血/胜负 → ``session.performance``(默认实现非空,但 P1 无 caller,§11.7)。"""
         session.performance.record(obs)
+        # D-94:存可靠结算 HP(达阈)给下回合 prep state.hp。prep 帧 HP 区持续空(read_hp 误读,D-93 救不了),
+        # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(HP 结算→下回合 prep 不变)。保血/maybe_pivot 信号地基。
+        if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
+            session.last_hp = obs.hp_after
 
     def on_match_end(self, session: StrategySession, config, outcome: MatchOutcome) -> None:
         """P1 no-op(outcome 字段全默认,真实结算屏 OCR 属 P1.5)。"""

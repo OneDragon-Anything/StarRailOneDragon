@@ -15,6 +15,13 @@
 
 ---
 
+## D-94 (2026-08-07) prep state.hp 用结算屏 HP(可靠)替 prep 帧 read_hp(持续误读)· default_strategy.on_round_end / shop.buy / StrategySession.last_hp
+
+- **决策**:`on_round_end` 达阈置信度的结算 `hp_after` → 存 `session.last_hp`;`BuyShopCards` prep state.hp 优先用 `session.last_hp`(结算屏「小队生命值NN」可靠),None(首回合)退 `read_hp`。
+- **为什么**:D-93(retry)live **无效** —— round4 prep 读 hp=100(实际 58,on_round_end 确认)persist;retry 也读 100 → prep 帧 HP 区**持续空**(非仅过渡),retry 救不了。保血/maybe_pivot 的 hp_safe 信号地基失效(误判满血不保血 → 失血死)。结算屏 hp_after 经多样本核实可靠(read_round_outcome,小队生命值NN)→ 用它给下回合 prep(HP 结算→下回合 prep 不变,值等价)。
+- **备选**:① D-93 retry 加更多次/更长 sleep —— HP 区持续空(非时序),治标不治本。② 改 read_hp 区 —— 区对(shop 关闭态 HP 显示),问题是帧非区。③ 不修 —— 保血常 disarm,得不偿失。结算 HP 是**不同源**的可靠值,根治。
+- **状态**:采用。2 单测绿(达阈存 / 低置信不污染);全 207 cw 测试绿。D-93(retry)保留作首回合/兜底(无结算 HP 时)。live 验待(下局 prep state.hp 用结算真值,保血信号武装)。· default_strategy.on_round_end / shop.buy
+
 ## D-93 (2026-08-07) read_hp 重读兜底:读到上限 100 可能是入口过渡帧 HP 区未渲染 → 重读 2 次取真值(保血信号地基)· shop.buy / read_hp
 
 - **决策**:`BuyShopCards.buy` 读 hp 后,若 `hp_value >= HP_MAX(100)` → 重读 2 次(各 sleep 0.4s + 重截图),取首个 < HP_MAX 的值;都 100 则维持(真满血或 HP 区持续空)。
