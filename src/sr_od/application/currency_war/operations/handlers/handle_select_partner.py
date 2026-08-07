@@ -15,6 +15,9 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_decisions import PartnerOption
+from sr_od.application.currency_war.cw_state import GameState
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -81,13 +84,26 @@ class HandleSelectPartner(SrOperation):
         # D-61:已选择态(上轮选了没确认 / overlay 复现)→ 跳 candidate click(避免反取消);否则点 candidate。
         if not self.round_by_ocr(screen, '已选择').is_success:
             cands = self._read_candidates(screen)
-            if cands:
-                _name, cx, cy = cands[0]   # 取最左候选(TODO:策略化按 target_comp.core_chars 选)
+            # T#99 接 decide_partner:候选 label 作 char_id 尽力匹配 target_comp.core_chars / 偏好。
+            # ⚠️ 候选只有立绘、无角色名(label 是流派/role,非角色名;视觉大模型 2026-08-07 核实)→ char_id 多为
+            # label → 多不命中 core_chars → idx=0(最左)。**真正接决策需 SIFT 立绘识别**(同 read_bench_chars,
+            # CW 立绘库)喂真角色名 = 后续子项(候选位置视觉不稳,需 CV 卡框 / 多样本定网格)。
+            options = [PartnerOption(idx=i, char_id=n) for i, (n, _cx, _cy) in enumerate(cands)]
+            match = self.ctx.cw_match
+            idx = 0
+            reason = 'no-candidates(fallback)'
+            if match is not None and options:
+                _state = match.session.last_state or GameState()
+                _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+                pick = match.strategy.decide_partner(options, _state, match.session, _cfg)
+                idx = pick.idx if 0 <= pick.idx < len(cands) else 0
+                reason = pick.reason
+            log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
+            if cands and 0 <= idx < len(cands):
+                _name, cx, cy = cands[idx]
                 portrait = Point(cx, cy - HandleSelectPartner.PORTRAIT_DY_ABOVE_LABEL)
-                log.info(f'[cw-partner] candidates={[c[0] for c in cands]} chose={_name}@{portrait}')
             else:
                 portrait = HandleSelectPartner.FALLBACK_PORTRAIT
-                log.info(f'[cw-partner] no candidate OCR, fallback@{portrait}')
             # D-64(bug#1 缓解):click 前 mouse_move(零移动),防 before_screenshot 移光标 → click 落空。
             self.ctx.controller.mouse_move(portrait)
             self.ctx.controller.click(portrait)
