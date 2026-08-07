@@ -277,7 +277,7 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def _board_pairs(ctx: SrContext, screen: MatLike) -> dict[str, tuple[int, int]]:
+def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> dict[str, tuple[int, int]]:
     """OCR 左面板 → {阵营: (count, next_tier)},从 "X/Y" 解析(X=在场人数,Y=下个 tier 阈值)。
 
     聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
@@ -305,8 +305,9 @@ def _board_pairs(ctx: SrContext, screen: MatLike) -> dict[str, tuple[int, int]]:
                 break
         if xy is not None:
             cnt, nt = xy
-            # sanity:count 1-9;next_tier 1-12(阵营 tier 最高 ~9,留余量)。越界 → 兜底。
-            cnt = cnt if 1 <= cnt <= 9 else 1
+            # sanity:count 1-max_count(默认 9;read_game_state 传 level —— faction count ≤ deployed ≤ level,
+            # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
+            cnt = cnt if 1 <= cnt <= max(max_count, 1) else 1
             nt = nt if 1 <= nt <= 12 else 0
             pairs[faction] = (cnt, nt)
         else:
@@ -411,7 +412,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
     state.streak = read_streak(ctx, screen)
     # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
-    _bp = _board_pairs(ctx, screen)
+    _bp = _board_pairs(ctx, screen, state.level)
     state.board = {f: c for f, (c, _nt) in _bp.items()}
     state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
     # D-107(RC1,治 T#97 战术层 desync):deployed 从 board 真值重建 → deployed_count() 对齐实际阵上数。
