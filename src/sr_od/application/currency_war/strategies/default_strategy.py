@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 内置默认策略(``DefaultCwStrategy``,``STRATEGY_ID="default"``)。
 
 **阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_decisions``/``cw_comps``),
@@ -13,6 +15,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_comps, cw_decisions
 from sr_od.application.currency_war.cw_decisions import (
     EncounterOption,
@@ -83,6 +86,19 @@ class DefaultCwStrategy(CwStrategy):
         if session.active_env:
             state.active_env = session.active_env
         score_ctx = cw_comps.make_score_context(state)
+        # D-92 drought bail:target 连续 DROUGHT_BAIL 轮 shop 无其阵营卡(shop_supply<1.0)→ 弃 target 重选。
+        # 防 commit(D-86)锁死**不可达** target:live round4-6 target=DOT队,但 shop/board 始终无 持续伤害/减益
+        # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。
+        # (shop_supply<1.0 = shop 无 target 阵营卡;=1.0 = 本回合买得到 → drought 归 0;正常 shop 波动不会累积)
+        DROUGHT_BAIL: int = 3
+        if session.target_comp is not None:
+            _supply = cw_comps.shop_supply(session.target_comp, state)
+            session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
+            if session.target_drought >= DROUGHT_BAIL:
+                log.info('[cw-target] %s 连续 %d 轮 shop 无其阵营卡(shop_supply=%.1f)→ 弃 target,重选(shop-aware)',
+                         session.target_comp.name, session.target_drought, _supply)
+                session.target_comp = None
+                session.target_drought = 0
         if session.target_comp is None:
             cands = cw_comps.select_comp(state, score_ctx, config)
             session.target_comp = cands[0] if cands else None

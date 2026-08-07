@@ -15,6 +15,13 @@
 
 ---
 
+## D-92 (2026-08-07) drought bail:target 连续 3 轮 shop 无其阵营卡 → 弃 target 重选(防 commit 锁死不可达 target)· default_strategy.update_target / StrategySession.target_drought
+
+- **决策**:`update_target` 追踪 `session.target_drought`(target 阵营连续多少轮不在 shop,即 `shop_supply<1.0`);≥`DROUGHT_BAIL(3)` → 弃 target(=None)→ select_comp 重选(shop-aware 挑买得到的)。
+- **为什么**:live round4-6 验证(D-90 后):target=DOT队(D-86 commit sticky),但 **shop/board 始终无 持续伤害/减益 卡**(RNG)→ comp 永远建不成 → HP 掉到 4 死 plane1。`select_comp` 本就 shop-aware(shop_supply 降权),`maybe_pivot` 也 shop-aware,但 **commit(D-86)把 pivot gap 提到 ×1.5**,全 comp shop-dry 时无 comp 能超 gap 转走 → 锁死。drought bail 在 commit 之上加出口:连续 3 轮 shop 供不上 target → 强制重选(绕过 commit + pivot gap)。3 轮阈值避正常 shop 波动(target 卡偶现 → drought 归 0,不累积)。
+- **备选**:① 单轮 shop_supply<1.0 就 waive commit → shop 波动每轮 flit(D-86 要防的),弃。② drought 阈值 2 → 太激进(正常波动误触发),3 平衡。③ 不动 commit,改 maybe_pivot gap → 全 dry 时仍无 comp 超 gap,治标不治本;drought 强制重选才解。④ select_comp 加 board 深度对齐(更根治但改动大)—— 后续;drought bail 先止血。
+- **状态**:采用。2 单测绿(drought 3→bail 重选 / shop 供上→归0);全 207 cw 测试绿。**live 验待**(下局 target 不可达时 round6+ 不再锁死 → 重选 shop 供得上的 comp)。· default_strategy.update_target / strategy/03 select_comp shop-aware
+
 ## D-91 (2026-08-07) 决策接线 audit + 遭遇节点接入策略(read_encounter_options → decide_encounter)· cw_node_obs / handle_encounter / StrategySession.last_state
 
 - **决策**:① 全面自检「所有决策操作接入策略」(用户指令)→ 审计表(`.debug/temp/currency_war/decision_wiring_audit.md`):买/invest_env/invest_strategy 已接入;**遭遇/补给/巨星/伙伴/部署 未接入**(handler 硬编码默认,decide_* 钩子虽就绪但不调/option 全空)。② 接入**遭遇**:新建 `cw_node_obs.read_encounter_options`(OCR 标题「遭遇其X」→ difficulty + 奖励带→reward)→ HandleEncounter 调 `strategy.decide_encounter`(difficulty + comp 成型度选,非硬编码左)。③ 加 `StrategySession.last_state`(BuyShopCards 每回合存 board/deployed 快照)→ 节点 overlay handler 读成型度(overlay 时 board 不可读,用上次备战近似)。
