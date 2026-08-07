@@ -91,7 +91,7 @@ class DeployBench(SrOperation):
                      f'{[(b.char_id, b.position_pref) for b in actual]} '
                      f'target_factions={target_factions or "(无 target)"} '
                      f'cap_remaining={cap_remaining}(lv={_lv} deployed={_deployed_before})')
-            self._deploy_by_identity(actual, bench, front, back, target_factions, cap_remaining)
+            self._deploy_by_identity(actual, bench, front, back, target_factions, cap_remaining, _deployed_before)
         else:
             match = self.ctx.cw_match
             moves: list[DeployMove] = (
@@ -132,7 +132,8 @@ class DeployBench(SrOperation):
     def _deploy_by_identity(self, actual: list, bench: list[Point],
                             front: list[Point], back: list[Point],
                             target_factions: set[str] | None = None,
-                            cap_remaining: int | None = None) -> None:
+                            cap_remaining: int | None = None,
+                            deployed_before: int | None = None) -> None:
         """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
 
         每个识别成功的角色(STRONG):按 ``position_pref``(front/back)拖到对应排下一个空槽。
@@ -159,7 +160,13 @@ class DeployBench(SrOperation):
                     bonds.add(ch.independent)
                 return bool(bonds & target_factions)
             actual = sorted(actual, key=lambda bc: (0 if _is_target(bc) else 1, bc.slot))
-        front_idx = back_idx = 0
+        # D-108e:offset by deployed_before(front-filled-first 假设)—— r2+ 别拖 occupied 槽(否则 swap churn,
+        # 板每轮换)。deployed_before None(r1 空 board OCR fail)→ offset 0(空板 front 0 空,正确)。
+        if deployed_before is not None and deployed_before > 0:
+            front_idx = min(deployed_before, len(front))
+            back_idx = max(0, deployed_before - len(front))
+        else:
+            front_idx = back_idx = 0
         dragged = 0
         for bc in actual:
             if cap_remaining is not None and dragged >= cap_remaining:
