@@ -255,11 +255,20 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     )
     if target_comp is not None:
         score -= TARGET_PROGRESS_WEIGHT * _target_progress_remaining(state, target_comp)
+        # D-113: bench target potential —— bench 有 target 阵营角色(未 deploy)→ 给分(未来 deploy 潜力)。
+        # board 满 → 买 target 到 bench → delta>0 → bot 买 → level up 后 deploy → target 深堆。
+        # 不加 → delta≈0(board 不变)→ bot 不买 target 到 bench → level up 无 target deploy → 永不深堆(D-112 发现)。
+        # delta 中 phantom bench 抵消(plan greedy: delta = eval[after]-base; phantom 在两者 → 消,净 delta 正确)。
+        _bench_tgt = sum(1 for bc in state.bench
+                         if bc.faction in target_comp.factions or bc.char_id in target_comp.core_chars)
+        score += BENCH_TARGET_WEIGHT * _bench_tgt
     return score
 
 
 # target 成型剩余进度权重(战略层导向;占位,待实玩校准)。越大 → 越 commit 到 target。
 TARGET_PROGRESS_WEIGHT: float = 15.0
+# D-113: bench target 角色 potential(board 满 → 买 target 到 bench 的价值)。> economy_loss(≈0.3/gold)→ delta 正 → bot 买 target 到 bench。
+BENCH_TARGET_WEIGHT: float = 3.0
 
 
 def _target_progress_remaining(state: GameState, target_comp: Comp) -> float:
