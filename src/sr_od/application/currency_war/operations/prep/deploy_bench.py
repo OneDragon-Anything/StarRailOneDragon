@@ -77,11 +77,21 @@ class DeployBench(SrOperation):
         match = self.ctx.cw_match
         _tgt = match.session.target_comp if (match is not None and match.session is not None) else None
         target_factions: set[str] = set(_tgt.factions) if _tgt is not None else set()
+        # D-108d:cap-limited deploy。CW deploy cap=level(max_units);旧码拖**全部**识别 bench(7),cap(level 4)
+        # 只落 4,余 drag-to-occupied 被拒浪费(每轮多 3 drag)。cap_remaining=level-已部署 → 仅拖 cap_remaining 个
+        # (D-108c target-first 占有限额,off-target 不再浪费 drag 也避免误 lock)。level/deployed 读不到 → None(全 deploy 兜底)。
+        _deployed_before = read_deployed_count(self.ctx, self.last_screenshot)
+        _lv = (match.session.last_state.level
+               if (match is not None and match.session is not None
+                   and match.session.last_state is not None) else None)
+        cap_remaining: int | None = (max(0, _lv - _deployed_before)
+                                     if (_lv and _deployed_before is not None) else None)
         if actual:
             log.info(f'[cw-deploy] 身份驱动:识别 {len(actual)} 个 '
                      f'{[(b.char_id, b.position_pref) for b in actual]} '
-                     f'target_factions={target_factions or "(无 target)"}')
-            self._deploy_by_identity(actual, bench, front, back, target_factions)
+                     f'target_factions={target_factions or "(无 target)"} '
+                     f'cap_remaining={cap_remaining}(lv={_lv} deployed={_deployed_before})')
+            self._deploy_by_identity(actual, bench, front, back, target_factions, cap_remaining)
         else:
             match = self.ctx.cw_match
             moves: list[DeployMove] = (
@@ -121,7 +131,8 @@ class DeployBench(SrOperation):
 
     def _deploy_by_identity(self, actual: list, bench: list[Point],
                             front: list[Point], back: list[Point],
-                            target_factions: set[str] | None = None) -> None:
+                            target_factions: set[str] | None = None,
+                            cap_remaining: int | None = None) -> None:
         """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
 
         每个识别成功的角色(STRONG):按 ``position_pref``(front/back)拖到对应排下一个空槽。
@@ -151,6 +162,8 @@ class DeployBench(SrOperation):
         front_idx = back_idx = 0
         dragged = 0
         for bc in actual:
+            if cap_remaining is not None and dragged >= cap_remaining:
+                break   # D-108d:cap(level)满 → 停(target-first 已占有限额)
             if bc.slot < 1 or bc.slot > len(bench):
                 continue
             src = bench[bc.slot - 1]
@@ -173,6 +186,8 @@ class DeployBench(SrOperation):
         remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
         targets = front[front_idx:] + back[back_idx:]
         for i, slot_i in enumerate(remaining):
+            if cap_remaining is not None and dragged >= cap_remaining:
+                break   # D-108d:cap 满 → naive 补剩余也停
             if i >= len(targets):
                 break
             self.ctx.controller.drag_to(end=targets[i], start=bench[slot_i - 1], duration=1.0)

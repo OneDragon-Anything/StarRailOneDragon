@@ -22,7 +22,7 @@
 - **修法**:`deploy()` 从 `session.target_comp` 取 factions → `_deploy_by_identity` sorted target-first → 限槽时 target 先占。off-target 溢出留 bench(`_handle_bench_full` sell)。**deployed-lock → sell-deployed board-management 路径无效**(子agent MVP 作废,详 process_log 2026-08-08)。
 - **模型真值(查实,后续策略地基)**:① board=deployed(左面板上阵羁绊);② deployed 锁定(不能 sell/undeploy);③ max_units=min(level,10)=deploy 上限;④ board sum>deployed 角色数(多羁绊重复计,非 owned)。
 - **备选**:① sell deployed off-target(推翻:deployed 锁定,3 测实锤);② deploy ONLY target 不 deploy off-target(推翻:空槽丢 tempo 掉血,留后续 tempo 权衡);③ 改 selection 适配 board(部分:selection 已 shop-supplied 正确,主因 deploy 非 selection)。
-- **状态**:采用。214 cw 测试绿(无 deploy 单测:op+drag 难单测;live 验待:限槽时 target 先 deploy → board target 阵营不被 off-target 挤)。· T#97 / `DeployBench._deploy_by_identity` / CW deployed-lock(机制)
+- **状态**:采用。214 cw 测试绿。**系列细化**:D-108b(全阵营 get_char.factions 非 factions[0] 首阵营)+ D-108c(全羁绊 factions+flows+independent —— comp.factions 混阵营+流派,赛飞儿 factions=夜之半神 flows=追击/减益,只取 factions 漏追击)+ D-108d(**cap-limited**:deploy 限 level-已部署,避免拖全部 bench 超 cap 浪费 drag)。D-108c 匹配核实(赛飞儿/飞霄/追击 + 藿藿/青雀/仙舟 → TARGET)。live 验待:限槽时 target 先占 + 不超 cap。· T#97 / `DeployBench._deploy_by_identity`(target_factions+cap_remaining)/ CW deployed-lock(机制)
 
 ---
 
