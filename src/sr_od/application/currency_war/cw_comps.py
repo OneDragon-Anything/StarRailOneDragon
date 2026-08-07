@@ -535,7 +535,7 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 # 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型 comp;② cw_decisions prefilter
 # 拒 off-target(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金,drought bail 处理真不可达)。
 COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
-COMMIT_ROUND: int = 4              # 累计轮 (plane-1)*9+round ≥4 → commit(plane1 r4 起;仅递增不回退)
+COMMIT_ROUND: int = 2              # D-111:4→2(策略子agent B:deployed-lock 下 r1-3 off-target locked 太多 → r2 起 commit + prefilter 拒 off-target + deploy target-first → 早期 target 聚焦 → comp 在 plane1 深堆 → 进 plane2 时成型)
 COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型 comp
 
 
