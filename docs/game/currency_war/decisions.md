@@ -23,7 +23,7 @@
 - **机制**:`find_area` 对配 `text` 的 area = OCR 限定在 `pc_rect` + LCS;配 `template_id` = 模板匹配。检测用 `round_by_find_area`(只检测不点击,skill 警告);找到再点用 `round_by_find_and_click_area`;无脑点固定按钮中心用 `round_by_click_area`。
 - **待续(余 ~60 处,需新建 area + 截图建档,逐屏推进)**:结算屏(挑战结束/继续挑战/下一步/下一页/放弃并结算/返回货币战争/总伤害/数据统计/创业指南[exit 语境]——**无 screen_info 文件,待建 currency_war 结算屏**)、partner/megastar/supply/encounter overlay 标题(选择伙伴/确认选择/请选择强化角色/盛会之星/补给阶段/遭遇其一/消耗品/拖动到——screen_info 无 text area,待补)、备战席已满弹窗、可合成列表/角色详情、战斗 toast(点击空白加速/继续——动态,或留全屏 fallback)、entry 弹窗(前往参与/继续进度/点击空白处关闭/赛季扩充/新内容解禁)。这些坐标不能猜(CLAUDE.md 硬规则:玩法改动别凭猜改),按 od-dev-ui-region-detect 实图量。
 - **备选**:① 提 lcs_percent 止血(ADR-0008 否:只杀低重叠,全等/高重叠子序列无效,且不治本);② 删全屏 OCR 只留 area(ADR-0004 option3 否:动态 toast 确需全屏 fallback);③ 区域识别(采用,结构性根治)。
-- **状态**:采用(首批 ~18 处 + 按钮-收起 area)。行为保持(同文本同位置,OCR 限区替代全屏),待实机跑局验证各路径(收起/shop 开关/overlay dispatch/lobby 回流)。余 ~60 处逐屏续做。· od-dev-write-operation ADR-0004/0008
+- **状态**:采用。批次进度:① 首批 ~18 处(复用现有 area + 按钮-收起);② overlay 屏批:新建 货币战争-选择伙伴(标识-选择伙伴/按钮-确认选择)+ 货币战争-巨星强化(标识-盛会之星/按钮-请选择强化角色),补给屏补 标识-补给阶段;转 battle_loop 0a/0b/0e dispatch + run_megastar/run_supply `_in_node` + handle_select_partner 入口 guard。**0b 由「确认选择」改「盛会之星」独有标题**(原靠 0a 先捕 partner 区分;独有标题更直接,且盛会之星全屏撞 4 处/bond label,area 位置区分根治)。坐标用 `_snap` 历史截图视觉量 + analyze_screen OCR ground truth 核实(partner/megastar 文本框均落在 area 内 ✓)。待实机跑局验证 dispatch;余 ~50 处(结算屏 ~25 需新建屏 + entry 弹窗 ~9,需捕图)逐屏续做。· od-dev-write-operation ADR-0004/0008
 
 ---
 

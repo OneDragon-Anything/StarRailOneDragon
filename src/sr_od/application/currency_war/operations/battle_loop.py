@@ -163,17 +163,19 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
-        #     lcs_percent=0.7:「选择伙伴」与「请选择投资策略」共享「选择」(2/4=0.5=默认阈值)→
-        #     投资策略屏被误派发到本 handler(2026-08-04 snap 实测发现)。收紧到 0.7 杀误匹配
-        #     (真「选择伙伴」OCR 1.0 不受影响)。
-        if self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success:
+        #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
+        #     共享「选择」(2/4=0.5=默认阈值)会误匹配全屏 LCS → 投资策略屏被误派发(2026-08-04 snap 实测)。
+        #     area 位置不同(选择伙伴 overlay 标题在 top-center id_mark rect)→ 不命中(同 0d/0e area 化理由)。
+        if self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
             HandleSelectPartner(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0b. 巨星强化(有"确认选择"、无"选择伙伴")→ RunMegastarNode(选候选 + 确认,详见 op)。
-        #     lcs_percent=0.7:同上,防「确认选择」与「请选择投资策略」共享「选择」误匹配。
-        if self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success:
+        # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
+        #     用 screen_info 标题 area(标识-盛会之星)位置区分。原用全屏「确认选择」(lcs 0.7 防「请选择投资策略」
+        #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar
+        #     独有标题「盛会之星」更直接(独有标题位置区分,无需依赖分支先后)。
+        if self.round_by_find_area(screen, '货币战争-巨星强化', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
             RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
@@ -214,7 +216,7 @@ class CurrencyWarRunLoop(SrOperation):
             self._snap('invest_env')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
-        if self.round_by_ocr(screen, '补给阶段', lcs_percent=0.8).is_success:
+        if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
             RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
             return self.round_wait(wait=2)

@@ -35,8 +35,8 @@ class RunSupplyNode(RunNode):
         return self._run_node()
 
     def _in_node(self, screen) -> bool:
-        # 还在补给屏 = 「补给阶段」关键词在(lcs 0.8 防与「备战阶段」共享「阶段」误匹配)。
-        return self.round_by_ocr(screen, '补给阶段', lcs_percent=0.8).is_success
+        # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
+        return self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success
 
     def _do_action(self, screen) -> None:
         # 动作沿用 HandleSupply(已验证可完成);只外层套验证 + 预算。

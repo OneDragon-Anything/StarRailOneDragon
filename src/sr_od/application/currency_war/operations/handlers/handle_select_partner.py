@@ -76,7 +76,7 @@ class HandleSelectPartner(SrOperation):
     @operation_node(name='选择伙伴', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_ocr(screen, '选择伙伴').is_success:
+        if not self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
         # D-61:已选择态(上轮选了没确认 / overlay 复现)→ 跳 candidate click(避免反取消);否则点 candidate。
         if not self.round_by_ocr(screen, '已选择').is_success:
@@ -111,7 +111,7 @@ class HandleSelectPartner(SrOperation):
         if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
             # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
             # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。
-            if self.round_by_ocr(self.screenshot(), '请选择强化角色').is_success:
+            if self.round_by_find_area(self.screenshot(), '货币战争-巨星强化', '按钮-请选择强化角色').is_success:
                 # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
                 # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
                 target = Point(960, 300)
@@ -124,7 +124,7 @@ class HandleSelectPartner(SrOperation):
                     self.ctx.controller.mouse_move(confirm2)
                     self.ctx.controller.click(confirm2)
                     time.sleep(1.0)
-                if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
+                if self.round_by_find_area(self.screenshot(), '货币战争-选择伙伴', '标识-选择伙伴').is_success:
                     log.info('[cw-partner] step2 后 overlay 仍在 → round_retry')
                     return self.round_retry(wait=1)
                 log.info('[cw-partner] step2 完成 → overlay 关')
