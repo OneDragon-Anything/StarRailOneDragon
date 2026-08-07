@@ -19,10 +19,10 @@ area_list:
 - area_name: 按钮-请选择强化角色
   id_mark: false
   pc_rect:
-  - 1402
-  - 480
-  - 1624
-  - 537
+  - 1400
+  - 478
+  - 1582
+  - 565
   text: 请选择强化角色
   lcs_percent: 0.5
   template_sub_dir: ''
