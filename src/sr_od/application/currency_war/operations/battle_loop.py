@@ -264,10 +264,10 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=1.5)
 
         # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
-        if self.round_by_ocr(screen, '继续挑战').is_success:
-            self._record_round_outcome(screen)  # P1.5: 结算屏(挑战结束)→ read_round_outcome → on_round_end
+        if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
+            self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
             time.sleep(1.0)
-            if self.round_by_ocr_and_click(self.screenshot(), '继续挑战', success_wait=2).is_success:
+            if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
                 return self.round_wait(wait=2)
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
@@ -294,8 +294,8 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 6. 战斗/过场屏(总伤害/数据统计 在,无其他动作;OCR 常漏「点击空白加速」)→ 点空白加速/推进。
         # 只用战斗独有关键词;不用「羁绊」(大厅"羁绊链路"会误匹配)
-        if (self.round_by_ocr(screen, '总伤害').is_success
-                or self.round_by_ocr(screen, '数据统计').is_success):
+        if (self.round_by_ocr(screen, '总伤害').is_success   # TODO(T#103) 待建 area(此结算帧未见「总伤害」label)
+                or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
