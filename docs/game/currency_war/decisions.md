@@ -15,6 +15,16 @@
 
 ---
 
+## D-104 (2026-08-07) 修 _record_round_outcome gate「挑战结束」→实屏「挑战成功」(激活 P1.5 观测回路 + D-94 last_hp)· battle_loop
+
+- **决策**:`_record_round_outcome` 删错误的结算屏 gate(`round_by_ocr('挑战结束')`)。它仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用,gate 冗余;且 gate 查「挑战结束」与**实屏「挑战成功」**不符 → 永不命中 → on_round_end 从不调。
+- **为什么**:T#103 捕结算屏(2026-08-07 实锤 round 1-4 胜结算屏文本是「挑战成功」非「挑战结束」)暴露 —— P1.5 观测回路(`performance.record` 喂掉血/胜负)+ D-94(`session.last_hp` 给下回合 prep 真值 hp,覆盖 prep read_hp 不可靠)**双双静默死**。这瓦解「观测驱动非预测」核心哲学:maybe_pivot 保血信号 + shop prep-hp 全靠误读的 read_hp(常 100)→ 策略对真实血量盲。plane2 wall(连败掉血死)与此相关(保血信号失效)。
+- **影响(行为)**:每回合 round-end 结算 → on_round_end 现在真触发 → `session.performance` 累积掉血/胜负 trend + `session.last_hp` 写结算屏 hp(达阈)→ 下回合 prep 用真值 hp。D-94 设计**首次真正生效**(此前代码在但 gate 堵死)。
+- **备选**:① 改 gate 文字「挑战结束」→「挑战成功」(但 win/lose 文字可能不同:胜=挑战成功/负=?;且 gate 冗余 —— 分支3 已确认结算屏);② 删 gate 信任 caller(采用:唯一 caller 是分支3 已 gate 继续挑战;`if cw_match is None` 仍守);③ 同时 area 化(gate 文字进 area,但删 gate 更干净 + 关一个 T#103 全屏 OCR 站点)。首领 boss 检测(L134)留全屏 OCR + TODO(需 boss 结算帧才 area 化)。
+- **状态**:采用。待 live 验证(下回合结算 on_round_end 日志 `[cw-loop] on_round_end ... hp_after=NN` 出现即激活)。· P1.5 观测回路 / D-94 last_hp / 关联 T#97(plane2 wall 保血)
+
+---
+
 ## D-103 (2026-08-07) round_by_ocr 全屏 → screen_info area 化(遵守 od-dev-write-operation ADR-0004/0008,行为保持)· 全 cw ops/handlers/entry
 
 - **决策**:cw 模块全屏 `round_by_ocr(screen, text)`(无 area,LCS 默认 0.5 子序列匹配,结构性易误匹配)→ 凡固定位置元素改区域识别(`round_by_find_area` / `round_by_find_and_click_area`,text 进 screen_info area 的 `pc_rect`,OCR 限定区域不全文扫)。用户指令「找出 cw 所有使用的地方都要替换掉」+ 指正 skill 早说不要用全屏 round_by_ocr。

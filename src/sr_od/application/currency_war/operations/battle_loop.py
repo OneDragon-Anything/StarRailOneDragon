@@ -116,22 +116,23 @@ class CurrencyWarRunLoop(SrOperation):
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
     def _record_round_outcome(self, screen) -> None:
-        """P1.5 观测回路:结算屏(挑战结束 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
+        """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
         喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
-        记掉血 trend(观测驱动,非预测)。非结算屏(无「挑战结束」)→ 跳过。失败不阻塞对局(观测为辅)。
-        node_type 推断:结算屏含「首领」(如「1-9首领」)→ boss 节点,否则普通战斗(2026-08-06 refine,
-        原全粗「普通战斗」)。plane/round 用 last-known(``read_phase_round`` 结算屏不显 plane/round)。
+        记掉血 trend(观测驱动,非预测)+ 写 ``session.last_hp``(达阈;D-94 给下回合 prep 真值 hp)。
+        **仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用**,故无内部结算屏 gate —— 原 gate 查
+        「挑战结束」与实屏「挑战成功」不符 → 永不命中 → on_round_end 从不调 → performance/last_hp 全不喂
+        (P1.5 观测回路 + D-94 prep-hp 真值机制双双静默死;2026-08-07 捕结算屏实锤「挑战成功」修复)。
+        失败不阻塞对局(观测为辅)。node_type:结算屏含「首领」(如「1-9首领」)→ boss,否则普通战斗。
+        plane/round 用 last-known(``read_phase_round`` 结算屏不显 plane/round)。
         """
         if self.ctx.cw_match is None:
             return
-        if not self.round_by_ocr(screen, '挑战结束').is_success:
-            return  # 非结算屏(继续挑战可能在他处)→ 不调 on_round_end,免误记
         try:
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
-            _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算(词缀在简报不在结算屏,不误匹配)
+            _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
                                       comp_tag=_comp_tag, node_type='boss' if _is_boss else '普通战斗')
             self.ctx.cw_match.strategy.on_round_end(
