@@ -15,6 +15,13 @@
 
 ---
 
+## D-96 (2026-08-07) 巨星节点 step2「请选择强化角色」→ 再 confirm 跳过强化(两步 overlay,partner reset 同类)· RunMegastarNode._do_action
+
+- **决策**:`RunMegastarNode._do_action` step1 confirm 后,若 OCR 见「请选择强化角色」(step2)→ 再 click CONFIRM 跳过强化(可选),overlay 关。
+- **为什么**:live round8 卡死 9min —— 巨星是**两步**(step1 选盛会之星候选 + confirm → step2「请选择强化角色」+ confirm),旧 RunMegastarNode 只 1 次 confirm → step2 残 → overlay 不关 → 主循环误判 prep、出战 click 落 overlay 空 → 死循环。**partner overlay reset(T#98)同类**(两步 overlay 只做 step1)。手动 click 确认选择@(1490,560)实测跳过强化推进(强化角色可选)。RunMegastarNode.CONFIRM(1490,560)= step2 确认选择钮 center(OCR 钮 1442-1541)。
+- **备选**:① step2 选强化角色(target core)再 confirm —— 强化可选,跳过更简 + 不需强化目标定位(960,300 实测非 megastar 强化位)。② _in_node 改检测 step2 —— _do_action 内处理更直接(两步一气呵成)。③ 不修 —— 每个巨星节点卡死,不可接受。
+- **状态**:采用。ruff 净;211 cw 测试绿。live 验待(下局巨星节点 step2 自动跳过,overlay 关,不卡)。· RunMegastarNode / partner T#98 同类
+
 ## D-95 (2026-08-07) 巨星节点接入策略(read_megastar_options → decide_megastar)· cw_node_obs.read_megastar_options / RunMegastarNode
 
 - **决策**:新建 `read_megastar_options`(OCR「盛会之星一X先生/女士!」→ MegastarOption(char_id=X),按 x 左→右 idx);`RunMegastarNode._do_action` 改 read 候选 → `decide_megastar`(select_megastar 按 target.core_chars / buff 契合)→ 点选中 idx(替代默认左候选)+ bug#1 mouse_move。

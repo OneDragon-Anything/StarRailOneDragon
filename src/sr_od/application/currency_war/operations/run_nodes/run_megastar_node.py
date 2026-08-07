@@ -66,3 +66,12 @@ class RunMegastarNode(RunNode):
         time.sleep(0.6)
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
         self.ctx.controller.click(RunMegastarNode.CONFIRM)
+        time.sleep(0.9)
+        # D-96:巨星**两步** —— step1 confirm 后出 step2「请选择强化角色」(强化角色可选)→ 再 confirm 跳过强化,
+        # overlay 才关。旧码只 1 次 confirm → step2 残 → overlay 不关 → 主循环误判 prep、出战 click 落 overlay 空
+        # → 死循环(live round8 卡 9min;partner overlay reset 同类)。实测 confirm@(1490,560) 跳过强化推进。
+        if self.round_by_ocr(self.screenshot(), '请选择强化角色', lcs_percent=0.7).is_success:
+            log.info('[cw-megastar] step2 请选择强化角色 → 再 confirm 跳过强化(可选),关 overlay')
+            self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
+            self.ctx.controller.click(RunMegastarNode.CONFIRM)
+            time.sleep(0.9)
