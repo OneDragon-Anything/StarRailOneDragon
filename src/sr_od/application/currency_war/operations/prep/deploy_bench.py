@@ -138,7 +138,15 @@ class DeployBench(SrOperation):
             # 尽管是 仙舟/追击)。任一阵营 ∈ target 即 target。
             def _is_target(bc) -> bool:
                 ch = get_char(bc.char_id)
-                return ch is not None and bool(set(ch.factions) & target_factions)
+                if ch is None:
+                    return False
+                # 角色全羁绊(factions 阵营 + flows 流派 + independent)—— comp.factions / board 混用阵营+流派
+                # (巡击青雀=[仙舟(阵营),追击(流派)]),故匹配须取全羁绊:赛飞儿 factions=夜之半神 + flows=追击、减益
+                # → 只取 factions 漏「追击」→ 误判 off-target。全羁绊任一 ∈ target 即 target。
+                bonds = set(ch.factions) | set(ch.flows)
+                if ch.independent:
+                    bonds.add(ch.independent)
+                return bool(bonds & target_factions)
             actual = sorted(actual, key=lambda bc: (0 if _is_target(bc) else 1, bc.slot))
         front_idx = back_idx = 0
         dragged = 0
