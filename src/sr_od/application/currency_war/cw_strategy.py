@@ -160,6 +160,9 @@ class StrategySession:
     # D-92(2026-08-07):target 连续多少轮 shop_supply<1.0(shop 无 target 阵营卡)。>= DROUGHT_BAIL →
     # 弃 target 重选(防 commit 锁死不可达 target:update_target 重选;live round6 HP4 死于此)。
     target_drought: int = 0
+    # D-98(2026-08-07):plan() 算出的部署指令(DeployMove 列表),BuyShopCards 存 → DeployBench 读。
+    # 替代旧 DeployBench naive 填位(从槽0拖全部,不看 position_pref)。用户反复要求接入决策。
+    pending_deploys: list = field(default_factory=list)
     # D-94(2026-08-07):最近一次结算屏读到的可靠 HP(hp_confidence 达阈;on_round_end 写)。
     # 备战 prep 帧 HP 区**持续空**(D-93 retry 救不了,live round4 读 100 实际 58)→ 保血信号失效。
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。

@@ -222,6 +222,13 @@ class BuyShopCards(SrOperation):
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
+        # D-98:存 plan 的 DeployMove 到 session(给 DeployBench 读,替代 naive 填位)。
+        # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
+        deploy_moves = [a for a in actions if isinstance(a, DeployMove)]
+        if match is not None:
+            match.session.pending_deploys = deploy_moves
+            log.info(f'[cw-shop] 存 {len(deploy_moves)} 个 DeployMove 到 session(pending_deploys)')
+
         # 关商店(「收起」)
         time.sleep(0.4)
         self.round_by_ocr_and_click(self.screenshot(), '收起', success_wait=1.0)
