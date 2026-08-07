@@ -1,12 +1,12 @@
 # 12. comp 成型深化(commitment)— P2 真正通关 blocker
 
 > 总见 [README](README.md)。本文:P2 核心 —— bot **commit 一个可成型 comp + 深 stack(不散)**,解「board 全程 spread → 弱 → plane2 秒死」。
-> 状态:**F2 已实现+live 验证(D-63,bot roll 找 target 阵营 + 买)/ F3 已验证 wired(D-64 阶段确认超线性 1.83>1.0 偏深堆,无需改)/ F1(commit 阈值)待做(据 plane2 结果)**。触发:整局 bot 存活过 plane1(D-54~D-62 事件/bug 修)但 plane2 r1 hp100→0 秒死 —— board 8 阵营各 1-2 无深堆,target(击破流萤)阵营 shop 不供,攒金/买 off-target 不 roll 找 target → 永不深成型。
+> 状态:**F1 已实现(D-86 maybe_pivot 强粘 + **D-106 买侧 prefilter 拒 off-target** → commit 后 roll 找 target 不散买;`target_committed` 单一判据 maybe_pivot + prefilter 共用)/ F2 已实现+live 验证(D-63 roll 找 target 阵营 + D-90 shop 有 target 先买不刷掉)/ F3 已验证 wired(D-64 超线性 1.83>1.0)/ drought bail 出口(D-92,5 轮无 target 重选,防 commit 锁死不可达)**。触发:整局 bot 存活过 plane1(D-54~D-62 事件/bug 修)但 plane2 r1 hp100→0 秒死 —— board 8 阵营各 1-2 无深堆。**D-106 live 验待**:多局 r4+ board 收敛(深堆 target 阵营)+ hp 不崩。
 
 ## 问题(2026-08-06 整局实测)
 
 1. **board 全程 spread**:bot 从不 commit 一个 comp 深化 —— 每轮 board 是 8 阵营各 1-2 张(target 阵营常只 1 张,远未成型)。comp_score 间 gap 极小(+0.015/+0.038/+0.097)→ 每轮近 pivot 边缘,leader 随 board/shop 微变。
-2. **shop 无 target 阵营时不 roll 找 target**:`plan` 的 prefilter 在 shop 无 target 卡时允许买 off-target 填充(防饿死)→ board 散;且 `_saving_for_level`(攒金升级)还**阻断 roll**(line 511 `not _saving_for_level`)→ 攒金期间完全不搜 target 卡 → target 永不深堆。
+2. **shop 无 target 阵营时不 roll 找 target**:`plan` 的 prefilter 在 shop 无 target 卡时允许买 off-target 填充(防饿死)→ board 散;且 `_saving_for_level`(攒金升级)还**阻断 roll**(line 511 `not _saving_for_level`)→ 攒金期间完全不搜 target 卡 → target 永不深堆。**(✅ D-106 已修:已 commit 后 prefilter 拒 off-target → 改 Refresh 找 target / 攒金;未 commit 早期仍放行 tempo;drought bail 处理真不可达)**
 3. **plane2+ 高伤**:弱 comp(无深成型)plane2 一回合 hp100→0 秒死。
 
 根因一句话:**bot 没有「commit 一个 comp + 持续 roll/买深化它」的机制**;target 选择 flit + plan 不 roll 找 target + off-target 填充 → 永远 spread 弱阵。

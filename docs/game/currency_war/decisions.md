@@ -15,6 +15,16 @@
 
 ---
 
+## D-106 (2026-08-08) commit 后买牌拒 off-target(prefilter 加 commitment gate,治 T#97 spread 根因)· §03/§08
+
+- **决策**:`cw_decisions` 买牌 prefilter 加 commitment gate —— 已 commit(`target_committed`)时,off-target 卡**也拒**(不仅「shop 有买得起 target」时拒)。`COMMIT_FRAC`/`COMMIT_ROUND`/`COMMIT_STICK_FACTOR` 提 `cw_comps` 模块级 + 新 `target_committed()` helper(maybe_pivot 强粘 + prefilter 拒 off-target **共用单一判据**)。
+- **为什么**:T#97 live 复现(A8 plane1,target 巡击青雀[仙舟/追击]):买完唯一 target 卡(追击/赛飞儿)后 `simulate(BuyCard)` 把它移出 shop → shop 无 target → 旧 prefilter「防 hold-forever 饿死」放行 off-target → 买 能量/持续伤害/群攻 散牌 → board 8 阵营 spread(追击:1 仙舟:1 永不深堆)→ comp 永弱 → hp r1-2 升(80→84)后 r3 起崩(84→75→62→53 @r7)。根因:commit 只让 target**不换**(maybe_pivot sticky),没让**买单**聚焦 —— 旧「防饿死」与 drought bail(D-92,5 轮重选)冗余且直接致 spread。
+- **修法**:commit 后 off-target 不买 → 该 Refresh 找 target / 攒金(drought bail 处理真不可达)。未 commit(round<4)仍放行 off-target = 早期 tempo(起手 7 角色已铺板,非空板饿死;tempo 掉血可接受)。
+- **备选**:① 删「防饿死」全禁 off-target(推翻:早期需散牌铺板 tempo,全禁饿死);② 仅禁 盛会之星 off-target(推翻:太窄,能量/持续伤害 等非盛会 off-target 同样 spread);③ 多维打分软惩罚 off-target(推翻:commit 是硬 sticky 语义,软打分被 char_value 盖过 → spread 复发)。
+- **状态**:采用。2 新单测绿(commit 拒 off-target / 未 commit 放行 tempo)+ D-79 回归绿;212 cw 测试绿;修了 069565a2 漏更新的 drought bail 测试(3→5)。**live 验待**:下局 r4+ 不再买 off-target 散牌 → board 收敛(追击/仙舟 深堆)→ hp 不崩。· T#97 / `target_committed` / `cw_decisions._best_improving_action` prefilter
+
+---
+
 ## D-105 (2026-08-07) supply 接 decide_supply(read_supply_options OCR 装备/角色列 → key_equips 契合选)· T#99 决策接线
 
 - **决策**:`RunSupplyNode._do_action` 接 `strategy.decide_supply` —— 新建 `read_supply_options`(cw_node_obs)OCR 补给每列(装备名 y≈680 + 角色名 y≈545,按 x 聚列)→ `SupplyOption` 列表 → `decide_supply` 按 `target_comp.key_equips` 契合 + 装备通用价值(`_EQUIP_VALUE`)选最优列 → 点该列卡身 + 确认。替代原盲点 `CARD_BODY`(900,550)= 永远第一列。

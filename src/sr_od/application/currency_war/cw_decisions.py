@@ -30,6 +30,7 @@ from sr_od.application.currency_war.cw_comps import (
     make_score_context,
     mechanics_fit,
     select_comp,
+    target_committed,
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
@@ -506,10 +507,15 @@ def _best_improving_action(
         if target_comp is not None:
             _is_offtarget = (card.faction not in target_comp.factions
                              and card.name not in target_comp.core_chars)
-            if _is_offtarget and any(
+            if _is_offtarget:
+                # shop 有买得起的 target 卡 → 跳 off-target(聚焦深化 target;task#16)。
+                # T#97:**已 commit** 也跳(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金;
+                # drought bail 处理真不可达 target)。仅「非 commit + shop 无 target」放行 = 早期 tempo。
+                _shop_has_buyable_tgt = any(
                     c.faction in target_comp.factions or c.name in target_comp.core_chars
-                    for c in state.shop if state.gold >= card_cost(c)):
-                continue
+                    for c in state.shop if state.gold >= card_cost(c))
+                if _shop_has_buyable_tgt or target_committed(target_comp, state):
+                    continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if after_buy.deployed_count() < after_buy.max_units() and after_buy.bench:

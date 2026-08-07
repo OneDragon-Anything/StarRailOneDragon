@@ -506,6 +506,25 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 
 # ===== 转型(pivot)+ 巨星(select_megastar)=====
 
+# T#97 commitment(单一定义,maybe_pivot 强粘 + cw_decisions 买牌 prefilter 拒 off-target 共用):
+# commit = 已成型(form_progress≥COMMIT_FRAC)**或**累计轮达 COMMIT_ROUND(spread board 的 form_progress
+# 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型 comp;② cw_decisions prefilter
+# 拒 off-target(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金,drought bail 处理真不可达)。
+COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
+COMMIT_ROUND: int = 4              # 累计轮 (plane-1)*9+round ≥4 → commit(plane1 r4 起;仅递增不回退)
+COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型 comp
+
+
+def target_committed(target: Comp, state: GameState) -> bool:
+    """target 是否已 commit(form_progress≥COMMIT_FRAC 或 累计轮≥COMMIT_ROUND)。单一真相源(T#97)。
+
+    spread board 的 form_progress 永不达 COMMIT_FRAC → 靠 ``(plane-1)*9+round≥COMMIT_ROUND`` 轮数兜底
+    (仅递增不回退)。maybe_pivot(强粘)+ cw_decisions prefilter(拒 off-target)共用本判据。
+    """
+    return (form_progress(target, state) >= COMMIT_FRAC
+            or (state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND)
+
+
 def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
@@ -526,15 +545,9 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 巡击青雀[medium] gap 0.097 卡 0.10 没转,
     # 巡击青雀 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
-    # F1(commit 阈值,strategy/12):target form_progress 越过 COMMIT_FRAC = 已 commit → pivot 阈值提高
-    # (强粘,不弃已成型 comp;防 flit 弃正在堆的 comp)。2026-08-06 实跑:bot board spread + 低 hp 弃成型
-    # comp → 弱死;commit 后该深堆不弃。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。
-    COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
-    # T#97 round-based commitment:spread board 的 form_progress 永不达 COMMIT_FRAC → target 永不 commit →
-    # flit(2026-08-07 live:target 巡击青雀/万敌单C/DOT队 跨轮 flit → 每轮买不同阵营 = spread 根因)。
-    # 加累计轮门槛:≥COMMIT_ROUND 也算 commit → 强 sticky → plan 一致买 target 阵营深 stack。
-    COMMIT_ROUND: int = 4              # 累计轮 (plane-1)*9+round ≥4 → commit(plane1 r4 起 sticky;仅递增不回退)
-    COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → 阈值 ×1.5(0.10→0.15),更难弃成型 comp
+    # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)→ pivot
+    # 阈值 ×COMMIT_STICK_FACTOR,不弃成型 comp(防 flit 弃正在堆的 comp)。**优先于 D-59 easier**
+    # (已 commit 不因易 comp 降阈被弃)。COMMIT_* 已提模块级(maybe_pivot + cw_decisions prefilter 共用)。
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
@@ -569,9 +582,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)。
         # F1(strategy/12):target 已 commit(form_progress≥COMMIT_FRAC)→ 提阈值强粘(不弃成型),优先于 easier。
         _required_gap = PIVOT_SCORE_GAP
-        _committed = (target is not None and (
-            form_progress(target, state) >= COMMIT_FRAC
-            or (state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND))
+        _committed = target is not None and target_committed(target, state)
         _easier = (target is not None
                    and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
                    and form_progress(target, state) < 1.0)
