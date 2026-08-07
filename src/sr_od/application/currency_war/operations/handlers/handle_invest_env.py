@@ -72,8 +72,8 @@ class HandleInvestEnv(SrOperation):
     @operation_node(name='投资环境', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        _hit = self.round_by_ocr(screen, '投资环境').is_success
-        log.info(f'[cw-env] enter round_by_ocr(投资环境)={_hit}')
+        _hit = self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success
+        log.info(f'[cw-env] enter find_area(标识-投资环境)={_hit}')
         if not _hit:
             return self.round_fail('非投资环境屏')
 

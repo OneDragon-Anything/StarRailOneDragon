@@ -15,6 +15,18 @@
 
 ---
 
+## D-103 (2026-08-07) round_by_ocr 全屏 → screen_info area 化(遵守 od-dev-write-operation ADR-0004/0008,行为保持)· 全 cw ops/handlers/entry
+
+- **决策**:cw 模块全屏 `round_by_ocr(screen, text)`(无 area,LCS 默认 0.5 子序列匹配,结构性易误匹配)→ 凡固定位置元素改区域识别(`round_by_find_area` / `round_by_find_and_click_area`,text 进 screen_info area 的 `pc_rect`,OCR 限定区域不全文扫)。用户指令「找出 cw 所有使用的地方都要替换掉」+ 指正 skill 早说不要用全屏 round_by_ocr。
+- **为什么**:ADR-0004/0008 + SKILL.md 选型判据 —— 固定位置元素**压倒性默认**区域识别;全屏 OCR = rare last-resort(仅位置真漂移/动态)。CW 几乎所有检测文本都是固定位置(按钮 / overlay 标题 / id_mark)→ 全屏 LCS 是偷懒 + 误匹配风险(LCS 0.5 子序列撞别屏同名/邻屏相似标签,实跑已多次复发卡死)。area 位置约束结构性根治。
+- **本轮(首批,复用现有 area + 量 1 个新 area)**:① 复用已有 area 的文本(零测量):购买经验→`备战标识-购买经验`、商店→`按钮-商店`、出战→`按钮-出战`、投资策略→`标识-请选择投资策略`、投资环境→`标识-投资环境`、未达上限→`标识-未达上限警告`、创业指南→`标识-创业指南`(shop/battle_prep/battle_loop/exit/start/handle_invest_env/handle_invest_strategy/handle_deploy_not_full);② 新建 `按钮-收起`(shop 开/关 toggle,坐标交叉验证:视觉文本框落 `按钮-商店` 同一 toggle 按钮内,pc_rect [1578,948,1664,1002])。阿哈简易装备(0g)、invest_strategy/env(battle_loop 0e)上轮已 area 化。
+- **机制**:`find_area` 对配 `text` 的 area = OCR 限定在 `pc_rect` + LCS;配 `template_id` = 模板匹配。检测用 `round_by_find_area`(只检测不点击,skill 警告);找到再点用 `round_by_find_and_click_area`;无脑点固定按钮中心用 `round_by_click_area`。
+- **待续(余 ~60 处,需新建 area + 截图建档,逐屏推进)**:结算屏(挑战结束/继续挑战/下一步/下一页/放弃并结算/返回货币战争/总伤害/数据统计/创业指南[exit 语境]——**无 screen_info 文件,待建 currency_war 结算屏**)、partner/megastar/supply/encounter overlay 标题(选择伙伴/确认选择/请选择强化角色/盛会之星/补给阶段/遭遇其一/消耗品/拖动到——screen_info 无 text area,待补)、备战席已满弹窗、可合成列表/角色详情、战斗 toast(点击空白加速/继续——动态,或留全屏 fallback)、entry 弹窗(前往参与/继续进度/点击空白处关闭/赛季扩充/新内容解禁)。这些坐标不能猜(CLAUDE.md 硬规则:玩法改动别凭猜改),按 od-dev-ui-region-detect 实图量。
+- **备选**:① 提 lcs_percent 止血(ADR-0008 否:只杀低重叠,全等/高重叠子序列无效,且不治本);② 删全屏 OCR 只留 area(ADR-0004 option3 否:动态 toast 确需全屏 fallback);③ 区域识别(采用,结构性根治)。
+- **状态**:采用(首批 ~18 处 + 按钮-收起 area)。行为保持(同文本同位置,OCR 限区替代全屏),待实机跑局验证各路径(收起/shop 开关/overlay dispatch/lobby 回流)。余 ~60 处逐屏续做。· od-dev-write-operation ADR-0004/0008
+
+---
+
 ## D-102 (2026-08-07) deploy 身份驱动(采 CW 立绘库 + read_bench_chars,修 D-100 bench_idx 错位)· deploy_bench / cw_identity_obs / collect_portraits_op
 
 - **决策**:deploy_bench 改用 `read_bench_chars`(CW 立绘库 SIFT 识别实际 bench 每槽角色)→ 按角色 `position_pref` deploy(front/back),替代 D-100 的 tracked_bench idx(tracked_bench 顺序 ≠ 实际槽位 → 拖错角色)。

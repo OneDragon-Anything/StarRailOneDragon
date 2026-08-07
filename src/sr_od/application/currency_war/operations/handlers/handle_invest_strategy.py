@@ -74,7 +74,7 @@ class HandleInvestStrategy(SrOperation):
     @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_ocr(screen, '投资策略').is_success:
+        if not self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             return self.round_fail('非投资策略屏')
 
         opts = self._read_options(screen)

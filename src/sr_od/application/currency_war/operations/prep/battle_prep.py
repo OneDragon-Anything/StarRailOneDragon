@@ -46,7 +46,7 @@ class BattlePrepCycle(SrOperation):
     def battle(self) -> OperationRoundResult:
         # 点出战 + verify transition(仍在备战→retry)。
         screen = self.last_screenshot
-        if self.round_by_ocr(screen, '出战').is_success:
+        if self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success:
             _btn = area_center(self.ctx, '按钮-出战') or BattlePrepCycle.BATTLE_FALLBACK
             # bug#1 缓解(D-62):click 前 mouse_move 到出战键(零移动),防 before_screenshot 移光标到角落 →
             # click 落在移动中 → 被游戏判拖拽落空。2026-08-06 r9 实跑:出战 click ×4 未落地(手动 click 即开战)
@@ -56,7 +56,7 @@ class BattlePrepCycle(SrOperation):
             log.info(f'[cw-prep] 备战单轮 ③ 出战 click @({_btn.x},{_btn.y})')
             time.sleep(1.0)  # 等出战→战斗过渡
             # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(防假成功 prep-loop)
-            if self.round_by_ocr(self.screenshot(), '购买经验').is_success:
+            if self.round_by_find_area(self.screenshot(), '货币战争-备战', '备战标识-购买经验').is_success:
                 log.warning('[cw-prep] ⚠️ 出战后仍在备战(click 未落地 / bug#1?),retry')
                 return self.round_retry('出战 click 未落地,重试', wait=1)
             log.info('[cw-prep] 出战成功 → 自动战斗')

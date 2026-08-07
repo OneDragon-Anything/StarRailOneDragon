@@ -117,7 +117,7 @@ class StartCurrencyWarMatch(SrOperation):
         # 2) 投资环境 3 选 1 → HandleInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
         #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
-        if self.round_by_ocr(screen, '投资环境').is_success:
+        if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success:
             _log.info('[cw-entry] 到达投资环境 → HandleInvestEnv(3 选 1 + 确认)')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)

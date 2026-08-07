@@ -190,10 +190,10 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)
 
         # 0d. 出战确认弹窗(未达上限)→ HandleDeployNotFull(勾本局不再提示 + 确认,详见 op)。
-        # lcs_percent=0.8:防投资策略屏的策略描述「能量上限」与「未达上限」共享子序列「上限」(LCS 2/4=0.5
-        # =默认阈值)误匹配 → 投资策略屏被本分支吞 → 反复触发 HandleDeployNotFull 卡死(2026-08-05 实跑)。
-        # 真「未达上限」弹窗 4/4 命中不受影响。同 loop 其他分支(0a/0b/0e 均 0.7-0.9)的收紧惯例。
-        if self.round_by_ocr(screen, '未达上限', lcs_percent=0.8).is_success:
+        # 用 screen_info id_mark area(标识-未达上限警告)位置区分,非全屏 LCS:投资策略屏的策略描述「能量上限」
+        # 与「未达上限」共享子序列「上限」(LCS 2/4=0.5)会误匹配全屏 LCS → 投资策略屏被本分支吞 → 反复触发
+        # HandleDeployNotFull 卡死(2026-08-05 实跑)。id_mark area 位置不同 → 不命中(同 0e invest area 化理由)。
+        if self.round_by_find_area(screen, '货币战争-未达上限警告', '标识-未达上限警告', crop_first=False).is_success:
             HandleDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 
@@ -242,7 +242,7 @@ class CurrencyWarRunLoop(SrOperation):
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
         # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),
         # 走正常 prep→出战→战斗(原 遭遇 handler "2选1" 过时,且 click 干扰 prep → stall,已移除)。
-        if self.round_by_ocr(screen, '购买经验').is_success:
+        if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
@@ -278,7 +278,7 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
-        if self.round_by_ocr(screen, '创业指南').is_success:
+        if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
             # 局终:on_match_end(P1 桩 MatchOutcome,默认 no-op;真实 outcome 填充属 P1.5)+ 清场防跨局污染(D-34/§11.7)
             if self.ctx.cw_match is not None:
                 self.ctx.cw_match.strategy.on_match_end(

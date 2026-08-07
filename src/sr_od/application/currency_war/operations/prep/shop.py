@@ -88,20 +88,28 @@ class BuyShopCards(SrOperation):
         # round_fail 快速退出(不 retry),让上层 BattlePrepCycle 中止、主循环 loop 接手处理事件
         # (loop 的 0/0b/4 分支)。否则 round_retry 在非商店屏死循环 → 对局卡死。
         # 备战锚点「购买经验」= 底部买经验按钮,shop 开/关均可见(本 op 开 shop 后仍点它升等级)。
-        if not self.round_by_ocr(screen, '购买经验').is_success:
+        if not self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             return self.round_fail('非备战屏(回合事件叠层?),交主循环处理')
         # 事件 overlay 兜底(2026-08-04):投资策略/环境/补给等 overlay 叠在备战上,「购买经验」会
         # 透出(底部左下未遮)→ 上面 guard 误放行 → overlay 遮商店 → "找不到商店"死循环。
         # 主循环已事件前置检测(正常不到这),这是 BuyShopCards 自身的兜底:overlay 在 → fail 交主循环。
-        for _evt in ('投资策略', '投资环境', '补给阶段', '遭遇其一', '选择伙伴', '确认选择'):
+        # 事件 overlay 兜底:有 screen_info 标题区的走区域识别(结构性不误匹配,T#103);
+        # 无区的 overlay(补给/遭遇/选择伙伴/确认选择 —— screen_info 待建 text area)暂留全屏 OCR + 高 lcs。
+        for _scr, _area, _evt in (
+            ('货币战争-投资策略', '标识-请选择投资策略', '投资策略'),
+            ('货币战争-投资环境', '标识-投资环境', '投资环境'),
+        ):
+            if self.round_by_find_area(screen, _scr, _area).is_success:
+                return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
+        for _evt in ('补给阶段', '遭遇其一', '选择伙伴', '确认选择'):  # TODO(T#103) 待建 area
             if self.round_by_ocr(screen, _evt, lcs_percent=0.8).is_success:
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
-        if self.round_by_ocr(screen, '收起').is_success:
-            self.round_by_ocr_and_click(screen, '收起', success_wait=1.0)
+        if self.round_by_find_area(screen, '货币战争-备战', '按钮-收起').is_success:
+            self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-收起', success_wait=1.0)
             time.sleep(0.4)
             screen = self.screenshot()
         hp_value = read_hp(self.ctx, screen)
@@ -117,8 +125,8 @@ class BuyShopCards(SrOperation):
                     break
 
         # 开商店(gold/shop/board 须 shop 开才显示;HP 此时被遮但上面已读过)
-        if not self.round_by_ocr(self.screenshot(), '收起').is_success:
-            if not self.round_by_ocr_and_click(self.screenshot(), '商店', success_wait=1.5).is_success:
+        if not self.round_by_find_area(self.screenshot(), '货币战争-备战', '按钮-收起').is_success:
+            if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
                 return self.round_retry('找不到商店/收起按钮', wait=1)
             time.sleep(0.5)
 
@@ -231,7 +239,7 @@ class BuyShopCards(SrOperation):
 
         # 关商店(「收起」)
         time.sleep(0.4)
-        self.round_by_ocr_and_click(self.screenshot(), '收起', success_wait=1.0)
+        self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-收起', success_wait=1.0)
         return self.round_success(
             f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
             f'(gold={state.gold} lv={state.level} plane={state.plane})'

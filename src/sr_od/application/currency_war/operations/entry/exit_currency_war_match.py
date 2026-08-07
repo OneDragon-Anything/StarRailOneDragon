@@ -26,7 +26,7 @@ class ExitCurrencyWarMatch(SrOperation):
         screen = self.last_screenshot
 
         # 已在大厅 → 完成
-        if self.round_by_ocr(screen, '创业指南').is_success:
+        if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
             return self.round_success(ExitCurrencyWarMatch.STATUS_AT_LOBBY)
 
         # 放弃提示 → 放弃并结算
@@ -47,9 +47,9 @@ class ExitCurrencyWarMatch(SrOperation):
             return self.round_wait(wait=2)
 
         # 备战/对局中(无放弃提示)→ Esc 弹放弃提示
-        if (self.round_by_ocr(screen, '购买经验').is_success       # 备战
-                or self.round_by_ocr(screen, '备战阶段').is_success
-                or self.round_by_ocr(screen, '出战').is_success):
+        if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success       # 备战
+                or self.round_by_ocr(screen, '备战阶段').is_success   # TODO(T#103) 待建 area
+                or self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=2)
 

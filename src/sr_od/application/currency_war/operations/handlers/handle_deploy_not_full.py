@@ -34,8 +34,9 @@ class HandleDeployNotFull(SrOperation):
     @operation_node(name='未达上限确认', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # lcs_percent=0.8:防「能量上限」(投资策略描述)与「未达上限」共享「上限」(2/4=0.5)误匹配(见 battle_loop 0d)。
-        if not self.round_by_ocr(screen, '未达上限', lcs_percent=0.8).is_success:
+        # 用 screen_info id_mark area(标识-未达上限警告)位置区分,非全屏 LCS:防「能量上限」(投资策略描述)
+        # 与「未达上限」共享「上限」(2/4=0.5)误匹配(见 battle_loop 0d)。area 位置不同 → 不命中。
+        if not self.round_by_find_area(screen, HandleDeployNotFull.SCREEN_NAME, '标识-未达上限警告').is_success:
             return self.round_fail('非未达上限弹窗')
         _check = area_center(self.ctx, '勾选-本局不再提示', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.CHECKBOX_NO_PROMPT
         _confirm = area_center(self.ctx, '按钮-确认', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.BTN_CONFIRM
