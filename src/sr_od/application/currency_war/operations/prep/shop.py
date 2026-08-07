@@ -154,6 +154,9 @@ class BuyShopCards(SrOperation):
             if match.session.tracked_bench:
                 state.bench = _tracked_bench_chars(match.session.tracked_bench)
                 log.info(f'[cw] tracked_bench(seed state.bench)={match.session.tracked_bench}')
+            # D-91:存 last_state 快照(board/deployed/bench 完整)给节点 overlay handler(遭遇/补给/...)
+            # 读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
+            match.session.last_state = state
             actions = match.strategy.decide_prep(state, match.session, config)
             # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
             target_name = match.session.target_comp.name if match.session.target_comp is not None else ''

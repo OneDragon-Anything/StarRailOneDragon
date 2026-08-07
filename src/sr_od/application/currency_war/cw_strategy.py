@@ -153,6 +153,10 @@ class StrategySession:
     反馈(掉血/胜负);``memory`` 是策略私有 scratch(连胜计数/「这轮攒金升8」意图等 escape hatch)。
     """
     target_comp: Comp | None = None        # 战略层目标阵容(update_target 维护)
+    # 最近一次备战 read_game_state 快照(board/deployed/bench;BuyShopCards 每回合写)。给**节点 overlay
+    # handler**(遭遇/补给/巨星/伙伴)读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
+    # D-91(2026-08-07):决策接线 audit —— 节点 decide_* 需 state 评成型度,session 之前没存 → 加。
+    last_state: GameState | None = None
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     memory: dict[str, Any] = field(default_factory=dict)       # 策略私有 scratch(核心领域实体走正规类型,不塞这)

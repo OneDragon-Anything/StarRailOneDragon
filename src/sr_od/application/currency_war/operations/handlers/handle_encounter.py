@@ -14,6 +14,10 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_node_obs import read_encounter_options
+from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
     safe_click,
@@ -39,8 +43,20 @@ class HandleEncounter(SrOperation):
         screen = self.last_screenshot
         if not self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:  # 0.9 防备战屏「遭遇」误匹配(见 battle_loop 0c)
             return self.round_fail('非遭遇节点屏')
-        # 默认选左卡(难度低、稳);TODO 策略化按 comp 选左/右。
-        card = HandleEncounter.CARD_LEFT
+        # D-91 决策接线:read 遭遇选项(difficulty 从标题其X + reward)→ decide_encounter
+        # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
+        options = read_encounter_options(self.ctx, screen)
+        match = self.ctx.cw_match
+        idx, reason = 0, 'default(no-options/match)'
+        if match is not None and options:
+            _state = match.session.last_state or GameState()   # overlay 时 board 不可读 → 用上次备战快照
+            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+            pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
+            if 0 <= pick.idx < len(options):
+                idx = pick.idx
+            reason = pick.reason
+        log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} pick=idx{idx} {reason}')
+        card = HandleEncounter.CARD_LEFT if idx == 0 else HandleEncounter.CARD_RIGHT
         safe_click(self, card, tag='cw-encounter')
         time.sleep(0.8)
         # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop

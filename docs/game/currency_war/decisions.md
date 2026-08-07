@@ -15,6 +15,13 @@
 
 ---
 
+## D-91 (2026-08-07) 决策接线 audit + 遭遇节点接入策略(read_encounter_options → decide_encounter)· cw_node_obs / handle_encounter / StrategySession.last_state
+
+- **决策**:① 全面自检「所有决策操作接入策略」(用户指令)→ 审计表(`.debug/temp/currency_war/decision_wiring_audit.md`):买/invest_env/invest_strategy 已接入;**遭遇/补给/巨星/伙伴/部署 未接入**(handler 硬编码默认,decide_* 钩子虽就绪但不调/option 全空)。② 接入**遭遇**:新建 `cw_node_obs.read_encounter_options`(OCR 标题「遭遇其X」→ difficulty + 奖励带→reward)→ HandleEncounter 调 `strategy.decide_encounter`(difficulty + comp 成型度选,非硬编码左)。③ 加 `StrategySession.last_state`(BuyShopCards 每回合存 board/deployed 快照)→ 节点 overlay handler 读成型度(overlay 时 board 不可读,用上次备战近似)。
+- **为什么**:用户连 3 轮反映「没接策略 / 无脑选人 / 没按设计实现」。审计对照 design 08(早已标 encounter/megastar/supply naive):**策略纯逻辑就绪但 handler 不调**是根因(不是没设计)。遭遇是 P0(design high + 最早出现的 option 节点),先接入立 pattern。读「一」漏(笔画细)→ 数字设可选(无数字→难度1 = 漏了「一」的易卡,baseline 实测)。
+- **备选**:① 接 supply(钻,高值)先 —— 钻检测需 CV/视觉,reader 更重;遭遇 reader 纯 OCR 更轻,先立 pattern。② 不加 last_state 用空 state —— decide_encounter 恒判未成型→恒低难度(= 旧「选左」),无改进;last_state 让 formed 时敢选高难度拿好奖励。③ 用 V-marks 计数判难度 —— V-marks OCR 不稳;标题数字更稳。
+- **状态**:采用。read_encounter_options offline baseline 核实(2 卡 difficulty 1/4 + reward 正确)+ 4 单测绿;全 205 cw 测试绿。**余未接入**:补给/巨星/伙伴/部署(decide_supply/select_megastar/decide_partner 就绪,缺 reader;部署 blocked by 身份)。commit 见下。· cw_node_obs / strategy/08 接线表 / decision_wiring_audit.md
+
 ## D-90 (2026-08-07) Refresh 门:shop 有买得起的 target 卡 → 先买别刷掉(simulate RefreshShop 不建模换 shop)· cw_decisions._best_improving_action
 
 - **决策**:Refresh 候选加门 `not _shop_has_buyable_target` —— shop 有买得起的 target 卡(target 阵营/core)时抑制 Refresh,先买;买完(无买得起的 target)才 Refresh 找更多。

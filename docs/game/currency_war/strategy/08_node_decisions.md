@@ -2,6 +2,23 @@
 
 > 总见 [README](README.md)。review r1(方案)发现:遭遇难度选择、巨星强化、补给出钻 三块节点决策 naive 或缺失。这些是 A8 高胜率的关键节点决策(非买/deploy/升/刷新的核心循环,但每局必遇)。
 
+## 决策接线状态(2026-08-07 全面自检,用户指令「所有决策操作都要接入策略」)
+
+> 对照本节 + 01/05,逐决策点核查「handler 是否调 decide_*」。详 `.debug/temp/currency_war/decision_wiring_audit.md`。
+> 模式:handler 应 **read 选项 → 调 `strategy.decide_*` → 点选中项**,非硬编码默认。
+
+| 决策点 | 策略函数 | reader | handler 接入 | 状态 |
+|---|---|---|---|---|
+| 买牌 | `plan` ✅ | `read_shop_cards` ✅ | BuyShopCards ✅ | ✅ 接入(D-90 修 refresh) |
+| 投资环境/策略 | `decide_invest`→`decide_event` ✅ | OCR 卡名 ✅ | HandleInvest* ✅ | ✅ 接入 |
+| **遭遇** | `decide_encounter` ✅ | `read_encounter_options` ✅(D-91) | HandleEncounter ✅(D-91) | ✅ **接入**(D-91) |
+| 补给 | `decide_supply` ✅ | `read_supply_options` ❌缺 | RunSupplyNode ❌(默认中牌) | ❌ 待接 |
+| 巨星 | `select_megastar` ✅ | 候选名 OCR ❌缺 | RunMegastarNode ❌(char_id 空→idx0) | ❌ 待接 |
+| 伙伴 | (PartnerOption,fn 待写) | 候选名 OCR ❌缺 | HandleSelectPartner ❌(取最左) | ❌ 待接 |
+| 部署 | plan 的 `DeployMove`(被 shop.py 跳过) | 备战席身份 ❌(SIFT 失败 D-84) | DeployBench ❌(naive 填位) | ❌ blocked by 身份 |
+
+**接入 4 / 未接 4**(原未接 5,遭遇 D-91 接入)。未接的补给/巨星/伙伴:decide_* 就绪,缺 reader(需 live 到画面建)。部署 blocked by 角色身份(半身立绘 SIFT 不可行)。
+
 ## 遭遇节点(decide_encounter,完整性-3,high)
 
 **问题**:research §10.2「A8 遭遇常比 boss 凶;**可刷新 1 次**;阵容未成型选最低难度 + 刷新避开**急速制冷/正当防卫**(最难)」。当前 battle_loop naive「选左遭遇」,decide_event(白名单子串)**无法表达难度选择**(遭遇选项是难度档,非白名单项)。
