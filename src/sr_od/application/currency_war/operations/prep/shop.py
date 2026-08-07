@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_obs_core import HP_MAX
 from sr_od.application.currency_war.cw_observation import (
     area_center,
     read_game_state,
@@ -104,6 +105,16 @@ class BuyShopCards(SrOperation):
             time.sleep(0.4)
             screen = self.screenshot()
         hp_value = read_hp(self.ctx, screen)
+        # D-93:hp 读到上限 HP_MAX(=100)可能是**入口过渡帧 HP 区未渲染**(实测 round8 读 100 实际 29,
+        # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
+        # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
+        if hp_value >= HP_MAX:
+            for _ in range(2):
+                time.sleep(0.4)
+                _v = read_hp(self.ctx, self.screenshot())
+                if _v < HP_MAX:
+                    hp_value = _v
+                    break
 
         # 开商店(gold/shop/board 须 shop 开才显示;HP 此时被遮但上面已读过)
         if not self.round_by_ocr(self.screenshot(), '收起').is_success:

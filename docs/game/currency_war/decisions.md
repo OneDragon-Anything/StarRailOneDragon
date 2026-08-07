@@ -15,6 +15,13 @@
 
 ---
 
+## D-93 (2026-08-07) read_hp 重读兜底:读到上限 100 可能是入口过渡帧 HP 区未渲染 → 重读 2 次取真值(保血信号地基)· shop.buy / read_hp
+
+- **决策**:`BuyShopCards.buy` 读 hp 后,若 `hp_value >= HP_MAX(100)` → 重读 2 次(各 sleep 0.4s + 重截图),取首个 < HP_MAX 的值;都 100 则维持(真满血或 HP 区持续空)。
+- **为什么**:live round8 读 hp=100(实际结算 29;round9 同款读对 29)→ **间歇时序**(入口过渡帧 HP 区未渲染),非持续。hp 驱动 `maybe_pivot` 的 hp_safe 保命信号(hp<0.75×threshold → 切最快 easy comp)+ `_phase_weights` 保血权重 —— 误读 100 → 误判满血 → **不保血/不切保命** → 不必要失血死。保血是生存地基,误读 disarm 它。
+- **备选**:① 入口固定 sleep 等渲染 —— 每轮加延迟(满血时也等),弃;只在读到 100(可疑)时重读,满血无额外延迟(重读仍 100)。② 改 read_hp 区等渲染 —— 区是对的(shop 关闭态 HP 显示),问题是帧时序非区;本重读治时序。③ 不修 —— 间歇但保血常 disarm,得不偿失。
+- **状态**:采用。ruff 净;全 207 cw 测试绿。真满血重读仍 100(无害);间歇误读 → 重读取真值。live 验随下局(round8 类过渡帧 hp 不再误读 100)。· shop.buy / cw_observation.read_hp
+
 ## D-92 (2026-08-07) drought bail:target 连续 3 轮 shop 无其阵营卡 → 弃 target 重选(防 commit 锁死不可达 target)· default_strategy.update_target / StrategySession.target_drought
 
 - **决策**:`update_target` 追踪 `session.target_drought`(target 阵营连续多少轮不在 shop,即 `shop_supply<1.0`);≥`DROUGHT_BAIL(3)` → 弃 target(=None)→ select_comp 重选(shop-aware 挑买得到的)。
