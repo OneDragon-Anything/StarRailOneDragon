@@ -261,11 +261,18 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
-    DeployBench 用它定位**空位**:从 stage 第 X 个槽起部署(跳过已占的前 X 个),
-    否则拖到已占槽会被拒(货币战争 drag-to-occupied 不交换)→ 备战栏角色部署不上去 →
-    出战(需满员/接近满员才触发)卡死。
+    DeployBench 用它定位**空位**:D-108d(cap_remaining)+ D-108e(offset)依赖它;读不到 → fallback
+    → 部分 churn。**small stylized「X/Y」paddle det 常漏**(同 gold/cost,T-96)→ crop + 3x 放大破 det
+    天花板(read_gold 同法,T-92)。仍读不到 → None(调用方 fallback)。
     """
-    blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, '区域-部署数')))
+    rect = _area_rect(ctx, '区域-部署数')
+    if rect is None:
+        return None
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return None
+    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
+    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=up))
     m = re.search(r'(\d+)\s*/\s*\d+', blob)
     return int(m.group(1)) if m else None
 
