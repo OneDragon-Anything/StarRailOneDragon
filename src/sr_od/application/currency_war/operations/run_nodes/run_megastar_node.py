@@ -42,8 +42,15 @@ class RunMegastarNode(RunNode):
     def _in_node(self, screen) -> bool:
         # 巨星 overlay:有「确认选择」且非「选择伙伴」(选择伙伴候选是 stage 立绘,由 RunSelectPartner 接)。
         # lcs 0.7:防「确认选择」与「请选择投资策略」共享「选择」(2/4=0.5)误匹配。
-        return (self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success
-                and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
+        still_in = (self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success
+                    and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
+        # D-97c:节点完成(overlay 关)→ 重置 session flag(下个 megastar 节点可重新点候选)。
+        # megastar 每 plane 至少 1 个(plane1 r6 + plane2 r6…),flag 不能跨节点保持 True。
+        if not still_in:
+            _match = self.ctx.cw_match
+            if _match is not None:
+                _match.session.megastar_candidate_clicked = False
+        return still_in
 
     def _do_action(self, screen) -> None:
         # D-97b:候选只点**一次** —— 用 session 级 flag(跨 loop re-dispatch 持久;instance flag 会因 new
