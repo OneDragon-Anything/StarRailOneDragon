@@ -170,14 +170,14 @@ class DeployBench(SrOperation):
             dst = self._find_empty_slot(pref, front, back, occupied_front, occupied_back)
             if dst is None:
                 continue
-            # D-117b:fire-and-forget(去掉 SIFT 验+retry —— false negative:post-drag screenshot 在动画过渡帧
-            # → SIFT 恒读少 → 0% 验成功 → 3×retry 浪费 22s/round)。保留 mouse_move(bug#1 缓解)+ 长 duration。
-            # 用**下一轮 board OCR** 验(非 SIFT,不受 drag 动画影响)。
-            self.ctx.controller.mouse_move(src)
-            self.ctx.controller.drag_to(end=dst, start=src, duration=1.5)
-            time.sleep(0.8)
+            # D-118:**CW deploy = click-select→click-deploy**(非 drag!2026-08-08 实测:drag_to 100% 不 land,
+            # click(bench)→click(stage slot) 成功 deploy)。旧码 D-102~D-117 全用 drag_to → 从未真正 deploy。
+            self.ctx.controller.click(src)
+            time.sleep(0.3)
+            self.ctx.controller.click(dst)
+            time.sleep(0.5)
             dragged += 1
-            log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
+            log.info(f'[cw-deploy] click-deploy:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
 
         deployed_slots = {bc.slot for bc in actual}
         remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
@@ -188,10 +188,13 @@ class DeployBench(SrOperation):
                    or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
             if dst is None:
                 break
-            self.ctx.controller.drag_to(end=dst, start=bench[slot_i - 1], duration=1.0)
-            time.sleep(0.4)
+            # D-118:click-deploy(naive 补槽也用 click,非 drag)
+            self.ctx.controller.click(bench[slot_i - 1])
+            time.sleep(0.3)
+            self.ctx.controller.click(dst)
+            time.sleep(0.5)
             dragged += 1
-        log.info(f'[cw-deploy] 身份拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
+        log.info(f'[cw-deploy] click-deploy 完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
 
     @staticmethod
     def _find_empty_slot(pref: str, front: list[Point], back: list[Point],
