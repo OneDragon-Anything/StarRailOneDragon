@@ -474,6 +474,21 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     return form_fac * power_fac
 
 
+def _formation_cost_factor(comp: Comp) -> float:
+    """D-115:成型成本因子 —— 低 form_tiers sum(易成型)→ ×>1;高 sum(难成型)→ ×<1。
+
+    分析 COMP_LIBRARY 发现:盛会之星 sum=3(3 人激活)vs 巡击青雀 sum=8(5+3 人激活)。后者成型
+    需 ~16 rounds(plane1+plane2 18 rounds 几乎全用),前者 ~6 rounds(plane1 内成型)。plane1 成型
+    = 进 plane2 时 comp 强 → 能活。旧码 form_progress 不含 total cost({仙舟:5,追击:3} 仙舟:2/追击:1
+    的 progress 0.37 > {列车同行:4} 列车同行:2 的 0.25,但后者只需再 2 人 vs 前者再 5 人)。
+    """
+    if not comp.form_tiers:
+        return 1.0
+    total = sum(comp.form_tiers.values())
+    # sum=3 → ×1.15;sum=4 → ×1.1;sum=6 → ×0.95;sum=8 → ×0.85(low cost boost, high cost penalty)
+    return max(0.85, 1.3 - total * 0.055)
+
+
 def _board_alignment(comp: Comp, state: GameState) -> float:
     """D-109:board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
 
@@ -507,6 +522,7 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
         s *= _difficulty_phase_factor(comp, state)
         s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
         s *= _board_alignment(comp, state)   # D-109:board-aware(deployed-lock → 选 board 支持的 comp)
+        s *= _formation_cost_factor(comp)   # D-115:低 form_tiers sum(易成型)优先 → comp 更快成型 → plane2 更强
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
