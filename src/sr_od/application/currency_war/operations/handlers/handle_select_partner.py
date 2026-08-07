@@ -3,7 +3,7 @@
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
 「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → 点候选立绘选中 → 确认选择。
-必须在「确认选择/巨星」(HandleMegastar)之前判断 —— 选择伙伴也有「确认选择」但候选是
+必须在「确认选择/巨星」(RunMegastarNode)之前判断 —— 选择伙伴也有「确认选择」但候选是
 stage 立绘(横排,阵营 label 行),非巨星的左候选(822,333)。
 
 TODO:策略化选伙伴(按 target_comp.core_chars 评估候选,现取最左)。

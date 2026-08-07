@@ -171,7 +171,7 @@ class CurrencyWarRunLoop(SrOperation):
             HandleSelectPartner(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0b. 巨星强化(有"确认选择"、无"选择伙伴")→ HandleMegastar(选候选 + 确认,详见 op)。
+        # 0b. 巨星强化(有"确认选择"、无"选择伙伴")→ RunMegastarNode(选候选 + 确认,详见 op)。
         #     lcs_percent=0.7:同上,防「确认选择」与「请选择投资策略」共享「选择」误匹配。
         if self.round_by_ocr(screen, '确认选择', lcs_percent=0.7).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用

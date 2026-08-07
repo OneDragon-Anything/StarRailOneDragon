@@ -1,10 +1,12 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 补给节点 RunNode(从 ``HandleSupply`` 升级为节点生命周期 owner)。
 
 补给阶段 = 3 选 1 装备 + 确认。RunNode 化后:每轮**验证**"还在补给屏?"(关键词在)→ 点卡身 +
 确认 → ``round_retry``;overlay 消失(关键词没了)= 节点完成 → ``round_success``;超预算(点不动)
 → FAIL bail(**不无限烧**,旧 HandleSupply 盲单发失败也回 success → flat loop 无限 round_wait 烧预算)。
 
-动作沿用 HandleSupply(已验证可完成补给:log 实跑 supply→megastar 衔接成功):点卡身 (900,550)
+动作沿用旧 HandleSupply(已删,dead code;动作已并入本 RunSupplyNode。已验证可完成补给:log 实跑 supply→megastar 衔接成功):点卡身 (900,550)
 不开对话直接选中 + 确认。本次重构**只改生命周期(验证完成 + 预算),不改动作**,隔离模式效果。
 
 TODO(Stage C4):接 ``cw_decisions.decide_supply`` 按 target_comp.key_equips 契合选,替代默认选中牌。
