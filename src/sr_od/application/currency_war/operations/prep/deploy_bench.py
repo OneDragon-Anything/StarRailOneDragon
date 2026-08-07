@@ -170,14 +170,12 @@ class DeployBench(SrOperation):
             dst = self._find_empty_slot(pref, front, back, occupied_front, occupied_back)
             if dst is None:
                 continue
-            # D-118:**CW deploy = click-select→click-deploy**(非 drag!2026-08-08 实测:drag_to 100% 不 land,
-            # click(bench)→click(stage slot) 成功 deploy)。旧码 D-102~D-117 全用 drag_to → 从未真正 deploy。
-            self.ctx.controller.click(src)
-            time.sleep(0.3)
-            self.ctx.controller.click(dst)
+            # D-118b:CW deploy = long-press drag(hold 0.5s → drag → release)。
+            # click 打开详情面板(非 pickup);plain drag 太快(游戏见为 click)。长按让游戏识别"拾取角色"。
+            self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
             time.sleep(0.5)
             dragged += 1
-            log.info(f'[cw-deploy] click-deploy:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
+            log.info(f'[cw-deploy] 长按拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
 
         deployed_slots = {bc.slot for bc in actual}
         remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
@@ -188,13 +186,11 @@ class DeployBench(SrOperation):
                    or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
             if dst is None:
                 break
-            # D-118:click-deploy(naive 补槽也用 click,非 drag)
-            self.ctx.controller.click(bench[slot_i - 1])
-            time.sleep(0.3)
-            self.ctx.controller.click(dst)
+            # D-118b:长按 drag(naive 补槽也用 long-press drag)
+            self.ctx.controller.drag_to(start=bench[slot_i - 1], end=dst, duration=1.0, hold_time=0.5)
             time.sleep(0.5)
             dragged += 1
-        log.info(f'[cw-deploy] click-deploy 完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
+        log.info(f'[cw-deploy] 长按拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
 
     @staticmethod
     def _find_empty_slot(pref: str, front: list[Point], back: list[Point],

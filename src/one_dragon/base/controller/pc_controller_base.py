@@ -406,13 +406,15 @@ class PcControllerBase(ControllerBase):
             log.error('后台点击失败', exc_info=True)
             return False
 
-    def drag_to(self, end: Point, start: Point | None = None, duration: float = 0.5) -> None:
+    def drag_to(self, end: Point, start: Point | None = None, duration: float = 0.5,
+               hold_time: float = 0.0) -> None:
         """按住拖拽。
 
         Args:
             end: 拖拽目的点
             start: 拖拽开始点
             duration: 拖拽持续时间
+            hold_time: 按下后保持时间(长按拾取;0 = 原行为)
         """
         if start is None:
             start = get_current_mouse_pos()
@@ -420,9 +422,10 @@ class PcControllerBase(ControllerBase):
         if self.background_mode:
             return self._background_drag(start, end, duration)
 
-        return self._foreground_drag(start, end, duration)
+        return self._foreground_drag(start, end, duration, hold_time)
 
-    def _foreground_drag(self, start: Point, end: Point, duration: float = 0.5) -> None:
+    def _foreground_drag(self, start: Point, end: Point, duration: float = 0.5,
+                       hold_time: float = 0.0) -> None:
         """前台拖拽：通过 pyautogui 按住拖动。
 
         Args:
@@ -439,7 +442,7 @@ class PcControllerBase(ControllerBase):
         if to_pos is None:
             log.error('拖拽终点不在游戏窗口区域 (%s)', end)
             return
-        drag_mouse(from_pos, to_pos, duration=duration)
+        drag_mouse(from_pos, to_pos, duration=duration, hold_time=hold_time)
 
     def _background_drag(self, start: Point, end: Point, duration: float = 0.5) -> None:
         """后台拖拽：用 SetCursorPos 移动光标，配合 PostMessage WM_LBUTTONDOWN/UP。
@@ -581,18 +584,24 @@ def get_mouse_sensitivity():
     return speed.value
 
 
-def drag_mouse(start: Point, end: Point, duration: float = 0.5):
+def drag_mouse(start: Point, end: Point, duration: float = 0.5, hold_time: float = 0.0):
     """按住鼠标左键进行画面拖动 (消除拖动后的惯性)。
 
     Args:
         start: 原位置
         end: 拖动位置
         duration: 拖动鼠标到目标位置，持续秒数
+        hold_time: 按下后、移动前的保持时间(秒)。某些游戏(如星穹铁道货币战争)需要长按
+            才识别为"拾取"角色(非点击打开详情面板)。0 = 不保持(原行为)。
     """
 
     # 移动到起点并按下
     pyautogui.moveTo(start.x, start.y)
     pyautogui.mouseDown()
+
+    # hold_time: 按下后保持不动(长按),让游戏识别为"拾取"而非"点击"
+    if hold_time > 0:
+        time.sleep(hold_time)
 
     # 减去 PcControllerBase.SLEEP_BEFORE_DRAG_END 之后的间隔
     duration_drag = max(duration - PcControllerBase.SLEEP_BEFORE_DRAG_END, PcControllerBase.DRAG_MIN_DURATION)
