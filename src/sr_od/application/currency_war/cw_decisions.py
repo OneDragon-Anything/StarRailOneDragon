@@ -510,11 +510,6 @@ def _best_improving_action(
                     c.faction in target_comp.factions or c.name in target_comp.core_chars
                     for c in state.shop if state.gold >= card_cost(c)):
                 continue
-            # D-98:盛会之星 卡触发 megastar 节点(需选「强化角色」,bot 暂未解 → 每局 round8 卡死)。
-            # target 不含盛会之星 时,**永远不买**盛会之星 卡(防 megastar 节点触发 —— 避开法,治根:
-            # 不持有盛会之星 char → megastar 节点不触发)。待 megastar 强化角色选择解决后移除此 workaround。
-            if '盛会之星' not in target_comp.factions and card.faction == '盛会之星':
-                continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if after_buy.deployed_count() < after_buy.max_units() and after_buy.bench:

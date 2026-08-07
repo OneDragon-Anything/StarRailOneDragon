@@ -46,12 +46,11 @@ class RunMegastarNode(RunNode):
                 and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
 
     def _do_action(self, screen) -> None:
-        # D-97:候选只点**一次**(防 RunNode retry re-click 把候选 toggle 反选 → confirm 无候选失效 → 卡死)。
-        # 2026-08-07 实测:星期日选中(金边)后 confirm@(1490,560) **即关 overlay** —— step2「强化角色」**可选**,
-        # 直接跳过。旧 D-96 误判 step2 必需(实为 toggle bug 致 confirm 无候选失效);根因是 RunNode retry re-click。
-        # megastar 选中态是**视觉**(金边,非 OCR「已选择」)→ 用 flag 保证候选只点一次(类 partner「已选择」守卫)。
-        if not getattr(self, '_candidate_clicked', False):
-            # D-95:read 候选 → decide_megastar(select_megastar 按 target.core_chars)→ 点选中 idx。bug#1 mouse_move。
+        # D-97b:候选只点**一次** —— 用 session 级 flag(跨 loop re-dispatch 持久;instance flag 会因 new
+        # RunMegastarNode 实例重置 → re-click toggle 反选 → confirm 无候选 → 卡死)。megastar 选中态视觉(金边)。
+        _match = self.ctx.cw_match
+        _clicked = getattr(_match.session, 'megastar_candidate_clicked', False) if _match else False
+        if not _clicked:
             options = read_megastar_options(self.ctx, screen)
             match = self.ctx.cw_match
             idx = 0
@@ -67,7 +66,8 @@ class RunMegastarNode(RunNode):
             candidate = RunMegastarNode.CANDIDATE_LEFT if idx == 0 else RunMegastarNode.CANDIDATE_RIGHT
             self.ctx.controller.mouse_move(candidate)
             self.ctx.controller.click(candidate)
-            self._candidate_clicked = True   # 只点一次(防 retry toggle 反选)
+            if _match is not None:
+                _match.session.megastar_candidate_clicked = True   # session 级:跨 re-dispatch 持久
             time.sleep(0.6)
         # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)

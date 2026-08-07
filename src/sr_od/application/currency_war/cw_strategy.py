@@ -164,6 +164,9 @@ class StrategySession:
     # 备战 prep 帧 HP 区**持续空**(D-93 retry 救不了,live round4 读 100 实际 58)→ 保血信号失效。
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。
     last_hp: int | None = None
+    # D-97b(2026-08-07):megastar 候选是否已点(session 级,跨 loop re-dispatch 持久;
+    # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
+    megastar_candidate_clicked: bool = False
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     memory: dict[str, Any] = field(default_factory=dict)       # 策略私有 scratch(核心领域实体走正规类型,不塞这)
