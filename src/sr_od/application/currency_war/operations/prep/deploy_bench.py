@@ -20,6 +20,7 @@ from sr_od.application.currency_war.currency_war_char_id import (
     AvatarTemplates,
     load_avatar_templates,
 )
+from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_identity_obs import read_bench_chars
 from sr_od.application.currency_war.cw_observation import read_deployed_count
 from sr_od.application.currency_war.cw_state import DeployMove
@@ -132,7 +133,13 @@ class DeployBench(SrOperation):
         挤到 bench 而非 locked 占槽。无 target(早期/reactive)→ 不排序(原行为,全 deploy)。
         """
         if target_factions:
-            actual = sorted(actual, key=lambda bc: (0 if bc.faction in target_factions else 1, bc.slot))
+            # D-108b:用角色**全阵营**(get_char.factions)判 target,非 BenchChar.faction(=factions[0] 只首阵营)。
+            # 多羁绊角色(飞霄=仙舟+追击)首阵营可能非 target → factions[0] 漏判 → 排序错(实跑 r1:飞霄 被排 off-target
+            # 尽管是 仙舟/追击)。任一阵营 ∈ target 即 target。
+            def _is_target(bc) -> bool:
+                ch = get_char(bc.char_id)
+                return ch is not None and bool(set(ch.factions) & target_factions)
+            actual = sorted(actual, key=lambda bc: (0 if _is_target(bc) else 1, bc.slot))
         front_idx = back_idx = 0
         dragged = 0
         for bc in actual:
