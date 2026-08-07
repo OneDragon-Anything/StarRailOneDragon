@@ -230,6 +230,14 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
+        # 0g. 投资策略「阿哈大悦」装备选择 overlay(为阿哈选1件简易装备)→ 点装备自动关。
+        #     阿哈投资策略在某节点弹此 overlay(选1件简易装备给阿哈)。bot 不选 → overlay 持 → 卡备战
+        #     (2026-08-07 实跑:plane1 1-3 卡此 overlay 666s)。点第1装备(幸运星位 626,250;策略可后续
+        #     按 key_equips 选,先关 overlay 推进)→ 实测自动关 overlay 回备战。
+        if self.round_by_ocr(screen, '简易装备', lcs_percent=0.8).is_success:
+            self.ctx.controller.click(Point(626, 250))
+            return self.round_wait(wait=1.5)
+
         # 1. 备战阶段 → 单轮(买+deploy+出战)
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
         # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),
