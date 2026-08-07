@@ -15,6 +15,13 @@
 
 ---
 
+## D-95 (2026-08-07) 巨星节点接入策略(read_megastar_options → decide_megastar)· cw_node_obs.read_megastar_options / RunMegastarNode
+
+- **决策**:新建 `read_megastar_options`(OCR「盛会之星一X先生/女士!」→ MegastarOption(char_id=X),按 x 左→右 idx);`RunMegastarNode._do_action` 改 read 候选 → `decide_megastar`(select_megastar 按 target.core_chars / buff 契合)→ 点选中 idx(替代默认左候选)+ bug#1 mouse_move。
+- **为什么**:决策接线 audit(D-91)巨星是未接 4 项之一(handler 默认左候选,char_id 空→idx0)。live cw_megastar 捕获(cw-snap)核实候选名 OCR 可读(花火/星期日 盛会之星)→ reader 可建。select_megastar 早实现(cw_comps)但 handler 不调 → 接上。盛会之星给全队 buff,选对 buff 契合 comp(花火=追击增伤?/星期日=…)。
+- **备选**:① 保持默认左 —— 漏选契合 comp 的盛会之星,弃。② VLM 选 —— 名 OCR 可读,不需 VLM,弃。③ 候选位置动态读(非 CANDIDATE_LEFT/RIGHT 常量)—— 名位置 = 卡身(实测点 822,333 命中花火),固定常量够;2 候选左右固定。
+- **状态**:采用。offline cw_megastar 核实(2 候选 花火/星期日 读对)+ 2 单测绿;全 211 cw 测试绿。live 验待(下局巨星节点选 target 契合候选,非默认左)。· cw_node_obs / RunMegastarNode / strategy/08 接线表(巨星 ✅)
+
 ## D-94 (2026-08-07) prep state.hp 用结算屏 HP(可靠)替 prep 帧 read_hp(持续误读)· default_strategy.on_round_end / shop.buy / StrategySession.last_hp
 
 - **决策**:`on_round_end` 达阈置信度的结算 `hp_after` → 存 `session.last_hp`;`BuyShopCards` prep state.hp 优先用 `session.last_hp`(结算屏「小队生命值NN」可靠),None(首回合)退 `read_hp`。

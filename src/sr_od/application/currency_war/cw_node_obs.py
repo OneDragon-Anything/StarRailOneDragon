@@ -16,7 +16,7 @@ import re
 
 from cv2.typing import MatLike
 
-from sr_od.application.currency_war.cw_decisions import EncounterOption
+from sr_od.application.currency_war.cw_decisions import EncounterOption, MegastarOption
 from sr_od.context.sr_context import SrContext
 
 # 遭遇卡标题「遭遇其X」→ X 中文数字 → 难度档(其一=1 易 … 其六=6);decide_encounter 按难度选。
@@ -69,3 +69,30 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
             rewards=[nearest] if nearest else [],
         ))
     return opts
+
+
+# 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(2026-08-07 cw_megastar)。
+# 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
+_MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')
+
+
+def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOption]:
+    """OCR 巨星节点候选 → ``MegastarOption`` 列表(char_id 从「盛会之星一X先生/女士!」解析)。
+
+    巨星候选 = 盛会之星 bond(花火/星期日…)给全队 buff。按候选名 center-x 左→右排序 → ``idx``。
+    候选名位置 = 点击位置(实测 RunMegastarNode 点 (822,333) 命中花火;名 = 卡身选中区)。decide_megastar
+    按 target.core_chars 选(含盛会之星 → 绑该角色;否则 buff 契合)。读不到 → [](handler 退默认 idx0)。
+    """
+    ocr_map = ctx.ocr_service.get_ocr_result_map(
+        image=screen, rect=None, color_range=None, crop_first=False,
+    )
+    cands: list[tuple[int, str]] = []   # (center_x, char_id)
+    for text, mrl in ocr_map.items():
+        if mrl.max is None:
+            continue
+        m = _MEGASTAR_RE.search(text)
+        if m is None:
+            continue
+        cands.append((mrl.max.center.x, m.group(1)))
+    cands.sort(key=lambda c: c[0])
+    return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]

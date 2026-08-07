@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 巨星节点 RunNode(位面首领 round6 的巨星选择 overlay)。
 
 实机(2026-08-04):强化角色**可选**,不选也能确认推进 —— 点确认后 overlay 消失、回备战 1-6
@@ -12,15 +14,21 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_node_obs import read_megastar_options
+from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
 
 
 class RunMegastarNode(RunNode):
-    """巨星节点:选候选成巨星 + 确认(强化角色可选)。验证 overlay 消失才完成。"""
+    """巨星节点:read 候选 → decide_megastar(select_megastar 按 target.core_chars)→ 点选中候选 + 确认。"""
 
-    # 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边)。
+    # 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
     CANDIDATE_LEFT: ClassVar[Point] = Point(822, 333)
+    # 右候选(星期日)位 —— OCR 名 @x1061 y334(cw_megastar 实测 2026-08-07);同 y。
+    CANDIDATE_RIGHT: ClassVar[Point] = Point(1061, 333)
     # 「确认选择」钮中心(OCR 确认选择 x1442y548;钮中心 ~1490,560)。
     CONFIRM: ClassVar[Point] = Point(1490, 560)
 
@@ -38,6 +46,23 @@ class RunMegastarNode(RunNode):
                 and not self.round_by_ocr(screen, '选择伙伴', lcs_percent=0.7).is_success)
 
     def _do_action(self, screen) -> None:
-        self.ctx.controller.click(RunMegastarNode.CANDIDATE_LEFT)
+        # D-95 决策接线:read 巨星候选 → decide_megastar(select_megastar 按 target.core_chars / buff 契合)
+        # → 点选中 idx(替代默认左候选)。候选名位置 = 点击位置(实测)。bug#1 mouse_move 缓解。
+        options = read_megastar_options(self.ctx, screen)
+        match = self.ctx.cw_match
+        idx = 0
+        if match is not None and options:
+            _state = match.session.last_state or GameState()   # overlay 时用上次备战快照
+            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+            pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
+            if 0 <= pick.idx < len(options):
+                idx = pick.idx
+            log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
+        else:
+            log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
+        candidate = RunMegastarNode.CANDIDATE_LEFT if idx == 0 else RunMegastarNode.CANDIDATE_RIGHT
+        self.ctx.controller.mouse_move(candidate)
+        self.ctx.controller.click(candidate)
         time.sleep(0.6)
+        self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
         self.ctx.controller.click(RunMegastarNode.CONFIRM)
