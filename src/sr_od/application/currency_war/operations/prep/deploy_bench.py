@@ -70,10 +70,17 @@ class DeployBench(SrOperation):
         # 配饰/变体角色 SIFT 漏识别(D-75 待核)→ 漏的 naive 补舞台剩余;后续采图鉴立绘补全。
         templates = self._get_templates()
         actual = read_bench_chars(self.ctx, self.last_screenshot, templates) if templates else []
+        # D-108:deploy 优先级(CW deployed 锁定 → 限槽时 target 阵营先占;off-target 留 bench 可 sell)。
+        # bench>capacity(early:多牌低等级)时,target-first 保证 target 角色上任(非被 off-target 挤到 bench),
+        # off-target 溢出留 bench(sellable)。board=deployed 锁定 → 先 deploy 谁 = 谁 locked 占槽 → target 优先。
+        match = self.ctx.cw_match
+        _tgt = match.session.target_comp if (match is not None and match.session is not None) else None
+        target_factions: set[str] = set(_tgt.factions) if _tgt is not None else set()
         if actual:
             log.info(f'[cw-deploy] 身份驱动:识别 {len(actual)} 个 '
-                     f'{[(b.char_id, b.position_pref) for b in actual]}')
-            self._deploy_by_identity(actual, bench, front, back)
+                     f'{[(b.char_id, b.position_pref) for b in actual]} '
+                     f'target_factions={target_factions or "(无 target)"}')
+            self._deploy_by_identity(actual, bench, front, back, target_factions)
         else:
             match = self.ctx.cw_match
             moves: list[DeployMove] = (
@@ -112,13 +119,20 @@ class DeployBench(SrOperation):
         return templates
 
     def _deploy_by_identity(self, actual: list, bench: list[Point],
-                            front: list[Point], back: list[Point]) -> None:
+                            front: list[Point], back: list[Point],
+                            target_factions: set[str] | None = None) -> None:
         """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
 
         每个识别成功的角色(STRONG):按 ``position_pref``(front/back)拖到对应排下一个空槽。
         未识别槽(配饰/变体 SIFT 漏,D-75 待核):naive 补舞台剩余空槽(位置式,不靠身份)。
         绕过旧 bug(tracked_bench 顺序 ≠ 实际槽位 → 拖错)。
+
+        D-108:target_factions 非空 → **target 阵营角色先 deploy**(sorted target-first)。CW deployed 锁定
+        → 限槽(bench>capacity)时 target 先占槽 locked,off-target 溢出留 bench(sellable);非 target 被
+        挤到 bench 而非 locked 占槽。无 target(早期/reactive)→ 不排序(原行为,全 deploy)。
         """
+        if target_factions:
+            actual = sorted(actual, key=lambda bc: (0 if bc.faction in target_factions else 1, bc.slot))
         front_idx = back_idx = 0
         dragged = 0
         for bc in actual:

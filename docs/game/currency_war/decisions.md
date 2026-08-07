@@ -15,6 +15,17 @@
 
 ---
 
+## D-108 (2026-08-08) deploy 优先级:target 阵营先 deploy(CW deployed 锁定 + board=deployed 模型)· §12
+
+- **决策**:`DeployBench._deploy_by_identity` 加 `target_factions` 参数 → target 阵营角色 sorted **先 deploy**(限槽时 target 先占,off-target 溢出留 bench sellable)。无 target(早期/reactive)→ 不排序(原行为)。
+- **为什么**:live 实测(3 测 + 控制组,**CW deployed 锁定**):drag deployed→出售区 / drag→bench / click 全失败;bench sell 控制组 ✅(机制正常)。+ 查实 **board=deployed**(`_board_pairs` 读左面板 = 上阵羁绊;board sum>max_units 是**多羁绊角色重复计**(大丽花=击破+盛会之星),非 owned)。故 **board=deployed 且 locked → 先 deploy 谁 = 谁 locked 占槽**。旧 deploy 全 bench(随机序)→ bench>capacity(early 多牌低等级)时 target 可能被挤到 bench、off-target locked 占槽 → comp 永不深堆。
+- **修法**:`deploy()` 从 `session.target_comp` 取 factions → `_deploy_by_identity` sorted target-first → 限槽时 target 先占。off-target 溢出留 bench(`_handle_bench_full` sell)。**deployed-lock → sell-deployed board-management 路径无效**(子agent MVP 作废,详 process_log 2026-08-08)。
+- **模型真值(查实,后续策略地基)**:① board=deployed(左面板上阵羁绊);② deployed 锁定(不能 sell/undeploy);③ max_units=min(level,10)=deploy 上限;④ board sum>deployed 角色数(多羁绊重复计,非 owned)。
+- **备选**:① sell deployed off-target(推翻:deployed 锁定,3 测实锤);② deploy ONLY target 不 deploy off-target(推翻:空槽丢 tempo 掉血,留后续 tempo 权衡);③ 改 selection 适配 board(部分:selection 已 shop-supplied 正确,主因 deploy 非 selection)。
+- **状态**:采用。214 cw 测试绿(无 deploy 单测:op+drag 难单测;live 验待:限槽时 target 先 deploy → board target 阵营不被 off-target 挤)。· T#97 / `DeployBench._deploy_by_identity` / CW deployed-lock(机制)
+
+---
+
 ## D-107 (2026-08-08) 战术层 desync 真根因:deployed 恒 [] → 经济/deploy 门全失效(RC1 首修)· §12
 
 - **决策**:`read_game_state` 从 board 真值重建 `deployed`(新 `rebuild_deployed_from_board` helper)→ `deployed_count()` 对齐实际阵上数。修 **RC1**(子agent a5a4c3358 查实)。
