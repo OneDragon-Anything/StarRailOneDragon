@@ -170,33 +170,14 @@ class DeployBench(SrOperation):
             dst = self._find_empty_slot(pref, front, back, occupied_front, occupied_back)
             if dst is None:
                 continue
-            # D-117:bug#1 缓解 + SIFT 验 + retry
-            landed = False
-            for attempt in range(3):
-                self.ctx.controller.mouse_move(src)
-                self.ctx.controller.drag_to(end=dst, start=src, duration=1.5)
-                time.sleep(0.5)
-                if templates:
-                    _after = read_deployed_chars(self.ctx, self.screenshot(), templates)
-                    _after_cnt = len(_after) if _after is not None else None
-                    _before_cnt = len(occupied_front) + len(occupied_back)
-                    if _after_cnt is not None and _after_cnt > _before_cnt:
-                        landed = True
-                        occupied_front.clear()
-                        occupied_back.clear()
-                        for d in (_after or []):
-                            (occupied_front if d.position_pref == 'front' else occupied_back).add(d.slot)
-                        break
-                    log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) attempt {attempt+1}: '
-                             f'occupied {_before_cnt}→{_after_cnt} (未增,retry)')
-                else:
-                    landed = True
-                    break
-            if landed:
-                dragged += 1
-                log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst} ✓')
-            else:
-                log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) 3 次未落地,跳过')
+            # D-117b:fire-and-forget(去掉 SIFT 验+retry —— false negative:post-drag screenshot 在动画过渡帧
+            # → SIFT 恒读少 → 0% 验成功 → 3×retry 浪费 22s/round)。保留 mouse_move(bug#1 缓解)+ 长 duration。
+            # 用**下一轮 board OCR** 验(非 SIFT,不受 drag 动画影响)。
+            self.ctx.controller.mouse_move(src)
+            self.ctx.controller.drag_to(end=dst, start=src, duration=1.5)
+            time.sleep(0.8)
+            dragged += 1
+            log.info(f'[cw-deploy] 身份拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
 
         deployed_slots = {bc.slot for bc in actual}
         remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
