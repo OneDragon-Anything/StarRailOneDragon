@@ -234,7 +234,7 @@ class CurrencyWarRunLoop(SrOperation):
         #     阿哈投资策略在某节点弹此 overlay(选1件简易装备给阿哈)。bot 不选 → overlay 持 → 卡备战
         #     (2026-08-07 实跑:plane1 1-3 卡此 overlay 666s)。点第1装备(幸运星位 626,250;策略可后续
         #     按 key_equips 选,先关 overlay 推进)→ 实测自动关 overlay 回备战。
-        if self.round_by_ocr(screen, '简易装备', lcs_percent=0.8).is_success:
+        if self.round_by_find_area(screen, '货币战争-备战', '标识-简易装备', crop_first=False).is_success:
             self.ctx.controller.click(Point(626, 250))
             return self.round_wait(wait=1.5)
 

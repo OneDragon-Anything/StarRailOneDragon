@@ -97,7 +97,7 @@ class DefaultCwStrategy(CwStrategy):
         # 防 commit(D-86)锁死**不可达** target:live round4-6 target=DOT队,但 shop/board 始终无 持续伤害/减益
         # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。
         # (shop_supply<1.0 = shop 无 target 阵营卡;=1.0 = 本回合买得到 → drought 归 0;正常 shop 波动不会累积)
-        DROUGHT_BAIL: int = 3
+        DROUGHT_BAIL: int = 5   # T#97:放宽(3 太激进 —— shop 随机 3 轮无阵营卡是正常波动不该弃 target;5 容忍随机,稳 commit)
         if session.target_comp is not None:
             _supply = cw_comps.shop_supply(session.target_comp, state)
             session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
