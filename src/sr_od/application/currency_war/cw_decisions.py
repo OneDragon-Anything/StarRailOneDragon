@@ -560,10 +560,16 @@ def _best_improving_action(
     _shop_has_buyable_target = (target_comp is not None and any(
         c.faction in target_comp.factions or c.name in target_comp.core_chars
         for c in state.shop if state.gold >= card_cost(c)))
+    # D-112:target committed + target 阵营 board count 全 <2(未深堆)→ 该 roll 找 target 卡(非纯攒息)。
+    # 旧 _saving_for_interest 全阻 roll(D-67)→ comp 永不深堆 → plane2 弱死。target 不深时 roll 值利息牺牲
+    # (3/3 局 survive plane1 但 comp count=1 不深 → plane2 秒死;策略子agent P3)。
+    _roll_for_target = (target_comp is not None
+                        and target_committed(target_comp, state)
+                        and not any(state.board.get(f, 0) >= 2 for f in target_comp.factions))
     if (state.gold >= SHOP_REFRESH_COST and refresh_budget > 0
             and not _shop_has_buyable_target
             and (not _saving_for_level or not _shop_has_target)
-            and not _saving_for_interest):
+            and not (_saving_for_interest and not _roll_for_target)):
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                      target_comp=target_comp),
              [RefreshShop(cost=SHOP_REFRESH_COST)])
