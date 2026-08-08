@@ -15,6 +15,42 @@
 
 ---
 
+## D-145 (2026-08-09) 【review 重大发现】deploy_bench SIFT-gating bug = D-140 真因(target 单位上不了 board);D-144 错层 revert
+
+- **决策(review 发现,已核实 deploy_bench:102-120)**:D-140(board[追击] 卡 1 despite 买 3+ 追击卡)**真因 = deploy_bench 用 SIFT(read_bench_chars)选部署对象,绕过 plan 的 DeployMove**。`if actual:`(SIFT 识别到任意 bench 角色)→ _deploy_by_identity(只迭代 SIFT 可见角色);**SIFT 识别不了的角色(D-75:只 4 角色可靠)永远不上 board**。plan 的 DeployMove(tracked 身份,可靠)只在 `else`(SIFT 全失败)用,且 line 116 自承「tracked_bench idx 可能错位」故避用。**非 merge、非 cap、非 deployed-lock** —— 是 SIFT 把 target 单位 gate 在 bench。
+- **为什么这是 A8 可赢性关键**:板散输的根因是工程 bug(deploy 执行没接 plan 决策),非游戏限制(deployed-lock)。修了 deploy → target 单位上场 → bond 激活 → comp 成型 → 存活。4 个策略 fix(D-138/141/142/139)都已对,只是 deploy 执行断了。
+- **修法方向(review 主推)**:deploy_bench **执行 plan 的 DeployMove(tracked 身份)作主路径**,SIFT 仅作槽位验证(D-123 bench-count-drop retry-stick 已可靠,不需 SIFT 身份)。**关键待解**:bench_idx(tracked)→ 物理 bench 槽 的映射(line 116「可能错位」需修;task#105 bench 跟踪的 slot-order)。映射对了 → plan 路径可靠 → target 上场。
+- **D-144(deploy-only-target)↺ 错层 revert**:D-144 改的是 _deploy_by_identity(SIFT path),但 SIFT path 本身是 bug(应绕过)。D-144 target-only 还 under-soak 实跑失败。revert D-144 → 回 committed baseline(D-125 fill-all SIFT + D-139B),再修 SIFT-gating(本 D-145)。
+- **状态**:bug 确认 + 修法定。待:① revert D-144(git checkout deploy_bench.py);② 查 bench→slot 映射(cw_observation bench seed + cw_strategy tracked_bench order);③ 实现 deploy 执行 plan DeployMove + 修映射;④ match 验(target 上场 → board[target] 涨 → bond → 存活)。mechanics 修(非策略锁)。· review-a0610 / D-140(真因)/ D-144(revert)/ D-75(SIFT 4 角色)/ D-102(idx 错位)/ task#105
+
+---
+
+## D-144 (2026-08-09) ↺ 推翻 D-143:deployed-lock 是游戏机制(deployed 不能卖)→ deploy-swap 不可能;改 deploy-only-target(不填 off-target)
+
+- **决策(推翻 D-143)**:D-143 deploy-swap(卖 off-target deployed 换 target)**机制上不可能** —— 读 `docs/game/gameplay/currency_war.md:78` 确认:**deployed-lock 是 CW 游戏机制**(deployed 角色详情面板**无出售按钮**,drag→出售区/备战席**全失败**;只有 bench 能卖)。board 一旦部署**永久锁定**。→ 改方向:**deploy-only-target**(从 r1 只 deploy target/集中阵营,off-target 留 bench 可卖/合,**不 fill 全场**)。
+- **为什么 D-143 错 + D-125 fill 也错**:D-125 fill-all(填 off-target 占满槽)**正是 spread 根因** —— 它把 off-target 永久锁上 board → comp 永不成型(doc 自己的「策略含义」:必须 r1 deploy target,不能先填全场再换;D-125 违反了)。match3 证实:r1-9 board 8 阵营散(deployed off-target 锁死)→ bond 低 → r7 HP48→20 崩。
+- **deploy-only-target 设计(待实现 + 验证)**:① deploy **只** target/集中阵营卡(off-target 留 bench);② **确保 front 非空**(≥1 front 单位,避 D-125 修的 front-empty stall;无 target front-pref 时 deploy 1 off-target front 作最小妥协);③ **接受 partial board**(集中少单位 + bond 强 > 散多单位无 bond;auto-chess bond 乘伤远超单位数堆叠);④ emergent 期(无 target)deploy 最小(够 valid board 即可,非全填)。
+- **待 live 验证**:deployed-lock 反直觉(auto-chess 通常能卖 deployed),doc 虽详(D-122 era 验过)但关键,起 match4 备战时**实机核实**(drag deployed→出售区 看能否卖)。但 deploy-only-target 不管验证结果都对(锁 off-target 本就坏),可先实现。
+- **备选**:① D-143 deploy-swap —— 推翻(机制不可能);② 保留 fill-all 靠星级补 —— bond 缺失伤太大(-28/轮),不够;③ deploy-only-target(本设计)—— 治本(板随轮次集中,off-target 不锁)。**选 ③**。
+- **状态**:**实现 + 实跑 → 失败(under-soak 死更快),待 review 定方向**。match4(target-only)hp 80→40 @r4(~−13/轮,比 fill-all 死更快)—— target-only 早期 under-deployment(3 单位 vs cap)→ 少伤害吸收 → 掉血多。而 fill-all(match3)锁 spread 输晚期(~r9 boss 1HP)。**两者都输**:deployed-lock(板一旦部署永久锁)使板成型成 hard lock-in(无法早散晚集中)。deployed-sell 无法经 MCP 验(需 CW 长按 hold drag,MCP drag 无 hold_time)→ 信任 doc(deployed unsellable)。**起 clean-context 设计 review** 定板成型最高杠杆修法(去 emergent 早选 target?hybrid deploy?A8 是否可赢 given deployed-lock?)。· D-143(推翻)/ D-125(fill)/ D-122(emergent+lock)/ gameplay:78 / task#97
+
+---
+
+## D-143 (2026-08-09,设计待实现) deploy-swap:卖 off-target deployed 换 target 上场(解 board-spread → 赢的路径)
+
+- **决策(设计)**:允许策略性 **sell 已部署 off-target 角色 → 腾槽 deploy target**,解 board-spread(D-140/4 fix 后的剩余瓶颈)。match3 证实:4 fix 修对 bootstrapping/买/pivot/deploy-waste,但 **off-target starter deployed-lock(D-122)锁住不让换 → board 难集中 → bond 低 → 弱板 → r7 HP48→20(-28)崩**。real auto-chess 玩家会随轮次 reconcentrate(目标卡到了就卖偏卡换上),bot 的 deployed-lock 阻止了这步。
+- **为什么是下一前沿**:撞 board-spread 第 3 次(match1/2/3 + D-140),是 4 fix 后**赢不了的根因**。4 fix 让 bot 能买/选 target,但买到的 target 卡上不了场(off-target 占槽)→ board 仍散 → bond 不激活 → 弱。
+- **设计草图(待细化 + 实现)**:
+  ① **何时换**:board 满(deployed=max)+ 有 off-target deployed(faction∉target,非 core)+ bench 有 target 卡(faction∈target/core)。committed comp 不换(防 churn 已成型)。
+  ② **卖谁**:off-target deployed 里价值最低(低星/非 core)。
+  ③ **deploy 谁**:bench target 卡(高 concentration/target fit)。
+  ④ **churn-guard**:每轮限 swap 次数(1-2)+ 仅明显改 concentration 时(非边际)+ 不卖已成型 comp 的 target 角色。
+  ⑤ **新 action `SellDeployed`**:cw_state 加(simulate:移 deployed + refund gold)+ op 执行(drag deployed 槽 → sell area(70,846),同 `_handle_bench_full` 机制换源)。
+- **备选**:① 不 deploy off-target starter(round1 留空槽)—— r1 under-deployed 掉血更狠,差;② 接受 spread 靠星级/数量补 —— bond 缺失伤太大(-28/轮),不够;③ deploy-swap(本设计)—— 治本(让 board 随轮次集中),需防 churn。
+- **状态**:**设计阶段**(match3 证实瓶颈,sell 机制读通可行)。待:① match3 跑完拿 match-end 数据(阵容价值)确证弱板程度;② 细化设计(churn-guard)+ 实现(SellDeployed action + 策略 + op);③ 策略锁内(deploy/sell 行为)+ review + 验。· D-122(deployed-lock)/ D-140(bond)/ D-125(fill)/ match3 / task#97
+
+---
+
 ## D-142 (2026-08-09) tempo(战力断档)破息:板弱不攒息/级(补用户既定设计,代码漏板强判据;解 emergent buy0 死循环)
 
 - **决策**:补「tempo(战力断档)破息」到 `_saving`(`_saving_for_level` + `_saving_for_interest` 都加板强判据):**板弱(无 target 或 form_progress<COMMIT_FRAC)→ 不攒息/级,先花建板**。板强(有 target 且 form≥COMMIT_FRAC)才攒。
