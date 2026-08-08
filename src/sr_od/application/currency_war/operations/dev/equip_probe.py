@@ -24,8 +24,8 @@ class EquipMechanismProbe(SrOperation):
     FRONT_SLOTS: list[Point] = [Point(743, 450), Point(887, 450), Point(1033, 450), Point(1179, 450)]
     BACK_SLOTS: list[Point] = [Point(604, 680), Point(746, 680), Point(888, 680),
                                 Point(1032, 680), Point(1173, 680), Point(1315, 680)]
-    EQUIP_SLOT: Point = Point(1344, 866)   # 详情面板空装备槽 □(D-153 实机 藿藿/乱破 面板)
-    EQUIP_PLUS: Point = Point(1654, 911)   # 详情面板「+」(D-153;上次点它闭面板,复测)
+    EQUIP_SLOT: Point = Point(1468, 866)   # 详情面板空装备槽 □(panel 区 x1400-1800;1344 在 panel 外会闭面板)
+    EQUIP_PLUS: Point = Point(1654, 911)   # 详情面板「+」(D-153;点它曾闭面板,待复测)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='cw-equip-probe')
@@ -51,9 +51,8 @@ class EquipMechanismProbe(SrOperation):
             _still_panel = self.round_by_ocr(after_slot, '出售', lcs_percent=0.8).is_success
             log.info(f'[cw-equip-probe] 点装备槽{self.EQUIP_SLOT} 后:面板仍开={_still_panel} OCR={_texts[:25]}')
             self.save_screenshot(prefix='cw_equip_probe_afterslot')
-            # 关掉可能弹的 equip 子面板(若开了),回详情面板
-            self.ctx.controller.btn_tap('esc')
-            time.sleep(0.6)
+            # **勿 ESC**(D-153/clean op/probe 三次教训:面板已关时 ESC → 中断挑战 dialog → 对局放弃)。
+            # probe 只 log 不关(面板状态由 equip-slot click 决定;下轮 prep 自然回)。
             return self.round_success(f'equip-probe done(panel @ {slot})')
         log.info('[cw-equip-probe] 未找到详情面板(无 deployed char 在所点槽)')
         return self.round_success('no panel found')
