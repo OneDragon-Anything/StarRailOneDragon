@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争配置。
 
 策略层字段(faction/character/event 优先级等)= **meta 层,版本依赖**:游戏更新会改

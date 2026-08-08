@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 角色领域模型(Character + CHARACTERS 注册表;meta 层,V4.4)。
 
 **来源**:米游社百科「货币战争图鉴·员工」`channel/map/209/210`(content/info API,2026-08-03),

@@ -258,23 +258,46 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     return 1, 1
 
 
+def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, int | None]:
+    """舞台中央「X/Y」指示 → (X 已部署角色数, Y deploy cap);读不到 → (None, None)。
+
+    **small stylized「X/Y」paddle det 常漏**(同 gold/cost,T-96)→ crop + 3x 放大破 det 天花板
+    (read_gold 同法,T-92)。仍读不到 → (None, None)(调用方 fallback)。
+
+    D-139(2026-08-08):Y(cap)是真值,非 level —— 实机 cap≠level(lv4-5 时「3/3」、lv6 时「5/5」)。
+    deploy_bench 旧 `cap_remaining = level - deployed` 高估 cap → board 已满仍试拖全 bench(9 角色×~10s
+    全失败浪费)。现同时给 Y,deploy_bench 用真 cap。X 由 ``read_deployed_count``、Y 由 ``read_deploy_cap`` 暴露。
+    """
+    rect = _area_rect(ctx, '区域-部署数')
+    if rect is None:
+        return None, None
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return None, None
+    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
+    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=up))
+    m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    return None, None
+
+
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
     DeployBench 用它定位**空位**:D-108d(cap_remaining)+ D-108e(offset)依赖它;读不到 → fallback
-    → 部分 churn。**small stylized「X/Y」paddle det 常漏**(同 gold/cost,T-96)→ crop + 3x 放大破 det
-    天花板(read_gold 同法,T-92)。仍读不到 → None(调用方 fallback)。
+    → 部分 churn。实现见 ``_read_deploy_paddle``(同时给 cap Y,见 ``read_deploy_cap``)。
     """
-    rect = _area_rect(ctx, '区域-部署数')
-    if rect is None:
-        return None
-    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-    if crop.size == 0:
-        return None
-    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
-    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=up))
-    m = re.search(r'(\d+)\s*/\s*\d+', blob)
-    return int(m.group(1)) if m else None
+    return _read_deploy_paddle(ctx, screen)[0]
+
+
+def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
+    """舞台中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
+
+    D-139:实机 cap≠level(lv4-5「3/3」、lv6「5/5」)→ DeployBench 应用本 Y 非 level 估 cap_remaining,
+    避免 board 已满仍试拖全 bench 的浪费 + 误判有空槽。读不到 → 退 level 估(旧行为,fallback)。
+    """
+    return _read_deploy_paddle(ctx, screen)[1]
 
 
 def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> dict[str, tuple[int, int]]:
@@ -418,7 +441,24 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # D-107(RC1,治 T#97 战术层 desync):deployed 从 board 真值重建 → deployed_count() 对齐实际阵上数。
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
-    state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
+    # task#105 step⑥(D-130/D-131):deployed **身份**优先 session.tracked_deployed(bot 跟踪,char_id+star,
+    # 替 rebuild 无身份 → concentration/char_quality 在准信号上算);**数量**仍对齐 board(D-107 ground truth
+    # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
+    # tracked 空(首轮/未跟踪/局外)→ 全 rebuild(向后兼容,行为同 D-107)。
+    _match = getattr(ctx, 'cw_match', None)
+    _tracked_dep = (_match.session.tracked_deployed
+                    if (_match is not None and _match.session is not None) else None)
+    if _tracked_dep:
+        import copy
+        state.deployed = copy.deepcopy(_tracked_dep)
+        _board_n = min(sum(state.board.values()), state.level)  # D-114 cap(multi-faction overcount)
+        if len(state.deployed) > _board_n:
+            state.deployed = state.deployed[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
+        elif len(state.deployed) < _board_n:
+            _rebuild = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
+            state.deployed.extend(_rebuild[len(state.deployed):])   # 补无身份(tracked 少计,如 sell 漂移)
+    else:
+        state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     return state

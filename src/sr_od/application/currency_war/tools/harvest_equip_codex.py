@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 · 装备图鉴批量采集(工具型 operation;CW 专属,放 app/cw/tools/)。
 
 == 作用 ==

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
 from sr_od.application.currency_war.cw_comps import (
     AFFIX_MECHANIC_MAP,
+    COMMIT_FRAC,
     COMP_LIBRARY,
     LevelGoal,
     clamp,
@@ -316,16 +317,24 @@ def _distinct_factions(state: GameState) -> set[str]:
     return factions
 
 
-def _concentration_delta(card: ShopCard, state: GameState) -> float:
+def _concentration_delta(card: ShopCard, state: GameState,
+                         target_comp: Comp | None = None) -> float:
     """买这张牌对 concentration 的影响(加到 buy delta,L1)。
 
     - card.faction 已在 bench+deployed → +REINFORCE_BONUS(深化集中阵营,人玩「强化已 collect」)。
-    - 新阵营 且 已 ≥DEPLOY_FACTION_CAP 阵营 → −SPREAD_PENALTY(防 spread-lock 永久占槽;> 单卡 synergy 收益)。
-    - 否则 0(早期开第 1-3 阵营中性,允许集中起步)。
+    - **target 阵营卡**(faction∈target.factions 或 name∈core_chars)→ 永不 spread 罚(D-137,2026-08-08
+      实跑 round3:DOT 队 target 卡 减益/椒丘 因 board 已 4 阵营≥cap 被旧逻辑 -8 罚 → target 卡 buy delta
+      负 → 不买 → comp 永不深成型 → buy0)。target 阵营是想要的,新 target 阵营**深化 comp 非 spread**。
+    - off-target 新阵营 且 已 ≥DEPLOY_FACTION_CAP 阵营 → −SPREAD_PENALTY(防 spread-lock 永久占槽)。
+    - 否则 0(早期开第 1-3 阵营中性 / target 阵营新进 中性)。
     """
     factions = _distinct_factions(state)
     if card.faction and card.faction in factions:
         return REINFORCE_BONUS
+    # 新阵营:target 阵营免 spread 罚(深化 target 非 spread;D-137)
+    if target_comp is not None and (
+            card.faction in target_comp.factions or card.name in target_comp.core_chars):
+        return 0.0
     if len(factions) >= DEPLOY_FACTION_CAP:
         return -SPREAD_PENALTY
     return 0.0
@@ -532,12 +541,19 @@ def _best_improving_action(
         (_goal is not None and _goal.action == "level_up")
         or state.level < _expected_level(state.round_num, state.plane)))
     _saving_for_level = _want_level and state.gold < _lv_cost
-    # D-67 经济统一论(用户 2026-08-06 反馈「没早凑 50 金拿满利息」):维持 ≥50 金息引擎。gold<50 + 板位满
-    # (deployed≥max_units,非战力断档)+ 健康(hp≥threshold,非 tempo)→ 攒息(抑散牌买/刷)。CLAUDE.md
-    # 「维持≥50 金,超出才花;tempo(HP 危险/战力断档)破息」。实跑 bot 花光金到 0 → 无息引擎 → 弱死。
+    # D-142 tempo(战力断档)破息(CLAUDE.md「tempo:战力断档破息抢节奏」,2026-08-09):板弱(无 target 或
+    # form_progress<COMMIT_FRAC)→ 不攒息/级,先花建板。实跑 match2:r3 board 满+散+gold11+无 target →
+    # _saving(息+级)堵死全部非 target 买 → 无 target 全堵 → buy0 → 永不集中 → 永无 target → 死循环。
+    # 旧 _saving_for_interest 把「板位满」当「非战力断档」是错(board 满但散=仍战力断档);本修加真板强判据。
+    # 板弱囤金=等死(HP 掉速快过攒息/级收益);破息花钱集中(reinforce→count2→emergent target)。板强才攒。
+    _board_strong = (target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC)
+    _saving_for_level = _saving_for_level and _board_strong
+    # D-67 经济统一论(用户 2026-08-06):维持 ≥50 金息引擎。gold<50 + 板位满 + 健康 + **板强**(D-142 tempo)
+    # → 攒息。CLAUDE.md「维持≥50 金,超出才花;tempo(HP 危险/战力断档)破息」(战力断档=板弱,非仅板位不满)。
     _saving_for_interest = (state.gold < INTEREST_THRESHOLD
                             and state.deployed_count() >= state.max_units()
-                            and state.hp >= effective_hp_threshold(state, config))
+                            and state.hp >= effective_hp_threshold(state, config)
+                            and _board_strong)
     _saving = _saving_for_level or _saving_for_interest
 
     # 1) 买 + 上任组合(原子)
@@ -593,7 +609,7 @@ def _best_improving_action(
         for a in seq[1:]:
             after = simulate(after, a)
         delta = evaluate(after, config, faction_priority, target_comp) - base_eval
-        delta += _concentration_delta(card, state)   # D-122 L1:集中化信号(强化已 collect 阵营 / 防 spread-lock)
+        delta += _concentration_delta(card, state, target_comp)   # D-122 L1:集中化信号(D-137 target 阵营免 spread 罚)
         if card.name and card.name in character_priority:
             delta += CHAR_PRIORITY_BONUS * 2
         beat(delta, seq)

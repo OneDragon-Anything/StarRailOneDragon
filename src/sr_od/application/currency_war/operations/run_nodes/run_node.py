@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 RunNode 基类:对局内一个节点的生命周期 owner。
 
 op 划分方法论(2026-08-04 实践提炼,详 ``.debug/temp/currency_war/runnode_decomposition.md``;

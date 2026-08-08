@@ -40,6 +40,7 @@ from sr_od.application.currency_war.cw_performance import (
 )
 from sr_od.application.currency_war.cw_state import (
     Action,
+    BenchChar,
     GameState,
     MatchOutcome,
     PickEvent,
@@ -189,6 +190,9 @@ class StrategySession:
     # D-84 char identity(bot tracking):buy OCR 名持久化 → 跨轮 seed state.bench(SIFT 屏幕识别不可行)。
     # deploy/sell 同步待补(deploy=DeployBench 位置式 / sell=_handle_bench_full 位置式,后续接)。
     tracked_bench: list[str] = field(default_factory=list)
+    # task#105(D-129~D-131):bench/deployed 持久跟踪(带 star;mutate 同步 buy/deploy,sell 位置式漂移接受)。
+    tracked_bench_chars: list[BenchChar] = field(default_factory=list)
+    tracked_deployed: list[BenchChar] = field(default_factory=list)
 
 
 @dataclass

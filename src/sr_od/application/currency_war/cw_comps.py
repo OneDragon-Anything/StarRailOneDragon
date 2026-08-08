@@ -632,17 +632,31 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     if state.hp < _pivot_hp:
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
         # D-65:保命优先 board 有 progress 的 easy comp(防切到 board 不支持的 comp → 无法成型 → 还是死)。
-        # 2026-08-06 实跑:hp1 时切 DOT队(board 无 持续伤害/减益)→ 无法成型 → 死;该优先 board 有 progress 的。
         with_progress = [c for c in easy if form_progress(c, state) > 0]
-        pool = with_progress if with_progress else easy
-        fastest = min(pool, key=lambda c: c.typical_form_round or 99)
+        if with_progress:
+            # 有 easy comp 已有 board progress → 切最快成型的(稳定,board 支持)。原 D-65 行为,OK。
+            fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
+            if target is None or fastest.name != target.name:
+                log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
+                         state.plane, state.round_num, state.hp, _pivot_hp,
+                         target.name if target else 'None', fastest.name)
+                return fastest
+            return None   # 已在该 easy comp → 保持(不让信号 1/2 churn 切走)
+        # D-141(2026-08-08):无 easy comp 有 board progress。实跑 r8 hp20 巡击青雀(追击2/巡海游侠1,medium,
+        # 有 progress)被 easy 过滤排除,旧 fallback `pool=with_progress if with_progress else easy` → 选最快
+        # easy=DOT队(board 0 持续伤害)→ 转 0-foundation → 必死。D-65 fallback 漏 0-progress easy comp,本修补。
+        if target is not None and form_progress(target, state) > 0:
+            # target 有 progress(medium 也算)→ 保持(不弃有 progress 的去追 0-progress easy;转 0-foundation 必死)。
+            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无easy有progress → 保持 %s(有progress,不转0-foundation)',
+                     state.plane, state.round_num, state.hp, _pivot_hp, target.name)
+            return None
+        # target 也无 progress(空板/早期)→ 旧 D-65 行为:最快 easy(至少快成型,无信息可挑 progress)。
+        fastest = min(easy, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:
-            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s%s',
-                     state.plane, state.round_num, state.hp, _pivot_hp,
-                     target.name if target else 'None', fastest.name,
-                     ' [board有progress优先]' if with_progress else '')
+            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无progress → 最快easy %s',
+                     state.plane, state.round_num, state.hp, _pivot_hp, fastest.name)
             return fastest
-        return None   # 已在最快 easy comp → 保持(不让信号 1/2 churn 切走)
+        return None
     # 信号 1:更优涌现。**决策迹日志**(D-56):best≠target 才评 gap;log score/gap/决策(弱阵诊断:
     # shop_supply 使 comp_score 波动 → 误涌现 pivot,数据驱动校准 PIVOT_SCORE_GAP / commitment)。
     if target is None or best.name != target.name:

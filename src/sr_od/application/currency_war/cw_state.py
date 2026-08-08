@@ -300,3 +300,26 @@ def simulate(state: GameState, action: Action) -> GameState:
         # shop 内容变化未知(随机),不模拟具体牌;仅扣金
     # PickEvent 不在本模拟范围(event 单独决策)
     return s
+
+
+def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
+                          action: Action) -> None:
+    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(task#105 运行时同步用;D-129/D-130)。
+
+    与 ``simulate`` 的区别:``simulate`` 返回新 ``GameState`` copy(前瞻语义,含 gold/level/shop 全字段);
+    本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
+    sell→pop),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
+    ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。
+    LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
+    """
+    if isinstance(action, BuyCard):
+        bench.append(_card_to_bench(action.card))
+        _merge_bench(bench)
+    elif isinstance(action, SellBench):
+        if 0 <= action.bench_idx < len(bench):
+            bench.pop(action.bench_idx)
+    elif isinstance(action, DeployMove):
+        if 0 <= action.bench_idx < len(bench):
+            bc = bench.pop(action.bench_idx)
+            bc.position_pref = action.to_row
+            deployed.append(bc)

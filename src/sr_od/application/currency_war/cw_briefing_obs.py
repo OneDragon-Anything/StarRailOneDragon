@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 简报屏观测(对局开始):敌人词缀 + 位面首领。
 
 简报屏(``货币战争-简报``)OCR reads:``read_affixes``/``read_bosses``/``read_affix_effect``

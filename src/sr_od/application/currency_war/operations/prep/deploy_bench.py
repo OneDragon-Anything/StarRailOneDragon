@@ -27,7 +27,10 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
 )
-from sr_od.application.currency_war.cw_observation import read_deployed_count
+from sr_od.application.currency_war.cw_observation import (
+    read_deploy_cap,
+    read_deployed_count,
+)
 from sr_od.application.currency_war.cw_state import DeployMove
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -82,8 +85,16 @@ class DeployBench(SrOperation):
         _lv = (match.session.last_state.level
                if (match is not None and match.session is not None
                    and match.session.last_state is not None) else None)
-        cap_remaining: int | None = (max(0, _lv - _deployed_before)
-                                     if (_lv and _deployed_before is not None) else None)
+        # D-139(2026-08-08):cap 用「区域-部署数」paddle Y(真值)非 level 估 —— 实机 cap≠level
+        # (lv4-5 时「3/3」、lv6 时「5/5」)。旧 `level - deployed` 高估 cap → board 已满仍试拖全 bench
+        # (9 角色×~10s 全失败浪费 + 误判有空槽)。paddle Y 读不到 → 退 level 估(旧行为 fallback)。
+        _paddle_cap = read_deploy_cap(self.ctx, self.last_screenshot)
+        if _paddle_cap is not None and _deployed_before is not None:
+            cap_remaining: int | None = max(0, _paddle_cap - _deployed_before)
+        elif _lv and _deployed_before is not None:
+            cap_remaining = max(0, _lv - _deployed_before)
+        else:
+            cap_remaining = None
         # D-119 诊断:log board 阵营计数(左面板 OCR 真值)= comp 成型 ground truth(非 SIFT)。
         # 验 deploy 是否真 deepening target 阵营(board[target] 增?) vs spread(多阵营各 1)。
         _board = (match.session.last_state.board if (match is not None and match.session is not None
@@ -188,6 +199,7 @@ class DeployBench(SrOperation):
                      f'(共 {len(occupied_front) + len(occupied_back)} occupied)')
 
         dragged = 0
+        consecutive_fail = 0   # D-141b:连续 deploy 无 stick 计数(board 满/拖坏 早停)
         # D-123 retry-until-stick:SIFT 占位检测(_dep_sift)对 stage 角色 false-negative(2026-08-08 确认:
         # occupied(SIFT) 显 2 但 board 实际 4)→ _find_empty_slot 选占槽 → 游戏拒拖 → 角色回 bench →
         # board 卡 spread。改:不靠 SIFT 选槽,改 **deploy→verify(bench count 降 = 角色真上 board)→
@@ -218,10 +230,32 @@ class DeployBench(SrOperation):
                     stuck = True
                     log.info(f'[cw-deploy] retry-stick:bench[{bc.slot}]({bc.char_id}/{pref}) → {pref}-{try_idx} '
                              f'✓ stick(bench {_bench_n + 1}→{_bench_n})')
+                    # task#105 step④(D-130/D-131):deploy 同步 tracked_bench_chars→tracked_deployed。
+                    # 按 bc.char_id 匹配(SIFT 识别);char_id='?'(未识别)无法匹配 → 漂移靠 board 校正(D-131)。
+                    # 保留 buy 的正确 star(pop tracked_bench_chars 的,非 SIFT star=1)。待 step⑥(cw_observation
+                    # seed state.deployed=tracked_deployed)才生效;现仅维护 session 持久态。
+                    _sess = self.ctx.cw_match.session if self.ctx.cw_match is not None else None
+                    if _sess is not None and bc.char_id and bc.char_id != '?':
+                        _idx = next((i for i, c in enumerate(_sess.tracked_bench_chars)
+                                     if c.char_id == bc.char_id), None)
+                        if _idx is not None:
+                            _up = _sess.tracked_bench_chars.pop(_idx)
+                            _up.position_pref = pref
+                            _sess.tracked_deployed.append(_up)
+                            log.info(f'[cw-deploy] task#105 sync:{bc.char_id} bench→deployed({pref})')
                     break
                 # 未中:slot 实占(SIFT 漏读)或拖失败 → 试下槽(角色仍在 src)
-            if not stuck:
+            if stuck:
+                consecutive_fail = 0
+            else:
+                consecutive_fail += 1
                 log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) 未能 deploy(槽满/拖失败,留 bench)')
+                # D-141b:board 已满(cap 估偏高 level / paddle 未读到)时全 bench 试拖都失败 → 每个浪费 ~10s。
+                # dragged 仍 0(从无 stick)+ 连续 2 次失败 = board 真 full(有空槽 retry-stick 会中)→ 早停,省 ~70s
+                # (9→2 次失败)。仅 dragged==0 触发:已开始 deploy 后不早停(留 cap_remaining 控,防 under-deploy)。
+                if dragged == 0 and consecutive_fail >= 2:
+                    log.info('[cw-deploy] 早停:dragged=0 + 连续2次无 stick → board 满,停止试拖(D-141b)')
+                    break
         log.info(f'[cw-deploy] 拖完:retry-stick {dragged} 个(D-123;fill concentration-first D-125)')
 
     def _deploy_strategic(self, moves: list[DeployMove], bench: list[Point],

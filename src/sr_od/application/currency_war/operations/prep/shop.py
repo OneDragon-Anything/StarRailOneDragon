@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -22,6 +23,7 @@ from sr_od.application.currency_war.cw_state import (
     LevelUp,
     RefreshShop,
     SellBench,
+    mutate_bench_deployed,
 )
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.context.sr_context import SrContext
@@ -175,10 +177,14 @@ class BuyShopCards(SrOperation):
                     if gv > 0:
                         state.gold = gv
                         break
-            # D-84 char identity:跨轮 seed state.bench(buy OCR 名持久化;SIFT 屏幕识别不可行)。
-            if match.session.tracked_bench:
+            # D-84/task#105 char identity:跨轮 seed state.bench。
+            # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
+            if match.session.tracked_bench_chars:
+                state.bench = deepcopy(match.session.tracked_bench_chars)  # copy 防下游 plan 污染持久态
+                log.info(f'[cw] tracked_bench_chars(seed)={[(c.char_id, c.star) for c in state.bench]}')
+            elif match.session.tracked_bench:
                 state.bench = _tracked_bench_chars(match.session.tracked_bench)
-                log.info(f'[cw] tracked_bench(seed state.bench)={match.session.tracked_bench}')
+                log.info(f'[cw] tracked_bench(旧 seed)={match.session.tracked_bench}')
             # D-91:存 last_state 快照(board/deployed/bench 完整)给节点 overlay handler(遭遇/补给/...)
             # 读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
             match.session.last_state = state
@@ -214,6 +220,8 @@ class BuyShopCards(SrOperation):
                     # D-84:记下买的角色名 → tracked_bench 跨轮 seed(下轮 state.bench)
                     if action.card.name:
                         match.session.tracked_bench.append(action.card.name)
+                    # task#105(D-129~D-131):bench 持久跟踪带 star+merge(mutate 同步,替 star 恒1)
+                    mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
                     log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')
