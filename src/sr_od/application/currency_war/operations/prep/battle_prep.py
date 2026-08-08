@@ -7,9 +7,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_observation import area_center
-from sr_od.application.currency_war.operations.prep.clean_offtarget import (
-    CleanDeployedOffTarget,
-)
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
@@ -39,17 +36,11 @@ class BattlePrepCycle(SrOperation):
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
 
     @node_from(from_name='买牌')
-    @operation_node(name='清off-target')
-    def clean(self) -> OperationRoundResult:
-        # D-153:买完(shop 关)→ 清存量 off-target deployed(点头像→详情面板→sell 阵营 ∌ target)。
-        # 互补 D-152(D-152 防**新** off-target deploy;本步清**存量**)。无 target → op 内自跳过。
-        log.info('[cw-prep] 备战单轮 ② 清存量 off-target(CleanDeployedOffTarget, D-153)')
-        return self.round_by_op_result(CleanDeployedOffTarget(self.ctx).execute())
-
-    @node_from(from_name='清off-target')
     @operation_node(name='部署')
     def deploy(self) -> OperationRoundResult:
-        log.info('[cw-prep] 备战单轮 ③ 部署(DeployBench)')
+        # D-154:D-153 clean 解绑(fill-all deploy 下 moot —— 卖的 off-target 又被 re-deploy;
+        # 且每轮 +12s 拖慢)。clean op 代码留(clean_offtarget.py)待 late-game(target 充足)重接。
+        log.info('[cw-prep] 备战单轮 ② 部署(DeployBench)')
         return self.round_by_op_result(DeployBench(self.ctx).execute())
 
     @node_from(from_name='部署')

@@ -305,13 +305,18 @@ class DeployBench(SrOperation):
             _is_conc = any(_fcount.get(_f, 0) >= 2 for _f in _factions)
             if _is_target or _is_conc:
                 _deploy_idx.append(_slot - 1)   # slot 1-indexed → bench idx
+        # D-154(修正 D-152 under-fill 回归,2026-08-09 实跑 r3-r4 board 仅 2 unit → 弱 → HP 崩):
+        # D-152 原 target-only(_deploy_idx only,"off-target 留 bench")→ 板仅 target(1-2 unit)→ 严重 under-fill
+        # → 每轮输(baseline fill-all 满 5 unit 存活到 r6)。修:**target-priority + fill** —— target 槽先 deploy
+        # (集中优先),再用 off-target 填满(满板存活;bodies 早期 > concentration 晚期;target 够多时自然集中)。
+        # 集中(D-153 clean + target-only deploy)是 late-game 优化(target 充足时);early 满板存活优先。
+        _tgt_set = set(_deploy_idx)
+        _iter_order = sorted(_tgt_set) + [i for i in range(len(bench)) if i not in _tgt_set]
         if _deploy_idx:
-            _iter_order = sorted(set(_deploy_idx))
-            log.info(f'[cw-deploy] selective(D-152):deploy target/集中 槽 {[i+1 for i in _iter_order]} '
-                     f'(target_factions={sorted(_tgt_factions)} fcount={_fcount});off-target 留 bench')
+            log.info(f'[cw-deploy] target-priority+fill(D-154):target 槽 {sorted(_tgt_set)} 先,余 off-target 填满'
+                     f'(target_factions={sorted(_tgt_factions)});满板存活 + target 优先集中')
         else:
-            _iter_order = list(range(len(bench)))   # fallback fill-all(map 空/无 target/全 off-target;无回归)
-            log.info(f'[cw-deploy] selective(D-152) 无 target/集中槽 → fallback fill-all(全 {len(bench)} 槽)')
+            log.info(f'[cw-deploy] fill-all(D-154):无 target/集中 → 全 {len(bench)} 槽填满')
         dragged = 0
         consecutive_fail = 0   # 板满/空槽 早停(连续 bench 槽无 stick → 板满,停;省 ~2min 浪费)
         for i in _iter_order:  # comp 槽优先(D-149),余按 0..8

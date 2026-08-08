@@ -15,6 +15,16 @@
 
 ---
 
+## D-154 (2026-08-09)【修正·重要】D-152 target-only deploy + D-153 clean 致 board under-fill → 弱 → HP 崩;改 target-priority+fill(满板)+ 解绑 clean
+
+- **决策(实跑负结果纠正)**:D-152 selective deploy 改 **target-priority + fill**(target 槽先 deploy,余 off-target 填满 → **满板存活** + target 优先集中);**D-153 clean 解绑**(fill-all 下 moot —— 卖的 off-target 又 re-deploy;且每轮 +12s)。clean op 代码留(clean_offtarget.py)待 late-game 重接。
+- **为什么(负结果)**:D-152 target-only(_deploy_idx only,"off-target 留 bench")+ D-153 clean(卖 off-target)合谋致 **board under-fill** —— 实跑 r3-r4 `board={命运圣杯:1,战技点:1}` = **仅 2 unit**(level 4-6 cap ~5)→ 严重空板 → 每轮输 → HP r3 84→71→58 崩(**比 baseline r6 崩更早**)。baseline fill-all(满 ~5 unit)存活到 r6。
+- **核心教训**:**concentration(target-only / clean)在 target 稀缺时 counterproductive** —— under-fill(2 unit)比 spread(满板 off-target)**更弱**(bodies 数 > 阵营纯度,早期尤其)。auto-chess:**满板存活 > 集中**,集中是 late-game(target 充足)优化。target-priority+fill = 满板 + target 优先(target 够多时自然集中,不多时 off-target 填满不死)。
+- **备选**:① target-only(D-152 原)—— under-fill 死(本 D 否定)。② clean(D-153)—— 减板 + fill-all moot。③ **target-priority+fill(D-154)** —— 满板存活 + target 优先。选 ③。
+- **状态**:采用(commit 待)。**r6+ 崩的真因 = 板弱(裸装无 equip D-148 + target acquisition 有限),非 formation**。D-152/D-153 的 concentration 思路非 silver bullet(under-fill 反害)。下步:① D-154 满板 fix 验(恢复 baseline r6 存活);② **pivot D-148 equip**(裸装输一切,最大单点)。· D-152(target-only under-fill,修正)/ D-153(clean 解绑,op 留)/ D-148(equip,真因)/ baseline r6 崩
+
+---
+
 ## D-153 (2026-08-09)【GAME-CHANGER·验证】点击 deployed 头像→详情面板(露阵营+出售按钮+装备)→ 破身份墙
 
 - **决策(实机验证)**:点击 **deployed 舞台角色头像** → 弹**详情面板**,含:① **角色阵营/羁绊**(藿藿=仙舟/⑨能量/+治疗,可 OCR 读 → **per-char 身份**);② **「出售」按钮**(detail 面板内,x~1746 y~901);③ **「装备推荐」**装备区(D-148 equip);④ 详情/技能/属性。
