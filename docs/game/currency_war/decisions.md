@@ -15,6 +15,35 @@
 
 ---
 
+## D-151 (2026-08-09)【用户确认 GAME-CHANGER】deployed 可卖!deploy-swap 可行 → 板成型死结解
+
+- **决策(用户实机确认)**:**deployed 角色能卖**(用户拖 deployed→出售区,gold 增加)。**deployed-lock(doc gameplay:78)是误判**!deploy-swap(sell off-target deployed → deploy comp)**可行**。D-143(deploy-swap 设计,曾因「deployed-lock」推翻)now **复活**。
+- **为什么 game-changer**:整个 session 根本瓶颈(deployed-lock → 板 r1 锁散 → comp 难集中 → HP 崩)基于错误前提。**deployed 可卖 → bot 可卖 off-target starter → 换 comp → 板集中**。
+- **修法**:deploy_bench 加 `_sell_all_deployed`(遍历 stage 槽→出售区,confirmed works)+ 条件:**board 有 off-target(∃ faction ∉ target)→ sell all deployed + redeploy bench(comp-curated)**。board 全 target 时不卖。board OCR factions 做条件(不需身份)。
+- **状态**:用户确认。**deploy-swap = 赢 A8 关键路径**。下一步:实现 _sell_all_deployed + 条件 + match 验。· D-143(复活)/ D-144(revisit)/ gameplay:78(误判)
+
+---
+
+## D-148 (2026-08-09)【重大】装备 gap:bot 从不 equip 单位(手动穿戴机制缺失)→ 裸装弱 → HP 崩
+
+- **决策(web 核实 + 代码核实)**:CW 装备**手动穿戴**(棋盘界面点角色→拖装备),bot **无 equip handler/op** → **从不装备单位** → 单位裸装(无属性+战斗效果加成)→ 极弱 → HP -13/round 崩(远快于玩家)。**整个缺失机制**。
+- **为什么是大 gap**:web([米游社官方](https://sr.mihoyo.com/news/160700):"穿戴装备提升战斗能力;装备通过奖励/补给节点获取";[TapTap](https://www.tapap.cn/moment/731573167151121380):"棋盘界面穿戴装备,前后台均可,最多3件/角色")。装备给属性+特殊战斗效果,大幅强化单位。bot 拣了 supply 装备(decide_supply)但**没 equip**(无 op)→ 装备浪费,单位裸装。这**解释 HP 快掉**(裸装 vs 玩家满装)+ 是 plane1 存活瓶颈(比 char→slot D-147 更直接的存活因子)。
+- **影响重估**:equip 装备(3件/角色)→ 单位大幅强化 → HP 掉速大降(可能 -13→-5/round)→ 存活 plane1 → 进 plane2-3 comp 成型(D-147 char→slot 助)→ 赢。**potentially 最大单点修复**(存活是赢的前提;裸装输一切)。
+- **实现方向(新 equip op + screen_info)**:① 观察备战 equip UI(点角色→装备面板→拖装备 to 角色;需 in-game 观测 UI 流程 + 坐标);② screen_info 建 equip 区域(角色详情面板 + 装备槽 + inventory);③ 新 equip op(点角色 + 拖装备到槽);④ 策略(优先给 core/前排?但首版 equip anyone 即大改善)。mechanics(画面 op,非策略锁)。
+- **状态**:gap 确认(web+代码)。**待**:① in-game 观测 equip UI 流程(起 match→备战有装备→看怎么穿);② 建 screen_info + equip op;③ match 验(装上→HP 掉速降→存活)。**优先级:高于 char→slot**(存活是赢的前提)。· D-147(char→slot)/ match6(-13/round)/ decide_supply(拣不装) / gameplay doc(补 equip 机制)
+
+---
+
+## D-147 (2026-08-09) 真根因 = char→slot 感知(comp 卡 benched 上不了场);非 merge/level/pivot
+
+- **决策(诊断精化)**:board-spread 输的**真根因 = comp 卡在 bench 上不了场**,非 merge(D-140 假设)/level(D-146 排除)/pivot。match6 r2 买 4 追击卡(飞霄+赛飞儿×2+不死途)但 board 追击=1 —— **3 追击卡 benched**(board 满 starter)。赛飞儿只 2 张不合并 → 非 merge。**comp 卡买到了但上不了 board**。
+- **为什么上不了**:① **板满 starter(deployed-lock)**:r1 fill-all(D-145)deploy 全 starter → 板满 cap → 后续 comp 卡无槽可上(deployed-lock 不让 starter 下)。② **char→slot 感知缺**:无法可靠选 deploy comp 卡(SIFT 只 4 角色可靠 D-75;tracked_bench slot=list-index 错位 D-102)→ fill-all 是唯一可靠 deploy(全 bench 槽),但它不区分 comp/starter(板满即停)。两条合一 → comp 卡永远 bench → comp 永不成型 → 输。
+- **解路(pixel-diff slot tracking)**:买牌时检测**哪个 bench 槽新被占**(pixel-diff before/after buy,不需身份,可靠)→ 记录 bought char→physical slot。则 deploy 可靠选 comp 卡(tracked slot)deploy 到板(comp 卡上场)。这是 char→slot 感知根的解(替 SIFT/tracked-idx)。**配 deploy-only-comp**(板满 starter 时,新 slot(level 升)优先 comp 卡,非全 bench)→ comp 卡随 level 上场。
+- **备选**:① 接受 fill-all + level 速冲(高 cap comp 卡占多数)—— 慢,plane1 cap 6 不够;② deploy-swap —— deployed-lock 阻(D-143/144 推翻);③ pixel-diff tracking(本设计)—— 治本(解 char→slot → 可选 deploy comp)。选 ③。
+- **状态**:诊断定(char→slot 感知根 + comp benched)。**待实现 pixel-diff slot tracking**(buy op 记 char→slot + deploy 用 tracked slot 选 comp 卡上场)。这是赢 A8 的感知地基修(非策略锁,mechanics/perception)。大改(buy op + tracking + deploy 选 comp),需仔细设计 + review + 多 match 验。· D-145(fill-all)/D-75(SIFT)/D-102(tracked idx)/deployed-lock / task#97
+
+---
+
 ## D-146 (2026-08-09) 早选 target(EMERGENT_SIGNAL_COUNT 2→1)—— 配 D-145 deploy-all 解集中太慢
 
 - **决策**:`EMERGENT_SIGNAL_COUNT` 2→1(target 在 board+bench 任一阵营 count≥1 即 select_comp,r1 starter 在场即触发)。配 D-145 deploy-all(全板上场)→ r1 早选 comp + 早聚焦买(D-138)+ 全板 → 快集中(comp 在 HP 崩前成型)。

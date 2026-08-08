@@ -80,6 +80,28 @@ class DeployBench(SrOperation):
         # target 单位识别不了 → 永远不上 board → board[追击] 卡 1(D-140 真因,非 merge/cap/deployed-lock)。
         # 改:遍历 bench 物理槽 drag→board,retry-stick 验 bench-count 降(有角色 deployed;空槽/板满 不降→跳/停),
         # deploy 全部 owned(target+off-target)→ target 上场→bond 激活。pref 无身份用 front 先填(次优,target 上场首要)。
+        # D-151(用户确认 deployed 可卖):deploy-swap —— board 有 off-target 阵营(∃ faction ∉ target)
+        # → sell all deployed + redeploy bench(comp-curated via D-138/D-142 buying)。board OCR factions 做条件
+        # (不需身份)。deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
+        _match = self.ctx.cw_match
+        _board = (_match.session.last_state.board
+                  if (_match is not None and _match.session is not None
+                      and _match.session.last_state is not None) else None)
+        _tgt_comp = (_match.session.target_comp
+                     if (_match is not None and _match.session is not None) else None)
+        _target_factions: set[str] = set(_tgt_comp.factions) if _tgt_comp is not None else set()
+        _has_offtarget = bool(_board and _target_factions
+                             and any(f not in _target_factions for f in _board))
+        if _has_offtarget:
+            _already_swapped = getattr(_match, 'deploy_swapped', False) if _match is not None else False
+            if not _already_swapped:
+                log.info(f'[cw-deploy] deploy-swap(D-151 one-time):board off-target({_board} vs {_target_factions})'
+                         f' → sell all deployed(清 starters)+ redeploy bench;之后不再 sell(让 comp 累积)')
+                self._sell_all_deployed(front, back)
+                if _match is not None:
+                    _match.deploy_swapped = True   # one-time:只第一次 swap,之后 comp 累积不被卖
+            else:
+                log.info('[cw-deploy] deploy-swap 已做过(D-151 one-time),不再 sell(comp 累积中)')
         if templates:
             self._deploy_all_slots(bench, front, back, _dep_sift, templates)
         else:
@@ -224,6 +246,16 @@ class DeployBench(SrOperation):
                     log.info('[cw-deploy] 早停:dragged=0 + 连续2次无 stick → board 满,停止试拖(D-141b)')
                     break
         log.info(f'[cw-deploy] 拖完:retry-stick {dragged} 个(D-123;fill concentration-first D-125)')
+
+    def _sell_all_deployed(self, front: list[Point], back: list[Point]) -> None:
+        """D-151(用户确认 deployed 可卖):卖全部 deployed 角色。遍历 stage 槽(front 4 + back 6)
+        drag→出售区(70,846)。用户建议 drag 时间设长(duration 1.5,非 0.8)—— deployed 角色需更长拖拽
+        才能拾起+拖到出售区。occupied → 卖(gold+),empty → 无影响。"""
+        _sell = Point(70, 846)
+        for slot in front + back:
+            self.ctx.controller.drag_to(start=slot, end=_sell, duration=1.5)   # D-151: 用户建议 longer time
+            time.sleep(0.5)
+        log.info(f'[cw-deploy] sell-all-deployed(D-151):拖 {len(front) + len(back)} 个 stage 槽 → 出售区')
 
     def _deploy_all_slots(self, bench: list[Point], front: list[Point], back: list[Point],
                           _dep_sift: list | None, templates: AvatarTemplates | None) -> None:
