@@ -33,6 +33,9 @@ from sr_od.application.currency_war.operations.handlers.handle_invest_strategy i
 from sr_od.application.currency_war.operations.handlers.handle_select_partner import (
     HandleSelectPartner,
 )
+from sr_od.application.currency_war.operations.handlers.handle_wish_trial import (
+    HandleWishTrial,
+)
 from sr_od.application.currency_war.operations.prep.battle_prep import BattlePrepCycle
 from sr_od.application.currency_war.operations.run_nodes.run_megastar_node import (
     RunMegastarNode,
@@ -240,6 +243,15 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-备战', '标识-简易装备', crop_first=False).is_success:
             self.ctx.controller.click(Point(626, 250))
             return self.round_wait(wait=1.5)
+
+        # 0h. 祈愿试炼 overlay(节点级 quest 选择:选1试炼 → 完 objective 得奖励)→ HandleWishTrial
+        #     (点第1卡 + 确认选择)。叠备战上挡备战分支 → 必须在备战(1)前检测。2026-08-08 实跑发现:
+        #     bot 卡此 overlay 68min(购买经验透出命中 → BattlePrepCycle 误派 → shop 被遮失败 → 死循环)。
+        #     ESC 不关;点卡身选中(金色边框)→ 确认选择 → 关回备战。详见 op。
+        if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
+            self._snap('wish_trial')
+            HandleWishTrial(self.ctx).execute()
+            return self.round_wait(wait=2)
 
         # 1. 备战阶段 → 单轮(买+deploy+出战)
         # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。

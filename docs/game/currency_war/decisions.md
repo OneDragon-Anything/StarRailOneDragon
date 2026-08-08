@@ -15,6 +15,17 @@
 
 ---
 
+## D-119 (2026-08-08) 祈愿试炼 overlay handler(事件长尾:节点级 quest 选择 overlay 挡备战)· battle_loop 0h
+
+- **决策**:新增 `HandleWishTrial` op + `货币战争-祈愿试炼` screen_info(`标识-祈愿试炼` id_mark + `按钮-确认选择`),`battle_loop` 加分支 **0h**(备战分支 1 前):检测 `标识-祈愿试炼` → 点第 1 张试炼卡 `(660,340)` 选中(mouse_move+click,bug#1 缓解)→ `按钮-确认选择` → 验 overlay 关。
+- **为什么**:2026-08-08 实跑 bot 卡此 overlay **68min**(overlay 叠备战、购买经验透出命中 → 备战分支(1)误派 `BattlePrepCycle` → shop 被遮失败 → 死循环)。祈愿试炼 = **节点级 quest 选择**(选 1 试炼 → 完 objective 如「累计刷新10次」「难度3+遭遇节点战斗」→ 得奖励 金币/阵营星徽),出现在特定节点前(再临仪式-二/遭遇战)。**ESC 不关**;实测交互(手动清 overlay 验):点卡身 → 选中(金色边框 + 「请选择」提示消 + 确认选择转亮)→ 点确认选择 → overlay 关回备战。
+- **备选**:① ESC 关(否:实测不关);② 找关闭/收起按钮(否:无独立关闭,「收起」是左阵营面板折叠非 overlay 关);③ 策略化选试炼(OCR 各卡 objective+reward 按易完成度/契合 comp 选 —— **TODO**,MVP 取第 1 张,「累计刷新10次」bot 本就刷新易完成)。
+- **状态**:采用。交互模型 + 检测几何实测验(手动清 overlay + screen_info pc_rect 含 祈愿试炼@988,60);code ruff 净 + import OK。**live 重验待**:下局祈愿试炼再现时 handler 自处理(当前局已手动清)。· T#99 事件长尾 / `HandleWishTrial` / `currency_war_wish_trial.yml` / battle_loop 0h
+
+> **doc-sync 缺口(待补)**:D-110~D-118b(deploy 机制系列:_board_pairs cap / COMMIT_ROUND=2 / roll-for-target / bench-target eval / deployed cap / formation_cost / SIFT slot deploy / drag 可靠性 / **D-118b long-press drag = CW 拾取角色需长 hold_time**)已 commit 未进本日志。why 已在 commit message + `deploy_bench.py` docstring + process_log 2026-08-08。后续按需补 D 条目(关键模型真值:CW deploy = drag+hold_time 非 click;deployed 锁定;board=deployed)。
+
+---
+
 ## D-109 (2026-08-08) select_comp board-aware + shop_supply 收紧(策略子agent P1,治 target/board 不匹配)· §03/§12
 
 - **决策**:① select_comp 加 `_board_alignment`(comp 阵营 board count≥2 → ×1.2 deep-stack boost;全无 → ×0.7 penalty;count≥1 → ×1.0);② `shop_supply` 收紧(核心阵营 form_tiers keys 在 shop 才 1.0;非核心 0.5;旧 any faction=1.0 太松)。
