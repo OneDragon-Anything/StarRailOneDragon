@@ -487,7 +487,8 @@ def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int
         area = next((a for a in si.area_list if a.area_name == f'备战栏-{i}'), None)
         if area is None or area.pc_rect is None:
             continue
-        x1, y1, x2, y2 = area.pc_rect
+        _r = area.pc_rect   # Rect 对象(有 .x1/.y1/.x2/.y2 属性,非可迭代;旧 `x1,y1,x2,y2=pc_rect` 致 TypeError)
+        x1, y1, x2, y2 = _r.x1, _r.y1, _r.x2, _r.y2
         b = before[y1:y2, x1:x2]
         a = after[y1:y2, x1:x2]
         if b.size == 0 or a.size == 0:

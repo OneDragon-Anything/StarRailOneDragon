@@ -275,23 +275,43 @@ class DeployBench(SrOperation):
         _bench_n = len(read_bench_chars(self.ctx, self.last_screenshot, templates)) if templates else 0
         log.info(f'[cw-deploy] fill-all(D-145):bench_count={_bench_n} '
                  f'occupied(SIFT) front={sorted(occupied_front)} back={sorted(occupied_back)}')
-        # D-149 deploy-use:comp 卡优先 deploy(char→slot from buy pixel-diff D-147)。本轮新 comp buys 的
-        # bench 槽先 deploy(集中:有限 free 槽优先给 comp 卡,而非随机 bench)。map 只含本轮 buys → 只优先本轮新 comp。
+        # D-152 selective deploy(agent a63a1df6 审 → 实证 deploy 忽略 plan 致 board spread):
+        # 不再 fill-all(D-145 部署 off-target 致 5 阵营各 1,无 tier → r6+ HP 崩)。只 deploy **target 阵营 OR
+        # 集中阵营**(board+bench count>=2)的 bench 角色 —— 复刻 cw_decisions._should_deploy 语义,但在物理槽层
+        # (用 bench_slot_map name→物理 slot,**绕开 logical bench_idx→物理映射墙**;map 即物理 slot,无需转换)。
+        # off-target 留 bench(可卖)。map 空/无 target → fallback fill-all(旧 D-145 行为,无回归;早期无 target 必要)。
         _match = self.ctx.cw_match
         _slot_map = getattr(_match, 'bench_slot_map', {}) if _match is not None else {}
-        _tgt = (_match.session.target_comp.factions
-                if (_match is not None and _match.session is not None
-                    and _match.session.target_comp is not None) else None)
-        _comp_idx: list[int] = []
-        if _slot_map and _tgt:
-            for _cn, _slot in _slot_map.items():
-                _ch = get_char(_cn) if _cn else None
-                if (_ch is not None and (set(_ch.factions) & set(_tgt))
-                        and 1 <= _slot <= len(bench)):
-                    _comp_idx.append(_slot - 1)   # slot 1-indexed → bench idx
-        _iter_order = _comp_idx + [i for i in range(len(bench)) if i not in _comp_idx]
-        if _comp_idx:
-            log.info(f'[cw-deploy] comp-priority(D-149):本轮新 comp 卡槽 {_comp_idx} 先 deploy(集中)')
+        _sess = (_match.session if (_match is not None and _match.session is not None) else None)
+        _tgt_factions: set[str] = (set(_sess.target_comp.factions)
+                                   if (_sess is not None and _sess.target_comp is not None) else set())
+        _board = (_sess.last_state.board if (_sess is not None and _sess.last_state is not None) else {})
+        # 各阵营计数(board deployed + bench_slot_map 角色)= concentration 判据(同 _should_deploy)
+        _fcount: dict[str, int] = dict(_board)
+        for _cn in _slot_map:
+            _ch = get_char(_cn) if _cn else None
+            if _ch is not None and _ch.factions:
+                for _f in _ch.factions:
+                    _fcount[_f] = _fcount.get(_f, 0) + 1
+        _deploy_idx: list[int] = []
+        for _cn, _slot in _slot_map.items():
+            if not (1 <= _slot <= len(bench)):
+                continue
+            _ch = get_char(_cn) if _cn else None
+            if _ch is None or not _ch.factions:
+                continue
+            _factions = set(_ch.factions)
+            _is_target = bool(_factions & _tgt_factions) if _tgt_factions else False
+            _is_conc = any(_fcount.get(_f, 0) >= 2 for _f in _factions)
+            if _is_target or _is_conc:
+                _deploy_idx.append(_slot - 1)   # slot 1-indexed → bench idx
+        if _deploy_idx:
+            _iter_order = sorted(set(_deploy_idx))
+            log.info(f'[cw-deploy] selective(D-152):deploy target/集中 槽 {[i+1 for i in _iter_order]} '
+                     f'(target_factions={sorted(_tgt_factions)} fcount={_fcount});off-target 留 bench')
+        else:
+            _iter_order = list(range(len(bench)))   # fallback fill-all(map 空/无 target/全 off-target;无回归)
+            log.info(f'[cw-deploy] selective(D-152) 无 target/集中槽 → fallback fill-all(全 {len(bench)} 槽)')
         dragged = 0
         consecutive_fail = 0   # 板满/空槽 早停(连续 bench 槽无 stick → 板满,停;省 ~2min 浪费)
         for i in _iter_order:  # comp 槽优先(D-149),余按 0..8
@@ -315,7 +335,12 @@ class DeployBench(SrOperation):
                         dragged += 1
                         _bench_n = len(_bench_now)
                         placed = True
-                        log.info(f'[cw-deploy] fill-all:bench槽{i+1} → board ✓ stick(bench {_bench_n + 1}→{_bench_n})')
+                        # D-152:角色已上 board → 从 bench_slot_map 删该 slot(map 跨回合准;否则下轮以为还在 bench)
+                        if _match is not None and getattr(_match, 'bench_slot_map', None):
+                            _gone = next((n for n, s in _match.bench_slot_map.items() if s == i + 1), None)
+                            if _gone is not None:
+                                del _match.bench_slot_map[_gone]
+                        log.info(f'[cw-deploy] deploy:bench槽{i+1} → board ✓ stick(bench {_bench_n + 1}→{_bench_n})')
                         break
                 if placed:
                     break

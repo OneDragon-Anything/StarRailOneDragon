@@ -15,6 +15,22 @@
 
 ---
 
+## D-152 (2026-08-09)【根因纠正·重大】deploy 执行忽略 plan(fill-all 致 board spread)→ selective deploy
+
+- **决策(clean-context agent a63a1df6 审 + telemetry 全局复盘)**:`deploy_bench._deploy_all_slots` 改 **selective deploy** —— 只 deploy **target 阵营 OR 集中阵营**(board+bench count≥2)的 bench 角色(复刻 `cw_decisions._should_deploy` 语义,但在物理槽层),off-target 留 bench;**fallback fill-all**(map 空/无 target,无回归)。同时修 `bench_slot_map` baseline(两帧同 shop-OPEN)+ 跨回合合并 + deployed 后删 slot。
+- **为什么(真根因,非策略)**:9 个策略 commit(D-138~151)调对了 **buy/plan 层**(telemetry 实证:r4 买全 DOT队 椒丘×3+卡芙卡+艾丝妲;r6/r7 有 target 就买 —— **buy 实际在工作**)。但 `cw_decisions.plan()` 精心算的 `pending_deploys`(`_should_deploy` 过滤=target/集中)在 shop.py 存了却**从不消费** —— deploy() 调 `_deploy_all_slots`(D-145)fill-all 部署**全 bench(target+off-target)**,`_deploy_strategic`(D-98 plan-driven)是死代码。→ board 被 off-target + fill-all 污染(5 阵营×1,无 tier)→ bench 躺 target 卡不上场 → r6+ 敌人变强每轮输 → HP ~-13/round 崩 → p2r1 hp=1 死。**20 局 baseline 铁证**:r1-r4 HP 稳/升(赢),r6+ 崩,死时 gold 30-60 未花(经济 OK 转不成板强)。
+- **核心难点 + 绕法**:bench_idx(logical)→物理槽映射(SIFT 4 角色可靠 / gaps 致 logical≠物理 / pixel-diff 旧用 shop-CLOSED vs OPEN 致全槽 diff)**是 D-145/147/149/150/151 反复撞的墙**。D-152 绕法:**`bench_slot_map` 本身就是物理 slot**(name→slot),`bench[slot-1]` 直接给 Point,无需 logical→物理转换。selective deploy 用 map 的 name→get_char().factions→target 判定,在物理槽层复刻 `_should_deploy`。
+- **备选(为什么不选)**:
+  - **D-98 `_deploy_strategic`(plan bench_idx→槽)**:bench_idx 来自 tracked_bench 顺序,deploy 走槽留 gaps → logical idx≠物理位 → 漂移。弃(D-145 才退 fill-all)。
+  - **D-145 fill-all(现状)**:可靠部署全 bench,但**部署 off-target 致 spread**(本 D 根因)。不弃作 fallback(map 空/早期无 target 时必要)。
+  - **SIFT 身份 deploy(`_deploy_by_identity`)**:SIFT 只 4 角色可靠(D-75)→ 大多 target 识别不了 → 不上场。弃。
+  - **D-147 pixel-diff 原版**:baseline 用 `screen`(shop-CLOSED,line 118)vs `_after_shot`(shop-OPEN)→ shop UI overlay 致**全槽 diff 触发** → map 坏(agent 发现,**非** auto-deploy;doc 无 auto-deploy 记载)。D-152 改 baseline 为 `_buy_baseline`(shop-OPEN,buy 前)→ 两帧同状态 → diff 只反映 buy 变化。
+  - **D-151 deploy-swap(sell all + redeploy)**:机制 confirmed(deployed 可卖),但 sell 含 comp + fill-all redeploy 仍 spread → **帮倒忙**。D-152 selective deploy 后,deploy-swap 降为"清存量 off-target starter"的辅助(保留,one-time)。
+- **待解矛盾(测试将定)**:`docs/game/gameplay/currency_war.md:78`(2026-08-08 多源实测)称 deployed **不能**卖;D-151/用户(2026-08-09)称**能**。D-152 selective deploy **两边都对**(防新增 off-target deploy;deploy-swap 辅助清存量)。match 验看 sell 是否真扣 gold → 更新 doc。
+- **状态**:实验(已实现 shop.py + deploy_bench.py,ruff 过;match 验证中)。**验证指标**:r6+ HP 不再崩(赢些 r6-r9)/ board target 阵营 count≥2 / `[cw-deploy] selective` 日志 fires / `[cw-shop] char→slot` map 非空。fallback 保底(map 空则 fill-all,无回归)。· D-145(fill-all,降为 fallback)/ D-147(pixel-diff baseline 修)/ D-151(deploy-swap 降辅助)/ D-138~151(buy 层,已对)/ gameplay:78(deployed-sell 矛盾待定)/ agent a63a1df6(撞3次换视角 clean review)
+
+---
+
 ## D-151 (2026-08-09)【用户确认 GAME-CHANGER】deployed 可卖!deploy-swap 可行 → 板成型死结解
 
 - **决策(用户实机确认)**:**deployed 角色能卖**(用户拖 deployed→出售区,gold 增加)。**deployed-lock(doc gameplay:78)是误判**!deploy-swap(sell off-target deployed → deploy comp)**可行**。D-143(deploy-swap 设计,曾因「deployed-lock」推翻)now **复活**。

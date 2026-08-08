@@ -165,6 +165,11 @@ class BuyShopCards(SrOperation):
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
+        # D-152 char→slot baseline:buy 前截 shop-OPEN 帧(此时 shop 已开 + 无 buy 变化)→ 配 buy 后的
+        # _after_shot(同为 shop-OPEN)做 pixel-diff,差值才只反映 buy 带来的 bench 占位变化。旧代码用
+        # `screen`(line 118,shop-CLOSED 帧)做 baseline → shop UI overlay 致全槽 diff 触发 → map 坏(D-147 真因,
+        # 非 auto-deploy;agent a63a1df6 发现)。deploy_bench 用此 map 选 target 槽 selective deploy(D-152)。
+        _buy_baseline = self.screenshot()
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             state = read_game_state(self.ctx, self.screenshot())
@@ -248,16 +253,20 @@ class BuyShopCards(SrOperation):
             match.session.pending_deploys = deploy_moves
             log.info(f'[cw-shop] 存 {len(deploy_moves)} 个 DeployMove 到 session(pending_deploys)')
 
-        # D-147 char→slot:buy 前(screen,guards 不改 bench)后(after_shot)pixel-diff → 新占槽 = bought 卡落点
-        # (left-to-right = buy 顺序,bench 从左到右填)。存 cw_match.bench_slot_map(setattr 免改 class),给
-        # DeployBench 选 comp 卡 + pref 定位用(D-149 deploy-use 待接;现先采集 map)。
+        # D-152 char→slot:buy 前(_buy_baseline,shop-OPEN 无 buy)后(_after_shot,shop-OPEN 有 buy)pixel-diff
+        # → 新占槽 = bought 卡落点(left-to-right = buy 顺序,bench 从左到右填)。**两帧同 shop-OPEN 状态**
+        # 才只差 buy 变化(旧用 shop-CLOSED 的 `screen` → shop overlay 致全槽 diff → map 坏,D-147 真因)。
+        # 存 cw_match.bench_slot_map(**合并非覆盖**,跨回合累积;deploy_bench D-152 selective deploy 用 + 卖/合
+        # 自修正:deployed 后 deploy_bench 删该 slot;空槽 drag bench-count 不降 → retry-stick skip)。
         if _bought_names:
             _after_shot = self.screenshot()
-            _new_slots = new_bench_slots(self.ctx, screen, _after_shot)
+            _new_slots = new_bench_slots(self.ctx, _buy_baseline, _after_shot)
             if _new_slots and match is not None:
                 _slot_map = dict(zip(_bought_names, _new_slots, strict=False))
-                match.bench_slot_map = _slot_map   # setattr
-                log.info(f'[cw-shop] char→slot(D-147 pixel-diff):{_slot_map}')
+                if not hasattr(match, 'bench_slot_map') or match.bench_slot_map is None:
+                    match.bench_slot_map = {}
+                match.bench_slot_map.update(_slot_map)   # 合并(跨回合累积),非覆盖
+                log.info(f'[cw-shop] char→slot(D-152 pixel-diff,合并):{_slot_map} → 全 map={match.bench_slot_map}')
 
         # 关商店(「收起」)
         time.sleep(0.4)
