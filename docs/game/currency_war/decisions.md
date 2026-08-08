@@ -15,6 +15,16 @@
 
 ---
 
+## D-120 (2026-08-08) select_comp r1 shop_supply 中性化(治 target 选错 → spread → 永不成型)· §02/§03
+
+- **决策**:`select_comp` 在 **r1 + 空 board** 时,`shop_supply<1.0` 的 comp 不再 ×0.3 碾压,改中性 0.5(×0.65);r2+ / board 有阵营 → shop_supply 恢复硬判(真实可得性信号)。让 r1 的 target 由 **intrinsic formability**(formation_cost + difficulty + strength)决定,非单回合 shop 噪声。
+- **为什么**:board-log ground truth(2026-08-08)—— bot 选 **击破流萤(hard)** 纯因 r1 5 张随机 shop 含「击破」(supply=1.0),易成型 comp supply=0 → ×0.3 被碾压 → 击破流萤 以 ~2× 优势赢。但击破后续回合供不上 → prefilter 放行 off-target → board 6 阵营 spread → **deployed-lock 永不成型**(D-108 实锤:deployed 不能 undeploy)→ HP r3 崩。**r1 shop 是 5 张随机样本,「本回合无核心阵营」≠「长期不可得」**,×0.3 让噪声一票主导 target。deploy 已验工作(D-118b + board-log)→ 根因在选 target,非 deploy。
+- **核验(code-level)**:r1 shop=击破 + 空 board → 旧选 击破流萤;新选 **列车同行**(易成型,sum 4)。r2+ 同 shop → 仍选 击破流萤(supply 硬判,回归覆盖)。
+- **备选**:① 加强 `_formation_cost_factor` 权重 —— 否(单维调参,扛不过 ×0.3 碾压);② shop_supply 用跨回合历史 —— 否(state 改动复杂,r1 中性化已解最痛);③ COMMIT_ROUND 2→1 —— 否(r1 commit 太激进,pivot 无法纠);④ **aux prefilter(flexible-chars stopgap)** —— **缓**(子agent 提案依赖 `Comp.shared_chars/transition_chars`,但 Comp **无此属性** → 不可行;需先建模。主改单独应有效:易成型 comp 如 列车同行 阵营常见 → shop 供 → prefilter 找到 target → 不 spread)。
+- **状态**:采用。217 cw 测试绿(+1 新 `test_select_comp_r1_neutralizes_shop_supply_noise`)。**live 验待**:fresh A8 match → r1 选易成型 comp?board 收敛(target 阵营 count 深堆,≤3 阵营)?HP r3 不崩?多局(≥3)均值判。· T#97 / `select_comp`(_supply 中性化)/ 子agent a38f52c8d92d2b6ff 提案
+
+---
+
 ## D-119 (2026-08-08) 祈愿试炼 overlay handler(事件长尾:节点级 quest 选择 overlay 挡备战)· battle_loop 0h
 
 - **决策**:新增 `HandleWishTrial` op + `货币战争-祈愿试炼` screen_info(`标识-祈愿试炼` id_mark + `按钮-确认选择`),`battle_loop` 加分支 **0h**(备战分支 1 前):检测 `标识-祈愿试炼` → 点第 1 张试炼卡 `(660,340)` 选中(mouse_move+click,bug#1 缓解)→ `按钮-确认选择` → 验 overlay 关。
