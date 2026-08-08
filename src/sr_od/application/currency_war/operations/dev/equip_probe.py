@@ -51,8 +51,10 @@ class EquipMechanismProbe(SrOperation):
             _still_panel = self.round_by_ocr(after_slot, '出售', lcs_percent=0.8).is_success
             log.info(f'[cw-equip-probe] 点装备槽{self.EQUIP_SLOT} 后:面板仍开={_still_panel} OCR={_texts[:25]}')
             self.save_screenshot(prefix='cw_equip_probe_afterslot')
-            # **勿 ESC**(D-153/clean op/probe 三次教训:面板已关时 ESC → 中断挑战 dialog → 对局放弃)。
-            # probe 只 log 不关(面板状态由 equip-slot click 决定;下轮 prep 自然回)。
+            # **勿 ESC**(中断挑战 bug)。安全关:re-click 同 char(toggle close)。集成 BattlePrepCycle 时
+            # 需关面板(否则出战被遮);toggle 不保证关 → 下个 op verify 兜底。
+            self.ctx.controller.click(slot)
+            time.sleep(0.5)
             return self.round_success(f'equip-probe done(panel @ {slot})')
         log.info('[cw-equip-probe] 未找到详情面板(无 deployed char 在所点槽)')
         return self.round_success('no panel found')
