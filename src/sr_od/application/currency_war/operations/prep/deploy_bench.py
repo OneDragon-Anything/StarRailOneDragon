@@ -166,26 +166,17 @@ class DeployBench(SrOperation):
 
             def _conc(bc) -> int:
                 return _fcount.get(getattr(bc, 'faction', ''), 0)
-            _pool = [bc for bc in actual if _is_target(bc) or _conc(bc) >= 2]
-            if _pool:
-                actual = sorted(_pool, key=lambda bc: (0 if _is_target(bc) else 1, -_conc(bc), bc.slot))
-                _deploy_offtarget = False   # target/集中:off-target 留 bench,不补剩余
-                log.info(f'[cw-deploy] concentration deploy:pool={len(_pool)} '
-                         f'{[(bc.char_id, getattr(bc, "faction", "?"), _conc(bc)) for bc in actual]}')
-            elif not _dep_sift:   # board 空 + 无 target/集中 → tempo seed(deploy ≤2 最高 count 防空板)
-                actual = sorted(actual, key=lambda bc: (-_conc(bc), bc.slot))[:2]
-                _deploy_offtarget = False
-                log.info('[cw-deploy] tempo seed:无 target/集中 + 空板 → deploy ≤2 防空板全掉血')
-            else:
-                # D-124:board 非空 + 无 target/集中 → 原不 deploy 致 **deadlock**(稀疏松血快崩,2026-08-08 验)。
-                # 改 **fill tempo**:deploy 全 bench(concentration-first 排序:高 count/target 优先),填满 board
-                # 换存活(满板抗打 > 稀疏;更多回合 → 更多 shop 抽 → 集中更可能涌现 = 标准 auto-chess tempo)。
-                # accept 有限 spread-lock(deployed-lock 下 tempo 必要,off-target 沉没);D-123 retry-stick 保证
-                # 真上 board;配 L1(集中化 buy)+ concentration-first 排序尽量减 spread + 优先集中槽。
-                actual = sorted(actual, key=lambda bc: (-_conc(bc), bc.slot))
-                _deploy_offtarget = False
-                log.info('[cw-deploy] tempo fill:无 target/集中 + board 非空 → 填板 tempo '
-                         '(concentration-first;accept spread-lock 换存活;D-123 retry-stick)')
+            # D-125:deploy ALL bench chars(concentration-first 排序:target/高count 先),填满 board 到 cap。
+            # concentration-only 致 **front-empty 卡死**(2026-08-08 验「前台区域无角色 无法出战」—— 全 back-pref
+            # 集中角色 → front 空 → 游戏拒出战 → stall)。fill 保证 valid board(front+back 都有)+ concentration
+            # 优先(deepen target/集中)。accept 有限 spread-lock(deployed-lock 下 tempo 必要,off-target 沉没);
+            # D-123 retry-stick 保证真上 board;配 L1 集中化 buy + concentration-first 排序尽量减 spread + 优先集中。
+            _pool_n = sum(1 for bc in actual if _is_target(bc) or _conc(bc) >= 2)
+            actual = sorted(actual, key=lambda bc: (0 if (_is_target(bc) or _conc(bc) >= 2) else 1,
+                                                   -_conc(bc), bc.slot))
+            _deploy_offtarget = False
+            log.info(f'[cw-deploy] fill(concentration-first):{_pool_n} 集中/target + {len(actual) - _pool_n} '
+                     f'fill = {len(actual)} chars → 填板(D-123 retry-stick;front+back 都填)')
 
         occupied_front: set[int] = set()
         occupied_back: set[int] = set()
