@@ -106,6 +106,21 @@ class DefaultCwStrategy(CwStrategy):
                          session.target_comp.name, session.target_drought, _supply)
                 session.target_comp = None
                 session.target_drought = 0
+        # D-122 emergent target:target 在 bench+board 有阵营 count≥2(信号)**前**保持 None。
+        # 解 target-buy 错配(D-120/121 失败根因):target r1 空板预选,早于 buy → 选 unacquirable comp
+        # (列车同行 不在 shop)→ 不 acquire → spread。改:target **emerge from board** —— L1+L2 集中化
+        # (cw_decisions REINFORCE/SPREAD + deploy cap)驱动 r1-r2 buy/deploy 收敛 → 阵营 count 升 →
+        # 信号(count≥2)出现 → select_comp 选含该阵营的 comp(shop_supply≥0.3 board-back 可得,非 unacquirable)。
+        # 对齐「运行时按场面灵活选」+ 人玩(跟 shop 走,comp emerge)。COMMIT_ROUND 轮数兜底取消(信号驱动)。
+        EMERGENT_SIGNAL_COUNT: int = 2
+        _counts: dict[str, int] = dict(state.board)
+        for _bc in state.bench:
+            if _bc.faction and _bc.faction != '?':
+                _counts[_bc.faction] = _counts.get(_bc.faction, 0) + 1
+        _has_signal = any(_c >= EMERGENT_SIGNAL_COUNT for _c in _counts.values())
+        if session.target_comp is None and not _has_signal:
+            log.info('[cw-target] emergent:无阵营 count≥2(board+bench)→ target 保持 None(L1+L2 集中化驱动)')
+            return
         if session.target_comp is None:
             cands = cw_comps.select_comp(state, score_ctx, config)
             session.target_comp = cands[0] if cands else None
@@ -122,7 +137,8 @@ class DefaultCwStrategy(CwStrategy):
         ⚠️ rng 由现「每调用新建 random.Random()」合并为 ``session.rng``(单一可种子源,§11.4);
         未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。"""
         return cw_decisions.plan(state, config, config.faction_priority,
-                                 rng=session.rng, target_comp=session.target_comp)
+                                 rng=session.rng, target_comp=session.target_comp,
+                                 reactive=(session.target_comp is None))  # D-122:emergent(target=None)授权 reactive,plan 不内部 select_comp
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:

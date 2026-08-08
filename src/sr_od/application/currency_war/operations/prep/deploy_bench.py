@@ -142,9 +142,15 @@ class DeployBench(SrOperation):
         D-116:SIFT slot-level occupied detection(_find_empty_slot)。
         D-117:bug#1 缓解(mouse_move 先)+ 长 duration + SIFT 验 + retry(3 次)。
         """
-        _deploy_offtarget = True   # 默认:补剩余 off-target(naive 填位 / 无 target 时)
-        if target_factions:
+        # D-122 L2b:concentration deploy(deployed-lock 防 spread;替 D-121 target-only/全 deploy)。
+        # deploy target 阵营 OR 集中阵营(bench+deployed faction count≥2);off-target 单张留 bench 可 sell。
+        # 配 L1(cw_decisions 集中化 buy)+ L3(emergent target)。无 target 无集中(board 空)→ tempo seed
+        # (deploy ≤2 最高 count)防空板全掉血;board 非空 + 无 target/集中 → 不 deploy(off-target 留 bench)。
+        _deploy_offtarget = True   # 默认补剩余(无 target_factions / 无 actual 时,naive 填位)
+        if target_factions or actual:
             def _is_target(bc) -> bool:
+                if not target_factions:
+                    return False
                 ch = get_char(bc.char_id)
                 if ch is None:
                     return False
@@ -152,18 +158,28 @@ class DeployBench(SrOperation):
                 if ch.independent:
                     bonds.add(ch.independent)
                 return bool(bonds & target_factions)
-            # D-121:deployed-lock(deployed 不能 sell —— 2026-08-08 vision 确认详情面板**无出售按钮** +
-            # D-108 drag→出售区失败)→ 只 deploy target 阵营角色(off-target 留 bench,经 _maybe_sell_for_interest
-            # 卖)。否则 off-target 一旦 deployed 永锁占槽 → target 进不去 → comp 永不成型(spread 根因;
-            # 2026-08-08 board-log:r2 board 6 阵营各1 卡死,target 仅1)。早期 target 少 → 牺牲 tempo
-            # (卖血保成型,用户框架「前期可适当卖血保经济」);**无 target 时退回全 deploy(防空板全掉血)**。
-            # 配 D-120(target 选易成型 common comp 如 列车同行 → 早有 target 可 deploy,非空板)。
-            target_actual = [bc for bc in actual if _is_target(bc)]
-            if target_actual:
-                actual = sorted(target_actual, key=lambda bc: bc.slot)
-                _deploy_offtarget = False   # target-only:off-target 留 bench(可 sell),不补剩余
+            _fcount: dict[str, int] = {}
+            for _bc in (*actual, *(_dep_sift or [])):
+                _f = getattr(_bc, 'faction', '')
+                if _f and _f != '?':
+                    _fcount[_f] = _fcount.get(_f, 0) + 1
+
+            def _conc(bc) -> int:
+                return _fcount.get(getattr(bc, 'faction', ''), 0)
+            _pool = [bc for bc in actual if _is_target(bc) or _conc(bc) >= 2]
+            if _pool:
+                actual = sorted(_pool, key=lambda bc: (0 if _is_target(bc) else 1, -_conc(bc), bc.slot))
+                _deploy_offtarget = False   # target/集中:off-target 留 bench,不补剩余
+                log.info(f'[cw-deploy] concentration deploy:pool={len(_pool)} '
+                         f'{[(bc.char_id, getattr(bc, "faction", "?"), _conc(bc)) for bc in actual]}')
+            elif not _dep_sift:   # board 空 + 无 target/集中 → tempo seed(deploy ≤2 最高 count 防空板)
+                actual = sorted(actual, key=lambda bc: (-_conc(bc), bc.slot))[:2]
+                _deploy_offtarget = False
+                log.info('[cw-deploy] tempo seed:无 target/集中 + 空板 → deploy ≤2 防空板全掉血')
             else:
-                actual = sorted(actual, key=lambda bc: bc.slot)   # 无 target → 全 deploy(防空板)
+                actual = []   # board 非空 + 无 target/集中 → 不 deploy(off-target 留 bench 可 sell)
+                _deploy_offtarget = False
+                log.info('[cw-deploy] 无 target/集中 + board 非空 → 不 deploy(off-target 留 bench)')
 
         occupied_front: set[int] = set()
         occupied_back: set[int] = set()

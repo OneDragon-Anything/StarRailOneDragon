@@ -520,17 +520,11 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # D-120:shop-aware 降权 —— 但 r1(空 board)时 shop 是 5 张随机样本,supply=0 是**噪声非信号**
-        # (本回合 shop 无核心阵营 ≠ 长期不可得)。旧码 supply=0 → ×0.3 碾压,让 hard comp(如 击破流萤)
-        # **仅因 r1 shop 含其阵营**就被选中(×0.3 一票主导,压过 formation_cost)→ 后续回合供不上 →
-        # prefilter 放行 off-target → board 6 阵营 spread → deployed-lock 永不成型(2026-08-08 board-log
-        # ground truth:board r2 起卡死 6×1,target 仅 1)。r1 supply<1.0 → 中性 0.5(×0.65),让 intrinsic
-        # formability(formation_cost + difficulty + strength)决定 target。r2+ / board 有阵营 → shop_supply
-        # 恢复硬判(此时 board 进展可校验,单回合 supply 是真实可得性信号)。对齐「成型难度是关键打分维度」。
-        _supply = shop_supply(comp, state)
-        if (not state.board) and state.round_num <= 1 and _supply < 1.0:
-            _supply = 0.5
-        s *= (0.3 + 0.7 * _supply)
+        # D-122 ↺ D-120:r1 shop_supply 中性化**推翻** —— 它让 select_comp 选易成型但**不在 shop 的 comp**
+        # (列车同行)→ target-buy 错配 → 不 acquire → spread。D-122 改 emergent target(update_target 在阵营
+        # count≥2 前不调 select_comp)→ select_comp 只在 board 有信号时调,领先 comp 的 shop_supply≥0.3
+        # (board-back)→ 不需 r1 中性化。恢复硬 shop_supply 判(可得性信号)。
+        s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
         s *= _board_alignment(comp, state)   # D-109:board-aware(deployed-lock → 选 board 支持的 comp)
         s *= _formation_cost_factor(comp)   # D-115:低 form_tiers sum(易成型)优先 → comp 更快成型 → plane2 更强
         scored.append((s, comp))

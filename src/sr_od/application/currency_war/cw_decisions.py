@@ -82,6 +82,13 @@ SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
 
+# D-122 concentration(deployed-lock 防 spread):r1 起驱动 buy/deploy 收敛,无 target 也生效。
+# 人玩 auto-chess:跟 shop 走、concentrate(强化已 collect 阵营)、comp emerge。bot 旧「pre-select target→force」
+# 在 deployed-lock + shop 随机下失败(target-buy 错配 → spread → 锁板 → 永不成型)。
+REINFORCE_BONUS: float = 4.0      # 买 card.faction 已在 bench+deployed → 加分(深化集中阵营,~1 synergy 激活档)
+SPREAD_PENALTY: float = 8.0       # 买新阵营 且 已 ≥DEPLOY_FACTION_CAP 阵营 → 重罚(防 spread-lock 永久占槽;>单卡 synergy 收益)
+DEPLOY_FACTION_CAP: int = 3       # board 阵营数上限(L2 deploy cap 共用;deployed-lock 下超 = 永久 spread)
+
 # 通用升级曲线(task#18 经济统一论):COMP_LIBRARY 未填 level_plan 时用。
 # auto-chess meta:前期(2-4)roll 找低费核心 → 中期(5-7)level_up 推等级(解锁高费刷新率 + 出战位)
 # → lv8 roll 找 5 费核心 → lv9+ stable。comp 自带 level_plan(如列车同行)优先于此(见 _resolve_level_goal)。
@@ -300,6 +307,52 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str]) -> int |
                key=lambda i: _bench_sell_value(state.bench[i], character_priority, close))
 
 
+# ===== D-122 concentration helpers(deployed-lock 防 spread;r1 起驱动 buy/deploy 收敛)=====
+
+def _distinct_factions(state: GameState) -> set[str]:
+    """已 collect 的阵营集合 = board(deployed ground truth)+ bench(不含 '?'/空)。"""
+    factions = set(state.board.keys())
+    factions.update(bc.faction for bc in state.bench if bc.faction and bc.faction != '?')
+    return factions
+
+
+def _concentration_delta(card: ShopCard, state: GameState) -> float:
+    """买这张牌对 concentration 的影响(加到 buy delta,L1)。
+
+    - card.faction 已在 bench+deployed → +REINFORCE_BONUS(深化集中阵营,人玩「强化已 collect」)。
+    - 新阵营 且 已 ≥DEPLOY_FACTION_CAP 阵营 → −SPREAD_PENALTY(防 spread-lock 永久占槽;> 单卡 synergy 收益)。
+    - 否则 0(早期开第 1-3 阵营中性,允许集中起步)。
+    """
+    factions = _distinct_factions(state)
+    if card.faction and card.faction in factions:
+        return REINFORCE_BONUS
+    if len(factions) >= DEPLOY_FACTION_CAP:
+        return -SPREAD_PENALTY
+    return 0.0
+
+
+def _bench_faction_counts(state: GameState) -> dict[str, int]:
+    """已 collect 各阵营计数 = board(deployed ground truth)+ bench(_should_deploy 用)。"""
+    counts: dict[str, int] = dict(state.board)
+    for c in state.bench:
+        if c.faction and c.faction != '?':
+            counts[c.faction] = counts.get(c.faction, 0) + 1
+    return counts
+
+
+def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool:
+    """是否 deploy 该角色(L2 deploy cap,防 spread-lock)。
+
+    deploy 条件(任一):
+    - target 阵营角色(target.factions 含 bc.faction 或 bc.char_id ∈ core_chars)。
+    - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
+    否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
+    """
+    if target is not None and (bc.faction in target.factions or bc.char_id in target.core_chars):
+        return True
+    return _bench_faction_counts(state).get(bc.faction, 0) >= 2
+
+
 # ===== A1:蒙特卡洛 D 牌(刷新商店期望值)=====
 
 def _sample_cost(level: int, rng: random.Random) -> int:
@@ -376,13 +429,16 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
 
 def plan(state: GameState, config, faction_priority: list[str],
          rng: random.Random | None = None,
-         target_comp: Comp | None = None) -> list[Action]:
+         target_comp: Comp | None = None,
+         reactive: bool = False) -> list[Action]:
     """一回合动作计划:硬门(必做)+ 贪心改进(买/deploy/升/卖/**D 牌蒙特卡洛**)。
 
     config: CurrencyWarConfig。rng: 蒙特卡洛 D 牌用(默认新建;测试传 seeded 保确定)。
     target_comp: 战略层目标阵容(稳定,由上层 shop op 跨回合管理 + maybe_pivot 切换)。
         传入 → 用它(不每轮重选,防 select_comp 振荡致 churn);None → 内部 select_comp
         (向后兼容 / 测试 / reactive 退化)。硬门:bench-full 必破、gold≥0、level≤10。
+    reactive: D-122 emergent —— True=授权 target=None(上层 update_target 阵营 count≥2 前不选 target),
+        plan 不内部 select_comp(纯 L1 集中化驱动 buy/deploy);False(默认)= 向后兼容(None→内部 select_comp)。
     """
     rng = rng or random.Random()
     character_priority = getattr(config, 'character_priority', [])
@@ -406,7 +462,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 按振荡 target 卖牌 → 破坏性 churn(每轮换牌)+ 零收敛 → 比 reactive 更弱。故 target 须跨回合稳定
     # (上层 shop op 持久化 + maybe_pivot 才切),plan 只消费。详 task#16 + strategy/02 F-3。
     target = target_comp
-    if target is None:
+    if target is None and not reactive:   # D-122:reactive(emergent)授权 None → 不内部 select_comp(纯集中化)
         _candidates = select_comp(cur, make_score_context(cur), config)
         if _candidates:
             target = _candidates[0]
@@ -527,7 +583,8 @@ def _best_improving_action(
                     continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
-        if after_buy.deployed_count() < after_buy.max_units() and after_buy.bench:
+        if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
+                and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):   # D-122 L2:只 deploy target/集中
             bc = after_buy.bench[-1]
             row, ok = _pick_deploy_row(after_buy, bc)
             if ok:
@@ -536,6 +593,7 @@ def _best_improving_action(
         for a in seq[1:]:
             after = simulate(after, a)
         delta = evaluate(after, config, faction_priority, target_comp) - base_eval
+        delta += _concentration_delta(card, state)   # D-122 L1:集中化信号(强化已 collect 阵营 / 防 spread-lock)
         if card.name and card.name in character_priority:
             delta += CHAR_PRIORITY_BONUS * 2
         beat(delta, seq)
@@ -544,6 +602,8 @@ def _best_improving_action(
     for i, bc in enumerate(state.bench):
         if state.deployed_count() >= state.max_units():
             break
+        if not _should_deploy(bc, state, target_comp):   # D-122 L2:只 deploy target/集中,off-target 单张留 bench
+            continue
         row, ok = _pick_deploy_row(state, bc)
         if not ok:
             continue

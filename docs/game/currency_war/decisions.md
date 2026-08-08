@@ -15,6 +15,19 @@
 
 ---
 
+## D-122 (2026-08-08) concentrate-first / target-emergent 架构( holistic 重设计,治 spread 根因)· §02/§12
+
+- **决策**:推翻「pre-select target → force」架构(D-120/121 单杠杆 patch 连败的根因),改 **concentrate-first + target-emergent**(人玩 auto-chess:跟 shop 走、concentrate、comp emerge)。4 层:
+  - **L1 buy 集中**(cw_decisions):买牌 delta 加 `_concentration_delta` —— card.faction 已 collect(board+bench)→ +REINFORCE_BONUS;新阵营 且 已 ≥DEPLOY_FACTION_CAP(3)→ −SPREAD_PENALTY(防 spread-lock)。
+  - **L2 deploy cap**(cw_decisions `_should_deploy` + deploy_bench `_deploy_by_identity`):只 deploy target 阵营 OR 集中阵营(count≥2);off-target 单张留 bench(可 sell);board 空+无集中 → tempo seed(deploy ≤2)防空板。
+  - **L3 emergent target**(default_strategy `update_target`):target 在 bench+board 有阵营 **count≥2 前**恒 None(解 target-buy 错配:target r1 空板预选 → 选 unacquirable comp);信号出现 → select_comp 选 board-leader comp(shop_supply≥0.3 board-back 可得)。plan 加 `reactive` 参数(emergent 授权 target=None,不内部 select_comp)。
+  - **L4 ↺ D-120**:select_comp r1 shop_supply 中性化**推翻**(它选 unacquirable target);emergent 下 select_comp 只在 board 有信号时调,不需 r1 中性化。
+- **为什么**:D-120/121 live 验仍 spread —— 真根因 = **target-buy 错配**(target r1 空板预选,早于 buy → 选易成型但 unacquirable comp → 不 acquire → off-target deploy → spread → deployed-lock 永久)。**target pre-select 与 deployed-lock 不兼容**(deployed-lock 下 r1 spread 不可逆)→ 必须反转为「r1 起集中(buy+deploy)→ target emerge from board」。子agent adfe23995f04ec49f 整体设计。I27(单杠杆 patch 连败 → holistic 重设计)。
+- **备选**:① board-management(sell deployed)—— 否(deployed 不可 sell,D-121 vision 确认);② 纯 acquire-side target —— 否(仍 pre-select);③ shop 历史 —— 后续 P1.5。
+- **状态**:采用。ruff 净;**217 cw 测试绿**(删 D-120 测试 + 加 emergent 测试 + 修 2 drought 测试加 board 信号)。**live 验待**:fresh match → board 收敛 ≤3 阵营?target emerge + 深堆?HP r3 不崩?进 plane2?多局(≥3)均值判。· T#97 / `_concentration_delta`/`_should_deploy`/`update_target`(emergent)/`plan`(reactive)/`_deploy_by_identity`(concentration)/ REINFORCE_BONUS·4.0 / SPREAD_PENALTY·8.0 / DEPLOY_FACTION_CAP·3
+
+---
+
 ## D-121 (2026-08-08) deploy target-only(off-target 留 bench 可 sell)—— deployed-lock 确认 → 防 spread · §12
 
 - **决策**:`DeployBench._deploy_by_identity` 当 target_factions 有值且有 target 角色时,**只 deploy target 阵营角色**(off-target 留 bench,经 `_maybe_sell_for_interest` 卖);**跳过补剩余**(不 deploy off-target 填槽)。无 target 时退回全 deploy(防空板全掉血)。
