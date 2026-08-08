@@ -15,6 +15,16 @@
 
 ---
 
+## D-146 (2026-08-09) 早选 target(EMERGENT_SIGNAL_COUNT 2→1)—— 配 D-145 deploy-all 解集中太慢
+
+- **决策**:`EMERGENT_SIGNAL_COUNT` 2→1(target 在 board+bench 任一阵营 count≥1 即 select_comp,r1 starter 在场即触发)。配 D-145 deploy-all(全板上场)→ r1 早选 comp + 早聚焦买(D-138)+ 全板 → 快集中(comp 在 HP 崩前成型)。
+- **为什么**:match5(D-145 deploy fix 后)实跑:board 7 阵营全 1 spread,**count≥2 到 r6-7 才 emergent → 太慢**,HP 62→38 崩在 comp 成型前。D-145 修了 deploy(target 上场),但 emergent 等 count2 太慢(spread starter 难达)。降到 count1 → r1 即选 comp → 早聚焦买 → 快集中。
+- **D-122 顾虑(空板选 unacquirable)不适用**:r1 board 有 starters(非空)+ select_comp 用 shop_supply(D-126)保 acquirable + maybe_pivot 纠偏 + drought_bail(D-92,5 轮无 shop 卡弃 target 重选)兜底。count1 = starter 在场(非空板)。
+- **备选**:① round-fallback(round≥3 强制选)—— 更保守(等 2 轮信息),但少 2 轮聚焦买;② 保持 count2 靠 D-145 deploy 加速集中 —— deploy 不影响 emergent 门槛,不解;③ count1(本设计)—— 最直接早聚焦。选 ③ 验,若 r1-target comp 太盲(选错),回退 round-fallback。
+- **状态**:实现 + 单测绿(20 cw_strategy 测试;test_update_target_emergent 更新 count1)。**待 match6 验**(r1 早选 target → 早聚焦买 → comp 早成型 → 存活/赢?)。策略锁内(grounded match5 集中慢实据)。· D-122(emergent)/ D-145(deploy-all)/ D-138(buy target)/ match5 / task#97
+
+---
+
 ## D-145 (2026-08-09) 【review 重大发现】deploy_bench SIFT-gating bug = D-140 真因(target 单位上不了 board);D-144 错层 revert
 
 - **决策(review 发现,已核实 deploy_bench:102-120)**:D-140(board[追击] 卡 1 despite 买 3+ 追击卡)**真因 = deploy_bench 用 SIFT(read_bench_chars)选部署对象,绕过 plan 的 DeployMove**。`if actual:`(SIFT 识别到任意 bench 角色)→ _deploy_by_identity(只迭代 SIFT 可见角色);**SIFT 识别不了的角色(D-75:只 4 角色可靠)永远不上 board**。plan 的 DeployMove(tracked 身份,可靠)只在 `else`(SIFT 全失败)用,且 line 116 自承「tracked_bench idx 可能错位」故避用。**非 merge、非 cap、非 deployed-lock** —— 是 SIFT 把 target 单位 gate 在 bench。

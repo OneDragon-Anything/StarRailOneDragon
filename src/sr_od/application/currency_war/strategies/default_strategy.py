@@ -110,13 +110,11 @@ class DefaultCwStrategy(CwStrategy):
                          session.target_comp.name, session.target_drought, _supply)
                 session.target_comp = None
                 session.target_drought = 0
-        # D-122 emergent target:target 在 bench+board 有阵营 count≥2(信号)**前**保持 None。
-        # 解 target-buy 错配(D-120/121 失败根因):target r1 空板预选,早于 buy → 选 unacquirable comp
-        # (列车同行 不在 shop)→ 不 acquire → spread。改:target **emerge from board** —— L1+L2 集中化
-        # (cw_decisions REINFORCE/SPREAD + deploy cap)驱动 r1-r2 buy/deploy 收敛 → 阵营 count 升 →
-        # 信号(count≥2)出现 → select_comp 选含该阵营的 comp(shop_supply≥0.3 board-back 可得,非 unacquirable)。
-        # 对齐「运行时按场面灵活选」+ 人玩(跟 shop 走,comp emerge)。COMMIT_ROUND 轮数兜底取消(信号驱动)。
-        EMERGENT_SIGNAL_COUNT: int = 2
+        # D-146(2026-08-09)早选 target(EMERGENT_SIGNAL_COUNT 2→1):match5 实跑 board 7 阵营全 1 spread,
+        # count≥2 到 r6-7 才 emergent → 太慢,HP 在 comp 成型前崩。降到 count≥1(starter 任一阵营在场,r1 即触发)
+        # → r1 选 comp + 早聚焦买(D-138)+ D-145 deploy 全板 → 快集中。D-122「空板选 unacquirable」顾虑不适用
+        # (r1 board 有 starters 非空 + select_comp 用 shop_supply 保 acquirable;maybe_pivot 纠偏;drought_bail 兜底)。
+        EMERGENT_SIGNAL_COUNT: int = 1
         _counts: dict[str, int] = dict(state.board)
         for _bc in state.bench:
             if _bc.faction and _bc.faction != '?':
