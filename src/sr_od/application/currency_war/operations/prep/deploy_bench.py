@@ -146,7 +146,6 @@ class DeployBench(SrOperation):
         # deploy target 阵营 OR 集中阵营(bench+deployed faction count≥2);off-target 单张留 bench 可 sell。
         # 配 L1(cw_decisions 集中化 buy)+ L3(emergent target)。无 target 无集中(board 空)→ tempo seed
         # (deploy ≤2 最高 count)防空板全掉血;board 非空 + 无 target/集中 → 不 deploy(off-target 留 bench)。
-        _deploy_offtarget = True   # 默认补剩余(无 target_factions / 无 actual 时,naive 填位)
         if target_factions or actual:
             def _is_target(bc) -> bool:
                 if not target_factions:
@@ -174,7 +173,6 @@ class DeployBench(SrOperation):
             _pool_n = sum(1 for bc in actual if _is_target(bc) or _conc(bc) >= 2)
             actual = sorted(actual, key=lambda bc: (0 if (_is_target(bc) or _conc(bc) >= 2) else 1,
                                                    -_conc(bc), bc.slot))
-            _deploy_offtarget = False
             log.info(f'[cw-deploy] fill(concentration-first):{_pool_n} 集中/target + {len(actual) - _pool_n} '
                      f'fill = {len(actual)} chars → 填板(D-123 retry-stick;front+back 都填)')
 
@@ -224,40 +222,7 @@ class DeployBench(SrOperation):
                 # 未中:slot 实占(SIFT 漏读)或拖失败 → 试下槽(角色仍在 src)
             if not stuck:
                 log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) 未能 deploy(槽满/拖失败,留 bench)')
-
-        if _deploy_offtarget:
-            deployed_slots = {bc.slot for bc in actual}
-            remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
-            for slot_i in remaining:
-                if cap_remaining is not None and dragged >= cap_remaining:
-                    break
-                dst = (self._find_empty_slot('back', front, back, occupied_front, occupied_back)
-                       or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
-                if dst is None:
-                    break
-                # D-118b:长按 drag(naive 补槽也用 long-press drag)
-                self.ctx.controller.drag_to(start=bench[slot_i - 1], end=dst, duration=1.0, hold_time=0.5)
-                time.sleep(0.5)
-                dragged += 1
-            log.info(f'[cw-deploy] 长按拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
-        else:
-            log.info(f'[cw-deploy] target-only 拖完:共拖 {dragged} 个 target(off-target 留 bench 可 sell)')
-
-    @staticmethod
-    def _find_empty_slot(pref: str, front: list[Point], back: list[Point],
-                         occupied_front: set[int], occupied_back: set[int]) -> Point | None:
-        """D-116:在 pref 排找第一个空槽(不在 occupied set 中的 idx 1..len)。无空槽 → 尝试另一排 → None。"""
-        slots, occupied = (front, occupied_front) if pref == 'front' else (back, occupied_back)
-        for i in range(1, len(slots) + 1):
-            if i not in occupied:
-                occupied.add(i)
-                return slots[i - 1]
-        other_slots, other_occ = (back, occupied_back) if pref == 'front' else (front, occupied_front)
-        for i in range(1, len(other_slots) + 1):
-            if i not in other_occ:
-                other_occ.add(i)
-                return other_slots[i - 1]
-        return None
+        log.info(f'[cw-deploy] 拖完:retry-stick {dragged} 个(D-123;fill concentration-first D-125)')
 
     def _deploy_strategic(self, moves: list[DeployMove], bench: list[Point],
                           front: list[Point], back: list[Point]) -> None:
