@@ -193,6 +193,11 @@ class DeployBench(SrOperation):
                      f'(共 {len(occupied_front) + len(occupied_back)} occupied)')
 
         dragged = 0
+        # D-123 retry-until-stick:SIFT 占位检测(_dep_sift)对 stage 角色 false-negative(2026-08-08 确认:
+        # occupied(SIFT) 显 2 但 board 实际 4)→ _find_empty_slot 选占槽 → 游戏拒拖 → 角色回 bench →
+        # board 卡 spread。改:不靠 SIFT 选槽,改 **deploy→verify(bench count 降 = 角色真上 board)→
+        # 没中试下槽**。manual 验空槽 drag 能 stick(群攻 1→2)。bench SIFT 可靠(检 bench 角色),作 verify。
+        _bench_n = len(read_bench_chars(self.ctx, self.last_screenshot, templates)) if templates else 0
         for bc in actual:
             if cap_remaining is not None and dragged >= cap_remaining:
                 break
@@ -200,15 +205,28 @@ class DeployBench(SrOperation):
                 continue
             src = bench[bc.slot - 1]
             pref = bc.position_pref or 'back'
-            dst = self._find_empty_slot(pref, front, back, occupied_front, occupied_back)
-            if dst is None:
-                continue
-            # D-118b:CW deploy = long-press drag(hold 0.5s → drag → release)。
-            # click 打开详情面板(非 pickup);plain drag 太快(游戏见为 click)。长按让游戏识别"拾取角色"。
-            self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
-            time.sleep(0.5)
-            dragged += 1
-            log.info(f'[cw-deploy] 长按拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
+            slots_row, occupied_set = (front, occupied_front) if pref == 'front' else (back, occupied_back)
+            stuck = False
+            for try_idx in range(1, len(slots_row) + 1):
+                if try_idx in occupied_set:
+                    continue
+                dst = slots_row[try_idx - 1]
+                # D-118b:CW deploy = long-press drag(hold 0.5s → drag → release)。
+                self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
+                time.sleep(0.7)
+                # verify:re-read bench,count 降 = 角色真上 board(stick)。bench SIFT 可靠。
+                _bench_now = read_bench_chars(self.ctx, self.screenshot(), templates) if templates else []
+                if len(_bench_now) < _bench_n:
+                    occupied_set.add(try_idx)
+                    dragged += 1
+                    _bench_n = len(_bench_now)
+                    stuck = True
+                    log.info(f'[cw-deploy] retry-stick:bench[{bc.slot}]({bc.char_id}/{pref}) → {pref}-{try_idx} '
+                             f'✓ stick(bench {_bench_n + 1}→{_bench_n})')
+                    break
+                # 未中:slot 实占(SIFT 漏读)或拖失败 → 试下槽(角色仍在 src)
+            if not stuck:
+                log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) 未能 deploy(槽满/拖失败,留 bench)')
 
         if _deploy_offtarget:
             deployed_slots = {bc.slot for bc in actual}

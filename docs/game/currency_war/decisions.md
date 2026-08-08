@@ -15,6 +15,16 @@
 
 ---
 
+## D-123 (2026-08-08) deploy retry-until-stick(SIFT 占位 false-negative → 不靠 SIFT 选槽,deploy→verify→试下槽)· §12
+
+- **决策**:`_deploy_by_identity` 主 deploy 循环改 **retry-until-stick**:每角色按 pref 排顺序试槽,drag→**verify(bench count 降 = 角色真上 board)**→ 没中试下槽。不靠 SIFT 占位(`_dep_sift`/`_find_empty_slot` 降为 best-effort 跳过已知占)。
+- **为什么**:🎯🎯🎯 **2026-08-08 controlled + log CONFIRMED** —— deploy-stick 失败 = **SIFT 占位检测 false-negative**:`occupied(SIFT)` 显 2 但 board 实际 4 角色(stage 角色 ≠ character_cw_portrait 立绘模板,SIFT 漏读)→ `_find_empty_slot` 选占槽 → 游戏拒拖 → 角色回 bench → board 卡 spread → comp 永不成型。**controlled 验**:手动 drag bench→空槽 **STICK**(群攻 1→2)→ drag 机制正常,占位检测坏。4 次 T#97 策略调(D-120/121/122)全败 = 一直调对的策略层,执行层 SIFT 占位坏没碰(I28 实例)。
+- **verify 选 bench count**:`read_bench_chars`(bench SIFT 可靠,检 bench 角色)→ 角色真上 board 则 bench count 降。非 stage SIFT(不可靠)。manual 验 bench SIFT 检 4 稳。
+- **备选**:① CV 空槽判(empty vs occupied;variance 不行背景变,需 empty-slot 模板 / 更好特征)—— 复杂,留后续;② 改进 stage SIFT 模板(采 stage 姿势)—— 工作量大;③ retry-until-stick(本选)—— 最简 + 不靠占位检测。
+- **状态**:采用。ruff 净 + import OK。**live 验待**:fresh match → deploy log 显 `retry-stick ✓` → board 真集中(target 阵营 count 深堆)→ comp 成型 → HP r3 不崩?多局(≥3)。· T#97 真根因(SIFT 占位 false-negative)/ `_deploy_by_identity`(retry-until-stick)/ controlled 验(2026-08-08 手动 drag 空槽 stick)/ I28
+
+---
+
 ## D-122 (2026-08-08) concentrate-first / target-emergent 架构( holistic 重设计,治 spread 根因)· §02/§12
 
 - **决策**:推翻「pre-select target → force」架构(D-120/121 单杠杆 patch 连败的根因),改 **concentrate-first + target-emergent**(人玩 auto-chess:跟 shop 走、concentrate、comp emerge)。4 层:
