@@ -177,9 +177,15 @@ class DeployBench(SrOperation):
                 _deploy_offtarget = False
                 log.info('[cw-deploy] tempo seed:无 target/集中 + 空板 → deploy ≤2 防空板全掉血')
             else:
-                actual = []   # board 非空 + 无 target/集中 → 不 deploy(off-target 留 bench 可 sell)
+                # D-124:board 非空 + 无 target/集中 → 原不 deploy 致 **deadlock**(稀疏松血快崩,2026-08-08 验)。
+                # 改 **fill tempo**:deploy 全 bench(concentration-first 排序:高 count/target 优先),填满 board
+                # 换存活(满板抗打 > 稀疏;更多回合 → 更多 shop 抽 → 集中更可能涌现 = 标准 auto-chess tempo)。
+                # accept 有限 spread-lock(deployed-lock 下 tempo 必要,off-target 沉没);D-123 retry-stick 保证
+                # 真上 board;配 L1(集中化 buy)+ concentration-first 排序尽量减 spread + 优先集中槽。
+                actual = sorted(actual, key=lambda bc: (-_conc(bc), bc.slot))
                 _deploy_offtarget = False
-                log.info('[cw-deploy] 无 target/集中 + board 非空 → 不 deploy(off-target 留 bench)')
+                log.info('[cw-deploy] tempo fill:无 target/集中 + board 非空 → 填板 tempo '
+                         '(concentration-first;accept spread-lock 换存活;D-123 retry-stick)')
 
         occupied_front: set[int] = set()
         occupied_back: set[int] = set()
