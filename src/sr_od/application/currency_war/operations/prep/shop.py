@@ -11,6 +11,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_obs_core import HP_MAX
 from sr_od.application.currency_war.cw_observation import (
     area_center,
+    new_bench_slots,
     read_game_state,
     read_gold,
     read_hp,
@@ -81,6 +82,7 @@ class BuyShopCards(SrOperation):
     @operation_node(name='商店买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        _bought_names: list[str] = []   # D-147 char→slot:本轮 bought 卡名(buy 顺序),配 pixel-diff 找槽
         # 前置:备战席已满 → 升等级(+卖前几个 bench)清警告解锁购买(位置式,不需身份)
         if self._handle_bench_full(screen):
             return self.round_success('备战席已满,升等级(+卖角色)清警告')
@@ -220,6 +222,7 @@ class BuyShopCards(SrOperation):
                     # D-84:记下买的角色名 → tracked_bench 跨轮 seed(下轮 state.bench)
                     if action.card.name:
                         match.session.tracked_bench.append(action.card.name)
+                        _bought_names.append(action.card.name)   # D-147 char→slot
                     # task#105(D-129~D-131):bench 持久跟踪带 star+merge(mutate 同步,替 star 恒1)
                     mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
                 elif isinstance(action, LevelUp):
@@ -244,6 +247,17 @@ class BuyShopCards(SrOperation):
         if match is not None:
             match.session.pending_deploys = deploy_moves
             log.info(f'[cw-shop] 存 {len(deploy_moves)} 个 DeployMove 到 session(pending_deploys)')
+
+        # D-147 char→slot:buy 前(screen,guards 不改 bench)后(after_shot)pixel-diff → 新占槽 = bought 卡落点
+        # (left-to-right = buy 顺序,bench 从左到右填)。存 cw_match.bench_slot_map(setattr 免改 class),给
+        # DeployBench 选 comp 卡 + pref 定位用(D-149 deploy-use 待接;现先采集 map)。
+        if _bought_names:
+            _after_shot = self.screenshot()
+            _new_slots = new_bench_slots(self.ctx, screen, _after_shot)
+            if _new_slots and match is not None:
+                _slot_map = dict(zip(_bought_names, _new_slots, strict=False))
+                match.bench_slot_map = _slot_map   # setattr
+                log.info(f'[cw-shop] char→slot(D-147 pixel-diff):{_slot_map}')
 
         # 关商店(「收起」)
         time.sleep(0.4)

@@ -35,6 +35,7 @@ import cv2
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils.log_utils import log
 
 # re-export 简报 + 结算 reads(向后兼容:from cw_observation import read_affixes/parse_settlement_hp 等仍可用)
 from sr_od.application.currency_war.cw_briefing_obs import (  # noqa: F401
@@ -462,3 +463,38 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     return state
+
+
+# ===== D-147 char→slot(pixel-diff,非 SIFT)=====
+# D-147 真根因:comp 卡 benched 上不了场(char→slot 感知缺:SIFT 只 4 角色可靠 D-75 / tracked idx 错位 D-102)
+# → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
+# 无需身份(可靠)。left-to-right 顺序 ↔ buy 顺序。配 deploy 用 tracked slot 选 comp + pref(D-149 待全实现)。
+BENCH_SLOT_DIFF_THRESHOLD: float = 10.0   # absdiff 均值阈值;新 char icon 显著 > 此(校准待实跑)
+
+
+def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int]:
+    """buy 前/后 bench 哪些物理槽(1..9)新被占(pixel-diff:新 char icon 出现 → 高 absdiff 均值)。
+
+    D-147 char→slot 感知根解。返回新占槽 idx 列表(**left-to-right 升序** = buy 顺序,因 bench 从左到右填)。
+    调用方(buy op)把本结果与同轮 bought 卡名(buy 顺序)zip → char→slot map。无需角色身份(纯像素,可靠)。
+    """
+    log.info('[cw-bench-diff] new_bench_slots CALLED')   # D-147 诊断:确认函数被调用
+    si = ctx.screen_loader.get_screen('货币战争-备战')
+    if si is None:
+        return []
+    changed: list[int] = []
+    for i in range(1, 10):
+        area = next((a for a in si.area_list if a.area_name == f'备战栏-{i}'), None)
+        if area is None or area.pc_rect is None:
+            continue
+        x1, y1, x2, y2 = area.pc_rect
+        b = before[y1:y2, x1:x2]
+        a = after[y1:y2, x1:x2]
+        if b.size == 0 or a.size == 0:
+            continue
+        diff = float(cv2.absdiff(b, a).mean())   # 新 icon → 多像素变化 → 高均值
+        if diff > 1.0:   # D-147 校准临时:log 有变化的槽 diff 值(定 threshold)
+            log.info(f'[cw-bench-diff] slot{i} diff={diff:.1f}')
+        if diff > BENCH_SLOT_DIFF_THRESHOLD:
+            changed.append(i)
+    return changed   # 已 left-to-right(slot idx 升序,range 1..9)
