@@ -84,11 +84,16 @@ class DeployBench(SrOperation):
                    and match.session.last_state is not None) else None)
         cap_remaining: int | None = (max(0, _lv - _deployed_before)
                                      if (_lv and _deployed_before is not None) else None)
+        # D-119 诊断:log board 阵营计数(左面板 OCR 真值)= comp 成型 ground truth(非 SIFT)。
+        # 验 deploy 是否真 deepening target 阵营(board[target] 增?) vs spread(多阵营各 1)。
+        _board = (match.session.last_state.board if (match is not None and match.session is not None
+                  and match.session.last_state is not None) else None)
         if actual:
             log.info(f'[cw-deploy] 身份驱动:识别 {len(actual)} 个 '
                      f'{[(b.char_id, b.position_pref) for b in actual]} '
                      f'target_factions={target_factions or "(无 target)"} '
-                     f'cap_remaining={cap_remaining}(lv={_lv} deployed={_deployed_before})')
+                     f'cap_remaining={cap_remaining}(lv={_lv} deployed={_deployed_before}) '
+                     f'board={_board}')
             self._deploy_by_identity(actual, bench, front, back, target_factions,
                                      cap_remaining, _deployed_before, _dep_sift, templates)
         else:
