@@ -15,6 +15,17 @@
 
 ---
 
+## D-153 (2026-08-09)【GAME-CHANGER·验证】点击 deployed 头像→详情面板(露阵营+出售按钮+装备)→ 破身份墙
+
+- **决策(实机验证)**:点击 **deployed 舞台角色头像** → 弹**详情面板**,含:① **角色阵营/羁绊**(藿藿=仙舟/⑨能量/+治疗,可 OCR 读 → **per-char 身份**);② **「出售」按钮**(detail 面板内,x~1746 y~901);③ **「装备推荐」**装备区(D-148 equip);④ 详情/技能/属性。
+- **验证**:点 deployed 藿藿 → 面板露 仙舟/能量/治疗 + 出售按钮 → 点「出售」→ **藿藿 真被卖**(board 仙舟 1→0 / 能量 1→0 / 治疗 2→1,藿藖贡献消失)→ **deployed 可卖(via 详情面板按钮,非 drag)**。
+- **为什么 GAME-CHANGER**:破**身份墙**(整个 session 根本瓶颈:无角色身份 → 无法 selective 清 off-target → board 永久 spread)。详情面板给 per-char 阵营 → bot 能逐个识别 deployed 角色 → **selective sell off-target**(读阵营,非 target 才卖)→ 清板 → concentrate target。+ equip 区(D-148,bot 裸装弱,可能最大单点存活修复)。
+- **推翻**:doc `gameplay:78`(deployed-lock:click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)—— **drag 确实失败,但 click 头像的详情面板有「出售」按钮且可用**。doc 只对了一半(drag 失败),漏了按钮。**待改 doc gameplay:78**。
+- **实现方向(新 selective-sell op + screen_info)**:① screen_info 建详情面板区域(阵营栏 x~1407-1589 y~301 / 出售按钮 ~(1746,901) / 装备区);② 新 op:遍历 deployed 槽(前排4+后排6)→ click 头像 → OCR 阵营 → ∄ target 阵营 → click 出售 → 清 off-target;③ 装备 op(D-148,装备推荐区 drag 装备)。**画面 op,非策略锁**。
+- **状态**:机制验证 OK(出售按钮 work + 阵营可读)。**下一步**:建 screen_info + selective-sell op → match 验(board 清 off-target → target 集中 → r6+ HP 稳)。· D-152(selective deploy 防**新** off-target deploy;D-153 清**存量** off-target,互补)/ D-148(equip,同详情面板)/ D-151(deploy-swap drag 版,降级 → 被 D-153 selective-sell 替)/ gameplay:78(doc 半错待改)/ 用户提示(点头像→售卖按钮,实锤对)
+
+---
+
 ## D-152 (2026-08-09)【根因纠正·重大】deploy 执行忽略 plan(fill-all 致 board spread)→ selective deploy
 
 - **决策(clean-context agent a63a1df6 审 + telemetry 全局复盘)**:`deploy_bench._deploy_all_slots` 改 **selective deploy** —— 只 deploy **target 阵营 OR 集中阵营**(board+bench count≥2)的 bench 角色(复刻 `cw_decisions._should_deploy` 语义,但在物理槽层),off-target 留 bench;**fallback fill-all**(map 空/无 target,无回归)。同时修 `bench_slot_map` baseline(两帧同 shop-OPEN)+ 跨回合合并 + deployed 后删 slot。
