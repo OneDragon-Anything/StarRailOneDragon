@@ -92,7 +92,11 @@ class DefaultCwStrategy(CwStrategy):
         # 原 bug:active_env 恒空 → env_fit 全 0.5 → T0 env(如 昼之半神概念股→昼神阿雅)不硬绑。
         if session.active_env:
             state.active_env = session.active_env
-        score_ctx = cw_comps.make_score_context(state)
+        # D-126:记录本回合 shop 阵营到 session.shop_faction_seen(跨回合累积;select_comp 判长期可得性)。
+        for _c in state.shop:
+            if _c.faction and _c.faction != '?':
+                session.shop_faction_seen[_c.faction] = session.shop_faction_seen.get(_c.faction, 0) + 1
+        score_ctx = cw_comps.make_score_context(state, shop_faction_seen=session.shop_faction_seen)
         # D-92 drought bail:target 连续 DROUGHT_BAIL 轮 shop 无其阵营卡(shop_supply<1.0)→ 弃 target 重选。
         # 防 commit(D-86)锁死**不可达** target:live round4-6 target=DOT队,但 shop/board 始终无 持续伤害/减益
         # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。

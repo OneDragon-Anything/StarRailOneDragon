@@ -15,6 +15,15 @@
 
 ---
 
+## D-126 (2026-08-08) shop-history 长期可得性(select_comp 跟 shop 走,替 shop_supply 单回合短视)· §02
+
+- **决策**:① `StrategySession.shop_faction_seen`(faction → 跨回合累积出现次数);② `update_target` 每回合记录本回合 shop 阵营;③ `select_comp` 加 `_shop_history_factor`(comp 核心阵营在 shop 历史 avg≥2 → ×1.2;从未出现 → ×0.7),经 `ScoreContext.shop_faction_seen` 传入。
+- **为什么**:concentration 是 deploy 修复(D-123/125)后的剩余 frontier(board spread → HP 崩)。根因之一 = **shop_supply 单回合短视**(D-120 选 unacquirable target,如 列车同行 不在 r1 shop)→ 不 acquire → spread。人玩 auto-chess「跟 shop 走」—— commit 到**反复出现**的阵营(可成型),非单回合随机。shop-history 用跨回合累积判**长期可得性**(替单回合 shop_supply 短视)→ 选反复出现的可成型 comp → target 可 acquire → 减 spread。对齐「运行时按场面灵活选」。
+- **备选**:① 加强 L1 REINFORCE/SPREAD(单维调参,扛不过 shop 随机);② shop_history 用于 buy(delta 加分,非 select)—— 后续可加;③ 接受 CW 硬核(deployed-lock)—— 不选。
+- **状态**:采用。ruff 净;114 cw 测试绿(+1 新 `test_shop_history_factor`)。**live 验待**:fresh match → target 是否跟 shop-history 走(选反复出现的可成型 comp)?board 减 spread?HP r3 不崩?· T#97 concentration frontier / `_shop_history_factor` / `ScoreContext.shop_faction_seen` / `update_target`(记录)
+
+---
+
 ## D-123 (2026-08-08) deploy retry-until-stick(SIFT 占位 false-negative → 不靠 SIFT 选槽,deploy→verify→试下槽)· §12
 
 - **决策**:`_deploy_by_identity` 主 deploy 循环改 **retry-until-stick**:每角色按 pref 排顺序试槽,drag→**verify(bench count 降 = 角色真上 board)**→ 没中试下槽。不靠 SIFT 占位(`_dep_sift`/`_find_empty_slot` 降为 best-effort 跳过已知占)。

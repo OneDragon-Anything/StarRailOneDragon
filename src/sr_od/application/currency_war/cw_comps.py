@@ -81,9 +81,9 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-
-
-# ===== 机制表(双向:克 + 利;debuff=buff)=====
+    # D-126:shop 阵营跨回合出现历史(faction → 出现次数;update_target 累积)。
+    # select_comp 用其判长期可得性(替 shop_supply 单回合短视)—— 跟 shop 走,commit 到反复出现的阵营。
+    shop_faction_seen: dict = field(default_factory=dict)
 # 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
@@ -390,13 +390,16 @@ def current_enemy_mechanics(state: GameState) -> set[str]:
     return {AFFIX_MECHANIC_MAP.get(a, a) for a in state.enemy_affixes}
 
 
-def make_score_context(state: GameState, bosses: list[str] | None = None) -> ScoreContext:
-    """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
+def make_score_context(state: GameState, bosses: list[str] | None = None,
+                       shop_faction_seen: dict | None = None) -> ScoreContext:
+    """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。
+    shop_faction_seen(D-126):跨回合 shop 阵营历史,update_target 累积后传入。"""
     return ScoreContext(
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
         plane=state.plane, round_num=state.round_num, gold=state.gold,
+        shop_faction_seen=shop_faction_seen or {},
     )
 
 
@@ -507,6 +510,28 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     return 1.0
 
 
+def _shop_history_factor(comp: Comp, ctx: ScoreContext) -> float:
+    """D-126:shop 历史**长期可得性**(替 shop_supply 单回合短视)。人玩「跟 shop 走」——commit 到反复
+    出现的阵营(可成型),非单回合随机。comp 核心阵营(form_tiers keys)在 shop 历史(cumulative)平均
+    出现次数:avg≥2(反复出现,可成型)→ ×1.2;avg=0(从未出现,难成型)→ ×0.7;否则中性。
+
+    解 D-120 target-buy 错配:shop_supply 单回合短视选 unacquirable target(列车同行 不在 r1 shop)→
+    不 acquire → spread。shop-history 用跨回合累积判长期可得性 → 选反复出现的可成型 comp。
+    """
+    seen = ctx.shop_faction_seen
+    if not seen or not comp.factions:
+        return 1.0
+    core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)
+    if not core:
+        return 1.0
+    avg = sum(seen.get(f, 0) for f in core) / len(core)
+    if avg >= 2:
+        return 1.2
+    if avg <= 0:
+        return 0.7
+    return 1.0
+
+
 def select_comp(state: GameState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
@@ -527,6 +552,7 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
         s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
         s *= _board_alignment(comp, state)   # D-109:board-aware(deployed-lock → 选 board 支持的 comp)
         s *= _formation_cost_factor(comp)   # D-115:低 form_tiers sum(易成型)优先 → comp 更快成型 → plane2 更强
+        s *= _shop_history_factor(comp, ctx)  # D-126:shop 历史长期可得性(替 shop_supply 单回合短视)
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]

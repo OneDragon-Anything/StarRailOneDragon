@@ -160,6 +160,10 @@ class StrategySession:
     # D-92(2026-08-07):target 连续多少轮 shop_supply<1.0(shop 无 target 阵营卡)。>= DROUGHT_BAIL →
     # 弃 target 重选(防 commit 锁死不可达 target:update_target 重选;live round6 HP4 死于此)。
     target_drought: int = 0
+    # D-126:shop 阵营出现历史(跨回合累积,faction → 出现次数)。人玩 auto-chess 的「模式识别」——
+    # 跟 shop 走,commit 到反复出现的阵营(可成型),非单回合随机。select_comp/buy 用其判**长期可得性**
+    # (替 shop_supply 单回合短视;解 D-120 target-buy 错配)。update_target 每回合记录本回合 shop 阵营。
+    shop_faction_seen: dict = field(default_factory=dict)
     # D-98(2026-08-07):plan() 算出的部署指令(DeployMove 列表),BuyShopCards 存 → DeployBench 读。
     # 替代旧 DeployBench naive 填位(从槽0拖全部,不看 position_pref)。用户反复要求接入决策。
     pending_deploys: list = field(default_factory=list)
