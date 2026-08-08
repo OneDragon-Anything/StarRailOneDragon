@@ -102,8 +102,8 @@ class CleanDeployedOffTarget(SrOperation):
                 kept += 1
                 self.ctx.controller.btn_tap('esc')   # 关面板,保 target / 不可读保守保留
                 time.sleep(0.4)
-        # 收尾:确保面板关(末个 target 保留后 ESC;末个 sell 后面板自关)
-        self.ctx.controller.btn_tap('esc')
-        time.sleep(0.3)
+        # 收尾:末个 sell 面板自关;末个 keep 已在循环内 ESC 关(panel 开时 ESC 安全 → 只关面板)。
+        # **勿加无条件尾部 ESC**(D-153 bug 实跑:面板已关时 ESC → 弹「中断挑战」dialog → loop 不识别 →
+        # retry stall)。sell 自关 + keep(面板开)ESC 关 = 循环结束无面板开,无需额外关。
         log.info(f'[cw-clean] 清完:sold={sold} off-target,kept={kept} target')
         return self.round_success(f'sold {sold} off-target / kept {kept} target', wait=1)
