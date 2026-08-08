@@ -265,9 +265,9 @@ class DeployBench(SrOperation):
         for i in _iter_order:  # comp 槽优先(D-149),余按 0..8
             if _bench_n <= 0:
                 break  # bench 空(全 deployed 或开局无),无角色可 deploy
-            if consecutive_fail >= 2:
-                log.info('[cw-deploy] fill-all 早停:连续2 bench槽无 stick → 板满(无 free 槽),停止试拖')
-                break
+            # D-150(2026-08-09):移除 consecutive_fail 早停 —— bench 有 gaps(前轮 deploy 了 bench[0,1] 留空)
+            # → 早停在空槽 → 错过 bench[2+] 角色 → board under-filled(< cap)→ 弱 → HP 崩(实测 retry-stick 0!)。
+            # 遍历全 9 槽容忍 gaps;board full 时 inner-loop 无 free 槽 → fast fail(无 drag,~0.5s/slot,可接受)。
             src = bench[i]
             placed = False
             for row, occ in ((front, occupied_front), (back, occupied_back)):
