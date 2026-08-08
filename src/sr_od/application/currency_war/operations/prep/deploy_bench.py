@@ -142,6 +142,7 @@ class DeployBench(SrOperation):
         D-116:SIFT slot-level occupied detection(_find_empty_slot)。
         D-117:bug#1 缓解(mouse_move 先)+ 长 duration + SIFT 验 + retry(3 次)。
         """
+        _deploy_offtarget = True   # 默认:补剩余 off-target(naive 填位 / 无 target 时)
         if target_factions:
             def _is_target(bc) -> bool:
                 ch = get_char(bc.char_id)
@@ -151,7 +152,18 @@ class DeployBench(SrOperation):
                 if ch.independent:
                     bonds.add(ch.independent)
                 return bool(bonds & target_factions)
-            actual = sorted(actual, key=lambda bc: (0 if _is_target(bc) else 1, bc.slot))
+            # D-121:deployed-lock(deployed 不能 sell —— 2026-08-08 vision 确认详情面板**无出售按钮** +
+            # D-108 drag→出售区失败)→ 只 deploy target 阵营角色(off-target 留 bench,经 _maybe_sell_for_interest
+            # 卖)。否则 off-target 一旦 deployed 永锁占槽 → target 进不去 → comp 永不成型(spread 根因;
+            # 2026-08-08 board-log:r2 board 6 阵营各1 卡死,target 仅1)。早期 target 少 → 牺牲 tempo
+            # (卖血保成型,用户框架「前期可适当卖血保经济」);**无 target 时退回全 deploy(防空板全掉血)**。
+            # 配 D-120(target 选易成型 common comp 如 列车同行 → 早有 target 可 deploy,非空板)。
+            target_actual = [bc for bc in actual if _is_target(bc)]
+            if target_actual:
+                actual = sorted(target_actual, key=lambda bc: bc.slot)
+                _deploy_offtarget = False   # target-only:off-target 留 bench(可 sell),不补剩余
+            else:
+                actual = sorted(actual, key=lambda bc: bc.slot)   # 无 target → 全 deploy(防空板)
 
         occupied_front: set[int] = set()
         occupied_back: set[int] = set()
@@ -182,20 +194,23 @@ class DeployBench(SrOperation):
             dragged += 1
             log.info(f'[cw-deploy] 长按拖:bench[{bc.slot}]({bc.char_id}/{pref}) → {dst}')
 
-        deployed_slots = {bc.slot for bc in actual}
-        remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
-        for slot_i in remaining:
-            if cap_remaining is not None and dragged >= cap_remaining:
-                break
-            dst = (self._find_empty_slot('back', front, back, occupied_front, occupied_back)
-                   or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
-            if dst is None:
-                break
-            # D-118b:长按 drag(naive 补槽也用 long-press drag)
-            self.ctx.controller.drag_to(start=bench[slot_i - 1], end=dst, duration=1.0, hold_time=0.5)
-            time.sleep(0.5)
-            dragged += 1
-        log.info(f'[cw-deploy] 长按拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
+        if _deploy_offtarget:
+            deployed_slots = {bc.slot for bc in actual}
+            remaining = [i for i in range(1, len(bench) + 1) if i not in deployed_slots]
+            for slot_i in remaining:
+                if cap_remaining is not None and dragged >= cap_remaining:
+                    break
+                dst = (self._find_empty_slot('back', front, back, occupied_front, occupied_back)
+                       or self._find_empty_slot('front', front, back, occupied_front, occupied_back))
+                if dst is None:
+                    break
+                # D-118b:长按 drag(naive 补槽也用 long-press drag)
+                self.ctx.controller.drag_to(start=bench[slot_i - 1], end=dst, duration=1.0, hold_time=0.5)
+                time.sleep(0.5)
+                dragged += 1
+            log.info(f'[cw-deploy] 长按拖完:共拖 {dragged} 个(识别 {len(actual)} + 补剩余 {len(remaining)})')
+        else:
+            log.info(f'[cw-deploy] target-only 拖完:共拖 {dragged} 个 target(off-target 留 bench 可 sell)')
 
     @staticmethod
     def _find_empty_slot(pref: str, front: list[Point], back: list[Point],

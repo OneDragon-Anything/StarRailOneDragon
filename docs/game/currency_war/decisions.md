@@ -15,6 +15,15 @@
 
 ---
 
+## D-121 (2026-08-08) deploy target-only(off-target 留 bench 可 sell)—— deployed-lock 确认 → 防 spread · §12
+
+- **决策**:`DeployBench._deploy_by_identity` 当 target_factions 有值且有 target 角色时,**只 deploy target 阵营角色**(off-target 留 bench,经 `_maybe_sell_for_interest` 卖);**跳过补剩余**(不 deploy off-target 填槽)。无 target 时退回全 deploy(防空板全掉血)。
+- **为什么**:🔴 **deployed-lock 确认(2026-08-08 vision 实测)**:click deployed char(银枝)→ 详情面板(name/role/阵营/技能/装备推荐)**无「出售」按钮**;+ D-108 drag deployed→出售区 失败 → **deployed 角色 = 真锁,无任何 sell 途径**。故 off-target 一旦 deployed **永锁占槽** → target 进不去 → comp 永不成型(spread 根因;board-log:r2 board 6 阵营各1 卡死)。**spread 永久不可恢复**(board-management sell-deployed 路 **死**)→ 必须**防 spread**:不 deploy off-target(留 bench 可 sell)。早期 target 少 → 牺牲 tempo(用户框架「前期可适当卖血保经济」)。配 D-120(target 选易成型 common comp → 早有 target 可 deploy,非空板)。
+- **备选**:① board-management(sell deployed off-target + redeploy target)—— **否(deployed 不可 sell,实测)**;② buy-side 防 spread(不买 off-target)—— 补充但 deploy-side 更直接(锁发生在 deploy);③ cap off-target 数(留 reserve 槽)—— 复杂,留后续 tuning。
+- **状态**:采用。ruff 净 + import OK。**live 验待**:fresh match(D-120+D-121 从 r1)→ board 阵营收敛 ≤3 / target 深堆 / off-target 在 bench 被 sell / HP r3 不崩?多局(≥3)均值判。· T#97 / `DeployBench._deploy_by_identity`(target-only + _deploy_offtarget flag)/ deployed-lock(2026-08-08 vision 确认)
+
+---
+
 ## D-120 (2026-08-08) select_comp r1 shop_supply 中性化(治 target 选错 → spread → 永不成型)· §02/§03
 
 - **决策**:`select_comp` 在 **r1 + 空 board** 时,`shop_supply<1.0` 的 comp 不再 ×0.3 碾压,改中性 0.5(×0.65);r2+ / board 有阵营 → shop_supply 恢复硬判(真实可得性信号)。让 r1 的 target 由 **intrinsic formability**(formation_cost + difficulty + strength)决定,非单回合 shop 噪声。
