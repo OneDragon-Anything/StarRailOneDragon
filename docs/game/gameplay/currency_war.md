@@ -73,6 +73,11 @@ screen_info:备战阶段已建(`currency_war_battle_prep.yml`,用户手圈:备�
 - **OCR 误匹配教训**:大厅判定用「创业指南」(大厅独有),勿用「开始「货币战争」」(与旷宇纷争页分类文本 LCS 误匹配);战斗屏 fallback 用「总伤害」(战斗独有),勿用「羁绊」(大厅"羁绊链路"误匹配)。
 - **guide_data 待补**:旷宇纷争 tab 下加「货币战争」category(当前入口用 GuideChooseTab + OCR 手动点,非 GuideTransport)。
 - **Strategy 精修(待办,打赢位面 2 首领)**:智能 deploy 到空槽(`currency_war_cv` 空槽检测当前不可靠,待重标定)+ 羁绊聚焦选买 + 经济(早升等级/卖弱角色)。
+- **deploy / sell 机制真相(2026-08-08 多源实测,策略地基)**:
+  - **deploy = drag(非 click)**:click 备战角色开详情面板(非选中);长按 drag(hold 0.5s)才拾取→拖到舞台槽 deploy。见 D-118b。
+  - **deployed-lock(deployed 角色永锁)**:deployed 角色不能卖(click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)。**只有 bench 角色能卖**。→ board 阵容**一旦部署即永久**,不能撤/换/卖 → **早期散买部署 off-target = 永久锁板,comp 永不成型**(T#97 spread 根因)。策略含义:必须从 r1 就 deploy target 阵营(off-target 留 bench 可卖),不能"先deploy全场再换"。
+  - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限)。
+  - sell 途径:备战席角色 → 拖到左下出售区(`_maybe_sell_for_interest` 已实现,只卖 bench)。
 
 ## 参考来源
 
