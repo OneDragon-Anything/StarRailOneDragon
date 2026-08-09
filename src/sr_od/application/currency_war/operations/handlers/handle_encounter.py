@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 遭遇节点 二选一处理 op(从主循环 ``CurrencyWarRunLoop`` 拆出)。
 
 检测「遭遇其一」+ 底部「选择」→ 点卡身选中 + 点选择确认。2026-08-04 实测交互模型
@@ -43,7 +45,6 @@ class HandleEncounter(SrOperation):
         screen = self.last_screenshot
         if not self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:  # 0.9 防备战屏「遭遇」误匹配(见 battle_loop 0c)
             return self.round_fail('非遭遇节点屏')
-        # D-91 决策接线:read 遭遇选项(difficulty 从标题其X + reward)→ decide_encounter
         # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
         options = read_encounter_options(self.ctx, screen)
         match = self.ctx.cw_match

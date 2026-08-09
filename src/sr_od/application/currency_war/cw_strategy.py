@@ -7,7 +7,7 @@
 = 今天打法(薄委托既有模块函数,P1 零行为变化)。
 
 设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md``;决策见
-``docs/game/currency_war/decisions.md`` D-34。本模块**纯逻辑**:所有钩子只吃
+``docs/game/currency_war/decisions.md`` 。本模块**纯逻辑**:所有钩子只吃
 ``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 
 
 class CwStrategy(ABC):
-    """一整套货币战争局内打法(可替换的决策大脑;D-34/§11.3)。
+    """一整套货币战争局内打法(可替换的决策大脑;/§11.3)。
 
     **无状态策略**:实例**不持有可变的每局状态**,所有跨步状态走 ``StrategySession``(框架每局
     新建、传入每个钩子、局终销毁)。收益:实例可反复 instantiate、可 unit 测(喂构造好的 state)、
@@ -128,7 +128,7 @@ class CwStrategy(ABC):
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度/词缀避开。⚠️ D-35 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
+        """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
 
     @abstractmethod
     def decide_megastar(self, options: list[MegastarOption], state: GameState,
@@ -148,7 +148,7 @@ class CwStrategy(ABC):
 
 @dataclass
 class StrategySession:
-    """一局货币战争的跨步状态(框架每局新建,局终销毁;策略读写;D-34/§11.4)。
+    """一局货币战争的跨步状态(框架每局新建,局终销毁;策略读写;/§11.4)。
 
     策略实例无状态,所有可变每局状态放这。``rng`` 可种子化(公平/replay);``performance`` 是观测
     反馈(掉血/胜负);``memory`` 是策略私有 scratch(连胜计数/「这轮攒金升8」意图等 escape hatch)。
@@ -156,23 +156,17 @@ class StrategySession:
     target_comp: Comp | None = None        # 战略层目标阵容(update_target 维护)
     # 最近一次备战 read_game_state 快照(board/deployed/bench;BuyShopCards 每回合写)。给**节点 overlay
     # handler**(遭遇/补给/巨星/伙伴)读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
-    # D-91(2026-08-07):决策接线 audit —— 节点 decide_* 需 state 评成型度,session 之前没存 → 加。
     last_state: GameState | None = None
-    # D-92(2026-08-07):target 连续多少轮 shop_supply<1.0(shop 无 target 阵营卡)。>= DROUGHT_BAIL →
     # 弃 target 重选(防 commit 锁死不可达 target:update_target 重选;live round6 HP4 死于此)。
     target_drought: int = 0
-    # D-126:shop 阵营出现历史(跨回合累积,faction → 出现次数)。人玩 auto-chess 的「模式识别」——
     # 跟 shop 走,commit 到反复出现的阵营(可成型),非单回合随机。select_comp/buy 用其判**长期可得性**
-    # (替 shop_supply 单回合短视;解 D-120 target-buy 错配)。update_target 每回合记录本回合 shop 阵营。
     shop_faction_seen: dict = field(default_factory=dict)
-    # D-98(2026-08-07):plan() 算出的部署指令(DeployMove 列表),BuyShopCards 存 → DeployBench 读。
     # 替代旧 DeployBench naive 填位(从槽0拖全部,不看 position_pref)。用户反复要求接入决策。
     pending_deploys: list = field(default_factory=list)
-    # D-94(2026-08-07):最近一次结算屏读到的可靠 HP(hp_confidence 达阈;on_round_end 写)。
-    # 备战 prep 帧 HP 区**持续空**(D-93 retry 救不了,live round4 读 100 实际 58)→ 保血信号失效。
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。
     last_hp: int | None = None
-    # D-97b(2026-08-07):megastar 候选是否已点(session 级,跨 loop re-dispatch 持久;
+    # level 单调守卫(read_level OCR 间歇误读 5/6→4;等级局内只升不降,读出<上次=误读用上次)。新局默认 0。
+    last_level_obs: int = 0
     # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
     megastar_candidate_clicked: bool = False
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
@@ -185,12 +179,9 @@ class StrategySession:
     briefing_affixes: list[str] = field(default_factory=list)
     # 简报首领(3 位面 boss 名;loop __init__ 从 ctx.cw_briefing_bosses copy;boss_fit 输入)
     briefing_bosses: list[str] = field(default_factory=list)
-    # 已选投资环境名(如"昼之半神概念股";HandleInvestEnv 选后写;update_target copy 到 state → env_fit 输入)。D-58
     active_env: str = ""
-    # D-84 char identity(bot tracking):buy OCR 名持久化 → 跨轮 seed state.bench(SIFT 屏幕识别不可行)。
     # deploy/sell 同步待补(deploy=DeployBench 位置式 / sell=_handle_bench_full 位置式,后续接)。
     tracked_bench: list[str] = field(default_factory=list)
-    # task#105(D-129~D-131):bench/deployed 持久跟踪(带 star;mutate 同步 buy/deploy,sell 位置式漂移接受)。
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)
 

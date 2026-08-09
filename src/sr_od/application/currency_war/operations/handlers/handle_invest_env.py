@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 投资环境 3 选 1 op(从主循环拆出)。
 
 OCR 3 张投资环境卡名 → ``cw_decisions.decide_event`` 按事件白名单打分 → 点**最优**卡底
@@ -80,12 +82,10 @@ class HandleInvestEnv(SrOperation):
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _ in opts]
-        # D-68:未建模环境不静默 —— OCR 命中注册表外的名字 → log warn(数据缺口可见信号,防假绿;
         # 见 od-dev-gameplay-automation 完成判据反馈)。可能是赛季新增 / OCR 误识 / 锁定未命名。
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
-        # D-34:走策略 decide_invest(kind='env';default 委托 decide_event,行为等价)。overlay 叠备战时
         # board 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:
@@ -103,7 +103,6 @@ class HandleInvestEnv(SrOperation):
         else:
             chosen, choose_x, reason = '?', 960, 'fallback(no-ocr)'
         log.info(f'[cw-env] options={names} chose={chosen!r}@x={choose_x} reason={reason}')
-        # D-58:存已选 env 到 session → update_target copy 到 state.active_env → env_fit(T0 env 近乎硬绑)生效。
         # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
         if match is not None and chosen != '?':
             match.session.active_env = chosen

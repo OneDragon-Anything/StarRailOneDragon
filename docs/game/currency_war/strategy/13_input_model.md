@@ -76,8 +76,8 @@
 
 | 字段 | 类型 | 含义 | 来源 | 接线 |
 |---|---|---|---|---|
-| `deployed` | `list[Unit]` | 已上阵角色(身份/星级/阵营/前 or 后排/身上装备) | 中央棋盘 | 🟡(字段有,**身份/装备没读**,deploy 现走 deploy-all) |
-| `bench` | `list[Unit]` | 备战栏角色(身份/星级/阵营/身上装备) | 底部备战栏 | 🟡(字段有,**身份/装备没读**) |
+| `deployed` | `list[Unit]` | 已上阵角色(身份/星级/阵营/前 or 后排/身上装备) | 中央棋盘 | 🟡(字段有,**身份没读**:`rebuild_deployed_from_board` 只 faction 无 char_id;见 §13.11) |
+| `bench` | `list[Unit]` | 备战栏角色(身份/星级/阵营/身上装备) | 底部备战栏 | 🟡(字段有,身份靠 tracked_bench OCR 名**但 star 恒1 + append-only 不同步**;见 §13.11) |
 | `front_max` / `back_max` | `int` | 前/后排槽位上限(4 / 6) | 硬编码 | ✅ |
 | `bench_full_flag` | `bool \| None` | 备战栏满 | 「备战席已满」警告 | ✅ `read_bench_full` |
 | `board` | `dict[str, FactionState]` | 阵营激活(count + **激活 tier + 下个 tier 阈值**) | 左侧羁绊面板(`X/Y`) | 🟡(count 接了但脆,**tier/阈值没接**) |
@@ -230,3 +230,31 @@
 2. **参考数据补全**(纯逻辑):核 `cw_investments`/`cw_equipment` 完整性,缺的补。
 3. **接线**(需游戏,画面建档):按 §13.6 表,优先级 = 对决策影响大的先(`enemy_difficulty`/`node_type`/`active_strategies`/`inventory`/`streak` > 其余)。
 4. 每接一块,`GameState` 对应字段从 `None` → 真值;策略自然用上(不用改策略代码)。
+
+---
+
+## 13.11 现状代码级 gap(已建模但坏掉的,2026-08-08 审计)
+
+> §13.2 标 🟡「已建模但 OCR 没接」。审计发现 bench/deployed 更严重:**已建模但 bot 跟踪逻辑坏** → 字段有值却是错的 → 比没接更危险(策略拿假信号当真)。决策见 [`decisions.md`](../decisions.md) D-127。
+
+bench/deployed 的实现级 bug(**非** OCR 缺失,是 bot 自跟踪逻辑错):
+
+| 项 | 现状(坏) | 后果 |
+|---|---|---|
+| bench 星级 | `tracked_bench` 纯名列表,`_tracked_bench_chars` 建 `BenchChar` **不传 star → 恒 1** | `char_quality_score`(`bc.star × 优先`)星级项失效;3 合 1 升星无收益信号 |
+| bench 同步 | `tracked_bench` **append-only**:buy 时 append,但 deploy/sell/3 合 1 升星**全不同步** | bench 数量虚高(已 deploy/sell/merge 的角色还在)→ `_bench_faction_counts` / `_concentration_delta` / `BENCH_TARGET_WEIGHT` 全在虚高信号上算 |
+| deployed 身份 | `rebuild_deployed_from_board` 从 board 阵营计数重建,**只 faction 无 char_id** | `char_quality` deployed 部分 / `core_chars` 匹配失效 |
+
+**影响**:这三个 bug 让 `evaluate` 的 concentration(用 bench faction)/ `char_quality`(用 bench+deployed 的 char_id+star)在**失真信号**上算。这是 #97(comp spread)调 7 次策略权重没用的隐藏根因之一 —— 不是策略错,是评分地基坏(实例见 I28「策略对但执行坏」)。
+
+**优先补 —— bench 自跟踪(纯逻辑,不依赖 OCR)**:能 bot 自跟踪的不靠屏幕识别。把 `tracked_bench`(纯名列表)升级为带星级的状态机:
+- `buy(name)` → append(name, star=1) → merge(同名同星 ≥3 → 合并 star+1,借 `cw_state._merge_bench`)。
+- `deploy(identity, row)` → bench 移 deployed(deploy_bench 的 SIFT identity D-102 回报拖了谁,身份保留)。
+- `sell` / 每轮用 `board`(OCR 真值)校正总数。
+
+低风险(纯逻辑,可离线单测)、高收益(评分地基修复)。**先于其它接线** —— 地基修复前不调策略权重(避免重蹈 D-120~D-126「在坏地基上调」)。修完用 A8-1(用户已选)实测:concentration 信号是否变准、board 是否真能集中。
+
+**其它 gap 的优先级(接 §13.10,补现实约束)**:
+- **#2 观测回路**(结算屏掉血/胜负):「观测驱动」命脉,但依赖结算屏画面建档(§13.9;`on_round_end` 现不被调用)→ 工程 uncertain,先探查画面,不阻塞 #1。
+- **#3 节点候选身份**(megastar/partner/supply):需立绘/装备模板库(§13.6),节点出现才验证。
+- streak / 对手阵容 / node_path / equips:§13.9 待核,次优。

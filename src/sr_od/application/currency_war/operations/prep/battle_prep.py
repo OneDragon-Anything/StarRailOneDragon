@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 import time
 from typing import ClassVar
 
@@ -16,12 +18,11 @@ from sr_od.operations.sr_operation import SrOperation
 class BattlePrepCycle(SrOperation):
     """货币战争 备战单轮自动化:买牌 → 部署 → 出战。
 
-    把三个已实机验证的子 op 串成单轮:``BuyShopCards``(开商店 naive 买 3-5 张 + sell/升等级)→
-    ``DeployBench``(拖备战栏→舞台前排优先)→ 点「出战」进自动战斗。
-    naive 策略:买全部 + 填位 deploy,不选羁绊/不读价格(见 design.md Strategy 可插拔升级)。
+    把三个子 op 串成单轮:``BuyShopCards``(开商店 → ``cw_decisions.plan`` 驱动买卡/升等级/刷新)→
+    ``DeployBench``(SIFT 身份 + 策略驱动部署 target 优先)→ 点「出战」进自动战斗。
 
-    注:智能选角(识别角色→按羁绊/命途部署)依赖角色识别,见 char_id 思路;
-    本 op 是 v1 naive 填位。待接进 app + 实机测试(需游戏到备战)。
+    注:DeployBench 已接 SIFT 身份(D-8 立绘库)+ 策略驱动部署(D-7 CV 确定性 + D-10 卖 off-target
+    + D-12 观测回路纠 tracking 漂),非 v1 naive 填位。装备穿戴待 equip_all 重建(D-27/D-28 cw_equip SIFT)。
     """
 
     def __init__(self, ctx: SrContext):
@@ -38,7 +39,6 @@ class BattlePrepCycle(SrOperation):
     @node_from(from_name='买牌')
     @operation_node(name='部署')
     def deploy(self) -> OperationRoundResult:
-        # D-154:D-153 clean 解绑(fill-all deploy 下 moot —— 卖的 off-target 又被 re-deploy;
         # 且每轮 +12s 拖慢)。clean op 代码留(clean_offtarget.py)待 late-game(target 充足)重接。
         log.info('[cw-prep] 备战单轮 ② 部署(DeployBench)')
         return self.round_by_op_result(DeployBench(self.ctx).execute())
@@ -50,7 +50,6 @@ class BattlePrepCycle(SrOperation):
         screen = self.last_screenshot
         if self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success:
             _btn = area_center(self.ctx, '按钮-出战') or BattlePrepCycle.BATTLE_FALLBACK
-            # bug#1 缓解(D-62):click 前 mouse_move 到出战键(零移动),防 before_screenshot 移光标到角落 →
             # click 落在移动中 → 被游戏判拖拽落空。2026-08-06 r9 实跑:出战 click ×4 未落地(手动 click 即开战)
             # → bug#1 间歇连发(此前 r1-8 出战正常)。同 buy_store_item 的 mouse_move 缓解。verify 仍在(下行)。
             self.ctx.controller.mouse_move(_btn)

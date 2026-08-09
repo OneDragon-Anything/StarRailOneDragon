@@ -29,7 +29,6 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 ]
 
 # 事件选项名 → 优先级分(越高越优先选,decide_event 子串匹配)。投资环境 + 投资策略 按名字打分。
-# 名字以米游社百科 docs/game/currency_war/data/investment_strategies.md(261 条)+ cw_investments.py::INVESTMENT_ENVS(投资环境全量,D-68)为准。
 # (review r1 修正:删"贝洛伯格星徽/追击星徽"——那是装备/环境奖励非投资策略;"反利+"→"返利+";
 #  "模範的力量"→"榜样的力量";补棱彩 T0)
 DEFAULT_EVENT_WHITELIST: dict[str, int] = {
@@ -48,7 +47,6 @@ DEFAULT_EVENT_WHITELIST: dict[str, int] = {
 }
 
 # 枚举合法值(构造时校验,typo/大小写错静默落入默认)
-# aggression 已删(D-18:死字段,cw_decisions 不用);economy_mode 保留(D-18:eval 权重微调,与 level_plan 硬 gate 共存)
 ALLOWED_ECONOMY: set[str] = {"interest_first", "rush_level", "adaptive"}
 
 # boss 名 → 该回避的阵营/流派(阵容克制;boss 名需实机 OCR 落库)
@@ -64,7 +62,6 @@ DEFAULT_DOT_PUNISH_ENVS: list[str] = ["净化身心"]
 # 难度 → 保血阈值覆盖(A1..A8;effective_hp_threshold 用)。
 # **保守起步,待实机校准**:A1-A4 = 40(= HP_DANGER,低难不变,可适当卖血保经济);
 # A5+ 升阶(高难敌人更凶 → 更早弃息保血)。detection(state.selected_difficulty)接线后生效;
-# 未检测 / 用户置空 → 回退 hp_safe_threshold。D-32。
 DEFAULT_DIFFICULTY_HP: dict[str, int] = {
     "A1": 40, "A2": 40, "A3": 40, "A4": 40,
     "A5": 45, "A6": 50, "A7": 52, "A8": 55,
@@ -96,12 +93,9 @@ class CurrencyWarConfig(YamlConfig):
         self.boss_counter: dict = self.get('boss_counter', DEFAULT_BOSS_COUNTER)
         self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
         # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
-        # _refresh_cap / maybe_pivot(0.75×)经此派生,D-18 unification。
         self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
-        # 难度 → 保血阈值覆盖(检测到 state.selected_difficulty 时优先于 hp_safe_threshold;D-32)。
         # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。
         self.difficulty_hp_override: dict = self.get('difficulty_hp_override', DEFAULT_DIFFICULTY_HP)
-        # 策略插件(D-34/§11.8):strategy_id = 用哪套 CwStrategy(default=内置打法;StrategyManager
         # 发现的任意 id);strategy_seed = 策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
         self.strategy_id: str = self.get('strategy_id', 'default')

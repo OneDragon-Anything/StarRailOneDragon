@@ -61,7 +61,7 @@ class Comp:
     form_tiers: dict[str, int]   # 成型 tier 目标 {"仙舟":5,"追击":3}(几人激活算成型)
     strength: str                # "S"/"A"/"B" 综合强度(版本强度;2026-08-03:不标"邪道" —— 邪道非必需)
     form_difficulty: str         # "easy"/"medium"/"hard" 成型难度(用户:关键维度)
-    early_power: str = "中"      # 早期(plane1)战力先验 "高"/"中"/"低"(D-53 弱阵实验:DOT队 DoT 慢热=低 / 列车同行 A850 挂机=高);待实玩校准
+    early_power: str = "中"
     level_plan: dict[int, LevelGoal] = field(default_factory=dict)  # 成型路线(玩家等级→该做什么);建库时填
     key_equips: list[str] = field(default_factory=list)      # 关键装备(可含重复,如阿雅需 2 反重力皮靴)
     boss_weakness: list[str] = field(default_factory=list)   # 克这阵容的 boss 名(boss_fit 用)
@@ -81,7 +81,6 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-    # D-126:shop 阵营跨回合出现历史(faction → 出现次数;update_target 累积)。
     # select_comp 用其判长期可得性(替 shop_supply 单回合短视)—— 跟 shop 走,commit 到反复出现的阵营。
     shop_faction_seen: dict = field(default_factory=dict)
 # 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
@@ -130,10 +129,8 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 属性熄火(7):对应属性我方伤害 1 点(4 次后解除),克纯色队
     "风之熄火": "属性熄火", "火之熄火": "属性熄火", "冰之熄火": "属性熄火",
     "雷之熄火": "属性熄火", "物理熄火": "属性熄火", "量子熄火": "属性熄火", "虚数熄火": "属性熄火",
-    # 击破/单核 相关(D-49 补)
     "皮糙肉厚": "皮糙肉厚",   # 利击破 comp(未被击破受伤-30% → 击破流不受罚)
     "榜样激励": "榜样激励",   # 克单核(伤害第一的 75%)
-    # 多段/延后 相关(D-55 补)
     "忍无可忍": "多段惩罚",   # 敌受 7 次攻击提前 100% → 克高频低单次(反甲白厄)
     "沉重脚步": "行动延后",   # 受击行动延后 8% → 克速度依赖
     # 其余词缀(首领强化/复仇心切/倒计时类/灼热轰炸等)为纯数值/无 comp 交互(灼热轰炸:前排受击+DoT
@@ -142,7 +139,6 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件顶部 import 重导出 → 下游用 cw_comps.AFFIX_EFFECTS 不变。
-# 词缀→策略 tag(给 mechanics_fit)见下面 AFFIX_MECHANIC_MAP(D-49/55 已接 comp_score W_MECH;
 # comp.boss_weakness 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
@@ -163,7 +159,7 @@ ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
 COMP_LIBRARY: list[Comp] = [
     Comp(
         name="列车同行", factions=["列车同行"], core_chars=["姬子·启行", "三月七", "花火", "瓦尔特"],
-        form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",  # D-53:A850 挂机流适应任何负面,姬子·启行即战力
+        form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
         # 成型 8 人口:前台 姬子·启行+花火+瓦尔特+记忆主,后台 三月七+刻律德菈+千冶·刃+符玄/缇宝
         key_equips=["冷笑话引擎", "火力风暴潮", "高周波电锯", "掩体生成枪"],   # 输出装(非反甲;攻略明言"不需要刷反甲")
@@ -184,13 +180,13 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
-        form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",  # D-53:追击后期(需 9 追击成型)
+        form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 评级(76807134):追击 = B 级(纯后期需 9 追击)
         shared_chars=["知更鸟"], typical_form_round=6,
     ),
     Comp(
         name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
-        form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",  # D-53:需 2 反重力皮靴 + 速度投资,试用难玩
+        form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",
         # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)
         key_equips=["反重力皮靴", "反重力皮靴"],   # 2 靴("找鞋战争");光速螺旋桨由 3 昼之半神自动获得,非 find gate
         boss_weakness=["电视机"], mechanic_attributes=["速度依赖"],   # 电视机禁速克速度依赖
@@ -198,18 +194,18 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="击破流萤", factions=["击破"], core_chars=["流萤"],
-        form_tiers={"击破": 6}, strength="A", form_difficulty="hard", early_power="中",  # D-53:击破(波提欧 V4.4 加强)
+        form_tiers={"击破": 6}, strength="A", form_difficulty="hard", early_power="中",
         # V4.4 评级(76807134):击破(波提欧)= A 级(V4.4 加强);流萤/波提欧/姬子领队变体
         mechanic_attributes=["击破"], typical_form_round=7,
     ),
     Comp(
         name="贝洛伯格召唤", factions=["贝洛伯格"], core_chars=["布洛妮娅"],
-        form_tiers={"贝洛伯格": 4}, strength="A", form_difficulty="medium", early_power="中",  # D-53:召唤
+        form_tiers={"贝洛伯格": 4}, strength="A", form_difficulty="medium", early_power="中",
         mechanic_attributes=["召唤"], shared_chars=["布洛妮娅"], typical_form_round=5,
     ),
     Comp(
         name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "长夜月"],
-        form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",  # D-53:燃血 debuff=buff,需成型才强
+        form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血
         mechanic_attributes=["燃血"],
         key_equips=["热血沸腾拳", "高周波电锯", "火力风暴潮"],   # meta(71465721)万敌核心装备
@@ -217,13 +213,13 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="DOT队", factions=["持续伤害", "减益"], core_chars=["卡芙卡", "桑博", "黄泉"],
-        form_tiers={"持续伤害": 4, "减益": 4}, strength="B", form_difficulty="easy", early_power="低",  # D-53:DoT 慢热需叠,plane1 弱(2026-08-06 整局印证:DOT队 plane1 r9 战死)
+        form_tiers={"持续伤害": 4, "减益": 4}, strength="B", form_difficulty="easy", early_power="低",
         # V4.4 评级(76807134):dot(持续伤害)= B;减益(黄泉)= A 级(本 comp 含减益,黄泉是减益核心)
         mechanic_attributes=["DoT"], typical_form_round=4,
     ),
     Comp(
         name="反甲白厄", factions=["毁灭"], core_chars=["白厄"],
-        form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard", early_power="低",  # D-53:需 3 以牙还牙甲(装备依赖)
+        form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard", early_power="低",
         key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
         boss_weakness=["红绿灯", "酒杯怪", "琥珀王", "死龙"],   # meta:怕红绿灯 + 酒杯怪
         mechanic_attributes=["高频低单次"], typical_form_round=7,
@@ -231,7 +227,7 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="命运圣杯红A", factions=["命运圣杯"], core_chars=["Archer", "远坂凛"],
-        form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",  # D-53:Archer S 级即战力,但需 core 成型
+        form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):Archer(红A)95 = S 级真神;攻略(76924524):高倍率九五核心,加远坂凛+圣杯→+150%攻击+战技点
         # 阵容:Archer(双电锯+风暴潮)+凛+瓦尔特+开拓者·记忆 + 4战技点(花火/刻律)+刃(2减益)+缇宝/符玄/知更鸟
         # ⚠️ core_chars 必须用图鉴规范名(characters.md,OCR/char_id 匹配靠它):"Archer" 非"红A"
@@ -302,7 +298,6 @@ def shop_supply(comp: Comp, state: GameState) -> float:
     if not comp.factions:
         return 1.0
     shop_factions = {c.faction for c in state.shop}
-    # D-109:收紧 —— 核心(form_tiers keys)阵营在 shop 才 1.0;仅非核心阵营 → 0.5(旧 any faction=1.0 太松,
     # 1 张非核心牌就让 comp 看似可成型 → select_comp 被 shop 噪声主导;策略子agent P1)。
     core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)
     if any(f in shop_factions for f in core):
@@ -393,7 +388,7 @@ def current_enemy_mechanics(state: GameState) -> set[str]:
 def make_score_context(state: GameState, bosses: list[str] | None = None,
                        shop_faction_seen: dict | None = None) -> ScoreContext:
     """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。
-    shop_faction_seen(D-126):跨回合 shop 阵营历史,update_target 累积后传入。"""
+    shop_faction_seen():跨回合 shop 阵营历史,update_target 累积后传入。"""
     return ScoreContext(
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
@@ -465,7 +460,7 @@ def _priority_boost(comp: Comp, config) -> float:
 def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     """阶段感知因子(用户:成型难度 + 早期战力都是关键维度):早期/穷 → 偏 easy 成型 + early_power 高。
 
-    D-53 弱阵实验:原只偏 form_difficulty easy(DOT队 easy 被选),但 DOT队 DoT 慢热 plane1 弱死。
+    弱阵实验:原只偏 form_difficulty easy(DOT队 easy 被选),但 DOT队 DoT 慢热 plane1 弱死。
     加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏 easy **且** early_power 高,
     避免选易成型但早期弱的 comp。先验待实玩校准(多局验证)。
     """
@@ -473,12 +468,12 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     if not early:
         return 1.0
     form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
-    power_fac = {"高": 1.15, "中": 1.0, "低": 0.85}.get(comp.early_power, 1.0)  # D-53:早期偏 early_power 高
+    power_fac = {"高": 1.15, "中": 1.0, "低": 0.85}.get(comp.early_power, 1.0)
     return form_fac * power_fac
 
 
 def _formation_cost_factor(comp: Comp) -> float:
-    """D-115:成型成本因子 —— 低 form_tiers sum(易成型)→ ×>1;高 sum(难成型)→ ×<1。
+    """成型成本因子 —— 低 form_tiers sum(易成型)→ ×>1;高 sum(难成型)→ ×<1。
 
     分析 COMP_LIBRARY 发现:盛会之星 sum=3(3 人激活)vs 巡击青雀 sum=8(5+3 人激活)。后者成型
     需 ~16 rounds(plane1+plane2 18 rounds 几乎全用),前者 ~6 rounds(plane1 内成型)。plane1 成型
@@ -493,7 +488,7 @@ def _formation_cost_factor(comp: Comp) -> float:
 
 
 def _board_alignment(comp: Comp, state: GameState) -> float:
-    """D-109:board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
+    """board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
 
     comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.7(deployed-lock 下不可成型);
     count≥1 → ×1.0(中性)。**robust to board OCR 噪声**:count≥1 判 has_any 可靠(faction 在板 = ≥1
@@ -511,11 +506,11 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
 
 
 def _shop_history_factor(comp: Comp, ctx: ScoreContext) -> float:
-    """D-126:shop 历史**长期可得性**(替 shop_supply 单回合短视)。人玩「跟 shop 走」——commit 到反复
+    """shop 历史**长期可得性**(替 shop_supply 单回合短视)。人玩「跟 shop 走」——commit 到反复
     出现的阵营(可成型),非单回合随机。comp 核心阵营(form_tiers keys)在 shop 历史(cumulative)平均
     出现次数:avg≥2(反复出现,可成型)→ ×1.2;avg=0(从未出现,难成型)→ ×0.7;否则中性。
 
-    解 D-120 target-buy 错配:shop_supply 单回合短视选 unacquirable target(列车同行 不在 r1 shop)→
+    解 target-buy 错配:shop_supply 单回合短视选 unacquirable target(列车同行 不在 r1 shop)→
     不 acquire → spread。shop-history 用跨回合累积判长期可得性 → 选反复出现的可成型 comp。
     """
     seen = ctx.shop_faction_seen
@@ -545,14 +540,12 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # D-122 ↺ D-120:r1 shop_supply 中性化**推翻** —— 它让 select_comp 选易成型但**不在 shop 的 comp**
-        # (列车同行)→ target-buy 错配 → 不 acquire → spread。D-122 改 emergent target(update_target 在阵营
         # count≥2 前不调 select_comp)→ select_comp 只在 board 有信号时调,领先 comp 的 shop_supply≥0.3
         # (board-back)→ 不需 r1 中性化。恢复硬 shop_supply 判(可得性信号)。
-        s *= (0.3 + 0.7 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.3(task#25)
-        s *= _board_alignment(comp, state)   # D-109:board-aware(deployed-lock → 选 board 支持的 comp)
-        s *= _formation_cost_factor(comp)   # D-115:低 form_tiers sum(易成型)优先 → comp 更快成型 → plane2 更强
-        s *= _shop_history_factor(comp, ctx)  # D-126:shop 历史长期可得性(替 shop_supply 单回合短视)
+        s *= (0.15 + 0.85 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.15(D-6 实验:加严,让 target 跟 shop 可得走,减 target-availability 错配 → 集中)
+        s *= _board_alignment(comp, state)
+        s *= _formation_cost_factor(comp)
+        s *= _shop_history_factor(comp, ctx)
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
@@ -581,7 +574,7 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 # 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型 comp;② cw_decisions prefilter
 # 拒 off-target(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金,drought bail 处理真不可达)。
 COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
-COMMIT_ROUND: int = 2              # D-111:4→2(策略子agent B:deployed-lock 下 r1-3 off-target locked 太多 → r2 起 commit + prefilter 拒 off-target + deploy target-first → 早期 target 聚焦 → comp 在 plane1 深堆 → 进 plane2 时成型)
+COMMIT_ROUND: int = 2
 COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型 comp
 
 
@@ -599,42 +592,36 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
 
-    转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**(D-40):
+    转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**():
     3. **保命转型(最优先)**:hp < 0.75×effective_hp_threshold → 切最快成型的 easy comp
        (typical_form_round 最小,**稳定不 churn**)。hp 危险时信号 1/2 不参与(防振荡死亡螺旋)。
     1. 更优 comp 涌现:存在 B 使 comp_score(B) > target + PIVOT_SCORE_GAP(本回合单次比较)。
     2. ceiling 不可达:target.typical_form_round > 剩余轮次估算(已成型豁免)。
 
-    ⚠️ D-40:2026-08-05 实跑,低 HP 时信号 1 先触发选 select_comp best(随 board/shop 每轮变)→ target
+    ⚠️ 2026-08-05 实跑,低 HP 时信号 1 先触发选 select_comp best(随 board/shop 每轮变)→ target
     振荡 churn(列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp → 死亡螺旋。改:信号 3 提前 +
     hp 危险时独占(返回稳定最快 easy,不让 1/2 churn)。
     ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(占位待接)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
-    # D-59:pivot 倾向易成型 comp。best 比 target 更易成型(form_difficulty 低)且 target 未成型 → 阈值降
     # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 巡击青雀[medium] gap 0.097 卡 0.10 没转,
     # 巡击青雀 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
     # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)→ pivot
-    # 阈值 ×COMMIT_STICK_FACTOR,不弃成型 comp(防 flit 弃正在堆的 comp)。**优先于 D-59 easier**
     # (已 commit 不因易 comp 降阈被弃)。COMMIT_* 已提模块级(maybe_pivot + cw_decisions prefilter 共用)。
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
         return None
     best = candidates[0]
-    # 信号 3(保命转型)优先于 1/2:hp 危险(< 0.75×effective_hp_threshold;D-18/D-32)→ 切最快成型的
-    # easy comp(稳定:typical_form_round 固定 → 每轮同一 comp,不 churn)。**必须先于信号 1**(D-40):
     # 2026-08-05 实跑,低 HP 时信号 1(更优涌现)先触发 → 选 select_comp best(随 board/shop 每轮变 →
     # target 振荡 churn:列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
     if state.hp < _pivot_hp:
         easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
-        # D-65:保命优先 board 有 progress 的 easy comp(防切到 board 不支持的 comp → 无法成型 → 还是死)。
         with_progress = [c for c in easy if form_progress(c, state) > 0]
         if with_progress:
-            # 有 easy comp 已有 board progress → 切最快成型的(稳定,board 支持)。原 D-65 行为,OK。
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
             if target is None or fastest.name != target.name:
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
@@ -642,54 +629,54 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                          target.name if target else 'None', fastest.name)
                 return fastest
             return None   # 已在该 easy comp → 保持(不让信号 1/2 churn 切走)
-        # D-141(2026-08-08):无 easy comp 有 board progress。实跑 r8 hp20 巡击青雀(追击2/巡海游侠1,medium,
         # 有 progress)被 easy 过滤排除,旧 fallback `pool=with_progress if with_progress else easy` → 选最快
-        # easy=DOT队(board 0 持续伤害)→ 转 0-foundation → 必死。D-65 fallback 漏 0-progress easy comp,本修补。
         if target is not None and form_progress(target, state) > 0:
             # target 有 progress(medium 也算)→ 保持(不弃有 progress 的去追 0-progress easy;转 0-foundation 必死)。
             log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无easy有progress → 保持 %s(有progress,不转0-foundation)',
                      state.plane, state.round_num, state.hp, _pivot_hp, target.name)
             return None
-        # target 也无 progress(空板/早期)→ 旧 D-65 行为:最快 easy(至少快成型,无信息可挑 progress)。
         fastest = min(easy, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:
             log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无progress → 最快easy %s',
                      state.plane, state.round_num, state.hp, _pivot_hp, fastest.name)
             return fastest
         return None
-    # 信号 1:更优涌现。**决策迹日志**(D-56):best≠target 才评 gap;log score/gap/决策(弱阵诊断:
-    # shop_supply 使 comp_score 波动 → 误涌现 pivot,数据驱动校准 PIVOT_SCORE_GAP / commitment)。
+    # D-9:已 commit 的 target **不被信号1(涌现)翻转**。comp_score 随 board 每 round 抖动(board 因
+    # buy 变)→ 信号1 反复越阈值 → target 振荡(实测 r1-7 击破流萤↔r1-8 DOT队,均 committed)→ buy 每轮
+    # 为不同 comp 买 → 永不集中 → 散板。COMMIT_STICK_FACTOR×1.5(0.15 阈)压不住(大 board 波动 gap 仍超)。
+    # commit 即锁定:只有信号3(HP 危机,上方已优先处理)/信号2(ceiling 不可达)/drought_bail(连续无供给)
+    # /losing-streak(obs 驱动保命)能解锁。人玩同理:commit 后不因「略优 comp」弃成型,只危机才转。
     if target is None or best.name != target.name:
-        target_score = comp_score(target, state, ctx) if target is not None else 0.0
-        best_score = comp_score(best, state, ctx)
-        gap = best_score - target_score
-        # D-59:best 更易成型 + target 未成型 → 降阈值(倾向转易 comp,成型快少掉血)。
-        # F1(strategy/12):target 已 commit(form_progress≥COMMIT_FRAC)→ 提阈值强粘(不弃成型),优先于 easier。
-        _required_gap = PIVOT_SCORE_GAP
         _committed = target is not None and target_committed(target, state)
-        _easier = (target is not None
-                   and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
-                   and form_progress(target, state) < 1.0)
-        if _committed:
-            _required_gap = PIVOT_SCORE_GAP * COMMIT_STICK_FACTOR   # 已 commit → 强粘(不弃成型)
-        elif _easier:
-            _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易 comp → 降阈
-        _tag = ' [commit强粘]' if _committed else (' [易comp降阈]' if _easier else '')
-        # T#97 step-3 (comp_viability,P1.5 接线):comp 观测 losing(trend bad)→ 降阈值(更易转走;obs-driven;
-        # hp garble fix e440e496 使 trend 可信)。committed+losing → ×1.5×0.7=×1.05(几乎不粘,该转)。
-        if tracker is not None and target is not None and tracker.is_losing_streak(target.name):
-            _required_gap *= 0.7
-            _tag += ' [viability losing]'
-        if gap > _required_gap:
-            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
+        _losing = tracker is not None and target is not None and tracker.is_losing_streak(target.name)
+        if _committed and not _losing:
+            log.info('[cw-pivot] p=%s r=%s hp=%s target=%s 已commit → 锁定,跳过信号1(防振荡;best=%s 不转)',
                      state.plane, state.round_num, state.hp,
-                     target.name if target else 'None', best.name,
-                     best_score, target_score, gap, _required_gap, _tag,
-                     {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
-            return best
-        log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
-                 state.plane, state.round_num, state.hp,
-                 best.name, target.name if target else 'None', gap, _required_gap, _tag)
+                     target.name if target else 'None', best.name)
+        else:
+            target_score = comp_score(target, state, ctx) if target is not None else 0.0
+            best_score = comp_score(best, state, ctx)
+            gap = best_score - target_score
+            _required_gap = PIVOT_SCORE_GAP
+            _easier = (target is not None
+                       and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
+                       and form_progress(target, state) < 1.0)
+            if _easier:
+                _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易 comp → 降阈
+            _tag = ' [易comp降阈]' if _easier else ''
+            if _losing:
+                _required_gap *= 0.7
+                _tag += ' [viability losing]'
+            if gap > _required_gap:
+                log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
+                         state.plane, state.round_num, state.hp,
+                         target.name if target else 'None', best.name,
+                         best_score, target_score, gap, _required_gap, _tag,
+                         {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
+                return best
+            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
+                     state.plane, state.round_num, state.hp,
+                     best.name, target.name if target else 'None', gap, _required_gap, _tag)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
         # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)

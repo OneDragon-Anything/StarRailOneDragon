@@ -1,7 +1,6 @@
-# 临时 probe(D-148 equip 机制调查,2026-08-09):点 deployed → 详情面板 → 点装备槽 → log 出现啥
 """调查 CW equip 机制(owned-equip source / drag / slot-click 行为)。
 
-D-148 确认 equip 是高价值 lever(裸装输一切 + 敌方词缀惩罚裸装),但 equip 机制未明(点「+」闭面板;
+确认 equip 是高价值 lever(裸装输一切 + 敌方词缀惩罚裸装),但 equip 机制未明(点「+」闭面板;
 drag-from-where 不清)。本 probe:遍历 deployed 槽 → click 头像 → 检测详情面板(OCR「出售」)→
 click 空装备槽 → log 出现的内容(OCR + 截图)→ 探明 slot-click 开 equip list/inventory 还是其他。
 
@@ -25,7 +24,7 @@ class EquipMechanismProbe(SrOperation):
     BACK_SLOTS: list[Point] = [Point(604, 680), Point(746, 680), Point(888, 680),
                                 Point(1032, 680), Point(1173, 680), Point(1315, 680)]
     EQUIP_SLOT: Point = Point(1468, 866)   # 详情面板空装备槽 □(panel 区 x1400-1800;1344 在 panel 外会闭面板)
-    EQUIP_PLUS: Point = Point(1654, 911)   # 详情面板「+」(D-153;点它曾闭面板,待复测)
+    EQUIP_PLUS: Point = Point(1654, 911)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='cw-equip-probe')

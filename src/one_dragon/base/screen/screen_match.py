@@ -8,8 +8,8 @@
 数据结构 ``AreaType`` / ``AreaMatchDetail`` / ``ScreenMatch`` 为纯 dataclass,
 供 backend 层 ``AnalyzeScreenResult`` 跨层引用(``sr_od`` 依赖 ``one_dragon``)。
 """
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 
 from one_dragon.base.matcher.match_result import MatchResultList
@@ -62,6 +62,41 @@ class AreaMatchDetail:
     confidence: float | None = None
 
 
+class UnmatchedReason(StrEnum):
+    """未命中 area 的原因(str Enum,序列化为 'no_method'/'sub_state')。
+
+    Attributes:
+        NO_METHOD: 无识别方法(text 和 template 均空)= 纯定位区域,本就无法匹配,
+            仅供点击 / 定位用。
+        SUB_STATE: 有识别方法(text 或 template 非空)但当前画面未命中 = 子态 / 当前
+            不可见(如仅在特定状态出现 / 高亮的开关、按钮、面板展开态等)。
+    """
+
+    NO_METHOD = 'no_method'
+    SUB_STATE = 'sub_state'
+
+
+@dataclass
+class UnmatchedArea:
+    """精准命中画面里「未命中」的 area(画面已识别,但该 area 当前没匹配上)。
+
+    Attributes:
+        area_name: 区域名(中文)。
+        reason: 未命中原因(NO_METHOD=无识别方法;SUB_STATE=有识别方法但当前未命中)。
+        pc_rect: 区域坐标 ``[x1, y1, x2, y2]``(1080p 游戏空间)。
+        text: 文本区配置的 OCR 文本(非文本区为空串)。
+        template_id: 模板区配置的模板 id(非模板区为空串)。
+        id_mark: 是否画面唯一标识。
+    """
+
+    area_name: str
+    reason: UnmatchedReason
+    pc_rect: list[int]
+    text: str = ''
+    template_id: str = ''
+    id_mark: bool = False
+
+
 @dataclass
 class ScreenMatch:
     """单个画面的匹配结果。
@@ -70,11 +105,15 @@ class ScreenMatch:
         screen_name: 画面名称(中文,关联 ``screen_info.screen_name``)。
         is_precise: True=精准命中(``id_mark`` 全中);False=模糊 top_n 候选。
         areas: 命中的 area 详情(只返命中的;是结果层,非 ``ScreenArea`` 配置)。
+        unmatched_areas: **仅精准命中时填充**:该画面「未命中」的 area(含纯定位区与当前
+            不可见的子态区,``reason`` 区分;纯定位区带坐标可点击,子态区带 text / template
+            可判断当前子态)。模糊候选恒为空列表(未计算)。
     """
 
     screen_name: str
     is_precise: bool
     areas: list[AreaMatchDetail]
+    unmatched_areas: list[UnmatchedArea] = field(default_factory=list)
 
 
 def find_area_with_detail(
@@ -138,6 +177,35 @@ def find_area_with_detail(
             confidence=float(mrl.max.confidence),
         )
     return None
+
+
+def _build_unmatched(screen_info: 'ScreenInfo', hit_names: set[str]) -> list[UnmatchedArea]:
+    """精准命中画面里,把「未命中」的 area 收集起来并按原因分类。
+
+    未命中 area 分两类(见 ``UnmatchedReason``):
+    - 无识别方法(text / template 均空)= 纯定位区,本就不会命中 → NO_METHOD;
+    - 有识别方法但当前未命中 = 子态 / 当前不可见 → SUB_STATE。
+
+    Args:
+        screen_info: 已精准命中的画面配置。
+        hit_names: 本次命中的 area 名称集合(从 ``find_area_with_detail`` 非 None 聚合)。
+
+    Returns:
+        未命中 area 列表(顺序同 ``screen_info.area_list``,命中区跳过)。
+    """
+    result: list[UnmatchedArea] = []
+    for area in screen_info.area_list:
+        if area.area_name in hit_names:
+            continue
+        reason = (UnmatchedReason.SUB_STATE
+                  if area.is_text_area or area.is_template_area
+                  else UnmatchedReason.NO_METHOD)
+        result.append(UnmatchedArea(
+            area_name=area.area_name, reason=reason,
+            pc_rect=[area.x1, area.y1, area.x2, area.y2],
+            text=area.text, template_id=area.template_id, id_mark=area.id_mark,
+        ))
+    return result
 
 
 def find_screen_matches(
@@ -226,7 +294,8 @@ def find_screen_matches(
         id_mark_names = {a.area_name for a in screen_info.area_list if a.id_mark}
         is_precise = len(id_mark_names) > 0 and id_mark_names.issubset(hit_names)
         if is_precise:
-            return [ScreenMatch(screen_name=name, is_precise=True, areas=hit_details)]
+            return [ScreenMatch(screen_name=name, is_precise=True, areas=hit_details,
+                                unmatched_areas=_build_unmatched(screen_info, hit_names))]
         fuzzy.append((name, hit_details, len(hit_details)))
 
     # 3) 无精准 → 命中数 top_n(tie-break 用 screen_info_list 顺序)

@@ -10,7 +10,7 @@
 |---|---|---|
 | `check_game_window` | `backend.check_window()` | `WindowStatus`（结构化 JSON；backend 抛错时返 `{'error': ...}`） |
 | `capture_game_screen` | `backend.capture()` | 截图绝对路径（落盘 `.debug/sr_od_mcp/screenshot/`） |
-| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示） |
+| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示；精准命中画面若注册了额外识别器,多回传 `extras` 该画面的结构化领域事实,见 [screen-recognizers.md](screen-recognizers.md)） |
 | `upsert_screen_area(screen_name, area_name, pc_rect, ...)` | `backend.upsert_screen_area()` | `{success, action(inserted/updated), area_count, error}`（写 yml + reload） |
 | `delete_screen_area(screen_name, area_name)` | `backend.delete_screen_area()` | `{success, action(deleted), area_count, error}`（写 yml + reload） |
 | `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：结果文本；`block=False`：已启动 JSON；并发拒绝时返错误 JSON |
@@ -43,6 +43,7 @@
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
 - `analyze_screen(save_image=True)`（实时模式）把已截的内存图顺手存盘 + 回传 `screenshot_path`，供调用方喂 视觉大模型 double-check；默认 `false` 不落盘，离线模式忽略。
 - `analyze_screen` 成功时返回 `vision_hint`：提醒本结果仅含 OCR + 模板匹配的部分识别，不等同完整视觉理解，需要全面判断画面时配合视觉工具 / 多模态再看（能力边界提示，[design-principles.md](design-principles.md) P14；防智能体把部分识别当画面全貌）。失败时为 `null`。
+- `analyze_screen` 精准命中画面时返回 `extras`：若该画面注册了**额外识别器（recognizer）**,带该画面的结构化领域事实（画面特定结构,如货币战争备战画面的金币 / 阶段 / 阵营在场人数）;无注册识别器的画面为 `null`。识别器异常不中断本结果（`extras=null`,详见日志）。这是 per-screen 注册机制,新增画面识别器见 [screen-recognizers.md](screen-recognizers.md)。MCP 侧 dataclass 由 FastMCP 序列化、加字段自动生效;但 `analyze_screen` 的 **tool docstring 属 tool 描述变更,需客户端 `/mcp` 重连**智能体才能看到 `extras` 字段描述（字段本身不重连也在返回 JSON 里）。
 - 所有运行（`open_game` / 一条龙 / 独立应用 / 自定义 op）经**同一个 `RunSlot`** 派发：op 路径（`open_game` / `run_operation`）槽自管 `start_running/execute/stop_running`，app 路径（`run_one_dragon` / `run_standalone_app`）委托 `run_application`（复用 GUI/CLI 共享入口）。`block=True` 用 `asyncio.wrap_future(future)` 阻塞 await 取结果，`block=False` 立刻返回已启动状态，后续用 `get_run_status` 查进度。
 - `run_operation` 是**通用 operation 运行入口**（不框死为调试）：`op_id` 格式 `<dotted module path>.<ClassName>`（可从 `list_operations` 获取）；`args` 传构造参数,以 `cls(ctx, **args)` 烤进闭包——JSON 标量/列表/字典直接传;`@dataclass`+`from_dict` 参数传 dict,实例化前用 `coerce_dataclass_params` 自动反序列化;其余复杂数据类拒绝(提示走 application);先用 `describe_operation` 看参数 schema(`coercible=True` 的可传 dict)。SR 当前业务 op 暂无 `@dataclass`+`from_dict` 参数,该能力前置就绪。
 - 配置修改工具（`get/set/add/delete_config_item` + `describe_config` + `list_app_configs`）按 `app_id` 路由到各 config 领域方法（`config_router.py`），写穿 ctx 缓存实例、写入前校验；SR 当前仅 `standalone_app` / `_group` 两条通用路由，后续接入体力计划等 `@dataclass`+`from_dict` 配置时在 `config_router._build_routes` 补 `RouterEntry`。

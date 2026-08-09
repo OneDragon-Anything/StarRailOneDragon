@@ -41,6 +41,16 @@ class UnequipEquip: char_id: str; equip: str                       # 拆装(拆�
 ```
 plan 候选修增 ComposeEquip(有 2 同类简易 → 合成进阶,key_equipsOwned 更新)、AssignEquip(key_equip → 主 C)。
 
+## 装备穿戴机制(UI op,2026-08-09 D-17 research 补)
+
+**现状:bot 完全裸装** —— `EquipAll` op(drag-based,`operations/prep/equip_all.py`)因回归被**解绑**(git `e9747690`:drag 致「前台区域无角色」→ loop stall retry 46)。装备是 A8 成型关键(D-17:「1雅1鞋成型」、反重力皮靴必备、裸装输)→ **重启用 EquipAll = 当前最高杠杆**。
+
+**机制(待 live 验)**:
+- 攻略(D-17)说**拖拽**穿戴(装备区 owned equip icon → 角色装备槽)+ 「拆装扳手」道具拆装 + 2 简易合 1 进阶。与 `equip_all.py` 的 drag 方案一致(但有回归)。
+- VLM 实测(D-17,跨 2 样本 万敌+镜流)+ **live 实测(r1-1 藿藿,2026-08-09)**:角色详情面板底部「装备推荐」按钮(~x1509,y816)。**click 后弹出「推荐装备」+「次选装备」列表(OCR 实锤),不是一键自动穿** —— "一键穿最佳"假设证伪。装备仍需从列表选(点推荐装备→穿?)或拖拽。
+- **→ EquipAll 无 clean one-click 路径**:两条路 —— ① 修 drag 回归(`equip_all.py` drop zone / hold_time,git `e9747690`);② 实现 list-select 流程(开面板→装备推荐→点推荐装备→穿,每角色多 click)。每局保底 ≥3 装(开局+1/p1boss+1/p2boss+1 + 奖励/补给节点)。
+- **下一步(live)**:进备战 + 点已部署角色开详情面板 → click「装备推荐」→ 截图/日志看是否自动穿戴。是 → 重写 EquipAll 为 click「装备推荐」;否 → 修 `equip_all.py` 的 drag 回归(drop zone / hold_time)。每局保底 ≥3 装(开局+1/p1boss+1/p2boss+1 + 奖励/补给节点)。
+
 ## 补给节点决策(decide_supply,完整性-5)
 research §10.5:"补给角色有概率带红/蓝钻装备,未出钻就重刷(拿钻基本宣告胜利);位面1 补给优先级 姬子·启行 > 折叠小刀 > 轮回鞋;无钻时 鞋(反重力靴)> 电池(永动机)> 生命花(分解液/能量饮料)"。
 ```

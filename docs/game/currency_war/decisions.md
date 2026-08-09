@@ -15,1066 +15,258 @@
 
 ---
 
-## D-155 (2026-08-09)【机制澄清·重要】equip = drag 装备区→char(非 detail-panel slot-click);之前探查方向错
+## 重置说明(2026-08-09)
 
-- **决策(web 攻略核实:官方 + TapTap + bwiki)**:CW equip 机制 = **棋盘界面的「装备区」(owned equip inventory)长按/拖动装备图标 → 拖到角色头像/格子 → 穿戴**。+ **合成**:拖两件简易装备到一起 → 一件进阶装备。例:拖【幸运星】→ 黑塔 → 装备。
-- **为什么重要(纠偏)**:之前 equip 探查(detail-panel slot-click + 「装备推荐」)**方向错** —— 详情面板的「装备推荐」是**推荐非装备源**,空装备槽 click 不开 equip list(实跑 r7 证:点 1468,866 panel 内无 list)。真装备源 = **棋盘 prep board 上的装备区**(owned equip icons),drag 到 char。
-- **equip op 方向(改)**:① 找**装备区**位置(prep board 上 owned equip icons 的区域 —— 待 screen-onboarding,可能 bottom/side 一排 icon);② **drag** equip icon → char 槽位(同 deploy drag 机制);③ 合成(2 简易 drag 一起 → 进阶,可选优化)。**前提**:bot own equip(decide_supply 无钻时拣;待验 bot 是否真有 equip 在装备区)。
-- **状态**:机制明(web 确认 drag-from-装备区)。**下步**:① prep board 找装备区(owned equip icons 位置,screen-onboarding);② 验 bot 是否 own equip(装备区有 icon?);③ 建 drag-equip op(drag 装备区→char);④ 合成 op(可选)。推翻 D-148 的 detail-panel equip 假设(那是推荐非源)。· D-148(equip gap,机制改)/ equip_probe(detail-panel 方向错,留作 char-click ref)/ D-153(char 详情面板:阵营+出售,非 equip 源)
+自主推进期(/goal、/loop)积累的决策(**旧 D-15 ~ D-155**)经判定**不可信**(盲操作 / 不读日志 / 不建画面模型 / 违反预期外画面协议 → cw 代码缺乏对玩法状态的真实理解),已从本文件**删除**。**D-1~D-14 保留**(重走期,可信);新决策从 D-17 续(D-15/D-16 跳过)。完整旧版(D-01~D-155)在 git:`git show HEAD:docs/game/currency_war/decisions.md`(1080 行)。
 
----
+⚠️ **悬空引用**:strategy/12·13、data/、screens/currency_war_prep 等仍引 D-15~D-155(D-86/D-90/D-106/D-148/D-155…),均指**已删废弃决策,不再维护**(查含义看上述 git 旧版)。
 
-## D-154 (2026-08-09)【修正·重要】D-152 target-only deploy + D-153 clean 致 board under-fill → 弱 → HP 崩;改 target-priority+fill(满板)+ 解绑 clean
+⚠️ **append-only 违规说明**:本删除违反"append-only,推翻用 `↺ 推翻 D-XX` 标注非删"铁律;历史在 git 可查(未丢),但本文件单一源对 D-15~D-155 断裂。彻底修 = restore D-15~D-155 + 顶部标 ↺ 不可信(待 focused 任务,涉及旧 D-17/D-18 与新 D-17/D-18 编号冲突需重排,不在长 session 尾仓促做)。
 
-- **决策(实跑负结果纠正)**:D-152 selective deploy 改 **target-priority + fill**(target 槽先 deploy,余 off-target 填满 → **满板存活** + target 优先集中);**D-153 clean 解绑**(fill-all 下 moot —— 卖的 off-target 又 re-deploy;且每轮 +12s)。clean op 代码留(clean_offtarget.py)待 late-game 重接。
-- **为什么(负结果)**:D-152 target-only(_deploy_idx only,"off-target 留 bench")+ D-153 clean(卖 off-target)合谋致 **board under-fill** —— 实跑 r3-r4 `board={命运圣杯:1,战技点:1}` = **仅 2 unit**(level 4-6 cap ~5)→ 严重空板 → 每轮输 → HP r3 84→71→58 崩(**比 baseline r6 崩更早**)。baseline fill-all(满 ~5 unit)存活到 r6。
-- **核心教训**:**concentration(target-only / clean)在 target 稀缺时 counterproductive** —— under-fill(2 unit)比 spread(满板 off-target)**更弱**(bodies 数 > 阵营纯度,早期尤其)。auto-chess:**满板存活 > 集中**,集中是 late-game(target 充足)优化。target-priority+fill = 满板 + target 优先(target 够多时自然集中,不多时 off-target 填满不死)。
-- **备选**:① target-only(D-152 原)—— under-fill 死(本 D 否定)。② clean(D-153)—— 减板 + fill-all moot。③ **target-priority+fill(D-154)** —— 满板存活 + target 优先。选 ③。
-- **状态**:采用(commit 待)。**r6+ 崩的真因 = 板弱(裸装无 equip D-148 + target acquisition 有限),非 formation**。D-152/D-153 的 concentration 思路非 silver bullet(under-fill 反害)。下步:① D-154 满板 fix 验(恢复 baseline r6 存活);② **pivot D-148 equip**(裸装输一切,最大单点)。· D-152(target-only under-fill,修正)/ D-153(clean 解绑,op 留)/ D-148(equip,真因)/ baseline r6 崩
+决策编号从 **D-1 重新开始**。新决策基于重走方法论产生:`od-dev-gameplay-automation` playbook(逐阶段达标)+ `od-dev-progress-tracking` 任务树(状态机 + 防偏离门)。自主 cw 代码标 `# 未验证`,进对应画面时按 skill review 重审后才可信,调完删注释。
 
----
+## D-1 (2026-08-09)【诊断·重要】观察地基实测可用 → 策略(集中度)才是死 r9 真阻塞;策略层解锁
 
-## D-153 (2026-08-09)【GAME-CHANGER·验证】点击 deployed 头像→详情面板(露阵营+出售按钮+装备)→ 破身份墙
+- **决策**:跑 baseline bot 诊断(r1-7 实跑 + 日志)表明:**观察地基可用** —— 身份跟踪(`灵砂/乱破/大丽花` tracked)+ board 阵营 OCR(`击破/夜之半神`)+ gold/hp/level/round 全读对。bot 死 r9 的**真因 = 策略 naive**:`deploy-swap` 卖 off-target(含佩佩,实测**可卖** —— deployed-lock 是误判,gameplay doc 待修)+ `fill-all`「**无 target/集中 → 全 9 槽填满**」→ 散板无羁绊聚焦 → 战力弱 → 输。
+- **为什么**:防偏离门解锁条件 ①(权威源画面子态①-⑤)对 **WORKING 观察满足**(身份/棋盘/经济实测准);3.1(变槽位)/3.3(面板身份)是**增强**(变槽位坐标 / SIFT 漂移恢复),非策略阻塞。②端到端跑通(实测)、③客观指标(round/HP/胜负)已定义 → **策略层解锁**,聚焦集中度 deploy/comp。
+- **备选**:① 继续磨观察(3.1/3.3 集成进 flow)—— 诊断显示非阻塞,降优先级(留作漂移恢复/变槽位补,不卡策略);② 全盘重写策略 —— 过激,先改集中度(deploy 别 fill-all、comp 聚焦买/留 target 阵营)。
+- **状态**:采用(诊断)。观察机制(3.1/3.3)记进度树待集成;deployed 可卖修正 gameplay doc 的 deployed-lock 误判。
+- **⚠️ 纠偏(2026-08-09 自审子 agent)**:本条标题/原结论"策略层解锁"**过度乐观** —— 依据仅**单局(r1-7)诊断**,且 D-12 后证观测回路当时是**断的**(deploy 不更新 tracking → buy 用漂移数据)。按防偏离门:三解锁 ①(权威源画面子态①-⑤)②(端到端观测回路)**实为未过**,仅 ③(客观指标)过 → **策略层仍应锁**。本条"解锁"降级为"诊断假设";D-6/D-9/D-11 在此误判下动了核心策略模块,其"集中有效"结论**作废,待 D-12 观测回路验通后重验**。
+- `· gameplay.md(deployed-lock) / strategy/`
 
-- **决策(实机验证)**:点击 **deployed 舞台角色头像** → 弹**详情面板**,含:① **角色阵营/羁绊**(藿藿=仙舟/⑨能量/+治疗,可 OCR 读 → **per-char 身份**);② **「出售」按钮**(detail 面板内,x~1746 y~901);③ **「装备推荐」**装备区(D-148 equip);④ 详情/技能/属性。
-- **验证**:点 deployed 藿藿 → 面板露 仙舟/能量/治疗 + 出售按钮 → 点「出售」→ **藿藿 真被卖**(board 仙舟 1→0 / 能量 1→0 / 治疗 2→1,藿藖贡献消失)→ **deployed 可卖(via 详情面板按钮,非 drag)**。
-- **为什么 GAME-CHANGER**:破**身份墙**(整个 session 根本瓶颈:无角色身份 → 无法 selective 清 off-target → board 永久 spread)。详情面板给 per-char 阵营 → bot 能逐个识别 deployed 角色 → **selective sell off-target**(读阵营,非 target 才卖)→ 清板 → concentrate target。+ equip 区(D-148,bot 裸装弱,可能最大单点存活修复)。
-- **推翻**:doc `gameplay:78`(deployed-lock:click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)—— **drag 确实失败,但 click 头像的详情面板有「出售」按钮且可用**。doc 只对了一半(drag 失败),漏了按钮。**待改 doc gameplay:78**。
-- **实现方向(新 selective-sell op + screen_info)**:① screen_info 建详情面板区域(阵营栏 x~1407-1589 y~301 / 出售按钮 ~(1746,901) / 装备区);② 新 op:遍历 deployed 槽(前排4+后排6)→ click 头像 → OCR 阵营 → ∄ target 阵营 → click 出售 → 清 off-target;③ 装备 op(D-148,装备推荐区 drag 装备)。**画面 op,非策略锁**。
-- **状态**:机制验证 OK(出售按钮 work + 阵营可读)。**下一步**:建 screen_info + selective-sell op → match 验(board 清 off-target → target 集中 → r6+ HP 稳)。· D-152(selective deploy 防**新** off-target deploy;D-153 清**存量** off-target,互补)/ D-148(equip,同详情面板)/ D-151(deploy-swap drag 版,降级 → 被 D-153 selective-sell 替)/ gameplay:78(doc 半错待改)/ 用户提示(点头像→售卖按钮,实锤对)
+## D-2 (2026-08-09)【bug·策略】deploy 集中度 factions/flows 命名空间错位 → 流派羁绊永不 match → fill-all
 
----
+- **决策**:`deploy_bench._deploy_all_slots` 集中度匹配改用 char **全羁绊**(factions ∪ flows),非只 factions。同步 `_fcount` 计数也含 flows。
+- **为什么**:诊断日志(`集中度诊断`)显示 `deploy_idx=[]` → fill-all。根因:`Comp.factions` 混**阵营**(仙舟/银河学者)+ **流派**(击破/追击/持续伤害/减益)于一个「羁绊」命名空间(如 `巡击青雀 factions=[仙舟,追击]`);但 `Character` 拆 `.factions`(阵营)/`.flows`(流派),deploy 只查 `.factions` → **流派羁绊**(椒丘 flows=持续伤害/减益、大丽花 flows=击破)**永不 match** target → deploy_idx 空 → fill-all 散板。
+- **备选**:① 拆 `Comp.factions` 为阵营/流派两字段(治本但大改 comp 模型 + 全 callers)—— 记 TODO,先修匹配;② 只改 deploy 不动 comp —— 选(本次),最小解阻塞。
+- **状态**:采用(deploy_bench 已改,ruff 过)。⚠️ 同类 bug 蔓延 `cw_decisions`(`bc.faction`/`card.faction` 单字段 vs `target.factions`,~10 处)—— 那些用单 faction 字段(来源不一:bench=阵营[0] / shop OCR=卡面羁绊),需系统审(待策略重做)。
+- `· cw_chars(Character 模型) / cw_comps(Comp.factions)`
 
-## D-152 (2026-08-09)【根因纠正·重大】deploy 执行忽略 plan(fill-all 致 board spread)→ selective deploy
+## D-3 (2026-08-09)【bug·策略】deploy-swap 无 bench 守卫 → 卖光 deployed 无补 → 空板必输
 
-- **决策(clean-context agent a63a1df6 审 + telemetry 全局复盘)**:`deploy_bench._deploy_all_slots` 改 **selective deploy** —— 只 deploy **target 阵营 OR 集中阵营**(board+bench count≥2)的 bench 角色(复刻 `cw_decisions._should_deploy` 语义,但在物理槽层),off-target 留 bench;**fallback fill-all**(map 空/无 target,无回归)。同时修 `bench_slot_map` baseline(两帧同 shop-OPEN)+ 跨回合合并 + deployed 后删 slot。
-- **为什么(真根因,非策略)**:9 个策略 commit(D-138~151)调对了 **buy/plan 层**(telemetry 实证:r4 买全 DOT队 椒丘×3+卡芙卡+艾丝妲;r6/r7 有 target 就买 —— **buy 实际在工作**)。但 `cw_decisions.plan()` 精心算的 `pending_deploys`(`_should_deploy` 过滤=target/集中)在 shop.py 存了却**从不消费** —— deploy() 调 `_deploy_all_slots`(D-145)fill-all 部署**全 bench(target+off-target)**,`_deploy_strategic`(D-98 plan-driven)是死代码。→ board 被 off-target + fill-all 污染(5 阵营×1,无 tier)→ bench 躺 target 卡不上场 → r6+ 敌人变强每轮输 → HP ~-13/round 崩 → p2r1 hp=1 死。**20 局 baseline 铁证**:r1-r4 HP 稳/升(赢),r6+ 崩,死时 gold 30-60 未花(经济 OK 转不成板强)。
-- **核心难点 + 绕法**:bench_idx(logical)→物理槽映射(SIFT 4 角色可靠 / gaps 致 logical≠物理 / pixel-diff 旧用 shop-CLOSED vs OPEN 致全槽 diff)**是 D-145/147/149/150/151 反复撞的墙**。D-152 绕法:**`bench_slot_map` 本身就是物理 slot**(name→slot),`bench[slot-1]` 直接给 Point,无需 logical→物理转换。selective deploy 用 map 的 name→get_char().factions→target 判定,在物理槽层复刻 `_should_deploy`。
-- **备选(为什么不选)**:
-  - **D-98 `_deploy_strategic`(plan bench_idx→槽)**:bench_idx 来自 tracked_bench 顺序,deploy 走槽留 gaps → logical idx≠物理位 → 漂移。弃(D-145 才退 fill-all)。
-  - **D-145 fill-all(现状)**:可靠部署全 bench,但**部署 off-target 致 spread**(本 D 根因)。不弃作 fallback(map 空/早期无 target 时必要)。
-  - **SIFT 身份 deploy(`_deploy_by_identity`)**:SIFT 只 4 角色可靠(D-75)→ 大多 target 识别不了 → 不上场。弃。
-  - **D-147 pixel-diff 原版**:baseline 用 `screen`(shop-CLOSED,line 118)vs `_after_shot`(shop-OPEN)→ shop UI overlay 致**全槽 diff 触发** → map 坏(agent 发现,**非** auto-deploy;doc 无 auto-deploy 记载)。D-152 改 baseline 为 `_buy_baseline`(shop-OPEN,buy 前)→ 两帧同状态 → diff 只反映 buy 变化。
-  - **D-151 deploy-swap(sell all + redeploy)**:机制 confirmed(deployed 可卖),但 sell 含 comp + fill-all redeploy 仍 spread → **帮倒忙**。D-152 selective deploy 后,deploy-swap 降为"清存量 off-target starter"的辅助(保留,one-time)。
-- **待解矛盾(测试将定)**:`docs/game/gameplay/currency_war.md:78`(2026-08-08 多源实测)称 deployed **不能**卖;D-151/用户(2026-08-09)称**能**。D-152 selective deploy **两边都对**(防新增 off-target deploy;deploy-swap 辅助清存量)。match 验看 sell 是否真扣 gold → 更新 doc。
-- **状态**:实验(已实现 shop.py + deploy_bench.py,ruff 过;match 验证中)。**验证指标**:r6+ HP 不再崩(赢些 r6-r9)/ board target 阵营 count≥2 / `[cw-deploy] selective` 日志 fires / `[cw-shop] char→slot` map 非空。fallback 保底(map 空则 fill-all,无回归)。· D-145(fill-all,降为 fallback)/ D-147(pixel-diff baseline 修)/ D-151(deploy-swap 降辅助)/ D-138~151(buy 层,已对)/ gameplay:78(deployed-sell 矛盾待定)/ agent a63a1df6(撞3次换视角 clean review)
+- **决策**:`deploy-swap` 的 `_sell_all_deployed` 前加守卫:**bench 无角色(SIFT read_bench_chars 计数 0)则禁止 sell**。
+- **为什么**:实测(12:08:58)bot 板散(8 阵营全 off-target vs DoT target)→ deploy-swap 卖光 deployed,但 bench_count=0 无补 → **空板出战必输**。sell-all 是为清 starter 重 deploy target,但 bench 空时卖 = 自杀。守卫:bench 有角色才 sell。
+- **备选**:① 禁用 deploy-swap —— 过激(有 bench 时清 starter 合理);② 只卖 off-target deployed 不卖 target —— 更优但需身份(D-2 修了 deploy 匹配,deploy-swap 可复用),记 TODO。选 bench 守卫(最小止血)。
+- **状态**:采用(deploy_bench 已加守卫,ruff 过)。根因仍是 buy 未集中(散板才触发 swap)—— 待策略重做(buy 聚焦 target 阵营)。
+- `· deploy_bench(_sell_all_deployed)`
 
----
+## D-4 (2026-08-09)【bug·机制】deploy SIFT 占用误判空前排 → 跳前排 → 空板出战阻塞 → bot 卡死
 
-## D-151 (2026-08-09)【用户确认 GAME-CHANGER】deployed 可卖!deploy-swap 可行 → 板成型死结解
+- **决策**:`_deploy_all_slots` 的 `occupied_front/back` **不再预填 SIFT**(改靠 retry-stick 实际 stick 判占用)。
+- **为什么**:bot 卡死循环(buy→deploy→buy→deploy 不进战斗)。链路:`read_deployed_chars`(SIFT)误判空前排槽为占用(`occupied(SIFT) front=[1,2,3,4]`)→ deploy `if try_idx in occ: continue` 跳前排 → 全拖后排 → **前排空** → 出战被「前台区域无角色」阻塞(出战 click 4× 未落地 → 备战单轮失败 → 外层 loop 重入 → 再 deploy)。SIFT 占用对备战立绘不可靠(脸近景库 ≠ 半身)。retry-stick(实际 drag 后 bench 计数降 = 真占用)才是可靠占用信号。
+- **备选**:① 修 SIFT —— 治本但难(半身 ≠ 脸库,3.x 验过);② **CV 占用检测**(亮度/方差:空槽 placeholder vs 立绘)—— 更准,待做(D-4 是止血,弃 SIFT 预填;CV 占用是后续);③ 保留 SIFT —— 会再卡。选弃 SIFT 预填(最小止血)+ CV 占用作后续。
+- **状态**:采用(deploy_bench 已改 occupied 预填为空 + SIFT 仅日志;ruff 过)。⚠️ D-4 单独不够:弃 SIFT 预填 → deploy 试全槽(多拖,用户观察到循环拖动)→ **需 CV 占用检测**(只拖空槽)才彻底。身份同理:deploy 不知前后台角色 → 待面板身份(3.3)集成。
+- `· deploy_bench(_deploy_all_slots occupied) / insights(SIFT 不可靠)`
 
-- **决策(用户实机确认)**:**deployed 角色能卖**(用户拖 deployed→出售区,gold 增加)。**deployed-lock(doc gameplay:78)是误判**!deploy-swap(sell off-target deployed → deploy comp)**可行**。D-143(deploy-swap 设计,曾因「deployed-lock」推翻)now **复活**。
-- **为什么 game-changer**:整个 session 根本瓶颈(deployed-lock → 板 r1 锁散 → comp 难集中 → HP 崩)基于错误前提。**deployed 可卖 → bot 可卖 off-target starter → 换 comp → 板集中**。
-- **修法**:deploy_bench 加 `_sell_all_deployed`(遍历 stage 槽→出售区,confirmed works)+ 条件:**board 有 off-target(∃ faction ∉ target)→ sell all deployed + redeploy bench(comp-curated)**。board 全 target 时不卖。board OCR factions 做条件(不需身份)。
-- **状态**:用户确认。**deploy-swap = 赢 A8 关键路径**。下一步:实现 _sell_all_deployed + 条件 + match 验。· D-143(复活)/ D-144(revisit)/ gameplay:78(误判)
+## D-5 (2026-08-09)【机制】deploy 占用检测:SIFT → CV 灰度 std(`slot_occupied`)
 
----
-
-## D-148 (2026-08-09)【重大】装备 gap:bot 从不 equip 单位(手动穿戴机制缺失)→ 裸装弱 → HP 崩
-
-- **决策(web 核实 + 代码核实)**:CW 装备**手动穿戴**(棋盘界面点角色→拖装备),bot **无 equip handler/op** → **从不装备单位** → 单位裸装(无属性+战斗效果加成)→ 极弱 → HP -13/round 崩(远快于玩家)。**整个缺失机制**。
-- **为什么是大 gap**:web([米游社官方](https://sr.mihoyo.com/news/160700):"穿戴装备提升战斗能力;装备通过奖励/补给节点获取";[TapTap](https://www.tapap.cn/moment/731573167151121380):"棋盘界面穿戴装备,前后台均可,最多3件/角色")。装备给属性+特殊战斗效果,大幅强化单位。bot 拣了 supply 装备(decide_supply)但**没 equip**(无 op)→ 装备浪费,单位裸装。这**解释 HP 快掉**(裸装 vs 玩家满装)+ 是 plane1 存活瓶颈(比 char→slot D-147 更直接的存活因子)。
-- **影响重估**:equip 装备(3件/角色)→ 单位大幅强化 → HP 掉速大降(可能 -13→-5/round)→ 存活 plane1 → 进 plane2-3 comp 成型(D-147 char→slot 助)→ 赢。**potentially 最大单点修复**(存活是赢的前提;裸装输一切)。
-- **实现方向(新 equip op + screen_info)**:① 观察备战 equip UI(点角色→装备面板→拖装备 to 角色;需 in-game 观测 UI 流程 + 坐标);② screen_info 建 equip 区域(角色详情面板 + 装备槽 + inventory);③ 新 equip op(点角色 + 拖装备到槽);④ 策略(优先给 core/前排?但首版 equip anyone 即大改善)。mechanics(画面 op,非策略锁)。
-- **状态**:gap 确认(web+代码)。**待**:① in-game 观测 equip UI 流程(起 match→备战有装备→看怎么穿);② 建 screen_info + equip op;③ match 验(装上→HP 掉速降→存活)。**优先级:高于 char→slot**(存活是赢的前提)。· D-147(char→slot)/ match6(-13/round)/ decide_supply(拣不装) / gameplay doc(补 equip 机制)
-
----
-
-## D-147 (2026-08-09) 真根因 = char→slot 感知(comp 卡 benched 上不了场);非 merge/level/pivot
-
-- **决策(诊断精化)**:board-spread 输的**真根因 = comp 卡在 bench 上不了场**,非 merge(D-140 假设)/level(D-146 排除)/pivot。match6 r2 买 4 追击卡(飞霄+赛飞儿×2+不死途)但 board 追击=1 —— **3 追击卡 benched**(board 满 starter)。赛飞儿只 2 张不合并 → 非 merge。**comp 卡买到了但上不了 board**。
-- **为什么上不了**:① **板满 starter(deployed-lock)**:r1 fill-all(D-145)deploy 全 starter → 板满 cap → 后续 comp 卡无槽可上(deployed-lock 不让 starter 下)。② **char→slot 感知缺**:无法可靠选 deploy comp 卡(SIFT 只 4 角色可靠 D-75;tracked_bench slot=list-index 错位 D-102)→ fill-all 是唯一可靠 deploy(全 bench 槽),但它不区分 comp/starter(板满即停)。两条合一 → comp 卡永远 bench → comp 永不成型 → 输。
-- **解路(pixel-diff slot tracking)**:买牌时检测**哪个 bench 槽新被占**(pixel-diff before/after buy,不需身份,可靠)→ 记录 bought char→physical slot。则 deploy 可靠选 comp 卡(tracked slot)deploy 到板(comp 卡上场)。这是 char→slot 感知根的解(替 SIFT/tracked-idx)。**配 deploy-only-comp**(板满 starter 时,新 slot(level 升)优先 comp 卡,非全 bench)→ comp 卡随 level 上场。
-- **备选**:① 接受 fill-all + level 速冲(高 cap comp 卡占多数)—— 慢,plane1 cap 6 不够;② deploy-swap —— deployed-lock 阻(D-143/144 推翻);③ pixel-diff tracking(本设计)—— 治本(解 char→slot → 可选 deploy comp)。选 ③。
-- **状态**:诊断定(char→slot 感知根 + comp benched)。**待实现 pixel-diff slot tracking**(buy op 记 char→slot + deploy 用 tracked slot 选 comp 卡上场)。这是赢 A8 的感知地基修(非策略锁,mechanics/perception)。大改(buy op + tracking + deploy 选 comp),需仔细设计 + review + 多 match 验。· D-145(fill-all)/D-75(SIFT)/D-102(tracked idx)/deployed-lock / task#97
-
----
-
-## D-146 (2026-08-09) 早选 target(EMERGENT_SIGNAL_COUNT 2→1)—— 配 D-145 deploy-all 解集中太慢
-
-- **决策**:`EMERGENT_SIGNAL_COUNT` 2→1(target 在 board+bench 任一阵营 count≥1 即 select_comp,r1 starter 在场即触发)。配 D-145 deploy-all(全板上场)→ r1 早选 comp + 早聚焦买(D-138)+ 全板 → 快集中(comp 在 HP 崩前成型)。
-- **为什么**:match5(D-145 deploy fix 后)实跑:board 7 阵营全 1 spread,**count≥2 到 r6-7 才 emergent → 太慢**,HP 62→38 崩在 comp 成型前。D-145 修了 deploy(target 上场),但 emergent 等 count2 太慢(spread starter 难达)。降到 count1 → r1 即选 comp → 早聚焦买 → 快集中。
-- **D-122 顾虑(空板选 unacquirable)不适用**:r1 board 有 starters(非空)+ select_comp 用 shop_supply(D-126)保 acquirable + maybe_pivot 纠偏 + drought_bail(D-92,5 轮无 shop 卡弃 target 重选)兜底。count1 = starter 在场(非空板)。
-- **备选**:① round-fallback(round≥3 强制选)—— 更保守(等 2 轮信息),但少 2 轮聚焦买;② 保持 count2 靠 D-145 deploy 加速集中 —— deploy 不影响 emergent 门槛,不解;③ count1(本设计)—— 最直接早聚焦。选 ③ 验,若 r1-target comp 太盲(选错),回退 round-fallback。
-- **状态**:实现 + 单测绿(20 cw_strategy 测试;test_update_target_emergent 更新 count1)。**待 match6 验**(r1 早选 target → 早聚焦买 → comp 早成型 → 存活/赢?)。策略锁内(grounded match5 集中慢实据)。· D-122(emergent)/ D-145(deploy-all)/ D-138(buy target)/ match5 / task#97
-
----
-
-## D-145 (2026-08-09) 【review 重大发现】deploy_bench SIFT-gating bug = D-140 真因(target 单位上不了 board);D-144 错层 revert
-
-- **决策(review 发现,已核实 deploy_bench:102-120)**:D-140(board[追击] 卡 1 despite 买 3+ 追击卡)**真因 = deploy_bench 用 SIFT(read_bench_chars)选部署对象,绕过 plan 的 DeployMove**。`if actual:`(SIFT 识别到任意 bench 角色)→ _deploy_by_identity(只迭代 SIFT 可见角色);**SIFT 识别不了的角色(D-75:只 4 角色可靠)永远不上 board**。plan 的 DeployMove(tracked 身份,可靠)只在 `else`(SIFT 全失败)用,且 line 116 自承「tracked_bench idx 可能错位」故避用。**非 merge、非 cap、非 deployed-lock** —— 是 SIFT 把 target 单位 gate 在 bench。
-- **为什么这是 A8 可赢性关键**:板散输的根因是工程 bug(deploy 执行没接 plan 决策),非游戏限制(deployed-lock)。修了 deploy → target 单位上场 → bond 激活 → comp 成型 → 存活。4 个策略 fix(D-138/141/142/139)都已对,只是 deploy 执行断了。
-- **修法方向(review 主推)**:deploy_bench **执行 plan 的 DeployMove(tracked 身份)作主路径**,SIFT 仅作槽位验证(D-123 bench-count-drop retry-stick 已可靠,不需 SIFT 身份)。**关键待解**:bench_idx(tracked)→ 物理 bench 槽 的映射(line 116「可能错位」需修;task#105 bench 跟踪的 slot-order)。映射对了 → plan 路径可靠 → target 上场。
-- **D-144(deploy-only-target)↺ 错层 revert**:D-144 改的是 _deploy_by_identity(SIFT path),但 SIFT path 本身是 bug(应绕过)。D-144 target-only 还 under-soak 实跑失败。revert D-144 → 回 committed baseline(D-125 fill-all SIFT + D-139B),再修 SIFT-gating(本 D-145)。
-- **状态**:bug 确认 + 修法定。待:① revert D-144(git checkout deploy_bench.py);② 查 bench→slot 映射(cw_observation bench seed + cw_strategy tracked_bench order);③ 实现 deploy 执行 plan DeployMove + 修映射;④ match 验(target 上场 → board[target] 涨 → bond → 存活)。mechanics 修(非策略锁)。· review-a0610 / D-140(真因)/ D-144(revert)/ D-75(SIFT 4 角色)/ D-102(idx 错位)/ task#105
-
----
-
-## D-144 (2026-08-09) ↺ 推翻 D-143:deployed-lock 是游戏机制(deployed 不能卖)→ deploy-swap 不可能;改 deploy-only-target(不填 off-target)
-
-- **决策(推翻 D-143)**:D-143 deploy-swap(卖 off-target deployed 换 target)**机制上不可能** —— 读 `docs/game/gameplay/currency_war.md:78` 确认:**deployed-lock 是 CW 游戏机制**(deployed 角色详情面板**无出售按钮**,drag→出售区/备战席**全失败**;只有 bench 能卖)。board 一旦部署**永久锁定**。→ 改方向:**deploy-only-target**(从 r1 只 deploy target/集中阵营,off-target 留 bench 可卖/合,**不 fill 全场**)。
-- **为什么 D-143 错 + D-125 fill 也错**:D-125 fill-all(填 off-target 占满槽)**正是 spread 根因** —— 它把 off-target 永久锁上 board → comp 永不成型(doc 自己的「策略含义」:必须 r1 deploy target,不能先填全场再换;D-125 违反了)。match3 证实:r1-9 board 8 阵营散(deployed off-target 锁死)→ bond 低 → r7 HP48→20 崩。
-- **deploy-only-target 设计(待实现 + 验证)**:① deploy **只** target/集中阵营卡(off-target 留 bench);② **确保 front 非空**(≥1 front 单位,避 D-125 修的 front-empty stall;无 target front-pref 时 deploy 1 off-target front 作最小妥协);③ **接受 partial board**(集中少单位 + bond 强 > 散多单位无 bond;auto-chess bond 乘伤远超单位数堆叠);④ emergent 期(无 target)deploy 最小(够 valid board 即可,非全填)。
-- **待 live 验证**:deployed-lock 反直觉(auto-chess 通常能卖 deployed),doc 虽详(D-122 era 验过)但关键,起 match4 备战时**实机核实**(drag deployed→出售区 看能否卖)。但 deploy-only-target 不管验证结果都对(锁 off-target 本就坏),可先实现。
-- **备选**:① D-143 deploy-swap —— 推翻(机制不可能);② 保留 fill-all 靠星级补 —— bond 缺失伤太大(-28/轮),不够;③ deploy-only-target(本设计)—— 治本(板随轮次集中,off-target 不锁)。**选 ③**。
-- **状态**:**实现 + 实跑 → 失败(under-soak 死更快),待 review 定方向**。match4(target-only)hp 80→40 @r4(~−13/轮,比 fill-all 死更快)—— target-only 早期 under-deployment(3 单位 vs cap)→ 少伤害吸收 → 掉血多。而 fill-all(match3)锁 spread 输晚期(~r9 boss 1HP)。**两者都输**:deployed-lock(板一旦部署永久锁)使板成型成 hard lock-in(无法早散晚集中)。deployed-sell 无法经 MCP 验(需 CW 长按 hold drag,MCP drag 无 hold_time)→ 信任 doc(deployed unsellable)。**起 clean-context 设计 review** 定板成型最高杠杆修法(去 emergent 早选 target?hybrid deploy?A8 是否可赢 given deployed-lock?)。· D-143(推翻)/ D-125(fill)/ D-122(emergent+lock)/ gameplay:78 / task#97
-
----
-
-## D-143 (2026-08-09,设计待实现) deploy-swap:卖 off-target deployed 换 target 上场(解 board-spread → 赢的路径)
-
-- **决策(设计)**:允许策略性 **sell 已部署 off-target 角色 → 腾槽 deploy target**,解 board-spread(D-140/4 fix 后的剩余瓶颈)。match3 证实:4 fix 修对 bootstrapping/买/pivot/deploy-waste,但 **off-target starter deployed-lock(D-122)锁住不让换 → board 难集中 → bond 低 → 弱板 → r7 HP48→20(-28)崩**。real auto-chess 玩家会随轮次 reconcentrate(目标卡到了就卖偏卡换上),bot 的 deployed-lock 阻止了这步。
-- **为什么是下一前沿**:撞 board-spread 第 3 次(match1/2/3 + D-140),是 4 fix 后**赢不了的根因**。4 fix 让 bot 能买/选 target,但买到的 target 卡上不了场(off-target 占槽)→ board 仍散 → bond 不激活 → 弱。
-- **设计草图(待细化 + 实现)**:
-  ① **何时换**:board 满(deployed=max)+ 有 off-target deployed(faction∉target,非 core)+ bench 有 target 卡(faction∈target/core)。committed comp 不换(防 churn 已成型)。
-  ② **卖谁**:off-target deployed 里价值最低(低星/非 core)。
-  ③ **deploy 谁**:bench target 卡(高 concentration/target fit)。
-  ④ **churn-guard**:每轮限 swap 次数(1-2)+ 仅明显改 concentration 时(非边际)+ 不卖已成型 comp 的 target 角色。
-  ⑤ **新 action `SellDeployed`**:cw_state 加(simulate:移 deployed + refund gold)+ op 执行(drag deployed 槽 → sell area(70,846),同 `_handle_bench_full` 机制换源)。
-- **备选**:① 不 deploy off-target starter(round1 留空槽)—— r1 under-deployed 掉血更狠,差;② 接受 spread 靠星级/数量补 —— bond 缺失伤太大(-28/轮),不够;③ deploy-swap(本设计)—— 治本(让 board 随轮次集中),需防 churn。
-- **状态**:**设计阶段**(match3 证实瓶颈,sell 机制读通可行)。待:① match3 跑完拿 match-end 数据(阵容价值)确证弱板程度;② 细化设计(churn-guard)+ 实现(SellDeployed action + 策略 + op);③ 策略锁内(deploy/sell 行为)+ review + 验。· D-122(deployed-lock)/ D-140(bond)/ D-125(fill)/ match3 / task#97
-
----
-
-## D-142 (2026-08-09) tempo(战力断档)破息:板弱不攒息/级(补用户既定设计,代码漏板强判据;解 emergent buy0 死循环)
-
-- **决策**:补「tempo(战力断档)破息」到 `_saving`(`_saving_for_level` + `_saving_for_interest` 都加板强判据):**板弱(无 target 或 form_progress<COMMIT_FRAC)→ 不攒息/级,先花建板**。板强(有 target 且 form≥COMMIT_FRAC)才攒。
-- **为什么**:match2 r3 board 满+散(7阵营各1)+ gold11 + 无 target → 旧 `_saving_for_interest`(gold<50 + 满 + 健康)堵死**全部非 target 买** → 无 target 全堵 → **buy0** → 永不集中 → 永无 emergent target → 死循环(D-122 emergent 假设 L1 集中化买驱动收敛,但 L1 被 _saving 堵了)。旧码把「板位满」当「非战力断档」是**错** —— 板满但散 = 仍战力断档(弱板)。**用户 CLAUDE.md 明定「tempo(战力断档)破息抢节奏」**,但代码只看 hp 不看板强 → 漏了板弱破息 → 死循环。
-- **修法**:`_board_strong = target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC`;`_saving_for_level = ... and _board_strong`;`_saving_for_interest = (... gold<50 + 满 + 健康) and _board_strong`。板弱 → _saving=False → buys 流(reinforce +4 > spread 罚 -8 → 集中现有阵营 → count2 → emergent target → D-138 接管 target 买)。
-- **备选**:① 只改 interest 不改 level —— 不够(_saving_for_level 也堵,match2 两都 True);② 降 emergent 阈值 count≥1 —— 治标(无 target 仍 buy0);③ emergent 改用 shop 可得性选 target —— 更大改(动 select_comp 时机),暂不。**选板强判据**(实现用户明定 tempo 破息,最小补全,不动 target 选择架构)。
-- **状态**:**实现 + 单测绿**(test_plan_d142_tempo_weak_board_buys_not_save:板弱+满+gold<50+无target → 买 reinforce 非 buy0;55 cw_decisions 测试全绿无回归,ruff 净)。**待 match3 验证**(重启加载,看 emergent target 是否触发 + bot 集中 + 存活)。这是 unblock D-138/D-141 验证的关键(无它 bot buy0 到死,永不 target)。· D-122(emergent)/ D-67(经济)/ CLAUDE.md tempo / cw_decisions._saving:542-555 / task#97
-
----
-
-## D-141 (2026-08-08) maybe_pivot 信号3 bug:保命转 0-foundation comp(D-65 修不完整;本局首要败因,日志确认)
-
-- **决策(确认 bug)**:maybe_pivot 信号3(保命,HP<0.75×阈)在**无 easy comp 有 board progress** 时,fallback `pool = with_progress if with_progress else easy` → 选**最快 easy comp(哪怕 0 board progress)**。**转到一个 board 完全不支持、无法成型的 comp = 必死**。修法:**信号3 绝不转 0-foundation comp** —— 无 easy comp 有 progress 时,要么**保持当前 target**(若它有 progress,即便 medium)要么选 **form_progress 最高的 comp**(最接近成型),而非最快 easy 的 0-progress。
-- **为什么(日志+代码双确认)**:干净局 `[cw-pivot] p=1 r=8 hp=20<30 信号3保命 巡击青雀->DOT队`。r8 board={'追击':2,'巡海游侠':1,...}(巡击青雀 medium **有 progress**)被 `easy=[c for c in candidates if form_difficulty=="easy"]` 排除;无 easy comp 有 progress → with_progress 空 → pool=easy → fastest=DOT队(board **0 持续伤害**)→ 转 0-foundation DOT → r8-9 无法成型 → boss 1HP 险过 → plane2 HP1 输。**D-65 注释自承**「hp1 切 DOT队 board 无持续伤害→死,该优先 board 有 progress」,但 fallback 仍漏 0-progress easy comp —— **D-65 修法不完整**。
-- **修法设计(待实现,策略锁内)**:`maybe_pivot` 信号3 branch:① `with_progress` 非空 → 现行(最快 easy w/ progress,OK);② `with_progress` 空 → **不 fallback 到 0-progress easy**;改为:若当前 target 有 progress(form_progress(target)>0)→ **return None(保持 target)**;否则选 **all candidates 里 form_progress 最高的**(最接近成型,不限 easy)。核心:0-foundation comp 永不作为 pivot 目标(转过去必死,不如留有 progress 的)。
-- **备选**:① 信号3 只在 target 无 progress 时才考虑 easy fallback —— 部分修(target 有 progress 时保持,但 target 无 progress 时仍可能转 0-foundation);② 删除信号3 保命 pivot(让信号1/2 处理)—— 退回 D-40 前 churn 问题;③ 信号3 优先 current target progress(本设计)。**选 ③**(治本:0-foundation 永不转)。
-- **状态**:**已实现 + 单测绿**(cw_comps.maybe_pivot 信号3 改:无 easy comp 有 progress + target 有 progress → return None 保持;target 无 progress → 旧行为最快 easy,不破坏空板 case;test_maybe_pivot_d141_no_easy_progress_keeps_target)。配 D-139 Fix B(deploy no-progress 早停)。102 cw 测试绿,ruff 净,server 重启加载。**干净 match 2 验证中**(看 pivot 决策迹是否保持 comp + 存活)。**本局首要败因**(比 D-140 bond 成型更致命)。· D-65 / D-40 / cw_comps.maybe_pivot:632-652 / task#97
-
----
-
-## D-140 (2026-08-08) D-138 干净局验证:buy 修复生效,但 bond 不激活 → 必要不充分(待查 merge vs deploy)
-
-- **决策(验证结果)**:D-138(spread-exempt-target)**行为级确认生效** —— 干净 fresh match r2-4:bot 买 target 阵营卡(r2 追击×2)+ **shop 无 target 时 Refresh 找到再买**(r3 刷2次→买追击/赛飞儿),vs D-136 buy0。**但 board[追击] 卡在 1 从 r3→r7**(买了 3+ 追击卡仍 1)→ 巡击青雀 bond 激活不了 → 弱板 → HP 80→46(@r6,~−8/轮崩溃)→ 趋势必输。**D-138 修了「买」但 bond 不激活 = 必要不充分**。
-- **为什么(bond 不激活两假设,待查)**:① **merge(cw_state._merge_bench 已证实机制)**:3 同名同星 → 合 1 star+1 单位 → bond 计数(单位数)不涨。bot REINFORCE_BONUS(+4)奖买「已在 board 的阵营」任意卡(含同角色 dup 飞霄)→ 买 dup → merge → board[追击] 不涨。激活 bond 需**多个不同 target 角色**(飞霄+赛飞儿+灵砂)非同角色升星。② **deploy/bench(对齐 D-139)**:买的 target 卡可能留 bench(deploy cap 问题未 deploy)→ bond(deployed-only)不计 → 同样 board 不涨。两假设需 deployed 角色详情(middleware/SIFT)区分。
-- **下一步(策略,锁内)**:buy delta 区分「新 target 角色(涨 bond 计数)」vs「dup target 角色(升星)」—— 平衡(diversify 激活 bond + 适度 star-up);或修 deploy 确保 target 卡上场(D-139 cap 修后验)。**先验明 merge vs deploy 哪个主因**(下个干净局看 deployed 角色列表),再定修法。非盲改。
-- **备选**:① 纯加 bond-count bonus 到 buy delta —— 治标(仍可能买 dup);② 改 comp 定义(bond 阈值)—— 不治本;③ 先修 deploy(D-139)排除 H2 再判 H1 —— 顺序合理(排除一个变量)。
-- **状态**:验证中(match r7 趋势输,等 match-end 总经济/阵容价值数据确认)。D-138 保留(修对了 buy)。D-139 deploy 修(排 H2)+ buy diversity(排 H1)是下两步。· D-138 / D-136(buy0)/ cw_state._merge_bench / task#97
-
----
-
-## D-139 (2026-08-08) deploy cap 真 source = paddle「X/Y」Y(非 level;rect 待修)
-
-- **决策**:DeployBench `cap_remaining` 从 **level 估** 改 **「区域-部署数」paddle Y 真值**。实机 cap≠level(round1 起步 cap=3「0/3」、confounded-match lv6 cap=5「5/5」)。旧 `cap_remaining=level-deployed` 高估 → board 已满仍试拖全 bench(9 角色×~10s 全失败,~90s/轮纯浪费;retry-stick 0)。
-- **为什么**:confounded-match round1-9 实跑日志:`cap_remaining=1(lv=6 deployed=5)` + `occupied(SIFT) front={1,2,3} back={1,2}`(board 实满 5)→ 试拖 9 bench 全「槽满/拖失败」。paddle「5/5」证实 cap=5 非 6。cap 高估 1 → 循环不早停(`dragged>=cap_remaining` 永不满足,dragged 恒 0)→ 全 bench 试遍。cap 正确(=5,remaining=0)→ 循环立即 break,零浪费。**D-134①(deploy cap≠level)实锤**。
-- **修法(2 部分)**:① `cw_observation` 抽 `_read_deploy_paddle` 返 (X,Y)(正则旧 `(\d+)/\d+` 只取 X 丢 Y → 改 `(\d+)/(\d+)`)+ `read_deploy_cap`(Y)+ `read_deployed_count` 改调 helper(✅ 6 测试绿,ruff 净)。② `deploy_bench` cap_remaining 用 paddle Y(level fallback;paddle 读不到退旧行为,无回归)。**遗留**:`区域-部署数` rect `[790,185,1060,240]` y 只到 240,但 paddle 实际 y203-284(round1「0/3」@843,203 / lv6「5/5」@846,207)→ crop 截半 paddle → OCR None → 现 fallback level(D-139 暂 no-op)。**rect 待改 [800,200,1060,295]**(全包 paddle)+ 分屏 yml 改后 **regen `_od_merged.yml`**(merged 是加载源,memory screen-info-merged-yml)+ 重启 + 验。下轮做。
-- **备选**:① no-progress 早停(连续 K 次 deploy 失败即 break)—— band-aid 不治本(cap 仍错),且 row-pref 边缘(同排满另排空)误判;选 paddle 真值治本。② cap=level-1 公式 —— 2 样点(lv4→3、lv6→5)不可靠,不如读真值。③ 信 SIFT occupied 数 —— D-123 证 SIFT 占位 false-negative(显2实4),不可靠。
-- **状态**:obs reader + deploy_bench 改完(✅ 单测),paddle rect 修正待下轮(需 regen merged + 重启)。D-138 同干净局验证中。· D-134①(deploy cap≠level)/ deploy_bench.cap_remaining / cw_observation._read_deploy_paddle / task#97
-
----
-
-## D-138 (2026-08-08) buy0 真修法:_concentration_delta target 阵营免 spread 罚(撤 D-137 死区 roll)
-
-- **决策**:**buy0 真因 = `_concentration_delta` 对新 target 阵营也 -8 spread 罚** → target 卡 buy delta 负 → 不买 → comp 永不深成型。**修**:`_concentration_delta` 加 `target_comp` 参数,**target 阵营卡(faction∈target.factions 或 name∈core_chars)免 spread 罚**(深化 target 非 spread;off-target 新阵营仍罚)。**撤 D-137 死区 roll**(review 证实打错层 + 缺 _saving_for_level 守卫 + post-roll greedy 死代码)。
-- **为什么**:clean-context review 子agent + validation round3 数据共同定位。validation round3:`target=DOT队` + shop 有 target 卡 **减益/椒丘**(DOT 阵营)+ board 已 4 阵营 → 旧逻辑 -8 罚 → buy delta 负 → plan=[]。**shop 明明有 target 卡却不买** → 真因不是「无 target 卡」(死区 roll 的前提),是 spread 罚**不区分 target/off-target**(连 target 新阵营也罚)。target 阵营是想要的,新 target 阵营深化 comp 非 spread。
-- **review 发现处理**(clean 子agent,4 点):① 死区 roll 缺 `_saving_for_level` 守卫(mid-game 会抽干升级基金)→ **撤**(打错层,不需守卫)② D-137 文档与实际转向不同步 → **本 D-138 修** ③ post-roll greedy 死代码(simulate 不换 shop)→ **撤** ④ buy0 多因(_saving_for_level 压制 + spread + 死区),spread-exempt 是主体(target 卡不买),死区 roll 是边缘(shop 完全无 target)。
-- **备选**:① 死区强制 roll(撤:打错层 + 抽干升级基金风险)② evaluate fielding 项(D-137 原设计:奖励板满度)—— 仍可作为「未部署 tempo / shop 无 target 卡」的补充,但 spread-exempt 先解决主体(target 卡不买);暂不做,看验证 ③ 改 _refresh_expected_delta roll 估值(review:calibration 无底洞,不选)。
-- **状态**:spread-exempt-target 实现(`_concentration_delta`+target_comp + 调用点)+ 测试(`test_concentration_delta` 加 target-免罚用例 + `test_plan_d137_buys_target_faction_despite_board_spread` round3 场景现买)→ **223 cw 测试全绿**。下一步:重启 server + 验证(跑对局看 target 卡现买 + comp 深成型 + 阵容价值/存活提升)。**遗留**:shop 完全无 target 卡时仍可能 plan=[](tempo/roll/maybe_pivot 升级另议,D-137 fielding 补充可选)。· D-137 / task#97 / cw_decisions._concentration_delta
-
----
-
-## D-137 (2026-08-08) 策略锁解锁(备战①-⑤ 全过)+ buy0 修法设计(evaluate 加 fielding/tempo 项)
-
-- **决策**:**策略锁三解锁全满足** → buy 策略(cw_decisions)改动**解锁**。① 备战权威源①-⑤ 全过(①id_mark/area✅D-133 ②op✅ ③run_op✅D-133/134 ④测试✅ test_cw_decisions ~50 plan 测试 + test_currency_war_shop read 测试 ⑤M=3✅ 集成跑 12+ 稳定 prep cycles)+ ②端到端+观测回路✅D-136 + ③客观指标✅(win/round/HP/阵容价值/总经济)。
-- **buy0 根因精确定位(非 bug,t97 设计内 + 设计缺陷)**:`plan` greedy 只买 `evaluate()` 正提升的卡;evaluate = 阶段加权(羁绊+经济+角色质量)+ target_progress + bench_target,**无 fielding/tempo 项**。under-deployed(deployed<max_units)时买 off-target 填充卡:羁绊不改善 + `_concentration_delta` spread penalty → eval delta 负/零 → 永不买 → 弱板掉血输(t97 committed 拒偏目标卡 + 无填板激励 = 双重不买)。`_saving_for_interest` 只在板满+健康时抑买,under-deployed 时本不 save,但 greedy 仍无正提升买 → 瓶颈在 evaluate 缺 fielding 项。
-- **修法设计(2 部分,读 constant 后修订)**:target_progress 只跟 target 阵营(off-target 买**不**触发 -15 罚),真 blocker 是 SPREAD_PENALTY=8(≥DEPLOY_FACTION_CAP=3 阵营时新阵营重罚)+ economy 掉息(-4)。fielding-only 需 >12 压过 → 量级失衡(vs 其他项 4-15)。故 **2 部分协同**:① **gate `_concentration_delta` 的 SPREAD_PENALTY 于板满**(deployed≥max_units 才罚 spread;under-deployed 填充不罚 —— spread 目的「板满别散」,板不满填板是好事,tempo)② **evaluate 加 fielding 项**(FIELDING_WEIGHT × deployed/max_units,奖励板满度)。协同:under-deployed 填充无 spread 罚 + fielding 正 → greedy 自然买填板;板满+健康才攒息(_saving_for_interest 已有)+ spread 罚防散。即 CLAUDE.md「tempo(战力断档)破息」的 eval 落地。
-- **备选**:① 改 t97 放宽 committed 拒偏目标 —— 治标,破坏 commitment 纪律。② plan-level tempo 硬规则(under-deployed 必买最便宜)—— 不灵活(硬买可能买错)。③ fielding-only(不 gate spread)—— 需 fielding 量级失衡。**选 ①+② 协同**:spread 罚语义精确化(板满才罚)+ fielding 项补 tempo 激励,统一评分层,greedy 自然平衡。
-- **状态**:解锁 + 设计定(2 部分)。下一步:**实现**(gate `_concentration_delta` spread 于板满 + evaluate 加 fielding 项 + 调权重 + tempo 单测 + 跑 50 plan 测试看回归)+ review(核心策略改动)+ 验证(跑对局看板满度/存活/阵容价值提升)。· D-136 / task#97(spread-board)/ cw_decisions.evaluate
-
-> **2026-08-08 根因复核精化(实现前)**:深读 _best_improving_action + run 日志(round6 gold=23/shop 无 target/plan=[])→ buy0 真因 = **死区冻结**:shop 无 target 卡 → 不能买 target;off-target 被 spread 罚(-8)+ _should_deploy 拒 deploy → 不买/买了不上板;roll 蒙特卡洛 delta 负 → 不刷;非 _saving(板不满 deployed<max)但无正候选 → **plan=[] 冻结,comp 永不成型**。**核心杠杆 ≠ spread 罚(只是加剧),是「shop 无 target 时既不 roll 找 target 也不买 tempo」**。且 board OCR = owned(deployed+bench)非 deployed 占位 → fullness gate 必须用 `deployed_count()`(len deployed)非 `sum(board)`。**修法优先级调整**:① **shop 无 target + 非 _saving_for_interest → 允许 roll 找 target(即使 monte-carlo delta 微负;comp 必须成型,不 roll=必输,D-63 意图被悲观 delta/saving 抑制)** ② 再看是否需 spread gate / tempo deploy。下轮**实现 #1**(roll-for-target 死区破冰),不再分析。
-
----
-
-## D-136 (2026-08-08) 端到端完整跑通(回大厅)+ 策略瓶颈确认(buy0 囤金输)
-
-- **决策**:`CurrencyWarRunLoop` 集成跑**完整对局 start→end**(21min):plane1 全 9 回合 + boss(1HP 险过)→ plane2 2-1 **挑战失败**(HP0)→ 结算多页 → **回大厅**。**阶段5 端到端验证实质完成** —— loop 处理 match-end 全链:挑战失败 → 前往结算 → 对局评价 → 下一页 → 返回货币战争 → 3c 回大厅 + on_match_end 清场(`cw_match=None`)。
-- **结果:LOSS @ plane2 r1**。结算:**总经济 88 / 阵容价值 10 / HP 0**。bot 10 回合仅 round1 买 2 张,余囤金 88 不花 → 阵容价值 10 → 必输。
-- **策略瓶颈确认(Stage5,当前最大且明确)**:**买牌逻辑过保守/疑似 bug** —— 多回合 shop 无目标阵营卡时 `plan=[]`(目标纪律不买偏卡),但**连 8 回合买 0 + 囤金 88** 异常(88 金 shop 有 1-2 费卡,即便保守策略也该升级/买填充/刷,不该全囤)→ 阵容不成长 → 输。**非管道问题**(管道全工作端到端验证),是策略决策层(cw_decisions plan/buy)问题。
-- **策略锁状态评估**:②端到端跑通+观测回路 **✓**(本次 run 证实)、③客观指标 **✓**(win/round/HP/阵容价值/总经济)、①权威源画面①-⑤ 全过 **部分**(备战 ②③✓ ①id_mark/area✓;④测试/⑤分支[需 M=3 稳定 run]未做)。**本次 1 次稳定 run(无管道 bug)= ⑤ 的 1/3 样本**。
-- **状态**:集成 + 端到端验证**完整通过**(core mechanics + match-end 全工作)。下一决策点:策略 buy0 是明确的胜负瓶颈 —— 诊断(读 cw_decisions 理解为何 plan=[],bug 还是过保守)是当前最高价值;修需过策略锁(① 权威源画面①-⑤ 全过 or 评估本次端到端是否已满足策略锁精神)。· D-133~135 / task#107 / 阶段4→5
-
----
-
-## D-135 (2026-08-08) 集成跑过 plane1 全程 + boss(1-9)+ 转 plane2 + 策略动态 pivot
-
-- **决策**:`CurrencyWarRunLoop` 集成跑**完整覆盖 plane1**(9 回合 + boss)+ **boss→plane2 过渡** + **策略跨回合动态 pivot**。证明 loop 处理**完整多位面结构**(非只前几回合 / 非单 op)。
-- **证据(实机 A8,~18min)**:① **boss 1-9**「金血忆灵·裁定忘却之形」 fought(战斗中「受到致命攻击,战斗倒计时减少」险情)→ `on_round_end plane=1 round=9 hp_after=1 conf=1.0 comp=DOT队 node=boss` —— **boss 正确 tagged**(node=boss,`round_by_ocr('首领')` 命中),on_round_end 观测回路在 boss 回合工作。② **策略 pivot**:comp **击破流萤 → DOT队**(round6 还是击破流萤,boss 回合变 DOT队;maybe_pivot 跨回合动态换阵,非锁死一套)。③ **plane1→2 过渡**:boss 后进 **2-1**(plane2 round1 备战)—— loop 的结算分支(3/3b)处理了 boss 结算 → plane 推进。④ 集成管道全程机制(buy/deploy/出战/rounds/combat/on_round_end/pivot/plane 过渡)**全工作**。
-- **策略质量观察(Stage5,锁)**:bot **连续多回合买0张**(shop 无目标阵营卡 → 目标纪律不买偏卡)→ 弱板 → HP 掉速加快(r3:-8/r4:-10/r6:-13)→ boss **1 HP 险过**。管道 mechanics 不受影响(验证目标达成);但策略过严不买致弱板,是 Stage5 调优点(买0 是否过严 / 是否该 tempo 买填充)。
-- **状态**:集成验证覆盖 plane1 全程 + boss + plane 过渡 + 策略 pivot —— **阶段4 集成验证实质通过**(core mechanics 端到端工作)。run 进 plane2 继续(可能 plane2/3 全程 或 1HP 后某回合输 → match-end 验证)。· D-134 / task#107 / 阶段4→5
-
----
-
-## D-134 (2026-08-08) 集成管道(CurrencyWarRunLoop)实跑证实 cw_match 跨 op 持久 + 多回合推进(答 D-133)
-
-- **决策**:跑 `CurrencyWarRunLoop`(整局集成入口,`__init__:92` 建 cw_match)**证实 D-133 开放问题**:集成路径 cw_match **跨 op 持久** —— BuyShopCards/DeployBench 在同一 cw_match 下共享状态(cap/tracked_bench/last_state/target 全生效)。单 op(D-133)测不到的跨 op 状态,集成管道里**确认工作**。
-- **证据(实机 A8,round 1-1→1-3)**:① DeployBench `cap_remaining=1(lv=4 deployed=3)` 非 None(D-133 单 op 时 None)+ `board={'银河学者':2,'能量':1,'群攻':1,'持续伤害':1,'命运圣杯':1}` 真值读到 + `target_factions={'击破'}`(策略 update_target 选了「击破流萤」目标阵容)→ cw_match 持久 + 策略层工作。② 回合 1-1→1-2→1-3 推进,战斗自动结算,HP 80→82→84(每回合 +2 回复机制)。③ 出战成功 → 自动战斗(round 3 干净成功;偶 bug#1 flaky 重试成)。
-- **发现(待跟进,非阻塞)**:① **deploy cap ≠ level** —— code `cap_remaining = lv - deployed`(假设 cap=level),但游戏实 cap=3(区域-部署数「3/3」,lv=4-5)→ cap 高估 → 多试 bounce(retry-stick 留 bench,无害但浪费 + 日志误导「槽满/拖失败」)。真 cap 来源待查(可能读区域-部署数 OCR 而非 level;另 level 读取本身不稳:round2 lv=5 / round3 lv=4 倒退 = OCR 误读嫌疑)。② **出战 bug#1 flaky** —— 每回合偶「出战 click 未落地 / 找不到出战按钮」(click 落地时序 + 过渡帧 verify 误判),重试后成功;battle_prep 已 mouse_move 缓解(D-62)但不彻底。
-- **状态**:集成 mechanics(cw_match 持久 + 多回合 + 战斗结算 + 策略选 target)**证实工作**。run 继续长跑端到端(plane1 boss → plane2/3 → 回大厅);完成或卡死时补记。· D-133 / task#107 / 阶段4
-
----
-
-## D-133 (2026-08-08) 阶段4 入口+备战 prep 管道 run_op 实测通过 + 方法论纠正(单 op 不共享 cw_match)
-
-- **决策**:实机 A8 round 1 逐 op run_operation 实测,prep 管道**单 op 逻辑全通过**:① EnterCurrencyWar(大世界→大厅,11s)② StartCurrencyWarMatch(大厅→模式选择→难度确认[切最高职级 A8]→简报 HandleBriefing→投资环境 HandleInvestEnv→备战,42s)③ BuyShopCards(读 state + plan 集中化买 2 + 关商店)④ DeployBench(retry-stick 部署到 cap)。**权威源 obs 读取实机核实正确**:`gold=3 hp=80 lv=4 plane=1 round=1 board={}` + shop 5 牌(阵营+名+费)全读对 + 左羁绊面板部分激活。
-- **方法论纠正(关键)**:`ctx.cw_match` 由 **battle_loop.py:92 创建**(对战循环里),**非** buy/deploy 前 → **逐个 run_operation 跑 buy/deploy 时 `ctx.cw_match=None`**:BuyShopCards 走防御分支(shop.py:153)建**临时 default match 不挂 ctx**(局外不复用)→ 其 tracked_bench_chars/pending_deploys/last_state **随 op 调用结束丢失**;DeployBench 见 cw_match=None → `cap_remaining=None`、无 target。**非 bug,是「逐个 run_operation」验证方式的局限** —— 单 op 各自逻辑验到 ✓,但**跨 op 状态传递(cap/tracked_bench/last_state/pending_deploys)单 op 验证测不到**,那要跑集成管道(battle_loop 建 cw_match)才发生。memory `gameplay-early-verify-op-by-op`(早期逐 op)下一阶段 = 集成验证。
-- **实机游戏知识发现**:① 货币战争**开局有预置角色**(round 1 bench = 4 预置[艾丝妲/黑塔/Saber/赛飞儿]+ 2 买[阿格莱雅/藿藿]=6,lv~4 起步,非空板开局)。② deploy cap = **3**(区域-部署数 OCR「3/3」),与 level(4)不一致 —— cap≠level,待多回合数据确认 cap 来源。DeployBench **结果正确**(满 cap 3,超 cap 角色回 bench 不丢,retry-stick 验 bench count),但 cap_remaining 未生效(cw_match=None)→ 多试 3 次无效 drag(轻微效率,非正确性问题;真管道 cw_match 在则 cap 生效)。
-- **备选**:① 逐 op 验完直接跑 battle_loop 集成 —— 但 battle_loop `#未验证` 需先按 D-128 review(补观测);② 手动建 cw_match 再逐 op —— 绕 battle_loop 但失真(真管道 battle_loop 建,手动建测不到建逻辑)。**选**:逐 op 逻辑已验 ✓,下一阶段 = 集成管道验证(battle_loop review 后跑,验 cw_match 持久 + cap/tracked_bench 生效 + 多回合)。
-- **状态**:prep 管道(入口 4 op + 备战 buy/deploy)单 op 实测通过,权威源读取核实。下一阶段 = 集成验证(battle_loop `#未验证` review → 跑,验跨 op 状态 + combat + 多回合)。· D-128 / 阶段4 / `gameplay-early-verify-op-by-op`
-
----
-
-## D-132 (2026-08-08) task#105 bench/deployed 自跟踪完成(deploy 闭环 + star 修复;sell 漂移接受)
-
-- **决策**:task#105 核心完成。**deploy 闭环贯通**:buy(`mutate_bench_deployed` 同步 tracked_bench_chars + `_merge_bench` 升星,带 star)→ deploy verify(pop tracked_bench_chars → append tracked_deployed,按 SIFT 成功 char_id 匹配保留 buy 正确 star)→ `read_game_state`(seed state.deployed = tracked_deployed + 数量校正对齐 board)。修 D-127 三坏点:star 恒1(buy 带 star+merge)/ append-only(deploy verify 同步)/ rebuild 无 char_id(seed tracked_deployed 身份)。
-- **为什么**:D-127 诊断评分地基坏(bench/deployed 身份+星级假信号)→ concentration/char_quality 在假信号上算 → #97 调权重 7 次无效。task#105 让 bench/deployed 身份+星级准确(buy/deploy 精确同步)。3 轮 clean review(D-129/130 设计 + buy+seed 接线 + step⑥ 数量校正)**均无必改**,222 cw 测试绿。
-- **sell 漂移接受(D-131,review 确认合理)**:deployed 锁定不可 sell(tracked_deployed 只增不减,只 deploy verify append);sell 只漂移 bench(`_handle_bench_full` 位置式卖不知身份),但 bench 靠 buy 每次 mutate 校正(持续刷新)。deployed 不受 sell 漂移影响。
-- **状态**:核心完成,222 测试绿,review(step⑥)无必改。**剩余 frontier**:① tracked_bench(旧 list[str])+ `_tracked_bench_chars` 死写退役(review buy+seed 建议②,双写过渡安全,TODO 清理);② step⑥ 数量校正抽纯函数单测(可测性,TODO)。**实跑验证待游戏**(端到端跑通看 concentration/char_quality 信号改善 + 是否治 #97 spread)。· task#105 / D-127~D-131 / #97
-
----
-
-## D-131 (2026-08-08) 校正 D-130 task#105 边界:read_bench_chars 只 4 角色可靠(D-75)+ sell 位置式根本漂移
-
-- **决策**:核实 `cw_identity_obs` 后校正:① `read_bench_chars` **非可靠全校正** —— D-75 实测脸近景库只对 4 个面部独特角色强命中(佩拉/黑塔/Saber/藿藿),配饰/货币战争变体待核 → D-130 step②「read_bench_chars 重建 session.bench」**不可靠**,只作部分校正(4 角色可信),非 ground truth。② sell **位置式根本漂移** —— `_handle_bench_full`(shop.py:262)卖 bench-1/2/3 物理位置(drag 到出售区),**不知卖了谁身份** → tracked_bench(buy 顺序)与物理位置对不上 → sell 后 bench 身份必漂移,task#105 无法精确同步。③ 架构确认(cw_identity_obs docstring):bench/deployed 默认 **bot 跟踪**(mutate),SIFT reads 是**旁路**(不进 read_game_state,避双写)—— 故 task#105 = 完善 bot 跟踪,非改用 SIFT。
-- **task#105 能修(显著改善)**:buy 带 star+merge(修 star 恒1)+ deploy verify 分支同步(身份从 SIFT 成功 char_id)。**不能完全修**:sell 后 bench 身份(位置式卖 + SIFT 4 角色限制)→ 接受漂移(SIFT 部分校正 + board 计数校正 deployed)。
-- **为什么**:D-130 step② 基于 review「read_bench_chars(D-123)可靠」,但核实 D-75 只 4 角色可靠 + docstring 明确 SIFT 旁路。先核实避免基于错误假设实现(软门)。
-- **状态**:task#105 scope 收窄确认。实现按此:buy/deploy/star 精确同步(显著改善 concentration/char_quality);sell 漂移 = 剩余 frontier(根本限制,非 task#105 完全解)。D-130 step② read_bench_chars 改「部分校正」非「重建」。· task#105 / D-75 / cw_identity_obs docstring
-
----
-
-## D-130 (2026-08-08) 补充 D-129 task#105 实现:deploy SIFT 同步 + bench 身份校正 + mutate 纯函数 + sell 执行点(review 必改)
-
-- **决策**:据 clean review(第2次,2026-08-08)修正 D-129 实现细节(设计方向不变 —— 仍是复用转移逻辑接执行点):
-  ① **deploy 同步**:`deploy_bench` 不走 tracked_bench idx,用 SIFT `read_bench_chars` + retry-stick(D-123)。在 **verify 分支(stuck=True,deploy_bench.py:214)** 按成功的 `bc.slot`/`char_id` 同步 session.bench(pop)+ deployed(append)。SIFT 返 `char_id="?"` 时身份漂移不可全防 → 靠 board OCR 校正**计数**(非身份)。
-  ② **bench 身份校正**:D-129 只提 board 校正 deployed;补 —— 每轮 deploy/sell 后用 `read_bench_chars`(bench SIFT,D-123 实测可靠)重建 session.bench,双重防漂移(bench 身份无别的 ground truth,D-84)。
-  ③ **抽 mutate 纯函数**:转移逻辑抽 `mutate_bench_deployed(bench, deployed, action)`,**别直接调 `simulate(state, action)`**(它操作整 GameState copy = 前瞻语义;执行点只需 bench/deployed 转移)。
-  ④ **sell 执行点**:`SellBench` 当前 plan emit 但 `shop.py:196` 跳过不执行 → step③ 接 **`_handle_bench_full`(位置式卖)** 执行点,非 SellBench;别混。
-- **为什么**:review 独立核实 deploy_bench.py 后指出 D-129 低估了 deploy 同步复杂度(SIFT 识别非 idx 移动)+ 漏 bench 身份校正 + 复用 simulate 语义错 + sell 执行点不清。这些是实现正确性硬点,不修则半成品或漂移。
-- **状态**:设计定稿(D-129 方向 + D-130 实现 4 修正)。**实现 scope 钉死(下轮 fresh)**:① `cw_state` 抽 `mutate_bench_deployed` 纯函数;② `cw_strategy` session.bench/deployed 持久(`tracked_bench list[str]`→`list[BenchChar]`);③ `shop` buy 接 mutate+merge;④ `deploy_bench` verify 分支接 mutate(DeployMove);⑤ `_handle_bench_full` sell 接 mutate;⑥ `cw_observation` seed session.bench/deployed + `read_bench_chars` 重建 + board 校正;⑦单测(mutate 序列 + 校正)。· task#105 / D-129 / review-2026-08-08(第2次)
-
----
-
-## D-129 (2026-08-08) task#105 bench/deployed 自跟踪状态机设计(评分地基修复,纯逻辑不依赖画面)
-
-- **决策**:把运行时 bench/deployed 跟踪从「`tracked_bench: list[str]`(名字,append-only,star 恒1)+ `rebuild_deployed_from_board`(无 char_id)」升级为「session 持久 `bench/deployed: list[BenchChar]`,真实 buy/deploy/sell 执行后用 **`simulate` 同款转移**同步」。**复用 `cw_state.simulate`/`_merge_bench`/`_card_to_bench`**(已正确,仅前瞻用,现接到运行时);OCR `board`(阵营计数真值)作 ground truth 校正(防跟踪漂移)。
-- **为什么**:D-127 诊断评分地基坏 —— `tracked_bench` star 恒1(只存名字)+ append-only(sell/merge/deploy 不同步)+ rebuild 无 char_id → `concentration`/`char_quality` 在假信号上算 → D-120~126 调权重 7 次无效。**`simulate()`(cw_state.py:271)已正确实现转移**(buy→bench+merge / deploy→deployed+board / sell→pop+refund / level_up),但只用于前瞻拷贝;运行时真实动作没同步持久状态 → 修复 = 把 simulate 转移逻辑接到真实执行点(shop.buy / deploy_bench / sell)。纯逻辑,不需画面/游戏(D-84 已证 SIFT 屏幕识别备战半身不可行 → 身份只能 bot 跟踪)。review(2026-08-08)建议:可与画面验证并行,锁的是策略**权重调参**不是**地基修复**。
-- **备选**:① 每轮全 OCR 重建 bench/deployed —— D-84 证 SIFT 备战半身不可行,身份只能跟踪;② 只修 star(buy 带 card.star)不修 deploy/sell 同步 —— drift 更糟(deploy 走的角色残留 tracked_bench → bench 虚高),D-127 要求 buy+deploy+sell 一起;③ 用 `read_deployed_chars`(SIFT)补 deployed 身份 —— D-75 脸近景库对半身强但备战是小图标,不可靠;④ 新造独立状态机 —— 重复 simulate 逻辑,双源易漂移,选复用。
-- **状态**:设计定,待实现(下轮 fresh context 做)。子步骤:① `tracked_bench: list[str]`→`list[BenchChar]` + buy 接 `_card_to_bench`+`_merge_bench`;② deploy 同步(bench→deployed,deploy_bench 执行点);③ sell 同步(bench.pop,_handle_bench_full 执行点);④ board OCR 校正(阵营计数 ground truth 对齐 deployed);⑤ 单测(buy/merge/deploy/sell 序列 + board 校正,纯逻辑不需游戏)。⚠️ buy+deploy+sell 必须一起上(否则半成品 drift 比现在更糟)。· task#105 / D-127 / `cw_state.simulate` / `cw_strategy.StrategySession` / review-2026-08-08
-
----
-
-## D-128 (2026-08-08) 阶段4 定位校正:验证现有 # 未验证 代码,非从零重写(重走=验证非删除)· 阶段4
-
-- **决策**:阶段4 对现有 cw 代码走**逐画面 review 验证**(①建档核实 + run_op ②③实测 + 测试④ + 分支⑤,通过删 `# 未验证`),**不从零重写 op 骨架**。分两层:① entry/handler 骨架 + screen_info + obs 读取 = 验证现有;② 策略决策层(cw_decisions/cw_strategy/cw_comps 评分/选择/权重)= **锁住**,等画面①-⑤ 全过 + 端到端 + 客观指标(与 D-127 冻结策略权重 + 防偏离门策略锁一致)。
-- **为什么**:重走说明「进度全废弃」= 废弃**进度记录(PROGRESS_*.md)+ 可信度基线**,非删代码(working tree + commit 在,标 `# 未验证` 待逐画面 review)—— 重走方法论本就要求"验证现有 + 删注释"(D-82 已实践「删 # 未验证」)。实据:① `app.py` 已实现设计.md 完整 op 链(Enter→Start→RunLoop)+ 中间态接手(D-26 resume);② `start_currency_war_match.py` 全流程 screen_info area 化(D-103/42,替全屏 ocr 根治 LCS 误匹配)+ 出口契约 `_at_prep`(检测"购买经验"= 到备战)+ `MAX_ADVANCE_STEPS` 防死循环 + 日志;③ 15 个 screen_info yml 全建(entry + 全 handler 画面),简报含信息 area(词缀行/首领行 = 词缀/boss 权威源已覆盖);④ /loop 护栏期(D-82~127)已持续修复 + 删 # 未验证。从零重写 = 丢弃这些已实跑 + 修过 bug 的积累,违背"验证非盲信/非盲重写"。
-- **备选**:① 从零重写全部 —— 浪费 entry 骨架已实跑 + 已修 bug 积累(D-42/57/103 等);② 全盘信现有不 review —— 违背 `# 未验证` 待 review + 重走教训(早期 D-54~81 盲操作不可信);→ 选逐画面 review 验证(中间)。**策略层例外**:地基坏(D-127 `tracked_bench` star 恒 1 + deploy/sell/merge 不同步 = 假信号)需重做状态机(task#105),非简单 review —— 故策略层锁住另作,不在本决策的"验证现有"范围。
-- **状态**:采用。指导阶段4 走法:逐画面验证现有 `# 未验证` 代码 + 补建档缺口(webp fixture / id_mark 测试 / 信息 area 完整性核实)+ run_op 实测,通过删 `# 未验证`;策略决策层锁住等前置。· 阶段4 / 重走说明 / 防偏离门 / task#105
-
----
-
-## D-127 (2026-08-08) 观察数据 gap 审计 + bench 自跟踪优先(评分地基修复,冻结策略权重)· §13
-
-- **决策**:① 审计策略各决策点的观察数据需求 → 发现 bench/deployed **已建模但坏**(`tracked_bench` star 恒1 + append-only deploy/sell/merge 不同步 + `rebuild_deployed_from_board` 无 char_id),非 OCR 缺失;② 优先补 **bench 自跟踪**(纯逻辑状态机:buy+merge 升星 / deploy 回报身份 / sell+board 校正),先于一切策略调整;③ 在地基修复前**冻结策略权重调整**(避免重蹈 D-120~D-126 在坏地基上调);④ gap 审计并入 `13_input_model.md` §13.11(单一源,非新文件 —— 初稿撞 `12_comp_commitment` 编号且与 13 重叠,删并)。
-- **为什么**:用户挑战「小修小补会变好吗」→ 复盘 D-119~D-126(8 commit,一半写了又改:120↺122 / 121→125 / 124→125)结论 = ① 没有可靠测量(单局噪声>信号,无反馈环)② 执行/策略耦合 ③ 策略结构(因子叠加)不可调。审计落地后找到更深的隐藏根因:**评分地基(bench/deployed 身份+星级)坏** → concentration/char_quality 在假信号上算 → #97 调 7 次权重无效(I28「策略对执行坏」的评分层版本)。能 bot 自跟踪的不靠屏幕 OCR(D-84 tracked_bench 已是此路),升级状态机即可,低风险高收益。**先修地基再谈策略**(用户认同方向:审视缺哪些观察)。
-- **备选**:① 接观测回路(掉血/胜负)先 —— 「观测驱动」命脉但依赖结算屏画面建档(§13.9,`on_round_end` 现不被调用),工程 uncertain,不阻塞 bench 修复,列 #2;② 直接重写策略为决策树 —— 在坏地基上重写还是瞎,先修地基;③ 降难度 A5/A6 建基准 —— 用户改用 **A8-1**(真实目标最温档,信号特征一致,用户已选)。
-- **状态**:采用(审计并入 13 §13.11;bench 自跟踪 = task #105)。测量地基优先序:bench 自跟踪(#1 纯逻辑)→ 观测回路结算屏(#2 需画面建档)→ 节点候选身份(#3 需模板库)。用户已选 A8-1 作基准。· §13.11 / `13_input_model.md` / I29 / task#105 / A8-1 基准
-
----
-
-## D-126 (2026-08-08) shop-history 长期可得性(select_comp 跟 shop 走,替 shop_supply 单回合短视)· §02
-
-- **决策**:① `StrategySession.shop_faction_seen`(faction → 跨回合累积出现次数);② `update_target` 每回合记录本回合 shop 阵营;③ `select_comp` 加 `_shop_history_factor`(comp 核心阵营在 shop 历史 avg≥2 → ×1.2;从未出现 → ×0.7),经 `ScoreContext.shop_faction_seen` 传入。
-- **为什么**:concentration 是 deploy 修复(D-123/125)后的剩余 frontier(board spread → HP 崩)。根因之一 = **shop_supply 单回合短视**(D-120 选 unacquirable target,如 列车同行 不在 r1 shop)→ 不 acquire → spread。人玩 auto-chess「跟 shop 走」—— commit 到**反复出现**的阵营(可成型),非单回合随机。shop-history 用跨回合累积判**长期可得性**(替单回合 shop_supply 短视)→ 选反复出现的可成型 comp → target 可 acquire → 减 spread。对齐「运行时按场面灵活选」。
-- **备选**:① 加强 L1 REINFORCE/SPREAD(单维调参,扛不过 shop 随机);② shop_history 用于 buy(delta 加分,非 select)—— 后续可加;③ 接受 CW 硬核(deployed-lock)—— 不选。
-- **状态**:采用。ruff 净;114 cw 测试绿(+1 新 `test_shop_history_factor`)。**live 验待**:fresh match → target 是否跟 shop-history 走(选反复出现的可成型 comp)?board 减 spread?HP r3 不崩?· T#97 concentration frontier / `_shop_history_factor` / `ScoreContext.shop_faction_seen` / `update_target`(记录)
-
----
-
-## D-123 (2026-08-08) deploy retry-until-stick(SIFT 占位 false-negative → 不靠 SIFT 选槽,deploy→verify→试下槽)· §12
-
-- **决策**:`_deploy_by_identity` 主 deploy 循环改 **retry-until-stick**:每角色按 pref 排顺序试槽,drag→**verify(bench count 降 = 角色真上 board)**→ 没中试下槽。不靠 SIFT 占位(`_dep_sift`/`_find_empty_slot` 降为 best-effort 跳过已知占)。
-- **为什么**:🎯🎯🎯 **2026-08-08 controlled + log CONFIRMED** —— deploy-stick 失败 = **SIFT 占位检测 false-negative**:`occupied(SIFT)` 显 2 但 board 实际 4 角色(stage 角色 ≠ character_cw_portrait 立绘模板,SIFT 漏读)→ `_find_empty_slot` 选占槽 → 游戏拒拖 → 角色回 bench → board 卡 spread → comp 永不成型。**controlled 验**:手动 drag bench→空槽 **STICK**(群攻 1→2)→ drag 机制正常,占位检测坏。4 次 T#97 策略调(D-120/121/122)全败 = 一直调对的策略层,执行层 SIFT 占位坏没碰(I28 实例)。
-- **verify 选 bench count**:`read_bench_chars`(bench SIFT 可靠,检 bench 角色)→ 角色真上 board 则 bench count 降。非 stage SIFT(不可靠)。manual 验 bench SIFT 检 4 稳。
-- **备选**:① CV 空槽判(empty vs occupied;variance 不行背景变,需 empty-slot 模板 / 更好特征)—— 复杂,留后续;② 改进 stage SIFT 模板(采 stage 姿势)—— 工作量大;③ retry-until-stick(本选)—— 最简 + 不靠占位检测。
-- **状态**:采用。ruff 净 + import OK。**live 验待**:fresh match → deploy log 显 `retry-stick ✓` → board 真集中(target 阵营 count 深堆)→ comp 成型 → HP r3 不崩?多局(≥3)。· T#97 真根因(SIFT 占位 false-negative)/ `_deploy_by_identity`(retry-until-stick)/ controlled 验(2026-08-08 手动 drag 空槽 stick)/ I28
-
----
-
-## D-122 (2026-08-08) concentrate-first / target-emergent 架构( holistic 重设计,治 spread 根因)· §02/§12
-
-- **决策**:推翻「pre-select target → force」架构(D-120/121 单杠杆 patch 连败的根因),改 **concentrate-first + target-emergent**(人玩 auto-chess:跟 shop 走、concentrate、comp emerge)。4 层:
-  - **L1 buy 集中**(cw_decisions):买牌 delta 加 `_concentration_delta` —— card.faction 已 collect(board+bench)→ +REINFORCE_BONUS;新阵营 且 已 ≥DEPLOY_FACTION_CAP(3)→ −SPREAD_PENALTY(防 spread-lock)。
-  - **L2 deploy cap**(cw_decisions `_should_deploy` + deploy_bench `_deploy_by_identity`):只 deploy target 阵营 OR 集中阵营(count≥2);off-target 单张留 bench(可 sell);board 空+无集中 → tempo seed(deploy ≤2)防空板。
-  - **L3 emergent target**(default_strategy `update_target`):target 在 bench+board 有阵营 **count≥2 前**恒 None(解 target-buy 错配:target r1 空板预选 → 选 unacquirable comp);信号出现 → select_comp 选 board-leader comp(shop_supply≥0.3 board-back 可得)。plan 加 `reactive` 参数(emergent 授权 target=None,不内部 select_comp)。
-  - **L4 ↺ D-120**:select_comp r1 shop_supply 中性化**推翻**(它选 unacquirable target);emergent 下 select_comp 只在 board 有信号时调,不需 r1 中性化。
-- **为什么**:D-120/121 live 验仍 spread —— 真根因 = **target-buy 错配**(target r1 空板预选,早于 buy → 选易成型但 unacquirable comp → 不 acquire → off-target deploy → spread → deployed-lock 永久)。**target pre-select 与 deployed-lock 不兼容**(deployed-lock 下 r1 spread 不可逆)→ 必须反转为「r1 起集中(buy+deploy)→ target emerge from board」。子agent adfe23995f04ec49f 整体设计。I27(单杠杆 patch 连败 → holistic 重设计)。
-- **备选**:① board-management(sell deployed)—— 否(deployed 不可 sell,D-121 vision 确认);② 纯 acquire-side target —— 否(仍 pre-select);③ shop 历史 —— 后续 P1.5。
-- **状态**:采用。ruff 净;**217 cw 测试绿**(删 D-120 测试 + 加 emergent 测试 + 修 2 drought 测试加 board 信号)。**live 验待**:fresh match → board 收敛 ≤3 阵营?target emerge + 深堆?HP r3 不崩?进 plane2?多局(≥3)均值判。· T#97 / `_concentration_delta`/`_should_deploy`/`update_target`(emergent)/`plan`(reactive)/`_deploy_by_identity`(concentration)/ REINFORCE_BONUS·4.0 / SPREAD_PENALTY·8.0 / DEPLOY_FACTION_CAP·3
-
----
-
-## D-121 (2026-08-08) deploy target-only(off-target 留 bench 可 sell)—— deployed-lock 确认 → 防 spread · §12
-
-- **决策**:`DeployBench._deploy_by_identity` 当 target_factions 有值且有 target 角色时,**只 deploy target 阵营角色**(off-target 留 bench,经 `_maybe_sell_for_interest` 卖);**跳过补剩余**(不 deploy off-target 填槽)。无 target 时退回全 deploy(防空板全掉血)。
-- **为什么**:🔴 **deployed-lock 确认(2026-08-08 vision 实测)**:click deployed char(银枝)→ 详情面板(name/role/阵营/技能/装备推荐)**无「出售」按钮**;+ D-108 drag deployed→出售区 失败 → **deployed 角色 = 真锁,无任何 sell 途径**。故 off-target 一旦 deployed **永锁占槽** → target 进不去 → comp 永不成型(spread 根因;board-log:r2 board 6 阵营各1 卡死)。**spread 永久不可恢复**(board-management sell-deployed 路 **死**)→ 必须**防 spread**:不 deploy off-target(留 bench 可 sell)。早期 target 少 → 牺牲 tempo(用户框架「前期可适当卖血保经济」)。配 D-120(target 选易成型 common comp → 早有 target 可 deploy,非空板)。
-- **备选**:① board-management(sell deployed off-target + redeploy target)—— **否(deployed 不可 sell,实测)**;② buy-side 防 spread(不买 off-target)—— 补充但 deploy-side 更直接(锁发生在 deploy);③ cap off-target 数(留 reserve 槽)—— 复杂,留后续 tuning。
-- **状态**:采用。ruff 净 + import OK。**live 验待**:fresh match(D-120+D-121 从 r1)→ board 阵营收敛 ≤3 / target 深堆 / off-target 在 bench 被 sell / HP r3 不崩?多局(≥3)均值判。· T#97 / `DeployBench._deploy_by_identity`(target-only + _deploy_offtarget flag)/ deployed-lock(2026-08-08 vision 确认)
-
----
-
-## D-120 (2026-08-08) select_comp r1 shop_supply 中性化(治 target 选错 → spread → 永不成型)· §02/§03
-
-- **决策**:`select_comp` 在 **r1 + 空 board** 时,`shop_supply<1.0` 的 comp 不再 ×0.3 碾压,改中性 0.5(×0.65);r2+ / board 有阵营 → shop_supply 恢复硬判(真实可得性信号)。让 r1 的 target 由 **intrinsic formability**(formation_cost + difficulty + strength)决定,非单回合 shop 噪声。
-- **为什么**:board-log ground truth(2026-08-08)—— bot 选 **击破流萤(hard)** 纯因 r1 5 张随机 shop 含「击破」(supply=1.0),易成型 comp supply=0 → ×0.3 被碾压 → 击破流萤 以 ~2× 优势赢。但击破后续回合供不上 → prefilter 放行 off-target → board 6 阵营 spread → **deployed-lock 永不成型**(D-108 实锤:deployed 不能 undeploy)→ HP r3 崩。**r1 shop 是 5 张随机样本,「本回合无核心阵营」≠「长期不可得」**,×0.3 让噪声一票主导 target。deploy 已验工作(D-118b + board-log)→ 根因在选 target,非 deploy。
-- **核验(code-level)**:r1 shop=击破 + 空 board → 旧选 击破流萤;新选 **列车同行**(易成型,sum 4)。r2+ 同 shop → 仍选 击破流萤(supply 硬判,回归覆盖)。
-- **备选**:① 加强 `_formation_cost_factor` 权重 —— 否(单维调参,扛不过 ×0.3 碾压);② shop_supply 用跨回合历史 —— 否(state 改动复杂,r1 中性化已解最痛);③ COMMIT_ROUND 2→1 —— 否(r1 commit 太激进,pivot 无法纠);④ **aux prefilter(flexible-chars stopgap)** —— **缓**(子agent 提案依赖 `Comp.shared_chars/transition_chars`,但 Comp **无此属性** → 不可行;需先建模。主改单独应有效:易成型 comp 如 列车同行 阵营常见 → shop 供 → prefilter 找到 target → 不 spread)。
-- **状态**:采用。217 cw 测试绿(+1 新 `test_select_comp_r1_neutralizes_shop_supply_noise`)。**live 验待**:fresh A8 match → r1 选易成型 comp?board 收敛(target 阵营 count 深堆,≤3 阵营)?HP r3 不崩?多局(≥3)均值判。· T#97 / `select_comp`(_supply 中性化)/ 子agent a38f52c8d92d2b6ff 提案
-
----
-
-## D-119 (2026-08-08) 祈愿试炼 overlay handler(事件长尾:节点级 quest 选择 overlay 挡备战)· battle_loop 0h
-
-- **决策**:新增 `HandleWishTrial` op + `货币战争-祈愿试炼` screen_info(`标识-祈愿试炼` id_mark + `按钮-确认选择`),`battle_loop` 加分支 **0h**(备战分支 1 前):检测 `标识-祈愿试炼` → 点第 1 张试炼卡 `(660,340)` 选中(mouse_move+click,bug#1 缓解)→ `按钮-确认选择` → 验 overlay 关。
-- **为什么**:2026-08-08 实跑 bot 卡此 overlay **68min**(overlay 叠备战、购买经验透出命中 → 备战分支(1)误派 `BattlePrepCycle` → shop 被遮失败 → 死循环)。祈愿试炼 = **节点级 quest 选择**(选 1 试炼 → 完 objective 如「累计刷新10次」「难度3+遭遇节点战斗」→ 得奖励 金币/阵营星徽),出现在特定节点前(再临仪式-二/遭遇战)。**ESC 不关**;实测交互(手动清 overlay 验):点卡身 → 选中(金色边框 + 「请选择」提示消 + 确认选择转亮)→ 点确认选择 → overlay 关回备战。
-- **备选**:① ESC 关(否:实测不关);② 找关闭/收起按钮(否:无独立关闭,「收起」是左阵营面板折叠非 overlay 关);③ 策略化选试炼(OCR 各卡 objective+reward 按易完成度/契合 comp 选 —— **TODO**,MVP 取第 1 张,「累计刷新10次」bot 本就刷新易完成)。
-- **状态**:采用。交互模型 + 检测几何实测验(手动清 overlay + screen_info pc_rect 含 祈愿试炼@988,60);code ruff 净 + import OK。**live 重验待**:下局祈愿试炼再现时 handler 自处理(当前局已手动清)。· T#99 事件长尾 / `HandleWishTrial` / `currency_war_wish_trial.yml` / battle_loop 0h
-
-> **doc-sync 缺口(待补)**:D-110~D-118b(deploy 机制系列:_board_pairs cap / COMMIT_ROUND=2 / roll-for-target / bench-target eval / deployed cap / formation_cost / SIFT slot deploy / drag 可靠性 / **D-118b long-press drag = CW 拾取角色需长 hold_time**)已 commit 未进本日志。why 已在 commit message + `deploy_bench.py` docstring + process_log 2026-08-08。后续按需补 D 条目(关键模型真值:CW deploy = drag+hold_time 非 click;deployed 锁定;board=deployed)。
-
----
-
-## D-109 (2026-08-08) select_comp board-aware + shop_supply 收紧(策略子agent P1,治 target/board 不匹配)· §03/§12
-
-- **决策**:① select_comp 加 `_board_alignment`(comp 阵营 board count≥2 → ×1.2 deep-stack boost;全无 → ×0.7 penalty;count≥1 → ×1.0);② `shop_supply` 收紧(核心阵营 form_tiers keys 在 shop 才 1.0;非核心 0.5;旧 any faction=1.0 太松)。
-- **为什么**:策略子agent a9a0a871 分析 bot die plane1 根因 **P1 = select_comp 不跟 board**:spread board 下所有 comp form_progress 低且相近 → target 被 shop_supply/strength 主导(非 board)→ 选 board 不支持的 comp → deployed-lock 下永不成型。shop_supply 太松(any faction=1.0)放大 shop 噪声。
-- **robust to board OCR 噪声(P4)**:board-alignment 用 count≥1 判 has_any(faction 在板 = ≥1 deployed,可靠);count≥2 是 bonus 非 penalty(OCR 误读 count 不降权)。
-- **备选**:COMMIT_ROUND=2 + deploy target-only(子agent B,需 A 先行 + 多局验,tempo 风险);_board_pairs denoise(D,地基)。
-- **状态**:采用。214 测试绿。live 验待:target 跟 board 走 → comp 成型改善。· T#97 / `_board_alignment` / `shop_supply` / 策略子agent P1
-
----
-
-## D-108 (2026-08-08) deploy 优先级:target 阵营先 deploy(CW deployed 锁定 + board=deployed 模型)· §12
-
-- **决策**:`DeployBench._deploy_by_identity` 加 `target_factions` 参数 → target 阵营角色 sorted **先 deploy**(限槽时 target 先占,off-target 溢出留 bench sellable)。无 target(早期/reactive)→ 不排序(原行为)。
-- **为什么**:live 实测(3 测 + 控制组,**CW deployed 锁定**):drag deployed→出售区 / drag→bench / click 全失败;bench sell 控制组 ✅(机制正常)。+ 查实 **board=deployed**(`_board_pairs` 读左面板 = 上阵羁绊;board sum>max_units 是**多羁绊角色重复计**(大丽花=击破+盛会之星),非 owned)。故 **board=deployed 且 locked → 先 deploy 谁 = 谁 locked 占槽**。旧 deploy 全 bench(随机序)→ bench>capacity(early 多牌低等级)时 target 可能被挤到 bench、off-target locked 占槽 → comp 永不深堆。
-- **修法**:`deploy()` 从 `session.target_comp` 取 factions → `_deploy_by_identity` sorted target-first → 限槽时 target 先占。off-target 溢出留 bench(`_handle_bench_full` sell)。**deployed-lock → sell-deployed board-management 路径无效**(子agent MVP 作废,详 process_log 2026-08-08)。
-- **模型真值(查实,后续策略地基)**:① board=deployed(左面板上阵羁绊);② deployed 锁定(不能 sell/undeploy);③ max_units=min(level,10)=deploy 上限;④ board sum>deployed 角色数(多羁绊重复计,非 owned)。
-- **备选**:① sell deployed off-target(推翻:deployed 锁定,3 测实锤);② deploy ONLY target 不 deploy off-target(推翻:空槽丢 tempo 掉血,留后续 tempo 权衡);③ 改 selection 适配 board(部分:selection 已 shop-supplied 正确,主因 deploy 非 selection)。
-- **状态**:采用。214 cw 测试绿。**系列细化**:D-108b(全阵营 get_char.factions 非 factions[0] 首阵营)+ D-108c(全羁绊 factions+flows+independent —— comp.factions 混阵营+流派,赛飞儿 factions=夜之半神 flows=追击/减益,只取 factions 漏追击)+ D-108d(**cap-limited**:deploy 限 level-已部署,避免拖全部 bench 超 cap 浪费 drag)。D-108c 匹配核实(赛飞儿/飞霄/追击 + 藿藿/青雀/仙舟 → TARGET)。live 验待:限槽时 target 先占 + 不超 cap。· T#97 / `DeployBench._deploy_by_identity`(target_factions+cap_remaining)/ CW deployed-lock(机制)
-
----
-
-## D-107 (2026-08-08) 战术层 desync 真根因:deployed 恒 [] → 经济/deploy 门全失效(RC1 首修)· §12
-
-- **决策**:`read_game_state` 从 board 真值重建 `deployed`(新 `rebuild_deployed_from_board` helper)→ `deployed_count()` 对齐实际阵上数。修 **RC1**(子agent a5a4c3358 查实)。
-- **为什么**:D-106(commit 拒 off-target)只解 buy-spread-at-commit,但 live 仍死 → 子agent 深查发现**战术执行模型整体 desync**(非单点):旧 `read_game_state` 不填 deployed(docstring「v1 不读 deployed 身份」)→ 恒 [] → `deployed_count()` 恒 0 → ① **`_saving_for_interest`(需 deployed≥max_units)永不触发 → bot 不攒息、散买 off-target(gold→0,T#97 spread 真根因之一)**;② 买+deploy 门(`deployed<max`)恒真 → 每买必 DeployMove;③ deploy-from-bench 把幻影 bench 全 deploy。board=OCR 真值(每轮重读),deployed 旧从不从 board 重建 → 计数脱节。同批查实 RC2(tracked_bench append-only 幻影)/RC3(DeployBench 拖已占槽)/RC4(bench 溢出位置卖),RC1 = 计数门失效 = 经济崩溃根因,优先修。
-- **修法**:`rebuild_deployed_from_board(board, back_max)` 从 board 重建 deployed(back 先填至 back_max 再 front 近真实布局;identity/star 占位 —— OCR 只给阵营计数读不到 char_id,计数门用,实际槽位 DeployBench SIFT 处理)。`read_game_state` 调用它填 `state.deployed`。
-- **备选**:① 改 `deployed_count()` 返 `sum(board.values())`(推翻:破坏 test 显式设 deployed 的用例);② 重建含真 identity(推翻:SIFT 不可靠,OCR 读不到 char_id)。
-- **状态**:采用。214 cw 测试绿(+ 2 新单测:rebuild 计数/前后排 + board 满+gold<50 → 攒息不散买)。**RC1 首修;RC2/RC3/RC4 待续**(子agent 报告见 process_log 2026-08-08)。live 验待:bot 攒息(gold 不再→0)+ deployed 门恢复 → 配 D-106 减 spread。· T#97 / `rebuild_deployed_from_board` / `cw_observation.read_game_state`
-
----
-
-## D-106 (2026-08-08) commit 后买牌拒 off-target(prefilter 加 commitment gate,治 T#97 spread 根因)· §03/§08
-
-- **决策**:`cw_decisions` 买牌 prefilter 加 commitment gate —— 已 commit(`target_committed`)时,off-target 卡**也拒**(不仅「shop 有买得起 target」时拒)。`COMMIT_FRAC`/`COMMIT_ROUND`/`COMMIT_STICK_FACTOR` 提 `cw_comps` 模块级 + 新 `target_committed()` helper(maybe_pivot 强粘 + prefilter 拒 off-target **共用单一判据**)。
-- **为什么**:T#97 live 复现(A8 plane1,target 巡击青雀[仙舟/追击]):买完唯一 target 卡(追击/赛飞儿)后 `simulate(BuyCard)` 把它移出 shop → shop 无 target → 旧 prefilter「防 hold-forever 饿死」放行 off-target → 买 能量/持续伤害/群攻 散牌 → board 8 阵营 spread(追击:1 仙舟:1 永不深堆)→ comp 永弱 → hp r1-2 升(80→84)后 r3 起崩(84→75→62→53 @r7)。根因:commit 只让 target**不换**(maybe_pivot sticky),没让**买单**聚焦 —— 旧「防饿死」与 drought bail(D-92,5 轮重选)冗余且直接致 spread。
-- **修法**:commit 后 off-target 不买 → 该 Refresh 找 target / 攒金(drought bail 处理真不可达)。未 commit(round<4)仍放行 off-target = 早期 tempo(起手 7 角色已铺板,非空板饿死;tempo 掉血可接受)。
-- **备选**:① 删「防饿死」全禁 off-target(推翻:早期需散牌铺板 tempo,全禁饿死);② 仅禁 盛会之星 off-target(推翻:太窄,能量/持续伤害 等非盛会 off-target 同样 spread);③ 多维打分软惩罚 off-target(推翻:commit 是硬 sticky 语义,软打分被 char_value 盖过 → spread 复发)。
-- **状态**:采用。2 新单测绿(commit 拒 off-target / 未 commit 放行 tempo)+ D-79 回归绿;212 cw 测试绿;修了 069565a2 漏更新的 drought bail 测试(3→5)。**live 验待**:下局 r4+ 不再买 off-target 散牌 → board 收敛(追击/仙舟 深堆)→ hp 不崩。· T#97 / `target_committed` / `cw_decisions._best_improving_action` prefilter
-
----
-
-## D-105 (2026-08-07) supply 接 decide_supply(read_supply_options OCR 装备/角色列 → key_equips 契合选)· T#99 决策接线
-
-- **决策**:`RunSupplyNode._do_action` 接 `strategy.decide_supply` —— 新建 `read_supply_options`(cw_node_obs)OCR 补给每列(装备名 y≈680 + 角色名 y≈545,按 x 聚列)→ `SupplyOption` 列表 → `decide_supply` 按 `target_comp.key_equips` 契合 + 装备通用价值(`_EQUIP_VALUE`)选最优列 → 点该列卡身 + 确认。替代原盲点 `CARD_BODY`(900,550)= 永远第一列。
-- **为什么**:用户指正「还是没接决策」—— supply handler 盲点 CARD_BODY,策略 `decide_supply` 钩子空悬。补给每轮都遇(高频)+ 装备/钻选择直接影响战力 → 必须策略化。实捕 round1-5 补给(视觉大模型 + OCR 核实):5 列,每列 = 角色 + 装备,无刷新按钮(故 `decide_supply` 传 `refresh_used=True` 跳过刷新逻辑),钻(红/蓝)此帧无。
-- **状态**:采用。supply/megastar/deploy 决策接线完成(megastar 早接 read_megastar_options 正则抽「盛会之星一X先生/女士」char_id;deploy D-100/D-102)。**partner 未接**:候选只有立绘、名字/标签不可读(视觉大模型 2026-08-07 核实)→ OCR 路不通,需 SIFT 立绘识别(同 read_bench_chars,CW 立绘库)才能喂 `decide_partner` 真角色名 → 独立子项。钻视觉判定(has_diamond)+ 装备 y 带多样本核 = TODO。· T#99 / `decide_supply` / `read_supply_options`
-
----
-
-## D-104 (2026-08-07) 修 _record_round_outcome gate「挑战结束」→实屏「挑战成功」(激活 P1.5 观测回路 + D-94 last_hp)· battle_loop
-
-- **决策**:`_record_round_outcome` 删错误的结算屏 gate(`round_by_ocr('挑战结束')`)。它仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用,gate 冗余;且 gate 查「挑战结束」与**实屏「挑战成功」**不符 → 永不命中 → on_round_end 从不调。
-- **为什么**:T#103 捕结算屏(2026-08-07 实锤 round 1-4 胜结算屏文本是「挑战成功」非「挑战结束」)暴露 —— P1.5 观测回路(`performance.record` 喂掉血/胜负)+ D-94(`session.last_hp` 给下回合 prep 真值 hp,覆盖 prep read_hp 不可靠)**双双静默死**。这瓦解「观测驱动非预测」核心哲学:maybe_pivot 保血信号 + shop prep-hp 全靠误读的 read_hp(常 100)→ 策略对真实血量盲。plane2 wall(连败掉血死)与此相关(保血信号失效)。
-- **影响(行为)**:每回合 round-end 结算 → on_round_end 现在真触发 → `session.performance` 累积掉血/胜负 trend + `session.last_hp` 写结算屏 hp(达阈)→ 下回合 prep 用真值 hp。D-94 设计**首次真正生效**(此前代码在但 gate 堵死)。
-- **备选**:① 改 gate 文字「挑战结束」→「挑战成功」(但 win/lose 文字可能不同:胜=挑战成功/负=?;且 gate 冗余 —— 分支3 已确认结算屏);② 删 gate 信任 caller(采用:唯一 caller 是分支3 已 gate 继续挑战;`if cw_match is None` 仍守);③ 同时 area 化(gate 文字进 area,但删 gate 更干净 + 关一个 T#103 全屏 OCR 站点)。首领 boss 检测(L134)留全屏 OCR + TODO(需 boss 结算帧才 area 化)。
-- **状态**:采用。待 live 验证(下回合结算 on_round_end 日志 `[cw-loop] on_round_end ... hp_after=NN` 出现即激活)。· P1.5 观测回路 / D-94 last_hp / 关联 T#97(plane2 wall 保血)
-
----
-
-## D-103 (2026-08-07) round_by_ocr 全屏 → screen_info area 化(遵守 od-dev-write-operation ADR-0004/0008,行为保持)· 全 cw ops/handlers/entry
-
-- **决策**:cw 模块全屏 `round_by_ocr(screen, text)`(无 area,LCS 默认 0.5 子序列匹配,结构性易误匹配)→ 凡固定位置元素改区域识别(`round_by_find_area` / `round_by_find_and_click_area`,text 进 screen_info area 的 `pc_rect`,OCR 限定区域不全文扫)。用户指令「找出 cw 所有使用的地方都要替换掉」+ 指正 skill 早说不要用全屏 round_by_ocr。
-- **为什么**:ADR-0004/0008 + SKILL.md 选型判据 —— 固定位置元素**压倒性默认**区域识别;全屏 OCR = rare last-resort(仅位置真漂移/动态)。CW 几乎所有检测文本都是固定位置(按钮 / overlay 标题 / id_mark)→ 全屏 LCS 是偷懒 + 误匹配风险(LCS 0.5 子序列撞别屏同名/邻屏相似标签,实跑已多次复发卡死)。area 位置约束结构性根治。
-- **本轮(首批,复用现有 area + 量 1 个新 area)**:① 复用已有 area 的文本(零测量):购买经验→`备战标识-购买经验`、商店→`按钮-商店`、出战→`按钮-出战`、投资策略→`标识-请选择投资策略`、投资环境→`标识-投资环境`、未达上限→`标识-未达上限警告`、创业指南→`标识-创业指南`(shop/battle_prep/battle_loop/exit/start/handle_invest_env/handle_invest_strategy/handle_deploy_not_full);② 新建 `按钮-收起`(shop 开/关 toggle,坐标交叉验证:视觉文本框落 `按钮-商店` 同一 toggle 按钮内,pc_rect [1578,948,1664,1002])。阿哈简易装备(0g)、invest_strategy/env(battle_loop 0e)上轮已 area 化。
-- **机制**:`find_area` 对配 `text` 的 area = OCR 限定在 `pc_rect` + LCS;配 `template_id` = 模板匹配。检测用 `round_by_find_area`(只检测不点击,skill 警告);找到再点用 `round_by_find_and_click_area`;无脑点固定按钮中心用 `round_by_click_area`。
-- **待续(余 ~60 处,需新建 area + 截图建档,逐屏推进)**:结算屏(挑战结束/继续挑战/下一步/下一页/放弃并结算/返回货币战争/总伤害/数据统计/创业指南[exit 语境]——**无 screen_info 文件,待建 currency_war 结算屏**)、partner/megastar/supply/encounter overlay 标题(选择伙伴/确认选择/请选择强化角色/盛会之星/补给阶段/遭遇其一/消耗品/拖动到——screen_info 无 text area,待补)、备战席已满弹窗、可合成列表/角色详情、战斗 toast(点击空白加速/继续——动态,或留全屏 fallback)、entry 弹窗(前往参与/继续进度/点击空白处关闭/赛季扩充/新内容解禁)。这些坐标不能猜(CLAUDE.md 硬规则:玩法改动别凭猜改),按 od-dev-ui-region-detect 实图量。
-- **备选**:① 提 lcs_percent 止血(ADR-0008 否:只杀低重叠,全等/高重叠子序列无效,且不治本);② 删全屏 OCR 只留 area(ADR-0004 option3 否:动态 toast 确需全屏 fallback);③ 区域识别(采用,结构性根治)。
-- **状态**:采用。批次进度:① 首批 ~18 处(复用现有 area + 按钮-收起);② overlay 屏批:新建 货币战争-选择伙伴(标识-选择伙伴/按钮-确认选择)+ 货币战争-巨星强化(标识-盛会之星/按钮-请选择强化角色),补给屏补 标识-补给阶段;转 battle_loop 0a/0b/0e dispatch + run_megastar/run_supply `_in_node` + handle_select_partner 入口 guard。**0b 由「确认选择」改「盛会之星」独有标题**(原靠 0a 先捕 partner 区分;独有标题更直接,且盛会之星全屏撞 4 处/bond label,area 位置区分根治)。坐标用 `_snap` 历史截图视觉量 + analyze_screen OCR ground truth 核实(partner/megastar 文本框均落在 area 内 ✓)。待实机跑局验证 dispatch;余 ~50 处(结算屏 ~25 需新建屏 + entry 弹窗 ~9,需捕图)逐屏续做。· od-dev-write-operation ADR-0004/0008
-
----
-
-## D-102 (2026-08-07) deploy 身份驱动(采 CW 立绘库 + read_bench_chars,修 D-100 bench_idx 错位)· deploy_bench / cw_identity_obs / collect_portraits_op
-
-- **决策**:deploy_bench 改用 `read_bench_chars`(CW 立绘库 SIFT 识别实际 bench 每槽角色)→ 按角色 `position_pref` deploy(front/back),替代 D-100 的 tracked_bench idx(tracked_bench 顺序 ≠ 实际槽位 → 拖错角色)。
-- **为什么**:D-100 deploy bug 根因 —— `bench_idx`(tracked_bench 顺序)索引固定槽位坐标,但实际槽位角色顺序 ≠ tracked_bench append 顺序(sell/合成/deploy 后槽位变)→ 拖错。用户引导:① 别偷懒用现成 avatar 脸库(D-75 配饰/变体弱),采图鉴 canonical 半身立绘;② `read_bench_chars` 从没在 op 集成(cw_identity_obs 旁路离线用),D-100 没用它。
-- **实现链**:① 采全 71 角色图鉴半身立绘(`CollectPortraits` op,白框法:点卡片 → CV 定位选中白框 → crop 立绘;对齐 `HarvestEquipCodex` 模式;多帧 OCR 补 det 漏)② `load_avatar_templates` 修中文路径(np.fromfile+imdecode,cv2.imread 中文挂)③ `resolve_char_name` 加 CW 库中文 key 直接返(CW 库 key 是中文名非主游英文 id;否则 `get_character_by_id(中文)=None` 全 skip)④ deploy_bench `_get_templates` 切 CW 库(character_cw_portrait,比 avatar 脸库强:卡芙卡 avatar 9 临界 → CW 25 STRONG)。
-- **验证**:read_bench_chars 实机识别 5(藿藿/艾丝妲/大丽花/飞霄/那刻夏 STRONG 22-54);deploy 身份驱动(按 position_pref 拖 back/front,非 tracked_bench 错位)。D-100 bug 解。
-- **备选**:① tracked_bench(全错位,否);② avatar 脸库(配饰/变体弱 D-75,否);③ 采图鉴 canonical 立绘(强,采用)。
-- **状态**:采用。CW 库 71 canonical,SIFT 匹配备战栏 STRONG;deploy 身份驱动实机验证。· §deploy / cw_identity_obs
-
----
-
-## D-99 (2026-08-07) 巨星触发 = 持有盛会之星角色时进备战弹(↺ 推翻早期「round6/位面首领」假设)· 玩法认知
-
-- **决策**:巨星(盛会之星选择 overlay)触发条件 = 【假设·待正向验证】玩家持有盛会之星角色时,进入备战回合弹出;候选 = 持有的盛会之星角色(每局不同);**非固定节点**。
-- **为什么**:用户质问「巨星何时出现你搞懂没」→ 查 research/wiki/3 个实机样本。证据(均为**观察相关**,非正向验证):① 局A `iter=1`(开局备战,绝非首领)就弹,候选盛会之星 → 持有即弹;② 局B 全程 0 个盛会之星角色 → 全程无巨星(plane1 走 9 关都没弹);③ 旧图 1-6 持有花火+星期日 → 1-6 弹。攻略/wiki 均未提「固定节点」→ 支持动态触发。早期代码注释「位面首领 round6」「每面 r6」(D-95 docstring / D-97c 注释)是瞎猜,D-30「plane1 round6」是巧合观察非规律。
-- **备选**:① 固定每面第 6 关首领(research 称)—— 局B 1-6 无巨星 + 局A 开局弹,否定;② 首领节点触发 —— 局A `iter=1` 非首领,否定;③ 持有盛会之星触发 —— 3 样本相关支持,**但未正向验证**(没主动买盛会之星看出战下关弹)。
-- **状态**:**【假设·待正向验证】**(用户 2026-08-07 指正:未验证就下结论 + 删了 TODO 是错的)。3 样本相关推断,非因果验证;**正向验证前不当事实**。已把 docstring / gameplay doc 措辞改回「假设·待验证 TODO」。**dispatch 不受影响**(loop 0b OCR 反应式检测「确认选择」,不管何时弹都接得住;该机制是真是假 bot 都靠 OCR 反应处理)。`decide_megastar` 按 buff 契合选候选(机制验证与否不影响)。**正向验证 todo**:主动买盛会之星角色(大丽花 1费,准坐标 商店牌 center)→ 出战 → 看下关备战弹巨星 overlay。· §08 巨星 / `gameplay/currency_war.md`
-
----
-
-## D-97 (2026-08-07) 巨星候选**只点一次**(flag 防 RunNode retry re-click toggle 反选)—— 真根因 + step2 强化角色实为可选 · RunMegastarNode._do_action
-
-- **决策**:`_do_action` 加 `_candidate_clicked` flag → 候选只点一次(首次点 + 设 flag;retry 跳过候选只重 confirm)。删 D-96 的 step2 必需假设(step2 实可选,转安全网)。
-- **为什么**:D-96(再 confirm)是**错诊** —— step2「强化角色」**可选**(选完盛会之星 → confirm 直接跳过 → overlay 关)。真根因:RunNode retry **re-click 候选 → toggle 反选** → confirm 时无候选选中 → 不推进 → 卡。用户点醒关键:**别见「强化角色未选择」文本不变就假设交互失败/确认 disabled**;该文本是**非阻断状态**,确认钮 active。实测(星期日选中金边后 confirm@1490,560)即关 overlay。megastar 选中态是视觉(金边,非 OCR「已选择」)→ flag 保证只点一次(类 partner「已选择」守卫的视觉版)。
-- **备选**:① D-96 再 confirm(错诊,治标)—— 实为 toggle 反选致 confirm 失效,再 confirm 仍无候选无效。② CV 检测金边选中态 → 跳过已选候选 —— 更鲁棒但重(每轮 CV);flag 简单够(单 op 生命周期内候选只点一次)。③ 重写为 Handle* op(类 partner)—— 改动大;flag + RunNode 够。
-- **状态**:采用。ruff 净;211 cw 测试绿。**真根因解**(toggle);step2 非阻断(D-96 降级安全网)。live 验:下局 megastar 节点候选点一次 + confirm → overlay 关(不再 toggle 卡)。· RunMegastarNode / skill 反馈(状态文本≠失败)
-
-## D-96 (2026-08-07) 巨星节点 step2「请选择强化角色」→ 再 confirm 跳过强化(两步 overlay,partner reset 同类)· RunMegastarNode._do_action
-
-- **决策**:`RunMegastarNode._do_action` step1 confirm 后,若 OCR 见「请选择强化角色」(step2)→ 再 click CONFIRM 跳过强化(可选),overlay 关。
-- **为什么**:live round8 卡死 9min —— 巨星是**两步**(step1 选盛会之星候选 + confirm → step2「请选择强化角色」+ confirm),旧 RunMegastarNode 只 1 次 confirm → step2 残 → overlay 不关 → 主循环误判 prep、出战 click 落 overlay 空 → 死循环。**partner overlay reset(T#98)同类**(两步 overlay 只做 step1)。手动 click 确认选择@(1490,560)实测跳过强化推进(强化角色可选)。RunMegastarNode.CONFIRM(1490,560)= step2 确认选择钮 center(OCR 钮 1442-1541)。
-- **备选**:① step2 选强化角色(target core)再 confirm —— 强化可选,跳过更简 + 不需强化目标定位(960,300 实测非 megastar 强化位)。② _in_node 改检测 step2 —— _do_action 内处理更直接(两步一气呵成)。③ 不修 —— 每个巨星节点卡死,不可接受。
-- **状态**:采用。ruff 净;211 cw 测试绿。live 验待(下局巨星节点 step2 自动跳过,overlay 关,不卡)。· RunMegastarNode / partner T#98 同类
-
-## D-95 (2026-08-07) 巨星节点接入策略(read_megastar_options → decide_megastar)· cw_node_obs.read_megastar_options / RunMegastarNode
-
-- **决策**:新建 `read_megastar_options`(OCR「盛会之星一X先生/女士!」→ MegastarOption(char_id=X),按 x 左→右 idx);`RunMegastarNode._do_action` 改 read 候选 → `decide_megastar`(select_megastar 按 target.core_chars / buff 契合)→ 点选中 idx(替代默认左候选)+ bug#1 mouse_move。
-- **为什么**:决策接线 audit(D-91)巨星是未接 4 项之一(handler 默认左候选,char_id 空→idx0)。live cw_megastar 捕获(cw-snap)核实候选名 OCR 可读(花火/星期日 盛会之星)→ reader 可建。select_megastar 早实现(cw_comps)但 handler 不调 → 接上。盛会之星给全队 buff,选对 buff 契合 comp(花火=追击增伤?/星期日=…)。
-- **备选**:① 保持默认左 —— 漏选契合 comp 的盛会之星,弃。② VLM 选 —— 名 OCR 可读,不需 VLM,弃。③ 候选位置动态读(非 CANDIDATE_LEFT/RIGHT 常量)—— 名位置 = 卡身(实测点 822,333 命中花火),固定常量够;2 候选左右固定。
-- **状态**:采用。offline cw_megastar 核实(2 候选 花火/星期日 读对)+ 2 单测绿;全 211 cw 测试绿。live 验待(下局巨星节点选 target 契合候选,非默认左)。· cw_node_obs / RunMegastarNode / strategy/08 接线表(巨星 ✅)
-
-## D-94 (2026-08-07) prep state.hp 用结算屏 HP(可靠)替 prep 帧 read_hp(持续误读)· default_strategy.on_round_end / shop.buy / StrategySession.last_hp
-
-- **决策**:`on_round_end` 达阈置信度的结算 `hp_after` → 存 `session.last_hp`;`BuyShopCards` prep state.hp 优先用 `session.last_hp`(结算屏「小队生命值NN」可靠),None(首回合)退 `read_hp`。
-- **为什么**:D-93(retry)live **无效** —— round4 prep 读 hp=100(实际 58,on_round_end 确认)persist;retry 也读 100 → prep 帧 HP 区**持续空**(非仅过渡),retry 救不了。保血/maybe_pivot 的 hp_safe 信号地基失效(误判满血不保血 → 失血死)。结算屏 hp_after 经多样本核实可靠(read_round_outcome,小队生命值NN)→ 用它给下回合 prep(HP 结算→下回合 prep 不变,值等价)。
-- **备选**:① D-93 retry 加更多次/更长 sleep —— HP 区持续空(非时序),治标不治本。② 改 read_hp 区 —— 区对(shop 关闭态 HP 显示),问题是帧非区。③ 不修 —— 保血常 disarm,得不偿失。结算 HP 是**不同源**的可靠值,根治。
-- **状态**:采用。2 单测绿(达阈存 / 低置信不污染);全 207 cw 测试绿。D-93(retry)保留作首回合/兜底(无结算 HP 时)。live 验待(下局 prep state.hp 用结算真值,保血信号武装)。· default_strategy.on_round_end / shop.buy
-
-## D-93 (2026-08-07) read_hp 重读兜底:读到上限 100 可能是入口过渡帧 HP 区未渲染 → 重读 2 次取真值(保血信号地基)· shop.buy / read_hp
-
-- **决策**:`BuyShopCards.buy` 读 hp 后,若 `hp_value >= HP_MAX(100)` → 重读 2 次(各 sleep 0.4s + 重截图),取首个 < HP_MAX 的值;都 100 则维持(真满血或 HP 区持续空)。
-- **为什么**:live round8 读 hp=100(实际结算 29;round9 同款读对 29)→ **间歇时序**(入口过渡帧 HP 区未渲染),非持续。hp 驱动 `maybe_pivot` 的 hp_safe 保命信号(hp<0.75×threshold → 切最快 easy comp)+ `_phase_weights` 保血权重 —— 误读 100 → 误判满血 → **不保血/不切保命** → 不必要失血死。保血是生存地基,误读 disarm 它。
-- **备选**:① 入口固定 sleep 等渲染 —— 每轮加延迟(满血时也等),弃;只在读到 100(可疑)时重读,满血无额外延迟(重读仍 100)。② 改 read_hp 区等渲染 —— 区是对的(shop 关闭态 HP 显示),问题是帧时序非区;本重读治时序。③ 不修 —— 间歇但保血常 disarm,得不偿失。
-- **状态**:采用。ruff 净;全 207 cw 测试绿。真满血重读仍 100(无害);间歇误读 → 重读取真值。live 验随下局(round8 类过渡帧 hp 不再误读 100)。· shop.buy / cw_observation.read_hp
-
-## D-92 (2026-08-07) drought bail:target 连续 3 轮 shop 无其阵营卡 → 弃 target 重选(防 commit 锁死不可达 target)· default_strategy.update_target / StrategySession.target_drought
-
-- **决策**:`update_target` 追踪 `session.target_drought`(target 阵营连续多少轮不在 shop,即 `shop_supply<1.0`);≥`DROUGHT_BAIL(3)` → 弃 target(=None)→ select_comp 重选(shop-aware 挑买得到的)。
-- **为什么**:live round4-6 验证(D-90 后):target=DOT队(D-86 commit sticky),但 **shop/board 始终无 持续伤害/减益 卡**(RNG)→ comp 永远建不成 → HP 掉到 4 死 plane1。`select_comp` 本就 shop-aware(shop_supply 降权),`maybe_pivot` 也 shop-aware,但 **commit(D-86)把 pivot gap 提到 ×1.5**,全 comp shop-dry 时无 comp 能超 gap 转走 → 锁死。drought bail 在 commit 之上加出口:连续 3 轮 shop 供不上 target → 强制重选(绕过 commit + pivot gap)。3 轮阈值避正常 shop 波动(target 卡偶现 → drought 归 0,不累积)。
-- **备选**:① 单轮 shop_supply<1.0 就 waive commit → shop 波动每轮 flit(D-86 要防的),弃。② drought 阈值 2 → 太激进(正常波动误触发),3 平衡。③ 不动 commit,改 maybe_pivot gap → 全 dry 时仍无 comp 超 gap,治标不治本;drought 强制重选才解。④ select_comp 加 board 深度对齐(更根治但改动大)—— 后续;drought bail 先止血。
-- **状态**:采用。2 单测绿(drought 3→bail 重选 / shop 供上→归0);全 207 cw 测试绿。**live 验待**(下局 target 不可达时 round6+ 不再锁死 → 重选 shop 供得上的 comp)。· default_strategy.update_target / strategy/03 select_comp shop-aware
-
-## D-91 (2026-08-07) 决策接线 audit + 遭遇节点接入策略(read_encounter_options → decide_encounter)· cw_node_obs / handle_encounter / StrategySession.last_state
-
-- **决策**:① 全面自检「所有决策操作接入策略」(用户指令)→ 审计表(`.debug/temp/currency_war/decision_wiring_audit.md`):买/invest_env/invest_strategy 已接入;**遭遇/补给/巨星/伙伴/部署 未接入**(handler 硬编码默认,decide_* 钩子虽就绪但不调/option 全空)。② 接入**遭遇**:新建 `cw_node_obs.read_encounter_options`(OCR 标题「遭遇其X」→ difficulty + 奖励带→reward)→ HandleEncounter 调 `strategy.decide_encounter`(difficulty + comp 成型度选,非硬编码左)。③ 加 `StrategySession.last_state`(BuyShopCards 每回合存 board/deployed 快照)→ 节点 overlay handler 读成型度(overlay 时 board 不可读,用上次备战近似)。
-- **为什么**:用户连 3 轮反映「没接策略 / 无脑选人 / 没按设计实现」。审计对照 design 08(早已标 encounter/megastar/supply naive):**策略纯逻辑就绪但 handler 不调**是根因(不是没设计)。遭遇是 P0(design high + 最早出现的 option 节点),先接入立 pattern。读「一」漏(笔画细)→ 数字设可选(无数字→难度1 = 漏了「一」的易卡,baseline 实测)。
-- **备选**:① 接 supply(钻,高值)先 —— 钻检测需 CV/视觉,reader 更重;遭遇 reader 纯 OCR 更轻,先立 pattern。② 不加 last_state 用空 state —— decide_encounter 恒判未成型→恒低难度(= 旧「选左」),无改进;last_state 让 formed 时敢选高难度拿好奖励。③ 用 V-marks 计数判难度 —— V-marks OCR 不稳;标题数字更稳。
-- **状态**:采用。read_encounter_options offline baseline 核实(2 卡 difficulty 1/4 + reward 正确)+ 4 单测绿;全 205 cw 测试绿。**余未接入**:补给/巨星/伙伴/部署(decide_supply/select_megastar/decide_partner 就绪,缺 reader;部署 blocked by 身份)。commit 见下。· cw_node_obs / strategy/08 接线表 / decision_wiring_audit.md
-
-## D-90 (2026-08-07) Refresh 门:shop 有买得起的 target 卡 → 先买别刷掉(simulate RefreshShop 不建模换 shop)· cw_decisions._best_improving_action
-
-- **决策**:Refresh 候选加门 `not _shop_has_buyable_target` —— shop 有买得起的 target 卡(target 阵营/core)时抑制 Refresh,先买;买完(无买得起的 target)才 Refresh 找更多。
-- **为什么**:实跑 round1 live 观察(用户叫停):shop=[追击/飞霄×3,…] target=巡击青雀(追击/仙舟),plan 却选 `['Refresh','Refresh','Buy(追击)',…]` → Refresh 换 shop → 追击全没 → 只能买 off-target(艾丝妲/阿格莱雅/万敌)→ spread。根因:`simulate(RefreshShop)` **不建模换 shop**(只扣金,shop 不变)→ 贪心误以为 Refresh 后还能买当前 shop 的 target,故 Refresh 赢首动作;实跑 Refresh 清空 target。auto-chess 基本功:target 在场且买得起 = 确定收益,Refresh 找 target 是蒙特卡洛乐观赌注 → 取确定不取赌。
-- **备选**:① 改 simulate(RefreshShop) 建模换 shop(采样新 shop)—— 但 plan 贪心序列里 Refresh 后的 buy 仍基于旧 shop(采样无法预知真 shop),治标;且蒙特卡洛 _refresh_expected_delta 已采样,这里问题是贪心序列层。② Refresh 后重 plan(实跑已是:Refresh 后重读 shop 重 plan)—— 但首轮 Refresh 已损失 target,迟。本门在「首动作别 Refresh 掉 target」根治。③ 禁止首轮 Refresh —— 太死(无 target 时该 Refresh 找)。
-- **状态**:采用。45 cw_decisions 测试绿。live 验待(下局 round1 shop 有 target → 直接买不 Refresh)。· cw_decisions._best_improving_action / strategy/02
-
-## D-89 (2026-08-07) 事件 handler 全加出口验证(bug#1/多步 overlay flat-loop,partner reset 根因同类)· handlers/_overlay_confirm + 6 handler
-
-- **决策**:加共享助手 `_overlay_confirm`(`safe_click`=bug#1 mouse_move 缓解;`confirm_and_verify`=点确认→验入口词消失→没关 `round_retry` 计节点预算兜底;`find_text_center` OCR 定位确认)+ megastar/supply/encounter/invest_env/invest_strategy/deploy_not_full 6 handler 接入;briefing 已正确验关(id_mark 重检)仅去 tag。
-- **为什么**:静态 review 7 事件 handler(write-operation 出口验证护栏)发现 **6/7 是 partner reset 同类 flat-loop** —— click+confirm→`round_success` 无 overlay 关验证、无 bug#1 mouse_move → bug#1 吞 click / 隐藏多步 overlay → 无限 flat-loop(不计 retry → MAX_ITER 才超时)。partner(T#98)已证这类 bug 是 reset 根因;余 6 是未爆同类地雷,battle_loop de-tag 后调它们 → bug 必浮(guardrail 教训)。
-- **备选**:① 每 handler 内联 verify(像 partner)—— 6×重复 = 屎山,弃,提共享助手。② 只加 mouse_move 不 verify —— 隐藏多步 overlay 仍 flat-loop,弃。③ 盲补多步 handler(猜 step2)—— 无 live 证据猜交互 = 自主盲操作(reset 教训);只 verify+retry 边界 + rich log,隐藏多步下次 match 日志可见再补。
-- **状态**:采用。commit `cf0663c4`。ruff 净;201 测试绿(2 次)。live 验待(下局事件节点不卡)。· handlers/_overlay_confirm / write-operation「反模式:点了≠成了」
-
-## D-88 (2026-08-07) ↺ D-87 T#97 step-2 target bonus 改 tier-only(不×close-to-next,避 over-rush 弱-early)· cw_decisions.synergy_score
-
-- **决策**:`TARGET_FACTION_BONUS` 1.5× **只加在 `_base_tier`**(已激活 tier 深化),close-to-next 不加。D-87 原(1.5× on whole tier_score,含 close-to-next)live 验 counterproductive(disabled `bde28379`)后改 tier-only(`ab90e9c0`)。
-- **为什么**:live 5-match:1.5× on whole → 追击 count2 冲 tier3(弱-early)over-commit → HP 掉快(82→21 vs step-1-only 84→24)→ 死 plane2 **r1**(vs step-1-only **r4**)。tier-only 奖励深化(count≥阈值)非 rush(接近阈值)→ 早期 HP 峰值 86(首增)+ 不 over-rush。
-- **备选**:① 1.5× on whole(D-87 原版)—— over-rush 弱-early,弃。② disabled 1.0 —— 安全但丢早期 HP 峰值增益。③ 1.2× on whole —— 仍 over-rush 只是更慢。tier-only 既保增益又避 rush。
-- **状态**:采用(tier-only)。单 match noisy(comp 依赖 shop RNG),多 match 均值待验。· cw_decisions.synergy_score / strategy/03
-
-## D-87 (2026-08-07) T#97 step-2 target-faction buy bonus(synergy ×1.5 target,正向避 churn)· cw_decisions.synergy_score
-
-- **决策**:`synergy_score` target 阵营加分(`TARGET_FACTION_BONUS`),正向激励买 target 阵营卡深 stack,替代 `OFF_TARGET_DISCOUNT` 打折。
-- **为什么**:spread 根因 = off-target discount 1.0(无偏好)→ target 阵营卡无优先 → 散买。清 log 析:惩罚 off-target(0.3)致卖成型 off-target churn(D-15);正向 bonus 激励 target 避 churn。具体倍数/作用域经 D-88 调(tier-only)。
-- **备选**:① `OFF_TARGET_DISCOUNT`<1.0 打折 —— D-15 证 churn,弃。② `select_comp` favor board-aligned —— 更根治但改动大,后续。③ comp_viability(step-3,`9db4c814`)—— 平行项,观测 hp trend 弃掉血 comp。
-- **状态**:↺ 推翻 D-87 原(1.5× whole)by D-88(tier-only);bonus 正向激励思路采用。· cw_decisions.synergy_score
-
-## D-86 (2026-08-07) T#97 round-based comp commitment —— 防 spread-flit(累计轮≥4 commit)· cw_comps.maybe_pivot
-
-- **决策**:`maybe_pivot._committed` 加 round 门槛:累计轮 `(plane-1)*9+round ≥ COMMIT_ROUND(4)` 也算 commit(原仅 `form_progress≥COMMIT_FRAC`)。
-- **为什么**:全 match live 观测(2026-08-07):bot board 全程 8 阵营 spread → `form_progress` 永不达 `COMMIT_FRAC(0.4)` → target 永不 commit → **flit**(巡击青雀/万敌单C/DOT队 跨轮变 → 每轮买不同阵营 = spread 根因)→ 弱 comp → 死 plane2 r1。spread 致 form_progress 低 → commit 触发不了 → 死循环。round 门槛破环:round4 强 commit → target sticky → plan 一致买 target 阵营深 stack。
-- **备选**:① `select_comp` favor board-aligned(清 log 方向)—— 更根治但 weight 改动大风险;本条先最小止血 flit,board-align 后续。② 降 `COMMIT_FRAC` —— 推翻:spread 时各 comp form_progress 极低(<0.2),降阈值会误 commit 任意 comp。
-- **状态**:采用。ruff 净;200 cw 测试绿。live 验待(下局 target round4 sticky + 深 stack + 能否过 plane2)。· cw_comps.maybe_pivot / strategy/12
-
-## D-85 (2026-08-07) gold blocker 解除 —— read_gold 裁区+放大3x(paddle native 漏小 stylized 数字)· cw_observation.read_gold / 文本-金币数
-
-- **决策**:`read_gold` 改 裁 `文本-金币数` area(收紧 [1610,890,1690,945] 只含 gold 数字,排除隔壁 G0/0 货币)+ `cv2.resize 3x` + OCR(弃 native `_ocr`)。
-- **为什么**:gold 数字小+stylized,paddle OCR **det native 几乎总漏**(read 0/空,click-test 实锤 gold≥1)→ bot 读 gold=0 不买 → 备战卡死。裁+放大破 det 天花板(实测定区稳读 3/2)。**同 I24**(小 stylized 数字 paddle 漏 → 放大 OCR)。推翻 T-#96「cost OCR 不可行」(放大后可行,2/4 读对)。
-- **状态**:采用。commit `0d68635b`。live 验:gold 读对 → bot 买(round1:2 / round2:4 追击)。· cw_observation.read_gold
-
-## D-84 (2026-08-07) char identity:SIFT 屏幕识别不可行(主游脸库 + 图鉴立绘都不 match 备战半身)→ 改 bot tracking(buy OCR 名持久化)· cw_identity_obs / read_game_state
-
-- **决策**:bench/deployed 角色身份**不走 SIFT 屏幕识别**;改 **bot tracking**(buy/deploy 时 OCR 的角色名持久化进 session,跨轮 seed `state.bench`/`deployed`)。
-- **为什么**:实测 SIFT 不可行(两源都验):
-  - ① 主游 `character_avatar` 脸库 vs 备战 slot:`cw_identity_obs` SIFT 与 VLM char ID 不一致(佩拉 vs 停云)→ 不可信。
-  - ② 货币战争**图鉴角色卡立绘** vs 备战 slot:CV(detect_gallery_cards **正确检测卡矩形**)裁对后 SIFT **全低 inliers**(top 4 < min 10)→ 仍不 match。
-  - **根因**:备战显示的是 **half-body 立绘**,与任何模板库(主游脸近景 / 图鉴卡 portrait)美术 + 裁剪都不同 → SIFT 特征不匹配。**屏幕识别立绘 = 不可靠,与模板源无关。**
-- **备选**:① SIFT 图鉴立绘模板替主游脸库 —— 推翻(实测仍不 match,art/crop 差异)。② 每帧 VLM —— 推翻(最终 bot 纯代码无 LLM)。③ **bot tracking** —— 采用:buy 时 `read_shop_cards` OCR 名(**已验证可靠**,T#92:翡翠/丹恒·腾荒/…)→ 持久化 session.bench;deploy 时记录 → session.deployed;`read_game_state`/shop 跨轮 seed。可靠(buy OCR 验证)+ 小改。deploy 有 bug#1 drag 漂移风险,但 buy 可靠 + deploy 经 T#90 日志可观测 + 可用 OCR deployed_count 校验。
-- **状态**:采用。实现:① `StrategySession` 加 `persisted_bench`/`persisted_deployed`;② `BuyShopCards` 买后 append `card.name`;③ shop 跨轮 seed `state.bench/deployed`。待实现(autonomous 代码,谨慎 + 测试)。**`cw_identity_obs` SIFT 留作离线漂移恢复旁路(非主路径)。** · cw_identity_obs / cw_strategy.StrategySession / shop.py
-
-## D-83 (2026-08-07) board_next_tier 不接线 —— 静态 FACTIONS.tiers 与 live ground truth 一致(冗余)· cw_factions / synergy_score
-
-- **决策**:**不**把 `board_next_tier`(live OCR 下个 tier 阈值)接进 `synergy_score` / `_close_to_next`;静态 `FACTIONS[faction].tiers` 已与实机 ground truth 一致 → board_next_tier 冗余。
-- **为什么**:T#91/T#92 曾定 board_next_tier 为「接线优先」(reliable + 未用 + 关系 comp 成型)。cross-check 静态 tiers vs live board_next_tier(T#92 dump,5 fixture 全 faction/count 组合):**全部一致** —— 仙舟 (3,5,7,10) count1→next3 ✓ / 巡海游侠 (1,2,3,4) count1→next2 ✓ / 能量 (3,5,7,10) count2→next3 ✓ / 贝洛伯格 (2,4) count1→next2 ✓ …。静态数据(米游社 V4.4)准确,live 只确认不增信息。接线 = 同值信号塞进评分 = 无行为变化 + 给未验证策略代码添复杂度。**且** board_next_tier 只对**当前态**准,simulate(买牌后 count 变)live 快照失效 → 接进 synergy_score(评 simulated 态)反而不对。
-- **备选**:① 接线 board_next_tier 覆盖静态 —— 推翻:live=静态,覆盖无意义 + simulate 语义错。② 修静态 tiers(若不一致)—— 不需要,已一致。
-- **状态**:采用。T#93(board_next_tier 接线)撤销。synergy 评分 tier 基础(静态)经 ground truth 核实**可靠**。余 read-but-unused:cost 字段 OCR 不可行(T#96)、node_type/streak 弱、xp_progress(可靠但收益边际 —— level-up 时机微调,可选)。· cw_factions.FACTIONS / cw_decisions.synergy_score
-
-## D-82 (2026-08-06) 备战 3 op 补执行日志 + 部署验落地 + 删 #未验证(用户 /loop 护栏)· cw_ops prep / 备战 doc
-
-- **决策**:`BuyShopCards`/`DeployBench`/`BattlePrepCycle` 按 `od-dev-write-operation` review,补执行期日志(决策点信息密度,invariant#5);`DeployBench` 加拖后重读已部署数验落地;删三 op 的 `# 未验证` 注释。审计 `read_game_state` → 发现 7 字段 **已读未用**(plan 未消费),记进备战 doc 待 wiring。
-- **为什么**:用户 `/loop` 重启自主推进带硬护栏「运行 op 前查 `# 未验证` → 按 skill 补日志/截图 → 删注释」。重置根因之一 = `DeployBench` bug#1 drag 落空乱 board **无日志没察觉**(D-43);op 缺日志违反 write-operation(invariant#5)。补日志让每步可观测、bug#1 drag 可见。`DeployBench` 零日志 + drag 是 bug#1 高发点 → 加「拖完重读已部署数」观测 delta。
-- **备选**:① deploy 验落地硬 fail(delta<n 则 retry)—— 推翻:空槽 no-op + 部分部署合法 → 误判 retry 死循环;仅观测更稳。② 不删 `# 未验证` 等实机验再删 —— 推翻:护栏明示「补日志后可删」;实机验是下一步(T#92),失败再回炉,不阻塞。
-- **状态**:采用。ruff 净;全 currency_war **199 绿**。已读未用审计记进 `docs/game/screens/currency_war_prep.md`(`board_next_tier` 接线优先,关系 comp 成型度核心弱项 D-54~D-67)。· 备战 op / od-dev-write-operation invariant#5
-
-## D-81 (2026-08-06) strategy/13 迁移块第二步:GameState.bosses → plane_bosses(3 位面 boss)rename · cw_state §13.2/§13.5
-- **决策**:`GameState.bosses` → `plane_bosses`(3 位面 boss 名 = 简报屏「3 阵营」;`current_boss` 派生),reader/赋值处同步:`cw_comps.make_score_context`(`list(state.plane_bosses)`→ ScoreContext.bosses)+ `default_strategy`(`state.plane_bosses = list(session.briefing_bosses)`,即 §13.5 session→state 迁移点)。
-- **为什么(§13.2/§13.5 迁移块第二步,类 D-80)**:`current_boss` 派生(D-78 已加)读 `bosses`;§13.2 字段名应为 `plane_bosses`(原 `bosses` 模糊)。`default_strategy:80` 正是 §13.5 `session.briefing_bosses → state` 迁移点,rename 对齐(为后续 session 粘性字段全迁入 state 铺路)。范围小(1 字段 + 2 reader + 2 测试)。
-- **备选**:① 留 `bosses` alias —— 推翻:无外部 caller,clean rename 更清晰(单一真相源);② 同步 rename `ScoreContext.bosses` —— 保留:`ScoreContext.bosses` 是「评分输入 boss 列表」(语义 OK),与 `GameState.plane_bosses`(数据源)分工,只 GameState 字段 rename,bridge 处 `list(state.plane_bosses)` 衔接。
-- **状态**:采用。全 currency_war **199 绿**;ruff 净。迁移块进度:✅ 加法子集(D-78)/ ✅ difficulty→selected_difficulty(D-80)/ ✅ bosses→plane_bosses(D-81)/ ⏳ equips→inventory 拆 + round_num→node_index + hp→None 去谎言 + session 粘性字段全迁入 + 策略层 None 降级(后续块)。· strategy/13 §13.2/§13.5
-
----
-
-## D-80 (2026-08-06) strategy/13 迁移块第一步:GameState.difficulty → selected_difficulty(职级)rename · cw_state §13.7/§13.8
-- **决策**:`GameState.difficulty` → `selected_difficulty`(本局职级 A1..A8 / A8-1..A8-50),`effective_hp_threshold` reader 同步(`getattr(state, "selected_difficulty", "")`)。落 §13.7 **两阶难度模型**:`selected_difficulty`(职级,决定起始敌难 + 额外敌人词缀)+ `enemy_difficulty`(数值,随节点递增 + 可被投资策略压低,D-78 前已加)。
-- **为什么(strategy/13 §13.8 迁移块,安全子集先行)**:原 `difficulty` 名模糊(职级 vs 数值混淆)→ rename 区分(§13.7 两阶)。选**最小风险子集**先迁(1 runtime reader `effective_hp_threshold` + 2 测试,bounded、机械 rename),把行为变化大的部分(hp→None 去谎言 / bosses→plane_bosses / equips→inventory 拆 / round_num→node_index / session 粘性字段迁入)留后续块。
-- **备选**:① 保留 `difficulty` 作 alias(向后兼容)—— 推翻:无外部 caller(只 `effective_hp_threshold` + 测试 import),clean rename 更清晰(单一真相源,无 alias 双源漂移);② 一次性全迁(rename + 去谎言 + session 迁 + 策略层 None 降级)—— 推翻:行为变化大 + 长上下文易错,分块独立验证更稳(D-78 加法 → D-80 rename → 后续去谎言/session)。
-- **状态**:采用。全 currency_war **199 绿**;ruff 净。迁移块进度:✅ 加法子集(D-78)/ ✅ difficulty rename(D-80)/ ⏳ hp→None 去谎言 + bosses/equips/round_num rename + session 迁入 + 策略层 None 降级(后续块)。· strategy/13 §13.7/§13.8
-
----
-
-## D-79 (2026-08-06) 弱阵 fix:commitment prefilter 不再豁免 character_priority 的 off-target 角色(comp-aware)· cw_decisions · task#88
-- **决策**:`cw_decisions._best_improving_action` 的 commitment prefilter(target 设定时跳过 off-target 散牌)off-target 测试**去掉 `card.name not in character_priority` 豁免** —— off-target = `阵营∉target.factions 且非 core`,与 priority 无关。priority 仍享 buy-delta 加成(`CHAR_PRIORITY_BONUS×2`)+ 未 commit 时(`target=None`)prefilter 不跑 → 早期 stopgap 保留;只堵「已 commit + shop 有 target 卡可买时,off-target priority 角色仍被买」这个洞。
-- **为什么(D-56 live log 实证,非盲调)**:resume plane1-9 死局跑 bot 采 D-56 决策迹 → `target='DOT队'` 全程稳定(D-40 防振荡生效),但 gold=8 时买 **藿藿+阿格莱雅(能量,纯 off-target for DOT)** 填充 → board 7 阵营零成型(能量/仙舟/群攻/贝洛伯格/列车同行/银河学者都非 DOT)→ plane1 boss 战 **hp 60→26 重伤**;plane2 r1 仍 8 阵营 spread。根因:`DEFAULT_CHARACTER_PRIORITY` 含「藿藿/阿格莱雅」(1-2 费前期基石),prefilter 第三条件 `name not in character_priority` 把它们豁免 → commitment 名存实亡。违反 CLAUDE.md 铁律「**一切评分 comp 相关**」(装备/巨星/词缀都挂钩 target_comp,priority 不该绝对豁免 commitment)。
-- **备选**:① 改 `DEFAULT_CHARACTER_PRIORITY` 删 藿藿/阿格莱雅 —— 推翻:治标(用户自定义 priority 会再撞)+ 这些角色对能量队等仍是有效 early stopgap;根因是 priority 绝对豁免,该治本(prefilter)。② priority 完全 comp-aware(连 eval 加成也去)—— 推翻过激:priority 的 eval 加成是用户 steer(未 commit / shop 无 target 卡时该 grab 强角色),只需堵 committed 态。③ 同步改 `_saving` gate 的 priority 豁免 —— 推迟:`_saving` 是经济维度,prefilter 已在 committed+target-可买 态拦住 off-target priority buy(saving 放行→prefilter 拦),功能够;若 `_saving` 豁免也致 spread 待后续数据。
-- **状态**:采用。1 新测试绿(`gold=3 + [阿格莱雅(能量,off-target priority), 黄泉(减益,target core)]` → 买黄泉、不买阿格莱雅;旧码 priority 豁免 + buy-delta `+16` → 先买阿格莱雅→gold 剩 2 买不起黄泉→漏 target);全 currency_war **199 绿**;ruff 净。**待验证**:restart server(载 fix)+ 新局跑,看 committed 态 board 是否聚焦 target faction(不再 spread);旧码 bot 实跑已确认 bug(hp 60→26)。· task#88 / strategy/02 commitment / CLAUDE.md「一切评分 comp 相关」
-
----
-
-## D-78 (2026-08-06) GameState 加法建模块:strategy/13 §13.2 补字段 + NodeInfo + BenchChar.equips + current_boss 派生(零行为变化)· strategy/13 §13.10 step1
-- **决策**:`cw_state.py` 落 strategy/13 §13.10 step1 的**安全加法子集** —— ① 新 `NodeInfo` 类型(node_path 元素);② `BenchChar`(= §13.2 `Unit`)加 `equips: list[str]`(身上装备,有序);③ `GameState` 加 7 个 §13.2 新字段(`node_path`/`match_type`/`plane_modifiers`/`shop_locked`/`active_strategies`/`megastar_char`/`partner_char`,**均 None/空兜底**,OCR 未接→安全降级);④ `current_boss` 派生属性(= `bosses[plane-1]`,越界/空→None)。**零行为变化**:不 rename、不删字段、不改默认值、不 rewiring 策略层。
-- **为什么(PROGRESS 顶优先 + 风险分层)**:strategy/13 §13.10 step1「建模」是纯逻辑、不需游戏的头号待办;GameState 经前期补全已较完整(node_type/enemy_difficulty/xp_progress/level_up_cost/shop_refresh_cost/streak/board_next_tier 等已加),本次补剩余 §13.2 新字段让后续 OCR 接线可填(接一个填一个)。**加法子集先落地** = 零风险(长上下文 / post-compact 不宜一次做大行为变化);**行为变化部分(rename `round_num→node_index`/`difficulty→selected_difficulty`/`bosses→plane_bosses`/`equips→inventory` 拆 + 去谎言默认 `hp→None`/`board` 编 + 策略层 `None` 降级 + 测试调绿)留后续统一迁移块**(§13.8),避免半截迁移破坏策略层。
-- **备选**:① 一次性做全部(renames + 去谎言 + 策略层 None 降级 + 测试)—— 推翻:行为变化大 + 长上下文易错,分块更稳且可独立验证;② 加 `inventory` 字段(§13.2 G,equips 拆 available_equips + diamonds)—— **推迟**:与现有 `equips: list[str]` 双源(违反 CLAUDE.md 单一真相源),留「equips→inventory」统一迁移时一起做,避免过渡期双写漂移;③ 不加 `current_boss` 派生 —— 保留:派生属性无副作用,boss_fit/策略可直接用,免去各处重算 `bosses[plane-1]`;④ 加 `NodeRecord`(§13.3 观测日志)—— 推迟:属 `PerformanceTracker.history`(cw_performance),与 GameState 分离,不在本块。
-- **状态**:采用。5 测试绿(新字段默认 + BenchChar.equips + NodeInfo + current_boss 派生 + 既有字段/方法零回归);全 currency_war **193 绿**;ruff 净。§13.2 字段补到剩:rename/去谎言默认/inventory 拆/NodeRecord/FactionState(board 重构)—— 后续迁移块(§13.8,需同步改策略层 + 测试)。· strategy/13 §13.10 step1 / §13.2
-
----
-
-## D-77 (2026-08-06) 装备合成图谱:7 标准基础件完整 K7 两两合成图(28 进阶,逻辑闭合)+ 光能电池孤立节点(待核实)· cw_synthesis
-- **决策**:建 `cw_synthesis.py` 合成图谱 —— **7 件标准基础件(以太钻头/和平手枪/幸运星/折叠小刀/生命之花/轮滑鞋/量产型装甲)构成完整 K7 两两合成图**:C(7,2)=**21 交叉配方**(每两件不同基础件→1 进阶,**双组件经图鉴「合成公式」列表交集核实 = 确证**)+ **7 自配配方**(每件×2→1 进阶;反重力皮靴=2×轮滑鞋 攻略确证,余 6 由 K7 闭合逻辑确证 —— 每件列表恰 7 项,6 项交叉用尽,第 7 项无其他件可配→只能自配)= **28 进阶,合成图完整闭合**。光能电池 7 进阶与标准 7 零交叉(孤立节点,机理不同)→ `GUANGNENG_ONLY` 标注,**待游戏内人工核实**后另建。
-- **为什么(D-73⑤ 装备合成配方 + 证据纪律)**:`extract_synthesis.py` OCR 数据银行图鉴「合成公式」区(每基础件→可合成进阶名单)派生图谱;进阶名出现在 2 件基础件列表交集 = 那两件即组件。**OCR↔米游社 equipment.md 双源对拍**:42 个名字(7 基础件+28 结果+7 光能)全在 `EQUIPMENT_ROSTER`,无缺。**视觉大模型读图标配对被否** —— GLM-4.5V 对光能电池页编造自相矛盾链(战场进化手册既是结果又被当组件,7 结果漏 1),印证 CLAUDE.md VLM 边界(计数/对齐/状态推理不可信);故光能电池不靠 VLM,标待游戏内核实,不强入码(拿假设当论据=违反证据纪律)。
-- **备选**:① VLM 读图标配对(推翻:幻觉自相矛盾链);② 28+光能7 全当确证入码(推翻:光能机理不明,与标准 K7 零交叉,强入=假设当论据)→ 只入确证的 28,光能另列待核;③ 入 `cw_equipment.py`(推翻:那是 `gen_equip_registry.py` 产物,合成不在 equipment.md → regen 丢失)→ 独立 `cw_synthesis.py` 手维护(28 配方稳定游戏数据);④ 全靠 bot-tracking 不建合成图(保留:ComposeEquip 接线时 bot 跟踪作运行时主路径,本图谱作静态可达性参考/成型评估)。
-- **状态**:采用。**6 测试绿**(K7 完整闭合 + 度数全 6 + 无重复对 + 三组结果无重叠 + 名字双源对拍 + 可达性函数 `synthesize_target`/`self_advance`/`cross_components`/`self_base`);ruff 净。`以太钻头` 类别怪癖(图鉴归简易 tab 作基础件,米游社归进阶)—— 按图鉴事实作基础件处理,docstring 标注。**光能电池机理 + ComposeEquip op 接线待后续**(游戏内核实机理后)。· D-73⑤ / strategy/03 装备合成 / `tools/cw/extract_synthesis.py`
-
----
-
-## D-76 (2026-08-06) 装备图标库:CV 形状检测裁切工具(tools/cw/harvest_equip_icons.py,可复用)+ 位置对齐法· task#87
-- **决策**:数据银行装备图鉴采图标库,建**可复用裁剪工具** `tools/cw/harvest_equip_icons.py`(CV 形状检测定位紫色边框方块 → 紧贴裁 → 按规范名存 `assets/template/cw_equip/`),版本更新重跑补采。方法(od-dev-ui-region-detect §形状轮廓法 squares):灰度多阈值扫描 + 填洞(`drawContours FILLED`)+ 4 顶点凸 + 面积/长宽比 + IoU 去重 → 检出图标方块(精度完美);召回 ~50%(图标内容差异大)→ 聚类检出锚点推全 7×3 网格(列中心 + 尺寸)。**标签↔图标位置对齐**(OCR 名 top-y + CV 校准偏移 + CV 列中心;顶/底行图标越出面板自动跳过)。
-- **为什么(用户「去数据银行」+ 教方法,2026-08-06)**:建 icon/立绘库(任务#87);用户逐点纠方法:① **别用名字中心推坐标**(名字长短不一→偏心)→ CV 形状检测判几何;② **别按行索引对齐**(滚动后顶行图标被面板裁切→CV 漏检顶行→索引整行错位贴错,实测 page-2 错标一整行已删)→ **位置对齐**(OCR 名 y + 偏移);③ **裁剪脚本存可复用工具**(版本更新补采,别扔 .debug/temp);④ Windows 中文路径 `cv2.imwrite` 挂 → `imencode+tofile`。
-- **备选**:① 硬编码名字中心 + 固定 116 框(推翻:外围背景 + 偏心,用户首否);② 检测行索引 ↔ 名行索引对齐(推翻:滚动裁切→错位);③ 一次性脚本扔 .debug(推翻:版本更新要重写 → 存 `tools/cw/` 复用);④ 完全不建库走 bot-tracking(保留:装备身份默认 bot 跟踪,视觉库作恢复/校验旁路,同 D-75 角色身份设计)。
-- **状态**:采用。工具 ruff 净;page-1(21)+ page-2 干净行(14)= **35/125 初始入库**(动能激发剑行被裁切跳过,待他处补);squares 精度完美(21/21 紧贴居中,vision 校验)。**采全待续**(滚动 + OCR 名 y 流程,~4-5 页;含 ·特权 变体需选读全名)。**skill 反馈已写**(「采库裁剪脚本存复用工具 + 位置对齐法」→ skill-improver 后台处理中)。· 任务#87 / strategy/13 `inventory.available_equips`·`Unit.equips`
-
----
-
-## D-75 (2026-08-06) 角色立绘库:脸近景库对备战半身立绘强命中(免采半身模板)+ identity reader 接线· cw_identity_obs/currency_war_char_id
-- **决策**:备战角色身份识别**复用现有 `character_avatar` 脸近景库(88)**(推翻 char_id.py / D-73 旧结论"脸近景≠备战半身,需货币战争专属半身模板")。新建 `cw_identity_obs`:`identify_slots`(纯 CV 核心,裁 screen_info 槽位 → SIFT → `resolve_char_name` → 规范名,离线可测)+ `read_deployed_chars` / `read_bench_chars`(ctx 薄包装,从 screen_info 取 `前排-1..4`/`后排-1..6`/`备战栏-1..9` rect)。`resolve_char_name`:`avatar_id` → `get_character_by_id().cn` → `CHARACTER_ROSTER`(变体子串消歧)。
-- **为什么(用户「建 icon/立绘库」+ 实证优先)**:用实机 P1R9 截图实测 SIFT,脸库对备战半身立绘**强命中** —— 前排 4/4(佩拉/黑塔/Saber/藿藿,inliers 23-30 vs 第二名 3-4,巨大间隔)、备战栏 8/9(inliers 21-36)、后排空(正确返空;VLM 曾幻觉"1 个后排",印证 VLM 计数不可信)。旧"配饰角色不可靠"基于不同/旧样本,**过于悲观**。用户要建库 → 实证发现**库已存在且对面部独特角色够用,免从零采 74 张半身模板**的大工程。
-- **备选**:① 从零采货币战争专属半身模板(推翻:实测脸库够用;且备战/商店槽位 RNG 累积采全 74 张慢、数据银行图鉴采有跨视图风险 + 用户对局中不能导航)。② 接进 `read_game_state`(推翻:每帧 SIFT 慢 + 与 bot 跟踪 deployed/bench 双写冲突);**保留 bot 跟踪为默认**(deployed/bench 由 buy/deploy 推演,plan-time 快),视觉 reads 作**离线重建 / 漂移恢复旁路**(不进 read_game_state)。③ 完全不建视觉身份(推翻:离线从截图重建 GameState 对测试/replay 有值 + 漂移恢复)。
-- **状态**:采用。4 测试绿(`resolve_char_name` 单元 + `identify_slots` 纯 CV + `read_deployed_chars` 经 ctx 集成,fixture `deployed_p1r9.webp`);全 currency_war **187 绿**;ruff 净。**待多样本核**:配饰/帽子重角色(黑天鹅等)、货币战争变体(姬子·启行/千冶·刃/丹恒·腾荒 共脸异名 → SIFT 归一基础名,子串消歧对"基础+变体并存"roster 可能不准,需星级/阵营旁证)。**部分解决 D-73 备战字段全图 🟡 deployed/bench 身份**;余 `Unit.equips`/`active_strategies`/`inventory`/`node_path` 仍需图标库(任务#87)。· strategy/13 §13.2 deployed/bench 身份
-
----
-
-## D-73 (2026-08-06) 第二轮攻略调研驱动策略更新计划(V4.4 meta + 概念股送件 + 词缀对策 + 商店保底)· strategy/03 round5 + research/
-- **决策**:第二轮 V4.4/V4.5 深度调研完成(知识库 `.debug/temp/currency_war/strategy_research/`,9 文件分主题),据此定策略更新方向,记入 strategy/03 round5:**① COMP_LIBRARY** —— 「列车同行」= **姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**(core 姬子启行+三月七,key_equips 反震四件套,**boss_weakness 加「正当防卫」**);补 命运圣杯流/欢愉队/万敌单C/减益黄泉。**② 新角色+命运圣杯阵营**(CHARACTER_ROSTER/FACTIONS 补)。**③ 词缀对策表**(正当防卫克反震/反甲/高频;同步行动克拉条利DOT;沉重脚步刚需护盾…)。**④ 概念股送装备件 = decide_invest(env) 新维度**(选与 target_comp 核心装备合成件匹配的概念股)。**⑤ 装备合成配方**(cw_equipment 基础件×2→进阶)。**⑥ 商店保底**(每5刷出5张同费,建模进 D牌逻辑)。**⑦ 姬子启行选择伙伴按最缺羁绊选**(升级 decide_partner,随 read_partner OCR)。
-- **为什么(用户 2026-08-06「重新调研 + 总结优化策略」)**:第一轮(research round1,V4.4 基线)后实机推进到 V4.4/V4.5,meta 已演进(姬子·启行反震=顶层、Fate 联动命运圣杯),需新一轮调研校准策略方向 + 补 V4.4 新内容。用户定调「调研越多越好」,2 个研究子 agent 并发(≤2 上限内)分头深挖阵容/角色/装备/经济/投资/boss/节点,NGA 403、米游社 JS-only 靠搜索摘要+其它源交叉,每条标来源+版本+置信度。
-- **用户澄清(2026-08-06,定方向)**:① **刷新费默认 2 金**(备战画面识别;部分条件触发后变 → 读 `state.shop_refresh_cost`;bwiki "4金"疑混淆,代码 `SHOP_REFRESH_COST=2` 对);② 升级金价表/连胜阶梯 → 实机采集(非设计问题);③ **列车同行 = 姬子·启行**(确认);④ 角色图鉴补全(任务)。
-- **备选**:① 直接改代码实现上述(推翻:用户明确「只更新设计方法 + 进度待办,之后有人跟进」,本轮不改代码);② 只写 PROGRESS 待办不更新设计 doc(推翻:研究对 strategy/03 阵容规划层有实质设计影响,需 round5 补充落 doc 才不漂);③ 把装备/词缀细节也全写进 strategy/07、10(推迟:03 是战略核心先落,07/10 细节在 research dir,跟进人按 round5 + research 执行即可,避免本轮盲目改未读 doc)。
-- **状态**:**计划(待跟进人实现)**。strategy/03 round5 已落;research/ 9 文件已落;PROGRESS_autonomous 已加待办。实现优先级(跟进人参考):COMP_LIBRARY 扩 + 词缀对策表 + 新角色/阵营注册表(纯逻辑、影响识别+选comp)→ 概念股送件决策(纯逻辑)→ 数值实机校准 → 装备配方/商店保底/选择伙伴(部分需OCR)。· strategy/03 round5 + research/(用户「调研越多越好 + 只更设计/待办」)
-
----
-
-## D-74 (2026-08-06) 备战字段采集收尾批:enemy_difficulty/level_up_cost/shop_refresh_cost/streak + xp 改用 screen_info area(用户纠误判)· cw_state/cw_observation
-- **决策**:接 4 个备战字段(各用 screen_info area,单一源坐标):`enemy_difficulty`(文本-难度,左上角)、`level_up_cost`(文本-购买经验金币数)、`shop_refresh_cost`(文本-刷新金币数,默认 2)、`streak`(文本-连胜数);+ `read_xp_progress` 改用 `文本-升级所需经验` area(去掉 D-72 的硬编码 Rect);`read_game_state` 接线。
-- **为什么(用户 2026-08-06 纠正)**:我 D-73 误判"level_up_cost/enemy_difficulty 不在备战屏"——**它们在 screen_info 有 area**(文本-难度/购买经验金币数/刷新金币数/连胜数/升级所需经验),我漏 grep area 名了。用户:"升级所需金币在 screen_info 应该有;敌人难度在左上角"。核实后全在 → 按用户「完成备战」全接。
-- **备选**:① enemy_difficulty stylized OCR 常空 → 不接(推翻:area + scaffold 就位,OCR 能读到即生效,stylized 留 vision/digit-CV 后续);② 保 xp 硬编码 Rect(推翻:screen_info area 是单一源,改用它)。
-- **状态**:采用。65 测试绿(+1 numeric batch);ruff 净。**caveat**:enemy_difficulty 数字 stylized,OCR 常空(可靠读待 vision/digit-CV);level_up_cost/streak/refresh_cost shop-态相关(读到填真值,读不到 None/2 兜底)。**子agent 确认**:base64 vision 脚本是官方 harness 特性(GH #36511,harness 拦截 `data:image/` stdout→图片块),非 hack;Read 的 CDN 反斜杠 key 是**定制环境 bug**(报环境维护者:上传 key 该用 hash 如 data-URL 路,非 raw 路径)。· 用户纠误判 + 「完成备战」
-
-## D-73 (2026-08-06) 备战字段采集:node_type(当前节点类型,顶部标签 OCR)+ vision 修复(img_to_vision_url 脚本)· cw_state/cw_observation
-- **决策**:① **node_type 字段**(`str | None`)+ `read_node_type`(顶部节点行标签带 OCR → 关键词 map:首领→boss/补给→supply/遭遇→encounter/巨星→megastar/战斗/精英/奖励/投资);`read_game_state` 接线。② **vision 修复**(本条前置):新建 `.claude/scripts/img_to_vision_url.py`(本地路径[+crop]→base64→print→harness 拦截上传 CDN 用 hash key→干净 URL→喂 analyze_image);CLAUDE.md 记「用 analyze_image 前必跑此脚本」+「项目用 uv run python 不用 python」;memory 更新(旧 Read→CDN 路径已失效)。
-- **为什么(用户 2026-08-06「完成备战」+ vision 修复诉求)**:node_type(当前)驱动节点前决策(boss 前保战力/补给前无战)。vision 400(Read 的 CDN URL 带反斜杠)卡了 icon 字段 + 整个 screen-onboarding 主线无数次,用户要脚本一劳永逸。
-- **备选**:① 全节点类型 node_path(图标→类型)需建节点图标模板库(本条只当前节点 + 文字标签);② vision 修法用 file:// / 编码 URL(都实测 400,推翻;只有 base64→harness 上传干净 key 通)。
-- **状态**:采用。64 测试绿(+1 node_type);ruff 净。**仅 boss(首领)实机核实**;其它节点类型标签措辞待多态实机补全(map 已覆盖常见词)。· 备战可采字段到顶(见下)。
-- **备战字段全图(D-73 收尾)**:✅ 可采全接 —— gold/hp/level/plane/round/shop/bench_full + board tier(D-69)+ xp_progress(D-72)+ node_type(本条);❌ **不在备战屏** —— level_up_cost(购买经验区"5"是**等级**非 cost,实据;cost 不显示)、enemy_difficulty(是简报/结算"敌人难度 108",非备战);🟡 **需图标/立绘库**(下步大方向)—— active_strategies(右面板图标列,vision 探到但 identity 要策略图标库)、inventory equips(未持有/要装备图标库)、deployed/bench 身份(SIFT 立绘库)、node_path 全节点类型(节点图标库)。**备战"完成"= 建 icon/立绘库**(identity 类),非更多 OCR。
-
-## D-72 (2026-08-06) 备战字段采集:xp_progress(购买经验 "X/Y"→cur/next;文本字段到顶)· cw_state/cw_observation
-- **决策**:备战文本字段采集第二切片 = `xp_progress: tuple[int,int] | None`(``cur_xp, xp_to_next_level``),购买经验按钮下方 "X/Y"(如 "4/20"→(4,20))。`read_xp_progress`(硬编码 Rect,同 read_bench_full,后续移 screen_info area)+ `read_game_state` 接线。
-- **为什么(用户 2026-08-06「继续备战文本字段采集」)**:xp_progress 是 level 升级时机决策的输入(cur 接近 next → 即将升级,影响 level_plan/买经验优先级),替代纯 `_expected_level` 估。
-- **备选**:① 同切片接 `level_up_cost`(推翻:购买经验的 "5" OCR 不稳,cost 还是 level 不清,需 vision 核实,暂不接);② 用 screen_info area(推迟:先硬编码验稳再移,同 read_bench_full 先例)。
-- **状态**:采用。63 cw_observation+decisions 测试绿(+1 xp_progress);ruff 净。**备战文本字段采集到顶**:干净文本字段 = board tier(D-69)+ xp_progress(本条);**余皆阻塞** —— active_strategies/inventory 图标、node 行图标、deployed/bench 身份 = vision(400)/SIFT 立绘库;enemy_difficulty 备战屏未见(可能在节点子态)。下一解锁靠修 vision / 建 SIFT 库。· D-70 备战字段采集 + 用户「继续文本字段」
-
-## D-71 (2026-08-06) 拆分 cw_observation(备战/简报/结算/core;D-70 备战字段采集铺路)· cw_obs_*
-- **决策**:`cw_observation.py` 558 行混了备战/简报/结算三类 reads。按**画面**拆成 4 文件:`cw_obs_core.py`(共享 helper `_ocr`/`_area_rect`/`area_center`/`shop_card_click_points`/`_first_int` + 常量,无兄弟依赖断循环)+ `cw_briefing_obs.py`(简报 reads + 词缀文件操作)+ `cw_settlement_obs.py`(结算 reads)+ `cw_observation.py`(只留备战 reads + `read_game_state` + **re-export** 简报/结算)。
-- **为什么(用户 2026-08-06)**:「cw_observation 太大就拆」。备战字段采集(D-69/D-70)会让它涨到 750+,趁早拆、新 reads 直接进对模块。**零 importer churn**:所有 `from cw_observation import X`(8 处:shop/deploy_bench/battle_prep/handle_*/battle_loop)经 re-export 仍可用。
-- **备选**:① 4 文件全平铺无 core(推翻:briefing/settlement 需 `_ocr`/`_area_rect` → 循环导入;必须抽 core);② importer 改从子模块 import(推翻:8 处 churn,re-export 更省);③ 暂不拆(推翻:备战字段会让它更大,越拖越难)。
-- **状态**:采用。180 currency_war 测试全绿(含 entry_flow 全 handler 链);ruff 净。**1 测试触点**:`test_cw_observation` 的 affix-effects 测试 monkeypatch `_AFFIX_EFFECTS_PATH`(随 file-ops 挪到 `cw_briefing_obs`,测试改用 `cw_briefing_obs._AFFIX_EFFECTS_PATH`)。`area_center` 在 observation 内不用、只 re-export → `# noqa: F401`(防 ruff 删)。· 用户「太大就拆」+ D-70 备战字段采集铺路
-
-## D-70 (2026-08-06) 策略入参 = 完整局内信息(GameState 重做:全量字段 + 整局固定归位 + None 不说谎) · strategy/13
-- **决策**:`GameState` 重做成**完整的局内信息单一入口** —— ① 把一局货币战争所有可能有用的信息全建字段(进度/节点/经济/棋盘/商店/投资/装备/资源/生命 + 整局固定事实 + 节点观测日志 + 游戏参考数据注册表);② 开局读一次、整局不变的事实(3 boss/敌人词缀/投资环境/位面修正/难度)从 `session` 迁入 `state`(修「同一信息两个家」);③ **`None` = 未观测,不用 plausible 默认值说谎**(hp=100/count=1/level 兜底 → 全改 None);④ 节点序列(备战顶部图标行)、已持投资策略、持有装备+钻等之前漏读的信息补建。详 strategy/13。
-- **为什么(用户 2026-08-06 定调)**:**「要完成决策,提供的信息越多越好;是否使用是策略决策的事」**。现状 `GameState` 是「策略现在用到啥才补啥」,大量有用信息没字段(`active_strategies`/`streak`/`node_type`/`node_path`/`inventory`...)或读默认值说谎(策略分不清真值 vs 没读到,「完整提供」是空话)。信息层与决策层解耦:信息层只管完整准确提供,字段先全建,接不接 OCR 是画面建档的事(接了填真值,没接 None)。另:难度两阶(职级 A8-1..A8-50 决定起始敌难 + 节点递增的 enemy_difficulty,boss 血量 base×1.052^难度)记进 gameplay。
-- **备选**:① 在现状 GameState 上零散补字段(推翻:现状「plausible 默认说谎」+「session/state 双家」是结构性缺陷,打补丁不治本,违背「完整 + 诚实」原则);② 顺手改 hook 签名/给自定义策略建参数家(推翻:另一件事,本文聚焦信息内容,不混;hook 签名后续单独做);③ 把节点序列/装备等 OCR 接完再建模(推翻:字段先建不阻塞,接线是画面建档独立任务,不该耦合)。
-- **状态**:**设计(待实现)**。strategy/13 已写(字段全集 + 接线状态表 + 待核实项 + 实施顺序)。建模纯逻辑不需游戏;接线需游戏(画面建档)。**行为变化点**:去谎言默认 → 策略层(`cw_decisions`)需对 None 安全降级 + 测试调。· strategy/13(用户「完整提供信息」定调)
-
----
-
-## D-69 (2026-08-06) 备战字段采集启动(doc 13):board tier(X/Y → count + next_tier)· cw_state/cw_observation
-- **决策**:备战屏信息密度高但 `GameState` 只填 8 字段(用户:备战还没处理完,很多信息没采)。按 doc 13(`strategy/13_input_model.md`)启动备战字段采集,**第一切片 = board tier**:左面板 "X/Y" → `count=X`(已有)+ `next_tier=Y`(新增 `board_next_tier` 字段)。`read_board` 重构出 `_board_pairs`(同时取 X+Y)+ `read_board_next_tier`;`read_game_state` 单次 OCR 填两者。
-- **为什么(用户 2026-08-06)**:① 「每屏做完」——备战 "done" 不止 area/id_mark,要采全它提供的 `GameState` 字段(doc 13 §13.2);② 全屏 OCR 把 "2/3" 误读 "213" 让 `read_board` 显脆,实为**全屏密度问题**(聚焦裁切读对)——`next_tier` 阈值是 comp/progress 评分「距下个 tier 几人」要的。
-- **备选**:① `board: dict[str,FactionState]` 改类型(doc 13 目标,推翻:破所有 `state.board[f]` int 用法,留 §13.8 一轮聚焦改;现**加itive 加字段**,不破行为);② 只读 count 不扩(推翻:next_tier 干净可读 + 有价值)。
-- **状态**:采用。18 cw_observation 测试绿(+1 board X/Y);ruff 净;`read_board` 行为不变(回归)。**保守**:新字段默认空、无策略消费方(暂),策略接法后续。· doc 13 §13.2D/§13.6 + 用户「每屏做完」
-- **备战字段全图(余待采)**:✅ board tier(本条);🟡 待探区域(active_strategies 右面板空需别的子态/enemy_difficulty/level_up_cost/xp_progress);❌ 阻塞(node row 图标/inventory 图标=vision 400 挂;deployed/bench 身份=SIFT 立绘库未建)。逐簇推进。
-
-## D-68 (2026-08-06) 投资环境数据银行核对 → INVESTMENT_ENVS 全量 + 删冗余 doc + 未建模项 log warn(代码单一源) · cw_investments/handle_invest_env
-- **决策**:① **INVESTMENT_ENVS 全量扩**(36→~82,7 类齐全:概念股15/邀请20/契约7/时代6/经济15/规则10/专家9),数据银行 OCR 核对游戏内总 83/解锁 68;② **删 `docs/game/currency_war/data/investment_envs.md`**(代码已全量建模,doc 数据表是冗余副本);③ **handle_invest_env 加 log warn**:OCR 命中注册表外的环境名 → 报警(未建模项不静默 fallback,防假绿);④ 修正:删 2 个不存在的概念股(持续伤害/量子同频概念股,数据银行无此卡)、确认战技点概念股(实存)、新增 4 个米游社漏收(红钻/蓝钻贵族、命运圣杯邀请/契约)。
-- **为什么(用户 2026-08-06 指导)**:① 「每屏处理完再下一屏」——投资环境屏的完整范畴 = 认全所有环境(数据全集是识别地基,非后置美化);② **数据银行是权威源**(83 总,米游社 77 漏 4 + 2 个概念股不存在);③ **「代码已建模的游戏数据不存 doc」(用户原则,单一真相源延伸)**——注册表有 name/category/effect/faction/source 全字段,doc 同内容是重复源 → 漂移风险(CLAUDE.md「单一真相源」的具体化)。非数据信息(D-68 发现/缺口/Fate 阵营)进本日志 + 代码注释,不进数据 doc。
-- **备选**:① 保留 doc 双源(推翻:漂移,用户明确要代码单一源);② 只加 log warn 不扩注册表(推翻:注册表是识别基础,log warn 只兜底,两者都要);③ 把全量数据留 doc、代码只收策略用的(推翻:OCR 识别全集都要,且违背单一源)。
-- **状态**:采用。49 investments+comps 测试绿(10 新 D-68);ruff 净。**缺口**:5 个 `???` 锁定未命名环境🔴无法收(数据银行未解锁);命运圣杯 = **Fate 联动阵营**(角色 远坂凛/吉尔伽美什/Archer),factions doc 未收,待补。**下一步 D-69**:运行时采集仿词缀(锁定环境玩家解锁后出现在对局里自动采)。· CLAUDE.md 工程化质量/单一真相源 + 用户「每屏做完」+ 「代码已建模不存 doc」
-
----
-
-## D-67 (2026-08-06) 经济统一论接线 + bench 空间检查(用户反馈:没早凑 50 金 + 没判断备战席满 + 无脑填备战席) · cw_decisions
-- **决策**:① **_saving_for_interest**:gold<INTEREST_THRESHOLD(50) + 板位满(deployed≥max_units,非战力断档)+ 健康(hp≥threshold,非 tempo)→ 攒息(抑 off-target 买 + 阻 roll),并入 `_saving`(同 _saving_for_level 抑散牌);② **bench 空间检查**:buy loop 里 deploy 满 + bench 满(≥BENCH_CAPACITY 9)→ skip 买(防 overfill)。
-- **为什么(用户 2026-08-06 看对局反馈)**:①「没早凑 50 金拿满利息」—— bot greedy buy-delta 见 synergy(+10/牌)> interest(4/tier,**单轮视图低估复利**)→ 买空金到 0 → 无息引擎(每回合白拿5)→ 弱死。CLAUDE.md「经济统一论:维持≥50,超出才花;tempo(HP危险/战力断档)破息」是设计但**未接线强制**。②「没判断备战席满 + 无脑填备战席」—— buy loop 无 bench 空间检查,deploy 满时买的牌堆 bench → overfill;off-target 散牌买致 spread。
-- **备选**:① 提 INTEREST_WEIGHT(4→8,推翻:单轮 eval 仍会买,synergy>interest;hard floor 才根治);② off-target cap(推翻:D-67 初版试过,破坏 synergy push,已撤);③ 全阻 target 买也(推翻:target 深化 + level_plan 该花,只阻 off-target + roll)。
-- **状态**:采用。44 decisions 测试绿;ruff 净。**tempo 例外**:hp<threshold 或板位未满(战力断档)→ 不攒息(可买保命/填板)。**待新局验**:bot 是否早达 ≥50 金(息引擎)+ bench 不 overfill + 少 spread。· CLAUDE.md 经济统一论 + 用户反馈
-
-## D-66 (2026-08-06) P2/F1:maybe_pivot commit 阈值(target form_progress≥0.4 → 强粘,不弃成型 comp) · cw_comps
-- **决策**:信号1 pivot 阈值加 commit 层 —— `target` 的 `form_progress ≥ COMMIT_FRAC(0.4)` = 已 commit → 阈值 ×`COMMIT_STICK_FACTOR(1.5)`(0.10→0.15,强粘)。**优先于 D-59 easier**(已 commit 不因易 comp 降阈被弃)。未 commit + best 易 → D-59 降阈(0.07);已 commit → 强粘(0.15);else 正常(0.10)。
-- **为什么(strategy/12 F1 + 2026-08-06 实跑 spread)**:bot board spread + 低 hp 弃正在成型的 comp → 弱死。F2(roll)让 bot roll 找 target,但 target flit(微 score 波动切走)→ 深堆被打断。F1 让已 commit(40%+ 成型)的 target 强粘,best 需大幅优于(0.15)才转 → bot 深堆一个 comp 不轻易弃。语义:「已在堆 X,继续堆,别因 shop 这轮波动弃」。
-- **备选**:① 不加 F1 靠 D-40/D-59 稳(推翻:实跑仍 flit/spread,F1 显式 commit 阈值更稳);② COMMIT_FRAC 调高(0.6,推翻:0.4 已能防弃 1 阵营过半的 comp,0.6 太晚);③ commit 也阻信号3(推翻:信号3 保命该能切,D-65 已让保命 board-align,F1 只管信号1 涌现)。
-- **状态**:**实验**(COMMIT_FRAC 0.4 / STICK_FACTOR 1.5 待多局校准)。40 cw_comps 测试绿;ruff 净。log 加 `[commit强粘]` 标记。**待新局验**:已 commit 的 target 是否不被微波动弃 → 深堆成型 → 存活久。· strategy/12 F1(P2 comp 成型)
-
-## D-65 (2026-08-06) 弱阵:信号3 保命优先 board 有 progress 的 easy comp(防切 board 不支持的 fast-easy) · cw_comps
-- **决策**:信号3(保命,hp<0.75×threshold)选最快 easy comp 时,**优先 board 有 form_progress>0 的 easy comp**(无则 fallback 全 easy)。log 加 `[board有progress优先]` 标记。
-- **为什么(2026-08-06 实跑 plane1 r8 死)**:hp 流血到 1(hp<30 保命触发)→ 信号3 切 **DOT队**(fast easy,form_round 4),但 board 是 追击/群攻(**无 DOT队 的 持续伤害/减益**)→ DOT队 无法成型 → 仍死。切到一个 board 不支持的 fast-easy = 无效保命(成型不了还是死)。该优先 board 已有 progress 的 easy comp(如 列车同行,board 有 列车同行:1 → 能继续堆成型)。
-- **备选**:① 保命切当前 target 若正在成型(推翻:target 可能 medium/hard,保命该偏 easy 快成型;D-65 在 easy 池内筛 progress 更稳);② 完全弃保命切换(推翻:D-40 实跑证明低 hp 不稳 churn 死亡螺旋,保命切稳定 easy 是对的,D-65 只加 board-progress 约束);③ 信号3 也看 comp_viability 观测(将来,P2)。
-- **状态**:采用。40 cw_comps 测试绿(改 test_maybe_pivot_low_hp_signal3:board full 成型 easy → 保命选它,非弃成型);ruff 净。**关联**:F1(commit 阈值)尚未做(strategy/12);D-65 是保命的 board-alignment 细化。· 弱阵(D-40 保命 + D-59 易comp + strategy/12)
-
-## D-64 (2026-08-06) choose_partner confirm mouse_move + 验 overlay 关(bug#1 + ADR-0009) · handle_select_partner
-- **决策**:candidate + confirm click 前 `mouse_move`(bug#1 缓解);confirm 改 OCR 定位(`_find_text_center`)+ mouse_move + click(弃 `round_by_ocr_and_click` 裸 click);confirm 后验 overlay 关(选择伙伴 消失),没关 `round_retry`(ADR-0009 兜底)。
-- **为什么(2026-08-06 r6 stall)**:choose_partner iter102+ flat-loop:`已选择→直接确认` round_success 但 overlay 不关。**probe 实测**:手动 click candidate(945,301)→已选择→手动 click 确认(1441,582)→**overlay 关回备战**。bot 的 `round_by_ocr_and_click` confirm 被 bug#1 吞(before_screenshot 移光标→click 落空)→ overlay 持留 → flat-loop。r9 同型(手动 click 即关)。
-- **备选**:① 保留 round_by_ocr_and_click 只加 verify(推翻:click 仍 bug#1 吞,verify 只能 retry 不能让 click 落地;mouse_move 治本);② 弃 confirm 改 ESC(推翻:probe 验 confirm 关 overlay 是正解,ESC 行为未验);③ 两步事件假说(推翻:probe 验 confirm 直接关 overlay,非两步)。
-- **状态**:采用。ruff 净。**同 D-62(出战)模式:关键 click 前 mouse_move 缓解 bug#1**。待新局验 choose_partner 不再 flat-loop。· bug#1 + ADR-0009(三层完成验证,就地用)
-
-## D-63 (2026-08-06) P2/F2:plan roll 找 target(_sample_shop 加 target 权重 + 攒金期 shop 无 target 时允许 roll) · cw_decisions
-- **决策**:① `_sample_shop` 加 `target_comp` 参,target 阵营采样权重 2×(同 user priority);② `_best_improving_action` roll gate:攒金期(`_saving_for_level`)shop **无 target 卡**时允许 roll 找 target(原 `not _saving_for_level` 一刀切阻 roll)。
-- **为什么(2026-08-06 plane2 r1 秒死暴露)**:bot 存活过 plane1 但 plane2 r1 hp100→0 一回合死。根因:shop 无 target(击破流萤)阵营卡 + gold44<升7级48 → `_saving_for_level` 阻 roll + plan 不买 off-target(攒金)→ `plan=[]` 带 spread board 进 plane2(高伤)→ 秒死。**蒙特卡洛 `_sample_shop` 只按 user faction_priority 加权,target 阵营不在 priority 时 roll 估值偏低 → bot 永不 roll 找 target → target 永不深成型**。
-- **备选**:① 纯 directive roll(不评 delta,推翻:浪费 gold,target 真不供时白刷;蒙特卡洛估值 + target 权重更稳);② 不改采样只放宽 gate(推翻:采样不加权时 roll delta 仍低 → 放宽也不 roll,无效);③ F1 先(commit  supplied comp,推翻:F1 设计更大,F2 小步可独立验证 + 直接解 plane2 攒金不 roll)。
-- **关联**:F1(track board commit)/ F3(深 stack 接线)/ comp_viability 是后续 P2 步(strategy/12)。本步(F2)是 P2 第一小步,实机验证。
-- **状态**:**实验**(target 采样权重 2× + roll 放宽,待新局验证 roll 行为是否让 target 更深成型)。44 decisions 测试绿(+1 _sample_shop target 加权);ruff 净。· strategy/12 F2(P2 comp 成型)
-
-## D-62 (2026-08-06) bug#1 缓解:出战 click 前 mouse_move(r9 出战 click ×4 未落地) · battle_prep
-- **决策**:`BattlePrepCycle.battle` 点出战前加 `controller.mouse_move(_btn)`(零移动 click),同 `buy_store_item` 的 bug#1 缓解。
-- **为什么(2026-08-06 r9 实跑)**:r9 boss prep 出战 click ×4「未落地」→ 备战单轮 fail → 循环。**手动 click(1784,731)即开战** → bot click 系统性落空,非按钮不存在。根因 = bug#1(`SrPcController.before_screenshot` 截图前移光标到角落 → op 截图后紧接 click,光标移动中落下,被游戏判拖拽落空)。出战 click 直接 `controller.click` 无 mouse_move → bug#1 裸露。r1-8 出战正常 = 间歇(bug#1 偶发),r9 连发(运气/时机)。
-- **备选**:① 不改,靠 verify+retry(下行 round_retry 已有 ADR-0009 verify)兜底(部分:retry 的 click 也 bug#1 裸露 → 连发时 retry 也落空,mouse_move 治本);② 每 op 铺 mouse_move(推翻:CLAUDE.md「多数 click 正常,只间歇落空处加」,出战是已观察落空点);③ 改 before_screenshot 不移光标(推翻:框架级,跨项目,非本仓范围)。
-- **状态**:采用。ruff 净。**待新局验**:出战 click 不再连发落空。· bug#1(`SrPcController.before_screenshot` 移光标)+ CLAUDE.md 缓解惯例
-
-## D-60 (2026-08-06) 事件长尾:HandleSelectPartner 硬编码立绘坐标落候选间隙 → flat-loop · handle_select_partner
-- **决策**:`HandleSelectPartner` 弃硬编码 `STAGE_PORTRAIT=(1048,299)` → OCR 候选阵营标签(label 行 y~362,2-4 字过滤)定位候选 → 点最左候选立绘 `(label_x, label_y-60)`(立绘在 label 上方~60px)→ 确认选择(OCR click,原已工作)。无候选兜底 (960,300)。
-- **为什么(2026-08-06 实跑 flat-loop)**:08:36 局 1-7 节点 choose_partner iter131+ 反复「成功」画面不变(31 snap)。**probe 实测**(游戏 parked 在该屏):2 候选 护盾(label x890)/能量(label x1127),立绘 y~300;硬编码 (1048,299) **x=1048 落两候选间隙** → 点不中 → 确认选择无效 → flat-loop。点 (1127,300) 命中 能量 候选(高亮选中)→ 点 确认选择(1441,582)→ overlay 关闭回备战。**根因 = 硬编码 x 不随候选数/位置变**(2/3 候选间隙不同)。
-- **备选**:① 改硬编码 x 到某候选(推翻:候选数/位置随事件变,硬编码必再间隙);② screen_info 建候选区(task#20,推翻:候选是动态横排,label OCR 更自适应,同 invest_env/card 模式);③ 点 label(card)而非立绘(推翻:probe 点立绘 y300 选中,label 362 未验证;立绘(label_y-60)自适应布局位移)。
-- **状态**:采用。173 cw 测试绿;ruff 净。**待新局验**:choose_partner 是否一次过(不再 flat-loop)。TODO:策略化选伙伴(按 target_comp.core_chars,现取最左)。· 事件长尾(D-39 encounter 同类 flat-loop)
-
-## D-59 (2026-08-06) 弱阵:maybe_pivot 信号1 倾向易成型 comp(best 易 + target 未成型 → 阈值降) · cw_comps
-- **决策**:信号1 pivot 阈值随 best vs target 成型难度调节 —— `best.form_difficulty` 比 target 低(easy<medium<hard)**且 target 未成型**(form_progress<1)→ 阈值 ×`PIVOT_EASIER_FACTOR`(0.7,0.10→0.07),倾向转易 comp。target 已成型不降(不弃已完成 comp)。
-- **为什么(2026-08-06 实跑弱阵深化)**:08:36 局 target=巡击青雀[medium,仙舟5+追击3=8卡],r3 列车同行[easy,S,4卡] gap **+0.097 卡 0.10 没转** → 巡击青雀 慢成型(shop 不供 仙舟/追击)+ board 散(买 off-target 能量:3)+ hp 持续掉(82→58→45)。列车同行 fewer 卡 + S 强 + bot 默认首选(挂机流)→ 转了成型更快更强、少掉血。**根因 = pivot 阈值对易/难 comp 一视同仁,没偏好易成型**(慢 comp 拖死)。
-- **备选**:① 调 PIVOT_SCORE_GAP 整体(推翻:会影响所有 pivot,误伤;D-59 只对易 comp 降,精准);② commitment prefilter 收紧(已有 prefilter,shop 无 target 卡时允许 off-target 填充防饿死,收紧风险饿死/弱战力);③ 升 W_PROG 让 select_comp 偏易成型(部分,但 pivot 阈值才是 r3 没转的直接因);④ off-target filler cap(能量:3,推翻:off-target stack 也有 synergy 值,cap 未必更好;根因是慢 comp 不是 filler)。
-- **关联坑**:OFF_TARGET_DISCOUNT 曾 0.3→致卖 off-target 深堆 churn→revert 1.0(见 cw_decisions 注释);D-59 不动 board eval(只调 pivot 阈值),无 churn 风险。
-- **状态**:**实验**(PIVOT_EASIER_FACTOR 0.7 待多局校准)。40 测试绿(既有 maybe_pivot 无回归);ruff 净。log 加 `[易comp降阈]` 标记便于实机核实。**待新局验**:r3 类场景是否转 列车同行 + 存活更久。· 弱阵(D-53/56/58)+ task#16 commitment
-
-## D-58 (2026-08-06) env_fit 接线 bug:已选投资环境从不存 state.active_env → T0 env 硬绑静默失效 · cw_strategy/handle_invest_env/default_strategy
-- **决策**:`StrategySession` 加 `active_env: str`;`HandleInvestEnv` 选后写 `session.active_env = chosen`;`update_target` copy 到 `state.active_env`(make_score_context 前,同 briefing_affixes 模式)。
-- **为什么(2026-08-06 实跑 + 代码核实)**:T0 env「昼之半神概念股」选了(score=100),board 已 昼之半神:2(向 昼神阿雅 成型),但 target=巡击青雀(0 仙舟/追击)。grep 证实 **`active_env` 只读(cw_comps:391)从不赋值** —— HandleInvestEnv 点了 chosen 卡却不存名 → state.active_env 恒空 → `env_fit` 全返 0.5 → ENV_COMP_AFFINITY(T0 env 近乎硬绑)静默失效。修后:昼神阿雅 env_fit=1.0(+board form_progress 0.5)→ comp_score ~0.375 >> 巡击青雀 ~0.075 → 会选/转向 env + board 支持的 comp。
-- **备选**:① OCR 读 active_env(推翻:env 名屏上不常驻,选中后不可读;session 存是正解,同 briefing);② 只在 select_comp 用 env(推翻:update_target/maybe_pivot 都经 make_score_context,pivot 也要 env 信号);③ 存 active_strategy 投资策略(暂不:comp_score 不用投资策略,留 P2+ 视需要)。
-- **状态**:采用。60 测试绿(env_fit 逻辑既有覆盖);ruff 净。**待新局验证**:T0 env 下是否选/转向 昼神阿雅(env+board 支持)而非 env-blind 选 巡击青雀。· 弱阵(D-53/56)+ ENV_COMP_AFFINITY
-
-## D-57 (2026-08-06) app 起局 bug:_in_match 大厅误判「已在对局」(短词 lcs 0.5 误匹配)→ 跳过 start 空跑 · currency_war_app
-- **决策**:`_in_match` 加 `_at_lobby` 短路(大厅≠对局中)+ `_IN_MATCH_KEYWORDS` 的 `round_by_ocr` 收紧 lcs 0.5→0.8。
-- **为什么(2026-08-06 实跑)**:从大厅 run_standalone_app → 2.4s 空跑「对局结束,回大厅」。日志:`_start_match` 报「已在对局中,跳过 start 交 loop」→ loop 见大厅「创业指南」→ 3c 误「对局结束」。根因 = `_in_match` 用默认 lcs 0.5 全屏 OCR 短词:「出战」(2 字)匹配大厅「货币战争」(含「战」,1/2=0.5≥0.5 命中)→ 误判对局中 → 跳过 start。**同 D-37/D-50/D-54 round_by_ocr 默认 lcs 坑第 N 次**(短词 + 全屏 LCS = 误匹配高发)。
-- **备选**:① 只收紧 lcs 不加 _at_lobby 短路(部分:其他大厅词可能仍误匹配,短路根治「大厅≠对局」语义);② 删「出战」短词(推翻:真对局时「出战」是有效锚点,收紧 lcs 即可);③ _in_match 也用 screen_info area(推翻:对局中态多(备战/事件/战斗/结算),建全 area 成本高,lobby 短路 + lcs 0.8 够)。
-- **状态**:采用。ruff 净。验证:restart server → run_standalone_app → **正常起局**(点开始→简报→投资环境选 昼之半神概念股→备战→loop running)。· D-26 中间态接手
-
-## D-56 (2026-08-06) 决策迹:maybe_pivot 加 log(弱阵诊断要数据,非猜) · cw_comps
-- **决策**:`maybe_pivot` 3 信号(保命/涌现/ceiling)各加 INFO log —— 评估点 log 当前/最佳 comp、score、gap、决策(pivot X / 保持)。`select_comp` 暂不 log(每轮调用,select_comp top 已由 maybe_pivot 内部用)。
-- **为什么(弱阵诊断)**:2026-08-06 整跑 bot round7 巡击青雀→DOT队 pivot 后 plane2 r2 战死。**根因代码级定位** = 信号1 用 `comp_score(best) > comp_score(target)+0.10`,而 comp_score 含 shop_supply 乘数(0.3+0.7×shop_supply,可达 ~3.3×)→ shop RNG 刷出他阵营牌 → 该 comp score 暴涨 → 误涌现 pivot → 永不深 commit → 弱阵死。但**修法值(PIVOT_SCORE_GAP / commitment 权重)需实跑 score/gap 数据校准**(原 match 日志 server 重启被截断丢失 → 无数据)→ 先加 log 采数据,再据数据调(D-57),**不凭猜定值**(D-35 教训:猜值误判)。log 亦永久 telemetry(决策迹复盘 + 未来 ML side door,§11.5)。
-- **备选**:① 凭代码级根因直接调 PIVOT_SCORE_GAP/加 commitment(推翻:无 score 数据猜值,D-35 风险);② select_comp 也 log top3(推翻:每轮 noisy,maybe_pivot 已覆盖决策点);③ log 打 DEBUG(推翻:server 跑 INFO,DEBUG 不见 → 采不到)。
-- **状态**:采用。66 pivot/comp 测试绿(log 行为中性);ruff 净。**next**:起干净对局采 pivot log → 据 gap 分布调 PIVOT_SCORE_GAP / 加 commitment hysteresis(D-57)。· 弱阵(D-53)
-
-## D-55 (2026-08-06) task#73 续:AFFIX_MECHANIC_MAP 补 忍无可忍/沉重脚步(灼热轰炸 纯数值不入表) · cw_comps
-- **决策**:MECHANIC_COUNTERS 补「多段惩罚」→[高频低单次]、「行动延后」→[速度依赖];AFFIX_MECHANIC_MAP 补 忍无可忍→多段惩罚、沉重脚步→行动延后。灼热轰炸**不入表**(纯数值)。
-- **为什么(task#73 余词缀)**:① 忍无可忍(敌受 7 击提前 100%)→ 克高频多段(反甲白厄 高频低单次 多打→频触→敌频动),方向强,入表;② 沉重脚步(受击延后 8%)→ 克速度依赖(鞋队 tuning 被打乱),方向性入表;③ 灼热轰炸(前排受击+火 DoT)均匀影响所有 comp(无 comp flip;治疗护盾只是"抗"非"被利"),按「纯数值怪强化无 comp 交互不入表」原则(同 首领强化)**不入表**,mechanics_fit 中性 0.5 正确。
-- **备选**:① 灼热轰炸 synergy 反甲白厄(推翻:反甲白厄 attr=高频低单次 非"受击反击",无 synergy attr 可挂;强挂伪造);② 忍无可忍 reuse「反伤」tag(推翻:机制不同 反伤=反伤 vs 多段=敌提前,语义混);③ 沉重脚步 reuse「速度抑制」tag(推翻:速度抑制=极端高速被抑 vs 行动延后=受击延后,语义混,用独立 tag「行动延后」清晰)。
-- **状态**:采用。cw_comps test +3(忍无可忍/沉重脚步 behavioral + AFFIX_MECHANIC_MAP integration),40 绿;ruff 净。**task#73 剩余**:comp.boss_weakness 俗称→规范公司名对齐(boss_fit 永不命中,需游戏数据银行 boss 图鉴核对,游戏忙暂阻)。· task#73(D-49)
-
-## D-54 (2026-08-06) 事件长尾:battle_loop 加 0f 消耗品详情浮层 → ESC 关(plane2 supply 后 modal 遮屏死循环) · battle_loop
-- **决策**:battle_loop 加 0f 分支(0e 后、备战前):OCR 同时命中「消耗品」AND「拖动到」(均 lcs 0.9)→ `btn_tap('esc')` 关浮层 → round_wait 1.5。
-- **为什么(2026-08-06 整跑暴露,plane2 新地)**:plane2 round1 hp=1 存活(DOT队)→ 补给节点 → 投资策略「星星相印」奖励【员工投影仪】消耗品 → 游戏自动弹消耗品**介绍 modal**(「员工投影仪/消耗品/拖动到...使用/道具使用后消失」)→ modal 遮挡备战/投资策略屏 → 上面 0-6 分支全不命中 → `round_retry` flat loop ~19min → 失败。**非策略死,UI 弹窗卡死**。前三局死 plane1 从未到 plane2,故未暴露。
-- **验证(实机 probe,游戏 parked 在 modal)**:`analyze_screen` 仅抓到 modal 文字(无备战元素)= modal 全遮挡;`key_tap esc` → modal 关,露出「请选择投资策略」屏(分类器能识别)→ ESC 是有效 dismiss。视觉大模型确认 modal 右上有 X 关闭键 + 是模态遮挡。
-- **备选**:① 点 X 关闭键(推翻:需稳定坐标,modal 居中但 X 坐标会随物品变;ESC 非定位无漂移,且 1b 详情弹窗已用 ESC 建惯例);② 建模 screen_info + close button area(推翻:transient dismiss overlay 非常驻屏,1b/2 已确立 OCR-dismiss 惯例,screen_info 过重;长尾若 item modal 繁多再升级);③ 只「消耗品」单条件(推翻:备战底部消耗品栏可能也有「消耗品」label → 误匹配备战 → ESC 打断备战;加「拖动到」(拖动使用说明只出现在详情 modal)双条件精确)。
-- **状态**:采用。170 cw 测试绿;ruff 净。**装备类详情 modal**(无「拖动到」,如星星相印 也给简易装备)是长尾,观察到再补签名。验证待新局到 plane2 supply + modal → 0f ESC → 续跑。· §11 事件长尾 · insights(I21 待补:transient dismiss overlay 归类)
-
-## D-53 (2026-08-06) 弱阵实验:comp early_power 早期战力先验 + _difficulty_phase_factor 早期偏 · cw_comps
-- **决策**:Comp 加 `early_power`("高"/"中"/"低" 早期 plane1 战力先验)+ `_difficulty_phase_factor` 早期(round≤3 or gold<30)= `form_fac * power_fac`(偏 form_difficulty easy **且** early_power 高)。9 comp 标先验:列车同行=高 / 命运圣杯=中 / 击破流萤=中 / 贝洛伯格=中 / 万敌=中 / 巡击青雀=低 / 昼神阿雅=低 / DOT队=低 / 反甲白厄=低。
-- **为什么(2026-08-06 整局暴露弱阵)**:DOT队(form_difficulty easy + B 级)plane1 r9 boss 战死(HP 62→0)。原 `_difficulty_phase_factor` 只偏 easy 成型 → DOT队 易成型被选,但 **DoT 慢热 plane1 弱**。加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏易成型 **且** 早期战力强。
-- **备选**:① 调 W_STR 偏 S 级(推翻:strength S/A/B 太粗,列车同行 S 但 progress 0 仍不选;early_power 直接标早期战力);② comp_viability 观测 blend(推翻:candidate 无观测未 commit,只 current comp 用;early_power 静态先验可立即用);③ 只 form_difficulty 不加 early_power(推翻:DOT队 easy 弱,没区分早期战力)。
-- **状态**:**实验**(先验待多局实玩校准)。cw_comps + cw_decisions 80 测试绿。**下局验证**:早期是否选 early_power 高(列车同行)而非 DOT队 + 存活更久。若无效调权重/先验。· 整局弱阵(D-50 整跑)
-
-## D-52 (2026-08-06) P1.5 refine:node_type 推断(结算屏「首领」→ boss) · battle_loop
-- **决策**:`_record_round_outcome` node_type 从固定「普通战斗」→ 推断:结算屏 OCR 含「首领」(如「1-9首领」)→ `'boss'`,否则「普通战斗」。log 加 node 字段。
-- **为什么**:P1.5 观测回路 node_type 原 all「普通战斗」(粗),boss/普通不区分 → PerformanceTracker trend 不能按节点类型分(boss 掉血 vs 普通)。2026-08-06 整跑 log:round9 结算屏「1-9首领」(boss 标签)可区分。词缀「首领强化」在简报不在结算屏 → 不误匹配。
-- **状态**:采用。node_type 推断 + log node。实机验证待下局 boss 结算(node=boss)。· P1.5(D-48)
-
-## D-51 (2026-08-06) P1.5 refine:失败结算屏「挑战失败」→ hp_after=0 conf=1.0(团灭确定) · cw_observation
-- **决策**:`read_round_outcome` 加判:OCR 含「挑战失败」且 `parse_settlement_hp` None → `hp_after=0 conf=1.0`(团灭确定)。
-- **为什么(2026-08-06 整跑暴露)**:plane1 round9 boss 战死 → 失败结算屏 OCR「挑战失败/小队生命值❤!/对局评价/下一步」。`parse_settlement_hp` 正则 `生命值\s*(\d+)` 不匹配「生命值❤!」(❤!非数字)→ None → hp_after=0 conf=0.0。但**失败 = hp 0 是 ground truth**(团灭),该 conf=1.0 进 PerformanceTracker trend(死信号,策略学)。
-- **备选**:① 失败屏不记 conf=0(推翻:死是重要信号,该进 trend);② OCR「生命值」后取任意(推翻:❤!非数字,取 0 因「挑战失败」判,非解析)。
-- **状态**:采用。失败屏 hp 0 conf 1.0。test_cw_observation +1,16 绿。**boss 结算屏「挑战结束」无「生命值」前缀**(只裸数字如「70」)→ 暂 conf=0,后续实机核实 boss 结算屏 hp 位置 refine。· P1.5(D-48)
-
-## D-50 (2026-08-06) ↺ D-37 复发:0e 投资策略/环境 改用 id_mark area(全屏 LCS 误匹配失败结算屏) · battle_loop
-- **决策**:battle_loop 0e 投资策略/环境检测 `round_by_ocr('投资策略/环境', lcs=0.8)` → 改 `round_by_find_area('标识-请选择投资策略'/'标识-投资环境', id_mark)`。补给阶段暂留(失败结算屏没「补给阶段」)。
-- **为什么(2026-08-06 实跑暴露)**:loop plane1 round9 boss 战死 → 失败结算屏(对局未完成)OCR 含「投资策略/投资环境」(对局信息)+「标准博弈」(A8 标签)→ 0e 全屏 LCS「投资策略」命中 → 派 HandleInvestStrategy → handle 卡名行 OCR「标准博弈/试用」→ 点标准博弈@(423,477) → 没推进 → loop 反复(iter 340+)卡死。D-37(投资策略 LCS 误匹配「能量上限」)同类复发,这次是失败结算屏的「投资策略」对局信息。
-- **备选**:① LCS 改「请选择投资策略」(推翻:子序列匹配,失败结算屏「投资策略」仍是「请选择投资策略」子序列 → LCS 高 → 误命中);② 先排失败结算屏「对局未完成」(推翻:多一分支,id_mark area 更根治);③ HandleInvestStrategy 入口核对 id_mark(部分,但 0e 派发就该准,handle 不该兜底 0e 误派)。
-- **状态**:采用。0e 用 id_mark area(固定位置全等;失败结算「投资策略」在对局信息区,不在真屏 id_mark pc_rect → 不命中)→ 落 3b「下一页」回大厅。验证:loop 从失败结算 10.9s 回大厅(下一页 → 返回货币战争 → 创业指南 round_success)。方法论印证 screen-onboarding「固定位置用 area 非全屏 LCS」+ write-operation「LCS 子序列匹配是误匹配高发,独有长关键词 + area 才稳」。· insights I20
-
-## D-49 (2026-08-06) mechanics_fit 数据对齐 + 补全:comp 属性对齐 MECHANIC 表 + 补皮糙肉厚/榜样激励 · cw_comps(task#73)
-- **决策**:`mechanics_fit` 已接 `comp_score`(W_MECH),但 comp 属性 tag 跟 MECHANIC 表不对齐 → 命中少。对齐 + 补:① 列车同行 `[护盾]→[治疗护盾]`(对齐 counter 治疗削弱→治疗护盾);② `MECHANIC_SYNERGIES` 补「皮糙肉厚→[击破]」(利击破 comp);③ `MECHANIC_COUNTERS` 补「榜样激励→[高倍率单核]」(克单核);④ `AFFIX_MECHANIC_MAP` 补皮糙肉厚/榜样激励。
-- **为什么**:`mechanics_fit(comp, mechanics)` 经 `comp.mechanic_attributes` 查 MECHANIC_COUNTERS/SYNERGIES。comp 标的属性必须 = MECHANIC 表属性 tag 才命中。原 列车同行[护盾] ≠ counter[治疗护盾] → 不命中(重症难题不克它);击破流萤[击破]/命运圣杯[高倍率单核] 无 MECHANIC 条目 → 永不命中。对齐后真生效(皮糙肉厚利击破、榜样激励克单核、重症难题克列车同行)。
-- **备选**:① 不对齐维持现状(mechanics_fit 大半中性,词缀克制没生效 → 策略不适配词缀);② comp 逐词缀列举克制(推翻:数据驱动,comp 标属性 tag + MECHANIC 表查,不必逐词缀)。
-- **状态**:采用。comp 属性对齐 + MECHANIC 补 2 条 + AFFIX_MECHANIC_MAP 补 2 词缀。test_cw_comps +3(击破+皮糙肉厚 synergy / 命运圣杯+榜样激励 counter / 列车+治疗削弱 counter),37 绿。**剩余**:召唤[召唤]无明确词缀交互暂不补;AFFIX_MECHANIC_MAP 仍部分(沉重脚步/忍无可忍/灼热轰炸 等待游戏知识);**comp.boss_weakness 名对齐 bosses.md/read_bosses OCR 名**(boss_fit 已接,但 comp 标的红绿灯/电视机/琥珀王/死龙 是简称,要核对 bosses.md 规范名)留。· competitors.md 策略映射
-
-## D-48 (2026-08-05) P1.5 观测回路接线:battle_loop 结算屏 → read_round_outcome → on_round_end · battle_loop
-- **决策**:CurrencyWarRunLoop「继续挑战」检测处加 P1.5 观测回路:结算屏(「挑战结束」)→ `read_round_outcome`(OCR hp_after,组件 D-38)→ `strategy.on_round_end`(默认实现 `performance.record(obs)`,记掉血 trend)。非结算屏跳过;失败不阻塞对局。plane/round 用 last-known(`read_phase_round` 结算屏不显);node_type 暂粗(普通战斗,boss/elite 后续)。
-- **为什么(用户 2026-08-03 定调:观测驱动非预测)**:read_round_outcome(D-38 组件)+ on_round_end 钩子(D-34)+ PerformanceTracker 都就位,只缺 battle_loop caller。接上后 PerformanceTracker 记每回合 hp_after → 掉血 trend → 策略可据**观测结果**调 comp/mechanics 评分(而非盲预测赢率;版本鲁棒 —— V4.5 改数值,掉血照样掉)。
-- **备选**:① 结算屏 read_game_state 拿 state 传 on_round_end(推翻:on_round_end default 只用 obs + session.performance,不用 state 其他字段;read_game_state 结算屏 OCR 多区域开销大,传 `GameState()` 空);② 每屏调 on_round_end(推翻:非结算屏无 hp_after,只「挑战结束」结算屏调,免误记)。
-- **状态**:采用。battle_loop 接线(`_record_round_outcome` + 「继续挑战」前调);cw_strategy 15 测试绿(on_round_end default 不破坏)。实机验证待跑局(看 `[cw-loop] on_round_end` log hp_after 记录)。node_type 推断(boss/elite 节点追踪)+ on_match_end 真实 outcome 填充留后续。· strategy/11 §11.7(P1.5)
-
-## D-47 (2026-08-05) 词缀效果采集:注册表单独 py(affix_effects_data) + 运行时自动写 + 固定采集对比 + 截图对账 · cw_observation/handle_briefing
-- **决策**:敌人词缀效果(游戏原文 ground truth)用单独 py 注册表 `affix_effects_data.py`(`AFFIX_EFFECTS: dict[str,str]`,从 cw_comps 迁出,cw_comps 重导出不变)。HandleBriefing **固定采集**每词缀(点词缀弹 tooltip → `read_affix_effect` OCR 效果,纯解析找标题→取下方紧邻连续行 dy≤45)→ 对比注册表**文件最新**(`load_affix_effects_from_file`,exec 读)→ 新名/描述不一致 → 截图(`affix_shots/<词缀>.png`)+ `write_affix_effects` 写回注册表(`json.dumps` 合法 py);一致→跳过。**本轮下游不生效**(mechanics_fit 用内存 import 旧值),**下轮启动重新 import 生效**。
-- **为什么(用户 2026-08-05)**:① 词缀效果要游戏原文(简报词缀只显示名字,点词缀弹 tooltip 才显效果;游戏内无词缀图鉴,网络无权威完整列表,competitors.md 攻略统计 ~50);② 注册表作"最后使用"权威源,运行时自动写(采到新/不准就校准)省人工 yml→py 同步;③ 对比跟注册表**文件最新**(非内存)→ 本轮内不重复写;④ 截图对账回查 OCR 没采错;⑤ 本轮不生效下轮生效可接受(用户明确)。
-- **备选**:① yml 缓冲 + 人工同步进 py(推翻:多一步人工同步,用户要自动);② 对比跟内存 import(推翻:本轮写后内存不更新 → 本轮内重复采重复写);③ 只采注册表缺的(推翻:用户要固定采集校准,描述不一致也记录);④ read_affix_effect 限 y<960(推翻:硬编码不鲁棒,改标题下方紧邻连续行 dy≤45)。
-- **状态**:采用。实机验证通过(HandleBriefing 采 4 词缀:软弱无力注册表故意改错→采到原文→写回正确+截图,其他 3 一致跳过;点下一步+自检离开简报)。15 测试绿。`load_affix_effects_from_file` exec 解析(**TODO 后续换 importlib.reload/ast**,不优雅)。mechanics_fit 接线留 task#73(注册表 effect 原文不喂策略,tag 走 `AFFIX_MECHANIC_MAP`)。· docs/game/screens/currency_war_briefing.md
-
-## D-46 (2026-08-05) ↺ 推翻 I16「卡底 820 选中」:投资策略点卡名(y≈474)选中(白边+确认亮) · handle_invest_strategy
-- **决策**:投资策略 3 选 1 点卡选中位置 = **卡名行(y≈474)**,非 I16 的「卡底 820」。`CARD_CLICK_Y` 820→474;screen_info「区域-卡牌描述行」(卡底)→「区域-卡名行」[200,455,1720,505];handle 改读 `area_center('区域-卡名行')`。
-- **为什么(2026-08-05 实跑暴露 + 实机点验)**:loop 卡投资策略 ~4min(整局阻塞)。stop 后实机点验:点中产阶级卡名(461,474)→ 视觉白边选中 → 点确认(951,967)→ 推进备战 1-3(链路通)。**卡名 y474 选中**,非 I16「卡底 820」—— I16 凭「820 高亮+刷新次数变 0」误判(实际是刷新反馈,非选中)。点卡底 820 没选中 → handle 点 820 → loop 反复卡死投资策略。
-- **备选**:① 维持 I16 卡底 820(推翻:实机点验不选中,loop 卡死);② 点描述区 545(推翻:旧 doc「描述区选中」,实为开角色详情,非选中;投资环境才用描述区选中,两 screen 选中位不同)。
-- **状态**:采用。投资策略选中 = 卡名 y474(白边选中态)。实跑验证:修后 restart loop 推进 1-3→1-6 顺畅(投资策略过 ✓)。教训:选中位置必须实机点验 + 视觉确认选中态(白边)+ 链路验证(选中→确认→推进),别凭单次观察下结论。详见 insights I18(推翻 I16)。· screen_info `currency_war_invest_strategy`
-
-## D-45 (2026-08-05) ↺ 修正 D-43:bug#1 机制真(before_screenshot 移鼠标→click 判拖拽),关键 click 前 mouse_move 缓解有效(非全删) · currency_war/框架
-- **决策**:修正 D-43 对 bug#1 的过激判断。bug#1(op click 偶发不落地)**机制真**:框架 `before_screenshot` 每轮截图前移光标到角落(截图卫生)→ 紧接 click 光标移动中落下,偶被游戏判拖拽落空(间歇吞过渡按钮/结算翻页)。缓解:关键过渡 click 前 `mouse_move(target)` 再 click(零移动=不被判拖拽)。**不是 D-43 说的「根因纯抢鼠标 + 全删 mouse_move」**。
-- **为什么(用户 2026-08-05 CLAUDE.md 修正)**:D-43 把 bug#1 全归「开发时抢鼠标」并删全部 mouse_move 缓解,过激。真相:① before_screenshot 移鼠标机制真(框架行为,**自动运行也在**,非纯抢鼠标),间歇吞 click;② 多数自动运行 click 正常,只在间歇落空处加 mouse_move,别每 op 铺;③ 手动测不稳定先怀疑**自己在抢鼠标**,别急着归框架 bug。
-- **备选**:① 维持 D-43(全删 mouse_move,推翻:间歇落空处无缓解会吞 click);② 每 op 铺 mouse_move(推翻:多数正常不需,污染)。
-- **状态**:采用。bug#1 缓解策略 = 关键过渡 click 前 mouse_move(按需,非全铺)+ 手动测不稳先怀疑抢鼠标。**D-43「全删」部分推翻**(间歇落空处该保留 mouse_move;此前删的若实跑暴露间歇吞 click 再按需加回)。详见 insights I17(修正 I15)。
-
-## D-44 (2026-08-05) 简报首领识别链路 —— read_bosses → state.bosses → boss_fit(对称 affix 链路)· start_currency_war_match/cw_observation
-- **决策**:简报屏加读 3 位面 boss 名(`read_bosses`,OCR「区域-首领行」area)→ `ctx.cw_briefing_bosses` → `session.briefing_bosses` → `state.bosses` → `boss_fit(comp, bosses)`。对称 D-43 之前的 affix 链路(read_affixes → state.enemy_affixes → mechanics_fit)。
-- **为什么(用户 2026-08-05 指出)**:简报层 review 时只识别了敌人词缀,漏了首领。简报屏 3 boss 横排卡片(立绘 + 红色阵营标签 + 名字),开局预览 3 boss 是规划投资策略的关键(攻略共识「刷开局看 boss 选投资环境」)。**3 位面是玩法结构,所有难度(A5/A8/A850)固定 3 个 boss,不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
-- **备选**:① 连阵营标签一起 OCR(推翻:红色背景白字 OCR 干扰大,阵营价值低于名字;先采名字,阵营待视觉核实后再定);② 采 boss 机制/克制(推翻:简报屏不显示 boss 机制,要查图鉴,属数据层后续浏览器补,同 competitors.md 待确定);③ 只存 boss 数量不存名字(推翻:`boss_fit` 用名字匹配 `comp.boss_weakness`,要名字非数量)。
-- **状态**:采用。识别链路通(`read_bosses` → ctx → session → `state.bosses` → `boss_fit`)。**数据层待补**:`comp.boss_weakness` 当前多为空 → `boss_fit` 暂中性 0.5;boss 机制 + 哪些 comp 怕哪个 boss 待图鉴采集(同 competitors.md,后续浏览器/实玩)。测试 `test_read_bosses_briefing`(3 boss)+ entry_flow a8 assert 3 boss,绿。· docs/game/screens/currency_war_briefing.md
-
-## D-43 (2026-08-05) ↺ 推翻 bug#1:根因是开发时用户抢鼠标,非框架 bug → 删全部 active_window/mouse_move 缓解 · currency_war 全域
-- **决策**:撤销 bug#1 的全部缓解代码 —— 删 currency_war 10 文件的 `active_window()` + `mouse_move()` + 配套 `time.sleep(0.3)`(mouse_move→click 之间)+ bug#1 注释;删 memory `before-screenshot-moves-mouse-breaks-clicks`。
-- **为什么(用户 2026-08-05 澄清)**:bug#1(op `controller.click` 偶发不落地,手动 click_game 同坐标有效)的根因是**开发/调试时用户手动抢鼠标**干扰,非框架自动化运行问题。实际 bot 自动运行时无人抢鼠标,click 正常落地。之前三次根因判断全是误判 —— I11(失焦)/续7(server 长跑退化)/续11(pre_delay 间隙抢焦)/memory(before_screenshot 移鼠标判拖拽)都把「用户抢鼠标」的人为干扰误当框架 bug,铺了 10 文件过度防御(active_window/mouse_move 散布),污染代码且不可维护。
-- **备选**:① 保留缓解(推翻:基于错误根因,active_window 散布每个 op 不可维护);② 只删 active_window 保留 mouse_move(推翻:mouse_move 同基于 bug#1「判拖拽」误判,一并删);③ 保留作「防御性」(推翻:用户立场「自动化运行不该考虑窗口被抢,否则到处 active_window」)。
-- **状态**:采用。删 2 active_window + 14 mouse_move + 15 sleep + bug#1 注释(battle_loop/battle_prep/handle_invest_env/strategy/deploy_not_full/select_partner/encounter/run_supply/megastar + enter_currency_war 注释);ruff 全净;grep 无残留;memory 删。**注:op 残留的 verify-retry(battle_prep 出战后检测仍在备战→retry)保留 —— 那是「等动画/加载」的安全网,非 bug#1 缓解。** 详见 insights I15(推翻 I11/续7/续11)。
-
-## D-42 (2026-08-05) 「开始对局/返回最高职级」检测 area 化 —— 根治「开局不利」LCS 误匹配 · start_currency_war_match
-- **决策**:`advance_to_prep` 的「返回最高职级」「开始对局」检测从全屏 `round_by_ocr` 改 `round_by_find_and_click_area`(crop 难度确认 area),删手动 `area_center`+click(改用 helper 一体)。
-- **为什么**:全屏 `round_by_ocr`(lcs 0.5)误匹配 —— 「开始对局」与简报 boss 词缀「开局不利」共享「开局」(2/4=0.5=默认阈值)→ **简报屏误触发难度确认的「开始对局」分支** → click 开始对局 area(1691,965)60 次死循环超时(行为测试 recorded_clicks 暴露)。方向 1(area 化)根治:crop 难度确认 area 限定位置,简报上该 area 无「开始对局」→ 不误命中。
-- **备选**:① 收紧 lcs 0.8(D-37 惯例,治标);② area 化(采用,方法论首选,根治)。crop area OCR 对小 area 有漏字风险(见测试 refine)。
-- **状态**:采用。ruff 净。行为测试验证中(mock 暴露 crop OCR 漏字新问题,refine)。· `start_currency_war_match.py:advance_to_prep`。
-
-## D-41 (2026-08-05) shop_supply:shop presence 主导,board-only 降为弱信号(0.3)—— 修 comp 成型弱 · cw_comps
-- **决策**:`shop_supply(comp)` 改判可成型 = **shop 出现该 comp 阵营 → 1.0;仅 board 有、shop 无 → 0.3**(旧 1.0);都无 → 0.0。
-- **为什么(I14)**:2026-08-05 P1 验证 match 全程 board **多样不收敛**(7+ 阵营×1),comp 永不深堆成型 → 弱阵 → HP 持续掉 → 死。根因:旧 `shop_supply` 把「board 持有 1 张」当「可成型」(1.0)→ select_comp 不降权「board 有但 shop 供不上核心」的 comp(如 board 昼之半神:1 + shop 无 昼之半神 → 仍选昼神阿雅)→ 选了成型不了的 target → shop 买不到核心 → 永不成型。**「board 已有 1 张 ≠ 能成型」,可成型必须看 shop 能否买到更多核心**。
-- **备选**:① shop_supply 只看 shop、board 不计(推翻:board 已有也是信号,完全不计太激进,可能频繁切 target);② 维持旧 1.0(推翻:win-rate 核心阻塞,实测致死);③ 按需求数加权(shop 有 N 张/comp 需 M 张 → M/N;更精但需牌池计数,留 refine)。
-- **状态**:采用。74 既有 cw 测试全绿(相对排序保持:成型 comp 即便 ×0.51 仍胜 unsupplied)+ 3 新 shop_supply 测试锁定(shop=1.0 / board-only=0.3 / 都无=0.0)。配合 D-40(保命优先),target 选择现在既看 shop 供给(早选可成型)又低 HP 稳定(不 churn)。next 实跑验证:下局 board 应更聚焦(target 与 shop 供得上对齐)、HP 掉得更慢。· `cw_comps.py:shop_supply` / strategy/03。
-
-## D-40 (2026-08-05) maybe_pivot 信号3(保命)优先于 1/2 —— 防低 HP target 振荡 churn · cw_comps
-- **决策**:`maybe_pivot` 把**信号3(保命转型)提到信号1/2 之前**;hp 危险(< 0.75×effective_hp_threshold)时**独占** —— 返回最快成型的 easy comp(typical_form_round 最小,稳定不 churn),信号1/2 不参与。
-- **为什么**:2026-08-05 实跑,P1 验证 match 在 plane1 末期 HP 低时,**target 振荡 churn**:列车同行→巡击青雀→DOT队→昼神阿雅(几轮内 4 次换)→ board 跟着 churn → 永不深堆成型 → HP 耗尽死亡螺旋。根因:低 HP 时**信号1(更优涌现)先于信号3 触发** —— 信号1 选 select_comp 的 best(随 board/shop 每轮变 → 振荡)+ 会选到**高难度 comp(昼神阿雅 hard)**;信号3(选最快 easy,稳定)被抢占。保命语义下,该切**稳定的最快成型 comp**,不该每轮追 volatile best。
-- **备选**:① 信号1 加 hysteresis(要求新 comp 连续 N 轮更优才切)—— 推翻:保命时根本不该追更优,该直接独占信号3;② 增大 PIVOT_SCORE_GAP —— 推翻:治标,board 波动大时仍会振;③ 信号3 仍放后面但加「hp 危险时跳过信号1」守卫 —— 等价于提前,不如直接重排清晰。
-- **状态**:采用。30 既有 cw_comps 测试全绿(5 maybe_pivot 测试兼容:低 hp 测试 hp=20 仍信号3,健康测试 hp=100 跳过信号3 走 1/2)+ 新测试 `test_maybe_pivot_low_hp_signal3_preempts_signal1` 锁定(低 HP 即使更优 comp 涌现,也只切最快 easy,非高难度 comp)。next 实跑验证:下局低 HP 时 target 应稳定(不再 churn)。· `cw_comps.py:maybe_pivot` / strategy/03 信号3。
-
-## D-39 (2026-08-05) ↺ 修正 D-35:遭遇节点**有** 3 难度选择 UI → re-activate HandleEncounter dispatch(lcs 0.9)· battle_loop 0c / handle_encounter
-- **决策**:撤销 D-35 的「移除遭遇 dispatch」—— 在 `battle_loop` 0c **重新**派发遭遇节点屏到 `HandleEncounter`,检测关键词 `'遭遇其一'` 用 **lcs_percent=0.9**(非 D-35 时的默认 0.5)。
-- **为什么(D-35 是误判)**:D-35 称「遭遇 round = 普通战斗,无选项选择 UI」并删了 dispatch。**2026-08-05 实跑再证实**:遭遇节点**有** 3 难度选择 UI —— 屏「遭遇节点」+「遭遇其一/其二/其三」(难度递增)+ 奖励(金币/幸运星)+「选择」按钮。loop 删了 dispatch 后到该屏死 retry(iter75+,卡 plane1→plane2 间的遭遇节点)。D-35 删 dispatch 的**真实根因**是旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5)→ 备战屏瞎点 CARD_LEFT 卡死;**正解 = 收紧 lcs(到 0.9),非 removal**。`HandleEncounter` 自身检测本就 0.9(handler 2026-08-04 实测交互:点卡身选中 → 点选择确认),且 D-35 只删了 loop dispatch、handler 一直留着 —— 故 re-activate dispatch 即恢复。
-- **备选**:① 维持 D-35 removal(推翻:遭遇屏实有选择 UI,不处理必卡死);② 给遭遇屏建 screen_info area 用区域识别(方法论首选,留 refine —— 现沿用 handler 既有兜底坐标 CARD_LEFT/SELECT + lcs 0.9 OCR 检测即解)。
-- **状态**:采用。`HandleEncounter` 暂用启发式默认选**左卡 = 遭遇其一 = 最易**(金币×2;低风险,适合未成型 comp);`decide_encounter` 策略化(按 comp 成型度 + 词缀选难度)留 follow-up(handler TODO)。影响 strategy/11 §11.3.4⑤:`decide_encounter` 钩子**不再因「无 UI」dormant**,而是「handler 暂用启发式,OCR 选项 + 钩子接线留 refine」。· `battle_loop.py:146-156` / `handle_encounter.py`。
-
-## D-38 (2026-08-05) P1.5 观测回路 OCR 组件:结算屏 hp_after 解析 · cw_observation
-- **决策**:P1.5(观测回路,D-36 列为 next)的第一块零件:``cw_observation.parse_settlement_hp``(纯函数)+ ``read_round_outcome``(OCR 全屏 → ``RoundOutcome``)。**组件就位 + 单测,``battle_loop`` 的 ``on_round_end`` 接线留下局**(避免杀当前验证 match;留下局部署)。
-- **结算屏形态(2026-08-05 实跑 OCR 确认)**:战斗后「挑战结束/数据统计/继续挑战」屏,展示「小队生命值<N>」(战后 HP)+ 总伤害 + 连胜。实测 OCR:`['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战',...]`(战前 84 → 战后 71,本战损 13)。
-- **为什么(解析用「紧邻数字」)**:``parse_settlement_hp`` 用 ``re.search(r'生命值\\s*(\\d+)', t)`` 取「生命值」**紧邻后方**数字,而非首部/尾部 —— 防投资策略描述「每损失20点小队生命值获得5」(偶同屏/同 OCR)误取 20/5。「紧邻」语义:数字紧跟「生命值」(允空格),隔汉字即不算。越界(HP_MIN..HP_MAX)丢弃。
-- **备选**:① 区域 OCR(给结算屏建 screen_info area for 小队生命值)—— 方法论首选,但需结算屏建档(本次用全屏 OCR 解析即解,区域留 refine);② 尾部数字 ``(\d+)\D*$`` —— 推翻:「每损失...生命值获得5」尾部是 5,误取;紧邻数字才区分得开。
-- **状态**:采用。6 单测全绿(``test_cw_observation.py``:结算 71、无噪声 84、拒非紧邻、无文本 None、越界丢弃、0 允许)。next:``battle_loop`` 接 on_round_end(结算检测 → read_round_outcome → ``strategy.on_round_end``)+ node_type 推断(boss/elite 节点追踪)。· strategy/11 §11.7/§11.12 P1.5。
-
-## D-37 (2026-08-05) loop 0d「未达上限」LCS 误匹配「能量上限」→ 收紧 lcs 0.5→0.8 · battle_loop 0d / handle_deploy_not_full
-- **决策**:`battle_loop` branch 0d(未达上限弹窗 dispatch)+ `HandleDeployNotFull` 的检测关键词 `'未达上限'` 收紧 `lcs_percent` 默认 0.5 → 0.8。
-- **为什么**:投资策略屏的策略描述含「能量上限」(如"同于能量上限20%的能量"),与「未达上限」共享子序列「上限」(LCS 2/4 = **0.5 = 默认阈值**)→ branch 0d 误匹配 → 投资策略屏被吞,反复触发 `HandleDeployNotFull`(其点击落在错误坐标,不消 overlay)→ 对局卡死(2026-08-05 实跑,P1 验证时暴露)。真「未达上限」弹窗 4/4 命中,0.8 不影响;「能量上限」2/4=0.5 < 0.8 不再误匹配。同 loop 其他分支(0a/0b/0e)早就在 0.7-0.9,唯独 0d 漏在默认 0.5。
-- **备选**:**区域识别**(给 `currency_war_deploy_not_full` screen_info 加「未达上限」text area,loop 用 `round_by_find_area` 检测 —— 方法论首选,用户立场「round_by_ocr 全屏=偷懒」)—— 留待 deploy 弹窗建档补 text area 后改;本次最小止血用 lcs 收紧(与 loop 既有惯例一致,即解)。
-- **状态**:采用。实机验证:修复后 loop 正确走 0e → `HandleInvestStrategy`(`decide_invest` 选「正能量」)+ 继续 prep(`update_target` 列车同行 + `decide_prep` Buy/Deploy),不再卡 `HandleDeployNotFull`。· `battle_loop.py:155-159` / `handle_deploy_not_full.py:36`。
-
-## D-36 (2026-08-05) 策略插件 P1 落地(接口 + 接线,零行为变化)· strategy/11 §11.7/§11.12
-- **决策**:D-34 设计的 **P1** 落地 —— 新建 `cw_strategy.py`(`CwStrategy` ABC 全 abstract 钩子 + `StrategySession` + `CurrencyWarMatch`)+ `cw_strategy_manager.py`(`StrategyManager` 发现,仿 `ApplicationFactoryManager` 但省 factory/const 配对)+ `strategies/default_strategy.py`(`DefaultCwStrategy` 薄委托既有 `cw_decisions`/`cw_comps`);`CurrencyWarConfig` +`strategy_id`/`strategy_seed`;`SrContext` +`cw_match`(显式声明 + reload 重置,字符串注解免运行时 import)+ `currency_war_strategy_plugin_dirs`;`battle_loop` 每局建/毁 match + `on_match_start`(_iter==1)/`on_match_end`(桩 `MatchOutcome()`);`shop` 走 `strategy.update_target`+`decide_prep`(删 `BuyShopCards._target_comp` class-attr hack);`handle_invest_*` 走 `decide_invest`。
-- **为什么**:把"散落模块函数 + `_target_comp` class-attr hack"换成"单一 strategy 对象 + session",**不动战术层逻辑**(默认策略薄委托既有函数 = 今天打法)。P1 = 零行为变化,让插件替换口子立即可用(用户/参赛者可写策略);P2 地道化(逻辑迁进方法、删模块函数)后续。
-- **备选 / 行为等价说明**:
-  - **rng 合并**:`decide_prep` 用 `session.rng` 替代 `plan` 每调用新建 `random.Random()`。旧 = per-call 真随机,新 = per-session 真随机(未种子时)。两者都真随机、**分布同(均匀)、用户不可观测差异**;合并后**可种子化**(比赛公平 / replay 复现)= P1 目标之一(§11.4),非 bug。
-  - **观测回路(`on_round_end`/真实 `on_match_end` outcome)留 P1.5**:P1 框架不构造 `RoundOutcome`/真实 `MatchOutcome`(需结算屏 OCR 探查,未做)→ 这两钩子 P1 无 caller;默认方法体就位(`record`/no-op),随阶段5 OCR 落地才接。
-  - **supply/megastar/partner/boss 钩子 ABC 里就位 + 默认委托,但 handler 不 rewire**(OCR 缺 / dispatch 已删),随阶段5。
-- **状态**:采用。**验证**:130 既有 cw 测试 + 15 新 plugin 测试(`test_cw_strategy.py`:发现/去重/THIRD_PARTY/default 委托/session+rng)全绿;ruff 净(sr_context 剩 11 错误全为既有 `Optional`/`List` 旧式风格,非本次引入);实机端到端确认(`[cw-strategy] 发现 1 个策略 default` + `[cw-env] decide_invest` + `[cw] target=击破流萤 decide_prep`,新 strategy 对象经全链路执行)。· strategy/11 §11.7/§11.12;P1.5 观测回路 / P2 地道化 待续。
-
-## D-35 (2026-08-05) 遭遇 round = 普通战斗,移除 HandleEncounter 2选1 dispatch · battle_loop / handle_encounter
-- **决策**:遭遇节点 round 改判为**普通战斗**(无选项选择 UI,只有难度标签 + 出战),走正常 prep→出战→战斗(`battle_loop.py` branch 1 `BattlePrepCycle`);移除原 `HandleEncounter`(2选1)dispatch。
-- **为什么**:`doc(currency_war_encounter.md)` + 实机 + verifier 三方确认:遭遇 round **没有选项选择 UI**(原 2选1 是误判)。原 `HandleEncounter`(点卡身选难度档 + 选择)对着不存在的 UI 操作 → stall。
-- **备选**:保留 `HandleEncounter`(推翻:无选项 UI,2选1 前提不成立)。
-- **状态**:采用。`battle_loop.py` 删 `HandleEncounter` import + 0c dispatch(改注释);`HandleEncounter` op + `cw_decisions.decide_encounter` 纯逻辑 + 测试**暂留**(待确认全代码库无他用再删)。⚠️ **本条后补**(代码先改、决策日志漏记,违反「实跑演进当场记 D-NN」;strategy/11 review r2 发现此缺口 → 现补)。影响 strategy/11:`decide_encounter` 钩子按本条 dormant(见 strategy/11 §11.3.4⑤)。· `battle_loop.py:124-131` / §08。
-
-## D-34 (2026-08-05) 策略插件机制:`CwStrategy` ABC + `StrategySession` + `StrategyManager`(对标 app 插件)· strategy/11
-- **决策**:把货币战争的「决策大脑」抽象成**可替换的 `CwStrategy`**(无状态 + 模板方法全默认)+ **每局内存态 `StrategySession`**(持 target_comp/rng/performance/memory,替代 `BuyShopCards._target_comp` class-attr hack)+ **`StrategyManager`**(对标 `ApplicationFactoryManager` 的约定式文件扫描 + BUILTIN/THIRD_PARTY 双源,但无 factory 间接 —— 策略 `cls()` 即实例化,元数据走类属性)。覆盖**全部局内决策**(备战 plan + 投资策略/环境 + 补给 + 遭遇 + 巨星 + 选伙伴 + boss 克制 + target_comp 选择/转型)。内置 `DefaultCwStrategy` 分两阶段:P1 薄封装委托现有 `cw_decisions`/`cw_comps`(零行为变化),P2 地道重构(逻辑迁进方法、删模块函数)。服务「用户自写策略」+「社区策略比赛」。详 strategy/11。
-- **为什么**:用户要「封装一个基类,接收完整局面、出下一步决策、留临时数据口、为插件机制/策略比赛留缺口」。现有决策是**散落的模块函数**(`plan`/`decide_event`/`select_comp`… 各处直调)+ **跨步状态 ad-hoc**(`_target_comp` class-attr),无单一替换切口 → 换打法得 monkey-patch 多处。三大设计选择:
-  - **范围 = 全部局内决策(非仅备战)**:一个 strategy 对象 = 一整套打法,最契合「用自己的策略玩」+ 比赛(比拼完整打法)。备战只是举例。
-  - **无状态策略 + 显式 session(非有状态实例)**:策略实例不持每局可变状态,全进 `StrategySession`(框架每局新建/局终销毁)。收益:可重入、可并行(比赛批量跑 1000 局)、可种子化(`session.rng`)、可离线测、无隐藏状态跨局泄漏。这是服务比赛的关键杠杆。
-  - **发现机制 = 对标 app 插件(非 entry-points / 非 dotted-path)**:用户明问「现在的 application 怎么做」→ 照 `ApplicationFactoryManager`(文件扫描 + BUILTIN `src/.../strategies/` + THIRD_PARTY `plugins/currency_war_strategies/` + 复用 `plugin_module_loader` + 去重 + 热重载),体验与 app 插件一致;参赛者丢文件即进 GUI 下拉。省 factory 间接(策略无 config/run_record 机制)。
-- **备选**:① **entry-points**(推翻:更重、需参赛者会打包,且背离框架既有文件扫描模式);② **有状态策略实例**(推翻:隐藏状态、难重置、不能并行、跨局泄漏风险 —— 不服务比赛批量评分);③ **纯抽象 ABC 强制实现全部钩子**(推翻:参赛门槛过高;模板方法全默认让「只换个买牌策略」低门槛);④ **范围仅备战 shop**(推翻:用户「之类的」暗示不止;仅备战换不了选事件/boss,比赛维度窄);⑤ **跨局持久化 session**(推翻:YAGNI + D-04「持久化默认不碰」;跨局采集走既有 telemetry,不造第二套);⑥ **沙箱隔离第三方策略**(推翻:与第三方 app 插件同威胁模型,`plugins/` 已自动 import 执行,本机制不引入新威胁面;诚实记录「进程内全信任」,比赛在受信任环境跑)。
-- **状态**:采用(设计定案,设计文档 strategy/11 已写,经 r1 双 reviewer 审过;实现待跟进)。交付:P1 接口+接线+薄委托默认(**战术层**零行为变化,低风险)→ **P1.5 观测回路接线**(结算屏 OCR → `RoundOutcome`/`MatchOutcome`,需游戏)→ P2 内置地道化(中风险,测试保绿)→ P3 比赛基建(replay/batch_score + 参赛骨架)。**接口在 P1 冻结**,P1.5/P2/P3 不破坏它。向後兼容:`strategy_id` 默认 `"default"` = 今天战术层打法(观测钩子 P1 期 no-op,不影响行为)。· strategy/11(what)/ 落点:`cw_strategy.CwStrategy`/`StrategySession`/`CurrencyWarMatch`、`cw_strategy_manager.StrategyManager`、`strategies/default_strategy.DefaultCwStrategy`、`shop.BuyShopCards.buy`(删 `_target_comp`)+ `battle_loop.__init__`(建/毁 match)、`sr_context.cw_match`/`currency_war_strategy_plugin_dirs`、删 dead code `handle_megastar.py`、`cw_decisions`+`cw_comps` 迁进 `DefaultCwStrategy`(P2)。· §01/05/06/10。
-
-## D-33 (2026-08-05) maybe_pivot 信号2 加「已成型守卫」(不放弃已完成 comp)· cw_comps
-- **决策**:`maybe_pivot` 信号2(ceiling 不可达 → 切 easy)加守卫 `form_progress(target, state) < 1.0` —— target 已成型(board 全 tier 达成)时**豁免**信号2,不因 `typical_form_round > remaining` 切走已完成的 comp。
-- **为什么**:原逻辑 `if target.typical_form_round > remaining:` 无视成型度 → 已成型的 target(plane3 后期 remaining 小)会被误判"来不及成型"切走 → 放弃已完成的强 comp 转切 easy,反而变弱。**正确性 bug**(不该放弃已完成 comp),非调参。补 maybe_pivot 信号1+2 测试时发现。
-- **备选**:① 不修(推翻:已成型 comp 是最强态,切走=自毁);② 守卫用 `< 0.9` 而非 `< 1.0`(推翻:0.9 近成型仍可能来不及,该让 `form_round>remaining` 判定;只有全成型 1.0 才确定不该切)。
-- **状态**:采用。+ 1 测试(`test_maybe_pivot_formed_target_no_ceiling_pivot`:阿雅成型 board={昼之半神:4}+ plane3 round5 remaining≈1 → 不切);cw_comps 30 测试绿。· `cw_comps.maybe_pivot` 信号2。· §03。
-
-## D-32 (2026-08-05) difficulty → hp_safe_threshold 派生(向后兼容,A8 高难保血地基)· cw_state / cw_decisions / config
-- **决策**:加 `GameState.difficulty`(A1..A8,匹配开始从难度确认屏检测)+ `CurrencyWarConfig.difficulty_hp_override`(难度→保血阈值映射,默认 A1-A4=40 不变 / A5+ 升阶)+ `effective_hp_threshold(state, config)`(cw_state)。3 处阈值读取统一走它:evaluate → `_phase_weights`、plan → `_refresh_cap`、`maybe_pivot`(0.75×)。**向后兼容**:difficulty 未检测("")或 override 无对应键 → 回退 `hp_safe_threshold`(默认 40 = `HP_DANGER`),行为与加 difficulty 前**完全一致**(detection 未接线时零变化)。
-- **为什么**:cw_decisions 长期 TODO(:194「待 difficulty 字段」、:206「待补 A8 difficulty 信号」)—— A8 高难敌人更凶,固定 threshold=40 偏低(过晚弃息保血 → 失血过多);高难应更早保血。**离线地基**:detection(难度确认屏 OCR → `state.difficulty`)是后续 game 接线任务;本改动先把「阈值随难度变」的 plumbing + 派生函数 + GameState 字段就位,detection 落地即生效(不再动决策代码)。关 D-18(hp 阈值统一)的 difficulty 维度。
-- **备选**:① 直接改死 `HP_DANGER` 常量(推翻:全局生效、低难也变、不向后兼容,A8/低难该不同阈值);② 加 difficulty 字段但不派生、等 detection 全做完再接(推翻:detection 时要同时改字段+函数+3 处位点,更碎;先做离线地基更稳,且向后兼容不破坏当前未验证跑)。
-- **状态**:采用。代码 + 5 新测试绿(`test_effective_hp_threshold_*` ×4 + `test_eval_difficulty_aware_hp_threshold` 集成证 difficulty 改变 eval 行为);现有 cw_decisions/cw_comps 测试向后兼容通过。`DEFAULT_DIFFICULTY_HP`(A5+ 升阶)是**保守起步,待实机校准**(detection 接线后看 A8 实际失血曲线调)。· `cw_state.effective_hp_threshold` / `currency_war_config.DEFAULT_DIFFICULTY_HP` / `cw_decisions` evaluate+plan / `cw_comps.maybe_pivot`。· §02A3。
-
-## D-31 (2026-08-04) 巨星卡死真根因 = bug#1(↺ 推翻 D-30 的"2 步缺 step2")· run_megastar_node
-- **决策**:巨星节点卡死 6min 的真根因是 **bug#1**(确认 click 走 `round_by_ocr_and_click`,其 `before_screenshot` 把鼠标移到角 → click 判 drag 被吞 → 确认永不落地 → flat loop 无限 `round_wait` 烧预算),**不是**漏选强化角色。强化角色**可选**(不选也能确认推进)。修 = `RunMegastarNode`:`mouse_move`+`click`(bug#1 零移动缓解,同 invest handler)+ RunNode 验证(overlay 消失=完成)+ 节点预算(点不动 bail,不再 2.5h 烧)。
-- **为什么(实机,MCP + VLM 结合)**:① OCR ground truth ——「强化角色未选择」持续在,点确认(MCP `click_game` 直连、无 before_screenshot)后该字消失、overlay 关 = **节点推进了**;② open-prompt VLM —— 看到花火有**金色发光边框 = 已选中**(窄 prompt 之前漏看、误报"没选中"→ 误判缺 step);③ 综上:花火早被 bot 的候选 click 选中,唯一卡点是确认 click 被 bug#1 吞,我直连点确认一发即中。
-- **备选**:D-30 的"补选强化角色 step2 / 候选选中机制不明"(↺ 推翻:强化角色可选非卡点;候选早选好了,D-30 的"选中机制不明"是窄-prompt 视觉大模型 漏看金边造成的误判)。
-- **状态**:采用。`RunMegastarNode` 代码完成(ruff 净 + 导入/结构验);**行为验证待下次巨星节点**(bug#1 缓解后应一发推进;现游戏已过我手动推进的巨星、在备战 1-6)。· `run_nodes/run_megastar_node.py` / `battle_loop` 0b。
-- **方法论(回应用户"prompt 限制 VLM" + "MCP 和 VLM 都用")**:① **VLM 探索未知画面先 OPEN prompt**(描述全部),窄/leading 问法**压制题外输出** —— 我窄 prompt 漏看金边 → 误判"没选中" → 误以为缺 step → 跑去问用户;open prompt 一眼看到金边。② **MCP(OCR ground truth)+ VLM(open 枚举/选中态)+ click(验证交互)三结合** —— 各取所长:OCR 可信、VLM 看非文本元素/状态、click 验行为。③ **这条经验 → `od-dev-screen-onboarding`(open 枚举)+ 视觉大模型 用法 memory(open prompt 先)**。
-
-## D-30 (2026-08-04) 巨星节点机制缺口 + 早期恶性循环(实机发现,待解)· handle_megastar / 策略
-- **决策(发现,非定案)**:① 巨星(位面首领,每位面第 6 关)是**2 步节点**(选候选成巨星 + 选强化角色 + 确认),`HandleMegastar` 只做第 1 步 → 确认被拒(「强化角色未选择」)→ 节点永不完成;② 但"候选怎么选中"**机制不明**(点卡片本体 (925,240) / 名字条 (820,333)/(920,343) 均不选;点「详情」能开浮层=点击落地✓;视觉大模型 状态推理不可信;web 搜索无果)→ 需用户/人肉实机观察;③ 更深:bot 早期战力弱 → 输回合 → 穷 → 升不起级 → 弱 comp → 继续输(**恶性循环**),level gate+saving(D-24/D-28)必要非充分。
-- **为什么**:实机迭代(plane1 round6)暴露 —— 卡巨星 6min(75+ retry 屏完全不变,会转到 MAX_ITER 2000 ~2.5h);round6 gold=17 lv=4 付不起升级费 30,hp 100→58 在掉血。纯代码永远看不出。
-- **备选**:① 凭 视觉大模型 猜巨星选中目标(推翻:视觉大模型 状态/交互推理不可信,memory `onboard-vision-required` 已记);② 跳过巨星(推翻:首领节点不可跳,必打)。
-- **状态**:**待解**。巨星选中机制 = 知识缺口(问用户 / 看攻略视频);恶性循环 = 早期战力 + 经济策略问题(需策略迭代)。`RunMegastarNode` 待机制明后建(预算至少 fail-fast 不再 2.5h 烧)。· `handle_megastar` / 策略早期经济。
-
-## D-29 (2026-08-04) RunNode 重构:对局内 op 按节点生命周期划分 · battle_loop / run_nodes
-- **决策**:对局内主循环从「flat loop 逐帧重新发现」重构为「外层分类+委派 + RunNode 按节点生命周期 owner」。`RunNode` 基类(**committed-but-verifying + 节点作用域预算**):每轮验证"还在本节点?"(`_in_node`)→ 否=节点完成 `round_success`;是→`_do_action` 做一动作→`round_retry`(计 `node_max_retry_times` 预算;超→FAIL bail,不无限烧)。pilot = `RunSupplyNode`(从 `HandleSupply` 升级,动作不变只套验证+预算)。
-- **为什么**:旧 `Handle*` 全是**盲单发**(做一次动作就无条件 `round_success`,从不验证节点真完成 / overlay 消失)→ 动作失败也回 success → 外层 flat loop `round_wait`(**不计 retry**)无限重派 → 卡死烧预算(巨星 6min / invest_strategy 18min / invest_env 卡死,**全这一个模式**)。flat loop 还把"我在哪种节点"和"节点哪一步"两条正交问题塞进一条优先级阶梯 → LCS 噪音 / precedence 脆弱。RunNode 分开:外层只分类(小集合稳定),RunNode 管节点内多阶段 + 验证完成 + 预算。
-- **备选**:① 保留 flat loop 只加全局超时(推翻:治标,优先级阶梯/LCS 噪音/无节点作用域卡死判据的根因没解);② 大改成显式状态机(推翻:OneDragon 节点图 + committed-but-verifying 已够,无需另造)。
-- **状态**:采用。基类 + `RunSupplyNode` pilot 代码完成(ruff 净 + 导入/结构验),**行为验证待补给屏**(被巨星 D-30 卡,推进不到补给);其余节点(encounter/partner/invest_strategy/invest_env/megastar/combat)待逐个迁移(先零件后整体)。方法论 + 完整设计:`.debug/temp/currency_war/runnode_decomposition.md`(**后续提炼进 od-dev skills** —— op 划分通用方法论)。· `battle_loop` 0e supply 分支 / `run_nodes/run_node.py` / `run_supply_node.py`。
-
-## D-28 (2026-08-04) `_saving_for_level` 对齐 D-24 gate · cw_decisions
-- **决策**:`_saving_for_level` = 想升(`level<10 AND (goal=level_up OR level<_expected_level)`)AND `gold<升级费` → 抑制散牌买/刷,攒钱升等级。
-- **为什么**:D-24 gate 已按"落后期望也升"(修 chicken-egg:`_DEFAULT_LEVEL_GOAL[4]=roll` → lv4 不升 → 永远到不了 lv5),但 saving 仍按旧"goal=level_up"→ lv4 不攒 → gate 想升却付不起。saving 须与 gate **同口径**。
-- **备选**:saving 按 goal=level_up(推翻:与 D-24 gate 不一致,lv4 永远不攒,gate 形同虚设)。
-- **状态**:采用(代码 `d5e0aea7`)。· `cw_decisions._saving_for_level`/`_want_level`。**注:必要非充分** —— 实跑 round6 gold=17 仍升 0(太穷付不起 30,见 D-30 恶性循环)。
-
-## D-27 (2026-08-04) RunLoop 事件 overlay 前置检测 + BuyShopCards 兜底 · battle_loop / shop
-- **决策**:① RunLoop 把 投资策略/投资环境/补给 检测**移到备战前**(原 step 4 → 0e,与 选择伙伴/巨星/遭遇/未达上限 同列前置);② BuyShopCards guard 加事件 overlay 兜底(检测 投资策略/环境/补给/遭遇/伙伴/确认选择 → fail 交主循环)。
-- **为什么**:实跑发现**投资策略屏被误派 BuyShopCards**(「购买经验」从 overlay 后透出 → 备战分支 step1 先命中 → BuyShopCards → overlay 遮商店 → "找不到商店"死循环)。根因:事件 overlay 叠备战、购买经验透出,但事件检测在备战后。事件必须前置(overlay 在就不进备战)。BuyShopCards 兜底防 loop 漏检/其他调用路径。
-- **备选**:① 只移 precedence(推翻:BuyShopCards 单查购买经验不够,需 overlay 兜底防其他路径);② BuyShopCards 单查 overlay(推翻:loop 是主路由,precedence 是主修)。两者互补。
-- **状态**:采用(纯代码,需游戏验证 —— 下次投资策略屏应路由 HandleInvestStrategy 非 BuyShopCards)。`· battle_loop / shop`。**通用**:overlay 态检测必须在 base 态前(overlay 会让 base 锚点透出)。
-
-## D-26 (2026-08-04) app 中间态接手(state-aware resume)· currency_war_app
-- **决策**:`CurrencyWarApp` 各入口 op(`_enter_lobby`/`_start_match`)先检测当前态,已在 CW(大厅「创业指南」或对局中态)就跳过、直接进 `_run_loop`。新 `_in_match` helper(OCR 锚点:购买经验/备战阶段/投资策略/投资环境/补给/遭遇/盛会之星/出战/挑战结束/请选择投资)。
-- **为什么**:用户洞见 —— app 原线性流(EnterCurrencyWar→Start→Loop)只认大世界起点,从对局中态(投资策略/备战/战斗)重跑会卡 entry(EnterCurrencyWar 找不到 guide)。实测从投资策略跑 app 失败、只能直接跑 RunLoop 接管。bot crash/重启/手动接管后需从任意态 resume。各 op「已过就 skip」= 幂等 resume。
-- **备选**:① app 开头一个 detection node 路由(推翻:每 op 自检更模块化,符既有 node_from 流);② 总从大世界重新进(推翻:丢对局进度 + entry 卡)。
-- **状态**:采用(纯代码,需游戏验证 —— 下次从对局中态跑 app 应直接 resume 进 loop)。`· currency_war_app`。**通用洞见**:长流程 app(模拟宇宙/忘却之庭/历战等)都该支持中间态接手(crash/重启后可 resume,非总从头)。
-
-## D-25 (2026-08-04) exit op 事件屏 escape(返回备战界面/Esc 关 overlay)· 入口 op
-- **决策**:`exit_currency_war_match` 加事件 overlay escape 分支 —— 「返回备战界面」(投资策略/环境)→ 点回备战;其他事件(补给/遭遇/巨星/详情/可合成列表)→ Esc 关。放备战分支后、retry 前。
-- **为什么**:实测从投资策略屏跑 exit → 卡 210s+(事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环)。修后:事件屏先 escape 回备战 → 走原 Esc→放弃→结算→大厅。
-- **备选**:① exit op 开头无脑 Esc 到备战(推翻:可能误关结算页);② 每事件单独 handler(推翻:exit 只需 escape,不必理解事件)。按文本检测 escape 最小可靠。
-- **状态**:采用(纯代码,需游戏验证)。`· 入口 op`
-
-## D-24 (2026-08-04) level gate chicken-egg 修:落后期望等级也升(非仅 goal=level_up)· strategy/02 plan / 03 level_plan
-- **决策**:`plan()` 升级 gate 条件从「goal=level_up + 够钱」扩为「够钱 + (goal=level_up **或** 落后期望等级 `_expected_level`)」。
-- **为什么**:telemetry 6 局**全「升0次」**(gold 到 74 也不升)。根因:task#18(D-14)gate 只在 goal=level_up 时升,但 `_DEFAULT_LEVEL_GOAL[2,3,4]=roll`(非 level_up)→ gate 在这些等级不触发 → 永远到不了 5+(level_up 等级)→ **chicken-egg 卡低等级** → 弱 comp → 输。CW 起步 lv4 + goal[4]=roll → 永卡 4。「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。
-- **备选**:① 改 `_DEFAULT_LEVEL_GOAL[3,4]=level_up`(推翻:rigid,只解 lv4;「落后期望」更通用,适用任何掉队);② LevelUp 回归 eval 候选(推翻:task#18 D-14 已证 eval 短视永不选;gate 更稳)。
-- **状态**:采用(7 level-up 测试绿,含新 D-24 测试)。**待干净对局验证**:下局应能看到升级(chicken-egg 解)。`· §02 plan / §03 level_plan`
-
-## D-23 (2026-08-04) EnterCurrencyWar wait_lobby 防御性加固(前往参与仍在→重点击)· 入口 op
-- **决策**:`wait_lobby` 加分支 —— `前往参与` 仍在(transport click 没落地)→ `round_by_ocr_and_click` 重点击。放「创业指南」(大厅)之后、弹窗/F 分支之前。
-- **为什么**:全流程跑卡 `wait_lobby` 重试 37x 失败,根因:停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ F 分支(`货币战争 AND NOT 前往参与`)被跳过 → 无分支命中 → 死循环。上个节点(前往参与)的 transport click 没落地(bug#1)→ 角色没传送 → 停指南页。重点击兜底。
-- **备选**:① 提 node_max_retry(推翻:不解决根因,仍死循环);② 改 F 分支条件(推翻:不该在指南页按 F)。防御性重点击 = happy path 不受影响(传送成功则前往参与消失,分支不触发)。
-- **状态**:采用(防御性加固;**需游戏验证** —— 下个干净对局跑 EnterCurrencyWar 看是否还卡)。`· 入口 op`
-
-## D-22 (2026-08-04) hp 阈值统一 config.hp_safe_threshold(D-18 unification 落地)· strategy/02 §A3
-- **决策**:加 `config.hp_safe_threshold`(默认 40 = HP_DANGER);`_phase_weights(plane,hp,hp_threshold=HP_DANGER)`、`_refresh_cap(state,hp_threshold)`、`maybe_pivot`(`0.75×threshold`)签名加参数带默认。evaluate/plan 经 `getattr(config,'hp_safe_threshold',HP_DANGER)` 传入。
-- **为什么**:02 §A3 要求 hp 阈值单一源(原散落 `HP_DANGER=40` + `maybe_pivot hp<30` 硬编码);A8 高难需调高阈值(difficulty 派生)。**默认 = HP_DANGER → 行为不变**(64 测试绿),但单一源 + difficulty 可调 + 偏移系数集中(转型 0.75×;死局 0.5× / 连败 1.5× 待相应函数实现时补)。
-- **备选**:① 直接删 HP_DANGER 全走 config(推翻:默认值仍 40,保留常量作 default + 测试引用更稳);② 不做(推翻:design 02 §A3 指示 + 审计标的 divergence)。
-- **状态**:采用(D-18 hp 项落地;64+1 测试绿)。`· §02 §A3`
-
-## D-21 (2026-08-04) optionality_score + α(t) 纯函数(承诺-期权)· strategy/02/03 P1-1+F-3
-- **决策**:实现 `optionality_score(state)`(bench 角色属 **≥2 COMP_LIBRARY comp**[``shared_chars ∪ core_chars``]→ 加分,保期权/容错)+ `alpha_t(state)`(总回合 <R_OPEN→0 纯期权 / >R_CLOSE→1 纯承诺,线性)。R_OPEN/R_CLOSE/OPTIONALITY_WEIGHT **值在代码**(阶段 6 实玩校准)。
-- **为什么**:A8 方差生存战,过早 commit 单一 comp 遇克/缺牌即死(plane2 死因之一);保 ≥2 comp 可行 → 容错。design P1-1/F-3 标 high。
-- **备选**:① 直接集成进 evaluate(推迟:改核心 eval 行为需 P0 游戏验证才稳,先做零件);② 不做(推翻:high 优先 + 直接关系 plane2 生存)。
-- **状态**:采用(纯函数 + 2 测试绿;**evaluate 集成延后** —— ``α·target_progress + (1-α)·optionality`` 混合,待 P0 解阻后集成 + 游戏验证)。`· §02/03 P1-1/F-3`
-
-## D-20 (2026-08-04) decide_supply 纯逻辑骨架实现 · strategy/07/08
-- **决策**:实现 `decide_supply(options, state, target_comp, config, refresh_used) → SupplyPick`(纯函数,design 07/08 骨架)。规则:带钻(红/蓝)→ 选(基本赢,碾压);全无钻 + 刷新未用 → 刷新找钻;刷新已用 → ``key_equips`` 契合(+10 命脉级)+ 通用装备价值(鞋>电池>花,``_EQUIP_VALUE`` 代码表)。新 ``SupplyOption``(idx/角色/装备/带钻)+ ``SupplyPick``。
-- **为什么**:补给节点 naive「选中牌」(``handle_supply``)无视钻/key_equips;design 07/08。钻 = 拿到基本赢(用户),碾压;key_equips comp 相关(D-07)。先纯逻辑(可独立测),handler 接线(``read_supply_options`` OCR + 钻视觉判定)待阶段 5。
-- **备选**:① 通用 equip_score(推翻:脱 comp 无意义,D-07);② 等阶段 5 OCR 一起(推翻:纯逻辑可独立测,符合先零件后整体)。
-- **状态**:采用(纯逻辑 + 4 测试绿;handler 待 ``read_supply_options`` 阶段 5)。`· §07/08 补给`
-
-## D-19 (2026-08-04) decide_encounter 纯逻辑骨架实现 · strategy/08
-- **决策**:实现 `decide_encounter(options, state, target_comp, config, refresh_used) → EncounterPick`(纯函数,design 08 骨架)。规则:未成型→低难度;全分支词缀克 comp(``mechanics_fit``<0.4)+ 刷新未用→刷新换批;成型 + 词缀利 comp(debuff=buff)→高难度拿奖励;刷新已用→按最优选。新 ``EncounterOption``(idx/难度/词缀/奖励)+ ``EncounterPick``(idx/refresh/reason)数据类。
-- **为什么**:遭遇节点 naive「选左」(``handle_encounter``)无法表达难度/词缀决策;design 08 标 high。词缀用 ``mechanics_fit``(debuff=buff,D-05)判克/利 comp。先做纯逻辑(阶段 2 骨架,可独立测),handler 接线(OCR ``read_encounter_options``)待阶段 5。
-- **备选**:① 扩 ``decide_event`` 白名单(推翻:遭遇是难度档非白名单项,decide_event 表达不了);② 等阶段 5 OCR 一起做(推翻:纯逻辑可独立测 + 早发现 bug,符合"先零件后整体")。
-- **状态**:采用(纯逻辑 + 4 测试绿;handler 接线待 ``read_encounter_options`` 阶段 5)。`· §08 遭遇`
-
-## D-18 (2026-08-04) 配置层对齐:经济统一论落地后的取舍 · strategy/02 §A3 + README §A/D
-- **决策**:① `economy_mode` **保留**(作 eval 权重微调:interest_first/rush_level 调利息/等级项),不按原 README §D 删除;② `aggression` **删除**(死字段,cw_decisions 不用);③ hp 阈值统一走 `config.hp_safe_threshold`(02 §A3)+ config 重写(forbid/build_around/handoff/difficulty/manage_meta_run)**缓做**(deferred)。
-- **为什么**:① level_plan 是**硬 gate**(D-14,主导花费指令),economy_mode 只调 eval 权重(非花费决策)→ 二者**不冲突**(原 README "和 level_plan 打架"的删除理由在 hard-gate 落地后不成立);且 economy_mode 有测试锁定(test_economy_mode_effects),删 = 行为变更 + 破测试,无收益。② aggression 全代码不用,设计早判"虚"已删,代码残留。③ hp 统一 / config 重写是干净但触及 `_phase_weights` 签名 + 测试 + GUI 的重构,非"修漂移",单列任务。
-- **备选**:按原 README §A/D 全删 economy_mode/aggression + 一次重写 config(推翻:① economy_mode 删除理由失效;② config 重写大,且 cw_comps 已 `getattr` 防御读取新字段,可增量加不必一次重写)。
-- **状态**:采用(①② 已做;③ deferred,见 process_log/insights)。`· §02 §A3 / README §A/D`
-
-## D-17 (2026-08-04) eval / comp_score 权重实跑校准 · strategy/02 §A3 + 03 comp_score
-- **决策**:V4.4 research 先验权重经 2026-08-04 实跑(replay 32 局 + bot)校准:`INTEREST_WEIGHT 2→4`、`LEVEL_WEIGHT 3→6`、`SYNERGY_TIER_EXPONENT=1.5`(收敛:深化 delta>散新)、`OFF_TARGET_DISCOUNT 0.3→1.0`(revert,改用 commitment prefilter D-15)、`W_PROG 0.35→0.45` / `W_STR 0.10→0.05`(select_comp 偏好可成型而非纯高强度)、`TARGET_PROGRESS_WEIGHT=15`。
-- **为什么**:实跑发现原值致 bot 不攒金(息 delta = 牌 synergy → 无差别买)、不升等级(level benefit < interest loss)、select_comp 锁高强度但不可成型 comp(列车同行 S 但商店没牌 → 不收敛)。提权后 bot 攒到 50 + 升级 + 选可成型 comp。
-- **备选**:维持 research 先验占位值(推翻:实跑证明不收敛)。阶段 6 再用 replay 精调最敏感 3-5 维。
-- **状态**:采用(实跑驱动,待阶段 6 replay 精调)。`· §02 §A3 / §03`
-
-## D-16 (2026-08-04) shop_supply:select_comp 降权不可得 comp(task#25)· strategy/03
-- **决策**:`select_comp` 对核心阵营在当前 shop/board **不可得**的 comp ×0.3 降权(新 helper `shop_supply`)。
-- **为什么**:实跑发现 select_comp 锁高强度 comp(列车同行 S=1.0)但商店刷不出其牌 → board 散、永不成型 → plane1 重伤。降权使 select 偏好**可得** comp(万敌 燃血:1 > 列车同行 0 可得)。
-- **备选**:① 纯按 comp_score 不考虑可得性(推翻:锁死不可成型 comp);② P1-2 `ENV_COMP_AFFINITY` 硬绑(更强形式,待实玩补全 T0 env 表)。
-- **状态**:采用。`· §03 select_comp`
-
-## D-15 (2026-08-04) commitment prefilter + OFF_TARGET_DISCOUNT revert(task#16)· strategy/02
-- **决策**:target_comp 设定时,`_best_improving_action` 用 **prefilter** —— shop 有 target 卡(阵营∈target.factions / ∈core_chars)可买时,跳过纯 off-target 散牌(**只 gate 新 buys,不动已持有 board 的 eval**);`OFF_TARGET_DISCOUNT` revert 0.3→1.0(不打折 board synergy)。
-- **为什么**:原 OFF_TARGET_DISCOUNT=0.3 打折 board synergy 致 bot 卖成型 off-target 深堆(churn)= regression。prefilter 只影响"买什么新牌"不影响"已堆的怎么评分"→ 聚焦深化 target 且不破坏现有 board。target_comp 参数保留(prefilter 复用,OFF_TARGET_DISCOUNT effect 暂关)。
-- **备选**:① OFF_TARGET_DISCOUNT 打折 board(↺ 推翻,致 churn);② 无 commitment(纯 reactive,不聚焦)。
-- **状态**:采用。`· §02 commitment`
-
-## D-14 (2026-08-04) level_plan 从"导向"升级为"硬 gate"(task#18)· strategy/03 经济统一论
-- **决策**:`plan()` 中 level_plan `action="level_up"` + 够钱 → **直接执行 LevelUp**(每轮 ≤1 级),不进贪心 eval 候选。语义从 D-08 的"导向(eval 权重)"升级为"**花费指令(directive)**"。comp 无 level_plan 时退回通用曲线 `_DEFAULT_LEVEL_GOAL`。
-- **为什么**:replay 32 局「升 0 次」根因 —— 贪心 eval 对"花大金升级"的利息损失短视:LevelUp 候选 delta 永负(花 48 金 → 利息档 5→0 损 -20,level_val 仅 +6)→ 永不选中 → bot 卡 lv5-6 → 弱 comp → plane2 死。level_plan 说升 + afford → 信任计划而非短视 eval。tempo 破息在所不惜(升级 = 解锁高费刷新率 + 出战位,关键长期投资)。
-- **备选**:① 仅提 LEVEL_WEIGHT 让 eval 自发选升级(部分采用 D-17 提 3→6,但单靠 eval 权重不够稳,hard gate 兜底);② 每 comp 手填 level_plan(保留:comp 有则优先,无则通用曲线兜底,保证所有 comp 有合理经济行为)。
-- **状态**:采用。`· §03 经济统一论 / §02 plan`
-
-## D-13 (2026-08-03) 击破 tiers V4.4 修正 2/4/6/9 · data/factions
-- **决策**:`击破` FactionInfo tiers 用 `(2,4,6,9)`(原 `(2,4,6,8,10)`)。
-- **为什么**:官方赛季文 76641553,V4.4 姬子成专家顾问,tiers 下调。
-- **备选**:无(实据,非权衡)。
-- **状态**:采用。
-
-## D-12 (2026-08-03) 领域模型注册表 + 单一真相源派生 · 工程化
-- **决策**:核心实体建正规 model 类 + 注册表(Character / Faction / Equipment / InvestmentEnv+Strategy);派生关系而非硬编码 —— `ENV_FACTION_MAP`←`INVESTMENT_ENVS.faction`、`DISTINCT_CARDS_PER_COST`←`chars_by_cost`、`Faction.members()`←`CHARACTERS` 反查。
-- **为什么**:用户定调工程化质量,别写屎山;单一真相源改一处自动传导(否则多处硬编码易脱节)。
-- **备选**:裸 dict + 散字符串(推翻:重复硬编码,改一处要同步多处)。
-- **状态**:采用。
-
-## D-11 (2026-08-03) 观测 trend 归一化而非完全划分 · strategy/10
-- **决策**:`recent_hp_loss_trend` 用 `hp_delta / expected_drop[node_type]` 归一化,全部样本进**同一条** trend(不按 node_type 完全划分);boss 另留短 trend。
-- **为什么**:review r5 的"完全划分"致 boss 观测永久 None + obs 随节点类型震荡;归一化既消除"打 boss 掉得多=我弱"偏差,又不丢样本。
-- **备选**:按 node_type 完全划分(↺ 推翻 r5 过度修正;boss 稀疏 + 震荡)。
-- **状态**:采用(r6 修 r5)。
-
-## D-10 (2026-08-03) comp_viability 冷启动早返回纯先验 · strategy/10
-- **决策**:obs=None(无观测)时直接返回纯先验,不 blend。
-- **为什么**:`obs_weight × obs`(0×None)会 TypeError 崩溃;且无观测时纯先验就是最佳估计。
-- **备选**:用先验填 None 再 blend(多余,先验已在公式里)。
-- **状态**:采用(bug-driven,测试发现)。
-
-## D-09 (2026-08-03) 列车同行(姬子·启行)= bot 默认首选 comp · data/comp_library
-- **决策**:V4.4 列车同行 comp 作 bot 默认首选(strength S)。
-- **为什么**:A850 挂机流攻略(76824096):"全程自动、不凹开局、适应任何负面环境" —— 完美适配 bot。V4.4 评级真神。
-- **备选**:昼神阿雅(已降 B)/命运圣杯红A(S 但联动获取门槛)。
-- **状态**:采用。
-
-## D-08 (2026-08-03) 经济统一论:level_plan 驱动超额金 · strategy/03
-- **决策**:D牌/买牌/买经验是"花钱的一环",非三件事。维持 ≥50 金(息引擎),**超额(>50 不生息,免费)该花**,花哪由 `target_comp.level_plan[当前等级]` 决定(level_up/roll/stable);tempo(连胜连败/HP危险/战力断档)例外破息。
-- **为什么**:用户框架 —— 超额的钱白该花,花哪由成型路线导向。
-- **备选**:D牌/买牌/买经验三件独立决策(推翻:割裂,忽略超额金的"免费"性)。
-- **状态**:采用。**接法已落地**(`plan` level_plan 硬 gate[D-14] + `select_comp`/`maybe_pivot`[cw_comps] + shop.py 接线;2026-08-04)。
-
-## D-07 (2026-08-03) 一切评分 comp 相关 · strategy/03/07/10
-- **决策**:装备/巨星/词缀好坏都挂钩 `target_comp`(`equip_fit`/`mechanics_fit`/`select_megastar`),不设独立绝对评分项。
-- **为什么**:反重力皮靴对昼神阿雅(需2靴)是命脉、对别 comp 不一定;知更鸟幸运一击只对暴击队值钱;正当防卫对阿雅是克、对万敌燃血是利。
-- **备选**:通用 equip_score + 通用词缀表(推翻:脱离 comp 的绝对评分无意义)。
-- **状态**:采用。
-
-## D-06 (2026-08-03) V4.4 阿雅 strength S→B · data/comp_library
-- **决策**:V4.4 昼神阿雅 comp strength B(V3.8 曾标 S "最轮椅")。
-- **为什么**:米游社合集 76807134 V4.4 评级(试用+0命),阿雅降 B —— 需反重力皮靴×2+速度投资,试用/0命下难成型。
-- **备选**:保留 S(与 V4.4 实测 meta 矛盾)。
-- **状态**:采用。↺ 推翻 V3.8 "最轮椅 S" 先验。
-
-## D-05 (2026-08-03) debuff 可能是 buff(mechanics_fit 双向)· strategy/10
-- **决策**:敌人词缀对 comp 是 counter 还是 synergy,**双向判**(同一词缀对不同 comp 方向相反)。`comp.mechanic_attributes` + 全局 `MECHANIC_COUNTERS`/`MECHANIC_SYNERGIES`。
-- **为什么**:正当防卫(反伤)对高频队是克、对燃血队(万敌)是利(反伤让燃血掉血→角斗场记录→伤害更高)。但**永久创伤**(掉血减上限)**克**燃血 —— 反例,故燃血非"所有掉血都利"。
-- **备选**:通用高危词缀表(推翻:同词缀不同 comp 方向相反,通用表错)。
-- **状态**:采用。
-
-## D-04 (2026-08-03) 持久化/跨局状态默认不碰 · strategy/09
-- **决策**:bot 默认**不动**玩家跨局继承(优势布局/钻钞);`manage_meta_run=false`。仅**局内**状态(买/deploy/升/D牌)默认自动。
-- **为什么**:防打乱玩家长期投入(优势布局是玩家自己攒的 buff);持久化破坏性操作 opt-in。
-- **备选**:默认自动激活最优布局(推翻:风险大,可能毁玩家投入)。
-- **状态**:采用。
-
-## D-03 (2026-08-03) 不凹开局重开 · strategy/09
-- **决策**:策略**不依赖重开**找好开局;够好就该能"理智"克服任何开局。
-- **为什么**:重开是玩家行为不是策略;策略鲁棒性应内含,不该靠重开掩盖。
-- **备选**:opening reroll(推翻)。
-- **状态**:采用。仅 `handoff=true + 好开局`用例保留"刷好开局交手玩家"。
-
-## D-02 (2026-08-03) 邪道非必需(通关=成型度+装备)· strategy/02/03
-- **决策**:不把"邪道装备/特殊 win-con"(物质分解液/反甲/仙舟神君邪道)当 comp 强度关键项;通关能力 = f(成型度 + 装备质量 + 阵型),差别在**成型难度**。
-- **为什么**:用户实战 —— 好好构筑阵容+找装备,很多阵容都能通 A8;被攻略带偏("A8 80亿血必须靠邪道")。
-- **备选**:标"邪道 A8 专项 S"(↺ 推翻;与实战矛盾)。删 `a8_wincon_holdings`。
-- **状态**:采用。
-
-## D-01 (2026-08-03) 砍精确战斗模拟器 + ML,改观测驱动 · strategy/01/10
-- **决策**:**不建**战斗模拟器(打前预测赢率/掉血),**不建** ML 训练管线;改用 OCR **观测结果**(每回合掉血/胜负/boss血条)当反馈信号。
-- **为什么**:星铁战斗太复杂(回合序/弱点/击破/能量/战技点)OCR 反推不出可信模型;且版本迭代改数值,预测模型会废、维护不起。结果信号扎根在结果上,版本鲁棒。用户定调"像人一样玩"(人看掉血,不算赢率)。
-- **备选**:① 精确 sim(推翻:维护成本极高 + 版本废);② ML 训练(推翻:训练价值版本短命,V4.4 训的 V4.5 废);③ 粗可行性启发式(**保留**为 comp_viability 先验,非预测)。
-- **状态**:采用。ML 只采集(debug telemetry 序列化决策迹),**不主依赖**。
+- **决策**:deploy_bench `_deploy_all_slots` 的 occupied_front/back 改用 `currency_war_cv.slot_occupied`(槽中心 ±55 区域灰度 std > 25 = 已占),替 SIFT(`read_deployed_chars`)。
+- **为什么**:D-4 只弃 SIFT 预填(靠 retry-stick),deploy 仍试全槽 → 多拖(用户观察到循环拖动)。CV `slot_occupied` 给**可靠占用**:空槽 placeholder 灰度 std ~11,立绘 ~39-67,阈值 25 干净分离;**不依赖角色身份/颜色**(白角色也准),远胜 SIFT 半身。deploy 据此只拖**空槽**(前排优先)→ 前排能填 → 出战通(解 D-4 的卡死链)。
+- **备选**:① 修 SIFT(半身 ≠ 脸库,难);② 亮度阈值(立绘亮度也高,但 std 对「内容 vs placeholder」更稳);③ 颜色/饱和(白角色低饱和失效,见 D-2 时期椒丘问题)。选灰度 std(稳 + 简单)。
+- **状态**:采用(deploy_bench 已接 + currency_war_cv.slot_occupied;ruff 过)。**单元验证**:screenshot 上 front[1/3 占,2/4 空] back[1/2/3/6 占,4/5 空] 与 ground truth 全对。**端到端(deploy 填前排 → 出战通)待 run 验**。
+- `· currency_war_cv.slot_occupied / deploy_bench(_deploy_all_slots occupied)`
+
+## D-6 (2026-08-09)【诊断·策略】死 p2r1 真因:板散(无 tier-2)→ HP 崩;集中被身份卡
+
+- **决策**:**集中(叠 tier-2 同阵营)是存活关键**,且**被身份卡**(deploy 不知 bench 角色阵营 → 无法叠 → off-target 填满散板)→ **3.3.2 身份集成是集中的前置**。
+- **为什么**(实跑一局日志):p2r1 `hp=1 lv=6 board={击破:1,仙舟:1,夜之半神:1,银河学者:1,持续伤害:1,盛会之星:1}` target='DOT队'。**6-7 阵营全 ×1,零 tier-2**;target DoT 但只 1 持续伤害(场上的是击破/其他)。板散 → 每轮掉血 → 位面 1 末 HP=1 → 位面 2 r1 即死。commit 兜底(round≥2)早触发,off-target skip 也早生效,但**早播的散(starters/r1 买)+ deployed 难清**使板持续散;且 deploy 不知 bench 阵营 → 填 off-target 加剧散。
+- **备选**:① 强制 commit-from-r1 / 降 COMMIT_FRAC —— 只影响 r1 少量买,不解决持久散(否);② deploy 弃 off-target 填(少 bodies 早死更惨)—— 否;③ **身份集成后 deploy 按"叠已有阵营"排序**(target 优先 + 同阵营次之 + 新阵营最后)→ 叠出 tier-2(选中);④ select_comp 选 shop 可得的阵营(减 target-availability 错配)—— 后续。
+- **状态**:采用(诊断 + **ship 了代码**:cw_comps.py:545 select_comp 可得性权重 `0.15+0.85*shop_supply`,原日志仅标"诊断"低估了对核心模块锁的触发)。**下一步 = 3.3.2 身份集成**(让 deploy 知 bench 阵营)。指标:板阵营数下降 / 出现 tier-2 / p2 存活轮数。
+- **⚠️ 待重验(2026-08-09 自审)**:本诊断 + select_comp 权重改动的"集中有效/无效"结论,是在**观测回路断(buy 用漂移 tracking)**前提下得出 → **作废,待 D-12 观测回路验通后重验**。
+- `· cw_decisions(buy/concentration) / 3.3.2(身份集成)`
+
+## D-7 (2026-08-09)【机制】deploy 确定性部署:CV 占用 → 拖空槽 → CV 验源槽空(替 trial-and-error)
+
+- **决策**:`deploy_bench._deploy_deterministic`:CV `slot_occupied` 知 bench 哪些槽有角色 + stage 哪些槽空 → 每个有角色的 bench 槽拖到一个空 stage 槽(前排优先)→ CV 验「源 bench 槽空了」=成功。替旧 `_deploy_all_slots`(trial-and-error,试全槽 + SIFT 验 bench count)。
+- **为什么**:D-5(CV 占用)给可靠占用后,部署可确定性:只拖空槽、CV 验源空(同时覆盖 place + swap)。旧 trial-and-error 废拖空 bench 槽 + 换槽试错 + 依赖 SIFT count(D-4 弃)。CV 验替 SIFT,准且快。
+- **备选**:① 保留 trial-and-error(D-4/D-5 后多余);② SIFT 验(deployed SIFT 占用不可靠,D-4);③ CV 占用 + 验源空(本次选)。选③。
+- **状态**:采用 + run 验(D-7 实测:CV 验源槽空,放置成功;cap 内 deploy + 出战通,bot 推进 r1-8/boss)。属做法二 deploy op 实现(非核心策略模块)。后续 D-8(排序接 SIFT 身份)/ D-10(卖 off-target)在本方法上扩展。
+
+## D-8 (2026-08-09)【机制·策略】deploy 集中度排序接 SIFT 身份(替 bench_slot_map 跟踪)
+
+- **决策**:`deploy_bench._deploy_deterministic` 的 target-first 排序,改用 SIFT `read_bench_chars`(71 CW 立绘库)读 bench 真实角色身份 → 真实羁绊(阵营 ∪ 流派)判 target,替 `bench_slot_map` 跟踪。
+- **为什么**:D-6 诊断集中的前置是「deploy 知 bench 阵营」。原排序读 `_match.bench_slot_map`(shop.py pixel-diff 跟踪,char→物理槽),但该 map **不完整**(pixel-diff 漏检 / 跨回合漂移)→ target 角色在 map 里认不出 → 永远落 `rest` → 不优先 → 集中失败、填 off-target 散板。3.3 身份基础已解决(71 CW 立绘采集 + SIFT 30-49 内点可靠),`read_bench_chars` 直接给 bench 真实身份 → 真正的 target-first 排序 → 集中叠 tier-2。
+- **备选**:① 修 bench_slot_map(pixel-diff 本质不稳,弃);② 不排序纯填板(回到 D-6 前的散板);③ 每轮 SIFT 重读 bench(本次选,9 槽 SIFT 一次,可接受)。选 SIFT 身份(治本,替不完整跟踪)。
+- **状态**:已实现(deploy_bench `_deploy_deterministic` 排序块 + 签名加 templates;ruff 过)。**待 server 重启 run 验**:目标 = target 角色优先上场 → 板阵营数下降 / 出现 tier-2 / 位面 2 存活。⚠️ 依赖 select_comp 的 target 正确(D-6 可得性权重已减错配);buy 集中度(7.2)仍待做 —— deploy 排序只是「让买到的 target 先上」,买不集中则 bench 仍散。
+- **注**:`bench_slot_map` 现仅 shop.py 写、deploy 不再读(`_deploy_all_slots` 是死代码),已冗余 —— 后续清理(shop.py 写 + deploy 删除循环一并删)。
+- `· deploy_bench(_deploy_deterministic 排序) / cw_identity_obs(read_bench_chars) / 5.3(deploy 接身份)`
+
+## D-9 (2026-08-09)【bug·策略】committed target 被信号1(涌现)反复翻转 → 振荡 churn → 散板
+
+- **决策**:`maybe_pivot` 信号1(更优 comp 涌现)对**已 commit** 的 target **不再翻转** —— commit 即锁定,只有信号3(HP 危机)/信号2(ceiling 不可达)/drought_bail/losing-streak 能解锁。
+- **为什么**:实测(D-6 局)r1-7 target=击破流萤 → r1-8 target=DOT队(均 committed,round≥2)。`comp_score` 随 board 每 round 抖动(board 因 buy 变)→ 信号1 反复越阈值(COMMIT_STICK_FACTOR×1.5=0.15 阈压不住大 board 波动)→ target 振荡 → buy 每轮为不同 comp 买 → 永不集中 → 散板(8 阵营×1)→ HP 崩 → 死 p2r1。这是 target→buy→board→comp_score→target 自反馈环。治本:斩断环 —— committed target 不被 board 抖动驱动的信号1 翻转。人玩同理:commit 后不因「略优 comp」弃成型,只危机/不可达才转。
+- **备选**:① 再提 COMMIT_STICK_FACTOR(×2/×3)—— 治标,大波动仍可超,且难定值;② 信号1 改比 form_progress(稳定单调)非 comp_score(抖动)—— 更精细但复杂,待 D-9 验后看是否需要;③ commit 后完全锁(本次选,信号3/2/drought/losing 仍解锁,安全)。选③(最干净,直接斩环)。
+- **状态**:已实现(maybe_pivot 信号1 块:committed && !losing → 跳过 + 日志;ruff 过)。**待 run 验**:target 应停止轮间振荡 → buy 单方向 → 板阵营数下降。⚠️ `COMMIT_STICK_FACTOR` 现 maybe_pivot 不再用(死常量,待清);commitment 仍由 COMMIT_FRAC/COMMIT_ROUND(target_committed)定义。配合 D-8(deploy 集中)+ 本修复(target 稳定),buy 才有单一方向可集中。
+- **⚠️ 程序注记(2026-08-09 自审)**:本条改 `cw_comps`(核心策略模块),当时核心锁 ①② 未过 → 程序上该等观测回路。但**振荡 bug 本身(r1-7 击破流萤↔r1-8 DOT队)是 `on_round_end` 日志直接观测**(session.target_comp.name 轮间翻转,非 tracking 依赖)→ bug 真实、fix 直接验(target r1-2/3/4 稳定也是直接观测)。下游"集中度提升"效果仍属推断,待 D-12 观测回路验通后随 D-6 重验。
+- `· cw_comps(maybe_pivot 信号1) / 7.1(target 稳定)`
+
+## D-10 (2026-08-09)【bug·机制】deploy-swap 一次性冻结 → off-target 永驻板 → bench target 上不了场 → 死锁慢失血
+
+- **决策**:`deploy_bench` deploy-swap 改为**卖 off-target deployed(留 target)+ 1:1 替换上限**,替旧「一次性 sell-all」。bench 有 target 单位时,卖掉板上 off-target(`read_deployed_chars` 识别,≤ bench target 数)给 bench target 腾位。
+- **为什么**:D-8+D-9 run 实测死锁:r1-6 bench 堆满 **target(击破)单位**(`艾丝妲/乱破×2/阮·梅/大丽花`,SIFT 识全击破),但**上不了场** —— 板满(lv4 cap=4)+ 旧 `deploy_swapped=True` 一次性冻结 → off-target 永远卖不掉 → bench target 堆着、板冻结 off-target → 每轮掉血 → 死。bot 其实**在买 target 集中**(集中化发生),卡在「上场」这步。修:解开 sell —— 卖 off-target 给 target 腾位。人玩同理:确认方向后卖杂牌上阵核心。
+- **备选**:① 解冻旧 sell-all(一次性→每轮)—— 毁板上 target(merged star)+ 每轮 churn,否;② 保留一次性 + 改 buy 不买 off-target —— buy 已买 target(bench 证据),根因不在 buy 在上场;③ 只卖 off-target(留 target,本次选)—— 不毁 target、自收敛(板全 target 停)、1:1 上限保板大小。选③。
+- **状态**:已实现(`_sell_offtarget_deployed`:read_deployed_chars 识别 off-target + 1:1 替换上限 max_sell=bench_target 数;swap 块去 deploy_swapped 一次性;`_deploy_deterministic` 改 fresh `self.screenshot()` 看 post-sell 空槽;ruff 过)。**待 run 验 + 首验 read_deployed_chars**:① read_deployed_chars 身份准否(日志详记,首跑核实);② 卖 off-target → bench target 上场 → 板阵营数降 / tier 叠。⚠️ `deploy_swapped` flag + `_sell_all_deployed` 现冗余(待清);依赖 D-9(target 稳,否则 off/target 判据漂)。
+- `· deploy_bench(_sell_offtarget_deployed / swap 块 / _deploy_deterministic fresh screenshot) / cw_identity_obs(read_deployed_chars 首用)`
+
+## D-11 (2026-08-09)【策略·调参】7.2 buy 囤 target:`BENCH_TARGET_WEIGHT` 3→8(让集中速率跟上)
+
+- **决策**:`cw_decisions.BENCH_TARGET_WEIGHT` 3.0 → 8.0(bench 上 target 单位的 eval 权重)。
+- **为什么**:D-8/9/10 集中系统机制都通,但**集中速率被 buy 卡** —— greedy buy 第 2+ 张 target 卡(板满落 bench)delta = +BENCH_TARGET_WEIGHT(3) − 金成本 + 协同递减 ≤0 → buy 停在 1-2 张(buy 统计:买1×12,从不买3+)→ bench 极少积 target → D-10 `max_sell=bench_target` 每1轮只 1:1 换 1 个 off-target → 板 6-8 阵营来不及在 ~9 轮内集中 → boss 战损大 → p2r1 死。**D-10 的 1:1 上限其实最优**(卖更多只被 bench off-target 补,净减=bench_target 数)→ 唯一杠杆是**让 buy 成量囤 target**。提权重至 8:每张 bench target +8(常数,不随协同递减)→ delta 持续正 → buy 板满时囤 target → D-10 下轮成量换(lv4 板满 4 off + bench 4 target → 一轮全换)。
+- **备选**:① 松 D-10 1:1 上限 —— 净减不变(bench off-target 补位),无效,否;② 改 buy+deploy 非原子(囤 bench 不即上)—— 大改,且 deploy op 已分开处理;③ 提 bench target 权重(本次选)—— 最小、对症、与 D-10 max_sell 协同。选③。
+- **状态**:**二次回退 =3.0(2026-08-09 A/B 负)**。重实现 =8 后 fresh A/B:D-11 局板**更散(r1-8 无 tier-2,全 ×1)**、p2r2 hp3 **< baseline(D-14)hp16**。**D-11 未帮集中反更散 → p2 更弱**。结论:**buy hoard 单杠杆不治 p2 死** —— bot 能激进买(7 张/轮),非 buy-quantity 限;板散是 comp 选择/pivot + deploy 集中度问题,非 buy 权重。D-11 两次试(=8)两次回退,确认非杠杆。=3 保留。
+- `· cw_decisions(BENCH_TARGET_WEIGHT) / 7.2(buy 集中)`
+
+## D-12 (2026-08-09)【机制·观测回路】deploy 后 SIFT 真实身份纠 tracking 漂(3.3.2,解锁核心锁 ②)
+
+- **决策**:`deploy_bench` 加 `_reconcile_tracking`:deploy 完成(shop 关、bench/deployed 全可见)后,用 SIFT `read_bench_chars`+`read_deployed_chars` 读**真实身份**重置 `session.tracked_bench_chars`/`tracked_deployed`(保留旧 tracking 的 star,按 char_id 匹配)。
+- **为什么**:观测回路断点根因 —— deploy op 视觉拖拽(D-7/D-8/D-10)不调 `mutate_bench_deployed` → session.tracked_bench_chars/tracked_deployed 滞留(已上场的还显在 bench、已卖的还显在 deployed)→ 下轮 buy 用**漂移 tracking** 做集中度判断(`bc.faction` 错)→ 错。read_game_state 的 deployed 也是 tracked+rebuild(假身份)。D-12 在 deploy 后(真实态)用 SIFT 纠正 → 下轮 buy 用准 tracking。**完成观测回路 → 解锁核心锁 ②(端到端观测回路通)**,为策略调优(深度集中)扫前置。
+- **备选**:① 在 read_game_state 加 SIFT —— shop-open 时 shop overlay 可能遮前排 + 循环内多次调贵,否;② 用详情面板 OCR 读 deployed 身份(task#115)—— 慢(逐个点开)+ SIFT 已验证可靠(D-10),否;③ deploy 后 SIFT 纠 tracking(本次选)—— shop 关准确、复用 D-8/D-10 已有 SIFT、保留 star。选③。
+- **状态**:**已验证(2026-08-09 16:34 局,pre-log 直证纠漂)**。补 pre-log + 修 star multiset 碰撞(review 要求)后重启验:r1 deploy pre=`bench=[阿格莱雅,艾丝妲] deployed=[]` → post=`bench=[爻光,阿格莱雅,艾丝妲] deployed=[希儿,藿藿,飞霄]` —— **tracking 滞留(deployed 空却实际 3 个已上场),D-12 纠正**。pre≠post 直证纠漂(非 no-op)。**观测回路闭合 → 解锁核心锁 ②(端到端观测回路)**。⚠️ star multiset 防重复 char_id 碰撞;SIFT star 恒1,身份准为主。shop.py 过时注释已修。
+- `· deploy_bench(_reconcile_tracking) / cw_identity_obs(read_bench_chars+read_deployed_chars) / 3.3.2(身份集成进 obs)`
+
+## D-13 (2026-08-09)【bug·观测】level OCR 间歇误读(等级倒退)→ 单调守卫(做法二 obs 可靠性)
+
+- **决策**:`cw_observation.read_game_state` 加 **level 单调守卫**:读出 level < `session.last_level_obs`(上次真值)→ 用上次(等级局内只升不降);`StrategySession` 加 `last_level_obs` 字段(新局默认 0)。
+- **为什么**:3rd 自审 §4 抓 —— read_level OCR 间歇把 5/6 读成 4(实测 r1 lv4→r2 lv5→**r3 lv4**(倒退)→r4 lv6→**r4 lv4**)。等级不可能降 → lv4 是 OCR 误读(非 _expected_level 兜底:p1r3 兜底=5)。level 字段不可信 → **max_units/cap/economy 全跟着错**(cap 读低 → deploy 少 → 板弱)。守卫:单调不降(读出<上次=误读,用上次),治 OCR 倒退症状。
+- **备选**:① 修 OCR 数字识别本身(难,不确定为何 5/6→4);② 放宽区域重读(区域已收紧);③ 单调守卫(本次选,简单 + 治倒退症状)。注:守卫不修「真升 OCR 滞后读旧值」(real 6 OCR 5 → 守卫保 5 漏升),但倒退(6→4)是明确错,守卫先治此;OCR 本身待另修。
+- **状态**:**已验证(2026-08-09 16:55 局)**:r1 lv4 → r2 lv5(单调不降),守卫触发 **6 次**(OCR 把 lv5 读成 3/4 被纠正;证据备份 run_D13_1655_evidence.log)。level 字段可信 → max_units/cap/economy 不再因 level 误读错。属做法二 obs。
+- `· cw_observation(read_game_state level 守卫) / cw_strategy(StrategySession.last_level_obs)`
+
+## D-14 (2026-08-09)【策略·经济】_saving_for_level 去 _board_strong 门 → 弱板也攒级升级(破 chicken-egg,p2 杠杆)
+
+- **决策**:`cw_decisions._best_improving_action` 的 `_saving_for_level` **去掉 `_board_strong` 门控**(原 line 538 `_saving_for_level = _saving_for_level and _board_strong` 删除)。`_saving_for_interest` 仍门控(息是经济,板强才囤)。
+- **为什么**:4th 自审 + 经济诊断 —— bot 卡 lv6 大半局(die p2)。根因:`_saving_for_level` 被 `_board_strong`(form_progress≥0.4)门控 → tier-2 弱板(form_progress<0.4)→ **不攒级 → 花金在买/刷 → 永不升级 → 卡 lv6 cap → 上不了更多单位 → 永 tier-2 → p2 死** = chicken-egg(弱板→不升→弱)。旧门控意图"板弱该花钱建板别囤",但 buy 受可得性限(DoT 稀疏凑不齐 tier-3,见 insights)→ 钱浪费在 refresh/off-target → 没升级 → 永弱。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。去门控:弱板也攒级(抑制 off-target 买+refresh 浪费,留 target 买 + 攒金)→ 够 cost 下轮 plan level gate(优先)升级。
+- **备选**:① 提 INTEREST_WEIGHT(让攒息值 → 但不直接促升级);② 改 level_plan 更激进(治本但复杂);③ 去 _board_strong 门(本次选,最小、直击 chicken-egg)。选③。
+- **状态**:**已验证有效(2026-08-09 resume+fresh 局)**:D-14 后 lv6 时 gold 达 **53**(baseline max 43)→ bot **升1次 到 lv7**(plan `买1张 升1次` @ gold=53 lv=6;baseline gold≤43<48 够不着)。**D-14 修对了 leveling**(saving 不足→够不着 cost→卡 lv6),5th 自审"改错层"是基于 baseline gold"43-50"的误读(实际 max 43<48,够不着非"够却不升")。**但 p2 仍死**(resume 局升到 lv7 仍挑战失败)→ p2 存活还需 **comp 质量(tier-3,见 insights comp 可得性诊断)**,leveling 必要不充分。D-14 保留(真修)。
+- **【核心锁声明(2026-08-09,审查 P1-b)】**:D-14 改 `cw_decisions`(核心策略模块),防偏离门 ① 未过 → 按门核心模块改动该等 ①。但 D-14 **不像 D-6/D-9 作废**:D-6/D-9 的"集中有效"结论依赖 buy tracking(② 未通时漂移),而 D-14 的"leveling 修对"结论是 **plan 日志直接观测**(gold 53→升 lv7,非 tracking 依赖)→ 证据基础可信,② 通不通都不影响。故 D-14 **保留 + 显式声明 ①-例外**:① 过后 comp 层重做时复审(确认去 `_board_strong` 门不与新 comp 逻辑冲突),在此之前"leveling 修对"作可信结论,但下游"p2 存活需 comp 质量"仍待 ①。
+- `· cw_decisions(_saving_for_level 去门) / 收尾·策略(经济 tempo)`
+
+## D-17 (2026-08-09)【研究·证据基】货币战争机制攻略研究(经济/装备/A8 阵容)—— 后续 economy/equip/comp 改动权威依据
+
+- **决策**:后台子 agent(clean context)查米游社/bwiki/TapTap/17173/豌豆荚攻略源,产出给代码用的机制依据(带证据等级「原文确认/通则推断/未查到」+ 来源 URL)。三条核心:
+  - **Q1 经济**:利息每 10 金 1 息(原文,17173)、50 金封顶 5 息(通则);等级 3→10 且=上阵数上限(原文);**正确节奏 = 先冲等级(4级前主升级)→ 维持 50 金吃满息 → 多余金币刷牌/买同费卡(卡池稀释提目标卡概率);奖励关不花钱留息**;**升级费用表攻略不记 → 从游戏内「数据银行」图鉴取**(代码现表是估,但 6→10≈262 与攻略"270"吻合,大致对)。→ 印证 bot「囤金不升级」是坑;D-14 leveling 方向对(攒够 cost 就升),gold<50 不花符合"维持50息线"。
+  - **Q2 装备**:攻略说**拖拽**穿戴 + 拆装扳手拆 + 2 简易合 1 进阶;**攻略未提「装备推荐」按钮**(但 VLM 实测 2 样本[万敌+镜流]看到该按钮稳定存在 → 攻略只讲手动拖拽,按钮功能待 live 验);每局保底 ≥3 装(开局+1 / p1boss+1 / p2boss+1 + 奖励/补给节点);**装备是 A8 成型关键**(「1雅1鞋成型」、反重力皮靴必备,裸装输)→ **bot 当前完全不装(EquipAll 解绑 e9747690)是 p2 大杠杆**。
+  - **Q3 A8 阵容**:**A8 是均衡混搭(6+3 双羁绊:6DoT+3昼神 / 5能量+4昼神 / 6燃血+5夜神),非纯单阵营叠高** → 印证「集中到 tier-3 做不到」(正确策略本非纯集中);四大羁绊阈值(贝洛伯格2人激活最低/昼神3人/减益8人/DoT6人);「净化身心」环境克 DoT/减益 → 选阵须检测环境;辅助(缇宝/星期日/记忆主/知更鸟)> 非核心羁绊。
+- **为什么**:p2 死多因子,单杠杆调(D-11/14/15)皆不治;需权威机制依据定方向而非凭猜。研究带证据等级 + 来源,可直接入代码或指引下一步。
+- **对后续指引(非本条代码改动)**:① **装备 = 最高杠杆**(bot 裸装)→ 优先 live 验「装备推荐」机制 → 重启用 EquipAll;② comp 从「集中」转「均衡 6+3」(收尾大改,核心锁通后);③ economy tempo D-14 已大致对,微调靠图鉴费用表;④ 升级费用表从「数据银行」图鉴提取(权威单一源,优先游戏内图鉴)。
+- **状态**:研究完成(证据基已立)。后续 D-18+(economy/equip/comp 具体改动)引用本条。
+- **来源**:官方 sr.mihoyo.com/news/160700(机制);bwiki wiki.biligame.com/sr/货币战争(装备/合成/拆装);TapTap V3.7 攻略(升级节奏/牌库);17173 上分+四大羁绊;豌豆荚(A8 三套阵容);4399(1雅1鞋成型)。米游社 content_id 未取到(官方页 JS 渲染)。
+- **注**:decisions.md 缺 D-15(formation_cost 强化后回退)/ D-16(drought invested-guard)两策略改动记录(doc-sync 漏),待补。
+- `· docs/game/currency_war/strategy/ / insights.md / prep doc(装备推荐按钮)`
+
+## D-18 (2026-08-09)【机制·装备】live 验装备穿戴 = 拖拽(非 click;装备推荐=浏览)
+
+> ⚠️ **后半(L164-165)已自修正**:装备区 x1800-1918 是装饰球体(非装备),`equip_all` 区域错。**前半(装备推荐=浏览 / drag 机制)仍有效**。D-23 增量补充(装备槽在详情面板)。
+
+- **决策**:live 实测(手动导航到备战 + 买牌部署藿藿)验装备穿戴机制:
+  - 「装备推荐」按钮(~x1509,y816)click → 弹「推荐装备/次选装备」列表(OCR 实锤),**非自动穿**。
+  - 点列表装备 → 弹装备信息详情(生命之环:stats/适配角色/合成公式),**不穿戴、无穿戴按钮**。
+  - → click-flow 全是信息浏览;**装备机制 = 拖拽**(research 攻略 + 排除法)。
+- **为什么**:D-17 疑「装备推荐」一键穿;live 证伪 → EquipAll **无 clean one-click**,必须走 drag(修 e9747690 回归)。
+- **状态**:机制确认(拖拽)。**drag 回归根因已诊断(2026-08-09 重接 EquipAll + 跑 bot 实测)**:`_detect_equip_icons` 亮度检测**有假阳性** —— 把 r1-1 装备区**装饰球体误判成 owned equip icon**(检测到 2 个 @ (1851,189)/(1851,316),但 r1-1 无真装备;VLM 确认是装饰球体)→ drag 假 icon → 假"装备成功"(icon 2→1 是球体被位移,非真装备)+ transient 出战"找不到按钮"retry(bot 恢复到 r1-2)。**极可能就是 e9747690 原回归根因**:板满时假 drag 释放到角色→位移→前台空;r1-1(未满)没位移但 transient 出战失败。**修法 = 修检测(拒装饰球体,只认真装备 icon)** —— 需先看真装备 icon 长啥样(r1-5 补给后,detect-only 跑到那时截图核)。EquipAll 已**撤销重接**(回 买→部署→出战,不假触发);equip_all.py 保留 drag 截图诊断 + 检测代码待修。
+- **⚠️ detect-only 跑到 r1-6(补给后已有装备)再核(2026-08-09)**:装备区 x1800-1918 **仍是装饰球体**(VLM 2 样本一致:r1-1 + r1-6)→ **检测区域从根本上错(整片球体非装备),不是"拒球体"能修**。owned 装备**不在 x1800-1918**(可能 x1252-1800 左半,或补给给的装备直接在角色身上)。**→ 装备需先正确建档装备区(owned 装备位置/外观,走 od-dev-screen-onboarding)再重建检测**;equip_all(x1800-1918 亮度检测)整个建在错区域上,待建档后重写。EquipAll detect-only 重接已撤(回 买→部署→出战)。
+- **副产物(economy)**:plan 日志证 bot 能负担就升级(r1-6 gold54→升1、r1-8 升2),负担不起才"买0升0"= 符合维持50息线 → **economy 没坏**,p2 死主因 = 裸装 + comp 没深成型,非 economy。"gold74 lv5"是 OCR level 误读(D-13 守卫未全治)。
+- **备选**:放弃装备 lever(裸装输但能出战)—— 否(research 称装备 A8 必备,大杠杆)。
+- `· strategy/07 / prep doc(装备推荐机制) / equip_all.py(drag 回归待修) / cw_state.card_cost(=card.cost,买卡费用认得)`
+
+## D-19 (2026-08-09)【机制·经济】团队规模上限 = level + 财富宝钻(后排槽位非固定 6)
+
+- **决策**:deploy 槽位数 = **前排固定 4 + 后排基准 6**,但**团队规模上限可被财富宝钻(装备,无论是否穿戴)+1**(`equipment.md:211`),诅咒·宝石剑泽尔里奇对应 -1。→ 后排槽位**不可硬编码 6**,deploy_bench 须按运行时实测槽位数部署。
+- **为什么**:用户确认(前排不变、后排特殊环境/钻石等增加)+ 数据核实(equipment.md:211 财富宝钻「团队规模上限+1」;红钻/蓝钻是合成材料不加位;投资环境 84 + 投资策略 315 条均无加位机制)。原 prep doc「前排是否也变待核」由用户拍板:**前排固定**。
+- **备选**:① 硬编码 6 —— 错(财富宝钻 +1,实测见过后排 7);② 运行时实测槽位数(本次选,deploy 须动态);③ 静态表 —— 无(随装备动态)。
+- **状态**:机制确认(已补 prep doc + gameplay doc max_units 行)。deploy_bench 现 baseline 前4后6,**待改运行时实测**(核心锁① 过后 deploy 重做时)。`· prep doc / gameplay.md(max_units)`。
+
+## D-20 (2026-08-09)【纠正·身份】立绘库 character_cw_portrait 采了+deploy_bench 用了;脸库旧实测不适用;备战 recognizer 接入角色识别
+
+- **决策**(三件):
+  1. **立绘库真相纠正**:货币战争立绘库 `character_cw_portrait`(**采了,71 角色,中文 key,含变体分开采:姬子/姬子·启行、刃/千冶·刃…**)—— `deploy_bench._get_templates` 实际加载它(**非** character_avatar 脸库)。旧 docstring(currency_war_char_id / cw_identity_obs)说 character_avatar,**过时、与代码不符**(曾误导判错)。已修 docstring 对齐立绘库 + L115 离线 demo 也改立绘库。
+  2. **「不可靠(4 角色)」是脸库旧实测**:`currency_war_char_id` docstring 的 2026-08-06「4 角色强命中」实测明说用 character_avatar 脸库;立绘库 `character_cw_portrait` **实际效果从未实测**(理论上更可靠:域匹配 + 含服装,变体分开采或可区分共脸)。**实测前勿据脸库旧结论判立绘库不可靠**。
+  3. **备战 recognizer 接入角色识别**:`battle_prep_recognizer` 现产 `front_line`/`back_line`/`bench`(`read_deployed_chars`/`read_bench_chars` 纯读 SIFT,templates 从 `ctx.cw_portrait_templates` 取,未加载→None 不自己 load)。诚实标注可靠性待实测,未实测前不据该字段做硬决策。
+- **为什么**:用户质疑「立绘库采了为何没用」→ 核实发现 docstring 过时 + 代码实际用立绘库 + 脸库旧实测被误套到立绘库。`read_deployed_chars`/`read_bench_chars` 经核实是**纯读**(`identify_slots` 纯 CV 不写 session),可安全进 recognizer(并发安全)。
+- **备选**:① recognizer 不产角色(旧立场)—— 否(立绘库该用 + 纯读入口存在 + 结果供智能体交叉验证非盲信);选接入 + 标注。② recognizer 自己 load templates —— 否(重操作 + 副作用,违纯读);用已缓存 `ctx.cw_portrait_templates`。
+- **状态**:docstring 修对齐立绘库 + recognizer 接入角色识别(测试 34 过)。**待实测**:立绘库命中率(需游戏,核心锁①子项)—— 决定角色识别可不可信。`· currency_war_char_id/cw_identity_obs docstring / battle_prep_recognizer / 进度树(① 子项)`。
+
+## D-21 (2026-08-09)【策略·设计】阶段节奏骨架(阵容无关 × 阵容参数)+ 完整刷新概率表
+
+- **决策**:策略骨架 = **阵容无关的通用节奏(一套)** × **阵容参数(每 comp 填 `level_plan`/`factions`/`core_chars`/`key_equips`)**,灵活支持所有 T1,不为每阵容硬编码流程。写进 `strategy/14_phase_skeleton.md`。核心:等级曲线驱动(+ bwiki 完整刷新概率表 Lv1-10 作 `level_plan` 硬地基)+ 节点×等级×动作骨架 + 经济线 + 骨架/参数分离(`level_plan` 接缝)。
+- **为什么**:用户要「总结每阵容每阶段做什么」灵活支持所有 T1。工程化解法 = 不为每阵容写流程,而是骨架统一 + 参数化 `level_plan`(03 已有 level_plan 设计,本调研用概率表坐实地基 + 系统化节点动作)。最大增量 = bwiki 完整刷新概率表(现有 economy_research 只有「7级3费=0.4」一个点)+ 节点动作表 + 骨架/参数分离论点。
+- **备选**:① 每阵容硬编码一套阶段流程 —— 不灵活(新增阵容要写流程),否;② 纯 eval 驱动无阶段骨架 —— 缺节奏指导(何时升/D/all-in,A8 节奏关键),否;选 骨架×参数(03 `level_plan` 的系统化)。
+- **状态**:`14_phase_skeleton.md` 写好(设计文档,what)。**不改核心策略代码**(锁①未过;02 `SHOP_REFRESH_TABLE` 接 A4、`level_plan` 填 comp 都是锁①过后实现)。V4.4 评级 🟢(推翻 V3.7 阿雅降 B);升级费用 🔴 待图鉴;V4.5 🟡 沿用。`· strategy/14 / 03(level_plan)/ 02(SHOP_REFRESH_TABLE)`。
+
+## D-22 (2026-08-09)【验证·身份】立绘库 character_cw_portrait 实测可用(6/6 有角色槽命中)—— 推翻脸库旧结论 + 验证 D-20 接入对
+
+- **决策**:①-b 实测**初步通过**。离线脚本(`.debug/temp/currency_war/test_portrait_recog.py`)对 r1-8 备战截图(`cw_equip_detect_1786279596669.png`)跑 SIFT `identify_character` 对 `character_cw_portrait`:
+  - **VLM ground truth**:前排4 + 后排1 + 备战栏1 = 6 个有角色槽;其余空。
+  - **SIFT 立绘库**:6/6 有角色槽**全命中**(藿藿/赛飞儿/砂金/不死途/丹恒·饮月/不死途,inliers 29-48 高分);空槽全 None(best=0-1,不误识别)。
+  - **命中率 100%**(本样本)。
+- **为什么**:验证 D-20 接入角色识别是否可靠(立绘库从未实测,脸库旧结论说只 4 角色强命中)。实测:立绘库(域匹配)对有角色槽全命中 + 空槽不误 → **可靠**,推翻脸库旧结论。**D-20 接入角色识别是对的**(非假信号)。
+- **备选/待**:① 据脸库旧结论判立绘库不可靠 —— 实测推翻,错;② 角色名准确性 —— SIFT 高 inliers + 重复槽(前排4=备战1 都不死途)一致 + 砂金金发/丹恒饮月黑发合理,但**待详情面板 OCR(#115)确认 ground truth**;③ 样本量小(1 截图 6 角色),**待共脸变体样本**(姬子/姬子·启行,SIFT 能否靠服装区分 —— 库已分开采)。
+- **状态**:①-b 初步实测通过(立绘库可用)。待:更多样本(共脸变体)+ 角色名 ground truth(#115)。`· currency_war_char_id/cw_identity_obs docstring(实测可用)/ 进度树①-b / test_portrait_recog.py`。
+
+## D-23 (2026-08-09)【机制·装备】①-a 实测增量补充 D-18 后半:装备槽在详情面板(owned 不在备战装备区)
+
+- **决策**(①-a live 实测,r1-8 备战,点藿藿详情面板):
+  1. **装备区(区域-道具装备 x1252-1918)= 装饰球体 + 扳手**(VLM 实测:顶扳手 y90-120 + 装饰球体 y130-710),**无 owned 装备 icon / 装备槽**。**印证 D-18 后半(L165 已自修正:装备区球体)**;prep doc 旧「装备槽右列 x1805-1885」是 D-18 crop VLM 误判(L165 已修,①-a 再确认,非「推翻 D-18」—— D-18 前半 drag 机制仍有效)。
+  2. **角色装备槽 = 详情面板**(点 deployed 角色 → 右侧面板):3 槽横向,终结技区下 / 装备推荐上(y~700-800);r1-8 藿藿 **3 槽全空(裸装,深色 □)**。**owned 装备不在备战装备区,装备槽在详情面板**(drag 穿戴)。
+  3. **owned 装备源待探**:从哪 drag 到槽(点槽弹 owned 列表?装备推荐弹推荐列表 D-18)。装备机制 = drag(D-18)。
+- **为什么**:①-a 核心问题(D-18 留:owned 装备在哪)。本轮 live 实测**增量补充 D-18 后半**(L165 已认装备区球体 → ①-a 定位 owned 在详情面板装备槽)。`equip_all`(x1800-1918 亮度检测)建在错认知上(装备区是装饰球体非装备),①-a 完整建档后重写。
+- **状态**:①-a 进行中(#128)。已建档装备区结构(装饰球体)+ 装备槽位置(详情面板)。**待**:① 精确装备槽坐标(crop 交叉 —— VLM grounding 与 OCR 装备推荐位置冲突,不可信);② owned 装备源(点槽探);③ 三态样本(空 r1-8 / 填充 需 owned);④ 重建 `_detect_equip_icons` + 重开 drag。`· prep doc 装备区 / equip_all / 进度树①-a`。
+
+## D-24 (2026-08-10)【审查·P0】核心模块锁名存实亡:5 核心模块工作区 carryover(D-6~D-14)+ shop_supply 引用作废 D-6 —— 待用户 git 回退
+
+- **决策**(review `a248e08a8c3973cc3` P0):① 未过(核心策略模块该锁),但 `git status` 显示 **5 核心模块工作区被改**(cw_strategy/cw_decisions/cw_comps/cw_strategy_manager/cw_investments,D-6~D-14 自主推进期 carryover)。具体:
+  - **maybe_pivot(cw_comps:644-652,D-9)**:commit 后信号1 不翻转(`_committed and not _losing → 跳过`)。D-9 有记录 + 程序注记(振荡 bug 直接观测非 tracking 依赖;下游集中度待①重验)—— 类 D-14 可①-例外声明。
+  - **shop_supply(cw_comps:545)**:`(0.15+0.85*)` 注释「D-6 实验:加严」—— **引用已作废 D-6**(进度树 D-6 作废待重验)改核心模块 = 自相矛盾,该①过后回退/重做。
+- **为什么**:review P0「声明锁定 + 工作区未授权改动」是最危险状态(下次会话读进度树以为锁着,实则行为已变)。治本 = ① 过后回退核心模块基线重做(carryover 都标作废待重验)。
+- **状态**:**待用户决定 git 回退**(回退 5 核心模块到 HEAD 基线,① 过后重做)—— 不擅自 git(CLAUDE.md 版本控制约束 + 不可逆)。当前:进度树/decisions 标注 carryover 作废待重验。`· cw_comps(maybe_pivot:644 / shop_supply:545) / 进度树防偏离门`。
+
+## D-25 (2026-08-10)【机制·装备】research **假设**(待填充态 live 核,review P1 降级):装备库面板=拖拽穿戴/合成;r1-8 裸装=空态。⚠️ r1-6 反例未解(owned 源位置待全幅核)
+
+- **决策**(research 攻略 web):货币战争装备区 = **独立面板**(对局「角色/装备/消耗品」标签,点「装备」进),owned 装备存放处;**拖拽**装备到角色头像穿戴 + 两散件拖拽合成。
+- **①-a D-23 认知修正(降级为假设,review P1)**:D-23 说「装备区装饰球体无 owned」—— r1-8 裸装(没 owned)→ 球体可能是空态。**但 research 攻略只证「拖拽穿戴」机制(装备库面板),不等于备战画面 x1252-1918 的 UI 布局**(攻略机制 ≠ UI 布局)。**⚠️ r1-6 反例(D-18 L167):r1-6 补给后有 owned,装备区 x1800-1918 仍球体** —— 说明 owned 不在右半 x1800-1918(可能在左半 x1252-1800,未查)。故「装备区=owned源 / equip_all 方向对」**仅假设**,待填充态全幅(x1252-1918 左右半)live 核。
+- **为什么**:①-a owned 源卡点。research 攻略说装备库面板(拖拽),**但 r1-6(有 owned)右半球体未解** → owned 源位置(右半?左半?别处?)**待 live 全幅核**,勿据空态+攻略翻盘(review P1 cherry-picking 纠正)。
+- **状态**:①-a 认知修正(装备区=owned 源,r1-8 空态)。**下轮**:跑到补给节点(有 owned)看装备区填充态(icon 长啥样)+ 区分空/填充 + 重建 `_detect_equip_icons`(形状/边框,非亮度)→ 重开 drag。来源:[17173 萌新攻略](http://news.17173.com/content/11072025/175303925.shtml)+[官方玩法说明](https://sr.mihoyo.com/news/160700)。`· prep doc 装备区 / D-18(装备机制 drag)/ D-23(装备区空态修正)`。
+
+## D-26 (2026-08-10)【机制·装备】r1-6 全幅 VLM 印证:装备区(x1252-1918)=装饰(球体+角色立绘)非 owned;**推测** owned 源=装备库面板(独立,未 live 观测);D-25 假设错,D-18 对
+
+- **决策**(①-a r1-6 截图全幅 VLM,解 review P1 r1-6 反例):r1-6(补给后)装备区(x1252-1918)**全幅** —— 右半(x1800-1918)装饰球体 + 左半(x1252-1800)**角色立绘**(非 owned),**无 owned 装备 icon**。
+- **含义**:① 备战「区域-道具装备」(x1252-1918)= **装饰**(球体+角色立绘),非 owned 源。② owned 源 = **装备库面板**(独立面板,research「角色/装备/消耗品」标签),备战无入口(OCR 无「装备」标签)。③ **D-25 假设(装备区=owned源)错** —— 装备区是装饰;owned 源=装备库面板独立。④ equip_all(x1800-1918 检测装备区)**错**(检测装饰)—— **D-18 结论对**(装备区球体,owned 不在 x1800-1918)。
+- **为什么**:review P1(r1-6 反例未解)。r1-6 全幅 VLM 印证装备区装饰(非 owned),解 r1-6 反例(有 owned 仍球体 = 装备区本就装饰,非「空态」)。owned 源=装备库面板(独立,入口待找)。
+- **状态**:①-a owned 源 = 装备库面板(独立,备战无入口,待找 —— 可能补给节点选装备时开)。**下轮**:bot 到补给节点看装备库面板 + owned icon。`· prep doc 装备区(装饰,非 owned)/ D-18(结论对)/ D-25(假设错)/ review P1`。
+
+## D-27 (2026-08-10)【纠正·装备·重大】cw_equip SIFT 识别到 owned icon —— 推翻 D-18/D-23/D-25/D-26 VLM 球体误判;owned 源=装备区(x1800-1918 右列),①-a 鸡生蛋解除
+
+- **决策**(用户质疑 + cw_equip SIFT 验证,test_equip_recog.py):①-a 全程 VLM 把装备区 owned icon 误判「装饰球体」(D-18/D-23/D-25/D-26)。**cw_equip SIFT 识别到 owned icon**:
+  - r1-6:拆装扳手(工具)@(1836,172)。
+  - r1-8:生命之花+轮滑鞋(简易)+拆装扳手(工具)@(1836-1849,172-315)。
+  - inliers 11-32(高,可靠)。
+- **推翻**:owned icon **在装备区右列(x~1800-1918)**,非「装饰球体」(VLM 误判)。owned 源 = **装备区**(备战可见),非「装备库面板独立」(D-26 推测错)。**①-a 鸡生蛋解除**(owned 源=装备区,bot 备战可见,不需到补给)。
+- **equip_all 重建方向**:x1800-1918 亮度检测**区域对**(owned 在那),但**亮度不够**(owned icon vs 空槽球体都亮)→ 改 **cw_equip SIFT 模板匹配**(154 件,inliers≥10),非亮度。
+- **为什么**:用户质疑「cw_equip 模板库建了为何不用」→ 核实 cw_equip(154 icon)建了(harvest_equip_codex),识别函数没实现(cw_equipment.py 只数据);用 cw_equip SIFT 验证 → 命中 owned → 推翻 VLM 球体。
+- **教训**:①-a 全程 VLM(球体)误判,有 cw_equip 模板库不用 —— **识别优先用已有模板库 SIFT,不凭 VLM**(VLM 对小 icon 不可信,CLAUDE.md)。鸡生蛋 memory 作废(owned 源非补给)。
+- **状态**:①-a 重新激活(owned=装备区,cw_equip SIFT)。**下一步**:建 read_equips(用 cw_equip SIFT,像 read_deployed_chars)+ 重建 equip_all(SIFT 非亮度)+ 测试。`· test_equip_recog.py / cw_equipment.py / equip_all(重建) / D-18·D-23·D-25·D-26(球体误判推翻)`。
+
+## D-28 (2026-08-10)【确认·装备】D-27 tiebreaker:crop 单 owned icon 放大 4x → VLM 复核确认真装备 icon(扳手/轮滑鞋/饰品);审查 P0-2「单点反转假阳性」担忧推翻,D-27 方向成立
+
+- **决策**(审查 P0-2 质疑 D-27 证据不足 → crop tiebreaker):D-27 只验 r1-6/r1-8 两张、inliers 偏低(11-32)就推翻 D-18~D-26 四条 VLM 观测,审查合理质疑「可能从 VLM 单点误判摆到 SIFT 单点误判」。做决定性 tiebreaker:把 SIFT 命中点 ±55px crop 放大 4x(crop_equip_icons.py)→ analyze_image GLM-4.5V ground truth 复核。
+- **结果**(VLM 放大后判定):3 个命中点全是**可识别装备 icon** ——
+  - 拆装扳手@(1836,172):银灰金属扳手,C 形开口,六边形框,右下「1」(数量)。
+  - 轮滑鞋@(1849,239):粉白紫具象轮滑鞋,4 轮。
+  - 生命之花@(1849,315):圆形饰品,银边红底绿区白几何花纹。
+  - 右列整列:r1-8 三装备 icon + 红渐变背景;r1-6 扳手 + 背景装饰竖条(非球体)。
+- **确认**:D-27 SIFT 命中**经 VLM 放大 ground truth 复核为真装备 icon**,非假阳性。**审查 P0-2「D-27 可能单点反转假阳性」担忧推翻**。D-18~D-26 VLM「球体」误判根因 = **全图送 VLM**(小 owned icon ~60px 在 1920×1080 全图丢细节 → 误判球体),违反 CLAUDE.md「视觉大模型·小目标先裁切+放大(破 32×32 patch 天花板),全图送小 icon 必丢细节」。放大后 VLM 自己看清是装备。
+- **修正 D-27 教训**:D-27 教训「识别优先用已有模板库 SIFT,不凭 VLM」**过窄**。真正教训 = **跨多样本 + ground truth 交叉验证**(gameplay-automation 证据纪律);小目标必**裁切放大**(CLAUDE.md),全图送 VLM 必丢细节。SIFT 同样会假阳性(审查 P0-3 指出 equip_rect 含左半立绘区 → 立绘图案可能假匹配),VLM 也会误判(球体)—— **单一方法都不可信,交叉验证治本**。
+- **遗留**(审查 P0-3 read_equips 代码缺陷,待修):① centroid 用 RANSAC `mask` 过滤的 inlier,非全部 `good`(含 outlier);② equip_rect 收紧到右列(x1800-1918,排除左半 x1252-1800 立绘区);③ min_inliers 提到 ≥15 + 簇聚合(同坐标 ±20px 多命中归一)。①-a 仍需建 screen_info area + 三态 fixture(审查 P1-1,tiebreaker 是认知非建档)。
+- **状态**:D-27 方向**确认成立**(SIFT 对,VLM 球体错)。下一步:① read_equips 三处修;② ①-a 建 screen_info area(owned icon pc_rect 右列)+ 三态;③ 多样本(≥5 跨局面 + 空槽假阳性率,待游戏回货币战争)。`· D-27(确认)/ D-18·D-23·D-25·D-26(球体误判,根因全图送 VLM)`。
+
+## D-29 (2026-08-10)【数据·核实】用户三问(装备/投资策略/投资环境效果)核实 —— 都已采集(用户认知过时);equip_all 重建可用 effect 决策
+
+- **决策**(用户曾问「没采集装备效果?」「投资环境/策略效果有收集吗?」→ 核实三处数据完整性,证据纪律不凭用户认知):三处**都已采集**(V4.4 全量),用户认知过时(D-27 前可能未全)。
+  - **装备效果**:代码 `cw_equipment.py` EQUIPMENTS(153 件)`Equipment.effect` 字段**主体填了** —— 进阶/特权/星徽/白昼/命运/骇客/特殊全有效果原文(如「反重力皮靴:速度增幅+15%可叠加」);简易(7)/工具 effect 空(**合理** —— 基础属性无特殊效果)。**equip_all 重建(①-a)可用 effect 决策选装备**(哪个装备给哪个角色)。
+  - **投资策略效果**:data doc `investment_strategies.md` 全量(315 条:棱彩114+金125+银76,米游社原文 V4.4);代码 `INVESTMENT_STRATEGIES` 只收 T0(event_whitelist 决策用,全量随事件/补给决策接线补全)。
+  - **投资环境效果**:代码 `cw_investments.py` `INVESTMENT_ENVS` 全量(7 类有名环境,`InvestmentEnv.effect` 填,游戏内图鉴核对 83 总/68 解锁);**代码单一源**(原 investment_envs.md doc 已删,符 CLAUDE.md「代码全量后 doc 冗余删」)。
+- **为什么核实**:用户提数据缺口 → 不凭「用户说没」接受,核实代码/doc(证据纪律)。结论:三处采集齐,V4.4 全量。
+- **遗留**:投资策略数据量不一致(米游社 channel/map/209/212 = 216 vs data doc investment_strategies.md = 315)—— 来源/channel 差异,低优待核(非本轮阻塞)。
+- **状态**:数据完整性确认(装备/投资策略/投资环境效果都采集)。equip_all 重建(①-a)用 Equipment.effect 决策选装备 + read_equips 识别 owned icon + drag 穿戴。`· 用户三问(过时)/ equipment.md(data doc)/ investment_strategies.md(315)/ cw_investments INVESTMENT_ENVS(代码单一源)`。
+
+<!-- 新 D-NN 条目加在这里(按时间倒序) -->

@@ -54,7 +54,6 @@ class RunMegastarNode(RunNode):
         # 巨星 overlay:盛会之星标题在(用 screen_info 标题 area 位置区分,非全屏 LCS)。原用「确认选择
         # AND NOT 选择伙伴」(lcs 0.7 防共享「选择」误匹配)—— 改用 megastar 独有标题「盛会之星」更直接。
         still_in = self.round_by_find_area(screen, '货币战争-巨星强化', '标识-盛会之星', crop_first=False).is_success
-        # D-97c:节点完成(overlay 关)→ 重置 session flag(下个 megastar 节点可重新点候选)。
         # megastar 一局可能多次(每次持有盛会之星角色触发,见模块 docstring),flag 不能跨节点保持 True。
         if not still_in:
             _match = self.ctx.cw_match
@@ -63,7 +62,6 @@ class RunMegastarNode(RunNode):
         return still_in
 
     def _do_action(self, screen) -> None:
-        # D-97b:候选只点**一次** —— 用 session 级 flag(跨 loop re-dispatch 持久;instance flag 会因 new
         # RunMegastarNode 实例重置 → re-click toggle 反选 → confirm 无候选 → 卡死)。megastar 选中态视觉(金边)。
         _match = self.ctx.cw_match
         _clicked = getattr(_match.session, 'megastar_candidate_clicked', False) if _match else False
@@ -90,7 +88,6 @@ class RunMegastarNode(RunNode):
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
         self.ctx.controller.click(RunMegastarNode.CONFIRM)
         time.sleep(0.9)
-        # D-96 step2 安全网:正常 candidate-confirm 已关 overlay;若罕见仍在 + 有「请选择强化角色」→ 再 confirm。
         if self.round_by_find_area(self.screenshot(), '货币战争-巨星强化', '按钮-请选择强化角色', crop_first=False).is_success:
             log.info('[cw-megastar] step2 请选择强化角色 仍在(罕见)→ 再 confirm(安全网)')
             self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)

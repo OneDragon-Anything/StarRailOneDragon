@@ -4,7 +4,7 @@
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
 立绘 → 规范名(``read_deployed_chars`` / ``read_bench_chars``),用 ``currency_war_char_id`` 的
-SIFT 匹配器对 ``character_avatar`` 脸近景库。
+SIFT 匹配器对模板库(生产用 ``character_cw_portrait`` 货币战争立绘库,见 ``currency_war_char_id`` docstring)。
 
 **与 bot 跟踪的关系**(设计):``GameState.deployed`` / ``bench`` 默认由 **bot 跟踪**(buy/deploy
 动作推演,``simulate`` 维护,见 ``cw_state``)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
@@ -19,8 +19,9 @@ SIFT 匹配器对 ``character_avatar`` 脸近景库。
 可离线硬编码 rect 测;``read_deployed_chars`` / ``read_bench_chars`` 从 ctx screen_info 取 rect
 再调核心。与 ``currency_war_char_id`` 同样的「纯 CV + 外部接线」分层。
 
-**2026-08-06 实测**(D-75):脸近景库对 4 个面部独特角色强命中(佩拉 / 黑塔 / Saber / 藿藿);
-配饰角色 / 货币战争变体待多样本核(见 ``currency_war_char_id`` docstring)。
+**可靠性:实测初步可用(2026-08-09 D-22)**:r1-8 备战截图 SIFT 立绘库 **6/6 有角色槽命中**(inliers
+29-48)+ 空槽不误 → 立绘库可用,推翻脸库旧结论。待补:共脸变体样本 + 角色名 ground truth(见
+``currency_war_char_id`` docstring)。
 """
 from __future__ import annotations
 

@@ -25,7 +25,7 @@ class CurrencyWarApp(SrApplication):
     大世界 → 货币战争大厅(`EnterCurrencyWar`)→ 开始对局到备战(`StartCurrencyWarMatch`)
     → 对局循环到结束(`CurrencyWarRunLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)。
 
-    **中间态接手(D-26,2026-08-04)**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
+    **中间态接手(,2026-08-04)**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
     已在 CW(大厅/对局中)就跳过 enter/start、直接进 loop。故 bot crash/重启/手动接管后,
     从任何态(大世界 / 大厅 / 备战 / 事件 / 战斗 / 结算)重跑 app 都能 resume,不卡 entry。
 
@@ -59,14 +59,12 @@ class CurrencyWarApp(SrApplication):
         # 跳过 start 交 loop → loop 见大厅「创业指南」→ 误「对局结束」2.4s 空跑(2026-08-06 实跑)。
         if self._at_lobby(screen):
             return False
-        # lcs_percent=0.8:杀短词子序列误匹配(同 D-37/D-50/D-54 round_by_ocr 默认 lcs 坑);
         # 真在对局时这些锚点 OCR 干净 4/4 命中,0.8 不影响。
         return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
     @operation_node(name='进入货币战争大厅', is_start_node=True)
     def _enter_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 中间态接手(D-26):已在 CW(大厅/对局中)→ 跳过 enter(无需从大世界进)。
         if self._at_lobby(screen) or self._in_match(screen):
             return self.round_success('已在 CW(大厅/对局中),跳过 enter')
         op = EnterCurrencyWar(self.ctx)
@@ -76,7 +74,6 @@ class CurrencyWarApp(SrApplication):
     @operation_node(name='开始对局到备战阶段')
     def _start_match(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 中间态接手(D-26):已在对局中 → 跳过 start(无需从大厅开始),直接交 loop。
         if self._in_match(screen):
             return self.round_success('已在对局中,跳过 start 交 loop')
         op = StartCurrencyWarMatch(self.ctx)

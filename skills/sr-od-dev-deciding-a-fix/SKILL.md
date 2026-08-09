@@ -14,7 +14,7 @@ description: Use when a bug or issue is reported and the failure mechanism is kn
 
 ## 决策流程（5 步）
 
-**0. 确认故障机制（入口）** — 能复述"失败怎么发生"？不能 → `superpowers:systematic-debugging` 先定位。
+**0. 确认故障机制（入口）** — 能复述"失败怎么发生"？不能 → `superpowers:systematic-debugging` 先定位。若根因涉及「op 走到陌生画面」,先确认画面交互认知完整(说不出全部可交互元素 → 先按 `od-dev-screen-onboarding` 建档),别在猜的画面上定修法。
 
 **1. 画因果链** *(RCA / 5 Whys / Fault Tree)* — 症状→直接原因→机制→包级→系统级→上游代码→流程→修复状态。每节点 = 候选介入点。**挖到 actionable 层（你有权且能修的那层），不更深。**
 

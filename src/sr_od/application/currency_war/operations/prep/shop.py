@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 import time
 from copy import deepcopy
 from typing import ClassVar
@@ -32,11 +34,12 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
-    """D-84:tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
+    """tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
 
-    SIFT 屏幕识别立绘不可行(主游脸库 + 图鉴立绘都不 match 备战 half-body,D-84)→ 用 buy 时
-    ``read_shop_cards`` OCR 的规范名(已验证可靠,T#92)持久化,跨轮 seed bench →
-    plan / char_quality / comp core check 知 bot 自有角色(reset 根因之解)。
+    buy 时 ``read_shop_cards`` OCR 的规范名(T#92 验证可靠)持久化,跨轮 seed bench →
+    plan / char_quality / comp core check 知 bot 自有角色。**SIFT 立绘识别现已可行**(71 CW
+    立绘库,D-8/D-10/D-12 验证)—— deploy op 后用 SIFT 真实身份纠 tracking 漂(deploy_bench
+    ``_reconcile_tracking``,D-12);buy 期 bench 仍用 OCR 名跟踪(buy 改变 bench,SIFT 单帧跟不上)。
     """
     from sr_od.application.currency_war.cw_chars import get_char
     out: list[BenchChar] = []
@@ -82,7 +85,7 @@ class BuyShopCards(SrOperation):
     @operation_node(name='商店买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        _bought_names: list[str] = []   # D-147 char→slot:本轮 bought 卡名(buy 顺序),配 pixel-diff 找槽
+        _bought_names: list[str] = []
         # 前置:备战席已满 → 升等级(+卖前几个 bench)清警告解锁购买(位置式,不需身份)
         if self._handle_bench_full(screen):
             return self.round_success('备战席已满,升等级(+卖角色)清警告')
@@ -117,7 +120,6 @@ class BuyShopCards(SrOperation):
             time.sleep(0.4)
             screen = self.screenshot()
         hp_value = read_hp(self.ctx, screen)
-        # D-93:hp 读到上限 HP_MAX(=100)可能是**入口过渡帧 HP 区未渲染**(实测 round8 读 100 实际 29,
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
         if hp_value >= HP_MAX:
@@ -140,11 +142,9 @@ class BuyShopCards(SrOperation):
         level_btn = area_center(self.ctx, BuyShopCards.BUY_EXP_AREA) or BuyShopCards.LEVEL_UP_FALLBACK
         refresh_btn = area_center(self.ctx, '按钮-刷新') or BuyShopCards.REFRESH_FALLBACK
 
-        # 战略层(D-34):strategy.update_target 写 session.target_comp(首轮 select_comp;其后 maybe_pivot,
         # 无强信号保持 —— 等价旧 _target_comp class-attr 逻辑,但状态进 session 跨回合持久)。用 shop 关闭帧
         # hp 覆盖的 state(M6 钉死行为等价:hp 真值 → maybe_pivot 的 hp_safe 信号正确触发,非 shop 开帧的假 100)。
         match = self.ctx.cw_match
-        # D-94:优先用结算屏 HP(可靠)。prep 帧 HP 区**常持续空**(read_hp 误读 100,D-93 retry 救不了,
         # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
         # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
         if match is not None and match.session.last_hp is not None:
@@ -165,10 +165,7 @@ class BuyShopCards(SrOperation):
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
-        # D-152 char→slot baseline:buy 前截 shop-OPEN 帧(此时 shop 已开 + 无 buy 变化)→ 配 buy 后的
         # _after_shot(同为 shop-OPEN)做 pixel-diff,差值才只反映 buy 带来的 bench 占位变化。旧代码用
-        # `screen`(line 118,shop-CLOSED 帧)做 baseline → shop UI overlay 致全槽 diff 触发 → map 坏(D-147 真因,
-        # 非 auto-deploy;agent a63a1df6 发现)。deploy_bench 用此 map 选 target 槽 selective deploy(D-152)。
         _buy_baseline = self.screenshot()
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
@@ -184,7 +181,6 @@ class BuyShopCards(SrOperation):
                     if gv > 0:
                         state.gold = gv
                         break
-            # D-84/task#105 char identity:跨轮 seed state.bench。
             # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
             if match.session.tracked_bench_chars:
                 state.bench = deepcopy(match.session.tracked_bench_chars)  # copy 防下游 plan 污染持久态
@@ -192,7 +188,6 @@ class BuyShopCards(SrOperation):
             elif match.session.tracked_bench:
                 state.bench = _tracked_bench_chars(match.session.tracked_bench)
                 log.info(f'[cw] tracked_bench(旧 seed)={match.session.tracked_bench}')
-            # D-91:存 last_state 快照(board/deployed/bench 完整)给节点 overlay handler(遭遇/补给/...)
             # 读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
             match.session.last_state = state
             actions = match.strategy.decide_prep(state, match.session, config)
@@ -224,11 +219,9 @@ class BuyShopCards(SrOperation):
                              f'{action.card.faction}/{action.card.name}/{action.card.cost}')
                     time.sleep(0.4)
                     total_buy += 1
-                    # D-84:记下买的角色名 → tracked_bench 跨轮 seed(下轮 state.bench)
                     if action.card.name:
                         match.session.tracked_bench.append(action.card.name)
-                        _bought_names.append(action.card.name)   # D-147 char→slot
-                    # task#105(D-129~D-131):bench 持久跟踪带 star+merge(mutate 同步,替 star 恒1)
+                        _bought_names.append(action.card.name)
                     mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
@@ -246,17 +239,13 @@ class BuyShopCards(SrOperation):
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
-        # D-98:存 plan 的 DeployMove 到 session(给 DeployBench 读,替代 naive 填位)。
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
         deploy_moves = [a for a in actions if isinstance(a, DeployMove)]
         if match is not None:
             match.session.pending_deploys = deploy_moves
             log.info(f'[cw-shop] 存 {len(deploy_moves)} 个 DeployMove 到 session(pending_deploys)')
 
-        # D-152 char→slot:buy 前(_buy_baseline,shop-OPEN 无 buy)后(_after_shot,shop-OPEN 有 buy)pixel-diff
         # → 新占槽 = bought 卡落点(left-to-right = buy 顺序,bench 从左到右填)。**两帧同 shop-OPEN 状态**
-        # 才只差 buy 变化(旧用 shop-CLOSED 的 `screen` → shop overlay 致全槽 diff → map 坏,D-147 真因)。
-        # 存 cw_match.bench_slot_map(**合并非覆盖**,跨回合累积;deploy_bench D-152 selective deploy 用 + 卖/合
         # 自修正:deployed 后 deploy_bench 删该 slot;空槽 drag bench-count 不降 → retry-stick skip)。
         if _bought_names:
             _after_shot = self.screenshot()
@@ -266,7 +255,7 @@ class BuyShopCards(SrOperation):
                 if not hasattr(match, 'bench_slot_map') or match.bench_slot_map is None:
                     match.bench_slot_map = {}
                 match.bench_slot_map.update(_slot_map)   # 合并(跨回合累积),非覆盖
-                log.info(f'[cw-shop] char→slot(D-152 pixel-diff,合并):{_slot_map} → 全 map={match.bench_slot_map}')
+                log.info(f'[cw-shop] char→slot(pixel-diff,合并):{_slot_map} → 全 map={match.bench_slot_map}')
 
         # 关商店(「收起」)
         time.sleep(0.4)

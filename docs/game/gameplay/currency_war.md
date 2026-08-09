@@ -22,6 +22,7 @@ involves_screens: [星际和平指南]
   - 来源:[官方玩法说明](https://sr.mihoyo.com/news/160700)、[V4.0 扩充(A8-30→50)](http://news.17173.com/content/02112026/124720972.shtml)、[V3.8 调整](https://sr.mihoyo.com/news/161414)、[bwiki 投资策略(难度修改器)](https://wiki.biligame.com/sr/投资策略一览)。
 - **位面**:每局 3 个位面,每位面多节点 + 首领;第一位面带强化词(如「战个痛快」)。
 - **备战阶段(核心循环)**:进度 X-Y(位面-节点);**商店**发 5 张角色牌(各带阵营羁绊 + 技能标签 + 价格)→ 花金币买牌 / **刷新**刷牌 / **购买经验**升队 → 配**前台(作战)/后台(支援)**站位 → **出战** → 自动战斗 → 下一节点。
+- **备战棋盘槽位(2026-08-09 实测 + 攻略核实)**:**前台(作战)+ 后台(支援)**两排槽位。**上阵数量上限 = 晋升等级**(level 6→6 人、7→7…;队伍总 8-10 人,来源 [游侠](https://m.ali213.net/news/gl2511/1709345.html)/[bwiki](https://wiki.biligame.com/sr/%E8%B4%A7%E5%B8%81%E6%88%98%E4%BA%89))。**槽位布局随投资环境变**:实测某投资环境把后台 6→7 槽(用户确认),还可能 8/9/10(上限待游戏内图鉴核实)。→ screen_info 固定槽位坐标(`前排-1..4 / 后排-1..6`)不可硬信,需按布局动态推导(见「变槽位角色识别方案」)。
 - **阵营羁绊(实测)**:命运圣杯 / 仙舟 / 夜之半神 / 公司 / 银河学者 等;技能标签:战技点 / 能量 / 燃血 / 群攻 / 持续伤害。
 - **经济**:战斗结束给基础金币 + 按持有金币给**利息** + **连胜**额外奖励(类自走棋经济)。
 - **选择事件**:投资环境(3 选 1,带星徽/羁绊效果)、星徽、羁绊等(类模拟宇宙祝福选择)。
@@ -70,13 +71,14 @@ screen_info:备战阶段已建(`currency_war_battle_prep.yml`,用户手圈:备�
 - **screen_info 已建**(`currency_war_battle_prep.yml`,用户手圈):备战栏 ×9 / 前排 ×4 / 后排 ×6 / 按钮(商店/出战/购买经验)/ 文本区域。✅ stale `currency_war.yml`(旧 5 槽,曾重复 screen_id)已删(2026-08-03)。
 - **bug:过渡按钮点击不落地(已解)**:框架 `round_by_ocr_and_click` 有 0.3s `pre_delay`,active_window(节点起手)到 click 间隙游戏可能失焦 → 点空;手动 `click_game` 无间隙所以稳。修:关键过渡按钮(开始对局等)用「OCR 检测 + active_window 紧贴直接 controller.click」(无 pre_delay 间隙)。
 - **角色识别局限**:`currency_war_char_id`(SIFT)对脸部独特角色可靠、对配饰/半身不可靠(头像训练域 ≠ 备战立绘);商店 OCR 名字 + 购买/deploy 跟踪是主路径,char_id 仅兜底。
+- **角色详情面板 = ground truth 身份源(2026-08-09 实测)**:备战屏**点已部署角色** → 右侧弹详情面板,显示**角色名 + 阵营 + 星级 + 携带装备**(实测佩佩:双阵营 击破+夜之半神、3★、「特殊角色携带的装备无法拆除」)。bot 可逐个点开读 deployed 身份,优于 SIFT 半身识别。出口:点面板外空白处关闭(⚠️ 勿 ESC,见 bug#2)。子态建档详 [screens/currency_war_prep.md](../screens/currency_war_prep.md)。
 - **OCR 误匹配教训**:大厅判定用「创业指南」(大厅独有),勿用「开始「货币战争」」(与旷宇纷争页分类文本 LCS 误匹配);战斗屏 fallback 用「总伤害」(战斗独有),勿用「羁绊」(大厅"羁绊链路"误匹配)。
 - **guide_data 待补**:旷宇纷争 tab 下加「货币战争」category(当前入口用 GuideChooseTab + OCR 手动点,非 GuideTransport)。
 - **Strategy 精修(待办,打赢位面 2 首领)**:智能 deploy 到空槽(`currency_war_cv` 空槽检测当前不可靠,待重标定)+ 羁绊聚焦选买 + 经济(早升等级/卖弱角色)。
 - **deploy / sell 机制真相(2026-08-08 多源实测,策略地基)**:
   - **deploy = drag(非 click)**:click 备战角色开详情面板(非选中);长按 drag(hold 0.5s)才拾取→拖到舞台槽 deploy。见 D-118b。
   - **deployed-lock(deployed 角色永锁)**:deployed 角色不能卖(click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)。**只有 bench 角色能卖**。→ board 阵容**一旦部署即永久**,不能撤/换/卖 → **早期散买部署 off-target = 永久锁板,comp 永不成型**(T#97 spread 根因)。策略含义:必须从 r1 就 deploy target 阵营(off-target 留 bench 可卖),不能"先deploy全场再换"。
-  - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限)。
+  - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限)。**团队规模上限可被财富宝钻(装备,无论是否穿戴)+1**(equipment.md:211;诅咒·宝石剑泽尔里奇对应 -1)→ 后排槽位**非固定 6**,deploy 须按运行时实测槽位数(见 D-19)。
   - sell 途径:备战席角色 → 拖到左下出售区(`_maybe_sell_for_interest` 已实现,只卖 bench)。
 
 ## 参考来源

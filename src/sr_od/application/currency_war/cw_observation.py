@@ -5,9 +5,9 @@
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
 共享 helper/常量在 ``cw_obs_core``;本模块 **re-export** 简报/结算的公开函数,故
-``from cw_observation import read_affixes / parse_settlement_hp / ...`` 向后兼容(2026-08-06 拆分,D-70)。
+``from cw_observation import read_affixes / parse_settlement_hp / ...`` 向后兼容(2026-08-06 拆分,)。
 
-备战字段采集按 doc 13(``strategy/13_input_model.md``)逐簇推进(D-69 board tier 已接,余待采:
+备战字段采集按 doc 13(``strategy/13_input_model.md``)逐簇推进(board tier 已接,余待采:
 active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻塞于 vision/SIFT 库)。
 
 **区域单一真相源 = screen_info**(用户 2026-08-03):``assets/game_data/screen_info/currency_war_battle_prep.yml``
@@ -23,7 +23,7 @@ v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
 - **level**:``read_level`` OCR 优先 + ``_expected_level`` 兜底;telemetry level 跨样本合理(✓)。
 - **hp**:⚠️ **plan-time 读不到(保血原本未武装),根因已确认 = shop 开启时右上角 HP 区空,非读取器坏**。
   ``BuyShopCards`` 在 shop 关闭帧读 hp → 覆盖 state.hp(见 shop.buy;回归 test_read_hp_shop_state)。
-- **board**:count 解析曾脆(全屏 OCR 把 "2/3" 误读 "213");D-69 改用 ``_board_pairs`` 聚焦解析 X/Y,
+- **board**:count 解析曾脆(全屏 OCR 把 "2/3" 误读 "213");改用 ``_board_pairs`` 聚焦解析 X/Y,
   count=X + next_tier=Y(``read_board_next_tier``),根因(全屏密度)解决。
 """
 from __future__ import annotations
@@ -167,7 +167,7 @@ def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
 
 
 def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
-    """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(D-69 备战字段采集)。
+    """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 
     OCR 购买经验(y848)下方 ~y935 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
     level 升级时机决策用(cur 接近 next → 即将升级,影响 level_plan/买经验优先级)。
@@ -265,7 +265,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
     **small stylized「X/Y」paddle det 常漏**(同 gold/cost,T-96)→ crop + 3x 放大破 det 天花板
     (read_gold 同法,T-92)。仍读不到 → (None, None)(调用方 fallback)。
 
-    D-139(2026-08-08):Y(cap)是真值,非 level —— 实机 cap≠level(lv4-5 时「3/3」、lv6 时「5/5」)。
+    (2026-08-08):Y(cap)是真值,非 level —— 实机 cap≠level(lv4-5 时「3/3」、lv6 时「5/5」)。
     deploy_bench 旧 `cap_remaining = level - deployed` 高估 cap → board 已满仍试拖全 bench(9 角色×~10s
     全失败浪费)。现同时给 Y,deploy_bench 用真 cap。X 由 ``read_deployed_count``、Y 由 ``read_deploy_cap`` 暴露。
     """
@@ -286,7 +286,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
-    DeployBench 用它定位**空位**:D-108d(cap_remaining)+ D-108e(offset)依赖它;读不到 → fallback
+    DeployBench 用它定位**空位**:d(cap_remaining)+ e(offset)依赖它;读不到 → fallback
     → 部分 churn。实现见 ``_read_deploy_paddle``(同时给 cap Y,见 ``read_deploy_cap``)。
     """
     return _read_deploy_paddle(ctx, screen)[0]
@@ -295,7 +295,7 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
 def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
 
-    D-139:实机 cap≠level(lv4-5「3/3」、lv6「5/5」)→ DeployBench 应用本 Y 非 level 估 cap_remaining,
+    实机 cap≠level(lv4-5「3/3」、lv6「5/5」)→ DeployBench 应用本 Y 非 level 估 cap_remaining,
     避免 board 已满仍试拖全 bench 的浪费 + 误判有空槽。读不到 → 退 level 估(旧行为,fallback)。
     """
     return _read_deploy_paddle(ctx, screen)[1]
@@ -430,6 +430,17 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.node_type = read_node_type(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
+    # 单调守卫(level-robust,2026-08-09 自审 §4):等级局内**只升不降**(CW 无降级机制)。
+    # read_level OCR 间歇误读(实测 r1 lv4→r2 lv5→r3 lv4 倒退;lv4 非 _expected_level 兜底[=5] → 是 OCR 把
+    # 5/6 读成 4)→ level 字段不可信 → max_units/cap/economy 全跟着错。守卫:读出 < session 上次真值 = 误读,
+    # 用上次真值(单调不降);新局 session 重置 last_level_obs=0 自然从首读起。
+    _match = getattr(ctx, 'cw_match', None)
+    if _match is not None and _match.session is not None:
+        _last_lv = getattr(_match.session, 'last_level_obs', 0)
+        if _last_lv and state.level < _last_lv:
+            log.info(f'[cw] level 单调守卫:OCR 读 {state.level} < 上次 {_last_lv}(误读)→ 用 {_last_lv}')
+            state.level = _last_lv
+        _match.session.last_level_obs = state.level
     state.xp_progress = read_xp_progress(ctx, screen)
     state.enemy_difficulty = read_enemy_difficulty(ctx, screen)
     state.level_up_cost = read_level_up_cost(ctx, screen)
@@ -439,20 +450,16 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _bp = _board_pairs(ctx, screen, state.level)
     state.board = {f: c for f, (c, _nt) in _bp.items()}
     state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
-    # D-107(RC1,治 T#97 战术层 desync):deployed 从 board 真值重建 → deployed_count() 对齐实际阵上数。
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
-    # task#105 step⑥(D-130/D-131):deployed **身份**优先 session.tracked_deployed(bot 跟踪,char_id+star,
-    # 替 rebuild 无身份 → concentration/char_quality 在准信号上算);**数量**仍对齐 board(D-107 ground truth
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
-    # tracked 空(首轮/未跟踪/局外)→ 全 rebuild(向后兼容,行为同 D-107)。
     _match = getattr(ctx, 'cw_match', None)
     _tracked_dep = (_match.session.tracked_deployed
                     if (_match is not None and _match.session is not None) else None)
     if _tracked_dep:
         import copy
         state.deployed = copy.deepcopy(_tracked_dep)
-        _board_n = min(sum(state.board.values()), state.level)  # D-114 cap(multi-faction overcount)
+        _board_n = min(sum(state.board.values()), state.level)
         if len(state.deployed) > _board_n:
             state.deployed = state.deployed[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
         elif len(state.deployed) < _board_n:
@@ -465,20 +472,17 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     return state
 
 
-# ===== D-147 char→slot(pixel-diff,非 SIFT)=====
-# D-147 真根因:comp 卡 benched 上不了场(char→slot 感知缺:SIFT 只 4 角色可靠 D-75 / tracked idx 错位 D-102)
 # → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
-# 无需身份(可靠)。left-to-right 顺序 ↔ buy 顺序。配 deploy 用 tracked slot 选 comp + pref(D-149 待全实现)。
 BENCH_SLOT_DIFF_THRESHOLD: float = 10.0   # absdiff 均值阈值;新 char icon 显著 > 此(校准待实跑)
 
 
 def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int]:
     """buy 前/后 bench 哪些物理槽(1..9)新被占(pixel-diff:新 char icon 出现 → 高 absdiff 均值)。
 
-    D-147 char→slot 感知根解。返回新占槽 idx 列表(**left-to-right 升序** = buy 顺序,因 bench 从左到右填)。
+    char→slot 感知根解。返回新占槽 idx 列表(**left-to-right 升序** = buy 顺序,因 bench 从左到右填)。
     调用方(buy op)把本结果与同轮 bought 卡名(buy 顺序)zip → char→slot map。无需角色身份(纯像素,可靠)。
     """
-    log.info('[cw-bench-diff] new_bench_slots CALLED')   # D-147 诊断:确认函数被调用
+    log.info('[cw-bench-diff] new_bench_slots CALLED')
     si = ctx.screen_loader.get_screen('货币战争-备战')
     if si is None:
         return []
@@ -494,7 +498,7 @@ def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int
         if b.size == 0 or a.size == 0:
             continue
         diff = float(cv2.absdiff(b, a).mean())   # 新 icon → 多像素变化 → 高均值
-        if diff > 1.0:   # D-147 校准临时:log 有变化的槽 diff 值(定 threshold)
+        if diff > 1.0:
             log.info(f'[cw-bench-diff] slot{i} diff={diff:.1f}')
         if diff > BENCH_SLOT_DIFF_THRESHOLD:
             changed.append(i)

@@ -13,6 +13,11 @@ op 采 154 件图标 + cw_shots OCR 校验,效果正文与 docs(米游社)一致
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+
+import cv2
+import numpy as np
+from cv2.typing import MatLike
 
 
 @dataclass(frozen=True)
@@ -209,3 +214,86 @@ EQUIPMENT_ROSTER: frozenset[str] = frozenset(EQUIPMENTS.keys())
 def get_equip(name: str) -> Equipment | None:
     """按规范名取 Equipment;无则 None。"""
     return EQUIPMENTS.get(name)
+
+
+# ===== 装备视觉识别(cw_equip SIFT;D-27 突破:owned icon 在装备区右列 x1800-1918)=====
+# ①-a 全程 VLM 误判「装饰球体」(D-18~D-26),cw_equip SIFT 才识别到 owned icon(test_equip_recog.py)。
+# 教训(D-28 修正):小目标必裁切放大(CLAUDE.md),全图送 VLM 必丢细节(误判球体);单一方法(SIFT/VLM)都不可信,跨多样本+ground truth 交叉验证治本。
+
+
+_EQUIP_SIFT = cv2.SIFT_create()
+_EQUIP_MATCHER = cv2.BFMatcher()
+
+
+def load_equip_templates(equip_dir: Path) -> dict[str, tuple[MatLike, tuple, np.ndarray]]:
+    """加载 cw_equip 模板库(``<名>.png`` → SIFT 关键点/描述子)。
+
+    cw_equip 是单 png(非 ``<id>/raw.png`` 结构),直接读 png → gray → SIFT。
+    返回 ``{name: (gray, keypoints, descriptors)}``(同 ``load_avatar_templates`` 结构)。
+    """
+    templates: dict[str, tuple[MatLike, tuple, np.ndarray]] = {}
+    for png in sorted(equip_dir.glob('*.png')):
+        img = cv2.imdecode(np.fromfile(str(png), np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        kp, desc = _EQUIP_SIFT.detectAndCompute(gray, None)
+        if desc is not None and len(kp) >= 4:
+            templates[png.stem] = (gray, kp, desc)
+    return templates
+
+
+def read_equips(
+    screen: MatLike,
+    templates: dict[str, tuple[MatLike, tuple, np.ndarray]],
+    equip_rect: tuple[int, int, int, int] = (1800, 90, 1918, 710),
+    min_inliers: int = 10,
+    cluster_radius: int = 20,
+) -> list[tuple[str, tuple[int, int], int]]:
+    """装备区 SIFT 匹配 cw_equip → owned icon ``[(name, (cx, cy), inliers)]``。
+
+    equip_rect 默认装备区**右列**(x1800-1918, y90-710)—— owned icon 竖列(D-27 + tiebreaker D-28 确认);
+    左半 x1252-1800 是角色立绘区,纳入会致立绘图案假匹配装备模板(审查 P0-3②),故收紧到右列。
+    返回 owned 装备(名 + 原图绝对坐标 + inliers),按 inliers 降序。
+
+    三处健全性(D-28 审查 P0-3 修):
+    - centroid 用 RANSAC ``mask`` 标记的 inlier 子集(非 Lowe ``good`` 全部 —— 含 outlier 会偏移 icon 中心);
+    - ``cluster_radius`` 簇聚合:同坐标 ±px 内多模板命中归一到 inliers 最高者(防相似装备模板重复命中同一 icon);
+    - ``min_inliers=10`` 保留(D-28 tiebreaker 证 inliers=11 的拆装扳手也是真装备,≥15 会漏工具类简单 icon);
+      降假阳性靠 equip_rect 收紧 + 簇聚合 + mask centroid,非提阈值。
+
+    纯读(只 SIFT screen + templates,不写 session/全局),可进 recognizer / op。
+    """
+    x1, y1, x2, y2 = equip_rect
+    zone = screen[y1:y2, x1:x2]
+    gray = cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)
+    kp_z, desc_z = _EQUIP_SIFT.detectAndCompute(gray, None)
+    raw_hits: list[tuple[str, tuple[int, int], int]] = []
+    if desc_z is None or len(kp_z) < 4:
+        return raw_hits
+    for name, (_tgray, tkp, tdesc) in templates.items():
+        matches = _EQUIP_MATCHER.knnMatch(tdesc, desc_z, k=2)
+        good = [mm[0] for mm in matches if len(mm) >= 2 and mm[0].distance < 0.75 * mm[1].distance]
+        if len(good) >= 8:
+            src = np.float32([tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+            dst = np.float32([kp_z[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+            _, mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+            if mask is None:
+                continue
+            inliers = int(mask.sum())
+            if inliers < min_inliers:
+                continue
+            # centroid 用 RANSAC inlier(非全部 good —— outlier 偏移中心,审查 P0-3①)
+            inlier_pts = [kp_z[good[i].trainIdx].pt for i in range(len(good)) if mask[i]]
+            cx = int(np.median([p[0] for p in inlier_pts])) + x1
+            cy = int(np.median([p[1] for p in inlier_pts])) + y1
+            raw_hits.append((name, (cx, cy), inliers))
+    # 簇聚合:同坐标 cluster_radius 内多命中归一到 inliers 最高(审查 P0-3③)
+    raw_hits.sort(key=lambda h: -h[2])  # inliers 降序,高者优先保留
+    clustered: list[tuple[str, tuple[int, int], int]] = []
+    for name, (cx, cy), inliers in raw_hits:
+        if any(abs(cx - ocx) <= cluster_radius and abs(cy - ocy) <= cluster_radius
+               for _, (ocx, ocy), _ in clustered):
+            continue  # 已被更高 inliers 命中吞并(去重)
+        clustered.append((name, (cx, cy), inliers))
+    return clustered

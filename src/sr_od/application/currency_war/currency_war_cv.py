@@ -82,6 +82,83 @@ def detect_empty_slots(screen: MatLike) -> tuple[list[Point], list[Point]]:
     return front, back
 
 
+def _canny_border_lines(band_gray: MatLike, x_off: int) -> list[int]:
+    """行带灰度图 → 竖向边框线 x(全图坐标)。Canny 边缘 + 列投影 + 峰合并。"""
+    edges = cv2.Canny(band_gray, 80, 200)
+    col = np.convolve(edges.sum(axis=0).astype(float), np.ones(7), "same")
+    thr = col.max() * 0.35
+    peaks: list[int] = []
+    i = 0
+    while i < len(col):
+        if col[i] > thr:
+            j = i
+            while j < len(col) and col[j] > thr:
+                j += 1
+            peaks.append(int(np.average(np.arange(i, j), weights=col[i:j])))
+            i = j
+        else:
+            i += 1
+    lines: list[list[int]] = []
+    for p in peaks:
+        if lines and p - lines[-1][-1] < 25:
+            lines[-1].append(p)
+        else:
+            lines.append([p])
+    return [int(np.mean(grp)) + x_off for grp in lines]
+
+
+def detect_slot_centers(
+    img: MatLike, y1: int, y2: int, x1: int = 460, x2: int = 1620
+) -> list[int]:
+    """检测一行舞台槽位的中心 x(全图坐标)。
+
+    方法:Canny 检竖向边框线 → 相邻边框中点 = 槽位中心。**count 无关**(N 边框→N-1 槽,
+    兼容投资环境致槽位数变)、**内容无关**(空板全边框可见时检测)。
+
+    ⚠️ 仅在**空板(plane-start,未部署时)**检测可靠 —— 已占槽的立绘边缘淹没边框。
+    运行时应在每位面起始(空板)检测一次,缓存进 GameState,位面内用缓存。
+    验证(2026-08-09,a8_start 空板):front 4 / back 6,中心距 screen_info <10px。
+    """
+    band = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
+    borders = _canny_border_lines(band, x1)
+    return [(borders[k] + borders[k + 1]) // 2 for k in range(len(borders) - 1)]
+
+
+# 舞台前排 / 后排 y 带(固定;槽位计数沿 x 变)。front y~329-467, back y~600-739。
+FRONT_ROW_Y0, FRONT_ROW_Y1 = 315, 480
+BACK_ROW_Y0, BACK_ROW_Y1 = 590, 745
+
+
+def detect_board_slots(img: MatLike) -> tuple[list[Point], list[Point]]:
+    """检测舞台全部槽位中心(空板 plane-start 用),返回 (前排, 后排),(x, 行中心 y)。"""
+    fy = (FRONT_ROW_Y0 + FRONT_ROW_Y1) // 2
+    by = (BACK_ROW_Y0 + BACK_ROW_Y1) // 2
+    front = [(x, fy) for x in detect_slot_centers(img, FRONT_ROW_Y0, FRONT_ROW_Y1)]
+    back = [(x, by) for x in detect_slot_centers(img, BACK_ROW_Y0, BACK_ROW_Y1)]
+    return front, back
+
+
+# 槽位占用判据(替 SIFT;SIFT 对备战立绘不可靠见 D-4):灰度 std。
+# 空槽 placeholder 低方差(~11),立绘高方差(~39-67);阈值 25 干净分离(2026-08-09 实测)。
+SLOT_OCCUPY_HALF: int = 55
+SLOT_OCCUPY_STD_THR: float = 25.0
+
+
+def slot_occupied(
+    screen: MatLike, cx: int, cy: int,
+    half: int = SLOT_OCCUPY_HALF, thr: float = SLOT_OCCUPY_STD_THR,
+) -> bool:
+    """槽位是否已占(有立绘)。取 (cx,cy) ± half 区域灰度 std > thr = 已占。
+
+    替 SIFT 占用判(D-4:SIFT 误判空槽为占用 → deploy 跳前排 → 前排空 → 出战阻塞)。
+    CV 灰度 std 对「立绘 vs placeholder」稳,不依赖角色身份/颜色(白角色也准)。
+    """
+    x1, y1 = max(0, cx - half), max(0, cy - half)
+    x2, y2 = cx + half, cy + half
+    crop = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
+    return float(crop.std()) > thr
+
+
 if __name__ == "__main__":
     import os
     import sys

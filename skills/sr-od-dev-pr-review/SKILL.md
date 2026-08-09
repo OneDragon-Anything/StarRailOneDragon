@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-pr-review
-description: 当要审查/验证一个 open PR 是否可合并时用。英文 review/verify a PR、check if mergeable、validate PR functionality、PR code review。
+description: 当要审查/验证一个 open PR 是否可合并时用(L0 分诊 → L1/L2 总做 → L3/L4 按类型,给「可合并 / 需返工」结论)。**凡是判断一个 PR 能不能 merge(功能验证 / 代码审查 / check 状态)都用本 skill**。作者把自己的 PR 推到可合并(处理 review / CI / 清 unresolved thread)见 sr-od-dev-pr-finishing —— 本 skill 管审查判断不管收尾。英文 review/verify a PR、check if mergeable、validate PR functionality、PR code review。
 ---
 
 # PR 审查验证

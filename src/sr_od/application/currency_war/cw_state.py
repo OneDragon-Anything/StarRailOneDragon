@@ -38,18 +38,18 @@ class ShopCard:
 
 @dataclass
 class BenchChar:
-    """备战栏/已上阵角色(= strategy/13 §13.2 的 ``Unit``;D-78 加 ``equips``)。"""
+    """备战栏/已上阵角色(= strategy/13 §13.2 的 ``Unit``;加 ``equips``)。"""
     slot: int
     char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
     faction: str = "?"   # 阵营
     star: int = 1        # 星级
     position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    equips: list[str] = field(default_factory=list)   # 装在身上的装备规范名(有序;D-78;OCR 未接→空)
+    equips: list[str] = field(default_factory=list)
 
 
 @dataclass
 class NodeInfo:
-    """位面节点序列中的一项(strategy/13 §13.2 node_path;D-78)。
+    """位面节点序列中的一项(strategy/13 §13.2 node_path;)。
 
     纯图标无文字 → 需视觉/CV 建图标模板(§13.9 待核);未接 OCR 时 node_path 为空。
     """
@@ -65,7 +65,6 @@ class GameState:
     node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
     enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度;boss 血量 base×1.052^难度)。None=未读到(stylized OCR 常空)
     level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
-    # 购买经验进度 (cur_xp, xp_to_next_level),如 (4,20);文本-升级所需经验 "X/Y"(D-69 备战字段采集)。
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
     level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,plan 用 LEVEL_UP_COST_TABLE 兜底)
@@ -92,7 +91,6 @@ class GameState:
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
     bench_full_flag: bool | None = None
-    # —— strategy/13 §13.2 补字段(D-78 加法块;均 None/空兜底,OCR 未接→安全降级)——
     node_path: list[NodeInfo] = field(default_factory=list)   # 本位面节点序列(纯图标,需视觉;§13.9 待核)
     match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
@@ -138,18 +136,18 @@ def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
                                max_count: int | None = None) -> list[BenchChar]:
     """从 board(OCR 阵营计数真值)重建 ``deployed`` 列表 → ``deployed_count()`` 对齐实际阵上数。
 
-    D-107(RC1 fix):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效。本 helper 从 board
+    (RC1 fix):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效。本 helper 从 board
     重建 deployed。
-    **D-114**:max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
+    ****:max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
     sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
-    **误触**(board 没满却当满 → 不买 target 到 bench → D-113 被 block)。cap at level = 实际 deployed 上限。
+    **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
     """
     deployed: list[BenchChar] = []
     back_left = back_max
     for faction, count in board.items():
         for _ in range(count):
             if max_count is not None and len(deployed) >= max_count:
-                return deployed   # D-114: cap at level(multi-faction overcount guard)
+                return deployed
             pref = "back" if back_left > 0 else "front"
             if back_left > 0:
                 back_left -= 1
@@ -199,7 +197,7 @@ Action = BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
 
 @dataclass
 class MatchOutcome:
-    """一局货币战争的终局结算(框架构造,传给 ``CwStrategy.on_match_end``;D-34/§11.4)。
+    """一局货币战争的终局结算(框架构造,传给 ``CwStrategy.on_match_end``;/§11.4)。
 
     ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(默认 ``on_match_end`` no-op,
     字段未被读);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)属 P1.5**,依赖结算屏
@@ -257,7 +255,7 @@ def effective_hp_threshold(state: GameState, config) -> int:
 
     向后兼容:selected_difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
     前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
-    (决策见 docs/game/currency_war/decisions.md D-32)。detection 接线(难度确认屏 OCR →
+    (决策见 docs/game/currency_war/decisions.md )。detection 接线(难度确认屏 OCR →
     state.selected_difficulty)是后续 game 接线任务;本函数 + GameState.selected_difficulty 是其离线地基。
     """
     diff = (getattr(state, "selected_difficulty", "") or "").strip()
@@ -304,7 +302,7 @@ def simulate(state: GameState, action: Action) -> GameState:
 
 def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
                           action: Action) -> None:
-    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(task#105 运行时同步用;D-129/D-130)。
+    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(task#105 运行时同步用;/)。
 
     与 ``simulate`` 的区别:``simulate`` 返回新 ``GameState`` copy(前瞻语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /

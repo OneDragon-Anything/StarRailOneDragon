@@ -79,7 +79,6 @@ class CurrencyWarRunLoop(SrOperation):
         cw_telemetry.start_run()
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
-        # 策略插件机制(D-34/§11.7):每局新建 CurrencyWarMatch(strategy+session)挂 ctx。__init__ 时
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
         # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 session.target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
@@ -122,10 +121,10 @@ class CurrencyWarRunLoop(SrOperation):
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
         喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
-        记掉血 trend(观测驱动,非预测)+ 写 ``session.last_hp``(达阈;D-94 给下回合 prep 真值 hp)。
+        记掉血 trend(观测驱动,非预测)+ 写 ``session.last_hp``(达阈;给下回合 prep 真值 hp)。
         **仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用**,故无内部结算屏 gate —— 原 gate 查
         「挑战结束」与实屏「挑战成功」不符 → 永不命中 → on_round_end 从不调 → performance/last_hp 全不喂
-        (P1.5 观测回路 + D-94 prep-hp 真值机制双双静默死;2026-08-07 捕结算屏实锤「挑战成功」修复)。
+        (P1.5 观测回路 + prep-hp 真值机制双双静默死;2026-08-07 捕结算屏实锤「挑战成功」修复)。
         失败不阻塞对局(观测为辅)。node_type:结算屏含「首领」(如「1-9首领」)→ boss,否则普通战斗。
         plane/round 用 last-known(``read_phase_round`` 结算屏不显 plane/round)。
         """
@@ -152,7 +151,6 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_fail(status='对局循环超时')
         screen = self.last_screenshot
 
-        # on_match_start(每局首次截图后调一次;D-34/§11.7):P1 默认 no-op,自定义策略可读 state 初始化。
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
         if self._iter == 1 and self.ctx.cw_match is not None:
             self.ctx.cw_match.strategy.on_match_start(
@@ -185,8 +183,6 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)
 
         # 0c. 遭遇节点(3 难度选择:遭遇其一/其二/其三 + 选择)→ HandleEncounter(点左卡=遭遇其一=最易 + 选择)。
-        #     ↺ D-39 修正 D-35:D-35「遭遇=普通战斗无 UI」是误判 —— 实有 3 难度选择 UI 的遭遇节点(2026-08-05
-        #     实跑再证实:屏「遭遇节点」+「遭遇其一/其二/其三」+ 难度/奖励 +「选择」)。D-35 删 dispatch 的真实
         #     根因 = 旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5);正解是收紧 lcs 非 removal。
         #     现 lcs 0.9:备战「遭遇」(2/4=0.5<0.9)不误匹配;真「遭遇其一」4/4 命中(HandleEncounter 自身检测亦 0.9)。
         #     handler 2026-08-04 实测交互:点卡身选中 → 点选择确认(中间勿插空白点击会取消选中)。
@@ -228,7 +224,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 0f. 消耗品详情浮层 → ESC 关。获消耗品奖励(投资策略「星星相印」给【员工投影仪】等)后游戏自动弹
         #     介绍 modal,遮挡备战/投资策略屏 → 上面所有分支都不命中 → round_retry 死循环(2026-08-06 实跑:
         #     plane2 supply 后弹「员工投影仪」modal,flat retry ~19min 失败;**非策略死,UI 弹窗卡死**)。
-        #     ESC 实测可关(见 decisions D-54)→ 露出下层屏(投资策略/备战),loop 再分类推进。
         #     签名「消耗品」(类型 label) AND 「拖动到」(拖动使用说明 —— 只出现在消耗品详情 modal,备战底部
         #     消耗品栏无)→ 双条件精确,不误匹配备战。装备类详情 modal(无「拖动到」)是长尾,观察到再补。
         if (self.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
@@ -294,7 +289,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
-            # 局终:on_match_end(P1 桩 MatchOutcome,默认 no-op;真实 outcome 填充属 P1.5)+ 清场防跨局污染(D-34/§11.7)
             if self.ctx.cw_match is not None:
                 self.ctx.cw_match.strategy.on_match_end(
                     self.ctx.cw_match.session, self._cw_config, MatchOutcome())

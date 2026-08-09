@@ -1,24 +1,32 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
-"""货币战争角色识别:SIFT 特征匹配 ``assets/template/character_avatar/`` 模板库(主游脸近景)。
+"""货币战争角色识别:SIFT 特征匹配模板库(纯 CV;库由调用方传 ``avatar_dir``,生产用立绘库)。
 
-**2026-08-06 实测复盘(D-75,扭转旧结论)**:用实机备战**半身立绘**真图重测,脸近景库对面部独特
-角色**强命中**(4/4:佩拉/黑塔/Saber/藿藿,best inliers 23-30 vs 第二名 3-4,巨大间隔)。旧结论
-(2026-08-02「配饰角色不可靠,需货币战争专属半身模板」)**过于悲观** —— 至少对面部独特角色,脸库
-直接复用即可,**无需从零采 74 张半身模板**。仍待多样本核:配饰/帽子重角色(黑天鹅等)、货币战争
-专属变体(姬子·启行/千冶·刃/丹恒·腾荒,与基础角色共脸但异名 → SIFT 归一到基础名,需 roster
-子串消歧,见 ``cw_identity_obs.resolve_char_name``)。
+**生产实际用的库(2026-08-09 核实,纠正旧 docstring)**:``deploy_bench._get_templates`` 加载
+``assets/template/character_cw_portrait``(**货币战争半身立绘库**,71 角色,中文规范名 key,含变体
+分开采:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999)。``resolve_char_name``
+对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。
+
+⚠️ **识别可靠性:实测初步可用(2026-08-09 D-22)**:离线对 r1-8 备战截图跑 SIFT(`test_portrait_recog.py`),
+立绘库对 **6/6 有角色槽全命中**(inliers 29-48),空槽 None(best=0-1 不误识别)→ **立绘库可靠,
+推翻脸库旧结论**(脸库只 4 角色强命中)。下方「4 角色强命中」是 character_avatar(脸库)旧实测,仅作
+下界参考。**待补**:更多样本(尤其共脸变体 姬子/姬子·启行 能否靠服装区分)+ 角色名 ground truth
+(详情面板 OCR)。
+
+**2026-08-06 旧实测(character_avatar 脸库,仅作下界参考)**:脸近景库对面部独特角色强命中(4/4:
+佩拉/黑塔/Saber/藿藿,best inliers 23-30 vs 第二名 3-4);配饰/帽子重角色、货币战争专属变体待核。
+此结论「脸库够用、无需半身模板」与代码实际加载立绘库不符 —— 以代码为准(立绘库)。
 
 匹配要点:``min_inliers`` 最低内点 + ``ambiguity_ratio`` 歧义比过滤低置信结果(空槽位/非角色特征
 少 → 自然落 None,无需额外「槽位是否填充」预判)。
 
 本模块**纯 CV**(无 ctx/screen_info 依赖,可离线测):``load_avatar_templates`` 预计算 SIFT 关键点/
-描述子;``identify_character`` 返回 ``(avatar_id, inliers)``,avatar_id = 模板目录名(主游英文 id,
-如 ``pela``)。avatar_id → 货币战争规范名的映射在 ``cw_identity_obs.resolve_char_name``(查
-``character_const.get_character_by_id`` 得 cn 名 → 校验/消歧到 ``CHARACTER_ROSTER``)。
+描述子;``identify_character`` 返回 ``(avatar_id, inliers)``,avatar_id = 模板目录名(立绘库=中文
+规范名如 ``藿藿``;脸库=主游英文 id 如 ``pela``;生产用立绘库)。avatar_id → 货币战争规范名映射在
+``cw_identity_obs.resolve_char_name``。
 
-部署/循环 op 用本模块时,模板由 ``ctx.ih`` 预加载传入(避免每次重算);离线测试用
-``load_avatar_templates`` 从磁盘加载。
+部署/循环 op 用本模块时,模板由调用方加载传入(``deploy_bench`` 加载立绘库缓存到
+``ctx.cw_portrait_templates``);离线测试用 ``load_avatar_templates`` 从磁盘加载。
 """
 from __future__ import annotations
 
@@ -112,7 +120,7 @@ if __name__ == '__main__':
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )
-    avatar_dir = repo / 'assets' / 'template' / 'character_avatar'
+    avatar_dir = repo / 'assets' / 'template' / 'character_cw_portrait'   # 立绘库(与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
     # 填充的备战槽(GT 坐标,峰高证实有角色)
     slots = {
         'bench-1': (382, 845, 495, 979),

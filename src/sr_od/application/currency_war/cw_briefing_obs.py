@@ -167,7 +167,7 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
         '\n'
         '格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。\n'
         'mechanics_fit 接线(词缀→tag→comp 克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES\n'
-        '落地(D-49/55,接 comp_score W_MECH);本文件只采 effect 原文(ground truth,不参策略)。\n'
+        '落地(/55,接 comp_score W_MECH);本文件只采 effect 原文(ground truth,不参策略)。\n'
         '"""\n'
         'from __future__ import annotations\n\n'
         'AFFIX_EFFECTS: dict[str, str] = ' + json.dumps(current, ensure_ascii=False, indent=4) + '\n'

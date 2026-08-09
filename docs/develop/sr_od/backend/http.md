@@ -11,7 +11,7 @@
 | GET | `/health` | backend 进程探测 | `{"ok": true, "server": "sr_od", "ready": bool}` |
 | GET | `/game/window` | `backend.check_window()` | `WindowStatus` JSON |
 | GET | `/game/capture` | `backend.capture()` | PNG 字节（`image/png`，不落盘） |
-| GET | `/game/analyze?save_image=` | `backend.analyze()` | `AnalyzeScreenResult` JSON（`save_image=true` 实时模式多带 `screenshot_path`） |
+| GET | `/game/analyze?save_image=` | `backend.analyze()` | `AnalyzeScreenResult` JSON（`save_image=true` 实时模式多带 `screenshot_path`;精准命中画面若注册了额外识别器多带 `extras`,见 [screen-recognizers.md](screen-recognizers.md)） |
 | POST | `/game/enter?block=` | `backend.start_run('http', op_factory)` | `block=true`（默认）：结果 JSON；`block=false`：已启动 JSON；并发拒绝返错误 JSON |
 | GET | `/game/applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
 | POST | `/game/run/one-dragon?block=` | `backend.run_one_dragon('http')` | 默认返回启动状态；`block=true` 等待一条龙结束 |
@@ -28,7 +28,7 @@
 - `routes.py` 放基础 game handler 与总注册入口；`service_routes.py` 放应用运行、自定义 op 和 `/health` 这组服务端点。
 - 处理器调 backend 走 `asyncio.to_thread`；`BackendNotReadyError` 统一返回 503 JSON。
 - `/game/capture` 直接回传 PNG 字节（区别于 MCP 的落盘返路径，同一能力、不同序列化）。
-- `/game/analyze?save_image=true`（实时模式）让 backend 顺手存盘 + 响应多带 `screenshot_path`；默认 `false` 不落盘，离线模式忽略。
+- `/game/analyze?save_image=true`（实时模式）让 backend 顺手存盘 + 响应多带 `screenshot_path`；默认 `false` 不落盘，离线模式忽略。`/game/analyze` 的响应是**手搓 JSON dict**（显式枚举字段,非自动序列化 dataclass）,故新增 `extras` 等字段时**必须在 `handle_game_analyze` 的响应 dict 里显式补**(否则 HTTP 静默丢字段);这点与 MCP 侧（FastMCP 自动序列化 dataclass）不同 —— 两适配器序列化方式差异,MCP 自动带、HTTP 要手补（[design-principles.md](design-principles.md) P11 对称）。
 - 所有运行端点（`/game/enter`、`/game/run/one-dragon`、`/game/run/standalone`、`/game/run/operation`）经**同一个 `RunSlot`** 异步派发：op 路径（`enter` / `operation`）槽自管生命周期，app 路径（`one-dragon` / `standalone`）委托 `run_application`。
 - 自定义 op 端点：`op_id` 走 query 参数（`?op_id=...`），`args` 走 JSON body（整体 body 即 args 字典，空 body 时 `args={}`）；`block` 走 query。**业务失败一律 `200 + body 内 error/started 标志`**（`op_id` 不存在 / 非 Operation / 参数校验失败 / 并发拒绝），不引入 400/404/409；仅 `BackendNotReadyError` 返 503。
 - 配置刷新：app 路径在 `run_application` 前（槽线程内、`_start` 已赢锁后）刷新当前进程的 YAML 配置缓存，对齐 GUI 已保存设置；拒绝路径不刷新。`/game/applications` 与 `/game/operations` 是只读路径，不刷新。

@@ -50,6 +50,8 @@ server 给「**事实**」,智能体做「**决策 + 通用理解**」。server 
 
 例子:OCR 全文 + 坐标 ✅(原始数据);**「当前画面 = login_screen」✅(领域事实,server 经 screen info 识别后给)**;「下一步该点登录按钮」❌(决策,智能体做)。
 
+> **画面命中后的更细领域事实**(如某画面内的角色阵容 / 经济状态):`analyze_screen` 精准命中后按 `screen_name` 自动跑该画面声明的**额外识别器(recognizer)**,把结构化领域事实塞进返回的 `extras`。per-screen 注册机制 + 自动加载,见 [screen-recognizers.md](screen-recognizers.md)。
+
 ### P3. 操作 vs 观察分离
 操作类 tool 改状态(进游戏 / 停止 / reload / 改配置),观察类只读(窗口 / 截图 / 运行态)。副作用两种标注:
 - **docstring** 文字说明(给智能体读);

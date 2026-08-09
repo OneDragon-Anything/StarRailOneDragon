@@ -9,7 +9,7 @@
 阶段 2(Phase 2,后续)会把 ``cw_decisions``+``cw_comps`` 逻辑迁进本类方法、权重转类常量、删模块
 函数;接口在阶段 1 已冻结,阶段 2 是纯内部重构 + 测试须保绿。
 
-设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md`` §11.6;决策见 D-34。
+设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md`` §11.6;决策见 。
 """
 from __future__ import annotations
 
@@ -66,7 +66,6 @@ class DefaultCwStrategy(CwStrategy):
                      obs: RoundOutcome) -> None:
         """观测驱动:喂掉血/胜负 → ``session.performance``(默认实现非空,但 P1 无 caller,§11.7)。"""
         session.performance.record(obs)
-        # D-94:存可靠结算 HP(达阈)给下回合 prep state.hp。prep 帧 HP 区持续空(read_hp 误读,D-93 救不了),
         # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(HP 结算→下回合 prep 不变)。保血/maybe_pivot 信号地基。
         if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
             session.last_hp = obs.hp_after
@@ -88,17 +87,13 @@ class DefaultCwStrategy(CwStrategy):
         # 注:当前 comp.boss_weakness 多为空(数据待采,同 competitors.md),boss_fit 暂中性;数据补上即生效。
         if session.briefing_bosses:
             state.plane_bosses = list(session.briefing_bosses)
-        # 已选投资环境注入(D-58):HandleInvestEnv 写 session.active_env → copy 到 state → env_fit。
         # 原 bug:active_env 恒空 → env_fit 全 0.5 → T0 env(如 昼之半神概念股→昼神阿雅)不硬绑。
         if session.active_env:
             state.active_env = session.active_env
-        # D-126:记录本回合 shop 阵营到 session.shop_faction_seen(跨回合累积;select_comp 判长期可得性)。
         for _c in state.shop:
             if _c.faction and _c.faction != '?':
                 session.shop_faction_seen[_c.faction] = session.shop_faction_seen.get(_c.faction, 0) + 1
         score_ctx = cw_comps.make_score_context(state, shop_faction_seen=session.shop_faction_seen)
-        # D-92 drought bail:target 连续 DROUGHT_BAIL 轮 shop 无其阵营卡(shop_supply<1.0)→ 弃 target 重选。
-        # 防 commit(D-86)锁死**不可达** target:live round4-6 target=DOT队,但 shop/board 始终无 持续伤害/减益
         # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。
         # (shop_supply<1.0 = shop 无 target 阵营卡;=1.0 = 本回合买得到 → drought 归 0;正常 shop 波动不会累积)
         DROUGHT_BAIL: int = 5   # T#97:放宽(3 太激进 —— shop 随机 3 轮无阵营卡是正常波动不该弃 target;5 容忍随机,稳 commit)
@@ -106,13 +101,20 @@ class DefaultCwStrategy(CwStrategy):
             _supply = cw_comps.shop_supply(session.target_comp, state)
             session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
             if session.target_drought >= DROUGHT_BAIL:
-                log.info('[cw-target] %s 连续 %d 轮 shop 无其阵营卡(shop_supply=%.1f)→ 弃 target,重选(shop-aware)',
-                         session.target_comp.name, session.target_drought, _supply)
-                session.target_comp = None
-                session.target_drought = 0
-        # D-146(2026-08-09)早选 target(EMERGENT_SIGNAL_COUNT 2→1):match5 实跑 board 7 阵营全 1 spread,
+                # D-16(comp 稳定,2026-08-09):bail 只在**未 invested**(form_progress<0.3)时。
+                # 诊断:PIVOT 是集中破坏者(为 comp A 买→bail 切 B→mixed→散)。bail 已 invested 的 comp
+                # → 丢投资 + 破坏集中 → 板散 → p2 弱。invested(form_progress≥0.3,已有几单位)则保(ride it out),
+                # 避免破坏性 pivot。stable comp → 单方向买 → tier-2 集中 → p2 更强。
+                _fp = cw_comps.form_progress(session.target_comp, state)
+                if _fp < 0.3:
+                    log.info('[cw-target] %s 连续 %d 轮 shop 无阵营卡 + 未 invested(form_progress=%.2f<0.3)→ 弃,重选',
+                             session.target_comp.name, session.target_drought, _fp)
+                    session.target_comp = None
+                    session.target_drought = 0
+                else:
+                    log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
+                             session.target_comp.name, session.target_drought, _fp)
         # count≥2 到 r6-7 才 emergent → 太慢,HP 在 comp 成型前崩。降到 count≥1(starter 任一阵营在场,r1 即触发)
-        # → r1 选 comp + 早聚焦买(D-138)+ D-145 deploy 全板 → 快集中。D-122「空板选 unacquirable」顾虑不适用
         # (r1 board 有 starters 非空 + select_comp 用 shop_supply 保 acquirable;maybe_pivot 纠偏;drought_bail 兜底)。
         EMERGENT_SIGNAL_COUNT: int = 1
         _counts: dict[str, int] = dict(state.board)
@@ -140,7 +142,7 @@ class DefaultCwStrategy(CwStrategy):
         未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。"""
         return cw_decisions.plan(state, config, config.faction_priority,
                                  rng=session.rng, target_comp=session.target_comp,
-                                 reactive=(session.target_comp is None))  # D-122:emergent(target=None)授权 reactive,plan 不内部 select_comp
+                                 reactive=(session.target_comp is None))
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:
@@ -155,7 +157,7 @@ class DefaultCwStrategy(CwStrategy):
 
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度/词缀避开。⚠️ D-35 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
+        """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
         return cw_decisions.decide_encounter(options, state, session.target_comp, config, refresh_used)
 
     def decide_megastar(self, options: list[MegastarOption], state: GameState,

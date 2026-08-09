@@ -1,3 +1,5 @@
+# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+
 """货币战争 投资策略 3 选 1 op(从主循环拆出)。
 
 OCR 3 张投资策略卡名 → ``cw_decisions.decide_event`` 按事件白名单打分 → 点**最优**卡
@@ -80,7 +82,6 @@ class HandleInvestStrategy(SrOperation):
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
-        # D-34:走策略 decide_invest(default 委托 decide_event,行为等价)。投资策略 overlay 叠备战时 board
         # 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:

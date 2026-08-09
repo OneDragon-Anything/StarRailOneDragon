@@ -73,7 +73,6 @@ OFF_TARGET_DISCOUNT: float = 1.0       # 2026-08-04 revert(原 0.3):实跑发现
 # 不动已有堆的 board eval)—— 待后续 task#16 续。target_comp 参数保留(prefilter 复用),effect 暂关。
 # T#97 step-2(tuned):target bonus **只加在 tier 部分**(_base_tier,不含 close-to-next),避免 over-rush 弱-early。
 # 2026-08-07 live:1.5× on whole tier_score(含 close-to-next)→ over-rush 弱-early 追击(count 2 冲 tier 3)→ HP 掉快
-# → 死 plane2 r1(D-88)。改:bonus 只在 _base_tier(已激活 tier 的深化),close-to-next 不加 → 奖励深化(count≥阈值)非 rush。
 TARGET_FACTION_BONUS: float = 1.5      # target 阵营 tier 部分 ×1.5(tier-only,close-to-next 不加;见 synergy_score)
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
@@ -83,7 +82,6 @@ SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
 
-# D-122 concentration(deployed-lock 防 spread):r1 起驱动 buy/deploy 收敛,无 target 也生效。
 # 人玩 auto-chess:跟 shop 走、concentrate(强化已 collect 阵营)、comp emerge。bot 旧「pre-select target→force」
 # 在 deployed-lock + shop 随机下失败(target-buy 错配 → spread → 锁板 → 永不成型)。
 REINFORCE_BONUS: float = 4.0      # 买 card.faction 已在 bench+deployed → 加分(深化集中阵营,~1 synergy 激活档)
@@ -159,7 +157,6 @@ def synergy_score(state: GameState, faction_priority: list[str],
         info = FACTIONS.get(faction)
         cat_w = CATEGORY_WEIGHT[info.category] if info and info.category in CATEGORY_WEIGHT else 3.0
         # T#97 step-2(tuned):target bonus **只加在 _base_tier(tier 部分)**,不含 close-to-next —— 避免 over-rush
-        # 弱-early(1.5× on whole 含 close-to-next → count 2 冲 tier 3 弱 comp → HP 掉快,见 D-88)。
         _base_tier = cat_w * _activated_tiers(faction, count) ** SYNERGY_TIER_EXPONENT
         if target_factions:
             _base_tier *= TARGET_FACTION_BONUS if faction in target_factions else OFF_TARGET_DISCOUNT
@@ -263,9 +260,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     )
     if target_comp is not None:
         score -= TARGET_PROGRESS_WEIGHT * _target_progress_remaining(state, target_comp)
-        # D-113: bench target potential —— bench 有 target 阵营角色(未 deploy)→ 给分(未来 deploy 潜力)。
         # board 满 → 买 target 到 bench → delta>0 → bot 买 → level up 后 deploy → target 深堆。
-        # 不加 → delta≈0(board 不变)→ bot 不买 target 到 bench → level up 无 target deploy → 永不深堆(D-112 发现)。
         # delta 中 phantom bench 抵消(plan greedy: delta = eval[after]-base; phantom 在两者 → 消,净 delta 正确)。
         _bench_tgt = sum(1 for bc in state.bench
                          if bc.faction in target_comp.factions or bc.char_id in target_comp.core_chars)
@@ -275,8 +270,10 @@ def evaluate(state: GameState, config, faction_priority: list[str],
 
 # target 成型剩余进度权重(战略层导向;占位,待实玩校准)。越大 → 越 commit 到 target。
 TARGET_PROGRESS_WEIGHT: float = 15.0
-# D-113: bench target 角色 potential(board 满 → 买 target 到 bench 的价值)。> economy_loss(≈0.3/gold)→ delta 正 → bot 买 target 到 bench。
-BENCH_TARGET_WEIGHT: float = 3.0
+BENCH_TARGET_WEIGHT: float = 3.0   # D-11 二次回退(2026-08-09 A/B 负):=8 局板更散(无 tier-2)、p2 hp3 < baseline hp16。
+# 结论:buy hoard(BENCH_TARGET_WEIGHT)单杠杆不治 p2 死 —— bot 能激进买(7 张/轮),非 buy-quantity 限;
+# 板散是 comp 选择/pivot + deploy 集中度问题,非 buy 权重。p2 死需更深工作(holistic 板强 / 接受 tier-2 靠星级装备)。
+# =3 为 D-6 时期值,保留。D-11 两次试(=8)两次回退,确认非杠杆。
 
 
 def _target_progress_remaining(state: GameState, target_comp: Comp) -> float:
@@ -308,7 +305,6 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str]) -> int |
                key=lambda i: _bench_sell_value(state.bench[i], character_priority, close))
 
 
-# ===== D-122 concentration helpers(deployed-lock 防 spread;r1 起驱动 buy/deploy 收敛)=====
 
 def _distinct_factions(state: GameState) -> set[str]:
     """已 collect 的阵营集合 = board(deployed ground truth)+ bench(不含 '?'/空)。"""
@@ -322,7 +318,7 @@ def _concentration_delta(card: ShopCard, state: GameState,
     """买这张牌对 concentration 的影响(加到 buy delta,L1)。
 
     - card.faction 已在 bench+deployed → +REINFORCE_BONUS(深化集中阵营,人玩「强化已 collect」)。
-    - **target 阵营卡**(faction∈target.factions 或 name∈core_chars)→ 永不 spread 罚(D-137,2026-08-08
+    - **target 阵营卡**(faction∈target.factions 或 name∈core_chars)→ 永不 spread 罚(,2026-08-08
       实跑 round3:DOT 队 target 卡 减益/椒丘 因 board 已 4 阵营≥cap 被旧逻辑 -8 罚 → target 卡 buy delta
       负 → 不买 → comp 永不深成型 → buy0)。target 阵营是想要的,新 target 阵营**深化 comp 非 spread**。
     - off-target 新阵营 且 已 ≥DEPLOY_FACTION_CAP 阵营 → −SPREAD_PENALTY(防 spread-lock 永久占槽)。
@@ -331,7 +327,6 @@ def _concentration_delta(card: ShopCard, state: GameState,
     factions = _distinct_factions(state)
     if card.faction and card.faction in factions:
         return REINFORCE_BONUS
-    # 新阵营:target 阵营免 spread 罚(深化 target 非 spread;D-137)
     if target_comp is not None and (
             card.faction in target_comp.factions or card.name in target_comp.core_chars):
         return 0.0
@@ -380,7 +375,7 @@ def _sample_shop(state: GameState, faction_priority: list[str], rng: random.Rand
     """采样 n 张可能的刷新牌(近似牌池模型)。阵营从 FACTIONS 采样(faction_priority + target_comp
     阵营加权),费用按等级。近似(无真实牌池计数);D 牌决策用其期望值。
 
-    D-63/F2:target 阵营加权 —— 蒙特卡洛 D 牌估值该考虑「roll 出 target 卡」的价值,否则 target 阵营
+    /F2:target 阵营加权 —— 蒙特卡洛 D 牌估值该考虑「roll 出 target 卡」的价值,否则 target 阵营
     不在 user priority 时 roll 估值偏低 → bot 不 roll → shop 无 target 卡时纯攒金/买 off-target →
     target 永不深成型(plane2 弱死)。加权 2×(同 priority)让 roll-for-target 进决策。
     """
@@ -446,7 +441,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     target_comp: 战略层目标阵容(稳定,由上层 shop op 跨回合管理 + maybe_pivot 切换)。
         传入 → 用它(不每轮重选,防 select_comp 振荡致 churn);None → 内部 select_comp
         (向后兼容 / 测试 / reactive 退化)。硬门:bench-full 必破、gold≥0、level≤10。
-    reactive: D-122 emergent —— True=授权 target=None(上层 update_target 阵营 count≥2 前不选 target),
+    reactive: emergent —— True=授权 target=None(上层 update_target 阵营 count≥2 前不选 target),
         plan 不内部 select_comp(纯 L1 集中化驱动 buy/deploy);False(默认)= 向后兼容(None→内部 select_comp)。
     """
     rng = rng or random.Random()
@@ -471,7 +466,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 按振荡 target 卖牌 → 破坏性 churn(每轮换牌)+ 零收敛 → 比 reactive 更弱。故 target 须跨回合稳定
     # (上层 shop op 持久化 + maybe_pivot 才切),plan 只消费。详 task#16 + strategy/02 F-3。
     target = target_comp
-    if target is None and not reactive:   # D-122:reactive(emergent)授权 None → 不内部 select_comp(纯集中化)
+    if target is None and not reactive:
         _candidates = select_comp(cur, make_score_context(cur), config)
         if _candidates:
             target = _candidates[0]
@@ -484,7 +479,6 @@ def plan(state: GameState, config, faction_priority: list[str],
     _goal = _resolve_level_goal(cur, target)
     _lv_cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
     # 升级条件:够钱 + (level_plan 说 level_up **或** 落后期望等级 `_expected_level`)。
-    # 修 chicken-egg bug(D-24):原 gate 只在 goal=level_up 时升,但 roll 等级(2/3/4)→ gate 不触发
     # → 永远到不了 5+(level_up 等级)→ 卡低等级 → telemetry 6 局全「升0次」(gold 到 74 也不升)。
     # 「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。每轮 ≤1 级。
     _exp_lv = _expected_level(cur.round_num, cur.plane)
@@ -532,23 +526,19 @@ def _best_improving_action(
         if delta > best_delta + 1e-6:
             best, best_delta = seq, delta
 
-    # 花费指令(level_plan / 通用曲线):驱动下面 buying gate + refresh gate(task#18/D-24)。
     _goal = _resolve_level_goal(state, target_comp)
     _lv_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)         # 升下一级金价
-    # 想升 = goal=level_up **或** 落后期望等级(对齐 D-24 gate)。saving 对齐 gate:
     # 想升 + 还没够钱 → 抑制散牌买/刷,攒金。否则 gate 永远付不起(bot 花光金不攒,lv4 gold12 实测)。
     _want_level = (state.level < 10 and (
         (_goal is not None and _goal.action == "level_up")
         or state.level < _expected_level(state.round_num, state.plane)))
     _saving_for_level = _want_level and state.gold < _lv_cost
-    # D-142 tempo(战力断档)破息(CLAUDE.md「tempo:战力断档破息抢节奏」,2026-08-09):板弱(无 target 或
-    # form_progress<COMMIT_FRAC)→ 不攒息/级,先花建板。实跑 match2:r3 board 满+散+gold11+无 target →
-    # _saving(息+级)堵死全部非 target 买 → 无 target 全堵 → buy0 → 永不集中 → 永无 target → 死循环。
-    # 旧 _saving_for_interest 把「板位满」当「非战力断档」是错(board 满但散=仍战力断档);本修加真板强判据。
-    # 板弱囤金=等死(HP 掉速快过攒息/级收益);破息花钱集中(reinforce→count2→emergent target)。板强才攒。
+    # D-14(2026-08-09,4th 自审 + 经济诊断):_saving_for_level **不再**被 _board_strong 门控。
+    # 旧门控(板弱 form_progress<COMMIT_FRAC → 不攒级 → 花买/刷)致 chicken-egg:tier-2 弱板→不攒级→永不升→
+    # 卡 lv6 cap→上不了更多单位→永 tier-2→p2 死。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。
+    # _saving_for_level 抑制 off-target 买 + refresh(浪费金),留 target 买(建 comp)+ 攒金 → 够 cost 下轮 plan
+    # level gate(优先执行)升级。**_saving_for_interest 仍由 _board_strong 门控**(息是经济,板强才囤,弱板不囤息)。
     _board_strong = (target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC)
-    _saving_for_level = _saving_for_level and _board_strong
-    # D-67 经济统一论(用户 2026-08-06):维持 ≥50 金息引擎。gold<50 + 板位满 + 健康 + **板强**(D-142 tempo)
     # → 攒息。CLAUDE.md「维持≥50 金,超出才花;tempo(HP 危险/战力断档)破息」(战力断档=板弱,非仅板位不满)。
     _saving_for_interest = (state.gold < INTEREST_THRESHOLD
                             and state.deployed_count() >= state.max_units()
@@ -561,14 +551,12 @@ def _best_improving_action(
         cost = card_cost(card)
         if state.gold < cost:
             continue
-        # D-67 bench 空间(用户反馈「没判断备战席满」):deploy 满 + bench 满 → 买的牌无处放,skip(防 overfill
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
         if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue
         # level_plan buying gate(task#18):攒金升级期间(_saving)抑制散牌,但仍允许 target
         # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
         # 这里只管"攒金期间别把金泄到散牌上"(解 replay 32 局金堆 50+ 不花/花在散牌上不升级)。
-        # D-67:_saving 含 _saving_for_interest(攒息,gold<50),同抑散牌。
         if _saving:
             _is_target_card = (target_comp is not None and (
                 card.faction in target_comp.factions
@@ -580,7 +568,6 @@ def _best_improving_action(
         # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char)→ 聚焦深化 target,
         # 防"买一切"致 board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防
         # hold-forever 饿死)。区别旧 OFF_TARGET_DISCOUNT 打折 board 的 churn(d87b2a68 revert):只 gate 新 buys。
-        # D-79:off-target 测试**不再豁免 character_priority**(原含 `card.name not in character_priority`
         # → 藿藿/阿格莱雅 等 priority 列里的 off-target 角色被放行 → board spread;plane1-9 实采 7 阵营零成型、
         # gold=8 买 能量 藿藿/阿格莱雅 填 off-target)。违反「一切评分 comp 相关」(CLAUDE.md):priority 不该
         # 绝对豁免 commitment。priority 仍享 eval 加成(CHAR_PRIORITY_BONUS,下文)+ 未 commit 时(target=None)
@@ -600,7 +587,7 @@ def _best_improving_action(
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
-                and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):   # D-122 L2:只 deploy target/集中
+                and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):
             bc = after_buy.bench[-1]
             row, ok = _pick_deploy_row(after_buy, bc)
             if ok:
@@ -609,7 +596,7 @@ def _best_improving_action(
         for a in seq[1:]:
             after = simulate(after, a)
         delta = evaluate(after, config, faction_priority, target_comp) - base_eval
-        delta += _concentration_delta(card, state, target_comp)   # D-122 L1:集中化信号(D-137 target 阵营免 spread 罚)
+        delta += _concentration_delta(card, state, target_comp)
         if card.name and card.name in character_priority:
             delta += CHAR_PRIORITY_BONUS * 2
         beat(delta, seq)
@@ -618,7 +605,7 @@ def _best_improving_action(
     for i, bc in enumerate(state.bench):
         if state.deployed_count() >= state.max_units():
             break
-        if not _should_deploy(bc, state, target_comp):   # D-122 L2:只 deploy target/集中,off-target 单张留 bench
+        if not _should_deploy(bc, state, target_comp):
             continue
         row, ok = _pick_deploy_row(state, bc)
         if not ok:
@@ -630,14 +617,11 @@ def _best_improving_action(
     # 升等级不由这里候选 —— plan() 硬 gate 按 level_plan 执行(task#18;根因:eval 对「花大金升级」
     # 的利息损失短视 → LevelUp 候选 delta 永负 → 永不选 → 32 局升 0 次)。buying gate 同源:攒金升级期间
     # (_saving_for_level)不 D 牌(refresh 泄金,与散牌买同理)。
-    # D-63/F2 例外:攒金期若 shop 无 target 卡,允许 roll 找 target(否则纯攒金 + shop 无 target →
     # target 永不深成型 → plane2 弱秒死,2026-08-06 实跑)。_refresh_expected_delta 已加 target 阵营采样权重。
-    # D-67:但 _saving_for_interest(攒息,gold<50)时全阻 roll(息引擎优先,tempo 例外已在 _saving_for_interest
     # 的 hp 判定排除)。
     _shop_has_target = (target_comp is not None and any(
         c.faction in target_comp.factions or c.name in target_comp.core_chars
         for c in state.shop))
-    # D-90:shop 有**买得起**的 target 卡 → 先买,别 Refresh 把它刷掉。根因(2026-08-07 实跑 round1):
     # simulate(RefreshShop) 不建模换 shop(只扣金、shop 不变)→ 贪心误以为「Refresh 后还能买当前 shop 的 target」,
     # 故 plan 选 Refresh 作第一动作;但实跑 Refresh 换 shop → target 卡(追击×3)全没 → 只能买 off-target → spread。
     # 规则:auto-chess 基本功 —— target 卡在场且买得起 = 确定收益,Refresh 找 target 是赌注(蒙特卡洛乐观);
@@ -645,8 +629,6 @@ def _best_improving_action(
     _shop_has_buyable_target = (target_comp is not None and any(
         c.faction in target_comp.factions or c.name in target_comp.core_chars
         for c in state.shop if state.gold >= card_cost(c)))
-    # D-112:target committed + target 阵营 board count 全 <2(未深堆)→ 该 roll 找 target 卡(非纯攒息)。
-    # 旧 _saving_for_interest 全阻 roll(D-67)→ comp 永不深堆 → plane2 弱死。target 不深时 roll 值利息牺牲
     # (3/3 局 survive plane1 但 comp count=1 不深 → plane2 秒死;策略子agent P3)。
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
@@ -881,7 +863,7 @@ def decide_supply(options: list[SupplyOption], state: GameState,
 
 @dataclass
 class MegastarOption:
-    """一个巨星候选(OCR/SIFT 读角色名,``read_megastar`` 阶段5;D-34/§11.3.4⑥)。
+    """一个巨星候选(OCR/SIFT 读角色名,``read_megastar`` 阶段5;/§11.3.4⑥)。
 
     char_id:候选角色名(空 = OCR 未就绪,匹配恒失败 → 默认 idx=0 = 今天盲点左候选)。
     """
@@ -900,7 +882,7 @@ class MegastarPick:
 
 @dataclass
 class PartnerOption:
-    """一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;D-34/§11.3.4⑦)。
+    """一个伙伴候选(OCR/SIFT 读角色名,``read_partner`` 阶段5;/§11.3.4⑦)。
 
     char_id:候选角色名(空 = OCR 未就绪 → 默认 idx=0 = 今天盲点 stage 立绘)。
     """

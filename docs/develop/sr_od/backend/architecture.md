@@ -22,9 +22,10 @@ flowchart TB
 
 ```text
 src/sr_od/backend/
-  schemas.py             # WindowStatus / AnalyzeScreenResult / RunStatusResult / ApplicationListResult / OperationListResult
-  backend_context.py     # SrBackendContext + RunSlot（单槽，app/op 分派）
+  schemas.py             # WindowStatus / AnalyzeScreenResult(含 extras) / RunStatusResult / ApplicationListResult / OperationListResult
+  backend_context.py     # SrBackendContext + RunSlot（单槽，app/op 分派）+ analyze 接入额外识别器
   operation_registry.py  # 自定义 op 扫描 / op_id 解析 / args 校验（纯反射，不实例化）
+  screen_recognizer_scan.py  # 画面额外识别器(recognizer)扫描 + 注册表填充（镜像 operation_registry,扫描期无参实例化）
   mcp/
     app.py               # create_mcp_server + 基础 game tools
     service_app.py       # list_applications / run_one_dragon / run_standalone_app / list_operations / describe_operation / run_operation
@@ -34,7 +35,13 @@ src/sr_od/backend/
     service_routes.py    # /health + 应用运行 + 自定义 op HTTP handler
   entry/
     server.py            # create_app / uvicorn 入口
+
+# 公共包（游戏无关,ZZZ 可复用）
+src/one_dragon/base/screen/
+  screen_recognizer.py   # ScreenRecognizer 基类 + ScreenRecognizerRegistry + RecognizerScanResult
 ```
+
+> 画面额外识别器（per-screen recognizer）的**契约**（基类 / 注册表 / 扫描结果）在公共包 `one_dragon/base/screen/screen_recognizer.py`（与 `screen_match.py` 同域,游戏无关）;**扫描器**（扫 `sr_od` 承载包、填注册表）在 `sr_od/backend/screen_recognizer_scan.py`（须知游戏扫描根,公共包不能反向依赖游戏代码）。详见 [screen-recognizers.md](screen-recognizers.md)。
 
 ## SrBackendContext
 
@@ -44,7 +51,7 @@ src/sr_od/backend/
 |---|---|---|
 | `check_window()` | 查询游戏窗口状态 | `WindowStatus` |
 | `capture()` | 截取当前游戏画面 | RGB `MatLike` |
-| `analyze()` | 截图 + OCR + 画面匹配 | `AnalyzeScreenResult` |
+| `analyze()` | 截图 + OCR + 画面匹配 + 精准命中跑额外识别器 | `AnalyzeScreenResult`（含 `extras`） |
 | `start_run(source, op_factory, display_name=None)` | 启动 operation（op 路径，供 `open_game` / `run_operation` 经适配器调用） | `(ok, future)` |
 | `run_one_dragon(source)` | 按当前配置启动完整一条龙（app 路径） | `(ok, future)` |
 | `run_standalone_app(source, app_id=None)` | 启动独立应用（app 路径） | `(ok, future)` |
@@ -84,6 +91,16 @@ src/sr_od/backend/
 - `describe_operation(ctx, op_id)`：纯反射返回单个 op 的参数 schema(每个参数标 `json_serializable` + `coercible`——后者表示 `@dataclass`+`from_dict` 可从 dict 反序列化;整体 `debuggable` = 必填参数都可传入)。
 
 `run_operation` 在适配器侧组合上述能力：`resolve_op_class` + `validate_args` 先校验，通过后把 `cls` + `args` 烤进闭包 `op_factory = lambda ctx: cls(ctx, **args)`，提交 `run_slot._start`（op 路径，`display_name=op_id`）。槽只认统一签名 `op_factory(ctx) → Operation`，对 `open_game` 与自定义 op 一视同仁。
+
+## 画面额外识别器（per-screen recognizer）
+
+`analyze()` 在画面**精准命中**后,按 `screen_name` 查注册表调用该画面声明的**额外识别器（recognizer）**,做该画面特有的额外识别（如货币战争备战画面的金币 / 阶段 / 阵营在场人数）,把结构化领域事实塞进 `AnalyzeScreenResult.extras` 回传。这是 per-screen **注册机制 + 自动加载**:[design-principles.md](design-principles.md) **P2**（server 给领域事实）。
+
+- **契约在公共包**:`one_dragon/base/screen/screen_recognizer.py` 的 `ScreenRecognizer`（类属性 `screen_name` + `recognize(ctx, image, screen_info) -> dict | None`）+ `ScreenRecognizerRegistry` + `RecognizerScanResult`。游戏无关,ZZZ 可复用。
+- **扫描器在 SR backend**:`screen_recognizer_scan.scan_recognizers(ctx, refresh=False)` 镜像 `operation_registry.scan_operations`（`_SCAN_ROOTS` + rglob + `__module__` 守卫 + 模块级 `_CACHE`）,扫描 `sr_od.operations` + `sr_od.application`,挑 `ScreenRecognizer` 子类 → **无参实例化** → 按 `.screen_name` 注册（唯一差异:op 扫描纯反射不实例化,recognizer 扫描会 `attr()` 实例化,故 recognizer `__init__` 必须无副作用零参数）。惰性,首次精准命中触发整树扫描,之后 `dict.get`。
+- **接入**:`backend_context.analyze()` 精准命中后 `get_recognizer(ctx, screen_name)` → `recognizer.recognize(...)`;整个查表+调用包在 try 里,**任一步异常 → `extras=None`,绝不中断 analyze**（错误隔离）,`json.dumps(extras)` 校验防非序列化值漏到序列化层。
+- **并发安全(关键)**:`analyze_screen` 不查 `run_slot`,可与运行中 operation 并发 → recognizer 必须是**纯读**:不写 `self.`、不写模块全局、不读写 `cw_match.session`。故货币战争备战 recognizer 用纯 reader + 自写 `_read_phase_round_pure`（不复用写全局的 `read_phase_round`）。
+- 新增画面识别器（怎么写 / 放哪 / 契约）见 [screen-recognizers.md](screen-recognizers.md)。
 
 ## 适配器
 

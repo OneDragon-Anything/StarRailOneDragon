@@ -24,6 +24,7 @@ SKILL.md 4 节判据,每节对应一类项目专属坑:
 | §2 定位故障环节(节点级) | 数重复记录判循环 vs 进展;对照 `@operation_node`/`@node_from` 流转图 | 路由节点死循环 |
 | §3 识别类 bug 专项(画面/OCR) | 分析路径 ≠ bot 路径;离线遍历裁剪×阈值×区域 | analyze 误导 / OCR 迁移 |
 | §4 采集证据 | 识别时刻截图(`is_debug` 门控)+ 离线同参数复现 | bot 当时看到的帧不可回看 |
+| §5 根因是陌生画面 → 先建档 | 说不出画面全部可交互元素 + 各自点后跳哪 → 先建档(`od-dev-screen-onboarding`)别猜修 | debug framing 不触发建档 → 在猜的画面上猜修必回归 |
 
 SKILL.md 只写方法论 / 判据;具体函数名、坐标、版本号是某次案例的偶然细节,留在 `case-study.md` 作论据,不进 SKILL.md(`od-dev-writing-skills` 硬规范 4)。
 

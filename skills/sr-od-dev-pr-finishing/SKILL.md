@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-pr-finishing
-description: 当用户要把已开的 PR 推到「完善可合并」、处理 PR/CodeRabbit review、清 unresolved thread、问 PR 能不能 merge / checks 状态时用。英文:finish/get a PR mergeable、address review comments、PR not merging、CI red、unresolved threads。仅 PR 已开后的收尾;单条评论处理用 superpowers:receiving-code-review。
+description: 当用户要把已开的 PR 推到「完善可合并」、处理 PR/CodeRabbit review、清 unresolved thread、修 CI red / checks 状态时用。英文:finish/get a PR mergeable、address review comments、PR not merging、CI red、unresolved threads。仅 PR 已开后的收尾;**只审查/判断 PR 能否合并不做收尾见 sr-od-dev-pr-review**;单条评论处理用 superpowers:receiving-code-review。
 ---
 
 # PR 收尾(跑到完善可合并)

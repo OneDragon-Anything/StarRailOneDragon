@@ -14,6 +14,7 @@ game 切片方法（``check_window``/``capture``/``analyze``）从
 
 import asyncio
 import contextlib
+import json
 import subprocess
 import threading
 import time
@@ -34,9 +35,10 @@ from one_dragon.base.operation.application.application_run_context import (
 )
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.screen.screen_area import ScreenArea
+from one_dragon.base.screen.screen_info import ScreenInfo
 from one_dragon.base.screen.screen_match import find_screen_matches
 from one_dragon.utils import cv2_utils, debug_utils, os_utils
-from one_dragon.utils.log_utils import mask_text
+from one_dragon.utils.log_utils import log, mask_text
 from sr_od.backend.schemas import (
     AnalyzeScreenResult,
     ApplicationInfo,
@@ -45,6 +47,7 @@ from sr_od.backend.schemas import (
     RunStatusResult,
     WindowStatus,
 )
+from sr_od.backend.screen_recognizer_scan import get_recognizer
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -677,8 +680,24 @@ class SrBackendContext:
             screens = find_screen_matches(self._ctx, image)
             if write_back and screens and screens[0].is_precise:
                 self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
+
+            # —— 精准命中 → 按画面查表跑额外识别器(无注册则 None,稳态零额外开销)——
+            #    整个查表+调用都包在 try 里(含 get_recognizer 触发的惰性首扫):任一步异常 → extras=None,绝不中断 analyze。
+            extras: dict | None = None
+            if screens and screens[0].is_precise:
+                try:
+                    recognizer = get_recognizer(self._ctx, screens[0].screen_name)   # 惰性首扫在此触发;扫描内部已 try/except 记 failures 不抛,但兜底防 rglob 等意外
+                    if recognizer is not None:
+                        screen_info = self._ctx.screen_loader.get_screen(screens[0].screen_name)   # 精准命中保证该画面已建档故能取到(非 Optional);理论边界异常由本 try 兜成 extras=None
+                        extras = recognizer.recognize(self._ctx, image, screen_info)
+                        if extras is not None:
+                            json.dumps(extras)   # 提前校验 JSON 可序列化,违例走下面 except(extras=None),不让坏值漏到序列化层拖垮响应
+                except Exception as e:  # noqa: BLE001 recognizer 异常(含扫描/读取/返回非 JSON 可序列化值)绝不中断 analyze
+                    log.warning(f'recognizer[{screens[0].screen_name}] 异常: {e}')
+                    extras = None
+
             return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None,
-                                       screenshot_path=saved_path, vision_hint=_VISION_HINT)
+                                       screenshot_path=saved_path, vision_hint=_VISION_HINT, extras=extras)
         except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:不回写,返失败(存盘已成功的仍回传路径排障)
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e), screenshot_path=saved_path)
 
@@ -766,6 +785,43 @@ class SrBackendContext:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return _area_result(False, screen_name, area_name, None, error=str(e),
                                 count=self._safe_area_count(screen_name))
+
+    def create_screen(self, screen_id: str, screen_name: str, app_id: str = '', pc_alt: bool = False) -> dict:
+        """创建一个新画面(空 area_list;写 yml + reload)。操作类。
+
+        screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area`` 加 area。
+        无需游戏在线。
+
+        Args:
+            screen_id: 画面 ID(英文 snake_case,作 yml 文件名;如 currency_war_lobby)。
+            screen_name: 画面名(中文,作 get_screen / analyze 的 key;如 货币战争-大厅)。
+            app_id: 所属应用 ID(空 = 全局 screen)。
+            pc_alt: PC 端点击是否需 Alt。
+
+        Returns:
+            ``{success, screen_id, screen_name, action(created), error}``。
+        """
+        try:
+            if not screen_id or not screen_name:
+                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
+                        'action': None, 'error': 'screen_id / screen_name 不能为空'}
+            loader = self._ctx.screen_loader
+            if screen_id in loader._id_2_screen:
+                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
+                        'action': None, 'error': f'screen_id 已存在: {screen_id}'}
+            if screen_name in loader.screen_info_map:
+                return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
+                        'action': None, 'error': f'screen_name 已存在: {screen_name}'}
+            screen_info = ScreenInfo({
+                'screen_id': screen_id, 'screen_name': screen_name,
+                'app_id': app_id, 'pc_alt': pc_alt, 'area_list': [],
+            })
+            loader.save_screen(screen_info)
+            return {'success': True, 'screen_id': screen_id, 'screen_name': screen_name,
+                    'action': 'created', 'error': None}
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
+                    'action': None, 'error': str(e)}
 
     def _safe_area_count(self, screen_name: str) -> int | None:
         """异常路径下尽量取 area 数(取不到返 None,不再抛)。"""

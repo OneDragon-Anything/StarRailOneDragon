@@ -193,12 +193,19 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
         Returns:
             ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述、
-            screenshot_path、vision_hint)。
+            screenshot_path、vision_hint、extras)。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
             需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
+            精准命中时 ``screens[0].unmatched_areas`` 给出该画面未命中 area 及原因:
+            ``no_method``=纯定位区(无 OCR/模板,带 ``pc_rect`` 可点击)、
+            ``sub_state``=有识别方法但当前不可见的子态区(带 ``text``/``template_id``)。
 
             ``vision_hint``(success 时):本结果仅含 OCR + 模板匹配的部分识别,不等同完整
             视觉理解;需要全面判断画面时配合视觉工具 / 多模态再看(能力边界提醒,非错误)。
+
+            ``extras``(精准命中时):若该画面注册了额外识别器(recognizer),带该画面的结构化
+            领域事实(画面特定结构,如货币战争备战画面的前后台 / 备战席角色 + 金币 / 阶段);
+            识别器异常不中断本结果(extras=None);无注册识别器的画面恒为 None。
         """
         try:
             return backend.analyze(screenshot, save_image)
@@ -271,6 +278,27 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         except Exception as e:  # noqa: BLE001 工具层统一兜底
             return {'success': False, 'screen_name': screen_name, 'area_name': area_name,
                     'action': None, 'area_count': None, 'error': str(e)}
+
+    @mcp.tool(annotations=ToolAnnotations(title="新建画面"))  # 操作类:建新 screen_info(写 yml + reload)
+    def create_screen(
+        screen_id: Annotated[str, Field(description="画面 ID,英文 snake_case,作 yml 文件名(如 currency_war_lobby)")],
+        screen_name: Annotated[str, Field(description="画面名,中文,作 get_screen / analyze 的 key(如 货币战争-大厅)")],
+        app_id: str = '',
+        pc_alt: bool = False,
+    ) -> dict:
+        """创建一个新画面(空 area_list;写 yml + reload)。操作类,改 screen_info。
+
+        screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area`` 加 area。
+        无需游戏在线。**增减 MCP method 需客户端 /mcp 重连**获取新工具。
+
+        Returns:
+            dict: ``{success, screen_id, screen_name, action(created), error}``。
+        """
+        try:
+            return backend.create_screen(screen_id, screen_name, app_id, pc_alt)
+        except Exception as e:  # noqa: BLE001 工具层统一兜底
+            return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
+                    'action': None, 'error': str(e)}
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
     def close_game() -> str:

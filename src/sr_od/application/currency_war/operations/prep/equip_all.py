@@ -1,22 +1,18 @@
-# 未验证(D-148 drag-equip op,2026-08-09)
 
-"""货币战争 全员装备 op(D-148 + D-155:drag 装备区 equip icon → char grid slot)。
+"""货币战争 全员装备 op —— DORMANT(未接进 BattlePrepCycle,待建档后重写)。
 
-**背景**:bot own equip(decide_supply 无钻时拣)但**不装备**(equips UNREAD + 无 equip op)→ 单位裸装
-→ 弱(敌方词缀「软弱无力/额外打击」惩罚裸装)。D-155 web 确认机制:**棋盘 prep board 装备区**(右侧
-`区域-道具装备` x1252-1918 y90-710)的 owned equip icon(**long-press/drag** → char 头像/格 → 穿戴)。
+**状态(D-18)**:本 op 已撤销重接(e9747690 解绑 + D-18),BattlePrepCycle 回「买→部署→出战」(无装备节点)。
+原 `_detect_equip_icons` 亮度检测区域 **x1800-1918 已证伪 = 装饰球体非 owned equip icon**(D-18:
+r1-1 + r1-6 VLM 两样本一致),整个检测建在错区域 → 假阳性(误判球体为装备)→ drag 假 icon 破坏棋盘/出战。
+bot 当前裸装 → 装备是 A8 大杠杆(D-17),但**必须先建档再重写,不能在错区域上叠补丁**。
 
-**机制实跑(D-155)**:装备 icon 在右列(x~1851,y 随 owned equip 数;亮度列检测可定位);drag icon →
-char grid slot(前排槽 center,test 验 tentative 生效 —— body figure drop 失败,grid slot drop 成功)。
+**重写计划(onboarding-first,防 D-148 churn)**:先按 `od-dev-screen-onboarding` 给装备区正式建档
+(多 crop 交叉验证 + 三态样本:空槽占位符 / 填充装备 / 工具;owned 装备实际位置待定位)→ 再重建检测
+(形状/边框/图案,非亮度)→ 再重开 drag(穿戴机制 = drag,见 D-17/D-18 + strategy/07)。
 
-**op**:① 亮度列检测 装备区 右列(x1800-1918)owned equip icon 位置;② 每个 icon drag → 前排 char
-grid slot(循环 前排-1..4 center);③ 验证(re-detect:icon 数减少 = 装上)。接 BattlePrepCycle(部署后)。
-
-**注意**:① drop zone = grid slot center(y398),非 body figure(后者失败);② 勿 ESC(中断挑战 bug#2);
-③ owned equip 数有限(3/match),全装是边际改善(但每局都裸装输,装上即改善)。
+**当前代码**:detect-only 探针(equip_all node 截图 `cw_equip_detect_*`)是 D-18 诊断遗留,已得出
+"区域错"结论,区域证伪后探针不再有诊断价值(保留作存档);unreachable drag 代码已删。
 """
-import time
-
 import cv2
 import numpy as np
 
@@ -29,7 +25,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class EquipAll(SrOperation):
-    """备战阶段:全员装备(drag 装备区 owned equip icon → 前排 char grid slot,D-148/D-155)。
+    """备战阶段:全员装备(drag 装备区 owned equip icon → 前排 char grid slot,/)。
 
     前置:已在「货币战争-备战」(shop 关,detail panel 关 —— 装备区 visible)。部署后跑(板已满)。
     """
@@ -41,7 +37,6 @@ class EquipAll(SrOperation):
     ZONE_Y1: int = 90
     ZONE_Y2: int = 710
     ICON_Y_MAX: int = 450   # icon 在上半区(y90-450);下半(y>450)是别的 UI(过滤)
-    # 前排 char drop zone。D-155 "拖到角色头像/格":grid center(398)+ body(450)都失败 → 试 **avatar
     # 头像**(slot 顶 ~y350,char 小肖像+HP bar 处)。screen_info 前排-1..4 x:743/887/1033/1179。
     FRONT_SLOTS: list[Point] = [Point(743, 350), Point(887, 350), Point(1033, 350), Point(1179, 350)]
 
@@ -84,25 +79,9 @@ class EquipAll(SrOperation):
             log.info('[cw-equip] 装备区无 owned equip icon → 无可装,跳过')
             return self.round_success('无 equip')
         log.info(f'[cw-equip] 检测 {len(icons)} 个 owned equip icon:{[(p.x, p.y) for p in icons]} → drag 到前排槽')
-
-        equipped = 0
-        for i, icon in enumerate(icons):
-            if i >= len(self.FRONT_SLOTS):
-                break   # icon 多于前排槽 → 只装前排(余下装后排待扩)
-            dst = self.FRONT_SLOTS[i]
-            # D-155:long-press/drag 装备 icon → char grid slot。hold_time=0.8(long-press 拾起 equip icon;
-            # 无 hold_time drag 不拾起 → 不装备,2026-08-09 实跑 icon 数未减 = drag 未生效)
-            self.ctx.controller.drag_to(start=icon, end=dst, duration=1.5, hold_time=0.8)
-            time.sleep(0.8)
-            equipped += 1
-            log.info(f'[cw-equip] drag equip{i+1}({icon.x},{icon.y}) → 前排-{i+1}({dst.x},{dst.y})')
-
-        # 验证:re-detect icon(应减少 = 装上)
-        time.sleep(0.5)
-        after_icons = self._detect_equip_icons(self.screenshot())
-        log.info(f'[cw-equip] 装后 re-detect:{len(after_icons)} icon(装前 {len(icons)})')
-        if len(after_icons) < len(icons):
-            log.info(f'[cw-equip] ✓ icon 减少({len(icons)}→{len(after_icons)})= 装备成功')
-        else:
-            log.warning('[cw-equip] ⚠ icon 未减(drag 可能未生效 / drop zone / panel 遮)')
-        return self.round_success(f'equip drag {equipped}(icon {len(icons)}→{len(after_icons)})', wait=1)
+        self.save_screenshot(prefix='cw_equip_detect')   # D-18 detect-only:捕获 equip 区(球体 vs 真装备),供修检测
+        # D-18 detect-only(诊断检测假阳性根因):不 drag(假 icon=装饰球体会破坏棋盘/出战),只截图捕获。
+        # 跑到 r1-5(补给后真装备)→ 对比 cw_equip_detect 截图区分真装备 icon vs 空槽球体 → 修 _detect_equip_icons → 重开 drag。
+        return self.round_success(f'detect-only {len(icons)} icon(D-18 区域证伪,探针存档;待建档重写)')
+        # unreachable drag 代码已删(D-18:建在证伪的 x1800-1918 装饰球体区域 → 假阳性破坏棋盘)。
+        # 重写走 onboarding-first:先建档装备区三态 → 重建 _detect_equip_icons(非亮度)→ 重开 drag(见 docstring)。

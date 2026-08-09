@@ -1,8 +1,8 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
-"""货币战争 部署 op(D-98:接入 plan() 的 DeployMove,替代 v1 naive 填位)。
+"""货币战争 部署 op(接入 plan() 的 DeployMove,替代 v1 naive 填位)。
 
-**策略驱动部署**(D-98,2026-08-07):读 ``session.pending_deploys``(plan 算出的 DeployMove 列表),
+**策略驱动部署**(,2026-08-07):读 ``session.pending_deploys``(plan 算出的 DeployMove 列表),
 按每个 move 的 ``to_row``(front/back)+ ``bench_idx``(对应 tracked_bench 顺序)拖到对应排的空槽。
 不再无脑从槽 0 拖全部到前排优先。
 
@@ -22,6 +22,7 @@ from sr_od.application.currency_war.currency_war_char_id import (
     AvatarTemplates,
     load_avatar_templates,
 )
+from sr_od.application.currency_war.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
@@ -30,7 +31,7 @@ from sr_od.application.currency_war.cw_identity_obs import (
 from sr_od.application.currency_war.cw_observation import (
     read_deployed_count,
 )
-from sr_od.application.currency_war.cw_state import DeployMove
+from sr_od.application.currency_war.cw_state import BenchChar, DeployMove
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -74,14 +75,11 @@ class DeployBench(SrOperation):
             return self.round_success(DeployBench.STATUS_NO_BENCH)
 
         templates = self._get_templates()
-        _dep_sift = read_deployed_chars(self.ctx, self.last_screenshot, templates) if templates else None
-        # D-145(review-a0610 重大发现):deploy 全部 bench(slot-iteration + retry-stick),非 SIFT-gated。
-        # 旧 `if actual`(SIFT read_bench_chars)只迭代 SIFT 可见角色;SIFT 只 4 角色可靠(D-75)→ 大多数
-        # target 单位识别不了 → 永远不上 board → board[追击] 卡 1(D-140 真因,非 merge/cap/deployed-lock)。
+        # _dep_sift 不再算(D-5 后占用走 CV slot_occupied;_deploy_all_slots 活跃路径不用 _dep_sift。
+        # _deploy_by_identity/_strategic 是死代码)。省一次 SIFT read_deployed_chars(提速)。
+        _dep_sift = None
         # 改:遍历 bench 物理槽 drag→board,retry-stick 验 bench-count 降(有角色 deployed;空槽/板满 不降→跳/停),
         # deploy 全部 owned(target+off-target)→ target 上场→bond 激活。pref 无身份用 front 先填(次优,target 上场首要)。
-        # D-151(用户确认 deployed 可卖):deploy-swap —— board 有 off-target 阵营(∃ faction ∉ target)
-        # → sell all deployed + redeploy bench(comp-curated via D-138/D-142 buying)。board OCR factions 做条件
         # (不需身份)。deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
         _match = self.ctx.cw_match
         _board = (_match.session.last_state.board
@@ -92,26 +90,96 @@ class DeployBench(SrOperation):
         _target_factions: set[str] = set(_tgt_comp.factions) if _tgt_comp is not None else set()
         _has_offtarget = bool(_board and _target_factions
                              and any(f not in _target_factions for f in _board))
-        if _has_offtarget:
-            _already_swapped = getattr(_match, 'deploy_swapped', False) if _match is not None else False
-            if not _already_swapped:
-                log.info(f'[cw-deploy] deploy-swap(D-151 one-time):board off-target({_board} vs {_target_factions})'
-                         f' → sell all deployed(清 starters)+ redeploy bench;之后不再 sell(让 comp 累积)')
-                self._sell_all_deployed(front, back)
-                if _match is not None:
-                    _match.deploy_swapped = True   # one-time:只第一次 swap,之后 comp 累积不被卖
+        if _has_offtarget and templates is not None and _target_factions:
+            # D-10:卖 off-target deployed 给 bench target 腾位(替一次性 sell-all)。死锁根因:bot 买到 target
+            # 单位但板满(cap)+ off-target 卖不掉(旧 deploy_swapped 一次性冻结)→ bench target 上不了场 →
+            # 板冻结 off-target → 慢失血。修:bench 有 target 单位时,卖 deployed 中的 off-target(留 target),
+            # 腾位给 bench target(_deploy_deterministic 填)。自收敛(板全 target → _has_offtarget=False 停)。
+            # 守卫(D-3):bench 有 target 才卖(有更好的要换上);无 target 留 off-target bodies(> 空板)。
+            _bench_chars = read_bench_chars(self.ctx, self.last_screenshot, templates)
+
+            def _is_tgt_char(name: str) -> bool:
+                _c = get_char(name) if name else None
+                return _c is not None and bool((set(_c.factions) | set(_c.flows)) & _target_factions)
+
+            _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
+            if _bench_tgt_n > 0:
+                _n = self._sell_offtarget_deployed(front, back, _target_factions, templates,
+                                                   max_sell=_bench_tgt_n)
+                log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
+                         f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
-                log.info('[cw-deploy] deploy-swap 已做过(D-151 one-time),不再 sell(comp 累积中)')
-        if templates:
-            self._deploy_all_slots(bench, front, back, _dep_sift, templates)
-        else:
-            log.info('[cw-deploy] 无 avatar 模板 → naive 填位')
-            self._deploy_naive(bench, front, back)
+                log.info('[cw-deploy] deploy-swap 跳过:bench 无 target 单位(留 off-target bodies;'
+                         ' 根因=buy 未买 target / economy 未攒金升级)')
+        self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(替 trial-and-error _deploy_all_slots)
+        self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
 
         time.sleep(0.5)
         log.info('[cw-deploy] 拖完')
 
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
+
+    def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
+                              templates: AvatarTemplates | None) -> None:
+        """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽拖到一个空目标槽(前排优先,target 阵营先)→
+        CV 验「源备战槽空了」=成功。替 trial-and-error(无废拖空备战槽、无换槽试错、CV 验替 SIFT)。
+        CV 验源槽空同时覆盖 place + swap(swap 时被换下角色回 bench,源槽仍空)。
+
+        D-8 接身份:排序(target 先)用 SIFT ``read_bench_chars``(71 CW 立绘库可靠)读 bench 真实阵营,
+        替不完整的 ``bench_slot_map`` 跟踪。SIFT 未命中的 bench 角色 → 当 rest(照常 deploy,只不优先)。
+        D-10:fresh screenshot(``self.screenshot()``)看 post-sell 状态(_sell_offtarget_deployed 腾出的空槽)。
+        """
+        scr = self.screenshot()
+        bench_occ = [i for i, c in enumerate(bench) if slot_occupied(scr, int(c.x), int(c.y))]
+        targets = ([(0, i) for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
+                   + [(1, i) for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))])
+        if not bench_occ or not targets:
+            log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} empty_targets={len(targets)}'
+                     f' → {"无 bench 角色" if not bench_occ else "板满无空槽(swap 待身份)"}')
+            return
+        _match = self.ctx.cw_match
+        _sess = (_match.session if (_match is not None and _match.session is not None) else None)
+        _tgt = (set(_sess.target_comp.factions)
+                if (_sess is not None and _sess.target_comp is not None) else set())
+        # D-8:bench 身份走 SIFT(read_bench_chars,71 CW 立绘库可靠)→ 真实羁绊(阵营 ∪ 流派)→ target 先。
+        # 替 bench_slot_map(shop.py pixel-diff 跟踪,不完整 → target 角色认不出 → 永远当 rest → 不集中)。
+        _bench_id: dict[int, set[str]] = {}   # bench_idx(0-based) → 该角色羁绊集合
+        if templates is not None and _tgt:
+            for bc in read_bench_chars(self.ctx, scr, templates):
+                ch = get_char(bc.char_id) if bc.char_id else None
+                if ch is not None and 1 <= bc.slot <= len(bench):
+                    _bench_id[bc.slot - 1] = set(ch.factions) | set(ch.flows)
+            log.info(f'[cw-deploy] bench 身份(SIFT):{ {i: sorted(b) for i, b in _bench_id.items()} }'
+                     f' tgt={sorted(_tgt)}')
+        tgt_idx, rest = [], []
+        for i in bench_occ:
+            _bonds = _bench_id.get(i)
+            _is_tgt = bool(_bonds and _bonds & _tgt) if _tgt else False
+            (tgt_idx if _is_tgt else rest).append(i)
+        order = tgt_idx + rest
+        log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx} empty_targets={len(targets)}')
+        placed = 0
+        for bi in order:
+            if not targets:
+                break
+            src = bench[bi]
+            row, ti = targets.pop(0)
+            dst = (front if row == 0 else back)[ti]
+            for _attempt in range(3):
+                self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
+                time.sleep(0.7)
+                if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
+                    placed += 1
+                    if _match is not None and getattr(_match, 'bench_slot_map', None):
+                        _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
+                        if _gone is not None:
+                            del _match.bench_slot_map[_gone]
+                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1} → {"前" if row == 0 else "后"}排{ti+1} ✓ (CV 验源槽空)')
+                    break
+            else:
+                log.info(f'[cw-deploy] deterministic: bench槽{bi+1} 拖3次源槽未空(bug#1?),跳过')
+                targets.insert(0, (row, ti))   # 目标槽没占住,回收给下个角色
+        log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
     def _get_templates(self) -> AvatarTemplates | None:
         """加载 avatar SIFT 模板(缓存到 ctx.cw_avatar_templates,首次 load 后复用)。"""
@@ -134,15 +202,14 @@ class DeployBench(SrOperation):
                             deployed_before: int | None = None,
                             _dep_sift: list | None = None,
                             templates: AvatarTemplates | None = None) -> None:
-        """D-102:按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
+        """按**实际识别**的 bench 角色身份 deploy(替代 tracked_bench idx)。
 
-        D-108:target_factions 非空 → target-first sorted deploy。
-        D-108d:cap_remaining 限 deploy 数。
-        D-108f:SIFT deployed count 替 OCR。
-        D-116:SIFT slot-level occupied detection(_find_empty_slot)。
-        D-117:bug#1 缓解(mouse_move 先)+ 长 duration + SIFT 验 + retry(3 次)。
+        target_factions 非空 → target-first sorted deploy。
+        d:cap_remaining 限 deploy 数。
+        f:SIFT deployed count 替 OCR。
+        SIFT slot-level occupied detection(_find_empty_slot)。
+        bug#1 缓解(mouse_move 先)+ 长 duration + SIFT 验 + retry(3 次)。
         """
-        # D-122 L2b:concentration deploy(deployed-lock 防 spread;替 D-121 target-only/全 deploy)。
         # deploy target 阵营 OR 集中阵营(bench+deployed faction count≥2);off-target 单张留 bench 可 sell。
         # 配 L1(cw_decisions 集中化 buy)+ L3(emergent target)。无 target 无集中(board 空)→ tempo seed
         # (deploy ≤2 最高 count)防空板全掉血;board 非空 + 无 target/集中 → 不 deploy(off-target 留 bench)。
@@ -165,16 +232,14 @@ class DeployBench(SrOperation):
 
             def _conc(bc) -> int:
                 return _fcount.get(getattr(bc, 'faction', ''), 0)
-            # D-125:deploy ALL bench chars(concentration-first 排序:target/高count 先),填满 board 到 cap。
             # concentration-only 致 **front-empty 卡死**(2026-08-08 验「前台区域无角色 无法出战」—— 全 back-pref
             # 集中角色 → front 空 → 游戏拒出战 → stall)。fill 保证 valid board(front+back 都有)+ concentration
             # 优先(deepen target/集中)。accept 有限 spread-lock(deployed-lock 下 tempo 必要,off-target 沉没);
-            # D-123 retry-stick 保证真上 board;配 L1 集中化 buy + concentration-first 排序尽量减 spread + 优先集中。
             _pool_n = sum(1 for bc in actual if _is_target(bc) or _conc(bc) >= 2)
             actual = sorted(actual, key=lambda bc: (0 if (_is_target(bc) or _conc(bc) >= 2) else 1,
                                                    -_conc(bc), bc.slot))
             log.info(f'[cw-deploy] fill(concentration-first):{_pool_n} 集中/target + {len(actual) - _pool_n} '
-                     f'fill = {len(actual)} chars → 填板(D-123 retry-stick;front+back 都填)')
+                     f'fill = {len(actual)} chars → 填板(retry-stick;front+back 都填)')
 
         occupied_front: set[int] = set()
         occupied_back: set[int] = set()
@@ -188,8 +253,7 @@ class DeployBench(SrOperation):
                      f'(共 {len(occupied_front) + len(occupied_back)} occupied)')
 
         dragged = 0
-        consecutive_fail = 0   # D-141b:连续 deploy 无 stick 计数(board 满/拖坏 早停)
-        # D-123 retry-until-stick:SIFT 占位检测(_dep_sift)对 stage 角色 false-negative(2026-08-08 确认:
+        consecutive_fail = 0
         # occupied(SIFT) 显 2 但 board 实际 4)→ _find_empty_slot 选占槽 → 游戏拒拖 → 角色回 bench →
         # board 卡 spread。改:不靠 SIFT 选槽,改 **deploy→verify(bench count 降 = 角色真上 board)→
         # 没中试下槽**。manual 验空槽 drag 能 stick(群攻 1→2)。bench SIFT 可靠(检 bench 角色),作 verify。
@@ -207,7 +271,6 @@ class DeployBench(SrOperation):
                 if try_idx in occupied_set:
                     continue
                 dst = slots_row[try_idx - 1]
-                # D-118b:CW deploy = long-press drag(hold 0.5s → drag → release)。
                 self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
                 time.sleep(0.7)
                 # verify:re-read bench,count 降 = 角色真上 board(stick)。bench SIFT 可靠。
@@ -219,8 +282,6 @@ class DeployBench(SrOperation):
                     stuck = True
                     log.info(f'[cw-deploy] retry-stick:bench[{bc.slot}]({bc.char_id}/{pref}) → {pref}-{try_idx} '
                              f'✓ stick(bench {_bench_n + 1}→{_bench_n})')
-                    # task#105 step④(D-130/D-131):deploy 同步 tracked_bench_chars→tracked_deployed。
-                    # 按 bc.char_id 匹配(SIFT 识别);char_id='?'(未识别)无法匹配 → 漂移靠 board 校正(D-131)。
                     # 保留 buy 的正确 star(pop tracked_bench_chars 的,非 SIFT star=1)。待 step⑥(cw_observation
                     # seed state.deployed=tracked_deployed)才生效;现仅维护 session 持久态。
                     _sess = self.ctx.cw_match.session if self.ctx.cw_match is not None else None
@@ -239,59 +300,130 @@ class DeployBench(SrOperation):
             else:
                 consecutive_fail += 1
                 log.info(f'[cw-deploy] bench[{bc.slot}]({bc.char_id}) 未能 deploy(槽满/拖失败,留 bench)')
-                # D-141b:board 已满(cap 估偏高 level / paddle 未读到)时全 bench 试拖都失败 → 每个浪费 ~10s。
                 # dragged 仍 0(从无 stick)+ 连续 2 次失败 = board 真 full(有空槽 retry-stick 会中)→ 早停,省 ~70s
                 # (9→2 次失败)。仅 dragged==0 触发:已开始 deploy 后不早停(留 cap_remaining 控,防 under-deploy)。
                 if dragged == 0 and consecutive_fail >= 2:
-                    log.info('[cw-deploy] 早停:dragged=0 + 连续2次无 stick → board 满,停止试拖(D-141b)')
+                    log.info('[cw-deploy] 早停:dragged=0 + 连续2次无 stick → board 满,停止试拖(b)')
                     break
-        log.info(f'[cw-deploy] 拖完:retry-stick {dragged} 个(D-123;fill concentration-first D-125)')
+        log.info(f'[cw-deploy] 拖完:retry-stick {dragged} 个(;fill concentration-first )')
 
-    def _sell_all_deployed(self, front: list[Point], back: list[Point]) -> None:
-        """D-151(用户确认 deployed 可卖):卖全部 deployed 角色。遍历 stage 槽(front 4 + back 6)
-        drag→出售区(70,846)。用户建议 drag 时间设长(duration 1.5,非 0.8)—— deployed 角色需更长拖拽
-        才能拾起+拖到出售区。occupied → 卖(gold+),empty → 无影响。"""
+    def _sell_offtarget_deployed(self, front: list[Point], back: list[Point],
+                                 target_factions: set[str], templates: AvatarTemplates | None,
+                                 max_sell: int = 99) -> int:
+        """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
+
+        SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
+        target 单位保留(替旧 sell-all 毁掉板上 target)。卖数 ≤ ``max_sell``(**1:1 替换上限** = bench
+        target 数,保证每个卖出被一个 target 补上,板大小稳定;防 bench target 少却卖光 off-target → 板缩 HP 崩)。
+        ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
+        首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
+        """
+        deployed = read_deployed_chars(self.ctx, self.last_screenshot, templates) if templates else []
         _sell = Point(70, 846)
-        for slot in front + back:
-            self.ctx.controller.drag_to(start=slot, end=_sell, duration=1.5)   # D-151: 用户建议 longer time
+        sold = 0
+        for d in deployed:
+            if sold >= max_sell:
+                break
+            ch = get_char(d.char_id) if d.char_id else None
+            if ch is None:
+                continue
+            bonds = set(ch.factions) | set(ch.flows)
+            if bonds & target_factions:
+                continue   # target 单位,保留
+            row = front if d.position_pref == 'front' else back
+            if not (1 <= d.slot <= len(row)):
+                continue
+            src = row[d.slot - 1]
+            self.ctx.controller.drag_to(start=src, end=_sell, duration=1.5)
             time.sleep(0.5)
-        log.info(f'[cw-deploy] sell-all-deployed(D-151):拖 {len(front) + len(back)} 个 stage 槽 → 出售区')
+            sold += 1
+            log.info(f'[cw-deploy] sell-offtarget:{d.char_id}({sorted(bonds)}) @'
+                     f'{"前" if d.position_pref == "front" else "后"}排{d.slot} → 出售区')
+        if deployed:
+            log.info(f'[cw-deploy] read_deployed_chars={[(d.char_id, d.position_pref, d.slot) for d in deployed]};'
+                     f' sold {sold}/{max_sell} off-target (target_factions={sorted(target_factions)})')
+        return sold
+
+    def _reconcile_tracking(self, templates: AvatarTemplates | None) -> None:
+        """D-12(3.3.2 · 观测回路):deploy 后用 SIFT 真实 bench/deployed 身份重置 session.tracking。
+
+        根因:deploy op 视觉拖拽(D-7/D-8/D-10)不调 ``mutate_bench_deployed`` → session.tracked_bench_chars /
+        tracked_deployed 滞留(还显示已上场的在 bench、已卖的在 deployed)→ 下轮 buy 用漂移 tracking 做集中度
+        判断 → 错。本方法:deploy 完成(shop 关、bench/deployed 全可见、SIFT 准)后,读真实身份重置 tracking,
+        **保留旧 tracking 的 star**(SIFT star 恒 1)。完成观测回路 → 解锁核心锁 ②。
+
+        ⚠️ review 修(2026-08-09):① **pre-log**(纠漂前 log 旧 tracking)直证漂移被纠正(否则只 post 看不出纠没纠);
+        ② **star 多副本**(用 multiset per char_id,非 dict)—— 重复 char_id(如两艾丝妲,一已升星)dict 塌缩 → star 错。
+        """
+        if templates is None:
+            return
+        _match = self.ctx.cw_match
+        if _match is None or _match.session is None:
+            return
+        _old_bench = _match.session.tracked_bench_chars
+        _old_dep = _match.session.tracked_deployed
+        scr = self.screenshot()   # fresh post-deploy
+        real_bench = read_bench_chars(self.ctx, scr, templates)
+        real_deployed = read_deployed_chars(self.ctx, scr, templates)
+        # pre-log:纠漂前旧 tracking char_id(直证漂移:旧 vs 真实不一致 = 漂了被纠正)
+        log.info(f'[cw-deploy] tracking 纠漂前(D-12 pre):bench={[bc.char_id for bc in _old_bench]} '
+                 f'deployed={[bc.char_id for bc in _old_dep]}')
+
+        def _star_pool(old: list[BenchChar]) -> dict[str, list[int]]:
+            pool: dict[str, list[int]] = {}
+            for bc in old:
+                pool.setdefault(bc.char_id, []).append(bc.star)
+            return pool
+
+        _bp, _dp = _star_pool(_old_bench), _star_pool(_old_dep)
+
+        def _keep(bc: BenchChar, pool: dict[str, list[int]]) -> BenchChar:
+            stars = pool.get(bc.char_id)
+            star = stars.pop(0) if stars else bc.star   # multiset:重复 char_id 按序取 star,不塌缩
+            return BenchChar(slot=bc.slot, char_id=bc.char_id, faction=bc.faction,
+                             star=star, position_pref=bc.position_pref)
+
+        _new_bench = [_keep(bc, _bp) for bc in real_bench]
+        _new_dep = [_keep(bc, _dp) for bc in real_deployed]
+        _match.session.tracked_bench_chars = _new_bench
+        _match.session.tracked_deployed = _new_dep
+        log.info(f'[cw-deploy] tracking 纠漂后(D-12 post):bench={[(bc.char_id, bc.star) for bc in _new_bench]} '
+                 f'deployed={[(bc.char_id, bc.star) for bc in _new_dep]}')
 
     def _deploy_all_slots(self, bench: list[Point], front: list[Point], back: list[Point],
                           _dep_sift: list | None, templates: AvatarTemplates | None) -> None:
-        """D-145(review-a0610):deploy 全部 bench 角色(slot-iteration + retry-stick),非 SIFT-gated。
+        """(review-a0610):deploy 全部 bench 角色(slot-iteration + retry-stick),非 SIFT-gated。
 
-        旧主路径用 SIFT read_bench_chars 选部署对象 → SIFT 只 4 角色可靠(D-75)→ target 单位识别不了
-        → 永远不上 board → board[追击] 卡 1(D-140 真因)。改:遍历 bench 物理槽(1..9),drag 每个→board,
-        retry-stick 验 bench-count 降(D-123:benc SIFT count 可靠)= 有角色 deployed;空槽/板满 不降→跳。
+        旧主路径用 SIFT read_bench_chars 选部署对象 → SIFT 只 4 角色可靠()→ target 单位识别不了
+        → 永远不上 board → board[追击] 卡 1(真因)。改:遍历 bench 物理槽(1..9),drag 每个→board,
+        retry-stick 验 bench-count 降(benc SIFT count 可靠)= 有角色 deployed;空槽/板满 不降→跳。
         deploy 全部 owned(target+off-target)→ target 上场→bond 激活。pref 无身份用 front 先填(次优,
         target 上场首要;pref 精确位型待 identity/slot 跟踪修后补)。终止:bench-count=0(全 deploy)或 free 槽尽。
         """
-        occupied_front: set[int] = set()
-        occupied_back: set[int] = set()
-        if _dep_sift:
-            for d in _dep_sift:
-                (occupied_front if d.position_pref == 'front' else occupied_back).add(d.slot)
+        # 占用走 CV slot_occupied(灰度 std:空 placeholder ~11 vs 立绘 ~39+,阈值 25 干净分离)。
+        # 替 SIFT(D-4:SIFT 误判空 front 占用 → 跳前排 → 前排空 → 出战阻塞)。CV 不依赖角色身份/颜色,稳。
+        _scr = self.last_screenshot
+        occupied_front: set[int] = {i for i, c in enumerate(front) if slot_occupied(_scr, int(c.x), int(c.y))}
+        occupied_back: set[int] = {i for i, c in enumerate(back) if slot_occupied(_scr, int(c.x), int(c.y))}
         _bench_n = len(read_bench_chars(self.ctx, self.last_screenshot, templates)) if templates else 0
-        log.info(f'[cw-deploy] fill-all(D-145):bench_count={_bench_n} '
-                 f'occupied(SIFT) front={sorted(occupied_front)} back={sorted(occupied_back)}')
-        # D-152 selective deploy(agent a63a1df6 审 → 实证 deploy 忽略 plan 致 board spread):
-        # 不再 fill-all(D-145 部署 off-target 致 5 阵营各 1,无 tier → r6+ HP 崩)。只 deploy **target 阵营 OR
+        log.info(f'[cw-deploy] fill-all():bench_count={_bench_n} occupied(CV) '
+                 f'front={sorted(occupied_front)} back={sorted(occupied_back)}')
         # 集中阵营**(board+bench count>=2)的 bench 角色 —— 复刻 cw_decisions._should_deploy 语义,但在物理槽层
         # (用 bench_slot_map name→物理 slot,**绕开 logical bench_idx→物理映射墙**;map 即物理 slot,无需转换)。
-        # off-target 留 bench(可卖)。map 空/无 target → fallback fill-all(旧 D-145 行为,无回归;早期无 target 必要)。
         _match = self.ctx.cw_match
         _slot_map = getattr(_match, 'bench_slot_map', {}) if _match is not None else {}
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
         _tgt_factions: set[str] = (set(_sess.target_comp.factions)
                                    if (_sess is not None and _sess.target_comp is not None) else set())
         _board = (_sess.last_state.board if (_sess is not None and _sess.last_state is not None) else {})
-        # 各阵营计数(board deployed + bench_slot_map 角色)= concentration 判据(同 _should_deploy)
+        # 各羁绊计数(board deployed + bench_slot_map 角色)= concentration 判据。
+        # ⚠️ 羁绊 = 阵营(factions) ∪ 流派(flows)统一命名空间(comp.factions 也混两者,见 D-2);
+        # 只算 factions 会漏流派羁绊(椒丘 flows=持续伤害/减益 / 大丽花 flows=击破)→ 永不 match → fill-all。
         _fcount: dict[str, int] = dict(_board)
         for _cn in _slot_map:
             _ch = get_char(_cn) if _cn else None
-            if _ch is not None and _ch.factions:
-                for _f in _ch.factions:
+            if _ch is not None:
+                for _f in tuple(_ch.factions) + tuple(_ch.flows):
                     _fcount[_f] = _fcount.get(_f, 0) + 1
         _deploy_idx: list[int] = []
         for _cn, _slot in _slot_map.items():
@@ -300,29 +432,33 @@ class DeployBench(SrOperation):
             _ch = get_char(_cn) if _cn else None
             if _ch is None or not _ch.factions:
                 continue
-            _factions = set(_ch.factions)
+            _factions = set(_ch.factions) | set(_ch.flows)   # 羁绊 = 阵营 ∪ 流派(D-2:comp.factions 混两者)
             _is_target = bool(_factions & _tgt_factions) if _tgt_factions else False
             _is_conc = any(_fcount.get(_f, 0) >= 2 for _f in _factions)
             if _is_target or _is_conc:
-                _deploy_idx.append(_slot - 1)   # slot 1-indexed → bench idx
-        # D-154(修正 D-152 under-fill 回归,2026-08-09 实跑 r3-r4 board 仅 2 unit → 弱 → HP 崩):
-        # D-152 原 target-only(_deploy_idx only,"off-target 留 bench")→ 板仅 target(1-2 unit)→ 严重 under-fill
+                _deploy_idx.append(_slot - 1)
+        # 诊断(D-1):为何 fill-all —— 记 bench 身份 / 目标阵营 / 每角色匹配
+        _per: dict[tuple[str, int], tuple] = {}
+        for _cn, _slot in _slot_map.items():
+            _c = get_char(_cn) if _cn else None
+            _fs = (_c.factions if (_c is not None and _c.factions) else [])
+            _per[(_cn, _slot)] = (_fs, bool(set(_fs) & _tgt_factions))
+        log.info(f'[cw-deploy] 集中度诊断:slot_map={dict(_slot_map)} tgt_factions={sorted(_tgt_factions)} '
+                 f'fcount={_fcount} per_char_match={_per} deploy_idx={sorted(set(_deploy_idx))}')   # slot 1-indexed → bench idx
         # → 每轮输(baseline fill-all 满 5 unit 存活到 r6)。修:**target-priority + fill** —— target 槽先 deploy
         # (集中优先),再用 off-target 填满(满板存活;bodies 早期 > concentration 晚期;target 够多时自然集中)。
-        # 集中(D-153 clean + target-only deploy)是 late-game 优化(target 充足时);early 满板存活优先。
         _tgt_set = set(_deploy_idx)
         _iter_order = sorted(_tgt_set) + [i for i in range(len(bench)) if i not in _tgt_set]
         if _deploy_idx:
-            log.info(f'[cw-deploy] target-priority+fill(D-154):target 槽 {sorted(_tgt_set)} 先,余 off-target 填满'
+            log.info(f'[cw-deploy] target-priority+fill():target 槽 {sorted(_tgt_set)} 先,余 off-target 填满'
                      f'(target_factions={sorted(_tgt_factions)});满板存活 + target 优先集中')
         else:
-            log.info(f'[cw-deploy] fill-all(D-154):无 target/集中 → 全 {len(bench)} 槽填满')
+            log.info(f'[cw-deploy] fill-all():无 target/集中 → 全 {len(bench)} 槽填满')
         dragged = 0
         consecutive_fail = 0   # 板满/空槽 早停(连续 bench 槽无 stick → 板满,停;省 ~2min 浪费)
-        for i in _iter_order:  # comp 槽优先(D-149),余按 0..8
+        for i in _iter_order:
             if _bench_n <= 0:
                 break  # bench 空(全 deployed 或开局无),无角色可 deploy
-            # D-150(2026-08-09):移除 consecutive_fail 早停 —— bench 有 gaps(前轮 deploy 了 bench[0,1] 留空)
             # → 早停在空槽 → 错过 bench[2+] 角色 → board under-filled(< cap)→ 弱 → HP 崩(实测 retry-stick 0!)。
             # 遍历全 9 槽容忍 gaps;board full 时 inner-loop 无 free 槽 → fast fail(无 drag,~0.5s/slot,可接受)。
             src = bench[i]
@@ -335,12 +471,11 @@ class DeployBench(SrOperation):
                     self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
                     time.sleep(0.7)
                     _bench_now = read_bench_chars(self.ctx, self.screenshot(), templates) if templates else []
-                    if len(_bench_now) < _bench_n:   # bench-count 降 = 角色真上 board(D-123 验)
+                    if len(_bench_now) < _bench_n:
                         occ.add(try_idx)
                         dragged += 1
                         _bench_n = len(_bench_now)
                         placed = True
-                        # D-152:角色已上 board → 从 bench_slot_map 删该 slot(map 跨回合准;否则下轮以为还在 bench)
                         if _match is not None and getattr(_match, 'bench_slot_map', None):
                             _gone = next((n for n, s in _match.bench_slot_map.items() if s == i + 1), None)
                             if _gone is not None:
@@ -354,11 +489,11 @@ class DeployBench(SrOperation):
             else:
                 # bench 槽 i 空(无角色)或板满(无 free 槽)→ consecutive_fail++(连续2→早停)
                 consecutive_fail += 1
-        log.info(f'[cw-deploy] fill-all 拖完(D-145):retry-stick {dragged} 个(全部 bench → board)')
+        log.info(f'[cw-deploy] fill-all 拖完():retry-stick {dragged} 个(全部 bench → board)')
 
     def _deploy_strategic(self, moves: list[DeployMove], bench: list[Point],
                           front: list[Point], back: list[Point]) -> None:
-        """D-98 策略驱动:按 DeployMove(bench_idx, to_row) 拖到对应排的空槽。"""
+        """策略驱动:按 DeployMove(bench_idx, to_row) 拖到对应排的空槽。"""
         front_idx = 0
         back_idx = 0
         dragged = 0

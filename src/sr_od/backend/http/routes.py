@@ -113,8 +113,9 @@ async def handle_game_analyze(backend: SrBackendContext, request: Request | None
         request: Starlette 请求对象(读 query 中的 save_image)。
 
     Returns:
-        200 + 分析结果 JSON(success / ocr_texts / screens / error / screenshot_path / vision_hint);
-        backend 未就绪时返回 503。决策优先看 ``screens``,散落文本看 ``ocr_texts``。
+        200 + 分析结果 JSON(success / ocr_texts / screens / error / screenshot_path / vision_hint /
+        extras);backend 未就绪时返回 503。决策优先看 ``screens``,散落文本看 ``ocr_texts``;
+        精准命中画面若注册了额外识别器,``extras`` 带该画面的结构化领域事实(否则 None)。
     """
     try:
         save_image = _query_bool(request, 'save_image', False)
@@ -128,6 +129,7 @@ async def handle_game_analyze(backend: SrBackendContext, request: Request | None
         "error": result.error,
         "screenshot_path": result.screenshot_path,
         "vision_hint": result.vision_hint,
+        "extras": result.extras,
     })
 
 

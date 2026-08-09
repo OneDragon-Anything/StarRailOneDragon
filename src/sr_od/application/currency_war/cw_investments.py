@@ -3,14 +3,14 @@
 """货币战争 投资策略 + 投资环境领域模型(meta 层,V4.4)。
 
 **来源**:米游社百科「货币战争图鉴」投资策略 `channel/map/209/212`(216)、投资环境 `/213`,
-+ 游戏内「数据银行」投资环境图鉴核对(2026-08-06,D-68;游戏内总 83 / 解锁 68)。
-投资环境全量在本注册表(``INVESTMENT_ENVS``,代码单一源 —— 原 ``investment_envs.md`` doc D-68 已删,
++ 游戏内「数据银行」投资环境图鉴核对(2026-08-06,;游戏内总 83 / 解锁 68)。
+投资环境全量在本注册表(``INVESTMENT_ENVS``,代码单一源 —— 原 ``investment_envs.md`` doc 已删,
 用户原则:代码已建模的游戏数据不存 doc);投资策略全量 216 在 ``investment_strategies.md``(本表只收 T0)。
 
 **用途**:
 - ``InvestmentEnv``(概念股/邀请/契约/时代/经济/规则/专家):**带 faction 字段** —— 概念股/邀请/命运圣杯
   对应哪个阵营是派生 ENV_FACTION_MAP 的单一真相源(改注册表自动传导,取代 cw_comps 硬编码)。
-  D-68 起 INVESTMENT_ENVS 收全部「有名」环境(投资环境屏 OCR 名 → effect/category 查表,识别全集)。
+  起 INVESTMENT_ENVS 收全部「有名」环境(投资环境屏 OCR 名 → effect/category 查表,识别全集)。
 - ``InvestmentStrategy``(局内 3 选 1):event_whitelist 的规范名来源。
 
 **为什么建模**(用户 2026-08-03):核心实体建正规 model 类 + 注册表(可查询/校验/派生),非散 dict。
@@ -18,7 +18,7 @@
 ⚠️ INVESTMENT_ENVS 已全量(7 类有名环境);INVESTMENT_STRATEGIES 仍只收 T0(event_whitelist 用),
 全量 216 在 doc,随事件/补给决策(阶段 3a)接线补全。env_fit 策略影响目前只用「阵营亲和」一维
 (概念股/邀请/命运圣杯),其余类别(契约/时代/经济/规则/专家)效果异质,待分类建模(阶段 3a)。
-版本依赖:赛季扩充会新增/调整(如命运圣杯 = Fate 联动阵营,D-68 新增)。
+版本依赖:赛季扩充会新增/调整(如命运圣杯 = Fate 联动阵营,新增)。
 """
 from __future__ import annotations
 
@@ -53,10 +53,7 @@ def _strat(name: str, rarity: str, effect: str, source: str = "") -> InvestmentS
 
 
 # ===== INVESTMENT_ENVS 注册表(全量;🟢 米游社原文 + 数据银行补;带 faction)=====
-# 数据银行核对(2026-08-06,D-68):游戏内总 83 / 解锁 68。本注册表收全部「有名」环境
-# (米游社图鉴 + 数据银行 OCR 并集);5 个纯 ??? 锁定未命名环境无法收录(🔴 见 decisions.md D-68)。
 # faction 仅概念股/邀请/命运圣杯契约有(加成对应阵营);其余类别效果异质,策略影响待分类建模(阶段 3a)。
-# ⚠️ D-68 更正:原 D-36 收录的「持续伤害概念股」「量子同频概念股」数据银行无此卡 → 不存在,已删
 # (只剩持续伤害/量子同频的「邀请」「契约」形态)。新增:战技点概念股(实存)、红钻/蓝钻贵族、
 # 命运圣杯邀请/契约(Fate 联动阵营)。
 INVESTMENT_ENVS: dict[str, InvestmentEnv] = {e.name: e for e in [
@@ -189,7 +186,7 @@ def get_env(name: str) -> InvestmentEnv | None:
 def is_known_env(name: str) -> bool:
     """投资环境名是否在注册表内(识别完整性信号;OCR 命中注册表外的名字 → 数据缺口,应 log warn)。
 
-    D-68:用于 handle_invest_env 把「未建模环境」从静默中性 fallback 变成可见信号(防假绿,
+    用于 handle_invest_env 把「未建模环境」从静默中性 fallback 变成可见信号(防假绿,
     见 od-dev-gameplay-automation 完成判据反馈)。注册表外的名字可能是:① 赛季新增未收录;
     ② OCR 误识;③ 锁定未命名环境(数据银行 ??? 无法收录)。
     """

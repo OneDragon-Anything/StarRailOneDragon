@@ -43,7 +43,7 @@ class Comp:
 3. **tempo 例外**:连胜/连败 streak(额外金)、HP 危险、战力断档 → 可**破息**(花到 50 以下)抢节奏。
 
 **与战术层接法(02,2026-08-04 已落地)**:`plan()` 中 level_plan `level_up` + afford → **硬 gate 执行 LevelUp**(D-14,非纯贪心 eval delta);`target_comp=None` 时退化为通用曲线 `_DEFAULT_LEVEL_GOAL`。`select_comp`/`maybe_pivot`(cw_comps)选 target,shop.py 接线传 `_target_comp` 给 plan()。具体 level_plan 曲线:comp 自带优先,无则通用曲线兜底。
-通用曲线(research 已有):前期 4-5 级 roll 找 1 费 / 中期升 7 roll 找 4 费、2-6 回合升 8 / 后期升 8-9 找 5 费 + 关键卡追 3 星。
+通用曲线(research 已有):前期 4-5 级 roll 找 1 费 / 中期升 7 roll 找 4 费、2-6 回合升 8 / 后期升 8-9 找 5 费 + 关键卡追 3 星。**完整刷新概率表 Lv1-10(bwiki 🟢,level_plan 硬地基)+ 节点×等级×动作骨架 + 骨架/参数分离论点见 [14 阶段节奏骨架](14_phase_skeleton.md)**(2026-08-09 调研 D-21)。
 来源:research meta 阵容表 + cw_data + **用户实战补充**。meta(版本依赖),做成 config 可热更。起步 ~6-10 套:巡击青雀/昼神阿雅/贝洛伯格召唤/击破流萤/欢愉/列车同行/物质分解液/反甲反震(**2026-08-03:不标"邪道 A8 专项" —— 邪道非必需,这些只是可选的强阵容之一,成型难度各异**)。**用户认同方向**:攻略 + 实战定义足够多优秀阵容,多维打分(强度 + 成型难度 + boss 契合 + 装备契合),运行时按场面灵活选易成型又够强的。
 
 ## comp_score(显式公式,可实施性-1)
@@ -148,3 +148,21 @@ COMP_LIBRARY 加 version_tag;README checklist:版本更新 → 重抓 cw_data �
   - 职责清晰:candidate 无观测(没打过),current 有观测(打过几关)。
 - **F-3 optionality 时间衰减(HIGH)**:eval 中 target_progress 与 optionality 用 α(t) 平衡(详 02 round4 F-3),早灵活晚承诺。select_comp **备选几套(N≈2-3)直到核心到来**(2026-08-03 用户:几套备选不影响经济);核心到了(commit 信号 α 升)收敛到 **commit 1 + pivot 1**。
 - **F-13 target_progress vs optionality shared_char 双重计分(LOW)**:shared_char 同时属 target + ≥2 其他 comp。optionality 只对"非 target 的可转型路径"计分(target 贡献由 target_progress 覆盖);或声明"两个分都拿是 intended"(既推进又保灵活)。注释清楚。
+
+## round 5 补充(2026-08-06 第二轮调研驱动;why 见 decisions D-73)
+
+> 第二轮 V4.4/V4.5 深度调研完成,知识库在 `.debug/temp/currency_war/strategy_research/`(分主题:01 阵容meta/02 角色/03 装备/04 经济/05 投资/06 boss词缀/07 节点伙伴A850/08 缺口与建议)。下文只列**对阵容规划层的设计影响**,细节查 research。
+
+- **R5-1 列车同行 = 姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**:COMP_LIBRARY 的「列车同行」comp core_chars 以 **姬子·启行**(4费)+ 三月七(护盾)为核心;key_equips = 冷笑话引擎+火力风暴潮+高周频电锯+掩体生成枪(反震四件套);成型易-中(7-8级,9人口更优);**boss_weakness/affix_preference 必加「正当防卫」**(反伤词缀克反震,遇则必败 → 遭遇节点必刷新避开,见 06)。
+- **R5-2 COMP_LIBRARY 补缺阵容**(每阵容带 form_difficulty/key_equips/boss_weakness,数据查 research/01):
+  - **命运圣杯流**(Fate 联动,联动后 T0;core Archer+远坂凛+吉尔伽美什+Saber+星徽;form_difficulty=hard,4 个 5 费;**联动前投影不能升星**;祈愿试炼任务期不能拆羁绊)。
+  - **欢愉队**(高配 T0;core 银狼LV.999 狼尊+爻光(不可替代)+火花+藿藿;form_difficulty=hard,双 5 费双 3 星)。
+  - **万敌单C**(form_difficulty=easy,7 级成型,NGA 认 A8 最简单)。
+  - **减益黄泉**(配千冶·刃 V4.4 质变;form_difficulty=medium-hard)。
+- **R5-3 新角色 + 命运圣杯阵营**:`CHARACTER_ROSTER` 补 千冶·刃/姬子·启行(注意与原姬子区分)/远坂凛/吉尔伽美什/Archer/Saber/银狼LV.999/爻光/火花/绯英(费用+阵营+站位);`FACTIONS` 补 **命运圣杯**(唯一经济+战斗双修羁绊,激活祈愿试炼)。进了商店 OCR 才识别。
+- **R5-4 词缀对策进 comp 评分**(详 research/06):`AFFIX_MECHANIC_MAP`+`MECHANIC_COUNTERS/SYNERGIES` 补全 + comp.boss_weakness/affix_preference 体现:**正当防卫→克高频/反震/反甲**(阿雅/姬子反震/白厄/欢愉)、**同步行动→克拉条但利 DOT**、**沉重脚步→刚需护盾**、急速制冷→需解控、重症难题→克奶盾。遇未 OCR 词缀落库,不硬编码全集。
+- **R5-5 概念股送装备件 = 凹开局/选环境新维度**(详 research/03):每个概念股送的基础装备 = 该阵营核心装备合成件(昼神/追击送轮滑鞋→反重力皮靴;仙舟送折叠小刀→高周频电锯;列车送幸运星)。`decide_invest(kind="env")` 在 event_whitelist 分数上加一层:**优先选与 target_comp 核心装备合成件匹配的概念股**(补强 P1-2 ENV_COMP_AFFINITY,从「阵营亲和」细化到「装备件亲和」)。
+- **R5-6 装备合成配方**(详 research/03,落 `cw_equipment`):基础件×2→进阶配方表(反重力皮靴=轮滑鞋×2;高周频电锯=幸运星+折叠小刀;永动机=光能电池×2…)。comp.key_equips 用规范名;equip_fit/supply 选装备据此。
+- **R5-7 商店保底机制进 D 牌逻辑**:每第 5 次刷新必出 5 张同费(采购专员·彩每 5/·金每 7 缩短)。`_refresh_cap`/`_refresh_expected_delta` 建模「刷新计数器→第 5 次保底」;关键回合(升 8 搜核心)刷到第 5 次必出 5 张同费核心 → D 牌估值在该点跳升。
+- **R5-8 姬子·启行「选择伙伴」升级**(详 research/07):`decide_partner` 当前「优先 core_chars 命中」→ 升级为按**当前最缺羁绊 + 装备需求**选(缺护盾→三月七、生存→符玄、输出→白厄、能量→风堇)。依赖 `read_partner` OCR(候选 char_id),当前 OCR 未接(idx=0 盲点),随阶段 5。
+- **数值校准(不属本层,记下)**:刷新费默认 **2 金**(用户 2026-08-06 确认;条件触发后变 → 运行时读 `state.shop_refresh_cost`,代码 `SHOP_REFRESH_COST=2` 默认对);升级金价表 / 连胜阶梯 → 实机 OCR 采集(strategy/13 §13.6 接线)。
