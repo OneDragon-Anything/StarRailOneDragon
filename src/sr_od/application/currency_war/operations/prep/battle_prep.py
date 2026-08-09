@@ -8,7 +8,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
-from sr_od.application.currency_war.operations.prep.equip_all import EquipAll
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -45,14 +44,6 @@ class BattlePrepCycle(SrOperation):
         return self.round_by_op_result(DeployBench(self.ctx).execute())
 
     @node_from(from_name='部署')
-    @operation_node(name='装备')
-    def equip(self) -> OperationRoundResult:
-        # D-148/D-155:部署后→装备(drag 装备区 owned equip icon → 前排 char avatar y350)。
-        # bot own equip 不装 = 执行 gap;EquipAll 解(panel 开/无 equip 时自跳过)。
-        log.info('[cw-prep] 备战单轮 ③ 全员装备(EquipAll, D-148/D-155)')
-        return self.round_by_op_result(EquipAll(self.ctx).execute())
-
-    @node_from(from_name='装备')
     @operation_node(name='出战')
     def battle(self) -> OperationRoundResult:
         # 点出战 + verify transition(仍在备战→retry)。
