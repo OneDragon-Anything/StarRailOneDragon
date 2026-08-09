@@ -56,7 +56,7 @@ class EquipAll(SrOperation):
         col = screen[self.ZONE_Y1:self.ICON_Y_MAX, self.EQUIP_COL_X1:self.EQUIP_COL_X2]
         gray = cv2.cvtColor(col, cv2.COLOR_BGR2GRAY)
         row_bright = (gray > 90).sum(axis=1)
-        icon_rows = np.where(row_bright > 40)[0]
+        icon_rows = np.where(row_bright > 30)[0]   # >30 稳定(>40 漏中间 icon;2026-08-09 实跑调)
         icons: list[Point] = []
         if len(icon_rows) == 0:
             return icons
@@ -89,8 +89,9 @@ class EquipAll(SrOperation):
             if i >= len(self.FRONT_SLOTS):
                 break   # icon 多于前排槽 → 只装前排(余下装后排待扩)
             dst = self.FRONT_SLOTS[i]
-            # D-155:long-press/drag 装备 icon → char grid slot(duration 1.5 long-press)
-            self.ctx.controller.drag_to(start=icon, end=dst, duration=1.5)
+            # D-155:long-press/drag 装备 icon → char grid slot。hold_time=0.8(long-press 拾起 equip icon;
+            # 无 hold_time drag 不拾起 → 不装备,2026-08-09 实跑 icon 数未减 = drag 未生效)
+            self.ctx.controller.drag_to(start=icon, end=dst, duration=1.5, hold_time=0.8)
             time.sleep(0.8)
             equipped += 1
             log.info(f'[cw-equip] drag equip{i+1}({icon.x},{icon.y}) → 前排-{i+1}({dst.x},{dst.y})')
