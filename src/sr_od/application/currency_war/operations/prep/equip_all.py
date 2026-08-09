@@ -41,8 +41,9 @@ class EquipAll(SrOperation):
     ZONE_Y1: int = 90
     ZONE_Y2: int = 710
     ICON_Y_MAX: int = 450   # icon 在上半区(y90-450);下半(y>450)是别的 UI(过滤)
-    # 前排 char grid slot center(D-155 grid drop zone;screen_info 前排-1..4 center y398)
-    FRONT_SLOTS: list[Point] = [Point(743, 398), Point(887, 398), Point(1033, 398), Point(1179, 398)]
+    # 前排 char drop zone。D-155 "拖到角色头像/格":grid center(398)+ body(450)都失败 → 试 **avatar
+    # 头像**(slot 顶 ~y350,char 小肖像+HP bar 处)。screen_info 前排-1..4 x:743/887/1033/1179。
+    FRONT_SLOTS: list[Point] = [Point(743, 350), Point(887, 350), Point(1033, 350), Point(1179, 350)]
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-全员装备')
