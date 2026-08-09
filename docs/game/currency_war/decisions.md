@@ -15,6 +15,15 @@
 
 ---
 
+## D-155 (2026-08-09)【机制澄清·重要】equip = drag 装备区→char(非 detail-panel slot-click);之前探查方向错
+
+- **决策(web 攻略核实:官方 + TapTap + bwiki)**:CW equip 机制 = **棋盘界面的「装备区」(owned equip inventory)长按/拖动装备图标 → 拖到角色头像/格子 → 穿戴**。+ **合成**:拖两件简易装备到一起 → 一件进阶装备。例:拖【幸运星】→ 黑塔 → 装备。
+- **为什么重要(纠偏)**:之前 equip 探查(detail-panel slot-click + 「装备推荐」)**方向错** —— 详情面板的「装备推荐」是**推荐非装备源**,空装备槽 click 不开 equip list(实跑 r7 证:点 1468,866 panel 内无 list)。真装备源 = **棋盘 prep board 上的装备区**(owned equip icons),drag 到 char。
+- **equip op 方向(改)**:① 找**装备区**位置(prep board 上 owned equip icons 的区域 —— 待 screen-onboarding,可能 bottom/side 一排 icon);② **drag** equip icon → char 槽位(同 deploy drag 机制);③ 合成(2 简易 drag 一起 → 进阶,可选优化)。**前提**:bot own equip(decide_supply 无钻时拣;待验 bot 是否真有 equip 在装备区)。
+- **状态**:机制明(web 确认 drag-from-装备区)。**下步**:① prep board 找装备区(owned equip icons 位置,screen-onboarding);② 验 bot 是否 own equip(装备区有 icon?);③ 建 drag-equip op(drag 装备区→char);④ 合成 op(可选)。推翻 D-148 的 detail-panel equip 假设(那是推荐非源)。· D-148(equip gap,机制改)/ equip_probe(detail-panel 方向错,留作 char-click ref)/ D-153(char 详情面板:阵营+出售,非 equip 源)
+
+---
+
 ## D-154 (2026-08-09)【修正·重要】D-152 target-only deploy + D-153 clean 致 board under-fill → 弱 → HP 崩;改 target-priority+fill(满板)+ 解绑 clean
 
 - **决策(实跑负结果纠正)**:D-152 selective deploy 改 **target-priority + fill**(target 槽先 deploy,余 off-target 填满 → **满板存活** + target 优先集中);**D-153 clean 解绑**(fill-all 下 moot —— 卖的 off-target 又 re-deploy;且每轮 +12s)。clean op 代码留(clean_offtarget.py)待 late-game 重接。
