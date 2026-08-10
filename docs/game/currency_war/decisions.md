@@ -528,4 +528,12 @@
 - **改**:抽 `_below_icon_diff(screen_pre, screen_post, avatar_x, below_y=479, bx_half=35, by_half=30) -> float` 成**模块级纯函数**(equip_all.py),op 内联 diff 改调它(可离线 fixture 测,治本:可测设计)。回归测试 `test_below_icon_diff_detects_equip`(飞霄 fixture 锁阈值/区域)。
 - **状态**:**offline 验证 + 抽函数 + 回归测试**。剩 **live drag 落地机制 + read_equips 跨局面** 需游戏条件(补给/奖励节点出穿戴装备)才能验。`· D-41(R19 CV-diff 替 count-verify,本 D-56 offline 核其可靠)/ R14 P0-1(count 验穿假成功,已由 R19 CV-diff 解决)`。
 
+## D-57 (2026-08-10)【验证·equip_all 首次 live 跑(no-op 路径)】备战 1-6 owned 仅冶金炉(工具)→ equip_all run_operation 实跑:read_equips 读到冶金炉 → 工具过滤(_TOOL_CATEGORIES)→ 无穿戴候选 → 干净 break round_success「0 件」,1.97s,无 drag/crash/bug#2。验 read+filter+exit 在真实画面可靠;drag/CV-diff 路径仍待穿戴装备
+
+- **触发**:equip_all dormant 从未 live 跑;备战略 owned 仅工具(冶金炉)无穿戴类 → 正好测 **no-op 路径**(无穿戴 → 干净退出),不需穿戴装备也能验一部分。
+- **跑**:`run_operation(equip_all.EquipAll)`(MCP 后端,真实备战屏)。结果 state=success、duration=1.97s、last_status「装备 0 件到前排 avatar」、failed_node=null。游戏态不变(冶金炉还在,4/4 不变)。
+- **验到**:① cw_equip SIFT 模板加载 OK;② read_equips 在 live 屏读到冶金炉;③ `_TOOL_CATEGORIES={'工具'}` 过滤冶金炉(category='工具')→ wearable=[];④ 无穿戴 → `break` → round_success(不 retry、不 crash);⑤ 无 bug#2(无条件 ESC)、无 bug#1(无 drag)。**read+filter+exit 路径 live 可靠**。
+- **未验(仍阻塞)**:drag 穿戴类 → CV-diff 验穿(D-56 offline 核了 diff 逻辑,但 live drag 落地 + read_equips 跨局面 需 owned 穿戴装备 = 补给/奖励节点)。
+- **状态**:**no-op 路径 live 验证**(+ D-56 offline 验穿逻辑)。equip_all 激活剩:① live drag 测(需穿戴 owned)② P0-2(drag 前 read_equipped_below 读槽空满)③ 接 BattlePrepCycle。`· D-56(offline CV-diff 核)/ R19(CV-diff 替 count-verify)/ D-53~D-55(同期 shop/identity 工作)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
