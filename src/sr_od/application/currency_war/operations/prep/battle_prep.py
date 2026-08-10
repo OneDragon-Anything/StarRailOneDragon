@@ -10,19 +10,22 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
+from sr_od.application.currency_war.operations.prep.equip_all import EquipAll
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
 class BattlePrepCycle(SrOperation):
-    """货币战争 备战单轮自动化:买牌 → 部署 → 出战。
+    """货币战争 备战单轮自动化:买牌 → 部署 → 装备 → 出战。
 
-    把三个子 op 串成单轮:``BuyShopCards``(开商店 → ``cw_decisions.plan`` 驱动买卡/升等级/刷新)→
-    ``DeployBench``(SIFT 身份 + 策略驱动部署 target 优先)→ 点「出战」进自动战斗。
+    把四个子 op 串成单轮:``BuyShopCards``(开商店 → ``cw_decisions.plan`` 驱动买卡/升等级/刷新)→
+    ``DeployBench``(SIFT 身份 + 策略驱动部署 target 优先)→ ``EquipAll``(read_equips owned → 过滤工具 →
+    drag 穿戴类 → 空槽,P0-2 占位检测)→ 点「出战」进自动战斗。
 
     注:DeployBench 已接 SIFT 身份(D-8 立绘库)+ 策略驱动部署(D-7 CV 确定性 + D-10 卖 off-target
-    + D-12 观测回路纠 tracking 漂),非 v1 naive 填位。装备穿戴待 equip_all 重建(D-27/D-28 cw_equip SIFT)。
+    + D-12 观测回路纠 tracking 漂),非 v1 naive 填位。EquipAll 接入 cycle(D-77:supply 装备自动穿,
+    无穿戴 no-op;P0-2 占位 D-58 + 假阳修 D-62)。
     """
 
     def __init__(self, ctx: SrContext):
@@ -44,6 +47,12 @@ class BattlePrepCycle(SrOperation):
         return self.round_by_op_result(DeployBench(self.ctx).execute())
 
     @node_from(from_name='部署')
+    @operation_node(name='装备')
+    def equip(self) -> OperationRoundResult:
+        log.info('[cw-prep] 备战单轮 ③ 装备(EquipAll)')
+        return self.round_by_op_result(EquipAll(self.ctx).execute())
+
+    @node_from(from_name='装备')
     @operation_node(name='出战')
     def battle(self) -> OperationRoundResult:
         # 点出战 + verify transition(仍在备战→retry)。
@@ -54,7 +63,7 @@ class BattlePrepCycle(SrOperation):
             # → bug#1 间歇连发(此前 r1-8 出战正常)。同 buy_store_item 的 mouse_move 缓解。verify 仍在(下行)。
             self.ctx.controller.mouse_move(_btn)
             self.ctx.controller.click(_btn)
-            log.info(f'[cw-prep] 备战单轮 ③ 出战 click @({_btn.x},{_btn.y})')
+            log.info(f'[cw-prep] 备战单轮 ④ 出战 click @({_btn.x},{_btn.y})')
             # verify transition(D-70:轮询等转移,非 1.0s 单次负复核 —— transition 慢时误判"仍在备战"报败)。
             # 出战 → 战斗(deploy=cap,备战标识消失)/ 未达上限警告(deploy<cap,点确认让战斗开)。
             for _ in range(6):  # 6 × 0.5s = 3s 轮询窗口
