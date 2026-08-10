@@ -556,4 +556,17 @@
 - **不猜原则**:4 项均需数据银行图鉴(content_id/effect/变体存在性)权威核,不凭推断命名/重命名(治本非叠补丁)。命运圣杯星徽 虽 web 确认独立,但 content_id(7292)归属未定 → 不擅拆。
 - **状态**:**1/5 修(管理员手套),4/5 图鉴待核**(分析完成,记此供后续图鉴 session 直接补)。影响:read_equips 漏识别这 4 件 owned(列车同行/命运圣杯星徽 常见=中;诅咒·干将莫邪 命运=低;财富 特殊无用=低)。`· R18 P1(unknown warning)/ 数据银行图鉴(权威源,待核 4 项)`。
 
+## D-60 (2026-08-11)【验证·equip_all P0-2 live 跑(no-equip 路径)】server restart 加载 P0-2 代码后 run_operation equip_all 实跑(D-58 代码首次 live):_get_tm_grays 加载 154 TM grays ✓ / read_row_equipped 跑(前排全空 occupied={})/ _empty_slots → [1,2,3,4] ✓ / read_equips 读冶金炉(count=1 工具)→ 过滤 → 无穿戴 → 0 件退出。**P0-2 新代码(占位读 + 空槽选择)live 验证通过(no-equip 路径)**;drag + occupied-非空 路径仍待穿戴装备
+
+- **触发**:D-58 P0-2 offline 实现后,首次 live 跑验新代码(占位读 read_row_equipped + _get_tm_grays + _empty_slots 在真实备战不崩 + 逻辑对)。
+- **跑**:restart_sr_od_mcp_server(加载 P0-2)→ run_operation(EquipAll,备战 1-8)。log:
+  - `[cw-equip] 加载 154 个 cw_equip 模板`(SIFT)+ `加载 154 个 cw_equip TM grays`(TM,新 `_get_tm_grays`)—— 两套模板库都加载(154,含重命名后管理员手套)。
+  - read_row_equipped 跑(前排 4 槽 below-avatar TM)→ occupied={}(全空,无 pre-equip)→ 无「已穿槽」日志(空不记)。
+  - `_empty_slots({}, 4)` = [1,2,3,4](全空)。
+  - read_equips → count=1(冶金炉,工具)→ `_TOOL_CATEGORIES` 过滤 → wearable=[] → 「无穿戴候选 → 停」。
+  - last_status「装备 0 件到前排 avatar(空槽 [1, 2, 3, 4])」,2.9s,success。
+- **验到**:① `_get_tm_grays` 加载 154 TM grays(新加载器 live OK);② `read_row_equipped` 在 op 上下文跑(无崩,返 {});③ `_empty_slots` 逻辑 live 对([1,2,3,4]);④ read+filter+exit 路径(D-57 验过)再现。**P0-2 新代码 live 通过(no-equip 路径)**。
+- **未验(仍阻塞)**:① drag 穿戴类→CV-diff 验穿(需 owned 穿戴装备 = 补给节点);② P0-2 occupied-非空 路径(前排有 pre-equip → 跳过那些槽,需角色已穿装备)。
+- **状态**:**P0-2 live 验证(no-equip 路径)**。equip_all 激活剩:① live drag(需穿戴 owned)② occupied-非空 验(需 pre-equip)③ 接 BattlePrepCycle。`· D-58(P0-2 实现)/ D-57(no-op 路径 live)/ D-49(read_equipped_below)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
