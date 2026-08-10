@@ -156,6 +156,10 @@ def _check_owned_order(
 # 防合成材料误匹配:滑轮鞋/折叠小刀同 icon 位置)更稳。实测(D-49):3件全中 0.745-0.781 @ scale0.33;
 # threshold 0.6 baseline。D-48「icon 随数量缩/3件分辨率墙」已推翻(根因=harvest 投影法裁切假象)。
 _EQUIP_TM_SCALES: tuple[float, ...] = (0.30, 0.33, 0.35, 0.37)  # 98px→29-36px;icon 32-34px 随位置变(梯形视角:前排~32px/后排最右~34px),0.33+0.35 覆盖两 best(D-51:0.35 抓后排-6 武器大师,step 0.03 会漏)
+# below-avatar icon 横排布局(D-49 CV 验):icon 相对 below cx 的 offset,件数决定。
+# 1件{0} / 2件{-21,+21} / 3件{-43,0,+43};候选点(5个)覆盖所有可能。
+_EQUIP_CANDIDATES: tuple[int, ...] = (-43, -21, 0, 21, 43)
+_EQUIP_LAYOUTS: tuple[tuple[int, ...], ...] = ((-43, 0, 43), (-21, 21), (0,))  # 3件/2件/1件,大到小(完整布局优先)
 
 
 def load_equip_tm_grays(equip_dir: Path) -> dict[str, MatLike]:
@@ -209,7 +213,7 @@ def read_equipped_below(
     out: dict[int, list[str]] = {}
     for slot_idx, rect in below_rects:
         crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
-        raw: list[tuple[str, float, int]] = []  # (name, val, x_in_crop) 命中(>=threshold)
+        raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 命中(>=threshold)
         near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<threshold),MISS 日志用
         # 98px 大图模板 multi-scale TM(icon ~32-34px 随位置变,D-49/D-51;缩到 29-36px 覆盖)
         for name, tgray in tmpl_grays.items():
@@ -222,18 +226,20 @@ def read_equipped_below(
                 r = cv2.matchTemplate(crop, resized, cv2.TM_CCOEFF_NORMED)
                 _, mx, _, mloc = cv2.minMaxLoc(r)
                 if mx >= threshold:
-                    raw.append((name, float(mx), mloc[0]))
+                    raw.append((name, float(mx), mloc[0] + nw // 2))  # icon 中心(模板左 + 半宽)
                 elif mx >= miss_threshold and mx > near.get(name, 0.0):
                     near[name] = float(mx)
-        # NMS:按 x 位置聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重,防合成材料误匹配)
+        # NMS:按 icon 中心聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重)
         raw.sort(key=lambda t: -t[1])
-        kept: list[tuple[str, float, int]] = []
-        for name, val, x in raw:
-            if any(abs(x - kx) <= nms_radius for _, _, kx in kept):
+        kept: list[tuple[str, float, int]] = []  # (name, val, icon_center)
+        for name, val, icon_center in raw:
+            if any(abs(icon_center - kc) <= nms_radius for _, _, kc in kept):
                 continue
-            kept.append((name, val, x))
-        if kept:
-            out[slot_idx] = [n for n, _, _ in kept]
+            kept.append((name, val, icon_center))
+        # 布局约束(D-49):icon 中心归候选点(cx±43/±21/0),取最大完整 1/2/3件布局,剔孤立误检 + 缺候选 MISS。
+        equipped = _select_equipped_layout(kept, crop.shape[1] // 2, slot_idx, screen, rect)
+        if equipped:
+            out[slot_idx] = equipped
         # icon 数守卫:角色 below 最多3件,>3 = 误检/邻槽串入
         if len(kept) > 3:
             cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
@@ -252,6 +258,47 @@ def read_equipped_below(
                        equips=str([n for n, _, _ in kept]), val_top=f'{val_top:.2f}',
                        MISS=f'[{miss_str}]', shot=shot)
     return out
+
+
+def _select_equipped_layout(
+    kept: list[tuple[str, float, int]],
+    below_cx: int,
+    slot_idx: int,
+    screen: MatLike,
+    rect: Rect,
+) -> list[str]:
+    """布局约束选装备(D-49):kept icon 中心归候选点(cx±43/±21/0),取最大完整 1/2/3件布局。
+
+    - icon 中心归最近候选(±11 内);非候选 = 孤立(误检,不取)。
+    - 命中候选取最大完整布局(3件{-43,0,+43} > 2件{-21,+21} > 1件{0};候选 ⊆ 命中)→ 该布局装备。
+    - 更大布局部分中(缺候选)= MISS(漏检)``[cw!]``;无完整布局 = 异常 ``[cw!]`` + 截图。
+    """
+    cand_name: dict[int, str] = {}
+    for name, _val, icon_center in kept:
+        off = icon_center - below_cx
+        nearest = min(_EQUIP_CANDIDATES, key=lambda c: abs(c - off))
+        if abs(nearest - off) <= 11:
+            cand_name.setdefault(nearest, name)  # NMS 已 val 降序,首个=最高
+    hit = set(cand_name)
+    chosen = next((lay for lay in _EQUIP_LAYOUTS if set(lay) <= hit), None)
+    if chosen is not None:
+        return [cand_name[o] for o in chosen]
+    # 无完整布局:fallback 全命中候选 + 异常
+    equipped = [cand_name[o] for o in sorted(cand_name)]
+    if hit:
+        cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
+               anomaly=f'无完整1/2/3件布局(命中候选{sorted(hit)})',
+               equips=str(equipped), shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'nolayout_slot{slot_idx}'))
+    # MISS:更大布局部分中(缺候选 = 漏检)
+    for lay in _EQUIP_LAYOUTS:
+        partial = set(lay) & hit
+        if partial and not set(lay) <= hit:
+            missing = [c for c in lay if c not in hit]
+            cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
+                   MISS=f'布局{lay}缺候选{missing}(漏检)',
+                   shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'layoutmiss_slot{slot_idx}'))
+            break
+    return equipped
 
 
 def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
