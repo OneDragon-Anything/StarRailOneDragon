@@ -63,7 +63,8 @@ class BattlePrepCycle(SrOperation):
                 # 未达上限警告(deploy<cap)→ 点确认(让战斗开;确认 btn center ~1159,653)
                 if self.round_by_find_area(scr, '货币战争-未达上限警告', '标识-未达上限警告').is_success:
                     log.info('[cw-prep] 出战 → 未达上限警告(deploy<cap)→ 确认')
-                    self.ctx.controller.click(Point(1159, 653))
+                    _confirm = area_center(self.ctx, '按钮-确认', '货币战争-未达上限警告') or Point(1159, 653)
+                    self.ctx.controller.click(_confirm)
                     time.sleep(1.0)
                     continue
                 # 转移成功:备战标识(购买经验)消失 → 战斗/结算
