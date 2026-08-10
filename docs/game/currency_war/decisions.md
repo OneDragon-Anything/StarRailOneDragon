@@ -724,4 +724,16 @@
 - **位面2-1 wall**:两场都在 **位面2-1 团灭**(对局未完成 2-1×战斗)。第二场有装备(量产型装甲+光能电池)+ 伤害 14× 提,但仍过不了位面2-1。**位面2-1 是 bot 当前 wall**(comp/策略需提:tier-3 成型 + 更多装备 + HP 管理)。待 ① 过后策略调优。
 - **状态**:**第二场完整 A8 对局(equip_all)+ 数据对比(equip_all → 伤害 14× 提 + 生存更久,但位面2-1 wall 仍在)**。bot 在变强(equip_all),但需策略/comp 提升破位面2-1。`· D-76(第一场)/ D-77/D-78(equip_all 接 cycle+①-a 闭环)`。
 
+## D-80 (2026-08-11)【评估·核心锁① 近解锁(5 权威源 recognizer 全验)→ 策略阶段可能可启】核心锁① = 「权威源画面子态①-⑤ 全过」。盘点:5 权威源 recognizer 全建全验 —— ① 备战(gold/hp/board/equipped,D-20 test34过)② 简报(affixes/bosses,#121)③ 结算(hp_after/is_failed,#122,D-78 live 验)④ 投资策略(strategies,#123)⑤ 装备(read_equipped_below,①-a D-78 闭环)。**若 ①-⑤ = 这 5 权威源 recognizer → ① 可能已全过 → 策略模块解锁 → comp/HP 调优破位面2-1 wall**。待用户确认 ①-⑤ 定义
+
+- **评估**:核心锁① = 「权威源画面子态①-⑤ 全过」(进度.md L16)。盘点 5 权威源 recognizer(权威源映射 L20-30):
+  ① 备战 cw_observation(gold/hp/round/level/board 阵营/shop/equipped)—— D-20 建,test 34 过 ✓
+  ② 简报 cw_briefing_obs(affixes/bosses/位面强化)—— #121 ✓
+  ③ 结算 settlement_recognizer(hp_after/is_failed)—— #122,D-78 live 验 ✓
+  ④ 投资策略 recognizer(strategies)—— #123 ✓
+  ⑤ 装备 read_equipped_below(below-avatar icon)—— ①-a D-78 闭环 ✓(D-49+D-62+D-78)
+- **结论(待用户确认)**:**若 ①-⑤ = 这 5 权威源 recognizer → ① 全过 → 策略模块(cw_strategy/cw_decisions/cw_comps)解锁 → comp/HP 调优可启 → 破位面2-1 wall**。
+- **不确定**:①-⑤ 的确切定义(是这 5 recognizer?还是 screen-onboarding 建档① 类叶子?或 画面建档 3.1/3.3/3.4?)。**待用户确认 ①-⑤ 定义 → 若 = 5 recognizer 则 ① 解锁 → 策略阶段启**。
+- **状态**:**评估(待确认)**。5 权威源 recognizer 全验 → ① 可能解锁。用户确认 ①-⑤ 定义后定:若解锁 → 策略阶段(comp/HP/位面2-1 wall)。`· 核心锁①(进度.md L16)/ 权威源映射(L20-30)/ D-78(①-a 闭环,第 5 recognizer 验)/ D-79(位面2-1 wall,策略待)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
