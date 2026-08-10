@@ -123,7 +123,7 @@ def read_equips(
 # SIFT patch 天花板对 32px 小 icon 失效(D-45)→ multi-scale TM(98px 模板缩到 ~32px)+ NMS(同位置取最高,
 # 防合成材料误匹配:滑轮鞋/折叠小刀同 icon 位置)更稳。实测(D-49):3件全中 0.745-0.781 @ scale0.33;
 # threshold 0.6 baseline。D-48「icon 随数量缩/3件分辨率墙」已推翻(根因=harvest 投影法裁切假象)。
-_EQUIP_TM_SCALES: tuple[float, ...] = (0.28, 0.30, 0.33, 0.36, 0.39)  # 98px→27-38px 覆盖固定 ~32px icon(D-49)
+_EQUIP_TM_SCALES: tuple[float, ...] = (0.30, 0.33, 0.35, 0.37)  # 98px→29-36px;icon 32-34px 随位置变(梯形视角:前排~32px/后排最右~34px),0.33+0.35 覆盖两 best(D-51:0.35 抓后排-6 武器大师,step 0.03 会漏)
 
 
 def load_equip_tm_grays(equip_dir: Path) -> dict[str, MatLike]:
@@ -158,7 +158,7 @@ def read_equipped_below(
     3件态全中(0.745-0.781),无分辨率墙(D-48「icon 缩」已推翻)。multi-scale(0.28-0.39)给 icon
     微变余量;NMS 防同位置多命中(合成材料:滑轮鞋/折叠小刀)。
 
-    :param screen: 备战画面截图(BGR,1080p)。
+    :param screen: 备战画面截图(RGB,1080p;sr_od ``cv2_utils.read_image`` 约定,非 BGR)。
     :param tmpl_grays: ``load_equip_tm_grays`` 结果(``{name: gray}``,98px 大图模板)。
     :param below_rects: ``[(slot_idx, Rect), ...]`` —— 每槽 below-avatar 搜索区(调用方从 screen_info
         槽 rect 算:avatar 底部下方,icon y 中心 ≈ avatar_y2 + 14,见 ``cw_identity_obs.avatar_to_below``)。
@@ -172,7 +172,7 @@ def read_equipped_below(
     """
     out: dict[int, list[str]] = {}
     for slot_idx, rect in below_rects:
-        crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_BGR2GRAY)
+        crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
         raw: list[tuple[str, float, int]] = []  # (name, val, x_in_crop)
         # 98px 大图模板 multi-scale TM(icon 固定 ~32px,D-49;缩到 27-38px 覆盖)
         for name, tgray in tmpl_grays.items():

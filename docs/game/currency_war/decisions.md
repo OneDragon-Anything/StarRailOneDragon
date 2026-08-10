@@ -460,12 +460,22 @@
 - **适配方向(后续)**:运行时 CV 检测后排 avatar 位置(轮廓/投影)→ 动态 count + cx → `avatar_to_below`。与 D-19(deploy_bench 实测槽位)+ 权威源「槽位布局=投资环境决定+空板CV检测」同类。
 - **状态**:**gap 已记,待运行时槽位检测适配**;当前 count=6 覆盖 6 内(主流场景)。前排恒 4(团队规模前排固定,不动态)。`· D-19(槽位动态同类)/ 权威源(槽位布局投资环境决定)/ 用户(指出 >6 需记录)`。
 
-## D-51 (2026-08-10)【证据·边界 case·后排-6 最右 icon 裁切】后排-6(cx1316 最右站位)3件最右 icon(武器大师 cx+33)被舞台右边界裁切,val 0.57<0.6 漏检;其他 icon(光能0.749/步步0.696)正常。CW 边界角色 icon 部分裁切渲染限制,非 below 区问题
+## D-51 (2026-08-10)【纠正·后排-6 漏检根因=scale 漏(非裁切)·已修】icon 尺寸随位置变(梯形视角:前排~32px/后排最右~34px),武器大师后排-6 best scale=0.35 val0.601,step 0.03 漏 0.35 致漏检;scales 加 0.35 后全中
 
-- **触发**:采后排-6 飞霄3件 fixture,`read_equipped_below` 漏武器大师。
-- **验证**:宽 crop(x1246-1480)武器大师 val 0.570 @ x1349(cx1316+33),icon 在 below[1246,1385]区内但 val 低(前排-1 同装备 0.745);其他2件 val 正常。
-- **根因(pi 调研确认)**:icon 是正方形 UI 叠加层(**无透视变形**,pi 确认 —— 推翻「俯视致 icon 变形」猜想);但后排-6(最右站位)3件最右 icon 被角色卡框右边界裁切(右边 truncated)→ 内容缺 → TM val 降 0.57<0.6 漏。**非 below 区切**(icon 在区内)、非透视变形。
-- **选项**:① 降 threshold(0.6→0.55)抓边界但风险假阳性(空位置 noise 0.58-0.62 成假阳);② 接受边界漏检(后排-6 最右 icon);③ 特殊处理(不值)。
-- **状态**:**边界 case 已记,待定(threshold/接受)**。后排 1-5 各 cx 3件全中(非边界);仅后排-6(最右)最右 icon 受裁切。`· D-49(各cx通用,边界除外)/ D-50(槽位动态)`。
+- **触发**:采后排-6 飞霄3件,`read_equipped_below` 漏武器大师(val0.57)。
+- **初判(错)**:猜「角色卡框裁切 icon」/「below 区裁剪」(用户质疑梯形致区域不准)。
+- **根因(scale 扫描确认)**:icon 尺寸**随位置变**(梯形视角:前排~32px/scale0.33,后排最右~34px/scale0.35)。武器大师后排-6 best scale=0.35 val0.601>0.6,但 `_EQUIP_TM_SCALES` step 0.03 漏 0.35(0.36 val0.481)→ 漏检。**非裁切/遮挡**(pi + 用户确认 icon 完整无遮挡,装备顺序不变)。推翻初判「卡框裁切」。
+- **修**:`_EQUIP_TM_SCALES` = (0.30,0.33,0.35,0.37) 含 0.35,后排-6 武器大师 0.601 命中,3件全中。
+- **教训**:val 低先扫 scale(图标尺寸随位置/视角变),别急着归「裁切/遮挡/接受漏检」(我初判草率,用户坚持查根因才纠正)。D-49「icon 固定尺寸」需修正:32-34px 随位置变。
+- **状态**:**已修(scales 加 0.35),后排 1-6 全 cx 3件全中**。`· D-49(icon 尺寸 32-34px 随位置变,非完全固定)/ 用户(坚持查根因 + 装备顺序没变,推翻我"接受漏检"草率结论)`。
+
+## D-52 (2026-08-10)【bug·通道·read_equipped_below BGR2GRAY 误用】screen 是 RGB(sr_od cv2_utils.read_image 约定),read_equipped_below 却用 BGR2GRAY(假设 BGR)→ R/B 通道灰度错位 → TM val 降;临界 icon(武器大师后排-6 0.604)被推<0.6 漏。修 RGB2GRAY
+
+- **触发**:back6 webp 测试 fail,但手动 PNG 跑过(cv2.imdecode 返 BGR,BGR2GRAY 对);测试 load_screen 返 RGB,BGR2GRAY 错。
+- **根因**:`read_equipped_below` `COLOR_BGR2GRAY`,但 sr_od screen 是 RGB(`cv2_utils.read_image` 约定)。R/B 通道灰度权重换(0.299↔0.114)→ 灰度错 → TM val 降。
+- **影响**:所有 `read_equipped_below` 调用(recognizer + 测试)。高 val(0.7+)未暴露,临界(0.6 边缘)漏(武器大师后排-6 双重临界:scale 0.35 + 通道)。
+- **修**:`COLOR_BGR2GRAY → COLOR_RGB2GRAY`。模板 `load_equip_tm_grays`(cv2.imdecode BGR)BGR2GRAY 对;screen RGB2GRAY 对;两者灰度真值一致(0.299R+0.587G+0.114B)。
+- **教训**:sr_od screen 统一 RGB,灰度转换注意通道(别无脑 BGR2GRAY)。memory `cv2-utils-rgb-convention` 已记,read_equipped_below 漏了。
+- **状态**:**已修(RGB2GRAY),22 测试过**。`· memory cv2-utils-rgb-convention / D-51(scale 后又发现通道,back6 武器双重临界暴露)`。
 
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
