@@ -658,4 +658,13 @@
 - **附加**:deploy bench4-5 bug#1(拖3次源槽未空)→ placed 3/5(bench4-5 漏部署);但 cap=3 → 3/3 满,不影响出战。
 - **状态**:**发现(记)**。BattlePrepCycle 出战 false-failure bug。修待(battle_prep.py 出战 step 等 transition,非即时复核)。`· BattlePrepCycle(battle_prep.py)/ HandleDeployNotFull(未达上限,本例 cap=3 满未触发)/ bug#1(click 异步/拖拽误判)`。
 
+## D-71 (2026-08-11)【修·BattlePrepCycle 出战 false-failure(D-70)+ 未达上限警告处理】battle_prep.py 出战 step:1.0s 单次负复核(仍在备战→retry)改 3s 轮询正信号(备战标识消失→success / 未达上限警告→点确认让战斗开→continue / 3s 仍备战→retry)。修 D-70 false-failure(transition 慢误判)+ 补 deploy<cap 未达上限警告处理(原代码无)。ruff 过;live 验待下轮 BattlePrepCycle
+
+- **触发**:D-70 BattlePrepCycle 出战 false-failure(op 报败实成功)。
+- **根因(D-70)**:出战 click 后 **1.0s 单次**复核「仍在备战」—— combat transition 慢(>1.0s)→ 误判"click 未落地"→ retry → transition 中找不到出战 → 报败(实赢)。
+- **修**:出战 click 后 **轮询 6×0.5s=3s** 等转移:① 备战标识(购买经验)**消失** → success(过渡到战斗/结算);② **未达上限警告**出现(deploy<cap)→ 点确认(1159,653)→ continue 轮询(让战斗开);③ 3s 仍备战 → retry(真未落地)。**正信号(备战 gone)替代负复核(备战 still)** + 补未达上限警告处理(原代码无,deploy<cap 必撞)。
+- **不擅**:mouse_move 缓解(已在,line 55)保留;只改 verify 时序 + 加警告处理。
+- **验**:ruff 过。live 验待下轮 BattlePrepCycle(deploy=cap→备战消失 success / deploy<cap→警告确认→战斗)。
+- **状态**:**修 D-70 + 补未达上限警告**。BattlePrepCycle 出战 step 等转移(正信号)+ 处理 deploy<cap 警告。`· D-70(false-failure 发现)/ write-operation(出口验真转移)/ HandleDeployNotFull(未达上限,本修内联处理)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

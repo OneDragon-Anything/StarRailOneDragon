@@ -55,12 +55,22 @@ class BattlePrepCycle(SrOperation):
             self.ctx.controller.mouse_move(_btn)
             self.ctx.controller.click(_btn)
             log.info(f'[cw-prep] 备战单轮 ③ 出战 click @({_btn.x},{_btn.y})')
-            time.sleep(1.0)  # 等出战→战斗过渡
-            # verify:仍在备战(购买经验 visible)→ click 未落地 → retry(防假成功 prep-loop)
-            if self.round_by_find_area(self.screenshot(), '货币战争-备战', '备战标识-购买经验').is_success:
-                log.warning('[cw-prep] ⚠️ 出战后仍在备战(click 未落地 / bug#1?),retry')
-                return self.round_retry('出战 click 未落地,重试', wait=1)
-            log.info('[cw-prep] 出战成功 → 自动战斗')
-            return self.round_success(wait=3)
+            # verify transition(D-70:轮询等转移,非 1.0s 单次负复核 —— transition 慢时误判"仍在备战"报败)。
+            # 出战 → 战斗(deploy=cap,备战标识消失)/ 未达上限警告(deploy<cap,点确认让战斗开)。
+            for _ in range(6):  # 6 × 0.5s = 3s 轮询窗口
+                time.sleep(0.5)
+                scr = self.screenshot()
+                # 未达上限警告(deploy<cap)→ 点确认(让战斗开;确认 btn center ~1159,653)
+                if self.round_by_find_area(scr, '货币战争-未达上限警告', '标识-未达上限警告').is_success:
+                    log.info('[cw-prep] 出战 → 未达上限警告(deploy<cap)→ 确认')
+                    self.ctx.controller.click(Point(1159, 653))
+                    time.sleep(1.0)
+                    continue
+                # 转移成功:备战标识(购买经验)消失 → 战斗/结算
+                if not self.round_by_find_area(scr, '货币战争-备战', '备战标识-购买经验').is_success:
+                    log.info('[cw-prep] 出战成功 → 过渡到战斗/结算')
+                    return self.round_success(wait=3)
+            log.warning('[cw-prep] ⚠️ 出战后 3s 仍在备战(click 未落地 / bug#1?),retry')
+            return self.round_retry('出战 click 未落地,重试', wait=1)
         log.info('[cw-prep] 找不到出战按钮,retry')
         return self.round_retry('找不到出战', wait=1)
