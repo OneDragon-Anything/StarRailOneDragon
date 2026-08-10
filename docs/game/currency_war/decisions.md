@@ -774,4 +774,12 @@
 - **read_equipped 3件 live 验证**:match#5 slot=2 检出 3件(随便骰子+折叠小刀+痛觉阻断芯片 / 很硬的甲+随便骰子+生命之花,val_top 0.85)—— live 证 read_equipped_below 3件识别工作(D-49 offline 测过的 live 复证,关 3件 fixture gap 的担忧:识别能力就绪,缺的是 controlled fixture)。
 - **状态**:**match#5 终局(死位面2-1)**。5 场数据收敛:wall=位面2,levers=HP 管理 + comp(boss HP 留存)+ equip 供给。**① 解锁后策略**:选高 boss-HP-留存 comp + HP 管理 + tier-3 成型。`· D-83(match#4 位面2-2,首过 wall)/ D-80(① 评估)`。
 
+## D-85 (2026-08-11)【数据·match#6 死位面2-2 + 6 场 wall 数据饱和(levers 精化为 comp 强度非 HP 量)】match#6(巡击青雀,进位面2 HP16)死**位面2-2**(同 match#4 HP12)→ **进位面2 HP 高低(12 vs 16)不改变结局**(位面2-1 战斗都把 HP 打到 1 靠保险过)→ **levers 精化:位面2 战斗需 comp 强度「赢得不濒死」,非「进位面2 HP 高」**。6 场饱和:全死位面2(4,6@位面2-2;1,2,5@位面2-1),comp 决定深度。① 后策略=decisive 位面2 胜(tier-3 comp + equip)
+
+- **match#6 轨迹**:HP 82→66(r4)→54(r6)→48(r8)→**16(位面1 boss r9)**→进位面2(HP16)→**1(位面2-1,保险过)**→**0(位面2-2 死)**。comp 巡击青雀(p1)→列车同行/DOT队(p2)。
+- **levers 精化(关键)**:match#4(进位面2 HP12)与 match#6(HP16)**都死位面2-2** —— 进位面2 HP 高 33%(12→16)**不改变结局**。位面2-1 战斗**恒把 HP 打到 1**(靠保险机制过),HP 量不是瓶颈;**comp 强度(位面2 战斗赢得不濒死)才是**。精化 D-84「HP 管理」→「**comp 强度:decisive 位面2 胜**」(tier-3 成型 + equip + 站位/技能)。
+- **6 场 wall 数据饱和**:match#1-2,5 死**位面2-1**;match#4,6 死**位面2-2**(均靠保险过位面2-1)。**全死位面2**(无过位面2-2)。comp 决定深度(巡击青雀→位面2-2;DOT队→位面2-1)。wall = 位面2(levers:comp 强度 + 位面2 HP 损耗管理)。
+- **数据饱和判定(6 场足够)**:wall 充分刻画,**续打 match 边际数据趋零**(comp→深度已 2 样本证;位面2 HP 损耗模式稳)。**续打价值=仅 rare-edge 捕捉(新事件/屏/装备态)+ autonomous-play 目标,非新 wall 认知**。
+- **状态**:**match#6 终局 + 数据饱和**。6 场证 wall=位面2,levers=comp 强度(decisive 位面2 胜)+ equip 供给。**① 解锁后策略**:tier-3 comp 成型 + 穿戴 equip + 位面2 战斗不濒死(非堆 HP 量)。`· D-83(match#4 位面2-2)/ D-84(match#5 位面2-1,comp 杠杆)/ D-80(① 评估)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
