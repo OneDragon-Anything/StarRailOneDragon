@@ -545,4 +545,15 @@
 - **测**:`test_empty_slots_skips_occupied`(纯函数:全空→全槽 / 部分→跳过 / 全已穿→空)。offline 验空槽选择逻辑。drag 占用读 + live 验仍待穿戴装备条件。
 - **状态**:**P0-2 offline 实现完成**。equip_all 激活剩:① live drag 测(需穿戴 owned = 补给节点)② 接 BattlePrepCycle。`· D-57(列 P0-2 为剩项)/ D-49(read_equipped_below)/ D-56(_below_icon_diff 验穿)`。
 
+## D-59 (2026-08-11)【数据·装备注册表 5 错位排查 + 1 修(管理员手套)】cw_equip 模板名(154 png,harvest OCR 命名)vs EQUIPMENTS 注册表(153 件,equipment.md 生成)5 处不匹配 → read_equips 把这 5 件当 unknown 过滤(漏识别 owned)。排查:1 确认 cropper 误名(管理员手套ProMax→管理员手套,已 git mv 修);4 是注册表数据缺(命运圣杯星徽 确认独立 web+CV,注册表错并;诅咒·干将莫邪/财富 待图鉴核),不猜,待数据银行图鉴验证后补 equipment.md + 重生成
+
+- **触发**:equip_all read_equips 有 `unknown = [n for n, _, _ in hits if EQUIPMENTS.get(n) is None]` warning(R18 P1)。模板 stem ≠ 注册表 key → 漏识别 owned 装备。
+- **排查(客观脚本)**:比 `assets/template/cw_equip/*.png` stem vs `EQUIPMENTS` keys → 5 不匹配:
+  - **管理员手套ProMax**(模板)→ 注册表「管理员手套」(骇客 7891)。注册表无任何 "ProMax"(只 Max/Pro 后缀)→ cropper 误名。✅ **已修(git mv → 管理员手套.png)**;全仓 grep 无代码/测试引用 → 安全。
+  - **列车同行星徽 + 命运圣杯星徽**(2 模板)→ 注册表仅 1 条「列车同行星徽(命运圣杯星徽)」。MSE=1378(两图不同,非 dup)。Web 核:命运圣杯星徽是 Fate 联动**独立星徽**(命运圣杯羁绊),列车同行是另一羁绊 → **注册表错并成 1 条,缺命运圣杯星徽 entry**。待图鉴核各自 content_id/effect 后拆 equipment.md + 重生成。
+  - **诅咒·干将莫邪**(模板)→ 注册表只有 干将莫邪/极·干将莫邪(无诅咒版)。命运系有诅咒变体(诅咒·阿瓦隆等)→ 诅咒·干将莫邪 可能真品(equipment.md 漏)或误裁。待图鉴核。
+  - **财富**(模板)→ 注册表 财富(基础)/财富(强化) 2 条。模板 bare「财富」→ 属基础 or 强化 待图鉴核。
+- **不猜原则**:4 项均需数据银行图鉴(content_id/effect/变体存在性)权威核,不凭推断命名/重命名(治本非叠补丁)。命运圣杯星徽 虽 web 确认独立,但 content_id(7292)归属未定 → 不擅拆。
+- **状态**:**1/5 修(管理员手套),4/5 图鉴待核**(分析完成,记此供后续图鉴 session 直接补)。影响:read_equips 漏识别这 4 件 owned(列车同行/命运圣杯星徽 常见=中;诅咒·干将莫邪 命运=低;财富 特殊无用=低)。`· R18 P1(unknown warning)/ 数据银行图鉴(权威源,待核 4 项)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
