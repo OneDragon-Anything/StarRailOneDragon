@@ -154,15 +154,15 @@ def read_equipped_below(
 
     识别**角色已穿装备**(头像下方 icon),与 ``read_equips``(owned 列,未穿)互补。
 
-    **icon 固定 ~32px(D-49)**:below-avatar 装备 icon 不随装备数变(98px 模板 × scale 0.33 ≈ 32px);
-    3件态全中(0.745-0.781),无分辨率墙(D-48「icon 缩」已推翻)。multi-scale(0.28-0.39)给 icon
-    微变余量;NMS 防同位置多命中(合成材料:滑轮鞋/折叠小刀)。
+    **icon ~32-34px 随位置变(D-49/D-51)**:below-avatar 装备 icon 不随装备数变,但随角色位置/梯形视角
+    略变(前排 ~32px / 后排最右 ~34px)。multi-scale(0.30/0.33/0.35/0.37 → 29-36px)枚举覆盖,每个 icon
+    在最接近 scale 命中最高 val(D-51:漏 0.35 致后排-6 武器大师漏);NMS 防同位置多命中(合成材料:滑轮鞋/折叠小刀)。
 
     :param screen: 备战画面截图(RGB,1080p;sr_od ``cv2_utils.read_image`` 约定,非 BGR)。
     :param tmpl_grays: ``load_equip_tm_grays`` 结果(``{name: gray}``,98px 大图模板)。
     :param below_rects: ``[(slot_idx, Rect), ...]`` —— 每槽 below-avatar 搜索区(调用方从 screen_info
         槽 rect 算:avatar 底部下方,icon y 中心 ≈ avatar_y2 + 14,见 ``cw_identity_obs.avatar_to_below``)。
-    :param scales: 98px 模板缩放档(覆盖固定 ~32px icon;0.28-0.39 → 27-38px)。
+    :param scales: 98px 模板缩放档(覆盖 ~32-34px icon;0.30-0.37 → 29-36px,D-51)。
     :param threshold: TM 命中阈值;0.6(实测 top1 0.74+,保守留余量)。
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18);同 ``±radius`` 内多命中取 val 最高
         (防合成材料误匹配:滑轮鞋/折叠小刀同位置)。
@@ -186,7 +186,7 @@ def read_equipped_below(
                 _, mx, _, mloc = cv2.minMaxLoc(r)
                 if mx >= threshold:
                     raw.append((name, float(mx), mloc[0]))
-        # NMS:按 x 位置聚类(±nms_radius),每簇取 val 最高(mini + 98px 合并,mini 高 val 自动赢)
+        # NMS:按 x 位置聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重,防合成材料误匹配)
         raw.sort(key=lambda t: -t[1])
         kept: list[tuple[str, float, int]] = []
         for name, val, x in raw:
@@ -202,8 +202,8 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     """确保 ctx 缓存 cw_equip TM 模板(98px grays);返 ``grays`` 或 None(目录缺)。
 
     首次 load 缓存 ``ctx.cw_equip_tm_grays``;后续读缓存。recognizer 装备识别的 templates 加载点
-    (owned 列 SIFT 模板由 ``equip_all._get_templates`` 另加载,不冲突)。mini 库已删(D-49,icon 固定
-    ~32px,大图 scale 0.33 直接覆盖)。
+    (owned 列 SIFT 模板由 ``equip_all._get_templates`` 另加载,不冲突)。mini 库已删(D-49/D-51,icon
+    ~32-34px 随位置变,大图 multi-scale 0.30-0.37 覆盖)。
 
     **并发安全**:幂等(同值重 load 无害);只缓存只读资源(非 session/游戏状态),与运行中 operation 不竞争。
     """
