@@ -766,4 +766,12 @@
 - **affix 修复(D-81)live 健康**:match#4 简报 4 词缀(首领强化/一鼓作气/以人为本/高费审美)全与注册表一致 → write_affix_effects no-op,无污染、无回归(D-82 验证持续生效)。
 - **状态**:**match#4 终局(死位面2-2,首过位面2-1)**。4 场数据点:match#1-2 死位面2-1 / match#4 死位面2-2 —— bot 渐进变强,墙软化但仍位面2 HP 枯竭死。**① 解锁后 = HP 管理 + comp 聚焦**。`· D-79(match#2 位面2-1)/ D-80(① 评估)/ D-82(affix live 验)`。
 
+## D-84 (2026-08-11)【数据·match#5 死位面2-1(comp 影响 boss HP 留存)】match#5(~24.5min)死**位面2-1**(进位面2 HP1→0),较 match#4(位面2-2)退步。**comp DOT队 → 位面1 boss HP1**(vs match#4 巡击青雀 HP12)→ comp 选择影响 boss HP 留存,直接决定能否过位面2-1 wall。5 场数据证 wall = 位面2,levers = HP 管理 + comp 强度
+
+- **match#5 轨迹**:HP 82(r1)→64(r4)→51(r6)→25(r8)→**1(位面1 boss r9)**→进位面2(HP1)→**0(位面2-1 死)**。comp 昼神阿雅/DOT队(plane1);board 持续伤害2/昼之半神2/能量1/星核猎手1。
+- **vs match#4**:match#4 巡击青雀 进位面2 HP12(过位面2-1,死位面2-2);match#5 DOT队 进位面2 **HP1**(死位面2-1)。**comp 决定 boss HP 留存 → 决定 wall 深度**。DOT队(持续伤害)boss 战损血多于巡击青雀(追击/青雀)。
+- **5 场 wall 数据**:match#1-2,5 死**位面2-1**;match#4 死**位面2-2**(唯一过位面2-1,靠保险机制 HP1 擦过)。**位面2-1 是 wall**(3/5 死这);HP 管理 + comp 强度是 levers(进位面2 HP 12 vs 1 决定能否过)。
+- **read_equipped 3件 live 验证**:match#5 slot=2 检出 3件(随便骰子+折叠小刀+痛觉阻断芯片 / 很硬的甲+随便骰子+生命之花,val_top 0.85)—— live 证 read_equipped_below 3件识别工作(D-49 offline 测过的 live 复证,关 3件 fixture gap 的担忧:识别能力就绪,缺的是 controlled fixture)。
+- **状态**:**match#5 终局(死位面2-1)**。5 场数据收敛:wall=位面2,levers=HP 管理 + comp(boss HP 留存)+ equip 供给。**① 解锁后策略**:选高 boss-HP-留存 comp + HP 管理 + tier-3 成型。`· D-83(match#4 位面2-2,首过 wall)/ D-80(① 评估)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
