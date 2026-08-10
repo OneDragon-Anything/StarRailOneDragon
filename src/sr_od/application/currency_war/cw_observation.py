@@ -295,8 +295,9 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
 def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
 
-    实机 cap≠level(lv4-5「3/3」、lv6「5/5」)→ DeployBench 应用本 Y 非 level 估 cap_remaining,
-    避免 board 已满仍试拖全 bench 的浪费 + 误判有空槽。读不到 → 退 level 估(旧行为,fallback)。
+    实机 **cap=level**(2026-08-10 fixture deployed_p1r9 验:Lv.5 + 5/5);钻石/财富宝钻加成时 cap>level
+    (+1 团队槽 → 后排可能>6,见 D-50)。DeployBench 应用本 Y 非 level 估 cap_remaining。
+    读不到 → 退 level 估(旧行为,fallback)。旧注「cap≠level(lv4-5 3/3)」自主推进期错数据,已纠正。
     """
     return _read_deploy_paddle(ctx, screen)[1]
 

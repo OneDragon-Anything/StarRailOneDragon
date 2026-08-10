@@ -50,8 +50,10 @@ from sr_od.application.currency_war.cw_observation import (
     read_deployed_count,
     read_gold,
     read_hp,
+    read_level,
     read_streak,
 )
+from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -99,6 +101,7 @@ class _BattlePrepState:
     streak: int | None              # 连胜/连败 magnitude(read_streak,读不到→None)
     deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
+    level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
     board: dict[str, int]           # {阵营名: 在场人数}(read_board)
     front_line: list[str] | None    # 前排角色规范名(read_deployed_chars SIFT;templates 未加载/空→None)
     back_line: list[str] | None     # 后排角色规范名(同上)
@@ -150,13 +153,16 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) or None
             back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) or None
             bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9) or None
+        phase = _read_phase_round_pure(ctx, image)
+        level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
         state = _BattlePrepState(
             gold=read_gold(ctx, image),
-            phase=_read_phase_round_pure(ctx, image),
+            phase=phase,
             hp=read_hp(ctx, image),
             streak=read_streak(ctx, image),
             deploy_count=read_deployed_count(ctx, image),
             deploy_cap=read_deploy_cap(ctx, image),
+            level=level,
             board=read_board(ctx, image),
             front_line=front_line,
             back_line=back_line,
@@ -165,4 +171,10 @@ class BattlePrepRecognizer(ScreenRecognizer):
             back_equips=back_equips,
             bench_equips=bench_equips,
         )
+        # D-50:deploy_cap > level = 钻石/财富宝钻加成(+1 团队槽)→ 后排可能>6(read_equipped count=6 漏)
+        if state.deploy_cap is not None and state.deploy_cap > state.level:
+            cw_log('recognize', step='team_size', target='后排', attn=True,
+                   anomaly=f'deploy_cap={state.deploy_cap}>level={state.level}(钻石/宝钻加成)→后排可能>6(read_equipped count=6 漏,D-50)',
+                   level=state.level, deploy_cap=state.deploy_cap,
+                   shot=cw_shot(image, f'team_cap{state.deploy_cap}_lv{state.level}'))
         return asdict(state)

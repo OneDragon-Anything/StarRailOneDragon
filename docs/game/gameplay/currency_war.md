@@ -82,7 +82,7 @@ screen_info:备战阶段已建(`currency_war_battle_prep.yml`,用户手圈:备�
 - **deploy / sell 机制真相(2026-08-08 多源实测,策略地基)**:
   - **deploy = drag(非 click)**:click 备战角色开详情面板(非选中);长按 drag(hold 0.5s)才拾取→拖到舞台槽 deploy。见 D-118b。
   - **deployed-lock(deployed 角色永锁)**:deployed 角色不能卖(click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)。**只有 bench 角色能卖**。→ board 阵容**一旦部署即永久**,不能撤/换/卖 → **早期散买部署 off-target = 永久锁板,comp 永不成型**(T#97 spread 根因)。策略含义:必须从 r1 就 deploy target 阵营(off-target 留 bench 可卖),不能"先deploy全场再换"。
-  - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限)。**团队规模上限可被财富宝钻(装备,无论是否穿戴)+1**(equipment.md:211;诅咒·宝石剑泽尔里奇对应 -1)→ 后排槽位**非固定 6**,deploy 须按运行时实测槽位数(见 D-19)。
+  - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限,购买经验升级)。**后排>6 条件(D-50,攻略+装备图鉴)**:① **level 9 → 财富宝石 +1 团队槽**(攻略:升9级给财富宝石);② **财富宝钻(装备,无论是否穿戴)+1**(equipment.md:211,D-19);③ **诅咒·宝石剑泽尔里奇 -1**。佩佩/投资策略/环境 = 获取财富宝钻途径(投资策略给 2 宝钻;佩佩成就集齐 3 只)。→ 后排槽位 6/7/8/9/10 随 level+宝钻动态,**read_equipped count=6 硬编码**(D-50)在高 level+宝钻时漏(7-10)。
   - sell 途径:备战席角色 → 拖到左下出售区(`_maybe_sell_for_interest` 已实现,只卖 bench)。
 
 ## 参考来源
