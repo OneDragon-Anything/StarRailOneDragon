@@ -684,4 +684,11 @@
 - **手动处理**:选 定点爆破(核弹伤害,助推) + 确认 → 备战 round 3。
 - **状态**:**发现(记)**。BattlePrepCycle 不处理 mid-match events(交主循环设计)。全自主需 CurrencyWarRunLoop(主循环委派)。`· D-71/D-72(BattlePrepCycle 出战修+验)/ CurrencyWarRunLoop(battle_loop.py 主循环)/ HandleInvestStrategy(投资策略 handler)`。
 
+## D-74 (2026-08-11)【里程碑·CurrencyWarRunLoop 主循环 live 自主运行(事件+备战,bot 自主打 CW)】run CurrencyWarRunLoop @ 备战 round 3 → RUNNING(state=running, retry_count=0, 74s+ smooth)。log:主循环**分类状态→委派 handler**:`货币战争-祈愿试炼` handler 执行成功(事件处理)→ `对局循环→等待` → 检测备战 → 委派 `BattlePrepCycle`(buy+deploy+出战)。**bot 全自主主循环 live 运行**(事件处理 + 备战委派),retry 0 无 stall
+
+- **里程碑**:run CurrencyWarRunLoop(主循环)→ **RUNNING 自主运行**。bot 全自主打 CW(A8):分类状态→委派 handler(事件/备战)。
+- **log 验**:02:45:24 `货币战争-祈愿试炼` handler 成功(事件处理 —— 主循环 dispatch 到 handler)→ 02:45:26 `对局循环→等待` → 02:45:28 检测备战 → 委派 `BattlePrepCycle`(buy+deploy+出战)。**主循环分类+委派正常,retry 0**。
+- **铺垫**:D-70~D-72(BattlePrepCycle 出战修+验)+ D-73(主循环才处理事件认知)→ 主循环可自主运行(出战正常 + 事件委派)。
+- **状态**:**里程碑 —— CurrencyWarRunLoop 自主运行中**。bot 全自主打 A8 CW(事件+备战+出战+结算+循环)。后续监控(match 进展 / stall / 失败节点)。`· D-73(主循环才自主)/ D-71/D-72(BattlePrepCycle 出战修+验)/ CurrencyWarRunLoop(battle_loop.py)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
