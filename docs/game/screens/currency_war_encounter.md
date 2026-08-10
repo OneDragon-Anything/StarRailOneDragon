@@ -1,8 +1,8 @@
 ---
 screen_name: 货币战争-遭遇节点
 appears_in: [currency_war]
-last_updated: 2026-08-04
-source_image: 待归档(基线 `.debug/sr_od_mcp/screenshot/screenshot_20260804_111031_308056.png`)
+last_updated: 2026-08-10
+source_image: screens/货币战争-遭遇节点/default.webp
 ---
 
 # 货币战争-遭遇节点(二选一遭遇选择)
@@ -48,13 +48,13 @@ bug#1 缓解:关键 click 前 `mouse_move`(零移动 click 不被框架 before_s
 ## 识别快照
 
 `analyze_screen`(基线图 `screenshot_20260804_111031_308056.png`):
-- 匹配画面:**无**(本屏未进 screen_info,`screens=[]`)→ 纯 `round_by_ocr('遭遇其一')` 检测。
+- 匹配画面:**货币战争-遭遇节点 `is_precise=True`**(2026-08-10 建档后;标识-遭遇节点 conf 0.9994 + 按钮-选择 + 按钮-返回备战界面)。建档前为 `screens=[]` 纯 `round_by_ocr('遭遇其一')` 检测。
 - 全量 OCR:`返回备战界面` / `遭遇节点` / `遭遇其一` / `遭遇其四` / `-难度-` / `M` / `奖励预览`×2 / `金币` / `随机4费角色` / `2` / `3` / `难度越高敌人越强大，请谨慎选择` / `剩余次数：1` / `选择`。
 - 视觉大模型(智谱 GLM-4.5V):两张六边形卡左右并列;左卡难度 1 蓝 V + 金币×2;右卡难度 4 红 V + 随机4费角色×3;初始无卡选中;「选择」未选中时灰边。
 
 ## 备注 / 待查
 
-- **screen_info 现状**:本屏**未建模**(`screens=[]`),坐标暂硬编码在 `battle_loop.py` handler。待按规范把卡身/选择/返回坐标进 screen_info(task#20 + 拆 op task#22)。
+- **screen_info 现状**:**已建(2026-08-10)** —— id_mark `标识-遭遇节点`(「遭遇节点」)+ `遭遇卡-其一`/`遭遇卡-其二`(卡身点击选中)+ `按钮-选择` + `按钮-返回备战界面`。handler(`battle_loop.py`)现仍 OCR 判定 + 硬编码坐标,后续可改用 area 坐标(单一真相源,task#20 收尾)。
 - **策略化选卡(待做)**:当前默认选左卡(难度低、稳)。应按 `target_comp` 评估两卡价值(右卡「随机4费角色×3」对缺核心卡的 comp 极值)—— 属节点决策(见 `docs/game/currency_war/strategy/08_node_decisions.md`)。
 - 「遭遇其X」的 X 不固定(其一/其四实测,可能有其二其三)→ 检测用前缀「遭遇其」+「选择」+「遭遇节点」组合更稳。
 - 「返回备战界面」放弃是否扣「剩余次数」待确认。
