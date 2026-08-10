@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
@@ -55,6 +56,7 @@ from sr_od.application.currency_war.cw_observation import (
 )
 
 _log = log_utils.log
+_MISS_SHOT_DIR = Path(__file__).resolve().parents[5] / '.debug' / 'temp' / 'currency_war' / 'miss'
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -150,9 +152,9 @@ class BattlePrepRecognizer(ScreenRecognizer):
         bench_equips: dict[int, list[str]] | None = None
         equip_grays = ensure_equip_tm_templates(ctx)
         if equip_grays is not None:
-            front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4, logger=_log) or None
-            back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6, logger=_log) or None
-            bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9, logger=_log) or None
+            front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4, logger=_log, shot_dir=_MISS_SHOT_DIR) or None
+            back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6, logger=_log, shot_dir=_MISS_SHOT_DIR) or None
+            bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9, logger=_log, shot_dir=_MISS_SHOT_DIR) or None
         state = _BattlePrepState(
             gold=read_gold(ctx, image),
             phase=_read_phase_round_pure(ctx, image),
