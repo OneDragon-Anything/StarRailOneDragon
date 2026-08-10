@@ -86,7 +86,7 @@ def read_equips(
     """
     x1, y1, x2, y2 = equip_rect
     zone = screen[y1:y2, x1:x2]
-    gray = cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(zone, cv2.COLOR_RGB2GRAY)  # sr_od screen RGB(D-52 同类,read_equips 也通道错)
     kp_z, desc_z = _EQUIP_SIFT.detectAndCompute(gray, None)
     raw_hits: list[tuple[str, tuple[int, int], int]] = []
     if desc_z is None or len(kp_z) < 4:
@@ -116,7 +116,38 @@ def read_equips(
                for _, (ocx, ocy), _ in clustered):
             continue  # 已被更高 inliers 命中吞并(去重)
         clustered.append((name, (cx, cy), inliers))
+    _check_owned_order(clustered, screen, equip_rect)
     return clustered
+
+
+def _check_owned_order(
+    equips: list[tuple[str, tuple[int, int], int]],
+    screen: MatLike,
+    equip_rect: tuple[int, int, int, int],
+) -> None:
+    """owned 栏顺序异常检测:装备按布局(从上到下、从右到左)排,相邻间距突变 = 跳格(前面漏检)。
+
+    CW owned 栏填充规则:第一行独立(冶金炉多了左堆),下面从上到下、从右到左 → 装备应连续
+    (从起始格)。跳格(识别到"后面"装备但"前面"位置空)= 前面可能漏检,记 ``[cw!]`` + 存 owned 栏截图。
+
+    简化(自适应,无需预建网格):装备按 (cy 行, -cx 列) 排序,相邻欧氏间距;中位数 = 正常步距,
+    间距 > 1.8×中位数 = 跳格。
+    """
+    if len(equips) < 4:
+        return  # 太少无法判连续性
+    pts = sorted([(e[1][0], e[1][1]) for e in equips], key=lambda p: (p[1], -p[0]))
+    dists = [((pts[i + 1][0] - pts[i][0]) ** 2 + (pts[i + 1][1] - pts[i][1]) ** 2) ** 0.5
+             for i in range(len(pts) - 1)]
+    med = sorted(dists)[len(dists) // 2]
+    if med <= 0:
+        return
+    for i, d in enumerate(dists):
+        if d > 1.8 * med:
+            x1, y1, x2, y2 = equip_rect
+            cw_log('read_equips', step='order', target='owned', attn=True,
+                   anomaly=f'跳格 equip[{i}]->[{i + 1}] 间距{d:.0f}>>中位{med:.0f}(前面可能漏检)',
+                   count=len(equips), shot=cw_shot(screen[y1:y2, x1:x2], 'owned_anomaly'))
+            return
 
 
 # ===== 穿戴装备识别(below-avatar icon;D-45 路径① multi-scale TM 替 SIFT;D-49 确认 icon 固定尺寸)=====
@@ -203,6 +234,11 @@ def read_equipped_below(
             kept.append((name, val, x))
         if kept:
             out[slot_idx] = [n for n, _, _ in kept]
+        # icon 数守卫:角色 below 最多3件,>3 = 误检/邻槽串入
+        if len(kept) > 3:
+            cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
+                   anomaly=f'icon数{len(kept)}>3(误检/邻槽串入)', equips=str([n for n, _, _ in kept]),
+                   shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'over3_slot{slot_idx}'))
         # MISS 日志:近命中(val 刚低于 threshold)可能是漏检(如 D-51 武器大师后排-6 val0.57<0.6)。
         # grep `\[cw\].*MISS` 找漏检;miss_threshold 0.55 避低 val 噪声。
         if near:
