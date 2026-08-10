@@ -66,9 +66,10 @@ class HandleBriefing(SrOperation):
                 # 固定采集:每词缀点采 OCR 效果 → 跟注册表文件(affix_effects_data.py 最新)比,新名/描述不一致
                 # → 存 tooltip 截图 + 写回注册表(write_affix_effects;本轮内存不生效,下轮 import 生效)。
                 _updates = self._collect_affix_effects(dict(_affixes_pos))
-                if _updates and write_affix_effects(_updates):
-                    _log.info('[cw-briefing] %d 个词缀(新名/与注册表不一致)已写回注册表: %s',
-                              len(_updates), list(_updates))
+                if _updates:
+                    # write_affix_effects 内部 log 明细(D-81 守卫:garbage「下一步」拒 / existing divergent
+                    # 不覆盖静态数据 / new key 加);返回是否实际写入。
+                    write_affix_effects(_updates)
         if not self.ctx.cw_briefing_bosses:
             _bosses = read_bosses(self.ctx, screen)
             if _bosses:

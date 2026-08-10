@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -21,6 +22,8 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.utils.cv2_utils import save_image
 from sr_od.application.currency_war.cw_obs_core import BRIEFING_SCREEN, _area_rect, _ocr
 from sr_od.context.sr_context import SrContext
+
+_log = logging.getLogger(__name__)
 
 
 def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Point]]:
@@ -147,22 +150,64 @@ def save_affix_screenshot(screen: MatLike, name: str) -> str:
     return filename
 
 
-def write_affix_effects(updates: dict[str, str]) -> bool:
-    """merge ``updates`` 进 ``affix_effects_data.py`` 注册表(新名新增 / 不一致覆盖)。
+def _is_garbage_affix(name: str, effect: str) -> bool:
+    """OCR 采的词缀效果是否明显 garbage(拒写 ground truth)。
 
-    读文件最新(``load_affix_effects_from_file``)→ merge ``updates`` → 写回(``json.dumps`` 生成合法 py
-    dict literal,中文保留)。**写入不影响已加载内存**(下游本轮用旧值)→ **下轮启动重新 import 生效**。
-    ``updates`` 空 → 不写。返回是否写入。
+    简报 tooltip 未弹时(``_collect_affix_effects`` 的 click 没落到词缀 / 动画未完),
+    ``read_affix_effect`` 读下行文本(下一词缀行 / 「下一步」按钮)当效果 → garbage。
+    判据:**真效果文案绝不会只含 / 含「下一步」**(「下一步」= 简报按钮文字)。空效果同理(未采到)。
+    """
+    if '下一步' in name or '下一步' in effect:
+        return True
+    return not effect.strip()
+
+
+def write_affix_effects(updates: dict[str, str]) -> bool:
+    """把 ``updates`` 的**合格**词缀效果 merge 进 ``affix_effects_data.py`` 注册表。
+
+    写入策略(D-81,治 OCR 污染 ground truth;详见 decisions.md):
+
+    - **garbage 守卫**:``_is_garbage_affix`` 拒(「下一步」按钮文字 / 空)→ 不写。
+    - **existing 不覆盖**:词缀效果是**静态游戏数据**(不随对局变,每场只是选不同词缀,效果本身固定);
+      注册表已有值更可信(人工校准 / 干净 OCR 采过)。OCR 重读 divergent → **不覆盖**,仅 log +
+      tooltip 截图已存(``affix_shots/``)待人工 review(重读错比真变更常见,如 ``85%/60%/30%`` 被读成
+      ``85%160%/30%``)。**新 key(过 garbage 守卫)正常新增。**
+
+    读文件最新(``load_affix_effects_from_file``)→ 按上策略 merge ``updates`` → 写回(``json.dumps`` 生成
+    合法 py dict literal,中文保留)。**写入不影响已加载内存**(下游本轮用旧值)→ **下轮启动重新 import 生效**。
+    返回是否实际写入(有合格新 key)。
     """
     if not updates:
         return False
     current = load_affix_effects_from_file()
-    current.update(updates)
+    accepted: dict[str, str] = {}
+    rejected_garbage: list[str] = []
+    divergent: list[str] = []
+    for name, effect in updates.items():
+        if _is_garbage_affix(name, effect):
+            rejected_garbage.append(name)
+            continue
+        if name in current:
+            if current[name] != effect:
+                # existing divergent → 不覆盖(静态数据,现有值更可信;tooltip 截图已存待人工 review)
+                divergent.append(f'{name}: 注册表「{current[name]}」≠ OCR「{effect}」(不覆盖,待 review)')
+            continue
+        accepted[name] = effect
+    if rejected_garbage:
+        _log.warning('[cw!][briefing] 词缀效果 garbage 拒写(OCR 含「下一步」/空,tooltip 疑未弹): %s',
+                     rejected_garbage)
+    if divergent:
+        _log.warning('[cw!][briefing] 词缀效果 divergent 不覆盖(静态数据,现有值更可信;截图待 review): %s',
+                     divergent)
+    if not accepted:
+        return False
+    current.update(accepted)
     content = (
         '"""敌人词缀 → 游戏原文效果注册表(数据层 ground truth)。\n'
         '\n'
-        '**本文件由 HandleBriefing 运行时自动维护**(``cw_briefing_obs.write_affix_effects`` 采到新词缀 /\n'
-        '与现有不一致 → 写入)。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)\n'
+        '**本文件由 HandleBriefing 运行时自动维护**(``cw_briefing_obs.write_affix_effects`` 采到**新**词缀 →\n'
+        '写入;D-81 起**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +\n'
+        '截图待人工 review)。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)\n'
         '→ **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。\n'
         '\n'
         '格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。\n'
@@ -173,4 +218,5 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
         'AFFIX_EFFECTS: dict[str, str] = ' + json.dumps(current, ensure_ascii=False, indent=4) + '\n'
     )
     _AFFIX_EFFECTS_PATH.write_text(content, encoding='utf-8')
+    _log.info('[cw][briefing] 词缀效果注册表新增 %d 个: %s', len(accepted), list(accepted))
     return True

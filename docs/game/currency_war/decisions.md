@@ -736,4 +736,18 @@
 - **不确定**:①-⑤ 的确切定义(是这 5 recognizer?还是 screen-onboarding 建档① 类叶子?或 画面建档 3.1/3.3/3.4?)。**待用户确认 ①-⑤ 定义 → 若 = 5 recognizer 则 ① 解锁 → 策略阶段启**。
 - **状态**:**评估(待确认)**。5 权威源 recognizer 全验 → ① 可能解锁。用户确认 ①-⑤ 定义后定:若解锁 → 策略阶段(comp/HP/位面2-1 wall)。`· 核心锁①(进度.md L16)/ 权威源映射(L20-30)/ D-78(①-a 闭环,第 5 recognizer 验)/ D-79(位面2-1 wall,策略待)`。
 
+## D-81 (2026-08-11)【修复·affix 效果注册表 OCR 污染(治本:写入守卫 + 清数据)】review 抓到 `affix_effects_data.py` 工作区损坏(形单影只 `85%/60%/30%`→`85%160%/30%`)→ 查出**系统性 OCR 污染**:简报 tooltip 未弹时 `read_affix_effect` 读下行(下一词缀行 /「下一步」按钮)当效果 → garbage 被当 ground truth 写入。`write_affix_effects` 无条件 `current.update()` 覆盖 → garbage 累积(下一步值 ×3、`*冰之熄火` 拼接 garbage key、形单影只值损坏)。**治本(写入策略改)+ 清数据**
+
+- **根因(因果链)**:症状(registry garbage)→ `write_affix_effects` 无校验 + 无条件覆盖 existing → briefing OCR 本质不可靠(tooltip 弹出依赖 click 落地 + 动画,未弹时 `_below_text` 读下行无法区分弹没弹)。词缀效果是**静态游戏数据**(不随对局变,每场只选不同词缀,效果本身固定)→ 无条件覆盖只会把对的换成错的。
+- **证据(affix_shots 对账截图 + analyze_image VLM 核实)**:① 随从强化.png tooltip 弹出 → VLM 读「速度提高30%,生命上限提高20%」(工作区新值**正确**,保留);② 形单影只.png tooltip 弹出 → VLM 读「85%/60%/30%」(原值**正确**,工作区 `85%160%/30%` 是损坏,revert);③ 开局不利/变宝为废.png **无 tooltip**(click 没弹)→ OCR 读「下一步」按钮当效果(失败模式实证)。
+- **修法(write_affix_effects 双守卫,治本 chokepoint)**:
+  - **garbage 守卫**:`_is_garbage_affix` 拒「下一步」在 key/value + 空效果(真效果绝不只含/含按钮文字)→ 不写。
+  - **existing 不覆盖**:已有词缀遇 divergent OCR → **不覆盖**(静态数据,现有值更可信),仅 `[cw!][briefing]` log + tooltip 截图已存(`affix_shots/`)待人工 review。**新 key(过守卫)正常新增。**
+  - caller(`handle_briefing`)log 改:不再 overclaim「N 个已写回」(守卫可能拒/跳),明细交 write 内部 log。
+- **清数据(affix_effects_data.py)**:revert 形单影只 → `85%/60%/30%。`;保留 随从强化(VLM 验);删 4 garbage(开局不利/变宝为废/丢失幸运 = 「下一步」值;`*冰之熄火` = 拼接 garbage key)。3 个「下一步」词缀效果未采(tooltip 未弹截图无法读)→ **删,待下次 OCR tooltip 成功弹时作新 key 加回**(competitors.md 只有概括非原文,不擅填)。53 → 49 entry。
+- **备选(为什么没选)**:① **改 OCR 层检测 tooltip 未弹**(`read_affix_effect` 验 tooltip 视觉存在再读)—— 治更上游,但复杂(需理解 tooltip 视觉结构)+ 游戏占用难 live 验 + **即使 OCR 层完美,写入守卫仍必要**(防御纵深:tooltip 弹了 OCR 仍可能误读,如形单影只;故 existing 不覆盖是必须的)。记 TODO,非本 commit。② **删 auto-write 改纯人工**—— 失去自动采新词缀能力。**守卫 + append-only-existing 兼顾自动采 + 防 OCR 污染,最优。**
+- **验证(假设驱动)**:`test_affix_effects_write.py` 6 例覆盖三策略(garbage 拒 / existing divergent 不覆盖 / new key 加 / existing same no-op / 混合 batch);`test_write_affix_effects_merge` 更新匹配新策略。ruff + CW 套件 267 过。**判据收紧**:auto-write 不再把 garbage / divergent 写进 ground truth。
+- **副作用 / 待办**:① 代码改 **需 server 重启生效**(MCP server 启动时 import;bot 用旧内存代码直到重启)。② 3 个「下一步」词缀(开局不利/变宝为废/丢失幸运)效果待 tooltip 成功弹时采回。③ **pre-existing 失败 `test_maybe_pivot_better_comp_emerges`**(cw_comps.py:653 D-9 carryover maybe_pivot `if _committed and not _losing` vs 测试期望 signal-1 pivot)—— 实证 HEAD 上无我改动也 fail(stash 验),属核心策略模块锁 carryover(commit 7ae880b3),**① 解锁前不动**。
+- **状态**:**已修(待 server 重启生效 + 3 词缀待采)**。`· review ~05:00(抓损坏) / affix_shots/(对账证据) / D-80(① 评估,carryover 待清)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
