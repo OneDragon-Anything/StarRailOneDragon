@@ -675,4 +675,13 @@
 - **结果**:结算 挑战成功(hp_after=64, 获得金币5, 等级提升提示, 掉落晶矿)。round 2 赢。
 - **状态**:**D-71 修 live 验证通过**。BattlePrepCycle 出战 step 正常(轮询转移,不 false-fail)。D-70→D-71→D-72 闭环(发现→修→验)。`· D-70(发现)/ D-71(修)/ write-operation(出口验真转移)`。
 
+## D-73 (2026-08-11)【发现·BattlePrepCycle 不处理 match 中事件(投资策略);全 CurrencyWarRunLoop 才自主】run BattlePrepCycle round 3 → 0.95s fail「非备战屏(回合事件叠层),交主循环处理」failed_node=买牌。实屏=投资策略 3 选 1(佩佩客串/定点爆破/商业间谍)mid-match event。BattlePrepCycle 只处理备战单轮(buy+deploy+出战),**不处理 mid-match events**(投资策略/遭遇/补给等)→ 遇 event fail + 交主循环。**全自主需 CurrencyWarRunLoop**(主循环:分类状态→委派 handler[事件/备战])
+
+- **触发**:run BattlePrepCycle round 3(after round 2 结算→继续 → 投资策略 event)。
+- **fail**:0.95s fail「非备战屏(回合事件叠层?),交主循环处理」failed_node=买牌。BattlePrepCycle buy step 检测非备战 → fail + 交主循环(设计如此,非 bug)。
+- **实屏**:投资策略 3 选 1(佩佩客串[装备]/ 定点爆破[核弹伤害]/ 商业间谍[经济])—— mid-match event(between rounds)。
+- **gap**:BattlePrepCycle = **备战单轮**(buy+deploy+出战),**不处理 mid-match events**(投资策略/遭遇/补给等)。全自主需 **CurrencyWarRunLoop**(主循环:flat loop 分类状态→委派 handler[HandleInvestStrategy/HandleEncounter/.../BattlePrepCycle])。run BattlePrepCycle 单独只处理连续备战轮(无 event 介入时)。
+- **手动处理**:选 定点爆破(核弹伤害,助推) + 确认 → 备战 round 3。
+- **状态**:**发现(记)**。BattlePrepCycle 不处理 mid-match events(交主循环设计)。全自主需 CurrencyWarRunLoop(主循环委派)。`· D-71/D-72(BattlePrepCycle 出战修+验)/ CurrencyWarRunLoop(battle_loop.py 主循环)/ HandleInvestStrategy(投资策略 handler)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
