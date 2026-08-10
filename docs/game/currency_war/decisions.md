@@ -789,4 +789,12 @@
 - **诊断 step1(本 commit)**:出战 retry 前加 `self.save_screenshot()` 存屏。下次 bug#1 cluster 复现时,看截图:① **有 overlay**(dialog/事件盖出战)→ overlay 问题(出战 click 落 overlay);② **无 overlay,纯备战屏**→ bug#1 drag( elimination);③ 出战按钮位置 → 验坐标。**根因定后再修**(别盲改 click)。
 - **状态**:**诊断 step1 部署(待下次复现存证 + live-debug)**。match#7 终局饱和(died wall,17.9min,同 D-85)。`· insights(出战 click 机制 + 修法待定)/ bug#1(CLAUDE.md)/ D-85(数据饱和)`。
 
+## D-87 (2026-08-11)【诊断·出战 click retry 根因 = 选择伙伴/强化角色 overlay(非 bug#1,D-86 trap 实证)】match#9 出战 retry(D-86 trap active)capture 4 张 retry 屏,VLM 客观分析:**出战按钮右下角可见无遮挡,但 选择伙伴弹窗 + 请选择强化角色提示 叠加在备战屏 → pending selection action-blocks 出战** → click 不 transition → retry。跨 4 retry overlay 持存 → 排除 bug#1 drag。**修法方向:出战前 handle overlay(非调 click timing)**
+
+- **诊断证据(D-86 save_screenshot trap 捕到)**:match#9 出战 retry 4 张屏(`.debug/images/BattlePrepCycle_*.png`),VLM 2 张一致:① 出战按钮右下角**清晰可见无遮挡**;② 但画面**非纯净备战屏** —— **选择伙伴弹窗(中间,选角色复制装备效果)+ 请选择强化角色橙提示条(右上)叠加**;③ 这些是 pending selection → 游戏 action-block 出战(出战可见但点不响应)。
+- **根因(定)**:**选择伙伴 + 强化角色 selection overlay pending 时点出战 → 被 block**(非 bug#1 drag)。排除 bug#1:drag 不会跨 4 retry 持存 + 出战按钮可见无遮挡(若是 drag/遮挡,出战会不可见或 click 落别处;实测出战可见 + click 不响应 = action-block by pending selection)。
+- **修法方向(转,别走 bug#1 死路)**:BattlePrepCycle 出战前(或 buy/deploy/equip 后)**handle 选择伙伴/强化角色 overlay** —— complete selection(选个 partner/强化角色)或 dismiss(关弹窗)。**需 live 观察**:① overlay 来源(选择伙伴 = equip 投影件触发?强化角色 = 升级触发?哪个 prep 步留的);② handling(complete 需选啥 / dismiss 点哪)→ defer 到 live-debug。bot 现 retry 恢复(非 breaking,但浪费 ~20s/cluster + match-fail 风险)。
+- **D-86 trap 价值证成**:诊断存证 → 捕到证据 → VLM 定根因(overlay 非 bug#1)→ 修法方向转(handle overlay,别调 click timing)。**rare-edge 捕捉 → 诊断 → 定向修法**链路通。
+- **状态**:**根因已定(overlay,非 bug#1),修法 defer(需 live 观察 overlay 来源 + handling)**。`· D-86(trap 部署)/ insights(出战 click 机制 + 根因更新)/ bug#1(CLAUDE.md,排除)/ D-85(数据饱和)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
