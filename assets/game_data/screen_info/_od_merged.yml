@@ -2557,7 +2557,7 @@
     color_range: null
     goto_list: []
   - area_name: 装备详情-合成公式
-    id_mark: true
+    id_mark: false
     pc_rect:
     - 1100
     - 815
