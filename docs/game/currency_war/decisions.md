@@ -648,4 +648,14 @@
 - **bot 意义**:match-end 流程(挑战失败→对局评价→返回→大厅)bot 须能导航(挑战失败已建档 D-68;对局评价/返回待建档 —— 主要需点 下一页/返回货币战争 翻过)。客观指标(积分/晋升/总经济/阵容价值)是 A8 胜率衡量地基(阶段7 客观指标)。
 - **状态**:**match-end 流程地图 + A8 客观指标记录**。bot 对局生命周期完整(备战→出战→结算/挑战失败→对局评价→大厅)。`· D-67/D-68(挑战失败)/ D-3(A8 目标)/ 阶段7 客观指标`。
 
+## D-70 (2026-08-11)【发现·BattlePrepCycle 出战 false-failure(op 报败但实成功)】run BattlePrepCycle(备战单轮:deploy+equip+出战)on 新 A8 局 1-1:deploy 3/3(bench1-3→前排,bench4-5 bug#1 拖未空跳过)→ 出战 click @(1815,747)→ op 报"找不到出战"失败(**但实际 combat 已开 + 挑战成功 hp62**)。根因:出战 click 后 op 即时复核"仍在备战"(transition 慢/bug#1 误判)→ retry"找不到出战"(transition 中)→ 报败。**实成功报败**(op 出战验证时序太紧,未等 transition)
+
+- **跑**:run_operation BattlePrepCycle @ 备战 1-1(新 A8 局,人身意外险环境)。deploy 3/3(bench1-3 ✓,bench4-5 拖3次未空 bug#1 跳过,placed=3/5 但 cap=3 满)→ equip_all(无穿戴,no-op)→ 出战 click @(1815,747)。
+- **op 报败**:出战 click 后 log「出战后仍在备战(click 未落地/bug#1?),retry」→「找不到出战按钮」retries → **报败"找不到出战"**(failed_node=出战,43s)。
+- **实成功**:analyze 显 **结算 挑战成功**(hp_after=62, 获得金币3, 掉落晶矿)→ **combat 实开 + 赢**。即出战 click 实落(op 误报)。
+- **根因**:出战 click 后 op **即时**复核「仍在备战」—— transition(combat loading)慢 / bug#1 误判 → op 以为没点中 → retry「找不到出战」(transition 中 出战 已消失)→ 报败。**op 出战验证时序太紧,未等 transition 到 combat/结算**。
+- **影响**:BattlePrepCycle 出战 step **false-failure**(报败但实成功)→ bot 会误判回合失败(实赢)→ 可能误触发重试/退出。修需:出战 click 后**等 transition**(轮询 combat/结算/未达上限警告 出现,非即时复核 出战 还在)。
+- **附加**:deploy bench4-5 bug#1(拖3次源槽未空)→ placed 3/5(bench4-5 漏部署);但 cap=3 → 3/3 满,不影响出战。
+- **状态**:**发现(记)**。BattlePrepCycle 出战 false-failure bug。修待(battle_prep.py 出战 step 等 transition,非即时复核)。`· BattlePrepCycle(battle_prep.py)/ HandleDeployNotFull(未达上限,本例 cap=3 满未触发)/ bug#1(click 异步/拖拽误判)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
