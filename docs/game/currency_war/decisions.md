@@ -505,4 +505,17 @@
 - **教训**:旧 docstring 结论(脸库时代)没随库切换(D-22 脸库→半身库)更新 → 知识漂移。库/算法切换后,依赖它的结论要同步复核。
 - **状态**:**docstring 已修**。`· D-22(脸库→半身库,结论没同步)/ 用户(质疑分数相同,触发验证)`。
 
+## D-55 (2026-08-10)【重构·商店 read_shop_cards OCR→SIFT + 商店牌肖像区 VLM 定位】OCR 牌名对开拓者(玩家自定义名"Momojie")读不到/匹配错;且旧 SIFT 测试因我猜裁切(screen_info 牌中心≠肖像中心)误判"弱"。VLM 定位肖像区(pi qwen3.7-plus bbox_2d 0-1000)→ 客观 SIFT 复核 33-68 内点 5/5 → 改 SIFT
+
+- **触发(用户)**:开拓者真实名是开拓者,游戏里显示玩家自定义名"Momojie" → OCR 牌名读不到;「商店识别改回 SIFT」。+ 质疑我"猜坐标而非 VLM 确定"(D-55 方法论)。
+- **查证(关键纠错)**:我先猜裁切 `x_center±95`(基于 screen_info 牌中心 377/646/…)→ SIFT 内点仅 6-14,误判"商店 SIFT 弱"。**用户质疑 → VLM(pi qwen3.7-plus, bbox_2d 0-1000)定位肖像真实中心 501/754/1007/1260/1513 → 客观 SIFT 复核:内点 33-68、5/5 命中 GT(翡翠/丹恒·腾荒/不死途/飞霄/三月七)**。根因:screen_info 商店牌-N 是**文字带/点击点**(中心 377/…),**≠肖像中心**(501/…,差 60-124px)→ 我裁错位置。VLM 才对(详见 ui-region-detect skill「VLM 定位信任层级」+ ADR-0005)。
+- **改**:
+  1. **screen_info 商店牌-1..5 pc_rect** → 肖像区(VLM 定位 `[cx-109,70,cx+109,260]`;cx=501/754/1007/1260/1513),`upsert_screen_area`。
+  2. **`read_shop_cards` OCR→SIFT**:裁 商店牌-N 肖像 → `identify_character`(SIFT 立绘库)→ `resolve_char_name` 规范名;faction/cost 从 roster 派生(`ch.factions[0]`/`ch.cost`)。未识别 → name='' faction='?' cost=0(仍占位保 5 张,len 不变)。删 OCR helper `_match_char` + `difflib`。
+  3. **`ensure_portrait_templates(ctx)`**(cw_identity_obs,镜像 ensure_equip_tm_templates):按需加载 character_cw_portrait 缓存 `ctx.cw_portrait_templates`。buy 在 deploy 前(BattlePrepCycle: buy→deploy),故 shop 不依赖 deploy 才加载的缓存。
+  4. **faction 语义变**:OCR 牌标签 → roster factions[0](SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。
+- **接口不变**:`list[ShopCard]`(x/faction/name/cost/star);shop.py(`_tracked_bench_chars` 用 buy 名 seed bench)+ plan 消费无感。`shop_card_click_points` 改从 cw_obs_core import(不再经 cw_observation re-export)。
+- **教训**:① VLM 定位可信,别猜坐标 + 别拿未验证参照系(screen_info 点击点)否定 VLM(同 D-55 方法论);② "SIFT 弱"结论常是裁切错,先查裁切位置(VLM/CV 定)再下结论;③ qwen3 bbox_2d 归一化 **0-1000**(非 0-999,官方文档,差 0.1% 可忽略但已订正 CLAUDE.md)。
+- **状态**:**已修 + test_read_shop_cards_sift 5/5 GT(shop_open.webp)+ 258 测试过(仅既有 comp pivot 失败)**。**待办**:① 开拓者 roster gap(Momojie 模板 → 开拓者·欢愉/记忆,需定命途);② live 验买牌点击落在牌上(肖像中心 501 vs 旧文字中心 377,差 124px,需实机 click 核)。`· D-54(VLM 坐标可信方法论同源)/ 用户(开拓者 OCR 失败 + 推 VLM 定位 + 质疑猜坐标,全程纠方向)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

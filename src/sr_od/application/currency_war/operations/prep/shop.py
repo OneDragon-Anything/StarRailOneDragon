@@ -10,14 +10,13 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_obs_core import HP_MAX
+from sr_od.application.currency_war.cw_obs_core import HP_MAX, shop_card_click_points
 from sr_od.application.currency_war.cw_observation import (
     area_center,
     new_bench_slots,
     read_game_state,
     read_gold,
     read_hp,
-    shop_card_click_points,
 )
 from sr_od.application.currency_war.cw_state import (
     BenchChar,

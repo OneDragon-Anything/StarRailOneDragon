@@ -25,12 +25,15 @@ SIFT 匹配器对模板库(生产用 ``character_cw_portrait`` 货币战争立�
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from sr_od.application.currency_war.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
+    load_avatar_templates,
 )
 from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.cw_equipment import read_equipped_below
@@ -65,6 +68,25 @@ def resolve_char_name(avatar_id: str) -> str | None:
         if cn in name:
             return name
     return None
+
+
+def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
+    """确保 ctx 缓存 ``character_cw_portrait`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
+
+    首次 load 缓存 ``ctx.cw_portrait_templates``;后续读缓存。**shop SIFT**(D-55,``read_shop_cards``)
+    + deployed/bench SIFT 身份识别的模板加载点(deploy_bench 也读写此缓存)。**幂等**:同值重 load 无害。
+
+    **并发安全**:只缓存只读资源(非 session/游戏状态),与运行中 operation 不竞争(同 ensure_equip_tm_templates)。
+    buy 在 deploy 之前(BattlePrepCycle: buy→deploy),故 shop 不能依赖 deploy 才加载的模板 → 本函数按需加载。
+    """
+    templates = getattr(ctx, 'cw_portrait_templates', None)
+    if templates is None:
+        portrait_dir = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'character_cw_portrait'
+        if not portrait_dir.is_dir():
+            return None
+        templates = load_avatar_templates(portrait_dir)
+        ctx.cw_portrait_templates = templates
+    return templates
 
 
 def identify_slots(

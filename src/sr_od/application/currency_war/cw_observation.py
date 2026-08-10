@@ -28,7 +28,6 @@ v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
 """
 from __future__ import annotations
 
-import difflib
 import re
 
 import cv2
@@ -47,27 +46,29 @@ from sr_od.application.currency_war.cw_briefing_obs import (  # noqa: F401
     save_affix_screenshot,
     write_affix_effects,
 )
-from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
+from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_factions import FACTIONS
+from sr_od.application.currency_war.cw_identity_obs import (
+    ensure_portrait_templates,
+    identify_character,
+    resolve_char_name,
+)
 from sr_od.application.currency_war.cw_obs_core import (
     A_BOARD,
     A_GOLD,
     A_PHASE,
-    A_SHOP_REGION,
-    COL_TOLERANCE,
+    A_SHOP_CARD_PREFIX,
     GOLD_MAX,
     GOLD_MIN,
     HP_MAX,
     HP_MIN,
     LEVEL_MAX,
     LEVEL_MIN,
-    SHOP_FACTION_NAME_SPLIT_Y,
     _area_rect,
     _first_int,
     _ocr,
     area_center,  # noqa: F401 (re-export:importer 经 cw_observation.area_center 用)
-    shop_card_click_points,
-)
+    )
 from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     parse_settlement_hp,
     read_round_outcome,
@@ -371,54 +372,36 @@ def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     return {f: nt for f, (_c, nt) in _board_pairs(ctx, screen).items() if nt > 0}
 
 
-def _match_char(text: str) -> str:
-    """OCR 牌名 → CHARACTER_ROSTER 规范名(精确 → 子串 → difflib 近似);无则 ''。"""
-    t = (text or '').strip()
-    if not t:
-        return ''
-    if t in CHARACTER_ROSTER:
-        return t
-    for name in CHARACTER_ROSTER:           # 子串(OCR 多读/少读字符)
-        if name in t or t in name:
-            return name
-    matches = difflib.get_close_matches(t, CHARACTER_ROSTER, n=1, cutoff=0.6)
-    return matches[0] if matches else ''
-
-
 def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
-    """OCR 商店 5 张牌 → list[ShopCard](x + faction + name + cost)。
+    """SIFT 商店 5 张牌肖像 → list[ShopCard](x + faction + name + cost)。
 
-    牌位 x 从 screen_info 商店牌-1..5 中心读;整体 OCR 商店牌区 → 按 y 分阵营标签
-    (< ``SHOP_FACTION_NAME_SPLIT_Y``)/ 角色名(>= 该 y)→ 按 x 分配到最近牌位。name 经
-    CHARACTER_ROSTER 匹配 → 顺带得 cost;name 未知 → cost=0(card_cost 兜底 3)。商店须已打开。
+    每张牌:裁 screen_info ``商店牌-N``(**肖像区**,D-55 经 VLM 定位改自文字带)→ ``identify_character``
+    SIFT 对 ``character_cw_portrait`` 立绘库 → ``resolve_char_name`` 规范名;faction/cost 从 roster 派生。
+    未识别(低内点/歧义/不在 roster)→ name='' faction='?' cost=0(仍占位保 5 张,len 不变)。
+
+    **D-55 由 OCR 改 SIFT**:OCR 牌名对开拓者(玩家自定义名,如 "Momojie")等读不到/匹配错;SIFT 看
+    肖像更稳(实测 shop_open 5/5 内点 33-68,VLM 定位肖像区)。faction 由 OCR 牌标签 → roster factions[0]
+    (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。立绘库经 ``ensure_portrait_templates`` 按需加载
+    (buy 在 deploy 前,BattlePrepCycle: buy→deploy,故不依赖 deploy 才加载的缓存)。
     """
-    centers = shop_card_click_points(ctx)
-    shop_rect = _area_rect(ctx, A_SHOP_REGION)
-    if not centers or shop_rect is None:
-        return []
-    faction_by_x: dict[int, str] = {}
-    name_by_x: dict[int, str] = {}
-    for r in _ocr(ctx, screen, shop_rect):
-        cx, cy = r.center.x, r.center.y
-        nearest = min(centers, key=lambda p: abs(p.x - cx))
-        if abs(nearest.x - cx) > COL_TOLERANCE:
-            continue
-        x = int(nearest.x)
-        if cy < SHOP_FACTION_NAME_SPLIT_Y:           # 阵营标签行
-            f = next((f for f in FACTIONS if f in (r.data or '')), None)
-            if f and x not in faction_by_x:
-                faction_by_x[x] = f
-        else:                                        # 角色名行
-            name = _match_char(r.data or '')
-            if name and x not in name_by_x:
-                name_by_x[x] = name
+    templates = ensure_portrait_templates(ctx)
     cards: list[ShopCard] = []
-    for pt in centers:
-        x = int(pt.x)
-        ch = get_char(name_by_x.get(x, '')) if name_by_x.get(x) else None
-        cost = ch.cost if ch is not None else 0
-        cards.append(ShopCard(x=x, faction=faction_by_x.get(x, '?'),
-                              name=name_by_x.get(x, ''), cost=cost, star=1))
+    for i in range(1, 6):
+        rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}')
+        if rect is None:
+            continue
+        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+        avatar_id, _inliers = (identify_character(crop, templates)
+                               if templates is not None else (None, 0))
+        name = resolve_char_name(avatar_id) if avatar_id else ''
+        ch = get_char(name) if name else None
+        cards.append(ShopCard(
+            x=(rect.x1 + rect.x2) // 2,
+            faction=(ch.factions[0] if (ch is not None and ch.factions) else '?'),
+            name=name,
+            cost=(ch.cost if ch is not None else 0),
+            star=1,
+        ))
     return cards
 
 

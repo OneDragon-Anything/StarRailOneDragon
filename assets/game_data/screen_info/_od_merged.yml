@@ -2349,10 +2349,10 @@
   - area_name: 商店牌-1
     id_mark: false
     pc_rect:
-    - 314
-    - 265
-    - 440
-    - 311
+    - 392
+    - 70
+    - 610
+    - 260
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -2363,10 +2363,10 @@
   - area_name: 商店牌-2
     id_mark: false
     pc_rect:
-    - 583
-    - 265
-    - 709
-    - 311
+    - 645
+    - 70
+    - 863
+    - 260
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -2377,10 +2377,10 @@
   - area_name: 商店牌-3
     id_mark: false
     pc_rect:
-    - 860
-    - 265
-    - 986
-    - 311
+    - 898
+    - 70
+    - 1116
+    - 260
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -2391,10 +2391,10 @@
   - area_name: 商店牌-4
     id_mark: false
     pc_rect:
-    - 1122
-    - 265
-    - 1248
-    - 311
+    - 1151
+    - 70
+    - 1369
+    - 260
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -2405,10 +2405,10 @@
   - area_name: 商店牌-5
     id_mark: false
     pc_rect:
-    - 1390
-    - 265
-    - 1516
-    - 311
+    - 1405
+    - 70
+    - 1623
+    - 260
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
