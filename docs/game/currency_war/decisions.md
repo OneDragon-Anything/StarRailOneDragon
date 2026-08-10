@@ -616,4 +616,12 @@
 - **fixture**:`ended.webp`(挑战结束)归档 `sr-od-test/screens/货币战争-结算/`(+ `win.webp` 挑战成功)。id_mark 测试 39 过(+1,ended 也命中 继续挑战 id_mark)。
 - **状态**:**发现(记)+ fixture 归档**。结算 标题变体(成功/结束/失败):成功✓ 结束✓(D-65) 失败待。is_failed 精确判据待攒齐 3 标题 fixture 后定。`· 结算 onboarding(2026-08-11)/ D-122(结算 recognizer hp_after/is_failed)`。
 
+## D-66 (2026-08-11)【修正·D-65 is_failed 误判纠正(recognizer 用 _FAIL_MARKER 非 area LCS)】查 settlement_recognizer.py:`is_failed = any(_FAIL_MARKER in t for t in ocr_texts)`,`_FAIL_MARKER='挑战失败'`(line 38/74),**非** `标识-挑战成功` area LCS。故 挑战结束 → `is_failed=false` **正确**(结束≠失败,非误读)。D-65「is_failed LCS 误同」推测**作废**(基于错误假设 is_failed 用 area)。area 命名瑕疵不影响(非 id_mark、不影响 is_failed)
+
+- **触发**:D-65 推测 is_failed 用 area LCS(挑战结束→is_failed=false 疑误读)待核。
+- **查**:`recognizers/settlement_recognizer.py` line 74 `is_failed = any(_FAIL_MARKER in (t or '') for t in ocr_texts)`,`_FAIL_MARKER='挑战失败'`(line 38)。**is_failed 用「挑战失败」substring on `ocr_texts`,非 `标识-挑战成功` area**。
+- **结论**:挑战成功/结束(无「挑战失败」)→ is_failed=false ✓;挑战失败(有「挑战失败」)→ is_failed=true ✓。**挑战结束 → is_failed=false 正确**(结束≠失败)。D-65「is_failed LCS 误同」推测**作废**(基于错误假设 is_failed 用 area)。
+- **次要**:`标识-挑战成功` area(text「挑战成功」)确 LCS 匹配「挑战结束」0.998 —— 仅 area 命名略不准(该 area **非 id_mark**[继续挑战才是],不影响 screen 识别,也不影响 is_failed[_FAIL_MARKER 判])。可不改(命名瑕疵,改名 churn 不值)。
+- **状态**:**D-65 is_failed 误判纠正**。is_failed 逻辑正确(无需修)。结算 3 标题 is_failed 判据已明:**有「挑战失败」→ true,余 → false**。`· D-65(挑战结束变体+is_failed 推测)/ settlement_recognizer.py(_FAIL_MARKER)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
