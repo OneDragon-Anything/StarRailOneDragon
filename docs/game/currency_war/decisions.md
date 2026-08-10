@@ -691,4 +691,12 @@
 - **铺垫**:D-70~D-72(BattlePrepCycle 出战修+验)+ D-73(主循环才处理事件认知)→ 主循环可自主运行(出战正常 + 事件委派)。
 - **状态**:**里程碑 —— CurrencyWarRunLoop 自主运行中**。bot 全自主打 A8 CW(事件+备战+出战+结算+循环)。后续监控(match 进展 / stall / 失败节点)。`· D-73(主循环才自主)/ D-71/D-72(BattlePrepCycle 出战修+验)/ CurrencyWarRunLoop(battle_loop.py)`。
 
+## D-75 (2026-08-11)【里程碑·bot 自主处理 补给节点(人身意外险 supply)+ 推进到 boss round 9(①-a 装备源触达)】CurrencyWarRunLoop 自主运行 ~15min(retry 0):log 02:58:45 **`货币战争-补给节点` 执行成功**(RunSupplyNode op —— 主循环 dispatch 到补给 handler,人身意外险「首领前补给阶段」生效)。bot 自主 round 3→…→9(事件+备战+出战+结算+补给节点),现 备战 1-9 boss(HP5,deploy 2/5,board 命运圣杯×2/能量/战技点 + 吉尔伽美什/远坂凛/阮·梅)
+
+- **里程碑**:CurrencyWarRunLoop 自主运行 ~15min(retry 0)。log 02:58:45 `货币战争-补给节点 执行成功`(RunSupplyNode op)。**bot 自主处理补给节点**(人身意外险「首领节点前额外补给阶段」生效 → 首领前触发 supply → RunSupplyNode handler 处理)。
+- **自主推进**:round 3 → 4 → … → 9(主循环:事件 handler[祈愿试炼/补给节点/...]+ 备战[BattlePrepCycle:buy+deploy+出战]+ 结算 + 循环)。retry 0 无 stall。
+- **当前**:备战 1-9 **boss**(首领),HP 5(低,boss 轮损血),gold 41,deploy 2/5,board 命运圣杯×2/能量/战技点 + front 吉尔伽美什/远坂凛/阮·梅(Fate联动)。bot 在做 buy/deploy 决策(log `plan=['Buy(命运圣杯/远坂凛/1)','Deploy',...]`)。
+- **①-a 触达 + gap**:补给节点 = ①-a 装备源。bot 处理了 supply(RunSupplyNode)→ 装备可能入 装备库。**但 BattlePrepCycle = buy+deploy+出战(无 equip_all 节点)** → 装备可能在 装备库 未穿(equip_all 未接 cycle)。待 loop 结束后查 装备库 + 评估 equip_all 接 cycle。
+- **状态**:**里程碑 —— bot 自主处理补给节点 + 推进到 boss round 9**。bot 自主打满对局生命周期(备战→出战→结算→补给→boss)。①-a 装备源触达(supply 处理);equip_all 接 cycle 待(当前 cycle 无 equip 节点)。`· D-74(主循环自主)/ RunSupplyNode(补给 handler)/ 人身意外险(首领前 supply)/ BattlePrepCycle(buy+deploy+出战,无 equip)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
