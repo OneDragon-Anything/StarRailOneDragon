@@ -1,8 +1,9 @@
-"""解析 docs equipment.md → 生成 cw_equipment.py 全量 EQUIPMENTS 注册表(避免手抄错)。
+"""解析 docs equipment.md → 生成 cw_equipment_data.py 全量 EQUIPMENTS 注册表(P0-1 拆分:数据独立文件,SIFT 在 cw_equipment.py 手维护)。
 
 D-70「参考数据补全:装备代码注册表全量」。equipment.md(米游社🟢,已由 cw_shots OCR 校验
-与数据银行一致)是权威源;本脚本把它的分类表解析成 _eq() 行,贴入 cw_equipment.py 替换
-现 12 key 的部分。stacking 由效果文本推断(含「可叠加/叠加N层」→True)。
+与数据银行一致)是权威源;本脚本把它的分类表(+合成配方段)解析成 _eq() 行,生成
+cw_equipment_data.py(P0-1:数据独立;SIFT 在 cw_equipment.py 手维护)。stacking 由效果文本
+推断(含「可叠加/叠加N层」→True);recipe 解析「进阶合成配方」段。
 
 == 用法 ==
     uv run python tools/cw/gen_equip_registry.py
@@ -49,6 +50,31 @@ def _clean_name(raw: str) -> list[str]:
     return [raw]
 
 
+def parse_recipes() -> dict[str, tuple[str, str]]:
+    """解析 equipment.md「进阶合成配方」段 → {进阶名: (简易A, 简易B)}。
+
+    只收 2 件全的(``A + B``);同件×2 / off-screen / 幸运星漏检 待核不计(留 doc 待核区)。
+    """
+    recipes: dict[str, tuple[str, str]] = {}
+    in_section = False
+    for line in DOC.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if s.startswith("##"):
+            in_section = "合成配方" in s
+            continue
+        if not in_section or not s.startswith("|") or "---" in s:
+            continue
+        cells = [c.strip() for c in s.split("|") if c.strip()]
+        if len(cells) != 2 or cells[0] == "进阶":
+            continue  # 跳表头(| 进阶 | = 简易A + 简易B |)
+        name, formula = cells
+        if " + " in formula:
+            parts = [p.strip() for p in formula.split(" + ")]
+            if len(parts) == 2 and parts[0] and parts[1]:
+                recipes[name] = (parts[0], parts[1])
+    return recipes
+
+
 def parse() -> list[dict]:
     """解析 equipment.md → [{name, category, effect, stacking, source}, ...]。"""
     lines = DOC.read_text(encoding="utf-8").splitlines()
@@ -93,6 +119,9 @@ def parse() -> list[dict]:
 
 def main() -> None:
     entries = parse()
+    recipes = parse_recipes()
+    for e in entries:
+        e["recipe"] = recipes.get(e["name"])
     by_cat: dict[str, list[dict]] = {}
     for e in entries:
         by_cat.setdefault(e["category"], []).append(e)
@@ -108,7 +137,9 @@ def main() -> None:
         for e in es:
             eff = e["effect"].replace('"', '\\"')
             stk = "True" if e["stacking"] else "False"
-            eq_lines.append(f'    _eq("{e["name"]}", "{e["category"]}", "{eff}", {stk}, "{e["source"]}"),')
+            rec = e.get("recipe")
+            rec_arg = f", recipe={rec!r}" if rec else ""
+            eq_lines.append(f'    _eq("{e["name"]}", "{e["category"]}", "{eff}", {stk}, "{e["source"]}"{rec_arg}),')
         eq_lines.append("")
 
     count_summary = " / ".join(f"{c.split(': ')[0]} {c.split(': ')[1]}" for c in counts)
@@ -116,7 +147,7 @@ def main() -> None:
               .replace("__ENTRIES__", "\n".join(eq_lines))
               .replace("__TOTAL__", str(total))
               .replace("__COUNTS__", count_summary))
-    out_path = REPO / "src/sr_od/application/currency_war/cw_equipment.py"
+    out_path = REPO / "src/sr_od/application/currency_war/cw_equipment_data.py"  # P0-1:只写数据;SIFT 在 cw_equipment.py(手维护,不被覆盖)
     out_path.write_text(module, encoding="utf-8")
     print(f"写全量注册表 → {out_path}({total} 件)")
 
@@ -146,10 +177,12 @@ class Equipment:
     effect: str         # 效果原文(简易只基础属性→空)
     stacking: bool      # 效果可叠加("可叠加"/"叠加N层"→True)
     source: str = ""    # 米游社 content_id
+    recipe: tuple[str, str] | None = None  # 进阶合成配方(2 简易);非进阶/待核→None
 
 
-def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "") -> Equipment:
-    return Equipment(name=name, category=category, effect=effect, stacking=stacking, source=source)
+def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
+        recipe: tuple[str, str] | None = None) -> Equipment:
+    return Equipment(name=name, category=category, effect=effect, stacking=stacking, source=source, recipe=recipe)
 
 
 # ===== EQUIPMENTS 全量注册表(__TOTAL__ 件;__COUNTS__)=====

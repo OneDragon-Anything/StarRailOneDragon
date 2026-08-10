@@ -33,6 +33,7 @@ from sr_od.application.currency_war.currency_war_char_id import (
     identify_character,
 )
 from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
+from sr_od.application.currency_war.cw_equipment import read_equipped_below
 from sr_od.application.currency_war.cw_obs_core import _area_rect
 from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.config.character_const import get_character_by_id
@@ -126,3 +127,35 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复。
     """
     return identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
+
+
+# ===== 穿戴装备识别(below-avatar mini icon;D-45/D-46)=====
+def avatar_to_below(rect: Rect, half_w: int = 70, dy: int = 14, half_h: int = 33) -> Rect:
+    """槽位 avatar rect → below-avatar icon 搜索 rect(avatar 底部下方;穿戴装备 icon 显示处)。
+
+    前排 avatar ``[.,329,.,467]`` → below center cy=481(=y2+14;D-49 CV 实测 icon y 中心);后排/备战席
+    avatar 底部 y2 不同,below 自动跟随(dy 相对 avatar 底部)。搜索区 ±half_w/half_h 覆盖固定 ~32px icon
+    (D-49:icon 不随装备数变)。**half_w=70**:3件 icon 横排跨度 ~86px(cx±43),55 会切边缘 icon(D-49 修);
+    70 覆盖3件且不含邻槽(front-2 在 cx+~144 外)。
+    """
+    cx = (rect.x1 + rect.x2) // 2
+    cy = rect.y2 + dy
+    return Rect(cx - half_w, cy - half_h, cx + half_w, cy + half_h)
+
+
+def read_row_equipped(
+    ctx: SrContext,
+    screen: MatLike,
+    tmpl_grays: dict[str, MatLike],
+    prefix: str,
+    count: int,
+) -> dict[int, list[str]]:
+    """某排(前排/后排/备战栏)每槽 below-avatar 已穿装备 → ``{slot_idx: [装备名]}``(纯读)。
+
+    从 ctx screen_info 取 ``{prefix}-1..{count}`` avatar rect → ``avatar_to_below`` → ``read_equipped_below``。
+    空槽 / 无命中 → 该 slot 不在 dict。与 ``read_deployed_chars``(角色身份)互补:角色 + 装备 = 完整槽位态。
+
+    纯读(只 TM screen + templates,不写 session/全局),可进 recognizer(并发安全)。
+    """
+    below_rects = [(idx, avatar_to_below(r)) for idx, r in _ctx_slots(ctx, prefix, count)]
+    return read_equipped_below(screen, tmpl_grays, below_rects)

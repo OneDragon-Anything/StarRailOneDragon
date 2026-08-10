@@ -32,9 +32,11 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
+from sr_od.application.currency_war.cw_equipment import ensure_equip_tm_templates
 from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
+    read_row_equipped,
 )
 from sr_od.application.currency_war.cw_obs_core import (
     A_PHASE,
@@ -101,6 +103,9 @@ class _BattlePrepState:
     front_line: list[str] | None    # 前排角色规范名(read_deployed_chars SIFT;templates 未加载/空→None)
     back_line: list[str] | None     # 后排角色规范名(同上)
     bench: list[str] | None         # 备战栏角色规范名(read_bench_chars SIFT;同上)
+    front_equips: dict[int, list[str]] | None  # 前排每槽已穿装备名(read_row_equipped TM;templates 未加载/空→None)
+    back_equips: dict[int, list[str]] | None   # 后排每槽已穿装备名(同上)
+    bench_equips: dict[int, list[str]] | None  # 备战栏每槽已穿装备名(同上)
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
@@ -135,6 +140,16 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_line = [c.char_id for c in deployed if c.position_pref == 'front'] or None
             back_line = [c.char_id for c in deployed if c.position_pref == 'back'] or None
             bench = [c.char_id for c in bench_list] or None
+        # 穿戴装备(read_row_equipped TM below-avatar mini icon;ensure_equip_tm_templates 加载缓存,纯读;
+        # 产出「谁穿了什么」给策略层 — 与 front_line/back_line/bench 角色身份互补,完整槽位态)
+        front_equips: dict[int, list[str]] | None = None
+        back_equips: dict[int, list[str]] | None = None
+        bench_equips: dict[int, list[str]] | None = None
+        equip_grays = ensure_equip_tm_templates(ctx)
+        if equip_grays is not None:
+            front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) or None
+            back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) or None
+            bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9) or None
         state = _BattlePrepState(
             gold=read_gold(ctx, image),
             phase=_read_phase_round_pure(ctx, image),
@@ -146,5 +161,8 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_line=front_line,
             back_line=back_line,
             bench=bench,
+            front_equips=front_equips,
+            back_equips=back_equips,
+            bench_equips=bench_equips,
         )
         return asdict(state)

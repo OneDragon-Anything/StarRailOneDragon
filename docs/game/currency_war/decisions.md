@@ -269,4 +269,187 @@
 - **遗留**:投资策略数据量不一致(米游社 channel/map/209/212 = 216 vs data doc investment_strategies.md = 315)—— 来源/channel 差异,低优待核(非本轮阻塞)。
 - **状态**:数据完整性确认(装备/投资策略/投资环境效果都采集)。equip_all 重建(①-a)用 Equipment.effect 决策选装备 + read_equips 识别 owned icon + drag 穿戴。`· 用户三问(过时)/ equipment.md(data doc)/ investment_strategies.md(315)/ cw_investments INVESTMENT_ENVS(代码单一源)`。
 
+## D-30 (2026-08-10)【纠正·误识别·重大】游戏一直在货币战争 —— 「位面过渡」画面没建档被误识别模拟宇宙,致多轮「卡游戏」错判
+
+- **决策(用户指出「建档问题+id_mark 区分」+ 点空白推进验证)**:纠正多轮「游戏在模拟宇宙,①-a 卡游戏」错判 —— **游戏一直在货币战争对局中**。「位面过渡」画面(货币战争,3 位面进度 1 金 2/3 灰 + 点击空白继续)**没 screen_info entry + id_mark** → analyze 模糊撞「模拟宇宙」(都有「位面」,is_precise=False)→ 误判「偏离模拟宇宙」停了多轮。
+- **纠正证据**:点空白处推进 → analyze「货币战争-投资环境」is_precise=**true**(货币战争局内节点)。位面过渡是货币战争前序。
+- **处理**:建「货币战争-位面过渡」screen(currency_war_plane_transition)+「提示-点击空白继续」area(基础)。**id_mark 区分模拟宇宙待多样本**(需模拟宇宙位面选择截图对比独有锚)→ gap。
+- **方法论(跨玩法偏离/误识别,用户 2026-08-10 提炼)**:① analyze 命中非目标玩法 → **先怀疑误识别**(点空白推进验证/核实特征),别急着判「偏离/卡游戏」停;② **误识别/偏离都不停** —— 导航回目标或点空白推进;③ **没建档画面(误识别根因)→ 按 screen-onboarding 建 + id_mark 区分别玩法**。已写 skill_feedback.md(screen-onboarding 补「跨玩法偏离」分支)+ 两个 cron prompt 加这条。
+- **教训**:多轮把货币战争位面过渡误判模拟宇宙 → 「卡游戏」错判浪费多轮。根因 = **没核实**(点空白推进一秒就证伪,没做)+ 画面没建档。符重置四教训「凭猜不核实」(凭 analyze 模糊结果猜「模拟宇宙」)。`· 模拟宇宙误识别(纠正)/ 位面过渡建档(基础 id_mark 待补)/ skill_feedback(跨玩法偏离分支)`。
+
+## D-31 (2026-08-10)【证据·装备·假阳性】read_equips 1-1 假阳性:空槽 UI(蓝环白十字)误识别幸运星(inliers=15)→ 装备区需画面模型(owned icon 槽位 vs 空槽 UI)
+
+- **决策(1-1 备战 read_equips + crop VLM tiebreaker)**:read_equips 1-1 命中 2:拆装扳手@(1840,172) inliers=13(VLM 确认银灰扳手 = **真装备** ✓)+ 幸运星@(1854,244) inliers=15(VLM 确认 = **蓝环白十字功能性 UI**,非装备!**假阳性** ✗)。
+- **根因**:装备区右列槽位:有装备 = owned icon(六边形深灰框 + 装备图案);**空槽 = 蓝环白十字「添加」UI**(点选装备穿)。read_equips SIFT 把空槽 UI 误匹配幸运星模板(inliers=15 反比真装备 13 高)。**审查 R2 P0-2「SIFT 假阳性」担忧成真**(D-28 tiebreaker 确认 r1-8 真,但 1-1 暴露假阳性)。
+- **处理**:①-a **先建装备区画面模型**(screen-onboarding:owned icon 槽位 vs 空槽 UI 布局,六边形框 vs 蓝环白十字区分)→ 再 read_equips(CV 框型过滤空槽 UI / owned 槽位定位)+ equip_all。符记忆「检测op前先建档」+ 审查「画面模型」。
+- **教训**:read_equips 建在未建档装备区 → 假阳性。证据纪律(审查 R2/R3)坚持 tiebreaker 才发现(1-1 幸运星 inliers=15 偏高可疑,crop VLM 证伪)。**read_equips min_inliers=10 + 簇聚合不够降假阳性**(假 inliers 15 > 真 13),需画面模型(框型/槽位)非纯阈值。
+- **状态**:read_equips 假阳性确认(空槽 UI)。①-a 转「先画面模型」。下一步:装备区 owned/空槽 画面建档(1-1 + r1-8 对比槽位布局)。`· read_equips 假阳性(蓝环白十字 UI)/ 装备区画面模型(待建)/ 审查 R2 P0-2(成真)`。
+- **蓝色过滤验证(2026-08-10,排除简单颜色法)**:命中点 HSV 蓝色比例 —— 1-1 假阳性幸运星 0.122 **低于** r1-8 真 owned(拆装扳手 0.146 / 生命之花 0.197 / 轮滑鞋 0.300)。**简单蓝色阈值区分不了**(假阳性蓝比真 owned 还低)→ 需框型(owned 六边形深灰框 vs 空槽蓝环白十字)或槽位画面模型,非颜色阈值。
+
+## D-32 (2026-08-10)【装备·drag 证伪】①-a equip_all drag 验证:D-18 落点 y350 过时,drag 扳手 → 前排 avatar 没穿装备(扳手回);需重验 drag 机制
+
+- **决策(①-a drag 验证,游戏 click ground truth)**:drag 扳手@(1840,172) → 前排-1 avatar (743,350)(D-18 FRONT_SLOTS y350,caa07f32「WORKS」)**失败**。read_equips drag 后扳手还在@(1840,172)(没穿走,inliers=13 同前),VLM 前排-1「红色 icon」= 误判(角色自带,非装备)。
+- **证伪**:D-18 drag 落点 y350(avatar drop zone)**不 work** —— drag owned → 前排 avatar 没穿装备(扳手回装备区)。印证 e9747690 解绑根因「drag 致前台区域无角色 → stall」(装备 drag 机制有问题)。
+- **待重验**:装备 drag 到哪穿?角色装备栏坐标(非前排 avatar y350?角色身上装备槽?) + drag 操作。需游戏 click ground truth(drag 装备 → 不同落点试,看 icon 减)+ VLM 看角色装备栏。
+- **教训**:D-18 caa07f32「y350 WORKS」可能那时偶然/版本变/我 drag 不对。①-a equip_all 重建前必须搞清 drag 机制(D-18 落点已证伪,insights 记)。read_equips(owned 识别 D-28/D-31)+ VLM 验证(过滤假阳性)ready,但 drag 机制(穿装备)未通。
+- **状态**:①-a drag 机制待重验(D-18 落点证伪)。下步:游戏 drag 装备试不同落点(角色装备栏位置)+ click ground truth。`· D-18(落点证伪)/ e9747690(解绑根因 drag stall 印证)/ read_equips(owned 识别 ready)/ D-31(假阳性 VLM 过滤)`。
+
+## D-33 (2026-08-10)【装备·路径·重大】装备推荐 list-select 路径(点角色→详情→装备推荐→列表弹)前 3 步通 —— 免 drag 路径可行(D-17 既定,被 D-32 跳过,R6 P1-1 补测)
+
+- **决策(审查 R6 P1-1 + 游戏测)**:D-17 已识别「装备推荐」list-select 路径(点已部署角色 → 详情面板 → 装备推荐按钮 → 弹推荐/次选装备列表 → 点选穿戴),D-32 跳过直接测 drag(失败)。本轮补测:**前 3 步通** —— 点前排-1 角色 (743,398) → 详情面板开(三月七,属性/战技/装备推荐按钮 @(1465,802))→ 点装备推荐 → **推荐列表弹**(推荐装备 4 + 次选装备 4)。
+- **意义**:装备推荐 list-select 路径**可行 + 免 drag**(drag 路径 D-32 失败 + e9747690 回归风险)。equip_all 重建该优先**装备推荐 list-select**(点角色 → 详情 → 装备推荐 → 列表 → 点推荐装备穿戴),非 drag。
+- **待验(穿戴 + 推荐性质)**:① 点推荐装备图标 = 穿戴?(未测,需坐标 + click ground truth)② 推荐装备性质:owned 可穿 vs 理想装备展示?1-1 owned 只拆装扳手(工具),推荐列表 8 图标 → 可能**理想装备**(图鉴推荐,非 owned,点不能穿)。需 bot 有 owned 穿戴装备(补给/奖励)确认推荐穿。
+- **坐标**:推荐装备图标 VLM grounding 不准(给 [x,y] 非 bbox + 偏中央,详情面板右半;CLAUDE.md VLM grounding 幻觉)。需 screen_info 建装备推荐列表 area or CV 检测(od-dev-ui-region-detect)。
+- **状态**:装备推荐 list-select 路径前 3 步通(免 drag 可行)。下一步:① bot 获 owned 穿戴装备(推进对局到补给/奖励)② 建装备推荐列表 screen_info area ③ 点推荐装备验穿戴 ④ equip_all 重建(list-select 优先,drag 备选)。`· D-17(装备推荐路径既定)/ D-32(drag 失败,工具)/ R6 P1-1(补测路径)/ e9747690(drag 回归,免 drag 优)`。
+
+## D-34 (2026-08-10)【装备·tiebreaker+纠正】1-4 减益星徽真 owned 穿戴类(tiebreaker 确认)+ D-33 纠正(装备推荐=提示非穿戴,D-18 live 知识回归)+ drag 穿戴类待验(D-23 装备槽)
+
+- **tiebreaker(1-4 bot stop 备战 crop VLM)**:减益星徽@(1847,322) = VLM「方形蓝星角框 + 圆粉底白螺旋图案」= **真 owned 穿戴类装备(星徽)**✓;治疗星徽@(1854,248) = 「蓝环白十字空槽 UI」= **假阳性**(D-31 同);拆装扳手@(1840,172) = 工具(非穿戴)。
+- **D-33 纠正(审查 R7 + D-18 live,知识回归)**:装备推荐 list-select「免 drag 可行」**过早**。D-18(2026-08-09)已 live 实测:点装备推荐 → 弹列表 → 点列表装备 → **弹装备信息详情(stats/适配/合成),不穿戴无穿戴按钮**。gameplay.md:54「推荐装备=提示(hint)」。VLM 核实推荐图标无 owned 标记(图鉴式)。**推荐列表 = 提示/图鉴浏览,非穿戴路径**。真穿戴 = drag 穿戴类装备。
+- **drag 穿戴类待验(审查 R7 + D-23)**:D-32 drag 失败因拖工具(非穿戴类)。真未测:drag **穿戴类**(减益星徽,1-4 有)→ 角色详情面板装备槽(D-23 坐标,非前排 avatar y350)→ 验 icon 减=穿。caa07f32「WORKS」未证真穿(可能亮度检测噪声/球体位移,D-18 诊断),drag 对穿戴类仍开放假设。
+- **教训**:D-33 没引 D-18 live 结论(装备推荐=信息浏览),重发现浪费一轮。**行动前重读 D-17/D-18/D-23**(装备机制)防知识回归。
+- **状态**:减益星徽(穿戴类)到 1-4(bot stop)。下一步:重读 D-23(装备槽坐标)+ drag 减益星徽 → 装备槽验穿。⚠️ 审查 R7:onboarding-first(装备区 owned/空槽 + 装备槽 + 推荐弹窗画面模型)。`· D-33(纠正,推荐=提示)/ D-18(live 结论回归)/ D-23(装备槽坐标待读)/ 减益星徽(穿戴类 owned,1-4)`。
+
+## D-35 (2026-08-10)【装备·drag 穿戴类成功·重大】轮滑鞋(简易穿戴)drag → 详情面板装备槽 = 穿成功(read_equips icon 减)!D-32 工具失败 + D-34 穿戴类方向对
+
+- **决策(①-a drag 验,1-6 备战飞霄详情面板 + 装备区轮滑鞋)**:drag 轮滑鞋@(1850,242) → 装备槽行中心 (1650,755)(区域-装备槽 [1400,712,1900,798],onboarding-first 建)**成功** —— read_equips drag 后命中 **0**(轮滑鞋没了 = 穿了!)。
+- **意义**:drag **穿戴类装备**(轮滑鞋简易)→ 角色详情面板装备槽 = **穿成功**(icon 减)。D-32 drag 拆装扳手(工具)失败(工具拆装备非穿)+ D-34 穿戴类方向对 → **drag 穿戴类 work,工具类不 work**。D-18 caa07f32「WORKS」可能是真穿(穿戴类,非工具)。
+- **①-a drag 机制确认**:① drag owned **穿戴类**(排除工具:拆装扳手/冶金炉/随便骰子等)→ 详情面板装备槽(区域-装备槽 [1400,712,1900,798])② icon 减=穿成功 ③ 工具类单独处理(拆装扳手拆装备,非 drag 穿)。
+- **待验**:① read_equips 0 可能详情面板遮装备区 —— VLM 验装备槽有轮滑鞋 icon 确认穿 ② 多样本(不同穿戴装备 drag)③ equip_all 重建(read_equips 候选 + VLM 过滤假阳性空槽 UI + 过滤工具类 + drag 穿戴类 → 装备槽)。
+- **状态**:**drag 穿戴类成功**(①-a 重大突破)。①-a 框架:read_equips(owned D-28/D-31)→ VLM 过滤(假阳性空槽 UI)→ 过滤工具类 → drag 穿戴类 → 详情面板装备槽(区域-装备槽)。`· D-32(工具失败)/ D-34(穿戴类方向)/ D-18 caa07f32(WORKS 真穿穿戴类)/ 区域-装备槽(onboarding-first 建)`。
+
+## D-36 (2026-08-10)【装备·drag 穿戴类成功·真证】关详情 + drag 轮滑鞋 → 前排 avatar = 穿成功(read_equips 关详情 3 轮滑鞋减)!纠正 D-35(详情遮装备区 read_equips 0 假象)
+
+- **决策(①-a drag 验纠正 D-35,关详情路径)**:D-35 误判(read_equips 0 详情遮装备区假象 + VLM 诱导问误判)。本轮纠正:**关详情面板(装备区 x1800-1918 可见,不被详情遮)+ drag 轮滑鞋(穿戴类,@1849,239 装备区 owned)→ 前排 avatar (743,350)**(D-18 路径)→ read_equips(**关详情,非遮真验**)命中 **3**(减益星徽+拆装扳手+治疗星徽)—— **轮滑鞋没了(穿了!)**。
+- **真证**:read_equips drag 前(关详情)4(含轮滑鞋)→ drag 后(关详情)3(轮滑鞋减)。**关详情 read_equips 真验(非 D-35 遮态 0 假象)**。
+- **①-a drag 穿戴类机制确认**:① 装备区 owned 可见(**不开详情面板**,详情面板 x1700-1920 遮装备区 x1800-1918)② drag **穿戴类**(轮滑鞋等,排除工具拆装扳手)→ 前排 avatar (743,350)(D-18 路径,**非详情装备槽 D-23**)③ read_equips(**关详情,非遮**)icon 减 = 穿成功。
+- **教训(D-35 误判)**:① read_equips 详情面板遮装备区(x1800-1918 被详情覆盖)→ 遮态 read_equips 0 假象,**必须关详情验**(证据纪律)② VLM 诱导问(「轮滑鞋穿了?」)致误判,客观问(「装备区几个 icon」)才准 ③ drag 装备源需装备区可见(不被详情遮)。
+- **状态**:**drag 穿戴类成功(D-18 前排 avatar 路径,关详情)**。①-a 框架:read_equips(owned,关详情装备区可见)→ VLM 过滤(假阳性空槽 UI)→ 过滤工具类 → drag 穿戴类 → 前排 avatar (743,350)。`· D-35(误判遮假象,纠正)/ D-18(前排 avatar WORKS 真穿穿戴类)/ D-32(工具失败)/ 详情面板遮装备区(布局)`。
+
+## D-37 (2026-08-10)【纠正·装备区面板模型·重大】右侧面板=「选中驱动」常驻信息面板(非开/关弹窗)+ D-35「详情遮装备区」纠错 + read_equips 假阴性(和平手枪漏检,第三重不可靠)
+
+- **决策(装备区面板模型,实证 + 代码 read_deployed_id_op/equip_probe/battle_loop)**:右侧面板(区域-道具装备 x1252-1918)**不是开/关弹窗,是选中驱动的常驻信息面板** —— 总显示当前选中实体:点装备 icon → 装备详情(名/类型,详情-装备名 x1450-1620);再点/展开 → 可合成列表 overlay;点已部署角色 → 角色详情(名/属性/天赋/详情+出售)。
+- **进出交互(用户问「怎么进来和关闭」)**:进来 = 点装备 icon(装备详情)/ 点角色(角色详情);关闭 = ① 可合成列表 overlay → **ESC**(条件 ESC,代码 battle_loop:263 / exit:66 / start:83,实测验证关 overlay);② 角色详情 → **点空白(备战席/商店下方,用户提示;代码 PANEL_CLOSE=700,400 空前台区)**;⚠️ 装备详情 base 勿 ESC(bug#2 → 中断挑战)。`收起`=商店折叠;`出售`=角色详情卖装备按钮(非装备弹窗)。
+- **D-35 纠错**:「详情面板 x1700-1920 遮装备区 x1800-1918 → read_equips 0」**错**。实测 read_equips 装备详情面板**开**时仍 5 命中(拆装扳手/光能电池/生命之花/治疗星徽/减益星徽,x1839-1853)。D-35 所述「遮装备区」面板是**角色详情面板**(更宽,点角色触发),非装备详情面板(窄 x1450-1620,不遮 icon)。**read_equips 不受装备详情面板影响**。
+- **read_equips 假阴性(NEW,第三重不可靠)**:和平手枪@(1854,248)(点击确认真 owned + 详情显示)read_equips **没命中**(SIFT 漏,< min_inliers 10)。叠加 R11(空槽假阳性 + 和平手枪→治疗星徽 名错),read_equips **三重不可靠**:漏真 owned + 空槽误匹配 + 名错。
+- **为什么(重要)**:equip_all 地基 = read_equips。三重不可靠 → drag 验证(D-36「名减判穿」)连锁失效(R11 P0):漏 owned(没装)+ 空槽假阳(drag 空槽)+ 名错(名减判错)。**装备区需画面模型(槽位 owned/empty CV,非 SIFT 名)做地基**,read_equips 退位或仅作 hint。
+- **备选**:① 画面模型 = 装备 icon 列槽位(动态 CV 定位)+ slot_occupied CV(D-5 灰度 std)判 owned/empty → drag owned 槽 → 验槽位变 empty(位置 CV,非名);② read_equips 保留作 hint(定位候选),CV 验 owned/empty 过滤。
+- **状态**:**装备区面板模型建(选中驱动 + 进出交互清楚)+ D-35 纠错 + read_equips 三重不可靠实证**。①-a 下步:建装备区槽位画面模型(screen_info area + owned/empty CV + 三态 fixture),equip_all 重建在地基上。`· D-35(纠错:装备详情不遮 icon,角色详情才遮)/ D-36(名减判穿,read_equips 名错地基不稳)/ R11(假阳性+名错+drag 验连锁失效 P0)`。
+
+## D-38 (2026-08-10)【纠正·用户权威】装备列「加号」= 星徽 icon(非空槽);无空槽 → read_equips「空槽假阳性」framing 作废(D-31/D-37 纠正)
+
+- **决策(用户权威,两次确认)**:装备 owned icon 列**无空槽**。我(D-31)+ R11 误判的「蓝环白十字空槽 UI」**实为星徽(星徽)icon**(星徽图标 = 蓝星边框 + 白十字/+ 图案,视觉似空槽 +,但真 owned 装备)。用户原话:「加号是星徽,没有加号空槽」。
+- **纠正 D-31/D-37**:「read_equips 空槽假阳性」**作废** —— 那些位置是真星徽 owned,非空槽;read_equips 匹配星徽名(治疗星徽/幸运星)到那些位置**可能本就正确**。
+- **read_equips 实际问题(收窄)**:① **假阴性**(漏真 owned,如和平手枪 SIFT 漏,@1854,248 点击实锤);② **偶发名错**(和平手枪→治疗星徽 类)。**无「空槽假阳性」**(无空槽)。
+- **equip_all 含义(简化)**:① **不需假阳性过滤**(无空槽,read_equips 命中皆真 owned);② **工具类识别仍需可靠**(drag 工具如拆装扳手会拆角色装备 D-32,有副作用,不能盲 drag 测试);③ 穿戴验证用位置(icon 消失)非名。
+- **教训(VLM 误判游戏知识)**:VLM(我 + R11)把星徽 icon 误判空槽 —— VLM 不懂游戏,白十字/+ 图案视觉歧义。**游戏知识(「这是什么」)以用户/图鉴/click 验为准,非 VLM 推断**;VLM 仅客观描述(图案/颜色/位置)可用。
+- **状态**:**装备列无空槽,加号=星徽,read_equips 无空槽假阳性**。①-a 转向:detect 所有 owned icon 位置(皆装备)+ **可靠识别工具类**(免盲 drag 拆装)+ drag 穿戴类 + 位置验。slot_occupied CV(owned/empty)**作废**(无 empty)。`· D-31/D-37(空槽假阳性 framing 作废)/ R11(空槽分析同样误判)`。
+
+## D-39 (2026-08-10)【证据·read_equips 可靠性验证·重大去险】read_equips 名准确(4/4 click 验)+ 无假阳性;漏检由 min_inliers 10→7 修复 → 阈值 7 可靠,equip_all 地基稳(非 R11「建在沙上」)
+
+- **验证方法**:click 每个 read_equips 命中 → OCR 详情名 vs SIFT 名(1-6 备战)。
+- **结果(4/4 click 实锤 SIFT 名全对)**:y169 拆装扳手[工具]✓(详情 拆装扳手/消耗品)/ y252 和平手枪[简易]✓ / y336 折叠小刀[简易]✓ / y555 治疗星徽[星徽]✓(详情 治疗/流派星徽)。(y407 光能电池/y464 生命之花/y628 减益星徽 未 click 但 SIFT 一致。)
+- **结论**:read_equips **名准确**(验过全对)+ **无假阳性**(无空槽 D-38)+ **漏检可修**(min_inliers=10 漏 和平手枪/折叠小刀 → **阈值 7 全命中**,5/3 同 7 无杂散 → 7 稳)。**旧「三重不可靠」overblown**(基于误判 D-31 + 阈值 10 过严漏检)。
+- **①-a 含义(重大简化/去险)**:read_equips **阈值 7 可靠**(检出全部 owned + 名/类准 + 无假阳)→ equip_all 地基**稳**。equip_all:read_equips(thr7)→ 过滤工具(EQUIPMENTS.category,拆装扳手✓ 验)→ drag 穿戴类 → 验证(名既准,名减或位置 CV 均可)。R11 P0「连锁失效」风险降(名准)。
+- **待办**:① read_equips min_inliers 默认 10→7(`cw_equipment.py`,D-28 设的 10 过严)+ 跨局面验证阈值 7 无假阳;② equip_all 用 thr7 read_equips 重建 + 位置验;③ D-36 多样本降级(R12 偏差3)。
+- **状态**:**read_equips 阈值 7 可靠(名准+无假阳+漏检修),equip_all 地基稳,①-a 大幅去险**。`· D-38(+=星徽 无空槽)/ D-31·R11(三重不可靠 overblown)/ D-28(min_inliers=10 过严 → 7)`。
+
+## D-40 (2026-08-10)【纠正·用户权威·多列网格】装备 owned = 多列网格(col1 x1800-1918 + col2 x1660-1800 + ...);冶金炉@x1784 真实 col2 → read_equips equip_rect 扩 x1620-1918 覆盖多列(thr7 实测 8/8)
+
+- **决策(用户权威,第三次纠正单列假设)**:装备 owned **不止一列**(用户:「应该有2列」「默认5列从右往左」)。col1(x1800-1918)=7 icon;**col2(x1660-1800)=冶金炉@x1784**[工具/消耗品](click 实锤);col3+(x1530-1660)空。**共 8 owned,2 列**。
+- **我之前的错**:① read_equips equip_rect=(1800,1918) 仅扫 col1 → 漏 col2 冶金炉;② 把 thr10 wide-scan 的冶金炉@x1784 误判「noise」(实真);③ squares 漏消耗品边框(拆装扳手+冶金炉同盲点)。**根因:单列假设 + thr10 漏弱匹配**。
+- **修复**:read_equips `equip_rect` 默认 (1800,1918) → **(1620,1918)**(多列,覆盖 col1-3,排除立绘 x1252-1450 + 面板 x1450-1620)。thr7 实测 x1620-1918 扫 = **8/8 全命中两列无杂散**(thr10 wide-scan 噪点是阈值过高漏弱匹配,非区域宽)。
+- **网格识别现状**:thr7 + wide equip_rect(x1620-1918)**单次扫即覆盖多列**(非固定 cell per-column)。固定 cell 模型(装备格-cIrJ)是未来硬化(更鲁棒),当前 zone 扫够用。
+- **待办**:① col4-5 若溢到面板区(x1450-1620)需关面板扫(equip_all 前置关面板);② 跨局面验证 x1620-1918 无立绘/面板假匹配;③ equip_all 用多列 read_equips 重建 + count 验穿(R13 中-3)。
+- **状态**:**装备多列网格确认(col1+col2=8),read_equips equip_rect 扩多列,thr7 单次扫覆盖**。`· D-39(thr7 名准)/ 用户三纠正(+=星徽·多列·8个)/ R13 中-2(多列 doc-code drift 现对齐)`。
+
+## D-41 (2026-08-10)【证据·equip_all LIVE + 合成机制·重大】equip_all 机制验通(column 8→4);合成发现(轮滑鞋+生命之花→步步生花,穿戴触发);count-verify 报3实4(合成消耗2件);read-equipped below-avatar SIFT 读步步生花正确
+
+- **equip_all LIVE 测**(run_operation,daemon 重启 server 加载新代码):read_equips(thr7,x1620-1918)→8 owned→过滤工具→drag 穿戴类→前排 avatar→count 验穿。**column 8→4(4 件移出),equipped 报 3**。机制(drag+count)**通**。
+- **合成机制发现(用户确认)**:**轮滑鞋 + 生命之花 → 步步生花**(进阶)。equip_all 给飞霄(已有轮滑鞋)装生命之花 → **自动合成步步生花**(穿戴触发合成)。below-avatar SIFT 读到步步生花(@x735,inliers=7)—— **正确,非误判**(我先前错判 mis-match;VLM+用户实锤)。
+- **count-verify 失真根因(R16 P0-2)**:合成消耗 **2 件**(生命之花+轮滑鞋)→ column count −2,但 equip_all `equipped+=1`(报3实4)。且被消耗的轮滑鞋**在角色身上**(非 column 视野)→ count-verify 在「不知角色装备态」下验 → 不可靠。
+- **read-equipped**(R15 step1 核实):below-avatar mini icon SIFT **可读**(步步生花正确);char-detail 装备槽 SIFT 0 命中(槽 icon 更小)。→ **avatar-slot ground truth(下方 mini icon)可行**,替 count-verify。
+- **治本方向(R15/R16)**:count-verify → **avatar-slot ground truth**(drag 后读目标 avatar 下方 mini icon 确认新装备,非 column count 减)—— 免受合成/列 reflow/漏检干扰;同时让 equip_all 知「装到了谁身上」(P0-2 多槽 + 策略基础)。
+- **合成配方采集**:codex(数据银行→装备图鉴)进阶详情「合成公式」= 2 简易(步步生花=生命之花+轮滑鞋 实锤)。全量表待 codex 采(web bwiki 部分且矛盾:以太钻 类别不一致;codex 简易行有以太钻 → equipment.md 标进阶可能有误,待核)。⚠️ **入代码前先拆生成器地雷(R16 P0-1)**。
+- **状态**:**equip_all 机制验通 + 合成机制发现(穿戴触发)+ count-verify 失真根因(合成)+ read-equipped below-avatar SIFT 可行**。①-a 下步:① **拆生成器地雷**(P0-1,`cw_equipment_data.py` 拆出 SIFT)② 合成配方 codex 采 → equipment.md → class `recipe` 字段 → regen ③ count-verify 改 avatar-slot ground truth。`· D-40(多列)/ D-39(thr7)/ R15·R16(count-verify→avatar-slot)/ 用户(合成确认)`。
+
+## D-42 (2026-08-10)【重构·P0-1 生成器地雷拆除】cw_equipment 拆数据/SIFT 双文件(cw_equipment_data 生成 + cw_equipment SIFT);gen 写 _data → 覆盖地雷除
+
+- **背景(R16 P0-1)**:`gen_equip_registry` 覆盖 `cw_equipment.py` → 删 L218+ SIFT(read_equips/load_equip_templates)→ ImportError。SIFT 手加在生成产物后,不在 template。R17 复核确认(gen target 仍 cw_equipment.py),本轮修。
+- **决策(拆双文件)**:① `cw_equipment_data.py`(生成器产物:Equipment+_eq+EQUIPMENTS+get_equip,dataclass only);② `cw_equipment.py`(手维护 SIFT:load_equip_templates/read_equips,`from .cw_equipment_data import` + `__all__` re-export 给旧 caller);③ `gen_equip_registry.py:119` target 改 `cw_equipment_data.py`(+ docstring)。
+- **验证**:ruff 双文件过;import OK(EQUIPMENTS=153 same,cw_equipment/equip_all 均 import 正常);read_equips 仍 4 hits(115501 截图,功能不变)。生成器只写 `_data`,永不碰 `cw_equipment.py` SIFT → **覆盖地雷除**。
+- **遗留**:① `cw_equipment_data.py` untracked(待 `git add`,R17 P1);② 以太钻门类错(待 regen 修,R17 P2;现 unblocked 可 regen);③ **recipe 入 Equipment class**(用户指令「效果+合成入 class」,待加 `recipe` 字段 + gen 解析 + regen)。
+- **状态**:**P0-1 地雷拆除完成(cw_equipment 拆数据/SIFT,gen 写 _data)**。recipe 入 class 解锁(下一步:加字段+改 gen+regen)。`· R16 P0-1(地雷)/ R17 P0(target 改)/ 用户(效果+合成入 class)`。
+
+## D-43 (2026-08-10)【用户指令完成·recipe 入 Equipment class】Equipment 加 recipe 字段 + gen 解析合成配方段 + regen → 21 进阶配方入代码
+
+- **用户指令**:「效果、合成路径都加入到 py 文件的装备 class 里」。效果原已在(生成);**合成路径(配方)本轮入**。
+- **决策**:① `Equipment` 加 `recipe: tuple[str,str] | None = None`(进阶 = 2 简易;非进阶/待核 → None);② `gen_equip_registry` 加 `parse_recipes()`(解析 equipment.md「进阶合成配方」段 → `{进阶:(A,B)}`)+ main 合并 + `_eq` emit recipe;③ regen `cw_equipment_data.py`(P0-1 已拆,regen 安全,不碰 SIFT)。
+- **验证**:regen 153 件;**recipes filled 21**(步步生花=`('生命之花','轮滑鞋')`✓ 用户确认;武器大师/掩体生成枪 等);ruff 双文件过;read_equips 4 hits 不变(功能不受影响)。
+- **遗留**:① **15 待核配方**(7 漏幸运星 + 8 off-screen/×2)→ recipe=None,待 codex 滚动重采补;② 以太钻门类(equipment.md 标进阶,codex/SIFT 示简易,待移简易段 + regen);③ regen 计数 **153 vs 154 icon**(R17 noted,待核漏哪个);④ `cw_equipment_data.py` untracked(待 git add)。
+- **状态**:**recipe 入 Equipment class 完成(21 配方,用户指令达成)**。效果 + 合成均在代码(see code → understand)。`· D-42(P0-1 拆分 → regen 安全)/ D-41(合成机制)/ 用户(效果+合成入 class)`。
+
+## D-44 (2026-08-10)【equip_all 验穿治本·avatar-slot CV-diff】count-verify 替为 avatar-slot CV-diff(drag 前后对比目标 avatar 下方 mini icon 区)—— robust 合成/reflow/read漏检
+
+- **背景(R19治本③/D-41)**:count-verify D-41 实测**报3实4 失真**(合成消耗2件 → column count 扰 + read漏检)。需 avatar-slot ground truth(直接观测 avatar 装备态,非间接推断 column)。
+- **决策**:equip_all 验穿改 **avatar-slot CV-diff**:drag 前 crop 目标 avatar 下方 mini icon 区(`BELOW_ICON_Y=479`,D-41 测),drag 后 crop 同区,`np.abs(pre-post).mean() > BELOW_DIFF_THRESHOLD(8.0)` = 穿[新装/合成都变 icon],不变 = drag 落空。
+- **robust 3 路**(count-verify 的 3 失效路全治):① **合成**(轮滑鞋+生命之花→步步生花:avatar 下方 icon 滑轮鞋→步步生花,diff 高 ✓);② **列 reflow**(avatar 下方位置固定,不受 column reflow);③ **read漏检**(直接 CV-diff,不依赖 read_equips count)。
+- **验证**:ruff 过;import OK(BELOW_ICON_Y=479 THRESH=8.0);read_equips 不变。**dormant**(待 live 测跨局面调阈值)。
+- **遗留**:① BELOW_ICON_Y=479 + THRESH=8.0 待 live 跨局面调(单局 1-6 设);② avatar-slot 只验「变了」(穿了),不区分新装 vs 合成(策略层若需区分须 SIFT-identify below-icon)。
+- **状态**:**equip_all 验穿改 avatar-slot CV-diff(robust 合成/reflow/漏检,count-verify 失真治本)**。①-a equip_all 鲁棒性提升。`· D-41(count-verify 失真)/ R19治本③(avatar-slot)/ R15·R16(count→avatar-slot 方向)`。
+
+## D-45 (2026-08-10)【证据·已穿装备识别 + recognizer 缺口·路径定】below-avatar SIFT 1件✅ 2-3件失效(icon 缩小);template match partial(简易✅ 进阶 borderline);read_equips=owned 列非已穿;recognizer 无已穿字段(gap);路径 template match + 集成
+
+- **澄清两个识别**(R20):`read_equips` = owned 列(**未穿**装备,thr7 SIFT 4/4 验 D-39)**≠ 角色已穿装备**。①-a 之前的工作是 owned 列,not 已穿。
+- **已穿装备识别实测**(below-avatar mini icon):
+  - **1 件**:SIFT ✅(步步生花 inliers=8 / 治疗星徽 inliers=5;icon 较大 ~50px)。
+  - **2 件**:SIFT ❌(icon 缩小 ~35px,SIFT patch 天花板失效);**template match partial**(折叠小刀 简易 0.78✅ / 步步生花 进阶 0.53 borderline vs 轮滑鞋 0.52)。
+  - **3 件**:更差(icon 更小)。
+- **根因**:below-avatar mini icon 随装备数缩小;SIFT(关键点)对 <~50px 失效;template match(像素)更好但 complex 进阶 icon borderline(98px 模板缩放到 35px 丢细节)。
+- **recognizer 缺口**(R20):`battle_prep_recognizer` 产 front_line/back_line/bench(角色身份),**无已穿装备字段** → 策略层不知「谁穿了什么」→ comp 评分 / equip_fit 无地基。这是 ①-a 的真正缺口。
+- **路径**(R20 治本,共识):① **template match 替 SIFT**(方案 A,mini icon 固定尺寸 TM>SIFT);② **mini-templates**(35px native 采,非 98px 缩放)修 complex borderline;③ **recognizer 加 `front_equips` 字段**(below-avatar TM 纯读,给策略层地基);④ equip_all CV-diff 验穿(D-44)**不卡**(只检测「变了」,不需读身份)。
+- **状态**:**已穿装备识别 1件✅ 2-3件 partial;recognizer 缺已穿字段;路径 template match + mini-templates + 集成**。①-a 下一核心块(fresh context 做)。`· D-44(CV-diff 验穿)/ D-41(below-avatar SIFT)/ R20(识别缺口 + 路径)/ 用户(1~3件 + 集成问)`。
+
+## D-46 (2026-08-10)【证据·穿戴装备识别 mini-template + recognizer 集成·重大】native 34px mini(实战裁)修进阶 borderline(步步生花 0.565→0.907);read_equipped_below 双模板;recognizer 加 front/back/bench_equips;飞霄跨位置(前排/后排)2 件一致
+
+- **mini-template 验证(D-45② 落地)**:below-avatar mini icon 是游戏渲染 34px(含 UI 边框/底色)。98px 纯 icon 模板缩放到 34px 丢细节 → 进阶 borderline(步步生花前排 0.603 / 后排 0.565,< 0.6 漏检)。**native 34px mini**(从实战 below-avatar 裁,含 UI 装饰):步步生花前排 1.000 / 后排 0.907;折叠小刀 1.000 / 0.970。**mini 完胜,跨位置 >0.9 稳定**。
+- **根因**:below-avatar mini icon 有 UI 装饰(边框色=稀有度);98px 纯 icon(codex 裁)无装饰 → 缩放后 mismatch。native mini(实战裁)含装饰 → 高 val。
+- **read_equipped_below 双模板(D-45①+②)**:① ``tmpl_minis``(34px native,优先,multi-scale 0.8-1.5 覆盖 1/2/3 件 icon 尺寸变);② ``tmpl_grays``(98px,fallback,简易可用 / mini 库未覆盖装备)。NMS 合并取 val 最高(mini 高自动赢)。
+- **mini 库**(``assets/template/cw_equip_mini/``):实战裁 native 34px。首批:步步生花+折叠小刀(飞霄 2 件,``.debug/temp/cw_equip_probe/harvest_minis.py`` 裁)。**渐进建**(实战遇新装备补采)。
+- **recognizer 集成**:``BattlePrepRecognizer`` 加 ``front_equips``/``back_equips``/``bench_equips``(``dict[slot_idx, list[name]]``)。``ensure_equip_tm_templates(ctx)`` 加载缓存(幂等,并发安全)。产出「谁穿了什么」给策略层地基。
+- **跨位置验证(用户核心需求)**:飞霄从前排-1 drag→后排-1,2 件装备 icon **跟随**(VLM 确认)+ ``read_equipped_below`` 前排/后排都 = ``{步步生花, 折叠小刀}``**一致**(``test_read_equipped_front/back_feixiao_2`` PASS)。
+- **遗留**:① mini 库仅 2 件(飞霄),其他装备(黑能导轨/治疗星徽等)用 98px fallback,实战遇时补 mini;② 1 件/3 件态 icon 尺寸(50px/28px)``mini_scales``(0.8-1.5)覆盖待 fixture 验;③ 备战席 below 区(y2=979→below cy=991 接近画面底,可能被金币 UI 干扰)待 fixture 验;④ mini 单尺寸(34px)对 1 件态(50px)放大匹配泛化待验。
+- **状态**:**穿戴装备识别 mini-template + recognizer 集成 + 跨位置测试就绪**。①-a 重大进展(策略层有「谁穿了什么」地基)。`· D-45(识别缺口+路径)/ 用户(3 件识别+跨位置+测试)/ D-41(below-avatar SIFT 可行但 2-3 件失效)/ read_equips(owned 列,对比)`。
+
+## D-47 (2026-08-10)【画面·装备详情子态建档】点角色详情装备槽 icon → 中部弹装备详情(名/类型/属性/效果/适配/合成);icon 精确定位(pi crop)
+
+- **交互确认(用户指令)**:角色详情(点 deployed 角色→右侧面板)底部「区域-装备槽」[1400,712,1900,798] 有3个穿戴装备 icon。**点装备槽 icon → 中部(x977-1360)弹装备详情子态**(不盖父屏 id_mark 购买经验,故父屏子态非独立 screen)。
+- **装备详情内容**(点 icon1 = 步步生花,OCR):装备名(步步生花)+ 类型(进阶装备)+ 属性(速度增幅10%/伤害增幅15%/生命增幅10%)+ 效果描述(前台生命>70%时伤害增幅+30%)+ 适配角色 + 合成公式。与 D-18 装备推荐列表点的装备详情**同画面**(D-18 入口=装备推荐列表;本条入口=角色详情装备槽)。
+- **装备槽 icon 精确定位**(pi crop 装备槽区,聚焦少干扰):3 icon 中心 **(1633,780)/(1702,780)/(1774,780)**(y780 在区域-装备槽 712-798 内偏底)。SIFT 0 + 98px TM 低 val(0.25-0.38)+ MCP VLM grounding y 偏 —— 装备槽 icon 识别/定位难(渲染特殊),**pi crop 聚焦**才准。
+- **教训(VLM 坐标)**:点装备槽反复开天赋(点 (1500,755)/(1633,755) 都开天赋详情)—— y755 在 icon 上方(天赋/技能区);pi crop 定位 y780 才是 icon。**装备槽 icon 位置待建 screen_info area**(pc_rect,坐标单一源),后续 op 点装备经 area,免硬编码。
+- **状态**:**装备详情子态交互 + 内容确认**;fixture 归档 ``equip_detail_stepbystep.webp``。待:① 建 screen_info area(装备名/类型/属性/合成/关闭)+ id_mark;② doc 建档(父屏货币战争-备战子态);③ 装备槽 icon pc_rect 入 screen_info(op 点装备经 area)。`· 用户(点装备→装备详情)/ D-18(装备推荐列表同画面)/ D-46(穿戴装备识别)`。
+
+## D-48 (2026-08-10)【证据·大图压缩 vs mini·分辨率墙】3件28px below:大图简易0.77/进阶0.36-0.38;mini(2件裁)0.33-0.49不比大图好 → 大图压缩可行不需大规模mini;进阶+3件borderline是28px分辨率墙
+
+- **验证(用户问:大图压缩可行否?需建mini?)**:对3件态 below(140550,28px icon)宽 scale(0.2-0.7)+ 双算法(AREA/LINEAR):
+  - 大图(98px):光能电池(简易)**0.77✅**,步步生花/极·白昼·武器大师(进阶)0.36-0.38 borderline
+  - native mini(2件态34px裁):步步生花0.33,折叠小刀0.49 —— **不比大图好**
+- **纠正 D-46「mini 可靠」**:mini 是**尺寸特化** —— 2件态裁的 mini 只匹配2件态 icon(34px,0.9+),对3件态(28px)暴跌(0.33)。即 mini 跨件数也 borderline(每件数 icon 渲染不同,非只尺寸)。
+- **根因(分辨率墙)**:below-avatar mini icon 随装备数缩小(1件~50/2件~34/3件~28px),**3件28px太小,任何模板(大图压缩/mini)都 borderline** —— 细节不足(D-46 归因「UI 装饰」部分纠正:主因是分辨率,非装饰)。
+- **结论**:**大图压缩可行**(简易可靠 0.77),**不需大规模建 mini 库**。进阶+3件态 borderline 是 28px 分辨率墙(大图/mini 都受,非模板问题)。
+- **简化方向**:`read_equipped_below` 大图 98px multi-scale(主,简易可靠 + 进阶尽力),mini 库只保留已采(步步生花+折叠小刀,2件态进阶补充),**不为每装备每件数采 mini**(工程大 + 3件也 borderline)。进阶3件 borderline 接受(分辨率限制);策略层先用简易可靠识别,进阶识别作尽力。
+- **状态**:**大图压缩可行,mini 不需大规模**;进阶+3件 borderline 是分辨率墙。`· D-46(mini 2件0.9 但3件0.33=尺寸特化,「可靠」结论纠正)/ 用户(大图压缩可行否)/ 光能电池(简易大图0.77 验)`。
+
+## D-49 (2026-08-10)【证据·纠正 D-48·icon 固定尺寸】below-avatar 装备 icon 固定 ~32px(98px×0.33)不随装备数变;D-48「icon 缩/分辨率墙」错(根因=harvest 投影法裁切假象);3件全中;mini 库冗余删除
+
+- **触发(用户质疑)**:用户指出「角色下方装备图标大小应该是一样的」,怀疑 D-48「建库按尺寸分好几套」+ below 区域取错。
+- **验证(CV 大图模板 multi-scale TM,1件 vs 3件同图对比)**:备战 1-6 截图(150914),front-1(3件)/front-3(1件)/front-4(1件)各槽 top1 最佳 scale **都是 0.33(32px)**:
+  - front-1(3件):光能电池 0.781@0.35(34px)、步步生花 0.750@0.33(32px)、武器大师 0.745@0.33(32px)—— **3件全中**(无分辨率墙)
+  - front-3(1件):减益星徽 0.744@0.33(32px);front-4(1件):治疗星徽 0.771@0.33(32px)
+  - icon y 中心 = 481(全一致);`avatar_to_below` cy=479(差 2px,区域未取错,完整覆盖)
+  - pi(qwen3.7-plus)同结论:所有 icon 尺寸一致(但 pi 绝对坐标偏,只取其相对一致性;以 CV 数值为准)
+- **根因(D-48 为何错)**:harvest 脚本用**投影峰值法 + 硬编码 half** 裁 mini —— 紧密横排 icon(3件间距 ~4px)上投影连段/失灵,裁出的「2件 34px / 3件 28px」是**裁切产物**(脚本人为 half + 投影失灵),非真实 icon 尺寸。D-48 拿假数据推出「icon 随数量缩 → 3件 28px 分辨率墙」,整条推导链建立在错误前提。
+- **结论**:**icon 固定 ~32px,不随装备数变**;**无分辨率墙,3件态大图模板 scale 0.33 全中**(0.745-0.781);**mini 库(cw_equip_mini)冗余**(34px mini ≈ 大图缩放结果),删除;`_EQUIP_TM_SCALES` 从 (0.3-0.5,29-49px 基于错误假设)收窄到 ~0.33 附近(覆盖 27-38px 余量)。
+- **状态**:**icon 固定 32px,大图 scale 0.33 全中(含 3件),mini 库删除,`read_equipped_below` 简化(去 mini 路径 + scales 收窄)**。`· D-48(整条推翻:icon 不缩 / 无分辨率墙 / 3件全中 / mini 非必需而是冗余)/ D-46(mini 优先同样作废:大图 scale0.33 直接覆盖)/ 用户(质疑 icon 应同尺寸,触发纠正)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
