@@ -569,4 +569,13 @@
 - **未验(仍阻塞)**:① drag 穿戴类→CV-diff 验穿(需 owned 穿戴装备 = 补给节点);② P0-2 occupied-非空 路径(前排有 pre-equip → 跳过那些槽,需角色已穿装备)。
 - **状态**:**P0-2 live 验证(no-equip 路径)**。equip_all 激活剩:① live drag(需穿戴 owned)② occupied-非空 验(需 pre-equip)③ 接 BattlePrepCycle。`· D-58(P0-2 实现)/ D-57(no-op 路径 live)/ D-49(read_equipped_below)`。
 
+## D-61 (2026-08-11)【发现·read_equipped_below 边缘假阳性(完美投影仪 0.62 空槽)】备战 1-9 extras.front_equips={2:[完美投影仪]}(recognizer),但同屏 equip_all read_row_equipped 返 occupied={}。log 揭:slot2 完美投影仪 val_top=0.62(≥thr0.6)+ 无完整1/2/3件布局 anomaly + MISS → 边缘假阳性(空槽误匹配工具模板 0.62,不稳:一帧命中一帧空)。recognizer 已 [cw!] 标 anomaly 但 val≥thr 仍计入。影响 P0-2(假 occupied→误跳槽)。修需:布局anomaly + 边缘val→判空/未知(待①-a 装备区画面模型)
+
+- **触发**:equip_all run(1-9)read occupied={}(slots=[1,2,3,4]),但稍早 analyze extras.front_equips={2:[完美投影仪]}。同函数 read_equipped_below 不同结果 → 查 log。
+- **log(recognizer 01:18:27)**:`[cw!][read_equipped][slot=2] anomaly=无完整1/2/3件布局(命中候选[21]) equips=['完美投影仪']` + `MISS=布局(-21,21)缺候选[-21]` + `equips=['完美投影仪'] val_top=0.62 MISS=[光能盾牌0.58,生命之花0.57,幸运星0.57]`。
+- **判**:slot2 实为空(完美投影仪是工具不穿戴;equip_all 读空)。完美投影仪 val 0.62 刚过 thr0.6 + 无完整布局(单件工具不该在该位置)→ **边缘假阳性**,不稳(0.62 近阈值:一帧命中一帧空)。
+- **影响**:① read_equipped_below 边缘假阳性(空槽误匹配工具);② 影响 P0-2(若 read_row_equipped 返假 occupied={2:...}→ `_empty_slots` 误跳槽2 → 空槽被当已穿 → 漏装);③ recognizer 已 [cw!] 标 anomaly 但 val≥thr 仍计入 → 需补「布局anomaly + 边缘val → 判空/未知」。
+- **修(待①-a)**:read_equipped_below 增守卫:布局anomaly(无完整1/2/3件布局)+ 候选val 近阈值(<~0.65)→ 判未知/空(不计数)。需画面模型(空槽 below 区 vs 有 icon)支撑。**不擅改阈值**(0.6 是 D-49 validated,提高致真漏检;需布局守卫非裸阈值)。
+- **状态**:**发现(记)**。装备库仍无穿戴(phase 1-9 level 6,仍冶金炉1件工具)→ ①-a drag 仍阻塞。read_equipped_below 边缘假阳列入①-a 装备区画面模型时修。`· D-49(read_equipped_below)/ D-58(P0-2)/ D-60(P0-2 live)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
