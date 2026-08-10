@@ -578,4 +578,13 @@
 - **修(待①-a)**:read_equipped_below 增守卫:布局anomaly(无完整1/2/3件布局)+ 候选val 近阈值(<~0.65)→ 判未知/空(不计数)。需画面模型(空槽 below 区 vs 有 icon)支撑。**不擅改阈值**(0.6 是 D-49 validated,提高致真漏检;需布局守卫非裸阈值)。
 - **状态**:**发现(记)**。装备库仍无穿戴(phase 1-9 level 6,仍冶金炉1件工具)→ ①-a drag 仍阻塞。read_equipped_below 边缘假阳列入①-a 装备区画面模型时修。`· D-49(read_equipped_below)/ D-58(P0-2)/ D-60(P0-2 live)`。
 
+## D-62 (2026-08-11)【修·read_equipped_below 边缘假阳(D-61)】`_select_equipped_layout` 无完整1/2/3件布局时原返 fallback 全命中候选(致 D-61 完美投影仪 val0.62 单件落 +21 候选被当装备返 → 空槽假阳)。CW 每角色最多3件,1/2/3件布局覆盖全部合法配置 → 无完整布局 = 误检。改:无完整布局返 `[]`(不返 fallback),anomaly + MISS 日志保留(诊断)。单元测试 + D-49 既有测试过
+
+- **触发**:D-61 发现 read_equipped_below 边缘假阳(完美投影仪 0.62 空槽误匹配)。
+- **根因**:`_select_equipped_layout` 无完整布局的 fallback(返全命中候选,原 `return equipped`)—— 单件落 +21(2件布局右位缺 -21)无完整布局,仍被当装备返 → 假阳。
+- **改**:无完整布局 → `return []`(非 fallback 候选)。CW 每角色最多3件,1/2/3件布局(cx±43/±21/0)覆盖全部合法配置;无完整布局 = 误检(非合法位置),返空。anomaly + MISS 日志保留(诊断漏检/误检)。
+- **不擅改**:阈值(0.6 是 D-49 validated,提高致真漏检)—— 改的是**布局守卫**(无完整布局返空),非阈值。
+- **测**:`test_select_layout_no_complete_returns_empty`(单件 +21 → [],单件 0 → [件])。D-49 既有测试(1/2/3件 valid + 0件 empty)17/17 过(合法路径不破坏)。
+- **状态**:**修 + 单元测过**。read_equipped_below 边缘假阳(D-61)解决 —— recognizer/P0-2 不再把无完整布局的误检候选当 occupied。live 再验待同帧假阳重现(间歇,单元+逻辑验充分)。`· D-61(发现)/ D-49(read_equipped_below)/ D-58(P0-2 受益)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

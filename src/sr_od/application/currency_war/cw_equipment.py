@@ -283,12 +283,14 @@ def _select_equipped_layout(
     chosen = next((lay for lay in _EQUIP_LAYOUTS if set(lay) <= hit), None)
     if chosen is not None:
         return [cand_name[o] for o in chosen]
-    # 无完整布局:fallback 全命中候选 + 异常
-    equipped = [cand_name[o] for o in sorted(cand_name)]
+    # 无完整布局(D-61):CW 每角色最多3件,1/2/3件布局覆盖全部合法配置;无完整布局 = 误检
+    # (D-61:完美投影仪 val0.62 单件落 +21 候选,非合法布局 → 空槽误匹配)。返 [] 不返 fallback 候选
+    # (防 recognizer/P0-2 把不可靠候选当 occupied —— D-61 实测致 front_equips 假阳)。anomaly + MISS 日志保留(诊断)。
     if hit:
         cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
-               anomaly=f'无完整1/2/3件布局(命中候选{sorted(hit)})',
-               equips=str(equipped), shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'nolayout_slot{slot_idx}'))
+               anomaly=f'无完整1/2/3件布局(命中候选{sorted(hit)})→判空(误检,不返)',
+               equips=str([cand_name[o] for o in sorted(cand_name)]),
+               shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'nolayout_slot{slot_idx}'))
     # MISS:更大布局部分中(缺候选 = 漏检)
     for lay in _EQUIP_LAYOUTS:
         partial = set(lay) & hit
@@ -298,7 +300,7 @@ def _select_equipped_layout(
                    MISS=f'布局{lay}缺候选{missing}(漏检)',
                    shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'layoutmiss_slot{slot_idx}'))
             break
-    return equipped
+    return []
 
 
 def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
