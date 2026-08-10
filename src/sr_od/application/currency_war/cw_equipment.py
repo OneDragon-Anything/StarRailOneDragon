@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,13 +16,13 @@ import cv2
 import numpy as np
 from cv2.typing import MatLike
 
-from one_dragon.utils import cv2_utils
 from sr_od.application.currency_war.cw_equipment_data import (
     EQUIPMENT_ROSTER,
     EQUIPMENTS,
     Equipment,
     get_equip,
 )
+from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
 
 if TYPE_CHECKING:
     from one_dragon.base.geometry.rectangle import Rect
@@ -152,8 +151,6 @@ def read_equipped_below(
     threshold: float = 0.6,
     nms_radius: int = 18,
     miss_threshold: float = 0.55,
-    logger: logging.Logger | None = None,
-    shot_dir: Path | None = None,
 ) -> dict[int, list[str]]:
     """每槽 below-avatar 区 multi-scale TM + NMS → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
 
@@ -172,11 +169,8 @@ def read_equipped_below(
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18);同 ``±radius`` 内多命中取 val 最高
         (防合成材料误匹配:滑轮鞋/折叠小刀同位置)。
     :param miss_threshold: MISS 日志阈值;val 在 [miss_threshold, threshold) 的近命中记 MISS(可能漏检,
-        如 D-51 武器大师后排-6 val0.57)。0.55 避低 val 噪声。``logger=None`` 时不记。
-    :param logger: 可选 logging.Logger;非 None 时记 MISS 日志(``[cw!][read_equipped][slot=N] ... MISS=[...]``),
-        grep ``\\[cw!\\].*MISS`` 找漏检。None(默认,纯函数/测试)不记。
-    :param shot_dir: 可选 Path;非 None 时 MISS 存 below 区 crop(彩色)到 ``shot_dir/miss_slot<N>.png``,
-        log ``| shot=<名>`` 引截图名 —— grep MISS 后看 crop 定位漏检根因(如 D-51 武器大师)。None 不存。
+        如 D-51 武器大师后排-6 val0.57)。0.55 避低 val 噪声。MISS 经 ``cw_observe.cw_log`` 记(``[cw!]``),
+        grep ``\\[cw!\\].*MISS`` 找;存 below crop(``cw_observe.cw_shot``)定位根因。
     :return: ``{slot_idx: [装备名]}``;空槽 / 无命中 → 该 slot 不在 dict。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer / op(并发安全)。
@@ -211,19 +205,16 @@ def read_equipped_below(
             out[slot_idx] = [n for n, _, _ in kept]
         # MISS 日志:近命中(val 刚低于 threshold)可能是漏检(如 D-51 武器大师后排-6 val0.57<0.6)。
         # grep `\[cw\].*MISS` 找漏检;miss_threshold 0.55 避低 val 噪声。
-        if logger is not None and near:
+        if near:
             kept_names = {n for n, _, _ in kept}
             miss_items = sorted(((n, v) for n, v in near.items() if n not in kept_names), key=lambda t: -t[1])
             if miss_items:
                 miss_str = ','.join(f'{n}({v:.2f})' for n, v in miss_items[:5])
                 val_top = kept[0][1] if kept else 0.0
-                shot_part = ''
-                if shot_dir is not None:
-                    shot_name = f'miss_slot{slot_idx}.png'
-                    cv2_utils.save_image(screen[rect.y1:rect.y2, rect.x1:rect.x2], str(shot_dir / shot_name))
-                    shot_part = f' | shot={shot_name}'
-                logger.info(f'[cw!][read_equipped][slot={slot_idx}] equips={[n for n, _, _ in kept]} '
-                            f'val_top={val_top:.2f} MISS=[{miss_str}]{shot_part}')
+                shot = cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'miss_slot{slot_idx}')
+                cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
+                       equips=str([n for n, _, _ in kept]), val_top=f'{val_top:.2f}',
+                       MISS=f'[{miss_str}]', shot=shot)
     return out
 
 

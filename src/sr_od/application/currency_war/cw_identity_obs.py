@@ -25,9 +25,6 @@ SIFT 匹配器对模板库(生产用 ``character_cw_portrait`` 货币战争立�
 """
 from __future__ import annotations
 
-import logging
-from pathlib import Path
-
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
@@ -152,8 +149,6 @@ def read_row_equipped(
     tmpl_grays: dict[str, MatLike],
     prefix: str,
     count: int,
-    logger: logging.Logger | None = None,
-    shot_dir: Path | None = None,
 ) -> dict[int, list[str]]:
     """某排(前排/后排/备战栏)每槽 below-avatar 已穿装备 → ``{slot_idx: [装备名]}``(纯读)。
 
@@ -163,4 +158,4 @@ def read_row_equipped(
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer(并发安全)。
     """
     below_rects = [(idx, avatar_to_below(r)) for idx, r in _ctx_slots(ctx, prefix, count)]
-    return read_equipped_below(screen, tmpl_grays, below_rects, logger=logger, shot_dir=shot_dir)
+    return read_equipped_below(screen, tmpl_grays, below_rects)
