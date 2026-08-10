@@ -667,4 +667,12 @@
 - **验**:ruff 过。live 验待下轮 BattlePrepCycle(deploy=cap→备战消失 success / deploy<cap→警告确认→战斗)。
 - **状态**:**修 D-70 + 补未达上限警告**。BattlePrepCycle 出战 step 等转移(正信号)+ 处理 deploy<cap 警告。`· D-70(false-failure 发现)/ write-operation(出口验真转移)/ HandleDeployNotFull(未达上限,本修内联处理)`。
 
+## D-72 (2026-08-11)【验证·D-71 修 live(BattlePrepCycle round 2 出战成功,不再 false-fail)】run BattlePrepCycle round 2(deploy→出战):log `出战 click @(1815,747)` → 0.8s 内 `出战成功 → 过渡到战斗/结算`(轮询捕备战标识消失)→ 执行成功(非 false-fail)→ 结算 挑战成功 hp64。**D-70 false-failure 修复 live 验证通过**(出战 step 轮询正信号,不再误报)
+
+- **跑**:run BattlePrepCycle round 2(新 A8 局,人身意外险)。
+- **log**:02:34:28 `出战 click @(1815,747)` → 02:34:29 `出战成功 → 过渡到战斗/结算`(轮询 ~0.8s 捕 备战标识 消失)→ 02:34:32 `备战单轮 执行成功 返回状态 成功`。
+- **对比 D-70**:D-70 同步出战 click → 1.0s 单次复核误判"仍在备战"→ 报败(实赢)。D-71 修后 → 轮询正信号(备战 gone)→ ~0.8s 确认 success。**false-failure 修复 live 验证通过**。
+- **结果**:结算 挑战成功(hp_after=64, 获得金币5, 等级提升提示, 掉落晶矿)。round 2 赢。
+- **状态**:**D-71 修 live 验证通过**。BattlePrepCycle 出战 step 正常(轮询转移,不 false-fail)。D-70→D-71→D-72 闭环(发现→修→验)。`· D-70(发现)/ D-71(修)/ write-operation(出口验真转移)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
