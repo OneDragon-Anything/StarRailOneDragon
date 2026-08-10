@@ -536,4 +536,13 @@
 - **未验(仍阻塞)**:drag 穿戴类 → CV-diff 验穿(D-56 offline 核了 diff 逻辑,但 live drag 落地 + read_equips 跨局面 需 owned 穿戴装备 = 补给/奖励节点)。
 - **状态**:**no-op 路径 live 验证**(+ D-56 offline 验穿逻辑)。equip_all 激活剩:① live drag 测(需穿戴 owned)② P0-2(drag 前 read_equipped_below 读槽空满)③ 接 BattlePrepCycle。`· D-56(offline CV-diff 核)/ R19(CV-diff 替 count-verify)/ D-53~D-55(同期 shop/identity 工作)`。
 
+## D-58 (2026-08-11)【实现·equip_all P0-2 drag 前占位检测】原 `target=FRONT_AVATARS[equipped]` 按已穿计数索引 → 已穿槽被覆盖(前排部分角色 pre-equip 时 drag 会覆盖)。改:drag 前 read_row_equipped 读前排 avatar 已穿 → `_empty_slots` 算空槽 → 只往空槽 drag(target=FRONT_AVATARS[slot-1])
+
+- **触发**:D-57 列 equip_all 激活剩项含「P0-2」。原循环 `while equipped < len(FRONT_AVATARS): target = FRONT_AVATARS[equipped]` —— `equipped` 只计本轮已穿,假设槽 0..equipped-1 顺次填;若某槽 pre-equip(已有装备)→ drag 覆盖它(游戏换装或拒)。
+- **改**:① `_get_tm_grays`(load_equip_tm_grays 缓存 ctx,镜像 `_get_templates`);② drag 前 `read_row_equipped(ctx, screen, grays, '前排', 4)` 读已穿 → `_empty_slots(occupied, 4)`(纯函数,槽不在 dict=空)→ 只迭代空槽,`target = FRONT_AVATARS[slot_idx-1]`;③ 全已穿 → round_success「全已穿跳过」。
+- **备选(否)**:① 不读占位、信任顺次填 —— 否(覆盖已穿);② CV 灰度 std 判占用(新函数)—— 否(read_row_equipped D-49 已 validated,复用优先,不造新)。
+- **复用 + 风险**:read_row_equipped(D-49 below-avatar TM,threshold 0.6)判占用;`_below_icon_diff`(D-56)验穿不变。P0-2 只改目标选择(空槽),不改验穿。false-negative(read_equipped_below 漏已穿→误判空→drag 覆盖)bounded(0.6 validated)+ 验穿兜底。
+- **测**:`test_empty_slots_skips_occupied`(纯函数:全空→全槽 / 部分→跳过 / 全已穿→空)。offline 验空槽选择逻辑。drag 占用读 + live 验仍待穿戴装备条件。
+- **状态**:**P0-2 offline 实现完成**。equip_all 激活剩:① live drag 测(需穿戴 owned = 补给节点)② 接 BattlePrepCycle。`· D-57(列 P0-2 为剩项)/ D-49(read_equipped_below)/ D-56(_below_icon_diff 验穿)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

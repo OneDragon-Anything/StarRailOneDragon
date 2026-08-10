@@ -28,8 +28,10 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_equipment import (
     EQUIPMENTS,
     load_equip_templates,
+    load_equip_tm_grays,
     read_equips,
 )
+from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
 from sr_od.application.currency_war.cw_obs_core import _area_rect
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -55,10 +57,22 @@ def _below_icon_diff(
     return float(np.abs(pre.astype(np.int16) - post.astype(np.int16)).mean())
 
 
+def _empty_slots(occupied: dict[int, list[str]], count: int) -> list[int]:
+    """已穿槽位 dict → 空槽位序号列表(1-based;P0-2 drag 前占位检测)。
+
+    ``occupied`` = ``read_row_equipped`` 结果(``{slot_idx: [装备名]}``,slot_idx 1-based);槽不在 dict = 空。
+    纯函数(可离线测):只往空槽 drag,避免覆盖已穿装备(原 bug:``target = FRONT_AVATARS[equipped]``
+    按已穿计数索引 → 已穿槽被覆盖)。
+    """
+    return [i for i in range(1, count + 1) if i not in occupied]
+
+
 class EquipAll(SrOperation):
-    """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排角色头像 → avatar-slot CV-diff 验穿。
+    """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
     装备库区域 = screen_info「区域-道具装备」(多列 x1620-1918,D-40;坐标维护 yml 非硬编码)。
+    **P0-2 drag 前占位检测**:``read_row_equipped`` 读前排 avatar 已穿 → 只往空槽 drag(``_empty_slots``,
+    修原 ``target=FRONT_AVATARS[equipped]`` 按已穿计数索引 → 已穿槽被覆盖)。
     avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
     变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
     前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**dormant**(未接 cycle,待多列/三态完整建档后激活)。
@@ -94,6 +108,24 @@ class EquipAll(SrOperation):
         log.info(f'[cw-equip] 加载 {len(templates)} 个 cw_equip 模板(缓存 ctx)')
         return templates
 
+    def _get_tm_grays(self):
+        """加载 cw_equip TM grays(缓存 ctx.cw_equip_tm_grays;``read_row_equipped`` 读 avatar 已穿用)。
+
+        与 ``_get_templates`` 互补:后者 SIFT keypoint/descriptor(read_equips owned 列用);本函数返
+        简单 gray(``matchTemplate`` 用,read_equipped_below below-avatar mini icon 用)。两套同源(`assets/template/cw_equip`)。
+        """
+        cached = getattr(self.ctx, 'cw_equip_tm_grays', None)
+        if cached is not None:
+            return cached
+        equip_dir = Path(__file__).resolve().parents[6] / 'assets/template/cw_equip'
+        if not equip_dir.is_dir():
+            log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
+            return None
+        grays = load_equip_tm_grays(equip_dir)
+        self.ctx.cw_equip_tm_grays = grays
+        log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
+        return grays
+
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -109,10 +141,23 @@ class EquipAll(SrOperation):
         if rect is None:
             return self.round_fail('screen_info 区域-道具装备 缺失')
         equip_rect = (rect.x1, rect.y1, rect.x2, rect.y2)
+        # P0-2 drag 前占位检测:读前排 avatar 已穿(read_row_equipped below-avatar TM)→ 只往空槽 drag。
+        # 修原 bug:target=FRONT_AVATARS[equipped] 按已穿计数索引 → 已穿槽被覆盖。空槽序号 1-based → FRONT_AVATARS[slot-1]。
+        tmpl_grays = self._get_tm_grays()
+        if tmpl_grays is None:
+            return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
+        occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))
+        if occupied:
+            log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
+                     {k: '+'.join(v) for k, v in sorted(occupied.items())})
+        slots = _empty_slots(occupied, len(self.FRONT_AVATARS))
+        if not slots:
+            log.info('[cw-equip] 前排 avatar 全已穿 → 无空槽,停')
+            return self.round_success('前排 avatar 全已穿,跳过')
         # avatar-slot CV-diff 验穿(R19治本③/D-41:替 count-verify —— robust 合成消耗2件/列reflow/read漏检;
         # drag 前后对比目标 avatar 下方 mini icon 区,变了=穿[新装或合成],不变=drag 落空/非穿戴)
         equipped = 0
-        while equipped < len(self.FRONT_AVATARS):
+        for slot_idx in slots:
             cur = self.screenshot()
             if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
                 log.info('[cw-equip] 角色详情面板开 → 停')
@@ -129,18 +174,19 @@ class EquipAll(SrOperation):
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break
             name, (cx, cy) = wearable[0]
-            target = self.FRONT_AVATARS[equipped]
-            log.info('[cw-equip] drag %s @(%d,%d) → 前排 avatar (%d,%d)', name, cx, cy, target.x, target.y)
+            target = self.FRONT_AVATARS[slot_idx - 1]
+            log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽]',
+                     name, cx, cy, slot_idx, target.x, target.y)
             self.ctx.controller.drag_to(start=Point(cx, cy), end=target, duration=1.5, hold_time=0.5)
             time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
             post = self.screenshot()
             diff = _below_icon_diff(cur, post, target.x, self.BELOW_ICON_Y, self.BX_HALF, self.BY_HALF)
             if diff > self.BELOW_DIFF_THRESHOLD:
                 equipped += 1
-                log.info('[cw-equip] %s 穿了(avatar below-icon diff=%.1f > %.1f)',
-                         name, diff, self.BELOW_DIFF_THRESHOLD)
+                log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
+                         name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
             else:
                 log.info('[cw-equip] %s drag 未变(diff=%.1f ≤ %.1f)→ 停(bug#1 落空/非穿戴)',
                          name, diff, self.BELOW_DIFF_THRESHOLD)
                 break
-        return self.round_success(f'装备 {equipped} 件到前排 avatar')
+        return self.round_success(f'装备 {equipped} 件到前排 avatar(空槽 {slots})')
