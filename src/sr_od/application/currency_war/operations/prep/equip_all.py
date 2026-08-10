@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
+from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -35,6 +36,23 @@ from sr_od.operations.sr_operation import SrOperation
 
 # 工具类装备(拆装扳手/冶金炉/随便骰子等,非 drag 穿;D-34 单独处理)
 _TOOL_CATEGORIES: set[str] = {'工具'}
+
+
+def _below_icon_diff(
+    screen_pre: MatLike, screen_post: MatLike, avatar_x: int,
+    below_y: int = 479, bx_half: int = 35, by_half: int = 30,
+) -> float:
+    """drag 前后目标 avatar 下方 mini icon 区的像素差均值(>阈值=穿了;R19 CV-diff 验穿)。
+
+    纯函数(可离线 fixture 测):crop below-icon 区 → 两帧像素绝对差均值。``EquipAll`` 用它判 drag
+    是否落地穿(robust 合成消耗2件/列reflow/read漏检,替 count-verify D-41)。默认 below_y/bx_half/by_half
+    对齐 ``EquipAll`` 类常量(D-41 测 below-icon y=479),测试可直接调。
+
+    实测验证(D-56,飞霄 0→1→2→3 件 fixture):连续态(加 icon)diff 28-41(>>阈值 8.0),同态 0.0。
+    """
+    pre = screen_pre[below_y - by_half:below_y + by_half, avatar_x - bx_half:avatar_x + bx_half]
+    post = screen_post[below_y - by_half:below_y + by_half, avatar_x - bx_half:avatar_x + bx_half]
+    return float(np.abs(pre.astype(np.int16) - post.astype(np.int16)).mean())
 
 
 class EquipAll(SrOperation):
@@ -112,15 +130,11 @@ class EquipAll(SrOperation):
                 break
             name, (cx, cy) = wearable[0]
             target = self.FRONT_AVATARS[equipped]
-            # 目标 avatar 下方 mini icon 区(drag 前 crop;D-41 测 below-icon y=479)
-            bx, by = target.x, self.BELOW_ICON_Y
-            pre_below = cur[by - self.BY_HALF:by + self.BY_HALF, bx - self.BX_HALF:bx + self.BX_HALF]
             log.info('[cw-equip] drag %s @(%d,%d) → 前排 avatar (%d,%d)', name, cx, cy, target.x, target.y)
             self.ctx.controller.drag_to(start=Point(cx, cy), end=target, duration=1.5, hold_time=0.5)
             time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
             post = self.screenshot()
-            post_below = post[by - self.BY_HALF:by + self.BY_HALF, bx - self.BX_HALF:bx + self.BX_HALF]
-            diff = float(np.abs(pre_below.astype(np.int16) - post_below.astype(np.int16)).mean())
+            diff = _below_icon_diff(cur, post, target.x, self.BELOW_ICON_Y, self.BX_HALF, self.BY_HALF)
             if diff > self.BELOW_DIFF_THRESHOLD:
                 equipped += 1
                 log.info('[cw-equip] %s 穿了(avatar below-icon diff=%.1f > %.1f)',

@@ -518,4 +518,14 @@
 - **教训**:① VLM 定位可信,别猜坐标 + 别拿未验证参照系(screen_info 点击点)否定 VLM(同 D-55 方法论);② "SIFT 弱"结论常是裁切错,先查裁切位置(VLM/CV 定)再下结论;③ qwen3 bbox_2d 归一化 **0-1000**(非 0-999,官方文档,差 0.1% 可忽略但已订正 CLAUDE.md)。
 - **状态**:**已修 + test_read_shop_cards_sift 5/5 GT(shop_open.webp)+ 258 测试过(仅既有 comp pivot 失败)**。**待办**:① 开拓者 roster gap(Momojie 模板 → 开拓者·欢愉/记忆,需定命途);② live 验买牌点击落在牌上(肖像中心 501 vs 旧文字中心 377,差 124px,需实机 click 核)。`· D-54(VLM 坐标可信方法论同源)/ 用户(开拓者 OCR 失败 + 推 VLM 定位 + 质疑猜坐标,全程纠方向)`。
 
+## D-56 (2026-08-10)【验证·equip_all CV-diff 验穿 offline 核 + 抽 _below_icon_diff 纯函数】equip_all dormant,live drag 验阻塞(备战 owned 仅工具无穿戴类);但验穿逻辑(R19 avatar-slot CV-diff)可 offline 验。用飞霄 0→1→2→3 件 fixture:连续态 below-icon diff 28-41(>>阈值 8.0)、同态 0.0 → 验穿 + 阈值/区域可靠。抽 _below_icon_diff 纯函数 + 回归测试
+
+- **触发**:equip_all(R19 CV-diff 验穿)dormant 未 live 验;live 阻塞(备战 1-6 owned 仅「冶金炉」工具,无穿戴类 → drag 流程测不了)。但**验穿逻辑本身**(drag 前后 avatar below-icon 区像素差)可 offline 用 fixture 验。
+- **验**:`equipped_front1_feixiao_0/1/2/3`(front-1 飞霄 0→1→2→3 件顺序态)。`_below_icon_diff`(front-1 x743, below_y479, ±35/30):
+  - 连续态(加 icon):0→1=28.1、1→2=41.4、2→3=40.6(**>>阈值 8.0**)。
+  - 同态:0.0(< 8.0)。
+  - → R19 CV-diff 验穿 + `BELOW_DIFF_THRESHOLD=8.0` + below_y479 区域 **offline 可靠**(干净区分穿了/没穿)。robust 合成消耗/列reflow/read漏检(不依赖 owned count)。
+- **改**:抽 `_below_icon_diff(screen_pre, screen_post, avatar_x, below_y=479, bx_half=35, by_half=30) -> float` 成**模块级纯函数**(equip_all.py),op 内联 diff 改调它(可离线 fixture 测,治本:可测设计)。回归测试 `test_below_icon_diff_detects_equip`(飞霄 fixture 锁阈值/区域)。
+- **状态**:**offline 验证 + 抽函数 + 回归测试**。剩 **live drag 落地机制 + read_equips 跨局面** 需游戏条件(补给/奖励节点出穿戴装备)才能验。`· D-41(R19 CV-diff 替 count-verify,本 D-56 offline 核其可靠)/ R14 P0-1(count 验穿假成功,已由 R19 CV-diff 解决)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
