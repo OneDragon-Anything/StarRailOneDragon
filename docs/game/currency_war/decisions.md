@@ -708,4 +708,13 @@
 - **learnings(改进方向)**:① 过位面1 boss(定点爆破助力)但 位面2-1 团灭(HP 管理/comp 强度待提);② BattlePrepCycle 无 equip_all(supply 装备未穿,待接 cycle);③ bot buy/deploy 决策有策略(log plan 可见),但 comp 质量(tier-3 成型)待策略调优(①过后)。
 - **状态**:**里程碑 —— bot 自主打完完整 A8 对局(19min,全生命周期,积分8400,赛季满级)**。项目目标(自主 A8 bot)实践验证:主循环 CurrencyWarRunLoop 端到端自主打 A8 CW,dispatch 全通无 stall。`· D-74/D-75(主循环自主+补给)/ D-71/D-72(出战修+验)/ 定点爆破(核弹助过 boss)/ 人身意外险(补给触发)`。
 
+## D-78 (2026-08-11)【里程碑·D-77 equip_all cycle live 验 + ①-a 全链 drag PASSED + P0-2 占位跳过验】CurrencyWarRunLoop 自主打新局(含 D-77 equip 节点)。log 验 equip_all 在 BattlePrepCycle ③ 节点每轮运行:round 1-2 `drag 量产型装甲 → 前排-1[空槽] → 穿了(diff=32.2>8.0)` ✓ —— **①-a 全链 live drag PASSED**(read_equips→drag→avatar→CV-diff);round 3 `前排已穿槽(跳过不覆盖):{1:'量产型装甲'}` → **P0-2 occupied-非空 验**(slot1 已穿→skip)。**D-77 equip 在 cycle 正常 + ①-a 完整闭环**
+
+- **验证**:CurrencyWarRunLoop 自主打新局(BattlePrepCycle 含 D-77 equip 节点)。
+- **log round 1**(03:16:22):`[cw-prep] ③ 装备(EquipAll)` → `[cw-equip] drag 量产型装甲 @(1838,239) → 前排-1 avatar(743,350)[空槽]` → `穿了(前排-1 below-icon diff=32.2 > 8.0)` → `无穿戴候选(count=1)→停`。**①-a 全链 live drag**:read_equips 读 量产型装甲(owned 简易)→ drag 到 前排-1 空 slot → CV-diff 32.2 >> 阈值 8.0 = 穿!**①-a 闭环**(read→filter→drag→CV-diff,P0-2 空 slot=[1,2,3,4])。
+- **log round 3**(03:19:11):`③ 装备(EquipAll)` → `前排已穿槽(跳过不覆盖):{1:'量产型装甲'}` → `无穿戴候选(count=2)→停`。**P0-2 occupied-非空 验**:slot1 已穿 量产型装甲 → occupied={1:...} → _empty_slots skip 1 → 不覆盖。
+- **意义**:①-a **全链 live drag PASSED**(之前 supply-gated blocker 解除 —— 装备库有 starting 量产型装甲,equip 自动穿)+ P0-2 occupied-非空 验(之前 unverified)。**①-a 完整闭环**(检测→drag→CV-diff→P0-2 全 live 验)。
+- **match**:备战 1-3,HP 84(好,vs 上局 HP 5 @round9),deploy 4/4 满,前排-1 穿 量产型装甲。bot 更强(装备+满编)。
+- **状态**:**D-77 equip_all cycle 验 + ①-a 全链 drag PASSED + P0-2 occupied 验**。①-a 完整闭环(read_equips/equip_all/P0-2/CV-diff 全 live 验)。equip_all 在 cycle 中自主装备 → bot 更强。`· D-77(equip 接 cycle)/ D-58/D-60(P0-2 no-equip 验)/ D-62/D-63(假阳修+验)/ D-36(drag 机制验)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
