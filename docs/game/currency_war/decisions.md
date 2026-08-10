@@ -699,4 +699,13 @@
 - **①-a 触达 + gap**:补给节点 = ①-a 装备源。bot 处理了 supply(RunSupplyNode)→ 装备可能入 装备库。**但 BattlePrepCycle = buy+deploy+出战(无 equip_all 节点)** → 装备可能在 装备库 未穿(equip_all 未接 cycle)。待 loop 结束后查 装备库 + 评估 equip_all 接 cycle。
 - **状态**:**里程碑 —— bot 自主处理补给节点 + 推进到 boss round 9**。bot 自主打满对局生命周期(备战→出战→结算→补给→boss)。①-a 装备源触达(supply 处理);equip_all 接 cycle 待(当前 cycle 无 equip 节点)。`· D-74(主循环自主)/ RunSupplyNode(补给 handler)/ 人身意外险(首领前 supply)/ BattlePrepCycle(buy+deploy+出战,无 equip)`。
 
+## D-76 (2026-08-11)【里程碑·bot 自主打完完整 A8 对局(19min,retry 0,积分8400→赛季18000满,全生命周期)】CurrencyWarRunLoop **执行成功**「对局结束,回大厅」(1118s≈19min)。bot 自主打完整 A8 对局:备战→出战→结算→补给(人身意外险)→位面1 boss(过)→位面过渡→位面2-1(挑战失败 HP0)→对局评价(积分8400)→返回→大厅(赛季积分18000/18000满级)。**全生命周期自主,retry 0 无 stall,主循环 dispatch 全通(事件+备战+补给+boss+match-over+lobby-return)**
+
+- **里程碑**:CurrencyWarRunLoop **完成完整 A8 对局**(state=success, 1118s≈19min, retry 0)。last_status「对局结束,回大厅」。
+- **对局全程**:bot 自主打 round 3→…→9(备战→出战→结算→补给[人身意外险]→事件[祈愿试炼/投资策略])→ **位面1 boss 过**(定点爆破核弹)→ 位面过渡 → **位面2-1 挑战失败**(HP0 团灭)→ 对局评价(积分8400, 对局未完成2-1)→ 返回货币战争 → **大厅**。
+- **积分**:本局 **8400**(达位面2,过位面1 boss)。赛季积分 **18000/18000 满级**(9600+8400)。
+- **主循环 dispatch 全通**:事件 handler(祈愿试炼/投资策略/补给节点)+ 备战(BattlePrepCycle)+ 结算 + 位面过渡 + match-over(挑战失败→对局评价→返回→大厅)。**retry 0,~19min 无 stall**。
+- **learnings(改进方向)**:① 过位面1 boss(定点爆破助力)但 位面2-1 团灭(HP 管理/comp 强度待提);② BattlePrepCycle 无 equip_all(supply 装备未穿,待接 cycle);③ bot buy/deploy 决策有策略(log plan 可见),但 comp 质量(tier-3 成型)待策略调优(①过后)。
+- **状态**:**里程碑 —— bot 自主打完完整 A8 对局(19min,全生命周期,积分8400,赛季满级)**。项目目标(自主 A8 bot)实践验证:主循环 CurrencyWarRunLoop 端到端自主打 A8 CW,dispatch 全通无 stall。`· D-74/D-75(主循环自主+补给)/ D-71/D-72(出战修+验)/ 定点爆破(核弹助过 boss)/ 人身意外险(补给触发)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
