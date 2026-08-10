@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -149,6 +150,8 @@ def read_equipped_below(
     scales: tuple[float, ...] = _EQUIP_TM_SCALES,
     threshold: float = 0.6,
     nms_radius: int = 18,
+    miss_threshold: float = 0.55,
+    logger: logging.Logger | None = None,
 ) -> dict[int, list[str]]:
     """每槽 below-avatar 区 multi-scale TM + NMS → ``{slot_idx: [装备名]}``(纯 CV,可离线测)。
 
@@ -166,6 +169,10 @@ def read_equipped_below(
     :param threshold: TM 命中阈值;0.6(实测 top1 0.74+,保守留余量)。
     :param nms_radius: 同位置去重半径(icon 间距 ~35px → 18);同 ``±radius`` 内多命中取 val 最高
         (防合成材料误匹配:滑轮鞋/折叠小刀同位置)。
+    :param miss_threshold: MISS 日志阈值;val 在 [miss_threshold, threshold) 的近命中记 MISS(可能漏检,
+        如 D-51 武器大师后排-6 val0.57)。0.55 避低 val 噪声。``logger=None`` 时不记。
+    :param logger: 可选 logging.Logger;非 None 时记 MISS 日志(``[cw][read_equipped][slot=N] ... MISS=[...]``),
+        grep ``\\[cw\\].*MISS`` 找漏检。None(默认,纯函数/测试)不记。
     :return: ``{slot_idx: [装备名]}``;空槽 / 无命中 → 该 slot 不在 dict。
 
     纯读(只 TM screen + templates,不写 session/全局),可进 recognizer / op(并发安全)。
@@ -173,8 +180,9 @@ def read_equipped_below(
     out: dict[int, list[str]] = {}
     for slot_idx, rect in below_rects:
         crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
-        raw: list[tuple[str, float, int]] = []  # (name, val, x_in_crop)
-        # 98px 大图模板 multi-scale TM(icon 固定 ~32px,D-49;缩到 27-38px 覆盖)
+        raw: list[tuple[str, float, int]] = []  # (name, val, x_in_crop) 命中(>=threshold)
+        near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<threshold),MISS 日志用
+        # 98px 大图模板 multi-scale TM(icon ~32-34px 随位置变,D-49/D-51;缩到 29-36px 覆盖)
         for name, tgray in tmpl_grays.items():
             th, tw = tgray.shape
             for s in scales:
@@ -186,6 +194,8 @@ def read_equipped_below(
                 _, mx, _, mloc = cv2.minMaxLoc(r)
                 if mx >= threshold:
                     raw.append((name, float(mx), mloc[0]))
+                elif mx >= miss_threshold and mx > near.get(name, 0.0):
+                    near[name] = float(mx)
         # NMS:按 x 位置聚类(±nms_radius),每簇取 val 最高(同 icon 多模板/多尺度命中去重,防合成材料误匹配)
         raw.sort(key=lambda t: -t[1])
         kept: list[tuple[str, float, int]] = []
@@ -195,6 +205,16 @@ def read_equipped_below(
             kept.append((name, val, x))
         if kept:
             out[slot_idx] = [n for n, _, _ in kept]
+        # MISS 日志:近命中(val 刚低于 threshold)可能是漏检(如 D-51 武器大师后排-6 val0.57<0.6)。
+        # grep `\[cw\].*MISS` 找漏检;miss_threshold 0.55 避低 val 噪声。
+        if logger is not None and near:
+            kept_names = {n for n, _, _ in kept}
+            miss_items = sorted(((n, v) for n, v in near.items() if n not in kept_names), key=lambda t: -t[1])
+            if miss_items:
+                miss_str = ','.join(f'{n}({v:.2f})' for n, v in miss_items[:5])
+                val_top = kept[0][1] if kept else 0.0
+                logger.info(f'[cw!][read_equipped][slot={slot_idx}] equips={[n for n, _, _ in kept]} '
+                            f'val_top={val_top:.2f} MISS=[{miss_str}]')
     return out
 
 
