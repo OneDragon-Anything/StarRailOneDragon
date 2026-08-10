@@ -81,6 +81,7 @@ class BattlePrepCycle(SrOperation):
                     log.info('[cw-prep] 出战成功 → 过渡到战斗/结算')
                     return self.round_success(wait=3)
             log.warning('[cw-prep] ⚠️ 出战后 3s 仍在备战(click 未落地 / bug#1?),retry')
+            self.save_screenshot()  # 诊断存证(insights 出战 click 条):看 retry 时屏上 bug#1 drag(无 overlay) vs overlay 挡出战(有 dialog/事件) vs 坐标偏
             return self.round_retry('出战 click 未落地,重试', wait=1)
         log.info('[cw-prep] 找不到出战按钮,retry')
         return self.round_retry('找不到出战', wait=1)

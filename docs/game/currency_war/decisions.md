@@ -782,4 +782,11 @@
 - **数据饱和判定(6 场足够)**:wall 充分刻画,**续打 match 边际数据趋零**(comp→深度已 2 样本证;位面2 HP 损耗模式稳)。**续打价值=仅 rare-edge 捕捉(新事件/屏/装备态)+ autonomous-play 目标,非新 wall 认知**。
 - **状态**:**match#6 终局 + 数据饱和**。6 场证 wall=位面2,levers=comp 强度(decisive 位面2 胜)+ equip 供给。**① 解锁后策略**:tier-3 comp 成型 + 穿戴 equip + 位面2 战斗不濒死(非堆 HP 量)。`· D-83(match#4 位面2-2)/ D-84(match#5 位面2-1,comp 杠杆)/ D-80(① 评估)`。
 
+## D-86 (2026-08-11)【诊断·出战 click bug#1 cluster(match#7 复现)+ save_screenshot 存证】match#7 出战 click bug#1 复现 2 次(各 4× 落空 → 节点 exhaust → loop retry 恢复)。**诊断 step1 部署**:出战 retry 加 `save_screenshot()` 存证,下次复现时区分 bug#1 drag(屏无 overlay)vs overlay 挡出战(有 dialog/事件)vs 坐标偏。根因 + 修法待 live-debug
+
+- **现象**:BattlePrepCycle 出战节点 `mouse_move(_btn)+click(_btn)` 后,4× 连续「3s 仍在备战」→ 节点 exhaust → loop 重跑 buy+deploy+equip+出战 才成功。match#7 复现 2 次(浪费 ~40s + match-fail 风险)。matches#1-6 retry=0,match#7 retry=2(bug#1 间歇,unlucky match)。
+- **click 机制(已查,详 insights 出战 click 条)**:`click(pos)`→`win_click(pos)`=`moveTo+mouseDown+sleep+mouseUp`;`mouse_move(pos)`=`moveTo+0.1s`。出战 = 两次 moveTo(_btn);mitigation 已加 + 0.1s settle,理论应防 drag,实测仍 4× 落空 → **根因非单纯 bug#1**(可能 overlay 挡出战 / 坐标偏 / moveTo+mouseDown 太快)。
+- **诊断 step1(本 commit)**:出战 retry 前加 `self.save_screenshot()` 存屏。下次 bug#1 cluster 复现时,看截图:① **有 overlay**(dialog/事件盖出战)→ overlay 问题(出战 click 落 overlay);② **无 overlay,纯备战屏**→ bug#1 drag( elimination);③ 出战按钮位置 → 验坐标。**根因定后再修**(别盲改 click)。
+- **状态**:**诊断 step1 部署(待下次复现存证 + live-debug)**。match#7 终局饱和(died wall,17.9min,同 D-85)。`· insights(出战 click 机制 + 修法待定)/ bug#1(CLAUDE.md)/ D-85(数据饱和)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
