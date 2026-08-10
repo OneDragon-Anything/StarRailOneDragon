@@ -587,4 +587,14 @@
 - **测**:`test_select_layout_no_complete_returns_empty`(单件 +21 → [],单件 0 → [件])。D-49 既有测试(1/2/3件 valid + 0件 empty)17/17 过(合法路径不破坏)。
 - **状态**:**修 + 单元测过**。read_equipped_below 边缘假阳(D-61)解决 —— recognizer/P0-2 不再把无完整布局的误检候选当 occupied。live 再验待同帧假阳重现(间歇,单元+逻辑验充分)。`· D-61(发现)/ D-49(read_equipped_below)/ D-58(P0-2 受益)`。
 
+## D-63 (2026-08-11)【验证·D-62 fix live(完美投影仪假阳同帧重现→正确判空)】备战 1-9(首领局)equip_all run,log 显示 slot2 完美投影仪 val0.62 + 无完整布局 anomaly → **D-62 fix 生效**:anomaly msg 含「→判空(误检,不返)」,equip_all read occupied={}(slots=[1,2,3,4],slot2 未误计)。**D-61 同帧假阳重现 + D-62 fix 正确拒**;back_equips 真 已穿(步步生花+光能电池+武器大师 slot6 3件 valid 布局)仍正确读 → fix 不破坏合法读
+
+- **触发**:D-62 fix(无完整布局返[])后 live 验。
+- **log(01:38:45)**:`[cw!][read_equipped][slot=2] anomaly=无完整1/2/3件布局(命中候选[21])→判空(误检,不返) equips=['完美投影仪']` + MISS。**anomaly msg 含 D-62 新增「→判空(误检,不返)」** → fix 代码 live 生效。equip_all result `slots=[1,2,3,4]`(occupied={}) → slot2 未误计为 occupied(D-61 假阳被拒)。
+- **对比 D-61**:D-61 同场景(完美投影仪0.62 slot2)→ 旧代码返 fallback [完美投影仪] → recognizer front_equips 假阳。D-62 fix → 返 [] → 不假阳。**同帧假阳重现 + fix 正确拒 = live 验证**。
+- **合法读不破坏**:back_equips={6:[步步生花,光能电池,武器大师]}(3件 valid 布局)仍正确读 → fix 只拒无完整布局的误检,不破坏 valid 布局。
+- **①-a drag 仍阻塞**:装备库 count=1(仅冶金炉工具,无穿戴 owned)→ equip_all 无穿戴候选(0 件)。穿戴装备都在 back-row 已穿(非 装备库 owned)。drag 全链 live 测待 owned 穿戴自然落 装备库(**不破坏 back-row 好装备用 冶金炉 强测** —— drag 已 D-36 验,破坏步步生花+光能电池+武器大师不值)。
+- **server 观察**:本轮多次 sr_od「disconnected」通知,但 log 干净(startup complete + 处理请求),指令重显 → **客户端瞬断重连噪声,非 server 崩**(game op 正常)。
+- **状态**:**D-62 fix live 验证通过**(D-61 假阳场景重现 + 正确拒)。read_equipped_below 边缘假阳闭环(发现 D-61 → 修 D-62 → live 验 D-63)。`· D-61(发现)/ D-62(修)/ D-49(read_equipped_below)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
