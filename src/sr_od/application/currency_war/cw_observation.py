@@ -260,14 +260,24 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
 
 
 def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, int | None]:
-    """舞台中央「X/Y」指示 → (X 已部署角色数, Y deploy cap);读不到 → (None, None)。
+    """舞台上方中央「X/Y」指示 → (X 已部署角色数, Y deploy cap);读不到 → (None, None)。
 
-    **small stylized「X/Y」paddle det 常漏**(同 gold/cost,T-96)→ crop + 3x 放大破 det 天花板
-    (read_gold 同法,T-92)。仍读不到 → (None, None)(调用方 fallback)。
+    **原生 OCR,不放大**(D-53):字体够大,放大反致 paddle det 把 "X/Y" 拆成两框(读成 "5")。
+    关键是 **screen_info ``区域-部署数`` pc_rect 给足 padding** —— paddle det 需文字周围有背景才把
+    "X/Y" 当**一个整体 box** 出;pc_rect 太紧(旧 [790,185,1060,240] 终点 y240 切在文字 y244 之上 +
+    无 padding)→ det 拆 / 丢斜杠(读成 "15/"/"16")→ 全 None。padding 给足(D-53 改 [820,210,1060,280])
+    → 原生即稳读 "5/5"(5 fixture 全中)。
 
-    (2026-08-08):Y(cap)是真值,非 level —— 实机 cap≠level(lv4-5 时「3/3」、lv6 时「5/5」)。
-    deploy_bench 旧 `cap_remaining = level - deployed` 高估 cap → board 已满仍试拖全 bench(9 角色×~10s
-    全失败浪费)。现同时给 Y,deploy_bench 用真 cap。X 由 ``read_deployed_count``、Y 由 ``read_deploy_cap`` 暴露。
+    **整串识别 + 提取**(用户 D-53 指点):OCR 整个 region → join 成一串 → 正则提取 X/Y,不拆开识。
+    **斜杠特殊处理**(用户 D-53):``/`` 常被识成 ``1``/``l``/``I``/``i``/``|`` → 把「数字间的非数字单字符」
+    normalize 成 ``/`` 再正则(``re.sub(r'(?<=\\d)\\D(?=\\d)', '/', blob)``);slash→``1`` 致 X 虚高由 X>Y guard 兜。
+
+    **cap = level**(D-53 实测核正):无钻石/宝钻/诅咒时 deploy cap = 团队等级(5 fixture 跨 lv3/4/5/7 核:
+    5/5@lv5、4/4@lv4、3/4@lv4、0/3@lv3、6/7@lv7,Y 恒=level)。钻石/财富宝钻 +1 团队槽 → cap=level+1
+    (>level 即钻石加成,recognizer 据此告警 D-50)。⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。
+
+    X(deployed)sanity:deployed 不可能 > cap;X>cap 时(如 a8_start "10/3",真值 0/3,slash 噪声致 X 虚高)
+    X 不可信 → 返 (None, Y)(deployed 未知走 fallback,但 cap Y 仍准)。
     """
     rect = _area_rect(ctx, '区域-部署数')
     if rect is None:
@@ -275,16 +285,19 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
     crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
     if crop.size == 0:
         return None, None
-    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
-    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=up))
-    m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    return None, None
+    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=crop))
+    norm = re.sub(r'(?<=\d)\D(?=\d)', '/', blob)      # 数字间非数字单字符 → /(slash 误识兜底,用户 D-53)
+    m = re.search(r'(\d+)\s*/\s*(\d+)', norm)
+    if not m:
+        return None, None
+    x, y = int(m.group(1)), int(m.group(2))
+    if x > y:                                   # deployed > cap 不可能 → X 是 OCR 噪声(slash→1 等),Y 仍可信
+        return None, y
+    return x, y
 
 
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
-    """舞台中央「X/Y」指示 → X(已部署角色数);读不到 → None。
+    """舞台上方中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
     DeployBench 用它定位**空位**:d(cap_remaining)+ e(offset)依赖它;读不到 → fallback
     → 部分 churn。实现见 ``_read_deploy_paddle``(同时给 cap Y,见 ``read_deploy_cap``)。
@@ -293,11 +306,12 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
 
 
 def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
-    """舞台中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
+    """舞台上方中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
 
-    实机 **cap=level**(2026-08-10 fixture deployed_p1r9 验:Lv.5 + 5/5);钻石/财富宝钻加成时 cap>level
-    (+1 团队槽 → 后排可能>6,见 D-50)。DeployBench 应用本 Y 非 level 估 cap_remaining。
-    读不到 → 退 level 估(旧行为,fallback)。旧注「cap≠level(lv4-5 3/3)」自主推进期错数据,已纠正。
+    实机 **cap=level**(D-53 实测核正:5 fixture 跨 lv3/4/5/7,Y 恒=level;无钻石/宝钻/诅咒时)。
+    钻石/财富宝钻加成时 cap=level+1(>level 即钻石加成,recognizer 据此告警 D-50,后排可能>6)。
+    DeployBench 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
+    旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。reader 实现细节/根因见 ``_read_deploy_paddle``。
     """
     return _read_deploy_paddle(ctx, screen)[1]
 

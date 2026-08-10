@@ -478,4 +478,22 @@
 - **教训**:sr_od screen 统一 RGB,灰度转换注意通道(别无脑 BGR2GRAY)。memory `cv2-utils-rgb-convention` 已记,read_equipped_below 漏了。
 - **状态**:**已修(RGB2GRAY),22 测试过**。`· memory cv2-utils-rgb-convention / D-51(scale 后又发现通道,back6 武器双重临界暴露)`。
 
+## D-53 (2026-08-10)【纠正·cap=level 实测核正 + read_deploy_cap 全 None 根因=pc_rect 切在文字上方 + 3x 放大拆斜杠】用户质疑「cap=level」用的是全屏 OCR(噪声)非裁剪 reader;实测裁剪 reader 全 None —— pc_rect 终点 y240 切在文字 y244 上方 + 无 padding + 3x 放大把斜杠 det 拆碎。修:pc_rect 给足 padding(右留 'X/10')+ 原生 OCR(去放大)+ 斜杠 normalize + X>Y guard。5 fixture 核 cap=level
+
+- **触发(用户)**:「13/4→Y=4 这种情况,是全屏 OCR 识别不准吗?还是你裁剪识别的?」—— 质疑我 cap=level 结论的依据。
+- **查证**:我之前 cap=level 用的是 `analyze_screen` **全屏 OCR**(噪声:deployed "5/5" 被读成 "13/4","1" 是邻元素噪声)。跑裁剪 reader `read_deploy_cap` → **6 fixture 全 None**(完全读不到)。
+- **根因(debug 逐层)**:
+  1. **pc_rect 切在文字上方**:`区域-部署数` 旧 `[790,185,1060,240]` 终点 y240,实际 "X/Y" 文字中心 **y244** → crop 只读顶部残影('1')。
+  2. **无 padding 致 paddle det 拆碎**:crop 太紧 → paddle det 把 "5/5" 拆成两框丢斜杠(读成 '5' / '5 | 5'),而非一个整体 box。
+  3. **3x 放大帮倒忙**:我先前加的 3x 放大(仿 read_gold "破 det 天花板")反而让 det 更碎(放大后斜杠更易被当独立框)。
+- **用户指点(关键)**:① 字体够大,**放大没必要**(去 3x);② **"X/Y" 整串识别再提取**,别拆;③ **"/" 易被识成 1/l/I/i/|**,需特殊处理。
+- **修(`_read_deploy_paddle`)**:
+  1. **pc_rect 给足 padding**:`区域-部署数` `[820,210,1150,280]`(覆盖文字 y244 + 右留余量容 "X/10"/"10/10")→ paddle det 把 "X/Y" 当一个整体 box 原生读出。
+  2. **原生 OCR(去放大)**:用户对,字够大,放大反碎斜杠。
+  3. **斜杠 normalize**:`re.sub(r'(?<=\d)\D(?=\d)', '/', blob)` 把数字间非数字单字符(/ 误识成 l/I/i/|)还原成 /,再正则 `\d+/\d+` 提取。
+  4. **X>Y guard**:deployed 不可能 > cap;slash→1 致 X 虚高(如 a8_start "10/3" 真值 0/3)→ 返 (None, Y)(deployed 走 fallback,cap 仍准)。
+- **结论**:**cap=level(无钻石/宝钻/诅咒时)** —— 5 fixture 跨 lv3/4/5/7 实测核正(5/5@lv5、4/4@lv4、3/4@lv4、0/3@lv3、6/7@lv7,Y 恒=level)。shop_open 不显示部署数 → None → fallback level(cap=level 故 fallback 准)。钻石/财富宝钻 +1 → cap=level+1(>level 触发 recognizer D-50 告警)。
+- **教训**:① 用户质疑数据来源时要分清「全屏 OCR 噪声」vs「裁剪 reader 真值」—— 我之前混了;② 裁剪 reader 全 None 别归「字小/放弃」,先查 pc_rect 是否覆盖文字(D-53 是 pc_rect 切错位);③ paddle det 需 padding 把短文本当整体,放大不是万能(此例放大帮倒忙);④ 用户指点(整串识 + 斜杠处理 + 不放大)是正解,我最初 2x 放大是次优。
+- **状态**:**已修 + 5/6 read_deploy_cap==level(shop_open None 正确)+ 回归测试 test_read_deploy_cap_equals_level**。`· D-50(后排>6 适配,本 D-53 的 cap 可读是 D-50 告警的前提)/ 用户(质疑数据来源 + 指点整串识/斜杠/不放大/右 padding 容 X/10,全程纠正方向)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

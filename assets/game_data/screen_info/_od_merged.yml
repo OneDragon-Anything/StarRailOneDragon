@@ -2447,10 +2447,10 @@
   - area_name: 区域-部署数
     id_mark: false
     pc_rect:
-    - 790
-    - 185
-    - 1060
-    - 240
+    - 820
+    - 210
+    - 1150
+    - 280
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
