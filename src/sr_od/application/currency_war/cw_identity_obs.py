@@ -41,15 +41,17 @@ from sr_od.context.sr_context import SrContext
 
 
 def resolve_char_name(avatar_id: str) -> str | None:
-    """SIFT 的 avatar_id(主游英文 id,如 ``pela``)→ 货币战争规范名(如 ``佩拉``)。
+    """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(``CHARACTER_ROSTER`` 成员)。
 
-    路径:``get_character_by_id(avatar_id).cn`` 得主游 cn 名 → 若在 ``CHARACTER_ROSTER`` 直接用;
-    否则(货币战争变体共脸异名,如脸库归一到「姬子」但 roster 有「姬子·启行」+「姬子」)→ 取 roster
-    中含该 cn 的成员(子串消歧);仍无 → None(SIFT 命中了主游角色但不在货币战争 roster,如脸库误匹配
-    或货币战争未收录角色)。
+    **半身立绘库(``character_cw_portrait``)key = 中文规范名**(白框法采,含变体独立模板,如
+    ``姬子·启行`` / ``千冶·刃``)→ ``identify_character`` 返回的 avatar_id 已是规范名 → 本函数
+    第 54 行 ``avatar_id in CHARACTER_ROSTER`` 直接命中返。变体**可被 SIFT 区分**(D-54 验:
+    deployed_p1r9 后排-2 姬子·启行 inliers=38,基础姬子 <7 连 top3 未进 —— 共脸对分数拉开,
+    非无法区分;旧「脸库归一·SIFT 无法区分变体」结论是脸库时代产物,已废)。
 
-    ⚠️ 变体消歧对「基础名 + 变体名并存」的 roster(姬子/姬子·启行、刃/千冶·刃)子串命中**第一个**,
-    可能不准 —— 变体与基础角色共脸,SIFT 本身无法区分,需结合星级 / 阵营等旁证(待多样本核)。
+    56-65 行(``get_character_by_id`` 英文 id→cn + 子串消歧)是 **legacy 脸库路径**(英文 id),
+    半身立绘库基本不走;留作兜底。仍无 → None(SIFT 命中但不在货币战争 roster,如开拓者 roster 缺、
+    脸库误匹配)。
     """
     if avatar_id in CHARACTER_ROSTER:
         return avatar_id   # CW 立绘库 key 是中文规范名(白框法采),直接返(非主游英文 id)
