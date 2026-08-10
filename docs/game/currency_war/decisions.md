@@ -750,4 +750,12 @@
 - **副作用 / 待办**:① 代码改 **需 server 重启生效**(MCP server 启动时 import;bot 用旧内存代码直到重启)。② 3 个「下一步」词缀(开局不利/变宝为废/丢失幸运)效果待 tooltip 成功弹时采回。③ **pre-existing 失败 `test_maybe_pivot_better_comp_emerges`**(cw_comps.py:653 D-9 carryover maybe_pivot `if _committed and not _losing` vs 测试期望 signal-1 pivot)—— 实证 HEAD 上无我改动也 fail(stash 验),属核心策略模块锁 carryover(commit 7ae880b3),**① 解锁前不动**。
 - **状态**:**已修(待 server 重启生效 + 3 词缀待采)**。`· review ~05:00(抓损坏) / affix_shots/(对账证据) / D-80(① 评估,carryover 待清)`。
 
+## D-82 (2026-08-11)【验证·D-81 affix 修复 live 验证 + 纠正 deployed-lock doc 误判】D-81 修复后 server 重启 → match-4 简报在新守卫下跑,验 fix live 健康。另执行 D-2 早就标「doc 待修」的 deployed-lock 误判修正
+
+- **D-81 live 验证(假设驱动,deciding-a-fix §5)**:match-4 简报(04:37,server 重启后新代码)读 4 词缀(首领强化/一鼓作气/以人为本/高费审美),逐个 click+OCR tooltip → 4 个效果**与注册表完全一致**(首领强化「60%/30%」/一鼓作气「100%」/以人为本「105%…70%」/高费审美「80%…105%」)→ `_collect_affix_effects` 比 registry 全等 → `_updates` 空 → `write_affix_effects` 未调(no-op)。
+- **判据收紧(确认)**:① **正常采集未被守卫破坏**(4 词缀正常读,无误拒);② **4 注册表值 live 实锤**(live OCR == D-81 VLM 验值);③ **守卫健康**(本局无 garbage / divergent 触发 —— 4 词缀全匹配是 expected clean case;garbage 拒 / existing divergent 不覆盖 两路径由 D-81 单测覆盖,本局未 live 触发属正常,非缺口)。
+- **结论**:D-81 修复 live 健康,无回归;ground truth 本局未被写(全等 no-op),未来遇 garbage/divergent 时守卫生效(单测保证)。
+- **deployed-lock doc 误判修正(执行 D-2 「doc 待修」)**:`gameplay/currency_war.md` 原「deployed 永锁 / drag→出售区全失败 / 一旦部署即永久」(2026-08-08)与 **D-2 实测(deployed 可卖,含佩佩)+ D-10 实现(`_sell_offtarget_deployed` drag deployed→出售区 Point(70,846))** 矛盾 → 改为「deployed 可经 drag→出售区 卖(非永锁,可 redeploy,有代价);详情面板无出售按钮」。策略含义(「必须 r1 deploy target」)标 **待 ① 后重评估**(基于永锁误判,过强)。
+- **状态**:**D-81 live 验证通过 + deployed-lock doc 误判已修**。`· D-81(守卫 + 清数据)/ D-2(deployed 可卖实测)/ D-10(_sell_offtarget_deployed 实现)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

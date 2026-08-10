@@ -81,7 +81,7 @@ screen_info:备战阶段已建(`currency_war_battle_prep.yml`,用户手圈:备�
 - **Strategy 精修(待办,打赢位面 2 首领)**:智能 deploy 到空槽(`currency_war_cv` 空槽检测当前不可靠,待重标定)+ 羁绊聚焦选买 + 经济(早升等级/卖弱角色)。
 - **deploy / sell 机制真相(2026-08-08 多源实测,策略地基)**:
   - **deploy = drag(非 click)**:click 备战角色开详情面板(非选中);长按 drag(hold 0.5s)才拾取→拖到舞台槽 deploy。见 D-118b。
-  - **deployed-lock(deployed 角色永锁)**:deployed 角色不能卖(click 详情面板**无出售按钮**;drag→出售区/备战席 全失败)。**只有 bench 角色能卖**。→ board 阵容**一旦部署即永久**,不能撤/换/卖 → **早期散买部署 off-target = 永久锁板,comp 永不成型**(T#97 spread 根因)。策略含义:必须从 r1 就 deploy target 阵营(off-target 留 bench 可卖),不能"先deploy全场再换"。
+  - **deployed 可卖(纠正 2026-08-08「deployed-lock 永锁」误判;D-2 实测 + D-10 实现)**:deployed 角色可经 **drag→出售区** 卖(deploy-swap `_sell_offtarget_deployed`:drag deployed→出售区 `Point(70,846)`;D-2 实测可卖,含佩佩;D-3 加 bench 守卫防卖光)。详情面板无出售按钮(只能 drag 卖,不能点面板卖)。bench 角色同样可 drag→出售区 卖(`_maybe_sell_for_interest`)。→ deployed **非永锁,可 redeploy**(卖 off-target deployed → 给 bench target 腾位),但有代价(失该角色 + 需 bench 有替换)。⚠️ **策略含义待 ① 后重评估**:旧「必须从 r1 就 deploy target,不能先 deploy 全场再换」结论基于「永锁」误判,**过强** —— deployed 既可撤换(有代价),原「早期散买 off-target = 永久锁板 / T#97 spread 根因」表述需据此修正(散买 off-target 非永久锁,可后续卖 redeploy)。
   - **board = deployed**(左面板阵营计数 = 上阵羁绊;非 owned);**max_units = level**(deploy 上限,购买经验升级)。**后排>6 条件(D-50,攻略+装备图鉴)**:① **level 9 → 财富宝石 +1 团队槽**(攻略:升9级给财富宝石);② **财富宝钻(装备,无论是否穿戴)+1**(equipment.md:211,D-19);③ **诅咒·宝石剑泽尔里奇 -1**。佩佩/投资策略/环境 = 获取财富宝钻途径(投资策略给 2 宝钻;佩佩成就集齐 3 只)。→ 后排槽位 6/7/8/9/10 随 level+宝钻动态,**read_equipped count=6 硬编码**(D-50)在高 level+宝钻时漏(7-10)。
   - sell 途径:备战席角色 → 拖到左下出售区(`_maybe_sell_for_interest` 已实现,只卖 bench)。
 
