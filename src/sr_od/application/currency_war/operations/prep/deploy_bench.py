@@ -166,14 +166,23 @@ class DeployBench(SrOperation):
         # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。
         _bench_id: dict[int, set[str]] = {}   # bench_idx(0-based) → 该角色羁绊集合
         _bench_pos: dict[int, str] = {}       # bench_idx(0-based) → "front"/"back"(角色 position_pref)
+        _bench_cid: dict[int, str] = {}       # bench_idx(0-based) → char_id(5.1.7 去重)
         if templates is not None:
             for bc in read_bench_chars(self.ctx, scr, templates):
                 ch = get_char(bc.char_id) if bc.char_id else None
                 if ch is not None and 1 <= bc.slot <= len(bench):
                     _bench_id[bc.slot - 1] = set(ch.factions) | set(ch.flows)
                     _bench_pos[bc.slot - 1] = ch.position_pref()
+                    _bench_cid[bc.slot - 1] = bc.char_id
             log.info(f'[cw-deploy] bench 身份(SIFT):{ {i: sorted(b) for i, b in _bench_id.items()} }'
                      f' pos={_bench_pos} tgt={sorted(_tgt)}')
+        # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):read_deployed_chars → deployed char_id;
+        # bench 角色已 deployed → deploy 循环跳过(避免场上重复角色 + 买/部署同名)。
+        _deployed_cids: set[str] = set()
+        if templates is not None:
+            _deployed_cids = {bc.char_id for bc in read_deployed_chars(self.ctx, scr, templates) if bc.char_id}
+            if _deployed_cids:
+                log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
         tgt_idx, rest = [], []
         for i in bench_occ:
             _bonds = _bench_id.get(i)
@@ -184,6 +193,11 @@ class DeployBench(SrOperation):
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
         for bi in order:
+            # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):bench 角色已 deployed → 跳过(避免重复)。
+            _cid = _bench_cid.get(bi)
+            if _cid and _cid in _deployed_cids:
+                log.info(f'[cw-deploy] 去重(5.1.7):bench槽{bi+1}({_cid}) 已 deployed,跳过')
+                continue
             # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
             pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
             # 前排保证(出战要求,5.1.6 补):pref=back 但前排完全空(无角色)→ 强制前排(back 放前排不
