@@ -245,7 +245,7 @@ class DeployBench(SrOperation):
                     break
             if not _landed:
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
-                         f' 拖3次源槽未空(bug#1 间歇 / avatar 偏移;5.1.9 avatar 根因对 placed=3/5),跳过')
+                         f' 拖3次源槽未空(avatar ~60% 成功率;bug#1 间歇 / RunLoop 多轮累积),跳过')
                 chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
