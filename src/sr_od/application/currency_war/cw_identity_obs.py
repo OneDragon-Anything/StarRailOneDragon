@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import cv2
+import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
@@ -38,7 +40,6 @@ from sr_od.application.currency_war.currency_war_char_id import (
 from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.cw_equipment import read_equipped_below
 from sr_od.application.currency_war.cw_obs_core import _area_rect
-from sr_od.application.currency_war.cw_observe import cw_shot_unique
 from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
@@ -90,6 +91,40 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     return templates
 
 
+# 金星(亮金色五角星)HSV 范围(CV 采样 4 样本 star_front_1..4 标定 2026-08-11;crop=RGB)。
+# 亮金色 ≈ #FFD700:H 黄~橙(OpenCV 0-180),高 S 高 V。立绘金色装饰(衣服/腰带)也命中 → 靠位置(底部)过滤。
+_STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 80)
+_STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
+
+
+def read_star(crop: MatLike) -> int:
+    """数角色立绘底部金星(星级);``crop`` = 槽位 RGB crop(含立绘 + 底部金星)。
+
+    金星 = 亮金色五角星,立绘**最底部中央**(y > 0.74h);1/2/3 星 = N 个金星横向并排。
+    HSV 金色 inRange → 连通域 → 数「底部 + 中央 + 合理面积」的金色域(过滤立绘衣服/腰带金色装饰:
+    装饰在 y < 0.74h 中部;4 样本核实 2026-08-11:佩拉/黑塔中部有金色装饰 + 底部 1 金星,
+    Saber/藿藿无装饰)。
+
+    :return: 星级(≥1);检测失败 / 空图 → 1(角色必有星,fallback)。
+    ⚠️ 仅 1 星样本验过(2/3 星缺 live 样本);逻辑同(数金星个数),2/3 星待后期回合采到样本再验。
+    """
+    if crop is None or crop.size == 0:
+        return 1
+    h, w = crop.shape[:2]
+    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
+    mask = cv2.inRange(hsv, _STAR_GOLD_LO, _STAR_GOLD_HI)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    n, _labels, stats, cent = cv2.connectedComponentsWithStats(mask)
+    count = 0
+    for i in range(1, n):
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        cx, cy = cent[i]
+        # 金星:底部(yfrac>0.74)+ 中央(w/2 ± 35%)+ 面积(去噪点 40 + 去过大色块 600)
+        if cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and 40 < area < 600:
+            count += 1
+    return max(count, 1)
+
+
 def identify_slots(
     screen: MatLike,
     templates: AvatarTemplates,
@@ -104,8 +139,8 @@ def identify_slots(
     :return: 命中角色的 BenchChar 列表(空槽 / 低内点 / 歧义 / 非 roster → 跳过,不进列表)。
 
     每槽:裁 ``screen[y1:y2, x1:x2]`` → ``identify_character``(SIFT 对脸库)→ ``resolve_char_name``
-    → 规范名。faction 取角色首阵营(粗;权威阵营计数看 board OCR);star 暂默认 1(胸前金星视觉
-    计数待补)。
+    → 规范名。faction 取角色首阵营(粗;权威阵营计数看 board OCR);star = ``read_star``(立绘底部
+    金星计数)。
     """
     out: list[BenchChar] = []
     for slot_idx, rect in slots:
@@ -117,14 +152,11 @@ def identify_slots(
         if name is None:
             continue
         ch = get_char(name)
-        # 临时采集钩子(星级 OCR 标定,CLAUDE.md 方案):存槽位 crop(内容哈希去重 → 同角色不同星级都采到),
-        # 供离线设计星级读取(现 star 恒=1 占位)。**reader 设计好后删本行**(临时代码,不留开关/参数)。
-        cw_shot_unique(crop, f'star_{row or "bench"}_{slot_idx}_{name}')
         out.append(BenchChar(
             slot=slot_idx,
             char_id=name,
             faction=ch.factions[0] if (ch is not None and ch.factions) else '?',
-            star=1,                          # 星级视觉读待补(胸前金星计数);暂默认 1
+            star=read_star(crop),            # 立绘底部金星计数(1/2/3 星;见 read_star)
             position_pref=row if row else (ch.position_pref() if ch is not None else 'back'),
         ))
     return out
