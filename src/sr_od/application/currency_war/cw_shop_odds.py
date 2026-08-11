@@ -11,8 +11,8 @@
 2. m 张目标费用里,出 x 张目标牌 = **超几何**(剩余目标副本 a−j / 剩余同费非目标副本 (v−1)a−c)。
 3. 状态转移方程算**期望刷新次数** E_j(找 k 张目标牌,从手上有 j 张起)。
 
-**V4.4 池参数**(实测,推翻旧"统一9张"推测):
-- a = 18 张/种(3费实测;1/2/4/5费待核,placeholder 同 18)
+**池参数**:
+- a = 9 张/种(**5费 NGA 实锤** [tid=45557485](https://bbs.nga.cn/read.php?tid=45557485)「5费卡每张×9」;其他费用攻略少 + 难实机,placeholder 9 待核。搜索摘要「按费用递减 30/25/18/10/9」未核实原文、存疑不用)
 - v = 同费用种类数(1费14/2费13/3费13/4费12/5费9,from characters.md)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
@@ -27,8 +27,9 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS, chars_by_cost
 
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
-# a:每种牌的副本数(V4.4 3费实测=18;1/2/4/5费待核,placeholder=18)
-POOL_COPIES_PER_CARD: dict[int, int] = {1: 18, 2: 18, 3: 18, 4: 18, 5: 18}
+# a:每种牌的副本数 —— 5费9张/种 NGA 实锤(tid=45557485);其他费用攻略少+难实机,placeholder=9 待核
+# (搜索摘要"按费用递减 30/25/18/10/9"未核实原文、存疑,不用;部分效果改副本数>A4.7 修正)
+POOL_COPIES_PER_CARD: dict[int, int] = {1: 9, 2: 9, 3: 9, 4: 9, 5: 9}
 # v:同费用的种类数 —— 从角色注册表派生(单一真相源;改 CHARACTERS 自动传导,非硬编码)
 # 注:3费=13 与 D牌期望表(77124902)实测点吻合;其余费用随注册表,实机校准
 DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}

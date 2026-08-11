@@ -843,4 +843,12 @@
 - **验证**:ruff clean;CW test 268 passed(删 test_shop_history_factor + 加 test_acquirability_factor_level_cost)。
 - **状态**:**已修(select_comp 用理论可得性,D-6 解,A4.5 完成)**。`· D-6(shop_supply carryover)/ A4.1(REFRESH_PROB)/ economy_research §1(刷新概率独立机制)`。
 
+## D-93 (2026-08-11)【数据·副本数 9 张/种(5费 NGA 实锤 + 3指数推理;搜索摘要编造已纠正)】POOL_COPIES_PER_CARD 纠正为 9 张/种(所有费用)。依据:① 5费9张 NGA 实锤(tid=45557485「5费卡每张×9」)+「同费用角色牌数量相同」;② 3合1升星 → 副本数必为 3 的指数(9=3² 够 1 个 3 星),非 3 指数(旧 18 / 搜索摘要 30/25/18/10/9)不合理。
+
+- **纠正历史(反复)**:旧 economy_research「V4.4 3费=18 推翻统一9」无直接源(来源节只 5费9)→ 中间误信搜索摘要「按费用递减 30/25/18/10/9」(LLM 编造,WebFetch TapTap 原文核实:原文只「每种相同」无数字)→ 最终 3指数推理(用户点破)+ 5费实锤 + 原文核实 → 9。
+- **方法论(WebSearch→原文,沉淀 memory)**:WebSearch LLM 摘要不可信(编造数字 / 误读),必须 WebFetch 原始来源核实;原文拿不到则标未核实,不采用摘要。memory `websearch-verify-original-source`。
+- **A4.7 修正(用户确认)**:部分场景/效果可能改副本数 >9(用户记得有,具体待查)= 基础 9 × 效果修正因子(同概率修正层)。
+- **影响**:acquirability_factor 不用副本数(只 refresh_prob)→ 不影响;expected_refreshes(A4.3 精化未做)用 POOL_COPIES_PER_CARD → 9。test 52 passed。
+- **状态**:**基础副本数 9 落地;效果修正 A4.7 待查**。`· economy_research §1 / A4 进度(A4.2 部分过 9共识 / A4.7 效果修正)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
