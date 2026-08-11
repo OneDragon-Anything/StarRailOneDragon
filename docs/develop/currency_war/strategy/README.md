@@ -63,21 +63,20 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 
 ⚠️ **现状(2026-08-04 对齐,D-18)**:`currency_war_config.py` 已删 `aggression`(死字段);**保留** `economy_mode`(eval 权重微调,与 level_plan 硬 gate 共存非冲突)+ `event_whitelist`/`boss_counter`/`dot_punish_envs`(decide_event/decide_boss 用)。**仍缺** `character_forbid/build_around`、`faction_forbid`、`strategy/env_*`、`handoff/difficulty/manage_meta_run`(cw_comps 已 `getattr` 防御读取,可增量加,deferred)。原 §D "economy_mode/event_whitelist 已删"计划**撤销**(见 D-18)。
 
-## 决策点 × 层归属(2026-08-11 核代码校准;此前的 ❌ 多数已接,旧标过期)
+## 决策点 × 层归属
 | 决策 | 层 | 状态 |
 |---|---|---|
 | 买哪张/deploy 谁/站哪排/升等级/卖谁 | 战术(eval+贪心) | ✅ |
 | 何时 D 牌(刷新) | 战术(蒙特卡洛 A1) | ✅ |
 | commit 哪个阵容/转型 | 战略(A2) | ✅ 骨架(cw_comps 阶段2)|
 | 巨星绑谁 | 战略(select_megastar) | ✅ 骨架(cw_comps 阶段2)|
-| 事件(投资环境/策略)选哪个 | 战术(白名单 decide_event) | ✅ handle_invest_env/handle_invest_strategy 调 |
-| 遭遇难度/词缀避开 | 节点(decide_encounter) | ✅ handle_encounter:55 调(design 08§遭遇;Stage C2 进一步优化待) |
-| 补给选装备/出钻 | 节点(decide_supply) | ✅ run_supply_node:56 调(T#99;钻视觉判定/has_diamond 待补) |
-| 装备契合评估 | 战略/comp 评估(equip_fit) | ✅ comp_score `W_EQUIP*equip_fit`(cw_comps:586)+ comp_viability `0.25*equip_fit`(cw_performance:215) |
-| **装备合成/分配动作** | Equip 动作(equip_all 按 equip_fit 选穿) | ❌ equip_all 现顺序穿 wearable[0],未按 equip_fit/合成优先级分配(偏策略调优,待) |
+| 事件(投资环境/策略)选哪个 | 战术(白名单 decide_event) | ✅ |
+| **遭遇难度/词缀避开** | 节点(decide_encounter) | ❌ 阶段 2(08) |
+| **补给选装备/出钻** | 节点(decide_supply) | ❌ 阶段 3a(07) |
+| **装备合成/分配** | 战略/comp 评估(`equip_fit(comp)` comp 相关,详 07;不独立评分)+ Equip 动作 | ❌ 阶段 3a(07) |
 | boss 克制切换阵营 | 战略/战术(decide_boss_priority) | ✅ 基础 |
-| 战斗反馈(掉血/胜负跟踪) | 数据(PerformanceTracker)+ 战术(comp_viability) | ✅ 接线:`_record_round_outcome`→`on_round_end`→`performance.record`(battle_loop:153;live 日志证) |
-| 状态对账/动作验证 | 数据(A6) | ✅ 角色身份 `_reconcile_tracking`(deploy_bench:347,D-12);gold/hp/round/board 等是 OCR 直读无 bot-tracking,无需对账 |
+| **战斗反馈(掉血/胜负跟踪)** | 数据(PerformanceTracker)+ 战术(comp_viability) | ✅ 骨架(cw_performance 阶段2)+ 阶段 4 接线 |
+| 状态对账/动作验证 | 数据(A6) | ❌ 阶段 4 |
 
 ## 当前状态(2026-08-03)
 **已实现+提交**:战术层内核 + review r1(44 条修)+ A1(蒙特卡洛 D 牌)+ A3(阶段键控)+ **阶段 2 战略层(cw_comps 阵容库/comp_score/select_comp/转型/巨星 + cw_performance 观测反馈 PerformanceTracker/comp_viability/死局 + cw_telemetry 决策迹采集)**。78 测试绿。百科数据全量(米游社 V4.4,../../../game/currency_war/data/)。
