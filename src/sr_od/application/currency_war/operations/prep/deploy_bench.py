@@ -186,6 +186,11 @@ class DeployBench(SrOperation):
         for bi in order:
             # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
             pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
+            # 前排保证(出战要求,5.1.6 补):pref=back 但前排完全空(无角色)→ 强制前排(back 放前排不
+            # 触发赋能,但出战硬要求前排有角色;优于前排空出战拒卡局)。第一个 back 填前排,后续正常后排。
+            if pref == 'back' and len(front_empty) == len(front):
+                pref = 'front'
+                log.info(f'[cw-deploy] 前排保证:bench槽{bi+1}(pref=back)→ 强制前排(前排空,出战要求)')
             if pref == 'front':
                 chosen, chosen_pts, fallback, fallback_pts = front_empty, front, back_empty, back
             else:
