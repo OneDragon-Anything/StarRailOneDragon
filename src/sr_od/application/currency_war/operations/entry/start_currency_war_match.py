@@ -92,6 +92,18 @@ class StartCurrencyWarMatch(SrOperation):
         # 全屏 ocr 有 LCS 误匹配:「开始对局」与简报 boss 词缀「开局不利」共享「开局」(2/4=0.5=默认阈值)
         # → 简报屏误触发开始对局分支点错(行为测试暴露)。area.rect 限定位置根治。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
+        # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
+        # → loop __init__ copy session → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)。
+        if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
+                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
+                crop_first=False).is_success:
+            from sr_od.application.currency_war.cw_observation import (
+                read_selected_difficulty,
+            )
+            _diff = read_selected_difficulty(self.ctx, screen)
+            if _diff:
+                self.ctx.cw_selected_difficulty = _diff
+                _log.info('[cw-entry] 本局职级: %s', _diff)
         if self.round_by_find_and_click_area(
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '按钮-返回最高职级',
                 success_wait=2, crop_first=False).is_success:

@@ -217,6 +217,9 @@ class SrContext(OneDragonContext):
         self.cw_briefing_affixes: list[str] | None = None
         # 简报首领(3 位面 boss 名,同上中转)→ loop __init__ copy 到 session.briefing_bosses(boss_fit 输入)
         self.cw_briefing_bosses: list[str] | None = None
+        # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
+        # copy 到 session.selected_difficulty → default_strategy 填 state → effective_hp_threshold D-32;3.5.1)
+        self.cw_selected_difficulty: str | None = None
 
         # 秘技相关
         self.technique_used: bool = False  # 新一轮战斗前是否已经使用秘技了
@@ -315,6 +318,7 @@ class SrContext(OneDragonContext):
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  切实例清对局态(防跨账号/跨局污染)
         self.cw_briefing_affixes = None  # 同清(防跨账号/跨局污染)
         self.cw_briefing_bosses = None  # 同清
+        self.cw_selected_difficulty = None  # 同清(3.5.1)
 
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)

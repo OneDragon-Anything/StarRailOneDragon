@@ -180,6 +180,9 @@ class StrategySession:
     round_num: int = 1
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
+    # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
+    # default_strategy 填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
+    selected_difficulty: str = ""
     # 简报首领(3 位面 boss 名;loop __init__ 从 ctx.cw_briefing_bosses copy;boss_fit 输入)
     briefing_bosses: list[str] = field(default_factory=list)
     active_env: str = ""

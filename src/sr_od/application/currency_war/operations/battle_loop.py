@@ -97,6 +97,11 @@ class CurrencyWarRunLoop(SrOperation):
         if self.ctx.cw_briefing_affixes:
             _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
             self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
+        # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
+        # → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)
+        if self.ctx.cw_selected_difficulty:
+            _session.selected_difficulty = self.ctx.cw_selected_difficulty
+            self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
         # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
         if self.ctx.cw_briefing_bosses:
             _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)

@@ -85,6 +85,9 @@ class DefaultCwStrategy(CwStrategy):
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:
             state.enemy_affixes = list(session.briefing_affixes)
+        # 本局职级(session.selected_difficulty → state → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
+        if session.selected_difficulty:
+            state.selected_difficulty = session.selected_difficulty
         # 简报首领注入:3 位面 boss 名 → state.bosses → ScoreContext.bosses → comp_score 的 boss_fit。
         # 注:当前 comp.boss_weakness 多为空(数据待采,同 competitors.md),boss_fit 暂中性;数据补上即生效。
         if session.briefing_bosses:
