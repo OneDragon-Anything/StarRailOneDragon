@@ -1,4 +1,4 @@
-# 未验证(dormant,货币战争自主推进期代码,需进对应画面按 skill review 重审后才能信)
+# 未验证(货币战争自主推进期代码,已接 cycle + live 验穿;需按 od-dev-write-operation skill review 重审后才能信)
 
 """货币战争 全员装备 op:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排角色头像 → count 验穿。
 
