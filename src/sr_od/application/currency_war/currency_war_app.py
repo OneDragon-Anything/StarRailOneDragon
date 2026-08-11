@@ -35,10 +35,11 @@ class CurrencyWarApp(SrApplication):
 
     STATUS_AT_LOBBY: ClassVar[str] = EnterCurrencyWar.STATUS_AT_LOBBY
 
-    # 对局中态 OCR 锚点(备战 / 事件 overlay / 战斗结算)—— 命中任一 = 已在对局里,跳过 enter+start
+    # 对局中态 OCR 锚点(备战 / 事件 overlay / 战斗 / 结算)—— 命中任一 = 已在对局里,跳过 enter+start
     _IN_MATCH_KEYWORDS: ClassVar[tuple[str, ...]] = (
         '购买经验', '备战阶段', '投资策略', '投资环境', '补给阶段',
         '遭遇其一', '盛会之星', '出战', '挑战结束', '请选择投资',
+        '总伤害', '敌方行动中', '我方行动中',  # 战斗屏(对局中,防 _in_match 漏判 → 重进大厅卡,2026-08-12)
     )
 
     def __init__(self, ctx: SrContext):
