@@ -77,4 +77,4 @@
 - [万敌单C](万敌单C.md) —— B,燃血登神 debuff=buff
 - [持续伤害 dot](持续伤害dot.md) —— B,卡芙卡+鹅+刃,V4.4 刃回归
 
-⚠️ 代码 COMP_LIBRARY 对齐 V4.4:贝洛伯格召唤→**银枝群攻**(已改);**巡击青雀**(仙舟+追击 hybrid)作 test fixture 暂留,V4.4 纯追击=飞霄-led 见 [追击飞霄](追击飞霄.md)(待 test 更新后替换)。
+⚠️ 代码 COMP_LIBRARY 已对齐 V4.4:贝洛伯格召唤→**银枝群攻**、巡击青雀→**追击飞霄**(飞霄-led 纯追击,test fixture 同步更新)。

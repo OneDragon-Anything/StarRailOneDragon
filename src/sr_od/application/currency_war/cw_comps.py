@@ -56,9 +56,9 @@ class LevelGoal:
 @dataclass
 class Comp:
     """一套目标阵容(meta 数据,V4.4 起步估值待实玩校准)。"""
-    name: str                    # "巡击青雀"/"昼神阿雅"/"万敌单C"(roster 见 docs/game/currency_war/data/comp_library.md)
-    factions: list[str]          # 核心阵营组合 ["仙舟","追击"](查 FACTIONS)
-    core_chars: list[str]        # 核心角色(名)["青雀","知更鸟"]
+    name: str                    # "追击飞霄"/"昼神阿雅"/"万敌单C"(roster 见 docs/game/currency_war/data/comp_library.md)
+    factions: list[str]          # 核心阵营组合 ["追击"](查 FACTIONS)
+    core_chars: list[str]        # 核心角色(名)["飞霄","知更鸟"]
     form_tiers: dict[str, int]   # 成型 tier 目标 {"仙舟":5,"追击":3}(几人激活算成型)
     strength: str                # "S"/"A"/"B" 综合强度(版本强度;2026-08-03:不标"邪道" —— 邪道非必需)
     form_difficulty: str         # "easy"/"medium"/"hard" 成型难度(用户:关键维度)
@@ -348,16 +348,19 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
-        form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",
-        # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击,见 comps/追击飞霄.md);本 comp 是仙舟+追击 hybrid,
-        # 作 test fixture(test_cw_comps/decisions/telemetry 多处用其仙洲+追击结构)。⚠️ 待 test 更新后替为追击飞霄(V4.4 对齐)
-        key_equips=["火力风暴潮", "火力风暴潮"], mechanic_attributes=["追击"],
-        shared_chars=["知更鸟"], transition_chars=["青雀", "符玄", "艾丝妲"], typical_form_round=6,
+        name="追击飞霄", factions=["追击"], core_chars=["飞霄", "知更鸟", "缇宝", "不死途"],
+        form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
+        # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
+        # 飞霄双风暴潮+鸟(3追击关键)+缇宝/不死途/刃;2星飞霄上9(3星锁血反降);追击转→5追击60%真伤
+        key_equips=["火力风暴潮", "火力风暴潮", "永动机"], mechanic_attributes=["追击"],
+        shared_chars=["知更鸟", "缇宝", "不死途"], transition_chars=["赛飞儿", "风堇", "刃"],
+        typical_form_round=7,
         level_plan={
-            5: LevelGoal("roll", target_cost=2, target_chars=["青雀"]),
-            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=3, target_chars=["青雀", "知更鸟"], star_goals={"青雀": 2}),
+            5: LevelGoal("roll", target_cost=3, target_chars=["飞霄"]),
+            6: LevelGoal("roll", target_cost=3, target_chars=["飞霄"], star_goals={"飞霄": 2}),
+            7: LevelGoal("roll", target_cost=3, target_chars=["飞霄"], star_goals={"飞霄": 2}),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=0, target_chars=["知更鸟", "不死途"]),
         },
     ),
     Comp(
@@ -631,10 +634,10 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
 def _formation_cost_factor(comp: Comp) -> float:
     """成型成本因子 —— 低 form_tiers sum(易成型)→ ×>1;高 sum(难成型)→ ×<1。
 
-    分析 COMP_LIBRARY 发现:盛会之星 sum=3(3 人激活)vs 巡击青雀 sum=8(5+3 人激活)。后者成型
+    分析 COMP_LIBRARY 发现:命运圣杯红A sum=3(3 人激活)vs 龙丹战技点 sum=8(4+4 人激活)。后者成型
     需 ~16 rounds(plane1+plane2 18 rounds 几乎全用),前者 ~6 rounds(plane1 内成型)。plane1 成型
-    = 进 plane2 时 comp 强 → 能活。旧码 form_progress 不含 total cost({仙舟:5,追击:3} 仙舟:2/追击:1
-    的 progress 0.37 > {列车同行:4} 列车同行:2 的 0.25,但后者只需再 2 人 vs 前者再 5 人)。
+    = 进 plane2 时 comp 强 → 能活。旧码 form_progress 不含 total cost(2 阵营部分成型 progress 可能
+    > 1 阵营满成型,但后者只需再几人 vs 前者再多人)。
     """
     if not comp.form_tiers:
         return 1.0
@@ -736,13 +739,13 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     2. ceiling 不可达:target.typical_form_round > 剩余轮次估算(已成型豁免)。
 
     ⚠️ 2026-08-05 实跑,低 HP 时信号 1 先触发选 select_comp best(随 board/shop 每轮变)→ target
-    振荡 churn(列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp → 死亡螺旋。改:信号 3 提前 +
+    振荡 churn(列车同行→追击飞霄→DOT队→昼神阿雅)+ 选到高难度 comp → 死亡螺旋。改:信号 3 提前 +
     hp 危险时独占(返回稳定最快 easy,不让 1/2 churn)。
     ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(占位待接)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
-    # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 巡击青雀[medium] gap 0.097 卡 0.10 没转,
-    # 巡击青雀 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
+    # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 追击飞霄[medium] gap 0.097 卡 0.10 没转,
+    # 追击飞霄 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
     # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)→ pivot
     # (已 commit 不因易 comp 降阈被弃)。COMMIT_* 已提模块级(maybe_pivot + cw_decisions prefilter 共用)。
@@ -752,7 +755,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         return None
     best = candidates[0]
     # 2026-08-05 实跑,低 HP 时信号 1(更优涌现)先触发 → 选 select_comp best(随 board/shop 每轮变 →
-    # target 振荡 churn:列车同行→巡击青雀→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
+    # target 振荡 churn:列车同行→追击飞霄→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
     if state.hp < _pivot_hp:

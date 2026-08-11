@@ -16,7 +16,7 @@ class LevelGoal:
 
 @dataclass
 class Comp:
-    name: str                    # "巡击青雀"/"昼神阿雅轮椅"/"贝洛伯格召唤"/"万敌单C"(roster 见 ../../../game/currency_war/data/comp_library.md)
+    name: str                    # "追击飞霄"/"昼神阿雅"/"银枝群攻"/"万敌单C"(roster 见 ../../../game/currency_war/data/comp_library.md)
     factions: list[str]          # 核心阵营组合 ["仙舟","追击"]
     core_chars: list[str]        # 核心角色(名)["青雀","知更鸟","昔涟"]
     form_tiers: dict[str,int]    # 成型 tier 目标 {"仙舟":7,"追击":5}
@@ -44,7 +44,7 @@ class Comp:
 
 **与战术层接法(02,2026-08-04 已落地)**:`plan()` 中 level_plan `level_up` + afford → **硬 gate 执行 LevelUp**(D-14,非纯贪心 eval delta);`target_comp=None` 时退化为通用曲线 `_DEFAULT_LEVEL_GOAL`。`select_comp`/`maybe_pivot`(cw_comps)选 target,shop.py 接线传 `_target_comp` 给 plan()。具体 level_plan 曲线:comp 自带优先,无则通用曲线兜底。
 通用曲线(research 已有):前期 4-5 级 roll 找 1 费 / 中期升 7 roll 找 4 费、2-6 回合升 8 / 后期升 8-9 找 5 费 + 关键卡追 3 星。**完整刷新概率表 Lv1-10(bwiki 🟢,level_plan 硬地基)+ 节点×等级×动作骨架 + 骨架/参数分离论点见 [14 阶段节奏骨架](14_phase_skeleton.md)**(2026-08-09 调研 D-21)。
-来源:research meta 阵容表 + cw_data + **用户实战补充**。meta(版本依赖),做成 config 可热更。起步 ~6-10 套:巡击青雀/昼神阿雅/贝洛伯格召唤/击破流萤/欢愉/列车同行/物质分解液/反甲反震(**2026-08-03:不标"邪道 A8 专项" —— 邪道非必需,这些只是可选的强阵容之一,成型难度各异**)。**用户认同方向**:攻略 + 实战定义足够多优秀阵容,多维打分(强度 + 成型难度 + boss 契合 + 装备契合),运行时按场面灵活选易成型又够强的。
+来源:research meta 阵容表 + cw_data + **用户实战补充**。meta(版本依赖),做成 config 可热更。起步 ~6-10 套:追击飞霄/昼神阿雅/银枝群攻/击破流萤/欢愉/列车同行/物质分解液/反甲反震(**2026-08-03:不标"邪道 A8 专项" —— 邪道非必需,这些只是可选的强阵容之一,成型难度各异**)。**用户认同方向**:攻略 + 实战定义足够多优秀阵容,多维打分(强度 + 成型难度 + boss 契合 + 装备契合),运行时按场面灵活选易成型又够强的。
 
 ## comp_score(显式公式,可实施性-1)
 
