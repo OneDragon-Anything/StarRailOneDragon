@@ -29,6 +29,7 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_deployed_chars,
 )
 from sr_od.application.currency_war.cw_observation import (
+    read_deploy_cap,
     read_deployed_count,
 )
 from sr_od.application.currency_war.cw_state import BenchChar, DeployMove
@@ -146,6 +147,20 @@ class DeployBench(SrOperation):
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
         _tgt = (set(_sess.target_comp.factions)
                 if (_sess is not None and _sess.target_comp is not None) else set())
+        # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
+        # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
+        # + 用户 live 观察 bug4「未考虑上限」)。CV 实测 deployed 优于 state.deployed_count(board 重建可能虚高)。
+        # cap 真值优先 read_deploy_cap(OCR X/Y 的 Y,含宝钻/诅咒加成);读不到 fallback level(D-19 cap≈level)。
+        # ⚠️ level≠cap 场景(诅咒-1 / 宝钻+1):用 level 会误判 cap 未满 → 白拖(D-53 注 level=cap 无加成,但加成时偏)。
+        _cap = read_deploy_cap(self.ctx, scr)
+        if _cap is None:
+            _cap = (_sess.last_state.level if (_sess is not None and _sess.last_state is not None) else None)
+        if _cap is not None and _cap > 0:
+            _deployed = (len(front) - len(front_empty)) + (len(back) - len(back_empty))
+            if _deployed >= _cap:
+                log.info(f'[cw-deploy] 板满 cap:deployed={_deployed} ≥ cap={_cap}(level,5.1.8)'
+                         f' front空={len(front_empty)} back空={len(back_empty)} → bench 角色留 bench(不白拖)')
+                return
         # D-8:bench 身份走 SIFT(read_bench_chars,71 CW 立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
         # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
         # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。
@@ -182,15 +197,18 @@ class DeployBench(SrOperation):
             ti = chosen.pop(0)
             dst = chosen_pts[ti]
             src = bench[bi]
+            # 5.1.9(2026-08-12 米游社官方+VLM 诊断):deploy = 拖拽角色**头像 avatar**(角色卡左上角小圆,非立绘/名字)。
+            # mouseDown 立绘(中心 y912 / 上部 y882)→ 游戏不拾取(判 click 开详情);mouseDown avatar 左上角才拾取。
+            # D-118b drag 未 live 验(commit 明记)→ placed=0 长期未发现。avatar = 角色卡左上(center 偏 -40,-50)。
+            # slot_occupied 验源槽仍用中心(src);click bench 开详情(D-118b/本轮验)确认 click 非 pickup。
+            _src_drag = Point(int(src.x) - 40, int(src.y) - 50)
             _landed = False
             _row_cn = '前' if chosen_pts is front else '后'
             for _attempt in range(3):
-                # bug#1 mitigation(对齐 equip_all 2f521915,live 实证 2026-08-12):drag 前先 mouse_move(src)
-                # 零移动,防 SrPcController 截图卫生把光标移角落 → drag 起点漂 → 落空。同 session equip_all
-                # (有 mouse_move)drag 穿了、deploy_bench(无)drag placed=0/4 → 差异即此 mitigation。
-                self.ctx.controller.mouse_move(src)
+                # bug#1 mitigation(对齐 equip_all 2f521915)+ 5.1.9 mouseDown 立绘上部(_src_drag)。
+                self.ctx.controller.mouse_move(_src_drag)
                 time.sleep(0.2)
-                self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
+                self.ctx.controller.drag_to(start=_src_drag, end=dst, duration=1.0, hold_time=1.0)
                 time.sleep(0.7)
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
                     placed += 1
@@ -204,7 +222,8 @@ class DeployBench(SrOperation):
                              f' (CV 验源槽空)')
                     break
             if not _landed:
-                log.info(f'[cw-deploy] deterministic: bench槽{bi+1} 拖3次源槽未空(bug#1?),跳过')
+                log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
+                         f' 拖3次源槽未空(bug#1 间歇 / avatar 偏移;5.1.9 avatar 根因对 placed=3/5),跳过')
                 chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
