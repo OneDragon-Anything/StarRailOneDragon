@@ -132,11 +132,12 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
 
 
 def acquirability_factor(core_chars: list[str], level: int) -> float:
-    """comp 核心角色在当前等级的理论可凑性因子(替 select_comp 的 shop_supply / shop_history 观察法)。
+    """comp 核心角色在当前等级的理论可得性 [0,1](替 select_comp 的 shop_supply / shop_history 观察法)。
 
-    用 refresh_prob(level, char.cost) 查每个核心角色的理论刷新概率,取**最低**(阵容受最稀卡限制)。
-    转成乘法因子:p=0 → ×0.5(当前等级刷不出该费);p=1 → ×1.2(满概率);p=0.4 → ×0.78。
-    比观察法(看本回合/历史刷没刷到)有理论依据:刷新概率独立(用户点破)→ 观察无预测力。
+    取核心角色里最低 refresh_prob(level, cost)(阵容受最稀卡限制)。
+    p=1(满概率刷出)→ 1.0;p=0(该等级刷不出该费)→ 0.0;p=0.4 → 0.4。
+    select_comp 用法同 shop_supply(``s *= 0.15 + 0.85 * acquirability_factor``)。
+    理论依据:刷新概率独立(用户点破)→ 观察(shop 本回合 / 历史)无预测力,用理论概率表 REFRESH_PROB。
     """
     probs: list[float] = []
     for name in core_chars:
@@ -145,5 +146,4 @@ def acquirability_factor(core_chars: list[str], level: int) -> float:
             probs.append(refresh_prob(level, c.cost))
     if not probs:
         return 1.0
-    min_p = min(probs)
-    return 0.5 + 0.7 * min_p
+    return min(probs)

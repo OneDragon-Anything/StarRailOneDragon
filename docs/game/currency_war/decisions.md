@@ -832,4 +832,15 @@
 - **验证**:ruff clean;test_cw_shop_odds 10 passed(`expected_refreshes_for_card` level=7 cost=3 用 REFRESH_PROB[7][3]=0.4 新旧一致,不受影响)。
 - **状态**:**基础表已落(A4.1 已过);概率修正 A4.7 待数据采集**。`· economy_research §1(机制)/ A4 进度(A4.1 已过 / A4.7 待办)/ 备战 doc 子态5`。
 
+## D-92 (2026-08-11)【修复·select_comp 可得性观察法 → 理论法(acquirability_factor 替 shop_supply + shop_history);D-6 解,A4.5 完成】select_comp 用 shop_supply(本回合 shop 观察)+ _shop_history_factor(历史 shop 观察)判 comp 可得性。用户点破:商店刷新概率独立(每轮独立)→ 观察(本回合 / 历史 shop 刷没刷到)对未来无预测力,该用理论概率表。改:acquirability_factor(core_chars, level)= 核心角色最低 refresh_prob(level, cost)(理论,基于 A4.1 REFRESH_PROB),替 select_comp 的两个观察因子。
+
+- **故障机制(观察法为何错)**:shop_supply 看本回合 shop 有无核心阵营 → 短视(这回合没刷不代表下回合没,刷新独立);_shop_history_factor 看历史累积 → 同样无预测力(历史出现不代表未来)。两观察因子在「判 comp 能否成型」上无理论依据 → 可得性判断不稳。
+- **改法(选)**:select_comp L545 `s *= (0.15 + 0.85 * shop_supply)` + L548 `s *= _shop_history_factor` → 合并成 `s *= (0.15 + 0.85 * acquirability_factor(comp.core_chars, state.level))`。acquirability_factor = min(refresh_prob(level, cost) for 核心角色)(阵容受最稀卡限制),理论基于 REFRESH_PROB(A4.1 权威表)。用法范围同 shop_supply([0,1],0.15+0.85*)。
+- **备选(为什么没选)**:① 保留 shop_supply 只删 shop_history → 仍单回合短视,没解决根因。② acquirability 用期望刷新次数(expected_refreshes,考虑副本数)→ A4.2 副本数未全核(a=18 只 3 费),过早;先用 refresh_prob(概率,已权威)作可得性,expected_refreshes 留 A4.3 精化。
+- **保留 shop_supply**:default_strategy.py:101 drought 检测用(判本回合 shop 有无 target 卡 → drought 计数)。drought 本意是观察连续无目标,观察语义合理 → 保留(不替)。
+- **删 _shop_history_factor**:只 select_comp 用(已替);shop_faction_seen 字段保留(default_strategy 累积,无害,后续清)。
+- **关联**:D-6(shop_supply 冗余 carryover,清);A4.1(REFRESH_PROB 权威表,acquirability_factor 数据地基);A4.5 完成(select_comp 接理论可得性)。
+- **验证**:ruff clean;CW test 268 passed(删 test_shop_history_factor + 加 test_acquirability_factor_level_cost)。
+- **状态**:**已修(select_comp 用理论可得性,D-6 解,A4.5 完成)**。`· D-6(shop_supply carryover)/ A4.1(REFRESH_PROB)/ economy_research §1(刷新概率独立机制)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
+from sr_od.application.currency_war.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.cw_state import GameState, effective_hp_threshold
 
 if TYPE_CHECKING:
@@ -505,28 +506,6 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     return 1.0
 
 
-def _shop_history_factor(comp: Comp, ctx: ScoreContext) -> float:
-    """shop 历史**长期可得性**(替 shop_supply 单回合短视)。人玩「跟 shop 走」——commit 到反复
-    出现的阵营(可成型),非单回合随机。comp 核心阵营(form_tiers keys)在 shop 历史(cumulative)平均
-    出现次数:avg≥2(反复出现,可成型)→ ×1.2;avg=0(从未出现,难成型)→ ×0.7;否则中性。
-
-    解 target-buy 错配:shop_supply 单回合短视选 unacquirable target(列车同行 不在 r1 shop)→
-    不 acquire → spread。shop-history 用跨回合累积判长期可得性 → 选反复出现的可成型 comp。
-    """
-    seen = ctx.shop_faction_seen
-    if not seen or not comp.factions:
-        return 1.0
-    core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)
-    if not core:
-        return 1.0
-    avg = sum(seen.get(f, 0) for f in core) / len(core)
-    if avg >= 2:
-        return 1.2
-    if avg <= 0:
-        return 0.7
-    return 1.0
-
-
 def select_comp(state: GameState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
@@ -540,12 +519,12 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # count≥2 前不调 select_comp)→ select_comp 只在 board 有信号时调,领先 comp 的 shop_supply≥0.3
-        # (board-back)→ 不需 r1 中性化。恢复硬 shop_supply 判(可得性信号)。
-        s *= (0.15 + 0.85 * shop_supply(comp, state))   # shop-aware 降权:不可得 comp ×0.15(D-6 实验:加严,让 target 跟 shop 可得走,减 target-availability 错配 → 集中)
+        # acquirability:核心角色在当前等级的理论刷新概率(D-92 替 shop_supply + shop_history 观察法;
+        # 用户点破:刷新概率独立 → 观察 shop 本回合/历史无预测力,用理论 REFRESH_PROB 表)。
+        # p=0(该等级刷不出该费)→ ×0.15 重降;p=1(满概率)→ ×1.0。
+        s *= (0.15 + 0.85 * acquirability_factor(comp.core_chars, state.level))
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
-        s *= _shop_history_factor(comp, ctx)
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
