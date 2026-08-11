@@ -19,6 +19,12 @@
 - [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta,bwiki pending 米游社)
 - [bosses.md](data/bosses.md) —— boss 克制
 
+## `comps/` —— 阵容攻略(玩家视角,游戏知识)
+每套阵容怎么 work / 成型节奏 / 过渡 / 装备(为什么)/ 弱点。米游社 V4.4 合集(76807134)+ 各 comp 攻略直读核实。
+- [README](comps/README.md) —— 跨 comp pattern(评级总览 / 开局过渡分级 / 通用角色 / 通用装备 / 成型节奏共性)
+- 逐套:[列车同行](comps/列车同行.md) / [命运圣杯红A](comps/命运圣杯红A.md) / [绯英欢愉](comps/绯英欢愉.md) / [希儿量子](comps/希儿量子.md) / [黄泉减益](comps/黄泉减益.md) / [龙丹战技点](comps/龙丹战技点.md) / [双王圣杯](comps/双王圣杯.md)
+- 结构化字段(factions/core/form_tiers/level_plan)权威源 = `src/sr_od/application/currency_war/cw_comps.py::COMP_LIBRARY`;本目录是叙事/why(互补非双源)。
+
 ## 画面事实
 画面(screen doc,游戏提供的 UI)算游戏玩法,仍在 [docs/game/screens/](../screens/)(`currency_war_*.md`)。
 

@@ -209,17 +209,21 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="希儿量子", factions=["欢愉", "贝洛伯格"], core_chars=["希儿", "缇宝", "知更鸟", "布洛妮娅"],
-        form_tiers={"欢愉": 3, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="中",
-        # V4.4 评级(76807134):希儿 = A 级;量子三拉条(17173):希儿(风暴潮)+缇宝(饮料罐保生存)+知更鸟(弹射器)+布洛妮娅
-        key_equips=["火力风暴潮", "火力风暴潮"],   # ⚠️ 缇宝"饮料罐"待核规范名(非 EQUIPMENTS),暂略
-        shared_chars=["缇宝", "知更鸟", "布洛妮娅"], transition_chars=["知更鸟", "布洛妮娅", "符玄"],
-        typical_form_round=6,
+        name="希儿量子", factions=["量子同频", "贝洛伯格"], core_chars=["希儿", "瓦尔特", "知更鸟", "布洛妮娅"],
+        form_tiers={"量子同频": 4, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="高",
+        # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
+        # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
+        # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
+        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],
+        boss_weakness=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
+        mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
+        transition_chars=["希儿", "刃", "符玄"], typical_form_round=6,
         level_plan={
             5: LevelGoal("roll", target_cost=2, target_chars=["希儿"]),
-            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
-            9: LevelGoal("roll", target_cost=0, target_chars=["缇宝", "知更鸟"]),
+            6: LevelGoal("roll", target_cost=2, target_chars=["希儿"], star_goals={"希儿": 2}),
+            7: LevelGoal("roll", target_cost=2, target_chars=["希儿"], star_goals={"希儿": 2}),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "知更鸟"]),
         },
     ),
     Comp(
@@ -252,32 +256,37 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="龙丹战技点", factions=["战技点", "盛会之星"], core_chars=["丹恒·饮月", "花火", "刻律德菈"],
-        form_tiers={"战技点": 6, "盛会之星": 4}, strength="A", form_difficulty="medium", early_power="中",
-        # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716):战技点主 c,6战技点+盛会+星间+量子
-        # ⚠️ 数字(6战技点/6盛会)待米游社 76987716 直读精核(本条 core/派别 🟢,阈值 🟡)
-        key_equips=[], mechanic_attributes=["战技点依赖"],   # ⚠️ 关键装备待米游社 76987716 直读精核
-        shared_chars=["花火", "刻律德菈"], transition_chars=["花火", "刻律德菈", "知更鸟"],
+        name="龙丹战技点", factions=["战技点", "列车同行"], core_chars=["丹恒·饮月", "远坂凛", "瓦尔特", "花火"],
+        form_tiers={"战技点": 4, "列车同行": 4}, strength="A", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716 直读纠正):4战技点+4列车(周日开)
+        # 凛(远坂凛)V4.4 新:宝石叠99层→第二魔法实验拐198%爆伤(+默认70%=268%);饮月双电锯+风暴潮
+        # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
+        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"], mechanic_attributes=["战技点依赖"],
+        shared_chars=["远坂凛", "瓦尔特", "花火"], transition_chars=["花火", "风堇", "姬子·启行"],
         typical_form_round=7,
         level_plan={
-            5: LevelGoal("roll", target_cost=2, target_chars=["花火", "刻律德菈"]),
-            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"]),
-            9: LevelGoal("roll", target_cost=5, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
+            5: LevelGoal("roll", target_cost=2, target_chars=["花火", "远坂凛"]),
+            6: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
+            7: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "符玄"]),
         },
     ),
     Comp(
-        name="双王群攻", factions=["群攻", "昼之半神"], core_chars=["大黑塔", "景元", "风堇", "那刻夏", "罗刹"],
-        form_tiers={"群攻": 7, "昼之半神": 4}, strength="A", form_difficulty="medium", early_power="低",
-        # V4.4 评级(76807134):双王 = A 级;攻略(76985789):7群攻+4昼之半神,大黑塔+景元双 c(双王)
-        # 大黑塔 2 星后上 9 成型;备战席堆小黑塔帮升星。投资环境:昼之半神概念股/群攻邀请
-        key_equips=["电光履", "高周波电锯", "光速螺旋桨"],
-        mechanic_attributes=["群攻"], shared_chars=["风堇", "罗刹", "小黑塔"],
-        transition_chars=["风堇", "艾丝妲", "黑塔"], typical_form_round=8,
-        level_plan={  # 双 5 费双王:前期过渡 → 大黑塔 2 星后上 9
-            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=4, target_chars=["大黑塔", "景元"]),
-            9: LevelGoal("roll", target_cost=5, target_chars=["大黑塔"], star_goals={"大黑塔": 2}),
+        name="双王圣杯", factions=["命运圣杯", "能量"], core_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
+        form_tiers={"命运圣杯": 3, "能量": 5}, strength="A", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):双王 = A 级;攻略(76985789 直读纠正调研误认):双王=闪闪(吉尔伽美什)+Saber(Fate圣杯联动),
+        # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
+        # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
+        # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
+        key_equips=["火力风暴潮", "冷笑话引擎", "永动机", "反重力皮靴"],
+        mechanic_attributes=["连携高频开大"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
+        transition_chars=["花火", "远坂凛", "刃"], typical_form_round=7,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["花火", "远坂凛"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("roll", target_cost=4, target_chars=["Saber"], star_goals={"Saber": 2}),
+            8: LevelGoal("roll", target_cost=4, target_chars=["吉尔伽美什", "Saber"], star_goals={"Saber": 2}),
+            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "符玄"]),
         },
     ),
     Comp(
