@@ -217,7 +217,7 @@ class EquipAll(SrOperation):
             if not wearable:
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break
-            # comp 驱动穿戴(D-XX 接线,ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
+            # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
             _match = self.ctx.cw_match
             _key_equips = (_match.session.target_comp.key_equips
                            if (_match is not None and _match.session is not None
