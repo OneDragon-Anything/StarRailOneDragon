@@ -38,6 +38,21 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     return None
 
 
+def parse_streak(ocr_texts: list[str]) -> int:
+    """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 − / 未读到 0;纯函数可单测)。
+
+    fixture 核实(2026-08-11):结算屏 OCR 含 '连胜×0' 形态,**前缀连胜/连败 = 方向**(read_streak
+    备战只读 magnitude 无方向)。OCR 偶把 × 读成 x/X/*;前缀与尾随数字在同一 token。
+    """
+    for t in ocr_texts:
+        if '连胜' in t or '连败' in t:
+            m = re.search(r'(\d+)', t)
+            if m:
+                n = int(m.group(1))
+                return n if '连胜' in t else -n
+    return 0
+
+
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,
                        comp_tag: str, node_type: str = '普通战斗'):
     """结算屏 → ``RoundOutcome``(观测回路 P1.5;``on_round_end`` 输入)。
@@ -63,4 +78,5 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         round_num=round_num, plane=plane, node_type=node_type, comp_tag=comp_tag,
         hp_after=hp if hp is not None else 0,
         hp_confidence=1.0 if hp is not None else 0.0,
+        streak=parse_streak(ocr_texts),   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
     )

@@ -422,6 +422,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     hp 不可 OCR → 默认 100。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
+    # 临时采集钩子(备战屏 reader 标定,CLAUDE.md 方案):采 streak 语义 / node_type 子态 / difficulty 等
+    # 尚不可靠 reader 的样本(内容哈希去重,同屏只存一次)。reader 设计好后删本段(临时代码)。
+    from sr_od.application.currency_war.cw_observe import cw_shot_unique
+    cw_shot_unique(screen, 'battle_prep')
     state = GameState()
     state.gold = read_gold(ctx, screen)
     state.hp = read_hp(ctx, screen)
@@ -443,7 +447,13 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.enemy_difficulty = read_enemy_difficulty(ctx, screen)
     state.level_up_cost = read_level_up_cost(ctx, screen)
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
-    state.streak = read_streak(ctx, screen)
+    # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
+    # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    if _sess is not None:
+        state.streak = _sess.last_streak
+    else:
+        state.streak = read_streak(ctx, screen) or 0
     # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
     _bp = _board_pairs(ctx, screen, state.level)
     state.board = {f: c for f, (c, _nt) in _bp.items()}

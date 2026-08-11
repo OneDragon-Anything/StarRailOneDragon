@@ -165,6 +165,9 @@ class StrategySession:
     pending_deploys: list = field(default_factory=list)
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。
     last_hp: int | None = None
+    # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
+    # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
+    last_streak: int = 0
     # level 单调守卫(read_level OCR 间歇误读 5/6→4;等级局内只升不降,读出<上次=误读用上次)。新局默认 0。
     last_level_obs: int = 0
     # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。

@@ -66,6 +66,8 @@ class DefaultCwStrategy(CwStrategy):
                      obs: RoundOutcome) -> None:
         """观测驱动:喂掉血/胜负 → ``session.performance``(默认实现非空,但 P1 无 caller,§11.7)。"""
         session.performance.record(obs)
+        # 结算「连胜×N」前缀=方向 → session.last_streak(给下回合 economy C 杠杆:连胜保连胜/连败 fold)。
+        session.last_streak = obs.streak
         # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(HP 结算→下回合 prep 不变)。保血/maybe_pivot 信号地基。
         if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
             session.last_hp = obs.hp_after

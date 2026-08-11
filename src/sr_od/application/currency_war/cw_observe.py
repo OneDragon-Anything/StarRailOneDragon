@@ -18,6 +18,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from cv2.typing import MatLike
@@ -62,3 +63,22 @@ def cw_shot(image: MatLike, name: str) -> str:
     _SHOT_DIR.mkdir(parents=True, exist_ok=True)
     cv2_utils.save_image(image, str(_SHOT_DIR / f'{name}.png'))
     return f'{name}.png'
+
+
+def cw_shot_unique(image: MatLike, label: str) -> str | None:
+    """存截图(**内容哈希去重**,采集钩子用;best-effort 不抛)。
+
+    视觉相同的只存一次,不同视觉(如不同星级 / 不同总伤害)各存一份。返文件名 / None(去重跳过或失败)。
+    **采集钩子**(CLAUDE.md 方案):标定尚无 reader 的字段(星级 / 结算总伤害 / difficulty / streak 语义)——
+    运行时采样本,离线设计 reader;**reader 设计好后直接删各调用处钩子**(临时代码,不留开关)。
+    """
+    try:
+        _h = hashlib.md5(image.tobytes()).hexdigest()[:8]
+        fp = _SHOT_DIR / f'{label}__{_h}.png'
+        if fp.exists():
+            return None
+        _SHOT_DIR.mkdir(parents=True, exist_ok=True)
+        cv2_utils.save_image(image, str(fp))
+        return fp.name
+    except Exception:  # noqa: BLE001  采集 best-effort,失败不阻塞识别/对局
+        return None

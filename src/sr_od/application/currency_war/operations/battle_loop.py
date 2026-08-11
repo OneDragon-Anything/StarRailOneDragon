@@ -1,5 +1,6 @@
 import random
 import time
+from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -65,6 +66,9 @@ class CurrencyWarRunLoop(SrOperation):
     # 2026-08-04 实跑:500 不够 —— reactive 弱阵战斗慢,plane2 r5 打「蚕食者之影」时 iter 撞 500
     # →「对局循环超时」失败(bot 一直在推进,非逻辑 bug,是迭代预算耗尽)。bump 到 2000(≈66min 预算)。
     # 待优化:MAX_ITER 应只计「动作迭代」(备战/事件/结算),不计战斗 round_wait(战斗长短不该吃预算)。
+    # 临时随机态停机钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。建档后删本钩子。
+    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER,快速捕 novel 随机态。
+    UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
@@ -303,7 +307,32 @@ class CurrencyWarRunLoop(SrOperation):
         # 只用战斗独有关键词;不用「羁绊」(大厅"羁绊链路"会误匹配)
         if (self.round_by_ocr(screen, '总伤害').is_success   # TODO(T#103) 待建 area(此结算帧未见「总伤害」label)
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
+            # 临时采集钩子(总伤害/输出 reader 标定,CLAUDE.md 方案):采结算数据统计屏样本。reader 设计好后删本段。
+            from sr_od.application.currency_war.cw_observe import cw_shot_unique
+            cw_shot_unique(screen, 'settlement_damage')
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
+        # 临时随机态停机钩子(CLAUDE.md 方案 D):持久未识别画面(新事件/词缀/boss overlay 等未建档随机态)
+        # → 存 sentinel + stop_running,保画面给 AI 当场建档(纯读画面不 click)。建档后删本钩子。
+        # 持久判定:连续 N 轮 fallback(过渡帧 1-2 轮内被上面分支接走 → 不累计,防误停)。
+        if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
+            self._unknown_streak = getattr(self, '_unknown_streak', 0) + 1
+        else:
+            self._unknown_streak = 1
+        self._unknown_last_iter = self._iter
+        if self._unknown_streak >= CurrencyWarRunLoop.UNKNOWN_STOP_THRESHOLD:
+            try:
+                _shot = self.save_screenshot(prefix='cw_unknown')
+                _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
+                             / 'currency_war' / 'unknown_state.flag')
+                _sentinel.parent.mkdir(parents=True, exist_ok=True)
+                _sentinel.write_text(
+                    f'iter={self._iter} streak={self._unknown_streak} shot={_shot}', encoding='utf-8')
+                log.info('[cw!] [loop] 持久未识别画面 → stop_running 待 AI 建档 shot=%s streak=%s',
+                         _shot, self._unknown_streak)
+            except Exception as e:  # noqa: BLE001  钩子失败不阻塞
+                log.warning('[cw-loop] unknown stop 钩子失败(不阻塞): %s', e)
+            self.ctx.run_context.stop_running()
+            return self.round_fail(status='持久未识别画面,停机待建档')
         return self.round_retry(wait=2)

@@ -38,6 +38,7 @@ from sr_od.application.currency_war.currency_war_char_id import (
 from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.cw_equipment import read_equipped_below
 from sr_od.application.currency_war.cw_obs_core import _area_rect
+from sr_od.application.currency_war.cw_observe import cw_shot_unique
 from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
@@ -116,6 +117,9 @@ def identify_slots(
         if name is None:
             continue
         ch = get_char(name)
+        # 临时采集钩子(星级 OCR 标定,CLAUDE.md 方案):存槽位 crop(内容哈希去重 → 同角色不同星级都采到),
+        # 供离线设计星级读取(现 star 恒=1 占位)。**reader 设计好后删本行**(临时代码,不留开关/参数)。
+        cw_shot_unique(crop, f'star_{row or "bench"}_{slot_idx}_{name}')
         out.append(BenchChar(
             slot=slot_idx,
             char_id=name,
