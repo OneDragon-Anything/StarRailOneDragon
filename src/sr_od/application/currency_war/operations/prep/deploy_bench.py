@@ -220,11 +220,14 @@ class DeployBench(SrOperation):
             # mouseDown 立绘(中心 y912 / 上部 y882)→ 游戏不拾取(判 click 开详情);mouseDown avatar 左上角才拾取。
             # D-118b drag 未 live 验(commit 明记)→ placed=0 长期未发现。avatar = 角色卡左上(center 偏 -40,-50)。
             # slot_occupied 验源槽仍用中心(src);click bench 开详情(D-118b/本轮验)确认 click 非 pickup。
-            _src_drag = Point(int(src.x) - 40, int(src.y) - 50)
             _landed = False
             _row_cn = '前' if chosen_pts is front else '后'
+            # 5.1.9 avatar mouseDown:VLM/pi/CV grounding 都不稳(小目标 ~20px,HoughCircles 5/9 槽),
+            # retry 试多偏移命中 avatar 圆心(CV 测 y≈center-30~50 波动;x 不明)。覆盖左上区 3 点。
+            _avatar_off = [(-40, -50), (-4, -30), (-25, -40)]
             for _attempt in range(3):
-                # bug#1 mitigation(对齐 equip_all 2f521915)+ 5.1.9 mouseDown 立绘上部(_src_drag)。
+                _ox, _oy = _avatar_off[_attempt]
+                _src_drag = Point(int(src.x) + _ox, int(src.y) + _oy)
                 self.ctx.controller.mouse_move(_src_drag)
                 time.sleep(0.2)
                 self.ctx.controller.drag_to(start=_src_drag, end=dst, duration=1.0, hold_time=1.0)
