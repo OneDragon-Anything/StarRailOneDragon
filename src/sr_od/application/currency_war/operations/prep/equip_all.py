@@ -10,7 +10,7 @@ read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = scre
 (CV diff > 阈值 = 穿[新装或合成都变 icon],不变 = drag 落空)。**robust 合成消耗2件/列reflow/read漏检**
 (count-verify D-41 实测报3实4 失真:合成消耗2件 → column count 扰;avatar below-icon 变化直接观测,免受其扰)。
 
-**dormant**:未接 BattlePrepCycle,待多列/三态完整建档 + 跨局面验证后激活。
+**已接 cycle**(BattlePrepCycle ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响 → drag 前 mouse_move + 落空 retry(2026-08-11 live 诊断加)。
 
 **前置**:已在「货币战争-备战」,角色详情面板关(出售 不可见 —— 角色详情面板遮 col2;装备详情面板不遮 icon D-37)。
 """
@@ -75,7 +75,7 @@ class EquipAll(SrOperation):
     修原 ``target=FRONT_AVATARS[equipped]`` 按已穿计数索引 → 已穿槽被覆盖)。
     avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
     变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
-    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**dormant**(未接 cycle,待多列/三态完整建档后激活)。
+    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(BattlePrepCycle ③);装备量受 bug#1 drag 间歇落空影响 → mouse_move + retry 缓解。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -125,6 +125,25 @@ class EquipAll(SrOperation):
         self.ctx.cw_equip_tm_grays = grays
         log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
         return grays
+
+    def _drag_equip(self, start: Point, target: Point) -> tuple[bool, float]:
+        """单次 drag 穿戴 + bug#1 mitigation + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
+
+        bug#1 缓解(2026-08-11 加,live A8 实跑诊断):drag 前 ``mouse_move(start)``(零移动)——
+        ``before_screenshot`` 把光标移角落做截图卫生,紧接 drag 会因光标移动中被游戏判拖拽落空(memory bug#1 /
+        CLAUDE.md);先 mouse_move 到起点 + 稍顿,drag 从起点零移动出发,避间歇落空(同 run_supply_node:65 /
+        buy_store_item:42 / run_megastar_node:82 模式)。CV-diff 验穿(R19):drag 前后对比目标 avatar 下方
+        mini icon 区,变了=穿(robust 合成消耗/reflow,替 count-verify)。**每次调取自己的 pre 基线截图**
+        (紧贴 drag,非用 loop 顶部 cur —— 基线越紧贴 drag,微变化越不被漏)。
+        """
+        cur = self.screenshot()
+        self.ctx.controller.mouse_move(start)
+        time.sleep(0.2)
+        self.ctx.controller.drag_to(start=start, end=target, duration=1.5, hold_time=0.5)
+        time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        post = self.screenshot()
+        diff = _below_icon_diff(cur, post, target.x, self.BELOW_ICON_Y, self.BX_HALF, self.BY_HALF)
+        return diff > self.BELOW_DIFF_THRESHOLD, diff
 
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
@@ -177,16 +196,22 @@ class EquipAll(SrOperation):
             target = self.FRONT_AVATARS[slot_idx - 1]
             log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽]',
                      name, cx, cy, slot_idx, target.x, target.y)
-            self.ctx.controller.drag_to(start=Point(cx, cy), end=target, duration=1.5, hold_time=0.5)
-            time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
-            post = self.screenshot()
-            diff = _below_icon_diff(cur, post, target.x, self.BELOW_ICON_Y, self.BX_HALF, self.BY_HALF)
-            if diff > self.BELOW_DIFF_THRESHOLD:
+            landed, diff = self._drag_equip(Point(cx, cy), target)
+            if landed:
                 equipped += 1
                 log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
                          name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
-            else:
-                log.info('[cw-equip] %s drag 未变(diff=%.1f ≤ %.1f)→ 停(bug#1 落空/非穿戴)',
-                         name, diff, self.BELOW_DIFF_THRESHOLD)
-                break
+                continue
+            # bug#1 间歇落空 → retry 一次(同件同槽;bug#1 随机,retry 可能成,2026-08-11 live A8 诊断)
+            log.info('[cw-equip] %s drag 未变(diff=%.1f ≤ %.1f)→ retry(bug#1?)',
+                     name, diff, self.BELOW_DIFF_THRESHOLD)
+            landed2, diff2 = self._drag_equip(Point(cx, cy), target)
+            if landed2:
+                equipped += 1
+                log.info('[cw-equip] %s retry 穿了(前排-%d diff=%.1f)', name, slot_idx, diff2)
+                continue
+            # retry 仍败 = 真问题(bug#1 持续 / 非穿戴 / 槽满),停(避免空转烧时间)
+            log.info('[cw-equip] %s retry 仍败(diff=%.1f)→ 停(bug#1 持续 or 非穿戴)',
+                     name, diff2)
+            break
         return self.round_success(f'装备 {equipped} 件到前排 avatar(空槽 {slots})')
