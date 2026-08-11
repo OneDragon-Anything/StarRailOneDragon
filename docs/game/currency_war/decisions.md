@@ -797,4 +797,12 @@
 - **D-86 trap 价值证成**:诊断存证 → 捕到证据 → VLM 定根因(overlay 非 bug#1)→ 修法方向转(handle overlay,别调 click timing)。**rare-edge 捕捉 → 诊断 → 定向修法**链路通。
 - **状态**:**根因已定(overlay,非 bug#1),修法 defer(需 live 观察 overlay 来源 + handling)**。`· D-86(trap 部署)/ insights(出战 click 机制 + 根因更新)/ bug#1(CLAUDE.md,排除)/ D-85(数据饱和)`。
 
+## D-88 (2026-08-11)【诊断·出战 overlay 深化(dismiss UI 找到 + 复发常见 + 类型待核)】match#10 出战 overlay 复发(2 cluster,retry=1;4 场里 3 场中:7/9/10)→ **非 rare,常见**(每场 ~20-40s waste)。重析 match#10 trap 截图:**overlay 有 dismiss UI**(收起/collapse btn + 确认选择/confirm)→ **修法可行:出战前 detect+dismiss(collapse)operational unlock,非必 ①**。但 overlay 类型 VLM 不一致(match#9 读「选择伙伴/强化角色」,match#10 读「祈愿试炼」tabs 经验/免费刷新)→ 类型待 live 核(可能多种 CW prep 选择 overlay 或 VLM 误读)
+
+- **复发频率(升优先级)**:matches#7/9/10 中(8/4-6/1-3 未)→ **3/4 近期场**(非 rare)。每场 ~20-40s waste(retry 等待 overlay 自动清)+ match-fail 风险。比 D-87 评估的「rare」更常见 → 修复优先级升。
+- **dismiss UI 找到(match#10 重析)**:overlay 弹窗有 **收起(collapse)按钮**(左下,向上箭头)+ 橙提示旁 **确认选择(confirm)按钮**。→ **operational 修法可行**:出战节点 detect overlay → 点「收起」collapse(skip 选择,不解锁 gameplay 决策)→ 出战 unblocked。**非 ①-locked**(collapse = dismiss,非策略选择);proper 选最佳 trial = ①-locked gameplay。
+- **overlay 类型不一致(待 live 核)**:D-87(match#9)VLM 读「选择伙伴 + 强化角色」;本条(match#10)读「祈愿试炼(tabs 经验/免费刷新)」。可能:① bot 命中**多种** CW prep 选择 overlay(祈愿试炼/选择伙伴/强化角色,不同触发);② VLM 对 CW 专名误读。**类型待 live 核**(直接看屏 / 对比 match#9 vs #10 截图)再定统一 handling。
+- **修法(defer 到 bot-idle live session)**:① live 核 overlay 类型(一种 or 多种);② screen-onboarding overlay + dismiss UI(收起/确认选择 area);③ 出战节点 detect overlay → collapse → retry 出战。substantive(screen-onboarding + op 改)但非 ①-locked(collapse dismiss)。bot 现 retry 恢复(非 breaking)。
+- **状态**:**overlay 诊断深化(dismiss UI 找到 + 复发常见 + 类型待核),修法 defer live session**。`· D-87(根因 overlay)/ D-86(trap)/ insights(出战 click)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
