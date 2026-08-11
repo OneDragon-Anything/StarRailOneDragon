@@ -91,12 +91,24 @@ WP(target_progress 权重,见 `TARGET_PROGRESS_WEIGHT` 代码,待校准;不在�
 - 否则按 buff 契合 target_comp:物理/前后台强度队→星期日;击破队→大丽花;多 5 费→黑天鹅。
 - battle_loop 的「确认选择」分支(当前 naive 点左)改调此函数。
 
+## 掉血归因(观测驱动决策框架,2026-08-11 用户)
+
+COMP_LIBRARY 收录即**强度可信**(先验),观测**不推翻阵容选择**,只判**投资方向**。掉血按**成型度(form_progress)**三分:
+
+| 状态 | 掉血含义 | 动作 |
+|---|---|---|
+| 成型中(form_progress 低) | 核心没凑齐 | **继续组建**(补过渡 / 通用辅助支撑,别掉太多血) |
+| 成型后(form_progress 高) | **装备 / 星级不够**(阵容本身可信) | **花钱补强**(升星 / 穿装备),**不转型** |
+| 凑不齐(核心不来 / ceiling 不可达) | 这套组建不了 | **转方向**(pivot,见下) |
+
+→ **pivot 只服务"凑不齐"**,不用来"成型后掉血就换阵容"。comp_viability 观测的用途是判"继续组建 / 补强 / 转方向",不是简单"掉血→转"。
+
 ## 转型(pivot,比较型信号 + 分阶段,正确性-4/5)
 
 **转型信号(比较型,删「N 回合无推进」)**:
 1. **更优 comp 涌现**:存在 comp B,`comp_score(B)` 持续 > `comp_score(target)` 超阈值且差距扩大(连续 2 回合)。
 2. **ceiling 不可达**:target 的 form_tiers 所需轮次 > 剩余轮次(typical_form_round 估算)。**已成型(form_progress=1.0)豁免** —— 不切走已完成 comp(D-33)。
-3. **保命转型**:hp < 0.75×`effective_hp_threshold`(D-18 阈值统一 + D-32 difficulty 派生;原硬编码 30=0.75×40)→ 切成型最快的 comp(低 typical_form_round)。
+3. **保命转型(仅未成型)**:hp 压力大 **且 target 未成型**(form_progress 低、凑不齐、靠它成型前会死)→ 切成型最快的 comp(低 typical_form_round)。**已成型 comp 掉血不转**(见上「掉血归因」:成型后掉血 = 装备/星级不够 → 花钱补强,不换阵容)。
 
 **转型实现(分阶段,正确性-5)**:
 - **阶段 2(当前)启发式**:转型触发 → 切 target_comp;eval 改用新 target;战术层贪心自然开始买新 comp 牌;**卖旧 comp 的 transition_chars + 非共享 core**(规则化,_bench_sell_value 已保留通用 + 接近推层,转型时旧 comp 牌不再是「接近推层」→ 可卖)。转型成本用**规则估算**(transition_chars 卖出回金 vs 新 comp 典型成型轮次),**不用多步搜索**。
