@@ -225,7 +225,7 @@ class DeployBench(SrOperation):
             # 5.1.9 avatar mouseDown:VLM/pi/CV grounding 都不稳(小目标 ~20px,HoughCircles 5/9 槽),
             # retry 试多偏移命中 avatar 圆心(CV 测 y≈center-30~50 波动;x 不明)。覆盖左上区 5 点(整局验 50% → 增覆盖)。
             _avatar_off = [(-40, -50), (-4, -30), (-25, -40), (-15, -35), (-30, -45)]
-            for _attempt in range(5):
+            for _attempt in range(len(_avatar_off)):
                 _ox, _oy = _avatar_off[_attempt]
                 _src_drag = Point(int(src.x) + _ox, int(src.y) + _oy)
                 self.ctx.controller.mouse_move(_src_drag)
@@ -249,7 +249,7 @@ class DeployBench(SrOperation):
                     break
             if not _landed:
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
-                         f' 拖3次源槽未空(avatar ~60% 成功率;bug#1 间歇 / RunLoop 多轮累积),跳过')
+                         f' 拖{len(_avatar_off)}次源槽未空(avatar ~50-60% 成功率;bug#1 间歇 / RunLoop 多轮累积),跳过')
                 chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
