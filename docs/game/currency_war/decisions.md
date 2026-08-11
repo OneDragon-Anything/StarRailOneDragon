@@ -805,4 +805,11 @@
 - **修法(defer 到 bot-idle live session)**:① live 核 overlay 类型(一种 or 多种);② screen-onboarding overlay + dismiss UI(收起/确认选择 area);③ 出战节点 detect overlay → collapse → retry 出战。substantive(screen-onboarding + op 改)但非 ①-locked(collapse dismiss)。bot 现 retry 恢复(非 breaking)。
 - **状态**:**overlay 诊断深化(dismiss UI 找到 + 复发常见 + 类型待核),修法 defer live session**。`· D-87(根因 overlay)/ D-86(trap)/ insights(出战 click)`。
 
+## D-89 (2026-08-11)【诊断·出战 overlay OCR 定型 = 祈愿试炼 trial selection(D-87 VLM 误读纠正),fix 确归 ①-phase】analyze_screen OCR match#13 trap 截图 → **overlay = 「祈愿试炼」(Wish Trial)试炼选择**(标题/指示/试炼选项/收起/确认选择 全 OCR 实证)。**D-87 VLM「选择伙伴/强化角色」是误读**。是 CW prep trial selection(选 1/N 试炼 → 确认拿奖励)→ **proper fix = ①-phase 选最佳试炼(策略)**;收起 stopgap 效果不确定(collapse vs minimize)→ 价值有限 → **确认 defer ①-phase**,retry 恢复 interim
+
+- **OCR 实证(祈愿试炼)**:overlay 标题「祈愿试炼」+「选择1个祈愿试炼,完成后可获取祈愿奖励」+ 试炼选项(「连续3场战斗无角色陷入无法战斗状态」「进行一场难度3及以上的遭遇节点战斗」等)+ 收起(x443y559)+ 确认选择(x1447y625)+ 橙提示「请选择一个祈愿试炼」+ 出战(x1783y729 可见但 action-blocked)。出现 备战 round1 level4(intermittent)。
+- **纠正 D-87 VLM 误读**:D-87 VLM 读「选择伙伴/强化角色」错;OCR 定型「祈愿试炼」(Wish Trial)。**教训**:VLM 对 CW 专名不可信(D-88 已标不确定,OCR 实证纠正)—— 画面定型优先 OCR(文字权威)。
+- **fix 确归 ①-phase**:祈愿试炼 = CW prep **trial selection**(选最佳试炼 = 策略决策,①-locked)。收起 stopgap(collapse skip)效果不确定 + ①-phase 会 proper handle → **确认 defer ①-phase**(治本:prep-rework handle 祈愿试炼 selection)。retry 恢复 interim(overlay intermittent,loop-fresh-prep 常无 overlay → 恢复)。
+- **状态**:**overlay OCR 定型(祈愿试炼)+ fix 确归 ①-phase**。诊断完整(trap→OCR→定型),为 ①-phase 备好。`· D-87(根因 overlay,VLM 误读选择伙伴)/ D-88(dismiss UI + 复发频率)/ D-86(trap)/ insights(OCR 实证 + 机制)`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
