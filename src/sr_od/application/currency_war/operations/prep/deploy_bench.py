@@ -231,7 +231,11 @@ class DeployBench(SrOperation):
                 self.ctx.controller.mouse_move(_src_drag)
                 time.sleep(0.2)
                 self.ctx.controller.drag_to(start=_src_drag, end=dst, duration=1.0, hold_time=1.0)
-                time.sleep(0.7)
+                time.sleep(0.5)
+                # 5.1.9 RunLoop 累积(2-1 0/9 疑多角色 drag 锁累积):drag 后 mouse_move 羁绊面板区(非槽)
+                # 释放光标,防 drag 锁残留致后续 drag 落空。下个角色 mouse_move(_src_drag) 重新定位。
+                self.ctx.controller.mouse_move(Point(100, 500))
+                time.sleep(0.3)
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
                     placed += 1
                     _landed = True
