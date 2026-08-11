@@ -178,6 +178,23 @@ class PerformanceTracker:
         return clamp(1.0 - trend / HP_LOSS_FULL, 0.0, 1.0)
 
 
+def star_achievement(comp: Comp, state: GameState) -> float:
+    """核心角色星级达成(0..1;review round-4 HIGH-1:限时 AV 星级=输出,高星核心角色更强)。
+
+    核心角色(``char_id in comp.core_chars``)在 bench/deployed 的 star —— 取 **bot 跟踪** star
+    (``simulate`` 维护:buy=卡星 + 3合1 升星),非 ``read_star`` 旁路(read_star 是 offline/漂移校验,
+    不进 bot 跟踪)。归一化:平均 star,1 星=0 / 2 星=0.5 / 3 星=1.0。无核心角色持有(早期未成型)→ 0。
+    """
+    if not comp.core_chars:
+        return 0.0
+    stars = [bc.star for bc in (*state.bench, *state.deployed)
+             if bc.char_id in comp.core_chars]
+    if not stars:
+        return 0.0
+    avg = sum(stars) / len(stars)
+    return clamp((avg - 1.0) / 2.0, 0.0, 1.0)
+
+
 # ===== comp_viability(评 current 已 commit comp;先验 + 观测 blend)=====
 
 def comp_viability(comp: Comp, state: GameState, ctx: ScoreContext,
@@ -189,13 +206,15 @@ def comp_viability(comp: Comp, state: GameState, ctx: ScoreContext,
 
     - obs = tracker.perf_for_comp(comp.name);None(冷启动)→ obs_weight=0,纯先验。
     - rounds_seen 增 → obs_weight 升(0.1→0.5;观测越多越信观测)。
-    - 先验 = 0.45 form + 0.30 equip + 0.25 mechanics(归一化 sum=1;不含 strength,已 commit 不看 research)。
+    - 先验 = 0.40 form + 0.25 equip + 0.20 mechanics + 0.15 star(归一化 sum=1;不含 strength,已 commit 不看 research;
+      star=核心角色星级达成,review round-4 HIGH-1 限时 AV 星级=输出;权重先验占位待 stage6 实跑校准)。
     """
     obs = tracker.perf_for_comp(comp.name)
     prior = (
-        0.45 * form_progress(comp, state)
-        + 0.30 * equip_fit(comp, state)
-        + 0.25 * mechanics_fit(comp, ctx.mechanics)
+        0.40 * form_progress(comp, state)
+        + 0.25 * equip_fit(comp, state)
+        + 0.20 * mechanics_fit(comp, ctx.mechanics)
+        + 0.15 * star_achievement(comp, state)   # review round-4 HIGH-1:限时 AV 星级=输出
     )
     if obs is None:
         return clamp(prior, 0.0, 1.0)   # 冷启动:纯先验(obs_weight=0,但 0*None 会崩 → 早返回)
