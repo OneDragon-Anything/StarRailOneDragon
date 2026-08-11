@@ -158,82 +158,217 @@ ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
 # 详 docs/game/currency_war/data/comp_library.md。form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
 
 COMP_LIBRARY: list[Comp] = [
+    # ===== S 级(版本真神,V4.4 合集 76807134)=====
     Comp(
         name="列车同行", factions=["列车同行"], core_chars=["姬子·启行", "三月七", "花火", "瓦尔特"],
         form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
         # 成型 8 人口:前台 姬子·启行+花火+瓦尔特+记忆主,后台 三月七+刻律德菈+千冶·刃+符玄/缇宝
         key_equips=["冷笑话引擎", "火力风暴潮", "高周波电锯", "掩体生成枪"],   # 输出装(非反甲;攻略明言"不需要刷反甲")
-        boss_weakness=[], mechanic_attributes=["治疗护盾"],   # 三月七护盾;重症难题(治疗/护盾削弱)克(MECHANIC counter 治疗削弱→治疗护盾)
-        shared_chars=["三月七"], typical_form_round=5,
-        # level_plan(经济统一论,task#18):前期 roll 找 core(3 费)→ 中期 level_up → 后期 roll 追星级。
+        boss_weakness=[], mechanic_attributes=["治疗护盾"],
+        shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["三月七", "符玄", "艾丝妲"],
+        typical_form_round=5,
         level_plan={
-            3: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七"],
-                         star_goals={"三月七": 2}),
+            3: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七"], star_goals={"三月七": 2}),
             4: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "花火"]),
-            5: LevelGoal("level_up"),
-            6: LevelGoal("level_up"),  # 2026-08-04:原 "roll" → 改 "level_up"(攒金升 7,解 bot 花
-                            # 光金不升级。roll 在 lv8 找 core 更合适,lv6 该先升级解锁高费刷新率)
-            7: LevelGoal("level_up"),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 2, "花火": 2}),
         },
     ),
     Comp(
-        name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
-        form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",
-        # V4.4 评级(76807134):追击 = B 级(纯后期需 9 追击)
-        shared_chars=["知更鸟"], typical_form_round=6,
+        name="命运圣杯红A", factions=["命运圣杯"], core_chars=["Archer", "远坂凛"],
+        form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):Archer 95 = S 级真神;攻略(76924524):高倍率九五核心+远坂凛+圣杯→+150%攻击+战技点
+        # ⚠️ core_chars 用图鉴规范名:"Archer" 非"红A"(OCR/char_id 匹配靠 characters.md)
+        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],
+        mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
+        shared_chars=["远坂凛", "瓦尔特"], transition_chars=["符玄", "知更鸟", "花火"],
+        typical_form_round=6,
+        level_plan={  # 4 个 5 费成型难:前期低费过渡保血 → 升 8-9 找 5 费
+            4: LevelGoal("roll", target_cost=2, target_chars=["远坂凛"]),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=5, target_chars=["Archer", "远坂凛"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["Archer"], star_goals={"Archer": 2}),
+        },
+    ),
+    # ===== A 级(版本强势,V4.4 合集 76807134)=====
+    Comp(
+        name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光"],
+        form_tiers={"欢愉": 3, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
+        # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
+        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],
+        mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "花火"],
+        transition_chars=["银狼LV.999", "爻光", "花火"], typical_form_round=6,
+        level_plan={  # 低费欢愉:前期 roll 欢愉 → 升 8-9 找杨叔
+            4: LevelGoal("roll", target_cost=1, target_chars=["绯英", "爻光"]),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=2, target_chars=["绯英"], star_goals={"绯英": 2}),
+            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特"]),
+        },
     ),
     Comp(
-        name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
-        form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",
-        # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)
-        key_equips=["反重力皮靴", "反重力皮靴"],   # 2 靴("找鞋战争");光速螺旋桨由 3 昼之半神自动获得,非 find gate
-        boss_weakness=["电视机"], mechanic_attributes=["速度依赖"],   # 电视机禁速克速度依赖
-        shared_chars=["风堇"], typical_form_round=8,
+        name="希儿量子", factions=["欢愉", "贝洛伯格"], core_chars=["希儿", "缇宝", "知更鸟", "布洛妮娅"],
+        form_tiers={"欢愉": 3, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):希儿 = A 级;量子三拉条(17173):希儿(风暴潮)+缇宝(饮料罐保生存)+知更鸟(弹射器)+布洛妮娅
+        key_equips=["火力风暴潮", "火力风暴潮"],   # ⚠️ 缇宝"饮料罐"待核规范名(非 EQUIPMENTS),暂略
+        shared_chars=["缇宝", "知更鸟", "布洛妮娅"], transition_chars=["知更鸟", "布洛妮娅", "符玄"],
+        typical_form_round=6,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["希儿"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
+            9: LevelGoal("roll", target_cost=0, target_chars=["缇宝", "知更鸟"]),
+        },
+    ),
+    Comp(
+        name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "刃"],
+        form_tiers={"巡海游侠": 3, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
+        # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
+        # V4.4 加刃提升残梦效率。前期 4 减益降敌伤过渡 → 7 级 d 找黄泉+不死途 → 上 9 补符玄杨叔
+        # ⚠️ 与 DOT队(卡芙卡持续伤害)不同,黄泉是减益/巡海游侠主派,独立
+        key_equips=["火力风暴潮", "冷笑话引擎"],
+        boss_weakness=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
+        mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
+        transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["乱破", "不死途"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("roll", target_cost=3, target_chars=["黄泉", "不死途"]),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=0, target_chars=["黄泉"], star_goals={"黄泉": 2, "不死途": 2}),
+        },
     ),
     Comp(
         name="击破流萤", factions=["击破"], core_chars=["流萤"],
         form_tiers={"击破": 6}, strength="A", form_difficulty="hard", early_power="中",
-        # V4.4 评级(76807134):击破(波提欧)= A 级(V4.4 加强);流萤/波提欧/姬子领队变体
-        mechanic_attributes=["击破"], typical_form_round=7,
+        # V4.4 评级(76807134):击破(波提欧)= A 级(V4.4 加强);攻略(76852576)
+        mechanic_attributes=["击破"], shared_chars=["波提欧"],
+        transition_chars=["波提欧", "符玄", "艾丝妲"], typical_form_round=7,
+        level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 凑击破
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=4, target_chars=["流萤", "波提欧"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["流萤"], star_goals={"流萤": 2}),
+        },
+    ),
+    Comp(
+        name="龙丹战技点", factions=["战技点", "盛会之星"], core_chars=["丹恒·饮月", "花火", "刻律德菈"],
+        form_tiers={"战技点": 6, "盛会之星": 4}, strength="A", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716):战技点主 c,6战技点+盛会+星间+量子
+        # ⚠️ 数字(6战技点/6盛会)待米游社 76987716 直读精核(本条 core/派别 🟢,阈值 🟡)
+        key_equips=[], mechanic_attributes=["战技点依赖"],   # ⚠️ 关键装备待米游社 76987716 直读精核
+        shared_chars=["花火", "刻律德菈"], transition_chars=["花火", "刻律德菈", "知更鸟"],
+        typical_form_round=7,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["花火", "刻律德菈"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
+        },
+    ),
+    Comp(
+        name="双王群攻", factions=["群攻", "昼之半神"], core_chars=["大黑塔", "景元", "风堇", "那刻夏", "罗刹"],
+        form_tiers={"群攻": 7, "昼之半神": 4}, strength="A", form_difficulty="medium", early_power="低",
+        # V4.4 评级(76807134):双王 = A 级;攻略(76985789):7群攻+4昼之半神,大黑塔+景元双 c(双王)
+        # 大黑塔 2 星后上 9 成型;备战席堆小黑塔帮升星。投资环境:昼之半神概念股/群攻邀请
+        key_equips=["电光履", "高周波电锯", "光速螺旋桨"],
+        mechanic_attributes=["群攻"], shared_chars=["风堇", "罗刹", "小黑塔"],
+        transition_chars=["风堇", "艾丝妲", "黑塔"], typical_form_round=8,
+        level_plan={  # 双 5 费双王:前期过渡 → 大黑塔 2 星后上 9
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=4, target_chars=["大黑塔", "景元"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["大黑塔"], star_goals={"大黑塔": 2}),
+        },
     ),
     Comp(
         name="贝洛伯格召唤", factions=["贝洛伯格"], core_chars=["布洛妮娅"],
         form_tiers={"贝洛伯格": 4}, strength="A", form_difficulty="medium", early_power="中",
-        mechanic_attributes=["召唤"], shared_chars=["布洛妮娅"], typical_form_round=5,
-    ),
-    Comp(
-        name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "长夜月"],
-        form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",
-        # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血
-        mechanic_attributes=["燃血"],
-        key_equips=["热血沸腾拳", "高周波电锯", "火力风暴潮"],   # meta(71465721)万敌核心装备
-        shared_chars=["风堇", "长夜月"], typical_form_round=6,
-    ),
-    Comp(
-        name="DOT队", factions=["持续伤害", "减益"], core_chars=["卡芙卡", "桑博", "黄泉"],
-        form_tiers={"持续伤害": 4, "减益": 4}, strength="B", form_difficulty="easy", early_power="低",
-        # V4.4 评级(76807134):dot(持续伤害)= B;减益(黄泉)= A 级(本 comp 含减益,黄泉是减益核心)
-        mechanic_attributes=["DoT"], typical_form_round=4,
+        mechanic_attributes=["召唤"], shared_chars=["布洛妮娅"],
+        transition_chars=["布洛妮娅", "银枝", "符玄"], typical_form_round=5,
+        level_plan={
+            4: LevelGoal("roll", target_cost=2, target_chars=["布洛妮娅"]),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["布洛妮娅"], star_goals={"布洛妮娅": 2}),
+        },
     ),
     Comp(
         name="反甲白厄", factions=["毁灭"], core_chars=["白厄"],
         form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard", early_power="低",
         key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
-        boss_weakness=["红绿灯", "酒杯怪", "琥珀王", "死龙"],   # meta:怕红绿灯 + 酒杯怪
-        mechanic_attributes=["高频低单次"], typical_form_round=7,
+        boss_weakness=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
+        mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
+        transition_chars=["白厄", "符玄", "三月七"], typical_form_round=7,
+        level_plan={
+            5: LevelGoal("roll", target_cost=3, target_chars=["白厄"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["白厄"], star_goals={"白厄": 2}),
+        },
         # ⚠️ "毁灭" 不在 FACTIONS(data gap;form_progress 返回 0,待实机 OCR 确认白厄实际羁绊)
     ),
+    # ===== B 级(强度一般,V4.4 合集 76807134)=====
     Comp(
-        name="命运圣杯红A", factions=["命运圣杯"], core_chars=["Archer", "远坂凛"],
-        form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",
-        # V4.4 评级(76807134):Archer(红A)95 = S 级真神;攻略(76924524):高倍率九五核心,加远坂凛+圣杯→+150%攻击+战技点
-        # 阵容:Archer(双电锯+风暴潮)+凛+瓦尔特+开拓者·记忆 + 4战技点(花火/刻律)+刃(2减益)+缇宝/符玄/知更鸟
-        # ⚠️ core_chars 必须用图鉴规范名(characters.md,OCR/char_id 匹配靠它):"Archer" 非"红A"
-        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],   # 攻略:"双电锯+风暴潮"(通用 find 装;命运改件由圣杯祈愿自动给,非 find gate)
-        mechanic_attributes=["高倍率单核"], typical_form_round=6,
+        name="狼尊欢愉", factions=["星核猎手", "欢愉"], core_chars=["银狼LV.999", "爻光"],
+        form_tiers={"欢愉": 3, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783):欢愉狼尊炮,保血用(一阶段奖励关前后稳血线)
+        # 也作绯英欢愉的早期过渡 c(上 8 后踢掉换主角)
+        key_equips=[], mechanic_attributes=["欢愉叠层"],
+        shared_chars=["爻光", "花火"], transition_chars=["爻光", "花火", "符玄"], typical_form_round=5,
+        level_plan={
+            4: LevelGoal("roll", target_cost=2, target_chars=["银狼LV.999", "爻光"]),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["银狼LV.999"], star_goals={"银狼LV.999": 2}),
+        },
+    ),
+    Comp(
+        name="昼神阿雅", factions=["昼之半神"], core_chars=["阿格莱雅", "风堇", "昔涟"],
+        form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",
+        # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)
+        key_equips=["反重力皮靴", "反重力皮靴"],
+        boss_weakness=["电视机"], mechanic_attributes=["速度依赖"],
+        shared_chars=["风堇", "昔涟"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"], typical_form_round=8,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["阿格莱雅", "风堇"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
+        },
+    ),
+    Comp(
+        name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
+        form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",
+        # V4.4 评级(76807134):追击 = B 级(纯后期需 9 追击,76883466)
+        shared_chars=["知更鸟"], transition_chars=["青雀", "符玄", "艾丝妲"], typical_form_round=6,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["青雀"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=3, target_chars=["青雀", "知更鸟"], star_goals={"青雀": 2}),
+        },
+    ),
+    Comp(
+        name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "长夜月"],
+        form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
+        mechanic_attributes=["燃血"],
+        key_equips=["热血沸腾拳", "高周波电锯", "火力风暴潮"],
+        shared_chars=["风堇", "长夜月"], transition_chars=["长夜月", "符玄", "风堇"], typical_form_round=6,
+        level_plan={
+            5: LevelGoal("roll", target_cost=2, target_chars=["万敌", "长夜月"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["万敌"], star_goals={"万敌": 2}),
+        },
+    ),
+    Comp(
+        name="DOT队", factions=["持续伤害", "减益"], core_chars=["卡芙卡", "桑博"],
+        form_tiers={"持续伤害": 4, "减益": 2}, strength="B", form_difficulty="easy", early_power="低",
+        # V4.4 评级(76807134):dot = B 级;持续伤害(卡芙卡/桑博)P1 强/P2 乏力/P3 需转;低费过渡保血权威(77026641)
+        # ⚠️ 黄泉减益已拆独立(见上),本 comp 只含 DoT(卡芙卡/桑博),减益 2 层是副带
+        mechanic_attributes=["DoT"], shared_chars=["桑博"],
+        transition_chars=["桑博", "卡芙卡", "艾丝妲"], typical_form_round=4,
+        level_plan={  # 低费 DoT:P1 快速成型保血
+            3: LevelGoal("roll", target_cost=1, target_chars=["桑博"]),
+            4: LevelGoal("roll", target_cost=2, target_chars=["卡芙卡", "桑博"], star_goals={"桑博": 2}),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=0, target_chars=["卡芙卡"], star_goals={"卡芙卡": 2}),
+        },
     ),
 ]
 

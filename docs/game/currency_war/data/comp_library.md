@@ -1,10 +1,9 @@
-# 货币战争 COMP_LIBRARY · 起步阵容 roster(V4.4,2026-08-03)
+# 货币战争 COMP_LIBRARY · 阵容 roster(V4.4)
 
-> **起步 roster**,~8 套,覆盖易/中/难成型 + 各类机制(含 debuff=buff 的燃血)。
-> **依据**:strategy_research.md §10(meta 阵容横评)+ cw_data/characters.md / factions.md(米游社 V4.4)。
-> **⚠️ 全部待实玩校准**(用户:玩的次数不多,实玩增强了解)。`strength`/`form_difficulty`/`core_chars`/`form_tiers` 是起步估值,实机/replay 迭代。
-> **`level_plan`(成型路线)留空** —— 按用户选的 B,等建库时填(每个 comp 的等级→该做什么)。
-> **邪道非必需**(用户 2026-08-03):不标"邪道 A8 专项",物质分解液/反甲等只是可选强阵容/强装之一。
+> ⚠️ **权威源 = `src/sr_od/application/currency_war/cw_comps.py::COMP_LIBRARY`**(15 套,V4.4 米游社合集 76807134 评级 + 各 comp 攻略;`level_plan`/`transition_chars`/`shared_chars` 已填)。本 doc 是早期起草(8 套,2026-08-03),**以代码为准**;下列 roster 表仅作早期参考,新增 6 套(绯英欢愉/希儿量子/黄泉减益/龙丹战技点/双王群攻/狼尊欢愉)+ level_plan 填充见代码。
+> **依据**:米游社 V4.4 合集(76807134:S 姬子·启行/红A;A 绯英/希儿/黄泉/波提欧/饮月/双王;B 狼尊/阿雅/追击/银枝/dot/万敌)+ 各 comp 攻略 + 开局过渡(77037489)。
+> **⚠️ 待实玩校准**:`strength`/`form_difficulty`/`form_tiers`/`level_plan target_cost` 是 V4.4 估值,实机/replay 迭代;部分新角色(爻光/绯英/大黑塔 等)roster 已建模,个别(小黑塔 shared)待补。
+> **邪道非必需**:不标"邪道 A8 专项",物质分解液/反甲等只是可选强阵容/强装之一。
 
 ## 字段说明
 - `factions`:核心阵营组合(查 cw_data/factions.md 31 羁绊)
