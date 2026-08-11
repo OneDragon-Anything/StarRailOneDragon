@@ -17,7 +17,7 @@
 - **一个文件只注册一个策略**(多真实策略取首个);``STRATEGY_ID`` 唯一性强校验(重复报错,指明首注册位)。
 - 无 ``_factory.py`` / ``_const.py`` 配对(元数据全类属性,§11.3.1)→ 实例化 ``cls()``(无参)。
 
-设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md`` §11.5;决策见 。
+设计见 ``docs/develop/currency_war/strategy/11_strategy_plugin.md`` §11.5;决策见 。
 """
 from __future__ import annotations
 

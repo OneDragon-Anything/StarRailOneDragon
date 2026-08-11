@@ -5,7 +5,7 @@
 战略层(阶段 2,A2):从「reactive 加深领先」升级到「围绕目标阵容 commit + 转型 + 巨星」。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
-数据与设计依据(详 ``docs/game/currency_war/strategy/03_comp_planning.md`` +
+数据与设计依据(详 ``docs/develop/currency_war/strategy/03_comp_planning.md`` +
 ``10_battle_and_enemies.md`` + ``docs/game/currency_war/data/comp_library.md``):
 - ``COMP_LIBRARY``:起步 roster(~8 套,覆盖易/中/难成型 + 各机制,含 debuff=buff 的燃血)。
   依据 strategy_research §10(meta 横评)+ docs/game/currency_war/data/characters.md / factions.md(米游社 V4.4)。

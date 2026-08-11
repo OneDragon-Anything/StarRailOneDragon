@@ -255,7 +255,7 @@ def effective_hp_threshold(state: GameState, config) -> int:
 
     向后兼容:selected_difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
     前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
-    (决策见 docs/game/currency_war/decisions.md )。detection 接线(难度确认屏 OCR →
+    (决策见 docs/develop/currency_war/decisions/INDEX.md )。detection 接线(难度确认屏 OCR →
     state.selected_difficulty)是后续 game 接线任务;本函数 + GameState.selected_difficulty 是其离线地基。
     """
     diff = (getattr(state, "selected_difficulty", "") or "").strip()

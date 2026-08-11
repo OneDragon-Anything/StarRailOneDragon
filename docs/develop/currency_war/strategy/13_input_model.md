@@ -2,7 +2,7 @@
 
 > 总见 [README](README.md)。本文:策略拿到的「入参」= **完整的局内信息**,分两半 —— **观测态 `GameState`**(本局画面/状态快照,OCR 填)+ **游戏参考数据**(全量注册表,策略可查)。原则一句话:**信息层只管完整、准确地提供;用不用是策略层的事**。
 >
-> **why 见** [`decisions.md` D-70](../decisions.md)。本文只讲 what(字段/语义/来源/接线状态)。相关:[05 数据接线](05_data_wiring.md)(`GameState` 怎么被 OCR 填)、[11 策略插件](11_strategy_plugin.md)(`CwStrategy` 钩子收 `state`)、[10 战斗反馈](10_battle_and_enemies.md)(观测日志 `PerformanceTracker`)。
+> **why 见** [`decisions.md` D-70](../decisions/INDEX.md)。本文只讲 what(字段/语义/来源/接线状态)。相关:[05 数据接线](05_data_wiring.md)(`GameState` 怎么被 OCR 填)、[11 策略插件](11_strategy_plugin.md)(`CwStrategy` 钩子收 `state`)、[10 战斗反馈](10_battle_and_enemies.md)(观测日志 `PerformanceTracker`)。
 
 ---
 
@@ -235,7 +235,7 @@
 
 ## 13.11 现状代码级 gap(已建模但坏掉的,2026-08-08 审计)
 
-> §13.2 标 🟡「已建模但 OCR 没接」。审计发现 bench/deployed 更严重:**已建模但 bot 跟踪逻辑坏** → 字段有值却是错的 → 比没接更危险(策略拿假信号当真)。决策见 [`decisions.md`](../decisions.md) D-127。
+> §13.2 标 🟡「已建模但 OCR 没接」。审计发现 bench/deployed 更严重:**已建模但 bot 跟踪逻辑坏** → 字段有值却是错的 → 比没接更危险(策略拿假信号当真)。决策见 [`decisions.md`](../decisions/INDEX.md) D-127。
 
 bench/deployed 的实现级 bug(**非** OCR 缺失,是 bot 自跟踪逻辑错):
 

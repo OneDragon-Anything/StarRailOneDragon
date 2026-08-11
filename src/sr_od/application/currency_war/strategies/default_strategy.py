@@ -9,7 +9,7 @@
 阶段 2(Phase 2,后续)会把 ``cw_decisions``+``cw_comps`` 逻辑迁进本类方法、权重转类常量、删模块
 函数;接口在阶段 1 已冻结,阶段 2 是纯内部重构 + 测试须保绿。
 
-设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md`` §11.6;决策见 。
+设计见 ``docs/develop/currency_war/strategy/11_strategy_plugin.md`` §11.6;决策见 。
 """
 from __future__ import annotations
 

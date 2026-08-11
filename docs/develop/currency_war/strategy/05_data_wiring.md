@@ -59,12 +59,12 @@ battle_loop 检测「备战」画面
 | 表 | 内容 | 状态 |
 |---|---|---|
 | FACTIONS(31 羁绊) | 名+类别+tiers+效果 | ✅ cw_factions.py(赛季级 meta,改代码+测试;或抽 yml,见 README 分层)|
-| 角色花名册(74) | 名+命途+费用+阵营+流派 | ✅ ../data/characters.md(待接 char→阵营/费用查询)|
+| 角色花名册(74) | 名+命途+费用+阵营+流派 | ✅ ../../../game/currency_war/data/characters.md(待接 char→阵营/费用查询)|
 | 投资策略/环境白名单 | 名+优先级 | ✅ config T0 子集(可扩)|
 | **COMP_LIBRARY** | 阵容库 | ❌ 待建(A2)|
 | SHOP_REFRESH_TABLE | 费用刷新概率 | ❌ 待补(A4)|
 | boss_counter | boss→回避阵营 | ✅ 基础(config)|
-| 装备图鉴(~130) | 名+效果+合成 | ✅ ../data/equipment.md |
+| 装备图鉴(~130) | 名+效果+合成 | ✅ ../../../game/currency_war/data/equipment.md |
 | 遭遇词缀表 | 词缀+对策 | ❌ 待建(research+实机)|
 
 ## 接线状态

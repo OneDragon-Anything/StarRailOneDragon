@@ -79,7 +79,7 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 | 状态对账/动作验证 | 数据(A6) | ❌ 阶段 4 |
 
 ## 当前状态(2026-08-03)
-**已实现+提交**:战术层内核 + review r1(44 条修)+ A1(蒙特卡洛 D 牌)+ A3(阶段键控)+ **阶段 2 战略层(cw_comps 阵容库/comp_score/select_comp/转型/巨星 + cw_performance 观测反馈 PerformanceTracker/comp_viability/死局 + cw_telemetry 决策迹采集)**。78 测试绿。百科数据全量(米游社 V4.4,../data/)。
+**已实现+提交**:战术层内核 + review r1(44 条修)+ A1(蒙特卡洛 D 牌)+ A3(阶段键控)+ **阶段 2 战略层(cw_comps 阵容库/comp_score/select_comp/转型/巨星 + cw_performance 观测反馈 PerformanceTracker/comp_viability/死局 + cw_telemetry 决策迹采集)**。78 测试绿。百科数据全量(米游社 V4.4,../../../game/currency_war/data/)。
 **方案**:strategy_plan/ 11 篇(本 README + 01-10),经 review r1-r4 方案(~75 findings)打磨 + 2026-08-03 观测驱动哲学修订。
 
 ## 实施阶段(总览,详 06)

@@ -16,7 +16,7 @@ class LevelGoal:
 
 @dataclass
 class Comp:
-    name: str                    # "巡击青雀"/"昼神阿雅轮椅"/"贝洛伯格召唤"/"万敌单C"(roster 见 ../data/comp_library.md)
+    name: str                    # "巡击青雀"/"昼神阿雅轮椅"/"贝洛伯格召唤"/"万敌单C"(roster 见 ../../../game/currency_war/data/comp_library.md)
     factions: list[str]          # 核心阵营组合 ["仙舟","追击"]
     core_chars: list[str]        # 核心角色(名)["青雀","知更鸟","昔涟"]
     form_tiers: dict[str,int]    # 成型 tier 目标 {"仙舟":7,"追击":5}

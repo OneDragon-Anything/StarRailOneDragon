@@ -66,7 +66,7 @@ cw_factions.py 硬编码 31 羁绊(赛季级 meta),与"config 可热更"原则�
 - **R2-13 全回合 mock 模拟器(med,高 ROI 早发现战略层 bug)**:阶段 2 加 mock run simulator(敌人 HP 衰减 + 随机发牌 + 每回合 plan)→ 跑 N 局断言胜率/成型率/无死锁。比 replay harness(5.5 需游戏)更早可用,非游戏端到端验证战略层。
 - **meta-run 阶段(09)**:阶段 -1(优势布局 preconditioning,需游戏)+ 阶段 6+(钻钞 farming 元循环:超频刷钻→喂优势布局→标准 A8)。【凹开局重开(原阶段 4.5)已删 —— 策略够好该能克服任何开局】
 - **R2-14 app 级 circuit breaker(med)**:04 的"多次失败→跳过"是单笔级;加 app 级熔断(连续 K 回合 state 不变/画面未切/OCR 全失败 → abandon run + 告警,防死循环烧时间)。
-- **R2-6 全量事件图鉴(med)**:../data/investment_envs(92)+ strategies(268)做成 ranked yml,decide_event 查全量(当前 ~30 白名单,无命中乱选 idx 0)。
+- **R2-6 全量事件图鉴(med)**:../../../game/currency_war/data/investment_envs(92)+ strategies(268)做成 ranked yml,decide_event 查全量(当前 ~30 白名单,无命中乱选 idx 0)。
 - **R2-16 LockShop(low-med)**:cw_state 加 LockShop action(shop 有下回合才买得起的 key 牌时锁住,省自动刷新)。
 
 ## round 3 补充(根本盲点:P0/P1/P2)

@@ -2,7 +2,7 @@
 
 > 总见 [README](README.md)。本文:把货币战争的「决策大脑」抽象成**可替换的 `CwStrategy`** + **自动发现机制(对标 app 插件)** + **每局会话状态 `StrategySession`**,服务两个目标:**① 用户自写策略、用自己的打法玩货币战争;② 社区策略比赛**。
 >
-> **why 见** [`decisions.md` D-34](../decisions.md)。本文只讲 what(接口/结构/接线/交付路径)。
+> **why 见** [`decisions.md` D-34](../decisions/INDEX.md)。本文只讲 what(接口/结构/接线/交付路径)。
 > 相关:[01 架构](01_architecture.md)(三层:数据→战术→战略,本机制把战术+战略层决策统一收口到一个可替换对象)、[02 eval+搜索](02_eval_search.md)、[05 数据接线](05_data_wiring.md)(GameState 单一真相源)、[06 实施阶段](06_phases.md)(replay harness 5.5 与本文比赛评分共用)。
 
 ---

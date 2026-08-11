@@ -128,4 +128,4 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **node_type band 不稳**:顶部标签 band 偶把非当前节点(如 reward)或 shop 开启态漏读;仅 battle/boss 稳,其余节点类型待多子态实机核全。
 - **费用字段 OCR 不可行**:见上「不可行」;静态估是对的,别建/修 area、别接线 cost reader。
 - **streak / enemy_difficulty**:实图读不到(streak 全 None;difficulty stylized 常空);待核实显示条件 / 改 digit-CV。
-- 策略接法详 `docs/game/currency_war/strategy/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。
+- 策略接法详 `docs/develop/currency_war/strategy/`;reader 详 `cw_observation.py`;identity 详 `cw_identity_obs.py`。

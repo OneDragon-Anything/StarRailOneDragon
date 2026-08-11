@@ -6,8 +6,8 @@
 换对象 = 换打法,不动框架。内置具现 ``DefaultCwStrategy``(``strategies/default_strategy.py``)
 = 今天打法(薄委托既有模块函数,P1 零行为变化)。
 
-设计见 ``docs/game/currency_war/strategy/11_strategy_plugin.md``;决策见
-``docs/game/currency_war/decisions.md`` 。本模块**纯逻辑**:所有钩子只吃
+设计见 ``docs/develop/currency_war/strategy/11_strategy_plugin.md``;决策见
+``docs/develop/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
 ``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 

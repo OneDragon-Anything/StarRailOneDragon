@@ -14,7 +14,7 @@
 
 **原则**:一切**持久化/跨局状态**(花钻钞、改优势布局、改玩家存档类)默认 opt-in(不碰);局内状态(买/deploy/升/D 牌)才默认自动。防 bot 破坏玩家在游戏里的长期投入。
 
-**数据**:优势布局图鉴(../data/advantage_layouts.md bwiki 版,米游社待校准)+ 钻钞数(OCR)。**需游戏**(且需 `manage_meta_run=true`)。
+**数据**:优势布局图鉴(../../../game/currency_war/data/advantage_layouts.md bwiki 版,米游社待校准)+ 钻钞数(OCR)。**需游戏**(且需 `manage_meta_run=true`)。
 **阶段**:06 加「阶段 -1:优势布局 preconditioning」(pre-run,需游戏 + manage_meta_run 开)。
 
 ## R2-3 游戏自带"攻略"推荐(版本无关 ground truth)— high
@@ -47,7 +47,7 @@
 - decide_advantage_layout 逻辑(选最优组合):**非游戏**(纯逻辑 + mock 测)。
 
 ## 测试(纯逻辑)
-- decide_advantage_layout:优先战力增幅布局(势力削弱/投资经验/钻石闪耀等,详 ../data/advantage_layouts.md)。
+- decide_advantage_layout:优先战力增幅布局(势力削弱/投资经验/钻石闪耀等,详 ../../../game/currency_war/data/advantage_layouts.md)。
 - select_comp 攻略先验:game_recommended_comp 给定时优先它(version 过期时)。
 
 ## 阶段(06 加)
