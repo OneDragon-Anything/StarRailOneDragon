@@ -48,5 +48,9 @@
 ## 后果(占位待校准)
 
 - **权重先验占位**(0.15 star / 0.40 form / 0.25 equip / 0.20 mech),**stage6 实跑校准**(客观指标 round/HP/胜负 驱动);值只在代码,文档写语义 + 指常量名。
-- **star 可信度边界**:star_achievement 用 bot 跟踪 star(simulate 维护 buy 卡星 + 3合1)。⚠️ **投资策略给的高星卡**(如「星变」1费变3星 / 「读博深造」变3星)若 `simulate` / `ShopCard.star` 路径没设 star,bot 跟踪漏(当 1 星)→ star_achievement 低估。待验 simulate 高星卡路径(若漏,补 simulate 设 star,非改 star_achievement)。
+- **star 可信度边界(2026-08-11 验完)**:star_achievement 用 bot 跟踪 star。调研确认:
+  - bot 跟踪 star 来源 = buy(`ShopCard.star=1`,`cw_observation:403`)+ 3合1(`cw_state:231` simulate +1)。
+  - **投资策略/巨星给的高星卡 bot 不模拟**(`decide_event:766` / `select_megastar:848` 只选策略/绑定角色,游戏自动给卡;bot 不跟踪给卡效果)→ bot 跟踪 star 漂移(漏这些高星卡,star_achievement 低估)。
+  - **接受局限**:star_achievement 反映主升星路径(buy 卡星 + 3合1 玩家主动合);投资策略高星卡漂移被 **obs blend 部分纠**(`perf_for_comp` 实际掉血反映真实强度)+ 长期靠 `identify_slots`/`read_star` 旁路校验(offline/漂移恢复,设计上不进 bot 跟踪避免双写冲突)。
+  - **不补 simulate**:投资策略效果 216 条各异 + bot 选策略时不知具体给哪张卡,模拟给卡 star 不切实;漂移是 bot 跟踪层固有问题(动作推演不含游戏自动事件),非 star_achievement 特有。
 - comp_viability 冷启动(无核心持有)star=0,prior 较旧(0.625 vs 0.725)—— 早期未成型本就该低,合理。
