@@ -73,7 +73,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - bench/deployed 角色身份(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位(前排/后排/备战栏)→ SIFT 对 `character_avatar` 脸近景库 → 规范名。脸近景库对备战半身立绘强命中;与 bot 跟踪(buy/deploy 推演)互补,作离线重建 / 漂移恢复旁路(不进 read_game_state)。
 
 **未接(需图标库 或 bot 跟踪)**:
-- `Unit.equips`(角色身上装备,纯图标)、`active_strategies`(右面板图标列 ~x1797-1918)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)。
+- `Unit.equips`(角色身上装备,纯图标)、`active_strategies`(右面板图标列 ~x1797-1918)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)、**投资环境效果**(按钮-投资环境 overlay,策略 input;live 验 2026-08-11)。
 
 ## 识别快照
 
@@ -99,7 +99,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **automation 用途**:装备数据(名/类型/属性/效果/合成)的 ground truth 确认源(对照代码注册表 `cw_equipment_data`);**非自动化主路径**(装备穿戴走 drag,见装备区)。
 - **命中**:screen「货币战争-备战」is_precise=True(装备详情-合成公式 conf 0.9997 + 备战标识-购买经验)。fixture:`equip_detail_stepbystep.webp`(步步生花/进阶装备,2026-08-10)。
 
-### 5. 商店刷新概率表(弹窗子态)— `screens/货币战争-备战/shop_refresh_odds.webp`
+### 5. 商店刷新概率表(弹窗子态)— `screens/货币战争-商店刷新概率表/shop_refresh_odds.webp`
 
 - **何时出现**:备战 shop 开启态,点商店面板底部百分比条(y≈375)→ 弹 modal「商店刷新概率」表(半透明遮罩盖备战)。
 - **状态流转**:备战 shop 开 →[点底部百分比条]→ 刷新概率表弹窗 →[右上角 × ~1502,258 关闭]→ 回备战 shop 开。**出口**:×(VLM grounding 确认);表外无递归交互(纯展示 + 关闭)。
@@ -117,7 +117,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
   | Lv.10 | 5% | 10% | 20% | 40% | 25% |
 
 - **automation 用途**:`cw_shop_odds.REFRESH_PROB` 已落此表(D-91)= A4 牌池模型 / `_refresh_expected_delta` D牌蒙特卡洛 的 p(level,cost) 权威源。bot 无需运行时读(常量在代码内)。
-- **识别**:弹窗盖备战 id_mark;`screens=[]`(未建独立 screen_info)。fixture:`shop_refresh_odds.webp`。
+- **识别**:**独立 screen_info `货币战争-商店刷新概率表`**(盖备战 id_mark → 按 §3.5 建独立;id_mark=`标识-刷新概率表`「商店刷新概率」标题,test_id_mark 过)。bot 不自动化(纯展示)。
 
 ## 备注 / 待查
 
