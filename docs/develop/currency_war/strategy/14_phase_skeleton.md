@@ -121,7 +121,7 @@ class NodeGoal:
 | 杠杆 | 状态 | 落点 |
 |---|---|---|
 | 攒 50 吃满息 | ✅ | `INTEREST_WEIGHT=4` + `_maybe_sell_for_interest` |
-| 保连胜 > 吃息 | 🟡 read_streak 已读,economy 未消费 | streak 接线(上) |
+| 保连胜 > 吃息 | ✅ economy 消费 streak magnitude(2026-08-11,结算「连胜×N」前缀=方向 → economy 对称档位金) | C 杠杆 3(方向驱 plan:保连胜 vs fold,R2-4b)待做 |
 | 连败 fold | 🟡 `STREAK_FOLD_HP=50` 待实现 | 02 R2-4b |
 | 奖励关白嫖 | 🟡 node_plan 标奖励关 + `_refresh_cap` 收紧 | — |
 | 牌池稀释 | 🟡 A4 牌池消耗追踪 | `POOL_COPIES_PER_CARD` 已有(D-93) |
@@ -194,7 +194,7 @@ class NodeGoal:
 
 **纯逻辑(可现在做)**:
 1. **升级费用表实机核**(B/C 前置):图鉴补权威值(`LEVEL_UP_COST_TABLE` 现粗估 ±20%)→ node_plan 金门控准。🔴 先做。
-2. **node_plan 编码**(B):`NodeGoal` + `get_node_goal` + `plan()` gate + `_DEFAULT_NODE_PLAN`(替代纯 `_expected_level` 等级级目标)。
+2. **node_plan 编码**(B):`NodeGoal` + `get_node_goal` + `plan()` gate + `_DEFAULT_NODE_PLAN`(替代纯 `_expected_level` 等级级目标)。✅ **core done(2026-08-11)**:7 条节点规则(P1 saving/interest/hold、P2 level、P3 allin)+ plan() target_level gate + _maybe_sell_for_interest allin/level 跳卖息。**剩余**:spend_mode→economy_score 权重(§2.2,与 _phase_weights 重叠需统一)+ danger_d(卡 OCR)。
 3. **streak 接线**(C,**有序**):① 先胜负语义核(read_streak 正负号);② 通过后 economy_score 消费 state.streak(未核前只 magnitude 档位不带方向)。
 4. **牌池稀释 + 商店保底**(C):A4 牌池消耗追踪 + `_refresh_expected_delta` 纳入保底。
 

@@ -23,3 +23,4 @@
 | [0094](0094-strategy-merge-single-source.md) | 策略三轴重设计与 14 重复 → 合并入 14 + 删 15 | accepted | 2026-08-11 | 单一源(防双源漂移),重设计前先 grep 现有文档 |
 | [0095](0095-strategy-design-round1-av-correction.md) | 策略方案定型轮 1(限时 AV / 掉血归因 / commit 渐进 / COMP 扩充) | accepted | 2026-08-11 | review HIGH + 用户玩法修正折进设计;限时=行动值 AV |
 | [0096](0096-optionality-vs-commit-reconciliation.md) | optionality/α(t) 与 commit 不矛盾(管不同决策:eval vs pivot) | accepted | 2026-08-11 | optionality 限定通用角色(≥2 comp);α 在 eval、commit 在 pivot,正交 |
+| [0097](0097-strategy-impl-wiring-nodeplan-transition-streak.md) | 策略实现接线轮(node_plan / evaluate α-blend 接法 / transition_tempo / streak 杠杆 / A4.3 牌池) | accepted | 2026-08-11 | 14 §2 node_plan 落地 + 0096 α-blend 接 evaluate + round-4 过渡羁绊 + 结算 streak magnitude 进 economy + 0091 表采 D 牌 |
