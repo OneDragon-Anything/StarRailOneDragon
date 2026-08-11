@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
+from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
@@ -58,6 +59,10 @@ CATEGORY_WEIGHT: dict[str, float] = {"combat": 10.0, "economy": 6.0, "support": 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。
+# streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):auto-chess
+# 连胜/连败都给档位金(对称,取 magnitude;方向用于 plan 行为 —— 保连胜 vs fold,留 R2-4b)。
+STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,阶段 6 实玩校准)
+STREAK_CAP: int = 5                   # streak 经济封顶档(连胜/连败金一般 ≤5 档)
 LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
 # (level benefit+3 < interest loss-6 → 不升)→ 卡 lv5-6 → 弱 comp → plane2 死。提权让升级战胜息损 → 升7-8
 # → 高费 unit → comp value↑ → 攻坚 plane2。
@@ -181,11 +186,50 @@ def _expected_level(round_num: int, plane: int) -> int:
     return min(8 + (round_num - 1) // 3, 10)
 
 
+# ===== node_plan:节点×等级×动作节奏骨架(阵容无关;14 §2) =====
+# plan() 读 NodeGoal.target_level 作等级 gate 地板(显式,胜 _expected_level 平滑曲线 —— 关键 inflection
+# 更果断:P2 早推 7、2-5 推 8 搜核心、P3 推 9-10)。spend_mode 驱经济档位(allin 跳卖息 等)。danger_d 占位(卡 OCR)。
+@dataclass
+class NodeGoal:
+    """某节点(位面-轮)的节奏目标(阵容无关骨架;comp 只换 level_plan/core_chars 参数;14 §2.0)。"""
+    target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
+    spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
+    action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
+    danger_d: bool = False      # A8 遭遇前战力不足 → 弃息 D 保血(🔴 前置 difficulty/hp_trend OCR,占位)
+
+
+# 节点×等级×动作骨架表(14 §2.1;人玩节奏:前期攒息→中期升人口→后期 allin)。(plane, rmin, rmax) → NodeGoal。
+# 目标等级比 _expected_level 平滑曲线**更果断**(关键 inflection 提前),驱动 bot 像人一样按节奏升。
+# 值为 V4.4 先验(占位,阶段 6 实玩校准)。位面长度变(首领 1-7/1-8/1-9)用区间(rmax=9)兜。
+_DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
+    (1, 1, 3, NodeGoal(4, "saving", "rush_level")),    # P1 早期:冲 Lv4,纯升级 + 尽快向 50 金
+    (1, 4, 6, NodeGoal(6, "interest", "d_search")),    # P1 中期:Lv6,攒 50 吃满息(息引擎)
+    (1, 7, 9, NodeGoal(6, "hold")),                     # P1 后期/首领:锁血过 P1 首领
+    (2, 1, 4, NodeGoal(7, "level", "d_search")),       # P2 早期:推 Lv7(升人口)
+    (2, 5, 9, NodeGoal(8, "level", "d_search")),       # P2 中后期:2-5~2-7 升 8 搜核心
+    (3, 1, 3, NodeGoal(9, "allin", "chase_star")),     # P3 早期:上 9 找 5 费
+    (3, 4, 9, NodeGoal(10, "allin", "chase_star")),    # P3 后期/boss:上 10 + 关键卡追 3 星
+]
+
+
+def get_node_goal(plane: int, round_num: int) -> NodeGoal:
+    """查 (plane, round) → NodeGoal(先匹配 _DEFAULT_NODE_PLAN 区间 → fallback;14 §2.0)。
+
+    fallback(未匹配):target_level=_expected_level(round, plane)、spend_mode="adaptive"、
+    action_focus="rush_level"。位面长度变(首领轮次不定)→ 区间兜;plane>3 / round>9 → fallback。
+    """
+    for p, rmin, rmax, goal in _DEFAULT_NODE_PLAN:
+        if p == plane and rmin <= round_num <= rmax:
+            return goal
+    return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
+
+
 def economy_score(state: GameState, economy_mode: str) -> float:
-    """经济健康度:利息(存金到 50)+ 等级合适度。
+    """经济健康度:利息(存金到 50)+ 等级合适度 + streak 档位金(C 杠杆 2)。
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
+    streak 取 magnitude(连胜/连败都给档位金,对称);方向驱动的 plan 行为(保连胜 vs fold)留 R2-4b。
     """
     interest_tiers = min(state.gold // 10, INTEREST_THRESHOLD // 10)
     interest_val = interest_tiers * INTEREST_WEIGHT
@@ -195,7 +239,9 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     elif economy_mode == "rush_level":
         interest_val *= 0.5
         level_val *= 1.5   # rush_level:等级项加权(抢升语义 —— 落后等级更痛、领先更值),不只弱化守息
-    return interest_val + level_val
+    # streak 档位金(C 杠杆 2;fixture 核实后接线 2026-08-11):state.streak 带符号,magnitude 对称计。
+    streak_val = min(abs(state.streak or 0), STREAK_CAP) * STREAK_WEIGHT
+    return interest_val + level_val + streak_val
 
 
 def char_quality_score(state: GameState, character_priority: list[str]) -> float:
@@ -244,11 +290,14 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
 
 def evaluate(state: GameState, config, faction_priority: list[str],
              target_comp: Comp | None = None) -> float:
-    """局面总分(越高越好)= 阶段键控加权的(羁绊 + 经济 + 角色质量)+ target_progress(若有 target)。
+    """局面总分(越高越好)= 阶段键控加权的(羁绊 + 经济 + 角色质量)+ 承诺-期权混合项。
 
-    target_comp 给定时加 **战略层导向**:接近 target 成型(form_tiers)的局面加分
-    (− TARGET_PROGRESS_WEIGHT × 剩余进度)。target_comp=None(reactive)→ 行为不变(A3)。
-    **接法第一步**(03):evaluate 支持 target;plan 自动 select_comp 传 target 是下一步。
+    承诺-期权(F-3 / ADR 0096,2026-08-11 接线 ``α·commit + (1−α)·optionality``):
+    - **commit 项**(target_comp 给定):``BENCH_TARGET``(持有 target 牌,**始终奖励** —— 早期也要攒核心件)
+      + ``α·target_progress``(成型压力,早弱晚强:早期未成型是正常的,不该重罚;晚期必须成型 → 罚强)。
+    - **optionality 项**(灵活期权):``(1−α)·optionality_score`` —— 早(α 小)保期权(bench 上属 ≥2 comp
+      的通用角色),晚(α 大)让位 commit。optionality 与 commit 正交(ADR 0096:不同决策,不矛盾)。
+    target_comp=None(reactive)→ commit 项归零,只剩 optionality(早期灵活)+ 基础分(A3 向后兼容)。
     core_chars 持有不在此重复计分(char_quality 已覆盖用户 character_priority)。
     """
     ws, we, wc = _phase_weights(state.plane, state.hp,
@@ -258,13 +307,21 @@ def evaluate(state: GameState, config, faction_priority: list[str],
         + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
         + wc * char_quality_score(state, getattr(config, 'character_priority', []))
     )
+    alpha = alpha_t(state)
     if target_comp is not None:
-        score -= TARGET_PROGRESS_WEIGHT * _target_progress_remaining(state, target_comp)
-        # board 满 → 买 target 到 bench → delta>0 → bot 买 → level up 后 deploy → target 深堆。
-        # delta 中 phantom bench 抵消(plan greedy: delta = eval[after]-base; phantom 在两者 → 消,净 delta 正确)。
+        # 成型压力(剩余进度罚)随 α:早期未成型不该重罚,晚期必须成型 → 罚强(F-3 commit 项)。
+        score -= alpha * TARGET_PROGRESS_WEIGHT * _target_progress_remaining(state, target_comp)
+        # BENCH_TARGET 不随 α 缩:持有 target 牌始终奖励(早期也要攒核心件;board 满→买 target 到 bench→
+        # delta>0→bot 买→level up 后 deploy→target 深堆)。delta 中 phantom bench 抵消(plan greedy 消,净 delta 正确)。
         _bench_tgt = sum(1 for bc in state.bench
                          if bc.faction in target_comp.factions or bc.char_id in target_comp.core_chars)
         score += BENCH_TARGET_WEIGHT * _bench_tgt
+    # optionality(灵活期权,F-3):早期(α 小)保 ≥2 comp 通用角色,晚期(α→1)让位 commit。
+    # 即使 reactive(target=None)也奖 —— 未 commit 时更该保灵活(通用角色随时可并入将来 target)。
+    score += (1.0 - alpha) * OPTIONALITY_WEIGHT * optionality_score(state)
+    # 过渡羁绊(P1 保血基础设施,review round-4 HIGH-2):早期凑能打伤害的羁绊(仙舟/狼狩/dot/列车/贝洛伯格)
+    # 稳血到成型(限时 AV 下前期有输出不超时);fades as commit(α→1)。board 阵营数 OCR → 真信号现成。
+    score += (1.0 - alpha) * transition_tempo_score(state)
     return score
 
 
@@ -360,14 +417,17 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
 # ===== A1:蒙特卡洛 D 牌(刷新商店期望值)=====
 
 def _sample_cost(level: int, rng: random.Random) -> int:
-    """按等级采费用(高等级高费概率高;粗估,实机校准刷新概率表后替换)。"""
-    if level < 5:
-        pool = [1, 1, 1, 2, 2, 3]
-    elif level < 8:
-        pool = [1, 2, 2, 3, 3, 4]
-    else:
-        pool = [1, 2, 3, 3, 4, 4, 5]
-    return rng.choice(pool)
+    """按等级采费用(REFRESH_PROB 权威刷新概率表,D-91 实机 OCR;替旧手估 pool,A4.3)。
+
+    D 牌蒙特卡洛用:采样 cost 必须贴合真实刷新概率(低级不出 5 费),否则 D 牌估值偏差。
+    无数据(Lv<4 纯 1 费 / 越界)→ 1 费。
+    """
+    probs = REFRESH_PROB.get(level)
+    if not probs:
+        return 1
+    costs = list(probs.keys())
+    weights = list(probs.values())
+    return rng.choices(costs, weights=weights, k=1)[0]
 
 
 def _sample_shop(state: GameState, faction_priority: list[str], rng: random.Random,
@@ -481,9 +541,10 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 升级条件:够钱 + (level_plan 说 level_up **或** 落后期望等级 `_expected_level`)。
     # → 永远到不了 5+(level_up 等级)→ 卡低等级 → telemetry 6 局全「升0次」(gold 到 74 也不升)。
     # 「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。每轮 ≤1 级。
-    _exp_lv = _expected_level(cur.round_num, cur.plane)
+    # node_plan(14 §2):目标等级用 NodeGoal.target_level(节点级,关键 inflection 更果断)替 _expected_level 曲线。
+    _target_lv = get_node_goal(cur.plane, cur.round_num).target_level
     if (cur.level < 10 and cur.gold >= _lv_cost
-            and ((_goal is not None and _goal.action == "level_up") or cur.level < _exp_lv)):
+            and ((_goal is not None and _goal.action == "level_up") or cur.level < _target_lv)):
         actions.append(LevelUp(cost=_lv_cost))
         cur = simulate(cur, actions[-1])
 
@@ -529,9 +590,10 @@ def _best_improving_action(
     _goal = _resolve_level_goal(state, target_comp)
     _lv_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)         # 升下一级金价
     # 想升 + 还没够钱 → 抑制散牌买/刷,攒金。否则 gate 永远付不起(bot 花光金不攒,lv4 gold12 实测)。
+    # node_plan(14 §2):目标等级用 NodeGoal.target_level(节点级)替 _expected_level 曲线。
     _want_level = (state.level < 10 and (
         (_goal is not None and _goal.action == "level_up")
-        or state.level < _expected_level(state.round_num, state.plane)))
+        or state.level < get_node_goal(state.plane, state.round_num).target_level))
     _saving_for_level = _want_level and state.gold < _lv_cost
     # D-14(2026-08-09,4th 自审 + 经济诊断):_saving_for_level **不再**被 _board_strong 门控。
     # 旧门控(板弱 form_progress<COMMIT_FRAC → 不攒级 → 花买/刷)致 chicken-egg:tier-2 弱板→不攒级→永不升→
@@ -663,7 +725,11 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     """凑整吃息:卖出能跨一个 10 倍数(+1 档息)的非关键 bench 牌(循环,最多 3 张)。"""
     if state.gold >= INTEREST_THRESHOLD or not state.bench:
         return
-    if getattr(config, 'economy_mode', 'adaptive') == "rush_level":
+    # node_plan(14 §2.2):节点 spend_mode 花光成型(allin,P3)/ 升人口(level,P2)/ 抢升(rush_level)
+    # 档位不囤息(卖息与节奏相悖)。
+    _econ = getattr(config, 'economy_mode', 'adaptive')
+    _spend = get_node_goal(state.plane, state.round_num).spend_mode
+    if _econ == "rush_level" or _spend in ("allin", "level"):
         return
     cur = state
     for _ in range(3):
@@ -941,3 +1007,21 @@ def optionality_score(state: GameState) -> float:
         if bc.char_id and char_comps.get(bc.char_id, 0) >= 2:
             score += OPTIONALITY_PER_CHAR
     return score
+
+
+# 过渡羁绊(P1 能打伤害的羁绊,前期凑出保血;review round-4 HIGH-2;comps/README「开局过渡分级」人上人级)。
+# 限时 AV 下前期靠这些羁绊组合稳血到成型(DOT 慢热 P1 弱死根因之一 = 无过渡羁绊支撑)。
+# 全局过渡基础设施(非 per-comp):任何 comp 的 P1 都可拿这些羁绊 tempo。
+TRANSITION_FACTIONS: set[str] = {'仙舟', '狼狩', '持续伤害', '列车同行', '贝洛伯格'}
+TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(≥2)的过渡羁绊的早期保血分(占位,阶段 6 校准)
+
+
+def transition_tempo_score(state: GameState) -> float:
+    """P1 过渡羁绊分(review round-4 HIGH-2):board 凑出(≥2)能打伤害的过渡羁绊 → 早期保血(限时 AV 不超时)。
+
+    人上人级 = 2 个能打伤害羁绊组合(仙舟/狼狩/dot/列车/贝洛伯格),稳血到成型。最多奖 2 个(更多边际
+    递减);与 optionality 同(1−α)早期强调 —— 早期保期权/过渡,fades as commit(α→1)让位 target。
+    board 阵营数 OCR 读 → 真信号现成。**非与 synergy 双重堆**:只奖过渡羁绊(早期 tempo),flat-per-羁绊。
+    """
+    n = sum(1 for f in TRANSITION_FACTIONS if state.board.get(f, 0) >= 2)
+    return min(n, 2) * TRANSITION_TEMPO_BONUS
