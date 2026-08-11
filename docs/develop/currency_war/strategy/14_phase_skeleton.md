@@ -153,6 +153,8 @@ class NodeGoal:
 
 **A 轴深度改动(灵活阵容)前置未就绪 → 拆后做(D-94)**:① optionality α(t) 集成进 evaluate(需 P0 实跑校准,02 L903 延后原因);② COMP_LIBRARY 多羁绊改(6+3 / 5+4 双羁绊,非单阵营堆;待 D-17 版本核实锁 V4.4 vs V3.7);③ 每套 comp `level_plan` 填全(现 9 套只列车填);④ ENV affinity 表(投资环境→comp 偏好);⑤ `transition_chars`。前置(P0 游戏验证 + 版本核实)就绪后单独设计。
 
+**⚠️ α(t)/optionality 与 commit 正交(ADR 0096,解 review round-2 HIGH-1)**:α(t)/optionality 在 **eval**(奖 bench 上属 ≥2 comp 的**通用角色**,非 off-direction 核心);commit 在 **maybe_pivot**(target 粘性防振荡)。两者管不同决策,softened prefilter 放过的通用角色正是 optionality 奖的 → 一致,不矛盾。
+
 ## §5 T1(A8 顶级)阵容的节奏要点(引 comp_library.md,不重复评级)
 
 > 评级(strength / form_difficulty)单一源在 `data/comp_library.md`(V4.4 🟢 米游社 `76807134`,推翻 V3.7);本文**不重复评级**(避免双源漂移),只列 comp_library 没有的「核心节奏要点」(本骨架视角 = level_plan / 成型标志)。

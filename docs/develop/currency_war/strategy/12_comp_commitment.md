@@ -16,7 +16,7 @@
 ### F1. target 该 track board 已积累(commit to what you've built)
 当前 select_comp 按 comp_score(含 form_progress)选,但 gap 小 → flit。**commit 机制**:一旦某 comp 的 form_progress 越过 commit 阈值(如 0.4),target 强粘(只更强信号才转)—— 不让微小的 score 波动切走已积累的 comp。语义:「**方向定了 X**(commit target),但**组建是渐进的** —— 拿到核心后还要好几回合凑配件,**中途靠过渡阵容 / 通用辅助支撑**(不掉血),**不是立刻死堆单一阵营**」(2026-08-11 用户:commit 不狭隘)。
 
-⚠️ **防散放宽(2026-08-11 用户)**:D-106 prefilter(commit 后拒 off-target)组建期要**放过过渡阵容 / 通用辅助**(不属 target 阵营、但是组建期必需的支撑/打工),只拒"别的成型方向"的牌,别一刀切拒所有非 target —— 否则组建期板太纯太弱、过渡撑不住血。
+⚠️ **防散放宽(2026-08-11 用户)**:D-106 prefilter(commit 后拒 off-target)组建期要**放过过渡阵容 / 通用辅助**(不属 target 阵营、但是组建期必需的支撑/打工),只拒"别的成型方向"的牌,别一刀切拒所有非 target —— 否则组建期板太纯太弱、过渡撑不住血。commit 管 **maybe_pivot**(target 粘性防振荡),与 eval 里的 optionality/α(t)正交不矛盾(ADR 0096)。
 
 (与 D-59「易 comp 降阈」互补:D-59 偏好转易成型 comp;F1 偏好**不弃已成型 comp**。)
 

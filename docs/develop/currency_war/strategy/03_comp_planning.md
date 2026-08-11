@@ -158,7 +158,7 @@ COMP_LIBRARY 加 version_tag;README checklist:版本更新 → 重抓 cw_data �
   - `comp_prior(candidate_comp, state, plane)` → **select_comp 评分 candidate 用**(纯先验 4 项:成型进度 + 核心角色持有 + 关键装备 + research meta 强度,**无观测**)。
   - `comp_viability(current_comp, state, plane, tracker)` → **pivot / eval 评 current target 用**(先验 + `perf_on_node_type` 观测)。
   - 职责清晰:candidate 无观测(没打过),current 有观测(打过几关)。
-- **F-3 optionality 时间衰减(HIGH)**:eval 中 target_progress 与 optionality 用 α(t) 平衡(详 02 round4 F-3),早灵活晚承诺。select_comp **备选几套(N≈2-3)直到核心到来**(2026-08-03 用户:几套备选不影响经济);核心到了(commit 信号 α 升)收敛到 **commit 1 + pivot 1**。
+- **F-3 optionality 时间衰减(HIGH)**:eval 中 target_progress 与 optionality 用 α(t) 平衡(详 02 round4 F-3),早灵活晚承诺。select_comp **备选几套(N≈2-3)直到核心到来**(2026-08-03 用户:几套备选不影响经济);核心到了(commit 信号 α 升)收敛到 **commit 1 + pivot 1**。optionality 限定**通用角色(≥2 comp)**,与 commit(pivot 粘性)正交不矛盾(ADR 0096)。
 - **F-13 target_progress vs optionality shared_char 双重计分(LOW)**:shared_char 同时属 target + ≥2 其他 comp。optionality 只对"非 target 的可转型路径"计分(target 贡献由 target_progress 覆盖);或声明"两个分都拿是 intended"(既推进又保灵活)。注释清楚。
 
 ## round 5 补充(2026-08-06 第二轮调研驱动;why 见 decisions D-73)
