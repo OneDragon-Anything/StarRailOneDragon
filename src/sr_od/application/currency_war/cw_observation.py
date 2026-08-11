@@ -223,6 +223,35 @@ def read_streak(ctx: SrContext, screen: MatLike) -> int | None:
     return None
 
 
+# 难度确认屏 reader(开局读本局职级;非备战屏,放本模块集中 OCR readers)
+_DIFFICULTY_CONFIRM_SCREEN: str = '货币战争-难度确认'
+
+
+def parse_selected_difficulty(texts: list[str]) -> str:
+    """难度确认屏 OCR 文字 → 本局职级(``A\\d+(-\\d+)?``,如 A8 / A5 / A8-1..A8-50)。
+
+    正则 + 全匹配过滤非职级文字(财富造物主 / 当前职级难度效果 等)。纯函数可单测。
+    无匹配 → ""(``effective_hp_threshold`` 回退默认阈值,行为不变;cw_state:253)。
+    """
+    for t in texts:
+        m = re.fullmatch(r'A(\d+)(?:-(\d+))?', t.strip())
+        if m:
+            return t.strip()
+    return ''
+
+
+def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
+    """难度确认屏 → 本局职级(``标识-当前难度职级`` area OCR → parse)。
+
+    AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
+    保血阈值调高(D-32,cw_state:253 + config.difficulty_hp_override)。读不到 → ""(回退默认)。
+    ⚠️ 接线(开局进难度确认屏时调 → 存 state.selected_difficulty)待续;本函数 = reader 就绪。
+    """
+    rect = _area_rect(ctx, '标识-当前难度职级', _DIFFICULTY_CONFIRM_SCREEN)
+    texts = [r.data for r in _ocr(ctx, screen, rect)]
+    return parse_selected_difficulty(texts)
+
+
 # last-known-good (plane, round):plane 单调递增、round 同位面内递增;过渡帧 OCR 失败时
 # 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(2026-08-04 实跑发现:
 # plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
