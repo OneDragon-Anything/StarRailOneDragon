@@ -220,6 +220,9 @@ class SrContext(OneDragonContext):
         # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
         # copy 到 session.selected_difficulty → default_strategy 填 state → effective_hp_threshold D-32;3.5.1)
         self.cw_selected_difficulty: str | None = None
+        # 敌人难度数值(简报「敌人难度N」parse_enemy_difficulty 读 → loop copy session.enemy_difficulty
+        # → read_game_state 填 state.enemy_difficulty;3.5.2 接线,danger_d 前置 + diagnostic)
+        self.cw_enemy_difficulty: int | None = None
 
         # 秘技相关
         self.technique_used: bool = False  # 新一轮战斗前是否已经使用秘技了
@@ -319,6 +322,7 @@ class SrContext(OneDragonContext):
         self.cw_briefing_affixes = None  # 同清(防跨账号/跨局污染)
         self.cw_briefing_bosses = None  # 同清
         self.cw_selected_difficulty = None  # 同清(3.5.1)
+        self.cw_enemy_difficulty = None  # 同清(3.5.2)
 
         from sr_od.config.game_config import GameConfig
         self.game_config: GameConfig = GameConfig(self.current_instance_idx)

@@ -102,6 +102,10 @@ class CurrencyWarRunLoop(SrOperation):
         if self.ctx.cw_selected_difficulty:
             _session.selected_difficulty = self.ctx.cw_selected_difficulty
             self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
+        # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
+        if self.ctx.cw_enemy_difficulty is not None:
+            _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
+            self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
         # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
         if self.ctx.cw_briefing_bosses:
             _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)

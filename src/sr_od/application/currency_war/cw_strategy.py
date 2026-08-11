@@ -183,6 +183,8 @@ class StrategySession:
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # default_strategy 填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""
+    # 敌人难度数值(简报「敌人难度N」读 → ctx.cw_enemy_difficulty → loop copy;read_game_state 填 state;3.5.2)
+    enemy_difficulty: int | None = None
     # 简报首领(3 位面 boss 名;loop __init__ 从 ctx.cw_briefing_bosses copy;boss_fit 输入)
     briefing_bosses: list[str] = field(default_factory=list)
     active_env: str = ""

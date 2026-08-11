@@ -75,6 +75,15 @@ class HandleBriefing(SrOperation):
             if _bosses:
                 self.ctx.cw_briefing_bosses = _bosses
                 _log.info('简报首领读得: %s', _bosses)
+        # 读敌人难度数值(简报「标识-敌人难度」→ ctx.cw_enemy_difficulty 中转 → session → state;3.5.2 接线)
+        if self.ctx.cw_enemy_difficulty is None:
+            from sr_od.application.currency_war.cw_briefing_obs import (
+                read_briefing_enemy_difficulty,
+            )
+            _diff = read_briefing_enemy_difficulty(self.ctx, screen)
+            if _diff is not None:
+                self.ctx.cw_enemy_difficulty = _diff
+                _log.info('简报敌人难度读得: %s', _diff)
 
         # ③ 点「下一步」离开简报(下一画面由上层 advance 调度;新局经位面过场叠层到投资环境)。
         _click = self.round_by_find_and_click_area(

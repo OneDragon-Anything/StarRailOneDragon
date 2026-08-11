@@ -57,6 +57,31 @@ def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     return [name for name, _ in read_affixes_with_pos(ctx, screen)]
 
 
+def parse_enemy_difficulty(texts: list[str]) -> int | None:
+    """简报「敌人难度N」OCR → int(N;如 ``敌人难度108`` → 108;纯函数可单测)。
+
+    整局基础敌人难度(影响 boss 血量 base×1.052^难度;strategy/13 §13.7)。正则 ``敌人难度\\s*(\\d+)``
+    过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(state.enemy_difficulty 回退 None;3.5.2)。
+    """
+    for t in texts:
+        m = re.search(r'敌人难度\s*(\d+)', t)
+        if m:
+            v = int(m.group(1))
+            if 0 <= v <= 300:
+                return v
+    return None
+
+
+def read_briefing_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
+    """简报「标识-敌人难度」area OCR → parse_enemy_difficulty → int(3.5.2)。
+
+    读不到 / area 缺 → None(state.enemy_difficulty 回退 None 或 session 值)。
+    """
+    rect = _area_rect(ctx, '标识-敌人难度', BRIEFING_SCREEN)
+    texts = [r.data for r in _ocr(ctx, screen, rect)]
+    return parse_enemy_difficulty(texts)
+
+
 def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     """简报首领行 → 3 个位面 boss 名列表(每局固定 3 boss,如 增熵能源集团/火线动力机甲/银甲武装公司)。
 

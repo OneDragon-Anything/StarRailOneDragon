@@ -473,7 +473,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
             state.level = _last_lv
         _match.session.last_level_obs = state.level
     state.xp_progress = read_xp_progress(ctx, screen)
-    state.enemy_difficulty = read_enemy_difficulty(ctx, screen)
+    # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
+    _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
+    state.enemy_difficulty = _ed if _ed is not None else read_enemy_difficulty(ctx, screen)
     state.level_up_cost = read_level_up_cost(ctx, screen)
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
