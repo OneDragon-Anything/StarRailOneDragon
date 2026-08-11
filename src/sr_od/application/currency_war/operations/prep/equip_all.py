@@ -67,6 +67,31 @@ def _empty_slots(occupied: dict[int, list[str]], count: int) -> list[int]:
     return [i for i in range(1, count + 1) if i not in occupied]
 
 
+def _prioritize_wearable(
+    wearable: list[tuple[str, tuple[int, int]]],
+    key_equips: list[str] | None,
+) -> list[tuple[str, tuple[int, int]]]:
+    """穿戴候选按 target_comp.key_equips 优先排序(命脉件在前,其余原序)。
+
+    comp 驱动穿戴(替 naive ``wearable[0]``):EquipAll 优先穿 target comp 的关键装备
+    (如反甲流需 3 以牙还牙甲 / 阿雅需 2 反重力皮靴),而非 read_equips 返回的第一个。无 target /
+    无 key_equips → 原序(等价旧行为)。``key_equips`` 可含重复 → 按 multiplicity 消费(命中的重复件也优先,
+    但不超额)。与 ``equip_fit`` 同源(``comp.key_equips`` 出发,不设通用 equip_score;决策见 ADR-0101)。
+    """
+    if not key_equips:
+        return wearable
+    remaining = list(key_equips)
+    prioritized: list[tuple[str, tuple[int, int]]] = []
+    rest: list[tuple[str, tuple[int, int]]] = []
+    for name, pos in wearable:
+        if name in remaining:
+            prioritized.append((name, pos))
+            remaining.remove(name)   # 消费一个 multiplicity(重复件不超额优先)
+        else:
+            rest.append((name, pos))
+    return prioritized + rest
+
+
 class EquipAll(SrOperation):
     """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
@@ -192,10 +217,17 @@ class EquipAll(SrOperation):
             if not wearable:
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break
+            # comp 驱动穿戴(D-XX 接线,ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
+            _match = self.ctx.cw_match
+            _key_equips = (_match.session.target_comp.key_equips
+                           if (_match is not None and _match.session is not None
+                               and _match.session.target_comp is not None) else None)
+            wearable = _prioritize_wearable(wearable, _key_equips)
             name, (cx, cy) = wearable[0]
+            _tag = 'key_equip优先' if (_key_equips and name in _key_equips) else '通用'
             target = self.FRONT_AVATARS[slot_idx - 1]
-            log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽]',
-                     name, cx, cy, slot_idx, target.x, target.y)
+            log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽] [%s]',
+                     name, cx, cy, slot_idx, target.x, target.y, _tag)
             landed, diff = self._drag_equip(Point(cx, cy), target)
             if landed:
                 equipped += 1
