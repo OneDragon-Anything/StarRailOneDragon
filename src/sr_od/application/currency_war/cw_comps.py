@@ -244,9 +244,9 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="击破流萤", factions=["击破"], core_chars=["流萤"],
-        form_tiers={"击破": 6}, strength="A", form_difficulty="hard", early_power="中",
-        # V4.4 评级(76807134):击破(波提欧)= A 级(V4.4 加强);攻略(76852576)
+        name="击破流萤", factions=["击破", "巡海游侠"], core_chars=["流萤", "波提欧"],
+        form_tiers={"击破": 6, "巡海游侠": 4}, strength="A", form_difficulty="hard", early_power="中",
+        # V4.4 评级(76807134):击破(波提欧)= A 级(V4.4 加强);攻略(76852576 直读):6击破+4游侠(全两星+波提欧前台=300%增幅)
         mechanic_attributes=["击破"], shared_chars=["波提欧"],
         transition_chars=["波提欧", "符玄", "艾丝妲"], typical_form_round=7,
         level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 凑击破
@@ -290,14 +290,20 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="贝洛伯格召唤", factions=["贝洛伯格"], core_chars=["布洛妮娅"],
-        form_tiers={"贝洛伯格": 4}, strength="A", form_difficulty="medium", early_power="中",
-        mechanic_attributes=["召唤"], shared_chars=["布洛妮娅"],
-        transition_chars=["布洛妮娅", "银枝", "符玄"], typical_form_round=5,
+        name="银枝群攻", factions=["贝洛伯格", "群攻"], core_chars=["银枝", "翡翠", "知更鸟"],
+        form_tiers={"贝洛伯格": 4, "群攻": 3}, strength="B", form_difficulty="medium", early_power="低",
+        # V4.4 评级(76807134):银枝 = B 级;攻略(77006068 直读纠正):V4.4 离能量,"轮椅通拐"(杨叔/主角/缇宝/花火/千冶刃+符玄)抬
+        # 银枝(风暴潮+冷笑话)+翡翠(3群攻)+鸟(拉条加攻增伤+10%幸运);必须3星银枝;适合对群,对单大降
+        # ⚠️ 旧"贝洛伯格召唤"(布洛妮娅 core)误:布洛妮娅是通用辅助非 comp lead;V4.4 贝洛伯格代表=银枝
+        key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻"],
+        boss_weakness=["单体长战"], shared_chars=["翡翠", "知更鸟"],
+        transition_chars=["椒丘", "星期日", "刃"], typical_form_round=7,
         level_plan={
-            4: LevelGoal("roll", target_cost=2, target_chars=["布洛妮娅"]),
-            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=0, target_chars=["布洛妮娅"], star_goals={"布洛妮娅": 2}),
+            5: LevelGoal("roll", target_cost=3, target_chars=["银枝"]),
+            6: LevelGoal("roll", target_cost=3, target_chars=["银枝"], star_goals={"银枝": 2}),
+            7: LevelGoal("roll", target_cost=3, target_chars=["银枝"], star_goals={"银枝": 2}),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=0, target_chars=["翡翠", "知更鸟"]),
         },
     ),
     Comp(
@@ -316,10 +322,10 @@ COMP_LIBRARY: list[Comp] = [
     ),
     # ===== B 级(强度一般,V4.4 合集 76807134)=====
     Comp(
-        name="狼尊欢愉", factions=["星核猎手", "欢愉"], core_chars=["银狼LV.999", "爻光"],
-        form_tiers={"欢愉": 3, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
-        # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783):欢愉狼尊炮,保血用(一阶段奖励关前后稳血线)
-        # 也作绯英欢愉的早期过渡 c(上 8 后踢掉换主角)
+        name="狼尊欢愉", factions=["星核猎手", "欢愉"], core_chars=["银狼LV.999", "爻光", "刃"],
+        form_tiers={"欢愉": 5, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
+        # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
+        # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         key_equips=[], mechanic_attributes=["欢愉叠层"],
         shared_chars=["爻光", "花火"], transition_chars=["爻光", "花火", "符玄"], typical_form_round=5,
         level_plan={
@@ -344,7 +350,9 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="巡击青雀", factions=["仙舟", "追击"], core_chars=["青雀", "知更鸟"],
         form_tiers={"仙舟": 5, "追击": 3}, strength="B", form_difficulty="medium", early_power="低",
-        # V4.4 评级(76807134):追击 = B 级(纯后期需 9 追击,76883466)
+        # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击,见 comps/追击飞霄.md);本 comp 是仙舟+追击 hybrid,
+        # 作 test fixture(test_cw_comps/decisions/telemetry 多处用其仙洲+追击结构)。⚠️ 待 test 更新后替为追击飞霄(V4.4 对齐)
+        key_equips=["火力风暴潮", "火力风暴潮"], mechanic_attributes=["追击"],
         shared_chars=["知更鸟"], transition_chars=["青雀", "符玄", "艾丝妲"], typical_form_round=6,
         level_plan={
             5: LevelGoal("roll", target_cost=2, target_chars=["青雀"]),
@@ -357,7 +365,8 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         mechanic_attributes=["燃血"],
-        key_equips=["热血沸腾拳", "高周波电锯", "火力风暴潮"],
+        key_equips=["火力风暴潮", "绝对热量", "热血沸腾拳"],   # 攻略(77056698):万敌风暴潮+绝对热量+热血沸腾拳;吃装备
+        boss_weakness=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月"], transition_chars=["长夜月", "符玄", "风堇"], typical_form_round=6,
         level_plan={
             5: LevelGoal("roll", target_cost=2, target_chars=["万敌", "长夜月"]),
@@ -366,11 +375,13 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="DOT队", factions=["持续伤害", "减益"], core_chars=["卡芙卡", "桑博"],
-        form_tiers={"持续伤害": 4, "减益": 2}, strength="B", form_difficulty="easy", early_power="低",
-        # V4.4 评级(76807134):dot = B 级;持续伤害(卡芙卡/桑博)P1 强/P2 乏力/P3 需转;低费过渡保血权威(77026641)
-        # ⚠️ 黄泉减益已拆独立(见上),本 comp 只含 DoT(卡芙卡/桑博),减益 2 层是副带
-        mechanic_attributes=["DoT"], shared_chars=["桑博"],
+        name="DOT队", factions=["持续伤害", "星核猎手"], core_chars=["卡芙卡", "黑天鹅", "刃", "桑博"],
+        form_tiers={"持续伤害": 4, "星核猎手": 2}, strength="B", form_difficulty="easy", early_power="低",
+        # V4.4 评级(76807134):dot = B 级;攻略(77026641 直读):V4.4 刃加入→卡芙卡回归(刃比普通狼频繁触星核猎手额外战技)
+        # 卡芙卡3风暴潮(dot不吃幸运)+黑天鹅(鹅,2dot)+刃(2星核猎手)+刻律(复制战技连动)+鸟;需自己卡芙卡
+        # ⚠️ 黄泉减益已拆独立(见上);本 comp=DoT 主派(卡芙卡/鹅/刃/桑博),P1强/P2乏力/P3需转,低费过渡保血权威
+        key_equips=["火力风暴潮", "火力风暴潮", "火力风暴潮"], mechanic_attributes=["DoT"],
+        shared_chars=["桑博", "刃", "黑天鹅"],
         transition_chars=["桑博", "卡芙卡", "艾丝妲"], typical_form_round=4,
         level_plan={  # 低费 DoT:P1 快速成型保血
             3: LevelGoal("roll", target_cost=1, target_chars=["桑博"]),
