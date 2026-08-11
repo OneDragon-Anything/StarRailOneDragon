@@ -14,7 +14,7 @@
 **V4.4 池参数**(实测,推翻旧"统一9张"推测):
 - a = 18 张/种(3费实测;1/2/4/5费待核,placeholder 同 18)
 - v = 同费用种类数(1费14/2费13/3费13/4费12/5费9,from characters.md)
-- p(level, cost) = 刷新概率(7级3费=0.4 实测;其余 placeholder 待折叠栏/实机核)
+- p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
 供 ``cw_decisions._refresh_expected_delta`` 的 D牌蒙特卡洛用(替代 ``_sample_shop`` 粗近似):
 当期望刷新次数 × 刷新成本 < 买到目标牌的收益时才值得 D。
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.cw_chars import chars_by_cost
+from sr_od.application.currency_war.cw_chars import CHARACTERS, chars_by_cost
 
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
@@ -33,16 +33,20 @@ POOL_COPIES_PER_CARD: dict[int, int] = {1: 18, 2: 18, 3: 18, 4: 18, 5: 18}
 # 注:3费=13 与 D牌期望表(77124902)实测点吻合;其余费用随注册表,实机校准
 DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}
 
-# 刷新概率 p[level][cost](V4.4;7级3费=0.4 实测点,其余 placeholder 待 77074467 折叠栏/实机核)
-# 粗规律:随等级升,高费概率提升(低级低费主导、高级高费主导)。
+# 刷新概率 p[level][cost](V4.4 权威,2026-08-11 游戏内"商店刷新概率"表实机 OCR;D-91)
+# 入口:备战-商店面板-点底部百分比条(y≈375)弹完整 Lv1-10 表。每行概率和=100%。
+# 规律:随等级升,高费概率提升(低级 1 费主导 → 高级 4/5 费主导);1-3 级纯 1 费,4 级起混 2/3 费,7 级起出 5 费。
 REFRESH_PROB: dict[int, dict[int, float]] = {
-    4: {1: 1.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0},
-    5: {1: 0.85, 2: 0.15, 3: 0.0, 4: 0.0, 5: 0.0},
-    6: {1: 0.65, 2: 0.30, 3: 0.05, 4: 0.0, 5: 0.0},
-    7: {1: 0.45, 2: 0.35, 3: 0.40, 4: 0.0, 5: 0.0},   # 7级3费=0.4 实测(注:原表概率和可能>1,待核归一)
-    8: {1: 0.25, 2: 0.30, 3: 0.45, 4: 0.15, 5: 0.0},
-    9: {1: 0.15, 2: 0.20, 3: 0.30, 4: 0.40, 5: 0.15},
-    10: {1: 0.10, 2: 0.15, 3: 0.20, 4: 0.35, 5: 0.45},
+    1: {1: 1.0},
+    2: {1: 1.0},
+    3: {1: 1.0},
+    4: {1: 0.65, 2: 0.25, 3: 0.10},
+    5: {1: 0.45, 2: 0.33, 3: 0.20, 4: 0.02},
+    6: {1: 0.30, 2: 0.40, 3: 0.25, 4: 0.05},
+    7: {1: 0.19, 2: 0.30, 3: 0.40, 4: 0.10, 5: 0.01},
+    8: {1: 0.18, 2: 0.25, 3: 0.32, 4: 0.22, 5: 0.03},
+    9: {1: 0.15, 2: 0.20, 3: 0.25, 4: 0.30, 5: 0.10},
+    10: {1: 0.05, 2: 0.10, 3: 0.20, 4: 0.40, 5: 0.25},
 }
 
 
@@ -125,3 +129,21 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
     # target_star 对需 k 张:2星=3、3星=9(货币战争 3 合 1)
     k = {2: 3, 3: 9}.get(target_star, 3)
     return expected_refreshes(p, v, a, non_target_taken, k, owned)
+
+
+def acquirability_factor(core_chars: list[str], level: int) -> float:
+    """comp 核心角色在当前等级的理论可凑性因子(替 select_comp 的 shop_supply / shop_history 观察法)。
+
+    用 refresh_prob(level, char.cost) 查每个核心角色的理论刷新概率,取**最低**(阵容受最稀卡限制)。
+    转成乘法因子:p=0 → ×0.5(当前等级刷不出该费);p=1 → ×1.2(满概率);p=0.4 → ×0.78。
+    比观察法(看本回合/历史刷没刷到)有理论依据:刷新概率独立(用户点破)→ 观察无预测力。
+    """
+    probs: list[float] = []
+    for name in core_chars:
+        c = CHARACTERS.get(name)
+        if c:
+            probs.append(refresh_prob(level, c.cost))
+    if not probs:
+        return 1.0
+    min_p = min(probs)
+    return 0.5 + 0.7 * min_p

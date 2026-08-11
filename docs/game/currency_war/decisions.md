@@ -822,4 +822,14 @@
 - **验证**:`test_maybe_pivot_better_comp_emerges` fail→pass;回归 `test_plan_t97_committed_refuses_offtarget_when_no_target_in_shop` state 更新(board 给 target 投入,反映"committed 需有投入"新语义);全 CW suite **268 passed**;ruff clean。
 - **状态**:**已修(test 全绿)**。`· D-9(carryover maybe_pivot guard)/ D-12(观测回路修,振荡根因)/ D-88 进度(① 废弃,策略可动)/ 焦点段缺口 1`。
 
+## D-91 (2026-08-11)【数据·商店刷新概率完整表实机 OCR 落地 REFRESH_PROB(推翻 placeholder)+ 概率修正留 A4.7 待办】备战 shop 开 → 点底部百分比条(y≈375)弹 modal「商店刷新概率」表(完整 Lv1-10 × 1-5费,OCR + VLM 双源复核一致,每行和=100%)→ 落 `cw_shop_odds.REFRESH_PROB`(代码单一源)+ 备战 doc 子态5 + economy_research §1。**推翻旧 placeholder**(旧 REFRESH_PROB[4]={1:1.0} 等;实为 Lv.4=65/25/10)。**基础表;角色/效果改概率留 A4.7**(等数据采集)
+
+- **数据来源(实机 OCR + VLM 双源)**:备战-商店面板底部 5 个百分比条**可点击**(点弹完整概率表子态,非纯显示 —— 之前误以为常驻显示)。modal 弹窗「商店刷新概率」:Lv1-10 × 1-5费,右上角 × 关闭(~1502,258,VLM grounding),半透明遮罩,表外无递归交互(纯展示叶子子态)。OCR 读表 + VLM 逐格复核**完全一致**(Lv.1-3=100%、Lv.4=65/25/10、Lv.5=45/33/20/2、Lv.6=30/40/25/5、Lv.7=19/30/40/10/1、Lv.8=18/25/32/22/3、Lv.9=15/20/25/30/10、Lv.10=5/10/20/40/25),每行和=100%。7级3费=0.4 与旧实测点(economy_research §1)吻合。
+- **推翻 placeholder**:旧 REFRESH_PROB 是粗近似占位(仅 7级3费=0.4 一个实测点 + 其余推测),Lv.4 还误写 {1:1.0}(从底部条 OCR 误推 —— 底部条值 ≠ 理论概率,见下)。实机表纠正:每行精确,和=100%。
+- **底部条含义待查**:备战 level 4 底部条 OCR=`■100% ■0%…` 但弹窗表 Lv.4=65/25/10,**不一致** → 底部条非理论概率(疑当前轮实际刷出分布 / OCR 误读进度条图形);**点开弹窗表才是权威**。备战 doc 标待查。
+- **概率修正(角色/效果)留 A4.7**:部分角色/装备/效果改商店刷新概率(如命运卜者·黑鹅 5费↑,economy_research §1)→ REFRESH_PROB 现是**基础表**(无修正),实际刷新概率 = 基础 × 修正因子。修正源数据(哪些角色/效果改 + 改多少)待游戏数据全采集后处理(A4.7,用户指示 2026-08-11)。
+- **落点**:`cw_shop_odds.REFRESH_PROB`(值单一源)+ 备战 doc「可交互元素/识别快照子态5」+ economy_research §1(指向代码不重贴,避免双源)+ screen_info 加 `按钮-刷新概率表` area(入口 [945,360,1415,410])+ fixture `screens/货币战争-备战/shop_refresh_odds.webp`。
+- **验证**:ruff clean;test_cw_shop_odds 10 passed(`expected_refreshes_for_card` level=7 cost=3 用 REFRESH_PROB[7][3]=0.4 新旧一致,不受影响)。
+- **状态**:**基础表已落(A4.1 已过);概率修正 A4.7 待数据采集**。`· economy_research §1(机制)/ A4 进度(A4.1 已过 / A4.7 待办)/ 备战 doc 子态5`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->
