@@ -1,4 +1,4 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+# 已接入 battle_loop:255(2026-08-08 实测:bot 卡此 overlay 68min 后接入检测 + HandleWishTrial 点卡+确认+验关;出战不再被 overlay 卡,D-87~89 闭环)。整局遇祈愿(随机,命运圣杯/特定节点)live 再验。选试炼策略 naive 第1张(策略层 TODO:OCR objective+reward 选)。
 
 """货币战争 祈愿试炼 overlay 处理 op(事件长尾:2026-08-08 实跑发现,bot 卡此 overlay 68min)。
 
