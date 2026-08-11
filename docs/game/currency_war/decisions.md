@@ -812,4 +812,14 @@
 - **fix 确归 ①-phase**:祈愿试炼 = CW prep **trial selection**(选最佳试炼 = 策略决策,①-locked)。收起 stopgap(collapse skip)效果不确定 + ①-phase 会 proper handle → **确认 defer ①-phase**(治本:prep-rework handle 祈愿试炼 selection)。retry 恢复 interim(overlay intermittent,loop-fresh-prep 常无 overlay → 恢复)。
 - **状态**:**overlay OCR 定型(祈愿试炼)+ fix 确归 ①-phase**。诊断完整(trap→OCR→定型),为 ①-phase 备好。`· D-87(根因 overlay,VLM 误读选择伙伴)/ D-88(dismiss UI + 复发频率)/ D-86(trap)/ insights(OCR 实证 + 机制)`。
 
+## D-90 (2026-08-11)【修复·D-9 commit guard 误杀转型信号 → 轮数兜底加 form_progress>0(test fail 修)】`test_maybe_pivot_better_comp_emerges` 一直 fail(HEAD 红根因之一)。根因:`target_committed` 的 `COMMIT_ROUND=2` 轮数兜底让**零投入 target** 也算 commit → maybe_pivot 信号1(更优 comp 涌现)被 `_committed and not _losing` 绝对跳过 → comp 成型后转不动(board 全倒在别的 comp 上也不能转)。修:`target_committed` 轮数兜底加 `form_progress>0`(零投入不算 commit,该转)
+
+- **故障机制**:`target_committed = form_progress≥0.4 OR (累计轮≥2)`。test 场景 target=反甲白厄、board={列车同行:4}、round=2 → form_progress(反甲白厄)=0 < 0.4,但 `(0*9+2)≥2` → True → committed → maybe_pivot L652 `if _committed and not _losing:` 跳过信号1 → return None → test fail。
+- **备选(为什么没选)**:① **去掉 COMMIT_ROUND 兜底** → spread board(form_progress 永不达 0.4)永不 commit → cw_decisions prefilter(拒 off-target)失防 + 信号1 永远跑 → 散板振荡回归。② **调大 COMMIT_ROUND(2→N)** → round N 仍锁,治标。③ **guard 抬阈(commit 时更高 PIVOT_GAP)** → D-9 注释明说 `COMMIT_STICK_FACTOR×1.5(0.15)压不住 board 抖动` → 试过不行。三都留漏洞。
+- **修法(选)**:`target_committed = form_progress≥0.4 OR (累计轮≥COMMIT_ROUND AND form_progress>0)`。**精确建模 commit 语义 = 「已成型 或 轮数够且对 target 有投入」**。零投入(board 全在别处)不算 commit → 该 pivot;spread(有零星投入但散)轮数兜底仍锁 → 防振荡。最小改动(一行条件)+ 修 test + 保 spread 防护。
+- **前提验证**:D-9 加绝对锁防的振荡(r1-7 流萤↔r1-8 DOT队)根因是 buy 用漂移 tracking → D-12 已修观测回路(纠 tracking 漂);但 board 因 buy 自然抖动仍会让 comp_score 抖 → commit guard(防 board 抖动级 churn)仍需要,**故不去兜底只加 form_progress>0 条件**。
+- **关联**:清 carryover ① 废弃后策略可动的第一个 fix。D-9 carryover(maybe_pivot)清;**D-6 carryover(shop_supply 冗余)下一个**。本修也属焦点段缺口 1。
+- **验证**:`test_maybe_pivot_better_comp_emerges` fail→pass;回归 `test_plan_t97_committed_refuses_offtarget_when_no_target_in_shop` state 更新(board 给 target 投入,反映"committed 需有投入"新语义);全 CW suite **268 passed**;ruff clean。
+- **状态**:**已修(test 全绿)**。`· D-9(carryover maybe_pivot guard)/ D-12(观测回路修,振荡根因)/ D-88 进度(① 废弃,策略可动)/ 焦点段缺口 1`。
+
 <!-- 新 D-NN 条目加在这里(按时间倒序) -->

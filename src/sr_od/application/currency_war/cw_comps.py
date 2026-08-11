@@ -579,13 +579,16 @@ COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.
 
 
 def target_committed(target: Comp, state: GameState) -> bool:
-    """target 是否已 commit(form_progress≥COMMIT_FRAC 或 累计轮≥COMMIT_ROUND)。单一真相源(T#97)。
+    """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_decisions prefilter(拒 off-target)共用。
 
-    spread board 的 form_progress 永不达 COMMIT_FRAC → 靠 ``(plane-1)*9+round≥COMMIT_ROUND`` 轮数兜底
-    (仅递增不回退)。maybe_pivot(强粘)+ cw_decisions prefilter(拒 off-target)共用本判据。
+    commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
+    轮数兜底要求 form_progress>0 —— 防零投入误锁:board 全倒在别的 comp 上(target 零投入)时不应算 commit
+    (明显错配,该 pivot;修 D-9 COMMIT_ROUND=2 绝对兜底误杀信号1 → test_maybe_pivot_better_comp_emerges fail)。
+    spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
-    return (form_progress(target, state) >= COMMIT_FRAC
-            or (state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND)
+    fp = form_progress(target, state)
+    return (fp >= COMMIT_FRAC
+            or ((state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND and fp > 0))
 
 
 def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
