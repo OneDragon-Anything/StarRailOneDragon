@@ -245,7 +245,8 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
 
     AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
     保血阈值调高(D-32,cw_state:253 + config.difficulty_hp_override)。读不到 → ""(回退默认)。
-    ⚠️ 接线(开局进难度确认屏时调 → 存 state.selected_difficulty)待续;本函数 = reader 就绪。
+    接线已通(3.5.1,d841d1a1):StartCurrencyWarMatch 难度确认段调本函数 → ctx.cw_selected_difficulty
+    → battle_loop copy session → default_strategy 填 state → effective_hp_threshold D-32 激活。
     """
     rect = _area_rect(ctx, '标识-当前难度职级', _DIFFICULTY_CONFIRM_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]
