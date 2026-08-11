@@ -121,64 +121,91 @@ class DeployBench(SrOperation):
 
     def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
                               templates: AvatarTemplates | None) -> None:
-        """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽拖到一个空目标槽(前排优先,target 阵营先)→
-        CV 验「源备战槽空了」=成功。替 trial-and-error(无废拖空备战槽、无换槽试错、CV 验替 SIFT)。
-        CV 验源槽空同时覆盖 place + swap(swap 时被换下角色回 bench,源槽仍空)。
+        """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
+        空槽(target 阵营先)→ CV 验「源备战槽空了」=成功。
 
-        D-8 接身份:排序(target 先)用 SIFT ``read_bench_chars``(71 CW 立绘库可靠)读 bench 真实阵营,
-        替不完整的 ``bench_slot_map`` 跟踪。SIFT 未命中的 bench 角色 → 当 rest(照常 deploy,只不优先)。
+        **5.1.6(2026-08-12,live 观察 2)**:按 ``Character.position_pref()``(cw_chars 注册表)选排 ——
+        前台角色→前排空槽、后台/flex 角色→后排空槽;对应排满才 fallback 另一排(避免不上场)。
+        替旧「targets 一锅 pop(0) 前排优先」(不看角色属性 → 前台角色被拖后排 / 后台角色被拖前排 → 放错排
+        无效果)。flex 默认 back(``position_pref`` 语义,后排槽多)。
+
+        D-8 接身份:排序(target 先)+ position_pref(选排)都用 SIFT ``read_bench_chars`` 读 bench 身份 →
+        ``get_char`` 查注册表。SIFT 未命中的 bench 角色 → 当 rest(pref 默认 back,照常 deploy,只不优先)。
         D-10:fresh screenshot(``self.screenshot()``)看 post-sell 状态(_sell_offtarget_deployed 腾出的空槽)。
+        CV 验源槽空同时覆盖 place + swap(swap 时被换下角色回 bench,源槽仍空)。
         """
         scr = self.screenshot()
         bench_occ = [i for i, c in enumerate(bench) if slot_occupied(scr, int(c.x), int(c.y))]
-        targets = ([(0, i) for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
-                   + [(1, i) for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))])
-        if not bench_occ or not targets:
-            log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} empty_targets={len(targets)}'
+        front_empty = [i for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
+        back_empty = [i for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))]
+        if not bench_occ or (not front_empty and not back_empty):
+            log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} front空={len(front_empty)} back空={len(back_empty)}'
                      f' → {"无 bench 角色" if not bench_occ else "板满无空槽(swap 待身份)"}')
             return
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
         _tgt = (set(_sess.target_comp.factions)
                 if (_sess is not None and _sess.target_comp is not None) else set())
-        # D-8:bench 身份走 SIFT(read_bench_chars,71 CW 立绘库可靠)→ 真实羁绊(阵营 ∪ 流派)→ target 先。
-        # 替 bench_slot_map(shop.py pixel-diff 跟踪,不完整 → target 角色认不出 → 永远当 rest → 不集中)。
+        # D-8:bench 身份走 SIFT(read_bench_chars,71 CW 立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
+        # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
+        # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。
         _bench_id: dict[int, set[str]] = {}   # bench_idx(0-based) → 该角色羁绊集合
-        if templates is not None and _tgt:
+        _bench_pos: dict[int, str] = {}       # bench_idx(0-based) → "front"/"back"(角色 position_pref)
+        if templates is not None:
             for bc in read_bench_chars(self.ctx, scr, templates):
                 ch = get_char(bc.char_id) if bc.char_id else None
                 if ch is not None and 1 <= bc.slot <= len(bench):
                     _bench_id[bc.slot - 1] = set(ch.factions) | set(ch.flows)
+                    _bench_pos[bc.slot - 1] = ch.position_pref()
             log.info(f'[cw-deploy] bench 身份(SIFT):{ {i: sorted(b) for i, b in _bench_id.items()} }'
-                     f' tgt={sorted(_tgt)}')
+                     f' pos={_bench_pos} tgt={sorted(_tgt)}')
         tgt_idx, rest = [], []
         for i in bench_occ:
             _bonds = _bench_id.get(i)
             _is_tgt = bool(_bonds and _bonds & _tgt) if _tgt else False
             (tgt_idx if _is_tgt else rest).append(i)
         order = tgt_idx + rest
-        log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx} empty_targets={len(targets)}')
+        log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
+                 f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
         for bi in order:
-            if not targets:
-                break
+            # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
+            pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
+            if pref == 'front':
+                chosen, chosen_pts, fallback, fallback_pts = front_empty, front, back_empty, back
+            else:
+                chosen, chosen_pts, fallback, fallback_pts = back_empty, back, front_empty, front
+            if not chosen:
+                if not fallback:
+                    break   # 两排皆满,无槽可拖
+                chosen, chosen_pts = fallback, fallback_pts
+            ti = chosen.pop(0)
+            dst = chosen_pts[ti]
             src = bench[bi]
-            row, ti = targets.pop(0)
-            dst = (front if row == 0 else back)[ti]
+            _landed = False
+            _row_cn = '前' if chosen_pts is front else '后'
             for _attempt in range(3):
+                # bug#1 mitigation(对齐 equip_all 2f521915,live 实证 2026-08-12):drag 前先 mouse_move(src)
+                # 零移动,防 SrPcController 截图卫生把光标移角落 → drag 起点漂 → 落空。同 session equip_all
+                # (有 mouse_move)drag 穿了、deploy_bench(无)drag placed=0/4 → 差异即此 mitigation。
+                self.ctx.controller.mouse_move(src)
+                time.sleep(0.2)
                 self.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.5)
                 time.sleep(0.7)
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
                     placed += 1
+                    _landed = True
                     if _match is not None and getattr(_match, 'bench_slot_map', None):
                         _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
                         if _gone is not None:
                             del _match.bench_slot_map[_gone]
-                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1} → {"前" if row == 0 else "后"}排{ti+1} ✓ (CV 验源槽空)')
+                    _fb = ' (fallback)' if (pref == 'front') != (_row_cn == '前') else ''
+                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
+                             f' (CV 验源槽空)')
                     break
-            else:
+            if not _landed:
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1} 拖3次源槽未空(bug#1?),跳过')
-                targets.insert(0, (row, ti))   # 目标槽没占住,回收给下个角色
+                chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
     def _get_templates(self) -> AvatarTemplates | None:
