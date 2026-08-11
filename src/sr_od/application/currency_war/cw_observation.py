@@ -452,10 +452,6 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     hp 不可 OCR → 默认 100。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
-    # 临时采集钩子(备战屏 reader 标定,CLAUDE.md 方案):采 streak 语义 / node_type 子态 / difficulty 等
-    # 尚不可靠 reader 的样本(内容哈希去重,同屏只存一次)。reader 设计好后删本段(临时代码)。
-    from sr_od.application.currency_war.cw_observe import cw_shot_unique
-    cw_shot_unique(screen, 'battle_prep')
     state = GameState()
     state.gold = read_gold(ctx, screen)
     state.hp = read_hp(ctx, screen)
