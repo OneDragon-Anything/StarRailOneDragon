@@ -169,6 +169,10 @@ def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
 
 # 节点类型模板 Hu 矩缓存(module-level;``read_node_sequence`` 首调从 assets 加载)。
 _NODE_TYPE_TEMPLATES: dict | None = None
+# clean 备战帧的最少圆数门:基础行 8 槽 + invest-env 增(人身意外险+1 → 9);shop 开 / 过渡 / overlay
+# 遮挡时 HoughCircles 只检出 1-3 个。n < 此 → 非 clean 帧(reader 数据不可信:坏帧 Hu 畸变 → 假未识别),
+# 返 None 跳过等下轮重读。容许 2 漏检(8→6),排除所有观测到的坏帧(n≤3)。
+_MIN_CLEAN_CIRCLES: int = 6
 
 
 def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
@@ -180,7 +184,8 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     ``cw_node_reader.HU_DIST_UNRECOGNIZED`` → 未识别(扑满/新类型,调用方可触发采集)。
 
     ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关(见 CLAUDE.md RGB 约定)→ 直传 classify。
-    返回 None:模板未加载 / 非节点行(检测不到圆)。详 ``cw_node_reader`` 模块 docstring。
+    返回 None:模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:shop 开 / 过渡 / overlay
+    遮挡 → 坏帧 Hu 畸变不可信)。调用方遇 None 跳过,等下个 clean 备战帧重读。详 ``cw_node_reader`` docstring。
     """
     global _NODE_TYPE_TEMPLATES
     from pathlib import Path
@@ -197,8 +202,8 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
         return None
     _x0, _y0, _x1, _y1 = NODE_ROW_RECT
     _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES)
-    if not _slots:
-        return None
+    if len(_slots) < _MIN_CLEAN_CIRCLES:
+        return None  # 非 clean 备战帧(shop 开 / 过渡 / overlay 遮挡 → 圆数少);数据不可信,跳过等下轮重读
     _cur = read_node_type(ctx, screen)
     if _cur:
         for _s in _slots:

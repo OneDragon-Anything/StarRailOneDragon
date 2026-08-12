@@ -52,6 +52,7 @@ class BattlePrepCycle(SrOperation):
             from sr_od.application.currency_war.cw_observation import read_node_sequence
             _slots = read_node_sequence(self.ctx, screen)
             if not _slots:
+                log.info('[cw-prep][nodeseq] skip(模板未加载 / 非 clean 备战帧)')
                 return
             _sum = ', '.join(
                 f'{s.idx}:{s.state}:{s.node_type}' + (f'({s.hu_dist:.1f})' if s.hu_dist else '')
