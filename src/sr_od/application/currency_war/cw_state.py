@@ -20,9 +20,12 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-# 卖出回金(按星级;粗估,实机校准)。⚠️ star3=5 是占位 —— 实际应为 cost×9(1星=cost、2星=cost×3、3星=cost×9,
-# review agent 🟡 推算);A4 实现时改 cost-based sell_refund(star,cost)(需 BenchChar 带 cost),替换此表。
-SELL_VALUE: dict[int, int] = {1: 1, 2: 3, 3: 5}
+from sr_od.application.currency_war.cw_chars import CHARACTERS
+
+# 卖出回金 = 招募费(cost)× 合成倍数(economy_research.md §2)。1星=cost 🟢 BWIKI+4399 权威;
+# 2星=cost×3、3星=cost×9、4星=cost×27 🟡 推算(合成成本逻辑:该星卡基础副本数,3合1),待实机核。
+# 旧 SELL_VALUE{1:1,2:3,3:5} 占位(连 1星都没按 cost → 2-5费卡卖出全错)→ 弃,改 cost-based。
+_SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 
 
@@ -244,9 +247,24 @@ def card_cost(card: ShopCard) -> int:
     return card.cost or 3
 
 
-def sell_refund(star: int) -> int:
-    """卖出回金(按星级)。"""
-    return SELL_VALUE.get(star, 1)
+def sell_refund(star: int, cost: int) -> int:
+    """卖出回金(economy_research.md §2;用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
+
+    - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
+    - 2星 = cost×3 − 1、3星 = cost×9 − 1、4星 = cost×27 − 1(合成成本 − 1 手续费)。
+      🟡 2星:用户印象「2星少1金币」+ 修正 economy_research §2 内部矛盾(L83「2星=cost×3 即免费」
+      vs L93「2星以上不免费」→ 改 cost×3−1 = 亏1金 = 不免费,自洽)。3/4星推测同「−1 手续费」逻辑,**待实机核**。
+    """
+    refund = max(cost, 1) * _SELL_MULT.get(star, 1)
+    if star >= 2:
+        refund -= 1   # 合成手续费(2星以上卖出少1金;用户印象 + economy_research 矛盾修正;3/4星待核)
+    return max(refund, 0)
+
+
+def _bench_char_cost(bc: BenchChar) -> int:
+    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。"""
+    c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
+    return c.cost if c and c.cost else 3
 
 
 def effective_hp_threshold(state: GameState, config) -> int:
@@ -282,7 +300,7 @@ def simulate(state: GameState, action: Action) -> GameState:
     elif isinstance(action, SellBench):
         if 0 <= action.bench_idx < len(s.bench):
             sold = s.bench.pop(action.bench_idx)
-            s.gold += sell_refund(sold.star)
+            s.gold += sell_refund(sold.star, _bench_char_cost(sold))
     elif isinstance(action, LevelUp):
         if s.level < 10:  # 封顶 10 级
             s.gold -= action.cost
