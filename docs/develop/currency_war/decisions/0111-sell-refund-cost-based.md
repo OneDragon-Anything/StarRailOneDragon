@@ -41,8 +41,8 @@ Date: 2026-08-12
 - **2/3/4 星精确值待真样本**(当前 2星=cost×3−1 用户确认「少1」,3/4星推测同 −1 逻辑)。
 - **售价验证法(用户 2026-08-12 给,验通)**:**click 角色头像 → 详情面板显示「+N 出售」**(N=卖出价,
   无损,不用 drag/不真卖)。替原「mouseDown 拖起看出售区」(MCP drag 没法拖起不松手)。
-- ⚠️ **star 检测严重误判(2026-08-12 实机暴露,根本问题)**:丹恒·饮月实机 1星(click 详情 +2 = 1星 cost),
-  但 read_star(HSV 装饰误判)+ simulate tracked(_merge tracking 漂移)+ pi(数金星不稳)**三者都误判 2星**。
-  → star_achievement(comp_viability)/ _held_base_copies(acq)/ star hook 全被污染。**star 检测根本问题待修**
-  (read_star 调参验2星样本 + simulate tracking 查重复计)前,star 相关策略数据不可信。
+- ⚠️ **star 售价矛盾待客观核(2026-08-12,非武断 star 错)**:丹恒 read_star/simulate 报 2星,click 详情 pi 读
+  「+2」(似1星cost)。但 **pi 数金星/读数字都不稳**(17:50 报全1星 / 18:00 报三个2星 / +2 自相矛盾),不凭 pi
+  判 star 错。**假设 star 识别对**(用户:read_star 已验证 commit 672aa838;3合1 是全场 deployed+bench+买,simulate
+  _merge 只看 bench 有局限 → read_star 实机更准)。售价待客观 OCR 核(click 详情面板数字,非 VLM)。
 - 297 测试过(test_sell_refund_cost_based 锁数学 + test_bench_char_cost_unknown 兜底)。
