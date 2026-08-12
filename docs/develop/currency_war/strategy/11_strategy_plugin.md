@@ -360,7 +360,7 @@ if self._iter == 1:
 **各 handler(事件节点)** —— ⚠️ **P1 只 rewire 今天有 OCR 的 handler**(`decide_invest`);其余钩子在 ABC 里就位 + 默认委托,但 **handler 不动**(OCR 缺 / dispatch 已删),随阶段 5 OCR 落地再接(见 §11.3.4 各钩子 ⚠️ + §11.12)。
 
 - **P1 rewire** —— `HandleInvestStrategy`/`HandleInvestEnv`:`decide_event(names, config, stub)` → `match.strategy.decide_invest(kind, names, state, match.session, config)`。⚠️ 投资 overlay 叠在备战上时 **board 不可读**,`state.board` **传空 dict(stub)**(不取 session 旁路 —— `StrategySession` 无 last_board 字段);默认 `decide_invest` 对空 board 降级容错(现 `decide_event` 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
-- **P1 不 rewire(钩子在、默认委托、handler 维持今天盲点,随阶段 5 OCR 落地)** —— `RunSupplyNode`(补给 OCR 缺)、`RunMegastarNode`/`HandleSelectPartner`(候选 char_id OCR 缺 → 默认 idx=0 = 今天盲点)、`boss counter(boss_fit/countered_by_bosses;decide_boss_priority 已删错模型)。`RunMegastarNode`/`HandleSelectPartner` 的 bug#1 `mouse_move`+`click` 缓解是**执行层**,与策略层无关,rewire 与否都保留。
+- **P1 不 rewire(钩子在、默认委托、handler 维持今天盲点,随阶段 5 OCR 落地)** —— `RunSupplyNode`(补给 OCR 缺)、`RunMegastarNode`/`HandleSelectPartner`(候选 char_id OCR 缺 → 默认 idx=0 = 今天盲点)、`boss counter`(boss_fit/countered_by_bosses;decide_boss_priority 已删错模型)。`RunMegastarNode`/`HandleSelectPartner` 的 bug#1 `mouse_move`+`click` 缓解是**执行层**,与策略层无关,rewire 与否都保留。
 - **D-35 后 dead(不 rewire、待删)** —— `HandleEncounter`(遭遇无选项 UI;`decide_encounter` dormant)。
 
 **观测驱动回路** —— ⚠️ **今天未接线**:`battle_loop.py` 现在既不构造 `RoundOutcome`、也不调 `PerformanceTracker.record`(`cw_observation.py` 自注「PerformanceTracker 待阶段 4-5 接线」)。也就是说「每场战斗后 OCR 掉血/胜负」是**从无到有的新 OCR 工作**,不是改个调用名。
