@@ -114,13 +114,22 @@ def read_star(crop: MatLike) -> int:
     hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
     mask = cv2.inRange(hsv, _STAR_GOLD_LO, _STAR_GOLD_HI)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-    n, _labels, stats, cent = cv2.connectedComponentsWithStats(mask)
+    n_contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     count = 0
-    for i in range(1, n):
-        area = int(stats[i, cv2.CC_STAT_AREA])
-        cx, cy = cent[i]
-        # 金星:底部(yfrac>0.74)+ 中央(w/2 ± 35%)+ 面积(去噪点 40 + 去过大色块 600)
-        if cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and 40 < area < 600:
+    for c in n_contours:
+        a = cv2.contourArea(c)
+        if a <= 100:
+            continue
+        perim = cv2.arcLength(c, True)
+        M = cv2.moments(c)
+        if M['m00'] == 0:
+            continue
+        cx, cy = M['m10'] / M['m00'], M['m01'] / M['m00']
+        # 圆度 4πA/P²:金星实心五角星 ~0.57-0.65;装饰细长/不规则 <0.55(2026-08-12 立绘库验:
+        # 灵砂0.07-0.15/赛飞儿0.04-0.54/阿格莱雅0.03-0.27 装饰;金星0.57-0.65)。area100 排小装饰,
+        # 圆度>0.55 排大装饰(对新角色鲁棒:金星五角星形状固定)。
+        circ = 4 * np.pi * a / perim / perim if perim > 0 else 0
+        if cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and a < 600 and circ > 0.55:
             count += 1
     return max(count, 1)
 
