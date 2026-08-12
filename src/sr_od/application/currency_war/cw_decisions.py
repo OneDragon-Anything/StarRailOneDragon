@@ -783,7 +783,7 @@ def decide_event(options: list[str], config, state: GameState) -> PickEvent:
     return PickEvent(option_idx=best_idx, reason=f"score={best_score:.0f}")
 
 
-# ===== 遭遇节点(decide_encounter,design 08;纯逻辑骨架,handler 接线待阶段5 OCR)=====
+# ===== 遭遇节点(decide_encounter,design 08;✅ 已接 HandleEncounter:55 + read_encounter_options)=====
 
 @dataclass
 class EncounterOption:
@@ -857,7 +857,7 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
                          reason=f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty}")
 
 
-# ===== 补给节点(decide_supply,design 07/08;纯逻辑骨架,handler 接线待阶段5 OCR)=====
+# ===== 补给节点(decide_supply,design 07/08;✅ 已接 run_supply_node:56 + read_supply_options)=====
 
 # 通用装备价值(V4.4 meta 先验;**值在代码单一源,不进 strategy doc**;实玩校准)。
 # 设计原则:带钻 > 鞋(找鞋战争;速度 comp 命脉)> 电池 > 花/通用。具体值随版本。
@@ -896,7 +896,8 @@ def _equip_value(equip: str) -> int:
 
 def decide_supply(options: list[SupplyOption], state: GameState,
                   target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
-    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08;handler 待阶段5 ``read_supply_options`` 接)。
+    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node``:56 调本函数 +
+    ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。原「handler 待阶段5 接」过期(2026-08-12 核实)。
 
     决策(comp 相关 + 钻优先):
     1. **带钻**(红/蓝)→ 选它(拿到基本赢,碾压)。

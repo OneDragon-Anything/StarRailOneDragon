@@ -6,8 +6,9 @@
 (见 ``docs/game/screens/currency_war_encounter.md``):
   点卡身(选中)→ 点选择(确认),**中间不要插空白点击**(会取消选中 → 死循环)。
 
-TODO(Stage C2):接 ``cw_decisions.decide_encounter``(待实现,design 08§遭遇)按 comp 成型度 +
-  遭遇词缀选卡(避开急速制冷/正当防卫等克 comp 的),替代当前默认选左卡(难度低、稳)。
+✅ Stage C2 已接(L55):调 ``decide_encounter``(已实现,按 comp 成型度选:未成型→低难保生存 /
+  成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。原「待实现/默认选左」
+  过期已撤回。⚠️ affix 避开分支 N/A(选项 UI 不显词缀,战后才显)。
 TODO(task#20):卡身/选择坐标进 screen_info(遭遇屏 ``currency_war_encounter`` 未建模)。
 """
 import time
