@@ -9,7 +9,7 @@
 策略 = **阵容无关的骨架**(所有 T1 共用)× **阵容参数**(每 comp 填)。骨架驱动「何时升 / D / 锁 / all-in / 转」;参数告诉骨架「找谁、什么算成型」。
 
 - **骨架**(本文 §1-§3 + 02/12):等级曲线驱动 + 经济线 + 保血/保经济切换 + commit/optionality(α)+ 观测驱动反馈。
-- **参数**(03 `Comp` 数据类 / `data/comp_library.md`):`factions`/`form_tiers`/`core_chars`/`level_plan`/`key_equips`/`form_difficulty`/`boss_weakness`。
+- **参数**(03 `Comp` 数据类 / `data/comp_library.md`):`factions`/`form_tiers`/`core_chars`/`level_plan`/`key_equips`/`form_difficulty`/`countered_by_bosses`。
 
 **`level_plan` 是骨架与参数的接缝**:骨架提供通用等级曲线(§1 概率表)+ 兜底 `_DEFAULT_LEVEL_GOAL`;comp 自带 `level_plan` 覆盖(如红A「2-7 上9」、阿雅「4-5 级 D 1费」)。无 comp 走通用,有 comp 走专属。**这正是 03「经济统一论」已写的设计,本调研用概率表坐实其地基**。
 
@@ -146,7 +146,7 @@ class NodeGoal:
 - `level_plan[Lv]`(该 comp 等级→动作曲线,用 §1 概率表填)。
 - `key_equips`(反重力皮靴×2 / 以牙还牙甲×3 / 高周频电锯×2+火力风暴潮…)。
 - `form_difficulty`(easy/medium/hard,决定早期偏 comp 强度还是易成型)。
-- `boss_weakness` + `affix_synergy`(克它的 + **利它的**:正当防卫利燃血 → 遇则升权)。
+- `countered_by_bosses` + `affix_synergy`(克它的 + **利它的**:正当防卫利燃血 → 遇则升权)。
 - `transition_chars`(早期打工牌)+ `shared_chars`(转型复用)+ **通用过渡角色**(不属特定阵营、跨阵容打工 / 组建期支撑:银河学者、夜之半神打工、通用辅助知更鸟/星期日/缇宝/记忆主)。⚠️ **这三类是「灵活 + 前期存钱 + 组建期不掉血」的基础设施** —— 当前 COMP_LIBRARY `transition_chars` 全空、`shared_chars` 稀疏(review HIGH-2)→ optionality / 过渡机制没数据跑不起来。**该填 + 流派扩充调研后补全**(2026-08-11 用户)。
 
 **换 comp 只换参数,骨架不变 → 灵活支持所有 T1**(工程化解法与备选见 D-21)。

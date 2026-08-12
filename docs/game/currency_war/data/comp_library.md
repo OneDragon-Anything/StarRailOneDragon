@@ -12,7 +12,7 @@
 - `strength`:综合强度 S/A/B(版本强度,实玩校准)
 - `form_difficulty`:成型难度 easy/medium/hard(用户强调关键维度:核心牌费用/典型成型轮次/转型成本)
 - `key_equips`:关键装备(详 cw_data/equipment.md)
-- `boss_weakness` / `affix_synergy`:克这阵容的 boss / **利这阵容的词缀**(MECHANIC_SYNERGIES,debuff=buff)
+- `countered_by_bosses` / `affix_synergy`:克这阵容的 boss / **利这阵容的词缀**(MECHANIC_SYNERGIES,debuff=buff)
 - `shared_chars`:与其他 comp 共享的核心(转型可复用)
 - `transition_chars`:早期打工牌(后期卖)
 
@@ -25,7 +25,7 @@
 - strength: A(research §10:4.4 meta 顶层,4 人成型稳定通关 A850)
 - form_difficulty: **easy**(4 人成型、3 费核心,成型快)
 - key_equips: 护盾反震类(research:一动反伤 140 亿)
-- boss_weakness: (无明显,稳)
+- countered_by_bosses: (无明显,稳)
 - shared_chars: 三月七(护盾,列车同行)
 - 备注:护盾反震流,V4.4 最稳起步推荐。
 
@@ -35,7 +35,7 @@
 - form_tiers: {仙舟: 7, 追击: 5}(神君层数)
 - strength: A(research:最稳无弱点,神君海伤)
 - form_difficulty: medium(仙舟 7 层需一定轮次,但低中费)
-- boss_weakness: (无明显,稳)
+- countered_by_bosses: (无明显,稳)
 - shared_chars: 知更鸟(盛会之星,多 comp 共用)
 
 ### 3. 昼神阿雅轮椅(昼之半神)— hard / S
@@ -45,7 +45,7 @@
 - strength: S(强,成型碾压)
 - form_difficulty: **hard**(需 2 反重力皮靴 + 3 昼神,鞋+人都难凑)
 - key_equips: **反重力皮靴 ×2**(速度,"找鞋战争")
-- boss_weakness: **电视机(禁速)** —— MECHANIC_COUNTERS:禁速克速度依赖(详 10)
+- countered_by_bosses: **电视机(禁速)** —— MECHANIC_COUNTERS:禁速克速度依赖(详 10)
 - shared_chars: 风堇(昼神+燃血,与万敌流共用)
 
 ### 4. 击破流萤(击破主 C)— medium-hard / A
@@ -54,7 +54,7 @@
 - form_tiers: {击破: 待定}
 - strength: A
 - form_difficulty: medium-hard(5 费核心,后期找)
-- boss_weakness: (待实玩)
+- countered_by_bosses: (待实玩)
 
 ### 5. 贝洛伯格召唤(布洛妮娅)— medium / A
 - factions: 贝洛伯格(+ 燃血独立:布洛妮娅大守护者)
@@ -80,7 +80,7 @@
 - form_tiers: {持续伤害: 待定, 减益: 待定}
 - strength: B(research:下限极高/上限低,稳但不爆)
 - form_difficulty: **easy**(低费成型快,前期过渡强)
-- boss_weakness: 净化身心环境(走 DoT 避,config dot_punish_envs)
+- countered_by_bosses: 净化身心环境(走 DoT 避,config dot_punish_envs)
 - 备注:前期/低难保血利器;高难上限不足。
 
 ### 8. 反甲白厄(毁灭反甲)— medium-hard / A
@@ -89,7 +89,7 @@
 - form_tiers: {毁灭: 待定}
 - strength: A(research:A8 打得爽)
 - form_difficulty: medium-hard(反甲装备成型)
-- boss_weakness: **琥珀王/死龙/酒杯怪(反伤/高防)** —— MECHANIC_COUNTERS:克高频低单次(详 10)
+- countered_by_bosses: **琥珀王/死龙/酒杯怪(反伤/高防)** —— MECHANIC_COUNTERS:克高频低单次(详 10)
 - 备注:靠阵型(坦克前排吃伤触发反伤,P1-3 formation)。
 
 ## 维护
@@ -126,7 +126,7 @@
    - 跑断腿桑博(前期过渡权威,位面3乏力)。
 2. **反击流(大数字)**:利用高难怪多动 + 受击反馈。
    - 万敌单C(前期坐牢需 1 命;V4.4 万敌 2→1费 + 燃血角斗场上调 → 比V3.7强):核心装备 热血沸腾拳/高周波电锯/火力风暴潮。
-   - 反甲卡厄斯兰那(白厄):**怕红绿灯 + 酒杯怪**,需**以牙还牙甲 ×3**,反重力皮靴(三月七/丹恒腾荒)。→ COMP_LIBRARY 反甲白厄 boss_weakness 应加 **红绿灯**,key_equips 加 **以牙还牙甲×3**。
+   - 反甲卡厄斯兰那(白厄):**怕红绿灯 + 酒杯怪**,需**以牙还牙甲 ×3**,反重力皮靴(三月七/丹恒腾荒)。→ COMP_LIBRARY 反甲白厄 countered_by_bosses 应加 **红绿灯**,key_equips 加 **以牙还牙甲×3**。
    - 铲平杰帕德(受击砸地反击,需群攻/列车同行星徽)。
 3. **星徽羁绊流**:凑羁绊(狼狩/击破/仙舟/减益/群攻/银河学者/能量/追击/持续伤害/燃血)。
    - **仙舟**:3仙舟应付前两关,5稳过位面1,7稳过位面2,8-9通位面3。神君靠仙舟队员行动叠层。→ 仙舟可作为独立 comp(当前并入巡击青雀)。

@@ -24,7 +24,7 @@ class Comp:
     form_difficulty: str         # easy/medium/hard 成型难度(用户强调:成型难度是关键维度;物质分解液/反甲等难凑的标 hard)
     level_plan: dict[int, LevelGoal]  # **成型路线**(玩家等级 → 该等级做什么);驱动战术层花超额金(详下"经济统一论")
     key_equips: list[str]        # 关键装备 ["反重力皮靴"](详 07)
-    boss_weakness: list[str]     # 克制这阵容的 boss/词缀 ["电视机"]
+    countered_by_bosses: list[str]     # 克制这阵容的 boss/词缀 ["电视机"]
     affix_preference: list[str]  # 适合/避开的敌人词缀
     shared_chars: list[str]      # 与其他 comp 共享的 core(转型可复用)
     transition_chars: list[str]  # 早期打工牌(银河学者/夜之半神等,后期卖)
@@ -54,13 +54,13 @@ comp_score(comp, state, bosses, envs_chosen) =
   + w_boss * boss_fit(comp, bosses)
   + w_env  * env_fit(comp, envs_chosen)
   + w_str  * strength_base(comp)
-  - w_weak * boss_weakness_penalty(comp, bosses)
+  - w_weak * countered_by_bosses_penalty(comp, bosses)
 
 progress(comp, state) =                                 # 归一化 0..1
     0.6 * Σ_f (min(board[f], form_tiers[f]) / form_tiers[f]) / len(factions)   # 阵营 tier 进度
   + 0.4 * Σ_c (c in owned_chars(state)) / len(core_chars)                      # 核心角色持有
 
-boss_fit(comp, bosses) = 1 - boss_weakness_penalty(comp, bosses)              # boss 克制(命中 weakness 降分)
+boss_fit(comp, bosses) = 1 - countered_by_bosses_penalty(comp, bosses)              # boss 克制(命中 weakness 降分)
 env_fit(comp, envs) = 1 if comp.factions ∩ envs 概念股/邀请对应阵营 else 0.5    # 投资环境契合
 strength_base(comp) = research meta 强度先验(S/A/B → 分)
 ```
@@ -165,14 +165,14 @@ COMP_LIBRARY 加 version_tag;README checklist:版本更新 → 重抓 cw_data �
 
 > 第二轮 V4.4/V4.5 深度调研完成,知识库在 `.debug/temp/currency_war/strategy_research/`(分主题:01 阵容meta/02 角色/03 装备/04 经济/05 投资/06 boss词缀/07 节点伙伴A850/08 缺口与建议)。下文只列**对阵容规划层的设计影响**,细节查 research。
 
-- **R5-1 列车同行 = 姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**:COMP_LIBRARY 的「列车同行」comp core_chars 以 **姬子·启行**(4费)+ 三月七(护盾)为核心;key_equips = 冷笑话引擎+火力风暴潮+高周频电锯+掩体生成枪(反震四件套);成型易-中(7-8级,9人口更优);**boss_weakness/affix_preference 必加「正当防卫」**(反伤词缀克反震,遇则必败 → 遭遇节点必刷新避开,见 06)。
-- **R5-2 COMP_LIBRARY 补缺阵容**(每阵容带 form_difficulty/key_equips/boss_weakness,数据查 research/01):
+- **R5-1 列车同行 = 姬子·启行护盾反震流(V4.4 meta 顶层,用户确认)**:COMP_LIBRARY 的「列车同行」comp core_chars 以 **姬子·启行**(4费)+ 三月七(护盾)为核心;key_equips = 冷笑话引擎+火力风暴潮+高周频电锯+掩体生成枪(反震四件套);成型易-中(7-8级,9人口更优);**countered_by_bosses/affix_preference 必加「正当防卫」**(反伤词缀克反震,遇则必败 → 遭遇节点必刷新避开,见 06)。
+- **R5-2 COMP_LIBRARY 补缺阵容**(每阵容带 form_difficulty/key_equips/countered_by_bosses,数据查 research/01):
   - **命运圣杯流**(Fate 联动,联动后 T0;core Archer+远坂凛+吉尔伽美什+Saber+星徽;form_difficulty=hard,4 个 5 费;**联动前投影不能升星**;祈愿试炼任务期不能拆羁绊)。
   - **欢愉队**(高配 T0;core 银狼LV.999 狼尊+爻光(不可替代)+火花+藿藿;form_difficulty=hard,双 5 费双 3 星)。
   - **万敌单C**(form_difficulty=easy,7 级成型,NGA 认 A8 最简单)。
   - **减益黄泉**(配千冶·刃 V4.4 质变;form_difficulty=medium-hard)。
 - **R5-3 新角色 + 命运圣杯阵营**:`CHARACTER_ROSTER` 补 千冶·刃/姬子·启行(注意与原姬子区分)/远坂凛/吉尔伽美什/Archer/Saber/银狼LV.999/爻光/火花/绯英(费用+阵营+站位);`FACTIONS` 补 **命运圣杯**(唯一经济+战斗双修羁绊,激活祈愿试炼)。进了商店 OCR 才识别。
-- **R5-4 词缀对策进 comp 评分**(详 research/06):`AFFIX_MECHANIC_MAP`+`MECHANIC_COUNTERS/SYNERGIES` 补全 + comp.boss_weakness/affix_preference 体现:**正当防卫→克高频/反震/反甲**(阿雅/姬子反震/白厄/欢愉)、**同步行动→克拉条但利 DOT**、**沉重脚步→刚需护盾**、急速制冷→需解控、重症难题→克奶盾。遇未 OCR 词缀落库,不硬编码全集。
+- **R5-4 词缀对策进 comp 评分**(详 research/06):`AFFIX_MECHANIC_MAP`+`MECHANIC_COUNTERS/SYNERGIES` 补全 + comp.countered_by_bosses/affix_preference 体现:**正当防卫→克高频/反震/反甲**(阿雅/姬子反震/白厄/欢愉)、**同步行动→克拉条但利 DOT**、**沉重脚步→刚需护盾**、急速制冷→需解控、重症难题→克奶盾。遇未 OCR 词缀落库,不硬编码全集。
 - **R5-5 概念股送装备件 = 凹开局/选环境新维度**(详 research/03):每个概念股送的基础装备 = 该阵营核心装备合成件(昼神/追击送轮滑鞋→反重力皮靴;仙舟送折叠小刀→高周频电锯;列车送幸运星)。`decide_invest(kind="env")` 在 event_whitelist 分数上加一层:**优先选与 target_comp 核心装备合成件匹配的概念股**(补强 P1-2 ENV_COMP_AFFINITY,从「阵营亲和」细化到「装备件亲和」)。
 - **R5-6 装备合成配方**(详 research/03,落 `cw_equipment`):基础件×2→进阶配方表(反重力皮靴=轮滑鞋×2;高周频电锯=幸运星+折叠小刀;永动机=光能电池×2…)。comp.key_equips 用规范名;equip_fit/supply 选装备据此。
 - **R5-7 商店保底机制进 D 牌逻辑**:每第 5 次刷新必出 5 张同费(采购专员·彩每 5/·金每 7 缩短)。`_refresh_cap`/`_refresh_expected_delta` 建模「刷新计数器→第 5 次保底」;关键回合(升 8 搜核心)刷到第 5 次必出 5 张同费核心 → D 牌估值在该点跳升。
