@@ -3,11 +3,18 @@
 import time
 from typing import ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_node_reader import (
+    HU_DIST_UNRECOGNIZED,
+    NODE_ROW_RECT,
+    NodeSlot,
+)
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
 from sr_od.application.currency_war.operations.prep.equip_all import EquipAll
@@ -62,17 +69,13 @@ class BattlePrepCycle(SrOperation):
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-prep] nodeseq skip: {e}')
 
-    def _capture_unrecognized_node_icons(self, screen, slots) -> None:
+    def _capture_unrecognized_node_icons(self, screen: MatLike, slots: list[NodeSlot]) -> None:
         """[采集钩子·临时] 未来圆 Hu 无显著最近(hu_dist > ``HU_DIST_UNRECOGNIZED``)→ 裁该图标存盘。
 
         聚焦单未识别图标(非全行 dedup);扑满 / 新节点类型离线分析加模板用。icon 裁窗 ``_ICON_CAP_R``
         略大于分类窗(多给上下文供 VLM / 人眼分析);模板定型时仍按 ``cw_node_reader._SAMPLE_R`` 重抽。
         扑满模板补上 → 删本方法 + 调用(CLAUDE.md「临时钩子用完即删」)。
         """
-        from sr_od.application.currency_war.cw_node_reader import (
-            HU_DIST_UNRECOGNIZED,
-            NODE_ROW_RECT,
-        )
         from sr_od.application.currency_war.cw_observe import cw_shot_unique
         _ICON_CAP_R = 24  # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文);临时常量随钩子删
         _x0, _y0, _x1, _y1 = NODE_ROW_RECT
