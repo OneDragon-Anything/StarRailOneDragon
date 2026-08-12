@@ -653,10 +653,9 @@ def _formation_cost_factor(comp: Comp) -> float:
 def _board_alignment(comp: Comp, state: GameState) -> float:
     """board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
 
-    comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.7(deployed-lock 下不可成型);
-    count≥1 → ×1.0(中性)。**robust to board OCR 噪声**:count≥1 判 has_any 可靠(faction 在板 = ≥1
-    deployed);count≥2 是 bonus 非 penalty(OCR 误读 count 不降权)。策略子agent P1:spread board 下
-    select_comp 不跟 board → 选 board 不支持的 comp → 永不成型。
+    comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.3(deployed-lock 下不可成型,
+    review🔴 重 penalty:原 ×0.7 压不过 acq 0.15-1.0 主导 → spread;改 ×0.3 让 board 支持主导选 comp);
+    count≥1 → ×1.0(中性)。**robust to board OCR 噪声**:count≥1 判 has_any 可靠;count≥2 bonus 非 penalty。
     """
     if not comp.factions:
         return 1.0
@@ -664,7 +663,7 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     if any(board.get(f, 0) >= 2 for f in comp.factions):
         return 1.2   # deep-stack → boost
     if not any(board.get(f, 0) >= 1 for f in comp.factions):
-        return 0.7   # 全不在 board → penalty
+        return 0.3   # 全不在 board → 重 penalty(review🔴:原0.7 压不过 acq,改0.3)
     return 1.0
 
 
@@ -681,10 +680,11 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # acquirability:核心角色在当前等级的理论刷新概率(D-92 替 shop_supply + shop_history 观察法;
-        # 用户点破:刷新概率独立 → 观察 shop 本回合/历史无预测力,用理论 REFRESH_PROB 表)。
-        # p=0(该等级刷不出该费)→ ×0.15 重降;p=1(满概率)→ ×1.0。
-        s *= (0.15 + 0.85 * acquirability_factor(comp.core_chars, state.level))
+        # acquirability:核心角色在当前等级的理论刷新概率(D-92 理论 REFRESH_PROB 表)。
+        # review🔴 收窄:原 0.15+0.85p(方差0.85)压过 _board_alignment(0.7-1.2 方差0.5)→ acq 主导
+        # → 选 board 不支持但 core 易刷的 comp → spread 永不成型。改 0.5+0.5p(方差0.5),
+        # 让 board 支持主导选 comp,acq 作次级 tiebreak。p=0→×0.5(仍降但不碾 board);p=1→×1.0。
+        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level))
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
         scored.append((s, comp))
