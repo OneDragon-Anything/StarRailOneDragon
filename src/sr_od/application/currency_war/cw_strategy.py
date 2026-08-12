@@ -128,7 +128,9 @@ class CwStrategy(ABC):
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
+        """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``HandleEncounter``(L55 调)+ ``cw_decisions.decide_encounter``
+        (非平凡:未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新换批)+ ``read_encounter_options``
+        (OCR 卡标题→difficulty)。affix 分支 N/A(选项 UI 不显词缀,战后才显)。原「dormant 无选项UI」过期(2026-08-12 核实)。"""
 
     @abstractmethod
     def decide_megastar(self, options: list[MegastarOption], state: GameState,

@@ -820,7 +820,9 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
 
 def decide_encounter(options: list[EncounterOption], state: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
-    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08;handler 待阶段5 ``read_encounter_options`` 接)。
+    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``HandleEncounter``(L55 调本函数)+
+    ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
+    (选项 UI 不显词缀,战后才显)。原 docstring「handler 待阶段5 接」过期(2026-08-12 代码核实已接)。
 
     决策(观测驱动 + comp 相关,debuff=buff):
     1. **未成型**(deployed 不足 / target 成型度低)→ 偏低难度(生存优先)。
