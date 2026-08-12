@@ -47,6 +47,7 @@ from sr_od.application.currency_war.cw_state import (
     RefreshShop,
     SellBench,
     ShopCard,
+    _bench_char_cost,
     card_cost,
     effective_hp_threshold,
     sell_refund,
@@ -808,7 +809,7 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
             # review 🔴:target 核心不卖凑息(承诺贯穿卖路径;防卖刚买的 target 核心凑息)
             if target_comp is not None and _card_hits_target(bc.char_id, bc.faction, target_comp):
                 continue
-            refund = sell_refund(bc.star)
+            refund = sell_refund(bc.star, _bench_char_cost(bc))
             if (cur.gold + refund) // 10 > cur.gold // 10 and cur.gold + refund <= INTEREST_THRESHOLD:
                 best_idx = i
                 break
