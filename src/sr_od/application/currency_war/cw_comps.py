@@ -568,12 +568,12 @@ def make_score_context(state: GameState, bosses: list[str] | None = None,
 # 超长战斗。提 W_PROG 让 select_comp 偏好**可成型**(board 已有 progress,如 万敌 燃血:1)comp 而非
 # 高强度不可成型。算账:万敌(progress0.125,str0.4) vs 列车同行(prog0,str1.0),旧 0.084<0.1(列车同行赢);
 # 新 0.45*0.125+0.05*0.4=0.076 > 0.45*0+0.05*1.0=0.05(万敌赢)= 选可成型。
-W_PROG: float = 0.45    # 成型进度(form + core_char)—— 提权:偏好可成型 comp
-W_MECH: float = 0.15    # 机制契合(双向 debuff=buff;略降给 W_PROG)
+W_PROG: float = 0.55    # 成型进度(form + core_char)—— 提权:偏好可成型 comp(review🔴 吸 W_BOSS 死重)
+W_MECH: float = 0.15    # 机制契合(双向 debuff=buff)
 W_ENV: float = 0.15     # 投资环境契合
-W_BOSS: float = 0.10    # boss 克制
+W_BOSS: float = 0.0     # boss 克制 —— review🔴 暂 0(boss_fit 恒 0.5:countered_by_bosses 俗称未对齐 task#73 → 死重);机制建模接通后回退 0.10
 W_EQUIP: float = 0.10   # 装备契合(comp 相关)
-W_STR: float = 0.05     # research meta 强度(降:strength 不该压过可成型性)
+W_STR: float = 0.05     # research meta 强度
 
 
 def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:

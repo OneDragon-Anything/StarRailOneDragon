@@ -517,7 +517,6 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
 
     target_comp: 战略层目标(A2),传给 evaluate 使 D 牌期望导向 target 成型。None=reactive。
     """
-    character_priority = getattr(config, 'character_priority', [])
     best = evaluate(state, config, faction_priority, target_comp)
     for card in state.shop:
         if state.gold < card_cost(card):
@@ -529,12 +528,10 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
             if ok:
                 after = simulate(after, DeployMove(bench_idx=len(after.bench) - 1,
                                                    to_row=row, faction=bc.faction))
-        # 口径与真实买(_best_improving_action L715-716)一致:eval + concentration + priority
-        # (review 🔴:原漏 _concentration_delta → 蒙特卡洛 D 牌估值尺子≠真实买 → 该 D 不 D)
+        # 口径与真实买(_best_improving_action)一致:eval + concentration(char_quality 已计 priority)
+        # review🔴 补 concentration(原漏→D牌估值偏);review🟡 去 priority*2(char_quality 一处计,原三重过度偏置)
         ev = (evaluate(after, config, faction_priority, target_comp)
               + _concentration_delta(card, state, target_comp))
-        if card.name in character_priority:
-            ev += CHAR_PRIORITY_BONUS * 2
         best = max(best, ev)
     return best
 
@@ -725,8 +722,7 @@ def _best_improving_action(
             after = simulate(after, a)
         delta = evaluate(after, config, faction_priority, target_comp) - base_eval
         delta += _concentration_delta(card, state, target_comp)
-        if card.name and card.name in character_priority:
-            delta += CHAR_PRIORITY_BONUS * 2
+        # review🟡 去 CHAR_PRIORITY_BONUS*2 flat(char_quality_score 已计 priority×star,原三重过度偏置)
         beat(delta, seq)
 
     # 2) 上任已拥有的 bench 角色(按 position_pref 分流)

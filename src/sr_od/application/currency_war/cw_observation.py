@@ -590,8 +590,13 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.bench_full_flag = read_bench_full(ctx, screen)
     # 采集钩子(临时,采完即删;3.5.3 read_star 2-3星验证):tracking star≥2 的 deployed/bench char
     # → 存备战屏(含立绘底部金星)供离线 read_star 2-3星验。screen=RGB,存图 RGB→BGR(cv2-utils 约定)。
-    _hook_stars = [bc.star for bc in (*state.deployed, *getattr(state, 'bench', []))
-                   if getattr(bc, 'star', 0) >= 2]
+    # review ⚠️:查 session.tracked_deployed + tracked_bench_chars(deploy 后 SIFT 维护,含 star),
+    # 非 state.bench(read_game_state 不读 bench 身份 → state.bench 恒空 → 漏 bench 2星如赛飞儿)。
+    _hook_tracked: list = []
+    if _match is not None and _match.session is not None:
+        _hook_tracked = list(getattr(_match.session, 'tracked_deployed', []) or [])
+        _hook_tracked += list(getattr(_match.session, 'tracked_bench_chars', []) or [])
+    _hook_stars = [getattr(bc, 'star', 0) for bc in _hook_tracked if getattr(bc, 'star', 0) >= 2]
     if _hook_stars:
         try:
             import hashlib
