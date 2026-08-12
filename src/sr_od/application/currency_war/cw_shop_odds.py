@@ -12,7 +12,8 @@
 3. 状态转移方程算**期望刷新次数** E_j(找 k 张目标牌,从手上有 j 张起)。
 
 **池参数**:
-- a = 9 张/种(**5费 NGA 实锤** [tid=45557485](https://bbs.nga.cn/read.php?tid=45557485)「5费卡每张×9」;其他费用攻略少 + 难实机,placeholder 9 待核。搜索摘要「按费用递减 30/25/18/10/9」未核实原文、存疑不用)
+- a = 每种牌副本数(1/2费=27 可升4星 / 3/4/5费=9 最高3星;均 3 倍数,3合1 决定;权威源 V3.7 必修二,
+  5费=9 与 [NGA tid=45557485](https://bbs.nga.cn/read.php?tid=45557485) 实锤吻合;2026-08-12 用户确认)
 - v = 同费用种类数(1费14/2费13/3费13/4费12/5费9,from characters.md)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
@@ -27,9 +28,10 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS, chars_by_cost
 
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
-# a:每种牌的副本数 —— 5费9张/种 NGA 实锤(tid=45557485);其他费用攻略少+难实机,placeholder=9 待核
-# (搜索摘要"按费用递减 30/25/18/10/9"未核实原文、存疑,不用;部分效果改副本数>A4.7 修正)
-POOL_COPIES_PER_CARD: dict[int, int] = {1: 9, 2: 9, 3: 9, 4: 9, 5: 9}
+# a:每种牌的副本数 —— 1/2费=27(可升 4 星:27=3 个 3 星=9×3)、3/4/5费=9(最高 3 星)。均 3 的倍数(3合1 决定)。
+# 权威源:V3.7 必修二。V4.2 银狼档「30/25/18/10/9」含非 3 倍数(25/10)→ 不可信弃用。
+# (5费=9 NGA tid=45557485 实锤吻合;1/2费=27 由「可升 4 星」推出,2026-08-12 用户确认)
+POOL_COPIES_PER_CARD: dict[int, int] = {1: 27, 2: 27, 3: 9, 4: 9, 5: 9}
 # v:同费用的种类数 —— 从角色注册表派生(单一真相源;改 CHARACTERS 自动传导,非硬编码)
 # 注:3费=13 与 D牌期望表(77124902)实测点吻合;其余费用随注册表,实机校准
 DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}
@@ -126,7 +128,7 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
     """
     p = refresh_prob(level, cost)
     v = DISTINCT_CARDS_PER_COST.get(cost, 13)
-    a = POOL_COPIES_PER_CARD.get(cost, 18)
+    a = POOL_COPIES_PER_CARD.get(cost, 9)
     # target_star 对需 k 张:2星=3、3星=9(货币战争 3 合 1)
     k = {2: 3, 3: 9}.get(target_star, 3)
     return expected_refreshes(p, v, a, non_target_taken, k, owned)
@@ -137,7 +139,7 @@ def acquirability_factor(core_chars: list[str], level: int) -> float:
 
     取核心角色里最低 refresh_prob(level, cost)(阵容受最稀卡限制)。
     p=1(满概率刷出)→ 1.0;p=0(该等级刷不出该费)→ 0.0;p=0.4 → 0.4。
-    select_comp 用法同 shop_supply(``s *= 0.15 + 0.85 * acquirability_factor``)。
+    select_comp 用法:s *= (0.5 + 0.5 * acquirability_factor)(ADR-0105 收窄:原 0.15+0.85p 压过 board 主导)。
     理论依据:刷新概率独立(用户点破)→ 观察(shop 本回合 / 历史)无预测力,用理论概率表 REFRESH_PROB。
     """
     probs: list[float] = []
