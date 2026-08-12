@@ -118,18 +118,23 @@ def read_star(crop: MatLike) -> int:
     count = 0
     for c in n_contours:
         a = cv2.contourArea(c)
-        if a <= 100:
+        if a <= 120:
             continue
         perim = cv2.arcLength(c, True)
         M = cv2.moments(c)
         if M['m00'] == 0:
             continue
         cx, cy = M['m10'] / M['m00'], M['m01'] / M['m00']
-        # 圆度 4πA/P²:金星实心五角星 ~0.57-0.65;装饰细长/不规则 <0.55(2026-08-12 立绘库验:
-        # 灵砂0.07-0.15/赛飞儿0.04-0.54/阿格莱雅0.03-0.27 装饰;金星0.57-0.65)。area100 排小装饰,
-        # 圆度>0.55 排大装饰(对新角色鲁棒:金星五角星形状固定)。
+        bx, by, bw, bh = cv2.boundingRect(c)
+        aspect = bw / bh if bh > 0 else 0
+        # 金星判据(ADR-0112 迭代,2026-08-12 多槽形状分析):金星 circ 实测 **0.52-0.65**
+        # (非原标 0.57-0.65;备战栏-2 a142 circ0.52 被 circ>0.55 误漏)+ aspect **0.89-1.06**(近方)。
+        # 纯 circ>0.55 漏实战金星(circ0.52);改三联判据:circ>0.45 放金星 + aspect0.85-1.15 滤细长
+        # 装饰(前排长条 aspect2.44 / 立绘库青雀 aspect0.74)+ a>120 滤小装饰(立绘库赛飞儿 a108)。
+        # 立绘库 71 张 0 误判 + 实战金星全过(a142-274 circ0.52-0.65 aspect0.89-1.06)。
         circ = 4 * np.pi * a / perim / perim if perim > 0 else 0
-        if cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and a < 600 and circ > 0.55:
+        if (cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and a < 600
+                and circ > 0.45 and 0.85 <= aspect <= 1.15):
             count += 1
     return max(count, 1)
 
