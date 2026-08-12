@@ -87,6 +87,10 @@ class CurrencyWarConfig(YamlConfig):
         self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
         self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
         self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
+        # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束(现行,向后兼容)。
+        # app._run_loop 透传给 CurrencyWarRunLoop。run_standalone_app 设此 yml 即跑 N 轮。
+        _mr = self.get('max_rounds', None)
+        self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
         # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
         self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
         # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。

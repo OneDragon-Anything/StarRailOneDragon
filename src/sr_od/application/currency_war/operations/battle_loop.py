@@ -76,9 +76,14 @@ class CurrencyWarRunLoop(SrOperation):
     # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
-    def __init__(self, ctx: SrContext):
+    def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
+        # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后,停在下一轮备战屏(analyze board/star)。
+        # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
+        # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
+        self._max_rounds: int | None = max_rounds
+        self._rounds_done: int = 0
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 待接)
         cw_telemetry.start_run()
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
@@ -86,30 +91,36 @@ class CurrencyWarRunLoop(SrOperation):
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
         # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 session.target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
+        # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
+        # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
+        # 停 app / 手停 / 重启 server 后 cw_match 清(None)→ 下次 run 重新 new(新局)。
+        self._is_new_match: bool = self.ctx.cw_match is None
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
-        _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
-            self._cw_config.strategy_id)
-        _session = _strategy.create_session(self._cw_config)
-        if self._cw_config.strategy_seed is not None:
-            _session.rng = random.Random(self._cw_config.strategy_seed)
-        self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
-        # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
-        if self.ctx.cw_briefing_affixes:
-            _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
-            self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
-        # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
-        # → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)
-        if self.ctx.cw_selected_difficulty:
-            _session.selected_difficulty = self.ctx.cw_selected_difficulty
-            self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
-        # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
-        if self.ctx.cw_enemy_difficulty is not None:
-            _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
-            self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
-        # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
-        if self.ctx.cw_briefing_bosses:
-            _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
-            self.ctx.cw_briefing_bosses = None  # 取走清空(防跨局复用)
+        if self._is_new_match:
+            _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
+                self._cw_config.strategy_id)
+            _session = _strategy.create_session(self._cw_config)
+            if self._cw_config.strategy_seed is not None:
+                _session.rng = random.Random(self._cw_config.strategy_seed)
+            self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
+            # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
+            if self.ctx.cw_briefing_affixes:
+                _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
+                self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
+            # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
+            # → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)
+            if self.ctx.cw_selected_difficulty:
+                _session.selected_difficulty = self.ctx.cw_selected_difficulty
+                self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
+            # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
+            if self.ctx.cw_enemy_difficulty is not None:
+                _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
+                self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
+            # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
+            if self.ctx.cw_briefing_bosses:
+                _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
+                self.ctx.cw_briefing_bosses = None  # 取走清空(防跨局复用)
+        # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
@@ -157,6 +168,24 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
             log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
 
+    def _probe_settlement_nodetype(self, screen) -> None:
+        """[采集钩子·临时] 结算屏「挑战成功」下方 "X-Y <节点类型>" → log + 存裁图(标定节点类型词汇)。
+
+        结算屏恒干净(无 shop 开/事件 overlay 干扰),比备�战节点行(仅 shop-closed 可见)可靠。
+        逐轮采 → 配备�战节点行图标(位置 i ↔ 第 i+1 轮)得 位置→类型 映射,建图标模板。
+        采够(位面1 全轮类型齐)→ 删本方法 + loop 分支3 的调用(CLAUDE.md 临时钩子用完即删)。
+        """
+        try:
+            from one_dragon.base.geometry.rectangle import Rect
+            from sr_od.application.currency_war.cw_obs_core import _ocr
+            from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
+            # 「挑战成功」标识 y184-274;其下 "X-Y <type>" ~y270-310。OCR 宽带含上下文。
+            blob = ''.join(r.data for r in _ocr(self.ctx, screen, Rect(700, 250, 1260, 330)))
+            cw_log('settlement', step='nodetype', attn=True, raw=blob,
+                   shot=cw_shot(screen[245:335, 690:1270], f'settlement_nt_{blob[:12]}'))
+        except Exception as e:  # noqa: BLE001  采集钩子 best-effort
+            log.info(f'[cw-loop] settlement nodetype probe skip: {e}')
+
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
         self._iter += 1
@@ -165,7 +194,7 @@ class CurrencyWarRunLoop(SrOperation):
         screen = self.last_screenshot
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
-        if self._iter == 1 and self.ctx.cw_match is not None:
+        if self._iter == 1 and self._is_new_match:
             self.ctx.cw_match.strategy.on_match_start(
                 read_game_state(self.ctx, screen), self.ctx.cw_match.session, self._cw_config)
 
@@ -266,6 +295,12 @@ class CurrencyWarRunLoop(SrOperation):
         # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),
         # 走正常 prep→出战→战斗(原 遭遇 handler "2选1" 过时,且 click 干扰 prep → stall,已移除)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
+            # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
+            if self._max_rounds is not None and self._rounds_done >= self._max_rounds:
+                log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',
+                         self._max_rounds, self._rounds_done)
+                return self.round_success(
+                    f'已跑 {self._rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
@@ -287,6 +322,8 @@ class CurrencyWarRunLoop(SrOperation):
         # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
+            self._probe_settlement_nodetype(screen)  # [采集钩子·临时] 结算 "X-Y <type>" 标定,采完删
+            self._rounds_done += 1   # 挑战成功 = 完成一轮(max_rounds 轮锚点)
             time.sleep(1.0)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
                 return self.round_wait(wait=2)

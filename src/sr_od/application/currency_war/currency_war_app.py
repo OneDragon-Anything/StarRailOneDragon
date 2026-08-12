@@ -7,6 +7,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.currency_war import currency_war_const
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.currency_war_run_record import CurrencyWarRunRecord
 from sr_od.application.currency_war.operations.battle_loop import CurrencyWarRunLoop
 from sr_od.application.currency_war.operations.entry.enter_currency_war import (
@@ -83,5 +84,6 @@ class CurrencyWarApp(SrApplication):
     @node_from(from_name='开始对局到备战阶段')
     @operation_node(name='对局循环到结束')
     def _run_loop(self) -> OperationRoundResult:
-        op = CurrencyWarRunLoop(self.ctx)
+        _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+        op = CurrencyWarRunLoop(self.ctx, max_rounds=_cfg.max_rounds)
         return self.round_by_op_result(op.execute())
