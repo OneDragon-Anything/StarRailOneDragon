@@ -44,6 +44,23 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
+        # [停机钩子·临时] 检测 tracked bench/deployed star≥2 → 停机给 AI 拖卡/click 详情验证售卖价
+        # (校准 sell_refund 2/3星值;用户:检测到2/3星就停,AI 接手,不等策略卖)。验完删本块+sentinel
+        # (CLAUDE.md 方案 D)。假设 star 识别对(已验证 commit 672aa838);售价客观核(click 详情「+N 出售」OCR,非 VLM)。
+        _match = getattr(self.ctx, 'cw_match', None)
+        _sess = _match.session if _match is not None else None
+        if _sess is not None:
+            _tracked = list(getattr(_sess, 'tracked_deployed', []) or [])
+            _tracked += list(getattr(_sess, 'tracked_bench_chars', []) or [])
+            _hi = [(getattr(bc, 'char_id', ''), getattr(bc, 'star', 0), getattr(bc, 'slot', -1))
+                   for bc in _tracked if getattr(bc, 'star', 0) >= 2]
+            if _hi:
+                self.save_screenshot(prefix='sell_star_hook')
+                from pathlib import Path
+                Path('.debug/temp/currency_war/sell_star_hook.flag').write_text(str(_hi), encoding='utf-8')
+                log.info(f'[cw-hook] 检测 star≥2 → 停机给 AI 验证售卖价(click 详情「+N 出售」):{_hi}')
+                self.ctx.run_context.stop_running()
+                return self.round_wait(status=f'star≥2 停机:{_hi}')
         self._probe_node_type()   # [采集钩子·临时] 节点类型标定,采完(位面1 全轮)删本调用+方法
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
 

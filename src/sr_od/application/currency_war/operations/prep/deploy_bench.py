@@ -32,7 +32,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
 )
-from sr_od.application.currency_war.cw_state import BenchChar, DeployMove
+from sr_od.application.currency_war.cw_state import DeployMove
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -417,15 +417,15 @@ class DeployBench(SrOperation):
         return sold
 
     def _reconcile_tracking(self, templates: AvatarTemplates | None) -> None:
-        """D-12(3.3.2 · 观测回路):deploy 后用 SIFT 真实 bench/deployed 身份重置 session.tracking。
+        """D-12(3.3.2 · 观测回路):deploy 后用 SIFT 身份 + ``read_star`` 实机星级 重置 session.tracking。
 
-        根因:deploy op 视觉拖拽(D-7/D-8/D-10)不调 ``mutate_bench_deployed`` → session.tracked_bench_chars /
-        tracked_deployed 滞留(还显示已上场的在 bench、已卖的在 deployed)→ 下轮 buy 用漂移 tracking 做集中度
-        判断 → 错。本方法:deploy 完成(shop 关、bench/deployed 全可见、SIFT 准)后,读真实身份重置 tracking,
-        **保留旧 tracking 的 star**(SIFT star 恒 1)。完成观测回路 → 解锁核心锁 ②。
+        根因:deploy op 视觉拖拽不调 ``mutate_bench_deployed`` → tracking 滞留(已上场在 bench / 已卖在 deployed)
+        → 下轮 buy 用漂移 tracking 错。本方法:deploy 后(SIFT 准)读真实 bench/deployed 身份重置 tracking。
 
-        ⚠️ review 修(2026-08-09):① **pre-log**(纠漂前 log 旧 tracking)直证漂移被纠正(否则只 post 看不出纠没纠);
-        ② **star 多副本**(用 multiset per char_id,非 dict)—— 重复 char_id(如两艾丝妲,一已升星)dict 塌缩 → star 错。
+        ⚠️ 2026-08-12:star 用 ``identify_slots`` 的 ``read_star`` 实机金星(非旧 tracking pool 保留)。旧逻辑「保留
+        旧 star(SIFT star 恒1)」注释过期 —— read_star 已接(commit 672aa838,identify_slots L159 读实机金星)。
+        用户:假设 star 识别对(read_star 实机 > simulate 推算;且 simulate _merge 只看 bench,3合1 是全场
+        deployed+bench+买)。read_star 1星验过,2星逻辑同(数金星)。
         """
         if templates is None:
             return
@@ -441,26 +441,14 @@ class DeployBench(SrOperation):
         log.info(f'[cw-deploy] tracking 纠漂前(D-12 pre):bench={[bc.char_id for bc in _old_bench]} '
                  f'deployed={[bc.char_id for bc in _old_dep]}')
 
-        def _star_pool(old: list[BenchChar]) -> dict[str, list[int]]:
-            pool: dict[str, list[int]] = {}
-            for bc in old:
-                pool.setdefault(bc.char_id, []).append(bc.star)
-            return pool
-
-        _bp, _dp = _star_pool(_old_bench), _star_pool(_old_dep)
-
-        def _keep(bc: BenchChar, pool: dict[str, list[int]]) -> BenchChar:
-            stars = pool.get(bc.char_id)
-            star = stars.pop(0) if stars else bc.star   # multiset:重复 char_id 按序取 star,不塌缩
-            return BenchChar(slot=bc.slot, char_id=bc.char_id, faction=bc.faction,
-                             star=star, position_pref=bc.position_pref)
-
-        _new_bench = [_keep(bc, _bp) for bc in real_bench]
-        _new_dep = [_keep(bc, _dp) for bc in real_deployed]
-        _match.session.tracked_bench_chars = _new_bench
-        _match.session.tracked_deployed = _new_dep
-        log.info(f'[cw-deploy] tracking 纠漂后(D-12 post):bench={[(bc.char_id, bc.star) for bc in _new_bench]} '
-                 f'deployed={[(bc.char_id, bc.star) for bc in _new_dep]}')
+        # identify_slots 已带 read_star 实机 star(real_*.bc.star);直接用,不再用旧 tracking star 覆盖
+        # (用户 2026-08-12:假设 star 识别对 —— read_star 实机观测 > simulate 推算;且绕过 simulate _merge
+        # 只看 bench 的局限 —— 3合1 是全场 deployed+bench+买)。read_star 1星验过(commit 672aa838),2星逻辑同。
+        _match.session.tracked_bench_chars = list(real_bench)
+        _match.session.tracked_deployed = list(real_deployed)
+        log.info(f'[cw-deploy] tracking 纠漂后(D-12 post,star=read_star 实机):'
+                 f'bench={[(bc.char_id, bc.star) for bc in real_bench]} '
+                 f'deployed={[(bc.char_id, bc.star) for bc in real_deployed]}')
 
     def _deploy_all_slots(self, bench: list[Point], front: list[Point], back: list[Point],
                           _dep_sift: list | None, templates: AvatarTemplates | None) -> None:
