@@ -142,11 +142,6 @@ class CwStrategy(ABC):
                        session: StrategySession, config: CurrencyWarConfig) -> PartnerPick:
         """选择伙伴。⚠️ OCR 未就绪(P1 钩子存在 + 默认委托,handler 不 rewire,char_id 空 → idx=0)。"""
 
-    @abstractmethod
-    def decide_boss_priority(self, bosses: list[str], state: GameState,
-                             session: StrategySession, config: CurrencyWarConfig) -> list[str]:
-        """boss 克制调整阵营优先级。⚠️ 全代码库零调用(缺 boss OCR + dispatch),随阶段5。"""
-
 
 @dataclass
 class StrategySession:

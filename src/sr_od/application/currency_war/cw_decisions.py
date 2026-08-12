@@ -774,20 +774,9 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
         cur = simulate(cur, actions[-1])
 
 
-# ===== 事件 + boss =====
-
-def decide_boss_priority(bosses: list[str], config) -> list[str]:
-    """按 boss 克制表调整阵营优先级(被克制的阵营降权到末尾)。"""
-    base = list(getattr(config, 'faction_priority', []))
-    boss_counter = getattr(config, 'boss_counter', {})
-    demoted: set[str] = set()
-    for boss in bosses:
-        for f in boss_counter.get(boss, []):
-            demoted.add(f)
-    if not demoted:
-        return base
-    return [f for f in base if f not in demoted] + [f for f in base if f in demoted]
-
+# ===== 事件 =====
+# decide_boss_priority(阵营降权)已删(2026-08-12):boss 克制是 comp-vs-boss 机制级(走 boss_fit/
+# comp.boss_weakness + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
 
 def decide_event(options: list[str], config, state: GameState) -> PickEvent:
     """事件选项打分:白名单优先级(子串)+ 克制环境降权(走 DoT 主派时避)。"""

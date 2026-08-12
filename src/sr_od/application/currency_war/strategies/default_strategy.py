@@ -190,8 +190,3 @@ class DefaultCwStrategy(CwStrategy):
             if o.char_id and o.char_id in wants:
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
-
-    def decide_boss_priority(self, bosses: list[str], state: GameState,
-                             session: StrategySession, config) -> list[str]:
-        """boss 克制调整阵营优先级。⚠️ 全代码库零调用(缺 boss OCR + dispatch),随阶段5。"""
-        return cw_decisions.decide_boss_priority(bosses, config)
