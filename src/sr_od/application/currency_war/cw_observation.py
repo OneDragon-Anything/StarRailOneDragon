@@ -543,6 +543,23 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
+    # 采集钩子(临时,采完即删;3.5.3 read_star 2-3星验证):tracking star≥2 的 deployed/bench char
+    # → 存备战屏(含立绘底部金星)供离线 read_star 2-3星验。screen=RGB,存图 RGB→BGR(cv2-utils 约定)。
+    _hook_stars = [bc.star for bc in (*state.deployed, *getattr(state, 'bench', []))
+                   if getattr(bc, 'star', 0) >= 2]
+    if _hook_stars:
+        try:
+            import hashlib
+            from pathlib import Path
+            _mx = max(_hook_stars)
+            _h = hashlib.md5(screen.tobytes()).hexdigest()[:8]
+            _p = Path('.debug/temp/currency_war/shots') / f'star{_mx}__{_h}.png'
+            if not _p.exists():
+                _ok, _arr = cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))
+                if _ok:
+                    _arr.tofile(str(_p))
+        except Exception:  # noqa: BLE001  采集失败不阻塞读 state
+            pass
     return state
 
 
