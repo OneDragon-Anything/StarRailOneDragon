@@ -48,4 +48,5 @@ A 更直接(单次刷新可得性,select_comp 量级一致),C 留给 D牌蒙特�
 - 测试:旧 `test_acquirability_factor_level_cost`(断言 min refresh_prob)→ 重写 `test_acquirability_factor_pool_aware`
   (验 ÷v + held 消耗 + 空 core);加 `test_held_base_copies_folds_star`(star 折基础副本)。
 - 297 测试过。
-- **NPC 共享池消耗(c)仍忽略**(保守,待实机核是否共享);卖回是否回池待核 —— 这些影响 acq 精度但不阻塞主路径。
+- **NPC 共享池消耗(c)仍忽略**(保守,待实机核 NPC 是否消耗共享牌池)。卖回回池已确认(用户)→ `_held_base_copies`
+  按「当前 bench+deployed」计 held(卖出即减 held → 牌池恢复),模型与卖回机制自洽。
