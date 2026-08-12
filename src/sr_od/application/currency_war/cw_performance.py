@@ -22,6 +22,7 @@ from sr_od.application.currency_war.cw_comps import (
     equip_fit,
     form_progress,
     mechanics_fit,
+    weighted_mean,
 )
 from sr_od.application.currency_war.cw_state import GameState
 
@@ -206,18 +207,19 @@ def comp_viability(comp: Comp, state: GameState, ctx: ScoreContext,
 
     - obs = tracker.perf_for_comp(comp.name);None(冷启动)→ obs_weight=0,纯先验。
     - rounds_seen 增 → obs_weight 升(0.1→0.5;观测越多越信观测)。
-    - 先验 = 0.40 form + 0.25 equip + 0.20 mechanics + 0.15 star(归一化 sum=1;不含 strength,已 commit 不看 research;
+    - 先验 = 0.40 form + 0.25 equip + 0.20 mechanics + 0.15 star(动态归一 sum=1;不含 strength,已 commit 不看 research;
       star=核心角色星级达成,review round-4 HIGH-1 限时 AV 星级=输出;权重先验占位待 stage6 实跑校准)。
+      动态归一(ADR-0107):equip/mechanics 无数据返 None → 剔除 + 权重重分配给 form/star(治死重常量地板)。
     """
     obs = tracker.perf_for_comp(comp.name)
-    prior = (
-        0.40 * form_progress(comp, state)
-        + 0.25 * equip_fit(comp, state)
-        + 0.20 * mechanics_fit(comp, ctx.mechanics)
-        + 0.15 * star_achievement(comp, state)   # review round-4 HIGH-1:限时 AV 星级=输出
-    )
+    prior = weighted_mean([
+        (0.40, form_progress(comp, state)),
+        (0.25, equip_fit(comp, state)),
+        (0.20, mechanics_fit(comp, ctx.mechanics)),
+        (0.15, star_achievement(comp, state)),   # review round-4 HIGH-1:限时 AV 星级=输出
+    ])
     if obs is None:
-        return clamp(prior, 0.0, 1.0)   # 冷启动:纯先验(obs_weight=0,但 0*None 会崩 → 早返回)
+        return clamp(prior, 0.0, 1.0)   # 冷启动:纯先验(obs_weight=0)
     rounds_seen = sum(1 for o in tracker.history if o.comp_tag == comp.name)
     obs_weight = clamp(0.1 + 0.4 * (rounds_seen / 18), 0.1, 0.5)
     prior_weight = 1.0 - obs_weight

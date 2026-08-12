@@ -869,12 +869,13 @@ class EncounterPick:
 def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> float:
     """该分支词缀对 target_comp 的契合(``mechanics_fit`` 0..1;<0.4 克、>0.5 利 debuff=buff)。
 
-    无 target_comp → 中性 0.5(纯按难度选)。
+    无 target_comp / 无词缀信号(mechanics_fit 返 None,ADR-0107)→ 中性 0.5(纯按难度选,不触发刷新)。
     """
     if target_comp is None:
         return 0.5
     mechs = {AFFIX_MECHANIC_MAP.get(a, a) for a in option.affixes}
-    return mechanics_fit(target_comp, mechs)
+    fit = mechanics_fit(target_comp, mechs)
+    return fit if fit is not None else 0.5
 
 
 def decide_encounter(options: list[EncounterOption], state: GameState,

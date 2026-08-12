@@ -473,16 +473,17 @@ def shop_supply(comp: Comp, state: GameState) -> float:
     return 0.0
 
 
-def equip_fit(comp: Comp, state: GameState) -> float:
+def equip_fit(comp: Comp, state: GameState) -> float | None:
     """装备契合度(comp 相关,0..1):持有 comp.key_equips 越多越高(超线性 ^0.7 奖励集齐)。
 
     ⚠️ comp 驱动(用户):不设通用 equip_score,一切从 target_comp.key_equips 出发。
     key_equips 可含重复(阿雅需 2 反重力皮靴)→ 按 multiplicity 匹配持有数。
-    无装备数据(state.equips 空)/ comp 无关键装备 → 中性 0.5(纯靠 form/mechanics 先验)。
+    无装备数据(state.equips 空)/ comp 无关键装备 → **None**(ADR-0107 动态权重:无数据不进加权,
+    权重重分配给有数据项,治死重常量地板)。
     """
     equips = list(getattr(state, 'equips', []) or [])
     if not comp.key_equips or not equips:
-        return 0.5
+        return None
     remaining = list(equips)
     held = 0
     for ke in comp.key_equips:
@@ -494,15 +495,16 @@ def equip_fit(comp: Comp, state: GameState) -> float:
     return clamp((held / len(comp.key_equips)) ** 0.7, 0.0, 1.0)
 
 
-def mechanics_fit(comp: Comp, mechanics: set[str]) -> float:
+def mechanics_fit(comp: Comp, mechanics: set[str]) -> float | None:
     """机制契合(comp 相关,双向 0..1):命中 counter(克这 comp)→ 降;命中 synergy(利这 comp)→ 升。
 
     ⚠️ comp 驱动(用户 debuff=buff):同一词缀对不同 comp 方向相反。经 comp.mechanic_attributes
-    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举)。无机制信息 → 中性 0.5。
+    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举)。
+    无机制信息(无敌人词缀 / comp 无 mechanic_attributes)→ **None**(ADR-0107 动态权重剔除,治死重)。
     典型:万敌[燃血] + 反伤 → synergy 升(debuff=buff);阿雅[速度依赖] + 禁速 → counter 降。
     """
     if not mechanics or not comp.mechanic_attributes:
-        return 0.5
+        return None
     score = 0.5
     for mech in mechanics:
         countered_attrs = MECHANIC_COUNTERS.get(mech, [])
@@ -514,18 +516,26 @@ def mechanics_fit(comp: Comp, mechanics: set[str]) -> float:
     return clamp(score, 0.0, 1.0)
 
 
-def boss_fit(comp: Comp, bosses: list[str]) -> float:
-    """boss 克制(boss 名维度):命中 comp.countered_by_bosses → 降。无 boss 信息 → 中性 0.5。"""
+def boss_fit(comp: Comp, bosses: list[str]) -> float | None:
+    """boss 克制(boss 名维度):命中 comp.countered_by_bosses → 降。
+
+    无 boss 信息 / comp 无 countered_by_bosses → **None**(ADR-0107 动态权重剔除,治死重)。
+    有 boss + comp 有 countered_by_bosses 但未命中 → 0.5(真实中性:boss 在但不利害此 comp,有数据)。
+    """
     if not bosses or not comp.countered_by_bosses:
-        return 0.5
+        return None
     n_hit = sum(1 for b in comp.countered_by_bosses if b in bosses)
     return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
 
 
-def env_fit(comp: Comp, env: str) -> float:
-    """投资环境契合:① T0 env 近乎硬绑(P1-2 ENV_COMP_AFFINITY);② env 加成对应阵营(R2-9)。无 env → 0.5。"""
+def env_fit(comp: Comp, env: str) -> float | None:
+    """投资环境契合:① T0 env 近乎硬绑(P1-2 ENV_COMP_AFFINITY);② env 加成对应阵营(R2-9)。
+
+    未选投资环境(env 空)→ **None**(ADR-0107 动态权重剔除,治死重)。env 已选但不加成此 comp → 0.5
+    (真实中性:env 在但不利好此 comp,有数据)。
+    """
     if not env:
-        return 0.5
+        return None
     # P1-2: T0 env 近乎硬绑某 comp
     if env in ENV_COMP_AFFINITY:
         affinity = ENV_COMP_AFFINITY[env].get(comp.name, 0.0)
@@ -562,34 +572,53 @@ def make_score_context(state: GameState, bosses: list[str] | None = None,
 
 
 # ===== comp_score(候选 comp 综合分)=====
-# 权重 V4.4 research meta 先验(占位,待实玩校准);归一化 sum=1.0。开发者阶段 6 手调(内部,非用户 GUI)。
+# 权重 = 各维度**importance 先验**(V4.4 research meta 校准;归一化 sum=1.0)。开发者阶段 6 手调(内部)。
 # 2026-08-04 实跑校准:W_PROG 0.35→0.45 / W_STR 0.10→0.05 / W_MECH 0.20→0.15。
 # 根因:select_comp 卡在无 progress 的高 strength comp(列车同行 S=1.0),但商店没刷其牌 → 不收敛、
 # 超长战斗。提 W_PROG 让 select_comp 偏好**可成型**(board 已有 progress,如 万敌 燃血:1)comp 而非
 # 高强度不可成型。算账:万敌(progress0.125,str0.4) vs 列车同行(prog0,str1.0),旧 0.084<0.1(列车同行赢);
 # 新 0.45*0.125+0.05*0.4=0.076 > 0.45*0+0.05*1.0=0.05(万敌赢)= 选可成型。
-W_PROG: float = 0.55    # 成型进度(form + core_char)—— 提权:偏好可成型 comp(review🔴 吸 W_BOSS 死重)
+#
+# 动态权重(ADR-0107,治本 review#5 死重):权重不再因「数据未接通」而失效 —— *_fit 无数据返 None,
+# weighted_mean 剔除 None 项 + 权重重分配给有数据项。故 W_BOSS 复位 0.10(ADR-0106 暂置 0 的 stopgap
+# 不再需要:boss 无数据时 boss_fit 返 None → 自动剔除,不再贡献死重常量;数据接通即生效)。
+W_PROG: float = 0.45    # 成型进度(form + core_char)—— 偏好可成型 comp
 W_MECH: float = 0.15    # 机制契合(双向 debuff=buff)
 W_ENV: float = 0.15     # 投资环境契合
-W_BOSS: float = 0.0     # boss 克制 —— review🔴 暂 0(boss_fit 恒 0.5:countered_by_bosses 俗称未对齐 task#73 → 死重);机制建模接通后回退 0.10
+W_BOSS: float = 0.10    # boss 克制(无数据 → boss_fit 返 None → 动态剔除;countered_by_bosses 接通即生效)
 W_EQUIP: float = 0.10   # 装备契合(comp 相关)
 W_STR: float = 0.05     # research meta 强度
+
+
+def weighted_mean(items: list[tuple[float, float | None]]) -> float:
+    """动态加权平均(ADR-0107):None 项(无数据)剔除,权重重分配给有数据项。
+
+    治本(review#5):消除 *_fit 无数据返 0.5 的「常量地板」—— 全 comp 同值的项不区分却仍占权重,
+    挤压 progress/strength 区分力(dead weight)。None 项不进加权 → 有数据项有效权重升 → 区分力恢复。
+    全 None → 0.0(理论上不会:comp_score 的 progress/strength、comp_viability 的 form/star 恒有数据)。
+    """
+    valid = [(w, v) for w, v in items if v is not None]
+    total_w = sum(w for w, _ in valid)
+    if total_w <= 0:
+        return 0.0
+    return sum(w * v for w, v in valid) / total_w
 
 
 def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
     """候选 comp 综合分(select_comp 评分 candidate 用;无观测项 —— 未 commit 的 candidate 无观测)。
 
     多维度 comp 相关(用户:一切挂钩目标阵容):成型进度 + 机制双向 + 环境 + boss + 装备 + 强度。
+    动态归一(ADR-0107):*_fit 无数据返 None → 该项剔除、权重重分配(治死重常量地板)。
     评 **current 已 commit** comp 用 cw_performance.comp_viability(加观测 blend),不用本函数。
     """
-    return (
-        W_PROG * progress(comp, state)
-        + W_MECH * mechanics_fit(comp, ctx.mechanics)
-        + W_ENV * env_fit(comp, ctx.env)
-        + W_BOSS * boss_fit(comp, ctx.bosses)
-        + W_EQUIP * equip_fit(comp, state)
-        + W_STR * strength_base(comp)
-    )
+    return weighted_mean([
+        (W_PROG, progress(comp, state)),
+        (W_MECH, mechanics_fit(comp, ctx.mechanics)),
+        (W_ENV, env_fit(comp, ctx.env)),
+        (W_BOSS, boss_fit(comp, ctx.bosses)),
+        (W_EQUIP, equip_fit(comp, state)),
+        (W_STR, strength_base(comp)),
+    ])
 
 
 # 用户 4 轴 steer(README A):优先/禁止/build_around。阶段 2 用 getattr 防御读取(config 字段待加)。
@@ -692,10 +721,11 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
     return [c for _s, c in scored[:top_n]]
 
 
-def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dict[str, float]:
+def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dict[str, float | None]:
     """comp_score 的特征分解(telemetry 采集用:给人肉眼复盘 + 未来 ML side door)。
 
-    schema 稳定(字段名跨版本不变);数值随版本/实玩变。详 cw_telemetry。
+    schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(ADR-0107)。
+    详 cw_telemetry。
     """
     return {
         "progress": progress(comp, state),
@@ -798,6 +828,13 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                      state.plane, state.round_num, state.hp,
                      target.name if target else 'None', best.name)
         else:
+            if target is None:
+                # 无 target(尚未承诺)→ 无忠诚对象,signal1 的 gap 检查不适用(它为防「弃 current target
+                # churn」而设,target=None 无可弃)→ 直接选 best。动态权重(ADR-0107)让 comp_score 诚实化
+                # (无数据不再注水 0.5 常量)→ 早期诚实低分也该有 target,不该卡 gap 阈留 None。
+                log.info('[cw-pivot] p=%s r=%s hp=%s 无 target → 直接选 best %s(未承诺,gap 检查不适用)',
+                         state.plane, state.round_num, state.hp, best.name)
+                return best
             target_score = comp_score(target, state, ctx) if target is not None else 0.0
             best_score = comp_score(best, state, ctx)
             gap = best_score - target_score
@@ -816,7 +853,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                          state.plane, state.round_num, state.hp,
                          target.name if target else 'None', best.name,
                          best_score, target_score, gap, _required_gap, _tag,
-                         {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items()})
+                         {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items() if v is not None})
                 return best
             log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
                      state.plane, state.round_num, state.hp,
