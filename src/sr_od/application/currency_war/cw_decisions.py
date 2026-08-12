@@ -748,7 +748,11 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     if state.gold >= INTEREST_THRESHOLD or not state.bench:
         return
     # node_plan(14 §2.2):节点 spend_mode 花光成型(allin,P3)/ 升人口(level,P2)/ 抢升(rush_level)
-    # 档位不囤息(卖息与节奏相悖)。
+    # 档位不囤息(卖息与节奏相悖)。⚠️ 本函数是 spend_mode 的**动作消费者**(allin/level → 跳卖息动作);
+    # 另一消费者 ``_economy_mode_for``(ADR-0102)是**评分消费者**(spend_mode → economy_mode 映射,调
+    # economy_score 利息/等级相对权重)。两者刻意不同映射:本函数挡「卖息凑档」动作(allin/level 不该囤息),
+    # _economy_mode_for 调经济评分相对权重(level→rush_level / allin→adaptive neutral,economy-low 由
+    # _phase_weights plane3 we=0.3 处理)—— 语义不同,勿强行统一(审计 round-17 borderline#2)。
     _econ = getattr(config, 'economy_mode', 'adaptive')
     _spend = get_node_goal(state.plane, state.round_num).spend_mode
     if _econ == "rush_level" or _spend in ("allin", "level"):
