@@ -8,7 +8,7 @@
 
 `comp_viability`(评 current 已 commit comp 可行性)先验 = 0.45·form + 0.30·equip + 0.25·mechanics,**缺星级维度**(review round-4 HIGH-1)。
 
-货币战争限时 AV(行动值)机制下,**星级 = 输出能力**(2/3 星角色伤害更高)—— comps/ 攻略逐套标「核心追 2-3 星」(银枝必须 3 星 / 万敌 4-5 级追 3 星)。comp_viability 不含 star → 只有「成型度(form)+ 装备 + 词缀适配」,无「核心角色升星程度」→ 高星核心 comp 被低估。
+货币战争限时 AV(行动值)机制下,**星级 = 输出能力**(2/3 星角色伤害更高)—— guides/阵容_ 攻略逐套标「核心追 2-3 星」(银枝必须 3 星 / 万敌 4-5 级追 3 星)。comp_viability 不含 star → 只有「成型度(form)+ 装备 + 词缀适配」,无「核心角色升星程度」→ 高星核心 comp 被低估。
 
 信号就绪度:
 - **bot 跟踪 BenchChar.star** 由 `simulate` 维护(`cw_state`:buy=卡星 + 3合1 → star+1),非恒=1。

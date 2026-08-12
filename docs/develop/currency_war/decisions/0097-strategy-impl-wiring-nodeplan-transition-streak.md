@@ -39,7 +39,7 @@
 - **α 来源**:`alpha_t(state)`(R_OPEN=2 → R_CLOSE=12 ramp;ADR 0096 定义)。target=None(reactive)→ commit 项归零,只剩 optionality + 基础分(A3 向后兼容)。
 
 ### transition_tempo(过渡羁绊,review round-4 HIGH-2)
-- **A(选)**:`TRANSITION_FACTIONS` = {仙舟, 狼狩, 持续伤害, 列车同行, 贝洛伯格}(能打伤害的早期羁绊,人上人级,comps/README「开局过渡分级」);`transition_tempo_score` = board 凑出(≥2)的过渡羁绊计数(cap 2)× `TRANSITION_TEMPO_BONUS=3.0`,乘 `(1−α)`(早期强调,fades as commit)。
+- **A(选)**:`TRANSITION_FACTIONS` = {仙舟, 狼狩, 持续伤害, 列车同行, 贝洛伯格}(能打伤害的早期羁绊,人上人级,guides/阵容_README.md「开局过渡分级」);`transition_tempo_score` = board 凑出(≥2)的过渡羁绊计数(cap 2)× `TRANSITION_TEMPO_BONUS=3.0`,乘 `(1−α)`(早期强调,fades as commit)。
 - B:per-comp 过渡羁绊 —— 双源(每 comp 自带过渡),且早期 comp 未定,违背"早期灵活"。否。
 - C:无过渡(纯等成型)—— DOT 慢热 P1 无过渡羁绊支撑 → 限时 AV 超时掉血 → 死根因。否。
 - D:与 synergy 双重堆(transition 也按阵营激活数计)—— flat-per-羁绊(只奖"凑出 ≥2"的早期 tempo),非堆 synergy 分。否(防双计)。
