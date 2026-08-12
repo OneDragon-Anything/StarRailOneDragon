@@ -928,7 +928,7 @@ def decide_supply(options: list[SupplyOption], state: GameState,
     return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
 
 
-# ===== 巨星节点(decide_megastar,新钩子;纯逻辑骨架,handler 待候选 char_id OCR 接)=====
+# ===== 巨星节点(decide_megastar;✅ 已派发 run_megastar_node:75,按 target.core_chars 选;⚠️ 候选 char_id OCR 限时 fallback idx0)=====
 
 @dataclass
 class MegastarOption:
@@ -947,7 +947,7 @@ class MegastarPick:
     reason: str = ""
 
 
-# ===== 选择伙伴节点(decide_partner,新钩子;纯逻辑骨架,handler 待候选 char_id OCR 接)=====
+# ===== 选择伙伴节点(decide_partner;✅ 已派发 handle_select_partner:96,T#99;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
 
 @dataclass
 class PartnerOption:
