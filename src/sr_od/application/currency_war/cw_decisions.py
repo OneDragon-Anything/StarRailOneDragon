@@ -17,6 +17,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
 from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
 
@@ -336,7 +337,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
         # BENCH_TARGET 不随 α 缩:持有 target 牌始终奖励(早期也要攒核心件;board 满→买 target 到 bench→
         # delta>0→bot 买→level up 后 deploy→target 深堆)。delta 中 phantom bench 抵消(plan greedy 消,净 delta 正确)。
         _bench_tgt = sum(1 for bc in state.bench
-                         if bc.faction in target_comp.factions or bc.char_id in target_comp.core_chars)
+                         if _card_hits_target(bc.char_id, bc.faction, target_comp))
         score += BENCH_TARGET_WEIGHT * _bench_tgt
     # optionality(灵活期权,F-3):早期(α 小)保 ≥2 comp 通用角色,晚期(α→1)让位 commit。
     # 即使 reactive(target=None)也奖 —— 未 commit 时更该保灵活(通用角色随时可并入将来 target)。
@@ -392,6 +393,41 @@ def _distinct_factions(state: GameState) -> set[str]:
     return factions
 
 
+def _char_synergies(name: str) -> set[str]:
+    """角色全部羁绊(阵营 + 流派 + 独立),查 ``CHARACTERS`` 注册表(CLAUDE.md 单一源)。
+
+    流派(持续伤害/击破/燃血/…)与阵营同为羁绊,``comp.factions`` 可含两者 → target 匹配须用全羁绊,
+    非单 ``card.faction``(= ``Character.factions[0]``,丢流派)。流派主派 comp(DOT/击破/燃血)的流派
+    角色(如艾丝妲=银河学者+持续伤害)据此识别为 target,不被误判 off-target → commit 后仍可买凑过渡。
+    未识别 / 不在注册表 → 空集(card.faction 兜底由 ``_card_hits_target`` 加)。
+    """
+    ch = CHARACTERS.get(name)
+    if ch is None:
+        return set()
+    syn = set(ch.factions) | set(ch.flows)
+    if ch.independent:
+        syn.add(ch.independent)
+    return syn
+
+
+def _card_hits_target(name: str, faction: str, target: Comp) -> bool:
+    """这张牌是否属于 target comp(**全羁绊匹配,流派安全**;治本流派/阵营断裂,决策见 ADR-0103)。
+
+    True:name ∈ target.core_chars **或** 全羁绊(``_char_synergies`` + faction 兜底)∩ target.factions 非空。
+    faction 兜底:name 未识别时用 OCR 的 card.faction(虽只阵营,聊胜于空)。
+
+    ⚠️ 取代旧 ``card.faction in target.factions``(只阵营,流派主派 comp 的过渡/补充角色被误判 off-target:
+    实跑 DOT 队 P1 输根因 —— 艾丝妲/椒丘等持续伤害流派角色 card.faction=银河学者/空 ∉ DOT.factions
+    [持续伤害,星核猎手] → commit 后被 prefilter 跳过 → 凑不出 2DOT 过渡)。
+    """
+    if name in target.core_chars:
+        return True
+    syn = _char_synergies(name)
+    if faction and faction != '?':
+        syn = syn | {faction}
+    return bool(syn & set(target.factions))
+
+
 def _concentration_delta(card: ShopCard, state: GameState,
                          target_comp: Comp | None = None) -> float:
     """买这张牌对 concentration 的影响(加到 buy delta,L1)。
@@ -406,8 +442,7 @@ def _concentration_delta(card: ShopCard, state: GameState,
     factions = _distinct_factions(state)
     if card.faction and card.faction in factions:
         return REINFORCE_BONUS
-    if target_comp is not None and (
-            card.faction in target_comp.factions or card.name in target_comp.core_chars):
+    if target_comp is not None and _card_hits_target(card.name, card.faction, target_comp):
         return 0.0
     if len(factions) >= DEPLOY_FACTION_CAP:
         return -SPREAD_PENALTY
@@ -431,7 +466,7 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
-    if target is not None and (bc.faction in target.factions or bc.char_id in target.core_chars):
+    if target is not None and _card_hits_target(bc.char_id, bc.faction, target):
         return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
@@ -642,11 +677,10 @@ def _best_improving_action(
         # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
         # 这里只管"攒金期间别把金泄到散牌上"(解 replay 32 局金堆 50+ 不花/花在散牌上不升级)。
         if _saving:
-            _is_target_card = (target_comp is not None and (
-                card.faction in target_comp.factions
-                or card.name in target_comp.core_chars
-                or card.name in character_priority))
-            if not _is_target_card:
+            _is_target = (target_comp is not None
+                          and (_card_hits_target(card.name, card.faction, target_comp)
+                               or card.name in character_priority))
+            if not _is_target:
                 continue   # 散牌:攒金给升级,跳过
         # commitment prefilter(task#16):target 设定时,若 shop 有 target 卡(阵营∈target.factions 或
         # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char)→ 聚焦深化 target,
@@ -657,14 +691,13 @@ def _best_improving_action(
         # 绝对豁免 commitment。priority 仍享 eval 加成(CHAR_PRIORITY_BONUS,下文)+ 未 commit 时(target=None)
         # 本 prefilter 不跑 → 早期 stopgap 保留。
         if target_comp is not None:
-            _is_offtarget = (card.faction not in target_comp.factions
-                             and card.name not in target_comp.core_chars)
+            _is_offtarget = not _card_hits_target(card.name, card.faction, target_comp)
             if _is_offtarget:
                 # shop 有买得起的 target 卡 → 跳 off-target(聚焦深化 target;task#16)。
                 # T#97:**已 commit** 也跳(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金;
                 # drought bail 处理真不可达 target)。仅「非 commit + shop 无 target」放行 = 早期 tempo。
                 _shop_has_buyable_tgt = any(
-                    c.faction in target_comp.factions or c.name in target_comp.core_chars
+                    _card_hits_target(c.name, c.faction, target_comp)
                     for c in state.shop if state.gold >= card_cost(c))
                 if _shop_has_buyable_tgt or target_committed(target_comp, state):
                     continue
@@ -704,14 +737,14 @@ def _best_improving_action(
     # target 永不深成型 → plane2 弱秒死,2026-08-06 实跑)。_refresh_expected_delta 已加 target 阵营采样权重。
     # 的 hp 判定排除)。
     _shop_has_target = (target_comp is not None and any(
-        c.faction in target_comp.factions or c.name in target_comp.core_chars
+        _card_hits_target(c.name, c.faction, target_comp)
         for c in state.shop))
     # simulate(RefreshShop) 不建模换 shop(只扣金、shop 不变)→ 贪心误以为「Refresh 后还能买当前 shop 的 target」,
     # 故 plan 选 Refresh 作第一动作;但实跑 Refresh 换 shop → target 卡(追击×3)全没 → 只能买 off-target → spread。
     # 规则:auto-chess 基本功 —— target 卡在场且买得起 = 确定收益,Refresh 找 target 是赌注(蒙特卡洛乐观);
     # 取确定不取赌。买完所有买得起的 target(本字段转 False)才 Refresh 找更多。
     _shop_has_buyable_target = (target_comp is not None and any(
-        c.faction in target_comp.factions or c.name in target_comp.core_chars
+        _card_hits_target(c.name, c.faction, target_comp)
         for c in state.shop if state.gold >= card_cost(c)))
     # (3/3 局 survive plane1 但 comp count=1 不深 → plane2 秒死;策略子agent P3)。
     _roll_for_target = (target_comp is not None
