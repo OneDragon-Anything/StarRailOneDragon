@@ -367,22 +367,30 @@ def _target_progress_remaining(state: GameState, target_comp: Comp) -> float:
     return tot / len(target_comp.form_tiers)
 
 
-def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factions: set[str]) -> float:
-    """角色"留下价值"(越低越该卖):星级 + 优先角色 + 接近推层阵营保留。"""
+def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factions: set[str],
+                     target_comp: Comp | None = None) -> float:
+    """角色"留下价值"(越低越该卖):星级 + 优先角色 + 接近推层阵营 + target 核心保护。
+
+    review 🔴:加 target_comp —— target 核心卡(core_chars / 全羁绊命中)高额保护分,
+    防 plan 卖掉 target 核心凑息(承诺须贯穿卖路径,非只买/部署;否则一边承诺一边卖 target)。
+    """
     val = float(bc.star)
     if bc.char_id in character_priority:
         val += 100
     if bc.faction in close_factions:
         val += 50
+    if target_comp is not None and _card_hits_target(bc.char_id, bc.faction, target_comp):
+        val += 100   # target 核心保护(同 priority 量级);commit 后绝不卖 target 凑息
     return val
 
 
-def _weakest_bench_idx(state: GameState, character_priority: list[str]) -> int | None:
+def _weakest_bench_idx(state: GameState, character_priority: list[str],
+                       target_comp: Comp | None = None) -> int | None:
     if not state.bench:
         return None
     close = _close_factions(state)
     return min(range(len(state.bench)),
-               key=lambda i: _bench_sell_value(state.bench[i], character_priority, close))
+               key=lambda i: _bench_sell_value(state.bench[i], character_priority, close, target_comp))
 
 
 
@@ -521,7 +529,10 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
             if ok:
                 after = simulate(after, DeployMove(bench_idx=len(after.bench) - 1,
                                                    to_row=row, faction=bc.faction))
-        ev = evaluate(after, config, faction_priority, target_comp)
+        # 口径与真实买(_best_improving_action L715-716)一致:eval + concentration + priority
+        # (review 🔴:原漏 _concentration_delta → 蒙特卡洛 D 牌估值尺子≠真实买 → 该 D 不 D)
+        ev = (evaluate(after, config, faction_priority, target_comp)
+              + _concentration_delta(card, state, target_comp))
         if card.name in character_priority:
             ev += CHAR_PRIORITY_BONUS * 2
         best = max(best, ev)
@@ -573,7 +584,7 @@ def plan(state: GameState, config, faction_priority: list[str],
             actions.append(LevelUp(cost=cost))
             cur = simulate(cur, actions[-1])
         else:
-            idx = _weakest_bench_idx(cur, character_priority)
+            idx = _weakest_bench_idx(cur, character_priority, target_comp)
             if idx is not None:
                 actions.append(SellBench(bench_idx=idx))
                 cur = simulate(cur, actions[-1])
@@ -620,7 +631,7 @@ def plan(state: GameState, config, faction_priority: list[str],
         base_eval = evaluate(cur, config, faction_priority, target)
 
     # —— 凑整吃息:卖出能跨 10 倍数(+1 档息)的非关键 bench 牌(循环)——
-    _maybe_sell_for_interest(cur, actions, character_priority, config)
+    _maybe_sell_for_interest(cur, actions, character_priority, config, target_comp)
     return actions
 
 
@@ -776,7 +787,8 @@ def _pick_deploy_row(state: GameState, bc: BenchChar) -> tuple[str, bool]:
 
 
 def _maybe_sell_for_interest(state: GameState, actions: list[Action],
-                             character_priority: list[str], config) -> None:
+                             character_priority: list[str], config,
+                             target_comp: Comp | None = None) -> None:
     """凑整吃息:卖出能跨一个 10 倍数(+1 档息)的非关键 bench 牌(循环,最多 3 张)。"""
     if state.gold >= INTEREST_THRESHOLD or not state.bench:
         return
@@ -796,6 +808,9 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
         best_idx = None
         for i, bc in enumerate(cur.bench):
             if bc.char_id in character_priority or bc.faction in close:
+                continue
+            # review 🔴:target 核心不卖凑息(承诺贯穿卖路径;防卖刚买的 target 核心凑息)
+            if target_comp is not None and _card_hits_target(bc.char_id, bc.faction, target_comp):
                 continue
             refund = sell_refund(bc.star)
             if (cur.gold + refund) // 10 > cur.gold // 10 and cur.gold + refund <= INTEREST_THRESHOLD:

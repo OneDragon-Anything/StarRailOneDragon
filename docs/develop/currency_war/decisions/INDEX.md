@@ -30,3 +30,4 @@
 | [0101](0101-equip-wear-comp-key-equips.md) | EquipAll 穿戴接 comp.key_equips 优先(替 naive wearable[0]) | accepted | 2026-08-12 | 穿戴按 target_comp 命脉件优先(equip_fit/decide_supply 已 comp 驱动,动作层补接);不改角色级分配 |
 | [0102](0102-spend-mode-drives-economy-score.md) | spend_mode 驱动 economy_score(节点节奏→经济档位;补 0097 剩余) | accepted | 2026-08-12 | _economy_mode_for 映射(saving→interest_first/level→rush_level/allin→adaptive);与 _phase_weights 正交;allin economy-low 由 plane3 we=0.3 处理 |
 | [0103](0103-target-matching-full-synergies.md) | target comp 牌归属用全羁绊匹配(治本流派/阵营断裂) | accepted | 2026-08-12 | _card_hits_target(全羁绊∩comp.factions)替 card.faction in target.factions(只阵营);流派角色(艾丝妲/椒丘)commit 后不再被误跳 → DOT 凑得出 2DOT;8 处统一 |
+| [0104](0104-strategy-review-fixes-batch1.md) | 策略 review 修复批次1(反甲白厄死comp/蒙特卡洛concentration/卖路径护target) | accepted | 2026-08-12 | 反甲白厄 factions 空(白厄无阵营,毁灭是命途非阵营)+防回归测试;蒙特卡洛补_concentration_delta(口径统一);卖路径加target_comp护核心(commitment贯穿) |

@@ -307,8 +307,13 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="反甲白厄", factions=["毁灭"], core_chars=["白厄"],
-        form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard", early_power="低",
+        name="反甲白厄", factions=[], core_chars=["白厄"],
+        form_tiers={}, strength="A", form_difficulty="hard", early_power="低",
+        # 白厄无阵营(cw_chars:104 factions=""),独立羁绊「救世主」(获所有前台非独立羁绊效果)。
+        # 反甲流靠白厄单核 + 以牙还牙甲×3 受击反伤,**不靠阵营羁绊成型** → factions/form_tiers 空。
+        # (原 ["毁灭"]/{"毁灭":4} 错:毁灭是命途(destruction)非阵营,form_progress 恒 0 → 死 comp 污染候选池。)
+        # comp 靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
+        # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),select_comp 候选但 progress 低。
         key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
         countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
         mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
@@ -318,7 +323,6 @@ COMP_LIBRARY: list[Comp] = [
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=0, target_chars=["白厄"], star_goals={"白厄": 2}),
         },
-        # ⚠️ "毁灭" 不在 FACTIONS(data gap;form_progress 返回 0,待实机 OCR 确认白厄实际羁绊)
     ),
     # ===== B 级(强度一般,V4.4 合集 76807134)=====
     Comp(
