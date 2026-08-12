@@ -156,8 +156,6 @@ class StrategySession:
     last_state: GameState | None = None
     # 弃 target 重选(防 commit 锁死不可达 target:update_target 重选;live round6 HP4 死于此)。
     target_drought: int = 0
-    # 跟 shop 走,commit 到反复出现的阵营(可成型),非单回合随机。select_comp/buy 用其判**长期可得性**
-    shop_faction_seen: dict = field(default_factory=dict)
     # 替代旧 DeployBench naive 填位(从槽0拖全部,不看 position_pref)。用户反复要求接入决策。
     pending_deploys: list = field(default_factory=list)
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。

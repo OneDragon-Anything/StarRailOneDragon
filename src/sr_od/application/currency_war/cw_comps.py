@@ -82,8 +82,6 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-    # select_comp 用其判长期可得性(替 shop_supply 单回合短视)—— 跟 shop 走,commit 到反复出现的阵营。
-    shop_faction_seen: dict = field(default_factory=dict)
 # 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
@@ -558,16 +556,13 @@ def current_enemy_mechanics(state: GameState) -> set[str]:
     return {AFFIX_MECHANIC_MAP.get(a, a) for a in state.enemy_affixes}
 
 
-def make_score_context(state: GameState, bosses: list[str] | None = None,
-                       shop_faction_seen: dict | None = None) -> ScoreContext:
-    """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。
-    shop_faction_seen():跨回合 shop 阵营历史,update_target 累积后传入。"""
+def make_score_context(state: GameState, bosses: list[str] | None = None) -> ScoreContext:
+    """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
     return ScoreContext(
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
         plane=state.plane, round_num=state.round_num, gold=state.gold,
-        shop_faction_seen=shop_faction_seen or {},
     )
 
 
@@ -656,7 +651,7 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏 easy **且** early_power 高,
     避免选易成型但早期弱的 comp。先验待实玩校准(多局验证)。
     """
-    early = state.round_num <= 3 or state.gold < 30
+    early = (state.round_num + (state.plane - 1) * 6) <= 3 or state.gold < 30   # 全局 elapsed 判早期(位面内 round_num 1-6 循环 → per-plane 判会误把 plane2/3 r1-3 当早期)
     if not early:
         return 1.0
     form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
@@ -759,7 +754,7 @@ def target_committed(target: Comp, state: GameState) -> bool:
     """
     fp = form_progress(target, state)
     return (fp >= COMMIT_FRAC
-            or ((state.plane - 1) * 9 + state.round_num >= COMMIT_ROUND and fp > 0))
+            or ((state.plane - 1) * 6 + state.round_num >= COMMIT_ROUND and fp > 0))
 
 
 def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
