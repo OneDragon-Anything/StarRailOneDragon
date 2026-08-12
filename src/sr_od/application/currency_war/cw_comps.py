@@ -694,6 +694,25 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     return 1.0
 
 
+def _held_base_copies(state: GameState) -> dict[str, int]:
+    """玩家持有的每角色**基础副本数**(牌池消耗 j;ADR-0110 acq 牌池感知用)。
+
+    bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
+    持有越多 → 牌池剩余该角色越少 → 越难再刷(牌库有限,用户根因)。
+    state.bench/deployed 由 session.tracked_* seed(带 char_id+star;shop.py:185);空(首轮/无身份)→ {}。
+    """
+    counts: dict[str, int] = {}
+    bench = list(getattr(state, 'bench', []) or [])
+    deployed = list(getattr(state, 'deployed', []) or [])
+    for bc in (*bench, *deployed):
+        cid = getattr(bc, 'char_id', None)
+        if not cid:
+            continue
+        star = max(getattr(bc, 'star', 1), 1)
+        counts[cid] = counts.get(cid, 0) + 3 ** (star - 1)
+    return counts
+
+
 def select_comp(state: GameState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
@@ -701,17 +720,17 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
     评分 = comp_score(多维)+ 用户 4 轴 steer(硬过滤 build_around/forbid + 软加权 priority)
     + 阶段成型难度因子(早期偏 easy)。optionality 时传 top_n=2-3 备选几套(P1-1:核心来了再 commit)。
     """
+    held = _held_base_copies(state)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
     scored: list[tuple[float, Comp]] = []
     for comp in COMP_LIBRARY:
         if not _passes_steering(comp, config):
             continue
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # acquirability:核心角色在当前等级的理论刷新概率(D-92 理论 REFRESH_PROB 表)。
-        # review🔴 收窄:原 0.15+0.85p(方差0.85)压过 _board_alignment(0.7-1.2 方差0.5)→ acq 主导
-        # → 选 board 不支持但 core 易刷的 comp → spread 永不成型。改 0.5+0.5p(方差0.5),
-        # 让 board 支持主导选 comp,acq 作次级 tiebreak。p=0→×0.5(仍降但不碾 board);p=1→×1.0。
-        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level))
+        # acquirability(ADR-0110 牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
+        # review🔴 收窄(ADR-0105):0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
+        # 防选「core 易刷但 board 不支持」的 comp → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
+        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level, held))
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
         scored.append((s, comp))

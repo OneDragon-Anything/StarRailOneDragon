@@ -134,19 +134,40 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
     return expected_refreshes(p, v, a, non_target_taken, k, owned)
 
 
-def acquirability_factor(core_chars: list[str], level: int) -> float:
-    """comp 核心角色在当前等级的理论可得性 [0,1](替 select_comp 的 shop_supply / shop_history 观察法)。
+def acquirability_factor(core_chars: list[str], level: int,
+                         held: dict[str, int] | None = None) -> float:
+    """comp 核心角色的**牌池感知**可得性 [0,1](select_comp 用;ADR-0110 牌池模型,补 ADR-0092 理论法)。
 
-    取核心角色里最低 refresh_prob(level, cost)(阵容受最稀卡限制)。
-    p=1(满概率刷出)→ 1.0;p=0(该等级刷不出该费)→ 0.0;p=0.4 → 0.4。
-    select_comp 用法:s *= (0.5 + 0.5 * acquirability_factor)(ADR-0105 收窄:原 0.15+0.85p 压过 board 主导)。
-    理论依据:刷新概率独立(用户点破)→ 观察(shop 本回合 / 历史)无预测力,用理论概率表 REFRESH_PROB。
+    P(单次刷新 5 格中至少出 1 张该角色)= 1 - P(0 张),用 ``_refresh_dist`` 精确超几何算:
+    - P(出该费用)= refresh_prob(level, cost);M~B(5, p) 出该费用格数;
+    - 给定 m 格该费用,出该角色 = 超几何(剩余该角色副本 a−j / 同费剩余总副本 v·a−j);
+    - **j = 玩家已持有该角色的基础副本数**(1星1/2星3/3星9/4星27,3合1 折算)→ 持有越多,剩余越少,越难再刷
+      (牌库有限:买掉即减,用户根因;ADR-0109 副本数 27/9)。忽略 NPC 消耗(未知,保守:只扣自己持有的)。
+    comp 取核心角色里**最低**(阵容受最稀卡限制)。
+
+    :param held: {char_name: 已持基础副本数 j},默认 None=全 0(早期未持,纯满池理论)。
+    :return: [0,1];p=0(该等级不出该费)→ 0;无识别角色 → 1.0(中性不降权)。
+
+    select_comp 用法:s *= (0.5 + 0.5 * acq)(ADR-0105:acq 作次级 tiebreak,非主导;牌池感知后范围收窄
+    至 ~0.005-0.3 → 乘子 0.50-0.65,仍提供「低费核心早期更易刷」的 tiebreak 区分)。
+    理论依据(ADR-0092):刷新概率独立 → 观察(shop 本回合/历史)无预测力,用理论 REFRESH_PROB + 牌池模型。
     """
+    held = held or {}
     probs: list[float] = []
     for name in core_chars:
         c = CHARACTERS.get(name)
-        if c:
-            probs.append(refresh_prob(level, c.cost))
+        if not c:
+            continue
+        p_cost = refresh_prob(level, c.cost)
+        if p_cost <= 0:
+            probs.append(0.0)          # 该等级不出该费用 → 0(刷不出)
+            continue
+        a = POOL_COPIES_PER_CARD.get(c.cost, 9)
+        v = DISTINCT_CARDS_PER_COST.get(c.cost, 13)
+        j = held.get(name, 0)
+        # P(0 张该角色)经超几何(j 张已离池 → rem_target=a-j);1-P(0)=P(≥1)
+        dist0 = _refresh_dist(p_cost, v, a, c=0, k_need=1, j=j)[0]
+        probs.append(1.0 - dist0)
     if not probs:
         return 1.0
     return min(probs)
