@@ -37,7 +37,53 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
+        self._probe_node_type()   # [采集钩子·临时] 节点类型标定,采完(位面1 全轮)删本调用+方法
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
+
+    def _probe_node_type(self) -> None:
+        """[采集钩子·临时] 备战入场读节点行序列(``read_node_sequence``)→ log + 未识别图标采集。
+
+        read_node_sequence = HoughCircles 动态定圆 + HSV 三态 + 未来 Hu 匹配 + 当前 OCR(见 cw_node_reader)。
+        未识别图标(hu_dist > 阈值:扑满 / 新节点类型)→ 存图标离线分析加模板。
+        扑满模板补上 + ``session.node_types`` 生产接线后 → 删本方法 + buy 调用(CLAUDE.md「两种钩子」)。
+        """
+        try:
+            screen = self.screenshot()
+            from sr_od.application.currency_war.cw_observation import read_node_sequence
+            _slots = read_node_sequence(self.ctx, screen)
+            if not _slots:
+                return
+            _sum = ', '.join(
+                f'{s.idx}:{s.state}:{s.node_type}' + (f'({s.hu_dist:.1f})' if s.hu_dist else '')
+                for s in _slots)
+            log.info(f'[cw-prep][nodeseq] n={len(_slots)} | {_sum}')
+            self._capture_unrecognized_node_icons(screen, _slots)
+        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
+            log.info(f'[cw-prep] nodeseq skip: {e}')
+
+    def _capture_unrecognized_node_icons(self, screen, slots) -> None:
+        """[采集钩子·临时] 未来圆 Hu 无显著最近(hu_dist > ``HU_DIST_UNRECOGNIZED``)→ 裁该图标存盘。
+
+        聚焦单未识别图标(非全行 dedup);扑满 / 新节点类型离线分析加模板用。icon 裁窗 ``_ICON_CAP_R``
+        略大于分类窗(多给上下文供 VLM / 人眼分析);模板定型时仍按 ``cw_node_reader._SAMPLE_R`` 重抽。
+        扑满模板补上 → 删本方法 + 调用(CLAUDE.md「临时钩子用完即删」)。
+        """
+        from sr_od.application.currency_war.cw_node_reader import (
+            HU_DIST_UNRECOGNIZED,
+            NODE_ROW_RECT,
+        )
+        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        _ICON_CAP_R = 24  # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文);临时常量随钩子删
+        _x0, _y0, _x1, _y1 = NODE_ROW_RECT
+        _row = screen[_y0:_y1, _x0:_x1]
+        for _s in slots:
+            if _s.state != 'upcoming' or _s.hu_dist is None or _s.hu_dist <= HU_DIST_UNRECOGNIZED:
+                continue
+            _y0c, _y1c = max(0, _s.cy - _ICON_CAP_R), _s.cy + _ICON_CAP_R
+            _x0c, _x1c = max(0, _s.cx - _ICON_CAP_R), _s.cx + _ICON_CAP_R
+            _fn = cw_shot_unique(_row[_y0c:_y1c, _x0c:_x1c], f'node_unknown_{_s.idx}')
+            if _fn:
+                log.info(f'[cw-prep][nodeseq] 未识别图标 idx={_s.idx} hu={_s.hu_dist:.1f} → 采 {_fn}')
 
     @node_from(from_name='买牌')
     @operation_node(name='部署')

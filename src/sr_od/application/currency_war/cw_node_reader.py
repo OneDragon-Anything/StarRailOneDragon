@@ -44,6 +44,7 @@ class NodeSlot:
 
     idx: int                       # 槽号(左→右 0..)
     cx: int                        # 圆心 x(节点行裁图坐标)
+    cy: int                        # 圆心 y(节点行裁图坐标;采集未识别图标定位用)
     state: str                     # past / current / upcoming
     node_type: str | None          # best Hu 匹配(未来);None(当前/过去;当前类型由 OCR 定)
     hu_dist: float | None          # 最近 Hu 距离(未来);None(当前/过去)。> HU_DIST_UNRECOGNIZED → 未识别
@@ -120,5 +121,5 @@ def classify_node_row(row_bgr: np.ndarray, templates: dict[str, HuLike]) -> list
             h = _hu_moments(gray[y0:y1, x0:x1])
             hu_dist, best = min((_hu_distance(h, hu), t) for t, hu in templates.items())
             node_type = best
-        slots.append(NodeSlot(idx=i, cx=cx, state=state, node_type=node_type, hu_dist=hu_dist))
+        slots.append(NodeSlot(idx=i, cx=cx, cy=cy, state=state, node_type=node_type, hu_dist=hu_dist))
     return slots
