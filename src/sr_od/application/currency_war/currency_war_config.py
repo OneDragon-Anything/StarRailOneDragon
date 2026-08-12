@@ -49,12 +49,8 @@ DEFAULT_EVENT_WHITELIST: dict[str, int] = {
 # 枚举合法值(构造时校验,typo/大小写错静默落入默认)
 ALLOWED_ECONOMY: set[str] = {"interest_first", "rush_level", "adaptive"}
 
-# boss 名 → 该回避的阵营/流派(阵容克制;boss 名需实机 OCR 落库)
-DEFAULT_BOSS_COUNTER: dict[str, list[str]] = {
-    # 例:电视机克阿格莱雅(昼之半神轮椅流);琥珀王/死龙/酒杯怪克反甲白厄(白厄=毁灭,此处降毁灭)
-    "电视机": ["昼之半神"],
-    # 其余 boss 名待实机 OCR 补
-}
+# boss 克制 = comp-vs-boss 机制级(comp.countered_by_bosses + boss_fit + task#73 机制建模),
+# 非阵营级 —— 原 DEFAULT_BOSS_COUNTER(boss→降权阵营)错模型已删(decide_boss_priority 删时一并清)。
 
 # 克制 DoT/减益 的投资环境(遇此环境不走 DoT 路线)
 DEFAULT_DOT_PUNISH_ENVS: list[str] = ["净化身心"]
@@ -90,7 +86,6 @@ class CurrencyWarConfig(YamlConfig):
         econ = self.get('economy_mode', 'adaptive')
         self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
         self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
-        self.boss_counter: dict = self.get('boss_counter', DEFAULT_BOSS_COUNTER)
         self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
         # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
         self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
@@ -111,7 +106,6 @@ class CurrencyWarConfig(YamlConfig):
             'faction_forbid': self.faction_forbid,
             'economy_mode': self.economy_mode,
             'event_whitelist': self.event_whitelist,
-            'boss_counter': self.boss_counter,
             'dot_punish_envs': self.dot_punish_envs,
             'hp_safe_threshold': self.hp_safe_threshold,
             'difficulty_hp_override': self.difficulty_hp_override,

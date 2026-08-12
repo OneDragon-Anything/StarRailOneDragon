@@ -89,7 +89,7 @@ class DefaultCwStrategy(CwStrategy):
         if session.selected_difficulty:
             state.selected_difficulty = session.selected_difficulty
         # 简报首领注入:3 位面 boss 名 → state.bosses → ScoreContext.bosses → comp_score 的 boss_fit。
-        # 注:当前 comp.boss_weakness 多为空(数据待采,同 competitors.md),boss_fit 暂中性;数据补上即生效。
+        # 注:当前 comp.countered_by_bosses 多为空(数据待采,同 competitors.md),boss_fit 暂中性;数据补上即生效。
         if session.briefing_bosses:
             state.plane_bosses = list(session.briefing_bosses)
         # 原 bug:active_env 恒空 → env_fit 全 0.5 → T0 env(如 昼之半神概念股→昼神阿雅)不硬绑。

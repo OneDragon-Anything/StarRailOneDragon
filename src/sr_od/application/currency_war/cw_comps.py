@@ -65,7 +65,7 @@ class Comp:
     early_power: str = "中"
     level_plan: dict[int, LevelGoal] = field(default_factory=dict)  # 成型路线(玩家等级→该做什么);建库时填
     key_equips: list[str] = field(default_factory=list)      # 关键装备(可含重复,如阿雅需 2 反重力皮靴)
-    boss_weakness: list[str] = field(default_factory=list)   # 克这阵容的 boss 名(boss_fit 用)
+    countered_by_bosses: list[str] = field(default_factory=list)   # 克这阵容的 boss 名(boss_fit 用)
     mechanic_attributes: list[str] = field(default_factory=list)  # comp 机械属性 tag(mechanics_fit 经 MECHANIC 表判)
     shared_chars: list[str] = field(default_factory=list)    # 与其他 comp 共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
@@ -140,7 +140,7 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件顶部 import 重导出 → 下游用 cw_comps.AFFIX_EFFECTS 不变。
-# comp.boss_weakness 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
+# comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
@@ -165,7 +165,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
         # 成型 8 人口:前台 姬子·启行+花火+瓦尔特+记忆主,后台 三月七+刻律德菈+千冶·刃+符玄/缇宝
         key_equips=["冷笑话引擎", "火力风暴潮", "高周波电锯", "掩体生成枪"],   # 输出装(非反甲;攻略明言"不需要刷反甲")
-        boss_weakness=[], mechanic_attributes=["治疗护盾"],
+        countered_by_bosses=[], mechanic_attributes=["治疗护盾"],
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["三月七", "符玄", "艾丝妲"],
         typical_form_round=5,
         level_plan={
@@ -215,7 +215,7 @@ COMP_LIBRARY: list[Comp] = [
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
         key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],
-        boss_weakness=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
+        countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
         mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
         transition_chars=["希儿", "刃", "符玄"], typical_form_round=6,
         level_plan={
@@ -233,7 +233,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 加刃提升残梦效率。前期 4 减益降敌伤过渡 → 7 级 d 找黄泉+不死途 → 上 9 补符玄杨叔
         # ⚠️ 与 DOT队(卡芙卡持续伤害)不同,黄泉是减益/巡海游侠主派,独立
         key_equips=["火力风暴潮", "冷笑话引擎"],
-        boss_weakness=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
+        countered_by_bosses=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
         mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
         level_plan={
@@ -296,7 +296,7 @@ COMP_LIBRARY: list[Comp] = [
         # 银枝(风暴潮+冷笑话)+翡翠(3群攻)+鸟(拉条加攻增伤+10%幸运);必须3星银枝;适合对群,对单大降
         # ⚠️ 旧"贝洛伯格召唤"(布洛妮娅 core)误:布洛妮娅是通用辅助非 comp lead;V4.4 贝洛伯格代表=银枝
         key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻"],
-        boss_weakness=["单体长战"], shared_chars=["翡翠", "知更鸟"],
+        countered_by_bosses=["单体长战"], shared_chars=["翡翠", "知更鸟"],
         transition_chars=["椒丘", "星期日", "刃"], typical_form_round=7,
         level_plan={
             5: LevelGoal("roll", target_cost=3, target_chars=["银枝"]),
@@ -310,7 +310,7 @@ COMP_LIBRARY: list[Comp] = [
         name="反甲白厄", factions=["毁灭"], core_chars=["白厄"],
         form_tiers={"毁灭": 4}, strength="A", form_difficulty="hard", early_power="低",
         key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
-        boss_weakness=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
+        countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
         mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
         transition_chars=["白厄", "符玄", "三月七"], typical_form_round=7,
         level_plan={
@@ -339,7 +339,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"昼之半神": 4}, strength="B", form_difficulty="hard", early_power="低",
         # V4.4 评级(76807134):阿雅 = B 级(试用难玩;需反重力皮靴×2+速度投资,V3.8 最轮椅→V4.4 降 B)
         key_equips=["反重力皮靴", "反重力皮靴"],
-        boss_weakness=["电视机"], mechanic_attributes=["速度依赖"],
+        countered_by_bosses=["电视机"], mechanic_attributes=["速度依赖"],
         shared_chars=["风堇", "昔涟"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"], typical_form_round=8,
         level_plan={
             5: LevelGoal("roll", target_cost=2, target_chars=["阿格莱雅", "风堇"]),
@@ -369,7 +369,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         mechanic_attributes=["燃血"],
         key_equips=["火力风暴潮", "绝对热量", "热血沸腾拳"],   # 攻略(77056698):万敌风暴潮+绝对热量+热血沸腾拳;吃装备
-        boss_weakness=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
+        countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月"], transition_chars=["长夜月", "符玄", "风堇"], typical_form_round=6,
         level_plan={
             5: LevelGoal("roll", target_cost=2, target_chars=["万敌", "长夜月"]),
@@ -511,10 +511,10 @@ def mechanics_fit(comp: Comp, mechanics: set[str]) -> float:
 
 
 def boss_fit(comp: Comp, bosses: list[str]) -> float:
-    """boss 克制(boss 名维度):命中 comp.boss_weakness → 降。无 boss 信息 → 中性 0.5。"""
-    if not bosses or not comp.boss_weakness:
+    """boss 克制(boss 名维度):命中 comp.countered_by_bosses → 降。无 boss 信息 → 中性 0.5。"""
+    if not bosses or not comp.countered_by_bosses:
         return 0.5
-    n_hit = sum(1 for b in comp.boss_weakness if b in bosses)
+    n_hit = sum(1 for b in comp.countered_by_bosses if b in bosses)
     return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
 
 

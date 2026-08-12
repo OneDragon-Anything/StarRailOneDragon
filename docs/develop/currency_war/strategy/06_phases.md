@@ -32,7 +32,7 @@
 - 游戏?**是**。
 
 ### 阶段 5:op 层接线 — ❌ 需游戏
-- 内容:BuyShopCards 用 plan(删旧 smart_buy_decision);DeployBench 用 plan 的 Deploy;battle_loop 事件分支用 decide_event/encounter/supply + select_megastar;开局 read_bosses → decide_boss_priority;read_game_state+reconcile+maybe_pivot 每回合调;post-action verify 接入。
+- 内容:BuyShopCards 用 plan(删旧 smart_buy_decision);DeployBench 用 plan 的 Deploy;battle_loop 事件分支用 decide_event/encounter/supply + select_megastar;开局 read_bosses → state.bosses(boss_fit 用;decide_boss_priority 已删);read_game_state+reconcile+maybe_pivot 每回合调;post-action verify 接入。
 - **D 牌两阶段 plan(r6 F8)**:`simulate(RefreshShop)` 不更新 shop 内容(刷新后未知),故 plan emit RefreshShop 后当回合无法 emit 新 shop 的 BuyCard(会买旧 shop 的牌)。**op 层**:plan1 可能 emit refresh → 执行刷新 → **重新 OCR shop → plan2 emit buy**。纯逻辑阶段(2-3a)先在 doc 标注此限制,op 接线(阶段 5)实现两阶段。
 - 依赖:阶段 4 + 阶段 2。
 - 完成判据:`run_standalone_app('currency_war')` 全程用 cw_decisions 决策,跑通不卡死。

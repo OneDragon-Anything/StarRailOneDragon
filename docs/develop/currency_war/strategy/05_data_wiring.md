@@ -69,7 +69,7 @@ battle_loop 检测「备战」画面
 
 ## 接线状态
 - ❌ BuyShopCards 仍用旧 smart_buy_decision(r1 #08)—— 接线第一件事(阶段 5)。
-- ✅ decide_event/decide_boss_priority 纯函数,op 可直接调(事件 handler 未接入)。
+- ✅ decide_event 纯函数,op 可直接调(事件 handler 已接)。decide_boss_priority 已删(错模型,boss 走 boss_fit/countered_by_bosses)。
 
 ## 游戏/非游戏边界
 - **非游戏**:FACTIONS/角色/事件白名单/装备图鉴数据、COMP_LIBRARY、决策逻辑(plan/eval/select_comp/decide_*/reconcile 骨架)、蒙特卡洛 D 牌、阶段键控、测试。

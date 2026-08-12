@@ -190,19 +190,11 @@ def decide_partner(self, options: list[PartnerOption], state: GameState,
 - 默认实现:优先 `config.character_build_around` / `session.target_comp.core_chars` 命中;否则 idx=0。⚠️ P1 不 rewire,handler 仍写死点 `STAGE_PORTRAIT(1048,299)`;「idx=0」是 OCR 接线后(P1.5+)的等价描述,非今天行为本身。
 - ⚠️ **OCR 未就绪**:`read_partner` 今天不存在;`HandleSelectPartner` 现盲点 stage 立绘。**P1 钩子存在 + 默认委托,但 handler 不 rewire**(char_id 全 `""` → 默认 idx=0 = 今天盲点)。随 OCR 落到阶段 5。
 
-**⑧ `decide_boss_priority` —— boss 克制调整阵营优先级(替代 `decide_boss_priority`)**
+**⑧ ~~`decide_boss_priority`~~ —— 已删(2026-08-12)**:boss 克制是 **comp-vs-boss 机制级**(走 `boss_fit`/`comp.countered_by_bosses` + task#73 机制建模),非阵营级。原「boss→降权阵营」是错模型 + 全代码库零调用死代码,已从 ABC + DefaultCwStrategy + cw_decisions 删除。boss 数据采完(bosses.md 20 boss 机制),真 boss counter = task#73 机制建模(comp 机械属性 vs boss 机制,策略-stage)。
 
-```python
-def decide_boss_priority(self, bosses: list[str], state: GameState,
-                         session: StrategySession, config: CurrencyWarConfig) -> list[str]
-```
-
-- 默认实现:调既有 `cw_decisions.decide_boss_priority(bosses, config)`。
-- ⚠️ **此钩子目前全代码库零调用**(`decide_boss_priority` 仅定义未接);接线时需新增「boss OCR(开局/位面首领屏读 boss 名)→ 在主循环接入点调本钩子」。属新 OCR 工作,不在 P1 默认行为内。
-
-> **钩子完备性**:以上 8 个决策钩子 + 3 个生命周期钩子(`on_match_start`/`on_round_end`/`on_match_end`)+ `create_session`(session factory,每局调一次、非决策点)= 覆盖 [01 §决策点×层归属](01_architecture.md) 表里**除『装备合成/分配』(❌待做,留作未来钩子 `decide_equip`,不在首版)外的全部局内决策**,并**新增** `decide_partner`(「选择伙伴」overlay —— 旧表未列此决策点)。
+> **钩子完备性**:以上 7 个决策钩子 + 3 个生命周期钩子(`on_match_start`/`on_round_end`/`on_match_end`)+ `create_session`(session factory,每局调一次、非决策点)= 覆盖 [01 §决策点×层归属](01_architecture.md) 表里**除『装备合成/分配』(❌待做,留作未来钩子 `decide_equip`,不在首版)外的全部局内决策**,并**新增** `decide_partner`(「选择伙伴」overlay —— 旧表未列此决策点)。
 >
-> ⚠️ **P1 调用就绪度**(决定哪些钩子 P1 真被框架调):只有 `update_target`/`decide_prep`(备战,OCR 全)+ `decide_invest`(投资,OCR 卡名已有)+ 生命周期骨架 **在 P1 被调**。`decide_supply`/`decide_megastar`/`decide_partner`/`decide_boss_priority` 钩子在 ABC 里就位、默认委托,但 **P1 无 caller**(缺选项 OCR / 缺 dispatch),随阶段 5 OCR 落地才接;`decide_encounter` 按 D-35 dormant(遭遇=普通战斗无选项 UI)。**hook 全部在 P1 冻结**,caller 分批接 —— 别把「hook 存在」误读成「P1 就能跑」。
+> ⚠️ **P1 调用就绪度**(决定哪些钩子 P1 真被框架调):只有 `update_target`/`decide_prep`(备战,OCR 全)+ `decide_invest`(投资,OCR 卡名已有)+ 生命周期骨架 **在 P1 被调**。`decide_supply`/`decide_megastar`/`decide_partner` 钩子在 ABC 里就位、默认委托,但 **P1 无 caller**(缺选项 OCR / 缺 dispatch),随阶段 5 OCR 落地才接;`decide_encounter` 按 D-35 dormant(遭遇=普通战斗无选项 UI)。**hook 全部在 P1 冻结**,caller 分批接 —— 别把「hook 存在」误读成「P1 就能跑」。
 
 ---
 
@@ -368,7 +360,7 @@ if self._iter == 1:
 **各 handler(事件节点)** —— ⚠️ **P1 只 rewire 今天有 OCR 的 handler**(`decide_invest`);其余钩子在 ABC 里就位 + 默认委托,但 **handler 不动**(OCR 缺 / dispatch 已删),随阶段 5 OCR 落地再接(见 §11.3.4 各钩子 ⚠️ + §11.12)。
 
 - **P1 rewire** —— `HandleInvestStrategy`/`HandleInvestEnv`:`decide_event(names, config, stub)` → `match.strategy.decide_invest(kind, names, state, match.session, config)`。⚠️ 投资 overlay 叠在备战上时 **board 不可读**,`state.board` **传空 dict(stub)**(不取 session 旁路 —— `StrategySession` 无 last_board 字段);默认 `decide_invest` 对空 board 降级容错(现 `decide_event` 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
-- **P1 不 rewire(钩子在、默认委托、handler 维持今天盲点,随阶段 5 OCR 落地)** —— `RunSupplyNode`(补给 OCR 缺)、`RunMegastarNode`/`HandleSelectPartner`(候选 char_id OCR 缺 → 默认 idx=0 = 今天盲点)、`decide_boss_priority`(零调用 + 缺 boss OCR)。`RunMegastarNode`/`HandleSelectPartner` 的 bug#1 `mouse_move`+`click` 缓解是**执行层**,与策略层无关,rewire 与否都保留。
+- **P1 不 rewire(钩子在、默认委托、handler 维持今天盲点,随阶段 5 OCR 落地)** —— `RunSupplyNode`(补给 OCR 缺)、`RunMegastarNode`/`HandleSelectPartner`(候选 char_id OCR 缺 → 默认 idx=0 = 今天盲点)、`boss counter(boss_fit/countered_by_bosses;decide_boss_priority 已删错模型)。`RunMegastarNode`/`HandleSelectPartner` 的 bug#1 `mouse_move`+`click` 缓解是**执行层**,与策略层无关,rewire 与否都保留。
 - **D-35 后 dead(不 rewire、待删)** —— `HandleEncounter`(遭遇无选项 UI;`decide_encounter` dormant)。
 
 **观测驱动回路** —— ⚠️ **今天未接线**:`battle_loop.py` 现在既不构造 `RoundOutcome`、也不调 `PerformanceTracker.record`(`cw_observation.py` 自注「PerformanceTracker 待阶段 4-5 接线」)。也就是说「每场战斗后 OCR 掉血/胜负」是**从无到有的新 OCR 工作**,不是改个调用名。
@@ -471,7 +463,7 @@ P1 先落地 → 插件口子立刻可用(用户/参赛者可写策略);P2 是�
 - `operations/run_nodes/run_supply_node.py`(→ decide_supply,随补给 OCR,阶段 5)
 - `operations/run_nodes/run_megastar_node.py`(→ decide_megastar,随候选 char_id OCR)
 - `operations/handlers/handle_select_partner.py`(→ decide_partner,随 char_id OCR)
-- boss OCR 接入点(→ decide_boss_priority,新 OCR)
+- boss OCR 接入点(→ state.bosses → boss_fit/countered_by_bosses;decide_boss_priority 已删)
 - 观测回路 ✅(P1.5,D-48~52):每场战斗结算 OCR → `RoundOutcome` → `on_round_end`(performance.record 记 hp trend);终局 `MatchOutcome` 仍桩(待真实 outcome 填充)
 
 **删除 dead handler**(全代码库仅注释 + 残留 `.pyc`,无实际 import)

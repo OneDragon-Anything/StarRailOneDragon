@@ -74,7 +74,7 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 | 遭遇难度/词缀避开 | 节点(decide_encounter) |
 | 补给选装备/出钻 | 节点(decide_supply) |
 | 装备合成/分配 | 战略/comp 评估(equip_fit(comp),详 07)+ Equip 动作 |
-| boss 克制切换阵营 | 战略/战术(decide_boss_priority) |
+| boss 克制(comp-vs-boss) | 战术(boss_fit/comp.countered_by_bosses;decide_boss_priority 已删错模型) |
 | 战斗反馈(掉血/胜负跟踪) | 数据(PerformanceTracker)+ 战术(comp_viability) |
 | 状态对账/动作验证 | 数据(A6) |
 

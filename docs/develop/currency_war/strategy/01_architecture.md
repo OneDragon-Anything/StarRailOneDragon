@@ -57,7 +57,7 @@
 | **何时 D 牌(刷新)** | 战术(**蒙特卡洛 A1**) | ✅(A1)|
 | **commit 哪个阵容/转型** | **战略(A2)** | ✅ 已做(cw_comps select_comp/maybe_pivot + shop.py 接线[D-14])|
 | 事件(投资环境/策略)选哪个 | 战术(白名单 + 克制) | ✅ |
-| boss 克制切换阵营优先级 | 战略/战术(decide_boss_priority) | ✅(基础)|
+| boss 克制(comp-vs-boss 机制级) | 战术(boss_fit/comp.countered_by_bosses;decide_boss_priority 错模型已删) | 🟡 boss 数据采完,机制建模 task#73(策略-stage) |
 | 装备合成/分配 | 未建模 | ❌(待做,长链收益)|
 
 ## 为什么不推翻重做

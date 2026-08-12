@@ -12,7 +12,7 @@
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
-- ``CwStrategy`` —— ABC,大脑接口(3 生命周期 + 8 决策 + create_session = 12 钩子,全 abstract)。
+- ``CwStrategy`` —— ABC,大脑接口(3 生命周期 + 7 决策 + create_session = 11 钩子,全 abstract)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。

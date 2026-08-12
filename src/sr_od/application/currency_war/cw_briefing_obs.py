@@ -90,10 +90,10 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
     (滤数字/符号/短噪声/「阵营」2 字 label)。下游 ``state.bosses`` → ``boss_fit(comp, bosses)``
-    命中 ``comp.boss_weakness`` 打分。读不到 / area 缺 → [](不覆盖 state.bosses)。
+    命中 ``comp.countered_by_bosses`` 打分。读不到 / area 缺 → [](不覆盖 state.bosses)。
 
     ⚠️ 数据层待补(同 competitors.md,后续浏览器/图鉴采):boss 机制 + 哪些 comp 怕哪个 boss
-    (``comp.boss_weakness``)。当前 ``comp.boss_weakness`` 多为空 → boss_fit 中性 0.5;识别链路先通,
+    (``comp.countered_by_bosses``)。当前 ``comp.countered_by_bosses`` 多为空 → boss_fit 中性 0.5;识别链路先通,
     数据层后续接上即生效。boss 阵营(红色标签内)OCR 暂不读(红底干扰,待视觉核实后再决定是否采)。
     """
     rect = _area_rect(ctx, '区域-首领行', BRIEFING_SCREEN)

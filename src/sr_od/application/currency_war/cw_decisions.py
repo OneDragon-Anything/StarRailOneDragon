@@ -776,7 +776,7 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
 
 # ===== 事件 =====
 # decide_boss_priority(阵营降权)已删(2026-08-12):boss 克制是 comp-vs-boss 机制级(走 boss_fit/
-# comp.boss_weakness + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
+# comp.countered_by_bosses + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
 
 def decide_event(options: list[str], config, state: GameState) -> PickEvent:
     """事件选项打分:白名单优先级(子串)+ 克制环境降权(走 DoT 主派时避)。"""
