@@ -288,6 +288,28 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
     return cap
 
 
+def _economy_mode_for(state: GameState, config) -> str:
+    """node spend_mode → economy_score 档位(14 §2.2;NodeGoal.spend_mode 主,config.economy_mode 辅)。
+
+    spend_mode 是节点节奏 gate,驱动 economy_score 利息/等级相对权重:
+    - saving/interest → interest_first(攒息 snowball;P1 早期主目标尽快 50 金)
+    - level → rush_level(弱化守息 + 强化等级;P2 升人口)
+    - hold/allin/spend → adaptive(economy-low 由 _phase_weights plane3 we=0.3 处理,非此处)
+    - adaptive → config.economy_mode 用户偏好辅
+
+    与 _phase_weights 正交:本函数调 economy_score 内部(利息/等级相对权重),
+    _phase_weights 调 economy_score 的 outer 乘子 we(HP/plane)。两者复合不双计。
+    """
+    _spend = get_node_goal(state.plane, state.round_num).spend_mode
+    if _spend in ("saving", "interest"):
+        return "interest_first"
+    if _spend == "level":
+        return "rush_level"
+    if _spend == "adaptive":
+        return getattr(config, 'economy_mode', 'adaptive')
+    return "adaptive"   # hold/allin/spend → neutral
+
+
 def evaluate(state: GameState, config, faction_priority: list[str],
              target_comp: Comp | None = None) -> float:
     """局面总分(越高越好)= 阶段键控加权的(羁绊 + 经济 + 角色质量)+ 承诺-期权混合项。
@@ -304,7 +326,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
                                 effective_hp_threshold(state, config))
     score = (
         ws * synergy_score(state, faction_priority, target_comp)
-        + we * economy_score(state, getattr(config, 'economy_mode', 'adaptive'))
+        + we * economy_score(state, _economy_mode_for(state, config))   # spend_mode→economy(§2.2;ADR-0102)
         + wc * char_quality_score(state, getattr(config, 'character_priority', []))
     )
     alpha = alpha_t(state)
