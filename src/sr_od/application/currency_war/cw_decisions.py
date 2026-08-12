@@ -229,7 +229,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
-    streak 取 magnitude(连胜/连败都给档位金,对称);方向驱动的 plan 行为(保连胜 vs fold)留 R2-4b。
+    streak 取 magnitude(连胜/连败都给档位金,对称);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动剩「保连胜」半(连胜维持>吃息)待。
     """
     interest_tiers = min(state.gold // 10, INTEREST_THRESHOLD // 10)
     interest_val = interest_tiers * INTEREST_WEIGHT

@@ -55,7 +55,13 @@ evaluate = `_phase_weights(plane, hp)` 加权的(羁绊+经济+角色质量)。*
 
 ## round 2 补充(新发掘)
 - **R2-4 连胜奖励 econ(med-high)**:gameplay 确认"连续获胜额外金币"+ research"断连胜亏的钱比利息亏多"。economy_score 加 `streak_val = min(streak, cap)·STREAK_WEIGHT`(需 read_streak);为"保连胜提质量"的 buy/deploy 加战术分。当前只算利息+等级,系统性低估保连胜。
-- **R2-4b 连败经济 / open-fold 战术(r5 新增,high,auto-chess 核心盲区)**:当前 `is_losing_streak`(详 10)→ 转保守(保息/防御 deploy/急救 D)。**漏了连败也是经济**:auto-chess 连败也给匹配金,故意输攒钱后期 all-in 翻盘(open-fold)是核心战术。当前逻辑会在该认输攒钱的 plane1-2 反而花钱急救,把"连败翻盘"打成"又输又穷"。**修法(分阶段)**:
+- **R2-4b 连败经济 / open-fold 战术(r5 新增,high,auto-chess 核心盲区)**:**2026-08-12 用户确认原则**:**「血量安全 → fold(保息攒钱);血量不安全 → 急救」** —— 暂时的失败(连败)都是为攒钱保高息,只要认为血量安全就可 fold。**✅ 已由 HP-gating 实现**(非显式「连败→fold」代码,因 HP gate 已覆盖):
+  - `_phase_weights`:HP safe → balanced(economy 不降权 → 自然保息 fold);HP 危 → 保血(战力加权 = 急救)。
+  - `_refresh_cap`:HP safe → cap=2(不急救 D);HP 危 → cap=4(急救 D 翻盘)。
+  - `_saving_for_interest`:gold<50 + 板强 → 攒息(fold)。HP 安全线 = `effective_hp_threshold`(D-32,A8 调高)。
+  - streak **magnitude** 已接(economy C2,连胜/连败对称档位金);streak **方向**未显式消费(plan 无「连败→急救」错误逻辑 —— 下方 spec 说的「急救」是 HP-gate 之前旧描述)。
+  - 下方「`is_losing_streak` + `STREAK_FOLD_HP`(≈50)+ `plane<3` gate」是**更细的连败专项版(未实现)**,但用户原则(HP-based fold)已满足,非阻塞。剩「保连胜」半(连胜维持 > 吃息)独立战术,待。
+  - 原描述(r5):当前 `is_losing_streak`(详 10)→ 转保守(保息/防御 deploy/急救 D)。**漏了连败也是经济**:auto-chess 连败也给匹配金,故意输攒钱后期 all-in 翻盘(open-fold)是核心战术。**修法(分阶段)**:
   - `is_losing_streak` 且 `hp > STREAK_FOLD_HP`(≈50)且 `plane < 3` → **继续连败攒钱**:不急救 D、不抢升等级、吃连败金 + 利息(守息至上),买牌只买能成型后翻盘的 key 牌(不为当前关提质量)。
   - `hp ≤ STREAK_FOLD_HP` 或 `plane == 3`(再输就死)→ 才急救 D 翻盘。
   - economy_score 加 `loss_streak_val = min(loss_streak, cap)·LOSS_STREAK_WEIGHT`(连败档位金);plan 的贪心在 fold 态降权"为当前关提质量"的 buy/deploy。
