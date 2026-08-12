@@ -223,6 +223,44 @@ def read_streak(ctx: SrContext, screen: MatLike) -> int | None:
     return None
 
 
+def parse_damage_value(s: str) -> int | None:
+    """伤害值文本 → int('126.5万'→1265000 / '1439282'→1439282 / '89.8亿'→...;无数字/异常 → None)。
+
+    战斗实时屏右侧「伤害」列角色明细 parse(总伤害 = 各角色求和,**无单独字段**;2026-08-12 视觉大模型确认)。
+    """
+    s = (s or '').strip()
+    if not s:
+        return None
+    mult = 1
+    if s.endswith('万'):
+        mult = 10_000
+        s = s[:-1]
+    elif s.endswith('亿'):
+        mult = 100_000_000
+        s = s[:-1]
+    try:
+        return int(round(float(s) * mult))
+    except ValueError:
+        return None
+
+
+def read_total_damage(ctx: SrContext, screen: MatLike, rect: tuple[int, int, int, int]) -> int | None:
+    """战斗实时屏右侧「伤害」列各角色明细 → 求和(总伤害)。
+
+    ⚠️ **fragile 时机**:战斗中读(敌方/我方行动中,伤害实时增)→ 读的是当时累计,非最终。诊断用
+    (stage7 输出诊断;hp_trend 已隐含输出主路径 ``is_run_dead``)。**战斗实时屏未建档**(``screens=[]``,
+    ``rect`` 调用方传固定坐标临时;TODO 战斗屏建档后改 area)。3.5.4 reader 就位,接线(战斗时机 + 建档)待 stage7。
+    无单独总伤害字段 → 角色明细求和(2026-08-12 视觉大模型确认)。
+    """
+    x1, y1, x2, y2 = rect
+    crop = screen[y1:y2, x1:x2]
+    if crop.size == 0:
+        return None
+    ocr = ctx.ocr_service.get_ocr_result_list(image=crop)
+    vals = [v for v in (parse_damage_value(r.data) for r in ocr) if v is not None]
+    return sum(vals) if vals else None
+
+
 # 难度确认屏 reader(开局读本局职级;非备战屏,放本模块集中 OCR readers)
 _DIFFICULTY_CONFIRM_SCREEN: str = '货币战争-难度确认'
 
