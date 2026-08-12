@@ -167,6 +167,46 @@ def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
     return None
 
 
+# 节点类型模板 Hu 矩缓存(module-level;``read_node_sequence`` 首调从 assets 加载)。
+_NODE_TYPE_TEMPLATES: dict | None = None
+
+
+def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
+    """备战顶部「节点行」→ 节点槽列表(``cw_node_reader.NodeSlot``);每次备战调(invest-env 增/改节点 → 重识别)。
+
+    组装纯 CV 核心(``cw_node_reader.classify_node_row``):HoughCircles 动态定圆 + HSV 三态(已过/当前/未来)+
+    未来 Hu 矩匹配 4 模板;**当前节点**类型用 OCR 标签(``read_node_type``,只有当前节点有文字标签)覆盖。
+    **首领** = 位面最后节点(按位置判,不在节点行模板内;调用方按 round 推断)。未来圆 Hu 距离 >
+    ``cw_node_reader.HU_DIST_UNRECOGNIZED`` → 未识别(扑满/新类型,调用方可触发采集)。
+
+    ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关(见 CLAUDE.md RGB 约定)→ 直传 classify。
+    返回 None:模板未加载 / 非节点行(检测不到圆)。详 ``cw_node_reader`` 模块 docstring。
+    """
+    global _NODE_TYPE_TEMPLATES
+    from pathlib import Path
+
+    from sr_od.application.currency_war.cw_node_reader import (
+        NODE_ROW_RECT,
+        classify_node_row,
+        load_node_type_templates,
+    )
+    if _NODE_TYPE_TEMPLATES is None:
+        _d = Path(__file__).resolve().parents[4] / 'assets' / 'game_data' / 'cw_node_types'
+        _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
+    if not _NODE_TYPE_TEMPLATES:
+        return None
+    _x0, _y0, _x1, _y1 = NODE_ROW_RECT
+    _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES)
+    if not _slots:
+        return None
+    _cur = read_node_type(ctx, screen)
+    if _cur:
+        for _s in _slots:
+            if _s.state == 'current':
+                _s.node_type = _cur
+    return _slots
+
+
 def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 
