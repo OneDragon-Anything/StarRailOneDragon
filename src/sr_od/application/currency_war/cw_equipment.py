@@ -246,7 +246,9 @@ def read_equipped_below(
                    anomaly=f'icon数{len(kept)}>3(误检/邻槽串入)', equips=str([n for n, _, _ in kept]),
                    shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'over3_slot{slot_idx}'))
         # MISS 日志:近命中(val 刚低于 threshold)可能是漏检(如 D-51 武器大师后排-6 val0.57<0.6)。
-        # grep `\[cw\].*MISS` 找漏检;miss_threshold 0.55 避低 val 噪声。
+        # ⚠️ 分级(CLAUDE.md [cw!]=需关注/[cw]=普通):清晰读(val_top≥0.7)的 near-MISS 是被拒候选
+        # (噪声,非漏检)→ [cw] 普通;疑似漏检(val_top<0.7 / kept 空)→ [cw!] 需关注。
+        # grep `\[cw!\].*MISS` 找真漏检;`\[cw\].*MISS` 看被拒候选(诊断)。miss_threshold 0.55 避低 val 噪声。
         if near:
             kept_names = {n for n, _, _ in kept}
             miss_items = sorted(((n, v) for n, v in near.items() if n not in kept_names), key=lambda t: -t[1])
@@ -254,7 +256,7 @@ def read_equipped_below(
                 miss_str = ','.join(f'{n}({v:.2f})' for n, v in miss_items[:5])
                 val_top = kept[0][1] if kept else 0.0
                 shot = cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'miss_slot{slot_idx}')
-                cw_log('read_equipped', target=f'slot={slot_idx}', attn=True,
+                cw_log('read_equipped', target=f'slot={slot_idx}', attn=val_top < 0.7,
                        equips=str([n for n, _, _ in kept]), val_top=f'{val_top:.2f}',
                        MISS=f'[{miss_str}]', shot=shot)
     return out
