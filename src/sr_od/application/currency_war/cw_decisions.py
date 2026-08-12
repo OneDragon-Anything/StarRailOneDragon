@@ -188,14 +188,14 @@ def _expected_level(round_num: int, plane: int) -> int:
 
 # ===== node_plan:节点×等级×动作节奏骨架(阵容无关;14 §2) =====
 # plan() 读 NodeGoal.target_level 作等级 gate 地板(显式,胜 _expected_level 平滑曲线 —— 关键 inflection
-# 更果断:P2 早推 7、2-5 推 8 搜核心、P3 推 9-10)。spend_mode 驱经济档位(allin 跳卖息 等)。danger_d 占位(卡 OCR)。
+# 更果断:P2 早推 7、2-5 推 8 搜核心、P3 推 9-10)。spend_mode 驱经济档位(allin 跳卖息 等)。danger_d 占位(卡 node_type 下节点识别,3.5.5;非 difficulty/hp_trend —— 二者已就绪)。
 @dataclass
 class NodeGoal:
     """某节点(位面-轮)的节奏目标(阵容无关骨架;comp 只换 level_plan/core_chars 参数;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
-    danger_d: bool = False      # A8 遭遇前战力不足 → 弃息 D 保血(🔴 前置 difficulty/hp_trend OCR,占位)
+    danger_d: bool = False      # A8 遭遇前战力不足 → 弃息 D 保血(🔴 前置 = 下节点 node_type 预判,3.5.5 blocked;difficulty/hp_trend 已就绪 —— effective_hp_threshold + PerformanceTracker。占位从未被读)
 
 
 # 节点×等级×动作骨架表(14 §2.1;人玩节奏:前期攒息→中期升人口→后期 allin)。(plane, rmin, rmax) → NodeGoal。
@@ -253,7 +253,7 @@ def char_quality_score(state: GameState, character_priority: list[str]) -> float
     return score
 
 
-HP_DANGER: int = 40   # 保血触发阈值(hp 低于此 → 弃息保血;A8 高难可调高,待 difficulty 字段)
+HP_DANGER: int = 40   # 保血触发阈值默认(hp 低于此 → 弃息保血)。A8 高难调高经 effective_hp_threshold(state,config)(D-32/3.5.1 已接,live-verified)。
 
 
 def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[float, float, float]:
@@ -265,7 +265,7 @@ def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[
     - **plane3(后期):锁血** —— 全力战力/星级(打 boss)。
     - **其余(健康):平衡 (1,1,1)** —— economy 不压低,可 snowball 到 50。
 
-    待补:A8 difficulty 信号(高难 HP_DANGER 调高)+ win_streak(连胜中保连胜>吃息,需 read_streak)。
+    A8 difficulty 已接(effective_hp_threshold,3.5.1/D-32 live-verified);win_streak 待补(连胜中保连胜>吃息,需 read_streak 方向 —— 结算源已接 session.last_streak,plan 消费端待 R2-4b)。
     """
     if hp < hp_threshold:
         return (1.2, 0.4, 1.2)   # 保血:战力/角色优先,经济降权(任何位面 HP 危险)

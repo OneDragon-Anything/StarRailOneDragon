@@ -134,8 +134,10 @@ class DefaultCwStrategy(CwStrategy):
             cands = cw_comps.select_comp(state, score_ctx, config)
             session.target_comp = cands[0] if cands else None
         else:
-            # tracker=session.performance:maybe_pivot 目前不读 tracker(信号3 走 state.hp;tracker 是
-            # 声明未用的占位,与其 docstring「待接」一致)→ 传不传都不影响行为;tracker 驱动的保命观测是 P1.5。
+            # tracker=session.performance:maybe_pivot **读** tracker —— is_losing_streak 解锁 commit 锁做
+            # 保命转型(cw_comps:791)+ losing 时 pivot 阈值 ×0.7(cw_comps:807)。live-verified(2026-08-12):
+            # on_round_end 喂 hp_after conf=1.0,trend 真实(HP 82→…→1),is_losing_streak 实触发。
+            # (原「maybe_pivot 目前不读 tracker 占位」判断过期已撤回 —— 实接 cw_comps:791/807。)
             piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                        tracker=session.performance)
             if piv is not None:
