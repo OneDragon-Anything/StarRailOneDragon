@@ -206,11 +206,12 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
-        # [停机钩子·临时] 未建档节点(巨星/选择伙伴/祈愿试炼 —— 无 doc / id_mark 缺)→ 停机给 AI 建档 +
-        # 接决策(decide_*/SIFT 候选 待接)。建档完删本块 + 各 sentinel。CLAUDE.md「两种钩子」方案 D。
+        # [停机钩子·临时] 未完整建档节点(巨星/祈愿试炼 —— screen_info+handler 有但无完整 skill 建档:doc/fixture/id_mark 测缺)
+        # → 停机给 AI 按 od-dev-screen-onboarding 完整建档 + 接决策。建档完删该 tuple 项。CLAUDE.md「两种钩子」方案 D。
+        # ⚠️ 选择伙伴已完整建档(2026-08-13,doc+fixture+id_mark=false overlay-on-parent + 显式 area dispatch)→ 移出本钩子,
+        # 0a 分支 HandleSelectPartner 接管。
         for _scr, _area, _tag in (
             ('货币战争-巨星强化', '标识-盛会之星', 'megastar'),
-            ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
         ):
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
