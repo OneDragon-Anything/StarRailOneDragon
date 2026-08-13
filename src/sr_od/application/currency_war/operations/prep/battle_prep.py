@@ -44,6 +44,11 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
+        # [识别核对钩子·临时] clean 备战帧(buy 入口,shop 未开):read 身份/星 vs tracking → flag 不一致;
+        # read star≥3 → 停机截 3/4★ 样本(read_star 3/4 星从没验过)。ground truth=tracking(也会漂)→
+        # flag=可疑非定罪,需视觉核实是 reader 还是 tracking 错。核完 reader 删本调用+方法(CLAUDE.md「两种钩子」)。
+        if self._verify_recognition():
+            return self.round_wait(status='read star≥3 停机截样本')
         # [停机钩子·临时] 检测 tracked bench/deployed star≥2 → 停机给 AI 拖卡/click 详情验证售卖价
         # (校准 sell_refund 2/3星值;用户:检测到2/3星就停,AI 接手,不等策略卖)。验完删本块+sentinel
         # (CLAUDE.md 方案 D)。假设 star 识别对(已验证 commit 672aa838);售价客观核(click 详情「+N 出售」OCR,非 VLM)。
@@ -105,6 +110,60 @@ class BattlePrepCycle(SrOperation):
             _fn = cw_shot_unique(_row[_y0c:_y1c, _x0c:_x1c], f'node_unknown_{_s.idx}')
             if _fn:
                 log.info(f'[cw-prep][nodeseq] 未识别图标 idx={_s.idx} hu={_s.hu_dist:.1f} → 采 {_fn}')
+
+    def _verify_recognition(self) -> bool:
+        """[识别核对钩子·临时] clean 备战帧(buy 入口):read 身份/星 vs session tracking → flag 不一致;
+        read star≥3 → 停机截 3/4★ 样本。返 True=已停机(3/4★)。
+
+        read_deployed_chars/read_bench_chars(SIFT 身份 + read_star)vs session.tracked_deployed/tracked_bench_chars
+        (simulate 维护)。read≠tracking → ``[cw!]`` log + 存截图(视觉核实是 reader 错还是 tracking 漂)。
+        read star≥3 → save_screenshot + sentinel flag + stop_running(read_star 3/4 星从没 live 验过,截样本离线验)。
+        ground truth 是 tracking(自身会漂,故有此核对)→ flag = 可疑,非定罪。核完 reader 删本方法 + buy 调用。
+        """
+        try:
+            from sr_od.application.currency_war.cw_identity_obs import (
+                ensure_portrait_templates,
+                read_bench_chars,
+                read_deployed_chars,
+            )
+            _tmpl = ensure_portrait_templates(self.ctx)
+            if _tmpl is None:
+                return False
+            _scr = self.screenshot()
+            _dep = read_deployed_chars(self.ctx, _scr, _tmpl)
+            _bench = read_bench_chars(self.ctx, _scr, _tmpl)
+            # 3★/4★ → 停机截样本
+            _hi = [f'{bc.position_pref or "bench"}-{bc.slot}:{bc.char_id}★{bc.star}'
+                   for bc in (*_dep, *_bench) if bc.star >= 3]
+            if _hi:
+                from pathlib import Path
+                self.save_screenshot(prefix='star34_sample')
+                Path('.debug/temp/currency_war/star34_sample.flag').write_text(str(_hi), encoding='utf-8')
+                log.info(f'[cw-hook][verify] read star≥3 → 停机截样本:{_hi}')
+                self.ctx.run_context.stop_running()
+                return True
+            # read vs tracking(身份 + 星;按 槽位定位)
+            _match = getattr(self.ctx, 'cw_match', None)
+            _sess = _match.session if _match is not None else None
+            if _sess is None:
+                return False
+            _mm: list[str] = []
+            for bc in _dep:
+                tv = next((x for x in (_sess.tracked_deployed or [])
+                           if x.position_pref == bc.position_pref and x.slot == bc.slot), None)
+                if tv is not None and (tv.char_id, tv.star) != (bc.char_id, bc.star):
+                    _mm.append(f'dep[{bc.position_pref}{bc.slot}] read={(bc.char_id, bc.star)} tracked={(tv.char_id, tv.star)}')
+            for bc in _bench:
+                tv = next((x for x in (_sess.tracked_bench_chars or []) if x.slot == bc.slot), None)
+                if tv is not None and (tv.char_id, tv.star) != (bc.char_id, bc.star):
+                    _mm.append(f'bench[{bc.slot}] read={(bc.char_id, bc.star)} tracked={(tv.char_id, tv.star)}')
+            if _mm:
+                log.info(f'[cw!][verify] read≠tracking({len(_mm)}):{" | ".join(_mm)}')
+                self.save_screenshot(prefix='recog_mismatch')
+            return False
+        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
+            log.info(f'[cw-hook][verify] skip:{e}')
+            return False
 
     @node_from(from_name='买牌')
     @operation_node(name='部署')
