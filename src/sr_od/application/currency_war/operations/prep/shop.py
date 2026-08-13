@@ -104,10 +104,11 @@ class BuyShopCards(SrOperation):
         for _scr, _area, _evt in (
             ('货币战争-投资策略', '标识-请选择投资策略', '投资策略'),
             ('货币战争-投资环境', '标识-投资环境', '投资环境'),
+            ('货币战争-补给', '标识-补给阶段', '补给阶段'),   # 2026-08-13:补给建档后从全屏 OCR 移到 area(位置判 [893,120,1027,230])——治备战「返回补给阶段」按钮文本假阳 → 死循环
         ):
             if self.round_by_find_area(screen, _scr, _area).is_success:
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
-        for _evt in ('补给阶段', '遭遇其一', '选择伙伴', '确认选择'):  # TODO(T#103) 待建 area
+        for _evt in ('遭遇其一', '选择伙伴', '确认选择'):  # TODO(T#103) 待建 area
             if self.round_by_ocr(screen, _evt, lcs_percent=0.8).is_success:
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
