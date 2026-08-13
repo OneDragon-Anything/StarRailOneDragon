@@ -205,6 +205,20 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
+        # [停机钩子·临时] 未建档节点(巨星/选择伙伴/祈愿试炼 —— 无 doc / id_mark 缺)→ 停机给 AI 建档 +
+        # 接决策(decide_*/SIFT 候选 待接)。建档完删本块 + 各 sentinel。CLAUDE.md「两种钩子」方案 D。
+        for _scr, _area, _tag in (
+            ('货币战争-巨星强化', '标识-盛会之星', 'megastar'),
+            ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
+            ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
+        ):
+            if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
+                self.save_screenshot(prefix=f'{_tag}_hook')
+                Path(f'.debug/temp/currency_war/{_tag}_hook.flag').write_text(_tag, encoding='utf-8')
+                log.info(f'[cw-hook] {_tag} 节点(未建档)→ 停机给 AI 建档 + 接决策')
+                self.ctx.run_context.stop_running()
+                return self.round_wait(status=f'{_tag} 停机建档')
+
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
         #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
