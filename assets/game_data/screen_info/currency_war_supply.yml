@@ -44,3 +44,31 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
+- area_name: 文本-已选择
+  id_mark: false
+  pc_rect:
+  - 1642
+  - 912
+  - 1741
+  - 937
+  text: 已选择
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-剩余次数
+  id_mark: false
+  pc_rect:
+  - 1347
+  - 969
+  - 1484
+  - 997
+  text: 剩余次数
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
