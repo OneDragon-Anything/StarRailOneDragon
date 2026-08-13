@@ -239,6 +239,10 @@ class DeployBench(SrOperation):
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
                     placed += 1
                     _landed = True
+                    # 5.1.7 补(2026-08-13 用户发现):同轮 drag 成功 → 刚 deploy 的角色入去重集,
+                    # 防 bench 同角色 2 张时第 2 张重复 drag(场上已有该角色 → 上场失败)。
+                    if _cid:
+                        _deployed_cids.add(_cid)
                     if _match is not None and getattr(_match, 'bench_slot_map', None):
                         _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
                         if _gone is not None:
