@@ -10,7 +10,7 @@ area_list:
   - 1030
   - 118
   text: 投资环境
-  lcs_percent: 0.5
+  lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
