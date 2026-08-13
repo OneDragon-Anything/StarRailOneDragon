@@ -12,6 +12,7 @@ from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_observation import (
     read_game_state,
+    read_node_sequence,
     read_phase_round,
     read_round_outcome,
     reset_phase_round_cache,
@@ -315,12 +316,16 @@ class CurrencyWarRunLoop(SrOperation):
                          self._max_rounds, self._rounds_done)
                 return self.round_success(
                     f'已跑 {self._rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
-            # 补给节点备战(「返回补给阶段」按钮在):补给节点**出战不推进**(无出战打怪,确认补给即完成节点
-            # 进下回合,live 确认 2026-08-13)→ 点「返回补给阶段」进补给屏,下轮 Loop 0e 分支(RunSupplyNode)
-            # 选+确认 → 进下回合。非走 BattlePrepCycle→出战(补给节点出战无效,旧逻辑卡死)。
-            if self.round_by_find_area(screen, '货币战争-备战', '按钮-返回补给阶段', crop_first=False).is_success:
+            # 补给节点(nodeseq 当前节点类型=supply):出战不推进(无出战打怪,确认补给即完成节点进下回合,
+            # live 确认 2026-08-13)→ 点「返回补给阶段」进补给屏,下轮 Loop 0e 分支 RunSupplyNode 选+确认。
+            # ⚠️ 用 nodeseq 节点类型判,非「返回补给阶段」按钮 —— 该按钮 battle 节点也在(可 revisit),不可靠
+            # (2026-08-13 实跑:1-6 battle 节点出战成功 + 也有该按钮)。nodeseq 读失败(非 clean 帧)→ 不 divert
+            # (默认 BattlePrepCycle,保险不误判 battle 为 supply)。
+            _cur_slot = next((s for s in (read_node_sequence(self.ctx, screen) or [])
+                              if s.state == 'current'), None)
+            if _cur_slot is not None and _cur_slot.node_type == 'supply':
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
-                log.info('[cw-loop] 补给节点备战 → 点返回补给阶段 进补给屏(下轮 RunSupplyNode 选+确认推进)')
+                log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 RunSupplyNode)')
                 return self.round_wait(wait=2)
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
