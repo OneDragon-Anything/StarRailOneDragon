@@ -14,11 +14,12 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
   会与 operation 竞争污染兜底值)→ 本模块自写 ``_read_phase_round_pure``(只 OCR + 正则,不缓存,读不到返 None);
 - **不复用 ``read_game_state``**(它读写 ``cw_match.session.last_level_obs`` / ``tracked_deployed``,是 session 状态)。
 
-**角色身份(前后台 / 备战席)**:用 ``cw_identity_obs.read_deployed_chars`` / ``read_bench_chars``
+**角色身份 + 星级 + 装备(前后台 / 备战席)**:用 ``cw_identity_obs.read_deployed_chars`` / ``read_bench_chars``
 (纯 CV SIFT,**纯读** —— 只裁槽位 + SIFT + 返 BenchChar,不写 session / 全局,可安全并发)产
-``front_line`` / ``back_line`` / ``bench``(角色规范名 list)。templates 从 ``ctx.cw_portrait_templates`` 取
-(``deploy_bench`` 加载的立绘库 ``character_cw_portrait`` 缓存);**未加载(None)→ 不产角色**
-(recognizer 不自己 load,守纯读原则),三字段返 None。
+``front_line`` / ``back_line`` / ``bench``(BenchChar list,含 char_id/star/equips)。立绘库经
+``ensure_portrait_templates`` **幂等加载缓存**(只读资源,并发安全,同 ``ensure_equip_tm_templates``);
+库缺失→三字段 None。装备经 ``read_row_equipped`` 读 below-avatar icon,按 slot 注入 BenchChar.equips
+(备战席无 below icon→equips 恒 [])。
 
 ⚠️ **可靠性待实测**:立绘库 ``character_cw_portrait`` 实际识别效果从未实测(理论上比脸库可靠:域匹配 +
 含服装,变体分开采),产出可能是部分命中 / 漏 / 误。消费方据该字段时知其 SIFT 来源 + 待实测(见
@@ -34,6 +35,7 @@ from typing import TYPE_CHECKING
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from sr_od.application.currency_war.cw_equipment import ensure_equip_tm_templates
 from sr_od.application.currency_war.cw_identity_obs import (
+    ensure_portrait_templates,
     read_bench_chars,
     read_deployed_chars,
     read_row_equipped,
@@ -54,6 +56,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_streak,
 )
 from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
+from sr_od.application.currency_war.cw_state import BenchChar
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -93,6 +96,7 @@ class _BattlePrepState:
     """备战画面领域事实(组装后 ``asdict()`` 转 dict 回传;类型化单一真相源)。
 
     字段类型对齐各 reader 的返回类型(gold/hp 有安全默认故非 Optional;phase/deploy/streak 读不到为 None)。
+    角色槽位复用 ``BenchChar``(cw_state;含 slot/char_id/faction/star/position_pref/equips),不另建模型。
     """
 
     gold: int                       # 当前金币(read_gold,读不到→0,安全保守)
@@ -103,12 +107,9 @@ class _BattlePrepState:
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
     level: int                      # 团队规模等级(read_level,Lv.N;cap>level=钻石/宝钻加成)
     board: dict[str, int]           # {阵营名: 在场人数}(read_board)
-    front_line: list[str] | None    # 前排角色规范名(read_deployed_chars SIFT;templates 未加载/空→None)
-    back_line: list[str] | None     # 后排角色规范名(同上)
-    bench: list[str] | None         # 备战栏角色规范名(read_bench_chars SIFT;同上)
-    front_equips: dict[int, list[str]] | None  # 前排每槽已穿装备名(read_row_equipped TM;templates 未加载/空→None)
-    back_equips: dict[int, list[str]] | None   # 后排每槽已穿装备名(同上)
-    bench_equips: dict[int, list[str]] | None  # 备战栏每槽已穿装备名(同上)
+    front_line: list[BenchChar] | None  # 前排角色(SIFT 身份 + read_star 星级 + read_row_equipped 装备注入 equips;templates 未加载→None)
+    back_line: list[BenchChar] | None   # 后排角色(同上)
+    bench: list[BenchChar] | None       # 备战栏角色(read_bench_chars SIFT + read_star;备战席无 below icon→equips 恒 [])
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
@@ -132,30 +133,24 @@ class BattlePrepRecognizer(ScreenRecognizer):
         Returns:
             ``_BattlePrepState`` 的 dict 视图;字段含义见 ``_BattlePrepState``。
         """
-        # 角色身份(立绘库 SIFT 纯读;templates 未加载→三字段 None,不自己 load)
-        templates = getattr(ctx, 'cw_portrait_templates', None)
-        front_line: list[str] | None = None
-        back_line: list[str] | None = None
-        bench: list[str] | None = None
+        # 装备(slot_idx → 装备名;先读,再注入 BenchChar.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
+        # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
+        equip_grays = ensure_equip_tm_templates(ctx)
+        front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
+        back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) if equip_grays is not None else {}
+        # 角色复用 BenchChar(read_deployed_chars 已返,含 star);只补 equips(按 slot 对齐注入)
+        templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
+        front_line: list[BenchChar] | None = None
+        back_line: list[BenchChar] | None = None
+        bench: list[BenchChar] | None = None
         if templates is not None:
             deployed = read_deployed_chars(ctx, image, templates)
-            bench_list = read_bench_chars(ctx, image, templates)
-            front_line = [c.char_id for c in deployed if c.position_pref == 'front'] or None
-            back_line = [c.char_id for c in deployed if c.position_pref == 'back'] or None
-            bench = [c.char_id for c in bench_list] or None
-        # 穿戴装备(read_row_equipped TM below-avatar mini icon;ensure_equip_tm_templates 加载缓存,纯读;
-        # 产出「谁穿了什么」给策略层 — 与 front_line/back_line/bench 角色身份互补,完整槽位态)
-        front_equips: dict[int, list[str]] | None = None
-        back_equips: dict[int, list[str]] | None = None
-        bench_equips: dict[int, list[str]] | None = None
-        equip_grays = ensure_equip_tm_templates(ctx)
-        if equip_grays is not None:
-            front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) or None
-            back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) or None
-            # 备战栏 below 不读:未上阵角色无 below-avatar icon(机制恒空,见 cw_dev 权威源映射),
-            # 读它只在空背景产假 MISS 噪声(某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
-            # bench_equips 保持 None(无消费方,字段留接口兼容)。
-            # bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9) or None
+            bench_chars = read_bench_chars(ctx, image, templates)
+            for c in deployed:
+                c.equips = (front_equips if c.position_pref == 'front' else back_equips).get(c.slot, [])
+            front_line = [c for c in deployed if c.position_pref == 'front'] or None
+            back_line = [c for c in deployed if c.position_pref == 'back'] or None
+            bench = bench_chars or None  # 备战席无 below icon → equips 保持默认 []
         phase = _read_phase_round_pure(ctx, image)
         level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
         state = _BattlePrepState(
@@ -170,9 +165,6 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_line=front_line,
             back_line=back_line,
             bench=bench,
-            front_equips=front_equips,
-            back_equips=back_equips,
-            bench_equips=bench_equips,
         )
         # D-50:deploy_cap > level = 钻石/财富宝钻加成(+1 团队槽)→ 后排可能>6(read_equipped count=6 漏)
         if state.deploy_cap is not None and state.deploy_cap > state.level:
