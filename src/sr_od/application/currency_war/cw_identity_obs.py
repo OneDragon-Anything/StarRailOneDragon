@@ -93,48 +93,81 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
 
 # 金星(亮金色五角星)HSV 范围(CV 采样 4 样本 star_front_1..4 标定 2026-08-11;crop=RGB)。
 # 亮金色 ≈ #FFD700:H 黄~橙(OpenCV 0-180),高 S 高 V。立绘金色装饰(衣服/腰带)也命中 → 靠位置(底部)过滤。
-_STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 80)
+# HSV 金色范围;**V>150** 只抓自发光亮金星,滤暗金衣服装饰(ADR-0114,2026-08-13):
+# 前排角色立绘底部有大量暗金衣服(V80-150)淹没金星,旧 V>80 把衣服抓成 area1279 大块致检测崩溃。
+_STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 150)
 _STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
+# 四角星 TM 模板(单星 mask,19x19 area190,从备战栏-1 单星提取);模块级缓存避免每帧 imread。
+_STAR_TMPL_CACHE: MatLike | None = None
+
+
+def _load_star_tmpl() -> MatLike | None:
+    """加载四角星 TM 模板(模块级缓存,首次 imread 后复用);缺失返 None(read_star fallback 1)。"""
+    global _STAR_TMPL_CACHE
+    if _STAR_TMPL_CACHE is None:
+        p = Path(__file__).resolve().parent / 'template' / 'star_gold_tmpl.png'
+        if p.exists():
+            _STAR_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
+    return _STAR_TMPL_CACHE
 
 
 def read_star(crop: MatLike) -> int:
     """数角色立绘底部金星(星级);``crop`` = 槽位 RGB crop(含立绘 + 底部金星)。
 
-    金星 = 亮金色五角星,立绘**最底部中央**(y > 0.74h);1/2/3 星 = N 个金星横向并排。
-    HSV 金色 inRange → 连通域 → 数「底部 + 中央 + 合理面积」的金色域(过滤立绘衣服/腰带金色装饰:
-    装饰在 y < 0.74h 中部;4 样本核实 2026-08-11:佩拉/黑塔中部有金色装饰 + 底部 1 金星,
-    Saber/藿藿无装饰)。
+    金星 = **四角星**(十字星 ✦,自发光亮金黄),立绘**底部中央**(y > 0.65h);1/2/3 星 = N 颗并排。
+    **TM 模板匹配法**(ADR-0114,替 ADR-0113 轮廓法):HSV V>150 抓亮金星(滤暗金衣服)→ 四角星模板
+    matchTemplate → NMS 分离紧贴(2 星 gap 小)→ peak 局部 area/aspect/circ 验证滤残余装饰。
 
-    :return: 星级(≥1);检测失败 / 空图 → 1(角色必有星,fallback)。
-    ⚠️ 仅 1 星样本验过(2/3 星缺 live 样本);逻辑同(数金星个数),2/3 星待后期回合采到样本再验。
+    轮廓法(ADR-0113)对 **2 星紧贴**(连通成大域 area>600 上限漏)+ **前排衣服淹没**(area1279
+    把金星淹没)结构性失效。TM 各星独立滑窗匹配,紧贴亦分,V>150 滤衣服让 mask 干净 —— 治本。
+    验证(2026-08-13):立绘库 71 张 0 误判 + 前排-3/备战-4/三月七 2星读 2 + 1星各槽稳读 1。
+
+    :return: 星级(≥1);空图/无匹配/模板缺 → 1(角色必有星,fallback)。
+    ⚠️ **已知局限**(offline 旁路,live 走 bot tracking ``BenchChar.star``):极小 gap 2星(如后排-3,
+    gap<NMS 距离 tw*0.6)NMS 合并读 1;read_star 仅 comp_viability 离线校验用(cw_performance:185),
+    不影响 live star_achievement。等 live 多 2星样本再调 NMS min_dist。
     """
     if crop is None or crop.size == 0:
         return 1
+    tmpl = _load_star_tmpl()
+    if tmpl is None:
+        return 1
     h, w = crop.shape[:2]
-    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
+    region = crop[int(h * 0.65):, int(w * 0.15):int(w * 0.85)]  # 底部中央带(cy>0.65,盖前排0.72)
+    hsv = cv2.cvtColor(region, cv2.COLOR_RGB2HSV)
     mask = cv2.inRange(hsv, _STAR_GOLD_LO, _STAR_GOLD_HI)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-    n_contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    th, tw = tmpl.shape[:2]
+    if mask.shape[0] < th or mask.shape[1] < tw:
+        return 1
+    res = cv2.matchTemplate(mask, tmpl, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, _ = cv2.minMaxLoc(res)
+    if max_val < 0.55:
+        return 1  # 无金星匹配 → fallback(角色必有星)
+    # NMS:收集 ≥0.55 的 peak,互距 > tw*0.6(分离紧贴 2星)
+    min_dist = tw * 0.6
+    ys, xs = np.where(res >= 0.55)
+    pts = sorted(zip(ys, xs, strict=True), key=lambda p: res[p[0], p[1]], reverse=True)
+    peaks: list[tuple[int, int]] = []
+    for y, x in pts:
+        if all((y - py) ** 2 + (x - px) ** 2 > min_dist ** 2 for py, px in peaks):
+            peaks.append((int(y), int(x)))
+    # peak 局部形状验证:四角星 area 80-320 + aspect 近方 0.80-1.20 + circ>0.35(滤细长/碎装饰)
     count = 0
-    for c in n_contours:
-        a = cv2.contourArea(c)
-        if a <= 120:
+    for py, px in peaks:
+        local = mask[py:py + th, px:px + tw]
+        if local.size < th * tw:
             continue
-        perim = cv2.arcLength(c, True)
-        M = cv2.moments(c)
-        if M['m00'] == 0:
+        lc, _ = cv2.findContours(local, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cc = max(lc, key=cv2.contourArea) if lc else None
+        if cc is None:
             continue
-        cx, cy = M['m10'] / M['m00'], M['m01'] / M['m00']
-        bx, by, bw, bh = cv2.boundingRect(c)
+        la = cv2.contourArea(cc)
+        perim = cv2.arcLength(cc, True)
+        bx, by, bw, bh = cv2.boundingRect(cc)
         aspect = bw / bh if bh > 0 else 0
-        # 金星判据(ADR-0112 迭代,2026-08-12 多槽形状分析):金星 circ 实测 **0.52-0.65**
-        # (非原标 0.57-0.65;备战栏-2 a142 circ0.52 被 circ>0.55 误漏)+ aspect **0.89-1.06**(近方)。
-        # 纯 circ>0.55 漏实战金星(circ0.52);改三联判据:circ>0.45 放金星 + aspect0.85-1.15 滤细长
-        # 装饰(前排长条 aspect2.44 / 立绘库青雀 aspect0.74)+ a>120 滤小装饰(立绘库赛飞儿 a108)。
-        # 立绘库 71 张 0 误判 + 实战金星全过(a142-274 circ0.52-0.65 aspect0.89-1.06)。
-        circ = 4 * np.pi * a / perim / perim if perim > 0 else 0
-        if (cy > h * 0.74 and abs(cx - w / 2) < w * 0.35 and a < 600
-                and circ > 0.45 and 0.85 <= aspect <= 1.15):
+        circ = 4 * np.pi * la / perim / perim if perim > 0 else 0
+        if 80 <= la <= 320 and 0.80 <= aspect <= 1.20 and circ > 0.35:
             count += 1
     return max(count, 1)
 
