@@ -44,6 +44,10 @@ class AnalyzeScreenResult:
             结构化领域事实(画面特定结构,如备战画面的前后台 / 备战席角色 + 金币 / 阶段);
             否则 None。识别器异常不中断 analyze(extras=None,详见日志)。离线模式
             (screenshot 传入)同样跑。详见 ``docs/develop/sr_od/backend/screen-recognizers.md``。
+        extras_doc: 与 ``extras`` 平级的字段说明(数据归数据、说明归说明,不塞进 extras):
+            精准命中且识别器声明了 ``extras_doc`` 时,原样回填该声明(字段名 → 一行语义,
+            含取值格式 / 读不到时的值 / 可靠性注意);否则 None。调用方拿到 extras 的同时
+            就拿到字段语义,零跳查;识别器异常时仍返回(extras=None 时可对照排障)。
     """
 
     success: bool
@@ -53,6 +57,7 @@ class AnalyzeScreenResult:
     screenshot_path: str | None = None
     vision_hint: str | None = None
     extras: dict | None = None
+    extras_doc: dict[str, str] | None = None
 
 
 @dataclass

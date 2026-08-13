@@ -46,6 +46,13 @@ class BriefingRecognizer(ScreenRecognizer):
 
     screen_name: str = BRIEFING_SCREEN   # '货币战争-简报'
 
+    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _BriefingState 一致)
+    extras_doc: dict[str, str] = {
+        'affixes': '敌人词缀 OCR 原名 list(读不到→[],不伪造)。仅名不含效果原文 —— '
+                   'recognizer 纯读不 click,效果需消费方自查或走 affix_effects_data 注册表',
+        'bosses': '3 位面首领名 list(读不到→[])',
+    }
+
     def recognize(
         self,
         ctx: SrContext,

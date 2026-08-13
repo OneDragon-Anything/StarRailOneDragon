@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 # + 穿戴装备 TM 识别(load_equip_tm_grays/read_equipped_below)
 # __all__ 告知 ruff 这些 re-export 非 unused(F401)
 __all__ = ['Equipment', 'EQUIPMENTS', 'EQUIPMENT_ROSTER', 'get_equip', 'load_equip_templates', 'read_equips',
-           'load_equip_tm_grays', 'read_equipped_below', 'ensure_equip_tm_templates']
+           'load_equip_tm_grays', 'read_equipped_below', 'ensure_equip_tm_templates', 'ensure_equip_sift_templates']
 
 # R16 P0-1 已解决(2026-08-10):SIFT 段拆到本文件(手维护),数据在 ``cw_equipment_data``(生成器产物)。
 # 生成器(``tools/cw/gen_equip_registry.py``)只写 ``cw_equipment_data``,永不覆盖本文件 → 旧覆盖地雷已除。
@@ -322,3 +322,22 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
         grays = load_equip_tm_grays(equip_dir)
         ctx.cw_equip_tm_grays = grays
     return grays
+
+
+def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
+    """确保 ctx 缓存 cw_equip SIFT 模板(owned 列 ``read_equips`` 用);返 ``templates`` 或 None(目录缺)。
+
+    首次 ``load_equip_templates`` 缓存 ``ctx.cw_equip_sift_templates``;后续读缓存。与
+    ``ensure_equip_tm_templates``(below-avatar TM grays)互补 —— 本函数返 SIFT 预计算(keypoints/descriptors,
+    owned 列大 icon ~98px SIFT 稳),TM 版返简单 gray(below mini icon ~32px TM 稳)。
+
+    **并发安全**:幂等(同值重 load 无害);只缓存只读资源(非 session/游戏状态),与运行中 operation 不竞争。
+    """
+    templates = getattr(ctx, 'cw_equip_sift_templates', None)
+    if templates is None:
+        equip_dir = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'cw_equip'
+        if not equip_dir.is_dir():
+            return None
+        templates = load_equip_templates(equip_dir)
+        ctx.cw_equip_sift_templates = templates
+    return templates

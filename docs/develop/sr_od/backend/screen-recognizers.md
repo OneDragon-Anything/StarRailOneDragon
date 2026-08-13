@@ -12,6 +12,7 @@
 ```python
 class ScreenRecognizer:
     screen_name: str   # 中文画面名,与 ScreenMatch.screen_name 一致(如 '货币战争-备战')
+    extras_doc: dict[str, str] = {}   # extras 字段名 → 一行语义说明(键集与 recognize 返回一致)
 
     def recognize(self, ctx, image, screen_info) -> dict | None:
         # 对该画面做额外识别,返 JSON 可序列化的领域事实 dict;无内容/不适用返 None
@@ -22,12 +23,16 @@ class ScreenRecognizer:
 - `image`:`analyze` 已截的 RGB 画面（复用,别重截）。
 - `screen_info`:命中画面的 `ScreenInfo`（可读 `area_list` 取 `pc_rect`）。
 - 返回:**JSON 可序列化 dict**（画面特定结构,框架不规定）。
+- `extras_doc`:**必声明**（字段说明的单一源,随代码走）。`analyze` 把它与 `extras` **平级**返回
+  （`AnalyzeScreenResult.extras_doc`,数据归数据、说明归说明,不塞进 extras）—— 调用方拿到
+  extras 的同时就拿到字段语义,不必知道当前是什么画面、也不必另查文档。说明里写清取值格式、
+  读不到时的值（`None` / `[]` / 安全默认）、可靠性注意（如 SIFT 待实测）;加 / 改字段时同步键集。
 
 ## 加一个识别器（3 步）
 
 **1. 建文件**:在对应 app 目录下（推荐 `<app>/recognizers/<xxx>_recognizer.py`),或通用 operation 包下（非 app 画面如登录 / 菜单）。
 
-**2. 写子类**:设 `screen_name` + 实现 `recognize()`。鼓励内部用领域模型类组装再 `asdict()` 转 dict（工程化质量:类型化单一真相源）。
+**2. 写子类**:设 `screen_name` + 声明 `extras_doc` + 实现 `recognize()`。鼓励内部用领域模型类组装再 `asdict()` 转 dict（工程化质量:类型化单一真相源;`extras_doc` 键集与该模型字段一致）。
 
 ```python
 # 例:src/sr_od/application/<app>/recognizers/foo_recognizer.py
@@ -50,6 +55,12 @@ class _FooState:
 
 class FooRecognizer(ScreenRecognizer):
     screen_name: str = '某画面'   # 必须与 screen_info 的 screen_name 一致
+
+    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _FooState 一致)
+    extras_doc: dict[str, str] = {
+        'count': '某数量(int;读不到→None 不伪造)',
+        'name': '某名字(str;读不到→None)',
+    }
 
     def recognize(self, ctx: 'SrContext', image: 'MatLike', screen_info: 'ScreenInfo') -> dict | None:
         # 读画面、组装领域事实(SR 端 ctx 类型按项目惯例窄化为 SrContext,同 SrOperation)

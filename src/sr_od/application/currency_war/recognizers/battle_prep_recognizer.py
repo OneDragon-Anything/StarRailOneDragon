@@ -33,7 +33,12 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from sr_od.application.currency_war.cw_equipment import ensure_equip_tm_templates
+from sr_od.application.currency_war.cw_equipment import (
+    ensure_equip_sift_templates,
+    ensure_equip_tm_templates,
+    read_equips,
+)
+from sr_od.application.currency_war.cw_equipment_data import get_equip
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     read_bench_chars,
@@ -110,12 +115,33 @@ class _BattlePrepState:
     front_line: list[BenchChar] | None  # 前排角色(SIFT 身份 + read_star 星级 + read_row_equipped 装备注入 equips;templates 未加载→None)
     back_line: list[BenchChar] | None   # 后排角色(同上)
     bench: list[BenchChar] | None       # 备战栏角色(read_bench_chars SIFT + read_star;备战席无 below icon→equips 恒 [])
+    owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
     """货币战争备战画面额外识别器(首个 per-screen recognizer 消费者)。"""
 
     screen_name: str = SCREEN_NAME   # '货币战争-备战'
+
+    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _BattlePrepState 一致)
+    extras_doc: dict[str, str] = {
+        'gold': '当前金币(int;读不到→0,安全保守默认)',
+        'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
+        'hp': '小队剩余血量(int,0-100;读不到→100 健康先验)',
+        'streak': '连胜/连败 magnitude(int;读不到→None)',
+        'deploy_count': '已部署角色数(int;读不到→None)',
+        'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
+        'level': '团队规模等级 Lv.N(int;cap>level=钻石/宝钻加成)',
+        'board': '{阵营名: 在场人数} dict(OCR 左面板)',
+        'front_line': '前排角色 list(元素 BenchChar dict: slot/char_id/faction/star/position_pref/equips;'
+                      'char_id 空串=未知;equips=装备名 list)。SIFT 立绘识别可靠性待实测,别单独据它做硬决策;'
+                      'templates 未加载→None',
+        'back_line': '后排角色 list(同 front_line 结构;SIFT 待实测;templates 未加载→None)',
+        'bench': '备战栏角色 list(同上;备战席无 below icon→equips 恒 [];空→None)',
+        'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
+                        'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
+                        'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
+    }
 
     def recognize(
         self,
@@ -151,6 +177,21 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_line = [c for c in deployed if c.position_pref == 'front'] or None
             back_line = [c for c in deployed if c.position_pref == 'back'] or None
             bench = bench_chars or None  # 备战席无 below icon → equips 保持默认 []
+        # owned 装备栏(右侧 区域-道具装备,read_equips SIFT;装备+消耗品混排,返名+位置,category 区分装备 vs 消耗品)
+        sift_templates = ensure_equip_sift_templates(ctx)
+        owned_equips: list[dict] | None = None
+        if sift_templates is not None:
+            _owned: list[dict] = []
+            for eq_name, eq_pos, eq_inliers in read_equips(image, sift_templates):
+                eq_info = get_equip(eq_name)
+                _owned.append({
+                    'name': eq_name,
+                    'category': eq_info.category if eq_info is not None else '',
+                    'cx': eq_pos[0],
+                    'cy': eq_pos[1],
+                    'inliers': eq_inliers,
+                })
+            owned_equips = _owned or None
         phase = _read_phase_round_pure(ctx, image)
         level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
         state = _BattlePrepState(
@@ -165,6 +206,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
             front_line=front_line,
             back_line=back_line,
             bench=bench,
+            owned_equips=owned_equips,
         )
         # D-50:deploy_cap > level = 钻石/财富宝钻加成(+1 团队槽)→ 后排可能>6(read_equipped count=6 漏)
         if state.deploy_cap is not None and state.deploy_cap > state.level:

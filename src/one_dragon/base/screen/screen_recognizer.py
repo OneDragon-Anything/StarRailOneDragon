@@ -28,19 +28,29 @@ class ScreenRecognizer:
     """画面额外识别器:画面精准命中后,框架按 ``screen_name`` 查表调用。
 
     子类只需:① 设类属性 ``screen_name``(中文画面名,与 ``ScreenMatch.screen_name`` 一致);
-    ② 实现 ``recognize()``。框架扫描游戏应用包自动发现(扫描根由各游戏 backend 配置,SR 为
+    ② 实现 ``recognize()``;③ 声明类属性 ``extras_doc``(extras 字段说明,随响应自描述)。
+    框架扫描游戏应用包自动发现(扫描根由各游戏 backend 配置,SR 为
     ``sr_od.operations`` + ``sr_od.application``),无需中心注册。
 
     recognize 内部鼓励用领域模型类组装,再转 JSON 可序列化 dict 返回(工程化质量:
-    单一真相源 / 类型注解,见 CLAUDE.md「工程化质量」)。框架层不规定 dict 结构(各画面不同)。
+    单一真相源 / 类型注解,见 CLAUDE.md「工程化质量」)。框架层不规定 dict 结构(各画面不同),
+    但**必须经 ``extras_doc`` 声明返回字段语义**(字段名 → 一行说明),analyze 会把它与 ``extras``
+    一起平级返回(``AnalyzeScreenResult.extras_doc``)—— 调用方(智能体 / HTTP)拿到 extras 的同时
+    就拿到字段语义,不必知道画面是什么、也不必另查文档。
     ``extras`` 直接计入 MCP tool 响应 token 预算(P6,Claude Code tool response 限 25000 tokens),
-    故保持精简、只返决策需要的语义字段,别倒整张原始 OCR/坐标表。recognize 不得写 ``self.``;
+    故保持精简、只返决策需要的语义字段,别倒整张原始 OCR/坐标表;``extras_doc`` 每字段一行,
+    同样从简。recognize 不得写 ``self.``;
     不得复用带**业务语义**进程级可变状态的 reader(如 ``_last_phase_round`` 这类会影响 operation 决策的
     last-known-good 缓存)—— 但**透明缓存类**共享状态(如 ``ocr_service._cache``,其并发异常已被内部兜住)
     可放心复用。详见实现文档 / spec §6「并发安全」。
     """
 
     screen_name: str   # 关联画面名;与 analyze 命中的 ScreenMatch.screen_name 一致
+
+    # extras 字段说明(单一源,随代码走):字段名 → 一行语义(取值格式 / 读不到时的值 / 可靠性注意)。
+    # analyze 把它与 extras 一起平级返回(AnalyzeScreenResult.extras_doc),调用方零跳查。
+    # 键集应与 recognize 实际返回的 dict 键一致(加 / 改字段时同步)。
+    extras_doc: dict[str, str] = {}
 
     def recognize(
         self,

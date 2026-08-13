@@ -10,7 +10,7 @@
 |---|---|---|
 | `check_game_window` | `backend.check_window()` | `WindowStatus`（结构化 JSON；backend 抛错时返 `{'error': ...}`） |
 | `capture_game_screen` | `backend.capture()` | 截图绝对路径（落盘 `.debug/sr_od_mcp/screenshot/`） |
-| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示；精准命中画面若注册了额外识别器,多回传 `extras` 该画面的结构化领域事实,见 [screen-recognizers.md](screen-recognizers.md)） |
+| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示；精准命中画面若注册了额外识别器,多回传 `extras` 该画面的结构化领域事实 + 平级 `extras_doc` 字段说明,见 [screen-recognizers.md](screen-recognizers.md)） |
 | `upsert_screen_area(screen_name, area_name, pc_rect, ...)` | `backend.upsert_screen_area()` | `{success, action(inserted/updated), area_count, error}`（写 yml + reload） |
 | `delete_screen_area(screen_name, area_name)` | `backend.delete_screen_area()` | `{success, action(deleted), area_count, error}`（写 yml + reload） |
 | `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：结果文本；`block=False`：已启动 JSON；并发拒绝时返错误 JSON |
@@ -123,6 +123,14 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 - 本机接口默认无鉴权，因此不需要 Bearer token 或额外 headers。
 - Codex/Claude 只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页或命令行负责。
 - 命令行启动可用 `uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`；如果项目根目录存在 `.env`，也可使用 `uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`。
+
+## 开机自启(主 server)
+
+主 server 可在登录后自动启动（Session 1 内直接拉起，**不经 daemon 派生**），与 [daemon 开机自启](remote-ssh.md#开机自启) 相互独立、可共存：
+
+- 启动脚本：`tools/mcp/start_mcp_server.ps1`（默认 host 127.0.0.1 / port 24001，日志写 `.debug/sr_od_mcp/main_server.log`，与 GUI / daemon start tool 同路径）。
+- 装自启快捷方式：`.\tools\mcp\create_mcp_server_startup_shortcut.ps1` —— 在 Startup 文件夹建 `SR OD MCP Server.lnk`，登录后自动调上面脚本（隐藏窗口）。卸载即删该 `.lnk`。
+- 幂等说明：本快捷方式与 daemon 自启快捷方式各管各的；daemon 的 `start_sr_od_mcp_server` 先按命令行检测进程已存在则跳过，不会重复拉起 / 端口冲突。
 
 ## 路线图（尚未实现）
 

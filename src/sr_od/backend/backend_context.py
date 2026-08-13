@@ -683,11 +683,14 @@ class SrBackendContext:
 
             # —— 精准命中 → 按画面查表跑额外识别器(无注册则 None,稳态零额外开销)——
             #    整个查表+调用都包在 try 里(含 get_recognizer 触发的惰性首扫):任一步异常 → extras=None,绝不中断 analyze。
+            #    extras_doc(字段说明)在 recognize 调用前先取:识别器异常时 extras=None 但说明照常返回,调用方可对照排障。
             extras: dict | None = None
+            extras_doc: dict[str, str] | None = None
             if screens and screens[0].is_precise:
                 try:
                     recognizer = get_recognizer(self._ctx, screens[0].screen_name)   # 惰性首扫在此触发;扫描内部已 try/except 记 failures 不抛,但兜底防 rglob 等意外
                     if recognizer is not None:
+                        extras_doc = getattr(recognizer, 'extras_doc', None) or None   # 声明为空 dict → None(稀疏返回)
                         screen_info = self._ctx.screen_loader.get_screen(screens[0].screen_name)   # 精准命中保证该画面已建档故能取到(非 Optional);理论边界异常由本 try 兜成 extras=None
                         extras = recognizer.recognize(self._ctx, image, screen_info)
                         if extras is not None:
@@ -697,7 +700,8 @@ class SrBackendContext:
                     extras = None
 
             return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None,
-                                       screenshot_path=saved_path, vision_hint=_VISION_HINT, extras=extras)
+                                       screenshot_path=saved_path, vision_hint=_VISION_HINT,
+                                       extras=extras, extras_doc=extras_doc)
         except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:不回写,返失败(存盘已成功的仍回传路径排障)
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e), screenshot_path=saved_path)
 

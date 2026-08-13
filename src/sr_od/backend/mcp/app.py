@@ -193,7 +193,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
         Returns:
             ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述、
-            screenshot_path、vision_hint、extras)。
+            screenshot_path、vision_hint、extras、extras_doc)。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
             需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
             精准命中时 ``screens[0].unmatched_areas`` 给出该画面未命中 area 及原因:
@@ -206,6 +206,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             ``extras``(精准命中时):若该画面注册了额外识别器(recognizer),带该画面的结构化
             领域事实(画面特定结构,如货币战争备战画面的前后台 / 备战席角色 + 金币 / 阶段);
             识别器异常不中断本结果(extras=None);无注册识别器的画面恒为 None。
+
+            ``extras_doc``(与 extras 平级):extras 各字段的说明 dict(字段名 → 一行语义,
+            含取值格式 / 读不到时的值 / 可靠性注意);有 extras 语义时直接读它,不必猜;
+            无注册识别器 / 未声明时为 None。
         """
         try:
             return backend.analyze(screenshot, save_image)

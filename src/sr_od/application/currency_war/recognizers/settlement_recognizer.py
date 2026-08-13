@@ -51,6 +51,12 @@ class SettlementRecognizer(ScreenRecognizer):
 
     screen_name: str = SETTLEMENT_SCREEN   # '货币战争-结算'
 
+    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _SettlementState 一致)
+    extras_doc: dict[str, str] = {
+        'hp_after': '战后小队 HP(int;「挑战失败」团灭屏→0;非失败屏读不到→None,不硬塞)',
+        'is_failed': '是否「挑战失败」(团灭屏;bool)',
+    }
+
     def recognize(
         self,
         ctx: SrContext,

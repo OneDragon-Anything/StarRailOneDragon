@@ -49,6 +49,12 @@ class InvestStrategyRecognizer(ScreenRecognizer):
 
     screen_name: str = INVEST_STRATEGY_SCREEN   # '货币战争-投资策略'
 
+    # extras 字段说明(随 analyze 响应平级返回 extras_doc;键集与 _InvestStrategyState 一致)
+    extras_doc: dict[str, str] = {
+        'strategies': '当前 3 选 1 投资策略选项名 list(OCR;读不到→[])。'
+                      '刻意不产 rarity(注册表未全量,非 T0 透传原名,见模块 docstring)',
+    }
+
     def recognize(
         self,
         ctx: SrContext,
