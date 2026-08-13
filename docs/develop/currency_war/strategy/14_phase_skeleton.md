@@ -121,8 +121,8 @@ class NodeGoal:
 | 杠杆 | 状态 | 落点 |
 |---|---|---|
 | 攒 50 吃满息 | ✅ | `INTEREST_WEIGHT=4` + `_maybe_sell_for_interest` |
-| 保连胜 > 吃息 | ✅ economy 消费 streak magnitude(2026-08-11,结算「连胜×N」前缀=方向 → economy 对称档位金) | C 杠杆 3(方向驱 plan:保连胜 vs fold,R2-4b)待做 |
-| 连败 fold | 🟡 `STREAK_FOLD_HP=50` 待实现 | 02 R2-4b |
+| 保连胜 > 吃息 | ✅ economy 消费 streak magnitude(2026-08-11)+ ✅ C 杠杆 3 方向驱 plan(ADR-0117,2026-08-13:连胜≥`WIN_STREAK_BREAK_INTEREST`(2)→ `_should_save_for_interest` 破息) | magnitude(2026-08-11)+ 方向(ADR-0117)双接 |
+| 连败 fold | ✅ HP-gating 覆盖(02 R2-4b:血量安全→fold/不安全→急救,`_phase_weights`/`_refresh_cap`/`_saving_for_interest` HP gate);更细连败专项(`STREAK_FOLD_HP` plane<3 gate)未实现,用户原则已满足 | 02 R2-4b |
 | 奖励关白嫖 | 🟡 node_plan 标奖励关 + `_refresh_cap` 收紧 | — |
 | 牌池稀释 | 🟡 A4 牌池消耗追踪 | `POOL_COPIES_PER_CARD` 已有(D-93) |
 | 保血 D | 🟡 静态 HP<40,无下关遭遇预判 | difficulty + hp_trend OCR(阶段 4) |

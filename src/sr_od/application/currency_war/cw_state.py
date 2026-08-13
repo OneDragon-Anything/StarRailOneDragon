@@ -72,7 +72,7 @@ class GameState:
     xp_progress: tuple[int, int] | None = None
     level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,plan 用 LEVEL_UP_COST_TABLE 兜底)
     shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
-    streak: int | None = None             # 连胜/连败数(文本-连胜数;正=连胜?待核;None=未读到)
+    streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;strategy/13 §13.7 两阶难度:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)

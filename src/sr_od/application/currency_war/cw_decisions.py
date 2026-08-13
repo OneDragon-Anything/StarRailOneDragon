@@ -65,6 +65,9 @@ INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 �
 # 连胜/连败都给档位金(对称,取 magnitude;方向用于 plan 行为 —— 保连胜 vs fold,留 R2-4b)。
 STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,阶段 6 实玩校准)
 STREAK_CAP: int = 5                   # streak 经济封顶档(连胜/连败金一般 ≤5 档)
+# C 杠杆 3 winning half(R2-4b;14 §连胜中「2 胜+」):连胜 ≥ 此 → 破息花钱提质量维持连胜(断连胜亏 > 利息亏)。
+# streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
+WIN_STREAK_BREAK_INTEREST: int = 2    # auto-chess 连胜金 2 连起档(2 连=1 金、3 连=2 金…),故阈值=2
 LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
 # (level benefit+3 < interest loss-6 → 不升)→ 卡 lv5-6 → 弱 comp → plane2 死。提权让升级战胜息损 → 升7-8
 # → 高费 unit → comp value↑ → 攻坚 plane2。
@@ -231,7 +234,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
-    streak 取 magnitude(连胜/连败都给档位金,对称);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动剩「保连胜」半(连胜维持>吃息)待。
+    streak 取 magnitude(连胜/连败都给档位金,对称);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
     """
     interest_tiers = min(state.gold // 10, INTEREST_THRESHOLD // 10)
     interest_val = interest_tiers * INTEREST_WEIGHT
@@ -267,7 +270,7 @@ def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[
     - **plane3(后期):锁血** —— 全力战力/星级(打 boss)。
     - **其余(健康):平衡 (1,1,1)** —— economy 不压低,可 snowball 到 50。
 
-    A8 difficulty 已接(effective_hp_threshold,3.5.1/D-32 live-verified);win_streak 待补(连胜中保连胜>吃息,需 read_streak 方向 —— 结算源已接 session.last_streak,plan 消费端待 R2-4b)。
+    A8 difficulty 已接(effective_hp_threshold,3.5.1/D-32 live-verified);win_streak 已接(_should_save_for_interest:连胜≥WIN_STREAK_BREAK_INTEREST 破息保连胜,C 杠杆 3 / R2-4b;结算源 session.last_streak 方向)。
     """
     if hp < hp_threshold:
         return (1.2, 0.4, 1.2)   # 保血:战力/角色优先,经济降权(任何位面 HP 危险)
@@ -310,6 +313,30 @@ def _economy_mode_for(state: GameState, config) -> str:
     if _spend == "adaptive":
         return getattr(config, 'economy_mode', 'adaptive')
     return "adaptive"   # hold/allin/spend → neutral
+
+
+def _should_save_for_interest(state: GameState, config, target_comp: Comp | None) -> bool:
+    """攒息门(经济统一论):全满足 → hold gold 攒利息(抑制散买/刷)。
+
+    条件:gold<INTEREST_THRESHOLD(未满息)+ 板满(deployed≥max_units)+ HP 安全(≥threshold)
+    + 板强(target 已 commit,form_progress≥COMMIT_FRAC)+ **非连胜中**(保连胜>吃息,见下)。
+    tempo 破息出口(任一不满足即不攒息):HP 危险(由 _phase_weights 处理)/ 战力断档(板弱,D-142)/
+    板未满(该 deploy 提战力)/ **连胜中**(本条,C 杠杆 3)。
+
+    **保连胜 > 吃息(C 杠杆 3 winning half,R2-4b;14 §连胜中「2 胜+」)**:连胜 ≥ ``WIN_STREAK_BREAK_INTEREST``
+    → 破息花钱提质量维持连胜(断连胜亏 > 利息亏 —— 连胜金 + 胜金 > 一档利息)。streak 带符号(连胜 + / 连败 −,
+    结算源 session.last_streak,方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b:血量安全→fold/不安全→急救)。
+    """
+    if state.gold >= INTEREST_THRESHOLD:
+        return False
+    if state.deployed_count() < state.max_units():
+        return False
+    if state.hp < effective_hp_threshold(state, config):
+        return False
+    if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
+        return False
+    # 连胜 ≥ 阈值 → 破息(保连胜>吃息,断连胜亏>利息亏);否则攒息。
+    return (state.streak or 0) < WIN_STREAK_BREAK_INTEREST
 
 
 def evaluate(state: GameState, config, faction_priority: list[str],
@@ -666,12 +693,8 @@ def _best_improving_action(
     # 卡 lv6 cap→上不了更多单位→永 tier-2→p2 死。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。
     # _saving_for_level 抑制 off-target 买 + refresh(浪费金),留 target 买(建 comp)+ 攒金 → 够 cost 下轮 plan
     # level gate(优先执行)升级。**_saving_for_interest 仍由 _board_strong 门控**(息是经济,板强才囤,弱板不囤息)。
-    _board_strong = (target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC)
-    # → 攒息。CLAUDE.md「维持≥50 金,超出才花;tempo(HP 危险/战力断档)破息」(战力断档=板弱,非仅板位不满)。
-    _saving_for_interest = (state.gold < INTEREST_THRESHOLD
-                            and state.deployed_count() >= state.max_units()
-                            and state.hp >= effective_hp_threshold(state, config)
-                            and _board_strong)
+    # → 攒息。CLAUDE.md「维持≥50 金,超出才花;tempo(HP 危险/战力断档/连胜中)破息」(战力断档=板弱,非仅板位不满)。
+    _saving_for_interest = _should_save_for_interest(state, config, target_comp)
     _saving = _saving_for_level or _saving_for_interest
 
     # 1) 买 + 上任组合(原子)
