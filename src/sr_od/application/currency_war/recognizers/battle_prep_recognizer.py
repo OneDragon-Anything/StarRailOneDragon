@@ -152,7 +152,10 @@ class BattlePrepRecognizer(ScreenRecognizer):
         if equip_grays is not None:
             front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) or None
             back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) or None
-            bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9) or None
+            # 备战栏 below 不读:未上阵角色无 below-avatar icon(机制恒空,见 cw_dev 权威源映射),
+            # 读它只在空背景产假 MISS 噪声(某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
+            # bench_equips 保持 None(无消费方,字段留接口兼容)。
+            # bench_equips = read_row_equipped(ctx, image, equip_grays, '备战栏', 9) or None
         phase = _read_phase_round_pure(ctx, image)
         level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
         state = _BattlePrepState(
