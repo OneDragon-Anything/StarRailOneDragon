@@ -44,11 +44,10 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='买牌', is_start_node=True)
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
-        # [识别核对钩子·临时] clean 备战帧(buy 入口,shop 未开):read 身份/星 vs tracking → flag 不一致;
-        # read star≥3 → 停机截 3/4★ 样本(read_star 3/4 星从没验过)。ground truth=tracking(也会漂)→
-        # flag=可疑非定罪,需视觉核实是 reader 还是 tracking 错。核完 reader 删本调用+方法(CLAUDE.md「两种钩子」)。
-        if self._verify_recognition():
-            return self.round_wait(status='read star≥3 停机截样本')
+        # [识别核对钩子·临时] clean 备战帧(buy 入口,shop 未开):read 身份/星 vs tracking → flag 不一致([cw!] log +
+        # 存截图)。3/4★ 停机截样本由 sell_star_hook(tracked≥2,≥3⊂≥2)负责,本钩子只 flag 不停机(去重叠)。
+        # ground truth=tracking(也会漂)→ flag=可疑非定罪,需视觉核实是 reader 还是 tracking 错。核完删(CLAUDE.md「两种钩子」)。
+        self._verify_recognition()
         # [停机钩子·临时] 检测 tracked bench/deployed star≥2 → 停机给 AI 拖卡/click 详情验证售卖价
         # (校准 sell_refund 2/3星值;用户:检测到2/3星就停,AI 接手,不等策略卖)。验完删本块+sentinel
         # (CLAUDE.md 方案 D)。假设 star 识别对(已验证 commit 672aa838);售价客观核(click 详情「+N 出售」OCR,非 VLM)。
@@ -111,13 +110,14 @@ class BattlePrepCycle(SrOperation):
             if _fn:
                 log.info(f'[cw-prep][nodeseq] 未识别图标 idx={_s.idx} hu={_s.hu_dist:.1f} → 采 {_fn}')
 
-    def _verify_recognition(self) -> bool:
-        """[识别核对钩子·临时] clean 备战帧(buy 入口):read 身份/星 vs session tracking → flag 不一致;
-        read star≥3 → 停机截 3/4★ 样本。返 True=已停机(3/4★)。
+    def _verify_recognition(self) -> None:
+        """[识别核对钩子·临时] clean 备战帧(buy 入口):read 身份/星 vs session tracking → flag 不一致。
 
         read_deployed_chars/read_bench_chars(SIFT 身份 + read_star)vs session.tracked_deployed/tracked_bench_chars
         (simulate 维护)。read≠tracking → ``[cw!]`` log + 存截图(视觉核实是 reader 错还是 tracking 漂)。
-        read star≥3 → save_screenshot + sentinel flag + stop_running(read_star 3/4 星从没 live 验过,截样本离线验)。
+        read star≥3 → 仅 log 标记(**不停机** —— sell_star_hook tracked≥2 已停机截高星样本,≥3⊂≥2 覆盖,
+        此处不重复停机;read_star 3/4 星样本从 sell_star 的截图取)。互补 deploy_bench._reconcile_tracking
+        (post-deploy 静默纠 tracking;本钩子 buy 入口 flag 出 read≠tracking 让你知道哪里漂)。
         ground truth 是 tracking(自身会漂,故有此核对)→ flag = 可疑,非定罪。核完 reader 删本方法 + buy 调用。
         """
         try:
@@ -128,25 +128,20 @@ class BattlePrepCycle(SrOperation):
             )
             _tmpl = ensure_portrait_templates(self.ctx)
             if _tmpl is None:
-                return False
+                return
             _scr = self.screenshot()
             _dep = read_deployed_chars(self.ctx, _scr, _tmpl)
             _bench = read_bench_chars(self.ctx, _scr, _tmpl)
-            # 3★/4★ → 停机截样本
+            # read star≥3:不单独停机(sell_star_hook tracked≥2 已停机截高星样本,≥3⊂≥2 覆盖);仅 log 标记
             _hi = [f'{bc.position_pref or "bench"}-{bc.slot}:{bc.char_id}★{bc.star}'
                    for bc in (*_dep, *_bench) if bc.star >= 3]
             if _hi:
-                from pathlib import Path
-                self.save_screenshot(prefix='star34_sample')
-                Path('.debug/temp/currency_war/star34_sample.flag').write_text(str(_hi), encoding='utf-8')
-                log.info(f'[cw-hook][verify] read star≥3 → 停机截样本:{_hi}')
-                self.ctx.run_context.stop_running()
-                return True
+                log.info(f'[cw!][verify] read star≥3(3/4★ 样本, sell_star_hook 会停机截图):{_hi}')
             # read vs tracking(身份 + 星;按 槽位定位)
             _match = getattr(self.ctx, 'cw_match', None)
             _sess = _match.session if _match is not None else None
             if _sess is None:
-                return False
+                return
             _mm: list[str] = []
             for bc in _dep:
                 tv = next((x for x in (_sess.tracked_deployed or [])
@@ -160,10 +155,8 @@ class BattlePrepCycle(SrOperation):
             if _mm:
                 log.info(f'[cw!][verify] read≠tracking({len(_mm)}):{" | ".join(_mm)}')
                 self.save_screenshot(prefix='recog_mismatch')
-            return False
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-hook][verify] skip:{e}')
-            return False
 
     @node_from(from_name='买牌')
     @operation_node(name='部署')
@@ -176,7 +169,31 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='装备')
     def equip(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ③ 装备(EquipAll)')
-        return self.round_by_op_result(EquipAll(self.ctx).execute())
+        _r = self.round_by_op_result(EquipAll(self.ctx).execute())
+        self._verify_equipped()   # [装备核对钩子·临时] EquipAll 后 read_row_equipped → log(对比 EquipAll 意图核装备识别)
+        return _r
+
+    def _verify_equipped(self) -> None:
+        """[装备核对钩子·临时] EquipAll(drag 穿戴 / 触发合成)后 read_row_equipped → log 已穿装备。
+
+        对比 EquipAll 意图(拖了哪些装备到哪些槽):若拖了但 read 没读到 / 合成结果没识别 → 装备识别(reader)错。
+        采:截图(详情面板关后,clean 帧)+ log ``[cw-hook][equip]``。仅 log read 结果(意图对比离线 / 人眼),
+        不阻塞备战。核完装备 reader 删本方法 + equip 调用(CLAUDE.md「两种钩子」)。
+        """
+        try:
+            from sr_od.application.currency_war.cw_equipment import (
+                ensure_equip_tm_templates,
+            )
+            from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
+            _grays = ensure_equip_tm_templates(self.ctx)
+            if _grays is None:
+                return
+            _scr = self.screenshot()
+            _fe = read_row_equipped(self.ctx, _scr, _grays, '前排', 4)
+            _be = read_row_equipped(self.ctx, _scr, _grays, '后排', 6)
+            log.info(f'[cw-hook][equip] read 已穿装备: front={_fe} back={_be}')
+        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
+            log.info(f'[cw-hook][equip] skip:{e}')
 
     @node_from(from_name='装备')
     @operation_node(name='出战')
