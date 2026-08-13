@@ -99,6 +99,10 @@ _STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 150)
 _STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
 # TM 匹配阈值(2026-08-13:0.50。原 0.55 漏后排-3 第2星 val0.511;0.50 解 + 立绘库 0/71 仍 0)
 _STAR_TM_THRESH: float = 0.50
+# peak 轮廓圆度下限(ADR-0115,2026-08-13:0.25)。原 0.35 太紧 —— 真金星 circ 实测 0.34-0.50(随槽位
+# 渲染微变),备战-9 边槽把同颗星 circ 压到 0.34<0.35 被误拒 → 2星读 1(假阴)。**立绘库 0/71 误判
+# 不靠 circ**(area+aspect+V>150+TM 已挡死,circ>0.0 仍 0/71)+ 全 fixture 无新 FP → 放宽到 0.25 留足余量。
+_STAR_CIRC_MIN: float = 0.25
 # 四角星 TM 模板(单星 mask,19x19 area190,从备战栏-1 单星提取);模块级缓存避免每帧 imread。
 _STAR_TMPL_CACHE: MatLike | None = None
 
@@ -123,7 +127,9 @@ def read_star(crop: MatLike) -> int:
     轮廓法(ADR-0113)对 **2 星紧贴**(连通成大域 area>600 上限漏)+ **前排衣服淹没**(area1279
     把金星淹没)结构性失效。TM 各星独立滑窗匹配,紧贴亦分,V>150 滤衣服让 mask 干净 —— 治本。
     验证(2026-08-13):立绘库 71 张 0 误判 + 各位置 2星(前排-3/后排-3/备战-4)读 2 + 三月七 2星 +
-    1星各槽稳读 1(thresh 0.50:后排-3 第2星 val0.511,原 0.55 漏)。
+    1星各槽稳读 1(thresh 0.50:后排-3 第2星 val0.511,原 0.55 漏)。**circ 放宽(ADR-0115)**:原 circ>0.35
+    太紧 —— 备战-9 边槽同颗金星 circ 渲染到 0.34 被误拒 → 2星读 1;放宽到 0.25(立绘库仍 0/71 +
+    全 fixture 无新 FP),备战-9 读回 2。
 
     :return: 星级(≥1);空图/无匹配/模板缺 → 1(角色必有星,fallback)。
     ⚠️ **offline 旁路**(live 走 bot tracking ``BenchChar.star``,非 read_star):comp_viability 离线
@@ -154,7 +160,8 @@ def read_star(crop: MatLike) -> int:
     for y, x in pts:
         if all((y - py) ** 2 + (x - px) ** 2 > min_dist ** 2 for py, px in peaks):
             peaks.append((int(y), int(x)))
-    # peak 局部形状验证:四角星 area 80-320 + aspect 近方 0.80-1.20 + circ>0.35(滤细长/碎装饰)
+    # peak 局部形状验证:四角星 area 80-320 + aspect 近方 0.80-1.20 + circ>_STAR_CIRC_MIN(滤细长/碎装饰)。
+    # circ 下限见 _STAR_CIRC_MIN(ADR-0115:0.25,原 0.35 误拒备战-9 边槽真金星)。
     count = 0
     for py, px in peaks:
         local = mask[py:py + th, px:px + tw]
@@ -169,7 +176,7 @@ def read_star(crop: MatLike) -> int:
         bx, by, bw, bh = cv2.boundingRect(cc)
         aspect = bw / bh if bh > 0 else 0
         circ = 4 * np.pi * la / perim / perim if perim > 0 else 0
-        if 80 <= la <= 320 and 0.80 <= aspect <= 1.20 and circ > 0.35:
+        if 80 <= la <= 320 and 0.80 <= aspect <= 1.20 and circ > _STAR_CIRC_MIN:
             count += 1
     return max(count, 1)
 
