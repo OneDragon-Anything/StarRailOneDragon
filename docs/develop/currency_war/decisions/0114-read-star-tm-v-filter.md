@@ -39,12 +39,9 @@ HSV V 下限 80→150,滤掉暗金衣服(金星自发光 V 高留下)。mask 干
 
 - `_STAR_GOLD_LO` V:80 → 150(`cw_identity_obs.py`)
 - 四角星模板 `currency_war/template/star_gold_tmpl.png`(19×19 area190,从备战栏-1 单星提取,模块级缓存 `_load_star_tmpl`)
-- read_star 流程:region cy>0.65 → HSV V>150 mask → TM(TM_CCOEFF_NORMED,thresh 0.55)→ NMS(min_dist = tw*0.6)→ peak 局部验证(area 80-320 / aspect 0.80-1.20 / circ>0.35)
-- 验证(2026-08-13):立绘库 71 张 **0 误判**;实机前排-3 / 备战栏-4 / 三月七 2星读 2;1星各槽稳读 1
-
-## 已知局限(offline 旁路,待 live 多样本)
-
-- **后排-3 2星读 1**:两星 gap 极小(<NMS 距离 tw*0.6≈11px),NMS 合并。read_star 仅 comp_viability 离线校验用,**live 走 bot tracking `star_achievement` 不受影响**。xfail 测试跟踪(`test_read_star_2star_back3_xfail`),待 live 多 2星样本调 min_dist / 加多模板。
+- read_star 流程:region cy>0.65 → HSV V>150 mask → TM(TM_CCOEFF_NORMED,**thresh 0.50** `_STAR_TM_THRESH`)→ NMS(min_dist = tw*0.6)→ peak 局部验证(area 80-320 / aspect 0.80-1.20 / circ>0.35)
+- 验证(2026-08-13):立绘库 71 张 **0 误判**;实机各位置 2星(前排-3 衣服淹没 / 后排-3 / 备战栏-4)+ 三月七 2星读 2;1星各槽稳读 1
+- thresh 0.55→0.50(2026-08-13 迭代):原 0.55 漏后排-3 第2星(val0.511<0.55,实测 peak2 非噪声 NMS 能分);0.50 解 + 立绘库仍 0/71(0.50 不引误判)。**无已知 2星局限**(各位置 2星全读对;3星待 live 样本,逻辑同)。
 
 ## 四角星纠正
 

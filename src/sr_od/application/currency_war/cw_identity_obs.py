@@ -97,6 +97,8 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
 # 前排角色立绘底部有大量暗金衣服(V80-150)淹没金星,旧 V>80 把衣服抓成 area1279 大块致检测崩溃。
 _STAR_GOLD_LO: tuple[int, int, int] = (10, 40, 150)
 _STAR_GOLD_HI: tuple[int, int, int] = (45, 255, 255)
+# TM 匹配阈值(2026-08-13:0.50。原 0.55 漏后排-3 第2星 val0.511;0.50 解 + 立绘库 0/71 仍 0)
+_STAR_TM_THRESH: float = 0.50
 # 四角星 TM 模板(单星 mask,19x19 area190,从备战栏-1 单星提取);模块级缓存避免每帧 imread。
 _STAR_TMPL_CACHE: MatLike | None = None
 
@@ -120,12 +122,12 @@ def read_star(crop: MatLike) -> int:
 
     轮廓法(ADR-0113)对 **2 星紧贴**(连通成大域 area>600 上限漏)+ **前排衣服淹没**(area1279
     把金星淹没)结构性失效。TM 各星独立滑窗匹配,紧贴亦分,V>150 滤衣服让 mask 干净 —— 治本。
-    验证(2026-08-13):立绘库 71 张 0 误判 + 前排-3/备战-4/三月七 2星读 2 + 1星各槽稳读 1。
+    验证(2026-08-13):立绘库 71 张 0 误判 + 各位置 2星(前排-3/后排-3/备战-4)读 2 + 三月七 2星 +
+    1星各槽稳读 1(thresh 0.50:后排-3 第2星 val0.511,原 0.55 漏)。
 
     :return: 星级(≥1);空图/无匹配/模板缺 → 1(角色必有星,fallback)。
-    ⚠️ **已知局限**(offline 旁路,live 走 bot tracking ``BenchChar.star``):极小 gap 2星(如后排-3,
-    gap<NMS 距离 tw*0.6)NMS 合并读 1;read_star 仅 comp_viability 离线校验用(cw_performance:185),
-    不影响 live star_achievement。等 live 多 2星样本再调 NMS min_dist。
+    ⚠️ **offline 旁路**(live 走 bot tracking ``BenchChar.star``,非 read_star):comp_viability 离线
+    校验用(cw_performance:185),不影响 live star_achievement。3星待 live 样本(逻辑同,数金星)。
     """
     if crop is None or crop.size == 0:
         return 1
@@ -142,11 +144,11 @@ def read_star(crop: MatLike) -> int:
         return 1
     res = cv2.matchTemplate(mask, tmpl, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, _ = cv2.minMaxLoc(res)
-    if max_val < 0.55:
+    if max_val < _STAR_TM_THRESH:
         return 1  # 无金星匹配 → fallback(角色必有星)
-    # NMS:收集 ≥0.55 的 peak,互距 > tw*0.6(分离紧贴 2星)
+    # NMS:收集 ≥_STAR_TM_THRESH 的 peak,互距 > tw*0.6(分离紧贴 2星)
     min_dist = tw * 0.6
-    ys, xs = np.where(res >= 0.55)
+    ys, xs = np.where(res >= _STAR_TM_THRESH)
     pts = sorted(zip(ys, xs, strict=True), key=lambda p: res[p[0], p[1]], reverse=True)
     peaks: list[tuple[int, int]] = []
     for y, x in pts:
