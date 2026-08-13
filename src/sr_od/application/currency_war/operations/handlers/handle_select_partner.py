@@ -1,4 +1,5 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+# live-verified 2026-08-13:HandleSelectPartner 端到端跑通(step1 候选 click 早前实测;step2 点中心立绘
+# (960,300)→「已选择」→ 确认 → overlay 关,live 验)。原自主推进期代码,已 review + live 验,可信。
 
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
