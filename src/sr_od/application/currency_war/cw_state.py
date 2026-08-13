@@ -25,7 +25,7 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 # 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」+ 修 §2 内部矛盾,
 # 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。旧 SELL_VALUE{1:1,2:3,3:5} 占位(连1星都没按cost)→ 弃。
-_SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 再 −1 手续费
+_SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 
 
@@ -251,13 +251,15 @@ def sell_refund(star: int, cost: int) -> int:
     """卖出回金(economy_research.md §2;用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
 
     - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
-    - 2星 = cost×3 − 1、3星 = cost×9 − 1、4星 = cost×27 − 1(合成成本 − 1 手续费)。
-      🟡 2星:用户印象「2星少1金币」+ 修正 economy_research §2 内部矛盾(L83「2星=cost×3 即免费」
-      vs L93「2星以上不免费」→ 改 cost×3−1 = 亏1金 = 不免费,自洽)。3/4星推测同「−1 手续费」逻辑,**待实机核**。
+    - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。
+    - **cost=1 exempt(无手续费)**:🟢 2026-08-13 live 实测 2★1费 万敌 出售 = **+3 金**(cost×3,无 −1;
+      sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
+      非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``(旧 ``star>=2`` 一刀切把 1费 也 −1 了,错)。
+    - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)
-    if star >= 2:
-        refund -= 1   # 合成手续费(2星以上卖出少1金;用户印象 + economy_research 矛盾修正;3/4星待核)
+    if star >= 2 and cost >= 2:
+        refund -= 1   # 合成手续费:仅 star≥2 且 cost≥2(cost=1 exempt,实测 2★1费=3 无费;用户「2费开始减1」)
     return max(refund, 0)
 
 
