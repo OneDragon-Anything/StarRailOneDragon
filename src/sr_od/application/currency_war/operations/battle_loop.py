@@ -301,6 +301,14 @@ class CurrencyWarRunLoop(SrOperation):
                          self._max_rounds, self._rounds_done)
                 return self.round_success(
                     f'已跑 {self._rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
+            # [停机钩子·临时] 补给节点备战(「返回补给阶段」按钮在)→ 停机给 AI 继续补给建档
+            # (试用角标/角色详情子面板/卡旁数字 交互验证待补;CLAUDE.md「两种钩子」方案 D)。建档完删本块 + sentinel。
+            if self.round_by_find_area(screen, '货币战争-备战', '按钮-返回补给阶段', crop_first=False).is_success:
+                self.save_screenshot(prefix='supply_node_hook')
+                Path('.debug/temp/currency_war/supply_node_hook.flag').write_text('supply_node', encoding='utf-8')
+                log.info('[cw-hook] 补给节点备战(返回补给阶段)→ 停机给 AI 继续补给建档(试用/角色详情/数字)')
+                self.ctx.run_context.stop_running()
+                return self.round_wait(status='补给节点停机建档')
             BattlePrepCycle(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
