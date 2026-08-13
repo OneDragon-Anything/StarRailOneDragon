@@ -353,9 +353,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 只用战斗独有关键词;不用「羁绊」(大厅"羁绊链路"会误匹配)
         if (self.round_by_ocr(screen, '总伤害').is_success   # TODO(T#103) 待建 area(此结算帧未见「总伤害」label)
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
-            # 临时采集钩子(总伤害/输出 reader 标定,CLAUDE.md 方案):采结算数据统计屏样本。reader 设计好后删本段。
-            from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            cw_shot_unique(screen, 'settlement_damage')
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
