@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 巨星节点 RunNode(盛会之星羁绊的「选巨星」overlay)。
 
 **玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
@@ -53,7 +51,7 @@ class RunMegastarNode(RunNode):
     def _in_node(self, screen) -> bool:
         # 巨星 overlay:盛会之星标题在(用 screen_info 标题 area 位置区分,非全屏 LCS)。原用「确认选择
         # AND NOT 选择伙伴」(lcs 0.7 防共享「选择」误匹配)—— 改用 megastar 独有标题「盛会之星」更直接。
-        still_in = self.round_by_find_area(screen, '货币战争-巨星强化', '标识-盛会之星', crop_first=False).is_success
+        still_in = self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success
         # megastar 一局可能多次(每次持有盛会之星角色触发,见模块 docstring),flag 不能跨节点保持 True。
         if not still_in:
             _match = self.ctx.cw_match
@@ -88,7 +86,7 @@ class RunMegastarNode(RunNode):
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
         self.ctx.controller.click(RunMegastarNode.CONFIRM)
         time.sleep(0.9)
-        if self.round_by_find_area(self.screenshot(), '货币战争-巨星强化', '按钮-请选择强化角色', crop_first=False).is_success:
+        if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星', '按钮-请选择强化角色', crop_first=False).is_success:
             log.info('[cw-megastar] step2 请选择强化角色 仍在(罕见)→ 再 confirm(安全网)')
             self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
             self.ctx.controller.click(RunMegastarNode.CONFIRM)

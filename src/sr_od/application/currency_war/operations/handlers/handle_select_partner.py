@@ -122,7 +122,7 @@ class HandleSelectPartner(SrOperation):
         if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
             # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
             # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。
-            if self.round_by_find_area(self.screenshot(), '货币战争-巨星强化', '按钮-请选择强化角色').is_success:
+            if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星', '按钮-请选择强化角色').is_success:
                 # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
                 # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
                 target = Point(960, 300)

@@ -206,13 +206,18 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
-        # [停机钩子·临时] 未完整建档节点(巨星/祈愿试炼 —— screen_info+handler 有但无完整 skill 建档:doc/fixture/id_mark 测缺)
-        # → 停机给 AI 按 od-dev-screen-onboarding 完整建档 + 接决策。建档完删该 tuple 项。CLAUDE.md「两种钩子」方案 D。
-        # ⚠️ 选择伙伴已完整建档(2026-08-13,doc+fixture+id_mark=false overlay-on-parent + 显式 area dispatch)→ 移出本钩子,
-        # 0a 分支 HandleSelectPartner 接管。
+        # [停机钩子·临时] 未完整建档节点 + 待排查节点 → 停机给 AI 按 od-dev-screen-onboarding 建档/排查。
+        # 建档/排查完删该 tuple 项。CLAUDE.md「两种钩子」方案 D。
+        # - 祈愿:screen_info+handler 有但无完整 skill 建档(doc/fixture/id_mark 测缺)。巨星(盛会之星)已完整建档(2026-08-13)→ 移出 tuple,0b 接管。
+        # - 补给/投资策略/投资环境(2026-08-13 用户):疑似**独立屏非备战 overlay**(补给有「返回备战」按钮 →
+        #   可导航回备战,是兄弟屏)。当前 0e 当 overlay 处理 + id_mark 模型可能错(fixture 无购买经验)→ 停机排查
+        #   overlay vs 独立屏 + 完整建档(id_mark/流转/返回备战按钮)。
+        # ⚠️ 选择伙伴已完整建档(2026-08-13,组合 id_mark 购买经验+选择伙伴;备战含被盖前台区域→overlay 帧备战不 is_precise,无测试豁免)→ 移出 tuple,0a 接管。
         for _scr, _area, _tag in (
-            ('货币战争-巨星强化', '标识-盛会之星', 'megastar'),
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
+            ('货币战争-补给', '标识-补给阶段', 'supply'),
+            ('货币战争-投资策略', '标识-请选择投资策略', 'invest_strategy'),
+            ('货币战争-投资环境', '标识-投资环境', 'invest_env'),
         ):
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
                 self.save_screenshot(prefix=f'{_tag}_hook')
@@ -235,7 +240,7 @@ class CurrencyWarRunLoop(SrOperation):
         #     用 screen_info 标题 area(标识-盛会之星)位置区分。原用全屏「确认选择」(lcs 0.7 防「请选择投资策略」
         #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar
         #     独有标题「盛会之星」更直接(独有标题位置区分,无需依赖分支先后)。
-        if self.round_by_find_area(screen, '货币战争-巨星强化', '标识-盛会之星', crop_first=False).is_success:
+        if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
             RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
