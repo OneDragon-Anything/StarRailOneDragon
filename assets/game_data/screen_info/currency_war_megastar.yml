@@ -3,12 +3,12 @@ screen_name: 货币战争-巨星强化
 pc_alt: false
 area_list:
 - area_name: 标识-盛会之星
-  id_mark: false
+  id_mark: true
   pc_rect:
-  - 980
-  - 48
-  - 1125
-  - 105
+  - 982
+  - 47
+  - 1126
+  - 89
   text: 盛会之星
   lcs_percent: 0.5
   template_sub_dir: ''
