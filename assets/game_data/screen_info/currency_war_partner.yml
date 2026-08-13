@@ -3,7 +3,7 @@ screen_name: 货币战争-选择伙伴
 pc_alt: false
 area_list:
 - area_name: 标识-选择伙伴
-  id_mark: false
+  id_mark: true
   pc_rect:
   - 987
   - 52
