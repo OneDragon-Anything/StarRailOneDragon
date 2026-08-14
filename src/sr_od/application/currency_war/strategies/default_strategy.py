@@ -42,6 +42,7 @@ from sr_od.application.currency_war.prep_actions import (
     ClickSpheres,
     DeferSpheres,
     DeployMove,
+    EnsureShopClosed,
     EnsureShopOpen,
     LevelUp,
     OpenBox,
@@ -221,6 +222,11 @@ class DefaultCwStrategy(CwStrategy):
         if obs.boxes:
             return OpenBox()                     # 开箱即腾席 + 得装备
         if obs.spheres and obs.free_bench_slots > 0:
+            # live 2026-08-14(1-2 实锤):商店开态奖励面板 [1257,140,1662,493] 与「刷新概率表」
+            # 按钮 [945,360,1415,410] 重叠(x1257-1415∩y360-410)——HoughCircles 把按钮图形误检成
+            # 假球,点击即开概率表弹窗(遮挡 → bail → 乒乓)。商店开 → 先关店,清洁面板上再收球。
+            if obs.shop_open:
+                return EnsureShopClosed()
             return ClickSpheres(max_k=min(obs.free_bench_slots, len(obs.spheres)))
         if obs.spheres and obs.free_bench_slots <= 0 and session.defer_count < 2:
             return self._free_bench_step(obs, session, config)
