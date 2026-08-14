@@ -13,7 +13,7 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 用户定调:策略应该是**根据当前画面输出下一步做什么**(例:有奖励未领+备战满 → 拖前后台/卖无关角色/
 都有用则留球),做一步 → 再识别 → 再决定。
 
-## 决策(v4 框架/策略分离,2026-08-14 用户三轮定调)
+## 决策(v5 review 修订,2026-08-14 review agent 3H+7M 证据核实后)
 
 新增 PrepDirector(SrOperation):观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(动作全集**原子化**:ClickSphere/ClickSpheres(k=free 带内验早停)/OpenBox/PickBoxCard/BuyCard/LevelUp/RefreshShop/**SellBench(身份感知)**/DeployMove/WearEquip/StartBattle;组合动作仅商店/装备域过渡用)
 (`CwStrategy.decide_prep_action` 新方法,基类默认规则版,复用 _should_deploy/_weakest_bench_idx/plan)→
@@ -21,6 +21,8 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 防死循环 = 动作级 fail 屏蔽 + 环级 stall 预算强制出战。
 
 腾席优先级:deploy 空位上人 > 升级扩容 > 卖最弱(身份感知)> 全有用则 DeferSpheres。
+
+**v5 review 修订**(review agent 带行号证据核实后):① H1 事实校正:祈愿/补给/投资×2 四屏实为停机隔离态(battle_loop:216-227,疑独立屏非 overlay)非「已接线」,P5 前置重建档;② H2 工具域 12 件全量分类(补特权赋予卡/好运令牌主动类,UseProjector 席位前置);③ H3 命运圣杯任务二选一(PickGrailQuestOption,5F 令咒协议等高策略约束)补进全景;④ M1 规则 2↔3 空转环修(defer_count 门);M2 gold 关态不可读标注;M3 身份观察+对账进环入口;M4 P5 补 GoToSupplyScreen/GoPickStrategy;M5 弹层 bail 规则(连续失败 2 次上抛,禁裸 ESC);M6 _weakest_bench_idx 无 3合1 保护标注;M7 update_target 双调说明;L 系列吸收(排除清单/命名映射/ClickSpheres 掉箱即停/StartBattle 屏蔽豁免/观察缓存失效)。
 
 **v4 分离(用户定调:「这块应该只是框架,要和具体策略分离开来,可以有多种策略实现」)**:环 = 框架(八条不变式 F1-F8:单步契约/观察真实/动作合法域/验证防护/出口兜底/无状态策略/可换策略/可回放),「下一步做什么」全部判断 = 策略(CwStrategy 子类,可多实现热插拔,对齐 11 号插件机制);decide_prep_action 为 **abstract ABC 钩子**(v3 的「基类给默认实现」违反 11 号 ABC+Default 分层,修正:参考实现住 DefaultCwStrategy);§5 规则降级为 Default 参考实现非框架。
 
