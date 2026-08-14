@@ -28,6 +28,7 @@
 | [0099](0099-deploy-position-pref.md) | deploy 按角色前后台属性选排(替 0007「前排优先」;5.1.6) | accepted | 2026-08-12 | 角色 position_pref 选排(前→前/后→后),对应排满 fallback;修放错排无效(live 观察 2) |
 | [0100](0100-deploy-avatar-mousedown.md) | deploy mouseDown 角色头像 avatar(推翻 D-118b drag 假设;5.1.9) | ↺ 推翻0120 | 2026-08-12 | mouseDown 立绘不拾取(click 开详情);改 avatar 左上 drag → placed=3/5(D-118b 未 live 验是根因) |
 | [0101](0101-equip-wear-comp-key-equips.md) | EquipAll 穿戴接 comp.key_equips 优先(替 naive wearable[0]) | accepted | 2026-08-12 | 穿戴按 target_comp 命脉件优先(equip_fit/decide_supply 已 comp 驱动,动作层补接);不改角色级分配 |
+| 0124 | 买牌 tempo 例外:未成型 commit 放行板直接增强散牌 | [0124-buy-tempo-exception.md](0124-buy-tempo-exception.md) |
 | [0102](0102-spend-mode-drives-economy-score.md) | spend_mode 驱动 economy_score(节点节奏→经济档位;补 0097 剩余) | accepted | 2026-08-12 | _economy_mode_for 映射(saving→interest_first/level→rush_level/allin→adaptive);与 _phase_weights 正交;allin economy-low 由 plane3 we=0.3 处理 |
 | [0103](0103-target-matching-full-synergies.md) | target comp 牌归属用全羁绊匹配(治本流派/阵营断裂) | accepted | 2026-08-12 | _card_hits_target(全羁绊∩comp.factions)替 card.faction in target.factions(只阵营);流派角色(艾丝妲/椒丘)commit 后不再被误跳 → DOT 凑得出 2DOT;8 处统一 |
 | [0104](0104-strategy-review-fixes-batch1.md) | 策略 review 修复批次1(反甲白厄死comp/蒙特卡洛concentration/卖路径护target) | accepted | 2026-08-12 | 反甲白厄 factions 空(白厄无阵营,毁灭是命途非阵营)+防回归测试;蒙特卡洛补_concentration_delta(口径统一);卖路径加target_comp护核心(commitment贯穿) |
