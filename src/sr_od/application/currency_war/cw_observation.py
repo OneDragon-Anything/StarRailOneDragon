@@ -574,6 +574,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
     _match = getattr(ctx, 'cw_match', None)
+    # active_strategies:session(持久宿主,handle_invest_strategy 写)→ state(_refresh_cap 等消费;
+    # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
+    if _match is not None and _match.session is not None:
+        state.active_strategies = list(_match.session.active_strategies)
     _tracked_dep = (_match.session.tracked_deployed
                     if (_match is not None and _match.session is not None) else None)
     if _tracked_dep:

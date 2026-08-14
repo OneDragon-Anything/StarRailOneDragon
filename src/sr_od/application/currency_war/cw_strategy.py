@@ -180,6 +180,10 @@ class StrategySession:
     last_level_obs: int = 0
     # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
     megastar_candidate_clicked: bool = False
+    # 已持有投资策略(局中选,可多张;live 修复 2026-08-15:宿主=session 持久,read_game_state
+    # 拷贝到 state 供 _refresh_cap 等消费 —— 原接线只加 GameState 字段而 handler 写 session,
+    # 停机隔离期从未 live 跑过,首跑暴露 AttributeError)。
+    active_strategies: list[str] = field(default_factory=list)
     # —— 备战决策环(PrepDirector,doc 15 / ADR-0123)计数宿主 ——
     # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
     # 策略/框架经 DeferSpheres +1;门=2(§5.1 规则 3 防规则 2↔3 空转环)。)
