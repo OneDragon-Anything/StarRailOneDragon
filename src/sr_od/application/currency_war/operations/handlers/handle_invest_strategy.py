@@ -99,6 +99,12 @@ class HandleInvestStrategy(SrOperation):
         else:
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
+        # 写入 session.active_strategies(原 bug:chosen 只点不存 → active_strategies 恒空 → 经济/难度判定静默失效,
+        # 如 cw_decisions.L286 刷新减费策略判定、刷新费用减免都读不到已持有策略)。
+        # 投资策略可多张(局中重复选)→ append;去重防重选同一张时重复入列。
+        if match is not None and chosen != '?':
+            if chosen not in match.session.active_strategies:
+                match.session.active_strategies.append(chosen)
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

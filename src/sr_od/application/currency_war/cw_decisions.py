@@ -91,6 +91,16 @@ LEVEL_UP_COST_TABLE: dict[int, int] = {2: 4, 3: 10, 4: 18, 5: 30, 6: 36, 7: 48, 
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
+# 刷新减费类投资策略名(持有任一 → 每刷更便宜 → D牌效率更高 → _refresh_cap 放宽上限)。
+# 名字源自 cw_investments.INVESTMENT_STRATEGIES 注册表(单一真相源);电表倒转核心「砂里淘金」
+# 不入白名单(economy_research §3:难操作+耗时,非推荐 bot 玩法)→ 这里也不收,与白名单一致。
+REFRESH_DISCOUNT_STRATEGIES: frozenset[str] = frozenset({
+    '高效决策',       # 棱彩:刷新费用减半
+    '采购专员·彩',   # 棱彩:刷新返现(刷越多返越多)
+    '采购专员·金',   # 金:刷新返现
+    '返利+',         # 金:刷新返利
+    '加油站',         # 金:刷新减费
+})
 
 # 人玩 auto-chess:跟 shop 走、concentrate(强化已 collect 阵营)、comp emerge。bot 旧「pre-select target→force」
 # 在 deployed-lock + shop 随机下失败(target-buy 错配 → spread → 锁板 → 永不成型)。
@@ -283,13 +293,17 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
     """本回合 D 牌(刷新)上限(动态;review agent + 用户:固定 2 太死)。
 
     关键回合放宽:升 8 后 / plane3 搜核心、HP 危险锁血急救。
-    待补:拿刷新减费策略(砂里淘金/加油站)→ 6;需 GameState.active_strategies 字段(电表倒转)。
+    刷新减费策略放宽:持有 REFRESH_DISCOUNT_STRATEGIES 任一(高效决策/加油站/采购专员等)
+    → 每刷更便宜 → D牌效率更高 → 放宽到 6,关键回合多搜核心。
+    策略数据源 = handle_invest_strategy 选时写回的 state.active_strategies(2026-08-14 接通)。
     """
     cap = MAX_REFRESH_PER_ROUND          # 基线 2
     if state.plane == 3 or state.level >= 8:
         cap = max(cap, 4)                # 升 8 后 / plane3:搜核心多刷
     if state.hp < hp_threshold:
         cap = max(cap, 4)                # 锁血急救:多刷找质量
+    if any(s in REFRESH_DISCOUNT_STRATEGIES for s in state.active_strategies):
+        cap = max(cap, 6)                # 刷新减费策略:D牌变便宜,放宽多搜核心
     return cap
 
 
