@@ -196,7 +196,17 @@ class DeployBench(SrOperation):
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
+        _cap_stopped = False
         for bi in order:
+            # live 2026-08-15(match5 根因终定位):起始 cap 检查只做一次 —— 循环中途 deployed 达 cap 后
+            # 游戏拒收后续 drag(单位弹回 = 「源槽未变」连环假失败 + 每槽 3×2s 白烧)。每槽动态复查。
+            if _cap is not None and _cap > 0:
+                _deployed_now = (len(front) - len(front_empty)) + (len(back) - len(back_empty))
+                if _deployed_now >= _cap:
+                    log.info(f'[cw-deploy] 板满 cap(动态停):deployed={_deployed_now} ≥ cap={_cap}'
+                             f' placed={placed} → 剩余 bench 角色留 bench(不白拖)')
+                    _cap_stopped = True
+                    break
             # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):bench 角色已 deployed → 跳过(避免重复)。
             _cid = _bench_cid.get(bi)
             if _cid and _cid in _deployed_cids:
@@ -259,7 +269,7 @@ class DeployBench(SrOperation):
                     with contextlib.suppress(Exception):
                         self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
                     chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
-        if placed < len(order):
+        if placed < len(order) and not _cap_stopped:
             log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/{len(order)}(失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
