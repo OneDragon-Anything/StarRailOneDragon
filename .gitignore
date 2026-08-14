@@ -54,6 +54,8 @@ notice_cache/
 models/
 # AI 入口：.claude/ 整个不入库（CLAUDE.md 也是个人本地；团队共享走根 AGENTS.md）
 .claude/*
+# .agents/ 通用 AI agents 目录（DSH 等 skill junction，本地 link 不入库）
+.agents/*
 CLAUDE.local.md
 
 # superpowers（规划文档/会话产物，不入库）
