@@ -44,7 +44,9 @@ class HandleEncounter(SrOperation):
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:  # 0.9 防备战屏「遭遇」误匹配(见 battle_loop 0c)
+        # live 2026-08-15:改 id_mark area(标识-遭遇节点)—— OCR「遭遇其一」在截断帧(「遭遇其」)miss;
+        # 独立屏实锤(返回备战界面右上,同补给/投资策略)。
+        if not self.round_by_find_area(screen, '货币战争-遭遇节点', '标识-遭遇节点', crop_first=False).is_success:
             return self.round_fail('非遭遇节点屏')
         # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
         options = read_encounter_options(self.ctx, screen)
@@ -63,5 +65,6 @@ class HandleEncounter(SrOperation):
         time.sleep(0.8)
         # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」;docstring 已记「插空白点击取消选中→死循环」风险)。
+        # 验关用标题「遭遇节点」(4 字 vs 备战「遭遇」标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)
         return confirm_and_verify(self, confirm_point=HandleEncounter.SELECT_BTN,
-                                  entry_keyword='遭遇其一', lcs_percent=0.9, tag='cw-encounter')
+                                  entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')

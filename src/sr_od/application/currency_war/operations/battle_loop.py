@@ -246,11 +246,11 @@ class CurrencyWarRunLoop(SrOperation):
             RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             return self.round_wait(wait=2)
 
-        # 0c. 遭遇节点(3 难度选择:遭遇其一/其二/其三 + 选择)→ HandleEncounter(点左卡=遭遇其一=最易 + 选择)。
-        #     根因 = 旧 0c 用默认 lcs 0.5 把**备战屏「遭遇」标签**误匹配(LCS 2/4=0.5);正解是收紧 lcs 非 removal。
-        #     现 lcs 0.9:备战「遭遇」(2/4=0.5<0.9)不误匹配;真「遭遇其一」4/4 命中(HandleEncounter 自身检测亦 0.9)。
-        #     handler 2026-08-04 实测交互:点卡身选中 → 点选择确认(中间勿插空白点击会取消选中)。
-        if self.round_by_ocr(screen, '遭遇其一', lcs_percent=0.9).is_success:
+        # 0c. 遭遇节点(难度二选一 + 选择)→ HandleEncounter(点卡选中 + 选择确认)。
+        #     live 2026-08-15:改 id_mark area 检测(标识-遭遇节点,yml 已建)—— 旧全屏 OCR「遭遇其一」
+        #     lcs 0.9 在卡标题 OCR 截断帧(「遭遇其」3/4=0.75)miss → 整屏落未知画面停机。
+        #     handler 交互(2026-08-04 实测):点卡身选中 → 点选择确认(中间勿插空白点击会取消选中)。
+        if self.round_by_find_area(screen, '货币战争-遭遇节点', '标识-遭遇节点', crop_first=False).is_success:
             self._snap('encounter')
             HandleEncounter(self.ctx).execute()
             return self.round_wait(wait=2)
