@@ -43,7 +43,9 @@ from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     read_bench_chars,
     read_deployed_chars,
+    read_reward_spheres,
     read_row_equipped,
+    read_supply_boxes,
 )
 from sr_od.application.currency_war.cw_obs_core import (
     A_PHASE,
@@ -116,6 +118,8 @@ class _BattlePrepState:
     back_line: list[BenchChar] | None   # 后排角色(同上)
     bench: list[BenchChar] | None       # 备战栏角色(read_bench_chars SIFT + read_star;备战席无 below icon→equips 恒 [])
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
+    supply_boxes: list[dict] | None      # 备战栏补给箱槽位(read_supply_boxes TM;元素 {slot,cx,cy};奖励球开箱掉箱占席,点「开启」腾槽;空→None;2026-08-14 首见机制)
+    reward_spheres: list[dict] | None    # 奖励面板晶矿球(read_reward_spheres HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;点球开启入账,角色/箱占席;空→None;2026-08-14 首见机制)
 
 
 class BattlePrepRecognizer(ScreenRecognizer):
@@ -141,6 +145,10 @@ class BattlePrepRecognizer(ScreenRecognizer):
         'owned_equips': '右侧 owned 装备栏 list(read_equips SIFT;元素 {name,category,cx,cy,inliers};'
                         'category 工具/特殊=消耗品,其余简易/进阶/特权/星徽/白昼/命运/骇客=装备;'
                         'cx/cy=1080p 原图绝对坐标(点该坐标开对应物品详情);空→None;templates 未加载→None)',
+        'supply_boxes': '备战栏补给箱 list(read_supply_boxes TM;元素 {slot,cx,cy},cx/cy=开启按钮中心'
+                        '(点它开箱腾席);奖励球(晶矿)开启可能掉箱占 1 备战席槽;空→None',
+        'reward_spheres': '奖励面板晶矿球 list(read_reward_spheres HoughCircles;元素 {color,cx,cy,r},'
+                          'color=gold/blue/gray,cx/cy=点球坐标;通关奖励节点后出现;席满点不动(先开箱腾席);空→None',
     }
 
     def recognize(
@@ -207,6 +215,12 @@ class BattlePrepRecognizer(ScreenRecognizer):
             back_line=back_line,
             bench=bench,
             owned_equips=owned_equips,
+            supply_boxes=([
+                {'slot': idx, 'cx': p.x, 'cy': p.y} for idx, p in read_supply_boxes(ctx, image)
+            ] or None),
+            reward_spheres=([
+                {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_reward_spheres(ctx, image)
+            ] or None),
         )
         # D-50:deploy_cap > level = 钻石/财富宝钻加成(+1 团队槽)→ 后排可能>6(read_equipped count=6 漏)
         if state.deploy_cap is not None and state.deploy_cap > state.level:
