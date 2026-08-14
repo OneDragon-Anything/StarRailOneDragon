@@ -486,7 +486,10 @@ class PrepActionExecutor:
             self._ctx.controller.click(btn)
             time.sleep(0.3)
             lv = _read_level_raw(self._ctx, self._op.screenshot())
-            if lv is not None and lv > before:
+            # live 幽灵 lv10(2026-08-15 两局实锤):raw 读可吃到相邻数字(XP「10/20」的 10),接受任意
+            # >before 会把 6→10 假成功写进 last_level_obs 被单调守卫永久锁死(→ 永不买经验+攒金死)。
+            # 游戏机制:每点一次经验 +1 级 → 接受窗钳 before+2;窗外读数当漏读,继续循环。
+            if lv is not None and before < lv <= before + 2:
                 if session is not None:
                     session.last_level_obs = lv
                 log.info(f'[cw][levelup] level {before}→{lv} ✓')

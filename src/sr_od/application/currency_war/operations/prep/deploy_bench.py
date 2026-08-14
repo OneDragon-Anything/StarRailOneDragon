@@ -240,8 +240,15 @@ class DeployBench(SrOperation):
                          f' (CV 验源槽变)')
             else:
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
-                         f' 拖3次源槽未变(bug#1 间歇),跳过')
+                         f' 拖3次源槽未变(bug#1 间歇?),跳过')
+                # live 2026-08-15(match1 p2 deploy storm:placed=1/9、2/7 连环空场上阵 → HP 流失):
+                # 失败帧存证供离线根因(是 bug#1 鼠标间歇 / 源槽其实空(slot_occupied 假阳) / 游戏拒拖)。
+                import contextlib
+                with contextlib.suppress(Exception):
+                    self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
                 chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
+        if placed < len(order):
+            log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/{len(order)}(失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
 
     def _get_templates(self) -> AvatarTemplates | None:

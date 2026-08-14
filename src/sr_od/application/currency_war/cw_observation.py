@@ -552,6 +552,13 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         if _last_lv and state.level < _last_lv:
             log.info(f'[cw] level 单调守卫:OCR 读 {state.level} < 上次 {_last_lv}(误读)→ 用 {_last_lv}')
             state.level = _last_lv
+        # 跳变守卫(live 2026-08-15 两局实锤):单次误读大数(如 XP「10/20」的 10 混入等级区)被
+        # 单调守卫永久锁死 —— p1r9 经济 60 金「升到 lv10」(需 360 金)不可能。等级一轮最多升
+        # 1-2 级(买经验每点一次 +1);跳 >+2 = reader 假阳 → 用上次真值 + [cw!] 留证。
+        if _last_lv and state.level > _last_lv + 2:
+            log.warning(
+                f'[cw!] level 跳变守卫:OCR 读 {state.level} > 上次 {_last_lv}+2(疑似 XP 数字混入) → 用 {_last_lv}(误读不锁死)')
+            state.level = _last_lv
         _match.session.last_level_obs = state.level
     state.xp_progress = read_xp_progress(ctx, screen)
     # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
