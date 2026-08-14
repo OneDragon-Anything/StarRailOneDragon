@@ -1,4 +1,4 @@
-# 15 备战决策环(PrepDirector)—— 备战编排从固定序列到观察驱动(v5 review 修订)
+# 15 备战决策环(PrepDirector)—— 备战编排从固定序列到观察驱动(v6 二轮 review 修订,定稿)
 
 > 总见 [README](README.md)。本文:备战画面内「下一步做什么」的决策架构 —— 观察驱动单步决策环,
 > 替代 BattlePrepCycle 固定序列。2026-08-14 用户定调(触发:奖励球 + 备战席满,球拖一轮才收);
@@ -6,7 +6,9 @@
 > **v4**:显式**框架/策略分离**(用户定调:「这块应该只是框架,要和具体策略分离开来,可以有多种策略实现」
 > —— 对齐 11 号插件机制,环是框架,规则是策略);**v5**:review agent 修订(带代码行号证据的 3 HIGH + 7 MED):
 > 事件域「已接线✅」事实性错误(四屏实为停机隔离态)、工具域 12 件全量分类、命运圣杯任务系统补全、
-> §5.1 空转环/gold 互斥/bail 规则等伪码漏洞。ADR-0123 记录决策。
+> §5.1 空转环/gold 互斥/bail 规则等伪码漏洞;**v6(二轮 review)**:defer_count 环级清零语义(H-1)、
+> 弹层 bail 三层优先级与计数生命周期(H-2)、控制流动作入全集 §4.2b(H-3)、P1 动作集补 LevelUp/
+> EnsureShopOpen(H-4)、ADR 正文按现行版重写(M-1)+ 全部 M/L 修订。**定稿,可开工 P1**。ADR-0123 记录决策。
 
 ## 1. 问题(为什么改)
 
@@ -28,6 +30,7 @@
 ```
 外环 CurrencyWarRunLoop(主循环,已有):屏幕级路由
     战斗 / 结算 / 位面过渡 / 备战(→ 内环) / 事件 overlay(P1-4 交分支 handler;P5 进内环) / 大厅
+    ⚠️ 其中祈愿/补给/投资×2 四屏现处停机隔离态(battle_loop:216-227,§4.3),巨星/伙伴/遭遇才是活 handler(L-3)
     ▼ 备战态
 内环 PrepDirector(新,替换 BattlePrepCycle):备战画面步级决策
   while True:
@@ -71,7 +74,7 @@
 | 域 | 原子动作 | 决策依据(现成) | 验证 |
 |---|---|---|---|
 | 奖励 | ClickSphere / **ClickSpheres(k=min(free,n),带内验早停)** / OpenBox / PickBoxCard | 大球优先;箱必开;k=free-slots 驱动 | 球数−1/overlay 态翻转/owned+ |
-| 商店 | BuyCard / BuyXP / LevelUp(=BuyXP×k) / RefreshShop | plan() eval-delta / level_plan / 蒙特卡洛 | 金变/牌变/level+1 |
+| 商店 | BuyCard / LevelUp(执行=购买经验按钮循环点至 level+1,单次点击不作为独立决策动作,L-2) / RefreshShop | plan() eval-delta / level_plan / 蒙特卡洛 | 金变/牌变/level+1 |
 | 席位 | **SellBench(slot,身份感知)** / **SellDeployed(slot,换阵卸位)** / DeployMove(from,to) | _weakest_bench_idx(**现版无 3合1 件保护待加**,cw_decisions:412-435)/ off-target(D-10)/ _should_deploy+_pick_deploy_row | 源空+gold+ / 源空+目标占 |
 | 装备 | WearEquip(equip,slot) / Synthesize(defer) | key_equips 优先(角色级分配 P4) | below-icon CV-diff |
 | 战斗 | StartBattle(含未达上限确认) | 环出口全件(§7) | 备战标识消失 |
@@ -93,6 +96,15 @@
 | 被动 | 财富宝钻(团队规模+1)/红钻/蓝钻(星徽合成材料) | 无使用动作 | 宝钻影响 deploy_cap(§3 已读);钻类归 **Synthesize** 材料 | — |
 | **待核** | 垃圾袋/金垃圾袋(category=工具但给属性) | 疑似穿戴语义 | 穿戴 vs 使用待核(现被 EquipAll 一刀切过滤,P3 随 WearEquip 一并核) | P3 核 |
 
+
+### 4.2b 控制流动作(v6 修 H-3:F3 自违反补齐)
+
+| 动作 | 语义 | 执行契约 | F3 豁免说明 |
+|---|---|---|---|
+| **DeferSpheres** | 球留置,本环不再尝试(框架 no-op) | **不计 stall、计步数**(§7 预算仍约束);仅奖励域合法(球>0 时策略可出);框架对策略可见的幂等信号 —— 同环重复出由 defer_count 门挡 | 控制流信号非游戏动作,F3 域外豁免;策略不可用任意 no-op 刷步(其余动作须带验证,验证失败计 stall) |
+| **BailToOuter** | 中止本环,交外环处理(弹层/事件) | 框架信号,环 break;**外环重入重建 Director 时 stall/屏蔽/defer 计数全清零**(v6 修 H-2c);外环侧重入次数受既有 node_max_retry_times 预算兜底(battle_loop.py:190) | 同上;P5 后事件收编进环,此动作仅剩真异常弹层用 |
+
+**执行器返回契约**:游戏动作 → progressed: bool(验证过);控制流动作 → 框架处理,不走 execute 验证链。
 ### 4.3 事件域(overlay 选择,P5 收编进环;决策函数大多现成)
 
 | 动作 | overlay 画面 | 决策依据 | 现状(v5 review 核实) | 进环 |
@@ -105,14 +117,15 @@
 | PickWishTrialOption(idx) | 祈愿试炼 | **naive 第1张(决策函数缺:OCR objective+reward 评估)** | HandleWishTrial 代码在但 **🚫 停机隔离中**(建档 3.9 未做) | P5(前置 3.9) |
 | **PickGrailQuestOption(idx)** | **命运圣杯任务二选一**(F 羁绊 2F/3F/4F/5F 展开触发,备战中弹) | **缺(待写;含 5F 令咒协议[-88HP 换 8 完美投影仪,需 ≥88HP 当关用完]/诅咒圣杯「3-4 后别接」/鲜血神殿激活态等高策略约束,详 guides/阵容_命运圣杯红A.md:22-46)** | 🚫 未建档(3.10 待确认);与工具域强联动(投影仪时效) | P5(前置 3.10 建档) |5 |
 
-P1-P4 过渡:内环遇 overlay → BailToOuter 交主循环分支。**⚠️ 现状语义(v5 核实)**:祈愿/补给/投资×2 四屏在主循环也是停机隔离态(battle_loop:216-227 未建档)→ bail 后同样停机,**与现状行为一致故零回归,但离「可用 handler」还差重建档**;巨星/伙伴/遭遇 bail 后走真 handler。
+P1-P4 过渡:内环遇 overlay → BailToOuter 交主循环分支。**⚠️ 现状语义(v5 核实)**:祈愿/补给/投资×2 四屏在主循环也是停机隔离态(battle_loop:216-227;yml 已建但未完整建档核实,L-4)→ bail 后同样停机,**与现状行为一致故零回归,但离「可用 handler」还差重建档**;巨星/伙伴/遭遇 bail 后走真 handler。
 P5 收编前置:**overlay-vs-独立屏重建档**(3.9 祈愿/3.10 圣杯/补给/投资 id_mark 模型核实)→ 逐事件收编(巨星/伙伴/遭遇先,投资/补给/祈愿/圣杯后)→ 事件与 prep 决策共享 obs+session,主循环瘦身为纯路由。**P5 出口补充**:补给节点备战出口 = GoToSupplyScreen(点「返回补给阶段」,battle_loop:326-335 nodeseq 分流);备战被锁态出口 = GoPickStrategy(battle_loop:206)—— 两动作进 P5 动作集,出口判定需节点类型感知(nodeseq current)。
 
 ### 4.4 决策点全景索引(动作 ↔ 决策归属 ↔ 策略需求清单 §2 对齐;「决策函数」均属策略层,框架不实现)
 
 | 决策点 | 决策函数 | 动作 | Phase |
 |---|---|---|---|
-| 买/升/刷/卖/deploy | plan() | BuyCard/LevelUp/RefreshShop/SellBench/DeployMove | P1(组合)→P2(原子) |
+| 买/升/刷 | plan() | BuyCard/LevelUp/RefreshShop | P1(组合 RunBuyPhase)→P2(原子) |
+| 卖/deploy(席位域) | _weakest_bench_idx(待加 3合1 保护)/_should_deploy | SellBench/SellDeployed/DeployMove/LevelUp(腾席 b 步) | **P1 原子**(v6 修 M-3,与 §8 对齐) |
 | 奖励收取/腾席 | §5 规则(复用现成评估) | ClickSpheres/OpenBox/SellBench/DeployMove/Defer | **P1** |
 | 工具使用 | **缺(待写,§4.2 十二件分类)** | UseProjector/UseWrench/UseSmelter/UsePrivilegeCard/UseLuckyToken | P4 |
 | 装备穿戴/合成 | equip_fit/key_equips | WearEquip/Synthesize | P1(组合)→P3 |
@@ -130,21 +143,23 @@ P5 收编前置:**overlay-vs-独立屏重建档**(3.9 祈愿/3.10 圣杯/补给/
 
 ```
 F1 单步契约: 每步 = observe → decide_prep_action(obs) → execute(带验证) → 再 observe
-F2 观察真实: obs 只由现成 reader 产出(框架不造数据);shop 开关互斥由框架管理
+F2 观察真实: obs 只由现成 reader 产出(框架不造数据);shop 开关互斥**由框架校验读取前置态**(不匹配报错),切换由 EnsureShopOpen/Closed 动作显式执行(v6 修 M-4)
 F3 动作合法域: 策略输出的动作必须在 §4 动作全集内;框架校验参数(槽位存在/idx 界内)后执行
 F4 验证与防护: 框架执行每动作并做完成验证;fail 计数/stall 屏蔽/预算强制出战(§7)对策略透明
 F5 出口兜底: 策略不给 StartBattle 且 stall/预算耗尽 → 框架强制出战(策略挂了流程不断)
 F6 无状态策略: 环不污染策略实例;跨步意图(defer 计数等)走 StrategySession(11 号原则 1)
 F7 可换策略: strategy_id 由配置选(11 号);换策略只换决策,不换观察/执行/防护
 F8 可回放: obs+action 序列落 telemetry(对齐 11 号「可离线测+可复盘」;replay 评分用)
+
+**P1 交付范围(v6 修 M-7)**:F1-F7 全量 + F8 仅「obs+action 落盘」(复用 cw_telemetry);replay 评分后置(远期)
 ```
 
 ### 5.1 策略实现示例:奖励收取(free-slots 驱动;DefaultCwStrategy 参考实现)
 
 ```
-1) boxes > 0 → OpenBox + PickBoxCard     # 箱白占席,先开=腾席+得装备
+1) boxes > 0 → OpenBox(下步观察弹层后 PickBoxCard;F1 单步契约,两步非一步,L-5)     # 箱白占席,先开=腾席+得装备
 2) n_spheres > 0 且 free > 0 → ClickSpheres(k=min(free, n), 大球优先,内验早停;**掉箱即停回环**由规则 1 统筹 —— v5 定,替 handle_reward_sphere 现内联开箱行为)
-3) n_spheres > 0 且 free == 0 且 session.defer_count < 2 → 腾席链(5.2)取一步,回 2(**DeferSpheres 时 defer_count+1,门=2 防规则 2↔3 空转环** —— v5 修 M1)
+3) n_spheres > 0 且 free == 0 且 defer_count < 2 → 腾席链(5.2)取一步,回 2(**DeferSpheres 时 defer_count+1,门=2 防规则 2↔3 空转环**;⚠️ **defer_count 是环级计数,Director 每次环入口由框架清零** —— session 字段、框架管重写,防局级累积把腾席链永久禁用,v6 修 H-1)
 4) 球箱皆无 或 defer_count ≥ 2 → 主流程(5.3)【球留置;defer 不计 stall】
 ```
 
@@ -185,16 +200,16 @@ d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数进 session)
 
 ## 7. 环出口(出战条件)与防死循环
 
-**出口(StartBattle)**,全部满足:无球 或 球 Defer≥2;无箱;plan() 无正提升;无可上(deploy 满或无候选);
+**出口(StartBattle)**,全部满足:无球 或 球 Defer≥2(**环内计数,环入口清零,下轮重判** —— 留置是本轮决定非整局决定,v6 修 H-1);无箱;plan() 无正提升;无可上(deploy 满或无候选);
 装备无可穿;工具无可用了(P4+)。
 
-**防死循环(分层,v5 补 M5/L6)**:
-- 动作级:每动作带验证;fail≥2 本回合屏蔽(**StartBattle 豁免** —— 出口动作被屏蔽会堵死环);
-- **弹层防护(P1 起)**:mid-prep 弹层实锤高发(投影仪 modal 卡 666s/祈愿卡 68min 史)。规则 = **动作验证连续失败 2 次 → BailToOuter 快速上抛,绝不隔着弹层强制品**。恢复原语分型:CloseOverlay(点空白 960,530)/ESC(仅限已建档 modal:消耗品详情/可合成列表)/点 × 关闭(概率表 1502,258);**禁止裸 ESC 兜底**(备战基态 ESC 有 bug#2 风险);
-- 环级:stall≥5 或步数>60 → 强制 StartBattle(前提:当前无弹层 —— 有弹层走 BailToOuter);
-- 出战级:现转移验证 6×0.5s 轮询不动。
-
-**排除清单(非决策点,框架与策略都不处理)**:攻略/教学/数据银行/数据统计按钮(纯信息查看)、商店刷新概率表弹窗(纯展示)、惊喜盒(倒计时自动开启,点击仅 tooltip)、商店锁定(shop_locked 字段全仓无读写 + 备战无锁定按钮 → CW 无此机制,字段按「None 不说谎」原则清理)。
+**防死循环(分层,v6 定优先级与生命周期,修 H-2)**:
+- **优先级**:动作验证失败 → 同一动作连续 2 次失败 → **先试恢复原语**(分型:点空白/已建档 modal ESC/点 ×)→ 恢复无效才 BailToOuter(计数全清零,见 §4.2b)。即「同动作连败 2 次」先走恢复,bail 是恢复失败后的上抛,**不与 fail≥2 屏蔽双响应**(屏蔽 = 该动作本环不再执行;恢复+bail = 环本身让位);
+- 动作级:每动作带验证;同动作 fail≥2 → 本环屏蔽(**StartBattle 豁免**;屏蔽命中时:该步计 stall + telemetry 记录,框架**拒绝执行**被屏蔽动作 —— 策略确定性重提案同动作会被拒,不静默跳过,修 M-5);
+- 环级:stall≥5 或步数>60 → 强制 StartBattle(**P1 判定式:v6 修 H-2b —— 去「无弹层」前提(overlay_state 是 P5 字段,P1 不可判),改为「连续 K(=5) 步零进展 **且恢复原语已试尽(同动作连败 2 次已触发过)**」—— 恢复试尽仍零进展,强制品是最后手段;弹层场景实际走不到这(恢复无效先 bail 了)**);
+- 出战级:现转移验证 6×0.5s 轮询不动;
+- **外环 ping-pong 防护**:bail → 外环 → 重入重建 Director(计数全清零)若再 bail,受主循环 node_max_retry_times=400 预算兜底;连续 bail ≥3 同因 → 记 [cw!] 升诊断。
+**排除清单(非决策点,框架与策略都不处理)**:攻略/教学/数据银行/数据统计按钮(纯信息查看)、商店刷新概率表弹窗(纯展示)、惊喜盒(倒计时自动开启,点击仅 tooltip)、商店锁定(shop_locked 字段全仓无读写 + 备战无锁定按钮 → CW 无此机制,字段按「None 不说谎」原则清理)。「不处理」指不作决策目标;概率表弹窗作为遮挡仍会被恢复原语关闭(点 ×,L-1)。
 
 **组合动作命名映射**(L1):RunBuyPhase=BuyShopCards / RunEquip=EquipAll / RunDeploy=DeployBench(代码实名)。
 P1 允许 update_target 双调(Director 环入口 + shop.py:166 各一次,无害);P2 溶解 RunBuyPhase 时删 shop.py 内调用(L7)。
@@ -204,11 +219,11 @@ P1 挂载切换时搬 battle_prep 两个临时采集钩子(_verify_recognition/_
 
 | Phase | 内容 | 风险控制 |
 |---|---|---|
-| **P1 环 + 奖励/席位/战斗原子** | Director 环;ClickSpheres/OpenBox/PickBoxCard/SellBench/SellDeployed/DeployMove/StartBattle 全原子;商店/装备组合(RunBuyPhase/RunEquip);遇 overlay → BailToOuter | 新域一次做对;旧 op 内部一行不动;bail 零回归 |
+| **P1 环 + 奖励/席位/战斗原子** | Director 环;ClickSpheres/OpenBox/PickBoxCard/SellBench/SellDeployed/DeployMove/StartBattle + **LevelUp + EnsureShopOpen/Closed**(v6 修 H-4:腾席链 b 步与 gold 读取需此三原子,实现极薄 = 各一个 click+锚点验证)全原子;商店/装备组合(RunBuyPhase/RunEquip);遇 overlay → BailToOuter。**⚠️ P1 残留风险(M-6):defer-尽(free==0)仍进 RunBuyPhase 时,shop.py 内 _handle_bench_full 位置式卖(症状2)活着 —— 默认策略加门:进 RunBuyPhase 前保证 free>0,否则跳过买牌直奔出口** | 新域一次做对;旧 op 内部一行不动;bail 零回归 |
 | **P2 买牌原子化** | 拆 plan() 单步;_handle_bench_full 退役;两阶段 hack 淘汰 | fixture 动作序列 diff |
 | **P3 部署/装备原子化** | RunEquip→WearEquip;off-target 卖上移为 SellBench/SellDeployed 决策;BattlePrepCycle 退役 | 同上 |
 | **P4 工具域** | UseProjector/UseWrench/UseSmelter 原子 + 决策函数(投影仪复制核心最优先做,3合1 高价值) | 新增域,不动旧链 |
-| **P5 事件域收编** | overlay 态进 obs(§3);PickXxxOption 进环(内部委托现成 decide_*);主循环瘦身为纯路由;祈愿策略函数补(OCR objective+reward) | 每事件单独收编(投资→巨星→伙伴→…),收编一个验一个 |
+| **P5 事件域收编** | overlay 态进 obs(§3);PickXxxOption 进环(内部委托现成 decide_*,含圣杯 PickGrailQuestOption);出口补 GoToSupplyScreen/GoPickStrategy;主循环瘦身为纯路由;祈愿策略函数补(OCR objective+reward) | **前置:祈愿 3.9/圣杯 3.10/补给/投资×2 重建档**;收编顺序 = 巨星/伙伴/遭遇先(已建档),投资/补给/祈愿/圣杯后(重建档完);收编一个验一个 |
 
 每 Phase 独立 live 验证(`run_operation` 稳定 M=3),不并行。
 

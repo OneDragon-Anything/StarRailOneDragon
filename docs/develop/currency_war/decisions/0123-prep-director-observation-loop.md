@@ -13,9 +13,11 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 用户定调:策略应该是**根据当前画面输出下一步做什么**(例:有奖励未领+备战满 → 拖前后台/卖无关角色/
 都有用则留球),做一步 → 再识别 → 再决定。
 
-## 决策(v5 review 修订,2026-08-14 review agent 3H+7M 证据核实后)
+## 决策(v6 定稿,两轮 review 后;下文为**现行有效版本**,v3-v5 修订史附后)
 
-新增 PrepDirector(SrOperation):观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(动作全集**原子化**:ClickSphere/ClickSpheres(k=free 带内验早停)/OpenBox/PickBoxCard/BuyCard/LevelUp/RefreshShop/**SellBench(身份感知)**/DeployMove/WearEquip/StartBattle;组合动作仅商店/装备域过渡用)
+新增 **PrepDirector(内环 SrOperation,替换主循环中的 BattlePrepCycle 挂载点;外环主循环不动)**:观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(decide_prep_action,**abstract ABC 钩子,默认实现住 DefaultCwStrategy(11 号 ABC+Default),复用 _should_deploy/_weakest_bench_idx/plan)→ 执行(原子动作映射原语带验证;组合动作 RunBuyPhase/RunEquip 仅商店/装备域 P1-P3 过渡)。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
+防死循环三层:同动作连败 2 次先试恢复原语(分型,禁裸 ESC)→ 无效 BailToOuter(外环重入计数全清零,ping-pong 受 node_max_retry 兜底)→ stall≥5/步数>60 且恢复试尽才强制出战;StartBattle 屏蔽豁免。
+P1 动作集 = ClickSpheres/OpenBox/PickBoxCard/SellBench/SellDeployed/DeployMove/StartBattle/LevelUp/EnsureShopOpen/Closed + 控制流(DeferSpheres 不计 stall 计步数/BailToOuter)。ckSpheres(k=free 带内验早停)/OpenBox/PickBoxCard/BuyCard/LevelUp/RefreshShop/**SellBench(身份感知)**/DeployMove/WearEquip/StartBattle;组合动作仅商店/装备域过渡用)
 (`CwStrategy.decide_prep_action` 新方法,基类默认规则版,复用 _should_deploy/_weakest_bench_idx/plan)→
 执行(宏动作映射现有 op,P1 一行不改)→ 再观察。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
 防死循环 = 动作级 fail 屏蔽 + 环级 stall 预算强制出战。
@@ -30,9 +32,8 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 
 ## 迁移
 
-P1 外环替换(子 op 不动,收球-腾席闭环当轮完成)→ P2 买牌内部化(拆 plan 单步,淘汰 shop.py
-两阶段 hack + _handle_bench_full)→ P3 部署/装备内部化(BattlePrepCycle 退役)。
-每 Phase 独立 live 验(M=3)。
+**P1 内环替换**(新域原子:奖励/席位/战斗;商店/装备组合过渡,子 op 一行不动,收球-腾席闭环当轮完成;默认策略加门防 _handle_bench_full 位置式卖残留)→ **P2 买牌原子化**(拆 plan 单步,淘汰 shop.py 两阶段 hack + _handle_bench_full,删 shop.py 内 update_target 调用)→ **P3 部署/装备原子化**(BattlePrepCycle 退役,对账进环入口)→ **P4 工具域**(UseProjector 等 6 主动工具 + 决策函数)→ **P5 事件域收编**(前置:祈愿 3.9/圣杯 3.10/补给/投资×2 重建档;巨星/伙伴/遭遇先收编;P5 出口补 GoToSupplyScreen/GoPickStrategy;主循环瘦身为纯路由)。
+每 Phase 独立 live 验(M=3),不并行。
 
 ## 后果
 
