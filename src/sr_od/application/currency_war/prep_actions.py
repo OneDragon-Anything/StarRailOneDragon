@@ -131,6 +131,15 @@ class RunEquip(PrepAction):
     """组合(P1 过渡):全员装备 = EquipAll(P3 溶解为 WearEquip)。"""
 
 
+# 动作全集白名单(F3 membership 校验,review M-4;新动作加入全集时同步此处)
+PREP_ACTION_TYPES: tuple = (
+    DeferSpheres, BailToOuter, ClickSpheres, OpenBox, PickBoxCard,
+    SellBench, SellDeployed, DeployMove, LevelUp,
+    EnsureShopOpen, EnsureShopClosed, StartBattle,
+    RunBuyPhase, RunDeploy, RunEquip,
+)
+
+
 def action_key(action: PrepAction) -> str:
     """动作实例键(屏蔽计数粒度 = 动作类型 + 参数,§13.2;SellBench(3) 与 SellBench(5) 各自计数)。"""
     import dataclasses
@@ -192,11 +201,14 @@ class PrepActionExecutor:
     # ===== F3 参数校验(非法 → 错误串;合法 → None)=====
 
     def validate(self, action: PrepAction) -> str | None:
-        """校验动作参数(槽位存在/idx 界内,§5.0 F3)。返回错误描述;None=合法。
+        """校验动作合法域 + 参数(§5.0 F3)。返回错误描述;None=合法。
 
-        只校验**静态可判**参数(槽位越界/row 枚举);动态前置(球是否存在/overlay 是否开)
-        由 execute 的完成验证覆盖(验证失败路径,非参数非法路径)。
+        两层:① 动作全集白名单(review M-4 —— 未知类型走参数非法路径拒绝,不进 execute
+        的验证失败/fail 循环);② 静态可判参数(槽位越界/row 枚举)。动态前置(球是否存
+        在/overlay 是否开)由 execute 的完成验证覆盖(验证失败路径,非参数非法路径)。
         """
+        if not isinstance(action, PREP_ACTION_TYPES):
+            return f'未知动作类型 {type(action).__name__}(不在动作全集,§4)'
         if isinstance(action, SellBench):
             if not (1 <= action.slot <= len(self._bench_pts)):
                 return f'SellBench slot={action.slot} 越界(1-{len(self._bench_pts)})'
@@ -260,8 +272,13 @@ class PrepActionExecutor:
     # ===== 奖励域 =====
 
     def _click_spheres(self, action: ClickSpheres) -> tuple[bool, str]:
-        """逐球点击(大球优先)→ 每球重读验消失;掉箱即停(下步 OpenBox 统筹,v5 定);席满停。"""
+        """逐球点击(大球优先)→ 只计**验证消失**的球;掉箱即停(下步 OpenBox 统筹,v5 定);席满停。
+
+        review H-3:progressed 只认真进展 —— 每次点击后重读,球数减少才 verified+1;
+        点击落空(球没少 = 席满/遮挡)不计进展 → 返 False 走环的 fail/恢复路径(§13.2)。
+        """
         clicked = 0
+        verified = 0
         budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
         screen = self._op.screenshot()
         while clicked < budget:
@@ -275,16 +292,18 @@ class PrepActionExecutor:
             clicked += 1
             time.sleep(1.2)
             screen = self._op.screenshot()
+            after = read_reward_spheres(self._ctx, screen)
+            if len(after) < before:
+                verified += 1   # 真进展:球消失(入账/落席)
             if read_supply_boxes(self._ctx, screen):
                 log.info('[cw][sphere] 点球掉箱 → 停回环(下步 OpenBox 统筹,v5 定)')
                 break
-            after = read_reward_spheres(self._ctx, screen)
             if len(after) >= before:
                 log.info(f'[cw][sphere] 球数未减({before}→{len(after)}) → 疑席满点不动,停')
                 break
-        detail = f'点球 {clicked}/{budget}'
+        detail = f'点球 {clicked}/{budget} 验证消失 {verified}'
         log.info(f'[cw][sphere] {detail}')
-        return clicked > 0, detail
+        return verified > 0, detail
 
     def _open_box(self, action: OpenBox) -> tuple[bool, str]:
         """开箱:点箱槽「开启」→ 验武装箱 overlay 弹出(标识-请选择)。"""
@@ -435,6 +454,7 @@ class PrepActionExecutor:
             before = max(before, session.last_level_obs)   # 单调守卫(read_level 间歇误读)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
         for _ in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
+            self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
             time.sleep(0.3)
             screen = self._op.screenshot()
@@ -486,6 +506,7 @@ class PrepActionExecutor:
             if self._op.round_by_find_area(scr, '货币战争-未达上限警告', '标识-未达上限警告').is_success:
                 confirm = (area_center(self._ctx, '按钮-确认', '货币战争-未达上限警告')
                            or PrepActionExecutor.CONFIRM_FALLBACK)
+                self._ctx.controller.mouse_move(confirm)   # bug#1 缓解(review M-5)
                 self._ctx.controller.click(confirm)
                 time.sleep(1.0)
                 continue
@@ -537,29 +558,31 @@ class PrepActionExecutor:
 # ===== 恢复原语(§13.3;动作连败 2 次时先试,bail 是恢复失败后的上抛)=====
 
 
-def try_recovery(op: SrOperation, ctx: SrContext) -> str:
+def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
     """恢复原语:已知弹层分型关闭(检测到才动,bug#2 合规),未知 → 点真空白(960,530)兜底。
 
-    返回执行的原语描述(供日志/遥测)。调用后外层靠下一步动作是否恢复判断效果。
+    返回 (原语描述, 是否关过已知弹层)。closed_known 供 Director 恢复无效时**分型**(review
+    H-2:关过已知弹层仍败 = 弹层顽固 → BailToOuter 交外环;无已知弹层仍败 = 状态/识别类
+    失败 → 本环屏蔽该动作)。调用后外层靠下一步动作是否恢复判断效果。
     """
     screen = op.last_screenshot
-    # 消耗品详情 modal(签名:消耗品 + 拖动到 双条件)→ ESC
+    # 消耗品详情 modal(签名:消耗品 + 拖动到 双条件;L-2:双条件精确,单「消耗品」易误)→ ESC
     if (op.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
             and op.round_by_ocr(screen, '拖动到', lcs_percent=0.9).is_success):
         ctx.controller.btn_tap('esc')
-        return 'ESC 关消耗品详情'
+        return 'ESC 关消耗品详情', True
     # 可合成列表 overlay → ESC
     if op.round_by_ocr(screen, '可合成列表', lcs_percent=0.8).is_success:
         ctx.controller.btn_tap('esc')
-        return 'ESC 关可合成列表'
+        return 'ESC 关可合成列表', True
     # 角色详情面板 → 点空白(960,530 真空白 = 前后排之间;700,400 旧值前排有人时=前排-1 槽,已修)
     if op.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success:
         ctx.controller.click(Point(960, 530))
-        return '点空白关角色详情'
+        return '点空白关角色详情', True
     # 概率表弹窗 → 点 ×(1502,258)
     if op.round_by_ocr(screen, '概率', lcs_percent=0.7).is_success:
         ctx.controller.click(Point(1502, 258))
-        return '点×关概率表'
+        return '点×关概率表', True
     # 未知弹层兜底:点真空白
     ctx.controller.click(Point(960, 530))
-    return '点空白兜底(960,530)'
+    return '点空白兜底(960,530)', False

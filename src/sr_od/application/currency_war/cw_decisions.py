@@ -437,9 +437,10 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str],
     if not state.bench:
         return None
     from collections import Counter
-    _counts = Counter(bc.char_id for bc in state.bench if bc.char_id)
+    # 按 (char_id, star) 计数(review L-5):3合1 只合并同名同星,同名不同星不构成进度 → 不保护
+    _counts = Counter((bc.char_id, bc.star) for bc in state.bench if bc.char_id)
     _protected = {i for i, bc in enumerate(state.bench)
-                  if bc.char_id and _counts[bc.char_id] >= 2}
+                  if bc.char_id and _counts[(bc.char_id, bc.star)] >= 2}
     _candidates = [i for i in range(len(state.bench)) if i not in _protected]
     if not _candidates:
         return None   # 全是 3合1 进行件:无可卖(调用方 DeferSpheres/留置)
