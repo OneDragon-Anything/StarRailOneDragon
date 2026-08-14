@@ -13,18 +13,27 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 用户定调:策略应该是**根据当前画面输出下一步做什么**(例:有奖励未领+备战满 → 拖前后台/卖无关角色/
 都有用则留球),做一步 → 再识别 → 再决定。
 
-## 决策(v6 定稿,两轮 review 后;下文为**现行有效版本**,v3-v5 修订史附后)
+## 决策(v7 定稿,三轮 review 后;本节为唯一现行版,历史修订见下方附注)
 
-新增 **PrepDirector(内环 SrOperation,替换主循环中的 BattlePrepCycle 挂载点;外环主循环不动)**:观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(decide_prep_action,**abstract ABC 钩子,默认实现住 DefaultCwStrategy(11 号 ABC+Default),复用 _should_deploy/_weakest_bench_idx/plan)→ 执行(原子动作映射原语带验证;组合动作 RunBuyPhase/RunEquip 仅商店/装备域 P1-P3 过渡)。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
-防死循环三层:同动作连败 2 次先试恢复原语(分型,禁裸 ESC)→ 无效 BailToOuter(外环重入计数全清零,ping-pong 受 node_max_retry 兜底)→ stall≥5/步数>60 且恢复试尽才强制出战;StartBattle 屏蔽豁免。
-P1 动作集 = ClickSpheres/OpenBox/PickBoxCard/SellBench/SellDeployed/DeployMove/StartBattle/LevelUp/EnsureShopOpen/Closed + 控制流(DeferSpheres 不计 stall 计步数/BailToOuter)。ckSpheres(k=free 带内验早停)/OpenBox/PickBoxCard/BuyCard/LevelUp/RefreshShop/**SellBench(身份感知)**/DeployMove/WearEquip/StartBattle;组合动作仅商店/装备域过渡用)
-(`CwStrategy.decide_prep_action` 新方法,基类默认规则版,复用 _should_deploy/_weakest_bench_idx/plan)→
-执行(宏动作映射现有 op,P1 一行不改)→ 再观察。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
-防死循环 = 动作级 fail 屏蔽 + 环级 stall 预算强制出战。
+新增 **PrepDirector(内环 SrOperation,替换主循环中的 BattlePrepCycle 挂载点;外环主循环不动)**:
+观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(`CwStrategy.decide_prep_action`,
+**abstract ABC 钩子**,默认实现住 DefaultCwStrategy(11 号 ABC+Default),复用 _should_deploy/
+_weakest_bench_idx/plan)→ 执行(原子动作映射原语带验证;组合动作 RunBuyPhase/RunDeploy/RunEquip
+仅商店/部署/装备域 P1-P3 过渡)。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
 
-腾席优先级:deploy 空位上人 > 升级扩容 > 卖最弱(身份感知)> 全有用则 DeferSpheres。
+防死循环三层:同动作连败 2 次先试恢复原语(分型,禁裸 ESC)→ 无效 BailToOuter(外环重入重建 Director
+时 stall/屏蔽/defer 计数全清零;ping-pong 由主循环 **MAX_ITER=2000** 对局预算兜底 —— round_wait
+不消耗 node 重试预算,operation.py:453-461,勿引 node_max_retry_times)→ 恢复试尽仍零进展
+(stall≥5/步数>60)才强制出战;StartBattle 屏蔽豁免;连续 bail≥3 同因计数宿主 = StrategySession
+(该计数**不在**清零清单内,局终才销毁)。
 
-**v5 review 修订**(review agent 带行号证据核实后):① H1 事实校正:祈愿/补给/投资×2 四屏实为停机隔离态(battle_loop:216-227,疑独立屏非 overlay)非「已接线」,P5 前置重建档;② H2 工具域 12 件全量分类(补特权赋予卡/好运令牌主动类,UseProjector 席位前置);③ H3 命运圣杯任务二选一(PickGrailQuestOption,5F 令咒协议等高策略约束)补进全景;④ M1 规则 2↔3 空转环修(defer_count 门);M2 gold 关态不可读标注;M3 身份观察+对账进环入口;M4 P5 补 GoToSupplyScreen/GoPickStrategy;M5 弹层 bail 规则(连续失败 2 次上抛,禁裸 ESC);M6 _weakest_bench_idx 无 3合1 保护标注;M7 update_target 双调说明;L 系列吸收(排除清单/命名映射/ClickSpheres 掉箱即停/StartBattle 屏蔽豁免/观察缓存失效)。
+P1 动作集 = ClickSpheres/OpenBox/PickBoxCard/SellBench/SellDeployed/DeployMove(仅腾席链)/
+StartBattle/LevelUp/EnsureShopOpen/Closed + 控制流(DeferSpheres 不计 stall 计步数/BailToOuter)
++ **RunDeploy(DeployBench 整体,v7 修三轮 H-2:保留 D-10 换血/同角色去重 5.1.7/前排保证 5.1.6/
+cap 门 5.1.8 四项板上行为,零部署回归;原子 DeployMove 只用于腾席链,避免每次部署触发 SIFT 重观察)**;
+四项行为 P2/P3 随部署域原子化上移为策略规则后退役。
+
+腾席优先级:deploy 空位上人 > 升级扩容 > 卖最弱(身份感知,_weakest_bench_idx 待加 3合1 件保护)> 全有用则 DeferSpheres(defer_count 环入口清零)。
 
 **v4 分离(用户定调:「这块应该只是框架,要和具体策略分离开来,可以有多种策略实现」)**:环 = 框架(八条不变式 F1-F8:单步契约/观察真实/动作合法域/验证防护/出口兜底/无状态策略/可换策略/可回放),「下一步做什么」全部判断 = 策略(CwStrategy 子类,可多实现热插拔,对齐 11 号插件机制);decide_prep_action 为 **abstract ABC 钩子**(v3 的「基类给默认实现」违反 11 号 ABC+Default 分层,修正:参考实现住 DefaultCwStrategy);§5 规则降级为 Default 参考实现非框架。
 
