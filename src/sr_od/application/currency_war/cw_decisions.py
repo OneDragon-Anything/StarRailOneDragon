@@ -223,7 +223,7 @@ _DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
     (1, 4, 6, NodeGoal(6, "interest", "d_search")),    # P1 中期:Lv6,攒 50 吃满息(息引擎)
     (1, 7, 9, NodeGoal(7, "hold", "rush_level")),      # P1 后期/首领:lv7 保血过 P1 首领(live:-34HP@lv6 → 升人口)
     (2, 1, 4, NodeGoal(8, "level", "d_search")),       # P2 早期:直接推 Lv8(live:lv7 进 P2 仍 2-1/2-2 死)
-    (2, 5, 9, NodeGoal(9, "level", "d_search")),       # P2 中后期:2-5~2-7 升 9 搜核心(M8 lv9 破 2-7)
+    (2, 5, 9, NodeGoal(8, "level", "d_search")),       # P2 中后期:lv8(review H4 软化:M8 lv9 锚点疑幽灵,收入模型不支持 9)
     (3, 1, 3, NodeGoal(9, "allin", "chase_star")),     # P3 早期:上 9 找 5 费
     (3, 4, 9, NodeGoal(10, "allin", "chase_star")),    # P3 后期/boss:上 10 + 关键卡追 3 星
 ]
@@ -576,8 +576,22 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
     target_comp: 战略层目标(A2),传给 evaluate 使 D 牌期望导向 target 成型。None=reactive。
     """
     best = evaluate(state, config, faction_priority, target_comp)
+    _dep_names = {bc.char_id for bc in state.deployed if bc.char_id}
+    _bench_cnt: dict[str, int] = {}
+    for _bc in state.bench:
+        if _bc.char_id:
+            _bench_cnt[_bc.char_id] = _bench_cnt.get(_bc.char_id, 0) + 1
     for card in state.shop:
         if state.gold < card_cost(card):
+            continue
+        # review H3 修正:MC 候选与真实买同约束 —— 场上同名散牌不集(死钱)、副本≥3 不买。
+        # 旧 MC 对真实买家会拒绝的牌照估分 → 刷新期望系统性乐观 → 每轮刷满 cap 烧金(M10 25刷6买)。
+        _copies = (1 if card.name in _dep_names else 0) + _bench_cnt.get(card.name, 0)
+        if _copies >= 3:
+            continue
+        if (card.name in _dep_names
+                and not (target_comp is not None
+                         and _card_hits_target(card.name, card.faction, target_comp))):
             continue
         after = simulate(state, BuyCard(card=card))
         if after.deployed_count() < after.max_units() and after.bench:
@@ -739,21 +753,30 @@ def _best_improving_action(
     _saving = _saving_for_level or _saving_for_interest
 
     # 1) 买 + 上任组合(原子)
-    # 板上同角色去重前置到买入(live M8 实锤:sell 0 off-target 三连 + bench target 5-6 个进不了场 ——
-    # 场上已有该角色(cap 满)时再买同名 = 死钱:deploy 去重跳过、D-10 无 off-target 可换,金沉淀在 bench。
-    # 例外:bench 该角色已有 ≥2 张(3合1 即将凑齐,升星后可换上场)→ 仍可买。
-    _deployed_names = {bc.char_id for bc in state.deployed if bc.char_id}
+    # 同角色副本买入门(live M8 死钱实锤 + review H1 修正:游戏 3合1 = 全场合并(deployed+bench),
+    # 旧 bench>=2 窗口从 shop 不可达 —— 第 1/2 张也被拦,计数永远起不来,已上阵单位锁死 1★)。
+    # 修正语义:总副本(场上+bench)≥3 不买(纯浪费);场上已有同名时,仅 target/core 角色继续集
+    # 第 2/3 张(集星意图),散牌不集(那才是 M8 死钱根因)。
+    _deployed_name_counts: dict[str, int] = {}
+    for _bc in state.deployed:
+        if _bc.char_id:
+            _deployed_name_counts[_bc.char_id] = _deployed_name_counts.get(_bc.char_id, 0) + 1
     _bench_name_counts: dict[str, int] = {}
     for _bc in state.bench:
         if _bc.char_id:
             _bench_name_counts[_bc.char_id] = _bench_name_counts.get(_bc.char_id, 0) + 1
+    def _copies(name: str) -> int:
+        return _deployed_name_counts.get(name, 0) + _bench_name_counts.get(name, 0)
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
-        if (card.name in _deployed_names
-                and _bench_name_counts.get(card.name, 0) < 2):
-            continue   # 场上已有同名且凑不齐 3合1 → 死钱不买(live M8 板死根因)
+        if _copies(card.name) >= 3:
+            continue   # 已 3 张(自动合并中)/超 3 = 纯浪费
+        if (card.name in _deployed_name_counts
+                and not (target_comp is not None
+                         and _card_hits_target(card.name, card.faction, target_comp))):
+            continue   # 场上已有同名散牌 → 不集(死钱);target/core 角色继续集 3合1
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
         if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue
@@ -766,10 +789,14 @@ def _best_improving_action(
                                or card.name in character_priority))
             # tempo 例外(ADR-0124):板直接增强散牌不属「泄金」—— 板上 ≥2 同阵营深化 或 强卡
             # (cost≥3)且板不满员 → 放行(板饿死每场掉 HP,攒的金最后买不回血)。
-            _counts_s = _bench_faction_counts(state)
-            _strengthens_s = (_counts_s.get(card.faction, 0) >= 2 or card_cost(card) >= 3)
+            # review MED 修正:同 prefilter 收紧(board-only 计数 + 去 cost>=3 分支 + fp 守卫)
+            if target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC:
+                _strengthens_s = False   # 已成型:例外关(原 ADR-0124 语义)
+            else:
+                _strengthens_s = (state.board.get(card.faction, 0) >= 2
+                                  or card.name in character_priority)
             _room_s = (state.deployed_count() < state.max_units()
-                       or len(state.bench) < BENCH_CAPACITY)   # bench 空位也算 room(同 prefilter)
+                       or len(state.bench) < BENCH_CAPACITY)
             if not _is_target and not (_strengthens_s and _room_s):
                 continue   # 散牌:攒金给升级,跳过
         # commitment prefilter(task#16 + ADR-0124 tempo 修订):target 设定时,若 shop 有 target 卡
@@ -790,12 +817,13 @@ def _best_improving_action(
                     # 已成型 commit:严格拒散牌(原 T#97 语义)。未成型(form_progress<0.4)commit:
                     # 放行板直接增强散牌(tempo 例外,防饿死)。
                     _fp = form_progress(target_comp, state)
-                    _board_counts = _bench_faction_counts(state)
-                    _strengthens = (_board_counts.get(card.faction, 0) >= 2
-                                    or card_cost(card) >= 3)
-                    # room = 板空位 **或** bench 空位(live M10 实锤:板被早期廉价卡填满后
-                    # room=0 恒 False → tempo 例外的板增强路径整轮失效,金堆 75-88 板值 13。
-                    # bench 也是 room:买进 bench 待 D-10 换血/3合1,不是死钱(≠ ADR-0125 的重复买入)。
+                    # review H2 修正:阵营计数只用 board(deployed 真值;旧含 bench → 买进的单张反向
+                    # 维持例外开启,fp 冻结 <0.4 例外永不关 = spread 吸引子);去 cost>=3 无阵营约束分支
+                    # (OCR 失败 cost 默认 3 自动放行加剧 spread)。例外 = 深化**板上**已有 ≥2 的阵营
+                    # 或 priority 角色(用户偏好);converge 导向。
+                    _board_only = dict(state.board)
+                    _strengthens = (_board_only.get(card.faction, 0) >= 2
+                                    or card.name in character_priority)
                     _room = (state.deployed_count() < state.max_units()
                              or len(state.bench) < BENCH_CAPACITY)
                     if not (_fp < COMMIT_FRAC and _strengthens and _room):
