@@ -16,6 +16,9 @@ from sr_od.application.currency_war.cw_node_reader import (
     NodeSlot,
 )
 from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.operations.handlers.handle_reward_sphere import (
+    CollectRewardSpheres,
+)
 from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
 from sr_od.application.currency_war.operations.prep.equip_all import EquipAll
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
@@ -41,7 +44,14 @@ class BattlePrepCycle(SrOperation):
     # 出战按钮 center:screen_info「按钮-出战」(货币战争-备战);常量=screen_info 缺失兜底。
     BATTLE_FALLBACK: ClassVar[Point] = Point(1817, 749)
 
-    @operation_node(name='买牌', is_start_node=True)
+    @operation_node(name='收球', is_start_node=True)
+    def collect(self) -> OperationRoundResult:
+        """收奖励球(B6;通关奖励节点后的面板球 + 备战席补给箱开箱)。无球无箱时 no-op 快速过。"""
+        log.info('[cw-prep] 备战单轮 ⓪ 收球(CollectRewardSpheres:开箱+点球,无球 no-op)')
+        return self.round_by_op_result(CollectRewardSpheres(self.ctx).execute())
+
+    @node_from(from_name='收球')
+    @operation_node(name='买牌')
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
         # [识别核对钩子·临时] clean 备战帧(buy 入口,shop 未开):read 身份/星 vs tracking → flag 不一致([cw!] log +
