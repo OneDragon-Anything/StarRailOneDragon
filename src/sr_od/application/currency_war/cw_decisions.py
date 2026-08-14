@@ -737,10 +737,21 @@ def _best_improving_action(
     _saving = _saving_for_level or _saving_for_interest
 
     # 1) 买 + 上任组合(原子)
+    # 板上同角色去重前置到买入(live M8 实锤:sell 0 off-target 三连 + bench target 5-6 个进不了场 ——
+    # 场上已有该角色(cap 满)时再买同名 = 死钱:deploy 去重跳过、D-10 无 off-target 可换,金沉淀在 bench。
+    # 例外:bench 该角色已有 ≥2 张(3合1 即将凑齐,升星后可换上场)→ 仍可买。
+    _deployed_names = {bc.char_id for bc in state.deployed if bc.char_id}
+    _bench_name_counts: dict[str, int] = {}
+    for _bc in state.bench:
+        if _bc.char_id:
+            _bench_name_counts[_bc.char_id] = _bench_name_counts.get(_bc.char_id, 0) + 1
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
+        if (card.name in _deployed_names
+                and _bench_name_counts.get(card.name, 0) < 2):
+            continue   # 场上已有同名且凑不齐 3合1 → 死钱不买(live M8 板死根因)
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
         if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue
