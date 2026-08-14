@@ -403,7 +403,10 @@ class PrepDirector(SrOperation):
             # 恢复后仍连败(恢复无效)→ 分型(§7 优先级条落地语义,ADR-0123):
             # 关过已知弹层仍败 = 弹层顽固/未知 → 环让位(bail 交外环弹层分支/停机钩子);
             # 无已知弹层(兜底点空白)仍败 = 状态/识别类失败 → 本环屏蔽(策略换路)。
-            if self._recovery_closed_known.get(key, False):
+            # ClickSpheres 特判(live M12 二停):假球点击打开的道具详情弹层被恢复关掉 →
+            # closed_known=True 误走 bail 分支 ×3 停机。收球的恢复无效本质是识别类失败(假球),
+            # 一律走 shield+defer(那个"弹层"是我们自己点出来的,非阻塞弹层)。
+            if self._recovery_closed_known.get(key, False) and not isinstance(action, ClickSpheres):
                 log.warning(f'[cw!][director] {key} 恢复(关弹层)后仍连败 → BailToOuter(弹层顽固)')
                 return self._bail(match, f'恢复无效-弹层:{key}')
             if not isinstance(action, StartBattle):
