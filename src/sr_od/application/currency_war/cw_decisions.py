@@ -428,10 +428,23 @@ def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factio
 
 def _weakest_bench_idx(state: GameState, character_priority: list[str],
                        target_comp: Comp | None = None) -> int | None:
+    """最弱可卖 bench 下标(腾席链 c 步 / plan 硬门共用;doc 15 §5.2c)。
+
+    **3合1 重复件保护**(doc 15 §4.1 待加项,2026-08-14 P1 落地):bench 内同名 ≥2 张 =
+    3合1 进行中(再买 1 张即自动升星,价值远超残值)→ 保护不卖;全被保护 → 返回 None
+    (无可卖,调用方走 DeferSpheres/留置)。
+    """
     if not state.bench:
         return None
+    from collections import Counter
+    _counts = Counter(bc.char_id for bc in state.bench if bc.char_id)
+    _protected = {i for i, bc in enumerate(state.bench)
+                  if bc.char_id and _counts[bc.char_id] >= 2}
+    _candidates = [i for i in range(len(state.bench)) if i not in _protected]
+    if not _candidates:
+        return None   # 全是 3合1 进行件:无可卖(调用方 DeferSpheres/留置)
     close = _close_factions(state)
-    return min(range(len(state.bench)),
+    return min(_candidates,
                key=lambda i: _bench_sell_value(state.bench[i], character_priority, close, target_comp))
 
 
@@ -598,6 +611,23 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
     return sum(deltas) / len(deltas) if deltas else 0.0
 
 
+def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
+    """升等级硬门(plan()/PrepDirector 腾席链 b 步共用单一源;doc 15 §5.2b / §4.1)。
+
+    条件 = level<10 + gold≥LEVEL_UP_COST_TABLE[level+1] + (level_goal 说 level_up **或**
+    落后 NodeGoal.target_level)。⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态
+    的 fresh state 上判(PrepDirector: EnsureShopOpen 后重读;doc 15 §5.2b M2)。
+    """
+    if state.level >= 10:
+        return False
+    cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
+    if state.gold < cost:
+        return False
+    goal = _resolve_level_goal(state, target_comp)
+    if goal is not None and goal.action == 'level_up':
+        return True
+    return state.level < get_node_goal(state.plane, state.round_num).target_level
+
 def plan(state: GameState, config, faction_priority: list[str],
          rng: random.Random | None = None,
          target_comp: Comp | None = None,
@@ -643,16 +673,10 @@ def plan(state: GameState, config, faction_priority: list[str],
     # (花 48 金 → 利息档 5→0 损 -20,level_val 仅 +6)→ 永不选中 → bot 卡 lv5-6 → 弱 comp → plane2 死。
     # level_plan 是**花费指令**非建议:说 level_up + afford → 执行,信任计划而非短视 eval。tempo 破息在所
     # 不惜(升级解锁高费刷新率 + 出战位 = 关键长期投资)。每轮最多 1 级(自然节流,防一轮烧光金)。
-    _goal = _resolve_level_goal(cur, target)
-    _lv_cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
-    # 升级条件:够钱 + (level_plan 说 level_up **或** 落后期望等级 `_expected_level`)。
-    # → 永远到不了 5+(level_up 等级)→ 卡低等级 → telemetry 6 局全「升0次」(gold 到 74 也不升)。
-    # 「落后期望等级」兜底:不管 goal,等级跟不上节奏 + 够钱 → 升(经济统一论:落后该升)。每轮 ≤1 级。
-    # node_plan(14 §2):目标等级用 NodeGoal.target_level(节点级,关键 inflection 更果断)替 _expected_level 曲线。
-    _target_lv = get_node_goal(cur.plane, cur.round_num).target_level
-    if (cur.level < 10 and cur.gold >= _lv_cost
-            and ((_goal is not None and _goal.action == "level_up") or cur.level < _target_lv)):
-        actions.append(LevelUp(cost=_lv_cost))
+    # 升级条件单一源抽 level_up_gate(PrepDirector 腾席链 b 步共用,防两处漂移;P1 2026-08-14):
+    # 够钱 + (level_plan 说 level_up **或** 落后 NodeGoal.target_level)。每轮 ≤1 级(自然节流)。
+    if level_up_gate(cur, target):
+        actions.append(LevelUp(cost=LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)))
         cur = simulate(cur, actions[-1])
 
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——

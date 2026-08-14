@@ -3,18 +3,11 @@
 import time
 from typing import ClassVar
 
-from cv2.typing import MatLike
-
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_node_reader import (
-    HU_DIST_UNRECOGNIZED,
-    NODE_ROW_RECT,
-    NodeSlot,
-)
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.operations.handlers.handle_reward_sphere import (
     CollectRewardSpheres,
@@ -54,101 +47,9 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='买牌')
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
-        # [识别核对钩子·临时] clean 备战帧(buy 入口,shop 未开):read 身份/星 vs tracking → flag 不一致([cw!] log +
-        # 存截图)。ground truth=tracking(也会漂)→ flag=可疑非定罪,需视觉核实是 reader 还是 tracking 错。核完删(CLAUDE.md「两种钩子」)。
-        self._verify_recognition()
-        self._probe_node_type()   # [采集钩子·临时] 节点类型标定,采完(位面1 全轮)删本调用+方法
+        # 识别核对/节点标定钩子已随 P1 挂载切换搬入 PrepDirector(环入口对账 + _probe_node_type;
+        # doc 15 §7 L1)。本类保留为 P3 前回退路径,不再重复采集。
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
-
-    def _probe_node_type(self) -> None:
-        """[采集钩子·临时] 备战入场读节点行序列(``read_node_sequence``)→ log + 未识别图标采集。
-
-        read_node_sequence = HoughCircles 动态定圆 + HSV 三态 + 未来 Hu 匹配 + 当前 OCR(见 cw_node_reader)。
-        未识别图标(hu_dist > 阈值:扑满 / 新节点类型)→ 存图标离线分析加模板。
-        扑满模板补上 + ``session.node_types`` 生产接线后 → 删本方法 + buy 调用(CLAUDE.md「两种钩子」)。
-        """
-        try:
-            screen = self.screenshot()
-            from sr_od.application.currency_war.cw_observation import read_node_sequence
-            _slots = read_node_sequence(self.ctx, screen)
-            if not _slots:
-                log.info('[cw-prep][nodeseq] skip(模板未加载 / 非 clean 备战帧)')
-                return
-            _sum = ', '.join(
-                f'{s.idx}:{s.state}:{s.node_type}' + (f'({s.hu_dist:.1f})' if s.hu_dist else '')
-                for s in _slots)
-            log.info(f'[cw-prep][nodeseq] n={len(_slots)} | {_sum}')
-            self._capture_unrecognized_node_icons(screen, _slots)
-        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
-            log.info(f'[cw-prep] nodeseq skip: {e}')
-
-    def _capture_unrecognized_node_icons(self, screen: MatLike, slots: list[NodeSlot]) -> None:
-        """[采集钩子·临时] 未来圆 Hu 无显著最近(hu_dist > ``HU_DIST_UNRECOGNIZED``)→ 裁该图标存盘。
-
-        聚焦单未识别图标(非全行 dedup);扑满 / 新节点类型离线分析加模板用。icon 裁窗 ``_ICON_CAP_R``
-        略大于分类窗(多给上下文供 VLM / 人眼分析);模板定型时仍按 ``cw_node_reader._SAMPLE_R`` 重抽。
-        扑满模板补上 → 删本方法 + 调用(CLAUDE.md「临时钩子用完即删」)。
-        """
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique
-        _ICON_CAP_R = 24  # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文);临时常量随钩子删
-        _x0, _y0, _x1, _y1 = NODE_ROW_RECT
-        _row = screen[_y0:_y1, _x0:_x1]
-        for _s in slots:
-            if _s.state != 'upcoming' or _s.hu_dist is None or _s.hu_dist <= HU_DIST_UNRECOGNIZED:
-                continue
-            _y0c, _y1c = max(0, _s.cy - _ICON_CAP_R), _s.cy + _ICON_CAP_R
-            _x0c, _x1c = max(0, _s.cx - _ICON_CAP_R), _s.cx + _ICON_CAP_R
-            _fn = cw_shot_unique(_row[_y0c:_y1c, _x0c:_x1c], f'node_unknown_{_s.idx}')
-            if _fn:
-                log.info(f'[cw-prep][nodeseq] 未识别图标 idx={_s.idx} hu={_s.hu_dist:.1f} → 采 {_fn}')
-
-    def _verify_recognition(self) -> None:
-        """[识别核对钩子·临时] clean 备战帧(buy 入口):read 身份/星 vs session tracking → flag 不一致。
-
-        read_deployed_chars/read_bench_chars(SIFT 身份 + read_star)vs session.tracked_deployed/tracked_bench_chars
-        (simulate 维护)。read≠tracking → ``[cw!]`` log + 存截图(视觉核实是 reader 错还是 tracking 漂)。
-        read star≥3 → 仅 log 标记(**不停机** —— sell_star_hook tracked≥2 已停机截高星样本,≥3⊂≥2 覆盖,
-        此处不重复停机;read_star 3/4 星样本从 sell_star 的截图取)。互补 deploy_bench._reconcile_tracking
-        (post-deploy 静默纠 tracking;本钩子 buy 入口 flag 出 read≠tracking 让你知道哪里漂)。
-        ground truth 是 tracking(自身会漂,故有此核对)→ flag = 可疑,非定罪。核完 reader 删本方法 + buy 调用。
-        """
-        try:
-            from sr_od.application.currency_war.cw_identity_obs import (
-                ensure_portrait_templates,
-                read_bench_chars,
-                read_deployed_chars,
-            )
-            _tmpl = ensure_portrait_templates(self.ctx)
-            if _tmpl is None:
-                return
-            _scr = self.screenshot()
-            _dep = read_deployed_chars(self.ctx, _scr, _tmpl)
-            _bench = read_bench_chars(self.ctx, _scr, _tmpl)
-            # read star≥3:不单独停机(sell_star_hook tracked≥2 已停机截高星样本,≥3⊂≥2 覆盖);仅 log 标记
-            _hi = [f'{bc.position_pref or "bench"}-{bc.slot}:{bc.char_id}★{bc.star}'
-                   for bc in (*_dep, *_bench) if bc.star >= 3]
-            if _hi:
-                log.info(f'[cw!][verify] read star≥3(3/4★ 样本, sell_star_hook 会停机截图):{_hi}')
-            # read vs tracking(身份 + 星;按 槽位定位)
-            _match = getattr(self.ctx, 'cw_match', None)
-            _sess = _match.session if _match is not None else None
-            if _sess is None:
-                return
-            _mm: list[str] = []
-            for bc in _dep:
-                tv = next((x for x in (_sess.tracked_deployed or [])
-                           if x.position_pref == bc.position_pref and x.slot == bc.slot), None)
-                if tv is not None and (tv.char_id, tv.star) != (bc.char_id, bc.star):
-                    _mm.append(f'dep[{bc.position_pref}{bc.slot}] read={(bc.char_id, bc.star)} tracked={(tv.char_id, tv.star)}')
-            for bc in _bench:
-                tv = next((x for x in (_sess.tracked_bench_chars or []) if x.slot == bc.slot), None)
-                if tv is not None and (tv.char_id, tv.star) != (bc.char_id, bc.star):
-                    _mm.append(f'bench[{bc.slot}] read={(bc.char_id, bc.star)} tracked={(tv.char_id, tv.star)}')
-            if _mm:
-                log.info(f'[cw!][verify] read≠tracking({len(_mm)}):{" | ".join(_mm)}')
-                self.save_screenshot(prefix='recog_mismatch')
-        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
-            log.info(f'[cw-hook][verify] skip:{e}')
 
     @node_from(from_name='买牌')
     @operation_node(name='部署')

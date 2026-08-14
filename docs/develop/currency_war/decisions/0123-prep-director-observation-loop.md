@@ -1,7 +1,7 @@
 # ADR-0123 备战编排从固定序列改为观察驱动决策环(PrepDirector)
 
 - 日期:2026-08-14
-- 状态:已接受(设计定稿,实现 P1 待做)
+- 状态:已接受(P1 已实现 2026-08-14:prep_director.py + prep_actions.py + decide_prep_action 钩子 + DefaultCwStrategy 具现 + 挂载切换;live 验证待做)
 - 设计详文:[strategy/15_prep_director.md](../strategy/15_prep_director.md)
 
 ## 背景

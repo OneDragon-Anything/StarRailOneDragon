@@ -13,6 +13,11 @@
 > 不足以复现,全原子切换=静默回归)、ADR 残留清干净、§13 P1 接口规格附录(slot 物理槽位语义/execute 三失败
 > 路径/恢复原语映射/屏蔽粒度/obs 恒空)、ping-pong 兜底修正(MAX_ITER 非 node_max_retry)、武装箱选卡归属、
 > StartBattle 先 execute 后 break、第三方钩子兼容注、三采集钩子去向。**定稿,可开工 P1**。ADR-0123 记录决策。
+>
+> **P1 已落地(2026-08-14)**:框架 `prep_director.py`(环 + PrepObservation + F1-F8)+ 原子执行器
+> `prep_actions.py` + ABC 钩子 `decide_prep_action`(cw_strategy)+ DefaultCwStrategy §5.1-5.3 具现 +
+> 挂载切换(battle_loop 备战分支 → PrepDirector,BattlePrepCycle 退役为 P3 前回退路径)。决策单测 17 项
+> (`sr-od-test/.../test_prep_director.py`)。**待 live 验证**(`run_operation` 稳定 M=3,§8)。
 
 ## 1. 问题(为什么改)
 

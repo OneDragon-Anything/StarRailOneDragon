@@ -12,7 +12,8 @@
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
-- ``CwStrategy`` —— ABC,大脑接口(3 生命周期 + 7 决策 + create_session = 11 钩子,全 abstract)。
+- ``CwStrategy`` —— ABC,大脑接口(3 生命周期 + 8 决策 + create_session = 12 钩子,全 abstract;
+  ``decide_prep_action`` = 备战决策环步级决策,P1 新增,见 doc 15/ADR-0123)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。
@@ -113,6 +114,18 @@ class CwStrategy(ABC):
         ``session.rng`` 作蒙特卡洛。"""
 
     @abstractmethod
+    def decide_prep_action(self, obs, session: StrategySession,
+                           config: CurrencyWarConfig):
+        """备战决策环步级决策(doc 15 / ADR-0123,P1 新增):看 ``obs`` 出**一个**动作。
+
+        - ``obs``: ``PrepObservation``(框架观察层产出;P1 ``overlay_state``/``shop_cards`` 恒空)。
+        - 返回: 一个 ``PrepAction``(``prep_actions.py``;原子为主,P1 含 Run* 组合过渡)。
+          控制流动作(``DeferSpheres``/``BailToOuter``)是框架信号,不走 execute 验证链。
+        - 契约: 无状态策略 —— 跨步意图(defer 计数等)走 ``session``;框架保证每步先观察再决策
+          (F1),动作合法性由框架校验(F3),验证失败/stall 屏蔽对策略透明(F4)。
+        """
+
+    @abstractmethod
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession,
                       config: CurrencyWarConfig) -> PickEvent:
@@ -167,6 +180,15 @@ class StrategySession:
     last_level_obs: int = 0
     # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
     megastar_candidate_clicked: bool = False
+    # —— 备战决策环(PrepDirector,doc 15 / ADR-0123)计数宿主 ——
+    # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
+    # 策略/框架经 DeferSpheres +1;门=2(§5.1 规则 3 防规则 2↔3 空转环)。)
+    defer_count: int = 0
+    # prep_phase:默认策略主流程推进位(0=买牌前/1=买完/2=部署完/3=装备完→出战;环级,Director
+    # 环入口清零,同 defer_count 宿主模式 —— 策略无状态,主流程阶段只能住 session,F6)。
+    prep_phase: int = 0
+    # bail_reason_counts:BailToOuter 同因计数(局级,环重建不清零 —— ping-pong 诊断用;≥3 记 [cw!])。
+    bail_reason_counts: dict[str, int] = field(default_factory=dict)
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     memory: dict[str, Any] = field(default_factory=dict)       # 策略私有 scratch(核心领域实体走正规类型,不塞这)

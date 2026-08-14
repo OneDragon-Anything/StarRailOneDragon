@@ -38,6 +38,20 @@ from sr_od.application.currency_war.cw_state import (
     PickEvent,
 )
 from sr_od.application.currency_war.cw_strategy import CwStrategy, StrategySession
+from sr_od.application.currency_war.prep_actions import (
+    ClickSpheres,
+    DeferSpheres,
+    DeployMove,
+    EnsureShopOpen,
+    LevelUp,
+    OpenBox,
+    PickBoxCard,
+    RunBuyPhase,
+    RunDeploy,
+    RunEquip,
+    SellBench,
+    StartBattle,
+)
 
 
 class DefaultCwStrategy(CwStrategy):
@@ -187,3 +201,115 @@ class DefaultCwStrategy(CwStrategy):
             if o.char_id and o.char_id in wants:
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
+    # ===== 备战决策环步级决策(doc 15 §5.1-5.3 参考实现;P1)=====
+
+    def decide_prep_action(self, obs, session: StrategySession, config):
+        """备战决策环步级决策 = doc 15 §5.1-5.3 参考实现(奖励收取 → 腾席链 → 主流程)。"
+
+        规则序(每步全量重判,先命中先出):
+        1. 武装箱 overlay 开 → PickBoxCard(执行器默认选卡,v7 M-3;OpenBox 两步链第二步);
+        2. 有箱 → OpenBox(箱白占席,先开=腾席+得装备;两步非一步,F1/L-5);
+        3. 有球且有空席 → ClickSpheres(k=min(free, n);掉箱由规则 1/2 下步统筹);
+        4. 有球无空席且 defer<2 → 腾席链一步(deploy 空位 > 升级 > 卖最弱 > DeferSpheres);
+        5. 球箱皆无 或 defer≥2 → 主流程(买→部署→装备→出战,Run* 组合;P1 过渡)。
+
+        obs P1 恒空字段(overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
+        gold 仅 shop_open 且 obs.state fresh 时可信(关态读空,§5.2b M2)。
+        """
+        if obs.box_overlay_open:
+            return PickBoxCard(card_idx=None)   # 执行器默认选卡(P1 住执行器;P5 上移策略)
+        if obs.boxes:
+            return OpenBox()                     # 开箱即腾席 + 得装备
+        if obs.spheres and obs.free_bench_slots > 0:
+            return ClickSpheres(max_k=min(obs.free_bench_slots, len(obs.spheres)))
+        if obs.spheres and obs.free_bench_slots <= 0 and session.defer_count < 2:
+            return self._free_bench_step(obs, session, config)
+        return self._main_flow_step(obs, session, config)
+
+    def _free_bench_step(self, obs, session: StrategySession, config):
+        """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。"""
+        st = self._pseudo_state(obs, session)
+        target = session.target_comp
+        # a. deploy 空位(零成本最优):bench 有过 _should_deploy 的角色 → DeployMove
+        if obs.deploy_vacancy > 0:
+            for bc in list(obs.bench_chars):
+                if cw_decisions._should_deploy(bc, st, target):
+                    row, ok = cw_decisions._pick_deploy_row(st, bc)
+                    if not ok:
+                        continue
+                    occupied = obs.front_occupied if row == 'front' else obs.back_occupied
+                    size = obs.front_size if row == 'front' else obs.back_size
+                    empty = next((n for n in range(1, size + 1) if n not in occupied), None)
+                    if empty is not None:
+                        log.info(f'[cw][prep] 腾席链a:deploy空位 → 槽{bc.slot}({bc.char_id})'
+                                 f' → {row}{empty}')
+                        return DeployMove(from_slot=bc.slot, to_row=row, to_slot=empty)
+        # b. 升级扩容(cap+1 → 回 a):gold 需 shop 开态 fresh state(§5.2b M2)
+        if st.level < 10:
+            if obs.shop_open and obs.state is not None:
+                fresh = self._fresh_state(obs, session)
+                if cw_decisions.level_up_gate(fresh, target):
+                    log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
+                    return LevelUp()
+            else:
+                log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
+                return EnsureShopOpen()
+        # c. 卖最弱(_weakest_bench_idx 含 3合1 重复件保护;全保护 → None)
+        idx = cw_decisions._weakest_bench_idx(st, config.character_priority, target)
+        if idx is not None and idx < len(st.bench):
+            bc = st.bench[idx]
+            log.info(f'[cw][prep] 腾席链c:卖最弱 槽{bc.slot}({bc.char_id})')
+            return SellBench(slot=bc.slot)
+        # d. 全是有用角色 → 留置(DeferSpheres;框架计 defer_count,门=2)
+        log.info('[cw][prep] 腾席链d:无可卖/不可升 → DeferSpheres(球留置)')
+        return DeferSpheres()
+
+    def _main_flow_step(self, obs, session: StrategySession, config):
+        """主流程推进(§5.3;Run* 组合 P1 过渡,阶段位 prep_phase 由 Director 环入口清零)。
+
+        阶段位在**出动作时**前移(策略看不到执行结果;失败由框架 fail/屏蔽/恢复链兜住,
+        失败动作不无限重提案)。M-6 门:进 RunBuyPhase 前保证 free>0,否则跳过买牌直奔部署
+        (防 shop.py 内 _handle_bench_full 位置式卖,doc 15 §8 P1 残留风险)。
+        """
+        if session.prep_phase <= 0:
+            session.prep_phase = 1
+            if obs.free_bench_slots <= 0:
+                log.info('[cw][prep] M-6 门:free=0 跳过买牌(防 _handle_bench_full 位置式卖)')
+                return self._main_flow_step(obs, session, config)   # 进部署段
+            return RunBuyPhase()
+        if session.prep_phase == 1:
+            session.prep_phase = 2
+            return RunDeploy()
+        if session.prep_phase == 2:
+            session.prep_phase = 3
+            return RunEquip()
+        return StartBattle()
+
+    def _pseudo_state(self, obs, session: StrategySession) -> GameState:
+        """从 session tracking 组装决策用 GameState(环内轻量,SIFT 重读只在环入口)。"""
+        st = GameState()
+        st.board = {}
+        for bc in session.tracked_deployed:
+            if bc.faction and bc.faction != '?':
+                st.board[bc.faction] = st.board.get(bc.faction, 0) + 1
+        st.bench = list(session.tracked_bench_chars)
+        st.deployed = list(session.tracked_deployed)
+        st.level = session.last_level_obs or (
+            session.last_state.level if session.last_state is not None else 1)
+        if obs is not None and obs.shop_open and obs.state is not None:
+            st.gold = obs.state.gold
+            st.plane = obs.state.plane
+            st.round_num = obs.state.round_num
+        elif session.last_state is not None:
+            st.plane = session.last_state.plane
+            st.round_num = session.last_state.round_num
+        st.hp = session.last_hp if session.last_hp is not None else 100
+        return st
+
+    def _fresh_state(self, obs, session: StrategySession) -> GameState:
+        """shop 开态 fresh state(obs.state)+ bench tracking seed(gold 可信,腾席链 b 用)。"""
+        st = obs.state if obs.state is not None else GameState()
+        fresh = st.copy()
+        if session.tracked_bench_chars:
+            fresh.bench = list(session.tracked_bench_chars)
+        return fresh

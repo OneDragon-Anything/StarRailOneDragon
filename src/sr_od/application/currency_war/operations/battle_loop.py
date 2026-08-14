@@ -38,13 +38,13 @@ from sr_od.application.currency_war.operations.handlers.handle_select_partner im
 from sr_od.application.currency_war.operations.handlers.handle_wish_trial import (
     HandleWishTrial,
 )
-from sr_od.application.currency_war.operations.prep.battle_prep import BattlePrepCycle
 from sr_od.application.currency_war.operations.run_nodes.run_megastar_node import (
     RunMegastarNode,
 )
 from sr_od.application.currency_war.operations.run_nodes.run_supply_node import (
     RunSupplyNode,
 )
+from sr_od.application.currency_war.prep_director import PrepDirector
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -311,10 +311,9 @@ class CurrencyWarRunLoop(SrOperation):
             HandleWishTrial(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 1. 备战阶段 → 单轮(买+deploy+出战)
-        # 注:遭遇/选择伙伴 等 event overlay 已在 0b/0c 处理(确认选择/未达上限)。
-        # 遭遇 round 是普通战斗(2026-08-04 视觉大模型 确认:无选项选择 UI,只有难度标签 + 出战),
-        # 走正常 prep→出战→战斗(原 遭遇 handler "2选1" 过时,且 click 干扰 prep → stall,已移除)。
+        # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,doc 15/ADR-0123;原 BattlePrepCycle
+        #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
+        #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
             if self._max_rounds is not None and self._rounds_done >= self._max_rounds:
@@ -333,7 +332,7 @@ class CurrencyWarRunLoop(SrOperation):
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 RunSupplyNode)')
                 return self.round_wait(wait=2)
-            BattlePrepCycle(self.ctx).execute()
+            PrepDirector(self.ctx).execute()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
