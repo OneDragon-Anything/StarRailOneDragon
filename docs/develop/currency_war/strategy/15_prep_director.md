@@ -1,10 +1,10 @@
-# 15 备战决策环(PrepDirector)—— 备战编排从固定序列到观察驱动(v3 决策点全景)
+# 15 备战决策环(PrepDirector)—— 备战编排从固定序列到观察驱动(v4 框架/策略分离)
 
 > 总见 [README](README.md)。本文:备战画面内「下一步做什么」的决策架构 —— 观察驱动单步决策环,
 > 替代 BattlePrepCycle 固定序列。2026-08-14 用户定调(触发:奖励球 + 备战席满,球拖一轮才收);
-> **v2 修订**:动作全集原子化(宏动作被否);**v3 修订**:补全**事件域**(投资策略/环境、盛会之星、
-> 伙伴、祈愿、遭遇、补给 overlay 选择)与**工具域**(扳手/冶金炉/投影仪使用)—— 决策点全景纳入,
-> 两层环架构(外环路由 + 内环步级决策)。ADR-0123 记录决策。
+> **v2**:动作全集原子化(宏动作被否);**v3**:决策点全景(事件域 + 工具域);
+> **v4**:显式**框架/策略分离**(用户定调:「这块应该只是框架,要和具体策略分离开来,可以有多种策略实现」
+> —— 对齐 11 号插件机制,环是框架,规则是策略)。ADR-0123 记录决策。
 
 ## 1. 问题(为什么改)
 
@@ -99,7 +99,7 @@ P1-P4 过渡:内环遇 overlay → `BailToOuter` 交主循环现有分支(现 Bu
 P5 收编:overlay 态进 obs(§3 overlay_state/options),事件决策与 prep 决策**共享同一 obs + session**(治症状6),
 主循环瘦身为纯路由(战斗/结算/过渡/大厅)。
 
-### 4.4 决策点全景索引(动作 ↔ 策略需求清单 §2 对齐)
+### 4.4 决策点全景索引(动作 ↔ 决策归属 ↔ 策略需求清单 §2 对齐;「决策函数」均属策略层,框架不实现)
 
 | 决策点 | 决策函数 | 动作 | Phase |
 |---|---|---|---|
@@ -110,9 +110,26 @@ P5 收编:overlay 态进 obs(§3 overlay_state/options),事件决策与 prep 决
 | 事件选择(投资/巨星/伙伴/遭遇/补给/祈愿) | decide_*(现成,祈愿缺) | PickXxxOption | P5 |
 | 出战时机 | 环出口规则(§7) | StartBattle | P1 |
 
-## 5. 决策规则(v1 规则版)
+## 5. 框架不变式 vs 策略实现(v4 核心分离)
 
-### 5.1 奖励收取(free-slots 驱动)
+**环(PrepDirector)是框架** —— 不含任何玩法判断,只保证以下**不变式**(任何策略都必须在之上运行);
+**「下一步做什么」的全部判断是策略**(CwStrategy 子类,可多实现 + 热插拔,见 11 号插件机制)。
+§5.1-5.3 的规则降级为 `DefaultCwStrategy` 的**参考实现**(v1 规则版),非框架一部分。
+
+### 5.0 框架不变式(环保证,策略可依赖)
+
+```
+F1 单步契约: 每步 = observe → decide_prep_action(obs) → execute(带验证) → 再 observe
+F2 观察真实: obs 只由现成 reader 产出(框架不造数据);shop 开关互斥由框架管理
+F3 动作合法域: 策略输出的动作必须在 §4 动作全集内;框架校验参数(槽位存在/idx 界内)后执行
+F4 验证与防护: 框架执行每动作并做完成验证;fail 计数/stall 屏蔽/预算强制出战(§7)对策略透明
+F5 出口兜底: 策略不给 StartBattle 且 stall/预算耗尽 → 框架强制出战(策略挂了流程不断)
+F6 无状态策略: 环不污染策略实例;跨步意图(defer 计数等)走 StrategySession(11 号原则 1)
+F7 可换策略: strategy_id 由配置选(11 号);换策略只换决策,不换观察/执行/防护
+F8 可回放: obs+action 序列落 telemetry(对齐 11 号「可离线测+可复盘」;replay 评分用)
+```
+
+### 5.1 策略实现示例:奖励收取(free-slots 驱动;DefaultCwStrategy 参考实现)
 
 ```
 1) boxes > 0 → OpenBox + PickBoxCard     # 箱白占席,先开=腾席+得装备
@@ -121,27 +138,40 @@ P5 收编:overlay 态进 obs(§3 overlay_state/options),事件决策与 prep 决
 4) 球箱皆无 → 主流程(5.3)
 ```
 
-### 5.2 腾席决策链(每步回环重判)
+### 5.2 策略实现示例:腾席链(每步回环重判;优先级是默认策略的选择,非框架强制)
 
 ```
 a. deploy_vacancy > 0 且有角色过 _should_deploy → DeployMove(零成本最优)
 b. level < 10 且 gold ≥ LEVEL_UP_COST 且 level_plan 允许 → LevelUp(cap+1 → 回 a)
 c. _weakest_bench_idx 有可卖(保 3合1 重复件)→ SellBench(身份感知)
-d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数)
+d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数进 session)
 ```
 
-### 5.3 主流程
+### 5.3 策略实现示例:主流程推进
 
 工具检查(P4+:有投影仪+可复制核心→UseProjector 优先,3合1 价值最高)→ 买(RunBuyPhase→P2 原子)
 → 有可上(DeployMove)→ 有可穿(RunEquip→P3)→ 出口判定(§7)→ StartBattle。每步回环重判。
 
-## 6. 决策接口(CwStrategy 演进)
+> **换策略示例**:一个激进策略可以完全重写 5.1-5.3(如「血量健康期无视球先买牌,残血期才收球卖角换金」),
+> 或继承 DefaultCwStrategy 只覆盖腾席链(如「永不卖角色,宁可留球」)。框架层(观察/验证/防护/回放)零改动。
 
-- 新方法 `decide_prep_action(obs, session, config) -> PrepAction`,**基类默认实现**(v1 规则 = §5,委托
-  cw_decisions 既有函数),DefaultStrategy 可覆盖 —— 非 abstract,不破坏插件体系;
-- `decide_prep`(批量 shop 计划)保留(RunBuyPhase 内用,P2 溶解);事件 `decide_*`(invest/megastar/
-  partner/encounter/supply)保留 —— P5 后由 decide_prep_action 在 overlay 态内部委托调用(单一入口,实现不动);
-- Director 是 **SrOperation**(单「决策环」节点 + 内部 while + round_retry 预算);`update_target` 环入口调一次。
+## 6. 决策接口分层(v4:框架 vs 策略,对齐 11 号 ABC+Default 模板方法)
+
+| 层 | 内容 | 变更频率 |
+|---|---|---|
+| **框架(PrepDirector + prep_actions)** | 环循环/观察组装/动作合法性校验/执行原语/完成验证/stall 防护/出口兜底/telemetry 落盘 | 稳(玩法知识零嵌入) |
+| **策略接口(CwStrategy,11 号 ABC)** | **新增钩子 `decide_prep_action(obs, session, config) -> PrepAction`(abstract)**;既有 decide_prep/decide_invest/decide_supply/decide_encounter/decide_megastar/decide_partner 保留(P5 后由 decide_prep_action 在 overlay 态内部委托) | 接口稳定 |
+| **默认策略(DefaultCwStrategy)** | decide_prep_action 具现 = §5.1-5.3 参考实现(委托 cw_decisions 既有函数:plan/_should_deploy/_weakest_bench_idx);继承者可整体覆盖或只覆盖局部 | 随玩法迭代 |
+| **第三方策略(plugins/currency_war_strategies/)** | 继承 CwStrategy 全自研,或继承 Default 只覆盖关心的钩子(11 号两路) | 自由 |
+
+要点:
+- **ABC 钩子 abstract 化**(与 11 号原则 2 一致:ABC 纯接口;逻辑进 Default)—— v3 的「基类给默认实现」
+  违反 11 号分层,v4 修正:default 实现住在 DefaultCwStrategy,不是 ABC;
+- Director 是 **SrOperation**(单「决策环」节点 + 内部 while + round_retry 预算);`update_target` 环入口调一次;
+- **P5 事件收编后**:所有决策(步级 + 事件)经 decide_prep_action 单一入口 —— 事件 decide_* 变为其内部
+  委托的辅助钩子(实现不动,调用点收敛),策略作者只在入口写分发;
+- **测试对齐 11 号 §11.10**:策略纯逻辑可离线测(喂构造 obs 断言 action);框架环用 mock controller 测;
+  换策略不改框架测试。
 
 ## 7. 环出口(出战条件)与防死循环
 
@@ -182,6 +212,7 @@ d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数)
 | 事件收编节奏 | P5 每事件单独收编逐一验 | 一次全收(回归风险大) |
 | 祈愿策略 | P5 补(OCR objective+reward → 易完成度/契合打分) | 保持 naive |
 | stall 预算 | 5 步 / 60 总步 | 实跑校准 |
+| 框架/策略边界微调 | §5.0 八条不变式;策略可完全重写 5.1-5.3 | 不变式加多(过度约束策略)/加少(框架失守) 都待实跑反馈 |
 
 ## 11. 与既有文档关系
 
@@ -194,8 +225,9 @@ d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数)
 
 ```
 src/sr_od/application/currency_war/
-├── prep_director.py            # 新:PrepDirector(两层环之内环)+ PrepObservation(含 overlay_state)
-├── cw_strategy.py              # +decide_prep_action(基类默认:v1 规则 = §5;P5 内部委托 decide_*)
+├── prep_director.py            # 新【框架】:PrepDirector(两层环之内环)+ PrepObservation(含 overlay_state)+ 不变式 F1-F8
+├── cw_strategy.py              # 【接口】+decide_prep_action(abstract ABC 钩子)
+├── strategies/default_strategy.py  # 【默认策略】decide_prep_action 具现 = §5.1-5.3 参考实现
 ├── cw_decisions.py             # 复用:_should_deploy/_weakest_bench_idx/plan/LEVEL_UP_COST_TABLE
 ├── prep_actions.py             # 新:原子执行器(奖励/席位/商店/装备/战斗/工具,各带完成验证)
 └── operations/
