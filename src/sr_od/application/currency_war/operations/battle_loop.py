@@ -142,6 +142,16 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
+    def _clear_bail_count(self, reason: str) -> None:
+        """外环 handler 成功消化某 overlay 后清其 bail 计数(M11 误停机修复)。
+
+        Director 对同一 overlay 的多次 bail 若都被外环**成功处理**(巨星节点每场触发一次,连胜连开),
+        是合法流转而非 ping-pong —— 不清零会在第 3 次合法出现时误升级停机(M11 2-2 巨星实锤)。
+        """
+        _m = self.ctx.cw_match
+        if _m is not None and getattr(_m.session, 'bail_reason_counts', None):
+            _m.session.bail_reason_counts.pop(reason, None)
+
     def _record_round_outcome(self, screen) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
@@ -235,6 +245,7 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
             HandleSelectPartner(self.ctx).execute()
+            self._clear_bail_count('事件overlay:partner')
             return self.round_wait(wait=2)
 
         # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
@@ -244,6 +255,7 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
             RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
+            self._clear_bail_count('事件overlay:megastar')   # 合法 bail 清计数(live M11 误停机)
             return self.round_wait(wait=2)
 
         # 0c. 遭遇节点(难度二选一 + 选择)→ HandleEncounter(点卡选中 + 选择确认)。
