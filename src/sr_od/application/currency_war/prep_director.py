@@ -101,6 +101,9 @@ class PrepObservation:
     front_size: int = 4
     back_size: int = 6
     overlay_state: str | None = None    # P5
+    # 事件 overlay 检测(P1-4 过渡:盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即 BailToOuter
+    # 交外环分支 handler;live 2026-08-15 实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
+    event_overlay: str | None = None
     overlay_options: list | None = None # P5
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
 
@@ -154,6 +157,15 @@ class PrepDirector(SrOperation):
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
         obs.box_overlay_open = self.round_by_find_area(
             screen, '货币战争-备战-武装箱选择', '标识-请选择', crop_first=False).is_success
+        # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
+        for _scr, _area, _tag in (
+            ('货币战争-盛会之星', '标识-盛会之星', 'megastar'),
+            ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
+            ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
+        ):
+            if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
+                obs.event_overlay = _tag
+                break
         occupied = [i + 1 for i, p in enumerate(self._bench_pts)
                     if slot_occupied(screen, int(p.x), int(p.y))]
         obs.free_bench_slots = max(0, len(self._bench_pts) - len(occupied))
@@ -280,6 +292,8 @@ class PrepDirector(SrOperation):
         from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
+        if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
+            return self._bail(match, f'事件overlay:{obs.event_overlay}')
         # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
         try:
@@ -354,6 +368,8 @@ class PrepDirector(SrOperation):
                     return bail
             # 再观察:执行过的游戏动作一律 heavy(结构变化,review H-1);控制流走 light(上方)
             obs = self._observe(heavy=True)
+            if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
+                return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
     def _stall_gate(self) -> OperationRoundResult | None:
         """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
