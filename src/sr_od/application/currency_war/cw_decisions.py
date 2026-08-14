@@ -751,27 +751,37 @@ def _best_improving_action(
             _is_target = (target_comp is not None
                           and (_card_hits_target(card.name, card.faction, target_comp)
                                or card.name in character_priority))
-            if not _is_target:
+            # tempo 例外(ADR-0124):板直接增强散牌不属「泄金」—— 板上 ≥2 同阵营深化 或 强卡
+            # (cost≥3)且板不满员 → 放行(板饿死每场掉 HP,攒的金最后买不回血)。
+            _counts_s = _bench_faction_counts(state)
+            _strengthens_s = (_counts_s.get(card.faction, 0) >= 2 or card_cost(card) >= 3)
+            _room_s = state.deployed_count() < state.max_units()
+            if not _is_target and not (_strengthens_s and _room_s):
                 continue   # 散牌:攒金给升级,跳过
-        # commitment prefilter(task#16):target 设定时,若 shop 有 target 卡(阵营∈target.factions 或
-        # ∈core_chars)可买,跳过纯 off-target 散牌(阵营∉target 且非 core_char)→ 聚焦深化 target,
-        # 防"买一切"致 board 散、comp 永不深堆(plane2 comp-strength 墙根因)。shop 无 target 卡时不跳(防
-        # hold-forever 饿死)。区别旧 OFF_TARGET_DISCOUNT 打折 board 的 churn(d87b2a68 revert):只 gate 新 buys。
-        # → 藿藿/阿格莱雅 等 priority 列里的 off-target 角色被放行 → board spread;plane1-9 实采 7 阵营零成型、
-        # gold=8 买 能量 藿藿/阿格莱雅 填 off-target)。违反「一切评分 comp 相关」(CLAUDE.md):priority 不该
-        # 绝对豁免 commitment。priority 仍享 eval 加成(CHAR_PRIORITY_BONUS,下文)+ 未 commit 时(target=None)
-        # 本 prefilter 不跑 → 早期 stopgap 保留。
+        # commitment prefilter(task#16 + ADR-0124 tempo 修订):target 设定时,若 shop 有 target 卡
+        # (阵营∈target.factions 或 ∈core_chars)可买,跳过纯 off-target 散牌 → 聚焦深化 target。
+        # **tempo 例外(2026-08-15 live 7 局实锤:commit 过早/过死饿死板)**:form_progress <
+        # PREFILTER_STRICT_FRAC(0.4 = 未成型)时放行「板直接增强」散牌 —— 板上已有 ≥2 同阵营计数
+        # (深化现有羁绊)或强卡(cost≥3)且板不满员。人类打法:前期买强散卡保 tempo,成型后纯堆 target。
+        # 板饿死代价(每场 -10~-36 HP) > spread 代价(散卡仍可 deploy 保战力)。
         if target_comp is not None:
             _is_offtarget = not _card_hits_target(card.name, card.faction, target_comp)
             if _is_offtarget:
-                # shop 有买得起的 target 卡 → 跳 off-target(聚焦深化 target;task#16)。
-                # T#97:**已 commit** 也跳(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金;
-                # drought bail 处理真不可达 target)。仅「非 commit + shop 无 target」放行 = 早期 tempo。
                 _shop_has_buyable_tgt = any(
                     _card_hits_target(c.name, c.faction, target_comp)
                     for c in state.shop if state.gold >= card_cost(c))
-                if _shop_has_buyable_tgt or target_committed(target_comp, state):
-                    continue
+                if _shop_has_buyable_tgt:
+                    continue   # shop 有 target 可买 → 聚焦
+                if target_committed(target_comp, state):
+                    # 已成型 commit:严格拒散牌(原 T#97 语义)。未成型(form_progress<0.4)commit:
+                    # 放行板直接增强散牌(tempo 例外,防饿死)。
+                    _fp = form_progress(target_comp, state)
+                    _board_counts = _bench_faction_counts(state)
+                    _strengthens = (_board_counts.get(card.faction, 0) >= 2
+                                    or card_cost(card) >= 3)
+                    _board_room = state.deployed_count() < state.max_units()
+                    if not (_fp < COMMIT_FRAC and _strengthens and _board_room):
+                        continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
         if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
