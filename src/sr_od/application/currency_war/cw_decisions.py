@@ -766,7 +766,8 @@ def _best_improving_action(
             # (cost≥3)且板不满员 → 放行(板饿死每场掉 HP,攒的金最后买不回血)。
             _counts_s = _bench_faction_counts(state)
             _strengthens_s = (_counts_s.get(card.faction, 0) >= 2 or card_cost(card) >= 3)
-            _room_s = state.deployed_count() < state.max_units()
+            _room_s = (state.deployed_count() < state.max_units()
+                       or len(state.bench) < BENCH_CAPACITY)   # bench 空位也算 room(同 prefilter)
             if not _is_target and not (_strengthens_s and _room_s):
                 continue   # 散牌:攒金给升级,跳过
         # commitment prefilter(task#16 + ADR-0124 tempo 修订):target 设定时,若 shop 有 target 卡
@@ -790,8 +791,12 @@ def _best_improving_action(
                     _board_counts = _bench_faction_counts(state)
                     _strengthens = (_board_counts.get(card.faction, 0) >= 2
                                     or card_cost(card) >= 3)
-                    _board_room = state.deployed_count() < state.max_units()
-                    if not (_fp < COMMIT_FRAC and _strengthens and _board_room):
+                    # room = 板空位 **或** bench 空位(live M10 实锤:板被早期廉价卡填满后
+                    # room=0 恒 False → tempo 例外的板增强路径整轮失效,金堆 75-88 板值 13。
+                    # bench 也是 room:买进 bench 待 D-10 换血/3合1,不是死钱(≠ ADR-0125 的重复买入)。
+                    _room = (state.deployed_count() < state.max_units()
+                             or len(state.bench) < BENCH_CAPACITY)
+                    if not (_fp < COMMIT_FRAC and _strengthens and _room):
                         continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
