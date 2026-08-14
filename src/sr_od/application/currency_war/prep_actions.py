@@ -606,15 +606,18 @@ def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
         return 'ESC 关可合成列表', True
     # 角色详情面板 → 点空白(960,530 真空白 = 前后排之间;700,400 旧值前排有人时=前排-1 槽,已修)
     if op.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success:
+        ctx.controller.mouse_move(Point(960, 530))   # live 2026-08-14:恢复点击也要 mouse_move(bug#1)
         ctx.controller.click(Point(960, 530))
         return '点空白关角色详情', True
-    # 概率表弹窗 → 点 ×(1502,258)。MED-5:改 area 化检测(标识-刷新概率表 id_mark)——
-    # 旧全屏 OCR「概率」lcs=0.7 过松,商店「刷新概率表」按钮等即误中 → 误点 (1502,258)
-    # 落在 商店牌-5 区(shop_open yml [1405,70,1623,260])= 误买牌。
+    # 概率表弹窗 → 点 ×(1501,263;VLM live 定位 2026-08-14,与原建档 1502,258 同点)。MED-5:
+    # area 化检测(标识-刷新概率表 id_mark)—— 旧全屏 OCR「概率」lcs=0.7 过松会误中商店文本。
+    # live 实锤(2026-08-14 1-2):恢复点击无 mouse_move 被 bug#1 吃掉 → 弹窗关不掉 → bail 链停机。
     if op.round_by_find_area(screen, '货币战争-商店刷新概率表', '标识-刷新概率表',
                              crop_first=False).is_success:
-        ctx.controller.click(Point(1502, 258))
+        ctx.controller.mouse_move(Point(1501, 263))   # bug#1 缓解(live 实锤必须)
+        ctx.controller.click(Point(1501, 263))
         return '点×关概率表', True
     # 未知弹层兜底:点真空白
+    ctx.controller.mouse_move(Point(960, 530))   # bug#1 缓解
     ctx.controller.click(Point(960, 530))
     return '点空白兜底(960,530)', False

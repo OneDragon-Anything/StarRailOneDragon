@@ -284,6 +284,15 @@ class CurrencyWarRunLoop(SrOperation):
             RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
             return self.round_wait(wait=2)
 
+        # 0e2. 商店刷新概率表弹窗 → 点 × 关闭(live 2026-08-14 1-2 实锤补:点球误触开后无分支消化,
+        #       遮出战按钮 → Director bail → 外环也认不出 → 停机)。× 位置 VLM 定位 (1501,263);
+        #       mouse_move 必带(bug#1:恢复原语同坐标点击曾落空)。
+        if self.round_by_find_area(screen, '货币战争-商店刷新概率表', '标识-刷新概率表',
+                                   crop_first=False).is_success:
+            self.ctx.controller.mouse_move(Point(1501, 263))
+            self.ctx.controller.click(Point(1501, 263))
+            log.info('[cw-loop] 概率表弹窗 → 点× 关闭')
+            return self.round_wait(wait=1.5)
         # 0f. 消耗品详情浮层 → ESC 关。获消耗品奖励(投资策略「星星相印」给【员工投影仪】等)后游戏自动弹
         #     介绍 modal,遮挡备战/投资策略屏 → 上面所有分支都不命中 → round_retry 死循环(2026-08-06 实跑:
         #     plane2 supply 后弹「员工投影仪」modal,flat retry ~19min 失败;**非策略死,UI 弹窗卡死**)。
