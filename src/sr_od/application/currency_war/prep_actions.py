@@ -552,7 +552,9 @@ class PrepActionExecutor:
         module_path, cls_name = op_path.rsplit('.', 1)
         op_cls = getattr(importlib.import_module(module_path), cls_name)
         result = op_cls(self._ctx).execute()
-        ok = bool(result is not None and getattr(result, 'is_success', False))
+        # live 修复(2026-08-14):OperationResult 字段是 success(非 is_success —— 那是
+        # OperationRoundResult 的字段);旧 getattr 恒 False → 组合动作全被误判失败。
+        ok = bool(result is not None and getattr(result, 'success', False))
         if name == '装备':
             self._verify_equipped()   # L-1:_verify_equipped 随 RunEquip 保留(自 battle_prep 搬入)
         status = getattr(result, 'status', '')
