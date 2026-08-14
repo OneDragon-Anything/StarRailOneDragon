@@ -202,6 +202,11 @@ class DeployBench(SrOperation):
             if _cid and _cid in _deployed_cids:
                 log.info(f'[cw-deploy] 去重(5.1.7):bench槽{bi+1}({_cid}) 已 deployed,跳过')
                 continue
+            # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
+            # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
+            if not slot_occupied(self.screenshot(), int(bench[bi].x), int(bench[bi].y)):
+                log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查空(起始帧假阳/已上阵) → 跳过')
+                continue
             # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
             pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
             # 前排保证(出战要求,5.1.6 补):pref=back 但前排完全空(无角色)→ 强制前排(back 放前排不
@@ -239,14 +244,21 @@ class DeployBench(SrOperation):
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
                          f' (CV 验源槽变)')
             else:
-                log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
-                         f' 拖3次源槽未变(bug#1 间歇?),跳过')
-                # live 2026-08-15(match1 p2 deploy storm:placed=1/9、2/7 连环空场上阵 → HP 流失):
-                # 失败帧存证供离线根因(是 bug#1 鼠标间歇 / 源槽其实空(slot_occupied 假阳) / 游戏拒拖)。
-                import contextlib
-                with contextlib.suppress(Exception):
-                    self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
-                chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
+                # live 2026-08-15(match4 根因):drag_char 的 before 帧取自 retry 循环外,成功验证可滞后;
+                # 失败后 fresh 复查源槽 —— 已空 = 实际拖成(验证滞后)计 placed;仍占 = 真失败。
+                time.sleep(0.3)
+                if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
+                    placed += 1
+                    if _cid:
+                        _deployed_cids.add(_cid)
+                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查源槽已空 → 判拖成(验证滞后)')
+                else:
+                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
+                             f' 拖3次源槽未变,跳过(失败帧存证)')
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
+                    chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
         if placed < len(order):
             log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/{len(order)}(失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
