@@ -735,9 +735,9 @@ area_list:
   pc_rect:
   - 1450
   - 130
-  - 1620
+  - 1680
   - 190
-  text: 和平手枪
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
