@@ -57,6 +57,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
     read_game_state,
+    read_gold,
 )
 from sr_od.application.currency_war.cw_state import BenchChar, GameState
 from sr_od.application.currency_war.prep_actions import (
@@ -135,6 +136,7 @@ class PrepDirector(SrOperation):
         self._cached_bench: list[BenchChar] = []
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
+        self._cached_gold_trusted: bool = False
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
@@ -178,8 +180,17 @@ class PrepDirector(SrOperation):
             st.bench = list(obs.bench_chars or (session.tracked_bench_chars if session else []))
             obs.state = st
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
-            if not obs.state_gold_trusted and session is not None:
-                log.info('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信(策略侧勿用)')
+            if not obs.state_gold_trusted:
+                log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
+            elif st.gold == 0:
+                # MED-2:gold 读 0 间歇漏读是实证问题(shop.py 同款缓解)—— 不重读则腾席链 b
+                # 误判无金 → 链 c 误卖角色。shop 开态连读 0 才认 0(重截图 3 次取首个 >0)。
+                for _ in range(3):
+                    time.sleep(0.4)
+                    gv = read_gold(self.ctx, self.screenshot())
+                    if gv > 0:
+                        st.gold = gv
+                        break
             if session is not None:
                 session.last_state = st
             cap = read_deploy_cap(self.ctx, screen)
@@ -188,15 +199,17 @@ class PrepDirector(SrOperation):
                 obs.deploy_vacancy = max(0, cap - dep_n)
             else:
                 obs.deploy_vacancy = self._cached_vacancy
-            # 更新 light 沿用缓存
+            # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
+            # 缓存 state 生成时的可信度就是它的可信度)
             self._cached_state = st
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)
             self._cached_vacancy = obs.deploy_vacancy
+            self._cached_gold_trusted = obs.state_gold_trusted
         else:
             # light:heavy 字段沿用缓存(上次真读值;review H-1 — 不再恒默认导致永动机)
             obs.state = self._cached_state
-            obs.state_gold_trusted = False   # 缓存值可能跨 shop 态变化,gold 需 heavy 重判
+            obs.state_gold_trusted = self._cached_gold_trusted   # MED-1:trusted 位随缓存 state
             obs.bench_chars = list(self._cached_bench)
             obs.deployed_chars = list(self._cached_deployed)
             obs.deploy_vacancy = self._cached_vacancy
@@ -257,6 +270,7 @@ class PrepDirector(SrOperation):
         self._cached_bench = []
         self._cached_deployed = []
         self._cached_vacancy = 0
+        self._cached_gold_trusted = False
         self._probe_node_type()   # [采集钩子·临时] 节点类型标定(自 battle_prep 搬入;采完删)
         return self._run_loop(match)
 
@@ -266,6 +280,12 @@ class PrepDirector(SrOperation):
         from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
+        # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
+        # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
+        try:
+            match.strategy.update_target(obs.state or GameState(), session, config)
+        except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
+            log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
         while True:
             self._steps += 1
             if self._steps > PrepDirector.MAX_STEPS:
@@ -296,12 +316,18 @@ class PrepDirector(SrOperation):
             if err is not None:
                 log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝 + 计 stall')
                 self._stall += 1
+                gate = self._stall_gate()   # MED-3:拒绝路径也要兜 stall 门(防 55 步空转)
+                if gate is not None:
+                    return gate
                 obs = self._observe(heavy=False)
                 continue
             # 屏蔽命中:拒绝执行 + stall + 遥测(策略确定性重提案同动作被拒,M-5)
             if key in self._blocked and not isinstance(action, StartBattle):
                 log.warning(f'[cw!][director] 动作已屏蔽 {key} → 拒绝 + 计 stall(M-5)')
                 self._stall += 1
+                gate = self._stall_gate()   # MED-3:同上
+                if gate is not None:
+                    return gate
                 obs = self._observe(heavy=False)
                 continue
 
@@ -319,11 +345,26 @@ class PrepDirector(SrOperation):
                 self._stall = 0
                 self._fail_counts.pop(key, None)
             else:
-                bail = self._on_verify_fail(match, action, key)
+                try:
+                    bail = self._on_verify_fail(match, action, key)
+                except Exception as e:  # noqa: BLE001  LOW-5:恢复原语点击异常同执行异常路径
+                    log.warning(f'[cw!][director] 失败处理/恢复原语异常 {key}: {e} → 本环 fail')
+                    return self.round_fail(status=f'失败处理异常 {key}: {e}')
                 if bail is not None:
                     return bail
             # 再观察:执行过的游戏动作一律 heavy(结构变化,review H-1);控制流走 light(上方)
             obs = self._observe(heavy=True)
+
+    def _stall_gate(self) -> OperationRoundResult | None:
+        """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
+
+        MED-3:所有计 stall 的路径(验证失败/参数非法/屏蔽拒绝)统一走本门 —— 否则屏蔽后
+        策略确定性重提案会 55 步空转到 MAX_STEPS 才兜住。
+        """
+        if self._stall >= PrepDirector.STALL_LIMIT and self._recovery_tried:
+            log.warning(f'[cw!][director] stall≥{PrepDirector.STALL_LIMIT} 且恢复已试尽 → 强制出战(F5)')
+            return self._force_battle('stall+恢复试尽')
+        return None
 
     def _on_verify_fail(self, match, action: PrepAction, key: str) -> OperationRoundResult | None:
         """验证失败处理(review H-2 修订):连败 2 → 恢复原语(一次/实例)→ 仍连败 2 → 分型
@@ -354,10 +395,7 @@ class PrepDirector(SrOperation):
             self._fail_counts[key] = 0   # 屏蔽后拒绝走 stall 路径,计数归零防重复触发
             return None
         # 环级强制出战门(stall≥5 且恢复已试尽,§7 H-2b)
-        if self._stall >= PrepDirector.STALL_LIMIT and self._recovery_tried:
-            log.warning(f'[cw!][director] stall≥{PrepDirector.STALL_LIMIT} 且恢复已试尽 → 强制出战(F5)')
-            return self._force_battle('stall+恢复试尽')
-        return None
+        return self._stall_gate()
 
     def _bail(self, match, reason: str) -> OperationRoundResult:
         """环让位:交外环处理(§4.2b;外环重入重建 Director 时环级计数全清零)。"""
@@ -365,7 +403,17 @@ class PrepDirector(SrOperation):
         session.bail_reason_counts[reason] = session.bail_reason_counts.get(reason, 0) + 1
         n = session.bail_reason_counts[reason]
         if n >= PrepDirector.BAIL_SAME_REASON_DIAG:
-            log.warning(f'[cw!][director] 同因 bail ×{n}: {reason}(ping-pong 诊断)')
+            # MED-7:同因 bail≥3 = 外环 3 次未消化该弹层(bail↔重入 ping-pong,MAX_ITER 兜底
+            # 需多小时)→ 升级停机钩子(方案 D):存证 + stop_running 保画面待 AI 建档/排查。
+            log.warning(f'[cw!][director] 同因 bail ×{n}: {reason} → 升级停机(ping-pong,保画面建档)')
+            import contextlib
+            with contextlib.suppress(Exception):
+                self.save_screenshot(prefix='bail_pingpong')
+            rc = getattr(self.ctx, 'run_context', None)
+            if rc is not None:
+                with contextlib.suppress(Exception):
+                    rc.stop_running()
+            return self.round_fail(status=f'同因 bail ×{n}({reason}) 停机待建档')
         log.info(f'[cw][director] BailToOuter({reason}) → 交外环')
         return self.round_success(f'BailToOuter({reason})', wait=1)
 

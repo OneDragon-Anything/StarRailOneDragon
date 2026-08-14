@@ -65,3 +65,22 @@ cap 门 5.1.8 四项板上行为,零部署回归;原子 DeployMove 只用于腾�
 4. 其余:M-2 模板加载复用 ensure_portrait_templates(单一源);M-4 动作全集白名单进 validate;
    M-5 升级循环/未达上限确认补 mouse_move(bug#1);L-1 对账漂移 [cw!]+截图;L-4 强制出战
    异常兜底;L-5 3合1 保护按 (char_id, star)。测试 24 项(决策表 16 + 环级 8,覆盖 H-1/H-2/H-3 回归)。
+
+## 实现修订二(round-2 review,2026-08-14)
+
+round-1 修复全数验证通过(0 HIGH)。round-2 抓 8 MED,修 6 留 2(live 观测):
+1. **MED-2 gold 重读迁移**:_observe heavy 在 shop 开态 gold==0 时重读 3 帧取真值(shop.py 同款
+   缓解)—— 不修则 gold 漏读 → 腾席链 b 误判无金 → 链 c 误卖角色(live 必触发的破坏性错误)。
+2. **MED-5 概率表恢复原语 area 化**:改 id_mark「标识-刷新概率表」检测 —— 旧全屏 OCR「概率」
+   lcs=0.7 会误中商店区文本,误点 (1502,258) 落商店牌-5 = 误买牌。
+3. **MED-1 state_gold_trusted 接线**:策略腾席链 b/_pseudo_state 改判框架 F2 标记(原先字段是
+   死代码,策略用自造代理);light 步 trusted 位随缓存 state 带出。
+4. **MED-3 stall 门补全**:拒绝路径(参数非法/屏蔽)也走 _stall_gate —— 修前屏蔽后确定性重提案
+   会 55 步空转才被 MAX_STEPS 兜住。
+5. **MED-4 update_target 环入口接线**(doc §6 语义落地;失败不炸环沿用旧 target)。
+6. **MED-7 bail≥3 同因升级停机钩子**(存证 + stop_running 保画面建档,替 [cw!] 纯日志 ——
+   ping-pong 靠 MAX_ITER 兜底需多小时)。
+7. **MED-8 升级验证改 OCR 直读**(_read_level_raw 无 _expected_level 兜底)—— 兜底曲线值在落后
+   攒金场景会假成功 + 污染 session 单调守卫。
+8. MED-6(组合动作 no-op success 清 stall)/LOW-6(墙钟预算):默认策略无活害,doc §13.2/
+   §10 标注,live 观测后定。测试 28 项(+MED-1/MED-2/LOW-3 _observe 直测/MED-8)。

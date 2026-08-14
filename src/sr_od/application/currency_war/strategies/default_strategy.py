@@ -244,9 +244,10 @@ class DefaultCwStrategy(CwStrategy):
                         log.info(f'[cw][prep] 腾席链a:deploy空位 → 槽{bc.slot}({bc.char_id})'
                                  f' → {row}{empty}')
                         return DeployMove(from_slot=bc.slot, to_row=row, to_slot=empty)
-        # b. 升级扩容(cap+1 → 回 a):gold 需 shop 开态 fresh state(§5.2b M2)
+        # b. 升级扩容(cap+1 → 回 a):gold 需可信(framework F2 state_gold_trusted,MED-1 接线;
+        # shop 开态 + fresh state 才信 —— 关态读空/缓存过期都会误判无金 → 链 c 误卖)
         if st.level < 10:
-            if obs.shop_open and obs.state is not None:
+            if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
                 fresh = self._fresh_state(obs, session)
                 if cw_decisions.level_up_gate(fresh, target):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
@@ -296,8 +297,8 @@ class DefaultCwStrategy(CwStrategy):
         st.deployed = list(session.tracked_deployed)
         st.level = session.last_level_obs or (
             session.last_state.level if session.last_state is not None else 1)
-        if obs is not None and obs.shop_open and obs.state is not None:
-            st.gold = obs.state.gold
+        if obs is not None and getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
+            st.gold = obs.state.gold   # 仅 F2 可信标记时采用(gold 关态读空,MED-1)
             st.plane = obs.state.plane
             st.round_num = obs.state.round_num
         elif session.last_state is not None:

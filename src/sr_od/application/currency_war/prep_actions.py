@@ -31,10 +31,6 @@ from sr_od.application.currency_war.cw_obs_core import (
     _ocr,
     area_center,
 )
-from sr_od.application.currency_war.cw_observation import (
-    read_level,
-    read_phase_round,
-)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -152,6 +148,28 @@ def action_key(action: PrepAction) -> str:
     return type(action).__name__
 
 
+def _read_level_raw(ctx: SrContext, screen) -> int | None:
+    """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**;review MED-8)。
+
+    read_level 的兜底曲线适合决策估值,不适合完成验证(期望值>实际时假成功)。漏读返 None,
+    调用方决定基线退路。
+    """
+    from sr_od.application.currency_war.cw_obs_core import (
+        LEVEL_MAX,
+        LEVEL_MIN,
+        _first_int,
+        _ocr,
+    )
+
+    rect = _area_rect(ctx, '文本-等级')
+    if rect is None:
+        return None
+    v = _first_int([r.data for r in _ocr(ctx, screen, rect)])
+    if v is not None and (LEVEL_MIN <= v <= LEVEL_MAX):
+        return v
+    return None
+
+
 def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     """从 screen_info「货币战争-备战」读全部 prefix-N 区域中心(N 升序)。
 
@@ -267,6 +285,8 @@ class PrepActionExecutor:
             return self._run_composite('部署', 'sr_od.application.currency_war.operations.prep.deploy_bench.DeployBench')
         if isinstance(action, RunEquip):
             return self._run_composite('装备', 'sr_od.application.currency_war.operations.prep.equip_all.EquipAll')
+        if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
+            return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)'
         return False, f'未知动作类型 {type(action).__name__}'
 
     # ===== 奖励域 =====
@@ -281,6 +301,8 @@ class PrepActionExecutor:
         verified = 0
         budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
         screen = self._op.screenshot()
+        if not read_reward_spheres(self._ctx, screen):
+            return True, '无球(观察-执行竞态,无事可做)'   # LOW-2:不计验证失败
         while clicked < budget:
             spheres = read_reward_spheres(self._ctx, screen)
             if not spheres:
@@ -445,21 +467,26 @@ class PrepActionExecutor:
     # ===== 商店域 =====
 
     def _level_up(self) -> tuple[bool, str]:
-        """买经验至 level+1(循环点「购买经验」+ read_level 验;gold 前置由策略保证)。"""
+        """买经验至 level+1(循环点「购买经验」+ **OCR 直读**验证;gold 前置由策略保证)。
+
+        MED-8:完成验证用 _read_level_raw(无 _expected_level 兜底)—— read_level 漏读时返
+        期望曲线值,落后攒金场景 expected>actual → 首点即假成功 + 污染 session 单调守卫。
+        """
         match = self._ctx.cw_match
         session = match.session if match is not None else None
         screen = self._op.screenshot()
-        before = read_level(self._ctx, screen, *read_phase_round(self._ctx, screen))
-        if session is not None and session.last_level_obs:
-            before = max(before, session.last_level_obs)   # 单调守卫(read_level 间歇误读)
+        before = _read_level_raw(self._ctx, screen)
+        if before is None and session is not None and session.last_level_obs:
+            before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
+        if before is None:
+            return False, 'level 基线读不到(OCR 漏读),拒绝盲点'
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
         for _ in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
             time.sleep(0.3)
-            screen = self._op.screenshot()
-            lv = read_level(self._ctx, screen, *read_phase_round(self._ctx, screen))
-            if lv > before:
+            lv = _read_level_raw(self._ctx, self._op.screenshot())
+            if lv is not None and lv > before:
                 if session is not None:
                     session.last_level_obs = lv
                 log.info(f'[cw][levelup] level {before}→{lv} ✓')
@@ -579,8 +606,11 @@ def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
     if op.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success:
         ctx.controller.click(Point(960, 530))
         return '点空白关角色详情', True
-    # 概率表弹窗 → 点 ×(1502,258)
-    if op.round_by_ocr(screen, '概率', lcs_percent=0.7).is_success:
+    # 概率表弹窗 → 点 ×(1502,258)。MED-5:改 area 化检测(标识-刷新概率表 id_mark)——
+    # 旧全屏 OCR「概率」lcs=0.7 过松,商店「刷新概率表」按钮等即误中 → 误点 (1502,258)
+    # 落在 商店牌-5 区(shop_open yml [1405,70,1623,260])= 误买牌。
+    if op.round_by_find_area(screen, '货币战争-商店刷新概率表', '标识-刷新概率表',
+                             crop_first=False).is_success:
         ctx.controller.click(Point(1502, 258))
         return '点×关概率表', True
     # 未知弹层兜底:点真空白

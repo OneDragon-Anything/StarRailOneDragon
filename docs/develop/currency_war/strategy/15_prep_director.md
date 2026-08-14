@@ -66,7 +66,7 @@
 | bench_chars / deployed_chars(身份+星级,SIFT) | read_bench_chars / read_deployed_chars + session tracking 合并;**环入口对账一步**(read≠tracking 漂移是既有 bug 源,deploy_bench._reconcile_tracking / battle_prep._verify_recognition 钩子的继任宿主) | 重(环入口 + 结构变化) |
 | spheres / boxes | read_reward_spheres / read_supply_boxes(⚠️ 已知未验边界:owned 装备溢出遮奖励区 → 可能漏/误,保守消费) | 轻(每步) |
 | free_bench_slots: int | 9 − bench 占用(角色+箱都占席) | 轻 |
-| deploy_vacancy: int | read_deploy_cap − read_deployed_count | 轻 |
+| deploy_vacancy: int | read_deploy_cap − read_deployed_count | 重(P1 实现:heavy 刷新 + light 沿用缓存;原「轻」标注已过期) |
 | owned_equips(含 category=工具,12 件模板全在库) | read_equips(SIFT) | 重 |
 | overlay_state / overlay_options(P5) | 各屏 id_mark 锚点 + handler 现成 _read_options。**⚠️ 现状:祈愿/补给/投资策略/投资环境四屏 yml 已建但 id_mark 模型待核(疑独立屏非 overlay,battle_loop:216-227 停机隔离中);巨星/伙伴/遭遇/武装箱 ✅ 建档可依** | 轻/重 |
 | shop_cards / shop_open | read_shop_cards / 锚点 | 重(买牌阶段) |
@@ -187,6 +187,7 @@ d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数进 session)
 
 工具检查(P4+:有投影仪+可复制核心→UseProjector 优先,3合1 价值最高)→ 买(RunBuyPhase→P2 原子)
 → 有可上(DeployMove)→ 有可穿(RunEquip→P3)→ 出口判定(§7)→ StartBattle。每步回环重判。
+**P1 实现注(round-2 MED-4/LOW-1)**:主流程以 session.prep_phase 阶段位实现(环入口清零,出动作时前移 —— 阶段位是「本环走到哪段」的位置记忆,非每步从头重判;球/箱/腾席规则仍在每步全量重判);update_target 由框架在**环入口**调一次(shop.py:166 的 RunBuyPhase 内调用 = P1 允许的双调)。
 
 > **换策略示例**:一个激进策略可以完全重写 5.1-5.3(如「血量健康期无视球先买牌,残血期才收球卖角换金」),
 > 或继承 DefaultCwStrategy 只覆盖腾席链(如「永不卖角色,宁可留球」)。框架层(观察/验证/防护/回放)零改动。
@@ -223,6 +224,7 @@ d. 全是有用角色 → DeferSpheres(球留置,记 defer 计数进 session)
 **排除清单(非决策点,框架与策略都不处理)**:攻略/教学/数据银行/数据统计按钮(纯信息查看)、商店刷新概率表弹窗(纯展示)、惊喜盒(倒计时自动开启,点击仅 tooltip)、商店锁定(shop_locked 字段全仓无读写 + 备战无锁定按钮 → CW 无此机制,字段按「None 不说谎」原则清理)。「不处理」指不作决策目标;概率表弹窗作为遮挡仍会被恢复原语关闭(点 ×,L-1)。
 
 **组合动作命名映射**(L1):RunBuyPhase=BuyShopCards / RunEquip=EquipAll / RunDeploy=DeployBench(代码实名)。
+**组合动作 progressed 语义弱化**(round-2 MED-6):P1 组合动作 progressed = 子 op is_success(含 no-op 成功,如「备战席已满清警告」),非严格状态进展;默认策略因 prep_phase 单调无活害,P2 原子化消除。自定义策略勿依赖组合动作清 stall。
 P1 允许 update_target 双调(Director 环入口 + shop.py:166 各一次,无害);P2 溶解 RunBuyPhase 时删 shop.py 内调用(L7)。
 P1 挂载切换时搬 battle_prep 的临时采集钩子进 Director 观察阶段:_verify_recognition/_probe_node_type 搬;**_verify_equipped 不搬**(随 RunEquip 组合动作保留在 EquipAll 后调用,采样不断,L-1)。
 
