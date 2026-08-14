@@ -1,0 +1,102 @@
+screen_id: currency_war_battle_prep_supply_box
+screen_name: 货币战争-备战-武装箱选择
+pc_alt: false
+area_list:
+- area_name: 标识-武装箱
+  id_mark: true
+  pc_rect:
+  - 940
+  - 25
+  - 1200
+  - 80
+  text: 武装箱
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-请选择
+  id_mark: true
+  pc_rect:
+  - 960
+  - 70
+  - 1180
+  - 115
+  text: 请选择
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 装备卡-1
+  id_mark: false
+  pc_rect:
+  - 545
+  - 225
+  - 700
+  - 345
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 装备卡-2
+  id_mark: false
+  pc_rect:
+  - 825
+  - 225
+  - 980
+  - 345
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 装备卡-3
+  id_mark: false
+  pc_rect:
+  - 1110
+  - 225
+  - 1265
+  - 345
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 装备卡-4
+  id_mark: false
+  pc_rect:
+  - 1390
+  - 225
+  - 1545
+  - 345
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-卡名行
+  id_mark: false
+  pc_rect:
+  - 545
+  - 255
+  - 1545
+  - 300
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

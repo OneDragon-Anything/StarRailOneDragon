@@ -21,7 +21,7 @@ from sr_od.operations.sr_operation import SrOperation
 # 详情面板角色名区(面板开时固定;panel ~x1400-1840,y370-780)。名 OCR 有字 = 面板开。
 NAME_RECT: Rect = Rect(1470, 380, 1680, 440)
 # 关面板:点面板外空白(空前台区)。⚠️ 勿 ESC(bug#2:备战屏 ESC→中断挑战 dialog)。
-PANEL_CLOSE: Point = Point(700, 400)
+PANEL_CLOSE: Point = Point(960, 530)  # 真空白(前后排之间);旧 (700,400) 前排有角色时=前排-1 槽,会点到角色(2026-08-14 实测)
 # 默认读的槽(佩佩位,probe 用;正式流程由 detect_board_slots + deploy 跟踪提供)
 DEFAULT_SLOT: Point = Point(1390, 668)
 
