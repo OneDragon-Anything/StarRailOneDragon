@@ -13,9 +13,9 @@ BattlePrepCycle 是固定流水线(收球→买牌→部署→装备→出战),�
 用户定调:策略应该是**根据当前画面输出下一步做什么**(例:有奖励未领+备战满 → 拖前后台/卖无关角色/
 都有用则留球),做一步 → 再识别 → 再决定。
 
-## 决策
+## 决策(v2 原子化修订,2026-08-14 用户 review)
 
-新增 PrepDirector(SrOperation):观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策
+新增 PrepDirector(SrOperation):观察(PrepObservation,组合现成 reader 轻/重分层)→ 单步决策(动作全集**原子化**:ClickSphere/ClickSpheres(k=free 带内验早停)/OpenBox/PickBoxCard/BuyCard/LevelUp/RefreshShop/**SellBench(身份感知)**/DeployMove/WearEquip/StartBattle;组合动作仅商店/装备域过渡用)
 (`CwStrategy.decide_prep_action` 新方法,基类默认规则版,复用 _should_deploy/_weakest_bench_idx/plan)→
 执行(宏动作映射现有 op,P1 一行不改)→ 再观察。环出口 = StartBattle(无球无箱无正提升无可上无可穿);
 防死循环 = 动作级 fail 屏蔽 + 环级 stall 预算强制出战。
