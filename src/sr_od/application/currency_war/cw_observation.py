@@ -64,11 +64,12 @@ from sr_od.application.currency_war.cw_obs_core import (
     HP_MIN,
     LEVEL_MAX,
     LEVEL_MIN,
+    SHOP_SCREEN_NAME,
     _area_rect,
     _first_int,
     _ocr,
     area_center,  # noqa: F401 (re-export:importer 经 cw_observation.area_center 用)
-    )
+)
 from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     parse_settlement_hp,
     read_round_outcome,
@@ -500,7 +501,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     templates = ensure_portrait_templates(ctx)
     cards: list[ShopCard] = []
     for i in range(1, 6):
-        rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}')
+        rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}', SHOP_SCREEN_NAME)
         if rect is None:
             continue
         crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]

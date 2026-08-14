@@ -22,11 +22,13 @@ from sr_od.context.sr_context import SrContext
 
 # screen_info「货币战争-备战」(currency_war_battle_prep.yml)area 名
 SCREEN_NAME: str = '货币战争-备战'
+# 开商店子态画面(currency_war_battle_prep_shop_open.yml):商店牌/刷新/收起 等商店态 area 迁此
+SHOP_SCREEN_NAME: str = '货币战争-备战-开商店'
 A_GOLD: str = '文本-金币数'
 A_PHASE: str = '区域-阶段'
 A_BOARD: str = '区域-羁绊面板'
-A_SHOP_REGION: str = '商店牌区'             # 5 张牌的阵营+名文本带(整体 OCR,按 y 分阵营/名)
-A_SHOP_CARD_PREFIX: str = '商店牌-'        # 商店牌-1..5(点击中心)
+A_SHOP_REGION: str = '商店牌区'             # 5 张牌的阵营+名文本带(整体 OCR,按 y 分阵营/名;商店态,读 SHOP_SCREEN_NAME)
+A_SHOP_CARD_PREFIX: str = '商店牌-'        # 商店牌-1..5(点击中心;商店态,读 SHOP_SCREEN_NAME)
 # 商店牌区内行分类阈值(卡牌布局固定):y < 此 = 阵营标签;>= 此 = 角色名
 SHOP_FACTION_NAME_SPLIT_Y: int = 278
 COL_TOLERANCE: int = 100                   # 文本 x 分配到牌位的容差
@@ -64,8 +66,11 @@ def area_center(ctx: SrContext, name: str, screen_name: str = SCREEN_NAME) -> Po
 
 
 def shop_card_click_points(ctx: SrContext) -> list[Point]:
-    """商店 5 牌位点击中心(按 商店牌-1..5 顺序,screen_info);screen 缺失 → []。"""
-    si = ctx.screen_loader.get_screen(SCREEN_NAME)
+    """商店 5 牌位点击中心(按 商店牌-1..5 顺序,screen_info);screen 缺失 → []。
+
+    商店牌 area 在开商店子态画面(``SHOP_SCREEN_NAME``)。
+    """
+    si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
     if si is None:
         return []
     pts: list[Point] = []

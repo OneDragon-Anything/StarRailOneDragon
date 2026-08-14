@@ -30,3 +30,115 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
+- area_name: 商店牌-1
+  id_mark: false
+  pc_rect:
+  - 392
+  - 70
+  - 610
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 商店牌-2
+  id_mark: false
+  pc_rect:
+  - 645
+  - 70
+  - 863
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 商店牌-3
+  id_mark: false
+  pc_rect:
+  - 898
+  - 70
+  - 1116
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 商店牌-4
+  id_mark: false
+  pc_rect:
+  - 1151
+  - 70
+  - 1369
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 商店牌-5
+  id_mark: false
+  pc_rect:
+  - 1405
+  - 70
+  - 1623
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 商店牌区
+  id_mark: false
+  pc_rect:
+  - 300
+  - 228
+  - 1560
+  - 326
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-刷新
+  id_mark: false
+  pc_rect:
+  - 1563
+  - 455
+  - 1620
+  - 490
+  text: 刷新
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-刷新概率表
+  id_mark: false
+  pc_rect:
+  - 945
+  - 360
+  - 1415
+  - 410
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

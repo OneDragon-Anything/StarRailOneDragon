@@ -10,7 +10,11 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_obs_core import HP_MAX, shop_card_click_points
+from sr_od.application.currency_war.cw_obs_core import (
+    HP_MAX,
+    SHOP_SCREEN_NAME,
+    shop_card_click_points,
+)
 from sr_od.application.currency_war.cw_observation import (
     area_center,
     new_bench_slots,
@@ -115,8 +119,8 @@ class BuyShopCards(SrOperation):
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
-        if self.round_by_find_area(screen, '货币战争-备战', '按钮-收起').is_success:
-            self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-收起', success_wait=1.0)
+        if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+            self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
             time.sleep(0.4)
             screen = self.screenshot()
         hp_value = read_hp(self.ctx, screen)
@@ -131,7 +135,7 @@ class BuyShopCards(SrOperation):
                     break
 
         # 开商店(gold/shop/board 须 shop 开才显示;HP 此时被遮但上面已读过)
-        if not self.round_by_find_area(self.screenshot(), '货币战争-备战', '按钮-收起').is_success:
+        if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
                 return self.round_retry('找不到商店/收起按钮', wait=1)
             time.sleep(0.5)
@@ -140,7 +144,7 @@ class BuyShopCards(SrOperation):
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         click_pts = shop_card_click_points(self.ctx)
         level_btn = area_center(self.ctx, BuyShopCards.BUY_EXP_AREA) or BuyShopCards.LEVEL_UP_FALLBACK
-        refresh_btn = area_center(self.ctx, '按钮-刷新') or BuyShopCards.REFRESH_FALLBACK
+        refresh_btn = area_center(self.ctx, '按钮-刷新', SHOP_SCREEN_NAME) or BuyShopCards.REFRESH_FALLBACK
 
         # 无强信号保持 —— 等价旧 _target_comp class-attr 逻辑,但状态进 session 跨回合持久)。用 shop 关闭帧
         # hp 覆盖的 state(M6 钉死行为等价:hp 真值 → maybe_pivot 的 hp_safe 信号正确触发,非 shop 开帧的假 100)。
@@ -259,7 +263,7 @@ class BuyShopCards(SrOperation):
 
         # 关商店(「收起」)
         time.sleep(0.4)
-        self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-收起', success_wait=1.0)
+        self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
         return self.round_success(
             f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
             f'(gold={state.gold} lv={state.level} plane={state.plane})'
