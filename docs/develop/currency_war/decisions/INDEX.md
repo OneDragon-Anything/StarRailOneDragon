@@ -31,6 +31,7 @@
 | 0124 | 买牌 tempo 例外:未成型 commit 放行板直接增强散牌 | [0124-buy-tempo-exception.md](0124-buy-tempo-exception.md) |
 | 0125 | 板上同角色重复买入禁令(死钱防沉) | [0125-no-dead-money-duplicate-buys.md](0125-no-dead-money-duplicate-buys.md) |
 | 0126 | 节点等级计划 live 校准(A8 更高人口) | [0126-level-plan-live-calibration.md](0126-level-plan-live-calibration.md) |
+| 0127 | 策略 review round-3 修订:H1-H4 | [0127-strategy-review-h1-h4.md](0127-strategy-review-h1-h4.md) |
 | [0102](0102-spend-mode-drives-economy-score.md) | spend_mode 驱动 economy_score(节点节奏→经济档位;补 0097 剩余) | accepted | 2026-08-12 | _economy_mode_for 映射(saving→interest_first/level→rush_level/allin→adaptive);与 _phase_weights 正交;allin economy-low 由 plane3 we=0.3 处理 |
 | [0103](0103-target-matching-full-synergies.md) | target comp 牌归属用全羁绊匹配(治本流派/阵营断裂) | accepted | 2026-08-12 | _card_hits_target(全羁绊∩comp.factions)替 card.faction in target.factions(只阵营);流派角色(艾丝妲/椒丘)commit 后不再被误跳 → DOT 凑得出 2DOT;8 处统一 |
 | [0104](0104-strategy-review-fixes-batch1.md) | 策略 review 修复批次1(反甲白厄死comp/蒙特卡洛concentration/卖路径护target) | accepted | 2026-08-12 | 反甲白厄 factions 空(白厄无阵营,毁灭是命途非阵营)+防回归测试;蒙特卡洛补_concentration_delta(口径统一);卖路径加target_comp护核心(commitment贯穿) |
