@@ -209,14 +209,14 @@ class CurrencyWarRunLoop(SrOperation):
         # [停机钩子·临时] 未完整建档节点 + 待排查节点 → 停机给 AI 按 od-dev-screen-onboarding 建档/排查。
         # 建档/排查完删该 tuple 项。CLAUDE.md「两种钩子」方案 D。
         # - 祈愿:screen_info+handler 有但无完整 skill 建档(doc/fixture/id_mark 测缺)。巨星(盛会之星)已完整建档(2026-08-13)→ 移出 tuple,0b 接管。
-        # - 补给/投资策略/投资环境(2026-08-13 用户):疑似**独立屏非备战 overlay**(补给有「返回备战」按钮 →
-        #   可导航回备战,是兄弟屏)。当前 0e 当 overlay 处理 + id_mark 模型可能错(fixture 无购买经验)→ 停机排查
-        #   overlay vs 独立屏 + 完整建档(id_mark/流转/返回备战按钮)。
+        # - 补给/投资环境(2026-08-13 用户):疑似**独立屏非备战 overlay**(补给有「返回备战」按钮 →
+        #   可导航回备战,是兄弟屏)。停机排查 overlay vs 独立屏 + 完整建档(id_mark/流转/返回备战按钮)。
+        # - 投资策略已完整重建档(2026-08-15 live:9 步 onboarding + 独立屏实锤 + 三态 fixture + id_mark
+        #   测 4/4 + HandleInvestStrategy 点击模型 live 核对)→ 移出 tuple,0e 分支接管。
         # ⚠️ 选择伙伴已完整建档(2026-08-13,组合 id_mark 购买经验+选择伙伴;备战含被盖前台区域→overlay 帧备战不 is_precise,无测试豁免)→ 移出 tuple,0a 接管。
         for _scr, _area, _tag in (
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
             ('货币战争-补给', '标识-补给阶段', 'supply'),
-            ('货币战争-投资策略', '标识-请选择投资策略', 'invest_strategy'),
             ('货币战争-投资环境', '标识-投资环境', 'invest_env'),
         ):
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
