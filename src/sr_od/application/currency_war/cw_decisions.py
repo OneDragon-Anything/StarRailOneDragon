@@ -217,11 +217,13 @@ class NodeGoal:
 # 目标等级比 _expected_level 平滑曲线**更果断**(关键 inflection 提前),驱动 bot 像人一样按节奏升。
 # 值为 V4.4 先验(占位,阶段 6 实玩校准)。位面长度变(首领 1-7/1-8/1-9)用区间(rmax=9)兜。
 _DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
+    # 2026-08-15 live 校准(ADR-0126):M8(lv9 aggressive)唯一破 2-7 进位面 3;lv6@1-9 boss 稳定 -34~-40 HP,
+    # 进位面 2 即死(M9/M10/M11 全灭于 2-1/2-2)。A8 敌难度 108 要求更高人口 —— P1 后期也推 7,P2 提前上 8。
     (1, 1, 3, NodeGoal(4, "saving", "rush_level")),    # P1 早期:冲 Lv4,纯升级 + 尽快向 50 金
     (1, 4, 6, NodeGoal(6, "interest", "d_search")),    # P1 中期:Lv6,攒 50 吃满息(息引擎)
-    (1, 7, 9, NodeGoal(6, "hold")),                     # P1 后期/首领:锁血过 P1 首领
-    (2, 1, 4, NodeGoal(7, "level", "d_search")),       # P2 早期:推 Lv7(升人口)
-    (2, 5, 9, NodeGoal(8, "level", "d_search")),       # P2 中后期:2-5~2-7 升 8 搜核心
+    (1, 7, 9, NodeGoal(7, "hold", "rush_level")),      # P1 后期/首领:lv7 保血过 P1 首领(live:-34HP@lv6 → 升人口)
+    (2, 1, 4, NodeGoal(8, "level", "d_search")),       # P2 早期:直接推 Lv8(live:lv7 进 P2 仍 2-1/2-2 死)
+    (2, 5, 9, NodeGoal(9, "level", "d_search")),       # P2 中后期:2-5~2-7 升 9 搜核心(M8 lv9 破 2-7)
     (3, 1, 3, NodeGoal(9, "allin", "chase_star")),     # P3 早期:上 9 找 5 费
     (3, 4, 9, NodeGoal(10, "allin", "chase_star")),    # P3 后期/boss:上 10 + 关键卡追 3 星
 ]
