@@ -227,6 +227,12 @@ class DefaultCwStrategy(CwStrategy):
             # 假球,点击即开概率表弹窗(遮挡 → bail → 乒乓)。商店开 → 先关店,清洁面板上再收球。
             if obs.shop_open:
                 return EnsureShopClosed()
+            # live 2026-08-15(M12 1-9 实锤):owned 装备栏溢出到奖励区 → 道具图标被误检成假球,
+            # 点击无效 → 验证失败循环 → bail×3 停机。defer 门扩到收球:反复失败(框架置 defer)后
+            # 放弃收球走主流程;下轮环入口 defer 清零重判(真球可再收,自愈)。
+            if session.defer_count >= 2:
+                log.info('[cw][prep] 球疑假检(owned 溢出,点击反复失败)→ defer 跳过收球,走主流程')
+                return self._main_flow_step(obs, session, config)
             return ClickSpheres(max_k=min(obs.free_bench_slots, len(obs.spheres)))
         if obs.spheres and obs.free_bench_slots <= 0 and session.defer_count < 2:
             return self._free_bench_step(obs, session, config)

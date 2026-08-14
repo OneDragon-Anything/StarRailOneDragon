@@ -62,6 +62,7 @@ from sr_od.application.currency_war.cw_observation import (
 from sr_od.application.currency_war.cw_state import BenchChar, GameState
 from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
+    ClickSpheres,
     DeferSpheres,
     PrepAction,
     PrepActionExecutor,
@@ -407,6 +408,8 @@ class PrepDirector(SrOperation):
                 return self._bail(match, f'恢复无效-弹层:{key}')
             if not isinstance(action, StartBattle):
                 self._blocked.add(key)
+            if isinstance(action, ClickSpheres):
+                match.session.defer_count = max(match.session.defer_count, 2)
             log.warning(f'[cw!][director] {key} 恢复(无弹层)后仍连败 → 本环屏蔽(策略须换路)')
             self._fail_counts[key] = 0   # 屏蔽后拒绝走 stall 路径,计数归零防重复触发
             return None
