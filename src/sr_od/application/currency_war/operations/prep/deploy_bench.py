@@ -101,6 +101,10 @@ class DeployBench(SrOperation):
         _tgt_comp = (_match.session.target_comp
                      if (_match is not None and _match.session is not None) else None)
         _target_factions: set[str] = set(_tgt_comp.factions) if _tgt_comp is not None else set()
+        # live 2026-08-15(M1 位面2 列车同行4→1 稀释根因):comp 核心辅助(花火/瓦尔特/符玄等)的阵营标签
+        # ∌ comp 阵营(列车同行)—— 只按阵营判 target 会把 core_char 辅助当 off-target 卖掉 → 板成型度崩。
+        # target 判定 = 阵营/流派交集 **或** core_chars 成员(_card_hits_target 同语义,ADR-0103)。
+        _target_cores: set[str] = set(_tgt_comp.core_chars) if _tgt_comp is not None else set()
         _has_offtarget = bool(_board and _target_factions
                              and any(f not in _target_factions for f in _board))
         if _has_offtarget and templates is not None and _target_factions:
@@ -112,13 +116,15 @@ class DeployBench(SrOperation):
             _bench_chars = read_bench_chars(self.ctx, self.last_screenshot, templates)
 
             def _is_tgt_char(name: str) -> bool:
+                if name in _target_cores:
+                    return True   # core_char 辅助(阵营∉comp)也是 target(勿卖/优先上)
                 _c = get_char(name) if name else None
                 return _c is not None and bool((set(_c.factions) | set(_c.flows)) & _target_factions)
 
             _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
             if _bench_tgt_n > 0:
                 _n = self._sell_offtarget_deployed(front, back, _target_factions, templates,
-                                                   max_sell=_bench_tgt_n)
+                                                   max_sell=_bench_tgt_n, target_cores=_target_cores)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -196,9 +202,14 @@ class DeployBench(SrOperation):
             if _deployed_cids:
                 log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
         tgt_idx, rest = [], []
+        # live 2026-08-15:target 优先 = 阵营交集 **或** core_char(_bench_cid;辅助如花火/瓦尔特
+        # 阵营 ∉ comp 阵营,只按 _bonds 判会把核心辅助排到 rest 尾部 → 上场晚/被换血)。
+        _cores = (_sess.target_comp.core_chars
+                  if (_sess is not None and _sess.target_comp is not None) else None) or []
         for i in bench_occ:
             _bonds = _bench_id.get(i)
-            _is_tgt = bool(_bonds and _bonds & _tgt) if _tgt else False
+            _cid0 = _bench_cid.get(i)
+            _is_tgt = ((_bonds and _bonds & _tgt) or _cid0 in _cores) if _tgt else False
             (tgt_idx if _is_tgt else rest).append(i)
         order = tgt_idx + rest
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
@@ -297,7 +308,7 @@ class DeployBench(SrOperation):
 
     def _sell_offtarget_deployed(self, front: list[Point], back: list[Point],
                                  target_factions: set[str], templates: AvatarTemplates | None,
-                                 max_sell: int = 99) -> int:
+                                 max_sell: int = 99, target_cores: set[str] | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -312,6 +323,8 @@ class DeployBench(SrOperation):
         for d in deployed:
             if sold >= max_sell:
                 break
+            if d.char_id and d.char_id in (target_cores or set()):   # core_char 辅助保留(live 花火误卖根因)
+                continue
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
                 continue
