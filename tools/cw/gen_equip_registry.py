@@ -99,6 +99,21 @@ def _guess_cat(nm: str, eff: str) -> str:
     return "特殊"
 
 
+def _props(pe: dict) -> tuple[tuple[str, str], ...]:
+    """plaza equipment 条目 → 结构化数值 ((属性名, 数值), ...);100/101 覆盖。"""
+    return tuple((p["name"], p.get("num") or "") for p in (pe.get("properties") or []))
+
+
+def _recipes(pe: dict) -> tuple[tuple[str, ...], ...]:
+    """plaza compose_list → 官方合成路线 (((材料名), ...), ...);多路线全收(宝钻 3 路)。"""
+    routes: list[tuple[str, ...]] = []
+    for c in pe.get("compose_list") or []:
+        ch = tuple(x["name"].replace(chr(0x2022), chr(0x00B7)) for x in (c.get("childrens") or []))
+        if len(ch) >= 2:
+            routes.append(ch)
+    return tuple(routes)
+
+
 def parse_skeleton() -> list[dict]:
     """主链骨架:plaza config + 图鉴截图 → [{name, category, effect, stacking, ...}]。
 
@@ -138,8 +153,10 @@ def parse_skeleton() -> list[dict]:
             seen.add(key)
             desc = pe.get("desc") or ""
             entries.append({"name": nm, "category": cat, "effect": desc,
-                            "stacking": _stacking(desc), "source": ""})
-        # 特权条目补(普通版之上加特权名)
+                            "stacking": _stacking(desc), "source": "",
+                            "official": pe.get("category_name") or "",
+                            "props": _props(pe), "recipes": _recipes(pe)})
+        # 特权条目补(普通版之上加特权名;数值为普通版翻倍,自带 properties)
         for pe in cfg["equipment_list"]:
             nm = pe["name"].replace(chr(0x2022), chr(0x00B7))
             if not nm.endswith(chr(0x00B7) + "特权"):
@@ -149,7 +166,9 @@ def parse_skeleton() -> list[dict]:
             seen.add(nm)
             desc = pe.get("desc") or ""
             entries.append({"name": nm, "category": "特权", "effect": desc,
-                            "stacking": _stacking(desc), "source": ""})
+                            "stacking": _stacking(desc), "source": "",
+                            "official": pe.get("category_name") or "",
+                            "props": _props(pe), "recipes": _recipes(pe)})
 
     codex_path = REPO / ".debug/temp/cw_equip_data.json"
     if codex_path.exists():
@@ -226,11 +245,20 @@ def merge_codex(entries: list[dict]) -> list[dict]:
     codex = json.loads(codex_path.read_text(encoding="utf-8"))
     TIER_CAT = {"简易": "简易", "进阶": "进阶", "特权": "特权", "星徽": "星徽", "消耗品": "工具"}
 
-    # 进阶配方:图鉴 icon 反查产物(36/36,方案 b)覆盖 md 配方(21 条,仅 1 条用户确认过)
+    # 配方交叉验证:图鉴 icon 反查(36/36)vs plaza 官方 compose_list —— 官方为准,不一致打印告警
+    n_agree = n_conflict = 0
     for e in entries:
         rec = (codex.get(e["name"]) or {}).get("recipe")
-        if rec and len(rec) >= 2:
-            e["recipe"] = tuple(rec[:2])
+        if not (rec and len(rec) >= 2):
+            continue
+        icon_route = tuple(sorted(rec[:2]))
+        official_routes = [tuple(sorted(r)) for r in e.get("recipes") or ()]
+        if icon_route in official_routes:
+            n_agree += 1
+        else:
+            n_conflict += 1
+            print(f"[recipe-conflict] {e['name']}: 图鉴icon={icon_route} vs 官方={e.get('recipes')}")
+    print(f"[recipe-xcheck] 图鉴icon 与官方 compose 一致 {n_agree} / 冲突 {n_conflict}")
     # 数值校验(2026-08-16):图鉴 OCR 数字误读(虫洞 150→250/冷笑话 4层→5层实测)→
     # plaza 官方 desc 数值为准:数字序列不一致时整条 effect 换 plaza 版(结构化无 OCR 噪声)
     import re as _re
@@ -248,7 +276,6 @@ def merge_codex(entries: list[dict]) -> list[dict]:
             if not pd or not e["effect"]:
                 continue
             clean = _re.sub(r"<[^>]+>", "", pd)
-            n_o = _re.findall(r"\d+(?:\.\d+)?%?", e["effect"].replace(" ", ""))
             n_p = _re.findall(r"\d+(?:\.\d+)?%?", clean.replace(",", ""))
             # 逗号千分位归一(5,000→5000)后再比
             n_o2 = _re.findall(r"\d+(?:\.\d+)?%?", e["effect"].replace(" ", "").replace(",", ""))
@@ -288,12 +315,12 @@ def main() -> None:
         if e["name"] not in md_names:
             entries.append(e)
     entries = merge_codex(entries)
-    recipes = parse_recipes()
-    for e in entries:
-        # 配方优先级:图鉴 icon 反查(merge_codex 注入,36/36)> md 文字(21 条,仅 1 条用户确认);
-        # 图鉴无配方条目才回落 md
-        if not e.get("recipe"):
-            e["recipe"] = recipes.get(e["name"])
+    # 配方 = plaza 官方 compose_list(parse_skeleton 注入;进阶36+星徽17+宝钻1=54 条),
+    # 与图鉴 icon 反查在 merge_codex 内交叉验证;md 配方(21 条,仅 1 条确认)已退役不再回落
+    for e in entries:  # 非 plaza 来源(图鉴/md 兜底)补默认空值
+        e.setdefault("recipes", ())
+        e.setdefault("props", ())
+        e.setdefault("official", "")
     by_cat: dict[str, list[dict]] = {}
     for e in entries:
         by_cat.setdefault(e["category"], []).append(e)
@@ -309,9 +336,14 @@ def main() -> None:
         for e in es:
             eff = e["effect"].replace('"', '\\"')
             stk = "True" if e["stacking"] else "False"
-            rec = e.get("recipe")
-            rec_arg = f", recipe={rec!r}" if rec else ""
-            eq_lines.append(f'    _eq("{e["name"]}", "{e["category"]}", "{eff}", {stk}, "{e["source"]}"{rec_arg}),')
+            extra = ""
+            if e.get("recipes"):
+                extra += f", recipes={e['recipes']!r}"
+            if e.get("props"):
+                extra += f", props={e['props']!r}"
+            if e.get("official"):
+                extra += f', official={e["official"]!r}'
+            eq_lines.append(f'    _eq("{e["name"]}", "{e["category"]}", "{eff}", {stk}, "{e["source"]}"{extra}),')
         eq_lines.append("")
 
     count_summary = " / ".join(f"{c.split(': ')[0]} {c.split(': ')[1]}" for c in counts)
@@ -331,7 +363,9 @@ _MODULE_TEMPLATE = '''"""货币战争 装备领域模型(Equipment + EQUIPMENTS 
 **生成**:本文件由 ``tools/cw/gen_equip_registry.py`` 生成(**勿手改**;
 重跑 ``uv run python tools/cw/gen_equip_registry.py``)。
 数据源优先级:骨架(name/category)= plaza 官方 API > 图鉴截图;
-effect = 图鉴 OCR(plaza 数值校验层修正误读)> md;recipe = 图鉴 icon 反查 > md;
+effect = 图鉴 OCR(plaza 数值校验层修正误读)> md;
+recipes/props/official = plaza 官方 API(compose_list 结构化合成树 + properties
+结构化数值 + category_name 官方分类;与图鉴 icon 反查交叉验证);
 ``docs/game/currency_war/data/equipment.md`` 仅未解锁兜底(4 条,解锁采集后可删)。
 
 **来源溯源**:数据银行装备图鉴(权威)+ 米游社图鉴对齐。2026-08-06 经 ``harvest_equip_codex``
@@ -353,12 +387,16 @@ class Equipment:
     effect: str         # 效果原文(简易只基础属性→空)
     stacking: bool      # 效果可叠加("可叠加"/"叠加N层"→True)
     source: str = ""    # 米游社 content_id
-    recipe: tuple[str, str] | None = None  # 进阶合成配方(2 简易);非进阶/待核→None
+    recipes: tuple[tuple[str, ...], ...] = ()   # 官方合成路线(材料名组);进阶36+星徽17+宝钻1(3路);空=非合成/未知
+    props: tuple[tuple[str, str], ...] = ()     # 结构化数值 (属性名, 数值%) —— plaza properties,100/101 覆盖
+    official_category: str = ""  # plaza 官方分类名(进阶装备/特权装备/星徽/羁绊装备/宝钻);非 plaza 条目空
 
 
 def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
-        recipe: tuple[str, str] | None = None) -> Equipment:
-    return Equipment(name=name, category=category, effect=effect, stacking=stacking, source=source, recipe=recipe)
+        recipes: tuple[tuple[str, ...], ...] = (),
+        props: tuple[tuple[str, str], ...] = (), official: str = "") -> Equipment:
+    return Equipment(name=name, category=category, effect=effect, stacking=stacking, source=source,
+                     recipes=recipes, props=props, official_category=official)
 
 
 # ===== EQUIPMENTS 全量注册表(__TOTAL__ 件;__COUNTS__)=====

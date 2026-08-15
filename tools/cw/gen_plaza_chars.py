@@ -125,10 +125,16 @@ def gen_data_py(roles: list, version: str) -> None:
         cname = canon(e["name"], e["id"])
         traits = tuple(t["name"] for t in (e.get("trait_details") or []))
         skills = tuple(s["name"] for s in (e.get("skills") or []))
+        # 官方职能标签(skills[].category_tags 并集,保序去重):输出/辅助/治疗/护盾
+        tags: list[str] = []
+        for s in e.get("skills") or []:
+            for t in s.get("category_tags") or []:
+                if t not in tags:
+                    tags.append(t)
         rows.append(
             f"    PlazaRole(id={e['id']!r}, name={cname!r}, cost={int(e['rarity'])}, "
             f"position={e['front_back_type']!r}, traits={traits!r}, skills={skills!r}, "
-            f"is_hide={e['is_hide']}, is_expert={e['is_expert']}),"
+            f"tags={tuple(tags)!r}, is_hide={e['is_hide']}, is_expert={e['is_expert']}),"
         )
     head = [
         f"# 警告:本文件由 tools/cw/gen_plaza_chars.py 生成(plaza config V{version}),勿手编;版本更新重跑生成。",
@@ -151,6 +157,7 @@ def gen_data_py(roles: list, version: str) -> None:
         "    position: str          # Front/Back/Common",
         "    traits: tuple[str, ...]",
         "    skills: tuple[str, ...]",
+        "    tags: tuple[str, ...]   # 官方职能标签(category_tags 并集):输出/辅助/治疗/护盾",
         "    is_hide: bool",
         "    is_expert: bool",
         "",
