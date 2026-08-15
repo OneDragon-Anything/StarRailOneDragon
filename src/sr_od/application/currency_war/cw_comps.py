@@ -169,9 +169,13 @@ COMP_LIBRARY: list[Comp] = [
         level_plan={
             3: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七"], star_goals={"三月七": 2}),
             4: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "花火"]),
-            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            5: LevelGoal("level_up"), 6: LevelGoal("level_up"),
+            # ADR-0128(攻略复查 #8,阵容_列车同行:53):**停留 7 级猛 D 3星姬子**(3费 7 级概率
+            # 峰值 p=0.40)—— 旧 7=level_up 直冲 8 违背「核心概率级停留」人玩节奏。
+            7: LevelGoal("roll", target_cost=3, target_chars=["姬子·启行", "三月七", "花火"],
+                         star_goals={"姬子·启行": 3}),
             8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
-                         star_goals={"姬子·启行": 2, "花火": 2}),
+                         star_goals={"姬子·启行": 3, "花火": 2}),
         },
     ),
     Comp(

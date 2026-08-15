@@ -28,6 +28,13 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 
+# 购买经验机制(ADR-0129;用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
+# 「购买经验」每点一次 +XP_PER_BUY 经验、花小额金币(按钮实读 state.level_up_cost);经验攒够当前级
+# 门槛自动升级,溢出结转。等级门槛表(升下一级所需总经验):
+XP_PER_BUY: int = 4
+XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
+XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
+
 
 @dataclass
 class ShopCard:
@@ -70,7 +77,7 @@ class GameState:
     level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
-    level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,plan 用 LEVEL_UP_COST_TABLE 兜底)
+    level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,用 XP_CLICK_COST_FALLBACK 兜底)
     shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
@@ -172,7 +179,7 @@ class SellBench:
 
 @dataclass
 class LevelUp:
-    cost: int        # 本次升等级花费(由外部按 LEVEL_UP_COST_TABLE 估)
+    cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
 
 
 @dataclass
@@ -304,9 +311,20 @@ def simulate(state: GameState, action: Action) -> GameState:
             sold = s.bench.pop(action.bench_idx)
             s.gold += sell_refund(sold.star, _bench_char_cost(sold))
     elif isinstance(action, LevelUp):
+        # 真实语义(ADR-0129):一次「购买经验」= +XP_PER_BUY 经验、-单击金币;攒够当前级门槛自动
+        # 升级(跨级结转溢出)。旧模型「一次动作 = 升 1 级 + 扣整级大金」与机制不符 → 升级门过度
+        # 保守(以为要点 36-60 金,实际每击 4-8 金)→ 升级滞后 live 实锤(M15 进位面 2 真实 lv5)。
         if s.level < 10:  # 封顶 10 级
             s.gold -= action.cost
-            s.level += 1
+            _cur = s.xp_progress[0] if s.xp_progress else 0
+            _cur += XP_PER_BUY
+            while s.level < 10:
+                _need = XP_TO_NEXT_LEVEL.get(s.level, 4)
+                if _cur < _need:
+                    break
+                _cur -= _need
+                s.level += 1
+            s.xp_progress = (_cur, XP_TO_NEXT_LEVEL.get(s.level, _cur))
     elif isinstance(action, DeployMove):
         if 0 <= action.bench_idx < len(s.bench):
             bc = s.bench.pop(action.bench_idx)

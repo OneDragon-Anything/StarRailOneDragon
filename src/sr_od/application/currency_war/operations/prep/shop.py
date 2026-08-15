@@ -299,7 +299,8 @@ class BuyShopCards(SrOperation):
         if not self.round_by_ocr(screen, '备战席已满').is_success:
             return False
         level_btn = area_center(self.ctx, BuyShopCards.BUY_EXP_AREA) or BuyShopCards.LEVEL_UP_FALLBACK
-        for _ in range(8):
+        # ADR-0129:每击 +4 XP;6→7 级需 40 XP = 10 击(盖全等级段,原 8 击不够)
+        for _ in range(10):
             self.ctx.controller.click(level_btn)
             time.sleep(0.3)
         for sell_i in range(3):

@@ -54,3 +54,6 @@
 | [0121](0121-sell-refund-fee-cost-dependent.md) | sell_refund 手续费 cost 相关(1费 exempt;2费+ star≥2 才减1) | accepted | 2026-08-13 | live 实测 2★1费 万敌出售=+3(cost×3,无−1;VLM 读「金币+3」)。用户:1费不减、2费开始减1 → 手续费 cost 相关非纯 star。改 −1 条件 star≥2→star≥2 且 cost≥2(旧一刀切把1费也−1了,错)。1费各星全额退;cost≥2 star≥2 −1。economy §2 矛盾消解(1费免费对)。删 sell-star 停机钩子(售价已验) |
 | [0122](0122-battle-prep-idmark-overlay-substate.md) | 备战 id_mark + overlay/子态区分(前台区域被盖;子态独立屏) | accepted | 2
 | [0123](0123-prep-director-observation-loop.md) | 备战编排固定序列 → 观察驱动决策环 PrepDirector(decide_prep_action 单步;腾席优先级;P1-P3 迁移) | accepted | 2026-08-14 |026-08-13 | 备战旧只购买经验→overlay 帧透出购买经验也命中备战→撞车。改:备战=购买经验+前台区域+后台区域(前台区域=棋盘前排标签,被中心 overlay 盖→overlay 帧备战缺它不 is_precise);overlay=购买经验+标题(组合);备战-开商店=购买经验+收起;备战-装备详情=无 id_mark(子态)。删测试豁免,测试+live 双确认。crop-OCR 坑:前台区域紧框漏检→放宽给上下文 |
+| [0128](0128-user-rhythm-batch1.md) | 用户人玩节奏批次1(连胜不对称/1费集星免费/boss前花完/comp停留D) | accepted | 2026-08-15 | 攻略复查11项小修4项+comp停留语义:streak只计连胜(无连败补偿);cost==1集2★免费(净0);node_type=boss→不攒息+刷cap4;comp显式roll压过node地板(列车停7级D3星姬子,旧冲8) |
+| [0129](0129-xp-click-model-and-level-from-xp.md) | 购买经验单击模型(+4XP/击,门槛自动升级溢出结转)+XP分母反推真等级 | accepted | 2026-08-15 | 用户门槛表4/6/20/40/52/72/84+telemetry对拍;LevelUp=单击非整级大金(旧模型高估成本→升级滞后,M15进P2真lv5);read_level启发兜底污染观测→XP反查覆盖+[cw!]留证 |
+

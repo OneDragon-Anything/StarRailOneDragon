@@ -37,6 +37,9 @@ from sr_od.application.currency_war.cw_comps import (
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
+    XP_CLICK_COST_FALLBACK,
+    XP_PER_BUY,
+    XP_TO_NEXT_LEVEL,
     Action,
     BenchChar,
     BuyCard,
@@ -86,8 +89,54 @@ OFF_TARGET_DISCOUNT: float = 1.0       # 2026-08-04 revert(原 0.3):实跑发现
 TARGET_FACTION_BONUS: float = 1.5      # target 阵营 tier 部分 ×1.5(tier-only,close-to-next 不加;见 synergy_score)
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
-# 默认升级金价(粗估,实机校准)
-LEVEL_UP_COST_TABLE: dict[int, int] = {2: 4, 3: 10, 4: 18, 5: 30, 6: 36, 7: 48, 8: 60, 9: 70, 10: 84}
+# —— 购买经验决策 helper(ADR-0129;机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
+def xp_click_cost(state: GameState) -> int:
+    """一次「购买经验」单击花金(state.level_up_cost OCR 实读优先;缺 → XP_CLICK_COST_FALLBACK)。"""
+    return state.level_up_cost if state.level_up_cost else XP_CLICK_COST_FALLBACK
+
+
+def clicks_to_next_level(state: GameState) -> int:
+    """从当前 XP 到升 1 级还需的单击次数(xp 未知按 0 进度向上取整;满级返 0)。"""
+    if state.level >= 10:
+        return 0
+    if state.xp_progress:
+        cur, need = state.xp_progress
+    else:
+        cur, need = 0, XP_TO_NEXT_LEVEL.get(state.level, 4)
+    return max(0, -(-(need - cur) // XP_PER_BUY))
+
+
+def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
+    """是否处于「该买经验」期:comp level_goal 说 level_up,或落后 NodeGoal.target_level 地板。
+
+    ADR-0128(用户节奏 §7-7「不无脑停概率最高级,也不无脑推级」):comp 对**当前级**显式给了
+    roll/stable(= 停留本级 D 核心)→ comp 停留意图压过 node 地板 —— 钱该花在 D 牌不是经验;
+    未给(走通用曲线)才按 node 地板推。例:列车同行 lv7 roll 3星姬子(攻略 列车:53)→ 不推 8。
+    """
+    if state.level >= 10:
+        return False
+    if target_comp is not None:
+        _own = target_comp.level_plan.get(state.level)
+        if _own is not None:
+            if _own.action == 'level_up':
+                return True
+            if _own.action in ('roll', 'stable'):
+                return False   # comp 明确停留本级:D 核心,不买经验
+    goal = _resolve_level_goal(state, target_comp)
+    if goal is not None and goal.action == 'level_up':
+        return True
+    return state.level < get_node_goal(state.plane, state.round_num).target_level
+
+
+def _xp_gold_floor(state: GameState, config, want_level: bool) -> int:
+    """买经验时的存金地板(用户节奏 economy_research §7:不影响吃息;追级期降档)。
+
+    非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
+    追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。
+    """
+    if state.hp < effective_hp_threshold(state, config):
+        return 10
+    return 20 if want_level else INTEREST_THRESHOLD
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
@@ -256,8 +305,10 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     elif economy_mode == "rush_level":
         interest_val *= 0.5
         level_val *= 1.5   # rush_level:等级项加权(抢升语义 —— 落后等级更痛、领先更值),不只弱化守息
-    # streak 档位金(C 杠杆 2;fixture 核实后接线 2026-08-11):state.streak 带符号,magnitude 对称计。
-    streak_val = min(abs(state.streak or 0), STREAK_CAP) * STREAK_WEIGHT
+    # streak 档位金(C 杠杆 2;fixture 核实后接线 2026-08-11)。ADR-0128(攻略复查 #5):货币战争
+    # **无连败补偿**(核心机制:27,vs TFT)→ 只计连胜方向,连败 0 分(旧 magnitude 对称计 = 把
+    # 不存在的连败金也计入经济分 → 连败中虚高,误导「连败也值钱」)。
+    streak_val = min(max(state.streak or 0, 0), STREAK_CAP) * STREAK_WEIGHT
     return interest_val + level_val + streak_val
 
 
@@ -291,7 +342,8 @@ def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[
     return (1.0, 1.0, 1.0)       # 健康:平衡(economy 不压低,snowball 到 50)
 
 
-def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
+def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
+                 target_comp: Comp | None = None) -> int:
     """本回合 D 牌(刷新)上限(动态;review agent + 用户:固定 2 太死)。
 
     关键回合放宽:升 8 后 / plane3 搜核心、HP 危险锁血急救。
@@ -304,6 +356,12 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER) -> int:
         cap = max(cap, 4)                # 升 8 后 / plane3:搜核心多刷
     if state.hp < hp_threshold:
         cap = max(cap, 4)                # 锁血急救:多刷找质量
+    if state.node_type == 'boss':
+        cap = max(cap, 4)                # ADR-0128(复查 #4):boss 关前把钱花完(D 出质量保 HP)
+    if (target_comp is not None
+            and target_comp.level_plan.get(state.level) is not None
+            and target_comp.level_plan[state.level].action == 'roll'):
+        cap = max(cap, 4)                # ADR-0128:comp 明确停留本级 roll(D 核心概率级)→ 放开刷
     if any(s in REFRESH_DISCOUNT_STRATEGIES for s in state.active_strategies):
         cap = max(cap, 6)                # 刷新减费策略:D牌变便宜,放宽多搜核心
     return cap
@@ -344,6 +402,10 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
     结算源 session.last_streak,方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b:血量安全→fold/不安全→急救)。
     """
     if state.gold >= INTEREST_THRESHOLD:
+        return False
+    # ADR-0128(攻略复查 #4,经济运营:18「boss 关前把钱花完」):boss 节点不攒息 —— 存金边际
+    # 价值(5息)远低于板强保 HP(HP 是通关硬约束,息随时可再攒);read_node_type 对 boss 稳(实机核实)。
+    if state.node_type == 'boss':
         return False
     if state.deployed_count() < state.max_units():
         return False
@@ -628,22 +690,21 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
     return sum(deltas) / len(deltas) if deltas else 0.0
 
 
-def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
-    """升等级硬门(plan()/PrepDirector 腾席链 b 步共用单一源;doc 15 §5.2b / §4.1)。
+def level_up_gate(state: GameState, target_comp: Comp | None = None,
+                  config=None) -> bool:
+    """买经验硬门(plan()/PrepDirector 腾席链 b 步共用单一源;doc 15 §5.2b / §4.1;ADR-0129)。
 
-    条件 = level<10 + gold≥LEVEL_UP_COST_TABLE[level+1] + (level_goal 说 level_up **或**
-    落后 NodeGoal.target_level)。⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态
-    的 fresh state 上判(PrepDirector: EnsureShopOpen 后重读;doc 15 §5.2b M2)。
+    条件 = level<10 + 该买经验(_want_level_up)+ 存金允许(扣单击价后不破 _xp_gold_floor)。
+    旧门要求 gold≥整级大金(36-60)→ 实际每击仅 4-8 金 → 过度保守 → 升级滞后(M15 live 实锤)。
+    ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
+    (PrepDirector: EnsureShopOpen 后重读;doc 15 §5.2b M2)。
     """
     if state.level >= 10:
         return False
-    cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)
-    if state.gold < cost:
+    want = _want_level_up(state, target_comp)
+    if not want:
         return False
-    goal = _resolve_level_goal(state, target_comp)
-    if goal is not None and goal.action == 'level_up':
-        return True
-    return state.level < get_node_goal(state.plane, state.round_num).target_level
+    return state.gold - xp_click_cost(state) >= _xp_gold_floor(state, config, want)
 
 def plan(state: GameState, config, faction_priority: list[str],
          rng: random.Random | None = None,
@@ -665,10 +726,14 @@ def plan(state: GameState, config, faction_priority: list[str],
 
     # —— 硬门:bench-full → 必破(优先升等级,无金则卖最弱)——
     if cur.bench_is_full():
-        cost = LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)
-        if cur.level < 10 and cur.gold >= cost:
-            actions.append(LevelUp(cost=cost))
-            cur = simulate(cur, actions[-1])
+        # bench-full 是阻塞态:点够「真升 1 级」的单击次数解锁(ADR-0129;点不起整套 → 卖最弱。
+        # 旧按整级大金判可负担性 → 高估成本 → 不必要卖牌)。
+        _clicks = clicks_to_next_level(cur)
+        _one = xp_click_cost(cur)
+        if cur.level < 10 and _clicks > 0 and cur.gold >= _clicks * _one:
+            for _ in range(_clicks):
+                actions.append(LevelUp(cost=_one))
+                cur = simulate(cur, actions[-1])
         else:
             idx = _weakest_bench_idx(cur, character_priority, target_comp)
             if idx is not None:
@@ -692,16 +757,22 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 不惜(升级解锁高费刷新率 + 出战位 = 关键长期投资)。每轮最多 1 级(自然节流,防一轮烧光金)。
     # 升级条件单一源抽 level_up_gate(PrepDirector 腾席链 b 步共用,防两处漂移;P1 2026-08-14):
     # 够钱 + (level_plan 说 level_up **或** 落后 NodeGoal.target_level)。每轮 ≤1 级(自然节流)。
-    if level_up_gate(cur, target):
-        actions.append(LevelUp(cost=LEVEL_UP_COST_TABLE.get(cur.level + 1, 70)))
-        cur = simulate(cur, actions[-1])
+    if level_up_gate(cur, target, config):
+        # ADR-0129:买经验 = 单击 +4 XP;点满「到下一级」所需次数为一段(每轮 ≤1 级自然节流),
+        # 预算受 _xp_gold_floor 约束(追级期保 20 / 攒息期保 50 / 血危 10)。
+        _one = xp_click_cost(cur)
+        _budget = cur.gold - _xp_gold_floor(cur, config, True)
+        for _ in range(min(clicks_to_next_level(cur), max(0, _budget // _one))):
+            actions.append(LevelUp(cost=_one))
+            cur = simulate(cur, actions[-1])
 
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority, target)
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config)) - refresh_used,
+                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config),
+                                                                  target_comp=target) - refresh_used,
                                       target_comp=target)
         if not step:
             break
@@ -735,14 +806,11 @@ def _best_improving_action(
         if delta > best_delta + 1e-6:
             best, best_delta = seq, delta
 
-    _goal = _resolve_level_goal(state, target_comp)
-    _lv_cost = LEVEL_UP_COST_TABLE.get(state.level + 1, 70)         # 升下一级金价
-    # 想升 + 还没够钱 → 抑制散牌买/刷,攒金。否则 gate 永远付不起(bot 花光金不攒,lv4 gold12 实测)。
-    # node_plan(14 §2):目标等级用 NodeGoal.target_level(节点级)替 _expected_level 曲线。
-    _want_level = (state.level < 10 and (
-        (_goal is not None and _goal.action == "level_up")
-        or state.level < get_node_goal(state.plane, state.round_num).target_level))
-    _saving_for_level = _want_level and state.gold < _lv_cost
+    # 想升 + 存金不敷「单击价 + 地板」→ 抑制散牌买/刷,攒金(ADR-0129:单击价小,此抑制远弱于旧
+    # 整级大金版,对齐用户「不影响吃息基础上多买牌」;只在真攒不出单击钱时才锁)。
+    _want_level = _want_level_up(state, target_comp)
+    _saving_for_level = (_want_level and state.gold
+                         < xp_click_cost(state) + _xp_gold_floor(state, config, _want_level))
     # D-14(2026-08-09,4th 自审 + 经济诊断):_saving_for_level **不再**被 _board_strong 门控。
     # 旧门控(板弱 form_progress<COMMIT_FRAC → 不攒级 → 花买/刷)致 chicken-egg:tier-2 弱板→不攒级→永不升→
     # 卡 lv6 cap→上不了更多单位→永 tier-2→p2 死。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。
@@ -777,9 +845,13 @@ def _best_improving_action(
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
         if (card.name and card.name in _deployed_name_counts
+                and card_cost(card) > 1
                 and not (target_comp is not None
                          and _card_hits_target(card.name, card.faction, target_comp))):
-            continue   # 场上已有同名散牌 → 不集(死钱);target/core 继续集;未知名不判(无法识别重复)
+            # 场上已有同名散牌 → 不集(死钱);target/core 继续集;未知名不判(无法识别重复)。
+            # ADR-0128(攻略复查 #11,前期过渡:29):**1费例外** —— 1星买卖净 0(ADR-0121),场上
+            # 同名 1费买第 2/3 张集 2★ = 免费战力(合完还能原价卖),不属死钱。
+            continue
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
         if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue

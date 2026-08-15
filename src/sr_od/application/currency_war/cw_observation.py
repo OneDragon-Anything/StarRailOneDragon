@@ -75,6 +75,7 @@ from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     read_round_outcome,
 )
 from sr_od.application.currency_war.cw_state import (
+    XP_TO_NEXT_LEVEL,
     GameState,
     ShopCard,
     rebuild_deployed_from_board,
@@ -529,6 +530,15 @@ def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
 
 
 # ===== 组合入口 =====
+def _level_from_xp(xp_progress: tuple[int, int] | None) -> int | None:
+    """XP 条分母反推当前等级(ADR-0129):"cur/need" 的 need = 当前级→下一级门槛,反查
+    ``XP_TO_NEXT_LEVEL``。1-2 级门槛不在表(用户表从 LV.3 起)→ None(调用方不覆盖,安全)。"""
+    if not xp_progress:
+        return None
+    _inv = {v: k for k, v in XP_TO_NEXT_LEVEL.items()}
+    return _inv.get(xp_progress[1])
+
+
 def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     """一战前备战屏(商店已开)→ GameState(喂 plan)。
 
@@ -542,6 +552,16 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.node_type = read_node_type(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
+    state.xp_progress = read_xp_progress(ctx, screen)
+    # XP 分母反推真等级(ADR-0129):XP 条 "cur/need" 的 need = 当前级→下一级门槛(用户实测表
+    # XP_TO_NEXT_LEVEL,telemetry 多局分母 4/6/20/40 对拍一致)。read_level OCR 失败时静默用
+    # _expected_level 启发式兜底 —— 该值污染策略输入与 telemetry(live 实锤:真等级 5→6 过渡期
+    # level 列恒为启发值 6;M15 进位面 2 真实 lv5 被记成 lv6)。XP 可读 → 反查表覆盖;与读值
+    # 冲突 → 信 XP 分母 + [cw!] 留证(1-2 级门槛不在表 → 反查失败不覆盖,安全)。
+    _xp_lv = _level_from_xp(state.xp_progress)
+    if _xp_lv is not None and _xp_lv != state.level:
+        log.warning(f'[cw!] level 修正:OCR/兜底读 {state.level},XP 分母反推 {_xp_lv}(以 XP 为准)')
+        state.level = _xp_lv
     # 单调守卫(level-robust,2026-08-09 自审 §4):等级局内**只升不降**(CW 无降级机制)。
     # read_level OCR 间歇误读(实测 r1 lv4→r2 lv5→r3 lv4 倒退;lv4 非 _expected_level 兜底[=5] → 是 OCR 把
     # 5/6 读成 4)→ level 字段不可信 → max_units/cap/economy 全跟着错。守卫:读出 < session 上次真值 = 误读,
@@ -560,7 +580,6 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
                 f'[cw!] level 跳变守卫:OCR 读 {state.level} > 上次 {_last_lv}+2(疑似 XP 数字混入) → 用 {_last_lv}(误读不锁死)')
             state.level = _last_lv
         _match.session.last_level_obs = state.level
-    state.xp_progress = read_xp_progress(ctx, screen)
     # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
     _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
     state.enemy_difficulty = _ed if _ed is not None else read_enemy_difficulty(ctx, screen)
