@@ -288,7 +288,13 @@ def gen_equip_templates(cfg: dict) -> None:
         ys, xs = np.where(m)
         if len(xs):
             rgb = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        cv2.imencode(".png", rgb)[1].tofile(dst)
+        h, w = rgb.shape[:2]
+        s = 98 / max(h, w)
+        rgb = cv2.resize(rgb, (max(1, int(w * s)), max(1, int(h * s))), interpolation=cv2.INTER_AREA)
+        canvas = np.full((98, 98, 3), (30, 30, 34), np.uint8)
+        oh, ow = rgb.shape[:2]
+        canvas[(98 - oh) // 2:(98 - oh) // 2 + oh, (98 - ow) // 2:(98 - ow) // 2 + ow] = rgb
+        cv2.imencode(".png", canvas)[1].tofile(dst)
     # 手工补充:名字不在 plaza 普通名的全部(简易/特权/合成件)
     # 命名对齐(2026-08-15):registry 的 财富(基础)/(强化) 共用手工 财富.png 两份拷贝;
     # plaza 的 诅咒·干将莫邪 为 registry 漏项(cw_equipment_data 生成器待补),模板照收。

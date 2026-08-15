@@ -216,8 +216,8 @@ def read_equipped_below(
         raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 命中(>=threshold)
         near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<threshold),MISS 日志用
         # 大图模板 multi-scale TM(icon ~32-34px 随位置变,D-49/D-51;缩到 29-36px 覆盖)。
-        # scales 语义 = 相对 98px 基准(手工库);混合库含 128px plaza 官方图(用户 2026-08-15:保持
-        # 原始分辨率不烘焙)→ 按模板宽归一换算,等效目标像素不变(32-34px icon 各档一致)。
+        # scales 语义 = 相对 98px 基准;混合库(plaza 官方烘焙已统一 98px,用户 2026-08-15 定)
+        # 归一换算保留作防御(模板若非 98 尺寸仍等效目标像素)。
         for name, tgray in tmpl_grays.items():
             th, tw = tgray.shape
             k = 98.0 / max(tw, th)   # 模板宽→98 基准的换算系数
