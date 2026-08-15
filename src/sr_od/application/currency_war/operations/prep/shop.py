@@ -36,6 +36,12 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
+def _form_progress(comp, state) -> float:
+    """fp 遥测helper(review 要求:fp 轨迹可观测;comp None 时不调)。"""
+    from sr_od.application.currency_war.cw_comps import form_progress
+    return form_progress(comp, state)
+
+
 def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
     """tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
 
@@ -198,9 +204,10 @@ class BuyShopCards(SrOperation):
             # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
             target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
 
+            _fp_v = _form_progress(match.session.target_comp, state) if match.session.target_comp is not None else -1.0
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
                      f'plane={state.plane} round={state.round_num} board={state.board} '
-                     f'target={target_name!r}')
+                     f'target={target_name!r} fp={_fp_v:.2f} bench={len(state.bench)}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
             cw_telemetry.record_decision(state, target_name, {}, {}, actions)   # 写本地 decisions.jsonl(含 A2 target)
