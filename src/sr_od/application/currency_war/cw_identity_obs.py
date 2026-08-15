@@ -250,7 +250,24 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
 
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复。
     """
-    return identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
+    chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
+    # [采集钩子·临时,采完删(用户 2026-08-15 指示)]召唤物建档:狸猫系(狸小龙/狸小虎/狸狸)/佩佩/
+    # 姵姵/Gemini 等策略召唤的单位不在立绘库 → SIFT miss,但**槽位占用(slot_occupied CV)为真** ——
+    # 「占位但认不出」= 未建档角色现身(召唤物新类 / 立绘缺角色),整屏存证离线建模板。
+    try:
+        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        _named = {c.slot for c in chars} if chars else set()
+        for _slot, _rect in _ctx_slots(ctx, '备战栏', 9):
+            if _slot in _named:
+                continue
+            from sr_od.application.currency_war.currency_war_cv import slot_occupied
+            if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
+                             _rect.y1 + (_rect.y2 - _rect.y1) // 2):
+                cw_shot_unique(screen, 'bench_unidentified')
+                break
+    except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
+        pass
+    return chars
 
 
 # ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
