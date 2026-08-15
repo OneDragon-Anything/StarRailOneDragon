@@ -62,7 +62,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("飞霄", 1, "front", "输出", "狼狩", "追击", source="6373"),
     _ch("椒丘", 1, "front", "治疗、辅助", "", "持续伤害、减益", source="6531"),
     _ch("加拉赫", 1, "flex", "治疗", "盛会之星", "治疗、击破", source="6522"),
-    _ch("娜塔莎", 1, "flex", "治疗", "贝洛伯格", "治疗", source="6548"),
+    _ch("娜塔莎", 3, "flex", "治疗", "贝洛伯格", "治疗", source="6548"),  # 费用勘误 1→3(广场 config rarity+bwiki 双源,2026-08-15)
     _ch("桑博", 1, "flex", "输出", "贝洛伯格、星间旅人", "持续伤害", source="6554"),
     _ch("赛飞儿", 1, "front", "辅助", "夜之半神", "追击、减益", source="6553"),
     _ch("万敌", 1, "flex", "输出", "夜之半神", "燃血", source="6541"),
@@ -78,7 +78,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("吉尔伽美什", 2, "flex", "输出", "命运圣杯", "能量", source="7880"),
     _ch("绯英", 2, "flex", "输出", "星间旅人", "欢愉", source="7467"),
     _ch("不死途", 2, "flex", "输出", "巡海游侠", "追击", source="7465"),
-    _ch("爻光", 2, "flex", "辅助", "仙舟", "欢愉", source="7000"),
+    _ch("爻光", 1, "flex", "辅助", "仙舟", "欢愉", source="7000"),  # 费用勘误 2→1(广场 config rarity+bwiki 双源,2026-08-15)
     _ch("砂金", 2, "front", "护盾、输出", "公司", "追击、护盾", source="6400"),
     _ch("阮·梅", 2, "back", "辅助", "银河学者", "击破", source="6399"),
     _ch("银枝", 2, "front", "输出、辅助", "星间旅人", "群攻", source="6392"),
@@ -102,7 +102,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("真理医生", 3, "front", "输出", "银河学者、星间旅人", "追击", source="6285"),
     _ch("星期日", 3, "flex", "辅助", "盛会之星、列车同行", "能量", source="6185"),
     _ch("白厄", 3, "front", "输出", "", "", independent="救世主", source="6134"),
-    _ch("银狼LV.999", 3, "front", "输出", "星核猎手", "欢愉", independent="头号玩家", source="7466"),
+    _ch("银狼LV.999", 3, "front", "输出", "星核猎手", "欢愉", independent="头号玩家", source="7466"),  # ⚠️ 3/4/5 费三档:升星升费(3星拖上场→4费1星→同理5费,备战不升费);cost=起始费,多档建模待策略层需要时扩(广场 id 15061/15062/15063,2026-08-15)
     # —— 4 费 ——
     _ch("开拓者·欢愉", 4, "back", "辅助", "列车同行", "欢愉", source="7469"),
     _ch("火花", 4, "front", "输出", "星间旅人", "战技点、欢愉", source="7001"),
@@ -127,7 +127,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("景元", 5, "front", "输出", "仙舟", "群攻、能量", source="6137"),
     _ch("托帕&账账", 5, "back", "输出、辅助", "公司", "追击", source="6136"),
     _ch("瓦尔特", 5, "front", "输出、辅助", "列车同行、星间旅人", "减益", source="6135"),
-    _ch("罗刹", 5, "flex", "治疗", "星间旅人", "治疗", source="6252"),   # 站位/类型 🟡 待核(characters.md)
+    _ch("罗刹", 4, "flex", "治疗", "星间旅人", "治疗", source="6252"),  # 费用勘误 5→4(广场 config rarity+bwiki 双源,2026-08-15);站位/类型 🟡 待核
 ]}
 
 # 规范名集合(从 CHARACTERS 派生;供 COMP_LIBRARY.core_chars / config.character_priority 校验)
