@@ -102,7 +102,7 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 ### Skills
 
-开发 skill 全在公共仓 `OneDragon-Skills`（`od-dev-*`，12 个：op / app / 玩法开发、画面建档、调试排查、PR 流程、skill 写作等），经 junction 挂进所用工具的 skill 目录自动加载（DSH: `.dsh/skills/` / Claude Code: `.claude/skills/`）；写作规范 `od-dev-writing-skills` 也在公共仓（见 §Skills）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
+开发 skill 全在公共仓 `OneDragon-Skills`（`od-dev-*`，索引见该仓 `skills/README.md`），经 junction 挂进所用工具的 skill 目录自动加载（DSH: `.dsh/skills/` / Claude Code: `.claude/skills/`）；写作规范 `od-dev-writing-skills` 也在公共仓（见 §Skills）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
 
 ### Plugin
 
