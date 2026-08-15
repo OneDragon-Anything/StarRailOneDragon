@@ -69,6 +69,10 @@ class Comp:
     mechanic_attributes: list[str] = field(default_factory=list)  # comp 机械属性 tag(mechanics_fit 经 MECHANIC 表判)
     shared_chars: list[str] = field(default_factory=list)    # 与其他 comp 共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
+    # ADR-0139(复查 #9):comp 特定站位要求(角色→"front"/"back"),覆盖命途 position_pref 默认 ——
+    # 攻略实证:爻光必后台(绯英攻略反向论证:后台跑条给前台多开大,总伤更高)、万敌独前排(燃血吃受击)、
+    # 知更鸟前台(追击支撑)。空 = 全按命途默认。
+    char_positions: dict[str, str] = field(default_factory=dict)
     typical_form_round: int = 0  # 大致成型所需轮次(level_plan 粗估汇总)
     version_tag: str = "V4.4"    # 版本维护用
 
@@ -204,6 +208,7 @@ COMP_LIBRARY: list[Comp] = [
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],
         mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "花火"],
+        char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
         transition_chars=["银狼LV.999", "爻光", "花火"], typical_form_round=6,
         level_plan={  # 低费欢愉:前期 roll 欢愉 → 升 8-9 找杨叔
             4: LevelGoal("roll", target_cost=1, target_chars=["绯英", "爻光"]),
@@ -378,6 +383,7 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         # playbook:docs/develop/currency_war/playbook/追击飞霄.md(改此条目须同步)
+        char_positions={"知更鸟": "front"},   # ADR-0139:知更鸟前台(追击攻略:鸟前台支撑中后期;砂金/灵砂/符玄等生存位也优先前台)
         name="追击飞霄", factions=["追击"], core_chars=["飞霄", "知更鸟", "缇宝", "不死途"],
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
@@ -398,6 +404,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"夜之半神": 4, "燃血": 4}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         mechanic_attributes=["燃血"],
+        char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
         key_equips=["火力风暴潮", "绝对热量", "热血沸腾拳"],   # 攻略(77056698):万敌风暴潮+绝对热量+热血沸腾拳;吃装备
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月"], transition_chars=["长夜月", "符玄", "风堇"], typical_form_round=6,

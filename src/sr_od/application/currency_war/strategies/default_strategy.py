@@ -249,7 +249,7 @@ class DefaultCwStrategy(CwStrategy):
         if obs.deploy_vacancy > 0:
             for bc in list(obs.bench_chars):
                 if cw_decisions._should_deploy(bc, st, target):
-                    row, ok = cw_decisions._pick_deploy_row(st, bc)
+                    row, ok = cw_decisions._pick_deploy_row(st, bc, target)
                     if not ok:
                         continue
                     occupied = obs.front_occupied if row == 'front' else obs.back_occupied

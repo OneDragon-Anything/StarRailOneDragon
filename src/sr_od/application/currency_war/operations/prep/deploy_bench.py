@@ -192,6 +192,12 @@ class DeployBench(SrOperation):
                     _bench_id[bc.slot - 1] = set(ch.factions) | set(ch.flows)
                     _bench_pos[bc.slot - 1] = ch.position_pref()
                     _bench_cid[bc.slot - 1] = bc.char_id
+        # ADR-0139:comp 特定站位覆盖命途默认(爻光必后台/万敌独前排——攻略实证,同 _pick_deploy_row 语义)
+        if (_sess is not None and _sess.target_comp is not None
+                and _sess.target_comp.char_positions):
+            for bi2, cid2 in list(_bench_cid.items()):
+                if cid2 in _sess.target_comp.char_positions:
+                    _bench_pos[bi2] = _sess.target_comp.char_positions[cid2]
             log.info(f'[cw-deploy] bench 身份(SIFT):{ {i: sorted(b) for i, b in _bench_id.items()} }'
                      f' pos={_bench_pos} tgt={sorted(_tgt)}')
         # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):read_deployed_chars → deployed char_id;

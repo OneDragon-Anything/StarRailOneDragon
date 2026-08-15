@@ -679,7 +679,7 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
         after = simulate(state, BuyCard(card=card))
         if after.deployed_count() < after.max_units() and after.bench:
             bc = after.bench[-1]
-            row, ok = _pick_deploy_row(after, bc)
+            row, ok = _pick_deploy_row(after, bc, target_comp)
             if ok:
                 after = simulate(after, DeployMove(bench_idx=len(after.bench) - 1,
                                                    to_row=row, faction=bc.faction))
@@ -938,7 +938,7 @@ def _best_improving_action(
                 and after_buy.bench[-1].char_id not in _dep_ids
                 and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):
             bc = after_buy.bench[-1]
-            row, ok = _pick_deploy_row(after_buy, bc)
+            row, ok = _pick_deploy_row(after_buy, bc, target_comp)
             if ok:
                 seq.append(DeployMove(bench_idx=len(after_buy.bench) - 1, to_row=row, faction=bc.faction))
         after = after_buy
@@ -958,7 +958,7 @@ def _best_improving_action(
             continue   # 场上已有同名(游戏禁双,5.1.7;留 bench 待合并)
         if not _should_deploy(bc, state, target_comp):
             continue
-        row, ok = _pick_deploy_row(state, bc)
+        row, ok = _pick_deploy_row(state, bc, target_comp)
         if not ok:
             continue
         mv = DeployMove(bench_idx=i, to_row=row, faction=bc.faction)
@@ -996,11 +996,18 @@ def _best_improving_action(
     return best
 
 
-def _pick_deploy_row(state: GameState, bc: BenchChar) -> tuple[str, bool]:
-    """按角色 position_pref 选排(偏好排优先,满则另一排);无空位返回 (row, False)。"""
+def _pick_deploy_row(state: GameState, bc: BenchChar,
+                    target_comp: Comp | None = None) -> tuple[str, bool]:
+    """按角色 position_pref 选排(偏好排优先,满则另一排);无空位返回 (row, False)。
+
+    ADR-0139:target_comp.char_positions(角色→front/back)覆盖命途默认 —— comp 特定站位是攻略实证
+    (爻光必后台/万敌独前排),比命途 position_pref 更准;无条目按默认。
+    """
     if state.deployed_count() >= state.max_units():
         return ("front", False)
     pref = bc.position_pref or "back"
+    if target_comp is not None and bc.char_id in target_comp.char_positions:
+        pref = target_comp.char_positions[bc.char_id]
     if pref == "front" and state.front_count() < state.front_max:
         return ("front", True)
     if state.back_count() < state.back_max:
