@@ -1162,6 +1162,8 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
 COMMIT_ROUND: int = 2
 COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型 comp
+PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(评审🟡6:easier/losing/overlap 叠乘最低
+#                                   0.039 < comp_score 单轮自然抖动 ~0.06-0.1 → losing 窗口噪声级 churn)
 
 
 def target_committed(target: Comp, state: GameState) -> bool:
@@ -1281,6 +1283,15 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                 _tag += f' [共享高{_overlap:.2f}降阈]'
             elif _overlap < 0.1:
                 _tag += f' [共享低{_overlap:.2f}加阈]'
+                # 评审🟡5:form_tiers 空的 comp(反甲白厄)fp 恒 0 → 永不 commit → 信号 1 是它
+                # 唯一出路,再吃 ×1.3 加阈 = 最难逃的 comp(与 commit 锁的防振荡初衷相反 ——
+                # 那是给"已成型"的保护,它从没成型过)。降回 1.0。
+                if target is not None and not target.form_tiers:
+                    _required_gap /= 1.3
+                    _tag += '[无form_tiers回1.0]'
+            # 评审🟡6:叠乘下限(0.10×0.7×0.7×0.8=0.039 < comp_score 单轮自然抖动 ~0.06-0.1
+            # → losing 窗口内在重叠 comp 间噪声级来回切)。设绝对下限防 churn。
+            _required_gap = max(_required_gap, PIVOT_GAP_FLOOR)
             if gap > _required_gap:
                 log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
                          state.plane, state.round_num, state.hp,

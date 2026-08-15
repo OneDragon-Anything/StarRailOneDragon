@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
-    COMP_LIBRARY,
+    char_routes,
     clamp,
     escort_for,
     form_progress,
@@ -374,18 +374,15 @@ def optionality_score(state: GameState) -> float:
     """灵活性分:bench 角色属 **≥2 个 COMP_LIBRARY comp**(``shared_chars ∪ core_chars``)→ 加分(保期权)。
 
     设计 P1-1:保 ≥2 comp 可行的 bench 角色 → 遇克/缺牌可转型,容错;过早卖 shared_chars 扣分(未实现,
-    集成时在 _bench_sell_value 加)。**未含 transition_chars**(需 comp 上下文,集成时补)。
+    集成时在 _bench_sell_value 加)。**未含 transition_chars**(已降级为参考字段,ADR-0149 由两级池替代)。
+    评审🟡8:角色→comp 计数改调 ``char_routes()`` 单一源(原处自建 dict 同构实现,双源易漂移)。
     """
     if not state.bench:
         return 0.0
-    # 预算每个角色属几个 comp(shared + core 合并)
-    char_comps: dict[str, int] = {}
-    for comp in COMP_LIBRARY:
-        for c in set(comp.shared_chars) | set(comp.core_chars):
-            char_comps[c] = char_comps.get(c, 0) + 1
+    routes = char_routes()
     score = 0.0
     for bc in state.bench:
-        if bc.char_id and char_comps.get(bc.char_id, 0) >= 2:
+        if bc.char_id and len(routes.get(bc.char_id, ())) >= 2:
             score += OPTIONALITY_PER_CHAR
     return score
 
@@ -399,22 +396,38 @@ def optionality_score(state: GameState) -> float:
 # 它们的过渡价值是**角色效果驱动**(桑博/艾丝妲带 DoT、藿藿/娜塔莎奶)非低费成员充足,派生判据筛不到。
 TRANSITION_FACTIONS: set[str] = skeleton_factions() | {'持续伤害', '治疗'}
 
-TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(≥2)的过渡羁绊的早期保血分(占位,阶段 6 校准)
+TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(激活档)的过渡羁绊的早期保血分(占位,阶段 6 校准)
+
+
+def _tier_activated(faction: str, count: int) -> bool:
+    """该羁绊当前人数是否**激活了任意一档**(评审🟡7:tempo 判据与真实 tier 对齐)。
+
+    FACTIONS.tiers 是激活人数档(升序);count ≥ 最低档才算「凑出」—— 仙舟(3/5/7/10)2 人不激活
+    任何效果不算,巡海游侠(1/…)1 人即 tier-1 就算。未知羁绊(不在 FACTIONS)退回 count≥2 保守判。
+    """
+    info = FACTIONS.get(faction)
+    if info is None or not info.tiers:
+        return count >= 2
+    return count >= min(info.tiers)
 
 
 
 def transition_tempo_score(state: GameState,
                           target_comp: Comp | None = None) -> float:
-    """P1 过渡羁绊分(review round-4 HIGH-2):board 凑出(≥2)能打伤害的过渡羁绊 → 早期保血(限时 AV 不超时)。
+    """P1 过渡羁绊分(review round-4 HIGH-2):board 凑出(激活档)能打伤害的过渡羁绊 → 早期保血(限时 AV 不超时)。
 
     人上人级 = 2 个能打伤害羁绊组合(仙舟/狼狩/dot/列车/贝洛伯格),稳血到成型。最多奖 2 个(更多边际
     递减);与 optionality 同(1−α)早期强调 —— 早期保期权/过渡,fades as commit(α→1)让位 target。
-    board 阵营数 OCR 读 → 真信号现成。**非与 synergy 双重堆**:只奖过渡羁绊(早期 tempo),flat-per-羁绊。
+    board 阵营数 OCR 读 → 真信号现成。**双计说明(评审🟡7 更正)**:target 的核心阵营深堆会同时拿
+    synergy(tier 效果)+tempo(早期能扛)—— 这是 intended(过渡期 target 阵营本来就既成型又保血),
+    非重复奖励同一件事。
+    评审🟡7:判「凑出」= **激活任意一档**(``_tier_activated``,非死板 ≥2)—— 仙舟 2 人不激活不奖,
+    巡海游侠/星间旅人 1 人激活就奖(与真实游戏效果对齐)。
 
     ADR-0140(护航感知):target 给定且在护航窗口(P1 后期 ~ P2 分水岭前)→ 匹配护航套(escort_for)的
     羁绊凑出(≥2)额外加分 —— 护航是「有方向的过渡」(服务真主 C),比散凑过渡羁绊更值得买/留。
     """
-    n = sum(1 for f in TRANSITION_FACTIONS if state.board.get(f, 0) >= 2)
+    n = sum(1 for f in TRANSITION_FACTIONS if _tier_activated(f, state.board.get(f, 0)))
     score = min(n, 2) * TRANSITION_TEMPO_BONUS
     ec = escort_for(target_comp)
     if ec is not None and (state.plane, state.round_num) <= (ec.retire_plane, ec.retire_round):
