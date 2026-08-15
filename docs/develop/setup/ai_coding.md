@@ -31,13 +31,12 @@ Skill 是 Claude Code(及 Codex 等少数工具)的可调用能力。要点:**�
 
 ### 依赖 superpowers
 
-项目已统一采用 [superpowers](https://github.com/anthropics/superpowers)(需求探索 / 写计划 / TDD / 调试 / review / 分支收尾全链路方法论)。本项目 dev skill(`sr-od-dev-*`)叠加在其之上,非替代 —— 使用者需同时具备 superpowers。Claude Code 安装:插件市场搜 `superpowers`,或 `/plugin install superpowers`。
+[superpowers](https://github.com/anthropics/superpowers)(需求探索 / 计划 / TDD / 调试 / review / 收尾全链路方法论)是 Claude Code 侧插件,装不装随个人;**项目开发流程的权威方法论是公共仓 `od-dev-*` skills**(跨工具,DSH / Claude Code 都经 skill 目录加载),不依赖 superpowers。
 
 ### 命名 / 放哪
 
-- 统一用 `sr-od-` 项目前缀:开发类 `sr-od-dev-`(指引 AI 在本项目开发 / 配置 / 构建)、使用类 `sr-od-`(指引用本项目做游戏自动化)。`sr-od-` 兼项目命名空间,防和插件 / 个人 skill 撞名。
-- **SR 专属 skill** 放本仓根 `skills/<name>/`(**提交**),junction 进 AI 工具读 skill 的目录(如 Claude Code 的 `.claude/skills/<name>`,**本地**不入库)。Windows junction 免管理员(`mklink /J`)。
-- **可跨项目通用的开发类 skill**(如 `od-dev-writing-skills` —— skill 写作规范)在 `OneDragon-Skills` 公共仓(`od-` / `od-dev-` 前缀)。**推荐安装该仓获取;具体安装方式后续补**。维护者本地有该仓,用 junction(见个人 `.claude/CLAUDE.md`)。
+- **开发类 skill 全在公共仓 `OneDragon-Skills`**(`od-dev-` 前缀,OneDragon 系列通用;12 个:op / app / 玩法开发、画面建档、调试排查、PR 流程、skill 写作等,索引见该仓 `skills/README.md`)。标准安装:`npx skills add OneDragon-Anything/OneDragon-Skills`(agent-skills 开放标准 CLI;公共仓发布于 GitHub 后可用);维护者本地有该仓 clone,用 junction 挂进所用工具的 skill 目录(见个人入口)。Windows junction 免管理员(`mklink /J`)。
+- **SR 专属 skill**(星铁独有、跨项目不成立的)放本仓根 `skills/<name>/`(**提交**,`sr-od-` 前缀),同样 junction 进工具 skill 目录(如 Claude Code 的 `.claude/skills/<name>`,**本地**不入库);目前无。
 
 ## AI 辅助提交的署名(推荐)
 

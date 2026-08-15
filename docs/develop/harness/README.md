@@ -44,7 +44,7 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 | `AGENTS.md` | 仓库根 | 统一 AI 编码入口（架构 / 硬约束 / 流程），所有工具的信息源 |
 | `AGENTS.local.md` | 仓库根 | 个人本地入口（DSH 原生加载，不入库）；Claude Code 用户经 `.claude/CLAUDE.md` `@import` |
 | [../setup/ai_coding.md](../setup/ai_coding.md) | docs/develop/setup | 各 AI 工具的接入指引（用户向："怎么用"） |
-| [`skills/`](../../../skills/) | 仓库根 | dev skill（`sr-od-dev-*`，如 pr-finishing / deciding-a-fix / gameplay-automation 等，经 junction 加载）；写作规范 `od-dev-writing-skills` 在公共仓 `OneDragon-Skills` |
+| 公共仓 `OneDragon-Skills` | 工作区 | 全部开发 skill（`od-dev-*` ×12，经 junction 挂载进各工具 skill 目录）；本仓原 `skills/` 已于 2026-08-15 全部迁入公共仓 |
 
 > 本项目多人协作，各开发者所用 coding agent 不一定相同（DSH、Claude Code 等），文档按工具中性描述。"怎么用"见 `setup/ai_coding.md`；本目录（harness/）记录"怎么建、为什么这么建"。
 

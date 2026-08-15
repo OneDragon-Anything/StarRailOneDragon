@@ -102,7 +102,7 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 ### Skills
 
-项目开发类 skill（`sr-od-dev-*`，如 pr-finishing / deciding-a-fix / gameplay-automation 等），Claude Code 经 `.claude/skills/` junction 自动加载；写作规范 `od-dev-writing-skills` 在公共仓 `OneDragon-Skills`（见 §Skills）。**团队采用 [superpowers](https://github.com/anthropics/superpowers) 作为开发流程方法论**（brainstorming → 计划 → TDD → review → 合并），本项目 dev skill 是叠加其上的项目特定补充，建议一并安装（`/plugin install superpowers`）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
+开发 skill 全在公共仓 `OneDragon-Skills`（`od-dev-*`，12 个：op / app / 玩法开发、画面建档、调试排查、PR 流程、skill 写作等），经 junction 挂进所用工具的 skill 目录自动加载（DSH: `.dsh/skills/` / Claude Code: `.claude/skills/`）；写作规范 `od-dev-writing-skills` 也在公共仓（见 §Skills）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
 
 ### Plugin
 

@@ -88,13 +88,12 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## Skills
 
-本项目开发类 skill(`sr-od-dev-*`)用公共仓的 **`od-dev-writing-skills`** 指导编写(方法论:4 硬规范 / writing-craft / testing)。
+开发类 skill(`od-dev-*`,12 个)全在公共仓 **OneDragon-Skills**(op / app / 玩法开发、画面建档、调试排查、PR 流程、skill 写作);写 / 改 skill 按该仓 `AGENTS.md` + `od-dev-writing-skills`(4 硬规范 / writing-craft / testing)。
 
-- **保存**:根 `skills/<name>/`(提交)。
-- **命名**:`sr-od-dev-` 前缀(星铁专属命名空间,防撞名);使用类 `sr-od-`。
-- **挂载**:junction `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;DSH: `.dsh/skills/`、Claude Code: `.claude/skills/`、`.agents/skills/` 为通用兼容位)。
+- **挂载**:junction 公共仓 `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;DSH: `.dsh/skills/`、Claude Code: `.claude/skills/`)。
+- **SR 专属 skill**(星铁独有、跨项目不成立的)才进本仓 `skills/<name>/`(`sr-od-` 前缀,提交),同样 junction 挂载;目前无。
 
-`od-dev-writing-skills` 本身从公共仓 `OneDragon-Skills` 挂载进本仓各工具的 skill 目录(可通用 skill 沉淀到公共仓,SR 独有业务留本仓)。详 [docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)。
+详 [docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)。
 
 ## 深入阅读
 
