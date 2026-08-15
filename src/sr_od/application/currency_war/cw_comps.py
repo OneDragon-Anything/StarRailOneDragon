@@ -344,12 +344,12 @@ COMP_LIBRARY: list[Comp] = [
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
-        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],
+        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯", "动能激发剑"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
         mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
         shared_chars=["远坂凛", "瓦尔特"], transition_chars=["符玄", "知更鸟", "花火"],
         typical_form_round=6,
-        level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率)
-            4: LevelGoal("roll", target_cost=2, target_chars=["远坂凛"]),
+        level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率);评审🟡6:远坂凛 1费
+            4: LevelGoal("roll", target_cost=1, target_chars=["远坂凛"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=5, target_chars=["Archer", "远坂凛"]),
             9: LevelGoal("roll", target_cost=5, target_chars=["Archer"], star_goals={"Archer": 2}),
@@ -362,16 +362,18 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],
-        mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "花火"],
+        mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "火花"],
         char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
-        transition_chars=["银狼LV.999", "爻光", "花火"], typical_form_round=6,
+        transition_chars=["银狼LV.999", "花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         flex_factions=["星间旅人", "仙舟", "治疗", "量子同频", "战技点"],
         plaza_carry="绯英",
-        level_plan={  # 低费欢愉:前期 roll 欢愉 → 升 8-9 找杨叔
+        level_plan={  # 评审🟡2:labels 6级搜牌 19/25=76%(全场最集中)→ 6级停 roll,旧 5/6/7 全 level_up 缺停留
             4: LevelGoal("roll", target_cost=1, target_chars=["绯英", "爻光"]),
-            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            5: LevelGoal("level_up"),
+            6: LevelGoal("roll", target_cost=2, target_chars=["绯英"], star_goals={"绯英": 2}),
+            7: LevelGoal("level_up"),
             8: LevelGoal("roll", target_cost=2, target_chars=["绯英"], star_goals={"绯英": 2}),
-            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特"]),
         },
     ),
     Comp(
@@ -380,18 +382,18 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
-        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],
+        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
         countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
         mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
         transition_chars=["希儿", "刃", "符玄"], typical_form_round=6,
         flex_factions=["战技点", "治疗", "盛会之星", "列车同行"],
         plaza_carry="希儿",
         level_plan={
-            5: LevelGoal("roll", target_cost=2, target_chars=["希儿"]),
-            6: LevelGoal("roll", target_cost=2, target_chars=["希儿"], star_goals={"希儿": 2}),
-            7: LevelGoal("roll", target_cost=2, target_chars=["希儿"], star_goals={"希儿": 2}),
+            5: LevelGoal("roll", target_cost=3, target_chars=["希儿"]),   # 评审🟡6:希儿 3费,旧标 2
+            6: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
+            7: LevelGoal("roll", target_cost=3, target_chars=["希儿"], star_goals={"希儿": 2}),
             8: LevelGoal("level_up"),
-            9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "知更鸟"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特", "知更鸟"]),
         },
     ),
     Comp(
@@ -407,7 +409,7 @@ COMP_LIBRARY: list[Comp] = [
         mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
         level_plan={
-            5: LevelGoal("roll", target_cost=2, target_chars=["乱破", "不死途"]),
+            5: LevelGoal("roll", target_cost=1, target_chars=["乱破", "不死途"]),
             6: LevelGoal("level_up"), 7: LevelGoal("roll", target_cost=3, target_chars=["黄泉", "不死途"]),
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["黄泉"], star_goals={"黄泉": 2, "不死途": 2}),
@@ -421,14 +423,15 @@ COMP_LIBRARY: list[Comp] = [
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         mechanic_attributes=["击破"], shared_chars=["黄泉", "流萤", "忘归人"],
+        key_equips=["虫洞掘进钻头", "反重力皮靴", "光速螺旋桨"],   # 评审🟡7:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
         transition_chars=["赛飞儿", "灵砂", "忘归人"], typical_form_round=7,
         flex_factions=["减益", "盛会之星"],
         plaza_carry="波提欧",
-        level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 击破
-            5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=4, target_chars=["不死途", "波提欧"]),
-            9: LevelGoal("roll", target_cost=0, target_chars=["不死途", "忘归人"],
-                         star_goals={"不死途": 2}),
+        level_plan={  # 后期 6 击破:前期过渡 → 升 8-9 击破;评审🟡6:波提欧 5费/不死途 2费
+            5: LevelGoal("roll", target_cost=1, target_chars=["乱破"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=2, target_chars=["不死途", "波提欧"]),
+            9: LevelGoal("roll", target_cost=5, target_chars=["波提欧", "忘归人"], star_goals={"不死途": 2}),
         },
     ),
     Comp(
@@ -442,9 +445,9 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=7,
         flex_factions=["量子同频", "盛会之星"],
         plaza_carry="丹恒·饮月",
-        level_plan={
+        level_plan={  # 评审🟡6:饮月 2费(旧标3);花火 2费
             5: LevelGoal("roll", target_cost=2, target_chars=["花火", "远坂凛"]),
-            6: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
+            6: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
             7: LevelGoal("roll", target_cost=3, target_chars=["丹恒·饮月"], star_goals={"丹恒·饮月": 2}),
             8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["瓦尔特", "符玄"]),
@@ -457,7 +460,7 @@ COMP_LIBRARY: list[Comp] = [
         # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
         # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
-        key_equips=["火力风暴潮", "冷笑话引擎", "永动机", "反重力皮靴"],
+        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
         mechanic_attributes=["连携高频开大"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
         transition_chars=["花火", "远坂凛", "刃"], typical_form_round=7,
         flex_factions=["列车同行", "战技点", "治疗", "盛会之星"],
@@ -492,10 +495,10 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=7,
         flex_factions=["战技点", "列车同行", "量子同频", "星核猎手"],
         plaza_carry="火花",
-        level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变)
+        level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变);评审🟡6:花火 2费/饮月 2费
             5: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=4, target_chars=["花火"], star_goals={"花火": 2}),
+            8: LevelGoal("roll", target_cost=2, target_chars=["花火"], star_goals={"花火": 2}),
             9: LevelGoal("roll", target_cost=0, target_chars=["花火", "开拓者·记忆"], star_goals={"花火": 3}),
         },
     ),
@@ -561,7 +564,8 @@ COMP_LIBRARY: list[Comp] = [
         plaza_carry="白厄",
         level_plan={
             5: LevelGoal("roll", target_cost=3, target_chars=["白厄"]),
-            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            6: LevelGoal("level_up"),
+            7: LevelGoal("roll", target_cost=3, target_chars=["白厄"], star_goals={"白厄": 2}),   # 评审🟡8:labels 7级搜牌 25/38(66%),旧 7=level_up 直跳 8 缺停留
             8: LevelGoal("roll", target_cost=0, target_chars=["白厄"], star_goals={"白厄": 3}),
         },
     ),
@@ -576,10 +580,10 @@ COMP_LIBRARY: list[Comp] = [
         shared_chars=["爻光", "花火"], transition_chars=["爻光", "花火", "符玄"], typical_form_round=5,
         flex_factions=["星间旅人", "战技点", "列车同行"],
         plaza_carry="银狼LV.999",
-        level_plan={
-            4: LevelGoal("roll", target_cost=2, target_chars=["银狼LV.999", "爻光"]),
+        level_plan={  # 评审🟡6:银狼LV.999 3费(升费到5,标3=起始找牌档)
+            4: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999", "爻光"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=0, target_chars=["银狼LV.999"], star_goals={"银狼LV.999": 2}),
+            8: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999"], star_goals={"银狼LV.999": 2}),
         },
     ),
     Comp(
@@ -595,10 +599,11 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=8,
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         plaza_carry="阿格莱雅",
-        level_plan={
-            5: LevelGoal("roll", target_cost=2, target_chars=["阿格莱雅", "风堇"]),
+        level_plan={  # 评审🟡6/🟡9:阿格莱雅 1费(旧标2);「速升9找银狼」补 9 级
+            5: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅", "风堇"]),
             6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
-            8: LevelGoal("roll", target_cost=0, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
+            8: LevelGoal("roll", target_cost=1, target_chars=["阿格莱雅"], star_goals={"阿格莱雅": 2}),
+            9: LevelGoal("roll", target_cost=0, target_chars=["银狼"], star_goals={"阿格莱雅": 3}),
         },
     ),
     Comp(
@@ -635,7 +640,7 @@ COMP_LIBRARY: list[Comp] = [
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
         char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
-        key_equips=["火力风暴潮", "绝对热量", "热血沸腾拳"],   # plaza 逐件一致(风暴潮54/热血沸腾拳40/绝对热量26)—— 现库被实战印证
+        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲", "长夜月"],
         typical_form_round=5,
@@ -645,7 +650,7 @@ COMP_LIBRARY: list[Comp] = [
             3: LevelGoal("roll", target_cost=1, target_chars=["万敌"]),
             4: LevelGoal("roll", target_cost=1, target_chars=["万敌"], star_goals={"万敌": 2}),
             5: LevelGoal("roll", target_cost=1, target_chars=["万敌"], star_goals={"万敌": 3}),
-            6: LevelGoal("roll", target_cost=2, target_chars=["千冶·刃", "长夜月"]),
+            6: LevelGoal("roll", target_cost=2, target_chars=["千冶·刃", "长夜月"]),   # 千冶·刃 2费/长夜月 2费
             7: LevelGoal("level_up"), 8: LevelGoal("level_up"),
             9: LevelGoal("roll", target_cost=0, target_chars=["万敌", "千冶·刃"],
                          star_goals={"万敌": 3, "千冶·刃": 2}),
