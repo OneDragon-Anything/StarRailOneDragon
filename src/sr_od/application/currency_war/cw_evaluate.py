@@ -312,22 +312,29 @@ def _target_progress_remaining(state: GameState, target_comp: Comp) -> float:
 
 
 
-def _card_hits_target(name: str, faction: str, target: Comp) -> bool:
+def _card_hits_target(name: str, faction: str, target: Comp,
+                      include_flex: bool = False) -> bool:
     """这张牌是否属于 target comp(**全羁绊匹配,流派安全**;治本流派/阵营断裂,决策见 ADR-0103)。
 
-    True:name ∈ target.core_chars **或** 全羁绊(``_char_synergies`` + faction 兜底)∩ target.factions 非空。
+    True:name ∈ target.core_chars **或** 全羁绊(``_char_synergies`` + faction 兜底)∩ 目标阵营集非空。
     faction 兜底:name 未识别时用 OCR 的 card.faction(虽只阵营,聊胜于空)。
 
     ⚠️ 取代旧 ``card.faction in target.factions``(只阵营,流派主派 comp 的过渡/补充角色被误判 off-target:
     实跑 DOT 队 P1 输根因 —— 艾丝妲/椒丘等持续伤害流派角色 card.faction=银河学者/空 ∉ DOT.factions
     [持续伤害,星核猎手] → commit 后被 prefilter 跳过 → 凑不出 2DOT 过渡)。
+
+    ADR-0152(评审🔴1)``include_flex`` 两档语义:
+    - **False(默认,严格 = 核心阵营)**:deploy-swap 卖出候选 / bench 核心计数用 —— flex 单位是合法
+      填充但**可被核心替换**(大丽花[盛会之星,列车flex] 让位给 列车 core 是升级非误卖)。
+    - **True(宽松 = 核心+弹性)**:买牌 prefilter / deploy 许可用 —— flex 铺板是策略层奖励的合法
+      形态(砂金=列车护盾流常驻),不拒买不上场。
     """
     if name in target.core_chars:
         return True
     syn = _char_synergies(name)
     if faction and faction != '?':
         syn = syn | {faction}
-    return bool(syn & set(target.factions))
+    return bool(syn & (target.all_factions if include_flex else set(target.factions)))
 
 
 

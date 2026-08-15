@@ -100,7 +100,9 @@ class DeployBench(SrOperation):
                       and _match.session.last_state is not None) else None)
         _tgt_comp = (_match.session.target_comp
                      if (_match is not None and _match.session is not None) else None)
-        _target_factions: set[str] = set(_tgt_comp.factions) if _tgt_comp is not None else set()
+        # ADR-0152(评审🔴1):all_factions(核心+弹性)—— flex 板面单位(砂金=公司/护盾 是列车护盾流
+        # 常驻)不判 off-target;与 _card_hits_target 同源(策略层奖励的 flex 铺板 ≠ 执行层可卖的散牌)。
+        _target_factions: set[str] = set(_tgt_comp.all_factions) if _tgt_comp is not None else set()
         # live 2026-08-15(M1 位面2 列车同行4→1 稀释根因):comp 核心辅助(花火/瓦尔特/符玄等)的阵营标签
         # ∌ comp 阵营(列车同行)—— 只按阵营判 target 会把 core_char 辅助当 off-target 卖掉 → 板成型度崩。
         # target 判定 = 阵营/流派交集 **或** core_chars 成员(_card_hits_target 同语义,ADR-0103)。

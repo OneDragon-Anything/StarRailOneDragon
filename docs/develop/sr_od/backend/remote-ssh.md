@@ -21,7 +21,15 @@ daemon 就是那个**常驻 Session 1、握有管理员权限**的管理者—�
 
 1. 装 dev 依赖:`uv sync --group dev`(装 `psutil`)。
 2. 起 daemon:`.\tools\mcp\daemon\start_daemon.ps1`(默认 24000)。
-3. 在你的 MCP 客户端注册 daemon(URL `http://127.0.0.1:24000/mcp`——客户端与 daemon 同机:SSH 登录游戏本机后在本机跑 Claude Code,loopback 跨 Session 也能连到 Session 1 的 daemon)。Claude Code 示例:
+3. 在你的 MCP 客户端注册 daemon(URL `http://127.0.0.1:24000/mcp`——客户端与 daemon 同机:SSH 登录游戏本机后在本机跑 MCP 客户端,loopback 跨 Session 也能连到 Session 1 的 daemon)。DSH 在项目根 `.dsh/mcp.servers.yml` 加:
+
+   ```yaml
+   sr_od_daemon:
+     transport: streamable-http
+     url: http://127.0.0.1:24000/mcp
+   ```
+
+   Claude Code:
 
    ```shell
    claude mcp add --transport http sr_od_daemon http://127.0.0.1:24000/mcp

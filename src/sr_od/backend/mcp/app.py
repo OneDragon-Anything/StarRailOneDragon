@@ -182,6 +182,11 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     ) -> AnalyzeScreenResult:
         """分析画面(截图 + OCR + 画面匹配),返回结构化结果。观察类,不改游戏状态。
 
+        **非视觉大模型(VLM)**:本 tool 的「分析」= OCR + 传统 OpenCV 模板/颜色匹配,
+        按已建档 screen_info 做客观命中,**没有视觉理解能力**(看不见图标语义 / 布局 /
+        状态 / 未建档元素)。要「看懂画面」用视觉大模型(zai ``analyze_image`` 等)或
+        视觉子 agent;``save_image=True`` 回传的 ``screenshot_path`` 可直接喂视觉工具。
+
         只需截图标路径用 ``capture_game_screen``;本 tool 截图 + 分析。
 
         screenshot 省略 → 截当前游戏画面(需游戏在线),精准命中回写当前画面名;

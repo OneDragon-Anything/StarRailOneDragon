@@ -163,7 +163,7 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
-    if target is not None and _card_hits_target(bc.char_id, bc.faction, target):
+    if target is not None and _card_hits_target(bc.char_id, bc.faction, target, include_flex=True):
         return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
@@ -462,10 +462,13 @@ def _best_improving_action(
         # (深化现有羁绊)或强卡(cost≥3)且板不满员。人类打法:前期买强散卡保 tempo,成型后纯堆 target。
         # 板饿死代价(每场 -10~-36 HP) > spread 代价(散卡仍可 deploy 保战力)。
         if target_comp is not None:
-            _is_offtarget = not _card_hits_target(card.name, card.faction, target_comp)
+            # ADR-0152 评审🔴1:买牌判 off-target 用宽松档(核心+弹性)—— flex 铺板是策略层奖励的
+            # 合法形态(砂金=列车护盾流),不拒买;卖出/deploy-swap 才用严格档(deploy_bench 处)。
+            _is_offtarget = not _card_hits_target(card.name, card.faction, target_comp,
+                                                 include_flex=True)
             if _is_offtarget:
                 _shop_has_buyable_tgt = any(
-                    _card_hits_target(c.name, c.faction, target_comp)
+                    _card_hits_target(c.name, c.faction, target_comp, include_flex=True)
                     for c in state.shop if state.gold >= card_cost(c))
                 if _shop_has_buyable_tgt:
                     continue   # shop 有 target 可买 → 聚焦

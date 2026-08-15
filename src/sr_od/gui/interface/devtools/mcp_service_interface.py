@@ -8,6 +8,7 @@ server 日志文件展示，避免把大段日志返回给 MCP agent 消耗上�
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 import urllib.error
@@ -100,6 +101,17 @@ def _server_command(root: Path, port: int) -> list[str]:
     return cmd
 
 
+def _server_spawn_env(root: Path) -> dict[str, str]:
+    """主 server 子进程环境：src-layout + package=false，显式注入绝对路径 PYTHONPATH。
+
+    不依赖 .env 携带 PYTHONPATH（对齐 daemon 的 start_sr_od_mcp_server）；
+    .env 含该变量会被 DSH 的启动环境校验拒绝。
+    """
+    env = os.environ.copy()
+    env['PYTHONPATH'] = str(root / 'src')
+    return env
+
+
 def _probe_server(port: int) -> tuple[bool, str]:
     """探测指定端口是否已经是 sr_od MCP server。"""
     try:
@@ -178,6 +190,7 @@ def _start_server(port: int) -> str:
         process = subprocess.Popen(
             cmd,
             cwd=str(root),
+            env=_server_spawn_env(root),
             stdout=log_file,
             stderr=subprocess.STDOUT,
             creationflags=flags,

@@ -98,7 +98,7 @@ class FooRecognizer(ScreenRecognizer):
 ### 错误隔离 + JSON 可序列化
 
 - `recognize` 抛异常 → 框架兜成 `extras=None`,**不中断 analyze**（OCR + 画面匹配结果照常返回)。故识别器内部不必层层 try,但**返回的 dict 必须 JSON 可序列化**（框架会 `json.dumps` 校验;含 `datetime` / numpy 标量 / 自定义对象的值会被拦下 → `extras=None`)。
-- **保持精简**:`extras` 直接计入 MCP tool 响应 token 预算（[design-principles.md](design-principles.md) P6,Claude Code tool response 限 25000 tokens),只返决策需要的语义字段,别倒整张原始 OCR / 坐标表。
+- **保持精简**:`extras` 直接计入 MCP tool 响应 token 预算（[design-principles.md](design-principles.md) P6,MCP 客户端 tool response 有 token 上限，设计时参照 Claude Code 的 25000 tokens),只返决策需要的语义字段,别倒整张原始 OCR / 坐标表。
 
 ### 不稳定字段不硬塞（避免假信号）
 

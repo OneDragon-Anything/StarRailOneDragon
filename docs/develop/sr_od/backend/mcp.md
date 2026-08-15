@@ -41,6 +41,7 @@
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。
+- `analyze_screen` 是 **OCR + 传统 OpenCV 模板/颜色匹配，非视觉大模型(VLM)**：只做已建档 screen_info 的客观命中，无视觉理解；tool docstring 已显式标注，防智能体把「分析」误解为「看懂画面」（要看懂 → 视觉大模型工具 / 视觉子 agent）。
 - `analyze_screen(save_image=True)`（实时模式）把已截的内存图顺手存盘 + 回传 `screenshot_path`，供调用方喂 视觉大模型 double-check；默认 `false` 不落盘，离线模式忽略。
 - `analyze_screen` 成功时返回 `vision_hint`：提醒本结果仅含 OCR + 模板匹配的部分识别，不等同完整视觉理解，需要全面判断画面时配合视觉工具 / 多模态再看（能力边界提示，[design-principles.md](design-principles.md) P14；防智能体把部分识别当画面全貌）。失败时为 `null`。
 - `analyze_screen` 精准命中画面时返回 `extras`：若该画面注册了**额外识别器（recognizer）**,带该画面的结构化领域事实（画面特定结构,如货币战争备战画面的金币 / 阶段 / 阵营在场人数）;无注册识别器的画面为 `null`。识别器异常不中断本结果（`extras=null`,详见日志）。这是 per-screen 注册机制,新增画面识别器见 [screen-recognizers.md](screen-recognizers.md)。MCP 侧 dataclass 由 FastMCP 序列化、加字段自动生效;但 `analyze_screen` 的 **tool docstring 属 tool 描述变更,需客户端 `/mcp` 重连**智能体才能看到 `extras` 字段描述（字段本身不重连也在返回 JSON 里）。
@@ -97,7 +98,18 @@
 ## 接入 MCP 客户端
 
 主 server 是标准 streamable-http,任何 MCP 客户端都可挂载。
-先通过 GUI「开发工具 -> MCP 服务」或命令行启动本机 server，再在 Codex/Claude 里新增 MCP 服务器。
+先通过 GUI「开发工具 -> MCP 服务」或命令行启动本机 server，再在你的 MCP 客户端新增服务器（按所用工具，见下）。
+
+### DSH MCP 配置
+
+项目根 `.dsh/mcp.servers.yml`（workspace-mcp 插件按 cwd 自动加载，保存热生效；不入库，每人本地建）：
+
+```yaml
+servers:
+  sr_od:
+    transport: streamable-http
+    url: http://127.0.0.1:24001/mcp
+```
 
 ### Claude Code MCP 配置
 
@@ -121,7 +133,7 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 - 当前服务只实现 streamable HTTP，不是 STDIO server；Codex 中不要选 STDIO。
 - 本机接口默认无鉴权，因此不需要 Bearer token 或额外 headers。
-- Codex/Claude 只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页或命令行负责。
+- MCP 客户端只负责连接已启动的 HTTP MCP server；启动 / 停止 / 重启由 GUI「MCP 服务」页或命令行负责。
 - 命令行启动可用 `uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`；如果项目根目录存在 `.env`，也可使用 `uv run --env-file .env python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001`。
 
 ## 开机自启(主 server)

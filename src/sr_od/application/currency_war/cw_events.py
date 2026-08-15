@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_comps import (
     AFFIX_MECHANIC_MAP,
+    AUGMENT_COMP_AFFINITY,
     form_progress,
     mechanics_fit,
 )
@@ -97,6 +98,11 @@ def decide_event(options: list[str], config, state: GameState,
         _pv = None if _env is not None else pick_value_of(opt)
         # ↑ ADR-0144b 跨表污染守卫:83 env 名中 29 个会 LCS 误中策略名(全量扫描实测:列车同行概念股→
         # 列车同行星徽28/增发货币→超发货币55 等)——env 名走 env 分支评分,不进策略 LCS 兜底。
+        # ADR-0152(评审🔴3a)augment 定义型 comp:黑塔纪元/飞光等拿到即改写本局玩法(216 张黑塔
+        # 入商店/师徒变身)—— 评分压过一切常规项(仅低于用户白名单;M1 资源入口:拿到 = 换打法)。
+        if opt in AUGMENT_COMP_AFFINITY:
+            score = max(score, 120.0)
+            reason = 'augment-defining'
         _comp_hit = 0
         if _st is not None:
             _fs, _cs = strategy_bindings(_st)
