@@ -22,6 +22,7 @@ from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESH
 from sr_od.application.currency_war.cw_investments import (
     EconomyEffect,
     aggregate_economy,
+    get_strategy,
 )
 from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
 
@@ -1049,11 +1050,18 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
 # comp.countered_by_bosses + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
 
 def decide_event(options: list[str], config, state: GameState) -> PickEvent:
-    """事件选项打分:白名单优先级(子串)+ 克制环境降权(走 DoT 主派时避)。"""
+    """事件选项打分:白名单优先级(子串)+ 注册表先验(ADR-0133)+ 克制环境降权(DoT 主派时避)。
+
+    注册表先验:白名单未命中的选项,若名字在 INVESTMENT_STRATEGIES(全量 315)→ 按品质给基线分
+    (棱彩 50 / 金 30 / 银 10;带 EconomyEffect 再 +20)。上限 70 < 白名单地板(~82)→
+    白名单 T0 仍优先;先验只解决「白名单外选项互相比较」(旧版全 0 = 变相随机选)。
+    投资环境名不在策略注册表 → 先验 0,行为不变。
+    """
     whitelist: dict = getattr(config, 'event_whitelist', {}) or {}
     dot_punish = list(getattr(config, 'dot_punish_envs', []) or [])
     on_dot = sum(state.board.get(f, 0) for f in ('持续伤害', '减益')) >= 2
     penalty = (max(whitelist.values()) + 100) if whitelist else 100
+    _rarity_prior: dict[str, float] = {'棱彩': 50.0, '金': 30.0, '银': 10.0}
 
     best_idx, best_score = 0, -1.0
     for i, opt in enumerate(options):
@@ -1061,6 +1069,12 @@ def decide_event(options: list[str], config, state: GameState) -> PickEvent:
         for name, val in whitelist.items():
             if name in opt:
                 score = max(score, float(val))
+        _st = get_strategy(opt)
+        if _st is not None:
+            _prior = _rarity_prior.get(_st.rarity, 0.0)
+            if _st.economy is not None and _st.economy != EconomyEffect():
+                _prior += 20.0
+            score = max(score, _prior)
         if on_dot and any(p in opt for p in dot_punish):
             score -= penalty
         if score > best_score:
