@@ -72,9 +72,11 @@ def strip_rich(s: str) -> str:
 
     ``•``→``·``、``剎``→``刹``(与注册表键字符一致 —— strategy_bindings 从 effect 文本
     提取阵营/角色名,字符不统一会绑不上);其余标点/空格保持官方原样。
+    ``{NICKNAME}`` = 游戏运行时模板占位符(渲染为玩家昵称,即开拓者卡;仅 盗用身份 1 处)
+    → 归一为「开拓者」。
     """
     s = re.sub(r"</?[a-zA-Z][a-zA-Z0-9]*[^>]*>", "", s)
-    return s.replace("•", "·").replace("剎", "刹").strip()
+    return s.replace("•", "·").replace("剎", "刹").replace("{NICKNAME}", "开拓者").strip()
 
 
 def fetch_config(use_cache: bool) -> dict:

@@ -235,7 +235,7 @@ ENV_FACTION: dict[str, str] = {
     '战技点契约': '战技点',       # 丹恒·饮月/花火/火花
     '星核猎手契约': '星核猎手',   # 卡芙卡/刃/银狼/流萤
     '欢愉契约': '欢愉',           # 银狼LV.999/火花/开拓者·欢愉
-    # '特邀专家:加拉赫': '击破',  # ?待确认:击破羁绊档位给以太钻头(机制挂钩但非赠角色),暂不绑
+    '特邀专家:加拉赫': '击破',   # 加拉赫=击破角色(plaza traits 盛会之星/击破/治疗)+击破档位给钻头(用户确认)
 }
 
 
@@ -363,7 +363,6 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
 # 文本扫描的两类噪声就此清除:战术义眼(泛用回能,误绑"能量")/生命之花祝福(泛用治疗强度,误绑"治疗")。
 # 消费:decide_event comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
 # 维护:版本更新重跑 gen_plaza_invest.py → diff 报告对「效果变」条目提示 → 回本表重审对应键。
-# 「# ?」= 语义不确定,待用户逐条确认(确认后删标记):
 STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     # —— 星徽套组(棱彩):阵营星徽 + 阵营 key 角色 ——
     '列车同行星徽套组': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
@@ -428,11 +427,11 @@ STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     '阿哈大悦': (frozenset({'欢愉'}), frozenset()),       # 欢愉羁绊激活时强化阿哈
     '不虚此行': (frozenset({'列车同行'}), frozenset()),   # 星穹列车/光轨
     '离火燎原': (frozenset({'减益'}), frozenset()),       # 离火真伤
-    '按劳分配': (frozenset({'战技点'}), frozenset()),     # ?待确认:经济上限随战技点羁绊档位升,算不算阵营绑定
-    '步狸村之谜': (frozenset({'狼狩'}), frozenset()),     # ?待确认:经召唤物穿戴的狼狩星徽间接绑定
+    '按劳分配': (frozenset({'战技点'}), frozenset()),     # 金币上限随战技点羁绊档位(用户确认)
+    '步狸村之谜': (frozenset({'狼狩'}), frozenset()),     # 狸狸穿戴狼狩星徽(用户确认,同 星徽→绑定 判据)
     # —— comp 专属机制强化(棱彩)——
-    '盗用身份': (frozenset({'列车同行'}), frozenset({'火花'})),  # ?待确认:绑列车同行来自所赠列车同行星徽
-    '飞光·传剑': (frozenset({'仙舟'}), frozenset({'彦卿', '景元'})),  # ?待确认:仙舟=神君伤害引用+双角色均仙舟
+    '盗用身份': (frozenset({'列车同行'}), frozenset({'火花'})),  # 所赠列车同行星徽(用户确认;{NICKNAME}=开拓者卡已归一)
+    '飞光·传剑': (frozenset({'仙舟'}), frozenset({'彦卿', '景元'})),  # 神君引用+双仙舟角色(用户确认)
     '都是这家伙的错！': (frozenset({'命运圣杯'}), frozenset()),
     # —— 赠 key 角色 / 双子互升 / 专家顾问(角色绑定,无阵营)——
     '飞光·映月': (frozenset(), frozenset({'镜流', '景元'})),
@@ -441,7 +440,7 @@ STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     '轮回不止': (frozenset(), frozenset({'白厄'})),
     '白衣伙伴': (frozenset(), frozenset({'白厄', '星期日'})),
     '双龙会': (frozenset(), frozenset({'丹恒·饮月', '丹恒·腾荒'})),
-    '偶像经济': (frozenset(), frozenset({'火花'})),       # ?待确认:火花为特殊变体角色
+    '偶像经济': (frozenset({'星间旅人'}), frozenset({'火花'})),  # 火花=星间旅人 4费核心(plaza traits 确认;用户授权查角色数据定)
     '愚者恶作剧': (frozenset(), frozenset({'花火', '火花'})),
     '砂里淘金': (frozenset(), frozenset({'砂金'})),
     '琼玉专家:青雀': (frozenset(), frozenset({'青雀'})),
