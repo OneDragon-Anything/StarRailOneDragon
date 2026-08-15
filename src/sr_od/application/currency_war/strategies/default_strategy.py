@@ -2,11 +2,11 @@
 
 """货币战争 内置默认策略(``DefaultCwStrategy``,``STRATEGY_ID="default"``)。
 
-**阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_events/cw_plan 等(原 cw_decisions,ADR-0145 拆分)``/``cw_comps``),
+**阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_events/cw_plan 等(原 cw_events,ADR-0145 拆分)``/``cw_comps``),
 逻辑不动 → **零行为变化**(``config.strategy_id="default"`` = 今天打法)。参赛者可继承本类只覆盖
 关心的几个钩子(模板方法,低门槛、比赛友好)。
 
-阶段 2(Phase 2,后续)会把 ``cw_decisions``+``cw_comps`` 逻辑迁进本类方法、权重转类常量、删模块
+阶段 2(Phase 2,后续)会把 ``cw_events``+``cw_comps`` 逻辑迁进本类方法、权重转类常量、删模块
 函数;接口在阶段 1 已冻结,阶段 2 是纯内部重构 + 测试须保绿。
 
 设计见 ``docs/develop/currency_war/strategy/11_strategy_plugin.md`` §11.6;决策见 。

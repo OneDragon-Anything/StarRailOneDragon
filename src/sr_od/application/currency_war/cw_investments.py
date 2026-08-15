@@ -983,15 +983,16 @@ SURVIVAL_PICKS: frozenset[str] = frozenset({
 
 
 def pick_value_of(name: str) -> int | None:
-    """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS(同 _option_rarity 口径 0.6);
-    未评估(codex 新条目/完全未知)→ None(消费侧回落品质先验)。"""
+    """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS(0.6 + 长度差守卫,评审建议6:
+    |Δlen|≤3 —— 防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染由 cw_events 守卫
+    另行拦截,此处只管策略表内部);未评估(codex 新条目/完全未知)→ None(回落品质先验)。"""
     s = INVESTMENT_STRATEGIES.get(name)
     if s is not None and s.pick_value > 0:
         return s.pick_value
     from one_dragon.utils.str_utils import find_best_match_by_lcs
     names = list(INVESTMENT_STRATEGIES)
     idx = find_best_match_by_lcs(name, names, lcs_percent_threshold=0.6)
-    if idx is not None:
+    if idx is not None and abs(len(names[idx]) - len(name)) <= 3:
         v = INVESTMENT_STRATEGIES[names[idx]].pick_value
         return v if v > 0 else None
     return None

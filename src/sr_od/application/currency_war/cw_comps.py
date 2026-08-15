@@ -16,7 +16,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
    反重力皮靴对昼神阿雅(需 2 靴)是命脉、对别的 comp 不一定;正当防卫词缀对万敌燃血是利、对阿雅是克。
 2. **debuff 可能是 buff** —— 同一词缀对不同阵容方向相反(mechanics_fit 双向:counter 降 + synergy 升)。
 3. **COMP_LIBRARY 多维打分 + 运行时按场面选** —— 不锁死一套,按成型难度/boss/环境/词缀灵活选易成型又够强的。
-4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_decisions,待接)。
+4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy/cw_plan(ADR-0145 拆分))。
 
 ⚠️ meta(版本依赖):core_chars/form_tiers/strength/form_difficulty 是 V4.4 起步估值,replay + 实玩迭代。
 """
@@ -506,7 +506,7 @@ def progress(comp: Comp, state: GameState) -> float:
     """comp_score 用:0.6 阵营 tier 进度 + 0.4 核心角色持有(归一化 0..1)。
 
     与 form_progress 区别:progress 加了 core_char 持有项(选 target 时评估契合用);
-    eval 驱动买牌用 target_progress(只度量剩余进度,去三重,详 cw_decisions 待接)。
+    eval 驱动买牌用 target_progress(只度量剩余进度,详 cw_evaluate(ADR-0145 拆分))。
     """
     fp = form_progress(comp, state)
     owned = _owned_chars(state)
@@ -885,9 +885,9 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 
 # ===== 转型(pivot)+ 巨星(select_megastar)=====
 
-# T#97 commitment(单一定义,maybe_pivot 强粘 + cw_decisions 买牌 prefilter 拒 off-target 共用):
+# T#97 commitment(单一定义,maybe_pivot 强粘 + cw_events 买牌 prefilter 拒 off-target 共用):
 # commit = 已成型(form_progress≥COMMIT_FRAC)**或**累计轮达 COMMIT_ROUND(spread board 的 form_progress
-# 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型 comp;② cw_decisions prefilter
+# 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型 comp;② cw_events prefilter
 # 拒 off-target(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金,drought bail 处理真不可达)。
 COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营 comp 约 1 阵营过半)
 COMMIT_ROUND: int = 2
@@ -895,7 +895,7 @@ COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.
 
 
 def target_committed(target: Comp, state: GameState) -> bool:
-    """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_decisions prefilter(拒 off-target)共用。
+    """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_events prefilter(拒 off-target)共用。
 
     commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
     轮数兜底要求 form_progress>0 —— 防零投入误锁:board 全倒在别的 comp 上(target 零投入)时不应算 commit
@@ -927,7 +927,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 追击飞霄 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
     # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)→ pivot
-    # (已 commit 不因易 comp 降阈被弃)。COMMIT_* 已提模块级(maybe_pivot + cw_decisions prefilter 共用)。
+    # (已 commit 不因易 comp 降阈被弃)。COMMIT_* 已提模块级(maybe_pivot + cw_events prefilter 共用)。
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
     candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:

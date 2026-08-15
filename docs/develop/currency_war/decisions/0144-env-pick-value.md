@@ -26,9 +26,9 @@ Accepted(2026-08-15)
 1. `InvestmentEnv.pick_value: int = 0`;ENV_PICK_VALUE 表(83 条,TSV 派生)replace 合并。
 2. `ENV_FACTION_MATCH_FLOOR`(概念股 78/邀请 70/契约 72):faction ∩ target_comp.factions 时提到 floor;未匹配吃裸基准分。
 3. `ENV_SURVIVAL_BONUS`(白银时代/敌后破坏 +15,人身意外险 +10):hp<40 降难度求稳钩子。
-4. decide_event env 分支:策略 miss 且 env 命中 → 基准分/faction floor/HP 钩子;已知局限注释(eval-lcs 只搜策略表,env OCR 形变可能 LCS 误中策略名,0.6 阈值下实测相近名对均 <0.6,有界)。
+4. decide_event env 分支:策略 miss 且 env 命中 → 基准分/faction floor/HP 钩子。~~已知局限:OCR 形变 env 名可能 LCS 误中~~(**修订 0144b,评审 212c+自查双实证:canonical env 名即有 29/83 误中——增发货币→超发货币0.75 等;env 命中一律跳过 pick_value_of 与 _option_rarity 的 LCS 兜底,commit 71bbfb9b**)。
 5. **default_strategy 修订 ADR-0134**:env kind 也传 target_comp —— 开局 None(行为同旧),局中环境屏 comp 已定使阵营条件分生效。
-6. 两 handler(invest_env/invest_strategy)用 `session.last_state or GameState()` 替空 stub:HP 分档/持有策略用真值(空 stub hp=100 恒满血,曾致 0141 惩罚全部按满血档)。
+6. 两 handler(invest_env/invest_strategy)用 `session.last_state or GameState()` 替空 stub:~~持有策略用真值~~(**勘误 2026-08-15 评审:decide_event 不读 active_strategies,该半句不成立**;实际收益 = HP 分档真值 + on_dot 惩罚路径激活——后者原是死配置被顺手救活,方向正确)。空 stub hp=100 恒满血,曾致 0141 惩罚全部按满血档)。
 
 ## 后续
 
