@@ -95,14 +95,15 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
     if state.level >= 10:
         return False
     # ADR-0149 P1 追级抑制(评审R3):息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
-    # 买经验 —— M22 r7-r9 金≤35 全程追级零息病理)。⚠️ 只拦「想升」不拦「买得起」:金够单击价
-    # +地板时 level_plan 硬 gate 照常执行(金币转人口的即时实现,非泄金;两测试场景语义)。
-    # lv<5 不拦(开场人口等级是节奏基础);boss/锁血豁免。
+    # 买经验 —— M22 r7-r9 金≤35 全程追级零息病理)。⚠️ 语义边界(M31 实证修正):只拦「攒金
+    # 追级」(金 < 单击价+10 = 连一次有效点击都做不了还想攒),**金够单击+保命地板(10)放行** ——
+    # 升级本身是人口投资,金 12-14 点一次 XP 是正确节奏非泄金(M31 死因:旧 +20 地板把 lv4
+    # 卡到 P2)。lv<5 不拦(开场人口等级);boss/锁血豁免。
     if (state.plane == 1 and state.level >= 5
             and state.gold < INTEREST_THRESHOLD
             and state.node_type not in ('boss',) and state.hp >= 30):
-        _click_cost = 4 + state.level   # xp_click_cost 简算(lv5=9/格);够单击+地板(20) → 执行不拦
-        if state.gold < _click_cost + 20:
+        _click_cost = 4 + state.level   # xp_click_cost 简算(lv5=9/格)
+        if state.gold < _click_cost + 10:
             return False
     if target_comp is not None:
         _own = target_comp.level_plan.get(state.level)
