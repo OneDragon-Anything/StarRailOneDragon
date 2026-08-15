@@ -306,6 +306,13 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(Point(1501, 263))
             log.info('[cw-loop] 概率表弹窗 → 点× 关闭')
             return self.round_wait(wait=1.5)
+        # 0e3. 道具详情弹窗(聘用书类;live 2026-08-15 M13 首遇):获得 3费聘用书 等道具后自动弹介绍 modal,
+        #       关键词与消耗品(消耗品+拖动到)不同 → 落未知画面停机。点 ×(1862,65 VLM 定位)关;道具使用属 P4 工具域。
+        if self.round_by_ocr(screen, '聘用书', lcs_percent=0.8).is_success:
+            self.ctx.controller.mouse_move(Point(1862, 65))
+            self.ctx.controller.click(Point(1862, 65))
+            log.info('[cw-loop] 道具详情弹窗(聘用书)→ 点× 关闭')
+            return self.round_wait(wait=1.5)
         # 0f. 消耗品详情浮层 → ESC 关。获消耗品奖励(投资策略「星星相印」给【员工投影仪】等)后游戏自动弹
         #     介绍 modal,遮挡备战/投资策略屏 → 上面所有分支都不命中 → round_retry 死循环(2026-08-06 实跑:
         #     plane2 supply 后弹「员工投影仪」modal,flat retry ~19min 失败;**非策略死,UI 弹窗卡死**)。
