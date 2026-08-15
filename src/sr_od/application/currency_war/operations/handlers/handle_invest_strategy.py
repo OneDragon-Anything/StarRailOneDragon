@@ -86,6 +86,7 @@ class HandleInvestStrategy(SrOperation):
         # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1)]刷新 UI 标定:OCR y790-890 横带找
         # 「刷新次数N」→ 记次数+按钮x。为 PickEvent.refresh 接入(缺口1)提供坐标/次数真值。
         import re as _re
+
         from one_dragon.base.geometry.rectangle import Rect as _Rect
         for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
                 image=screen, rect=_Rect(300, 790, 1650, 890), crop_first=False).items():
