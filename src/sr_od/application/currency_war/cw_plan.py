@@ -181,8 +181,18 @@ def _card_supports_target(name: str, faction: str, state, target) -> bool:
 # 低星低价不挑阵容的第三类,target/off-target 之外;成型后自然替换)。
 GENERIC_FILLERS: list[str] = ['星期日']
 
-# ADR-0149:无损购买窗口(用户 §7-11「金<20(1息档)买过渡件不损息还压缩牌库——攒息不该拦无损购买」)。
+# ADR-0149:无损购买窗口(用户 §7-11「金<20(1息档)买过渡件不损息还压缩牌库」)。
 NO_LOSS_GOLD_CEILING: int = 20
+
+
+def _no_loss_affordable(gold: int, cost: int) -> bool:
+    """ADR-0149 评审R1:**档位保留**式无损可负担(用户原话「金13可以买到10金的」)。
+
+    花后仍 ≥ 当前息档地板(gold//10 × 10)才放行 —— 金14 买 2费(14→12,息档1保留)✓;
+    金14 买 4费(14→10,仍档1)✓;金14 买 5费(14→9,档1→0)✗。这同时是天然量控:
+    单轮最多花掉「零头」,本金(整十部分)永不动 —— 无需显式「每轮 N 张」。
+    """
+    return gold - cost >= (gold // 10) * 10
 
 
 def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
@@ -190,7 +200,9 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
 
     M4 方法论:过渡 = 骨架拼装(便宜低档羁绊成对),不是攒金也不是散买。三类合法:
     ① 枢纽池:EARLY_CORE_POOL(单买=开局,M3)/ TEMPO_POOL(打工,1星买卖近无损);
-    ② 骨架羁绊配对:card 的羁绊 ∩ skeleton 派生集,且 board+bench 已有 ≥1(深化成对);
+    ② 骨架羁绊配对:card 的羁绊 ∩ 骨架集,且 board+bench 已有 ≥1(凑**能激活档**的成对;
+      评审Y1 收窄:买后 counts+1 ≥ 该羁绊最低激活档 —— 仙舟(3/5/7/10)已有 1 买第 2 张
+      不激活任何效果=白占位,不深化到 2 不买);
     ③ 通用填充件:板未满时的 GENERIC_FILLERS(星期日;第三类语义)。
     散买骨架单张(羁绊无存量)仍拒 —— 防spread 回归(M25 教训)。
     """
@@ -199,12 +211,20 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
     if name in GENERIC_FILLERS:
         return state.deployed_count() < state.max_units()
     from sr_od.application.currency_war.cw_economy import _char_synergies
+    from sr_od.application.currency_war.cw_factions import FACTIONS
     syn = _char_synergies(name)
     if faction and faction != '?':
         syn = syn | {faction}
     sk = skeleton_factions() | {'持续伤害', '治疗'}   # 同 TRANSITION_FACTIONS 口径(cw_evaluate)
     counts = _bench_faction_counts(state)
-    return any(f in sk and counts.get(f, 0) >= 1 for f in syn)
+    for f in syn:
+        if f not in sk:
+            continue
+        _info = FACTIONS.get(f)
+        _min_tier = min(_info.tiers) if (_info is not None and _info.tiers) else 2
+        if counts.get(f, 0) + 1 >= _min_tier:   # 买后达到激活档(评审Y1)
+            return True
+    return False
 
 
 
@@ -507,8 +527,10 @@ def _best_improving_action(
                           and (_card_hits_target(card.name, card.faction, target_comp)
                                or card.name in character_priority))
             # ADR-0149 无损购买窗口:金<20(1息档)买过渡件不损息还压牌池(用户 §7-11)——
-            # 骨架纪律买(_skeleton_buy_ok)放行,攒金不拦;M22 实证 r4 金21 有货空手即此病。
+            # 骨架纪律买放行,且 `_no_loss_affordable` 档位保留(评审R1:花后仍 ≥ 息档地板);
+            # M22 实证 r4 金21 有货空手即此病。
             if (not _is_target and state.gold < NO_LOSS_GOLD_CEILING
+                    and _no_loss_affordable(state.gold, card_cost(card))
                     and _skeleton_buy_ok(card.name, card.faction, state)):
                 pass   # 落到下方正常估值(passthrough;非 continue)
             else:
@@ -617,31 +639,58 @@ def _best_improving_action(
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
                         and not any(state.board.get(f, 0) >= 2 for f in target_comp.factions))
-    # ADR-0149 骨架买优先于 refresh(1息档):金<20 + shop 无可买 target + 有骨架合法件 + 未成型 →
-    # 规则直买(确定 tempo)而非 refresh(赌 target;M22 r4 金21 空手/烧刷新同病)。取确定不取赌,
-    # 与下方「target 在场先买后 refresh」同哲学。eval 对单张骨架 delta 恒负(新阵营/掉金)→ 不进
-    # 候选,规则直出;TEMPO/EARLY 枢纽优先,其次骨架配对,取最便宜。
-    if (state.gold < NO_LOSS_GOLD_CEILING and target_comp is not None
+    # ADR-0149 骨架买兜底(评审R1/R2/Y1/Y2/Y3 修订后语义):
+    # - 触发:金<20(1息档) **且** 候选最优为空/纯 Refresh(gold 花在赌刷新不如确定过渡件;Y3 不抢占
+    #   eval 已选出的更优买,含 flex 配对买);
+    # - 量控(R1):`_no_loss_affordable` 档位保留式(花后仍 ≥ 当前息档地板)—— 单轮只花零头,
+    #   本金永不动,无需显式每轮 N 张;
+    # - 原子 deploy(R2):买+立即 deploy(同 candidate-1 模式)—— 过渡件价值在场上保血,
+    #   买而囤 bench = 白买(optionality 只数 bench 反向钉死枢纽件);
+    # - plane 门(Y2):P2+ 息引擎重建期(ADR-0148)不吃骨架买;
+    # - spread 守卫(Y1):板已 ≥DEPLOY_FACTION_CAP 阵营 → 只许深化已有阵营,不开新骨架对。
+    if (state.plane == 1 and state.gold < NO_LOSS_GOLD_CEILING
+            and target_comp is not None
             and not _shop_has_buyable_target
-            and form_progress(target_comp, state) < COMMIT_FRAC):
+            and form_progress(target_comp, state) < COMMIT_FRAC
+            and (not best or all(type(a).__name__ == 'RefreshShop' for a in best))):
         _sk_candidates = [c for c in state.shop
-                          if state.gold >= card_cost(c)
+                          if _no_loss_affordable(state.gold, card_cost(c))
                           and _skeleton_buy_ok(c.name, c.faction, state)]
+        if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
+            # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)
+            _counts = _bench_faction_counts(state)
+            from sr_od.application.currency_war.cw_economy import _char_synergies as _syn
+            _sk_candidates = [c for c in _sk_candidates
+                              if any(_counts.get(f, 0) >= 1 for f in
+                                     (_syn(c.name) | ({c.faction} if c.faction and c.faction != '?' else set())))]
         if _sk_candidates:
             _sk_candidates.sort(key=lambda c: (
                 0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1, card_cost(c)))
             card = _sk_candidates[0]
-            log.info('[cw-plan] ADR-0149 骨架买(1息档,先于refresh):%s(cost%s,gold%s)',
-                     card.name, card.cost, state.gold)
-            return [BuyCard(card=card)]
+            seq: list[Action] = [BuyCard(card=card)]
+            after_buy = simulate(state, seq[0])
+            _dep_ids = {b.char_id for b in state.deployed if b.char_id}
+            if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
+                    and after_buy.bench[-1].char_id not in _dep_ids):
+                bc = after_buy.bench[-1]
+                row, ok = _pick_deploy_row(after_buy, bc, target_comp)
+                if ok:
+                    seq.append(DeployMove(bench_idx=len(after_buy.bench) - 1, to_row=row, faction=bc.faction))
+            log.info('[cw-plan] ADR-0149 骨架买(1息档,档位保留):%s(cost%s,gold%s,deploy=%s)',
+                     card.name, card.cost, state.gold, len(seq) > 1)
+            return seq
     _rf_cost = _refresh_cost(state, _rf_used)
     if (state.gold >= _rf_cost and refresh_budget > 0
             and not _shop_has_buyable_target
             and (not _saving_for_level or not _shop_has_target)
             and not (_saving_for_interest and not _roll_for_target)):
-        beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
-                                     target_comp=target_comp, refresh_cost=_rf_cost),
-             [RefreshShop(cost=_rf_cost)])
+        # 评审R3 连带守卫:攒级期(ADR-0129)+ drought(无 target 在场)→ 刷金与攒级矛盾
+        # (M22 r6/r8 病理:XP×3+Refresh×2 把金 33→17);骨架兜底已在上处理此场景,refresh 不再吃零头。
+        _drought_no_target = (target_comp is not None and not _shop_has_target)
+        if not (_saving_for_level and _drought_no_target):
+            beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
+                                         target_comp=target_comp, refresh_cost=_rf_cost),
+                 [RefreshShop(cost=_rf_cost)])
 
     return best
 

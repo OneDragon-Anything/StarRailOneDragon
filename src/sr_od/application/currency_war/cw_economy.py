@@ -88,9 +88,23 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
     ADR-0128(用户节奏 §7-7「不无脑停概率最高级,也不无脑推级」):comp 对**当前级**显式给了
     roll/stable(= 停留本级 D 核心)→ comp 停留意图压过 node 地板 —— 钱该花在 D 牌不是经验;
     未给(走通用曲线)才按 node 地板推。例:列车同行 lv7 roll 3星姬子(攻略 列车:53)→ 不推 8。
+    ADR-0149 评审R3(用户 §7-12「连50金都没凑到,为什么要急着升级?」):P1 金 < INTEREST_THRESHOLD
+    非boss/非锁血 → 不追级 —— 息引擎未立时追级 = 挤占买牌本金(M22 r7-r9 实证金≤35 全程追级
+    零息)。boss/锁血节点豁免(节奏窗口 > 息纪律)。
     """
     if state.level >= 10:
         return False
+    # ADR-0149 P1 追级抑制(评审R3):息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
+    # 买经验 —— M22 r7-r9 金≤35 全程追级零息病理)。⚠️ 只拦「想升」不拦「买得起」:金够单击价
+    # +地板时 level_plan 硬 gate 照常执行(金币转人口的即时实现,非泄金;两测试场景语义)。
+    # lv<5 不拦(开场人口等级是节奏基础);boss/锁血豁免。
+    if (state.plane == 1 and state.level >= 5
+            and state.gold < INTEREST_THRESHOLD
+            and state.node_type not in ('boss',) and state.hp >= 30):
+        from sr_od.application.currency_war.cw_state import GameState  # noqa: F401(防环)
+        _click_cost = 4 + state.level   # xp_click_cost 简算(lv5=9/格);够单击+地板(20) → 执行不拦
+        if state.gold < _click_cost + 20:
+            return False
     if target_comp is not None:
         _own = target_comp.level_plan.get(state.level)
         if _own is not None:
