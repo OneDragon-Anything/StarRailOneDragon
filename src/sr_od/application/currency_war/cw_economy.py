@@ -101,7 +101,6 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
     if (state.plane == 1 and state.level >= 5
             and state.gold < INTEREST_THRESHOLD
             and state.node_type not in ('boss',) and state.hp >= 30):
-        from sr_od.application.currency_war.cw_state import GameState  # noqa: F401(防环)
         _click_cost = 4 + state.level   # xp_click_cost 简算(lv5=9/格);够单击+地板(20) → 执行不拦
         if state.gold < _click_cost + 20:
             return False
