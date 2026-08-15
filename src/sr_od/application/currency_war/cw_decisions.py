@@ -21,9 +21,11 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
 from sr_od.application.currency_war.cw_investments import (
     INVESTMENT_STRATEGIES,
+    SURVIVAL_PICKS,
     EconomyEffect,
     aggregate_economy,
     get_strategy,
+    pick_value_of,
     strategy_bindings,
 )
 from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
@@ -1112,6 +1114,7 @@ def decide_event(options: list[str], config, state: GameState,
             if name in opt:
                 score = max(score, float(val))
         _st = get_strategy(opt)
+        _pv = pick_value_of(opt)   # ADR-0143 评估基准分(canonical 精确/LCS;None=未评估)
         _comp_hit = 0
         if _st is not None:
             _fs, _cs = strategy_bindings(_st)
@@ -1119,11 +1122,22 @@ def decide_event(options: list[str], config, state: GameState,
             if _comp_hit:
                 score = max(score, 45.0 * _comp_hit + 20.0)
                 reason = f'comp-hit×{_comp_hit}'
-            _prior = _rarity_prior.get(_st.rarity, 0.0)
-            if _st.economy is not None and _st.economy != EconomyEffect():
-                _prior += 20.0
+            # ADR-0143:评估基准分替裸品质先验 —— 同品质内有先后(鲜血阶梯75 vs 数值碾压35)。
+            # 评估分已含经济价值 → economy +20 只在回落路径加(防双计)。
+            if _pv is not None:
+                _prior = float(_pv)
+            else:
+                _prior = _rarity_prior.get(_st.rarity, 0.0)
+                if _st.economy is not None and _st.economy != EconomyEffect():
+                    _prior += 20.0
             if _prior > score:
-                score, reason = _prior, f'prior-{_st.rarity}'
+                score, reason = _prior, ('eval' if _pv is not None else f'prior-{_st.rarity}')
+        elif _pv is not None and float(_pv) > score:
+            # 精确名 miss 但 LCS 命中评估表(OCR 形变)→ 裸评估分(comp/economy 修饰不可靠)
+            score, reason = float(_pv), 'eval-lcs'
+        # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
+        if state.hp < 40 and _st is not None and _st.name in SURVIVAL_PICKS:
+            score += 15.0
         # ADR-0141(复查 #6):品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
         # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
         # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
