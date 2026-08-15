@@ -79,6 +79,7 @@ class DecisionTrace:
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解
     actions: list[dict[str, Any]] = field(default_factory=list)       # action plan(每项带 __type__)
     hp: int = 0                                   # 决策时 HP(冗余于 state,便于快速筛)
+    hp_readable: bool = True                      # hp 真读到?(False=100 兜底;insights hp=100 毒化)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
 
 
@@ -173,7 +174,7 @@ class TelemetryRecorder:
             candidate_scores=dict(candidate_scores),
             eval_breakdown=dict(eval_breakdown),
             actions=[serialize_action(a) for a in actions],
-            hp=state.hp, gold=state.gold,
+            hp=state.hp, hp_readable=bool(getattr(state, 'hp_readable', True)), gold=state.gold,
         )
         if self.enabled:
             self._gold_trajectory.setdefault(run_id, []).append(state.gold)

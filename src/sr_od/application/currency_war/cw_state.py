@@ -83,6 +83,7 @@ class GameState:
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;strategy/13 §13.7 两阶难度:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
+    hp_readable: bool = True   # hp 是否真读到(False=100 是默认兜底;遥测保真,决策不用)
     # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
     board: dict[str, int] = field(default_factory=dict)
     # board_next_tier = 各阵营「下个 tier 阈值」(左面板 "X/Y" 的 Y;doc 13 FactionState.next_tier)。

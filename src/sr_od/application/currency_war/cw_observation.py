@@ -117,6 +117,19 @@ def read_gold(ctx: SrContext, screen: MatLike) -> int:
     return v
 
 
+def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
+    """read_hp 的保真版:读不到/越界 → None(默认值由调用方定)。
+
+    遥测用(insights 2026-08-15「hp=100 默认值毒化遥测」):read_hp 的 100 默认是决策层
+    安全设计(不触发保血),但遥测记录里「真 100」与「读不到兜底 100」不可区分 → 复盘误判
+    (M19 曾误读「P1 零损」)。遥测/复盘侧用本函数区分。
+    """
+    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-剩余血量'))])
+    if v is None or not (HP_MIN <= v <= HP_MAX):
+        return None
+    return v
+
+
 def read_hp(ctx: SrContext, screen: MatLike) -> int:
     """小队剩余血量(备战屏右上角 ``文本-剩余血量``)。读不到/越界 → 100(健康先验)。
 
@@ -124,10 +137,8 @@ def read_hp(ctx: SrContext, screen: MatLike) -> int:
     5 张 shop-关闭态全读到真 HP(80/80/80/29/84)、shop-开启态该区空 → 默认 100。本函数正确 ——
     ``BuyShopCards`` 在 shop 关闭帧读 hp 覆盖 state.hp(见 shop.buy)。回归:``test_read_hp_shop_state``。
     """
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-剩余血量'))])
-    if v is None or not (HP_MIN <= v <= HP_MAX):
-        return 100
-    return v
+    v = read_hp_opt(ctx, screen)
+    return 100 if v is None else v
 
 
 def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> int:
@@ -550,7 +561,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     """
     state = GameState()
     state.gold = read_gold(ctx, screen)
-    state.hp = read_hp(ctx, screen)
+    _hp_opt = read_hp_opt(ctx, screen)
+    state.hp = 100 if _hp_opt is None else _hp_opt
+    state.hp_readable = _hp_opt is not None   # 遥测保真(insights hp=100 毒化)
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.node_type = read_node_type(ctx, screen)
     state.level = read_level(ctx, screen, state.plane, state.round_num)
