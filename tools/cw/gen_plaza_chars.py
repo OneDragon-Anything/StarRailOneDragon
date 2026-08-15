@@ -27,8 +27,10 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "src"))  # 供 gen_templates import sr_od 注册表
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_chars_data.py"
+TPL_DIR = REPO / "assets/template/character_cw_portrait_plaza"  # 官方立绘模板库(替代手采库)
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"
 HEADERS = {
@@ -162,6 +164,73 @@ def gen_data_py(roles: list, version: str) -> None:
     DATA_PY.write_text("\n".join(head + rows + tail), encoding="utf-8")
 
 
+def gen_templates(roles: list) -> None:
+    """产物3:官方立绘 SIFT 模板库(<规范名>/raw.png)。
+
+    big_icon(RGBA 透明底 512x376)→ 烘焙成合成图:
+    - 背景色 = 角色费用档色(灰/绿/蓝/紫/金,取值自旧手采库角块中位数,见模块 docstring);
+    - alpha>=128 掩码下 SIFT 只在角色本体提特征(生产 loader 同步支持 mask.png);
+    - bbox 裁剪到角色本体。
+    同步存 mask.png(alpha 二值)供 loader 用;源 RGBA 存 src.png 便重烘。
+    """
+    import cv2
+    import numpy as np
+
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+
+    tpl_dir = Path("assets/template/character_cw_portrait")
+    by_cost: dict = {}
+    for name, ch in CHARACTERS.items():
+        if (tpl_dir / name / "raw.png").exists():
+            by_cost.setdefault(ch.cost, []).append(name)
+    cost_bg = {}
+    for cost, names in sorted(by_cost.items()):
+        px = []
+        for nm in names[:8]:
+            img = cv2.imdecode(np.fromfile(str(tpl_dir / nm / "raw.png"), dtype=np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                continue
+            h, w = img.shape[:2]
+            for corner in [img[4:16, 4:16], img[4:16, w - 16:w - 4],
+                           img[h - 16:h - 4, 4:16], img[h - 16:h - 4, w - 16:w - 4]]:
+                px.extend(corner.reshape(-1, 3).astype(np.int32).tolist())
+        cost_bg[cost] = np.median(np.array(px), axis=0).astype(np.uint8)
+
+    TPL_DIR.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for r in roles:
+        cname = canon(r["name"], r["id"])
+        big = r.get("big_icon") or ""
+        if not big:
+            continue
+        dst = TPL_DIR / cname
+        if (dst / "raw.png").exists():  # 幂等:同 id 不重下
+            continue
+        req = urllib.request.Request(big, headers={"User-Agent": HEADERS["User-Agent"], "Referer": HEADERS["Referer"]})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = resp.read()
+        rgba = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+        if rgba is None or rgba.ndim != 3 or rgba.shape[2] != 4:
+            continue
+        ch = CHARACTERS.get(cname)
+        bg = cost_bg.get(ch.cost if ch else 3, cost_bg.get(3))
+        if bg is None:
+            continue
+        a = rgba[:, :, 3:4].astype(np.float32) / 255.0
+        rgb = (rgba[:, :, :3].astype(np.float32) * a + np.array(bg, dtype=np.float32).reshape(1, 1, 3) * (1 - a)).astype(np.uint8)
+        mask = ((rgba[:, :, 3] >= 128) * 255).astype(np.uint8)
+        ys, xs = np.where(mask > 0)
+        if len(xs):
+            rgb = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+            mask = mask[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        dst.mkdir(exist_ok=True)
+        cv2.imencode(".png", rgb)[1].tofile(dst / "raw.png")
+        cv2.imencode(".png", mask)[1].tofile(dst / "mask.png")
+        cv2.imencode(".png", rgba)[1].tofile(dst / "src.png")
+        n += 1
+    print(f"[tpl] 烘焙 {n} 角色(费用色 {sorted(cost_bg.keys())})")
+
+
 def main() -> None:
     cfg = fetch_config()
     version = cfg.get("rpg_game_big_version", "?")
@@ -170,6 +239,8 @@ def main() -> None:
     print(f"[docs] {n} 角色 -> {DOC_DIR}")
     gen_data_py(roles, version)
     print(f"[data] -> {DATA_PY}")
+    gen_templates(roles)
+    print(f"[tpl] -> {TPL_DIR}")
 
 
 if __name__ == "__main__":

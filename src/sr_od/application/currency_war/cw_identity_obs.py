@@ -84,7 +84,10 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     """
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
-        portrait_dir = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'character_cw_portrait'
+        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask)
+        if not portrait_dir.is_dir():
+            portrait_dir = base / 'character_cw_portrait'   # 回退:旧手采库
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)

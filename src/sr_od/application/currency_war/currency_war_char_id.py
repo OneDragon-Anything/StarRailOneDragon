@@ -45,7 +45,11 @@ AvatarTemplates = dict[str, tuple[MatLike, tuple, np.ndarray]]
 
 
 def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
-    """加载目录下所有角色头像模板(``<id>/raw.png``),预计算 SIFT 关键点/描述子。"""
+    """加载目录下所有角色头像模板(``<id>/raw.png``),预计算 SIFT 关键点/描述子。
+
+    若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
+    (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
+    """
     templates: AvatarTemplates = {}
     for child in sorted(avatar_dir.iterdir()):
         raw = child / 'raw.png'
@@ -55,7 +59,13 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
         if img is None:
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        kp, desc = _SIFT.detectAndCompute(gray, None)
+        mask_file = child / 'mask.png'
+        mask = None
+        if mask_file.is_file():
+            m = cv2.imdecode(np.fromfile(str(mask_file), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+            if m is not None and m.shape == gray.shape:
+                mask = m
+        kp, desc = _SIFT.detectAndCompute(gray, mask)
         templates[child.name] = (gray, kp, desc)
     return templates
 
@@ -120,7 +130,7 @@ if __name__ == '__main__':
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )
-    avatar_dir = repo / 'assets' / 'template' / 'character_cw_portrait'   # 立绘库(与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
+    avatar_dir = repo / 'assets' / 'template' / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙;旧手采库 character_cw_portrait 留作回退)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
     # 填充的备战槽(GT 坐标,峰高证实有角色)
     slots = {
         'bench-1': (382, 845, 495, 979),
