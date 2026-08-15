@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 import random
+
+from one_dragon.utils.log_utils import log
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
     EARLY_CORE_POOL,
+    TEMPO_POOL,
     form_progress,
     make_score_context,
     select_comp,
+    skeleton_factions,
     target_committed,
 )
 from sr_od.application.currency_war.cw_economy import (
@@ -171,6 +175,36 @@ def _card_supports_target(name: str, faction: str, state, target) -> bool:
         return False
     counts = _bench_faction_counts(state)
     return any(f in flex and counts.get(f, 0) >= 1 for f in syn)
+
+
+# ADR-0149:通用填充件(用户 §7-14「星期日是通用辅助,阵容有缺口暂时用着也没所谓」——
+# 低星低价不挑阵容的第三类,target/off-target 之外;成型后自然替换)。
+GENERIC_FILLERS: list[str] = ['星期日']
+
+# ADR-0149:无损购买窗口(用户 §7-11「金<20(1息档)买过渡件不损息还压缩牌库——攒息不该拦无损购买」)。
+NO_LOSS_GOLD_CEILING: int = 20
+
+
+def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
+    """P1 过渡骨架合法买(ADR-0149;与 flex 配对纪律同构,**不依赖 target**)。
+
+    M4 方法论:过渡 = 骨架拼装(便宜低档羁绊成对),不是攒金也不是散买。三类合法:
+    ① 枢纽池:EARLY_CORE_POOL(单买=开局,M3)/ TEMPO_POOL(打工,1星买卖近无损);
+    ② 骨架羁绊配对:card 的羁绊 ∩ skeleton 派生集,且 board+bench 已有 ≥1(深化成对);
+    ③ 通用填充件:板未满时的 GENERIC_FILLERS(星期日;第三类语义)。
+    散买骨架单张(羁绊无存量)仍拒 —— 防spread 回归(M25 教训)。
+    """
+    if name in EARLY_CORE_POOL or name in TEMPO_POOL:
+        return True
+    if name in GENERIC_FILLERS:
+        return state.deployed_count() < state.max_units()
+    from sr_od.application.currency_war.cw_economy import _char_synergies
+    syn = _char_synergies(name)
+    if faction and faction != '?':
+        syn = syn | {faction}
+    sk = skeleton_factions() | {'持续伤害', '治疗'}   # 同 TRANSITION_FACTIONS 口径(cw_evaluate)
+    counts = _bench_faction_counts(state)
+    return any(f in sk and counts.get(f, 0) >= 1 for f in syn)
 
 
 
@@ -472,18 +506,24 @@ def _best_improving_action(
             _is_target = (target_comp is not None
                           and (_card_hits_target(card.name, card.faction, target_comp)
                                or card.name in character_priority))
-            # tempo 例外(ADR-0124):板直接增强散牌不属「泄金」—— 板上 ≥2 同阵营深化 或 强卡
-            # (cost≥3)且板不满员 → 放行(板饿死每场掉 HP,攒的金最后买不回血)。
-            # review MED 修正:同 prefilter 收紧(board-only 计数 + 去 cost>=3 分支 + fp 守卫)
-            if target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC:
-                _strengthens_s = False   # 已成型:例外关(原 ADR-0124 语义)
+            # ADR-0149 无损购买窗口:金<20(1息档)买过渡件不损息还压牌池(用户 §7-11)——
+            # 骨架纪律买(_skeleton_buy_ok)放行,攒金不拦;M22 实证 r4 金21 有货空手即此病。
+            if (not _is_target and state.gold < NO_LOSS_GOLD_CEILING
+                    and _skeleton_buy_ok(card.name, card.faction, state)):
+                pass   # 落到下方正常估值(passthrough;非 continue)
             else:
-                _strengthens_s = (state.board.get(card.faction, 0) >= 2
-                                  or card.name in character_priority)
-            _room_s = (state.deployed_count() < state.max_units()
-                       or len(state.bench) < BENCH_CAPACITY)
-            if not _is_target and not (_strengthens_s and _room_s):
-                continue   # 散牌:攒金给升级,跳过
+                # tempo 例外(ADR-0124):板直接增强散牌不属「泄金」—— 板上 ≥2 同阵营深化 或 强卡
+                # (cost≥3)且板不满员 → 放行(板饿死每场掉 HP,攒的金最后买不回血)。
+                # review MED 修正:同 prefilter 收紧(board-only 计数 + 去 cost>=3 分支 + fp 守卫)
+                if target_comp is not None and form_progress(target_comp, state) >= COMMIT_FRAC:
+                    _strengthens_s = False   # 已成型:例外关(原 ADR-0124 语义)
+                else:
+                    _strengthens_s = (state.board.get(card.faction, 0) >= 2
+                                      or card.name in character_priority)
+                _room_s = (state.deployed_count() < state.max_units()
+                           or len(state.bench) < BENCH_CAPACITY)
+                if not _is_target and not (_strengthens_s and _room_s):
+                    continue   # 散牌:攒金给升级,跳过
         # commitment prefilter(task#16 + ADR-0124 tempo 修订):target 设定时,若 shop 有 target 卡
         # (阵营∈target.factions 或 ∈core_chars)可买,跳过纯 off-target 散牌 → 聚焦深化 target。
         # **tempo 例外(2026-08-15 live 7 局实锤:commit 过早/过死饿死板)**:form_progress <
@@ -500,6 +540,13 @@ def _best_improving_action(
                     for c in state.shop if state.gold >= card_cost(c))
                 if _shop_has_buyable_tgt:
                     continue   # shop 有 target 可买 → 聚焦
+                # ADR-0149 骨架例外:shop 无 target 可买 + 未成型(fp<COMMIT_FRAC)→ 骨架纪律买
+                # 放行(板饿死代价>spread,M15-M28 实证);已成型仍严格聚焦。与 tempo 例外并立。
+                if (target_comp is not None
+                        and form_progress(target_comp, state) < COMMIT_FRAC
+                        and _skeleton_buy_ok(card.name, card.faction, state)):
+                    _is_offtarget = False
+            if _is_offtarget:
                 if target_committed(target_comp, state):
                     # 已成型 commit:严格拒散牌(原 T#97 语义)。未成型(form_progress<0.4)commit:
                     # 放行板直接增强散牌(tempo 例外,防饿死)。
@@ -570,6 +617,23 @@ def _best_improving_action(
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
                         and not any(state.board.get(f, 0) >= 2 for f in target_comp.factions))
+    # ADR-0149 骨架买优先于 refresh(1息档):金<20 + shop 无可买 target + 有骨架合法件 + 未成型 →
+    # 规则直买(确定 tempo)而非 refresh(赌 target;M22 r4 金21 空手/烧刷新同病)。取确定不取赌,
+    # 与下方「target 在场先买后 refresh」同哲学。eval 对单张骨架 delta 恒负(新阵营/掉金)→ 不进
+    # 候选,规则直出;TEMPO/EARLY 枢纽优先,其次骨架配对,取最便宜。
+    if (state.gold < NO_LOSS_GOLD_CEILING and target_comp is not None
+            and not _shop_has_buyable_target
+            and form_progress(target_comp, state) < COMMIT_FRAC):
+        _sk_candidates = [c for c in state.shop
+                          if state.gold >= card_cost(c)
+                          and _skeleton_buy_ok(c.name, c.faction, state)]
+        if _sk_candidates:
+            _sk_candidates.sort(key=lambda c: (
+                0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1, card_cost(c)))
+            card = _sk_candidates[0]
+            log.info('[cw-plan] ADR-0149 骨架买(1息档,先于refresh):%s(cost%s,gold%s)',
+                     card.name, card.cost, state.gold)
+            return [BuyCard(card=card)]
     _rf_cost = _refresh_cost(state, _rf_used)
     if (state.gold >= _rf_cost and refresh_budget > 0
             and not _shop_has_buyable_target
