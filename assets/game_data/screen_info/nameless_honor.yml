@@ -1,98 +1,154 @@
-screen_id: phone_menu
-screen_name: 菜单
+screen_id: nameless_honor
+screen_name: 无名勋礼
 pc_alt: false
 area_list:
-- area_name: 右上角返回
-  id_mark: false
-  pc_rect:
-  - 1840
-  - 25
-  - 1895
-  - 80
-  text: ''
-  lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
-  template_match_threshold: 0.7
-  color_range: null
-  goto_list: []
-- area_name: 更多按钮
-  id_mark: false
-  pc_rect:
-  - 1390
-  - 50
-  - 1810
-  - 350
-  text: ''
-  lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
-  template_match_threshold: 0.7
-  color_range: null
-  goto_list: []
-- area_name: 开拓等级
+- area_name: 标识-无名勋礼
   id_mark: true
   pc_rect:
-  - 1280
-  - 230
-  - 1380
+  - 60
+  - 10
+  - 340
+  - 105
+  text: 无名勋礼
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-规则说明
+  id_mark: true
+  pc_rect:
+  - 1650
+  - 20
+  - 1830
+  - 100
+  text: 规则说明
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: tab-奖励
+  id_mark: false
+  pc_rect:
+  - 833
+  - 24
+  - 894
+  - 104
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: tab-任务
+  id_mark: false
+  pc_rect:
+  - 919
+  - 24
+  - 980
+  - 104
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: tab-星海珍藏
+  id_mark: false
+  pc_rect:
+  - 1025
+  - 24
+  - 1086
+  - 104
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1810
+  - 15
+  - 1875
+  - 85
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-购买等级
+  id_mark: false
+  pc_rect:
+  - 1630
+  - 205
+  - 1830
   - 290
-  text: 开拓等级
+  text: 购买等级
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 按键-返回登录
+- area_name: 按钮-奖励-一键领取
   id_mark: false
   pc_rect:
-  - 1834
-  - 951
-  - 1897
-  - 1008
-  text: ''
+  - 1270
+  - 890
+  - 1530
+  - 950
+  text: 一键领取
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 委托-任务列表
+- area_name: 按钮-任务-一键领取
   id_mark: false
   pc_rect:
-  - 320
-  - 190
-  - 1200
-  - 280
-  text: ''
+  - 1520
+  - 890
+  - 1810
+  - 950
+  text: 一键领取
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 委托-领取奖励
+- area_name: 按钮-奖励-取消
   id_mark: false
   pc_rect:
-  - 1365
-  - 865
-  - 1620
-  - 1020
-  text: 领取奖励
+  - 620
+  - 970
+  - 790
+  - 1010
+  text: 取消
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 委托-点击空白处关闭
+- area_name: 按钮-点击空白处关闭
   id_mark: false
   pc_rect:
-  - 845
-  - 644
-  - 1067
-  - 958
+  - 864
+  - 929
+  - 1063
+  - 962
   text: 点击空白处关闭
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -100,42 +156,14 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
-- area_name: 委托-委托派遣中
+- area_name: 按钮-开启无名勋礼
   id_mark: false
   pc_rect:
-  - 1190
-  - 860
-  - 1380
-  - 1020
-  text: 委托派遣中
-  lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
-  template_match_threshold: 0.7
-  color_range: null
-  goto_list: []
-- area_name: 按键-返回登录确认
-  id_mark: false
-  pc_rect:
-  - 1004
-  - 645
-  - 1324
-  - 705
-  text: 确认
-  lcs_percent: 0.5
-  template_sub_dir: ''
-  template_id: ''
-  template_match_threshold: 0.7
-  color_range: null
-  goto_list: []
-- area_name: 邮件-全部领取
-  id_mark: false
-  pc_rect:
-  - 390
-  - 960
-  - 520
-  - 1000
-  text: 全部领取
+  - 1437
+  - 763
+  - 1600
+  - 800
+  text: 开启无名勋礼
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

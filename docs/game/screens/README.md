@@ -8,6 +8,7 @@ StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试�
 |---|---|---|
 | 大世界 | [normal_world.md](normal_world.md) | 3D 探索大世界,`pc_alt=true`(锁光标) |
 | 手机菜单 | [phone_menu.md](phone_menu.md) | 手机主菜单 |
+| 无名勋礼 | [无名勋礼.md](无名勋礼.md) | 战斗通行证面板(奖励/任务/星海珍藏三 tab,全屏接管) |
 | 大地图 | [large_map.md](large_map.md) | 2D 大地图导航 / 传送 |
 | 背包 | [bag.md](bag.md) | 背包各 tab(消耗品/光锥/遗器/材料…) |
 | 队伍 | [team.md](team.md) | 队伍编成 |

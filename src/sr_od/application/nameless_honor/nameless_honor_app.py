@@ -1,19 +1,17 @@
 import time
-
-from cv2.typing import MatLike
 from typing import ClassVar
 
 from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
-from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.nameless_honor import nameless_honor_const
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
-from sr_od.operations.menu import phone_menu_utils, phone_menu_const
+from sr_od.operations.menu import phone_menu_const, phone_menu_utils
 from sr_od.operations.menu.open_phone_menu import OpenPhoneMenu
 from sr_od.screen_state import common_screen_state
 
@@ -64,7 +62,7 @@ class NamelessHonorApp(SrApplication):
         # 没有第二页
         if result is None:
             # 是否是版本更新后第一次打开此页面
-            result_new_ver = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-开启无名勋礼')
+            result_new_ver = self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-开启无名勋礼')
             if result_new_ver.is_success:
                 time.sleep(1)
                 # 再点一遍, 点掉更新详情
@@ -80,11 +78,11 @@ class NamelessHonorApp(SrApplication):
     @operation_node(name='领取任务奖励')
     def _claim_task(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        result = self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-任务-一键领取')
+        result = self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-任务-一键领取')
 
         if result.is_success:
             time.sleep(2)
-            self.round_by_click_area('菜单', '无名勋礼-点击空白处关闭')  # 可能会出现一个升级的画面 多点击一次
+            self.round_by_click_area('无名勋礼', '按钮-点击空白处关闭')  # 可能会出现一个升级的画面 多点击一次
             time.sleep(1)
             return self.round_success()
         else:
@@ -108,7 +106,7 @@ class NamelessHonorApp(SrApplication):
     def _claim_reward(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        return self.round_by_find_and_click_area(screen, '菜单', '无名勋礼-奖励-一键领取',
+        return self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-奖励-一键领取',
                                                  success_wait=2, retry_wait=0.5)
 
     @node_from(from_name='领取奖励')
@@ -124,11 +122,11 @@ class NamelessHonorApp(SrApplication):
             return self.round_success(wait=0.2)
 
         area_name_list = [
-            '无名勋礼-奖励-取消',
-            '无名勋礼-点击空白处关闭'
+            '按钮-奖励-取消',
+            '按钮-点击空白处关闭'
         ]
         for area_name in area_name_list:
-            result = self.round_by_find_and_click_area(screen, '菜单', area_name)
+            result = self.round_by_find_and_click_area(screen, '无名勋礼', area_name)
             if result.is_success:
                 return self.round_wait(result.status, wait=1)
 

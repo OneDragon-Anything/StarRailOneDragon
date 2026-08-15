@@ -663,10 +663,10 @@ area_list:
 - area_name: 标识-后台区域
   id_mark: true
   pc_rect:
-  - 900
-  - 555
-  - 1030
-  - 600
+  - 870
+  - 525
+  - 1060
+  - 630
   text: 后台区域
   lcs_percent: 0.5
   template_sub_dir: ''
