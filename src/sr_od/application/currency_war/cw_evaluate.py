@@ -15,6 +15,7 @@ from sr_od.application.currency_war.cw_comps import (
     form_progress,
 )
 from sr_od.application.currency_war.cw_economy import (
+    P2_REBUILD_GOLD_FLOOR,
     WIN_STREAK_BREAK_INTEREST,
     _char_synergies,
     _strategy_economy,
@@ -209,6 +210,11 @@ def _economy_mode_for(state: GameState, config) -> str:
     if _spend in ("saving", "interest"):
         return "interest_first"
     if _spend == "level":
+        # ADR-0148(评审 f3ab d1,进场金门槛):P2+ 穷金时 rush_level 是破产螺旋 —— 息权×0.5
+        # + 跳卖息,而 P1 末已烧空、进场仅 13-18 金(M20 实证)根本升不动 8。降档 interest_first
+        # 重建息引擎;自愈(金回升 ≥ P2_REBUILD_GOLD_FLOOR 自动回 rush_level)。
+        if state.plane >= 2 and state.gold < P2_REBUILD_GOLD_FLOOR:
+            return "interest_first"
         return "rush_level"
     if _spend == "adaptive":
         return getattr(config, 'economy_mode', 'adaptive')

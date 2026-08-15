@@ -240,6 +240,13 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
 
 
+# P2+ 穷金重建门限(ADR-0148,评审 f3ab d1):低于此金 → rush_level 降档 interest_first(息引擎重建)。
+# 与 roll_affordable 门(ADR-0147,放行边界 35)同族 —— 用户基准「P2 稳定≥50」的邻域;重建门限略低(30):
+# 升 8 需 ~40 金级投入(多击 XP + 板件),30 以下 rush 无意义;息引擎(50 封顶)可渐进重建,自愈式
+# (金回升 ≥ floor 自动回 rush_level,非进场粘滞)。
+P2_REBUILD_GOLD_FLOOR: int = 30
+
+
 def roll_affordable(state: GameState, config, target_comp) -> bool:
     """roll 可负担性门(ADR-0147,评审 f3ab d2):E[刷到 2星核心]×单价 vs 预算金。
 
