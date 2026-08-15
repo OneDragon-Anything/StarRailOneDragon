@@ -22,7 +22,7 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -36,20 +36,53 @@ class InvestmentEnv:
 
 
 @dataclass(frozen=True)
+class EconomyEffect:
+    """投资策略/环境的**可数值化经济效果**(ADR-0131;用户 2026-08-15:效果要直接转经济模型)。
+
+    只收能进策略层算账的效果(给金/免费刷新/利息/经验/连胜倍率);战力类(数值碾压/攻防一体等)
+    不在此(走战力评估,不进经济)。全 0/None = 无经济效果。字段语义:
+    - instant_gold: 选牌当场给金(一次性)
+    - gold_per_node: 每次进入新节点给金
+    - free_refresh_per_node: 每节点免费刷新次数(成本 0 的刷新)
+    - free_refresh_burst: 一次性海量免费刷新(如高效决策 9999 次);限时窗口策略层不编排时机(执行层待办)
+    - refresh_surprise_every: 每 N 次刷新刷出 5 张同费卡(采购专员;稳定器,提高刷新期望)
+    - gold_per_three_5cost: 每购买 3 个 5 费角色给金
+    - interest_cap_override: 利息档上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)
+    - xp_per_refresh: 每次刷新 +经验
+    - xp_per_node: 每节点 +经验
+    - xp_buy_cost_discount: 每击「购买经验」减金
+    - win_reward_mult: 连胜奖励倍率(伟大征服 3)
+    """
+    instant_gold: int = 0
+    gold_per_node: int = 0
+    free_refresh_per_node: int = 0
+    free_refresh_burst: int = 0
+    refresh_surprise_every: int = 0
+    gold_per_three_5cost: int = 0
+    interest_cap_override: int | None = None
+    xp_per_refresh: int = 0
+    xp_per_node: int = 0
+    xp_buy_cost_discount: int = 0
+    win_reward_mult: float = 1.0
+
+
+@dataclass(frozen=True)
 class InvestmentStrategy:
     """投资策略(局内 3 选 1,可刷新)。"""
     name: str           # 规范名
     rarity: str         # "棱彩"/"金"/"银"
     effect: str
     source: str = ""
+    economy: EconomyEffect | None = None   # 可数值化经济效果(ADR-0131);战力类 None
 
 
 def _env(name: str, category: str, effect: str, faction: str = "", source: str = "") -> InvestmentEnv:
     return InvestmentEnv(name=name, category=category, effect=effect, faction=faction, source=source)
 
 
-def _strat(name: str, rarity: str, effect: str, source: str = "") -> InvestmentStrategy:
-    return InvestmentStrategy(name=name, rarity=rarity, effect=effect, source=source)
+def _strat(name: str, rarity: str, effect: str, source: str = "",
+          economy: EconomyEffect | None = None) -> InvestmentStrategy:
+    return InvestmentStrategy(name=name, rarity=rarity, effect=effect, source=source, economy=economy)
 
 
 # ===== INVESTMENT_ENVS 注册表(全量;🟢 米游社原文 + 数据银行补;带 faction)=====
@@ -149,19 +182,41 @@ INVESTMENT_ENVS: dict[str, InvestmentEnv] = {e.name: e for e in [
 ]}
 
 # ===== INVESTMENT_STRATEGIES 注册表(T0 投资策略,event_whitelist 规范名来源;全量 216 在 doc)=====
+# 效果原文对齐米游社 315 全量 doc(ADR-0131 修正:旧 8 条描述错 —— 高效决策非"减半"而是 45 秒免费刷爆发;
+# 采购专员非"返现"而是变同费 5 张卡;价值投资·彩非"生息"而是送角色滚雪球;基本保障非"经济"而是战力)。
 INVESTMENT_STRATEGIES: dict[str, InvestmentStrategy] = {s.name: s for s in [
-    _strat("高效决策", "棱彩", "商店刷新费用减半(D牌成本降,关键回合多刷)"),
-    _strat("价值投资·彩", "棱彩", "存金生息增强(经济)"),
-    _strat("采购专员·彩", "棱彩", "刷新返现(刷得越多返越多,D牌变便宜)"),
-    _strat("返利+", "金", "刷新返利"),
-    _strat("采购专员·金", "金", "刷新返现"),
-    _strat("定期福利", "金", "定期金币"),
+    _strat("高效决策", "棱彩", "获得9999次免费刷新,但只持续45秒。结束时移除所有免费刷新。",
+           economy=EconomyEffect(free_refresh_burst=9999)),
+    _strat("价值投资·彩", "棱彩", "获得1个随机2星2费角色。每次进入新节点获得1星该角色,补给后额外2个,持续至本局结束。"),
+    _strat("采购专员·彩", "棱彩", "每5次刷新,商店刷出5张费用相同的角色(费用=备战席最左侧角色费用)。",
+           economy=EconomyEffect(refresh_surprise_every=5)),
+    _strat("本金充裕", "棱彩", "获得26金币。每次进入新节点,若拥有超过50金币,每额外10金币获1次免费刷新(最多3次)。",
+           economy=EconomyEffect(instant_gold=26)),
+    _strat("开源节流", "棱彩", "获得10金币,利息上限提升至9。进入新节点若上节点未花金币,则获最大利息金币。",
+           economy=EconomyEffect(instant_gold=10, interest_cap_override=9)),
+    _strat("利息上调", "棱彩", "获得25金币。最大利息提升至10金币。",
+           economy=EconomyEffect(instant_gold=25, interest_cap_override=10)),
+    _strat("买断制", "棱彩", "你不再获得利息。即刻获得15金币。每次进入新节点获得4经验。",
+           economy=EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4)),
+    _strat("淘金客", "棱彩", "你每次消耗金币刷新商店,获得2经验值。",
+           economy=EconomyEffect(xp_per_refresh=2)),
+    _strat("伟大征服", "棱彩", "连胜奖励变为3倍,敌人难度+N(N=当前连胜数)。获12经验。",
+           economy=EconomyEffect(win_reward_mult=3.0)),
+    _strat("商业间谍", "棱彩", "购买经验花费减1,升级时刷新商店,并偷取其中最贵的3个角色。",
+           economy=EconomyEffect(xp_buy_cost_discount=1)),
+    _strat("返利+", "金", "每购买3个5费角色获得3金币。立刻获6金币。",
+           economy=EconomyEffect(instant_gold=6, gold_per_three_5cost=3)),
+    _strat("采购专员·金", "金", "每7次刷新,商店刷出5张费用相同的角色(费用=备战席最左侧角色费用)。",
+           economy=EconomyEffect(refresh_surprise_every=7)),
+    _strat("定期福利", "金", "立刻获得4金币,且每次进入新节点获2金币。",
+           economy=EconomyEffect(instant_gold=4, gold_per_node=2)),
+    _strat("加油站", "金", "现在及每次进入新节点获1次免费刷新,立刻获8金币。",
+           economy=EconomyEffect(instant_gold=8, free_refresh_per_node=1)),
     _strat("定点爆破", "金", "爆发伤害"),
-    _strat("加油站", "金", "刷新减费"),
     _strat("数值碾压", "金", "强度增益"),
     _strat("攻防一体", "金", "攻防增益"),
     _strat("羁绊的力量", "金", "羁绊增益"),
-    _strat("基本保障", "金", "保底经济"),
+    _strat("基本保障", "金", "至少携带1件装备的角色获得20%生命增幅和16%伤害增幅。"),
     # 注:砂里淘金(电表倒转核心)是已知场景但难操作+耗时,非推荐 bot 玩法,不入白名单(economy_research §3)
 ]}
 
@@ -191,6 +246,47 @@ def is_known_env(name: str) -> bool:
     ② OCR 误识;③ 锁定未命名环境(数据银行 ??? 无法收录)。
     """
     return name in INVESTMENT_ENVS
+
+
+def economy_effect_of(name: str) -> EconomyEffect:
+    """单策略经济效果(无/未注册 → 全 0 EconomyEffect;ADR-0131)。"""
+    s = INVESTMENT_STRATEGIES.get(name)
+    return s.economy if (s is not None and s.economy is not None) else EconomyEffect()
+
+
+def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
+    """聚合多策略经济效果(ADR-0131):加法字段求和;interest_cap_override 取**最大**(更宽上限赢,
+    买断制 0 单独持有时生效 —— 与其它利息策略并持时游戏取宽值,保守建模取 max 非 min);
+    win_reward_mult 取**最大**(不叠乘)。"""
+    eff = EconomyEffect()
+    caps: list[int] = []
+    mults: list[float] = []
+    for n in strategy_names:
+        e = economy_effect_of(n)
+        eff = EconomyEffect(
+            instant_gold=eff.instant_gold + e.instant_gold,
+            gold_per_node=eff.gold_per_node + e.gold_per_node,
+            free_refresh_per_node=eff.free_refresh_per_node + e.free_refresh_per_node,
+            free_refresh_burst=eff.free_refresh_burst + e.free_refresh_burst,
+            refresh_surprise_every=(min(eff.refresh_surprise_every, e.refresh_surprise_every)
+                                    if (eff.refresh_surprise_every and e.refresh_surprise_every)
+                                    else (eff.refresh_surprise_every or e.refresh_surprise_every)),
+            gold_per_three_5cost=eff.gold_per_three_5cost + e.gold_per_three_5cost,
+            interest_cap_override=eff.interest_cap_override,
+            xp_per_refresh=eff.xp_per_refresh + e.xp_per_refresh,
+            xp_per_node=eff.xp_per_node + e.xp_per_node,
+            xp_buy_cost_discount=eff.xp_buy_cost_discount + e.xp_buy_cost_discount,
+            win_reward_mult=eff.win_reward_mult,
+        )
+        if e.interest_cap_override is not None:
+            caps.append(e.interest_cap_override)
+        if e.win_reward_mult != 1.0:
+            mults.append(e.win_reward_mult)
+    if caps:
+        eff = replace(eff, interest_cap_override=max(caps))
+    if mults:
+        eff = replace(eff, win_reward_mult=max(mults))
+    return eff
 
 
 def get_strategy(name: str) -> InvestmentStrategy | None:

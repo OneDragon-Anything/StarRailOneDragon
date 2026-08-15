@@ -19,6 +19,10 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
+from sr_od.application.currency_war.cw_investments import (
+    EconomyEffect,
+    aggregate_economy,
+)
 from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
 
 if TYPE_CHECKING:
@@ -90,9 +94,23 @@ TARGET_FACTION_BONUS: float = 1.5      # target 阵营 tier 部分 ×1.5(tier-on
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 # —— 购买经验决策 helper(ADR-0129;机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
+def _strategy_economy(state: GameState) -> EconomyEffect:
+    """当前持有投资策略的聚合经济效果(ADR-0131;active_strategies → 数值效果,策略层算账)。"""
+    return aggregate_economy(state.active_strategies)
+
+
+def _refresh_cost(state: GameState, refresh_used: int) -> int:
+    """第 refresh_used+1 次刷新的真实花金(ADR-0131):策略免费额度(如 加油站 每节点 1 次)内 = 0。"""
+    if refresh_used < _strategy_economy(state).free_refresh_per_node:
+        return 0
+    return SHOP_REFRESH_COST
+
+
 def xp_click_cost(state: GameState) -> int:
-    """一次「购买经验」单击花金(state.level_up_cost OCR 实读优先;缺 → XP_CLICK_COST_FALLBACK)。"""
-    return state.level_up_cost if state.level_up_cost else XP_CLICK_COST_FALLBACK
+    """一次「购买经验」单击花金(state.level_up_cost OCR 实读优先;缺 → XP_CLICK_COST_FALLBACK;
+    商业间谍类 xp_buy_cost_discount 再减;ADR-0131)。"""
+    base = state.level_up_cost if state.level_up_cost else XP_CLICK_COST_FALLBACK
+    return max(0, base - _strategy_economy(state).xp_buy_cost_discount)
 
 
 def clicks_to_next_level(state: GameState) -> int:
@@ -140,16 +158,9 @@ def _xp_gold_floor(state: GameState, config, want_level: bool) -> int:
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
-# 刷新减费类投资策略名(持有任一 → 每刷更便宜 → D牌效率更高 → _refresh_cap 放宽上限)。
-# 名字源自 cw_investments.INVESTMENT_STRATEGIES 注册表(单一真相源);电表倒转核心「砂里淘金」
-# 不入白名单(economy_research §3:难操作+耗时,非推荐 bot 玩法)→ 这里也不收,与白名单一致。
-REFRESH_DISCOUNT_STRATEGIES: frozenset[str] = frozenset({
-    '高效决策',       # 棱彩:刷新费用减半
-    '采购专员·彩',   # 棱彩:刷新返现(刷越多返越多)
-    '采购专员·金',   # 金:刷新返现
-    '返利+',         # 金:刷新返利
-    '加油站',         # 金:刷新减费
-})
+# (ADR-0131 已删 REFRESH_DISCOUNT_STRATEGIES 名单 —— 旧名单语义全错(高效决策=45秒免费刷爆发,
+# 采购专员=变同费5张卡非返现,加油站=每节点1次免费刷新+8金);刷新放宽改由 EconomyEffect 效果驱动,
+# 见 _refresh_cap + _refresh_cost。)
 
 # 人玩 auto-chess:跟 shop 走、concentrate(强化已 collect 阵营)、comp emerge。bot 旧「pre-select target→force」
 # 在 deployed-lock + shop 随机下失败(target-buy 错配 → spread → 锁板 → 永不成型)。
@@ -297,8 +308,13 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
     streak 取 magnitude(连胜/连败都给档位金,对称);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
     """
-    interest_tiers = min(state.gold // 10, INTEREST_THRESHOLD // 10)
+    # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
+    # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。
+    _se = _strategy_economy(state)
+    _icap = _se.interest_cap_override if _se.interest_cap_override is not None else INTEREST_THRESHOLD // 10
+    interest_tiers = min(state.gold // 10, _icap)
     interest_val = interest_tiers * INTEREST_WEIGHT
+    interest_val += _se.gold_per_node * INTEREST_WEIGHT / 10.0
     level_val = (state.level - _expected_level(state.round_num, state.plane)) * LEVEL_WEIGHT
     if economy_mode == "interest_first":
         interest_val *= 1.5
@@ -308,7 +324,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     # streak 档位金(C 杠杆 2;fixture 核实后接线 2026-08-11)。ADR-0128(攻略复查 #5):货币战争
     # **无连败补偿**(核心机制:27,vs TFT)→ 只计连胜方向,连败 0 分(旧 magnitude 对称计 = 把
     # 不存在的连败金也计入经济分 → 连败中虚高,误导「连败也值钱」)。
-    streak_val = min(max(state.streak or 0, 0), STREAK_CAP) * STREAK_WEIGHT
+    streak_val = min(max(state.streak or 0, 0), STREAK_CAP) * STREAK_WEIGHT * _se.win_reward_mult
     return interest_val + level_val + streak_val
 
 
@@ -362,8 +378,11 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
             and target_comp.level_plan.get(state.level) is not None
             and target_comp.level_plan[state.level].action == 'roll'):
         cap = max(cap, 4)                # ADR-0128:comp 明确停留本级 roll(D 核心概率级)→ 放开刷
-    if any(s in REFRESH_DISCOUNT_STRATEGIES for s in state.active_strategies):
-        cap = max(cap, 6)                # 刷新减费策略:D牌变便宜,放宽多搜核心
+    # ADR-0131:效果驱动替旧名单(REFRESH_DISCOUNT_STRATEGIES 语义错 —— 高效决策是 45 秒免费刷爆发
+    # 非减半、采购专员是变同费 5 张非返现):有免费刷新额度/爆发窗/变卡稳定器 → 刷新变便宜/更值 → 放宽。
+    _se = _strategy_economy(state)
+    if (_se.free_refresh_per_node or _se.free_refresh_burst or _se.refresh_surprise_every):
+        cap = max(cap, 6)
     return cap
 
 
@@ -672,16 +691,18 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
 
 def _refresh_expected_delta(state: GameState, config, faction_priority: list[str],
                             base_eval: float, rng: random.Random, k: int = REFRESH_SAMPLES,
-                            target_comp: Comp | None = None) -> float:
+                            target_comp: Comp | None = None,
+                            refresh_cost: int = SHOP_REFRESH_COST) -> float:
     """刷新商店的**期望 delta**(蒙特卡洛,A1):扣刷新金后,采样 k 个 shop,各取最优 buy+deploy
     eval,均值 − base_eval。这把"何时 D 牌"从无法建模变成可计算 —— D 牌当期望新 shop 收益 >
     刷新成本(economy 降)时发生。simulate 已扣 refresh cost,故期望含成本惩罚。
 
+    refresh_cost(ADR-0131):本次刷新真实花金(策略免费额度内 = 0 → 免费刷新期望恒更优)。
     target_comp: 战略层目标(A2),透传给 _best_buy_deploy_eval。None=reactive。
     """
-    if state.gold < SHOP_REFRESH_COST:
+    if state.gold < refresh_cost:
         return -1e9
-    after_cost = simulate(state, RefreshShop(SHOP_REFRESH_COST))  # 已扣 2 金
+    after_cost = simulate(state, RefreshShop(refresh_cost))
     deltas = []
     for _ in range(k):
         s = after_cost.copy()
@@ -773,7 +794,7 @@ def plan(state: GameState, config, faction_priority: list[str],
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
                                       refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config),
                                                                   target_comp=target) - refresh_used,
-                                      target_comp=target)
+                                      target_comp=target, rf_used=refresh_used)
         if not step:
             break
         actions.extend(step)
@@ -789,14 +810,17 @@ def plan(state: GameState, config, faction_priority: list[str],
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
     rng: random.Random, refresh_budget: int = 0, target_comp: Comp | None = None,
+    rf_used: int = 0,
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
     候选:买+deploy 原子组合、deploy 已有角色、**D 牌(蒙特卡洛期望)**。升等级不由这里候选 ——
     plan() 硬 gate 按 level_plan 执行(task#18;根因:eval 对花大金升级短视)。gold≥0/level≤10。
     refresh_budget: 本回合剩余可刷新次数(≤0 则不再生成 RefreshShop;防无限刷,review r5)。
+    rf_used: 本回合已刷新次数(ADR-0131;决定第 next 次刷新花金 —— 策略免费额度内 = 0)。
     target_comp: 战略层目标阵容(A2);传给 evaluate,使动作导向 target 成型。None=reactive。
     """
+    _rf_used = rf_used
     character_priority = getattr(config, 'character_priority', [])
     best: list[Action] = []
     best_delta = 0.0
@@ -958,13 +982,14 @@ def _best_improving_action(
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
                         and not any(state.board.get(f, 0) >= 2 for f in target_comp.factions))
-    if (state.gold >= SHOP_REFRESH_COST and refresh_budget > 0
+    _rf_cost = _refresh_cost(state, _rf_used)
+    if (state.gold >= _rf_cost and refresh_budget > 0
             and not _shop_has_buyable_target
             and (not _saving_for_level or not _shop_has_target)
             and not (_saving_for_interest and not _roll_for_target)):
         beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
-                                     target_comp=target_comp),
-             [RefreshShop(cost=SHOP_REFRESH_COST)])
+                                     target_comp=target_comp, refresh_cost=_rf_cost),
+             [RefreshShop(cost=_rf_cost)])
 
     return best
 
