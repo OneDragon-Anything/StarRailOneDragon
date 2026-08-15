@@ -2,7 +2,7 @@
 
 """货币战争 投资环境 3 选 1 op(从主循环拆出)。
 
-OCR 3 张投资环境卡名 → ``cw_decisions.decide_event`` 按事件白名单打分 → 点**最优**卡底
+OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打分 → 点**最优**卡底
 + 确认。替代原"盲点中卡"(无策略)。
 
 卡名按行过滤:标题「投资环境」在顶(y≈98)、卡名在中(y≈392)、描述在下(y≈432)、
@@ -23,7 +23,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_decisions import decide_event
+from sr_od.application.currency_war.cw_events import decide_event
 from sr_od.application.currency_war.cw_investments import is_known_env
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_observe import cw_shot_unique

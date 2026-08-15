@@ -22,7 +22,7 @@ from sr_od.operations.sr_operation import SrOperation
 class BattlePrepCycle(SrOperation):
     """货币战争 备战单轮自动化:买牌 → 部署 → 装备 → 出战。
 
-    把四个子 op 串成单轮:``BuyShopCards``(开商店 → ``cw_decisions.plan`` 驱动买卡/升等级/刷新)→
+    把四个子 op 串成单轮:``BuyShopCards``(开商店 → ``cw_plan.plan`` 驱动买卡/升等级/刷新)→
     ``DeployBench``(SIFT 身份 + 策略驱动部署 target 优先)→ ``EquipAll``(read_equips owned → 过滤工具 →
     drag 穿戴类 → 空槽,P0-2 占位检测)→ 点「出战」进自动战斗。
 

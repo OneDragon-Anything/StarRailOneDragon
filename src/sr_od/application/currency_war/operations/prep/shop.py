@@ -66,7 +66,7 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
 class BuyShopCards(SrOperation):
     """备战阶段:开商店 → ``plan`` 驱动买牌/升等级 → 关商店。
 
-    接战术层 ``cw_decisions.plan``(阶段键控 eval + 硬门贪心 + 蒙特卡洛 D牌):OCR 读真实
+    接战术层 ``cw_plan.plan``(阶段键控 eval + 硬门贪心 + 蒙特卡洛 D牌):OCR 读真实
     ``gold/level/round/plane/board/shop`` → ``plan`` → 执行返回的 ``BuyCard``/``LevelUp``。
 
     v1 接线范围(2026-08-03,见 ``docs/develop/currency_war/strategy/05_data_wiring.md``):

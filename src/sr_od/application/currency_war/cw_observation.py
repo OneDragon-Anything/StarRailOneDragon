@@ -84,7 +84,7 @@ from sr_od.context.sr_context import SrContext
 
 
 def _expected_level(plane: int, round_num: int) -> int:
-    """阶段期望等级(前期 4-6、中期 6-8、后期 8-10;同 cw_decisions._expected_level)。
+    """阶段期望等级(前期 4-6、中期 6-8、后期 8-10;同 cw_economy._expected_level)。
 
     level 不可 OCR 时作兜底:≈ 真实等级,使 economy level_val≈0(不误判欠等级 → 不滥升)
     + max_units≈ 真实(模拟 deploy 容量合理)。

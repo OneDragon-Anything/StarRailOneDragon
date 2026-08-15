@@ -91,7 +91,7 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CurrencyWarRunLoop。run_standalone_app 设此 yml 即跑 N 轮。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_decisions.HP_DANGER;_phase_weights /
+        # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_evaluate.HP_DANGER;_phase_weights /
         self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
         # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。
         self.difficulty_hp_override: dict = self.get('difficulty_hp_override', DEFAULT_DIFFICULTY_HP)

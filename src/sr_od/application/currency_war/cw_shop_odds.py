@@ -17,7 +17,7 @@
 - v = 同费用种类数(1费14/2费13/3费13/4费12/5费9,from characters.md)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
-供 ``cw_decisions._refresh_expected_delta`` 的 D牌蒙特卡洛用(替代 ``_sample_shop`` 粗近似):
+供 ``cw_plan._refresh_expected_delta`` 的 D牌蒙特卡洛用(替代 ``_sample_shop`` 粗近似):
 当期望刷新次数 × 刷新成本 < 买到目标牌的收益时才值得 D。
 """
 from __future__ import annotations

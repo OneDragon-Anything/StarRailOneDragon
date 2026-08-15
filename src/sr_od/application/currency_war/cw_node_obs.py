@@ -1,7 +1,7 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
 """货币战争 **节点选项观测**:遭遇/补给/巨星/伙伴 overlay 截图 → ``EncounterOption`` 等
-(喂 ``cw_decisions.decide_*`` / 策略 ``decide_encounter`` 等钩子)。
+(喂 ``cw_events.decide_*`` / 策略 ``decide_encounter`` 等钩子)。
 
 与 ``cw_observation``(备战屏 reads)分模块:本模块只管**节点 overlay 的选项读取**(decide_* 的输入)。
 决策接线 audit(2026-08-07,``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
@@ -17,7 +17,7 @@ import re
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
-from sr_od.application.currency_war.cw_decisions import (
+from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     MegastarOption,
     SupplyOption,

@@ -2,7 +2,7 @@
 
 """货币战争 投资策略 3 选 1 op(从主循环拆出)。
 
-OCR 3 张投资策略卡名 → ``cw_decisions.decide_event`` 按事件白名单打分 → 点**最优**卡
+OCR 3 张投资策略卡名 → ``cw_events.decide_event`` 按事件白名单打分 → 点**最优**卡
 + 确认。替代原"盲点中卡"(无策略)。
 
 卡名按行过滤(2026-08-04 snap 实测):标题「请选择投资策略」顶(y≈98)、卡名中(y≈490,
@@ -26,7 +26,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_decisions import decide_event
+from sr_od.application.currency_war.cw_events import decide_event
 from sr_od.application.currency_war.cw_investments import get_strategy
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
@@ -130,7 +130,7 @@ class HandleInvestStrategy(SrOperation):
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
         # 写入 session.active_strategies(原 bug:chosen 只点不存 → active_strategies 恒空 → 经济/难度判定静默失效,
-        # 如 cw_decisions.L286 刷新减费策略判定、刷新费用减免都读不到已持有策略)。
+        # 如 cw_economy._refresh_cost 刷新减费策略判定、刷新费用减免都读不到已持有策略)。
         # 投资策略可多张(局中重复选)→ append;去重防重选同一张时重复入列。
         if match is not None and chosen != '?':
             if chosen not in match.session.active_strategies:

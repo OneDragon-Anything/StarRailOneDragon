@@ -2,7 +2,7 @@
 
 """货币战争 内置默认策略(``DefaultCwStrategy``,``STRATEGY_ID="default"``)。
 
-**阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_decisions``/``cw_comps``),
+**阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_events/cw_plan 等(原 cw_decisions,ADR-0145 拆分)``/``cw_comps``),
 逻辑不动 → **零行为变化**(``config.strategy_id="default"`` = 今天打法)。参赛者可继承本类只覆盖
 关心的几个钩子(模板方法,低门槛、比赛友好)。
 
@@ -16,8 +16,8 @@ from __future__ import annotations
 from typing import Literal
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_comps, cw_decisions
-from sr_od.application.currency_war.cw_decisions import (
+from sr_od.application.currency_war import cw_comps, cw_events, cw_plan
+from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     EncounterPick,
     MegastarOption,
@@ -159,7 +159,7 @@ class DefaultCwStrategy(CwStrategy):
         """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。
         ⚠️ rng 由现「每调用新建 random.Random()」合并为 ``session.rng``(单一可种子源,§11.4);
         未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。"""
-        return cw_decisions.plan(state, config, config.faction_priority,
+        return cw_plan.plan(state, config, config.faction_priority,
                                  rng=session.rng, target_comp=session.target_comp,
                                  reactive=(session.target_comp is None))
 
@@ -172,17 +172,17 @@ class DefaultCwStrategy(CwStrategy):
         行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
         概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。"""
         _tgt = session.target_comp
-        return cw_decisions.decide_event(options, config, state, target_comp=_tgt)
+        return cw_events.decide_event(options, config, state, target_comp=_tgt)
 
     def decide_supply(self, options: list[SupplyOption], state: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(P1 钩子 + 默认委托,handler 不 rewire,随阶段5)。"""
-        return cw_decisions.decide_supply(options, state, session.target_comp, config, refresh_used)
+        return cw_events.decide_supply(options, state, session.target_comp, config, refresh_used)
 
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
         """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
-        return cw_decisions.decide_encounter(options, state, session.target_comp, config, refresh_used)
+        return cw_events.decide_encounter(options, state, session.target_comp, config, refresh_used)
 
     def decide_megastar(self, options: list[MegastarOption], state: GameState,
                         session: StrategySession, config) -> MegastarPick:
@@ -250,8 +250,8 @@ class DefaultCwStrategy(CwStrategy):
         # a. deploy 空位(零成本最优):bench 有过 _should_deploy 的角色 → DeployMove
         if obs.deploy_vacancy > 0:
             for bc in list(obs.bench_chars):
-                if cw_decisions._should_deploy(bc, st, target):
-                    row, ok = cw_decisions._pick_deploy_row(st, bc, target)
+                if cw_plan._should_deploy(bc, st, target):
+                    row, ok = cw_plan._pick_deploy_row(st, bc, target)
                     if not ok:
                         continue
                     occupied = obs.front_occupied if row == 'front' else obs.back_occupied
@@ -266,14 +266,14 @@ class DefaultCwStrategy(CwStrategy):
         if st.level < 10:
             if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
                 fresh = self._fresh_state(obs, session)
-                if cw_decisions.level_up_gate(fresh, target):
+                if cw_plan.level_up_gate(fresh, target):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
                     return LevelUp()
             else:
                 log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
                 return EnsureShopOpen()
         # c. 卖最弱(_weakest_bench_idx 含 3合1 重复件保护;全保护 → None)
-        idx = cw_decisions._weakest_bench_idx(st, config.character_priority, target)
+        idx = cw_plan._weakest_bench_idx(st, config.character_priority, target)
         if idx is not None and idx < len(st.bench):
             bc = st.bench[idx]
             log.info(f'[cw][prep] 腾席链c:卖最弱 槽{bc.slot}({bc.char_id})')

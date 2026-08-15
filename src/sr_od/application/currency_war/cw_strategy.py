@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from sr_od.application.currency_war.cw_decisions import (
+from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     EncounterPick,
     MegastarOption,
@@ -141,7 +141,7 @@ class CwStrategy(ABC):
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``HandleEncounter``(L55 调)+ ``cw_decisions.decide_encounter``
+        """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``HandleEncounter``(L55 调)+ ``cw_events.decide_encounter``
         (非平凡:未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新换批)+ ``read_encounter_options``
         (OCR 卡标题→difficulty)。affix 分支 N/A(选项 UI 不显词缀,战后才显)。原「dormant 无选项UI」过期(2026-08-12 核实)。"""
 

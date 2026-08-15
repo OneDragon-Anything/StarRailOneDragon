@@ -2,7 +2,7 @@
 
 """货币战争 策略状态模型(GameState + Action + 前瞻 simulate)。
 
-策略采用「评估函数 + 贪心改进」架构(见 cw_decisions.evaluate / plan):
+策略采用「评估函数 + 贪心改进」架构(见 cw_evaluate.evaluate / cw_plan.plan):
 - evaluate(state) 给局面打分(羁绊/经济/站位/角色质量);
 - 决策在硬规则门内,贪心选 eval 提升最大的动作;前瞻用 simulate(state, action)。
 
@@ -278,7 +278,7 @@ def _bench_char_cost(bc: BenchChar) -> int:
 
 def effective_hp_threshold(state: GameState, config) -> int:
     """实际保血阈值:selected_difficulty(职级)检测到且 ``config.difficulty_hp_override`` 有对应键 → 取覆盖值;
-    否则回退 ``config.hp_safe_threshold``(默认 40 = cw_decisions.HP_DANGER)。
+    否则回退 ``config.hp_safe_threshold``(默认 40 = cw_evaluate.HP_DANGER)。
 
     向后兼容:selected_difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
     前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
