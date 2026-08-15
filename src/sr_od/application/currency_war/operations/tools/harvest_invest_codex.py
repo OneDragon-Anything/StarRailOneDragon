@@ -18,6 +18,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from one_dragon.utils.str_utils import find_best_match_by_lcs
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
@@ -129,6 +130,41 @@ class HarvestInvestCodex(SrOperation):
         log.info('[采图鉴] 滚动未生效(可能到底)')
         return False
 
+    def _canon_name(self, raw: str, effect: str) -> str:
+        """OCR 名归一到注册表规范名(ADR-0138;艺术小字形变靠 LCS 相似匹配,非全等)。
+
+        ``find_best_match_by_lcs``(框架 str_utils,与 round_by_ocr 同源)th=0.5;防误配双守卫:
+        ① LCS 结果与 raw 长度差 ≤3(防「胜利，还」误配「返利」类短名偶合);
+        ② 效果文本 LCS 相似度 ≥0.5(名字拿效果二次验证;相似非包含,容忍措辞差)。
+        守卫不过 → 保留 raw(codex-new 路径,人工核)。
+        """
+        from sr_od.application.currency_war.cw_investments import (
+            INVESTMENT_ENVS,
+            INVESTMENT_STRATEGIES,
+        )
+        reg = INVESTMENT_ENVS if self.kind == 'envs' else INVESTMENT_STRATEGIES
+        names = list(reg)
+        idx = find_best_match_by_lcs(raw, names, lcs_percent_threshold=0.5)
+        if idx is None:
+            return raw
+        cand = names[idx]
+        if abs(len(cand) - len(raw)) > 3:
+            return raw
+        # 效果二次验证 = 相似度(非包含;ADR-0138:注册表效果与图鉴原文有措辞差时,包含式守卫
+        # 会误杀正确映射 —— 实测「他们获得师徒」vs 注册表「获师徒羁绊」)。效果 LCS ≥0.5 即认名字对。
+        if effect:
+            import re
+
+            from one_dragon.utils.str_utils import longest_common_subsequence_length
+
+            def _ce(s: str) -> str:
+                return re.sub(r'[^0-9A-Za-z\u4e00-\u9fff]+', '', s)
+
+            a, b = _ce(effect)[:40], _ce(reg[cand].effect)[:40]
+            if a and b and longest_common_subsequence_length(a, b) / max(len(a), len(b)) < 0.5:
+                return raw
+        return cand
+
     def _detail(self, img):
         """右侧详情:(名, 效果, 出现位面)。名 = 面板顶部标题(y 最小非 UI 文本)。"""
         texts = self._ocr_texts(img, NAME_REGION)
@@ -185,7 +221,8 @@ class HarvestInvestCodex(SrOperation):
                         det = self._detail(img2)
                         if det is None:
                             continue
-                        name, eff, planes = det
+                        name_raw, eff, planes = det
+                        name = self._canon_name(name_raw, eff)   # ADR-0138:LCS 归一(全等必失配)
                         if name in self.seen:
                             continue
                         self.seen.add(name)
