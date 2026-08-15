@@ -240,6 +240,11 @@ class PrepDirector(SrOperation):
             return
         old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars]
         old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed]
+        # 空读守卫(live M14 09:28 实锤:SIFT 动画/过渡帧读到 bench=[]+deployed=[],下一帧恢复 ——
+        # 空读直写 tracking 会污染决策(deploy/pivot 用错板);双空+前值非空 = 疑读失败,保旧值待重读)。
+        if not bench and not deployed and (old_b or old_d):
+            log.warning('[cw!][director] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
+            return
         if bench is not None:
             session.tracked_bench_chars = list(bench)
         if deployed is not None:
