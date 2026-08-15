@@ -250,6 +250,16 @@ class BuyShopCards(SrOperation):
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
+        # [停机钩子·临时,采完删(用户 2026-08-15 指示)]未购买(含刷新后仍未购买)且商店有
+        # 未识别卡(SIFT miss:昔涟诗篇等非角色内容/立绘缺的角色)→ 停机留画面给 AI 建档。
+        # read_shop_cards 的采集钩子已存整屏+flag;此处只做停机判定(方案 D:stop_running+保画面)。
+        # 立绘缺(开拓者·欢愉/加拉赫)会持续触发——现场采到立绘原料后即不再触发,一石二鸟。
+        if total_buy == 0 and any(not c.name for c in state.shop):
+            _unk = [i + 1 for i, c in enumerate(state.shop) if not c.name]
+            log.info(f'[cw-shop][hook] 未购买且存在未识别卡(槽{_unk})→ 停机采集(昔涟诗篇/立绘缺?)')
+            self.ctx.run_context.stop_running()
+            return self.round_fail(f'停机采集:商店未识别卡 槽{_unk}(未购买)')
+
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
         deploy_moves = [a for a in actions if isinstance(a, DeployMove)]
         if match is not None:
