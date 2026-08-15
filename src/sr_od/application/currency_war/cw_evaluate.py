@@ -13,6 +13,7 @@ from sr_od.application.currency_war.cw_comps import (
     clamp,
     escort_for,
     form_progress,
+    skeleton_factions,
 )
 from sr_od.application.currency_war.cw_economy import (
     P2_REBUILD_GOLD_FLOOR,
@@ -386,10 +387,10 @@ def optionality_score(state: GameState) -> float:
 # 过渡羁绊(P1 能打伤害的羁绊,前期凑出保血;review round-4 HIGH-2;comps/README「开局过渡分级」人上人级)。
 # 限时 AV 下前期靠这些羁绊组合稳血到成型(DOT 慢热 P1 弱死根因之一 = 无过渡羁绊支撑)。
 # 全局过渡基础设施(非 per-comp):任何 comp 的 P1 都可拿这些羁绊 tempo。
-# 过渡羁绊集(必修三前期公式,ADR-0130 续):核心 2DOT(桑博+艾丝妲)向外拓展 —— +佩拉 2贝洛伯格(输出)/
-# +小黑塔 2银河学者(挖矿经济,1-3 挖满 +3 金)/ 换奶 2治疗(保 1-5 关不掉人扣行动值,生存)。
-# 旧表仅 5 伤害系(复查 #2):经济/生存过渡缺位 → P1 早期「能打能苟」的合法过渡被当 spread 罚。
-TRANSITION_FACTIONS: set[str] = {'仙舟', '狼狩', '持续伤害', '列车同行', '贝洛伯格', '银河学者', '治疗'}
+# ADR-0152(M4 方法论接线):主集从注册表派生(``cw_comps.skeleton_factions``:最低档 ≤3 人 +
+# ≤2费成员 ≥2 —— plaza 实战开局组合的生成判据,版本更新自动传导);持续伤害/治疗手工补 ——
+# 它们的过渡价值是**角色效果驱动**(桑博/艾丝妲带 DoT、藿藿/娜塔莎奶)非低费成员充足,派生判据筛不到。
+TRANSITION_FACTIONS: set[str] = skeleton_factions() | {'持续伤害', '治疗'}
 
 TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(≥2)的过渡羁绊的早期保血分(占位,阶段 6 校准)
 
