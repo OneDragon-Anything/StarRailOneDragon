@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
 from sr_od.application.currency_war.cw_investments import (
+    INVESTMENT_STRATEGIES,
     EconomyEffect,
     aggregate_economy,
     get_strategy,
@@ -63,6 +64,9 @@ from sr_od.application.currency_war.cw_state import (
     sell_refund,
     simulate,
 )
+
+# 注册表名列表缓存(ADR-0141 _option_rarity LCS 兜底用;模块级避免每选项重建)
+INVESTMENT_STRATEGIES_KEYS: list[str] = list(INVESTMENT_STRATEGIES)
 
 # —— eval 权重 ——
 # 以下为 **V4.4 research meta 先验,冻结**(版本更新才改,不进用户调参面;review r5/r6 权重纪律)。
@@ -1058,6 +1062,20 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
 # decide_boss_priority(阵营降权)已删(2026-08-12):boss 克制是 comp-vs-boss 机制级(走 boss_fit/
 # comp.countered_by_bosses + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
 
+def _option_rarity(opt: str) -> str:
+    """投资策略选项的品质(ADR-0141 复查 #6):注册表精确查 → LCS 相似兜底(ADR-0138 通道);未知返 ''。
+
+    品质→敌难度(核心机制 38-40):金 +3 / 棱彩 +6 —— 高品质 = 高风险高回报,难度惩罚项的输入。
+    """
+    s = get_strategy(opt)
+    if s is not None:
+        return s.rarity
+    from one_dragon.utils.str_utils import find_best_match_by_lcs
+    names = list(INVESTMENT_STRATEGIES_KEYS) if INVESTMENT_STRATEGIES_KEYS else []
+    idx = find_best_match_by_lcs(opt, names, lcs_percent_threshold=0.6)
+    return INVESTMENT_STRATEGIES[names[idx]].rarity if idx is not None else ''
+
+
 def decide_event(options: list[str], config, state: GameState,
                   target_comp=None) -> PickEvent:
     """事件选项打分:白名单优先级(子串)+ comp 匹配(ADR-0134)+ 注册表先验(ADR-0133)+ 克制降权。
@@ -1097,6 +1115,14 @@ def decide_event(options: list[str], config, state: GameState,
                 _prior += 20.0
             if _prior > score:
                 score, reason = _prior, f'prior-{_st.rarity}'
+        # ADR-0141(复查 #6):品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
+        # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
+        # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
+        _rar = _st.rarity if _st is not None else _option_rarity(opt)
+        if _rar == '棱彩':
+            score -= 12.0 if state.hp >= 40 else 24.0
+        elif _rar == '金':
+            score -= 6.0 if state.hp >= 40 else 12.0
         if on_dot and any(p in opt for p in dot_punish):
             score -= penalty
         if score > best_score:

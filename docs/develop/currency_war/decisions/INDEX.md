@@ -68,3 +68,4 @@
 | [0138](0138-ocr-name-lcs-matching.md) | OCR名归一用框架LCS相似匹配(str_utils,非全等) | accepted | 2026-08-15 | 全等/包含对艺术小字形变(狸↔禄/•↔·/全半角)大量失配;_canon_name=find_best_match_by_lcs(0.5)+长度守卫+效果LCS守卫(非包含,容忍措辞差);效果守卫暴露注册表文本质量依赖(压缩版稀释LCS,六条换图鉴原文);CW一切OCR→规范名匹配走str_utils |
 | [0139](0139-comp-char-positions.md) | comp特定站位覆盖命途默认(char_positions;复查#9) | accepted | 2026-08-15 | 攻略实证:绯英爻光必后台(UP反向论证)/万敌独前排(燃血吃受击)/知更鸟前台(追击支撑);Comp.char_positions+三处消费同语义;comp级数据(同角色不同comp要求不同) |
 | [0140](0140-escort-comps-bench-gate-fix.md) | 中期护航三套+M18复盘回归修正(散牌留bench人口门) | accepted | 2026-08-15 | EscortComp注册(龙丹4战技3仙舟/灵砂4击破/阿雅3昼神3能量;escort_for按target机制匹配,成长型排除)+tempo分护航窗口加权;M18实证回归:散牌留bench全局化→放置3/18满员76%→空位>2人口扩展门放行;复盘:进P2 HP41vs1多活3轮,金无滞留,P2经验0次待完整局验 |
+| [0141](0141-rarity-difficulty-penalty.md) | 品质→敌难度进选卡(金+3/彩+6风险项;复查#6) | accepted | 2026-08-15 | 卡名后缀只覆盖11%→注册表rarity全量(_option_rarity精确+LCS兜底);惩罚HP分档(彩-12/-24金-6/-12)只调相对序非禁选(高先验经济类彩仍胜——经济值得难度);HP危期银经济胜彩无经济=行为改变实证;白名单T0语义不变 |
