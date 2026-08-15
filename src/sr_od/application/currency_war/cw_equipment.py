@@ -215,11 +215,14 @@ def read_equipped_below(
         crop = cv2.cvtColor(screen[rect.y1:rect.y2, rect.x1:rect.x2], cv2.COLOR_RGB2GRAY)  # sr_od screen 是 RGB(cv2_utils.read_image),非 BGR
         raw: list[tuple[str, float, int]] = []  # (name, val, icon_center) 命中(>=threshold)
         near: dict[str, float] = {}  # 近命中(name->max val, miss_threshold<=val<threshold),MISS 日志用
-        # 98px 大图模板 multi-scale TM(icon ~32-34px 随位置变,D-49/D-51;缩到 29-36px 覆盖)
+        # 大图模板 multi-scale TM(icon ~32-34px 随位置变,D-49/D-51;缩到 29-36px 覆盖)。
+        # scales 语义 = 相对 98px 基准(手工库);混合库含 128px plaza 官方图(用户 2026-08-15:保持
+        # 原始分辨率不烘焙)→ 按模板宽归一换算,等效目标像素不变(32-34px icon 各档一致)。
         for name, tgray in tmpl_grays.items():
             th, tw = tgray.shape
+            k = 98.0 / max(tw, th)   # 模板宽→98 基准的换算系数
             for s in scales:
-                nw, nh = int(tw * s), int(th * s)
+                nw, nh = int(tw * s * k), int(th * s * k)
                 if nw < 12 or nh < 12 or nw >= crop.shape[1] or nh >= crop.shape[0]:
                     continue
                 resized = cv2.resize(tgray, (nw, nh), interpolation=cv2.INTER_AREA)
@@ -316,7 +319,10 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     """
     grays = getattr(ctx, 'cw_equip_tm_grays', None)
     if grays is None:
-        equip_dir = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'cw_equip'
+        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        equip_dir = base / 'cw_equip_plaza'   # 混合库(plaza 官方 59 + 手工补充 96;生成器 gen_plaza_chars.py 产物)
+        if not equip_dir.is_dir():
+            equip_dir = base / 'cw_equip'   # 回退:旧手工库
         if not equip_dir.is_dir():
             return None
         grays = load_equip_tm_grays(equip_dir)
@@ -335,7 +341,10 @@ def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tupl
     """
     templates = getattr(ctx, 'cw_equip_sift_templates', None)
     if templates is None:
-        equip_dir = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'cw_equip'
+        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        equip_dir = base / 'cw_equip_plaza'   # 混合库(同 ensure_equip_tm_templates)
+        if not equip_dir.is_dir():
+            equip_dir = base / 'cw_equip'   # 回退:旧手工库
         if not equip_dir.is_dir():
             return None
         templates = load_equip_templates(equip_dir)

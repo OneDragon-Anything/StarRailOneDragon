@@ -31,6 +31,7 @@ sys.path.insert(0, str(REPO / "src"))  # 供 gen_templates import sr_od 注册�
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_chars_data.py"
 TPL_DIR = REPO / "assets/template/character_cw_portrait_plaza"  # 官方立绘模板库(替代手采库)
+EQUIP_TPL_DIR = REPO / "assets/template/cw_equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"
 HEADERS = {
@@ -231,6 +232,86 @@ def gen_templates(roles: list) -> None:
     print(f"[tpl] 烘焙 {n} 角色(费用色 {sorted(cost_bg.keys())})")
 
 
+def gen_equip_templates(cfg: dict) -> None:
+    """产物4:装备模板库 cw_equip_plaza(混合库,单 png <名>.png 与手工 cw_equip 同构)。
+
+    组成:
+    - plaza 进阶装备**普通版** art(去特权重复:特权 36 对与普通完全同图,SIFT 无法区分,
+      特权靠 codex 金框 → 用手工模板):RGBA 透明底 → 深底合成,**保持原始分辨率不 resize**
+      (用户 2026-08-15:烘焙缩放没必要,匹配时 multi-scale TM/SIFT 自适应;below-avatar
+      的 scale 档按模板实际尺寸换算即可);
+    - 手工 cw_equip 中名字不在 plaza 普通名集合的全部拷贝(简易装备 53 + 特权 36 等,
+      plaza 无此数据/同图不可分)。
+
+    匹配证据(2026-08-15):装备追踪弹窗 GT 3/3(内点 43/18/33 vs 手工 28/16/24);
+    owned 列实拍进阶件 plaza≥手工(多检出列车同行星徽);简易件 plaza 无数据靠手工。
+    """
+    import cv2
+    import numpy as np
+    import shutil
+
+    manual_dir = REPO / "assets/template/cw_equip"
+    EQUIP_TPL_DIR.mkdir(parents=True, exist_ok=True)
+    seen_url: dict = {}
+    plaza_normal_names: set = set()
+    failed: set = set()   # 下载/解码失败的 plaza 名(手工段 fallback 补)
+    for e in cfg["equipment_list"]:
+        name = e["name"].replace(chr(0x2022), chr(0x00B7))
+        is_priv = name.endswith(chr(0x00B7) + "特权")
+        if is_priv:
+            continue  # 特权与普通同 art(36 对实测同 icon URL),不进 plaza 集
+        if e["icon"] in seen_url:
+            continue
+        seen_url[e["icon"]] = name
+        plaza_normal_names.add(name)
+        dst = EQUIP_TPL_DIR / (name + ".png")
+        if dst.exists():
+            continue
+        try:
+            req = urllib.request.Request(e["icon"], headers={"User-Agent": HEADERS["User-Agent"], "Referer": HEADERS["Referer"]})
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                rgba = cv2.imdecode(np.frombuffer(resp.read(), np.uint8), cv2.IMREAD_UNCHANGED)
+        except Exception:
+            failed.add(name)
+            continue
+        if rgba is None or rgba.ndim != 3:
+            failed.add(name)
+            continue
+        if rgba.shape[2] == 4:
+            a = rgba[:, :, 3:4].astype(np.float32) / 255.0
+            rgb = (rgba[:, :, :3].astype(np.float32) * a + np.array((30, 30, 34), np.float32) * (1 - a)).astype(np.uint8)
+            m = (rgba[:, :, 3] >= 128)
+        else:
+            # 少数官方 icon 本就无 alpha(治疗/持续伤害星徽,128x128x3 不透明)——直通,掩码全开
+            rgb = rgba.copy()
+            m = np.ones(rgba.shape[:2], bool)
+        ys, xs = np.where(m)
+        if len(xs):
+            rgb = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        cv2.imencode(".png", rgb)[1].tofile(dst)
+    # 手工补充:名字不在 plaza 普通名的全部(简易/特权/合成件)
+    # 命名对齐(2026-08-15):registry 的 财富(基础)/(强化) 共用手工 财富.png 两份拷贝;
+    # plaza 的 诅咒·干将莫邪 为 registry 漏项(cw_equipment_data 生成器待补),模板照收。
+    n_copy = 0
+    alias: dict[str, str] = {"财富(基础)": "财富", "财富(强化)": "财富"}
+    for png in sorted(manual_dir.glob("*.png")):
+        if png.stem in plaza_normal_names or png.stem in alias.values():
+            continue
+        dst = EQUIP_TPL_DIR / png.name
+        if not dst.exists():
+            shutil.copyfile(png, dst)
+            n_copy += 1
+    for reg_name, manual_name in alias.items():
+        src = manual_dir / (manual_name + ".png")
+        dst = EQUIP_TPL_DIR / (reg_name + ".png")
+        if src.exists() and not dst.exists():
+            shutil.copyfile(src, dst)
+            n_copy += 1
+    if failed:
+        raise RuntimeError(f"plaza 装备下载失败(保持统一官方,不 fallback 手工):{sorted(failed)}")
+    print(f"[eqtpl] plaza {len(plaza_normal_names)} art + 手工补充 {n_copy} -> 共 {len(list(EQUIP_TPL_DIR.glob('*.png')))}")
+
+
 def main() -> None:
     cfg = fetch_config()
     version = cfg.get("rpg_game_big_version", "?")
@@ -241,6 +322,8 @@ def main() -> None:
     print(f"[data] -> {DATA_PY}")
     gen_templates(roles)
     print(f"[tpl] -> {TPL_DIR}")
+    gen_equip_templates(cfg)
+    print(f"[eqtpl] -> {EQUIP_TPL_DIR}")
 
 
 if __name__ == "__main__":

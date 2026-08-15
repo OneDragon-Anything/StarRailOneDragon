@@ -124,7 +124,10 @@ class EquipAll(SrOperation):
         cached = getattr(self.ctx, 'cw_equip_templates', None)
         if cached is not None:
             return cached
-        equip_dir = Path(__file__).resolve().parents[6] / 'assets/template/cw_equip'
+        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        equip_dir = base / 'cw_equip_plaza'   # 混合库(plaza 官方+手工补充)
+        if not equip_dir.is_dir():
+            equip_dir = base / 'cw_equip'
         if not equip_dir.is_dir():
             log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
             return None
@@ -142,7 +145,10 @@ class EquipAll(SrOperation):
         cached = getattr(self.ctx, 'cw_equip_tm_grays', None)
         if cached is not None:
             return cached
-        equip_dir = Path(__file__).resolve().parents[6] / 'assets/template/cw_equip'
+        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        equip_dir = base / 'cw_equip_plaza'   # 混合库(同 _get_templates)
+        if not equip_dir.is_dir():
+            equip_dir = base / 'cw_equip'
         if not equip_dir.is_dir():
             log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
             return None
