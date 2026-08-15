@@ -117,8 +117,57 @@ def parse() -> list[dict]:
     return entries
 
 
+def merge_codex(entries: list[dict]) -> list[dict]:
+    """合并图鉴抽取补丁(权威:数据银行 > 米游社 md;2026-08-15)。
+
+    - md effect 空(简易基础属性/占位)→ 图鉴抽取填;
+    - md 没有的条目(数据银行有而米游社无:穿刺死棘之枪/管理员手套ProMax/诅咒·干将莫邪/财富)
+      → 图鉴抽取新增(category 按截图 tier 映射,合集→按效果语义归类)。
+    图鉴抽取产物: .debug/temp/cw_equip_data.json(extract_equip_data.py 跑 cw_shots)。
+    """
+    import json
+
+    codex_path = REPO / ".debug/temp/cw_equip_data.json"
+    if not codex_path.exists():
+        return entries
+    codex = json.loads(codex_path.read_text(encoding="utf-8"))
+    TIER_CAT = {"简易": "简易", "进阶": "进阶", "特权": "特权", "星徽": "星徽", "消耗品": "工具"}
+    # 合集 tab 混多类,按效果语义归:卡带→骇客 / 圣杯·王冠·死棘→命运 / 财富·垃圾袋→特殊 / 白昼前缀→白昼
+    def guess_cat(nm: str, eff: str) -> str:
+        if nm.startswith("白昼·") or nm.startswith("极·白昼·"):
+            return "白昼"
+        if "卡带" in nm:
+            return "骇客"
+        if any(k in nm for k in ("圣杯", "王冠", "死棘", "阿瓦隆", "宝石剑", "开辟之星", "干将莫邪")):
+            return "命运"
+        if any(k in eff for k in ("金币", "扑满", "病毒", "投影", "防火墙", "芯片", "手套", "墨镜", "拷贝仪", "扳手")):
+            return "骇客"
+        return "特殊"
+
+    filled = 0
+    for e in entries:
+        if not e["effect"] and e["name"] in codex:
+            eff = " ".join(codex[e["name"]].get("effect") or [])
+            if eff:
+                e["effect"] = eff
+                e["stacking"] = _stacking(eff)
+                filled += 1
+    added = 0
+    known = {e["name"] for e in entries}
+    for nm, v in codex.items():
+        if nm in known:
+            continue
+        eff = " ".join(v.get("effect") or [])
+        cat = TIER_CAT.get(v.get("tier") or "") or guess_cat(nm, eff)
+        entries.append({"name": nm, "category": cat, "effect": eff,
+                        "stacking": _stacking(eff), "source": "", "recipe": None})
+        added += 1
+    print(f"[codex-merge] effect 填 {filled} 条,新增 {added} 条(图鉴权威)")
+    return entries
+
+
 def main() -> None:
-    entries = parse()
+    entries = merge_codex(parse())
     recipes = parse_recipes()
     for e in entries:
         e["recipe"] = recipes.get(e["name"])
@@ -200,4 +249,3 @@ def get_equip(name: str) -> Equipment | None:
 
 if __name__ == "__main__":
     main()
-
