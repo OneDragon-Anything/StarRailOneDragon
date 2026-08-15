@@ -16,10 +16,10 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 
 | 层 | 载体 | 何时进 |
 |---|---|---|
-| always-on | `AGENTS.md` / `.claude/CLAUDE.md` | 每次会话总要知的 |
+| always-on | `AGENTS.md`(团队) / 个人本地入口(DSH: `AGENTS.local.md`、Claude Code: `.claude/CLAUDE.md`) | 每次会话总要知的 |
 | on-demand | `docs/develop/`、skills | 按需查阅 / 调用时 |
 | live | MCP、工具 | 实时状态 |
-| memory | auto-memory / `CLAUDE.local.md` | 个人偏好、跨会话沉淀 |
+| memory | auto-memory / 各工具个人本地文件(`AGENTS.local.md` / `CLAUDE.local.md`) | 个人偏好、跨会话沉淀 |
 
 维护靠 **docs-as-code + 维护纪律**：文档入仓、随代码版本化、和代码同步更新。**写一次容易，保持准确才是难点**——这是后续 AGENTS.md 单源、三级晋升、skills 等机制存在的根。
 
@@ -29,12 +29,12 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 |---|---|
 | [context_layering.md](context_layering.md) | 上下文进哪档（always-on / on-demand / 强制）+「删了会出错吗」判据 |
 | [ai_tool_rules.md](ai_tool_rules.md) | 各 AI 工具 rules 机制 + frontmatter 跨工具兼容性 |
-| [entry_files.md](entry_files.md) | AGENTS.md / CLAUDE.md 等入口文件的维护规范 |
+| [agent_instruction_files.md](agent_instruction_files.md) | AGENTS.md / CLAUDE.md 等入口文件的维护规范 |
 | [settings_scope.md](settings_scope.md) | settings.json 各 key 的团队 / 个人 scope 归口 |
 
 ## 两条方向
 
-- **方向 A｜武装 harness（当前重心）**：把项目知识、规范、工具固化进 harness，让 AI（和贡献者）开箱即用、少踩坑。流程方法论采用 [superpowers](https://github.com/anthropics/superpowers)（brainstorming → 计划 → TDD → review → 合并，本项目 dev skill 叠加其上）；已落地：`AGENTS.md` 单源、`.claude/CLAUDE.md`、`skills/`、`setup/ai_coding.md`。
+- **方向 A｜武装 harness（当前重心）**：把项目知识、规范、工具固化进 harness，让 AI（和贡献者）开箱即用、少踩坑。流程方法论以 `od-dev-*` / `sr-od-dev-*` skills 为准(跨工具;Claude Code 侧 [superpowers](https://github.com/anthropics/superpowers) 为可选补充)（brainstorming → 计划 → TDD → review → 合并，本项目 dev skill 叠加其上）；已落地：`AGENTS.md` 单源、`.claude/CLAUDE.md`、`skills/`、`setup/ai_coding.md`。
 - **方向 B｜MCP 驱动的游戏自动化（已落地）**：把游戏操作（截图 / OCR / 进游戏 / 跑流程）通过常驻 MCP 暴露给 Agent，用于辅助开发调试，乃至让 Agent 直接驱动游戏。其地基是**运行层后端化**（`SrBackendContext`）；4 个感知 / 操作 tool（窗口状态 / 截图 / OCR / 进游戏）已实现并端到端验证，设计见 [../sr_od/backend/](../sr_od/backend/)。
 
 ## 当前状态（方向 A）
@@ -42,15 +42,15 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 | 组件 | 位置 | 作用 |
 |---|---|---|
 | `AGENTS.md` | 仓库根 | 统一 AI 编码入口（架构 / 硬约束 / 流程），所有工具的信息源 |
-| `.claude/CLAUDE.md` | 仓库根 | Claude Code 入口，`@../AGENTS.md` 引入 |
+| `AGENTS.local.md` | 仓库根 | 个人本地入口（DSH 原生加载，不入库）；Claude Code 用户经 `.claude/CLAUDE.md` `@import` |
 | [../setup/ai_coding.md](../setup/ai_coding.md) | docs/develop/setup | 各 AI 工具的接入指引（用户向："怎么用"） |
 | [`skills/`](../../../skills/) | 仓库根 | dev skill（`sr-od-dev-*`，如 pr-finishing / deciding-a-fix / gameplay-automation 等，经 junction 加载）；写作规范 `od-dev-writing-skills` 在公共仓 `OneDragon-Skills` |
 
-> 本项目目前只使用 Claude Code（单人开发），暂无 Copilot 等其它工具入口。"怎么用"见 `setup/ai_coding.md`；本目录（harness/）记录"怎么建、为什么这么建"。
+> 本项目多人协作，各开发者所用 coding agent 不一定相同（DSH、Claude Code 等），文档按工具中性描述。"怎么用"见 `setup/ai_coding.md`；本目录（harness/）记录"怎么建、为什么这么建"。
 
 ## 架构原则
 
-1. **单一信息源**：项目知识集中在 `AGENTS.md` + `docs/`，工具入口用 `@import` 引入而非复制。⚠️ `@import` 只 Claude Code 支持，且只用于组织单一源——**不省 context**（import 仍 launch 时全量加载）；判据见 [context_layering.md](context_layering.md)。
+1. **单一信息源**：项目知识集中在 `AGENTS.md` + `docs/`；各工具引入 `AGENTS.md`（DSH 原生加载 + `AGENTS.local.md` 个人补充；Claude Code 经 `.claude/CLAUDE.md` `@import`，接线见 [agent_instruction_files.md](agent_instruction_files.md)）；判据见 [context_layering.md](context_layering.md)。
 2. **贵重 infra 常驻**：MCP 的价值是让 `SrContext`（OCR / YOLO / 控制器）常驻内存，规避每次冷启动数秒成本。
 3. **共享 Layer 0、单服务器生长**：A→B1 工具在同一 MCP 服务器内按命名空间增长；B2（模型实时当玩家）另起独立 loop，复用 Layer 0，MCP 退为控制面。
 

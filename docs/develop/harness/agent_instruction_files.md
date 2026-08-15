@@ -1,11 +1,11 @@
-# AI 入口文件维护规范:AGENTS.md / .claude/CLAUDE.md
+# AI 入口文件维护规范:AGENTS.md / AGENTS.local.md
 
-> `AGENTS.md`(仓库根,跨工具统一源,**提交的团队共享**)和 `.claude/CLAUDE.md`(Claude Code 个人本地入口,**不入库**)都是 **always-on** 文件——每次会话完整进 context。本文档记录这两个文件的维护规范;分层判据见 [context_layering.md](context_layering.md),各工具机制见 [ai_tool_rules.md](ai_tool_rules.md)。
+> `AGENTS.md`(仓库根,跨工具统一源,**提交的团队共享**)和个人本地入口(**不入库**;DSH: `AGENTS.local.md` 原生加载,Claude Code: `.claude/CLAUDE.md` `@import` 引入)都是 **always-on** 文件。本文档记录这些文件的维护规范;分层判据见 [context_layering.md](context_layering.md),各工具机制见 [ai_tool_rules.md](ai_tool_rules.md)。
 
 **两层定位**:
 
 - `AGENTS.md` —— 团队共享 + 跨工具单一源(提交)。
-- `.claude/CLAUDE.md` —— 个人本地(`.claude/` 整个 gitignore),`@import` AGENTS.md + 个人补充;不入库、不作共享试验场。
+- 个人本地入口 —— DSH: `AGENTS.local.md`(原生加载,无需引入语法);Claude Code: `.claude/CLAUDE.md`(`@../AGENTS.md` 引入,见 [../setup/claude-code/entry-file.md](../setup/claude-code/entry-file.md))。均不入库,不作共享试验场。
 
 ## 1. 纯指令,不掺杂元信息
 
@@ -24,17 +24,17 @@
 ## 3. 单一信息源(两层)
 
 - `AGENTS.md` 是**源**(跨工具通用,**提交**)。
-- `.claude/CLAUDE.md` 是**个人本地**(不入库),用 `@../AGENTS.md` 引入 + 个人补充;**不复制** AGENTS.md 正文,Claude 专属细则(个人偏好)写在 `@import` 下方。
+- 个人本地入口(DSH: `AGENTS.local.md` / Claude Code: `.claude/CLAUDE.md`)是**个人本地**(不入库),个人补充;**不复制** AGENTS.md 正文。
 - 其他工具入口同理(defer 到 AGENTS.md,不复制)。
-- **暂不采用 path-scoped rules**(特定任务规范放单文件,不拆 `.claude/rules/`)——原因见 §5。
+- **暂不采用 path-scoped rules**(特定任务规范放单文件,不拆 rules 目录)——原因见 §5。
 
 ## 4. 改动流程(两层,无试验晋升)
 
 - **小改**(加 / 改一条约束):直接改 `AGENTS.md`。`AGENTS.md` 是团队共享 + 跨工具源,改动先经用户确认。
-- **大改 / 重组 `AGENTS.md`**:风险大,先在**分支 / 临时文件**试验验证(跑 Claude Code 观察表现),确认后再改 `AGENTS.md`。
-  - 不再用 `.claude/CLAUDE.md` 作试验场——它是个人本地(不入库、不共享),无法承载「试验 → 晋升回 AGENTS.md」的共享流程。
+- **大改 / 重组 `AGENTS.md`**:风险大,先在**分支 / 临时文件**试验验证(跑 AI 编码会话观察表现),确认后再改 `AGENTS.md`。
+  - 不用个人本地入口(`AGENTS.local.md` / `.claude/CLAUDE.md`)作共享试验场——它们个人本地(不入库、不共享),无法承载「试验 → 晋升回 AGENTS.md」的共享流程。
 - **共享文档先确认**:`AGENTS.md` 是提交的团队共享文档,改动先经用户确认,不静默重写。
-- **个人入口 `.claude/CLAUDE.md`**:个人随意改(不入库,不影响团队)。
+- **个人入口**(DSH: `AGENTS.local.md` / Claude Code: `.claude/CLAUDE.md`):个人随意改(不入库,不影响团队)。
 
 ## 5. path-scoped rules:暂不采用
 

@@ -4,7 +4,7 @@
 详细规范与背景资料不要堆在这里，按需继续阅读：
 - AI 编码 harness 工程方法论：[docs/develop/harness/README.md](docs/develop/harness/README.md)
 - 上下文分层判据：[docs/develop/harness/context_layering.md](docs/develop/harness/context_layering.md)
-- 入口文件维护规范：[docs/develop/harness/entry_files.md](docs/develop/harness/entry_files.md)
+- 入口文件维护规范：[docs/develop/harness/agent_instruction_files.md](docs/develop/harness/agent_instruction_files.md)
 - AI 工具接入指引：[docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)
 
 ## 项目概述
@@ -25,7 +25,7 @@ uv run ruff check src/你修改的文件.py
 uv run ruff check --fix src/你修改的文件.py
 ```
 
-- 因 `pyproject.toml` 设 `[tool.uv] package = false`，运行前需确保 `PYTHONPATH=src`：PowerShell 执行 `$env:PYTHONPATH="src"`，或在项目根 `.env` 写入 `PYTHONPATH=src` 后改用 `uv run --env-file .env python src/sr_od/gui/sr_full_app.py`。
+- 因 `pyproject.toml` 设 `[tool.uv] package = false`，运行前需确保 `PYTHONPATH=src`：PowerShell 执行 `$env:PYTHONPATH="src"`，或 `uv run --env-file .env python src/sr_od/gui/sr_full_app.py`（**`.env` 不放 `PYTHONPATH`**——DSH 启动环境校验会拒绝并阻塞从本目录启动 dsh；主 server 由 daemon/GUI spawn 时已自动注入，手动命令用前一种写法）。
 - 也可以沿用 `debug.bat`（交互式调试入口，已设置好环境）。
 - 只对自己修改的文件运行 `ruff check`。
 - 不要对整个 `src/` 目录运行 ruff，现有仓库尚未全面适配。
@@ -84,7 +84,7 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 自维护指南
 
-修改 **AI 入口文件** `AGENTS.md`（团队共享 / 跨工具单一源，提交）时，必须先按 [entry_files.md](docs/develop/harness/entry_files.md) 的规范来：纯指令不掺杂元信息、只放 always-on 该留的（「删了会出错吗」逐条自检）、单一信息源（`AGENTS.md` 是源，工具入口 `@import` 引入）、共享文档改动先经用户确认。`.claude/CLAUDE.md` 是**个人本地**（`.claude/` 整个不入库，见 entry_files.md），个人随意改。
+修改 **AI 入口文件**(`AGENTS.md` / 个人本地 `.local`)前,先按 `od-dev-writing-agent-instructions` skill 的 checklist 来(判层 → 判层内归属 → 纯度自检 → 改动流程);本项目专属细节(两层引入方式 / path-scoped 决策)见 [agent_instruction_files.md](docs/develop/harness/agent_instruction_files.md),共享文档改动先经用户确认。
 
 ## Skills
 
@@ -92,9 +92,9 @@ uv run ruff check --fix src/你修改的文件.py
 
 - **保存**:根 `skills/<name>/`(提交)。
 - **命名**:`sr-od-dev-` 前缀(星铁专属命名空间,防撞名);使用类 `sr-od-`。
-- **挂载**:junction `skills/<name>` → `.claude/skills/<name>`(本地,`.claude/` 不入库)。
+- **挂载**:junction `skills/<name>` → 所用工具读 skill 的目录(本地建、不入库;DSH: `.dsh/skills/`、Claude Code: `.claude/skills/`、`.agents/skills/` 为通用兼容位)。
 
-`od-dev-writing-skills` 本身从公共仓 `OneDragon-Skills` 挂载进本仓 `.claude/skills/`(可通用 skill 沉淀到公共仓,SR 独有业务留本仓)。详 [docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)。
+`od-dev-writing-skills` 本身从公共仓 `OneDragon-Skills` 挂载进本仓各工具的 skill 目录(可通用 skill 沉淀到公共仓,SR 独有业务留本仓)。详 [docs/develop/setup/ai_coding.md](docs/develop/setup/ai_coding.md)。
 
 ## 深入阅读
 
