@@ -353,6 +353,13 @@ class CurrencyWarRunLoop(SrOperation):
             HandleWishTrial(self.ctx).execute()
             return self.round_wait(wait=2)
 
+        # 0i. 星徽秘典道具详情弹窗(挡全屏 → 15 streak 停机钩子,M33 实锤)→ 点右上 X 关回原画面。
+        #     「星徽秘典」= 使用类道具(开四选一星徽);详情弹窗疑似点击道具误开。只关不选
+        #     (使用该道具 = 四选一星徽决策,价值不明先保守关;后续要消费再建 handler)。
+        if self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success:
+            self.ctx.controller.click(Point(1867, 64))
+            return self.round_wait(wait=1.5)
+
         # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,doc 15/ADR-0123;原 BattlePrepCycle
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
