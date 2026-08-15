@@ -144,6 +144,11 @@ def merge_codex(entries: list[dict]) -> list[dict]:
             return "骇客"
         return "特殊"
 
+    # 进阶配方:图鉴 icon 反查产物(36/36,方案 b)覆盖 md 配方(21 条,仅 1 条用户确认过)
+    for e in entries:
+        rec = (codex.get(e["name"]) or {}).get("recipe")
+        if rec and len(rec) >= 2:
+            e["recipe"] = tuple(rec[:2])
     filled = 0
     for e in entries:
         if not e["effect"] and e["name"] in codex:
@@ -170,7 +175,10 @@ def main() -> None:
     entries = merge_codex(parse())
     recipes = parse_recipes()
     for e in entries:
-        e["recipe"] = recipes.get(e["name"])
+        # 配方优先级:图鉴 icon 反查(merge_codex 注入,36/36)> md 文字(21 条,仅 1 条用户确认);
+        # 图鉴无配方条目才回落 md
+        if not e.get("recipe"):
+            e["recipe"] = recipes.get(e["name"])
     by_cat: dict[str, list[dict]] = {}
     for e in entries:
         by_cat.setdefault(e["category"], []).append(e)
