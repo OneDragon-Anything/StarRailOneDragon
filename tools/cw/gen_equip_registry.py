@@ -149,6 +149,31 @@ def merge_codex(entries: list[dict]) -> list[dict]:
         rec = (codex.get(e["name"]) or {}).get("recipe")
         if rec and len(rec) >= 2:
             e["recipe"] = tuple(rec[:2])
+    # 数值校验(2026-08-16):图鉴 OCR 数字误读(虫洞 150→250/冷笑话 4层→5层实测)→
+    # plaza 官方 desc 数值为准:数字序列不一致时整条 effect 换 plaza 版(结构化无 OCR 噪声)
+    import re as _re
+
+    plaza_cfg = REPO / ".debug/temp/currency_war/plaza/config_v4.4.json"
+    if plaza_cfg.exists():
+        import json as _json
+
+        pcfg = _json.loads(plaza_cfg.read_text(encoding="utf-8-sig"))
+        pcfg = pcfg["data"] if "data" in pcfg else pcfg
+        plaza_desc = {pe["name"].replace(chr(0x2022), chr(0x00B7)): pe.get("desc") or "" for pe in pcfg["equipment_list"]}
+        n_fixed = 0
+        for e in entries:
+            pd = plaza_desc.get(e["name"], "")
+            if not pd or not e["effect"]:
+                continue
+            clean = _re.sub(r"<[^>]+>", "", pd)
+            n_o = _re.findall(r"\d+(?:\.\d+)?%?", e["effect"].replace(" ", ""))
+            n_p = _re.findall(r"\d+(?:\.\d+)?%?", clean.replace(",", ""))
+            # 逗号千分位归一(5,000→5000)后再比
+            n_o2 = _re.findall(r"\d+(?:\.\d+)?%?", e["effect"].replace(" ", "").replace(",", ""))
+            if n_o2 != n_p:
+                e["effect"] = clean
+                n_fixed += 1
+        print(f"[plaza-numeric] 数值校正 {n_fixed} 条(图鉴 OCR 误读)")
     filled = 0
     for e in entries:
         if not e["effect"] and e["name"] in codex:
