@@ -1,0 +1,2533 @@
+{
+ "version": "4.4",
+ "generated_from": "miyoushe currency-wars plaza API (public, no login)",
+ "endpoints": {
+  "config": "GET /event/rpgcurrencywar/game/config?game=hkrpg",
+  "lineup_index": "POST /event/rpgcurrencywar/game/lineup/index",
+  "login_required_unusable": [
+   "GET /game/info",
+   "POST /config/dynamic_traits"
+  ]
+ },
+ "notes": [
+  "layers[].is_activated / current_role_count 为攻略阵容视角状态,已丢弃;need_count 即 layer 档位所需人数。",
+  "role_ids/roles 取 config.role_list 反查 trait_details 的权威 V4.4 静态成员表;lineup 观察值存 source.observed_role_ids 供校验。"
+ ],
+ "traits": [
+  {
+   "trait_id": "1001",
+   "name": "列车同行",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "召唤【星穹列车】撞击敌人并留下【光轨】，使我方小队的前/后台强度提高。",
+   "effect_rich": "召唤【星穹列车】撞击敌人并留下<color=#f29e38ff>【光轨】</color>，使<color=#f29e38ff>我方小队</color>的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "战斗开始时触发列车撞击，我方小队前/后台强度提高20%。",
+     "effect_rich": "战斗开始时触发列车撞击，我方小队<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高<color=#f29e38ff>20%</color>。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "列车额外以固定速度撞击，并提供40%，可叠加2层。【列车同行】队员获得双倍。",
+     "effect_rich": "列车额外以固定速度撞击，并提供<color=#f29e38ff>40%</color><property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，可叠加<color=#f29e38ff>2</color>层。【列车同行】队员获得双倍。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "提供的提高至60%，可叠加3层，每层额外使敌方全体目标防御力降低10%。",
+     "effect_rich": "提供的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>提高至<color=#f29e38ff>60%</color>，可叠加<color=#f29e38ff>3</color>层，每层额外使敌方全体目标防御力降低<color=#f29e38ff>10%</color>。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1001",
+    "1003",
+    "1004",
+    "1213",
+    "1313",
+    "1510",
+    "8007",
+    "8009"
+   ],
+   "roles": [
+    "三月七",
+    "姬子",
+    "瓦尔特",
+    "丹恒·饮月",
+    "星期日",
+    "姬子·启行",
+    "开拓者·记忆",
+    "开拓者·欢愉"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/2ab7568a2b34b7bc88cb98760fe5e596.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 563,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1001",
+     "1003",
+     "1004",
+     "1213",
+     "1313",
+     "1510",
+     "8007",
+     "8009"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1002",
+   "name": "星核猎手",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "装备最多的【星核猎手】成为【猎星人】，【星核猎手】会协助【猎星人】作战。\\n【星核猎手】的和提高。",
+   "effect_rich": "<color=#f29e38ff>装备最多</color>的【星核猎手】成为【猎星人】，【星核猎手】会协助【猎星人】作战。\\n【星核猎手】的<property type=ExtraAllDamageTypeAddedRatio1 display=all>和<property type=ExtraHPAddedRatio1 display=all>提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "24%，12%。",
+     "effect_rich": "24%<property type=ExtraAllDamageTypeAddedRatio1 display=all>，12%<property type=ExtraHPAddedRatio1 display=all>。"
+    },
+    {
+     "layer": 3,
+     "quality": 1,
+     "need_count": 3,
+     "effect": "48%，24%。",
+     "effect_rich": "48%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，24%<property type=ExtraHPAddedRatio1 display=icon>。"
+    },
+    {
+     "layer": 4,
+     "quality": 2,
+     "need_count": 4,
+     "effect": "80%，36%。额外激活一位【猎星人】。",
+     "effect_rich": "80%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，36%<property type=ExtraHPAddedRatio1 display=icon>。额外激活一位【猎星人】。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "仅激活角色赋能的【星核猎手】可生效【猎星人】效果。",
+     "text_rich": "仅激活角色赋能的【星核猎手】可生效【猎星人】效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 2,
+     "text": "【刃】：【星核猎手】每攻击4次，刃立即施放强化普攻攻击敌人。战斗开始时已记录2次攻击。",
+     "text_rich": "【刃】：【星核猎手】每攻击4次，刃立即施放强化普攻攻击敌人。战斗开始时已记录2次攻击。"
+    },
+    {
+     "position": 1,
+     "text_order": 3,
+     "text": "【卡芙卡】：【星核猎手】每攻击4次，卡芙卡立即施放战技攻击敌人。战斗开始时已记录2次攻击。",
+     "text_rich": "【卡芙卡】：【星核猎手】每攻击4次，卡芙卡立即施放战技攻击敌人。战斗开始时已记录2次攻击。"
+    },
+    {
+     "position": 1,
+     "text_order": 4,
+     "text": "【银狼】：【星核猎手】每攻击5次，银狼立即施放战技攻击敌人。战斗开始时已记录3次攻击。",
+     "text_rich": "【银狼】：【星核猎手】每攻击5次，银狼立即施放战技攻击敌人。战斗开始时已记录3次攻击。"
+    },
+    {
+     "position": 1,
+     "text_order": 5,
+     "text": "【流萤】：【星核猎手】每攻击6次，流萤立即施放终结技攻击敌人。战斗开始时已记录3次攻击。",
+     "text_rich": "【流萤】：【星核猎手】每攻击6次，流萤立即施放终结技攻击敌人。战斗开始时已记录3次攻击。"
+    },
+    {
+     "position": 1,
+     "text_order": 6,
+     "text": "【银狼LV.999】：【星核猎手】每攻击7次，银狼LV.999立即施放1次固定计入40笑点的欢愉技。战斗开始时已记录4次攻击。",
+     "text_rich": "【银狼LV.999】：【星核猎手】每攻击7次，银狼LV.999立即施放1次固定计入40笑点的欢愉技。战斗开始时已记录4次攻击。"
+    },
+    {
+     "position": 1,
+     "text_order": 9,
+     "text": "【千冶•刃】：【星核猎手】每攻击6次，千冶•刃立即施放终结技攻击敌人。战斗开始时已记录3次攻击。",
+     "text_rich": "【千冶•刃】：【星核猎手】每攻击6次，千冶•刃立即施放终结技攻击敌人。战斗开始时已记录3次攻击。"
+    }
+   ],
+   "role_ids": [
+    "1005",
+    "1006",
+    "1205",
+    "1310",
+    "1507",
+    "15061",
+    "15062",
+    "15063"
+   ],
+   "roles": [
+    "卡芙卡",
+    "银狼",
+    "刃",
+    "流萤",
+    "千冶·刃",
+    "银狼LV.999",
+    "银狼LV.999",
+    "银狼LV.999"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/fe5cee09c5901832a39df4a1fc79fccf.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 257,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1005",
+     "1006",
+     "1205",
+     "1310",
+     "1507",
+     "15061",
+     "15062",
+     "15063"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1003",
+   "name": "银河学者",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "基于【银河学者】们的星级叠加【猫猫糕】，并根据层数获得额外奖励。",
+   "effect_rich": "基于【银河学者】们的<color=#f29e38ff>星级</color>叠加【猫猫糕】，并根据层数获得额外奖励。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "30%前/后台强度。",
+     "effect_rich": "30%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "80%。获得1.5倍【DNA】。",
+     "effect_rich": "80%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。获得<color=#f29e38ff>1.5</color>倍【DNA】。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "200%。获得2倍【DNA】。",
+     "effect_rich": "200%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。获得<color=#f29e38ff>2</color>倍【DNA】。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "每星级【银河学者】提供的【DNA】进度为2/4/8/20。",
+     "text_rich": "每星级【银河学者】提供的【DNA】进度为2/4/8/20。"
+    },
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【猫猫糕】：【银河学者】队员的提高，前台回合开始时回复生命值，【猫猫糕】层数能提升回血倍率。我方前台提高。",
+     "text_rich": "【猫猫糕】：【银河学者】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>提高，前台回合开始时回复生命值，【猫猫糕】层数能提升回血倍率。我方前台<property type=ExtraAllDamageReduce display=all>提高。"
+    }
+   ],
+   "role_ids": [
+    "1009",
+    "1013",
+    "1303",
+    "1305",
+    "1401"
+   ],
+   "roles": [
+    "艾丝妲",
+    "黑塔",
+    "阮·梅",
+    "真理医生",
+    "大黑塔"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/6d3b4712c66715b91be4262a7bb47330.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 125,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1009",
+     "1013",
+     "1303",
+     "1305",
+     "1401"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1004",
+   "name": "公司",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【公司】队员的和提高。",
+   "effect_rich": "【公司】队员的<property type=ExtraBackPowerAddedRatio1 display=all>和<property type=ExtraShieldAddedRatio display=all>提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "30%，10%。普通战斗和遭遇节点开始时，获得1金币。",
+     "effect_rich": "30%<property type=ExtraBackPowerAddedRatio1 display=all>，10%<property type=ExtraShieldAddedRatio display=all>。普通战斗和遭遇节点开始时，获得<color=#f29e38ff>1</color>金币。"
+    },
+    {
+     "layer": 3,
+     "quality": 2,
+     "need_count": 3,
+     "effect": "100%，25%。普通战斗和遭遇节点开始时，获得3金币。",
+     "effect_rich": "100%<property type=ExtraBackPowerAddedRatio1 display=icon>，25%<property type=ExtraShieldAddedRatio display=icon>。普通战斗和遭遇节点开始时，获得<color=#f29e38ff>3</color>金币。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1112",
+    "1304",
+    "1314"
+   ],
+   "roles": [
+    "托帕&账账",
+    "砂金",
+    "翡翠"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/6b7bddb3502e2cf140800bc0089a4eed.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 52,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1112",
+     "1304",
+     "1314"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1005",
+   "name": "贝洛伯格",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【贝洛伯格】队员行动后为【造物引擎】充能，能量充满后攻击敌人并让本场战斗中造成伤害最多的贝洛伯格角色立即行动。\\n贝洛伯格队员和【造物引擎】的提高。",
+   "effect_rich": "【贝洛伯格】队员<color=#f29e38ff>行动</color>后为【造物引擎】充能，能量充满后攻击敌人并让本场战斗中<color=#f29e38ff>造成伤害最多</color>的贝洛伯格角色立即行动。\\n贝洛伯格队员和【造物引擎】的<property type=ExtraAllDamageTypeAddedRatio1 display=all>提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "36%。【造物引擎】额外造成【贝洛伯格】队员总伤害25%的伤害。",
+     "effect_rich": "36%<property type=ExtraAllDamageTypeAddedRatio1 display=all>。【造物引擎】额外造成【贝洛伯格】队员总伤害<color=#f29e38ff>25%</color>的伤害。"
+    },
+    {
+     "layer": 4,
+     "quality": 2,
+     "need_count": 4,
+     "effect": "72%。额外伤害的转化比例提高至40%。",
+     "effect_rich": "72%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>。额外伤害的转化比例提高至<color=#f29e38ff>40%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【造物引擎】：【贝洛伯格】队员行动后为其充能，充满时消耗部分能量对敌方全体造成大量火属性伤害，并使战斗中造成伤害最多的【贝洛伯格】角色立即行动。",
+     "text_rich": "【造物引擎】：【贝洛伯格】队员行动后为其充能，充满时消耗部分能量对敌方全体造成大量火属性伤害，并使战斗中造成伤害最多的【贝洛伯格】角色立即行动。"
+    }
+   ],
+   "role_ids": [
+    "1102",
+    "1104",
+    "1105",
+    "1106",
+    "1108",
+    "11011"
+   ],
+   "roles": [
+    "希儿",
+    "杰帕德",
+    "娜塔莎",
+    "佩拉",
+    "桑博",
+    "布洛妮娅"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/40c9928fee6ee88293ac00193b8e0840.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 74,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1102",
+     "1104",
+     "1105",
+     "1106",
+     "1108",
+     "11011"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1006",
+   "name": "星间旅人",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【星间旅人】角色会为你的小队提高特定属性，随场上【星间旅人】角色数量而提升。\\n【星间旅人】队员获得双倍收益。",
+   "effect_rich": "【星间旅人】角色会为你的小队提高特定属性，随场上【星间旅人】角色数量而提升。\\n【星间旅人】队员获得双倍收益。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 0,
+     "need_count": 1,
+     "effect": "100%加成。",
+     "effect_rich": "<color=#f29e38ff>100%</color>加成。"
+    },
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "120%加成。",
+     "effect_rich": "<color=#f29e38ff>120%</color>加成。"
+    },
+    {
+     "layer": 3,
+     "quality": 1,
+     "need_count": 3,
+     "effect": "145%加成。",
+     "effect_rich": "<color=#f29e38ff>145%</color>加成。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "175%加成。",
+     "effect_rich": "<color=#f29e38ff>175%</color>加成。"
+    },
+    {
+     "layer": 5,
+     "quality": 2,
+     "need_count": 5,
+     "effect": "210%加成。",
+     "effect_rich": "<color=#f29e38ff>210%</color>加成。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "250%加成。",
+     "effect_rich": "<color=#f29e38ff>250%</color>加成。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "300%加成。",
+     "effect_rich": "<color=#f29e38ff>300%</color>加成。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【桑博】 伤害减免提高10%。",
+     "text_rich": "【桑博】<property type=ExtraAllDamageReduce display=icon> 伤害减免提高10%。"
+    },
+    {
+     "position": 0,
+     "text_order": 2,
+     "text": "【银枝】前台强度提高20%。",
+     "text_rich": "【银枝】<property type=ExtraFrontPowerAddedRatio1 display=icon>前台强度提高20%。"
+    },
+    {
+     "position": 0,
+     "text_order": 3,
+     "text": "【绯英】初始能量提高15。",
+     "text_rich": "【绯英】<property type=ExtraInitSP display=icon>初始能量提高15。"
+    },
+    {
+     "position": 0,
+     "text_order": 4,
+     "text": "【真理医生】速度增幅提高10%。",
+     "text_rich": "【真理医生】<property type=ExtraSpeedAddedRatio1 display=icon>速度增幅提高10%。"
+    },
+    {
+     "position": 0,
+     "text_order": 6,
+     "text": "【罗刹】 后台强度提高20%。",
+     "text_rich": "【罗刹】<property type=ExtraBackPowerAddedRatio1 display=icon> 后台强度提高20%。"
+    },
+    {
+     "position": 0,
+     "text_order": 15,
+     "text": "【火花】提供随机属性加成。每节点变化！",
+     "text_rich": "【火花】提供随机属性加成。每节点变化！"
+    },
+    {
+     "position": 0,
+     "text_order": 16,
+     "text": "【瓦尔特】 幸运一击率提高10%。",
+     "text_rich": "【瓦尔特】<property type=ExtraLuckChance display=icon> 幸运一击率提高10%。"
+    },
+    {
+     "position": 0,
+     "text_order": 17,
+     "text": "【星徽】 幸运一击伤害提高18%。",
+     "text_rich": "【星徽】<property type=ExtraLuckDamage display=icon> 幸运一击伤害提高18%。"
+    }
+   ],
+   "role_ids": [
+    "1004",
+    "1108",
+    "1203",
+    "1302",
+    "1305",
+    "1501",
+    "1505"
+   ],
+   "roles": [
+    "瓦尔特",
+    "桑博",
+    "罗刹",
+    "银枝",
+    "真理医生",
+    "火花",
+    "绯英"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/a9bad80f933eeb0ee574b9a6181b5de1.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 539,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1004",
+     "1108",
+     "1203",
+     "1302",
+     "1305",
+     "1501",
+     "1505"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1007",
+   "name": "仙舟",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【仙舟】召唤【神君】。【仙舟】队员行动后为【神君】叠加段数并使其行动提前。\\n【仙舟】队员的前/后台强度和提高。",
+   "effect_rich": "【仙舟】召唤【神君】。【仙舟】队员<color=#f29e38ff>行动</color>后为【神君】叠加段数并使其行动提前。\\n【仙舟】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度和<property type=ExtraSpeedAddedRatio1 display=all>提高。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "20%前/后台强度，8%。",
+     "effect_rich": "20%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度，8%<property type=ExtraSpeedAddedRatio1 display=all>。"
+    },
+    {
+     "layer": 5,
+     "quality": 1,
+     "need_count": 5,
+     "effect": "40%，16%。【神君】基础伤害段数增加至6。",
+     "effect_rich": "40%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，16%<property type=ExtraSpeedAddedRatio1 display=icon>。【神君】基础伤害段数增加至<color=#f29e38ff>6</color>。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "80%，32%。【仙舟】队员行动后叠加的段数提高至2，战斗开始时【神君】立即行动。",
+     "effect_rich": "80%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，32%<property type=ExtraSpeedAddedRatio1 display=icon>。【仙舟】队员行动后叠加的段数提高至<color=#f29e38ff>2</color>，战斗开始时【神君】立即行动。"
+    },
+    {
+     "layer": 10,
+     "quality": 3,
+     "need_count": 10,
+     "effect": "200%，60%。【神君】基础伤害段数增加至10，每段倍率提高至600%，并更频繁地发动攻击！",
+     "effect_rich": "200%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，60%<property type=ExtraSpeedAddedRatio1 display=icon>。【神君】基础伤害段数增加至<color=#f29e38ff>10</color>，每段倍率提高至<color=#f29e38ff>600%</color>，并更频繁地发动攻击！"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【神君】：行动时攻击敌方全体，【仙舟】队员行动后增加其攻击段数并使其行动提前。",
+     "text_rich": "【神君】：行动时攻击敌方全体，【仙舟】队员行动后增加其攻击段数并使其行动提前。"
+    }
+   ],
+   "role_ids": [
+    "1201",
+    "1202",
+    "1204",
+    "1208",
+    "1209",
+    "1213",
+    "1217",
+    "1225",
+    "1502"
+   ],
+   "roles": [
+    "青雀",
+    "停云",
+    "景元",
+    "符玄",
+    "彦卿",
+    "丹恒·饮月",
+    "藿藿",
+    "忘归人",
+    "爻光"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/8a498e2f91e8beb6af84020b4b0a3485.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 254,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1201",
+     "1202",
+     "1204",
+     "1208",
+     "1209",
+     "1213",
+     "1217",
+     "1225",
+     "1502",
+     "12041",
+     "12042"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1008",
+   "name": "狼狩",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "召唤【步离人】协同战斗，其在参与战斗后可以获得经验并升级。我方队员携带更多装备会使其额外获得经验。\\n【狼狩】队员的前/后台强度提高，【步离人】每次升级后使该加成提高50%。",
+   "effect_rich": "召唤【步离人】协同战斗，其在参与战斗后可以获得经验并升级。我方队员<color=#f29e38ff>携带更多装备</color>会使其额外获得经验。\\n【狼狩】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高，【步离人】每次升级后使该加成提高50%。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "15%前/后台强度。",
+     "effect_rich": "15%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。"
+    },
+    {
+     "layer": 5,
+     "quality": 1,
+     "need_count": 5,
+     "effect": "30%。2倍经验。",
+     "effect_rich": "30%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>2</color>倍经验。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "50%。3倍经验。",
+     "effect_rich": "50%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>3</color>倍经验。"
+    },
+    {
+     "layer": 8,
+     "quality": 3,
+     "need_count": 8,
+     "effect": "90%。6倍经验。",
+     "effect_rich": "90%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>6</color>倍经验。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【步离人】：参与战斗后获得4点经验，我方队员每携带1件简易装备，就会在战斗后额外使其获得1点经验，获得足够的经验后【步离人】会升级，造成更多伤害并提供增益。进阶装备和特权装备算作2件简易装备。",
+     "text_rich": "【步离人】：参与战斗后获得4点经验，我方队员每携带1件简易装备，就会在战斗后额外使其获得1点经验，获得足够的经验后【步离人】会升级，造成更多伤害并提供增益。进阶装备和特权装备算作2件简易装备。"
+    }
+   ],
+   "role_ids": [
+    "1209",
+    "1212",
+    "1218",
+    "1220",
+    "1221",
+    "1222",
+    "1223"
+   ],
+   "roles": [
+    "彦卿",
+    "镜流",
+    "椒丘",
+    "飞霄",
+    "云璃",
+    "灵砂",
+    "貊泽"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/e234c7fec8058c5954066540a62c6d5c.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 85,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1209",
+     "1212",
+     "1218",
+     "1220",
+     "1221",
+     "1222",
+     "1223"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1009",
+   "name": "巡海游侠",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【巡海游侠】们获得和。若将【巡海游侠】放置于后台，则位于后台的【巡海游侠】的星级会使前台【巡海游侠】额外获得和。",
+   "effect_rich": "【巡海游侠】们获得<property type=ExtraAllDamageTypeAddedRatio1 display=all>和<property type=ExtraSpeedAddedRatio1 display=all>。若将【巡海游侠】<color=#f29e38ff>放置于后台</color>，则位于后台的【巡海游侠】的星级会使<color=#f29e38ff>前台</color>【巡海游侠】额外获得<property type=ExtraAllDamageTypeAddedRatio1 display=icon>和<property type=ExtraSpeedAddedRatio1 display=icon>。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 0,
+     "need_count": 1,
+     "effect": "8%，8%。",
+     "effect_rich": "8%<property type=ExtraAllDamageTypeAddedRatio1 display=all>，8%<property type=ExtraSpeedAddedRatio1 display=all>。"
+    },
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "16%，16%。",
+     "effect_rich": "16%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，16%<property type=ExtraSpeedAddedRatio1 display=icon>。"
+    },
+    {
+     "layer": 3,
+     "quality": 2,
+     "need_count": 3,
+     "effect": "28%，28%。",
+     "effect_rich": "28%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，28%<property type=ExtraSpeedAddedRatio1 display=icon>。"
+    },
+    {
+     "layer": 4,
+     "quality": 2,
+     "need_count": 4,
+     "effect": "30%，30%。【巡海游侠】队员进入战斗时行动提前100%。",
+     "effect_rich": "30%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，30%<property type=ExtraSpeedAddedRatio1 display=icon>。【巡海游侠】队员进入战斗时行动提前<color=#f29e38ff>100%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "1/2/3/4星的后台【巡海游侠】，提供1/3/6/12倍 和。",
+     "text_rich": "1/2/3/4星的后台【巡海游侠】，提供1/3/6/12倍 <property type=ExtraAllDamageTypeAddedRatio1 display=icon>和<property type=ExtraSpeedAddedRatio1 display=icon>。"
+    }
+   ],
+   "role_ids": [
+    "1308",
+    "1315",
+    "1317",
+    "1504"
+   ],
+   "roles": [
+    "黄泉",
+    "波提欧",
+    "乱破",
+    "不死途"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/4810406a19d27e09fc351408704e41d8.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 236,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1308",
+     "1315",
+     "1317",
+     "1504"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1010",
+   "name": "盛会之星",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "选择1名【盛会之星】角色作为【巨星】，使我方小队获得独特加成。",
+   "effect_rich": "选择1名【盛会之星】角色作为【巨星】，使<color=#f29e38ff>我方小队</color>获得独特加成。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "获得选定【巨星】的加成。",
+     "effect_rich": "获得选定【巨星】的加成。"
+    },
+    {
+     "layer": 3,
+     "quality": 1,
+     "need_count": 3,
+     "effect": "加成提高。",
+     "effect_rich": "加成提高。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "加成提高。",
+     "effect_rich": "加成提高。"
+    },
+    {
+     "layer": 5,
+     "quality": 2,
+     "need_count": 5,
+     "effect": "加成提高。",
+     "effect_rich": "加成提高。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "加成提高。",
+     "effect_rich": "加成提高。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【大丽花】 提高，提高。",
+     "text_rich": "【大丽花】 <property type=ExtraElementDamageAddedRatio1 display=all>提高，<property type=ExtraSpeedAddedRatio1 display=all>提高。"
+    },
+    {
+     "position": 0,
+     "text_order": 2,
+     "text": "【花火】 进入战斗时获得战技点，普攻/战技伤害增幅提高。",
+     "text_rich": "【花火】 进入战斗时获得战技点，<property type=ExtraAllDamageTypeAddedRatio1 display=icon>普攻/战技伤害增幅提高。"
+    },
+    {
+     "position": 0,
+     "text_order": 3,
+     "text": "【星期日】 前台第一位角色提高，后台第一位角色提高。",
+     "text_rich": "【星期日】 前台第一位角色<property type=ExtraFrontPowerAddedRatio1 display=all>提高，后台第一位角色<property type=ExtraBackPowerAddedRatio1 display=all>提高。"
+    },
+    {
+     "position": 0,
+     "text_order": 4,
+     "text": "【知更鸟】 提高。",
+     "text_rich": "【知更鸟】 <property type=ExtraLuckChance display=all>提高。"
+    },
+    {
+     "position": 0,
+     "text_order": 5,
+     "text": "【黑天鹅】 我方小队中每有1个5费角色，则提高，可叠加。",
+     "text_rich": "【黑天鹅】 我方小队中每有1个5费角色，则<property type=ExtraAllDamageTypeAddedRatio1 display=all>提高，可叠加。"
+    },
+    {
+     "position": 0,
+     "text_order": 6,
+     "text": "【星徽】 我方小队每装备了1个星徽，则前/后台强度提高，可叠加。",
+     "text_rich": "【星徽】 我方小队每装备了1个星徽，则<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高，可叠加。"
+    },
+    {
+     "position": 0,
+     "text_order": 7,
+     "text": "【加拉赫】 提高，提高。",
+     "text_rich": "【加拉赫】 <property type=ExtraElementDamageAddedRatio1 display=all>提高，<property type=ExtraHealAddedRatio display=all>提高。"
+    }
+   ],
+   "role_ids": [
+    "1301",
+    "1306",
+    "1307",
+    "1309",
+    "1313",
+    "1321"
+   ],
+   "roles": [
+    "加拉赫",
+    "花火",
+    "黑天鹅",
+    "知更鸟",
+    "星期日",
+    "大丽花"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/5294416fcb70136b9ba1f568b6c035a1.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 246,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1301",
+     "1306",
+     "1307",
+     "1309",
+     "1313",
+     "1321"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1011",
+   "name": "昼之半神",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "获得仅供【昼之半神】穿戴的白昼装备。\\n【昼之半神】队员的前/后台强度和提高。",
+   "effect_rich": "获得<color=#f29e38ff>仅供</color>【昼之半神】穿戴的<color=#f29e38ff>白昼装备</color>。\\n【昼之半神】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度和<property type=ExtraSpeedAddedRatio1 display=all>提高。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "10%前/后台强度，5%。获得【白昼•光速螺旋桨】。",
+     "effect_rich": "10%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度，5%<property type=ExtraSpeedAddedRatio1 display=all>。获得【白昼•光速螺旋桨】。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "18%，9%。获得【白昼•武器大师】。",
+     "effect_rich": "18%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，9%<property type=ExtraSpeedAddedRatio1 display=icon>。获得【白昼•武器大师】。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "36%，18%。获得【白昼•斩首行动】。",
+     "effect_rich": "36%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，18%<property type=ExtraSpeedAddedRatio1 display=icon>。获得【白昼•斩首行动】。"
+    },
+    {
+     "layer": 9,
+     "quality": 3,
+     "need_count": 9,
+     "effect": "60%，30%。白昼装备的特殊效果获得增强。进入战斗时，为你的【昼之半神】角色们穿戴满强化后的白昼装备！",
+     "effect_rich": "60%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>，30%<property type=ExtraSpeedAddedRatio1 display=icon>。白昼装备的特殊效果获得增强。进入战斗时，为你的【昼之半神】角色们穿戴满强化后的白昼装备！"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1402",
+    "1403",
+    "1405",
+    "1409",
+    "1410",
+    "1415"
+   ],
+   "roles": [
+    "阿格莱雅",
+    "缇宝",
+    "那刻夏",
+    "风堇",
+    "海瑟音",
+    "昔涟"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/775625caf90fdc5281fcf6a01f24fbf4.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 88,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1402",
+     "1403",
+     "1405",
+     "1409",
+     "1410",
+     "1415"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1012",
+   "name": "夜之半神",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "每个战斗阶段后生成【月光精华】，完胜后获得2倍【月光精华】。获得足够的【月光精华】后可以获取晶矿奖励。\\n【夜之半神】队员的前/后台强度提高。",
+   "effect_rich": "每个战斗阶段后生成【月光精华】，<color=#f29e38ff>完胜</color>后获得2倍【月光精华】。获得足够的【月光精华】后可以获取<color=#f29e38ff>晶矿奖励</color>。\\n【夜之半神】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "30%前/后台强度。2个【月光精华】。",
+     "effect_rich": "30%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。<color=#f29e38ff>2</color>个【月光精华】。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "60%。5个【月光精华】。",
+     "effect_rich": "60%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>5</color>个【月光精华】。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "120%。9个【月光精华】。",
+     "effect_rich": "120%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>9</color>个【月光精华】。"
+    },
+    {
+     "layer": 9,
+     "quality": 3,
+     "need_count": 9,
+     "effect": "240%。30个【月光精华】。",
+     "effect_rich": "240%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。<color=#f29e38ff>30</color>个【月光精华】。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【晶矿】 开启后可能获取金币、角色、装备或其它稀有物品！",
+     "text_rich": "【晶矿】 开启后可能获取金币、角色、装备或其它稀有物品！"
+    }
+   ],
+   "role_ids": [
+    "1404",
+    "1406",
+    "1407",
+    "1412",
+    "1413",
+    "1414",
+    "1415"
+   ],
+   "roles": [
+    "万敌",
+    "赛飞儿",
+    "遐蝶",
+    "刻律德菈",
+    "长夜月",
+    "丹恒·腾荒",
+    "昔涟"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/1f124653e7e4f96389cebc791cae5489.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 170,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1404",
+     "1406",
+     "1407",
+     "1412",
+     "1413",
+     "1414",
+     "1415"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1013",
+   "name": "命运圣杯",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【命运圣杯】提供祈愿试炼，完成试炼以获得各种奖励。\\n祈愿试炼的难度和奖励随羁绊等级提升。\\n【命运圣杯】成员的前/后台强度提高。",
+   "effect_rich": "【命运圣杯】提供祈愿试炼，<color=#f29e38ff>完成试炼</color>以获得各种<color=#f29e38ff>奖励</color>。\\n祈愿试炼的难度和奖励随羁绊等级提升。\\n【命运圣杯】成员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "25%前/后台强度。开启首个祈愿试炼。",
+     "effect_rich": "25%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。开启首个祈愿试炼。"
+    },
+    {
+     "layer": 3,
+     "quality": 1,
+     "need_count": 3,
+     "effect": "50%。第二个祈愿试炼，出现奖励更好、难度更高的诅咒试炼。",
+     "effect_rich": "50%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。第二个祈愿试炼，出现奖励更好、难度更高的诅咒试炼。"
+    },
+    {
+     "layer": 4,
+     "quality": 2,
+     "need_count": 4,
+     "effect": "100%。第三个祈愿试炼。",
+     "effect_rich": "100%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。第三个祈愿试炼。"
+    },
+    {
+     "layer": 5,
+     "quality": 3,
+     "need_count": 5,
+     "effect": "180%。最终祈愿试炼。",
+     "effect_rich": "180%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。最终祈愿试炼。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1014",
+    "1015",
+    "1508",
+    "1509"
+   ],
+   "roles": [
+    "Saber",
+    "Archer",
+    "远坂凛",
+    "吉尔伽美什"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/6208c4cadf6c8ba016d360754514a318.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 234,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1014",
+     "1015",
+     "1508",
+     "1509"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "1014",
+   "name": "师徒",
+   "trait_type": 0,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": null,
+   "effect_rich": null,
+   "layers": [],
+   "remarks": [],
+   "role_ids": [],
+   "roles": [],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/dba83c853117eb7d0b4202a56097fedb.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 0,
+    "layer_variants": 0,
+    "observed_role_ids": []
+   },
+   "data_completeness": "name_only",
+   "is_isolated": true,
+   "isolation_reason": "config.trait_info_list 有名无实:V4.4 role_list 75 条目无一人 trait_details 含师徒,且 trait_ids=[1014] 过滤查询 Hot/Recommend 各 2 页均 0 篇攻略(全版本 0)——旧赛季遗留羁绊,V4.4 无生效成员,公开端点无法取到 effect/layers"
+  },
+  {
+   "trait_id": "2001",
+   "name": "追击",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【追击】队员的提高，并在攻击后额外附伤。\\n我方小队连续行动会提高【追击】队员的，持续至任意敌人回合开始。",
+   "effect_rich": "【追击】队员的<property type=ExtraInsertDamageAddedRatio1 display=all>提高，并在攻击后额外附伤。\\n我方小队<color=#f29e38ff>连续行动</color>会提高【追击】队员的<property type=ExtraInsertDamageAddedRatio1 display=icon>，持续至任意敌人回合开始。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "20%。连续行动提供5%，最多20%。",
+     "effect_rich": "20%<property type=ExtraInsertDamageAddedRatio1 display=all>。连续行动提供<color=#f29e38ff>5%</color><property type=ExtraInsertDamageAddedRatio1 display=icon>，最多<color=#f29e38ff>20%</color>。"
+    },
+    {
+     "layer": 5,
+     "quality": 1,
+     "need_count": 5,
+     "effect": "50%。连续行动提供10%。\\n连续行动达到5次后，可发动【总攻击】。",
+     "effect_rich": "50%<property type=ExtraInsertDamageAddedRatio1 display=icon>。连续行动提供<color=#f29e38ff>10%</color><property type=ExtraInsertDamageAddedRatio1 display=icon>。\\n连续行动达到<color=#f29e38ff>5</color>次后，可发动【总攻击】。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "80%。连续行动提供15%。【总攻击】伤害提高。",
+     "effect_rich": "80%<property type=ExtraInsertDamageAddedRatio1 display=icon>。连续行动提供<color=#f29e38ff>15%</color><property type=ExtraInsertDamageAddedRatio1 display=icon>。【总攻击】伤害提高。"
+    },
+    {
+     "layer": 9,
+     "quality": 3,
+     "need_count": 9,
+     "effect": "120%。连续行动提供30%。【总攻击】伤害提高。",
+     "effect_rich": "120%<property type=ExtraInsertDamageAddedRatio1 display=icon>。连续行动提供<color=#f29e38ff>30%</color><property type=ExtraInsertDamageAddedRatio1 display=icon>。【总攻击】伤害提高。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【总攻击】：连续行动多次后，按羁绊内队员累计追击伤害造成真实伤害，并清空累计值。",
+     "text_rich": "【总攻击】：连续行动多次后，按羁绊内队员累计追击伤害造成真实伤害，并清空累计值。"
+    }
+   ],
+   "role_ids": [
+    "1112",
+    "1220",
+    "1223",
+    "1304",
+    "1305",
+    "1309",
+    "1406",
+    "1504"
+   ],
+   "roles": [
+    "托帕&账账",
+    "飞霄",
+    "貊泽",
+    "砂金",
+    "真理医生",
+    "知更鸟",
+    "赛飞儿",
+    "不死途"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/68bb3a2bdbd3161f2a7b9a60bfe4d4e4.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 67,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1112",
+     "1220",
+     "1223",
+     "1304",
+     "1305",
+     "1309",
+     "1406",
+     "1504"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2002",
+   "name": "击破",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【击破】队员的前/后台强度提高，并在攻击处于弱点击破状态的敌方目标后造成超击破伤害。\\n敌人的初始韧性和韧性恢复量降低。",
+   "effect_rich": "【击破】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高，并在攻击处于弱点击破状态的敌方目标后造成<color=#f29e38ff>超击破伤害</color>。\\n敌人的初始韧性和韧性恢复量降低。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "20%前/后台强度。超击破伤害提高至120%，敌人韧性降低10%。",
+     "effect_rich": "20%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。超击破伤害提高至<color=#f29e38ff>120%</color>，敌人韧性降低<color=#f29e38ff>10%</color>。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "60%。超击破伤害提高至180%，敌人韧性降低20%。击破敌人会充能【冲击波】。",
+     "effect_rich": "60%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。超击破伤害提高至<color=#f29e38ff>180%</color>，敌人韧性降低<color=#f29e38ff>20%</color>。击破敌人会充能【冲击波】。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "150%。超击破伤害提高至300%，敌人韧性降低30%。【冲击波】为我方小队恢复能量。",
+     "effect_rich": "150%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。超击破伤害提高至<color=#f29e38ff>300%</color>，敌人韧性降低<color=#f29e38ff>30%</color>。【冲击波】为我方小队恢复能量。"
+    },
+    {
+     "layer": 9,
+     "quality": 3,
+     "need_count": 9,
+     "effect": "320%。超击破伤害提高至500%，敌人韧性降低99%。",
+     "effect_rich": "320%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。超击破伤害提高至<color=#f29e38ff>500%</color>，敌人韧性降低<color=#f29e38ff>99%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【冲击波】：敌人被击破时获得充能，充满后击破全体敌人并造成伤害，使其受到的伤害提高。",
+     "text_rich": "【冲击波】：敌人被击破时获得充能，充满后击破全体敌人并造成伤害，使其受到的伤害提高。"
+    }
+   ],
+   "role_ids": [
+    "1003",
+    "1222",
+    "1225",
+    "1301",
+    "1303",
+    "1310",
+    "1315",
+    "1317",
+    "1321"
+   ],
+   "roles": [
+    "姬子",
+    "灵砂",
+    "忘归人",
+    "加拉赫",
+    "阮·梅",
+    "流萤",
+    "波提欧",
+    "乱破",
+    "大丽花"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/56b56c95b0f6ab56cffc61180b098ed0.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 75,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1003",
+     "1222",
+     "1225",
+     "1301",
+     "1303",
+     "1310",
+     "1315",
+     "1317",
+     "1321"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2003",
+   "name": "群攻",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【群攻】队员的提高，提高。进入战斗后在敌方场上生成2个可转移伤害的【借力球】。",
+   "effect_rich": "【群攻】队员的<property type=ExtraLuckChance display=all>提高，<property type=ExtraLuckDamage display=all>提高。进入战斗后在敌方场上生成2个可转移伤害的【借力球】。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "12%，12%。将受到伤害的40%分摊给其他敌人。",
+     "effect_rich": "12%<property type=ExtraLuckChance display=all>，12%<property type=ExtraLuckDamage display=all>。将受到伤害的<color=#f29e38ff>40%</color>分摊给其他敌人。"
+    },
+    {
+     "layer": 5,
+     "quality": 1,
+     "need_count": 5,
+     "effect": "24%，24%。将受到伤害的60%转移给其他敌方目标。累计受到6次攻击后，发射激光造成量子属性伤害。",
+     "effect_rich": "24%<property type=ExtraLuckChance display=icon>，24%<property type=ExtraLuckDamage display=icon>。将受到伤害的<color=#f29e38ff>60%</color>转移给其他敌方目标。累计受到<color=#f29e38ff>6</color>次攻击后，发射激光造成量子属性伤害。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "36%，36%。将受到伤害的100%分摊给其他敌人，并使首领敌人受到的伤害提高30%。累计受到6次攻击后，发射激光造成量子属性伤害。",
+     "effect_rich": "36%<property type=ExtraLuckChance display=icon>，36%<property type=ExtraLuckDamage display=icon>。将受到伤害的<color=#f29e38ff>100%</color>分摊给其他敌人，并使首领敌人受到的伤害提高<color=#f29e38ff>30%</color>。累计受到<color=#f29e38ff>6</color>次攻击后，发射激光造成量子属性伤害。"
+    },
+    {
+     "layer": 9,
+     "quality": 3,
+     "need_count": 9,
+     "effect": "60%，60%。将受到伤害的100%分摊给其他敌人，并使首领敌人受到的伤害提高100%。",
+     "effect_rich": "60%<property type=ExtraLuckChance display=icon>，60%<property type=ExtraLuckDamage display=icon>。将受到伤害的<color=#f29e38ff>100%</color>分摊给其他敌人，并使首领敌人受到的伤害提高<color=#f29e38ff>100%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【借力球】：受到攻击后，将自身受到的伤害按比例转移给其他敌人。",
+     "text_rich": "【借力球】：受到攻击后，将自身受到的伤害按比例转移给其他敌人。"
+    }
+   ],
+   "role_ids": [
+    "1013",
+    "1204",
+    "1302",
+    "1314",
+    "1401",
+    "1403",
+    "1405"
+   ],
+   "roles": [
+    "黑塔",
+    "景元",
+    "银枝",
+    "翡翠",
+    "大黑塔",
+    "缇宝",
+    "那刻夏"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/562f3e17710465b72350bf99f019ea3c.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 111,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1013",
+     "1204",
+     "1302",
+     "1314",
+     "1401",
+     "1403",
+     "1405",
+     "12041",
+     "12042"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2004",
+   "name": "能量",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【能量】队员的提高。在场上生成【能量地块】，可提供和能量恢复。",
+   "effect_rich": "【能量】队员的<property type=ExtraUltraDamageAddedRatio1 display=all>提高。在场上生成【能量地块】，可提供<property type=ExtraAllDamageTypeAddedRatio1 display=icon>和能量恢复。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "20%。",
+     "effect_rich": "20%<property type=ExtraUltraDamageAddedRatio1 display=all>。"
+    },
+    {
+     "layer": 5,
+     "quality": 1,
+     "need_count": 5,
+     "effect": "40%。【能量】角色累计消耗一定能量后，对全体敌人造成伤害倍率为800%的伤害。",
+     "effect_rich": "40%<property type=ExtraUltraDamageAddedRatio1 display=icon>。【能量】角色累计消耗一定能量后，对全体敌人造成伤害倍率为<color=#f29e38ff>800%</color>的伤害。"
+    },
+    {
+     "layer": 7,
+     "quality": 2,
+     "need_count": 7,
+     "effect": "80%。伤害倍率提高至1800%。",
+     "effect_rich": "80%<property type=ExtraUltraDamageAddedRatio1 display=icon>。伤害倍率提高至<color=#f29e38ff>1800%</color>。"
+    },
+    {
+     "layer": 10,
+     "quality": 3,
+     "need_count": 10,
+     "effect": "240%。场上所有地格都变为【能量地块】，伤害倍率提高至12000%。",
+     "effect_rich": "240%<property type=ExtraUltraDamageAddedRatio1 display=icon>。场上所有地格都变为【能量地块】，伤害倍率提高至<color=#f29e38ff>12000%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【能量地块】：进入战斗时，此地格上的角色获得30%，【能量】角色获得双倍。任一【能量】角色施放终结技后，此地格上的角色固定恢复能量。",
+     "text_rich": "【能量地块】：进入战斗时，此地格上的角色获得30%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，【能量】角色获得双倍。任一【能量】角色施放终结技后，此地格上的角色固定恢复能量。"
+    }
+   ],
+   "role_ids": [
+    "1014",
+    "1202",
+    "1217",
+    "1221",
+    "1313",
+    "1402",
+    "1509",
+    "8007",
+    "8009"
+   ],
+   "roles": [
+    "Saber",
+    "停云",
+    "藿藿",
+    "云璃",
+    "星期日",
+    "阿格莱雅",
+    "吉尔伽美什",
+    "开拓者·记忆",
+    "开拓者·欢愉"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/2bb800f9a1a7af28cde9d81477246a63.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 241,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1014",
+     "1202",
+     "1217",
+     "1221",
+     "1313",
+     "1402",
+     "1509",
+     "8007",
+     "8009"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2005",
+   "name": "治疗",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "我方小队的提高12%。【治疗】队员的提高。",
+   "effect_rich": "<color=#f29e38ff>我方小队</color>的<property type=ExtraHPAddedRatio1 display=all>提高12%。【治疗】队员的<property type=ExtraHealAddedRatio display=all>提高。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "20%。",
+     "effect_rich": "20%<property type=ExtraHealAddedRatio display=all>。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "40%。",
+     "effect_rich": "40%<property type=ExtraHealAddedRatio display=icon>。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "60%，我方小队获得60%。",
+     "effect_rich": "60%<property type=ExtraHealAddedRatio display=icon>，我方小队获得60%<property type=ExtraAllDamageTypeAddedRatio1 display=all>。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1105",
+    "1203",
+    "1208",
+    "1217",
+    "1222",
+    "1301",
+    "1409"
+   ],
+   "roles": [
+    "娜塔莎",
+    "罗刹",
+    "符玄",
+    "藿藿",
+    "灵砂",
+    "加拉赫",
+    "风堇"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/eb524fd9c0b15f7305cd1a6b04987f9b.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 255,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1105",
+     "1203",
+     "1208",
+     "1217",
+     "1222",
+     "1301",
+     "1409"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2006",
+   "name": "燃血",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【燃血】队员的和提高。战斗开始时，激活会记录【燃血】队员消耗生命值并在行动时攻击敌方全体的【燃血角斗场】。\\n【燃血】队员无法获得护盾，受到护盾时会回复2%生命上限+1000生命值。",
+   "effect_rich": "【燃血】队员的<property type=ExtraHPAddedRatio1 display=all>和<property type=ExtraAllDamageTypeAddedRatio1 display=all>提高。战斗开始时，激活会记录【燃血】队员消耗生命值并在行动时攻击敌方全体的【燃血角斗场】。\\n【燃血】队员无法获得护盾，受到护盾时会回复2%生命上限+1000生命值。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "10%，10%。可记录40000点。",
+     "effect_rich": "10%<property type=ExtraHPAddedRatio1 display=all>，10%<property type=ExtraAllDamageTypeAddedRatio1 display=all>。可记录<color=#f29e38ff>40000</color>点。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "20%，25%。可记录100000点，伤害倍率提高为1000%。",
+     "effect_rich": "20%<property type=ExtraHPAddedRatio1 display=icon>，25%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>。可记录<color=#f29e38ff>100000</color>点，伤害倍率提高为<color=#f29e38ff>1000%</color>。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "30%，40%。可记录240000点，伤害倍率提高为2000%，行动后返还消耗量的30%。",
+     "effect_rich": "30%<property type=ExtraHPAddedRatio1 display=icon>，40%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>。可记录<color=#f29e38ff>240000</color>点，伤害倍率提高为<color=#f29e38ff>2000%</color>，行动后返还消耗量的<color=#f29e38ff>30%</color>。"
+    },
+    {
+     "layer": 8,
+     "quality": 2,
+     "need_count": 8,
+     "effect": "45%，60%。可记录720000点，伤害倍率提高为4000%，行动后返还消耗量的50%。",
+     "effect_rich": "45%<property type=ExtraHPAddedRatio1 display=icon>，60%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>。可记录<color=#f29e38ff>720000</color>点，伤害倍率提高为<color=#f29e38ff>4000%</color>，行动后返还消耗量的<color=#f29e38ff>50%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【燃血角斗场】：记录【燃血】队员已损失的生命值并为【燃血】队员提供，行动时消耗所有记录值并对敌方全体造成伤害。",
+     "text_rich": "【燃血角斗场】：记录【燃血】队员已损失的生命值并为【燃血】队员提供<property type=ExtraAllDamageTypeAddedRatio1 display=icon>，行动时消耗所有记录值并对敌方全体造成伤害。"
+    }
+   ],
+   "role_ids": [
+    "1205",
+    "1212",
+    "1404",
+    "1407",
+    "1409",
+    "1413",
+    "1507",
+    "11012"
+   ],
+   "roles": [
+    "刃",
+    "镜流",
+    "万敌",
+    "遐蝶",
+    "风堇",
+    "长夜月",
+    "千冶·刃",
+    "布洛妮娅"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/75c5ee54b5402b3bcf967cf246ad08f4.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 194,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1205",
+     "1212",
+     "1404",
+     "1407",
+     "1409",
+     "1413",
+     "1507",
+     "11012"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2007",
+   "name": "减益",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【减益】队员的前/后台强度提高，行动时使敌方陷入负面效果时，为随机目标附加【离火】，使其造成的伤害降低，并且被攻击后受到额外伤害。",
+   "effect_rich": "【减益】队员的<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度提高，行动时使敌方陷入<color=#f29e38ff>负面效果</color>时，为随机目标附加【离火】，使其造成的伤害降低，并且被攻击后受到额外伤害。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "20%前/后台强度。每层造成的伤害降低3%，10%真实伤害，【离火】上限3层。",
+     "effect_rich": "20%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>前/后台强度。每层造成的伤害降低<color=#f29e38ff>3%</color>，<color=#f29e38ff>10%</color>真实伤害，【离火】上限<color=#f29e38ff>3</color>层。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "60%。每层造成的伤害降低4%，20%真实伤害。",
+     "effect_rich": "60%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。每层造成的伤害降低<color=#f29e38ff>4%</color>，<color=#f29e38ff>20%</color>真实伤害。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "120%。每层造成的伤害降低5%，30%真实伤害，【离火】上限提高到5层。",
+     "effect_rich": "120%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。每层造成的伤害降低<color=#f29e38ff>5%</color>，<color=#f29e38ff>30%</color>真实伤害，【离火】上限提高到<color=#f29e38ff>5</color>层。"
+    },
+    {
+     "layer": 8,
+     "quality": 3,
+     "need_count": 8,
+     "effect": "250%。每层造成的伤害降低6%，50%真实伤害。",
+     "effect_rich": "250%<property type=ExtraFrontPowerAddedRatio1 display=icon><property type=ExtraBackPowerAddedRatio1 display=icon>。每层造成的伤害降低<color=#f29e38ff>6%</color>，<color=#f29e38ff>50%</color>真实伤害。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【离火】：造成的伤害降低，受击时附加真实伤害，被消灭后转移层数。",
+     "text_rich": "【离火】：造成的伤害降低，受击时附加真实伤害，被消灭后转移层数。"
+    }
+   ],
+   "role_ids": [
+    "1004",
+    "1106",
+    "1209",
+    "1218",
+    "1308",
+    "1406",
+    "1507"
+   ],
+   "roles": [
+    "瓦尔特",
+    "佩拉",
+    "彦卿",
+    "椒丘",
+    "黄泉",
+    "赛飞儿",
+    "千冶·刃"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/7d6cc6b73f5b61956d0c3c8a1180d3b2.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 515,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1004",
+     "1106",
+     "1209",
+     "1218",
+     "1308",
+     "1406",
+     "1507"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2008",
+   "name": "持续伤害",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【持续伤害】队员的持续伤害增幅提高。敌方目标行动时，触发【超激发】，造成持续伤害并触发随机敌方目标的持续伤害效果。",
+   "effect_rich": "【持续伤害】队员的<property type=ExtraDOTDamageAddedRatio1 display=icon><color=#f29e38ff>持续伤害增幅</color>提高。敌方目标行动时，触发【超激发】，造成持续伤害并触发随机敌方目标的持续伤害效果。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "30%。【超激发】触发2次。",
+     "effect_rich": "30%<property type=ExtraDOTDamageAddedRatio1 display=all>。【超激发】触发<color=#f29e38ff>2</color>次。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "80%。【超激发】触发3次，基础伤害倍率提高至480%。非首领敌人被消灭时也会触发【超激发】。",
+     "effect_rich": "80%<property type=ExtraDOTDamageAddedRatio1 display=icon>。【超激发】触发<color=#f29e38ff>3</color>次，基础伤害倍率提高至<color=#f29e38ff>480%</color>。非首领敌人被消灭时也会触发【超激发】。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "200%。【超激发】触发6次，基础伤害倍率提高至960%。",
+     "effect_rich": "200%<property type=ExtraDOTDamageAddedRatio1 display=icon>。【超激发】触发<color=#f29e38ff>6</color>次，基础伤害倍率提高至<color=#f29e38ff>960%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【超激发】：对随机敌人造成持续伤害，并触发其陷入的持续伤害状态。",
+     "text_rich": "【超激发】：对随机敌人造成持续伤害，并触发其陷入的持续伤害状态。"
+    }
+   ],
+   "role_ids": [
+    "1005",
+    "1009",
+    "1108",
+    "1218",
+    "1307",
+    "1410"
+   ],
+   "roles": [
+    "卡芙卡",
+    "艾丝妲",
+    "桑博",
+    "椒丘",
+    "黑天鹅",
+    "海瑟音"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/fe1ddeca88e826e157079084270fffdf.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 277,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1005",
+     "1009",
+     "1108",
+     "1218",
+     "1307",
+     "1410"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2009",
+   "name": "量子同频",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "敌人受到的伤害提高。\\n【量子同频】角色获得可强化技能效果的【同频】。",
+   "effect_rich": "敌人受到的伤害提高。\\n【量子同频】角色获得可强化技能效果的【同频】<property type=ExtraQuantumResonance display=icon>。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "获得1层【同频】，敌人受到的伤害提高15%。",
+     "effect_rich": "获得<color=#f29e38ff>1</color>层【同频】<property type=ExtraQuantumResonance display=icon>，敌人受到的伤害提高<color=#f29e38ff>15%</color>。"
+    },
+    {
+     "layer": 3,
+     "quality": 1,
+     "need_count": 3,
+     "effect": "获得2层【同频】，敌人受到的伤害提高30%。",
+     "effect_rich": "获得<color=#f29e38ff>2</color>层【同频】<property type=ExtraQuantumResonance display=icon>，敌人受到的伤害提高<color=#f29e38ff>30%</color>。"
+    },
+    {
+     "layer": 4,
+     "quality": 2,
+     "need_count": 4,
+     "effect": "获得3层【同频】，敌人受到的伤害提高60%。",
+     "effect_rich": "获得<color=#f29e38ff>3</color>层【同频】<property type=ExtraQuantumResonance display=icon>，敌人受到的伤害提高<color=#f29e38ff>60%</color>。"
+    },
+    {
+     "layer": 5,
+     "quality": 2,
+     "need_count": 5,
+     "effect": "获得4层【同频】，敌人受到的伤害提高100%。",
+     "effect_rich": "获得<color=#f29e38ff>4</color>层【同频】<property type=ExtraQuantumResonance display=icon>，敌人受到的伤害提高<color=#f29e38ff>100%</color>。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【同频】：每层都会强化【量子同频】角色的技能。",
+     "text_rich": "【同频】<property type=ExtraQuantumResonance display=icon>：每层都会强化【量子同频】角色的技能。"
+    }
+   ],
+   "role_ids": [
+    "1006",
+    "1102",
+    "1208",
+    "1306",
+    "1403"
+   ],
+   "roles": [
+    "银狼",
+    "希儿",
+    "符玄",
+    "花火",
+    "缇宝"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/77cb13f1578813438c4f3b50d23a7653.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 432,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1006",
+     "1102",
+     "1208",
+     "1306",
+     "1403"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2010",
+   "name": "护盾",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【护盾】队员的提高。我方小队获得。我方前台获得一个可叠加的特殊护盾。",
+   "effect_rich": "【护盾】队员的<property type=ExtraShieldAddedRatio display=all>提高。<color=#f29e38ff>我方小队</color>获得<property type=ExtraAllDamageTypeAddedRatio1 display=all>。我方前台获得一个<color=#f29e38ff>可叠加</color>的特殊护盾。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "20%，12%。我方持有的护盾可叠加。",
+     "effect_rich": "20%<property type=ExtraShieldAddedRatio display=all>，12%<property type=ExtraAllDamageTypeAddedRatio1 display=all>。我方持有的护盾可叠加。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "40%，40%。我方持有的护盾可叠加。",
+     "effect_rich": "40%<property type=ExtraShieldAddedRatio display=icon>，40%<property type=ExtraAllDamageTypeAddedRatio1 display=icon>。我方持有的护盾可叠加。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1001",
+    "1104",
+    "1304",
+    "1414"
+   ],
+   "roles": [
+    "三月七",
+    "杰帕德",
+    "砂金",
+    "丹恒·腾荒"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/4924c0b50627d0fa8184d84152948d24.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 129,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1001",
+     "1104",
+     "1304",
+     "1414"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2011",
+   "name": "战技点",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "我方战技点上限提高，我方小队获得，施放战技或普攻时获得。【战技点】队员消耗战技点时，每个战技点进行1次抽奖。",
+   "effect_rich": "我方战技点上限提高，<color=#f29e38ff>我方小队</color>获得<property type=ExtraSpeedAddedRatio1 display=all>，施放<color=#f29e38ff>战技或普攻</color>时获得<property type=ExtraAllDamageTypeAddedRatio1 display=all>。【战技点】队员消耗战技点时，每个战技点进行1次抽奖。",
+   "layers": [
+    {
+     "layer": 2,
+     "quality": 0,
+     "need_count": 2,
+     "effect": "12%。获得12%，战技点上限提高2，可抽到小奖。",
+     "effect_rich": "12%<property type=ExtraSpeedAddedRatio1 display=all>。获得<color=#f29e38ff>12%</color><property type=ExtraAllDamageTypeAddedRatio1 display=all>，战技点上限提高<color=#f29e38ff>2</color>，可抽到小奖。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "24%。获得24%，战技点上限提高3，可抽到中奖和大奖。",
+     "effect_rich": "24%<property type=ExtraSpeedAddedRatio1 display=icon>。获得<color=#f29e38ff>24%</color><property type=ExtraAllDamageTypeAddedRatio1 display=icon>，战技点上限提高<color=#f29e38ff>3</color>，可抽到中奖和大奖。"
+    },
+    {
+     "layer": 6,
+     "quality": 2,
+     "need_count": 6,
+     "effect": "40%。获得48%，战技点上限提高4，抽奖时有概率额外获得1次特别奖，抽到更好奖励的概率提高。",
+     "effect_rich": "40%<property type=ExtraSpeedAddedRatio1 display=icon>。获得<color=#f29e38ff>48%</color><property type=ExtraAllDamageTypeAddedRatio1 display=icon>，战技点上限提高<color=#f29e38ff>4</color>，抽奖时有概率额外获得1次特别奖，抽到更好奖励的概率提高。"
+    },
+    {
+     "layer": 8,
+     "quality": 3,
+     "need_count": 8,
+     "effect": "80%。获得80%，战技点上限提高5，抽奖时有概率额外获得1次特别奖，抽到更好奖励的概率大幅提高。",
+     "effect_rich": "80%<property type=ExtraSpeedAddedRatio1 display=icon>。获得<color=#f29e38ff>80%</color><property type=ExtraAllDamageTypeAddedRatio1 display=icon>，战技点上限提高<color=#f29e38ff>5</color>，抽奖时有概率额外获得1次特别奖，抽到更好奖励的概率大幅提高。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【谢谢惠顾】 提高，持续至自身回合结束。",
+     "text_rich": "【谢谢惠顾】 <property type=ExtraAllDamageTypeAddedRatio1 display=icon>提高，持续至自身回合结束。"
+    },
+    {
+     "position": 0,
+     "text_order": 2,
+     "text": "【小奖】 恢复战技点。",
+     "text_rich": "【小奖】 恢复战技点。"
+    },
+    {
+     "position": 0,
+     "text_order": 3,
+     "text": "【中奖】 提高，持续至自身回合结束。",
+     "text_rich": "【中奖】 <property type=ExtraAllDamageTypeAddedRatio1 display=icon>提高，持续至自身回合结束。"
+    },
+    {
+     "position": 0,
+     "text_order": 4,
+     "text": "【大奖】 获得1个额外回合，并恢复4个战技点。",
+     "text_rich": "【大奖】 获得1个额外回合，并恢复4个战技点。"
+    },
+    {
+     "position": 0,
+     "text_order": 5,
+     "text": "【特别奖】 获得金币！！！",
+     "text_rich": "【特别奖】 获得金币！！！"
+    }
+   ],
+   "role_ids": [
+    "1015",
+    "1201",
+    "1213",
+    "1306",
+    "1412",
+    "1501",
+    "1508"
+   ],
+   "roles": [
+    "Archer",
+    "青雀",
+    "丹恒·饮月",
+    "花火",
+    "刻律德菈",
+    "火花",
+    "远坂凛"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/2c1d2ee9a73ab73f920caac23dd4eb6f.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 432,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1015",
+     "1201",
+     "1213",
+     "1306",
+     "1412",
+     "1501",
+     "1508"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "2012",
+   "name": "欢愉",
+   "trait_type": 1,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【欢愉】队员的提高。\\n备战阶段召唤【阿哈】为小队提供增益，【阿哈】拥有初始属性并穿戴3件随机简易装备，可将物品栏中简易装备拖拽给阿哈，合成对应进阶装备。",
+   "effect_rich": "【欢愉】队员的<property type=ExtraLuckChance display=all>提高。\\n备战阶段召唤<color=#f29e38ff>【阿哈】为小队提供增益</color>，【阿哈】拥有初始属性并<color=#f29e38ff>穿戴</color>3件随机<color=#f29e38ff>简易装备</color>，可将物品栏中简易装备<color=#f29e38ff>拖拽</color>给阿哈，合成对应<color=#f29e38ff>进阶装备</color>。",
+   "layers": [
+    {
+     "layer": 3,
+     "quality": 0,
+     "need_count": 3,
+     "effect": "8%。",
+     "effect_rich": "8%<property type=ExtraLuckChance display=all>。"
+    },
+    {
+     "layer": 4,
+     "quality": 1,
+     "need_count": 4,
+     "effect": "16%。阿哈升至2星，解锁第2个装备栏。",
+     "effect_rich": "16%<property type=ExtraLuckChance display=icon>。阿哈升至2星，解锁第2个装备栏。"
+    },
+    {
+     "layer": 5,
+     "quality": 2,
+     "need_count": 5,
+     "effect": "24%。阿哈升至3星，解锁第3个装备栏。",
+     "effect_rich": "24%<property type=ExtraLuckChance display=icon>。阿哈升至3星，解锁第3个装备栏。"
+    },
+    {
+     "layer": 7,
+     "quality": 3,
+     "need_count": 7,
+     "effect": "40%。阿哈升至4星！阿哈的所有装备变成特权装备！",
+     "effect_rich": "40%<property type=ExtraLuckChance display=icon>。阿哈升至4星！阿哈的所有装备变成特权装备！"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 0,
+     "text_order": 1,
+     "text": "【阿哈】在阿哈时刻期间始终视为攻击者（因此可触发相应进阶装备效果），并向小队分享自己的攻击类属性。",
+     "text_rich": "【阿哈】在阿哈时刻期间始终视为攻击者（因此可触发相应进阶装备效果），并向小队分享自己的攻击类属性。"
+    }
+   ],
+   "role_ids": [
+    "1501",
+    "1502",
+    "1505",
+    "8007",
+    "8009",
+    "15061",
+    "15062",
+    "15063"
+   ],
+   "roles": [
+    "火花",
+    "爻光",
+    "绯英",
+    "开拓者·记忆",
+    "开拓者·欢愉",
+    "银狼LV.999",
+    "银狼LV.999",
+    "银狼LV.999"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/a52c9da585d3472559f27248876dd381.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 119,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1501",
+     "1502",
+     "1505",
+     "8007",
+     "8009",
+     "15061",
+     "15062",
+     "15063"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3001",
+   "name": "大守护者",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "布洛妮娅会基于小队中【贝洛伯格】和【燃血】角色的数量，加入人数更多的羁绊并获得相应技能。\\n我方前台行动一定次数后，布洛妮娅召唤可可利亚攻击敌方全体。",
+   "effect_rich": "布洛妮娅会基于小队中【贝洛伯格】和【燃血】角色的数量，加入<color=#f29e38ff>人数更多的羁绊</color>并获得相应技能。\\n我方前台<color=#f29e38ff>行动</color>一定次数后，布洛妮娅召唤可可利亚攻击敌方全体。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "充能满8点后，可可利亚的攻击对敌方全体造成虚数属性伤害，该次攻击必定暴击。\\n羁绊效果随布洛妮娅的星级而提高。",
+     "effect_rich": "充能满<color=#f29e38ff>8</color>点后，可可利亚的攻击对敌方全体造成虚数属性伤害，该次攻击必定暴击。\\n羁绊效果随布洛妮娅的<color=#f29e38ff>星级</color>而提高。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "11011",
+    "11012"
+   ],
+   "roles": [
+    "布洛妮娅",
+    "布洛妮娅"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/2920441385a02546689819b94f3c5f98.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 60,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "11011",
+     "11012"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3002",
+   "name": "命运卜者",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "黑天鹅每累计参与2场战斗后可以打开占卜屋，并选择1张启示卡以获得对应强化。",
+   "effect_rich": "黑天鹅每累计参与2场战斗后可以打开占卜屋，并选择1张启示卡以获得对应强化。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "黑天鹅参与战斗后可以打开占卜屋，并选择1张启示卡以获得对应强化。",
+     "effect_rich": "黑天鹅参与战斗后可以打开占卜屋，并选择1张启示卡以获得对应强化。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1307"
+   ],
+   "roles": [
+    "黑天鹅"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/e23de9d95339adbfca8e7f1218a76d1f.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 62,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1307"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3003",
+   "name": "魔术师",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "Archer攻击一定次数后，使我方角色获得临时装备。",
+   "effect_rich": "Archer攻击一定次数后，使我方角色获得临时装备。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "Archer攻击一定次数后，使我方角色获得临时装备。",
+     "effect_rich": "Archer攻击一定次数后，使我方角色获得临时装备。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1015"
+   ],
+   "roles": [
+    "Archer"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/6af19ce2a290cf28d5053b5f76ad3f72.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 106,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1015"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3004",
+   "name": "挚爱之人",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "昔涟参与1场战斗后，昔涟的诗篇将在商店中刷新，并在被购买后提供各种强力增益。",
+   "effect_rich": "昔涟参与1场战斗后，昔涟的诗篇将在<color=#f29e38ff>商店</color>中刷新，并在被购买后提供各种强力增益。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "昔涟的诗篇将在商店中刷新，每个节点内最多购买1张。",
+     "effect_rich": "昔涟的诗篇将在<color=#f29e38ff>商店</color>中刷新，每个节点内最多购买1张。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1415"
+   ],
+   "roles": [
+    "昔涟"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/bff9f391de5639b0c9b302e090ac0dfd.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 129,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1415"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3005",
+   "name": "救世主",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "白厄和卡厄斯兰那获得所有前台角色已激活的非独立羁绊效果，该效果不会影响羁绊效果激活的人数。",
+   "effect_rich": "白厄和卡厄斯兰那获得所有<color=#f29e38ff>前台角色已激活</color>的非独立羁绊效果，该效果不会影响羁绊效果激活的人数。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "白厄和卡厄斯兰那获得所有前台角色已激活的非独立羁绊效果。",
+     "effect_rich": "白厄和卡厄斯兰那获得所有前台角色已激活的非独立羁绊效果。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "1408"
+   ],
+   "roles": [
+    "白厄"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/f1b8a0ca5cfd2479571ba50314a2b7ec.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 94,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1408"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3006",
+   "name": "头号玩家",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "【银狼LV.999】并不满意货币战争为她设计的费用和技能。她在升至2星时开始骇入货币战争，可以在修改自身费用和获得妙妙小道具间进行选择。达到3星5费时，狼尊将会接管货币战争。",
+   "effect_rich": "【银狼LV.999】并不满意货币战争为她设计的费用和技能。她在<color=#f29e38ff>升至2星</color>时开始骇入货币战争，可以在<color=#f29e38ff>修改自身费用</color>和获得<color=#f29e38ff>妙妙小道具</color>间进行选择。达到3星5费时，狼尊将会接管货币战争。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "首次达到2星时，【银狼LV.999】可以选择变为更高费用的1星【银狼LV.999】，或者获得【骇客改件】。",
+     "effect_rich": "首次达到2星时，【银狼LV.999】可以选择变为更高费用的1星【银狼LV.999】，或者获得【骇客改件】。"
+    }
+   ],
+   "remarks": [],
+   "role_ids": [
+    "15061",
+    "15062",
+    "15063"
+   ],
+   "roles": [
+    "银狼LV.999",
+    "银狼LV.999",
+    "银狼LV.999"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/ae5a73729b075a2b7d95375f0195c4ba.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 160,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "15061",
+     "15062",
+     "15063"
+    ]
+   },
+   "data_completeness": "full"
+  },
+  {
+   "trait_id": "3007",
+   "name": "领航员",
+   "trait_type": 2,
+   "version": "4.4",
+   "season": {
+    "season_id": "1",
+    "sub_season_id": "4"
+   },
+   "effect": "选择1名【列车同行】角色，姬子•启行获得该角色的流派羁绊，且复制其首件装备并作为改件佩戴。根据所选角色，姬子•启行强化自身和【列车同行】的【光轨】效果。",
+   "effect_rich": "选择1名【列车同行】角色，姬子•启行获得该角色的<color=#f29e38ff>流派羁绊</color>，且复制其<color=#f29e38ff>首件装备</color>并作为改件佩戴。根据所选角色，姬子•启行<color=#f29e38ff>强化自身</color>和【列车同行】的<color=#f29e38ff>【光轨】</color>效果。",
+   "layers": [
+    {
+     "layer": 1,
+     "quality": 4,
+     "need_count": 1,
+     "effect": "获得选定【领航员】的加成。",
+     "effect_rich": "获得选定【领航员】的加成。"
+    }
+   ],
+   "remarks": [
+    {
+     "position": 1,
+     "text_order": 1,
+     "text": "【丹恒•饮月】：加入【战技点】羁绊，获得【战技】相关强化效果。",
+     "text_rich": "【丹恒•饮月】：加入【战技点】羁绊，获得【战技】相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 2,
+     "text": "【星期日】：加入【能量】羁绊，获得【终结技】相关强化效果。",
+     "text_rich": "【星期日】：加入【能量】羁绊，获得【终结技】相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 3,
+     "text": "【瓦尔特】：加入【减益】羁绊，获得【负面状态】相关强化效果。",
+     "text_rich": "【瓦尔特】：加入【减益】羁绊，获得【负面状态】相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 4,
+     "text": "【开拓者】：加入【欢愉】、【能量】羁绊，获得【欢愉技】，并获得欢愉相关强化效果。",
+     "text_rich": "【开拓者】：加入【欢愉】、【能量】羁绊，获得【欢愉技】，并获得欢愉相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 5,
+     "text": "【姬子】：加入【击破】羁绊，获得【击破】相关强化效果。",
+     "text_rich": "【姬子】：加入【击破】羁绊，获得【击破】相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 6,
+     "text": "【三月七】：加入【护盾】羁绊，获得【护盾】与【反震】相关强化效果。",
+     "text_rich": "【三月七】：加入【护盾】羁绊，获得【护盾】与【反震】相关强化效果。"
+    },
+    {
+     "position": 1,
+     "text_order": 7,
+     "text": "【星徽】：加入对应流派羁绊。【列车同行】攻击后获得经验，我方小队幸运一击伤害提高。",
+     "text_rich": "【星徽】：加入对应流派羁绊。【列车同行】攻击后获得经验，我方小队幸运一击伤害提高。"
+    }
+   ],
+   "role_ids": [
+    "1510"
+   ],
+   "roles": [
+    "姬子·启行"
+   ],
+   "icon_url": "https://act-webstatic.mihoyo.com/darkmatter/hkrpg/prod_gf_cn/item_icon_u47dee/c49db07ca855d1fdf777d2cea58a4b97.png",
+   "source": {
+    "endpoint": "POST /event/rpgcurrencywar/game/lineup/index (trait_ids 过滤)",
+    "path": "tourn_detail.role_stages[].traits[]",
+    "n_lineups_observed": 378,
+    "layer_variants": 1,
+    "observed_role_ids": [
+     "1510"
+    ]
+   },
+   "data_completeness": "full"
+  }
+ ],
+ "coverage": {
+  "total_traits": 33,
+  "full": 32,
+  "name_only": 1,
+  "isolated_legacy": [
+   "1014 师徒"
+  ],
+  "member_source": "config.role_list 反查 trait_details(V4.4 权威静态表)",
+  "layer_effect_source": "lineup/index tourn_detail.role_stages[].traits[](公开免登录)",
+  "summon_variant_note": "仙舟/群攻 lineup 观察 role_ids 多出 12041/12042(前缀=景元1204):从不作为上阵角色出现,仅存在于 trait.role_ids 计数 -> 景元召唤实体(神君)变体 id,计入羁绊人数但非 roster 成员"
+ }
+}
