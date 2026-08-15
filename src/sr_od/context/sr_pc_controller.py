@@ -64,7 +64,14 @@ class SrPcController(PcControllerBase):
         return screen
 
     def before_screenshot(self) -> None:
-        self.mouse_move(Point(30, 1030))
+        """
+        截图前不移动光标
+        历史实现是移光标到左下角 (30, 1030) 做截图卫生(该点在 UID 黑块内 截图中不可见)
+        但每轮截图都会把光标挪走 截图后紧接的 click 会因光标移动中被游戏判为拖拽导致点击落空(间歇性)
+        故移除该逻辑 改为让光标停留在上次交互的位置(2026-08-15)
+        代价: 截图中可能出现光标 若遮挡 OCR/模板识别区 需在对应位置自行移开光标
+        """
+        pass
 
     def esc(self) -> bool:
         self.btn_tap(self.game_config.key_esc)
