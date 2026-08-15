@@ -81,6 +81,7 @@ FACTIONS: dict[str, FactionInfo] = {
     "命运卜者": FactionInfo("命运卜者", "independent", (1,), "黑天鹅专属:占卜屋启示卡"),
     "救世主": FactionInfo("救世主", "independent", (1,), "白厄专属:获所有前台非独立羁绊效果"),
     "头号玩家": FactionInfo("头号玩家", "independent", (1,), "银狼LV.999 专属:升费/骇客改件"),
+    "领航员": FactionInfo("领航员", "independent", (1,), "姬子·启行专属(V4.4):选列车同行角色获其流派+复制首件装备"),
 }
 
 # 从 character_const 映射:角色命途 → 大致定位(前排生存 / 后排输出)

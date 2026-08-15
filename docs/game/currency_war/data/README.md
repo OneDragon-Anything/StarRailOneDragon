@@ -26,6 +26,7 @@
 |---|---|---|---|
 | [gameplay.md](gameplay.md) | 米游社官方玩法说明(content/6564 全文)+ 机制框架速查 | — | 🟢 完整 |
 | [factions.md](factions.md) | 羁绊全表:阵营13/流派12/独立6,逐层效果原文 | 31 | 🟢 完整 |
+| [traits.json](traits.json) + [traits/](traits/) | **羁绊官方数据**(V4.4,攻旅广场 lineup/index 采集;tiers/效果全文/成员,`tools/cw/gen_factions.py` 生成) | 33 | 🟢 官方 |
 | [characters.md](characters.md) | 角色花名册:费用/站位/类型/阵营/流派(反查) | 74 | 🟢 完整 |
 | [investment_strategies.md](investment_strategies.md) | 投资策略:棱彩114/金125/银76 + 效果原文 | 315 | 🟢 米游社图鉴315条全覆盖(游戏内334) |
 | ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `src/sr_od/application/currency_war/cw_investments.py::INVESTMENT_ENVS` | ~82 | 🟢 全量(数据银行核对 83/解锁 68);代码已建模,doc 冗余已删(用户原则:代码已建模的游戏数据不存 doc) |
