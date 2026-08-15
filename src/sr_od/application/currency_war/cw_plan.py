@@ -6,10 +6,9 @@
 from __future__ import annotations
 
 import random
-
-from one_dragon.utils.log_utils import log
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
     EARLY_CORE_POOL,
@@ -659,13 +658,31 @@ def _best_improving_action(
         if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
             # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)
             _counts = _bench_faction_counts(state)
-            from sr_od.application.currency_war.cw_economy import _char_synergies as _syn
+            from sr_od.application.currency_war.cw_economy import (
+                _char_synergies as _syn,
+            )
             _sk_candidates = [c for c in _sk_candidates
                               if any(_counts.get(f, 0) >= 1 for f in
                                      (_syn(c.name) | ({c.faction} if c.faction and c.faction != '?' else set())))]
         if _sk_candidates:
+            # 评审Y1③:排序 key 补「立即可激活档」优先(买后即达 min_tier 的骨架对 > 纯枢纽单买)
+            from sr_od.application.currency_war.cw_factions import FACTIONS as _FAC
+            def _activates_now(c) -> int:
+                from sr_od.application.currency_war.cw_economy import (
+                    _char_synergies as _syn2,
+                )
+                _s = _syn2(c.name) | ({c.faction} if c.faction and c.faction != '?' else set())
+                _cnt = _bench_faction_counts(state)
+                for f in _s:
+                    _i = _FAC.get(f)
+                    if f in (skeleton_factions() | {'持续伤害', '治疗'}) and _i is not None and _i.tiers:
+                        if _cnt.get(f, 0) + 1 >= min(_i.tiers):
+                            return 0
+                return 1
             _sk_candidates.sort(key=lambda c: (
-                0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1, card_cost(c)))
+                _activates_now(c),
+                0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1,
+                card_cost(c)))
             card = _sk_candidates[0]
             seq: list[Action] = [BuyCard(card=card)]
             after_buy = simulate(state, seq[0])
@@ -684,10 +701,11 @@ def _best_improving_action(
             and not _shop_has_buyable_target
             and (not _saving_for_level or not _shop_has_target)
             and not (_saving_for_interest and not _roll_for_target)):
-        # 评审R3 连带守卫:攒级期(ADR-0129)+ drought(无 target 在场)→ 刷金与攒级矛盾
-        # (M22 r6/r8 病理:XP×3+Refresh×2 把金 33→17);骨架兜底已在上处理此场景,refresh 不再吃零头。
+        # 评审R3 连带守卫:①攒级期(ADR-0129)+ drought(无 target 在场)→ 刷金与攒级矛盾
+        # (M22 r6/r8 病理:XP×3+Refresh×2 把金 33→17);②金<20(1息档)禁刷 —— 零头是骨架买
+        # 的弹药,刷一次 -2 直接破档(评审实证 19→5);骨架兜底已处理此场景。
         _drought_no_target = (target_comp is not None and not _shop_has_target)
-        if not (_saving_for_level and _drought_no_target):
+        if not (_saving_for_level and _drought_no_target) and state.gold >= NO_LOSS_GOLD_CEILING:
             beat(_refresh_expected_delta(state, config, faction_priority, base_eval, rng,
                                          target_comp=target_comp, refresh_cost=_rf_cost),
                  [RefreshShop(cost=_rf_cost)])
