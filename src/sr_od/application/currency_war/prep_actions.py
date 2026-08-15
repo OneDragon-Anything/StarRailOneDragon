@@ -207,6 +207,7 @@ class PrepActionExecutor:
     SPHERE_MAX_CLICKS: ClassVar[int] = 12             # 单动作点球硬上限(防识别抖动死循环)
     BATTLE_FALLBACK: ClassVar[Point] = Point(1817, 749)   # 出战按钮兜底(同 battle_prep)
     CONFIRM_FALLBACK: ClassVar[Point] = Point(1159, 653)  # 未达上限确认兜底(同 battle_prep)
+    CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 HandleDeployNotFull)
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
         self._op = op
@@ -534,6 +535,14 @@ class PrepActionExecutor:
             time.sleep(0.5)
             scr = self._op.screenshot()
             if self._op.round_by_find_area(scr, '货币战争-未达上限警告', '标识-未达上限警告').is_success:
+                # M16 死循环根因修复(ADR-0136):只点确认不勾「本局不再提示」→ 人口不足时**每次**出战
+                # 都弹此窗;确认后若弹窗未消(点击落空/动画)轮询重进 → 外层判"仍在备战"=fail → 死循环 86min。
+                # 对齐 HandleDeployNotFull 完整行为:勾选(幂等,已勾无害)→ 确认 → 下轮验消失。
+                check = (area_center(self._ctx, '勾选-本局不再提示', '货币战争-未达上限警告')
+                         or PrepActionExecutor.CHECKBOX_FALLBACK)
+                self._ctx.controller.mouse_move(check)
+                self._ctx.controller.click(check)
+                time.sleep(0.3)
                 confirm = (area_center(self._ctx, '按钮-确认', '货币战争-未达上限警告')
                            or PrepActionExecutor.CONFIRM_FALLBACK)
                 self._ctx.controller.mouse_move(confirm)   # bug#1 缓解(review M-5)

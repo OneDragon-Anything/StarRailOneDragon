@@ -300,6 +300,27 @@ class PrepDirector(SrOperation):
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
+        # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
+        # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
+        # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
+        # 警告解除后才继续常规决策。每次环入口重判(警告可反复出现)。
+        from sr_od.application.currency_war.cw_observation import read_bench_full
+        _scr_full = getattr(self, 'last_screenshot', None)
+        if _scr_full is not None and read_bench_full(self.ctx, _scr_full):
+            log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
+            action = match.strategy.decide_prep_action(
+                type('BenchFullObs', (), {
+                    'box_overlay_open': False, 'boxes': [], 'spheres': [],
+                    'free_bench_slots': 0, 'shop_open': False,
+                    'deploy_vacancy': obs.deploy_vacancy,
+                    'bench_chars': obs.bench_chars, 'deployed_chars': obs.deployed_chars,
+                    'front_occupied': obs.front_occupied, 'back_occupied': obs.back_occupied,
+                    'front_size': obs.front_size, 'back_size': obs.back_size,
+                    'state': obs.state, 'state_gold_trusted': obs.state_gold_trusted,
+                })(), session, config)
+            progressed, detail = self._executor.execute(action)
+            log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
+            return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
         # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
         try:
