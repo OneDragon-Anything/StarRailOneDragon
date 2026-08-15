@@ -117,9 +117,14 @@ def fetch_config() -> dict:
 
 
 def fetch_lineups(order: str = "Hot", pages: int = 5, role_ids: list | None = None,
-                  trait_ids: list | None = None, sleep_s: float = 0.5) -> list:
-    """cursor 分页采集攻略列表(每条已含完整三阶段阵容)。"""
-    tag = ""
+                  trait_ids: list | None = None, match_hard: bool = False,
+                  sleep_s: float = 0.5) -> list:
+    """cursor 分页采集攻略列表(每条已含完整三阶段阵容)。
+
+    match_hard=True = 服务端高难(困难/Challenge)阵容筛选(A8 实战数据定向通道);
+    输出文件名带 Hard 标记,与普通采集不混。
+    """
+    tag = "Hard" if match_hard else ""
     if role_ids:
         tag += "R" + "-".join(map(str, role_ids))
     if trait_ids:
@@ -135,7 +140,7 @@ def fetch_lineups(order: str = "Hot", pages: int = 5, role_ids: list | None = No
             "game": "hkrpg", "page": str(page), "limit": "10",
             "lineup_type": "Tourn", "next_page_token": token,
             "role_ids": role_ids or [], "trait_ids": trait_ids or [],
-            "match_change_job": False, "match_hard": False, "order": order,
+            "match_change_job": False, "match_hard": match_hard, "order": order,
         }
         data = _check(_post("lineup/index", body), f"lineup/index p{page}")
         items = data.get("list") or []
@@ -190,6 +195,7 @@ def main() -> None:
     p_line.add_argument("--pages", type=int, default=5)
     p_line.add_argument("--roles", type=int, nargs="*", help="role id 筛选")
     p_line.add_argument("--traits", type=int, nargs="*", help="trait id 筛选(如 1001 列车同行)")
+    p_line.add_argument("--hard", action="store_true", help="高难(困难)阵容筛选(A8 定向)")
     p_icon = sub.add_parser("icons", help="下载/更新 icon 库")
     p_icon.add_argument("--force", action="store_true", help="强制重下(默认幂等跳过)")
     args = parser.parse_args()
@@ -197,7 +203,7 @@ def main() -> None:
     if args.cmd == "config":
         fetch_config()
     elif args.cmd == "lineups":
-        fetch_lineups(args.order, args.pages, args.roles, args.traits)
+        fetch_lineups(args.order, args.pages, args.roles, args.traits, args.hard)
     elif args.cmd == "icons":
         download_icons(args.force)
 
