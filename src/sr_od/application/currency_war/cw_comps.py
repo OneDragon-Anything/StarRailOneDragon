@@ -79,6 +79,7 @@ class ScoreContext:
     bosses: list[str] = field(default_factory=list)              # 当前/将遇 boss 名(boss_fit)
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
     env: str = ""                                                # 已选投资环境名(env_fit)
+    held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(ADR-0135 held_strategy_fit;机会型 pivot)
     plane: int = 1
     round_num: int = 1
     gold: int = 0
@@ -533,6 +534,34 @@ def boss_fit(comp: Comp, bosses: list[str]) -> float | None:
     return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
 
 
+def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
+    """**已持有策略**契合(ADR-0135 机会型 pivot 核心;用户「拿到适配策略主动转阵容」)。
+
+    每张持有策略的绑定(``strategy_bindings``,ADR-0134 派生)∩ comp(阵营/core 角色)命中 → 该策略
+    对此 comp 加成。归一 0..1:0.5 中性(无策略/无命中),每命中 +0.25 封顶 1.0(星徽套组双命中
+    = 三件套到手 → 1.0 满分,comp_score 显著抬 → select_comp/update_target 自然转向)。
+    无持有策略 → None(动态权重剔除,与 env_fit 同语义)。
+    与 env_fit 的分工:env = 开局定向(选环境时 comp 未定);本函数 = **局中机会**(策略到手后
+    重评 comp,把「牌找阵容」反转成「阵容追牌」)。
+    """
+    from sr_od.application.currency_war.cw_investments import (
+        get_strategy,
+        strategy_bindings,
+    )
+    if not active_strategies:
+        return None
+    hits = 0
+    for name in active_strategies:
+        s = get_strategy(name)
+        if s is None:
+            continue
+        fs, cs = strategy_bindings(s)
+        hits += len((fs & set(comp.factions)) | (cs & set(comp.core_chars)))
+    if hits == 0:
+        return 0.5   # 有策略但都不绑此 comp:真实中性(非无数据)
+    return clamp(0.5 + 0.25 * hits, 0.0, 1.0)
+
+
 def env_fit(comp: Comp, env: str) -> float | None:
     """投资环境契合:① T0 env 近乎硬绑(P1-2 ENV_COMP_AFFINITY);② env 加成对应阵营(R2-9)。
 
@@ -569,6 +598,7 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
+        held_strategies=list(state.active_strategies),   # ADR-0135 机会型 pivot(选完策略后 update_target 重评)
         plane=state.plane, round_num=state.round_num, gold=state.gold,
     )
 
@@ -587,6 +617,7 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
 W_PROG: float = 0.45    # 成型进度(form + core_char)—— 偏好可成型 comp
 W_MECH: float = 0.15    # 机制契合(双向 debuff=buff)
 W_ENV: float = 0.15     # 投资环境契合
+W_HELD: float = 0.15    # 已持有策略契合(ADR-0135 机会型 pivot;无持有 → None 动态剔除,权重重分配)
 W_BOSS: float = 0.10    # boss 克制(无数据 → boss_fit 返 None → 动态剔除;countered_by_bosses 接通即生效)
 W_EQUIP: float = 0.10   # 装备契合(comp 相关)
 W_STR: float = 0.05     # research meta 强度
@@ -617,6 +648,7 @@ def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
         (W_PROG, progress(comp, state)),
         (W_MECH, mechanics_fit(comp, ctx.mechanics)),
         (W_ENV, env_fit(comp, ctx.env)),
+        (W_HELD, held_strategy_fit(comp, ctx.held_strategies)),
         (W_BOSS, boss_fit(comp, ctx.bosses)),
         (W_EQUIP, equip_fit(comp, state)),
         (W_STR, strength_base(comp)),
@@ -693,8 +725,12 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     board = state.board
     if any(board.get(f, 0) >= 2 for f in comp.factions):
         return 1.2   # deep-stack → boost
+    if not board:
+        return 1.0   # ADR-0135:空板 = 无部署证据 → 不罚(罚的前提是 deployed-lock 有错配证据;
+        # 旧版空板全罚 ×0.3 = 无证据惩罚,且只打到 factions 非空的 comp —— 反甲白厄(factions 空,
+        # 故意设计)永远躲过 → 早期选择被数据伪影抬轿,机会型 pivot 也被它压死)
     if not any(board.get(f, 0) >= 1 for f in comp.factions):
-        return 0.3   # 全不在 board → 重 penalty(review🔴:原0.7 压不过 acq,改0.3)
+        return 0.3   # 全不在 board(板有单位)→ 重 penalty(review🔴:原0.7 压不过 acq,改0.3)
     return 1.0
 
 
@@ -725,16 +761,38 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
     + 阶段成型难度因子(早期偏 easy)。optionality 时传 top_n=2-3 备选几套(P1-1:核心来了再 commit)。
     """
     held = _held_base_copies(state)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
+    # ADR-0135:持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
+    # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
+    _granted: dict[str, int] = {}
+    from sr_od.application.currency_war.cw_investments import (
+        get_strategy,
+        strategy_bindings,
+    )
+    for _n in ctx.held_strategies:
+        _s = get_strategy(_n)
+        if _s is None:
+            continue
+        _gfs, _gcs = strategy_bindings(_s)
+        for _c in _gcs:
+            _granted[_c] = _granted.get(_c, 0) + 1
     scored: list[tuple[float, Comp]] = []
     for comp in COMP_LIBRARY:
         if not _passes_steering(comp, config):
             continue
+        _h = dict(held)
+        for _c, _k in _granted.items():
+            if _c in comp.core_chars:
+                _h[_c] = _h.get(_c, 0) + _k
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
+        # ADR-0135 成型加速乘子:持有策略双命中(fit=1.0,套组三件套到手)→ ×1.25(期望成型提前一档);
+        # 中性 0.5 → ×1.0(不加不减)。加性 W_HELD 会被 acq/难度乘子稀释,乘子保证机会信号不被淹没。
+        _hf = held_strategy_fit(comp, ctx.held_strategies)
+        s *= 1.0 + 0.4 * ((_hf if _hf is not None else 0.5) - 0.5) * 2
         # acquirability(ADR-0110 牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
         # review🔴 收窄(ADR-0105):0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
         # 防选「core 易刷但 board 不支持」的 comp → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
-        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level, held))
+        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level, _h))
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
         scored.append((s, comp))
@@ -752,6 +810,7 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
         "progress": progress(comp, state),
         "mechanics_fit": mechanics_fit(comp, ctx.mechanics),
         "env_fit": env_fit(comp, ctx.env),
+        "held_strategy_fit": held_strategy_fit(comp, ctx.held_strategies),
         "boss_fit": boss_fit(comp, ctx.bosses),
         "equip_fit": equip_fit(comp, state),
         "strength": strength_base(comp),
