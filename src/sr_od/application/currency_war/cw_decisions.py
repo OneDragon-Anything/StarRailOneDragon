@@ -35,6 +35,7 @@ from sr_od.application.currency_war.cw_comps import (
     COMP_LIBRARY,
     LevelGoal,
     clamp,
+    escort_for,
     form_progress,
     make_score_context,
     mechanics_fit,
@@ -471,7 +472,7 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     score += (1.0 - alpha) * OPTIONALITY_WEIGHT * optionality_score(state)
     # 过渡羁绊(P1 保血基础设施,review round-4 HIGH-2):早期凑能打伤害的羁绊(仙舟/狼狩/dot/列车/贝洛伯格)
     # 稳血到成型(限时 AV 下前期有输出不超时);fades as commit(α→1)。board 阵营数 OCR → 真信号现成。
-    score += (1.0 - alpha) * transition_tempo_score(state)
+    score += (1.0 - alpha) * transition_tempo_score(state, target_comp)
     return score
 
 
@@ -1352,12 +1353,22 @@ TRANSITION_FACTIONS: set[str] = {'仙舟', '狼狩', '持续伤害', '列车同�
 TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(≥2)的过渡羁绊的早期保血分(占位,阶段 6 校准)
 
 
-def transition_tempo_score(state: GameState) -> float:
+def transition_tempo_score(state: GameState,
+                          target_comp: Comp | None = None) -> float:
     """P1 过渡羁绊分(review round-4 HIGH-2):board 凑出(≥2)能打伤害的过渡羁绊 → 早期保血(限时 AV 不超时)。
 
     人上人级 = 2 个能打伤害羁绊组合(仙舟/狼狩/dot/列车/贝洛伯格),稳血到成型。最多奖 2 个(更多边际
     递减);与 optionality 同(1−α)早期强调 —— 早期保期权/过渡,fades as commit(α→1)让位 target。
     board 阵营数 OCR 读 → 真信号现成。**非与 synergy 双重堆**:只奖过渡羁绊(早期 tempo),flat-per-羁绊。
+
+    ADR-0140(护航感知):target 给定且在护航窗口(P1 后期 ~ P2 分水岭前)→ 匹配护航套(escort_for)的
+    羁绊凑出(≥2)额外加分 —— 护航是「有方向的过渡」(服务真主 C),比散凑过渡羁绊更值得买/留。
     """
     n = sum(1 for f in TRANSITION_FACTIONS if state.board.get(f, 0) >= 2)
-    return min(n, 2) * TRANSITION_TEMPO_BONUS
+    score = min(n, 2) * TRANSITION_TEMPO_BONUS
+    ec = escort_for(target_comp)
+    if ec is not None and (state.plane, state.round_num) <= (ec.retire_plane, ec.retire_round):
+        hit = sum(1 for f, need in ec.factions.items() if state.board.get(f, 0) >= min(2, need))
+        if hit:
+            score += hit * TRANSITION_TEMPO_BONUS * 1.5   # 护航羁绊加权(方向性过渡 > 散凑)
+    return score

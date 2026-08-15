@@ -232,12 +232,18 @@ class DeployBench(SrOperation):
                 _bench_fac[i] = _c.factions[0]
                 _pair_counts[_c.factions[0]] = _pair_counts.get(_c.factions[0], 0) + 1
         _held: list[int] = []
+        # M18 复盘回归修正(ADR-0130 补):散牌留 bench 是**P1 开局囤牌**语义;P2+ 人口扩展期
+        # (vacancy>2,等级 7-8 撑起的人口)空位本身就是战力,散牌该填位(M18 实测放置 3/18、满员率 76%,
+        # 未达上限弹窗频发 = 留 bench 过严的回归)。门:plane≥2 或 vacancy>2 → 散牌照旧上场。
+        _fill_mode = (len(front_empty) + len(back_empty)) > 2
         for i in list(rest):
             if i not in _bench_cid:
                 continue   # SIFT 未识别:照旧上(无法判 target/阵营)
             _f = _bench_fac.get(i)
             if _f is not None and _pair_counts.get(_f, 0) >= 2:
                 continue   # 同阵营成对(board+bench ≥2):凑过渡羁绊,上
+            if _fill_mode:
+                continue   # 人口扩展期:空位>2,散牌填位(body>空位,防未达上限弹窗)
             rest.remove(i)
             _held.append(i)
         _board_empty = (len(front_empty) == len(front)) and (len(back_empty) == len(back))

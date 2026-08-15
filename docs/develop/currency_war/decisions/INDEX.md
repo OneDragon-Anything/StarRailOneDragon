@@ -67,3 +67,4 @@
 | [0137](0137-codex-new-items-merge.md) | 图鉴采集数据并入注册表(6策略+1环境;doc外版本新条目) | accepted | 2026-08-15 | 图鉴实采对拍doc315发现6+1新条目(龙虎兄弟团/步禄村之谜/入职手续/双手摊开键盘/飞光·传剑/艾丝妲的猛犬/桑博专家);名从OCR误读人工复原待核;效果漂移177条=采集噪声不采纳;planes维度留json未入schema;注册表321策略+83环境 |
 | [0138](0138-ocr-name-lcs-matching.md) | OCR名归一用框架LCS相似匹配(str_utils,非全等) | accepted | 2026-08-15 | 全等/包含对艺术小字形变(狸↔禄/•↔·/全半角)大量失配;_canon_name=find_best_match_by_lcs(0.5)+长度守卫+效果LCS守卫(非包含,容忍措辞差);效果守卫暴露注册表文本质量依赖(压缩版稀释LCS,六条换图鉴原文);CW一切OCR→规范名匹配走str_utils |
 | [0139](0139-comp-char-positions.md) | comp特定站位覆盖命途默认(char_positions;复查#9) | accepted | 2026-08-15 | 攻略实证:绯英爻光必后台(UP反向论证)/万敌独前排(燃血吃受击)/知更鸟前台(追击支撑);Comp.char_positions+三处消费同语义;comp级数据(同角色不同comp要求不同) |
+| [0140](0140-escort-comps-bench-gate-fix.md) | 中期护航三套+M18复盘回归修正(散牌留bench人口门) | accepted | 2026-08-15 | EscortComp注册(龙丹4战技3仙舟/灵砂4击破/阿雅3昼神3能量;escort_for按target机制匹配,成长型排除)+tempo分护航窗口加权;M18实证回归:散牌留bench全局化→放置3/18满员76%→空位>2人口扩展门放行;复盘:进P2 HP41vs1多活3轮,金无滞留,P2经验0次待完整局验 |

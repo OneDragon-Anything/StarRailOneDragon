@@ -146,6 +146,41 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 # comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
+# ===== 中期护航三套(ADR-0140;难度攻略 22-34:6 级正式构筑,无需本体+极低造价+P2 稳定连胜)=====
+# 护航 = 中期临时 comp:服务真主 C(target),护到 2-7/3-1 结单退役;不适合成长型 comp(万敌/狼队/夜神/学者)。
+@dataclass(frozen=True)
+class EscortComp:
+    """中期护航阵容(过渡到真主 C 成型的中期战力;ADR-0140)。"""
+    name: str
+    factions: dict[str, int]        # 羁绊 → 需求人数(如 {"战技点":4,"仙舟":3})
+    serves: list[str]              # 服务的 target 机制属性(mechanic_attributes 匹配)
+    retire_plane: int = 2          # 分水岭位面
+    retire_round: int = 7          # 分水岭轮(该节点前未炸单即结单)
+
+
+ESCORT_COMPS: list[EscortComp] = [
+    EscortComp(name="龙丹护航", factions={"战技点": 4, "仙舟": 3},
+               serves=["高倍率单核", "量子拉条", "幸运一击"]),   # 直伤系(速8找火花/速9红A)
+    EscortComp(name="灵砂护航", factions={"击破": 4},
+               serves=["击破"]),                                # 击破系(转流萤/波提欧)
+    EscortComp(name="阿雅护航", factions={"昼之半神": 3, "能量": 3},
+               serves=["DoT", "减益"]),                         # 邪修系(DOT 队前期强度需阿雅过渡)
+]
+
+
+def escort_for(target: Comp | None) -> EscortComp | None:
+    """按 target 的机制属性选护航套(ADR-0140;serves 匹配;成长型 comp 返 None 不护航)。"""
+    if target is None:
+        return None
+    GROWTH_MECHANICS = {"燃血", "欢愉叠层"}   # 成长型不护航(攻略:需叠被动从头到场,护航打断节奏)
+    if set(target.mechanic_attributes) & GROWTH_MECHANICS:
+        return None
+    for ec in ESCORT_COMPS:
+        if set(ec.serves) & set(target.mechanic_attributes):
+            return ec
+    return None
+
+
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {
     name: [e.faction] for name, e in INVESTMENT_ENVS.items() if e.faction
