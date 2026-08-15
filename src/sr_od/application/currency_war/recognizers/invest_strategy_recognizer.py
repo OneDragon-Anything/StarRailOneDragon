@@ -10,9 +10,9 @@
 ``cw_match.session``(同 ``battle_prep_recognizer``)。故只经 ``cw_obs_core._area_rect`` 取
 ``区域-卡名行`` area + ``_ocr`` OCR + 正则筛选,**不碰** session / 全局。
 
-**刻意不产 rarity(品质)**:投资策略全量在 ``investment_strategies.md``(315 条),代码注册表
-``INVESTMENT_STRATEGIES`` 只收 T0(``cw_investments``),非 T0 透传原名(rarity 留空);按 spec
-「不稳定字段不硬塞」,v1 只产可靠的名列表,rarity 待注册表全量后再加。
+**刻意不产 rarity(品质)**:投资策略全量在 ``INVESTMENT_STRATEGIES``(``cw_investments``,
+plaza API base 335 条,ADR-0150),按 spec「不稳定字段不硬塞」v1 只产可靠的名列表;
+rarity 消费方可按名查注册表(需要时再加进 extras)。
 """
 from __future__ import annotations
 

@@ -149,7 +149,7 @@ MECHANIC_SYNERGIES: dict[str, list[str]] = {      # 机制 → 受利的 comp �
 - 【燃血角斗场】:"记录已损失生命值,每 10000 点额外 +3% 伤害增幅" → **燃血队靠掉血叠伤害**。
 - 燃血队员:刃/万敌/风堇/千冶·刃/镜流/长夜月/遐蝶/布洛妮娅(characters.md)。
 - 故 **正当防卫(反伤)**:克高频阿雅(counter)、**利燃血万敌(synergy)** —— 同一词缀双向。bot 在正当防卫局应**升权燃血 comp**(万敌单 C / 反击杰哥/万敌流,research §10)。
-- **"掉血=收益"web(更广)**:燃血 comp + 投资策略「星际和平保险/保险/先亏后盈」(按已损失生命给金/装备,../../../game/currency_war/data/investment_strategies.md)—— 燃血队天生掉血,这些策略额外补益。
+- **"掉血=收益"web(更广)**:燃血 comp + 投资策略「星际和平保险/保险/先亏后盈」(按已损失生命给金/装备;全量在代码 `INVESTMENT_STRATEGIES`,plaza API)—— 燃血队天生掉血,这些策略额外补益。
 
 机制名跨版本稳;具体 boss/词缀属哪个机制随版本变(随 ../../../game/currency_war/data/competitors.md 实机 OCR 更新)。比"boss 名→counter 阵营"名字查表更鲁棒。**数据需游戏**(实机 OCR 敌人机制/词缀;`enemy_affixes` 字段,见下)。
 
