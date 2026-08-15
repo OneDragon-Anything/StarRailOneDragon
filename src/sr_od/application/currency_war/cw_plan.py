@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
+    EARLY_CORE_POOL,
     form_progress,
     make_score_context,
     select_comp,
@@ -145,6 +146,34 @@ def _concentration_delta(card: ShopCard, state: GameState,
 
 
 
+def _card_supports_target(name: str, faction: str, state, target) -> bool:
+    """买牌/deploy 的 off-target 判定(**配对纪律版**,M25 实证修正)。
+
+    M4 方法论:骨架是「成对凑羁绊」非散买。规则:
+    - 核心(core_chars 或核心阵营羁绊)→ 恒 True;
+    - **枢纽早期核心**(EARLY_CORE_POOL,千冶·刃/姬子·启行等存活≥0.8)→ 单买 True
+      (跨路线复用,买了就是开局,plaza M3);
+    - flex 弹性羁绊 → 仅当该羁绊在 board+bench 已有 ≥1(深化成对)才 True;
+      散买 flex 单张 = spread 合法化(M25 实锤:8 阵营各 1,列车:1 卡死,hp10 死 2-4)。
+    """
+    if target is None:
+        return False
+    if _card_hits_target(name, faction, target):   # 严格档(核心)
+        return True
+    if name in EARLY_CORE_POOL:
+        return True
+    from sr_od.application.currency_war.cw_economy import _char_synergies
+    syn = _char_synergies(name)
+    if faction and faction != '?':
+        syn = syn | {faction}
+    flex = target.all_factions - set(target.factions)
+    if not flex:
+        return False
+    counts = _bench_faction_counts(state)
+    return any(f in flex and counts.get(f, 0) >= 1 for f in syn)
+
+
+
 def _bench_faction_counts(state: GameState) -> dict[str, int]:
     """已 collect 各阵营计数 = board(deployed ground truth)+ bench(_should_deploy 用)。"""
     counts: dict[str, int] = dict(state.board)
@@ -163,7 +192,7 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
-    if target is not None and _card_hits_target(bc.char_id, bc.faction, target, include_flex=True):
+    if target is not None and _card_supports_target(bc.char_id, bc.faction, state, target):
         return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
@@ -462,13 +491,12 @@ def _best_improving_action(
         # (深化现有羁绊)或强卡(cost≥3)且板不满员。人类打法:前期买强散卡保 tempo,成型后纯堆 target。
         # 板饿死代价(每场 -10~-36 HP) > spread 代价(散卡仍可 deploy 保战力)。
         if target_comp is not None:
-            # ADR-0152 评审🔴1:买牌判 off-target 用宽松档(核心+弹性)—— flex 铺板是策略层奖励的
-            # 合法形态(砂金=列车护盾流),不拒买;卖出/deploy-swap 才用严格档(deploy_bench 处)。
-            _is_offtarget = not _card_hits_target(card.name, card.faction, target_comp,
-                                                 include_flex=True)
+            # ADR-0152 M25 实证修正:flex 买牌**配对纪律**(_card_supports_target)—— flex 羁绊
+            # 仅在已有 ≥1 时深化(骨架=成对,M4);枢纽早期核心单买放行(M3);散买 flex=spread 合法化。
+            _is_offtarget = not _card_supports_target(card.name, card.faction, state, target_comp)
             if _is_offtarget:
                 _shop_has_buyable_tgt = any(
-                    _card_hits_target(c.name, c.faction, target_comp, include_flex=True)
+                    _card_supports_target(c.name, c.faction, state, target_comp)
                     for c in state.shop if state.gold >= card_cost(c))
                 if _shop_has_buyable_tgt:
                     continue   # shop 有 target 可买 → 聚焦
