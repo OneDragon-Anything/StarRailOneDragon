@@ -312,7 +312,10 @@ class PrepDirector(SrOperation):
                 type('BenchFullObs', (), {
                     'box_overlay_open': False, 'boxes': [], 'spheres': [],
                     'free_bench_slots': 0, 'shop_open': False,
-                    'deploy_vacancy': obs.deploy_vacancy,
+                    # ADR-0136 补修:横幅在时拖放被游戏拒(前排-4 中心 (1175,398) 落横幅区;M16 后排
+                    # 拖放同败 → 非仅遮挡,系统性拒绝)→ 链 a(DeployMove)注定失败,vacancy 置 0
+                    # 强制走 b(升级扩容)/c(卖最弱)—— 即游戏横幅自己给的指令「出售或提升等级」。
+                    'deploy_vacancy': 0,
                     'bench_chars': obs.bench_chars, 'deployed_chars': obs.deployed_chars,
                     'front_occupied': obs.front_occupied, 'back_occupied': obs.back_occupied,
                     'front_size': obs.front_size, 'back_size': obs.back_size,
