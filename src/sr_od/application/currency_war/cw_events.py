@@ -58,13 +58,19 @@ def _option_rarity(opt: str) -> str:
 
 def decide_event(options: list[str], config, state: GameState,
                   target_comp=None) -> PickEvent:
-    """事件选项打分:白名单优先级(子串)+ comp 匹配(ADR-0134)+ 注册表先验(ADR-0133)+ 克制降权。
+    """事件选项打分(投资策略/环境 3 选 1)。
 
-    comp 匹配(策略侧核心):选项绑定(阵营/角色)∩ target_comp → 每命中 +45(星徽套组对齐 target =
-    核心角色+星徽+核心装备三件套到手,成型加速,压倒白名单 T0 与品质先验;不对齐 = 裸品质分)。
-    绑定从 strategy_bindings(名字+效果文本派生)。误提取方向安全(空绑定 → 0 分回落先验)。
-    注册表先验:白名单未命中 → 品质基线(棱彩 50/金 30/银 10;EconomyEffect +20;上限 70)。
-    投资环境名不在策略注册表 → 先验 0(env 侧 faction 走 select_comp env_fit,不在此)。
+    分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 后的完整语义):
+    1. config 白名单(event_whitelist,子串匹配,如 定期福利=90)—— 用户显式配置,恒最高;
+       ⚠️ 与 PICK_VALUE 对 24/33 张同名卡分歧 20-60 分,白名单语义=覆盖非基线(评审 2026-08-15)
+    2. comp 命中(45×N+20,双命中 110):选项绑定∩target_comp(策略侧;成型加速压倒一切)
+    3. 策略评估分 pick_value(12-75,ADR-0143;替裸品质先验,「分数为纲」)
+       / 品质先验回落(50/30/10+economy20,仅未评估卡)
+    4. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
+    5. env 分支(_st is None 且 env 命中):env 裸分(28-72)/ 阵营 floor(概念股 78/邀请 70/契约 72)
+       / HP 钩子(+15/+10);**env 无品质不吃难度惩罚**(0144b)
+    叠加项(全部之后):品质难度惩罚(-12/-6,HP<40 加倍;仅策略)/ dot_punish(-100 档)/
+    生存钩子(+15,仅策略 SURVIVAL_PICKS)。未注册非 env = 0 分。
     """
     whitelist: dict = getattr(config, 'event_whitelist', {}) or {}
     dot_punish = list(getattr(config, 'dot_punish_envs', []) or [])
@@ -83,7 +89,10 @@ def decide_event(options: list[str], config, state: GameState,
             if name in opt:
                 score = max(score, float(val))
         _st = get_strategy(opt)
-        _pv = pick_value_of(opt)   # ADR-0143 评估基准分(canonical 精确/LCS;None=未评估)
+        _env = get_env(opt)   # 提前查 env 表(防跨表污染,见下 eval-lcs/惩罚两处守卫)
+        _pv = None if _env is not None else pick_value_of(opt)
+        # ↑ ADR-0144b 跨表污染守卫:83 env 名中 29 个会 LCS 误中策略名(全量扫描实测:列车同行概念股→
+        # 列车同行星徽28/增发货币→超发货币55 等)——env 名走 env 分支评分,不进策略 LCS 兜底。
         _comp_hit = 0
         if _st is not None:
             _fs, _cs = strategy_bindings(_st)
@@ -106,9 +115,8 @@ def decide_event(options: list[str], config, state: GameState,
             score, reason = float(_pv), 'eval-lcs'
         # ADR-0144(环境侧评估分):env 名不在策略注册表(原恒 0 分 → fallback 恒选第一张);
         # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∩ target_comp)+ HP 钩子。
-        # ⚠️ 已知局限:eval-lcs 路径只搜策略表,OCR 形变的 env 名可能 LCS 误中策略名(0.6 阈值
-        # 下实测相近名对均 <0.6,风险低;真命中也只得一个策略裸分,有界)。
-        _env = get_env(opt)
+        # OCR 形变的 env 名(如 尾彩•变体)不进策略 LCS(上方 _env 精确查 miss 时仍可能污染 ——
+        # 但 OCR 只出现在 handler 层归一名后才进决策,形变 env 名实际不达此处;守卫以精确查为准)。
         if _st is None and _env is not None:
             if _env.pick_value > 0 and float(_env.pick_value) > score:
                 score, reason = float(_env.pick_value), 'env-eval'
@@ -124,7 +132,9 @@ def decide_event(options: list[str], config, state: GameState,
         # ADR-0141(复查 #6):品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
         # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
         # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
-        _rar = _st.rarity if _st is not None else _option_rarity(opt)
+        # env 无品质分级(图鉴亦无,ADR-0144 评估实证)→ 不吃品质难度惩罚(否则 _option_rarity
+        # 的 LCS 兜底会让 env 名误中策略品质,列车同行概念股→列车同行星徽棱彩→-12 污染)。
+        _rar = _st.rarity if _st is not None else ('' if _env is not None else _option_rarity(opt))
         if _rar == '棱彩':
             score -= 12.0 if state.hp >= 40 else 24.0
         elif _rar == '金':
