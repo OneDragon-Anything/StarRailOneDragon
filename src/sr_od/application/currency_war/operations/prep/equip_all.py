@@ -25,6 +25,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_char_id import load_avatar_templates
 from sr_od.application.currency_war.cw_comps import equip_allocation
 from sr_od.application.currency_war.cw_equipment import (
     EQUIPMENTS,
@@ -181,6 +182,22 @@ class EquipAll(SrOperation):
         diff = _below_icon_diff(cur, post, target.x, vy, self.BX_HALF, self.BY_HALF)
         return diff > self.BELOW_DIFF_THRESHOLD, diff
 
+    def _get_avatar_templates(self):
+        """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,与 deploy_bench 同源)。"""
+        cached = getattr(self.ctx, 'cw_portrait_templates', None)
+        if cached is not None:
+            return cached
+        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        portrait_dir = base / 'character_cw_portrait_plaza'
+        if not portrait_dir.is_dir():
+            portrait_dir = base / 'character_cw_portrait'
+        if not portrait_dir.is_dir():
+            return None
+        templates = load_avatar_templates(portrait_dir)
+        self.ctx.cw_portrait_templates = templates
+        log.info(f'[cw-equip] 加载 {len(templates)} 个 avatar 模板(M7 身份,缓存 ctx)')
+        return templates
+
     def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
         """(row, slot) → (avatar 拖拽点, below 验穿 y);ADR-0154 后排支持。
 
@@ -219,11 +236,13 @@ class EquipAll(SrOperation):
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
         # ===== M7 装备角色级分配(ADR-0154;方法论 M7:装备是角色特定的)=====
-        # 身份(SIFT read_deployed_chars)+ 两排已穿(read_row_equipped)→ equip_allocation
-        # (carry 先拿 key_equips 按序 → 其余 core → 剩余兜底)→ 逐件 drag 到**该角色 avatar**
-        # (前排实测常量/后排 screen_info 推导)+ below CV-diff 验穿。身份读失败 → 退回旧
-        # front-only 流程(robust;offline fixture 也走旧路径)。
-        deployed = read_deployed_chars(self.ctx, screen, templates) if templates is not None else []
+        # 身份(SIFT read_deployed_chars,**立绘模板**非装备模板)+ 两排已穿(read_row_equipped)
+        # → equip_allocation(carry 先拿 key_equips 按序 → 其余 core → 剩余兜底)→ 逐件 drag 到
+        # **该角色 avatar**(前排实测常量/后排 screen_info 推导)+ below CV-diff 验穿。
+        # 身份读失败 → 退回旧 front-only 流程(robust;offline fixture 也走旧路径)。
+        avatar_templates = self._get_avatar_templates()
+        deployed = (read_deployed_chars(self.ctx, screen, avatar_templates)
+                    if avatar_templates is not None else [])
         _match = self.ctx.cw_match
         _tgt_comp = (_match.session.target_comp
                      if (_match is not None and _match.session is not None) else None)
