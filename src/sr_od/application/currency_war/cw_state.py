@@ -198,9 +198,15 @@ class RefreshShop:
 
 @dataclass
 class PickEvent:
-    """选事件选项(投资环境/策略/遭遇/补给)。"""
+    """选事件选项(投资环境/策略/遭遇/补给)。
+
+    refresh(ADR-0146 缺口1):三张最优分低于阈值时建议刷新(游戏规则:投资策略/环境/补给各可刷
+    N 次,免费)。**纯建议**——是否真刷由 handler 决定(读「刷新次数N」OCR,次数>0 才点;
+    刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
+    """
     option_idx: int
     reason: str = ""
+    refresh: bool = False
 
 
 Action = BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent

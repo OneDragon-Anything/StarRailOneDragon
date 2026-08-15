@@ -56,6 +56,10 @@ def _option_rarity(opt: str) -> str:
 
 
 
+# 建议刷新的分数下限(ADR-0146:低于此 = 烂手牌,免费刷新期望为正;tuning 候选)
+EVENT_REFRESH_SCORE_FLOOR: float = 50.0
+
+
 def decide_event(options: list[str], config, state: GameState,
                   target_comp=None) -> PickEvent:
     """事件选项打分(投资策略/环境 3 选 1)。
@@ -143,7 +147,11 @@ def decide_event(options: list[str], config, state: GameState,
             score -= penalty
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
-    return PickEvent(option_idx=best_idx, reason=f"{best_reason} score={best_score:.0f}")
+    # ADR-0146(缺口1):三张最优 < 阈值 → 建议刷新(免费次数;handler 读「刷新次数N」决定真刷否)。
+    # 阈值 50 ≈ 评估分中位(12-75;白名单 78+/comp-hit 65+ 天然不触发)—— 烂手牌换新期望。
+    _want_refresh = best_score < EVENT_REFRESH_SCORE_FLOOR
+    return PickEvent(option_idx=best_idx, refresh=_want_refresh,
+                     reason=f"{best_reason} score={best_score:.0f}" + ("|suggest-refresh" if _want_refresh else ""))
 
 
 # ===== 遭遇节点(decide_encounter,design 08;✅ 已接 HandleEncounter:55 + read_encounter_options)=====

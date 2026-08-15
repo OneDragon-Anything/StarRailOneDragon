@@ -56,6 +56,18 @@ class HandleInvestEnv(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
+        self._refresh_count: int = 0        # OCR 到的「剩余次数:N」(钩子写入;ADR-0146 刷新流读)
+
+    def _try_click_refresh(self) -> bool:
+        """点「按钮-刷新」area(ADR-0146;VLM 候选坐标,M21 首触实锤)。返是否点了(非是否生效)。"""
+        _pt = area_center(self.ctx, '按钮-刷新', HandleInvestEnv.SCREEN_NAME)
+        if _pt is None:
+            return False
+        log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 点({_pt.x},{_pt.y})')
+        self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
+        self.ctx.controller.click(_pt)
+        time.sleep(1.5)
+        return True
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -106,6 +118,7 @@ class HandleInvestEnv(SrOperation):
                         'text_x': int(_m.max.center.x), 'text_y': int(_m.max.center.y),
                         'text': _t,
                     }, ensure_ascii=False) + '\n')
+                self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
                 log.info(f'[cw-env] 刷新UI采集: 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
@@ -126,6 +139,19 @@ class HandleInvestEnv(SrOperation):
                 pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100(满血档):ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤)
         else:
             pick = None
+        # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性;失败安全同 strategy 侧)
+        if (pick is not None and getattr(pick, 'refresh', False)
+                and self._refresh_count > 0
+                and self._try_click_refresh()):
+            _new = self._read_options(self.screenshot())
+            _new_names = [n for n, _x in _new]
+            if _new and _new_names != names:
+                log.info(f'[cw-env] 刷新成功重读: {_new_names}')
+                opts, names = _new, _new_names
+                if match is not None:
+                    pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
+                else:
+                    pick = decide_event(names, config, GameState())
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x = opts[pick.option_idx]
             reason = pick.reason

@@ -58,6 +58,18 @@ class HandleInvestStrategy(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
+        self._refresh_count: int = 0        # OCR 到的「刷新次数N」(钩子写入;ADR-0146 刷新流读)
+
+    def _try_click_refresh(self) -> bool:
+        """点「按钮-刷新」area(ADR-0146;VLM 候选坐标,M21 首触实锤)。返是否点了(非是否生效)。"""
+        _pt = area_center(self.ctx, '按钮-刷新', HandleInvestStrategy.SCREEN_NAME)
+        if _pt is None:
+            return False
+        log.info(f'[cw-strat] 建议刷新(次数={self._refresh_count})→ 点({_pt.x},{_pt.y})')
+        self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
+        self.ctx.controller.click(_pt)
+        time.sleep(1.5)
+        return True
 
     def _read_options(self, screen) -> list[tuple[str, int, int]]:
         """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -106,6 +118,7 @@ class HandleInvestStrategy(SrOperation):
                         'btn_x': int(_m.max.center.x), 'btn_y': int(_m.max.center.y),
                         'text': _t,
                     }, ensure_ascii=False) + '\n')
+                self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
                 log.info(f'[cw-strat] 刷新UI采集: 次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
@@ -121,6 +134,20 @@ class HandleInvestStrategy(SrOperation):
                 pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100:ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤)
         else:
             pick = None
+        # ADR-0146(缺口1):decide 建议刷新(PickEvent.refresh = 三张最优 < 50)且 OCR 到次数>0
+        # → 点「按钮-刷新」(screen_info area;VLM 候选坐标,click 实锤待 M21 首触)→ 重读重选(一次性)。
+        # 失败安全:按钮坐标无效/点后无变化 → 下面的重读仍拿到原三张 → 照常选当前最优 = 现状行为。
+        if (pick is not None and getattr(pick, 'refresh', False)
+                and self._refresh_count > 0
+                and self._try_click_refresh()):
+            _new = self._read_options(self.screenshot())
+            if _new and [n for n, _x, _y in _new] != names:
+                log.info(f'[cw-strat] 刷新成功重读: {[n for n, _x, _y in _new]}')
+                opts, names = _new, [n for n, _x, _y in _new]
+                if match is not None:
+                    pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)
+                else:
+                    pick = decide_event(names, config, GameState())
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x, choose_y = opts[pick.option_idx]
             reason = pick.reason
