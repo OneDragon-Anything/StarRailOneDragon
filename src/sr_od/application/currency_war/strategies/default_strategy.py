@@ -292,8 +292,17 @@ class DefaultCwStrategy(CwStrategy):
         if session.prep_phase <= 0:
             session.prep_phase = 1
             if obs.free_bench_slots <= 0:
-                log.info('[cw][prep] M-6 门:free=0 跳过买牌(防 _handle_bench_full 位置式卖)')
-                return self._main_flow_step(obs, session, config)   # 进部署段
+                # M-6 门:free=0 跳过买牌(防 shop.py 内 _handle_bench_full 位置式卖)。
+                # M24 卡死修(2026-08-16):满席且**无球**时旧逻辑直奔 RunDeploy → deploy-swap 卖
+                # 拖拽失败(bug#1 变体)→ 警告不消 → 死循环;金不够升级时链 b 也不通。修:满席
+                # 一律先过腾席链 a/b/c(deploy 空位/升级扩容/卖最弱 —— _weakest_bench_idx 是保护式
+                # 卖,非位置式卖,与 M-6 门防的不冲突);链 d(DeferSpheres)不入 —— 无球时 defer 无意义,
+                # 落回部署段保持原行为。
+                log.info('[cw][prep] M-6 门:free=0 → 腾席链 a/b/c 破满席(买牌跳过)')
+                step = self._free_bench_step(obs, session, config)
+                if not isinstance(step, DeferSpheres):
+                    return step
+                return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
             return RunBuyPhase()
         if session.prep_phase == 1:
             session.prep_phase = 2
