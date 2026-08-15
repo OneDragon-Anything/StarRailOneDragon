@@ -20,6 +20,9 @@ from sr_od.application.currency_war.cw_observation import (
 from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
+from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
+    HandleArmoryBoxDialog,
+)
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
     HandleDeployNotFull,
 )
@@ -297,6 +300,14 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
             RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
+            return self.round_wait(wait=2)
+
+        # 0f. 节点武装箱弹窗(「武装突入」类节点,2026-08-15 M19 首见停机建档)→
+        #     HandleArmoryBoxDialog(点开箱 → 四选一 → 选卡点卡 → 验关;与备战补给箱
+        #     同下游不同入口,选卡公用 pick_box_card)。
+        if self.round_by_find_area(screen, '货币战争-武装箱弹窗', '标识-简易武装箱', crop_first=False).is_success:
+            self._snap('armory_box')
+            HandleArmoryBoxDialog(self.ctx).execute()
             return self.round_wait(wait=2)
 
         # 0e2. 商店刷新概率表弹窗 → 点 × 关闭(live 2026-08-14 1-2 实锤补:点球误触开后无分支消化,

@@ -35,6 +35,22 @@ def _material_value(name: str) -> int:
     return table.get(name, 0)
 
 
+def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
+    """武装箱 4 选 1 选卡(公用:备战箱/节点弹窗同下游;ADR-0143 前简化共用)。
+
+    target_comp.key_equips 命中优先 → 合成材料通用性最高 → None(调用方兜底第 1 卡)。
+    """
+    if not names:
+        return None
+    match = ctx.cw_match
+    if match is not None and match.session.target_comp is not None:
+        key_equips = set(match.session.target_comp.key_equips or [])
+        for n in names:
+            if n in key_equips:
+                return n
+    return max(names, key=_material_value, default=None)
+
+
 class HandleSupplyBox(SrOperation):
     """开补给箱:点箱槽「开启」→ 武装箱 4 选 1 → 按策略点卡 → 验 overlay 关。"""
 
@@ -98,13 +114,5 @@ class HandleSupplyBox(SrOperation):
         return self.round_success(wait=1.5)
 
     def _pick_card(self, names: list[str]) -> str | None:
-        """选卡:target_comp.key_equips 命中优先 → 材料通用性最高 → None(调用方兜底第1卡)。"""
-        if not names:
-            return None
-        match = self.ctx.cw_match
-        if match is not None and match.session.target_comp is not None:
-            key_equips = set(match.session.target_comp.key_equips or [])
-            for n in names:
-                if n in key_equips:
-                    return n
-        return max(names, key=_material_value, default=None)
+        """选卡(逻辑抽模块级 pick_box_card 公用;保留方法兼容既有调用)。"""
+        return pick_box_card(self.ctx, names)
