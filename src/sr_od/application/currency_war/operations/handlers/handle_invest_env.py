@@ -15,7 +15,6 @@ board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策
 缺失才用兜底常量。
 """
 import time
-import types
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -27,6 +26,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
 from sr_od.application.currency_war.cw_investments import is_known_env
 from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_observe import cw_shot_unique
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
@@ -83,6 +83,32 @@ class HandleInvestEnv(SrOperation):
             return self.round_fail('非投资环境屏')
 
         opts = self._read_options(screen)
+
+        # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1:环境屏刷新)]刷新 UI 标定:
+        # 2026-08-15 M19 环境屏 OCR 实锤「剩余次数:1」可读,但全屏 OCR 无「刷新」按钮文字(疑图标按钮)
+        # → ① 整屏 cw_shot_unique 存档(离线 VLM 定位按钮坐标);② 记次数文本坐标 → refresh_ui_samples.jsonl。
+        cw_shot_unique(screen, 'env_refresh_ui')
+        import re as _re
+
+        for _t, _m in (self._ocr_map or {}).items():
+            _mm = _re.search(r'剩余次数[：:]?\s*(\d+)', _t)
+            if _mm and _m.max is not None:
+                import json as _json
+                from datetime import datetime as _dt
+                from pathlib import Path as _P
+                _p = _P('.debug/temp/currency_war/refresh_ui_samples.jsonl')
+                _p.parent.mkdir(parents=True, exist_ok=True)
+                with _p.open('a', encoding='utf-8') as _f:
+                    _f.write(_json.dumps({
+                        'ts': _dt.now().isoformat(timespec='seconds'),
+                        'kind': 'env',
+                        'count': int(_mm.group(1)),
+                        'text_x': int(_m.max.center.x), 'text_y': int(_m.max.center.y),
+                        'text': _t,
+                    }, ensure_ascii=False) + '\n')
+                log.info(f'[cw-env] 刷新UI采集: 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
+                break
+
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _ in opts]
         # 见 od-dev-gameplay-automation 完成判据反馈)。可能是赛季新增 / OCR 误识 / 锁定未命名。
@@ -95,7 +121,7 @@ class HandleInvestEnv(SrOperation):
             if match is not None:
                 pick = match.strategy.decide_invest('env', names, GameState(), match.session, config)
             else:
-                pick = decide_event(names, config, types.SimpleNamespace(board={}))  # 防御:无 match(局外独立跑)
+                pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100(满血档):ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤)
         else:
             pick = None
         if pick is not None and 0 <= pick.option_idx < len(opts):

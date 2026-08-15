@@ -18,7 +18,6 @@ CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``):``�
 + ``按钮-确认``,task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,缺失才用兜底常量。
 """
 import time
-import types
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -85,6 +84,9 @@ class HandleInvestStrategy(SrOperation):
 
         # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1)]刷新 UI 标定:OCR y790-890 横带找
         # 「刷新次数N」→ 记次数+按钮x。为 PickEvent.refresh 接入(缺口1)提供坐标/次数真值。
+        # 整屏 cw_shot_unique 存档(env 屏同款;刷新按钮疑图标,OCR 无文字 → 离线 VLM 定位)。
+        from sr_od.application.currency_war.cw_observe import cw_shot_unique as _shot
+        _shot(screen, 'strategy_refresh_ui')
         import re as _re
 
         from one_dragon.base.geometry.rectangle import Rect as _Rect
@@ -116,7 +118,7 @@ class HandleInvestStrategy(SrOperation):
             if match is not None:
                 pick = match.strategy.decide_invest('strategy', names, GameState(), match.session, config)
             else:
-                pick = decide_event(names, config, types.SimpleNamespace(board={}))  # 防御:无 match(局外独立跑)
+                pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100:ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤)
         else:
             pick = None
         if pick is not None and 0 <= pick.option_idx < len(opts):
