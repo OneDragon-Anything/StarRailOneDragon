@@ -244,8 +244,9 @@ class CurrencyWarRunLoop(SrOperation):
         #     area 位置不同(选择伙伴 overlay 标题在 top-center id_mark rect)→ 不命中(同 0d/0e area 化理由)。
         if self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
-            HandleSelectPartner(self.ctx).execute()
-            self._clear_bail_count('事件overlay:partner')
+            _r = HandleSelectPartner(self.ctx).execute()
+            if _r is not None and getattr(_r, 'success', False):
+                self._clear_bail_count('事件overlay:partner')   # review M2:仅成功才清(失败保计数=ping-pong 安全网)
             return self.round_wait(wait=2)
 
         # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
@@ -254,8 +255,9 @@ class CurrencyWarRunLoop(SrOperation):
         #     独有标题「盛会之星」更直接(独有标题位置区分,无需依赖分支先后)。
         if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
-            RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
-            self._clear_bail_count('事件overlay:megastar')   # 合法 bail 清计数(live M11 误停机)
+            _r = RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
+            if _r is not None and getattr(_r, 'success', False):
+                self._clear_bail_count('事件overlay:megastar')   # 合法 bail 清计数(live M11 误停机;M2:仅成功才清)
             return self.round_wait(wait=2)
 
         # 0c. 遭遇节点(难度二选一 + 选择)→ HandleEncounter(点卡选中 + 选择确认)。

@@ -765,18 +765,21 @@ def _best_improving_action(
     for _bc in state.bench:
         if _bc.char_id:
             _bench_name_counts[_bc.char_id] = _bench_name_counts.get(_bc.char_id, 0) + 1
+    # review L2:星敏感计数 —— 商店牌恒 1★,3合1 材料须同名**同星**;deployed/bench 的 2★+ 不算材料。
+    def _star1(coll, name: str) -> int:
+        return sum(1 for b in coll if b.char_id == name and b.star == 1)
     def _copies(name: str) -> int:
-        return _deployed_name_counts.get(name, 0) + _bench_name_counts.get(name, 0)
+        return _star1(state.deployed, name) + _star1(state.bench, name)
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
-        if _copies(card.name) >= 3:
-            continue   # 已 3 张(自动合并中)/超 3 = 纯浪费
-        if (card.name in _deployed_name_counts
+        if card.name and _copies(card.name) >= 3:
+            continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
+        if (card.name and card.name in _deployed_name_counts
                 and not (target_comp is not None
                          and _card_hits_target(card.name, card.faction, target_comp))):
-            continue   # 场上已有同名散牌 → 不集(死钱);target/core 角色继续集 3合1
+            continue   # 场上已有同名散牌 → 不集(死钱);target/core 继续集;未知名不判(无法识别重复)
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
         if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
             continue
@@ -830,7 +833,11 @@ def _best_improving_action(
                         continue
         after_buy = simulate(state, BuyCard(card=card))
         seq = [BuyCard(card=card)]
+        # review M3:deploy 去重对齐游戏 5.1.7(场上同名禁双)—— 旧模拟把 2★ 与场上 1★ 双上阵,
+        # 估值虚高 + 运行时滞留 bench。同名已 deployed → 不 deploy(留 bench 待 3合1 合并)。
+        _dep_ids = {b.char_id for b in state.deployed if b.char_id}
         if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
+                and after_buy.bench[-1].char_id not in _dep_ids
                 and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):
             bc = after_buy.bench[-1]
             row, ok = _pick_deploy_row(after_buy, bc)
@@ -844,10 +851,13 @@ def _best_improving_action(
         # review🟡 去 CHAR_PRIORITY_BONUS*2 flat(char_quality_score 已计 priority×star,原三重过度偏置)
         beat(delta, seq)
 
-    # 2) 上任已拥有的 bench 角色(按 position_pref 分流)
+    # 2) 上任已拥有的 bench 角色(按 position_pref 分流;M3:同名去重同 1))
+    _dep_ids2 = {b.char_id for b in state.deployed if b.char_id}
     for i, bc in enumerate(state.bench):
         if state.deployed_count() >= state.max_units():
             break
+        if bc.char_id and bc.char_id in _dep_ids2:
+            continue   # 场上已有同名(游戏禁双,5.1.7;留 bench 待合并)
         if not _should_deploy(bc, state, target_comp):
             continue
         row, ok = _pick_deploy_row(state, bc)
