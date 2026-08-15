@@ -211,6 +211,38 @@ class DeployBench(SrOperation):
             _cid0 = _bench_cid.get(i)
             _is_tgt = ((_bonds and _bonds & _tgt) or _cid0 in _cores) if _tgt else False
             (tgt_idx if _is_tgt else rest).append(i)
+        # ADR-0130(用户节奏 §7-1「开场买牌囤 bench 不上阵」+ 复查确认 spread 种子):off-target 散牌
+        # 单张**留 bench 不上阵**(对齐 planner `_should_deploy` 语义)—— 上场条件:① target;② 同阵营
+        # 成对(board+bench 计数 ≥2,凑过渡羁绊,「买过渡阵容」人玩节奏);③ SIFT 未识别(无法判,
+        # 照旧上防空板);④ 保底:板完全空且无 target 无对 → 上 1 个(body > 空板)。旧 deploy-all 把
+        # 每个买单张都推上场 = spread 吸引子种子(fp 冻结 0.25 根因,M14/M15 遥测实锤)。
+        _pair_counts: dict[str, int] = {}
+        if _sess is not None and _sess.last_state is not None:
+            _pair_counts.update(_sess.last_state.board)
+        _bench_fac: dict[int, str] = {}
+        for i, _cid0 in _bench_cid.items():
+            _c = get_char(_cid0) if _cid0 else None
+            if _c is not None and _c.factions:
+                _bench_fac[i] = _c.factions[0]
+                _pair_counts[_c.factions[0]] = _pair_counts.get(_c.factions[0], 0) + 1
+        _held: list[int] = []
+        for i in list(rest):
+            if i not in _bench_cid:
+                continue   # SIFT 未识别:照旧上(无法判 target/阵营)
+            _f = _bench_fac.get(i)
+            if _f is not None and _pair_counts.get(_f, 0) >= 2:
+                continue   # 同阵营成对(board+bench ≥2):凑过渡羁绊,上
+            rest.remove(i)
+            _held.append(i)
+        _board_empty = (len(front_empty) == len(front)) and (len(back_empty) == len(back))
+        if _board_empty and not tgt_idx and not rest:
+            _fallback = _held[:1]
+            if _fallback:
+                rest.extend(_fallback)
+                _held = _held[1:]
+                log.info(f'[cw-deploy] 板空保底:上 1 个散牌(body > 空板):{_fallback}')
+        if _held:
+            log.info(f'[cw-deploy] 散牌留 bench(不成对/非 target,ADR-0130):slots={[h + 1 for h in _held]}')
         order = tgt_idx + rest
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')

@@ -1108,8 +1108,14 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
     # 评分:词缀契合(利 comp 加分)+ 成型→高难度值(奖励)/ 未成型→低难度安全
     def _score(o: EncounterOption, m: float) -> float:
         s = m
-        diff_norm = (o.difficulty - 1) / 2.0   # 0..1(难度 1→0、3→1)
-        s += (0.3 * diff_norm) if formed else (-0.3 * diff_norm)
+        # 0..1 clamp(难度 1→0、3→1;「其四」=4 越界 1.5 → 钳回,ADR-0130)
+        diff_norm = min(max((o.difficulty - 1) / 2.0, 0.0), 1.0)
+        if state.plane == 3:
+            # ADR-0130(复查 #3,经济运营:18/核心机制:26):P3 永避高难遭遇 —— 右边遭遇(7-3/7-4)
+            # 一次 -70 血且无增益回报,成型也不赌;P3 奖励边际 < 翻车风险。
+            s -= 0.5 * diff_norm
+        else:
+            s += (0.3 * diff_norm) if formed else (-0.3 * diff_norm)
         return s
 
     scored = sorted(zip(options, mechs, strict=True), key=lambda om: _score(om[0], om[1]), reverse=True)
@@ -1126,6 +1132,9 @@ _EQUIP_VALUE: dict[str, int] = {
     "反重力皮靴": 5, "轮滑鞋": 4,
     "永动机": 4, "光能电池": 3, "超级电池": 3,
     "物质分解液": 3, "能量饮料": 2, "绝对热量": 2,
+    # ADR-0130(复查 #7,各阵容装备段 + 核心机制:56):核心输出装补缺 —— 旧表缺失 = 全 0 分 →
+    # 补给/装备决策系统性低估 core 装备(火力风暴潮 = 伤害征服核心乘区,最高优先)。
+    "火力风暴潮": 6, "高周波电锯": 5, "冷笑话引擎": 4, "翁瓦克": 4,
 }
 
 

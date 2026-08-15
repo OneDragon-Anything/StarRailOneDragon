@@ -57,3 +57,4 @@
 | [0128](0128-user-rhythm-batch1.md) | 用户人玩节奏批次1(连胜不对称/1费集星免费/boss前花完/comp停留D) | accepted | 2026-08-15 | 攻略复查11项小修4项+comp停留语义:streak只计连胜(无连败补偿);cost==1集2★免费(净0);node_type=boss→不攒息+刷cap4;comp显式roll压过node地板(列车停7级D3星姬子,旧冲8) |
 | [0129](0129-xp-click-model-and-level-from-xp.md) | 购买经验单击模型(+4XP/击,门槛自动升级溢出结转)+XP分母反推真等级 | accepted | 2026-08-15 | 用户门槛表4/6/20/40/52/72/84+telemetry对拍;LevelUp=单击非整级大金(旧模型高估成本→升级滞后,M15进P2真lv5);read_level启发兜底污染观测→XP反查覆盖+[cw!]留证 |
 
+| [0130](0130-deploy-hold-scatter-p3-encounter-equip-values.md) | 部署散牌留bench(执行器对齐planner)+P3避高难遭遇+装备价值补缺 | accepted | 2026-08-15 | deploy-all是spread种子(fp冻结根因):off-target单张留bench,成对/target才上,板空保底1人;decide_encounter加plane==3难度恒罚(diff_norm钳0..1);_EQUIP_VALUE补风暴潮6/电锯5/冷笑话4/翁瓦克4 |
