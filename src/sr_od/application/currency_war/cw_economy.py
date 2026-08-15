@@ -240,6 +240,37 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
 
 
+def roll_affordable(state: GameState, config, target_comp) -> bool:
+    """roll 可负担性门(ADR-0147,评审 f3ab d2):E[刷到 2星核心]×单价 vs 预算金。
+
+    M20 死亡窗实证:roll 分支满血也放宽 cap=4 × 5 轮 plan,散板下 MC 期望恒正(任何牌都算
+    reinforce+4、金币边际成本≈0)→ 连刷烧光金 18→0 全买散件。本门用**金计价**替 MC 符号:
+    期望刷次(expected_refreshes_for_card,超几何精确;已实现未接线——本次接上)× 2 金
+    > 预算金(gold − xp_floor)→ roll 让位 node plan(P2 推 8),不放宽。用户基准「P2 少刷吃息」。
+    2星(3张)为目标档;3星 9 张期望太贵不进 D 决策。
+    """
+    goal = target_comp.level_plan.get(state.level)
+    if goal is None or goal.action != 'roll':
+        return False
+    cost = goal.target_cost or 3
+    # k=1「D 到下一张核心」:roll 分支实际行为 = 刷→见核心→买(增量凑件),非从 0 凑 2星
+    # (2星 3 张期望 22 刷/44 金,门会永不放行)。expected_refreshes_for_card 的
+    # target_star 只映射 2星/3星 → 直调底层 expected_refreshes(k=1)。
+    from sr_od.application.currency_war.cw_shop_odds import (
+        DISTINCT_CARDS_PER_COST,
+        POOL_COPIES_PER_CARD,
+        expected_refreshes,
+        refresh_prob,
+    )
+    _p = refresh_prob(state.level, cost)
+    _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
+    _a = POOL_COPIES_PER_CARD.get(cost, 9)
+    e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
+    e_gold = e_refreshes * SHOP_REFRESH_COST
+    budget = state.gold - _xp_gold_floor(state, config, True)
+    return budget > e_gold and state.gold >= 2 * SHOP_REFRESH_COST
+
+
 def _char_synergies(name: str) -> set[str]:
     """角色全部羁绊(阵营 + 流派 + 独立),查 ``CHARACTERS`` 注册表(CLAUDE.md 单一源)。
 

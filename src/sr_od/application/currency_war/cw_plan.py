@@ -349,7 +349,7 @@ def plan(state: GameState, config, faction_priority: list[str],
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
                                       refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config),
-                                                                  target_comp=target) - refresh_used,
+                                                                  target_comp=target, config=config) - refresh_used,
                                       target_comp=target, rf_used=refresh_used)
         if not step:
             break

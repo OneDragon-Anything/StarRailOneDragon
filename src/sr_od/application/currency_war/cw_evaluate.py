@@ -20,6 +20,7 @@ from sr_od.application.currency_war.cw_economy import (
     _strategy_economy,
     economy_score,
     get_node_goal,
+    roll_affordable,
 )
 from sr_od.application.currency_war.cw_factions import (
     FACTIONS,
@@ -159,7 +160,7 @@ def _phase_weights(plane: int, hp: int, hp_threshold: int = HP_DANGER) -> tuple[
 
 
 def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
-                 target_comp: Comp | None = None) -> int:
+                 target_comp: Comp | None = None, config=None) -> int:
     """本回合 D 牌(刷新)上限(动态;review agent + 用户:固定 2 太死)。
 
     关键回合放宽:升 8 后 / plane3 搜核心、HP 危险锁血急救。
@@ -176,8 +177,13 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
         cap = max(cap, 4)                # ADR-0128(复查 #4):boss 关前把钱花完(D 出质量保 HP)
     if (target_comp is not None
             and target_comp.level_plan.get(state.level) is not None
-            and target_comp.level_plan[state.level].action == 'roll'):
-        cap = max(cap, 4)                # ADR-0128:comp 明确停留本级 roll(D 核心概率级)→ 放开刷
+            and target_comp.level_plan[state.level].action == 'roll'
+            and roll_affordable(state, config, target_comp)):   # config 由调用方传(plan)
+        # ADR-0128:comp 停留本级 roll → 放开刷;ADR-0147(评审 f3ab d2)加**可负担性门**:
+        # E[刷到 2星核心]×2金 vs 预算金(gold−xp_floor),不可负担 → roll 让位 node plan
+        # 不放宽。M20 死亡窗实证:满血也 4 刷×5 轮,散板 MC 恒正(reinforce+4/金币边际≈0)
+        # 烧光金。金计价实现 = cw_economy.roll_affordable(expected_refreshes_for_card 接线)。
+        cap = max(cap, 4)
     # ADR-0131:效果驱动替旧名单(REFRESH_DISCOUNT_STRATEGIES 语义错 —— 高效决策是 45 秒免费刷爆发
     # 非减半、采购专员是变同费 5 张非返现):有免费刷新额度/爆发窗/变卡稳定器 → 刷新变便宜/更值 → 放宽。
     _se = _strategy_economy(state)
