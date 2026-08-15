@@ -83,6 +83,29 @@ class HandleInvestStrategy(SrOperation):
         if not self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             return self.round_fail('非投资策略屏')
 
+        # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1)]刷新 UI 标定:OCR y790-890 横带找
+        # 「刷新次数N」→ 记次数+按钮x。为 PickEvent.refresh 接入(缺口1)提供坐标/次数真值。
+        import re as _re
+        from one_dragon.base.geometry.rectangle import Rect as _Rect
+        for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
+                image=screen, rect=_Rect(300, 790, 1650, 890), crop_first=False).items():
+            _mm = _re.search(r'刷新次数\s*(\d+)', _t)
+            if _mm and _m.max is not None:
+                import json as _json
+                from datetime import datetime as _dt
+                from pathlib import Path as _P
+                _p = _P('.debug/temp/currency_war/refresh_ui_samples.jsonl')
+                _p.parent.mkdir(parents=True, exist_ok=True)
+                with _p.open('a', encoding='utf-8') as _f:
+                    _f.write(_json.dumps({
+                        'ts': _dt.now().isoformat(timespec='seconds'),
+                        'count': int(_mm.group(1)),
+                        'btn_x': int(_m.max.center.x), 'btn_y': int(_m.max.center.y),
+                        'text': _t,
+                    }, ensure_ascii=False) + '\n')
+                log.info(f'[cw-strat] 刷新UI采集: 次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
+                break
+
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
