@@ -44,7 +44,7 @@ return max(refund, 0)
 
 - **正向**:1费角色(飞霄/万敌/椒丘/三月七 等 CW 主力多 1费)卖价修正(+1 金);卖决策 / 利息跳档估算更准。
 - **待 live 核**:cost≥2 的 −1(2★2费=5)是用户记忆,未实测(本局板无 cost≥2 2★);3/4星 cost=1 全额(=9/27)是规则外推,未实测。下轮遇 cost≥2 2★ / 3★ 再核。
-- 删 sell-star 停机钩子(``battle_prep.buy`` L51-67):售价已验(2★1费=3),钩子任务完成(CLAUDE.md「临时钩子用完即删」)。
+- 删 sell-star 停机钩子(``battle_prep.buy`` L51-67):售价已验(2★1费=3),钩子任务完成(AGENTS.local.md「临时钩子用完即删」)。
 
 ## Links
 - economy_research §2(售价表;矛盾 L83/L93 由本 ADR 消解)。

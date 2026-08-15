@@ -216,7 +216,7 @@ class StrategySession:
 ```
 
 > - **观测历史读 `session.performance.history`**(`PerformanceTracker` 内部的 `list[RoundOutcome]` 是 source of truth,`record(obs)` 写、`recent_hp_loss_trend`/`_qualifying` 读)。**不另设 `session.history`**(避免双源脱节)。
-> - **`memory` 是 deliberate escape hatch**(策略私有 scratch,如连胜计数/「这轮攒金升 8」意图);核心领域实体(`Comp`/`RoundOutcome`/`MatchOutcome`)仍走正规类型,不塞进 memory(对齐 CLAUDE.md 工程化原则)。
+> - **`memory` 是 deliberate escape hatch**(策略私有 scratch,如连胜计数/「这轮攒金升 8」意图);核心领域实体(`Comp`/`RoundOutcome`/`MatchOutcome`)仍走正规类型,不塞进 memory(对齐 AGENTS.local.md 工程化原则)。
 > - **导入**:`dict[str, Any]` 需 `from typing import Any`;`PerformanceTracker` **顶部 import**(`field(default_factory=PerformanceTracker)` 需类对象,**不能** `TYPE_CHECKING`);`Comp` 仅类型注解 → 可 `TYPE_CHECKING`。模块顶已有 `from __future__ import annotations`。
 
 - **生命周期**:`CurrencyWarRunLoop.__init__` 经 `strategy.create_session(config)` 创建 → 挂 `ctx.cw_match.session` → 每个钩子收到的就是它 → `CurrencyWarRunLoop` 局终置 `ctx.cw_match = None`。

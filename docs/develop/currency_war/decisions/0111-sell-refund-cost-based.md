@@ -1,5 +1,7 @@
 # 0111 sell_refund cost-based(1星=cost / 2星=cost×3−1 / 3星=cost×9−1)
 
+> ⚠️ **手续费模型被 [ADR-0121](0121-sell-refund-fee-cost-dependent.md) 修正**(2026-08-13):「star≥2 一刀切 −1」错 —— 1费各星全额退(live 实测 2★1费=+3);−1 仅 star≥2 且 cost≥2。本 ADR 的 1★=cost 权威结论与「click 详情面板读售价」验证法仍有效;Consequences 中「star 售价矛盾待客观核」已由 0121 解决。
+
 Status: accepted
 Date: 2026-08-12
 

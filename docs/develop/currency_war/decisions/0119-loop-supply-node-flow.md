@@ -1,5 +1,7 @@
 # ADR-0119:Loop 补给节点流程 —— 点「返回补给阶段」进补给屏(替 supply 停机 hook)
 
+> ✅ 注(2026-08-15):「live 验待下个补给节点」已闭环 —— 补给 2026-08-15 完整重建档(独立屏实锤 + 5 列交互 live 验证 + RunSupplyNode 模型核对 + fixture 4 态),battle_loop 停机 tuple 已移出补给、0e 分支接管。
+
 - **Status**:Accepted(2026-08-13)
 - **关联**:ADR-0118(BuyShopCards 补给 bail)/ 补给画面建档(2026-08-13)/ events.md「出战 click 落空」
 

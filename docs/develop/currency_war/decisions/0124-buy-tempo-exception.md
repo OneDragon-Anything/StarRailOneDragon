@@ -1,5 +1,7 @@
 # ADR-0124 买牌 tempo 例外:未成型 commit 放行板直接增强散牌
 
+> ⚠️ **语义被 [ADR-0127](0127-strategy-review-h1-h4.md) H2 收敛**(2026-08-15):阵营计数只用 board(deployed 真值;旧含 bench = 买进单张反向维持例外开启,spread 吸引子);删 cost≥3 无阵营分支(OCR 失败 cost 默认 3 会自动放行);补 fp 守卫(成型即关)。本文旧语义描述不再是实现,以 0127 + 代码为准。
+
 - 日期:2026-08-15
 - 状态:已接受(实现于 cw_decisions._best_improving_action)
 

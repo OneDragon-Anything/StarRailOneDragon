@@ -1,5 +1,7 @@
 # 0019. 团队规模上限 = level + 财富宝钻/诅咒;后排槽位非固定 6
 
+> ✅ 注([ADR-0120](0120-deploy-center-drag-unified.md),2026-08-13):Consequences 所记「>6 漏检(D-50 gap)」已缓解 —— `DragCwChar._slot_center` 支持调用方传 back_centers、`DeployBench._row_centers` 读全部 后排-N area(不硬编码 6);>6 实际槽位坐标仍待财富宝钻局 live 验。
+
 - **Status**: accepted
 - **Date**: 2026-08-09
 - **原编号**: D-19

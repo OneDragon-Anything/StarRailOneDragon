@@ -31,7 +31,7 @@ synergy_score 已有 `SYNERGY_TIER_EXPONENT=1.5`(深堆超线性)—— 确认�
 
 - **commit 阈值**(F1):form_progress 多少算「已积累该 commit」?待多局 board evolution 校准。
 - **roll vs save balance**(F2):攒金期间 roll 几次?gold 距 level cost 多远时该 roll 找 target vs 纯攒?待 economy 校准。
-- **P2 comp_viability 观测 blend**(CLAUDE.md):成型中 comp 的实际战力(掉血 trend)反馈进 select_comp —— 已成型的弱 comp 该转(观测驱动,非预测)。on_round_end hp trend 已采(D-48~52),接线进 select_comp。
+- **P2 comp_viability 观测 blend**(AGENTS.local.md):成型中 comp 的实际战力(掉血 trend)反馈进 select_comp —— 已成型的弱 comp 该转(观测驱动,非预测)。on_round_end hp trend 已采(D-48~52),接线进 select_comp。
 
 ## 实施顺序(建议)
 

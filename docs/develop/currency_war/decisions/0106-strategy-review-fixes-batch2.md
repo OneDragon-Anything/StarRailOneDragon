@@ -1,5 +1,7 @@
 # 0106 策略 review 修复批次2(W_BOSS死重 / character_priority三重 / star钩子漏bench)
 
+> ⚠️ **W_BOSS 置 0 的 stopgap 已被 [ADR-0107](0107-comp-score-dynamic-weight.md) 撤销**(2026-08-12:动态权重治本,W_BOSS 复位 0.10;无数据时 boss_fit 返 None 自动剔除,不再需人改权重)。本 ADR 其余两项(character_priority 去三重 / star 钩子查 session.tracked_bench_chars)仍有效。
+
 Status: accepted
 Date: 2026-08-12
 

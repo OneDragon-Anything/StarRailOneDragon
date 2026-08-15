@@ -1,5 +1,7 @@
 # 0108 策略 review 修复批次3(shop_faction_seen 死数据 / difficulty_phase per-plane bug / target_committed *9)
 
+> ✅ 注:文末「仍留」清单中 #6 牌池 acq 已由 [ADR-0109](0109-pool-copies-canonical-27-9.md)/[ADR-0110](0110-acquirability-pool-aware.md) 落地、SELL_VALUE cost-based 已由 [ADR-0111](0111-sell-refund-cost-based.md)/[ADR-0121](0121-sell-refund-fee-cost-dependent.md) 落地(2026-08-12);其余次优项如需处理先核代码现状。
+
 Status: accepted
 Date: 2026-08-12
 

@@ -2,7 +2,7 @@
 
 - **Status**: accepted
 - **Date**: 2026-08-12
-- **Related**: cw_chars `Character`(factions/flows/independent 分离)/ CLAUDE.md 游戏数据单一源 / events 3.5.5(DOT 实跑 P1 输根因)
+- **Related**: cw_chars `Character`(factions/flows/independent 分离)/ AGENTS.local.md 游戏数据单一源 / events 3.5.5(DOT 实跑 P1 输根因)
 
 ## Context
 
@@ -23,7 +23,7 @@
 ## Decision Drivers
 
 1. **治本不叠补丁**:根因是角色侧只存阵营不存流派 → 用角色**全羁绊**匹配 comp.factions,非单阵营。comp.factions 含流派是合法建模,不该回避。
-2. **单一源**:角色全羁绊查 `CHARACTERS` 注册表(CLAUDE.md 游戏数据单一源),非到处硬补 card.faction。
+2. **单一源**:角色全羁绊查 `CHARACTERS` 注册表(AGENTS.local.md 游戏数据单一源),非到处硬补 card.faction。
 3. **最小结构接线**:不改数据类(`BenchChar`/`ShopCard`),只加查询 helper + 统一替换 target 匹配处。
 
 ## Considered Options

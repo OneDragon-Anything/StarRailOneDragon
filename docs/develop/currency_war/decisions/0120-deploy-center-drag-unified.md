@@ -2,12 +2,12 @@
 
 - **Status**: accepted(2026-08-13)
 - **原编号**: D-120
-- **↺ 推翻**:[0100](0100-deploy-avatar-mousedown.md)(avatar mouseDown + hold 1.0)
+- **↺ 推翻**:0100(原文件已删,见 INDEX)(avatar mouseDown + hold 1.0)
 - **关联**:[0099](0099-deploy-position-pref.md) 选排 / [0019](0019-max-units-dynamic-back-row.md) 动态后排 / DragCwChar(``drag_char`` 原语)
 
 ## Context
 
-[0100](0100-deploy-avatar-mousedown.md) 把 deploy 拖拽机制定为「mouseDown 角色卡左上 **avatar 小圆** + ``hold_time=1.0`` 长按」,live 验 placed=3/5,2/5 失败归「bug#1 间歇 / avatar 偏移」。2026-08-13 重诊:**avatar 结论全错**:
+0100(原文件已删,见 INDEX) 把 deploy 拖拽机制定为「mouseDown 角色卡左上 **avatar 小圆** + ``hold_time=1.0`` 长按」,live 验 placed=3/5,2/5 失败归「bug#1 间歇 / avatar 偏移」。2026-08-13 重诊:**avatar 结论全错**:
 
 - 「左上小圆 = avatar」**错** —— 那是**星标**(star icon),非头像。角色卡整张可拖(立绘 / 名字 / 中心任一点 mouseDown 都拾取)。
 - 「mouseDown 立绘开详情 → 立绘不拾取」**错** —— 详情面板是 **click(mouseUp 松开)** 触发,非 mouseDown。drag = **按下 + 移动**(按下即移 = 拾取;按下不动松开 = click 开详情)。
@@ -46,7 +46,7 @@
 - **推翻 [0100]**:avatar mouseDown + hold1.0 作废;0100「placed=3/5 成功」是 avatar 偏移落点偶中的噪声非机制有效。
 
 ## Links
-- 推翻 [0100](0100-deploy-avatar-mousedown.md)(avatar mouseDown + hold 1.0)。
+- 推翻 0100(原文件已删,见 INDEX)(avatar mouseDown + hold 1.0)。
 - [0099](0099-deploy-position-pref.md) 选排(中心拖让选排稳定生效)。
 - [0019](0019-max-units-dynamic-back-row.md) 动态后排(``back_centers`` / ``_row_centers`` 不硬编码 6)。
 - DragCwChar ``drag_char``(``operations/dev/drag_cw_char.py``)= 全仓角色拖拽单一源。
