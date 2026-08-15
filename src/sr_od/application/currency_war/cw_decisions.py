@@ -23,6 +23,7 @@ from sr_od.application.currency_war.cw_investments import (
     EconomyEffect,
     aggregate_economy,
     get_strategy,
+    strategy_bindings,
 )
 from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
 
@@ -1049,37 +1050,50 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
 # decide_boss_priority(阵营降权)已删(2026-08-12):boss 克制是 comp-vs-boss 机制级(走 boss_fit/
 # comp.countered_by_bosses + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
 
-def decide_event(options: list[str], config, state: GameState) -> PickEvent:
-    """事件选项打分:白名单优先级(子串)+ 注册表先验(ADR-0133)+ 克制环境降权(DoT 主派时避)。
+def decide_event(options: list[str], config, state: GameState,
+                  target_comp=None) -> PickEvent:
+    """事件选项打分:白名单优先级(子串)+ comp 匹配(ADR-0134)+ 注册表先验(ADR-0133)+ 克制降权。
 
-    注册表先验:白名单未命中的选项,若名字在 INVESTMENT_STRATEGIES(全量 315)→ 按品质给基线分
-    (棱彩 50 / 金 30 / 银 10;带 EconomyEffect 再 +20)。上限 70 < 白名单地板(~82)→
-    白名单 T0 仍优先;先验只解决「白名单外选项互相比较」(旧版全 0 = 变相随机选)。
-    投资环境名不在策略注册表 → 先验 0,行为不变。
+    comp 匹配(策略侧核心):选项绑定(阵营/角色)∩ target_comp → 每命中 +45(星徽套组对齐 target =
+    核心角色+星徽+核心装备三件套到手,成型加速,压倒白名单 T0 与品质先验;不对齐 = 裸品质分)。
+    绑定从 strategy_bindings(名字+效果文本派生)。误提取方向安全(空绑定 → 0 分回落先验)。
+    注册表先验:白名单未命中 → 品质基线(棱彩 50/金 30/银 10;EconomyEffect +20;上限 70)。
+    投资环境名不在策略注册表 → 先验 0(env 侧 faction 走 select_comp env_fit,不在此)。
     """
     whitelist: dict = getattr(config, 'event_whitelist', {}) or {}
     dot_punish = list(getattr(config, 'dot_punish_envs', []) or [])
     on_dot = sum(state.board.get(f, 0) for f in ('持续伤害', '减益')) >= 2
     penalty = (max(whitelist.values()) + 100) if whitelist else 100
     _rarity_prior: dict[str, float] = {'棱彩': 50.0, '金': 30.0, '银': 10.0}
+    _tgt_factions: set[str] = set(target_comp.factions) if target_comp is not None else set()
+    _tgt_chars: set[str] = set(target_comp.core_chars) if target_comp is not None else set()
 
     best_idx, best_score = 0, -1.0
+    best_reason = ''
     for i, opt in enumerate(options):
         score = 0.0
+        reason = 'whitelist'
         for name, val in whitelist.items():
             if name in opt:
                 score = max(score, float(val))
         _st = get_strategy(opt)
+        _comp_hit = 0
         if _st is not None:
+            _fs, _cs = strategy_bindings(_st)
+            _comp_hit = len((_fs & _tgt_factions) | (_cs & _tgt_chars))
+            if _comp_hit:
+                score = max(score, 45.0 * _comp_hit + 20.0)
+                reason = f'comp-hit×{_comp_hit}'
             _prior = _rarity_prior.get(_st.rarity, 0.0)
             if _st.economy is not None and _st.economy != EconomyEffect():
                 _prior += 20.0
-            score = max(score, _prior)
+            if _prior > score:
+                score, reason = _prior, f'prior-{_st.rarity}'
         if on_dot and any(p in opt for p in dot_punish):
             score -= penalty
         if score > best_score:
-            best_score, best_idx = score, i
-    return PickEvent(option_idx=best_idx, reason=f"score={best_score:.0f}")
+            best_score, best_idx, best_reason = score, i, reason
+    return PickEvent(option_idx=best_idx, reason=f"{best_reason} score={best_score:.0f}")
 
 
 # ===== 遭遇节点(decide_encounter,design 08;✅ 已接 HandleEncounter:55 + read_encounter_options)=====

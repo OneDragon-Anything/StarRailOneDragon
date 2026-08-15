@@ -289,6 +289,21 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     return eff
 
 
+def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], frozenset[str]]:
+    """策略的(阵营绑定, 角色绑定)—— 从名字+效果原文提取(ADR-0134;数据派生单一源,不手填 315 条)。
+
+    阵营 = FACTIONS 注册表键 ∩ 文本;角色 = CHARACTERS 注册表键 ∩ 文本。用于 decide_event 的
+    comp 匹配分(星徽套组/专属强化类对齐 target = 成型加速)。误提取方向安全:绑定为空 → 匹配分 0,
+    回落品质先验(不会因漏提取选错,只会少加分)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.cw_factions import FACTIONS
+    text = strategy.name + strategy.effect
+    fs = frozenset(f for f in FACTIONS if f in text)
+    cs = frozenset(c for c in CHARACTERS if c in text)
+    return fs, cs
+
+
 def get_strategy(name: str) -> InvestmentStrategy | None:
     """按规范名取 InvestmentStrategy;无则 None(全量未收的查 investment_strategies.md)。"""
     return INVESTMENT_STRATEGIES.get(name)

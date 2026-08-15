@@ -166,8 +166,11 @@ class DefaultCwStrategy(CwStrategy):
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
-        ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。"""
-        return cw_decisions.decide_event(options, config, state)
+        ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
+        ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
+        comp 匹配分压倒品质先验);env kind 不传(env 阵营定向走 select_comp env_fit,选时未定 comp)。"""
+        _tgt = session.target_comp if kind == 'strategy' else None
+        return cw_decisions.decide_event(options, config, state, target_comp=_tgt)
 
     def decide_supply(self, options: list[SupplyOption], state: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
