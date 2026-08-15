@@ -22,6 +22,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
 from sr_od.application.currency_war.cw_investments import is_known_env
@@ -54,12 +55,14 @@ class HandleInvestEnv(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
+        self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
+        self._ocr_map = ocr_map
         opts: list[tuple[str, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
@@ -106,6 +109,17 @@ class HandleInvestEnv(SrOperation):
         # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
         if match is not None and chosen != '?':
             match.session.active_env = chosen
+        # ADR-0132 采集:候选全集 + 效果原文(描述带 y 410-900)按卡分桶 → invest_cards.jsonl
+        # (kind=env;环境注册表虽全量,效果原文仍采 —— 对拍校验 + 版本变更感知)。
+        _items = [(t, m.max.center.x, m.max.center.y)
+                  for t, m in (self._ocr_map or {}).items() if m.max is not None]
+        _anchors = [(i, x) for i, (_n, x) in enumerate(opts)]
+        _buckets = cw_telemetry.bucket_card_texts(_anchors, _items,
+                                                  HandleInvestEnv.NAME_CY_HI, 900)
+        _cards = [{"idx": i, "name": n, "x": x,
+                   "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
+                  for i, (n, x) in enumerate(opts)]
+        cw_telemetry.record_invest_cards("env", _cards)
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

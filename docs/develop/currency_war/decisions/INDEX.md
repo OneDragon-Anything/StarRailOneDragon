@@ -59,3 +59,4 @@
 
 | [0130](0130-deploy-hold-scatter-p3-encounter-equip-values.md) | 部署散牌留bench(执行器对齐planner)+P3避高难遭遇+装备价值补缺 | accepted | 2026-08-15 | deploy-all是spread种子(fp冻结根因):off-target单张留bench,成对/target才上,板空保底1人;decide_encounter加plane==3难度恒罚(diff_norm钳0..1);_EQUIP_VALUE补风暴潮6/电锯5/冷笑话4/翁瓦克4 |
 | [0131](0131-invest-economy-effect-model.md) | 投资策略经济效果建模(EconomyEffect;替错名单) | accepted | 2026-08-15 | T0效果8条描述错(高效决策=45秒免费刷爆发非减半/采购专员=变同费5张非返现);EconomyEffect结构化(给金/免费刷新额度/利息上限/经验折扣/连胜倍率)+aggregate聚合;消费点:_refresh_cost免费额度内0金(MC期望真实成本)/_refresh_cap效果驱动/economy_score利息cap覆写+每节点金/xp_click_cost折扣 |
+| [0132](0132-invest-card-effect-collection.md) | 投资卡效果原文采集(invest_cards.jsonl;ground truth 回流) | accepted | 2026-08-15 | 只采名字不采效果(OCR刻意滤描述文本)→T0 8/12错长期未发现;复用同帧OCR按卡分桶零成本采集候选全集+效果原文(kind=strategy/env,每卡一行);策略侧补未注册告警;离线对拍校/补315长尾 |

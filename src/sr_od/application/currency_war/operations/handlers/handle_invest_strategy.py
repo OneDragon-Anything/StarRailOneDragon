@@ -25,8 +25,10 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_decisions import decide_event
+from sr_od.application.currency_war.cw_investments import get_strategy
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
@@ -56,12 +58,14 @@ class HandleInvestStrategy(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
+        self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
 
     def _read_options(self, screen) -> list[tuple[str, int, int]]:
         """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
+        self._ocr_map = ocr_map   # ADR-0132:采集复用(同一帧 OCR,不重跑)
         opts: list[tuple[str, int, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
@@ -105,6 +109,20 @@ class HandleInvestStrategy(SrOperation):
         if match is not None and chosen != '?':
             if chosen not in match.session.active_strategies:
                 match.session.active_strategies.append(chosen)
+        # ADR-0132 采集:候选全集 + 效果原文(描述带 y 505-835,排除卡名行/确认/刷新次数 UI)按卡分桶
+        # → invest_cards.jsonl;未注册名告警(注册表只 T0 子集,315 长尾靠采集渐进补全)。
+        _items = [(t, m.max.center.x, m.max.center.y)
+                  for t, m in (self._ocr_map or {}).items() if m.max is not None]
+        _anchors = [(i, x) for i, (_n, x, _y) in enumerate(opts)]
+        _buckets = cw_telemetry.bucket_card_texts(_anchors, _items,
+                                                  HandleInvestStrategy.NAME_CY_HI, 835)
+        _cards = [{"idx": i, "name": n, "x": x,
+                   "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
+                  for i, (n, x, _y) in enumerate(opts)]
+        cw_telemetry.record_invest_cards("strategy", _cards)
+        for _c in _cards:
+            if _c["name"] not in ('?',) and get_strategy(_c["name"]) is None:
+                log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口,效果原文已采集): {_c["name"]!r}')
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

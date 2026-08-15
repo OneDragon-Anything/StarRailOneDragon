@@ -276,6 +276,42 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
                                       rounds_survived, final_hp, notes=notes)
 
 
+def bucket_card_texts(anchors: list[tuple[int, int]], items: list[tuple[str, int, int]],
+                      y_min: int, y_max: int) -> dict[int, list[str]]:
+    """投资卡 OCR 文本按卡分桶(ADR-0132;纯函数可测)。
+
+    anchors: [(card_idx, 锚点x)](卡名行 center-x);items: [(文本, cx, cy)] 全图 OCR 条目。
+    每条 item 归 **x 最近**的锚点卡;y 不在 [y_min, y_max] 描述带 → 不归。
+    桶内按 y 升序(自然阅读序)。返回 {card_idx: [文本...]}。
+    """
+    if not anchors:
+        return {}
+    out: dict[int, list[tuple[int, str]]] = {i: [] for i, _x in anchors}
+    for text, cx, cy in items:
+        if not text or not (y_min <= cy <= y_max):
+            continue
+        idx = min(anchors, key=lambda a: abs(a[1] - cx))[0]
+        out[idx].append((cy, text))
+    return {i: [t for _y, t in sorted(v)] for i, v in out.items()}
+
+
+def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
+    """投资策略/环境卡**候选全集 + 效果原文** → invest_cards.jsonl(ADR-0132 采集)。
+
+    cards 元素:{idx, name, x, effect_text, chosen}(每卡一行,带 ts/run_id/kind)。
+    效果原文 = 卡面描述区 OCR 按卡分桶拼接 —— 注册表效果的 **ground truth 回流源**
+    (ADR-0131 发现 T0 12 条里 8 条描述错,即因无采集;离线对拍本文件校注册表/补 315 长尾)。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    rec = get_recorder()
+    ts = datetime.now().isoformat(timespec="seconds")
+    for c in cards:
+        rec._append("invest_cards.jsonl", {
+            "schema_version": 1, "ts": ts, "run_id": _CURRENT_RUN_ID, "kind": kind, **c,
+        })
+
+
 
 # ===== 复盘读取(给人肉眼复盘 / 未来 ML)=====
 
