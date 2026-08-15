@@ -322,6 +322,15 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     interest_tiers = min(state.gold // 10, _icap)
     interest_val = interest_tiers * INTEREST_WEIGHT
     interest_val += _se.gold_per_node * INTEREST_WEIGHT / 10.0
+    # ADR-0142(重复性经济效果折算进经济分;一次性 instant_gold 在选卡时点已体现,不在此):
+    # - 分期节点金(长期主义系):amount*count 总额摊 20 节点 ≈ 每节点等效金
+    # - boss 节点金(特战资金系):boss 占节点 ~1/9(1-9/2-7 结构)折算每节点等效
+    # - 升级金(节节高升):P1+P2 剩余期望 ~5 次升级,摊 20 节点
+    # - gold_per_20hp_lost(保险)故意不折算:损血换钱是反向激励,选卡评分不应鼓励损血
+    _equiv = (_se.gold_next_nodes_amount * _se.gold_next_nodes_count / 20.0
+              + _se.gold_per_boss_node / 9.0
+              + _se.gold_per_level_up * 5.0 / 20.0)
+    interest_val += _equiv * INTEREST_WEIGHT / 10.0
     level_val = (state.level - _expected_level(state.round_num, state.plane)) * LEVEL_WEIGHT
     if economy_mode == "interest_first":
         interest_val *= 1.5

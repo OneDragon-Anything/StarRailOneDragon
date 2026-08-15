@@ -52,6 +52,11 @@ class EconomyEffect:
     - xp_per_node: 每节点 +经验
     - xp_buy_cost_discount: 每击「购买经验」减金
     - win_reward_mult: 连胜奖励倍率(伟大征服 3)
+    - gold_per_boss_node: 进首领节点给金(特战资金系;boss 占节点 ~1/9,消费侧折算)
+    - gold_next_nodes_amount/count: 「现在及接下来 count 次进节点每次 amount 金」(长期主义系;分期金)
+    - gold_per_level_up: 每次升级给金(节节高升;P1 约 7 次升级,P2 再 2 次)
+    - gold_per_20hp_lost: 每损 20HP 给金(保险;**故意不进经济分** —— 损血换钱是反向激励,仅建档)
+    (ADR-0142:9 条曾错装一次性 instant_gold 的重复性效果,按效果原文归位)
     """
     instant_gold: int = 0
     gold_per_node: int = 0
@@ -64,6 +69,11 @@ class EconomyEffect:
     xp_per_node: int = 0
     xp_buy_cost_discount: int = 0
     win_reward_mult: float = 1.0
+    gold_per_boss_node: int = 0
+    gold_next_nodes_amount: int = 0
+    gold_next_nodes_count: int = 0
+    gold_per_level_up: int = 0
+    gold_per_20hp_lost: int = 0
 
 
 @dataclass(frozen=True)
@@ -279,6 +289,11 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
             xp_per_node=eff.xp_per_node + e.xp_per_node,
             xp_buy_cost_discount=eff.xp_buy_cost_discount + e.xp_buy_cost_discount,
             win_reward_mult=eff.win_reward_mult,
+            gold_per_boss_node=eff.gold_per_boss_node + e.gold_per_boss_node,
+            gold_next_nodes_amount=eff.gold_next_nodes_amount + e.gold_next_nodes_amount,
+            gold_next_nodes_count=max(eff.gold_next_nodes_count, e.gold_next_nodes_count),
+            gold_per_level_up=eff.gold_per_level_up + e.gold_per_level_up,
+            gold_per_20hp_lost=eff.gold_per_20hp_lost + e.gold_per_20hp_lost,
         )
         if e.interest_cap_override is not None:
             caps.append(e.interest_cap_override)
@@ -371,7 +386,7 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("奋斗协议", "棱彩", "购买经验消耗7点小队生命值而非金币。首领战结束回复50点小队生命值。", "6233"),
     _strat("爆晶矿·彩", "棱彩", "全队消灭敌方目标时,45%概率获得战利品晶矿。", "6231"),
     _strat("公司严选", "棱彩", "现在及每个位面开始时,开启一个由5个独特4费角色组成的商店,获3金币。", "6230", economy=EconomyEffect(instant_gold=3)),
-    _strat("节节高升", "棱彩", "每次升级时获得1个2星角色和1金币。角色费用=等级减4(最小1费)。", "6229", economy=EconomyEffect(instant_gold=1)),
+    _strat("节节高升", "棱彩", "每次升级时获得1个2星角色和1金币。角色费用=等级减4(最小1费)。", "6229", economy=EconomyEffect(gold_per_level_up=1)),
     _strat("装备方案A", "棱彩", "获得【光速螺旋桨】【反重力皮靴】【折叠小刀】。", "6207"),
     _strat("终身学习", "棱彩", "现在及每个位面开始时,获得【星徽秘典】。", "6206"),
     _strat("财富就是力量", "棱彩", "获得【财富宝钻】,该装备额外提供30%前/后台强度和20%速度增幅。", "6198"),
@@ -431,7 +446,7 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("好运来", "金", "合成与获得进阶装备时改为获得【好运令牌】。获2件随机简易装备。", "7598"),
     _strat("阿哈大悦", "金", "【欢愉】激活时阿哈+40%伤害增幅。从4件简易装备中为阿哈选1件,其羁绊简易装备全变该件,获【简易武装箱】。", "7599"),
     _strat("广聚天下英才", "金", "获得所有2费角色各一个。", "7601"),
-    _strat("按劳分配", "金", "战斗中每消耗10战技点结算获1金币(每场最多1)。激活2/4/6/8战技点羁绊时最多获2/3/4/6金币。", "7602", economy=EconomyEffect(instant_gold=1)),
+    _strat("按劳分配", "金", "战斗中每消耗10战技点结算获1金币(每场最多1)。激活2/4/6/8战技点羁绊时最多获2/3/4/6金币。", "7602", economy=EconomyEffect(gold_per_node=1)),  # ADR-0142:每场战斗结算金,≈1金/节点(保守,羁绊激活可到2-6未建模)
     _strat("全都要·金", "金", "本局补给阶段可选项减少2个。下2个补给阶段选择后,额外获得所有未选择的角色及装备。", "7639"),
     _strat("量产型装甲祝福", "金", "获得【量产型装甲】。全队获得15%伤害减免和5%护盾强度。", "6440"),
     _strat("生命之花祝福", "金", "获得【生命之花】。全队获得15%生命增幅和5%治疗强度。", "6439"),
@@ -444,7 +459,7 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("大扩招", "金", "扣除金币,每损失4金币获一个随机4费角色(最多扣40)。获【完美投影仪】和16金币。", "6412", economy=EconomyEffect(instant_gold=16)),
     _strat("五百强", "金", "首次有队员战斗中达500前台或后台强度时获30金币。立即获【折叠小刀】【和平手枪】。", "6411", economy=EconomyEffect(instant_gold=30)),
     _strat("成本控制", "金", "战斗结束时每剩10行动值回复1点小队生命(最多8)。立即获8金币、15生命和15生命上限。", "6410", economy=EconomyEffect(instant_gold=8)),
-    _strat("剩余价值", "金", "战斗结束时每剩30行动值获1金币(最多4)。", "6409", economy=EconomyEffect(instant_gold=1)),
+    _strat("剩余价值", "金", "战斗结束时每剩30行动值获1金币(最多4)。", "6409", economy=EconomyEffect(gold_per_node=1)),  # ADR-0142:每场战斗结算金(最多4),≈1金/节点保守
     _strat("人才济济", "金", "节点开始时,备战席角色≥8则获3经验。", "6408"),
     _strat("人才空洞", "金", "节点开始时,备战席角色≤4则获3经验。", "6407"),
     _strat("超发货币", "金", "失去现在所有金币,5节点后获得该数+70的总金币。", "6406"),
@@ -476,8 +491,8 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("小复制", "金", "获得2个【员工投影仪】。获7金币。", "6357", economy=EconomyEffect(instant_gold=7)),
     _strat("星变", "金", "战斗开始时,使一个随机1费角色变为3星。", "6356"),
     _strat("砂里淘金", "金", "合成2星2费角色时,获得1张【砂金】。", "6355"),
-    _strat("长期主义+", "金", "现在及接下来3次进入新节点时,每次获9金币。", "6354", economy=EconomyEffect(instant_gold=9)),
-    _strat("长期主义", "金", "现在及接下来3次进入新节点时,每次获7金币。", "6353", economy=EconomyEffect(instant_gold=7)),
+    _strat("长期主义+", "金", "现在及接下来3次进入新节点时,每次获9金币。", "6354", economy=EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3)),
+    _strat("长期主义", "金", "现在及接下来3次进入新节点时,每次获7金币。", "6353", economy=EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3)),
     _strat("彩虹期货+", "金", "4节点后进行一次不能刷新的棱彩策略三选一。", "6351"),
     _strat("彩虹期货", "金", "5节点后进行一次不能刷新的棱彩策略三选一。", "6350"),
     _strat("枪在手+", "金", "立刻获得2件随机简易装备,首领战后获1件随机简易装备。", "6349"),
@@ -558,9 +573,9 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("二费援军", "银", "获得4个随机2费角色。", "6386"),
     _strat("免费午餐", "银", "获得11次免费刷新。", "6385", economy=EconomyEffect(free_refresh_burst=11)),
     _strat("经验到账", "银", "获得10经验值。", "6384"),
-    _strat("特战资金+", "银", "进入首领节点时获得11金币。", "6382", economy=EconomyEffect(instant_gold=11)),
-    _strat("特战资金", "银", "进入首领节点时获得7金币。", "6381", economy=EconomyEffect(instant_gold=7)),
-    _strat("返利", "银", "每购买3个5费角色获得3金币。", "6477", economy=EconomyEffect(instant_gold=3)),
+    _strat("特战资金+", "银", "进入首领节点时获得11金币。", "6382", economy=EconomyEffect(gold_per_boss_node=11)),
+    _strat("特战资金", "银", "进入首领节点时获得7金币。", "6381", economy=EconomyEffect(gold_per_boss_node=7)),
+    _strat("返利", "银", "每购买3个5费角色获得3金币。", "6477", economy=EconomyEffect(gold_per_three_5cost=3)),
     _strat("规模效应", "银", "首次拥有8个一样的角色时获1个【完美投影仪】。", "6479"),
     _strat("军火贸易", "银", "获得1个【简易武装箱】,获4金币。", "6480", economy=EconomyEffect(instant_gold=4)),
     _strat("军火贸易+", "银", "获得1个【简易武装箱】,获8金币。", "6481", economy=EconomyEffect(instant_gold=8)),
@@ -596,7 +611,7 @@ _STRATEGIES_INGESTED: list[InvestmentStrategy] = [
     _strat("许诺特权", "银", "进入7个节点后获1个【特权武装箱】。", "6511"),
     _strat("赌神·银", "银", "获得一个【随便骰子】。", "6512"),
     _strat("钻石商人", "银", "升到9级时获得【财富宝钻】。", "6513"),
-    _strat("保险", "银", "每损失20点小队生命值获5金币和1件随机简易装备。", "6514", economy=EconomyEffect(instant_gold=5)),
+    _strat("保险", "银", "每损失20点小队生命值获5金币和1件随机简易装备。", "6514", economy=EconomyEffect(gold_per_20hp_lost=5)),  # ADR-0142:按损血重复给金;故意不进经济分(损血换钱反向激励)
     _strat("自由市场", "银", "每当将要获得简易装备时改为获【简易武装箱】。获1件随机简易装备。", "6515"),
     _strat("先亏后盈", "银", "损失20点小队生命值,4节点后获2个【简易武装箱】。", "6516"),
     _strat("精密拆装·银", "银", "获得1个【精密拆装扳手】和1个随机简易装备。", "6517"),
