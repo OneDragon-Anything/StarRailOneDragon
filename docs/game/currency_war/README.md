@@ -12,7 +12,7 @@
 - [characters.md](data/characters.md) —— 74 角色(费用 / 站位 / 类型 / 阵营 / 流派)
 - [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类)
 - [equipment.md](data/equipment.md) —— ~130 装备(简易 / 进阶 / 特权 / 星徽 / 白昼 / Fate / 工具)
-- 投资策略(334)+ 投资环境(83)—— **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py`(plaza API 生成,ADR-0150;`gen_plaza_invest.py` 版本更新重跑)
+- 投资策略(334)+ 投资环境(83)—— **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py` + **人读版** [data/invest_cards.md](data/invest_cards.md)(同生成器双产物,plaza API,ADR-0150;`gen_plaza_invest.py` 版本更新重跑)
 - [comp_library.md](data/comp_library.md) —— 起步阵容 roster 8+ 套 + V4.4 评级 + S 级运营要点
 - [economy_research.md](data/economy_research.md) —— 牌池 / 买卖退金 / 刷新概率 / boss HP 缩放(实据;刷新概率权威值在代码 `cw_shop_odds.REFRESH_PROB`)
 - [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta,bwiki pending 米游社)

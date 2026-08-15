@@ -5,9 +5,12 @@
   (必需 header x-rpc-currencywar-tourn: tourn)
   取 ``fight_augment_list``(投资策略)/``portal_list``(投资环境)。
 
-产出 ``src/sr_od/application/currency_war/cw_invest_data.py``(勿手编):
-  ``PLAZA_AUGMENTS`` / ``PLAZA_PORTALS`` —— 数字 id 为稳定主键;name 经 canon 归一为
-  注册表键(OCR 友好形);effect 为官方效果全文(去富文本标签,保换行)。
+产出(**同源双产物,双向链接,均勿手编**):
+  1. ``src/sr_od/application/currency_war/cw_invest_data.py`` —— 代码侧(机器消费):
+     ``PLAZA_AUGMENTS`` / ``PLAZA_PORTALS``,数字 id 为稳定主键;name 经 canon 归一为
+     注册表键(OCR 友好形);effect 为官方效果全文(去富文本标签,保换行)。
+  2. ``docs/game/currency_war/data/invest_cards.md`` —— 人读版(翻阅/攻略引用):
+     按品质分组的表格;id 列 = 代码侧 ``source='plaza:<id>'`` 的双向链接锚。
 
 两层架构(ADR-0150):本生成器只管 **base 事实层**(名字/品质/效果,API 直出);
 人工建模增量(economy 数值化/评估分/环境分类/阵营绑定/补遗条目)在
@@ -40,6 +43,8 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_invest_data.py"
+DOC_MD = REPO / "docs/game/currency_war/data/invest_cards.md"
+GEN_CMD = "uv run python tools/cw/gen_plaza_invest.py"
 CACHE_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"
@@ -88,10 +93,12 @@ def fetch_config(use_cache: bool) -> dict:
 
 
 def render(version: str, augments: list[dict], portals: list[dict]) -> str:
-    """生成 cw_invest_data.py 全文。"""
+    """生成 cw_invest_data.py 全文(与文档 invest_cards.md 双向链接,同源生成)。"""
     lines = [
         f'# 警告:本文件由 tools/cw/gen_plaza_invest.py 生成(plaza config V{version}),勿手编;',
         '# 版本更新重跑生成;人工建模增量(economy/评估分/分类)在 cw_investments.py。',
+        '# 人读版(同源生成,品质分组表格): docs/game/currency_war/data/invest_cards.md',
+        f'# 重跑: {GEN_CMD}',
         '"""货币战争 投资策略/环境 base 数据(plaza 官方 API,gen_plaza_invest.py 生成)。',
         "",
         f'投资策略(fight_augment_list){len(augments)} 条 / 投资环境(portal_list){len(portals)} 条,V{version}。',
@@ -183,6 +190,47 @@ def diff_report(augments: list[dict], portals: list[dict]) -> None:
             print(f"  - {kind} {rid} {old_by_id[rid].name}(移除,核对 overlay 孤儿)")
 
 
+def render_doc(version: str, augments: list[dict], portals: list[dict]) -> str:
+    """生成人读版文档 invest_cards.md(与代码 cw_invest_data.py 双向链接,同源生成)。
+
+    id = 双向链接锚:代码侧 ``source='plaza:<id>'`` ↔ 本表 id 列。
+    """
+    lines = [
+        f"# 货币战争 投资策略 / 投资环境(人读版,V{version})",
+        "",
+        f"> **由 `tools/cw/gen_plaza_invest.py` 生成,勿手编**(plaza 官方 API,重跑:`{GEN_CMD}`)。",
+        "> 代码侧(机器消费,含 canon 键/effect 全文):`src/sr_od/application/currency_war/cw_invest_data.py`",
+        "> —— 两个文件**同源生成、双向链接**,以 plaza id 为锚;人工建模增量(economy/评估分)在 `cw_investments.py`。",
+        "",
+    ]
+    qn: dict[str, int] = {}
+    for a in augments:
+        qn[_QUALITY[a["quality"]]] = qn.get(_QUALITY[a["quality"]], 0) + 1
+    lines += [
+        f"投资策略 {len(augments)} 条(棱彩{qn.get('棱彩', 0)}/金{qn.get('金', 0)}/银{qn.get('银', 0)})、"
+        f"投资环境 {len(portals)} 条。名字为 API 原文;代码注册表键经 canon 归一(半角标点/去空格等),"
+        "个别条目两处名字略异,以 id 为准。",
+        "",
+    ]
+    # 分组:棱彩>金>银,组内按 id 数值排序
+    for rarity in ("棱彩", "金", "银"):
+        group = sorted((a for a in augments if _QUALITY[a["quality"]] == rarity),
+                       key=lambda a: int(a["id"]))
+        lines += [f"## 投资策略 · {rarity}({len(group)})", "",
+                  "| id | 名字 | 效果 |", "|---|---|---|"]
+        for a in group:
+            effect = strip_rich(a["desc"]).replace("\n", "<br>").replace("|", "\\|")
+            lines.append(f"| {a['id']} | {canon(a['name'])} | {effect} |")
+        lines.append("")
+    lines += [f"## 投资环境({len(portals)})", "",
+              "| id | 名字 | 效果 |", "|---|---|---|"]
+    for p in sorted(portals, key=lambda p: int(p["id"])):
+        effect = strip_rich(p["desc"]).replace("\n", "<br>").replace("|", "\\|")
+        lines.append(f"| {p['id']} | {canon(p['title'])} | {effect} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="生成投资策略/环境 base 数据")
     parser.add_argument("--cache", action="store_true", help="用本地 config 缓存(离线)")
@@ -195,10 +243,12 @@ def main() -> None:
 
     diff_report(augments, portals)
     DATA_PY.write_text(render(version, augments, portals), encoding="utf-8")
+    DOC_MD.write_text(render_doc(version, augments, portals), encoding="utf-8")
     qn: dict[str, int] = {}
     for a in augments:
         qn[_QUALITY[a["quality"]]] = qn.get(_QUALITY[a["quality"]], 0) + 1
     print(f"[data] 策略{len(augments)}({qn}) 环境{len(portals)} V{version} -> {DATA_PY.relative_to(REPO)}")
+    print(f"[doc ] -> {DOC_MD.relative_to(REPO)}")
 
 
 if __name__ == "__main__":

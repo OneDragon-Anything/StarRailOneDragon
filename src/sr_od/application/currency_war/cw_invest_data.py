@@ -1,5 +1,7 @@
 # 警告:本文件由 tools/cw/gen_plaza_invest.py 生成(plaza config V4.4),勿手编;
 # 版本更新重跑生成;人工建模增量(economy/评估分/分类)在 cw_investments.py。
+# 人读版(同源生成,品质分组表格): docs/game/currency_war/data/invest_cards.md
+# 重跑: uv run python tools/cw/gen_plaza_invest.py
 """货币战争 投资策略/环境 base 数据(plaza 官方 API,gen_plaza_invest.py 生成)。
 
 投资策略(fight_augment_list)334 条 / 投资环境(portal_list)83 条,V4.4。

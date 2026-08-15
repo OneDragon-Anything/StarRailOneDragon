@@ -29,6 +29,7 @@
 | [traits.json](traits.json) + [traits/](traits/) | **羁绊官方数据**(V4.4,攻旅广场 lineup/index 采集;tiers/效果全文/成员,`tools/cw/gen_factions.py` 生成) | 33 | 🟢 官方 |
 | [characters.md](characters.md) | 角色花名册:费用/站位/类型/阵营/流派(反查) | 74 | 🟢 完整 |
 | ~~investment_strategies.md~~(已删,ADR-0150) | 投资策略 → **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py`(plaza API 官方 334 条,`tools/cw/gen_plaza_invest.py` 生成,版本更新重跑) | 334 | 🟢 官方 API 全量(与游戏内数据银行同口径) |
+| [invest_cards.md](invest_cards.md) | 投资策略/环境**人读版**(同生成器第二产物,与代码双向链接,id 为锚) | 334+83 | 🟢 同源生成勿手编 |
 | ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `src/sr_od/application/currency_war/cw_investments.py::INVESTMENT_ENVS` | ~82 | 🟢 全量(数据银行核对 83/解锁 68);代码已建模,doc 冗余已删(用户原则:代码已建模的游戏数据不存 doc) |
 | [equipment.md](equipment.md) | 装备:简易7/进阶33/特权35/星徽22/白昼6/命运改件16/骇客改件16/特殊2/工具11 | 153 | 🟢 米游社图鉴153条全覆盖(游戏内155) |
 | [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制 | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |

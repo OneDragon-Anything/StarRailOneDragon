@@ -37,6 +37,7 @@ ADR-0133 后投资策略注册表 = 315(米游社 doc ingest)+ 6(图鉴 codex)= 
 3. **数据修正落表**:13 条 rarity、5 条占位 effect、数值错全以 API 为准;14 条新增入表(飞光·映月 效果已知)。
 4. **键 RENAME**(OCR 友好形):本姑娘就是罗剎→罗刹、摸个鱼Ⅲ→摸个鱼吧III、全角冒号/逗号条目归半角;注册表 335 = 334 base + 1 补遗(追击星徽套组(二),plaza 不收重复效果卡)。
 5. **版本更新工作流**:重跑生成器 → 看 diff → 修 overlay 孤儿 → 完成。ADR-0133 的「图鉴轮补 19 漂移」待办关闭。
+6. **双产物 + 双向链接(用户 2026-08-16 定)**:生成器同源产出**人读版** `docs/game/currency_war/data/invest_cards.md`(品质分组表格:棱彩/金/银 + 环境,id/名字/效果)—— 代码侧 effect 必须留(运行时消费:`strategy_bindings` 文本提取 + 图鉴采集效果守卫,搬文档断主链路),但翻阅/攻略引用归文档。两产物互写链接与生成器署名(勿手编 + 重跑命令);**双向链接锚 = plaza id**(代码 `source='plaza:<id>'` ↔ 文档 id 列)。同源生成无漂移通道,与手维护 doc 的双源漂移(本次删 investment_strategies.md 的原因)本质不同;模式对齐角色侧 `gen_plaza_chars.py`(代码 + characters/*.md 双产物)。
 
 验证:CW 全套 410 passed(+6 守卫测试:base 完整性/overlay 无孤儿/键约定/数据修正/plaza 新增);ruff 过。
 
