@@ -1,4 +1,6 @@
 # 警告:本文件由 tools/cw/gen_factions.py 生成(traits.json V4.4),勿手编;版本更新重跑。
+# 重跑: uv run python tools/cw/gen_factions.py
+# 同源产物(人读文档层,效果全文在此): docs/game/currency_war/data/traits/<羁绊名>.md
 """羁绊官方数据(V4.4):tiers(激活阈值)/roles(成员)。
 
 来源:lineup/index 按羁绊筛采集(V4.4 过滤);采集器与过程见 .debug 工作区。

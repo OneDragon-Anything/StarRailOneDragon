@@ -98,6 +98,8 @@ def gen_docs(roles: list, version: str) -> int:
             f"cost: {costs}",
             "position: {}".format(entries[0]["front_back_type"]),
             f"version: {version}",
+            "generated_by: tools/cw/gen_plaza_chars.py",
+            "related_code: src/sr_od/application/currency_war/cw_chars_data.py",
             "---",
             "",
             f"# {cname}",
@@ -130,6 +132,8 @@ def gen_data_py(roles: list, version: str) -> None:
         )
     head = [
         f"# 警告:本文件由 tools/cw/gen_plaza_chars.py 生成(plaza config V{version}),勿手编;版本更新重跑生成。",
+        "# 重跑: uv run python tools/cw/gen_plaza_chars.py",
+        "# 同源产物(人读文档层,技能/星级效果全文): docs/game/currency_war/data/characters/<角色名>.md",
         "# 数据粒度 = plaza 条目(同名多档各一条:银狼LV.999 三费档/布洛妮娅变体/开拓者双形态等);",
         "# 规范名:• 已统一为·;开拓者已按 id 映射(8009=开拓者·欢愉/8007=开拓者·记忆)。",
         f'"""plaza 官方接口角色数据(V{version},gen_plaza_chars.py 生成)。"""',

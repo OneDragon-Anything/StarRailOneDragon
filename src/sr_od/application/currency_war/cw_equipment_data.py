@@ -1,9 +1,13 @@
 """货币战争 装备领域模型(Equipment + EQUIPMENTS 全量注册表;meta 层,V4.4)。
 
-**来源**:数据银行装备图鉴(权威)+ 米游社图鉴对齐。2026-08-06 经 ``harvest_equip_codex``
+**生成**:本文件由 ``tools/cw/gen_equip_registry.py`` 生成(**勿手改**;
+重跑 ``uv run python tools/cw/gen_equip_registry.py``)。
+数据源优先级:骨架(name/category)= plaza 官方 API > 图鉴截图;
+effect = 图鉴 OCR(plaza 数值校验层修正误读)> md;recipe = 图鉴 icon 反查 > md;
+``docs/game/currency_war/data/equipment.md`` 仅未解锁兜底(4 条,解锁采集后可删)。
+
+**来源溯源**:数据银行装备图鉴(权威)+ 米游社图鉴对齐。2026-08-06 经 ``harvest_equip_codex``
 op 采 154 件图标 + cw_shots OCR 校验,效果正文与 docs(米游社)一致 → 数据银行权威性确认。
-本注册表由 ``tools/cw/gen_equip_registry.py`` 从 ``docs/game/currency_war/data/equipment.md``
-解析生成(**勿手改** —— 改 docs 后重跑生成器)。
 
 **用途**:装备规范名单一真相源 —— COMP_LIBRARY.key_equips / 补给决策 / equip_fit 引用规范装备名。
 装备身份默认 bot 跟踪(部署/备战栏),视觉库(``assets/template/cw_equip/*.png``,154 件)作恢复旁路。

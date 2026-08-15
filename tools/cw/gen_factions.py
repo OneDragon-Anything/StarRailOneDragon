@@ -113,6 +113,8 @@ def main() -> None:
     # ---- 1) 数据模块 ----
     lines = [
         "# 警告:本文件由 tools/cw/gen_factions.py 生成(traits.json V" + version + "),勿手编;版本更新重跑。",
+        "# 重跑: uv run python tools/cw/gen_factions.py",
+        "# 同源产物(人读文档层,效果全文在此): docs/game/currency_war/data/traits/<羁绊名>.md",
         '"""羁绊官方数据(V' + version + "):tiers(激活阈值)/roles(成员)。",
         "",
         "来源:lineup/index 按羁绊筛采集(V4.4 过滤);采集器与过程见 .debug 工作区。",
@@ -157,6 +159,8 @@ def main() -> None:
             f"trait_type: {t.get('trait_type')}  # 0=阵营/流派 1=? 2=独立",
             f"tiers: {lt}",
             f"version: {version}",
+            "generated_by: tools/cw/gen_factions.py",
+            "related_code: src/sr_od/application/currency_war/cw_factions_data.py",
             "---",
             "",
             f"# {nm}",
