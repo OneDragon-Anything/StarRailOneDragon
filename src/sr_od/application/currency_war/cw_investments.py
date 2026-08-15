@@ -228,6 +228,14 @@ ENV_FACTION: dict[str, str] = {
     '持续伤害邀请': '持续伤害', '量子同频邀请': '量子同频', '战技点邀请': '战技点',
     '欢愉邀请': '欢愉', '命运圣杯邀请': '命运圣杯',
     '命运圣杯契约': '命运圣杯',
+    # —— 契约类阵营绑定(ADR-0151 补:效果=获赠该阵营角色,原 overlay 漏)——
+    '量子同频契约': '量子同频',   # 花火/缇宝升星→符玄/希儿
+    '公司契约': '公司',           # 翡翠/砂金/托帕
+    '持续伤害契约': '持续伤害',   # 椒丘/卡芙卡/黑天鹅
+    '战技点契约': '战技点',       # 丹恒·饮月/花火/火花
+    '星核猎手契约': '星核猎手',   # 卡芙卡/刃/银狼/流萤
+    '欢愉契约': '欢愉',           # 银狼LV.999/火花/开拓者·欢愉
+    # '特邀专家:加拉赫': '击破',  # ?待确认:击破羁绊档位给以太钻头(机制挂钩但非赠角色),暂不绑
 }
 
 
@@ -350,19 +358,120 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     return eff
 
 
-def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], frozenset[str]]:
-    """策略的(阵营绑定, 角色绑定)—— 从名字+效果原文提取(ADR-0134;数据派生单一源,不手填 315 条)。
+# ===== curated overlay:策略语义绑定(ADR-0151,逐卡按效果含义手建模;↺ ADR-0134 文本扫描派生)=====
+# 判据:**效果引用 comp 专属机制/召唤物/星徽/赠 key 角色 → 绑定;泛用数值(全队强度/给金/装备)→ 不绑**。
+# 文本扫描的两类噪声就此清除:战术义眼(泛用回能,误绑"能量")/生命之花祝福(泛用治疗强度,误绑"治疗")。
+# 消费:decide_event comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
+# 维护:版本更新重跑 gen_plaza_invest.py → diff 报告对「效果变」条目提示 → 回本表重审对应键。
+# 「# ?」= 语义不确定,待用户逐条确认(确认后删标记):
+STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
+    # —— 星徽套组(棱彩):阵营星徽 + 阵营 key 角色 ——
+    '列车同行星徽套组': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
+    '银河学者星徽套组': (frozenset({'银河学者'}), frozenset({'艾丝妲'})),
+    '贝洛伯格星徽套组': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
+    '星间旅人星徽套组': (frozenset({'星间旅人'}), frozenset({'银枝'})),
+    '仙舟星徽套组': (frozenset({'仙舟'}), frozenset({'藿藿'})),
+    '狼狩星徽套组': (frozenset({'狼狩'}), frozenset({'椒丘'})),
+    '盛会之星星徽套组': (frozenset({'盛会之星'}), frozenset({'花火'})),
+    '昼之半神星徽套组': (frozenset({'昼之半神'}), frozenset({'风堇'})),
+    '夜之半神星徽套组': (frozenset({'夜之半神'}), frozenset({'万敌'})),
+    '追击星徽套组': (frozenset({'追击'}), frozenset({'飞霄'})),
+    '追击星徽套组(二)': (frozenset({'追击'}), frozenset({'飞霄'})),
+    '击破星徽套组': (frozenset({'击破'}), frozenset({'阮·梅'})),
+    '群攻星徽套组': (frozenset({'群攻'}), frozenset({'翡翠'})),
+    '能量星徽套组': (frozenset({'能量'}), frozenset({'星期日'})),
+    '治疗星徽套组': (frozenset({'治疗'}), frozenset({'风堇'})),
+    '燃血星徽套组': (frozenset({'燃血'}), frozenset({'万敌'})),
+    '减益星徽套组': (frozenset({'减益'}), frozenset({'黄泉'})),
+    '持续伤害星徽套组': (frozenset({'持续伤害'}), frozenset({'卡芙卡'})),
+    '量子同频星徽套组': (frozenset({'量子同频'}), frozenset({'希儿'})),
+    '护盾星徽套组': (frozenset({'护盾'}), frozenset({'砂金'})),
+    '战技点星徽套组': (frozenset({'战技点'}), frozenset({'丹恒·饮月'})),
+    # —— 星徽单件(金):阵营星徽 + 阵营 key 角色 ——
+    '列车同行星徽': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
+    '银河学者星徽': (frozenset({'银河学者'}), frozenset({'艾丝妲'})),
+    '贝洛伯格星徽': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
+    '星间旅人星徽': (frozenset({'星间旅人'}), frozenset({'银枝'})),
+    '仙舟星徽': (frozenset({'仙舟'}), frozenset({'藿藿'})),
+    '狼狩星徽': (frozenset({'狼狩'}), frozenset({'椒丘'})),
+    '盛会之星星徽': (frozenset({'盛会之星'}), frozenset({'花火'})),
+    '昼之半神星徽': (frozenset({'昼之半神'}), frozenset({'风堇'})),
+    '夜之半神星徽': (frozenset({'夜之半神'}), frozenset({'万敌'})),
+    '命运圣杯星徽': (frozenset({'命运圣杯'}), frozenset({'远坂凛'})),
+    '追击星徽': (frozenset({'追击'}), frozenset({'飞霄'})),
+    '击破星徽': (frozenset({'击破'}), frozenset({'阮·梅'})),
+    '群攻星徽': (frozenset({'群攻'}), frozenset({'翡翠'})),
+    '能量星徽': (frozenset({'能量'}), frozenset({'星期日'})),
+    '治疗星徽': (frozenset({'治疗'}), frozenset({'风堇'})),
+    '燃血星徽': (frozenset({'燃血'}), frozenset({'万敌'})),
+    '减益星徽': (frozenset({'减益'}), frozenset({'黄泉'})),
+    '持续伤害星徽': (frozenset({'持续伤害'}), frozenset({'卡芙卡'})),
+    '量子同频星徽': (frozenset({'量子同频'}), frozenset({'希儿'})),
+    '护盾星徽': (frozenset({'护盾'}), frozenset({'砂金'})),
+    '战技点星徽': (frozenset({'战技点'}), frozenset({'丹恒·饮月'})),
+    '欢愉星徽': (frozenset({'欢愉'}), frozenset({'绯英'})),
+    # —— comp 专属机制强化(金):效果点名声援某阵营机制 ——
+    '双人舞': (frozenset({'星核猎手'}), frozenset({'千冶·刃', '卡芙卡'})),
+    '读博深造': (frozenset({'银河学者'}), frozenset({'艾丝妲', '阮·梅'})),
+    '钢铁美学': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
+    '人在旅途': (frozenset({'星间旅人'}), frozenset({'绯英', '银枝'})),
+    '装备党': (frozenset({'狼狩'}), frozenset({'椒丘', '飞霄'})),
+    '梦境大舞台': (frozenset({'盛会之星'}), frozenset({'花火'})),
+    '赞美太阳': (frozenset({'昼之半神'}), frozenset({'那刻夏'})),
+    '月光宝盒': (frozenset({'夜之半神'}), frozenset({'赛飞儿', '万敌'})),
+    '借力打力': (frozenset({'群攻'}), frozenset({'黑塔', '缇宝'})),
+    '超充站': (frozenset({'能量'}), frozenset({'阿格莱雅', '藿藿'})),
+    '燃起来了': (frozenset({'燃血'}), frozenset({'万敌', '千冶·刃'})),
+    '量子力学': (frozenset({'量子同频'}), frozenset({'希儿'})),
+    '如有神助': (frozenset({'仙舟'}), frozenset()),       # 神君伤害(仙舟召唤)
+    '迷之旅人': (frozenset({'巡海游侠'}), frozenset({'黄泉', '波提欧'})),
+    '阿哈大悦': (frozenset({'欢愉'}), frozenset()),       # 欢愉羁绊激活时强化阿哈
+    '不虚此行': (frozenset({'列车同行'}), frozenset()),   # 星穹列车/光轨
+    '离火燎原': (frozenset({'减益'}), frozenset()),       # 离火真伤
+    '按劳分配': (frozenset({'战技点'}), frozenset()),     # ?待确认:经济上限随战技点羁绊档位升,算不算阵营绑定
+    '步狸村之谜': (frozenset({'狼狩'}), frozenset()),     # ?待确认:经召唤物穿戴的狼狩星徽间接绑定
+    # —— comp 专属机制强化(棱彩)——
+    '盗用身份': (frozenset({'列车同行'}), frozenset({'火花'})),  # ?待确认:绑列车同行来自所赠列车同行星徽
+    '飞光·传剑': (frozenset({'仙舟'}), frozenset({'彦卿', '景元'})),  # ?待确认:仙舟=神君伤害引用+双角色均仙舟
+    '都是这家伙的错！': (frozenset({'命运圣杯'}), frozenset()),
+    # —— 赠 key 角色 / 双子互升 / 专家顾问(角色绑定,无阵营)——
+    '飞光·映月': (frozenset(), frozenset({'镜流', '景元'})),
+    '本姑娘就是罗刹': (frozenset(), frozenset({'三月七', '罗刹'})),
+    '黑塔纪元': (frozenset(), frozenset({'大黑塔', '黑塔'})),
+    '轮回不止': (frozenset(), frozenset({'白厄'})),
+    '白衣伙伴': (frozenset(), frozenset({'白厄', '星期日'})),
+    '双龙会': (frozenset(), frozenset({'丹恒·饮月', '丹恒·腾荒'})),
+    '偶像经济': (frozenset(), frozenset({'火花'})),       # ?待确认:火花为特殊变体角色
+    '愚者恶作剧': (frozenset(), frozenset({'花火', '火花'})),
+    '砂里淘金': (frozenset(), frozenset({'砂金'})),
+    '琼玉专家:青雀': (frozenset(), frozenset({'青雀'})),
+    '贸易专家:停云': (frozenset(), frozenset({'停云'})),
+    '调饮专家:加拉赫': (frozenset(), frozenset({'加拉赫'})),
+    '锻冶专家:刃': (frozenset(), frozenset({'刃'})),
+    '骇客专家:银狼': (frozenset(), frozenset({'银狼'})),
+    '潜行专家:貊泽': (frozenset(), frozenset({'貊泽'})),
+    '战术专家:佩拉': (frozenset(), frozenset({'佩拉'})),
+    '领航专家:姬子': (frozenset(), frozenset({'姬子'})),
+    '加拉赫顾问': (frozenset(), frozenset({'加拉赫'})),
+    '停云顾问': (frozenset(), frozenset({'停云'})),
+    '摸个鱼吧I': (frozenset(), frozenset({'青雀'})),
+    '摸个鱼吧II': (frozenset(), frozenset({'青雀'})),
+    '摸个鱼吧III': (frozenset(), frozenset({'青雀'})),
+}
+_BINDINGS_ORPHANS: list[str] = [n for n in STRATEGY_BINDINGS if n not in INVESTMENT_STRATEGIES]
+if _BINDINGS_ORPHANS:
+    raise ValueError(f"STRATEGY_BINDINGS 孤儿键(注册表无此卡,版本更新?):{_BINDINGS_ORPHANS}")
 
-    阵营 = FACTIONS 注册表键 ∩ 文本;角色 = CHARACTERS 注册表键 ∩ 文本。用于 decide_event 的
-    comp 匹配分(星徽套组/专属强化类对齐 target = 成型加速)。误提取方向安全:绑定为空 → 匹配分 0,
-    回落品质先验(不会因漏提取选错,只会少加分)。
+
+def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], frozenset[str]]:
+    """策略的(阵营绑定, 角色绑定)—— 查 STRATEGY_BINDINGS 语义表(ADR-0151 逐卡手建模;
+    ↺ ADR-0134 的文本扫描派生已撤 —— 扫描有两类噪声:泛用效果顺带提及阵营误绑
+    (战术义眼"恢复能量"≠能量队卡)/不可审不可纠;语义表可 dump 可逐条纠)。
+
+    用于 decide_event 的 comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
+    未建模卡 → 空绑定(匹配分 0,回落评估分/品质先验;新 API 卡待 diff 提示后建模)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.cw_factions import FACTIONS
-    text = strategy.name + strategy.effect
-    fs = frozenset(f for f in FACTIONS if f in text)
-    cs = frozenset(c for c in CHARACTERS if c in text)
-    return fs, cs
+    return STRATEGY_BINDINGS.get(strategy.name, (frozenset(), frozenset()))
 
 
 def get_strategy(name: str) -> InvestmentStrategy | None:

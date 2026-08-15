@@ -171,7 +171,8 @@ def diff_report(augments: list[dict], portals: list[dict]) -> None:
         new_by_id = {str(x["id"]): x for x in new_raw}
         added = set(new_by_id) - set(old_by_id)
         removed = set(old_by_id) - set(new_by_id)
-        renamed = quality_changed = effect_changed = 0
+        renamed = quality_changed = 0
+        effect_changed: list[str] = []
         for rid, x in new_by_id.items():
             o = old_by_id.get(rid)
             if o is None:
@@ -183,9 +184,17 @@ def diff_report(augments: list[dict], portals: list[dict]) -> None:
                 quality_changed += 1
                 print(f"  ~ {kind} {rid} 品质变 {getattr(o, 'rarity', '')} -> {extra_of(x)}")
             if strip_rich(x.get("desc", "")) != o.effect:
-                effect_changed += 1
+                effect_changed.append(f"{rid} {canon(name_of(x))}")
         print(f"[diff] {kind}: +{len(added)}新增 -{len(removed)}移除 {renamed}改名 "
-              f"{quality_changed}品质变 {effect_changed}效果变")
+              f"{quality_changed}品质变 {len(effect_changed)}效果变")
+        if effect_changed:
+            for line in effect_changed[:20]:
+                print(f"  ~ {kind} 效果变: {line}")
+            if len(effect_changed) > 20:
+                print(f"  ...另 {len(effect_changed) - 20} 条")
+            # 提示:语义建模(绑定/经济/分类)可能过期,需回 overlay 重审
+            print(f"  ⚠ 效果变化的{kind}需重审 cw_investments.py 人工建模:"
+                  f"STRATEGY_BINDINGS(语义绑定)/STRATEGY_ECONOMY(经济)/ENV_CATEGORY·ENV_FACTION(环境)")
         for rid in sorted(removed):
             print(f"  - {kind} {rid} {old_by_id[rid].name}(移除,核对 overlay 孤儿)")
 
