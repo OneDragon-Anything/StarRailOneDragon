@@ -387,7 +387,7 @@ class Equipment:
     effect: str         # 效果原文(简易只基础属性→空)
     stacking: bool      # 效果可叠加("可叠加"/"叠加N层"→True)
     source: str = ""    # 米游社 content_id
-    recipes: tuple[tuple[str, ...], ...] = ()   # 官方合成路线(材料名组);进阶36+星徽17+宝钻1(3路);空=非合成/未知
+    recipes: tuple[tuple[str, ...], ...] = ()   # 官方合成路线(材料名组);进阶36+星徽17+宝钻1(3路);空=不可合成(5 星徽官方 compose 空=非合成获取,2026-08-16 用户确认)
     props: tuple[tuple[str, str], ...] = ()     # 结构化数值 (属性名, 数值%) —— plaza properties,100/101 覆盖
     official_category: str = ""  # plaza 官方分类名(进阶装备/特权装备/星徽/羁绊装备/宝钻);非 plaza 条目空
 
