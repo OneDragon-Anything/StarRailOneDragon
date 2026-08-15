@@ -159,6 +159,7 @@ ENV_COMP_AFFINITY: dict[str, dict[str, float]] = {
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====
     Comp(
+        # playbook:docs/develop/currency_war/playbook/列车同行.md(改此条目须同步)
         name="列车同行", factions=["列车同行"], core_chars=["姬子·启行", "三月七", "花火", "瓦尔特"],
         form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
@@ -293,6 +294,27 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
+        # playbook:docs/develop/currency_war/playbook/火花星间旅人.md(改此条目须同步)
+        # V4.0 A级(BV1vVcLzXEN8 2026-02 转录):花火主C(吃点巧普攻+幻语记,倍率随花火等级)+星间旅人
+        # 羁绊(唯一有效应=旅人转职,1转职章=43.2%幸运暴伤);6战技点不提升 → 带银狼/符玄凑3量子;
+        # 前期龙丹战技点护航;上8大D找2星花火,3星质变;爻光三鞋(跑条供R回合)。
+        # 怕正当防卫;极速制冷不怕(R时刻解控)。好运令牌给阿雅(装备最顶级)勿给花火/爻光。
+        name="火花星间旅人", factions=["星间旅人", "量子同频"],
+        core_chars=["花火", "爻光", "开拓者·记忆", "银狼"],
+        form_tiers={"星间旅人": 4, "量子同频": 3}, strength="A", form_difficulty="medium",
+        early_power="高",
+        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴"],   # 花火1风暴潮+暴击刀;爻光三鞋
+        countered_by_bosses=[], mechanic_attributes=["幸运一击"],
+        shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
+        typical_form_round=7,
+        level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变)
+            5: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"]),
+            6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
+            8: LevelGoal("roll", target_cost=4, target_chars=["花火"], star_goals={"花火": 2}),
+            9: LevelGoal("roll", target_cost=0, target_chars=["花火", "开拓者·记忆"], star_goals={"花火": 3}),
+        },
+    ),
+    Comp(
         name="银枝群攻", factions=["贝洛伯格", "群攻"], core_chars=["银枝", "翡翠", "知更鸟"],
         form_tiers={"贝洛伯格": 4, "群攻": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 评级(76807134):银枝 = B 级;攻略(77006068 直读纠正):V4.4 离能量,"轮椅通拐"(杨叔/主角/缇宝/花火/千冶刃+符玄)抬
@@ -355,6 +377,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
+        # playbook:docs/develop/currency_war/playbook/追击飞霄.md(改此条目须同步)
         name="追击飞霄", factions=["追击"], core_chars=["飞霄", "知更鸟", "缇宝", "不死途"],
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
