@@ -1,4 +1,9 @@
-"""解析 docs equipment.md → 生成 cw_equipment_data.py 全量 EQUIPMENTS 注册表(P0-1 拆分:数据独立文件,SIFT 在 cw_equipment.py 手维护)。
+"""生成 cw_equipment_data.py 全量 EQUIPMENTS 注册表(P0-1 拆分:数据独立文件,SIFT 在 cw_equipment.py 手维护)。
+
+数据源优先级(2026-08-16 用户定,md 降级为未解锁兜底):
+  骨架(name/category) = plaza 官方 API(config equipment_list)> 图鉴截图(codex tier)> md 兜底(仅未解锁 4 条);
+  effect = 图鉴 OCR > plaza desc(数值校验用)> md;
+  recipe = 图鉴 icon 反查 > md 配方。
 
 D-70「参考数据补全:装备代码注册表全量」。equipment.md(米游社🟢,已由 cw_shots OCR 校验
 与数据银行一致)是权威源;本脚本把它的分类表(+合成配方段)解析成 _eq() 行,生成
@@ -75,6 +80,94 @@ def parse_recipes() -> dict[str, tuple[str, str]]:
     return recipes
 
 
+
+
+
+
+def _guess_cat(nm: str, eff: str) -> str:
+    """合集 tab 条目的语义归类(卡带→骇客/圣杯王冠死棘→命运/白昼前缀→白昼/其余→特殊)。"""
+    if nm.startswith("白昼·") or nm.startswith("极·白昼·"):
+        return "白昼"
+    if nm in ("财富", "金垃圾袋", "垃圾袋", "财富宝钻") or nm.startswith("财富("):
+        return "特殊"
+    if "卡带" in nm:
+        return "骇客"
+    if any(k in nm for k in ("圣杯", "王冠", "死棘", "阿瓦隆", "宝石剑", "开辟之星", "干将莫邪")):
+        return "命运"
+    if any(k in eff for k in ("金币", "扑满", "病毒", "投影", "防火墙", "芯片", "手套", "墨镜", "拷贝仪", "扳手")):
+        return "骇客"
+    return "特殊"
+
+
+def parse_skeleton() -> list[dict]:
+    """主链骨架:plaza config + 图鉴截图 → [{name, category, effect, stacking, ...}]。
+
+    plaza 给 101 条(name/category_name/desc);图鉴 codex 给截图有的条目(tier 映射 category);
+    两源都没有的(未解锁 4 条:穿越死棘之枪/管理员手套/财富(基础)/(强化))→ 由 parse()(equipment.md)
+    兜底合并。md 从生成主链降级为未解锁装备补充数据文件(2026-08-16 用户定)。
+    """
+    import json
+
+    entries: list[dict] = []
+    seen: set[str] = set()
+
+    plaza_path = REPO / ".debug/temp/currency_war/plaza/config_v4.4.json"
+    if plaza_path.exists():
+        cfg = json.loads(plaza_path.read_text(encoding="utf-8-sig"))
+        cfg = cfg["data"] if "data" in cfg else cfg
+        name_map: dict[str, str] = {}
+        for pe in cfg["equipment_list"]:
+            nm = pe["name"].replace(chr(0x2022), chr(0x00B7))
+            name_map[pe["icon"]] = nm
+        for pe in cfg["equipment_list"]:
+            nm = pe["name"].replace(chr(0x2022), chr(0x00B7))
+            is_priv = nm.endswith(chr(0x00B7) + "特权")
+            base_nm = nm[: -len("·特权")] if is_priv else nm
+            cat = pe.get("category_name") or ""
+            # plaza 分类名归一到 registry 口径(进阶装备→进阶;羁绊装备/宝钻走语义归)
+            cat = {"进阶装备": "进阶", "特权装备": "特权", "羁绊装备": "", "宝钻": ""}.get(cat, cat)
+            if cat == "":
+                cat = _guess_cat(nm, pe.get("desc") or "")
+            # 特权与普通同 art 同骨架数据,骨架记普通名,特权由 category 特权化
+            key = base_nm if is_priv else nm
+            if key in seen:
+                continue
+            if is_priv:
+                # 特权条目:若普通版已入则跳过(其数据同普通,注册表里特权版由 guess 阶段补)
+                continue
+            seen.add(key)
+            desc = pe.get("desc") or ""
+            entries.append({"name": nm, "category": cat, "effect": desc,
+                            "stacking": _stacking(desc), "source": ""})
+        # 特权条目补(普通版之上加特权名)
+        for pe in cfg["equipment_list"]:
+            nm = pe["name"].replace(chr(0x2022), chr(0x00B7))
+            if not nm.endswith(chr(0x00B7) + "特权"):
+                continue
+            if nm in seen:
+                continue
+            seen.add(nm)
+            desc = pe.get("desc") or ""
+            entries.append({"name": nm, "category": "特权", "effect": desc,
+                            "stacking": _stacking(desc), "source": ""})
+
+    codex_path = REPO / ".debug/temp/cw_equip_data.json"
+    if codex_path.exists():
+        codex = json.loads(codex_path.read_text(encoding="utf-8"))
+        tier_cat = {"简易": "简易", "进阶": "进阶", "特权": "特权", "星徽": "星徽", "消耗品": "工具"}
+        for nm, v in sorted(codex.items()):
+            if nm in seen:
+                continue
+            seen.add(nm)
+            cat = tier_cat.get(v.get("tier") or "") or _guess_cat(nm, " ".join(v.get("effect") or []))
+            # 图鉴怪癖:以太钻头在进阶 tab 但实为合成基础件(cw_synthesis 注一致,归简易)
+            if nm == "以太钻头":
+                cat = "简易"
+            entries.append({"name": nm, "category": cat, "effect": "",
+                            "stacking": False, "source": ""})
+    return entries
+
+
 def parse() -> list[dict]:
     """解析 equipment.md → [{name, category, effect, stacking, source}, ...]。"""
     lines = DOC.read_text(encoding="utf-8").splitlines()
@@ -132,17 +225,6 @@ def merge_codex(entries: list[dict]) -> list[dict]:
         return entries
     codex = json.loads(codex_path.read_text(encoding="utf-8"))
     TIER_CAT = {"简易": "简易", "进阶": "进阶", "特权": "特权", "星徽": "星徽", "消耗品": "工具"}
-    # 合集 tab 混多类,按效果语义归:卡带→骇客 / 圣杯·王冠·死棘→命运 / 财富·垃圾袋→特殊 / 白昼前缀→白昼
-    def guess_cat(nm: str, eff: str) -> str:
-        if nm.startswith("白昼·") or nm.startswith("极·白昼·"):
-            return "白昼"
-        if "卡带" in nm:
-            return "骇客"
-        if any(k in nm for k in ("圣杯", "王冠", "死棘", "阿瓦隆", "宝石剑", "开辟之星", "干将莫邪")):
-            return "命运"
-        if any(k in eff for k in ("金币", "扑满", "病毒", "投影", "防火墙", "芯片", "手套", "墨镜", "拷贝仪", "扳手")):
-            return "骇客"
-        return "特殊"
 
     # 进阶配方:图鉴 icon 反查产物(36/36,方案 b)覆盖 md 配方(21 条,仅 1 条用户确认过)
     for e in entries:
@@ -197,7 +279,14 @@ def merge_codex(entries: list[dict]) -> list[dict]:
 
 
 def main() -> None:
-    entries = merge_codex(parse())
+    entries = parse_skeleton()
+    # md 兜底:仅补两源都没有的(未解锁装备);骨架主链已是 plaza+图鉴(2026-08-16)
+    md_entries = parse()
+    md_names = {e["name"] for e in entries}
+    for e in md_entries:
+        if e["name"] not in md_names:
+            entries.append(e)
+    entries = merge_codex(entries)
     recipes = parse_recipes()
     for e in entries:
         # 配方优先级:图鉴 icon 反查(merge_codex 注入,36/36)> md 文字(21 条,仅 1 条用户确认);
