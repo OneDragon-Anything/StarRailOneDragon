@@ -1158,6 +1158,72 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
     }
 
 
+# ===== M7 装备角色级分配(ADR-0154;方法论 M7:装备是角色特定的,51% 文本覆盖)=====
+
+EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49 布局约束)
+
+
+def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
+                      occupied: dict[tuple[str, int], list[str]] | None = None,
+                      ) -> list[tuple[str, str]]:
+    """(角色名, 装备名) 分配序列 —— carry 先拿 key_equips(按序),其余 core 次之,剩余兜底前排。
+
+    M7 方法论(plaza 648 篇 51% 谈装备):「保证三月有一鞋一风扇,花火和杨叔的回能,姬子的双风暴」
+    「那刻夏全套 > 生存装 > 弹射器 > 永动机,一定要按这个顺序」—— 装备是**角色特定的**,不是
+    有装备就穿(用户 §7-9 同)。分配纪律:
+    1. **carry 先拿**:comp.plaza_carry(不在场上则 core_chars 中首个场上者)按序拿
+       key_equips(multiplicity 消费,不超发);
+    2. **其余场上 core** 拿剩余 key_equips(core 顺序);
+    3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
+    ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
+    char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
+    纯函数(可离线测);EquipAll 消费(ADR-0154)。
+    """
+    occ = occupied or {}
+    by_name: dict[str, list] = {}
+    for d in deployed:
+        n = getattr(d, 'char_id', None)
+        if n:
+            by_name.setdefault(n, []).append(d)
+    capacity: dict[str, int] = {}
+    for n, ds in by_name.items():
+        used = sum(len(occ.get((getattr(d, 'position_pref', '') or '',
+                                int(getattr(d, 'slot', 0) or 0)), [])) for d in ds)
+        capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
+
+    out: list[tuple[str, str]] = []
+    pool = list(owned)
+    if comp is not None and comp.key_equips:
+        # 接收者顺序:plaza_carry(carry)优先,再 core_chars 顺序;只发给场上且容量 >0 者
+        order: list[str] = []
+        if comp.plaza_carry:
+            order.append(comp.plaza_carry)
+        for c in comp.core_chars:
+            if c not in order:
+                order.append(c)
+        recipients = [c for c in order if capacity.get(c, 0) > 0]
+        for r in recipients:
+            for w in list(comp.key_equips):
+                if capacity.get(r, 0) <= 0 or not pool:
+                    break
+                if w in pool:
+                    pool.remove(w)
+                    out.append((r, w))
+                    capacity[r] -= 1
+            if not pool:
+                break
+    # 通用兜底:剩余 pool 按场上顺序(deployed 原序,前排先)分完
+    for d in deployed:
+        n = getattr(d, 'char_id', None)
+        if not n or not pool:
+            continue
+        while pool and capacity.get(n, 0) > 0:
+            g = pool.pop(0)
+            out.append((n, g))
+            capacity[n] -= 1
+    return out
+
+
 # ===== 转型(pivot)+ 巨星(select_megastar)=====
 
 # T#97 commitment(单一定义,maybe_pivot 强粘 + cw_events 买牌 prefilter 拒 off-target 共用):

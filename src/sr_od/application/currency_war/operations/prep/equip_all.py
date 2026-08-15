@@ -25,13 +25,18 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_comps import equip_allocation
 from sr_od.application.currency_war.cw_equipment import (
     EQUIPMENTS,
     load_equip_templates,
     load_equip_tm_grays,
     read_equips,
 )
-from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
+from sr_od.application.currency_war.cw_identity_obs import (
+    _ctx_slots,
+    read_deployed_chars,
+    read_row_equipped,
+)
 from sr_od.application.currency_war.cw_obs_core import _area_rect
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -157,15 +162,14 @@ class EquipAll(SrOperation):
         log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
         return grays
 
-    def _drag_equip(self, start: Point, target: Point) -> tuple[bool, float]:
+    def _drag_equip(self, start: Point, target: Point,
+                    verify_y: int | None = None) -> tuple[bool, float]:
         """单次 drag 穿戴 + bug#1 mitigation + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
 
-        bug#1 缓解(2026-08-11 加,live A8 实跑诊断):drag 前 ``mouse_move(start)``(零移动)——
-        ``before_screenshot`` 把光标移角落做截图卫生,紧接 drag 会因光标移动中被游戏判拖拽落空(memory bug#1 /
-        CLAUDE.md);先 mouse_move 到起点 + 稍顿,drag 从起点零移动出发,避间歇落空(同 run_supply_node:65 /
-        buy_store_item:42 / run_megastar_node:82 模式)。CV-diff 验穿(R19):drag 前后对比目标 avatar 下方
-        mini icon 区,变了=穿(robust 合成消耗/reflow,替 count-verify)。**每次调取自己的 pre 基线截图**
-        (紧贴 drag,非用 loop 顶部 cur —— 基线越紧贴 drag,微变化越不被漏)。
+        ``verify_y`` = 目标 avatar 的 below-icon 中心 y(默认前排 479;后排按 avatar_to_below
+        = rect.y2+14,ADR-0154 后排支持)。bug#1 缓解(2026-08-11 加,live A8 实跑诊断):drag 前
+        ``mouse_move(start)``(零移动)。CV-diff 验穿(R19):drag 前后对比目标 avatar 下方
+        mini icon 区,变了=穿(robust 合成消耗/reflow,替 count-verify)。
         """
         cur = self.screenshot()
         self.ctx.controller.mouse_move(start)
@@ -173,8 +177,26 @@ class EquipAll(SrOperation):
         self.ctx.controller.drag_to(start=start, end=target, duration=1.5, hold_time=0.5)
         time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         post = self.screenshot()
-        diff = _below_icon_diff(cur, post, target.x, self.BELOW_ICON_Y, self.BX_HALF, self.BY_HALF)
+        vy = self.BELOW_ICON_Y if verify_y is None else verify_y
+        diff = _below_icon_diff(cur, post, target.x, vy, self.BX_HALF, self.BY_HALF)
         return diff > self.BELOW_DIFF_THRESHOLD, diff
+
+    def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
+        """(row, slot) → (avatar 拖拽点, below 验穿 y);ADR-0154 后排支持。
+
+        前排用实测常量 FRONT_AVATARS(D-36 验,y350)+ BELOW_ICON_Y=479(D-41 验);
+        后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350 校准外推),
+        verify_y = rect.y2+14(avatar_to_below 同式,前排 467→481≈479 互证)。
+        """
+        if row == 'front':
+            if 1 <= slot <= len(self.FRONT_AVATARS):
+                return self.FRONT_AVATARS[slot - 1], self.BELOW_ICON_Y
+            return None
+        slots = _ctx_slots(self.ctx, '后排', 10)
+        for idx, r in slots:
+            if idx == slot:
+                return Point((r.x1 + r.x2) // 2, r.y1 + 21), r.y2 + 14
+        return None
 
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
@@ -196,6 +218,84 @@ class EquipAll(SrOperation):
         tmpl_grays = self._get_tm_grays()
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
+        # ===== M7 装备角色级分配(ADR-0154;方法论 M7:装备是角色特定的)=====
+        # 身份(SIFT read_deployed_chars)+ 两排已穿(read_row_equipped)→ equip_allocation
+        # (carry 先拿 key_equips 按序 → 其余 core → 剩余兜底)→ 逐件 drag 到**该角色 avatar**
+        # (前排实测常量/后排 screen_info 推导)+ below CV-diff 验穿。身份读失败 → 退回旧
+        # front-only 流程(robust;offline fixture 也走旧路径)。
+        deployed = read_deployed_chars(self.ctx, screen, templates) if templates is not None else []
+        _match = self.ctx.cw_match
+        _tgt_comp = (_match.session.target_comp
+                     if (_match is not None and _match.session is not None) else None)
+        if deployed:
+            occupied_m7: dict[tuple[str, int], list[str]] = {}
+            for row, prefix in (('front', '前排'), ('back', '后排')):
+                row_occ = read_row_equipped(self.ctx, screen, tmpl_grays, prefix,
+                                            4 if row == 'front' else 10)
+                for k, v in row_occ.items():
+                    occupied_m7[(row, k)] = list(v)
+            deployed_by_name: dict[str, list] = {}
+            for d in deployed:
+                if d.char_id:
+                    deployed_by_name.setdefault(d.char_id, []).append(d)
+            log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
+                     [(d.char_id, d.position_pref, d.slot) for d in deployed],
+                     {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
+            equipped = 0
+            stall = 0
+            while stall < 2:
+                cur = self.screenshot()
+                if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
+                    log.info('[cw-equip] 角色详情面板开 → 停')
+                    break
+                hits = read_equips(cur, templates, equip_rect=equip_rect)
+                wearable = [(n, p) for n, p, _ in hits
+                            if EQUIPMENTS.get(n) is not None
+                            and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                if not wearable:
+                    log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
+                    break
+                alloc = equip_allocation(_tgt_comp, deployed,
+                                         [n for n, _ in wearable], occupied_m7)
+                if not alloc:
+                    log.info('[cw-equip] 分配方案空(全满/无匹配)→ 停')
+                    break
+                char_name, want = alloc[0]
+                ds = deployed_by_name.get(char_name) or []
+                target_pv: tuple[Point, int] | None = None
+                for d in ds:
+                    pv = self._slot_drag_point(d.position_pref or 'back', int(d.slot or 1))
+                    if pv is not None:
+                        target_pv = pv
+                        d_used = d
+                        break
+                if target_pv is None:
+                    log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该角色', char_name)
+                    break
+                entry = next(((n, p) for n, p in wearable if n == want), None)
+                if entry is None:
+                    stall += 1   # owned 列 reflow 瞬时 miss → 再读一次
+                    continue
+                name, (cx, cy) = entry
+                target, verify_y = target_pv
+                log.info('[cw-equip] M7 drag %s @(%d,%d) → %s(%s-%d) [%s]',
+                         name, cx, cy, char_name, d_used.position_pref, d_used.slot,
+                         'key' if (_tgt_comp and name in _tgt_comp.key_equips) else 'gen')
+                landed, diff = self._drag_equip(Point(cx, cy), target, verify_y)
+                if not landed:
+                    landed, diff = self._drag_equip(Point(cx, cy), target, verify_y)   # bug#1 retry
+                if landed:
+                    equipped += 1
+                    key = (d_used.position_pref or 'back', int(d_used.slot or 1))
+                    occupied_m7.setdefault(key, []).append(name)
+                    stall = 0
+                    log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
+                else:
+                    log.info('[cw-equip] %s retry 仍败(diff=%.1f)→ 停(bug#1 持续 or 后排坐标偏差)',
+                             name, diff)
+                    break
+            return self.round_success(f'M7 装备 {equipped} 件(角色级分配)')
+        # ===== 旧 front-only 流程(身份读失败 fallback;原 ADR-0101 key_equips 优先)=====
         occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))
         if occupied:
             log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
@@ -224,10 +324,7 @@ class EquipAll(SrOperation):
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break
             # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
-            _match = self.ctx.cw_match
-            _key_equips = (_match.session.target_comp.key_equips
-                           if (_match is not None and _match.session is not None
-                               and _match.session.target_comp is not None) else None)
+            _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
             wearable = _prioritize_wearable(wearable, _key_equips)
             name, (cx, cy) = wearable[0]
             _tag = 'key_equip优先' if (_key_equips and name in _key_equips) else '通用'
