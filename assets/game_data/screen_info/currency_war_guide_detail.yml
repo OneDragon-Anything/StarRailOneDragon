@@ -1,0 +1,186 @@
+screen_id: currency_war_guide_detail
+screen_name: 货币战争-攻略详情
+pc_alt: false
+area_list:
+- area_name: 标识-标题-攻略详情
+  id_mark: true
+  pc_rect:
+  - 30
+  - 42
+  - 240
+  - 92
+  text: 攻略详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-阵容详情
+  id_mark: true
+  pc_rect:
+  - 850
+  - 210
+  - 1020
+  - 265
+  text: 阵容详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-运营思路
+  id_mark: true
+  pc_rect:
+  - 830
+  - 750
+  - 1000
+  - 805
+  text: 运营思路
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-复制攻略码
+  id_mark: false
+  pc_rect:
+  - 40
+  - 952
+  - 240
+  - 996
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-应用攻略
+  id_mark: false
+  pc_rect:
+  - 1660
+  - 952
+  - 1870
+  - 996
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-标题行
+  id_mark: false
+  pc_rect:
+  - 56
+  - 110
+  - 1540
+  - 150
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-查看攻略详情
+  id_mark: false
+  pc_rect:
+  - 1600
+  - 122
+  - 1870
+  - 160
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-阵容详情-前台
+  id_mark: false
+  pc_rect:
+  - 60
+  - 280
+  - 880
+  - 520
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-阵容详情-后台
+  id_mark: false
+  pc_rect:
+  - 60
+  - 525
+  - 880
+  - 760
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-运营思路
+  id_mark: false
+  pc_rect:
+  - 56
+  - 800
+  - 1880
+  - 940
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-热度
+  id_mark: false
+  pc_rect:
+  - 1440
+  - 950
+  - 1600
+  - 996
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-应用状态
+  id_mark: false
+  pc_rect:
+  - 700
+  - 265
+  - 1100
+  - 305
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭面板
+  id_mark: false
+  pc_rect:
+  - 1800
+  - 30
+  - 1885
+  - 62
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

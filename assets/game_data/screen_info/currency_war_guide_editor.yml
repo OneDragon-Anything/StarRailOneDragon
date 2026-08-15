@@ -1,0 +1,102 @@
+screen_id: currency_war_guide_editor
+screen_name: 货币战争-阵容编辑
+pc_alt: false
+area_list:
+- area_name: 标识-标题-阵容编辑
+  id_mark: true
+  pc_rect:
+  - 60
+  - 50
+  - 400
+  - 82
+  text: 阵容编辑
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-阶段-前期
+  id_mark: true
+  pc_rect:
+  - 770
+  - 158
+  - 845
+  - 192
+  text: 前期
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-阶段-中期
+  id_mark: true
+  pc_rect:
+  - 1185
+  - 158
+  - 1260
+  - 192
+  text: 中期
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标识-阶段-最终
+  id_mark: true
+  pc_rect:
+  - 1600
+  - 158
+  - 1680
+  - 192
+  text: 最终
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-tab-角色
+  id_mark: false
+  pc_rect:
+  - 110
+  - 92
+  - 220
+  - 128
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-tab-装备
+  id_mark: false
+  pc_rect:
+  - 380
+  - 92
+  - 500
+  - 128
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-阵容名
+  id_mark: false
+  pc_rect:
+  - 560
+  - 100
+  - 900
+  - 136
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
