@@ -20,10 +20,13 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS, INTEREST_THRESHOLD
 from sr_od.application.currency_war.cw_investments import (
+    ENV_FACTION_MATCH_FLOOR,
+    ENV_SURVIVAL_BONUS,
     INVESTMENT_STRATEGIES,
     SURVIVAL_PICKS,
     EconomyEffect,
     aggregate_economy,
+    get_env,
     get_strategy,
     pick_value_of,
     strategy_bindings,
@@ -1135,6 +1138,20 @@ def decide_event(options: list[str], config, state: GameState,
         elif _pv is not None and float(_pv) > score:
             # 精确名 miss 但 LCS 命中评估表(OCR 形变)→ 裸评估分(comp/economy 修饰不可靠)
             score, reason = float(_pv), 'eval-lcs'
+        # ADR-0144(环境侧评估分):env 名不在策略注册表(原恒 0 分 → fallback 恒选第一张);
+        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∩ target_comp)+ HP 钩子。
+        # ⚠️ 已知局限:eval-lcs 路径只搜策略表,OCR 形变的 env 名可能 LCS 误中策略名(0.6 阈值
+        # 下实测相近名对均 <0.6,风险低;真命中也只得一个策略裸分,有界)。
+        _env = get_env(opt)
+        if _st is None and _env is not None:
+            if _env.pick_value > 0 and float(_env.pick_value) > score:
+                score, reason = float(_env.pick_value), 'env-eval'
+            if _env.faction and _env.faction in _tgt_factions:
+                _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
+                if _floor > score:
+                    score, reason = _floor, f'env-faction:{_env.faction}'
+            if state.hp < 40:
+                score += ENV_SURVIVAL_BONUS.get(_env.name, 0.0)
         # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
         if state.hp < 40 and _st is not None and _st.name in SURVIVAL_PICKS:
             score += 15.0

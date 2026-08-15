@@ -168,8 +168,10 @@ class DefaultCwStrategy(CwStrategy):
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
         ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
         ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
-        comp 匹配分压倒品质先验);env kind 不传(env 阵营定向走 select_comp env_fit,选时未定 comp)。"""
-        _tgt = session.target_comp if kind == 'strategy' else None
+        comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
+        行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
+        概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。"""
+        _tgt = session.target_comp
         return cw_decisions.decide_event(options, config, state, target_comp=_tgt)
 
     def decide_supply(self, options: list[SupplyOption], state: GameState,

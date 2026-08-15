@@ -116,7 +116,7 @@ class HandleInvestStrategy(SrOperation):
         match = self.ctx.cw_match
         if names:
             if match is not None:
-                pick = match.strategy.decide_invest('strategy', names, GameState(), match.session, config)
+                pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)  # ADR-0144:真状态替空 stub
             else:
                 pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100:ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤)
         else:

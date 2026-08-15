@@ -119,7 +119,9 @@ class HandleInvestEnv(SrOperation):
         match = self.ctx.cw_match
         if names:
             if match is not None:
-                pick = match.strategy.decide_invest('env', names, GameState(), match.session, config)
+                # ADR-0144:last_state(上次备战真实快照,含 hp/active_strategies)替空 stub ——
+                # 环境屏 overlay 下 board 不可读,但 HP 分档/持有策略该用真值(空 stub hp=100 恒满血)。
+                pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
             else:
                 pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100(满血档):ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤)
         else:
