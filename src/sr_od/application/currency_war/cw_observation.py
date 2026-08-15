@@ -495,6 +495,8 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     未识别(低内点/歧义/不在 roster)→ name='' faction='?' cost=0(仍占位保 5 张,len 不变)。
 
     **D-55 由 OCR 改 SIFT**:OCR 牌名对开拓者(玩家自定义名,如 "Momojie")等读不到/匹配错;SIFT 看
+    肖像更稳。⚠️ 模板目录名须用**规范名**「开拓者·记忆/欢愉」非玩家 ID(2026-08-15 修:旧目录 Momojie/
+    → resolve_char_name 落 legacy 路径返 None = 「开拓者 roster 缺」根因;玩家 ID 随账号变,规范名不变);
     肖像更稳(实测 shop_open 5/5 内点 33-68,VLM 定位肖像区)。faction 由 OCR 牌标签 → roster factions[0]
     (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。立绘库经 ``ensure_portrait_templates`` 按需加载
     (buy 在 deploy 前,BattlePrepCycle: buy→deploy,故不依赖 deploy 才加载的缓存)。
