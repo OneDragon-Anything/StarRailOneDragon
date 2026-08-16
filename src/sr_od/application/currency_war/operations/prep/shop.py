@@ -196,13 +196,22 @@ class BuyShopCards(SrOperation):
             # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏(同帧读 3/0/空;实锤 click-test
             # 买牌成功 gold≥1 但 reader 读 0,见 process_log)→ 读 0 时重读几帧取首个 >0(deterministic 同帧
             # 重读无意义,故重截图)。不根治(stylized 漏读),但把「读 0 不买」概率降到「连读 0 才认 0」。
+            # 观察冲突审计 #6(2026-08-16):救援结果留证 —— 救回(首读假 0)/连读 0(真 0 或持续漏),
+            # 统计 stylized 漏读率,为 gold 双源(购买差值)排期供数据。
             if state.gold == 0:
+                _gold_rescued = None
                 for _ in range(4):
                     time.sleep(0.4)
                     gv = read_gold(self.ctx, self.screenshot())
                     if gv > 0:
                         state.gold = gv
+                        _gold_rescued = gv
                         break
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict('gold', 0, _gold_rescued if _gold_rescued is not None else 0,
+                             None, verdict=('采新-救援成功(首读假0,stylized漏)' if _gold_rescued is not None
+                                            else '确认真0(4帧连读0)'),
+                             source='shop_rescue')
             # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
             if match.session.tracked_bench_chars:
                 state.bench = deepcopy(match.session.tracked_bench_chars)  # copy 防下游 plan 污染持久态

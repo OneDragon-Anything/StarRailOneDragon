@@ -509,6 +509,33 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     return {f: c for f, (c, _nt) in _board_pairs(ctx, screen).items()}
 
 
+def board_from_tracked(tracked: list) -> dict[str, int] | None:
+    """从 tracked_deployed(身份可靠时)**计算** board 阵营计数(用户 2026-08-16 定:以算为准)。
+
+    OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
+    (board 是 form_progress/pivot/economy 的地基,漏阵营 = 半成型误判)。角色注册表
+    (``cw_chars.CHARACTERS``)已有全量阵营数据 → 每个已上场已知身份角色贡献其全部阵营,
+    计数天然是全集,不受滚动/遮挡/OCR 误读影响。
+
+    Returns:
+        {阵营: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?')→ None**(混合态不切,
+        OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露混合频率)。
+    """
+    if not tracked:
+        return None
+    counts: dict[str, int] = {}
+    for bc in tracked:
+        cid = getattr(bc, 'char_id', '') or ''
+        if not cid or cid == '?':
+            return None
+        ch = get_char(cid)
+        if ch is None or not ch.factions:
+            return None
+        for f in ch.factions:
+            counts[f] = counts.get(f, 0) + 1
+    return counts
+
+
 def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     """OCR 左面板 → {阵营名: 下个 tier 阈值}(= ``_board_pairs`` 的 Y;doc 13 ``FactionState.next_tier``)。
 
@@ -667,20 +694,49 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.streak = _sess.last_streak
     else:
         state.streak = read_streak(ctx, screen) or 0
-    # 单次 OCR 填 board(count) + board_next_tier(下个 tier 阈值,Y);doc 13 FactionState。
+    # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
+    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → **tracked 有身份时以计算为准**,OCR 只做
+    # 可见子集对拍留证):
+    # - computed(tracked 全已知身份)= 全集(每人贡献其全部阵营),不受滚动/遮挡影响 → state.board;
+    # - OCR 可见行 f 若在 computed 中两者应相等(不等 = tracked 漂移或 OCR 误读,留证);
+    #   OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号留证);computed 有而 OCR 不可见
+    #   = 滚动截断(正常,不算错)。
+    # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
+    _match = getattr(ctx, 'cw_match', None)
+    _tracked_dep = (_match.session.tracked_deployed
+                    if (_match is not None and _match.session is not None) else None)
+    _computed = board_from_tracked(_tracked_dep)
     _bp = _board_pairs(ctx, screen, state.level)
-    state.board = {f: c for f, (c, _nt) in _bp.items()}
-    state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
+    _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
+    if _computed is not None:
+        for _f, _ocr_c in _ocr_board.items():
+            _calc_c = _computed.get(_f)
+            if _calc_c is None:
+                obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed}, f'OCR有computed无:{_f}',
+                             screen, verdict='留证-tracked漏阵营角色(OCR可见但计算无)',
+                             source='computed_vs_ocr')
+            elif _calc_c != _ocr_c:
+                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
+                             screen, verdict='采新-computed(可见行count不等,tracked漂移或OCR误读)',
+                             source='computed_vs_ocr', faction=_f)
+        state.board = _computed
+        # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)
+        state.board_next_tier = {}
+        for _f, _c in _computed.items():
+            _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
+            _nt = next((t for t in _tiers if t > _c), 0)
+            if _nt:
+                state.board_next_tier[_f] = _nt
+    else:
+        state.board = _ocr_board
+        state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBench SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
-    _match = getattr(ctx, 'cw_match', None)
     # active_strategies:session(持久宿主,handle_invest_strategy 写)→ state(_refresh_cap 等消费;
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
-    _tracked_dep = (_match.session.tracked_deployed
-                    if (_match is not None and _match.session is not None) else None)
     if _tracked_dep:
         import copy
         state.deployed = copy.deepcopy(_tracked_dep)

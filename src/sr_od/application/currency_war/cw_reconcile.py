@@ -40,6 +40,16 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
     drifted = (old_b != new_b) or (old_d != new_d)
+    # star 回退留证(观察冲突审计 #13,2026-08-16):同名 star 下降(如 2★读回 1★)= read_star
+    # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
+    _old_stars = {(n, s) for n, s in old_b + old_d if n}
+    _new_stars = {(n, s) for n, s in new_b + new_d if n}
+    for _n, _s in _new_stars:
+        _old_s = next((_os for _on, _os in _old_stars if _on == _n), None)
+        if _old_s is not None and _s < _old_s:
+            log.warning(f'[cw!][{source}] star 回退:{_n} {_old_s}★→{_s}★(read_star 漏金星?卖后重买?)')
+            _conflict('star', _old_s, _s, screen, verdict='采新-read_star实读(回退留证)',
+                      source=source, char=_n)
     if bench is not None:
         session.tracked_bench_chars = list(bench)
     if deployed is not None:

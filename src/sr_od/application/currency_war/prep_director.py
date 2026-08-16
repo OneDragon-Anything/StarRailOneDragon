@@ -225,6 +225,20 @@ class PrepDirector(SrOperation):
                 obs.deploy_vacancy = max(0, cap - dep_n)
             else:
                 obs.deploy_vacancy = self._cached_vacancy
+            # 观察冲突审计 #9(2026-08-16):deployed 总数三源对拍(同帧全齐)——
+            # board OCR 阵营计数和 vs paddle X(读 deployed_count)vs CV 占用(front+back)。
+            # 分歧(任两源差 >1)留证:定位哪个 reader 在该类帧毒化(board OCR 阵营行漏/
+            # paddle 拆框/CV slot_occupied 阈值),为三源多数表决排期供数据。
+            _board_sum = sum(st.board.values())
+            _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
+            if dep_n is not None:
+                _spread = max(_board_sum, dep_n, _cv_occ) - min(_board_sum, dep_n, _cv_occ)
+                if _spread > 1:
+                    from sr_od.application.currency_war.cw_observe import obs_conflict
+                    obs_conflict('deployed_count_3src',
+                                 {'board_ocr': _board_sum, 'paddle_x': dep_n, 'cv_occupied': _cv_occ},
+                                 'spread>1', screen, verdict='留证-三源分歧(待定多数表决)',
+                                 source='director_heavy')
             # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
             # 缓存 state 生成时的可信度就是它的可信度)
             self._cached_state = st
