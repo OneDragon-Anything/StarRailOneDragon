@@ -404,9 +404,13 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 1f. **失败结算页**(M41 实锤 2026-08-16,历史首达 P3 后 HP 归零):「挑战结束」大标 +
         #     「X-Y 战斗」+ 点击空白加速(无继续挑战按钮)。此前未建档 → loop 未识别返回 None →
-        #     app 层 AttributeError。建档:货币战争-结算-失败(id_mark=标识-挑战结束)。
-        #     处理:点空白加速推进 → 后续「前往结算」由 3b 接管 → 3c 回大厅收局(挑战失败流程)。
-        if self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success:
+        #     app 层 AttributeError。建档:货币战争-结算-失败(id_mark=标识-挑战结束,lcs 0.9)。
+        #     ⚠️ 双保险(M43 二次咬人教训):近形文案「挑战结束/失败/成功」两两 LCS=0.5,lcs 单靠
+        #     不住(yml 旧值/漂移都会复活)——本分支加结构判据「无继续挑战按钮」(真失败结算页没有,
+        #     挑战成功屏恒有)→ 成功屏永不会被 1f 吞(其归 3 分支处理)。
+        if (self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success
+                and not self.round_by_find_area(
+                    screen, '货币战争-结算', '按钮-继续挑战', crop_first=False).is_success):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=2)
