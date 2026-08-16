@@ -40,6 +40,41 @@ class Character:
         return "back"   # back / flex → back(flex 可前可后,默认后排放后续 comp 阵型调整)
 
 
+# ===== 开拓者形态切换(用户 2026-08-16 指示:羁绊计算须注意其特殊性) =====
+# 机制:同一开拓者,**前台=记忆形态 / 后台=欢愉形态**(拖到另一排即切换命途,羁绊随之变:
+# 记忆=列车+能量;欢愉=列车+能量+欢愉 → 后台独有「欢愉」羁绊)。plaza switch_freq 363 次切换
+# = 同局反复换排是常态操作。注册表两形态独立条目(立绘不同,SIFT 按立绘判身份),但**身份
+# 计算(羁绊/计数)必须按「当前排」归一形态** —— 旧代码按 char_id 原值算,换排后:
+# 欢愉形态拖上前排 → 游戏内已变记忆(欢愉羁绊消失)而 tracking 仍记欢愉 → 欢愉计数虚高、
+# 记忆侧漏算。
+_TRAILBLAZER_FORMS: dict[str, dict[str, str]] = {
+    # 归一基名 → {排: 该排的形态规范名}
+    '开拓者': {'front': '开拓者·记忆', 'back': '开拓者·欢愉'},
+}
+
+
+def trailblazer_form(name: str, row: str) -> str:
+    """开拓者按排归一形态名:``row`` = "front"/"back";非开拓者原样返回。
+
+    兜底:归一名缺(row 为空/异常值)→ 按注册表 position_pref 推(与排一致的那张)。
+    """
+    for base, forms in _TRAILBLAZER_FORMS.items():
+        if base in name:
+            if row in forms:
+                return forms[row]
+            from sr_od.application.currency_war.cw_chars import CHARACTERS as _C
+            cur = _C.get(name)
+            if cur is not None and cur.position_pref() == row:
+                return name   # 已是目标排形态
+            other = forms.get('front' if row == 'back' else 'back', '')
+            return other or name
+    return name
+
+
+def is_trailblazer(name: str) -> bool:
+    return any(base in name for base in _TRAILBLAZER_FORMS)
+
+
 def _ch(name: str, cost: int, position: str, char_type: str,
         factions: str = "", flows: str = "", independent: str = "", source: str = "") -> Character:
     """构造助手:阵营/流派用"、"分隔的字符串 → tuple。空串 → 空 tuple。"""

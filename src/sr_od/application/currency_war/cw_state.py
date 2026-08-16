@@ -336,6 +336,18 @@ def simulate(state: GameState, action: Action) -> GameState:
         if 0 <= action.bench_idx < len(s.bench):
             bc = s.bench.pop(action.bench_idx)
             bc.position_pref = action.to_row  # 记录实际站位
+            # 开拓者形态切换(用户 2026-08-16):拖到另一排 = 命途切换(前台记忆/后台欢愉),
+            # 羁绊随之变 → char_id 同步换成目标排形态,board/装备/一切下游计算自然对。
+            from sr_od.application.currency_war.cw_chars import get_char as _get_char
+            from sr_od.application.currency_war.cw_chars import (
+                is_trailblazer,
+                trailblazer_form,
+            )
+            if bc.char_id and is_trailblazer(bc.char_id):
+                bc.char_id = trailblazer_form(bc.char_id, action.to_row)
+                _tc = _get_char(bc.char_id)
+                if _tc is not None and _tc.factions:
+                    bc.faction = _tc.factions[0]
             s.deployed.append(bc)
             s.board[action.faction] = s.board.get(action.faction, 0) + 1
     elif isinstance(action, RefreshShop):
@@ -365,4 +377,11 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
         if 0 <= action.bench_idx < len(bench):
             bc = bench.pop(action.bench_idx)
             bc.position_pref = action.to_row
+            # 开拓者形态切换(同 simulate 语义,单一源):换排 = 换命途,char_id 归一到目标排形态
+            from sr_od.application.currency_war.cw_chars import (
+                is_trailblazer,
+                trailblazer_form,
+            )
+            if bc.char_id and is_trailblazer(bc.char_id):
+                bc.char_id = trailblazer_form(bc.char_id, action.to_row)
             deployed.append(bc)

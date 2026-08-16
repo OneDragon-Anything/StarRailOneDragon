@@ -528,10 +528,21 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         cid = getattr(bc, 'char_id', '') or ''
         if not cid or cid == '?':
             return None
+        # 开拓者形态归一(用户 2026-08-16):前台=记忆/后台=欢愉,拖排即切换;羁绊按「当前排」
+        # 的形态计(欢愉形态被拖上前排 → 欢愉羁绊消失)。position_pref 即当前排(simulate/
+        # mutate DeployMove 写 to_row;identify_slots 上阵排写 row)。
+        from sr_od.application.currency_war.cw_chars import (
+            is_trailblazer,
+            trailblazer_form,
+        )
+        if is_trailblazer(cid):
+            cid = trailblazer_form(cid, getattr(bc, 'position_pref', '') or 'back')
         ch = get_char(cid)
         if ch is None or not ch.factions:
             return None
-        for f in ch.factions:
+        # 羁绊 = 阵营类(factions)+ 流派类(flows:能量/欢愉/击破…)都进左面板计数(OCR board
+        # 同口径 —— 只数 factions 会系统性漏流派羁绊;开拓者「欢愉」正是 flows,实测暴露)。
+        for f in (*ch.factions, *ch.flows):
             counts[f] = counts.get(f, 0) + 1
     return counts
 

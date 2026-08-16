@@ -218,6 +218,14 @@ def identify_slots(
         name = resolve_char_name(avatar_id)
         if name is None:
             continue
+        # 开拓者形态按排归一(用户 2026-08-16):前台=记忆/后台=欢愉;立绘库两形态覆盖不均时
+        # SIFT 可能按旧立绘判成另一形态 —— 已上阵排是权威(row 即真实排),归一消歧。
+        from sr_od.application.currency_war.cw_chars import (
+            is_trailblazer,
+            trailblazer_form,
+        )
+        if row and name and is_trailblazer(name):
+            name = trailblazer_form(name, row)
         ch = get_char(name)
         out.append(BenchChar(
             slot=slot_idx,
