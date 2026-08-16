@@ -115,5 +115,8 @@ class CurrencyWarConfig(YamlConfig):
             'difficulty_hp_override': self.difficulty_hp_override,
             'strategy_id': self.strategy_id,
             'strategy_seed': self.strategy_seed,
+            # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉
+            # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
+            'max_rounds': self.max_rounds,
         }
         YamlConfig.save(self)

@@ -5934,7 +5934,7 @@
     - 1022
     - 921
     text: 继续挑战
-    lcs_percent: 0.5
+    lcs_percent: 0.9
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -5962,7 +5962,7 @@
     - 1098
     - 274
     text: 挑战成功
-    lcs_percent: 0.5
+    lcs_percent: 0.9
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -6100,7 +6100,7 @@
     - 1098
     - 280
     text: 挑战失败
-    lcs_percent: 0.5
+    lcs_percent: 0.9
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
