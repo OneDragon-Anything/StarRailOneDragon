@@ -12,9 +12,9 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 
-sys.stdout.reconfigure(encoding='utf-8')
-
 from sr_od.application.currency_war import cw_deadlock_prover as dp
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 
 @dataclass
