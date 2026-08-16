@@ -197,7 +197,7 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     **首领** = 位面最后节点(按位置判,不在节点行模板内;调用方按 round 推断)。未来圆 Hu 距离 >
     ``cw_node_reader.HU_DIST_UNRECOGNIZED`` → 未识别(扑满/新类型,调用方可触发采集)。
 
-    ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关(见 CLAUDE.md RGB 约定)→ 直传 classify。
+    ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关 → 直传 classify。
     返回 None:模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:shop 开 / 过渡 / overlay
     遮挡 → 坏帧 Hu 畸变不可信)。调用方遇 None 跳过,等下个 clean 备战帧重读。详 ``cw_node_reader`` docstring。
     """
@@ -767,15 +767,15 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
-    # 采集钩子(临时,采完即删;3.5.3 read_star 2-3星验证):tracking star≥2 的 deployed/bench char
-    # → 存备战屏(含立绘底部金星)供离线 read_star 2-3星验。screen=RGB,存图 RGB→BGR(cv2-utils 约定)。
-    # review ⚠️:查 session.tracked_deployed + tracked_bench_chars(deploy 后 SIFT 维护,含 star),
-    # 非 state.bench(read_game_state 不读 bench 身份 → state.bench 恒空 → 漏 bench 2星如赛飞儿)。
+    # 采集钩子(临时,采完即删;3.5.3 read_star 验证):**仅 star≥3** 存备战屏(2026-08-16 收窄:
+    # star2 已验稳——30/30 真样本 read_star 全读 2,用户确认收窄;star3 样本 212 张待离线验)。
+    # screen=RGB,存图 RGB→BGR(cv2-utils 约定)。查 tracked_deployed + tracked_bench_chars
+    # (deploy 后 SIFT 维护含 star;state.bench 恒空,见 review ⚠️)。
     _hook_tracked: list = []
     if _match is not None and _match.session is not None:
         _hook_tracked = list(getattr(_match.session, 'tracked_deployed', []) or [])
         _hook_tracked += list(getattr(_match.session, 'tracked_bench_chars', []) or [])
-    _hook_stars = [getattr(bc, 'star', 0) for bc in _hook_tracked if getattr(bc, 'star', 0) >= 2]
+    _hook_stars = [getattr(bc, 'star', 0) for bc in _hook_tracked if getattr(bc, 'star', 0) >= 3]
     if _hook_stars:
         try:
             import hashlib

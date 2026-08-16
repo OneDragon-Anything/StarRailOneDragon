@@ -170,8 +170,13 @@ def read_star(crop: MatLike) -> int:
         if all((y - py) ** 2 + (x - px) ** 2 > min_dist ** 2 for py, px in peaks):
             peaks.append((int(y), int(x)))
     # peak 局部形状验证:四角星 area 80-320 + aspect 近方 0.80-1.20 + circ>_STAR_CIRC_MIN(滤细长/碎装饰)。
-    # circ 下限见 _STAR_CIRC_MIN(ADR-0115:0.25,原 0.35 误拒备战-9 边槽真金星)。
+    # circ 下限见 _STAR_CIRC_MIN(ADR-0115:0.35→0.25,原误拒备战-9 边槽真金星)。
+    # ⚖️ 行对齐验证(2026-08-16,用户实锤星徽秘典画面 star2 误标追因):真金星 N 颗 = **水平一排**
+    # (同 y ±4px,间距规律);服饰装饰(肩部金色领结/饰带)形状碰巧过形状门(实测 TM 0.51 + area/aspect/circ
+    # 全过)但 y 偏上离真星行远 → 行对齐杀此类误报。实现:过形状门的 peak 取**最大聚类行**(同 y 带
+    # 内数量多者优先;单峰自成一行的场景=1 星照常)。
     count = 0
+    _passed: list[tuple[int, int]] = []   # (py, px) 过形状门的峰
     for py, px in peaks:
         local = mask[py:py + th, px:px + tw]
         if local.size < th * tw:
@@ -186,7 +191,17 @@ def read_star(crop: MatLike) -> int:
         aspect = bw / bh if bh > 0 else 0
         circ = 4 * np.pi * la / perim / perim if perim > 0 else 0
         if 80 <= la <= 320 and 0.80 <= aspect <= 1.20 and circ > _STAR_CIRC_MIN:
-            count += 1
+            _passed.append((py, px))
+    if _passed:
+        # 行聚类:y 差 ≤4 的峰聚一行;取峰最多的行(平局取 y 大者——星行在底部)。
+        _rows: list[list[tuple[int, int]]] = []
+        for py, px in sorted(_passed, key=lambda p: p[0]):
+            if _rows and abs(py - _rows[-1][0][0]) <= 4:
+                _rows[-1].append((py, px))
+            else:
+                _rows.append([(py, px)])
+        _best = max(_rows, key=lambda r: (len(r), r[0][0]))
+        count = len(_best)
     return max(count, 1)
 
 
