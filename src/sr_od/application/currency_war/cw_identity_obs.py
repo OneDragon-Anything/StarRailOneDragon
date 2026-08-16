@@ -391,6 +391,35 @@ def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
     return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
+# 备战席溢出带(奖励角色悬浮位;2026-08-16 用户实证 star2__540a8be3):备战栏正上方
+# y 700-845 带,溢出立绘挂最右槽上方(实测赛飞儿 x~1362-1430)。
+_OVERFLOW_BAND: tuple[int, int, int, int] = (370, 700, 1500, 845)
+
+
+def count_overflow_chars(screen: MatLike) -> int:
+    """备战席溢出角色数(奖励给角色在席满时悬浮于备战栏上方;机制见 gameplay doc)。
+
+    检测:溢出带 Canny 边缘 x 投影 → 宽 >30px 的高密度段数 = 立绘数(实测赛飞儿段
+    x1362-1430 宽 68px;空带无段)。纯 CV(无 ctx);读不清 → 0(保守,不误报腾席)。
+    腾席决策用:破满需卖 ≥(溢出数+1)(卖 1 个溢出落 1 个,净空位 0)。
+    """
+    x1, y1, x2, y2 = _OVERFLOW_BAND
+    band = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(band, 60, 150)
+    col = edges.mean(axis=0)
+    th = col.mean() + col.std()
+    runs = []
+    in_run = False
+    for i, v in enumerate(col):
+        if v > th and not in_run:
+            start, in_run = i, True
+        elif v <= th and in_run:
+            if i - start > 30:
+                runs.append((start, i))
+            in_run = False
+    return len(runs)
+
+
 # ===== 奖励球识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====
 # 奖励球 = 晶矿(factions 晶矿条目:开启后可能获金币/角色/装备/稀有物品)。通关奖励节点后备战右侧
 # 面板出现球形奖励(实测 1-8 清关:1 大金球[r~44] + 5 蓝球[r~32] + 2 灰球[r~18])。点球即开启:

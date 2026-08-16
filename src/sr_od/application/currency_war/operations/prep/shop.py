@@ -334,6 +334,10 @@ class BuyShopCards(SrOperation):
 
         游戏提示「出售或提升等级」:升等级加 XP(解锁更高费刷新/上阵数)+ sell 给 gold →
         bench 槽位空出 → 警告消失 → 解锁购买。返回是否处理了(处理了则本回合跳过买牌)。
+        ⚠️ 溢出感知(2026-08-16 用户实证机制):奖励给的角色在席满时**悬浮在备战栏上方**,
+        卖出 1 个 → 溢出落位 → 席仍满(净空位 0)。旧循环卖 3 次固定 bench-1..3 在有溢出时
+        可能次次"卖完还满"耗尽预算。修:卖后重验,仍满且**检测到溢出立绘**(备战上方带
+        高边缘)→ 继续卖(上限提到 5);无溢出 → 原逻辑。
         """
         if not self.round_by_ocr(screen, '备战席已满').is_success:
             return False
@@ -342,11 +346,11 @@ class BuyShopCards(SrOperation):
         for _ in range(10):
             self.ctx.controller.click(level_btn)
             time.sleep(0.3)
-        for sell_i in range(3):
+        for sell_i in range(5):
             fresh = self.screenshot()
             if not self.round_by_ocr(fresh, '备战席已满').is_success:
                 break
-            bench_x = 438 + sell_i * 125  # bench-1..3 中心(横间距 ~125)
+            bench_x = 438 + sell_i * 125  # bench-1..5 中心(横间距 ~125;溢出时多卖)
             self.ctx.controller.drag_to(end=Point(70, 846), start=Point(bench_x, 912), duration=0.8)
             time.sleep(1)
             for _ in range(4):
