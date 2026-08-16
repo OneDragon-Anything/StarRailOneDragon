@@ -595,6 +595,10 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
         if rect is None:
             continue
         crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+        # r13:空槽检测(六边形占位,SIFT inliers≈3 vs 真卡 30-120)——低等级商店后槽未解锁
+        # 是常态,空槽不是「未识别卡」(c1888c7d 帧实证:牌4/5 空槽 inliers=3 触发假 unknown)。
+        if crop.mean() < 60:   # 空槽 = 黑底白轮廓,均值显著低于真卡(立绘+费用色底)
+            continue
         avatar_id, _inliers = (identify_character(crop, templates)
                                if templates is not None else (None, 0))
         name = resolve_char_name(avatar_id) if avatar_id else ''
