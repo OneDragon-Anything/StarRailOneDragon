@@ -406,7 +406,19 @@ class CurrencyWarRunLoop(SrOperation):
             self._rounds_done += 1   # 挑战成功 = 完成一轮(max_rounds 轮锚点)
             time.sleep(1.0)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
+                # 停留计数(M39 实证 2026-08-16):**对局终局结算屏**(3-1 后)形态与普通轮结算相同
+                # (按钮/文字全识别)但**点击不响应**——普通 click 无效,长按(0.5s)才推进;且该屏
+                # 「继续挑战」点了也不换画面(下一页才是「前往结算」)。停留 ≥3 轮 = 判终局屏,
+                # 走 3b 固定坐标长按推进(勿死等)。
+                self._settle_stay = getattr(self, '_settle_stay', 0) + 1
+                if self._settle_stay >= 3:
+                    log.info('[cw-loop] 结算屏停留 %s 轮 → 判对局终局屏,长按 (960,898) 推进',
+                             self._settle_stay)
+                    self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT, press_time=0.5)
+                    self._settle_stay = 0
                 return self.round_wait(wait=2)
+            return self.round_wait(wait=2)
+        self._settle_stay = 0   # 离开结算屏重置
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
         for btn in ('前往结算', '下一页', '返回货币战争'):
