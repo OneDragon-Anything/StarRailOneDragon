@@ -415,6 +415,21 @@ class CurrencyWarRunLoop(SrOperation):
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=2)
 
+        # 1g. [停机钩子·临时] 中断挑战 dialog(bug#2:ESC 误按弹「是否中断挑战」,历史 3 次实锤;
+        #     r2 review A-1 缺口)。无实拍图不能建档 → hook 捕获自然出现:检测「中断挑战」或
+        #     「是否中断」→ 存证 + 停机给 AI 建档(优先点取消保对局)。建档后删本钩子。
+        #     lcs 0.9(4字词要求完整子序列,防「中断」类误匹配)。
+        if (self.round_by_ocr(screen, '中断挑战', lcs_percent=0.9).is_success
+                or self.round_by_ocr(screen, '是否中断', lcs_percent=0.9).is_success):
+            _shot = self.save_screenshot(prefix='cw_interrupt_dialog')
+            _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
+                         / 'currency_war' / 'interrupt_dialog.flag')
+            _sentinel.parent.mkdir(parents=True, exist_ok=True)
+            _sentinel.write_text(f'iter={self._iter} shot={_shot}', encoding='utf-8')
+            log.info('[cw-hook] 中断挑战 dialog 出现 → 停机存证待建档 shot=%s', _shot)
+            self.ctx.run_context.stop_running()
+            return self.round_fail(status='中断挑战 dialog 停机待建档')
+
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
                 or self.round_by_ocr(screen, '点击空白处继续').is_success):
@@ -425,7 +440,15 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
             self._probe_settlement_nodetype(screen)  # [采集钩子·临时] 结算 "X-Y <type>" 标定,采完删
-            self._rounds_done += 1   # 挑战成功 = 完成一轮(max_rounds 轮锚点)
+            # C-1(r2 review,2026-08-16):计数锚点 = 新结算帧(非命中帧)——结算屏点击不生效循环 k 轮时,
+            # 旧行为每轮 +1 → rounds_done 虚增 → max_rounds=N>1 时提前停备战。改:同屏指纹(结果文本行)
+            # 不重复计数;仅进入新结算帧(上一轮不是结算/或结算内容变了)才 +1。轮败(1f)不计数(轮锚点=
+            # 挑战成功结算;失败局 0 计数是设计内)。
+            _fp = tuple(sorted((r.data, r.y) for r in self.ctx.ocr_service.get_ocr_result_list(
+                image=screen, rect=None, crop_first=False)))
+            if getattr(self, '_last_settle_fp', None) != _fp:
+                self._rounds_done += 1
+                self._last_settle_fp = _fp
             time.sleep(1.0)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
