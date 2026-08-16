@@ -282,12 +282,22 @@ def effective_hp_threshold(state: GameState, config) -> int:
     前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
     (决策见 docs/develop/currency_war/decisions/INDEX.md )。detection 接线(难度确认屏 OCR →
     state.selected_difficulty)是后续 game 接线任务;本函数 + GameState.selected_difficulty 是其离线地基。
+
+    ⚖️ r11 review #4(P2 位面键控):P2+ 敌强度跳升(实测 P2-1 掉 19/节点 vs P1 ~10;DP 影子
+    difficulty_scale P2≈1.5-1.95×)→ 阈值上浮 1.25×(P2)/1.5×(P3),更早弃息保血。
+    P1 不变(向后兼容)。
     """
     diff = (getattr(state, "selected_difficulty", "") or "").strip()
     override = getattr(config, "difficulty_hp_override", None) or {}
     if diff and diff in override:
-        return int(override[diff])
-    return int(getattr(config, "hp_safe_threshold", 40))
+        base = int(override[diff])
+    else:
+        base = int(getattr(config, "hp_safe_threshold", 40))
+    if state.plane >= 3:
+        return min(100, int(base * 1.5))
+    if state.plane == 2:
+        return min(100, int(base * 1.25))
+    return base
 
 
 
