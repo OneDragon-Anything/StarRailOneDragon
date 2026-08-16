@@ -1,6 +1,7 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
 import logging
+import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.rectangle import Rect
@@ -151,5 +152,17 @@ class StartCurrencyWarMatch(SrOperation):
         if self.round_by_ocr(screen, '点击空白处继续').is_success:
             self.ctx.controller.click(StartCurrencyWarMatch.BLANK_CLICK.center)
             return self.round_wait(wait=1)
+        # 3b) 积分奖励页(2026-08-17 M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
+        #     到备战不认识此屏 → 干等超时 196s)。处理:一键领取(有达标奖励)→ 等结算动画 →
+        #     点 X 关回大厅,下轮 entry 重新推进(领完弹窗自关或留 X)。
+        if self.round_by_find_area(screen, '货币战争-积分奖励', '标识-积分奖励',
+                                   crop_first=False).is_success:
+            _ok = self.round_by_find_and_click_area(
+                screen, '货币战争-积分奖励', '按钮-一键领取', success_wait=1)
+            _log.info('[cw-entry] 积分奖励页 → 一键领取(%s)后关闭', '点' if _ok.is_success else '按钮未读到')
+            time.sleep(1.5)   # 领取动画
+            self.round_by_find_and_click_area(
+                self.screenshot(), '货币战争-积分奖励', '按钮-关闭', success_wait=1)
+            return self.round_wait(wait=2)
 
         return self.round_retry(wait=1)
