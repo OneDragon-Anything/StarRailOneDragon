@@ -408,9 +408,17 @@ class CurrencyWarRunLoop(SrOperation):
         #     ⚠️ 双保险(M43 二次咬人教训):近形文案「挑战结束/失败/成功」两两 LCS=0.5,lcs 单靠
         #     不住(yml 旧值/漂移都会复活)——本分支加结构判据「无继续挑战按钮」(真失败结算页没有,
         #     挑战成功屏恒有)→ 成功屏永不会被 1f 吞(其归 3 分支处理)。
+        #     ⚠️ M44 三次咬人(2026-08-16 20:34):P2-1 轮败屏 = 「挑战结束 + 前往结算」(直接带局终
+        #     前进按钮,无「点击空白加速」)——1f 点空白无效循环。**分支内先查 3b 前进按钮词**,有则
+        #     点 SETTLEMENT_NEXT(与 3b 同语义:结算翻页回大厅收局),无才点空白加速。
         if (self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success
                 and not self.round_by_find_area(
                     screen, '货币战争-结算', '按钮-继续挑战', crop_first=False).is_success):
+            for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
+                if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
+                    self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
+                    self.park_cursor(after_wait=0.1)
+                    return self.round_wait(wait=2)
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=2)
