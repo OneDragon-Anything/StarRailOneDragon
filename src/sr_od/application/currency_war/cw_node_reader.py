@@ -69,9 +69,12 @@ def _hu_distance(a: HuLike, b: HuLike) -> float:
 
 
 def load_node_type_templates(templates_dir: Path) -> dict[str, HuLike]:
-    """加载 4 节点类型模板(battle/supply/encounter/reward)→ {type: Hu 矩}。
+    """加载 4 节点类型模板(battle/supply/encounter/reward)→ {type: Hu 矩(RGB luma)}。
 
-    模板 PNG 经 cv2.imdecode(BGR)读 → 灰度 → Hu(灰度/Hu 对 RGB/BGR 无关)。
+    ⚠️ 通道对齐(2026-08-16 review P1 修正):模板 PNG 经 imdecode 读到 **BGR** → 先翻成
+    RGB 语义再 ``RGB2GRAY`` 正确 luma —— 与 classify_node_row(live RGB 截图)同侧。
+    (旧注释「灰度/Hu 对 RGB/BGR 无关」不成立:灰度化权重 R/B 互换产生不同 luma →
+    不同 Otsu 二值 → 不同 Hu;仅 S/V 对通道序无关。)
     """
     out: dict[str, HuLike] = {}
     for t in ('battle', 'supply', 'encounter', 'reward'):
@@ -81,7 +84,7 @@ def load_node_type_templates(templates_dir: Path) -> dict[str, HuLike]:
         img = cv2.imdecode(np.fromfile(str(p), dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             continue
-        out[t] = _hu_moments(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
+        out[t] = _hu_moments(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
     return out
 
 
@@ -95,19 +98,20 @@ def detect_node_circles(row_gray: np.ndarray) -> list[tuple[int, int, int]]:
     return sorted((int(x / 3), int(y / 3), int(r / 3)) for x, y, r in np.round(circ[0]).astype(int))
 
 
-def _circle_state(row_bgr: np.ndarray, cx: int, cy: int) -> str:
-    """圆的态(已过/当前/未来)via HSV 平均饱和度 S + 亮度 V(采样窗 _SAMPLE_R)。
+def _circle_state(row_rgb: np.ndarray, cx: int, cy: int) -> str:
+    """圆的态(已过/当前/未来)via HSV 平均饱和度 S + 亮度 V(采样窗 _SAMPLE_R;RGB 输入)。
 
     判定序(2026-08-16 修正):
     1. S ≥ STATE_S_UPCOMING(高饱和)→ 当前/过去:V > STATE_V_CURRENT → current else past;
     2. S < 60(低饱和)但 **V < V_MIN_UPCOMING(暗)** → **past(变暗的过去节点** —— 饱和度
        随亮度一起降,单看 S 会把它误判未来,63 张误报实证);
     3. S < 60 且 V ≥ V_MIN_UPCOMING(低饱和且亮)→ upcoming(真未来,灰白图标亮底)。
+    HSV 转换用 RGB2HSV(通道序与输入一致;S/V 对 RGB/BGR 序无关,H 通道有序但本函数不用)。
     """
     x0, x1 = max(0, cx - _SAMPLE_R), cx + _SAMPLE_R
     y0, y1 = max(0, cy - _SAMPLE_R), cy + _SAMPLE_R
-    reg = row_bgr[y0:y1, x0:x1]
-    hsv = cv2.cvtColor(reg, cv2.COLOR_BGR2HSV)
+    reg = row_rgb[y0:y1, x0:x1]
+    hsv = cv2.cvtColor(reg, cv2.COLOR_RGB2HSV)
     s = float(hsv[:, :, 1].mean())
     v = float(hsv[:, :, 2].mean())
     if s >= STATE_S_UPCOMING:
@@ -117,8 +121,15 @@ def _circle_state(row_bgr: np.ndarray, cx: int, cy: int) -> str:
     return 'upcoming'
 
 
-def classify_node_row(row_bgr: np.ndarray, templates: dict[str, HuLike]) -> list[NodeSlot]:
-    """节点行裁图(BGR)→ 槽识别列表。纯 CV(无框架依赖)。
+def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list[NodeSlot]:
+    """节点行裁图(**RGB**,框架截图通道)→ 槽识别列表。纯 CV(无框架依赖)。
+
+    ⚠️ 通道语义(2026-08-16 review P1 修正):框架截图链 GDI/mss → ``BGRA2RGB`` → **live 是
+    RGB**;本函数此前用 ``COLOR_BGR2GRAY`` 把 RGB 当 BGR 灰度化(R/B 权重互换,错误 luma)。
+    模板/fixture 经 imdecode 走 BGR —— 两侧恰好都在"错误侧"自洽,BGR 路径测试绿但 live
+    从未被验证(review 实锤:RGB 传入时 idx4 supply(0.00)→encounter(1.66) 翻转)。修正:
+    本函数与模板加载统一 **RGB 语义 + ``RGB2GRAY`` 正确 luma**;调用方(read_node_sequence)
+    直传框架 RGB 截图;测试 fixture 传 imdecode 结果需先翻成 RGB(BGR→RGB)。
 
     - HoughCircles 动态定圆(数量/位置随 invest-env 变)。
     - **两段判态(2026-08-16 修正)**:
@@ -130,20 +141,20 @@ def classify_node_row(row_bgr: np.ndarray, templates: dict[str, HuLike]) -> list
       由上层 OCR 标签定,见 cw_observation.read_node_sequence)。
     - 未来圆 hu_dist > HU_DIST_UNRECOGNIZED → 未识别(上层触发采集 hook,如新节点类型)。
     """
-    gray = cv2.cvtColor(row_bgr, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(row_rgb, cv2.COLOR_RGB2GRAY)
     circles = detect_node_circles(gray)
     slots: list[NodeSlot] = []
     # 先定位当前槽(高饱和 + 高亮);找不到 → 退化为旧 HSV 逐槽判(保守)
     cur_idx = -1
     for i, (cx, cy, _r) in enumerate(circles):
-        if _circle_state(row_bgr, cx, cy) == 'current':
+        if _circle_state(row_rgb, cx, cy) == 'current':
             cur_idx = i
             break
     for i, (cx, cy, _r) in enumerate(circles):
         if cur_idx >= 0:
             state = 'current' if i == cur_idx else ('past' if i < cur_idx else 'upcoming')
         else:
-            state = _circle_state(row_bgr, cx, cy)   # 无当前锚(罕见)→ 旧单特征兜底
+            state = _circle_state(row_rgb, cx, cy)   # 无当前锚(罕见)→ 旧单特征兜底
         node_type: str | None = None
         hu_dist: float | None = None
         if state == 'upcoming' and templates:
