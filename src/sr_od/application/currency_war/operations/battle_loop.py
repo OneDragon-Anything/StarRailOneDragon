@@ -90,8 +90,11 @@ class CurrencyWarRunLoop(SrOperation):
         self._rounds_done: int = 0
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
-        # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 待接)
-        cw_telemetry.start_run()
+        # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
+        # difficulty:ctx.cw_selected_difficulty(StartCurrencyWarMatch 难度确认屏读存;此时**尚未**被
+        # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
+        _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
+        cw_telemetry.start_run(difficulty=_diff_for_telemetry)
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
@@ -179,6 +182,10 @@ class CurrencyWarRunLoop(SrOperation):
                                       comp_tag=_comp_tag, node_type='boss' if _is_boss else '普通战斗')
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
+            # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
+            # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
+            # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
+            cw_telemetry.record_outcome(_obs)
             log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type)
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
@@ -452,6 +459,15 @@ class CurrencyWarRunLoop(SrOperation):
                 self.ctx.cw_match.strategy.on_match_end(
                     self.ctx.cw_match.session, self._cw_config, _outcome)
                 self._allocator_update(_outcome)
+                # 遥测写端(review 半接线修复,2026-08-16):runs.jsonl 生产侧此前无写入方。
+                # result:plane>=3 = win(通关),否则 loss(死在 P3 内);gold 轨迹由 recorder
+                # 内存累积自动带。B4 的 outcome 真值同源。
+                cw_telemetry.record_run_summary(
+                    result='win' if _outcome.won else 'loss',
+                    plane_reached=_outcome.final_plane,
+                    rounds_survived=_outcome.final_round,
+                    final_hp=_outcome.final_hp,
+                    notes='auto')
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 
