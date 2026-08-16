@@ -318,6 +318,22 @@ class PrepDirector(SrOperation):
         session = match.session
         from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
+        # ⚠️ 特效消化等待(用户 2026-08-16 实证):上一步动作(drag 上场/买卡合成)会触发羁绊
+        # 特效/升星 overlay(盛会之星/圣杯/银狼升级等)遮挡画面 —— heavy 观察(SIFT/OCR)在特效
+        # 帧读 = 污染。环入口先截一帧探「备战标识」,miss(被特效遮)→ 等 1s 重试,最多 3 次
+        # 让特效播完再观察(非交互 overlay 播完即走;交互型由下方 event_overlay 检测 bail)。
+        # 探针 best-effort(截图/识别异常不阻塞 —— 离线 mock 测试无真画面)。
+        for _try in range(3):
+            try:
+                _probe = getattr(self, 'last_screenshot', None) or self.screenshot()
+                if self.round_by_find_area(_probe, SHOP_SCREEN_NAME, '备战标识-购买经验',
+                                           crop_first=False).is_success:
+                    break
+                log.info('[cw][director] 环入口画面被特效/overlay 遮(备战标识 miss)→ 等 1s 消化(try %d)',
+                         _try + 1)
+                time.sleep(1.0)
+            except Exception:   # noqa: BLE001  离线/无画面环境直接放行
+                break
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')

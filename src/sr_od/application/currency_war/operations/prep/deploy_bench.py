@@ -135,7 +135,9 @@ class DeployBench(SrOperation):
         self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
 
-        time.sleep(0.5)
+        # ⚠️ 拖完整队等待(用户 2026-08-16 实证):末次 drag 的羁绊特效/升星 overlay(盛会之星/
+        # 圣杯/银狼升级)可能仍在播 → 后续读(heavy state/SIFT/equip)被遮挡污染。等 1.5s 稳定。
+        time.sleep(1.5)
         log.info('[cw-deploy] 拖完')
 
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
@@ -331,6 +333,11 @@ class DeployBench(SrOperation):
                     _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
                     if _gone is not None:
                         del _match.bench_slot_map[_gone]
+                # ⚠️ 拖后特效等待(用户 2026-08-16 实证):拖上场会触发羁绊特效/升星 overlay
+                # (盛会之星/圣杯/银狼升级等)遮挡画面 —— 紧跟的下个 drag/CV 验槽/SIFT 读全被
+                # 污染。每个成功 drag 后等 1.2s 让特效播完/overlay 稳定(下轮 loop/director
+                # 的事件 overlay 检测再接管真正的交互型 overlay)。
+                time.sleep(1.2)
                 _fb = ' (fallback)' if (pref == 'front') != (_row_cn == '前') else ''
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
                          f' (CV 验源槽变)')
