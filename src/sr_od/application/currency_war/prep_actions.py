@@ -313,7 +313,9 @@ class PrepActionExecutor:
             self._ctx.controller.mouse_move(center)   # bug#1 缓解
             self._ctx.controller.click(center)
             clicked += 1
-            time.sleep(1.2)
+            # 光标 parking(审计 R5):点球后光标停在奖励区内,同区域 HoughCircles 重读会被
+            # 光标遮邻球 → 误判「球数未减」中断。park 后再读。
+            self._op.park_cursor(before_wait=1.2, after_wait=0.1)
             screen = self._op.screenshot()
             after = read_reward_spheres(self._ctx, screen)
             if len(after) < before:
@@ -510,7 +512,8 @@ class PrepActionExecutor:
                 screen, SCREEN_NAME, '按钮-商店', success_wait=1.5)
             if not r.is_success:
                 return False, '找不到按钮-商店'
-            time.sleep(0.5)
+            # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
+            self._op.park_cursor(before_wait=0.5, after_wait=0.1)
             ok = self._op.round_by_find_area(
                 self._op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success
             return ok, f'开商店 {"✓" if ok else "收起未出现"}'
@@ -518,7 +521,7 @@ class PrepActionExecutor:
             return True, '商店已关'
         self._op.round_by_find_and_click_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-        time.sleep(0.5)
+        self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3:验证「收起消失」前 park
         still = self._op.round_by_find_area(
             self._op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success
         return (not still), f'关商店 {"✓" if not still else "收起仍在"}'

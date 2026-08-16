@@ -337,4 +337,7 @@ class BuyShopCards(SrOperation):
             for _ in range(4):
                 self.ctx.controller.click(level_btn)
                 time.sleep(0.3)
+        # 光标 parking(审计 R1c):本函数点击密集(购买经验×10+,距等级区 18px),收尾不 park
+        # 则污染**跨 op** 的下一读(Director heavy observe read_game_state)。
+        self.park_cursor(after_wait=0.1)
         return True

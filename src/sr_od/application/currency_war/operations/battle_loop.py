@@ -415,6 +415,7 @@ class CurrencyWarRunLoop(SrOperation):
                     log.info('[cw-loop] 结算屏停留 %s 轮(点击未生效)→ 长按 (960,898) 兜底推进',
                              self._settle_stay)
                     self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT, press_time=0.5)
+                    self.park_cursor(after_wait=0.1)
                     self._settle_stay = 0
                 return self.round_wait(wait=2)
             return self.round_wait(wait=2)
@@ -426,6 +427,9 @@ class CurrencyWarRunLoop(SrOperation):
             # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
             if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
+                # 光标 parking(审计 R6):点击点正落在「下一页」文本框内,多页结算每页按钮同带
+                # → 光标压当页按钮文字 → OCR miss → unknown streak 停机。点完 park。
+                self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=2)
 
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。

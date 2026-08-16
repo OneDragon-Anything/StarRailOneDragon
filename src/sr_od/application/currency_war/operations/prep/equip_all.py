@@ -177,6 +177,10 @@ class EquipAll(SrOperation):
         time.sleep(0.2)
         self.ctx.controller.drag_to(start=start, end=target, duration=1.5, hold_time=0.5)
         time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        # 光标 parking(审计 R4):drag 终点=目标 avatar,光标停其上 → Director heavy observe 的
+        # read_deployed_chars SIFT 同 rect 读被遮。park 后再验穿截图(diff 裁剪区在 avatar 下方,
+        # park 不影响 diff)。UID 黑块 = 中立区。
+        self.park_cursor(after_wait=0.1)
         post = self.screenshot()
         vy = self.BELOW_ICON_Y if verify_y is None else verify_y
         diff = _below_icon_diff(cur, post, target.x, vy, self.BX_HALF, self.BY_HALF)
