@@ -402,16 +402,12 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
-        # 1f. **失败结算页**(M41 实锤 2026-08-16,历史首达 P3 后 HP 归零):「挑战结束」大标 +
-        #     「X-Y 战斗」+ 点击空白加速(无继续挑战按钮)。此前未建档 → loop 未识别返回 None →
-        #     app 层 AttributeError。建档:货币战争-结算-失败(id_mark=标识-挑战结束,lcs 0.9)。
-        #     ⚠️ 双保险(M43 二次咬人教训):近形文案「挑战结束/失败/成功」两两 LCS=0.5,lcs 单靠
-        #     不住(yml 旧值/漂移都会复活)——本分支加结构判据「无继续挑战按钮」(真失败结算页没有,
-        #     挑战成功屏恒有)→ 成功屏永不会被 1f 吞(其归 3 分支处理)。
-        #     ⚠️ M44 三次咬人(2026-08-16 20:34):P2-1 轮败屏 = 「挑战结束 + 前往结算」(直接带局终
-        #     前进按钮,无「点击空白加速」)——1f 点空白无效循环。**分支内先查 3b 前进按钮词**,有则
-        #     点 SETTLEMENT_NEXT(与 3b 同语义:结算翻页回大厅收局),无才点空白加速。
-        if (self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success
+        # 1f. **失败结算页**(战败即时结算:挑战结束大标 + 挑战进度掉血,无「按钮-继续挑战」——
+        #     首领胜利屏也有「挑战结束」但无「挑战进度」+有继续挑战,组合 id_mark 天然区分;M44 前三连咬
+        #     皆单锚撞车,组合归位)。两步序贯出口(用户实证):先「点击空白加速」→ 后「前往结算」按钮。
+        #     分支内先查按钮词(有则点 SETTLEMENT_NEXT),无则点空白加速——两步都推进。
+        if (self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战进度', crop_first=False).is_success
+                and self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success
                 and not self.round_by_find_area(
                     screen, '货币战争-结算', '按钮-继续挑战', crop_first=False).is_success):
             for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
