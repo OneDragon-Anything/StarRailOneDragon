@@ -144,12 +144,19 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list
     gray = cv2.cvtColor(row_rgb, cv2.COLOR_RGB2GRAY)
     circles = detect_node_circles(gray)
     slots: list[NodeSlot] = []
-    # 先定位当前槽(高饱和 + 高亮);找不到 → 退化为旧 HSV 逐槽判(保守)
+    # 定位当前槽:取**全场饱和峰**(S 最大且满足 current 门)而非首个命中 —— review P2:光标
+    # 悬停会把 past 提亮成伪 current,首中即锚会锚左移(左侧变暗图标被划成 upcoming 污染 Hu)。
+    # 真当前槽 = 高饱和高亮(节点的彩色描边),全场唯一显著峰;取 S 峰值更稳。
     cur_idx = -1
+    _best_s = -1.0
     for i, (cx, cy, _r) in enumerate(circles):
-        if _circle_state(row_rgb, cx, cy) == 'current':
+        hsv = cv2.cvtColor(row_rgb[max(0, cy - _SAMPLE_R):cy + _SAMPLE_R,
+                                   max(0, cx - _SAMPLE_R):cx + _SAMPLE_R], cv2.COLOR_RGB2HSV)
+        s = float(hsv[:, :, 1].mean())
+        v = float(hsv[:, :, 2].mean())
+        if s >= STATE_S_UPCOMING and v > STATE_V_CURRENT and s > _best_s:
+            _best_s = s
             cur_idx = i
-            break
     for i, (cx, cy, _r) in enumerate(circles):
         if cur_idx >= 0:
             state = 'current' if i == cur_idx else ('past' if i < cur_idx else 'upcoming')

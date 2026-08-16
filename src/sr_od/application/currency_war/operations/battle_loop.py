@@ -398,8 +398,9 @@ class CurrencyWarRunLoop(SrOperation):
         #     (投资策略给,类补给箱占席)开启后弹四选一星徽。旧处理「点X保守关」(M33 只见过
         #     误开)升级为选卡:OCR 四卡名 → 选与 board 阵营匹配的(板上已有阵营优先,星徽
         #     阵营计数+1);无匹配 → fallback 卡1。选完弹窗自关回备战、槽腾空、星徽入 owned。
-        if (self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success
-                and self.round_by_ocr(screen, '请选择1个', lcs_percent=0.9).is_success):
+        #     判据(review P2 加固):id_mark 命中即接管 —— 提示词 OCR miss 时也进 handler
+        #     (fallback 卡1),**不放行到备战分支**(弹窗盖备战 → 误派 PrepDirector ping-pong)。
+        if self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success:
             self._handle_star_tome_pick(screen)
             return self.round_wait(wait=2)
 
