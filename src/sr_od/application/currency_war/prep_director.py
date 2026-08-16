@@ -164,10 +164,13 @@ class PrepDirector(SrOperation):
         obs.box_overlay_open = self.round_by_find_area(
             screen, '货币战争-备战-武装箱选择', '标识-请选择', crop_first=False).is_success
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
+        # star_tome(星徽秘典四选一)2026-08-16 补(review P2:纵深防御 —— loop 0i 判据 miss 时
+        # 误派本环,穿模观察/动作失败搅动;加清单 → 即刻 bail 交回外环 0i 接管)。
         for _scr, _area, _tag in (
             ('货币战争-盛会之星', '标识-盛会之星', 'megastar'),
             ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
+            ('货币战争-星徽秘典弹窗', '标识-星徽秘典', 'star_tome'),
         ):
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
                 obs.event_overlay = _tag

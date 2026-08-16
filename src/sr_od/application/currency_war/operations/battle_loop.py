@@ -181,9 +181,13 @@ class CurrencyWarRunLoop(SrOperation):
             cards.sort(key=lambda c: c[1])
             pick_x = 660   # fallback 卡1
             pick_name = '(fallback卡1)'
+            # 匹配用 LCS(review P3:卡名艺术字形变 → 精确 in 静默失配恒 fallback;0.8 容字变形)
+            from one_dragon.utils import str_utils
             for faction, x in cards:
-                if faction in board and board[faction] > 0:
-                    pick_x, pick_name = x, faction
+                hit = next((b for b, n in board.items()
+                            if n > 0 and str_utils.find_by_lcs(b, faction, percent=0.8)), None)
+                if hit is not None:
+                    pick_x, pick_name = x, hit
                     break
             self.ctx.controller.click(Point(pick_x, 300))
             log.info('[cw-loop] 星徽秘典四选一: 候选=%s → 选 %s @(%s,300)',
