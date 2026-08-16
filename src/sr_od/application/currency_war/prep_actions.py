@@ -65,6 +65,16 @@ class OpenBox(PrepAction):
 
 
 @dataclass
+class OpenTome(PrepAction):
+    """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
+
+    2026-08-16 M45 建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
+    选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
+    """
+    slot: int | None = None
+
+
+@dataclass
 class PickBoxCard(PrepAction):
     """武装箱 4 选 1 点卡。card_idx=None → 执行器内嵌默认选卡(v7 M-3:P1 住执行器,P5 上移策略)。"""
     card_idx: int | None = None
@@ -251,6 +261,9 @@ class PrepActionExecutor:
         elif isinstance(action, OpenBox):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'OpenBox slot={action.slot} 越界(1-{len(self._bench_pts)})'
+        elif isinstance(action, OpenTome):
+            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
+                return f'OpenTome slot={action.slot} 越界(1-{len(self._bench_pts)})'
         elif isinstance(action, PickBoxCard):
             if action.card_idx is not None and not (1 <= action.card_idx <= 4):
                 return f'PickBoxCard card_idx={action.card_idx} 越界(1-4)'
@@ -264,6 +277,8 @@ class PrepActionExecutor:
             return self._click_spheres(action)
         if isinstance(action, OpenBox):
             return self._open_box(action)
+        if isinstance(action, OpenTome):
+            return self._open_tome(action)
         if isinstance(action, PickBoxCard):
             return self._pick_box_card(action)
         if isinstance(action, SellBench):
@@ -352,6 +367,36 @@ class PrepActionExecutor:
             return False, f'武装箱 overlay 未弹(槽{slot} 点击落空?)'
         log.info(f'[cw][box] 开箱槽{slot} → overlay 弹出 ✓')
         return True, f'开箱槽{slot}'
+
+    def _open_tome(self, action: OpenTome) -> tuple[bool, str]:
+        """开秘密典籍:点槽两次(选中→开启)→ 验星徽四选一弹窗(标识-星徽秘典)。
+
+        点两次间隔 ~1s(第一次选中边框高亮,第二次弹窗);弹窗后 loop 0i 接管选卡
+        (本动作不选 —— 选卡是策略决策,板上阵营匹配在 0i handler)。
+        """
+        from sr_od.application.currency_war.cw_identity_obs import read_tomes
+        screen = self._op.screenshot()
+        tomes = read_tomes(self._ctx, screen)
+        if not tomes:
+            return False, '无秘密典籍'
+        picked = tomes[0]
+        if action.slot is not None:
+            matched = next((t for t in tomes if t[0] == action.slot), None)
+            if matched is None:
+                return False, f'槽{action.slot} 无典籍(实读 {tomes})'
+            picked = matched
+        slot, center = picked
+        self._ctx.controller.mouse_move(center)   # bug#1 缓解
+        self._ctx.controller.click(center)        # 第一次:选中
+        time.sleep(1.0)
+        self._ctx.controller.click(center)        # 第二次:开启
+        time.sleep(1.5)
+        overlay = self._op.screenshot()
+        if not self._op.round_by_find_area(
+                overlay, '货币战争-星徽秘典弹窗', '标识-星徽秘典').is_success:
+            return False, f'星徽四选一未弹(槽{slot} 点两次落空?)'
+        log.info(f'[cw][tome] 开典籍槽{slot} → 星徽四选一弹出 ✓(选卡交 loop 0i)')
+        return True, f'开典籍槽{slot}'
 
     def _pick_box_card(self, action: PickBoxCard) -> tuple[bool, str]:
         """选卡:OCR 卡名行 → (card_idx 指定 | 执行器默认:key_equips 命中 → 材料通用性 → 第1张)→ 点卡验关。"""

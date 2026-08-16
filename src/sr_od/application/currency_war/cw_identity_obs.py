@@ -290,6 +290,25 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
 _SUPPLY_BOX_TM_THR: float = 0.6
 _supply_box_gray: MatLike | None = None
 _supply_box_loaded: bool = False
+# 秘密典籍(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」给的道具,红金典籍 icon+
+# 「开启」,占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(loop 0i 接管)。
+# 分离度实测:典籍 vs 补给箱互 TM 0.481(阈值 0.6 下互不误认);同读法同槽位模型。
+_tome_gray: MatLike | None = None
+_tome_loaded: bool = False
+
+
+def _get_tome_gray() -> MatLike | None:
+    """加载秘密典籍模板灰度图(模块级缓存;``assets/template/cw_supply/秘密典籍.png`` 缺 → None)。
+
+    ⚠️ 换模板文件需重启 server(module 级缓存;与节点模板/yml 同型坑)。
+    """
+    global _tome_gray, _tome_loaded
+    if not _tome_loaded:
+        _tome_loaded = True
+        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'cw_supply' / '秘密典籍.png'
+        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
+        _tome_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _tome_gray
 
 
 def _get_supply_box_gray() -> MatLike | None:
@@ -328,6 +347,33 @@ def find_supply_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tu
 def read_supply_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
     """备战栏补给箱(``备战栏-1..9``)→ ``[(slot_idx, 开启 center)]``(开箱 op 用;2026-08-14 首见机制)。"""
     return find_supply_boxes(screen, _ctx_slots(ctx, '备战栏', 9))
+
+
+def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
+    """纯 CV 核心:槽位 rect 内 TM 匹配秘密典籍 → ``[(slot_idx, 槽 center)]``(点开启用)。
+
+    与 ``find_supply_boxes`` 同法(灰度 TM + 0.6 阈值);互分离度 0.481 实测互不误认。
+    典籍点两次(选中→开启)→ 星徽四选一弹窗(loop 0i 接管选卡)。
+    """
+    tm = _get_tome_gray()
+    if tm is None:
+        return []
+    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+    out: list[tuple[int, Point]] = []
+    for idx, rect in slots:
+        crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
+        if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+            continue
+        r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
+        _, mx, _, _ = cv2.minMaxLoc(r)
+        if mx >= _SUPPLY_BOX_TM_THR:
+            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+    return out
+
+
+def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
+    """备战栏秘密典籍(``备战栏-1..9``)→ ``[(slot_idx, center)]``(点两次开启 → 星徽四选一)。"""
+    return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
 # ===== 奖励球识别(奖励节点清关后 区域-奖励 面板;2026-08-14 live 建档) =====

@@ -52,6 +52,9 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
 )
+from sr_od.application.currency_war.cw_identity_obs import (
+    read_tomes as cw_identity_obs_read_tomes,
+)
 from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
@@ -93,6 +96,7 @@ class PrepObservation:
     deployed_chars: list[BenchChar] = field(default_factory=list)
     spheres: list = field(default_factory=list)       # read_reward_spheres [(color, Point, r)]
     boxes: list = field(default_factory=list)         # read_supply_boxes [(slot, Point)]
+    tomes: list = field(default_factory=list)         # read_tomes [(slot, Point)] 秘密典籍(2026-08-16)
     free_bench_slots: int = 0           # 9 − 占用(角色+箱都占席;CV 每步现读)
     deploy_vacancy: int = 0             # deploy_cap − deployed_count(heavy 刷新)
     shop_open: bool = False             # 锚点「按钮-收起」可见(每步现读)
@@ -156,9 +160,10 @@ class PrepDirector(SrOperation):
         obs = PrepObservation()
         if not self._bench_pts:
             self._bench_pts = row_area_centers(self.ctx, '备战栏')
-        # 轻:球/箱/overlay/占用(每步现读)
+        # 轻:球/箱/典籍/overlay/占用(每步现读)
         obs.spheres = read_reward_spheres(self.ctx, screen)
         obs.boxes = read_supply_boxes(self.ctx, screen)
+        obs.tomes = cw_identity_obs_read_tomes(self.ctx, screen)
         obs.shop_open = self.round_by_find_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
         obs.box_overlay_open = self.round_by_find_area(

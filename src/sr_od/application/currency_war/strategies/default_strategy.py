@@ -46,6 +46,7 @@ from sr_od.application.currency_war.prep_actions import (
     EnsureShopOpen,
     LevelUp,
     OpenBox,
+    OpenTome,
     PickBoxCard,
     RunBuyPhase,
     RunDeploy,
@@ -224,6 +225,8 @@ class DefaultCwStrategy(CwStrategy):
         """
         if obs.box_overlay_open:
             return PickBoxCard(card_idx=None)   # 执行器默认选卡(P1 住执行器;P5 上移策略)
+        if getattr(obs, 'tomes', None):
+            return OpenTome()                   # 开典籍即腾席+触发星徽四选一(2026-08-16;选卡 loop 0i)
         if obs.boxes:
             return OpenBox()                     # 开箱即腾席 + 得装备
         if obs.spheres and obs.free_bench_slots > 0:
