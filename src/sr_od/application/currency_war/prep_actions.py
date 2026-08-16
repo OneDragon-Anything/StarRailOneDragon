@@ -31,6 +31,7 @@ from sr_od.application.currency_war.cw_obs_core import (
     _ocr,
     area_center,
 )
+from sr_od.application.currency_war.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -139,11 +140,14 @@ class RunEquip(PrepAction):
 
 # 动作全集白名单(F3 membership 校验,review M-4;新动作加入全集时同步此处)
 PREP_ACTION_TYPES: tuple = (
-    DeferSpheres, BailToOuter, ClickSpheres, OpenBox, PickBoxCard,
+    DeferSpheres, BailToOuter, ClickSpheres, OpenBox, OpenTome, PickBoxCard,
     SellBench, SellDeployed, DeployMove, LevelUp,
     EnsureShopOpen, EnsureShopClosed, StartBattle,
     RunBuyPhase, RunDeploy, RunEquip,
 )
+# ⚠️ r15 review P0:OpenTome 曾遗漏于此(fc888bc1 加动作时漏登记)——validate 拒「未知动作
+# 类型」→ OpenTome 从未真正执行(M55 414 次全是 F3 拒绝非执行失败)。教训:**新增 PrepAction
+# 必须同步登记本白名单**(F3 校验是最后防线,登记是入口门)。
 
 
 def action_key(action: PrepAction) -> str:
@@ -530,6 +534,13 @@ class PrepActionExecutor:
             return False, 'level 基线读不到(OCR 漏读),拒绝盲点'
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
         for _ in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
+            # r15 review P1:循环内金检查——旧版 12 连点无金门,策略侧金前置滞后一环时
+            # (如 P2 急救态 _saving_for_level 仍攒金但 plan 已发 LevelUp),gold 63→9
+            # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价(4)即停(防排干买牌本金)。
+            gold_now = read_gold(self._ctx, self._op.screenshot())
+            if gold_now is not None and gold_now < 4:
+                log.info('[cw][levelup] gold %s < 单击价 → 停点(保买牌本金)', gold_now)
+                break
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
             # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,

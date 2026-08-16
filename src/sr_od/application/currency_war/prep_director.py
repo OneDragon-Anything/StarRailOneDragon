@@ -489,6 +489,10 @@ class PrepDirector(SrOperation):
                 self._blocked.add(key)
             if isinstance(action, ClickSpheres):
                 match.session.defer_count = max(match.session.defer_count, 2)
+            if isinstance(action, OpenTome):
+                # r15 review P0-②:defer 门对 OpenTome 曾是死码(defer 只由 DeferSpheres/
+                # ClickSpheres 置位)——失败置 defer 让策略侧门(规则 2)真正生效。
+                match.session.defer_count = max(match.session.defer_count, 2)
             log.warning(f'[cw!][director] {key} 恢复(无弹层)后仍连败 → 本环屏蔽(策略须换路)')
             self._fail_counts[key] = 0   # 屏蔽后拒绝走 stall 路径,计数归零防重复触发
             return None
