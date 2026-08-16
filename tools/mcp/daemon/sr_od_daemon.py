@@ -115,11 +115,17 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
             if (PROJECT_ROOT / '.env').is_file():
                 cmd.extend(['--env-file', '.env'])
             cmd.extend(['python', '-m', 'sr_od.backend.entry.server', '--port', str(port)])
+            # src-layout + [tool.uv] package=false：`-m` 解析 sr_od 包必须 src 在 sys.path。
+            # 显式注入绝对路径 PYTHONPATH，不再依赖 .env（.env 含 PYTHONPATH 会被 DSH 的
+            # 启动环境校验拒绝，导致从本项目目录启动 dsh headless/CLI 直接失败）。
+            spawn_env = os.environ.copy()
+            spawn_env['PYTHONPATH'] = str(PROJECT_ROOT / 'src')
             # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
             with open(log_path, 'w', encoding='utf-8') as log_file:
                 process = subprocess.Popen(
                     cmd,
                     cwd=str(PROJECT_ROOT),
+                    env=spawn_env,
                     stdout=log_file,
                     stderr=subprocess.STDOUT,
                 )
