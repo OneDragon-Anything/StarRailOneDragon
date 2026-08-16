@@ -7826,7 +7826,7 @@
     - 1098
     - 272
     text: 挑战结束
-    lcs_percent: 0.5
+    lcs_percent: 0.9
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
