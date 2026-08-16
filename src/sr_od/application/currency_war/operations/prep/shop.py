@@ -159,6 +159,14 @@ class BuyShopCards(SrOperation):
         # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
         # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
         if match is not None and match.session.last_hp is not None:
+            # 观察冲突审计 #7(2026-08-16):「结算→下回合 prep 不变」是本文件自述契约 → prep 读与
+            # 结算真值不等 = 双源分歧事件,留证(兼测 prep read_hp 毒化率与结算屏误读,双向有用);
+            # 裁决仍采新(结算屏是权威源,契约本身允许 prep 读噪声)。
+            if hp_value != match.session.last_hp and hp_value < HP_MAX:
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict('hp', match.session.last_hp, hp_value, None,
+                             verdict='采新-结算真值覆盖(prep读≠结算,留证测毒化率)',
+                             source='prep_read_hp_vs_settlement')
             log.info(f'[cw] hp 用结算屏真值 {match.session.last_hp}(prep read_hp={hp_value} 不可靠,覆盖)')
             hp_value = match.session.last_hp
         _tgt_state = read_game_state(self.ctx, self.screenshot())

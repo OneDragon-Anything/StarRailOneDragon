@@ -405,26 +405,19 @@ class DeployBench(SrOperation):
         旧 star(SIFT star 恒1)」注释过期 —— read_star 已接(commit 672aa838,identify_slots L159 读实机金星)。
         用户:假设 star 识别对(read_star 实机 > simulate 推算;且 simulate _merge 只看 bench,3合1 是全场
         deployed+bench+买)。read_star 1星验过,2星逻辑同(数金星)。
+
+        2026-08-16(观察冲突审计 P0 #12):改调公共 ``cw_reconcile.reconcile_tracking`` ——
+        旧实现直接覆盖无空读守卫(M14 实锤的过渡帧双空读会污染 tracking;守卫此前只在
+        director 版),同语义两处强弱不一是 bug 温床;统一后另接 obs_conflict 证据链。
         """
         if templates is None:
             return
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
-        _old_bench = _match.session.tracked_bench_chars
-        _old_dep = _match.session.tracked_deployed
         scr = self.screenshot()   # fresh post-deploy
         real_bench = read_bench_chars(self.ctx, scr, templates)
         real_deployed = read_deployed_chars(self.ctx, scr, templates)
-        # pre-log:纠漂前旧 tracking char_id(直证漂移:旧 vs 真实不一致 = 漂了被纠正)
-        log.info(f'[cw-deploy] tracking 纠漂前(D-12 pre):bench={[bc.char_id for bc in _old_bench]} '
-                 f'deployed={[bc.char_id for bc in _old_dep]}')
-
-        # identify_slots 已带 read_star 实机 star(real_*.bc.star);直接用,不再用旧 tracking star 覆盖
-        # (用户 2026-08-12:假设 star 识别对 —— read_star 实机观测 > simulate 推算;且绕过 simulate _merge
-        # 只看 bench 的局限 —— 3合1 是全场 deployed+bench+买)。read_star 1星验过(commit 672aa838),2星逻辑同。
-        _match.session.tracked_bench_chars = list(real_bench)
-        _match.session.tracked_deployed = list(real_deployed)
-        log.info(f'[cw-deploy] tracking 纠漂后(D-12 post,star=read_star 实机):'
-                 f'bench={[(bc.char_id, bc.star) for bc in real_bench]} '
-                 f'deployed={[(bc.char_id, bc.star) for bc in real_deployed]}')
+        from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
+        reconcile_tracking(_match.session, real_bench, real_deployed, scr,
+                           source='deploy_bench')

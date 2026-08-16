@@ -189,7 +189,7 @@ class PrepDirector(SrOperation):
             if templates is not None:
                 obs.bench_chars = read_bench_chars(self.ctx, screen, templates)
                 obs.deployed_chars = read_deployed_chars(self.ctx, screen, templates)
-                self._reconcile_tracking(obs.bench_chars, obs.deployed_chars)
+                self._reconcile_tracking(obs.bench_chars, obs.deployed_chars, screen)
             else:
                 obs.bench_chars = list(self._cached_bench)
                 obs.deployed_chars = list(self._cached_deployed)
@@ -212,6 +212,14 @@ class PrepDirector(SrOperation):
             if session is not None:
                 session.last_state = st
             cap = read_deploy_cap(self.ctx, screen)
+            # 观察冲突审计 #15(2026-08-16):cap Y ∈ {level, level+1}(D-53 域知识:无加成=level,
+            # 钻石/宝钻=level+1)→ Y 是 level 的**第三独立源**(空间远离 Lv/XP 区,不受同一光标
+            # 污染)——不符 = level 或 cap 有读错,留证(三源网是 M38 类毒化天敌)。
+            if cap is not None and not (st.level <= cap <= st.level + 1):
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict('deploy_cap_vs_level', st.level, cap, screen,
+                             verdict='留证-域知识不符(cap应在level..level+1)',
+                             source='paddle_cap')
             dep_n = read_deployed_count(self.ctx, screen)
             if cap is not None and dep_n is not None:
                 obs.deploy_vacancy = max(0, cap - dep_n)
@@ -233,35 +241,21 @@ class PrepDirector(SrOperation):
             obs.deploy_vacancy = self._cached_vacancy
         return obs
 
-    def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar]) -> None:
+    def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
+                            screen=None) -> None:
         """环入口对账(§3:read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
 
         继任宿主:deploy_bench._reconcile_tracking + battle_prep._verify_recognition(P1 挂载
         切换搬入;star 用 read_star 实机金星,同 D-12 语义)。read 失败(templates None)不动。
         漂移 = 需关注([cw!] + 截图存证,继承 _verify_recognition 语义,review L-1)。
+        2026-08-16(观察冲突审计 #11):改调公共 ``cw_reconcile.reconcile_tracking`` ——
+        与 deploy_bench 版同语义统一(空读守卫/漂移留证/obs_conflict JSONL 单一实现)。
         """
         session = self._session()
         if session is None:
             return
-        old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars]
-        old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed]
-        # 空读守卫(live M14 09:28 实锤:SIFT 动画/过渡帧读到 bench=[]+deployed=[],下一帧恢复 ——
-        # 空读直写 tracking 会污染决策(deploy/pivot 用错板);双空+前值非空 = 疑读失败,保旧值待重读)。
-        if not bench and not deployed and (old_b or old_d):
-            log.warning('[cw!][director] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
-            return
-        if bench is not None:
-            session.tracked_bench_chars = list(bench)
-        if deployed is not None:
-            session.tracked_deployed = list(deployed)
-        new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
-        new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
-        if old_b != new_b or old_d != new_d:
-            log.warning(f'[cw!][director] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
-                        f' deployed {old_d}→{new_d}')
-            import contextlib
-            with contextlib.suppress(Exception):   # 存证失败不阻塞
-                self.save_screenshot(prefix='recog_mismatch')
+        from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
+        reconcile_tracking(session, bench, deployed, screen, source='director')
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)

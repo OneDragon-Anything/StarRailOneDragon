@@ -686,8 +686,14 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.deployed = copy.deepcopy(_tracked_dep)
         _board_n = min(sum(state.board.values()), state.level)
         if len(state.deployed) > _board_n:
+            # 观察冲突审计 #10(2026-08-16):截断=双源分歧(tracked 多计于 board OCR,如 deploy SIFT 漂移)
+            # —— 静默截断毒化部署近似;留证供毒化率统计。
+            obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
+                         verdict='截断-tracked多计(board OCR 为准)', source='tracked_vs_board')
             state.deployed = state.deployed[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
         elif len(state.deployed) < _board_n:
+            obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
+                         verdict='补齐-tracked少计(rebuild 无身份)', source='tracked_vs_board')
             _rebuild = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
             state.deployed.extend(_rebuild[len(state.deployed):])   # 补无身份(tracked 少计,如 sell 漂移)
     else:
