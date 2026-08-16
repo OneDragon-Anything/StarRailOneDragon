@@ -495,12 +495,15 @@ class PrepDirector(SrOperation):
         return self.round_fail(status=f'强制出战失败({why}): {detail}')
 
     def _probe_node_type(self) -> None:
-        """[采集钩子·临时] 备战入场读节点行序列(read_node_sequence)→ log + 未识别图标采集。
+        """[观测] 备战入场读节点行序列(read_node_sequence)→ log。
 
         自 battle_prep._probe_node_type 搬入(P1 挂载切换,doc §7 L1)。read_node_sequence =
-        HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。未识别图标
-        (hu_dist > 阈值:扑满 / 新节点类型)→ 存图标离线分析加模板。扑满模板补上 +
-        session.node_types 生产接线后 → 删本方法 + run 调用(CLAUDE.md「两种钩子」)。"""
+        HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。
+        未识别图标采集钩子(版本前哨,保留):未来圆 hu_dist > 阈值 → 裁图标存盘。
+        ⚠️ 已知误报(2026-08-16 复盘):历史 61 张采集全是**宝箱(奖励)图标的小尺寸 Hu 漂移**
+        (idx 4/5/7 远处节点,非新类型)——HU_DIST_UNRECOGNIZED=2.8 对远距小图标过严,
+        修阈值/过滤属 reader 校准待办(与扑满无关:扑满=奖励图标已实证,M45 current:reward
+        直接命中)。真新类型出现时本钩子仍是唯一自动捕获渠道,保留。"""
         try:
             from sr_od.application.currency_war.cw_node_reader import (
                 HU_DIST_UNRECOGNIZED,
@@ -519,6 +522,21 @@ class PrepDirector(SrOperation):
             self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-director] nodeseq skip: {e}')
+
+    def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
+        """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。"""
+        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文)
+        x0, y0, x1, y1 = node_row_rect
+        row = screen[y0:y1, x0:x1]
+        for s in slots:
+            if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
+                continue
+            yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
+            xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
+            fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
+            if fn:
+                log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
     def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
         """[采集钩子·临时] 未来圆 Hu 无显著最近(hu_dist > 阈值)→ 裁图标存盘(同 battle_prep 逻辑)。"""
