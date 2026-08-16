@@ -580,7 +580,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     if _collapse_area is None:
         # r9 review:锚缺失时门被静默跳过(fail-open)→ M37/M38 误停机回归无告警(改名/删 area)。
         from one_dragon.utils import log_utils
-        log_utils.log('warning', '[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
+        log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None:
         from one_dragon.base.screen.screen_utils import find_area_in_screen
         # ⚠️ r7 review P0-A:旧 `is not True` 恒真(FindAreaResultEnum.TRUE.value 是 int 1,
@@ -603,8 +603,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
         if _mean < 60:
             if _mean >= 50:   # 灰带:可能是被特效/裁切偏移压暗的真卡
                 from one_dragon.utils import log_utils
-                log_utils.log('info',
-                              f'[cw!][read_shop_cards] 牌{i} 均值{_mean:.1f}(灰带 50-60,'
+                log_utils.log.info(f'[cw!][read_shop_cards] 牌{i} 均值{_mean:.1f}(灰带 50-60,'
                               f'疑暗卡被误判空槽,采到即闭环降阈值)')
             continue
         avatar_id, _inliers = (identify_character(crop, templates)
@@ -815,8 +814,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
                     _arr.tofile(str(_p))
             # 停机(方案 D):保备战画面,采集流程见上注释。sentinel 防"手停"混淆。
             from one_dragon.utils import log_utils
-            log_utils.log('info',
-                          '[cw-hook] 3星角色出现 → 停机采集:请将该角色拖到 前/后/备战各槽逐位置截图'
+            log_utils.log.info('[cw-hook] 3星角色出现 → 停机采集:请将该角色拖到 前/后/备战各槽逐位置截图'
                           '(归档 star3_slots/,补全位置 read_star=3 测试;完成后删本钩子)')
             _sentinel = Path('.debug/temp/currency_war/star3_capture.flag')
             _sentinel.parent.mkdir(parents=True, exist_ok=True)

@@ -396,9 +396,9 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
                 # 选中态光效不对称抬升箱分误拒(delta<0.15 时),日志可见即可闭环(margin/取消选中复读)。
                 if tome_score - box_score < 0.15:
                     from one_dragon.utils import log_utils
-                    log_utils.log('info',
-                                  f'[cw!][find_tomes] 槽{idx} 互斥拒绝(余量薄): '
-                                  f'tome={tome_score:.3f} box={box_score:.3f}(选中态真典疑?采到即修)')
+                    log_utils.log.info(
+                        f'[cw!][find_tomes] 槽{idx} 互斥拒绝(余量薄): '
+                        f'tome={tome_score:.3f} box={box_score:.3f}(选中态真典疑?采到即修)')
                 continue
         out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
     return out
