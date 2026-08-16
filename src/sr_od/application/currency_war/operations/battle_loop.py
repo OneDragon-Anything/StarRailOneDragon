@@ -402,6 +402,15 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
+        # 1f. **失败结算页**(M41 实锤 2026-08-16,历史首达 P3 后 HP 归零):「挑战结束」大标 +
+        #     「X-Y 战斗」+ 点击空白加速(无继续挑战按钮)。此前未建档 → loop 未识别返回 None →
+        #     app 层 AttributeError。建档:货币战争-结算-失败(id_mark=标识-挑战结束)。
+        #     处理:点空白加速推进 → 后续「前往结算」由 3b 接管 → 3c 回大厅收局(挑战失败流程)。
+        if self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success:
+            self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
+            self.park_cursor(after_wait=0.1)
+            return self.round_wait(wait=2)
+
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
                 or self.round_by_ocr(screen, '点击空白处继续').is_success):
