@@ -67,6 +67,7 @@ from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
     ClickSpheres,
     DeferSpheres,
+    OpenTome,
     PrepAction,
     PrepActionExecutor,
     StartBattle,
