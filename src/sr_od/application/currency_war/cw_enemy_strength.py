@@ -44,7 +44,7 @@ def calibrate_strength(replay_dir: str | Path, min_n: int = 2) -> StrengthTable:
     for o in rows:
         by_run[o['run_id']].append(o)
     losses: dict[tuple[int, int], list[int]] = defaultdict(list)
-    for rid, seq in by_run.items():
+    for seq in by_run.values():
         prev_hp = 100
         for o in sorted(seq, key=lambda x: (x['plane'], x['round_num'])):
             loss = max(0, prev_hp - o['hp_after'])
