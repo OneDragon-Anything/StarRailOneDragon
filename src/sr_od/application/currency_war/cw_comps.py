@@ -872,11 +872,27 @@ def boss_fit(comp: Comp, bosses: list[str]) -> float | None:
 
     无 boss 信息 / comp 无 countered_by_bosses → **None**(ADR-0107 动态权重剔除,治死重)。
     有 boss + comp 有 countered_by_bosses 但未命中 → 0.5(真实中性:boss 在但不利害此 comp,有数据)。
+
+    **ADR-0160(15 号 v0)接通**:①俗称归一(BOSS_NICKNAMES:剧目→造梦兄弟影业等,
+    修名字空间错位 —— 旧 countered_by_bosses 用俗称 vs plane_bosses 规范名,永命中不了,
+    task#73 遗留);②comp 无 countered_by_bosses 但有 mechanic_attributes → 退
+    ``cw_enemy_data.matchup`` 结构层(boss 机制 tag × comp 属性,可解释 reasons;
+    无此兜底时 20 boss 里 16 个无 countered 数据的 comp 恒 None)。
     """
-    if not bosses or not comp.countered_by_bosses:
+    if not bosses:
         return None
-    n_hit = sum(1 for b in comp.countered_by_bosses if b in bosses)
-    return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
+    from sr_od.application.currency_war.cw_enemy_data import (
+        matchup,
+        normalize_boss_name,
+    )
+    canon = [normalize_boss_name(b) for b in bosses]
+    if comp.countered_by_bosses:
+        n_hit = sum(1 for b in comp.countered_by_bosses if normalize_boss_name(b) in canon)
+        return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
+    if comp.mechanic_attributes:
+        score, _reasons = matchup(comp.mechanic_attributes, canon)
+        return score
+    return None
 
 
 def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
