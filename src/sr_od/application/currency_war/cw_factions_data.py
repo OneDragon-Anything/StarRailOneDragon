@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-
 # {羁绊名: 激活阈值序列(第 N 层需几人)}
 TRAIT_TIERS: dict[str, tuple[int, ...]] = {
     '仙舟': (3, 5, 7, 10),

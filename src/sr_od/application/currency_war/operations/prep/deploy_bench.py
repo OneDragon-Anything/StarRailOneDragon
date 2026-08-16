@@ -367,7 +367,7 @@ class DeployBench(SrOperation):
         if cached is not None:
             return cached
         base = Path(__file__).resolve().parents[6] / 'assets/template'
-        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza 烘焙;唯一库,旧手采库已删 2026-08-17)
+        portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza 烘焙;唯一库,旧手采库已删 2026-08-17)
         if not portrait_dir.is_dir():
             log.warning(f'[cw-deploy] 立绘库目录不存在 {portrait_dir},退非身份 deploy')
             return None

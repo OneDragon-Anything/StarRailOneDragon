@@ -6,7 +6,7 @@
 (纯函数 / op / recognizer)直接调 ``cw_log`` / ``cw_shot`` 记观测,**不需透传 logger/shot_dir 参数**
 (避免每加一个监测点都改签名链 read_equipped_below ← read_row_equipped ← recognizer)。
 
-日志格式(CLAUDE.md CW 节「日志格式标准」):
+日志格式:
 - ``[cw][op][step][target] fields`` —— 普通(常规识别/流程)
 - ``[cw!][op][step][target] fields`` —— 需关注(漏检 MISS / 顺序异常 / UNKNOWN 未建档画面);``attn=True``
 - ``| shot=<名>`` —— 配对截图(``cw_shot`` 返名),grep 漏检后看截图定位根因
@@ -69,7 +69,7 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
     """存截图(**内容哈希去重**,采集钩子用;best-effort 不抛)。
 
     视觉相同的只存一次,不同视觉(如不同星级 / 不同总伤害)各存一份。返文件名 / None(去重跳过或失败)。
-    **采集钩子**(CLAUDE.md 方案):标定尚无 reader 的字段(星级 / 结算总伤害 / difficulty / streak 语义)——
+    **采集钩子**:标定尚无 reader 的字段(星级 / 结算总伤害 / difficulty / streak 语义)——
     运行时采样本,离线设计 reader;**reader 设计好后直接删各调用处钩子**(临时代码,不留开关)。
     """
     try:

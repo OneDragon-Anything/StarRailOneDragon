@@ -309,7 +309,7 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
 
 
 def _char_synergies(name: str) -> set[str]:
-    """角色全部羁绊(阵营 + 流派 + 独立),查 ``CHARACTERS`` 注册表(CLAUDE.md 单一源)。
+    """角色全部羁绊(阵营 + 流派 + 独立),查 ``CHARACTERS`` 注册表(游戏数据单一真相源)。
 
     流派(持续伤害/击破/燃血/…)与阵营同为羁绊,``comp.factions`` 可含两者 → target 匹配须用全羁绊,
     非单 ``card.faction``(= ``Character.factions[0]``,丢流派)。流派主派 comp(DOT/击破/燃血)的流派

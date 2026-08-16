@@ -71,7 +71,7 @@ class BattlePrepCycle(SrOperation):
 
         对比 EquipAll 意图(拖了哪些装备到哪些槽):若拖了但 read 没读到 / 合成结果没识别 → 装备识别(reader)错。
         采:截图(详情面板关后,clean 帧)+ log ``[cw-hook][equip]``。仅 log read 结果(意图对比离线 / 人眼),
-        不阻塞备战。核完装备 reader 删本方法 + equip 调用(CLAUDE.md「两种钩子」)。
+        不阻塞备战。核完装备 reader 删本方法 + equip 调用(临时钩子,用完即删)。
         """
         try:
             from sr_od.application.currency_war.cw_equipment import (

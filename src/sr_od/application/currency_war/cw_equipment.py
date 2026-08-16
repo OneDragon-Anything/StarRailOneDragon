@@ -249,7 +249,7 @@ def read_equipped_below(
                    anomaly=f'icon数{len(kept)}>3(误检/邻槽串入)', equips=str([n for n, _, _ in kept]),
                    shot=cw_shot(screen[rect.y1:rect.y2, rect.x1:rect.x2], f'over3_slot{slot_idx}'))
         # MISS 日志:近命中(val 刚低于 threshold)可能是漏检(如 D-51 武器大师后排-6 val0.57<0.6)。
-        # ⚠️ 分级(CLAUDE.md [cw!]=需关注/[cw]=普通):清晰读(val_top≥0.7)的 near-MISS 是被拒候选
+        # ⚠️ 分级([cw!]=需关注/[cw]=普通,语义详 ``cw_observe``):清晰读(val_top≥0.7)的 near-MISS 是被拒候选
         # (噪声,非漏检)→ [cw] 普通;疑似漏检(val_top<0.7 / kept 空)→ [cw!] 需关注。
         # grep `\[cw!\].*MISS` 找真漏检;`\[cw\].*MISS` 看被拒候选(诊断)。miss_threshold 0.55 避低 val 噪声。
         if near:
@@ -320,9 +320,9 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     grays = getattr(ctx, 'cw_equip_tm_grays', None)
     if grays is None:
         base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
-        equip_dir = base / 'cw_equip_plaza'   # 混合库(plaza 官方 59 + 手工补充 96;生成器 gen_plaza_chars.py 产物)
+        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方 59 + 手工补充 96;生成器 gen_plaza_chars.py 产物)
         if not equip_dir.is_dir():
-            equip_dir = base / 'cw_equip'   # 回退:旧手工库
+            equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库
         if not equip_dir.is_dir():
             return None
         grays = load_equip_tm_grays(equip_dir)
@@ -342,9 +342,9 @@ def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tupl
     templates = getattr(ctx, 'cw_equip_sift_templates', None)
     if templates is None:
         base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
-        equip_dir = base / 'cw_equip_plaza'   # 混合库(同 ensure_equip_tm_templates)
+        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 ensure_equip_tm_templates)
         if not equip_dir.is_dir():
-            equip_dir = base / 'cw_equip'   # 回退:旧手工库
+            equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库
         if not equip_dir.is_dir():
             return None
         templates = load_equip_templates(equip_dir)

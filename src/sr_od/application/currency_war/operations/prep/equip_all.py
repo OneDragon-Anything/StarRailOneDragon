@@ -131,9 +131,9 @@ class EquipAll(SrOperation):
         if cached is not None:
             return cached
         base = Path(__file__).resolve().parents[6] / 'assets/template'
-        equip_dir = base / 'cw_equip_plaza'   # 混合库(plaza 官方+手工补充)
+        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方+手工补充)
         if not equip_dir.is_dir():
-            equip_dir = base / 'cw_equip'
+            equip_dir = base / 'currency_war' / 'equip_legacy'
         if not equip_dir.is_dir():
             log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
             return None
@@ -152,9 +152,9 @@ class EquipAll(SrOperation):
         if cached is not None:
             return cached
         base = Path(__file__).resolve().parents[6] / 'assets/template'
-        equip_dir = base / 'cw_equip_plaza'   # 混合库(同 _get_templates)
+        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 _get_templates)
         if not equip_dir.is_dir():
-            equip_dir = base / 'cw_equip'
+            equip_dir = base / 'currency_war' / 'equip_legacy'
         if not equip_dir.is_dir():
             log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
             return None
@@ -192,7 +192,7 @@ class EquipAll(SrOperation):
         if cached is not None:
             return cached
         base = Path(__file__).resolve().parents[6] / 'assets/template'
-        portrait_dir = base / 'character_cw_portrait_plaza'
+        portrait_dir = base / 'currency_war' / 'portrait_plaza'
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)

@@ -559,7 +559,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     """SIFT 商店 5 张牌肖像 → list[ShopCard](x + faction + name + cost)。
 
     每张牌:裁 screen_info ``商店牌-N``(**肖像区**,D-55 经 VLM 定位改自文字带)→ ``identify_character``
-    SIFT 对 ``character_cw_portrait_plaza`` 官方立绘库 → ``resolve_char_name`` 规范名;faction/cost 从 roster 派生。
+    SIFT 对 ``currency_war/portrait_plaza`` 官方立绘库 → ``resolve_char_name`` 规范名;faction/cost 从 roster 派生。
     未识别(低内点/歧义/不在 roster)→ name='' faction='?' cost=0(仍占位保 5 张,len 不变)。
 
     **D-55 由 OCR 改 SIFT**:OCR 牌名对开拓者(玩家自定义名,如 "Momojie")等读不到/匹配错;SIFT 看

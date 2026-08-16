@@ -480,7 +480,7 @@ def _best_improving_action(
     # 卡 lv6 cap→上不了更多单位→永 tier-2→p2 死。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。
     # _saving_for_level 抑制 off-target 买 + refresh(浪费金),留 target 买(建 comp)+ 攒金 → 够 cost 下轮 plan
     # level gate(优先执行)升级。**_saving_for_interest 仍由 _board_strong 门控**(息是经济,板强才囤,弱板不囤息)。
-    # → 攒息。CLAUDE.md「维持≥50 金,超出才花;tempo(HP 危险/战力断档/连胜中)破息」(战力断档=板弱,非仅板位不满)。
+    # → 攒息。「维持≥50 金,超出才花;tempo(HP 危险/战力断档/连胜中)破息」(战力断档=板弱,非仅板位不满)。
     _saving_for_interest = _should_save_for_interest(state, config, target_comp)
     _saving = _saving_for_level or _saving_for_interest
 
