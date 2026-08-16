@@ -176,6 +176,12 @@ class PrepDirector(SrOperation):
             ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
             ('货币战争-星徽秘典弹窗', '标识-星徽秘典', 'star_tome'),
+            # r10 review 根因修:投资策略/投资环境/补给 3 个 0e 屏(此前白名单缺 → 在策略屏上
+            # 卡片立绘被 HoughCircles 误检成假球 → ClickSpheres 连败 → 恢复原语盲点 (960,530)
+            # = 中卡描述区正中 → 误开星徽详情弹窗 → 15 streak 停机,M53 实锤)。
+            ('货币战争-投资策略', '标识-请选择投资策略', 'invest_strategy'),
+            ('货币战争-投资环境', '标识-投资环境', 'invest_env'),
+            ('货币战争-补给', '标识-补给阶段', 'supply'),
         ):
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
                 obs.event_overlay = _tag

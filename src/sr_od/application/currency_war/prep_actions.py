@@ -679,7 +679,12 @@ def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
         ctx.controller.mouse_move(Point(1501, 263))   # bug#1 缓解(live 实锤必须)
         ctx.controller.click(Point(1501, 263))
         return '点×关概率表', True
-    # 未知弹层兜底:点真空白
-    ctx.controller.mouse_move(Point(960, 530))   # bug#1 缓解
-    ctx.controller.click(Point(960, 530))
-    return '点空白兜底(960,530)', False
+    # 未知弹层兜底:点真空白 —— **仅当画面是备战屏**(r10 review 治本:M53 实锤在投资策略屏上
+    # 盲点 (960,530)=中卡描述区正中 → 误开星徽详情弹窗 → 15 streak 停机。固定点在未知屏上
+    # 永远是赌注;非备战屏不点,让环走 overlay 白名单 bail / 外环接管)。
+    if op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
+                             crop_first=False).is_success:
+        ctx.controller.mouse_move(Point(960, 530))   # bug#1 缓解
+        ctx.controller.click(Point(960, 530))
+        return '点空白兜底(960,530,已验备战屏)', False
+    return '非备战屏不点(避免盲点误触,交 overlay 检测/外环)', False
