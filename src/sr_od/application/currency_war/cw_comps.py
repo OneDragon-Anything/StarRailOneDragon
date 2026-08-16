@@ -361,6 +361,27 @@ COMP_LIBRARY: list[Comp] = [
     ),
     # ===== A 级(版本强势,V4.4 合集 76807134)=====
     Comp(
+        name="千冶减益", factions=["减益", "星核猎手"], core_chars=["千冶·刃", "瓦尔特", "卡芙卡", "缇宝", "符玄"],
+        form_tiers={"减益": 4, "星核猎手": 2}, strength="A", form_difficulty="easy", early_power="高",
+        # plaza 聚类 千冶·刃 n=29(减益26/星核19/燃血13/量子13/列车12):减益通用板大族,此前无承接
+        # (29 篇里最多 5 篇可被既有 comp 覆盖,评审🟢1 点名)。千冶·刃(2费) carry,瓦尔特 24/29+卡芙卡 16
+        # +缇宝 15+符玄 14 常驻减益辅助群;皮靴 30 断层第一(carry 吃鞋)+风暴潮 14+螺旋桨 13;
+        # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
+        key_equips=["反重力皮靴", "反重力皮靴", "火力风暴潮", "光速螺旋桨"],
+        mechanic_attributes=["减益叠加"], shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
+        transition_chars=["椒丘", "风堇", "开拓者·记忆"], typical_form_round=6,
+        flex_factions=["燃血", "量子同频", "列车同行", "治疗", "持续伤害"],
+        plaza_carry="千冶·刃",
+        level_plan={
+            4: LevelGoal("roll", target_cost=2, target_chars=["千冶·刃", "卡芙卡"]),
+            5: LevelGoal("level_up"),
+            6: LevelGoal("roll", target_cost=2, target_chars=["千冶·刃"], star_goals={"千冶·刃": 3}),
+            7: LevelGoal("roll", target_cost=2, target_chars=["千冶·刃", "缇宝"], star_goals={"千冶·刃": 3}),
+            8: LevelGoal("level_up"),
+            9: LevelGoal("roll", target_cost=5, target_chars=["瓦尔特", "符玄"]),
+        },
+    ),
+    Comp(
         name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光"],
         form_tiers={"欢愉": 3, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
