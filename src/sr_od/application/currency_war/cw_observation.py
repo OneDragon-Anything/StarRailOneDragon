@@ -514,6 +514,17 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     (buy 在 deploy 前,BattlePrepCycle: buy→deploy,故不依赖 deploy 才加载的缓存)。
     """
     templates = ensure_portrait_templates(ctx)
+    # 商店开态前置门(M37/M38 误停机根因,2026-08-16):read_shop_cards 无脑裁牌区 rect 做 SIFT,
+    # 商店收起/未展开帧(牌区=节点进度条+功能按钮)上全 miss → 采集钩子把「非商店帧的空读」
+    # 误判「真有未识别卡」→ flag → shop.py 停机(实测:存证截图 analyze_screen 命中备战屏非
+    # 商店开态,VLM 客观描述证实 y70-260 无卡)。门:商店开态锚「按钮-收起」(text area,框架
+    # find_area_in_screen OCR+LCS)不命中 → 返空列表(「没有牌」≠「未识别」,不写 flag)。
+    _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
+    _collapse_area = next((a for a in _si.area_list if a.area_name == '按钮-收起'), None) if _si else None
+    if _collapse_area is not None:
+        from one_dragon.base.screen.screen_utils import find_area_in_screen
+        if find_area_in_screen(ctx, screen, _collapse_area).value is not True:
+            return []
     cards: list[ShopCard] = []
     for i in range(1, 6):
         rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}', SHOP_SCREEN_NAME)
