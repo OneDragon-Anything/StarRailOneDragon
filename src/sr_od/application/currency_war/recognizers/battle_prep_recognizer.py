@@ -21,10 +21,10 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 库缺失→三字段 None。装备经 ``read_row_equipped`` 读 below-avatar icon,按 slot 注入 BenchChar.equips
 (备战席无 below icon→equips 恒 [])。
 
-⚠️ **可靠性待实测**:立绘库 ``character_cw_portrait`` 实际识别效果从未实测(理论上比脸库可靠:域匹配 +
-含服装,变体分开采),产出可能是部分命中 / 漏 / 误。消费方据该字段时知其 SIFT 来源 + 待实测(见
-``currency_war_char_id`` docstring);**未实测前不据该字段做硬决策**(旧 docstring「不产角色」即此顾虑,
-现改为产出但标注,供智能体交叉验证而非盲信)。
+⚠️ **可靠性标注**:立绘库 ``character_cw_portrait_plaza``(官方 plaza 烘焙)实测可用 —— D-22(2026-08-09,
+手采库时代)有角色槽 6/6 命中空槽不误;切 plaza 库时 A/B 对拍持平(14 vs 15,一致 13);2026-08-16
+M34 live(EquipAll 身份)通过。消费方据该字段时仍知其 SIFT 来源(非 OCR),供智能体交叉验证而非盲信
+(证据链见 ``currency_war_char_id`` docstring)。
 """
 from __future__ import annotations
 

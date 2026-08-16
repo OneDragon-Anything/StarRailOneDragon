@@ -47,8 +47,8 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
     """tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
 
     buy 时 ``read_shop_cards`` OCR 的规范名(T#92 验证可靠)持久化,跨轮 seed bench →
-    plan / char_quality / comp core check 知 bot 自有角色。**SIFT 立绘识别现已可行**(71 CW
-    立绘库,D-8/D-10/D-12 验证)—— deploy op 后用 SIFT 真实身份纠 tracking 漂(deploy_bench
+    plan / char_quality / comp core check 知 bot 自有角色。**SIFT 立绘识别现已可行**(plaza
+    官方立绘库,D-8/D-10/D-12 验证)—— deploy op 后用 SIFT 真实身份纠 tracking 漂(deploy_bench
     ``_reconcile_tracking``,D-12);buy 期 bench 仍用 OCR 名跟踪(buy 改变 bench,SIFT 单帧跟不上)。
     """
     from sr_od.application.currency_war.cw_chars import get_char

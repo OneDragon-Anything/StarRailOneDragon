@@ -42,6 +42,17 @@ HEADERS = {
 
 TRAILBLAZER_NAME = {"8009": "开拓者·欢愉", "8007": "开拓者·记忆"}
 
+# 费用档底色(BGR,imdecode 采样空间;烘焙合成用,与现库已烘底色逐像素一致)。
+# 来源:2026-08-17 冻结自旧手采库 character_cw_portrait 角块中位数(原 gen_templates 运行时采样;
+# 该库已删,plaza 库转唯一库)。显示 RGB:1灰#6C6E78/2绿#488278/3蓝#59709E/4紫#8F6DEE/5金#C09B5D。
+COST_BG: dict[int, tuple[int, int, int]] = {
+    1: (120, 110, 108),
+    2: (120, 130, 72),
+    3: (158, 112, 89),
+    4: (238, 109, 143),
+    5: (93, 155, 192),
+}
+
 
 def fetch_config() -> dict:
     """直连 plaza config API(免登录公开;header 缺 retcode!=0)。"""
@@ -180,7 +191,7 @@ def gen_templates(roles: list) -> None:
     """产物3:官方立绘 SIFT 模板库(<规范名>/raw.png)。
 
     big_icon(RGBA 透明底 512x376)→ 烘焙成合成图:
-    - 背景色 = 角色费用档色(灰/绿/蓝/紫/金,取值自旧手采库角块中位数,见模块 docstring);
+    - 背景色 = 角色费用档色(灰/绿/蓝/紫/金,常量见 ``COST_BG``,来源见其注释);
     - alpha>=128 掩码下 SIFT 只在角色本体提特征(生产 loader 同步支持 mask.png);
     - bbox 裁剪到角色本体。
     同步存 mask.png(alpha 二值)供 loader 用;源 RGBA 存 src.png 便重烘。
@@ -189,24 +200,6 @@ def gen_templates(roles: list) -> None:
     import numpy as np
 
     from sr_od.application.currency_war.cw_chars import CHARACTERS
-
-    tpl_dir = Path("assets/template/character_cw_portrait")
-    by_cost: dict = {}
-    for name, ch in CHARACTERS.items():
-        if (tpl_dir / name / "raw.png").exists():
-            by_cost.setdefault(ch.cost, []).append(name)
-    cost_bg = {}
-    for cost, names in sorted(by_cost.items()):
-        px = []
-        for nm in names[:8]:
-            img = cv2.imdecode(np.fromfile(str(tpl_dir / nm / "raw.png"), dtype=np.uint8), cv2.IMREAD_COLOR)
-            if img is None:
-                continue
-            h, w = img.shape[:2]
-            for corner in [img[4:16, 4:16], img[4:16, w - 16:w - 4],
-                           img[h - 16:h - 4, 4:16], img[h - 16:h - 4, w - 16:w - 4]]:
-                px.extend(corner.reshape(-1, 3).astype(np.int32).tolist())
-        cost_bg[cost] = np.median(np.array(px), axis=0).astype(np.uint8)
 
     TPL_DIR.mkdir(parents=True, exist_ok=True)
     n = 0
@@ -225,7 +218,7 @@ def gen_templates(roles: list) -> None:
         if rgba is None or rgba.ndim != 3 or rgba.shape[2] != 4:
             continue
         ch = CHARACTERS.get(cname)
-        bg = cost_bg.get(ch.cost if ch else 3, cost_bg.get(3))
+        bg = COST_BG.get(ch.cost if ch else 3, COST_BG.get(3))
         if bg is None:
             continue
         a = rgba[:, :, 3:4].astype(np.float32) / 255.0
@@ -240,7 +233,7 @@ def gen_templates(roles: list) -> None:
         cv2.imencode(".png", mask)[1].tofile(dst / "mask.png")
         cv2.imencode(".png", rgba)[1].tofile(dst / "src.png")
         n += 1
-    print(f"[tpl] 烘焙 {n} 角色(费用色 {sorted(cost_bg.keys())})")
+    print(f"[tpl] 烘焙 {n} 角色(费用色 {sorted(COST_BG.keys())})")
 
 
 def gen_equip_templates(cfg: dict) -> None:
@@ -257,9 +250,10 @@ def gen_equip_templates(cfg: dict) -> None:
     匹配证据(2026-08-15):装备追踪弹窗 GT 3/3(内点 43/18/33 vs 手工 28/16/24);
     owned 列实拍进阶件 plaza≥手工(多检出列车同行星徽);简易件 plaza 无数据靠手工。
     """
+    import shutil
+
     import cv2
     import numpy as np
-    import shutil
 
     manual_dir = REPO / "assets/template/cw_equip"
     EQUIP_TPL_DIR.mkdir(parents=True, exist_ok=True)

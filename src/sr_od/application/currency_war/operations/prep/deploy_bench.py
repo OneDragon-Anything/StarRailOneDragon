@@ -181,7 +181,7 @@ class DeployBench(SrOperation):
                 log.info(f'[cw-deploy] 板满 cap:deployed={_deployed} ≥ cap={_cap}(level,5.1.8)'
                          f' front空={len(front_empty)} back空={len(back_empty)} → bench 角色留 bench(不白拖)')
                 return
-        # D-8:bench 身份走 SIFT(read_bench_chars,71 CW 立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
+        # D-8:bench 身份走 SIFT(read_bench_chars,plaza 官方立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
         # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
         # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。
         _bench_id: dict[int, set[str]] = {}   # bench_idx(0-based) → 该角色羁绊集合
@@ -344,9 +344,7 @@ class DeployBench(SrOperation):
         if cached is not None:
             return cached
         base = Path(__file__).resolve().parents[6] / 'assets/template'
-        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza 烘焙)
-        if not portrait_dir.is_dir():
-            portrait_dir = base / 'character_cw_portrait'   # 回退:旧手采库
+        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza 烘焙;唯一库,旧手采库已删 2026-08-17)
         if not portrait_dir.is_dir():
             log.warning(f'[cw-deploy] 立绘库目录不存在 {portrait_dir},退非身份 deploy')
             return None

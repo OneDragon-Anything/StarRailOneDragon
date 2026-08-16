@@ -2,10 +2,13 @@
 
 """货币战争角色识别:SIFT 特征匹配模板库(纯 CV;库由调用方传 ``avatar_dir``,生产用立绘库)。
 
-**生产实际用的库(2026-08-09 核实,纠正旧 docstring)**:``deploy_bench._get_templates`` 加载
-``assets/template/character_cw_portrait``(**货币战争半身立绘库**,71 角色,中文规范名 key,含变体
-分开采:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999)。``resolve_char_name``
-对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。
+**生产实际用的库(2026-08-17 起)**:``deploy_bench._get_templates`` 等加载
+``assets/template/character_cw_portrait_plaza``(**官方立绘库**,plaza big_icon 烘焙,72 角色,
+中文规范名 key,含变体分开取:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999;
+``tools/cw/gen_plaza_chars.py`` 生成)。``resolve_char_name``
+对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。旧手采库 ``character_cw_portrait``
+(白框法)与其前身 ``currency_war_portrait``(R/B 存反,AGENTS.local 图像通道约定所记事故)已于
+2026-08-17 删除,plaza 库为唯一立绘库。
 
 ⚠️ **识别可靠性:实测初步可用(2026-08-09 D-22)**:离线对 r1-8 备战截图跑 SIFT(`test_portrait_recog.py`),
 立绘库对 **6/6 有角色槽全命中**(inliers 29-48),空槽 None(best=0-1 不误识别)→ **立绘库可靠,
@@ -130,7 +133,7 @@ if __name__ == '__main__':
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )
-    avatar_dir = repo / 'assets' / 'template' / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙;旧手采库 character_cw_portrait 留作回退)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
+    avatar_dir = repo / 'assets' / 'template' / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,唯一库)   # noqa: E501  # 与 deploy_bench 生产路径一致;旧 demo 用 character_avatar 脸库,2026-08-09 对齐)
     # 填充的备战槽(GT 坐标,峰高证实有角色)
     slots = {
         'bench-1': (382, 845, 495, 979),

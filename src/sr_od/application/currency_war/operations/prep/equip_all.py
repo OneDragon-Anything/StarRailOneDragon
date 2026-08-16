@@ -194,8 +194,6 @@ class EquipAll(SrOperation):
         base = Path(__file__).resolve().parents[6] / 'assets/template'
         portrait_dir = base / 'character_cw_portrait_plaza'
         if not portrait_dir.is_dir():
-            portrait_dir = base / 'character_cw_portrait'
-        if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)
         self.ctx.cw_portrait_templates = templates

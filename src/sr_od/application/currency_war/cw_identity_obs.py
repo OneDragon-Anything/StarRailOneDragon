@@ -4,7 +4,7 @@
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
 立绘 → 规范名(``read_deployed_chars`` / ``read_bench_chars``),用 ``currency_war_char_id`` 的
-SIFT 匹配器对模板库(生产用 ``character_cw_portrait`` 货币战争立绘库,见 ``currency_war_char_id`` docstring)。
+SIFT 匹配器对模板库(生产用 ``character_cw_portrait_plaza`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
 **与 bot 跟踪的关系**(设计):``GameState.deployed`` / ``bench`` 默认由 **bot 跟踪**(buy/deploy
 动作推演,``simulate`` 维护,见 ``cw_state``)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
@@ -49,7 +49,7 @@ from sr_od.context.sr_context import SrContext
 def resolve_char_name(avatar_id: str) -> str | None:
     """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(``CHARACTER_ROSTER`` 成员)。
 
-    **半身立绘库(``character_cw_portrait``)key = 中文规范名**(白框法采,含变体独立模板,如
+    **半身立绘库(``character_cw_portrait_plaza``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
     ``姬子·启行`` / ``千冶·刃``)→ ``identify_character`` 返回的 avatar_id 已是规范名 → 本函数
     第 54 行 ``avatar_id in CHARACTER_ROSTER`` 直接命中返。变体**可被 SIFT 区分**(D-54 验:
     deployed_p1r9 后排-2 姬子·启行 inliers=38,基础姬子 <7 连 top3 未进 —— 共脸对分数拉开,
@@ -60,7 +60,7 @@ def resolve_char_name(avatar_id: str) -> str | None:
     脸库误匹配)。
     """
     if avatar_id in CHARACTER_ROSTER:
-        return avatar_id   # CW 立绘库 key 是中文规范名(白框法采),直接返(非主游英文 id)
+        return avatar_id   # CW 立绘库 key 是中文规范名(plaza 烘焙),直接返(非主游英文 id)
     c = get_character_by_id(avatar_id)
     if c is None:
         return None
@@ -74,7 +74,7 @@ def resolve_char_name(avatar_id: str) -> str | None:
 
 
 def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
-    """确保 ctx 缓存 ``character_cw_portrait`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
+    """确保 ctx 缓存 ``character_cw_portrait_plaza`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
 
     首次 load 缓存 ``ctx.cw_portrait_templates``;后续读缓存。**shop SIFT**(D-55,``read_shop_cards``)
     + deployed/bench SIFT 身份识别的模板加载点(deploy_bench 也读写此缓存)。**幂等**:同值重 load 无害。
@@ -85,9 +85,7 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
         base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
-        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask)
-        if not portrait_dir.is_dir():
-            portrait_dir = base / 'character_cw_portrait'   # 回退:旧手采库
+        portrait_dir = base / 'character_cw_portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删 2026-08-17)
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)
