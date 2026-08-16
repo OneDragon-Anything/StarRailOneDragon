@@ -635,9 +635,12 @@ def _best_improving_action(
         _card_hits_target(c.name, c.faction, target_comp)
         for c in state.shop if state.gold >= card_cost(c)))
     # (3/3 局 survive plane1 但 comp count=1 不深 → plane2 秒死;策略子agent P3)。
+    # M36 实证修正(2026-08-16):旧语义「无 faction≥2 才 roll」在 列车 2/4(fp 0.5)时翻 False →
+    # 攒息期 refresh 恒被拦 → **P2 冻金**(M29-M36 金 15-23 攒着不转化的机制根因;半成型恰是最该
+    # D 的时点,plaza M5「P2 全 D 凑成型」)。新语义:committed 且未成型(form_progress<1)→ roll 解锁。
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
-                        and not any(state.board.get(f, 0) >= 2 for f in target_comp.factions))
+                        and form_progress(target_comp, state) < 1.0)
     # ADR-0149 骨架买兜底(评审R1/R2/Y1/Y2/Y3 修订后语义):
     # - 触发:金<20(1息档) **且** 候选最优为空/纯 Refresh(gold 花在赌刷新不如确定过渡件;Y3 不抢占
     #   eval 已选出的更优买,含 flex 配对买);
