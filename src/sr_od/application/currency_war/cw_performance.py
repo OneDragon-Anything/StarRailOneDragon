@@ -69,39 +69,22 @@ HP_LOSS_FULL: float = 30.0
 
 
 class PerformanceTracker:
-    """跨回合观测追踪器(双侧 OCR → 生存/击杀信号 → comp_viability 观测项)。"""
+    """跨回合观测追踪器(掉血 trend → maybe_pivot 信号;comp_viability 观测项)。
+
+    ⚖️ 敌方侧死链已删(2026-08-16 review D4-D7):_update_required_damage(no-op 体)/
+    set_required_damage+required_damage(无读者)/boss_kill_signal(无调用)/_last_hp_after
+    (只写)——r6 F3 敌方观测整条从未接通,且已被 **19 号伤害账本**(ADR-0166 cw_damage_ledger,
+    不等式括号法)取代:伤害基准/击杀能力的正式归宿是 ledger,本类只管自身侧掉血 trend。
+    RoundOutcome 敌方三字段(enemy_hp_after/damage_dealt/killed)保留 dataclass 定义
+    (telemetry OutcomeRecord 同 schema,等 L1 结算屏建档后灌值直喂 ledger)。
+    """
 
     def __init__(self) -> None:
         self.history: list[RoundOutcome] = []
-        self._last_hp_after: int | None = None
-        # 跨局伤害基准(用户:r6 F3 正面解法)—— difficulty → 杀死 boss 所需每回合伤害阈值
-        self.required_damage: dict[str, float] = {}
 
     def record(self, outcome: RoundOutcome) -> None:
         """存档(低置信 outcome 也存 history,但 recent_hp_loss_trend 跳过)。"""
         self.history.append(outcome)
-        self._last_hp_after = outcome.hp_after
-        self._update_required_damage(outcome)
-
-    def _update_required_damage(self, outcome: RoundOutcome) -> None:
-        """跨局累积伤害基准(用户 F3):boss 节点 killed=True → 记 damage_dealt 为该难度下界。
-
-        越跑越准 + 版本自适应(V4.5 改数值后重新累积)。damage_dealt 不可观测则跳过。
-        """
-        if outcome.node_type != "boss":
-            return
-        if not outcome.killed:
-            return
-        if outcome.damage_dealt is None:
-            return
-        # difficulty 从 outcome 取不到(未带字段)→ 调用方经 update_required_damage(diff, dmg) 显式喂
-        # 此处仅 boss 击杀的局内记录;跨局聚合由调用方按 difficulty 分桶(set_required_damage)。
-
-    def set_required_damage(self, difficulty: str, damage: float) -> None:
-        """显式喂某难度的击杀伤害基准(跨局聚合后)。"""
-        prev = self.required_damage.get(difficulty)
-        # 取下界(杀死 boss 的最小伤害阈值)
-        self.required_damage[difficulty] = damage if prev is None else min(prev, damage)
 
     def _qualifying(self, comp_tag: str | None) -> list[tuple[RoundOutcome, float]]:
         """筛选可进 trend 的 outcome + 权重(r6 F1 排除 fold / F4 comp_tag 降权)。
@@ -152,20 +135,6 @@ class PerformanceTracker:
         if trend is None:
             return False
         return trend > HP_LOSS_FULL * 0.6       # 掉血 > 18(归一化)算 streak(占位)
-
-    def boss_kill_signal(self, window: int = 4) -> float | None:
-        """boss 节点专用信号(跨位面):用 damage_dealt / killed(r6 F3)。boss 稀疏 → 短 window。
-
-        返回 0..1(达 required_damage / killed=True → 高);无可观测 → None(退通用 comp 质量先验)。
-        """
-        boss_obs = [o for o in self.history if o.node_type == "boss"][-window:]
-        if not boss_obs:
-            return None
-        # killed 可观测 → 击杀率作粗信号
-        killed_obs = [o for o in boss_obs if o.killed is not None]
-        if killed_obs:
-            return sum(1 for o in killed_obs if o.killed) / len(killed_obs)
-        return None
 
     def perf_for_comp(self, comp_tag: str, window: int = 6) -> float | None:
         """某 comp 的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
