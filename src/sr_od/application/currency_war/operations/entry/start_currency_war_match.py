@@ -136,6 +136,17 @@ class StartCurrencyWarMatch(SrOperation):
             _log.info('[cw-entry] 到达投资环境 → HandleInvestEnv(3 选 1 + 确认)')
             HandleInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
+        # 2b) 投资策略 3 选 1 → HandleInvestStrategy(M41 实机修复 2026-08-16:开局流程
+        #     「简报→投资环境→投资策略→备战」,本屏在推进窗口出现但无分支 → 干等超时 196s
+        #     [日志实锤:OCR 反复读到「请选择投资策略」+三卡名,advance 无命中]。handler
+        #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
+        if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
+            _log.info('[cw-entry] 到达投资策略屏 → HandleInvestStrategy(3 选 1 + 确认)')
+            from sr_od.application.currency_war.operations.handlers.handle_invest_strategy import (
+                HandleInvestStrategy,
+            )
+            HandleInvestStrategy(self.ctx).execute()
+            return self.round_wait(wait=2)
         # 3) 位面教程叠层 → 点空白
         if self.round_by_ocr(screen, '点击空白处继续').is_success:
             self.ctx.controller.click(StartCurrencyWarMatch.BLANK_CLICK.center)
