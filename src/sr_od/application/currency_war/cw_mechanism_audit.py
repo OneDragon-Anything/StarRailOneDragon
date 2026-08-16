@@ -66,7 +66,7 @@ def audit_refresh_cost(rows: list[dict]) -> ConstantAudit:
 
 def audit_mechanisms(replay_dir: str | Path) -> list[ConstantAudit]:
     """入口:decisions.jsonl → 各常数审计清单。"""
-    rows = [json.loads(l) for l in Path(replay_dir).joinpath('decisions.jsonl')
+    rows = [json.loads(line) for line in Path(replay_dir).joinpath('decisions.jsonl')
             .read_text(encoding='utf-8').splitlines()]
     return [audit_refresh_cost(rows)]
 
