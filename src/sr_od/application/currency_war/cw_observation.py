@@ -579,7 +579,11 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     _collapse_area = next((a for a in _si.area_list if a.area_name == '按钮-收起'), None) if _si else None
     if _collapse_area is not None:
         from one_dragon.base.screen.screen_utils import find_area_in_screen
-        if find_area_in_screen(ctx, screen, _collapse_area).value is not True:
+        # ⚠️ r7 review P0-A:旧 `is not True` 恒真(FindAreaResultEnum.TRUE.value 是 int 1,
+        # `1 is not True` 恒成立)→ 门无条件返空 → read_shop_cards 自 e7bbd711(08-16 11:49)
+        # 起**全局恒空**(decisions 实证:此前 1031/1031 行 shop 非空,之后 234/234 shop=[]
+        # 且 0 BuyCard)——M46 起所有「一张不买」的真根因。改枚举等值比较。
+        if find_area_in_screen(ctx, screen, _collapse_area).value != 1:
             return []
     cards: list[ShopCard] = []
     for i in range(1, 6):

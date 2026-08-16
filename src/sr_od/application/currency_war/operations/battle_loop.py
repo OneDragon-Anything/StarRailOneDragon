@@ -423,24 +423,11 @@ class CurrencyWarRunLoop(SrOperation):
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
-            # ⚠️ 过渡门(用户 2026-08-16 实证):场景切换时**备战先渲染、事件 overlay 后弹出**
-            # (M47 22:34:43 帧同屏并存实锤:备战+请选择投资策略)——本帧若见 overlay 迹象 →
-            # 等一帧让 overlay 完全弹出再动(否则 Director 在 overlay 半开时点球/买卖 = 乱操作)。
-            # ⚠️ 判据修正(r5 review P0):旧版全屏 OCR 词表含「补给阶段」——与备战屏**常驻按钮**
-            # 「返回补给阶段」LCS=4/4=100% 必然相撞(lcs 提多高都挡不住,ADR-0118 同根因),
-            # 含补给节点的对局备战 livelock(等 1.2s 循环)。改 **0e 系 id_mark 位置判**
-            # (find_area 限定标题 rect,ADR-0118 根治法):投资策略/投资环境/补给 overlay 各用
-            # 自己屏的 id_mark area;遭遇其二~五变体不在(真遭遇屏 0c 已接,半开帧无标题)。
-            _overlay_leak = any(
-                self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success
-                for _scr, _area in (
-                    ('货币战争-投资策略', '标识-请选择投资策略'),
-                    ('货币战争-投资环境', '标识-投资环境'),
-                    ('货币战争-补给', '标识-补给阶段'),
-                ))
-            if _overlay_leak:
-                log.info('[cw-loop] 备战帧见事件 overlay 迹象(过渡半开,id_mark 位置判)→ 等 1.2s 稳定')
-                return self.round_wait(wait=1.2)
+            # 过渡门说明(r7 review P0-B):0e 系分支(上方)先于本分支检查同截图同三元组(id_mark
+            # 位置判),OCR 按 id(image) 缓存 → 到达此处时 overlay 检查必全 False——旧「半开帧
+            # 等 1.2s」门为不可达死码,已删。半开帧保护现状:标题已渲染 → 0e 直接派 handler(即
+            # 机制);标题未渲染的半开帧无保护(已知边界,后续需要时按「备战 id_mark+overlay
+            # id_mark 同帧共存 → 有界 settle 等」重做,防 ADR-0118 复刻需以 round/plane 变更为键)。
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
             if self._max_rounds is not None and self._rounds_done >= self._max_rounds:
                 log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',

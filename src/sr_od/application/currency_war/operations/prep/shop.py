@@ -193,6 +193,10 @@ class BuyShopCards(SrOperation):
             self.park_cursor(after_wait=0.1)
             state = read_game_state(self.ctx, self.screenshot())
             state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
+            # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None(plan 路径 1700/1706 None 实证,
+            # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
+            if match is not None and match.session.last_node_type:
+                state.node_type = match.session.last_node_type
             # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏(同帧读 3/0/空;实锤 click-test
             # 买牌成功 gold≥1 但 reader 读 0,见 process_log)→ 读 0 时重读几帧取首个 >0(deterministic 同帧
             # 重读无意义,故重截图)。不根治(stylized 漏读),但把「读 0 不买」概率降到「连读 0 才认 0」。

@@ -173,6 +173,10 @@ class StrategySession:
     pending_deploys: list = field(default_factory=list)
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。
     last_hp: int | None = None
+    # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,plan 路径
+    # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
+    # shop 关态 heavy 读到时写此;shop.py 喂 plan 前拷入 —— 仿 last_hp 模式)。
+    last_node_type: str | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

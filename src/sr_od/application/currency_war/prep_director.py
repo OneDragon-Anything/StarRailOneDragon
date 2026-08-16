@@ -203,6 +203,10 @@ class PrepDirector(SrOperation):
                 obs.deployed_chars = list(self._cached_deployed)
             st = read_game_state(self.ctx, screen)
             session = self._session()
+            # r7 review P0-①:shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒 None,
+            # plan 路径 boss 判定全死码的根因);仿 last_hp 模式。
+            if session is not None and st.node_type:
+                session.last_node_type = st.node_type
             st.bench = list(obs.bench_chars or (session.tracked_bench_chars if session else []))
             obs.state = st
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
