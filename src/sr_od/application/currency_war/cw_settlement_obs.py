@@ -61,9 +61,9 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag/node_type 由调用方
     (loop,知当前节点 + ``session.target_comp``)传入 —— 结算屏本身不暴露这些。
 
-    ⚠️ P1.5 组件:本函数已就位 + 单测,但 ``battle_loop`` 的 on_round_end 接线(结算检测 → 调本函数 →
-    ``strategy.on_round_end``)留下局部署(避免杀当前验证 match);node_type 推断暂粗(默认普通战斗,
-    boss/elite 需节点追踪,后续 refine)。
+    ✅ 已接线(2026-08-07 起):battle_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
+    strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
+    node_type:结算屏含「首领」→ boss,否则普通战斗(粗档;boss/elite 细分待节点追踪 refine)。
     """
     from sr_od.application.currency_war.cw_performance import RoundOutcome
     ocr_texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(

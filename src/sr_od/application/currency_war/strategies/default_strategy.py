@@ -79,7 +79,7 @@ class DefaultCwStrategy(CwStrategy):
 
     def on_round_end(self, state: GameState, session: StrategySession, config,
                      obs: RoundOutcome) -> None:
-        """观测驱动:喂掉血/胜负 → ``session.performance``(默认实现非空,但 P1 无 caller,§11.7)。"""
+        """观测驱动:喂掉血/胜负 → ``session.performance``(✅ 已接线:loop 每轮胜结算调用,§11.7)。"""
         session.performance.record(obs)
         # 结算「连胜×N」前缀=方向 → session.last_streak(给下回合 economy C 杠杆:连胜保连胜/连败 fold)。
         session.last_streak = obs.streak

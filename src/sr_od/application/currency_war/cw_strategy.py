@@ -92,7 +92,7 @@ class CwStrategy(ABC):
     def on_round_end(self, state: GameState, session: StrategySession,
                      config: CurrencyWarConfig, obs: RoundOutcome) -> None:
         """每场战斗后(观测驱动)。默认 ``session.performance.record(obs)``。
-        ⚠️ P1 不被调用(框架不构造 RoundOutcome,观测回路属 P1.5)。"""
+        ✅ 已接线(2026-08-07 起):loop._record_round_outcome 每轮胜结算调用。"""
 
     @abstractmethod
     def on_match_end(self, session: StrategySession, config: CurrencyWarConfig,
