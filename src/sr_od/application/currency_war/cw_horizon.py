@@ -214,7 +214,6 @@ def _validate_emergence() -> dict:
     # 初始:t=0,金 10,lv1(开局),hp 100,板 0(散装)
     t, g, L, h, b = 0, 10, 1, 100, 0
     trace = []
-    streak = 0
     while t < TOTAL_NODES:
         p = sol.posture(t, g, L, h, b)
         trace.append({'t': t, 'plane': t // NODES_PER_PLANE + 1, 'node': t % NODES_PER_PLANE + 1,
