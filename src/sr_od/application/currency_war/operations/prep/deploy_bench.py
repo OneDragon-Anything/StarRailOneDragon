@@ -284,11 +284,27 @@ class DeployBench(SrOperation):
                 continue
             # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
             pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
-            # 前排保证(出战要求,5.1.6 补):pref=back 但前排完全空(无角色)→ 强制前排(back 放前排不
-            # 触发赋能,但出战硬要求前排有角色;优于前排空出战拒卡局)。第一个 back 填前排,后续正常后排。
+            # 前排保证(出战要求,5.1.6 补;2026-08-16 修正用户实锤):pref=back 但前排完全空(无角色)
+            # → 强制前排(出战硬要求前排有角色)。⚠️ 旧实现"当前队首 back 强转前排"错在**没看后续
+            # 队列**——M47 22:32 实锤:target 先行把三月七(back)排队首,而队列后面就有真理医生/
+            # 乱破(真 front),旧逻辑强转三月七去前排、真 front 也进前排 → back 角色错占前排位。
+            # 修正:前排全空时**先重排**(剩余 order 中 pref=front 角色提到当前位前),无 front
+            # 候选才强转当前 back 角色。
             if pref == 'back' and len(front_empty) == len(front):
+                _pos = order.index(bi)
+                _later_front = next(
+                    (j for j in order[_pos + 1:]
+                     if _bench_pos.get(j, 'back') == 'front'
+                     and _bench_cid.get(j) not in _deployed_cids),
+                    None)
+                if _later_front is not None:
+                    order.remove(_later_front)
+                    order.insert(_pos, _later_front)
+                    log.info(f'[cw-deploy] 前排保证(重排): 真front槽{_later_front + 1} 提前'
+                             f'(当前槽{bi + 1}为back不强转)')
+                    continue   # 重排后重处理当前位置(现在是真 front)
                 pref = 'front'
-                log.info(f'[cw-deploy] 前排保证:bench槽{bi+1}(pref=back)→ 强制前排(前排空,出战要求)')
+                log.info(f'[cw-deploy] 前排保证:bench槽{bi+1}(pref=back)→ 强制前排(前排空且队列无front候选)')
             if pref == 'front':
                 chosen, chosen_pts, fallback, fallback_pts = front_empty, front, back_empty, back
             else:
