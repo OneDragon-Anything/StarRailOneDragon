@@ -160,6 +160,38 @@ class CurrencyWarRunLoop(SrOperation):
         if _m is not None and getattr(_m.session, 'bail_reason_counts', None):
             _m.session.bail_reason_counts.pop(reason, None)
 
+    def _handle_star_tome_pick(self, screen) -> None:
+        """星徽秘典四选一(2026-08-16 建档):OCR 四卡名 → 选 board 阵营匹配卡,无匹配 fallback 卡1。
+
+        卡名 OCR 在卡头带(四个卡名 y≈277 行,卡 x 中心 ≈ 660/950/1240/1530);「XX星徽」名去
+        「星徽」后缀即阵营名。板上有该阵营 → 优先(星徽给该阵营计数,板上已有=边际价值高)。
+        实测点卡即选(无需确认按钮),弹窗自关。
+        """
+        try:
+            board: dict[str, int] = {}
+            if self.ctx.cw_match is not None and self.ctx.cw_match.session.last_state is not None:
+                board = dict(self.ctx.cw_match.session.last_state.board or {})
+            ocr = self.ctx.ocr_service.get_ocr_result_list(screen, crop_first=False)
+            cards: list[tuple[str, int]] = []   # (阵营名, x中心)
+            for o in ocr:
+                t = o.data.strip()
+                if t.endswith('星徽') and len(t) > 2:
+                    faction = t[:-2]
+                    cards.append((faction, o.x + o.w // 2))
+            cards.sort(key=lambda c: c[1])
+            pick_x = 660   # fallback 卡1
+            pick_name = '(fallback卡1)'
+            for faction, x in cards:
+                if faction in board and board[faction] > 0:
+                    pick_x, pick_name = x, faction
+                    break
+            self.ctx.controller.click(Point(pick_x, 300))
+            log.info('[cw-loop] 星徽秘典四选一: 候选=%s → 选 %s @(%s,300)',
+                     [c[0] for c in cards] or 'OCR未读到', pick_name, pick_x)
+        except Exception as e:   # noqa: BLE001  选卡失败不阻塞(下轮重试或停机钩子接)
+            log.warning('[cw-loop] 星徽秘典选卡异常(不阻塞): %s', e)
+            self.ctx.controller.click(Point(660, 300))
+
     def _record_round_outcome(self, screen) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
@@ -196,7 +228,7 @@ class CurrencyWarRunLoop(SrOperation):
 
         结算屏恒干净(无 shop 开/事件 overlay 干扰),比备�战节点行(仅 shop-closed 可见)可靠。
         逐轮采 → 配备�战节点行图标(位置 i ↔ 第 i+1 轮)得 位置→类型 映射,建图标模板。
-        采够(位面1 全轮类型齐)→ 删本方法 + loop 分支3 的调用(CLAUDE.md 临时钩子用完即删)。
+        采够(位面1 全轮类型齐)→ 删本方法 + loop 分支3 的调用(临时钩子,用完即删)。
         """
         try:
             from one_dragon.base.geometry.rectangle import Rect
@@ -229,7 +261,7 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)
 
         # [停机钩子·临时] 未完整建档节点 + 待排查节点 → 停机给 AI 按 od-dev-screen-onboarding 建档/排查。
-        # 建档/排查完删该 tuple 项。CLAUDE.md「两种钩子」方案 D。
+        # 建档/排查完删该 tuple 项。
         # - 祈愿:screen_info+handler 有但无完整 skill 建档(doc/fixture/id_mark 测缺)。巨星(盛会之星)已完整建档(2026-08-13)→ 移出 tuple,0b 接管。
         # - 投资环境已解除隔离(2026-08-15 M19 live:id_mark 已建 + HandleInvestEnv 经入口路径
         #   多局验证;本 session 修防御分支 AttributeError 后 0e 分支接管)→ 移出 tuple。
@@ -362,12 +394,14 @@ class CurrencyWarRunLoop(SrOperation):
             HandleWishTrial(self.ctx).execute()
             return self.round_wait(wait=2)
 
-        # 0i. 星徽秘典道具详情弹窗(挡全屏 → 15 streak 停机钩子,M33 实锤)→ 点右上 X 关回原画面。
-        #     「星徽秘典」= 使用类道具(开四选一星徽);详情弹窗疑似点击道具误开。只关不选
-        #     (使用该道具 = 四选一星徽决策,价值不明先保守关;后续要消费再建 handler)。
-        if self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success:
-            self.ctx.controller.click(Point(1867, 64))
-            return self.round_wait(wait=1.5)
+        # 0i. 星徽秘典四选一(2026-08-16 M45 完整建档,用户指导):备战席「秘密典籍」道具
+        #     (投资策略给,类补给箱占席)开启后弹四选一星徽。旧处理「点X保守关」(M33 只见过
+        #     误开)升级为选卡:OCR 四卡名 → 选与 board 阵营匹配的(板上已有阵营优先,星徽
+        #     阵营计数+1);无匹配 → fallback 卡1。选完弹窗自关回备战、槽腾空、星徽入 owned。
+        if (self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success
+                and self.round_by_ocr(screen, '请选择1个', lcs_percent=0.9).is_success):
+            self._handle_star_tome_pick(screen)
+            return self.round_wait(wait=2)
 
         # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,doc 15/ADR-0123;原 BattlePrepCycle
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
