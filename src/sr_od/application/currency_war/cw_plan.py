@@ -484,6 +484,20 @@ def _best_improving_action(
     _saving_for_interest = _should_save_for_interest(state, config, target_comp)
     _saving = _saving_for_level or _saving_for_interest
 
+    # 影子接缝(ADR-0156,06 号束优化):开关开 → 联合行动束优先(断点跳变/同名升星链的联合
+    # 价值在束内可见,贪心单动作边际天然看不见);None/异常 → 落回下方贪心(现状栈,零改)。
+    from sr_od.application.currency_war.cw_bundle import BUNDLE_SEAM_ACTIVE
+    if BUNDLE_SEAM_ACTIVE:
+        try:
+            from sr_od.application.currency_war.cw_bundle import bundle_select
+            _bundle = bundle_select(state, config, faction_priority, target_comp)
+            if _bundle:
+                log.info('[cw][bundle] 束选择:%s(交互项联合价值)',
+                         [getattr(getattr(a, 'card', None), 'name', '?') for a in _bundle])
+                return _bundle
+        except Exception as _be:   # noqa: BLE001  影子 best-effort:任何异常回退贪心
+            log.info(f'[cw][bundle] 影子跳过:{_be}')
+
     # 1) 买 + 上任组合(原子)
     # 同角色副本买入门(live M8 死钱实锤 + review H1 修正:游戏 3合1 = 全场合并(deployed+bench),
     # 旧 bench>=2 窗口从 shop 不可达 —— 第 1/2 张也被拦,计数永远起不来,已上阵单位锁死 1★)。
