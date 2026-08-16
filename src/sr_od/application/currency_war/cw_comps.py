@@ -1176,6 +1176,17 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             s *= 1.5
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
+        # B3(ADR-0172 线组合首口,提案 21 §1b-1「错线 commit」的治法):boss 克线从 0.1 权重
+        # 评分项升格为**开局先验冲击乘子**——matchup<0.5(克)开局即压,不会被过渡牌堆高骗过
+        # form_progress 阈值。乘子语义:克(0.0-0.4)→ ×0.6-0.85;中性(0.5)→ ×1.0;利(0.6+)→
+        # ×1.05-1.1(温和,防 W_BOSS 双计 —— 评分项仍在,本乘子是开局/无板面投入时的主导信号,
+        # 有板面投入时被 _board_alignment 稀释)。影子安全:boss_fit None → ×1.0(=现状)。
+        try:
+            _bf = boss_fit(comp, list(state.plane_bosses))
+            if _bf is not None:
+                s *= (0.7 + 0.6 * _bf)
+        except Exception:   # noqa: BLE001  影子失败安全
+            pass
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
     return [c for _s, c in scored[:top_n]]
