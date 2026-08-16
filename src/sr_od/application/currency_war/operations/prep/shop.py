@@ -21,6 +21,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_game_state,
     read_gold,
     read_hp,
+    read_shop_cards,
 )
 from sr_od.application.currency_war.cw_state import (
     BenchChar,
@@ -254,11 +255,21 @@ class BuyShopCards(SrOperation):
         # 未识别卡(SIFT miss:昔涟诗篇等非角色内容/立绘缺的角色)→ 停机留画面给 AI 建档。
         # read_shop_cards 的采集钩子已存整屏+flag;此处只做停机判定(方案 D:stop_running+保画面)。
         # 立绘缺(开拓者·欢愉/加拉赫)会持续触发——现场采到立绘原料后即不再触发,一石二鸟。
+        # M35 防抖(2026-08-16):全槽 unknown 但 Fate 角色全在库 → 判商店开态动画/settle 瞬时读失败
+        # (0.3s sleep 偶不够)——停机前重读 2 帧(各 1s),仍 unknown 才真停(真缺模板不会因重读消失)。
         if total_buy == 0 and any(not c.name for c in state.shop):
             _unk = [i + 1 for i, c in enumerate(state.shop) if not c.name]
-            log.info(f'[cw-shop][hook] 未购买且存在未识别卡(槽{_unk})→ 停机采集(昔涟诗篇/立绘缺?)')
-            self.ctx.run_context.stop_running()
-            return self.round_fail(f'停机采集:商店未识别卡 槽{_unk}(未购买)')
+            for _ in range(2):
+                time.sleep(1.0)
+                _reshop = read_shop_cards(self.ctx, self.screenshot())
+                _unk = [i + 1 for i, c in enumerate(_reshop) if not c.name]
+                if not _unk:
+                    log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
+                    break
+            if _unk and total_buy == 0:
+                log.info(f'[cw-shop][hook] 未购买且存在未识别卡(槽{_unk})→ 停机采集(昔涟诗篇/立绘缺?)')
+                self.ctx.run_context.stop_running()
+                return self.round_fail(f'停机采集:商店未识别卡 槽{_unk}(未购买)')
 
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
         deploy_moves = [a for a in actions if isinstance(a, DeployMove)]
