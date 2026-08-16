@@ -20,8 +20,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_factions import INTEREST_THRESHOLD
-from sr_od.application.currency_war.cw_shop_odds import POOL_COPIES_PER_CARD, refresh_prob
+from sr_od.application.currency_war.cw_shop_odds import (
+    refresh_prob,
+)
 from sr_od.application.currency_war.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
 # ===== 日程结构(先验;后续由 read_node_sequence 实测覆盖) =====
