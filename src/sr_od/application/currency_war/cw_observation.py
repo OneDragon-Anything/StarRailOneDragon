@@ -70,6 +70,7 @@ from sr_od.application.currency_war.cw_obs_core import (
     _ocr,
     area_center,  # noqa: F401 (re-export:importer 经 cw_observation.area_center 用)
 )
+from sr_od.application.currency_war.cw_observe import obs_conflict
 from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     parse_settlement_hp,
     read_round_outcome,
@@ -591,6 +592,8 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _xp_lv = _level_from_xp(state.xp_progress)
     if _xp_lv is not None and _xp_lv != state.level:
         log.warning(f'[cw!] level 修正:OCR/兜底读 {state.level},XP 分母反推 {_xp_lv}(以 XP 为准)')
+        obs_conflict('level', state.level, _xp_lv, screen, verdict='采新-XP分母反推',
+                     source='xp_denominator', plane=state.plane, round_num=state.round_num)
         state.level = _xp_lv
     # XP 分母独立确认读值(两个独立源一致 = 真值的强证据;M38 实证:连升 4 级 4→8 被跳变守卫
     # 永久锁死在 4,策略全程跑假 level,P2/P3 概率表/人口/level_plan 全错)。
@@ -604,6 +607,8 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         _last_lv = getattr(_match.session, 'last_level_obs', 0)
         if _last_lv and state.level < _last_lv:
             log.info(f'[cw] level 单调守卫:OCR 读 {state.level} < 上次 {_last_lv}(误读)→ 用 {_last_lv}')
+            obs_conflict('level', _last_lv, state.level, screen, verdict='保旧-单调守卫(下降强可疑)',
+                         source='ocr', plane=state.plane, round_num=state.round_num)
             state.level = _last_lv
         # 跳变守卫(live 2026-08-15 两局实锤):单次误读大数(如 XP「10/20」的 10 混入等级区)被
         # 单调守卫永久锁死 —— p1r9 经济 60 金「升到 lv10」(需 360 金)不可能。等级一轮最多升
@@ -613,7 +618,13 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         if _last_lv and state.level > _last_lv + 2 and not _xp_confirms:
             log.warning(
                 f'[cw!] level 跳变守卫:OCR 读 {state.level} > 上次 {_last_lv}+2(疑似 XP 数字混入) → 用 {_last_lv}(误读不锁死)')
+            obs_conflict('level', _last_lv, state.level, screen, verdict='保旧-跳变守卫(单源跳变拒,XP未确认)',
+                         source='ocr', plane=state.plane, round_num=state.round_num)
             state.level = _last_lv
+        elif _last_lv and state.level > _last_lv + 2 and _xp_confirms:
+            # 真跳变放行也留证(大跳变即使确认也值得事后抽查 —— M38 若当时有此证据,3 个位面前就能定位)
+            obs_conflict('level', _last_lv, state.level, screen, verdict='采新-XP确认真跳变放行',
+                         source='ocr+xp_denominator', plane=state.plane, round_num=state.round_num)
         _match.session.last_level_obs = state.level
     # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
     _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None

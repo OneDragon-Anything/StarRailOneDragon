@@ -82,3 +82,37 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
         return fp.name
     except Exception:  # noqa: BLE001  采集 best-effort,失败不阻塞识别/对局
         return None
+
+
+# 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
+# (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
+# 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
+_CONFLICT_JOURNAL = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
+
+
+def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
+                 verdict: str = '', **ctx) -> None:
+    """观察冲突 hook:追加 JSONL 证据行 + 去重截图。best-effort,失败不抛不阻塞。
+
+    :param field: 冲突字段(level/gold/hp/board...)
+    :param old: 上次观察值(session 持久)
+    :param new: 本次读值
+    :param screen: 冲突帧(传则存去重截图,文件名进证据行)
+    :param verdict: 仲裁结果描述(如 '保旧-单调守卫'/'采新-XP确认'/'待研')
+    :param ctx: 附加上下文(plane/round/source/note...)
+    """
+    import datetime
+    import json as _json
+    try:
+        shot = cw_shot_unique(screen, f'obs_conflict_{field}') if screen is not None else None
+        rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
+               'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
+        if shot:
+            rec['shot'] = shot
+        _CONFLICT_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
+        with _CONFLICT_JOURNAL.open('a', encoding='utf-8') as f:
+            f.write(_json.dumps(rec, ensure_ascii=False) + '\n')
+        cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
+               verdict=verdict, shot=shot)
+    except Exception:  # noqa: BLE001  hook best-effort
+        pass
