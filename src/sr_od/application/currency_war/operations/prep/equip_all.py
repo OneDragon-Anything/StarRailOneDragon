@@ -248,6 +248,23 @@ class EquipAll(SrOperation):
         _match = self.ctx.cw_match
         _tgt_comp = (_match.session.target_comp
                      if (_match is not None and _match.session is not None) else None)
+        # ⚖️ 过渡期不穿装备(用户 2026-08-16 指示):装备攥着给成型阵容核心(key_equips 大件);
+        # 过渡期(form_progress 低)小件乱穿 = 浪费 below-avatar 容量 + 错穿拆卸成本。
+        # 判据:target comp 存在且未成型 → 只穿 key_equips 命中件,无命中 = 全攒着(gen 兜底停用);
+        # comp=None / 已成型(form≥COMMIT_FRAC)→ 保留 gen 兜底(散件也该穿,凑战力)。
+        _form = 0.0
+        if _tgt_comp is not None and deployed:
+            from sr_od.application.currency_war.cw_comps import (
+                COMMIT_FRAC,
+                form_progress,
+            )
+            from sr_od.application.currency_war.cw_state import GameState
+            _st = (_match.session.last_state if _match is not None else None) or GameState()
+            _form = form_progress(_tgt_comp, _st)
+        _transition_hold = (_tgt_comp is not None and 0.0 < _form < COMMIT_FRAC)
+        if _transition_hold:
+            log.info('[cw-equip] 过渡期持有(form=%.2f < %.2f):非 key_equips 不穿(攒给成型核心)',
+                     _form, COMMIT_FRAC)
         if deployed:
             occupied_m7: dict[tuple[str, int], list[str]] = {}
             for row, prefix in (('front', '前排'), ('back', '后排')):
@@ -278,6 +295,13 @@ class EquipAll(SrOperation):
                     break
                 alloc = equip_allocation(_tgt_comp, deployed,
                                          [n for n, _ in wearable], occupied_m7)
+                if _transition_hold:
+                    # 过渡期:过滤掉 gen 兜底项(分配序列中非 key_equips 命中的),只穿命脉件
+                    _keys = set(_tgt_comp.key_equips) if _tgt_comp else set()
+                    alloc = [a for a in alloc if a[1] in _keys]
+                    if not alloc:
+                        log.info('[cw-equip] 过渡期无 key_equips 命中(全攒着)→ 停')
+                        break
                 if not alloc:
                     log.info('[cw-equip] 分配方案空(全满/无匹配)→ 停')
                     break

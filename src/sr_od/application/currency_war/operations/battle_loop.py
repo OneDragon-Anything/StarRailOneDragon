@@ -412,6 +412,16 @@ class CurrencyWarRunLoop(SrOperation):
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
+            # ⚠️ 过渡门(用户 2026-08-16 实证):场景切换时**备战先渲染、事件 overlay 后弹出**
+            # (M47 22:34:43 帧同屏并存实锤:备战+请选择投资策略)——本帧若见任何 overlay 迹象
+            # (0e 系事件屏标题词同帧出现)→ 等一帧让 overlay 完全弹出再动(否则 Director 在
+            # overlay 半开时点球/买卖 = 乱操作)。
+            _overlay_leak = any(
+                self.round_by_ocr(screen, _w, lcs_percent=0.9).is_success
+                for _w in ('请选择投资策略', '选择投资环境', '补给阶段', '遭遇其一'))
+            if _overlay_leak:
+                log.info('[cw-loop] 备战帧见事件 overlay 迹象(过渡半开)→ 等 1.2s 让 overlay 稳定')
+                return self.round_wait(wait=1.2)
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
             if self._max_rounds is not None and self._rounds_done >= self._max_rounds:
                 log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',
@@ -505,8 +515,12 @@ class CurrencyWarRunLoop(SrOperation):
                     self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT, press_time=0.5)
                     self.park_cursor(after_wait=0.1)
                     self._settle_stay = 0
-                return self.round_wait(wait=2)
-            return self.round_wait(wait=2)
+                # ⚠️ 场景切换过渡等待(用户 2026-08-16 实证):结算→下一场景时**备战先渲染、
+                # 事件 overlay(投资策略/遭遇等)后弹出**(M47 22:34:43 帧同屏并存实锤)——旧
+                # wait=2 时 loop 可能在 overlay 半开帧进备战分支动手(点球乱操作)。加到 3s
+                # + 备战分支过渡门(见分支1)双保险。
+                return self.round_wait(wait=3)
+            return self.round_wait(wait=3)
         self._settle_stay = 0   # 离开结算屏重置
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
