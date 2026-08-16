@@ -495,8 +495,11 @@ class CurrencyWarRunLoop(SrOperation):
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
+        # 兜底(M43-resume 修复 2026-08-16):所有分支不命中 → 停机钩子(streak 累计/保画面停机)。
+        # 此前钩子代码被 _allocator_update 插错位置卷进方法体(从未执行)→ loop 隐式返 None。
+        return self._handle_unknown_fallback()
 
-        # ===== B4(ADR-0170):终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
+    # ===== B4(ADR-0170):终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
     def _allocator_update(self, outcome: MatchOutcome) -> None:
         """终局 update:臂 = 终局 target_comp 名(adherence 近似 1;开局臂双列待 v1)。"""
         if self._allocator is None or self.ctx.cw_match is None:
@@ -515,9 +518,12 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:   # noqa: BLE001  影子期失败安全
             log.info(f'[cw-alloc] update 失败(跳过): {e}')
 
-    # 临时随机态停机钩子(CLAUDE.md 方案 D):持久未识别画面(新事件/词缀/boss overlay 等未建档随机态)
-        # → 存 sentinel + stop_running,保画面给 AI 当场建档(纯读画面不 click)。建档后删本钩子。
-        # 持久判定:连续 N 轮 fallback(过渡帧 1-2 轮内被上面分支接走 → 不累计,防误停)。        if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
+    def _handle_unknown_fallback(self) -> OperationRoundResult:
+        """临时随机态停机钩子(方案 D,M43-resume 修复 2026-08-16):loop 尾部兜底 ——
+        所有分支不命中(战斗特效帧 OCR 乱码/新未建档画面)→ streak 累计 → 保画面停机待建档。
+        曾被 _allocator_update 插入位置错误卷进方法体(从未执行)→ loop 隐式返 None(19:59 实锤)。
+        """
+        if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
             self._unknown_streak = getattr(self, '_unknown_streak', 0) + 1
         else:
             self._unknown_streak = 1
