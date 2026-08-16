@@ -195,10 +195,8 @@ class StrategySession:
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
-    memory: dict[str, Any] = field(default_factory=dict)       # 策略私有 scratch(核心领域实体走正规类型,不塞这)
-    # 进度镜像(跨步看趋势用;每回合框架刷新;P1 框架未填,策略暂勿依赖)
-    plane: int = 1
-    round_num: int = 1
+    # ⚖️ memory/plane/round_num/pending_deploys 已删(2026-08-16 review D1/D2/TOP4:0 读者;
+    # 进度真源 = session.last_state(每回合框架刷新);策略私有 scratch 无消费者)。
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;

@@ -292,10 +292,8 @@ class BuyShopCards(SrOperation):
                 return self.round_fail(f'停机采集:商店未识别卡 槽{_unk}(未购买)')
 
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
-        deploy_moves = [a for a in actions if isinstance(a, DeployMove)]
-        if match is not None:
-            match.session.pending_deploys = deploy_moves
-            log.info(f'[cw-shop] 存 {len(deploy_moves)} 个 DeployMove 到 session(pending_deploys)')
+        # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBench 实读
+        # last_state.board;只写不读 = 腐化名单)。留日志行(计划可见性)。
 
         # → 新占槽 = bought 卡落点(left-to-right = buy 顺序,bench 从左到右填)。**两帧同 shop-OPEN 状态**
         # 自修正:deployed 后 deploy_bench 删该 slot;空槽 drag bench-count 不降 → retry-stick skip)。

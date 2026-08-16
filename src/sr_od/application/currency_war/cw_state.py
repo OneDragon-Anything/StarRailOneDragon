@@ -58,16 +58,6 @@ class BenchChar:
 
 
 @dataclass
-class NodeInfo:
-    """位面节点序列中的一项(strategy/13 §13.2 node_path;)。
-
-    纯图标无文字 → 需视觉/CV 建图标模板(§13.9 待核);未接 OCR 时 node_path 为空。
-    """
-    type: str = ""                          # 节点类型:战斗/精英/boss/补给/遭遇/投资/奖励
-    status: str = "future"                  # "past"/"current"/"future"
-
-
-@dataclass
 class GameState:
     """一回合决策时的局面快照(由 OCR 填充 + bot 跟踪)。"""
     gold: int = 0
@@ -102,7 +92,8 @@ class GameState:
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
     bench_full_flag: bool | None = None
-    node_path: list[NodeInfo] = field(default_factory=list)   # 本位面节点序列(纯图标,需视觉;§13.9 待核)
+    # ⚖️ node_path + NodeInfo 已删(2026-08-16 review D3:0 写 0 读;节点序列实际由
+    # cw_node_reader.NodeSlot 承载,read_node_sequence 直连消费方)。
     match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
     shop_locked: bool = False                # 商店是否锁定
