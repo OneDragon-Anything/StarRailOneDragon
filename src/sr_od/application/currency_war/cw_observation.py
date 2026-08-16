@@ -592,6 +592,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     if _xp_lv is not None and _xp_lv != state.level:
         log.warning(f'[cw!] level 修正:OCR/兜底读 {state.level},XP 分母反推 {_xp_lv}(以 XP 为准)')
         state.level = _xp_lv
+    # XP 分母独立确认读值(两个独立源一致 = 真值的强证据;M38 实证:连升 4 级 4→8 被跳变守卫
+    # 永久锁死在 4,策略全程跑假 level,P2/P3 概率表/人口/level_plan 全错)。
+    _xp_confirms = _xp_lv is not None and _xp_lv == state.level
     # 单调守卫(level-robust,2026-08-09 自审 §4):等级局内**只升不降**(CW 无降级机制)。
     # read_level OCR 间歇误读(实测 r1 lv4→r2 lv5→r3 lv4 倒退;lv4 非 _expected_level 兜底[=5] → 是 OCR 把
     # 5/6 读成 4)→ level 字段不可信 → max_units/cap/economy 全跟着错。守卫:读出 < session 上次真值 = 误读,
@@ -605,7 +608,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         # 跳变守卫(live 2026-08-15 两局实锤):单次误读大数(如 XP「10/20」的 10 混入等级区)被
         # 单调守卫永久锁死 —— p1r9 经济 60 金「升到 lv10」(需 360 金)不可能。等级一轮最多升
         # 1-2 级(买经验每点一次 +1);跳 >+2 = reader 假阳 → 用上次真值 + [cw!] 留证。
-        if _last_lv and state.level > _last_lv + 2:
+        # ⚠️ XP 反推确认的值豁免(M38 2026-08-16 实证):XP 连点一波可真实连升 4 级(4→8),
+        # 「+2 上限」假设错;XP 分母独立推出同值 = 真跳变,直通(本守卫只拦纯 OCR 单源假阳)。
+        if _last_lv and state.level > _last_lv + 2 and not _xp_confirms:
             log.warning(
                 f'[cw!] level 跳变守卫:OCR 读 {state.level} > 上次 {_last_lv}+2(疑似 XP 数字混入) → 用 {_last_lv}(误读不锁死)')
             state.level = _last_lv
