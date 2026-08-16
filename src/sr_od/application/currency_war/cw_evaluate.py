@@ -191,6 +191,34 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     _se = _strategy_economy(state)
     if (_se.free_refresh_per_node or _se.free_refresh_burst or _se.refresh_surprise_every):
         cap = max(cap, 6)
+    # ⚖️ B2(ADR-0171 审判层消费端首口:3★/搜牌停手,M32「金 19-22 未转化」正缺此判决)。
+    # 影子安全:try/except 静默回退(判决不可用 → cap 原值); verdict amend/abandon → cap 压 0
+    # (搜牌窗该停 —— 线活但附着计划该改);判决 hold → 原值。证据 = 时间线掉队(p(t) 曲线)。
+    try:
+        from sr_od.application.currency_war.cw_comps import form_progress
+        from sr_od.application.currency_war.cw_line_tribunal import (
+            LineHypothesis,
+            timeline_lag_lr,
+            verdict,
+        )
+        from sr_od.application.currency_war.cw_progress_curves import (
+            expected_curve_for_carry,
+        )
+        if target_comp is not None and target_comp.plaza_carry:
+            curve = expected_curve_for_carry(target_comp.plaza_carry)
+            if curve is not None:
+                _t = (min(state.plane, 3) - 1) * 9 + min(state.round_num, 9)
+                h = LineHypothesis('roll_cap_chase', target_comp.name, 'star_chase',
+                                   checkpoints=[_t], deadline=_t + 4, expected=curve)
+                _fp = form_progress(target_comp, state)
+                lag = h.progress_lag(_t, _fp)
+                if lag > 0:
+                    h.add_evidence(_t, 'timeline_lag', f'{lag:.2f}', timeline_lag_lr(lag))
+                    v = verdict(h, _t, cost_abandon=18.0, cost_hold=6.0)
+                    if v.action != 'hold':
+                        cap = 0   # amend/abandon:搜牌窗停(线活也该改附着计划——不再烧金搜)
+    except Exception:   # noqa: BLE001  影子期失败安全:判决不可用 → 原 cap(=现状行为)
+        pass
     return cap
 
 
