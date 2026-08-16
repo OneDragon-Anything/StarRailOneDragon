@@ -602,10 +602,10 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             cost=(ch.cost if ch is not None else 0),
             star=1,
         ))
-    # [停机采集钩子·临时,采完删(用户 2026-08-15 指示)]商店非角色内容(昔涟诗篇等)SIFT 恒 miss
-    # → 未识别槽存证:整屏 cw_shot_unique(内容哈希去重)+ flag 文件;shop.py 买前查 flag,
-    # 「有未识别卡且本帧未购买」→ 停机留画面给 AI 建档(方案 D)。立绘缺(开拓者·欢愉/加拉赫)
-    # 同样触发——正好一石二鸟,现场采到立绘原料。
+    # [采集钩子·收窄 2026-08-17]商店卡 SIFT miss 采集:历史 600+ 张积压,消费端(shop.py 停机)
+    # 已删——采集目的已达成(立绘库 216 张覆盖 roster;VLM 抽检样本全为「SIFT miss 但 OCR 名可读」
+    # 的普通卡,非真未知内容)。收窄:**哈希去重首见才写 flag**(旧逻辑每帧重写 flag → 600+ 积压);
+    # 同内容不重写。真未知(新版本新卡)会以新哈希首见留证。
     _unknown = [c for c in cards if not c.name]
     if _unknown:
         try:
@@ -613,8 +613,9 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
 
             from sr_od.application.currency_war.cw_observe import cw_shot_unique
             _shot = cw_shot_unique(screen, 'shop_unknown_card')
-            _P('.debug/temp/currency_war/shop_unknown_card.flag').write_text(
-                f'{len(_unknown)}_unknown:{_shot or "dup"}', encoding='utf-8')
+            if _shot:   # 仅新内容(哈希首见)才写 flag
+                _P('.debug/temp/currency_war/shop_unknown_card.flag').write_text(
+                    f'{len(_unknown)}_unknown:{_shot}', encoding='utf-8')
         except Exception:   # noqa: BLE001  采集 best-effort
             pass
     return cards
