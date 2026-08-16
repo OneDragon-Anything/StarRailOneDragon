@@ -457,6 +457,16 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
+        # 1d. 星徽详情弹窗(2026-08-17 M53 停机建档:「XX星徽套组」标题 + 流派星徽类型 + 效果/
+        #     适配角色/合成公式面板;点球/装备操作误点开星徽图标的详情)。点右上 X 关回备战。
+        #     不用 ESC(bug#2:面板已关时 ESC 落备战弹中断挑战);X 是弹窗内坐标永远安全。
+        if (self.round_by_find_area(screen, '货币战争-星徽详情', '标识-流派星徽', crop_first=False).is_success
+                or self.round_by_find_area(screen, '货币战争-星徽详情', '标识-套组标题', crop_first=False).is_success):
+            _close = self.round_by_find_and_click_area(
+                screen, '货币战争-星徽详情', '按钮-关闭', success_wait=1)
+            log.info('[cw-loop] 星徽详情弹窗 → 点X关闭(误开,回备战)')
+            return self.round_wait(wait=1.5)
+
         # 1f. **失败结算页**(战败即时结算:挑战结束大标 + 挑战进度掉血,无「按钮-继续挑战」——
         #     首领胜利屏也有「挑战结束」但无「挑战进度」+有继续挑战,组合 id_mark 天然区分;M44 前三连咬
         #     皆单锚撞车,组合归位)。两步序贯出口(用户实证):先「点击空白加速」→ 后「前往结算」按钮。
