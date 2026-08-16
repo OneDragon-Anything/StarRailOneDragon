@@ -43,13 +43,15 @@ def _cost_of_actions(actions: list[dict]) -> int:
 
 
 def audit_refresh_cost(rows: list[dict]) -> ConstantAudit:
-    """SHOP_REFRESH_COST:相邻决策行 gold 差 − 其他动作花费 = 刷新实付。
+    """SHOP_REFRESH_COST 执行侧归因(r9 review 修:旧版把 b 行未执行的规划花费记到 a→b 金差
+    → est=0 假阳性毒化注册表)。
 
-    expected 从机制注册表读(r9 review:接核对器当注册表首个消费端,防表-码双源漂移)。
-    ⚠️ r9 review 实证:telemetry 的 actions 是**规划序列**非执行账 —— 未执行的花费
-    (重 plan 丢弃的前案)会被记到 a→b 金差上 → est 混入执行侧重算前的噪声;执行侧
-    (shop.py 计数器)重算 est=2 占 83% → 注册表 2.0 实为 consistent。本函数保留
-    (规划侧视角)但 verdict 以执行侧重算为准。
+    三处修正(review ④):
+    ① 归因换 **a.actions 前缀**(执行侧):shop.py 两阶段执行「a 的前缀至首个 RefreshShop(含)」,
+       a→b 金差反映的正是这段 —— 用 a 前缀扣费而非 b 全案;
+    ② 限定**同节点行对**(round_num 相等):杀收入混杂(跨节点 income 进金差);
+    ③ 前缀扣费含 LevelUp(_cost_of_actions 已含)。
+    expected 从机制注册表读(首个消费端,防表-码双源)。
     """
     from sr_od.application.currency_war.cw_mechanism import get_mechanism
     expected = None
@@ -58,13 +60,23 @@ def audit_refresh_cost(rows: list[dict]) -> ConstantAudit:
         expected = float(_mc.value)
     diffs = []
     for a, b in zip(rows, rows[1:], strict=False):
-        if a['run_id'] != b['run_id']:
+        if a['run_id'] != b['run_id'] or a['state']['round_num'] != b['state']['round_num']:
             continue
-        acts = b.get('actions') or []
-        n_rf = sum(1 for x in acts if x.get('__type__') == 'RefreshShop')
+        # 执行前缀 = a.actions 至首个 RefreshShop(含);后面的动作两阶段循环没执行
+        prefix: list[dict] = []
+        n_rf = 0
+        for x in (a.get('actions') or []):
+            t = x.get('__type__')
+            if t == 'RefreshShop':
+                n_rf += 1
+                prefix.append(x)
+                break   # 执行至首个 RefreshShop(含)即停(重 plan 重来)
+            if t == 'DeployMove':
+                continue   # shop.py 跳过 deploy(不执行不扣费)
+            prefix.append(x)
         if n_rf == 0:
             continue
-        other_cost = _cost_of_actions([x for x in acts if x.get('__type__') != 'RefreshShop'])
+        other_cost = _cost_of_actions([x for x in prefix if x.get('__type__') != 'RefreshShop'])
         d = (a['state']['gold'] - b['state']['gold'] - other_cost) / n_rf
         if 0 <= d <= 10:   # 单刷费合理窗
             diffs.append(round(d))
