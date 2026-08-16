@@ -58,7 +58,7 @@ NAME_REGION = (1540, 115, 1780, 160)                # 右侧装备名 OCR 区(�
 SCROLL_FROM = Point(600, 800)                       # 上滑翻页:从底拖向顶(往下看更多行)
 SCROLL_TO = Point(600, 520)
 
-ICON_DIR = REPO / "assets/template/cw_equip"
+ICON_DIR = REPO / "assets/template/currency_war/equip_legacy"
 SHOT_DIR = REPO / ".debug/temp/cw_shots"
 
 

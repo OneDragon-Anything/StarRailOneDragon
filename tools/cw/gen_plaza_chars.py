@@ -30,8 +30,8 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))  # 供 gen_templates import sr_od 注册表
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_chars_data.py"
-TPL_DIR = REPO / "assets/template/character_cw_portrait_plaza"  # 官方立绘模板库(替代手采库)
-EQUIP_TPL_DIR = REPO / "assets/template/cw_equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
+TPL_DIR = REPO / "assets/template/currency_war/portrait_plaza"  # 官方立绘模板库(替代手采库)
+EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"
 HEADERS = {
@@ -255,7 +255,7 @@ def gen_equip_templates(cfg: dict) -> None:
     import cv2
     import numpy as np
 
-    manual_dir = REPO / "assets/template/cw_equip"
+    manual_dir = REPO / "assets/template/currency_war/equip_legacy"
     EQUIP_TPL_DIR.mkdir(parents=True, exist_ok=True)
     seen_url: dict = {}
     plaza_normal_names: set = set()

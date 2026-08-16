@@ -61,7 +61,7 @@ def _recipe_from_icons(img: np.ndarray) -> list[str] | None:
     if len(kept) < 2:
         return None
     grays = {}
-    for png in sorted((REPO / "assets/template/cw_equip").glob("*.png")):
+    for png in sorted((REPO / "assets/template/currency_war/equip_legacy").glob("*.png")):
         t = cv2.imdecode(np.fromfile(str(png), np.uint8), cv2.IMREAD_GRAYSCALE)
         if t is not None:
             grays[png.stem] = t

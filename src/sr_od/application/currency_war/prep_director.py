@@ -325,7 +325,7 @@ class PrepDirector(SrOperation):
         # 探针 best-effort(截图/识别异常不阻塞 —— 离线 mock 测试无真画面)。
         for _try in range(3):
             try:
-                _probe = getattr(self, 'last_screenshot', None) or self.screenshot()
+                _probe = self.screenshot()   # 新鲜帧(review:旧 last_screenshot 短路复用旧帧,miss 重试退化盲等)
                 if self.round_by_find_area(_probe, SHOP_SCREEN_NAME, '备战标识-购买经验',
                                            crop_first=False).is_success:
                     break

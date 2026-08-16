@@ -413,14 +413,22 @@ class CurrencyWarRunLoop(SrOperation):
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             # ⚠️ 过渡门(用户 2026-08-16 实证):场景切换时**备战先渲染、事件 overlay 后弹出**
-            # (M47 22:34:43 帧同屏并存实锤:备战+请选择投资策略)——本帧若见任何 overlay 迹象
-            # (0e 系事件屏标题词同帧出现)→ 等一帧让 overlay 完全弹出再动(否则 Director 在
-            # overlay 半开时点球/买卖 = 乱操作)。
+            # (M47 22:34:43 帧同屏并存实锤:备战+请选择投资策略)——本帧若见 overlay 迹象 →
+            # 等一帧让 overlay 完全弹出再动(否则 Director 在 overlay 半开时点球/买卖 = 乱操作)。
+            # ⚠️ 判据修正(r5 review P0):旧版全屏 OCR 词表含「补给阶段」——与备战屏**常驻按钮**
+            # 「返回补给阶段」LCS=4/4=100% 必然相撞(lcs 提多高都挡不住,ADR-0118 同根因),
+            # 含补给节点的对局备战 livelock(等 1.2s 循环)。改 **0e 系 id_mark 位置判**
+            # (find_area 限定标题 rect,ADR-0118 根治法):投资策略/投资环境/补给 overlay 各用
+            # 自己屏的 id_mark area;遭遇其二~五变体不在(真遭遇屏 0c 已接,半开帧无标题)。
             _overlay_leak = any(
-                self.round_by_ocr(screen, _w, lcs_percent=0.9).is_success
-                for _w in ('请选择投资策略', '选择投资环境', '补给阶段', '遭遇其一'))
+                self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success
+                for _scr, _area in (
+                    ('货币战争-投资策略', '标识-请选择投资策略'),
+                    ('货币战争-投资环境', '标识-投资环境'),
+                    ('货币战争-补给', '标识-补给阶段'),
+                ))
             if _overlay_leak:
-                log.info('[cw-loop] 备战帧见事件 overlay 迹象(过渡半开)→ 等 1.2s 让 overlay 稳定')
+                log.info('[cw-loop] 备战帧见事件 overlay 迹象(过渡半开,id_mark 位置判)→ 等 1.2s 稳定')
                 return self.round_wait(wait=1.2)
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
             if self._max_rounds is not None and self._rounds_done >= self._max_rounds:

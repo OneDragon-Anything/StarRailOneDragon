@@ -172,7 +172,8 @@ class HandleInvestEnv(SrOperation):
                     if _mm2 and _m.max is not None:
                         _cnt2 = int(_mm2.group(1))
                         break
-                if _cnt2 is None or _cnt2 >= self._refresh_count:
+                if _cnt2 is not None and _cnt2 >= self._refresh_count:
+                    # 次数读到了且没减 = 真没生效(None = OCR miss 不判假阳;review ④)
                     _shot = self.save_screenshot(prefix='cw_env_refresh_fail')
                     from pathlib import Path as _P2
                     _fp = _P2('.debug/temp/currency_war/refresh_click_fail.flag')

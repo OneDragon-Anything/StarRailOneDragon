@@ -36,7 +36,7 @@ import cv2
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
-OUT_DIR = REPO / "assets/template/cw_equip"
+OUT_DIR = REPO / "assets/template/currency_war/equip_legacy"
 # 右侧详情面板「选中装备图标」固定框(CV squares 检测 + 点选验证,2026-08-06 简易 tab)。
 # 跨 tab / 选中内容不变;版本更新画面布局变了 → 跑 --detect-box 重测后更新此常量。
 ICON_BOX = (1443, 125, 1541, 223)  # (x0, y0, x1, y1),98×98

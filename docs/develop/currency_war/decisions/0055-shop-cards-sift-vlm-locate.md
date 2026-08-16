@@ -9,7 +9,7 @@
 
 ## Decision Drivers
 - 开拓者自定义名破 OCR 路径
-- 立绘库 character_cw_portrait 已采(71 角色),SIFT 可用
+- 立绘库 currency_war/portrait_plaza 已采(71 角色),SIFT 可用
 - 肖像中心 ≠ screen_info 牌中心(文字带/点击点)→ 猜裁切错
 
 ## Considered Options

@@ -69,7 +69,9 @@ class HandleInvestStrategy(SrOperation):
         """动态定位刷新圆钮(文本锚定;2026-08-16 CV 实测修正,替 yml 固定坐标 VLM 猜测值)。
 
         OCR「刷新次数N」文本(钩子已记坐标 self._refresh_text_pt)→ 按钮 = 文本左偏 88px;
-        HoughCircles 在窗内复核圆存在(防文本误读);无文本锚 → False(不点)。
+        无文本锚 → False(不点)。⚠️ 未做 HoughCircles 圆复核(review:三帧实测偏移恒定,
+        复核留待多样性本不足时再上;停机钩子兜误点)。点击点距「确认」按钮 ~20px,偏移错时
+        停机钩子接(no-op 验证不过 → 存证停机)。
         """
         _pt = getattr(self, '_refresh_text_pt', None)
         if _pt is None:
@@ -174,7 +176,8 @@ class HandleInvestStrategy(SrOperation):
                     if _mm2 and _m.max is not None:
                         _cnt2 = int(_mm2.group(1))
                         break
-                if _cnt2 is None or _cnt2 >= self._refresh_count:
+                if _cnt2 is not None and _cnt2 >= self._refresh_count:
+                    # 次数读到了且没减 = 真没生效 → 停机存证(_cnt2 None = OCR miss,不判假阳停机;review ④)
                     _shot = self.save_screenshot(prefix='cw_strat_refresh_fail')
                     _fp = _P('.debug/temp/currency_war/refresh_click_fail.flag')
                     _fp.parent.mkdir(parents=True, exist_ok=True)
