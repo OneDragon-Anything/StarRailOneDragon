@@ -371,6 +371,18 @@ class PrepDirector(SrOperation):
                 })(), session, config)
             progressed, detail = self._executor.execute(action)
             log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
+            # r11 review #2(盲节点可观测性):破墙路径此前零遥测——M55 r3 的 59 金+双跳级全发生在
+            # decisions.jsonl 外(复盘盲区)。破墙动作也记一条(类名带 BenchFull 前缀,审计可辨)。
+            try:
+                from sr_od.application.currency_war import cw_telemetry
+
+                if obs.state is not None:
+                    _tc = getattr(match.session, 'target_comp', None)
+                    cw_telemetry.record_decision(
+                        obs.state, _tc.name if _tc else '', {}, {},
+                        [type(f'BenchFull_{type(action).__name__}', (), {'__dict__': {}})()])
+            except Exception:   # noqa: BLE001  遥测 best-effort
+                pass
             return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
         # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
