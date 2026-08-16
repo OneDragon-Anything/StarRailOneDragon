@@ -439,10 +439,10 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
             if self.ctx.cw_match is not None:
                 # B4(ADR-0170 telemetry 接线):终局真实数据灌 MatchOutcome(原桩全默认)——
-                # won=回大厅即本局结束(死/通都算,胜败由 final_plane 推:3=通关或 P3 内);
-                # plane/round 取 session 内 tracking(state 每 round 刷新,loop 期 last_state
-                # 是最后一轮真值)。喂 strategy.on_match_end + 跨局分配器(0170,分级奖励)。
-                _st = self.ctx.cw_match.state
+                # won=回大厅即本局结束;plane/round/hp 取 session.last_state(每回合框架刷新的
+                # 最后快照;⚠️ CurrencyWarMatch 无 state 字段——review 子代理 P0 实锤,勿写
+                # cw_match.state)。喂 strategy.on_match_end + 跨局分配器(0170,分级奖励)。
+                _st = self.ctx.cw_match.session.last_state
                 _outcome = MatchOutcome(
                     won=(_st is not None and _st.plane >= 3),
                     final_plane=_st.plane if _st is not None else 1,

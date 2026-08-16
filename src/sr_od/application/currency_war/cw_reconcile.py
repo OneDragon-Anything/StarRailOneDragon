@@ -62,10 +62,11 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     return True
 
 
-def _conflict(field: str, old, new, screen, *, verdict: str, source: str) -> None:
-    """obs_conflict 封装(best-effort,导入失败/异常不阻塞)。"""
+def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
+              **ctx) -> None:
+    """obs_conflict 封装(best-effort,导入失败/异常不阻塞)。**ctx 透传(如 char=)。"""
     try:
         from sr_od.application.currency_war.cw_observe import obs_conflict
-        obs_conflict(field, old, new, screen, verdict=verdict, source=source)
+        obs_conflict(field, old, new, screen, verdict=verdict, source=source, **ctx)
     except Exception:  # noqa: BLE001  留证 best-effort
         pass
