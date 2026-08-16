@@ -129,3 +129,29 @@ class HypothesisRegistry:
 
     def close(self, hyp_id: str) -> None:
         self.active.pop(hyp_id, None)
+
+
+# ===== 证据通道转换器(ADR-0171 §2.2 通道表;源模块已落,本轮接线) =====
+
+def pool_absence_lr(belief, card: str, k_needed: int, cost: int = 3) -> float:
+    """池缺席通道:牌池信念(ADR-0157)→ LR = P(证据|线死)/P(证据|线活)。
+
+    P(n≥k) 高 → 线活(缺席是随机波动,LR→低);P(n≥k) 低 → 池枯(线死证据,LR→高)。
+    LR = (1 − p)/max(p, 0.05):p=0.9 → 0.11(强活证据);p=0.2 → 4.0(强死证据)。
+    无该卡信念(冷启动)→ 1.0(中性,不产生证据 —— 04 纪律:读不到≠证据)。
+    """
+    if belief is None:
+        return 1.0
+    p = belief.p_at_least(card, k_needed)
+    if p is None:
+        return 1.0
+    return (1.0 - p) / max(p, 0.05)
+
+
+def timeline_lag_lr(lag: float, scale: float = 3.0) -> float:
+    """时间线掉队通道:掉队量(期望曲线−实际)→ LR(单调;scale=掉队 1.0 进度 ≈ e^3
+    倍死概率的粗标定,plaza p(t) 编译后校准)。"""
+    if lag <= 0:
+        return 1.0
+    import math
+    return math.exp(min(5.0, lag * scale))

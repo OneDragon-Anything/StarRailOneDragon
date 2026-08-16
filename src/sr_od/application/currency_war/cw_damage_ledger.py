@@ -106,3 +106,22 @@ class DamageLedger:
         if share_drop is not None and share_drop < -0.2:
             return '衰减型(份额骤降:机制针对/站位,接阵型层与 matchup)'
         return '缺口型(伤害不足:fold vs 急救由缺口×λ_hp 计价)'
+
+    # --- 集成接缝(ADR-0166 documented、本轮接线;消费端后续接 cw_plan) ---
+    def fold_vs_rescue_pricing(self, node_type: str, difficulty: int,
+                               lam_hp: float, base_scale: float = 1.0) -> dict:
+        """缺口 × λ_hp → fold vs 急救的计价(ADR-0161 首达层的 λ_hp 供给;不再手写阈值)。
+
+        gap<0 → 白过(fold:守息);gap>0 且 λ_hp 低(盈余区)→ 保守花;gap>0 且 λ_hp 高
+        (临界/边缘)→ 急救(D 牌/拉质量/提前成型)。三区语义与 ADR-0161 risk_posture
+        对齐,但这里是**单节点缺口驱动**的战术级计价(首达层是整局姿态)。
+        """
+        g = self.gap(node_type, difficulty, base_scale)
+        if g <= 0:
+            return {'action': 'fold', 'gap': round(g, 2), 'lam_hp': lam_hp,
+                    'reason': '缺口为负:这关白过,守息(奖励关省钱原则的计算化)'}
+        if lam_hp >= 0.05:
+            return {'action': 'rescue', 'gap': round(g, 2), 'lam_hp': lam_hp,
+                    'reason': f'缺口 {g:.2f} × λ_hp {lam_hp:.2f} = {g * lam_hp:.2f} 血当量,急救(D/拉质量)'}
+        return {'action': 'conservative', 'gap': round(g, 2), 'lam_hp': lam_hp,
+                'reason': f'缺口 {g:.2f} 但 λ_hp {lam_hp:.2f} 低(盈余区),保守花'}

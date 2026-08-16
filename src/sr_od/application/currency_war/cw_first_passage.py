@@ -104,3 +104,17 @@ def posture_guidance(posture: str) -> str:
         '临界': '方差回避:弃息 D 保血/避高难遭遇(danger_d 语义)',
         '必死边缘': '方差追求:弃息全 D 追星/转高上限 comp/赌高方差事件(「低血不卡息,留20」)',
     }.get(posture, '')
+
+
+# ===== 集成接缝(供给方适配器;ADR-0170/0166 documented,本轮接线) =====
+
+def board_tier_of(level: int, rb: float = 0.0) -> int:
+    """GameState(等级, 刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键;与 cw_horizon.b_eff 同源
+    映射 —— 首达层的供给方适配:salvage/计价消费端拿 GameState 即可算 P(win),不必自算板强)。"""
+    b = min(3.0, max(0.0, (level - 2) / 2.5) + rb)
+    return min(3, max(0, int(b)))
+
+
+def p_win_projection(level: int, hp: int, nodes_left: int, rb: float = 0.0) -> float:
+    """GameState → P(win)(一站式;05 号 salvage 触发量与 19 号计价的入口)。"""
+    return first_passage_win(board_tier_of(level, rb), hp, nodes_left)
