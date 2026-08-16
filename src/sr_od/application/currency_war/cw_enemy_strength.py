@@ -38,7 +38,7 @@ def calibrate_strength(replay_dir: str | Path, min_n: int = 2) -> StrengthTable:
     掉血 = 上一条 outcome.hp_after − 本条 hp_after(同 run 内顺序);首条用 100 起。
     min_n 以下不入表(样本不足不硬判,对齐 04「读不到≠证据」)。
     """
-    rows = [json.loads(l) for l in Path(replay_dir).joinpath('outcomes.jsonl')
+    rows = [json.loads(line) for line in Path(replay_dir).joinpath('outcomes.jsonl')
             .read_text(encoding='utf-8').splitlines()]
     by_run: dict[str, list] = defaultdict(list)
     for o in rows:
