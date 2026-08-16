@@ -88,6 +88,8 @@ class CurrencyWarRunLoop(SrOperation):
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
         self._rounds_done: int = 0
+        # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
+        self._allocator = _get_or_init_allocator(self.ctx)
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 待接)
         cw_telemetry.start_run()
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
@@ -436,8 +438,20 @@ class CurrencyWarRunLoop(SrOperation):
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
             if self.ctx.cw_match is not None:
+                # B4(ADR-0170 telemetry 接线):终局真实数据灌 MatchOutcome(原桩全默认)——
+                # won=回大厅即本局结束(死/通都算,胜败由 final_plane 推:3=通关或 P3 内);
+                # plane/round 取 session 内 tracking(state 每 round 刷新,loop 期 last_state
+                # 是最后一轮真值)。喂 strategy.on_match_end + 跨局分配器(0170,分级奖励)。
+                _st = self.ctx.cw_match.state
+                _outcome = MatchOutcome(
+                    won=(_st is not None and _st.plane >= 3),
+                    final_plane=_st.plane if _st is not None else 1,
+                    final_round=_st.round_num if _st is not None else 1,
+                    final_hp=_st.hp if _st is not None else 0,
+                )
                 self.ctx.cw_match.strategy.on_match_end(
-                    self.ctx.cw_match.session, self._cw_config, MatchOutcome())
+                    self.ctx.cw_match.session, self._cw_config, _outcome)
+                self._allocator_update(_outcome)
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 
@@ -452,10 +466,28 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
-        # 临时随机态停机钩子(CLAUDE.md 方案 D):持久未识别画面(新事件/词缀/boss overlay 等未建档随机态)
+        # ===== B4(ADR-0170):终局喂分配器(影子期:只记后验不改选臂;分级奖励+adherence) =====
+    def _allocator_update(self, outcome: MatchOutcome) -> None:
+        """终局 update:臂 = 终局 target_comp 名(adherence 近似 1;开局臂双列待 v1)。"""
+        if self._allocator is None or self.ctx.cw_match is None:
+            return
+        try:
+            arm_obj = getattr(self.ctx.cw_match.session, 'target_comp', None)
+            arm_id = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
+            if not arm_id or arm_id not in self._allocator.arms:
+                return
+            reward = self._allocator.reward_graded(
+                outcome.won, outcome.final_plane, rounds=outcome.final_round)
+            self._allocator.update(arm_id, reward, adherence=1.0)
+            log.info('[cw-alloc] 终局 update: arm=%s won=%s plane=%s reward=%.2f → mean=%.3f',
+                     arm_id, outcome.won, outcome.final_plane, reward,
+                     self._allocator.arms[arm_id].mean)
+        except Exception as e:   # noqa: BLE001  影子期失败安全
+            log.info(f'[cw-alloc] update 失败(跳过): {e}')
+
+    # 临时随机态停机钩子(CLAUDE.md 方案 D):持久未识别画面(新事件/词缀/boss overlay 等未建档随机态)
         # → 存 sentinel + stop_running,保画面给 AI 当场建档(纯读画面不 click)。建档后删本钩子。
-        # 持久判定:连续 N 轮 fallback(过渡帧 1-2 轮内被上面分支接走 → 不累计,防误停)。
-        if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
+        # 持久判定:连续 N 轮 fallback(过渡帧 1-2 轮内被上面分支接走 → 不累计,防误停)。        if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
             self._unknown_streak = getattr(self, '_unknown_streak', 0) + 1
         else:
             self._unknown_streak = 1
@@ -475,3 +507,24 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.run_context.stop_running()
             return self.round_fail(status='持久未识别画面,停机待建档')
         return self.round_retry(wait=2)
+
+
+# ===== B4(ADR-0170):跨局分配器进程级单例 + 终局 update =====
+_ALLOCATOR = None          # 进程级(后验跨局累积;server 不重启跨局延续)
+
+
+def _get_or_init_allocator(ctx: SrContext):
+    """惰性建分配器(失败安全:建不出来 → None,update no-op)。plaza 份额先验。"""
+    global _ALLOCATOR
+    if _ALLOCATOR is not None:
+        return _ALLOCATOR
+    try:
+        from sr_od.application.currency_war.cw_plaza_comps import PLAZA_CARRY_CLUSTERS
+        from sr_od.application.currency_war.cw_run_allocator import ThompsonAllocator
+        total = sum(max(c.n_posts, 0) for c in PLAZA_CARRY_CLUSTERS) or 1
+        share = {c.carry: c.n_posts / total for c in PLAZA_CARRY_CLUSTERS if c.n_posts >= 15}
+        _ALLOCATOR = ThompsonAllocator.from_plaza(share)
+    except Exception as e:   # noqa: BLE001  影子期失败安全
+        log.info(f'[cw-alloc] 分配器初始化失败(禁用): {e}')
+        _ALLOCATOR = None
+    return _ALLOCATOR
