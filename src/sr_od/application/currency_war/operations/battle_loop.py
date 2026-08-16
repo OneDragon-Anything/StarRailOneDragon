@@ -408,6 +408,17 @@ class CurrencyWarRunLoop(SrOperation):
             self._handle_star_tome_pick(screen)
             return self.round_wait(wait=2)
 
+        # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档):出战时前台空被
+        #     游戏拒(cap 满角色留 bench / 前排保证未触发的边缘)。处理:点确认关弹窗 → 下轮
+        #     备战分支 PrepDirector 重新部署(前排保证会把 bench 角色强转前排);若再次出战仍
+        #     拒(部署失败边缘)会再弹本窗,15 streak 停机兜底(不至于死循环)。
+        if self.round_by_find_area(
+                screen, '货币战争-提示-前台无角色', '标识-无角色提示', crop_first=False).is_success:
+            _ok_pt = self.round_by_find_and_click_area(
+                screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
+            log.info('[cw-loop] 前台无角色提示 → 确认关闭(下轮 PrepDirector 前排保证重部署)')
+            return self.round_wait(wait=1.5)
+
         # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,doc 15/ADR-0123;原 BattlePrepCycle
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
