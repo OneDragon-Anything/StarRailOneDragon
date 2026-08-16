@@ -203,16 +203,32 @@ _DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
 
 
 
-def get_node_goal(plane: int, round_num: int) -> NodeGoal:
+def get_node_goal(plane: int, round_num: int, *,
+                  gold: int | None = None, level: int | None = None, hp: int | None = None) -> NodeGoal:
     """查 (plane, round) → NodeGoal(先匹配 _DEFAULT_NODE_PLAN 区间 → fallback;14 §2.0)。
 
     fallback(未匹配):target_level=_expected_level(round, plane)、spend_mode="adaptive"、
     action_focus="rush_level"。位面长度变(首领轮次不定)→ 区间兜;plane>3 / round>9 → fallback。
+
+    **影子模式(ADR-0155,日程 DP 接缝)**:``HORIZON_SEAM_ACTIVE=True`` 且传全 (gold, level, hp)
+    → 姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现,03 号重设计);表 = 回退。
+    默认 False(表生效)—— 切流待实机 A/B(V5);消费端签名零改(全关键字参)。
     """
+    if HORIZON_SEAM_ACTIVE and None not in (gold, level, hp):
+        from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
+        _goal = _horizon_node_goal(plane, round_num, gold, level, hp)   # type: ignore[arg-type]
+        if _goal is not None:
+            return _goal
     for p, rmin, rmax, goal in _DEFAULT_NODE_PLAN:
         if p == plane and rmin <= round_num <= rmax:
             return goal
     return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
+
+
+# ADR-0155:日程 DP(cw_horizon)→ NodeGoal 接缝开关。False = 区间表(现状栈)生效;
+# True 且调用方传全状态 → DP 姿态。V1 涌现验证已过(等级带 92.6% ±1 级,满息脉冲涌现),
+# 切流前还需 V3 离线 A/B + V5 实机对照(03 号提案灰度路径)。
+HORIZON_SEAM_ACTIVE: bool = False
 
 
 
