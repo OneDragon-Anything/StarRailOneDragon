@@ -524,24 +524,12 @@ class PrepDirector(SrOperation):
             log.info(f'[cw-director] nodeseq skip: {e}')
 
     def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
-        """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。"""
+        """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
+
+        仅 upcoming 槽(判态已修 V 门,变暗过去节点不再混入);RGB 裁剪存盘(颜色信息保留,
+        模板同样 RGB——2026-08-16 用户指导)。"""
         from sr_od.application.currency_war.cw_observe import cw_shot_unique
         icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文)
-        x0, y0, x1, y1 = node_row_rect
-        row = screen[y0:y1, x0:x1]
-        for s in slots:
-            if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
-                continue
-            yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
-            xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
-            fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
-            if fn:
-                log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
-
-    def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
-        """[采集钩子·临时] 未来圆 Hu 无显著最近(hu_dist > 阈值)→ 裁图标存盘(同 battle_prep 逻辑)。"""
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique
-        icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文);临时常量随钩子删
         x0, y0, x1, y1 = node_row_rect
         row = screen[y0:y1, x0:x1]
         for s in slots:
