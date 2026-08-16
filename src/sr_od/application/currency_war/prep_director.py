@@ -308,6 +308,7 @@ class PrepDirector(SrOperation):
         session = match.session
         session.defer_count = 0
         session.prep_phase = 0
+        session.prep_phase_retry = 0
         self._executor = PrepActionExecutor(self, self.ctx)
         self._steps = 0
         self._stall = 0

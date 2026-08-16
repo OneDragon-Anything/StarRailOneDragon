@@ -195,6 +195,8 @@ class StrategySession:
     # prep_phase:默认策略主流程推进位(0=买牌前/1=买完/2=部署完/3=装备完→出战;环级,Director
     # 环入口清零,同 defer_count 宿主模式 —— 策略无状态,主流程阶段只能住 session,F6)。
     prep_phase: int = 0
+    # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
+    prep_phase_retry: int = 0
     # bail_reason_counts:BailToOuter 同因计数(局级,环重建不清零 —— ping-pong 诊断用;≥3 记 [cw!])。
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用

@@ -316,6 +316,18 @@ class DefaultCwStrategy(CwStrategy):
         if session.prep_phase == 2:
             session.prep_phase = 3
             return RunEquip()
+        # ⚖️ r23(强度表消费,p1-1 掉 25.5 实证):空板/严重缺员出战守卫——54 局 5 次空板出战
+        # (lv4,dep=0),p1-1/p1-7 高强度节点掉 24-29 血。deployed 有 tracking(bench/deployed chars)
+        # 且板上 0 人 → 不出战,回部署段(RunDeploy 会拖 bench 上场);bench 也空(真无牌)才放行
+        # (开局首轮无牌是正常态,游戏会给保底板?不——p1-1 开局必能买到牌,空板=部署失败,重试)。
+        _dep_n = len(obs.deployed_chars or [])
+        _bench_n = len(obs.bench_chars or [])
+        if _dep_n == 0 and _bench_n > 0 and session.prep_phase_retry < 2:
+            session.prep_phase_retry += 1
+            session.prep_phase = 1   # 回部署段重试(bench 有人没上去)
+            log.info('[cw][prep] 空板出战守卫:板上 0 人 bench %d 人 → 回部署段(p1-1 类节点掉 24+ 血)',
+                     _bench_n)
+            return RunDeploy()
         return StartBattle()
 
     def _pseudo_state(self, obs, session: StrategySession) -> GameState:
