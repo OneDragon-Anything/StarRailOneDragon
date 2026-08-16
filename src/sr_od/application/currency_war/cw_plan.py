@@ -680,9 +680,10 @@ def _best_improving_action(
             and target_comp is not None
             and not _shop_has_buyable_target
             and (form_progress(target_comp, state) < COMMIT_FRAC or _boss_spend)   # r7 ③:外层 fp 门在 boss 场豁免(fp 0.4-1.0 半成型恰是最需要兜底的域,M46/M48 实证 fp=0.5 被吞)
-            and (not best or all(type(a).__name__ == 'RefreshShop' for a in best))):
+            and (not best or all(type(a).__name__ in ('RefreshShop', 'DeployMove') for a in best))):   # r9:DeployMove-only best 同样放行骨架买(shop.py 两阶段不执行 deploy 就 break → boss 帧饿死;奖励关掉角色入席正是触发态)
         _sk_candidates = [c for c in state.shop
-                          if (_boss_spend or _no_loss_affordable(state.gold, card_cost(c)))   # r7 ②:boss 场免息档地板(ADR-0128 boss 前花尽;保息无意义)
+                          if state.gold >= card_cost(c)   # r9:金硬门(boss 豁免息档地板≠免金;cost>gold 幽灵购买进 tracking)
+                          and (_boss_spend or _no_loss_affordable(state.gold, card_cost(c)))   # r7 ②:boss 场免息档地板(ADR-0128 boss 前花尽;保息无意义)
                           and _skeleton_buy_ok(c.name, c.faction, state)]
         if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
             # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)

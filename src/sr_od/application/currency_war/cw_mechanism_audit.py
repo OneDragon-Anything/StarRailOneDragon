@@ -43,7 +43,19 @@ def _cost_of_actions(actions: list[dict]) -> int:
 
 
 def audit_refresh_cost(rows: list[dict]) -> ConstantAudit:
-    """SHOP_REFRESH_COST:相邻决策行 gold 差 − 其他动作花费 = 刷新实付。"""
+    """SHOP_REFRESH_COST:相邻决策行 gold 差 − 其他动作花费 = 刷新实付。
+
+    expected 从机制注册表读(r9 review:接核对器当注册表首个消费端,防表-码双源漂移)。
+    ⚠️ r9 review 实证:telemetry 的 actions 是**规划序列**非执行账 —— 未执行的花费
+    (重 plan 丢弃的前案)会被记到 a→b 金差上 → est 混入执行侧重算前的噪声;执行侧
+    (shop.py 计数器)重算 est=2 占 83% → 注册表 2.0 实为 consistent。本函数保留
+    (规划侧视角)但 verdict 以执行侧重算为准。
+    """
+    from sr_od.application.currency_war.cw_mechanism import get_mechanism
+    expected = None
+    _mc = get_mechanism('SHOP_REFRESH_COST')
+    if _mc is not None:
+        expected = float(_mc.value)
     diffs = []
     for a, b in zip(rows, rows[1:], strict=False):
         if a['run_id'] != b['run_id']:
@@ -57,10 +69,10 @@ def audit_refresh_cost(rows: list[dict]) -> ConstantAudit:
         if 0 <= d <= 10:   # 单刷费合理窗
             diffs.append(round(d))
     if len(diffs) < 5:
-        return ConstantAudit('SHOP_REFRESH_COST', None, len(diffs), 'underpowered', 2.0)
+        return ConstantAudit('SHOP_REFRESH_COST', None, len(diffs), 'underpowered', expected)
     est, cnt = Counter(diffs).most_common(1)[0]
-    verdict = 'consistent' if est == 2 else 'refuted'
-    return ConstantAudit('SHOP_REFRESH_COST', float(est), len(diffs), verdict, 2.0,
+    verdict = 'consistent' if expected is not None and est == expected else 'refuted'
+    return ConstantAudit('SHOP_REFRESH_COST', float(est), len(diffs), verdict, expected,
                          detail=f'分布 {Counter(diffs).most_common(3)}')
 
 

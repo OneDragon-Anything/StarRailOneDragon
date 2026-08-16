@@ -577,6 +577,10 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     # find_area_in_screen OCR+LCS)不命中 → 返空列表(「没有牌」≠「未识别」,不写 flag)。
     _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
     _collapse_area = next((a for a in _si.area_list if a.area_name == '按钮-收起'), None) if _si else None
+    if _collapse_area is None:
+        # r9 review:锚缺失时门被静默跳过(fail-open)→ M37/M38 误停机回归无告警(改名/删 area)。
+        from one_dragon.utils import log_utils
+        log_utils.log('warning', '[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None:
         from one_dragon.base.screen.screen_utils import find_area_in_screen
         # ⚠️ r7 review P0-A:旧 `is not True` 恒真(FindAreaResultEnum.TRUE.value 是 int 1,
