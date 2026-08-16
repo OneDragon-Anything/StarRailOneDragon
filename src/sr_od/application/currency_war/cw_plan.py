@@ -26,6 +26,7 @@ from sr_od.application.currency_war.cw_economy import (
     _xp_gold_floor,
     clicks_to_next_level,
     get_node_goal,
+    roll_affordable,
     xp_click_cost,
 )
 from sr_od.application.currency_war.cw_evaluate import (
@@ -638,9 +639,12 @@ def _best_improving_action(
     # M36 实证修正(2026-08-16):旧语义「无 faction≥2 才 roll」在 列车 2/4(fp 0.5)时翻 False →
     # 攒息期 refresh 恒被拦 → **P2 冻金**(M29-M36 金 15-23 攒着不转化的机制根因;半成型恰是最该
     # D 的时点,plaza M5「P2 全 D 凑成型」)。新语义:committed 且未成型(form_progress<1)→ roll 解锁。
+    # 评审🟡1:叠加 ADR-0147 可负担性门(金计价:E[刷到核心]×2金 ≤ 预算金)—— 防 drought 长尾
+    # 连刷烧光金(M20 病理;基础刷路径原来不查此门)。
     _roll_for_target = (target_comp is not None
                         and target_committed(target_comp, state)
-                        and form_progress(target_comp, state) < 1.0)
+                        and form_progress(target_comp, state) < 1.0
+                        and roll_affordable(state, config, target_comp))
     # ADR-0149 骨架买兜底(评审R1/R2/Y1/Y2/Y3 修订后语义):
     # - 触发:金<20(1息档) **且** 候选最优为空/纯 Refresh(gold 花在赌刷新不如确定过渡件;Y3 不抢占
     #   eval 已选出的更优买,含 flex 配对买);
