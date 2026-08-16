@@ -368,10 +368,14 @@ def read_supply_boxes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]
 def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
     """纯 CV 核心:槽位 rect 内 TM 匹配秘密典籍 → ``[(slot_idx, 槽 center)]``(点开启用)。
 
-    与 ``find_supply_boxes`` 同法(灰度 TM + 0.6 阈值);互分离度 0.481 实测互不误认。
-    典籍点两次(选中→开启)→ 星徽四选一弹窗(loop 0i 接管选卡)。
+    与 ``find_supply_boxes`` 同法,外加**互斥判定**(r11 修,M55 P2 活锁根因):典籍命中需
+    同时 ①典籍 TM ≥ 0.6 且 ②典籍分 > 箱分(同槽双模板对拍)。实测误检帧(补给箱槽):
+    典籍 0.558/箱 0.926 —— 旧版 0.558<0.6 本就该拦,但光照/选中态可抬分,双条件保证
+    箱永远不被认成典籍(0.926>0.558 互斥性强)。典籍点两次(选中→开启)→ 星徽四选一
+    弹窗(loop 0i 接管选卡)。
     """
     tm = _get_tome_gray()
+    bx = _get_supply_box_gray()
     if tm is None:
         return []
     gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
@@ -381,9 +385,15 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
         if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
             continue
         r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
-        _, mx, _, _ = cv2.minMaxLoc(r)
-        if mx >= _SUPPLY_BOX_TM_THR:
-            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+        tome_score = cv2.minMaxLoc(r)[1]
+        if tome_score < _SUPPLY_BOX_TM_THR:
+            continue
+        if bx is not None and bx.shape[0] <= crop.shape[0] and bx.shape[1] <= crop.shape[1]:
+            rb = cv2.matchTemplate(crop, bx, cv2.TM_CCOEFF_NORMED)
+            box_score = cv2.minMaxLoc(rb)[1]
+            if box_score >= tome_score:   # 箱分更高 = 这是箱不是典籍
+                continue
+        out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
     return out
 
 

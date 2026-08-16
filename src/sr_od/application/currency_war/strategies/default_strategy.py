@@ -225,7 +225,10 @@ class DefaultCwStrategy(CwStrategy):
         """
         if obs.box_overlay_open:
             return PickBoxCard(card_idx=None)   # 执行器默认选卡(P1 住执行器;P5 上移策略)
-        if getattr(obs, 'tomes', None):
+        # r11 review P0:defer 门(对照收球规则 4)——OpenTome 失败反复重试时(执行器连败置
+        # defer),无门活锁:M55 P2 全部 365 条决策全是 OpenTome 重试,71→84 金全程闲置、板面
+        # 冻结硬吃两仗。典籍疑似误检/开不动 → 放弃走主流程;下轮环入口 defer 清零重判自愈。
+        if getattr(obs, 'tomes', None) and session.defer_count < 2:
             return OpenTome()                   # 开典籍即腾席+触发星徽四选一(2026-08-16;选卡 loop 0i)
         if obs.boxes:
             return OpenBox()                     # 开箱即腾席 + 得装备
