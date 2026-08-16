@@ -136,8 +136,9 @@ class DragCwChar(SrOperation):
             time.sleep(0.2)
             op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
             time.sleep(0.5)
-            op.ctx.controller.mouse_move(Point(100, 500))      # 释放光标(防 drag 锁残留)
-            time.sleep(0.3)
+            # 光标 parking(审计 P0,2026-08-16):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
+            # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
+            op.park_cursor(after_wait=0.3)
             if DragCwChar._src_changed(before, op.screenshot(), src):
                 return True
         return False

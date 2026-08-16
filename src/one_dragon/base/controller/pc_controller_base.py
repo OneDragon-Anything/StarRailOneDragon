@@ -539,6 +539,25 @@ class PcControllerBase(ControllerBase):
             pyautogui.moveTo(win_pos.x, win_pos.y)
             time.sleep(0.1)  # 原本 pyautogui 的操作会有0.1s延迟, 现在去掉了, 故在这里加上延迟
 
+    def park_cursor(self, game_pos: Point,
+                    before_wait: float = 0.0, after_wait: float = 0.2) -> None:
+        """把光标停到**中立区**(不遮任何识别区域的坐标),截图/识别前调用。
+
+        光标会停在上次交互处(bug#1 前提:截图不保证无光标);点击/拖拽目标与后续识别区域
+        重叠时,停靠光标会污染 OCR/模板识别(实测:点购买经验按钮后光标压住相邻的等级
+        显示区 → OCR 读错)。动作后、识别截图前,把光标挪去画面上无识别区的角落。
+
+        Args:
+            game_pos: 中立区坐标(默认分辨率游戏坐标系;由调用方选,通用层不含游戏语义)
+            before_wait: 移动前等待(默认 0;动作余韵动画收尾用,按需传)
+            after_wait: 移动后等待(默认 0.2;光标稳定 + 下帧截图干净)
+        """
+        if before_wait > 0:
+            time.sleep(before_wait)
+        self.mouse_move(game_pos)
+        if after_wait > 0:
+            time.sleep(after_wait)
+
     @property
     def center_point(self) -> Point:
         return Point(self.standard_width // 2, self.standard_height // 2)

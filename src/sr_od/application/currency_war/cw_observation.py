@@ -366,20 +366,38 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     """位面 + 轮次(顶栏「X-Y」= 位面-轮次,如 "1-3" = 位面1 第3轮)。
 
     :return: (plane, round_num)。读不到 → 返回上次成功值(过渡帧兜底);无历史 → (1, 1)。
+
+    单调守卫(审计 P0,2026-08-16,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
+    读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 留证(毒化面:
+    level_plan/支出 gate/P2P3 概率表/_expected_level 兜底全歪)。digits fallback 抓首个数字
+    对噪声极敏感,是倒退误读的主要来源 —— fallback 路径读出的倒退一律拒。
     """
     global _last_phase_round
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
     m = re.search(r'(\d)\s*-\s*(\d)', blob)          # "1-3"
     if m:
-        _last_phase_round = (int(m.group(1)), int(m.group(2)))
-        return _last_phase_round
-    plane_m = re.search(r'第\s*(\d)\s*位面', blob)
-    if plane_m:
-        _last_phase_round = (int(plane_m.group(1)), int(plane_m.group(1)))
+        new = (int(m.group(1)), int(m.group(2)))
+    else:
+        plane_m = re.search(r'第\s*(\d)\s*位面', blob)
+        new = (int(plane_m.group(1)), int(plane_m.group(1))) if plane_m else None
+    if new is not None:
+        if _last_phase_round is not None and (new[0] < _last_phase_round[0]
+                                              or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
+            obs_conflict('phase_round', _last_phase_round, new, screen,
+                         verdict='保旧-单调守卫(plane/round 倒退=OCR假阳)', source='ocr')
+            return _last_phase_round
+        _last_phase_round = new
         return _last_phase_round
     digits = re.findall(r'\d', blob)
     if digits:
-        _last_phase_round = (int(digits[0]), int(digits[0]))
+        new = (int(digits[0]), int(digits[0]))
+        # fallback 单数字路径噪声敏感:倒退一律拒(保旧),只接受前进
+        if _last_phase_round is not None and (new[0] < _last_phase_round[0]
+                                              or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
+            obs_conflict('phase_round', _last_phase_round, new, screen,
+                         verdict='保旧-单调守卫(fallback数字倒退拒)', source='ocr_digits_fallback')
+            return _last_phase_round
+        _last_phase_round = new
         return _last_phase_round
     # OCR 失败(过渡帧)→ 返回上次成功值,避免 (1,1) 误导 level_plan
     if _last_phase_round is not None:

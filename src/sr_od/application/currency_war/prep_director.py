@@ -147,6 +147,11 @@ class PrepDirector(SrOperation):
     def _observe(self, heavy: bool) -> PrepObservation:
         """组装备战观察。heavy=True(环入口 + 每个执行过的游戏动作后):SIFT 身份 + GameState
         + cap 全重读;False(控制流/拒绝步后):只现读轻字段,heavy 字段沿用缓存。"""
+        # 光标 parking(审计 P0,2026-08-16,用户指示):上个动作(买牌点购买经验/拖拽停目标/
+        # 点球)后光标停在点击处,与识别区重叠 → OCR/SIFT 污染(M38 level 毒化根因链)。
+        # F1 契约:heavy 在每个执行过的游戏动作后必调 → 此处 park 覆盖全部动作后首读。
+        if heavy:
+            self.park_cursor()
         screen: MatLike = self.screenshot()
         obs = PrepObservation()
         if not self._bench_pts:

@@ -485,7 +485,9 @@ class PrepActionExecutor:
         for _ in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
-            time.sleep(0.3)
+            # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
+            # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再读。
+            self._op.park_cursor(before_wait=0.3, after_wait=0.15)
             lv = _read_level_raw(self._ctx, self._op.screenshot())
             # live 幽灵 lv10(2026-08-15 两局实锤):raw 读可吃到相邻数字(XP「10/20」的 10),接受任意
             # >before 会把 6→10 假成功写进 last_level_obs 被单调守卫永久锁死(→ 永不买经验+攒金死)。
