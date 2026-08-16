@@ -597,7 +597,15 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
         crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
         # r13:空槽检测(六边形占位,SIFT inliers≈3 vs 真卡 30-120)——低等级商店后槽未解锁
         # 是常态,空槽不是「未识别卡」(c1888c7d 帧实证:牌4/5 空槽 inliers=3 触发假 unknown)。
-        if crop.mean() < 60:   # 空槽 = 黑底白轮廓,均值显著低于真卡(立绘+费用色底)
+        # r15 review:跳过不可静默(假空槽=买不到该卡且不可见)——55-75 灰带 [cw!] 留证
+        # (实测真卡 min 67.4 vs 空槽 19.5,余量 11%;采到暗卡击穿即闭环降阈值)。
+        _mean = float(crop.mean())
+        if _mean < 60:
+            if _mean >= 50:   # 灰带:可能是被特效/裁切偏移压暗的真卡
+                from one_dragon.utils import log_utils
+                log_utils.log('info',
+                              f'[cw!][read_shop_cards] 牌{i} 均值{_mean:.1f}(灰带 50-60,'
+                              f'疑暗卡被误判空槽,采到即闭环降阈值)')
             continue
         avatar_id, _inliers = (identify_character(crop, templates)
                                if templates is not None else (None, 0))
