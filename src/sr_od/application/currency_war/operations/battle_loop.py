@@ -440,7 +440,8 @@ class CurrencyWarRunLoop(SrOperation):
         self._settle_stay = 0   # 离开结算屏重置
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
-        for btn in ('前往结算', '下一页', '返回货币战争'):
+        # 「下一步」= 挑战失败终局结算屏(M41 战败形态,M42 实锤):同底部中央位,SETTLEMENT_NEXT 点进。
+        for btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
             # lcs_percent=0.8:「返回货币战争」与事件屏「返回备战界面」共享「返回+战」(3/6=0.5)→
             # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
             if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
