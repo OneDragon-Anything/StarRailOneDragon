@@ -60,14 +60,24 @@ class HandleInvestStrategy(SrOperation):
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
         self._refresh_count: int = 0        # OCR 到的「刷新次数N」(钩子写入;ADR-0146 刷新流读)
 
+    # 刷新按钮动态定位(2026-08-16 用户指认圆形按钮 + CV 实测):按钮 = 圆形图标,
+    # 位于「刷新次数N」文本**左侧 ~88px** 同 y(r≈24);文本 x 有两种位置(476/974,随屏
+    # 形态漂移)→ 固定 area 不可行,OCR 文本锚定 + 左偏移(HoughCircles 复核圆存在)。
+    _REFRESH_BTN_DX: int = -88
+
     def _try_click_refresh(self) -> bool:
-        """点「按钮-刷新」area(ADR-0146;VLM 候选坐标,M21 首触实锤)。返是否点了(非是否生效)。"""
-        _pt = area_center(self.ctx, '按钮-刷新', HandleInvestStrategy.SCREEN_NAME)
+        """动态定位刷新圆钮(文本锚定;2026-08-16 CV 实测修正,替 yml 固定坐标 VLM 猜测值)。
+
+        OCR「刷新次数N」文本(钩子已记坐标 self._refresh_text_pt)→ 按钮 = 文本左偏 88px;
+        HoughCircles 在窗内复核圆存在(防文本误读);无文本锚 → False(不点)。
+        """
+        _pt = getattr(self, '_refresh_text_pt', None)
         if _pt is None:
             return False
-        log.info(f'[cw-strat] 建议刷新(次数={self._refresh_count})→ 点({_pt.x},{_pt.y})')
-        self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
-        self.ctx.controller.click(_pt)
+        target = Point(int(_pt.x + HandleInvestStrategy._REFRESH_BTN_DX), int(_pt.y))
+        log.info(f'[cw-strat] 建议刷新(次数={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
+        self.ctx.controller.mouse_move(target)   # bug#1 缓解
+        self.ctx.controller.click(target)
         time.sleep(1.5)
         return True
 
@@ -119,6 +129,7 @@ class HandleInvestStrategy(SrOperation):
                         'text': _t,
                     }, ensure_ascii=False) + '\n')
                 self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
+                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))   # 按钮锚(动态定位)
                 log.info(f'[cw-strat] 刷新UI采集: 次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
@@ -136,11 +147,15 @@ class HandleInvestStrategy(SrOperation):
             pick = None
         # ADR-0146(缺口1):decide 建议刷新(PickEvent.refresh = 三张最优 < 50)且 OCR 到次数>0
         # → 点「按钮-刷新」(screen_info area;VLM 候选坐标,click 实锤待 M21 首触)→ 重读重选(一次性)。
-        # 失败安全:按钮坐标无效/点后无变化 → 下面的重读仍拿到原三张 → 照常选当前最优 = 现状行为。
+        # [停机钩子·临时,用户 2026-08-16 指示] 刷新验证不通过(候选没变 **且** 次数没减)→ 停机存证:
+        # 按钮坐标是 VLM 候选未实锤(采集显示「刷新次数N」文本有两种 x 位置,按钮可能随屏形态漂移),
+        # 与其静默 fallback 选旧三张(永远不知道刷新没生效),不如停机把真实交互采下来修准。
+        # 建档坐标实锤后删本钩子(留正常刷新流)。
         if (pick is not None and getattr(pick, 'refresh', False)
                 and self._refresh_count > 0
                 and self._try_click_refresh()):
-            _new = self._read_options(self.screenshot())
+            _after = self.screenshot()
+            _new = self._read_options(_after)
             if _new and [n for n, _x, _y in _new] != names:
                 log.info(f'[cw-strat] 刷新成功重读: {[n for n, _x, _y in _new]}')
                 opts, names = _new, [n for n, _x, _y in _new]
@@ -148,6 +163,29 @@ class HandleInvestStrategy(SrOperation):
                     pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)
                 else:
                     pick = decide_event(names, config, GameState())
+            else:
+                # 验证失败:候选没变 —— 再查次数是否减(次数减=刷新生效但新三张碰巧同名?罕见;
+                # 次数没减=点击没生效,按钮坐标错)。存证停机。
+                import re as _re2
+                _cnt2 = None
+                for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
+                        image=_after, crop_first=False).items():
+                    _mm2 = _re2.search(r'刷新次数\s*(\d+)', _t)
+                    if _mm2 and _m.max is not None:
+                        _cnt2 = int(_mm2.group(1))
+                        break
+                if _cnt2 is None or _cnt2 >= self._refresh_count:
+                    _shot = self.save_screenshot(prefix='cw_strat_refresh_fail')
+                    _fp = _P('.debug/temp/currency_war/refresh_click_fail.flag')
+                    _fp.parent.mkdir(parents=True, exist_ok=True)
+                    _fp.write_text(
+                        f'count {self._refresh_count}->{_cnt2} candidates_same shot={_shot}',
+                        encoding='utf-8')
+                    log.warning('[cw!] [strat] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s',
+                                _shot)
+                    self.ctx.run_context.stop_running()
+                    return self.round_fail(status='刷新点击未生效,停机存证')
+                log.info('[cw-strat] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x, choose_y = opts[pick.option_idx]
             reason = pick.reason

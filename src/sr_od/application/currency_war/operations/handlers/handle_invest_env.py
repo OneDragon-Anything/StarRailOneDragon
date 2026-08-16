@@ -57,15 +57,21 @@ class HandleInvestEnv(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
         self._refresh_count: int = 0        # OCR 到的「剩余次数:N」(钩子写入;ADR-0146 刷新流读)
+        self._refresh_text_pt = None        # 次数文本坐标(刷新圆钮动态锚;2026-08-16 CV 实测)
+
+    # 刷新按钮动态定位(2026-08-16 CV 实测):env 屏刷新圆钮 = 「剩余次数:N」文本左侧 ~100px 同 y
+    # (HoughCircles 实测圆心 (672,983) r24 vs 文本 (772,983));图标按钮 OCR 无文字 → 文本锚定。
+    _REFRESH_BTN_DX: int = -100
 
     def _try_click_refresh(self) -> bool:
-        """点「按钮-刷新」area(ADR-0146;VLM 候选坐标,M21 首触实锤)。返是否点了(非是否生效)。"""
-        _pt = area_center(self.ctx, '按钮-刷新', HandleInvestEnv.SCREEN_NAME)
+        """动态定位刷新圆钮(文本锚定;替 yml 固定坐标 VLM 猜测值)。无文本锚 → False。"""
+        _pt = self._refresh_text_pt
         if _pt is None:
             return False
-        log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 点({_pt.x},{_pt.y})')
-        self.ctx.controller.mouse_move(_pt)   # bug#1 缓解
-        self.ctx.controller.click(_pt)
+        target = Point(int(_pt.x + HandleInvestEnv._REFRESH_BTN_DX), int(_pt.y))
+        log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
+        self.ctx.controller.mouse_move(target)   # bug#1 缓解
+        self.ctx.controller.click(target)
         time.sleep(1.5)
         return True
 
@@ -119,6 +125,7 @@ class HandleInvestEnv(SrOperation):
                         'text': _t,
                     }, ensure_ascii=False) + '\n')
                 self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
+                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))   # 按钮锚(动态定位)
                 log.info(f'[cw-env] 刷新UI采集: 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
@@ -139,11 +146,15 @@ class HandleInvestEnv(SrOperation):
                 pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100(满血档):ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤)
         else:
             pick = None
-        # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性;失败安全同 strategy 侧)
+        # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性)。
+        # [停机钩子·临时,用户 2026-08-16 指示] 刷新验证不通过(候选没变且次数没减)→ 停机存证:
+        # env 刷新按钮是**图标**(全屏 OCR 无「刷新」文字,yml 坐标是 VLM 猜测未实锤)——
+        # 与其静默 fallback(永远不知道刷新没生效),停机把真实按钮交互采下来。实锤后删钩子。
         if (pick is not None and getattr(pick, 'refresh', False)
                 and self._refresh_count > 0
                 and self._try_click_refresh()):
-            _new = self._read_options(self.screenshot())
+            _after = self.screenshot()
+            _new = self._read_options(_after)
             _new_names = [n for n, _x in _new]
             if _new and _new_names != names:
                 log.info(f'[cw-env] 刷新成功重读: {_new_names}')
@@ -152,6 +163,27 @@ class HandleInvestEnv(SrOperation):
                     pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
                 else:
                     pick = decide_event(names, config, GameState())
+            else:
+                import re as _re2
+                _cnt2 = None
+                for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
+                        image=_after, crop_first=False).items():
+                    _mm2 = _re2.search(r'剩余次数[::]\s*(\d+)', _t)
+                    if _mm2 and _m.max is not None:
+                        _cnt2 = int(_mm2.group(1))
+                        break
+                if _cnt2 is None or _cnt2 >= self._refresh_count:
+                    _shot = self.save_screenshot(prefix='cw_env_refresh_fail')
+                    from pathlib import Path as _P2
+                    _fp = _P2('.debug/temp/currency_war/refresh_click_fail.flag')
+                    _fp.parent.mkdir(parents=True, exist_ok=True)
+                    _fp.write_text(
+                        f'env count {self._refresh_count}->{_cnt2} candidates_same shot={_shot}',
+                        encoding='utf-8')
+                    log.warning('[cw!] [env] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s', _shot)
+                    self.ctx.run_context.stop_running()
+                    return self.round_fail(status='env 刷新点击未生效,停机存证')
+                log.info('[cw-env] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x = opts[pick.option_idx]
             reason = pick.reason
