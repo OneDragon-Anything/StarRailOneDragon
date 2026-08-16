@@ -668,7 +668,15 @@ def _best_improving_action(
     #   买而囤 bench = 白买(optionality 只数 bench 反向钉死枢纽件);
     # - plane 门(Y2):P2+ 息引擎重建期(ADR-0148)不吃骨架买;
     # - spread 守卫(Y1):板已 ≥DEPLOY_FACTION_CAP 阵营 → 只许深化已有阵营,不开新骨架对。
-    if (state.plane == 1 and state.gold < NO_LOSS_GOLD_CEILING
+    # ⚖️ boss 前花尽(2026-08-17 M46/M48 同病根因修复:3/3 局 P1-9 boss 濒死)——boss 节点
+    # gold 60-70 闲置 + 刷 10 次架无 target → **一张不买**就出战(骨架兜底的 plane/gold 两门
+    # 全拦住)。boss 是 P 末硬节点,板强 = 保 HP(ADR-0128 同源):boss + form<成型 → 解锁
+    # 骨架买(免 gold 上限/免 P1 门),把刷出来的确定战力买上;金花在板上 > 闲置挨打。
+    _boss_spend = (state.node_type == 'boss'
+                   and target_comp is not None
+                   and form_progress(target_comp, state) < 1.0)
+    if ((state.plane == 1 or _boss_spend)
+            and (state.gold < NO_LOSS_GOLD_CEILING or _boss_spend)
             and target_comp is not None
             and not _shop_has_buyable_target
             and form_progress(target_comp, state) < COMMIT_FRAC
