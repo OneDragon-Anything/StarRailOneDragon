@@ -92,6 +92,10 @@ class Comp:
     version_tag: str = "V4.4"    # 版本维护用
     flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(ADR-0152;不进 form_tiers)
     plaza_carry: str = ""        # plaza 实战聚类 carry 名(对拍锚,查 cw_plaza_comps.cluster_by_carry)
+    # ⚖️ r11 review #5(位面强度维度):comp 在哪些位面乏力(被环境抽陀螺)。来源=攻略实证
+    # (V4.0-4.4 难度攻略「DOT 队第二位面被抽陀螺」)+ comp 注释;消费端=maybe_pivot 信号 3
+    # (保命转型按位面过滤——P2 危血时转 P2 乏力 comp = 转完更死,M55 实证)。
+    weak_planes: tuple[int, ...] = ()
 
     @property
     def all_factions(self) -> set[str]:
@@ -687,6 +691,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):dot = B 级;攻略(77026641 直读):V4.4 刃加入→卡芙卡回归(刃比普通狼频繁触星核猎手额外战技)
         # 卡芙卡3风暴潮(dot不吃幸运)+黑天鹅(鹅,2dot)+刃(2星核猎手)+刻律(复制战技连动)+鸟;需自己卡芙卡
         # ⚠️ 黄泉减益已拆独立(见上);本 comp=DoT 主派(卡芙卡/鹅/刃/桑博),P1强/P2乏力/P3需转,低费过渡保血权威
+        weak_planes=(2,),   # r11 #5:攻略实证 P2 被抽陀螺(难度攻略:47-48)——保命 pivot P2 不选它
         # ADR-0152(plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
         # (core 的「刃」改「千冶·刃」+补海瑟音);装备 风暴潮19/反重力皮靴8。
         key_equips=["火力风暴潮", "火力风暴潮", "反重力皮靴"],
@@ -1333,7 +1338,11 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
     if state.hp < _pivot_hp:
-        easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
+        # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
+        # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。
+        _plane_ok = [c for c in candidates if state.plane not in c.weak_planes]
+        _pool = _plane_ok or candidates
+        easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
         with_progress = [c for c in easy if form_progress(c, state) > 0]
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
