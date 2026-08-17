@@ -442,7 +442,42 @@ def plan(state: GameState, config, faction_priority: list[str],
 
     # —— 凑整吃息:卖出能跨 10 倍数(+1 档息)的非关键 bench 牌(循环)——
     _maybe_sell_for_interest(cur, actions, character_priority, config, target_comp)
+    # —— 集中卖散(r28 核心治法):散板根因——早期无 target 散买累计,无回收机制。
+    # target 定后:bench 上 off-line(off-target 阵营 + 非优先角色 + 非过渡件)散牌
+    # 卖出回收,金投核心;玩家「集中一条线时卖 off-line 换核心」的自然操作。
+    # 场上(deployed)散牌**不卖**(上场战力 > 卖价;只清 bench 死库存)。
+    _sell_offline_for_focus(cur, actions, character_priority, target)
     return actions
+
+
+def _sell_offline_for_focus(state: GameState, actions: list,
+                            character_priority: list[str], target: Comp | None) -> None:
+    """集中卖散:target 定后清 bench 的 off-line 死库存(回收金投核心)。
+
+    判据(off-line,全部满足才卖):非 target 阵营/角色/过渡件 + 非用户 priority
+    + 非紧急战力(场上人数 < 上限时 bench 是死库存,卖出不损战力)。
+    每回合最多清 2 张(渐进,防一次性清空误伤过渡期)。
+    """
+    if target is None or not state.bench:
+        return
+    from sr_od.application.currency_war.cw_state import simulate as _sim
+    sold = 0
+    for bc in list(state.bench):
+        if sold >= 2:
+            break
+        if not bc.char_id:
+            continue
+        _is_target = _card_hits_target(bc.char_id, bc.faction, target)
+        _is_priority = bc.char_id in character_priority
+        _is_transition = bc.faction in getattr(target, 'flex_factions', ()) or \
+            bc.faction in getattr(target, 'transition_factions_hint', ())
+        if _is_target or _is_priority or _is_transition:
+            continue
+        # 场上满员时 bench 是潜在替补(下回合 deploy);不满员则纯死库存
+        if state.deployed_count() < state.max_units():
+            actions.append(SellBench(bench_idx=state.bench.index(bc)))
+            state = _sim(state, actions[-1])
+            sold += 1
 
 
 
