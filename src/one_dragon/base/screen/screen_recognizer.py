@@ -33,7 +33,7 @@ class ScreenRecognizer:
     ``sr_od.operations`` + ``sr_od.application``),无需中心注册。
 
     recognize 内部鼓励用领域模型类组装,再转 JSON 可序列化 dict 返回(工程化质量:
-    单一真相源 / 类型注解,见 CLAUDE.md「工程化质量」)。框架层不规定 dict 结构(各画面不同),
+    单一真相源 / 类型注解)。框架层不规定 dict 结构(各画面不同),
     但**必须经 ``extras_doc`` 声明返回字段语义**(字段名 → 一行说明),analyze 会把它与 ``extras``
     一起平级返回(``AnalyzeScreenResult.extras_doc``)—— 调用方(智能体 / HTTP)拿到 extras 的同时
     就拿到字段语义,不必知道画面是什么、也不必另查文档。

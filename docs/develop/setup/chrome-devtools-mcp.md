@@ -20,11 +20,23 @@ chrome-devtools-mcp 有两种接法:
 
 ## ① 装 MCP(connect 模式、user scope)
 
+**DSH**(全局 `~/.dsh/profiles/web/cordis.patch.yml` 或项目 `.dsh/mcp.servers.yml`;stdio 经 `npx` 跑,保存热生效):
+
+```yaml
+# 项目级则放 servers: 下；全局 patch 则放 dsh-mcp-client 条目 config
+chrome-devtools:
+  transport: stdio
+  command: npx
+  args: ['-y', 'chrome-devtools-mcp@latest', '--browser-url=http://127.0.0.1:19999', '--no-usage-statistics']
+```
+
+**Claude Code**(user scope,装到个人配置不进仓库):
+
 ```shell
 claude mcp add chrome-devtools -s user -- npx -y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:19999 --no-usage-statistics
 ```
 
-> `-s user`:装到你个人配置(`~/.claude.json`),不进项目仓库、不影响队友。端口 `19999` 可自定,与下方②一致即可。
+> 端口 `19999` 可自定,与下方②一致即可。
 
 ## ② 开调试浏览器(你自己在桌面会话开)
 
@@ -42,9 +54,10 @@ PowerShell(从开始菜单正常打开,落在你的桌面会话):
 - `--user-data-dir`:**独立 profile**,不碰你日常 Edge(路径自选;复用已有调试 profile 也行)。
 - 验证 CDP 起来:浏览器访问 `http://localhost:19999/json/version`,返回版本 JSON 即 ok。
 
-## ③ 让 Claude Code 加载工具
+## ③ 让工具加载
 
-新装的 MCP 当前会话不会自动加载 —— **`/mcp` 重连**(或重启 Claude Code)后,`chrome-devtools` 才出现在工具列表(`mcp__chrome-devtools__*`)。
+- **DSH**:项目 `.dsh/mcp.servers.yml` 保存后 watcher 自动重载(约 0.5s 防抖);全局 `cordis.patch.yml` HMR 热生效,无需重启会话。
+- **Claude Code**:新装的 MCP 当前会话不自动加载——`/mcp` 重连(或重启)后才出现(`mcp__chrome-devtools__*`)。
 
 ## 验证全链路
 
@@ -57,7 +70,7 @@ take_snapshot  → 能读到中文内容即通
 
 ## 会话坑(重要)
 
-Windows 上 Claude Code 的 Bash/agent 进程常跑在 **Session 0(services,无可见桌面)**,而你的可见桌面是 **console 会话(Session 3 等)**。会话隔离意味着:
+Windows 上 AI 编码工具的后台命令/agent 进程常跑在 **Session 0(services,无可见桌面)**,而你的可见桌面是 **console 会话(Session 3 等)**。会话隔离意味着:
 
 - **agent 起的带窗口进程(浏览器、游戏)落在 Session 0 → 窗口你看不到**(不是 headless,是会话隔离)。
 - 所以带界面、要你交互/扫码/登录的东西,**必须你自己在桌面会话启动**;agent 只负责经 localhost CDP(跨会话通)连进去驱动。

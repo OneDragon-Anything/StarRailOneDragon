@@ -89,8 +89,9 @@ uv run pytest sr-od-test/
 ```powershell
 # 1) 起后端 server（:24001；项目根目录，另起一个常驻终端）
 $env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 24001
-# 2) 注册到 Claude Code（再另开终端）
-claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
+# 2) 接入你的 AI 工具（配置不入库，每人本地建）—— 按所用工具二选一：
+#    DSH:        项目根 .dsh/mcp.servers.yml 配 sr_od（yaml 见 docs/develop/sr_od/backend/mcp.md）
+#    Claude Code: claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 ```
 
 - **工具清单见 [sr_od/backend/mcp.md](../sr_od/backend/mcp.md)**（不在此列举，避免随实现演进过时）。
@@ -98,11 +99,11 @@ claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 
 ### LSP（代码导航，pyright）
 
-项目用 uv 方式 pyright 做 LSP（定义 / 引用 / 符号），`pyproject.toml` 已配 `[tool.pyright] extraPaths=["src"]`（同 `PYTHONPATH=src` 的根因）。Claude Code 的 pyright 插件安装见 [AI 编码助手接入](ai_coding.md)。
+项目用 uv 方式 pyright 做 LSP（定义 / 引用 / 符号），`pyproject.toml` 已配 `[tool.pyright] extraPaths=["src"]`（同 `PYTHONPATH=src` 的根因）。各 AI 工具经 `uv run pyright-langserver` 接入（必须走 uv 方式；Claude Code 用 uv-pyright 插件）。
 
 ### Skills
 
-开发 skill 全在公共仓 `OneDragon-Skills`（`od-dev-*`，索引见该仓 `skills/README.md`），经 junction 挂进所用工具的 skill 目录自动加载（DSH: `.dsh/skills/` / Claude Code: `.claude/skills/`）；写作规范 `od-dev-writing-skills` 也在公共仓（见 §Skills）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
+开发 skill 全在公共仓 `OneDragon-Skills`（`od-dev-*`，索引见该仓 `skills/README.md`），经 junction 挂进所用工具的 skill 目录自动加载（DSH: `.dsh/skills/` / Claude Code: `.claude/skills/`）；写作规范 `od-dev-writing-skills` 在公共仓 `OneDragon-Skills`（见 §Skills）。开发流程方法论以 `od-dev-*` / `sr-od-dev-*` skills 为准（Claude Code 侧 [superpowers](https://github.com/anthropics/superpowers) 为可选补充）。详见 [AI 编码助手接入 §Skills](ai_coding.md#skills)。
 
 ### Plugin
 

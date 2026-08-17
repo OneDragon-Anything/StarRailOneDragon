@@ -1,6 +1,6 @@
 # settings.json 的团队级 vs 个人级归口
 
-> 本文档回答一个具体问题:**`.claude/settings.json` 里哪些 key 该放团队级(commit、共享),哪些该放个人级(`.local.json` / `~/.claude/`)?**
+> 适用于 Claude Code 用户(工具接法总览见 [../setup/ai_coding.md](../setup/ai_coding.md))。本文档回答一个具体问题:**`.claude/settings.json` 里哪些 key 该放团队级(commit、共享),哪些该放个人级(`.local.json` / `~/.claude/`)?**
 >
 > 调研日期:2026-06-30。依据:Anthropic 官方 [settings](https://code.claude.com/docs/en/settings) / [permissions](https://code.claude.com/docs/en/permissions) / [best-practices](https://code.claude.com/docs/en/best-practices)(原 `/engineering/claude-code-best-practices` 已合并至此)三份一手文档。
 >

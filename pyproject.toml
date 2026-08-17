@@ -86,8 +86,8 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 
-# Pyright 配置：供 Claude Code 的 LSP 工具使用（经 `uv run pyright-langserver` 启动，
-# 见 .claude/settings.json 的 lspServers；必须走 uv 方式，勿启用官方全局 pyright 插件）。
+# Pyright 配置：供 AI 编码工具的 LSP 使用（经 `uv run pyright-langserver` 启动；
+# 必须走 uv 方式，勿启用官方全局 pyright 插件）。
 [tool.pyright]
 include = ["src"]
 exclude = [

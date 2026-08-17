@@ -52,10 +52,14 @@ notice_cache/
 
 # 需自行下载的模型文件
 models/
-# AI 入口：.claude/ 整个不入库（CLAUDE.md 也是个人本地；团队共享走根 AGENTS.md）
+# AI 入口：.claude/ 整个不入库（历史 Claude Code 目录；团队共享走根 AGENTS.md）
 .claude/*
-# .agents/ 通用 AI agents 目录（DSH 等 skill junction，本地 link 不入库）
+# .agents/ 通用 AI agents 目录（skill 挂载兼容位，本地 link 不入库）
 .agents/*
+# .dsh/ DSH 项目级目录（skill junction + mcp.servers.yml 本机接线，不入库）
+.dsh/*
+# 个人本地入口（不入库；团队共享走根 AGENTS.md）
+AGENTS.local.md
 CLAUDE.local.md
 
 # superpowers（规划文档/会话产物，不入库）

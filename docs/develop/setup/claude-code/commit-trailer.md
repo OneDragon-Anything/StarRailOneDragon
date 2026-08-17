@@ -1,5 +1,7 @@
 # Claude Code：自动注入 commit trailer
 
+> 适用于 Claude Code 用户(git hook 部分工具无关);工具接法总览见 [../ai_coding.md](../ai_coding.md)。
+
 > 这是 [ai_coding.md](../ai_coding.md) 里「AI 辅助提交的署名 → 做法二 → 2b（git hook + 工具 hook 写模型名）」在 Claude Code 上的具体实现。思路通用，下面是 Claude Code 的落地。
 
 ## 目标
