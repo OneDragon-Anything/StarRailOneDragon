@@ -1148,6 +1148,17 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
     评分 = comp_score(多维)+ 用户 4 轴 steer(硬过滤 build_around/forbid + 软加权 priority)
     + 阶段成型难度因子(早期偏 easy)。optionality 时传 top_n=2-3 备选几套(P1-1:核心来了再 commit)。
     """
+    return [c for _s, c in select_comp_scored(state, ctx, config, top_n=top_n)]
+
+
+def select_comp_scored(state: GameState, ctx: ScoreContext, config,
+                       top_n: int = 1) -> list[tuple[float, Comp]]:
+    """``select_comp`` 的带分版(r3 review③:遥测要**实际排序分**——含 steer/acq/
+    board_alignment 等乘子的最终分,非裸 comp_score;close_call 分差分析量纲对齐)。
+
+    返回 ``[(final_score, Comp)]`` 降序;top_n 截断。排序逻辑与 select_comp 完全
+    同源(单一实现,select_comp 是本函数的投影)。
+    """
     held = _held_base_copies(state)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
     # ADR-0135:持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
     # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
@@ -1202,7 +1213,7 @@ def select_comp(state: GameState, ctx: ScoreContext, config,
             pass
         scored.append((s, comp))
     scored.sort(key=lambda t: t[0], reverse=True)
-    return [c for _s, c in scored[:top_n]]
+    return scored[:top_n]
 
 
 def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dict[str, float | None]:

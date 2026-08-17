@@ -195,6 +195,11 @@ class StrategySession:
     # prep_phase:默认策略主流程推进位(0=买牌前/1=买完/2=部署完/3=装备完→出战;环级,Director
     # 环入口清零,同 defer_count 宿主模式 —— 策略无状态,主流程阶段只能住 session,F6)。
     prep_phase: int = 0
+    # r3 review④:动态 setattr 升正式字段(asdict/repr 完整;getattr 兜底随之可删)
+    pivot_cooldown_until: int = 0                      # r7 pivot 冷却(转线后 N 轮封信号 1/2;保命豁免在调用侧)
+    last_candidate_scores: dict[str, float] = field(default_factory=dict)   # 选线轮的 top-3 实际排序分(r6 遥测补)
+    last_candidate_scores_round: int = -1              # 分数轮次戳(shop 侧判陈旧清空)
+    _supply_refresh_used: bool = False                 # 补给刷新 1 次已用(r2#2 跨实例)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;

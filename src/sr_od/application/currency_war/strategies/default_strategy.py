@@ -144,27 +144,30 @@ class DefaultCwStrategy(CwStrategy):
             log.info('[cw-target] emergent:无阵营 count≥2(board+bench)→ target 保持 None(L1+L2 集中化驱动)')
             return
         if session.target_comp is None:
-            cands = cw_comps.select_comp(state, score_ctx, config, top_n=3)
+            # r3 review③:用带分版 select_comp_scored——遥测记**实际排序分**
+            # (含 steer/acq/board_alignment 乘子的最终分),量纲与决策一致;
+            # 且省掉逐个重算 comp_score。
+            scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=3)
+            cands = [c for _s, c in scored_cands]
             session.target_comp = cands[0] if cands else None
             # 遥测补(2026-08-17 r6):candidate_scores 曾全空(shop.py 落盘 {})——
-            # 14 号 close_call 筛选零语料。select_comp top-3 存 session,shop 侧带出。
-            from sr_od.application.currency_war import cw_comps as _cc
-            session.last_candidate_scores = {}
-            import contextlib
-            for _c in cands:
-                with contextlib.suppress(Exception):   # 评分失败不炸 target
-                    session.last_candidate_scores[_c.name] = float(
-                        _cc.comp_score(_c, state, score_ctx))
+            # 14 号 close_call 筛选零语料。select_comp top-3 存 session,shop 侧带出
+            # (r3 review②:带轮次戳,非本轮回合 shop 侧判陈旧清空)。
+            session.last_candidate_scores_round = state.round_num
+            session.last_candidate_scores = {c.name: round(s, 4) for s, c in scored_cands}
         else:
             # tracker=session.performance:maybe_pivot **读** tracker —— is_losing_streak 解锁 commit 锁做
             # 保命转型(cw_comps:791)+ losing 时 pivot 阈值 ×0.7(cw_comps:807)。live-verified(2026-08-12):
             # on_round_end 喂 hp_after conf=1.0,trend 真实(HP 82→…→1),is_losing_streak 实触发。
             # (原「maybe_pivot 目前不读 tracker 占位」判断过期已撤回 —— 实接 cw_comps:791/807。)
-            # r7 pivot 冷却(治过度换线,两局败因:4/3 线漂移):转线后 N 轮内不再转(保命信号在
-            # maybe_pivot 内部 hp 门,不受此冷却影响——危机永远允许)。
+            # r7 pivot 冷却(治过度换线,两局败因:4/3 线漂移):转线后 N 轮内不再转。
+            # r3 review①修正:冷却只封信号 1/2,**保命信号豁免**——hp 危机时必须
+            # 永远允许转(否则冷却窗内 hp 崩掉 = 我亲手封死救命通道)。危机判据复用
+            # maybe_pivot 同款门(0.75×effective_hp_threshold)。
             _cool = getattr(session, 'pivot_cooldown_until', 0)
+            _in_crisis = state.hp < int(0.75 * cw_comps.effective_hp_threshold(state))
             piv = None
-            if state.round_num > _cool:
+            if _in_crisis or state.round_num > _cool:
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)
             if piv is not None:
