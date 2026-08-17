@@ -320,12 +320,11 @@ class CurrencyWarRunLoop(SrOperation):
             if _st0.round_num > 1 or _st0.plane > 1:
                 log.warning('[cw!][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
-                try:
+                import contextlib
+                with contextlib.suppress(Exception):   # 遥测 best-effort
                     cw_telemetry.record_exogenous(_st0.round_num, 'resumed_match',
                                                   detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
                                                   state=_st0)
-                except Exception:   # noqa: BLE001  遥测 best-effort
-                    pass
             self.ctx.cw_match.strategy.on_match_start(
                 _st0, self.ctx.cw_match.session, self._cw_config)
 
