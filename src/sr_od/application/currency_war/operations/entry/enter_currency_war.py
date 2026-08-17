@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 from typing import ClassVar
 
 from one_dragon.base.geometry.rectangle import Rect
@@ -53,7 +51,15 @@ class EnterCurrencyWar(SrOperation):
     def enter(self) -> OperationRoundResult:
         screen = self.last_screenshot
         # success_wait 给点击落地 + 跳转加载留时间
-        return self.round_by_ocr_and_click(screen, '前往参与', retry_wait=1, success_wait=2)
+        result = self.round_by_ocr_and_click(screen, '前往参与', retry_wait=1, success_wait=2)
+        if result.is_success:
+            return result
+        # 按钮不在 ≠ 失败(2026-08-17 实测事故:传送已落地/恢复场景下本节点判死
+        # 「找不到 前往参与」,而画面已在朝露公馆入口只差按 F)。交 wait_lobby 分流 ——
+        # 它已有全部下游分支:仍在指南页则重点击 / 入口按 F / 弹窗消化 / 大厅即成功,
+        # 真到不了大厅由它的节点预算兜底退出。
+        log.info('[cw-entry] 「前往参与」不在画面(可能已传送/加载中)→ 交等待大厅节点分流')
+        return self.round_success(status='前往参与不在画面,交下游分流')
 
     @node_from(from_name='前往参与')
     @operation_node(name='关闭弹窗并等待大厅', node_max_retry_times=30)
