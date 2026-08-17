@@ -130,8 +130,17 @@ class DefaultCwStrategy(CwStrategy):
                     session.target_comp = None
                     session.target_drought = 0
                 else:
-                    log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
-                             session.target_comp.name, session.target_drought, _fp)
+                    # r19 live 判读:invested 固执在 P1 后段是慢性死亡——局9「连续 10 轮
+                    # 无阵营卡」仍保 → 阵容卡在 0.5-0.75 form → P2 碾压。极端 drought
+                    # (≥8 轮零供给)时半成型线也弃(供给断了 = 这条线在当局已死)。
+                    if session.target_drought >= 8:
+                        log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
+                                    session.target_comp.name, session.target_drought, _fp)
+                        session.target_comp = None
+                        session.target_drought = 0
+                    else:
+                        log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
+                                 session.target_comp.name, session.target_drought, _fp)
         # count≥2 到 r6-7 才 emergent → 太慢,HP 在 comp 成型前崩。降到 count≥1(starter 任一阵营在场,r1 即触发)
         # (r1 board 有 starters 非空 + select_comp 用 shop_supply 保 acquirable;maybe_pivot 纠偏;drought_bail 兜底)。
         EMERGENT_SIGNAL_COUNT: int = 1
