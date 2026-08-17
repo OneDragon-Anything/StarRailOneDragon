@@ -53,7 +53,9 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
     _reg = dict(getattr(session, 'star_regression_count', {}) or {})
     for _n, _s in _new_stars:
-        _old_s = next((_os for _on, _os in _old_stars if _on == _n), None)
+        # 同名多星共存时取**最高旧星**(r6 review 小瑕疵:set 无序 next() 任意项;
+        # 回退判定应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
+        _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
         if _old_s is not None and _s < _old_s:
             log.warning(f'[cw!][{source}] star 回退:{_n} {_old_s}★→{_s}★(read_star 漏金星?卖后重买?)')
             _conflict('star', _old_s, _s, screen, verdict='采新-read_star实读(回退留证)',
