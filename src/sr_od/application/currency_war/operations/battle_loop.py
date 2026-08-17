@@ -266,18 +266,14 @@ class CurrencyWarRunLoop(SrOperation):
 
         # [停机钩子·临时] 未完整建档节点 + 待排查节点 → 停机给 AI 按 od-dev-screen-onboarding 建档/排查。
         # 建档/排查完删该 tuple 项。
-        # - 祈愿:screen_info+handler 有但无完整 skill 建档(doc/fixture/id_mark 测缺)。巨星(盛会之星)已完整建档(2026-08-13)→ 移出 tuple,0b 接管。
-        # - 投资环境已解除隔离(2026-08-15 M19 live:id_mark 已建 + HandleInvestEnv 经入口路径
-        #   多局验证;本 session 修防御分支 AttributeError 后 0e 分支接管)→ 移出 tuple。
-        # - 投资策略已完整重建档(2026-08-15 live:9 步 onboarding + 独立屏实锤 + 三态 fixture + id_mark
-        #   测 4/4 + HandleInvestStrategy 点击模型 live 核对)→ 移出 tuple,0e 分支接管。
-        # - 补给已完整重建档(2026-08-15 live:独立屏实锤(返回备战界面)+ 5 列交互验证(点列选中
-        #   0/1→1/1、确认 1708,980 与 yml 一致)+ RunSupplyNode 模型 live 核对 + fixture 4 态 +
-        #   id_mark 测既有 2 项)→ 移出 tuple,0e 分支接管。
-        # ⚠️ 选择伙伴已完整建档(2026-08-13,组合 id_mark 购买经验+选择伙伴;备战含被盖前台区域→overlay 帧备战不 is_precise,无测试豁免)→ 移出 tuple,0a 接管。
-        for _scr, _area, _tag in (
-            ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
-        ):
+        # - 巨星(盛会之星)已完整建档(2026-08-13)→ 移出,0b 接管。
+        # - 投资环境/投资策略/补给/选择伙伴 → 均已完整建档(2026-08-13~15)→ 移出,各自分支接管。
+        # - 祈愿试炼已完整建档(2026-08-17:doc+fixture+id_mark 测补齐;handler HandleWishTrial
+        #   2026-08-08 live 验证)→ 移出,**0c 分支接管**。⚠️ 教训:此钩子曾把每个新 run 在进
+        #   对局循环首帧(游戏停在祈愿屏)时停掉——游戏状态恰停在待建档屏时,钩子=每局必停,
+        #   被误判为「外部会话拦截」排查了一整晚(r24-r31)。钩子停机的前提是该屏**偶发**出现;
+        #   建档完成后立即删除,别留到「下次遇到」。
+        for _scr, _area, _tag in ():
             if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
                 self.save_screenshot(prefix=f'{_tag}_hook')
                 Path(f'.debug/temp/currency_war/{_tag}_hook.flag').write_text(_tag, encoding='utf-8')
