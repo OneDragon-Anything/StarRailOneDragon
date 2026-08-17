@@ -48,6 +48,30 @@ class DifficultyAccount:
             self.augments['(reconcile_residual)'] = self.augments.get('(reconcile_residual)', 0.0) + resid
         return self.total()
 
+    @classmethod
+    def from_strategies(cls, base: float, strategy_names: list[str],
+                        streak: int = 0) -> DifficultyAccount:
+        """从持卡注册表建账(v2,strategy/18 落地:EconomyEffect 难度字段)。
+
+        difficulty_delta 进 augments(节点型限定暂并入静态——遭遇/首领限定建模
+        挂 decide_encounter 消费批);difficulty_per_streak 走 streak 动态项。
+        品质通胀(API 无数值)不建。
+        """
+        from sr_od.application.currency_war.cw_investments import get_strategy
+        acc = cls(base=base, streak=streak)
+        for name in strategy_names:
+            s = get_strategy(name)
+            if s is None or s.economy is None:
+                continue
+            e = s.economy
+            if e.difficulty_delta:
+                acc.augments[name] = float(e.difficulty_delta)
+            if e.difficulty_per_streak:
+                # 多张动态卡取和(罕见);streak 项在 total() 里按 GROWTH_PER_STREAK 计
+                acc.augments[f'{name}(per_streak系数)'] = float(
+                    e.difficulty_per_streak - GROWTH_PER_STREAK)
+        return acc
+
 
 def marginal_value(d_now: float, d_delta: float, gap: float, *,
                    node_type: str = 'normal', plane: int = 1,

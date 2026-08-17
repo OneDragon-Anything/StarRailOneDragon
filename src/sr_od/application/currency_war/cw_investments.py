@@ -89,6 +89,22 @@ class EconomyEffect:
     gold_next_nodes_count: int = 0
     gold_per_level_up: int = 0
     gold_per_20hp_lost: int = 0
+    # —— v2 扩展(2026-08-17 strategy/18 全量调研;仅 API 文本明说的数值)——
+    difficulty_delta: int = 0             # 静态难度 Δ(简单模式 −3 等;36 号账本消费)
+    difficulty_per_streak: int = 0        # 动态难度(伟大征服:难度+连胜数)
+    difficulty_node_types: tuple[str, ...] = ()   # Δ 限定节点型(难度修改器:遭遇+首领)
+    future_quality_upgrade: str = ''      # 远见:后续策略节点品质改写('prism';期权侧消费)
+    difficulty_inflation_exempt: bool = False    # 远见:不增加敌人难度
+    gold_at_level: int = 0                # 成长基金:到达该级给金(级数配对字段)
+    gold_at_level_target: int = 0         # 触发等级(9)
+    xp_click_discount_from_level: int = 0  # 成长的快乐:该级起单击减金(配对字段 below)
+    xp_click_discount_from_level_at: int = 0   # 触发等级(8)
+    gold_at_node: int = 0                 # 时点大额(超发货币 +70;负债部分由消费端按持有金算)
+    gold_at_node_offset: int = 0          # 何时(t+5)
+    interest_flat_per_node: int = 0       # 狸财经狸:每节点固定息(与 interest_cap 无关)
+    hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
+    gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
+    xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
 
 
 @dataclass(frozen=True)
@@ -117,7 +133,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '利息上调': EconomyEffect(instant_gold=25, interest_cap_override=10),
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
     '淘金客': EconomyEffect(xp_per_refresh=2),
-    '伟大征服': EconomyEffect(win_reward_mult=3.0),
+    '伟大征服': EconomyEffect(win_reward_mult=3.0, difficulty_per_streak=1, xp_instant=12),
+    # ↑ 纠错(strategy/18 §5):注册表曾只建 ×3,漏「敌人难度+N(N=连胜)」与 +12XP(API 原文)
     '商业间谍': EconomyEffect(xp_buy_cost_discount=1),
     '返利+': EconomyEffect(instant_gold=6, gold_per_three_5cost=3),
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
@@ -127,7 +144,10 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '乱成一锅粥': EconomyEffect(instant_gold=10, free_refresh_burst=5),
     '着眼当下': EconomyEffect(instant_gold=5),
     '搜打撤': EconomyEffect(free_refresh_per_node=1),
-    '远见': EconomyEffect(instant_gold=15),
+    '远见': EconomyEffect(instant_gold=15, future_quality_upgrade='prism',
+                          difficulty_inflation_exempt=True),
+    # ↑ 纠错(strategy/18 §5):曾只建 +15 金,漏「后续策略节点→随机棱彩(不可刷)」
+    # +「不增加敌人难度」两大效果(API 原文;期权/难度侧由 33/36 号消费)
     '贸易专家:停云': EconomyEffect(instant_gold=10),
     '佩佩驾到': EconomyEffect(instant_gold=8),
     '控制规模': EconomyEffect(instant_gold=40),
@@ -138,7 +158,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '节节高升': EconomyEffect(gold_per_level_up=1),
     '本金充裕+': EconomyEffect(instant_gold=45),
     '黄金垃圾': EconomyEffect(instant_gold=15),
-    '退化': EconomyEffect(instant_gold=8),
+    '退化': EconomyEffect(instant_gold=8, difficulty_delta=-5),
     '停云顾问': EconomyEffect(instant_gold=4),
     '加拉赫顾问': EconomyEffect(instant_gold=4),
     '摸个鱼吧II': EconomyEffect(instant_gold=6),
@@ -183,6 +203,28 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '溜佩佩': EconomyEffect(instant_gold=9),
     '溜佩佩+': EconomyEffect(instant_gold=15),
     '保险': EconomyEffect(gold_per_20hp_lost=5),
+    # —— v2 新建(strategy/18 调研落地;API 文本明说的数值,2026-08-17)——
+    # 批 1:等级触发
+    '成长基金': EconomyEffect(gold_at_level=40, gold_at_level_target=9),
+    '成长的快乐': EconomyEffect(xp_instant=4,
+                                xp_click_discount_from_level=1, xp_click_discount_from_level_at=8),
+    # 批 2:时点日程
+    '超发货币': EconomyEffect(gold_at_node=70, gold_at_node_offset=5),
+    # ↑ 负债部分(失去现有全部金)由消费端按持有金处理,数值侧只记回流 +70
+    '固定理财': EconomyEffect(xp_per_node=0, free_refresh_burst=2),   # 位面开始部分(见下)
+    '固定理财+': EconomyEffect(free_refresh_burst=3),
+    # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——v0 只建即时刷;位面日程挂台账批次
+    '经验到账': EconomyEffect(xp_instant=10),
+    '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
+    # 批 3:动态/血金互兑
+    '狸财经狸': EconomyEffect(interest_flat_per_node=2),
+    # ↑ API 全文:30 本金进不了字段(非给玩家);息+2/节点;金<20 取 10(流动性保险,
+    #   行为条件流);P3 首领取全部存款(存款累计值消费端推)。数值侧先建固定息。
+    '不等价交换': EconomyEffect(hp_gold_swap=True),
+    '星际和平保险': EconomyEffect(gold_per_hp_lost_now=True),
+    # C 类:难度交互(显数值;36 号账本消费)
+    '简单模式': EconomyEffect(difficulty_delta=-3),
+    '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
 }
 
 
