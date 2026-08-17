@@ -301,6 +301,17 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_fail(status='对局循环超时')
         screen = self.last_screenshot
 
+        # r15 焦点防线(loop 级,失焦僵尸根治):每 10 迭代主动验窗口焦点,失焦即激活。
+        # r9 实证窗口后台化时输入静默丢/截图正常 → 环僵尸;click/drag 点位守卫(r9/r10)
+        # 只护单操作,本防线兜全类(未覆盖操作/未来新动作)。best-effort。
+        if self._iter % 10 == 0:
+            import contextlib
+            with contextlib.suppress(Exception):
+                _gw = self.ctx.controller.game_win
+                if not _gw.is_win_active:
+                    log.warning('[cw!][loop] 窗口失焦(输入静默丢风险)→ 主动激活')
+                    _gw.active()
+
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
         if self._iter == 1 and self._is_new_match:
             self.ctx.cw_match.strategy.on_match_start(
