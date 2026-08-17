@@ -105,6 +105,12 @@ class EconomyEffect:
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
+    # —— 合成/出售触发族(strategy/19 P7 修正轮,2026-08-17;均为「正常成型路上
+    #     白得」的被动经济,选卡正常评估,不围绕改打法)——
+    gold_per_2star2cost_merge: int = 0    # 砂里淘金:合 2星2费 得砂金(可卖 ≈ 现金)
+    gold_per_3star_merge: int = 0         # 星星相印:每合 3 星 +金
+    refresh_per_compose: int = 0          # 武力刷新:合成装备时得免费刷
+    sell_price_mult: float = 1.0          # 大裁员/降本增效:卖价 ×2(配合全场出售动作)
 
 
 @dataclass(frozen=True)
@@ -175,7 +181,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '小复制': EconomyEffect(instant_gold=7),
     '长期主义+': EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3),
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
-    '大裁员': EconomyEffect(free_refresh_burst=5),
+    '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
+    # ↑ 刷(旧)+ 卖价×2(合成/出售族轮并入)
     '嘴硬': EconomyEffect(instant_gold=6),
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
@@ -225,6 +232,12 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # C 类:难度交互(显数值;36 号账本消费)
     '简单模式': EconomyEffect(difficulty_delta=-3),
     '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
+    # 合成/出售触发族(strategy/19 P7 修正:被动经济,正常评估)
+    '砂里淘金': EconomyEffect(gold_per_2star2cost_merge=2),
+    # ↑ 合 2星2费 白得砂金(2费可卖 ≈2 金/张;阵容用得上则价值更高,经济侧按下界)
+    '星星相印': EconomyEffect(gold_per_3star_merge=5),
+    '武力刷新': EconomyEffect(refresh_per_compose=2),
+    '降本增效': EconomyEffect(sell_price_mult=2.0),
 }
 
 
