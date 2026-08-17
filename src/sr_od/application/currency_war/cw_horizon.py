@@ -15,7 +15,8 @@ V1.0 首跑失败暴露的三缺口(V1.1 修):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from pathlib import Path
 
 from sr_od.application.currency_war.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
@@ -93,7 +94,10 @@ def b_eff_level_free(b: float) -> bool:
 
 
 # ===== DP =====
-GOLD_STEP, GOLD_MAX = 5, 110
+# D1(ADR-0202/53 号网格约束):金步长 5→1——台账日程的 +1/+2 级小额度(长期主义 7/按劳 1)
+# 在步长 5 下被量化静默蒸发;状态空间 27×111×10×20×5 ≈ 3M × 8 姿态,求解分钟级(实测
+# ~3min),可忽略。posture() 的 g5 归一同步兼容(步长 1 下 gold//1*1=gold 恒等)。
+GOLD_STEP, GOLD_MAX = 1, 110
 HP_BUCKET, HP_MIN, HP_MAX = 5, 5, 100
 LEVEL_MIN, LEVEL_MAX = 1, 10
 SURVIVAL_W = 10.0
@@ -109,16 +113,121 @@ class Posture:
     tag: str = ''
 
 
-@dataclass
+_ACTION_ROLLS = {0: 0, 1: 2, 2: 4, 3: 6}
+
+
 class HorizonSolution:
-    policy: dict[tuple, Posture] = field(default_factory=dict)
-    value: dict[tuple, float] = field(default_factory=dict)
+    """DP 解。v5 起内部为 numpy flat 数组(求解向量化 + 缓存 ~MB 级),对外三访问口:
+
+    - ``posture(t, gold, level, hp, rb)``:O(1) flat 索引 → 按需构造 Posture(查询低频);
+    - ``value_at(...)``:同上,标量值;
+    - ``policy`` / ``value``(property):**惰性物化 dict 视图**(旧消费端[测试/审计]兼容;
+      生产路径不应触碰)。
+    布局 flat:((t*NG+gi)*NLEV+Li)*NH+hi)*NR+rbi;动作码 0=存息 1=+D2 2=+D4 3=+D6
+    4=升级 5=升+D2 6=升+D4 7=升+D6。
+    (非 dataclass:类级布局常数与缓存字段不进字段序;手写 __init__)
+    """
+
+    _act: object = None            # np.ndarray[int8] flat
+    _val: object = None            # np.ndarray[float64] flat
+    _policy_cache: dict[tuple, Posture] | None = None
+    _value_cache: dict[tuple, float] | None = None
+    _lc_of: dict[int, int] | None = None   # Li → level_cost(物化 Posture 的 v/tag 不含,
+    # spend 由动作码+此处恢复;v 存于 _val)
+
+    # —— 布局常数(类级,物化/posture 共用)——
+    _NG: int = GOLD_MAX // GOLD_STEP + 1
+    _NH: int = (HP_MAX - HP_MIN) // HP_BUCKET + 1
+    _NR: int = len(RB_STEPS)
+    _NLEV: int = LEVEL_MAX - LEVEL_MIN + 1
+
+    def __init__(self, act=None, val=None) -> None:
+        self._act = act
+        self._val = val
+        self._policy_cache = None
+        self._value_cache = None
+
+    # 兼容旧字段式访问(构造空解的旧调用路径)
+    @property
+    def policy(self) -> dict[tuple, Posture]:
+        if self._policy_cache is None:
+            self._materialize()
+        return self._policy_cache
+
+    @property
+    def value(self) -> dict[tuple, float]:
+        if self._value_cache is None:
+            self._materialize()
+        return self._value_cache
+
+    @policy.setter
+    def policy(self, d: dict) -> None:
+        self._policy_cache = d
+
+    @value.setter
+    def value(self, d: dict) -> None:
+        self._value_cache = d
+
+    def _idx(self, t: int, gold: int, level: int, hp: int, rbi: int) -> int:
+        # int() 强转:调用方可能传 float(validate_emergence 的 h_raw 演化是 float;
+        # 旧 dict 版 float 键静默 miss → fallback,新版显式取整 —— 兼容且更诚实)
+        t = int(t)
+        if t >= TOTAL_NODES:
+            t = TOTAL_NODES - 1   # 终局层未存(策略层无意义,值=残值公式可直算)
+        gi = min(int(gold) // GOLD_STEP, self._NG - 1)
+        Li = min(max(int(level), LEVEL_MIN), LEVEL_MAX) - LEVEL_MIN
+        hi = (min(max(int(hp), HP_MIN), HP_MAX) - HP_MIN) // HP_BUCKET
+        return (((t * self._NG + gi) * self._NLEV + Li) * self._NH + hi) * self._NR + int(rbi)
 
     def posture(self, t: int, gold: int, level: int, hp: int, rb: float) -> Posture:
-        g5 = min(gold // GOLD_STEP * GOLD_STEP, GOLD_MAX)
-        h5 = min(max(hp, HP_MIN), HP_MAX) // HP_BUCKET * HP_BUCKET
+        if self._act is None:
+            return self.policy.get(
+                (t, min(gold // GOLD_STEP * GOLD_STEP, GOLD_MAX),
+                 min(max(level, LEVEL_MIN), LEVEL_MAX),
+                 min(max(hp, HP_MIN), HP_MAX) // HP_BUCKET * HP_BUCKET,
+                 min(range(len(RB_STEPS)), key=lambda i: abs(RB_STEPS[i] - rb)))
+            ) or Posture(tag='fallback')
         rbi = min(range(len(RB_STEPS)), key=lambda i: abs(RB_STEPS[i] - rb))
-        return self.policy.get((t, g5, min(max(level, LEVEL_MIN), LEVEL_MAX), h5, rbi)) or Posture(tag='fallback')
+        i = self._idx(t, gold, level, hp, rbi)
+        a = int(self._act[i])
+        v = float(self._val[i])
+        lv_up = a >= 4
+        rolls = {0: 0, 1: 2, 2: 4, 3: 6}[a % 4]
+        tag = ('升级' if lv_up else '') + (f'+D{rolls}' if rolls else '')
+        if not tag:
+            tag = '存息'
+        return Posture(save=(a == 0), level_up=lv_up, refresh_budget=rolls, v=v, tag=tag)
+
+    def value_at(self, t: int, gold: int, level: int, hp: int, rb: float) -> float:
+        rbi = min(range(len(RB_STEPS)), key=lambda i: abs(RB_STEPS[i] - rb))
+        return float(self._val[self._idx(t, gold, level, hp, rbi)])
+
+    def _materialize(self) -> None:
+        """数组 → dict 视图(旧消费端兼容;一次性;t 层 0..TOTAL_NODES-1)。"""
+        self._policy_cache = {}
+        self._value_cache = {}
+        if self._act is None:
+            return
+        act, val = self._act, self._val
+        for t in range(TOTAL_NODES):
+            for gi in range(self._NG):
+                g = gi * GOLD_STEP
+                for Li in range(self._NLEV):
+                    L = Li + LEVEL_MIN
+                    for hi in range(self._NH):
+                        h = hi * HP_BUCKET + HP_MIN
+                        base = ((t * self._NG + gi) * self._NLEV + Li) * self._NH * self._NR \
+                            + hi * self._NR
+                        for rbi in range(self._NR):
+                            i = base + rbi
+                            a = int(act[i])
+                            lv_up = a >= 4
+                            rolls = {0: 0, 1: 2, 2: 4, 3: 6}[a % 4]
+                            tag = ('升级' if lv_up else '') + (f'+D{rolls}' if rolls else '') or '存息'
+                            self._policy_cache[(t, g, L, h, rbi)] = Posture(
+                                save=(a == 0), level_up=lv_up, refresh_budget=rolls,
+                                v=float(val[i]), tag=tag)
+                            self._value_cache[(t, g, L, h, rbi)] = float(val[i])
 
 
 def _hp_loss(t: int, level: int, rb: float) -> float:
@@ -132,27 +241,90 @@ def _hp_loss(t: int, level: int, rb: float) -> float:
     return base * difficulty_scale(t)
 
 
-def solve() -> HorizonSolution:
-    """逆向递推。状态 (t, g5, L, h5, rbi) ≈ 27×23×10×20×5 ≈ 620k × 8 姿态 ≈ 5M 评估(分钟级,离线)。"""
-    sol = HorizonSolution()
+def solve(ledger=None) -> HorizonSolution:
+    """逆向递推。状态 (t, g5, L, h5, rbi) ≈ 27×23×10×20×5 ≈ 620k × 8 姿态 ≈ 5M 评估(分钟级,离线)。
+
+    ledger(ADR-0202/53 号盲区 2 根治,effect-blind 修复):EffectLedger 注入 →
+    收入/息/成本全走台账突变视图(node_income_with/interest_with/level_cost_with);
+    None = 现状平坦常量(零漂移锚,全部既有测试与 0181/0190 A/B 基线锚定此路径)。
+    """
+    from sr_od.application.currency_war.cw_effect_ledger import (
+        interest_with,
+        level_cost_with,
+        node_income_with,
+    )
+    _has_ledger = ledger is not None
+
+    def _income(t: int, b2: float) -> int:
+        if _has_ledger:
+            # 台账路径:基础+连胜档在 DP 侧算,乘子/日程由 mutations/calendar 注入
+            base = BASE_INCOME + (4 if b_eff_level_free(b2) else 1)
+            if (t + 1) % NODES_PER_PLANE == 0:
+                base += BOSS_BONUS
+            streak_part = 4 * 1.0   # 连胜档金(node_income 的 +4 已入 base;此处保持同构)
+            return int(node_income_with(t, float(base) - 4.0, streak_part, ledger))
+        return node_income(t, b2)
+
+    def _interest(g2: int) -> int:
+        if _has_ledger:
+            return interest_with(g2, ledger, default_cap=GOLD_CAP_INTEREST // 10)
+        return interest(g2)
+
+    def _level_cost(L: int) -> int:
+        if _has_ledger:
+            return int(level_cost_with(clicks_to_level(L), ledger,
+                                       base_click_cost=float(XP_CLICK_COST_FLAT)))
+        return level_cost(L)
+
     g_list = list(range(0, GOLD_MAX + 1, GOLD_STEP))
     h_list = list(range(HP_MIN, HP_MAX + 1, HP_BUCKET))
-    # 终局:活着 = 存活奖励 + 残余资源(金/等级/hp;hp 残值 = 对未来波动的缓冲 —— 无此项则
-    # 存活一旦确保血量边际为 0,DP 用安全余量换利息,系统性欠升级,V1.1 实测);死亡=0
-    for g in g_list:
-        for L in range(LEVEL_MIN, LEVEL_MAX + 1):
-            for h in h_list:
-                for rbi, _rb in enumerate(RB_STEPS):
-                    sol.value[(TOTAL_NODES, g, L, h, rbi)] = (
-                        SURVIVAL_W + GOLD_RESIDUAL_W * g + LEVEL_RESIDUAL_W * L + HP_RESIDUAL_W * h)
+    _NLEV = LEVEL_MAX - LEVEL_MIN + 1
+    _NHP = (HP_MAX - HP_MIN) // HP_BUCKET + 1
+    _NRB = len(RB_STEPS)
+    _NG = GOLD_MAX // GOLD_STEP + 1
+    # rolls → 动作码尾缀(D0/D2/D4/D6);lv_up +4(编码:0..7,详 HorizonSolution docstring)
+    _rolls_code = {0: 0, 2: 1, 4: 2, 6: 3}
+
+    # 值/动作数组布局 [t, gi, Li, hi, rbi](v4/v5:扁平 list 热路径 + 紧凑产出)
+    _gstride, _lstride = _NLEV * _NHP * _NRB, _NHP * _NRB
+
+    def _vidx(t: int, gi: int, Li: int, hi: int, rbi: int) -> int:
+        return (((t * _NG + gi) * _NLEV + Li) * _NHP + hi) * _NRB + rbi
+
+    _values: list[float] = [0.0] * ((TOTAL_NODES + 1) * _NG * _gstride)
+    _actions: list[int] = [0] * (TOTAL_NODES * _NG * _gstride)
+    # 终局值(存活奖励 + 残值;死亡 0)
+    for gi, g in enumerate(g_list):
+        for Li, L in enumerate(range(LEVEL_MIN, LEVEL_MAX + 1)):
+            for hi, h in enumerate(h_list):
+                base = _vidx(TOTAL_NODES, gi, Li, hi, 0)
+                term = (SURVIVAL_W + GOLD_RESIDUAL_W * g + LEVEL_RESIDUAL_W * L
+                        + HP_RESIDUAL_W * h)
+                for rbi in range(_NRB):
+                    _values[base + rbi] = term
     for t in range(TOTAL_NODES - 1, -1, -1):
-        for g in g_list:
-            for L in range(LEVEL_MIN, LEVEL_MAX + 1):
-                for h in h_list:
-                    for rbi, rb in enumerate(RB_STEPS):
-                        best_v, best_p = -1e18, Posture()
-                        _lc = level_cost(L) if L < LEVEL_MAX else None
-                        # 遍历序 = 花费降序(升级先/多刷先):值平局时偏好进取姿态(防「全 0 平局退化存息」)
+        # —— 热循环预查表(v4:profile 实测 _hp_loss/b_eff/min 占 >80% 且为纯函数)——
+        drop_t: dict[tuple[int, int], float] = {}
+        inc_t: dict[tuple[int, int], int] = {}
+        for L2 in range(LEVEL_MIN, LEVEL_MAX + 1):
+            for rbi2, rb2 in enumerate(RB_STEPS):
+                drop_t[(L2, rbi2)] = _hp_loss(t, L2, rb2)
+                inc_t[(L2, rbi2)] = _income(t, b_eff(L2, rb2))
+        rbi2_of: dict[tuple[int, int, int], int] = {}
+        for rbi, rb in enumerate(RB_STEPS):
+            for rolls in (6, 4, 2, 0):
+                rb2 = min(RB_MAX, rb + 0.12 * rolls)
+                rbi2_of[(rolls, rbi)] = min(
+                    range(_NRB), key=lambda i: abs(RB_STEPS[i] - rb2))
+        _int_tab = [_interest(g2v) for g2v in range(GOLD_MAX + 1)]
+        for gi, g in enumerate(g_list):
+            for Li, L in enumerate(range(LEVEL_MIN, LEVEL_MAX + 1)):
+                _lc = _level_cost(L) if L < LEVEL_MAX else None
+                for hi, h in enumerate(h_list):
+                    for rbi in range(_NRB):
+                        best_v = -1e18
+                        best_a = 0
+                        # 遍历序 = 花费降序(升级先/多刷先):值平局偏好进取(防全 0 平局退化)
                         for lv_up in (1, 0):
                             if lv_up and (_lc is None or g < _lc):
                                 continue
@@ -161,29 +333,36 @@ def solve() -> HorizonSolution:
                                 if spend > g:
                                     continue
                                 g2 = g - spend
-                                L2 = min(LEVEL_MAX, L + lv_up)
-                                # 刷牌加成:期望买牌永久提升板强(封顶;边际随接近顶衰减)
-                                _up = 0.12 * rolls
-                                rb2 = min(RB_MAX, rb + _up if rb + _up < RB_MAX else RB_MAX)
-                                rbi2 = min(range(len(RB_STEPS)), key=lambda i: abs(RB_STEPS[i] - rb2))
-                                g3 = min(GOLD_MAX, (g2 + node_income(t, b_eff(L2, rb2))
-                                                    + interest(g2)) // GOLD_STEP * GOLD_STEP)
-                                drop = _hp_loss(t, L2, rb2)
-                                h_raw = h - drop
+                                L2 = L + lv_up if lv_up else L
+                                if L2 > LEVEL_MAX:
+                                    L2 = LEVEL_MAX
+                                rbi2 = rbi2_of[(rolls, rbi)]
+                                g3 = (g2 + inc_t[(L2, rbi2)] + _int_tab[g2]) // GOLD_STEP * GOLD_STEP
+                                if g3 > GOLD_MAX:
+                                    g3 = GOLD_MAX
+                                h_raw = h - drop_t[(L2, rbi2)]
                                 if h_raw <= 0:
-                                    v = 0.0   # 死亡终端:任何活路 > 死
+                                    v = 0.0   # 死亡终端
                                 else:
-                                    h3 = min(HP_MAX, max(HP_MIN, int(h_raw) // HP_BUCKET * HP_BUCKET))
-                                    v = sol.value[(t + 1, g3, L2, h3, rbi2)]
+                                    h3 = int(h_raw) // HP_BUCKET * HP_BUCKET
+                                    if h3 > HP_MAX:
+                                        h3 = HP_MAX
+                                    elif h3 < HP_MIN:
+                                        h3 = HP_MIN
+                                    v = _values[_vidx(t + 1, g3 // GOLD_STEP,
+                                                      L2 - LEVEL_MIN, (h3 - HP_MIN) // HP_BUCKET, rbi2)]
                                 if v > best_v:
-                                    tag = ('升级' if lv_up else '') + (f'+D{rolls}' if rolls else '')
-                                    if not tag:
-                                        tag = '存息'
-                                    best_v, best_p = v, Posture(save=(spend == 0), level_up=bool(lv_up),
-                                                                refresh_budget=rolls, v=v, tag=tag or '存息')
-                        sol.value[(t, g, L, h, rbi)] = best_v
-                        sol.policy[(t, g, L, h, rbi)] = best_p
-    return sol
+                                    best_v = v
+                                    best_a = (4 if lv_up else 0) + _rolls_code[rolls]
+                        _values[_vidx(t, gi, Li, hi, rbi)] = best_v
+                        _actions[_vidx(t, gi, Li, hi, rbi)] = best_a
+    # v5:产出 = 紧凑数组(policy/value dict 惰性物化 —— 3M 次 Posture 构造与 dict
+    # 插入从求解路径移除;act int8 ≈ 3MB,val float64 ≈ 25MB,缓存落盘同量级)
+    # 注意:存 **flat 一维数组**(posture/_materialize 按同布局 flat 索引)
+    import numpy as _np
+    val_arr = _np.array(_values[:TOTAL_NODES * _NG * _gstride], dtype=_np.float64)
+    act_arr = _np.array(_actions, dtype=_np.int8)
+    return HorizonSolution(act=act_arr, val=val_arr)
 
 
 # ===== V1 涌现验证 =====
@@ -249,12 +428,84 @@ if __name__ == '__main__':
 
 _SOLVED: HorizonSolution | None = None
 
+# DP 解盘缓存(ADR-0202 v3):金步长 1 后求解 ~67s/次 —— 按指纹 pickle 落盘,跨进程复用,
+# 冷启动从「每进程一次」降「每指纹全局一次」。指纹含代码版本(常量表在文件内,源文件
+# mtime 变 → 失效重解)。缓存目录在 .debug/temp(不入 git,损坏/缺失自动重解,安全兜底)。
+_DP_CACHE_DIR = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'dp_cache'
+
+
+def ledger_fingerprint(ledger) -> str:
+    """台账指纹:只有改 DP 世界模型的字段参与(calendar+mutations)——纯时点金
+    (instant_gold 类,overlay 73 条中 52 条)不进台账,指纹天然不变 → 命中即免重算。"""
+    import hashlib
+    if ledger is None:
+        return 'base'
+    m = ledger.mutations
+    payload = repr((
+        sorted(ledger.calendar.items()),
+        m.interest_cap, m.xp_click_delta, m.win_reward_mult,
+        m.free_refresh_per_node, m.free_refresh_burst,
+        m.refresh_surprise_every, m.gold_per_three_5cost,
+        m.xp_per_refresh, m.xp_per_node,
+        m.refresh_price_after, m.refresh_discount_at,
+    ))
+    return hashlib.md5(payload.encode()).hexdigest()[:12]
+
+
+_CACHE_MEMO: dict[str, HorizonSolution] = {}
+
+
+def _version_key() -> str:
+    """版本键 = 依赖文件集的内容哈希(cw_horizon + cw_state + cw_effect_ledger +
+    cw_first_passage[HP_LOSS 经 cw_horizon 自持,但保险纳入]……仅当文件存在)。
+
+    内容哈希而非 mtime:①改注释/格式化不白付 67s 重解;②跨文件依赖(cw_state 的
+    XP 常量、cw_effect_ledger 的台账结构)改动也正确失效——mtime 只看本文件会漏。"""
+    import hashlib
+    deps = [Path(__file__).resolve(),
+            Path(__file__).resolve().parent / 'cw_state.py',
+            Path(__file__).resolve().parent / 'cw_effect_ledger.py']
+    h = hashlib.md5()
+    for p in deps:
+        if p.exists():
+            h.update(p.read_bytes())
+    return h.hexdigest()[:10]
+
+
+def solve_cached(ledger=None) -> HorizonSolution:
+    """带盘缓存的求解:指纹(含依赖内容哈希)命中 → 进程内 memo 直返/读盘
+    (~5s,232MB pickle)/未命中 → 解+落盘(~67s)。冷启动从「每进程一次」降
+    「每指纹全局一次,且进程内零重复」。"""
+    import pickle
+    ver = _version_key()
+    fp = ledger_fingerprint(ledger)
+    if fp in _CACHE_MEMO:
+        return _CACHE_MEMO[fp]
+    cache_file = _DP_CACHE_DIR / f'dp_{fp}_{ver}.pkl'
+    if cache_file.exists():
+        try:
+            with cache_file.open('rb') as f:
+                sol = pickle.load(f)   # noqa: S301  受控缓存文件(本机生成,损坏走重解)
+            _CACHE_MEMO[fp] = sol
+            return sol
+        except Exception:   # noqa: BLE001  损坏缓存 → 重解覆盖
+            pass
+    sol = solve(ledger)
+    _CACHE_MEMO[fp] = sol
+    try:
+        _DP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with cache_file.open('wb') as f:
+            pickle.dump(sol, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception:   # noqa: BLE001  落盘失败不影响求解(纯优化,非正确性依赖)
+        pass
+    return sol
+
 
 def _solved() -> HorizonSolution:
-    """惰性解一次(离线秒-分钟级;进程内缓存)。"""
+    """惰性解一次(盘缓存跨进程复用;进程内再缓存)。"""
     global _SOLVED
     if _SOLVED is None:
-        _SOLVED = solve()
+        _SOLVED = solve_cached()
     return _SOLVED
 
 

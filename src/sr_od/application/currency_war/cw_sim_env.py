@@ -60,7 +60,8 @@ def _sample_shop(level: int, rng: random.Random) -> list[ShopCard]:
             pick = next(iter(probs), 1)
         pool = chars_by_cost(pick)
         ch = rng.choice(pool) if pool else None
-        out.append(ShopCard(x=i + 1, faction=(ch.factions[0] if ch and ch.factions else '?'),
+        # ''=已知无阵营(白厄类;sim 池来自注册表恒已知,与 shop/identity/shop_cards 同语义)
+        out.append(ShopCard(x=i + 1, faction=(ch.factions[0] if ch and ch.factions else ''),
                             name=(ch.name if ch else ''), cost=pick))
     return out
 

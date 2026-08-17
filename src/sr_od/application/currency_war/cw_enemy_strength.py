@@ -2,8 +2,8 @@
 
 影子 DP 的 difficulty_scale 是先验(0.5/0.9/1.4/1.5+0.05n);本件用自家 outcomes.jsonl
 的实测掉血(每节点 hp_after 差)校准/对照,输出带样本量的强度表——给 live 消费面
-(effective_hp_threshold 已接 ×1.25/×1.5;后续 _refresh_cap/_phase_weights 若需细化,
-按节点粒度消费此表)。纯函数,不进决策路径。
+(effective_hp_threshold 位面上浮已改 18 号首达模型导出,ADR-0176;后续 _refresh_cap/
+_phase_weights 若需细化,按节点粒度消费此表)。纯函数,不进决策路径。
 """
 from __future__ import annotations
 

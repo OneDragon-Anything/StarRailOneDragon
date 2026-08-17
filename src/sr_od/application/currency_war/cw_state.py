@@ -289,17 +289,26 @@ def effective_hp_threshold(state: GameState) -> int:
     高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
     ADR-0204 从 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
 
-    ⚖️ r11 review #4(P2 位面键控):P2+ 敌强度跳升(实测 P2-1 掉 19/节点 vs P1 ~10;DP 影子
-    difficulty_scale P2≈1.5-1.95×)→ 阈值上浮 1.25×(P2)/1.5×(P3),更早弃息保血。
-    P1 不变(向后兼容)。
+    ⚖️ ADR-0176(r11 #4 桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
+    改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
+    变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
+    精确零漂移(M57 验证行为保持)。
     """
+    from sr_od.application.currency_war.cw_first_passage import (
+        board_tier_of,
+        plane_hp_ratio,
+    )
+    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
+
     diff = (getattr(state, "selected_difficulty", "") or "").strip()
     base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
-    if state.plane >= 3:
-        return min(100, int(base * 1.5))
-    if state.plane == 2:
-        return min(100, int(base * 1.25))
-    return base
+    if state.plane <= 1:
+        return base
+    # 剩余战斗日程估计(位面×轮次 → 节点序;round_num 越界防御夹 [1, NODES_PER_PLANE])
+    t = (min(3, state.plane) - 1) * NODES_PER_PLANE + min(max(1, state.round_num), NODES_PER_PLANE) - 1
+    nodes_left = max(1, TOTAL_NODES - t)
+    ratio = plane_hp_ratio(board_tier_of(state.level), nodes_left, plane=state.plane)
+    return min(100, int(base * ratio))
 
 
 

@@ -307,9 +307,21 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
     _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
     _a = POOL_COPIES_PER_CARD.get(cost, 9)
     e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
-    e_gold = e_refreshes * SHOP_REFRESH_COST
+    # ADR-0202/53 号点消费:期望边际刷价按台账(免费额度余量折抵期望;v0 以额度摊销近似
+    # ——每节点 N 次免费 → 期望刷次中前 N 次零成本)。无 active_strategies = 旧行为(零漂移)。
+    _econ = getattr(state, 'active_strategies', None) or []
+    _free_per_node = 0
+    for _s in _econ:
+        from sr_od.application.currency_war.cw_investments import get_strategy
+        _se = get_strategy(_s)
+        if _se is not None and _se.economy is not None:
+            _free_per_node += _se.economy.free_refresh_per_node
+    if _free_per_node > 0 and e_refreshes > _free_per_node:
+        e_gold = (e_refreshes - _free_per_node) * SHOP_REFRESH_COST
+    else:
+        e_gold = e_refreshes * SHOP_REFRESH_COST if _free_per_node == 0 else 0.0
     budget = state.gold - _xp_gold_floor(state, True)
-    return budget > e_gold and state.gold >= 2 * SHOP_REFRESH_COST
+    return budget > e_gold and (e_gold == 0 or state.gold >= 2 * SHOP_REFRESH_COST)
 
 
 def _char_synergies(name: str) -> set[str]:

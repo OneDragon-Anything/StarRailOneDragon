@@ -37,8 +37,10 @@ _REGISTRY: dict[str, MechanismConstant] = {c.name: c for c in [
         'INTEREST_THRESHOLD', 50.0, 'income', 'bwiki(息封顶50)', 'verified',
         ('cw_plan', 'cw_economy', 'cw_horizon'), note='攒息上限(息=gold//10,封顶5)'),
     MechanismConstant(
-        'SHOP_REFRESH_COST', 2.0, 'income', '粗估,实机校准(注释许诺未兑现)', 'unverified',
-        ('cw_plan', 'cw_economy'), note='刷新商店花费;telemetry: refresh 动作前后 gold 差即测'),
+        'SHOP_REFRESH_COST', 2.0, 'income',
+        'telemetry 实测众数(ADR-0177,n=1098:主峰 2×974,次峰 0×95=免费刷策略/1×29=减费,可解释)',
+        'verified',
+        ('cw_plan', 'cw_economy', 'cw_mechanism_audit'), note='刷新商店花费;2026-08-17 审计升 verified(旧:粗估 unverified)'),
     MechanismConstant(
         'XP_PER_BUY', 4.0, 'income', '用户口述+ADR-0129', 'verified',
         ('cw_horizon',), note='买牌附赠 XP'),
