@@ -1458,15 +1458,49 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     return None
 
 
-# 盛会之星巨星 buff 表(米游社 factions.md 原文;select_megastar 按 target_comp 选,不单独评分)
+# 盛会之星巨星 buff 表(米游社 factions.md 原文,2→6 档;select_megastar 按绑定选):
+#   星期日:前台首位前台强度+后台首位后台强度(24%→132%)——前台单核乘法直乘
+#   黑天鹅:每个5费角色伤害增幅(5%→28%)——5费成群的高费队最大乘区(5个=+140%)
+#   知更鸟:幸运一击率(10%→55%)——暴击引擎(群攻/欢愉/追击)
+#   花火:进战5战技点+普攻/战技伤害增幅(12%→66%)——战技点引擎
+#   大丽花|加拉赫:击破伤害增幅+治疗强度(12%→66%)——击破专属(效果相同,谁在阵选谁)
+#   星徽:每星徽前后台强度(8%→44%)——依赖星徽套组,罕见(不进偏好表)
 MEGASTAR_BUFF: dict[str, str] = {
-    # 巨星角色 → 适合的 comp 机械属性(粗估,实玩校准)
-    "知更鸟": "幸运一击", "花火": "战技点", "星期日": "前后台强度",
-    "黑天鹅": "5费增伤", "大丽花": "击破",
+    '知更鸟': '幸运一击率+55%', '花火': '战技点5+普战技伤害+66%',
+    '星期日': '前后台首位强度+132%', '黑天鹅': '每5费+28%伤害',
+    '大丽花': '击破伤害+66%+治疗', '加拉赫': '击破伤害+66%+治疗',
+    '星徽': '每星徽强度+44%',
+}
+# comp 级巨星偏好(序 = 优先;strategy/19 P2 重读后按「comp 引擎 × 巨星乘区」绑定,
+# 替代旧 3 条属性键粗映射。未列的 comp 走 core/在场优先)
+COMP_MEGASTAR_PREFERENCE: dict[str, tuple[str, ...]] = {
+    # 前台单核族:carry 站前台 1 号位,星期日 132% 直乘
+    '反甲白厄': ('星期日', '知更鸟'),
+    '万敌单C': ('星期日', '知更鸟'),
+    '命运圣杯红A': ('星期日', '花火'),
+    '双王圣杯': ('星期日', '花火'),
+    '昼神阿雅': ('星期日', '花火'),
+    # 暴击引擎族(群攻/欢愉/追击 = 幸运一击)
+    '追击飞霄': ('知更鸟', '星期日'),
+    '银枝群攻': ('知更鸟', '星期日'),
+    '大黑塔银河学者': ('知更鸟', '黑天鹅'),
+    '希儿量子': ('知更鸟', '星期日'),
+    '绯英欢愉': ('知更鸟', '花火'),
+    '狼尊欢愉': ('知更鸟', '花火'),
+    '火花星间旅人': ('花火', '知更鸟'),   # 花火 core;欢愉引擎次之
+    # 战技点族
+    '龙丹战技点': ('花火', '知更鸟'),
+    '列车同行': ('花火', '星期日'),        # 花火 core;姬子前台次之
+    # 击破族
+    '巡海击破': ('大丽花', '加拉赫', '知更鸟'),
+    # 5费堆叠(DoT 队天然堆 5费黑天鹅/卡芙卡;黑天鹅 core 双保险)
+    'DOT队': ('黑天鹅', '知更鸟'),
+    '专家桑博DOT': ('黑天鹅', '知更鸟'),
 }
 MEGASTAR_BY_ATTRIBUTE: dict[str, str] = {
-    # comp 机械属性 → 推荐巨星(反向;粗估)
-    "幸运一击": "知更鸟", "击破": "大丽花", "5费增伤": "黑天鹅",
+    # 兜底(偏好表未列的 comp):comp 机械属性 → 巨星
+    '幸运一击': '知更鸟', '击破': '大丽花', '高倍率单核': '星期日',
+    '群攻': '知更鸟', '欢愉叠层': '知更鸟', '追击': '知更鸟', '战技点依赖': '花火',
 }
 
 
@@ -1474,9 +1508,12 @@ def select_megastar(state: GameState, target: Comp | None,
                     available_megastars: list[str]) -> str | None:
     """选 1 名盛会之星作巨星(盛会之星羁绊核心决策;按 target_comp 选,不单独评分)。
 
-    - 若 target.core_chars 含盛会之星且在可选里 → 绑该角色(如「知更鸟 comp」→ 知更鸟)。
-    - 否则按 buff 契合 target.mechanic_attributes 推。
-    - 无 target / 无可选 → None(退回 naive 默认,调用方处理)。
+    选择序(2026-08-17 strategy/19 P2 重写,按 comp 引擎 × 巨星乘区):
+    1. target.core_chars 里的盛会之星(在阵 core 天然绑定,如追击飞霄×知更鸟);
+    2. COMP_MEGASTAR_PREFERENCE[target.name](comp 级偏好序);
+    3. 机械属性兜底(MEGASTAR_BY_ATTRIBUTE);
+    4. 首个可选(naive)。
+    无 target / 无可选 → None(调用方处理)。
     """
     if not available_megastars:
         return None
@@ -1484,6 +1521,9 @@ def select_megastar(state: GameState, target: Comp | None,
         for c in target.core_chars:
             if c in available_megastars:
                 return c
+        for star in COMP_MEGASTAR_PREFERENCE.get(target.name, ()):
+            if star in available_megastars:
+                return star
         for attr in target.mechanic_attributes:
             star = MEGASTAR_BY_ATTRIBUTE.get(attr)
             if star and star in available_megastars:
