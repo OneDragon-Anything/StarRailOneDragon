@@ -462,6 +462,7 @@ def _sell_offline_for_focus(state: GameState, actions: list,
         return
     from sr_od.application.currency_war.cw_state import simulate as _sim
     sold = 0
+    _transition_chars = set(getattr(target, 'transition_chars', ()) or ())   # r9 review#1:角色级(transition_factions_hint 不存在,曾恒空→卖掉打工牌)
     for bc in list(state.bench):
         if sold >= 2:
             break
@@ -469,13 +470,17 @@ def _sell_offline_for_focus(state: GameState, actions: list,
             continue
         _is_target = _card_hits_target(bc.char_id, bc.faction, target)
         _is_priority = bc.char_id in character_priority
-        _is_transition = bc.faction in getattr(target, 'flex_factions', ()) or \
-            bc.faction in getattr(target, 'transition_factions_hint', ())
+        _is_transition = bc.char_id in _transition_chars or \
+            bc.faction in (getattr(target, 'flex_factions', ()) or ())
         if _is_target or _is_priority or _is_transition:
             continue
         # 场上满员时 bench 是潜在替补(下回合 deploy);不满员则纯死库存
         if state.deployed_count() < state.max_units():
-            actions.append(SellBench(bench_idx=state.bench.index(bc)))
+            try:
+                _idx = state.bench.index(bc)   # r9 review#3:值相等命中(同值卡分类同,语义等价)
+            except ValueError:
+                continue   # 已被前序卖掉(值不等幸存者)→ 跳过
+            actions.append(SellBench(bench_idx=_idx))
             state = _sim(state, actions[-1])
             sold += 1
 
@@ -819,11 +824,14 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     if _spend in ("allin", "level"):
         return
     cur = state
+    # r9 review#2:keep 集对齐 focus 卖版——transition_chars(打工牌)不卖凑息
+    # (两卖函数保护集不一致会互相打架:focus 保的弹性件被 interest 跨档卖掉)
+    _tc = set(getattr(target_comp, 'transition_chars', ()) or ()) if target_comp is not None else set()
     for _ in range(3):
         close = _close_factions(cur)
         best_idx = None
         for i, bc in enumerate(cur.bench):
-            if bc.char_id in character_priority or bc.faction in close:
+            if bc.char_id in character_priority or bc.char_id in _tc or bc.faction in close:
                 continue
             # review 🔴:target 核心不卖凑息(承诺贯穿卖路径;防卖刚买的 target 核心凑息)
             if target_comp is not None and _card_hits_target(bc.char_id, bc.faction, target_comp):
