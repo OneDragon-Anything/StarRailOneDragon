@@ -21,10 +21,9 @@ def _state_from_snapshot(snap: dict):
     for k in ('gold', 'level', 'hp', 'plane', 'round_num'):
         v = snap.get(k)
         if v is not None:
-            try:
+            import contextlib
+            with contextlib.suppress(Exception):   # 快照字段兼容
                 setattr(st, k, v)
-            except Exception:   # noqa: BLE001  快照字段兼容
-                pass
     board = snap.get('board')
     if isinstance(board, dict):
         st.board = dict(board)
