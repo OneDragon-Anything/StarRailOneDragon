@@ -108,6 +108,14 @@ _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 735)
 _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 RunSupplyNode.CARD_BODY;点卡身不开对话直接选中)
 _SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
+# 钻装备名集合(用户 2026-08-17:装备图已采集,直接名匹配——OCR 已读装备名,钻在名里,
+# 无需视觉判定;财富宝钻同类高价值。「红钻/蓝钻」补给角色穿戴出现,advantage「钻石闪耀」同源)
+DIAMOND_EQUIP_NAMES: frozenset[str] = frozenset({'红钻', '蓝钻', '财富宝钻'})
+
+
+def _equip_is_diamond(equip_name: str) -> bool:
+    """装备名含钻即钻系(红钻/蓝钻/财富宝钻;OCR 名直接匹配,子串含钻类家族)。"""
+    return '钻' in equip_name and any(d in equip_name for d in DIAMOND_EQUIP_NAMES)
 
 
 def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
@@ -115,7 +123,8 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
 
     布局(实捕 round1-5 补给,视觉大模型 + OCR 核实):N 列(实测 5;docstring 旧「3 选 1」过时),每列 =
     角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 + 右下「确认」。**无刷新按钮**(decide_supply
-    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻(红/蓝 = 基本赢)视觉判定待补(``has_diamond`` 恒 False,TODO)。
+    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻识别 ✅(2026-08-17,用户指路):装备名文本匹配
+    (红钻/蓝钻/财富宝钻)——OCR 已读装备名,钻在名里,无需视觉判定。
 
     装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
     (handler 退默认 ``CARD_BODY``)。
@@ -142,6 +151,7 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
             ncx, nname = min(chars, key=lambda c: abs(c[0] - ex))
             if abs(ncx - ex) < _SUPPLY_COL_X_TOL:
                 ch = nname
-        out.append((SupplyOption(idx=i, char=ch, equip=ename, has_diamond=False),
+        out.append((SupplyOption(idx=i, char=ch, equip=ename,
+                                 has_diamond=_equip_is_diamond(ename)),
                     Point(ex, _SUPPLY_CARD_CLICK_Y)))
     return out
