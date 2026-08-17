@@ -314,8 +314,20 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
         if self._iter == 1 and self._is_new_match:
+            _st0 = read_game_state(self.ctx, screen)
+            # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
+            # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
+            if _st0.round_num > 1 or _st0.plane > 1:
+                log.warning('[cw!][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
+                            '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
+                try:
+                    cw_telemetry.record_exogenous(_st0.round_num, 'resumed_match',
+                                                  detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
+                                                  state=_st0)
+                except Exception:   # noqa: BLE001  遥测 best-effort
+                    pass
             self.ctx.cw_match.strategy.on_match_start(
-                read_game_state(self.ctx, screen), self.ctx.cw_match.session, self._cw_config)
+                _st0, self.ctx.cw_match.session, self._cw_config)
 
         # 0. 备战被锁(顶部"返回投资策略选择"按钮)→ 点去选策略(check#4 接手)。
         #    lcs_percent=0.9:防与「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)
