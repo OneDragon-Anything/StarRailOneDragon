@@ -651,22 +651,10 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             cost=(ch.cost if ch is not None else 0),
             star=1,
         ))
-    # [采集钩子·收窄 2026-08-17]商店卡 SIFT miss 采集:历史 600+ 张积压,消费端(shop.py 停机)
-    # 已删——采集目的已达成(立绘库 216 张覆盖 roster;VLM 抽检样本全为「SIFT miss 但 OCR 名可读」
-    # 的普通卡,非真未知内容)。收窄:**哈希去重首见才写 flag**(旧逻辑每帧重写 flag → 600+ 积压);
-    # 同内容不重写。真未知(新版本新卡)会以新哈希首见留证。
-    _unknown = [c for c in cards if not c.name]
-    if _unknown:
-        try:
-            from pathlib import Path as _P
-
-            from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            _shot = cw_shot_unique(screen, 'shop_unknown_card')
-            if _shot:   # 仅新内容(哈希首见)才写 flag
-                _P('.debug/temp/currency_war/shop_unknown_card.flag').write_text(
-                    f'{len(_unknown)}_unknown:{_shot}', encoding='utf-8')
-        except Exception:   # noqa: BLE001  采集 best-effort
-            pass
+    # ~~shop_unknown_card 采集钩子已删(2026-08-17 归因闭环)~~:38 张存档样本离线对拍全识别
+    # (73-119 内点,plaza 库)——全部是刷新动画/settle 瞬时帧 miss,非真未知卡;阮·梅/白厄挂账
+    # 同归因闭环(瞬时帧,非光照变体/库缺)。flag 写入无消费端(shop.py 停机判定走重读防抖,
+    # L287-299,保留作真未知防护),纯积压源,按「采完即删」约定移除。
     return cards
 
 
@@ -754,9 +742,18 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
     # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。
+    # 双源留证(观察冲突审计 #8 P2,2026-08-17):结算真值(带符号)与备战 magnitude 独立可对拍
+    # —— |结算|≠备战 且 非结算重置边缘(胜→连胜≥1/败→连败≤-1 或 0)→ 一方误读,留证统计毒化率
+    # (read_streak magnitude OCR 间歇误读的量化数据,此前无通道)。
     _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     if _sess is not None:
         state.streak = _sess.last_streak
+        _prep_streak = read_streak(ctx, screen)
+        if (_prep_streak is not None and _sess.last_streak != 0
+                and abs(_sess.last_streak) != _prep_streak):
+            obs_conflict('streak', _sess.last_streak, _prep_streak, screen,
+                         verdict='留证-双源不等(结算带符号 vs 备战magnitude,一方误读)',
+                         source='settlement_vs_prep', plane=state.plane, round_num=state.round_num)
     else:
         state.streak = read_streak(ctx, screen) or 0
     # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,

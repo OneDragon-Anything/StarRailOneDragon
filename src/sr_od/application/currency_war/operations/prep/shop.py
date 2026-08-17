@@ -272,7 +272,11 @@ class BuyShopCards(SrOperation):
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
                     self.ctx.controller.click(refresh_btn)
                     log.info(f'[cw-shop] Refresh click @({refresh_btn.x},{refresh_btn.y})')
-                    time.sleep(0.8)   # 刷新动画
+                    # 刷新后等待 1.0s(2026-08-17:0.8→1.0;阮·梅/白厄单帧 miss 归因=刷新动画/settle
+                    # 瞬时帧,38 样本离线全识别+重读自愈双实锤——根治 stylized 漏读不现实,多等 0.2s
+                    # 降瞬时 miss 率。成本:MAX_REFRESH=4 硬墙 → 每轮 BuyShopCards 最多 +0.8s,
+                    # 对策略「45s 免费刷新窗口」可忽略)。M35 防抖(下方 hook 重读 2 帧)仍是兜底。
+                    time.sleep(1.0)   # 刷新动画
                     total_refresh += 1
                     did_refresh = True
             if not did_refresh:
@@ -282,6 +286,16 @@ class BuyShopCards(SrOperation):
         # 未识别卡(SIFT miss:昔涟诗篇等非角色内容/立绘缺的角色)→ 停机留画面给 AI 建档。
         # read_shop_cards 的采集钩子已存整屏+flag;此处只做停机判定(方案 D:stop_running+保画面)。
         # 立绘缺(开拓者·欢愉/加拉赫)会持续触发——现场采到立绘原料后即不再触发,一石二鸟。
+        #
+        # 📋 调研档案(2026-08-17 阮·梅/白厄单帧 miss 归因闭环,下次触发先读这段):
+        # - 历史触发(r16-r17 留 38 样本 + 当天 14:52/14:54 两次)**全部是刷新动画/settle 瞬时帧**:
+        #   ①离线 plaza 库对拍 38 样本全识别(73-119 内点,无一真未知——注意 cw_shot_unique 存的
+        #   是检测后另截的稳定帧,≠ miss 当帧,「同图全识别」不能证伪);②本 hook 防抖重读两次均
+        #   自愈 → 瞬时性实锤。非光照变体、非立绘库缺。
+        # - 已做:刷新后等待 0.8→1.0s(上方 RefreshShop);cw_observation 内嵌 flag 写入钩子已删
+        #   (无消费端纯积压)。本 hook 保留:真未知(新版本新卡/昔涟诗篇类非角色内容)仍需它兜底。
+        # - 下次触发排查序:①看防抖重读是否自愈(自愈=瞬时帧,考虑再调等待);②未自愈 → 对停机
+        #   画面跑 analyze_screen + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知 → 建档/补库。
         # M35 防抖(2026-08-16):全槽 unknown 但 Fate 角色全在库 → 判商店开态动画/settle 瞬时读失败
         # (0.3s sleep 偶不够)——停机前重读 2 帧(各 1s),仍 unknown 才真停(真缺模板不会因重读消失)。
         if total_buy == 0 and any(not c.name for c in state.shop):
@@ -317,6 +331,24 @@ class BuyShopCards(SrOperation):
         # 关商店(「收起」)
         time.sleep(0.4)
         self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+        # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(cost 由注册表/reader 估)vs
+        # 关店后实际读数 —— expected = 开店金 − Σ买价 − 升级费 − 刷新费(read_gold stylized 间歇漏,
+        # 但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有毒(stylized 漏读 / cost 错 /
+        # 未观收入),留证统计毒化率;机制核对器(r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
+        if total_buy or total_level or total_refresh:
+            _spend = (sum(a.card.cost for a in actions if isinstance(a, BuyCard) and a.card.x in bought_x)
+                      + sum(a.cost for a in actions if isinstance(a, LevelUp))
+                      + total_refresh * (state.shop_refresh_cost or 2))
+            _final_gold = read_gold(self.ctx, self.screenshot())
+            _expected = state.gold - _spend
+            if _final_gold is not None and abs(_final_gold - _expected) > 2:
+                from sr_od.application.currency_war.cw_observe import (
+                    obs_conflict as _oc,
+                )
+                _oc('gold_delta', _expected, _final_gold, None,
+                    verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
+                    source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
+                    spend=_spend)
         return self.round_success(
             f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
             f'(gold={state.gold} lv={state.level} plane={state.plane})'
