@@ -40,8 +40,8 @@ def replay_plan_diff(replay_dir: Path | str = DEFAULT_REPLAY,
     需要 config 可构造(离线默认实例);comp 按名取,取不到跳过该点。
     """
     from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-    from sr_od.application.currency_war.cw_plan import plan as plan_fn
     from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.cw_plan import plan as plan_fn
 
     cfg = CurrencyWarConfig(1)
     target = None
