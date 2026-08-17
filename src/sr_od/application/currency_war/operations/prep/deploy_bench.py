@@ -441,4 +441,4 @@ class DeployBench(SrOperation):
         real_deployed = read_deployed_chars(self.ctx, scr, templates)
         from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
         reconcile_tracking(_match.session, real_bench, real_deployed, scr,
-                           source='deploy_bench')
+                           source='deploy_bench', ctx=self.ctx)

@@ -288,7 +288,7 @@ class PrepDirector(SrOperation):
         if session is None:
             return
         from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
-        reconcile_tracking(session, bench, deployed, screen, source='director')
+        reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)

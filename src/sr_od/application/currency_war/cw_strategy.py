@@ -197,6 +197,9 @@ class StrategySession:
     prep_phase: int = 0
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
+    # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;
+    # 连续 2 节点回退 = 真识别问题(特效遮挡过渡帧一节点内消)→ 停机保画面排查;读回恢复即清零)
+    star_regression_count: dict[str, int] = field(default_factory=dict)
     # bail_reason_counts:BailToOuter 同因计数(局级,环重建不清零 —— ping-pong 诊断用;≥3 记 [cw!])。
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
