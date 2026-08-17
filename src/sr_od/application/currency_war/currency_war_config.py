@@ -28,40 +28,19 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
     "阿格莱雅", "藿藿", "桑博", "艾丝妲", "风堇", "卡芙卡",  # 藿藿=1费 / 卡芙卡=2费 / 风堇=2费
 ]
 
-# 事件选项名 → 优先级分(越高越优先选,decide_event 子串匹配)。投资环境 + 投资策略 按名字打分。
-# (review r1 修正:删"贝洛伯格星徽/追击星徽"——那是装备/环境奖励非投资策略;"反利+"→"返利+";
-#  "模範的力量"→"榜样的力量";补棱彩 T0)
-DEFAULT_EVENT_WHITELIST: dict[str, int] = {
-    # —— 投资环境 T0(开局 3 选 1)——
-    "昼之半神概念股": 100, "能量概念股": 100, "命运礼物": 95,
-    "贝洛伯格邀请": 90, "追击邀请": 90, "战技点契约": 85, "击破概念股": 85,
-    # —— 投资策略 T0(局内 3 选 1)——
-    "高效决策": 93, "价值投资·彩": 92, "采购专员·彩": 92, "返利+": 90, "采购专员·金": 88,  # 凹上限后期
-    # 注:「砂里淘金」(电表倒转核心,买-合-卖循环无限金)是已知场景,但**难操作+耗时,非推荐 bot 玩法**
-    #     (用户 2026-08-03);不入白名单(不主动追),作"无限刷场景存在"的知识留在 economy_research.md。
-    "定期福利": 90, "定点爆破": 90, "加油站": 88, "数值碾压": 88, "攻防一体": 88,
-    "价值投资·金": 85, "装备方案A": 85, "榜样的力量": 85, "羁绊的力量": 87, "基本保障": 86,
-    "战术义眼": 85, "武装突入": 82, "鲜血阶梯": 84, "野蛮成长": 83, "军备供应链": 80,
-    "开源节流": 78, "黄金投资": 78,
-    "中产阶级": 82, "黄金垃圾": 80, "难度修改器": 72,
-}
-
-# 枚举合法值(构造时校验,typo/大小写错静默落入默认)
-ALLOWED_ECONOMY: set[str] = {"interest_first", "rush_level", "adaptive"}
+# 枚举合法值(构造时校验,typo/大小写错静默落入默认)—— 现无枚举字段;economy_mode 及其
+# ALLOWED_ECONOMY 已删(ADR-0204:node_plan spend_mode 全区间有主,config 档位是死配置)。
 
 # boss 克制 = comp-vs-boss 机制级(comp.countered_by_bosses + boss_fit + task#73 机制建模),
 # 非阵营级 —— 原 DEFAULT_BOSS_COUNTER(boss→降权阵营)错模型已删(decide_boss_priority 删时一并清)。
 
-# 克制 DoT/减益 的投资环境(遇此环境不走 DoT 路线)
-DEFAULT_DOT_PUNISH_ENVS: list[str] = ["净化身心"]
-
-# 难度 → 保血阈值覆盖(A1..A8;effective_hp_threshold 用)。
-# **保守起步,待实机校准**:A1-A4 = 40(= HP_DANGER,低难不变,可适当卖血保经济);
-# A5+ 升阶(高难敌人更凶 → 更早弃息保血)。detection(state.selected_difficulty)接线后生效;
-DEFAULT_DIFFICULTY_HP: dict[str, int] = {
-    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
-    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
-}
+# 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(ADR-0203:配置=用户偏好单一职责)——
+# 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),cw_events decide_event 消费。
+# 原 dot_punish_envs 配置字段已删(与注册表双源,且属版本一致的客观数据非用户偏好)。
+# 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删(ADR-0204):策略校准参数
+# 归代码常量 cw_state.HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
+# event_whitelist(引擎调参非用户偏好,priority/forbid 已覆盖)同批删。配置面单一源:
+# docs/develop/currency_war/config.md。
 
 
 class CurrencyWarConfig(YamlConfig):
@@ -77,28 +56,29 @@ class CurrencyWarConfig(YamlConfig):
         # —— 策略偏好(meta,版本依赖)——
         self.faction_priority: list[str] = self.get('faction_priority', DEFAULT_FACTION_PRIORITY)
         self.character_priority: list[str] = self.get('character_priority', DEFAULT_CHARACTER_PRIORITY)
-        # 用户 4 轴 steer(README §A):forbid 硬过滤 + build_around 必含(cw_comps._passes_steering 读)。
-        # 默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
+        # 用户转向轴(config.md §3,用户 2026-08-17 确认全四类实体×三档):forbid 硬过滤 +
+        # build_around 必含(cw_comps._passes_steering 读)+ priority 软加分(_priority_boost /
+        # decide_event)。默认空 = 纯自适应。GUI setting card 待加(当前 yml 可改)。
         self.character_forbid: list[str] = self.get('character_forbid', [])
         self.character_build_around: list[str] = self.get('character_build_around', [])
         self.faction_forbid: list[str] = self.get('faction_forbid', [])
-        # 枚举校验(review r1 #10):typo/大小写错静默落入默认,避免用户以为改了实则没生效
-        econ = self.get('economy_mode', 'adaptive')
-        self.economy_mode: str = econ if econ in ALLOWED_ECONOMY else 'adaptive'
-        self.event_whitelist: dict = self.get('event_whitelist', DEFAULT_EVENT_WHITELIST)
-        self.dot_punish_envs: list[str] = self.get('dot_punish_envs', DEFAULT_DOT_PUNISH_ENVS)
-        # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束(现行,向后兼容)。
-        # app._run_loop 透传给 CurrencyWarRunLoop。run_standalone_app 设此 yml 即跑 N 轮。
-        _mr = self.get('max_rounds', None)
-        self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # hp 保血阈值(02 §A3 单一源;A8 高难调高)。默认 40 = cw_evaluate.HP_DANGER;_phase_weights /
-        self.hp_safe_threshold: int = self.get('hp_safe_threshold', 40)
-        # 默认 DEFAULT_DIFFICULTY_HP(A1-A4=40 不变、A5+ 升阶);空/未检测 → 回退 hp_safe_threshold。
-        self.difficulty_hp_override: dict = self.get('difficulty_hp_override', DEFAULT_DIFFICULTY_HP)
-        # 发现的任意 id);strategy_seed = 策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
+        # faction_build_around:必含阵营(成就局需要特定阵容,如 8减益 → ['减益'];
+        # 多个 = 全部必含,all() 语义 —— 与角色轴 any() 不同:多羁绊成就要求同时在场)。
+        self.faction_build_around: list[str] = self.get('faction_build_around', [])
+        # 投资策略/环境轴(decide_event 消费:priority 加分/forbid 重罚;env 命中走 env 注册表归一)。
+        self.strategy_priority: list[str] = self.get('strategy_priority', [])
+        self.strategy_forbid: list[str] = self.get('strategy_forbid', [])
+        self.env_priority: list[str] = self.get('env_priority', [])
+        self.env_forbid: list[str] = self.get('env_forbid', [])
+        # —— 开发/实验字段(ADR-0204 降级;不进未来 GUI,仅供 yml 调试)——
+        # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
         self.strategy_id: str = self.get('strategy_id', 'default')
         self.strategy_seed: int | None = self.get('strategy_seed', None)
+        # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束。
+        # app._run_loop 透传给 CurrencyWarRunLoop。
+        _mr = self.get('max_rounds', None)
+        self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
 
     def save(self) -> None:
         """持久化策略字段。"""
@@ -108,11 +88,11 @@ class CurrencyWarConfig(YamlConfig):
             'character_forbid': self.character_forbid,
             'character_build_around': self.character_build_around,
             'faction_forbid': self.faction_forbid,
-            'economy_mode': self.economy_mode,
-            'event_whitelist': self.event_whitelist,
-            'dot_punish_envs': self.dot_punish_envs,
-            'hp_safe_threshold': self.hp_safe_threshold,
-            'difficulty_hp_override': self.difficulty_hp_override,
+            'faction_build_around': self.faction_build_around,
+            'strategy_priority': self.strategy_priority,
+            'strategy_forbid': self.strategy_forbid,
+            'env_priority': self.env_priority,
+            'env_forbid': self.env_forbid,
             'strategy_id': self.strategy_id,
             'strategy_seed': self.strategy_seed,
             # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉

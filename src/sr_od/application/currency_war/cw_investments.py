@@ -20,7 +20,7 @@
 **用途**:
 - ``InvestmentEnv``(概念股/邀请/契约/时代/经济/规则/专家):**带 faction 字段** —— 概念股/
   邀请/命运圣杯契约对应哪个阵营是派生 ENV_FACTION_MAP 的单一真相源。
-- ``InvestmentStrategy``(局内 3 选 1):event_whitelist 的规范名来源。
+- ``InvestmentStrategy``(局内 3 选 1):pick_value 评估与用户转向轴(config strategy/env priority/forbid)的规范名来源。
 - 键约定:canon 归一名(半角冒号/逗号、`·`、拉丁数字),与 OCR 精确匹配层一致;
   OCR 形变(全角标点/剎刹)走 pick_value_of 的 LCS 兜底。
 

@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 # —— eval 权重 ——
 # 以下为 **V4.4 research meta 先验,冻结**(版本更新才改,不进用户调参面;review r5/r6 权重纪律)。
-# 开发者阶段 6 手调的最敏感 3-5 维(均内部,非用户 GUI;用户配置走 README A 的 4 轴优先/禁止/build_around+handoff):hp_safe_threshold(由 difficulty 派生)/ obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
+# 开发者阶段 6 手调的最敏感 3-5 维(均内部,非用户 GUI;用户配置走 develop config.md §3 转向轴):保血阈值(cw_state.HP_SAFE_THRESHOLD/DIFFICULTY_HP_TABLE,ADR-0204 迁入)/ obs schedule / MAX_REFRESH_PER_ROUND / α(t) r_open·r_close / fold 阈值。
 CATEGORY_WEIGHT: dict[str, float] = {"combat": 10.0, "economy": 6.0, "support": 4.0, "independent": 2.0}
 
 # (level benefit+3 < interest loss-6 → 不升)→ 卡 lv5-6 → 弱 comp → plane2 死。提权让升级战胜息损 → 升7-8
@@ -223,14 +223,14 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
 
 
 
-def _economy_mode_for(state: GameState, config) -> str:
-    """node spend_mode → economy_score 档位(14 §2.2;NodeGoal.spend_mode 主,config.economy_mode 辅)。
+def _economy_mode_for(state: GameState) -> str:
+    """node spend_mode → economy_score 档位(14 §2.2;NodeGoal.spend_mode 单一源)。
 
     spend_mode 是节点节奏 gate,驱动 economy_score 利息/等级相对权重:
     - saving/interest → interest_first(攒息 snowball;P1 早期主目标尽快 50 金)
     - level → rush_level(弱化守息 + 强化等级;P2 升人口)
     - hold/allin/spend → adaptive(economy-low 由 _phase_weights plane3 we=0.3 处理,非此处)
-    - adaptive → config.economy_mode 用户偏好辅
+    - adaptive → adaptive neutral(原 config.economy_mode 用户偏好辅已删,ADR-0204:死配置)
 
     与 _phase_weights 正交:本函数调 economy_score 内部(利息/等级相对权重),
     _phase_weights 调 economy_score 的 outer 乘子 we(HP/plane)。两者复合不双计。
@@ -245,9 +245,7 @@ def _economy_mode_for(state: GameState, config) -> str:
         if state.plane >= 2 and state.gold < P2_REBUILD_GOLD_FLOOR:
             return "interest_first"
         return "rush_level"
-    if _spend == "adaptive":
-        return getattr(config, 'economy_mode', 'adaptive')
-    return "adaptive"   # hold/allin/spend → neutral
+    return "adaptive"   # hold/allin/spend/adaptive → neutral
 
 
 
@@ -271,7 +269,7 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
         return False
     if state.deployed_count() < state.max_units():
         return False
-    if state.hp < effective_hp_threshold(state, config):
+    if state.hp < effective_hp_threshold(state):
         return False
     if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
         return False
@@ -293,10 +291,10 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     core_chars 持有不在此重复计分(char_quality 已覆盖用户 character_priority)。
     """
     ws, we, wc = _phase_weights(state.plane, state.hp,
-                                effective_hp_threshold(state, config))
+                                effective_hp_threshold(state))
     score = (
         ws * synergy_score(state, faction_priority, target_comp)
-        + we * economy_score(state, _economy_mode_for(state, config))   # spend_mode→economy(§2.2;ADR-0102)
+        + we * economy_score(state, _economy_mode_for(state))   # spend_mode→economy(§2.2;ADR-0102)
         + wc * char_quality_score(state, getattr(config, 'character_priority', []))
     )
     alpha = alpha_t(state)

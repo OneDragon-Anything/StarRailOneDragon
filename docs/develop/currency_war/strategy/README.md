@@ -56,12 +56,12 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 - (可选)playstyle 预设。
 
 ### C. 内部数据表(不放 GUI,代码/yml 维护)
-对谁都一样的正确数据:COMP_LIBRARY / MECHANIC_COUNTERS+SYNERGIES / dot_punish_envs / 优势布局自动激活 / hp_safe_threshold(由 difficulty 派生)/ _refresh_cap(动态)。
+对谁都一样的正确数据:COMP_LIBRARY / MECHANIC_COUNTERS+SYNERGIES(含「净化身心克 DoT」类客观数据,原 config dot_punish_envs 已删并入,ADR-0203)/ 优势布局自动激活 / hp_safe_threshold(由 difficulty 派生)/ _refresh_cap(动态)。
 
 ### D. 已移除(及原因)
-`run_mode`(→ 字段值表达)/ `aggression`(虚)/ `economy_mode`(和 level_plan 打架,经济 comp 驱动)/ `event_whitelist`(拆成 env+strategy priority)/ `achievement_target`(→ 预设)/ `target_comp_preference`(并入 build_around+priority)/ `hp_safe_threshold`+`refresh_budget`(→ 内部派生)/ 钻钞 farming(自动激活优势布局)/ `opening_restart`(策略不依赖,见 09)/ 濒死停(无用)/ 多账号·定时·领奖(一条龙框架层,非 app)。
+`run_mode`(→ 字段值表达)/ `aggression`(虚)/ `economy_mode`(和 level_plan 打架,经济 comp 驱动)/ `event_whitelist`(拆成 env+strategy priority)/ `achievement_target`(→ 预设)/ `target_comp_preference`(并入 build_around+priority)/ `hp_safe_threshold`+`refresh_budget`(→ 内部派生)/ 钻钞 farming(自动激活优势布局)/ `opening_restart`(策略不依赖,见 09)/ 濒死停(无用)/ 多账号·定时·领奖(一条龙框架层,非 app)/ `dot_punish_envs`(2026-08-17 删:游戏客观数据归 MECHANIC_COUNTERS 注册表,非用户偏好,ADR-0203)。
 
-⚠️ **现状(2026-08-04 对齐,D-18)**:`currency_war_config.py` 已删 `aggression`(死字段);**保留** `economy_mode`(eval 权重微调,与 level_plan 硬 gate 共存非冲突)+ `event_whitelist`/`dot_punish_envs`(decide_event/mechanics_fit 用;⚠️ boss_counter + decide_boss_priority 已删错模型,boss 走 boss_fit/countered_by_bosses)。**仍缺** `character_forbid/build_around`、`faction_forbid`、`strategy/env_*`、`handoff/difficulty/manage_meta_run`(cw_comps 已 `getattr` 防御读取,可增量加,deferred)。原 §D "economy_mode/event_whitelist 已删"计划**撤销**(见 D-18)。
+⚠️ **现状(2026-08-04 对齐,D-18;2026-08-17 两批收敛)**:`currency_war_config.py` 已删 `aggression`(死字段)、`dot_punish_envs`(ADR-0203 单一源迁移)、`economy_mode`/`event_whitelist`/`hp_safe_threshold`/`difficulty_hp_override`(ADR-0204:死配置/引擎调参/校准参数出清,hp 阈值迁 `cw_state` 代码常量);`strategy_seed`/`max_rounds` 降开发/实验字段。**转向轴全齐**:角色/阵营 × 优先/禁止/必含(含 `faction_build_around`)+ `strategy/env_priority/forbid`(decide_event 打分环;boss 走 boss_fit/countered_by_bosses)。**仍缺** `handoff/difficulty/manage_meta_run`(cw_comps 已 `getattr` 防御读取,可增量加,deferred)。**配置面定调见 [../config.md](../config.md)**。
 
 ## 决策点 × 层归属
 | 决策 | 层 |

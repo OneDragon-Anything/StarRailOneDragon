@@ -123,13 +123,13 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
 
 
 
-def _xp_gold_floor(state: GameState, config, want_level: bool) -> int:
+def _xp_gold_floor(state: GameState, want_level: bool) -> int:
     """买经验时的存金地板(用户节奏 economy_research §7:不影响吃息;追级期降档)。
 
     非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
     追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。
     """
-    if state.hp < effective_hp_threshold(state, config):
+    if state.hp < effective_hp_threshold(state):
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
 
@@ -308,7 +308,7 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
     _a = POOL_COPIES_PER_CARD.get(cost, 9)
     e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
     e_gold = e_refreshes * SHOP_REFRESH_COST
-    budget = state.gold - _xp_gold_floor(state, config, True)
+    budget = state.gold - _xp_gold_floor(state, True)
     return budget > e_gold and state.gold >= 2 * SHOP_REFRESH_COST
 
 

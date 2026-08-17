@@ -349,8 +349,7 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
 
 
 
-def level_up_gate(state: GameState, target_comp: Comp | None = None,
-                  config=None) -> bool:
+def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
     """买经验硬门(plan()/PrepDirector 腾席链 b 步共用单一源;doc 15 §5.2b / §4.1;ADR-0129)。
 
     条件 = level<10 + 该买经验(_want_level_up)+ 存金允许(扣单击价后不破 _xp_gold_floor)。
@@ -363,7 +362,7 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None,
     want = _want_level_up(state, target_comp)
     if not want:
         return False
-    return state.gold - xp_click_cost(state) >= _xp_gold_floor(state, config, want)
+    return state.gold - xp_click_cost(state) >= _xp_gold_floor(state, want)
 
 
 def plan(state: GameState, config, faction_priority: list[str],
@@ -417,11 +416,11 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 不惜(升级解锁高费刷新率 + 出战位 = 关键长期投资)。每轮最多 1 级(自然节流,防一轮烧光金)。
     # 升级条件单一源抽 level_up_gate(PrepDirector 腾席链 b 步共用,防两处漂移;P1 2026-08-14):
     # 够钱 + (level_plan 说 level_up **或** 落后 NodeGoal.target_level)。每轮 ≤1 级(自然节流)。
-    if level_up_gate(cur, target, config):
+    if level_up_gate(cur, target):
         # ADR-0129:买经验 = 单击 +4 XP;点满「到下一级」所需次数为一段(每轮 ≤1 级自然节流),
         # 预算受 _xp_gold_floor 约束(追级期保 20 / 攒息期保 50 / 血危 10)。
         _one = xp_click_cost(cur)
-        _budget = cur.gold - _xp_gold_floor(cur, config, True)
+        _budget = cur.gold - _xp_gold_floor(cur, True)
         for _ in range(min(clicks_to_next_level(cur), max(0, _budget // _one))):
             actions.append(LevelUp(cost=_one))
             cur = simulate(cur, actions[-1])
@@ -431,7 +430,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur, config),
+                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur),
                                                                   target_comp=target, config=config) - refresh_used,
                                       target_comp=target, rf_used=refresh_used)
         if not step:
@@ -474,7 +473,7 @@ def _best_improving_action(
     # 整级大金版,对齐用户「不影响吃息基础上多买牌」;只在真攒不出单击钱时才锁)。
     _want_level = _want_level_up(state, target_comp)
     _saving_for_level = (_want_level and state.gold
-                         < xp_click_cost(state) + _xp_gold_floor(state, config, _want_level))
+                         < xp_click_cost(state) + _xp_gold_floor(state, _want_level))
     # D-14(2026-08-09,4th 自审 + 经济诊断):_saving_for_level **不再**被 _board_strong 门控。
     # 旧门控(板弱 form_progress<COMMIT_FRAC → 不攒级 → 花买/刷)致 chicken-egg:tier-2 弱板→不攒级→永不升→
     # 卡 lv6 cap→上不了更多单位→永 tier-2→p2 死。**升级是 tempo 投资**(提 cap + shop 高费刷新率),任何板都该追。
@@ -778,9 +777,8 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     # economy_score 利息/等级相对权重)。两者刻意不同映射:本函数挡「卖息凑档」动作(allin/level 不该囤息),
     # _economy_mode_for 调经济评分相对权重(level→rush_level / allin→adaptive neutral,economy-low 由
     # _phase_weights plane3 we=0.3 处理)—— 语义不同,勿强行统一(审计 round-17 borderline#2)。
-    _econ = getattr(config, 'economy_mode', 'adaptive')
     _spend = get_node_goal(state.plane, state.round_num).spend_mode
-    if _econ == "rush_level" or _spend in ("allin", "level"):
+    if _spend in ("allin", "level"):
         return
     cur = state
     for _ in range(3):

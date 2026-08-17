@@ -121,7 +121,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
     # 机制 tag → 它克制的 comp 机械属性
     "反伤": ["高频低单次"],        # 正当防卫:克高频低单次(反甲白厄式)
     "冻结": ["慢速", "战技点依赖"],  # 极速制冷/坠入陷阱/冷冻冬眠:克慢速 + 战技点消耗队
-    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(config dot_punish_envs)
+    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,ADR-0203 单一源;原 config dot_punish_envs 已删)
     "掉血削上限": ["燃血"],        # 永久创伤:克燃血(掉血→减上限双损)⚠️ 燃血的反例 counter
     "治疗削弱": ["治疗护盾"],      # 重症难题:克治疗/护盾主坦队
     "幸运削弱": ["幸运一击"],      # 丢失幸运:克幸运一击/群攻(知更鸟)
@@ -1034,12 +1034,20 @@ def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
     ])
 
 
-# 用户 4 轴 steer(README A):优先/禁止/build_around。阶段 2 用 getattr 防御读取(config 字段待加)。
+# 用户转向轴(README A / develop config.md §3):优先/禁止/build_around。getattr 防御读取(mock/旧 yml 缺字段安全)。
 
 def _passes_steering(comp: Comp, config) -> bool:
-    """用户 steer 硬过滤:build_around 必含、forbid 必不含。不满足 → 排除出候选。"""
+    """用户 steer 硬过滤:build_around 必含、forbid 必不含。不满足 → 排除出候选。
+
+    - character_build_around:any() 语义(围绕我的任一强角色);
+    - faction_build_around:all() 语义(成就局要求指定阵容全在场,如 8减益 → ['减益'],
+      多羁绊成就列多个 = 全部必含)。
+    """
     build_around = getattr(config, 'character_build_around', []) or []
     if build_around and not any(c in comp.core_chars for c in build_around):
+        return False
+    faction_build = getattr(config, 'faction_build_around', []) or []
+    if faction_build and not set(faction_build).issubset(comp.all_factions):
         return False
     char_forbid = getattr(config, 'character_forbid', []) or []
     if any(c in comp.core_chars for c in char_forbid):
@@ -1336,7 +1344,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 2026-08-05 实跑,低 HP 时信号 1(更优涌现)先触发 → 选 select_comp best(随 board/shop 每轮变 →
     # target 振荡 churn:列车同行→追击飞霄→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
-    _pivot_hp = int(0.75 * effective_hp_threshold(state, config))
+    _pivot_hp = int(0.75 * effective_hp_threshold(state))
     if state.hp < _pivot_hp:
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。

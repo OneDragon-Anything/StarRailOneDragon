@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.cw_comps import (
     AFFIX_MECHANIC_MAP,
     AUGMENT_COMP_AFFINITY,
+    MECHANIC_COUNTERS,
     form_progress,
     mechanics_fit,
 )
@@ -56,9 +57,31 @@ def _option_rarity(opt: str) -> str:
     return INVESTMENT_STRATEGIES[names[idx]].rarity if idx is not None else ''
 
 
+# 「克 DoT/减益」的机制属性集合(与 MECHANIC_COUNTERS 值域对齐;ADR-0203)
+_DOT_PUNISHED_MECHS: frozenset[str] = frozenset({'DoT', '减益'})
+
+
+def _opt_counters_dot(opt: str) -> bool:
+    """选项(词缀/环境名)是否克制 DoT/减益主派 —— 机制注册表单一源(ADR-0203)。
+
+    名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制属性,与「净化身心」
+    同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义
+    (旧 config dot_punish_envs 名单已删 —— 游戏客观数据非用户偏好,版本全量一致)。
+    未知名(不在映射)→ False(不惩罚)。
+    """
+    for affix, tag in AFFIX_MECHANIC_MAP.items():
+        if affix in opt and not _DOT_PUNISHED_MECHS.isdisjoint(MECHANIC_COUNTERS.get(tag, ())):
+            return True
+    return False
+
+
 
 # 建议刷新的分数下限(ADR-0146:低于此 = 烂手牌,免费刷新期望为正;tuning 候选)
 EVENT_REFRESH_SCORE_FLOOR: float = 50.0
+
+# 用户转向轴(投资策略/环境;develop config.md §3):priority 软加分 + forbid 重罚。
+STEERING_PRIORITY_BONUS: float = 30.0     # soft:倾向选,可被 comp-hit(65-110)/增强定义(120)压过
+STEERING_FORBID_PENALTY: float = 10000.0  # hard−:有替代永不选;全被禁 → 分数落刷新阈值下自然建议刷新
 
 
 def decide_event(options: list[str], config, state: GameState,
@@ -66,21 +89,24 @@ def decide_event(options: list[str], config, state: GameState,
     """事件选项打分(投资策略/环境 3 选 1)。
 
     分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 后的完整语义):
-    1. config 白名单(event_whitelist,子串匹配,如 定期福利=90)—— 用户显式配置,恒最高;
-       ⚠️ 与 PICK_VALUE 对 24/33 张同名卡分歧 20-60 分,白名单语义=覆盖非基线(评审 2026-08-15)
-    2. comp 命中(45×N+20,双命中 110):选项绑定∩target_comp(策略侧;成型加速压倒一切)
-    3. 策略评估分 pick_value(12-75,ADR-0143;替裸品质先验,「分数为纲」)
+    1. comp 命中(45×N+20,双命中 110):选项绑定∩target_comp(策略侧;成型加速压倒一切)
+    2. 策略评估分 pick_value(12-75,ADR-0143;替裸品质先验,「分数为纲」)
        / 品质先验回落(50/30/10+economy20,仅未评估卡)
-    4. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
-    5. env 分支(_st is None 且 env 命中):env 裸分(28-72)/ 阵营 floor(概念股 78/邀请 70/契约 72)
+    3. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
+    4. env 分支(_st is None 且 env 命中):env 裸分(28-72)/ 阵营 floor(概念股 78/邀请 70/契约 72)
        / HP 钩子(+15/+10);**env 无品质不吃难度惩罚**(0144b)
-    叠加项(全部之后):品质难度惩罚(-12/-6,HP<40 加倍;仅策略)/ dot_punish(-100 档)/
-    生存钩子(+15,仅策略 SURVIVAL_PICKS)。未注册非 env = 0 分。
+    叠加项(全部之后):品质难度惩罚(-12/-6,HP<40 加倍;仅策略)/ 机制克制惩罚(-100 档,
+    MECHANIC_COUNTERS 单一源,ADR-0203)/ 用户转向轴(策略/环境 priority +30 soft、forbid −10000
+    hard−,config.md §3)/ 生存钩子(+15,仅策略 SURVIVAL_PICKS)。未注册非 env = 0 分。
+    (原 config event_whitelist 恒最高 boost 已删,ADR-0204:priority/forbid 覆盖用户语义,
+    「指定具体分值」是引擎调参非用户偏好。)
     """
-    whitelist: dict = getattr(config, 'event_whitelist', {}) or {}
-    dot_punish = list(getattr(config, 'dot_punish_envs', []) or [])
+    strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
+    strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
+    env_priority = list(getattr(config, 'env_priority', []) or [])
+    env_forbid = list(getattr(config, 'env_forbid', []) or [])
     on_dot = sum(state.board.get(f, 0) for f in ('持续伤害', '减益')) >= 2
-    penalty = (max(whitelist.values()) + 100) if whitelist else 100
+    penalty = 100
     _rarity_prior: dict[str, float] = {'棱彩': 50.0, '金': 30.0, '银': 10.0}
     _tgt_factions: set[str] = set(target_comp.factions) if target_comp is not None else set()
     _tgt_chars: set[str] = set(target_comp.core_chars) if target_comp is not None else set()
@@ -89,10 +115,7 @@ def decide_event(options: list[str], config, state: GameState,
     best_reason = ''
     for i, opt in enumerate(options):
         score = 0.0
-        reason = 'whitelist'
-        for name, val in whitelist.items():
-            if name in opt:
-                score = max(score, float(val))
+        reason = 'eval'
         _st = get_strategy(opt)
         _env = get_env(opt)   # 提前查 env 表(防跨表污染,见下 eval-lcs/惩罚两处守卫)
         _pv = None if _env is not None else pick_value_of(opt)
@@ -136,6 +159,17 @@ def decide_event(options: list[str], config, state: GameState,
                     score, reason = _floor, f'env-faction:{_env.faction}'
             if state.hp < 40:
                 score += ENV_SURVIVAL_BONUS.get(_env.name, 0.0)
+        # 用户转向轴(develop config.md §3):投资策略/环境 priority 软加分 + forbid 重罚。
+        # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
+        # 归一后才进决策(ADR-0144b),未注册项按事件主流(投资策略)处理。子串匹配与白名单一致(OCR 容错)。
+        _pri = env_priority if _env is not None else strategy_priority
+        if any(p in opt for p in _pri):
+            score += STEERING_PRIORITY_BONUS
+            reason = 'user-priority'
+        _forbid = env_forbid if _env is not None else strategy_forbid
+        if any(p in opt for p in _forbid):
+            score -= STEERING_FORBID_PENALTY
+            reason = 'user-forbid'
         # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
         if state.hp < 40 and _st is not None and _st.name in SURVIVAL_PICKS:
             score += 15.0
@@ -149,7 +183,7 @@ def decide_event(options: list[str], config, state: GameState,
             score -= 12.0 if state.hp >= 40 else 24.0
         elif _rar == '金':
             score -= 6.0 if state.hp >= 40 else 12.0
-        if on_dot and any(p in opt for p in dot_punish):
+        if on_dot and _opt_counters_dot(opt):
             score -= penalty
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason

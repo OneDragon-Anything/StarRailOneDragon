@@ -35,6 +35,14 @@ XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
 
+# 保血阈值(策略校准参数,ADR-0203/0204 从 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
+# **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
+HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;= cw_evaluate.HP_DANGER 同值,语义「安全地板」)
+DIFFICULTY_HP_TABLE: dict[str, int] = {
+    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
+    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
+}
+
 
 @dataclass
 class ShopCard:
@@ -274,25 +282,19 @@ def _bench_char_cost(bc: BenchChar) -> int:
     return c.cost if c and c.cost else 3
 
 
-def effective_hp_threshold(state: GameState, config) -> int:
-    """实际保血阈值:selected_difficulty(职级)检测到且 ``config.difficulty_hp_override`` 有对应键 → 取覆盖值;
-    否则回退 ``config.hp_safe_threshold``(默认 40 = cw_evaluate.HP_DANGER)。
+def effective_hp_threshold(state: GameState) -> int:
+    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE`` 有对应键 → 取覆盖值;
+    否则回退 ``HP_SAFE_THRESHOLD``(40)。
 
-    向后兼容:selected_difficulty 未检测("")或无对应覆盖键 → 回退 hp_safe_threshold,**行为与加 difficulty
-    前完全一致**(detection 未接线时零行为变化)。高难(A8)敌人更凶 → 阈值调高,更早弃息保血
-    (决策见 docs/develop/currency_war/decisions/INDEX.md )。detection 接线(难度确认屏 OCR →
-    state.selected_difficulty)是后续 game 接线任务;本函数 + GameState.selected_difficulty 是其离线地基。
+    高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
+    ADR-0204 从 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
 
     ⚖️ r11 review #4(P2 位面键控):P2+ 敌强度跳升(实测 P2-1 掉 19/节点 vs P1 ~10;DP 影子
     difficulty_scale P2≈1.5-1.95×)→ 阈值上浮 1.25×(P2)/1.5×(P3),更早弃息保血。
     P1 不变(向后兼容)。
     """
     diff = (getattr(state, "selected_difficulty", "") or "").strip()
-    override = getattr(config, "difficulty_hp_override", None) or {}
-    if diff and diff in override:
-        base = int(override[diff])
-    else:
-        base = int(getattr(config, "hp_safe_threshold", 40))
+    base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
     if state.plane >= 3:
         return min(100, int(base * 1.5))
     if state.plane == 2:

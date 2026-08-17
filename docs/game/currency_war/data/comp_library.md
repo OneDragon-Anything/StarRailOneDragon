@@ -80,7 +80,7 @@
 - form_tiers: {持续伤害: 待定, 减益: 待定}
 - strength: B(research:下限极高/上限低,稳但不爆)
 - form_difficulty: **easy**(低费成型快,前期过渡强)
-- countered_by_bosses: 净化身心环境(走 DoT 避,config dot_punish_envs)
+- countered_by_bosses: 净化身心环境(走 DoT 避,MECHANIC_COUNTERS 注册表单一源)
 - 备注:前期/低难保血利器;高难上限不足。
 
 ### 8. 反甲白厄(毁灭反甲)— medium-hard / A
