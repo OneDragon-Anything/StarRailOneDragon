@@ -35,29 +35,32 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
 
         通用入口,按 ``app_id`` 路由到该 config 的领域方法。写入前校验,不合法拒绝。
         改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+
+        Returns:
+            ``{success, error}`` 或 ``{success: True, app_id, list_field, id(新项标识)}``。
         """
         ctx = backend.ctx
         entry = get_entry(app_id)
         if entry is None:
-            return {'ok': False, 'error': f'不支持的 app_id: {app_id}'}
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
         expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
         if list_field != expected_list:
-            return {'ok': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
+            return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             item = entry.item_from_dict(item_dict)
             err = entry.validate_item(ctx, item)
             if err:
-                return {'ok': False, 'error': err}
+                return {'success': False, 'error': err}
             entry.add(config, item)
             new_id: str | None = None
             if hasattr(config, 'plan_list') and config.plan_list:
                 new_id = config.plan_list[-1].plan_id
             elif entry.id_kind == 'app_id' and isinstance(item, str):
                 new_id = item
-            return {'ok': True, 'app_id': app_id, 'list_field': list_field, 'id': new_id}
+            return {'success': True, 'app_id': app_id, 'list_field': list_field, 'id': new_id}
         except Exception as e:  # noqa: BLE001
-            return {'ok': False, 'error': str(e)}
+            return {'success': False, 'error': str(e)}
     return add_config_item
 
 
@@ -73,22 +76,25 @@ def make_delete_config_item(backend: SrBackendContext) -> Callable:
         """删一个数据类列表项。操作类,改配置,可逆性低。
 
         改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+
+        Returns:
+            ``{success, error}`` 或 ``{success: True, app_id, list_field, id}``。
         """
         ctx = backend.ctx
         entry = get_entry(app_id)
         if entry is None:
-            return {'ok': False, 'error': f'不支持的 app_id: {app_id}'}
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
         expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
         if list_field != expected_list:
-            return {'ok': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
+            return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             deleted = entry.delete(config, item_id)
             if not deleted:
-                return {'ok': False, 'error': f'未找到 id={item_id}'}
-            return {'ok': True, 'app_id': app_id, 'list_field': list_field, 'id': item_id}
+                return {'success': False, 'error': f'未找到 id={item_id}'}
+            return {'success': True, 'app_id': app_id, 'list_field': list_field, 'id': item_id}
         except Exception as e:  # noqa: BLE001
-            return {'ok': False, 'error': str(e)}
+            return {'success': False, 'error': str(e)}
     return delete_config_item
 
 
@@ -103,18 +109,22 @@ def make_get_config(backend: SrBackendContext) -> Callable:
         """读配置字段或全部 data。观察类,不改配置。
 
         改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+
+        Returns:
+            key 传入 → ``{success: True, app_id, key, value(字段值)}``;
+            key 省略 → ``{success: True, app_id, data(全部字段 dict)}``;失败 ``{success, error}``。
         """
         ctx = backend.ctx
         entry = get_entry(app_id)
         if entry is None:
-            return {'ok': False, 'error': f'不支持的 app_id: {app_id}'}
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             if key:
-                return {'ok': True, 'app_id': app_id, 'key': key, 'value': config.data.get(key)}
-            return {'ok': True, 'app_id': app_id, 'data': dict(config.data)}
+                return {'success': True, 'app_id': app_id, 'key': key, 'value': config.data.get(key)}
+            return {'success': True, 'app_id': app_id, 'data': dict(config.data)}
         except Exception as e:  # noqa: BLE001
-            return {'ok': False, 'error': str(e)}
+            return {'success': False, 'error': str(e)}
     return get_config
 
 
@@ -131,30 +141,34 @@ def make_set_config(backend: SrBackendContext) -> Callable:
 
         只读字段(run_times/plan_id 等)拒绝。写穿 ctx 缓存实例。
         改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+
+        Returns:
+            ``{success: True, app_id, key, value}`` 或 ``{success: False, error(只读/不合法原因,
+            enum 错误会附可用值列表)}``。
         """
         ctx = backend.ctx
         entry = get_entry(app_id)
         if entry is None:
-            return {'ok': False, 'error': f'不支持的 app_id: {app_id}'}
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
         if 'set' not in entry.supported_ops:
-            return {'ok': False, 'error': f'{app_id} 不支持 set'}
+            return {'success': False, 'error': f'{app_id} 不支持 set'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             if hasattr(config, '_RO_FIELDS') and key in config._RO_FIELDS:
-                return {'ok': False, 'error': f'{key} 是只读字段(运行态/身份),不可 set'}
+                return {'success': False, 'error': f'{key} 是只读字段(运行态/身份),不可 set'}
             if entry.field_schema and key not in entry.field_schema:
-                return {'ok': False, 'error': f'{key} 不在 {app_id} 的可改字段中(可用: {list(entry.field_schema.keys())})'}
+                return {'success': False, 'error': f'{key} 不在 {app_id} 的可改字段中(可用: {list(entry.field_schema.keys())})'}
             if entry.field_schema and key in entry.field_schema:
                 field_meta = entry.field_schema[key]
                 if field_meta.get('type') == 'enum' and 'enum_cls' in field_meta:
                     valid_values = [m.value.value for m in field_meta['enum_cls']]
                     if value not in valid_values:
-                        return {'ok': False, 'error': f'{key} 值 {value} 不合法(可用: {valid_values})'}
+                        return {'success': False, 'error': f'{key} 值 {value} 不合法(可用: {valid_values})'}
             config.update(key, value)
             config.save()
-            return {'ok': True, 'app_id': app_id, 'key': key, 'value': value}
+            return {'success': True, 'app_id': app_id, 'key': key, 'value': value}
         except Exception as e:  # noqa: BLE001
-            return {'ok': False, 'error': str(e)}
+            return {'success': False, 'error': str(e)}
     return set_config
 
 
@@ -170,11 +184,17 @@ def make_describe_config(backend: SrBackendContext) -> Callable:
 
         返回 set_fields(可改 + enum options) + ro_fields(只读) + list_fields(item 结构 + add_example)。
         智能体看到后可直接生成正确的 set/add 调用。不知道 app_id 时先 list_app_configs。
+
+        Returns:
+            ``{success, app_id, description, set_fields, ro_fields, list_fields, note}``。
+            ``set_fields``: 字段名 → ``{type, options(下拉合法值, value 为 set 时要传的
+            字符串)}``;``ro_fields``: 只读字段名列表;``list_fields[]``: ``{field(列表
+            字段名), item_fields(项内字段结构), add_example(可直接改用的加项示例)} ``。
         """
         ctx = backend.ctx
         entry = get_entry(app_id)
         if entry is None:
-            return {'ok': False, 'error': f'不支持的 app_id: {app_id}'}
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             ro_fields: set[str] = set(getattr(config, '_RO_FIELDS', set()))
@@ -191,7 +211,7 @@ def make_describe_config(backend: SrBackendContext) -> Callable:
                 _inject_category_options(ctx, app_id, category, list_fields[0])
 
             return {
-                'ok': True,
+                'success': True,
                 'app_id': app_id,
                 'description': entry.description,
                 'set_fields': set_fields,
@@ -200,7 +220,7 @@ def make_describe_config(backend: SrBackendContext) -> Callable:
                 'note': '所有 options 的 value 是 set/add 时要传的字符串(非 label);set_fields 与 ro_fields 互斥',
             }
         except Exception as e:  # noqa: BLE001
-            return {'ok': False, 'error': str(e)}
+            return {'success': False, 'error': str(e)}
     return describe_config
 
 
@@ -225,6 +245,11 @@ def make_list_app_configs(backend: SrBackendContext) -> Callable:
 
         返回每个 config 的 app_id + description + supported_ops + item_kind + id_kind。
         智能体看到 item_kind 知道 item 是 dataclass / str / dict,不会套错模板。
+
+        Returns:
+            ``{success, configs[]}``;``configs[]`` 元素: ``{app_id, description,
+            supported_ops(支持的操作,如 set/add/delete), item_kind(列表项类型
+            dataclass/str/dict), id_kind(项标识字段名)}``。
         """
         configs: list[dict] = []
         for app_id, entry in all_entries().items():
@@ -235,5 +260,5 @@ def make_list_app_configs(backend: SrBackendContext) -> Callable:
                 'item_kind': entry.item_kind,
                 'id_kind': entry.id_kind,
             })
-        return {'ok': True, 'configs': configs}
+        return {'success': True, 'configs': configs}
     return list_app_configs

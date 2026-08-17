@@ -9,35 +9,36 @@
 | MCP tool | 委托 | 返回 |
 |---|---|---|
 | `check_game_window` | `backend.check_window()` | `WindowStatus`（结构化 JSON；backend 抛错时返 `{'error': ...}`） |
-| `capture_game_screen` | `backend.capture()` | 截图绝对路径（落盘 `.debug/sr_od_mcp/screenshot/`） |
+| `capture_game_screen` | `backend.capture()` | `{success, path}`（截图落盘 `.debug/sr_od_mcp/screenshot/`，`path` 为绝对路径） |
 | `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示；精准命中画面若注册了额外识别器,多回传 `extras` 该画面的结构化领域事实 + 平级 `extras_doc` 字段说明,见 [screen-recognizers.md](screen-recognizers.md)） |
 | `upsert_screen_area(screen_name, area_name, pc_rect, ...)` | `backend.upsert_screen_area()` | `{success, action(inserted/updated), area_count, error}`（写 yml + reload） |
 | `delete_screen_area(screen_name, area_name)` | `backend.delete_screen_area()` | `{success, action(deleted), area_count, error}`（写 yml + reload） |
-| `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：结果文本；`block=False`：已启动 JSON；并发拒绝时返错误 JSON |
+| `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：终态 `{success, result}`；`block=False`：受理 `{started: True, ...}`；并发拒绝 `{started: False, error, source, hint}` |
 | `click_game(x, y, press_time=0.1, pc_alt=False)` | `backend.click_game()` | `{success, x, y, in_window, pc_alt}`（坐标不在窗口内 → `in_window=False`；`pc_alt=True` 大世界等锁光标画面点击前需按 Alt 解锁） |
 | `input_text(text, use_clipboard=None)` | `backend.input_text()` | `{success, method, masked_text}`（`use_clipboard=None` 跟 `game_config.type_input_way`） |
 | `key_tap(key, press_time=0)` | `backend.key_tap()` | `{success, key, press_time}`（框架键名 `w`/`a`/`s`/`d`/`f`/`esc`/`space`；`press_time>0` 长按） |
 | `drag(x1, y1, x2, y2, duration=1)` | `backend.drag()` | `{success, x1, y1, x2, y2, duration}`（`(x1,y1)→(x2,y2)` 1080p 游戏坐标拖拽，覆盖刮刮卡 / 收集来回拖等） |
 | `list_applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
-| `run_one_dragon(block=False)` | `backend.run_one_dragon('mcp')` | 默认立刻返回启动状态；`block=True` 等待一条龙结束 |
-| `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项 |
+| `run_one_dragon(block=False)` | `backend.run_one_dragon('mcp')` | 默认立刻返回受理 `{started: True, ...}`；`block=True` 等结束返终态 `{success, result}` |
+| `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项；返回形态同 `run_one_dragon` |
 | `list_operations` | `operation_registry.scan_operations(ctx)` | 可运行自定义 op 列表（`op_id` + 参数 schema，纯反射不实例化） |
 | `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + `coercible` + 整体 `debuggable`） |
-| `run_operation(op_id, args=None, block=False)` | `operation_registry` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回；`block=True` 等结束；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返错误 JSON。`@dataclass`+`from_dict` 参数可从 dict 传入 |
-| `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{ok, app_id, data|key,value}`（读配置字段/全 data；只读） |
-| `set_config(app_id, key, value)` | `config_router` 路由 → 写穿 ctx + 校验只读 | `{ok, app_id, key, value}`（写简单/enum 字段；只读字段拒绝） |
-| `add_config_item(app_id, list_field, item_dict)` | `config_router` 路由 → `item_from_dict` + 校验 + add | `{ok, app_id, list_field, id}`（增改列表项；写入前校验） |
-| `delete_config_item(app_id, list_field, item_id)` | `config_router` 路由 → delete | `{ok, app_id, list_field, id}`（删列表项；可逆性低） |
-| `describe_config(app_id, category=None)` | `config_router` 路由 → schema 组装 | `{ok, set_fields, ro_fields, list_fields, ...}`（结构化 schema + add 示例；只读） |
-| `list_app_configs()` | `config_router.all_entries()` | `{ok, configs:[{app_id, description, supported_ops, item_kind, id_kind}]}`（可改配置目录；只读） |
+| `run_operation(op_id, args=None, block=False)` | `operation_registry` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回受理；`block=True` 返终态 `{success, result}`；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返 `{started: False, error}`。`@dataclass`+`from_dict` 参数可从 dict 传入 |
+| `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{success, app_id, data|key,value}`（读配置字段/全 data；只读） |
+| `set_config(app_id, key, value)` | `config_router` 路由 → 写穿 ctx + 校验只读 | `{success, app_id, key, value}`（写简单/enum 字段；只读字段拒绝） |
+| `add_config_item(app_id, list_field, item_dict)` | `config_router` 路由 → `item_from_dict` + 校验 + add | `{success, app_id, list_field, id}`（增改列表项；写入前校验） |
+| `delete_config_item(app_id, list_field, item_id)` | `config_router` 路由 → delete | `{success, app_id, list_field, id}`（删列表项；可逆性低） |
+| `describe_config(app_id, category=None)` | `config_router` 路由 → schema 组装 | `{success, set_fields, ro_fields, list_fields, ...}`（结构化 schema + add 示例；只读） |
+| `list_app_configs()` | `config_router.all_entries()` | `{success, configs:[{app_id, description, supported_ops, item_kind, id_kind}]}`（可改配置目录；只读） |
 | `get_run_status` | `backend.query_status()` | `RunStatusResult`（运行中返当前节点/重试；终态返结果/失败定位） |
 | `stop_run` | `backend.stop()` | `{"stopped": bool, ...}`（仅表信号已发出，过渡期 `get_run_status` 仍显示 running） |
-| `close_game` | `backend.close_game()` | 文本（`str`，已发送关闭信号；controller 吞异常，用 `check_game_window` 验证） |
+| `close_game` | `backend.close_game()` | `{success, result}`（信号已发，非已关闭；controller 吞异常，用 `check_game_window` 验证） |
 | `list_mcp_usage_guides` | `mcp/prompts.py` | 可用操作指南目录，相当于帮助索引 |
 | `get_mcp_usage_guide(name, app_id=None)` | `mcp/prompts.py` | 指定操作指南正文，相当于任务级 `--help` |
 
 要点：
 
+- **返回契约（跨工具统一）**：成功标志键一律 `success`（bool）；运行类受理语义用 `started`（≠完成）；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。裸字符串 + `错误:` 前缀的返回已全部结构化（`capture_game_screen`/`close_game`/block 终态），调用方判错不再靠字符串匹配。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。
 - backend 实例通过闭包注入 tool，不使用全局单例，也不让 FastMCP lifespan 管 backend 生命周期。
 - `capture_game_screen` 落盘返回路径；`analyze_screen` 返回结构化 dataclass，由 FastMCP 序列化。

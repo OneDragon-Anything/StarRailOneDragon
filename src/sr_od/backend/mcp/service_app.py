@@ -18,13 +18,19 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
     """构造 ``run_one_dragon`` tool。"""
     async def run_one_dragon(
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到一条龙结束")] = False,
-    ) -> dict | str:
+    ) -> dict:
         """按当前 GUI/配置的一条龙设置启动完整一条龙运行。
 
         跑全套已启用应用用本 tool;单个应用用 ``run_standalone_app``;单个 operation 用 ``run_operation``。
 
         block=False(默认)立刻返回,用 get_run_status 查进度;block=True 阻塞到结束。
         副作用:操作游戏并运行已启用的一条龙应用组;单跑道,已有运行时返回错误。
+
+        Returns:
+            三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
+            ② 受理 dict ``{started: True, source, app, started_at, hint}``(block=False);
+            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
+            进度/结果细节看 ``get_run_status``。
         """
         try:
             ok, future = backend.run_one_dragon('mcp')
@@ -52,8 +58,9 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
         # block=True 只返回最终摘要，不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return '一条龙运行结束,但未返回结果'
-        return '一条龙运行成功' if result.success else f'一条龙运行失败: {result.status}'
+            return {'success': False, 'result': '一条龙运行结束,但未返回结果'}
+        return {'success': result.success,
+                'result': '一条龙运行成功' if result.success else f'一条龙运行失败: {result.status}'}
     return run_one_dragon
 
 
@@ -62,13 +69,19 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
     async def run_standalone_app(
         app_id: Annotated[str | None, Field(description="独立应用 ID;None=用 GUI「应用运行」当前选中项")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
-    ) -> dict | str:
+    ) -> dict:
         """启动独立应用。
 
         单个应用用本 tool;全套用 ``run_one_dragon``;单个 operation 用 ``run_operation``。
 
         app_id 为空时使用 GUI「应用运行」当前选中的应用。block=False(默认)立刻返回,
         用 get_run_status 查进度;block=True 阻塞到结束。副作用:操作游戏并运行目标应用。
+
+        Returns:
+            三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
+            ② 受理 dict ``{started: True, source, app, started_at, hint}``(block=False);
+            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
+            进度/结果细节看 ``get_run_status``。
         """
         try:
             ok, future = backend.run_standalone_app('mcp', app_id=app_id)
@@ -96,8 +109,9 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
         # block=True 只返回最终摘要，不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return '独立应用运行结束,但未返回结果'
-        return '独立应用运行成功' if result.success else f'独立应用运行失败: {result.status}'
+            return {'success': False, 'result': '独立应用运行结束,但未返回结果'}
+        return {'success': result.success,
+                'result': '独立应用运行成功' if result.success else f'独立应用运行失败: {result.status}'}
     return run_standalone_app
 
 
@@ -112,6 +126,13 @@ def make_list_applications(backend: SrBackendContext) -> Callable[[], Applicatio
         (idx 1 → config/01 账号01,idx 2 → config/02 账号02),**不是** config/0<idx+1>。
         激活实例看 ``config/one_dragon.yml`` 的 ``instance_list`` 里 ``active: true`` 项;
         改某实例配置前据此定位目录,别把 idx 当目录号做偏移。
+
+        Returns:
+            ``{current_instance_idx, active_standalone_app_id, applications[]}``;
+            ``active_standalone_app_id`` = GUI「独立应用运行」当前选中项(无则 None)。
+            ``applications[]`` 元素: ``{app_id, app_name, enabled_in_one_dragon(是否在
+            一条龙组里启用), in_standalone_list(是否在独立应用列表), is_active_standalone
+            (是否为当前选中独立应用)}``。
         """
         try:
             return backend.list_applications()
@@ -129,6 +150,12 @@ def make_list_operations(backend: SrBackendContext) -> Callable[[], OperationLis
 
         返回每个 operation 的 op_id(<module>.<ClassName>)与 __init__ 参数 schema(已剔除
         self/ctx)。用 describe_operation 看单个详情,用 run_operation 按 op_id 运行。无副作用。
+
+        Returns:
+            ``{operations[], failures[]}``。``operations[]`` 元素:
+            ``{op_id, class_name, module, params[]}``;``params[]`` 元素见
+            ``describe_operation`` 的 Returns(结构相同)。``failures[]`` 是单模块
+            import 失败记录(``{module}: {error}``),不影响其余扫描结果。
         """
         try:
             return operation_registry.scan_operations(backend.ctx)
@@ -147,6 +174,12 @@ def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
         op_id 格式 ``<dotted module path>.<ClassName>``,可从 list_operations 获取。
         每个参数标 json_serializable(标量/list/dict=True、复杂数据类如 ChargePlanItem=False,
         提示走 application);整体 debuggable 表示所有必填参数是否可经 JSON 传入。
+
+        Returns:
+            ``{op_id, debuggable, params[]}``;``params[]`` 元素:
+            ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'), required,
+            default(默认值字符串,必填为 None), json_serializable(可否直接传 JSON 值),
+            coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``。
         """
         try:
             return operation_registry.describe_operation(backend.ctx, op_id)
@@ -165,7 +198,7 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取")],
         args: Annotated[dict | None, Field(description="构造参数 dict;JSON 标量/列表/字典,@dataclass+from_dict 参数传 dict 自动反序列化;其余复杂数据类走 application")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
-    ) -> dict | str:
+    ) -> dict:
         """按 op_id(package.path.ClassName)运行任意 operation;args 传构造参数。
 
         单个 operation 用本 tool;全套用 ``run_one_dragon``;单个应用用 ``run_standalone_app``。
@@ -174,6 +207,12 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         用 list_operations / describe_operation 查 op_id 与参数。
         block=False(默认)立刻返回,用 get_run_status 查进度;block=True 阻塞到结束。
         副作用:操作游戏;单跑道,已有运行时返回错误(含 source + 提示)。
+
+        Returns:
+            三种形态:① 参数/并发错误 dict ``{started: False, error(, source, hint)}``;
+            ② 受理 dict ``{started: True, op_id, source, started_at, hint}``(block=False);
+            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
+            进度/结果细节看 ``get_run_status``。
         """
         try:
             cls = operation_registry.resolve_op_class(op_id)
@@ -211,6 +250,7 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         # block=True 只返回最终摘要,不把运行日志塞进 tool 输出。
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
-            return 'operation 运行结束,但未返回结果'
-        return 'operation 运行成功' if result.success else f'operation 运行失败: {result.status}'
+            return {'success': False, 'result': 'operation 运行结束,但未返回结果'}
+        return {'success': result.success,
+                'result': 'operation 运行成功' if result.success else f'operation 运行失败: {result.status}'}
     return run_operation

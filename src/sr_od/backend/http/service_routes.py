@@ -64,7 +64,7 @@ async def handle_game_run_one_dragon(backend: SrBackendContext, request: Request
         })
     result = await asyncio.wrap_future(future)
     msg = '一条龙运行成功' if result and result.success else f"一条龙运行失败: {getattr(result, 'status', '无结果')}"
-    return JSONResponse({'result': msg})
+    return JSONResponse({'success': bool(result and result.success), 'result': msg})
 
 
 async def handle_game_run_standalone(backend: SrBackendContext, request: Request | None = None) -> Response:
@@ -105,7 +105,7 @@ async def handle_game_run_standalone(backend: SrBackendContext, request: Request
         })
     result = await asyncio.wrap_future(future)
     msg = '独立应用运行成功' if result and result.success else f"独立应用运行失败: {getattr(result, 'status', '无结果')}"
-    return JSONResponse({'result': msg})
+    return JSONResponse({'success': bool(result and result.success), 'result': msg})
 
 
 async def handle_game_operations(backend: SrBackendContext, _request: Request | None = None) -> Response:
@@ -197,7 +197,7 @@ async def handle_game_run_operation(
     result = await asyncio.wrap_future(future)
     msg = ('operation 运行成功' if result and result.success
            else f"operation 运行失败: {getattr(result, 'status', '无结果')}")
-    return JSONResponse({'result': msg})
+    return JSONResponse({'success': bool(result and result.success), 'result': msg})
 
 
 def register_service_routes(mcp: FastMCP, backend: SrBackendContext) -> None:

@@ -63,7 +63,7 @@ def make_open_game(backend: SrBackendContext) -> Callable:
     async def open_game(
         enter: Annotated[bool, Field(description="True=打开+自动登录到大世界;False=只打开停在 ready 态不登录")] = True,
         block: Annotated[bool, Field(description="True=阻塞到完成;False=立刻返回,用 get_run_status 查进度")] = True,
-    ) -> dict | str:
+    ) -> dict:
         """打开游戏(可选自动登录)。长耗时,需交互式桌面。操作类。
 
         enter=True(默认)→ 打开 + 自动登录(= 原 open_and_enter_game,到大世界);
@@ -71,6 +71,11 @@ def make_open_game(backend: SrBackendContext) -> Callable:
         供调用方分步驱动登录流程。
         block=True(默认)阻塞到完成;block=False 立刻返回,用 get_run_status 查进度。
         副作用:操作游戏(启动 exe / 可能登录);单跑道,已有运行时返回错误(含 source + 提示)。
+
+        Returns:
+            三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
+            ② 受理 dict ``{started: True, source, started_at, hint}``(block=False);
+            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
         """
         from sr_od.operations.enter_game.open_and_enter_game import OpenAndEnterGame
         from sr_od.operations.enter_game.open_game import OpenGame
@@ -94,8 +99,10 @@ def make_open_game(backend: SrBackendContext) -> Callable:
             }
         result: OperationResult = await asyncio.wrap_future(future)  # 中断 cancel 的是 await,底层 _run 继续
         if enter:
-            return '成功打开并进入星穹铁道游戏' if result.success else f'打开游戏失败: {result.status}'
-        return '成功打开游戏(未登录)' if result.success else f'打开游戏失败: {result.status}'
+            msg = '成功打开并进入星穹铁道游戏' if result.success else f'打开游戏失败: {result.status}'
+        else:
+            msg = '成功打开游戏(未登录)' if result.success else f'打开游戏失败: {result.status}'
+        return {'success': result.success, 'result': msg}
     return open_game
 
 
@@ -105,6 +112,14 @@ def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusResu
         """查当前/最近一次运行状态(无副作用)。观察类。
 
         运行中返当前节点/耗时/重试;非运行返结果/失败定位。停止运行用 ``stop_run``。
+
+        Returns:
+            ``RunStatusResult``: ``{state, source, app, started_at, duration_seconds,
+            current_node, retry_count, last_status, failed_node}``。
+            ``state`` 取值 ``idle``(无运行)/``running``/``success``/``failed``/``stopped``;
+            ``current_node``/``retry_count`` 仅运行中有值;``last_status`` 仅终态有值
+            (成功描述 / 失败原因 / ``人工结束``);``failed_node`` 仅 failed 时有值
+            (失败停在哪一步,排障锚点);``started_at`` 为 ISO 时间戳,可作 tail 日志锚点。
         """
         return backend.query_status()
     return get_run_status
@@ -159,21 +174,24 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             return {'error': str(e)}
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="捕获游戏截图"))
-    def capture_game_screen() -> str:
-        """捕获游戏画面并保存截图，返回截图绝对路径。观察类。
+    def capture_game_screen() -> dict:
+        """捕获游戏画面并保存截图,返回结构化结果。观察类。
 
-        只截图不分析用本 tool;需 OCR / 画面匹配用 ``analyze_screen``。
+        **仅在「只要截图文件本身、不做画面分析」时用本 tool**(如存档证据 / 喂视觉大模型)。
+        要知道画面是什么(OCR / 画面匹配)直接调 ``analyze_screen`` —— 它默认自己截图自己分析,
+        不需要也不应该先走本 tool。
 
         Returns:
-            截图文件的绝对路径；backend 抛错时返回 ``错误: <原因>``。
+            ``{success: True, path: 截图文件绝对路径}``;backend 抛错时
+            ``{success: False, error: <原因>}``。
         """
         try:
             image = backend.capture()
             path = _save_screenshot(image)
         except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return f"错误: {e}"
+            return {'success': False, 'error': str(e)}
         log.info(f"截图已保存到: {path}")
-        return path
+        return {'success': True, 'path': path}
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="分析游戏画面"))
     def analyze_screen(
@@ -182,28 +200,44 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     ) -> AnalyzeScreenResult:
         """分析画面(截图 + OCR + 画面匹配),返回结构化结果。观察类,不改游戏状态。
 
+        **默认用法:不带参数直接调用** —— 自动截当前游戏画面并分析(需游戏在线),
+        **不要先调 capture_game_screen 再把路径传进来**(多一次往返,且两次截图间画面可能已变)。
+        还需要把截图喂视觉大模型时加 ``save_image=True``,结果里的 ``screenshot_path`` 直接可用,
+        同样不必先 capture。
+
         **非视觉大模型(VLM)**:本 tool 的「分析」= OCR + 传统 OpenCV 模板/颜色匹配,
         按已建档 screen_info 做客观命中,**没有视觉理解能力**(看不见图标语义 / 布局 /
         状态 / 未建档元素)。要「看懂画面」用视觉大模型(zai ``analyze_image`` 等)或
         视觉子 agent;``save_image=True`` 回传的 ``screenshot_path`` 可直接喂视觉工具。
 
-        只需截图标路径用 ``capture_game_screen``;本 tool 截图 + 分析。
-
-        screenshot 省略 → 截当前游戏画面(需游戏在线),精准命中回写当前画面名;
-        screenshot 传入 → 解析指定截图、**无需游戏在线**:绝对路径按路径读 / 纯名字到
-        ``.debug/images/<名字>.png`` 读;**不回写**识别状态。用于离线校验/反哺 screen_info。
+        传 screenshot 仅用于**离线**场景(分析已存的历史截图,无需游戏在线):绝对路径
+        按路径读 / 纯名字到 ``.debug/images/<名字>.png`` 读;**不回写**识别状态。
+        用于离线校验/反哺 screen_info。
 
         save_image=True(**仅实时模式**)→ 把截图落盘并把路径放进 ``screenshot_path``
         返回,供 vision 复用(省掉另调 capture_game_screen)。离线模式忽略。
 
         Returns:
-            ``AnalyzeScreenResult``(成功标志、OCR 文本列表、画面匹配结果、错误描述、
-            screenshot_path、vision_hint、extras、extras_doc)。
+            ``AnalyzeScreenResult``:顶层字段 ``success`` / ``ocr_texts`` / ``screens`` /
+            ``error`` / ``screenshot_path`` / ``vision_hint`` / ``extras`` / ``extras_doc``。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
             需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
-            精准命中时 ``screens[0].unmatched_areas`` 给出该画面未命中 area 及原因:
-            ``no_method``=纯定位区(无 OCR/模板,带 ``pc_rect`` 可点击)、
-            ``sub_state``=有识别方法但当前不可见的子态区(带 ``text``/``template_id``)。
+
+            ⚠️ **两套坐标系,别混用**:
+            - ``pc_rect``(unmatched_areas 里)与点击坐标 = **1080p 游戏空间**,
+              ``click_game`` 用这套;
+            - ``ocr_texts[]`` 与 ``screens[].areas[]`` 的 x/y/width/height = **截图绝对像素**
+              (随窗口实际分辨率变),只用于定位/参考,不直接喂 click_game。
+
+            嵌套结构:
+            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (截图像素坐标)。
+            - ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
+              ``unmatched_areas`` 仅精准命中时填充,``reason`` 取值 ``no_method``(纯定位区,
+              无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
+              子态区,带 text/template_id,用于判断当前子态);模糊候选恒为空。
+            - ``areas[]``(命中详情): ``{area_name, area_type('text'|'template'), x, y,
+              width, height(截图像素), text(仅文本区,实际命中文本), confidence(文本=OCR
+              score / 模板=匹配度)}``。
 
             ``vision_hint``(success 时):本结果仅含 OCR + 模板匹配的部分识别,不等同完整
             视觉理解;需要全面判断画面时配合视觉工具 / 多模态再看(能力边界提醒,非错误)。
@@ -314,15 +348,17 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """关闭游戏(发关闭窗口信号,秒级)。操作类。
 
         controller 吞异常不返成功标志,故只表「信号已发」—— 用 check_game_window
-        验证是否真关。backend 未就绪 / 窗口未就绪时返 ``错误: <原因>``。
+        验证是否真关。
 
         Returns:
-            backend ``close_game`` 返回的文本;backend 抛错时返回 ``错误: <原因>``。
+            ``{success: True, result: <backend 返回文本>}``(信号已发,非已关闭);
+            backend 抛错时 ``{success: False, error: <原因>}``。
         """
         try:
-            return backend.close_game()
+            msg = backend.close_game()
         except Exception as e:  # noqa: BLE001 工具层兜底(BackendNotReadyError 等)
-            return f"错误: {e}"
+            return {'success': False, 'error': str(e)}
+        return {'success': True, 'result': msg}
 
     @mcp.tool(annotations=ToolAnnotations(title="点击游戏坐标"))  # 操作类:操作游戏点击(非破坏)
     def click_game(

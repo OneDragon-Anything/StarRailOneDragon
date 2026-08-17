@@ -146,7 +146,7 @@ async def handle_game_enter(backend: SrBackendContext, request: Request | None =
         request: Starlette 请求对象，可携带 ``block`` query。
 
     Returns:
-        200 + JSON：成功派发（block=true 时含运行结果文本；block=false 时含
+        200 + JSON：成功派发（block=true 时含 ``success`` + 运行结果文本；block=false 时含
         ``started_at``）；已有运行进行中时返回 ``started=False`` + 来源 + 提示。
     """
     block = True
@@ -165,7 +165,7 @@ async def handle_game_enter(backend: SrBackendContext, request: Request | None =
                              'hint': '用 /game/status 查进度与结果'})
     result = await asyncio.wrap_future(future)
     msg = '成功打开并进入星穹铁道游戏' if result.success else f'打开游戏失败: {result.status}'
-    return JSONResponse({'result': msg})
+    return JSONResponse({'success': result.success, 'result': msg})
 
 
 async def handle_game_status(backend: SrBackendContext, _request: Request | None = None) -> Response:
@@ -206,13 +206,13 @@ async def handle_game_close(backend: SrBackendContext, _request: Request | None 
         _request: Starlette 请求对象（本处理器不使用）。
 
     Returns:
-        200 + ``{"result": <文本>}``；backend 未就绪时返回 503 + 错误描述。
+        200 + ``{"success": true, "result": <文本>}``(仅表信号已发);backend 未就绪时返回 503 + 错误描述。
     """
     try:
         msg = await asyncio.to_thread(backend.close_game)
     except BackendNotReadyError as e:
         return _err(str(e))
-    return JSONResponse({"result": msg})
+    return JSONResponse({"success": True, "result": msg})
 
 
 def register_http_routes(mcp: FastMCP, backend: SrBackendContext) -> None:

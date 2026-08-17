@@ -12,16 +12,16 @@
 | GET | `/game/window` | `backend.check_window()` | `WindowStatus` JSON |
 | GET | `/game/capture` | `backend.capture()` | PNG 字节（`image/png`，不落盘） |
 | GET | `/game/analyze?save_image=` | `backend.analyze()` | `AnalyzeScreenResult` JSON（`save_image=true` 实时模式多带 `screenshot_path`;精准命中画面若注册了额外识别器多带 `extras`,见 [screen-recognizers.md](screen-recognizers.md)） |
-| POST | `/game/enter?block=` | `backend.start_run('http', op_factory)` | `block=true`（默认）：结果 JSON；`block=false`：已启动 JSON；并发拒绝返错误 JSON |
+| POST | `/game/enter?block=` | `backend.start_run('http', op_factory)` | `block=true`（默认）：终态 `{"success": bool, "result": 文本}`；`block=false`：受理 `{"started": true, ...}`；并发拒绝返 `{"started": false, ...}` |
 | GET | `/game/applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
-| POST | `/game/run/one-dragon?block=` | `backend.run_one_dragon('http')` | 默认返回启动状态；`block=true` 等待一条龙结束 |
-| POST | `/game/run/standalone?app_id=&block=` | `backend.run_standalone_app('http', app_id)` | `app_id` 为空时使用 GUI「应用运行」当前选中项 |
+| POST | `/game/run/one-dragon?block=` | `backend.run_one_dragon('http')` | 默认返受理 `{"started": true, ...}`；`block=true` 等待结束返终态 `{"success": bool, "result": 文本}` |
+| POST | `/game/run/standalone?app_id=&block=` | `backend.run_standalone_app('http', app_id)` | `app_id` 为空时使用 GUI「应用运行」当前选中项;返回形态同 `/game/run/one-dragon` |
 | GET | `/game/operations` | `operation_registry.scan_operations(ctx)` | 可运行自定义 op 列表（`op_id` + 参数 schema，纯反射不实例化） |
 | GET | `/game/operations/describe?op_id=` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每参数标 `json_serializable` + 整体 `debuggable`） |
-| POST | `/game/run/operation?op_id=&block=` | `operation_registry` 校验 + `run_slot._start`（op 路径） | 默认返回启动状态；`block=true` 等结束；`args` 走 JSON body |
+| POST | `/game/run/operation?op_id=&block=` | `operation_registry` 校验 + `run_slot._start`（op 路径） | 默认返受理;`block=true` 等结束返终态 `{"success": bool, "result": 文本}`;`args` 走 JSON body |
 | GET | `/game/status` | `backend.query_status()` | `RunStatusResult` JSON |
 | POST | `/game/stop` | `backend.stop()` | `{"stopped": bool, ...}` JSON |
-| POST | `/game/close` | `backend.close_game()` | `{"result": 文本}` JSON；窗口未就绪返回 503 |
+| POST | `/game/close` | `backend.close_game()` | `{"success": true, "result": 文本}` JSON；窗口未就绪返回 503 |
 
 要点：
 
