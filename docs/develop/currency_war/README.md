@@ -22,6 +22,7 @@
 - [12 comp 成型](strategy/12_comp_commitment.md)—— commit + 深 stack
 - [13 输入模型](strategy/13_input_model.md)—— GameState 完整字段
 - [14 阶段节奏骨架](strategy/14_phase_skeleton.md)—— 阵容无关骨架 × 阵容参数(NodeGoal + 7 经济杠杆)
+- [17 HORIZON 求解器](strategy/17_horizon_solver.md)—— 跨期 DP 姿态引擎(cw_horizon 导览:状态空间/消费端/改常量 checklist/三层缓存)
 
 ### [decisions/](decisions/) —— 决策日志(ADR 式)
 - [INDEX](decisions/INDEX.md) —— 决策索引(Status + 一句话)
