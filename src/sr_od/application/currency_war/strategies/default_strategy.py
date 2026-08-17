@@ -136,7 +136,8 @@ class DefaultCwStrategy(CwStrategy):
                     if session.target_drought >= 8:
                         log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
                                     session.target_comp.name, session.target_drought, _fp)
-                        session.drought_excluded = session.target_comp.name   # r20:排除防选回
+                        if session.target_comp.name not in session.drought_excluded:
+                            session.drought_excluded.append(session.target_comp.name)   # r7 review#1:累积名单(单槽被第二条死线覆盖→振荡)
                         session.target_comp = None
                         session.target_drought = 0
                     else:
@@ -157,11 +158,15 @@ class DefaultCwStrategy(CwStrategy):
             # r3 review③:用带分版 select_comp_scored——遥测记**实际排序分**
             # (含 steer/acq/board_alignment 乘子的最终分),量纲与决策一致;
             # 且省掉逐个重算 comp_score。
-            # r20 补:极端 drought 刚弃的线排除(否则弃后重选回同一条 = 白弃;
-            # 供给断绝的线本局已死)。排除窗到 drought_excluded_until。
-            _excl = getattr(session, 'drought_excluded', '')
-            scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=5)
-            cands = [c for _s, c in scored_cands if c.name != _excl]
+            # r20 补:极端 drought 弃的线排除(否则弃后重选回同一条 = 白弃;供给断绝的线
+            # 本局已死,死线不复活)。r7 review#2:bail 后重选加**供给门**(select 不感知
+            # shop,ADR-0092 开局选线不动;此路径须候选本回合供得上核心,防共享阵营假换线)。
+            scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=8)
+            cands = [c for _s, c in scored_cands
+                     if c.name not in session.drought_excluded
+                     and cw_comps.shop_supply(c, state) >= 1.0]
+            if not cands:   # 供给门全滤光(整波断供)→ 退未排除名单最高分(比 None 好)
+                cands = [c for _s, c in scored_cands if c.name not in session.drought_excluded]
             session.target_comp = cands[0] if cands else None
             # 遥测补(2026-08-17 r6):candidate_scores 曾全空(shop.py 落盘 {})——
             # 14 号 close_call 筛选零语料。select_comp top-3 存 session,shop 侧带出
