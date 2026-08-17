@@ -230,9 +230,12 @@ def get_node_goal(plane: int, round_num: int, *,
 
 
 # ADR-0155:日程 DP(cw_horizon)→ NodeGoal 接缝开关。False = 区间表(现状栈)生效;
-# True 且调用方传全状态 → DP 姿态。V1 涌现验证已过(等级带 92.6% ±1 级,满息脉冲涌现),
-# 切流前还需 V3 离线 A/B + V5 实机对照(03 号提案灰度路径)。
-HORIZON_SEAM_ACTIVE: bool = False
+# True 且调用方传全状态 → DP 姿态。
+# ✅ **切流执行(2026-08-18 r16,ADR-0208)**:六连败证据链完备——①160 局对拍
+# 「表 hold→DP level」在 P1 高金段系统性分歧(节奏慢一档);②六局 P1 boss 稳定损
+# 20-36 血→P2 残血开局即崩;③r8 经济投入已尽力(强度差距根子在 P1 全程积累);
+# ④DP 姿态语义逐段核验(早升/先成型后冲 8)。目标授权自主推进。回滚 = 本行改 False。
+HORIZON_SEAM_ACTIVE: bool = True
 
 
 
