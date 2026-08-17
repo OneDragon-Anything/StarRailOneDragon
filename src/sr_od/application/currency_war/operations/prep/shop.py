@@ -238,7 +238,10 @@ class BuyShopCards(SrOperation):
                      f'target={target_name!r} fp={_fp_v:.2f} bench={len(state.bench)}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
-            cw_telemetry.record_decision(state, target_name, {}, {}, actions)   # 写本地 decisions.jsonl(含 A2 target)
+            cw_telemetry.record_decision(
+                state, target_name,
+                dict(getattr(match.session, 'last_candidate_scores', {}) or {}), {},
+                actions)   # candidate_scores 补(r6:曾恒 {},14 号 close_call 零语料)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)

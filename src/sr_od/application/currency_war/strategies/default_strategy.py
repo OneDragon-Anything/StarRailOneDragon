@@ -144,8 +144,17 @@ class DefaultCwStrategy(CwStrategy):
             log.info('[cw-target] emergent:无阵营 count≥2(board+bench)→ target 保持 None(L1+L2 集中化驱动)')
             return
         if session.target_comp is None:
-            cands = cw_comps.select_comp(state, score_ctx, config)
+            cands = cw_comps.select_comp(state, score_ctx, config, top_n=3)
             session.target_comp = cands[0] if cands else None
+            # 遥测补(2026-08-17 r6):candidate_scores 曾全空(shop.py 落盘 {})——
+            # 14 号 close_call 筛选零语料。select_comp top-3 存 session,shop 侧带出。
+            from sr_od.application.currency_war import cw_comps as _cc
+            session.last_candidate_scores = {}
+            import contextlib
+            for _c in cands:
+                with contextlib.suppress(Exception):   # 评分失败不炸 target
+                    session.last_candidate_scores[_c.name] = float(
+                        _cc.comp_score(_c, state, score_ctx))
         else:
             # tracker=session.performance:maybe_pivot **读** tracker —— is_losing_streak 解锁 commit 锁做
             # 保命转型(cw_comps:791)+ losing 时 pivot 阈值 ×0.7(cw_comps:807)。live-verified(2026-08-12):
@@ -358,3 +367,4 @@ class DefaultCwStrategy(CwStrategy):
         if session.tracked_bench_chars:
             fresh.bench = list(session.tracked_bench_chars)
         return fresh
+
