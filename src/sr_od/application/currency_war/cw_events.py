@@ -260,8 +260,11 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
         return EncounterPick(idx=options[0].idx, refresh=True,
                              reason=f"全分支词缀克 comp(mech_max={max(mechs):.2f}),刷新换批")
 
-    # 评分:词缀契合(利 comp 加分)+ 成型→高难度值(奖励)/ 未成型→低难度安全
+    # 评分:词缀契合(利 comp 加分)+ 难度档定价(P9 接 36 号账本:场合三态替代固定 ±0.3)
     def _score(o: EncounterOption, m: float) -> float:
+        from sr_od.application.currency_war.cw_survey19_hooks import (
+            encounter_tier_score,
+        )
         s = m
         # 0..1 clamp(难度 1→0、3→1;「其四」=4 越界 1.5 → 钳回,ADR-0130)
         diff_norm = min(max((o.difficulty - 1) / 2.0, 0.0), 1.0)
@@ -270,7 +273,14 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
             # 一次 -70 血且无增益回报,成型也不赌;P3 奖励边际 < 翻车风险。
             s -= 0.5 * diff_norm
         else:
-            s += (0.3 * diff_norm) if formed else (-0.3 * diff_norm)
+            # P9(2026-08-17,19 号落地;用户口径「阵容足够强才敢难」):难度档接 36 号
+            # 边际价值——压 −2 档的价值作风险计:碾压(压档无价值)→ 高难白拿奖励;
+            # 边际/未成型(压档值一条命)→ 低难度保血。gap 尺度:form 满板碾压
+            # (form 1.0 → gap −36,bell→0)→ 敢难;form 0.4(边缘)→ gap 0 峰值 → 保守。
+            gap = (0.4 - form) * 60
+            press_v = encounter_tier_score(d_now=100.0, tier_delta=-2,
+                                           gap=gap, plane=state.plane)
+            s += 0.3 * diff_norm * (1.0 if press_v < 0.05 else -1.0)
         return s
 
     scored = sorted(zip(options, mechs, strict=True), key=lambda om: _score(om[0], om[1]), reverse=True)

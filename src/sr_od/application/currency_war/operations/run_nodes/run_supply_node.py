@@ -30,6 +30,8 @@ class RunSupplyNode(RunNode):
     """补给节点:点卡身选中 + 确认,**验证 overlay 消失**才完成。"""
 
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
+    # 刷新按钮(图标式,VLM 判定 + refresh_ui_samples.jsonl 多局稳定坐标;2026-08-17)
+    REFRESH_BTN: ClassVar[Point] = Point(974, 854)
 
     def __init__(self, ctx: SrContext):
         RunNode.__init__(self, ctx, op_name='货币战争-补给节点')
@@ -80,25 +82,36 @@ class RunSupplyNode(RunNode):
     def _do_action(self, screen) -> None:
         self._collect_refresh_ui(screen)
         # T#99 接 decide_supply:OCR 补给选项(每列=角色+装备)→ 策略按 target_comp.key_equips 契合 + 装备
-        # 通用价值选(替代盲点 CARD_BODY)。钻(红/蓝=基本赢)视觉判定待补 → has_diamond 恒 False(TODO);
-        # supply **无刷新按钮** → 传 refresh_used=True 跳过 decide_supply 的刷新找钻逻辑。读不到选项 → CARD_BODY 兜底。
+        # 通用价值选(替代盲点 CARD_BODY)。钻识别双通道 ✅(SIFT 主+文本兜底,cw_node_obs)。
+        # 刷新按钮 ✅ 实锤(2026-08-17 VLM 判建档图 + refresh_ui_samples 多局数据:图标按钮
+        # @≈(974,854),「剩余次数:1」——补给可刷 1 次;旧注释「无刷新按钮」作废,OCR 钩子
+        # 找不到是因为按钮是**图标**非文字)。钻重刷链激活:无钻+未刷 → 点刷新重掷。
         opts = read_supply_options(self.ctx, screen)
         match = self.ctx.cw_match
         target = RunSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
+        refresh_target = None
         if match is not None and opts:
             _state = match.session.last_state or GameState()
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
-                [o for o, _ in opts], _state, match.session, _cfg, refresh_used=True)
-            if 0 <= pick.idx < len(opts):
+                [o for o, _ in opts], _state, match.session, _cfg, refresh_used=False)
+            if pick.refresh:
+                refresh_target = RunSupplyNode.REFRESH_BTN
+                reason = pick.reason
+            elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
             log.info('[cw-supply] options=%s pick=idx%s %s click@(%d,%d)',
-                     [(o.char, o.equip) for o, _ in opts], pick.idx, reason, target.x, target.y)
+                     [(o.char, o.equip, o.has_diamond) for o, _ in opts], pick.idx, reason, target.x, target.y)
         else:
             log.info('[cw-supply] opts=%d match=%s → CARD_BODY 兜底', len(opts), match is not None)
         # bug#1 缓解:click 前 mouse_move 到目标(零移动),防 before_screenshot 移光标 → click 落空。
+        if refresh_target is not None:
+            self.ctx.controller.mouse_move(refresh_target)
+            self.ctx.controller.click(refresh_target)
+            time.sleep(0.6)   # 等重掷动画;下一轮 loop 重新读选项
+            return
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)
         time.sleep(0.6)
