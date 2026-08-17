@@ -25,6 +25,7 @@
 - [17 HORIZON 求解器](strategy/17_horizon_solver.md)—— 跨期 DP 姿态引擎(cw_horizon 导览:状态空间/消费端/改常量 checklist/三层缓存)
 - [18 投资效果全量调研](strategy/18_invest_effect_survey.md)—— 335 策略+83 环境的建模盘点(A 金流/B 突变/C 难度/D 形态 + 注册表纠错项)
 - [19 二轮策略缺口扫描](strategy/19_second_survey_strategy_gaps.md)—— 玩法/角色/装备/羁绊/词缀重读的新策略点(P1-P10:狼狩装备经验/巨星映射/词缀预告/燃血容量/砂金流触发等)
+- [20 Live 观测规划](strategy/20_live_observation_plan.md)—— 待实机提案(12/14/22/27/39/41/44)的遥测/钩子需求矩阵与落地(exec_events/exogenous/决策扩字段/战斗截帧)
 
 ### [decisions/](decisions/) —— 决策日志(ADR 式)
 - [INDEX](decisions/INDEX.md) —— 决策索引(Status + 一句话)

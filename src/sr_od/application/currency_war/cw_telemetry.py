@@ -81,6 +81,10 @@ class DecisionTrace:
     hp: int = 0                                   # 决策时 HP(冗余于 state,便于快速筛)
     hp_readable: bool = True                      # hp 真读到?(False=100 兜底;insights hp=100 毒化)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
+    # —— live 观测扩容(strategy/20,2026-08-17;全部可选,回放/影子对齐)——
+    active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
+    dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
+    ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
 
 
 @dataclass
@@ -116,6 +120,41 @@ class RunSummary:
     pivot_count: int = 0
     gold_trajectory: list[int] = field(default_factory=list)   # 每回合 gold(经济复盘)
     notes: str = ""
+    # —— live 观测扩容(strategy/20,2026-08-17)——
+    death_window: str = ""          # 39 号免费窗口登记:""=竞争局 / "must_die" / "free"(局终判定)
+    strategies_held: list[str] = field(default_factory=list)   # 终局持卡(台账回放)
+
+
+@dataclass
+class ExecEvent:
+    """执行事件(exec_events.jsonl;27 号能力画像数据源,2026-08-17)。
+
+    prep_director 的 _fail_counts/_blocked/bail 原因本来局终即弃——落盘后跨局聚合
+    出「动作族×画面×失败率」画像(能力层:实现缺陷 vs 固有难度分型)。
+    """
+    ts: str = ""
+    run_id: str = ""
+    round_num: int = 0
+    action_family: str = ""         # 动作族(buy/deploy/equip/sell/levelup/refresh/...)
+    screen: str = ""                # 画面/时相桶(battle_prep/supply/encounter/...)
+    event: str = ""                 # "fail" / "blocked" / "bail" / "success_uncharged"
+    reason: str = ""                # 原因码(识别 MISS/点击无效/状态不符/…)
+    retry_count: int = 0
+
+
+@dataclass
+class ExogenousEvent:
+    """外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族,2026-08-17)。
+
+    节点类型转换/弹窗/简报/高利害条件触发——预案层的 trigger 频率统计与
+    journal 常开的语料基础。
+    """
+    ts: str = ""
+    run_id: str = ""
+    round_num: int = 0
+    kind: str = ""                  # node_enter/popup/briefing/condition_trigger/user_action
+    detail: str = ""
+    state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
 
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -163,8 +202,13 @@ class TelemetryRecorder:
 
     def record_decision(self, run_id: str, difficulty: str, state: GameState,
                         target_comp: str, candidate_scores: dict[str, float],
-                        eval_breakdown: dict[str, float], actions: list[Action]) -> None:
-        """记一条决策迹(decisions.jsonl)。target_comp='' 表示 reactive 无 target。"""
+                        eval_breakdown: dict[str, float], actions: list[Action],
+                        extra: dict[str, Any] | None = None) -> None:
+        """记一条决策迹(decisions.jsonl)。target_comp='' 表示 reactive 无 target。
+
+        extra(strategy/20 live 观测):dp_posture/active_strategies/ledger_fingerprint
+        等扩容字段(便捷函数自动填;直接调方可传 None 走旧 schema)。
+        """
         trace = DecisionTrace(
             ts=datetime.now().isoformat(timespec="seconds"),
             run_id=run_id, difficulty=difficulty,
@@ -176,6 +220,10 @@ class TelemetryRecorder:
             actions=[serialize_action(a) for a in actions],
             hp=state.hp, hp_readable=bool(getattr(state, 'hp_readable', True)), gold=state.gold,
         )
+        if extra:
+            trace.active_strategies = list(extra.get('active_strategies', []))
+            trace.dp_posture = dict(extra.get('dp_posture', {}))
+            trace.ledger_fingerprint = str(extra.get('ledger_fingerprint', ''))
         if self.enabled:
             self._gold_trajectory.setdefault(run_id, []).append(state.gold)
             if target_comp:
@@ -219,6 +267,41 @@ class TelemetryRecorder:
         self._comms.pop(run_id, None)
         self._difficulty.pop(run_id, None)
 
+    def record_exec_event(self, run_id: str, round_num: int, action_family: str,
+                          screen: str, event: str, reason: str = "",
+                          retry_count: int = 0) -> None:
+        """记执行事件(exec_events.jsonl;27 号能力画像:正在蒸发的失败数据落盘)。
+
+        action_family:动作族(buy/deploy/equip/…);event:fail/blocked/bail;
+        reason:原因码(识别 MISS/点击无效/…;实现缺陷 vs 固有难度由消费端分型)。
+        """
+        rec = ExecEvent(ts=datetime.now().isoformat(timespec="seconds"),
+                        run_id=run_id, round_num=round_num,
+                        action_family=action_family, screen=screen,
+                        event=event, reason=reason, retry_count=retry_count)
+        self._append("exec_events.jsonl", _to_jsonable(rec))
+
+    def record_exogenous(self, run_id: str, round_num: int, kind: str,
+                         detail: str = "",
+                         state: GameState | None = None) -> None:
+        """记外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
+
+        kind:node_enter/popup/briefing/condition_trigger/user_action;
+        state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义)。
+        """
+        snap: dict[str, Any] = {}
+        if state is not None:
+            snap = {'hp': getattr(state, 'hp', None),
+                    'gold': getattr(state, 'gold', None),
+                    'level': getattr(state, 'level', None),
+                    'plane': getattr(state, 'plane', None),
+                    'round_num': getattr(state, 'round_num', None),
+                    'bench_count': len(getattr(state, 'tracked_bench', []) or [])}
+        rec = ExogenousEvent(ts=datetime.now().isoformat(timespec="seconds"),
+                             run_id=run_id, round_num=round_num,
+                             kind=kind, detail=detail, state_snapshot=snap)
+        self._append("exogenous.jsonl", _to_jsonable(rec))
+
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id,避免给 BuyShopCards / loop
@@ -254,11 +337,37 @@ def current_run_id() -> str:
 def record_decision(state: GameState, target_comp: str,
                     candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
                     actions: list[Action]) -> None:
-    """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。"""
+    """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。
+
+    live 观测扩容(strategy/20):自动附影子 DP 姿态(12 号分歧频率数据源)与
+    持卡/台账指纹(效果感知解回放对齐)——查表 ~2µs,零成本。
+    """
     if not _CURRENT_RUN_ID:
         return
+    extra: dict[str, Any] = {}
+    try:
+        from sr_od.application.currency_war.cw_effect_ledger import (
+            build_ledger,
+            effects_from_strategies,
+        )
+        from sr_od.application.currency_war.cw_horizon import (
+            _horizon_node_goal,
+            ledger_fingerprint,
+        )
+        ng = _horizon_node_goal(state.plane, state.round_num, state.gold,
+                                state.level, state.hp)
+        if ng is not None:
+            extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
+                                   'target_level': getattr(ng, 'target_level', None)}
+        strategies = list(getattr(state, 'active_strategies', []) or [])
+        extra['active_strategies'] = strategies
+        extra['ledger_fingerprint'] = ledger_fingerprint(
+            build_ledger(effects_from_strategies(strategies)))
+    except Exception:   # noqa: BLE001  观测 best-effort
+        pass
     get_recorder().record_decision(_CURRENT_RUN_ID, _CURRENT_DIFFICULTY, state,
-                                   target_comp, candidate_scores, eval_breakdown, actions)
+                                   target_comp, candidate_scores, eval_breakdown, actions,
+                                   extra=extra)
 
 
 def record_outcome(outcome) -> None:

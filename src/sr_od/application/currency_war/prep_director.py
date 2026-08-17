@@ -462,6 +462,24 @@ class PrepDirector(SrOperation):
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
+    def _record_exec_obs(self, key: str, event: str, reason: str = '') -> None:
+        """观测钩子(常驻,27 号能力画像):执行事件落 exec_events.jsonl。
+
+        动作族从 key 前缀提取;best-effort(遥测异常绝不阻塞执行)。
+        """
+        try:
+            from sr_od.application.currency_war.cw_telemetry import (
+                current_run_id,
+                get_recorder,
+            )
+            get_recorder().record_exec_event(
+                run_id=current_run_id() or '-', round_num=self._steps,
+                action_family=key.split(':')[0] if key else '?',
+                screen='battle_prep', event=event, reason=reason or key,
+                retry_count=self._fail_counts.get(key, 0))
+        except Exception:   # noqa: BLE001  观测 best-effort
+            pass
+
     def _stall_gate(self) -> OperationRoundResult | None:
         """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
 
@@ -479,6 +497,8 @@ class PrepDirector(SrOperation):
         self._fail_counts[key] = self._fail_counts.get(key, 0) + 1
         fails = self._fail_counts[key]
         self._stall += 1
+        # 观测钩子(常驻,27 号能力画像数据源):失败计数落盘(原来局终即弃)
+        self._record_exec_obs(key, 'fail', f'fails={fails}')
         if fails >= PrepDirector.FAIL_TO_RECOVER and key not in self._recovered:
             # 首次连败门:恢复原语(一次/动作实例),重置计数给恢复后重试窗
             prim, closed_known = try_recovery(self, self.ctx)
@@ -501,6 +521,7 @@ class PrepDirector(SrOperation):
                 return self._bail(match, f'恢复无效-弹层:{key}')
             if not isinstance(action, StartBattle):
                 self._blocked.add(key)
+                self._record_exec_obs(key, 'blocked', '恢复无效-状态类')
             if isinstance(action, ClickSpheres):
                 match.session.defer_count = max(match.session.defer_count, 2)
             if isinstance(action, OpenTome):
@@ -516,6 +537,7 @@ class PrepDirector(SrOperation):
     def _bail(self, match, reason: str) -> OperationRoundResult:
         """环让位:交外环处理(§4.2b;外环重入重建 Director 时环级计数全清零)。"""
         session = match.session
+        self._record_exec_obs(reason, 'bail', '环让位')
         session.bail_reason_counts[reason] = session.bail_reason_counts.get(reason, 0) + 1
         n = session.bail_reason_counts[reason]
         if n >= PrepDirector.BAIL_SAME_REASON_DIAG:

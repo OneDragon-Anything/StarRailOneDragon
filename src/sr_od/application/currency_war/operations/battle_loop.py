@@ -196,6 +196,34 @@ class CurrencyWarRunLoop(SrOperation):
             log.warning('[cw-loop] 星徽秘典选卡异常(不阻塞): %s', e)
             self.ctx.controller.click(Point(660, 300))
 
+    def _battle_frame_sample(self, screen) -> None:
+        """[观测钩子·常驻,44 号]战斗中画面低频采样。
+
+        判「战斗中」= 非备战屏(round_by_find_area 备战失败 + 非 popup);≥15s 一帧;
+        内容哈希去重(同画面不重复存)。采到的是「loop 等待循环路过时的战斗画面」,
+        非全量(战斗动画帧率远高于采样率)——边际证据用,足够 44 号起步。
+        """
+        import time as _time
+        now = _time.time()
+        if now - getattr(self, '_last_bframe_ts', 0.0) < 15.0:
+            return
+        try:
+            if self.round_by_find_area(screen, '货币战争-备战', '标识-备战阶段',
+                                       crop_first=False).is_success:
+                return   # 备战屏不采
+        except Exception:   # noqa: BLE001
+            return
+        import cv2
+        h = hash(screen.tobytes()[:30000])   # 采样哈希(前 30KB 足够去重)
+        if h == getattr(self, '_last_bframe_hash', 0):
+            return
+        self._last_bframe_ts = now
+        self._last_bframe_hash = h
+        out_dir = Path('.debug/temp/currency_war/battle_frames')
+        out_dir.mkdir(parents=True, exist_ok=True)
+        cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))[1].tofile(
+            str(out_dir / f'bf_{int(now)}.png'))
+
     def _record_round_outcome(self, screen) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
@@ -222,6 +250,11 @@ class CurrencyWarRunLoop(SrOperation):
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
             cw_telemetry.record_outcome(_obs)
+            # 外生事件(strategy/20 live 观测,22 号预案触发频率语料):战斗节点完成
+            cw_telemetry.record_exogenous(
+                cw_telemetry.current_run_id(), _round, 'node_enter',
+                detail=f'battle_done:{_obs.node_type}',
+                state=_session.last_state)
             log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type)
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
@@ -279,7 +312,12 @@ class CurrencyWarRunLoop(SrOperation):
                 Path(f'.debug/temp/currency_war/{_tag}_hook.flag').write_text(_tag, encoding='utf-8')
                 log.info(f'[cw-hook] {_tag} 节点(未建档)→ 停机给 AI 建档 + 接决策')
                 self.ctx.run_context.stop_running()
-                return self.round_wait(status=f'{_tag} 停机建档')
+
+        # [观测钩子·常驻,44 号战斗过程观测] 战斗中画面低频采样(≥15s/帧 → battle_frames/,
+        # 内容哈希去重防同一战斗刷屏;非交互死时间的边际证据,结算屏/备战屏不采)。
+        import contextlib
+        with contextlib.suppress(Exception):   # 观测 best-effort
+            self._battle_frame_sample(screen)
 
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
@@ -665,3 +703,4 @@ def _get_or_init_allocator(ctx: SrContext):
         log.info(f'[cw-alloc] 分配器初始化失败(禁用): {e}')
         _ALLOCATOR = None
     return _ALLOCATOR
+
