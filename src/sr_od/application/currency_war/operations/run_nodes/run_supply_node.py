@@ -126,3 +126,4 @@ class RunSupplyNode(RunNode):
         # 确认(supply 按钮-确认 area;T#103 area 化)
         self.round_by_find_and_click_area(self.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
 
+
