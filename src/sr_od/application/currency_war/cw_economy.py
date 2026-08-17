@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     LevelGoal,
