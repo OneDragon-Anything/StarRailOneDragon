@@ -115,11 +115,14 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
                 # M55 P2 冻 lv6 实证)——comp 停留意图只在 P1 压地板;P2+ 落后地板即追级
                 # (停留 roll 可在追上地板后继续)。
                 return bool(state.plane >= 2 and state.level < get_node_goal(
-                    state.plane, state.round_num).target_level)
+                    state.plane, state.round_num,
+                    gold=state.gold, level=state.level, hp=state.hp).target_level)
     goal = _resolve_level_goal(state, target_comp)
     if goal is not None and goal.action == 'level_up':
         return True
-    return state.level < get_node_goal(state.plane, state.round_num).target_level
+    return state.level < get_node_goal(state.plane, state.round_num,
+                                       gold=state.gold, level=state.level,
+                                       hp=state.hp).target_level
 
 
 
@@ -218,11 +221,17 @@ def get_node_goal(plane: int, round_num: int, *,
     → 姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现,03 号重设计);表 = 回退。
     默认 False(表生效)—— 切流待实机 A/B(V5);消费端签名零改(全关键字参)。
     """
-    if HORIZON_SEAM_ACTIVE and None not in (gold, level, hp):
-        from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
-        _goal = _horizon_node_goal(plane, round_num, gold, level, hp)   # type: ignore[arg-type]
-        if _goal is not None:
-            return _goal
+    if HORIZON_SEAM_ACTIVE:
+        _partial = (gold, level, hp)
+        if any(v is not None for v in _partial) and None in _partial:
+            log.debug('[cw-seam] get_node_goal 部分传参(%s)→ 走表;迁移漏点排查',
+                      ('g' if gold is not None else '-') + ('l' if level is not None else '-')
+                      + ('h' if hp is not None else '-'))
+        if None not in (gold, level, hp):
+            from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
+            _goal = _horizon_node_goal(plane, round_num, gold, level, hp)   # type: ignore[arg-type]
+            if _goal is not None:
+                return _goal
     for p, rmin, rmax, goal in _DEFAULT_NODE_PLAN:
         if p == plane and rmin <= round_num <= rmax:
             return goal
