@@ -46,6 +46,29 @@ class CurrencyWarApp(SrApplication):
         '挑战失败',   # 挑战失败终局结算屏(对局评价/下一步;M42 实锤 2026-08-16:M41 战败后 app 重启,_in_match 漏判 → 误走 enter 链「返回普通大世界」循环点右上角;loop 3b「返回货币战争」同收局)
     )
 
+    # ⚖️ 治本(2026-08-17,M19/M34/M42 关键词补丁链的结构替代):对局中态检测升级为
+    # **screen_info 画面匹配**(货币战争- 前缀 − 大厅态白名单)——新对局画面建档即自动生效,
+    # 不再靠事后补关键词(每漏一个新屏 = enter 链「返回普通大世界」死循环 ~8min)。
+    # 关键词保留为 fallback(id_mark 未全中的半开/过渡帧)。
+    _CW_PREFIX: ClassVar[str] = '货币战争-'
+    _LOBBY_STATE_SCREENS: ClassVar[frozenset[str]] = frozenset({
+        '货币战争-大厅', '货币战争-模式选择',
+        '货币战争-攻略列表', '货币战争-攻略详情', '货币战争-攻略图例',
+        '货币战争-攻略码输入弹窗', '货币战争-保存阵容弹窗',
+        '货币战争-装备追踪弹窗', '货币战争-阵容编辑',
+    })
+
+    @classmethod
+    def in_match_screen_names(cls, screen_info_list) -> list[str]:
+        """对局中态屏名(screen_info 全集过滤:货币战争- 前缀 − 大厅态白名单)。
+
+        module 级可测;新对局画面建档(命名带前缀)自动进列表——M54 类
+        「新屏漏判 → enter 链死循环」结构性消除。
+        """
+        return [si.screen_name for si in screen_info_list
+                if si.screen_name.startswith(cls._CW_PREFIX)
+                and si.screen_name not in cls._LOBBY_STATE_SCREENS]
+
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,
@@ -58,13 +81,26 @@ class CurrencyWarApp(SrApplication):
         return self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success
 
     def _in_match(self, screen) -> bool:
-        """已在货币战争对局中(备战/事件/战斗/结算任一态)。"""
+        """已在货币战争对局中(备战/事件/战斗/结算任一态)。
+
+        双层:①screen_info 画面匹配(治本,新屏建档即生效);②关键词 fallback(半开/过渡帧)。
+        """
         # 大厅不是对局中态:防 _IN_MATCH_KEYWORDS 短词(如「出战」)round_by_ocr 默认 lcs 0.5
         # 误匹配大厅文字(「货币战争」含「战」→「出战」1/2=0.5 命中)→ _start_match 误判已在对局 →
         # 跳过 start 交 loop → loop 见大厅「创业指南」→ 误「对局结束」2.4s 空跑(2026-08-06 实跑)。
         if self._at_lobby(screen):
             return False
-        # 真在对局时这些锚点 OCR 干净 4/4 命中,0.8 不影响。
+        # ① 画面匹配层:已建档对局屏(备战系/事件系/战斗系/结算系/警告系/难度确认)。
+        # 难度确认 = start 流已开对局(点开始后),归对局中。
+        _in_match_screens = self.in_match_screen_names(self.ctx.screen_loader.screen_info_list)
+        if _in_match_screens:
+            try:
+                from one_dragon.base.screen.screen_utils import get_match_screen_name
+                if get_match_screen_name(self.ctx, screen, screen_name_list=_in_match_screens) is not None:
+                    return True
+            except Exception:  # noqa: BLE001  画面匹配失败退关键词层,不阻塞启动
+                pass
+        # ② 关键词 fallback(历史行为保留):真在对局时这些锚点 OCR 干净 4/4 命中。
         return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
     @operation_node(name='进入货币战争大厅', is_start_node=True)
