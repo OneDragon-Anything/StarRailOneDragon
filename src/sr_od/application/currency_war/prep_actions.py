@@ -585,11 +585,30 @@ class PrepActionExecutor:
     # ===== 战斗域 =====
 
     def _start_battle(self) -> tuple[bool, str]:
-        """出战:mouse_move+click 出战 → 轮询(未达上限确认 / 备战标识消失)。失败存证(bug#1 诊断)。"""
+        """出战:mouse_move+click 出战 → 轮询(未达上限确认 / 备战标识消失)。失败存证(bug#1 诊断)。
+
+        子态(2026-08-17 M72 实锤建档):「免战牌」策略激活时出战按钮变「跳过(N/N)」(直跳战斗,
+        免战 2 次)——查不到「出战」时查子态「按钮-跳过」,同语义点它(推进节点)。
+
+        ⚠️ 正交态查找(子态建模四问③,skill feedback 案例库):免战与「商店开」**可叠加**(跳过
+        按钮 + 牌区展开同帧)——叠加帧识别为 货币战争-备战-开商店(它盖基态 id_mark),
+        按单一屏查「按钮-跳过」会落空。跳过/出战按钮在两屏同一位置 → fallback 查找
+        **不锁死单一屏**(备战+开商店都查);按钮 area 单源归备战屏,不复制双源。
+        """
         screen = self._op.screenshot()
-        if not self._op.round_by_find_area(screen, SCREEN_NAME, '按钮-出战').is_success:
-            return False, '找不到出战按钮'
-        btn = area_center(self._ctx, '按钮-出战') or PrepActionExecutor.BATTLE_FALLBACK
+        _btn_area = '按钮-出战'
+        _btn_screens: list[str] = [SCREEN_NAME, '货币战争-备战-开商店']
+        _btn_found = any(
+            self._op.round_by_find_area(screen, _sc, '按钮-出战').is_success
+            for _sc in _btn_screens)
+        if not _btn_found:
+            if any(self._op.round_by_find_area(screen, _sc, '按钮-跳过', crop_first=False).is_success
+                   for _sc in _btn_screens):
+                _btn_area = '按钮-跳过'   # 免战牌子态:跳过=本节点直进(免战次数-1)
+                log.info('[cw][battle] 出战按钮为子态「跳过」(免战牌激活)→ 点跳过')
+            else:
+                return False, '找不到出战按钮'
+        btn = area_center(self._ctx, _btn_area) or PrepActionExecutor.BATTLE_FALLBACK
         self._ctx.controller.mouse_move(btn)   # bug#1 缓解(2026-08-06 r9 实打出战 click ×4 未落地)
         self._ctx.controller.click(btn)
         for _ in range(6):   # 6 × 0.5s 轮询窗口(同 battle_prep D-70)
