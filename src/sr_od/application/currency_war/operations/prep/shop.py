@@ -311,9 +311,12 @@ class BuyShopCards(SrOperation):
                     log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
                     break
             if _unk and total_buy == 0:
-                log.info(f'[cw-shop][hook] 未购买且存在未识别卡(槽{_unk})→ 停机采集(昔涟诗篇/立绘缺?)')
-                self.ctx.run_context.stop_running()
-                return self.round_fail(f'停机采集:商店未识别卡 槽{_unk}(未购买)')
+                # r34 降级留证不停机(原停机采集连续两局阻断实跑;主开发不在场时纯阻断)。
+                # 未识别卡按非 target 处理跳过即可(bot 能推进),截图留证给模板补档。
+                log.warning(f'[cw!][shop][hook] 未识别卡槽{_unk}(留证不停机,昔涟诗篇/立绘缺?'
+                            f'——r34 降级:原停机采集阻断实跑)')
+                self.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
+                # 不 stop:继续(未识别卡在 plan 中已是未知卡,买牌逻辑自然跳过)
 
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
         # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBench 实读
