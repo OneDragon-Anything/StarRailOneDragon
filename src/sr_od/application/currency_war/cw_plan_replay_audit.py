@@ -27,6 +27,24 @@ def _state_from_snapshot(snap: dict):
     board = snap.get('board')
     if isinstance(board, dict):
         st.board = dict(board)
+    # r26 v1:bench/deployed 完整快照(空 bench 假设曾致「live 不升 vs 复现升」假差异
+    # ——局9 r7 真相是 bench 9/9 满,live 选卖牌腾位是合理行为)
+    from sr_od.application.currency_war.cw_state import BenchChar
+    for field_name in ('bench', 'deployed'):
+        rows = snap.get(field_name)
+        if isinstance(rows, list):
+            objs = []
+            for r in rows:
+                if not isinstance(r, dict):
+                    continue
+                with contextlib.suppress(Exception):   # 字段兼容
+                    objs.append(BenchChar(
+                        slot=r.get('slot', 0),
+                        char_id=r.get('char_id', '') or '',
+                        faction=r.get('faction', '') or '',
+                        star=r.get('star', 1),
+                        position_pref=r.get('position_pref', 'back')))
+            setattr(st, field_name, objs)
     return st
 
 
