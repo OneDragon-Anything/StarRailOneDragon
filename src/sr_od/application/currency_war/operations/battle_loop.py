@@ -224,6 +224,15 @@ class CurrencyWarRunLoop(SrOperation):
         cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))[1].tofile(
             str(out_dir / f'bf_{int(now)}.png'))
 
+    def _last_true_hp(self, fallback_hp: int) -> int:
+        """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
+
+        recorder 只存 gold 轨迹,hp 轨迹在此模块内存维持(record_outcome 时);
+        死局回大厅 fallback_hp 常为 100 兜底(hp_readable=False 污染 last_state)。
+        """
+        hp = getattr(self, '_last_outcome_hp', None)
+        return hp if hp is not None else fallback_hp
+
     def _record_round_outcome(self, screen) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
@@ -250,6 +259,8 @@ class CurrencyWarRunLoop(SrOperation):
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
             cw_telemetry.record_outcome(_obs)
+            if _obs.hp_confidence >= 0.9:
+                self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
             # 外生事件(strategy/20 live 观测,22 号预案触发频率语料):战斗节点完成
             # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
             # 不存在,AttributeError 被吞致 exogenous 静默死)
@@ -617,11 +628,14 @@ class CurrencyWarRunLoop(SrOperation):
                 # 遥测写端(review 半接线修复,2026-08-16):runs.jsonl 生产侧此前无写入方。
                 # result:plane>=3 = win(通关),否则 loss(死在 P3 内);gold 轨迹由 recorder
                 # 内存累积自动带。B4 的 outcome 真值同源。
+                # ⚠️ final_hp 语义修正(2026-08-17 r3 live):死局回大厅后 last_state.hp
+                # 是结算屏后读不到的 100 兜底(hp_readable=False)——summary 曾记 100 而
+                # 实际 1。改用 outcomes 侧最后真值(recorder 内存轨迹,conf=1.0 的末条)。
                 cw_telemetry.record_run_summary(
                     result='win' if _outcome.won else 'loss',
                     plane_reached=_outcome.final_plane,
                     rounds_survived=_outcome.final_round,
-                    final_hp=_outcome.final_hp,
+                    final_hp=self._last_true_hp(_outcome.final_hp),
                     notes='auto')
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
