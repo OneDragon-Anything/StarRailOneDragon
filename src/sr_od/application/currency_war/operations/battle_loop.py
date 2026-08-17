@@ -483,20 +483,22 @@ class CurrencyWarRunLoop(SrOperation):
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=2)
 
-        # 1g. [停机钩子·临时] 中断挑战 dialog(bug#2:ESC 误按弹「是否中断挑战」,历史 3 次实锤;
-        #     r2 review A-1 缺口)。无实拍图不能建档 → hook 捕获自然出现:检测「中断挑战」或
-        #     「是否中断」→ 存证 + 停机给 AI 建档(优先点取消保对局)。建档后删本钩子。
-        #     lcs 0.9(4字词要求完整子序列,防「中断」类误匹配)。
-        if (self.round_by_ocr(screen, '中断挑战', lcs_percent=0.9).is_success
-                or self.round_by_ocr(screen, '是否中断', lcs_percent=0.9).is_success):
-            _shot = self.save_screenshot(prefix='cw_interrupt_dialog')
-            _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
-                         / 'currency_war' / 'interrupt_dialog.flag')
-            _sentinel.parent.mkdir(parents=True, exist_ok=True)
-            _sentinel.write_text(f'iter={self._iter} shot={_shot}', encoding='utf-8')
-            log.info('[cw-hook] 中断挑战 dialog 出现 → 停机存证待建档 shot=%s', _shot)
-            self.ctx.run_context.stop_running()
-            return self.round_fail(status='中断挑战 dialog 停机待建档')
+        # 1g. 中断挑战 dialog(bug#2:ESC 误按/误点左上角弹「是否中断挑战」,历史 3 次实锤;
+        #     2026-08-17 建档「货币战争-中断挑战弹窗」,替原停机钩子)。真模态、点遮罩无效;
+        #     出口:ESC / 右上X 关回备战(无副作用)。bot 策略 = 点右上 X 关闭继续对局
+        #     (不点「暂时离开」免中断对局,绝不点「放弃并结算」——不可逆放弃进度)。
+        #     弹窗内「小队生命值」为 HP 真值快照,顺带对账(备用,暂不消费)。
+        if self.round_by_find_area(screen, '货币战争-中断挑战弹窗', '标识-中断挑战',
+                                  crop_first=False).is_success:
+            log.info('[cw] [loop] [1g] 中断挑战 dialog(误触)→ 点右上X关闭回备战')
+            _btn = self.round_by_find_and_click_area(
+                screen, '货币战争-中断挑战弹窗', '按钮-关闭')
+            if _btn.is_success:
+                self.park_cursor(after_wait=0.1)
+                return self.round_wait(wait=1.5)
+            # X 点击失败兜底:ESC 同样关闭(实测无副作用)
+            self.ctx.controller.esc()
+            return self.round_wait(wait=1.5)
 
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
