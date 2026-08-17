@@ -1315,10 +1315,16 @@ def target_committed(target: Comp, state: GameState) -> bool:
             or ((state.plane - 1) * 6 + state.round_num >= COMMIT_ROUND and fp > 0))
 
 
+# r7 pivot 冷却(治过度换线;两局败因诊断:4 线/3 线换线漂移,P1 后段板面永远半成型):
+# 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
+# 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
+# 冷却状态挂 StrategySession.pivot_cooldown_until(default_strategy 调用侧维护)。
+PIVOT_COOLDOWN_ROUNDS: int = 3
+
+
 def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
-
     转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**():
     3. **保命转型(最优先)**:hp < 0.75×effective_hp_threshold → 切最快成型的 easy comp
        (typical_form_round 最小,**稳定不 churn**)。hp 危险时信号 1/2 不参与(防振荡死亡螺旋)。

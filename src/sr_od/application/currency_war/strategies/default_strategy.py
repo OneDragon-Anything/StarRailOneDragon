@@ -160,10 +160,18 @@ class DefaultCwStrategy(CwStrategy):
             # 保命转型(cw_comps:791)+ losing 时 pivot 阈值 ×0.7(cw_comps:807)。live-verified(2026-08-12):
             # on_round_end 喂 hp_after conf=1.0,trend 真实(HP 82→…→1),is_losing_streak 实触发。
             # (原「maybe_pivot 目前不读 tracker 占位」判断过期已撤回 —— 实接 cw_comps:791/807。)
-            piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
-                                       tracker=session.performance)
+            # r7 pivot 冷却(治过度换线,两局败因:4/3 线漂移):转线后 N 轮内不再转(保命信号在
+            # maybe_pivot 内部 hp 门,不受此冷却影响——危机永远允许)。
+            _cool = getattr(session, 'pivot_cooldown_until', 0)
+            piv = None
+            if state.round_num > _cool:
+                piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
+                                           tracker=session.performance)
             if piv is not None:
                 session.target_comp = piv
+                session.pivot_cooldown_until = state.round_num + cw_comps.PIVOT_COOLDOWN_ROUNDS
+                log.info('[cw-target] pivot %s → 冷却至 r%s(治过度换线,保命信号豁免)',
+                         piv.name, session.pivot_cooldown_until)
 
     def decide_prep(self, state: GameState, session: StrategySession, config) -> list[Action]:
         """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。
