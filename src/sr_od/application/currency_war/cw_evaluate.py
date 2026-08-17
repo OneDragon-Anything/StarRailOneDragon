@@ -128,12 +128,20 @@ def synergy_score(state: GameState, faction_priority: list[str],
 
 
 
-def char_quality_score(state: GameState, character_priority: list[str]) -> float:
-    """角色质量分:character_priority 角色 × 星级(bench + 已上阵 deployed)。"""
+def char_quality_score(state: GameState, character_priority: list[str],
+                       target_comp=None) -> float:
+    """角色质量分:character_priority 角色 × 星级 + **target 核心角色 × 星级**
+    (r17:全场 3合1 落地后补——合并人数-2 但星级+1,target 核心的 2★ 战力增值
+    必须计价,否则买第 3 张 delta 恒负 → 升星永不可达,与游戏语义相悖)。"""
     score = 0.0
+    core_names: set[str] = set()
+    if target_comp is not None:
+        core_names = set(getattr(target_comp, 'core_chars', ()) or ())
     for bc in (*state.bench, *state.deployed):
         if bc.char_id in character_priority:
             score += CHAR_PRIORITY_BONUS * bc.star
+        elif bc.char_id in core_names:
+            score += CHAR_PRIORITY_BONUS * bc.star * 0.5   # target 核心星级(半权:低于用户 priority)
     return score
 
 
@@ -297,7 +305,8 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     score = (
         ws * synergy_score(state, faction_priority, target_comp)
         + we * economy_score(state, _economy_mode_for(state))   # spend_mode→economy(§2.2;ADR-0102)
-        + wc * char_quality_score(state, getattr(config, 'character_priority', []))
+        + wc * char_quality_score(state, getattr(config, 'character_priority', []),
+                                  target_comp=target_comp)   # r17:target 核心星级计价(3合1 全场域配套)
     )
     alpha = alpha_t(state)
     if target_comp is not None:

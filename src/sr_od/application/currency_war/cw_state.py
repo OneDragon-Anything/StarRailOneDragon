@@ -232,27 +232,50 @@ def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
                      star=card.star, position_pref=position_pref)
 
 
-def _merge_bench(bench: list[BenchChar]) -> None:
-    """3 合 1 升星:同名同星 ≥3 → 合并为 1 个 star+1(就地改 bench)。
+def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None) -> None:
+    """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
 
-    游戏机制:招募 3 个相同星级同名角色自动升星。bench 里凑齐即合并。
+    游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
+    deploy_bench L427 用户口径「3合1 是全场」;live 实证(2026-08-18 r17):
+    tracking 只看 bench 预估 2★,其中 1-2 张已 deploy → 与游戏全场口径错位 →
+    「预估 2★ 读回 1★」star 回退停机钩子两度触发。合成载体:场上同名卡
+    升星优先(触发处常见态),无场上卡则 bench 首张升星。
+
+    deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
     """
-    i = 0
-    while i < len(bench):
-        bc = bench[i]
-        if not bc.char_id:
-            i += 1
-            continue
-        # 找同名同星
-        same = [j for j, c in enumerate(bench) if c.char_id == bc.char_id and c.star == bc.star]
-        if len(same) >= 3:
-            # 保留 same[0](升 star),删 same[1], same[2]
-            bench[same[0]].star += 1
-            del bench[same[2]]
-            del bench[same[1]]
-            # 不推进 i(升星后可能再凑?一般不会,但重来更稳)
-        else:
-            i += 1
+    pools: list[list[BenchChar]] = [bench]
+    if deployed is not None:
+        pools.append(deployed)
+    for _pass in range(2):   # 升星后可能再凑(3×2★→3★)
+        merged_any = False
+        for pool in pools:
+            for c in list(pool):
+                if not c.char_id:
+                    continue
+                # 全场同名同星组(对象引用,跨池)
+                group = [x for p in pools for x in p
+                         if x.char_id == c.char_id and x.star == c.star]
+                if len(group) < 3:
+                    continue
+                take = group[:3]
+                # 载体:场上优先(**身份**比较——dataclass 值相等会让 bench 张 `in deployed` 误真)
+                carrier = next((x for x in take
+                                 if deployed is not None
+                                 and any(x is y for y in deployed)), take[0])
+                carrier.star += 1
+                for x in take:
+                    if x is not carrier:
+                        for p in pools:
+                            with_first = next((y for y in p if y is x), None)
+                            if with_first is not None:
+                                p.remove(x)
+                                break
+                merged_any = True
+                break   # 重扫(列表已变)
+            if merged_any:
+                break
+        if not merged_any:
+            break
 
 
 def card_cost(card: ShopCard) -> int:
@@ -322,7 +345,7 @@ def simulate(state: GameState, action: Action) -> GameState:
     if isinstance(action, BuyCard):
         s.gold -= card_cost(action.card)
         s.bench.append(_card_to_bench(action.card))
-        _merge_bench(s.bench)
+        _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
         # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
         s.shop = [c for c in s.shop if c.x != action.card.x]
     elif isinstance(action, SellBench):
@@ -381,7 +404,7 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
     """
     if isinstance(action, BuyCard):
         bench.append(_card_to_bench(action.card))
-        _merge_bench(bench)
+        _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, SellBench):
         if 0 <= action.bench_idx < len(bench):
             bench.pop(action.bench_idx)
