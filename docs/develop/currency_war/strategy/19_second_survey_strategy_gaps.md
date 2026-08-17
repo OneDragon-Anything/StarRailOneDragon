@@ -25,13 +25,15 @@
 落码:`COMP_MEGASTAR_PREFERENCE` comp 级偏好表(19 comp)+ 选择序
 (core 绑定 → comp 偏好 → 属性兜底 → naive);测试 6 过,全量 722。
 
-### P3 · 词缀×comp 的 counter/synergy 已建表,但**位面可见性差**(决定论缺失)
+### P3 · ~~词缀预告未消费~~ **❌ 撤回:判断错,链路已通**(2026-08-17 核查)
 
-competitors.md 50 词缀分 14 类,MECHANIC_COUNTERS/SYNERGIES 已建模。**缺口**:
-词缀在**位面简报**可见(briefing_obs 已采!)但策略层没消费「下一位面词缀预告 →
-本位面成型方向调整」。P3 boss 克制(琥珀王克反甲白厄/电视机克阿格莱雅)是
-🟡 多源,**开局 3 boss 预告 → comp 提前规划**这条链零消费。
-落点:15 号敌情 dossier 的消费口(数据已就绪,是接线不是建模)。
+写本条时只查了表存在与 select_comp 字面量,没追数据流。实际全链已接:
+开局简报 OCR → `state.enemy_affixes`/`plane_bosses` → `make_score_context`
+(mechanics = AFFIX_MECHANIC_MAP 映射)→ **mechanics_fit 进 comp_score 加权主分
+(W_MECH,counter 降+synergy 升双向)** + **boss 侧 ADR-0172 开局先验冲击乘子
+(克 → ×0.6-0.85)** → select_comp/maybe_pivot 双消费。词缀与 boss 对选线
+**从开局就在起作用**,无缺口。
+教训:判「未消费」前必须追数据流到最终消费点,不能只看入口符号。
 
 ### P4 · ~~燃血角斗场「记录容量」策略语义~~ **❌ 撤回**(记录源理解错,用户纠正 2026-08-17)
 
@@ -106,7 +108,8 @@ guides/Fate 详档)。
    [无空槽可穿的真积压才算];执行接线挂 equip_all 消费批);
 4. ~~P7 砂金流触发~~(不采纳:选卡照常,不围绕它刷——用户裁定);
 5. **P3/P9**:P9 决策件落地(encounter_tier_score 包装 marginal_value 三态+P1
-   尖峰,handle_encounter 换源即可);P3 词缀预告接线动 comp 主路径,挂 47 号影子灰度;
+   尖峰,handle_encounter 换源即可);~~P3 接线~~ **撤回**——核查发现链路已通
+   (mechanics_fit 主分+boss 开局乘子早已消费),无需任何改动;
 6. P10 后置(依赖 33 号层 3);P4 撤回/P5 不采纳(用户裁定)。
 
 
