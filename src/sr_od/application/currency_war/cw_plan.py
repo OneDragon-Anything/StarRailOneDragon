@@ -777,7 +777,10 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     # economy_score 利息/等级相对权重)。两者刻意不同映射:本函数挡「卖息凑档」动作(allin/level 不该囤息),
     # _economy_mode_for 调经济评分相对权重(level→rush_level / allin→adaptive neutral,economy-low 由
     # _phase_weights plane3 we=0.3 处理)—— 语义不同,勿强行统一(审计 round-17 borderline#2)。
-    _spend = get_node_goal(state.plane, state.round_num).spend_mode
+    # r14 切流预备:传全状态(47 号语义——HORIZON_SEAM_ACTIVE 开启时 DP 姿态生效;
+    # 关时 gold/level/hp 参数被忽略走表,行为零变化)。
+    _spend = get_node_goal(state.plane, state.round_num,
+                           gold=state.gold, level=state.level, hp=state.hp).spend_mode
     if _spend in ("allin", "level"):
         return
     cur = state

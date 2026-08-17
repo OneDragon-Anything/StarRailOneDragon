@@ -235,7 +235,9 @@ def _economy_mode_for(state: GameState) -> str:
     与 _phase_weights 正交:本函数调 economy_score 内部(利息/等级相对权重),
     _phase_weights 调 economy_score 的 outer 乘子 we(HP/plane)。两者复合不双计。
     """
-    _spend = get_node_goal(state.plane, state.round_num).spend_mode
+    # r14 切流预备:传全状态(47 号语义,同 cw_plan L780;关时零行为变化)
+    _spend = get_node_goal(state.plane, state.round_num,
+                           gold=state.gold, level=state.level, hp=state.hp).spend_mode
     if _spend in ("saving", "interest"):
         return "interest_first"
     if _spend == "level":
