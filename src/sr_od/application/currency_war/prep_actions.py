@@ -480,11 +480,25 @@ class PrepActionExecutor:
         return ok, f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} {"✓" if ok else "拖3次源槽未变"}'
 
     def _drag(self, src: Point, dst: Point) -> bool:
-        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0+retry+验源槽像素变)。"""
+        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0+retry+验源槽像素变)。
+
+        r10 review#2:失焦守卫下沉到本原语(所有拖拽路径共享)——窗口后台化时
+        拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
+        拖前验焦点,失焦先激活。StartBattle 的 click 守卫同款语义(在它自己的
+        路径上,click 不走本原语)。
+        """
         from sr_od.application.currency_war.operations.dev.drag_cw_char import (
             DragCwChar,
         )
 
+        try:
+            gw = self._ctx.controller.game_win
+            if not gw.is_win_active:
+                log.warning('[cw!][drag] 窗口失焦(拖拽输入将静默丢)→ 先激活')
+                gw.active()
+                time.sleep(0.3)
+        except Exception:   # noqa: BLE001  焦点守卫 best-effort
+            pass
         return DragCwChar.drag_char(self._op, src, dst)
 
     def _track_remove_bench(self, slot: int) -> None:
@@ -646,7 +660,7 @@ class PrepActionExecutor:
                 log.info('[cw][battle] 出战成功 → 备战标识消失')
                 return True, '出战成功'
         self._op.save_screenshot()   # 诊断存证(同 battle_prep:bug#1 drag vs overlay 挡 vs 坐标偏)
-        return False, '出战 click 未落地(3s 仍在备战)'
+        return False, '出战 click 未落地(6×0.5s 轮询+失焦守卫后仍在备战)'
 
     # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
 

@@ -89,9 +89,10 @@ class RunSupplyNode(RunNode):
         # 找不到是因为按钮是**图标**非文字)。钻重刷链激活:无钻+未刷 → 点刷新重掷。
         opts = read_supply_options(self.ctx, screen)
         match = self.ctx.cw_match
-        # r2 review#2:实例态在外环每次新建 RunSupplyNode 下失效(bail 重派发后再刷)→
-        # 挂 match.session 按节点键记(跨实例持久);无 match 退实例态
-        _refresh_used = bool(getattr(match.session, '_supply_refresh_used', False)) if match is not None else self._refresh_used
+        # r2 review#2:实例态在外环每次新建 RunSupplyNode 下失效 → 挂 match.session
+        # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
+        # False 掩盖接线错误)。无 match 退实例态(测试/离线路径)。
+        _refresh_used = match.session._supply_refresh_used if match is not None else self._refresh_used
         target = RunSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
@@ -104,8 +105,7 @@ class RunSupplyNode(RunNode):
             if pick.refresh and not _refresh_used:   # 只刷一次(r1#1+r2#2:session 级)
                 refresh_target = RunSupplyNode.REFRESH_BTN
                 self._refresh_used = True
-                if match is not None:
-                    match.session._supply_refresh_used = True
+                match.session._supply_refresh_used = True
                 reason = pick.reason
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
