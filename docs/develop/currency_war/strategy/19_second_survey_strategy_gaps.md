@@ -99,10 +99,14 @@ guides/Fate 详档)。
 ## 落地建议(ROI 序)
 
 1. ~~P2 巨星映射~~ ✅ 已落地(COMP_MEGASTAR_PREFERENCE comp 级偏好表);
-2. **P8 补给重刷判据**(一行启发);
-3. **P1 狼狩装备经验**(7 号规划的 formation 项);
+2. **P8 补给重刷判据** ✅ 决策件落地(cw_survey19_hooks.supply_reroll_decision;
+   执行接线待「带钻」观测识别);
+3. **P1 狼狩装备经验** ✅ 决策件落地(wear_discipline_alert,**用户修正版**:装备
+   可循环[卖出回收/扳手拆],不为狼狩牺牲合成规划;唯一纪律 = 物品栏积压报警
+   [无空槽可穿的真积压才算];执行接线挂 equip_all 消费批);
 4. ~~P7 砂金流触发~~(不采纳:选卡照常,不围绕它刷——用户裁定);
-5. **P3 词缀预告接线 / P9 遭遇消费 36 号**(接线批次,不新建模);
+5. **P3/P9**:P9 决策件落地(encounter_tier_score 包装 marginal_value 三态+P1
+   尖峰,handle_encounter 换源即可);P3 词缀预告接线动 comp 主路径,挂 47 号影子灰度;
 6. P10 后置(依赖 33 号层 3);P4 撤回/P5 不采纳(用户裁定)。
 
 
