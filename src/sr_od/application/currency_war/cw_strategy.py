@@ -197,6 +197,7 @@ class StrategySession:
     prep_phase: int = 0
     # r3 review④:动态 setattr 升正式字段(asdict/repr 完整;getattr 兜底随之可删)
     pivot_cooldown_until: int = 0                      # r7 pivot 冷却(转线后 N 轮封信号 1/2;保命豁免在调用侧)
+    drought_excluded: str = ''                         # r20 极端 drought 弃线的线名(重选排除,防选回)
     last_candidate_scores: dict[str, float] = field(default_factory=dict)   # 选线轮的 top-3 实际排序分(r6 遥测补)
     last_candidate_scores_round: int = -1              # 分数轮次戳(shop 侧判陈旧清空)
     _supply_refresh_used: bool = False                 # 补给刷新 1 次已用(r2#2 跨实例)

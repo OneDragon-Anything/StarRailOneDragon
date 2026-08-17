@@ -136,6 +136,7 @@ class DefaultCwStrategy(CwStrategy):
                     if session.target_drought >= 8:
                         log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
                                     session.target_comp.name, session.target_drought, _fp)
+                        session.drought_excluded = session.target_comp.name   # r20:排除防选回
                         session.target_comp = None
                         session.target_drought = 0
                     else:
@@ -156,8 +157,11 @@ class DefaultCwStrategy(CwStrategy):
             # r3 review③:用带分版 select_comp_scored——遥测记**实际排序分**
             # (含 steer/acq/board_alignment 乘子的最终分),量纲与决策一致;
             # 且省掉逐个重算 comp_score。
-            scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=3)
-            cands = [c for _s, c in scored_cands]
+            # r20 补:极端 drought 刚弃的线排除(否则弃后重选回同一条 = 白弃;
+            # 供给断绝的线本局已死)。排除窗到 drought_excluded_until。
+            _excl = getattr(session, 'drought_excluded', '')
+            scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=5)
+            cands = [c for _s, c in scored_cands if c.name != _excl]
             session.target_comp = cands[0] if cands else None
             # 遥测补(2026-08-17 r6):candidate_scores 曾全空(shop.py 落盘 {})——
             # 14 号 close_call 筛选零语料。select_comp top-3 存 session,shop 侧带出
