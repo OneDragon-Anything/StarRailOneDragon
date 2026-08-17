@@ -213,8 +213,11 @@ class CurrencyWarRunLoop(SrOperation):
                 return   # 备战屏不采
         except Exception:   # noqa: BLE001
             return
+        # r2 review#4:曾只哈希前 30KB(顶部 5 行,战斗帧中部差异被吞)——resize 灰度
+        # 64x36 哈希全帧(降采样后整帧信息都进哈希)
         import cv2
-        h = hash(screen.tobytes()[:30000])   # 采样哈希(前 30KB 足够去重)
+        _small = cv2.resize(cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY), (64, 36))
+        h = hash(_small.tobytes())
         if h == getattr(self, '_last_bframe_hash', 0):
             return
         self._last_bframe_ts = now

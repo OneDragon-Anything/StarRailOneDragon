@@ -360,19 +360,15 @@ class PrepDirector(SrOperation):
         _scr_full = getattr(self, 'last_screenshot', None)
         if _scr_full is not None and read_bench_full(self.ctx, _scr_full):
             log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
-            action = match.strategy.decide_prep_action(
-                type('BenchFullObs', (), {
-                    'box_overlay_open': False, 'boxes': [], 'spheres': [],
-                    'free_bench_slots': 0, 'shop_open': False,
-                    # ADR-0136 补修:横幅在时拖放被游戏拒(前排-4 中心 (1175,398) 落横幅区;M16 后排
-                    # 拖放同败 → 非仅遮挡,系统性拒绝)→ 链 a(DeployMove)注定失败,vacancy 置 0
-                    # 强制走 b(升级扩容)/c(卖最弱)—— 即游戏横幅自己给的指令「出售或提升等级」。
-                    'deploy_vacancy': 0,
-                    'bench_chars': obs.bench_chars, 'deployed_chars': obs.deployed_chars,
-                    'front_occupied': obs.front_occupied, 'back_occupied': obs.back_occupied,
-                    'front_size': obs.front_size, 'back_size': obs.back_size,
-                    'state': obs.state, 'state_gold_trusted': obs.state_gold_trusted,
-                })(), session, config)
+            # r2 review#1(P0):曾用 type() 造假 obs(缺 tomes 等字段)→ 策略一读即 AttributeError
+            # 炸环。改 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)。
+            import dataclasses
+            bf_obs = dataclasses.replace(
+                obs, box_overlay_open=False, boxes=[], spheres=[],
+                free_bench_slots=0, shop_open=False,
+                # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
+                deploy_vacancy=0)
+            action = match.strategy.decide_prep_action(bf_obs, session, config)
             progressed, detail = self._executor.execute(action)
             log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
             # r11 review #2(盲节点可观测性):破墙路径此前零遥测——M55 r3 的 59 金+双跳级全发生在
@@ -383,8 +379,11 @@ class PrepDirector(SrOperation):
                 from sr_od.application.currency_war import cw_telemetry
 
                 if obs.state is not None:
+                    _bf_rid = cw_telemetry.current_run_id() or '-'
+                    if _bf_rid == '-' and self.ctx.cw_match is not None:
+                        _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'   # 与 _record_exec_obs 兜底一致
                     cw_telemetry.record_exec_event(
-                        run_id=cw_telemetry.current_run_id() or '-',
+                        run_id=_bf_rid,
                         round_num=obs.state.round_num,
                         action_family=f'BenchFull_{type(action).__name__}',
                         screen='battle_prep', event='bench_full_break',
@@ -472,10 +471,10 @@ class PrepDirector(SrOperation):
     def _record_exec_obs(self, key: str, event: str, reason: str = '') -> None:
         """观测钩子(常驻,27 号能力画像):执行事件落 exec_events.jsonl。
 
-        run_id 兜底:current_run_id → match 短 id(live 观察:pre-loop 阶段
-        current_run_id 尚未置位时 exec 事件已发生,记 '-' 会丢聚合维度)。
-        动作族提取:key 是动作 repr(类名(参数))→ 取首 `(` 前类名;
-        bail 类事件 key 是 reason 字符串 → 族归 'bail'。best-effort。
+        run_id 兜底:current_run_id → match 短 id。动作族:key 是动作 repr → 取首
+        `(` 前类名;bail 类事件 key 是 reason 字符串 → 族归 'bail'。round_num 用
+        游戏 轮次(r2#5:环步数重入清零且重复,与 decisions/outcomes 无法对齐;
+        last_state.round_num 才是 join key)。best-effort。
         """
         try:
             from sr_od.application.currency_war.cw_telemetry import (
@@ -483,12 +482,17 @@ class PrepDirector(SrOperation):
                 get_recorder,
             )
             run_id = current_run_id() or '-'
-            if run_id == '-' and self.ctx.cw_match is not None:
-                run_id = f'match:{id(self.ctx.cw_match) & 0xffff:x}'
+            game_round = 0
+            _m = self.ctx.cw_match
+            if _m is not None:
+                run_id = run_id if run_id != '-' else f'match:{id(_m) & 0xffff:x}'
+                _st = getattr(_m.session, 'last_state', None)
+                if _st is not None:
+                    game_round = getattr(_st, 'round_num', 0) or 0
             family = 'bail' if event == 'bail' else (
                 key.split('(')[0].split(':')[0].strip() or '?')
             get_recorder().record_exec_event(
-                run_id=run_id, round_num=self._steps,
+                run_id=run_id, round_num=game_round,
                 action_family=family,
                 screen='battle_prep', event=event, reason=reason or key,
                 retry_count=self._fail_counts.get(key, 0))
