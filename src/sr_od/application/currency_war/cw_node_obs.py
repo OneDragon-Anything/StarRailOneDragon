@@ -124,8 +124,11 @@ def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
     """SIFT 主通道:补给卡装备 icon 区扫三钻模板 → 带钻列索引集合。
 
     复用 read_equips 的模板匹配(ensure_equip_sift_templates 全量装备库,含三钻);
-    扫描区 = 各列装备带(y≈600-760,装备名 y≈680 的上下扩展);命中按 x 归列。
-    模板库缺/无命中 → 空集(调用方落文本兜底)。纯读。
+    扫描区 = 各列的 x 范围并集 × 装备区 y 带。模板库缺/无命中 → 空集(调用方落文本兜底)。纯读。
+
+    ✅ 实测对拍(2026-08-17,31 张存档补给画面):4 张命中(3 蓝钻 1 红钻,
+    y≈705-716 icon 带,x 归列正确),27 张零误报;红钻样本三方对拍一致
+    (SIFT@x506y716 inliers9 = VLM「第2列红宝石」= OCR 装备名「红钻」)。
     """
     if not columns:
         return set()
