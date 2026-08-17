@@ -108,14 +108,48 @@ _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 735)
 _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 RunSupplyNode.CARD_BODY;点卡身不开对话直接选中)
 _SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
-# 钻装备名集合(用户 2026-08-17:装备图已采集,直接名匹配——OCR 已读装备名,钻在名里,
-# 无需视觉判定;财富宝钻同类高价值。「红钻/蓝钻」补给角色穿戴出现,advantage「钻石闪耀」同源)
+# 钻装备名集合(文本兜底;主通道 = SIFT——用户 2026-08-17:装备图已采集,SIFT 稳,
+# OCR 艺术字有形变史,钻价值极高,漏判丢钻/误判浪费刷新,代价不对称)。
+# 财富宝钻同类高价值。「红钻/蓝钻」补给角色穿戴出现,advantage「钻石闪耀」同源。
 DIAMOND_EQUIP_NAMES: frozenset[str] = frozenset({'红钻', '蓝钻', '财富宝钻'})
 
 
 def _equip_is_diamond(equip_name: str) -> bool:
-    """装备名含钻即钻系(红钻/蓝钻/财富宝钻;OCR 名直接匹配,子串含钻类家族)。"""
-    return '钻' in equip_name and any(d in equip_name for d in DIAMOND_EQUIP_NAMES)
+    """文本兜底:装备名精确匹配三钻(非子串——防「虫洞掘进钻头」类带钻字误判)。"""
+    return equip_name in DIAMOND_EQUIP_NAMES
+
+
+def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
+                          columns: list[tuple[int, int]]) -> set[int]:
+    """SIFT 主通道:补给卡装备 icon 区扫三钻模板 → 带钻列索引集合。
+
+    复用 read_equips 的模板匹配(ensure_equip_sift_templates 全量装备库,含三钻);
+    扫描区 = 各列装备带(y≈600-760,装备名 y≈680 的上下扩展);命中按 x 归列。
+    模板库缺/无命中 → 空集(调用方落文本兜底)。纯读。
+    """
+    if not columns:
+        return set()
+    from sr_od.application.currency_war.cw_equipment import (
+        ensure_equip_sift_templates,
+        read_equips,
+    )
+    templates = ensure_equip_sift_templates(ctx)
+    if not templates:
+        return set()
+    diamond_tms = {n: t for n, t in templates.items() if n in DIAMOND_EQUIP_NAMES}
+    if not diamond_tms:
+        return set()
+    # 扫描带:所有列的 x 范围并集 × 装备区 y 带
+    x1 = max(0, min(cx for cx, _ in columns) - 160)
+    x2 = min(1919, max(cx for cx, _ in columns) + 160)
+    hits = read_equips(screen, diamond_tms, equip_rect=(x1, 600, x2, 760))
+    # 命中归列(最近列心)
+    out: set[int] = set()
+    for _name, (hx, _hy), _inl in hits:
+        best = min(range(len(columns)), key=lambda i: abs(columns[i][0] - hx))
+        if abs(columns[best][0] - hx) <= _SUPPLY_COL_X_TOL:
+            out.add(best)
+    return out
 
 
 def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
@@ -123,8 +157,8 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
 
     布局(实捕 round1-5 补给,视觉大模型 + OCR 核实):N 列(实测 5;docstring 旧「3 选 1」过时),每列 =
     角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 + 右下「确认」。**无刷新按钮**(decide_supply
-    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻识别 ✅(2026-08-17,用户指路):装备名文本匹配
-    (红钻/蓝钻/财富宝钻)——OCR 已读装备名,钻在名里,无需视觉判定。
+    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻识别双通道 ✅(2026-08-17):主 = SIFT
+    (装备 icon 区 y600-760 扫三钻模板,装备图已采集);兜底 = 装备名精确匹配。
 
     装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
     (handler 退默认 ``CARD_BODY``)。
@@ -144,6 +178,9 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
         elif _SUPPLY_CHAR_Y[0] <= cy <= _SUPPLY_CHAR_Y[1] and get_char(text) is not None:
             chars.append((cx, text))
     equips.sort(key=lambda e: e[0])
+    # 钻识别双通道:主 = SIFT(装备 icon 区扫三钻模板,稳);兜底 = 装备名精确匹配
+    # (OCR 艺术字形变风险;两通道任一命中即钻)。
+    _sift_diamonds = _sift_detect_diamonds(ctx, screen, [(ex, 0) for ex, _n in equips])
     out: list[tuple[SupplyOption, Point]] = []
     for i, (ex, ename) in enumerate(equips):
         ch = ''
@@ -151,7 +188,7 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
             ncx, nname = min(chars, key=lambda c: abs(c[0] - ex))
             if abs(ncx - ex) < _SUPPLY_COL_X_TOL:
                 ch = nname
-        out.append((SupplyOption(idx=i, char=ch, equip=ename,
-                                 has_diamond=_equip_is_diamond(ename)),
+        has_d = (i in _sift_diamonds) or _equip_is_diamond(ename)
+        out.append((SupplyOption(idx=i, char=ch, equip=ename, has_diamond=has_d),
                     Point(ex, _SUPPLY_CARD_CLICK_Y)))
     return out
