@@ -246,17 +246,20 @@ class PrepDirector(SrOperation):
                 obs.deploy_vacancy = self._cached_vacancy
             # 观察冲突审计 #9(2026-08-16):deployed 总数三源对拍(同帧全齐)——
             # board OCR 阵营计数和 vs paddle X(读 deployed_count)vs CV 占用(front+back)。
-            # 分歧(任两源差 >1)留证:定位哪个 reader 在该类帧毒化(board OCR 阵营行漏/
-            # paddle 拆框/CV slot_occupied 阈值),为三源多数表决排期供数据。
-            _board_sum = sum(st.board.values())
+            # ⚠️ 语义修正(2026-08-17 r3 live):sum(board.values()) ≠ 部署角色数——
+            # 一个角色贡献多阵营(藿藿=仙舟+治疗,4 人可贡献 11 阵营次),board 的 X 是
+            # 「该阵营在场人数」非「角色数」→ board_sum 系统性 ≥ 部署数,拿它对拍恒分歧
+            # (live M 实测 board_ocr=11/paddle=4/cv=4 的"分歧"全是本语义错,非 reader 毒化)。
+            # 修:board 源改「独立羁绊外的最大单阵营计数」也不对(同阵营多角色)——board
+            # 根本给不出角色数,**移出三源对拍**,对拍改双源(paddle X vs CV 占用)。
             _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
             if dep_n is not None:
-                _spread = max(_board_sum, dep_n, _cv_occ) - min(_board_sum, dep_n, _cv_occ)
+                _spread = abs(dep_n - _cv_occ)
                 if _spread > 1:
                     from sr_od.application.currency_war.cw_observe import obs_conflict
-                    obs_conflict('deployed_count_3src',
-                                 {'board_ocr': _board_sum, 'paddle_x': dep_n, 'cv_occupied': _cv_occ},
-                                 'spread>1', screen, verdict='留证-三源分歧(待定多数表决)',
+                    obs_conflict('deployed_count_2src',
+                                 {'paddle_x': dep_n, 'cv_occupied': _cv_occ},
+                                 'spread>1', screen, verdict='留证-双源分歧(paddle拆框/CV阈值)',
                                  source='director_heavy')
             # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
             # 缓存 state 生成时的可信度就是它的可信度)
