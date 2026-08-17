@@ -35,6 +35,7 @@ class RunSupplyNode(RunNode):
 
     def __init__(self, ctx: SrContext):
         RunNode.__init__(self, ctx, op_name='货币战争-补给节点')
+        self._refresh_used = False   # r1 review#1:节点实例态(只刷一次;游戏规则补给可刷 1 次)
 
     @operation_node(name='补给节点', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
@@ -60,7 +61,7 @@ class RunSupplyNode(RunNode):
             ocr_map = self.ctx.ocr_service.get_ocr_result_map(
                 image=screen, rect=None, color_range=None, crop_first=False)
             for _t, _m in ocr_map.items():
-                _mm = _re.search('(?:刷新次数|剩余次数)[：:]?s*(d+)', _t)
+                _mm = _re.search(r'(?:刷新次数|剩余次数)[：:]?\s*(\d+)', _t)
                 if _mm and _m.max is not None:
                     import json as _json
                     from datetime import datetime as _dt
@@ -95,9 +96,11 @@ class RunSupplyNode(RunNode):
             _state = match.session.last_state or GameState()
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
-                [o for o, _ in opts], _state, match.session, _cfg, refresh_used=False)
-            if pick.refresh:
+                [o for o, _ in opts], _state, match.session, _cfg,
+                refresh_used=self._refresh_used)
+            if pick.refresh and not self._refresh_used:   # r1 review#1:只刷一次防死循环
                 refresh_target = RunSupplyNode.REFRESH_BTN
+                self._refresh_used = True
                 reason = pick.reason
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
@@ -117,3 +120,4 @@ class RunSupplyNode(RunNode):
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)
         self.round_by_find_and_click_area(self.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
+

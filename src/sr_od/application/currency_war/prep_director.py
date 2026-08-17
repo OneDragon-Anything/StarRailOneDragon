@@ -374,14 +374,18 @@ class PrepDirector(SrOperation):
             log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
             # r11 review #2(盲节点可观测性):破墙路径此前零遥测——M55 r3 的 59 金+双跳级全发生在
             # decisions.jsonl 外(复盘盲区)。破墙动作也记一条(类名带 BenchFull 前缀,审计可辨)。
+            # r1 review#4:曾传 type() 造假对象(非 dataclass)→ serialize_action TypeError 被吞
+            # → 破墙遥测从未落盘。改 exec_events 通道(本就为执行事件设计)。
             try:
                 from sr_od.application.currency_war import cw_telemetry
 
                 if obs.state is not None:
-                    _tc = getattr(match.session, 'target_comp', None)
-                    cw_telemetry.record_decision(
-                        obs.state, _tc.name if _tc else '', {}, {},
-                        [type(f'BenchFull_{type(action).__name__}', (), {'__dict__': {}})()])
+                    cw_telemetry.record_exec_event(
+                        run_id=cw_telemetry.current_run_id() or '-',
+                        round_num=obs.state.round_num,
+                        action_family=f'BenchFull_{type(action).__name__}',
+                        screen='battle_prep', event='bench_full_break',
+                        reason='备战席满破墙')
             except Exception:   # noqa: BLE001  遥测 best-effort
                 pass
             return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
@@ -465,16 +469,24 @@ class PrepDirector(SrOperation):
     def _record_exec_obs(self, key: str, event: str, reason: str = '') -> None:
         """观测钩子(常驻,27 号能力画像):执行事件落 exec_events.jsonl。
 
-        动作族从 key 前缀提取;best-effort(遥测异常绝不阻塞执行)。
+        run_id 兜底:current_run_id → match 短 id(live 观察:pre-loop 阶段
+        current_run_id 尚未置位时 exec 事件已发生,记 '-' 会丢聚合维度)。
+        动作族提取:key 是动作 repr(类名(参数))→ 取首 `(` 前类名;
+        bail 类事件 key 是 reason 字符串 → 族归 'bail'。best-effort。
         """
         try:
             from sr_od.application.currency_war.cw_telemetry import (
                 current_run_id,
                 get_recorder,
             )
+            run_id = current_run_id() or '-'
+            if run_id == '-' and self.ctx.cw_match is not None:
+                run_id = f'match:{id(self.ctx.cw_match) & 0xffff:x}'
+            family = 'bail' if event == 'bail' else (
+                key.split('(')[0].split(':')[0].strip() or '?')
             get_recorder().record_exec_event(
-                run_id=current_run_id() or '-', round_num=self._steps,
-                action_family=key.split(':')[0] if key else '?',
+                run_id=run_id, round_num=self._steps,
+                action_family=family,
                 screen='battle_prep', event=event, reason=reason or key,
                 retry_count=self._fail_counts.get(key, 0))
         except Exception:   # noqa: BLE001  观测 best-effort

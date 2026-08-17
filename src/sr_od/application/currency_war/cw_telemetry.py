@@ -377,6 +377,18 @@ def record_outcome(outcome) -> None:
     get_recorder().record_outcome(_CURRENT_RUN_ID, outcome)
 
 
+def record_exogenous(round_num: int, kind: str, detail: str = '',
+                     state: GameState | None = None) -> None:
+    """便捷:用 current_run_id 记一条外生事件(r1 review#3:此前 battle_loop 调用
+    模块级函数但只有类方法 → AttributeError 被吞,exogenous.jsonl 生产侧静默死)。
+
+    注意签名与类方法不同(无 run_id 首参——模块级自动取 current_run_id)。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    get_recorder().record_exogenous(_CURRENT_RUN_ID, round_num, kind, detail, state)
+
+
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
                        final_hp: int, notes: str = "") -> None:
     """便捷:用 current_run_id 记局终 summary。loop 局终调。"""

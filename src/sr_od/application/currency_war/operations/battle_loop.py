@@ -251,8 +251,10 @@ class CurrencyWarRunLoop(SrOperation):
             # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
             cw_telemetry.record_outcome(_obs)
             # 外生事件(strategy/20 live 观测,22 号预案触发频率语料):战斗节点完成
+            # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
+            # 不存在,AttributeError 被吞致 exogenous 静默死)
             cw_telemetry.record_exogenous(
-                cw_telemetry.current_run_id(), _round, 'node_enter',
+                _round, 'node_enter',
                 detail=f'battle_done:{_obs.node_type}',
                 state=_session.last_state)
             log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s',

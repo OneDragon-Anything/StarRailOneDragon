@@ -142,10 +142,11 @@ def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
     diamond_tms = {n: t for n, t in templates.items() if n in DIAMOND_EQUIP_NAMES}
     if not diamond_tms:
         return set()
-    # 扫描带:所有列的 x 范围并集 × 装备区 y 带
+    # 扫描带:所有列的 x 范围并集 × 装备区 y 带(r1 review#5:y 带 580-780 加宽
+    # 覆盖实测命中 705-716 + 布局微变余量;右界由 screen 实宽派生,不假定 1920)
     x1 = max(0, min(cx for cx, _ in columns) - 160)
-    x2 = min(1919, max(cx for cx, _ in columns) + 160)
-    hits = read_equips(screen, diamond_tms, equip_rect=(x1, 600, x2, 760))
+    x2 = min(screen.shape[1] - 1, max(cx for cx, _ in columns) + 160)
+    hits = read_equips(screen, diamond_tms, equip_rect=(x1, 580, x2, 780))
     # 命中归列(最近列心)
     out: set[int] = set()
     for _name, (hx, _hy), _inl in hits:
