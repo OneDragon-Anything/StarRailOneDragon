@@ -534,8 +534,11 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
     Returns:
-        {阵营: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?')→ None**(混合态不切,
-        OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露混合频率)。
+        {阵营: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
+        (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露
+        混合频率)。**无阵营已知角色不 bail**(2026-08-17):白厄「救世主」复制效果不计人数
+        (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
+        独立羁绊行计入(与左面板显示同口径)。
     """
     if not tracked:
         return None
@@ -554,12 +557,23 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         if is_trailblazer(cid):
             cid = trailblazer_form(cid, getattr(bc, 'position_pref', '') or 'back')
         ch = get_char(cid)
-        if ch is None or not ch.factions:
+        if ch is None:
             return None
+        # 独立羁绊(救世主/领航员/挚爱之人…)左面板显示为一行(14:52 live OCR 实证含「救世主」)
+        # → 计入保持与面板同口径;否则 computed_vs_ocr 对拍每帧误报「OCR有computed无」留证噪声。
+        # comp 层消费只查 comp.factions,不受该键影响。
+        if ch.independent:
+            counts[ch.independent] = counts.get(ch.independent, 0) + 1
         # 羁绊 = 阵营类(factions)+ 流派类(flows:能量/欢愉/击破…)都进左面板计数(OCR board
         # 同口径 —— 只数 factions 会系统性漏流派羁绊;开拓者「欢愉」正是 flows,实测暴露)。
         for f in (*ch.factions, *ch.flows):
             counts[f] = counts.get(f, 0) + 1
+        if not (ch.factions or ch.flows or ch.independent):
+            return None  # 三者皆空 = 注册表数据异常,保守退 OCR
+        # 无阵营但有独立羁绊(白厄「救世主」)或 factions 空 flows 非空(布洛妮娅 燃血):身份已知
+        # 不 bail,上方已计入各自贡献。白厄复制效果不计人数(官方 trait 3005)→ 零阵营贡献即精确
+        # (2026-08-17 修:旧版 not ch.factions 即 None,白厄/布洛妮娅上场整链误退 OCR,
+        # 恰丢掉计算路径的抗滚动优势)。
     return counts
 
 
@@ -582,7 +596,9 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     肖像更稳。⚠️ 模板目录名须用**规范名**「开拓者·记忆/欢愉」非玩家 ID(2026-08-15 修:旧目录 Momojie/
     → resolve_char_name 落 legacy 路径返 None = 「开拓者 roster 缺」根因;玩家 ID 随账号变,规范名不变);
     肖像更稳(实测 shop_open 5/5 内点 33-68,VLM 定位肖像区)。faction 由 OCR 牌标签 → roster factions[0]
-    (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。立绘库经 ``ensure_portrait_templates`` 按需加载
+    (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。**faction 语义(2026-08-17)**:
+    ``'?'``=未知(name 空/不在注册表);``''``=已知无阵营(白厄「救世主」类)。立绘库经
+    ``ensure_portrait_templates`` 按需加载
     (buy 在 deploy 前,BattlePrepCycle: buy→deploy,故不依赖 deploy 才加载的缓存)。
     """
     templates = ensure_portrait_templates(ctx)
@@ -628,7 +644,9 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
         ch = get_char(name) if name else None
         cards.append(ShopCard(
             x=(rect.x1 + rect.x2) // 2,
-            faction=(ch.factions[0] if (ch is not None and ch.factions) else '?'),
+            # '?'=未知(名未识别/不在注册表);''=已知无阵营(白厄类;2026-08-17 与 shop/identity 同语义)
+            faction=(ch.factions[0] if (ch is not None and ch.factions)
+                     else ('' if ch is not None else '?')),
             name=name,
             cost=(ch.cost if ch is not None else 0),
             star=1,

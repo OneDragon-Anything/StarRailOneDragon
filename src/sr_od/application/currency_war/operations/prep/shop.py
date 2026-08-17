@@ -57,9 +57,12 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
         if not n:
             continue
         ch = get_char(n)
+        # faction 语义(2026-08-17 清理):'?' = 未知(名不在注册表);'' = 已知无阵营(白厄「救世主」类,
+        # 复制效果不计阵营人数)。旧版两者混填 '?',日志无法区分"识别失败"与"本来就无阵营"。
         out.append(BenchChar(
             slot=i, char_id=n,
-            faction=(ch.factions[0] if (ch is not None and ch.factions) else '?'),
+            faction=(ch.factions[0] if (ch is not None and ch.factions)
+                     else ('' if ch is not None else '?')),
         ))
     return out
 

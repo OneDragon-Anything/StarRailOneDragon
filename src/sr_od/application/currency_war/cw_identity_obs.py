@@ -244,7 +244,9 @@ def identify_slots(
         out.append(BenchChar(
             slot=slot_idx,
             char_id=name,
-            faction=ch.factions[0] if (ch is not None and ch.factions) else '?',
+            # '?'=未知(名不在注册表);''=已知无阵营(白厄类;与 shop._tracked_bench_chars 同语义)
+            faction=(ch.factions[0] if (ch is not None and ch.factions)
+                     else ('' if ch is not None else '?')),
             star=read_star(crop),            # 立绘底部金星计数(1/2/3 星;见 read_star)
             position_pref=row if row else (ch.position_pref() if ch is not None else 'back'),
         ))
