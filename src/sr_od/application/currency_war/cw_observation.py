@@ -803,44 +803,12 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
-    # [停机钩子·临时,用户 2026-08-16 指示] star≥3 出现 → 存证 + **停机**(3.5.3 read_star 3星验证)。
-    # 采集流程(log 同文,停机后画面保持在备战屏,按流程人工/AI 采集):
-    #   ①将该 3 星角色依次拖到 前排各槽(1-4)/后排各槽(1-6)/备战各槽(1-9),每个位置停 1s 截图;
-    #   ②截图归档 sr-od-test/screens/star3_slots/<排><槽>.webp(全位置覆盖);
-    #   ③离线对每张跑 read_star 断言读 3(全位置 3星识别测试,补 star3 的位置覆盖);
-    #   ④测试全过后删本停机钩子(star2 已验稳收窄先例;212 张 star3 存量已验 6/8 真 3星全读 3,
-    #     2 张"漏读"实为过渡帧画面无星)。
-    # screen=RGB,存图 RGB→BGR(cv2-utils 约定)。tracked_deployed + tracked_bench_chars(deploy 后
-    # SIFT 维护含 star;state.bench 恒空,见 review ⚠️)。
-    _hook_tracked: list = []
-    if _match is not None and _match.session is not None:
-        _hook_tracked = list(getattr(_match.session, 'tracked_deployed', []) or [])
-        _hook_tracked += list(getattr(_match.session, 'tracked_bench_chars', []) or [])
-    _hook_stars = [getattr(bc, 'star', 0) for bc in _hook_tracked if getattr(bc, 'star', 0) >= 3]
-    if _hook_stars:
-        try:
-            import hashlib
-            from pathlib import Path
-            _mx = max(_hook_stars)
-            _h = hashlib.md5(screen.tobytes()).hexdigest()[:8]
-            _p = Path('.debug/temp/currency_war/shots') / f'star{_mx}__{_h}.png'
-            if not _p.exists():
-                _ok, _arr = cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))
-                if _ok:
-                    _arr.tofile(str(_p))
-            # 停机(方案 D):保备战画面,采集流程见上注释。sentinel 防"手停"混淆。
-            from one_dragon.utils import log_utils
-            log_utils.log.info('[cw-hook] 3星角色出现 → 停机采集:请将该角色拖到 前/后/备战各槽逐位置截图'
-                          '(归档 star3_slots/,补全位置 read_star=3 测试;完成后删本钩子)')
-            _sentinel = Path('.debug/temp/currency_war/star3_capture.flag')
-            _sentinel.parent.mkdir(parents=True, exist_ok=True)
-            _sentinel.write_text(
-                f'star={_mx} 采集流程:拖3星角色到前排1-4/后排1-6/备战1-9各位置截图'
-                f'→sr-od-test/screens/star3_slots/<排><槽>.webp→read_star 全位置断言3',
-                encoding='utf-8')
-            ctx.run_context.stop_running()   # 方案 D 停机:保备战画面给采集
-        except Exception:  # noqa: BLE001  采集失败不阻塞读 state
-            pass
+    # [停机钩子·已删(2026-08-17 M72 采全)] star≥3 停机采集:19 位 fixture 已采全
+    # (star3_slots/),read_star 全位置断言 3 测试过(test_star3_positions)。⚠️ 教训存档:
+    # ①「停 bot 保画面」在备战不成立——备战有倒计时,到期自动出战推进(bot 停游戏不停),
+    #   M72 停机后游戏自己打完了 P2-9;此类需当场交互的采集,现场窗口=倒计时前,分小批+
+    #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
+    # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
     return state
 
 
