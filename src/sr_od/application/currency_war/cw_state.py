@@ -246,7 +246,9 @@ def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None
     pools: list[list[BenchChar]] = [bench]
     if deployed is not None:
         pools.append(deployed)
-    for _pass in range(2):   # 升星后可能再凑(3×2★→3★)
+    # 不动点循环(r6 review#1:两轮上限在级联合并 3×1★→2★→…不够;while 直到
+    # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止)
+    while True:
         merged_any = False
         for pool in pools:
             for c in list(pool):
@@ -258,18 +260,21 @@ def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None
                 if len(group) < 3:
                     continue
                 take = group[:3]
-                # 载体:场上优先(**身份**比较——dataclass 值相等会让 bench 张 `in deployed` 误真)
+                # 载体:场上优先(身份比较——dataclass 值相等会让 `in` 误真)
                 carrier = next((x for x in take
-                                 if deployed is not None
-                                 and any(x is y for y in deployed)), take[0])
+                                if deployed is not None
+                                and any(x is y for y in deployed)), take[0])
                 carrier.star += 1
+                # 删其余两张:**身份索引**删除(r6 review#2:list.remove 按值相等
+                # 删第一个命中,同名同星 dataclass 值相等会删错对象)
                 for x in take:
-                    if x is not carrier:
-                        for p in pools:
-                            with_first = next((y for y in p if y is x), None)
-                            if with_first is not None:
-                                p.remove(x)
-                                break
+                    if x is carrier:
+                        continue
+                    for p in pools:
+                        _idx = next((i for i, y in enumerate(p) if y is x), None)
+                        if _idx is not None:
+                            del p[_idx]
+                            break
                 merged_any = True
                 break   # 重扫(列表已变)
             if merged_any:

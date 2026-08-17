@@ -110,10 +110,10 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
         _p = Path('.debug/temp/currency_war/star_regression_hook.flag')
         _p.parent.mkdir(parents=True, exist_ok=True)
         _p.write_text(
-            f'[{datetime.now().isoformat(timespec="seconds")}] 这是我自己的 star 回退停机钩子停的'
-            f'(非手停/非外部拦截)——{char} 预估 {old_star}★(买牌 3合1 merge)连续 2 节点读回 '
-            f'{new_star}★,星级识别可疑。\n'
-            f'排查:①该角色槽位 read_star 实读(金星区是否被遮挡/光标压住);②SIFT 身份是否错配;'
+            f'[{datetime.now().isoformat(timespec="seconds")}] star 回退留证(r17 降级,**未停机**)——'
+            f'{char} 预估 {old_star}★(买牌 3合1 merge)多次读回 '
+            f'{new_star}★,星级/身份识别可疑。\n'
+            f'排查:①该角色槽位 read_star 实读;②SIFT 身份是否错配;'
             f'③修好后删钩子:cw_reconcile.py 搜「_star_stop_hook」整段。\n'
             f'画面态:备战(角色在板上,星区可见);来源:{source}',
             encoding='utf-8')
