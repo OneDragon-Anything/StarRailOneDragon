@@ -474,8 +474,11 @@ def _sell_offline_for_focus(state: GameState, actions: list,
             bc.faction in (getattr(target, 'flex_factions', ()) or ())
         if _is_target or _is_priority or _is_transition:
             continue
-        # 场上满员时 bench 是潜在替补(下回合 deploy);不满员则纯死库存
-        if state.deployed_count() < state.max_units():
+        # 场上**满员**时新牌上不了场,bench off-line 才是死库存(该卖);
+        # 场上未满时 bench 牌可 deploy 换战力(暂留)。r32 修正:原判据方向写反
+        # (deployed<max 才卖),live 快照 deployed 常含超编识别(14/6)→ 恒 False →
+        # 集中卖散实际从未触发(局13 r6-r8 零 SellBench 实证)。
+        if state.deployed_count() >= state.max_units():
             try:
                 _idx = state.bench.index(bc)   # r9 review#3:值相等命中(同值卡分类同,语义等价)
             except ValueError:
