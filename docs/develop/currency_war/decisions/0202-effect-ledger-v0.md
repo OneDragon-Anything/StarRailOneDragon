@@ -53,8 +53,12 @@ DP effect-blind(买断制照样攒息、连胜 ×3 照 ×1、商业间谍成本�
 - **v3 解缓存(同日,「67 秒」质询)**:solve_cached + ledger_fingerprint ——
   ①**重算触发面**:指纹只含改 DP 世界的字段(calendar+mutations),overlay 73 条中
   仅 ~11 条(息 cap/单击价/连胜乘子/节点收入类)会变指纹,52 条纯时点金(instant_gold)
-  命中即免重算——典型一局需重算 0-1 次;②**三层缓存**:进程内 memo(0s)→ 盘 pickle
-  (~6s,232MB,按「指纹+源 mtime」键,改源自动失效)→ 冷解(~67s);
-  ③生产路径 _solved() 换 solve_cached——MCP server 重启后首个查询从 67s 降 ~6s,
-  同持卡指纹跨进程全局只解一次。
-- 53 号处置完成(v0-v3),提案文件删档;测试 +11(effect_ledger 7+集成 2+缓存 2)。
+  命中即免重算——典型一局需重算 0-1 次;②三层缓存(进程 memo/盘 pickle/冷解);
+  ③生产路径 _solved() 换 solve_cached。
+- **v6 向量化(同日续,弱机性能质询)**:求解器 numpy 重写 —— 布局 [t,Li,gi,hi,rbi]
+  (Li 外提使 g,h,rbi 块连续),固定 (t,Li,lv_up,rolls) 时转移参数按 rbi 向量化、
+  g3/h3 整块 fancy-index;8 姿态按花费降序序扫(tie-break「strict > 才换」与标量版
+  逐位一致)。**对拍锚:ACT 逐位全等 + VAL max|diff|=0**(vs v5 标量基准)。
+  **求解 67.6s → 0.3s(225×);盘缓存层移除**(读 27MB pickle 比解更慢,负资产),
+  仅留进程内 memo。弱机冷启动 = 直接解,毫秒-秒级。涌现验证逐字段一致。
+- 53 号处置完成(v0-v6),提案文件删档;测试 +11(effect_ledger 7+集成 2+缓存 2)。
