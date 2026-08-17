@@ -600,6 +600,13 @@ class CurrencyWarRunLoop(SrOperation):
             # lcs_percent=0.8:「返回货币战争」与事件屏「返回备战界面」共享「返回+战」(3/6=0.5)→
             # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
             if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
+                # r10 战败屏 hp=0 补录:第四局实证 P2-2 团灭,战败结算屏不走
+                # _record_round_outcome(仅胜利结算屏分支3)→ outcomes 无 hp=0 记录
+                # → _last_outcome_hp 空 → summary 落 last_state 100 兜底污染。
+                if btn == '下一步' and self.round_by_ocr(screen, '挑战失败').is_success:
+                    self._last_outcome_hp = 0
+                    self._saw_defeat_settlement = True
+                    log.info('[cw-loop] 战败结算屏 → hp=0 补录 outcomes 真值源')
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
                 # 光标 parking(审计 R6):点击点正落在「下一页」文本框内,多页结算每页按钮同带
                 # → 光标压当页按钮文字 → OCR miss → unknown streak 停机。点完 park。
