@@ -611,6 +611,19 @@ class PrepActionExecutor:
         btn = area_center(self._ctx, _btn_area) or PrepActionExecutor.BATTLE_FALLBACK
         self._ctx.controller.mouse_move(btn)   # bug#1 缓解(2026-08-06 r9 实打出战 click ×4 未落地)
         self._ctx.controller.click(btn)
+        # r9 失焦守卫:click 后验窗口焦点,失焦 → game_win.active() 激活 + 重点一次
+        # (live 实证 2026-08-18:窗口后台化时输入静默丢,截图正常 → 环僵尸 20min;
+        # MCP click 激活后立即恢复。active() 是框架窗口原语,见 pc_game_window)。)
+        try:
+            time.sleep(0.4)
+            if not self._ctx.controller.game_win.is_win_active:
+                log.warning('[cw!][battle] 窗口失焦(输入静默丢)→ 激活 + 重试出战')
+                self._ctx.controller.game_win.active()
+                time.sleep(0.3)
+                self._ctx.controller.mouse_move(btn)
+                self._ctx.controller.click(btn)
+        except Exception:   # noqa: BLE001  焦点守卫 best-effort(无窗口对象则跳过)
+            pass
         for _ in range(6):   # 6 × 0.5s 轮询窗口(同 battle_prep D-70)
             time.sleep(0.5)
             scr = self._op.screenshot()
