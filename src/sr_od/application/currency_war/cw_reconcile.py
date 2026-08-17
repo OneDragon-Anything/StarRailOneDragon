@@ -58,11 +58,15 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             log.warning(f'[cw!][{source}] star 回退:{_n} {_old_s}★→{_s}★(read_star 漏金星?卖后重买?)')
             _conflict('star', _old_s, _s, screen, verdict='采新-read_star实读(回退留证)',
                       source=source, char=_n)
-            # ⚖️ 停机钩子(star≥2 连续 2 节点回退;预估升星 vs 实机不符 = 识别可疑)
+            # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
+            # 已存档 cw_dev/live_round11_diagnosis.md:根因在 SIFT 身份错配域(主开发在办),
+            # 非读星;停机不再有增量信息。降级为高频留证(每 5 次回退存一张证,不 stop),
+            # 排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
             if _old_s >= 2:
                 _reg[_n] = _reg.get(_n, 0) + 1
-                if _reg[_n] >= 2 and ctx is not None:
-                    _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source)
+                if _reg[_n] >= 2 and ctx is not None and _reg[_n] % 5 == 0:
+                    _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source,
+                                    stop_run=False)
         elif _n in _reg:
             del _reg[_n]   # 读回恢复(或超预估)→ 清零
     session.star_regression_count = _reg
@@ -89,9 +93,12 @@ def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
 
 
 def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
-                    screen, source: str) -> None:
-    """star 回退停机钩子(用户 2026-08-17 指示;连续 2 节点 star≥2 回退触发)。
+                    screen, source: str, stop_run: bool = True) -> None:
+    """star 回退留证钩子(用户 2026-08-17 指示;star≥2 回退触发)。
 
+    r17 降级(2026-08-18):排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
+    根因在 SIFT 身份域,非读星)——stop_run=False 时只留证截图不停机(证流保留,
+    实跑可推进);SIFT 身份修复后本段整删。
     停机保备战画面供排查星级识别(read_star 漏金星?星区被特效/光标遮挡?SIFT 身份错配?)。
     sentinel 自描述(r17-r31 教训:内容含「这是自己的钩子停的+删除位置」,防误判孤儿/外部拦截)。
     """
@@ -120,8 +127,10 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
         except Exception:  # noqa: BLE001  截图 best-effort
             pass
         log_utils.log.warning(
-            f'[cw-hook] star 回退停机:{char} 预估{old_star}★×2节点读回{new_star}★ → '
-            f'停机保画面排查星级识别(sentinel: star_regression_hook.flag;修好删 _star_stop_hook)')
-        ctx.run_context.stop_running()
+            f'[cw-hook] star 回退{"停机" if stop_run else "留证(r17 降级,不阻断)"}:'
+            f'{char} 预估{old_star}★×多节点读回{new_star}★ → '
+            f'保画面排查星级识别(sentinel: star_regression_hook.flag;修好删 _star_stop_hook)')
+        if stop_run:
+            ctx.run_context.stop_running()
     except Exception:  # noqa: BLE001  停机失败不阻塞对账写回
         pass
