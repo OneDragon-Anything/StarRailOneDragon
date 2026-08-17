@@ -609,6 +609,13 @@ class CurrencyWarRunLoop(SrOperation):
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
+            # r10 假局守卫:本 loop 从未记过 round_outcome(未打过任何一回合)却见大厅
+            # = 开局失败/中断(第四局实证:开局失败回大厅 → 用旧 session 拼假 loss,
+            # final_hp=100/rounds=2 全污染)。不记 summary、不喂分配器,仅清理 match。
+            if getattr(self, '_last_outcome_hp', None) is None and self._rounds_done == 0:
+                log.warning('[cw!][loop] 开局阶段即回大厅(无任何 round_outcome)→ 判开局失败,不记假 summary')
+                self.ctx.cw_match = None
+                return self.round_success('开局失败/中断(未产生对局数据,不记 summary)')
             if self.ctx.cw_match is not None:
                 # B4(ADR-0170 telemetry 接线):终局真实数据灌 MatchOutcome(原桩全默认)——
                 # won=回大厅即本局结束;plane/round/hp 取 session.last_state(每回合框架刷新的
