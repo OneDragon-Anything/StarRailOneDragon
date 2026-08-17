@@ -381,6 +381,14 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
         plane_m = re.search(r'第\s*(\d)\s*位面', blob)
         new = (int(plane_m.group(1)), int(plane_m.group(1))) if plane_m else None
     if new is not None:
+        # ⚠️ 值域守卫(2026-08-17 M70 假 win 根因):plane 只有 1-3,读出 8(恢复对局时顶栏被
+        # overlay 遮,OCR 抓到 A8 难度/Lv.8 的"8")→ last_state.plane=8 → 局终判定 8>=3 →
+        # 假 win 假通关。值域外 = OCR 假阳,当 miss 处理(走 last-known/兜底),不进缓存。
+        if not (1 <= new[0] <= 3 and 1 <= new[1] <= 9):
+            obs_conflict('phase_round', _last_phase_round, new, screen,
+                         verdict='拒-值域外(plane∈1-3/round≤9,OCR抓错源如A8难度)', source='ocr_range')
+            new = None
+    if new is not None:
         if _last_phase_round is not None and (new[0] < _last_phase_round[0]
                                               or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
             obs_conflict('phase_round', _last_phase_round, new, screen,
@@ -390,15 +398,23 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
         return _last_phase_round
     digits = re.findall(r'\d', blob)
     if digits:
-        new = (int(digits[0]), int(digits[0]))
-        # fallback 单数字路径噪声敏感:倒退一律拒(保旧),只接受前进
-        if _last_phase_round is not None and (new[0] < _last_phase_round[0]
-                                              or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
-            obs_conflict('phase_round', _last_phase_round, new, screen,
-                         verdict='保旧-单调守卫(fallback数字倒退拒)', source='ocr_digits_fallback')
+        d = int(digits[0])
+        # fallback 单数字:首数字同时当 plane/round 本就是强假设(仅开局 (1,1) 合法)——
+        # ⚠️ 值域守卫(M70 根因同上):"8" 来自 A8/Lv.8 泄漏,不是位面。只接受 1(开局 1-1)。
+        if d == 1:
+            new = (1, 1)
+        else:
+            obs_conflict('phase_round', _last_phase_round, (d, d), screen,
+                         verdict='拒-fallback数字非1(单数字仅开局1-1合法,A8/Lv泄漏)', source='ocr_digits_fallback')
+            new = None
+        if new is not None:
+            if _last_phase_round is not None and (new[0] < _last_phase_round[0]
+                                                  or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
+                obs_conflict('phase_round', _last_phase_round, new, screen,
+                             verdict='保旧-单调守卫(fallback数字倒退拒)', source='ocr_digits_fallback')
+                return _last_phase_round
+            _last_phase_round = new
             return _last_phase_round
-        _last_phase_round = new
-        return _last_phase_round
     # OCR 失败(过渡帧)→ 返回上次成功值,避免 (1,1) 误导 level_plan
     if _last_phase_round is not None:
         return _last_phase_round

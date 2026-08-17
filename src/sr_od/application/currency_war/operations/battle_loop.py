@@ -471,6 +471,9 @@ class CurrencyWarRunLoop(SrOperation):
                 and self.round_by_find_area(screen, '货币战争-结算-失败', '标识-挑战结束', crop_first=False).is_success
                 and not self.round_by_find_area(
                     screen, '货币战争-结算', '按钮-继续挑战', crop_first=False).is_success):
+            # 假 win 守卫(M70 事故):见过战败结算屏的 run 绝不判 win(即使 last_state.plane
+            # 因 OCR 毒化显示 3)。
+            self._saw_defeat_settlement = True
             for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
                 if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
                     self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
@@ -556,8 +559,12 @@ class CurrencyWarRunLoop(SrOperation):
                 # 最后快照;⚠️ CurrencyWarMatch 无 state 字段——review 子代理 P0 实锤,勿写
                 # cw_match.state)。喂 strategy.on_match_end + 跨局分配器(0170,分级奖励)。
                 _st = self.ctx.cw_match.session.last_state
+                # ⚠️ 假 win 守卫(2026-08-17 M70 事故):won 曾用 `plane >= 3`——恢复对局时 plane
+                # 被 OCR 读成 8(A8 难度泄漏)→ 8>=3 → 假通关进遥测。现要求 **plane==3 精确值**
+                # (值域守卫已在上游拒 8,此处双保险);且死局(本局见过战败结算屏 1f)不判 win。
+                _died_this_run = getattr(self, '_saw_defeat_settlement', False)
                 _outcome = MatchOutcome(
-                    won=(_st is not None and _st.plane >= 3),
+                    won=(_st is not None and _st.plane == 3 and not _died_this_run),
                     final_plane=_st.plane if _st is not None else 1,
                     final_round=_st.round_num if _st is not None else 1,
                     final_hp=_st.hp if _st is not None else 0,
