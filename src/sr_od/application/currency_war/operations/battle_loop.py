@@ -438,7 +438,11 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=1.5)
         # 0e3. 道具详情弹窗(聘用书类;live 2026-08-15 M13 首遇):获得 3费聘用书 等道具后自动弹介绍 modal,
         #       关键词与消耗品(消耗品+拖动到)不同 → 落未知画面停机。点 ×(1862,65 VLM 定位)关;道具使用属 P4 工具域。
-        if self.round_by_ocr(screen, '聘用书', lcs_percent=0.8).is_success:
+        #       ⚠️ r31 死循环修(live 实锤 15min+):祈愿试炼选项名含「聘用书」(4费聘用书)→ 本分支
+        #       截胡 0h 祈愿分支(反复点×无效)。加祈愿屏排除:标识-祈愿试炼 命中 → 让路 0h。
+        if (self.round_by_ocr(screen, '聘用书', lcs_percent=0.8).is_success
+                and not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼',
+                                                crop_first=False).is_success):
             self.ctx.controller.mouse_move(Point(1862, 65))
             self.ctx.controller.click(Point(1862, 65))
             log.info('[cw-loop] 道具详情弹窗(聘用书)→ 点× 关闭')
