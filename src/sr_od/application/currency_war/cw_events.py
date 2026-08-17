@@ -233,6 +233,39 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
     return fit if fit is not None else 0.5
 
 
+def _reward_value(rewards: list[str]) -> float:
+    """奖励文本 → 价值分 0..1(2026-08-17 用户指路「看奖励」接进选档)。
+
+    OCR 奖励带已读(read_encounter_options rewards);文本启发:
+    - 棱彩/金装备类关键词 > 银类 > 无文本(OCR 漏/无奖励带);
+    - 经验/金币给基础分(量小);
+    - 无奖励文本 → 0.5 中性(不因 OCR 漏惩罚该档)。
+    实玩校准点;先验表在代码单一源。
+    """
+    if not rewards:
+        return 0.5
+    text = ''.join(rewards)
+    if any(k in text for k in ('棱彩', '特权')):
+        return 1.0
+    if any(k in text for k in ('进阶', '黄金', '宝钻')):
+        return 0.8
+    if any(k in text for k in ('简易', '白银', '银')):
+        return 0.65
+    if any(k in text for k in ('经验', '金币', '装备')):
+        return 0.6
+    return 0.5
+
+
+# 敌方血量随难度缩放:base × 1.052^d(🟡 米游社拟合,competitors.md;19 号 D≥E 不等式地基)。
+# 遭遇选档用:档差 → 血量比 → 相对斩杀压力。
+_ENEMY_HP_GROWTH: float = 1.052
+
+
+def _difficulty_hp_ratio(tier_delta: int) -> float:
+    """档位差 → 敌方血量比(d 高 2 档 ≈ ×1.107 血)。"""
+    return _ENEMY_HP_GROWTH ** tier_delta
+
+
 
 def decide_encounter(options: list[EncounterOption], state: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
@@ -268,25 +301,28 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
         s = m
         # 0..1 clamp(难度 1→0、3→1;「其四」=4 越界 1.5 → 钳回,ADR-0130)
         diff_norm = min(max((o.difficulty - 1) / 2.0, 0.0), 1.0)
+        # 奖励价值(2026-08-17 用户指路;OCR 奖励带已读)——与难度联动:
+        # 只有「敢难」时奖励差才兑现,不敢难时好奖励也白搭(不独立加分)
+        rv = _reward_value(o.rewards)
         if state.plane == 3:
-            # ADR-0130(复查 #3,经济运营:18/核心机制:26):P3 永避高难遭遇 —— 右边遭遇(7-3/7-4)
-            # 一次 -70 血且无增益回报,成型也不赌;P3 奖励边际 < 翻车风险。
+            # ADR-0130(复查 #3):P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
             s -= 0.5 * diff_norm
+            s -= 0.1 * (1.0 - rv)   # P3 不为奖励冒险,仅轻微 tiebreak
         else:
-            # P9(2026-08-17,19 号落地;用户口径「阵容足够强才敢难」):难度档接 36 号
-            # 边际价值——压 −2 档的价值作风险计:碾压(压档无价值)→ 高难白拿奖励;
-            # 边际/未成型(压档值一条命)→ 低难度保血。gap 尺度:form 满板碾压
-            # (form 1.0 → gap −36,bell→0)→ 敢难;form 0.4(边缘)→ gap 0 峰值 → 保守。
+            # P9(用户口径「阵容足够强才敢难」):压 −2 档价值作风险计——
+            # 碾压(form≥0.9,gap≤−36,bell→0)敢难白拿;其余保守保血。
             gap = (0.4 - form) * 60
             press_v = encounter_tier_score(d_now=100.0, tier_delta=-2,
                                            gap=gap, plane=state.plane)
-            s += 0.3 * diff_norm * (1.0 if press_v < 0.05 else -1.0)
+            dare = press_v < 0.05
+            s += (0.3 + 0.2 * (rv - 0.5)) * diff_norm if dare else -0.3 * diff_norm
         return s
 
     scored = sorted(zip(options, mechs, strict=True), key=lambda om: _score(om[0], om[1]), reverse=True)
     best_o, best_m = scored[0]
     return EncounterPick(idx=best_o.idx, refresh=False,
-                         reason=f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty}")
+                          reason=(f"mech={best_m:.2f} formed={formed} diff={best_o.difficulty} "
+                                  f"reward={_reward_value(best_o.rewards):.2f}"))
 
 
 
