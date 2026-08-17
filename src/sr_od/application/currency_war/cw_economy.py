@@ -132,7 +132,15 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
 
     非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
     追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。
+    r24 位面末修正:A8 下 P1-r9 血量恒在危险带(六局实证 15-49<阈值)→ 地板恒 10
+    → boss 前花光 → P2 进场赤贫(gold 5-28,零搜牌窗口,成型无从谈起)。位面末
+    回合(round_num≥8,P1/P2 过半位面)保 **20**(P2 首回合一级利息档 + 搜牌本钱);
+    hp<30 真濒死仍 10(保命绝对优先)。
     """
+    if state.hp < 30:
+        return 10
+    if state.round_num >= 8:
+        return 20   # r24:位面末保本钱进下一位面(非 hp 危险分支的 10)
     if state.hp < effective_hp_threshold(state):
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
