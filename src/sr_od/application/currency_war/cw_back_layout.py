@@ -21,9 +21,12 @@ from __future__ import annotations
 from one_dragon.base.geometry.rectangle import Rect
 
 #: deploy_cap → screen_info 布局前缀(6 槽 = 基线「后排-N」;其余 = 「后排N槽-N」)
+#: 9 槽(双宝钻局,2026-08-20 交互实锤:位1藿藿 x464/位7狸小虎 x1316/位8狸小龙 x1458,
+#: 等差 142 与 6/8 槽同 —— 9 槽 = 6 槽两端扩,右 +2 左 +1)
 _LAYOUT_PREFIX: dict[int, str] = {
     6: '后排',
     8: '后排8槽',
+    9: '后排9槽',
 }
 
 #: 后排 y 带(所有布局共用;槽 rect 高约 600-739)
