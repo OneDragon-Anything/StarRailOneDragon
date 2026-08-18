@@ -195,10 +195,14 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     策略数据源 = handle_invest_strategy 选时写回的 state.active_strategies(2026-08-14 接通)。
     """
     cap = MAX_REFRESH_PER_ROUND          # 基线 2
+    # ⚖️ r67 必胜节点守卫(用户点破 2026-08-18「r8 是奖励,必胜的」):奖励节点无战斗 →
+    # 一切**战斗向**的放宽门失效(锁血急救=无血可扣;连胜维持=连胜白拿,刷新保连胜纯属
+    # 烧金)。刷牌本身仍合法(为下一轮备战搜卡,comp 停留 roll 门照常)——只关战斗向门。
+    _is_reward = state.node_type == 'reward'
     if state.plane == 3 or state.level >= 8:
         cap = max(cap, 4)                # 升 8 后 / plane3:搜核心多刷
-    if state.hp < hp_threshold:
-        cap = max(cap, 4)                # 锁血急救:多刷找质量
+    if state.hp < hp_threshold and not _is_reward:
+        cap = max(cap, 4)                # 锁血急救:多刷找质量(奖励节点无战斗 → 关)
     if state.node_type == 'boss':
         cap = max(cap, 4)                # ADR-0128(复查 #4):boss 关前把钱花完(D 出质量保 HP)
     # ⚖️ 连胜维持边际账(r63 用户指导 2026-08-18:「连胜奖励若 cover 刷新成本也可以刷」——
@@ -215,7 +219,8 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     # 但显式账若写成 档金≥shop_refresh_cost 且未来某策略把 cost 减到 0 → 恒真门
     # —— 落地时刷价下限 clamp 1 或直接消费免费额度字段,别比 0。
     _streak = state.streak or 0
-    if _streak >= STREAK_REFRESH_MIN:
+    if _streak >= STREAK_REFRESH_MIN and not _is_reward:
+        # (r67:奖励节点连胜白拿,刷新保连胜无意义 → 关;见上方必胜节点守卫)
         _se0 = _strategy_economy(state)
         # 伟大征服类 ×3(win_reward_mult≥2):奖励流被放大,更该保;常规连胜放宽一档。
         cap = max(cap, 6) if (_se0.win_reward_mult or 1.0) >= 2.0 else max(cap, 4)
