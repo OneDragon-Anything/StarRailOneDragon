@@ -197,6 +197,21 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
         cap = max(cap, 4)                # 锁血急救:多刷找质量
     if state.node_type == 'boss':
         cap = max(cap, 4)                # ADR-0128(复查 #4):boss 关前把钱花完(D 出质量保 HP)
+    # ⚖️ 连胜维持边际账(r63 用户指导 2026-08-18:「连胜奖励若 cover 刷新成本也可以刷」——
+    # 替旧布尔 WIN_STREAK_BREAK_INTEREST 只管破息不管刷新的粗粒度)。账:
+    #   下轮连胜档金 = min(streak+1, 5) 金(2连1金起档,economy STREAK 表;伟大征服等 ×mult
+    #   经 _strategy_economy.win_reward_mult,首积分位取整);刷价 = shop_refresh_cost(2,可减免)。
+    #   回本线:档金 ≥ 刷价 → 连胜本身是正期望收入流,刷到维持 ≈ 买收入(非烧金);
+    #   档金 < 刷价 → 维持连胜的刷新是净支出,只靠板强自然维持(不额外刷)。
+    #   3 连起档金 2 = 刷价 → 恒回本;2 连(1 金)< 2 → 不刷(等连胜自然滚到 3)。
+    #   连败期 streak ≤ 0 → 无连胜回报 → 完全落回「少刷攒息」(§7-2,现有行为)。
+    _streak = state.streak or 0
+    if _streak >= 2:
+        _se0 = _strategy_economy(state)
+        _streak_gold = min(_streak + 1, 5) * (_se0.win_reward_mult or 1.0)
+        if _streak_gold >= state.shop_refresh_cost:
+            cap = max(cap, 4)   # 连胜金 ≥ 刷价:刷保连胜 = 买收入
+
     if (target_comp is not None
             and target_comp.level_plan.get(state.level) is not None
             and target_comp.level_plan[state.level].action == 'roll'
