@@ -358,7 +358,8 @@ def record_decision(state: GameState, target_comp: str,
             ledger_fingerprint,
         )
         ng = _horizon_node_goal(state.plane, state.round_num, state.gold,
-                                state.level, state.hp)
+                                state.level, state.hp,
+                                strategies=list(getattr(state, 'active_strategies', []) or []) or None)
         if ng is not None:
             extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
                                    'target_level': getattr(ng, 'target_level', None)}

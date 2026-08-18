@@ -427,8 +427,6 @@ if __name__ == '__main__':
 
 # ===== 接缝:DP 姿态 → NodeGoal(ADR-0155;get_node_goal 影子模式消费) =====
 
-_SOLVED: HorizonSolution | None = None
-
 
 def ledger_fingerprint(ledger) -> str:
     """台账指纹:只有改 DP 世界模型的字段参与(calendar+mutations)——纯时点金
@@ -461,16 +459,27 @@ def solve_cached(ledger=None) -> HorizonSolution:
     return _CACHE_MEMO[fp]
 
 
-def _solved() -> HorizonSolution:
-    """惰性解一次(进程内 memo;生产路径入口)。"""
-    global _SOLVED
-    if _SOLVED is None:
-        _SOLVED = solve_cached()
-    return _SOLVED
+def _solved(strategies: list[str] | None = None) -> HorizonSolution:
+    """生产路径解(进程内指纹 memo)。
+
+    strategies(intake #6 接线,2026-08-18):持有投资策略 → ``build_ledger``
+    台账注入解(ADR-0202 effect-blind 修复 —— 息帽/免费刷/日程收入进 DP 世界
+    模型);空/None → base 解。**旧版恒 base 解** = 「采购专员/免费刷新爆发」等
+    经济卡持有与否 DP 姿态无差(67-P1c 哨兵指纹恒 'base' 的根因)。
+    同持卡组合指纹 memo → 零成本;新指纹首次向量化求解 ~0.3s(一局组合数有限)。
+    """
+    if strategies:
+        from sr_od.application.currency_war.cw_effect_ledger import (
+            build_ledger,
+            effects_from_strategies,
+        )
+        return solve_cached(build_ledger(effects_from_strategies(list(strategies))))
+    return solve_cached()
 
 
 def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: int,
-                       committed: bool = True):
+                       committed: bool = True,
+                       strategies: list[str] | None = None):
     """DP 姿态 → NodeGoal 映射(spend_mode 由姿态导出;None = 缺解回退表)。
 
     姿态语义:升级=level_up True → target_level=level+1/rush_level;D 预算>0 → d_search;
@@ -485,7 +494,7 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
         return None
     try:
         from sr_od.application.currency_war.cw_economy import NodeGoal
-        p = _solved().posture(t, gold, level, hp, 0.0)
+        p = _solved(strategies).posture(t, gold, level, hp, 0.0)
         if p.level_up and committed:
             return NodeGoal(min(10, level + 1), 'level', 'rush_level')
         if p.refresh_budget > 0:

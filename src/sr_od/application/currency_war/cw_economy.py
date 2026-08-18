@@ -120,14 +120,16 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
                 return bool(state.plane >= 2 and state.level < get_node_goal(
                     state.plane, state.round_num,
                     gold=state.gold, level=state.level, hp=state.hp,
-                    committed=not state.dual_track_phase).target_level)
+                    committed=not state.dual_track_phase,
+                    strategies=state.active_strategies or None).target_level)
     goal = _resolve_level_goal(state, target_comp)
     if goal is not None and goal.action == 'level_up':
         return True
     return state.level < get_node_goal(state.plane, state.round_num,
                                        gold=state.gold, level=state.level,
                                        hp=state.hp,
-                                       committed=not state.dual_track_phase).target_level
+                                       committed=not state.dual_track_phase,
+                                       strategies=state.active_strategies or None).target_level
 
 
 
@@ -225,7 +227,8 @@ _DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
 
 def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
-                  committed: bool = True) -> NodeGoal:
+                  committed: bool = True,
+                  strategies: list[str] | None = None) -> NodeGoal:
     """查 (plane, round) → NodeGoal(先匹配 _DEFAULT_NODE_PLAN 区间 → fallback;14 §2.0)。
 
     fallback(未匹配):target_level=_expected_level(round, plane)、spend_mode="adaptive"、
@@ -235,6 +238,8 @@ def get_node_goal(plane: int, round_num: int, *,
     → 姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现,03 号重设计);表 = 回退。
     默认 False(表生效)—— 切流待实机 A/B(V5);消费端签名零改(全关键字参)。
     ADR-0209(接线 2/6):committed=False(双轨期)→ DP 升级姿态被压(P1 攒息过渡)。
+    strategies(intake #6,2026-08-18):持有投资策略名 → DP 按台账突变重解(息帽/免费刷/
+    日程收入;空 → base 解)——「采购专员持有与否姿态无差」的 effect-blind 修复。
     """
     if HORIZON_SEAM_ACTIVE:
         _partial = (gold, level, hp)
@@ -244,7 +249,8 @@ def get_node_goal(plane: int, round_num: int, *,
                       + ('h' if hp is not None else '-'))
         if None not in (gold, level, hp):
             from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
-            _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed)   # type: ignore[arg-type]
+            _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed,
+                                       strategies=strategies)   # type: ignore[arg-type]
             if _goal is not None:
                 # 67-P1a(切流验证依赖):DP 姿态来源可见——无此行无法证明 DP 在跑(65 轮实锤)
                 log.info('[cw][goal] p%sr%s source=dp lv=%s spend=%s focus=%s',

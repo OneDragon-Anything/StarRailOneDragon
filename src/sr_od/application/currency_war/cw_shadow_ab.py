@@ -75,7 +75,12 @@ def shadow_diff(replay_dir: Path | str, limit: int = 2000) -> dict:
             table_goal = get_node_goal(st.plane, st.round_num)
         except Exception:   # noqa: BLE001
             continue
-        dp_goal = _horizon_node_goal(st.plane, st.round_num, st.gold, st.level, st.hp)
+        # intake #6:dp 臂同 live 语义(record_decision extra 里的持卡 → 台账解,
+        # 无则 base;对拍口径与生产一致)
+        _strats = list(getattr(st, 'active_strategies', []) or []) \
+            or list((row.get('extra') or {}).get('active_strategies') or [])
+        dp_goal = _horizon_node_goal(st.plane, st.round_num, st.gold, st.level, st.hp,
+                                     strategies=_strats or None)
         if dp_goal is None or table_goal is None:
             continue
         n += 1

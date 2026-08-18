@@ -265,9 +265,11 @@ def _economy_mode_for(state: GameState) -> str:
     """
     # r14 切流预备:传全状态(47 号语义,同 cw_plan L780;关时零行为变化)
     # ADR-0209 接线 2/6:dual_track_phase 压 P1 升级姿态(攒息过渡)
+    # intake #6:strategies 透传台账解(持卡 effect-aware DP)
     _spend = get_node_goal(state.plane, state.round_num,
                            gold=state.gold, level=state.level, hp=state.hp,
-                           committed=not state.dual_track_phase).spend_mode
+                           committed=not state.dual_track_phase,
+                           strategies=state.active_strategies or None).spend_mode
     if _spend in ("saving", "interest"):
         return "interest_first"
     if _spend == "level":
