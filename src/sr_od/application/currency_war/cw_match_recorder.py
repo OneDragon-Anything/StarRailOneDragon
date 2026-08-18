@@ -23,14 +23,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-from one_dragon.utils.log_utils import log
 from one_dragon.utils import cv2_utils
-
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_char_id import (
+    load_avatar_templates,
+)
 from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
@@ -38,9 +39,6 @@ from sr_od.application.currency_war.cw_identity_obs import (
 from sr_od.application.currency_war.cw_observation import (
     read_game_state,
     read_phase_round,
-)
-from sr_od.application.currency_war.currency_war_char_id import (
-    load_avatar_templates,
 )
 
 #: 关键帧门控关键词(命中任一才采集;全部是「可结构化提取」的画面锚)
@@ -87,7 +85,7 @@ def extract_frame(ctx, img, templates) -> dict:
         log.debug(f'[recorder] state 提取失败: {e}')
     try:
         front = read_deployed_chars(ctx, img, templates)
-        back = [c for c in front if c.position_pref == 'back']
+        [c for c in front if c.position_pref == 'back']
         rec['deployed'] = [
             {'name': c.char_id, 'star': c.star, 'row': c.position_pref, 'slot': c.slot}
             for c in front]
@@ -181,7 +179,7 @@ def replay_dir(dir_path: Path) -> None:
             rec['frame'] = p.name
             rec['anchor'] = anchor
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')
-    print(f'[recorder] replay done')
+    print('[recorder] replay done')
 
 
 if __name__ == '__main__':
