@@ -278,9 +278,16 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复。
     """
     chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
-    # [采集钩子·临时,采完删(用户 2026-08-15 指示)]召唤物建档:狸猫系(狸小龙/狸小虎/狸狸)/佩佩/
-    # 姵姵/Gemini 等策略召唤的单位不在立绘库 → SIFT miss,但**槽位占用(slot_occupied CV)为真** ——
-    # 「占位但认不出」= 未建档角色现身(召唤物新类 / 立绘缺角色),整屏存证离线建模板。
+    # [停机钩子·临时,建档后删(用户 2026-08-18 定调)]召唤物/特殊形态建档:
+    # 槽位占用(slot_occupied CV)真 + SIFT 认不出 = 未建档单位现身 → **停机保画面**,
+    # AI 现场点该槽 → 右侧详情面板出角色名(身份 ground truth 源)+ 外观对照 → 定名建档
+    # (portrait_plaza/<名>/raw.png 白框法裁剪 + roster 核条目)→ 删本钩子。
+    # 旧离线判读路线已尽(2026-08-18:640 样本 dHash 聚类 + VLM 判读簇0/簇1 黄泉/青雀
+    # 结论自相矛盾;overlay 帧混入 25/60 污染判定;离线裁剪分辨率不足以定名)→ 弃。
+    # 候选线(进度文件):三月七单位流变体(「本姑娘就是罗剎」罗刹形态)/飞光·映月镜流师徒/
+    # 青雀×18(摸个鱼Ⅲ)/狸猫系/佩佩/姵姵/Gemini —— 详情面板名一次定案。
+    # ⚠️ 防抖(r17-r31 教训):同内容哈希只停一次(cw_shot_unique 返 None = 已采过 → 不再停),
+    # 防同一单位整局反复停机;哨兵文件自描述。
     try:
         from sr_od.application.currency_war.cw_observe import cw_shot_unique
         _named = {c.slot for c in chars} if chars else set()
@@ -290,7 +297,23 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
             from sr_od.application.currency_war.currency_war_cv import slot_occupied
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
-                cw_shot_unique(screen, 'bench_unidentified')
+                _shot = cw_shot_unique(screen, 'summon_unknown')
+                if _shot is not None and ctx.run_context is not None:
+                    from pathlib import Path as _P
+
+                    from one_dragon.utils.log_utils import log as _log
+                    _cx = (_rect.x1 + _rect.x2) // 2
+                    _cy = (_rect.y1 + _rect.y2) // 2
+                    _P('.debug/temp/currency_war/summon_stop_hook.flag').write_text(
+                        '召唤物停机钩子(用户 2026-08-18 指示):备战栏 slot'
+                        f'{_slot} 占用但 SIFT 未识别。\n'
+                        f'处理:点槽位 ({_cx},{_cy}) → 详情面板读角色名(ground truth)'
+                        f'→ portrait_plaza/<名>/raw.png 建模板(白框裁 {(_rect.x1, _rect.y1, _rect.x2, _rect.y2)})'
+                        f'→ roster 核条目 → 删本钩子(cw_identity_obs.read_bench_chars 内 summon_unknown 段)。\n'
+                        f'截图: {_shot}', encoding='utf-8')
+                    _log.info('[cw-hook][summon] 备战 slot%s 占用未识别(截图 %s)→ 停机现场建档',
+                              _slot, _shot)
+                    ctx.run_context.stop_running()
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
