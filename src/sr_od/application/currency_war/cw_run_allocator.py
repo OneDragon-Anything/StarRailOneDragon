@@ -90,6 +90,9 @@ class ThompsonAllocator:
         """终局更新:分级奖励 × 遵从度加权 + 指数遗忘(γ 缩旧样本再加分母)。"""
         a = self.arms.get(arm_id)
         if a is None or not (0.0 <= reward <= 1.0):
+            # r68 review:拒绝必须留日志(57-A1 型断线哨兵——update 静默 no-op 时生产不可见)
+            from one_dragon.utils.log_utils import log
+            log.warning('[cw-alloc] update 拒绝:arm=%r 不在臂表 或 reward=%r 越界 [0,1]', arm_id, reward)
             return
         # 遗忘:旧后验向中性收缩(乘 γ 于伪计数规模,保持先验封顶语义)
         s = a.alpha + a.beta

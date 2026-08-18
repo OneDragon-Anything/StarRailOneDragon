@@ -645,6 +645,7 @@ class PrepDirector(SrOperation):
                 candidate_scores={},
                 eval_breakdown={'prep_step': float(self._steps)},
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
+                gold_point=False,   # r68 review:步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
             log.debug(f'[cw-director] telemetry skip: {e}')

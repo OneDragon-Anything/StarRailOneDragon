@@ -208,11 +208,15 @@ class TelemetryRecorder:
     def record_decision(self, run_id: str, difficulty: str, state: GameState,
                         target_comp: str, candidate_scores: dict[str, float],
                         eval_breakdown: dict[str, float], actions: list[Action],
-                        extra: dict[str, Any] | None = None) -> None:
+                        extra: dict[str, Any] | None = None,
+                        gold_point: bool = True) -> None:
         """记一条决策迹(decisions.jsonl)。target_comp='' 表示 reactive 无 target。
 
         extra(strategy/05 live 观测):dp_posture/active_strategies/ledger_fingerprint
         等扩容字段(便捷函数自动填;直接调方可传 None 走旧 schema)。
+        gold_point(r68 review):是否作为 ``gold_trajectory`` 采样点 —— 语义是**每回合**
+        gold(经济复盘),每回合一采样;PrepDirector 逐步记录(_record_step)传 False
+        防每回合混入 N 条步进值拉歪轨迹。
         """
         trace = DecisionTrace(
             ts=datetime.now().isoformat(timespec="seconds"),
@@ -229,7 +233,7 @@ class TelemetryRecorder:
             trace.active_strategies = list(extra.get('active_strategies', []))
             trace.dp_posture = dict(extra.get('dp_posture', {}))
             trace.ledger_fingerprint = str(extra.get('ledger_fingerprint', ''))
-        if self.enabled:
+        if self.enabled and gold_point:
             self._gold_trajectory.setdefault(run_id, []).append(state.gold)
             if target_comp:
                 comms = self._comms.setdefault(run_id, [])
@@ -303,7 +307,7 @@ class TelemetryRecorder:
                     'level': getattr(state, 'level', None),
                     'plane': getattr(state, 'plane', None),
                     'round_num': getattr(state, 'round_num', None),
-                    'bench_count': len(getattr(state, 'tracked_bench', []) or [])}
+                    'bench_count': len(getattr(state, 'bench', []) or [])}   # r68 review:旧 tracked_bench 字段 GameState 没有(恒 0)
         rec = ExogenousEvent(ts=datetime.now().isoformat(timespec="seconds"),
                              run_id=run_id, round_num=round_num,
                              kind=kind, detail=detail, state_snapshot=snap)
@@ -343,11 +347,12 @@ def current_run_id() -> str:
 
 def record_decision(state: GameState, target_comp: str,
                     candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
-                    actions: list[Action]) -> None:
+                    actions: list[Action], gold_point: bool = True) -> None:
     """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。
 
     live 观测扩容(strategy/05):自动附影子 DP 姿态(12 号分歧频率数据源)与
     持卡/台账指纹(效果感知解回放对齐)——查表 ~2µs,零成本。
+    gold_point:gold_trajectory 采样点开关(每回合一采样;步进记录传 False)。
     """
     if not _CURRENT_RUN_ID:
         return
@@ -379,7 +384,7 @@ def record_decision(state: GameState, target_comp: str,
         pass
     get_recorder().record_decision(_CURRENT_RUN_ID, _CURRENT_DIFFICULTY, state,
                                    target_comp, candidate_scores, eval_breakdown, actions,
-                                   extra=extra)
+                                   extra=extra, gold_point=gold_point)
 
 
 def record_outcome(outcome) -> None:
