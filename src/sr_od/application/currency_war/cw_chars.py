@@ -164,7 +164,13 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("景元", 5, "front", "输出", "仙舟", "群攻", source="6137"),  # trait 对齐 plaza:-能量(2026-08-15)
     _ch("托帕&账账", 5, "back", "输出、辅助", "公司", "追击", source="6136"),
     _ch("瓦尔特", 5, "front", "输出、辅助", "列车同行、星间旅人", "减益", source="6135"),
-    _ch("罗刹", 4, "back", "治疗", "星间旅人", "治疗", source="6252"),  # 费用勘误5→4+站位对齐 plaza Back(2026-08-15)
+    _ch("罗刹", 4, "back", "治疗", "星间旅人", "治疗", source="6252"),  # 费用勘误5→4+站位对齐 plaza Back(2028-08-15)
+    # —— 特殊召唤单位(投资策略赠送;不可拖动/不可卖,固定占后排)——
+    # r75 狸猫局建档:投资策略「龙虎兄弟狸」送双狸猫(弟弟狸小虎=蓝/哥哥狸小龙=红,同造型
+    # 异色 → identify_character 色相仲裁区分,_RED_HUE_PAIRS)。cost=0(非购买单位);
+    # 无阵营无流派(纯增益挂件,效果=【随便骰子】)。
+    _ch("狸小虎", 0, "back", "", "", "", source="live:龙虎兄弟狸"),
+    _ch("狸小龙", 0, "back", "", "", "", source="live:龙虎兄弟狸"),
 ]}
 
 # 规范名集合(从 CHARACTERS 派生;供 COMP_LIBRARY.core_chars / config.character_priority 校验)
