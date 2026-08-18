@@ -259,15 +259,23 @@ class TelemetryRecorder:
 
     def record_run_summary(self, run_id: str, result: str, plane_reached: int,
                            rounds_survived: int, final_hp: int,
-                           pivot_count: int = 0, notes: str = "") -> None:
-        """记一条局终 summary(runs.jsonl)。comms/gold 轨迹从内存累积取。"""
+                           pivot_count: int | None = None, notes: str = "") -> None:
+        """记一条局终 summary(runs.jsonl)。comms/gold 轨迹从内存累积取。
+
+        pivot_count=None(r68 review)→ 从 ``_comms`` target 序列推导(转移数 = len−1;
+        初选不算 pivot,含信号1/3/定型/drought 的一切换线)。旧默认 0 恒假 —— 实测一局 6 换
+        而 pivot_count=0,粘性/审判层对 churn 完全失明。
+        """
+        comms = list(self._comms.get(run_id, []))
+        if pivot_count is None:
+            pivot_count = max(0, len(comms) - 1)
         summary = RunSummary(
             ts=datetime.now().isoformat(timespec="seconds"),
             run_id=run_id,
             difficulty=self._difficulty.get(run_id, ""),
             result=result, plane_reached=plane_reached, rounds_survived=rounds_survived,
             final_hp=final_hp,
-            comps_committed=list(self._comms.get(run_id, [])),
+            comps_committed=comms,
             pivot_count=pivot_count,
             gold_trajectory=list(self._gold_trajectory.get(run_id, [])),
             notes=notes,

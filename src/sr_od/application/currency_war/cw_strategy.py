@@ -107,6 +107,25 @@ class CwStrategy(ABC):
         """战略层:选/转型 target_comp。框架在每个备战回合 ``decide_prep`` **之前**调一次。
         实现写 ``session.target_comp``(首轮选;其后按信号 pivot;无强信号保持)。"""
 
+
+def gated_hp(current_hp: int, session: StrategySession, now_t: int | None) -> int:
+    """结算 HP 新鲜度门(r68 review,单源 helper):**紧邻上一节点**的结算真值才可信覆盖现读。
+
+    - 新鲜(last_hp_t 与 now_t 差 1)→ 用 ``session.last_hp``(结算屏「小队生命值NN」是权威源;
+      prep 现读在 shop 开态常读到 100 兜底)。
+    - 陈旧(低 conf 结算轮残留/隔多轮)→ 用现读 ``current_hp``(防陈 hp 冻结毒化每回合)。
+
+    消费点:shop.py(buy 前)+ prep_director(环入口 update_target 前)——**两处必须同门**,
+    否则 director 先用假 hp(100 兜底)做 pivot 判定、shop 再用真 hp 反向 pivot,同节点两次
+    方向相反的换线(r68 实证:hp=100 信号1转红A → 10s 后 hp=26 信号3转DOT队)。
+    """
+    last_hp = getattr(session, 'last_hp', None)
+    last_t = getattr(session, 'last_hp_t', None)
+    if (last_hp is not None and now_t is not None
+            and last_t is not None and now_t - last_t == 1):
+        return last_hp
+    return current_hp
+
     @abstractmethod
     def decide_prep(self, state: GameState, session: StrategySession,
                     config: CurrencyWarConfig) -> list[Action]:

@@ -393,6 +393,15 @@ class PrepDirector(SrOperation):
             return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
         # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
+        # ⚖️ r68 review:**入口先过 HP 新鲜度门再调**(cw_strategy.gated_hp,与 shop.py 同门)——
+        # 旧版 obs.state.hp 常是 shop 开态 100 兜底 → maybe_pivot 在假 hp 上做信号1涌现判定,
+        # 10s 后 shop 侧真 hp 又触发信号3保命反向换线(r68 实证:hp=100 转红A → hp=26 转DOT队,
+        # 同节点两次方向相反 pivot = comp churn 主燃料)。
+        if obs.state is not None:
+            from sr_od.application.currency_war.cw_strategy import gated_hp
+            _os = obs.state
+            _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
+            _os.hp = gated_hp(_os.hp, session, _os_t)
         try:
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策

@@ -1366,7 +1366,13 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     if state.hp < _pivot_hp:
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。
-        _plane_ok = [c for c in candidates if state.plane not in c.weak_planes]
+        # r68(下一位面预转):过滤扩到 next_plane —— P1 末段保命转线若转进「下位面弱」的
+        # comp(如 DOT队 weak_planes=(2,)),等于把死期从本节点推迟到 P2 首战(r68 实证:
+        # r8/r9 信号3两次转 DOT队 → hp1 进 P2 即死)。当前+下一位面都 OK 才是合格保命落点;
+        # 全滤光仍回退原池(有落点好过无)。
+        _next_plane = min(state.plane + 1, 3)
+        _plane_ok = [c for c in candidates
+                     if state.plane not in c.weak_planes and _next_plane not in c.weak_planes]
         _pool = _plane_ok or candidates
         easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
         with_progress = [c for c in easy if form_progress(c, state) > 0]

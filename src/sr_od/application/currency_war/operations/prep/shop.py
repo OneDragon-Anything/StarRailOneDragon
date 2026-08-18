@@ -161,10 +161,11 @@ class BuyShopCards(SrOperation):
         match = self.ctx.cw_match
         # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
         # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
-        # ⚖️ r68 review 新鲜度门:结算 hp 只在「紧邻上一节点」(last_hp_t 与当前节点差 1)才可覆盖 ——
-        # 低 conf 结算轮 last_hp 残留陈值,无条件覆盖 = 陈 hp 冻结毒化每回合 prep(保血/转型永不触发,
-        # P1 boss 赢→P2 秒死 ×3 的观测链根因)。陈旧 → 用 prep 现读(含上方 100 复读防线)。
+        # ⚖️ r68 review 新鲜度门(单源 helper cw_strategy.gated_hp;director 环入口同门):
+        # 结算 hp 只在「紧邻上一节点」才可覆盖 —— 低 conf 结算轮 last_hp 残留陈值,无条件覆盖 =
+        # 陈 hp 冻结毒化每回合 prep(保血/转型永不触发,P1 boss 赢→P2 秒死 ×3 的观测链根因)。
         from sr_od.application.currency_war.cw_observation import read_phase_round
+        from sr_od.application.currency_war.cw_strategy import gated_hp
         _pr = read_phase_round(self.ctx, screen)
         _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
         _hp_t = getattr(match.session, 'last_hp_t', None) if match is not None else None
@@ -179,7 +180,7 @@ class BuyShopCards(SrOperation):
                              verdict='采新-结算真值覆盖(prep读≠结算,留证测毒化率)',
                              source='prep_read_hp_vs_settlement')
             log.info(f'[cw] hp 用结算屏真值 {match.session.last_hp}(prep read_hp={hp_value} 不可靠,覆盖)')
-            hp_value = match.session.last_hp
+            hp_value = gated_hp(hp_value, match.session, _now_t)   # 单源门(此处恒取结算值;陈旧分支在 elif)
         elif match is not None and match.session.last_hp is not None:
             log.info('[cw] hp 结算值陈久跳过覆盖(last_hp=%s t=%s, now t=%s)→ 用 prep 现读 %s(防冻结毒化)',
                      match.session.last_hp, _hp_t, _now_t, hp_value)
