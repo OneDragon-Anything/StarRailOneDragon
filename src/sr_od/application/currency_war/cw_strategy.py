@@ -199,6 +199,7 @@ class StrategySession:
     pivot_cooldown_until: int = 0                      # r7 pivot 冷却(转线后 N 轮封信号 1/2;保命豁免在调用侧)
     drought_excluded: list[str] = field(default_factory=list)   # r20 极端 drought 弃线名单(r7 review:单槽会被第二条死线覆盖→振荡;死线不复活,局级=session 新建)
     commit_signals: object = None   # ADR-0209 CommitSignals(定型信号累积器;惰性建——default_factory 会引环形导入,update_target 首调时建)
+    stash_comp: object = None       # ADR-0209 双轨期信号领先线 comp(囤牌方向;update_target 每回合刷新)
     last_candidate_scores: dict[str, float] = field(default_factory=dict)   # 选线轮的 top-3 实际排序分(r6 遥测补)
     last_candidate_scores_round: int = -1              # 分数轮次戳(shop 侧判陈旧清空)
     _supply_refresh_used: bool = False                 # 补给刷新 1 次已用(r2#2 跨实例)

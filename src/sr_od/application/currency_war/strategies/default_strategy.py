@@ -108,6 +108,13 @@ class DefaultCwStrategy(CwStrategy):
                       or past_commit_deadline(state.plane, state.round_num)
                       or session.commit_signals.ready())
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
+        # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)
+        session.stash_comp = None
+        if state.dual_track_phase:
+            _lead = session.commit_signals.leader()
+            if _lead is not None:
+                session.stash_comp = next(
+                    (c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None)
         # 简报词缀注入:read_game_state 不读简报(已过),从 session.briefing_affixes 设 state.enemy_affixes,
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:
@@ -225,10 +232,12 @@ class DefaultCwStrategy(CwStrategy):
     def decide_prep(self, state: GameState, session: StrategySession, config) -> list[Action]:
         """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。
         ⚠️ rng 由现「每调用新建 random.Random()」合并为 ``session.rng``(单一可种子源,§11.4);
-        未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。"""
+        未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。
+        ADR-0209(接线 3/6):stash_comp=信号领先线(双轨囤牌方向)传入。"""
         return cw_plan.plan(state, config, config.faction_priority,
-                                 rng=session.rng, target_comp=session.target_comp,
-                                 reactive=(session.target_comp is None))
+                            rng=session.rng, target_comp=session.target_comp,
+                            reactive=(session.target_comp is None),
+                            stash_comp=getattr(session, 'stash_comp', None))
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:

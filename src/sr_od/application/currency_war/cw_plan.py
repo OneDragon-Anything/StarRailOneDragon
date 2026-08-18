@@ -368,7 +368,8 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
 def plan(state: GameState, config, faction_priority: list[str],
          rng: random.Random | None = None,
          target_comp: Comp | None = None,
-         reactive: bool = False) -> list[Action]:
+         reactive: bool = False,
+         stash_comp: Comp | None = None) -> list[Action]:
     """一回合动作计划:硬门(必做)+ 贪心改进(买/deploy/升/卖/**D 牌蒙特卡洛**)。
 
     config: CurrencyWarConfig。rng: 蒙特卡洛 D 牌用(默认新建;测试传 seeded 保确定)。
@@ -377,6 +378,8 @@ def plan(state: GameState, config, faction_priority: list[str],
         (向后兼容 / 测试 / reactive 退化)。硬门:bench-full 必破、gold≥0、level≤10。
     reactive: emergent —— True=授权 target=None(上层 update_target 阵营 count≥2 前不选 target),
         plan 不内部 select_comp(纯 L1 集中化驱动 buy/deploy);False(默认)= 向后兼容(None→内部 select_comp)。
+    stash_comp: ADR-0209 双轨期信号领先线(囤牌方向;None=未起)。双轨期放行
+        过渡包牌+此线的 core/阵营牌(囤 bench),其他散牌不买。
     """
     rng = rng or random.Random()
     character_priority = getattr(config, 'character_priority', [])
@@ -432,7 +435,8 @@ def plan(state: GameState, config, faction_priority: list[str],
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
                                       refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur),
                                                                   target_comp=target, config=config) - refresh_used,
-                                      target_comp=target, rf_used=refresh_used)
+                                      target_comp=target, rf_used=refresh_used,
+                                      stash_comp=stash_comp)
         if not step:
             break
         actions.extend(step)
@@ -492,7 +496,7 @@ def _sell_offline_for_focus(state: GameState, actions: list,
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
     rng: random.Random, refresh_budget: int = 0, target_comp: Comp | None = None,
-    rf_used: int = 0,
+    rf_used: int = 0, stash_comp: Comp | None = None,
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
@@ -501,6 +505,7 @@ def _best_improving_action(
     refresh_budget: 本回合剩余可刷新次数(≤0 则不再生成 RefreshShop;防无限刷,review r5)。
     rf_used: 本回合已刷新次数(ADR-0131;决定第 next 次刷新花金 —— 策略免费额度内 = 0)。
     target_comp: 战略层目标阵容(A2);传给 evaluate,使动作导向 target 成型。None=reactive。
+    stash_comp: ADR-0209 双轨期信号领先线(囤牌放行面;None=非双轨/信号未起)。
     """
     _rf_used = rf_used
     character_priority = getattr(config, 'character_priority', [])
@@ -558,10 +563,25 @@ def _best_improving_action(
         return sum(1 for b in coll if b.char_id == name and b.star == 1)
     def _copies(name: str) -> int:
         return _star1(state.deployed, name) + _star1(state.bench, name)
+    # ADR-0209(接线 3/6):双轨买牌——双轨期(dual_track_phase)放行面收窄为:
+    # ①过渡包牌(TRANSITION_PACK 在册:上场保血);②信号领先线的 core/阵营牌
+    # (stash_comp 传入,囤 bench 不上场,1/2费买卖净 0 兼操纵牌池);③其他 skip(防散板)。
+    # 非双轨期不走此门(原逻辑)。stash_comp=None = 信号未起 → 只买过渡包。
+    _dual = state.dual_track_phase
+    if _dual:
+        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
+        if _dual and card.name:
+            _ent = TRANSITION_PACK.get(card.name)
+            _leader_ok = (stash_comp is not None
+                          and _card_hits_target(card.name, card.faction, stash_comp))
+            _target_ok = (target_comp is not None
+                          and _card_hits_target(card.name, card.faction, target_comp))
+            if _ent is None and not _leader_ok and not _target_ok:
+                continue   # 双轨期:非过渡包/非领先线/非现 target → 散牌不买
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
         if (card.name and card.name in _deployed_name_counts
