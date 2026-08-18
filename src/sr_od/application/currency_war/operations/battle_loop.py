@@ -256,6 +256,16 @@ class CurrencyWarRunLoop(SrOperation):
             _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
                                       comp_tag=_comp_tag, node_type='boss' if _is_boss else '普通战斗')
+            # killed 文本兜底(2026-08-18 用户语义:「扣血=战斗失败」):输轮结算屏形态 =
+            # 「挑战结束+继续挑战」(无「挑战成功」/无带符号进度,文本规则返 None)→ 用
+            # **上一轮结算真值 hp** 对比:hp 降 = 输,不降/回升 = 赢(赢轮 +2 长线作战回血
+            # 实证 80→82→84)。last_hp 由 on_round_end 结算真值链维护,此处读 = 上轮值。
+            if _obs.killed is None:
+                _prev_hp = getattr(_session, 'last_hp', None)
+                if _prev_hp is not None:
+                    _obs.killed = _obs.hp_after >= _prev_hp
+                    log.info('[cw-loop] killed 兜底(hp 对比):上轮 %s → 本轮 %s → %s',
+                             _prev_hp, _obs.hp_after, '赢' if _obs.killed else '输')
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
