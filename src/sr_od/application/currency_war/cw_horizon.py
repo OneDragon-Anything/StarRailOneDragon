@@ -469,12 +469,16 @@ def _solved() -> HorizonSolution:
     return _SOLVED
 
 
-def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: int):
+def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: int,
+                       committed: bool = True):
     """DP 姿态 → NodeGoal 映射(spend_mode 由姿态导出;None = 缺解回退表)。
 
     姿态语义:升级=level_up True → target_level=level+1/rush_level;D 预算>0 → d_search;
     存息 → interest(spend_mode);两者皆有 → level(升级优先,D 预算进 refresh_budget 语义,
     _refresh_cap 另有其表,此处 action_focus 表意)。
+    ADR-0209(接线 2/6):双轨期(P1 未定型,committed=False)压制 rush_level——
+    P1 玩法 = 过渡包 5 人口攒 50 息(plaza Early 79%=5 人),等级在定型时才拉;
+    DP 的升级姿态推迟到定型后生效(interest/hold 仍可用,保底攒息)。
     """
     t = (min(plane, 3) - 1) * NODES_PER_PLANE + min(round_num, NODES_PER_PLANE) - 1
     if not (0 <= t < TOTAL_NODES):
@@ -482,7 +486,7 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
     try:
         from sr_od.application.currency_war.cw_economy import NodeGoal
         p = _solved().posture(t, gold, level, hp, 0.0)
-        if p.level_up:
+        if p.level_up and committed:
             return NodeGoal(min(10, level + 1), 'level', 'rush_level')
         if p.refresh_budget > 0:
             return NodeGoal(level, 'adaptive', 'd_search')

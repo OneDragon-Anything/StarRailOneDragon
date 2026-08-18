@@ -101,6 +101,13 @@ class DefaultCwStrategy(CwStrategy):
         if session.commit_signals is None:
             from sr_od.application.currency_war.cw_transition import CommitSignals
             session.commit_signals = CommitSignals()
+        # ADR-0209(接线 2/6):双轨期判定——P1 且最终线未定型(信号未 ready 且未过
+        # deadline)。committed=False 时 get_node_goal 压 DP 升级姿态(P1 攒息过渡)。
+        from sr_od.application.currency_war.cw_transition import past_commit_deadline
+        _committed = (state.plane >= 2
+                      or past_commit_deadline(state.plane, state.round_num)
+                      or session.commit_signals.ready())
+        state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
         # 简报词缀注入:read_game_state 不读简报(已过),从 session.briefing_affixes 设 state.enemy_affixes,
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:

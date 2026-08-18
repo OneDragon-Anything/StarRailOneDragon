@@ -821,9 +821,11 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
     # _economy_mode_for 调经济评分相对权重(level→rush_level / allin→adaptive neutral,economy-low 由
     # _phase_weights plane3 we=0.3 处理)—— 语义不同,勿强行统一(审计 round-17 borderline#2)。
     # r14 切流预备:传全状态(47 号语义——HORIZON_SEAM_ACTIVE 开启时 DP 姿态生效;
-    # 关时 gold/level/hp 参数被忽略走表,行为零变化)。
+    # 关时 gold/level/hp 参数被忽略走表,行为零变化)。ADR-0209 接线 2/6:
+    # dual_track_phase=True(P1 双轨期)压 DP 升级姿态 → 攒息过渡。
     _spend = get_node_goal(state.plane, state.round_num,
-                           gold=state.gold, level=state.level, hp=state.hp).spend_mode
+                           gold=state.gold, level=state.level, hp=state.hp,
+                           committed=not state.dual_track_phase).spend_mode
     if _spend in ("allin", "level"):
         return
     cur = state
