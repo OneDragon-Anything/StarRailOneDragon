@@ -322,7 +322,7 @@ COMP_LIBRARY: list[Comp] = [
         # 装备 top:风暴潮352/电锯190/以牙还牙甲116/冷笑话56 → 双风暴+电锯+以牙还牙(跨分支覆盖)。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
-        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯", "以牙还牙甲"],
+        key_equips=["火力风暴潮", "高周波电锯", "以牙还牙甲", "冷笑话引擎"],
         countered_by_bosses=[], mechanic_attributes=["治疗护盾"],
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["三月七", "符玄", "艾丝妲"],
         typical_form_round=5,
@@ -352,7 +352,7 @@ COMP_LIBRARY: list[Comp] = [
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
-        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯", "动能激发剑"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
+        key_equips=["火力风暴潮", "高周波电锯", "动能激发剑", "碎星斩舰刀"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
         mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
         shared_chars=["远坂凛", "瓦尔特"], transition_chars=["符玄", "知更鸟", "花火"],
         typical_form_round=6,
@@ -371,7 +371,7 @@ COMP_LIBRARY: list[Comp] = [
         # (29 篇里最多 5 篇可被既有 comp 覆盖,评审🟢1 点名)。千冶·刃(2费) carry,瓦尔特 24/29+卡芙卡 16
         # +缇宝 15+符玄 14 常驻减益辅助群;皮靴 30 断层第一(carry 吃鞋)+风暴潮 14+螺旋桨 13;
         # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
-        key_equips=["反重力皮靴", "反重力皮靴", "火力风暴潮", "光速螺旋桨"],
+        key_equips=["反重力皮靴", "火力风暴潮", "光速螺旋桨", "反卫星狙击枪"],
         mechanic_attributes=["减益叠加"], shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
         transition_chars=["椒丘", "风堇", "开拓者·记忆"], typical_form_round=6,
         flex_factions=["燃血", "量子同频", "列车同行", "治疗", "持续伤害"],
@@ -386,11 +386,11 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光"],
+        name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
         form_tiers={"欢愉": 3, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
-        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],
+        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],
         mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "火花"],
         char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
         transition_chars=["银狼LV.999", "花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
@@ -406,12 +406,12 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="希儿量子", factions=["量子同频", "贝洛伯格"], core_chars=["希儿", "瓦尔特", "知更鸟", "布洛妮娅"],
+        name="希儿量子", factions=["量子同频", "贝洛伯格"], core_chars=["希儿", "瓦尔特", "知更鸟", "布洛妮娅", "花火", "符玄", "缇宝"],
         form_tiers={"量子同频": 4, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="高",
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
-        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
+        key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权", "战场进化手册"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
         countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
         mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
         transition_chars=["希儿", "刃", "符玄"], typical_form_round=6,
@@ -426,14 +426,14 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "千冶·刃"],
+        name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "千冶·刃", "瓦尔特"],
         form_tiers={"巡海游侠": 3, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
         # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
         # ADR-0152(plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
         # 改「千冶·刃」(V4.4 实战常驻是千冶·刃,非本体刃);装备 top:电锯56/风暴潮28/光速螺旋桨26/永动机24。
         flex_factions=["击破", "治疗", "追击", "量子同频"],
         plaza_carry="黄泉",
-        key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨"],
+        key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨", "永动机"],
         countered_by_bosses=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
         mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
@@ -445,14 +445,14 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="巡海击破", factions=["击破", "巡海游侠"], core_chars=["不死途", "波提欧", "乱破"],
+        name="巡海击破", factions=["击破", "巡海游侠"], core_chars=["不死途", "波提欧", "乱破", "忘归人", "大丽花", "灵砂", "阮·梅"],
         form_tiers={"击破": 6, "巡海游侠": 4}, strength="A", form_difficulty="hard", early_power="中",
         # ↺ 推翻「击破流萤」(ADR-0152,plaza 784 篇):V4.4 击破代表已换代 —— 流萤任一阶段在场仅 29 篇
         # (carry 聚类 n=8,7/8 击破形)。**锚=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         mechanic_attributes=["击破"], shared_chars=["黄泉", "流萤", "忘归人"],
-        key_equips=["虫洞掘进钻头", "反重力皮靴", "光速螺旋桨"],   # 评审🟡7:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
+        key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴", "光速螺旋桨·特权"],   # 评审🟡7:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
         transition_chars=["赛飞儿", "灵砂", "忘归人"], typical_form_round=7,
         flex_factions=["减益", "盛会之星"],
         plaza_carry="波提欧",
@@ -464,12 +464,12 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="龙丹战技点", factions=["战技点", "列车同行"], core_chars=["丹恒·饮月", "远坂凛", "瓦尔特", "花火"],
+        name="龙丹战技点", factions=["战技点", "列车同行"], core_chars=["丹恒·饮月", "远坂凛", "瓦尔特", "花火", "刻律德菈"],
         form_tiers={"战技点": 4, "列车同行": 4}, strength="A", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716 直读纠正):4战技点+4列车(周日开)
         # 凛(远坂凛)V4.4 新:宝石叠99层→第二魔法实验拐198%爆伤(+默认70%=268%);饮月双电锯+风暴潮
         # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
-        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"], mechanic_attributes=["战技点依赖"],
+        key_equips=["高周波电锯", "动能激发剑", "火力风暴潮", "斩首行动"], mechanic_attributes=["战技点依赖"],
         shared_chars=["远坂凛", "瓦尔特", "花火"], transition_chars=["花火", "风堇", "姬子·启行"],
         typical_form_round=7,
         flex_factions=["量子同频", "盛会之星"],
@@ -483,7 +483,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="双王圣杯", factions=["命运圣杯", "能量"], core_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
+        name="双王圣杯", factions=["命运圣杯", "能量"], core_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄", "开拓者·记忆", "藿藿"],
         form_tiers={"命运圣杯": 3, "能量": 5}, strength="A", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):双王 = A 级;攻略(76985789 直读纠正调研误认):双王=闪闪(吉尔伽美什)+Saber(Fate圣杯联动),
         # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
@@ -518,7 +518,7 @@ COMP_LIBRARY: list[Comp] = [
         # ADR-0152 评审🔴(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
-        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴"],   # 花火1风暴潮+暴击刀;爻光三鞋
+        key_equips=["火力风暴潮", "高周波电锯", "碎星斩舰刀", "动能激发剑"],   # 花火1风暴潮+暴击刀;爻光三鞋
         countered_by_bosses=[], mechanic_attributes=["幸运一击"],
         shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
         typical_form_round=7,
@@ -576,14 +576,14 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="反甲白厄", factions=[], core_chars=["白厄"],
+        name="反甲白厄", factions=[], core_chars=["白厄", "三月七", "姬子·启行"],
         form_tiers={}, strength="A", form_difficulty="hard", early_power="低",
         # 白厄无阵营(cw_chars:104 factions=""),独立羁绊「救世主」(获所有前台非独立羁绊效果)。
         # 反甲流靠白厄单核 + 以牙还牙甲×3 受击反伤,**不靠阵营羁绊成型** → factions/form_tiers 空。
         # (原 ["毁灭"]/{"毁灭":4} 错:毁灭是命途(destruction)非阵营,form_progress 恒 0 → 死 comp 污染候选池。)
         # comp 靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
         # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),select_comp 候选但 progress 低。
-        key_equips=["以牙还牙甲", "以牙还牙甲", "以牙还牙甲"],   # meta:反甲流需 3 以牙还牙甲
+        key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
         countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
         mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
         transition_chars=["白厄", "符玄", "三月七"], typical_form_round=7,
@@ -600,12 +600,12 @@ COMP_LIBRARY: list[Comp] = [
     ),
     # ===== B 级(强度一般,V4.4 合集 76807134)=====
     Comp(
-        name="狼尊欢愉", factions=["星核猎手", "欢愉"], core_chars=["银狼LV.999", "爻光", "千冶·刃"],
+        name="狼尊欢愉", factions=["星核猎手", "欢愉"], core_chars=["银狼LV.999", "爻光", "千冶·刃", "开拓者·欢愉", "火花", "绯英"],
         form_tiers={"欢愉": 5, "星核猎手": 2}, strength="B", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # ADR-0152 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
-        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴"], mechanic_attributes=["欢愉叠层"],
+        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层"],
         shared_chars=["爻光", "花火"], transition_chars=["爻光", "花火", "符玄"], typical_form_round=5,
         flex_factions=["星间旅人", "战技点", "列车同行"],
         plaza_carry="银狼LV.999",
@@ -622,7 +622,7 @@ COMP_LIBRARY: list[Comp] = [
         # ADR-0152(plaza 8 篇 carry):装备 反重力皮靴×16 断层第一(「有鞋跟本输不了」);阿格莱雅 3星率
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(评审🟡:升 A 依据不足,勿按万敌标准拔高)。
-        key_equips=["反重力皮靴", "反重力皮靴"],
+        key_equips=["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨", "火力风暴潮"],
         countered_by_bosses=["电视机"], mechanic_attributes=["速度依赖"],
         shared_chars=["风堇", "昔涟", "银狼"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"],
         typical_form_round=8,
@@ -659,7 +659,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "千冶·刃", "长夜月"],
+        name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "千冶·刃", "长夜月", "刻律德菈", "缇宝"],
         form_tiers={"夜之半神": 2, "燃血": 2}, strength="A", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         # ↺ ADR-0152(plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
@@ -669,7 +669,7 @@ COMP_LIBRARY: list[Comp] = [
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
         char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
-        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
+        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲", "长夜月"],
         typical_form_round=5,
@@ -686,7 +686,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="DOT队", factions=["持续伤害", "星核猎手"], core_chars=["卡芙卡", "黑天鹅", "千冶·刃", "海瑟音"],
+        name="DOT队", factions=["持续伤害", "星核猎手"], core_chars=["卡芙卡", "黑天鹅", "千冶·刃", "海瑟音", "符玄"],
         form_tiers={"持续伤害": 4, "星核猎手": 2}, strength="B", form_difficulty="easy", early_power="低",
         # V4.4 评级(76807134):dot = B 级;攻略(77026641 直读):V4.4 刃加入→卡芙卡回归(刃比普通狼频繁触星核猎手额外战技)
         # 卡芙卡3风暴潮(dot不吃幸运)+黑天鹅(鹅,2dot)+刃(2星核猎手)+刻律(复制战技连动)+鸟;需自己卡芙卡
@@ -694,7 +694,7 @@ COMP_LIBRARY: list[Comp] = [
         weak_planes=(2,),   # r11 #5:攻略实证 P2 被抽陀螺(难度攻略:47-48)——保命 pivot P2 不选它
         # ADR-0152(plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
         # (core 的「刃」改「千冶·刃」+补海瑟音);装备 风暴潮19/反重力皮靴8。
-        key_equips=["火力风暴潮", "火力风暴潮", "反重力皮靴"],
+        key_equips=["火力风暴潮", "反重力皮靴", "蓄能帆", "光速螺旋桨"],
         mechanic_attributes=["DoT"],
         shared_chars=["桑博", "千冶·刃", "黑天鹅"],
         transition_chars=["桑博", "卡芙卡", "艾丝妲"], typical_form_round=4,
@@ -711,10 +711,10 @@ COMP_LIBRARY: list[Comp] = [
         # ADR-0152 新增(plaza 补缺):景元仙舟族 —— 景元 carry 16 + 彦卿 14 篇。
         # **augment 强联动**:飞光·映月/传剑(各 8/5 篇,AUGMENT_COMP_AFFINITY 硬绑)—— 彦卿+景元师徒,
         # 拿到飞光 = 1费特殊景元+镜流强化;升星次序经济:「先 3星景元,否则镜流 3星后景元变 5费难刷」。
-        name="景元仙舟", factions=["仙舟"], core_chars=["景元", "镜流", "彦卿"],
+        name="景元仙舟", factions=["仙舟"], core_chars=["景元", "镜流", "彦卿", "符玄"],
         form_tiers={"仙舟": 5}, strength="B", form_difficulty="medium", early_power="中",
         # plaza:景元 3星率 0.69(5费);7级搜牌 7/16;装备 电锯13/风暴潮12/皮靴6;常驻 符玄13/爻光11/藿藿11
-        key_equips=["高周波电锯", "火力风暴潮"],
+        key_equips=["高周波电锯", "火力风暴潮", "反重力皮靴", "电光履"],
         mechanic_attributes=["召唤追击"],   # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊)
         shared_chars=["符玄", "忘归人", "藿藿"], transition_chars=["藿藿", "丹恒·饮月", "符玄"],
         typical_form_round=7,
