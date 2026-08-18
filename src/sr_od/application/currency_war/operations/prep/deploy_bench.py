@@ -70,6 +70,19 @@ class DeployBench(SrOperation):
         pts.sort(key=lambda t: t[0])
         return [p for _, p in pts]
 
+    def _back_row_centers_by_cap(self) -> list[Point]:
+        """r77e:后排槽位按 deploy_cap 选档布局(狸猫局 8 槽错位根修)。
+
+        read_deploy_cap OCR 到几槽就用「后排N槽-」档(经 cw_back_layout 路由,与
+        read_deployed_chars 同源);读不到/无档 → 退基线「后排-」(旧行为)。
+        """
+        from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
+        from sr_od.application.currency_war.cw_observation import read_deploy_cap
+        cap = read_deploy_cap(self.ctx, self.last_screenshot)
+        if cap and cap in _LAYOUT_PREFIX:
+            return self._row_centers(_LAYOUT_PREFIX[cap])
+        return self._row_centers('后排')
+
     @operation_node(name='部署备战栏角色', is_start_node=True)
     def deploy(self) -> OperationRoundResult:
         si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
@@ -87,7 +100,11 @@ class DeployBench(SrOperation):
 
         bench = self._row_centers('备战栏')
         front = self._row_centers('前排')
-        back = self._row_centers('后排')
+        # r77e 审计 BUG-4b/1c:后排槽位必须按 **cap 档布局**取(与 read_deployed_chars
+        # 同源)——狸猫局 cap=8 时基线 6 槽坐标错位(编号↔坐标两套参照系):_deploy_deterministic
+        # 漏计固定单位(cap 假未满白拖)+ _sell_offtarget_deployed 用 8 槽编号索引 6 槽表
+        # → 卖错邻槽(把 target 卖掉,成型度崩)。统一走 cw_back_layout 选档。
+        back = self._back_row_centers_by_cap()
         if len(bench) == 0:
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
             return self.round_success(DeployBench.STATUS_NO_BENCH)
@@ -433,6 +450,12 @@ class DeployBench(SrOperation):
                 continue
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
+                continue
+            # r77e 审计 BUG-1b:固定召唤单位(狸小虎/狸小龙/佩佩类,cost=0 不可购买语义)
+            # **不可拖动/不可卖** —— faction 空 → 不命中 target 分支,会被判 off-target
+            # 进卖路径(游戏拒 → 3 次重试 ~6s/只白烧;选中态光效还可能假成功虚增 sold)。
+            # cost==0 = roster 特殊召唤单位段标记,continue 保平安。
+            if ch.cost == 0:
                 continue
             bonds = set(ch.factions) | set(ch.flows)
             if bonds & target_factions:
