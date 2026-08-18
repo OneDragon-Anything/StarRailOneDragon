@@ -108,6 +108,12 @@ def identify_character(
     :param min_inliers: 最低内点数,低于此判 unknown(配饰角色/非角色会落这)。
     :param ambiguity_ratio: best 需 ≥ ratio × second 才算非歧义。
     :return: ``(char_id or None, best_inliers)``。None = 未知 / 歧义 / 低于阈值。
+
+    歧义仲裁(r75 狸猫兄弟案):**同型异色单位对**(狸小虎蓝/狸小龙红,同投资策略「龙虎
+    兄弟狸」造型仅色异)灰度 SIFT 形状互撞 —— ratio 1.28 < 1.5 判歧义 None,但两者的
+    **色相签名是决定性的**(蓝狸 B≫R / 红狸 R>B,模板与现场实测一致)。歧义时若 top2
+    恰为已知色相对(RED_HUE_PAIRS),按 slot_img 的色相差仲裁 —— SIFT 定「是这对兄弟」,
+    色相定「是哪只」。
     """
     gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)   # sr_od screen 是 RGB(screencapper BGRA2RGB;D-52 装备侧同类修,本处 2026-08-19 补)
     skp, sdesc = _SIFT.detectAndCompute(gray, None)
@@ -117,12 +123,35 @@ def identify_character(
     ]
     scores.sort(key=lambda t: -t[1])
     best_id, best = scores[0]
-    second = scores[1][1] if len(scores) > 1 else 0
+    second_id, second = (scores[1] if len(scores) > 1 else ('', 0))
     if best < min_inliers:
         return None, best
     if second > 0 and best < ambiguity_ratio * second:
+        # r75 色相仲裁:top2 是已知同型异色对 → 色相差定夺
+        arb = _hue_arbitrate(slot_img, best_id, second_id)
+        if arb is not None:
+            return arb, best
         return None, best
     return best_id, best
+
+
+#: 同型异色对(冷色成员, 暖色成员)——歧义时按 slot 色相偏向哪边仲裁(r75 狸猫兄弟)
+_RED_HUE_PAIRS: dict[frozenset[str], str] = {
+    frozenset({'狸小虎', '狸小龙'}): '狸小虎',   # 值 = 冷色(蓝)成员名
+}
+
+
+def _hue_arbitrate(slot_img: MatLike, a: str, b: str) -> str | None:
+    """歧义 top2 恰为已知色相对时,按 slot 色相(B−R 均值差)返回胜者;非已知对 → None。
+
+    判据(狸猫局实测):蓝狸现场 B−R ≈ +26 / 红狸 ≈ −1~−3(模板 +24 / −3);阈值取 +10
+    (两侧实测带间隔充分)。
+    """
+    pair = _RED_HUE_PAIRS.get(frozenset({a, b}))
+    if pair is None:
+        return None
+    diff = float(slot_img[:, :, 2].mean()) - float(slot_img[:, :, 0].mean())
+    return pair if diff > 10.0 else (b if pair == a else a)
 
 
 if __name__ == '__main__':

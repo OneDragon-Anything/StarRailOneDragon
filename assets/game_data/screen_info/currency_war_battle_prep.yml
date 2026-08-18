@@ -691,9 +691,9 @@ area_list:
 - area_name: 后排8槽-1
   id_mark: false
   pc_rect:
-  - 352
+  - 393
   - 600
-  - 504
+  - 535
   - 739
   text: ''
   lcs_percent: 0.5
@@ -705,9 +705,9 @@ area_list:
 - area_name: 后排8槽-2
   id_mark: false
   pc_rect:
-  - 523
+  - 535
   - 600
-  - 675
+  - 677
   - 739
   text: ''
   lcs_percent: 0.5
@@ -719,9 +719,9 @@ area_list:
 - area_name: 后排8槽-3
   id_mark: false
   pc_rect:
-  - 694
+  - 677
   - 600
-  - 846
+  - 819
   - 739
   text: ''
   lcs_percent: 0.5
@@ -733,9 +733,9 @@ area_list:
 - area_name: 后排8槽-4
   id_mark: false
   pc_rect:
-  - 865
+  - 818
   - 600
-  - 1017
+  - 960
   - 739
   text: ''
   lcs_percent: 0.5
@@ -747,9 +747,9 @@ area_list:
 - area_name: 后排8槽-5
   id_mark: false
   pc_rect:
-  - 1036
+  - 960
   - 600
-  - 1188
+  - 1102
   - 739
   text: ''
   lcs_percent: 0.5
@@ -761,9 +761,9 @@ area_list:
 - area_name: 后排8槽-6
   id_mark: false
   pc_rect:
-  - 1207
+  - 1103
   - 600
-  - 1359
+  - 1245
   - 739
   text: ''
   lcs_percent: 0.5
@@ -775,9 +775,9 @@ area_list:
 - area_name: 后排8槽-7
   id_mark: false
   pc_rect:
-  - 1378
+  - 1245
   - 600
-  - 1530
+  - 1387
   - 739
   text: ''
   lcs_percent: 0.5
@@ -789,9 +789,9 @@ area_list:
 - area_name: 后排8槽-8
   id_mark: false
   pc_rect:
-  - 1549
+  - 1387
   - 600
-  - 1701
+  - 1529
   - 739
   text: ''
   lcs_percent: 0.5
