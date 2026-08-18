@@ -104,7 +104,10 @@ class HarvestEquipCodex(SrOperation):
             ctrl.click(Point(self.tab_x, 170), press_time=0.1, pc_alt=False)
             time.sleep(1.2)
         repo = Path(__file__).resolve().parents[3]
-        icon_dir = repo / 'assets/template/cw_equip'
+        # 统一模板目录(2026-08-16 用户规范 assets/template/currency_war/<类型>/;2026-08-18
+        # 修:旧 'assets/template/cw_equip' 是规范外路径 → 归一 equip_legacy(手采图鉴
+        # icon 与 plaza 官方库互补,同库去重)。
+        icon_dir = repo / 'assets/template/currency_war/equip_legacy'
         shot_dir = repo / '.debug/temp/cw_shots' / self.tier
         icon_dir.mkdir(parents=True, exist_ok=True)
         shot_dir.mkdir(parents=True, exist_ok=True)
