@@ -369,7 +369,8 @@ def plan(state: GameState, config, faction_priority: list[str],
          rng: random.Random | None = None,
          target_comp: Comp | None = None,
          reactive: bool = False,
-         stash_comp: Comp | None = None) -> list[Action]:
+         stash_comp: Comp | None = None,
+         focus_sell_cap: int = 2) -> list[Action]:
     """一回合动作计划:硬门(必做)+ 贪心改进(买/deploy/升/卖/**D 牌蒙特卡洛**)。
 
     config: CurrencyWarConfig。rng: 蒙特卡洛 D 牌用(默认新建;测试传 seeded 保确定)。
@@ -450,17 +451,19 @@ def plan(state: GameState, config, faction_priority: list[str],
     # target 定后:bench 上 off-line(off-target 阵营 + 非优先角色 + 非过渡件)散牌
     # 卖出回收,金投核心;玩家「集中一条线时卖 off-line 换核心」的自然操作。
     # 场上(deployed)散牌**不卖**(上场战力 > 卖价;只清 bench 死库存)。
-    _sell_offline_for_focus(cur, actions, character_priority, target)
+    _sell_offline_for_focus(cur, actions, character_priority, target,
+                            sell_cap=focus_sell_cap)
     return actions
 
 
 def _sell_offline_for_focus(state: GameState, actions: list,
-                            character_priority: list[str], target: Comp | None) -> None:
+                            character_priority: list[str], target: Comp | None,
+                            sell_cap: int = 2) -> None:
     """集中卖散:target 定后清 bench 的 off-line 死库存(回收金投核心)。
 
     判据(off-line,全部满足才卖):非 target 阵营/角色/过渡件 + 非用户 priority
     + 非紧急战力(场上人数 < 上限时 bench 是死库存,卖出不损战力)。
-    每回合最多清 2 张(渐进,防一次性清空误伤过渡期)。
+    每回合最多清 sell_cap 张(默认 2 渐进;ADR-0209 定型边沿放宽加急)。
     """
     if target is None or not state.bench:
         return
@@ -468,7 +471,7 @@ def _sell_offline_for_focus(state: GameState, actions: list,
     sold = 0
     _transition_chars = set(getattr(target, 'transition_chars', ()) or ())   # r9 review#1:角色级(transition_factions_hint 不存在,曾恒空→卖掉打工牌)
     for bc in list(state.bench):
-        if sold >= 2:
+        if sold >= sell_cap:
             break
         if not bc.char_id:
             continue

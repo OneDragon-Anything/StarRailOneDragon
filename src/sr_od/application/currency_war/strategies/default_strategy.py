@@ -178,6 +178,24 @@ class DefaultCwStrategy(CwStrategy):
                     else:
                         log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
                                  session.target_comp.name, session.target_drought, _fp)
+        # ===== ADR-0209(接线 4/6):定型切换 =====
+        # 双轨期信号 ready 或过 deadline → target 锁定为信号领先线(定型;此后
+        # dual_track_phase=False,攒的钱拉人口+D 核心,装备/星级全投)。
+        # 领先线在 drought_excluded(死线)或断供 → 退 select_comp 最高分。
+        if state.dual_track_phase and session.commit_signals.ready():
+            _lead = session.commit_signals.leader()
+            _lead_comp = next((c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None) \
+                if _lead else None
+            if (_lead_comp is not None
+                    and _lead_comp.name not in session.drought_excluded
+                    and cw_comps.shop_supply(_lead_comp, state) > 0):
+                if session.target_comp is None or session.target_comp.name != _lead_comp.name:
+                    log.info('[cw-target] ADR-0209 定型:信号 ready(%s,%.2f)→ 切最终线(卖过渡换最终)',
+                             _lead[0], _lead[1])
+                    # 定型边沿:标记 drop 档过渡牌待卖(plan 的集中卖散消费;
+                    # 场上 drop 牌不卖——战力>卖价,自然被最终线替换)
+                    session.commit_flip_pending = True
+                session.target_comp = _lead_comp
         # count≥2 到 r6-7 才 emergent → 太慢,HP 在 comp 成型前崩。降到 count≥1(starter 任一阵营在场,r1 即触发)
         # (r1 board 有 starters 非空 + select_comp 用 shop_supply 保 acquirable;maybe_pivot 纠偏;drought_bail 兜底)。
         EMERGENT_SIGNAL_COUNT: int = 1
@@ -233,11 +251,16 @@ class DefaultCwStrategy(CwStrategy):
         """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。
         ⚠️ rng 由现「每调用新建 random.Random()」合并为 ``session.rng``(单一可种子源,§11.4);
         未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。
-        ADR-0209(接线 3/6):stash_comp=信号领先线(双轨囤牌方向)传入。"""
+        ADR-0209(接线 3/6):stash_comp=信号领先线(双轨囤牌方向)传入;
+        接线 4/6:定型边沿(commit_flip_pending)→ 卖散上限放宽(drop 档加急清)。"""
+        _cap = 6 if getattr(session, 'commit_flip_pending', False) else 2
+        if getattr(session, 'commit_flip_pending', False):
+            session.commit_flip_pending = False   # 一次性(本回合清)
         return cw_plan.plan(state, config, config.faction_priority,
                             rng=session.rng, target_comp=session.target_comp,
                             reactive=(session.target_comp is None),
-                            stash_comp=getattr(session, 'stash_comp', None))
+                            stash_comp=getattr(session, 'stash_comp', None),
+                            focus_sell_cap=_cap)
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:
