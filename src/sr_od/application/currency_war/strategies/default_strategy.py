@@ -115,6 +115,20 @@ class DefaultCwStrategy(CwStrategy):
             if _lead is not None:
                 session.stash_comp = next(
                     (c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None)
+        # ADR-0209(接线 5/6):flex 收敛白名单——target 的 flex 中,按 bench+board
+        # 已铺计数取 top2(玩家「护盾流/减益流二选一」的单局收敛;空=不启用)
+        _tc = session.target_comp
+        if _tc is not None and _tc.flex_factions:
+            from collections import Counter as _Ctr
+            _flex_cnt = _Ctr()
+            for bc in (*state.bench, *state.deployed):
+                if bc.faction in _tc.flex_factions:
+                    _flex_cnt[bc.faction] += 1
+            _board_flex = {f: c for f, c in state.board.items() if f in _tc.flex_factions}
+            for f, c in _board_flex.items():
+                _flex_cnt[f] += c
+            session.focus_factions = {f for f, _ in _flex_cnt.most_common(2)} if _flex_cnt else set()
+            state.focus_factions = session.focus_factions   # evaluate 经 state 读(接线 5/6)
         # 简报词缀注入:read_game_state 不读简报(已过),从 session.briefing_affixes 设 state.enemy_affixes,
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:

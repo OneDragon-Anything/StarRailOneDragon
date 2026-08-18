@@ -98,11 +98,15 @@ def _close_factions(state: GameState) -> set[str]:
 
 
 def synergy_score(state: GameState, faction_priority: list[str],
-                  target_comp: Comp | None = None) -> float:
+                  target_comp: Comp | None = None,
+                  focus_factions: set[str] | None = None) -> float:
     """羁绊质量分:激活 tier × 类别 + 接近推层 + 偏好 + 高 ceiling 潜力项。
 
     target_comp 给定时(commitment,task#16):off-target 阵营 synergy × OFF_TARGET_DISCOUNT,
     聚焦深化 target 阵营 → target comp 更高 tier 更强。target_comp=None(reactive/测试)→ 不打折。
+    ADR-0209(接线 5/6)focus_factions:信号收敛后的 flex 白名单(None=不启用,flex 全收
+    照旧)。非 target/focus 的阵营吃 OFF_TARGET_DISCOUNT 再 ×0.5(flex 收紧:防「羁绊
+    都有一点都不满」的散板形态——列车 7 flex 是跨攻略聚合,单局应收敛)。
     """
     target_factions: set[str] = set(target_comp.form_tiers.keys()) if target_comp is not None else set()
     score = 0.0
@@ -114,7 +118,12 @@ def synergy_score(state: GameState, faction_priority: list[str],
         # T#97 step-2(tuned):target bonus **只加在 _base_tier(tier 部分)**,不含 close-to-next —— 避免 over-rush
         _base_tier = cat_w * _activated_tiers(faction, count) ** SYNERGY_TIER_EXPONENT
         if target_factions:
-            _base_tier *= TARGET_FACTION_BONUS if faction in target_factions else OFF_TARGET_DISCOUNT
+            if faction in target_factions:
+                _base_tier *= TARGET_FACTION_BONUS
+            else:
+                _base_tier *= OFF_TARGET_DISCOUNT
+                if focus_factions is not None and faction not in focus_factions:
+                    _base_tier *= 0.5   # ADR-0209:flex 收敛(非白名单 flex 半罚)
         tier_score = _base_tier
         if _close_to_next(faction, count):
             tier_score += cat_w * CLOSE_TO_NEXT_TIER_BONUS   # close-to-next 不加 bonus(避免 rush 弱-early)
@@ -304,8 +313,10 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     """
     ws, we, wc = _phase_weights(state.plane, state.hp,
                                 effective_hp_threshold(state))
+    _focus = getattr(state, 'focus_factions', None)   # ADR-0209 接线 5/6:update_target 写入
     score = (
-        ws * synergy_score(state, faction_priority, target_comp)
+        ws * synergy_score(state, faction_priority, target_comp,
+                           focus_factions=_focus)
         + we * economy_score(state, _economy_mode_for(state))   # spend_mode→economy(§2.2;ADR-0102)
         + wc * char_quality_score(state, getattr(config, 'character_priority', []),
                                   target_comp=target_comp)   # r17:target 核心星级计价(3合1 全场域配套)

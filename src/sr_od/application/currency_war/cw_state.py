@@ -106,6 +106,7 @@ class GameState:
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
     shop_locked: bool = False                # 商店是否锁定
     dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;update_target 每回合刷新)
+    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(update_target 写入;evaluate 消费)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
     partner_char: str | None = None          # 选择的伙伴(选择伙伴节点)
