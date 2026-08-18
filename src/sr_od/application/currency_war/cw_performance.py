@@ -54,6 +54,8 @@ class RoundOutcome:
     enemy_hp_after: int | None = None
     damage_dealt: int | None = None
     killed: bool | None = None
+    # —— 进度真值(2026-08-18 用户点破:「扣血=战斗失败,游戏内有记录」)——
+    progress_delta: int | None = None   # 结算屏「挑战进度 ±N」带符号(赢 +2 / 输 -22);None=未读到
     # —— streak(连胜/连败;2026-08-11 结算「连胜×N」前缀=方向,fixture 核实)——
     streak: int = 0           # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用)
 

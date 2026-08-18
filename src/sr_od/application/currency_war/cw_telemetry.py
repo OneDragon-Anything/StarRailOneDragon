@@ -106,6 +106,7 @@ class OutcomeRecord:
     enemy_hp_after: int | None = None
     damage_dealt: int | None = None
     killed: bool | None = None
+    progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(2026-08-18:胜负+扣血真值,输轮也记)
 
 
 @dataclass
@@ -246,6 +247,7 @@ class TelemetryRecorder:
             hp_after=outcome.hp_after, hp_confidence=outcome.hp_confidence,
             enemy_hp_after=outcome.enemy_hp_after,
             damage_dealt=outcome.damage_dealt, killed=outcome.killed,
+            progress_delta=outcome.progress_delta,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 

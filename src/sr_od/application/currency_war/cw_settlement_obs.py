@@ -53,6 +53,50 @@ def parse_streak(ocr_texts: list[str]) -> int:
     return 0
 
 
+def parse_settlement_progress(ocr_texts: list[str]) -> int | None:
+    """结算屏「挑战进度 ±N」→ 带符号进度增量(纯函数;2026-08-18 用户点破接)。
+
+    **胜负+扣血的游戏内真值记录**(用户 2026-08-18:「扣血其实就是战斗失败,这个玩法里
+    应该有记录」):赢 = 正进度(挑战进度 +2,live 11:32 样本),输 = 负进度(M41 实锤
+    「2-1战斗 -22 挑战进度」——**数字前置**形态)。OCR 三形态:
+    ① 同 token 粘连('挑战进度+2');
+    ② 后随分离 token('挑战进度' '+2';注意「挑战成功」屏另有**无符号累计值**形态
+      '挑战进度' '46' —— 裸数字无号 = 累计进度非 delta,不取,防 -22 被记成 +46);
+    ③ 前置分离 token('-22' '挑战进度',战败屏)。
+    未读到 → None。
+    """
+    for i, t in enumerate(ocr_texts):
+        if '挑战进度' not in t:
+            continue
+        # 形态①:同 token 粘连(挑战进度+2 / 挑战进度-22)
+        m = re.search(r'挑战进度\s*([+-]\d+)', t)
+        if m:
+            return int(m.group(1))
+        # 形态②:后随分离 token —— 仅带符号数(裸数字=累计值不取)
+        if i + 1 < len(ocr_texts):
+            m2 = re.search(r'^\s*([+-]\d+)$', ocr_texts[i + 1].strip())
+            if m2:
+                return int(m2.group(1))
+        # 形态③:前置分离 token('-22' '挑战进度',战败屏;同样要求独立带符号 token)
+        if i > 0:
+            m3 = re.search(r'^\s*([+-]\d+)$', ocr_texts[i - 1].strip())
+            if m3:
+                return int(m3.group(1))
+    return None
+
+
+def parse_settlement_won(ocr_texts: list[str]) -> bool | None:
+    """结算屏胜负真值(纯函数;2026-08-18):「挑战成功」→ 赢;「挑战进度」负 → 输;
+    其余(无法判定)→ None。输轮结算屏形态 = 「挑战结束」+ 前往结算(无「挑战成功」)。"""
+    if any('挑战成功' in t for t in ocr_texts):
+        return True
+    if any('挑战失败' in t for t in ocr_texts):
+        return False   # 团灭终局
+    if parse_settlement_progress(ocr_texts) is not None:
+        return parse_settlement_progress(ocr_texts) > 0
+    return None
+
+
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,
                        comp_tag: str, node_type: str = '普通战斗'):
     """结算屏 → ``RoundOutcome``(观测回路 P1.5;``on_round_end`` 输入)。
@@ -74,9 +118,16 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 「生命值」前缀(只裸数字)→ 暂 conf=0(后续实机核实 boss 结算屏 hp 位置 refine)。
     if hp is None and any('挑战失败' in t for t in ocr_texts):
         hp = 0
+    # 胜负+进度真值(2026-08-18 用户点破:「扣血=战斗失败,游戏内有记录」):
+    # killed = 「挑战成功」/负进度判定;progress_delta = 挑战进度带符号值(赢 +2/输 -22)。
+    # 旧版 killed 恒 None + 输轮(挑战结束+前往结算,走 loop 3b)从不产生 outcome 行 →
+    # telemetry 只见赢轮,「P2 输给谁/扣多少」全盲。
+    _won = parse_settlement_won(ocr_texts)
     return RoundOutcome(
         round_num=round_num, plane=plane, node_type=node_type, comp_tag=comp_tag,
         hp_after=hp if hp is not None else 0,
         hp_confidence=1.0 if hp is not None else 0.0,
         streak=parse_streak(ocr_texts),   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
+        killed=_won,
+        progress_delta=parse_settlement_progress(ocr_texts),
     )

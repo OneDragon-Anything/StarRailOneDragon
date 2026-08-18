@@ -626,6 +626,16 @@ class CurrencyWarRunLoop(SrOperation):
             # lcs_percent=0.8:「返回货币战争」与事件屏「返回备战界面」共享「返回+战」(3/6=0.5)→
             # 不收紧则凡有"返回备战界面"的事件屏(投资策略/环境/补给)都被 3b 吞 → 卡死(2026-08-04 发现)。
             if self.round_by_ocr(screen, btn, lcs_percent=0.8).is_success:
+                # 输轮 outcome 记录(2026-08-18 用户点破:「扣血=战斗失败,游戏内有记录」):
+                # 「前往结算」帧 = 轮败/位面结束/团灭结算(无「继续挑战」按钮,分支3 不达)——
+                # 旧版输轮从不产生 outcome 行 → telemetry 只见赢轮,「P2 输给谁/扣多少」全盲。
+                # 同屏指纹防重(结算屏停留多轮只记一次;与分支3 _last_settle_fp 同机制)。
+                if btn == '前往结算':
+                    _fp = tuple(sorted((r.data, r.y) for r in self.ctx.ocr_service.get_ocr_result_list(
+                        image=screen, rect=None, crop_first=False)))
+                    if getattr(self, '_last_loss_fp', None) != _fp:
+                        self._last_loss_fp = _fp
+                        self._record_round_outcome(screen)   # killed/progress_delta 由屏文本判定
                 # r10 战败屏 hp=0 补录:第四局实证 P2-2 团灭,战败结算屏不走
                 # _record_round_outcome(仅胜利结算屏分支3)→ outcomes 无 hp=0 记录
                 # → _last_outcome_hp 空 → summary 落 last_state 100 兜底污染。
