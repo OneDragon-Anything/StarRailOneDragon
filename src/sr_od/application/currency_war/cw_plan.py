@@ -512,8 +512,11 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
     tiers: set[int] = set()
 
     def _equiv_copies(name: str) -> int:
-        # 2★ 卡 = 2 张 1★ 等价(3合1 语义);3★ = 6
-        return sum(bc.star for bc in (*state.deployed, *state.bench)
+        # 3合1 等价副本数(2026-08-18 修,项目权威口径:2★=3张1★、3★=9张,
+        # 见 cw_state._SELL_MULT/cw_comps/cw_shop_odds 同源语义):star 折 3**(star-1)。
+        # 旧 sum(bc.star)(2★=2/3★=3)配 <2 阈值 → 持 2 张 1★ 即被判「已到 2★ 不在追」,
+        # 实际差 1 张才能合并 → 该费级被移出追猎集,压缩买少覆盖一类该买的费级。
+        return sum(3 ** max(bc.star - 1, 0) for bc in (*state.deployed, *state.bench)
                    if bc.char_id == name)
 
     for comp in comps:
@@ -524,7 +527,7 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
             _cost = getattr(ch, 'cost', None)
             if ch is None or not _cost:
                 continue
-            if _equiv_copies(name) < 2:   # ①+②:core 未到 2★ → 在追
+            if _equiv_copies(name) < 3:   # ①+②:core 未到 2★(=3 张 1★ 等价)→ 在追
                 tiers.add(int(_cost))
     for bc in (*state.deployed, *state.bench):
         if bc.star >= 2 and bc.char_id:   # ③:已 2★ → 3★ 机会追猎

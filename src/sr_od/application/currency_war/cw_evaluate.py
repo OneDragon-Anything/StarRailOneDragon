@@ -7,10 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from one_dragon.utils import log_utils   # 67-P1b tribunal 判决日志
-
-log = log_utils.log
-
+from one_dragon.utils import log_utils  # 67-P1b tribunal 判决日志
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
     char_routes,
@@ -36,6 +33,8 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     effective_hp_threshold,
 )
+
+log = log_utils.log
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
@@ -227,13 +226,15 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
         if target_comp is not None and target_comp.plaza_carry:
             curve = expected_curve_for_carry(target_comp.plaza_carry)
             if curve is not None:
-                _t = (min(state.plane, 3) - 1) * 9 + min(state.round_num, 9)
+                # 0-based 节点(2026-08-18 修):曲线键 0-26;旧 1-based _t 奇数值查不到
+                # → 判决静默 no-op + off-by-one(cw_progress_curves 全分辨率配套)。
+                _t = (min(state.plane, 3) - 1) * 9 + min(state.round_num, 9) - 1
                 h = LineHypothesis('roll_cap_chase', target_comp.name, 'star_chase',
                                    checkpoints=[_t], deadline=_t + 4, expected=curve)
-                # 59-A1 修(量纲对齐):expected=等级曲线(1→10 归一)→ 实际侧必须同量纲
-                # (state.level / 10);旧喂 form_progress(阵营成型度 0-1)→ 常态 lag
-                # 0.1-0.2 → LR≈1.6 落 amended → 正常线被 cap=0 禁刷
-                _actual = min(state.level, 10) / 10.0
+                # 59-A1 修(量纲对齐):expected=等级曲线((lv-1)/9 归一,cw_progress_curves
+                # _LV_MIN/_LV_MAX)→ 实际侧必须同量纲;旧 state.level/10 恒高 (10-lv)/90
+                # → lag 系统性低估,掉队 <~0.08 的线永不触发判决。
+                _actual = (min(state.level, 10) - 1) / 9.0
                 lag = h.progress_lag(_t, _actual)
                 if lag > 0:
                     h.add_evidence(_t, 'timeline_lag', f'{lag:.2f}', timeline_lag_lr(lag))

@@ -46,9 +46,14 @@ def _interp(anchors: list[tuple[int, int]], node: int) -> float:
 
 
 def expected_curve(tempo: str) -> dict[int, float]:
-    """节奏档 → {节点: 期望进度}(检查点粒度:每 2 节点)。"""
+    """节奏档 → {节点: 期望进度}。
+
+    全分辨率(每节点一键,2026-08-18 修):旧「每 2 节点」粒度 + 消费端(cw_evaluate
+    tribunal)按 1-based 节点精确查 → 奇数轮整个判决静默 no-op(约一半节点无证据,
+    67-P1b 的 cap=0 频率对拍天然低估一半)。全分辨率后任意 0-based 节点 0-26 精确命中。
+    """
     anchors = _TEMPO_ANCHORS.get(tempo, _TEMPO_ANCHORS['7级搜牌'])
-    return {n: round(_interp(anchors, n), 3) for n in range(0, NODES_TOTAL, 2)}
+    return {n: round(_interp(anchors, n), 3) for n in range(0, NODES_TOTAL)}
 
 
 def dominant_tempo(carry: str) -> str | None:

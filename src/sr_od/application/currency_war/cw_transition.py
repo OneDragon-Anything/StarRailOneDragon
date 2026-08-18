@@ -78,12 +78,21 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     'bonus_reward': 0.4,        # 奖励节点随机产出(最弱证据)
 }
 
-#: 定型阈值:累积信号分超过此值 → 最终线定型(early 双轨期结束,卖过渡换最终)
-COMMIT_SIGNAL_THRESHOLD: float = 3.0
+#: 定型阈值:累积信号分超过此值 → 最终线定型(early 双轨期结束,卖过渡换最终)。
+#: r56 审查#1 修:3.0→5.0(旧值下 词缀1.5+策略2.0=3.5 即 ready → r1-r2 必定型,
+#: 双轨期形同虚设;live 实锤反甲白厄 r2 定型)。5.0 = 词缀+策略+环境+供给
+#: 的持续积累(单靠两源不够)。
+COMMIT_SIGNAL_THRESHOLD: float = 5.0
 
-#: 定型 deadline:P2-3 的投资策略/环境选择是最后转型节点(round 12 ≈ P2-r3);
-#: 过此节点无论信号强弱必须定型(之后经济量不足以转型——用户口径)。
-COMMIT_DEADLINE_T: int = 12
+#: 最早定型轮门(r56 审查#1):t<COMMIT_MIN_T 不允许信号定型(P1 早期证据不足,
+#: 强制双轨观察;deadline 仍兜底)。
+COMMIT_MIN_T: int = 7
+
+#: 定型边界(2026-08-18 P2-3 语义收口):**进位面 2 即定型**(t=10,P2-r1;消费方
+#: ``default_strategy._committed`` 的 ``state.plane >= 2``)。旧 COMMIT_DEADLINE_T=12
+#: (P2-3)分支被 plane>=2 恒短路(10 < 12)永不触发 = 死代码,已删 —— 保留的行为是
+#: 更严的 P2-r1 边界(ADR-0209「双轨期 = P1 且未定型」的原始设计,live 验证)。
+#: 文档口径「P2-3 是最后转型节点」仍成立:P2-r1 定型早于 P2-3,满足同一约束。
 
 #: P1 过渡期人口上限(r39 用户指导 + plaza 实证:Early 上场 79% = 5 人,中位/众数 5;
 #: 本质 = 低人口省升级金,尽快 50 金吃满息;等级在定型时才拉)。
@@ -93,11 +102,6 @@ EARLY_POP_CAP: int = 5
 def t_of(plane: int, round_num: int) -> int:
     """全局节点序号(plane*9 + round 的简化;与 horizon 的 t 同构)。"""
     return (min(plane, 3) - 1) * 9 + max(1, min(round_num, 9))
-
-
-def past_commit_deadline(plane: int, round_num: int) -> bool:
-    """已过定型 deadline(P2-3 后)→ 最终线必须定型,不再双轨。"""
-    return t_of(plane, round_num) >= COMMIT_DEADLINE_T
 
 
 class CommitSignals:
@@ -132,8 +136,11 @@ class CommitSignals:
         comp, sc = max(self.scores.items(), key=lambda kv: kv[1])
         return comp, sc
 
-    def ready(self) -> bool:
-        """达定型阈值(领先线信号分 ≥ COMMIT_SIGNAL_THRESHOLD)。"""
+    def ready(self, t: int = 0) -> bool:
+        """达定型条件:领先线信号分 ≥ 阈值 **且** t ≥ COMMIT_MIN_T(r56 审查#1:
+        轮门防 r1-r2 证据不足即锁;早轮双轨强制观察)。t=0(缺省)不设门(兼容)。"""
+        if t and t < COMMIT_MIN_T:
+            return False
         lead = self.leader()
         return lead is not None and lead[1] >= COMMIT_SIGNAL_THRESHOLD
 

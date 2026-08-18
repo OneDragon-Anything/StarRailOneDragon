@@ -104,12 +104,13 @@ class DefaultCwStrategy(CwStrategy):
         if session.commit_signals is None:
             from sr_od.application.currency_war.cw_transition import CommitSignals
             session.commit_signals = CommitSignals()
-        # ADR-0209(接线 2/6):双轨期判定——P1 且最终线未定型(信号未 ready 且未过
-        # deadline)。committed=False 时 get_node_goal 压 DP 升级姿态(P1 攒息过渡)。
-        from sr_od.application.currency_war.cw_transition import past_commit_deadline
+        # ADR-0209(接线 2/6):双轨期判定——P1 且最终线未定型(信号未 ready[t 轮门,
+        # r56]且未进位面 2)。committed=False 时 get_node_goal 压 DP 升级姿态(P1 攒息过渡)。
+        # 定型边界=进 P2(plane>=2,严于文档口径 P2-3;详 cw_transition 注释);
+        # 旧 past_commit_deadline 分支被 plane>=2 恒短路,已删(2026-08-18)。
+        from sr_od.application.currency_war.cw_transition import t_of
         _committed = (state.plane >= 2
-                      or past_commit_deadline(state.plane, state.round_num)
-                      or session.commit_signals.ready())
+                      or session.commit_signals.ready(t_of(state.plane, state.round_num)))
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
         # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)
         session.stash_comp = None
@@ -199,7 +200,8 @@ class DefaultCwStrategy(CwStrategy):
         # 双轨期信号 ready 或过 deadline → target 锁定为信号领先线(定型;此后
         # dual_track_phase=False,攒的钱拉人口+D 核心,装备/星级全投)。
         # 领先线在 drought_excluded(死线)或断供 → 退 select_comp 最高分。
-        if state.dual_track_phase and session.commit_signals.ready():
+        if state.dual_track_phase and session.commit_signals.ready(
+                t_of(state.plane, state.round_num)):
             _lead = session.commit_signals.leader()
             _lead_comp = next((c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None) \
                 if _lead else None
