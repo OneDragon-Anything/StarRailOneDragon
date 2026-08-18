@@ -89,6 +89,14 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
 _CONFLICT_JOURNAL = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
 
+#: 冲突截图节流窗(秒;2026-08-18 治理):同 (field, verdict) 在窗内只存一张截图。
+#: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board
+#: count 不等、level 乒乓)画面微变(gold 计数/动画帧)→ 内容哈希必新 → 每帧存 1.7MB。
+#: 慢性态一例截图即代表该态,罕见类(新 verdict)不受影响照存;JSONL 证据行不受节流
+#: (200B/行,统计价值保留)。300s = 每态每小时最多 ~12 张。
+_CONFLICT_SHOT_THROTTLE_S: float = 300.0
+_conflict_shot_ts: dict[tuple[str, str], float] = {}
+
 
 def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                  verdict: str = '', **ctx) -> None:
@@ -97,14 +105,22 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
     :param field: 冲突字段(level/gold/hp/board...)
     :param old: 上次观察值(session 持久)
     :param new: 本次读值
-    :param screen: 冲突帧(传则存去重截图,文件名进证据行)
+    :param screen: 冲突帧(传则存去重截图,文件名进证据行;**同 (field,verdict) 300s
+        内只存一张**——慢性状态冲突截图节流,防每帧 1.7MB 积压)
     :param verdict: 仲裁结果描述(如 '保旧-单调守卫'/'采新-XP确认'/'待研')
     :param ctx: 附加上下文(plane/round/source/note...)
     """
     import datetime
     import json as _json
+    import time as _time
     try:
-        shot = cw_shot_unique(screen, f'obs_conflict_{field}') if screen is not None else None
+        shot = None
+        if screen is not None:
+            _key = (field, verdict)
+            _now = _time.monotonic()
+            if _now - _conflict_shot_ts.get(_key, -1e9) >= _CONFLICT_SHOT_THROTTLE_S:
+                _conflict_shot_ts[_key] = _now
+                shot = cw_shot_unique(screen, f'obs_conflict_{field}')
         rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
                'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
         if shot:
