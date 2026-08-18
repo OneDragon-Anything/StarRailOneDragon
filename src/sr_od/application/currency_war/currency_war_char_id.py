@@ -103,13 +103,13 @@ def identify_character(
 ) -> tuple[str | None, int]:
     """识别槽内角色。
 
-    :param slot_img: 槽位裁图(BGR)。
+    :param slot_img: 槽位裁图(**RGB**,sr_od 框架截图约定;screencapper BGRA2RGB,cv2_utils.read_image 同)。
     :param templates: :func:`load_avatar_templates` 的结果(op 集成时由 ctx.ih 预加载传入)。
     :param min_inliers: 最低内点数,低于此判 unknown(配饰角色/非角色会落这)。
     :param ambiguity_ratio: best 需 ≥ ratio × second 才算非歧义。
     :return: ``(char_id or None, best_inliers)``。None = 未知 / 歧义 / 低于阈值。
     """
-    gray = cv2.cvtColor(slot_img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)   # sr_od screen 是 RGB(screencapper BGRA2RGB;D-52 装备侧同类修,本处 2026-08-19 补)
     skp, sdesc = _SIFT.detectAndCompute(gray, None)
     scores: list[tuple[str, int]] = [
         (cid, _inliers(skp, sdesc, tkp, tdesc))
@@ -140,7 +140,9 @@ if __name__ == '__main__':
         'bench-2': (507, 844, 620, 978),
         'bench-5': (882, 846, 995, 980),
     }
-    screen = cv2.imread(screen_path)
+    from one_dragon.utils import cv2_utils
+
+    screen = cv2_utils.read_image(screen_path)   # RGB(与生产截图同约定;cv2.imread 返 BGR 勿直用)
     templates = load_avatar_templates(avatar_dir)
     print(f'模板 {len(templates)} 个;截图 {screen_path}')
     for name, (x1, y1, x2, y2) in slots.items():

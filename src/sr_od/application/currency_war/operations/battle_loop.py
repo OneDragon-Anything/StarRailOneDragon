@@ -17,6 +17,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_round_outcome,
     reset_phase_round_cache,
 )
+from sr_od.application.currency_war.cw_performance import HP_CONFIDENCE_THRESHOLD
 from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
@@ -299,6 +300,10 @@ class CurrencyWarRunLoop(SrOperation):
                 self._settle_page1_progress = None
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
+            # last_hp_t 同步(r68 review:prep 新鲜度门的写入端;镜像 on_round_end 的
+            # HP_CONFIDENCE_THRESHOLD 门,保证 last_hp 与 last_hp_t 恒同源同轮)。
+            if _obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and _now_t is not None:
+                _session.last_hp_t = _now_t
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。

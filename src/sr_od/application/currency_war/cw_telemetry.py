@@ -464,16 +464,18 @@ def read_jsonl(path: Path | str) -> list[dict[str, Any]]:
 
 
 def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
-    """按 (run_id, round_num) join decisions ↔ outcomes → 每回合一条合并记录(复盘/ML 用)。
+    """按 (run_id, plane, round_num) join decisions ↔ outcomes → 每回合一条合并记录(复盘/ML 用)。
 
     decisions 主表,outcomes 左 join(无 outcome 的决策 outcome 字段为 None)。
+    ⚖️ r68 review:join 键加 plane —— round_num 是位面内序(1-9),P1r3 与 P2r3 旧键撞行
+    (跨位面 outcome 错配);两侧均含 plane 字段,旧记录缺 plane 时 get 返 None 仍一致配对。
     """
     decisions = read_jsonl(Path(replay_dir) / "decisions.jsonl")
     outcomes = read_jsonl(Path(replay_dir) / "outcomes.jsonl")
-    out_by_key = {(o["run_id"], o["round_num"]): o for o in outcomes}
+    out_by_key = {(o["run_id"], o.get("plane"), o["round_num"]): o for o in outcomes}
     joined: list[dict[str, Any]] = []
     for d in decisions:
-        key = (d.get("run_id"), d.get("round_num"))
+        key = (d.get("run_id"), d.get("plane"), d.get("round_num"))
         merged = dict(d)
         merged["outcome"] = out_by_key.get(key)
         joined.append(merged)

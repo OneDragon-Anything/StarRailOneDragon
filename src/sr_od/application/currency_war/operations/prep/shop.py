@@ -161,7 +161,15 @@ class BuyShopCards(SrOperation):
         match = self.ctx.cw_match
         # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
         # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
-        if match is not None and match.session.last_hp is not None:
+        # ⚖️ r68 review 新鲜度门:结算 hp 只在「紧邻上一节点」(last_hp_t 与当前节点差 1)才可覆盖 ——
+        # 低 conf 结算轮 last_hp 残留陈值,无条件覆盖 = 陈 hp 冻结毒化每回合 prep(保血/转型永不触发,
+        # P1 boss 赢→P2 秒死 ×3 的观测链根因)。陈旧 → 用 prep 现读(含上方 100 复读防线)。
+        from sr_od.application.currency_war.cw_observation import read_phase_round
+        _pr = read_phase_round(self.ctx, screen)
+        _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
+        _hp_t = getattr(match.session, 'last_hp_t', None) if match is not None else None
+        _hp_fresh = (_now_t is not None and _hp_t is not None and _now_t - _hp_t == 1)
+        if match is not None and match.session.last_hp is not None and _hp_fresh:
             # 观察冲突审计 #7(2026-08-16):「结算→下回合 prep 不变」是本文件自述契约 → prep 读与
             # 结算真值不等 = 双源分歧事件,留证(兼测 prep read_hp 毒化率与结算屏误读,双向有用);
             # 裁决仍采新(结算屏是权威源,契约本身允许 prep 读噪声)。
@@ -172,6 +180,9 @@ class BuyShopCards(SrOperation):
                              source='prep_read_hp_vs_settlement')
             log.info(f'[cw] hp 用结算屏真值 {match.session.last_hp}(prep read_hp={hp_value} 不可靠,覆盖)')
             hp_value = match.session.last_hp
+        elif match is not None and match.session.last_hp is not None:
+            log.info('[cw] hp 结算值陈久跳过覆盖(last_hp=%s t=%s, now t=%s)→ 用 prep 现读 %s(防冻结毒化)',
+                     match.session.last_hp, _hp_t, _now_t, hp_value)
         _tgt_state = read_game_state(self.ctx, self.screenshot())
         _tgt_state.hp = hp_value
         if match is None:

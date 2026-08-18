@@ -898,7 +898,10 @@ def _best_improving_action(
                 if _sim.gold < _cost:
                     continue
                 if c.name:
-                    _copies = sum(1 for b in (*_sim.deployed, *_sim.bench) if b.char_id == c.name)
+                    # r68 review:扫尾副本计数分星 —— 商店牌恒 1★,3合1 材料须同名同星(主循环
+                    # _star1 同口径);旧裸数名把 2★+ 也计入 → 假满副本误拦真材料(62 轮同族病复发)。
+                    _copies = sum(1 for b in (*_sim.deployed, *_sim.bench)
+                                  if b.char_id == c.name and b.star == 1)
                     if _copies >= 3:
                         continue   # 3合1 满副本(与主循环同门)
                     if c.name in {b.char_id for b in _sim.deployed if b.char_id} and _cost > 1:

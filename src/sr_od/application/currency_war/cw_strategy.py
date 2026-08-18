@@ -173,6 +173,10 @@ class StrategySession:
     pending_deploys: list = field(default_factory=list)
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp(HP 结算→下回合 prep 不变)。
     last_hp: int | None = None
+    # last_hp 的全局节点号((plane-1)*9+round;r68 review):结算 hp 只在「紧邻上一节点」才可覆盖
+    # prep 现读 —— 低 conf 结算轮(boss 胜利屏 hp 裸数字常读不到)last_hp 残留陈值,无条件覆盖
+    # = 陈 hp 冻结毒化每回合 prep(保血/转型永不触发;P1 boss 赢→hp1 进 P2 秒死 ×3 的观测链根因)。
+    last_hp_t: int | None = None
     # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,plan 路径
     # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
     # shop 关态 heavy 读到时写此;shop.py 喂 plan 前拷入 —— 仿 last_hp 模式)。
