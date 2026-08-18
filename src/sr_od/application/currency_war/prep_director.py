@@ -140,6 +140,7 @@ class PrepDirector(SrOperation):
         self._recovery_closed_known: dict[str, bool] = {}   # 恢复时是否关过已知弹层(分型用)
         self._recovery_tried: bool = False          # 本环恢复原语是否已试(强制出战门)
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
+        self._node_icon_shot_ts: dict[int, float] = {}   # 未识别节点图标采集防抖(idx→上次采集时刻;r80 P1-3)
         # light 步沿用的 heavy 缓存(观察分层,review H-1)
         self._cached_state: GameState | None = None
         self._cached_bench: list[BenchChar] = []
@@ -632,18 +633,29 @@ class PrepDirector(SrOperation):
         """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
 
         仅 upcoming 槽(判态已修 V 门,变暗过去节点不再混入);RGB 裁剪存盘(颜色信息保留,
-        模板同样 RGB——2026-08-16 用户指导)。"""
+        模板同样 RGB——2026-08-16 用户指导)。
+        r80(审计 P1-3):**同 idx 300s 时间窗防抖** —— 内容哈希去重防不住备战帧微变
+        (光标/金币动画/抗锯齿 → 哈希必新),同 idx 每帧重采刷屏(2-7 实证 idx4/5 连发);
+        已知误报源是远距小图标 Hu 漂移(61 张复盘),300s 窗足够人工/离线跟进,新类型
+        (真未识别)首采不受影响。
+        """
+        import time as _time
+
         from sr_od.application.currency_war.cw_observe import cw_shot_unique
         icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文)
         x0, y0, x1, y1 = node_row_rect
         row = screen[y0:y1, x0:x1]
+        now = _time.monotonic()
         for s in slots:
             if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
                 continue
+            if now - self._node_icon_shot_ts.get(s.idx, 0.0) < 300:
+                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效)
             yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
             xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
             fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
             if fn:
+                self._node_icon_shot_ts[s.idx] = now
                 log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
     def _record_step(self, obs: PrepObservation, action: PrepAction) -> None:

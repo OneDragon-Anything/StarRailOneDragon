@@ -185,20 +185,59 @@ _NODE_TYPE_KEYWORDS: dict[str, str] = {
 }
 
 
+def _node_type_label(ctx: SrContext, screen: MatLike) -> tuple[str | None, int | None]:
+    """节点行标签带 OCR → ``(node_type, 标签中心 x 全屏)``;无已知关键词 → (None, None)。
+
+    r80(审计 P0-1):标签**不止出现在当前节点下方** —— 2-7 备战实证「首领」出现在
+    **即将到来的 boss 节点**下方(x≈1341,当前节点在行中部 x≈900)→ 旧 read_node_type
+    只查关键词不看位置,把非 boss 轮误判 boss(boss_spend 提前花光资源,HP17 惨胜实证)。
+    本函数带位置返回,调用方做锚定校验。
+    """
+    results = _ocr(ctx, screen, Rect(500, 65, 1700, 115))
+    for r in results:
+        for kw, nt in _NODE_TYPE_KEYWORDS.items():
+            if kw in r.data:
+                return nt, int(r.x + r.w / 2)
+    return None, None
+
+
+#: 标签 x 与当前槽 cx 容差(节点槽距 ~90px + 标签中心偏差;超过 = 标签属于别的节点)
+_NODE_LABEL_X_TOL: int = 110
+#: boss 语义门:首领 = 位面**最后**节点(基础 8 槽 → boss 轮 ≥9;invest-env 增节点只会
+#: 更晚)→ round < 8 时读到的「首领」必是**即将到来**的 boss 节点标签,不是当前节点
+_BOSS_MIN_ROUND: int = 8
+
+
+def gate_node_type(node_type: str | None, round_num: int | None,
+                   label_x: int | None = None, current_cx: int | None = None) -> str | None:
+    """无锚定 OCR 读到的 node_type 语义门(r80 审计 P0;纯函数可测)。
+
+    两道门,任一不过 → None(不覆盖):
+    1. **boss 轮次门**:node_type=='boss' 且 round_num < ``_BOSS_MIN_ROUND`` → 即将到来
+       的 boss 节点标签(2-7 实证),非当前节点 → None。
+    2. **标签位置门**(给了锚点时):|label_x - current_cx| > ``_NODE_LABEL_X_TOL`` →
+       标签在别的节点下方(张冠李戴)→ None。
+    """
+    if node_type is None:
+        return None
+    if node_type == 'boss' and (round_num or 0) < _BOSS_MIN_ROUND:
+        return None
+    if label_x is not None and current_cx is not None \
+            and abs(label_x - current_cx) > _NODE_LABEL_X_TOL:
+        return None
+    return node_type
+
+
 def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
     """备战顶部「当前节点类型」标签 → node_type(boss/补给/遭遇/...;doc 13 §13.2A)。
 
-    OCR 顶部节点行下方的类型标签带 → 关键词映射(首领→boss 等)。读不到 / 无已知关键词 → None。
-    标签在当前节点图标下方(x 随当前节点位置变),故扫整条节点行宽。
-
-    ⚠️ 仅 boss(首领)实机核实;其它节点类型标签措辞待多子态实机核实(现 map 覆盖常见词,
-    命中即返,未核实的不影响 boss 检测)。区域暂硬编码(同 read_xp_progress,后续移 screen_info)。
+    ⚠️ **无锚定的宽松读**(r80):「首领」等标签也会出现在**即将到来的节点**下方
+    (2-7 实证)→ 本函数返回值**不可直接当当前节点类型**;消费方必须过
+    ``gate_node_type`` 语义门(read_game_state boss 轮次门 / read_node_sequence
+    标签位置门)。仅 boss(首领)实机核实;其它节点类型标签措辞待多子态实机核实。
     """
-    blob = ''.join(r.data for r in _ocr(ctx, screen, Rect(500, 65, 1700, 115)))
-    for kw, nt in _NODE_TYPE_KEYWORDS.items():
-        if kw in blob:
-            return nt
-    return None
+    t, _lx = _node_type_label(ctx, screen)
+    return t
 
 
 # 节点类型模板 Hu 矩缓存(module-level;``read_node_sequence`` 首调从 assets 加载)。
@@ -238,11 +277,21 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES)
     if len(_slots) < _MIN_CLEAN_CIRCLES:
         return None  # 非 clean 备战帧(shop 开 / 过渡 / overlay 遮挡 → 圆数少);数据不可信,跳过等下轮重读
-    _cur = read_node_type(ctx, screen)
-    if _cur:
-        for _s in _slots:
-            if _s.state == 'current':
-                _s.node_type = _cur
+    # r80(审计 P0-1):OCR 标签**带位置**锚定校验 —— 「首领」等标签会出现在即将到来的
+    # 节点下方(2-7 实证 x1341 vs 当前槽 cx≈900)→ 标签 x 与当前槽 cx 对拍,错位不覆盖。
+    _t, _lx = _node_type_label(ctx, screen)
+    if _t:
+        _cur_slot = next((s for s in _slots if s.state == 'current'), None)
+        if _cur_slot is None:
+            pass   # 无当前锚(罕见)→ 不覆盖
+        elif gate_node_type(_t, None, label_x=_lx,
+                            current_cx=_cur_slot.cx + _x0) is None:
+            from one_dragon.utils.log_utils import log as _log
+            _log.info('[cw!][nodeseq] 标签x错位不覆盖:type=%s 标签x=%d vs 当前槽cx=%d'
+                      '(标签属即将到来的节点,如 boss 前夕「首领」)', _t, _lx or -1,
+                      _cur_slot.cx + _x0)
+        else:
+            _cur_slot.node_type = _t
     return _slots
 
 
@@ -777,7 +826,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.hp = 100 if _hp_opt is None else _hp_opt
     state.hp_readable = _hp_opt is not None   # 遥测保真(insights hp=100 毒化)
     state.plane, state.round_num = read_phase_round(ctx, screen)
-    state.node_type = read_node_type(ctx, screen)
+    # r80(审计 P0):boss 轮次语义门 —— 「首领」标签在 boss 前夕也会出现在即将到来的
+    # boss 节点下方(2-7 实证),round<8 时必是张冠李戴 → 拒(boss=位面最后节点 ≥9 轮)
+    state.node_type = gate_node_type(read_node_type(ctx, screen), state.round_num)
     # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
     # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
     # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
