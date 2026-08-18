@@ -573,17 +573,23 @@ def _best_improving_action(
     _dual = state.dual_track_phase
     if _dual:
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+        # 常数削减(r51 用户效率提醒):双轨放行面预计算——stash/target 的
+        # core+faction 名集一次建好,循环内纯 set 查(免逐卡×逐 comp 的
+        # _card_hits_target 函数调用)
+        _allow_names: set[str] = set()
+        _allow_factions: set[str] = set()
+        for _sc in (stash_comp, target_comp):
+            if _sc is not None:
+                _allow_names.update(_sc.core_chars)
+                _allow_factions.update(_sc.factions)
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
             continue
         if _dual and card.name:
             _ent = TRANSITION_PACK.get(card.name)
-            _leader_ok = (stash_comp is not None
-                          and _card_hits_target(card.name, card.faction, stash_comp))
-            _target_ok = (target_comp is not None
-                          and _card_hits_target(card.name, card.faction, target_comp))
-            if _ent is None and not _leader_ok and not _target_ok:
+            if (_ent is None and card.name not in _allow_names
+                    and card.faction not in _allow_factions):
                 continue   # 双轨期:非过渡包/非领先线/非现 target → 散牌不买
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
