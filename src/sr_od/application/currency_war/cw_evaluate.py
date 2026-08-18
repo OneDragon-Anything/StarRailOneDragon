@@ -148,7 +148,12 @@ def char_quality_score(state: GameState, character_priority: list[str],
                        target_comp=None) -> float:
     """角色质量分:character_priority 角色 × 星级 + **target 核心角色 × 星级**
     (r17:全场 3合1 落地后补——合并人数-2 但星级+1,target 核心的 2★ 战力增值
-    必须计价,否则买第 3 张 delta 恒负 → 升星永不可达,与游戏语义相悖)。"""
+    必须计价,否则买第 3 张 delta 恒负 → 升星永不可达,与游戏语义相悖)。
+
+    r70 审计刀③:**场上(deployed)打工牌星级计价**——star≥2 每星 0.25×CHAR_PRIORITY_BONUS
+    (1★ 零分不变,防散牌囤积)。人类纪律「1 费顺手集 2★ = 免费战力」(transitions §6)
+    此前在 eval 零维度承载 → plan 永不奖励 → 板面星级真空 = P1 场场输的强度根因之一。
+    只计场上(bench 星级是潜在战力,半权已在 deploy 链承载,不双计)。"""
     score = 0.0
     core_names: set[str] = set()
     if target_comp is not None:
@@ -158,6 +163,11 @@ def char_quality_score(state: GameState, character_priority: list[str],
             score += CHAR_PRIORITY_BONUS * bc.star
         elif bc.char_id in core_names:
             score += CHAR_PRIORITY_BONUS * bc.star * 0.5   # target 核心星级(半权:低于用户 priority)
+    # r70:场上打工牌 2★+ 计价(升星战力;1★ 不计防囤散牌)
+    for bc in state.deployed:
+        if bc.char_id and bc.star >= 2 and (bc.char_id not in character_priority
+                                            and bc.char_id not in core_names):
+            score += CHAR_PRIORITY_BONUS * 0.25 * (bc.star - 1)
     return score
 
 

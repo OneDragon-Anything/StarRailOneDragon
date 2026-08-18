@@ -244,10 +244,16 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     deploy 条件(任一):
     - target 阵营角色(target.factions 含 bc.faction 或 bc.char_id ∈ core_chars)。
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
+    - r70:双轨框架牌(TRANSITION_PACK 在册,仙舟/列车/通用件)= 双轨期临时 target
+      (deploy 侧同语义;否则保血资产被判散牌留 bench → 白板挨打)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
     if target is not None and _card_supports_target(bc.char_id, bc.faction, state, target):
         return True
+    if state.dual_track_phase and bc.char_id:
+        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK as _TP
+        if bc.char_id in _TP:
+            return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
 
@@ -370,7 +376,8 @@ def plan(state: GameState, config, faction_priority: list[str],
          target_comp: Comp | None = None,
          reactive: bool = False,
          stash_comp: Comp | None = None,
-         focus_sell_cap: int = 2) -> list[Action]:
+         focus_sell_cap: int = 2,
+         framework: str = '') -> list[Action]:
     """一回合动作计划:硬门(必做)+ 贪心改进(买/deploy/升/卖/**D 牌蒙特卡洛**)。
 
     config: CurrencyWarConfig。rng: 蒙特卡洛 D 牌用(默认新建;测试传 seeded 保确定)。
@@ -381,6 +388,9 @@ def plan(state: GameState, config, faction_priority: list[str],
         plan 不内部 select_comp(纯 L1 集中化驱动 buy/deploy);False(默认)= 向后兼容(None→内部 select_comp)。
     stash_comp: ADR-0209 双轨期信号领先线(囤牌方向;None=未起)。双轨期放行
         过渡包牌+此线的 core/阵营牌(囤 bench),其他散牌不买。
+    framework: r70 过渡框架(仙舟/列车;''=未定)——双轨期买牌 delta 加 transition_score
+        同框架加成、deploy 认框架牌、卖出 keep 集保护框架 carry/partial。三侧单一源自
+        cw_transition.pick_framework(session 持有);治「买了→不上场→被当散牌卖掉」循环。
     """
     rng = rng or random.Random()
     character_priority = getattr(config, 'character_priority', [])
@@ -437,7 +447,7 @@ def plan(state: GameState, config, faction_priority: list[str],
                                       refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur),
                                                                   target_comp=target, config=config) - refresh_used,
                                       target_comp=target, rf_used=refresh_used,
-                                      stash_comp=stash_comp)
+                                      stash_comp=stash_comp, framework=framework)
         if not step:
             break
         actions.extend(step)
@@ -470,6 +480,17 @@ def _sell_offline_for_focus(state: GameState, actions: list,
     from sr_od.application.currency_war.cw_state import simulate as _sim
     sold = 0
     _transition_chars = set(getattr(target, 'transition_chars', ()) or ())   # r9 review#1:角色级(transition_factions_hint 不存在,曾恒空→卖掉打工牌)
+    # r70 框架保护集:双轨期当先框架的 carry/partial 不卖(「买了→不上→被当散牌卖」
+    # 循环的卖出侧;transition_score 框架加成买进来的牌,卖出侧得认)。
+    from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+    _fw = ''
+    if state.dual_track_phase:
+        _fw_names = {TRANSITION_PACK[b.char_id][0] for b in state.bench
+                     if b.char_id in TRANSITION_PACK}
+        if len(_fw_names) == 1:
+            _fw = next(iter(_fw_names))
+    _fw_keep = ({n for n, (f, t) in TRANSITION_PACK.items() if f == _fw and t != 'drop'}
+                if _fw else set())
     for bc in list(state.bench):
         if sold >= sell_cap:
             break
@@ -479,7 +500,7 @@ def _sell_offline_for_focus(state: GameState, actions: list,
         _is_priority = bc.char_id in character_priority
         _is_transition = bc.char_id in _transition_chars or \
             bc.faction in (getattr(target, 'flex_factions', ()) or ())
-        if _is_target or _is_priority or _is_transition:
+        if _is_target or _is_priority or _is_transition or bc.char_id in _fw_keep:
             continue
         # 场上**满员**时新牌上不了场,bench off-line 才是死库存(该卖);
         # 场上未满时 bench 牌可 deploy 换战力(暂留)。r32 修正:原判据方向写反
@@ -554,7 +575,7 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
     rng: random.Random, refresh_budget: int = 0, target_comp: Comp | None = None,
-    rf_used: int = 0, stash_comp: Comp | None = None,
+    rf_used: int = 0, stash_comp: Comp | None = None, framework: str = '',
 ) -> list[Action]:
     """返回 eval 提升最大且为正的动作序列;无则 []。
 
@@ -564,6 +585,7 @@ def _best_improving_action(
     rf_used: 本回合已刷新次数(ADR-0131;决定第 next 次刷新花金 —— 策略免费额度内 = 0)。
     target_comp: 战略层目标阵容(A2);传给 evaluate,使动作导向 target 成型。None=reactive。
     stash_comp: ADR-0209 双轨期信号领先线(囤牌放行面;None=非双轨/信号未起)。
+    framework: r70 过渡框架(买分加 transition_score 同框架加成;''=未定不加)。
     """
     _rf_used = rf_used
     character_priority = getattr(config, 'character_priority', [])
@@ -754,6 +776,12 @@ def _best_improving_action(
             after = simulate(after, a)
         delta = evaluate(after, config, faction_priority, target_comp) - base_eval
         delta += _concentration_delta(card, state, target_comp)
+        # r70 框架买分:双轨期同框架牌加 transition_score(carry 1.3/partial 0.9+集中加成;
+        # 旧 framework 恒 '' → 框架集中评分空转,买出来是 13 人名单散混合)。×0.8 缩放 =
+        # 与 synergy delta 同量纲但不盖过成型分(经验缩放,待对拍校准)。
+        if _dual and framework:
+            from sr_od.application.currency_war.cw_transition import transition_score
+            delta += 0.8 * transition_score(card.name, card.faction, framework)
         # review🟡 去 CHAR_PRIORITY_BONUS*2 flat(char_quality_score 已计 priority×star,原三重过度偏置)
         beat(delta, seq)
 

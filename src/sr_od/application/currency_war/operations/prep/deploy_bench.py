@@ -169,6 +169,20 @@ class DeployBench(SrOperation):
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
         _tgt = (set(_sess.target_comp.factions)
                 if (_sess is not None and _sess.target_comp is not None) else set())
+        # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
+        # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
+        # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
+        # 集合退化为原 target-only 行为。
+        _fw = getattr(_sess, 'transition_framework', '') if _sess is not None else ''
+        if _fw:
+            from sr_od.application.currency_war.cw_transition import (
+                FRAMEWORK_FACTIONS,
+                TRANSITION_PACK,
+            )
+            _tgt = _tgt | set(FRAMEWORK_FACTIONS.get(_fw, ()))
+            _fw_carry = {n for n, (f, t) in TRANSITION_PACK.items() if f == _fw and t != 'drop'}
+        else:
+            _fw_carry = set()
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
         # + 用户 live 观察 bug4「未考虑上限」)。CV 实测 deployed 优于 state.deployed_count(board 重建可能虚高)。
@@ -236,7 +250,9 @@ class DeployBench(SrOperation):
         for i in bench_occ:
             _bonds = _bench_id.get(i)
             _cid0 = _bench_cid.get(i)
-            _is_tgt = ((_bonds and _bonds & _tgt) or _cid0 in _cores) if _tgt else False
+            # r70:框架 carry/partial 也算 target(双轨期临时 target 语义,同 _tgt 并集)
+            _is_tgt = (((_bonds and _bonds & _tgt) or _cid0 in _cores)
+                       if _tgt else False) or _cid0 in _fw_carry
             (tgt_idx if _is_tgt else rest).append(i)
         # ADR-0130(用户节奏 §7-1「开场买牌囤 bench 不上阵」+ 复查确认 spread 种子):off-target 散牌
         # 单张**留 bench 不上阵**(对齐 planner `_should_deploy` 语义)—— 上场条件:① target;② 同阵营

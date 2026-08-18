@@ -248,10 +248,11 @@ class EquipAll(SrOperation):
         _match = self.ctx.cw_match
         _tgt_comp = (_match.session.target_comp
                      if (_match is not None and _match.session is not None) else None)
-        # ⚖️ 过渡期不穿装备(用户 2026-08-16 指示):装备攥着给成型阵容核心(key_equips 大件);
-        # 过渡期(form_progress 低)小件乱穿 = 浪费 below-avatar 容量 + 错穿拆卸成本。
-        # 判据:target comp 存在且未成型 → 只穿 key_equips 命中件,无命中 = 全攒着(gen 兜底停用);
-        # comp=None / 已成型(form≥COMMIT_FRAC)→ 保留 gen 兜底(散件也该穿,凑战力)。
+        # ⚖️ 过渡期持有语义修正(r70 审计刀②,替 2026-08-16 旧指示):旧版 form<COMMIT_FRAC
+        # 全 P1 攒仓库 = 白板打 8 个战斗节点 + r9 boss(每场稳定掉血的确定性损失;r70 实证
+        # P1 八战掉 62 血)。修正:过渡期**穿给当前上场的 5 人**——key_equips 命中件照穿
+        # (未来迁给核心只付一次性拆卸),非 key 散件穿给当前板面高战力者(carry 优先);
+        # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
         _form = 0.0
         if _tgt_comp is not None and deployed:
             from sr_od.application.currency_war.cw_comps import (
@@ -261,7 +262,10 @@ class EquipAll(SrOperation):
             from sr_od.application.currency_war.cw_state import GameState
             _st = (_match.session.last_state if _match is not None else None) or GameState()
             _form = form_progress(_tgt_comp, _st)
-        _transition_hold = (_tgt_comp is not None and 0.0 < _form < COMMIT_FRAC)
+        _dual = bool(getattr(_match.session, 'last_state', None) is not None
+                     and _match.session.last_state.dual_track_phase) if _match is not None else False
+        _transition_hold = (_tgt_comp is not None and 0.0 < _form < COMMIT_FRAC
+                            and not _dual)   # r70:双轨期不再 hold(穿给当前 5 人)
         if _transition_hold:
             log.info('[cw-equip] 过渡期持有(form=%.2f < %.2f):非 key_equips 不穿(攒给成型核心)',
                      _form, COMMIT_FRAC)

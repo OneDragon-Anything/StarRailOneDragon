@@ -112,6 +112,13 @@ class DefaultCwStrategy(CwStrategy):
         _committed = (state.plane >= 2
                       or session.commit_signals.ready(t_of(state.plane, state.round_num)))
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
+        # r70 过渡框架选定(买/上/卖三侧单一源):双轨期每轮按持有刷新;定型后清空
+        # (三侧消费见 cw_transition.pick_framework docstring)。
+        if state.dual_track_phase:
+            from sr_od.application.currency_war.cw_transition import pick_framework
+            session.transition_framework = pick_framework(state.bench, state.deployed, state.shop)
+        else:
+            session.transition_framework = ''
         # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)
         session.stash_comp = None
         if state.dual_track_phase:
@@ -290,7 +297,8 @@ class DefaultCwStrategy(CwStrategy):
                             rng=session.rng, target_comp=session.target_comp,
                             reactive=(session.target_comp is None),
                             stash_comp=getattr(session, 'stash_comp', None),
-                            focus_sell_cap=_cap)
+                            focus_sell_cap=_cap,
+                            framework=getattr(session, 'transition_framework', ''))
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
                       state: GameState, session: StrategySession, config) -> PickEvent:

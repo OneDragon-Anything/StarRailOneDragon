@@ -59,6 +59,30 @@ def in_early_phase(plane: int, committed: bool) -> bool:
     return plane == 1 and not committed
 
 
+def pick_framework(bench, deployed, shop=None) -> str:
+    """r70 过渡框架选定(买/上/卖三侧单一源):按当前持有(board+bench,可选 shop)的
+    框架件计数取领先框架;平局/全零 → ''(未定,消费方按散件口径)。
+
+    数据口径:主流 = 仙舟 32% + 列车 29%,其余 ≤5%(模块头 plaza 实证)。选定后:
+    - 买侧:transition_score(char, fw=framework) 同框架加成(r70 前该参数恒 '' = 加成空转);
+    - 上侧:deploy 双轨期以 FRAMEWORK_FACTIONS[framework] 为临时 target(框架牌不再是
+      「off-target 散牌留 bench」);
+    - 卖侧:keep 集保护当先框架的 carry/partial(防「买了→不上→被当散牌卖」循环)。
+    """
+    counts = {'仙舟': 0, '列车': 0}
+    for bc in (*deployed, *bench):
+        ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
+        if ent and ent[0] in counts:
+            counts[ent[0]] += 1
+    if shop:
+        for c in shop:
+            ent = TRANSITION_PACK.get(getattr(c, 'name', ''))
+            if ent and ent[0] in counts:
+                counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权
+    fw = max(counts, key=lambda k: counts[k])
+    return fw if counts[fw] >= 2 else ''
+
+
 # ===== 定型信号管线(r39 用户指导:最终 comp 的选择信号从开局积累,双轨并行) =====
 # 信号源(按到达顺序):简报词缀 → P1 投资策略 → P1 投资环境 → P1 商店供给倾向
 # → 最晚 P2-3 投资策略/环境(最后一次有经济量转型的节点,之后锁死)。
