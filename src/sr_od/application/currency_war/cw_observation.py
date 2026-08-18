@@ -118,6 +118,26 @@ def read_gold(ctx: SrContext, screen: MatLike) -> int:
     return v
 
 
+def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | None:
+    """商店开态的概率条 → {费用档 1-5: 概率}(r77 轮岗接线;读不到 → None 退基线)。
+
+    **为什么读屏**(用户 2026-08-19 点题「轮岗」):投资环境轮岗每备战阶段随机翻倍
+    一个费用档(基线 lv6 30/40/25/5 → 1费翻倍变 60/22/15/3,实测吻合)——概率条
+    直接印在商店面板上,OCR 即真值,无需建模哪个档被随机翻倍、也覆盖其他概率类
+    环境。消费方:plan._sample_cost(D 牌蒙特卡洛)/ refresh 价值评估。
+    """
+    from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME, _area_rect
+    rect = _area_rect(ctx, '按钮-刷新概率表', SHOP_SCREEN_NAME)   # 概率条在开商店子态屏
+    if rect is None:
+        return None
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return None
+    from sr_od.application.currency_war.cw_shop_odds import parse_prob_bar
+    texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(image=crop)]
+    return parse_prob_bar(texts)
+
+
 def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """read_hp 的保真版:读不到/越界 → None(默认值由调用方定)。
 
@@ -871,6 +891,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     else:
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)
+    # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
+    # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
+    state.refresh_probs = read_refresh_probs(ctx, screen)
     state.bench_full_flag = read_bench_full(ctx, screen)
     # [停机钩子·已删(2026-08-17 M72 采全)] star≥3 停机采集:19 位 fixture 已采全
     # (star3_slots/),read_star 全位置断言 3 测试过(test_star3_positions)。⚠️ 教训存档:

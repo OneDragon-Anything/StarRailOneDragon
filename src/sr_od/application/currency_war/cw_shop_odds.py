@@ -58,6 +58,38 @@ def refresh_prob(level: int, cost: int) -> float:
     return REFRESH_PROB.get(level, {}).get(cost, 0.0)
 
 
+def parse_prob_bar(texts: list[str]) -> dict[int, float] | None:
+    """商店概率条文本(如 ['60%','■22%','■15%','■3%','■0%'])→ {费用档: 概率}。
+
+    r77(用户点题「轮岗」):投资环境轮岗 = 每备战阶段随机一费用档概率翻倍(基线
+    30/40/25/5 → 1费翻倍变 60/22/15/3,实读吻合)。概率条直接印在商店面板上 →
+    **读屏即真值**,无需建模哪个档被随机翻倍。解析失败 → None(调用方退基线表)。
+    """
+    import re
+
+    nums: list[float] = []
+    for t in texts:
+        m = re.search(r'(\d+)%', t)
+        if m:
+            nums.append(int(m.group(1)) / 100.0)
+    if len(nums) != 5 or abs(sum(nums) - 1.0) > 0.05:
+        return None
+    return {cost: nums[cost - 1] for cost in range(1, 6)}
+
+
+def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
+    """对比观测概率与基线,判「轮岗翻倍档」(教学用途/日志;决策直接用 observed)。
+
+    判据:该档观测/基线 ≈ 2 且其余档按比例压缩(翻倍档吃掉一半质量)。
+    """
+    base = REFRESH_PROB.get(level, {})
+    for cost, p_obs in observed.items():
+        p_base = base.get(cost, 0.0)
+        if p_base > 0 and 1.6 <= p_obs / p_base <= 2.4:
+            return cost
+    return None
+
+
 def _refresh_dist(p: float, v: int, a: int, c: int, k_need: int, j: int) -> list[float]:
     """一次刷新得 x 张目标牌的概率分布(x=0..k_need);k_need=还需目标牌数。
 

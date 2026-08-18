@@ -100,6 +100,9 @@ class GameState:
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
     bench_full_flag: bool | None = None
+    # 商店开态概率条真值 {费用档 1-5: 概率}(r77 轮岗接线:投资环境轮岗每备战阶段随机
+    # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
+    refresh_probs: dict[int, float] | None = None
     # ⚖️ node_path + NodeInfo 已删(2026-08-16 review D3:0 写 0 读;节点序列实际由
     # cw_node_reader.NodeSlot 承载,read_node_sequence 直连消费方)。
     match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)

@@ -264,17 +264,21 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
 
 # ===== A1:蒙特卡洛 D 牌(刷新商店期望值)=====
 
-def _sample_cost(level: int, rng: random.Random) -> int:
+def _sample_cost(level: int, rng: random.Random,
+                 probs_override: dict[int, float] | None = None) -> int:
     """按等级采费用(REFRESH_PROB 权威刷新概率表,D-91 实机 OCR;替旧手估 pool,A4.3)。
 
     D 牌蒙特卡洛用:采样 cost 必须贴合真实刷新概率(低级不出 5 费),否则 D 牌估值偏差。
-    无数据(Lv<4 纯 1 费 / 越界)→ 1 费。
+    probs_override(r77 轮岗接线):实读概率条(state.refresh_probs,投资环境轮岗每备战
+    阶段随机翻倍一档)优先;None → 基线表。无数据(Lv<4 纯 1 费 / 越界)→ 1 费。
     """
-    probs = REFRESH_PROB.get(level)
+    probs = probs_override or REFRESH_PROB.get(level)
     if not probs:
         return 1
     costs = list(probs.keys())
     weights = list(probs.values())
+    if sum(weights) <= 0:
+        return 1
     return rng.choices(costs, weights=weights, k=1)[0]
 
 
@@ -292,7 +296,9 @@ def _sample_shop(state: GameState, faction_priority: list[str], rng: random.Rand
     target_factions = set(target_comp.factions) if target_comp is not None and target_comp.factions else set()
     weights = [2.0 if (f in faction_priority or f in target_factions) else 1.0 for f in factions]
     return [ShopCard(x=0, faction=rng.choices(factions, weights=weights, k=1)[0],
-                     cost=_sample_cost(state.level, rng)) for _ in range(n)]
+                     cost=_sample_cost(state.level, rng,
+                                       probs_override=getattr(state, 'refresh_probs', None))
+                     ) for _ in range(n)]
 
 
 

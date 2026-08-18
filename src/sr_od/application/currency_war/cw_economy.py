@@ -328,7 +328,8 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
         expected_refreshes,
         refresh_prob,
     )
-    _p = refresh_prob(state.level, cost)
+    _p = (getattr(state, 'refresh_probs', None) or {}).get(cost) \
+        or refresh_prob(state.level, cost)   # r77 轮岗:实读概率条优先(翻倍档期望刷次减半)
     _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
     _a = POOL_COPIES_PER_CARD.get(cost, 9)
     e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
