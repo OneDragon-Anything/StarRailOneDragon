@@ -341,10 +341,15 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     try:
         from sr_od.application.currency_war.cw_obs_core import _ocr
         from sr_od.application.currency_war.cw_observe import cw_shot_unique
-        _panel_open = any(
-            _ocr(ctx, screen, _area_rect(ctx, _n))
-            for _n in ('按钮-装备推荐',)
-            if _area_rect(ctx, _n) is not None)
+        # r82 守卫修正:「按钮-装备推荐」area 在「货币战争-备战-角色详情」子屏,
+        # _area_rect 默认查备战屏恒 None → 旧守卫形同虚设(r82 实锤:停机帧上面板
+        # 开着仍停机)。枚举两屏查,任一命中即面板开 → 本帧不判。
+        _panel_open = False
+        for _scr_name in ('货币战争-备战-角色详情', '货币战争-备战'):
+            _r = _area_rect(ctx, '按钮-装备推荐', _scr_name)
+            if _r is not None and _ocr(ctx, screen, _r):
+                _panel_open = True
+                break
         if _panel_open:
             return chars
         _named = {c.slot for c in chars} if chars else set()
