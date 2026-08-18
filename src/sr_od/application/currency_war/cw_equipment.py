@@ -133,6 +133,8 @@ def _owned_order_anomaly(pts: list[tuple[int, int]]) -> str | None:
     旧实现(欧氏间距全局中位)把**行尾→行首的换行跳变**误判为跳格 —— 换行时
     x 从左列跳回右列(live 2026-08-18 10:45/10:47 实锤:row1 两件 + row2 两件,
     [1]->[2] 间距 220 vs 中位 78 = 每逢跨行必误报,遥测噪声)。
+    ⚠️ 已知盲区(r58 review P2-5,纯遥测灵敏度限制):行内恰 3 icon 且漏 1 槽时
+    gaps=[s,2s] 中位=2s 阈值 3.6s 检不出(需 ≥4 icon 中位才稳);接受现状。
     """
     if len(pts) < 4:
         return None   # 太少无法判连续性
