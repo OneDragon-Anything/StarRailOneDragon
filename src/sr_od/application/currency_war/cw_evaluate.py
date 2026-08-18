@@ -68,6 +68,10 @@ TARGET_FACTION_BONUS: float = 1.5      # target 阵营 tier 部分 ×1.5(tier-on
 CEILING_BONUS_FACTOR: float = 0.3      # 高 ceiling 阵营(count/max_tier)潜力项系数
 
 MAX_REFRESH_PER_ROUND: int = 2   # 每回合最多主动刷新(D 牌)次数(防无限刷;review r5 修死代码)
+#: r63 连胜刷新门(用户 2026-08-18「连胜奖励 cover 刷新成本也可以刷」;⚠️ 档金真值
+#: 未核,auto-chess 常识不可进代码 → 保守取 3:与 WIN_STREAK_BREAK_INTEREST=2 错开,
+#: 2 连只破息买质量不额外刷;档金表核实后换显式边际账,见 _refresh_cap 注释)
+STREAK_REFRESH_MIN: int = 3
 
 
 
@@ -198,19 +202,20 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     if state.node_type == 'boss':
         cap = max(cap, 4)                # ADR-0128(复查 #4):boss 关前把钱花完(D 出质量保 HP)
     # ⚖️ 连胜维持边际账(r63 用户指导 2026-08-18:「连胜奖励若 cover 刷新成本也可以刷」——
-    # 替旧布尔 WIN_STREAK_BREAK_INTEREST 只管破息不管刷新的粗粒度)。账:
-    #   下轮连胜档金 = min(streak+1, 5) 金(2连1金起档,economy STREAK 表;伟大征服等 ×mult
-    #   经 _strategy_economy.win_reward_mult,首积分位取整);刷价 = shop_refresh_cost(2,可减免)。
-    #   回本线:档金 ≥ 刷价 → 连胜本身是正期望收入流,刷到维持 ≈ 买收入(非烧金);
-    #   档金 < 刷价 → 维持连胜的刷新是净支出,只靠板强自然维持(不额外刷)。
-    #   3 连起档金 2 = 刷价 → 恒回本;2 连(1 金)< 2 → 不刷(等连胜自然滚到 3)。
-    #   连败期 streak ≤ 0 → 无连胜回报 → 完全落回「少刷攒息」(§7-2,现有行为)。
+    # 替旧布尔 WIN_STREAK_BREAK_INTEREST 只管破息不管刷新的粗粒度)。
+    # ⚠️ 档金真值未核(2026-08-18 自查:「2连=1金/3连=2金」系 auto-chess 常识带入,项目
+    # 无权威源 —— STREAK_WEIGHT 是评分占位非金数;违「游戏数据先核实」铁律,已撤编造公式)。
+    # 现实现 = 保守门:连胜 ≥ STREAK_REFRESH_MIN(3,与 WIN_STREAK_BREAK_INTEREST=2
+    # 错开一档:2 连只破息买质量、不额外刷)→ 放宽。真档金表核实路径:结算屏「连胜×N」
+    # 同屏的获得金币总览(基础奖励/利息/连胜行,live OCR 可拆)+ 伟大征服 ×3 对拍。
+    # 核实后替换为显式账:min(档金(streak+1), cap)×mult ≥ shop_refresh_cost。
     _streak = state.streak or 0
-    if _streak >= 2:
+    if _streak >= STREAK_REFRESH_MIN:
         _se0 = _strategy_economy(state)
-        _streak_gold = min(_streak + 1, 5) * (_se0.win_reward_mult or 1.0)
-        if _streak_gold >= state.shop_refresh_cost:
-            cap = max(cap, 4)   # 连胜金 ≥ 刷价:刷保连胜 = 买收入
+        if (_se0.win_reward_mult or 1.0) >= 2.0:   # 伟大征服类 ×3:奖励流被放大,更该保
+            cap = max(cap, 6)
+        else:
+            cap = max(cap, 4)   # 常规连胜:放宽一档(维持正向收入流;精确账待档金真值)
 
     if (target_comp is not None
             and target_comp.level_plan.get(state.level) is not None
