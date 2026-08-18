@@ -212,7 +212,6 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     # 影子安全:try/except 静默回退(判决不可用 → cap 原值); verdict amend/abandon → cap 压 0
     # (搜牌窗该停 —— 线活但附着计划该改);判决 hold → 原值。证据 = 时间线掉队(p(t) 曲线)。
     try:
-        from sr_od.application.currency_war.cw_comps import form_progress
         from sr_od.application.currency_war.cw_line_tribunal import (
             LineHypothesis,
             timeline_lag_lr,
@@ -227,11 +226,18 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
                 _t = (min(state.plane, 3) - 1) * 9 + min(state.round_num, 9)
                 h = LineHypothesis('roll_cap_chase', target_comp.name, 'star_chase',
                                    checkpoints=[_t], deadline=_t + 4, expected=curve)
-                _fp = form_progress(target_comp, state)
-                lag = h.progress_lag(_t, _fp)
+                # 59-A1 修(量纲对齐):expected=等级曲线(1→10 归一)→ 实际侧必须同量纲
+                # (state.level / 10);旧喂 form_progress(阵营成型度 0-1)→ 常态 lag
+                # 0.1-0.2 → LR≈1.6 落 amended → 正常线被 cap=0 禁刷
+                _actual = min(state.level, 10) / 10.0
+                lag = h.progress_lag(_t, _actual)
                 if lag > 0:
                     h.add_evidence(_t, 'timeline_lag', f'{lag:.2f}', timeline_lag_lr(lag))
                     v = verdict(h, _t, cost_abandon=18.0, cost_hold=6.0)
+                    # 67-P1b(修复对拍测量仪):cap=0 判决频率可直接统计(修前/修后各 20 局)
+                    log.info('[cw][tribunal] roll_cap p%sr%s lag=%.2f lr=%.2f action=%s cap=%s',
+                             state.plane, state.round_num, lag, v.lr, v.action,
+                             0 if v.action != 'hold' else cap)
                     if v.action != 'hold':
                         cap = 0   # amend/abandon:搜牌窗停(线活也该改附着计划——不再烧金搜)
     except Exception:   # noqa: BLE001  影子期失败安全:判决不可用 → 原 cap(=现状行为)
@@ -405,8 +411,13 @@ OPTIONALITY_PER_CHAR: float = 1.0    # 每个属 ≥2 comp 的 bench 角色加�
 
 
 def _elapsed_rounds(state: GameState) -> int:
-    """总回合数(``round_num + (plane-1)*6``;3 位面 × 6 关 = 18)。α(t) 用。"""
-    return state.round_num + (state.plane - 1) * 6
+    """总回合数(全局节点序;每位面 9 节点,horizon 单一源)。α(t) 用。
+
+    60-A1 修(×6→单一源):游戏真相 9 节点/位面,旧 ×6 使 α(t) 在位面 2 达满值
+    晚 ~3 轮(optionality 偏高/target-progress 罚偏弱)。
+    """
+    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    return state.round_num + (state.plane - 1) * NODES_PER_PLANE
 
 
 

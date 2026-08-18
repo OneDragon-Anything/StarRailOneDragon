@@ -1077,7 +1077,8 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏 easy **且** early_power 高,
     避免选易成型但早期弱的 comp。先验待实玩校准(多局验证)。
     """
-    early = (state.round_num + (state.plane - 1) * 6) <= 3 or state.gold < 30   # 全局 elapsed 判早期(位面内 round_num 1-6 循环 → per-plane 判会误把 plane2/3 r1-3 当早期)
+    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    early = (state.round_num + (state.plane - 1) * NODES_PER_PLANE) <= 3 or state.gold < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
     if not early:
         return 1.0
     form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
@@ -1322,8 +1323,9 @@ def target_committed(target: Comp, state: GameState) -> bool:
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
     fp = form_progress(target, state)
+    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
     return (fp >= COMMIT_FRAC
-            or ((state.plane - 1) * 6 + state.round_num >= COMMIT_ROUND and fp > 0))
+            or ((state.plane - 1) * NODES_PER_PLANE + state.round_num >= COMMIT_ROUND and fp > 0))
 
 
 # r7 pivot 冷却(治过度换线;两局败因诊断:4 线/3 线换线漂移,P1 后段板面永远半成型):
@@ -1475,9 +1477,14 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                      best.name, target.name if target else 'None', gap, _required_gap, _tag)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
-        # 位面内剩余轮次粗估(每位面 6 轮,3 位面 = 18 轮;已过 round_num + (plane-1)*6)
-        elapsed = state.round_num + (state.plane - 1) * 6
-        remaining = max(18 - elapsed, 0)
+        # 64-A1 修(×6→9 单一源):旧 remaining=18-elapsed 在 P3 r2 起归 0 →
+        # 未成型 target 反复触发信号 2 pivot easy comp(真实还剩 7-9 节点)
+        from sr_od.application.currency_war.cw_horizon import (
+            NODES_PER_PLANE,
+            TOTAL_NODES,
+        )
+        elapsed = state.round_num + (state.plane - 1) * NODES_PER_PLANE
+        remaining = max(TOTAL_NODES - elapsed, 0)
         if target.typical_form_round > remaining and form_progress(target, state) < 1.0:
             # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates

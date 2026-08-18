@@ -26,7 +26,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
 from sr_od.application.currency_war.cw_state import Action, GameState
+
+log = log_utils.log
 
 # 默认 replay 目录(项目根 .debug/temp/currency_war/replay/;不入 git)
 DEFAULT_REPLAY_DIR: Path = Path(".debug/temp/currency_war/replay")
@@ -363,6 +366,10 @@ def record_decision(state: GameState, target_comp: str,
         extra['active_strategies'] = strategies
         extra['ledger_fingerprint'] = ledger_fingerprint(
             build_ledger(effects_from_strategies(strategies)))
+        # 67-P1c(接线哨兵):指纹恒 'base' = ledger 重载接线仍断;修复后不同持卡
+        # 组合应产生不同指纹(55-A1 对拍数据源)
+        log.debug('[cw][ledger] fp=%s strategies=%s',
+                  extra['ledger_fingerprint'], strategies)
     except Exception:   # noqa: BLE001  观测 best-effort
         pass
     get_recorder().record_decision(_CURRENT_RUN_ID, _CURRENT_DIFFICULTY, state,

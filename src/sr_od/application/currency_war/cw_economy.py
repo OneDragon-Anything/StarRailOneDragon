@@ -246,6 +246,10 @@ def get_node_goal(plane: int, round_num: int, *,
             from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
             _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed)   # type: ignore[arg-type]
             if _goal is not None:
+                # 67-P1a(切流验证依赖):DP 姿态来源可见——无此行无法证明 DP 在跑(65 轮实锤)
+                log.info('[cw][goal] p%sr%s source=dp lv=%s spend=%s focus=%s',
+                         plane, round_num, _goal.target_level, _goal.spend_mode,
+                         _goal.action_focus)
                 return _goal
     for p, rmin, rmax, goal in _DEFAULT_NODE_PLAN:
         if p == plane and rmin <= round_num <= rmax:

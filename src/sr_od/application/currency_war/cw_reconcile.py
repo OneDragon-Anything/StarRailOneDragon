@@ -57,6 +57,12 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         # 回退判定应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
         _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
         if _old_s is not None and _s < _old_s:
+            # 61-A1/72-A1 修(银狼升费机制豁免):银狼LV.999 3★拖上场→变4费1★(升费签名
+            # =2★→1★×2-3 与 3★→2★ 成对同刻,文档记载的正常机制,非识别失败);
+            # merge 修复实证不消银狼回退(48条/224局全为机制性),豁免防每2局误停一次
+            if _n.startswith('银狼') and _old_s - _s == 1:
+                log.info(f'[cw][{source}] star 回退豁免:{_n} {_old_s}★→{_s}★(升费机制,非识别失败)')
+                continue
             log.warning(f'[cw!][{source}] star 回退:{_n} {_old_s}★→{_s}★(read_star 漏金星?卖后重买?)')
             _conflict('star', _old_s, _s, screen, verdict='采新-read_star实读(回退留证)',
                       source=source, char=_n)

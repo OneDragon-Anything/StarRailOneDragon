@@ -704,7 +704,14 @@ class CurrencyWarRunLoop(SrOperation):
             return
         try:
             arm_obj = getattr(self.ctx.cw_match.session, 'target_comp', None)
-            arm_id = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
+            comp_name = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
+            # 57-A1 修(臂命名空间):臂表键 = plaza carry 角色名,update 侧是 comp 阵容名
+            # → 恒 no-op(62 局零累积实证)。comp→carry 归一映射(comp.plaza_carry)。
+            arm_id = ''
+            if comp_name:
+                from sr_od.application.currency_war.cw_comps import get_comp
+                _c = get_comp(comp_name)
+                arm_id = getattr(_c, 'plaza_carry', '') or ''
             if not arm_id or arm_id not in self._allocator.arms:
                 return
             reward = self._allocator.reward_graded(
