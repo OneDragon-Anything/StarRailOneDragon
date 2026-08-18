@@ -354,10 +354,30 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
             return chars
         # r85b:补给箱/典籍槽排除 —— 箱/典籍占 bench 槽是已知常态(掉箱占席),SIFT
         # 认不出它们是设计内(非角色)→ 不停机(VLM 实锤:第4局 slot2「蓝色卡片叠放
-        # +开启」= 补给箱,旧钩子反复停机骚扰)。TM 检测复用 find_supply_boxes/tomes。
+        # +开启」= 卡包/补给箱,旧钩子反复停机骚扰)。
+        # r85c:find_supply_boxes 的 0.6 硬门漏检**低分渲染**(卡包变体 TM 0.541 实锤)
+        # → 钩子内用宽松互斥对拍:箱分 > 0.45 且 ≥ 典籍分 = 物件槽(比 0.6 门宽,只
+        # 用于排除停机;read_supply_boxes 生产口径不变,防典籍误判由互斥保证)。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
-        _obj_slots = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
+        _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
+        _bx_g, _tm_g = _get_supply_box_gray(), _get_tome_gray()
+        if _bx_g is not None:
+            _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
+            for _i, _rect in _bench_slots9:
+                if _i in _obj_slots:
+                    continue
+                _c = _gray_full[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
+                if _c.shape[0] < _bx_g.shape[0] or _c.shape[1] < _bx_g.shape[1]:
+                    continue
+                _bs = cv2.minMaxLoc(cv2.matchTemplate(_c, _bx_g, cv2.TM_CCOEFF_NORMED))[1]
+                if _bs <= 0.45:
+                    continue
+                _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
+                       if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
+                           and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
+                if _bs >= _ts:
+                    _obj_slots.add(_i)   # 箱/卡包类物件(低分渲染),排除
         _named = {c.slot for c in chars} if chars else set()
         for _slot, _rect in _bench_slots9:
             if _slot in _named or _slot in _obj_slots:
