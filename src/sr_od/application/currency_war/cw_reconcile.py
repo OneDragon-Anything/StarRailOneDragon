@@ -46,7 +46,6 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         return False
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
-    drifted = (old_b != new_b) or (old_d != new_d)
     # star 回退留证(观察冲突审计 #13,2026-08-16):同名 star 下降(如 2★读回 1★)= read_star
     # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
@@ -79,11 +78,18 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                          f'→ 本帧保旧 {_old_s}★,下帧确认')
                 _conflict('star', _old_s, _s, screen, verdict='保旧-回退防抖(疑合成动画窗,下帧确认)',
                           source=source, char=_n)
+                # 保旧只抬**一个**副本(r58 review P1:同名多副本共存[2★+1★]时,循环会
+                # 把所有 star==_s 的副本集体抬到旧最大星 → 真实 1★ 副本变假 2★,污染
+                # merge/卖牌决策;数量守恒 = 只抬第一个命中)。
+                _bumped = False
                 for _lst in (bench, deployed):
-                    if _lst:
-                        for _bc in _lst:
-                            if _bc.char_id == _n and _bc.star == _s:
-                                _bc.star = _old_s   # 保旧(动画窗读数不进 tracking)
+                    if not _lst or _bumped:
+                        continue
+                    for _bc in _lst:
+                        if _bc.char_id == _n and _bc.star == _s:
+                            _bc.star = _old_s   # 保旧(动画窗读数不进 tracking)
+                            _bumped = True
+                            break
             else:
                 # 连续第二次:确认真回退(卖后重买/真识别问题)→ 采新写回。
                 log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
@@ -100,8 +106,20 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         elif _n in _pend or _n in _reg:
             del _pend[_n]   # 读回恢复(或超预估)→ 清防抖(自愈)
             _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
+    # 离场清除 pending(r58 review P2①:角色卖出/上场后 _pend 残留 → 该角色下次登场时
+    # 单次动画误读被误判「连续第二次确认」)。只在两侧都真读(非 None)时清 —— None 侧
+    # 读失败不代表离场。双空读已在上方守卫早退,这里 old 非空 + 双真读 = 真离场。
+    if _pend and bench is not None and deployed is not None:
+        _gone = [n for n in _pend if n not in {x for x, _ in _new_stars}]
+        for n in _gone:
+            del _pend[n]
     session.star_pending_regression = _pend
     session.star_regression_count = _reg
+    # 防抖可能原地改 bench/deployed 副本 star(r58 review P2②)→ 纠漂判定与日志必须
+    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。
+    new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
+    new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
+    drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
         session.tracked_bench_chars = list(bench)
     if deployed is not None:

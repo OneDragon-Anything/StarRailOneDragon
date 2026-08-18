@@ -427,6 +427,10 @@ if __name__ == '__main__':
 
 # ===== 接缝:DP 姿态 → NodeGoal(ADR-0155;get_node_goal 影子模式消费) =====
 
+#: _horizon_node_goal 异常去重指纹(r58 review P2③:台账接线后 build_ledger→solve 的
+#: 新失败面不能退化成「永久静默回退表解」;同持卡组合只警一次,防每帧刷屏)
+_SEAM_WARNED: set[str] = set()
+
 
 def ledger_fingerprint(ledger) -> str:
     """台账指纹:只有改 DP 世界模型的字段参与(calendar+mutations)——纯时点金
@@ -489,6 +493,7 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
     P1 玩法 = 过渡包 5 人口攒 50 息(plaza Early 79%=5 人),等级在定型时才拉;
     DP 的升级姿态推迟到定型后生效(interest/hold 仍可用,保底攒息)。
     """
+    global _SEAM_WARNED
     t = (min(plane, 3) - 1) * NODES_PER_PLANE + min(round_num, NODES_PER_PLANE) - 1
     if not (0 <= t < TOTAL_NODES):
         return None
