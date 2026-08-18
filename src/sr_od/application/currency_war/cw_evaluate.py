@@ -212,10 +212,8 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     _streak = state.streak or 0
     if _streak >= STREAK_REFRESH_MIN:
         _se0 = _strategy_economy(state)
-        if (_se0.win_reward_mult or 1.0) >= 2.0:   # 伟大征服类 ×3:奖励流被放大,更该保
-            cap = max(cap, 6)
-        else:
-            cap = max(cap, 4)   # 常规连胜:放宽一档(维持正向收入流;精确账待档金真值)
+        # 伟大征服类 ×3(win_reward_mult≥2):奖励流被放大,更该保;常规连胜放宽一档。
+        cap = max(cap, 6) if (_se0.win_reward_mult or 1.0) >= 2.0 else max(cap, 4)
 
     if (target_comp is not None
             and target_comp.level_plan.get(state.level) is not None
