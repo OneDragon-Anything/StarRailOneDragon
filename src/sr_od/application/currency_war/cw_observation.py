@@ -677,6 +677,73 @@ def _level_from_xp(xp_progress: tuple[int, int] | None) -> int | None:
     return _inv.get(xp_progress[1])
 
 
+def _resolve_level(
+    ocr_raw: int | None,
+    heuristic: int,
+    xp_level: int | None,
+    last_level: int,
+) -> tuple[int, list[tuple[str, int, int, str, str]], bool]:
+    """等级三源解析(纯函数,2026-08-18 治本重构:live M-cw 乒乓根因)。
+
+    输入:
+    - ``ocr_raw``:「文本-等级」区直读(**无兜底**;None=失读);
+    - ``heuristic``:``_expected_level`` 启发式(ocr_raw 失读时的兜底值);
+    - ``xp_level``:XP 条分母反推(ADR-0129,独立源;None=失读);
+    - ``last_level``:session 上次值(``last_level_obs``;0=新局无历史)。
+
+    返回 ``(level, events, authoritative)``:events = [(kind, old, new, verdict, source)]
+    (供调用方记 [cw!]/obs_conflict);authoritative = 本帧等级是否来自真实观测
+    (OCR 或 XP 至少一源可读;False=纯启发式,**调用方不得写回 last_level_obs** —— 毒化防线)。
+
+    解析序(信源主权从高到低):
+    1. 基值 = ocr_raw(可读)否则 heuristic;
+    2. XP 覆盖(ADR-0129「信 XP 分母」):xp_level 可读且 ≠ 基值 → 采 XP;
+    3. 单调守卫:较 last 下降 → **XP 主权豁免**(live 2026-08-18 实证:OCR 失读→启发式 6
+       被写进 last_level_obs 毒化,XP 反推 5 每帧被单调守卫打回 → level 乒乓 6↔5,
+       策略全程跑假等级);XP 未确认的下降仍是 OCR 误读 → 保旧;
+    4. 跳变守卫:较 last 跳 >+2 且 XP 未确认 → OCR 单源假阳 → 保旧(M38 语义)。
+    """
+    level = ocr_raw if ocr_raw is not None else heuristic
+    events: list[tuple[str, int, int, str, str]] = []
+    # XP 覆盖:真实双源分歧(OCR 可读)才留证;OCR 失读时的例行为「兜底让位 XP」
+    # (ADR-0129 设计常态,逐帧记 [cw!] 是遥测噪声 —— live 10:47-10:48 每帧 2 冲突实证)。
+    if xp_level is not None and xp_level != level and ocr_raw is not None:
+        events.append(('xp_override', level, xp_level, '采新-XP分母反推', 'xp_denominator'))
+    if xp_level is not None and xp_level != level:
+        level = xp_level
+    if last_level:
+        _xp_sovereign = xp_level is not None and level == xp_level
+        if level < last_level:
+            if _xp_sovereign:
+                # 上次值疑似被启发式/误读毒化,XP 独立源向下校正(乒乓根治)。
+                events.append(('xp_down', last_level, level,
+                               '采新-XP下行校正(上次值疑似毒化)', 'xp_denominator'))
+            else:
+                events.append(('mono', last_level, level,
+                               '保旧-单调守卫(下降强可疑)', 'ocr'))
+                level = last_level
+        elif level > last_level + 2:
+            if _xp_sovereign:
+                events.append(('jump_ok', last_level, level,
+                               '采新-XP确认真跳变放行', 'ocr+xp_denominator'))
+            else:
+                events.append(('jump', last_level, level,
+                               '保旧-跳变守卫(单源跳变拒,XP未确认)', 'ocr'))
+                level = last_level
+    authoritative = ocr_raw is not None or xp_level is not None
+    return level, events, authoritative
+
+
+#: _resolve_level 事件 → 日志格式({o}=旧值,{n}=新值;消费方 read_game_state)
+_LV_LOG_FMT: dict[str, str] = {
+    'xp_override': '[cw!] level 修正:OCR 读 {o},XP 分母反推 {n}(以 XP 为准)',
+    'xp_down': '[cw!] level XP下行校正:上次 {o}(疑似兜底毒化) → XP 反推 {n}(乒乓根治)',
+    'mono': '[cw] level 单调守卫:OCR 读 {n} < 上次 {o}(误读)→ 用 {o}',
+    'jump': '[cw!] level 跳变守卫:OCR 读 {n} > 上次 {o}+2(疑似 XP 数字混入) → 用 {o}(误读不锁死)',
+    'jump_ok': '[cw] level 真跳变放行:{o} → {n}(XP 分母独立确认)',
+}
+
+
 def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     """一战前备战屏(商店已开)→ GameState(喂 plan)。
 
@@ -691,49 +758,36 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.hp_readable = _hp_opt is not None   # 遥测保真(insights hp=100 毒化)
     state.plane, state.round_num = read_phase_round(ctx, screen)
     state.node_type = read_node_type(ctx, screen)
-    state.level = read_level(ctx, screen, state.plane, state.round_num)
+    # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
+    # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
+    # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
+    # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
     state.xp_progress = read_xp_progress(ctx, screen)
-    # XP 分母反推真等级(ADR-0129):XP 条 "cur/need" 的 need = 当前级→下一级门槛(用户实测表
-    # XP_TO_NEXT_LEVEL,telemetry 多局分母 4/6/20/40 对拍一致)。read_level OCR 失败时静默用
-    # _expected_level 启发式兜底 —— 该值污染策略输入与 telemetry(live 实锤:真等级 5→6 过渡期
-    # level 列恒为启发值 6;M15 进位面 2 真实 lv5 被记成 lv6)。XP 可读 → 反查表覆盖;与读值
-    # 冲突 → 信 XP 分母 + [cw!] 留证(1-2 级门槛不在表 → 反查失败不覆盖,安全)。
+    _lv_raw = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-等级'))])
+    if _lv_raw is not None and not (LEVEL_MIN <= _lv_raw <= LEVEL_MAX):
+        _lv_raw = None
     _xp_lv = _level_from_xp(state.xp_progress)
-    if _xp_lv is not None and _xp_lv != state.level:
-        log.warning(f'[cw!] level 修正:OCR/兜底读 {state.level},XP 分母反推 {_xp_lv}(以 XP 为准)')
-        obs_conflict('level', state.level, _xp_lv, screen, verdict='采新-XP分母反推',
-                     source='xp_denominator', plane=state.plane, round_num=state.round_num)
-        state.level = _xp_lv
-    # XP 分母独立确认读值(两个独立源一致 = 真值的强证据;M38 实证:连升 4 级 4→8 被跳变守卫
-    # 永久锁死在 4,策略全程跑假 level,P2/P3 概率表/人口/level_plan 全错)。
-    _xp_confirms = _xp_lv is not None and _xp_lv == state.level
-    # 单调守卫(level-robust,2026-08-09 自审 §4):等级局内**只升不降**(CW 无降级机制)。
-    # read_level OCR 间歇误读(实测 r1 lv4→r2 lv5→r3 lv4 倒退;lv4 非 _expected_level 兜底[=5] → 是 OCR 把
-    # 5/6 读成 4)→ level 字段不可信 → max_units/cap/economy 全跟着错。守卫:读出 < session 上次真值 = 误读,
-    # 用上次真值(单调不降);新局 session 重置 last_level_obs=0 自然从首读起。
     _match = getattr(ctx, 'cw_match', None)
+    _last_lv = 0
     if _match is not None and _match.session is not None:
         _last_lv = getattr(_match.session, 'last_level_obs', 0)
-        if _last_lv and state.level < _last_lv:
-            log.info(f'[cw] level 单调守卫:OCR 读 {state.level} < 上次 {_last_lv}(误读)→ 用 {_last_lv}')
-            obs_conflict('level', _last_lv, state.level, screen, verdict='保旧-单调守卫(下降强可疑)',
-                         source='ocr', plane=state.plane, round_num=state.round_num)
-            state.level = _last_lv
-        # 跳变守卫(live 2026-08-15 两局实锤):单次误读大数(如 XP「10/20」的 10 混入等级区)被
-        # 单调守卫永久锁死 —— p1r9 经济 60 金「升到 lv10」(需 360 金)不可能。等级一轮最多升
-        # 1-2 级(买经验每点一次 +1);跳 >+2 = reader 假阳 → 用上次真值 + [cw!] 留证。
-        # ⚠️ XP 反推确认的值豁免(M38 2026-08-16 实证):XP 连点一波可真实连升 4 级(4→8),
-        # 「+2 上限」假设错;XP 分母独立推出同值 = 真跳变,直通(本守卫只拦纯 OCR 单源假阳)。
-        if _last_lv and state.level > _last_lv + 2 and not _xp_confirms:
-            log.warning(
-                f'[cw!] level 跳变守卫:OCR 读 {state.level} > 上次 {_last_lv}+2(疑似 XP 数字混入) → 用 {_last_lv}(误读不锁死)')
-            obs_conflict('level', _last_lv, state.level, screen, verdict='保旧-跳变守卫(单源跳变拒,XP未确认)',
-                         source='ocr', plane=state.plane, round_num=state.round_num)
-            state.level = _last_lv
-        elif _last_lv and state.level > _last_lv + 2 and _xp_confirms:
-            # 真跳变放行也留证(大跳变即使确认也值得事后抽查 —— M38 若当时有此证据,3 个位面前就能定位)
-            obs_conflict('level', _last_lv, state.level, screen, verdict='采新-XP确认真跳变放行',
-                         source='ocr+xp_denominator', plane=state.plane, round_num=state.round_num)
+    state.level, _lv_events, _lv_authoritative = _resolve_level(
+        _lv_raw, _expected_level(state.plane, state.round_num), _xp_lv, _last_lv)
+    for _kind, _old, _new, _verdict, _src in _lv_events:
+        _fmt = _LV_LOG_FMT.get(_kind)
+        if _fmt is not None:
+            _msg = _fmt.format(o=_old, n=_new)
+            if _kind in ('xp_override', 'xp_down', 'jump'):
+                log.warning(_msg)
+            else:
+                log.info(_msg)
+        else:
+            log.warning(f'[cw!] level {_kind}:{_old}->{_new}')
+        obs_conflict('level', _old, _new, screen, verdict=_verdict, source=_src,
+                     plane=state.plane, round_num=state.round_num)
+    # 毒化防线(2026-08-18):纯启发式兜底值(OCR 与 XP 双失读)不写回 last_level_obs
+    # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
+    if _match is not None and _match.session is not None and _lv_authoritative:
         _match.session.last_level_obs = state.level
     # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
     _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
