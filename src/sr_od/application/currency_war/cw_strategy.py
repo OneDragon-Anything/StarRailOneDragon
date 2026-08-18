@@ -250,21 +250,26 @@ class CurrencyWarMatch:
     session: StrategySession
 
 
-def gated_hp(current_hp: int, session: StrategySession, now_t: int | None) -> int:
-    """结算 HP 新鲜度门(r68 review,单源 helper):**紧邻上一节点**的结算真值才可信覆盖现读。
+def gated_hp(current_hp: int, session: StrategySession, now_t: int | None,
+             current_readable: bool = True) -> int:
+    """结算 HP 新鲜度门(r68/r69,单源 helper):结算真值仅在**可信窗口**内覆盖现读。
 
-    - 新鲜(last_hp_t 与 now_t 差 1)→ 用 ``session.last_hp``(结算屏「小队生命值NN」是权威源;
-      prep 现读在 shop 开态常读到 100 兜底)。
-    - 陈旧(低 conf 结算轮残留/隔多轮)→ 用现读 ``current_hp``(防陈 hp 冻结毒化每回合)。
+    - 现读可信(``current_readable=True``)→ 仅紧邻上一节点(gap==1)的结算值可覆盖
+      (结算屏「小队生命值NN」权威;防陈 hp 冻结毒化)。
+    - 现读不可信(``False`` = 100 兜底,``hp_readable=False``)→ 放宽到 gap≤3:hp 只在
+      战斗结算变,非战斗节点(奖励/补给/选卡)隔断时结算值本就仍真(r69 实证:r5 非战斗
+      + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
+      如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
 
-    消费点:shop.py(buy 前)+ prep_director(环入口 update_target 前)+ default_strategy
-    ``_pseudo_state`` —— 三处必须同门,否则先调的一方用假 hp(100 兜底)做 pivot 判定、
-    后调的一方用真 hp 反向 pivot,同节点两次方向相反的换线(r68 实证:hp=100 信号1转红A →
-    10s 后 hp=26 信号3转DOT队)。
+    消费点:shop.py(buy 前)+ prep_director(环入口,传 obs.state.hp_readable)+
+    default_strategy ``_pseudo_state`` —— 同门,否则先调方用假 hp 判 pivot、后调方真 hp
+    反向 pivot,同节点两次方向相反换线(r68 实证)。
     """
     last_hp = getattr(session, 'last_hp', None)
     last_t = getattr(session, 'last_hp_t', None)
-    if (last_hp is not None and now_t is not None
-            and last_t is not None and now_t - last_t == 1):
+    if last_hp is None or now_t is None or last_t is None:
+        return current_hp
+    gap = now_t - last_t
+    if gap == 1 or (not current_readable and 1 < gap <= 3):
         return last_hp
     return current_hp

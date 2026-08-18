@@ -401,7 +401,8 @@ class PrepDirector(SrOperation):
             from sr_od.application.currency_war.cw_strategy import gated_hp
             _os = obs.state
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
-            _os.hp = gated_hp(_os.hp, session, _os_t)
+            _os.hp = gated_hp(_os.hp, session, _os_t,
+                              current_readable=bool(getattr(_os, 'hp_readable', True)))
         try:
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
