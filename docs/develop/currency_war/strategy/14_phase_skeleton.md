@@ -57,7 +57,7 @@ class NodeGoal:
 
 **字段消费者(谁读、怎么用)**:
 - `target_level` → gate plan()(显式目标等级,`_expected_level` 辅,见下「责任分工」)。
-- `spend_mode` → **驱动 economy 档位**,触达两消费者:`economy_score`(权重)+ `_maybe_sell_for_interest`(rush_level/allin 跳过卖息)。与 `config.economy_mode`(用户偏好微调)层级不同:NodeGoal.spend_mode 是**节点档位 gate**(主),config 是偏好(辅)。
+- `spend_mode` → **驱动 economy 档位**,触达两消费者:`economy_score`(权重)+ `_maybe_sell_for_interest`(rush_level/allin 跳过卖息)。(⚠️ 旧 config.economy_mode 已删,ADR-0204:与 spend_mode 打架的死配置;NodeGoal.spend_mode 是唯一档位源,r69 起由 DP 姿态导出。)
 - `action_focus` → 描述辅(d_search 偏 D 牌 / chase_star 偏追星;不直接进评分,`plan()` 启发式读)。
 - `danger_d` → 弃息 D 保血(`_refresh_cap` 放宽 + economy 让位)。🔴 **前置**:`read_node_type` 识别准(现仅 boss 核实,遭遇/补给/巨星标签待多子态补)+ hp_trend + difficulty OCR(阶段 4)。
 

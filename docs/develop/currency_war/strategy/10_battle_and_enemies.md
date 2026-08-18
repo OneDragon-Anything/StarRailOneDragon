@@ -76,7 +76,7 @@ class PerformanceTracker:
 
 ## 冷启动 fallback(r5 + r6 F6)
 
-第 1-2 回合 / 新 comp 刚 pivot,观测样本不足。**约定**:trend 方法样本不足(产 delta < 1)→ 返回 `None`;调用方判 None → 退静态先验(保血阈值 `hp < config.hp_safe_threshold`;comp_viability 观测项权重 = 0;is_run_dead → False)。差分需 **≥2 outcome 才有首个 delta**(r6 F6:不是"≥1 outcome")。
+第 1-2 回合 / 新 comp 刚 pivot,观测样本不足。**约定**:trend 方法样本不足(产 delta < 1)→ 返回 `None`;调用方判 None → 退静态先验(保血阈值 `hp < effective_hp_threshold`(⚠️ 旧 config.hp_safe_threshold 已删,ADR-0204,迁 cw_state 难度表);comp_viability 观测项权重 = 0;is_run_dead → False)。差分需 **≥2 outcome 才有首个 delta**(r6 F6:不是"≥1 outcome")。
 
 ## 粗可行性启发式(comp 强度;r5 拆双签名 + r6 F4 comp_tag)
 

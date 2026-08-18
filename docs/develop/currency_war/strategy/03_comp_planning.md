@@ -173,7 +173,7 @@ COMP_LIBRARY 加 version_tag;README checklist:版本更新 → 重抓 cw_data �
   - **减益黄泉**(配千冶·刃 V4.4 质变;form_difficulty=medium-hard)。
 - **R5-3 新角色 + 命运圣杯阵营**:`CHARACTER_ROSTER` 补 千冶·刃/姬子·启行(注意与原姬子区分)/远坂凛/吉尔伽美什/Archer/Saber/银狼LV.999/爻光/火花/绯英(费用+阵营+站位);`FACTIONS` 补 **命运圣杯**(唯一经济+战斗双修羁绊,激活祈愿试炼)。进了商店 OCR 才识别。
 - **R5-4 词缀对策进 comp 评分**(详 research/06):`AFFIX_MECHANIC_MAP`+`MECHANIC_COUNTERS/SYNERGIES` 补全 + comp.countered_by_bosses/affix_preference 体现:**正当防卫→克高频/反震/反甲**(阿雅/姬子反震/白厄/欢愉)、**同步行动→克拉条但利 DOT**、**沉重脚步→刚需护盾**、急速制冷→需解控、重症难题→克奶盾。遇未 OCR 词缀落库,不硬编码全集。
-- **R5-5 概念股送装备件 = 凹开局/选环境新维度**(详 research/03):每个概念股送的基础装备 = 该阵营核心装备合成件(昼神/追击送轮滑鞋→反重力皮靴;仙舟送折叠小刀→高周频电锯;列车送幸运星)。`decide_invest(kind="env")` 在 event_whitelist 分数上加一层:**优先选与 target_comp 核心装备合成件匹配的概念股**(补强 P1-2 ENV_COMP_AFFINITY,从「阵营亲和」细化到「装备件亲和」)。
+- **R5-5 概念股送装备件 = 凹开局/选环境新维度**(详 research/03):每个概念股送的基础装备 = 该阵营核心装备合成件(昼神/追击送轮滑鞋→反重力皮靴;仙舟送折叠小刀→高周频电锯;列车送幸运星)。`decide_invest(kind="env")` 在 env/strategy priority 打分(旧 event_whitelist 已删,ADR-0204,拆成 env+strategy priority)上加一层:**优先选与 target_comp 核心装备合成件匹配的概念股**(补强 P1-2 ENV_COMP_AFFINITY,从「阵营亲和」细化到「装备件亲和」)。
 - **R5-6 装备合成配方**(详 research/03,落 `cw_equipment`):基础件×2→进阶配方表(反重力皮靴=轮滑鞋×2;高周频电锯=幸运星+折叠小刀;永动机=光能电池×2…)。comp.key_equips 用规范名;equip_fit/supply 选装备据此。
 - **R5-7 商店保底机制进 D 牌逻辑**:每第 5 次刷新必出 5 张同费(采购专员·彩每 5/·金每 7 缩短)。`_refresh_cap`/`_refresh_expected_delta` 建模「刷新计数器→第 5 次保底」;关键回合(升 8 搜核心)刷到第 5 次必出 5 张同费核心 → D 牌估值在该点跳升。
 - **R5-8 姬子·启行「选择伙伴」升级**(详 research/07):`decide_partner` 当前「优先 core_chars 命中」→ 升级为按**当前最缺羁绊 + 装备需求**选(缺护盾→三月七、生存→符玄、输出→白厄、能量→风堇)。依赖 `read_partner` OCR(候选 char_id),当前 OCR 未接(idx=0 盲点),随阶段 5。

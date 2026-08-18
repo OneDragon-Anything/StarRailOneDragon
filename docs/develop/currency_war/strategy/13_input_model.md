@@ -146,7 +146,7 @@
 | 角色(费用/站位/类型/阵营) | `cw_chars.CHARACTER_ROSTER` | ✅ 74 条 |
 | 阵容库 | `cw_comps.COMP_LIBRARY` | ✅(持续填) |
 | 投资环境(效果/加成阵营) | `cw_investments.INVESTMENT_ENVS` | ✅ 全量 ~82(D-68 数据银行核对;doc 已删) |
-| 投资策略(效果) | `cw_investments.INVESTMENT_STRATEGIES` | 🟡 只收 T0(event_whitelist 用);全量仍在 doc,待收敛 |
+| 投资策略(效果) | `cw_investments.INVESTMENT_STRATEGIES` | 🟡 只收 T0(打分走 env/strategy priority;旧 event_whitelist 已删 ADR-0204);全量仍在 doc,待收敛 |
 | 装备(效果/配方) | `cw_equipment`(+ `cw_synthesis` 合成图谱) | ✅ 全量 153(D-70)+ 合成配方 28(D-77,K7 两两合成);`equipment.md` 留作生成器源(model A,非冗余) |
 | 敌人词缀 → 机制 | `cw_comps.AFFIX_MECHANIC_MAP` + `MECHANIC_COUNTERS/SYNERGIES` | 🟡(词缀 OCR 名/池待实机校准) |
 | 词缀效果原文 | `affix_effects_data.AFFIX_EFFECTS` | ✅(运行时自动采) |

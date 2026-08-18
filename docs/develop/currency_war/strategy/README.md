@@ -56,7 +56,7 @@ meta-run 层(09,跨局):开新局前**按配置激活最优「优势布局」**(
 - (可选)playstyle 预设。
 
 ### C. 内部数据表(不放 GUI,代码/yml 维护)
-对谁都一样的正确数据:COMP_LIBRARY / MECHANIC_COUNTERS+SYNERGIES(含「净化身心克 DoT」类客观数据,原 config dot_punish_envs 已删并入,ADR-0203)/ 优势布局自动激活 / hp_safe_threshold(由 difficulty 派生)/ _refresh_cap(动态)。
+对谁都一样的正确数据:COMP_LIBRARY / MECHANIC_COUNTERS+SYNERGIES(含「净化身心克 DoT」类客观数据,原 config dot_punish_envs 已删并入,ADR-0203)/ 优势布局自动激活 / hp 阈值(cw_state 难度表派生;旧 config.hp_safe_threshold 已删 ADR-0204)/ _refresh_cap(动态)。
 
 ### D. 已移除(及原因)
 `run_mode`(→ 字段值表达)/ `aggression`(虚)/ `economy_mode`(和 level_plan 打架,经济 comp 驱动)/ `event_whitelist`(拆成 env+strategy priority)/ `achievement_target`(→ 预设)/ `target_comp_preference`(并入 build_around+priority)/ `hp_safe_threshold`+`refresh_budget`(→ 内部派生)/ 钻钞 farming(自动激活优势布局)/ `opening_restart`(策略不依赖,见 09)/ 濒死停(无用)/ 多账号·定时·领奖(一条龙框架层,非 app)/ `dot_punish_envs`(2026-08-17 删:游戏客观数据归 MECHANIC_COUNTERS 注册表,非用户偏好,ADR-0203)。
