@@ -254,12 +254,23 @@ class DefaultCwStrategy(CwStrategy):
             # r3 review①修正:冷却只封信号 1/2,**保命信号豁免**——hp 危机时必须
             # 永远允许转(否则冷却窗内 hp 崩掉 = 我亲手封死救命通道)。危机判据复用
             # maybe_pivot 同款门(0.75×effective_hp_threshold)。
+            # r70 **boss 窗冻结**(治 r9 三连 pivot,run_20260818_191418 实证):r9=固定
+            # boss 节点(9 节点/位面),boss 前换线 = 丢弃已成形板面战力去追 0-progress
+            # 新线 = 自杀(本局 r9 一个备战窗内 列车→专家桑博→列车 三连 pivot,boss 打完
+            # hp 33→1)。boss 窗(node_type 读到 boss,或 round_num>=9 先验)内一切 pivot
+            # 冻结 —— 危机响应改由 buy 侧 boss_spend(cw_plan 花光提质量)承担,那才是
+            # boss 前正确动作。read_node_type 对 boss 实机核实过(cw_observation:160)。
             _cool = getattr(session, 'pivot_cooldown_until', 0)
             _in_crisis = state.hp < int(0.75 * cw_comps.effective_hp_threshold(state))
+            _boss_window = (state.node_type == 'boss'
+                            or (state.round_num >= 9 and state.node_type != 'supply'))
             piv = None
-            if _in_crisis or state.round_num > _cool:
+            if not _boss_window and (_in_crisis or state.round_num > _cool):
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)
+            elif _boss_window and (_in_crisis or state.round_num > _cool):
+                log.info('[cw-target] boss 窗(r%s node=%s)冻结 pivot(危机响应交 boss_spend 花光提质量)',
+                         state.round_num, state.node_type)
             if piv is not None:
                 session.target_comp = piv
                 session.pivot_cooldown_until = state.round_num + cw_comps.PIVOT_COOLDOWN_ROUNDS
