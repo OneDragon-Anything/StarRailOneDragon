@@ -115,15 +115,19 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
                 # r11 review #3:P2+ node 地板是**硬下限**(P2 敌强度跳升,人口不升=硬吃两仗,
                 # M55 P2 冻 lv6 实证)——comp 停留意图只在 P1 压地板;P2+ 落后地板即追级
                 # (停留 roll 可在追上地板后继续)。
+                # 75-A2 修:committed 全调用点一致(双轨期 xp 门与 spend 门同姿态,
+                # 防「spend 攒息/xp 追级」门间对拉)。
                 return bool(state.plane >= 2 and state.level < get_node_goal(
                     state.plane, state.round_num,
-                    gold=state.gold, level=state.level, hp=state.hp).target_level)
+                    gold=state.gold, level=state.level, hp=state.hp,
+                    committed=not state.dual_track_phase).target_level)
     goal = _resolve_level_goal(state, target_comp)
     if goal is not None and goal.action == 'level_up':
         return True
     return state.level < get_node_goal(state.plane, state.round_num,
                                        gold=state.gold, level=state.level,
-                                       hp=state.hp).target_level
+                                       hp=state.hp,
+                                       committed=not state.dual_track_phase).target_level
 
 
 
