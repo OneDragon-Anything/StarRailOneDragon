@@ -352,9 +352,15 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 break
         if _panel_open:
             return chars
+        # r85b:补给箱/典籍槽排除 —— 箱/典籍占 bench 槽是已知常态(掉箱占席),SIFT
+        # 认不出它们是设计内(非角色)→ 不停机(VLM 实锤:第4局 slot2「蓝色卡片叠放
+        # +开启」= 补给箱,旧钩子反复停机骚扰)。TM 检测复用 find_supply_boxes/tomes。
+        _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
+        _obj_slots = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
+        _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
         _named = {c.slot for c in chars} if chars else set()
-        for _slot, _rect in _ctx_slots(ctx, '备战栏', 9):
-            if _slot in _named:
+        for _slot, _rect in _bench_slots9:
+            if _slot in _named or _slot in _obj_slots:
                 continue
             from sr_od.application.currency_war.currency_war_cv import slot_occupied
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
