@@ -60,7 +60,7 @@ def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
 def parse_enemy_difficulty(texts: list[str]) -> int | None:
     """简报「敌人难度N」OCR → int(N;如 ``敌人难度108`` → 108;纯函数可单测)。
 
-    整局基础敌人难度(影响 boss 血量 base×1.052^难度;strategy/13 §13.7)。正则 ``敌人难度\\s*(\\d+)``
+    整局基础敌人难度(影响 boss 血量 base×1.052^难度;docs/game/gameplay/currency_war.md §难度)。正则 ``敌人难度\\s*(\\d+)``
     过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(state.enemy_difficulty 回退 None;3.5.2)。
     """
     for t in texts:

@@ -406,7 +406,7 @@ def plan(state: GameState, config, faction_priority: list[str],
     # —— A2 战略层:target 由上层传入(稳定,防每轮 select_comp 振荡 → churn);未传则 select_comp ——
     # 2026-08-04 实跑:每轮 select_comp 随 board 微变翻转 target(列车同行↔DOT队)→ _maybe_sell_for_interest
     # 按振荡 target 卖牌 → 破坏性 churn(每轮换牌)+ 零收敛 → 比 reactive 更弱。故 target 须跨回合稳定
-    # (上层 shop op 持久化 + maybe_pivot 才切),plan 只消费。详 task#16 + strategy/02 F-3。
+    # (上层 shop op 持久化 + maybe_pivot 才切),plan 只消费。详 task#16 + ADR-0096(α(t))。
     target = target_comp
     if target is None and not reactive:
         _candidates = select_comp(cur, make_score_context(cur), config)

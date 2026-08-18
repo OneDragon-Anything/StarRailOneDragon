@@ -73,7 +73,7 @@ class BuyShopCards(SrOperation):
     接战术层 ``cw_plan.plan``(阶段键控 eval + 硬门贪心 + 蒙特卡洛 D牌):OCR 读真实
     ``gold/level/round/plane/board/shop`` → ``plan`` → 执行返回的 ``BuyCard``/``LevelUp``。
 
-    v1 接线范围(2026-08-03,见 ``docs/develop/currency_war/strategy/05_data_wiring.md``):
+    v1 接线范围(2026-08-03,见 ``docs/develop/currency_war/strategy/05_observation.md``):
     - 执行 ``BuyCard``(点牌)/ ``LevelUp``(点「购买经验」)/ ``RefreshShop``(点「刷新」,两阶段 plan)。
     - **跳过** ``DeployMove`` —— deploy 走 ``DeployBench``(deploy-all,游戏按等级封顶;
       避开 plan 的 bench_idx→物理槽映射复杂度)。

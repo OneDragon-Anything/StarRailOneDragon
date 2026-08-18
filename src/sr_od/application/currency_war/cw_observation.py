@@ -7,13 +7,13 @@
 共享 helper/常量在 ``cw_obs_core``;本模块 **re-export** 简报/结算的公开函数,故
 ``from cw_observation import read_affixes / parse_settlement_hp / ...`` 向后兼容(2026-08-06 拆分,)。
 
-备战字段采集按 doc 13(``strategy/13_input_model.md``)逐簇推进(board tier 已接,余待采:
+备战字段采集按 doc 06(``strategy/06_input_model.md``)逐簇推进(board tier 已接,余待采:
 active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻塞于 vision/SIFT 库)。
 
 **区域单一真相源 = screen_info**(用户 2026-08-03):``assets/game_data/screen_info/currency_war_battle_prep.yml``
 (screen「货币战争-备战」),经 ``cw_obs_core._area_rect`` 读 area 的 pc_rect —— 改区域改 yml 即可,不动代码。
 
-设计原则(strategy/05 签名+失败语义 + 06 P2-3 sanity bounds):
+设计原则(strategy/05_observation(签名+失败语义+sanity bounds)):
 - 每字段用 ``_ocr(rect=...)`` 定区域读(**不塌缩重复文本** —— 地图版 get_ocr_result_map 按文本聚合,
   两张同阵营牌会撞键丢一张;list 版保留全部)。
 - OCR 失败 / 越界(sanity bounds)→ 安全默认,不抛错(plan 对默认安全降级:

@@ -9,7 +9,7 @@ OCR ground-truth 反馈当"阵容强不强"的信号,不用预测模型。
 review 历史:r5(修 9 个观测单点漏洞)+ r6(修 r5 扶正观测后引入的 4 个交互级漏洞)。
 本模块用**测试锁住** r6 的 4 个交互行为(open-fold 污染 / boss None / pivot 归因 / 冷启动 None)。
 
-设计依据:``docs/develop/currency_war/strategy/10_battle_and_enemies.md``。
+设计依据:``docs/develop/currency_war/strategy/05_observation.md``。
 """
 from __future__ import annotations
 

@@ -51,7 +51,7 @@ class DifficultyAccount:
     @classmethod
     def from_strategies(cls, base: float, strategy_names: list[str],
                         streak: int = 0) -> DifficultyAccount:
-        """从持卡注册表建账(v2,strategy/18 落地:EconomyEffect 难度字段)。
+        """从持卡注册表建账(v2,ADR-0205 落地:EconomyEffect 难度字段)。
 
         difficulty_delta 进 augments(节点型限定暂并入静态——遭遇/首领限定建模
         挂 decide_encounter 消费批);difficulty_per_streak 走 streak 动态项。

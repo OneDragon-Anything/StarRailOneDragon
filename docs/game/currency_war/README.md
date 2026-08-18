@@ -13,7 +13,6 @@
 - ~~equipment.md~~ → `cw_equipment.EQUIPMENTS`(158)
 - ~~invest_cards.md~~ → `cw_invest_data`(plaza API 生成器直灌注册表,ADR-0150)
 - ~~comp_library.md~~ → `cw_comps.COMP_LIBRARY`(20 套,含 V4.4 评级)
-- (economy_research.md 更早已迁 docs/develop/currency_war/strategy/ —— 用户口述策略校准非固化游戏数据)
 
 **保留(注册表未建模的唯一源)**:
 - [README](data/README.md) —— 索引 + 数据源 / 抓取通道 / 剩余缺口
@@ -21,6 +20,10 @@
 - [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类;⚠️ 代码注册表未建,唯一源)
 - [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta)
 - [bosses.md](data/bosses.md) —— boss 克制(⚠️ 代码注册表未建,唯一源)
+
+## `research/` —— 玩法研究(我们提炼/核实的知识,活文档)
+
+索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ plaza_methodology(M1-M16 玩法方法论)/ invest_effects(投资效果全量分类)。与 `guides/`(外部原文转录,按版本冻结)相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
 
 ## `guides/` —— 攻略目录(`阵容_` 阵容推荐 / `公共_` 公共知识)
 

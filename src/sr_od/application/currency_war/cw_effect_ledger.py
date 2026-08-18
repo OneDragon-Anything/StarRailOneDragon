@@ -149,7 +149,7 @@ def level_cost_with(clicks: int, ledger: EffectLedger, base_click_cost: float = 
     return clicks * max(0.0, base_click_cost + ledger.mutations.xp_click_delta)
 
 
-# ===== v2:strategy/18 调研新字段 → 台账路由(API 文本明说的数值) =====
+# ===== v2:ADR-0205 调研新字段 → 台账路由(API 文本明说的数值) =====
 
 def effects_from_strategies(strategy_names: list[str]) -> list[AggregateEffect]:
     """注册表 EconomyEffect → AggregateEffect 路由(生产接法:state.active_strategies)。

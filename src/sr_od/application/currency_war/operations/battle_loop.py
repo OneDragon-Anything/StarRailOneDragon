@@ -305,7 +305,7 @@ class CurrencyWarRunLoop(SrOperation):
             cw_telemetry.record_outcome(_obs)
             if _obs.hp_confidence >= 0.9:
                 self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
-            # 外生事件(strategy/20 live 观测,22 号预案触发频率语料):战斗节点完成
+            # 外生事件(strategy/05 telemetry,预案触发频率语料):战斗节点完成
             # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
             # 不存在,AttributeError 被吞致 exogenous 静默死)
             cw_telemetry.record_exogenous(

@@ -5,8 +5,8 @@
 战略层(阶段 2,A2):从「reactive 加深领先」升级到「围绕目标阵容 commit + 转型 + 巨星」。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
-数据与设计依据(详 ``docs/develop/currency_war/strategy/03_comp_planning.md`` +
-``10_battle_and_enemies.md`` + ``docs/game/currency_war/data/plaza_meta.md``):
+数据与设计依据(详 ``docs/develop/currency_war/strategy/02_comp.md`` +
+``05_observation.md`` + ``docs/game/currency_war/data/plaza_meta.md``):
 - ``COMP_LIBRARY``:19 套(V4.4 起步 8 套 → ADR-0152 plaza 784 篇高难帖校准扩充)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(strength/form_difficulty/level_plan 取舍)—— ``plaza_carry`` 字段
@@ -1509,7 +1509,7 @@ MEGASTAR_BUFF: dict[str, str] = {
     '大丽花': '击破伤害+66%+治疗', '加拉赫': '击破伤害+66%+治疗',
     '星徽': '每星徽强度+44%',
 }
-# comp 级巨星偏好(序 = 优先;strategy/19 P2 重读后按「comp 引擎 × 巨星乘区」绑定,
+# comp 级巨星偏好(序 = 优先;按「comp 引擎 × 巨星乘区」绑定(详 strategy/02_comp §7),
 # 替代旧 3 条属性键粗映射。未列的 comp 走 core/在场优先)
 COMP_MEGASTAR_PREFERENCE: dict[str, tuple[str, ...]] = {
     # 前台单核族:carry 站前台 1 号位,星期日 132% 直乘
@@ -1546,7 +1546,7 @@ def select_megastar(state: GameState, target: Comp | None,
                     available_megastars: list[str]) -> str | None:
     """选 1 名盛会之星作巨星(盛会之星羁绊核心决策;按 target_comp 选,不单独评分)。
 
-    选择序(2026-08-17 strategy/19 P2 重写,按 comp 引擎 × 巨星乘区):
+    选择序(按 comp 引擎 × 巨星乘区,详 strategy/02_comp §7):
     1. target.core_chars 里的盛会之星(在阵 core 天然绑定,如追击飞霄×知更鸟);
     2. COMP_MEGASTAR_PREFERENCE[target.name](comp 级偏好序);
     3. 机械属性兜底(MEGASTAR_BY_ATTRIBUTE);

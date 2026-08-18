@@ -84,7 +84,7 @@ class DecisionTrace:
     hp: int = 0                                   # 决策时 HP(冗余于 state,便于快速筛)
     hp_readable: bool = True                      # hp 真读到?(False=100 兜底;insights hp=100 毒化)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
-    # —— live 观测扩容(strategy/20,2026-08-17;全部可选,回放/影子对齐)——
+    # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
     ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
@@ -125,7 +125,7 @@ class RunSummary:
     pivot_count: int = 0
     gold_trajectory: list[int] = field(default_factory=list)   # 每回合 gold(经济复盘)
     notes: str = ""
-    # —— live 观测扩容(strategy/20,2026-08-17)——
+    # —— live 观测扩容(strategy/05_observation)——
     death_window: str = ""          # 39 号免费窗口登记:""=竞争局 / "must_die" / "free"(局终判定)
     strategies_held: list[str] = field(default_factory=list)   # 终局持卡(台账回放)
 
@@ -211,7 +211,7 @@ class TelemetryRecorder:
                         extra: dict[str, Any] | None = None) -> None:
         """记一条决策迹(decisions.jsonl)。target_comp='' 表示 reactive 无 target。
 
-        extra(strategy/20 live 观测):dp_posture/active_strategies/ledger_fingerprint
+        extra(strategy/05 live 观测):dp_posture/active_strategies/ledger_fingerprint
         等扩容字段(便捷函数自动填;直接调方可传 None 走旧 schema)。
         """
         trace = DecisionTrace(
@@ -346,7 +346,7 @@ def record_decision(state: GameState, target_comp: str,
                     actions: list[Action]) -> None:
     """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。
 
-    live 观测扩容(strategy/20):自动附影子 DP 姿态(12 号分歧频率数据源)与
+    live 观测扩容(strategy/05):自动附影子 DP 姿态(12 号分歧频率数据源)与
     持卡/台账指纹(效果感知解回放对齐)——查表 ~2µs,零成本。
     """
     if not _CURRENT_RUN_ID:

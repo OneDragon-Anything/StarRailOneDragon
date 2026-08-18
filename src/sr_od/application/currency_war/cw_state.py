@@ -56,7 +56,7 @@ class ShopCard:
 
 @dataclass
 class BenchChar:
-    """备战栏/已上阵角色(= strategy/13 §13.2 的 ``Unit``;加 ``equips``)。"""
+    """备战栏/已上阵角色(= strategy/06 的 ``Unit``;加 ``equips``)。"""
     slot: int
     char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
     faction: str = "?"   # 阵营
@@ -79,7 +79,7 @@ class GameState:
     shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
-    selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;strategy/13 §13.7 两阶难度:此=职级,enemy_difficulty=数值)
+    selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
     hp_readable: bool = True   # hp 是否真读到(False=100 是默认兜底;遥测保真,决策不用)
     # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
@@ -90,7 +90,7 @@ class GameState:
     deployed: list[BenchChar] = field(default_factory=list)
     shop: list[ShopCard] = field(default_factory=list)
     bench: list[BenchChar] = field(default_factory=list)
-    plane_bosses: list[str] = field(default_factory=list)   # 3 位面 boss 名(= 简报屏「3 阵营」;current_boss 派生;strategy/13 §13.2/§13.5)
+    plane_bosses: list[str] = field(default_factory=list)   # 3 位面 boss 名(= 简报屏「3 阵营」;current_boss 派生;strategy/06)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
     active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
     enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)
@@ -135,7 +135,7 @@ class GameState:
 
     @property
     def current_boss(self) -> str | None:
-        """当前位面 boss(派生 = plane_bosses[plane-1];strategy/13 §13.2)。无 boss 数据/越界 → None。"""
+        """当前位面 boss(派生 = plane_bosses[plane-1];strategy/06)。无 boss 数据/越界 → None。"""
         if not self.plane_bosses:
             return None
         idx = self.plane - 1

@@ -89,7 +89,7 @@ class EconomyEffect:
     gold_next_nodes_count: int = 0
     gold_per_level_up: int = 0
     gold_per_20hp_lost: int = 0
-    # —— v2 扩展(2026-08-17 strategy/18 全量调研;仅 API 文本明说的数值)——
+    # —— v2 扩展(ADR-0205 全量调研;仅 API 文本明说的数值)——
     difficulty_delta: int = 0             # 静态难度 Δ(简单模式 −3 等;36 号账本消费)
     difficulty_per_streak: int = 0        # 动态难度(伟大征服:难度+连胜数)
     difficulty_node_types: tuple[str, ...] = ()   # Δ 限定节点型(难度修改器:遭遇+首领)
@@ -105,7 +105,7 @@ class EconomyEffect:
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
-    # —— 合成/出售触发族(strategy/19 P7 修正轮,2026-08-17;均为「正常成型路上
+    # —— 合成/出售触发族(ADR-0211 裁定;均为「正常成型路上
     #     白得」的被动经济,选卡正常评估,不围绕改打法)——
     gold_per_2star2cost_merge: int = 0    # 砂里淘金:合 2星2费 得砂金(可卖 ≈ 现金)
     gold_per_3star_merge: int = 0         # 星星相印:每合 3 星 +金
@@ -140,7 +140,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
     '淘金客': EconomyEffect(xp_per_refresh=2),
     '伟大征服': EconomyEffect(win_reward_mult=3.0, difficulty_per_streak=1, xp_instant=12),
-    # ↑ 纠错(strategy/18 §5):注册表曾只建 ×3,漏「敌人难度+N(N=连胜)」与 +12XP(API 原文)
+    # ↑ 纠错(ADR-0205):注册表曾只建 ×3,漏「敌人难度+N(N=连胜)」与 +12XP(API 原文)
     '商业间谍': EconomyEffect(xp_buy_cost_discount=1),
     '返利+': EconomyEffect(instant_gold=6, gold_per_three_5cost=3),
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
@@ -152,7 +152,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '搜打撤': EconomyEffect(free_refresh_per_node=1),
     '远见': EconomyEffect(instant_gold=15, future_quality_upgrade='prism',
                           difficulty_inflation_exempt=True),
-    # ↑ 纠错(strategy/18 §5):曾只建 +15 金,漏「后续策略节点→随机棱彩(不可刷)」
+    # ↑ 纠错(ADR-0205):曾只建 +15 金,漏「后续策略节点→随机棱彩(不可刷)」
     # +「不增加敌人难度」两大效果(API 原文;期权/难度侧由 33/36 号消费)
     '贸易专家:停云': EconomyEffect(instant_gold=10),
     '佩佩驾到': EconomyEffect(instant_gold=8),
@@ -210,7 +210,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '溜佩佩': EconomyEffect(instant_gold=9),
     '溜佩佩+': EconomyEffect(instant_gold=15),
     '保险': EconomyEffect(gold_per_20hp_lost=5),
-    # —— v2 新建(strategy/18 调研落地;API 文本明说的数值,2026-08-17)——
+    # —— v2 新建(ADR-0205 调研落地;API 文本明说的数值)——
     # 批 1:等级触发
     '成长基金': EconomyEffect(gold_at_level=40, gold_at_level_target=9),
     '成长的快乐': EconomyEffect(xp_instant=4,
@@ -232,7 +232,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # C 类:难度交互(显数值;36 号账本消费)
     '简单模式': EconomyEffect(difficulty_delta=-3),
     '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
-    # 合成/出售触发族(strategy/19 P7 修正:被动经济,正常评估)
+    # 合成/出售触发族(ADR-0211:选卡照常评估)
     '砂里淘金': EconomyEffect(gold_per_2star2cost_merge=2),
     # ↑ 合 2星2费 白得砂金(2费可卖 ≈2 金/张;阵容用得上则价值更高,经济侧按下界)
     '星星相印': EconomyEffect(gold_per_3star_merge=5),

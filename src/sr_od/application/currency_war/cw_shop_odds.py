@@ -6,7 +6,7 @@
 - [article/77124902](https://www.miyoushe.com/sr/article/77124902) D牌期望表补充(计算方法)
 - [article/77074467](https://www.miyoushe.com/sr/article/77074467) D牌期望表主文(30 场景表)
 
-**模型**(详 ``docs/develop/currency_war/strategy/economy_research.md``):
+**模型**(详 ``docs/game/currency_war/research/economy.md``):
 1. 每次刷新 5 格,每格独立以概率 p 出目标费用 → 出目标费用数 M ~ 二项 B(5, p)。
 2. m 张目标费用里,出 x 张目标牌 = **超几何**(剩余目标副本 a−j / 剩余同费非目标副本 (v−1)a−c)。
 3. 状态转移方程算**期望刷新次数** E_j(找 k 张目标牌,从手上有 j 张起)。

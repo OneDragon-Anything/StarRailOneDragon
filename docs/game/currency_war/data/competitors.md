@@ -102,7 +102,7 @@
 - **第三位面 boss 血量 ≈ base × 1.052^难度**(指数增长,每级 +5.2%)。
 - **1.052^8 ≈ 1.5**(每 +8 难度,boss 血量 +50%);A8 高难(难度 60+)血量达几十~上百亿。
 - **白银投资策略**(效果:难度 -3)≈ 减 14% 当前血量(1.052^3≈1.166)→ 显著降低斩杀线。
-- **对 r6 F3 的意义**:`required_damage[difficulty]` 可按此公式**跨难度外推**(从一次观测的 boss 击杀伤害,按 1.052^Δdifficulty 推其他难度所需),数据少时用缩放,攒够后用实测。详 10_battle_and_enemies.md 伤害基准学习。
+- **对 r6 F3 的意义**:`required_damage[difficulty]` 可按此公式**跨难度外推**(从一次观测的 boss 击杀伤害,按 1.052^Δdifficulty 推其他难度所需),数据少时用缩放,攒够后用实测。详 strategy/05_observation(伤害基准学习,历史 ADR-0161)。
 - 相关:[75613480](https://www.miyoushe.com/sr/article/75613480) A8-100 敌人血量预测、[75631661](https://www.miyoushe.com/sr/article/75631661) A8-1000 血量预测。
 
 **⚠️ UI 可观测性待实机确认(r6 F3 关键)**:游戏战斗界面**是否暴露 boss HP 条 / 每回合伤害 / 击杀结算**?这决定 PerformanceTracker 敌方侧(enemy_hp_after/damage_dealt/killed)能否 OCR。若不暴露 → 通关能力靠 comp_viability 先验(成型度+装备)兜底。需实机 OCR 确认(boss 战时截屏看有无血条/伤害数字)。

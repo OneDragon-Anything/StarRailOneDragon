@@ -1,11 +1,10 @@
 # 货币战争 用户配置设计(配置语义单一源)
 
 > 本文回答「配置面该有什么、不该有什么」。决策依据(用户画像定调 + 单一职责原则)见
-> [ADR-0203](decisions/0203-config-user-preference-single-duty.md);三轴语义(必含/优先/禁止)
-> 详 [strategy/README §用户配置口](strategy/README.md)。字段实现 = `currency_war_config.py`
+> [ADR-0203](decisions/0203-config-user-preference-single-duty.md);字段实现 = `currency_war_config.py`
 > (行为与当前值在代码,本文只记语义与归属)。
 
-## 1. 目标用户画像(用户 2026-08-17 定调)
+## 1. 目标用户画像(用户定调,ADR-0203)
 
 1. **日常玩家(大多数)**:用 bot 完成日常游戏周期,不较真能否通关最高难度。
 2. **成就/奖励刷取**:想拿特定成就奖励(如「8 减益」「300 宝石」类成就),需要 bot 按指定玩法打。
@@ -30,24 +29,24 @@
 
 ## 3. 目标配置面
 
-### 3.1 用户面(按画像收敛;2026-08-17 用户确认四类实体 × 三档全保留)
+### 3.1 用户面(按画像收敛;四类实体 × 三档)
 
-| 实体 | 禁用(hard−) | 优先(soft+) | 必含(hard+) | 现状 |
-|---|---|---|---|---|
-| 角色 | `character_forbid` | `character_priority` | `character_build_around`(any:含任一) | ✅ 三者已在 |
-| 阵营 | `faction_forbid` | `faction_priority` | `faction_build_around`(**all:全部在场**) | ✅ 三者已在(2026-08-17 补 build_around) |
-| 投资策略 | `strategy_forbid` | `strategy_priority` | —(选卡分数已足) | ✅(2026-08-17 加,decide_event 消费) |
-| 投资环境 | `env_forbid` | `env_priority` | —(开局 3 选 1) | ✅(2026-08-17 加,decide_event 消费) |
-| 运行 | — | — | — | `strategy_id`(见 §4) |
+| 实体 | 禁用(hard−) | 优先(soft+) | 必含(hard+) |
+|---|---|---|---|
+| 角色 | `character_forbid` | `character_priority` | `character_build_around`(any:含任一) |
+| 阵营 | `faction_forbid` | `faction_priority` | `faction_build_around`(**all:全部在场**) |
+| 投资策略 | `strategy_forbid` | `strategy_priority` | —(选卡分数已足) |
+| 投资环境 | `env_forbid` | `env_priority` | —(开局 3 选 1) |
+| 运行 | — | — | `strategy_id`(见 §4) |
 
 > 原 `event_whitelist`(恒最高 boost)已删(ADR-0204):「指定具体分值」是引擎调参非用户偏好,
 > priority/forbid 已覆盖用户语义(想要/不要);打分环里的「恒最高」第三态无真实画像需求。
 
-- 三轴语义沿 strategy/README:**必含(hard+)> 优先(soft+)> 默认(评估分)> 禁止(hard−)**。
-- **阵营轴保留**(用户 2026-08-17 定调:成就需要特定阵容,如 8减益 → `faction_build_around=['减益']`);
+- 三轴语义:**必含(hard+)> 优先(soft+)> 默认(评估分)> 禁止(hard−)**。
+- **阵营轴保留**(成就需要特定阵容,如 8减益 → `faction_build_around=['减益']`);
   `faction_build_around` 用 **all() 语义**(多个必含 = 全部在场,多羁绊成就要求),与角色轴 any() 刻意不同。
-- **必含轴保留**(用户 2026-08-17 确认):成就局常需「一定用某阵容」,「优先」表达不了「一定」。
-- 消费端落点(改动小,已实现):comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
+- **必含轴保留**:成就局常需「一定用某阵容」,「优先」表达不了「一定」。
+- 消费端落点:comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
   (select_comp);选卡侧 `decide_event` 打分环加 priority +30 / forbid −10000(策略走策略轴、
   env 注册表命中走环境轴;子串匹配 OCR 容错;全被禁 → 分数落刷新阈值下自然建议刷新兜底)。
 - 预设(§3.2)打包这些轴,不自建平行评分。
@@ -55,7 +54,7 @@
 ### 3.2 预设(画像 2 的一键入口,后续做)
 
 成就预设 = 转向轴打包(如「8 减益」= 减益流派必含 + 相干策略优先),非特殊代码路径 —— bot 按
-偏好打、成就自然达成(strategy/README §B 既定设计)。
+偏好打、成就自然达成。
 
 ## 4. 运行控制与实验:只留 strategy_id(定稿;ADR-0204 执行完毕)
 
