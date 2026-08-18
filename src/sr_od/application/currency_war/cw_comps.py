@@ -1402,7 +1402,21 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # 定义型 comp 永远进不来(中心卖点静默失效)。
         _defining_new = any(AUGMENT_COMP_AFFINITY.get(a, {}).get(best.name, 0.0) >= 0.9
                             for a in ctx.held_strategies)
-        if _defining_new:
+        # r36 换线供给门(用户实锤「装备乱来」根因链:祈愿定义型解锁 r4 转 命运圣杯红A →
+        # 该线 5 轮零供给 → form 卡死 → 装备过渡期持有永不过渡 → 旧残留+新全攒):
+        # 换线出口(定义型/信号1)先查 best 线供给——shop 无+board 无(完全断供 0.0)则拒转,
+        # 弱信号 0.3(board 已有)放行。与 drought 重选供给门同款(r7 review),防「转进死线」。
+        # 空 shop(无观测,常见于离线/测试)= 不判(数据不足非断供)。
+        _best_supply = shop_supply(best, state) if state.shop else 1.0
+        if _best_supply <= 0.0:
+            log.info('[cw-pivot] p=%s r=%s 换线供给门:%s 完全断供(shop+board 无核心)→ 拒转(保持 %s;防转进死线锁死 form/装备)',
+                     state.plane, state.round_num, best.name,
+                     target.name if target else 'None')
+            if target is not None:
+                best = target   # 保持现线(gap=0 → 信号1不转)
+            else:
+                return None     # 无 target + 断供线不直选(下轮 emergent 重看)
+        elif _defining_new:
             log.info('[cw-pivot] p=%s r=%s hp=%s 定义型augment解锁 %s->%s (资源入口,绕过 gap/commit 锁)',
                      state.plane, state.round_num, state.hp,
                      target.name if target else 'None', best.name)
