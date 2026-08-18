@@ -120,34 +120,60 @@ def read_equips(
     return clustered
 
 
+#: owned 栏同一行的 cy 容差(行距 ≈ 98px = owned icon 大图尺寸,D-49;行内抖动实测 ~10px)
+_OWNED_ROW_DY: int = 45
+
+
+def _owned_order_anomaly(pts: list[tuple[int, int]]) -> str | None:
+    """owned 栏**行内**跳格检测(纯函数;2026-08-18 治本重构)。
+
+    布局(D-40/D-49):多列网格,行内从右到左连续填充(列步距 ~51px),行距 ~98px。
+    **跳格只在行内有意义**:某行相邻 icon 的 x 间距 > 1.8×行内中位步距 = 该行有
+    漏检槽位(识别到"后面"装备但"前面"位置空)。
+    旧实现(欧氏间距全局中位)把**行尾→行首的换行跳变**误判为跳格 —— 换行时
+    x 从左列跳回右列(live 2026-08-18 10:45/10:47 实锤:row1 两件 + row2 两件,
+    [1]->[2] 间距 220 vs 中位 78 = 每逢跨行必误报,遥测噪声)。
+    """
+    if len(pts) < 4:
+        return None   # 太少无法判连续性
+    srt = sorted(pts, key=lambda p: (p[1], -p[0]))
+    # 行聚类:cy 与当前行末点差 ≤ _OWNED_ROW_DY → 同行;否则新行
+    rows: list[list[tuple[int, int]]] = []
+    for p in srt:
+        if rows and abs(p[1] - rows[-1][-1][1]) <= _OWNED_ROW_DY:
+            rows[-1].append(p)
+        else:
+            rows.append([p])
+    for row in rows:
+        if len(row) < 3:
+            continue   # 两点无中位可判(首行独立布局常见,直接放行)
+        xs = sorted(p[0] for p in row)
+        gaps = [b - a for a, b in zip(xs, xs[1:], strict=False)]
+        med = sorted(gaps)[len(gaps) // 2]
+        if med <= 0:
+            continue
+        for i, g in enumerate(gaps):
+            if g > 1.8 * med:
+                return (f'跳格 行内x[{xs[i]}]->[{xs[i + 1]}] 间距{g}>1.8×中位{med}'
+                        f'(该行可能漏检)')
+    return None
+
+
 def _check_owned_order(
     equips: list[tuple[str, tuple[int, int], int]],
     screen: MatLike,
     equip_rect: tuple[int, int, int, int],
 ) -> None:
-    """owned 栏顺序异常检测:装备按布局(从上到下、从右到左)排,相邻间距突变 = 跳格(前面漏检)。
-
-    CW owned 栏填充规则:第一行独立(冶金炉多了左堆),下面从上到下、从右到左 → 装备应连续
-    (从起始格)。跳格(识别到"后面"装备但"前面"位置空)= 前面可能漏检,记 ``[cw!]`` + 存 owned 栏截图。
-
-    简化(自适应,无需预建网格):装备按 (cy 行, -cx 列) 排序,相邻欧氏间距;中位数 = 正常步距,
-    间距 > 1.8×中位数 = 跳格。
-    """
-    if len(equips) < 4:
-        return  # 太少无法判连续性
-    pts = sorted([(e[1][0], e[1][1]) for e in equips], key=lambda p: (p[1], -p[0]))
-    dists = [((pts[i + 1][0] - pts[i][0]) ** 2 + (pts[i + 1][1] - pts[i][1]) ** 2) ** 0.5
-             for i in range(len(pts) - 1)]
-    med = sorted(dists)[len(dists) // 2]
-    if med <= 0:
+    """owned 栏顺序异常检测(诊断留证,无行为影响):行内跳格 = 前面可能漏检,
+    记 ``[cw!]`` + 存 owned 栏截图。判定逻辑纯函数化 → ``_owned_order_anomaly``。"""
+    pts = [(e[1][0], e[1][1]) for e in equips]
+    anomaly = _owned_order_anomaly(pts)
+    if anomaly is None:
         return
-    for i, d in enumerate(dists):
-        if d > 1.8 * med:
-            x1, y1, x2, y2 = equip_rect
-            cw_log('read_equips', step='order', target='owned', attn=True,
-                   anomaly=f'跳格 equip[{i}]->[{i + 1}] 间距{d:.0f}>>中位{med:.0f}(前面可能漏检)',
-                   count=len(equips), shot=cw_shot(screen[y1:y2, x1:x2], 'owned_anomaly'))
-            return
+    x1, y1, x2, y2 = equip_rect
+    cw_log('read_equips', step='order', target='owned', attn=True,
+           anomaly=anomaly, count=len(equips),
+           shot=cw_shot(screen[y1:y2, x1:x2], 'owned_anomaly'))
 
 
 # ===== 穿戴装备识别(below-avatar icon;D-45 路径① multi-scale TM 替 SIFT;D-49 确认 icon 固定尺寸)=====
