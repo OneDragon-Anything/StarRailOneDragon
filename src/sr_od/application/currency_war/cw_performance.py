@@ -75,10 +75,10 @@ class PerformanceTracker:
 
     ⚖️ 敌方侧死链已删(2026-08-16 review D4-D7):_update_required_damage(no-op 体)/
     set_required_damage+required_damage(无读者)/boss_kill_signal(无调用)/_last_hp_after
-    (只写)——r6 F3 敌方观测整条从未接通,且已被 **19 号伤害账本**(ADR-0166 cw_damage_ledger,
-    不等式括号法)取代:伤害基准/击杀能力的正式归宿是 ledger,本类只管自身侧掉血 trend。
+    (只写)——r6 F3 敌方观测整条从未接通(2026-08-18 二刀:原定归宿 19 号伤害账本
+    cw_damage_ledger 属未接线孤儿批次,已删;伤害真值走结算屏 progress_delta/killed)。
     RoundOutcome 敌方三字段(enemy_hp_after/damage_dealt/killed)保留 dataclass 定义
-    (telemetry OutcomeRecord 同 schema,等 L1 结算屏建档后灌值直喂 ledger)。
+    (telemetry OutcomeRecord 同 schema;enemy_hp/damage 仍未灌值)。
     """
 
     def __init__(self) -> None:
