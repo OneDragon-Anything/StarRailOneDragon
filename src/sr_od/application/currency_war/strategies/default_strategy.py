@@ -481,7 +481,12 @@ class DefaultCwStrategy(CwStrategy):
         elif session.last_state is not None:
             st.plane = session.last_state.plane
             st.round_num = session.last_state.round_num
-        st.hp = session.last_hp if session.last_hp is not None else 100
+        # r69 review:hp 过新鲜度门(陈旧 last_hp 不进 pseudo state;门单源 cw_strategy.gated_hp,
+        # 现读基准 = last_state.hp 框架末次读值,None 时 100 默认)。
+        from sr_od.application.currency_war.cw_strategy import gated_hp
+        _t = (st.plane - 1) * 9 + st.round_num if (st.plane and st.round_num) else None
+        _cur_hp = session.last_state.hp if session.last_state is not None else 100
+        st.hp = gated_hp(_cur_hp, session, _t)
         return st
 
     def _fresh_state(self, obs, session: StrategySession) -> GameState:

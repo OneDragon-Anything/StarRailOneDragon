@@ -233,8 +233,12 @@ class TelemetryRecorder:
             trace.active_strategies = list(extra.get('active_strategies', []))
             trace.dp_posture = dict(extra.get('dp_posture', {}))
             trace.ledger_fingerprint = str(extra.get('ledger_fingerprint', ''))
-        if self.enabled and gold_point:
-            self._gold_trajectory.setdefault(run_id, []).append(state.gold)
+        if self.enabled:
+            if gold_point:
+                self._gold_trajectory.setdefault(run_id, []).append(state.gold)
+            # _comms 不受 gold_point 连坐(r69 review):gold 采样按回合、target 序列按变化,
+            # 语义不同 —— director 步进记录(gold_point=False)产生的换线也要落账,否则
+            # 「同节点双 pivot」只记终态 1 次,churn 被记账低估一半。
             if target_comp:
                 comms = self._comms.setdefault(run_id, [])
                 if not comms or comms[-1] != target_comp:

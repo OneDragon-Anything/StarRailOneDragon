@@ -129,14 +129,23 @@ class PerformanceTracker:
         return sum_d_w / total_w
 
     def is_losing_streak(self, comp_tag: str | None = None, window: int = 3) -> bool:
-        """近 window 回合是否大掉血(trend > LOSING 阈值)。样本不足 → False。
+        """近回合是否失血失势(双通道;r69 校准)。样本不足 → False。
 
         PvE 无每局 win/lose,只有 HP;"losing streak" = 持续高掉血。排除 fold。
+
+        通道 1(**游戏自报连败**,ground truth):结算屏「连败×N」前缀带符号(fixture 核实
+        2026-08-11,parse_streak)—— 连败 ≥2 = 游戏自己判定正在输,比任何 trend 阈值都硬,
+        直接解锁(r68 死因:71→26 五连败期间旧通道全程哑火)。
+        通道 2(trend,阈值校准 0.6→0.5):r68 实测 A8 慢性失血 13-24 血/轮(归一化),
+        旧阈 0.6×30=18 挡掉其中大半;0.5×30=15 覆盖实测带(仍高于正常波动 <10)。
         """
+        recent = [o for o in self.history[-(window + 2):] if not o.intentional_fold]
+        if any(o.streak <= -2 for o in recent):
+            return True
         trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
         if trend is None:
             return False
-        return trend > HP_LOSS_FULL * 0.6       # 掉血 > 18(归一化)算 streak(占位)
+        return trend > HP_LOSS_FULL * 0.5   # r69:18→15(0.6 系数挡住 r68 实测慢性失血带)
 
     def perf_for_comp(self, comp_tag: str, window: int = 6) -> float | None:
         """某 comp 的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
