@@ -52,6 +52,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
     _reg = dict(getattr(session, 'star_regression_count', {}) or {})
+    # ⚖️ star 回退防抖(2026-08-18 离线复现实证治本):274 张存证全量重放 —— 回退角色
+    # 40/40 在场且 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗口
+    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显)——**推翻 r17「SIFT 身份
+    # 错配」结论**。旧版回退即采新写回 → 动画窗 1★ 毒化 tracking,下一帧又纠回(往返抖;
+    # r34 停机钩子有同款防抖所以停机侧无误触,但对账侧漏了)。修:首次回退不写回
+    # (该角色 star 保旧),**连续第二次仍回退**才确认(真卖后重买/真识别问题)。
+    _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
     for _n, _s in _new_stars:
         # 同名多星共存时取**最高旧星**(r6 review 小瑕疵:set 无序 next() 任意项;
         # 回退判定应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
@@ -63,20 +70,37 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             if _n.startswith('银狼') and _old_s - _s == 1:
                 log.info(f'[cw][{source}] star 回退豁免:{_n} {_old_s}★→{_s}★(升费机制,非识别失败)')
                 continue
-            log.warning(f'[cw!][{source}] star 回退:{_n} {_old_s}★→{_s}★(read_star 漏金星?卖后重买?)')
-            _conflict('star', _old_s, _s, screen, verdict='采新-read_star实读(回退留证)',
-                      source=source, char=_n)
-            # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
-            # 已存档 cw_dev/live_round11_diagnosis.md:根因在 SIFT 身份错配域(主开发在办),
-            # 非读星;停机不再有增量信息。降级为高频留证(每 5 次回退存一张证,不 stop),
-            # 排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
-            if _old_s >= 2:
-                _reg[_n] = _reg.get(_n, 0) + 1
-                if _reg[_n] >= 2 and ctx is not None and _reg[_n] % 5 == 0:
-                    _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source,
-                                    stop_run=False)
-        elif _n in _reg:
-            del _reg[_n]   # 读回恢复(或超预估)→ 清零
+            _seen = _pend.get(_n, 0)
+            if _seen == 0:
+                # 首次:疑合成动画窗(特效遮挡第2星)——不写回,star 保旧防毒化;
+                # 下一帧读回正常即自愈(与 r34 停机钩子「连续 2 节点」同语义)。
+                _pend[_n] = 1
+                log.info(f'[cw][{source}] star 回退防抖:{_n} {_old_s}★→{_s}★(疑3合1动画窗)'
+                         f'→ 本帧保旧 {_old_s}★,下帧确认')
+                _conflict('star', _old_s, _s, screen, verdict='保旧-回退防抖(疑合成动画窗,下帧确认)',
+                          source=source, char=_n)
+                for _lst in (bench, deployed):
+                    if _lst:
+                        for _bc in _lst:
+                            if _bc.char_id == _n and _bc.star == _s:
+                                _bc.star = _old_s   # 保旧(动画窗读数不进 tracking)
+            else:
+                # 连续第二次:确认真回退(卖后重买/真识别问题)→ 采新写回。
+                log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
+                _conflict('star', _old_s, _s, screen, verdict='采新-回退确认(连续2次)',
+                          source=source, char=_n)
+                # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
+                # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
+                # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
+                if _old_s >= 2:
+                    _reg[_n] = _reg.get(_n, 0) + 1
+                    if _reg[_n] >= 2 and ctx is not None and _reg[_n] % 5 == 0:
+                        _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source,
+                                        stop_run=False)
+        elif _n in _pend or _n in _reg:
+            del _pend[_n]   # 读回恢复(或超预估)→ 清防抖(自愈)
+            _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
+    session.star_pending_regression = _pend
     session.star_regression_count = _reg
     if bench is not None:
         session.tracked_bench_chars = list(bench)

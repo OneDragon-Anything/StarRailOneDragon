@@ -210,6 +210,9 @@ class StrategySession:
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;
     # 连续 2 节点回退 = 真识别问题(特效遮挡过渡帧一节点内消)→ 停机保画面排查;读回恢复即清零)
     star_regression_count: dict[str, int] = field(default_factory=dict)
+    # star 回退防抖(char → 已见次数;2026-08-18 离线复现:274 存证 36/40 同图重读 2★,
+    # live 读 1★ = 3合1 合成动画窗)—— 首次回退 star 保旧不写回,连续第二次才采新确认。
+    star_pending_regression: dict[str, int] = field(default_factory=dict)
     # bail_reason_counts:BailToOuter 同因计数(局级,环重建不清零 —— ping-pong 诊断用;≥3 记 [cw!])。
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
     rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
