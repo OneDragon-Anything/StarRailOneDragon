@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 
-# 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2。1星=cost 🟢 BWIKI+4399+用户权威;
+# 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2(strategy/)。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」+ 修 §2 内部矛盾,
 # 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。旧 SELL_VALUE{1:1,2:3,3:5} 占位(连1星都没按cost)→ 弃。
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
@@ -291,7 +291,7 @@ def card_cost(card: ShopCard) -> int:
 
 
 def sell_refund(star: int, cost: int) -> int:
-    """卖出回金(economy_research.md §2;用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
+    """卖出回金(economy_research.md §2(strategy/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
 
     - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
     - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。

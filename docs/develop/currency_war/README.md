@@ -44,7 +44,7 @@
 - `cw_decisions.py` → `docs/develop/currency_war/strategy/02_eval_search.md`(战术层 eval)
 - `cw_performance.py` → `docs/develop/currency_war/strategy/10_battle_and_enemies.md`(观测反馈)
 - `cw_chars.py` → `docs/game/currency_war/data/characters.md`(角色规范名,游戏侧)
-- `cw_shop_odds.py` → `docs/game/currency_war/data/economy_research.md`(牌池参数,游戏侧)
+- `cw_shop_odds.py` → `strategy/economy_research.md`(牌池参数,游戏侧;2026-08-18 自 data/ 迁入)
 
 ## 关联 skill
 - `od-dev-gameplay-automation`(玩法自动化 playbook + 策略设计 + 策略需求清单)
