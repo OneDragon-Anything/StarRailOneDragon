@@ -496,6 +496,21 @@ def _sell_offline_for_focus(state: GameState, actions: list,
 
 
 
+def _compress_release(cost: int, gold: int, hunt_tiers: set[int]) -> bool:
+    """牌池压缩买放行判定(纯函数;r61/r62 用户节奏 §7-1/§7-15)。
+
+    「买便宜 1/2 星 = 追求过渡阵容的牌库压缩」——全局供给策略:抽走噪声牌升
+    目标卡后续出现率,不问费级归属。成本结构分档:
+    - 1 费恒放行(1星买卖净 0,ADR-0121,无成本);
+    - 2 费 / 追猎费级:保息放行(买后利息档不降,2星买卖净损 1 不能白买)。
+    """
+    if cost == 1:
+        return True
+    if cost == 2 or cost in hunt_tiers:
+        return (gold - cost) // 10 == gold // 10
+    return False
+
+
 def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
     """追猎费级(ADR-0209 r52 用户指导;**玩法理解**:gameplay/currency_war.md 策略模型 S3)。
 
@@ -616,6 +631,7 @@ def _best_improving_action(
     # (降分母提命中率),后续卖出净损 0-1(1星买卖净 0,economy §2 实证);
     # 压缩持有由集中卖散自然回收(off-line 牌)。
     _dual = state.dual_track_phase
+    _hunt_tiers: set[int] = set()   # 双轨期填充(r62:_saving 门压缩放行也消费,提前初始化)
     if _dual:
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
         # 常数削减(r51 用户效率提醒):双轨放行面预计算——stash/target 的
@@ -627,7 +643,7 @@ def _best_improving_action(
             if _sc is not None:
                 _allow_names.update(_sc.core_chars)
                 _allow_factions.update(_sc.factions)
-        _hunt_tiers: set[int] = _hunt_tier_set(state, (stash_comp, target_comp))
+        _hunt_tiers = _hunt_tier_set(state, (stash_comp, target_comp))
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
@@ -636,14 +652,9 @@ def _best_improving_action(
             _ent = TRANSITION_PACK.get(card.name)
             if (_ent is None and card.name not in _allow_names
                     and card.faction not in _allow_factions):
-                # 牌池压缩例外:同追猎费级 + 保息(买后利息档不降)才放行;
-                # r61(2026-08-18 用户精化 §7-1):**1 费恒放行**(1星买卖净 0,ADR-0121;
-                # r1/r2 奖励节点「保息前提下多买 1/2 星压缩牌库」—— 压缩是全局供给策略
-                # 非本位战力投资,便宜噪声牌抽走 = 后续轮目标卡浓度升,不问费级归属)。
-                if not (cost in _hunt_tiers
-                        and (state.gold - cost) // 10 == state.gold // 10) \
-                        and cost != 1:
-                    continue   # 双轨期:非过渡包/非领先线/非压缩件 → 散牌不买(1费例外恒买)
+                # 牌池压缩例外(用户节奏 §7-1/§7-15,判定 = _compress_release 纯函数)
+                if not _compress_release(card_cost(card), state.gold, _hunt_tiers):
+                    continue   # 双轨期:非过渡包/非领先线/非压缩件 → 散牌不买
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
         if (card.name and card.name in _deployed_name_counts
@@ -682,8 +693,11 @@ def _best_improving_action(
                                       or card.name in character_priority)
                 _room_s = (state.deployed_count() < state.max_units()
                            or len(state.bench) < BENCH_CAPACITY)
-                if not _is_target and not (_strengthens_s and _room_s):
-                    continue   # 散牌:攒金给升级,跳过
+                # r62 压缩放行(用户 §7-15:压缩=全局供给策略,非泄金;判定纯函数同上)
+                # ——攒金期照买(「保息前提下多买」语义,攒金门只该拦真泄金散牌)。
+                _compress_ok = _compress_release(card_cost(card), state.gold, _hunt_tiers)
+                if not _is_target and not _compress_ok and not (_strengthens_s and _room_s):
+                    continue   # 散牌:攒金给升级,跳过(压缩/板增强例外放行)
         # commitment prefilter(task#16 + ADR-0124 tempo 修订):target 设定时,若 shop 有 target 卡
         # (阵营∈target.factions 或 ∈core_chars)可买,跳过纯 off-target 散牌 → 聚焦深化 target。
         # **tempo 例外(2026-08-15 live 7 局实锤:commit 过早/过死饿死板)**:form_progress <
