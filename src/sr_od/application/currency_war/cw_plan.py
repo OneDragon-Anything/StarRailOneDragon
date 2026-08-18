@@ -879,6 +879,41 @@ def _best_improving_action(
                                          target_comp=target_comp, refresh_cost=_rf_cost),
                  [RefreshShop(cost=_rf_cost)])
 
+    # r66 压缩扫尾(用户 §7-1/§7-15「保息前提下多买 1/2 星压缩牌库」的序列面落地):
+    # best 是**单序列贪心**(买+deploy 原子对竞争),deploy 配对的 delta 常年压过纯 bench 囤牌
+    # → 放行面虽在(_compress_release),量进不了序列 —— r1 live 实证:5 张 1 费只买 2 张。
+    # 修:best 确定后追加**纯 BuyCard 扫尾**(不参与 beat 竞争),逐张判息门+金+副本+容量,
+    # 模拟递推保证金约束;骨架买分支(上方 return)是同类语义的强化版,不叠加。
+    # ⚖️ 适用域 = **双轨期**(r1/r2 压缩是过渡阵容的牌库浓缩,§7-1);已 commit(定型)后
+    # off-target 便宜牌属 spread,不扫(t97 语义:commit+shop 无 target → 不买,等 Refresh)。
+    if _dual:
+        try:
+            _sim = state
+            for _a in best:
+                _sim = simulate(_sim, _a)
+            for c in state.shop:
+                _cost = card_cost(c)
+                if c.name and c.name in {getattr(getattr(a, 'card', None), 'name', None) for a in best}:
+                    continue   # best 已含的牌不重复买
+                if _sim.gold < _cost:
+                    continue
+                if c.name:
+                    _copies = sum(1 for b in (*_sim.deployed, *_sim.bench) if b.char_id == c.name)
+                    if _copies >= 3:
+                        continue   # 3合1 满副本(与主循环同门)
+                    if c.name in {b.char_id for b in _sim.deployed if b.char_id} and _cost > 1:
+                        continue   # 场上同名散牌不集(同主循环;1费例外集 2★)
+                if _sim.deployed_count() >= _sim.max_units() and len(_sim.bench) >= BENCH_CAPACITY:
+                    break   # 板+席满,买无所居
+                if not _compress_release(_cost, _sim.gold, _hunt_tiers):
+                    continue
+                best.append(BuyCard(card=c))
+                _sim = simulate(_sim, best[-1])
+                log.info('[cw-plan] 压缩扫尾:+%s(cost%s,gold%s→%s,§7-15 牌库压缩)',
+                         c.name, _cost, _sim.gold + _cost, _sim.gold)
+        except Exception as _e:   # noqa: BLE001 扫尾 best-effort,失败保 best 原样
+            log.info('[cw-plan] 压缩扫尾跳过:%s', _e)
+
     return best
 
 
