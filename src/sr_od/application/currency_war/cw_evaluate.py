@@ -153,7 +153,8 @@ def char_quality_score(state: GameState, character_priority: list[str],
     r70 审计刀③:**场上(deployed)打工牌星级计价**——star≥2 每星 0.25×CHAR_PRIORITY_BONUS
     (1★ 零分不变,防散牌囤积)。人类纪律「1 费顺手集 2★ = 免费战力」(transitions §6)
     此前在 eval 零维度承载 → plan 永不奖励 → 板面星级真空 = P1 场场输的强度根因之一。
-    只计场上(bench 星级是潜在战力,半权已在 deploy 链承载,不双计)。"""
+    只计场上(bench 星级的激励由 deploy 候选的 eval delta 间接承载——2★ 上场后此处计价;
+    买第 3 张的合并增值在合并发生前不可见,集星激励仍偏弱,已知口径)。"""
     score = 0.0
     core_names: set[str] = set()
     if target_comp is not None:

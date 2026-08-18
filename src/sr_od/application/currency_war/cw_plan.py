@@ -251,8 +251,12 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     if target is not None and _card_supports_target(bc.char_id, bc.faction, state, target):
         return True
     if state.dual_track_phase and bc.char_id:
+        # r72 口径对齐(review #3):三侧统一「当先框架非 drop + 通用件」——
+        # 散件 drop(艾丝妲/佩拉)不自动上(应急件,op 侧同口径);通用 carry
+        # (千冶·刃 29%→64%)三侧都认。框架由 plan(framework=)/session 单一源。
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK as _TP
-        if bc.char_id in _TP:
+        _e = _TP.get(bc.char_id)
+        if _e is not None and _e[0] in ('仙舟', '列车', '通用') and _e[1] != 'drop':
             return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
@@ -462,35 +466,31 @@ def plan(state: GameState, config, faction_priority: list[str],
     # 卖出回收,金投核心;玩家「集中一条线时卖 off-line 换核心」的自然操作。
     # 场上(deployed)散牌**不卖**(上场战力 > 卖价;只清 bench 死库存)。
     _sell_offline_for_focus(cur, actions, character_priority, target,
-                            sell_cap=focus_sell_cap)
+                            sell_cap=focus_sell_cap, framework=framework)
     return actions
 
 
 def _sell_offline_for_focus(state: GameState, actions: list,
                             character_priority: list[str], target: Comp | None,
-                            sell_cap: int = 2) -> None:
+                            sell_cap: int = 2, framework: str = '') -> None:
     """集中卖散:target 定后清 bench 的 off-line 死库存(回收金投核心)。
 
     判据(off-line,全部满足才卖):非 target 阵营/角色/过渡件 + 非用户 priority
     + 非紧急战力(场上人数 < 上限时 bench 是死库存,卖出不损战力)。
     每回合最多清 sell_cap 张(默认 2 渐进;ADR-0209 定型边沿放宽加急)。
+    framework(r72 review:session 单一源透传,替旧 bench-only 重推导——混持/散件场景
+    旧法 `_fw=''` → keep 集恒空,「买→不上→卖」循环只修了半边)。
     """
     if target is None or not state.bench:
         return
     from sr_od.application.currency_war.cw_state import simulate as _sim
     sold = 0
     _transition_chars = set(getattr(target, 'transition_chars', ()) or ())   # r9 review#1:角色级(transition_factions_hint 不存在,曾恒空→卖掉打工牌)
-    # r70 框架保护集:双轨期当先框架的 carry/partial 不卖(「买了→不上→被当散牌卖」
-    # 循环的卖出侧;transition_score 框架加成买进来的牌,卖出侧得认)。
+    # r70 框架保护集(keep = 当先框架的 carry/partial + 通用件;framework 来自 session,
+    # 与买侧/deploy 侧同源)。''=未定框架 → 仅散件 drop 无保护。
     from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
-    _fw = ''
-    if state.dual_track_phase:
-        _fw_names = {TRANSITION_PACK[b.char_id][0] for b in state.bench
-                     if b.char_id in TRANSITION_PACK}
-        if len(_fw_names) == 1:
-            _fw = next(iter(_fw_names))
-    _fw_keep = ({n for n, (f, t) in TRANSITION_PACK.items() if f == _fw and t != 'drop'}
-                if _fw else set())
+    _fw_keep = ({n for n, (f, t) in TRANSITION_PACK.items()
+                 if (f == framework or f == '通用') and t != 'drop'} if framework else set())
     for bc in list(state.bench):
         if sold >= sell_cap:
             break

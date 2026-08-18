@@ -116,7 +116,9 @@ class DefaultCwStrategy(CwStrategy):
         # (三侧消费见 cw_transition.pick_framework docstring)。
         if state.dual_track_phase:
             from sr_od.application.currency_war.cw_transition import pick_framework
-            session.transition_framework = pick_framework(state.bench, state.deployed, state.shop)
+            session.transition_framework = pick_framework(
+                state.bench, state.deployed, state.shop,
+                current=session.transition_framework)   # r72 滞后:领先 ≥1 才换框架
         else:
             session.transition_framework = ''
         # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)

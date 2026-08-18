@@ -180,7 +180,10 @@ class DeployBench(SrOperation):
                 TRANSITION_PACK,
             )
             _tgt = _tgt | set(FRAMEWORK_FACTIONS.get(_fw, ()))
-            _fw_carry = {n for n, (f, t) in TRANSITION_PACK.items() if f == _fw and t != 'drop'}
+            # r72 口径对齐(review #3):与 plan._should_deploy 同口径 ——
+            # 当先框架非 drop + 通用件(散件 drop 不认;通用 carry 千冶·刃认)。
+            _fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
+                         if (f == _fw or f == '通用') and t != 'drop'}
         else:
             _fw_carry = set()
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)

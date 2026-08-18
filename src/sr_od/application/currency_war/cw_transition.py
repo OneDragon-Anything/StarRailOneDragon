@@ -59,15 +59,19 @@ def in_early_phase(plane: int, committed: bool) -> bool:
     return plane == 1 and not committed
 
 
-def pick_framework(bench, deployed, shop=None) -> str:
+def pick_framework(bench, deployed, shop=None, current: str = '') -> str:
     """r70 过渡框架选定(买/上/卖三侧单一源):按当前持有(board+bench,可选 shop)的
     框架件计数取领先框架;平局/全零 → ''(未定,消费方按散件口径)。
 
-    数据口径:主流 = 仙舟 32% + 列车 29%,其余 ≤5%(模块头 plaza 实证)。选定后:
+    data 口径:主流 = 仙舟 32% + 列车 29%,其余 ≤5%(模块头 plaza 实证)。选定后:
     - 买侧:transition_score(char, fw=framework) 同框架加成(r70 前该参数恒 '' = 加成空转);
     - 上侧:deploy 双轨期以 FRAMEWORK_FACTIONS[framework] 为临时 target(框架牌不再是
       「off-target 散牌留 bench」);
     - 卖侧:keep 集保护当先框架的 carry/partial(防「买了→不上→被当散牌卖」循环)。
+
+    r72 review 滞后(hysteresis):**切换需挑战者领先现任 ≥1(整权)** —— shop 半权
+    (0.5/张)随刷新噪声每轮变动,临界区(仙2 vs 列1.5)会每轮翻转 → 买侧跟着转 →
+    churn。现任保持门槛低(持平即留),换门槛高(领先 1),消除噪声翻转。
     """
     counts = {'仙舟': 0, '列车': 0}
     for bc in (*deployed, *bench):
@@ -80,7 +84,11 @@ def pick_framework(bench, deployed, shop=None) -> str:
             if ent and ent[0] in counts:
                 counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权
     fw = max(counts, key=lambda k: counts[k])
-    return fw if counts[fw] >= 2 else ''
+    if counts[fw] < 2:
+        return ''
+    if current and current in counts and counts[current] >= counts[fw] - 1.0:
+        return current   # 滞后:现任未被领先 ≥1 → 保持(防 shop 噪声每轮翻转)
+    return fw
 
 
 # ===== 定型信号管线(r39 用户指导:最终 comp 的选择信号从开局积累,双轨并行) =====
