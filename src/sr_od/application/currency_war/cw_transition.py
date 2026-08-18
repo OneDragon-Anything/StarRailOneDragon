@@ -66,6 +66,12 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     'invest_strategy': 2.0,     # 投资策略(定义型如黑塔纪元 affinity≥0.9 = 资源入口级)
     'invest_env': 1.0,          # 投资环境(方向性弱于策略)
     'shop_supply': 0.5,         # 商店供给(每回合弱证据,持续累积)
+    # r44 用户指导:节点随机奖励同属信号——补给(钻/装备/角色)/遭遇(三态选卡)/
+    # 奖励节点(晶矿球/礼盒)给的东西都是「本局走向」的证据(如补给送 Fate 角色
+    # = 命运圣杯线信号;遭遇给装备 = 装备系线倾向)
+    'supply_reward': 0.8,       # 补给节点产出(角色/装备定向)
+    'encounter_reward': 0.6,    # 遭遇选卡(策略/装备)
+    'bonus_reward': 0.4,        # 奖励节点随机产出(最弱证据)
 }
 
 #: 定型阈值:累积信号分超过此值 → 最终线定型(early 双轨期结束,卖过渡换最终)
@@ -74,6 +80,10 @@ COMMIT_SIGNAL_THRESHOLD: float = 3.0
 #: 定型 deadline:P2-3 的投资策略/环境选择是最后转型节点(round 12 ≈ P2-r3);
 #: 过此节点无论信号强弱必须定型(之后经济量不足以转型——用户口径)。
 COMMIT_DEADLINE_T: int = 12
+
+#: P1 过渡期人口上限(r39 用户指导 + plaza 实证:Early 上场 79% = 5 人,中位/众数 5;
+#: 本质 = 低人口省升级金,尽快 50 金吃满息;等级在定型时才拉)。
+EARLY_POP_CAP: int = 5
 
 
 def t_of(plane: int, round_num: int) -> int:
@@ -87,12 +97,16 @@ def past_commit_deadline(plane: int, round_num: int) -> bool:
 
 
 class CommitSignals:
-    """最终线定型信号累积器(局级,挂 StrategySession;r39 双轨架构)。
+    """最终线定型信号累积器(局级,挂 StrategySession;r39 双轨架构;r44 补全信号源)。
 
     各信号源到达时调 ``add``(源名 + 该源的 comp 分贡献),累积到每条线;
     ``leader`` 给当前倾向,``ready`` 判是否达定型阈值。双轨期买牌用
     ``leader`` 囤牌(bench 存最终线核心,场上仍打过渡包);``ready`` 或
     过 deadline → 定型(卖过渡换最终)。
+
+    信号全景(r44 用户口径「当前局的整体观察」):开局词缀 → P1 投资策略/环境
+    → 商店供给(持续)→ **节点随机产出**(补给角色/装备、遭遇选卡、奖励节点)
+    ——凡「本局拿到了什么」都是选线证据,不是只有商店和投资。
     """
 
     def __init__(self) -> None:
