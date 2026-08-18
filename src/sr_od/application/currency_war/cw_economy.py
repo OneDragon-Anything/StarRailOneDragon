@@ -128,7 +128,7 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
 
 
 def _xp_gold_floor(state: GameState, want_level: bool) -> int:
-    """买经验时的存金地板(用户节奏 economy_research §7:不影响吃息;追级期降档)。
+    """买经验时的存金地板(用户节奏 economy_research §7;**玩法理解**: gameplay/currency_war.md 策略模型 S1)。
 
     非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
     追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。

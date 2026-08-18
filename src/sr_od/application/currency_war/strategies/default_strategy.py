@@ -96,7 +96,10 @@ class DefaultCwStrategy(CwStrategy):
 
     def update_target(self, state: GameState, session: StrategySession, config) -> None:
         """战略层:首轮 ``select_comp``;其后 ``maybe_pivot``,无 pivot 保持(等价现 shop.py 逻辑,
-        但状态进 ``session.target_comp``,非 class-attr)。"""
+        但状态进 ``session.target_comp``,非 class-attr)。
+        **玩法理解单一源**:docs/game/gameplay/currency_war.md 策略模型 S2(双轨)/S4(定型信号)
+        ——本方法是双轨架构的心脏(信号喂入/双轨判定/定型切换/flex 收敛全在此),
+        改动前先对表该文档(防实现漂移)。"""
         # ADR-0209:CommitSignals 惰性建(避免 default_factory 环形导入)
         if session.commit_signals is None:
             from sr_od.application.currency_war.cw_transition import CommitSignals

@@ -497,15 +497,16 @@ def _sell_offline_for_focus(state: GameState, actions: list,
 
 
 def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
-    """追猎费级(ADR-0209 r52 用户指导):「目标牌」是动态的,非静态 core 列表。
+    """追猎费级(ADR-0209 r52 用户指导;**玩法理解**:gameplay/currency_war.md 策略模型 S3)。
 
-    三层语义:
+    目标牌是动态的,非静态 core 列表——改本函数前先对表该文档:
     ①缺谁追谁——target/stash 的 core 未到 2★ → 在追(过渡与最终两边的 core 都算);
     ②基本目标 2★——核心输出 3★ 难凑,2★ 为主目标;辅助 2★ 也能快速完成;
     ③牌运追猎——场上/bench 已 2★ 的角色,其费级入集(「3费辅助已 2★×2 →
       有几率追 3★」;当前商店等级该费级概率最高时收益最大)。
 
-    返回费级集;供牌池压缩买判定(同费非目标卡保息买入,降分母提命中率)。
+    返回费级集;供牌池压缩买判定(同费非目标卡保息买入,降分母提命中率;
+    压缩语义见同文档 S1 牌库操纵)。
     """
     from sr_od.application.currency_war.cw_chars import CHARACTERS
     tiers: set[int] = set()
