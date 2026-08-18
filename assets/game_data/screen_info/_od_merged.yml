@@ -2433,7 +2433,7 @@
   - area_name: 标识-前台区域
     id_mark: true
     pc_rect:
-    - 850
+    - 932
     - 275
     - 1070
     - 340
@@ -2447,7 +2447,7 @@
   - area_name: 标识-后台区域
     id_mark: true
     pc_rect:
-    - 870
+    - 930
     - 525
     - 1060
     - 630

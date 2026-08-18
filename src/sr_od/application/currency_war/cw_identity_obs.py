@@ -281,6 +281,37 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     if deploy_cap is None:
         deploy_cap = read_deploy_cap(ctx, screen)
     back_slots = back_row_slot_rects_ctx(ctx, deploy_cap or 6) or fallback_back_slots()
+    # r77d 布局停机钩子(用户 2026-08-20 定调:7/9 槽**要停机 + 现场拖角色验证**):
+    # 无档布局 ≠ 只存帧离线测 —— 离线暗框检测有背景噪声风险(8 槽首版 grounding
+    # 误换算教训),真值坐标必须现场交互闭环(拖角色到各槽 → 逐槽识别 → 详情面板
+    # 锚定)。遇无档 cap → 存帧(哈希去重)+ sentinel flag + **停机保画面**,AI 现场按
+    # flag 流程执行;档位补齐(upsert 后排N槽-1..N + _LAYOUT_PREFIX 登记)后不再触发。
+    try:
+        from sr_od.application.currency_war.cw_back_layout import _layout_prefixes
+        _cap = deploy_cap or 6
+        if (ctx.run_context is not None and _cap > 4 and _cap != 6
+                and _cap not in _layout_prefixes()):
+            from pathlib import Path as _P
+
+            from one_dragon.utils.log_utils import log as _log
+            from sr_od.application.currency_war.cw_observe import cw_shot_unique
+            _shot = cw_shot_unique(screen, f'back_layout_{_cap}slots')
+            if _shot is not None:
+                _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
+                    f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap} 槽布局未建档。\n'
+                    f'现场验证流程(参照 8 槽闭环 r76):\n'
+                    f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
+                    f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
+                    f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
+                    f'4. upsert_screen_area 后排{_cap}槽-1..{_cap}(真值);\n'
+                    f'5. cw_back_layout._LAYOUT_PREFIX 登记 { _cap }: \'后排{_cap}槽\';\n'
+                    f'6. 删本 flag + 重启 MCP server。\n'
+                    f'截图: {_shot}', encoding='utf-8')
+                _log.info('[cw-hook][layout] deploy_cap=%s 无档(7/9 槽?)→ 停机现场拖拽验证(截图 %s)',
+                          _cap, _shot)
+                ctx.run_context.stop_running()
+    except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
+        pass
     return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
             + identify_slots(screen, templates, back_slots, 'back'))
 

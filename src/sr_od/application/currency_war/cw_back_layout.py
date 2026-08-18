@@ -41,20 +41,36 @@ def back_row_slot_rects_ctx(ctx, cap: int) -> list[tuple[int, Rect]] | None:
     """按 deploy_cap 从 screen_info 取 ``[(slot_idx, rect), ...]``;无档 → None(调用方退基线)。
 
     ctx: ``SrContext``(screen_info 已加载)。cap = 部署上限真值(read_deploy_cap)。
+
+    r77c 采集钩子:cap 无档(如 7/9 槽,宝钻叠加局)→ 存帧到 shots/(内容哈希去重)+
+    进度记一笔,**不停机**(布局坐标离线可测,暗框法即可,无需保画面交互);下次遇该
+    布局 AI 离线 upsert 后排N槽-1..N + 本表登记即闭环。
     """
     prefix = _layout_prefixes().get(cap)
-    if prefix is None:
-        return None
-    from sr_od.application.currency_war.cw_identity_obs import _area_rect
-    out: list[tuple[int, Rect]] = []
-    i = 1
-    while True:
-        rect = _area_rect(ctx, f'{prefix}-{i}')
-        if rect is None:
-            break
-        out.append((i, rect))
-        i += 1
-    return out or None
+    if prefix is not None:
+        from sr_od.application.currency_war.cw_identity_obs import _area_rect
+        out: list[tuple[int, Rect]] = []
+        i = 1
+        while True:
+            rect = _area_rect(ctx, f'{prefix}-{i}')
+            if rect is None:
+                break
+            out.append((i, rect))
+            i += 1
+        if out:
+            return out
+    # 无档:[cw!] 告警(可检索);停机钩子在调用方 read_deployed_chars(r77d:存帧+flag+
+    # stop_running,现场拖角色逐位验证后补档 —— 真值坐标必须现场交互闭环,离线暗框检测
+    # 有 grounding 误换算教训)。本函数只返 None 退基线。
+    try:
+        if cap and cap > 4:
+            from one_dragon.utils.log_utils import log
+            log.warning('[cw!][layout] 后排 %d 槽布局未建档(退 6 槽基线,识别/拖拽将错位;'
+                        '停机钩子将触发现场验证;补档:拖角色逐位验 → upsert 后排%d槽-1..%d'
+                        ' → _LAYOUT_PREFIX 登记)', cap, cap, cap)
+    except Exception:   # noqa: BLE001
+        pass
+    return None
 
 
 def fallback_back_slots() -> list[tuple[int, Rect]]:
