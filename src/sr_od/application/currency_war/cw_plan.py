@@ -372,12 +372,20 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
     旧门要求 gold≥整级大金(36-60)→ 实际每击仅 4-8 金 → 过度保守 → 升级滞后(M15 live 实锤)。
     ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
     (PrepDirector: EnsureShopOpen 后重读;doc 15 §5.2b M2)。
+
+    **溢出金 XP 放行(r85,用户 50 金息律「>50 的每一分都无存钱意义,该升级就升级」)**:
+    金 ≥ INTEREST_THRESHOLD + 单击价 时(息满溢出区),_want_level_up 的 False
+    (DP 攒息姿态压 target_level)不再拦 —— 溢出部分买经验不损息档地板 50,
+    白嫖人口进度;姿态的「攒息」目的此时已达成,不矛盾。P1 末 60-70 金闲置
+    实证(用户演示局对照)即此缺口。地板仍守(花后 ≥50)。
     """
     if state.level >= 10:
         return False
     want = _want_level_up(state, target_comp)
     if not want:
-        return False
+        # r85 溢出区放行:息满 + 够单击 + 花后不破 50 地板 → 姿态压制不拦溢出金
+        return (state.gold >= INTEREST_THRESHOLD + xp_click_cost(state)
+                and state.gold - xp_click_cost(state) >= INTEREST_THRESHOLD)
     return state.gold - xp_click_cost(state) >= _xp_gold_floor(state, want)
 
 
