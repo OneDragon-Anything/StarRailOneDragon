@@ -206,9 +206,11 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     # ⚠️ 档金真值未核(2026-08-18 自查:「2连=1金/3连=2金」系 auto-chess 常识带入,项目
     # 无权威源 —— STREAK_WEIGHT 是评分占位非金数;违「游戏数据先核实」铁律,已撤编造公式)。
     # 现实现 = 保守门:连胜 ≥ STREAK_REFRESH_MIN(3,与 WIN_STREAK_BREAK_INTEREST=2
-    # 错开一档:2 连只破息买质量、不额外刷)→ 放宽。真档金表核实路径:结算屏「连胜×N」
-    # 同屏的获得金币总览(基础奖励/利息/连胜行,live OCR 可拆)+ 伟大征服 ×3 对拍。
-    # 核实后替换为显式账:min(档金(streak+1), cap)×mult ≥ shop_refresh_cost。
+    # 错开一档:2 连只破息买质量、不额外刷)→ 放宽。真档金表核实路径:连胜 ≥3 结算屏
+    # 整屏采集钩子(streak_gold_stN,cw_settlement_obs)拆「获得金币总览」连胜行 +
+    # 伟大征服 ×3 对拍。核实后替换为显式账 —— ⚠️ 校准纪律(r64 review P2):先验表必须
+    # 使阈值**随 streak 单调且有高于刷价的区间也有低于区间**(若全区间 ≥ 刷价 = 恒真门
+    # = 没校准;全 < = 门死),否则维持保守门。
     _streak = state.streak or 0
     if _streak >= STREAK_REFRESH_MIN:
         _se0 = _strategy_economy(state)

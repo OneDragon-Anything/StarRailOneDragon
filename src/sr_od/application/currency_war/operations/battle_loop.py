@@ -273,12 +273,22 @@ class CurrencyWarRunLoop(SrOperation):
             # 「挑战结束+继续挑战」(无「挑战成功」/无带符号进度,文本规则返 None)→ 用
             # **上一轮结算真值 hp** 对比:hp 降 = 输,不降/回升 = 赢(赢轮 +2 长线作战回血
             # 实证 80→82→84)。last_hp 由 on_round_end 结算真值链维护,此处读 = 上轮值。
-            if _obs.killed is None:
-                _prev_hp = getattr(_session, 'last_hp', None)
-                if _prev_hp is not None:
-                    _obs.killed = _obs.hp_after >= _prev_hp
-                    log.info('[cw-loop] killed 兜底(hp 对比):上轮 %s → 本轮 %s → %s',
-                             _prev_hp, _obs.hp_after, '赢' if _obs.killed else '输')
+            # ⚖️ r64 review P1/P2 修:①**双侧置信度门** —— 本轮 hp_confidence < 0.9 不比
+            # (boss 胜利屏 hp 裸数字读不到 → conf=0/hp_after=0,旧版 0≥prev 恒 False →
+            # boss 赢轮恒判输);②**轮次邻接门** —— 上轮 hp 读失败时 last_hp 是更早轮的
+            # 陈值,隔轮对比误判,只在上轮与本轮节点相邻(t 差 1)才比。_last_outcome_t
+            # 与 last_hp 同步更新(高置信轮都记,与 killed 是否被文本判定无关)。
+            _now_t = (_plane - 1) * 9 + _round if (_plane and _round) else None
+            if _obs.hp_confidence >= 0.9 and _now_t is not None:
+                if _obs.killed is None:
+                    _prev_hp = getattr(_session, 'last_hp', None)
+                    _prev_t = getattr(self, '_last_outcome_t', None)
+                    if (_prev_hp is not None and _prev_t is not None
+                            and _now_t - _prev_t == 1):
+                        _obs.killed = _obs.hp_after >= _prev_hp
+                        log.info('[cw-loop] killed 兜底(hp 对比):上轮 %s → 本轮 %s → %s',
+                                 _prev_hp, _obs.hp_after, '赢' if _obs.killed else '输')
+                self._last_outcome_t = _now_t
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方

@@ -500,13 +500,11 @@ def _compress_release(cost: int, gold: int, hunt_tiers: set[int]) -> bool:
     """牌池压缩买放行判定(纯函数;r61/r62 用户节奏 §7-1/§7-15)。
 
     「买便宜 1/2 星 = 追求过渡阵容的牌库压缩」——全局供给策略:抽走噪声牌升
-    目标卡后续出现率,不问费级归属。成本结构分档:
-    - 1 费恒放行(1星买卖净 0,ADR-0121,无成本);
-    - 2 费 / 追猎费级:保息放行(买后利息档不降,2星买卖净损 1 不能白买)。
+    目标卡后续出现率,不问费级归属。**统一保息门**(r64 review P1 修:1 费「净 0」
+    只对买卖往返成立,持有跨轮末在金=10 边界损 1 金息 —— 用户原则「保息前提下
+    多买」统一适用):买后利息档不降才放行(含 1 费)。
     """
-    if cost == 1:
-        return True
-    if cost == 2 or cost in hunt_tiers:
+    if cost <= 2 or cost in hunt_tiers:
         return (gold - cost) // 10 == gold // 10
     return False
 
@@ -713,7 +711,10 @@ def _best_improving_action(
                     _card_supports_target(c.name, c.faction, state, target_comp)
                     for c in state.shop if state.gold >= card_cost(c))
                 if _shop_has_buyable_tgt:
-                    continue   # shop 有 target 可买 → 聚焦
+                    # r64 review P2 修:压缩放行例外(§7-15 压缩=全局供给策略,与聚焦不冲突
+                    # —— 便宜噪声牌抽走直接提 target 卡后续出现率;判定同 _compress_release)。
+                    if not _compress_release(card_cost(card), state.gold, _hunt_tiers):
+                        continue   # shop 有 target 可买 → 聚焦(压缩件照买)
                 # ADR-0149 骨架例外:shop 无 target 可买 + 未成型(fp<COMMIT_FRAC)→ 骨架纪律买
                 # 放行(板饿死代价>spread,M15-M28 实证);已成型仍严格聚焦。与 tempo 例外并立。
                 if (target_comp is not None

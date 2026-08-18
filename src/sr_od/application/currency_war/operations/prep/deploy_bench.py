@@ -176,21 +176,24 @@ class DeployBench(SrOperation):
         # ⚠️ level≠cap 场景(诅咒-1 / 宝钻+1):用 level 会误判 cap 未满 → 白拖(D-53 注 level=cap 无加成,但加成时偏)。
         # r60(2026-08-18 用户实锤「明明随便上填空位也可以」):cap 低读 = 部署阻塞(lv5 真值被
         # paddle 失读/last_state 毒化成 3 → 板满假判 → 2 人留 bench,11:56:24 实锤)。cap 误差
-        # 两个方向不对称:低读阻塞上阵(战力真空,贵)/高读多拖一次被游戏拒(源槽弹回,重试停,便宜)
-        # → 取**多源 max**:OCR paddle Y / session 单调链 last_level_obs(_resolve_level 维护,已防毒化)
-        # / last_state.level(旧兜底)。降级方向(诅咒-1)仍靠 paddle 直读覆盖(读得到时不取 max 误判;
-        # 读不到时 max 保守 = 最多白拖,不阻塞)。
+        # 两个方向不对称:低读阻塞上阵(战力真空,贵)/高读多拖一次被游戏拒(源槽弹回,重试停,便宜)。
+        # r64 review P1 修(语义分层):**paddle 直读 = 权威**(屏幕 X/Y 显示的就是真 cap,含
+        # 诅咒-1/宝钻+1 —— 读到时直用,max 会把诅咒降级吃掉);**失读才 max 兜底**(单调链
+        # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
+        # 上阵的代价 > 高读白拖一次,不对称取舍)。
         _cap = read_deploy_cap(self.ctx, scr)
-        _lv_chain = (getattr(_sess, 'last_level_obs', 0)
-                     if (_sess is not None and _sess is not None) else 0) or 0
-        _lv_state = (_sess.last_state.level
-                     if (_sess is not None and _sess.last_state is not None) else None)
-        _cap_candidates = [c for c in (_cap, _lv_chain, _lv_state) if c is not None and c > 0]
-        _cap_eff = max(_cap_candidates) if _cap_candidates else None
-        if _cap != _cap_eff:
-            log.info(f'[cw-deploy] cap 多源仲裁: paddle={_cap} 单调链={_lv_chain} state={_lv_state}'
-                     f' → 取 max={_cap_eff}(低读阻塞上阵 > 高读白拖一次,不对称代价;r60)')
-        _cap = _cap_eff
+        if _cap is None:
+            _lv_chain = (getattr(_sess, 'last_level_obs', 0)
+                         if _sess is not None else 0) or 0
+            _lv_state = (_sess.last_state.level
+                         if (_sess is not None and _sess.last_state is not None) else None)
+            _cap_candidates = [c for c in (_lv_chain, _lv_state) if c is not None and c > 0]
+            if _cap_candidates:
+                _cap = max(_cap_candidates)
+                log.info(f'[cw-deploy] cap paddle 失读 → 单调链={_lv_chain} state={_lv_state}'
+                         f' 取 max={_cap}(低读阻塞上阵 > 高读白拖,r60/r64)')
+            else:
+                log.info('[cw-deploy] cap 全源失读 → None(不设板满门,拖到游戏拒即真值)')
         if _cap is not None and _cap > 0:
             _deployed = (len(front) - len(front_empty)) + (len(back) - len(back_empty))
             if _deployed >= _cap:
