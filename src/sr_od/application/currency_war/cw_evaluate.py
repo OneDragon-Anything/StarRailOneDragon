@@ -7,6 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from one_dragon.utils import log_utils   # 67-P1b tribunal 判决日志
+
+log = log_utils.log
+
 from sr_od.application.currency_war.cw_comps import (
     COMMIT_FRAC,
     char_routes,
