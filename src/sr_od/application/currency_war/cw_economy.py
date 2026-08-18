@@ -35,15 +35,16 @@ INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 �
 
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。
-# streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):auto-chess
-# 连胜/连败都给档位金(对称,取 magnitude;方向用于 plan 行为 —— 保连胜 vs fold,留 R2-4b)。
+# streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):
+# ⚖️ **单边**(ADR-0128 #1,2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
+# 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边;economy_score:306 同源)。
 STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,阶段 6 实玩校准)
 
-STREAK_CAP: int = 5                   # streak 经济封顶档(连胜/连败金一般 ≤5 档)
+STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
 
 # C 杠杆 3 winning half(R2-4b;14 §连胜中「2 胜+」):连胜 ≥ 此 → 破息花钱提质量维持连胜(断连胜亏 > 利息亏)。
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
-WIN_STREAK_BREAK_INTEREST: int = 2    # auto-chess 连胜金 2 连起档(2 连=1 金、3 连=2 金…),故阈值=2
+WIN_STREAK_BREAK_INTEREST: int = 2    # 连胜 ≥2 破息(阈值历史源 auto-chess 常识,货币战争档金真值未核——见 _refresh_cap r63 注)
 
 LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
 
@@ -195,8 +196,8 @@ def _expected_level(round_num: int, plane: int) -> int:
 
 
 # ===== node_plan:节点×等级×动作节奏骨架(阵容无关;14 §2) =====
-# plan() 读 NodeGoal.target_level 作等级 gate 地板(显式,胜 _expected_level 平滑曲线 —— 关键 inflection
-# 更果断:P2 早推 7、2-5 推 8 搜核心、P3 推 9-10)。spend_mode 驱经济档位(allin 跳卖息 等)。danger_d 占位(卡 node_type 下节点识别,3.5.5;非 difficulty/hp_trend —— 二者已就绪)。
+# plan() 读 NodeGoal.target_level 作等级 gate 地板。spend_mode 驱经济档位(allin 跳卖息 等)。
+# danger_d 占位(卡 node_type 下节点识别,3.5.5;非 difficulty/hp_trend —— 二者已就绪)。占位从未被读
 @dataclass
 
 class NodeGoal:
@@ -204,72 +205,55 @@ class NodeGoal:
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
-    danger_d: bool = False      # A8 遭遇前战力不足 → 弃息 D 保血(🔴 前置 = 下节点 node_type 预判,3.5.5 blocked;difficulty/hp_trend 已就绪 —— effective_hp_threshold + PerformanceTracker。占位从未被读)
+    danger_d: bool = False      # 占位从未被读(见上)
 
 
-
-# 节点×等级×动作骨架表(14 §2.1;人玩节奏:前期攒息→中期升人口→后期 allin)。(plane, rmin, rmax) → NodeGoal。
-# 目标等级比 _expected_level 平滑曲线**更果断**(关键 inflection 提前),驱动 bot 像人一样按节奏升。
-# 值为 V4.4 先验(占位,阶段 6 实玩校准)。位面长度变(首领 1-7/1-8/1-9)用区间(rmax=9)兜。
-_DEFAULT_NODE_PLAN: list[tuple[int, int, int, NodeGoal]] = [
-    # 2026-08-15 live 校准(ADR-0126):M8(lv9 aggressive)唯一破 2-7 进位面 3;lv6@1-9 boss 稳定 -34~-40 HP,
-    # 进位面 2 即死(M9/M10/M11 全灭于 2-1/2-2)。A8 敌难度 108 要求更高人口 —— P1 后期也推 7,P2 提前上 8。
-    (1, 1, 3, NodeGoal(4, "saving", "rush_level")),    # P1 早期:冲 Lv4,纯升级 + 尽快向 50 金
-    (1, 4, 6, NodeGoal(6, "interest", "d_search")),    # P1 中期:Lv6,攒 50 吃满息(息引擎)
-    (1, 7, 9, NodeGoal(7, "hold", "rush_level")),      # P1 后期/首领:lv7 保血过 P1 首领(live:-34HP@lv6 → 升人口)
-    (2, 1, 4, NodeGoal(8, "level", "d_search")),       # P2 早期:直接推 Lv8(live:lv7 进 P2 仍 2-1/2-2 死)
-    (2, 5, 9, NodeGoal(8, "level", "d_search")),       # P2 中后期:lv8(review H4 软化:M8 lv9 锚点疑幽灵,收入模型不支持 9)
-    (3, 1, 3, NodeGoal(9, "allin", "chase_star")),     # P3 早期:上 9 找 5 费
-    (3, 4, 9, NodeGoal(10, "allin", "chase_star")),    # P3 后期/boss:上 10 + 关键卡追 3 星
-]
-
+# ⚖️ r69(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
+# 历史:V4.4 先验表 → ADR-0126 用 11 局 bot live「校准」(P1末7/P2早8)→ 0126 被三重降级
+# (0127 H4 疑幽灵锚点/0129 等级观测污染/2026-08-18 单局相关≠基准)。ADR-0155 DP 影子接缝
+# 切流(0208)后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(r69 对话)仅剩
+# MemoryError + 开发期注册表手误(运行时游戏数据不进台账链;未注册策略名静默跳过)→
+# **保留脏表回退比停机更危险**(静默掉回 0126 节奏 = 看着在跑实际在错)。删除;
+# DP 失败/越界 → _expected_level 平滑先验 + adaptive(V4.4 干净先验,非 0126 数值)。
+# 等级基准权威 = 用户口述 §7(economy_research;息引擎优先/§7-13 过渡 lv5-6)+ XP 反推真值。
 
 
 def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
-    """查 (plane, round) → NodeGoal(先匹配 _DEFAULT_NODE_PLAN 区间 → fallback;14 §2.0)。
+    """查 (plane, round) → NodeGoal(**DP 姿态,ADR-0155 切流 0208;r69 表已删**)。
 
-    fallback(未匹配):target_level=_expected_level(round, plane)、spend_mode="adaptive"、
-    action_focus="rush_level"。位面长度变(首领轮次不定)→ 区间兜;plane>3 / round>9 → fallback。
-
-    **影子模式(ADR-0155,日程 DP 接缝)**:``HORIZON_SEAM_ACTIVE=True`` 且传全 (gold, level, hp)
-    → 姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现,03 号重设计);表 = 回退。
-    默认 False(表生效)—— 切流待实机 A/B(V5);消费端签名零改(全关键字参)。
+    姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现)。传参不全(迁移漏点)
+    /DP 异常/t 越界 → fallback = ``_expected_level`` 平滑先验 + adaptive(V4.4 干净先验;
+    旧 0126 区间表已删,见模块注释)。**DP 异常不再静默**:``_horizon_node_goal`` 记
+    [cw!] 结构化日志(可 grep),fallback 照走(对局不停,但有证据)。
     ADR-0209(接线 2/6):committed=False(双轨期)→ DP 升级姿态被压(P1 攒息过渡)。
     strategies(intake #6,2026-08-18):持有投资策略名 → DP 按台账突变重解(息帽/免费刷/
     日程收入;空 → base 解)——「采购专员持有与否姿态无差」的 effect-blind 修复。
     """
-    if HORIZON_SEAM_ACTIVE:
-        _partial = (gold, level, hp)
-        if any(v is not None for v in _partial) and None in _partial:
-            log.debug('[cw-seam] get_node_goal 部分传参(%s)→ 走表;迁移漏点排查',
-                      ('g' if gold is not None else '-') + ('l' if level is not None else '-')
-                      + ('h' if hp is not None else '-'))
-        if None not in (gold, level, hp):
-            from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
-            _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed,
-                                       strategies=strategies)   # type: ignore[arg-type]
-            if _goal is not None:
-                # 67-P1a(切流验证依赖):DP 姿态来源可见——无此行无法证明 DP 在跑(65 轮实锤)
-                log.info('[cw][goal] p%sr%s source=dp lv=%s spend=%s focus=%s',
-                         plane, round_num, _goal.target_level, _goal.spend_mode,
-                         _goal.action_focus)
-                return _goal
-    for p, rmin, rmax, goal in _DEFAULT_NODE_PLAN:
-        if p == plane and rmin <= round_num <= rmax:
-            return goal
+    _partial = (gold, level, hp)
+    if any(v is not None for v in _partial) and None in _partial:
+        log.debug('[cw-seam] get_node_goal 部分传参(%s)→ 走先验 fallback;迁移漏点排查',
+                  ('g' if gold is not None else '-') + ('l' if level is not None else '-')
+                  + ('h' if hp is not None else '-'))
+    if None not in (gold, level, hp):
+        from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
+        _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed,
+                                   strategies=strategies)   # type: ignore[arg-type]
+        if _goal is not None:
+            # 67-P1a(切流验证依赖):DP 姿态来源可见——无此行无法证明 DP 在跑(65 轮实锤)
+            log.info('[cw][goal] p%sr%s source=dp lv=%s spend=%s focus=%s',
+                     plane, round_num, _goal.target_level, _goal.spend_mode,
+                     _goal.action_focus)
+            return _goal
     return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
 
 
-# ADR-0155:日程 DP(cw_horizon)→ NodeGoal 接缝开关。False = 区间表(现状栈)生效;
-# True 且调用方传全状态 → DP 姿态。
-# ✅ **切流执行(2026-08-18 r16,ADR-0208)**:六连败证据链完备——①160 局对拍
-# 「表 hold→DP level」在 P1 高金段系统性分歧(节奏慢一档);②六局 P1 boss 稳定损
-# 20-36 血→P2 残血开局即崩;③r8 经济投入已尽力(强度差距根子在 P1 全程积累);
-# ④DP 姿态语义逐段核验(早升/先成型后冲 8)。目标授权自主推进。回滚 = 本行改 False。
-HORIZON_SEAM_ACTIVE: bool = True
+# ⚖️ r69(2026-08-18):旧 ADR-0155 影子接缝开关 HORIZON_SEAM_ACTIVE **已删**——切流(ADR-0208)
+# 完成后 DP 是唯一姿态源(r69 连带删除 0126 区间回退表,见 get_node_goal 注释),开关无消费点。
+# 历史:切流依据(ADR-0208)= 160 局对拍「表 hold→DP level」P1 高金段系统性分歧 + 六局 P1
+# boss 稳定损 20-36 血→P2 残血开局即崩。回滚方式 = git revert r69 提交。
 
 
 
@@ -278,7 +262,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
-    streak 取 magnitude(连胜/连败都给档位金,对称);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
+    streak 单边计分(ADR-0128 #1:货币战争无连败补偿,只计连胜;连败 0 分);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
     """
     # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
     # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。

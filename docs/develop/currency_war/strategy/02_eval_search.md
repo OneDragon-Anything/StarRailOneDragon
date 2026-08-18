@@ -59,7 +59,7 @@ evaluate = `_phase_weights(plane, hp)` 加权的(羁绊+经济+角色质量)。*
   - `_phase_weights`:HP safe → balanced(economy 不降权 → 自然保息 fold);HP 危 → 保血(战力加权 = 急救)。
   - `_refresh_cap`:HP safe → cap=2(不急救 D);HP 危 → cap=4(急救 D 翻盘)。
   - `_saving_for_interest`:gold<50 + 板强 → 攒息(fold)。HP 安全线 = `effective_hp_threshold`(D-32,A8 调高)。
-  - streak **magnitude** 已接(economy C2,连胜/连败对称档位金);streak **方向**驱动「保连胜」半**已接**(ADR-0117,2026-08-13):连胜 ≥ `WIN_STREAK_BREAK_INTEREST`(2)→ `_should_save_for_interest` 破息(花钱提质量维持连胜,断连胜亏 > 利息亏)。连败 fold 半由本节 HP-gating 覆盖(无需显式连败代码)。
+  - streak **单边**已接(economy C2;ADR-0128 #1:货币战争无连败补偿只计连胜,旧「对称」已废);streak **方向**驱动「保连胜」半**已接**(ADR-0117,2026-08-13):连胜 ≥ `WIN_STREAK_BREAK_INTEREST`(2)→ `_should_save_for_interest` 破息(花钱提质量维持连胜,断连胜亏 > 利息亏)。连败 fold 半由本节 HP-gating 覆盖(无需显式连败代码)。
   - 下方「`is_losing_streak` + `STREAK_FOLD_HP`(≈50)+ `plane<3` gate」是**更细的连败专项版(未实现)**,但用户原则(HP-based fold)已满足,非阻塞;「保连胜」半已接(ADR-0117)。**C 杠杆 3(streak 方向驱 plan)完成**。
   - 原描述(r5):当前 `is_losing_streak`(详 10)→ 转保守(保息/防御 deploy/急救 D)。**漏了连败也是经济**:auto-chess 连败也给匹配金,故意输攒钱后期 all-in 翻盘(open-fold)是核心战术。**修法(分阶段)**:
   - `is_losing_streak` 且 `hp > STREAK_FOLD_HP`(≈50)且 `plane < 3` → **继续连败攒钱**:不急救 D、不抢升等级、吃连败金 + 利息(守息至上),买牌只买能成型后翻盘的 key 牌(不为当前关提质量)。

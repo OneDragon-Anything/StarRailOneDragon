@@ -1,9 +1,12 @@
 """日程感知资源规划器 V1.1(03 号重设计提案;DP + 影子价格;2026-08-16)。
 
 **V1 = 涌现验证**(03 号 §4 判据):只喂机制常量,检验能否从第一性原理复现人类 meta
-(plaza 784 篇 labels:主流「7级搜牌」338 / 「速升8」 / 少数「速升9」140;P1 末 lv7 /
-P2 早上 8 = ADR-0126 实测)+ 用户满息基调(2026-08-16:高难度下持续满息才有金推等级/
-追星 —— 应从影子价格涌现,而非手写门)。
+(plaza 784 篇 labels:主流「7级搜牌」338 / 「速升8」 / 少数「速升9」140)+ 用户满息
+基调(2026-08-16:高难度下持续满息才有金推等级/追星 —— 应从影子价格涌现,而非手写门)。
+⚠️ r69(2026-08-18):旧版把「P1 末 lv7 / P2 早上 8 = ADR-0126 实测」当对拍锚——0126 已被
+三重降级(0127 H4 疑幽灵锚点/0129 等级观测污染/单局相关≠人玩基准,详 ADR-0126 头部),
+该锚点作废;plaza 784 篇 labels 仍是有效对拍源(独立于 0126)。等级基准权威 = 用户 §7
+(息引擎优先)+ XP 反推真值,horizon 校准待办含按此复跑。
 
 V1.0 首跑失败暴露的三缺口(V1.1 修):
 1. 中途死亡价值太软 → 死亡=0(与终局存活 SURVIVAL_W 对比,活命绝对优先);
@@ -505,5 +508,11 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
         if p.refresh_budget > 0:
             return NodeGoal(level, 'adaptive', 'd_search')
         return NodeGoal(level, 'interest', 'hold')
-    except Exception:   # noqa: BLE001  影子接缝 best-effort:任何异常回退表
+    except Exception as e:   # noqa: BLE001
+        # r69:DP 异常不再静默回 0126 脏表(表已删)。失败面穷举仅 MemoryError + 开发期
+        # 注册表手误(运行时游戏数据不进台账链)→ 记 [cw!] 可 grep 证据 + 先验 fallback,
+        # 对局不停(异常若是代码 bug,证据行会持续出现,进排查)。
+        from one_dragon.utils.log_utils import log as _log
+        _log.warning('[cw!][horizon] DP 求解异常(p%sr%s gold%s lv%s hp%s):%s '
+                     '→ 先验 fallback(_expected_level+adaptive)', plane, round_num, gold, level, hp, e)
         return None
