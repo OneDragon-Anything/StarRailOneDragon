@@ -496,6 +496,44 @@ def _sell_offline_for_focus(state: GameState, actions: list,
 
 
 
+def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
+    """追猎费级(ADR-0209 r52 用户指导):「目标牌」是动态的,非静态 core 列表。
+
+    三层语义:
+    ①缺谁追谁——target/stash 的 core 未到 2★ → 在追(过渡与最终两边的 core 都算);
+    ②基本目标 2★——核心输出 3★ 难凑,2★ 为主目标;辅助 2★ 也能快速完成;
+    ③牌运追猎——场上/bench 已 2★ 的角色,其费级入集(「3费辅助已 2★×2 →
+      有几率追 3★」;当前商店等级该费级概率最高时收益最大)。
+
+    返回费级集;供牌池压缩买判定(同费非目标卡保息买入,降分母提命中率)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    tiers: set[int] = set()
+
+    def _equiv_copies(name: str) -> int:
+        # 2★ 卡 = 2 张 1★ 等价(3合1 语义);3★ = 6
+        return sum(bc.star for bc in (*state.deployed, *state.bench)
+                   if bc.char_id == name)
+
+    for comp in comps:
+        if comp is None:
+            continue
+        for name in comp.core_chars:
+            ch = CHARACTERS.get(name)
+            _cost = getattr(ch, 'cost', None)
+            if ch is None or not _cost:
+                continue
+            if _equiv_copies(name) < 2:   # ①+②:core 未到 2★ → 在追
+                tiers.add(int(_cost))
+    for bc in (*state.deployed, *state.bench):
+        if bc.star >= 2 and bc.char_id:   # ③:已 2★ → 3★ 机会追猎
+            ch = CHARACTERS.get(bc.char_id)
+            _cost = getattr(ch, 'cost', None)
+            if ch is not None and _cost:
+                tiers.add(int(_cost))
+    return tiers
+
+
 def _best_improving_action(
     state: GameState, config, faction_priority: list[str], base_eval: float,
     rng: random.Random, refresh_budget: int = 0, target_comp: Comp | None = None,
@@ -570,6 +608,9 @@ def _best_improving_action(
     # ①过渡包牌(TRANSITION_PACK 在册:上场保血);②信号领先线的 core/阵营牌
     # (stash_comp 传入,囤 bench 不上场,1/2费买卖净 0 兼操纵牌池);③其他 skip(防散板)。
     # 非双轨期不走此门(原逻辑)。stash_comp=None = 信号未起 → 只买过渡包。
+    # r52 牌池压缩例外(用户指导):追猎费级同费的非目标卡,保息前提下买入压池
+    # (降分母提命中率),后续卖出净损 0-1(1星买卖净 0,economy §2 实证);
+    # 压缩持有由集中卖散自然回收(off-line 牌)。
     _dual = state.dual_track_phase
     if _dual:
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
@@ -582,6 +623,7 @@ def _best_improving_action(
             if _sc is not None:
                 _allow_names.update(_sc.core_chars)
                 _allow_factions.update(_sc.factions)
+        _hunt_tiers: set[int] = _hunt_tier_set(state, (stash_comp, target_comp))
     for card in state.shop:
         cost = card_cost(card)
         if state.gold < cost:
@@ -590,7 +632,10 @@ def _best_improving_action(
             _ent = TRANSITION_PACK.get(card.name)
             if (_ent is None and card.name not in _allow_names
                     and card.faction not in _allow_factions):
-                continue   # 双轨期:非过渡包/非领先线/非现 target → 散牌不买
+                # 牌池压缩例外:同追猎费级 + 保息(买后利息档不降)才放行
+                if not (cost in _hunt_tiers
+                        and (state.gold - cost) // 10 == state.gold // 10):
+                    continue   # 双轨期:非过渡包/非领先线/非压缩件 → 散牌不买
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
         if (card.name and card.name in _deployed_name_counts
