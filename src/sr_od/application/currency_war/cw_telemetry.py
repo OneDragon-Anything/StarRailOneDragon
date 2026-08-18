@@ -107,6 +107,7 @@ class OutcomeRecord:
     damage_dealt: int | None = None
     killed: bool | None = None
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(2026-08-18:胜负+扣血真值,输轮也记)
+    streak: int | None = None           # 连胜/连败带符号(r68:RoundOutcome 有此字段但序列化丢弃 → 补)
 
 
 @dataclass
@@ -248,6 +249,7 @@ class TelemetryRecorder:
             enemy_hp_after=outcome.enemy_hp_after,
             damage_dealt=outcome.damage_dealt, killed=outcome.killed,
             progress_delta=outcome.progress_delta,
+            streak=outcome.streak,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 

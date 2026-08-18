@@ -289,6 +289,14 @@ class CurrencyWarRunLoop(SrOperation):
                         log.info('[cw-loop] killed 兜底(hp 对比):上轮 %s → 本轮 %s → %s',
                                  _prev_hp, _obs.hp_after, '赢' if _obs.killed else '输')
                 self._last_outcome_t = _now_t
+            # r68 结算第一页 progress 合并:「挑战进度 ±N」只在第一页(分支2 已暂存
+            # _settle_page1_progress),第二页 parse 读不到 → 用暂存值兜底;用后清(下轮新值)。
+            if _obs.progress_delta is None:
+                _pg1 = getattr(self, '_settle_page1_progress', None)
+                if _pg1 is not None:
+                    _obs.progress_delta = _pg1
+                    log.info('[cw-loop] progress 合并(第一页暂存):%s', _pg1)
+                self._settle_page1_progress = None
             self.ctx.cw_match.strategy.on_round_end(
                 GameState(), _session, self._cw_config, _obs)
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
@@ -613,6 +621,20 @@ class CurrencyWarRunLoop(SrOperation):
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
                 or self.round_by_ocr(screen, '点击空白处继续').is_success):
+            # r68 结算第一页暂存(progress 真值页):「挑战进度 ±N」只在第一页(点击空白加速
+            # 帧);outcome 记录在第二页(按钮-继续挑战帧) → 第一页 progress 丢失(r135318
+            # 实证 outcome 全 progress=None 而屏上有 +2)。此处读出暂存,分支3 记录时合并。
+            try:
+                _texts1 = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
+                    image=screen, rect=None, crop_first=False)]
+                from sr_od.application.currency_war.cw_settlement_obs import (
+                    parse_settlement_progress,
+                )
+                _pg1 = parse_settlement_progress(_texts1)
+                if _pg1 is not None:
+                    self._settle_page1_progress = _pg1
+            except Exception:   # noqa: BLE001  暂存 best-effort
+                pass
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)
 
