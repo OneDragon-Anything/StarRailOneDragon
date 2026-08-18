@@ -118,6 +118,10 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
                 # (停留 roll 可在追上地板后继续)。
                 # 75-A2 修:committed 全调用点一致(双轨期 xp 门与 spend 门同姿态,
                 # 防「spend 攒息/xp 追级」门间对拉)。
+                # r73 RC1-③:hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
+                # 追级是远水(RC1 实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
+                if state.hp < 30:
+                    return False
                 return bool(state.plane >= 2 and state.level < get_node_goal(
                     state.plane, state.round_num,
                     gold=state.gold, level=state.level, hp=state.hp,

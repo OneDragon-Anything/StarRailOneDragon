@@ -112,6 +112,9 @@ class DefaultCwStrategy(CwStrategy):
         _committed = (state.plane >= 2
                       or session.commit_signals.ready(t_of(state.plane, state.round_num)))
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
+        # r73 RC3:双源写 session(单一源;shop 循环态/Director 每轮拷回,防 read_game_state
+        # 新建对象默认 False 冲掉 —— 断裂指纹:遥测每轮首条 True、循环内全 False)。
+        session.dual_track_phase = state.dual_track_phase
         # r70 过渡框架选定(买/上/卖三侧单一源):双轨期每轮按持有刷新;定型后清空
         # (三侧消费见 cw_transition.pick_framework docstring)。
         if state.dual_track_phase:
@@ -269,17 +272,22 @@ class DefaultCwStrategy(CwStrategy):
             # hp 33→1)。boss 窗(node_type 读到 boss,或 round_num>=9 先验)内一切 pivot
             # 冻结 —— 危机响应改由 buy 侧 boss_spend(cw_plan 花光提质量)承担,那才是
             # boss 前正确动作。read_node_type 对 boss 实机核实过(cw_observation:160)。
+            # r73 RC1 扩:冻结域含**位面切换后首战**(plane>=2 且 round_num==1)—— P2r1
+            # round 重置 1 → 旧定义恰好在此解锁;断崖点(敌强度跳升+过渡板)换线 = 撕掉
+            # 已囤投资(RC1 实证:万敌→千冶→专家桑博 两连撕)。P2 首战与 boss 同级:靠
+            # 花光买牌成型,不靠换线。
             _cool = getattr(session, 'pivot_cooldown_until', 0)
             _in_crisis = state.hp < int(0.75 * cw_comps.effective_hp_threshold(state))
             _boss_window = (state.node_type == 'boss'
-                            or (state.round_num >= 9 and state.node_type != 'supply'))
+                            or (state.round_num >= 9 and state.node_type != 'supply')
+                            or (state.plane >= 2 and state.round_num == 1))
             piv = None
             if not _boss_window and (_in_crisis or state.round_num > _cool):
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)
             elif _boss_window and (_in_crisis or state.round_num > _cool):
-                log.info('[cw-target] boss 窗(r%s node=%s)冻结 pivot(危机响应交 boss_spend 花光提质量)',
-                         state.round_num, state.node_type)
+                log.info('[cw-target] boss/位面切换 窗(p%sr%s node=%s)冻结 pivot(危机响应交花光成型)',
+                         state.plane, state.round_num, state.node_type)
             if piv is not None:
                 session.target_comp = piv
                 session.pivot_cooldown_until = state.round_num + cw_comps.PIVOT_COOLDOWN_ROUNDS

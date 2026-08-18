@@ -839,7 +839,10 @@ def _best_improving_action(
     # gold 60-70 闲置 + 刷 10 次架无 target → **一张不买**就出战(骨架兜底的 plane/gold 两门
     # 全拦住)。boss 是 P 末硬节点,板强 = 保 HP(ADR-0128 同源):boss + form<成型 → 解锁
     # 骨架买(免 gold 上限/免 P1 门),把刷出来的确定战力买上;金花在板上 > 闲置挨打。
-    _boss_spend = (state.node_type == 'boss'
+    # r73 RC1-②:花光域扩**位面切换后首战**(plane>=2 且 round==1)—— P2 敌强度跳升,
+    # 攒的金(旧局 28 只花 3)必须立即转化为板上战力(transitions「P2 用攒的金速成型」);
+    # 候选排序同 r73 RC5 修:target core 优先(见 _sk_candidates.sort)。
+    _boss_spend = ((state.node_type == 'boss' or (state.plane >= 2 and state.round_num == 1))
                    and target_comp is not None
                    and form_progress(target_comp, state) < 1.0)
     if ((state.plane == 1 or _boss_spend)
@@ -878,7 +881,12 @@ def _best_improving_action(
                 return 1
             _sk_candidates.sort(key=lambda c: (
                 _activates_now(c),
-                0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1,
+                # r73 RC5:boss/P2 首战花光候选 **target core 优先**(旧排序只看 TEMPO/EARLY 池
+                # → r9 boss 前 61 金全买过渡件,进 P2 全是待弃资产);平时骨架买仍按池序。
+                (0 if (target_comp is not None and c.name in target_comp.core_chars) else
+                 (0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1))
+                if _boss_spend else
+                (0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1),
                 card_cost(c)))
             card = _sk_candidates[0]
             seq: list[Action] = [BuyCard(card=card)]

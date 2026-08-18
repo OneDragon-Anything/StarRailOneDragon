@@ -212,6 +212,14 @@ class BuyShopCards(SrOperation):
             # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
             if match is not None and match.session.last_node_type:
                 state.node_type = match.session.last_node_type
+            # r73 review RC3 修(dual_track_phase 战术层接线断裂):update_target 写在
+            # _tgt_state(每轮首对象),循环内 read_game_state 新建 state 默认 False →
+            # ADR-0209 双轨买门/stash 放行/DP 攒息压制在实跑买牌路径**从未执行**
+            # (遥测指纹:每轮首条 True、循环内全 False)。修:dual 态单一源挂 session
+            # (cw_strategy),循环态每轮从 session 拷贝(仿 hp/node_type 同法)。
+            state.dual_track_phase = getattr(match.session, 'dual_track_phase', False)
+            if getattr(match.session, 'transition_framework', ''):
+                state.focus_factions = getattr(match.session, 'focus_factions', set())
             # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏(同帧读 3/0/空;实锤 click-test
             # 买牌成功 gold≥1 但 reader 读 0,见 process_log)→ 读 0 时重读几帧取首个 >0(deterministic 同帧
             # 重读无意义,故重截图)。不根治(stylized 漏读),但把「读 0 不买」概率降到「连读 0 才认 0」。
@@ -253,7 +261,11 @@ class BuyShopCards(SrOperation):
             _cand = dict(getattr(match.session, 'last_candidate_scores', {}) or {})
             if getattr(match.session, 'last_candidate_scores_round', None) != state.round_num:
                 _cand = {}   # r3 review②:非本轮回合的分数是陈旧值(仅选线轮写入)→ 清空防 close_call 污染
-            cw_telemetry.record_decision(state, target_name, _cand, {}, actions)
+            # r73 RC6:fp 落遥测(form_progress 此前只在日志,P1→P2 断崖审计只能从 board 推)
+            _eb: dict[str, float] = {}
+            if match.session.target_comp is not None:
+                _eb['fp'] = round(_form_progress(match.session.target_comp, state), 3)
+            cw_telemetry.record_decision(state, target_name, _cand, _eb, actions)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)

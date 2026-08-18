@@ -400,6 +400,8 @@ class PrepDirector(SrOperation):
         if obs.state is not None:
             from sr_od.application.currency_war.cw_strategy import gated_hp
             _os = obs.state
+            # r73 RC3:dual 态从 session 拷回(单一源;read 新对象默认 False 会冲掉双轨门)
+            _os.dual_track_phase = getattr(session, 'dual_track_phase', False)
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
             _os.hp = gated_hp(_os.hp, session, _os_t,
                               current_readable=bool(getattr(_os, 'hp_readable', True)))
