@@ -312,7 +312,7 @@ def skeleton_factions() -> set[str]:
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====
     Comp(
-        # playbook:docs/develop/currency_war/playbook/列车同行.md(改此条目须同步)
+        # 打法卡:docs/game/currency_war/research/comps/列车同行.md(游戏知识,非字段镜像,无同步义务)
         name="列车同行", factions=["列车同行"], core_chars=["姬子·启行", "三月七", "花火", "瓦尔特"],
         form_tiers={"列车同行": 4}, strength="S", form_difficulty="easy", early_power="高",
         # V4.4 权威评级(76807134):姬子·启行 = S 级真神;A850 挂机流(76824096):全程自动/不凹开局/适应任何负面环境 → bot 默认首选
@@ -502,7 +502,6 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        # playbook:docs/develop/currency_war/playbook/火花星间旅人.md(改此条目须同步)
         # V4.0 A级(BV1vVcLzXEN8 2026-02 转录):花火主C(吃点巧普攻+幻语记,倍率随花火等级)+星间旅人
         # 羁绊(唯一有效应=旅人转职,1转职章=43.2%幸运暴伤);6战技点不提升 → 带银狼/符玄凑3量子;
         # 前期龙丹战技点护航;上8大D找2星花火,3星质变;爻光三鞋(跑条供R回合)。
@@ -636,7 +635,7 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        # playbook:docs/develop/currency_war/playbook/追击飞霄.md(改此条目须同步)
+        # 打法卡:docs/game/currency_war/research/comps/追击飞霄.md(游戏知识,非字段镜像,无同步义务)
         char_positions={"知更鸟": "front"},   # ADR-0139:知更鸟前台(追击攻略:鸟前台支撑中后期;砂金/灵砂/符玄等生存位也优先前台)
         name="追击飞霄", factions=["追击"], core_chars=["飞霄", "知更鸟", "那刻夏", "不死途"],
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",

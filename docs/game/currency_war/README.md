@@ -23,22 +23,16 @@
 
 ## `research/` —— 玩法研究(我们提炼/核实的知识,活文档)
 
-索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ plaza_methodology(M1-M16 玩法方法论)/ invest_effects(投资效果全量分类)。与 `guides/`(外部原文转录,按版本冻结)相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
+索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ **combat(战斗机制:三乘区/星级/血量星/连胜)** / **transitions(过渡体系:P1 骨架/护航/买牌纪律)** / plaza_methodology(M1-M16 玩法方法论)/ **comps/(打法卡,有实战接触的单套 comp)** / invest_effects(投资效果全量分类)。与 `sources/`(外部原文存档,按版本冻结)相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
 
-## `guides/` —— 攻略目录(`阵容_` 阵容推荐 / `公共_` 公共知识)
+## `sources/` —— 外部原文存档(`阵容_` 阵容攻略 / `公共_` 公共知识;按版本冻结)
 
-### `阵容_*.md` —— 阵容攻略(玩家视角,游戏知识)
-每套阵容怎么 work / 成型节奏 / 过渡 / 装备(为什么)/ 弱点。米游社 V4.4 合集(76807134)+ 各 comp 攻略 + B 站 UP「甘泽成谣雨成诗」视频转录核实。
-- [阵容_README](guides/V4.4_阵容_README.md) —— 跨 comp pattern(评级总览 / 开局过渡分级 / 通用角色 / 通用装备 / 成型节奏共性)
-- 逐套:[阵容_列车同行](guides/V4.4_阵容_列车同行.md) / [阵容_命运圣杯红A](guides/V4.4_阵容_命运圣杯红A.md) / [阵容_绯英欢愉](guides/V4.2_阵容_绯英欢愉.md) / [阵容_希儿量子](guides/V4.4_阵容_希儿量子.md) / [阵容_黄泉减益](guides/V4.4_阵容_黄泉减益.md) / [阵容_龙丹战技点](guides/V3.8_阵容_龙丹战技点.md) / [阵容_双王圣杯](guides/V4.4_阵容_双王圣杯.md) ……全 17 套(另含 V3.8 [阵容_大黑塔](guides/V3.8_阵容_大黑塔.md)、V4.0 [阵容_火花星间旅人](guides/V4.0_阵容_火花星间旅人.md))见阵容_README
-- 结构化字段(factions/core/form_tiers/level_plan)权威源 = `src/sr_od/application/currency_war/cw_comps.py::COMP_LIBRARY`;本目录是叙事/why(互补非双源)。
+保真纪律与命名规约见 [sources/README](sources/README.md):只带来源元数据头,原文不改,我们的批注不进存档;提炼后的现行结论以 [research/](research/README.md) 为准。
 
-### `公共_*.md` —— 公共知识(跨阵容:机制 / 经济 / 过渡;B 站 UP 转录核实,标版本)
-- [公共_视频目录](guides/公共_视频目录.md) —— UP「甘泽成谣雨成诗」45 个币战视频按版本(V3.7→V4.4)编目 + 类型 + 转录状态
-- [公共_核心机制](guides/V3.7_公共_核心机制.md) —— ★伤害公式三乘区 / 血量加星 / 难度→血量 +5.2%/级 / 投资策略难度(V3.7)
-- [公共_经济运营](guides/V3.7_公共_经济运营.md) —— 连胜>>利息 / 牌池副本 27·9 / 卡牌池操纵 / 低费=不赌(V3.7)
-- [公共_前期过渡](guides/V3.7_公共_前期过渡.md) —— 桑博+艾斯达 2DOT 过渡公式 / 怪物词条×DOT 互动(V3.7)
-- [公共_难度攻略](guides/V4.0-4.4_公共_难度攻略.md) —— A830/A840/A850 难度环境 + 中期过渡三套护航(选择>>努力,V4.0/V4.2/V4.4)
+- [阵容_README](sources/V4.4_阵容_README.md) —— 跨阵容 pattern(评级总览 / 开局过渡分级 / 通用角色 / 通用装备 / 成型节奏共性,V4.4)
+- 逐套:17 套(V3.7×5 / V3.8×5 / V4.0×1 / V4.2×1 / V4.4×5)见各文件(V 前缀即版本)
+- [公共_视频目录](sources/公共_视频目录.md) —— UP「甘泽成谣雨成诗」45 个币战视频按版本编目 + 转录状态
+- [公共_核心机制](sources/V3.7_公共_核心机制.md) / [公共_经济运营](sources/V3.7_公共_经济运营.md) / [公共_前期过渡](sources/V3.7_公共_前期过渡.md)(V3.7 必修一/二/三)/ [公共_难度攻略](sources/V4.0-4.4_公共_难度攻略.md)(A830-A850 难度环境 + 中期过渡三套护航,V4.0/V4.2/V4.4)
 
 ## 画面事实
 画面(screen doc,游戏提供的 UI)算游戏玩法,仍在 [docs/game/screens/](../screens/)(`currency_war_*.md`)。

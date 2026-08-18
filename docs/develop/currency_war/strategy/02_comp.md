@@ -1,6 +1,6 @@
 # 02 阵容选择(战略层)
 
-> 「这局打什么阵容、何时定型/转型、跨局怎么分配」的语义。本篇:`cw_comps`(COMP_LIBRARY + select_comp/pivot)/ `cw_transition`(双轨过渡)/ `cw_line_tribunal`(审判层)/ `cw_run_allocator`(跨局分配)。玩法证据 → [game/research/plaza_methodology](../../../game/currency_war/research/plaza_methodology.md)(M1-M16)。
+> 「这局打什么阵容、何时定型/转型、跨局怎么分配」的语义。本篇:`cw_comps`(COMP_LIBRARY + select_comp/pivot)/ `cw_transition`(双轨过渡)/ `cw_line_tribunal`(审判层)/ `cw_run_allocator`(跨局分配)。玩法证据 → [game/research/plaza_methodology](../../../game/currency_war/research/plaza_methodology.md)(M1-M16);单套打法叙事(入场/退场/counter)→ [game/research/comps](../../../game/currency_war/research/comps/README.md)(打法卡,有实战接触才建)。
 
 ## 1. COMP_LIBRARY:阵容注册表(数据模型)
 
