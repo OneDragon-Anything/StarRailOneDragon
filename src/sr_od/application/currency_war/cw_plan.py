@@ -636,10 +636,14 @@ def _best_improving_action(
             _ent = TRANSITION_PACK.get(card.name)
             if (_ent is None and card.name not in _allow_names
                     and card.faction not in _allow_factions):
-                # 牌池压缩例外:同追猎费级 + 保息(买后利息档不降)才放行
+                # 牌池压缩例外:同追猎费级 + 保息(买后利息档不降)才放行;
+                # r61(2026-08-18 用户精化 §7-1):**1 费恒放行**(1星买卖净 0,ADR-0121;
+                # r1/r2 奖励节点「保息前提下多买 1/2 星压缩牌库」—— 压缩是全局供给策略
+                # 非本位战力投资,便宜噪声牌抽走 = 后续轮目标卡浓度升,不问费级归属)。
                 if not (cost in _hunt_tiers
-                        and (state.gold - cost) // 10 == state.gold // 10):
-                    continue   # 双轨期:非过渡包/非领先线/非压缩件 → 散牌不买
+                        and (state.gold - cost) // 10 == state.gold // 10) \
+                        and cost != 1:
+                    continue   # 双轨期:非过渡包/非领先线/非压缩件 → 散牌不买(1费例外恒买)
         if card.name and _copies(card.name) >= 3:
             continue   # 已 3 张(自动合并中)/超 3 = 纯浪费(未知名不判)
         if (card.name and card.name in _deployed_name_counts
