@@ -79,6 +79,13 @@ class CurrencyWarRunLoop(SrOperation):
     # 2026-08-04 实测(失败结算屏 OCR):「下一页」x922y882w76h33、「返回货币战争」x885y882w149h31
     # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
+    # 子态稳定门(2026-08-18 用户定调「连续3秒子态稳定再分发」):节点结算后游戏**先渲染备战、
+    # 再按下一节点类型弹 overlay**(普通战斗节点=商店面板/奖励=奖励面板/投资类=对应选择屏;
+    # 策略→环境可链式)。半开帧上分发 = 在未定型画面上行动——两类实锤:M47 ClickSpheres 误点
+    # (22:34:46/50)、bench_unidentified 钩子在 overlay 帧误采(11:17 投资策略帧)。
+    # 门语义:备战分支**连续**命中 ≥ 本值才派 PrepDirector;期间只观察(overlay 弹出后 0e 系
+    # 分支先于本分支接管,处理完回备战时门重新计时——链式 overlay 逐个消化)。
+    PREP_SETTLE_S: ClassVar[float] = 3.0
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
@@ -88,6 +95,12 @@ class CurrencyWarRunLoop(SrOperation):
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
         self._rounds_done: int = 0
+        # 子态稳定门状态(见 PREP_SETTLE_S 注释):_frame_is_prep=本帧是否走备战分支
+        # (迭代开头 shift 到 _prev_frame_prep 后清零,备战分支命中再置);_prep_entry_ts=
+        # 本次备战相位的首命中时刻(连续性断开/新相位 → 重置重计)。
+        self._frame_is_prep: bool = False
+        self._prev_frame_prep: bool = False
+        self._prep_entry_ts: float | None = None
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
@@ -342,6 +355,10 @@ class CurrencyWarRunLoop(SrOperation):
         #    lcs_percent=0.9:防与「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)
         #    误匹配 → 投资策略屏被本分支吞(点标题不动作)→ 死循环(2026-08-04 实跑发现,卡 plane1)。
         #    真「返回投资策略选择」按钮 OCR 1.0 不受影响。
+        # 子态稳定门 bookkeeping(见 PREP_SETTLE_S):shift 本帧标志到 prev 后清零 ——
+        # 备战分支命中时置回 True;下迭代 prev=False(非备战/overlay/结算)→ 新相位重计时。
+        self._prev_frame_prep = self._frame_is_prep
+        self._frame_is_prep = False
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
@@ -509,11 +526,22 @@ class CurrencyWarRunLoop(SrOperation):
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
+            self._frame_is_prep = True   # 稳定门 bookkeeping(本帧走备战分支)
+            # ⚖️ 子态稳定门(2026-08-18 用户定调):结算→备战先渲染→节点类型 overlay 后弹
+            # (普通战斗=商店面板/奖励/投资类…;策略→环境链式)—— 半开帧分发 = 未定型画面
+            # 上行动(M47 ClickSpheres 误点 / bench_unidentified overlay 帧误采,两类实锤)。
+            # 门:备战分支连续命中 ≥ PREP_SETTLE_S 才派 Director;期间只观察(round_wait 让
+            # overlay 弹出,弹出后 0e 系分支先于本分支接管,消化完回备战重新计时 —— 链式
+            # overlay 逐个走)。mid-phase 再入(prev=prep,如 Director bail 后重进)不重付。
+            if not self._prev_frame_prep or self._prep_entry_ts is None:
+                self._prep_entry_ts = time.monotonic()
+                log.info('[cw-loop] 备战相位进入 → 稳定门计时 %.1fs(PREP_SETTLE_S)',
+                         self.PREP_SETTLE_S)
+            if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
+                return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
             # 过渡门说明(r7 review P0-B):0e 系分支(上方)先于本分支检查同截图同三元组(id_mark
             # 位置判),OCR 按 id(image) 缓存 → 到达此处时 overlay 检查必全 False——旧「半开帧
-            # 等 1.2s」门为不可达死码,已删。半开帧保护现状:标题已渲染 → 0e 直接派 handler(即
-            # 机制);标题未渲染的半开帧无保护(已知边界,后续需要时按「备战 id_mark+overlay
-            # id_mark 同帧共存 → 有界 settle 等」重做,防 ADR-0118 复刻需以 round/plane 变更为键)。
+            # 等 1.2s」门为不可达死码,已删;其继任者 = 上方子态稳定门(连续 3s,非同帧检查)。
             # 可控轮数:已跑完 max_rounds 轮 → 停备战屏(可 analyze board/star + star 钩子采样本),不跑备战单轮。
             if self._max_rounds is not None and self._rounds_done >= self._max_rounds:
                 log.info('[cw-loop] max_rounds=%s 已跑 %s 轮 → 停备战屏(单/多轮验证)',
