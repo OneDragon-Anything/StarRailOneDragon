@@ -299,24 +299,6 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
             log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
 
-    def _probe_settlement_nodetype(self, screen) -> None:
-        """[采集钩子·临时] 结算屏「挑战成功」下方 "X-Y <节点类型>" → log + 存裁图(标定节点类型词汇)。
-
-        结算屏恒干净(无 shop 开/事件 overlay 干扰),比备�战节点行(仅 shop-closed 可见)可靠。
-        逐轮采 → 配备�战节点行图标(位置 i ↔ 第 i+1 轮)得 位置→类型 映射,建图标模板。
-        采够(位面1 全轮类型齐)→ 删本方法 + loop 分支3 的调用(临时钩子,用完即删)。
-        """
-        try:
-            from one_dragon.base.geometry.rectangle import Rect
-            from sr_od.application.currency_war.cw_obs_core import _ocr
-            from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
-            # 「挑战成功」标识 y184-274;其下 "X-Y <type>" ~y270-310。OCR 宽带含上下文。
-            blob = ''.join(r.data for r in _ocr(self.ctx, screen, Rect(700, 250, 1260, 330)))
-            cw_log('settlement', step='nodetype', attn=True, raw=blob,
-                   shot=cw_shot(screen[245:335, 690:1270], f'settlement_nt_{blob[:12]}'))
-        except Exception as e:  # noqa: BLE001  采集钩子 best-effort
-            log.info(f'[cw-loop] settlement nodetype probe skip: {e}')
-
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
         self._iter += 1
@@ -627,7 +609,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
-            self._probe_settlement_nodetype(screen)  # [采集钩子·临时] 结算 "X-Y <type>" 标定,采完删
             # C-1(r2 review,2026-08-16):计数锚点 = 新结算帧(非命中帧)——结算屏点击不生效循环 k 轮时,
             # 旧行为每轮 +1 → rounds_done 虚增 → max_rounds=N>1 时提前停备战。改:同屏指纹(结果文本行)
             # 不重复计数;仅进入新结算帧(上一轮不是结算/或结算内容变了)才 +1。轮败(1f)不计数(轮锚点=
