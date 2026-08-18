@@ -9,7 +9,7 @@
 策略 = **阵容无关的骨架**(所有 T1 共用)× **阵容参数**(每 comp 填)。骨架驱动「何时升 / D / 锁 / all-in / 转」;参数告诉骨架「找谁、什么算成型」。
 
 - **骨架**(本文 §1-§3 + 02/12):等级曲线驱动 + 经济线 + 保血/保经济切换 + commit/optionality(α)+ 观测驱动反馈。
-- **参数**(03 `Comp` 数据类 / `data/comp_library.md`):`factions`/`form_tiers`/`core_chars`/`level_plan`/`key_equips`/`form_difficulty`/`countered_by_bosses`。
+- **参数**(03 `Comp` 数据类 / `cw_comps.COMP_LIBRARY` 注册表,旧 data doc 已删):`factions`/`form_tiers`/`core_chars`/`level_plan`/`key_equips`/`form_difficulty`/`countered_by_bosses`。
 
 **`level_plan` 是骨架与参数的接缝**:骨架提供通用等级曲线(§1 概率表)+ 兜底 `_DEFAULT_LEVEL_GOAL`;comp 自带 `level_plan` 覆盖(如红A「2-7 上9」、阿雅「4-5 级 D 1费」)。无 comp 走通用,有 comp 走专属。**这正是 03「经济统一论」已写的设计,本调研用概率表坐实其地基**。
 
@@ -157,7 +157,7 @@ class NodeGoal:
 
 ## §5 T1(A8 顶级)阵容的节奏要点(引 comp_library.md,不重复评级)
 
-> 评级(strength / form_difficulty)单一源在 `data/comp_library.md`(V4.4 🟢 米游社 `76807134`,推翻 V3.7);本文**不重复评级**(避免双源漂移),只列 comp_library 没有的「核心节奏要点」(本骨架视角 = level_plan / 成型标志)。
+> 评级(strength / form_difficulty)单一源在 `cw_comps.COMP_LIBRARY` 注册表(V4.4 🟢 米游社 `76807134` 出处,推翻 V3.7;旧 data doc 已删 2026-08-18);本文**不重复评级**(避免双源漂移),只列注册表没有的「核心节奏要点」(本骨架视角 = level_plan / 成型标志)。
 
 | 阵容 | 核心节奏要点(level_plan / 成型标志) |
 |---|---|
@@ -170,7 +170,7 @@ class NodeGoal:
 | 贝洛伯格+物质分解液(邪道) | 反重力皮靴×2+分解液「左脚踩右脚」无限叠加;**刚需贝洛伯格星辉** |
 | DOT 队(过渡) | 位面1强/P2乏力/P3需转;**低费过渡保血权威** |
 
-详每阵容完整参数(core/form/equip/difficulty/weakness)查 `data/comp_library.md`。本调研在其上补红A运营时机、欢愉/减益细节(后续补 comp_library 字段)。
+详每阵容完整参数(core/form/equip/difficulty/weakness)查 `cw_comps.COMP_LIBRARY`。本调研在其上补红A运营时机、欢愉/减益细节(后续补 comp_library 字段)。
 
 **辅助 > 非核心羁绊**(🟢 D-17):缇宝/星期日/记忆主/知更鸟 价值高于凑非核心羁绊 → 骨架选 comp 优先抓通用辅助。**跨阵容共用核心**(optionality 用):知更鸟/风堇/布洛妮娅/三月七/银河学者+夜之半神(打工)。
 

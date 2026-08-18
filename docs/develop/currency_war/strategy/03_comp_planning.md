@@ -16,7 +16,7 @@ class LevelGoal:
 
 @dataclass
 class Comp:
-    name: str                    # "追击飞霄"/"昼神阿雅"/"银枝群攻"/"万敌单C"(roster 见 ../../../game/currency_war/data/comp_library.md)
+    name: str                    # "追击飞霄"/"昼神阿雅"/"银枝群攻"/"万敌单C"(roster 见 cw_comps.COMP_LIBRARY 注册表(旧 data doc 已删))
     factions: list[str]          # 核心阵营组合 ["仙舟","追击"]
     core_chars: list[str]        # 核心角色(名)["青雀","知更鸟","昔涟"]
     form_tiers: dict[str,int]    # 成型 tier 目标 {"仙舟":7,"追击":5}

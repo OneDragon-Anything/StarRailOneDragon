@@ -1,4 +1,4 @@
-# 货币战争 · 基础资料索引(cw_data/)
+# 货币战争 · 基础资料索引(cw_data/;⚠️ 2026-08-18 大收敛:注册表已建模的数据 doc 已删,本目录仅存未建模唯一源)
 
 > **用途**:策略配置地基 + 理解攻略术语。**只存原始数据**,不含策略代码。
 > **数据基准**:V4.4 赛季(数据抓取日 2026-08-03)。
@@ -25,15 +25,14 @@
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
 | [gameplay.md](gameplay.md) | 米游社官方玩法说明(content/6564 全文)+ 机制框架速查 | — | 🟢 完整 |
-| [factions.md](factions.md) | 羁绊全表:阵营13/流派12/独立6,逐层效果原文 | 31 | 🟢 完整 |
-| [traits.json](traits.json) + [traits/](traits/) | **羁绊官方数据**(V4.4,攻旅广场 lineup/index 采集;tiers/效果全文/成员,`tools/cw/gen_factions.py` 生成) | 33 | 🟢 官方 |
-| [characters.md](characters.md) | 角色花名册:费用/站位/类型/阵营/流派(反查) | 74 | 🟢 完整 |
+| ~~factions.md + traits.json + traits/~~(已删 2026-08-18) | 羁绊 → **代码单一源** `cw_factions.FACTIONS`(32,plaza 采集灌入) | 32 | 🟢 注册表 |
+| ~~characters.md + characters/~~(已删 2026-08-18) | 角色花名册 → **代码单一源** `cw_chars.CHARACTERS`(72;双盲核对 doc↔注册表 100% 重合后删) | 72 | 🟢 注册表 |
 | ~~investment_strategies.md~~(已删,ADR-0150) | 投资策略 → **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py`(plaza API 官方 334 条,`tools/cw/gen_plaza_invest.py` 生成,版本更新重跑) | 334 | 🟢 官方 API 全量(与游戏内数据银行同口径) |
-| [invest_cards.md](invest_cards.md) | 投资策略/环境**人读版**(同生成器第二产物,与代码双向链接,id 为锚) | 334+83 | 🟢 同源生成勿手编 |
-| ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `src/sr_od/application/currency_war/cw_investments.py::INVESTMENT_ENVS` | ~82 | 🟢 全量(数据银行核对 83/解锁 68);代码已建模,doc 冗余已删(用户原则:代码已建模的游戏数据不存 doc) |
-| [equipment.md](equipment.md) | 装备:简易7/进阶33/特权35/星徽22/白昼6/命运改件16/骇客改件16/特殊2/工具11 | 153 | 🟢 米游社图鉴153条全覆盖(游戏内155) |
-| [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制 | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |
-| [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益) | ~20 | ⚠️ bwiki,米游社-pending |
+| ~~invest_cards.md~~(已删 2026-08-18) | 同上(plaza API 直灌注册表,人读版 doc 双源已撤) | 334+83 | 🟢 注册表 |
+| ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `cw_investments`(plaza 全量) | ~82 | 🟢 注册表 |
+| ~~equipment.md~~(已删 2026-08-18) | 装备 → **代码单一源** `cw_equipment.EQUIPMENTS`(158) | 158 | 🟢 注册表 |
+| [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制(**注册表未建,本文唯一源**) | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |
+| [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
 
 ---
 
@@ -63,7 +62,7 @@
 | 罗刹站位/类型 | 角色表小缺口 | content/6252 单独取(本次批量漏取) |
 | **优势布局全量(钻钞 cost + 效果原文)** | 跨局 meta(R2-1 / 09) | advantage_layouts.md 暂用 bwiki;米游社图鉴 channel/map/209 **无此项**,玩法说明 6564 只有机制 → 待米游社专页(若日后收录)或实机校准 |
 | **费用刷新概率表(等级 × 1-5 费)** | A4 牌池模型精度(蒙特卡洛 D 牌) | bwiki/gachabase 均无精确表;可能游戏内才公开 → 实机 OCR 逐等级记录 OR 米游社专页(若日后收录) |
-| 装备合成配方(哪 2 简易→哪进阶) | 07 装备合成树(EQUIP_RECIPES) | equipment.md 有效果无逐条配方;待 content/info 逐条补或实机 |
+| 装备合成配方(哪 2 简易→哪进阶) | 07 装备合成树(EQUIP_RECIPES) | EQUIPMENTS 注册表有效果无逐条配方;待 content/info 逐条补或实机 |
 
 > **注**:旧文件 `../cw_game_data.md` 已废弃,数据已拆分到本目录各文件。
 

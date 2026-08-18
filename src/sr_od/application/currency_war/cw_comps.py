@@ -71,7 +71,7 @@ class Comp:
     次要羁绊(不进 form_tiers,但板面朝它铺不被 board_alignment 罚、env/策略绑定照常亲和)。
     ``plaza_carry`` = cw_plaza_comps 聚类 carry 名(对拍锚点;空 = 无 n≥5 聚类对应)。
     """
-    name: str                    # "追击飞霄"/"昼神阿雅"/"万敌单C"(roster 见 docs/game/currency_war/data/comp_library.md)
+    name: str                    # "追击飞霄"/"昼神阿雅"/"万敌单C"(roster 单一源 = 本注册表;旧 data doc 已删 2026-08-18)
     factions: list[str]          # 核心阵营组合 ["追击"](查 FACTIONS)
     core_chars: list[str]        # 核心角色(名)["飞霄","知更鸟"]
     form_tiers: dict[str, int]   # 成型 tier 目标 {"仙舟":5,"追击":3}(几人激活算成型;键 ⊆ factions)
@@ -307,7 +307,7 @@ def skeleton_factions() -> set[str]:
 
 
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
-# 详 docs/game/currency_war/data/comp_library.md。form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
+# (旧 comp_library.md doc 已删 2026-08-18,本注册表单一源。)form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
 
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====

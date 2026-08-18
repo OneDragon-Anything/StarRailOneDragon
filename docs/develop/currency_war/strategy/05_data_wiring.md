@@ -1,5 +1,11 @@
 # 05 数据与接线(分)
 
+> ⚠️ **状态(2026-08-18):本文档为设计期(2026-08-03)接线规划,大部分条目已落地且实现细节演进**——
+> GameState 字表现以 `cw_state.py` 代码为单一源(字段远多于下表);read_game_state/reconcile/plan 均已实现
+> (battle_prep_recognizer/cw_reconcile/cw_plan);COMP_LIBRARY/SHOP_REFRESH_TABLE/装备注册表均已建成
+> (cw_comps/cw_shop_odds/cw_equipment)。**下文保留作历史设计记录;现状以代码 + 15_prep_director 为准**。
+> meta 表数据源:旧 data/ doc 已删(数据单一源铁律,注册表即 truth,2026-08-18)。
+
 > 总见 [README](README.md)。策略输入数据(OCR 字段 + meta 表)+ OCR→GameState 接线 + op 层接入。
 > **review r1(方案)修正**:GameState 完整字段表单一真相源(连贯性-3)、read/reconcile 签名+失败语义(可实施性-4)、每回合 op 序列图(可实施性-3)、补 装备/巨星/遭遇/连胜 OCR(完整性)。
 
@@ -55,16 +61,16 @@ battle_loop 检测「备战」画面
 ```
 **select_comp 时机**:**每回合跑**(2026-08-03 用户定调,详 03)—— 投资策略/环境选择在位面中进行 + 商店强随机,需每回合响应;maybe_pivot 每回合检查转型信号。性能预算(02 R2-17 / 06 P2-2)需相应放宽(必要时 select_comp 结果缓存/降级)。
 
-## meta 数据表(非游戏可建)
-| 表 | 内容 | 状态 |
+## meta 数据表(非游戏可建;⚠️ 2026-08-18 现状列——注册表即单一源,旧 data/ doc 已删)
+| 表 | 内容 | 现状 |
 |---|---|---|
-| FACTIONS(31 羁绊) | 名+类别+tiers+效果 | ✅ cw_factions.py(赛季级 meta,改代码+测试;或抽 yml,见 README 分层)|
-| 角色花名册(74) | 名+命途+费用+阵营+流派 | ✅ ../../../game/currency_war/data/characters.md(待接 char→阵营/费用查询)|
-| 投资策略/环境白名单 | 名+优先级 | ✅ config T0 子集(可扩)|
-| **COMP_LIBRARY** | 阵容库 | ❌ 待建(A2)|
-| SHOP_REFRESH_TABLE | 费用刷新概率 | ❌ 待补(A4)|
-| 装备图鉴(~130) | 名+效果+合成 | ✅ ../../../game/currency_war/data/equipment.md |
-| 遭遇词缀表 | 词缀+对策 | ❌ 待建(research+实机)|
+| FACTIONS(31 羁绊) | 名+类别+tiers+效果 | ✅ `cw_factions.FACTIONS`(32 含流派)|
+| 角色花名册 | 名+命途+费用+阵营+流派 | ✅ `cw_chars.CHARACTERS`(72)|
+| 投资策略/环境 | 名+效果+经济建模 | ✅ `cw_investments/cw_invest_data`(plaza 全量)|
+| **COMP_LIBRARY** | 阵容库 | ✅ `cw_comps.COMP_LIBRARY`(20 套)|
+| SHOP_REFRESH_TABLE | 费用刷新概率 | ✅ `cw_shop_odds.REFRESH_PROB`(Lv1-10 实机 OCR)|
+| 装备图鉴(~158) | 名+效果+合成 | ✅ `cw_equipment.EQUIPMENTS` |
+| 遭遇词缀表 | 词缀+对策 | ✅ `affix_effects_data.py` |
 
 ## 接线状态
 - ❌ BuyShopCards 仍用旧 smart_buy_decision(r1 #08)—— 接线第一件事(阶段 5)。

@@ -2,10 +2,10 @@
 
 > 总见 [README](README.md)。review r1(方案)发现装备系统整块缺失(high)。装备是 auto-chess 核心机制,影响极大:反重力皮靴(跨版本最稳 T0)/物质分解液(真伤强装)/永动机/绝对热量(正当防卫对策);且**狼狩羁绊按场上装备数成长**(factions.md 原文),不建模装备 → 狼狩强度评估偏低。
 
-## 装备数据(已抓,../../../game/currency_war/data/equipment.md ~130 件)
+## 装备数据(单一源 `cw_equipment.EQUIPMENTS` 158 件;旧 data/equipment.md 已删 2026-08-18)
 - 简易装备(~7 类基础)/ 进阶装备(~33,2 简易合成)/ 特权装备(~27)/ 星徽钻石(~22)/ 白昼装备(~6,Fate ~24)/ 工具(~11)。
 - 关键 T0:反重力皮靴(速度+20%,每回合+15% 可无限叠加,"找鞋战争")、物质分解液(生命+10%/速度+15%,每回合首次技能触发真伤,强装)、永动机(刷终结技)、绝对热量(正当防卫反伤对策)、生命之环(生存)。
-- 来源:米游社百科 ../../../game/currency_war/data/equipment.md(🟢 原文)。
+- 来源:米游社百科(注册表字段带出处;2026-08-18 数据单一源收敛)。
 
 ## GameState 装备字段
 ```
@@ -64,7 +64,7 @@ decide_supply(options, state, config) → (idx, refresh?)
 comp.key_equips(03 的 Comp 字段)进 comp_score:已拥有 comp.key_equips → comp 契合度 ↑。例如「昼神阿雅」comp.key_equips=["反重力皮靴"],开局拿到鞋 → 该 comp comp_score ↑。
 
 ## 数据需求(游戏边界)
-- 装备图鉴:../../../game/currency_war/data/equipment.md(已抓,🟢)。**非游戏**(meta 数据)。
+- 装备图鉴:`cw_equipment.EQUIPMENTS`(注册表单一源)。**非游戏**(meta 数据)。
 - 装备 OCR(补给选项 + 角色穿戴):**需游戏**(read_supply + read_equip)。
 - 装备合成 OCR:补给/装备节点画面。**需游戏**。
 
@@ -74,6 +74,6 @@ comp.key_equips(03 的 Comp 字段)进 comp_score:已拥有 comp.key_equips → 
 - ComposeEquip:2 简易 → 进阶;key_equips_owned 更新。
 
 ## round 3 补充(P1)
-- **P1-4 装备合成树(recipe graph,high)**:07 加了 ComposeEquip 但**无合成树数据**(哪 2 简易→哪个进阶)。从 ../../../game/currency_war/data/equipment.md 提 `EQUIP_RECIPES: dict[adv_name, (simple_a, simple_b)]`;ComposeEquip 查表(当前"有 2 同类简易→合成"太模糊,无具体配方无法决策合成什么)。建模**机会成本**(合成消耗 2 槽 vs 等更好 T0 drop)。
+- **P1-4 装备合成树(recipe graph,high)**:07 加了 ComposeEquip 但**无合成树数据**(哪 2 简易→哪个进阶)。从 `cw_equipment.EQUIPMENTS`(注册表,合成公式字段)提 `EQUIP_RECIPES: dict[adv_name, (simple_a, simple_b)]`;ComposeEquip 查表(当前"有 2 同类简易→合成"太模糊,无具体配方无法决策合成什么)。建模**机会成本**(合成消耗 2 槽 vs 等更好 T0 drop)。
 - **P1-5 可叠加装备超线性(high)**:research+07 明确"反重力皮靴每回合+15% 可无限叠加" → 早 commit 复利。`equip_fit(comp)`(comp 相关)对把反重力靴列入 `stacking_equips` 的 comp(昼神阿雅)用超线性 `count**1.5` 或复利 `(1.15)**count`(2 双远超 2×);别的 comp 持有同靴不算分。
 - **R2-20 装备组件中间态(low)**:`equip_fit(comp)` 只奖成品 comp.key_equips,无"持有 2 简易即将合成 key_equip"中间态。加 component_progress 分(该 comp 的 key_equip 配方简易组件 × 合成接近度)。

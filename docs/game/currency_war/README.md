@@ -5,18 +5,22 @@
 > 自动化实现设计(bot 流程 / 策略 / 决策 why)见 [docs/develop/currency_war/](../../develop/currency_war/)。
 > 依据 `od-dev-gameplay-automation` ADR-0008:docs/game/ 只放游戏玩法,自动化归 docs/develop/。判据:「游戏改了它变 → 本目录;代码改了它变 → docs/develop/」。
 
-## `data/` —— 游戏数据(策略地基,米游社百科 V4.4 原文 🟢)
+## `data/` —— 游戏数据(⚠️ 2026-08-18 大收敛:注册表全量建模的 doc 已删,数据单一源铁律)
+
+**已删(代码注册表即单一源,版本更新改注册表+测试,doc 不再维护)**:
+- ~~characters.md + characters/ 74 文件~~ → `cw_chars.CHARACTERS`(72)
+- ~~traits.json + traits/ 34 文件 + factions.md~~ → `cw_factions.FACTIONS`(32)
+- ~~equipment.md~~ → `cw_equipment.EQUIPMENTS`(158)
+- ~~invest_cards.md~~ → `cw_invest_data`(plaza API 生成器直灌注册表,ADR-0150)
+- ~~comp_library.md~~ → `cw_comps.COMP_LIBRARY`(20 套,含 V4.4 评级)
+- (economy_research.md 更早已迁 docs/develop/currency_war/strategy/ —— 用户口述策略校准非固化游戏数据)
+
+**保留(注册表未建模的唯一源)**:
 - [README](data/README.md) —— 索引 + 数据源 / 抓取通道 / 剩余缺口
 - [gameplay.md](data/gameplay.md) —— 官方玩法说明(content/6564 全文)+ 机制速查(**有限行动值(AV)限时** 等)
-- [factions.md](data/factions.md) —— 31 羁绊逐层效果原文
-- [characters.md](data/characters.md) —— 74 角色(费用 / 站位 / 类型 / 阵营 / 流派)
-- [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类)
-- [equipment.md](data/equipment.md) —— ~130 装备(简易 / 进阶 / 特权 / 星徽 / 白昼 / Fate / 工具)
-- 投资策略(334)+ 投资环境(83)—— **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py` + **人读版** [data/invest_cards.md](data/invest_cards.md)(同生成器双产物,plaza API,ADR-0150;`gen_plaza_invest.py` 版本更新重跑)
-- [comp_library.md](data/comp_library.md) —— 起步阵容 roster 8+ 套 + V4.4 评级 + S 级运营要点
-(economy_research.md 已迁 docs/develop/currency_war/strategy/ —— 用户口述策略校准非固化游戏数据,2026-08-18)(实据;刷新概率权威值在代码 `cw_shop_odds.REFRESH_PROB`)
-- [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta,bwiki pending 米游社)
-- [bosses.md](data/bosses.md) —— boss 克制
+- [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类;⚠️ 代码注册表未建,唯一源)
+- [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta)
+- [bosses.md](data/bosses.md) —— boss 克制(⚠️ 代码注册表未建,唯一源)
 
 ## `guides/` —— 攻略目录(`阵容_` 阵容推荐 / `公共_` 公共知识)
 
@@ -37,5 +41,5 @@
 画面(screen doc,游戏提供的 UI)算游戏玩法,仍在 [docs/game/screens/](../screens/)(`currency_war_*.md`)。
 
 ## 版本维护
-货币战争赛季制,数据随版本变。更新流程:① 投资/环境:重跑 `tools/cw/gen_plaza_invest.py`(plaza API,内建 diff 报告)→ 按 diff 修 overlay 孤儿键;② 角色:重跑 `tools/cw/gen_plaza_chars.py`;③ 其余:重抓米游社图鉴(`data/` 各文件)→ 同步代码注册表(`cw_chars.CHARACTERS` / `cw_factions.FACTIONS` / `cw_equipment.EQUIPMENTS` 等)→ 回归测试。
+货币战争赛季制,数据随版本变。更新流程:① 投资/环境:重跑 `tools/cw/gen_plaza_invest.py`(plaza API,内建 diff 报告,直灌注册表)→ 按 diff 修 overlay 孤儿键;② 角色:重跑 `tools/cw/gen_plaza_chars.py`;③ 其余:重抓米游社图鉴 → **同步代码注册表**(`cw_chars.CHARACTERS` / `cw_factions.FACTIONS` / `cw_equipment.EQUIPMENTS` 等,注册表是唯一数据源)→ 回归测试。data/ 仅 bosses/competitors 等未建模 doc 需手工同步。
 数据源优先级:plaza 官方 API / 游戏内(权威)>>> 米游社百科 >>> bwiki / NGA / 攻略(参考)。标 🟢 官方原文 / 🟡 攻略一致 / 🔴 未找到。
