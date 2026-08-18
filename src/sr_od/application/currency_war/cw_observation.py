@@ -203,9 +203,10 @@ def _node_type_label(ctx: SrContext, screen: MatLike) -> tuple[str | None, int |
 
 #: 标签 x 与当前槽 cx 容差(节点槽距 ~90px + 标签中心偏差;超过 = 标签属于别的节点)
 _NODE_LABEL_X_TOL: int = 110
-#: boss 语义门:首领 = 位面**最后**节点(基础 8 槽 → boss 轮 ≥9;invest-env 增节点只会
-#: 更晚)→ round < 8 时读到的「首领」必是**即将到来**的 boss 节点标签,不是当前节点
-_BOSS_MIN_ROUND: int = 8
+#: boss 语义门:首领 = 位面**最后**节点(基础 9 轮,boss=第 9;r80 审计 a 收紧:人身意外险
+#: 在首领前+补给 → boss ≥10)→ round < 9 时读到的「首领」必是**即将到来**的 boss 节点
+#: 标签(2-7 实证),不是当前节点。取 9(非 10)= 无环境加节点时的下限,宁紧勿松。
+_BOSS_MIN_ROUND: int = 9
 
 
 def gate_node_type(node_type: str | None, round_num: int | None,

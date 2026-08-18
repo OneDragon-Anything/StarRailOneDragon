@@ -114,6 +114,12 @@ class PrepObservation:
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
 
 
+#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:r80 审计 c)实锤
+#: PrepDirector 每备战环重建(battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
+#: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
+_NODE_ICON_SHOT_TS: dict[int, float] = {}
+
+
 class PrepDirector(SrOperation):
     """备战决策环:观察驱动单步决策,替代 BattlePrepCycle 固定序列(P1)。
 
@@ -140,7 +146,6 @@ class PrepDirector(SrOperation):
         self._recovery_closed_known: dict[str, bool] = {}   # 恢复时是否关过已知弹层(分型用)
         self._recovery_tried: bool = False          # 本环恢复原语是否已试(强制出战门)
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        self._node_icon_shot_ts: dict[int, float] = {}   # 未识别节点图标采集防抖(idx→上次采集时刻;r80 P1-3)
         # light 步沿用的 heavy 缓存(观察分层,review H-1)
         self._cached_state: GameState | None = None
         self._cached_bench: list[BenchChar] = []
@@ -649,13 +654,13 @@ class PrepDirector(SrOperation):
         for s in slots:
             if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
                 continue
-            if now - self._node_icon_shot_ts.get(s.idx, 0.0) < 300:
-                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效)
+            if now - _NODE_ICON_SHOT_TS.get(s.idx, 0.0) < 300:
+                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效;r80 审计c:module-level 跨环存活)
             yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
             xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
             fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
             if fn:
-                self._node_icon_shot_ts[s.idx] = now
+                _NODE_ICON_SHOT_TS[s.idx] = now
                 log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
     def _record_step(self, obs: PrepObservation, action: PrepAction) -> None:

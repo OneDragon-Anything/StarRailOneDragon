@@ -75,12 +75,19 @@ class DeployBench(SrOperation):
 
         read_deploy_cap OCR 到几槽就用「后排N槽-」档(经 cw_back_layout 路由,与
         read_deployed_chars 同源);读不到/无档 → 退基线「后排-」(旧行为)。
+        ⚠️ 后排槽数 = deploy_cap(四组实测:lv6cap8后8/lv7cap9后9/lv8cap10后10/
+        lv9cap11后11;宝钻只加 cap,后排跟 cap 走,r80 审计 d-风险2 数据裁定)。
+        r80 审计 d:无档(如 cap=7)补 [cw!] 告警,对齐识别侧(cw_back_layout 同款)。
         """
+        from one_dragon.utils.log_utils import log as _log
         from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
         from sr_od.application.currency_war.cw_observation import read_deploy_cap
         cap = read_deploy_cap(self.ctx, self.last_screenshot)
         if cap and cap in _LAYOUT_PREFIX:
             return self._row_centers(_LAYOUT_PREFIX[cap])
+        if cap and cap > 4 and cap not in _LAYOUT_PREFIX:
+            _log.warning('[cw!][layout] deploy 侧 后排 %d 槽布局未建档(退 6 槽基线;'
+                         '停机钩子在识别侧已/将触发现场验证)', cap)
         return self._row_centers('后排')
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
@@ -216,6 +223,11 @@ class DeployBench(SrOperation):
         # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
         # 上阵的代价 > 高读白拖一次,不对称取舍)。
         _cap = read_deploy_cap(self.ctx, scr)
+        # r80 审计 d-风险1:入场帧(收起商店 1s 过渡)失读时 _back_row_centers_by_cap 已退
+        # 基线 6 槽;此处 fresh 帧重读到真 cap → **重建 back 布局**(否则整轮卖侧错位)。
+        from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
+        if _cap is not None and _cap in _LAYOUT_PREFIX:
+            back = self._row_centers(_LAYOUT_PREFIX[_cap])
         if _cap is None:
             _lv_chain = (getattr(_sess, 'last_level_obs', 0)
                          if _sess is not None else 0) or 0
