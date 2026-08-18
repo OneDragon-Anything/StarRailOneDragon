@@ -1,9 +1,10 @@
 """货币战争 **后排槽位布局**(可变槽位;2026-08-19 用户口述 + 狸猫局实拍)。
 
-机制:后排槽位数 = **deploy_cap**(四组实测:lv6cap8→后8/lv7cap9→后9/lv8cap10→后10/
-lv9cap11→后11;宝钻只加 cap(level+N),后排跟 cap 走,r80 审计数据裁定)。位面/等级/宝钻
-组合决定 cap;布局 = 固定坐标格点(间距 142)上按槽数开窗(两端交替扩)。**狸猫兄弟等
-固定召唤单位是固定坐标(1316/1458),不随槽数移动**(9/11 槽局其右侧有空槽实证)。
+机制:后排槽数 = **max(6, deploy_cap)**(五组实测:cap5→后6[lv4+1宝钻,暗框格点=
+基线 585-1174+花火/姬子命中]/cap8→后8/cap9→后9/cap10→后10/cap11→后11;后排基础
+6 槽,cap≤6 钳制 6,cap>6 跟 cap 走 —— r81 裁定)。cap = level+宝钻(部署上限)。
+布局 = 固定坐标格点(间距 142)上按槽数开窗;**狸猫兄弟等固定召唤单位是固定坐标
+(1316/1458),不随槽数移动**(9/11 槽局其右侧有空槽实证)。
 
 **单一真相源 = screen_info**(用户 2026-08-19 定调:槽位都记录到 screen_info):
 - 基准 6 槽:``货币战争-备战`` 的 ``后排-1..6``(基线,多局验证)。
@@ -42,16 +43,23 @@ def _layout_prefixes() -> dict[int, str]:
     return dict(_LAYOUT_PREFIX)
 
 
+def effective_back_slots(cap: int) -> int:
+    """后排实际槽数(r81 裁定):``max(6, cap)``。
+
+    五组实测:cap5→后6(lv4+1宝钻,暗框格点=基线+花火/姬子SIFT命中)/cap8→8/cap9→9/
+    cap10→10/cap11→11 —— 后排基础 6 槽,cap≤6 钳制 6(P1 低等级局基线恒对的原因),
+    cap>6 跟 cap 走。消费方(选档/停机守卫)统一过此函数。
+    """
+    return max(6, cap)
+
+
 def back_row_slot_rects_ctx(ctx, cap: int) -> list[tuple[int, Rect]] | None:
     """按 deploy_cap 从 screen_info 取 ``[(slot_idx, rect), ...]``;无档 → None(调用方退基线)。
 
-    ctx: ``SrContext``(screen_info 已加载)。cap = 部署上限真值(read_deploy_cap)。
-
-    r77c 采集钩子:cap 无档(如 7/9 槽,宝钻叠加局)→ 存帧到 shots/(内容哈希去重)+
-    进度记一笔,**不停机**(布局坐标离线可测,暗框法即可,无需保画面交互);下次遇该
-    布局 AI 离线 upsert 后排N槽-1..N + 本表登记即闭环。
+    ctx: ``SrContext``(screen_info 已加载)。cap = 部署上限真值(read_deploy_cap);
+    槽数 = ``effective_back_slots(cap)``(max(6,cap),r81)。
     """
-    prefix = _layout_prefixes().get(cap)
+    prefix = _layout_prefixes().get(effective_back_slots(cap))
     if prefix is not None:
         from sr_od.application.currency_war.cw_identity_obs import _area_rect
         out: list[tuple[int, Rect]] = []
@@ -66,13 +74,14 @@ def back_row_slot_rects_ctx(ctx, cap: int) -> list[tuple[int, Rect]] | None:
             return out
     # 无档:[cw!] 告警(可检索);停机钩子在调用方 read_deployed_chars(r77d:存帧+flag+
     # stop_running,现场拖角色逐位验证后补档 —— 真值坐标必须现场交互闭环,离线暗框检测
-    # 有 grounding 误换算教训)。本函数只返 None 退基线。
+    # 有 grounding 误换算教训)。本函数只返 None 退基线。⚠️ cap≤6 → 恒基线(r81),无告警。
     try:
-        if cap and cap > 4:
+        if cap and effective_back_slots(cap) not in _layout_prefixes():
             from one_dragon.utils.log_utils import log
             log.warning('[cw!][layout] 后排 %d 槽布局未建档(退 6 槽基线,识别/拖拽将错位;'
                         '停机钩子将触发现场验证;补档:拖角色逐位验 → upsert 后排%d槽-1..%d'
-                        ' → _LAYOUT_PREFIX 登记)', cap, cap, cap)
+                        ' → _LAYOUT_PREFIX 登记)', cap, effective_back_slots(cap),
+                        effective_back_slots(cap))
     except Exception:   # noqa: BLE001
         pass
     return None
