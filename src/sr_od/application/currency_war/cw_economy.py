@@ -120,7 +120,11 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
                 # 防「spend 攒息/xp 追级」门间对拉)。
                 # r73 RC1-③:hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
                 # 追级是远水(RC1 实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
-                if state.hp < 30:
+                # r87 H1 修正(审计 cc119c14,第3局实锤):hp<30 **进位面首 2 轮不拦** ——
+                # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(r4 团灭实证)。
+                # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;RC1 案例的病理是
+                # 「金 35 全烧经验」,由 XP 单击量控(花后地板)兜,非全量禁。
+                if state.hp < 30 and not (state.plane >= 2 and state.round_num <= 2):
                     return False
                 return bool(state.plane >= 2 and state.level < get_node_goal(
                     state.plane, state.round_num,

@@ -495,6 +495,10 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
     ADR-0209(接线 2/6):双轨期(P1 未定型,committed=False)压制 rush_level——
     P1 玩法 = 过渡包 5 人口攒 50 息(plaza Early 79%=5 人),等级在定型时才拉;
     DP 的升级姿态推迟到定型后生效(interest/hold 仍可用,保底攒息)。
+    r87 H1 修正(审计 cc119c14):**P1 round≥8 位面末豁免** —— 第4局实锤双轨期
+    拖满 P1 全程(信号3 连续 pivot 永不达标)→ lv6 带 boss,P2 hp 门接力 →
+    carry 等级窗口全局不存在。位面末(P1 r8+ / P2 r8+)定型与否都该追级
+    (boss/P3 在前,5-6 人口硬吃必死)。
     """
     global _SEAM_WARNED
     t = (min(plane, 3) - 1) * NODES_PER_PLANE + min(round_num, NODES_PER_PLANE) - 1
@@ -503,7 +507,9 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
     try:
         from sr_od.application.currency_war.cw_economy import NodeGoal
         p = _solved(strategies).posture(t, gold, level, hp, 0.0)
-        if p.level_up and committed:
+        # r87:P1/P2 位面末(r≥8)不再压 rush_level(boss/P3 前人口必追)
+        _late_plane = round_num >= NODES_PER_PLANE - 1
+        if p.level_up and (committed or _late_plane):
             return NodeGoal(min(10, level + 1), 'level', 'rush_level')
         if p.refresh_budget > 0:
             return NodeGoal(level, 'adaptive', 'd_search')

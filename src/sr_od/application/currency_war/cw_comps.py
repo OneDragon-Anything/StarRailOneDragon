@@ -1331,7 +1331,13 @@ def target_committed(target: Comp, state: GameState) -> bool:
 # 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
 # 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
 # 冷却状态挂 StrategySession.pivot_cooldown_until(default_strategy 调用侧维护)。
+# r87 H2 修正(审计 cc119c14,第4局实锤):**保命 pivot 也设冷却(1 轮/次,弱于信号1/2 的
+# 3 轮)** —— 旧「信号3全豁免」致 r7-r9 三轮 4 次 pivot(10 秒内两次翻转),
+# 「信号3→转线→板面清零→更弱→又信号3」自激,板面 14 阵营各×1 永不成型。
+# 保命优先级仍最高(hp 危险时信号1/2 不参与),但**连续翻转**被冷却掐断:已在该
+# comp 或刚转过 1 轮内 → 保持(板面不推倒,靠买牌/升人口补强度)。
 PIVOT_COOLDOWN_ROUNDS: int = 3
+PIVOT_SURVIVAL_COOLDOWN_ROUNDS: int = 1   # 保命 pivot 冷却(r87;防连续翻转自激)
 
 
 def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
@@ -1380,6 +1386,16 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
             if target is None or fastest.name != target.name:
+                # r87 H2:保命 pivot 冷却(1 轮)—— 连续翻转自激掐断;冷却内保持现状,
+                # 强度靠买牌/升人口补(转线本身不产战力,推倒板面才真掉战力)。
+                _sess = getattr(ctx, 'session', None)
+                _cd_until = getattr(_sess, 'pivot_cooldown_until', 0) if _sess else 0
+                if state.round_num <= _cd_until:
+                    log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命→%s 被冷却拦(至r%s;'
+                             '防连续翻转自激,板面靠买牌补)',
+                             state.plane, state.round_num, state.hp, _pivot_hp,
+                             fastest.name, _cd_until)
+                    return None
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
                          state.plane, state.round_num, state.hp, _pivot_hp,
                          target.name if target else 'None', fastest.name)

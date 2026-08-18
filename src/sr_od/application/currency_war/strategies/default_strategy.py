@@ -290,9 +290,14 @@ class DefaultCwStrategy(CwStrategy):
                          state.plane, state.round_num, state.node_type)
             if piv is not None:
                 session.target_comp = piv
-                session.pivot_cooldown_until = state.round_num + cw_comps.PIVOT_COOLDOWN_ROUNDS
-                log.info('[cw-target] pivot %s → 冷却至 r%s(治过度换线,保命信号豁免)',
-                         piv.name, session.pivot_cooldown_until)
+                # r87 H2:保命 pivot 用短冷却(1 轮,防连续翻转自激);信号1/2 维持 3 轮。
+                _survival = state.hp < int(0.75 * cw_comps.effective_hp_threshold(state))
+                _cd_rounds = (cw_comps.PIVOT_SURVIVAL_COOLDOWN_ROUNDS if _survival
+                              else cw_comps.PIVOT_COOLDOWN_ROUNDS)
+                session.pivot_cooldown_until = state.round_num + _cd_rounds
+                log.info('[cw-target] pivot %s → 冷却至 r%s(%s轮,%s)',
+                         piv.name, session.pivot_cooldown_until, _cd_rounds,
+                         '保命防自激' if _survival else '治过度换线')
 
     def decide_prep(self, state: GameState, session: StrategySession, config) -> list[Action]:
         """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。

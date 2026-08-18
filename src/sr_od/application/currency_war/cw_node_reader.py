@@ -68,23 +68,30 @@ def _hu_distance(a: HuLike, b: HuLike) -> float:
     return float(np.linalg.norm(np.log(np.abs(a) + 1e-12) - np.log(np.abs(b) + 1e-12)))
 
 
-def load_node_type_templates(templates_dir: Path) -> dict[str, HuLike]:
-    """加载 4 节点类型模板(battle/supply/encounter/reward)→ {type: Hu 矩(RGB luma)}。
+def load_node_type_templates(templates_dir: Path) -> dict[str, list[HuLike]]:
+    """加载节点类型模板(battle/supply/encounter/reward + **encounter_v2**)→ {type: Hu 矩}。
 
     ⚠️ 通道对齐(2026-08-16 review P1 修正):模板 PNG 经 imdecode 读到 **BGR** → 先翻成
     RGB 语义再 ``RGB2GRAY`` 正确 luma —— 与 classify_node_row(live RGB 截图)同侧。
-    (旧注释「灰度/Hu 对 RGB/BGR 无关」不成立:灰度化权重 R/B 互换产生不同 luma →
-    不同 Otsu 二值 → 不同 Hu;仅 S/V 对通道序无关。)
+
+    encounter_v2(r86):**遭遇节点的第二渲染**(深蓝圆底+灰色三叉箭头,186 张积压
+    采样实锤,对旧 4 模板最近 Hu=supply 4.02 ≫ 阈值 2.8 → 恒「未识别」刷采集);
+    自模板回归 184/186 命中。类型归 encounter(同语义:难度选择节点)。
     """
-    out: dict[str, HuLike] = {}
-    for t in ('battle', 'supply', 'encounter', 'reward'):
+    out: dict[str, list[HuLike]] = {}
+    # alias:文件名 → 类型 key(encounter_v2 → encounter 同语义)
+    _alias = {'encounter_v2': 'encounter'}
+    # 同 key 多模板(encounter/encounter_v2):保留各自 Hu,**classify 的 min() 匹配
+    # 天然取更近者** → 多变体都参与匹配(聚合而非覆盖)。
+    for t in ('battle', 'supply', 'encounter', 'encounter_v2', 'reward'):
         p = templates_dir / f'node_type_{t}.png'
         if not p.exists():
             continue
         img = cv2.imdecode(np.fromfile(str(p), dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             continue
-        out[t] = _hu_moments(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
+        out.setdefault(_alias.get(t, t), []).append(
+            _hu_moments(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)))
     return out
 
 
@@ -168,7 +175,10 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list
             x0, x1 = max(0, cx - _SAMPLE_R), cx + _SAMPLE_R
             y0, y1 = max(0, cy - _SAMPLE_R), cy + _SAMPLE_R
             h = _hu_moments(gray[y0:y1, x0:x1])
-            hu_dist, best = min((_hu_distance(h, hu), t) for t, hu in templates.items())
+            # 多模板聚合(r86):templates = {type: [Hu,...]}(同类型多变体),
+            # min over 全部 (dist, type) —— 变体自动取更近者。
+            hu_dist, best = min(
+                (_hu_distance(h, hu), t) for t, hus in templates.items() for hu in hus)
             node_type = best
         slots.append(NodeSlot(idx=i, cx=cx, cy=cy, state=state, node_type=node_type, hu_dist=hu_dist))
     return slots
