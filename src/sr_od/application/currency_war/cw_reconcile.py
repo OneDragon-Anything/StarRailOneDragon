@@ -104,7 +104,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                         _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source,
                                         stop_run=False)
         elif _n in _pend or _n in _reg:
-            del _pend[_n]   # 读回恢复(或超预估)→ 清防抖(自愈)
+            _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;r79:pop 防抖——
+            # 名字可能只在 _reg 不在 _pend,原 del 抛 KeyError 打断备战环,实锤 丹恒·饮月)
             _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
     # 离场清除 pending(r58 review P2①:角色卖出/上场后 _pend 残留 → 该角色下次登场时
     # 单次动画误读被误判「连续第二次确认」)。只在两侧都真读(非 None)时清 —— None 侧
