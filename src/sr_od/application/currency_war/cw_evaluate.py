@@ -210,7 +210,10 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     # 整屏采集钩子(streak_gold_stN,cw_settlement_obs)拆「获得金币总览」连胜行 +
     # 伟大征服 ×3 对拍。核实后替换为显式账 —— ⚠️ 校准纪律(r64 review P2):先验表必须
     # 使阈值**随 streak 单调且有高于刷价的区间也有低于区间**(若全区间 ≥ 刷价 = 恒真门
-    # = 没校准;全 < = 门死),否则维持保守门。
+    # = 没校准;全 < = 门死),否则维持保守门。⚠️ 刷价侧特判:免费刷新额度
+    # (free_refresh_per_node)是独立字段不碰 shop_refresh_cost(默认 2 不归 0),
+    # 但显式账若写成 档金≥shop_refresh_cost 且未来某策略把 cost 减到 0 → 恒真门
+    # —— 落地时刷价下限 clamp 1 或直接消费免费额度字段,别比 0。
     _streak = state.streak or 0
     if _streak >= STREAK_REFRESH_MIN:
         _se0 = _strategy_economy(state)
