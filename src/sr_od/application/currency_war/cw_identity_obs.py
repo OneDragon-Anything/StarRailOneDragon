@@ -263,13 +263,26 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
     return out
 
 
-def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> list[BenchChar]:
-    """舞台已上阵角色(前排 4 + 后排 6)→ list[BenchChar](position_pref=front/back)。
+def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates,
+                        deploy_cap: int | None = None) -> list[BenchChar]:
+    """舞台已上阵角色(前排 4 + 后排 N)→ list[BenchChar](position_pref=front/back)。
 
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
+    deploy_cap(r75 布局表):后排槽位数,选 ``cw_back_layout.BACK_ROW_LAYOUTS`` 布局 ——
+    **槽位变化时布局整体重排非尾部追加**(用户 2026-08-19 口述;8 槽实拍位1 x428 vs
+    6 槽 x604),旧固定「后排-1..6」在 7/8 槽局全错位。None → 从帧读 ``read_deploy_cap``,
+    读不到 → 6 槽基线(旧行为)。
     """
+    from sr_od.application.currency_war.cw_back_layout import (
+        back_row_slot_rects_ctx,
+        fallback_back_slots,
+    )
+    from sr_od.application.currency_war.cw_observation import read_deploy_cap
+    if deploy_cap is None:
+        deploy_cap = read_deploy_cap(ctx, screen)
+    back_slots = back_row_slot_rects_ctx(ctx, deploy_cap or 6) or fallback_back_slots()
     return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
-            + identify_slots(screen, templates, _ctx_slots(ctx, '后排', 6), 'back'))
+            + identify_slots(screen, templates, back_slots, 'back'))
 
 
 def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> list[BenchChar]:
