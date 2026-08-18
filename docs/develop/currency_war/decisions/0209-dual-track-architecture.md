@@ -46,7 +46,7 @@ Accepted(2026-08-18 r37-r47 用户指导定稿;接线批待做)
   补给0.8/遭遇0.6/奖励0.4;ready=领先线≥3.0)
 - `COMMIT_DEADLINE_T=12`(P2-3 强制定型)、`EARLY_POP_CAP=5`(P1 五人口攒息)
 
-### 接线批(待做,统一实施后全量测试)
+### 接线批(已全部实施,r51-r52)
 
 1. **信号喂入**:update_target 各信号到达时调 CommitSignals.add
    (词缀=mechanics_fit 分/投资策略=affinity 表/节点产出 handler 挂点)
@@ -59,6 +59,9 @@ Accepted(2026-08-18 r37-r47 用户指导定稿;接线批待做)
    定型后才 rush_level(与 r16 切流咬合)
 6. **字段换血(API 口径)**:key_equips←carry_equips 频次/form_tiers 分支比←
    traits 分布/core_chars←units 频次(星期日 217/274 核)/star_goals←3星率
+7. **牌池压缩买(r52 用户指导)**:「其他不买」的例外——追猎费级同费的
+   非目标卡,保息(买后利息档不降)前提下买入压池(降分母提命中率),
+   后续卖出净损 0-1;目标牌三层动态语义(缺谁追谁/基本 2★/牌运 3★)
 
 ## Consequences
 
