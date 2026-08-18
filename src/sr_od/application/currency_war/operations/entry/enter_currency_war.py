@@ -75,7 +75,11 @@ class EnterCurrencyWar(SrOperation):
         # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地,仍在加载)→ 重点击。
         # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
         # → 无分支命中 → 死循环重试(2026-08-04 全流程跑 37x 重试失败根因)。
-        if self.round_by_ocr(screen, '前往参与').is_success:
+        # ⚠️ lcs_percent=0.7 防误配(2026-08-19 实测事故):朝露公馆大世界左侧任务追踪文本
+        # 「请前往匹诺康尼-飞翔时针号」与「前往参与」LCS=前往(2/4=0.5)恰过默认阈值 → 存在性检查
+        # 假阳性 → 永远走本分支重点击 → F 分支被饿死,对局 8s 内失败。真按钮 OCR 4/4(一字形变 3/4=0.75),
+        # 0.7 同时容忍形变与拒绝该假阳性;round_by_ocr_and_click 有 difflib 预筛不受此扰。
+        if self.round_by_ocr(screen, '前往参与', lcs_percent=0.7).is_success:
             return self.round_by_ocr_and_click(screen, '前往参与', success_wait=2)
 
         # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白
@@ -92,8 +96,9 @@ class EnterCurrencyWar(SrOperation):
 
         # 「前往参与」把角色传送到朝露公馆入口附近(大世界旷野),需按 F(交互)进货币战争大厅。
         # 判定:画面有「货币战争」(入口交互提示)且不在指南页(无「前往参与」)→ 按 F。
-        if (self.round_by_ocr(screen, '货币战争').is_success
-                and not self.round_by_ocr(screen, '前往参与').is_success):
+        # lcs_percent=0.7 同上(防「请前往匹诺康尼…」任务追踪假阳性饿死本分支)。
+        if (self.round_by_ocr(screen, '货币战争', lcs_percent=0.7).is_success
+                and not self.round_by_ocr(screen, '前往参与', lcs_percent=0.7).is_success):
             log.info('[cw-entry] 朝露公馆入口(传送后)→ 按 F(交互)进货币战争大厅')
             self.ctx.controller.btn_tap(self.ctx.controller.game_config.key_interact)
             return self.round_retry(wait=2)
