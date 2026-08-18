@@ -97,6 +97,10 @@ class DefaultCwStrategy(CwStrategy):
     def update_target(self, state: GameState, session: StrategySession, config) -> None:
         """战略层:首轮 ``select_comp``;其后 ``maybe_pivot``,无 pivot 保持(等价现 shop.py 逻辑,
         但状态进 ``session.target_comp``,非 class-attr)。"""
+        # ADR-0209:CommitSignals 惰性建(避免 default_factory 环形导入)
+        if session.commit_signals is None:
+            from sr_od.application.currency_war.cw_transition import CommitSignals
+            session.commit_signals = CommitSignals()
         # 简报词缀注入:read_game_state 不读简报(已过),从 session.briefing_affixes 设 state.enemy_affixes,
         # 经 current_enemy_mechanics → ScoreContext.mechanics → select_comp/maybe_pivot 的 mechanics_fit。
         if session.briefing_affixes:
@@ -112,6 +116,23 @@ class DefaultCwStrategy(CwStrategy):
         if session.active_env:
             state.active_env = session.active_env
         score_ctx = cw_comps.make_score_context(state)
+        # ===== ADR-0209 信号喂入(接线 1/6):CommitSignals 累积各源的 comp 分 =====
+        # 词缀信号(一次;开局已见过就只喂一次)、商店供给(每回合弱证据)。
+        # 投资策略/环境/节点产出的喂点在各自 handler(见 decide_invest/supply 等)。
+        if not getattr(session, '_affix_signal_fed', False) and session.briefing_affixes:
+            from sr_od.application.currency_war.cw_comps import comp_score as _cs
+            session.commit_signals.add('briefing_affix', {
+                c.name: _cs(c, state, score_ctx) for c in cw_comps.COMP_LIBRARY})
+            session._affix_signal_fed = True
+        # 商店供给信号(每回合):各线核心阵营在 shop 的可买性 → 供给分
+        if state.shop:
+            _supply_scores: dict[str, float] = {}
+            for c in cw_comps.COMP_LIBRARY:
+                s = cw_comps.shop_supply(c, state)
+                if s > 0:
+                    _supply_scores[c.name] = s
+            if _supply_scores:
+                session.commit_signals.add('shop_supply', _supply_scores)
         # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。
         # (shop_supply<1.0 = shop 无 target 阵营卡;=1.0 = 本回合买得到 → drought 归 0;正常 shop 波动不会累积)
         DROUGHT_BAIL: int = 5   # T#97:放宽(3 太激进 —— shop 随机 3 轮无阵营卡是正常波动不该弃 target;5 容忍随机,稳 commit)
@@ -209,9 +230,25 @@ class DefaultCwStrategy(CwStrategy):
         ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
         comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
         行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
-        概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。"""
+        概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。
+        ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
+        affinity 表把所选卡映射到 comp 分贡献)。"""
         _tgt = session.target_comp
-        return cw_events.decide_event(options, config, state, target_comp=_tgt)
+        pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
+        # 信号喂入:所选卡对各线的 affinity → comp 分贡献
+        try:
+            from sr_od.application.currency_war.cw_comps import AUGMENT_COMP_AFFINITY
+            src = 'invest_strategy' if kind == 'strategy' else 'invest_env'
+            scores: dict[str, float] = {}
+            for opt in options:
+                aff = AUGMENT_COMP_AFFINITY.get(opt, {})
+                for comp_name, v in aff.items():
+                    scores[comp_name] = max(scores.get(comp_name, 0.0), v)
+            if scores:
+                session.commit_signals.add(src, scores)
+        except Exception:   # noqa: BLE001  信号喂入 best-effort
+            pass
+        return pick
 
     def decide_supply(self, options: list[SupplyOption], state: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
