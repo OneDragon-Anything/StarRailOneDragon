@@ -1043,12 +1043,27 @@ def _best_improving_action(
     # 模拟递推保证金约束;骨架买分支(上方 return)是同类语义的强化版,不叠加。
     # ⚖️ 适用域 = **双轨期**(r1/r2 压缩是过渡阵容的牌库浓缩,§7-1);已 commit(定型)后
     # off-target 便宜牌属 spread,不扫(t97 语义:commit+shop 无 target → 不买,等 Refresh)。
+    # r113(局31 实证修正):扫尾原为无差别放行(cost≤2 全买,「不问费级归属」)——
+    # 把预囤的「散件不买」完全绕过(局31 r1 全部 5 张散件由此买入,框架启动又被稀释)。
+    # 压缩语义保持,但**框架件优先**:同为 1/2 费压缩牌,carry/partial 框架件先入,
+    # 散件仅余量垫底(压缩价值=抽噪声提率,框架件入袋同时完成预囤,双重价值)。
     if _dual:
         try:
             _sim = state
             for _a in best:
                 _sim = simulate(_sim, _a)
-            for c in state.shop:
+            from sr_od.application.currency_war.cw_transition import (
+                TRANSITION_PACK as _TP2,
+            )
+            def _hoard_rank(_card) -> int:
+                _ent = _TP2.get(_card.name)
+                if _ent is None:
+                    return 2   # 散件(垫底)
+                if _ent[1] in ('carry', 'partial'):
+                    return 0   # 框架核心件(最优先)
+                return 1       # drop/通用(中间)
+            _shop_sorted = sorted(state.shop, key=_hoard_rank)
+            for c in _shop_sorted:
                 _cost = card_cost(c)
                 if c.name and c.name in {getattr(getattr(a, 'card', None), 'name', None) for a in best}:
                     continue   # best 已含的牌不重复买
