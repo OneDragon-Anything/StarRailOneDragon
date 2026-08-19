@@ -332,6 +332,7 @@ def _stash_form_progress(target_comp: Comp, state: GameState) -> float:
     ≤50 攒息,兴趣引擎是全程经济基线,见 user_playstyle [17]/[2])。
     本函数把 bench 囤件计入阵营进度(囤着的 target 件是成型资产,不是未开始)。
     """
+    from sr_od.application.currency_war.cw_comps import clamp
     if not target_comp.form_tiers:
         return 0.0
     bench_f: dict[str, int] = {}
@@ -348,8 +349,7 @@ def _stash_form_progress(target_comp: Comp, state: GameState) -> float:
         n += 1
     if n == 0:
         return 0.0
-    from one_dragon.utils import calc_utils
-    return calc_utils.clamp(total / n, 0.0, 1.0)
+    return clamp(total / n, 0.0, 1.0)
 
 
 def _should_save_for_interest(state: GameState, config, target_comp: Comp | None) -> bool:
