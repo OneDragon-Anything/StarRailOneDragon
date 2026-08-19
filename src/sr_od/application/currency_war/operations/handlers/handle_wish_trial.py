@@ -33,7 +33,9 @@ class HandleWishTrial(SrOperation):
     FIRST_CARD: ClassVar[Point] = Point(660, 340)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, op_name='货币战争-祈愿试炼')
+        # r116 热修(局33 实证:r104 重写本类时漏传 ctx → 祈愿试炼触发即崩,
+        # loop 空转 553 iter;签名对齐其他 handler)
+        SrOperation.__init__(self, ctx, op_name='货币战争-祈愿试炼')
 
     def _read_objectives(self, screen) -> list[str]:
         """OCR 各卡 objective 文字 → 按 x 近邻分流到卡槽。"""
