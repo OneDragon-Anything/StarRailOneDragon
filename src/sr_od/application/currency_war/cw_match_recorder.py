@@ -79,13 +79,16 @@ def extract_frame(ctx, img, templates) -> dict:
     try:
         st = read_game_state(ctx, img)
         if st is not None:
-            rec.update(gold=st.gold, hp=st.hp, level=st.level,
+            # r92(redesign 101):hp_readable 保真位必带——read_game_state 在 HP 失读时
+            # 兜底 hp=100(hp_readable=False),recorder 是画面真值对拍语料,混入假 100
+            # 会污染 bot vs 人类 HP 曲线对拍(r68 hp 毒化同族)。
+            rec.update(gold=st.gold, hp=st.hp, hp_readable=bool(st.hp_readable),
+                       level=st.level,
                        board=dict(st.board), bench_full=st.bench_is_full())
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
     try:
         front = read_deployed_chars(ctx, img, templates)
-        [c for c in front if c.position_pref == 'back']
         rec['deployed'] = [
             {'name': c.char_id, 'star': c.star, 'row': c.position_pref, 'slot': c.slot}
             for c in front]
@@ -159,15 +162,21 @@ def record_live(session: str = '', interval: float = 0.8) -> None:
 
 
 def replay_dir(dir_path: Path) -> None:
-    """离线重放:对已有截图目录逐帧提取(frames.jsonl 不存在时生成;存在则 frames_v2.jsonl)。"""
+    """离线重放:对已有截图目录逐帧提取(frames.jsonl 不存在时生成;存在则版本号递增)。
+
+    r92(redesign 101):旧「存在则写 frames_v2」在 v2 已存在时仍 'w' 覆盖 → 第三次
+    重放丢第二次结果(换阈值对拍迭代场景实损)。修:版本号递增(frames_v2/v3/…)。
+    """
     from sr_od.context.sr_context import SrContext
 
     ctx = SrContext()
     ctx.init_by_config()
     templates = load_avatar_templates(Path('assets/template/currency_war/portrait_plaza'))
     jsonl = dir_path / 'frames.jsonl'
-    if jsonl.exists():
-        jsonl = dir_path / 'frames_v2.jsonl'
+    _ver = 2
+    while jsonl.exists():
+        jsonl = dir_path / f'frames_v{_ver}.jsonl'
+        _ver += 1
     frames = sorted(p for p in dir_path.glob('*.png'))
     print(f'[recorder] replay {len(frames)} frames -> {jsonl.name}')
     with jsonl.open('w', encoding='utf-8') as f:
