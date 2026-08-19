@@ -21,9 +21,10 @@ from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
-# ⚠️ core 含 partial(爻光/瓦尔特/腾荒)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追)。
+# ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
+# 瓦尔特/腾荒 r100 已从 TRANSITION_PACK 移除,勿引用)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
-#             列车 = 4列车(数据口径主流档)。
+#             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝(r102)。
 _RECIPES: dict[str, Comp] = {
     '仙舟': Comp(
         name='过渡·仙舟配方', factions=['仙舟'],

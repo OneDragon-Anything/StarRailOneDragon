@@ -122,6 +122,14 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
         ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
         if ent and ent[0] in counts:
             counts[ent[0]] += 1
+    # r107 审计A:持有权单独存一份——「保持/翻转」判定只认持有(整权),
+    # 防 shop 半权蒸发导致现任框架闪烁回退 ''(买→不上→被当散牌卖的 r70
+    # 历史病回归)。启动判定仍用合并权。
+    owned = dict.fromkeys(FRAMEWORKS, 0)
+    for bc in (*deployed, *bench):
+        ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
+        if ent and ent[0] in owned:
+            owned[ent[0]] += 1
     if shop:
         for c in shop:
             ent = TRANSITION_PACK.get(getattr(c, 'name', ''))
@@ -132,11 +140,19 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     # 有意为之:同计数时选数据上更主流的框架。
     # r105:启动门槛从「持有 ≥2」放宽为「合并权 ≥2」(持有 1+在售 2 即启动);
     # r106:启动门 1.5(预囤策略在位后足够;纯 shop 1.0 仍不够)。
-    # 滞后门槛同基(challenger 合并权领先现任 ≥1 才换,防 shop 噪声翻转)。
+    # r107 审计A:**选定与保持解耦**——合并权 <1.5 时,现任持有权 ≥1 仍保持
+    # (shop 半权蒸发不丢框架);翻转门 = 挑战者**持有权**领先现任 ≥1(纯 shop
+    # 噪声翻不动),shop 半权只参与「谁最先过启动线」。
     if counts[fw] < 1.5:
+        if current and current in owned and owned[current] >= 1:
+            return current   # 现任手里有真件,保持(防闪烁回退 '')
         return ''
-    if current and current in counts and counts[current] >= counts[fw] - 1.0:
-        return current   # 滞后:现任未被领先 ≥1 → 保持(防 shop 噪声每轮翻转)
+    if current and current in owned and current in counts:
+        _challenger_owned = owned[fw]
+        if owned[current] >= _challenger_owned and owned[current] >= 1:
+            return current   # 现任持有未被挑战者持有领先 → 保持
+        if owned[current] >= 1 and _challenger_owned < owned[current] + 1:
+            return current   # 挑战者持有未领先 ≥1 → 保持(r72 滞后原语义,持有权版)
     return fw
 
 
@@ -230,8 +246,10 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     """买牌评分用:角色在过渡框架中的价值(carry>partial>drop;同框架+阵营契合加成)。
 
     framework 传当前选定的过渡框架('仙舟'/'列车'),同框架牌加成;
-    ''(未定框架)= **预囤模式**(r106:框架件按档位全分——见件就囤,持有最多
-    者启动;MC 2000 局实证预囤把启动率从 0.5% 拉到 99.9% @r1.4)。散件恒低分。
+    ''(未定框架)= **预囤模式**(r106:见框架件就囤,持有最多者启动;MC 2000 局
+    实证预囤把启动率从 0.5% 拉到 99.9% @r1.4)。散件恒低分。
+    r107 审计B:预囤只对 **carry/partial**(囤了围绕它走);drop 档返 0
+    (应急件,囤了 P1 末就卖 = 浪费金,与 recipe 追买口径一致)。
     """
     ent = TRANSITION_PACK.get(char_id)
     if ent is None:
@@ -239,6 +257,8 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     else:
         fw, tier = ent
         base = {'carry': 1.0, 'partial': 0.6, 'drop': 0.4}.get(tier, 0.3)
+        if not framework and tier == 'drop':
+            return 0.0   # 预囤模式不囤 drop(r107 审计B)
         if fw == framework:
             base += 0.3   # 同框架集中
         elif fw == '通用':

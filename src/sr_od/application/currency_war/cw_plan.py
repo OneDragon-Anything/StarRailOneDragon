@@ -229,8 +229,12 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
     # trait 型无人主 faction——希儿囤 bench 未上场时,旧口径 counts 无「量子同频」
     # → 买符玄被拒)。与 board 侧(OCR 多羁绊计数)口径对齐:同阵营的 bench 件都算
     # 配方方向证据。
+    # r107 审计D:并集时**排除该件主阵营**——_bench_faction_counts 已按 bc.faction
+    # 计过一次,_char_synergies 又含主阵营 → 双计把持有 1 张虚抬成 2,评审Y1 门
+    # (买后达激活档)提前放行,恰是要拦的「不激活白占位」。
     for _bc in state.bench:
-        for _f in _char_synergies(getattr(_bc, 'char_id', '')):
+        for _f in (_char_synergies(getattr(_bc, 'char_id', ''))
+                   - {getattr(_bc, 'faction', '')}):
             counts[_f] = counts.get(_f, 0) + 1
     # r95 配方自举豁免:当先框架的目标阵营(已有 ≥1 即在配方向上)→ 放行
     from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
@@ -339,9 +343,13 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
         # r72 口径对齐(review #3):三侧统一「当先框架非 drop + 通用件」——
         # 散件 drop(艾丝妲/佩拉)不自动上(应急件,op 侧同口径);通用 carry
         # (千冶·刃 29%→64%)三侧都认。框架由 plan(framework=)/session 单一源。
+        # r107 审计C:白名单从 FRAMEWORKS 单一源派生(r102 加量子时此处硬编码
+        # 遗漏 → 希儿/缇宝/符玄双轨期囤 bench 不上场,量子同频 trait 型连
+        # 底部兜底都接不住)。
+        from sr_od.application.currency_war.cw_transition import FRAMEWORKS as _FWS
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK as _TP
         _e = _TP.get(bc.char_id)
-        if _e is not None and _e[0] in ('仙舟', '列车', '通用') and _e[1] != 'drop':
+        if _e is not None and (_e[0] in _FWS or _e[0] == '通用') and _e[1] != 'drop':
             return True
     return _bench_faction_counts(state).get(bc.faction, 0) >= 2
 
