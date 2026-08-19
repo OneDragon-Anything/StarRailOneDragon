@@ -36,13 +36,25 @@ def _material_value(name: str) -> int:
 
 
 def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
-    """武装箱 4 选 1 选卡(公用:备战箱/节点弹窗同下游;ADR-0143 前简化共用)。
+    """武装箱 4 选 1 选卡(r104 起委托策略模块 decide_box_card;保留签名兼容)。
 
-    target_comp.key_equips 命中优先 → 合成材料通用性最高 → None(调用方兜底第 1 卡)。
+    策略层打分:key_equips 命中 +100 / key 材料两跳 +30 / 材料通用性;
+    无 match(局外)回落旧内联逻辑。返回选中的卡名(None=调用方兜底第1卡)。
     """
     if not names:
         return None
-    match = ctx.cw_match
+    match = getattr(ctx, 'cw_match', None)
+    if match is not None:
+        try:
+            from sr_od.application.currency_war.cw_state import GameState
+            _st = match.session.last_state or GameState()
+            idx = match.strategy.decide_box_card(
+                names, _st, match.session, getattr(match, 'config', None))
+            if 0 <= idx < len(names):
+                return names[idx]
+        except Exception:   # noqa: BLE001  策略失败回落旧逻辑
+            pass
+    # 旧内联回落(key_equips → 材料通用性)
     if match is not None and match.session.target_comp is not None:
         key_equips = set(match.session.target_comp.key_equips or [])
         for n in names:

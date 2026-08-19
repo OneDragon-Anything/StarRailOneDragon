@@ -24,6 +24,8 @@ from sr_od.application.currency_war.cw_events import (
     MegastarPick,
     PartnerOption,
     PartnerPick,
+    PlannerOption,
+    PlannerPick,
     SupplyOption,
     SupplyPick,
 )
@@ -510,6 +512,117 @@ class DefaultCwStrategy(CwStrategy):
             if o.char_id and o.char_id in wants:
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
+
+    def decide_planner(self, options: list[PlannerOption], state: GameState,
+                       session: StrategySession, config) -> PlannerPick:
+        """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
+
+        升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
+        session.target_comp 决定银狼线加成。"""
+        return cw_events.decide_planner(options, state, session.target_comp)
+
+    def decide_star_tome(self, options: list[str], state: GameState,
+                         session: StrategySession, config) -> int:
+        """星徽秘典四选一(r104 接入策略模块;原 loop 内联 board 匹配迁此)。
+
+        打分:①target_comp.all_factions 命中(终局线需要的阵营星徽 = +40);
+        ②board 已有该阵营(板上已有=边际价值高,board 计数 ×8);
+        ③当前配方框架阵营命中(双轨期过渡配方需要,+15)。无命中 fallback idx=0。
+        返回 options 索引。"""
+        if not options:
+            return 0
+        fw = getattr(session, 'transition_framework', '')
+        _fw_facs: set[str] = set()
+        if fw:
+            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        _tgt_facs: set[str] = set()
+        if session.target_comp is not None:
+            _tgt_facs = set(session.target_comp.all_factions or [])
+        best_i, best_s = 0, -1.0
+        for i, name in enumerate(options):
+            s = 0.0
+            from one_dragon.utils import str_utils
+            if name in _tgt_facs:
+                s += 40.0
+            hit = next((b for b, n in (state.board or {}).items()
+                        if n > 0 and str_utils.find_by_lcs(b, name, percent=0.8)), None)
+            if hit is not None:
+                s += 8.0 * (state.board or {})[hit]
+            if name in _fw_facs:
+                s += 15.0
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
+
+    def decide_wish_trial(self, options: list[str], state: GameState,
+                          session: StrategySession, config) -> int:
+        """祈愿试炼选卡(r104 接入策略模块;原固定第1张)。
+
+        options = 各卡 objective 文字(OCR)。打分:①金币类(直接经济,阵容无关
+        稳妥)+25;②target/框架阵营相关词命中 +20;③「刷新/购买」类操作向
+        (与 DP 攒息协同)+10;无信息 fallback idx=0。返回索引。"""
+        if not options:
+            return 0
+        _tgt_facs: set[str] = set()
+        if session.target_comp is not None:
+            _tgt_facs = set(session.target_comp.all_factions or [])
+        fw = getattr(session, 'transition_framework', '')
+        _fw_facs: set[str] = set()
+        if fw:
+            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        best_i, best_s = 0, -1.0
+        for i, obj in enumerate(options):
+            s = 0.0
+            if '金币' in obj:
+                s += 25.0
+            if any(f in obj for f in (_tgt_facs | _fw_facs)):
+                s += 20.0
+            if '刷新' in obj or '购买' in obj:
+                s += 10.0
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
+
+    def decide_box_card(self, names: list[str], state: GameState,
+                        session: StrategySession, config) -> int:
+        """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块;原 pick_box_card 内联迁此)。
+
+        打分:①target.key_equips 命中 +100(成型加速压倒一切);
+        ②合成材料通用性(_material_value 配方数;生命之花 7/轮滑鞋 6/光能电池 6);
+        ③target.key_equips 的合成材料(两跳:该材料能合出 key_equip)命中 +30。
+        无信息 fallback idx=0。返回索引(调用方点卡)。"""
+        if not names:
+            return 0
+        from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
+            _material_value,
+        )
+        _key: set[str] = set()
+        if session.target_comp is not None:
+            _key = set(session.target_comp.key_equips or [])
+        # key_equip 的合成材料(两跳)
+        _key_mats: set[str] = set()
+        if _key:
+            try:
+                from sr_od.application.currency_war.cw_equipment import EQUIPMENTS
+                for ke in _key:
+                    eq = EQUIPMENTS.get(ke)
+                    for m in getattr(eq, 'materials', ()) or ():
+                        _key_mats.add(m)
+            except Exception:   # noqa: BLE001  材料表缺失不加分
+                pass
+        best_i, best_s = 0, -1.0
+        for i, n in enumerate(names):
+            s = 0.0
+            if n in _key:
+                s += 100.0
+            if n in _key_mats:
+                s += 30.0
+            s += float(_material_value(n))
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
     # ===== 备战决策环步级决策(doc 15 §5.1-5.3 参考实现;P1)=====
 
     def decide_prep_action(self, obs, session: StrategySession, config):

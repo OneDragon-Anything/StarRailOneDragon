@@ -175,16 +175,14 @@ class CurrencyWarRunLoop(SrOperation):
             _m.session.bail_reason_counts.pop(reason, None)
 
     def _handle_star_tome_pick(self, screen) -> None:
-        """星徽秘典四选一(2026-08-16 建档):OCR 四卡名 → 选 board 阵营匹配卡,无匹配 fallback 卡1。
+        """星徽秘典四选一(2026-08-16 建档;r104 接入策略模块 decide_star_tome)。
 
         卡名 OCR 在卡头带(四个卡名 y≈277 行,卡 x 中心 ≈ 660/950/1240/1530);「XX星徽」名去
-        「星徽」后缀即阵营名。板上有该阵营 → 优先(星徽给该阵营计数,板上已有=边际价值高)。
+        「星徽」后缀即阵营名。策略层打分:target 阵营/board 已有/配方框架;无命中 fallback 卡1。
         实测点卡即选(无需确认按钮),弹窗自关。
         """
         try:
-            board: dict[str, int] = {}
-            if self.ctx.cw_match is not None and self.ctx.cw_match.session.last_state is not None:
-                board = dict(self.ctx.cw_match.session.last_state.board or {})
+            _match = self.ctx.cw_match
             ocr = self.ctx.ocr_service.get_ocr_result_list(screen, crop_first=False)
             cards: list[tuple[str, int]] = []   # (阵营名, x中心)
             for o in ocr:
@@ -195,14 +193,14 @@ class CurrencyWarRunLoop(SrOperation):
             cards.sort(key=lambda c: c[1])
             pick_x = 660   # fallback 卡1
             pick_name = '(fallback卡1)'
-            # 匹配用 LCS(review P3:卡名艺术字形变 → 精确 in 静默失配恒 fallback;0.8 容字变形)
-            from one_dragon.utils import str_utils
-            for faction, x in cards:
-                hit = next((b for b, n in board.items()
-                            if n > 0 and str_utils.find_by_lcs(b, faction, percent=0.8)), None)
-                if hit is not None:
-                    pick_x, pick_name = x, hit
-                    break
+            if cards and _match is not None:
+                from sr_od.application.currency_war.cw_state import GameState
+                _st = _match.session.last_state or GameState()
+                _cfg = getattr(_match, 'config', None)
+                idx = _match.strategy.decide_star_tome(
+                    [c[0] for c in cards], _st, _match.session, _cfg)
+                if 0 <= idx < len(cards):
+                    pick_x, pick_name = cards[idx][1], cards[idx][0]
             self.ctx.controller.click(Point(pick_x, 300))
             log.info('[cw-loop] 星徽秘典四选一: 候选=%s → 选 %s @(%s,300)',
                      [c[0] for c in cards] or 'OCR未读到', pick_name, pick_x)
