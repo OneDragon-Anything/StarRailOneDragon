@@ -42,6 +42,11 @@ TRANSITION_PACK: dict[str, tuple[str, str]] = {
     '三月七': ('列车', 'carry'),        # 23%→31% 最强贯穿
     '姬子·启行': ('列车', 'carry'),     # 14%→39%
     '花火': ('列车', 'carry'),          # 20%→46%(2费,非 4 费——注册表+plaza 双核实)
+    # —— 量子框架(r102 统一化;希儿 59 帖:主流=3量子+2贝,量子契约/贝概念股环境;
+    # 「过渡=终局雏形」线——carry 档=过渡终局同体,定型零交接)——
+    '希儿': ('量子', 'carry'),          # 3费 Early 69%→Final 贯穿 0.70(来牌即信号)
+    '缇宝': ('量子', 'partial'),        # 2费 48% Early(量子+群攻双 flow)
+    '符玄': ('量子', 'partial'),        # 2费(仙舟阵营+量子 flow,跨框架可留)
     # —— 双框架通用插件 ——
     '千冶·刃': ('通用', 'carry'),       # 19%→51%(Final 反超:最强通用插件)
     # 纯过渡散件(框架外,仅应急)
@@ -49,13 +54,16 @@ TRANSITION_PACK: dict[str, tuple[str, str]] = {
 }
 # 移除记录(r100 复核):瓦尔特(5费 Early 0.2%=终局 core,非过渡件;列车终局 comp
 # 已有)/娜塔莎(0.7%)/佩拉(1.1%)/丹恒·腾荒(6.8%)——Early 资格不足。
+# r102:花火移列车框架不动(她双 flow:列车阵营+量子;框架计数按阵营,量子侧靠
+# 希儿/缇宝/符玄;策略加分统一走 env/augment affinity,不走 pack)。
 
 # 框架 → 目标羁绊(Early 期 form 判定用)
 FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)
     '列车': ('列车同行',),               # 4 列车
+    '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
 }
-FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车')
+FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
 
 
 def in_early_phase(plane: int, committed: bool) -> bool:
@@ -81,8 +89,12 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     列车概念股 126 帖+列车邀请 84 帖):开局环境给框架方向时(portal 名含框架名),
     该框架计数 +3 等效权(开局送件+概率提高 = 数据级先验;普通来牌权压不过它,
     但真金白银买到 4 张对立框架件时仍可翻转——偏置不是锁死)。portal='' 无偏置。
+
+    r102 三框架:量子加入 counts(FRAMEWORKS 单一源;希儿/缇宝/符玄持有计数 +
+    量子契约 portal 偏置)。量子件 3 费为主 → 早期自然不被选(计数起不来),
+    中后期希儿出现即上——时机交给计分,不交给特判(用户定调)。
     """
-    counts = {'仙舟': 0, '列车': 0}
+    counts = dict.fromkeys(FRAMEWORKS, 0)
     if portal:
         for fw in counts:
             if fw in portal:

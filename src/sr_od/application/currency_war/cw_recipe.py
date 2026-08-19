@@ -42,6 +42,15 @@ _RECIPES: dict[str, Comp] = {
         form_tiers={'列车同行': 4},
         strength='A', form_difficulty='easy',
     ),
+    # r102 量子框架(希儿线统一化:walkin 特例通道删除,量子=第三过渡配方;
+    # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
+    '量子': Comp(
+        name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
+        core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
+                    if fw == '量子' and tier in ('carry', 'partial')],
+        form_tiers={'量子同频': 3, '贝洛伯格': 2},
+        strength='A', form_difficulty='easy',
+    ),
 }
 
 
@@ -60,89 +69,33 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
     return fw == framework or fw == '通用'
 
 
-# walkin 白名单(r100h,希儿/万敌 74 篇精读定稿):只有「攻略原文无硬前置措辞 AND
-# 来牌即信号」的线可走来牌双张触发。万敌系剔除——1.17M 赞主玩法是遐蝶燃血流
-# (万敌是挂件非 carry,需要燃血星徽+速8,环境/星徽信号走 env_fit 通道),单挂流
-# 信号是词缀+装备(mechanics_fit 通道),都轮不到「万敌双张」触发。
-WALKIN_ALLOWED_COMPS: frozenset[str] = frozenset({'希儿量子'})
-
-
-def _cheap_carry_walkin(target: Comp | None, state: GameState) -> bool:
-    """r100f 模式B判据:终局线便宜 carry 已到手 → 过渡=终局雏形,开局直接走本线。
-
-    plaza 二次精读实证(per_comp_transition.md 总纲):希儿(3费量子,48帖 Early 69%
-    贯穿 0.70)——本线 core ≤3 费开局就在商店池,「开局拿缇宝花火和希儿组3量子」零切换成本。
-
-    ⚠️ r100g 审计必修(局21 实证触发面失控):旧判据「≥2 cheap core 且持有 1」在
-    COMP_LIBRARY 20 套里 18 套满足,且便宜 core(三月七/花火/千冶·刃)跨 comp 共享
-    → 开局一张三月七就触发任意线 walkin,局21 全程散板。收紧为**双条件**:
-    ①终局主羁绊(form_tiers 最高档阵营)的 cheap 件 ≥2(雏形羁绊可早期成型——
-    量子线的希儿/花火/缇宝同属量子,列车线的三月七/姬子/花火同属列车);
-    ②**已持有该羁绊件 ≥2**(双张起步 = 真雏形信号,单张随机来牌不触发)。
-    贵 carry 线(Archer/瓦尔特 5费)主羁绊 cheap 件天然 <2 → 永不满足,模式A 兜底。
-
-    r100h **白名单**(74 篇精读定稿):只有「攻略无硬前置措辞 AND 来牌即信号」的线
-    可触发(希儿量子,126赞帖自证「商店较早刷出2星希儿」=来牌即开玩)。其余线
-    (遐蝶燃血要星徽/万敌单挂要词缀装备)各走 env/augment/mechanics 信号通道。
-    """
-    if target is None or not target.core_chars or not target.form_tiers:
-        return False
-    if target.name not in WALKIN_ALLOWED_COMPS:
-        return False
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    # 主羁绊 = form_tiers 档位最高的阵营(量子线的 量子同频,列车线的 列车同行)。
-    # ⚠️ 角色归属判 factions ∪ flows(量子同频是 flow 非原生阵营——希儿原生贝洛伯格)。
-    main_fac = max(target.form_tiers.items(), key=lambda kv: kv[1])[0]
-
-    def _in_fac(ch: str) -> bool:
-        o = CHARACTERS.get(ch)
-        if o is None:
-            return False
-        return main_fac in set(getattr(o, 'factions', ()) or ()) | set(getattr(o, 'flows', ()) or ())
-
-    # 该羁绊的 cheap core(≤3费)——雏形成型件
-    cheap_in_fac = [c for c in target.core_chars
-                    if getattr(CHARACTERS.get(c), 'cost', 9) <= 3 and _in_fac(c)]
-    if len(cheap_in_fac) < 2:
-        return False
-    owned = {getattr(bc, 'char_id', '') for bc in (*state.deployed, *state.bench)}
-    return sum(1 for c in cheap_in_fac if c in owned) >= 2
-
+# r102 统一化(用户定调):walkin 特例通道**整体删除**——希儿量子并入第三过渡配方
+# (量子),「过渡=终局雏形」由统一公式自然表达:框架计数(量子件持有)决定配方选择,
+# 策略/环境加分统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
+# 删除物:WALKIN_ALLOWED_COMPS 白名单 / _cheap_carry_walkin 判据 / walkin_latched
+# 滞回 / decision_target 优先级分支——全部是为特例服务的复杂度。
+# (r100f/g/h 教训留 git 历史:特例通道引入触发面失控(局21 散板)、滞回缺失
+# (拆雏形)两个 bug 各修一轮——统一框架一次性消解。)
 
 
 def decision_target(session, state: GameState) -> Comp | None:
-    """决策中心取 target 的**单一入口**(r100):双轨期按四路线喂决策对象。
+    """决策中心取 target 的**单一入口**(r100;消费方零改动)。
 
     用法:update_target/decide_prep 处把 ``session.target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
-    双轨期优先级(r100f 定稿,per_comp_transition.md 三模式总纲):
-    1. **模式B 便宜 carry 雏形**:终局线 core ≤3费×2 且已持有 1+(希儿量子类)→
-       直接喂终局 comp(买本线件即过渡,零切换;modeA 贵线永不触发);
-    2. **模式A 通用配方**:框架已定 → 配方伪 comp(仙舟3/列车4;贵 carry 线的
-       通用过渡包「3仙舟2DOT 扛 P1,P2 一波换」);
-    3. 无框架无雏形 → 终局 comp(散件口径)。
+    双轨期(配方驱动):框架已定 → 配方伪 comp(仙舟/列车/量子三选一,
+    pick_framework 按持有计数+portal 偏置选);无框架 → 终局 comp(散件口径)。
     非双轨(定型/P2+):终局 comp。
 
-    r101 审计必修③(walkin 滞回,5ba9b0a6 A):触发后掉回单张(卖/上场被吃)会
-    立即切回配方 → 配方方向买牌拆量子雏形(卖了希儿线组件买仙舟件)。滞回:
-    触发过一次(session.walkin_latched=终局线名)后,该线在双轨期**保持**
-    (雏形已建立 = 方向承诺;真崩盘走 drought/危机通道,不走牌数波动)。
+    r102:量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,
+    量子板面→希儿量子 final 转变成本≈0(板面即雏形),env/augment 的量子向加分
+    (量子契约/量子星徽/贝概念股)同时抬高配方选择与终局选择。
     """
     if getattr(state, 'dual_track_phase', False):
-        _tgt = getattr(session, 'target_comp', None)
-        # 滞回:已锁定的雏形线保持(仅当它仍是当前 target;换 target = 新承诺重锁)
-        _latched = getattr(session, 'walkin_latched', '')
-        if _latched and _tgt is not None and _tgt.name == _latched:
-            return _tgt
-        if _cheap_carry_walkin(_tgt, state):
-            session.walkin_latched = _tgt.name if _tgt is not None else ''
-            return _tgt
         fw = getattr(session, 'transition_framework', '')
         if fw:
             rc = _RECIPES.get(fw)
             if rc is not None:
                 return rc
-    else:
-        session.walkin_latched = ''   # 定型/进 P2 后锁自动失效
     return getattr(session, 'target_comp', None)
