@@ -443,9 +443,20 @@ class DefaultCwStrategy(CwStrategy):
         """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。"""
         st = self._pseudo_state(obs, session)
         target = session.target_comp
+        # r93 审计 46336415 必修:同名在场预检(游戏规则:场上同名禁双,5.1.7)。
+        # 第14局 r9 实证:藿藿已在场,腾席链a把 bench 藿藿拖向空位 5 次全被游戏拒
+        # (「拖3次源槽未变」×5 → director 屏蔽 → 爻光滞留 bench 到局末)。
+        # cw_plan L807 主循环有同款守卫(`bc.char_id in _dep_ids2: continue`),此处漏。
+        _dep_names = {bc.char_id for bc in st.deployed if bc.char_id}
         # a. deploy 空位(零成本最优):bench 有过 _should_deploy 的角色 → DeployMove
         if obs.deploy_vacancy > 0:
             for bc in list(obs.bench_chars):
+                if bc.char_id and bc.char_id in _dep_names:
+                    continue   # 同名已在场(游戏拒),留 bench 待 3合1 合并
+                # r93 失败记忆:同角色拖拽已被游戏拒过 → 跳过(重试同目标=白烧环步,
+                # 藿藿 5 连败实证;下一候选继续)。备战后对账刷新会自然重置状态。
+                if session.deploy_fail_counts.get(bc.char_id, 0) >= 1:
+                    continue
                 if cw_plan._should_deploy(bc, st, target):
                     row, ok = cw_plan._pick_deploy_row(st, bc, target)
                     if not ok:

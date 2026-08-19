@@ -67,6 +67,7 @@ from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
     ClickSpheres,
     DeferSpheres,
+    DeployMove,
     OpenTome,
     PrepAction,
     PrepActionExecutor,
@@ -559,6 +560,20 @@ class PrepDirector(SrOperation):
             if not isinstance(action, StartBattle):
                 self._blocked.add(key)
                 self._record_exec_obs(key, 'blocked', '恢复无效-状态类')
+                # r93 审计 46336415:DeployMove 被屏蔽 = 落点被游戏拒(同名在场/行限制等)
+                # → 写 session.deploy_fail_counts,策略腾席链跳过该角色(防下轮同卡重提案;
+                # 第14局 r9 藿藿 5 连败实证)。备战场面变化后 heavy 对账自然换候选。
+                try:
+                    if isinstance(action, DeployMove):
+                        _bc = (getattr(match.session, 'tracked_bench_chars', None) or [])
+                        _hit = next((b for b in _bc if b.slot == action.from_slot), None)
+                        if _hit is not None and _hit.char_id:
+                            match.session.deploy_fail_counts[_hit.char_id] = (
+                                match.session.deploy_fail_counts.get(_hit.char_id, 0) + 1)
+                            log.info('[cw-director] DeployMove 失败记忆 %s(腾席链将跳过,换下一候选)',
+                                     _hit.char_id)
+                except Exception:   # noqa: BLE001  记忆 best-effort
+                    pass
             if isinstance(action, ClickSpheres):
                 match.session.defer_count = max(match.session.defer_count, 2)
             if isinstance(action, OpenTome):
