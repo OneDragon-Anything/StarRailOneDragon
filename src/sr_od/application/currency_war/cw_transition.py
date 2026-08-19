@@ -95,6 +95,14 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     r102 三框架:量子加入 counts(FRAMEWORKS 单一源;希儿/缇宝/符玄持有计数 +
     量子契约 portal 偏置)。量子件 3 费为主 → 早期自然不被选(计数起不来),
     中后期希儿出现即上——时机交给计分,不交给特判(用户定调)。
+
+    r105 **开局先有鸡还是先有蛋修正**(局29 实证):旧逻辑 shop 半权只在框架
+    已定后参与滞后判定,开局「持有 0-1 张 → counts<2 → 框架=''」→ 无配方评分
+    引导 → 不买框架件 → 计数永远起不来 = **死锁**。前 6 轮死锁期由压缩买接管,
+    板面 11 角色五阵营散买(r1-r6 实拍),hp 45 才凑齐 2 张启动——掉的血就是
+    死锁代价。修正:**框架未定时,持有整权 + shop 在售半权合并计入启动判定**
+    (1 张持有 + 2 张在售 = 2.0 ≥ 2 即可选定)——店里有三月七就值得选列车,
+    买下后持有权巩固框架,死锁破。已定框架的滞后判定(领先 ≥1 才换)不变。
     """
     counts = dict.fromkeys(FRAMEWORKS, 0)
     if portal:
@@ -110,10 +118,13 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
         for c in shop:
             ent = TRANSITION_PACK.get(getattr(c, 'name', ''))
             if ent and ent[0] in counts:
-                counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权
+                counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权(启动期也计入,r105)
     fw = max(counts, key=lambda k: counts[k])
     # r102 审计③:平局按 dict 序偏仙舟(FRAMEWORKS 首位)——主流先验(32% vs 29%),
     # 有意为之:同计数时选数据上更主流的框架。
+    # r105:启动门槛从「持有 ≥2」放宽为「合并权 ≥2」(持有 1+在售 2 即启动);
+    # 滞后门槛同放宽(challenger 合并权领先现任 ≥1 才换,防 shop 噪声翻转的
+    # 原语义不变——噪声在 shop 半权 0.5 粒度上,领先 1 = 持有级差异,稳)。
     if counts[fw] < 2:
         return ''
     if current and current in counts and counts[current] >= counts[fw] - 1.0:
