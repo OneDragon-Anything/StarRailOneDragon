@@ -17,6 +17,7 @@ from sr_od.application.currency_war.cw_comps import (
     skeleton_factions,
 )
 from sr_od.application.currency_war.cw_economy import (
+    ALL_IN_HP_FLOOR,
     P2_REBUILD_GOLD_FLOOR,
     WIN_STREAK_BREAK_INTEREST,
     _char_synergies,
@@ -337,12 +338,17 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
     r89 息律通用化(用户 2026-08-20 三次定调,663 帖攻略 #145 佐证):**满息即花,节点无关** ——
     「金>50 的每一分都没有存的意义」是全部法则;boss/位面特例删除(旧 boss 特例是二阶概念,
     boss 只是「到时自然满息 + 花的边际价值高」,由 HP 权重与候选排序体现,不该是息律开关)。
+
+    r89b 三变量抉择(r89 后的本门语义,攻略专题实证):未满息时是否破息攒牌 = f(连胜在手?,
+    hp 安全,板强);连胜 ≥ 阈值已破息(下方);**hp < ALL_IN_HP_FLOOR(40,攻略 #153 卖血
+    下限/#62 快死 ALL IN)→ 破息花光成型**(血是通关硬约束,息随时可再攒 —— 旧门槛
+    effective_hp_threshold 职级相关,40 线是攻略明文安全线,两者取严)。
     """
     if state.gold >= INTEREST_THRESHOLD:
         return False
     if state.deployed_count() < state.max_units():
         return False
-    if state.hp < effective_hp_threshold(state):
+    if state.hp < min(effective_hp_threshold(state), ALL_IN_HP_FLOOR):
         return False
     if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
         return False
