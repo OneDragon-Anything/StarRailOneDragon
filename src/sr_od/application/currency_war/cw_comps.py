@@ -1377,6 +1377,17 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state))
     if state.hp < _pivot_hp:
+        # r90c 实证必修(第12局 p2r7 60 秒内两次翻转):危机豁免让 update_target 的
+        # 同轮多次调用绕过冷却(cooldown=round+1 只跨轮生效)→ 同备战环内反复 pivot。
+        # 修:危机路径入口即查冷却(同轮已 pivot 过 → 保持,与 with_progress 分支同门);
+        # 保命优先级不变(hp 危险时信号1/2 仍不参与),只掐「连续翻转」。
+        _sess0 = getattr(ctx, 'session', None)
+        _cd0 = getattr(_sess0, 'pivot_cooldown_until', 0) if _sess0 else 0
+        if state.round_num <= _cd0:
+            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 冷却中(至r%s;同轮已转,'
+                     '连续翻转自激掐断,板面靠买牌/合星/升级补)',
+                     state.plane, state.round_num, state.hp, _pivot_hp, _cd0)
+            return None
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。
         # r68(下一位面预转):过滤扩到 next_plane —— P1 末段保命转线若转进「下位面弱」的
