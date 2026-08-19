@@ -188,8 +188,10 @@ class DefaultCwStrategy(CwStrategy):
             _fw_supply = (cw_comps.shop_supply(
                 type('FW', (), {'factions': list(_fw_fac), 'form_tiers': {}})(), state)
                 if _fw_fac else 1.0)
-            # 框架断供 → 换框架(pick_framework 已有滞后;这里只在「配方完全建不起」
-            # (框架+通用全断 ≥5 轮)时清框架重选——比弃终局线便宜得多(共享件保留)。
+            # 框架断供 → 清框架重选(pick_framework 已有滞后;这里只在「配方框架阵营
+            # 断供 ≥5 轮」时清框架重选——比弃终局线便宜得多(共享件保留)。
+            # 口径:只判框架阵营(仙舟/列车同行);通用件(千冶·刃等跨框架)无阵营可判,
+            # 不在本判定内(断框架阵营但通用件在供 = 配方可维持,不清)。
             session.target_drought = session.target_drought + 1 if _fw_supply < 1.0 else 0
             if session.target_drought >= DROUGHT_BAIL:
                 log.warning('[cw!][target] 双轨框架 %s 连续 %d 轮断供 → 清框架重选'
@@ -486,9 +488,15 @@ class DefaultCwStrategy(CwStrategy):
         return self._main_flow_step(obs, session, config)
 
     def _free_bench_step(self, obs, session: StrategySession, config):
-        """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。"""
+        """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。
+
+        r100 审计必修①:target 改走 decision_target 单一入口——双轨期腾席链的上/卖
+        判据同 plan 路径(配方驱动),消除双路径语义分叉(旧:步级读终局 target →
+        r≥8 终局件上场 + 腾席链 c 无框架 keep 集可卖掉配方 carry)。
+        """
         st = self._pseudo_state(obs, session)
-        target = session.target_comp
+        from sr_od.application.currency_war.cw_recipe import decision_target
+        target = decision_target(session, st)
         # ⚖️ r94:同名在场守卫收口 cw_plan.deploy_legal(全局不变量单一源;5.1.7)。
         # 第14局 r9 实证:藿藿已在场,腾席链a把 bench 藿藿拖向空位 5 次全被游戏拒
         # → director 屏蔽 → 爻光滞留 bench 到局末。_should_deploy 顶部同守卫,

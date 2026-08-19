@@ -31,6 +31,9 @@ _RECIPES: dict[str, Comp] = {
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
+        # r100 审计必修②:过渡期站位(爻光必后台,ADR-0139 规则住在终局 comp,
+        # 配方伪 comp 需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
+        char_positions={'爻光': 'back'},
     ),
     '列车': Comp(
         name='过渡·列车配方', factions=['列车同行'],
