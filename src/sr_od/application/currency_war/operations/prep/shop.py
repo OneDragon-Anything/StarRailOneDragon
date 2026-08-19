@@ -287,7 +287,17 @@ class BuyShopCards(SrOperation):
             _eb: dict[str, float] = {}
             if match.session.target_comp is not None:
                 _eb['fp'] = round(_form_progress(match.session.target_comp, state), 3)
-            cw_telemetry.record_decision(state, target_name, _cand, _eb, actions)
+            # r101 session 态快照(redesign/102:完整决策输入落盘,回放/快照回归用)
+            _sess = match.session
+            _extra = {
+                'sess_framework': getattr(_sess, 'transition_framework', '') or '',
+                'sess_dual_track': bool(getattr(_sess, 'dual_track_phase', False)),
+                'sess_drought': getattr(_sess, 'target_drought', None),
+                'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
+                'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
+                'sess_active_env': getattr(_sess, 'active_env', '') or '',
+            }
+            cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)

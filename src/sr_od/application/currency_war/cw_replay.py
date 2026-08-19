@@ -120,6 +120,20 @@ def main() -> None:
         from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
         tgt = next((c for c in COMP_LIBRARY if c.name == d.get('target_comp')), None)
         sess.target_comp = tgt
+        # r101:session 态快照回填(前提改造落地后,回放的决策输入与实跑一致;
+        # 旧记录无这些字段 → 默认值,行为同前)
+        sess.transition_framework = d.get('sess_framework', '') or ''
+        sess.dual_track_phase = bool(d.get('sess_dual_track') or False)
+        if d.get('sess_drought') is not None:
+            sess.target_drought = int(d['sess_drought'])
+        if d.get('sess_active_env'):
+            sess.active_env = str(d['sess_active_env'])
+        _cs_scores = d.get('sess_commit_scores') or {}
+        if _cs_scores:
+            from sr_od.application.currency_war.cw_transition import CommitSignals
+            if not isinstance(sess.commit_signals, CommitSignals):
+                sess.commit_signals = CommitSignals()
+            sess.commit_signals.scores = {k2: float(v) for k2, v in _cs_scores.items()}
         try:
             actions = strat.decide_prep(st, sess, _Cfg())
             new_s = _fmt(actions)

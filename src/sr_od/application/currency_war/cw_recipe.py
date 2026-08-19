@@ -123,14 +123,26 @@ def decision_target(session, state: GameState) -> Comp | None:
        通用过渡包「3仙舟2DOT 扛 P1,P2 一波换」);
     3. 无框架无雏形 → 终局 comp(散件口径)。
     非双轨(定型/P2+):终局 comp。
+
+    r101 审计必修③(walkin 滞回,5ba9b0a6 A):触发后掉回单张(卖/上场被吃)会
+    立即切回配方 → 配方方向买牌拆量子雏形(卖了希儿线组件买仙舟件)。滞回:
+    触发过一次(session.walkin_latched=终局线名)后,该线在双轨期**保持**
+    (雏形已建立 = 方向承诺;真崩盘走 drought/危机通道,不走牌数波动)。
     """
     if getattr(state, 'dual_track_phase', False):
         _tgt = getattr(session, 'target_comp', None)
+        # 滞回:已锁定的雏形线保持(仅当它仍是当前 target;换 target = 新承诺重锁)
+        _latched = getattr(session, 'walkin_latched', '')
+        if _latched and _tgt is not None and _tgt.name == _latched:
+            return _tgt
         if _cheap_carry_walkin(_tgt, state):
+            session.walkin_latched = _tgt.name if _tgt is not None else ''
             return _tgt
         fw = getattr(session, 'transition_framework', '')
         if fw:
             rc = _RECIPES.get(fw)
             if rc is not None:
                 return rc
+    else:
+        session.walkin_latched = ''   # 定型/进 P2 后锁自动失效
     return getattr(session, 'target_comp', None)

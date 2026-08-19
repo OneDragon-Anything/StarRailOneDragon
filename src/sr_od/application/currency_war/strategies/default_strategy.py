@@ -138,14 +138,27 @@ class DefaultCwStrategy(CwStrategy):
         if state.dual_track_phase:
             from sr_od.application.currency_war.cw_transition import pick_framework
             _portal = (getattr(session, 'active_env', '') or '').strip()
+            _mute_until = getattr(session, 'portal_bias_mute', 0)
             # r100g C-2:清框架后的偏置压制窗内不给 portal(防 pick_framework 立即选回)
-            if state.round_num <= getattr(session, 'portal_bias_mute', 0):
+            if state.round_num <= _mute_until:
                 _portal = ''
-            session.transition_framework = pick_framework(
+            # r101 必修②:禁令窗内(=mute 同窗)被清框架不得重新选定;到期解禁。
+            _ban = (getattr(session, 'framework_clear_ban', '')
+                    if state.round_num <= _mute_until else '')
+            _picked = pick_framework(
                 state.bench, state.deployed, state.shop,
                 current=session.transition_framework, portal=_portal)   # r72 滞后
+            if _picked and _ban and _picked == _ban:
+                # 选回被清框架 → 拒(断供框架不复活);无现任继续未定,板面走散件
+                log.info('[cw][target] 清框架禁令窗:拒绝选回断供框架 %s(r%s≤r%s)',
+                         _picked, state.round_num, _mute_until)
+                _picked = ''
+            session.transition_framework = _picked
+            if not _ban and _picked:
+                session.framework_clear_ban = ''   # 窗外正常选定即清禁令
         else:
             session.transition_framework = ''
+            session.framework_clear_ban = ''
         # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)
         session.stash_comp = None
         if state.dual_track_phase:
@@ -216,15 +229,21 @@ class DefaultCwStrategy(CwStrategy):
             # 不在本判定内(断框架阵营但通用件在供 = 配方可维持,不清)。
             session.target_drought = session.target_drought + 1 if _fw_supply < 1.0 else 0
             if session.target_drought >= DROUGHT_BAIL:
+                _cleared_fw = session.transition_framework
                 log.warning('[cw!][target] 双轨框架 %s 连续 %d 轮断供 → 清框架重选'
                             '(配方重建比终局弃线便宜;终局线不动)',
-                            session.transition_framework, session.target_drought)
+                            _cleared_fw, session.target_drought)
                 session.transition_framework = ''
                 session.target_drought = 0
                 # r100g 审计必修(C-2):portal 局偏置持久(active_env 每轮 +3)会让
                 # 下一轮 pick_framework 立即选回同一框架 → 清框架空转、断供死循环。
                 # 清框架时连带压制 portal 偏置 DROUGHT_BAIL 轮(给重选窗口)。
                 session.portal_bias_mute = state.round_num + DROUGHT_BAIL
+                # r101 审计必修②(5ba9b0a6 C):清标志不够——板面持有的原框架件
+                # 计数还在,mute 窗内 pick_framework 仍按持有件选回原框架(空转
+                # 周期)。清框架时记禁令名,mute 窗内该框架不得被重新选定(断供
+                # 框架不复活;到期自动解禁——板面件还在,持续断供会再次清+续禁)。
+                session.framework_clear_ban = _cleared_fw
         elif session.target_comp is not None:
             _supply = cw_comps.shop_supply(session.target_comp, state)
             session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
@@ -654,6 +673,11 @@ class DefaultCwStrategy(CwStrategy):
         _t = (st.plane - 1) * 9 + st.round_num if (st.plane and st.round_num) else None
         _cur_hp = session.last_state.hp if session.last_state is not None else 100
         st.hp = gated_hp(_cur_hp, session, _t)
+        # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
+        # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)
+        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。单一源在 session
+        # (r73 RC3),此处与 shop 循环态同款拷贝。
+        st.dual_track_phase = bool(getattr(session, 'dual_track_phase', False))
         return st
 
     def _fresh_state(self, obs, session: StrategySession) -> GameState:

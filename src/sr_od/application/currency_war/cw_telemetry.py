@@ -88,6 +88,15 @@ class DecisionTrace:
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
     ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
+    # —— r101 session 态快照(redesign/102 前提改造:回放 harness/快照回归库需要完整
+    # 决策输入;缺这些,单帧重放 plan 会系统性偏差——session 态决定 decision_target
+    # 走哪条路线/攒息门/定型判定)。全可选,旧记录缺省 None 不破坏 schema。
+    sess_framework: str = ""                      # transition_framework(配方路线)
+    sess_dual_track: bool | None = None           # 双轨期(定型与否)
+    sess_drought: int | None = None               # target_drought(断供计数)
+    sess_pivot_cooldown: int | None = None        # pivot_cooldown_until
+    sess_commit_scores: dict[str, float] = field(default_factory=dict)  # CommitSignals 累积分
+    sess_active_env: str = ""                     # 已选投资环境(portal 偏置源)
 
 
 @dataclass
@@ -233,6 +242,13 @@ class TelemetryRecorder:
             trace.active_strategies = list(extra.get('active_strategies', []))
             trace.dp_posture = dict(extra.get('dp_posture', {}))
             trace.ledger_fingerprint = str(extra.get('ledger_fingerprint', ''))
+            # r101 session 态快照(redesign/102 前提改造)
+            trace.sess_framework = str(extra.get('sess_framework', ''))
+            trace.sess_dual_track = extra.get('sess_dual_track')
+            trace.sess_drought = extra.get('sess_drought')
+            trace.sess_pivot_cooldown = extra.get('sess_pivot_cooldown')
+            trace.sess_commit_scores = dict(extra.get('sess_commit_scores', {}))
+            trace.sess_active_env = str(extra.get('sess_active_env', ''))
         if self.enabled:
             if gold_point:
                 self._gold_trajectory.setdefault(run_id, []).append(state.gold)
