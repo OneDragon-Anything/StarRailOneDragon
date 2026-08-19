@@ -44,40 +44,45 @@ class HandlePlannerEvent(SrOperation):
     @operation_node(node_name='处理策划事件', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
         screen = self.screenshot()
-        # 1. OCR 两卡区域,找升费卡
+        # 1. OCR 两卡区域文字(卡描述 y~300-420 带,左卡 x<960 / 右卡 x≥960)
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
-        left_hit = False
-        right_hit = False
+        left_text, right_text = [], []
         for text, mrl in ocr_map.items():
-            if mrl.max is None or self.UPGRADE_COST_TEXT not in text:
+            if mrl.max is None:
                 continue
             cy = mrl.max.center.y
+            cx = mrl.max.center.x
             if not (self.CARD_TEXT_Y_LO <= cy <= self.CARD_TEXT_Y_HI):
                 continue
-            cx = mrl.max.center.x
-            if cx < 960:
-                left_hit = True
-            else:
-                right_hit = True
-        if left_hit:
-            target = self.CARD_LEFT
-            pick = '左卡(升费)'
-        elif right_hit:
-            target = self.CARD_RIGHT
-            pick = '右卡(升费)'
-        else:
-            # 无升费卡(5费升2星=全装备)→ 任选左
-            target = self.CARD_LEFT
-            pick = '左卡(无升费,装备任选)'
-        # 2. 点卡选中
+            (left_text if cx < 960 else right_text).append(text)
+        from sr_od.application.currency_war.cw_events import (
+            PlannerOption,
+            decide_planner,
+        )
+        options = [PlannerOption(idx=0, text=' '.join(left_text)),
+                   PlannerOption(idx=1, text=' '.join(right_text))]
+        # 2. 策略模块决策(r104 用户定调:由策略模块定,handler 不写死)
+        _match = getattr(self.ctx, 'cw_match', None)
+        _tgt = None
+        _st = None
+        if _match is not None:
+            _tgt = _match.session.target_comp
+            _st = _match.session.last_state
+        from sr_od.application.currency_war.cw_state import GameState
+        pick = decide_planner(options, _st or GameState(), _tgt)
+        target = self.CARD_LEFT if pick.idx == 0 else self.CARD_RIGHT
+        log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
+                 pick.reason, '左' if pick.idx == 0 else '右',
+                 options[pick.idx].text[:24])
+        # 3. 点卡选中
         self.ctx.controller.click(target)
         time.sleep(1.2)   # 等选中动画
-        # 3. 点确认(screen_info 按钮-骇入确认 区中心;若确认已自动跳过此点无害)
+        # 4. 点确认(screen_info 按钮-骇入确认 区中心;若确认已自动跳过此点无害)
         self.ctx.controller.click(Point(960, 615))
         time.sleep(1.5)   # 等面板
-        # 4. 若弹出「属性详情」面板 → 关闭
+        # 5. 若弹出「属性详情」面板 → 关闭
         screen2 = self.screenshot()
         ocr2 = self.ctx.ocr_service.get_ocr_result_map(
             image=screen2, rect=None, color_range=None, crop_first=False,
@@ -85,7 +90,4 @@ class HandlePlannerEvent(SrOperation):
         if any('属性详情' in t for t in ocr2):
             self.ctx.controller.click(self.DETAIL_CLOSE)
             time.sleep(0.8)
-            log.info('[cw][planner] 策划事件:%s → 已选+确认+关详情面板', pick)
-        else:
-            log.info('[cw][planner] 策划事件:%s → 已选+确认(无详情面板)', pick)
-        return self.round_success(status=f'策划事件已处理({pick})')
+        return self.round_success(status=f'策划事件已处理({pick.reason})')

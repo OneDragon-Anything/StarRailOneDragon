@@ -444,3 +444,77 @@ class PartnerPick:
     """decide_partner 返回:选第几个候选 + 原因。"""
     idx: int
     reason: str = ""
+
+
+# ===== 银狼策划事件(decide_planner;r104 用户定调「接入策略模块,由策略模块定」;
+#      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节)=====
+
+@dataclass
+class PlannerOption:
+    """一个策划选项(OCR 卡文字)。
+
+    text:卡描述全文(如「提升费用至4费,变为1星银狼LV.999」/「使后续节点【弱化】…」/
+    装备名+效果)。「提升费用」字样判升费卡由本模块打分表达,handler 不写死。
+    """
+    idx: int
+    text: str = ''
+
+
+@dataclass
+class PlannerPick:
+    """decide_planner 返回:选第几张卡 + 原因。"""
+    idx: int
+    reason: str = ''
+
+
+def decide_planner(options: list[PlannerOption], state: GameState,
+                   target_comp: Comp | None = None) -> PlannerPick:
+    """银狼「我来当策划」二选一策略(r104)。
+
+    用户定调(2026-08-20):**必接策略模块由它定**(handler 不写死默认),虽结论
+    几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达:
+
+    - **升费卡**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
+      滚强度)。基础 100;target 银狼线(狼尊欢愉/量子系)再 +30;**例外降权**:
+      target 不含银狼线且银狼确定不在场(board 有信息但无银狼)→ -60(投资无处兑现)。
+    - **弱化类**(「弱化」/「降低敌人」):全场即时战力,基础 55;HP<40 +20。
+    - **装备类**(其余):_equip_value 回落(装备注册表);target key_equip 命中 +15。
+    - 未识别文字:0 分(idx 顺序兜底)。
+    """
+    _tgt_chars = set(target_comp.core_chars) if target_comp is not None else set()
+    _tgt_factions = set(target_comp.factions) if target_comp is not None else set()
+    has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
+        _tgt_factions & {'欢愉', '量子同频'})
+    # 在场判定:bench+deployed 的 char_id(信息缺失=空列表→不降权,保守)
+    _pool = list(getattr(state, 'deployed', None) or []) + list(getattr(state, 'bench', None) or [])
+    _owned = {getattr(bc, 'char_id', '') for bc in _pool}
+    wolf_owned = ('银狼LV.999' in _owned) if _owned else True
+
+    best_idx, best_score, best_reason = 0, -1.0, ''
+    for opt in options:
+        score, reason = 0.0, ''
+        t = opt.text
+        if '提升费用' in t:
+            score, reason = 100.0, '升费(滚动投资前提)'
+            if has_wolf_line:
+                score += 30.0
+                reason += '+银狼线'
+            elif not wolf_owned:
+                score -= 60.0
+                reason += '-银狼不在场无处兑现'
+        elif '弱化' in t or '降低敌人' in t:
+            score, reason = 55.0, '全场弱化(即时战力)'
+            if state.hp < 40:
+                score += 20.0
+                reason += '+低血保命'
+        else:
+            score = float(_equip_value(t)) if t else 0.0
+            reason = f'装备({t[:8]})' if t else '未识别'
+            if t and target_comp is not None:
+                _ke = getattr(target_comp, 'key_equips', None) or []
+                if any(e in t for e in _ke):
+                    score += 15.0
+                    reason += '+key_equip'
+        if score > best_score:
+            best_idx, best_score, best_reason = opt.idx, score, reason
+    return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
