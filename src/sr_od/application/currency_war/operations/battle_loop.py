@@ -401,6 +401,21 @@ class CurrencyWarRunLoop(SrOperation):
                 self._clear_bail_count('事件overlay:partner')   # review M2:仅成功才清(失败保计数=ping-pong 安全网)
             return self.round_wait(wait=2)
 
+        # 0a2. 银狼「我来当策划」策划事件 overlay(r103,局29 P2r6 41min 卡死实证;
+        #      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节):二选一卡,
+        #      首次升2星=升费 vs 其他(默认升费——成长滚动投资前提);5费升2星=两卡
+        #      全装备(无升费,任选)。选卡后可能弹「属性详情」面板 → handler 内关。
+        #      ⚠️ 必须在 0a 后/备战(1)前:overlay 盖备战屏,loop 不认它就反复空读。
+        if self.round_by_find_area(screen, '货币战争-骇入策划', '标识-我来当策划', crop_first=False).is_success:
+            from sr_od.application.currency_war.operations.handlers.handle_planner_event import (
+                HandlePlannerEvent,
+            )
+            _r2 = HandlePlannerEvent(self.ctx).execute()
+            if _r2 is not None and getattr(_r2, 'success', False):
+                self._clear_bail_count('事件overlay:planner')
+                return self.round_wait(wait=2)
+            return self.round_retry(wait=2)
+
         # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
         #     用 screen_info 标题 area(标识-盛会之星)位置区分。原用全屏「确认选择」(lcs 0.7 防「请选择投资策略」
         #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar
