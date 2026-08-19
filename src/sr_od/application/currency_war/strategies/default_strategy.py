@@ -147,8 +147,19 @@ class DefaultCwStrategy(CwStrategy):
             # r101 必修②:禁令窗内(=mute 同窗)被清框架不得重新选定;到期解禁。
             _ban = (getattr(session, 'framework_clear_ban', '')
                     if state.round_num <= _mute_until else '')
+            # r114(局32 横跳根因):fresh read 的 bench char_id 靠 SIFT,识别时好时坏
+            # (shop 开帧/光标/动画)→ owned 计数归零 → 保持滞回失效 → 「未定↔仙舟」
+            # 跨轮横跳(局32 实证:藿藿×2+爻光×3 在手仍横跳)。修:pick_framework
+            # 的持有输入改 **session tracking**(bot 执行记录,单一真源)优先,
+            # fresh read 仅补缺(tracking 空时兜底)——识别失败不再影响框架稳定性。
+            _fw_bench = list(getattr(session, 'tracked_bench_chars', None) or [])
+            if not _fw_bench:
+                _fw_bench = state.bench
+            _fw_deployed = list(getattr(session, 'tracked_deployed', None) or [])
+            if not _fw_deployed:
+                _fw_deployed = state.deployed
             _picked = pick_framework(
-                state.bench, state.deployed, state.shop,
+                _fw_bench, _fw_deployed, state.shop,
                 current=session.transition_framework, portal=_portal)   # r72 滞后
             if _picked and _ban and _picked == _ban:
                 # 选回被清框架 → 拒(断供框架不复活);无现任继续未定,板面走散件
