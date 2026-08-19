@@ -393,13 +393,27 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
                 _shot = cw_shot_unique(screen, 'summon_unknown')
-                if _shot is not None:
-                    # r100j 降级:**留证不停机**(对齐 r34 shop_unknown 先例)。四连停机
-                    # 阻断实跑的教训;物品变体/真召唤物都靠这批截图离线补模板,补完
-                    # 自然不再触发。不再写 stop 类 flag(不阻断),shot + 日志足够检索。
+                if _shot is not None and ctx.run_context is not None:
+                    from pathlib import Path as _P
+
                     from one_dragon.utils.log_utils import log as _log
-                    _log.warning('[cw!][summon] 备战 slot%s 占用未识别(留证不停机,shot 唯一化'
-                                 '防刷屏;离线补模板后自然消失): %s', _slot, _shot)
+                    _cx = (_rect.x1 + _rect.x2) // 2
+                    _cy = (_rect.y1 + (_rect.y2) - _rect.y1) // 2
+                    _P('.debug/temp/currency_war/summon_stop_hook.flag').write_text(
+                        '召唤物/物品停机钩子:备战栏 slot'
+                        f'{_slot} 占用但 SIFT 未识别(非角色非已知箱/典籍)。\n'
+                        f'现场处理流程(必须当天做完,别降级绕过):\n'
+                        f'1. 点槽位 ({_cx},{_cy}) → 看内容(物品会直接开启/弹面板,角色出详情)\n'
+                        f'2. 若为物品变体:截图 → 补进 find_supply_boxes/find_tomes 模板或新增物品类目\n'
+                        f'   (r100j 教训:卡包变体 TM 0.54 漏检;物品占槽是常态,识别不全就停机等建档)\n'
+                        f'3. 若为真召唤物:portrait_plaza/<名>/raw.png 建模板(白框裁 '
+                        f'{(_rect.x1, _rect.y1, _rect.x2, _rect.y2)})→ roster 核条目\n'
+                        f'4. 建档完成 → 本钩子自然不再触发(flag 自删);别把钩子降级留证——'
+                        f'未建档物品被当空槽/普通占用乱操作比停机更贵(2026-08-20 用户纠偏)。\n'
+                        f'截图: {_shot}', encoding='utf-8')
+                    _log.warning('[cw!][summon] 备战 slot%s 占用未识别(物品变体或召唤物)'
+                                 '→ 停机现场建档(别降级;处理流程见 flag): %s', _slot, _shot)
+                    ctx.run_context.stop_running()
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
