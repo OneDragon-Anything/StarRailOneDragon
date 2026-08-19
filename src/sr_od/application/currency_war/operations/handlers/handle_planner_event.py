@@ -25,18 +25,21 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class HandlePlannerEvent(SrOperation):
-    """银狼策划事件 overlay:OCR 两卡 → 选升费卡(默认) → 确认 → 关详情面板。"""
+    """银狼策划事件 overlay:OCR 两卡 → 策略选卡 → 确认 → 关详情面板。"""
 
-    # 卡片中心(局29 实测:左卡区 x500-980/y280-560,点 (755,400) 命中选中)
-    CARD_LEFT: ClassVar[Point] = Point(755, 400)
-    CARD_RIGHT: ClassVar[Point] = Point(1260, 400)
-    # 升费卡判定文字(用户口述:升费卡带「提升费用」字样)
-    UPGRADE_COST_TEXT: ClassVar[str] = '提升费用'
+    # 卡身选中点击点(⚠️ 23:33 交互实锤:卡上半部点击=弹「属性详情」((755,400)/
+    # (1225,310) 均触发详情非选中)——**点卡下半部 y≈480 生效选中**(右卡选中+
+    # 确认亮,点确认消费事件成功)。别用卡中心/上部。
+    CARD_LEFT: ClassVar[Point] = Point(755, 480)
+    CARD_RIGHT: ClassVar[Point] = Point(1225, 480)
     # 卡文字 OCR 过滤带(卡描述在 y~330-370;标题 y~376)
     CARD_TEXT_Y_LO: ClassVar[int] = 300
     CARD_TEXT_Y_HI: ClassVar[int] = 420
-    # 选卡后自动弹的「属性详情」面板关闭按钮(归一化 775,245 → 1080p)
-    DETAIL_CLOSE: ClassVar[Point] = Point(1488, 265)
+    # 确认按钮(⚠️ 交互实锤:在**右侧偏下** (1440-1542,584-615),非画面中央!
+    # 旧写 (960,615) 是猜的——局29 事件 1.5h 未消费的另一半原因)
+    CONFIRM: ClassVar[Point] = Point(1491, 600)
+    # 详情面板关闭 ×(归一化 780,220 → 1080p;23:30 实测点击生效)
+    DETAIL_CLOSE: ClassVar[Point] = Point(1497, 238)
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
@@ -76,13 +79,25 @@ class HandlePlannerEvent(SrOperation):
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
-        # 3. 点卡选中
+        # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
+        # (755,400) 触发详情面板的实证;点卡身上部 y=310)
+        self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)
         time.sleep(1.2)   # 等选中动画
-        # 4. 点确认(screen_info 按钮-骇入确认 区中心;若确认已自动跳过此点无害)
-        self.ctx.controller.click(Point(960, 615))
+        # 3b. 验选中(「已选择」或确认亮);若弹出详情面板(点错区)→ 关掉重试点卡
+        screen_m = self.screenshot()
+        ocr_m = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen_m, rect=None, color_range=None, crop_first=False,
+        )
+        if any('属性详情' in t for t in ocr_m):
+            log.info('[cw][planner] 点卡触发详情面板(非选中)→ 关闭后 retry 重点')
+            self.ctx.controller.click(self.DETAIL_CLOSE)
+            time.sleep(0.8)
+            return self.round_retry(wait=1)
+        # 4. 点确认(CONFIRM 常量;若确认已自动跳过此点无害)
+        self.ctx.controller.click(self.CONFIRM)
         time.sleep(1.5)   # 等面板
-        # 5. 若弹出「属性详情」面板 → 关闭
+        # 5. 若弹出「属性详情」面板(选卡后自动弹)→ 关闭
         screen2 = self.screenshot()
         ocr2 = self.ctx.ocr_service.get_ocr_result_map(
             image=screen2, rect=None, color_range=None, crop_first=False,

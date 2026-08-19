@@ -8909,10 +8909,10 @@
   - area_name: 按钮-骇入确认
     id_mark: false
     pc_rect:
-    - 820
-    - 590
-    - 1100
-    - 640
+    - 1420
+    - 575
+    - 1560
+    - 625
     text: 确认选择
     lcs_percent: 0.5
     template_sub_dir: ''
