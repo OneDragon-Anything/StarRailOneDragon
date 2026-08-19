@@ -464,6 +464,45 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
 
 
 
+def record_shop_snapshot(event: str, shop: list, gold: int,
+                         plane: int = 0, round_num: int = 0) -> None:
+    """商店牌面快照(shop_snapshots.jsonl;r97;供给复盘的真值源)。
+
+    event:``offer``(进店首见)/ ``refresh``(刷新后新牌面)—— 买牌回合里 bot 会 refresh,
+    只记进店帧会丢中间 4-5 波牌 → 「配方件来没来」复盘断章取义(局18:据此误判
+    「仙舟 8 轮断供」实为 r2 爻光×3 在店没买)。shop 元素为 ShopCard(或已序列化 dict)。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    rec = get_recorder()
+    rec._append("shop_snapshots.jsonl", {
+        "schema_version": 1,
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "run_id": _CURRENT_RUN_ID,
+        "plane": plane, "round_num": round_num,
+        "event": event, "gold": gold,
+        "shop": [{k: getattr(c, k, None) for k in ('name', 'faction', 'cost', 'star')}
+                 for c in shop],
+    })
+
+
+def record_shop_snapshot_raw(event: str, shop: list, gold: int,
+                             plane: int = 0, round_num: int = 0) -> None:
+    """shop 已是序列化 dict 列表时的 record_shop_snapshot 变体。"""
+    if not _CURRENT_RUN_ID:
+        return
+    rec = get_recorder()
+    rec._append("shop_snapshots.jsonl", {
+        "schema_version": 1,
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "run_id": _CURRENT_RUN_ID,
+        "plane": plane, "round_num": round_num,
+        "event": event, "gold": gold,
+        "shop": list(shop),
+    })
+
+
+
 # ===== 复盘读取(给人肉眼复盘 / 未来 ML)=====
 
 def read_jsonl(path: Path | str) -> list[dict[str, Any]]:
@@ -497,3 +536,157 @@ def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
         merged["outcome"] = out_by_key.get(key)
         joined.append(merged)
     return joined
+
+
+# ===== 复盘查询(query CLI;telemetry 的读出端,r97)=====
+# 设计:数据与判读同源 —— 查询视图(逐轮演进/供给对照/异常标记)读的就是本模块落盘的
+# JSONL,schema 变更查询同步;新复盘问题 = 新视图/参数,不是新脚本(一次性脚本时代终结)。
+# 用法:
+#   uv run python -m sr_od.application.currency_war.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|all]
+
+def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
+    """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。"""
+    best: dict = {}
+    for d in read_jsonl(replay_dir / "decisions.jsonl"):
+        if run_id and d.get("run_id") != run_id:
+            continue
+        k = (d.get("plane"), d.get("round_num"))
+        n = len(d.get("actions") or [])
+        if k not in best or n > len(best[k].get("actions") or []):
+            best[k] = d
+    return best
+
+
+def _list_runs(replay_dir: Path) -> list[str]:
+    ids: list[str] = []
+    for d in read_jsonl(replay_dir / "outcomes.jsonl"):
+        rid = d.get("run_id")
+        if rid and (not ids or ids[-1] != rid):
+            ids.append(rid)
+    return ids
+
+
+def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
+    """视图:逐轮演进(hp/gold/买/升/D/board)。"""
+    best = _load_decisions_rounds(replay_dir, run_id)
+    lines = []
+    for k in sorted(best):
+        d = best[k]
+        st = d.get("state") or {}
+        acts = d.get("actions") or []
+        buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
+        lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        rfs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
+        board = " ".join(f"{k2}×{v}" for k2, v in (st.get("board") or {}).items()) or "(空)"
+        act_s = f"买{buys}" + (f"/升{lvs}" if lvs else "") + (f"/D{rfs}" if rfs else "")
+        lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
+                     f" {act_s:<10} | {board}")
+    return lines
+
+
+def query_supply(replay_dir: Path, run_id: str) -> list[str]:
+    """视图:供给对照(shop_snapshots 全波牌面 vs 买了什么;配方件出现即标 ★)。"""
+    snaps: dict = {}
+    for s in read_jsonl(replay_dir / "shop_snapshots.jsonl"):
+        if run_id and s.get("run_id") != run_id:
+            continue
+        snaps.setdefault((s.get("plane"), s.get("round_num")), []).append(s)
+    best = _load_decisions_rounds(replay_dir, run_id)
+    # 配方框架(cw_transition;import 失败退空 = 全牌不标)
+    try:
+        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+        recipe_names = set(TRANSITION_PACK.keys())
+    except Exception:   # noqa: BLE001
+        recipe_names = set()
+    lines = []
+    for k in sorted(set(list(snaps.keys()) + list(best.keys()))):
+        d = best.get(k)
+        acts = (d.get("actions") or []) if d else []
+        buys = [a.get("card", {}).get("name") for a in acts
+                if isinstance(a, dict) and a.get("__type__") == "BuyCard"]
+        lines.append(f"  p{k[0]}r{k[1]} tgt={(d or {}).get('target_comp', '?')}")
+        for s in snaps.get(k, []):
+            cards = [(c.get('name'), c.get('faction'), c.get('cost')) for c in (s.get('shop') or [])]
+            star = [f"★{n}({f})" for n, f, _c in cards
+                    if n in recipe_names or (f in ('仙舟', '列车同行') and n)]
+            mark = ('  ' + ' '.join(star)) if star else ''
+            lines.append(f"    [{s.get('event')}] g={s.get('gold')} {cards}{mark}")
+        if not snaps.get(k):
+            lines.append("    (无 shop 快照——旧数据只记进店帧,refresh 波丢失)")
+        lines.append(f"    买了: {buys}")
+    return lines
+
+
+ABN_GOLD: int = 40     # 金 ≥ 此且该轮 0 买 0 升 = 钱变不成板
+ABN_DROP: int = 25     # 单轮掉血 ≥ 此 = 战力断层
+
+
+def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
+    """视图:异常标记(钱变不成板/战力断层/plan_error)。"""
+    best = _load_decisions_rounds(replay_dir, run_id)
+    abn: list[str] = []
+    for k in sorted(best):
+        d = best[k]
+        acts = d.get("actions") or []
+        buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
+        lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        if (d.get("gold") or 0) >= ABN_GOLD and buys == 0 and lvs == 0:
+            abn.append(f"p{k[0]}r{k[1]} 金{d.get('gold')} 0买0升(钱变不成板)")
+        if (d.get("eval_breakdown") or {}).get("plan_error"):
+            abn.append(f"p{k[0]}r{k[1]} plan_error(决策崩溃,见 log)")
+    prev_hp = None
+    for o in read_jsonl(replay_dir / "outcomes.jsonl"):
+        if run_id and o.get("run_id") != run_id:
+            continue
+        hp = o.get("hp_after")
+        if prev_hp is not None and hp is not None and prev_hp - hp >= ABN_DROP:
+            abn.append(f"p{o.get('plane')}r{o.get('round_num')} 单轮掉血 {prev_hp}→{hp}(战力断层)")
+        if hp is not None:
+            prev_hp = hp
+    return abn
+
+
+def _cli_main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser(prog='cw_telemetry',
+                                 description='货币战争遥测查询(复盘判读单一入口)')
+    ap.add_argument('cmd', choices=['query'])
+    ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
+    ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
+    ap.add_argument('--view', default='rounds', choices=['rounds', 'supply', 'anomalies', 'all'])
+    ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
+    args = ap.parse_args()
+    replay_dir = Path(args.replay_dir)
+    runs = _list_runs(replay_dir)
+    if not runs:
+        print('(无 replay 数据)')
+        return
+    if args.recent:
+        print(f"—— 最近 {args.recent} 局 ——")
+        for rid in runs[-args.recent:]:
+            best = _load_decisions_rounds(replay_dir, rid)
+            abn = query_anomalies(replay_dir, rid)
+            outs = read_jsonl(replay_dir / 'outcomes.jsonl')
+            mine = [o for o in outs if o.get('run_id') == rid]
+            deepest = max(((o.get('plane') or 1, o.get('round_num') or 1) for o in mine),
+                          default=(1, 1))
+            last = mine[-1] if mine else {}
+            print(f"{rid}: P{deepest[0]}r{deepest[1]} | 决策{len(best)}轮 | 异常 {len(abn)} 条"
+                  f" | 末态 hp={last.get('hp_after')} comp={last.get('comp_tag')}")
+        return
+    rid = args.run or runs[-1]
+    print(f"=== {rid} ===")
+    if args.view in ('rounds', 'all'):
+        print('[rounds]')
+        print('\n'.join(query_rounds(replay_dir, rid)))
+    if args.view in ('supply', 'all'):
+        print('[supply]')
+        print('\n'.join(query_supply(replay_dir, rid)))
+    if args.view in ('anomalies', 'all'):
+        print('[anomalies]')
+        abn = query_anomalies(replay_dir, rid)
+        print('\n'.join(abn) if abn else '  ✓ 无异常标记')
+
+
+if __name__ == '__main__':
+    _cli_main()

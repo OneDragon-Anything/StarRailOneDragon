@@ -277,6 +277,9 @@ class BuyShopCards(SrOperation):
                      f'target={target_name!r} fp={_fp_v:.2f} bench={len(state.bench)}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
+            # r97 供给快照(进店首见):全波牌面真值源之一 —— 只记 decisions 会丢 refresh 波
+            cw_telemetry.record_shop_snapshot('offer', state.shop, state.gold,
+                                              state.plane, state.round_num)
             _cand = dict(getattr(match.session, 'last_candidate_scores', {}) or {})
             if getattr(match.session, 'last_candidate_scores_round', None) != state.round_num:
                 _cand = {}   # r3 review②:非本轮回合的分数是陈旧值(仅选线轮写入)→ 清空防 close_call 污染
@@ -325,6 +328,15 @@ class BuyShopCards(SrOperation):
                     time.sleep(1.0)   # 刷新动画
                     total_refresh += 1
                     did_refresh = True
+                    # r97 供给快照(refresh 波):刷出来的新牌面落盘(局18 教训:只记进店帧
+                    # → 「配方件来没来」复盘断章取义,健康线被误判断供弃线)。
+                    try:
+                        _new_shop = read_shop_cards(self.ctx, self.screenshot())
+                        cw_telemetry.record_shop_snapshot(
+                            'refresh', _new_shop, state.gold - 2 * total_refresh,
+                            state.plane, state.round_num)
+                    except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
+                        pass
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
