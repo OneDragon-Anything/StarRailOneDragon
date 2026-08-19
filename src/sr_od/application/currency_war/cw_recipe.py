@@ -60,14 +60,48 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
     return fw == framework or fw == '通用'
 
 
+def _cheap_carry_walkin(target: Comp | None, state: GameState) -> bool:
+    """r100f 模式B判据:终局线便宜 carry 已到手 → 过渡=终局雏形,开局直接走本线。
+
+    plaza 二次精读实证(per_comp_transition.md 总纲):希儿(3费量子,48帖 Early 69%
+    贯穿 0.70)/黄泉(3费巡海 0.75)/姬子(3费列车 0.60,混合)/万敌(1费夜神 0.63)
+    ——本线 core ≤3 费开局就在商店池,「开局拿缇宝花火和希儿组3量子」零切换成本。
+    判据:终局线 ≥2 个 core ≤3费(雏形羁绊可早期成型)**且已持有 ≥1**(开局拿到
+    便宜 carry = 走本线的触发信号);贵 carry 线(Archer/瓦尔特 5费)永远不满足
+    → 自然落回通用配方(模式A)。
+    """
+    if target is None or not target.core_chars:
+        return False
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    cheap = [c for c in target.core_chars
+             if getattr(CHARACTERS.get(c), 'cost', 9) <= 3]
+    if len(cheap) < 2:
+        return False
+    owned = {getattr(bc, 'char_id', '') for bc in (*state.deployed, *state.bench)}
+    return any(c in owned for c in cheap)
+
+
 def decision_target(session, state: GameState) -> Comp | None:
-    """决策中心取 target 的**单一入口**(r100):双轨期喂配方伪 comp,否则喂终局。
+    """决策中心取 target 的**单一入口**(r100):双轨期按四路线喂决策对象。
 
     用法:update_target/decide_prep 处把 ``session.target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
+
+    双轨期优先级(r100f 定稿,per_comp_transition.md 三模式总纲):
+    1. **模式B 便宜 carry 雏形**:终局线 core ≤3费×2 且已持有 1+(希儿量子类)→
+       直接喂终局 comp(买本线件即过渡,零切换;modeA 贵线永不触发);
+    2. **模式A 通用配方**:框架已定 → 配方伪 comp(仙舟3/列车4;贵 carry 线的
+       通用过渡包「3仙舟2DOT 扛 P1,P2 一波换」);
+    3. 无框架无雏形 → 终局 comp(散件口径)。
+    非双轨(定型/P2+):终局 comp。
     """
-    if getattr(state, 'dual_track_phase', False) and getattr(session, 'transition_framework', ''):
-        rc = _RECIPES.get(session.transition_framework)
-        if rc is not None:
-            return rc
+    if getattr(state, 'dual_track_phase', False):
+        _tgt = getattr(session, 'target_comp', None)
+        if _cheap_carry_walkin(_tgt, state):
+            return _tgt
+        fw = getattr(session, 'transition_framework', '')
+        if fw:
+            rc = _RECIPES.get(fw)
+            if rc is not None:
+                return rc
     return getattr(session, 'target_comp', None)
