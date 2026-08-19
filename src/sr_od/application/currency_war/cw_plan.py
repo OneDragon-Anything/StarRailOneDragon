@@ -195,7 +195,8 @@ def _no_loss_affordable(gold: int, cost: int) -> bool:
     return gold - cost >= (gold // 10) * 10
 
 
-def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
+def _skeleton_buy_ok(name: str, faction: str, state: GameState,
+                     framework: str = '') -> bool:
     """P1 过渡骨架合法买(ADR-0149;与 flex 配对纪律同构,**不依赖 target**)。
 
     M4 方法论:过渡 = 骨架拼装(便宜低档羁绊成对),不是攒金也不是散买。三类合法:
@@ -205,6 +206,13 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
       不激活任何效果=白占位,不深化到 2 不买);
     ③ 通用填充件:板未满时的 GENERIC_FILLERS(星期日;第三类语义)。
     散买骨架单张(羁绊无存量)仍拒 —— 防spread 回归(M25 教训)。
+
+    ⚖️ r95 审计必修③(配方自举豁免):旧 ② 的「不激活不买」把**过渡配方主体阵营**锁死在
+    1 副本(仙舟最低档 3:已有 1 买第 2 张被拒 → 第 3 张也永远凑不齐)——run16 实证
+    target=景元仙舟、shop 有仙舟牌、金 62-94 却一张不买。配方是**渐进拼装**(第16局
+    审计定论),豁免:**当先过渡框架的目标阵营**(TRANSITION_PACK 里框架主体阵营,如
+    仙舟对仙舟框架/列车对列车框架)从第 2 张起放行(它们是配方向 3 档推进的必经中间态,
+    非"白占位")。非框架阵营维持评审Y1 原语义。
     """
     if name in EARLY_CORE_POOL or name in TEMPO_POOL:
         return True
@@ -217,6 +225,12 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState) -> bool:
         syn = syn | {faction}
     sk = skeleton_factions() | {'持续伤害', '治疗'}   # 同 TRANSITION_FACTIONS 口径(cw_evaluate)
     counts = _bench_faction_counts(state)
+    # r95 配方自举豁免:当先框架的目标阵营(已有 ≥1 即在配方向上)→ 放行
+    from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+    _fw_fac = set(FRAMEWORK_FACTIONS.get(framework, ()) or ()) if framework else set()
+    for f in syn:
+        if f in _fw_fac and counts.get(f, 0) >= 1:
+            return True
     for f in syn:
         if f not in sk:
             continue
@@ -778,7 +792,7 @@ def _best_improving_action(
             # M22 实证 r4 金21 有货空手即此病。
             if (not _is_target and state.gold < NO_LOSS_GOLD_CEILING
                     and _no_loss_affordable(state.gold, card_cost(card))
-                    and _skeleton_buy_ok(card.name, card.faction, state)):
+                    and _skeleton_buy_ok(card.name, card.faction, state, framework=framework)):
                 pass   # 落到下方正常估值(passthrough;非 continue)
             else:
                 # tempo 例外(ADR-0124):板直接增强散牌不属「泄金」—— 板上 ≥2 同阵营深化 或 强卡
@@ -819,7 +833,7 @@ def _best_improving_action(
                 # 放行(板饿死代价>spread,M15-M28 实证);已成型仍严格聚焦。与 tempo 例外并立。
                 if (target_comp is not None
                         and form_progress(target_comp, state) < COMMIT_FRAC
-                        and _skeleton_buy_ok(card.name, card.faction, state)):
+                        and _skeleton_buy_ok(card.name, card.faction, state, framework=framework)):
                     _is_offtarget = False
             if _is_offtarget:
                 if target_committed(target_comp, state):
@@ -928,7 +942,7 @@ def _best_improving_action(
         _sk_candidates = [c for c in state.shop
                           if state.gold >= card_cost(c)   # r9:金硬门(高位金豁免息档地板≠免金;cost>gold 幽灵购买进 tracking)
                           and (_spill_spend or _no_loss_affordable(state.gold, card_cost(c)))   # r7 ②:高位金场免息档地板(满息溢出花掉不损息档)
-                          and _skeleton_buy_ok(c.name, c.faction, state)]
+                          and _skeleton_buy_ok(c.name, c.faction, state, framework=framework)]
         if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
             # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)
             _counts = _bench_faction_counts(state)

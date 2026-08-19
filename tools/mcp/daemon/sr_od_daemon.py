@@ -120,8 +120,24 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
             # 启动环境校验拒绝，导致从本项目目录启动 dsh headless/CLI 直接失败）。
             spawn_env = os.environ.copy()
             spawn_env['PYTHONPATH'] = str(PROJECT_ROOT / 'src')
+            # r95 审计必修:旧 mode='w' 每次重启**销毁上一 run 的 op 级证据**(异常栈/买牌
+            # 记录)——run16「40s 无 plan 记录」模式因 12:28 重启 log 被截断而不可诊断。
+            # 改 append + 尺寸轮转(>20MB 转 .1 保留一份),诊断链保住。
+            _need_rotate = False
+            try:
+                if log_path.is_file() and log_path.stat().st_size > 20 * 1024 * 1024:
+                    _rolled = log_path.with_suffix('.log.1')
+                    if _rolled.exists():
+                        _rolled.unlink()
+                    log_path.replace(_rolled)
+                    _need_rotate = True
+            except OSError:
+                pass
+            if _need_rotate:
+                from one_dragon.utils.log_utils import log as _dlog
+                _dlog.info('主 server 日志已轮转(>20MB → .log.1)')
             # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
-            with open(log_path, 'w', encoding='utf-8') as log_file:
+            with open(log_path, 'a', encoding='utf-8') as log_file:
                 process = subprocess.Popen(
                     cmd,
                     cwd=str(PROJECT_ROOT),

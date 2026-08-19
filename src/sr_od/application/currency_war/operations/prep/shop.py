@@ -1,5 +1,6 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
+import contextlib
 import time
 from copy import deepcopy
 from typing import ClassVar
@@ -248,7 +249,25 @@ class BuyShopCards(SrOperation):
                 log.info(f'[cw] tracked_bench(旧 seed)={match.session.tracked_bench}')
             # 读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
             match.session.last_state = state
-            actions = match.strategy.decide_prep(state, match.session, config)
+            # r95 审计必修②:plan 异常也要留证(run16 模式:7 个买牌回合 record_decision
+            # 整体缺席 + 40s 无 op 记录 = decide_prep 抛错被上层吞,事后不可诊断)。
+            # 异常时仍写一条 decisions(Error 占位)+ 完整栈到 log,再向上抛(行为不变)。
+            try:
+                actions = match.strategy.decide_prep(state, match.session, config)
+            except Exception:
+                import traceback
+
+                from sr_od.application.currency_war.cw_telemetry import (
+                    record_decision as _rd_err,
+                )
+                _tb = traceback.format_exc()
+                log.error('[cw!][plan] decide_prep 异常(留证后上抛):\n%s', _tb)
+                with contextlib.suppress(Exception):
+                    # eval_breakdown 是 dict[str,float],错误信号用 len(_tb) 数值占位
+                    # (异常本体全文在 log,此处只留"该回合 plan 崩了"的可检索标记)
+                    _rd_err(state, match.session.target_comp.name if match.session.target_comp else '',
+                            {}, {'plan_error': 1.0, 'plan_error_len': float(len(_tb))}, [])
+                raise
             # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
             target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
 
