@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Literal
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_comps, cw_events, cw_plan
+from sr_od.application.currency_war import cw_comps, cw_events, cw_plan, cw_transition
 from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -180,7 +180,24 @@ class DefaultCwStrategy(CwStrategy):
         # → comp 永远建不成 → HP 掉到 4 死。shop-aware select_comp 重选会挑 shop 供得上的 comp。
         # (shop_supply<1.0 = shop 无 target 阵营卡;=1.0 = 本回合买得到 → drought 归 0;正常 shop 波动不会累积)
         DROUGHT_BAIL: int = 5   # T#97:放宽(3 太激进 —— shop 随机 3 轮无阵营卡是正常波动不该弃 target;5 容忍随机,稳 commit)
-        if session.target_comp is not None:
+        # r100(双轨 drought 重定向):双轨期盯**配方框架供给**(板面的实际依赖),
+        # 不盯终局线(终局线 P1 冻结,囤件断了只是慢,不弃线)。终局线 drought 判定
+        # 只在定型后(非双轨)生效——原逻辑照旧跑在下面,双轨期短路。
+        if getattr(state, 'dual_track_phase', False) and session.transition_framework:
+            _fw_fac = cw_transition.FRAMEWORK_FACTIONS.get(session.transition_framework, ())
+            _fw_supply = (cw_comps.shop_supply(
+                type('FW', (), {'factions': list(_fw_fac), 'form_tiers': {}})(), state)
+                if _fw_fac else 1.0)
+            # 框架断供 → 换框架(pick_framework 已有滞后;这里只在「配方完全建不起」
+            # (框架+通用全断 ≥5 轮)时清框架重选——比弃终局线便宜得多(共享件保留)。
+            session.target_drought = session.target_drought + 1 if _fw_supply < 1.0 else 0
+            if session.target_drought >= DROUGHT_BAIL:
+                log.warning('[cw!][target] 双轨框架 %s 连续 %d 轮断供 → 清框架重选'
+                            '(配方重建比终局弃线便宜;终局线不动)',
+                            session.transition_framework, session.target_drought)
+                session.transition_framework = ''
+                session.target_drought = 0
+        elif session.target_comp is not None:
             _supply = cw_comps.shop_supply(session.target_comp, state)
             session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
             if session.target_drought >= DROUGHT_BAIL:
@@ -318,7 +335,18 @@ class DefaultCwStrategy(CwStrategy):
             # 冷却轮,无例外);本处 `or _in_crisis` 只是「冷却内仍进函数看危机」的
             # 通道(maybe_pivot 顶部统一拦),不再是守卫本身——同轮两翻(r90c)即旧结构
             # 把守卫放在调用侧 + 危机豁免旁路的病。
-            if not _boss_window and (_in_crisis or state.round_num > _cool):
+            # r100(终局线 P1 冻结):双轨期 target_comp 是**囤牌方向**不是作战方向
+            # (作战方向=过渡配方,decision_target 已换),换终局线 = 撕囤件方向,
+            # P1 内无重建轮次(局18 三连换实证);定义型 augment 在 maybe_pivot 内
+            # 自有解锁(_defining_new),危机响应在双轨期=保配方+花光补强非换线。
+            if (getattr(state, 'dual_track_phase', False)
+                    and not _boss_window and (_in_crisis or state.round_num > _cool)):
+                # 双轨期:信号 1/2 全关(r88),只剩危机路径——双轨危机不换终局线
+                # (板面由配方驱动,换 target 不产战力),交 buy 侧补强。
+                log.info('[cw-target] 双轨期冻结终局 pivot(tgt=%s;作战=配方%s,危机交买侧)',
+                         session.target_comp.name if session.target_comp else 'None',
+                         getattr(session, 'transition_framework', '') or '未定')
+            elif not _boss_window and (_in_crisis or state.round_num > _cool):
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)
             elif _boss_window and (_in_crisis or state.round_num > _cool):
@@ -336,17 +364,22 @@ class DefaultCwStrategy(CwStrategy):
                          '保命防自激' if _survival else '治过度换线')
 
     def decide_prep(self, state: GameState, session: StrategySession, config) -> list[Action]:
-        """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ ``session.target_comp``。
+        """备战 shop 计划:``plan`` 用 ``session.rng``(蒙特卡洛 D 牌,可种子化)+ 决策 target。
         ⚠️ rng 由现「每调用新建 random.Random()」合并为 ``session.rng``(单一可种子源,§11.4);
         未种子时仍真随机,决策分布不变(行为等价,见 D-NN)。
         ADR-0209(接线 3/6):stash_comp=信号领先线(双轨囤牌方向)传入;
-        接线 4/6:定型边沿(commit_flip_pending)→ 卖散上限放宽(drop 档加急清)。"""
+        接线 4/6:定型边沿(commit_flip_pending)→ 卖散上限放宽(drop 档加急清)。
+        r100(过渡一等公民):双轨期 plan 的 target = **配方伪 comp**(cw_recipe.decision_target
+        单一入口;不变量:P1 板面只由过渡配方驱动,终局件囤 bench 不上场)——买牌评分/
+        form_progress/skeleton 门自动转向「配方缺口」;stash_comp 照旧囤终局件。"""
         _cap = 6 if getattr(session, 'commit_flip_pending', False) else 2
         if getattr(session, 'commit_flip_pending', False):
             session.commit_flip_pending = False   # 一次性(本回合清)
+        from sr_od.application.currency_war.cw_recipe import decision_target
+        _dt = decision_target(session, state)
         return cw_plan.plan(state, config, config.faction_priority,
-                            rng=session.rng, target_comp=session.target_comp,
-                            reactive=(session.target_comp is None),
+                            rng=session.rng, target_comp=_dt,
+                            reactive=(_dt is None),
                             stash_comp=getattr(session, 'stash_comp', None),
                             focus_sell_cap=_cap,
                             framework=getattr(session, 'transition_framework', ''))
