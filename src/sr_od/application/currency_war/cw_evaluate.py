@@ -323,6 +323,35 @@ def _economy_mode_for(state: GameState) -> str:
 
 
 
+def _stash_form_progress(target_comp: Comp, state: GameState) -> float:
+    """r92 审计 T2:bench-inclusive 成型度(双轨期攒息门用)。
+
+    ``cw_comps.form_progress`` 只数 board(场上 tier,游戏正确口径);但 C1(r90)后
+    双轨期 final 件**故意囤 bench**(条件窗口外不上场)→ 裸 form 恒低 → 攒息门
+    form≥COMMIT_FRAC 恒 False → **P1 双轨期永不攒息**(违反用户息律通则:P1 也
+    ≤50 攒息,兴趣引擎是全程经济基线,见 user_playstyle [17]/[2])。
+    本函数把 bench 囤件计入阵营进度(囤着的 target 件是成型资产,不是未开始)。
+    """
+    if not target_comp.form_tiers:
+        return 0.0
+    bench_f: dict[str, int] = {}
+    for bc in state.bench:
+        if bc.faction and bc.faction != '?':
+            bench_f[bc.faction] = bench_f.get(bc.faction, 0) + 1
+    total = 0.0
+    n = 0
+    for f, tier in target_comp.form_tiers.items():
+        if tier <= 0:
+            continue
+        cnt = state.board.get(f, 0) + bench_f.get(f, 0)
+        total += min(cnt, tier) / tier
+        n += 1
+    if n == 0:
+        return 0.0
+    from one_dragon.utils import calc_utils
+    return calc_utils.clamp(total / n, 0.0, 1.0)
+
+
 def _should_save_for_interest(state: GameState, config, target_comp: Comp | None) -> bool:
     """攒息门(经济统一论):全满足 → hold gold 攒利息(抑制散买/刷)。
 
@@ -354,7 +383,15 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
         return False
     if state.hp < effective_hp_threshold(state) * HP_DISTRESS_FRAC:
         return False   # 真活不下去(职级阈值×HP_DISTRESS_FRAC):急救通道(_phase_weights),非本门常态
-    if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
+    if target_comp is None:
+        return False
+    # r92 审计 T2:双轨期 final 件囤 bench(C1)→ 裸 form(board-only)恒低 → 恒不攒息
+    # (违反息律通则:P1 也攒)。双轨期用 bench-inclusive 进度(囤件=成型资产);
+    # 定型后 form 全在场上,裸口径即真。
+    _fp = (_stash_form_progress(target_comp, state)
+           if getattr(state, 'dual_track_phase', False)
+           else form_progress(target_comp, state))
+    if _fp < COMMIT_FRAC:
         return False
     # 连胜 ≥ 阈值 → 破息(保连胜>吃息,断连胜亏>利息亏);否则攒息。
     return (state.streak or 0) < WIN_STREAK_BREAK_INTEREST

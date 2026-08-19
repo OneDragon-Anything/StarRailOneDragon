@@ -245,6 +245,25 @@ class DefaultCwStrategy(CwStrategy):
             # r20 补:极端 drought 弃的线排除(否则弃后重选回同一条 = 白弃;供给断绝的线
             # 本局已死,死线不复活)。r7 review#2:bail 后重选加**供给门**(select 不感知
             # shop,ADR-0092 开局选线不动;此路径须候选本回合供得上核心,防共享阵营假换线)。
+            # r92 审计 T3:**双轨期 bail 重选优先 CommitSignals leader**(贯穿件锁线,user_playstyle [23])
+            # ——分数排序在近空板上是噪声(r88 治 maybe_pivot 的同族;此路径漏网),
+            # bail→分数重选→再 bail 可循环。leader 无/断供才落分数排序(非双轨照旧)。
+            # 门:drought_excluded 非空 = 本局发生过 bail(只治 bail 循环,不动初始选线语义
+            # ——初始选线有 emergent 信号门+供给门,测试锁的行为)。
+            if (state.dual_track_phase and session.drought_excluded
+                    and session.commit_signals is not None):
+                _lead = session.commit_signals.leader()
+                _lead_comp = next((c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None) \
+                    if _lead else None
+                if (_lead_comp is not None
+                        and _lead_comp.name not in session.drought_excluded
+                        and cw_comps.shop_supply(_lead_comp, state) > 0):
+                    session.target_comp = _lead_comp
+                    log.info('[cw-target] drought 重选(双轨):CommitSignals leader=%s(分数排序=噪声,防 bail 循环)',
+                             _lead_comp.name)
+                    session.last_candidate_scores_round = state.round_num
+                    session.last_candidate_scores = {_lead_comp.name: round(_lead[1], 4)}
+                    return
             scored_cands = cw_comps.select_comp_scored(state, score_ctx, config, top_n=8)
             cands = [c for _s, c in scored_cands
                      if c.name not in session.drought_excluded
