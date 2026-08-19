@@ -375,16 +375,22 @@ def current_run_id() -> str:
 
 def record_decision(state: GameState, target_comp: str,
                     candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
-                    actions: list[Action], gold_point: bool = True) -> None:
+                    actions: list[Action], gold_point: bool = True,
+                    extra: dict[str, Any] | None = None) -> None:
     """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。
 
     live 观测扩容(strategy/05):自动附影子 DP 姿态(12 号分歧频率数据源)与
     持卡/台账指纹(效果感知解回放对齐)——查表 ~2µs,零成本。
     gold_point:gold_trajectory 采样点开关(每回合一采样;步进记录传 False)。
+    extra(r101 session 快照/r112 修复):调用方显式传入的扩容字段(sess_*
+    六字段)——**合并**(非覆盖)自动附的 dp_posture/ledger;局30 实证:
+    shop.py 传 extra= 时本函数签名没有该参数 → TypeError → 买牌 op 全程
+    异常 → 金 3→110 全程闲置,整局报废。教训:便捷函数签名必须与 recorder
+    方法对齐。
     """
     if not _CURRENT_RUN_ID:
         return
-    extra: dict[str, Any] = {}
+    _extra: dict[str, Any] = {}
     try:
         from sr_od.application.currency_war.cw_effect_ledger import (
             build_ledger,
@@ -398,21 +404,23 @@ def record_decision(state: GameState, target_comp: str,
                                 state.level, state.hp,
                                 strategies=list(getattr(state, 'active_strategies', []) or []) or None)
         if ng is not None:
-            extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
-                                   'target_level': getattr(ng, 'target_level', None)}
+            _extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
+                                    'target_level': getattr(ng, 'target_level', None)}
         strategies = list(getattr(state, 'active_strategies', []) or [])
-        extra['active_strategies'] = strategies
-        extra['ledger_fingerprint'] = ledger_fingerprint(
+        _extra['active_strategies'] = strategies
+        _extra['ledger_fingerprint'] = ledger_fingerprint(
             build_ledger(effects_from_strategies(strategies)))
         # 67-P1c(接线哨兵):指纹恒 'base' = ledger 重载接线仍断;修复后不同持卡
         # 组合应产生不同指纹(55-A1 对拍数据源)
         log.debug('[cw][ledger] fp=%s strategies=%s',
-                  extra['ledger_fingerprint'], strategies)
+                  _extra['ledger_fingerprint'], strategies)
     except Exception:   # noqa: BLE001  观测 best-effort
         pass
+    if extra:
+        _extra.update(extra)   # 调用方显式字段(sess_* 快照)合并在自动字段上
     get_recorder().record_decision(_CURRENT_RUN_ID, _CURRENT_DIFFICULTY, state,
                                    target_comp, candidate_scores, eval_breakdown, actions,
-                                   extra=extra, gold_point=gold_point)
+                                   extra=_extra, gold_point=gold_point)
 
 
 def record_outcome(outcome) -> None:
