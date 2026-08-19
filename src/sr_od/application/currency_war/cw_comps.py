@@ -1355,6 +1355,13 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(已接:``is_losing_streak`` 解锁 commit 锁做保命转型,L791)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
+    # r88(用户 2026-08-20 定调,第9局四线摇摆实证):**双轨期(P1 未定型)信号1/2 全关** ——
+    # target_comp 是从近空板上按分选的(分=噪声),每来一张牌重排 → 每 1-4 轮 pivot →
+    # 四条零共享核心线各推倒一次 → 板永不成型 → P1 全输过去(第9局 hp 100→1 零胜)。
+    # 用户模型:P1 玩的 = 过渡框架(列车+仙舟)持续加深;终局线由贯穿件信号锁
+    # (CommitSignals,update_target 定型路径);涌现/ceiling 分差在双轨期无信息量。
+    # target 变更路径收敛为:①CommitSignals 定型(ADR-0209)②drought 弃线重 select
+    # ③定义型 augment(贯穿件级资源信号,下方 _defining_new)④定型后信号 1/2 照常。
     # (易 comp 成型快 → 少掉血;实跑 r3 列车同行[easy,S] vs 追击飞霄[medium] gap 0.097 卡 0.10 没转,
     # 追击飞霄 慢成型持续掉血。列车同行 fewer 卡 + S 强,转了更快成型)。target 已成型不降(不弃已完成 comp)。
     PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易 comp
@@ -1381,7 +1388,21 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         _plane_ok = [c for c in candidates if state.plane not in c.weak_planes
                      and (state.round_num < 7 or _next_plane not in c.weak_planes)]
         _pool = _plane_ok or candidates
-        easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
+        # r88(第9局 r9 转 hard 昼神阿雅实证):双轨期保命**严格 easy(不回退原池)** ——
+        # 旧 `or _pool` fallback 把 hard 线放进来(hard 0-progress = 换个姿势死);
+        # 且要求**与当前板共享阵营**(min reset:保命转线别推倒仅有的羁绊)。
+        # 非双轨(已定型/已进 P2)保 fallback 原语义(有落点好过无)。
+        if getattr(state, 'dual_track_phase', False):
+            _board_factions = set(state.board.keys())
+            easy = [c for c in _pool if c.form_difficulty == 'easy'
+                    and _board_factions & set(c.factions)]
+            if not easy:
+                log.info('[cw-pivot] p=%s r=%s hp=%s<%s 双轨期保命无 strict-easy 共享线 → '
+                         '保持现状(板面靠买牌/合星/升级补,不推倒)',
+                         state.plane, state.round_num, state.hp, _pivot_hp)
+                return None
+        else:
+            easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
         with_progress = [c for c in easy if form_progress(c, state) > 0]
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
@@ -1449,6 +1470,14 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             log.info('[cw-pivot] p=%s r=%s hp=%s target=%s 已commit → 锁定,跳过信号1(防振荡;best=%s 不转)',
                      state.plane, state.round_num, state.hp,
                      target.name if target else 'None', best.name)
+        elif getattr(state, 'dual_track_phase', False):
+            # r88(第9局四线摇摆实证):双轨期信号1/2 关 —— 未成型板上 comp_score 分差是噪声,
+            # 每 1-4 轮 pivot 推倒重来 = P1 全输。target 由定型(CommitSignals)/drought/
+            # 定义型augment(上方已处理)管;涌现分差不构成换线证据。
+            log.info('[cw-pivot] p=%s r=%s hp=%s 双轨期 → 信号1/2 关(target=%s 保持;涌现分差'
+                     '在未成型板上是噪声,防四线摇摆)',
+                     state.plane, state.round_num, state.hp,
+                     target.name if target else 'None')
         else:
             if target is None:
                 # 无 target(尚未承诺)→ 无忠诚对象,signal1 的 gap 检查不适用(它为防「弃 current target

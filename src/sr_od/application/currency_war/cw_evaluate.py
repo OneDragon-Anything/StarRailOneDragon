@@ -333,12 +333,12 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
     **保连胜 > 吃息(C 杠杆 3 winning half,R2-4b;14 §连胜中「2 胜+」)**:连胜 ≥ ``WIN_STREAK_BREAK_INTEREST``
     → 破息花钱提质量维持连胜(断连胜亏 > 利息亏 —— 连胜金 + 胜金 > 一档利息)。streak 带符号(连胜 + / 连败 −,
     结算源 session.last_streak,方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b:血量安全→fold/不安全→急救)。
+
+    r89 息律通用化(用户 2026-08-20 三次定调,663 帖攻略 #145 佐证):**满息即花,节点无关** ——
+    「金>50 的每一分都没有存的意义」是全部法则;boss/位面特例删除(旧 boss 特例是二阶概念,
+    boss 只是「到时自然满息 + 花的边际价值高」,由 HP 权重与候选排序体现,不该是息律开关)。
     """
     if state.gold >= INTEREST_THRESHOLD:
-        return False
-    # ADR-0128(攻略复查 #4,经济运营:18「boss 关前把钱花完」):boss 节点不攒息 —— 存金边际
-    # 价值(5息)远低于板强保 HP(HP 是通关硬约束,息随时可再攒);read_node_type 对 boss 稳(实机核实)。
-    if state.node_type == 'boss':
         return False
     if state.deployed_count() < state.max_units():
         return False

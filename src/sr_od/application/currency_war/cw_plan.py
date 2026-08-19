@@ -849,25 +849,23 @@ def _best_improving_action(
     #   买而囤 bench = 白买(optionality 只数 bench 反向钉死枢纽件);
     # - plane 门(Y2):P2+ 息引擎重建期(ADR-0148)不吃骨架买;
     # - spread 守卫(Y1):板已 ≥DEPLOY_FACTION_CAP 阵营 → 只许深化已有阵营,不开新骨架对。
-    # ⚖️ boss 前花尽(2026-08-17 M46/M48 同病根因修复:3/3 局 P1-9 boss 濒死)——boss 节点
-    # gold 60-70 闲置 + 刷 10 次架无 target → **一张不买**就出战(骨架兜底的 plane/gold 两门
-    # 全拦住)。boss 是 P 末硬节点,板强 = 保 HP(ADR-0128 同源):boss + form<成型 → 解锁
-    # 骨架买(免 gold 上限/免 P1 门),把刷出来的确定战力买上;金花在板上 > 闲置挨打。
-    # r73 RC1-②:花光域扩**位面切换后首战**(plane>=2 且 round==1)—— P2 敌强度跳升,
-    # 攒的金(旧局 28 只花 3)必须立即转化为板上战力(transitions「P2 用攒的金速成型」);
-    # 候选排序同 r73 RC5 修:target core 优先(见 _sk_candidates.sort)。
-    _boss_spend = ((state.node_type == 'boss' or (state.plane >= 2 and state.round_num == 1))
-                   and target_comp is not None
-                   and form_progress(target_comp, state) < 1.0)
-    if ((state.plane == 1 or _boss_spend)
-            and (state.gold < NO_LOSS_GOLD_CEILING or _boss_spend)
+    # ⚖️ 花光域(r89 息律通用化,用户定调「满息即花,节点无关」):**金高位(gold≥INTEREST_THRESHOLD
+    # 即满息溢出)+ form<成型** 即解锁骨架买 —— 金>50 的每一分都无存的意义,花的通道节点无关
+    # 恒开;boss/P2 首战(旧 _boss_spend 特例)只是「到时自然满息 + 边际价值高」的高频场景,
+    # 由本通用条件自然覆盖,不再单列(2026-08-17 M46/M48 病根因的通用修:P1 末 60-70 金闲置
+    # 正是旧特例把通道锁在 boss 才发生;#145 攻略「资金超50时用多余金币升级」佐证)。
+    # 候选排序:r73 RC5 语义保留(target core 优先,防 r9 boss 前 61 金全买过渡件)。
+    _spill_spend = (state.gold >= INTEREST_THRESHOLD and target_comp is not None
+                    and form_progress(target_comp, state) < 1.0)
+    if ((state.plane == 1 or _spill_spend)
+            and (state.gold < NO_LOSS_GOLD_CEILING or _spill_spend)
             and target_comp is not None
             and not _shop_has_buyable_target
-            and (form_progress(target_comp, state) < COMMIT_FRAC or _boss_spend)   # r7 ③:外层 fp 门在 boss 场豁免(fp 0.4-1.0 半成型恰是最需要兜底的域,M46/M48 实证 fp=0.5 被吞)
+            and (form_progress(target_comp, state) < COMMIT_FRAC or _spill_spend)   # r7 ③:外层 fp 门在高位金场豁免(fp 0.4-1.0 半成型恰是最需要兜底的域,M46/M48 实证 fp=0.5 被吞)
             and (not best or all(type(a).__name__ in ('RefreshShop', 'DeployMove') for a in best))):   # r9:DeployMove-only best 同样放行骨架买(shop.py 两阶段不执行 deploy 就 break → boss 帧饿死;奖励关掉角色入席正是触发态)
         _sk_candidates = [c for c in state.shop
-                          if state.gold >= card_cost(c)   # r9:金硬门(boss 豁免息档地板≠免金;cost>gold 幽灵购买进 tracking)
-                          and (_boss_spend or _no_loss_affordable(state.gold, card_cost(c)))   # r7 ②:boss 场免息档地板(ADR-0128 boss 前花尽;保息无意义)
+                          if state.gold >= card_cost(c)   # r9:金硬门(高位金豁免息档地板≠免金;cost>gold 幽灵购买进 tracking)
+                          and (_spill_spend or _no_loss_affordable(state.gold, card_cost(c)))   # r7 ②:高位金场免息档地板(满息溢出花掉不损息档)
                           and _skeleton_buy_ok(c.name, c.faction, state)]
         if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
             # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)
@@ -895,11 +893,11 @@ def _best_improving_action(
                 return 1
             _sk_candidates.sort(key=lambda c: (
                 _activates_now(c),
-                # r73 RC5:boss/P2 首战花光候选 **target core 优先**(旧排序只看 TEMPO/EARLY 池
+                # r73 RC5/r89:高位金花光候选 **target core 优先**(旧排序只看 TEMPO/EARLY 池
                 # → r9 boss 前 61 金全买过渡件,进 P2 全是待弃资产);平时骨架买仍按池序。
                 (0 if (target_comp is not None and c.name in target_comp.core_chars) else
                  (0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1))
-                if _boss_spend else
+                if _spill_spend else
                 (0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1),
                 card_cost(c)))
             card = _sk_candidates[0]
