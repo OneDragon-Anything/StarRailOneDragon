@@ -352,6 +352,21 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 break
         if _panel_open:
             return chars
+        # r100j 守卫(局23-26 四连停机实证):**商店开态下 slot1 被购买经验按钮挤占**
+        # ——开商店时购买经验 UI(Lv/经验条/开启,x247-378)紧贴 bench slot1(x382+),
+        # 「开启」按钮渲染在 slot1 判定区内 → slot_occupied=True 但 SIFT 永不识别
+        # → summon 钩子每局停机(VLM+OCR 双实锤:summon_unknown__d346ffb3 帧 slot1=
+        # 购买经验卡)。商店开态本帧不判(summon 是真物件时 bench 满警示/出售流程
+        # 会另行暴露;静默跳过无实害)。
+        _shop_open = False
+        for _scr_name2 in ('货币战争-备战-开商店',):
+            _r2 = _area_rect(ctx, '备战标识-购买经验', _scr_name2)
+            # 开商店屏的购买经验 area 与 bench 同帧可见 → 用它定位;坐标 x<380 即开态布局
+            if _r2 is not None and _r2.x1 < 380:
+                _shop_open = True
+                break
+        if _shop_open:
+            return chars
         # r85b:补给箱/典籍槽排除 —— 箱/典籍占 bench 槽是已知常态(掉箱占席),SIFT
         # 认不出它们是设计内(非角色)→ 不停机(VLM 实锤:第4局 slot2「蓝色卡片叠放
         # +开启」= 卡包/补给箱,旧钩子反复停机骚扰)。
