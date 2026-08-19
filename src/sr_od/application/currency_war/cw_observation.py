@@ -85,16 +85,17 @@ from sr_od.context.sr_context import SrContext
 
 
 def _expected_level(plane: int, round_num: int) -> int:
-    """阶段期望等级(前期 4-6、中期 6-8、后期 8-10;同 cw_economy._expected_level)。
+    """阶段期望等级(**单一源 cw_economy._expected_level**;参数序 (plane, round_num) 转接)。
 
     level 不可 OCR 时作兜底:≈ 真实等级,使 economy level_val≈0(不误判欠等级 → 不滥升)
     + max_units≈ 真实(模拟 deploy 容量合理)。
+    ⚠️ r90 审计必修:此副本曾与 economy 侧漂移(改刻度忘了这里)——统一 import 单一源,
+    本函数只做参数序转接(消费方按 (plane, round) 调)。
     """
-    if plane <= 1:
-        return min(4 + round_num // 2, 6)
-    if plane == 2:
-        return min(6 + (round_num - 1) // 2, 8)
-    return min(8 + (round_num - 1) // 3, 10)
+    from sr_od.application.currency_war.cw_economy import (
+        _expected_level as _econ_expected_level,
+    )
+    return _econ_expected_level(round_num, plane)
 
 
 # ===== 备战单字段读取(失败 → 安全默认)=====

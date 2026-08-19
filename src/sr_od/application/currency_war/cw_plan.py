@@ -243,6 +243,10 @@ def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
 
     攻略 #245「手上有 4击破 才让白厄上场」的判据形式化:final 件的上场窗口之一 =
     上场本身产生确定羁绊增量(新档激活)。deepen 已达最高档不算(那是深化,归框架件管)。
+    ⚠️ 口径:只数场上(board),bench 囤牌不计入激活(游戏正确口径;并入 bench 会误判
+    「囤 2 张后第 1 张即激活」提前散上)。本函数只评估**候选卡本身**;「bench 囤的第
+    2/3 张同阵营齐档后整组上场」的组合窗口不在此判(靠窗口①定型/②位面末兜底,
+    单卡永不触发③——r90 审计 A.a 记录,接受该简化)。
     """
     from sr_od.application.currency_war.cw_economy import _char_synergies
     from sr_od.application.currency_war.cw_factions import FACTIONS

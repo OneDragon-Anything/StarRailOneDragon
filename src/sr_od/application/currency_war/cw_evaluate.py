@@ -17,6 +17,7 @@ from sr_od.application.currency_war.cw_comps import (
     skeleton_factions,
 )
 from sr_od.application.currency_war.cw_economy import (
+    HP_DISTRESS_FRAC,
     P2_REBUILD_GOLD_FLOOR,
     WIN_STREAK_BREAK_INTEREST,
     _char_synergies,
@@ -351,8 +352,8 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
         return False
     if state.deployed_count() < state.max_units():
         return False
-    if state.hp < effective_hp_threshold(state) * 0.5:
-        return False   # 真活不下去(职级阈值半血):急救通道(_phase_weights),非本门常态
+    if state.hp < effective_hp_threshold(state) * HP_DISTRESS_FRAC:
+        return False   # 真活不下去(职级阈值×HP_DISTRESS_FRAC):急救通道(_phase_weights),非本门常态
     if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
         return False
     # 连胜 ≥ 阈值 → 破息(保连胜>吃息,断连胜亏>利息亏);否则攒息。
