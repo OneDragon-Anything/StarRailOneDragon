@@ -2,6 +2,13 @@
 
 > **本文档族描述系统「现在是什么」**(as-built,方法论 ADR-0210):结构 / 语义 / 数据流 / 边界;值在代码(常量名单一源)、why 在 [decisions/](../decisions/INDEX.md)(ADR)、玩法证据在 [game/currency_war/research/](../../../game/currency_war/research/README.md)、实现进度在本地进度树。目标:纯代码(无 LLM)自动打最高难度 A8 高胜率,留用户偏好配置口([../config.md](../config.md))。
 
+> **⚠️ 改任何策略前的强制入口序**(用户 2026-08-20 定调):①先读
+> `game/currency_war/research/user_playstyle.md` **全文**(口述权威,条目 1-26)——
+> **每次改策略都整体考虑全部原则,不是逐条打补丁**;②攻略证据以 plaza 精读为准
+> (`research/plaza_methodology.md` M1-M16 + 专题);③动代码前用四原则自检:
+> **息律节点无关 / hp低是报警不是触发 / final 买而不上 / 过渡是配方不是散买** ——
+> 与原则冲突的改动方向(如新造节点特例、把报警线当 spending 触发器)一律重想。
+
 ## 核心哲学(三条,贯穿全系统)
 
 1. **像人一样玩,观测驱动非预测驱动**:用每回合 OCR 掉血/胜负等**观测结果**当反馈信号;不预测战斗(为什么砍掉战斗模拟器:ADR 见 INDEX)。
