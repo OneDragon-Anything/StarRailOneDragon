@@ -188,7 +188,23 @@ def stop_sr_od_mcp_server() -> str:
 
 @mcp.tool()
 def restart_sr_od_mcp_server() -> str:
-    """重启主 MCP server(先停再启,沿用原监听端口)。"""
+    """重启主 MCP server(先停再启,沿用原监听端口)。
+
+    r99 守卫:**主 server 有运行中的对局时拒绝重启**(杀对局 = 半途而废局 + 污染遥测;
+    局19 被局中重启污染实证)。检测:HTTP /run/status 的 state==running;server 不可达
+    (已死)则放行(重启救活本来就是重启的目的)。
+    """
+    # r99 局中重启守卫:主 server 活着且对局 running → 拒绝(说明该等局完或先 stop_run)
+    try:
+        import urllib.request
+        with urllib.request.urlopen('http://127.0.0.1:24001/game/status', timeout=3) as resp:
+            body = resp.read().decode('utf-8', errors='replace')
+        if '"state": "running"' in body or '"state":"running"' in body:
+            return ('[ERROR] 重启被拒 - 主 server 有对局运行中(杀对局=半途而废局+污染遥测)。\n'
+                    '先等对局结束,或显式 stop_run 后再重启。')
+    except Exception:   # noqa: BLE001  server 不可达(已死)→ 放行重启
+        pass
+
     # 停止前读取当前端口,重启后沿用,避免非默认端口被静默改回 24001
     proc = find_sr_od_mcp_server_process()
     port = _get_server_port(proc) if proc else None

@@ -812,9 +812,15 @@ def shop_supply(comp: Comp, state: GameState) -> float:
     ⚠️ I14(2026-08-05):旧版 board 有 1 张就返 1.0 → 选了成型不了的 target(board 有但 shop 供不上)
     → 永不成型。改:shop presence 主导,board-only 降为弱信号(0.3)——「board 已有 1 张 ≠ 能成型,
     要 shop 供得上核心」。
+    ⚠️ r99(局18 drought 复盘):**空 shop(无商店相位:奖励关/事件/战斗后无备战)≠ 断供** ——
+    无观测时返回 1.0 中性值(drought 不涨不归),旧逻辑空 shop → 0.3/0.0 弱信号 → 奖励关
+    白涨 drought(r5 一关白记 1 轮,8 轮断供里最多 2-3 轮是无相位冤枉的)。判据:
+    ``state.shop`` 为空列表 = 本回合无商店相位(商店开态必有 5 张,空 = 没到相位)。
     """
     if not comp.factions:
         return 1.0
+    if not state.shop:
+        return 1.0   # 无商店相位(奖励关/事件节点)——无观测≠断供,drought 中性
     shop_factions = {c.faction for c in state.shop}
     # 核心阵营(form_tiers)优先:非核心阵营在 shop 不算「供得上核心」(否则 drought 误归 0,漏掉不可达 target)。
     core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)

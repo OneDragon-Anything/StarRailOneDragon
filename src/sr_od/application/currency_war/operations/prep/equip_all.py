@@ -217,7 +217,6 @@ class EquipAll(SrOperation):
                 return Point((r.x1 + r.x2) // 2, r.y1 + 21), r.y2 + 14
         return None
 
-    @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def _transfer_pair(self, deployed, occupied_m7, tgt_comp, deployed_by_name):
         """r90 C6:找一对转移(key_equip:非核心持有者 → 目标核心)。
 
@@ -225,6 +224,9 @@ class EquipAll(SrOperation):
         #31/#44/#232):过渡期 key_equips 穿在当前 5 人(r70 语义)是**待迁资产**;
         target 核心到场且有空槽 → 迁。返 (holder描述, 件名, src below-icon点, 核心名,
         dst avatar点) 或 None。
+        r99 必修:本方法曾误接 `@operation_node(name='全员装备', is_start_node=True)`
+        (r90 插入时装饰器错位)→ 被框架当起始节点无参调用 → TypeError 每轮崩
+        (局19 r1 EquipAll ×7 连崩实证)。装饰器已归位 equip_all。
         """
         if tgt_comp is None or not tgt_comp.key_equips:
             return None
@@ -257,6 +259,7 @@ class EquipAll(SrOperation):
                                 Point(src_pv[0].x, src_pv[1]), cc, dst_pv)
         return None
 
+    @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
         # 前置:角色详情面板关(出售 可见 = 角色详情面板开,遮 col2;装备详情面板不遮 icon D-37)
