@@ -25,6 +25,7 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 """
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -356,18 +357,33 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # 开启按钮,非购买经验 UI)。撤掉昨天的商店开态静默跳过(它掩盖真问题:
         # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
         # **变体渲染**,find_supply_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
-        # 处理:承认「占用但非角色非已知物品」的判定职责就在本钩子(它就是干这个的),
-        # 但停机策略降级为**留证不停机**(对齐 r34 shop_unknown 先例:反复停机阻断
-        # 实跑,留证给 AI 离线补模板后再恢复停机)。已采 4 帧足已定位,恢复运行优先。
-        # r85b:补给箱/典籍槽排除 —— 箱/典籍占 bench 槽是已知常态(掉箱占席),SIFT
-        # 认不出它们是设计内(非角色)→ 不停机(VLM 实锤:第4局 slot2「蓝色卡片叠放
-        # +开启」= 卡包/补给箱,旧钩子反复停机骚扰)。
-        # r85c:find_supply_boxes 的 0.6 硬门漏检**低分渲染**(卡包变体 TM 0.541 实锤)
-        # → 钩子内用宽松互斥对拍:箱分 > 0.45 且 ≥ 典籍分 = 物件槽(比 0.6 门宽,只
-        # 用于排除停机;read_supply_boxes 生产口径不变,防典籍误判由互斥保证)。
+        # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它;另加
+        # **书册卡内容确认钩子**(模板已认但开启行为未知 → 下次在场停机点开看)。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
+        _obj_slots |= {i for i, _p in find_bookcards(screen, _bench_slots9)}   # r100k 书册卡
+        # r100k 书册卡确认钩子(临时,确认后删):模板认出它了,但开启后是什么未知
+        # (名字带「未知」占位)。下次备战遇到 → 停机,AI 点「开启」看内容 → 改名
+        # + 若有奖励弹窗接线 handler → 删本段。每局只停一次(flag 挡重复)。
+        try:
+            _bc = find_bookcards(screen, _bench_slots9)
+            if _bc and ctx.run_context is not None:
+                from pathlib import Path as _P2
+                _fp2 = _P2('.debug/temp/currency_war/bookcard_confirm_hook.flag')
+                if not _fp2.exists():
+                    _fp2.write_text(
+                        f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
+                        f'处理:点 ({_bc[0][1].x},{_bc[0][1].y}) 「开启」→ 看产出(弹窗/直接入账)'
+                        f'→ ①改模板名 书册卡_未知.png → 真名;②若有交互弹窗,接 handler;'
+                        f'③删本钩子段(cw_identity_obs 搜「bookcard_confirm」)+删本 flag。\n'
+                        f'{datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
+                    from one_dragon.utils.log_utils import log as _log2
+                    _log2.warning('[cw!][bookcard] 书册卡在场(已识别,内容未知)→ 停机点开确认'
+                                  '(流程见 flag;确认后删钩子)')
+                    ctx.run_context.stop_running()
+        except Exception:   # noqa: BLE001  确认钩子 best-effort
+            pass
         _bx_g, _tm_g = _get_supply_box_gray(), _get_tome_gray()
         if _bx_g is not None:
             _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
@@ -436,6 +452,14 @@ _supply_box_loaded: bool = False
 # 分离度实测:典籍 vs 补给箱互 TM 0.481(阈值 0.6 下互不误认);同读法同槽位模型。
 _tome_gray: MatLike | None = None
 _tome_loaded: bool = False
+# 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
+# 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与典籍/补给箱
+# 互撞 0.505/0.462(分离度足够)。**开启行为未知**(名字带「未知」待实机确认:
+# 下次备战遇到→钩子停机→AI 点开看内容→改名+接线开启 handler)。识别先行让
+# summon 钩子不再拦它,但开启语义未接(占槽待开,不阻塞读身份)。
+_bookcard_gray: MatLike | None = None
+_bookcard_loaded: bool = False
+_BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 典籍 0.505 分离充足
 
 
 def _get_tome_gray() -> MatLike | None:
@@ -450,6 +474,37 @@ def _get_tome_gray() -> MatLike | None:
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _tome_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _tome_gray
+
+
+def _get_bookcard_gray() -> MatLike | None:
+    """加载书册卡模板灰度图(r100k;``assets/template/currency_war/supply/书册卡_未知.png``)。"""
+    global _bookcard_gray, _bookcard_loaded
+    if not _bookcard_loaded:
+        _bookcard_loaded = True
+        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '书册卡_未知.png'
+        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
+        _bookcard_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _bookcard_gray
+
+
+def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
+    """纯 CV 核心:槽位内 TM 匹配书册卡(r100k 建档)→ ``[(slot_idx, center)]``。
+
+    自身帧 0.975+,阈值 0.75(选中态余量);典籍/箱互撞 ≤0.505 不需互斥。
+    """
+    tm = _get_bookcard_gray()
+    if tm is None:
+        return []
+    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+    out: list[tuple[int, Point]] = []
+    for idx, rect in slots:
+        crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
+        if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+            continue
+        r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
+        if cv2.minMaxLoc(r)[1] >= _BOOKCARD_TM_THR:
+            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+    return out
 
 
 def _get_supply_box_gray() -> MatLike | None:
