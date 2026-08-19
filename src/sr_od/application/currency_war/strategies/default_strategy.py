@@ -199,12 +199,25 @@ class DefaultCwStrategy(CwStrategy):
                     # 无阵营卡」仍保 → 阵容卡在 0.5-0.75 form → P2 碾压。极端 drought
                     # (≥8 轮零供给)时半成型线也弃(供给断了 = 这条线在当局已死)。
                     if session.target_drought >= 8:
-                        log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
-                                    session.target_comp.name, session.target_drought, _fp)
-                        if session.target_comp.name not in session.drought_excluded:
-                            session.drought_excluded.append(session.target_comp.name)   # r7 review#1:累积名单(单槽被第二条死线覆盖→振荡)
-                        session.target_comp = None
-                        session.target_drought = 0
+                        # r96(第18局实证):P1 后段(r≥7)弃线必死——弃后转的新线从零建,
+                        # 剩余轮次(r7-r9 ≈2-3 战)根本建不成(局18:仙舟 drought 弃→白厄→
+                        # 万敌→千冶 三连换,板=三线残骸 14 阵营,r9 boss hp1 惨胜)。
+                        # user_playstyle[20]:框架「成型、加深」非推倒。牌运断供在 P1 末段
+                        # 的正确响应 = 保持现线靠散件/星级补 + 吃息等 P2 供给恢复
+                        # (shop 概率表每轮独立重掷,断 8 轮不代表 P2 还断),
+                        # 不是换一条同样建不成的新线。
+                        if state.plane == 1 and state.round_num >= 7:
+                            log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(P1r%d 后段,'
+                                        '弃线无重建轮次→保持;散件/星级补,P2 供给重掷)',
+                                        session.target_comp.name, session.target_drought,
+                                        state.round_num)
+                        else:
+                            log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
+                                        session.target_comp.name, session.target_drought, _fp)
+                            if session.target_comp.name not in session.drought_excluded:
+                                session.drought_excluded.append(session.target_comp.name)   # r7 review#1:累积名单(单槽被第二条死线覆盖→振荡)
+                            session.target_comp = None
+                            session.target_drought = 0
                     else:
                         log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
                                  session.target_comp.name, session.target_drought, _fp)
