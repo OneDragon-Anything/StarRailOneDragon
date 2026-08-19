@@ -54,7 +54,7 @@ class HandleFortunePicker(SrOperation):
                 buckets[nearest].append(text)
         return [' '.join(buckets[x]) for x in self.CARD_XS]
 
-    @operation_node(node_name='命运卜者强化', is_start_node=True, node_max_retry_times=5)
+    @operation_node(name='命运卜者强化', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
         screen = self.screenshot()
         texts = self._read_cards(screen)
