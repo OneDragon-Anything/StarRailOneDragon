@@ -414,6 +414,19 @@ class CurrencyWarRunLoop(SrOperation):
                 return self.round_wait(wait=2)
             return self.round_retry(wait=2)
 
+        # 0a3. 命运卜者「强化效果三选一」overlay(r115,局32 P2r2 卡死 30min 实证;
+        #      策划系事件族:标题+三卡+Q详情+确认,布局同策划事件)。P2 强化关。
+        if (self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-命运卜者', crop_first=False).is_success
+                and self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-请选择强化效果', crop_first=False).is_success):
+            from sr_od.application.currency_war.operations.handlers.handle_fortune_picker import (
+                HandleFortunePicker,
+            )
+            _r3 = HandleFortunePicker(self.ctx).execute()
+            if _r3 is not None and getattr(_r3, 'success', False):
+                self._clear_bail_count('事件overlay:fortune')
+                return self.round_wait(wait=2)
+            return self.round_retry(wait=2)
+
         # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
         #     用 screen_info 标题 area(标识-盛会之星)位置区分。原用全屏「确认选择」(lcs 0.7 防「请选择投资策略」
         #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar
