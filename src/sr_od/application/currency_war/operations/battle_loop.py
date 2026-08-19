@@ -806,7 +806,15 @@ class CurrencyWarRunLoop(SrOperation):
                              / 'currency_war' / 'unknown_state.flag')
                 _sentinel.parent.mkdir(parents=True, exist_ok=True)
                 _sentinel.write_text(
-                    f'iter={self._iter} streak={self._unknown_streak} shot={_shot}', encoding='utf-8')
+                    f'持久未识别画面停机钩子:iter={self._iter} streak={self._unknown_streak}\n'
+                    f'处理流程(r100k 补,别跳过):\n'
+                    f'1. 用截图离线分析:analyze_screen(screenshot=<shot 路径>) 看已建档命中;\n'
+                    f'2. 未命中 → 按元素语义判断:新画面/弹窗 → od-dev-screen-onboarding 建档\n'
+                    f'   + battle_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ 考虑加大\n'
+                    f'   UNKNOWN_STOP_THRESHOLD 或加等待,不是新画面;\n'
+                    f'3. 建档完删本 flag + 重启 MCP server;若判断为瞬时帧误触发 → 删 flag\n'
+                    f'   直接重跑(阈值/防抖在 UNKNOWN_STOP_THRESHOLD)。\n'
+                    f'shot={_shot}', encoding='utf-8')
                 log.info('[cw!] [loop] 持久未识别画面 → stop_running 待 AI 建档 shot=%s streak=%s',
                          _shot, self._unknown_streak)
             except Exception as e:  # noqa: BLE001  钩子失败不阻塞

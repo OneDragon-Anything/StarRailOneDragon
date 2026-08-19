@@ -161,11 +161,14 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
         _p = Path('.debug/temp/currency_war/star_regression_hook.flag')
         _p.parent.mkdir(parents=True, exist_ok=True)
         _p.write_text(
-            f'[{datetime.now().isoformat(timespec="seconds")}] star 回退留证(r17 降级,**未停机**)——'
+            f'[{datetime.now().isoformat(timespec="seconds")}] star 回退{"停机" if stop_run else "留证(r17 降级,不阻断)"}——'
             f'{char} 预估 {old_star}★(买牌 3合1 merge)多次读回 '
             f'{new_star}★,星级/身份识别可疑。\n'
-            f'排查:①该角色槽位 read_star 实读;②SIFT 身份是否错配;'
-            f'③修好后删钩子:cw_reconcile.py 搜「_star_stop_hook」整段。\n'
+            f'处理流程(r100k 补):\n'
+            f'1. 对截图 shots/star_regress_{char}_*.png 肉眼核星级(金框/角标);\n'
+            f'2. ①星读对预估错(merge 逻辑)→ 修 cw_reconcile 预估;②星读错(read_star)\n'
+            f'   → 核星区遮挡/光标;③SIFT 身份错配 → 核 portrait 模板;\n'
+            f'3. 修好后删钩子:cw_reconcile.py 搜「_star_stop_hook」整段 + 删本 flag。\n'
             f'画面态:备战(角色在板上,星区可见);来源:{source}',
             encoding='utf-8')
         try:
