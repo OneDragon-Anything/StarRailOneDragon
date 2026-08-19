@@ -64,21 +64,36 @@ def _cheap_carry_walkin(target: Comp | None, state: GameState) -> bool:
     """r100f 模式B判据:终局线便宜 carry 已到手 → 过渡=终局雏形,开局直接走本线。
 
     plaza 二次精读实证(per_comp_transition.md 总纲):希儿(3费量子,48帖 Early 69%
-    贯穿 0.70)/黄泉(3费巡海 0.75)/姬子(3费列车 0.60,混合)/万敌(1费夜神 0.63)
-    ——本线 core ≤3 费开局就在商店池,「开局拿缇宝花火和希儿组3量子」零切换成本。
-    判据:终局线 ≥2 个 core ≤3费(雏形羁绊可早期成型)**且已持有 ≥1**(开局拿到
-    便宜 carry = 走本线的触发信号);贵 carry 线(Archer/瓦尔特 5费)永远不满足
-    → 自然落回通用配方(模式A)。
+    贯穿 0.70)——本线 core ≤3 费开局就在商店池,「开局拿缇宝花火和希儿组3量子」零切换成本。
+
+    ⚠️ r100g 审计必修(局21 实证触发面失控):旧判据「≥2 cheap core 且持有 1」在
+    COMP_LIBRARY 20 套里 18 套满足,且便宜 core(三月七/花火/千冶·刃)跨 comp 共享
+    → 开局一张三月七就触发任意线 walkin,局21 全程散板。收紧为**双条件**:
+    ①终局主羁绊(form_tiers 最高档阵营)的 cheap 件 ≥2(雏形羁绊可早期成型——
+    量子线的希儿/花火/缇宝同属量子,列车线的三月七/姬子/花火同属列车);
+    ②**已持有该羁绊件 ≥2**(双张起步 = 真雏形信号,单张随机来牌不触发)。
+    贵 carry 线(Archer/瓦尔特 5费)主羁绊 cheap 件天然 <2 → 永不满足,模式A 兜底。
     """
-    if target is None or not target.core_chars:
+    if target is None or not target.core_chars or not target.form_tiers:
         return False
     from sr_od.application.currency_war.cw_chars import CHARACTERS
-    cheap = [c for c in target.core_chars
-             if getattr(CHARACTERS.get(c), 'cost', 9) <= 3]
-    if len(cheap) < 2:
+    # 主羁绊 = form_tiers 档位最高的阵营(量子线的 量子同频,列车线的 列车同行)。
+    # ⚠️ 角色归属判 factions ∪ flows(量子同频是 flow 非原生阵营——希儿原生贝洛伯格)。
+    main_fac = max(target.form_tiers.items(), key=lambda kv: kv[1])[0]
+
+    def _in_fac(ch: str) -> bool:
+        o = CHARACTERS.get(ch)
+        if o is None:
+            return False
+        return main_fac in set(getattr(o, 'factions', ()) or ()) | set(getattr(o, 'flows', ()) or ())
+
+    # 该羁绊的 cheap core(≤3费)——雏形成型件
+    cheap_in_fac = [c for c in target.core_chars
+                    if getattr(CHARACTERS.get(c), 'cost', 9) <= 3 and _in_fac(c)]
+    if len(cheap_in_fac) < 2:
         return False
     owned = {getattr(bc, 'char_id', '') for bc in (*state.deployed, *state.bench)}
-    return any(c in owned for c in cheap)
+    return sum(1 for c in cheap_in_fac if c in owned) >= 2
 
 
 def decision_target(session, state: GameState) -> Comp | None:

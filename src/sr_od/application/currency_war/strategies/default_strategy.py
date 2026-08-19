@@ -123,6 +123,9 @@ class DefaultCwStrategy(CwStrategy):
         if state.dual_track_phase:
             from sr_od.application.currency_war.cw_transition import pick_framework
             _portal = (getattr(session, 'active_env', '') or '').strip()
+            # r100g C-2:清框架后的偏置压制窗内不给 portal(防 pick_framework 立即选回)
+            if state.round_num <= getattr(session, 'portal_bias_mute', 0):
+                _portal = ''
             session.transition_framework = pick_framework(
                 state.bench, state.deployed, state.shop,
                 current=session.transition_framework, portal=_portal)   # r72 滞后
@@ -203,6 +206,10 @@ class DefaultCwStrategy(CwStrategy):
                             session.transition_framework, session.target_drought)
                 session.transition_framework = ''
                 session.target_drought = 0
+                # r100g 审计必修(C-2):portal 局偏置持久(active_env 每轮 +3)会让
+                # 下一轮 pick_framework 立即选回同一框架 → 清框架空转、断供死循环。
+                # 清框架时连带压制 portal 偏置 DROUGHT_BAIL 轮(给重选窗口)。
+                session.portal_bias_mute = state.round_num + DROUGHT_BAIL
         elif session.target_comp is not None:
             _supply = cw_comps.shop_supply(session.target_comp, state)
             session.target_drought = session.target_drought + 1 if _supply < 1.0 else 0
@@ -343,15 +350,31 @@ class DefaultCwStrategy(CwStrategy):
             # 把守卫放在调用侧 + 危机豁免旁路的病。
             # r100(终局线 P1 冻结):双轨期 target_comp 是**囤牌方向**不是作战方向
             # (作战方向=过渡配方,decision_target 已换),换终局线 = 撕囤件方向,
-            # P1 内无重建轮次(局18 三连换实证);定义型 augment 在 maybe_pivot 内
-            # 自有解锁(_defining_new),危机响应在双轨期=保配方+花光补强非换线。
+            # P1 内无重建轮次(局18 三连换实证);危机响应在双轨期=保配方+花光补强非换线。
+            # r100g 审计必修(D):双轨期**仍调 maybe_pivot 但只接受定义型结果**——
+            # 旧写法直接不调用 = 黑塔纪元类(模式C,per_comp_transition 总纲)在 P1
+            # 全程被拦,与设计矛盾;_defining_new(affinity≥0.9)在函数内部,调用侧
+            # 冻结就到不了。信号1/2 由 maybe_pivot 内部双轨门关(r88),不受影响。
             if (getattr(state, 'dual_track_phase', False)
                     and not _boss_window and (_in_crisis or state.round_num > _cool)):
-                # 双轨期:信号 1/2 全关(r88),只剩危机路径——双轨危机不换终局线
-                # (板面由配方驱动,换 target 不产战力),交 buy 侧补强。
-                log.info('[cw-target] 双轨期冻结终局 pivot(tgt=%s;作战=配方%s,危机交买侧)',
-                         session.target_comp.name if session.target_comp else 'None',
-                         getattr(session, 'transition_framework', '') or '未定')
+                _piv_all = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
+                                                tracker=session.performance)
+                if _piv_all is not None and _piv_all is not session.target_comp:
+                    _defining = any(
+                        cw_comps.AUGMENT_COMP_AFFINITY.get(a, {}).get(_piv_all.name, 0.0) >= 0.9
+                        for a in score_ctx.held_strategies)
+                    if _defining:
+                        piv = _piv_all
+                        log.info('[cw-target] 双轨期定义型解锁例外:%s(模式C,绕过冻结)',
+                                 _piv_all.name)
+                    else:
+                        log.info('[cw-target] 双轨期冻结终局 pivot(tgt=%s→候选%s 拒;作战=配方%s)',
+                                 session.target_comp.name if session.target_comp else 'None',
+                                 _piv_all.name,
+                                 getattr(session, 'transition_framework', '') or '未定')
+                else:
+                    log.info('[cw-target] 双轨期冻结终局 pivot(无候选;作战=配方%s,危机交买侧)',
+                             getattr(session, 'transition_framework', '') or '未定')
             elif not _boss_window and (_in_crisis or state.round_num > _cool):
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)
