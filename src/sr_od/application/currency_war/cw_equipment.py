@@ -41,7 +41,7 @@ __all__ = ['Equipment', 'EQUIPMENTS', 'EQUIPMENT_ROSTER', 'get_equip', 'load_equ
 # 教训(D-28/D-38):VLM 不懂游戏,装备 icon 识别易误判(D-18~D-26 误判球体;D-38 把星徽当空槽)。cw_equip SIFT + click ground truth 交叉验证才准;别依赖 VLM 推断游戏事实,游戏知识以用户/图鉴为准。
 
 
-_EQUIP_SIFT = cv2.SIFT_create()
+_EQUIP_SIFT = cv2.SIFT_create()  # type: ignore[attr-defined]  # cv2 stubs 不含 SIFT(实际存在)
 _EQUIP_MATCHER = cv2.BFMatcher()
 
 

@@ -40,7 +40,7 @@ import numpy as np
 from cv2.typing import MatLike
 
 # SIFT 检测器(与 one_dragon.utils.cv2_utils.feature_detector 同源)
-_SIFT = cv2.SIFT_create()
+_SIFT = cv2.SIFT_create()  # type: ignore[attr-defined]  # cv2 stubs 不含 SIFT(实际存在,opencv-python>=4.4 内置)
 _MATCHER = cv2.BFMatcher()
 
 AvatarTemplates = dict[str, tuple[MatLike, tuple, np.ndarray]]

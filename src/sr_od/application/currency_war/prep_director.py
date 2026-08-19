@@ -389,7 +389,9 @@ class PrepDirector(SrOperation):
                     _bf_rid = cw_telemetry.current_run_id() or '-'
                     if _bf_rid == '-' and self.ctx.cw_match is not None:
                         _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'   # 与 _record_exec_obs 兜底一致
-                    cw_telemetry.record_exec_event(
+                    # r98 类型 gate 抓真 bug:record_exec_event 是 TelemetryRecorder 类方法,
+                    # 模块级直调 = AttributeError(此前被 except 吞 → 破墙遥测从未落盘)。
+                    cw_telemetry.get_recorder().record_exec_event(
                         run_id=_bf_rid,
                         round_num=obs.state.round_num,
                         action_family=f'BenchFull_{type(action).__name__}',

@@ -98,9 +98,32 @@ exclude = [
     "sr-od-test",
 ]
 extraPaths = ["src"]  # src-layout + package=false：让 pyright 去 src/ 解析 one_dragon/sr_od 等导入（同 PYTHONPATH=src 的根因）
-# TODO(type-check): typeCheckingMode 暂 off——只用导航（定义/引用/符号），不刷类型诊断。
-#   现有代码尚未 type-clean，后续随改造逐步提升 → basic → standard。
-typeCheckingMode = "off"
+# r98 起 cw 包(活跃战场)先开 basic —— 覆盖 import 解析 + 基础类型错(r92 ImportError
+# 三局才爆的类别;typeCheckingMode off 时 pyright 只当导航用,连 x:int='str' 都不报)。
+# 存量类型债 446 项(argumentType 217/optional 访问 136 等,渐进还):类型级降 warning
+# 不阻塞 gate;**import/未定义/调用存在性保持 error**——那是真 bug 域(r92 类别)。
+# gate: uv run pyright src/sr_od/application/currency_war/ (exit 0 才 commit)
+[[tool.pyright.executionEnvironments]]
+root = "src/sr_od/application/currency_war"
+typeCheckingMode = "basic"
+extraPaths = ["src"]
+# 存量债渐进还:类型级降 warning(gate 只看 error)
+reportArgumentType = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalSubscript = "warning"
+reportOptionalOperand = "warning"
+reportAttributeAccessIssue = "warning"   # 动态挂载(ctx.cw_* / session 字段)与 import 错混在此规则,gate 侧脚本筛 import 行
+reportPossiblyUnboundVariable = "warning"
+reportIncompatibleMethodOverride = "warning"
+reportReturnType = "warning"
+reportAssignmentType = "warning"
+reportIndexIssue = "warning"
+reportCallIssue = "warning"
+reportOperatorIssue = "warning"
+reportGeneralTypeIssues = "warning"
+reportUndefinedVariable = "error"
+reportMissingImports = "error"
+reportMissingModuleSource = "none"
 
 # Pytest 配置：src-layout + package=false，让 pytest 自动把 src/ 加入 sys.path
 # (取代 CI 的 PYTHONPATH=src env 和测试文件里手动的 sys.path.insert)
