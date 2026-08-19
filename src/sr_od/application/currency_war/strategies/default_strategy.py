@@ -282,6 +282,10 @@ class DefaultCwStrategy(CwStrategy):
                             or (state.round_num >= 9 and state.node_type != 'supply')
                             or (state.plane >= 2 and state.round_num == 1))
             piv = None
+            # r91:冷却**守卫**单一源在 maybe_pivot 函数顶(不变量:两次 pivot 至少隔
+            # 冷却轮,无例外);本处 `or _in_crisis` 只是「冷却内仍进函数看危机」的
+            # 通道(maybe_pivot 顶部统一拦),不再是守卫本身——同轮两翻(r90c)即旧结构
+            # 把守卫放在调用侧 + 危机豁免旁路的病。
             if not _boss_window and (_in_crisis or state.round_num > _cool):
                 piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
                                            tracker=session.performance)

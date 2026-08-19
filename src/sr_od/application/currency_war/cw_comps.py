@@ -1355,6 +1355,18 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     ⚠️ 阶段 2 启发式:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(已接:``is_losing_streak`` 解锁 commit 锁做保命转型,L791)。
     """
     PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
+    # ⚖️ r91 不变量统一守卫(收口 r87 H2 + r90c 两份分散检查,用户定调治本):
+    # **不变量:任意两次 pivot 之间至少间隔 cooldown 轮,无例外**(含危机信号)。
+    # 守卫放**函数最顶部**(所有信号路径的唯一必经点)——此前分散两份:
+    # r87 H2 挡 with_progress 分支、r90c 挡危机入口,第12局实证危机豁免仍可
+    # 绕过前者(60 秒两翻)。单一入口后调用侧的冷却门只是省算力优化,不再是守卫。
+    _sess_inv = getattr(ctx, 'session', None)
+    _cd_inv = getattr(_sess_inv, 'pivot_cooldown_until', 0) if _sess_inv else 0
+    if state.round_num <= _cd_inv:
+        log.info('[cw-pivot] p=%s r=%s 冷却中(至r%s,不变量:两次pivot至少隔冷却轮,'
+                 '无例外;板面靠买牌/合星/升级补)',
+                 state.plane, state.round_num, _cd_inv)
+        return None
     # r88(用户 2026-08-20 定调,第9局四线摇摆实证):**双轨期(P1 未定型)信号1/2 全关** ——
     # target_comp 是从近空板上按分选的(分=噪声),每来一张牌重排 → 每 1-4 轮 pivot →
     # 四条零共享核心线各推倒一次 → 板永不成型 → P1 全输过去(第9局 hp 100→1 零胜)。
@@ -1377,17 +1389,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state))
     if state.hp < _pivot_hp:
-        # r90c 实证必修(第12局 p2r7 60 秒内两次翻转):危机豁免让 update_target 的
-        # 同轮多次调用绕过冷却(cooldown=round+1 只跨轮生效)→ 同备战环内反复 pivot。
-        # 修:危机路径入口即查冷却(同轮已 pivot 过 → 保持,与 with_progress 分支同门);
-        # 保命优先级不变(hp 危险时信号1/2 仍不参与),只掐「连续翻转」。
-        _sess0 = getattr(ctx, 'session', None)
-        _cd0 = getattr(_sess0, 'pivot_cooldown_until', 0) if _sess0 else 0
-        if state.round_num <= _cd0:
-            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 冷却中(至r%s;同轮已转,'
-                     '连续翻转自激掐断,板面靠买牌/合星/升级补)',
-                     state.plane, state.round_num, state.hp, _pivot_hp, _cd0)
-            return None
+        # 冷却守卫已提函数顶(r91 不变量单一入口),危机路径不再自查。
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。
         # r68(下一位面预转):过滤扩到 next_plane —— P1 末段保命转线若转进「下位面弱」的
@@ -1418,16 +1420,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
             if target is None or fastest.name != target.name:
-                # r87 H2:保命 pivot 冷却(1 轮)—— 连续翻转自激掐断;冷却内保持现状,
-                # 强度靠买牌/升人口补(转线本身不产战力,推倒板面才真掉战力)。
-                _sess = getattr(ctx, 'session', None)
-                _cd_until = getattr(_sess, 'pivot_cooldown_until', 0) if _sess else 0
-                if state.round_num <= _cd_until:
-                    log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命→%s 被冷却拦(至r%s;'
-                             '防连续翻转自激,板面靠买牌补)',
-                             state.plane, state.round_num, state.hp, _pivot_hp,
-                             fastest.name, _cd_until)
-                    return None
+                # 冷却守卫已提函数顶(r91 不变量单一入口;原 r87 H2 分支内检查删除)。
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
                          state.plane, state.round_num, state.hp, _pivot_hp,
                          target.name if target else 'None', fastest.name)
