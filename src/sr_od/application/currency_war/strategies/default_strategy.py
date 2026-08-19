@@ -109,8 +109,23 @@ class DefaultCwStrategy(CwStrategy):
         # 定型边界=进 P2(plane>=2,严于文档口径 P2-3;详 cw_transition 注释);
         # 旧 past_commit_deadline 分支被 plane>=2 恒短路,已删(2026-08-18)。
         from sr_od.application.currency_war.cw_transition import t_of
+        # r100i(局22 r7 泄漏修复):committed 判定只看 signals.ready,但定型切换可能
+        # 被 drought_excluded/供给门拦 → 出现「ready(双轨结束)+ target 还是旧线 +
+        # maybe_pivot 信号1 全开」窗口 = 双轨冻结形同虚设(局22:16:18 弃过专家桑博DOT
+        # 进排除名单 → r7 信号 ready 但切换被拦 → 信号1 把 target 摇到万敌单C)。
+        # 修:**committed = ready 且(切换成功 或 target 已是 leader)**;切换失败
+        # (死线/断供)时保持双轨(信号1/2 关),等待 drought/定义型通道。
+        _ready = session.commit_signals.ready(t_of(state.plane, state.round_num))
+        _lead = session.commit_signals.leader() if _ready else None
+        _lead_comp = (next((c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None)
+                      if _lead else None)
+        _switchable = (_lead_comp is not None
+                       and _lead_comp.name not in session.drought_excluded
+                       and cw_comps.shop_supply(_lead_comp, state) > 0)
         _committed = (state.plane >= 2
-                      or session.commit_signals.ready(t_of(state.plane, state.round_num)))
+                      or (_ready and (_switchable or (
+                          session.target_comp is not None and _lead_comp is not None
+                          and session.target_comp.name == _lead_comp.name))))
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
         # r73 RC3:双源写 session(单一源;shop 循环态/Director 每轮拷回,防 read_game_state
         # 新建对象默认 False 冲掉 —— 断裂指纹:遥测每轮首条 True、循环内全 False)。
@@ -255,21 +270,17 @@ class DefaultCwStrategy(CwStrategy):
         # 双轨期信号 ready 或过 deadline → target 锁定为信号领先线(定型;此后
         # dual_track_phase=False,攒的钱拉人口+D 核心,装备/星级全投)。
         # 领先线在 drought_excluded(死线)或断供 → 退 select_comp 最高分。
-        if state.dual_track_phase and session.commit_signals.ready(
-                t_of(state.plane, state.round_num)):
-            _lead = session.commit_signals.leader()
-            _lead_comp = next((c for c in cw_comps.COMP_LIBRARY if c.name == _lead[0]), None) \
-                if _lead else None
-            if (_lead_comp is not None
-                    and _lead_comp.name not in session.drought_excluded
-                    and cw_comps.shop_supply(_lead_comp, state) > 0):
-                if session.target_comp is None or session.target_comp.name != _lead_comp.name:
-                    log.info('[cw-target] ADR-0209 定型:信号 ready(%s,%.2f)→ 切最终线(卖过渡换最终)',
-                             _lead[0], _lead[1])
-                    # 定型边沿:标记 drop 档过渡牌待卖(plan 的集中卖散消费;
-                    # 场上 drop 牌不卖——战力>卖价,自然被最终线替换)
-                    session.commit_flip_pending = True
-                session.target_comp = _lead_comp
+        # r100i:committed 判定(L125-129)已把 ready+switchable 算出并写 state;
+        # 此处**不能**再判 state.dual_track_phase(已被自己写 False,分支永远死)。
+        # 复用判定期的 _ready/_switchable:ready 且可切 → 切;被拦 → 保持(双轨已 True)。
+        if _ready and _switchable and _lead_comp is not None:
+            if session.target_comp is None or session.target_comp.name != _lead_comp.name:
+                log.info('[cw-target] ADR-0209 定型:信号 ready(%s,%.2f)→ 切最终线(卖过渡换最终)',
+                         _lead[0], _lead[1])
+                # 定型边沿:标记 drop 档过渡牌待卖(plan 的集中卖散消费;
+                # 场上 drop 牌不卖——战力>卖价,自然被最终线替换)
+                session.commit_flip_pending = True
+            session.target_comp = _lead_comp
         # count≥2 到 r6-7 才 emergent → 太慢,HP 在 comp 成型前崩。降到 count≥1(starter 任一阵营在场,r1 即触发)
         # (r1 board 有 starters 非空 + select_comp 用 shop_supply 保 acquirable;maybe_pivot 纠偏;drought_bail 兜底)。
         EMERGENT_SIGNAL_COUNT: int = 1
@@ -376,8 +387,15 @@ class DefaultCwStrategy(CwStrategy):
                     log.info('[cw-target] 双轨期冻结终局 pivot(无候选;作战=配方%s,危机交买侧)',
                              getattr(session, 'transition_framework', '') or '未定')
             elif not _boss_window and (_in_crisis or state.round_num > _cool):
-                piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
-                                           tracker=session.performance)
+                # r100i 定型边沿保护:commit_flip_pending(本轮刚定型切换)期间信号1/2
+                # 冻结——新线 form=0 必被旧线分反超,「切完即摇回」= 定型形同虚设
+                # (测试实证:切万敌单C 同轮被信号1摇回专家桑博DOT)。
+                if getattr(session, 'commit_flip_pending', False):
+                    log.info('[cw-target] 定型边沿保护:本轮刚切换(%s),信号1/2 冻结一轮',
+                             session.target_comp.name if session.target_comp else 'None')
+                else:
+                    piv = cw_comps.maybe_pivot(state, score_ctx, config, session.target_comp,
+                                               tracker=session.performance)
             elif _boss_window and (_in_crisis or state.round_num > _cool):
                 log.info('[cw-target] boss/位面切换 窗(p%sr%s node=%s)冻结 pivot(危机响应交花光成型)',
                          state.plane, state.round_num, state.node_type)
