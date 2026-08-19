@@ -17,7 +17,6 @@ from sr_od.application.currency_war.cw_comps import (
     skeleton_factions,
 )
 from sr_od.application.currency_war.cw_economy import (
-    ALL_IN_HP_FLOOR,
     P2_REBUILD_GOLD_FLOOR,
     WIN_STREAK_BREAK_INTEREST,
     _char_synergies,
@@ -340,16 +339,20 @@ def _should_save_for_interest(state: GameState, config, target_comp: Comp | None
     boss 只是「到时自然满息 + 花的边际价值高」,由 HP 权重与候选排序体现,不该是息律开关)。
 
     r89b 三变量抉择(r89 后的本门语义,攻略专题实证):未满息时是否破息攒牌 = f(连胜在手?,
-    hp 安全,板强);连胜 ≥ 阈值已破息(下方);**hp < ALL_IN_HP_FLOOR(40,攻略 #153 卖血
-    下限/#62 快死 ALL IN)→ 破息花光成型**(血是通关硬约束,息随时可再攒 —— 旧门槛
-    effective_hp_threshold 职级相关,40 线是攻略明文安全线,两者取严)。
+    hp 安全,板强);连胜 ≥ 阈值已破息(下方)。
+    ⚠️ r90 用户修正(2026-08-20 定性):**hp 低 ≠ ALL IN 触发** —— 血低是前面破息决策
+    错了的报警,花光挺节点 = 给策略失败擦屁股,断息后经济撑不起整局(死亡螺旋实证:
+    第7/9局 hp1 进 P2 即死)。目标长期通关非苟节点。血低的正确响应 = **最小必要支出**
+    止损 + 息引擎尽量保;旧 hp 破息门(effective_hp_threshold,职级相关)语义保留但
+    收紧为「真活不下去才破息」(由 _phase_weights HP 危险权重的既有路径承担急救,
+    本门只管常态攒息)。真 ALL IN 只属位面末最后一战(cw_plan _spill_spend 场景)。
     """
     if state.gold >= INTEREST_THRESHOLD:
         return False
     if state.deployed_count() < state.max_units():
         return False
-    if state.hp < min(effective_hp_threshold(state), ALL_IN_HP_FLOOR):
-        return False
+    if state.hp < effective_hp_threshold(state) * 0.5:
+        return False   # 真活不下去(职级阈值半血):急救通道(_phase_weights),非本门常态
     if target_comp is None or form_progress(target_comp, state) < COMMIT_FRAC:
         return False
     # 连胜 ≥ 阈值 → 破息(保连胜>吃息,断连胜亏>利息亏);否则攒息。

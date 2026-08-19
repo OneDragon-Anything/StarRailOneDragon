@@ -218,6 +218,45 @@ class EquipAll(SrOperation):
         return None
 
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
+    def _transfer_pair(self, deployed, occupied_m7, tgt_comp, deployed_by_name):
+        """r90 C6:找一对转移(key_equip:非核心持有者 → 目标核心)。
+
+        攻略装备转移常态(#9「龙丹装备转给火花」/#4「给景元的装备先让银枝用」/
+        #31/#44/#232):过渡期 key_equips 穿在当前 5 人(r70 语义)是**待迁资产**;
+        target 核心到场且有空槽 → 迁。返 (holder描述, 件名, src below-icon点, 核心名,
+        dst avatar点) 或 None。
+        """
+        if tgt_comp is None or not tgt_comp.key_equips:
+            return None
+        for cc in tgt_comp.core_chars:
+            ds = deployed_by_name.get(cc) or []
+            d = next((x for x in ds if x.char_id == cc), None)
+            if d is None:
+                continue
+            d_row, d_slot = d.position_pref or 'back', int(d.slot or 1)
+            dst_pv = self._slot_drag_point(d_row, d_slot)
+            if dst_pv is None:
+                continue
+            if len(occupied_m7.get((d_row, d_slot), [])) >= 3:
+                continue   # 该核心槽满 → 试下一核心
+            for (row, slot), names in occupied_m7.items():
+                holder = next((x for x in deployed
+                               if (x.position_pref or 'back') == row
+                               and int(x.slot or 1) == slot), None)
+                if holder is None or not holder.char_id:
+                    continue
+                if holder.char_id in tgt_comp.core_chars:
+                    continue   # 已在核心身上 → 不动
+                for n in names:
+                    if n in tgt_comp.key_equips:
+                        src_pv = self._slot_drag_point(row, slot)
+                        if src_pv is None:
+                            continue
+                        # 源 = 持有者 avatar 下方 below-icon(穿着件所在;近似取 below 中心)
+                        return (f'{holder.char_id}({row}-{slot})', n,
+                                Point(src_pv[0].x, src_pv[1]), cc, dst_pv)
+        return None
+
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
         # 前置:角色详情面板关(出售 可见 = 角色详情面板开,遮 col2;装备详情面板不遮 icon D-37)
@@ -283,6 +322,34 @@ class EquipAll(SrOperation):
             log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
                      [(d.char_id, d.position_pref, d.slot) for d in deployed],
                      {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
+            # ===== r90 C6 装备转移前置遍(攻略装备转移常态;≤3 件/次,落空即停) =====
+            # 每件转移后重读两排占用(画面已变);below CV-diff 验落(同主循环验穿)。
+            for _ in range(3):
+                if self.round_by_ocr(self.screenshot(), '出售', lcs_percent=0.8).is_success:
+                    log.info('[cw-equip] 转移遍:角色详情面板开 → 停')
+                    break
+                tp = self._transfer_pair(deployed, occupied_m7, _tgt_comp, deployed_by_name)
+                if tp is None:
+                    break
+                holder_desc, tname, src_pt, cc_name, (dst_pt, dst_vy) = tp
+                log.info('[cw-equip] C6 转移 %s 的 %s → %s(key_equip 过渡持有→核心)',
+                         holder_desc, tname, cc_name)
+                landed, diff = self._drag_equip(src_pt, dst_pt, dst_vy)
+                if not landed:
+                    # below-icon 拖拽起点是近似坐标,可能没抓中 → retry 一次
+                    landed, diff = self._drag_equip(src_pt, dst_pt, dst_vy)
+                if landed:
+                    log.info('[cw-equip] C6 转移落(%s→%s,diff=%.1f);重读占用', tname, cc_name, diff)
+                    _cur = self.screenshot()
+                    occupied_m7 = {}
+                    for row, prefix in (('front', '前排'), ('back', '后排')):
+                        row_occ = read_row_equipped(self.ctx, _cur, tmpl_grays, prefix,
+                                                    4 if row == 'front' else 10)
+                        for k, v in row_occ.items():
+                            occupied_m7[(row, k)] = list(v)
+                else:
+                    log.info('[cw-equip] C6 转移 %s 落空(diff=%.1f,below 拖拽近似未中)→ 停本遍', tname, diff)
+                    break
             equipped = 0
             stall = 0
             while stall < 2:

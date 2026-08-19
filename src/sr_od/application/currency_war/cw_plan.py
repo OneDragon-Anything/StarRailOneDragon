@@ -238,18 +238,57 @@ def _bench_faction_counts(state: GameState) -> dict[str, int]:
 
 
 
+def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
+    """r90 C1 上场即激活档:该牌上场后 board 阵营计数命中**此前未达**的激活档。
+
+    攻略 #245「手上有 4击破 才让白厄上场」的判据形式化:final 件的上场窗口之一 =
+    上场本身产生确定羁绊增量(新档激活)。deepen 已达最高档不算(那是深化,归框架件管)。
+    """
+    from sr_od.application.currency_war.cw_economy import _char_synergies
+    from sr_od.application.currency_war.cw_factions import FACTIONS
+    syn = _char_synergies(bc.char_id) if bc.char_id else set()
+    if bc.faction and bc.faction != '?':
+        syn = syn | {bc.faction}
+    for f in syn:
+        _i = FACTIONS.get(f)
+        if _i is None or not _i.tiers:
+            continue
+        cur = state.board.get(f, 0)
+        new = cur + 1
+        hits_new = any(new >= t for t in _i.tiers)
+        hits_old = any(cur >= t for t in _i.tiers)
+        if hits_new and not hits_old:
+            return True
+    return False
+
+
 def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool:
     """是否 deploy 该角色(L2 deploy cap,防 spread-lock)。
 
-    deploy 条件(任一):
-    - target 阵营角色(target.factions 含 bc.faction 或 bc.char_id ∈ core_chars)。
+    r90 C1 **final 件条件窗口**(663 帖攻略精读 #243/#245/#249:final 件买而囤 bench,
+    等窗口才上场 —— 用户定性「凑 final 不是问题,让它上场却取不了胜利才是」):
+    双轨期(P1 未定型)target 件**不再即买即上**(旧 L251 直 True = P1 板长成 final
+    散件打不过过渡阵容,第9局四线散板实证)。P1 的板 = 过渡框架;final 件囤 bench,
+    上场窗口(任一):
+    - ①非双轨(定型信号 ready / 进 P2)→ 无条件上;
+    - ②位面末变阵窗(round ≥ 8;#243「1-8 奖励关后 d,1-9 变阵」)→ 换 final 上;
+    - ③上场即激活阵营档(见 ``_dep_activates_tier``;#245 白厄=4击破齐)→ 即刻兑现;
+    - ④框架在册件(TRANSITION_PACK 非 drop,仙舟/列车/通用)→ 双轨期临时 target 照上(r70)。
+    窗口外落回集中判据(阵营 count≥2 深化)。
+
+    deploy 条件(任一,窗口外):
+    - target 阵营角色(窗口内,见上)。
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
-    - r70:双轨框架牌(TRANSITION_PACK 在册,仙舟/列车/通用件)= 双轨期临时 target
-      (deploy 侧同语义;否则保血资产被判散牌留 bench → 白板挨打)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
     if target is not None and _card_supports_target(bc.char_id, bc.faction, state, target):
-        return True
+        if not state.dual_track_phase:
+            return True   # ①已定型/进 P2:final 即主力
+        if state.round_num >= 8:
+            return True   # ②位面末变阵窗(P1 r8 奖励关起 → r9 boss 前换 final)
+        if _dep_activates_tier(bc, state):
+            return True   # ③上场即激活档(确定战力即刻兑现)
+        # 双轨期窗口外:final 件囤 bench(stash),落到下方框架/集中判据
     if state.dual_track_phase and bc.char_id:
         # r72 口径对齐(review #3):三侧统一「当先框架非 drop + 通用件」——
         # 散件 drop(艾丝妲/佩拉)不自动上(应急件,op 侧同口径);通用 carry
