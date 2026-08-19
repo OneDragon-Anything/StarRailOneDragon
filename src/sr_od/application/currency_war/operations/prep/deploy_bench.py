@@ -347,10 +347,12 @@ class DeployBench(SrOperation):
                              f' placed={placed} → 剩余 bench 角色留 bench(不白拖)')
                     _cap_stopped = True
                     break
-            # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):bench 角色已 deployed → 跳过(避免重复)。
+            # ⚖️ 同名在场禁双(5.1.7,全局不变量;语义单一源 cw_plan.deploy_legal)。
+            # 执行层直查 char_id 集合(此处在 SIFT 读身份后的确定性部署,不走 _should_deploy)。
             _cid = _bench_cid.get(bi)
             if _cid and _cid in _deployed_cids:
-                log.info(f'[cw-deploy] 去重(5.1.7):bench槽{bi+1}({_cid}) 已 deployed,跳过')
+                log.info(f'[cw-deploy] 去重(5.1.7,不变量 cw_plan.deploy_legal 同源):'
+                         f'bench槽{bi+1}({_cid}) 已 deployed,跳过')
                 continue
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。

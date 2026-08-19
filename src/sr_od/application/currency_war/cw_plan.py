@@ -266,6 +266,23 @@ def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
     return False
 
 
+def deploy_legal(bc: BenchChar, deployed_names: set[str]) -> bool:
+    """⚖️ 全局不变量守卫(单一源,r94):**场上同名禁双**(游戏规则 5.1.7 实测,ADR-0125)。
+
+    **一切「把角色放上场」的路径必须过本守卫**——买后 deploy / 腾席链 / 换位 /
+    任何新 deploy 路径。历史上散在三处内联(cw_plan 主循环/deploy_bench/cw_state
+    注释),第 4 处新路径(腾席链 a,r93)漏写 → 藿藿被拖 5 次全拒实证。收口单一
+    函数后新路径只需调用,不再依赖"记得写"。
+    同名在场 → False(留 bench 待 3合1 合并,合并域=全场)。
+    """
+    return not (bc.char_id and bc.char_id in deployed_names)
+
+
+def deployed_name_set(state: GameState) -> set[str]:
+    """场上角色名集(deploy_legal 的配套取数;单一源防各处自算漂移)。"""
+    return {b.char_id for b in state.deployed if b.char_id}
+
+
 def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool:
     """是否 deploy 该角色(L2 deploy cap,防 spread-lock)。
 
@@ -280,11 +297,15 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     - ④框架在册件(TRANSITION_PACK 非 drop,仙舟/列车/通用)→ 双轨期临时 target 照上(r70)。
     窗口外落回集中判据(阵营 count≥2 深化)。
 
+    ⚖️ r94:本函数顶部统一执行 ``deploy_legal``(场上同名禁双,全局不变量)——
+    所有调用方(主循环/腾席链/任何新路径)经此即受保护,内联守卫不再各写。
     deploy 条件(任一,窗口外):
     - target 阵营角色(窗口内,见上)。
     - bc.faction 在 bench+deployed 已 count≥2(集中阵营深化)。
     否则留 bench(off-target 单张可 sell,防 deployed-lock 永久占槽)。
     """
+    if not deploy_legal(bc, deployed_name_set(state)):
+        return False   # 场上同名禁双(5.1.7,全局不变量;留 bench 待 3合1)
     if target is not None and _card_supports_target(bc.char_id, bc.faction, state, target):
         if not state.dual_track_phase:
             return True   # ①已定型/进 P2:final 即主力
@@ -843,12 +864,10 @@ def _best_improving_action(
         beat(delta, seq)
 
     # 2) 上任已拥有的 bench 角色(按 position_pref 分流;M3:同名去重同 1))
-    _dep_ids2 = {b.char_id for b in state.deployed if b.char_id}
+    # r94:内联同名守卫删(_should_deploy 顶部统一执行 deploy_legal 不变量)
     for i, bc in enumerate(state.bench):
         if state.deployed_count() >= state.max_units():
             break
-        if bc.char_id and bc.char_id in _dep_ids2:
-            continue   # 场上已有同名(游戏禁双,5.1.7;留 bench 待合并)
         if not _should_deploy(bc, state, target_comp):
             continue
         row, ok = _pick_deploy_row(state, bc, target_comp)
