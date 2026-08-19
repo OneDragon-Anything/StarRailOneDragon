@@ -878,9 +878,14 @@ def _best_improving_action(
         # r70 框架买分:双轨期同框架牌加 transition_score(carry 1.3/partial 0.9+集中加成;
         # 旧 framework 恒 '' → 框架集中评分空转,买出来是 13 人名单散混合)。×0.8 缩放 =
         # 与 synergy delta 同量纲但不盖过成型分(经验缩放,待对拍校准)。
-        if _dual and framework:
+        # r106 预囤:框架未定('')时也计 transition_score 档位分(见框架件就囤,
+        # 持有最多者启动——MC 2000 局:预囤把启动率 0.5%→99.9% @r1.4);
+        # 散件(ent=None)恒 0 分不抢预算。
+        if _dual:
             from sr_od.application.currency_war.cw_transition import transition_score
-            delta += 0.8 * transition_score(card.name, card.faction, framework)
+            _ts = transition_score(card.name, card.faction, framework)
+            if _ts > 0:
+                delta += 0.8 * _ts
         # review🟡 去 CHAR_PRIORITY_BONUS*2 flat(char_quality_score 已计 priority×star,原三重过度偏置)
         beat(delta, seq)
 

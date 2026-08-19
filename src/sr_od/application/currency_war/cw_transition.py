@@ -103,6 +103,14 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     死锁代价。修正:**框架未定时,持有整权 + shop 在售半权合并计入启动判定**
     (1 张持有 + 2 张在售 = 2.0 ≥ 2 即可选定)——店里有三月七就值得选列车,
     买下后持有权巩固框架,死锁破。已定框架的滞后判定(领先 ≥1 才换)不变。
+
+    r106 **预囤修正**(蒙特卡洛 2000 局实证 r105 不够):单框架/商店期望仅
+    0.24-0.55 张(池密度:1费20%/2费33%/3费14%/4费7%),合并权 ≥2 的启动率
+    **0.5%**——死锁只是缓解未破。破法=**未定框架期「见框架件就囤」**(买最便宜
+    的框架件,不管哪框架;持有最多者启动)——人类打法「拿到三月七/藿藿就围绕
+    它走」。MC:C 策略(gate1.5+预囤)启动率 99.9%/r1.4 启动/4.95 框架件
+    (vs B 纯降门 10.5%)。启动门同步 2→1.5(预囤在位后 1.5 = 持有1+在售1,
+    足够信号;纯 shop 1.0 仍不够格防噪声)。
     """
     counts = dict.fromkeys(FRAMEWORKS, 0)
     if portal:
@@ -123,9 +131,9 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     # r102 审计③:平局按 dict 序偏仙舟(FRAMEWORKS 首位)——主流先验(32% vs 29%),
     # 有意为之:同计数时选数据上更主流的框架。
     # r105:启动门槛从「持有 ≥2」放宽为「合并权 ≥2」(持有 1+在售 2 即启动);
-    # 滞后门槛同放宽(challenger 合并权领先现任 ≥1 才换,防 shop 噪声翻转的
-    # 原语义不变——噪声在 shop 半权 0.5 粒度上,领先 1 = 持有级差异,稳)。
-    if counts[fw] < 2:
+    # r106:启动门 1.5(预囤策略在位后足够;纯 shop 1.0 仍不够)。
+    # 滞后门槛同基(challenger 合并权领先现任 ≥1 才换,防 shop 噪声翻转)。
+    if counts[fw] < 1.5:
         return ''
     if current and current in counts and counts[current] >= counts[fw] - 1.0:
         return current   # 滞后:现任未被领先 ≥1 → 保持(防 shop 噪声每轮翻转)
@@ -222,7 +230,8 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     """买牌评分用:角色在过渡框架中的价值(carry>partial>drop;同框架+阵营契合加成)。
 
     framework 传当前选定的过渡框架('仙舟'/'列车'),同框架牌加成;
-    ''(未定框架)= 仅按档位。散件恒低分(应急才买)。
+    ''(未定框架)= **预囤模式**(r106:框架件按档位全分——见件就囤,持有最多
+    者启动;MC 2000 局实证预囤把启动率从 0.5% 拉到 99.9% @r1.4)。散件恒低分。
     """
     ent = TRANSITION_PACK.get(char_id)
     if ent is None:
@@ -234,6 +243,7 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
             base += 0.3   # 同框架集中
         elif fw == '通用':
             base += 0.15  # 通用插件次之
+        # fw != framework 且 framework=''(预囤):base 保持档位分(囤任何框架件)
     if faction in FRAMEWORK_FACTIONS.get(framework, ()):
         base += 0.2
     return base
