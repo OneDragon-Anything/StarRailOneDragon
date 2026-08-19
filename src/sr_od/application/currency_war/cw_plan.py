@@ -225,6 +225,13 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
         syn = syn | {faction}
     sk = skeleton_factions() | {'持续伤害', '治疗'}   # 同 TRANSITION_FACTIONS 口径(cw_evaluate)
     counts = _bench_faction_counts(state)
+    # r102 审计②修正:bench 计数并 trait 阵营(_char_synergies 含 flows;量子同频是
+    # trait 型无人主 faction——希儿囤 bench 未上场时,旧口径 counts 无「量子同频」
+    # → 买符玄被拒)。与 board 侧(OCR 多羁绊计数)口径对齐:同阵营的 bench 件都算
+    # 配方方向证据。
+    for _bc in state.bench:
+        for _f in _char_synergies(getattr(_bc, 'char_id', '')):
+            counts[_f] = counts.get(_f, 0) + 1
     # r95 配方自举豁免:当先框架的目标阵营(已有 ≥1 即在配方向上)→ 放行
     from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
     _fw_fac = set(FRAMEWORK_FACTIONS.get(framework, ()) or ()) if framework else set()

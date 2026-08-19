@@ -44,9 +44,11 @@ TRANSITION_PACK: dict[str, tuple[str, str]] = {
     '花火': ('列车', 'carry'),          # 20%→46%(2费,非 4 费——注册表+plaza 双核实)
     # —— 量子框架(r102 统一化;希儿 59 帖:主流=3量子+2贝,量子契约/贝概念股环境;
     # 「过渡=终局雏形」线——carry 档=过渡终局同体,定型零交接)——
-    '希儿': ('量子', 'carry'),          # 3费 Early 69%→Final 贯穿 0.70(来牌即信号)
-    '缇宝': ('量子', 'partial'),        # 2费 48% Early(量子+群攻双 flow)
-    '符玄': ('量子', 'partial'),        # 2费(仙舟阵营+量子 flow,跨框架可留)
+    '希儿': ('量子', 'carry'),          # 3费(Lv4 起 10%)Early 69%→贯穿 0.70(来牌即信号)
+    '缇宝': ('量子', 'partial'),        # 2费(Lv4 起 25%)48% Early(量子+群攻双 flow)
+    '符玄': ('量子', 'partial'),        # 4费(Lv5 起 2%——r102 审计①修正:非 2 费;
+    #                                    量子 core 三件两件 ≥3费 → 配方成型窗口整体偏后,
+    #                                    Lv5 前贝洛伯格档主要靠 pack 外贝件,属设计内)
     # —— 双框架通用插件 ——
     '千冶·刃': ('通用', 'carry'),       # 19%→51%(Final 反超:最强通用插件)
     # 纯过渡散件(框架外,仅应急)
@@ -110,6 +112,8 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
             if ent and ent[0] in counts:
                 counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权
     fw = max(counts, key=lambda k: counts[k])
+    # r102 审计③:平局按 dict 序偏仙舟(FRAMEWORKS 首位)——主流先验(32% vs 29%),
+    # 有意为之:同计数时选数据上更主流的框架。
     if counts[fw] < 2:
         return ''
     if current and current in counts and counts[current] >= counts[fw] - 1.0:
