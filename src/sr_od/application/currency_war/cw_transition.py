@@ -63,7 +63,7 @@ def in_early_phase(plane: int, committed: bool) -> bool:
     return plane == 1 and not committed
 
 
-def pick_framework(bench, deployed, shop=None, current: str = '') -> str:
+def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = '') -> str:
     """r70 过渡框架选定(买/上/卖三侧单一源):按当前持有(board+bench,可选 shop)的
     框架件计数取领先框架;平局/全零 → ''(未定,消费方按散件口径)。
 
@@ -76,8 +76,18 @@ def pick_framework(bench, deployed, shop=None, current: str = '') -> str:
     r72 review 滞后(hysteresis):**切换需挑战者领先现任 ≥1(整权)** —— shop 半权
     (0.5/张)随刷新噪声每轮变动,临界区(仙2 vs 列1.5)会每轮翻转 → 买侧跟着转 →
     churn。现任保持门槛低(持平即留),换门槛高(领先 1),消除噪声翻转。
+
+    r100e **portal 偏置**(特型环境 = 过渡=终局重叠的成因,plaza portals 实证:
+    列车概念股 126 帖+列车邀请 84 帖):开局环境给框架方向时(portal 名含框架名),
+    该框架计数 +3 等效权(开局送件+概率提高 = 数据级先验;普通来牌权压不过它,
+    但真金白银买到 4 张对立框架件时仍可翻转——偏置不是锁死)。portal='' 无偏置。
     """
     counts = {'仙舟': 0, '列车': 0}
+    if portal:
+        for fw in counts:
+            if fw in portal:
+                counts[fw] += 3   # 环境先验等效权(约 3 张框架件;可被实际来牌翻越)
+                break
     for bc in (*deployed, *bench):
         ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
         if ent and ent[0] in counts:

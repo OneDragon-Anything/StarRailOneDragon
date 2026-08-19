@@ -117,11 +117,15 @@ class DefaultCwStrategy(CwStrategy):
         session.dual_track_phase = state.dual_track_phase
         # r70 过渡框架选定(买/上/卖三侧单一源):双轨期每轮按持有刷新;定型后清空
         # (三侧消费见 cw_transition.pick_framework docstring)。
+        # r100e portal 偏置:开局环境(概念股/邀请,特型=过渡与终局重叠的成因)
+        # 给框架方向 → pick_framework 计数 +3 等效权(可被实际来牌翻越,非锁死)。
+        # 环境源 = session.active_env(handle_invest_env 选完写入,已有链路)。
         if state.dual_track_phase:
             from sr_od.application.currency_war.cw_transition import pick_framework
+            _portal = (getattr(session, 'active_env', '') or '').strip()
             session.transition_framework = pick_framework(
                 state.bench, state.deployed, state.shop,
-                current=session.transition_framework)   # r72 滞后:领先 ≥1 才换框架
+                current=session.transition_framework, portal=_portal)   # r72 滞后
         else:
             session.transition_framework = ''
         # ADR-0209(接线 3/6):信号领先线 comp 对象 → session(双轨囤牌方向)
