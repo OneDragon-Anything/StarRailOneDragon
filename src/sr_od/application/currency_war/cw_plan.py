@@ -759,6 +759,9 @@ def _best_improving_action(
     # 压缩持有由集中卖散自然回收(off-line 牌)。
     _dual = state.dual_track_phase
     _hunt_tiers: set[int] = set()   # 双轨期填充(r62:_saving 门压缩放行也消费,提前初始化)
+    # r107b 审计C:stash 补偿门(双轨期 + stash/target 至少一个非空)——
+    # 循环内终局件加补偿分,与框架分同量级竞争(修「框架件恒压死终局件」)。
+    _stash_gate = _dual and (stash_comp is not None or target_comp is not None)
     if _dual:
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
         # 常数削减(r51 用户效率提醒):双轨放行面预计算——stash/target 的
@@ -894,6 +897,16 @@ def _best_improving_action(
             _ts = transition_score(card.name, card.faction, framework)
             if _ts > 0:
                 delta += 0.8 * _ts
+        # r107b 审计必修C(stash 补偿):终局核心件对**配方伪 comp** 的 evaluate≈0
+        # (囤 bench 不上阵,配方不看它)+ 无 concentration/transition 分 → 系统性
+        # 排在任何框架件后,金紧时恒买不到 → P1 定型后无囤件 → P2 断层(历史病灶)。
+        # 补偿:stash/终局 core 命中 = +1.0(≈ 框架 carry 同框架分 0.8×1.2,让
+        # 「为终局囤牌」与「为配方买牌」在金竞争里同量级,谁买谁取决于 shop 相位)。
+        if _dual and card.name and _stash_gate:
+            if card.name in _allow_names:
+                delta += 1.0   # 终局线核心件(stash 或 target core)
+            elif card.faction in _allow_factions:
+                delta += 0.4   # 终局线阵营件(次级)
         # review🟡 去 CHAR_PRIORITY_BONUS*2 flat(char_quality_score 已计 priority×star,原三重过度偏置)
         beat(delta, seq)
 
