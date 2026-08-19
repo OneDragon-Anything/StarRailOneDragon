@@ -352,21 +352,13 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 break
         if _panel_open:
             return chars
-        # r100j 守卫(局23-26 四连停机实证):**商店开态下 slot1 被购买经验按钮挤占**
-        # ——开商店时购买经验 UI(Lv/经验条/开启,x247-378)紧贴 bench slot1(x382+),
-        # 「开启」按钮渲染在 slot1 判定区内 → slot_occupied=True 但 SIFT 永不识别
-        # → summon 钩子每局停机(VLM+OCR 双实锤:summon_unknown__d346ffb3 帧 slot1=
-        # 购买经验卡)。商店开态本帧不判(summon 是真物件时 bench 满警示/出售流程
-        # 会另行暴露;静默跳过无实害)。
-        _shop_open = False
-        for _scr_name2 in ('货币战争-备战-开商店',):
-            _r2 = _area_rect(ctx, '备战标识-购买经验', _scr_name2)
-            # 开商店屏的购买经验 area 与 bench 同帧可见 → 用它定位;坐标 x<380 即开态布局
-            if _r2 is not None and _r2.x1 < 380:
-                _shop_open = True
-                break
-        if _shop_open:
-            return chars
+        # r100j 修正(用户纠偏:商店开态**不**挤压备战席;slot1「开启」=占槽物品的
+        # 开启按钮,非购买经验 UI)。撤掉昨天的商店开态静默跳过(它掩盖真问题:
+        # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
+        # **变体渲染**,find_supply_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
+        # 处理:承认「占用但非角色非已知物品」的判定职责就在本钩子(它就是干这个的),
+        # 但停机策略降级为**留证不停机**(对齐 r34 shop_unknown 先例:反复停机阻断
+        # 实跑,留证给 AI 离线补模板后再恢复停机)。已采 4 帧足已定位,恢复运行优先。
         # r85b:补给箱/典籍槽排除 —— 箱/典籍占 bench 槽是已知常态(掉箱占席),SIFT
         # 认不出它们是设计内(非角色)→ 不停机(VLM 实锤:第4局 slot2「蓝色卡片叠放
         # +开启」= 卡包/补给箱,旧钩子反复停机骚扰)。
@@ -401,22 +393,13 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
                 _shot = cw_shot_unique(screen, 'summon_unknown')
-                if _shot is not None and ctx.run_context is not None:
-                    from pathlib import Path as _P
-
+                if _shot is not None:
+                    # r100j 降级:**留证不停机**(对齐 r34 shop_unknown 先例)。四连停机
+                    # 阻断实跑的教训;物品变体/真召唤物都靠这批截图离线补模板,补完
+                    # 自然不再触发。不再写 stop 类 flag(不阻断),shot + 日志足够检索。
                     from one_dragon.utils.log_utils import log as _log
-                    _cx = (_rect.x1 + _rect.x2) // 2
-                    _cy = (_rect.y1 + _rect.y2) // 2
-                    _P('.debug/temp/currency_war/summon_stop_hook.flag').write_text(
-                        '召唤物停机钩子(用户 2026-08-18 指示):备战栏 slot'
-                        f'{_slot} 占用但 SIFT 未识别。\n'
-                        f'处理:点槽位 ({_cx},{_cy}) → 详情面板读角色名(ground truth)'
-                        f'→ portrait_plaza/<名>/raw.png 建模板(白框裁 {(_rect.x1, _rect.y1, _rect.x2, _rect.y2)})'
-                        f'→ roster 核条目 → 删本钩子(cw_identity_obs.read_bench_chars 内 summon_unknown 段)。\n'
-                        f'截图: {_shot}', encoding='utf-8')
-                    _log.info('[cw-hook][summon] 备战 slot%s 占用未识别(截图 %s)→ 停机现场建档',
-                              _slot, _shot)
-                    ctx.run_context.stop_running()
+                    _log.warning('[cw!][summon] 备战 slot%s 占用未识别(留证不停机,shot 唯一化'
+                                 '防刷屏;离线补模板后自然消失): %s', _slot, _shot)
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
