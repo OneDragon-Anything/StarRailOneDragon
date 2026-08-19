@@ -1,15 +1,16 @@
 # live-verified 2026-08-13:HandleSelectPartner 端到端跑通(step1 候选 click 早前实测;step2 点中心立绘
 # (960,300)→「已选择」→ 确认 → overlay 关,live 验)。原自主推进期代码,已 review + live 验,可信。
 
+# r104(2026-08-20):SIFT 立绘识别接入(portrait_plaza 库)——候选真身喂 decide_partner,
+# core_chars 匹配真正生效(此前 label 流派名恒不命中 → 恒 idx=0 最左盲点)。
+
 """货币战争 选择伙伴 overlay 处理 op(从主循环拆出)。
 
-「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → 点候选立绘选中 → 确认选择。
-必须在「确认选择/巨星」(RunMegastarNode)之前判断 —— 选择伙伴也有「确认选择」但候选是
-stage 立绘(横排,阵营 label 行),非巨星的左候选(822,333)。
-
-TODO:策略化选伙伴(按 target_comp.core_chars 评估候选,现取最左)。
+「选择伙伴」overlay 会挡住出战 → stall。OCR 候选阵营标签定位候选 → SIFT 立绘识别
+真身 → decide_partner 按策略选 → 点候选立绘选中 → 确认选择。
 """
 import time
+from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -65,6 +66,41 @@ class HandleSelectPartner(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
+    def _identify_portraits(self, screen, cands: list[tuple[str, int, int]]) -> list[str]:
+        """r104:SIFT 立绘识别候选真身(portrait_plaza 库)→ 每候选 char_id(''=未识别)。
+
+        候选立绘区 = label 上方大区域(立绘中心 ≈ label y-60,向上扩 ~200px);
+        识别失败回落 label 流派名(旧行为)。真身识别让 decide_partner 的
+        core_chars 匹配真正生效(此前 label 名恒不命中 → 恒 idx=0)。
+        """
+        try:
+            from one_dragon.utils import os_utils
+            from sr_od.application.currency_war.currency_war_char_id import (
+                identify_character,
+                load_avatar_templates,
+            )
+            portrait_dir = Path(os_utils.get_path_under_work_dir(
+                'assets', 'template', 'currency_war', 'portrait_plaza'))
+            if not portrait_dir.is_dir():
+                return [n for n, _cx, _cy in cands]
+            templates = load_avatar_templates(portrait_dir)
+            out: list[str] = []
+            for _name, cx, cy in cands:
+                # 立绘区:候选中心上方(立绘主体在 label 上方 ~40-260px 带)
+                y1 = max(0, cy - 260)
+                y2 = max(y1 + 40, cy - 30)
+                x1 = max(0, cx - 110)
+                x2 = min(screen.shape[1], cx + 110)
+                crop = screen[y1:y2, x1:x2]
+                if crop.size == 0:
+                    out.append(_name)
+                    continue
+                cid, _inl = identify_character(crop, templates)
+                out.append(cid if cid else _name)
+            return out
+        except Exception:   # noqa: BLE001  SIFT 失败回落 label 名(旧行为)
+            return [n for n, _cx, _cy in cands]
+
     def _find_text_center(self, screen, text: str) -> Point | None:
         """OCR 找 ``text`` 的 center(没找到 None)。用于「确认选择」定位(避开 round_by_ocr_and_click 的
         bug#1 裸 click —— 改 mouse_move + click)。"""
@@ -83,11 +119,11 @@ class HandleSelectPartner(SrOperation):
             return self.round_fail('非选择伙伴屏')
         if not self.round_by_ocr(screen, '已选择').is_success:
             cands = self._read_candidates(screen)
-            # T#99 接 decide_partner:候选 label 作 char_id 尽力匹配 target_comp.core_chars / 偏好。
-            # ⚠️ 候选只有立绘、无角色名(label 是流派/role,非角色名;视觉大模型 2026-08-07 核实)→ char_id 多为
-            # label → 多不命中 core_chars → idx=0(最左)。**真正接决策需 SIFT 立绘识别**(同 read_bench_chars,
-            # CW 立绘库)喂真角色名 = 后续子项(候选位置视觉不稳,需 CV 卡框 / 多样本定网格)。
-            options = [PartnerOption(idx=i, char_id=n) for i, (n, _cx, _cy) in enumerate(cands)]
+            # r104:SIFT 立绘识别真身 → decide_partner 的 core_chars 匹配真正生效
+            # (此前 label 流派名恒不命中 → 恒 idx=0;立绘库/identify_character 基建已有)。
+            # 识别失败回落 label 名(旧行为)。
+            _char_ids = self._identify_portraits(screen, cands) if cands else []
+            options = [PartnerOption(idx=i, char_id=n) for i, n in enumerate(_char_ids)]
             match = self.ctx.cw_match
             idx = 0
             reason = 'no-candidates(fallback)'

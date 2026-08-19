@@ -432,16 +432,26 @@ class PrepActionExecutor:
         return True, f'选卡 {chosen}'
 
     def _default_box_card(self, names: list[tuple[str, int]]) -> tuple[str, int]:
-        """执行器内嵌默认选卡(v7 M-3:P1 住执行器,P5 上移策略):key_equips 命中 → 材料通用性 → 第1张。
+        """执行器内嵌默认选卡(r104 起委托策略模块 decide_box_card;P5 上移已落地两处归一)。
 
-        逻辑同 HandleSupplyBox._pick_card(P1 复用 _material_value 单一源,不重复建表;
-        P5 上移策略时两处归一)。
+        策略层打分:key_equips 命中 +100 / key 材料两跳 +30 / 材料通用性;
+        无 match(局外)回落旧内联(key_equips → 材料通用性 → 第1张)。
         """
+        match = self._ctx.cw_match
+        if match is not None:
+            try:
+                from sr_od.application.currency_war.cw_state import GameState
+                _st = match.session.last_state or GameState()
+                idx = match.strategy.decide_box_card(
+                    [n for n, _ in names], _st, match.session,
+                    getattr(match, 'config', None))
+                if 0 <= idx < len(names):
+                    return names[idx]
+            except Exception:   # noqa: BLE001  策略失败回落旧逻辑
+                pass
         from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
             _material_value,
         )
-
-        match = self._ctx.cw_match
         if match is not None and match.session.target_comp is not None:
             key_equips = set(match.session.target_comp.key_equips or [])
             for n, x in names:
