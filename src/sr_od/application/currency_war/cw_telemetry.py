@@ -670,6 +670,30 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
     return abn
 
 
+def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
+    """视图:羁绊激活档逐轮(配方成型判读的硬指标;r120 起 deploy 配方 target
+    生效后,档数应随轮上升;恒 0 = 配方没真正上场)。"""
+    from sr_od.application.currency_war.cw_factions import FACTIONS
+    best = _load_decisions_rounds(replay_dir, run_id)
+    lines: list[str] = []
+    for k in sorted(best):
+        d = best[k]
+        board = (d.get('state') or {}).get('board') or {}
+        activated = {}
+        for fac, cnt in board.items():
+            tiers = getattr(FACTIONS.get(fac), 'tiers', ()) or ()
+            tier = next((t for t in tiers if cnt >= t), 0)
+            if tier > 0:
+                activated[fac] = tier
+        total = sum(activated.values())
+        dep = [c.get('char_id') for c in ((d.get('state') or {}).get('deployed') or [])
+               if c.get('char_id')]
+        mark = '' if total else '  ← 档0'
+        lines.append(f"  p{k[0]}r{k[1]} 激活档={total} {activated if activated else ''}{mark}")
+        lines.append(f"    deployed={dep[:7]}")
+    return lines
+
+
 def _cli_main() -> None:
     import argparse
     ap = argparse.ArgumentParser(prog='cw_telemetry',
@@ -677,7 +701,7 @@ def _cli_main() -> None:
     ap.add_argument('cmd', choices=['query'])
     ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
     ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
-    ap.add_argument('--view', default='rounds', choices=['rounds', 'supply', 'anomalies', 'all'])
+    ap.add_argument('--view', default='rounds', choices=['rounds', 'supply', 'anomalies', 'tiers', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     args = ap.parse_args()
     replay_dir = Path(args.replay_dir)
@@ -706,6 +730,9 @@ def _cli_main() -> None:
     if args.view in ('supply', 'all'):
         print('[supply]')
         print('\n'.join(query_supply(replay_dir, rid)))
+    if args.view in ('tiers', 'all'):
+        print('[tiers]')
+        print('\n'.join(query_tiers(replay_dir, rid)))
     if args.view in ('anomalies', 'all'):
         print('[anomalies]')
         abn = query_anomalies(replay_dir, rid)
