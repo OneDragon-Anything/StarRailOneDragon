@@ -29,6 +29,7 @@ from sr_od.application.currency_war.cw_bridge_pool import (
     pick_bridge,
 )
 from sr_od.application.currency_war.cw_line_library_v1 import (
+    LINE_LIBRARY_V1,
     line_of,
 )
 from sr_od.application.currency_war.cw_performance import RoundOutcome
@@ -163,6 +164,19 @@ class LineStrategy(DefaultCwStrategy):
                 log.info('[cw][v2] 锁线 %s(核心卡 %s)',
                          r.line_id, r.matched_name)
                 session.bridge_id = None   # 终审 S7:锁线清桥
+            else:
+                # r248(重启丢 session 实锤):板面形态恢复通道——
+                # CARRY 不在但板面已有形态方向(羁绊重合)→ 恢复
+                # 锁线(server restart 丢 session 后姬子已被
+                # 消耗,但列车2 在场=方向明摆着,不该判「无方向」
+                # 拆板落 DOT)。重合度=线 P2 键的羁绊在场数≥2 档。
+                recovered = self._recover_line_from_board(state)
+                if recovered is not None:
+                    session.locked_line = recovered
+                    self._feed(session, 'E7_lock')
+                    log.info('[cw][v2] 板面形态恢复锁线 %s'
+                             '(重启后方向找回)', recovered)
+                    session.bridge_id = None
         # 终审 S4:v2 部署判据线内件集合——伪 comp 写 target_comp
         # (deploy_bench L248/L340 读 target_comp.factions/core_chars;
         # plan._should_deploy 同。锁线后 carry/线内件成为部署
@@ -185,15 +199,25 @@ class LineStrategy(DefaultCwStrategy):
                 session.bridge_id = bridge.bridge_id
                 session.target_comp = None
             elif state.plane >= 2 and state.round_num >= 4:
-                # ⑧-2 DOT 兜底可达性(P2 后半程无方向才落)
-                session.locked_line = 'dot_fallback'
-                self._feed(session, 'E7_lock')
-                log.info('[cw][v2] P%dr%d 无桥无信号 → 落 DOT 兜底',
-                         state.plane, state.round_num)
-                line = line_of('dot_fallback')
-                session.target_comp = (
-                    _LinePseudoComp.from_line(line, state.plane)
-                    if line is not None else None)
+                # r248 修 B:兜底守卫——板面有引擎羁绊 ≥2 时不落
+                # (方向已在路上,拆板换向的代价 > 等信号;
+                # 实锤:列车2 被判无方向拆散落 DOT)
+                if self._board_has_engine_direction(state):
+                    session.bridge_id = None
+                    session.target_comp = None
+                    log.info('[cw][v2] P%dr%d 无信号但板面有引擎方向'
+                             ' → 不落兜底(保持攒金等信号)',
+                             state.plane, state.round_num)
+                else:
+                    # ⑧-2 DOT 兜底可达性(P2 后半程无方向才落)
+                    session.locked_line = 'dot_fallback'
+                    self._feed(session, 'E7_lock')
+                    log.info('[cw][v2] P%dr%d 无桥无信号 → 落 DOT 兜底',
+                             state.plane, state.round_num)
+                    line = line_of('dot_fallback')
+                    session.target_comp = (
+                        _LinePseudoComp.from_line(line, state.plane)
+                        if line is not None else None)
             else:
                 session.bridge_id = None
                 session.target_comp = None
@@ -622,6 +646,32 @@ class LineStrategy(DefaultCwStrategy):
         # 即最多买到 9 满;原 >=8 在卖 1 张后 8 张仍触界
         # → r6 死锁没解干净)
         return len(state.bench or []) + planned_buys < 9
+
+    @staticmethod
+    def _recover_line_from_board(state: GameState) -> str | None:
+        """r248 修 A:板面形态恢复——线的 P2 键羁绊在板 ≥2 档
+        → 恢复该线锁(重启丢 session 后 CARRY 已消耗但方向
+        在板上的场景;列车2 = jizi 线 4 档的一半,强证据)。"""
+        best: str | None = None
+        best_hits = 0
+        for line in LINE_LIBRARY_V1:
+            if line.line_id == 'dot_fallback':
+                continue    # 兜底无形态键,不参与恢复
+            form = line.p2p3_forms.get('P2', '')
+            hits = 0
+            for part in form.split('+'):
+                name = part.rstrip('0123456789')
+                if name and state.board.get(name, 0) >= 2:
+                    hits += 1
+            if hits > best_hits:
+                best, best_hits = line.line_id, hits
+        return best if best_hits >= 1 else None
+
+    @staticmethod
+    def _board_has_engine_direction(state: GameState) -> bool:
+        """r248 修 B:板面引擎方向判——任一引擎羁绊 ≥2 在场。"""
+        return any(state.board.get(f, 0) >= 2
+                   for f in _ENGINE_FACTIONS)
 
     def _line_wants(self, card, state: GameState,
                     session: StrategySession) -> bool:
