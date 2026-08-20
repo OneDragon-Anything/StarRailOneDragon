@@ -182,7 +182,10 @@ class LineStrategy(DefaultCwStrategy):
               pop_low: bool = True) -> None:
         """喂事件。非确定集解包规则:
         E7_lock 保留当前 mode(锁线不改模式——开局锁线应攒钱);
-        E2 换线取 war(主动求战力);E8(应急恢复路径)保守取 war。
+        E2 换线取 war(主动求战力);E8(应急恢复)**保留当前 mode**
+        (状态机 E8 的三个候选全保持 mode,按 war 过滤会
+        StopIteration——模拟局 P0 实证;恢复后的追赶分支
+        由 pop_low 在候选内选择)。
         REJECT 保持原态+日志。"""
         self._ensure_state(session)
         st = session.v2_state
@@ -191,9 +194,8 @@ class LineStrategy(DefaultCwStrategy):
             log.debug('[cw][v2] 状态机拒事件 %s(守卫期/已访问),保持原态', ev)
             return
         if isinstance(ns, set):
-            want_war = ev != 'E7_lock'
-            ns = next(s for s in ns
-                      if (s[0] == cw_phase_machine.MODE_WAR) == want_war)
+            cur_mode = st[0]
+            ns = next(s for s in ns if s[0] == cur_mode)
         session.v2_state = ns
 
     @staticmethod
@@ -245,10 +247,11 @@ class LineStrategy(DefaultCwStrategy):
 
     def _catchup_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """追赶(简化版):升人口置顶。"""
+        """追赶(简化版):升人口置顶(模拟局观察#3 修复:留
+        _WAR_FLOOR 地板——追赶不等于花光,人口未凑钱先攒着)。"""
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         cost = xp_click_cost(state)
-        if state.gold >= cost:
+        if state.gold - cost >= _WAR_FLOOR:
             return [LevelUp(cost)]
         return []
 
@@ -256,7 +259,12 @@ class LineStrategy(DefaultCwStrategy):
                          session: StrategySession) -> list:
         """经济:线内件(星级三档)+压缩(地板——终审 S2 修正:
         50 是满息后不乱花,不是 50 以下不发展;未满息期地板降 10
-        [11]「金<20 1息档内购买不损息」精神)。"""
+        [11]「金<20 1息档内购买不损息」精神)。
+
+        冷启动兜底(模拟局 P1 修复):未锁线且无桥(fixed 件没发到)
+        时 _line_wants 恒 False → 全程 0 买死锁。兜底=买与已持有
+        同阵营的 1 费卡(凑对语义,deploy 的成对上场判据同源);
+        绝不买高费散牌(空过好过错买,[11] 息律)。"""
         actions: list = []
         floor = _INTEREST_FLOOR if state.gold >= _INTEREST_FLOOR else 10
         rem = state.gold
@@ -271,8 +279,10 @@ class LineStrategy(DefaultCwStrategy):
         for card in (state.shop or []):
             if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
-                actions.append(BuyCard(card))
-                rem -= 1
+                if self._line_wants(card, state, session) \
+                        or self._pair_wants(card, state):
+                    actions.append(BuyCard(card))
+                    rem -= 1
         return actions
 
     def _war_actions(self, state: GameState,
@@ -290,6 +300,19 @@ class LineStrategy(DefaultCwStrategy):
                 if len(actions) >= 2:
                     break
         return actions
+
+    @staticmethod
+    def _pair_wants(card, state: GameState) -> bool:
+        """冷启动凑对(模拟局 P1 修复):卡与已持有(board+bench)
+        同阵营 → 1 费可买(deploy 成对上场判据同源:
+        同阵营 count≥2 上场凑过渡羁绊)。"""
+        if not card.name or not card.faction or card.faction == '?':
+            return False
+        owned_factions = set(state.board.keys())
+        for b in (state.bench or []):
+            if b.faction and b.faction != '?':
+                owned_factions.add(b.faction)
+        return card.faction in owned_factions
 
     def _line_wants(self, card, state: GameState,
                     session: StrategySession) -> bool:
