@@ -124,8 +124,22 @@ class DeployBench(SrOperation):
         _board = (_match.session.last_state.board
                   if (_match is not None and _match.session is not None
                       and _match.session.last_state is not None) else None)
-        _tgt_comp = (_match.session.target_comp
-                     if (_match is not None and _match.session is not None) else None)
+        # r120(断层①修复:配方从不成型的执行层根因):deploy 的 target 判定原读
+        # session.target_comp(终局 comp)——双轨期预囤的框架件(藿藖/卡芙卡=仙舟)
+        # 不是终局 comp 的阵营/core → deploy-swap 当 off-target 卖(局35 r7 卡芙卡
+        # 被卖 4 次实证)+「target 先」排序不认 → 板面配方永不成型(P1 通关全靠
+        # 人口硬扛)。修:双轨期走 decision_target 单一入口(=配方伪 comp),
+        # 框架件成为部署一等公民——与买/卖两侧 r72「三侧单一源」对齐(deploy
+        # 侧此前是缺口)。
+        from sr_od.application.currency_war.cw_recipe import decision_target as _dt_fn
+        _tgt_comp = None
+        if _match is not None and _match.session is not None:
+            _st_dual = getattr(_match.session, 'dual_track_phase', False)
+            if _st_dual:
+                _pseudo = _match.session.last_state
+                _tgt_comp = _dt_fn(_match.session, _pseudo) if _pseudo is not None else None
+            if _tgt_comp is None:
+                _tgt_comp = _match.session.target_comp
         # ADR-0152(评审🔴1):all_factions(核心+弹性)—— flex 板面单位(砂金=公司/护盾 是列车护盾流
         # 常驻)不判 off-target;与 _card_hits_target 同源(策略层奖励的 flex 铺板 ≠ 执行层可卖的散牌)。
         _target_factions: set[str] = set(_tgt_comp.all_factions) if _tgt_comp is not None else set()
