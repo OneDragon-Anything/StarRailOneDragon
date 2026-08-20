@@ -334,14 +334,25 @@ class LineStrategy(DefaultCwStrategy):
     def _emergency_actions(self, state: GameState,
                            session: StrategySession) -> list:
         """应急:利息让位保留重生基数([18]);买即战力。
-        终审 N1:未识别卡(name='')不买。"""
+        终审 N1:未识别卡(name='')不买。
+        r252(第七局实锤:HP 1 进 P2 金 80 只买 1 张→必死):
+        旧版 line_wants 首中即 return 单张——「逐轮补强」
+        在 HP 1 的局等不起。修:budget 内**买满**线内件
+        (线内件按价升序,budget 递减;地板 _REBIRTH_FLOOR
+        照守),不再单张返回。"""
+        actions: list = []
         budget = max(0, state.gold - _REBIRTH_FLOOR)
-        for card in (state.shop or []):
-            if not card.name:
-                continue
-            if self._line_wants(card, state, session) \
-                    and card.cost <= budget:
-                return [BuyCard(card)]
+        wants = sorted(
+            (c for c in (state.shop or [])
+             if c.name and self._line_wants(c, state, session)
+             and c.cost <= budget),
+            key=lambda c: c.cost)
+        for card in wants:
+            if self._buy_guards(card, state, len(actions)):
+                actions.append(BuyCard(card))
+                budget -= card.cost
+        if actions:
+            return actions
         cards = sorted((c for c in (state.shop or []) if c.name),
                        key=lambda c: -c.cost)
         if cards and cards[0].cost <= budget:
