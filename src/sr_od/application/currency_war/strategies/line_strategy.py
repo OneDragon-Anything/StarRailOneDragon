@@ -309,16 +309,13 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济象限——显式动作序(r239 审计治本:升→刷→买→卖off→卖息;
-        v2 覆盖 decide_prep 丢了 default plan() 的动作面,同类病
-        已犯三次[r232/r236/r238],按序重排防第四个):
-        ① 升人口(A1):溢出金放行——gold≥50+单击价时买 XP
-           白嫖人口(r85 语义,default 实证修);
-        ② 买(floor 三档 r236:满息 50/中间保档 g%10/低位 0);
-        ③ 卖 off-target(A3):锁线后非保护 bench 件 cap 2/轮;
-        ④ 卖散凑息(r238:组合跨档)。"""
+        """经济象限——显式动作序(r240 修订:升→卖→买;
+        r239 版序是买→卖,r6 实证死锁:bench 满→容量守卫堵买→
+        金 44 有姬子也买不了,只能空转 LevelUp/Sell)。
+        ① 升人口:溢出金放行(gold≥50+单击价);
+        ② 卖(off-target cap1 + 凑息 cap1;腾容量+凑金);
+        ③ 买(守卫用卖出后状态判——买-卖循环依赖解除)。"""
         actions: list = []
-        # ① 溢出金升人口(A1 修复;level_up_gate 单一源)
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         xp = xp_click_cost(state)
         if state.gold - xp >= _INTEREST_FLOOR and xp > 0:
@@ -329,18 +326,31 @@ class LineStrategy(DefaultCwStrategy):
             floor = state.gold % 10    # 保息档,档内全花
         else:
             floor = 0                  # 低位金零息,全花
-        rem = state.gold - (xp if actions else 0)
+        # ② 卖(先卖腾容量;上限 1+1=2 防清空)
+        sells = self._sell_off_target(state, session, cap=1)
+        sells += self._sell_for_interest(state, session)[:1]
+        st2 = self._apply_sells(state, sells)
+        actions.extend(sells)
+        # ③ 买(容量按卖出后的余量判)
+        actions.extend(self._buy_actions(st2, session, floor))
+        return actions
+
+    def _buy_actions(self, state: GameState,
+                     session: StrategySession, floor: int) -> list:
+        """买入步(r240 抽出:卖后状态上的买;守卫同 A4)。"""
+        from sr_od.application.currency_war.cw_state import BuyCard
+        actions: list = []
+        rem = state.gold
         for card in (state.shop or []):
             if rem - card.cost < floor:
                 continue
             if not self._buy_guards(card, state, len(actions)):
-                continue    # A4:副本/容量守卫
+                continue
             if self._line_wants(card, state, session) \
                     or self._bridge_seed(card, state):
                 actions.append(BuyCard(card))
-                rem -= card.cost    # 终审 S3:逐张扣减防预算漂移
-        # 压缩(1费净0)
-        bought = {id(a.card) for a in actions if isinstance(a, BuyCard)}
+                rem -= card.cost
+        bought = {id(a.card) for a in actions}
         for card in (state.shop or []):
             if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
@@ -351,11 +361,26 @@ class LineStrategy(DefaultCwStrategy):
                         or self._pair_wants(card, state):
                     actions.append(BuyCard(card))
                     rem -= 1
-        # ③ 卖 off-target(A3:锁线后死库存回收)
-        actions.extend(self._sell_off_target(state, session, cap=2))
-        # ④ 卖散凑息(r238)
-        actions.extend(self._sell_for_interest(state, session))
         return actions
+
+    @staticmethod
+    def _apply_sells(state: GameState, sells: list) -> GameState:
+        """把 SellBench 应用到 state 副本(买入守卫用卖出后
+        的 bench/gold 判容量——r240:买-卖循环依赖解除)。"""
+        import copy
+        st2 = copy.deepcopy(state)
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        from sr_od.application.currency_war.cw_state import sell_refund
+        for s in sells:
+            idx = getattr(s, 'bench_idx', None)
+            if idx is None or idx >= len(st2.bench):
+                continue
+            bc = st2.bench[idx]
+            ch = CHARACTERS.get(bc.char_id)
+            cost = ch.cost if (ch and ch.cost) else 3
+            st2.gold += sell_refund(bc.star, cost)
+            st2.bench.pop(idx)
+        return st2
 
     @staticmethod
     def _maybe_refresh(state: GameState, session: StrategySession,
@@ -538,8 +563,10 @@ class LineStrategy(DefaultCwStrategy):
                       if getattr(d, 'char_id', '') == card.name)
         if copies >= 3:
             return False
-        # bench 容量:9 槽(保守 8 留合成空间)
-        return len(state.bench or []) + planned_buys < 8
+        # bench 容量:9 槽(r240 off-by-one 修:>8 才拒,
+        # 即最多买到 9 满;原 >=8 在卖 1 张后 8 张仍触界
+        # → r6 死锁没解干净)
+        return len(state.bench or []) + planned_buys < 9
 
     def _line_wants(self, card, state: GameState,
                     session: StrategySession) -> bool:
