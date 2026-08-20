@@ -73,6 +73,9 @@ _ENGINE_FACTIONS: frozenset = frozenset(
 #: r247 P2 预囤轮数门(P1 末期起提前买 P2 桥 core 囤 bench;
 #: 7 = P1 后段,boss 前还有 1-2 购买轮的窗口)
 _P2_PRECACHE_ROUND: int = 7
+#: r247 P2 预囤容量门(bench 上限,严于全局 cap 9——留 3合1 空间;
+#: 第九轮对抗审查 R3)
+_P2_PRECACHE_MAX_BENCH: int = 7
 
 
 class LineStrategy(DefaultCwStrategy):
@@ -710,28 +713,35 @@ class LineStrategy(DefaultCwStrategy):
     @staticmethod
     def _p2_precache_wants(card, state: GameState,
                            session: StrategySession) -> bool:
-        """r247 解法 A 谓词(第九轮对抗审查设计,四门全过才囤):
+        """r247 解法 A 谓词(第九轮对抗审查设计,四门全过才囤;
+        r249b 按审查 R2 收严方向门):
         ① 轮数门:P1 且 round ≥ _P2_PRECACHE_ROUND(7);
         ② 应急门:非应急(应急金该花在保命不囤件);
-        ③ 容量门:bench ≤ 7(留 2 槽给 3合1 空间);
-        ④ 方向门:锁线 jizi_train(train4_shield3 与它列车同向;
-           feiying 的 P2 键也是列车4 开头——同向成立;
-           dot_fallback 的 P2 键是持续伤害系——不同向不囤)。
+        ③ 容量门:bench ≤ _P2_PRECACHE_MAX_BENCH(留 3合1 空间);
+        ④ 方向门(集合相交,严于字符串包含):锁线 P2 键的
+           羁绊集 ∩ P2 桥 engine_bonds 键 非空——
+           jizi(列车+护盾)∩train4_shield3(列车+护盾)={全部}✓;
+           feiying(列车+欢愉)∩(列车+护盾)={列车}✓;
+           dot(持续伤害系)∩(列车+护盾)=∅ ✗ 天然排除。
         卡 ∈ P2 桥 core(fixed 不囤——CARRY 该按可负担门正常锁)。
         """
         if state.plane != 1 or state.round_num < _P2_PRECACHE_ROUND:
             return False
         if session.v2_state and session.v2_state[1]:
             return False    # 应急不囤
-        if len(state.bench or []) > 7:
+        if len(state.bench or []) > _P2_PRECACHE_MAX_BENCH:
             return False
-        # 方向兼容:P2 桥是列车系,锁线形态 P2 键须含列车
         line = line_of(session.locked_line) if session.locked_line else None
         if line is None:
             return False
         p2_form = line.p2p3_forms.get('P2', '')
-        if '列车' not in p2_form:
-            return False
+        line_bonds = {part.rstrip('0123456789')
+                      for part in p2_form.split('+')} - {''}
+        bridge_bonds: set[str] = set()
+        for combo in BRIDGE_POOL_P2:
+            bridge_bonds.update(combo.engine_bonds.keys())
+        if not (line_bonds & bridge_bonds):
+            return False    # 方向不相交(dot 线等)不囤
         return any(card.name in combo.core for combo in BRIDGE_POOL_P2)
 
     @staticmethod
