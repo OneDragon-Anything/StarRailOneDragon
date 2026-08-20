@@ -199,8 +199,8 @@ class DeployBench(SrOperation):
             return
         from sr_od.application.currency_war.cw_equipment import (
             ensure_equip_tm_templates,
-            read_row_equipped,
         )
+        from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
         equip_grays = ensure_equip_tm_templates(self.ctx)
         if equip_grays is None:
             return
