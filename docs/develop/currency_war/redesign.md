@@ -19,6 +19,13 @@
 > 结构/规则/常量/已含四类;挖出三处方案修正:
 > 应急保留重生基数([18] 死亡螺旋)/bench_windows 买而不上
 > ([21])/连胜维护分支([19] 三变量抉择)
+> **r204 代码级审计(§6 重写)**:对账 13 个策略代码文件——
+> 发现 CwStrategy 插件骨架与 redesign 正交(新策略=新具现,
+> 不推翻框架);DP(cw_horizon)退役为兜底姿态(证据等级裁定);
+> 可复用资产清单(shop_odds 超几何/investments 台账/
+> roll_affordable 金计价门);感知质量门继承(last_hp 时效/
+> level 单调守卫/streak 结算源);跨局层(run_allocator)
+> 补入未覆盖清单
 > **基础**:784 篇官方投稿全量深读(十类终局阵容分类 r167-r187)+
 > 战力基线表 r191+用户系列裁定(r149-r192)。
 > **范围**:策略层的数据模型与决策架构,不涉及代码细节。
@@ -541,16 +548,33 @@ plaza_methodology M1-M16 + economy §1-8)
   信号累计器丢失=失真 → 该信号判据降级为不可用
 ```
 
-## 6. 与现有实现的替换关系
+## 6. 与现有实现的替换关系(r204 代码级审计后重写:粒度=模块级)
 
-| 现有 | 处置 |
+**关键发现(代码审计)**:现有 `CwStrategy` 插件骨架(ABC 12 钩子+
+StrategySession+Manager+prep 执行环)与 redesign 正交——
+**redesign 就是一个新的 CwStrategy 具现**(如 `LineStrategy`),
+不推翻框架。钩子映射:锁线→update_target;决策循环→decide_prep;
+装备公式→decide_supply;M13 遭遇权衡→decide_encounter(已有三分支
+雏形);idol_plan→decide_megastar(现 idx=0 桩,填实);
+投资优先序→decide_invest(已有);累积态→StrategySession 扩展字段
+(对齐 §5.5 清单)。
+
+| 现有模块 | 处置(r204) |
 |---|---|
-| 阵容库 | 替换为线库(旧代码保留 fallback,§7) |
-| 过渡体系 | 替换为引擎池+兼容性表 |
-| 买牌/卖牌逻辑 | 重写为决策循环模式分支 |
-| 装备分配逻辑 | 重写为驱动型公式+时序 |
-| session | 扩展:锁线/引擎/装备时序/信号累计器/滞回计数/K 计数/
-  追赶态(丢失语义见 §5.5) |
+| CwStrategy ABC / StrategySession / Manager | **保留**(插件骨架;session 扩展累积态字段) |
+| prep_director / prep_actions(执行环) | **保留**(接入前过 review——带「未验证」头) |
+| cw_shop_odds(概率/超几何期望)/cw_investments(策略台账)/cw_state(机制常量) | **保留复用**(roll_affordable 金计价门=D 决策数学核,target 档主动 D 复用) |
+| cw_economy / cw_plan / cw_evaluate | **替换**(经济分/硬门贪心/评估函数→战力表+模式分支;fallback 保留一版本周期) |
+| cw_comps / cw_transition | **替换**(→线库+引擎池) |
+| cw_horizon(DP)/cw_first_passage | **退役为兜底姿态**(r204 裁定:DP 手造板强/掉血先验 vs 战力表 784 篇实证——证据等级碾压;DP 涌现验证未达成[文件头自认];单姿态源原则。降级保留=无信号兜底局的退化路径,与位面级粗表对齐) |
+| cw_run_allocator(跨局 Thompson) | **保留**(跨局层,本方案未覆盖——见 §10 补充) |
+| cw_telemetry | 扩展 schema(§6 原有清单) |
+
+**感知质量门继承(r204,代码已验证的防线,新实现不得丢)**:
+last_hp 时效门(结算 HP 仅紧邻节点可覆盖,防陈值毒化应急触发)/
+level 单调守卫(OCR 误读防护)/结算源 streak 方向(备战读无方向)。
+**执行层细节**(deploy_fail_counts 拖拽失败记忆等)属 prep 框架,
+保留不在策略层范围。
 | **遥测 schema(rev4)** | 同步扩展字段清单:模式与象限/回退级别(精确/降档/miss/
   **遥测解锁**)/锁线信号层级/换线事件/K 状态/应急进出/追赶期/
   探索标记;查询端视图同步演进(项目纪律:schema 变更查询同步) |
@@ -620,7 +644,9 @@ Step 5 实跑校准:遥测 hp 对拍;探索局打标隔离(校准管道与
 5. 统计功效:校准需百局量级;辅助指标(hp 曲线)补偿样本效率
 6. 贯通单点:接受(§2 声明)
 7. 未覆盖(显式排除):装备配方级选择/事件选项语义/P3 决赛圈针对/
-   投资策略通用决策(初版用 0 层信号固定优先序)
+   投资策略通用决策(初版用 0 层信号固定优先序)/**跨局分配**
+   (cw_run_allocator Thompson 采样+必死局回收——现有跨局层保留,
+   与本方案正交,后续单独对齐)
 
 ## 附录 A:常量索引(rev4;只列常量名与语义,值在代码)
 
