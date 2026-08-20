@@ -2,8 +2,13 @@
 
 """货币战争 阵营/羁绊(factions)数据库。
 
-**来源**:米游社百科「货币战争图鉴」(V4.4,2026-08-03 抓取,权威 🟢 原文),详见
-`docs/game/currency_war/data/factions.md`(31 羁绊逐层效果)。
+⚠️ **本文件是判断层(人维护)**:category/note/desc 是人工判断,生成器
+(tools/cw/gen_factions.py)**不写本文件**——它只生成数据层
+``cw_factions_data.py``(TRAIT_TIERS/TRAIT_ROLES,勿手编)与文档层
+``docs/game/currency_war/data/traits/``。手改数据请改生成器源并重跑,勿双源。
+
+**来源**:米游社百科「货币战争图鉴」(V4.4,2026-08-03 抓取,权威 🟢 原文);
+效果全文 desc 由 r155 从官方 config API 灌入(版本升级→重跑生成器→对拍)。
 **版本依赖**:羁绊构成与激活阈值随赛季更新变动,以米游社百科/游戏图鉴为准、实机左面板
 OCR 为真值;本表是 V4.4 快照,供策略 eval 用。
 

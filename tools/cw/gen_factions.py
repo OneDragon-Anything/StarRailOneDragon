@@ -37,6 +37,22 @@ PLAZA_DIR = REPO / ".debug/temp/currency_war/plaza"
 SRC_JSON = PLAZA_DIR / "trait_detail.json"
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_factions_data.py"
 DOC_DIR = REPO / "docs/game/currency_war/data/traits"
+# r156 写目标白名单守卫:生成器**只允许**写以下路径(数据层+文档层);
+# 判断层(cw_factions.py 等)永不在此列——若有人改动 DATA_PY/DOC_DIR
+# 指向判断层文件,此处断言拦截(防误覆盖人工维护的注册表)。
+WRITABLE_TARGETS = (DATA_PY, DOC_DIR)
+
+
+def _assert_writable_targets() -> None:
+    for t in WRITABLE_TARGETS:
+        if 'cw_factions.py' in t.name or (
+                t.suffix == '.py' and not t.name.endswith('_data.py')):
+            raise RuntimeError(
+                f'生成器写目标非法: {t}(判断层/非 _data.py 数据层文件;'
+                f'本生成器只写 {WRITABLE_TARGETS})')
+
+
+_assert_writable_targets()
 
 ISOLATED = {"师徒"}  # 旧赛季遗留(V4.4 无持有者),不生成
 
