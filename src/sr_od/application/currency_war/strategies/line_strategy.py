@@ -1,0 +1,276 @@
+"""货币战争 · 策略 v2(LineStrategy;Phase A Day 9;redesign §5)。
+
+**CwStrategy 具现**——继承 DefaultCwStrategy,只覆盖策略性钩子;
+执行性钩子(球/箱/典籍/腾席链骨架/encounter/supply/megastar/
+partner)全继承(r225 代码盘点的复用边界)。
+
+架构(redesign §3,每节点决策=三查):
+  查战力表(能不能过)→查线库(为谁积累)→规则集(具体动作)
+  状态机(cw_phase_machine)承载模式滞回/应急/追赶/守卫。
+
+覆盖的钩子(4 个):
+  on_match_start    session 扩展态初始化
+  on_round_end      感知质量门(抄 default:last_hp/streak)
+  update_target     信号锁线+桥线选择
+  decide_prep       四象限动作表
+
+session 扩展态(累积态清单=r220 §5.5;重启丢失语义已声明):
+  v2_state     状态机元组(cw_phase_machine.initial_state)
+  locked_line  锁定线 id(None=未锁)
+  bridge_id    当前桥(None=无)
+"""
+from __future__ import annotations
+
+from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_phase_machine
+from sr_od.application.currency_war.cw_bridge_pool import (
+    BRIDGE_POOL,
+    BRIDGE_POOL_P2,
+    pick_bridge,
+)
+from sr_od.application.currency_war.cw_line_library_v1 import (
+    line_of,
+)
+from sr_od.application.currency_war.cw_performance import RoundOutcome
+from sr_od.application.currency_war.cw_power_table import (
+    COARSE,
+    STRONG,
+    check,
+)
+from sr_od.application.currency_war.cw_signal_lock import (
+    check_core_signal,
+)
+from sr_od.application.currency_war.cw_state import (
+    BuyCard,
+    GameState,
+    LevelUp,
+)
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.strategies.default_strategy import (
+    DefaultCwStrategy,
+)
+
+#: 应急 HP 绝对档(简版;Step 5 按形态分层标定——r216)
+_EMERGENCY_HP: int = 25
+#: 应急保留重生基数([18] 死亡螺旋修正)
+_REBIRTH_FLOOR: int = 20
+#: 利息地板(50 金息律——满息;「卡30」是慢 D 期的下限档,
+#: 经济模式地板取 50,战力模式 30[S4:两档见 cw_economy._xp_gold_floor
+#: 同语义,Phase A 简化先统一 50/30 两数])
+_INTEREST_FLOOR: int = 50
+_WAR_FLOOR: int = 30
+#: 位面人口基线(r191 中位;追赶判定的参照)
+_POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
+
+
+class LineStrategy(DefaultCwStrategy):
+    """策略 v2:战力表+线库+桥线的四象限打法(redesign Phase A)。"""
+
+    STRATEGY_ID = 'line_v2'
+    STRATEGY_NAME = '线库策略 v2'
+    AUTHOR = 'OneDragon'
+    VERSION = '0.1'
+    DESCRIPTION = '战力表查证+信号锁线+桥线兜底(redesign Phase A)'
+
+    # ===== 生命周期 =====
+
+    def on_match_start(self, state: GameState, session: StrategySession,
+                       config) -> None:
+        """扩展态初始化(状态机/锁线/桥)。"""
+        session.v2_state = cw_phase_machine.initial_state()
+        session.locked_line = None
+        session.bridge_id = None
+
+    def on_round_end(self, state: GameState, session: StrategySession,
+                     config, obs: RoundOutcome) -> None:
+        """感知质量门(继承 default 实证链)+战斗节点事件喂状态机。"""
+        super().on_round_end(state, session, config, obs)
+        ev = 'node_pass'
+        # 位面边界权威判定(只 boss/遭遇查表)。
+        # B1:node_type 实际值是中文(cw_performance 口径)——
+        # 英文 'encounter' 永不命中=遭遇判定死码,已修。
+        # N2:obs.plane 比 state.plane 权威(结算时位面可能已推进)
+        if obs.node_type in ('boss', '遭遇') and session.locked_line:
+            line = line_of(session.locked_line)
+            if line is not None:
+                ph = f'P{obs.plane or state.plane}'
+                form = line.p2p3_forms.get(ph, '')
+                if form:
+                    pop = len(state.deployed)
+                    lvl, _, mp = check(form, pop, ph, self._drive_of(session))
+                    ok = lvl in (STRONG, COARSE) and abs(pop - mp) <= 2
+                    ev = 'E1_strong' if ok else 'E1_miss'
+        self._feed(session, ev)
+        # B2:追赶接线——人口 vs 位面基线(r191:P1 3-5/P2 6-7/P3 9-10)
+        pop = len(state.deployed)
+        baseline = _POP_BASELINE.get(obs.plane or state.plane, 7)
+        low = pop < baseline - 1     # 容差(基线是中位非硬线)
+        cat = session.v2_state[2]
+        if low and not cat and not session.v2_state[1]:
+            self._feed(session, 'E5', pop_low=low)
+        elif cat and not low:
+            self._feed(session, 'E6')
+
+    # ===== 战略层:信号锁线+桥线 =====
+
+    def update_target(self, state: GameState, session: StrategySession,
+                      config) -> None:
+        """v2 战略层:锁线检查(先)+桥线选择(未锁时)。
+
+        与 default 的 select_comp/maybe_pivot 完全不同——
+        不做 comp 评分/分数涌现换线([23]:换线只走
+        counter/降级显式路径,Phase A 只降级装置)。
+        """
+        if session.locked_line is None:
+            r = check_core_signal(self._visible_names(state))
+            if r.locked:
+                session.locked_line = r.line_id
+                self._feed(session, 'E7_lock')
+                log.info('[cw][v2] 锁线 %s(核心卡 %s)',
+                         r.line_id, r.matched_name)
+                session.target_comp = None
+                return
+        # 未锁线:桥线选择(购买方向;重合度最高)
+        bridge = pick_bridge(self._owned_names(state), 'P1')
+        session.bridge_id = bridge.bridge_id if bridge else None
+        session.target_comp = None   # v2 不消费旧 comp 体系
+
+    # ===== 四象限动作表 =====
+
+    def decide_prep(self, state: GameState, session: StrategySession,
+                    config) -> list:
+        """v2 备战计划:应急判定→象限动作(Phase A 简化范围)。"""
+        # --- 应急(存量语义,简版 HP 档) ---
+        if self._emergency(state) and not session.v2_state[1]:
+            self._feed(session, 'E3')
+        elif session.v2_state[1] and not self._emergency(state):
+            self._feed(session, 'E4')
+        emg = session.v2_state[1]
+        cat = session.v2_state[2]
+        if emg:
+            return self._emergency_actions(state, session)
+        if cat:
+            return self._catchup_actions(state, session)
+        if session.v2_state[0] == cw_phase_machine.MODE_ECONOMY:
+            return self._economy_actions(state, session)
+        return self._war_actions(state, session)
+
+    # ===== 内部 =====
+
+    @staticmethod
+    def _feed(session: StrategySession, ev: str,
+              pop_low: bool = True) -> None:
+        """喂事件。非确定集解包规则(S1 裁定):
+        E7_lock 保留当前 mode(锁线不改模式——开局锁线应攒钱,
+        与「卡30利息慢D」对齐);E2 换线取 war(主动求战力保守侧);
+        E8 重启按 HP 侧保守取 war。REJECT(S2)保持原态+日志。"""
+        st = session.v2_state
+        ns = cw_phase_machine.step(st, ev, pop_low=pop_low)
+        if ns == 'REJECT':
+            log.debug('[cw][v2] 状态机拒事件 %s(守卫期/已访问),保持原态', ev)
+            return
+        if isinstance(ns, set):
+            want_war = ev != 'E7_lock'
+            ns = next(s for s in ns
+                      if (s[0] == cw_phase_machine.MODE_WAR) == want_war)
+        session.v2_state = ns
+
+    @staticmethod
+    def _drive_of(session: StrategySession) -> str:
+        """B3:dot_fallback → 'unknown'(查表落最保守 ×2.0——
+        兜底线战力判断从严;原映射 burst 是保守性倒挂)。"""
+        line = line_of(session.locked_line) if session.locked_line else None
+        if line is None:
+            return 'unknown'
+        if line.drive_type == 'dot_fallback':
+            return 'unknown'
+        return line.drive_type
+
+    @staticmethod
+    def _visible_names(state: GameState) -> list[str]:
+        names = [c.name for c in (state.shop or []) if c.name]
+        names += [b.char_id for b in (state.bench or []) if b.char_id]
+        names += [d.char_id for d in (state.deployed or [])
+                  if getattr(d, 'char_id', '')]
+        return names
+
+    @staticmethod
+    def _owned_names(state: GameState) -> set[str]:
+        s = {b.char_id for b in (state.bench or []) if b.char_id}
+        s |= {d.char_id for d in (state.deployed or [])
+              if getattr(d, 'char_id', '')}
+        return s
+
+    @staticmethod
+    def _emergency(state: GameState) -> bool:
+        return state.hp <= _EMERGENCY_HP
+
+    def _emergency_actions(self, state: GameState,
+                           session: StrategySession) -> list:
+        """应急:利息让位保留重生基数([18]);买即战力。"""
+        budget = max(0, state.gold - _REBIRTH_FLOOR)
+        for card in (state.shop or []):
+            if self._line_wants(card, state, session) \
+                    and card.cost <= budget:
+                return [BuyCard(card)]
+        cards = sorted((state.shop or []), key=lambda c: -c.cost)
+        if cards and cards[0].cost <= budget:
+            return [BuyCard(cards[0])]
+        return []
+
+    def _catchup_actions(self, state: GameState,
+                         session: StrategySession) -> list:
+        """追赶(简化版):升人口置顶。"""
+        from sr_od.application.currency_war.cw_economy import xp_click_cost
+        cost = xp_click_cost(state)
+        if state.gold >= cost:
+            return [LevelUp(cost)]
+        return []
+
+    def _economy_actions(self, state: GameState,
+                         session: StrategySession) -> list:
+        """经济:线内件(星级三档)+压缩(利息地板内)。"""
+        actions: list = []
+        for card in (state.shop or []):
+            if state.gold - card.cost < _INTEREST_FLOOR:
+                continue
+            if self._line_wants(card, state, session):
+                actions.append(BuyCard(card))
+        # 压缩(1费净0;redesign §4.2 判据)
+        bought = {id(a.card) for a in actions}
+        for card in (state.shop or []):
+            if card.cost == 1 and state.gold - 1 >= _INTEREST_FLOOR \
+                    and id(card) not in bought:
+                actions.append(BuyCard(card))
+        return actions
+
+    def _war_actions(self, state: GameState,
+                     session: StrategySession) -> list:
+        """战力:分层补强(线内件优先;地板仍保——战力≠panic)。"""
+        actions: list = []
+        for card in (state.shop or []):
+            if state.gold - card.cost < _REBIRTH_FLOOR:
+                continue
+            if self._line_wants(card, state, session):
+                actions.append(BuyCard(card))
+                if len(actions) >= 2:
+                    break
+        return actions
+
+    def _line_wants(self, card, state: GameState,
+                    session: StrategySession) -> bool:
+        """星级三档购买判据(r201)——Phase A 简版:
+        锁线→carry+opportunistic 档;未锁→桥线 fixed/core。"""
+        if session.locked_line:
+            line = line_of(session.locked_line)
+            if line is None:
+                return False
+            if card.name == line.carry:
+                return True
+            return card.name in line.opportunistic_cards
+        if session.bridge_id:
+            pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
+            for combo in pool:
+                if combo.bridge_id == session.bridge_id:
+                    return card.name in combo.fixed + combo.core
+        return False

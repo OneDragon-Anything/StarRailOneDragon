@@ -221,6 +221,14 @@ class StrategySession:
     last_candidate_scores: dict[str, float] = field(default_factory=dict)   # 选线轮的 top-3 实际排序分(r6 遥测补)
     last_candidate_scores_round: int = -1              # 分数轮次戳(shop 侧判陈旧清空)
     _supply_refresh_used: bool = False                 # 补给刷新 1 次已用(r2#2 跨实例)
+    # —— 策略 v2(LineStrategy)扩展态——正式字段(评审 B-bg:动态
+    # setattr 会在「session 新建而 on_match_start 未走」路径崩;
+    # 且 asdict/telemetry 看不见动态属性——升正式,r3 review④ 同判例)——
+    v2_state: tuple = ('economy', False, False, 0, 0, 0, 0, 0)
+    # cw_phase_machine 状态元组(免环形导入用字面量默认;
+    # on_match_start 用 initial_state() 规范初始化)
+    locked_line: str | None = None                     # 锁定线 id(None=未锁)
+    bridge_id: str | None = None                       # 当前桥线 id(None=无)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;

@@ -40,6 +40,9 @@ class LineV1:
     equip_priority: str              # 装备优先序(一句话)
     bench_windows: dict[str, str] = field(default_factory=dict)
     # 核心卡上场窗口([21]):卡名→窗口描述
+    opportunistic_cards: list[str] = field(default_factory=list)
+    # S3 单一源:顺手升档名单(与 star_tiers 文本同步维护;
+    # 消费方=line_strategy._line_wants,勿在消费侧另建缓存)
 
 
 #: 姬子线的星级三档(r201 用户裁定)
@@ -75,6 +78,7 @@ LINE_LIBRARY_V1: list[LineV1] = [
                        '>瓦尔特回能',
         # r224 S2:窗口=条件式(调研 #35「开局刷到即上」的例外)
         bench_windows={'姬子·启行': '列车2已成型即上;否则>=7级'},
+        opportunistic_cards=['瓦尔特', '符玄', '星期日', '三月七'],
     ),
     LineV1(
         line_id='feiying_joy',
@@ -99,6 +103,7 @@ LINE_LIBRARY_V1: list[LineV1] = [
         roll_anchor='6级D三星绯英(2费便宜,早成型)',
         equip_priority='绯英风暴潮×2+永动机>爻光靴×3>藿藿绝对热量',
         bench_windows={'绯英': '6级且欢愉2+在场'},
+        opportunistic_cards=['爻光', '银狼LV.999', '藿藿'],
     ),
     LineV1(
         line_id='dot_fallback',
@@ -122,6 +127,7 @@ LINE_LIBRARY_V1: list[LineV1] = [
         roll_anchor='前期DOT2即战力;7级D三星卡芙卡',
         equip_priority='卡芙卡风暴潮×3>阮·梅充能>黑天鹅天基轨道炮',
         bench_windows={},
+        opportunistic_cards=['黑天鹅', '海瑟音', '桑博', '椒丘', '艾丝妲'],
     ),
 ]
 
