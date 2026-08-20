@@ -15,6 +15,8 @@
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
 | 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航/买牌纪律 | [transitions.md](transitions.md) |
+| **过渡阵容逐线定义**(引擎池/核心池/直通族结构;落码依据) | [transition_combos.md](transition_combos.md) ★ |
+| 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/枢纽分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
 | 单套 comp 打法(入场/退场信号/counter/装备叙事;有实战接触才建卡) | [comps/](comps/README.md) |
 | 投资卡效果全量分类与可建模边界(API 裁定) | [invest_effects.md](invest_effects.md) |

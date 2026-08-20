@@ -1,5 +1,10 @@
 # 过渡体系(P1-P2 阶段的阵容演化)
 
+> 本篇 = 过渡**叙事层**(骨架演进/成型停手线/换血点/护航体系);
+> **逐线组合定义**(引擎池/核心池/直通族结构与数据)→
+> [transition_combos.md](transition_combos.md);
+> 理解方法论 → [combo_methodology.md](combo_methodology.md)。
+
 > 「前期怎么活到成型、中期怎么护航」的体系知识:过渡骨架、过渡成型判定、换血点、护航、买牌纪律。来源:V3.7 必修三 + V4.0-4.4 难度攻略 + V4.4 合集([sources/](../sources/))+ 用户口述([user_playstyle](user_playstyle.md),条目号即口述条目)。V3.7 骨架经 V4.x 演进,各条标版本口径。实现侧(双轨过渡模型 / CommitSignals)→ strategy/02 §4(ADR-0209)。
 
 ## 1. P1 前期骨架(V3.7 → V4.x 演进)
