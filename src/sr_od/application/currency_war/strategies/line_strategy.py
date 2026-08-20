@@ -773,7 +773,21 @@ class LineStrategy(DefaultCwStrategy):
             bridge_bonds.update(combo.engine_bonds.keys())
         if not (line_bonds & bridge_bonds):
             return False    # 方向不相交(dot 线等)不囤
-        return any(card.name in combo.core for combo in BRIDGE_POOL_P2)
+        if not any(card.name in combo.core for combo in BRIDGE_POOL_P2):
+            return False
+        # r254(P2 首战断崖,十局数据):防御件优先——P2r1 的
+        # 掉血(-14/-36/-41)与板面无关是敌强度断崖;预囤时
+        # 护盾系(丹恒·腾荒/砂金/杰帕德的护盾 flow)优先于
+        # 纯输出件。谓词层面两者都放行(购买序由 _buy_actions
+        # 的 shop 序决定),但**防御件计入更早的轮数门**:
+        # 护盾系 r≥6 即囤(比通用门 7 提前 1 轮——P1 boss 的
+        # 生存压力同样受益)。
+        if state.round_num >= _P2_PRECACHE_ROUND - 1:
+            from sr_od.application.currency_war.cw_chars import CHARACTERS
+            ch = CHARACTERS.get(card.name)
+            if ch is not None and '护盾' in set(ch.flows) | set(ch.factions):
+                return True
+        return True
 
     @staticmethod
     def _pop_low(state: GameState, session: StrategySession) -> bool:
