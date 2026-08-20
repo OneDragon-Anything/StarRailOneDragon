@@ -173,6 +173,19 @@ class LineStrategy(DefaultCwStrategy):
                 bridge = pick_bridge(self._owned_names(state), ph)
                 session.bridge_id = bridge.bridge_id if bridge else None
                 session.target_comp = None
+        # B2(审计):双轨态/过渡框架写入——继承执行钩子
+        # (_should_deploy 框架件分支/_free_bench_step)读这些
+        # session 字段,v2 从不设 → 桥 carry 单卡囤 bench 不上场。
+        # 语义:未锁线+P1 = 双轨期(过渡),framework = 桥名映射
+        session.dual_track_phase = (session.locked_line is None
+                                    and state.plane < 2)
+        _BRIDGE_FW_MAP = {
+            'xianzhou_dot': '仙舟', 'xianzhou_train': '仙舟',
+            'train_dot': '列车',
+            'train4_shield3': '列车',
+        }
+        session.transition_framework = (
+            _BRIDGE_FW_MAP.get(session.bridge_id or '', ''))
 
     # ===== 四象限动作表 =====
 
@@ -296,49 +309,108 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济:线内件+桥种子+压缩(r236 三局修正:
-        用户「节点1没把钱花完」——g=3 floor=min(10,g-1)=2,
-        买一张 1 费后 rem-1>=2 不成立 → 停买剩 2 金。
-        利息结构:每 10 金 1 点 → 低位金(<10)的息 = 0,
-        攒着无意义;P1 早期是攒力量期。修:**未满息期
-        floor=0**(花到只剩买不起为止);满息期 floor=50
-        [11] 50 金息律;10-50 中间带 floor=gold%10
-        (保住已攒的息档,档内零息随便花)。"""
+        """经济象限——显式动作序(r239 审计治本:升→刷→买→卖off→卖息;
+        v2 覆盖 decide_prep 丢了 default plan() 的动作面,同类病
+        已犯三次[r232/r236/r238],按序重排防第四个):
+        ① 升人口(A1):溢出金放行——gold≥50+单击价时买 XP
+           白嫖人口(r85 语义,default 实证修);
+        ② 买(floor 三档 r236:满息 50/中间保档 g%10/低位 0);
+        ③ 卖 off-target(A3):锁线后非保护 bench 件 cap 2/轮;
+        ④ 卖散凑息(r238:组合跨档)。"""
         actions: list = []
+        # ① 溢出金升人口(A1 修复;level_up_gate 单一源)
+        from sr_od.application.currency_war.cw_economy import xp_click_cost
+        xp = xp_click_cost(state)
+        if state.gold - xp >= _INTEREST_FLOOR and xp > 0:
+            actions.append(LevelUp(xp))
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
         elif state.gold >= 10:
             floor = state.gold % 10    # 保息档,档内全花
         else:
             floor = 0                  # 低位金零息,全花
-        rem = state.gold
+        rem = state.gold - (xp if actions else 0)
         for card in (state.shop or []):
             if rem - card.cost < floor:
                 continue
+            if not self._buy_guards(card, state, len(actions)):
+                continue    # A4:副本/容量守卫
             if self._line_wants(card, state, session) \
                     or self._bridge_seed(card, state):
                 actions.append(BuyCard(card))
                 rem -= card.cost    # 终审 S3:逐张扣减防预算漂移
         # 压缩(1费净0)
-        bought = {id(a.card) for a in actions}
+        bought = {id(a.card) for a in actions if isinstance(a, BuyCard)}
         for card in (state.shop or []):
             if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
+                if not self._buy_guards(card, state, len(actions)):
+                    continue
                 if self._line_wants(card, state, session) \
                         or self._bridge_seed(card, state) \
                         or self._pair_wants(card, state):
                     actions.append(BuyCard(card))
                     rem -= 1
-        # 卖散凑息(r238:用户「节点4没卖出凑30金」——v2 覆盖
-        # decide_prep 时把 default 的 _maybe_sell_for_interest 丢了;
-        # 金 28 差 2 到 30 档,bench 7 张有散牌可卖而不卖。
-        # v2 版:跨档(+1 息)就卖,保护名单=桥/线内件+优先角色;
-        # 卖出按 sell_refund 折价,最多 2 张)
+        # ③ 卖 off-target(A3:锁线后死库存回收)
+        actions.extend(self._sell_off_target(state, session, cap=2))
+        # ④ 卖散凑息(r238)
         actions.extend(self._sell_for_interest(state, session))
         return actions
 
     @staticmethod
-    def _sell_for_interest(state: GameState,
+    def _maybe_refresh(state: GameState, session: StrategySession,
+                       rem: int) -> list:
+        """A2 修复:D 牌刷新——shop 无线内件可买时刷一次
+        (「卡30慢D」的 D;免费额度优先,预算门,单轮一次)。"""
+        from sr_od.application.currency_war.cw_state import RefreshShop
+        # shop 里还有 line-wants 可买 → 不刷
+        if state.shop:
+            has_target = False
+            for card in state.shop:
+                if card.name and card.cost <= rem:
+                    has_target = True
+                    break
+            if has_target:
+                return []
+        cost = state.shop_refresh_cost or 2
+        if rem - cost < 10:      # 刷新后至少保 10(低位不刷)
+            return []
+        return [RefreshShop(cost)]
+
+    def _sell_off_target(self, state: GameState,
+                         session: StrategySession, cap: int = 2) -> list:
+        """A3 修复:锁线后卖非保护 bench 件(死库存回收,
+        default _sell_offline_for_focus 的 v2 版;保护集与
+        _sell_for_interest 同源)。"""
+        from sr_od.application.currency_war.cw_state import SellBench
+        if session.locked_line is None:
+            return []
+        protect = self._protect_set(session)
+        close = set(state.board.keys())
+        out: list = []
+        for i, bc in enumerate(state.bench):
+            if len(out) >= cap:
+                break
+            if bc.char_id and bc.char_id not in protect \
+                    and bc.faction not in close:
+                out.append(SellBench(bench_idx=i))
+        return out
+
+    @staticmethod
+    def _protect_set(session: StrategySession) -> set[str]:
+        """保护集(卖出双路径共享:线 carry+opportunistic+桥名单)。"""
+        protect: set[str] = set()
+        for pool in (BRIDGE_POOL, BRIDGE_POOL_P2):
+            for combo in pool:
+                protect.update(combo.fixed + combo.core)
+        if session.locked_line:
+            line = line_of(session.locked_line)
+            if line is not None:
+                protect.add(line.carry)
+                protect.update(line.opportunistic_cards)
+        return protect
+
+    def _sell_for_interest(self, state: GameState,
                            session: StrategySession) -> list:
         """卖散凑息:v2 版 _maybe_sell_interest(保护名单语义
         换 v2:桥 fixed/core+锁线 opportunistic 不卖)。"""
@@ -351,15 +423,7 @@ class LineStrategy(DefaultCwStrategy):
         if cur_gold >= _INTEREST_FLOOR or not state.bench:
             return out
         # 保护集:桥名单+锁线名单
-        protect: set[str] = set()
-        for pool in (BRIDGE_POOL, BRIDGE_POOL_P2):
-            for combo in pool:
-                protect.update(combo.fixed + combo.core)
-        if session.locked_line:
-            line = line_of(session.locked_line)
-            if line is not None:
-                protect.add(line.carry)
-                protect.update(line.opportunistic_cards)
+        protect = self._protect_set(session)
         close = set(state.board.keys())    # 在场阵营不拆
         # 费用查注册表(_bench_char_cost 同语义;本地实现避免
         # 私有函数依赖)
@@ -399,11 +463,14 @@ class LineStrategy(DefaultCwStrategy):
                      session: StrategySession) -> list:
         """战力:分层补强(线内件优先;地板仍保——战力≠panic)。
         终审 S3:逐张扣减预算。⑧-3:冷启动兜底(同 economy
-        的 _pair_wants——P2 未锁线+war 不再恒 0 买)。"""
+        的 _pair_wants——P2 未锁线+war 不再恒 0 买)。
+        r239:A2 刷新(shop 无线内件时 D 一次)+A4 守卫。"""
         actions: list = []
         rem = state.gold
         for card in (state.shop or []):
             if rem - card.cost < _WAR_FLOOR:
+                continue
+            if not self._buy_guards(card, state, len(actions)):
                 continue
             if self._line_wants(card, state, session) \
                     or self._pair_wants(card, state) \
@@ -412,6 +479,9 @@ class LineStrategy(DefaultCwStrategy):
                 rem -= card.cost
                 if len(actions) >= 2:
                     break
+        # A2:shop 无线内件可买 → D 一次
+        if not any(isinstance(a, BuyCard) for a in actions):
+            actions.extend(self._maybe_refresh(state, session, rem))
         return actions
 
     @staticmethod
@@ -441,14 +511,35 @@ class LineStrategy(DefaultCwStrategy):
     def _pair_wants(card, state: GameState) -> bool:
         """冷启动凑对(模拟局 P1 修复):卡与已持有(board+bench)
         同阵营 → 1 费可买(deploy 成对上场判据同源:
-        同阵营 count≥2 上场凑过渡羁绊)。"""
+        同阵营 count≥2 上场凑过渡羁绊)。
+        A5(spread 门):已有阵营 ≥3 时不再开新阵营——
+        default M25 spread-lock 实证的防线。"""
         if not card.name or not card.faction or card.faction == '?':
             return False
         owned_factions = set(state.board.keys())
         for b in (state.bench or []):
             if b.faction and b.faction != '?':
                 owned_factions.add(b.faction)
+        if card.faction not in owned_factions \
+                and len(owned_factions) >= 3:
+            return False    # A5:阵营上限
         return card.faction in owned_factions
+
+    @staticmethod
+    def _buy_guards(card, state: GameState,
+                    planned_buys: int) -> bool:
+        """A4(审计):买牌守卫——同名副本 ≤3(3合1 上限,
+        第4张纯浪费)+ bench 容量(已提案数计入)。"""
+        if not card.name:
+            return False
+        copies = sum(1 for b in (state.bench or [])
+                     if b.char_id == card.name)
+        copies += sum(1 for d in (state.deployed or [])
+                      if getattr(d, 'char_id', '') == card.name)
+        if copies >= 3:
+            return False
+        # bench 容量:9 槽(保守 8 留合成空间)
+        return len(state.bench or []) + planned_buys < 8
 
     def _line_wants(self, card, state: GameState,
                     session: StrategySession) -> bool:
@@ -503,6 +594,24 @@ class _LinePseudoComp:
         self.factions = factions       # deploy L248 直读该属性
         self.char_positions: dict[str, str] = {}
         self.form_tiers = form_tiers   # shop._form_progress 读
+        # B1(审计+实跑实证 22:59「no attribute level_plan」):
+        # 继承链(default 钩子/cw_plan/level_up_gate)按真 Comp
+        # 消费的完整属性面——逐个 grep 消费点补齐,防下一个
+        # AttributeError
+        self.key_equips: list[str] = []            # decide_box_card/装备转移
+        self.flex_factions: list[str] = []         # all_factions 外的弹性
+        self.transition_chars: list[str] = []      # 卖出保护(打工牌)
+        self.shared_chars: list[str] = []          # 转型共享
+        self.level_plan: dict = {}                 # level_up_gate 读
+        self.strength: str = 'S'
+        self.form_difficulty: str = 'medium'
+        self.early_power: str = '中'
+        self.countered_by_bosses: list[str] = []
+        self.mechanic_attributes: list[str] = []
+        self.typical_form_round: int = 5
+        self.version_tag: str = 'v2'
+        self.plaza_carry: str = core_chars[0] if core_chars else ''
+        self.weak_planes: tuple = ()
 
     @property
     def all_factions(self) -> set[str]:
