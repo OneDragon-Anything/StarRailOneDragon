@@ -250,10 +250,16 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
     实证预囤把启动率从 0.5% 拉到 99.9% @r1.4)。散件恒低分。
     r107 审计B:预囤只对 **carry/partial**(囤了围绕它走);drop 档返 0
     (应急件,囤了 P1 末就卖 = 浪费金,与 recipe 追买口径一致)。
+    r137 阵营兜底(局38 终判「列车件池只有 5 人?」→ 实 8 人:配方羁绊
+    计数认阵营池,买牌只认 TRANSITION_PACK 策展 3 人——饮月(仙舟+列车
+    双阵营)/星期日/瓦尔特被当散件放过,「列车×4」难凑齐):
+    阵营命中当前框架但不在策展同框架 → partial 级分(羁绊计数有贡献)。
     """
     ent = TRANSITION_PACK.get(char_id)
+    fw_facs = FRAMEWORK_FACTIONS.get(framework, ()) if framework else ()
+    _fac_hit = bool(framework and _char_has_faction(char_id, fw_facs))
     if ent is None:
-        base = 0.0
+        base = 0.6 if _fac_hit else 0.0   # r137:非在册但阵营命中=partial 级
     else:
         fw, tier = ent
         base = {'carry': 1.0, 'partial': 0.6, 'drop': 0.4}.get(tier, 0.3)
@@ -263,7 +269,18 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
             base += 0.3   # 同框架集中
         elif fw == '通用':
             base += 0.15  # 通用插件次之
+        elif _fac_hit:
+            base += 0.2   # r137:在册他框架件但阵营命中当前框架
         # fw != framework 且 framework=''(预囤):base 保持档位分(囤任何框架件)
     if faction in FRAMEWORK_FACTIONS.get(framework, ()):
         base += 0.2
     return base
+
+
+def _char_has_faction(char_id: str, fw_facs) -> bool:
+    """角色注册表阵营/流派与框架阵营有交集(r137 阵营兜底;纯查表)。"""
+    from sr_od.application.currency_war.cw_chars import get_char
+    c = get_char(char_id) if char_id else None
+    if c is None:
+        return False
+    return bool((set(c.factions) | set(c.flows)) & set(fw_facs or ()))
