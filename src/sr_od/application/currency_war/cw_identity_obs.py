@@ -391,23 +391,28 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                         ctx.run_context.stop_running()
         except Exception:   # noqa: BLE001  确认钩子 best-effort
             pass
-        _bx_g, _tm_g = _get_supply_box_gray(), _get_tome_gray()
-        if _bx_g is not None:
+        _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
+                     if t is not None]
+        _tm_g = _get_tome_gray()
+        if _item_tms:
             _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
             for _i, _rect in _bench_slots9:
                 if _i in _obj_slots:
                     continue
                 _c = _gray_full[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
-                if _c.shape[0] < _bx_g.shape[0] or _c.shape[1] < _bx_g.shape[1]:
-                    continue
-                _bs = cv2.minMaxLoc(cv2.matchTemplate(_c, _bx_g, cv2.TM_CCOEFF_NORMED))[1]
+                _bs = 0.0
+                for _it in _item_tms:
+                    if _c.shape[0] < _it.shape[0] or _c.shape[1] < _it.shape[1]:
+                        continue
+                    _bs = max(_bs, cv2.minMaxLoc(
+                        cv2.matchTemplate(_c, _it, cv2.TM_CCOEFF_NORMED))[1])
                 if _bs <= 0.45:
                     continue
                 _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
                        if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
                            and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
                 if _bs >= _ts:
-                    _obj_slots.add(_i)   # 箱/卡包类物件(低分渲染),排除
+                    _obj_slots.add(_i)   # 箱/卡包/武装箱类物件(低分渲染),排除
         _named = {c.slot for c in chars} if chars else set()
         for _slot, _rect in _bench_slots9:
             if _slot in _named or _slot in _obj_slots:
@@ -421,7 +426,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
 
                     from one_dragon.utils.log_utils import log as _log
                     _cx = (_rect.x1 + _rect.x2) // 2
-                    _cy = (_rect.y1 + (_rect.y2) - _rect.y1) // 2
+                    _cy = (_rect.y1 + _rect.y2) // 2   # r256 修:原式 (y1+y2-y1)//2 = y2//2 是 bug
                     _P('.debug/temp/currency_war/summon_stop_hook.flag').write_text(
                         '召唤物/物品停机钩子:备战栏 slot'
                         f'{_slot} 占用但 SIFT 未识别(非角色非已知箱/典籍)。\n'
@@ -525,24 +530,46 @@ def _get_supply_box_gray() -> MatLike | None:
     return _supply_box_gray
 
 
+_crate_gray: MatLike | None = None
+_crate_loaded: bool = False
+
+
+def _get_crate_gray() -> MatLike | None:
+    """加载简易武装箱模板灰度图(r256;军火贸易类投资策略给的占槽物品,
+    summon_stop_hook 首捕建档——证据 summon_unknown__42d15804.png,
+    红卡金星+开启钮;与补给箱模板互斥 0.45)。"""
+    global _crate_gray, _crate_loaded
+    if not _crate_loaded:
+        _crate_loaded = True
+        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '简易武装箱.png'
+        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
+        _crate_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _crate_gray
+
+
 def find_supply_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
-    """纯 CV 核心:槽位 rect 列表内 TM 匹配补给箱 → ``[(slot_idx, 槽 center)]``(点「开启」用)。
+    """纯 CV 核心:槽位 rect 列表内 TM 匹配可开启物品箱
+    (补给箱 + 简易武装箱 r256)→ ``[(slot_idx, 槽 center)]``(点「开启」用)。
 
     模板 ~97x118 < 槽 rect ~113x134 → 逐槽 matchTemplate。空槽/角色槽远低于阈值不命中。
     可离线硬编码 rect 测(同 ``identify_slots`` 分层约定)。
     """
-    tm = _get_supply_box_gray()
-    if tm is None:
+    tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
+           if t is not None]
+    if not tms:
         return []
     gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
     out: list[tuple[int, Point]] = []
     for idx, rect in slots:
         crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
-        if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
-            continue
-        r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
-        _, mx, _, _ = cv2.minMaxLoc(r)
-        if mx >= _SUPPLY_BOX_TM_THR:
+        best = 0.0
+        for tm in tms:
+            if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+                continue
+            r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
+            _, mx, _, _ = cv2.minMaxLoc(r)
+            best = max(best, mx)
+        if best >= _SUPPLY_BOX_TM_THR:
             out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
     return out
 
