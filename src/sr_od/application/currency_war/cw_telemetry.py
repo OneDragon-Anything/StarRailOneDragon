@@ -694,6 +694,51 @@ def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
     return lines
 
 
+def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
+    """视图:plan 动作 vs 实际执行对拍(步进 decisions 里的 plan 序列 vs 次轮
+    board/bench 变化;r126 发现「plan 买白厄在首位但实跑只买 1 张」类执行
+    缺口的判读入口)。
+
+    方法:每轮末条决策的 plan buys/refresh/level vs 下一轮首条决策的
+    gold 差(金没花=买没执行/金花了板没变=点了没生效)。"""
+    rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
+            if d.get('run_id') == run_id]
+    rows.sort(key=lambda d: (d.get('plane') or 0, d.get('round_num') or 0,
+                             d.get('ts') or ''))
+    lines: list[str] = []
+    # 按轮聚合
+    by_round: dict = {}
+    for d in rows:
+        by_round.setdefault((d.get('plane'), d.get('round_num')), []).append(d)
+    keys = sorted(by_round)
+    for i, k in enumerate(keys[:-1]):
+        cur = by_round[k]
+        nxt = by_round[keys[i + 1]]
+        # 轮内累计 plan 动作
+        buys = lvl = rf = 0
+        for d in cur:
+            for a in (d.get('actions') or []):
+                t = a.get('__type__')
+                if t == 'BuyCard':
+                    buys += 1
+                elif t == 'LevelUp':
+                    lvl += 1
+                elif t == 'RefreshShop':
+                    rf += 1
+        g_end = cur[-1].get('state', {}).get('gold')
+        g_next = nxt[0].get('state', {}).get('gold')
+        if g_end is None or g_next is None:
+            continue
+        # 期望:下轮金 ≈ 本轮末 - 花费 + 收入(5±) ;偏差大 = 执行缺口
+        delta = g_next - g_end
+        # 收入 ~5-8(利息+基础);delta 显著大于收入 = plan 没花出去
+        suspicious = (buys + rf + lvl) > 0 and delta > 12
+        mark = '  ← 疑似未执行(金几乎没花)' if suspicious else ''
+        lines.append(f"  p{k[0]}r{k[1]} plan:买{buys} 升{lvl} 刷{rf} | 金 {g_end}→{g_next}"
+                     f"(Δ{delta:+d}){mark}")
+    return lines
+
+
 def _cli_main() -> None:
     import argparse
     ap = argparse.ArgumentParser(prog='cw_telemetry',
@@ -701,7 +746,8 @@ def _cli_main() -> None:
     ap.add_argument('cmd', choices=['query'])
     ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
     ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
-    ap.add_argument('--view', default='rounds', choices=['rounds', 'supply', 'anomalies', 'tiers', 'all'])
+    ap.add_argument('--view', default='rounds',
+                    choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     args = ap.parse_args()
     replay_dir = Path(args.replay_dir)
@@ -733,6 +779,9 @@ def _cli_main() -> None:
     if args.view in ('tiers', 'all'):
         print('[tiers]')
         print('\n'.join(query_tiers(replay_dir, rid)))
+    if args.view in ('planexec', 'all'):
+        print('[planexec]')
+        print('\n'.join(query_plan_vs_exec(replay_dir, rid)))
     if args.view in ('anomalies', 'all'):
         print('[anomalies]')
         abn = query_anomalies(replay_dir, rid)
