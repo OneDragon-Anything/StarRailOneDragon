@@ -159,23 +159,29 @@ class LineStrategy(DefaultCwStrategy):
                 _LinePseudoComp.from_line(line, state.plane)
                 if line is not None else None)
         else:
-            # ⑧-2 修复:DOT 兜底可达性——P2 起未锁线(无信号无桥)
-            # 落兜底线(对抗8:core_cards=[] 使 check_core_signal
-            # 永远返回不了 dot_fallback,「兜底」实为「不可达」)
-            if state.plane >= 2:
+            # 未锁线:桥线选择(重合度最高;phase 按当前位面)
+            # r244(稳定性 review 风险1):P2 桥选择不再被 DOT 兜底
+            # 一刀切——桥成立(fixed 齐或 score>0)走桥(仙舟
+            # 投资不搁浅+P2 池可达);只有真无方向(无信号无桥)
+            # 才落 dot_fallback。DOT 兜底也降到 P2 末(轮数门:
+            # P2 前半程还有时间等信号,后半程必须定型)
+            ph = 'P1' if state.plane == 1 else 'P2'
+            bridge = pick_bridge(self._owned_names(state), ph)
+            if bridge is not None:
+                session.bridge_id = bridge.bridge_id
+                session.target_comp = None
+            elif state.plane >= 2 and state.round_num >= 4:
+                # ⑧-2 DOT 兜底可达性(P2 后半程无方向才落)
                 session.locked_line = 'dot_fallback'
                 self._feed(session, 'E7_lock')
-                log.info('[cw][v2] P%d 未锁线 → 落 DOT 兜底',
-                         state.plane)
+                log.info('[cw][v2] P%dr%d 无桥无信号 → 落 DOT 兜底',
+                         state.plane, state.round_num)
                 line = line_of('dot_fallback')
                 session.target_comp = (
                     _LinePseudoComp.from_line(line, state.plane)
                     if line is not None else None)
             else:
-                # 未锁线:桥线选择(重合度最高;phase 按当前位面)
-                ph = 'P1' if state.plane == 1 else 'P2'
-                bridge = pick_bridge(self._owned_names(state), ph)
-                session.bridge_id = bridge.bridge_id if bridge else None
+                session.bridge_id = None
                 session.target_comp = None
         # B2(审计):双轨态/过渡框架写入——继承执行钩子
         # (_should_deploy 框架件分支/_free_bench_step)读这些
@@ -386,20 +392,20 @@ class LineStrategy(DefaultCwStrategy):
             st2.bench.pop(idx)
         return st2
 
-    @staticmethod
-    def _maybe_refresh(state: GameState, session: StrategySession,
+    def _maybe_refresh(self, state: GameState, session: StrategySession,
                        rem: int) -> list:
-        """A2 修复:D 牌刷新——shop 无线内件可买时刷一次
-        (「卡30慢D」的 D;免费额度优先,预算门,单轮一次)。"""
+        """A2 修复:D 牌刷新——shop 无**线内件**可买时刷一次
+        (「卡30慢D」的 D;免费额度优先,预算门,单轮一次)。
+        r244(稳定性 review 风险3):has_target 旧判据只查
+        「有名且买得起」不查 line_wants——任何有名卡都拦刷新,
+        D 通道实为死码。修:按线内判据(_line_wants/_bridge_seed)
+        判目标存在。"""
         from sr_od.application.currency_war.cw_state import RefreshShop
-        # shop 里还有 line-wants 可买 → 不刷
-        if state.shop:
-            has_target = False
-            for card in state.shop:
-                if card.name and card.cost <= rem:
-                    has_target = True
-                    break
-            if has_target:
+        # shop 里还有**线内件**可买 → 不刷(r244 判据修正)
+        for card in (state.shop or []):
+            if card.name and card.cost <= rem \
+                    and (self._line_wants(card, state, session)
+                         or self._bridge_seed(card, state)):
                 return []
         cost = state.shop_refresh_cost or 2
         if rem - cost < 10:      # 刷新后至少保 10(低位不刷)
