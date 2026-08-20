@@ -1304,6 +1304,28 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             if not pool:
                 break
     # 通用兜底:剩余 pool 按场上顺序(deployed 原序,前排先)分完
+    # r134 身份过滤(用户质询「为什么给砂金」):非 target 角色穿满通用件
+    # = 换血时一件件拆(即时小收益换后期摩擦)。规则:comp 有 core 在场时,
+    # 兜底优先发 core(哪怕 deployed 序靠后);非 core 每人只兜底 1 件
+    # (防裸奔),core 吃满。comp=None 保持全量兜底(无身份信息)。
+    if comp is not None:
+        _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
+        _others = [d for d in deployed
+                   if getattr(d, 'char_id', '') and d.char_id not in comp.core_chars]
+        # core 先吃满
+        for cn in _cores:
+            while pool and capacity.get(cn, 0) > 0:
+                g = pool.pop(0)
+                out.append((cn, g))
+                capacity[cn] -= 1
+        # 非 core:每人 1 件保底
+        for d in _others:
+            n = d.char_id
+            if pool and capacity.get(n, 0) > 0:
+                g = pool.pop(0)
+                out.append((n, g))
+                capacity[n] -= 1
+        return out
     for d in deployed:
         n = getattr(d, 'char_id', None)
         if not n or not pool:
