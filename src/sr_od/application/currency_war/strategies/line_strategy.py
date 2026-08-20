@@ -296,16 +296,21 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济:线内件+桥种子+压缩(r234 首局复盘修正:
-        散板期商店一直有引擎种子件——藿藿/三月七/艾丝妲——
-        但桥 fixed 判据(需 owned 已有)永远不满足 → 6 轮 0 买
-        全散板。补「桥种子」:未锁线且卡∈任一桥的 fixed∪core
-        → 买(第一块砖不需要已有砖;floor 满息期仍守)。"""
+        """经济:线内件+桥种子+压缩(r236 三局修正:
+        用户「节点1没把钱花完」——g=3 floor=min(10,g-1)=2,
+        买一张 1 费后 rem-1>=2 不成立 → 停买剩 2 金。
+        利息结构:每 10 金 1 点 → 低位金(<10)的息 = 0,
+        攒着无意义;P1 早期是攒力量期。修:**未满息期
+        floor=0**(花到只剩买不起为止);满息期 floor=50
+        [11] 50 金息律;10-50 中间带 floor=gold%10
+        (保住已攒的息档,档内零息随便花)。"""
         actions: list = []
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
+        elif state.gold >= 10:
+            floor = state.gold % 10    # 保息档,档内全花
         else:
-            floor = max(0, min(10, state.gold - 1))
+            floor = 0                  # 低位金零息,全花
         rem = state.gold
         for card in (state.shop or []):
             if rem - card.cost < floor:
