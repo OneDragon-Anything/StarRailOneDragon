@@ -366,22 +366,29 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # r100k 书册卡确认钩子(临时,确认后删):模板认出它了,但开启后是什么未知
         # (名字带「未知」占位)。下次备战遇到 → 停机,AI 点「开启」看内容 → 改名
         # + 若有奖励弹窗接线 handler → 删本段。每局只停一次(flag 挡重复)。
+        # r133 时序守卫(局37 实证):检测点=备战读,但同轮后续 bot 进战斗 →
+        # 停机落点在战斗画面,实物没看成,触发浪费一次。修:**画面须是备战态
+        # 才停**——用「备战阶段」OCR 关键词在场判(非备战态=跳过本轮,下轮再遇)。
         try:
             _bc = find_bookcards(screen, _bench_slots9)
             if _bc and ctx.run_context is not None:
                 from pathlib import Path as _P2
                 _fp2 = _P2('.debug/temp/currency_war/bookcard_confirm_hook.flag')
                 if not _fp2.exists():
-                    _fp2.write_text(
-                        f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
-                        f'处理:点 ({_bc[0][1].x},{_bc[0][1].y}) 「开启」→ 看产出(弹窗/直接入账)'
-                        f'→ ①改模板名 书册卡_未知.png → 真名;②若有交互弹窗,接 handler;'
-                        f'③删本钩子段(cw_identity_obs 搜「bookcard_confirm」)+删本 flag。\n'
-                        f'{datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
-                    from one_dragon.utils.log_utils import log as _log2
-                    _log2.warning('[cw!][bookcard] 书册卡在场(已识别,内容未知)→ 停机点开确认'
-                                  '(流程见 flag;确认后删钩子)')
-                    ctx.run_context.stop_running()
+                    _ocr_prep = ctx.ocr_service.get_ocr_result_map(
+                        image=screen, rect=None, color_range=None, crop_first=False)
+                    _is_prep = any('备战阶段' in t for t in _ocr_prep)
+                    if _is_prep:
+                        _fp2.write_text(
+                            f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
+                            f'处理:点 ({_bc[0][1].x},{_bc[0][1].y}) 「开启」→ 看产出(弹窗/直接入账)'
+                            f'→ ①改模板名 书册卡_未知.png → 真名;②若有交互弹窗,接 handler;'
+                            f'③删本钩子段(cw_identity_obs 搜「bookcard_confirm」)+删本 flag。\n'
+                            f'{datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
+                        from one_dragon.utils.log_utils import log as _log2
+                        _log2.warning('[cw!][bookcard] 书册卡在场(已识别,内容未知)→ 停机点开确认'
+                                      '(流程见 flag;确认后删钩子)')
+                        ctx.run_context.stop_running()
         except Exception:   # noqa: BLE001  确认钩子 best-effort
             pass
         _bx_g, _tm_g = _get_supply_box_gray(), _get_tome_gray()
