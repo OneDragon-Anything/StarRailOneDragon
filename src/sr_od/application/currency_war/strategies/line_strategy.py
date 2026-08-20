@@ -287,11 +287,11 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济:线内件(星级三档)+压缩(地板——r232 实跑修正:
-        用户观察「凑不到10金拿息也没买牌」=floor 挡死——
-        未满息期(gold<50)floor 取 min(10, gold-1):留 1 金
-        保底也要发展,息律是满息后不乱花不是低金不买;
-        满息期 floor=50 [11] 50 金息律)。"""
+        """经济:线内件+桥种子+压缩(r234 首局复盘修正:
+        散板期商店一直有引擎种子件——藿藿/三月七/艾丝妲——
+        但桥 fixed 判据(需 owned 已有)永远不满足 → 6 轮 0 买
+        全散板。补「桥种子」:未锁线且卡∈任一桥的 fixed∪core
+        → 买(第一块砖不需要已有砖;floor 满息期仍守)。"""
         actions: list = []
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
@@ -301,7 +301,8 @@ class LineStrategy(DefaultCwStrategy):
         for card in (state.shop or []):
             if rem - card.cost < floor:
                 continue
-            if self._line_wants(card, state, session):
+            if self._line_wants(card, state, session) \
+                    or self._bridge_seed(card, state):
                 actions.append(BuyCard(card))
                 rem -= card.cost    # 终审 S3:逐张扣减防预算漂移
         # 压缩(1费净0)
@@ -310,6 +311,7 @@ class LineStrategy(DefaultCwStrategy):
             if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
                 if self._line_wants(card, state, session) \
+                        or self._bridge_seed(card, state) \
                         or self._pair_wants(card, state):
                     actions.append(BuyCard(card))
                     rem -= 1
@@ -326,12 +328,30 @@ class LineStrategy(DefaultCwStrategy):
             if rem - card.cost < _WAR_FLOOR:
                 continue
             if self._line_wants(card, state, session) \
-                    or self._pair_wants(card, state):
+                    or self._pair_wants(card, state) \
+                    or self._bridge_seed(card, state):
                 actions.append(BuyCard(card))
                 rem -= card.cost
                 if len(actions) >= 2:
                     break
         return actions
+
+    @staticmethod
+    def _bridge_seed(card, state: GameState) -> bool:
+        """r234 桥种子:未锁线时,卡∈当前位面任一桥的
+        fixed∪core → 值得买(第一块砖;桥选择要求 owned 已有
+        fixed 是鸡生蛋——种子件先入手才能成桥)。
+
+        与 _pair_wants 的分工:seed 面向**引擎配方件**(三大
+        桥的名单,买了就有方向),pair 面向任意同阵营凑对
+        (散板止血)。"""
+        if not card.name:
+            return False
+        pool = BRIDGE_POOL if state.plane <= 1 else BRIDGE_POOL_P2
+        for combo in pool:
+            if card.name in combo.fixed or card.name in combo.core:
+                return True
+        return False
 
     @staticmethod
     def _affordable_cores(state: GameState) -> set[str]:
