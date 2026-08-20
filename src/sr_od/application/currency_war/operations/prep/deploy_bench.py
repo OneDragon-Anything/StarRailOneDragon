@@ -180,7 +180,45 @@ class DeployBench(SrOperation):
         time.sleep(1.5)
         log.info('[cw-deploy] 拖完')
 
+        # r132 装备遥测采集(穿戴侧盲区修复):decisions.jsonl 的 deployed.equips 恒空
+        # (决策点 state 来自 session.tracking 深拷贝,tracking 无 equips 字段;r117 定位)
+        # → 判读永远看不见装备齐度。deploy 后此处是**全量读时机**(画面稳定/正对
+        # 备战)——读 equipped below icon 并写 session.tracked_deployed[].equips,
+        # 后续决策快照自动携带。best-effort,失败不阻塞。
+        try:
+            self._snapshot_equips_into_tracking()
+        except Exception as e:   # noqa: BLE001  采集失败不影响部署
+            log.debug('[cw-deploy] equips 采集失败(不阻塞): %s', e)
+
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
+
+    def _snapshot_equips_into_tracking(self) -> None:
+        """读当前画面已上阵装备 → 回写 session.tracked_deployed 的 equips 字段。"""
+        _match = self.ctx.cw_match
+        if _match is None or _match.session is None:
+            return
+        from sr_od.application.currency_war.cw_equipment import (
+            ensure_equip_tm_templates,
+            read_row_equipped,
+        )
+        equip_grays = ensure_equip_tm_templates(self.ctx)
+        if equip_grays is None:
+            return
+        scr = self.last_screenshot
+        front_eq = read_row_equipped(self.ctx, scr, equip_grays, '前排', 4)
+        back_eq = read_row_equipped(self.ctx, scr, equip_grays, '后排', 6)
+        tracked = _match.session.tracked_deployed
+        _n = 0
+        for c in tracked:
+            slot = getattr(c, 'slot', None)
+            if slot is None:
+                continue
+            eq = (front_eq if c.position_pref == 'front' else back_eq).get(slot, [])
+            if eq:
+                c.equips = list(eq)
+                _n += len(eq)
+        if _n:
+            log.info('[cw-deploy] equips 采集:tracked %d 件写入(决策快照将携带)', _n)
 
     def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
                               templates: AvatarTemplates | None) -> None:
