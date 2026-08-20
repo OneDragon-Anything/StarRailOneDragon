@@ -225,7 +225,16 @@ class LineStrategy(DefaultCwStrategy):
             return
         if isinstance(ns, set):
             cur_mode = st[0]
-            ns = next(s for s in ns if s[0] == cur_mode)
+            if ev == 'E8_restart':
+                # E8 三候选全保持 mode → mode 过滤剩 3 个,按
+                # 集合迭代序随机挑 = 3/4 概率锁死应急(r235 模拟
+                # 实证:PYTHONHASHSEED 0-3 四跑三 FAIL)。
+                # 正确解包:排除「留在应急」分支,按 pop_low 选
+                ns = next(s for s in ns
+                          if s[0] == cur_mode and not s[1]
+                          and s[2] == bool(pop_low))
+            else:
+                ns = next(s for s in ns if s[0] == cur_mode)
         session.v2_state = ns
 
     @staticmethod
