@@ -201,21 +201,46 @@ class DeployBench(SrOperation):
 
     def _fix_misplaced_rows(self, front: list, back: list,
                             templates: AvatarTemplates | None) -> None:
-        """r241 场内换排纠正:pref=back 却在前排(或反之)→ 拖回正排。
+        """r241 场内换排纠正 + r250 前排保证(场内版)。
 
-        根因(用户实锤 2026-08-22):节点1 前排空时「前排保证」把
-        pref=back 的三月七强推前排(当时无 front 候选,行为对);
-        但后续真 front 角色上场后**无人把三月七挪回后排**——
-        deploy 只有 bench→场路径,场内错排永久遗留(三月七在
-        前排白吃伤害,她该在后排供护盾羁绊)。
-        条件:错排者存在 **且** 正排有空槽(没空槽不强换,避免
-        踢人);换排 = 错排槽 → 正排空槽的一次 drag。
-        """
+        r241:pref=back 却在前排(或反之)→ 拖回正排
+        (兜底强推遗留的永久错排)。
+        r250(用户局实锤「前台区域无角色,无法出战」卡 12min):
+        全部角色在后排+前排完全空 → 游戏拒出战;deploy 的
+        前排保证只管 bench→场,场内全后排无人纠正 → 死循环。
+        修:此情形强制把一个后排(pref=front 优先)挪前排——
+        出战硬要求 > 站位偏好。"""
         if templates is None:
             return
         deployed = read_deployed_chars(self.ctx, self.screenshot(), templates)
         if not deployed:
             return
+        # r250 前排保证(场内版):前排全空 + 后排有人 → 挪一
+        front_occupied = [d for d in deployed
+                          if (d.position_pref or 'back') == 'front']
+        if not front_occupied:
+            back_chars = [d for d in deployed
+                          if (d.position_pref or 'back') == 'back']
+            if back_chars and back:
+                # 优先真 front(pref)在后排的;否则第一个后排
+                cand = next(
+                    (d for d in back_chars
+                     if get_char(d.char_id) is not None
+                     and get_char(d.char_id).position_pref() == 'front'),
+                    back_chars[0])
+                ch = get_char(cand.char_id) if cand.char_id else None
+                if ch is not None and 1 <= cand.slot <= len(back):
+                    src = back[cand.slot - 1]
+                    if front:
+                        dst = front[0]
+                        if DragCwChar.drag_char(self, src, dst):
+                            log.info(f'[cw-deploy] 前排保证(场内 r250):'
+                                     f'{cand.char_id} 后排{cand.slot}'
+                                     f' → 前排1(前排空,出战硬要求) ✓')
+                            time.sleep(1.2)
+                            self._reconcile_tracking(templates)
+                            return
+        # r241 原逻辑:错排者归位
         front_empty = [i for i, c in enumerate(front)
                        if not slot_occupied(self.screenshot(), int(c.x), int(c.y))]
         back_empty = [i for i, c in enumerate(back)
