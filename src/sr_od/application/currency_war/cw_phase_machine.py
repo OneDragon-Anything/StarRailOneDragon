@@ -67,9 +67,17 @@ def step(st: tuple, ev: str, pop_low: bool = True,
     if ev == 'E8_restart':
         return (mode, False, cat, 0, 0, 0, 0, 0)
     frozen = cat                     # 追赶期滞回冻结
+    # r246 修正:P2 三连败实锤——追赶期**不冻结 E1_miss 的
+    # streak 攒积**(人口落后与战力不足是独立信号;原全冻结
+    # 让 cat 态下连败永不切 war,雪上加霜)。模式切换照常,
+    # 只冻结 pass streak(追赶期不打断人口专注)。
     if ev == 'E1_miss':
         if frozen:
-            return (mode, False, cat, sm, sp, max(0, gl - 1), rf, vis)
+            sm2 = min(sm + 1, MISS_STREAK_M)
+            if sm2 >= MISS_STREAK_M and mode == MODE_ECONOMY:
+                return (MODE_WAR, False, cat, 0, 0,
+                        max(0, gl - 1), rf, vis)   # A4 进入(追赶同)
+            return (mode, False, cat, sm2, sp, max(0, gl - 1), rf, vis)
         sm2 = min(sm + 1, MISS_STREAK_M)
         if sm2 >= MISS_STREAK_M and mode == MODE_ECONOMY:
             return (MODE_WAR, False, cat, 0, 0,
