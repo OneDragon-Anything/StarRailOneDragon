@@ -634,11 +634,19 @@ class DefaultCwStrategy(CwStrategy):
         _key_mats: set[str] = set()
         if _key:
             try:
-                from sr_od.application.currency_war.cw_equipment import EQUIPMENTS
+                # r130 修正:注册表字段是 **recipes**(cw_equipment_data._eq
+                # recipes=(('量产型装甲','幸运星'),))——旧代码读 .materials
+                # (不存在的属性)→ exception 被 swallow → 材料分静默失效,
+                # 幸运星/量产型装甲从拿不到 key_equip 材料加分(局33b 箱仅开
+                # 2 次的获取侧根因之一)。recipes 是「配方元组的元组」
+                # (每条=(材料a,材料b)),逐条展开。
+                from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS
                 for ke in _key:
                     eq = EQUIPMENTS.get(ke)
-                    for m in getattr(eq, 'materials', ()) or ():
-                        _key_mats.add(m)
+                    for recipe in getattr(eq, 'recipes', ()) or ():
+                        for m in recipe:
+                            if m:
+                                _key_mats.add(m)
             except Exception:   # noqa: BLE001  材料表缺失不加分
                 pass
         best_i, best_s = 0, -1.0
