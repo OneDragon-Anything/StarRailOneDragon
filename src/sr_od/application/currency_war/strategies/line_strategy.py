@@ -69,6 +69,9 @@ _CATCHUP_MIN_LEVEL: int = 6
 #: 散阵营凑对只服务无方向的冷启动期)
 _ENGINE_FACTIONS: frozenset = frozenset(
     {'仙舟', '列车同行', '持续伤害'})
+#: r247 P2 预囤轮数门(P1 末期起提前买 P2 桥 core 囤 bench;
+#: 7 = P1 后段,boss 前还有 1-2 购买轮的窗口)
+_P2_PRECACHE_ROUND: int = 7
 
 
 class LineStrategy(DefaultCwStrategy):
@@ -320,13 +323,22 @@ class LineStrategy(DefaultCwStrategy):
 
     def _catchup_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """追赶(简化版):升人口置顶(模拟局观察#3 修复:留
-        _WAR_FLOOR 地板——追赶不等于花光,人口未凑钱先攒着)。"""
+        """追赶:升人口置顶 + **剩余预算买形态件**。
+        r246c(模拟发现):追赶只返回 LevelUp 一条——金 35 只花
+        4 买经验,剩 31 干瞪眼;而 war 的形态件购买被 cat 拦截
+        (decide_prep 的 if cat 先于 war return)——P2 连败期
+        「追赶挡补强」是 r246b 之外的第三层拦阻。
+        修:追赶=升人口 + 剩余金走 war 购买(地板照守)。"""
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         cost = xp_click_cost(state)
+        actions: list = []
         if state.gold - cost >= _WAR_FLOOR:
-            return [LevelUp(cost)]
-        return []
+            actions.append(LevelUp(cost))
+            # 剩余预算的形态件购买(升完人口的钱继续买件)
+            st2 = state
+            st2.gold = state.gold - cost
+            actions.extend(self._war_actions(st2, session))
+        return actions
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
@@ -618,7 +630,12 @@ class LineStrategy(DefaultCwStrategy):
         r245(稳定性 review 风险2):锁线时 opportunistic 并入
         **当前位面桥 core**(P2 形态=列车4+护盾3,砂金/杰帕德/
         腾荒是桥 core 但不在静态 opportunistic——形态需求随
-        位面动态扩展,P2 成型不再缺件)。"""
+        位面动态扩展,P2 成型不再缺件)。
+        r247(P2 节奏解法 A,第九轮对抗审查落地):P1 末期
+        (r≥_P2_PRECACHE_ROUND)**提前买 P2 桥 core 囤 bench**——
+        P2 成型 3-4 轮压缩到 1 轮(成型速度<掉血速度的数学解)。
+        谓词独立(不裸改 plane 条件):应急不囤/bench≤7 门/
+        方向兼容门(jizi↔train4_shield3 列车同向)。"""
         if session.locked_line:
             line = line_of(session.locked_line)
             if line is None:
@@ -629,13 +646,43 @@ class LineStrategy(DefaultCwStrategy):
                 return True
             # r245:位面桥 core 并集(锁的线含该桥方向)
             pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
-            return any(card.name in combo.core for combo in pool)
+            if any(card.name in combo.core for combo in pool):
+                return True
+            # r247:P1 末提前囤 P2 桥 core(解法 A)
+            return self._p2_precache_wants(card, state, session)
         if session.bridge_id:
             pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
             for combo in pool:
                 if combo.bridge_id == session.bridge_id:
                     return card.name in combo.fixed + combo.core
         return False
+
+    @staticmethod
+    def _p2_precache_wants(card, state: GameState,
+                           session: StrategySession) -> bool:
+        """r247 解法 A 谓词(第九轮对抗审查设计,四门全过才囤):
+        ① 轮数门:P1 且 round ≥ _P2_PRECACHE_ROUND(7);
+        ② 应急门:非应急(应急金该花在保命不囤件);
+        ③ 容量门:bench ≤ 7(留 2 槽给 3合1 空间);
+        ④ 方向门:锁线 jizi_train(train4_shield3 与它列车同向;
+           feiying 的 P2 键也是列车4 开头——同向成立;
+           dot_fallback 的 P2 键是持续伤害系——不同向不囤)。
+        卡 ∈ P2 桥 core(fixed 不囤——CARRY 该按可负担门正常锁)。
+        """
+        if state.plane != 1 or state.round_num < _P2_PRECACHE_ROUND:
+            return False
+        if session.v2_state and session.v2_state[1]:
+            return False    # 应急不囤
+        if len(state.bench or []) > 7:
+            return False
+        # 方向兼容:P2 桥是列车系,锁线形态 P2 键须含列车
+        line = line_of(session.locked_line) if session.locked_line else None
+        if line is None:
+            return False
+        p2_form = line.p2p3_forms.get('P2', '')
+        if '列车' not in p2_form:
+            return False
+        return any(card.name in combo.core for combo in BRIDGE_POOL_P2)
 
     @staticmethod
     def _pop_low(state: GameState, session: StrategySession) -> bool:
