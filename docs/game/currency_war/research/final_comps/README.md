@@ -25,7 +25,7 @@
 | 希儿量子 | 希儿 | 量子3/贝4 | ~31 | (transition_combos 希儿节) | 已深读 |
 | 黄泉减益 | 黄泉 | 巡海4+减益4-6(标记+充能双循环) | 50 | [final_huangquan_debuff.md](final_huangquan_debuff.md) | **已深读**(50篇全量) |
 | 白厄反甲 | 白厄 | 反甲装备流(救世主聚合前台羁绊) | ~38 | [final_baie_reflect.md](final_baie_reflect.md) | **已深读**(38篇全量) |
-| 银狼欢愉 | 银狼LV.999 | 欢愉5+(阿哈特权) | ~50 | [final_yinlang_joy.md](final_yinlang_joy.md) | 粗读 |
+| 银狼欢愉 | 银狼LV.999 | 欢愉5-7+星间旅人(升费链CARRY+阿哈装备体系) | 68 | [final_yinlang_joy.md](final_yinlang_joy.md) | **已深读**(68篇全量) |
 | 大黑塔群攻 | 大黑塔+黑塔 | 群攻5+量子/学者 | ~34 | [final_daheita_aoe.md](final_daheita_aoe.md) | 粗读 |
 | DOT 卡芙卡 | 卡芙卡/海瑟音 | 持续伤害4-6 | ~25 | [final_dot_kafka.md](final_dot_kafka.md) | 粗读 |
 | 其他长尾 | 绯英/火花/远坂凛/千冶·刃… | 各 | ~60+ | 长尾(读到位再立类) | 未读 |
