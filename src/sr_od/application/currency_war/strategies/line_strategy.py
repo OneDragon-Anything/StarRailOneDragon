@@ -416,6 +416,12 @@ class LineStrategy(DefaultCwStrategy):
         # ② 卖(先卖腾容量;上限 1+1=2 防清空)
         sells = self._sell_off_target(state, session, cap=1)
         sells += self._sell_for_interest(state, session)[:1]
+        # r257(P2 成型最后一环):P1 末(r≥7)bench 满(>7)时
+        # 追加卖散件腾位——预囤门 r254 因 bench 满而关闭的
+        # 窗口重开(13 局实锤:bench 7-8 是常态,P2 core 囤不进)
+        if (state.plane == 1 and state.round_num >= 7
+                and len(state.bench or []) > _P2_PRECACHE_MAX_BENCH):
+            sells += self._sell_scatter_for_precache(state, session)
         st2 = self._apply_sells(state, sells)
         actions.extend(sells)
         # ③ 买(容量按卖出后的余量判;rem 扣除已提案的 LevelUp
@@ -525,6 +531,23 @@ class LineStrategy(DefaultCwStrategy):
                 protect.add(line.carry)
                 protect.update(line.opportunistic_cards)
         return protect
+
+    def _sell_scatter_for_precache(self, state: GameState,
+                                   session: StrategySession) -> list:
+        """r257 P1 末卖散腾囤位:bench 满(>7)时卖非保护件
+        给 P2 core 让位(13 局实锤:预囤门常因 bench 满关闭)。
+        只卖 1-2 张(到 7 为止,与 cap 上限对齐);
+        保护集语义同 _protect_set(线/桥/carry 不动)。"""
+        from sr_od.application.currency_war.cw_state import SellBench
+        protect = self._protect_set(session)
+        out: list = []
+        for i, b in enumerate(state.bench or []):
+            if len(state.bench) - len(out) <= _P2_PRECACHE_MAX_BENCH:
+                break
+            if not b.char_id or b.char_id in protect:
+                continue
+            out.append(SellBench(i))
+        return out[:2]
 
     def _sell_for_interest(self, state: GameState,
                            session: StrategySession) -> list:
