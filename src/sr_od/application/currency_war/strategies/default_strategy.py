@@ -450,10 +450,28 @@ class DefaultCwStrategy(CwStrategy):
         接线 4/6:定型边沿(commit_flip_pending)→ 卖散上限放宽(drop 档加急清)。
         r100(过渡一等公民):双轨期 plan 的 target = **配方伪 comp**(cw_recipe.decision_target
         单一入口;不变量:P1 板面只由过渡配方驱动,终局件囤 bench 不上场)——买牌评分/
-        form_progress/skeleton 门自动转向「配方缺口」;stash_comp 照旧囤终局件。"""
-        _cap = 6 if getattr(session, 'commit_flip_pending', False) else 2
-        if getattr(session, 'commit_flip_pending', False):
+        form_progress/skeleton 门自动转向「配方缺口」;stash_comp 照旧囤终局件。
+        r128(换血空窗修复,局36 r4 实证):定型边沿 cap 2→6 一次清光旧板但买入
+        无对应加急(白厄不在店)→ 卖 6 买 1 → 板面清空靠散牌填,羁绊 6 档→0,
+        空窗期 -15~-20 血/轮。修:**1:1 置换语义**——cap 放宽仍生效,但卖量
+        由「bench 已有的新线件数」约束(新线件到位一张卖一张;旧板虽 off-target
+        但羁绊档战力 > 空板)。deploy_bench D-10 同语义(max_sell=_bench_tgt_n)。
+        """
+        _flipping = bool(getattr(session, 'commit_flip_pending', False))
+        _cap = 6 if _flipping else 2
+        if _flipping:
             session.commit_flip_pending = False   # 一次性(本回合清)
+            # 1:1 置换:bench 新线件(target/stash core)数 = 可卖上限
+            _tgt_names = set(getattr(getattr(session, 'target_comp', None),
+                                     'core_chars', ()) or ())
+            _stash = getattr(session, 'stash_comp', None)
+            if _stash is not None:
+                _tgt_names |= set(getattr(_stash, 'core_chars', ()) or ())
+            _new_line_n = sum(1 for bc in (state.bench or [])
+                              if getattr(bc, 'char_id', '') in _tgt_names)
+            _cap = max(2, min(_cap, _new_line_n + 2))   # 基线2+新线件数(渐进清,不一次光)
+            log.info('[cw][target] 定型边沿 1:1 置换:bench 新线件 %d → 卖散 cap %d '
+                     '(旧板羁绊档保留至新线件到位;r128)', _new_line_n, _cap)
         from sr_od.application.currency_war.cw_recipe import decision_target
         _dt = decision_target(session, state)
         return cw_plan.plan(state, config, config.faction_priority,

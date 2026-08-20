@@ -460,6 +460,20 @@ class CurrencyWarRunLoop(SrOperation):
         with contextlib.suppress(Exception):   # 观测 best-effort
             self._battle_frame_sample(screen)
 
+        # 0a0. 选择装备 overlay(r129,局37 r3 哨兵推送实证:**必须在 0a 选择伙伴前**——
+        #      装备选择的副题也是「请选择1个」,选择伙伴屏的 标识-选择伙伴(文本
+        #      「请选择1个」)在本屏同样命中 → HandleSelectPartner 误派发找不到
+        #      确认按钮 → 失败循环。双 id_mark 门:装备标题+请选择1个都命中才派发。
+        if (self.round_by_find_area(screen, '货币战争-选择装备', '标识-选择装备', crop_first=False).is_success
+                and self.round_by_find_area(screen, '货币战争-选择装备', '标识-请选择1个装备', crop_first=False).is_success):
+            from sr_od.application.currency_war.operations.handlers.handle_equip_pick import (
+                HandleEquipPick,
+            )
+            _r0 = HandleEquipPick(self.ctx).execute()
+            if _r0 is not None and getattr(_r0, 'success', False):
+                self._clear_bail_count('事件overlay:equip_pick')
+            return self.round_wait(wait=2)
+
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
         #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
