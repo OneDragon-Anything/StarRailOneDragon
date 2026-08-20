@@ -407,7 +407,11 @@ class LineStrategy(DefaultCwStrategy):
         sells += self._sell_for_interest(state, session)[:1]
         st2 = self._apply_sells(state, sells)
         actions.extend(sells)
-        # ③ 买(容量按卖出后的余量判)
+        # ③ 买(容量按卖出后的余量判;rem 扣除已提案的 LevelUp
+        # ——r249d 模拟实锤:56 升4后 52,买3费杰帕德按 56-3=53>=50
+        # 放行,实际 56-4-3=49 穿 floor)
+        st2.gold -= xp if actions and isinstance(
+            actions[0], LevelUp) else 0
         actions.extend(self._buy_actions(st2, session, floor))
         return actions
 
