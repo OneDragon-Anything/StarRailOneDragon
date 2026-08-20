@@ -548,14 +548,22 @@ class LineStrategy(DefaultCwStrategy):
         (三大引擎羁绊:仙舟/列车同行/持续伤害)——用户实锤
         「挂件选择差」:飞霄/赛飞儿(夜半/狼狩)是散板止血件,
         锁线/桥方向明确后还买它们 = 挂件无方向性。无方向
-        (无锁无桥)才退全阵营凑对。"""
+        (无锁无桥)才退全阵营凑对。
+        r243:引擎判定用注册表全羁绊(factions+flows),不只用
+        shop 卡的 faction 字段——艾丝妲 faction=银河学者但
+        flows=持续伤害(DOT 引擎),只看 faction 会漏放行。"""
         if not card.name or not card.faction or card.faction == '?':
             return False
-        # r242:方向期引擎阵营门
+        # r242:方向期引擎阵营门(全羁绊判定)
         has_direction = (session is not None
                          and (session.locked_line or session.bridge_id))
-        if has_direction and card.faction not in _ENGINE_FACTIONS:
-            return False
+        if has_direction:
+            from sr_od.application.currency_war.cw_chars import CHARACTERS
+            ch = CHARACTERS.get(card.name)
+            card_bonds = set(ch.factions) | set(ch.flows) if ch \
+                else {card.faction}
+            if not (card_bonds & _ENGINE_FACTIONS):
+                return False
         owned_factions = set(state.board.keys())
         for b in (state.bench or []):
             if b.faction and b.faction != '?':
