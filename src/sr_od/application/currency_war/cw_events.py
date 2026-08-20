@@ -18,6 +18,7 @@ from sr_od.application.currency_war.cw_comps import (
 from sr_od.application.currency_war.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
     ENV_SURVIVAL_BONUS,
+    EQUIP_FLOW_PICKS,
     INVESTMENT_STRATEGIES,
     SURVIVAL_PICKS,
     EconomyEffect,
@@ -173,6 +174,13 @@ def decide_event(options: list[str], config, state: GameState,
         # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
         if state.hp < 40 and _st is not None and _st.name in SURVIVAL_PICKS:
             score += 15.0
+        # r255(P2 断崖装备缺失):P2 期装备流策略 +25——
+        # 11 局实锤 P2 板面 equips 全空(裸件打仗,首战
+        # -14~-41);军火类(每节点刷装备)是 P2 生存关键
+        # 通道,P1 期不加(P1 板面成型优先)。
+        if (state.plane >= 2 and _st is not None
+                and _st.name in EQUIP_FLOW_PICKS):
+            score += 25.0
         # ADR-0141(复查 #6):品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
         # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
         # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
