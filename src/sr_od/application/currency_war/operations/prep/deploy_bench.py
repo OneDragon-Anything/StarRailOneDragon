@@ -476,6 +476,15 @@ class DeployBench(SrOperation):
                 log.info(f'[cw-deploy] 板空保底:上 1 个散牌(body > 空板):{_fallback}')
         if _held:
             log.info(f'[cw-deploy] 散牌留 bench(不成对/非 target,ADR-0130):slots={[h + 1 for h in _held]}')
+        # r251 修 B(引擎 pair 优先):cap 有限时 pair 吸引子先到先得——
+        # 狼狩2(散)占满 cap 3-4,仙舟 pair(藿藿2★+爻光)坐板凳
+        # (第六局 r4-r6 实证:引擎件在场外,散 pair 白挨打)。
+        # 排序:引擎阵营 pair 提到散 pair 前(不动 target 优先序)。
+        _ENGINE = {'仙舟', '列车同行', '持续伤害'}
+        rest.sort(key=lambda i: (
+            0 if (_bench_fac.get(i) in _ENGINE
+                  or (_bench_id.get(i, set()) & _ENGINE))
+            else 1))
         order = tgt_idx + rest
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')

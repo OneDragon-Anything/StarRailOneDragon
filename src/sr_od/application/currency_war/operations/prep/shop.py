@@ -409,6 +409,20 @@ class BuyShopCards(SrOperation):
         # 关商店(「收起」)
         time.sleep(0.4)
         self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+        # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
+        # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
+        # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
+        # 买完用最新 bench 重估一次:桥/锁线当轮生效,紧随的 deploy
+        # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
+        try:
+            if match is not None and (total_buy or total_level or total_refresh):
+                _post = read_game_state(self.ctx, self.screenshot())
+                _post.hp = hp_value
+                if match.session.last_node_type:
+                    _post.node_type = match.session.last_node_type
+                match.strategy.update_target(_post, match.session, config)
+        except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
+            log.debug('[cw] 买后重估失败(不阻塞): %s', e)
         # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(cost 由注册表/reader 估)vs
         # 关店后实际读数 —— expected = 开店金 − Σ买价 − 升级费 − 刷新费(read_gold stylized 间歇漏,
         # 但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有毒(stylized 漏读 / cost 错 /
