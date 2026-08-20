@@ -74,6 +74,10 @@ class CurrencyWarRunLoop(SrOperation):
     # 临时随机态停机钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。建档后删本钩子。
     # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER,快速捕 novel 随机态。
     UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
+    # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
+    # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
+    STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
+    STALL_N: ClassVar[int] = 6
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
@@ -102,6 +106,11 @@ class CurrencyWarRunLoop(SrOperation):
         self._frame_is_prep: bool = False
         self._prev_frame_prep: bool = False
         self._prep_entry_ts: float | None = None
+        # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
+        # 每 STALL_SNAPSHOT_EVERY iter 采样一次;连续 STALL_N 次相同 → 哨兵。
+        self._stall_last_fp: int | None = None
+        self._stall_count: int = 0
+        self._stall_flag_written: bool = False
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
@@ -163,6 +172,58 @@ class CurrencyWarRunLoop(SrOperation):
             log.info(f'[cw-snap] {tag} iter={self._iter} shot={path} ocr={texts[:15]}')
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
+
+    def _stall_watch_tick(self, screen) -> None:
+        """r119 停滞 watchdog:同屏指纹连续相同 → 哨兵(不停机,日志+flag 双通道)。
+
+        指纹 = OCR 关键词 frozenset 哈希(5 iter 采一次,~5-10s 粒度)。战斗/
+        结算/等待态关键词豁免(它们本来就该静止)。触发 = 写 stall_watch.flag
+        (含处理指引)+ [cw!] 日志一次;画面变化后自动清计数(flag 留给 AI 巡检
+        后删)。设计:采集哨兵非停机(bot 可能只是慢,停机代价>等待代价;
+        od-dev-stop-hooks 采集/停机分流判据)。
+        """
+        if self._iter % CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY != 0:
+            return
+        ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen, rect=None, color_range=None, crop_first=False,
+        )
+        texts = frozenset(k for k, mrl in ocr_map.items() if mrl.max is not None)
+        # 战斗/结算/等待态豁免(合法静止)
+        _exempt = any(w in t for t in texts for w in
+                      ('战斗', '胜利', '挑战', '结算', '准备', '倒计时'))
+        if _exempt:
+            self._stall_count = 0
+            self._stall_last_fp = None
+            return
+        fp = hash(texts)
+        if fp == self._stall_last_fp:
+            self._stall_count += 1
+        else:
+            self._stall_count = 0
+            self._stall_last_fp = fp
+            self._stall_flag_written = False   # 画面动了 → 哨兵可再次触发(新一轮停滞)
+        if self._stall_count >= CurrencyWarRunLoop.STALL_N and not self._stall_flag_written:
+            _shot = self.save_screenshot(prefix='cw_stall')
+            _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
+                         / 'currency_war' / 'stall_watch.flag')
+            _sentinel.parent.mkdir(parents=True, exist_ok=True)
+            _sentinel.write_text(
+                f'停滞 watchdog:iter={self._iter} 同屏指纹连续 {self._stall_count} 次'
+                f'(≈{self._stall_count * CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY} iter)\n'
+                f'OCR 关键词: {sorted(texts)[:12]}\n'
+                f'处理流程:\n'
+                f'1. 看关键词/截图:疑似事件 overlay(未建档 handler)→ 按\n'
+                f'   od-dev-screen-onboarding 建档 + battle_loop 0x 分支加 handler;\n'
+                f'2. 疑似操作循环失败(点了没反应)→ od-dev-debug-automation 定位\n'
+                f'   (grep 该时刻日志,看哪个 node 在 retry);\n'
+                f'3. 处理完删本 flag。bot 未停机(可能只是慢),处理完可继续跑。\n'
+                f'shot={_shot}', encoding='utf-8')
+            log.warning('[cw!][watch] 停滞哨兵:同屏 %s 次(≈%s iter)关键词=%s '
+                        'shot=%s —— 疑似未处理 overlay/操作循环,详见 stall_watch.flag',
+                        self._stall_count,
+                        self._stall_count * CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY,
+                        sorted(texts)[:8], _shot)
+            self._stall_flag_written = True   # 只写一次,画面变化后可重置重写
 
     def _clear_bail_count(self, reason: str) -> None:
         """外环 handler 成功消化某 overlay 后清其 bail 计数(M11 误停机修复)。
@@ -326,6 +387,18 @@ class CurrencyWarRunLoop(SrOperation):
         if self._iter > CurrencyWarRunLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
         screen = self.last_screenshot
+
+        # r119 停滞 watchdog(用户 2026-08-21 纠偏「卡 30min 没发现」):
+        # 局29 银狼 41min/局32 命运卜者 30min/局33 祈愿崩 553 iter——轮询监控
+        # 只看进度摘要,卡死形态(同屏不动/空转)要跨采样对比才可见。本钩子
+        # 让 bot 自己检测:**每 STALL_SNAPSHOT_EVERY 次迭代采样一次画面指纹
+        # (OCR 关键词集合的哈希),连续 STALL_N 次指纹相同且非战斗/结算态
+        # → 写 stall_watch.flag 哨兵**(AI 下次巡检/交互第一时间可见,处理
+        # 流程写在 flag 里)。不停机(bot 可能只是慢),哨兵+日志双通道。
+        try:
+            self._stall_watch_tick(screen)
+        except Exception as _e:   # noqa: BLE001  watchdog 失败不阻塞
+            log.debug('[cw-watch] 停滞检测失败(不阻塞): %s', _e)
 
         # r15 焦点防线(loop 级,失焦僵尸根治):每 10 迭代主动验窗口焦点,失焦即激活。
         # r9 实证窗口后台化时输入静默丢/截图正常 → 环僵尸;click/drag 点位守卫(r9/r10)
