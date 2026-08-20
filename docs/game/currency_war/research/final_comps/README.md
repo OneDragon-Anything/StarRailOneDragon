@@ -22,7 +22,7 @@
 | 姬子列车 | 姬子·启行(±三月七/瓦尔特) | 列车4+减益/量子 | ~236 | [final_jizi_train.md](final_jizi_train.md) | 已深读(罗刹篇) |
 | 万敌燃血 | 万敌 | 燃血2-4+夜半2-4+量子3(受击驱动:受伤充能+燃血反打) | 40 | [final_wandi_burn.md](final_wandi_burn.md) | **已深读**(40篇全量) |
 | 圣杯双C | Saber→Archer(远坂凛粘合) | 圣杯3-4+能量5/战技点4(双C接力+任务系统) | 118 | [final_grail_dual.md](final_grail_dual.md) | **已深读**(118篇全量) |
-| 希儿量子 | 希儿 | 量子3/贝4 | ~31 | (transition_combos 希儿节) | 已深读 |
+| 希儿量子 | 希儿 | 量子4+贝4双修(拉条链×风暴潮叠层) | 38 | [final_seele_quantum.md](final_seele_quantum.md) | **已深读**(38篇全量) |
 | 黄泉减益 | 黄泉 | 巡海4+减益4-6(标记+充能双循环) | 50 | [final_huangquan_debuff.md](final_huangquan_debuff.md) | **已深读**(50篇全量) |
 | 白厄反甲 | 白厄 | 反甲装备流(救世主聚合前台羁绊) | ~38 | [final_baie_reflect.md](final_baie_reflect.md) | **已深读**(38篇全量) |
 | 银狼欢愉 | 银狼LV.999 | 欢愉5-7+星间旅人(升费链CARRY+阿哈装备体系) | 68 | [final_yinlang_joy.md](final_yinlang_joy.md) | **已深读**(68篇全量) |
