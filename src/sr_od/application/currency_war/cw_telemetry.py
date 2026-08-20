@@ -97,6 +97,12 @@ class DecisionTrace:
     sess_pivot_cooldown: int | None = None        # pivot_cooldown_until
     sess_commit_scores: dict[str, float] = field(default_factory=dict)  # CommitSignals 累积分
     sess_active_env: str = ""                     # 已选投资环境(portal 偏置源)
+    # —— 策略 v2(LineStrategy)字段(r226;redesign §6 遥测扩展:
+    # 模式/锁线/桥——AB 对拍与三层置信的数据源)——
+    strategy_id: str = ""                          # 本局策略 id(B2:分组键)
+    v2_mode: str = ""                             # economy/war(滞回当前模式)
+    v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
+    v2_bridge: str = ""                           # 当前桥线 id(""=无)
 
 
 @dataclass
@@ -249,6 +255,10 @@ class TelemetryRecorder:
             trace.sess_pivot_cooldown = extra.get('sess_pivot_cooldown')
             trace.sess_commit_scores = dict(extra.get('sess_commit_scores', {}))
             trace.sess_active_env = str(extra.get('sess_active_env', ''))
+            trace.strategy_id = str(extra.get('strategy_id', ''))
+            trace.v2_mode = str(extra.get('v2_mode', ''))
+            trace.v2_locked_line = str(extra.get('v2_locked_line', ''))
+            trace.v2_bridge = str(extra.get('v2_bridge', ''))
         if self.enabled:
             if gold_point:
                 self._gold_trajectory.setdefault(run_id, []).append(state.gold)
@@ -591,7 +601,7 @@ def _list_runs(replay_dir: Path) -> list[str]:
 
 
 def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
-    """视图:逐轮演进(hp/gold/买/升/D/board)。"""
+    """视图:逐轮演进(hp/gold/买/升/D/board;v2 模式/锁线/桥)。"""
     best = _load_decisions_rounds(replay_dir, run_id)
     lines = []
     for k in sorted(best):
@@ -603,8 +613,13 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         rfs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         board = " ".join(f"{k2}×{v}" for k2, v in (st.get("board") or {}).items()) or "(空)"
         act_s = f"买{buys}" + (f"/升{lvs}" if lvs else "") + (f"/D{rfs}" if rfs else "")
+        # r226 v2 字段读出(策略 v2 对拍视图;空则省略——default 局全空)
+        v2 = d.get("v2_mode") or ""
+        lock = d.get("v2_locked_line") or ""
+        bridge = d.get("v2_bridge") or ""
+        v2_s = f" v2=[{v2}|{lock or '-'}|{bridge or '-'}]" if (v2 or lock or bridge) else ""
         lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                     f" {act_s:<10} | {board}")
+                     f" {act_s:<10} | {board}{v2_s}")
     return lines
 
 

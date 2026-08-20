@@ -224,9 +224,11 @@ class StrategySession:
     # —— 策略 v2(LineStrategy)扩展态——正式字段(评审 B-bg:动态
     # setattr 会在「session 新建而 on_match_start 未走」路径崩;
     # 且 asdict/telemetry 看不见动态属性——升正式,r3 review④ 同判例)——
-    v2_state: tuple = ('economy', False, False, 0, 0, 0, 0, 0)
-    # cw_phase_machine 状态元组(免环形导入用字面量默认;
-    # on_match_start 用 initial_state() 规范初始化)
+    # 默认值 None(评审 B1:default 局遥测 v2_* 应全空可区分——
+    # 不能用元组默认,否则 default 呈现假 economy 污染 AB 对拍)
+    v2_state: tuple | None = None
+    # cw_phase_machine 状态元组(None=default 未初始化;
+    # LineStrategy.on_match_start 用 initial_state() 规范化)
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)

@@ -296,6 +296,13 @@ class BuyShopCards(SrOperation):
                 'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
                 'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
+                # r226 策略 v2 字段(正式字段直接读,B1 修正:
+                # default 局 v2_state=None → v2_mode 落空串,
+                # 「v2_* 全空=default」判读规则成立)
+                'strategy_id': getattr(config, 'strategy_id', 'default'),
+                'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
+                'v2_locked_line': _sess.locked_line or '',
+                'v2_bridge': _sess.bridge_id or '',
             }
             cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 
