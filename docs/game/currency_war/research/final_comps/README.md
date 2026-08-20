@@ -20,7 +20,7 @@
 | 类 | CARRY | 核心羁绊 | 篇数 | 子文档 | 理解状态 |
 |---|---|---|---|---|---|
 | 姬子列车 | 姬子·启行(±三月七/瓦尔特) | 列车4+减益/量子 | ~236 | [final_jizi_train.md](final_jizi_train.md) | 已深读(罗刹篇) |
-| 万敌燃血 | 万敌 | 燃血+群攻3/夜半2 | ~37 | [final_wandi_burn.md](final_wandi_burn.md) | 已深读 |
+| 万敌燃血 | 万敌 | 燃血2-4+夜半2-4+量子3(受击驱动:受伤充能+燃血反打) | 40 | [final_wandi_burn.md](final_wandi_burn.md) | **已深读**(40篇全量) |
 | 圣杯双C | Saber→Archer | 圣杯3-5+能量5 | ~80 | (transition_combos 圣杯节,待拆出) | 已深读 |
 | 希儿量子 | 希儿 | 量子3/贝4 | ~31 | (transition_combos 希儿节) | 已深读 |
 | 黄泉减益 | 黄泉 | 减益6+巡海4 | ~28 | [final_huangquan_debuff.md](final_huangquan_debuff.md) | 粗读 |
