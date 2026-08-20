@@ -174,6 +174,13 @@ class DeployBench(SrOperation):
                          ' 根因=buy 未买 target / economy 未攒金升级)')
         self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
+        # r241 换排纠正(用户实锤:三月七被兜底强推前排,后续永不被挪回):
+        # deploy 只管 bench→场,场内错排(pref=back 在前排/fallback 遗留)无人纠正
+        # → 兜底一旦发生就永久错排。此处扫 read_deployed_chars,错排者拖回正排。
+        try:
+            self._fix_misplaced_rows(front, back, templates)
+        except Exception as e:   # noqa: BLE001  纠正失败不阻塞部署
+            log.debug('[cw-deploy] 换排纠正失败(不阻塞): %s', e)
 
         # ⚠️ 拖完整队等待(用户 2026-08-16 实证):末次 drag 的羁绊特效/升星 overlay(盛会之星/
         # 圣杯/银狼升级)可能仍在播 → 后续读(heavy state/SIFT/equip)被遮挡污染。等 1.5s 稳定。
@@ -191,6 +198,66 @@ class DeployBench(SrOperation):
             log.debug('[cw-deploy] equips 采集失败(不阻塞): %s', e)
 
         return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
+
+    def _fix_misplaced_rows(self, front: list, back: list,
+                            templates: AvatarTemplates | None) -> None:
+        """r241 场内换排纠正:pref=back 却在前排(或反之)→ 拖回正排。
+
+        根因(用户实锤 2026-08-22):节点1 前排空时「前排保证」把
+        pref=back 的三月七强推前排(当时无 front 候选,行为对);
+        但后续真 front 角色上场后**无人把三月七挪回后排**——
+        deploy 只有 bench→场路径,场内错排永久遗留(三月七在
+        前排白吃伤害,她该在后排供护盾羁绊)。
+        条件:错排者存在 **且** 正排有空槽(没空槽不强换,避免
+        踢人);换排 = 错排槽 → 正排空槽的一次 drag。
+        """
+        if templates is None:
+            return
+        deployed = read_deployed_chars(self.ctx, self.screenshot(), templates)
+        if not deployed:
+            return
+        front_empty = [i for i, c in enumerate(front)
+                       if not slot_occupied(self.screenshot(), int(c.x), int(c.y))]
+        back_empty = [i for i, c in enumerate(back)
+                      if not slot_occupied(self.screenshot(), int(c.x), int(c.y))]
+        moved = 0
+        for d in deployed:
+            ch = get_char(d.char_id) if d.char_id else None
+            if ch is None or ch.cost == 0:
+                continue
+            want = ch.position_pref()
+            cur = d.position_pref or 'back'
+            if want == cur:
+                continue    # 排对了
+            # 错排:目标排的空槽
+            if want == 'front':
+                if not front_empty:
+                    continue
+                ti = front_empty.pop(0)
+                dst = front[ti]
+                _row_cn = '前'
+            else:
+                if not back_empty:
+                    continue
+                ti = back_empty.pop(0)
+                dst = back[ti]
+                _row_cn = '后'
+            src_row = front if cur == 'front' else back
+            if not (1 <= d.slot <= len(src_row)):
+                continue
+            src = src_row[d.slot - 1]
+            if DragCwChar.drag_char(self, src, dst):
+                moved += 1
+                log.info(f'[cw-deploy] 换排纠正:{d.char_id} {cur}排{d.slot}'
+                         f' → {_row_cn}排{ti + 1}(pref={want}) ✓')
+                time.sleep(1.2)    # 特效等待(同 drag 后约定)
+            else:
+                log.info(f'[cw-deploy] 换排纠正:{d.char_id} 拖3次未动,跳过')
+                # 槽没占住,回收
+                (front_empty if want == 'front' else back_empty).insert(0, ti)
+        if moved:
+            log.info(f'[cw-deploy] 换排纠正完成: {moved} 个角色归位')
+            self._reconcile_tracking(templates)   # 换排后 tracking 再纠一次
 
     def _snapshot_equips_into_tracking(self) -> None:
         """读当前画面已上阵装备 → 回写 session.tracked_deployed 的 equips 字段。"""
