@@ -108,6 +108,17 @@ class LineStrategy(DefaultCwStrategy):
                     lvl, _, mp = check(form, pop, ph, self._drive_of(session))
                     ok = lvl in (STRONG, COARSE) and abs(pop - mp) <= 2
                     ev = 'E1_strong' if ok else 'E1_miss'
+        # r246(P2 三连败实锤):普通战斗失败也是战力不足信号——
+        # 「扣血=节点战斗失败」(用户语义,combat.md;progress_delta
+        # 注释同判):hp_after 明显下降(≥10)= 该节点实际打输,
+        # 喂 E1_miss 让滞回在普通节点也能攒 miss(P2r1/r2/r4
+        # 连败时 v2_mode 恒 economy 的根修)。boss 判定仍走查表。
+        elif obs.node_type not in ('boss', '遭遇'):
+            hp = obs.hp_after if obs.hp_after else state.hp
+            prev = session.v2_prev_hp
+            if prev and prev - hp >= 10:
+                ev = 'E1_miss'
+            session.v2_prev_hp = hp
         self._feed(session, ev)
         # B2:追赶接线——人口 vs 位面基线(r232 修正:加等级门
         # _CATCHUP_MIN_LEVEL——P1 早期 pop<基线是常态,等级不够

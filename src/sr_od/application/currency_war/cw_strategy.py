@@ -231,6 +231,9 @@ class StrategySession:
     # LineStrategy.on_match_start 用 initial_state() 规范化)
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
+    # r246:普通战斗败检测的上一轮 HP(r246 P2 三连败实锤——
+    # hp_after 降幅 ≥10 = 节点实际打输,喂 E1_miss 攒滞回)
+    v2_prev_hp: int | None = None
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;
