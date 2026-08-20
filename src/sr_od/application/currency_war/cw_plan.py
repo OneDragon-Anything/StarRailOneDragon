@@ -624,14 +624,21 @@ def _sell_offline_for_focus(state: GameState, actions: list,
 
 
 
-def _compress_release(cost: int, gold: int, hunt_tiers: set[int]) -> bool:
+def _compress_release(cost: int, gold: int, hunt_tiers: set[int],
+                      is_core: bool = False) -> bool:
     """牌池压缩买放行判定(纯函数;r61/r62 用户节奏 §7-1/§7-15)。
 
     「买便宜 1/2 星 = 追求过渡阵容的牌库压缩」——全局供给策略:抽走噪声牌升
     目标卡后续出现率,不问费级归属。**统一保息门**(r64 review P1 修:1 费「净 0」
     只对买卖往返成立,持有跨轮末在金=10 边界损 1 金息 —— 用户原则「保息前提下
     多买」统一适用):买后利息档不降才放行(含 1 费)。
+    r126(用户指导:阵容核心容忍降息):**核心件豁免息档门**——单件期望
+    推导:目标 3-4 费核心 p_appear≈0.09/刷新 → 期望等待 11 刷×2金=22金,
+    远大于 1-2 金息损;core 现在买恒优(r126_spot_vs_wait.md)。is_core 由
+    调用方判(core_chars 命中),散件照旧保息。
     """
+    if is_core:
+        return True   # 核心件:成型价值 >> 息档(期望推导,同上)
     if cost <= 2 or cost in hunt_tiers:
         return (gold - cost) // 10 == gold // 10
     return False
