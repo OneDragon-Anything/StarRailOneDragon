@@ -329,7 +329,71 @@ class LineStrategy(DefaultCwStrategy):
                         or self._pair_wants(card, state):
                     actions.append(BuyCard(card))
                     rem -= 1
+        # 卖散凑息(r238:用户「节点4没卖出凑30金」——v2 覆盖
+        # decide_prep 时把 default 的 _maybe_sell_for_interest 丢了;
+        # 金 28 差 2 到 30 档,bench 7 张有散牌可卖而不卖。
+        # v2 版:跨档(+1 息)就卖,保护名单=桥/线内件+优先角色;
+        # 卖出按 sell_refund 折价,最多 2 张)
+        actions.extend(self._sell_for_interest(state, session))
         return actions
+
+    @staticmethod
+    def _sell_for_interest(state: GameState,
+                           session: StrategySession) -> list:
+        """卖散凑息:v2 版 _maybe_sell_interest(保护名单语义
+        换 v2:桥 fixed/core+锁线 opportunistic 不卖)。"""
+        from sr_od.application.currency_war.cw_state import (
+            SellBench,
+            sell_refund,
+        )
+        out: list = []
+        cur_gold = state.gold
+        if cur_gold >= _INTEREST_FLOOR or not state.bench:
+            return out
+        # 保护集:桥名单+锁线名单
+        protect: set[str] = set()
+        for pool in (BRIDGE_POOL, BRIDGE_POOL_P2):
+            for combo in pool:
+                protect.update(combo.fixed + combo.core)
+        if session.locked_line:
+            line = line_of(session.locked_line)
+            if line is not None:
+                protect.add(line.carry)
+                protect.update(line.opportunistic_cards)
+        close = set(state.board.keys())    # 在场阵营不拆
+        # 费用查注册表(_bench_char_cost 同语义;本地实现避免
+        # 私有函数依赖)
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        # 可卖候选(退款降序——大退款优先)
+        candidates: list[tuple[int, int]] = []   # (refund, bench_idx)
+        for i, bc in enumerate(state.bench):
+            if bc.char_id in protect or bc.faction in close \
+                    or not bc.char_id:
+                continue
+            ch = CHARACTERS.get(bc.char_id)
+            cost = ch.cost if (ch and ch.cost) else 3
+            refund = sell_refund(bc.star, cost)
+            candidates.append((refund, i))
+        if not candidates:
+            return out
+        candidates.sort(reverse=True)
+        # 组合语义(r238):贪心累计退款,跨档即停。
+        # default 单张判 28+1=29 永不触发;用户「卖两张凑30」
+        # ——组合退款才是对的。上限 3 张防清空 bench。
+        sold: list = []
+        total = 0
+        for refund, idx in candidates[:3]:
+            new_total = total + refund
+            if state.gold + new_total > _INTEREST_FLOOR:
+                break                    # 超满息线不再加
+            sold.append(SellBench(bench_idx=idx))
+            total = new_total
+            if (state.gold + total) // 10 > state.gold // 10:
+                break                    # 组合跨档,最小卖出集
+        # 全程没跨档(白卖)→ 撤销
+        if sold and (state.gold + total) // 10 == state.gold // 10:
+            sold = []
+        return sold
 
     def _war_actions(self, state: GameState,
                      session: StrategySession) -> list:
