@@ -355,16 +355,32 @@ class LineStrategy(DefaultCwStrategy):
         4 买经验,剩 31 干瞪眼;而 war 的形态件购买被 cat 拦截
         (decide_prep 的 if cat 先于 war return)——P2 连败期
         「追赶挡补强」是 r246b 之外的第三层拦阻。
-        修:追赶=升人口 + 剩余金走 war 购买(地板照守)。"""
+        修:追赶=升人口 + 剩余金走 war 购买(地板照守)。
+        r249c(模拟 [c] 回归):升人口的扣金把余钱打到 floor 下
+        (56-7=49<50)——war 地板按**扣经验后**的金判(修前
+        按原金判,56-2>=30 视同过)。升人口本身豁免地板(人口
+        是投资不是消费),买件部分守原地板。"""
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         cost = xp_click_cost(state)
         actions: list = []
         if state.gold - cost >= _WAR_FLOOR:
             actions.append(LevelUp(cost))
-            # 剩余预算的形态件购买(升完人口的钱继续买件)
+            # 剩余预算的形态件购买:金按扣除经验后计,
+            # 地板用扣后金的 war 档(30)——但若扣后 <50 原本
+            # 是满息态,买件地板应保 50(不因升人口破息)。
             st2 = state
             st2.gold = state.gold - cost
-            actions.extend(self._war_actions(st2, session))
+            floor_after = (_INTEREST_FLOOR
+                           if state.gold >= _INTEREST_FLOOR
+                           else _WAR_FLOOR)
+            acts2 = self._war_actions(st2, session)
+            # war 内部用 _WAR_FLOOR——此处按扣后语义复核
+            rem = st2.gold
+            for a in acts2:
+                if isinstance(a, BuyCard) and rem - a.card.cost < floor_after:
+                    break
+                rem -= getattr(getattr(a, 'card', None), 'cost', 0) or 0
+                actions.append(a)
         return actions
 
     def _economy_actions(self, state: GameState,
