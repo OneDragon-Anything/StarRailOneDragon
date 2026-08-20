@@ -545,22 +545,17 @@ class LineStrategy(DefaultCwStrategy):
     @staticmethod
     def _pair_wants(card, state: GameState,
                     session: StrategySession | None = None) -> bool:
-        """冷启动凑对(模拟局 P1 修复):卡与已持有(board+bench)
-        同阵营 → 1 费可买(deploy 成对上场判据同源:
-        同阵营 count≥2 上场凑过渡羁绊)。
-        A5(spread 门):已有阵营 ≥3 时不再开新阵营——
-        default M25 spread-lock 实证的防线。
-        r242(挂件质量):**有方向(锁线或桥)时只买引擎阵营**
-        (三大引擎羁绊:仙舟/列车同行/持续伤害)——用户实锤
-        「挂件选择差」:飞霄/赛飞儿(夜半/狼狩)是散板止血件,
-        锁线/桥方向明确后还买它们 = 挂件无方向性。无方向
-        (无锁无桥)才退全阵营凑对。
-        r243:引擎判定用注册表全羁绊(factions+flows),不只用
-        shop 卡的 faction 字段——艾丝妲 faction=银河学者但
-        flows=持续伤害(DOT 引擎),只看 faction 会漏放行。"""
+        """冷启动凑对 + 方向期质量门。
+        A5(spread 门):已有阵营 ≥3 时不再开新阵营。
+        r242(挂件质量):方向期只买引擎阵营(仙舟/列车/DOT)。
+        r243:全羁绊判定(factions∪flows,艾丝妲 DOT flow 放行)。
+        r245(稳定性 review 风险2):引擎门与锁线形态对齐——
+        锁线时放行集 = 引擎阵营 ∪ 锁线形态 form_tiers 的羁绊
+        (jizi P2=列车4+护盾3,护盾不是引擎但它是**线内需求**,
+        砂金/杰帕德被引擎门拒=P2 成型缺件)。"""
         if not card.name or not card.faction or card.faction == '?':
             return False
-        # r242:方向期引擎阵营门(全羁绊判定)
+        # r245:方向期阵营门(引擎 ∪ 锁线形态羁绊)
         has_direction = (session is not None
                          and (session.locked_line or session.bridge_id))
         if has_direction:
@@ -568,7 +563,15 @@ class LineStrategy(DefaultCwStrategy):
             ch = CHARACTERS.get(card.name)
             card_bonds = set(ch.factions) | set(ch.flows) if ch \
                 else {card.faction}
-            if not (card_bonds & _ENGINE_FACTIONS):
+            allow = set(_ENGINE_FACTIONS)
+            if session.locked_line:
+                line = line_of(session.locked_line)
+                if line is not None:
+                    allow.update(_LinePseudoComp._parse_tiers(
+                        line.p2p3_forms.get(
+                            f'P{state.plane}', '') or
+                        line.p2p3_forms.get('P2', '')))
+            if not (card_bonds & allow):
                 return False
         owned_factions = set(state.board.keys())
         for b in (state.bench or []):
@@ -600,14 +603,22 @@ class LineStrategy(DefaultCwStrategy):
     def _line_wants(self, card, state: GameState,
                     session: StrategySession) -> bool:
         """星级三档购买判据(r201)——Phase A 简版:
-        锁线→carry+opportunistic 档;未锁→桥线 fixed/core。"""
+        锁线→carry+opportunistic 档;未锁→桥线 fixed/core。
+        r245(稳定性 review 风险2):锁线时 opportunistic 并入
+        **当前位面桥 core**(P2 形态=列车4+护盾3,砂金/杰帕德/
+        腾荒是桥 core 但不在静态 opportunistic——形态需求随
+        位面动态扩展,P2 成型不再缺件)。"""
         if session.locked_line:
             line = line_of(session.locked_line)
             if line is None:
                 return False
             if card.name == line.carry:
                 return True
-            return card.name in line.opportunistic_cards
+            if card.name in line.opportunistic_cards:
+                return True
+            # r245:位面桥 core 并集(锁的线含该桥方向)
+            pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
+            return any(card.name in combo.core for combo in pool)
         if session.bridge_id:
             pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
             for combo in pool:
