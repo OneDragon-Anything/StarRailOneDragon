@@ -1308,6 +1308,10 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     # = 换血时一件件拆(即时小收益换后期摩擦)。规则:comp 有 core 在场时,
     # 兜底优先发 core(哪怕 deployed 序靠后);非 core 每人只兜底 1 件
     # (防裸奔),core 吃满。comp=None 保持全量兜底(无身份信息)。
+    # r232(用户实跑「无脑给前台1」):comp=None 的全量兜底 =
+    # deployed 顺序灌满第一人(前排 capacity 3 全吃)——v2 未锁线期
+    # 的默认行为。改为:**None 也按轮转**(每人 1 件轮一圈再回头,
+    # 而非灌满一人);comp 有 core 时行为不变。
     if comp is not None:
         _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
         _others = [d for d in deployed
@@ -1326,14 +1330,22 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 out.append((n, g))
                 capacity[n] -= 1
         return out
-    for d in deployed:
-        n = getattr(d, 'char_id', None)
-        if not n or not pool:
-            continue
-        while pool and capacity.get(n, 0) > 0:
-            g = pool.pop(0)
-            out.append((n, g))
-            capacity[n] -= 1
+    # comp=None:轮转分配(r232 前是灌满第一人)
+    _names = [d.char_id for d in deployed if getattr(d, 'char_id', '')]
+    _round = 0
+    while pool:
+        _gave = False
+        for n in _names:
+            if not pool:
+                break
+            if capacity.get(n, 0) > 0:
+                g = pool.pop(0)
+                out.append((n, g))
+                capacity[n] -= 1
+                _gave = True
+        _round += 1
+        if not _gave or _round > EQUIP_CAPACITY:
+            break
     return out
 
 

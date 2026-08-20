@@ -61,6 +61,10 @@ _INTEREST_FLOOR: int = 50
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
+#: 追赶触发的等级门(r232 实跑:level 3-5 期人口 3<基线-1 触发
+#: 追赶 → 恒 LevelUp 不买牌——P1 早期人口低于基线是常态不是
+#: 落后;只有等级已够高(人口上限打开)仍低于基线才算追赶)
+_CATCHUP_MIN_LEVEL: int = 6
 
 
 class LineStrategy(DefaultCwStrategy):
@@ -101,10 +105,14 @@ class LineStrategy(DefaultCwStrategy):
                     ok = lvl in (STRONG, COARSE) and abs(pop - mp) <= 2
                     ev = 'E1_strong' if ok else 'E1_miss'
         self._feed(session, ev)
-        # B2:追赶接线——人口 vs 位面基线(r191:P1 3-5/P2 6-7/P3 9-10)
+        # B2:追赶接线——人口 vs 位面基线(r232 修正:加等级门
+        # _CATCHUP_MIN_LEVEL——P1 早期 pop<基线是常态,等级不够
+        # 升人口也无意义(上限锁着),此时不进追赶;只有等级
+        # 打开人口上限仍低于基线才算真落后[用户实跑观察])
         pop = len(state.deployed)
         baseline = _POP_BASELINE.get(obs.plane or state.plane, 7)
-        low = pop < baseline - 1     # 容差(基线是中位非硬线)
+        low = (pop < baseline - 1
+               and state.level >= _CATCHUP_MIN_LEVEL)
         cat = session.v2_state[2]
         if low and not cat and not session.v2_state[1]:
             self._feed(session, 'E5', pop_low=low)
@@ -122,7 +130,15 @@ class LineStrategy(DefaultCwStrategy):
         counter/降级显式路径,Phase A 只降级装置)。
         """
         if session.locked_line is None:
-            r = check_core_signal(self._visible_names(state))
+            # ⑧-1 修复:锁信号加「可负担/已持有」门——商店可见
+            # 但买不起的 CARRY 不锁(对抗8:金<3 刷出姬子即锁线
+            # → 之后只认名单卡,桥件停买,空过挨打)。
+            # owned(bench+deployed)的名字不受此门(已在手)
+            names = self._visible_names(state)
+            affordable = self._affordable_cores(state)
+            owned = self._owned_names(state)
+            r = check_core_signal(
+                [n for n in names if n in owned or n in affordable])
             if r.locked:
                 session.locked_line = r.line_id
                 self._feed(session, 'E7_lock')
@@ -136,13 +152,27 @@ class LineStrategy(DefaultCwStrategy):
         if session.locked_line is not None:
             line = line_of(session.locked_line)
             session.target_comp = (
-                _LinePseudoComp.from_line(line) if line is not None else None)
+                _LinePseudoComp.from_line(line, state.plane)
+                if line is not None else None)
         else:
-            # 未锁线:桥线选择(重合度最高;phase 按当前位面)
-            ph = 'P1' if state.plane == 1 else 'P2'
-            bridge = pick_bridge(self._owned_names(state), ph)
-            session.bridge_id = bridge.bridge_id if bridge else None
-            session.target_comp = None
+            # ⑧-2 修复:DOT 兜底可达性——P2 起未锁线(无信号无桥)
+            # 落兜底线(对抗8:core_cards=[] 使 check_core_signal
+            # 永远返回不了 dot_fallback,「兜底」实为「不可达」)
+            if state.plane >= 2:
+                session.locked_line = 'dot_fallback'
+                self._feed(session, 'E7_lock')
+                log.info('[cw][v2] P%d 未锁线 → 落 DOT 兜底',
+                         state.plane)
+                line = line_of('dot_fallback')
+                session.target_comp = (
+                    _LinePseudoComp.from_line(line, state.plane)
+                    if line is not None else None)
+            else:
+                # 未锁线:桥线选择(重合度最高;phase 按当前位面)
+                ph = 'P1' if state.plane == 1 else 'P2'
+                bridge = pick_bridge(self._owned_names(state), ph)
+                session.bridge_id = bridge.bridge_id if bridge else None
+                session.target_comp = None
 
     # ===== 四象限动作表 =====
 
@@ -257,16 +287,16 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济:线内件(星级三档)+压缩(地板——终审 S2 修正:
-        50 是满息后不乱花,不是 50 以下不发展;未满息期地板降 10
-        [11]「金<20 1息档内购买不损息」精神)。
-
-        冷启动兜底(模拟局 P1 修复):未锁线且无桥(fixed 件没发到)
-        时 _line_wants 恒 False → 全程 0 买死锁。兜底=买与已持有
-        同阵营的 1 费卡(凑对语义,deploy 的成对上场判据同源);
-        绝不买高费散牌(空过好过错买,[11] 息律)。"""
+        """经济:线内件(星级三档)+压缩(地板——r232 实跑修正:
+        用户观察「凑不到10金拿息也没买牌」=floor 挡死——
+        未满息期(gold<50)floor 取 min(10, gold-1):留 1 金
+        保底也要发展,息律是满息后不乱花不是低金不买;
+        满息期 floor=50 [11] 50 金息律)。"""
         actions: list = []
-        floor = _INTEREST_FLOOR if state.gold >= _INTEREST_FLOOR else 10
+        if state.gold >= _INTEREST_FLOOR:
+            floor = _INTEREST_FLOOR
+        else:
+            floor = max(0, min(10, state.gold - 1))
         rem = state.gold
         for card in (state.shop or []):
             if rem - card.cost < floor:
@@ -288,18 +318,26 @@ class LineStrategy(DefaultCwStrategy):
     def _war_actions(self, state: GameState,
                      session: StrategySession) -> list:
         """战力:分层补强(线内件优先;地板仍保——战力≠panic)。
-        终审 S3:逐张扣减预算。"""
+        终审 S3:逐张扣减预算。⑧-3:冷启动兜底(同 economy
+        的 _pair_wants——P2 未锁线+war 不再恒 0 买)。"""
         actions: list = []
         rem = state.gold
         for card in (state.shop or []):
             if rem - card.cost < _WAR_FLOOR:
                 continue
-            if self._line_wants(card, state, session):
+            if self._line_wants(card, state, session) \
+                    or self._pair_wants(card, state):
                 actions.append(BuyCard(card))
                 rem -= card.cost
                 if len(actions) >= 2:
                     break
         return actions
+
+    @staticmethod
+    def _affordable_cores(state: GameState) -> set[str]:
+        """⑧-1:当前金买得起的核心卡名(shop∩gold 门)。"""
+        return {c.name for c in (state.shop or [])
+                if c.name and c.cost <= state.gold}
 
     @staticmethod
     def _pair_wants(card, state: GameState) -> bool:
@@ -373,8 +411,11 @@ class _LinePseudoComp:
         return set(self.factions)
 
     @classmethod
-    def from_line(cls, line) -> _LinePseudoComp:
-        form = line.p2p3_forms.get('P2', '')
+    def from_line(cls, line, plane: int = 1) -> _LinePseudoComp:
+        """按当前位面选形态键(⑧-4:P1 期锁姬子不用 P2 的
+        列车4+护盾3 当 target——那会把仙舟桥件判 off-target)。"""
+        ph = 'P1' if plane <= 1 else ('P2' if plane == 2 else 'P3')
+        form = line.p2p3_forms.get(ph) or line.p2p3_forms.get('P2', '')
         factions = [part.rstrip('0123456789')
                     for part in form.split('+')]
         tiers = cls._parse_tiers(form)

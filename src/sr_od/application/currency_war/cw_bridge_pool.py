@@ -82,8 +82,10 @@ BRIDGE_POOL_P2: list[BridgeCombo] = [
 #: 提取的 fixed/core 三档;版本更新靠人重跑调研),不是运行时
 #: 从战力表自动派生——redesign §4.2 的「数据派生」指 P1/P2 榜
 #: 数据决定**哪些组合够格入池**(81/41/31 篇的门槛),入池后
-#: 的角色构成是调研产物。版本漂移的运行时防护由消费方查
-#: cw_power_table.check(engine_bonds 键)承担(桥不成立→换桥)。
+#: 的角色构成是调研产物。
+#: 版本漂移防护(⑧-5 修正):**尚未接线**——line_strategy 当前
+#: 不对 bridge 调 check;接线排在 Phase B(桥成立性验证);
+#: 在此之前本注释如实声明「无运行时守卫」。
 
 #: 构造期一致性断言:combo.phase 必须与所在池一致(S3)
 for _pool, _ph in ((BRIDGE_POOL, 'P1'), (BRIDGE_POOL_P2, 'P2')):
