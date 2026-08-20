@@ -542,6 +542,9 @@ class LineStrategy(DefaultCwStrategy):
         protect = self._protect_set(session)
         out: list = []
         for i, b in enumerate(state.bench or []):
+            if (state.plane != 1
+                    or state.round_num < _P2_PRECACHE_ROUND):
+                break
             if len(state.bench) - len(out) <= _P2_PRECACHE_MAX_BENCH:
                 break
             if not b.char_id or b.char_id in protect:
