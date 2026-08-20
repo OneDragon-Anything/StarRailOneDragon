@@ -1403,6 +1403,14 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # target 振荡 churn:列车同行→追击飞霄→DOT队→昼神阿雅)+ 选到高难度 comp(昼神阿雅)→ 永不成型 →
     # 死亡螺旋。保命须让位:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn)。
     _pivot_hp = int(0.75 * effective_hp_threshold(state))
+    # r118(局34 P2 振荡根因):信号3保命优先于一切(含定型)——P2 hp 常驻<阈值
+    # → 保命每步触发「切 board progress 更高的 easy 线(列车)」,而 CommitSignals
+    # 定型每步又切回终局(反甲白厄 10.53 ready)→ 同轮内 3-4 次翻转,买牌方向
+    # 混乱(白厄+姬子/爻光/风堇混杂),P2 战力永远起不来。
+    # 修:**定型后保命 pivot 需落点 form_progress 显著更高**(≥当前+0.25,一次
+    # 性大步换线),不再是「有任何 progress 的最快 easy」——平级/略优不换,
+    # 消除与定型的每步拉锯;血线危机交买牌/装备侧加速(不弃线)。
+    _committed_target = (target is not None and target_committed(target, state))
     if state.hp < _pivot_hp:
         # 冷却守卫已提函数顶(r91 不变量单一入口),危机路径不再自查。
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
@@ -1435,7 +1443,16 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
             if target is None or fastest.name != target.name:
-                # 冷却守卫已提函数顶(r91 不变量单一入口;原 r87 H2 分支内检查删除)。
+                # r118:定型后保命换线门槛——落点 progress 须显著更高(≥当前+0.25)
+                if _committed_target:
+                    _cur_fp = form_progress(target, state)
+                    _new_fp = form_progress(fastest, state)
+                    if _new_fp < _cur_fp + 0.25:
+                        log.info('[cw-pivot] p=%s r=%s hp=%s 信号3保命:已定型(%s fp=%.2f) '
+                                 '落点 %s fp=%.2f 未显著更高 → 保持(危机交买牌/装备侧;r118)',
+                                 state.plane, state.round_num, state.hp,
+                                 target.name, _cur_fp, fastest.name, _new_fp)
+                        return None
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
                          state.plane, state.round_num, state.hp, _pivot_hp,
                          target.name if target else 'None', fastest.name)
