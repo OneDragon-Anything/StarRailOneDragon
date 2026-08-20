@@ -128,23 +128,37 @@ class LineStrategy(DefaultCwStrategy):
                 self._feed(session, 'E7_lock')
                 log.info('[cw][v2] 锁线 %s(核心卡 %s)',
                          r.line_id, r.matched_name)
-                session.target_comp = None
-                return
-        # 未锁线:桥线选择(购买方向;重合度最高)
-        bridge = pick_bridge(self._owned_names(state), 'P1')
-        session.bridge_id = bridge.bridge_id if bridge else None
-        session.target_comp = None   # v2 不消费旧 comp 体系
+                session.bridge_id = None   # 终审 S7:锁线清桥
+        # 终审 S4:v2 部署判据线内件集合——伪 comp 写 target_comp
+        # (deploy_bench L248/L340 读 target_comp.factions/core_chars;
+        # plan._should_deploy 同。锁线后 carry/线内件成为部署
+        # 一等公民,不再只按阵营集中)
+        if session.locked_line is not None:
+            line = line_of(session.locked_line)
+            session.target_comp = (
+                _LinePseudoComp.from_line(line) if line is not None else None)
+        else:
+            # 未锁线:桥线选择(重合度最高;phase 按当前位面)
+            ph = 'P1' if state.plane == 1 else 'P2'
+            bridge = pick_bridge(self._owned_names(state), ph)
+            session.bridge_id = bridge.bridge_id if bridge else None
+            session.target_comp = None
 
     # ===== 四象限动作表 =====
 
     def decide_prep(self, state: GameState, session: StrategySession,
                     config) -> list:
         """v2 备战计划:应急判定→象限动作(Phase A 简化范围)。"""
+        self._ensure_state(session)
         # --- 应急(存量语义,简版 HP 档) ---
         if self._emergency(state) and not session.v2_state[1]:
             self._feed(session, 'E3')
         elif session.v2_state[1] and not self._emergency(state):
-            self._feed(session, 'E4')
+            # 应急恢复走 E8_restart(状态机 E4 是 no-op——终审 S1:
+            # 原喂 E4 是接口错位,应急成吸收态)
+            self._feed(session, 'E8_restart',
+                       pop_low=self._pop_low(state, session))
+            # E8 恢复后非应急侧含追赶分支(pop_low)或正常态
         emg = session.v2_state[1]
         cat = session.v2_state[2]
         if emg:
@@ -158,12 +172,19 @@ class LineStrategy(DefaultCwStrategy):
     # ===== 内部 =====
 
     @staticmethod
-    def _feed(session: StrategySession, ev: str,
+    def _ensure_state(session: StrategySession) -> None:
+        """v2_state None 归一化(续跑/replay 路径未走 on_match_start
+        的守卫——终审 B1:None 喂状态机解包炸)。"""
+        if session.v2_state is None:
+            session.v2_state = cw_phase_machine.initial_state()
+
+    def _feed(self, session: StrategySession, ev: str,
               pop_low: bool = True) -> None:
-        """喂事件。非确定集解包规则(S1 裁定):
-        E7_lock 保留当前 mode(锁线不改模式——开局锁线应攒钱,
-        与「卡30利息慢D」对齐);E2 换线取 war(主动求战力保守侧);
-        E8 重启按 HP 侧保守取 war。REJECT(S2)保持原态+日志。"""
+        """喂事件。非确定集解包规则:
+        E7_lock 保留当前 mode(锁线不改模式——开局锁线应攒钱);
+        E2 换线取 war(主动求战力);E8(应急恢复路径)保守取 war。
+        REJECT 保持原态+日志。"""
+        self._ensure_state(session)
         st = session.v2_state
         ns = cw_phase_machine.step(st, ev, pop_low=pop_low)
         if ns == 'REJECT':
@@ -207,13 +228,17 @@ class LineStrategy(DefaultCwStrategy):
 
     def _emergency_actions(self, state: GameState,
                            session: StrategySession) -> list:
-        """应急:利息让位保留重生基数([18]);买即战力。"""
+        """应急:利息让位保留重生基数([18]);买即战力。
+        终审 N1:未识别卡(name='')不买。"""
         budget = max(0, state.gold - _REBIRTH_FLOOR)
         for card in (state.shop or []):
+            if not card.name:
+                continue
             if self._line_wants(card, state, session) \
                     and card.cost <= budget:
                 return [BuyCard(card)]
-        cards = sorted((state.shop or []), key=lambda c: -c.cost)
+        cards = sorted((c for c in (state.shop or []) if c.name),
+                       key=lambda c: -c.cost)
         if cards and cards[0].cost <= budget:
             return [BuyCard(cards[0])]
         return []
@@ -229,30 +254,39 @@ class LineStrategy(DefaultCwStrategy):
 
     def _economy_actions(self, state: GameState,
                          session: StrategySession) -> list:
-        """经济:线内件(星级三档)+压缩(利息地板内)。"""
+        """经济:线内件(星级三档)+压缩(地板——终审 S2 修正:
+        50 是满息后不乱花,不是 50 以下不发展;未满息期地板降 10
+        [11]「金<20 1息档内购买不损息」精神)。"""
         actions: list = []
+        floor = _INTEREST_FLOOR if state.gold >= _INTEREST_FLOOR else 10
+        rem = state.gold
         for card in (state.shop or []):
-            if state.gold - card.cost < _INTEREST_FLOOR:
+            if rem - card.cost < floor:
                 continue
             if self._line_wants(card, state, session):
                 actions.append(BuyCard(card))
-        # 压缩(1费净0;redesign §4.2 判据)
+                rem -= card.cost    # 终审 S3:逐张扣减防预算漂移
+        # 压缩(1费净0)
         bought = {id(a.card) for a in actions}
         for card in (state.shop or []):
-            if card.cost == 1 and state.gold - 1 >= _INTEREST_FLOOR \
+            if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
                 actions.append(BuyCard(card))
+                rem -= 1
         return actions
 
     def _war_actions(self, state: GameState,
                      session: StrategySession) -> list:
-        """战力:分层补强(线内件优先;地板仍保——战力≠panic)。"""
+        """战力:分层补强(线内件优先;地板仍保——战力≠panic)。
+        终审 S3:逐张扣减预算。"""
         actions: list = []
+        rem = state.gold
         for card in (state.shop or []):
-            if state.gold - card.cost < _REBIRTH_FLOOR:
+            if rem - card.cost < _WAR_FLOOR:
                 continue
             if self._line_wants(card, state, session):
                 actions.append(BuyCard(card))
+                rem -= card.cost
                 if len(actions) >= 2:
                     break
         return actions
@@ -274,3 +308,54 @@ class LineStrategy(DefaultCwStrategy):
                 if combo.bridge_id == session.bridge_id:
                     return card.name in combo.fixed + combo.core
         return False
+
+    @staticmethod
+    def _pop_low(state: GameState, session: StrategySession) -> bool:
+        """人口 vs 位面基线(E8 恢复的 pop_low 输入)。"""
+        pop = len(state.deployed)
+        baseline = _POP_BASELINE.get(state.plane, 7)
+        return pop < baseline - 1
+
+
+class _LinePseudoComp:
+    """v2 线伪 comp(deploy_bench/plan target 判定桥接——终审 S4)。
+
+    鸨子类型面 = deploy_bench 消费的属性:name/factions/core_chars/
+    all_factions/char_positions(L248/L340 与 _should_deploy)。
+    不继承 cw_comps.Comp(那要求 form_tiers 等全字段,与桥接
+    最小面不符;消费侧只做属性访问)。
+    """
+
+    @staticmethod
+    def _parse_tiers(form: str) -> dict[str, int]:
+        """'列车同行4+护盾3' → {列车同行:4, 护盾:3}。"""
+        tiers: dict[str, int] = {}
+        for part in form.split('+'):
+            name = part.rstrip('0123456789')
+            num = part[len(name):]
+            if name and num.isdigit():
+                tiers[name] = int(num)
+        return tiers
+
+    def __init__(self, name: str, core_chars: list[str],
+                 factions: list[str], form_tiers: dict[str, int]):
+        self.name = name
+        self.core_chars = core_chars
+        self.factions = factions       # deploy L248 直读该属性
+        self.char_positions: dict[str, str] = {}
+        self.form_tiers = form_tiers   # shop._form_progress 读
+
+    @property
+    def all_factions(self) -> set[str]:
+        return set(self.factions)
+
+    @classmethod
+    def from_line(cls, line) -> _LinePseudoComp:
+        form = line.p2p3_forms.get('P2', '')
+        factions = [part.rstrip('0123456789')
+                    for part in form.split('+')]
+        tiers = cls._parse_tiers(form)
+        return cls(name=f'v2:{line.line_id}',
+                   core_chars=[line.carry] + list(line.opportunistic_cards),
+                   factions=[f for f in factions if f],
+                   form_tiers=tiers)
