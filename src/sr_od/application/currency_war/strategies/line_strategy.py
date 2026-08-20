@@ -756,7 +756,7 @@ class LineStrategy(DefaultCwStrategy):
            dot(持续伤害系)∩(列车+护盾)=∅ ✗ 天然排除。
         卡 ∈ P2 桥 core(fixed 不囤——CARRY 该按可负担门正常锁)。
         """
-        if state.plane != 1 or state.round_num < _P2_PRECACHE_ROUND:
+        if state.plane != 1 or state.round_num < _P2_PRECACHE_ROUND - 1:
             return False
         if session.v2_state and session.v2_state[1]:
             return False    # 应急不囤
@@ -773,20 +773,21 @@ class LineStrategy(DefaultCwStrategy):
             bridge_bonds.update(combo.engine_bonds.keys())
         if not (line_bonds & bridge_bonds):
             return False    # 方向不相交(dot 线等)不囤
-        if not any(card.name in combo.core for combo in BRIDGE_POOL_P2):
+        in_p2_core = any(card.name in combo.core for combo in BRIDGE_POOL_P2)
+        if not in_p2_core:
             return False
         # r254(P2 首战断崖,十局数据):防御件优先——P2r1 的
-        # 掉血(-14/-36/-41)与板面无关是敌强度断崖;预囤时
-        # 护盾系(丹恒·腾荒/砂金/杰帕德的护盾 flow)优先于
-        # 纯输出件。谓词层面两者都放行(购买序由 _buy_actions
-        # 的 shop 序决定),但**防御件计入更早的轮数门**:
-        # 护盾系 r≥6 即囤(比通用门 7 提前 1 轮——P1 boss 的
-        # 生存压力同样受益)。
-        if state.round_num >= _P2_PRECACHE_ROUND - 1:
+        # 掉血(-14/-36/-41)与板面无关是敌强度断崖;护盾系
+        # (砂金/腾荒/杰帕德)提前 1 轮囤(r≥6;P1 boss 生存
+        # 同样受益)。非防御件(轮数门 7)由调用前检查兜底——
+        # 此函数入口门是 min(6,7)=6,护盾放行;非护盾在
+        # 这里按 7 拒。
+        if state.round_num < _P2_PRECACHE_ROUND:
             from sr_od.application.currency_war.cw_chars import CHARACTERS
             ch = CHARACTERS.get(card.name)
-            if ch is not None and '护盾' in set(ch.flows) | set(ch.factions):
-                return True
+            is_shield = ch is not None and (
+                '护盾' in set(ch.flows) | set(ch.factions))
+            return is_shield
         return True
 
     @staticmethod
