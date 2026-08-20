@@ -147,11 +147,20 @@ def pick_bridge(owned: set[str],
     phase 仅接受 P1/P2(显式映射,拼写错误即 KeyError——
     防静默落到错池);池内 combo.phase 已在构造期与所在
     池一致性校验(见模块尾部断言)。
-    """
+    r253(第八局复盘):P1 平局 tie-break 偏好 xianzhou_dot
+    ——它同时供 P1 的 DOT 引擎与 P2 列车桥的仙舟件
+    (藿藿/爻光/饮月都是 P2 方向的铺垫),P1→P2 平滑性
+    最优;第八局实证:散 DOT 板 P1 零败但进 P2 拆向
+    列车4+护盾3 转型成本高(四连败根因之一)。
+    分差 >0.5 时正常选高分(偏好只在真平局生效)。"""
     pool = _POOL_BY_PHASE[phase]
     best, best_s = None, 0.0
     for c in pool:
         s = score_bridge(c, owned)
         if s > best_s:
             best, best_s = c, s
+        elif (phase == 'P1' and best is not None
+              and abs(s - best_s) <= 0.5
+              and c.bridge_id == 'xianzhou_dot'):
+            best = c   # r253 平局偏好(P1→P2 平滑)
     return best
