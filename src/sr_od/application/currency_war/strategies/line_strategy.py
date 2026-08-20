@@ -65,6 +65,10 @@ _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
 #: 追赶 → 恒 LevelUp 不买牌——P1 早期人口低于基线是常态不是
 #: 落后;只有等级已够高(人口上限打开)仍低于基线才算追赶)
 _CATCHUP_MIN_LEVEL: int = 6
+#: 三大引擎羁绊(r242 挂件质量门:有方向期只买引擎阵营的卡,
+#: 散阵营凑对只服务无方向的冷启动期)
+_ENGINE_FACTIONS: frozenset = frozenset(
+    {'仙舟', '列车同行', '持续伤害'})
 
 
 class LineStrategy(DefaultCwStrategy):
@@ -358,7 +362,7 @@ class LineStrategy(DefaultCwStrategy):
                     continue
                 if self._line_wants(card, state, session) \
                         or self._bridge_seed(card, state) \
-                        or self._pair_wants(card, state):
+                        or self._pair_wants(card, state, session):
                     actions.append(BuyCard(card))
                     rem -= 1
         return actions
@@ -498,7 +502,7 @@ class LineStrategy(DefaultCwStrategy):
             if not self._buy_guards(card, state, len(actions)):
                 continue
             if self._line_wants(card, state, session) \
-                    or self._pair_wants(card, state) \
+                    or self._pair_wants(card, state, session) \
                     or self._bridge_seed(card, state):
                 actions.append(BuyCard(card))
                 rem -= card.cost
@@ -533,13 +537,24 @@ class LineStrategy(DefaultCwStrategy):
                 if c.name and c.cost <= state.gold}
 
     @staticmethod
-    def _pair_wants(card, state: GameState) -> bool:
+    def _pair_wants(card, state: GameState,
+                    session: StrategySession | None = None) -> bool:
         """冷启动凑对(模拟局 P1 修复):卡与已持有(board+bench)
         同阵营 → 1 费可买(deploy 成对上场判据同源:
         同阵营 count≥2 上场凑过渡羁绊)。
         A5(spread 门):已有阵营 ≥3 时不再开新阵营——
-        default M25 spread-lock 实证的防线。"""
+        default M25 spread-lock 实证的防线。
+        r242(挂件质量):**有方向(锁线或桥)时只买引擎阵营**
+        (三大引擎羁绊:仙舟/列车同行/持续伤害)——用户实锤
+        「挂件选择差」:飞霄/赛飞儿(夜半/狼狩)是散板止血件,
+        锁线/桥方向明确后还买它们 = 挂件无方向性。无方向
+        (无锁无桥)才退全阵营凑对。"""
         if not card.name or not card.faction or card.faction == '?':
+            return False
+        # r242:方向期引擎阵营门
+        has_direction = (session is not None
+                         and (session.locked_line or session.bridge_id))
+        if has_direction and card.faction not in _ENGINE_FACTIONS:
             return False
         owned_factions = set(state.board.keys())
         for b in (state.bench or []):
