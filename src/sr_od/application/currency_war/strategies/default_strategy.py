@@ -243,7 +243,7 @@ class DefaultCwStrategy(CwStrategy):
             session.target_drought = session.target_drought + 1 if _fw_supply < 1.0 else 0
             if session.target_drought >= DROUGHT_BAIL:
                 _cleared_fw = session.transition_framework
-                log.warning('[cw!][target] 双轨框架 %s 连续 %d 轮断供 → 清框架重选'
+                log.warning('[cw][target] 双轨框架 %s 连续 %d 轮断供 → 清框架重选'
                             '(配方重建比终局弃线便宜;终局线不动)',
                             _cleared_fw, session.target_drought)
                 session.transition_framework = ''
@@ -284,12 +284,12 @@ class DefaultCwStrategy(CwStrategy):
                         # (shop 概率表每轮独立重掷,断 8 轮不代表 P2 还断),
                         # 不是换一条同样建不成的新线。
                         if state.plane == 1 and state.round_num >= 7:
-                            log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(P1r%d 后段,'
+                            log.warning('[cw][target] %s 连续 %d 轮无阵营卡(P1r%d 后段,'
                                         '弃线无重建轮次→保持;散件/星级补,P2 供给重掷)',
                                         session.target_comp.name, session.target_drought,
                                         state.round_num)
                         else:
-                            log.warning('[cw!][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
+                            log.warning('[cw][target] %s 连续 %d 轮无阵营卡(invested form=%.2f 但供给断绝≥8)→ 极端 drought 弃线重选',
                                         session.target_comp.name, session.target_drought, _fp)
                             if session.target_comp.name not in session.drought_excluded:
                                 session.drought_excluded.append(session.target_comp.name)   # r7 review#1:累积名单(单槽被第二条死线覆盖→振荡)

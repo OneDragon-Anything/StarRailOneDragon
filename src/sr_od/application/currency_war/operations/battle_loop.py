@@ -438,7 +438,8 @@ class CurrencyWarRunLoop(SrOperation):
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
             if _st0.round_num > 1 or _st0.plane > 1:
-                log.warning('[cw!][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
+                # A18(hook审计批4):数据归属标记,只标不改行为 → [cw] 非 [cw!]
+                log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 import contextlib
                 with contextlib.suppress(Exception):   # 遥测 best-effort
@@ -856,7 +857,7 @@ class CurrencyWarRunLoop(SrOperation):
             # = 开局失败/中断(第四局实证:开局失败回大厅 → 用旧 session 拼假 loss,
             # final_hp=100/rounds=2 全污染)。不记 summary、不喂分配器,仅清理 match。
             if getattr(self, '_last_outcome_hp', None) is None and self._rounds_done == 0:
-                log.warning('[cw!][loop] 开局阶段即回大厅(无任何 round_outcome)→ 判开局失败,不记假 summary')
+                log.warning('[cw][loop] 开局阶段即回大厅(无任何 round_outcome)→ 判开局失败,不记假 summary')
                 self.ctx.cw_match = None
                 return self.round_success('开局失败/中断(未产生对局数据,不记 summary)')
             if self.ctx.cw_match is not None:
