@@ -7,8 +7,8 @@ area_list:
   pc_rect:
   - 660
   - 100
-  - 805
-  - 128
+  - 825
+  - 148
   text: 热门攻略
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -21,8 +21,8 @@ area_list:
   pc_rect:
   - 1015
   - 100
-  - 1185
-  - 128
+  - 1195
+  - 148
   text: 我的阵容
   lcs_percent: 0.5
   template_sub_dir: ''

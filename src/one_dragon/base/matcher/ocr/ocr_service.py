@@ -23,7 +23,7 @@ class OcrCacheEntry:
     create_time: float  # 创建时间
     color_range: list[list[int]] | None  # 颜色范围
     rect: Rect | None = None  # 识别区域
-    crop_first: bool = True  # 先裁剪再识别 用于从连续文本中只提取特定区域的文本
+    crop_first: bool = False  # 先裁剪再识别 用于从连续文本中只提取特定区域的文本
 
 
 class OcrService:
@@ -101,7 +101,7 @@ class OcrService:
         image: MatLike,
         color_range: list[list[int]] | None = None,
         rect: Rect | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> OcrCacheEntry | None:
         """
         从缓存中获取OCR结果
@@ -136,7 +136,7 @@ class OcrService:
         image: MatLike,
         color_range: list[list[int]] | None = None,
         rect: Rect | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
         threshold: float = 0,
         merge_line_distance: float = -1,
     ) -> list[OcrMatchResult]:
@@ -147,7 +147,9 @@ class OcrService:
             image: 输入图片
             color_range: 颜色范围过滤 [[lower], [upper]]
             rect: 指定区域。识别结果后，筛选在指定区域中出现的结果，即文本所在的矩形有70%以上在指定区域内
-            crop_first: 先裁剪再识别 用于从连续文本中只提取指定区域的文本
+            crop_first: 先裁剪再识别 用于从连续文本中只提取指定区域的文本。默认 False：
+                全图 OCR 后按 rect 过滤，结果按 id(image) 缓存、同帧多区域查询复用同一次识别；
+                True 为按 rect 先裁剪再 OCR，弃缓存复用且小/紧框裁剪后文字检测器易漏字
             threshold: OCR阈值
             merge_line_distance: 行合并距离
 
@@ -223,7 +225,7 @@ class OcrService:
         image: MatLike,
         color_range: list[list[int]] | None = None,
         rect: Rect | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
         threshold: float = 0,
         merge_line_distance: float = -1,
     ) -> dict[str, MatchResultList]:

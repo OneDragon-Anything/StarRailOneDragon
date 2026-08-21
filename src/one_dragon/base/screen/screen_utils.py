@@ -36,7 +36,7 @@ def find_area(
     screen: MatLike,
     screen_name: str,
     area_name: str,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> FindAreaResultEnum:
     """
     游戏截图中 是否能找到对应的区域
@@ -60,7 +60,7 @@ def find_area_binary(
     screen_name: str,
     area_name: str,
     binary_threshold: int = 127,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> FindAreaResultEnum:
     """
     使用二值化图像在游戏截图中查找区域
@@ -84,7 +84,7 @@ def find_area_in_screen_binary(
     screen: MatLike,
     area: ScreenArea,
     binary_threshold: int = 127,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> FindAreaResultEnum:
     """
     使用二值化图像在截图中查找区域
@@ -139,7 +139,7 @@ def find_area_in_screen(
     ctx: OneDragonContext,
     screen: MatLike,
     area: ScreenArea,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> FindAreaResultEnum:
     """
     游戏截图中 是否能找到对应的区域
@@ -231,7 +231,7 @@ def find_and_click_area(
     screen: MatLike,
     screen_name: str,
     area_name: str,
-    crop_first: bool = True,
+    crop_first: bool = False,
     center_x: bool = False,
 ) -> OcrClickResultEnum:
     """
@@ -336,7 +336,7 @@ def get_match_screen_name(
     ctx: OneDragonContext,
     screen: MatLike,
     screen_name_list: list[str] | None = None,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> str | None:
     """
     根据游戏截图 匹配一个最合适的画面
@@ -369,7 +369,7 @@ def get_match_screen_name(
 def get_match_screen_name_from_last(
     ctx: OneDragonContext,
     screen: MatLike,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> str | None:
     """
     根据游戏截图 从上次记录的画面开始 匹配一个最合适的画面
@@ -437,7 +437,7 @@ def is_target_screen(
     screen: MatLike,
     screen_name: str | None = None,
     screen_info: ScreenInfo | None = None,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> bool:
     """
     根据游戏截图 判断是否目标画面
@@ -480,7 +480,7 @@ def find_by_ocr(
     area: ScreenArea | None = None,
     lcs_percent: float = 0.5,
     color_range: list[list[int]] | None = None,
-    crop_first: bool = True,
+    crop_first: bool = False,
 ) -> bool:
     """
     判断画面中是否有目标文本

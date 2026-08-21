@@ -150,7 +150,7 @@ area_list:
   pc_rect:
   - 714
   - 590
-  - 760
+  - 880
   - 630
   text: 同意
   lcs_percent: 0.5

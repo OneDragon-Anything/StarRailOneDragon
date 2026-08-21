@@ -891,7 +891,7 @@ class Operation(OperationBase):
         retry_wait_round: float | None = None,
         until_find_all: list[tuple[str, str]] = None,
         until_not_find_all: list[tuple[str, str]] = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
         center_x: bool = False,
     ) -> OperationRoundResult:
         """在屏幕上查找并点击目标区域。
@@ -987,7 +987,7 @@ class Operation(OperationBase):
         success_wait_round: float | None = None,
         retry_wait: float | None = None,
         retry_wait_round: float | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> OperationRoundResult:
         """
         检查是否能在屏幕上找到目标区域。
@@ -1029,7 +1029,7 @@ class Operation(OperationBase):
         success_wait_round: float | None = None,
         retry_wait: float | None = None,
         retry_wait_round: float | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> OperationRoundResult:
         """
         使用二值化图像检查是否能在屏幕上找到目标区域。
@@ -1139,7 +1139,7 @@ class Operation(OperationBase):
         retry_wait_round: float | None = None,
         color_range: list[list[int]] | None = None,
         offset: Point | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
         remove_whitespace: bool = False,
     ) -> OperationRoundResult:
         """使用OCR在区域内查找目标文本并点击。
@@ -1228,7 +1228,7 @@ class Operation(OperationBase):
         retry_wait_round: float | None = None,
         color_range: list[list[int]] | None = None,
         offset: Point | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> OperationRoundResult:
         """使用OCR按优先级在区域内查找文本并点击。
 
@@ -1292,7 +1292,7 @@ class Operation(OperationBase):
         retry_wait_round: float | None = None,
         color_range: list[list[int]] | None = None,
         offset: Point | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> OperationRoundResult:
         """使用OCR按优先级查找文本并点击，支持为不同目标指定不同的返回动作。
 
@@ -1303,7 +1303,7 @@ class Operation(OperationBase):
                 示例: [('出战', OperationRoundResultEnum.SUCCESS), ('下一步', OperationRoundResultEnum.WAIT)]
             screen: 游戏截图。默认为None（使用 last_screenshot）。
             area: 要搜索的目标区域。默认为None（搜索整个屏幕）。
-            crop_first: 在传入区域时 是否先裁剪再进行文本识别。默认为True。
+            crop_first: 在传入区域时 是否先裁剪再进行文本识别。默认为False(全图 OCR 缓存复用)。
             pre_delay: 点击前等待时间（秒）。默认为0.3秒。
             success_wait: 匹配到 SUCCESS 动作后等待时间（秒）。默认为None。
             success_wait_round: 匹配到 SUCCESS 动作后等待直到轮次时间达到此值。默认为None。
@@ -1443,7 +1443,7 @@ class Operation(OperationBase):
         self,
         screen: np.ndarray | None = None,
         screen_name_list: list[str] | None = None,
-        crop_first: bool = True,
+        crop_first: bool = False,
     ) -> str:
         """
         识别当前画面的名称并保存起来。

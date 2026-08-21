@@ -2433,7 +2433,7 @@
   - area_name: 标识-前台区域
     id_mark: true
     pc_rect:
-    - 932
+    - 850
     - 275
     - 1070
     - 340
@@ -2447,7 +2447,7 @@
   - area_name: 标识-后台区域
     id_mark: true
     pc_rect:
-    - 930
+    - 905
     - 525
     - 1060
     - 630
@@ -3265,7 +3265,7 @@
     pc_rect:
     - 714
     - 590
-    - 760
+    - 880
     - 630
     text: 同意
     lcs_percent: 0.5
@@ -4683,7 +4683,7 @@
     pc_rect:
     - 1190
     - 860
-    - 1380
+    - 1690
     - 1020
     text: 委托派遣中
     lcs_percent: 0.5
@@ -7199,8 +7199,8 @@
     pc_rect:
     - 660
     - 100
-    - 805
-    - 128
+    - 825
+    - 148
     text: 热门攻略
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7213,8 +7213,8 @@
     pc_rect:
     - 1015
     - 100
-    - 1185
-    - 128
+    - 1195
+    - 148
     text: 我的阵容
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7880,7 +7880,7 @@
     - 60
     - 50
     - 400
-    - 82
+    - 95
     text: 阵容编辑
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7893,8 +7893,8 @@
     pc_rect:
     - 770
     - 158
-    - 845
-    - 192
+    - 852
+    - 202
     text: 前期
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7907,8 +7907,8 @@
     pc_rect:
     - 1185
     - 158
-    - 1260
-    - 192
+    - 1270
+    - 202
     text: 中期
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7921,8 +7921,8 @@
     pc_rect:
     - 1600
     - 158
-    - 1680
-    - 192
+    - 1682
+    - 202
     text: 最终
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -8129,8 +8129,8 @@
     pc_rect:
     - 760
     - 295
-    - 1005
-    - 350
+    - 1030
+    - 362
     text: 输入攻略码
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -8143,7 +8143,7 @@
     pc_rect:
     - 365
     - 400
-    - 585
+    - 635
     - 460
     text: 请输入攻略码
     lcs_percent: 0.5

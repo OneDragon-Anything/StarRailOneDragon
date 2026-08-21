@@ -649,7 +649,7 @@ area_list:
 - area_name: 标识-前台区域
   id_mark: true
   pc_rect:
-  - 932
+  - 850
   - 275
   - 1070
   - 340
@@ -663,7 +663,7 @@ area_list:
 - area_name: 标识-后台区域
   id_mark: true
   pc_rect:
-  - 930
+  - 905
   - 525
   - 1060
   - 630

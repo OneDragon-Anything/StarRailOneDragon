@@ -105,7 +105,7 @@ area_list:
   pc_rect:
   - 1190
   - 860
-  - 1380
+  - 1690
   - 1020
   text: 委托派遣中
   lcs_percent: 0.5

@@ -8,7 +8,7 @@ area_list:
   - 60
   - 50
   - 400
-  - 82
+  - 95
   text: 阵容编辑
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -21,8 +21,8 @@ area_list:
   pc_rect:
   - 770
   - 158
-  - 845
-  - 192
+  - 852
+  - 202
   text: 前期
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -35,8 +35,8 @@ area_list:
   pc_rect:
   - 1185
   - 158
-  - 1260
-  - 192
+  - 1270
+  - 202
   text: 中期
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -49,8 +49,8 @@ area_list:
   pc_rect:
   - 1600
   - 158
-  - 1680
-  - 192
+  - 1682
+  - 202
   text: 最终
   lcs_percent: 0.5
   template_sub_dir: ''

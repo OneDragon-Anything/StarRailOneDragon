@@ -2,7 +2,7 @@
 
 本模块在框架现有 ``find_area_in_screen``(返回布尔枚举)之上,新增强化版:
 - ``find_area_with_detail``:单 area 匹配,返回命中详情(坐标/文本/置信度),
-  默认 ``crop_first=False`` 走全图 OCR 缓存复用(与 ``find_area_in_screen`` 默认相反)。
+  ``crop_first`` 默认 False(框架统一默认,全图 OCR 缓存复用)。
 - ``find_screen_matches``:一次遍历分级匹配画面(精准早停 / top_n)。
 
 数据结构 ``AreaType`` / ``AreaMatchDetail`` / ``ScreenMatch`` 为纯 dataclass,
@@ -124,8 +124,8 @@ def find_area_with_detail(
 ) -> AreaMatchDetail | None:
     """单 area 强化匹配,返回命中详情;纯定位区域或未命中返 None。
 
-    与 ``find_area_in_screen`` 的差异:默认 ``crop_first=False`` 走全图 OCR 缓存
-    复用(性能,见 spec §2.5);返回 ``AreaMatchDetail`` 详情而非布尔枚举。
+    与 ``find_area_in_screen`` 的差异:返回 ``AreaMatchDetail`` 详情而非布尔枚举
+    (``crop_first`` 两者默认一致,均 False 走全图 OCR 缓存复用,性能见 spec §2.5)。
 
     Args:
         ctx: 运行上下文(提供 ``ocr_service`` / ``tm``)。
