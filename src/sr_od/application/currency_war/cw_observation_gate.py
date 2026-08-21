@@ -183,13 +183,11 @@ def wait_stable_frame(
             continue
         if stable_since is not None and \
                 _now() - stable_since >= profile['min_stable_s']:
-            log.info('[cw][gate] stable frame (profile=%s, %.1fs)',
-                     profile.get('anchor_area') or profile.get('ocr_keyword'),
-                     _now() - t0)
+            _name = profile.get('anchor_area') or profile.get('ocr_keyword')
+            log.info(f'[cw][gate] stable frame (profile={_name}, {_now() - t0:.1f}s)')
             return frame
         _diag['ok'] += 1
         _sleep(_POLL_S)
-    log.info('[cw][gate] timeout (%.1fs) profile=%s diag=%s',
-             _now() - t0,
-             profile.get('anchor_area') or profile.get('ocr_keyword'))
+    _name = profile.get('anchor_area') or profile.get('ocr_keyword')
+    log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) profile={_name} diag={_diag}')
     return None
