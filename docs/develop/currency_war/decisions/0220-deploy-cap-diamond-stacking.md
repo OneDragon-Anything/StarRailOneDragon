@@ -39,10 +39,24 @@ accepted(2026-08-22;局38 判读驱动,用户指出后台单位/新角色假设)
 
 ## Decision
 
-选 C。`prep_director` 审计 #15 域检查反转;`_read_deploy_paddle`/
+选 C,但 2026-08-22 同日 r350b 修订(用户点题):**C 的「cap>level+1 一律降 debug」
+误静音了该 hook 的采集用途**——后排布局档 7/9/10/11 系格点推导(只有 8 后台做过
+狸猫局实拍级建档),cap 落入未实拍档的局正是实拍采集机会,r348 的降级把信号砍了。
+最终三段结构:
+- cap < level → 留证「不可能向」(level 读错检测保留);
+- cap 落入 `_UNVERIFIED_BACK_SLOTS`{7,9,10,11}(不要求 cap>level+1,cap7/lv6 同样
+  采集)→ obs_conflict(`deploy_cap_unverified_layout`)留证,verdict 带可执行处理
+  步骤(本局逐位验证/错位 upsert 校正/正常移除该档)——hook 三要素补齐;
+- 已实拍档(6 基线/8 狸猫局)叠加 → debug 记宝钻数。
+
+`prep_director` 审计 #15 域检查按此实现;`_read_deploy_paddle`/
 `read_deploy_cap` docstring 补叠加语义(官方原文引用);recognizer D-50
 告警保留(其行为在叠加语义下仍正确:cap>level 均意味着后排按 max(6,cap)
 取布局),文案改「宝钻×N 叠加」。
+
+**持久教训(hook 设计)**:hook 的 verdict 必须写清「接管者该做什么」——
+只写「留证-域知识不符」不说采集用途,判读者会当假警报降级(deploy_cap 案例
+实证:r348 把 7/9 后台建档信号静音了半天才被用户点破)。
 
 ## Consequences
 
