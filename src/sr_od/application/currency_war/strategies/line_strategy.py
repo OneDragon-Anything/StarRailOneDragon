@@ -430,6 +430,25 @@ class LineStrategy(DefaultCwStrategy):
         st2.gold -= xp if actions and isinstance(
             actions[0], LevelUp) else 0
         actions.extend(self._buy_actions(st2, session, floor))
+        # r258(早期方向刷新,HP≥60 根因):P1 r≤4 方向窗口期,
+        # 未锁线未成桥且店里方向件 <2 → 刷一次找种子。
+        # 25 局 HP 轨迹实锤:好局(84/100/84)全部 r1 就有方向
+        # (CARRY/桥种子在首发商店);坏局(19-36)全部此窗口
+        # 无方向 → 买散件 → r3 起每轮 -13 流血到 boss。
+        # 经济象限原本无刷新通道(_maybe_refresh 只挂 war);
+        # 早期花 2 金找方向 vs 每轮漏 13 HP 是纯赚交易。
+        from sr_od.application.currency_war.cw_state import RefreshShop
+        if (state.plane == 1 and state.round_num <= 4
+                and session.locked_line is None and not session.bridge_id
+                and not any(isinstance(a, BuyCard) for a in actions)):
+            _dir_cnt = sum(
+                1 for c in (state.shop or [])
+                if c.name and (self._bridge_seed(c, state)
+                               or c.faction in _ENGINE_FACTIONS))
+            if _dir_cnt < 2:
+                _cost = state.shop_refresh_cost or 2
+                if st2.gold - _cost >= 5:
+                    actions.append(RefreshShop(_cost))
         return actions
 
     def _buy_actions(self, state: GameState,
