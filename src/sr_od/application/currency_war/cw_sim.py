@@ -169,11 +169,20 @@ def boss_delta(dir_round: int, rng: random.Random,
 
 
 def sample_node_sequence(rng: random.Random) -> list[str]:
-    """逐局采样真实节点序列(r260):r1-r8 从 NODE_TYPE_POOL 抽,
-    r9 恒 boss(位面末节点)。首槽固定 battle(开局弱敌,观测一致)。"""
-    seq = ['battle']
-    for _ in range(7):
-        seq.append(rng.choice(NODE_TYPE_POOL))
+    """P1 节点序列(r284 修正:固定骨架,非随机采样)。
+
+    遥测实证(14 帧 nodeseq,2026-08-23):P1 骨架固定
+    `reward reward battle battle supply _ _ reward [boss]`,
+    仅 slot5-6 变异(battle/encounter 互换——invest-env 改
+    节点:战争边疆战斗→遭遇 等,cw_node_reader 头注释/玩法
+    doc §节点行)。slot6 以 encounter 为主(8 帧中 5 帧)。
+    用户口述:位面节点基本固定,特殊策略才改。"""
+    seq = ['reward', 'reward', 'battle', 'battle', 'supply']
+    # slot5: 40% battle / 60% encounter(样本 3:5)
+    seq.append(rng.choices(('battle', 'encounter'), (0.4, 0.6))[0])
+    # slot6: 主要 encounter(8 帧中 5 遭遇 2 战斗 1 边缘)
+    seq.append(rng.choices(('encounter', 'battle'), (0.7, 0.3))[0])
+    seq.append('reward')
     seq.append('boss')
     return seq
 
