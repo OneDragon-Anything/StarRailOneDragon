@@ -58,18 +58,32 @@ PrepPhase 的观察/识别职责散在 4 层,同一备战画面每层各判一�
 - 缺点:风险不可控(备战链是现网最稳的链路;4 层虽乱但有 896 测试护着)
 
 ## Decision
-选 B,分四批:
-1. **批次1(观测基建)**:`cw_observation_gate.wait_stable_frame`
-   (clean 锚+双帧一致,统一 4 层等待)+ `observe_full`(组装既有
-   按屏分模块的 reads——cw_observation/cw_identity_obs 不重写,
-   只加组装层+稳定前置);PrepDirector 环入口与 battle_loop 稳定门
-   改用它(并行期旧路径保留对拍);
-2. **批次2(数字读帧态门)**:read_hp/read_gold/_board_pairs 补与
-   read_shop_cards 同款帧态门(审查发现 h;hp=100 毒读根修);
-3. **批次3(组合 op 降级)**:shop.py 识别段/deploy_bench 自读段上收,
-   组合 op 变纯执行器(接收已识别状态+动作);决策不再降层;
-4. **批次4(清理)**:删各层旧等待;钩子守卫统一走 gate;事件入口
-   归一(handlers/run_nodes/0e 分支)评估。
+选 B(观测层横切),方案经五轮对抗 review 收敛(定稿=
+`cw_dev/重构方案-观测层-v4.md`,吸收 A/B/C/D/Y/终验全部
+发现;gate 原语已落地 742d9f03+54f4e35f,flag off 零影响):
+
+**核心定案**:
+- wait_stable_frame:min_stable_s 连续稳定窗(首尾帧指纹
+  一致,非相邻对——慢动画假稳定)+先 park+三 profile
+  (关态[出战锚+圆数门双保险]/开态[收起锚]/弹窗态
+  [ocr_keyword 降级,随钩子删]);一致性=锚+per-area 像素
+  指纹(OCR 只用于锚);异常 raise 与超时 None 分流。
+- 不换:PREP_SETTLE_S 3s 门/分支分发/read_hp 契约/
+  GameState.hp/heavy-轻两档。
+- director 入口失败:复用 _bail 3-strike(session 计数,
+  reason 常量化),不造 round_fail 路径。
+- 批次:1 gate 基建+5 站接线(关 3+开 2)+observe_full
+  创建(P0②/invest_env 顺带)→ 2 数字读帧态门
+  (read_hp_opt 迁移 3 点+readable 标志;recognizer 同源)
+  → 3 组合 op 降级(单写者+substate)→ 4 清理。
+- flag 4 个按机制分组(进 save 白名单+config.md);
+  对拍=flag 二选一非双跑;gate 挂点不进钩子体。
+
+**为何对抗 review 是本 ADR 的必要组成**:v1→v4 五轮拦下
+双帧丢时间维度(重开 M47)/read_hp 爆炸面误判/board None
+契约未定义/bail 绕 3-strike(无限 ping-pong)/异常折叠 None
+(离线升级停机)等 8 个方案级错误——全部是"实现者会写出
+错误版本"级问题。
 
 ## Consequences
 - 观测有单一真值源;毒读类 bug 根治(hp=100/deployed 塌缩)
