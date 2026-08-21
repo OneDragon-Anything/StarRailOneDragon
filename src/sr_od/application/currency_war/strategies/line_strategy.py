@@ -231,6 +231,10 @@ class LineStrategy(DefaultCwStrategy):
                 else:
                     # ⑧-2 DOT 兜底可达性(P2 后半程无方向才落)
                     session.locked_line = 'dot_fallback'
+                    # review-M3(r353b):落锁清 bridge——另两条锁线路径
+                    # (L185/L198)都清,此漏致 locked+bridge 并存,
+                    # transition_framework 按 stale 桥写双轨框架
+                    session.bridge_id = None
                     self._feed(session, 'E7_lock')
                     log.info('[cw][v2] P%dr%d 无桥无信号 → 落 DOT 兜底',
                              state.plane, state.round_num)
@@ -470,6 +474,7 @@ class LineStrategy(DefaultCwStrategy):
         for card in sorted(
                 (c for c in (st2.shop or state.shop or [])
                  if c.name and c.faction in _board_factions
+                 and c.faction != '?'      # review-L3(r353b):防御
                  and c.name not in _bought and c.cost <= budget),
                 key=lambda c: (_tier_gap(c.faction), -c.cost)):
             # review-H(r352c):break→continue——排序键跨组无价格序,

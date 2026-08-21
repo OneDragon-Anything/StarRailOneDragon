@@ -308,8 +308,12 @@ class PrepDirector(SrOperation):
                                           f'正常则仅移除该档)'),
                                  source='layout_unverified')
                 else:
-                    log.debug('[cw][obs] cap=%d > level+1(宝钻×%d 叠加,合法)',
-                              cap, cap - st.level)
+                    # review-L1(r353b):else 分支承接所有已实拍档的
+                    # cap≥level——cap==level 是常态(无宝钻),别打
+                    # "宝钻×0"误导判读;仅真叠加(cap>level)才记
+                    if cap > st.level:
+                        log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法)',
+                                  cap, cap - st.level)
             dep_n = read_deployed_count(self.ctx, screen)
             if cap is not None and dep_n is not None:
                 obs.deploy_vacancy = max(0, cap - dep_n)
