@@ -56,7 +56,11 @@ class CleanDeployedOffTarget(SrOperation):
         return set()
 
     def _read_panel_factions(self, screen) -> set[str]:
-        """OCR 详情面板阵营栏 → 命中的 FACTIONS 规范名集合(如 {仙舟,能量,治疗})。"""
+        """OCR 详情面板阵营栏 → 命中的 FACTIONS 规范名集合(如 {仙舟,能量,治疗})。
+
+        保留裁剪读(2026-08-24 crop-first 审计):每槽 click 后独立截图,本 OCR 是该帧唯一
+        消费者(无同帧缓存复用收益);且阵营栏与相邻角色名/数值全图 det 易并框,裁切隔离更稳。
+        """
         _r = self.FACTION_RECT
         crop = screen[_r.y1:_r.y2, _r.x1:_r.x2]
         if crop.size == 0:

@@ -87,7 +87,11 @@ class HarvestEquipCodex(SrOperation):
         self.tab_x: int = tab_x
 
     def _ocr_name(self, img) -> str:
-        """OCR 右侧装备名区,取最长(最像装备名)文本;归一 OCR 把「·」读成「-」的问题。"""
+        """OCR 右侧装备名区,取最长(最像装备名)文本;归一 OCR 把「·」读成「-」的问题。
+
+        保留裁剪读(2026-08-24 crop-first 审计):每次 click 后独立截图、单 OCR 消费者
+        (无同帧缓存复用收益);NAME_REGION 窄带隔离图鉴网格密集文字。
+        """
         x0, y0, x1, y1 = NAME_REGION
         crop = img[y0:y1, x0:x1]
         res = self.ctx.ocr_service.get_ocr_result_list(image=crop, crop_first=False)

@@ -49,10 +49,16 @@ yml-only 调试 flag(`gate_director`/`gate_shop_close`/`gate_shop_open`/`gate_ho
 |---|---|---|---|
 | director 环入口 | PROFILE_CLOSED 稳定窗,末帧透传 `_observe` | 开商店态容忍(收起重进)→ 真特效 bail(3-strike) | 放行(observe 自截图) |
 | shop 买前收起 | PROFILE_CLOSED,稳定帧复用(M1) | fail-closed retry | 放行 |
-| shop 开店 | PROFILE_OPEN | 放行(suppress) | 放行 |
+| shop 开店 | PROFILE_OPEN | 放行(suppress;**刻意分层**:开店站超时已等满稳定窗,后续读在买循环内自带重试消化半开帧——与买前收起的 fail-closed 差异是设计非回归) | 放行 |
 | shop 买后收起 | PROFILE_CLOSED | 放行(suppress) | 放行 |
 | ensure_shop 双向 | 开/关 profile | 返回 False(机制恢复) | 旧单次验证 |
 | 钩子前置 | PROFILE_CLOSED | 跳过 reward 采集 | 放行 |
+
+已知观察项(r347 review M-1):环入口 collapse 容忍路径不经 `_bail`
+3-strike 计数——有界(retry 上限 6 次/节点,耗尽走 director fail
+streak ≥5 兜底),但收起点击失败时以无特征 generic fail 收场;实机
+观察 `[cw] 环入口开商店态` 频率,频繁则落修法(click 失败返 False
+走 bail 留证)。
 
 回归锁:flag 不得回流(test_cw_gate_flags)/`_legacy_poll` 不得回流+fail-closed 语义
 (test_cw_r336_batch4_locks)/旧探针锚不得回流+gate 必须在(test_cw_r297_p0_fixes)。

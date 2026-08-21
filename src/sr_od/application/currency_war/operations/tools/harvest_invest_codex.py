@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -49,9 +50,13 @@ class HarvestInvestCodex(SrOperation):
                         self.seen.add(json.loads(line)['name'])
 
     def _ocr_texts(self, img, region):
+        """全图 OCR + rect 过滤(2026-08-24 crop-first 审计转换;fixture 投资策略/default.png
+        对拍与裁剪读逐字等价)。同帧多次调用(_first_row_text 3 次 + _detail)复用同一帧级缓存,
+        不再各裁各识。坐标为绝对值(全图 OCR 原生绝对坐标,无需 +region 偏移)。"""
         x0, y0, x1, y1 = region
-        res = self.ctx.ocr_service.get_ocr_result_list(image=img[y0:y1, x0:x1], crop_first=False)
-        return [(r.data.strip(), int(r.center.x) + x0, int(r.center.y) + y0)
+        res = self.ctx.ocr_service.get_ocr_result_list(
+            image=img, rect=Rect(x0, y0, x1, y1), crop_first=False)
+        return [(r.data.strip(), int(r.center.x), int(r.center.y))
                 for r in res if r.data and r.w > 18]
 
     def _row_ys(self, img) -> list[int]:
