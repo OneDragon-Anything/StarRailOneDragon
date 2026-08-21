@@ -702,6 +702,13 @@ class PrepDirector(SrOperation):
                         s.node_type for s in sorted(
                             (x for x in slots if x.state == 'upcoming'),
                             key=lambda x: x.idx) if s.node_type]
+                    # r306(用户指路,方向修正):
+                    # **实时识别是权威**——每备战帧读节点行,
+                    # 应对 invest-env 等策略对节点的改变;
+                    # 开局帧的完整槽序存 plane_node_table 只作
+                    # **离线统计源**(跨局累积建「位面典型节点表」
+                    # 进 sim 骨架/策略知识)+ current 槽高亮读不到
+                    # 时的左移兜底参照。不做决策主源。
             except Exception:   # noqa: BLE001  best-effort 写入
                 pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战

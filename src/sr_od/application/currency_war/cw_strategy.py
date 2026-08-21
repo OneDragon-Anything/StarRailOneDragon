@@ -198,6 +198,10 @@ class StrategySession:
     # (恒 None 实锤)时左移推断用:本轮 current = 上帧 upcoming[0]
     # (节点行固定序列左移一位)。
     upcoming_types: list[str] | None = None
+    # r306(用户指路):开局帧完整槽序——**离线统计源**(跨局累积
+    # 建「位面典型节点表」进 sim 骨架/策略知识)+ 左移兜底参照。
+    # 决策主源 = 实时识别(每备战帧读节点行,应对策略改节点)。
+    plane_node_table: list[str] | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

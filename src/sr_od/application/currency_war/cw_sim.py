@@ -181,17 +181,20 @@ def boss_delta(dir_round: int, rng: random.Random,
 
 
 def sample_node_sequence(rng: random.Random) -> list[str]:
-    """P1 节点序列(r284 修正:固定骨架,非随机采样)。
+    """P1 节点序列(r306b 实证统计:25 开局帧众数表)。
 
-    遥测实证(14 帧 nodeseq,2026-08-23):P1 骨架固定
-    `reward reward battle battle supply _ _ reward [boss]`,
-    slot5(=r6):battle 为主(Hu 1.7 弱匹配的 encounter 多为
-    战斗误判;用户指正 r6 非遭遇),slot6(=r7):encounter
-    强匹配(0.5-1.2,稳定遭遇位)。
-    用户口述:位面节点基本固定,特殊策略才改。"""
+    典型表(每帧读全,用户指路):reward/reward/battle/battle/
+    supply/battle/encounter/reward/boss——slot1/2/4/7 全帧
+    一致(25/25);**slot3/5/6 是变异位**(24/25、23/25、24/25
+    主型,余为策略效果改节点:战斗→遭遇/补给)。
+    用户定调:位面节点基本固定,特殊策略才改;实机以实时
+    识别为权威,本表用于模拟骨架/策略预知(如 r7 遭遇→
+    r6 备战破息)。"""
     seq = ['reward', 'reward', 'battle', 'battle', 'supply']
-    seq.append(rng.choices(('battle', 'encounter'), (0.7, 0.3))[0])
-    seq.append(rng.choices(('encounter', 'battle'), (0.8, 0.2))[0])
+    # slot5(r6):battle 主(23/25),策略效果位
+    seq.append(rng.choices(('battle', 'encounter'), (0.92, 0.08))[0])
+    # slot6(r7):encounter 主(24/25)
+    seq.append(rng.choices(('encounter', 'supply'), (0.96, 0.04))[0])
     seq.append('reward')
     seq.append('boss')
     return seq
