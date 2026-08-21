@@ -270,17 +270,17 @@ class LineStrategy(DefaultCwStrategy):
         cat = session.v2_state[2]
         if emg:
             return self._emergency_actions(state, session)
+        # r291(局26 实锤:war/cat 帧绕过破息窗):窗口原在分支序
+        # economy 之后——war 态(war return)与追赶态(cat return)
+        # 都到不了它,r6 金 23 war 帧只 LevelUp 买 0(店有仙舟件)
+        # → 配方冻死 r4-r8 连掉。修:破息窗提到 cat 之前(应急
+        # 之外最高优先——P1 r5+ 的投资窗不因象限漂移失效)。
+        # r278→r285(节点骨架杠杆):slot5-6 遭遇高发,cw_sim
+        # r6/r7 合计 -28.6 HP——遭遇对是血口,r8 太晚。
+        if state.plane == 1 and state.round_num >= 5:
+            return self._boss_breaker_actions(state, session)
         if cat:
             return self._catchup_actions(state, session)
-        # r278→r285(节点骨架杠杆重定位):骨架实证 slot5-6 遭遇
-        # 高发(60%/70%),cw_sim 定量 r6/r7 合计 -28.6 HP(P1 失血
-        # 的 130%)——**遭遇对才是血口**,r8(reward +2)破息太晚。
-        # 修:破息窗从 r8 提前到 r5/r6(slot5/6 的前夜);r8 保底
-        # (节点可能变异 battle)。boss 前投资逻辑不变(地板/
-        # 升人口/买最强)。
-        if state.plane == 1 and state.round_num >= 5 \
-                and not session.v2_state[1]:
-            return self._boss_breaker_actions(state, session)
         if session.v2_state[0] == cw_phase_machine.MODE_ECONOMY:
             return self._economy_actions(state, session)
         return self._war_actions(state, session)
