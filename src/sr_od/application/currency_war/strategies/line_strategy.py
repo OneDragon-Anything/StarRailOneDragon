@@ -59,6 +59,10 @@ _REBIRTH_FLOOR: int = 20
 #: 经济模式地板取 50,战力模式 30[S4:两档见 cw_economy._xp_gold_floor
 #: 同语义,Phase A 简化先统一 50/30 两数])
 _INTEREST_FLOOR: int = 50
+# r269b 配方找件刷的期望门:P(刷后店≥1 配方件)≥此值才刷。
+# 校准:lv4-6 约 35-50%(刷划算);lv7+ 1费概率塌到 19-14%
+# → 配方件 p_any ~15% 以下 = 刷了也白刷(该升人口换费用段)。
+_RECIPE_REFRESH_MIN_P: float = 0.25
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
@@ -468,6 +472,12 @@ class LineStrategy(DefaultCwStrategy):
         # 刷一次找件(r258 同模式,门换配方判据)。局17 P1 零刷新
         # +仙舟只发 1-2 张 → 基础冻住 → boss -34。概率分析:仙舟
         # 供给充足(每轮期望 0.7 张)——缺的是主动找,不是发牌。
+        # r269b(用户点题:概率表接入决策):刷不刷按**期望价值**判——
+        # P(刷后店≥1 配方件) = 1-(1-p_recipe)^5(p 来自
+        # REFRESH_PROB/实读概率条 × 配方件种数/同费种数);
+        # 期望值 = p_any × (配方缺档×HP_GOLD 等值近似) - 刷价。
+        # p_any < 门槛(等级太高 1 费概率塌掉,如 lv8 14%)→ 不刷
+        # (该升人口换费用段,刷了也白刷)。值常量单一源在代码。
         if state.plane == 1 and 5 <= state.round_num <= 8:
             _RECIPE = {'仙舟', '持续伤害', '列车同行', '护盾'}
             _board = st2.board or {}
@@ -481,8 +491,24 @@ class LineStrategy(DefaultCwStrategy):
                     1 for c in (state.shop or [])
                     if c.name and c.faction in _RECIPE)
                 if _shop_recipe == 0:
+                    from sr_od.application.currency_war.cw_chars import (
+                        CHARACTERS,
+                    )
+                    from sr_od.application.currency_war.cw_shop_odds import (
+                        refresh_prob,
+                    )
+                    _p1 = (getattr(state, 'refresh_probs', None)
+                           or {}).get(1) or refresh_prob(st2.level, 1)
+                    _recipe_kinds = sum(
+                        1 for n, ch in CHARACTERS.items()
+                        if ch.cost == 1 and (ch.factions or [''])[0]
+                        in _RECIPE)
+                    _all1 = sum(1 for n, ch in CHARACTERS.items()
+                                if ch.cost == 1)
+                    _p_any = 1 - (1 - _p1 * _recipe_kinds / max(_all1, 1)) ** 5
                     _cost = state.shop_refresh_cost or 2
-                    if st2.gold - _cost >= 5:
+                    if _p_any >= _RECIPE_REFRESH_MIN_P \
+                            and st2.gold - _cost >= 5:
                         actions.append(RefreshShop(_cost))
         return actions
 
@@ -497,8 +523,10 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             if not self._buy_guards(card, state, len(actions)):
                 continue
+            # r269:P2 期加收 P2 桥 core(转换通道;局17 金 95 攒死)
             if self._line_wants(card, state, session) \
-                    or self._bridge_seed(card, state):
+                    or self._bridge_seed(card, state) \
+                    or self._p2_core_wants(card, state, session):
                 actions.append(BuyCard(card))
                 rem -= card.cost
         bought = {id(a.card) for a in actions}
@@ -869,6 +897,40 @@ class LineStrategy(DefaultCwStrategy):
                 '护盾' in set(ch.flows) | set(ch.factions))
             return is_shield
         return True
+
+    @staticmethod
+    def _p2_core_wants(card, state: GameState,
+                       session: StrategySession) -> bool:
+        """r269(P2 转换修复 L2,局17 三问判读):P2 期买 P2 桥 core。
+
+        局17 实锤:P2 金 76/84/95 攒着(买0/买1 反复),符玄(4费
+        仙舟 P2 核心)在店无人接——_p2_precache_wants 是 **P1 预囤**
+        谓词(plane!=1 即拒),P2 内无对应通道 → 配方板进 P2 后
+        没有升级路径(板面冻结六轮)。
+
+        门(P2 版,比 P1 预囤宽):
+        ① plane==2(P3 另议);
+        ② 非应急(应急金保命优先);
+        ③ 卡 ∈ P2 桥 core(方向对齐:锁线 P2 键羁绊 ∩ 桥 bonds);
+        ④ 金门由调用侧 floor 管(economy P2 floor 语义:
+          金≥50 时超额部分可投)。
+        """
+        if state.plane != 2 or not card.name:
+            return False
+        if session.v2_state and session.v2_state[1]:
+            return False    # 应急不囤
+        line = line_of(session.locked_line) if session.locked_line else None
+        if line is None:
+            return False
+        p2_form = line.p2p3_forms.get('P2', '')
+        line_bonds = {part.rstrip('0123456789')
+                      for part in p2_form.split('+')} - {''}
+        bridge_bonds: set[str] = set()
+        for combo in BRIDGE_POOL_P2:
+            bridge_bonds.update(combo.engine_bonds.keys())
+        if not (line_bonds & bridge_bonds):
+            return False
+        return any(card.name in combo.core for combo in BRIDGE_POOL_P2)
 
     @staticmethod
     def _pop_low(state: GameState, session: StrategySession) -> bool:
