@@ -707,14 +707,16 @@ class PrepDirector(SrOperation):
             cur_key = f'{_plane}:{_round}'
             if _key == cur_key:   # 本节点已采
                 return
-            _sess._reward_probed_key = cur_key
-            # 仅 shop 关态 clean 备战帧(商店开时六边形被遮)
+            # 仅 shop 关态 clean 备战帧(商店开时六边形被遮);
+            # 守卫在前——不 clean 不标记(下帧重试),修首版
+            # 先标记后守卫的"一次不 clean 永不采"缺陷
             if self.round_by_find_area(screen0, '货币战争-备战-开商店',
                                        '备战标识-购买经验').is_success:
                 return
             if not self.round_by_find_area(screen0, '货币战争-备战',
                                            '备战标识-购买经验').is_success:
                 return
+            _sess._reward_probed_key = cur_key
             self.ctx.controller.click(1555, 930)
             _time.sleep(1.0)
             screen1 = self.screenshot()
