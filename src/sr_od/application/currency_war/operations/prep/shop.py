@@ -450,12 +450,22 @@ class BuyShopCards(SrOperation):
                     import time as _t3
                     for _ in range(8):   # ≤2s@0.25s 步长
                         _t3.sleep(0.25)
-                        _fp = _cvu.fingerprint_in_rects(
-                            self.screenshot(), _rects)
-                        if _base is not None and _cvu.fingerprint_same(_fp, _base):
+                        # r327(终审 D):截图裸调会炸 refresh 分支
+                        # (离线 mock/瞬断)——与同文件快照段/gate
+                        # 调用同契约:suppress 降级为继续等,
+                        # 循环尽=超时回退旧 sleep 语义。
+                        _fp = None
+                        try:
+                            _shot = self.screenshot()
+                            _fp = _cvu.fingerprint_in_rects(_shot, _rects)
+                        except Exception:   # noqa: BLE001  离线契约
+                            _fp = None
+                        if _fp is not None and _base is not None \
+                                and _cvu.fingerprint_same(_fp, _base):
                             _stable = True
                             break
-                        _base = _fp
+                        if _fp is not None:
+                            _base = _fp
                     if not _stable:
                         _t3.sleep(0.5)   # 超时回退(≈旧 1.0s 总量)
                     total_refresh += 1

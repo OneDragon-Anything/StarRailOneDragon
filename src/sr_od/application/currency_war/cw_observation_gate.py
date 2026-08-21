@@ -131,7 +131,14 @@ def wait_stable_frame(
         if _name != profile['expect_screen']:
             _diag['screen'] += 1
             _sleep(_POLL_S)
+            # r327(终审 B):锚 miss 连 first_fp 一起重置——
+            # 只重置 stable_since 会在「锚短暂 miss 后恢复且
+            # 指纹未变」时卡死:L139 same 成立跳过重设分支,
+            # stable_since 恒 None → 稳定窗永不达成 → 必超时
+            # →(director 站)同因 3 次 3-strike 停机——瞬时锚
+            # miss 被放大成停局,违背时间稳定窗初衷。
             stable_since = None
+            first_fp = None
             continue
         # 帧一致:框架 per-rect(与全图 is_same_image 并列的增量)
         fp = cv2_utils.fingerprint_in_rects(

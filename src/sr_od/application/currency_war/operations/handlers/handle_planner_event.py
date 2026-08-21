@@ -96,10 +96,13 @@ class HandlePlannerEvent(SrOperation):
             return self.round_retry(wait=1)
         # 4. 点确认+验关(r326/P1⑦ 等画面审查:确认落空→
         # overlay 不关→外环反复重跑本节点——confirm_and_verify
-        # 统一收尾,计节点预算兜底替代无限重点)
+        # 统一收尾,计节点预算兜底替代无限重点)。
+        # r327(终审 E):验证词用全词「我来当策划」(入场锚同词,
+        # cw_hacker_planner.yml:26 live-verified)——短词「策划」
+        # 在艺术字漏读时可能假通过。
         from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
             confirm_and_verify,
         )
         return confirm_and_verify(
             self, confirm_point=self.CONFIRM,
-            entry_keyword='策划', tag='cw-planner')
+            entry_keyword='我来当策划', tag='cw-planner')
