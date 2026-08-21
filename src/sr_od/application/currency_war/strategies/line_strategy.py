@@ -63,6 +63,9 @@ _INTEREST_FLOOR: int = 50
 # 校准:lv4-6 约 35-50%(刷划算);lv7+ 1费概率塌到 19-14%
 # → 配方件 p_any ~15% 以下 = 刷了也白刷(该升人口换费用段)。
 _RECIPE_REFRESH_MIN_P: float = 0.25
+# r270 配方饥饿连续刷上限(期望分析:3 次命中 87%,总期望
+# 6.1 金 vs 不刷 20.8 金等值——多刷严格优;>3 边际递减)
+_RECIPE_REFRESH_MAX: int = 3
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
@@ -469,47 +472,53 @@ class LineStrategy(DefaultCwStrategy):
                     actions.append(RefreshShop(_cost))
         # r268(配方找件刷新,局17 实锤):r5-r8 配方基础未满
         # (板面 仙舟/DOT/列车/护盾 档 <5)且店里无配方件可买 →
-        # 刷一次找件(r258 同模式,门换配方判据)。局17 P1 零刷新
+        # 刷找件(r258 同模式,门换配方判据)。局17 P1 零刷新
         # +仙舟只发 1-2 张 → 基础冻住 → boss -34。概率分析:仙舟
         # 供给充足(每轮期望 0.7 张)——缺的是主动找,不是发牌。
         # r269b(用户点题:概率表接入决策):刷不刷按**期望价值**判——
         # P(刷后店≥1 配方件) = 1-(1-p_recipe)^5(p 来自
         # REFRESH_PROB/实读概率条 × 配方件种数/同费种数);
-        # 期望值 = p_any × (配方缺档×HP_GOLD 等值近似) - 刷价。
         # p_any < 门槛(等级太高 1 费概率塌掉,如 lv8 14%)→ 不刷
-        # (该升人口换费用段,刷了也白刷)。值常量单一源在代码。
+        # (该升人口换费用段,刷了也白刷)。
+        # r270(局18 实锤:单刷不够):仙舟冻在 2-3 档八轮,单刷
+        # miss(~50%)就放弃 → 板面不长 → 每轮 -13。期望分析:
+        # 连刷 3 次(命中 87%)总期望 6.1 金 vs 不刷 20.8 金
+        # 等值——多刷严格优。上限 _RECIPE_REFRESH_MAX,每次
+        # 重估(店里有配方件/配方满/预算尽 → 停)。
+        from sr_od.application.currency_war.cw_state import RefreshShop
         if state.plane == 1 and 5 <= state.round_num <= 8:
             _RECIPE = {'仙舟', '持续伤害', '列车同行', '护盾'}
-            _board = st2.board or {}
-            _recipe_lv = sum(v for k, v in _board.items()
-                             if k in _RECIPE)
-            if _recipe_lv < 5 and not any(
-                    isinstance(a, BuyCard)
-                    and a.card.faction in _RECIPE
-                    for a in actions):
-                _shop_recipe = sum(
-                    1 for c in (state.shop or [])
-                    if c.name and c.faction in _RECIPE)
-                if _shop_recipe == 0:
-                    from sr_od.application.currency_war.cw_chars import (
-                        CHARACTERS,
-                    )
-                    from sr_od.application.currency_war.cw_shop_odds import (
-                        refresh_prob,
-                    )
-                    _p1 = (getattr(state, 'refresh_probs', None)
-                           or {}).get(1) or refresh_prob(st2.level, 1)
-                    _recipe_kinds = sum(
-                        1 for n, ch in CHARACTERS.items()
-                        if ch.cost == 1 and (ch.factions or [''])[0]
-                        in _RECIPE)
-                    _all1 = sum(1 for n, ch in CHARACTERS.items()
-                                if ch.cost == 1)
-                    _p_any = 1 - (1 - _p1 * _recipe_kinds / max(_all1, 1)) ** 5
-                    _cost = state.shop_refresh_cost or 2
-                    if _p_any >= _RECIPE_REFRESH_MIN_P \
-                            and st2.gold - _cost >= 5:
-                        actions.append(RefreshShop(_cost))
+            from sr_od.application.currency_war.cw_chars import (
+                CHARACTERS,
+            )
+            from sr_od.application.currency_war.cw_shop_odds import (
+                refresh_prob,
+            )
+            _recipe_kinds = sum(
+                1 for n, ch in CHARACTERS.items()
+                if ch.cost == 1 and (ch.factions or [''])[0] in _RECIPE)
+            _all1 = sum(1 for n, ch in CHARACTERS.items()
+                        if ch.cost == 1)
+            _p1 = (getattr(state, 'refresh_probs', None) or {}).get(1) \
+                or refresh_prob(st2.level, 1)
+            _p_any = 1 - (1 - _p1 * _recipe_kinds / max(_all1, 1)) ** 5
+            _cost = state.shop_refresh_cost or 2
+            for _ in range(_RECIPE_REFRESH_MAX):
+                _board = st2.board or {}
+                if sum(v for k, v in _board.items()
+                       if k in _RECIPE) >= 5:
+                    break                       # 配方满
+                if any(isinstance(a, BuyCard)
+                       and a.card.faction in _RECIPE for a in actions):
+                    break                       # 已提案配方件
+                if any(c.name and c.faction in _RECIPE
+                       for c in (state.shop or [])):
+                    break                       # 店里已有(会买)
+                if _p_any < _RECIPE_REFRESH_MIN_P \
+                        or st2.gold - _cost < 5:
+                    break                       # 期望/预算门
+                actions.append(RefreshShop(_cost))
+                st2.gold -= _cost
         return actions
 
     def _buy_actions(self, state: GameState,
