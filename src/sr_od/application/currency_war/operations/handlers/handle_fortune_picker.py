@@ -71,9 +71,16 @@ class HandleFortunePicker(SrOperation):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw][fortune] 命运卜者强化:卡=%s → 选卡%d(%s)',
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
+        # r315(等画面审查 P0②:全无出口验证,失败分支死码):
+        # 选卡=safe_click(bug#1 缓解);确认+验关统一走
+        # confirm_and_verify(入口关键词=命运卜者;确认落空→
+        # overlay 不关→round_retry 计预算兜底,不再无限重点)
+        from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+            confirm_and_verify,
+            safe_click,
+        )
+        safe_click(self, target, tag='cw-fortune')
         time.sleep(1.2)
-        self.ctx.controller.click(self.CONFIRM)
-        time.sleep(1.5)
-        return self.round_success(status=f'命运卜者强化已选(卡{best_i + 1})')
+        return confirm_and_verify(
+            self, confirm_point=self.CONFIRM,
+            entry_keyword='命运卜者', tag='cw-fortune')

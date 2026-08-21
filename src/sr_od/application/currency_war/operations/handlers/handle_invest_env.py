@@ -168,12 +168,15 @@ class HandleInvestEnv(SrOperation):
                 _cnt2 = None
                 for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
                         image=_after, crop_first=False).items():
-                    _mm2 = _re2.search(r'剩余次数[::]\s*(\d+)', _t)
+                    _mm2 = _re2.search(r'剩余次数[：:]\s*(\d+)', _t)   # r315:补全角冒号
                     if _mm2 and _m.max is not None:
                         _cnt2 = int(_mm2.group(1))
                         break
                 if _cnt2 is not None and _cnt2 >= self._refresh_count:
                     # 次数读到了且没减 = 真没生效(None = OCR miss 不判假阳;review ④)
+                    # r315(审查附带 bug):正则字符类是两个 ASCII
+                    # 冒号(视觉像全角)——漏匹配全角冒号 → env 屏
+                    # _cnt2 恒 None → 停机守卫对 env 静默失效
                     _shot = self.save_screenshot(prefix='cw_env_refresh_fail')
                     from pathlib import Path as _P2
                     _fp = _P2('.debug/temp/currency_war/refresh_click_fail.flag')
