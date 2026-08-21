@@ -240,8 +240,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         st.gold += BASE_INCOME + min(INTEREST_CAP, st.gold // 10) \
             + (min(STREAK_CAP_GOLD, streak) if streak > 0 else 0)
         st.shop = pool.draw_shop(st.level)
-        # 决策循环:刷新后同轮再买一段(真 op 两阶段语义),至多 2 段
-        for _seg in range(2):
+        # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
+        # RefreshShop 动作后**独立重决策一段**——r270 连刷在
+        # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
+        # 执行+买后重估(r251):刷→见新店→(再刷或买)。
+        # r273 修:sim 逐动作消费,遇 RefreshShop 执行后立即
+        # re-decide(捕捉"刷到就买"),段数上限防死循环。
+        for _seg in range(8):
             strat.update_target(st, sess, None)
             acts = strat.decide_prep(st, sess, None)
             if not use_refresh:
@@ -249,8 +254,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if not isinstance(a, RefreshShop)]
             if not acts:
                 break
-            refreshed = False
+            progressed = False
             for a in acts:
+                if isinstance(a, RefreshShop):
+                    res.refreshes += 1
+                    st.gold -= (st.shop_refresh_cost or 2)
+                    st.shop = pool.draw_shop(st.level)
+                    progressed = True
+                    break          # 刷后立即 re-decide(见新店)
                 if isinstance(a, BuyCard):
                     pool.take(a.card.name)
                     st.gold -= a.card.cost
@@ -258,21 +269,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     st.bench.append(BenchChar(
                         slot=len(st.bench) + 1, char_id=a.card.name,
                         faction=a.card.faction))
-                elif isinstance(a, RefreshShop):
-                    res.refreshes += 1
-                    st.gold -= (st.shop_refresh_cost or 2)
-                    st.shop = pool.draw_shop(st.level)
-                    refreshed = True
+                    progressed = True
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
                     xp += 4
+                    progressed = True
                 elif isinstance(a, SellBench):
                     if 0 <= a.bench_idx < len(st.bench):
                         bc = st.bench.pop(a.bench_idx)
                         ch = CHARACTERS.get(bc.char_id)
                         st.gold += (ch.cost if ch and ch.cost else 1)
                         pool.ret(bc.char_id)
-            if not refreshed:
+                        progressed = True
+            if not progressed:
                 break
         while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
             xp -= XP_TO_NEXT_LEVEL[st.level]
