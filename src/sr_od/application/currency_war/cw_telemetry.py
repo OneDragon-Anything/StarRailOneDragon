@@ -293,6 +293,10 @@ class TelemetryRecorder:
             if _st is not None:
                 _board = dict(getattr(_st, 'board', None) or {})
                 _bench = len(getattr(_st, 'bench', None) or [])
+                # r339c(review B:语义注)——last_state 是**最近一次
+                # 备战观察**(结算前最后一读≈战前;P2 后段可能隔一
+                # 轮旧值:结算触发在下次备战观察前)。字段名
+                # board_before 语义成立,精度=「最近战前观察」。
         except Exception:   # noqa: BLE001  快照 best-effort
             pass
         rec = OutcomeRecord(

@@ -124,8 +124,6 @@ class CurrencyWarRunLoop(SrOperation):
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         cw_telemetry.start_run(difficulty=_diff_for_telemetry)
-        # r339:注册 ctx.cw_match 引用(record_outcome 板深快照源)
-        cw_telemetry.set_ctx_match(getattr(self.ctx, 'cw_match', None))
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
@@ -143,6 +141,10 @@ class CurrencyWarRunLoop(SrOperation):
             if self._cw_config.strategy_seed is not None:
                 _session.rng = random.Random(self._cw_config.strategy_seed)
             self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
+            # r339b:板深快照注册移**match new 后**(review 预核 A:
+            # 原在 start_run 处注册时 cw_match 恒 None——新局
+            # 首战快照死)。续跑局在 else 支支注册。
+            cw_telemetry.set_ctx_match(self.ctx.cw_match)
             # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
             if self.ctx.cw_briefing_affixes:
                 _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
@@ -160,6 +162,10 @@ class CurrencyWarRunLoop(SrOperation):
             if self.ctx.cw_briefing_bosses:
                 _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
                 self.ctx.cw_briefing_bosses = None  # 取走清空(防跨局复用)
+        else:
+            # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
+            # start_run,统一在两支各自 new/延用后注册)
+            cw_telemetry.set_ctx_match(self.ctx.cw_match)
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _snap(self, tag: str) -> None:
