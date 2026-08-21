@@ -557,10 +557,9 @@ class LineStrategy(DefaultCwStrategy):
         # 机会成本);局35/36 共性「金花不出去」的解法之一。
         # 门:①店有高优件未买且金差≤卖价;②bench 有非配方
         # 杂牌(off-target);③cap1(每轮最多一次)。
-        try:
+        import contextlib
+        with contextlib.suppress(Exception):   # 腾金失败不阻塞常规经济
             actions.extend(self._sell_for_gold(st2, session, floor))
-        except Exception:   # noqa: BLE001  腾金失败不阻塞常规经济
-            pass
         # r258(早期方向刷新,HP≥60 根因):P1 r≤4 方向窗口期,
         # 未锁线未成桥且店里方向件 <2 → 刷一次找种子。
         # 25 局 HP 轨迹实锤:好局(84/100/84)全部 r1 就有方向
