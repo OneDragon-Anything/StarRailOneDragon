@@ -669,21 +669,12 @@ class LineStrategy(DefaultCwStrategy):
                         or self._pair_wants(card, state, session):
                     actions.append(BuyCard(card))
                     rem -= 1
-        # r342(板深杠杆;sim r341h 分解实证):P1 期方向件买后
-        # 余钱+余位 → 收 cost≤2 散件上板(不与配方抢钱——floor
-        # 门保持;板深甜点 深6 起 Δ-11→-1,散件填充是量化最大
-        # 增益源:B 实验 5.33% vs 基线 1.67%)。保守版:仅 P1、
-        # cost≤2、guards 全走。
-        if state.plane == 1:
-            for card in (state.shop or []):
-                if rem - card.cost < floor or card.cost > 2:
-                    continue
-                if id(card) in {id(a.card) for a in actions}:
-                    continue
-                if not self._buy_guards(card, state, len(actions)):
-                    continue
-                actions.append(BuyCard(card))
-                rem -= card.cost
+        # r343(review J/F 处置):r342 散件填充**撤除**——修正
+        # 深度代理(可 deploy 件数,对齐实机 _should_deploy)后
+        # 复判增益归零(3.20% vs 3.20%):旧增益是「bench=上阵」
+        # 错位伪影(实机散件 drop 不上场,只剩金消耗+bench 拥挤
+        # +close 阵营死库存)。板深杠杆的真实落点=阵营 count≥2
+        # 的集中买(pair_wants 已有)+升级节奏,非散件。
         return actions
 
     @staticmethod

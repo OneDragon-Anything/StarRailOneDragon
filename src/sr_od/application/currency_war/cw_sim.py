@@ -162,13 +162,19 @@ def battle_delta(round_num: int, dir_round: int,
     return int(-loss)
 
 
-# r340 实机分布(31 局 outcomes 全量差分,645 轮):
+# r343 实机分布(31 局 outcomes 全量差分,645 轮):
 # 逐 run 差分 battle -7.3 / boss -25.1 / encounter -12.2;
 # **板深条件化**(decisions board join,深=Σ阵营人次):
 # battle 深[6-8] -1.0 vs [3-5] -11.3 vs [15-17] -7.1(非单调,
 # 深 12+ 才稳);boss 深15+ -23.7 vs 深12 -27.9。
 # 池结构:{node_type: {depth_bucket: [Δ...]}}——sim 结算按
 # 当轮实deep采样(经验分布,无参数假设)。
+# r343(review E 注):池在进程内懒加载一次冻结——消费方是
+# sim CLI(短命),新遥测数据要重跑进程生效。
+# r343(review F/J):深度代理=可 deploy 件数(阵营 count≥2
+# +引擎单件,capped by level)——对齐实机 _should_deploy。
+_SIM_ENGINE_FACTIONS: frozenset[str] = frozenset(
+    ('仙舟', '狼狩', '银河学者', '列车同行'))
 _LIVE_DELTA_POOL: dict | None = None
 _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 
@@ -223,16 +229,16 @@ def live_delta_pool() -> dict:
 
 def live_delta_for(node_type: str, depth: int,
                    rng: random.Random) -> int | None:
-    """按节点类型+板深取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。"""
+    """按节点类型+板深取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
+
+    r343(review E 修):邻桶回退只向**浅**侧(bucket-W)——
+    深侧封顶 15 后 +W 是死码,且向深回退=偏乐观(深=掉血少)。
+    """
     _map = live_delta_pool().get(node_type) or {}
     bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
     pool = _map.get(bucket)
     if not pool:
-        # 相邻桶回退(数据稀疏桶,如深[18+]并到[15])
-        for off in (-1, 1):
-            pool = _map.get(bucket + off * _DEPTH_BUCKET_W)
-            if pool:
-                break
+        pool = _map.get(bucket - _DEPTH_BUCKET_W)   # 浅侧回退
     return rng.choice(pool) if pool else None
 
 
@@ -383,8 +389,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # r340:板深条件化实机 Δ 池优先(经验分布重放——
         # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
         # 无匹配桶回退旧方向二元模型。
-        # r341f:同修正——Δ 采样用**上阵深度**(level 限)非 bench
-        _dep = min(st.level, len(st.bench))
+        # r343:同修正——Δ 采样用可 deploy 深度(口径同上)
+        from collections import Counter as _C2
+        _fc2 = _C2(b.faction for b in st.bench)
+        _dep = min(st.level, sum(c for f, c in _fc2.items() if c >= 2)
+                   + sum(c for f, c in _fc2.items()
+                         if c == 1 and f in _SIM_ENGINE_FACTIONS))
         _ld = live_delta_for(nodes[rn - 1], _dep, rng) \
             if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
         if _ld is not None:
@@ -395,10 +405,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
-        # r341f 修正:板深=**上阵数**(level 限的 deployed 代理),
-        # 非 bench 手牌——池拟合源是 OCR board(上阵阵营人次),
-        # bench 恒 8-9 与实机板深语义错位(杠杆实验全平的根因)。
-        res.depth_trail.append(min(st.level, len(st.bench)))
+        # r343(review F/J 修:深度代理对齐实机 deploy 口径)——
+        # 散件 drop 实机不上场(_should_deploy 的阵营 count≥2/
+        # 框架件判据),「bench 数」代理系统性高估。改为
+        # **可 deploy 件数**(阵营 count≥2 的 bench 卡数, capped
+        # by level;框架件近似=引擎阵营)。
+        from collections import Counter as _C
+        _fc = _C(b.faction for b in st.bench)
+        _deployable = sum(cnt for f, cnt in _fc.items() if cnt >= 2)
+        _deployable += sum(cnt for f, cnt in _fc.items()
+                           if cnt == 1 and f in _SIM_ENGINE_FACTIONS)
+        res.depth_trail.append(min(st.level, _deployable))
         if st.hp <= 0:
             break
     res.final_hp = st.hp
