@@ -124,6 +124,8 @@ class CurrencyWarRunLoop(SrOperation):
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         cw_telemetry.start_run(difficulty=_diff_for_telemetry)
+        # r339:注册 ctx.cw_match 引用(record_outcome 板深快照源)
+        cw_telemetry.set_ctx_match(getattr(self.ctx, 'cw_match', None))
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;

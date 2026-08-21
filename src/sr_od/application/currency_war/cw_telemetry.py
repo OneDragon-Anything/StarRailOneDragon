@@ -123,6 +123,11 @@ class OutcomeRecord:
     killed: bool | None = None
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(2026-08-18:胜负+扣血真值,输轮也记)
     streak: int | None = None           # 连胜/连败带符号(r68:RoundOutcome 有此字段但序列化丢弃 → 补)
+    # —— r339 板深快照(板深→胜率模型校准数据源;复盘发现 sim
+    # 天花板 8%>=60 vs 实机 3/3 达标的矛盾根因=模型缺板深机制,
+    # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。
+    board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
+    bench_count: int = 0               # 战前 bench 数(板深第二维)
 
 
 @dataclass
@@ -272,7 +277,24 @@ class TelemetryRecorder:
         self._append("decisions.jsonl", _to_jsonable(trace))
 
     def record_outcome(self, run_id: str, outcome) -> None:
-        """记一条观测结果(outcomes.jsonl)。outcome: cw_performance.RoundOutcome。"""
+        """记一条观测结果(outcomes.jsonl)。outcome: cw_performance.RoundOutcome。
+
+        r339:自动附战前板面快照(board_before/bench_count,从
+        ctx.cw_match.session.last_state 取——板深→胜率模型
+        校准数据源;miss 容错,缺省空)。ctx match 经
+        set_ctx_match 注册(启动时),record 端无 ctx 参数
+        侵入。
+        """
+        _board, _bench = {}, 0
+        try:
+            _m = _CTX_MATCH_REF[0]
+            _st = getattr(getattr(_m, 'session', None), 'last_state', None) \
+                if _m is not None else None
+            if _st is not None:
+                _board = dict(getattr(_st, 'board', None) or {})
+                _bench = len(getattr(_st, 'bench', None) or [])
+        except Exception:   # noqa: BLE001  快照 best-effort
+            pass
         rec = OutcomeRecord(
             ts=datetime.now().isoformat(timespec="seconds"),
             run_id=run_id,
@@ -284,6 +306,7 @@ class TelemetryRecorder:
             damage_dealt=outcome.damage_dealt, killed=outcome.killed,
             progress_delta=outcome.progress_delta,
             streak=outcome.streak,
+            board_before=_board, bench_count=_bench,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 
@@ -360,6 +383,14 @@ class TelemetryRecorder:
 _RECORDER: TelemetryRecorder | None = None
 _CURRENT_RUN_ID: str = ""
 _CURRENT_DIFFICULTY: str = ""
+# r339:ctx.cw_match 弱引用槽(record_outcome 板深快照源;
+# battle_loop 启动 run 时注册,None=离线/测试容错)
+_CTX_MATCH_REF: list = [None]
+
+
+def set_ctx_match(match) -> None:
+    """注册当前 ctx.cw_match(板深快照源;run 边界换新)。"""
+    _CTX_MATCH_REF[0] = match
 
 
 def get_recorder() -> TelemetryRecorder:
@@ -685,6 +716,60 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
     return abn
 
 
+def query_hp(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(r339):掉血分解——逐轮 (node, delta, 板深, 方向态)。
+
+    与 sim hp_events 同构(对拍 sim 校准模型的直接读出端);
+    board_before/bench_count 为 r339 起记录(旧数据缺省显示 -)。
+    """
+    lines = []
+    prev_hp: int | None = None
+    for o in read_jsonl(replay_dir / "outcomes.jsonl"):
+        if run_id and o.get("run_id") != run_id:
+            continue
+        hp = o.get("hp_after")
+        delta = (prev_hp - hp) if (prev_hp is not None and hp is not None) else None
+        _b = o.get("board_before") or {}
+        depth = sum(_b.values())
+        bench = o.get("bench_count")
+        delta_s = f'{-delta:+d}' if delta is not None else '-'
+        lines.append(
+            f"  p{o.get('plane')}r{o.get('round_num')} {o.get('node_type') or '?':8s}"
+            f" hp={hp} Δ={delta_s}"
+            f" 板深={depth if _b else '-'} bench={bench if bench is not None else '-'}")
+        if hp is not None:
+            prev_hp = hp
+    return lines
+
+
+def query_economy(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(r339):金轨迹/滞留——逐轮 (gold, 收入, 花出, 息)。
+
+    「金花不出去」异常的量化端:滞留轮(金≥20 且花=0)标 ⚠。
+    """
+    best = _load_decisions_rounds(replay_dir, run_id)
+    lines = []
+    prev_gold: int | None = None
+    for k in sorted(best):
+        d = best[k]
+        acts = d.get("actions") or []
+        spend = sum((a.get("card", {}).get("cost") or 0)
+                    for a in acts if isinstance(a, dict)
+                    and a.get("__type__") == "BuyCard")
+        spend += 4 * sum(1 for a in acts
+                         if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        spend += sum((a.get("cost") or 0) for a in acts
+                     if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
+        g = d.get("gold") or 0
+        income = (g - prev_gold + spend) if prev_gold is not None else None
+        flag = ' ⚠滞留' if (g >= 20 and spend == 0) else ''
+        lines.append(
+            f"  p{k[0]}r{k[1]} g={g}"
+            f" 花={spend} 收={'-' if income is None else income}{flag}")
+        prev_gold = g
+    return lines
+
+
 def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
     """视图:羁绊激活档逐轮(配方成型判读的硬指标;r120 起 deploy 配方 target
     生效后,档数应随轮上升;恒 0 = 配方没真正上场)。"""
@@ -762,7 +847,8 @@ def _cli_main() -> None:
     ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
     ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
     ap.add_argument('--view', default='rounds',
-                    choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec', 'all'])
+                    choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
+                             'hp', 'economy', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     args = ap.parse_args()
     replay_dir = Path(args.replay_dir)
@@ -801,6 +887,12 @@ def _cli_main() -> None:
         print('[anomalies]')
         abn = query_anomalies(replay_dir, rid)
         print('\n'.join(abn) if abn else '  ✓ 无异常标记')
+    if args.view in ('hp', 'all'):
+        print('[hp]')
+        print('\n'.join(query_hp(replay_dir, rid)))
+    if args.view in ('economy', 'all'):
+        print('[economy]')
+        print('\n'.join(query_economy(replay_dir, rid)))
 
 
 if __name__ == '__main__':
