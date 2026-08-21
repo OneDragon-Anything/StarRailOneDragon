@@ -933,12 +933,16 @@ class LineStrategy(DefaultCwStrategy):
         r242(挂件质量):方向期只买引擎阵营(仙舟/列车/DOT)。
         r243:全羁绊判定(factions∪flows,艾丝妲 DOT flow 放行)。
         r245(稳定性 review 风险2):引擎门与锁线形态对齐——
-        锁线时放行集 = 引擎阵营 ∪ 锁线形态 form_tiers 的羁绊
-        (jizi P2=列车4+护盾3,护盾不是引擎但它是**线内需求**,
-        砂金/杰帕德被引擎门拒=P2 成型缺件)。"""
+        锁线时放行集 = 引擎阵营 ∪ 锁线形态 form_tiers 的羁绊。
+        ⚠️ r350(局38 boss -34 根因)推翻 r245 的「∪」:锁线后
+        引擎阵营兜底仍放行线外挂件(艾丝妲 flows=DOT 被引擎门
+        收进 jizi 局 4 张,占 2 部署位——线形态列车4+护盾3 根本
+        不需要 DOT,boss 板面 3 线内+3 线外散件)→ 锁线时放行集
+        **只**取线形态羁绊(引擎阵营门仅未锁线的桥方向期用;
+        carry/opportunistic 已由 _line_wants 处理,此处纯挂件)。"""
         if not card.name or not card.faction or card.faction == '?':
             return False
-        # r245:方向期阵营门(引擎 ∪ 锁线形态羁绊)
+        # r350:方向期阵营门——锁线=线形态羁绊;未锁线=引擎阵营
         has_direction = (session is not None
                          and (session.locked_line or session.bridge_id))
         if has_direction:
@@ -946,14 +950,19 @@ class LineStrategy(DefaultCwStrategy):
             ch = CHARACTERS.get(card.name)
             card_bonds = set(ch.factions) | set(ch.flows) if ch \
                 else {card.faction}
-            allow = set(_ENGINE_FACTIONS)
             if session.locked_line:
+                # r350:只认锁线形态(jizi=列车+护盾;DOT/仙舟等
+                # 引擎阵营不再是线内需求的替代品)
                 line = line_of(session.locked_line)
-                if line is not None:
-                    allow.update(_LinePseudoComp._parse_tiers(
-                        line.p2p3_forms.get(
-                            f'P{state.plane}', '') or
-                        line.p2p3_forms.get('P2', '')))
+                # _parse_tiers 返 dict{羁绊:档位};allow 只需键集(r350)
+                allow = set(_LinePseudoComp._parse_tiers(
+                    line.p2p3_forms.get(
+                        f'P{state.plane}', '') or
+                    line.p2p3_forms.get('P2', ''))) \
+                    if line is not None else set()
+                allow.discard('')
+            else:
+                allow = set(_ENGINE_FACTIONS)   # 桥方向期:引擎门
             if not (card_bonds & allow):
                 return False
         owned_factions = set(state.board.keys())
