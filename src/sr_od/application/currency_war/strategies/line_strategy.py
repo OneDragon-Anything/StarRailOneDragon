@@ -69,6 +69,9 @@ _RECIPE_REFRESH_MAX: int = 3
 # r278 boss 前破息地板:boss 赢了 P2 有收入重建,输了 HP
 # 反正保不住 → 比 REBIRTH(20)激进;比 0 保守(留买经验余量)
 _BOSS_BREAKER_FLOOR: int = 10
+# r282 P1 中期息平台(配方成立后建 20:吃息 2/轮+投资余量;
+# 模拟:9 轮总收入 63→77,r8 可投 4→20)
+_MID_INTEREST_FLOOR: int = 20
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
@@ -469,10 +472,23 @@ class LineStrategy(DefaultCwStrategy):
             else _INTEREST_FLOOR
         if state.gold - xp >= _lvl_gate and xp > 0:
             actions.append(LevelUp(xp))
+        # r282(局21 经济判读:9 轮总收入 63 vs snowball 83——
+        # 「金峰 18-25 从不吃满息」):P1 配方成立(板配方≥5 档,
+        # r263b 判据)后建 **20 金息平台**(B 模式:兼顾配方投入
+        # 与吃息 2/轮;模拟 9 轮 +14 金收入,r8 可投 4→20)。
+        # 旧 floor=gold%10「档内全花」把保息理解反了(金 18 花
+        # 到 8 反而掉档)。配方未满期照旧全花(凑件优先)。
+        from sr_od.application.currency_war.cw_line_defs import (
+            recipe_tier as _recipe_tier,
+        )
+        _recipe_ok = _recipe_tier(state.board or {}) >= 5
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
+        elif state.plane == 1 and _recipe_ok and state.round_num <= 8 \
+                and state.gold >= 30:
+            floor = _MID_INTEREST_FLOOR   # 20 平台:吃息 2 保投资余量
         elif state.gold >= 10:
-            floor = state.gold % 10    # 保息档,档内全花
+            floor = state.gold % 10    # 保息档,档内全花(配方未满)
         else:
             floor = 0                  # 低位金零息,全花
         # ② 卖(先卖腾容量;上限 1+1=2 防清空)
