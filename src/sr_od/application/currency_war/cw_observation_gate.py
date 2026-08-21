@@ -89,24 +89,44 @@ PROFILE_POPUP: dict = {
 #: 帧间隔(方案 v4:0.2-0.3s)
 _POLL_S: float = 0.25
 
+#: 指纹比较阈值(局36 diag 实证:静态 UI 区帧间像素也不恒等
+#: ——截屏管线低比特噪声/合成抖动;字节级比对恒 fail
+#: (fp=5/anchor=0)。8x8 灰度均差 ≤ 此值视为同帧。
+_FP_MAX_MEAN_DIFF: float = 3.0
+
 
 def _fingerprint(frame: MatLike, rects: tuple[Rect, ...]) -> tuple:
-    """读区像素指纹(dHash 风格:逐区缩小灰度差分)。
-
-    比 OCR 便宜一个数量级(每区 8x8 灰度),对光标/VFX 通过
-    排除表规避(读区不含动画区)。
-    """
+    """读区像素指纹(逐区 8x8 灰度)。"""
     import cv2
+    import numpy as np
     parts = []
     for r in rects:
         crop = frame[r.y1:r.y2, r.x1:r.x2]
         if crop.size == 0:
-            parts.append(b'empty')
+            parts.append(np.zeros((8, 8), dtype=np.uint8))
             continue
         gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
         small = cv2.resize(gray, (8, 8))
-        parts.append(small.tobytes())
+        parts.append(small)
     return tuple(parts)
+
+
+def _fp_same(a: tuple, b: tuple) -> bool:
+    """指纹一致=逐区均差 ≤ 阈值(容忍截屏噪声,非字节恒等)。"""
+    import numpy as np
+    if len(a) != len(b):
+        return False
+    for x, y in zip(a, b):
+        if isinstance(x, bytes) or isinstance(y, bytes):
+            return False   # 旧格式不比
+        if float(np.mean(cv2_abs_diff(x, y))) > _FP_MAX_MEAN_DIFF:
+            return False
+    return True
+
+
+def cv2_abs_diff(x, y) -> numpy.ndarray:
+    import cv2
+    return cv2.absdiff(x, y)
 
 
 def wait_stable_frame(
@@ -173,9 +193,9 @@ def wait_stable_frame(
                 _sleep(_POLL_S)
                 stable_since = None
                 continue
-        # 指纹首尾一致
+        # 指纹首尾一致(阈值比较——字节恒等被截屏噪声否决,局36)
         fp = _fingerprint(frame, profile['fingerprint_rects'])
-        if first_fp is None or fp != first_fp:
+        if first_fp is None or not _fp_same(fp, first_fp):
             _diag['fp'] += 1
             first_fp = fp
             stable_since = _now()
