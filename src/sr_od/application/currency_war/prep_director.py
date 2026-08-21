@@ -732,25 +732,23 @@ class PrepDirector(SrOperation):
             from sr_od.application.currency_war.cw_observation import (
                 read_phase_round,
             )
-            # r294(四次静默终修):关店动作成功≠画面已渲染关店完成
-            # (动画延迟帧仍是半开态)→ 守卫失败**不静默 return**,
-            # 短等重试 3 次;仍不 clean 记日志(可观测)下轮再试。
+            # r294→r299(五次实测收敛):关店动画实测 ~3s;原
+            # 0.8s×3(检测消耗次数)3 连 miss 全耗在动画窗。
+            # 修:等待与检测分离——总窗 4.5s,检测不消耗次数;
+            # clean(备战关态锚「按钮-出战」——shop 开屏无此
+            # area,双态区分)即出。
+            _deadline = _time.time() + 4.5
             _clean = False
             _plane = _round = None
-            for _try in range(3):
+            while _time.time() < _deadline:
                 screen0 = self.screenshot()
                 if self.round_by_find_area(
-                        screen0, '货币战争-备战-开商店',
-                        '备战标识-购买经验').is_success:
-                    _time.sleep(0.8)   # 关店动画中,等
-                    continue
-                if self.round_by_find_area(
                         screen0, '货币战争-备战',
-                        '备战标识-购买经验').is_success:
+                        '按钮-出战').is_success:
                     _plane, _round = read_phase_round(self.ctx, screen0)
                     _clean = True
                     break
-                _time.sleep(0.8)
+                _time.sleep(0.6)
             if not _clean:
                 log.info('[cw][reward-probe] 备战帧未稳定(关店动画/'
                          '特效),本步跳过下轮再试')
