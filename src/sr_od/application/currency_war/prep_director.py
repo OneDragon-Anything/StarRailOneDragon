@@ -371,13 +371,16 @@ class PrepDirector(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(director 环入口)')
+            _gate_err = False
             try:
                 _gate_frame = wait_stable_frame(
                     self, profile=PROFILE_CLOSED)
-            except Exception:   # noqa: BLE001  离线契约:放行旧路径
-                _gate_frame = None
-            if _gate_frame is None:
+            except Exception:   # noqa: BLE001  离线契约
+                _gate_err = True   # P1① 分流:异常≠超时,走旧探针
+            if _gate_frame is None and not _gate_err:
                 return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
+            if _gate_err:
+                _gate_on = False   # 落回旧探针循环(其 except break 放行)
         if not _gate_on:
             for _try in range(3):
                 try:

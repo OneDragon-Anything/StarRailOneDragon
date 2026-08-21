@@ -150,16 +150,29 @@ class BuyShopCards(SrOperation):
                     wait_stable_frame,
                 )
                 log.info('[cw][gate] path=new(shop 买前收起)')
+                _gate_err = False
                 try:
                     if wait_stable_frame(self, profile=PROFILE_CLOSED) \
                             is not None:
                         _closed = True
-                except Exception:   # noqa: BLE001  离线契约:放行旧路径
-                    _closed = False
-                if not _closed:
+                except Exception:   # noqa: BLE001  离线契约
+                    _gate_err = True   # P1① 分流:异常≠超时
+                if not _closed and not _gate_err:
                     return self.round_retry('收起后关态未稳定(gate 超时)',
                                             wait=1)
-                screen = self.screenshot()
+                if _gate_err:
+                    # 异常→放行旧轮询(其 fail-open 语义保留为
+                    # 批次3 收敛项;此处仅保持等价)
+                    import time as _t
+                    for _ in range(5):
+                        _t.sleep(0.4)
+                        screen = self.screenshot()
+                        if not self.round_by_find_area(
+                                screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+                            _closed = True
+                            break
+                elif _closed:
+                    screen = self.screenshot()
             else:
                 import time as _t
                 for _ in range(5):
