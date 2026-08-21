@@ -41,6 +41,11 @@ class ExitCurrencyWarMatch(SrOperation):
 
         # 结算页 1:挑战失败/下一步。胜利结算屏(局30 实证卡点):
         # 按钮文案是「继续挑战」——先试它,再「下一步」
+        # r309b(局31 卡点):「结算-失败」屏(挑战进度屏)按钮是
+        # 「前往结算」——第三种文案,先试
+        if self.round_by_ocr_and_click(screen, '前往结算', success_wait=3).is_success:
+            log.info('[cw-exit] 进度结算屏 → 前往结算')
+            return self.round_wait(wait=2)
         if self.round_by_ocr_and_click(screen, '继续挑战', success_wait=3).is_success:
             log.info('[cw-exit] 胜利结算 → 继续挑战')
             return self.round_wait(wait=2)
