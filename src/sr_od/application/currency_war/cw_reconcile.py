@@ -152,12 +152,21 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
     实跑可推进);SIFT 身份修复后本段整删。
     停机保备战画面供排查星级识别(read_star 漏金星?星区被特效/光标遮挡?SIFT 身份错配?)。
     sentinel 自描述(r17-r31 教训:内容含「这是自己的钩子停的+删除位置」,防误判孤儿/外部拦截)。
+    r330 帧态门:留证/停机只在备战类精准帧(is_prep_like_frame)
+    ——动画帧上的星读回退本就常发(升星特效窗),不留证。
     """
     from datetime import datetime
     from pathlib import Path
 
     from one_dragon.utils import log_utils
     try:
+        # r330 帧态门:非备战类精准帧直接跳过(动画帧星读回退
+        # 常发,留证只是噪声)
+        from sr_od.application.currency_war.cw_obs_core import (
+            is_prep_like_frame,
+        )
+        if ctx is not None and not is_prep_like_frame(ctx, screen):
+            return
         _p = Path('.debug/temp/currency_war/star_regression_hook.flag')
         _p.parent.mkdir(parents=True, exist_ok=True)
         _p.write_text(

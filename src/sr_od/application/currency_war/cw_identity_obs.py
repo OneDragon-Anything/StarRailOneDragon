@@ -297,26 +297,37 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
         # 只对「有效槽数无档」停机(cap≤6 恒基线,不停机 —— 旧 `>4 且 ≠6` 会误停 cap5)。
         _slots_n = effective_back_slots(_cap)
         if ctx.run_context is not None and _slots_n not in _layout_prefixes():
-            from pathlib import Path as _P
+            # r330(钩子归位·帧态门,用户循环「稳定→观察→对账&hook」):
+            # 停机/采集只在备战类精准帧触发——过渡/动画帧跳过
+            # (本钩子埋在 reader 深处,调用方未必先过 gate)。
+            from sr_od.application.currency_war.cw_obs_core import (
+                is_prep_like_frame,
+            )
+            if not is_prep_like_frame(ctx, screen):
+                from one_dragon.utils.log_utils import log as _log0
+                _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
+                           '→ 跳过(过渡帧防误触)', _slots_n)
+            else:
+                from pathlib import Path as _P
 
-            from one_dragon.utils.log_utils import log as _log
-            from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
-            if _shot is not None:
-                _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
-                    f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap}'
-                    f'(有效后排 {_slots_n} 槽)布局未建档。\n'
-                    f'现场验证流程(参照 8 槽闭环 r76):\n'
-                    f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
-                    f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
-                    f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
-                    f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
-                    f'5. cw_back_layout._LAYOUT_PREFIX 登记;\n'
-                    f'6. 删本 flag + 重启 MCP server。\n'
-                    f'截图: {_shot}', encoding='utf-8')
-                _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
-                          _slots_n, _cap, _shot)
-                ctx.run_context.stop_running()
+                from one_dragon.utils.log_utils import log as _log
+                from sr_od.application.currency_war.cw_observe import cw_shot_unique
+                _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
+                if _shot is not None:
+                    _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
+                        f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap}'
+                        f'(有效后排 {_slots_n} 槽)布局未建档。\n'
+                        f'现场验证流程(参照 8 槽闭环 r76):\n'
+                        f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
+                        f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
+                        f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
+                        f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
+                        f'5. cw_back_layout._LAYOUT_PREFIX 登记;\n'
+                        f'6. 删本 flag + 重启 MCP server。\n'
+                        f'截图: {_shot}', encoding='utf-8')
+                    _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
+                              _slots_n, _cap, _shot)
+                    ctx.run_context.stop_running()
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
     return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
@@ -369,16 +380,20 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # r133 时序守卫(局37 实证):检测点=备战读,但同轮后续 bot 进战斗 →
         # 停机落点在战斗画面,实物没看成,触发浪费一次。修:**画面须是备战态
         # 才停**——用「备战阶段」OCR 关键词在场判(非备战态=跳过本轮,下轮再遇)。
+        # r133 时序守卫(局37 实证)→ r330 升级:帧态判据从
+        # OCR「备战阶段」关键词(弱:过渡帧可能残留文字)改为
+        # **id_mark 精准判定**(is_prep_like_frame,备战/开商店
+        # 二屏;与 gate 同判据源)。
         try:
             _bc = find_bookcards(screen, _bench_slots9)
             if _bc and ctx.run_context is not None:
                 from pathlib import Path as _P2
                 _fp2 = _P2('.debug/temp/currency_war/bookcard_confirm_hook.flag')
                 if not _fp2.exists():
-                    _ocr_prep = ctx.ocr_service.get_ocr_result_map(
-                        image=screen, rect=None, color_range=None, crop_first=False)
-                    _is_prep = any('备战阶段' in t for t in _ocr_prep)
-                    if _is_prep:
+                    from sr_od.application.currency_war.cw_obs_core import (
+                        is_prep_like_frame,
+                    )
+                    if is_prep_like_frame(ctx, screen):
                         _fp2.write_text(
                             f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
                             f'处理:点 ({_bc[0][1].x},{_bc[0][1].y}) 「开启」→ 看产出(弹窗/直接入账)'
@@ -420,6 +435,16 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
             from sr_od.application.currency_war.currency_war_cv import slot_occupied
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
+                # r330 帧态门(同 layout/bookcard:停机只在备战类
+                # 精准帧;过渡帧跳过防误采)
+                from sr_od.application.currency_war.cw_obs_core import (
+                    is_prep_like_frame,
+                )
+                if not is_prep_like_frame(ctx, screen):
+                    from one_dragon.utils.log_utils import log as _lg0
+                    _lg0.info('[cw-hook][summon] slot%s 占用未识别但帧非备战态'
+                              '→ 跳过(过渡帧防误触)', _slot)
+                    break
                 _shot = cw_shot_unique(screen, 'summon_unknown')
                 if _shot is not None and ctx.run_context is not None:
                     from pathlib import Path as _P

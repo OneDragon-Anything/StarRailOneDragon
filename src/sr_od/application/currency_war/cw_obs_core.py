@@ -88,6 +88,27 @@ def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
     return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
 
 
+def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
+    """帧态判据(r330,用户循环「稳定→观察→对账&hook」的 hook 门):
+    画面精准命中 备战屏 或 开商店屏(id_mark 体系,框架
+    screen_utils)→ True;过渡帧/结算/事件/动画帧 → False。
+
+    用途:**采集·停机钩子自检**——埋在 reader 深处的钩子
+    (summon/bookcard/layout/star)任何调用路径下先过本判据,
+    过渡帧不触发(防误采/误停;局35 类动画帧实证形态)。
+    best-effort:识别异常 → False(保守,不触发钩子)。
+    """
+    try:
+        from one_dragon.base.screen import screen_utils
+        name = screen_utils.get_match_screen_name(
+            ctx=ctx, screen=screen,
+            screen_name_list=[SCREEN_NAME, SHOP_SCREEN_NAME],
+            crop_first=False)
+        return name is not None
+    except Exception:   # noqa: BLE001  判据 best-effort;异常=不触发
+        return False
+
+
 def _first_int(texts: list[str]) -> int | None:
     """从文本列表提取第一个整数(逐文本正则);无则 None。"""
     for t in texts:
