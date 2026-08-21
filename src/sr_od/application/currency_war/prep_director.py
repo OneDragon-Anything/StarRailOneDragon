@@ -47,8 +47,6 @@ from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
-    read_bench_chars,
-    read_deployed_chars,
     read_reward_spheres,
     read_supply_boxes,
 )
@@ -59,8 +57,6 @@ from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
-    read_game_state,
-    read_gold,
 )
 from sr_od.application.currency_war.cw_state import BenchChar, GameState
 from sr_od.application.currency_war.prep_actions import (
@@ -207,15 +203,24 @@ class PrepDirector(SrOperation):
                              if slot_occupied(screen, int(p.x), int(p.y))}
         # 重:身份/星级/GameState/cap(环入口 + 结构变化 = 每个执行过的游戏动作)
         if heavy:
+            # r331(批次1 收尾:observe_full 接线,终审最大缺口):
+            # 可重定位读取(身份/gold==0 重读/substate)进组装层
+            # 单一源;director 保留副作用编排(session 写/审计/
+            # 缓存——单写者原则,批次3 全收敛)。
+            from sr_od.application.currency_war.cw_observe_full import (
+                observe_full,
+            )
+            _of = observe_full(self.ctx, screen, tier='heavy',
+                               source='director', op=self)
             templates = ensure_portrait_templates(self.ctx)   # M-2:复用单一源(路径+缓存)
             if templates is not None:
-                obs.bench_chars = read_bench_chars(self.ctx, screen, templates)
-                obs.deployed_chars = read_deployed_chars(self.ctx, screen, templates)
+                obs.bench_chars = _of.get('bench_chars') or []
+                obs.deployed_chars = _of.get('deployed_chars') or []
                 self._reconcile_tracking(obs.bench_chars, obs.deployed_chars, screen)
             else:
                 obs.bench_chars = list(self._cached_bench)
                 obs.deployed_chars = list(self._cached_deployed)
-            st = read_game_state(self.ctx, screen)
+            st = _of['state']
             session = self._session()
             # r7 review P0-①:shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒 None,
             # plan 路径 boss 判定全死码的根因);仿 last_hp 模式。
@@ -226,15 +231,8 @@ class PrepDirector(SrOperation):
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
                 log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
-            elif st.gold == 0:
-                # MED-2:gold 读 0 间歇漏读是实证问题(shop.py 同款缓解)—— 不重读则腾席链 b
-                # 误判无金 → 链 c 误卖角色。shop 开态连读 0 才认 0(重截图 3 次取首个 >0)。
-                for _ in range(3):
-                    time.sleep(0.4)
-                    gv = read_gold(self.ctx, self.screenshot())
-                    if gv > 0:
-                        st.gold = gv
-                        break
+            # MED-2 gold==0 重读已在 observe_full 内(r331 收敛
+            # 双源:此处不再重复——终审「双源易漏同步」风险)
             if session is not None:
                 session.last_state = st
             cap = read_deploy_cap(self.ctx, screen)
