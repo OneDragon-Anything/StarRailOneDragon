@@ -32,18 +32,21 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
 )
+from sr_od.application.currency_war.cw_line_defs import (
+    RECIPE_BASE as _RECIPE_BASE,
+)
+from sr_od.application.currency_war.cw_line_defs import (
+    RECIPE_FACTIONS as _RECIPE,
+)
 from sr_od.application.currency_war.cw_observation import read_deploy_cap
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-# r263b 过渡配方(攻略[20] 口径):基础 3仙舟+2DOT,渐进 +2列车2护盾。
-# deploy 配方纪律用:配方基础(_RECIPE_BASE 档)未满时,off-recipe
-# 阵营 pair 不上板(防散件稀释配方深度;局15 r6-r8 实证散 6-8 档
-# vs 配方 5 档 = r7 遭遇 -28 根因)。
-_RECIPE: frozenset[str] = frozenset(
-    {'仙舟', '持续伤害', '列车同行', '护盾'})
-_RECIPE_BASE: int = 5   # 3仙舟+2DOT 基础线
+# r263b 过渡配方纪律 → r271 收口 cw_line_defs 单一源(此前模块级
+# frozenset 与 line_strategy 的局部 set 双源;两份审查共同点名)。
+# 语义:配方基础(_RECIPE_BASE 档)未满时,off-recipe 阵营 pair
+# 不上板(防散件稀释配方;局15 r6-r8 实证)。
 
 
 class DeployBench(SrOperation):

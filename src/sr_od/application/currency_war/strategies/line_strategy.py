@@ -485,33 +485,38 @@ class LineStrategy(DefaultCwStrategy):
         # 连刷 3 次(命中 87%)总期望 6.1 金 vs 不刷 20.8 金
         # 等值——多刷严格优。上限 _RECIPE_REFRESH_MAX,每次
         # 重估(店里有配方件/配方满/预算尽 → 停)。
+        # r271(统一审查①):配方集合/基础线/1费种数收口
+        # cw_line_defs 单一源(此前本函数局部 set + deploy_bench
+        # frozenset + r269b 第三处手搓 = 三源)
+        from sr_od.application.currency_war.cw_line_defs import (
+            RECIPE_BASE,
+            RECIPE_FACTIONS,
+            recipe_kinds_1cost,
+            recipe_tier,
+        )
         from sr_od.application.currency_war.cw_state import RefreshShop
         if state.plane == 1 and 5 <= state.round_num <= 8:
-            _RECIPE = {'仙舟', '持续伤害', '列车同行', '护盾'}
             from sr_od.application.currency_war.cw_chars import (
                 CHARACTERS,
             )
             from sr_od.application.currency_war.cw_shop_odds import (
                 refresh_prob,
             )
-            _recipe_kinds = sum(
-                1 for n, ch in CHARACTERS.items()
-                if ch.cost == 1 and (ch.factions or [''])[0] in _RECIPE)
             _all1 = sum(1 for n, ch in CHARACTERS.items()
                         if ch.cost == 1)
             _p1 = (getattr(state, 'refresh_probs', None) or {}).get(1) \
                 or refresh_prob(st2.level, 1)
-            _p_any = 1 - (1 - _p1 * _recipe_kinds / max(_all1, 1)) ** 5
+            _p_any = 1 - (1 - _p1 * recipe_kinds_1cost()
+                          / max(_all1, 1)) ** 5
             _cost = state.shop_refresh_cost or 2
             for _ in range(_RECIPE_REFRESH_MAX):
-                _board = st2.board or {}
-                if sum(v for k, v in _board.items()
-                       if k in _RECIPE) >= 5:
+                if recipe_tier(st2.board or {}) >= RECIPE_BASE:
                     break                       # 配方满
                 if any(isinstance(a, BuyCard)
-                       and a.card.faction in _RECIPE for a in actions):
+                       and a.card.faction in RECIPE_FACTIONS
+                       for a in actions):
                     break                       # 已提案配方件
-                if any(c.name and c.faction in _RECIPE
+                if any(c.name and c.faction in RECIPE_FACTIONS
                        for c in (state.shop or [])):
                     break                       # 店里已有(会买)
                 if _p_any < _RECIPE_REFRESH_MIN_P \
