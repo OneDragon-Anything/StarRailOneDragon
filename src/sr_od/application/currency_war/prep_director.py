@@ -648,6 +648,18 @@ class PrepDirector(SrOperation):
                 for s in slots)
             log.info(f'[cw-director][nodeseq] n={len(slots)} | {summary}')
             self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
+            # r265:current 槽类型写 session(battle_loop on_round_end 消费——
+            # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)
+            try:
+                _sess = (self.ctx.cw_match.session
+                         if self.ctx.cw_match is not None else None)
+                if _sess is not None:
+                    _cur = next((s for s in slots if s.state == 'current'),
+                                None)
+                    _sess.node_type_current = (
+                        _cur.node_type if _cur is not None else None)
+            except Exception:   # noqa: BLE001  best-effort 写入
+                pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-director] nodeseq skip: {e}')
 

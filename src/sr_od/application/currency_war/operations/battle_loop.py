@@ -327,17 +327,13 @@ class CurrencyWarRunLoop(SrOperation):
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
-            # r260(用户指路:节点类型必须分层——奖励零战力要求,遭遇要求高于普通
-            # 甚至 boss,混记"普通战斗"会把掉血归因搅浑):结算屏「X-Y遭遇」→ 遭遇;
-            # 「X-Y奖励」→ 奖励;「首领」→ boss;其余 → 普通战斗。node_type 由此
-            # 四分,遥测/复盘/模拟按节点类型分层。
-            _node = '普通战斗'
-            if _is_boss:
-                _node = 'boss'
-            elif self.round_by_ocr(screen, '遭遇').is_success:
-                _node = '遭遇'
-            elif self.round_by_ocr(screen, '奖励').is_success:
-                _node = '奖励'
+            # r260/r265(用户两轮指路修正):节点类型的**权威源 = 备战画面节点行**
+            # (read_node_sequence,Hu 模板匹配,prep_director 每次备战已读并存
+            # session.node_seq)——结算屏 OCR 是二手推断(r260 首版全屏搜'奖励'
+            # 误中金币区'基础奖励',r265 area 版仍是推断),弃。
+            # 此处只消费 session 里备战期读到的本节点类型。
+            _node = 'boss' if _is_boss else (
+                getattr(_session, 'node_type_current', None) or '普通战斗')
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
                                       comp_tag=_comp_tag, node_type=_node)
             # killed 文本兜底(2026-08-18 用户语义:「扣血=战斗失败」):输轮结算屏形态 =

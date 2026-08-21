@@ -189,6 +189,11 @@ class StrategySession:
     # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
     # shop 关态 heavy 读到时写此;shop.py 喂 plan 前拷入 —— 仿 last_hp 模式)。
     last_node_type: str | None = None
+    # r265:节点行 current 槽的识别类型(read_node_sequence: Hu 模板+OCR 标签,
+    # 备战画面权威源)——prep_director 每次备战读节点行时写;battle_loop
+    # on_round_end 消费(节点类型分层的遥测/复盘输入;替代 r260 结算屏
+    # OCR 二手推断——'基础奖励'金币区误判实锤)。None=未读到(退普通战斗)。
+    node_type_current: str | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

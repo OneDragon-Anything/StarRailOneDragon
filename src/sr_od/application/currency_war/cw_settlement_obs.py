@@ -53,6 +53,27 @@ def parse_streak(ocr_texts: list[str]) -> int:
     return 0
 
 
+def parse_node_type(ocr_texts: list[str]) -> str:
+    """结算屏节点类型(r260/r265;纯函数):节点名行「X-Y遭遇/奖励/战斗」
+    → 遭遇/奖励/普通战斗。
+
+    防误判(r265 实锤:胜利结算被误判奖励):金币区 token
+    「基础奖励」「获得金币总览」含「奖励」——排除词表拦下;
+    节点名行形态 = 独立短 token「遭遇」/「奖励」或「X-Y遭遇」
+    粘连形态(实锤:局16 r1 '遭遇' 独立块 / r3 误判帧含
+    '基础奖励')。
+    """
+    _EXCLUDE = ('基础奖励', '金币', '总览', '奖励已')
+    for t in ocr_texts:
+        if any(w in t for w in _EXCLUDE):
+            continue
+        if '遭遇' in t:
+            return '遭遇'
+        if t.strip() == '奖励' or re.match(r'^\d-\d奖励', t.strip()):
+            return '奖励'
+    return '普通战斗'
+
+
 def parse_settlement_progress(ocr_texts: list[str]) -> int | None:
     """结算屏「挑战进度 ±N」→ 带符号进度增量(纯函数;2026-08-18 用户点破接)。
 
