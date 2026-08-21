@@ -137,17 +137,20 @@ def wait_stable_frame(
         op.park_cursor()
     stable_since = None
     first_fp = None
+    _diag = {'anchor': 0, 'absence': 0, 'circle': 0, 'fp': 0, 'ok': 0}
     while _now() < deadline:
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
         # 锚命中(presence)
         if profile.get('ocr_keyword'):
             if not op.round_by_ocr(frame, profile['ocr_keyword']).is_success:
+                _diag['anchor'] += 1
                 _sleep(_POLL_S)
                 stable_since = None
                 continue
         elif not op.round_by_find_area(
                 frame, profile['anchor_screen'],
                 profile['anchor_area'], crop_first=False).is_success:
+            _diag['anchor'] += 1
             _sleep(_POLL_S)
             stable_since = None
             continue
@@ -156,6 +159,7 @@ def wait_stable_frame(
         if profile.get('absence_area') and op.round_by_find_area(
                 frame, profile['absence_screen'],
                 profile['absence_area'], crop_first=False).is_success:
+            _diag['absence'] += 1
             _sleep(_POLL_S)
             stable_since = None
             continue
@@ -165,12 +169,14 @@ def wait_stable_frame(
                 read_node_sequence,
             )
             if not read_node_sequence(op.ctx, frame):
+                _diag['circle'] += 1
                 _sleep(_POLL_S)
                 stable_since = None
                 continue
         # 指纹首尾一致
         fp = _fingerprint(frame, profile['fingerprint_rects'])
         if first_fp is None or fp != first_fp:
+            _diag['fp'] += 1
             first_fp = fp
             stable_since = _now()
             _sleep(_POLL_S)
@@ -181,8 +187,9 @@ def wait_stable_frame(
                      profile.get('anchor_area') or profile.get('ocr_keyword'),
                      _now() - t0)
             return frame
+        _diag['ok'] += 1
         _sleep(_POLL_S)
-    log.info('[cw][gate] timeout (%.1fs) profile=%s',
+    log.info('[cw][gate] timeout (%.1fs) profile=%s diag=%s',
              _now() - t0,
              profile.get('anchor_area') or profile.get('ocr_keyword'))
     return None
