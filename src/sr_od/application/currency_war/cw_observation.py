@@ -99,6 +99,21 @@ def _expected_level(plane: int, round_num: int) -> int:
 
 
 # ===== 备战单字段读取(失败 → 安全默认)=====
+def read_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
+    """当前金币(r319:miss→None 保真版;契约伴生 read_gold 仍返 0)。"""
+    rect = _area_rect(ctx, A_GOLD)
+    if rect is None:
+        return None
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return None
+    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
+    v = _first_int([r.data for r in ctx.ocr_service.get_ocr_result_list(image=up)])
+    if v is None or not (GOLD_MIN <= v <= GOLD_MAX):
+        return None
+    return v
+
+
 def read_gold(ctx: SrContext, screen: MatLike) -> int:
     """当前金币(底部右侧数字)。读不到 / 越界 → 0(plan 不买,安全保守)。
 
@@ -106,17 +121,8 @@ def read_gold(ctx: SrContext, screen: MatLike) -> int:
     裁 area 后 **放大 3x** 再 OCR(破小目标 det 天花板)。area 已收紧到只含 gold 数字
     (排除隔壁 G0/0 货币;2026-08-07 实测 [1610,890,1690,945] 放大后稳读 3/2)。
     """
-    rect = _area_rect(ctx, A_GOLD)
-    if rect is None:
-        return 0
-    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-    if crop.size == 0:
-        return 0
-    up = cv2.resize(crop, (crop.shape[1] * 3, crop.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
-    v = _first_int([r.data for r in ctx.ocr_service.get_ocr_result_list(image=up)])
-    if v is None or not (GOLD_MIN <= v <= GOLD_MAX):
-        return 0
-    return v
+    v = read_gold_opt(ctx, screen)
+    return 0 if v is None else v
 
 
 def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | None:
@@ -549,15 +555,20 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     return _read_deploy_paddle(ctx, screen)[1]
 
 
-def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> dict[str, tuple[int, int]]:
-    """OCR 左面板 → {阵营: (count, next_tier)},从 "X/Y" 解析(X=在场人数,Y=下个 tier 阈值)。
+def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> tuple[dict[str, tuple[int, int]], bool]:
+    """OCR 左面板 → ({阵营: (count, next_tier)}, honest)。
 
     聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
     区域裁切可读对)。next_tier 未解析到 → 记 0(未知,read_board_next_tier 滤掉)。
+
+    r319(ADR-0213 批次2):第二返回值 honest=**至少一行 X/Y 真解析**——
+    有阵营行但全走 count=1 兜底(动画期只显 tier 链)= 帧不可信
+    (board_readable 消费);dict 契约不变(键仍在,值是兜底)。
     """
     results = _ocr(ctx, screen, _area_rect(ctx, A_BOARD))
     results.sort(key=lambda r: r.center.y)
     pairs: dict[str, tuple[int, int]] = {}
+    honest = False
     for i, r in enumerate(results):
         faction = next((f for f in FACTIONS if f in (r.data or '')), None)
         if faction is None or faction in pairs:
@@ -576,6 +587,7 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> dict[st
                 xy = (int(m_xy.group(1)), int(m_xy.group(2)))
                 break
         if xy is not None:
+            honest = True
             cnt, nt = xy
             # sanity:count 1-max_count(默认 9;read_game_state 传 level —— faction count ≤ deployed ≤ level,
             # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
@@ -585,7 +597,7 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> dict[st
         else:
             # 无 "X/Y"(动画期只显 tier 链等)→ count 默认 1(至少 1 人在场才显示该阵营),无 next_tier。
             pairs[faction] = (1, 0)
-    return pairs
+    return pairs, honest
 
 
 def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
@@ -593,7 +605,8 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
     每个激活阵营一行:阵营名 + 其下的 "X/Y"(X=在场人数,Y=下个 tier 阈值)。详见 ``_board_pairs``。
     """
-    return {f: c for f, (c, _nt) in _board_pairs(ctx, screen).items()}
+    pairs, _honest = _board_pairs(ctx, screen)
+    return {f: c for f, (c, _nt) in pairs.items()}
 
 
 def board_from_tracked(tracked: list) -> dict[str, int] | None:
@@ -653,7 +666,8 @@ def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
     只含 Y 解析到的阵营(0/未显阈值的不进 dict)。聚焦裁切 OCR 才稳(见 ``_board_pairs``)。
     """
-    return {f: nt for f, (_c, nt) in _board_pairs(ctx, screen).items() if nt > 0}
+    _bp_pairs, _ = _board_pairs(ctx, screen)
+    return {f: nt for f, (_c, nt) in _bp_pairs.items() if nt > 0}
 
 
 def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
@@ -823,7 +837,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     deploy 走 DeployBench)。
     """
     state = GameState()
-    state.gold = read_gold(ctx, screen)
+    _gold_opt = read_gold_opt(ctx, screen)
+    state.gold = 0 if _gold_opt is None else _gold_opt
+    state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
     _hp_opt = read_hp_opt(ctx, screen)
     state.hp = 100 if _hp_opt is None else _hp_opt
     state.hp_readable = _hp_opt is not None   # 遥测保真(insights hp=100 毒化)
@@ -895,7 +911,8 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _tracked_dep = (_match.session.tracked_deployed
                     if (_match is not None and _match.session is not None) else None)
     _computed = board_from_tracked(_tracked_dep)
-    _bp = _board_pairs(ctx, screen, state.level)
+    _bp, _board_honest = _board_pairs(ctx, screen, state.level)
+    state.board_readable = _board_honest   # r319:动画帧(count=1 兜底)显式标注
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
         for _f, _ocr_c in _ocr_board.items():

@@ -82,6 +82,11 @@ class GameState:
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
     hp_readable: bool = True   # hp 是否真读到(False=100 是默认兜底;遥测保真,决策不用)
+    # r319(ADR-0213 批次2):gold/board 可读保真位(对齐 hp_readable
+    # 模式——int/dict 契约下动画帧 miss 与真值不可区分;消费方
+    # 遥测/对拍用,决策默认不用)。
+    gold_readable: bool = True     # gold 是否真读到(False=0 是 miss 兜底)
+    board_readable: bool = True    # board 是否真读到(⚠ 空 dict 双义:真清空≠动画空——真清空时本位仍 True)
     # board = 已上阵阵营计数(OCR 左面板)。deployed = bot 跟踪的已上阵角色(含身份/站位)。
     board: dict[str, int] = field(default_factory=dict)
     # board_next_tier = 各阵营「下个 tier 阈值」(左面板 "X/Y" 的 Y;doc 13 FactionState.next_tier)。
