@@ -48,10 +48,20 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
 
-# 收入模型(遥测:基础 5 + 利息 min(5, gold//10) + 连胜 min(3, streak))
+# 收入模型(r296 分段修正,用户口述 2026-08-23 最高权威:
+# 连胜 0-1→1金,2-4→2金,5+→3金——奖励弹窗真值源,待 r280
+# 采集实证微调;基础 5 + 利息 min(5, gold//10))
 BASE_INCOME: int = 5
 INTEREST_CAP: int = 5
-STREAK_CAP_GOLD: int = 3
+
+
+def streak_gold(streak: int) -> int:
+    """连胜奖励分段(用户口述表;r296 前旧版 min(3,streak) 错)。"""
+    if streak < 2:
+        return 0
+    if streak < 5:
+        return 2
+    return 3
 
 # 战斗结算(25 局 HP 轨迹校准;方向=锁线/桥认领)
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
@@ -245,7 +255,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         st.round_num = rn
         st.gold += BASE_INCOME + min(INTEREST_CAP, st.gold // 10) \
-            + (min(STREAK_CAP_GOLD, streak) if streak > 0 else 0)
+            + streak_gold(streak)   # r296 用户口述分段(0-1→0,2-4→2,5+→3)
         st.shop = pool.draw_shop(st.level)
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
