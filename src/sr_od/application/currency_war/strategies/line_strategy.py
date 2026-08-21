@@ -429,9 +429,21 @@ class LineStrategy(DefaultCwStrategy):
                      '息 %.2f → 地板降 5',
                      _streak, _node, state.round_num, _remaining,
                      _ev_reward, _ev_interest)
-        if xp > 0 and budget >= xp and state.level < 8:
+        # r354(局43 判读:金 28 全点经验没升上去→boss 裸奔 -36):
+        # LevelUp 门从「单击价」改「升完级总成本」——半吊子点经验
+        # 是最差结局(金没了等级没变战力没买)。clicks_to_next_level
+        # 按 xp_progress 实读算总击数;升不起 → 金留给买牌
+        # (买牌对 HP 的边际 ≥ 半吊子经验)。
+        from sr_od.application.currency_war.cw_economy import (
+            clicks_to_next_level,
+        )
+        _clicks = clicks_to_next_level(state)
+        _lv_total = xp * _clicks if _clicks else 0
+        if _lv_total > 0 and budget >= _lv_total and state.level < 8:
             actions.append(LevelUp(xp))
-            budget -= xp
+            budget -= _lv_total
+            log.info('[cw][boss-breaker] LevelUp 总成本 %d(%d 击)',
+                     _lv_total, _clicks)
         # r293(局27 实锤:破息窗只 LvUp 买 0):bench 8 时
         # _buy_guards 容量守卫(<9)拒第 1 张——破息窗缺卖腾位
         # (economy 有 卖→买 序,破息窗只买)。修:买前卖
