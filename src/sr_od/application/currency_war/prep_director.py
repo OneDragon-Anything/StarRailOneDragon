@@ -663,13 +663,19 @@ class PrepDirector(SrOperation):
                 _sess = (self.ctx.cw_match.session
                          if self.ctx.cw_match is not None else None)
                 if _sess is not None:
-                    _cur = next((s for s in slots if s.state == 'current'),
-                                None)
-                    _direct = _cur.node_type if _cur is not None else None
+                    # r290(current 覆盖链改左移优先):OCR 标签
+                    # 位置门(r80)拦不住相邻同类标签(局20 实证:
+                    # r3 结算屏「战斗」vs current 读 reward——
+                    # reward 标签恰在 current 下方 x 对上)→
+                    # current 直读不可信。改:**左移推断优先**
+                    # (上帧 upcoming[0],r266 已有),OCR 标签
+                    # 只在左移无值时兜底(开局首帧)。
+                    _prev = getattr(_sess, 'upcoming_types', None) or []
+                    _direct = _prev[0] if _prev else None
                     if _direct is None:
-                        # 左移推断:上帧 upcoming[0](idx 最小的未来槽)= 本轮 current
-                        _prev = getattr(_sess, 'upcoming_types', None) or []
-                        _direct = _prev[0] if _prev else None
+                        _cur = next((s for s in slots
+                                     if s.state == 'current'), None)
+                        _direct = _cur.node_type if _cur is not None else None
                     _sess.node_type_current = _direct
                     # 存本帧 upcoming(下轮左移用; idx 升序)
                     _sess.upcoming_types = [
