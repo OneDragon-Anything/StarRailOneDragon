@@ -397,17 +397,33 @@ class LineStrategy(DefaultCwStrategy):
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         actions: list = []
         xp = xp_click_cost(state)
-        # r307(用户定调:奖励真值接入决策):连胜档 EV——
-        # 连胜≥2 时下节点奖励 2+(vs 断了 0-1 档 1),保连胜
-        # 期望 ≈ +1/节点×剩余节点(r6-r8 +3 金>攒 1 息)→
-        # 连胜期地板降 5(更激进投资板面;r282 模拟:连胜是
-        # 胜负手);连胜 0-1(已断)恢复 10。
+        # r308(用户指正:节点感知——保连胜 vs 攒息要按节点算):
+        # 保连胜价值 = (当前档 - 断档 1) × 剩余节点(断了以后
+        # 每节点都回到 0-1 档,连胜要重爬)——不是档间差;
+        # 息成本 = 地板差 5 金在**下一节点**的息损失(~0.25,
+        # 一次性,后续节点可重攒)。
+        # 算账:r7 遭遇连胜 3(档2):保住=2×2=4 vs 息 0.25 → 保;
+        # r3 battle 同连胜:保住=2×6=12 vs 0.25 → 也保?——
+        # 但 battle 胜率本就高(投资边际低)→ 判据加胜率敏感:
+        # 只有「投资能改变胜负」的节点(遭遇/boss/后段 battle)
+        # 降地板才有意义;早 battle 不投资也赢,省息。
         _streak = getattr(session, 'last_streak', 0) or 0
-        _floor = 5 if _streak >= 2 else _BOSS_BREAKER_FLOOR
+        _node = getattr(session, 'node_type_current', None) or ''
+        _remaining = max(0, 9 - state.round_num)   # P1 9 节点
+        _tier_now = streak_gold(_streak) if _streak >= 2 else 0
+        _ev_reward = (_tier_now - 1) * _remaining      # 断了回到 1 档
+        _ev_interest = 0.25                            # 一次性息损失
+        _hard_node = (_node in ('encounter', 'boss', 'battle')
+                      and _remaining <= 3) or _node in ('encounter', 'boss')
+        _floor = (5 if (_streak >= 2 and _hard_node
+                        and _ev_reward > _ev_interest)
+                  else _BOSS_BREAKER_FLOOR)
         budget = max(0, state.gold - _floor)
-        if _streak >= 2 and _floor != _BOSS_BREAKER_FLOOR:
-            log.info('[cw][boss-breaker] 连胜 %d(奖励档 %d)→ 地板降 %d',
-                     _streak, streak_gold(_streak), _floor)
+        if _floor == 5:
+            log.info('[cw][boss-breaker] 连胜 %d %s r%d(剩%d):EV保 %.1f>'
+                     '息 %.2f → 地板降 5',
+                     _streak, _node, state.round_num, _remaining,
+                     _ev_reward, _ev_interest)
         if xp > 0 and budget >= xp and state.level < 8:
             actions.append(LevelUp(xp))
             budget -= xp
