@@ -62,6 +62,24 @@ LOSS_PER_ROUND: float = 4.0         # 未立方向每多一轮加重(r7≈-23 �
 # -31(锁线晚的弱队),原 3.5 系数低估后段流血 → 提到 4.0。
 # 方向分桶样本小(4-10)且与「发牌差的队锁线晚」混杂,方向二元模型
 # 保留为 v1;后续样本攒够换「板深×方向×轮次」联合模型。
+#
+# r260(用户指路:节点类型必须分层)——**真实节点序列**来自实跑
+# read_node_sequence 日志(nodeseq):每个位面的节点行是
+# battle/encounter/reward/supply 混排(奖励/补给=零战力要求不掉血;
+# 遭遇=战力要求高于普通甚至 boss,遭遇三四尤其)。真实观测形态:
+# `battle battle encounter reward encounter reward` /
+# `reward reward battle encounter supply battle encounter reward` /
+# `... encounter encounter encounter reward`(三连遭遇)。
+# 模拟逐局**随机采样节点序列**(类型分布对齐观测),替代旧
+# 「每轮都是战斗」假设;遭遇轮结算强度对齐 boss 或更高。
+NODE_TYPE_POOL: tuple[str, ...] = (
+    'battle', 'battle', 'battle', 'battle',   # 战斗为主(~44%)
+    'encounter', 'encounter',                 # 遭遇(~22%)
+    'reward', 'reward', 'supply',             # 奖励/补给零战力(~33%)
+)
+# 遭遇结算强度 = boss 档 × 1.15(用户口述:遭遇三四可比 boss 难;
+# 遭遇一/二较温和 → 取均值系数,模拟无法读档位时的近似)
+ENCOUNTER_MULT: float = 1.15
 BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     # (方向建立轮上限, boss 基础损, 抖动幅度)
     (2, 14.0, 8.0),
@@ -138,12 +156,42 @@ def battle_delta(round_num: int, dir_round: int,
     return int(-loss)
 
 
-def boss_delta(dir_round: int, rng: random.Random) -> int:
-    """P1 boss(r9)HP 变化(校准层;按方向建立早晚分档)。"""
+def boss_delta(dir_round: int, rng: random.Random,
+               multiplier: float = 1.0) -> int:
+    """P1 boss(r9)HP 变化(校准层;按方向建立早晚分档)。
+
+    multiplier>1 用于遭遇轮(用户口述:遭遇三四可比 boss 难)。"""
     for cap, base, jitter in BOSS_BY_DIR_ROUND:
         if dir_round <= cap:
-            return int(-(base + rng.uniform(0, jitter)))
-    return int(-(36.0 + rng.uniform(0, 10.0)))
+            return int(-(base * multiplier
+                         + rng.uniform(0, jitter)))
+    return int(-(36.0 * multiplier + rng.uniform(0, 10.0)))
+
+
+def sample_node_sequence(rng: random.Random) -> list[str]:
+    """逐局采样真实节点序列(r260):r1-r8 从 NODE_TYPE_POOL 抽,
+    r9 恒 boss(位面末节点)。首槽固定 battle(开局弱敌,观测一致)。"""
+    seq = ['battle']
+    for _ in range(7):
+        seq.append(rng.choice(NODE_TYPE_POOL))
+    seq.append('boss')
+    return seq
+
+
+def node_delta(node: str, round_num: int, dir_round: int,
+               rng: random.Random) -> int:
+    """按节点类型的 HP 变化(r260 分层):
+    reward/supply 零战力要求 → 不掉血(小胜 +2 长线作战回血观测);
+    battle → 方向二元模型;
+    encounter → boss 档 × ENCOUNTER_MULT(档位不可观,均值近似);
+    boss → boss 档。"""
+    if node in ('reward', 'supply'):
+        return EARLY_WIN_DELTA
+    if node == 'encounter':
+        return boss_delta(dir_round, rng, multiplier=ENCOUNTER_MULT)
+    if node == 'boss':
+        return boss_delta(dir_round, rng)
+    return battle_delta(round_num, dir_round, rng)
 
 
 def _direction_established(session: StrategySession) -> bool:
@@ -165,6 +213,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     )
     rng = random.Random(seed)
     pool = _Pool(rng)
+    nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
     strat = strategy or LineStrategy()
     st = GameState()
     st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
@@ -230,8 +279,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             st.level += 1
         if res.dir_round == 99 and _direction_established(sess):
             res.dir_round = rn
-        delta = (boss_delta(res.dir_round, rng) if rn == 9
-                 else battle_delta(rn, res.dir_round, rng))
+        # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
+        # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
+        delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
         st.hp = max(0, int(st.hp + delta))
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
