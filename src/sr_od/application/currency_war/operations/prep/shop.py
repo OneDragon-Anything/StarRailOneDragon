@@ -185,21 +185,30 @@ class BuyShopCards(SrOperation):
                 if not _closed:
                     log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
-        # (miss→None 显式化);None 走结算真值链,无结算值→
-        # 100 兜底+log(方案 v4 D-4.4 语义定义)。
+        # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
+        # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
+        # 冻结毒化」从 miss 路径回流,与下方 L249 段同判据);
+        # 无新鲜结算值→100 兜底+log。
         # 旧「>=HP_MAX 重读 2 次」保留(None≠100 分流后,
         # 该循环只处理真满血误读,语义更纯)。
-        from sr_od.application.currency_war.cw_observation import read_hp_opt
+        from sr_od.application.currency_war.cw_observation import (
+            read_hp_opt,
+            read_phase_round,
+        )
         match = self.ctx.cw_match   # r317:提前(None 兜底链要用)
         _hp_raw = read_hp_opt(self.ctx, screen)
         if _hp_raw is None:
-            # 结算真值(新鲜度门在下方统一处理,此处只取
-            # last_hp 或 100 兜底)
+            _pr = read_phase_round(self.ctx, screen)
+            _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
+            _hp_t = getattr(match.session, 'last_hp_t', None) if match is not None else None
+            _fresh = (_now_t is not None and _hp_t is not None
+                      and _now_t - _hp_t == 1)
             _hp_raw = (match.session.last_hp
-                       if (match is not None
+                       if (match is not None and _fresh
                            and getattr(match.session, 'last_hp', None)
                            is not None) else 100)
-            log.info('[cw][shop] HP 区 miss→%s(结算真值/兜底)', _hp_raw)
+            log.info('[cw][shop] HP 区 miss→%s(fresh=%s 结算真值/兜底)',
+                     _hp_raw, _fresh)
         hp_value = _hp_raw
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
