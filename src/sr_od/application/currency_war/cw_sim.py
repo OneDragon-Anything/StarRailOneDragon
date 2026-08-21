@@ -56,9 +56,10 @@ INTEREST_CAP: int = 5
 
 
 def streak_gold(streak: int) -> int:
-    """连胜奖励分段(用户口述表;r296 前旧版 min(3,streak) 错)。"""
+    """连胜奖励分段(用户口述+2026-08-23 弹窗实测校准:
+    表为 0-1→1,2-4→2,5→3,6+→3;与 r296 首版差异:0-1 也给 1)。"""
     if streak < 2:
-        return 0
+        return 1
     if streak < 5:
         return 2
     return 3
