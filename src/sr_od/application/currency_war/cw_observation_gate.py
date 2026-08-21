@@ -105,14 +105,16 @@ def wait_stable_frame(
         op: SrOperation, *, profile: dict,
         timeout_s: float | None = None,
         clock=None) -> MatLike | None:
-    """等待画面稳定(方案 v4 定案语义)。
+    """等待画面稳定(方案 v4 定案语义;终验 P1① 修正)。
 
     - 先 park_cursor(op 方法;签名传 op 因 park_cursor 是
       SrOperation 成员,ctx 上没有——D-2.1);
     - 循环:截帧 → 锚命中(OCR/圆数门)→ 首尾帧指纹一致且
       持续 min_stable_s → 返回稳定帧;
-    - 截图异常 → 放行旧路径(返回 None 由调用方走旧逻辑;
-      离线契约,环级 mock 测试依赖);
+    - **截图异常 → raise**(终验 P1①:异常与超时必须分流——
+      折叠进 None 会被按 None 语义表接线成 3-strike 停机,
+      把离线/瞬断升级成停局,违背环级测试依赖的 except-break
+      放行语义;调用方 try/except 接住=放行旧路径);
     - 超时 → None(调用方按 per-callsite 语义表处理:
       director=同因 bail / shop=round_retry / 钩子=skip+log);
     - clock 可注入(默认 time.monotonic;测试 seam,Y-4)。
@@ -128,10 +130,7 @@ def wait_stable_frame(
     stable_since = None
     first_fp = None
     while _now() < deadline:
-        try:
-            frame = op.screenshot()
-        except Exception:   # noqa: BLE001  离线契约:放行旧路径
-            return None
+        frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
         # 锚命中
         if profile.get('ocr_keyword'):
             if not op.round_by_ocr(frame, profile['ocr_keyword']).is_success:
