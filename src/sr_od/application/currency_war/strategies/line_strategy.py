@@ -66,6 +66,9 @@ _RECIPE_REFRESH_MIN_P: float = 0.25
 # r270 配方饥饿连续刷上限(期望分析:3 次命中 87%,总期望
 # 6.1 金 vs 不刷 20.8 金等值——多刷严格优;>3 边际递减)
 _RECIPE_REFRESH_MAX: int = 3
+# r278 boss 前破息地板:boss 赢了 P2 有收入重建,输了 HP
+# 反正保不住 → 比 REBIRTH(20)激进;比 0 保守(留买经验余量)
+_BOSS_BREAKER_FLOOR: int = 10
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
@@ -266,6 +269,16 @@ class LineStrategy(DefaultCwStrategy):
             return self._emergency_actions(state, session)
         if cat:
             return self._catchup_actions(state, session)
+        # r278(boss 前破息,杠杆分析 r276/r277 实验):P1 r8 备战
+        # = boss 前最后投资窗。13 局 boss 掉血实证分布
+        # [14..36] 中位 32 → r8 HP≥92 才稳;EV 模型(r263)破息
+        # 小搜全档正期望;模拟 r277:r8 破息(60%成功)HP≥60
+        # 12%→21%。旧触发(war/emergency)太晚——r8 无条件
+        # 进投资态(地板降 _BOSS_BREAKER_FLOOR,买满线内件+
+        # 升星件),一搏 boss。
+        if state.plane == 1 and state.round_num >= 8 \
+                and not session.v2_state[1]:
+            return self._boss_breaker_actions(state, session)
         if session.v2_state[0] == cw_phase_machine.MODE_ECONOMY:
             return self._economy_actions(state, session)
         return self._war_actions(state, session)
@@ -365,6 +378,33 @@ class LineStrategy(DefaultCwStrategy):
         if cards and cards[0].cost <= budget:
             return [BuyCard(cards[0])]
         return []
+
+    def _boss_breaker_actions(self, state: GameState,
+                              session: StrategySession) -> list:
+        """r278:boss 前破息投资(P1 r8 备战,boss 最后一窗)。
+        结构同 _emergency(budget 内买满线内件),差异:
+        ① 地板 _BOSS_BREAKER_FLOOR(10,非 REBIRTH 20——
+        boss 赢了进 P2 有收入重建,boss 输了 HP 反正保不住);
+        ② 升人口优先(板深杠杆:局16 配方7档 boss 仅 -12);
+        ③ 线内件按价**降序**(买得起的最强件,不是最便宜)。"""
+        from sr_od.application.currency_war.cw_economy import xp_click_cost
+        actions: list = []
+        xp = xp_click_cost(state)
+        budget = max(0, state.gold - _BOSS_BREAKER_FLOOR)
+        if xp > 0 and budget >= xp and state.level < 8:
+            actions.append(LevelUp(xp))
+            budget -= xp
+        wants = sorted(
+            (c for c in (state.shop or [])
+             if c.name and (self._line_wants(c, state, session)
+                            or self._pair_wants(c, state, session))
+             and c.cost <= budget),
+            key=lambda c: -c.cost)     # 降序:买得起的最强
+        for card in wants:
+            if self._buy_guards(card, state, len(actions)):
+                actions.append(BuyCard(card))
+                budget -= card.cost
+        return actions
 
     def _catchup_actions(self, state: GameState,
                          session: StrategySession) -> list:
