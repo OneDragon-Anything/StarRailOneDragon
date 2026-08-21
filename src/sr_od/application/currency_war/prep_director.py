@@ -712,23 +712,35 @@ class PrepDirector(SrOperation):
             if _match is None:
                 return
             _sess = _match.session
-            _key = f'{getattr(_sess, "_reward_probed_key", None)}'
+            _key = getattr(_sess, '_reward_probed_key', None)
             from sr_od.application.currency_war.cw_observation import (
                 read_phase_round,
             )
-            screen0 = self.screenshot()
-            _plane, _round = read_phase_round(self.ctx, screen0)
+            # r294(四次静默终修):关店动作成功≠画面已渲染关店完成
+            # (动画延迟帧仍是半开态)→ 守卫失败**不静默 return**,
+            # 短等重试 3 次;仍不 clean 记日志(可观测)下轮再试。
+            _clean = False
+            _plane = _round = None
+            for _try in range(3):
+                screen0 = self.screenshot()
+                if self.round_by_find_area(
+                        screen0, '货币战争-备战-开商店',
+                        '备战标识-购买经验').is_success:
+                    _time.sleep(0.8)   # 关店动画中,等
+                    continue
+                if self.round_by_find_area(
+                        screen0, '货币战争-备战',
+                        '备战标识-购买经验').is_success:
+                    _plane, _round = read_phase_round(self.ctx, screen0)
+                    _clean = True
+                    break
+                _time.sleep(0.8)
+            if not _clean:
+                log.info('[cw][reward-probe] 备战帧未稳定(关店动画/'
+                         '特效),本步跳过下轮再试')
+                return
             cur_key = f'{_plane}:{_round}'
             if _key == cur_key:   # 本节点已采
-                return
-            # 仅 shop 关态 clean 备战帧(商店开时六边形被遮);
-            # 守卫在前——不 clean 不标记(下帧重试),修首版
-            # 先标记后守卫的"一次不 clean 永不采"缺陷
-            if self.round_by_find_area(screen0, '货币战争-备战-开商店',
-                                       '备战标识-购买经验').is_success:
-                return
-            if not self.round_by_find_area(screen0, '货币战争-备战',
-                                           '备战标识-购买经验').is_success:
                 return
             _sess._reward_probed_key = cur_key
             self.ctx.controller.click(1555, 930)
