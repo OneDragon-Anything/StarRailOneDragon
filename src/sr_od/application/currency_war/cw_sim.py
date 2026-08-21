@@ -104,6 +104,9 @@ class SimResult:
     bridge_id: str | None = None
     # r338 诊断基建:逐轮事件 (round, node_type, delta, dir_established)
     hp_events: list[tuple[int, str, int, bool]] = field(default_factory=list)
+    # r341 诊断基建:逐轮板深(Σbench;deployed 上场在 sim 未
+    # 建模——bench 即板深代理)——杠杆实验的观测端
+    depth_trail: list[int] = field(default_factory=list)
 
 
 class _Pool:
@@ -380,7 +383,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # r340:板深条件化实机 Δ 池优先(经验分布重放——
         # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
         # 无匹配桶回退旧方向二元模型。
-        _dep = sum((st.board or {}).values())
+        # r341f:同修正——Δ 采样用**上阵深度**(level 限)非 bench
+        _dep = min(st.level, len(st.bench))
         _ld = live_delta_for(nodes[rn - 1], _dep, rng) \
             if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
         if _ld is not None:
@@ -391,6 +395,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
+        # r341f 修正:板深=**上阵数**(level 限的 deployed 代理),
+        # 非 bench 手牌——池拟合源是 OCR board(上阵阵营人次),
+        # bench 恒 8-9 与实机板深语义错位(杠杆实验全平的根因)。
+        res.depth_trail.append(min(st.level, len(st.bench)))
         if st.hp <= 0:
             break
     res.final_hp = st.hp
