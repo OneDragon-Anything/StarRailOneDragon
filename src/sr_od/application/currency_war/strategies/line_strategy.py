@@ -551,6 +551,16 @@ class LineStrategy(DefaultCwStrategy):
         st2.gold -= xp if actions and isinstance(
             actions[0], LevelUp) else 0
         actions.extend(self._buy_actions(st2, session, floor))
+        # r328(用户提出:卖牌腾金)——店里最高优先件买不起
+        # (差 ≤ 卖价)时,卖 bench 最弱杂牌凑钱买入。经济语义:
+        # 方向件在店是稀缺事件(错过等刷,期望成本>1张杂牌的
+        # 机会成本);局35/36 共性「金花不出去」的解法之一。
+        # 门:①店有高优件未买且金差≤卖价;②bench 有非配方
+        # 杂牌(off-target);③cap1(每轮最多一次)。
+        try:
+            actions.extend(self._sell_for_gold(st2, session, floor))
+        except Exception:   # noqa: BLE001  腾金失败不阻塞常规经济
+            pass
         # r258(早期方向刷新,HP≥60 根因):P1 r≤4 方向窗口期,
         # 未锁线未成桥且店里方向件 <2 → 刷一次找种子。
         # 25 局 HP 轨迹实锤:好局(84/100/84)全部 r1 就有方向
@@ -700,6 +710,58 @@ class LineStrategy(DefaultCwStrategy):
         if rem - cost < 10:      # 刷新后至少保 10(低位不刷)
             return []
         return [RefreshShop(cost)]
+
+    def _sell_for_gold(self, state: GameState,
+                       session: StrategySession, floor: int) -> list:
+        """r328(用户提出):卖牌腾金——店有高优件买不起时
+        卖 bench 最弱杂牌凑钱(cap1)。
+
+        语义与 _sell_off_target(腾容量)/_sell_for_interest
+        (凑息)互补:这是**为买而卖**。判据:
+        ① 店里有方向件(_line_wants/_bridge_seed)未被提案
+           (金差使其落选);
+        ② 金差 ≤ 最弱可卖杂牌的卖价(sell_refund);
+        ③ 杂牌=非保护集(char_id 有值且不在 protect)。
+        返回 [SellBench, BuyCard](卖在前)。
+        """
+        from sr_od.application.currency_war.cw_state import (
+            BuyCard,
+            SellBench,
+            sell_refund,
+        )
+        if not state.shop or not state.bench:
+            return []
+        # ① 未买的高优件(意愿判据同 _buy_actions)
+        want = next((c for c in state.shop
+                     if c.name
+                     and (self._line_wants(c, state, session)
+                          or self._bridge_seed(c, state))), None)
+        if want is None:
+            return []
+        # ② 金差(含 floor——_buy_actions 拦的是 rem-cost<floor,
+        # 买不起的真正判据是 cost+floor-gold>0)
+        shortfall = want.cost + floor - state.gold
+        if shortfall <= 0:
+            return []   # 买得起(防御;_buy_actions 已提)
+        # ③ 最弱可卖杂牌(保护集外,卖价够差)
+        protect = self._protect_set(session)
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        best: tuple[int, int] | None = None   # (bench_idx, refund)
+        for i, b in enumerate(state.bench):
+            if not b.char_id or b.char_id in protect:
+                continue
+            ch = CHARACTERS.get(b.char_id)
+            if ch is None:
+                continue
+            refund = sell_refund(b.star, ch.cost)
+            if refund >= shortfall:
+                best = (i, refund)
+                break
+        if best is None:
+            return []
+        log.info('[cw][sell4gold] 腾金:卖 bench[%d](回收 %d)买 %s(差 %d)',
+                 best[0], best[1], want.name, shortfall)
+        return [SellBench(best[0]), BuyCard(want)]
 
     def _sell_off_target(self, state: GameState,
                          session: StrategySession, cap: int = 2) -> list:
