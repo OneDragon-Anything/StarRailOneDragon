@@ -773,8 +773,8 @@ class PrepDirector(SrOperation):
             # x1000-1560,y370-1010)
             from one_dragon.base.geometry.rectangle import Rect
             from sr_od.application.currency_war.cw_obs_core import _ocr
-            _texts = _ocr(self.ctx, screen1,
-                          Rect(1000, 370, 1560, 1010))
+            _texts = [r.data for r in _ocr(
+                self.ctx, screen1, Rect(1000, 370, 1560, 1010))]
             log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
                      _plane, _round, _texts[:20])
             self.ctx.controller.click(Point(960, 150))   # 关弹窗(空白,r302 Point)
