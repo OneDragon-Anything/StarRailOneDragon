@@ -33,20 +33,28 @@ if TYPE_CHECKING:
 
 # ===== profile 常量(两态+弹窗;锚/读区/超时收敛于此,调用方只选套) =====
 
-#: 关态(备战+商店关):锚=按钮-出战 presence;⚠ 状态专属性
-#: 两处代码注释互斥(r297 vs _start_battle L617-627)→ 叠加
-#: 圆数门(shop 开/过渡帧只检 1-3 圆,cw_observation L247-250)
-#: 双保险;实机一帧定谳后可简化(方案 v4 D-2.2)。
+#: 关态(备战+商店关):锚=按钮-出战 presence + 「按钮-收起」
+#: absence(shop 开→收起可见→拒)。
+#: ⚠ 实证史(对拍局35 首日):圆数门(circle_gate)误杀 1-1
+#: 奖励面板帧(reward 节点面板展开遮节点行→圆<6 恒 fail→
+#: 3-strike 停机)——「读不到圆」在 shop 开帧与奖励面板帧
+#: 语义相反,圆数门不能当关态判据;收起 absence 只防 shop
+#: 开(其判据即 shop 开态专属按钮),奖励面板帧正确放行。
 PROFILE_CLOSED: dict = {
     'anchor_screen': '货币战争-备战',
     'anchor_area': '按钮-出战',
+    # shop 开态互斥锚(absence):开商店屏的「按钮-收起」可见=拒
+    'absence_screen': '货币战争-备战-开商店',
+    'absence_area': '按钮-收起',
     # 读区像素指纹(1080p;不含立绘 idle 呼吸区/球区 VFX——排除表)
+    # ⚠ HP 在关态右上(文本-剩余血量 1408-1498/23-103);
+    # 原 (1620,890) 是 gold 区(关态恒空,指纹恒同无意义——对拍局35 发现)
     'fingerprint_rects': (
-        Rect(996, 8, 1080, 46),     # 顶栏 X-Y(轮次)
-        Rect(1620, 890, 1700, 945),  # HP 数字区(关态右上)
+        Rect(1408, 23, 1498, 103),  # HP 数字区(关态右上真值)
         Rect(60, 895, 320, 975),     # LV/XP
+        Rect(250, 30, 520, 120),     # 阶段区(位面-轮次)
     ),
-    'circle_gate': True,            # _MIN_CLEAN_CIRCLES≥6 双保险
+    'circle_gate': False,           # 误杀实证(局35),弃用
     'timeout_s': 4.5,               # r299 实测关店动画 ~3s
     'min_stable_s': 0.8,
 }
@@ -131,7 +139,7 @@ def wait_stable_frame(
     first_fp = None
     while _now() < deadline:
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
-        # 锚命中
+        # 锚命中(presence)
         if profile.get('ocr_keyword'):
             if not op.round_by_ocr(frame, profile['ocr_keyword']).is_success:
                 _sleep(_POLL_S)
@@ -143,7 +151,15 @@ def wait_stable_frame(
             _sleep(_POLL_S)
             stable_since = None
             continue
-        # 圆数门(关态双保险)
+        # 互斥锚(absence):shop 开态按钮可见 = 非关态 → 拒
+        # (对拍局35:替代圆数门——奖励面板帧读不到圆≠shop 开)
+        if profile.get('absence_area') and op.round_by_find_area(
+                frame, profile['absence_screen'],
+                profile['absence_area'], crop_first=False).is_success:
+            _sleep(_POLL_S)
+            stable_since = None
+            continue
+        # 圆数门(弃用——局35 实证误杀奖励面板帧;保留字段兼容)
         if profile.get('circle_gate'):
             from sr_od.application.currency_war.cw_observation import (
                 read_node_sequence,
