@@ -108,6 +108,16 @@ def wait_stable_frame(
     - 截图异常→raise(调用方 except=放行旧路径);
       超时→None(per-callsite 语义表);
     - clock 可注入(测试 seam)。
+    - r344(实机首验 bug,局37 停机根因):poll 成本模型——
+      id_mark 判定必须 crop_first=True(裁剪后按区 OCR ~0.2s/
+      区)。crop_first=False 是全图 OCR(~5s/帧),poll 循环
+      每帧新截图无缓存可复用 → 单轮 poll 就吞掉 4.5s 超时
+      预算,稳定窗结构性不可能达成(diag {'screen':0,'fp':1,
+      'ok':0} = 只跑了一轮);离线测试(注入 clock+假截图)
+      测不出时序成本。另加 one-shot grace poll:首轮已取到
+      指纹样本但从未比对过一次时,超时后允许一次额外 poll
+      (有界 deadline+1 poll),防重载机器下 poll 成本仍超
+      预算的同类饿死。
     """
     from one_dragon.base.screen import screen_utils
     from one_dragon.utils import cv2_utils
@@ -122,14 +132,26 @@ def wait_stable_frame(
     stable_since = None
     first_fp = None
     _diag = {'screen': 0, 'fp': 0, 'ok': 0}
-    while _now() < deadline:
+    _grace_used = False   # r344:超时后的一次额外 poll(见函数头注)
+    _compared = False     # 是否完成过至少一次指纹比对
+    while True:
+        if _now() >= deadline:
+            # r344:已有指纹样本但从未比对过 → 允许一次额外 poll
+            #(首轮 poll 成本可能已吞掉整个预算;无样本/已比对过/
+            # grace 已用 → 正常超时退出,保持有界)
+            if _compared or _grace_used or first_fp is None:
+                break
+            _grace_used = True
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
         # 画面判定:框架 is_target_screen(id_mark 体系;一次调用
-        # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)
+        # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)。
+        # r344:crop_first=True——poll 循环每帧新截图,全图 OCR
+        # 无缓存复用却 ~5s/轮(实机局37 实证吞掉超时预算);
+        # 裁剪按区 OCR ~0.2s/区,是 poll 循环唯一可承受的口径
         _name = screen_utils.get_match_screen_name(
             ctx=op.ctx, screen=frame,
             screen_name_list=list(profile['screen_list']),
-            crop_first=False)
+            crop_first=True)
         if _name != profile['expect_screen']:
             _diag['screen'] += 1
             _sleep(_POLL_S)
@@ -152,6 +174,7 @@ def wait_stable_frame(
             stable_since = _now()
             _sleep(_POLL_S)
             continue
+        _compared = True
         if stable_since is not None and \
                 _now() - stable_since >= profile['min_stable_s']:
             log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s)')
@@ -159,5 +182,6 @@ def wait_stable_frame(
         _diag['ok'] += 1
         _sleep(_POLL_S)
     log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) '
-             f'profile={profile["expect_screen"]} diag={_diag}')
+             f'profile={profile["expect_screen"]} '
+             f'diag={_diag} grace={_grace_used}')
     return None
