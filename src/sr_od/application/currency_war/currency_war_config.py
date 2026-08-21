@@ -79,16 +79,9 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CurrencyWarRunLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # —— 观测 gate flag(ADR-0213 批次1;4 个按机制分组,默认 off
-        # 走旧路径;对拍≥3 局无 [cw!] 新增+无 path 混布后逐组切 on)——
-        # gate_director:PrepDirector 环入口消化门 → wait_stable_frame
-        self.gate_director: bool = bool(self.get('gate_director', False))
-        # gate_shop_close:商店关向 3 站(shop 买前/买后收起+ensure_shop 关支)
-        self.gate_shop_close: bool = bool(self.get('gate_shop_close', False))
-        # gate_shop_open:商店开向 2 站(shop 重开+ensure_shop 开支)
-        self.gate_shop_open: bool = bool(self.get('gate_shop_open', False))
-        # gate_hook:采集钩子(_probe_node_type/_reward)前置 gate
-        self.gate_hook: bool = bool(self.get('gate_hook', False))
+        # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
+        # gate 无条件化——ADR-0213 对拍期结束;yml 残留键无害,
+        # get() 不再读)。
 
     def save(self) -> None:
         """持久化策略字段。"""
@@ -108,11 +101,6 @@ class CurrencyWarConfig(YamlConfig):
             # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉
             # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
             'max_rounds': self.max_rounds,
-            # gate flags(ADR-0213):必须进白名单,防 GUI 静默抹值
-            # (max_rounds 前科;方案 v4 终验 D-3.1)。
-            'gate_director': self.gate_director,
-            'gate_shop_close': self.gate_shop_close,
-            'gate_shop_open': self.gate_shop_open,
-            'gate_hook': self.gate_hook,
+            # r347:gate_* flags 已删(无条件化),save 不再写。
         }
         YamlConfig.save(self)

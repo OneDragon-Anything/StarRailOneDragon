@@ -131,60 +131,26 @@ class BuyShopCards(SrOperation):
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
         if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
             self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-            # r335(批次3 收尾):三路等待收敛为一个局部轮询函数
-            # (gate on 超时=fail-closed retry;gate 异常/flag off
-            # =旧轮询,fail-open 语义留证批次4 删)。旧三份重复
-            # (off 路径/gate-err fallback/r311 遗留)合一。
-            # r345:CurrencyWarConfig 改模块级 import——原局部
-            # import 在本 if 分支内,shop 关态入口(分支跳过)+
-            # 后方 L226 引用 = UnboundLocalError(局38 实机,
-            # gate bug #5:条件分支内局部 import + 分支外使用)
-            _gate_on = bool(getattr(
-                CurrencyWarConfig(self.ctx.current_instance_idx),
-                'gate_shop_close', False))
-
-            def _legacy_poll() -> bool:
-                """旧轮询(收起按钮消失 ≤2s);未稳仅 log(fail-open)。
-
-                ⚠ 返回稳定帧供后续 read_hp_opt 用(闭包写外层
-                screen 需 nonlocal——预核发现旧版轮询会更新
-                screen,收敛版丢了会静默用旧帧)。"""
-                import time as _t
-                nonlocal screen
-                _ok = False
-                for _ in range(5):
-                    _t.sleep(0.4)
-                    screen = self.screenshot()
-                    if not self.round_by_find_area(
-                            screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-                        _ok = True
-                        break
-                if not _ok:
-                    log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
-                return _ok
-
-            _closed = False
-            if _gate_on:
-                from sr_od.application.currency_war.cw_observation_gate import (
-                    PROFILE_CLOSED,
-                    wait_stable_frame,
-                )
-                log.info('[cw][gate] path=new(shop 买前收起)')
-                try:
-                    # r346(review M1):接收 gate 稳定帧而非布尔后重截——
-                    # 丢弃帧=gate 全图 OCR 缓存作废+HP 读在未验证帧上,
-                    # 且多付 ~5s 重 OCR(与 r344b 缓存贯穿设计冲突)
-                    _gf = wait_stable_frame(self, profile=PROFILE_CLOSED)
-                    if _gf is not None:
-                        _closed = True
-                        screen = _gf
-                except Exception:   # noqa: BLE001  离线契约
-                    _closed = _legacy_poll()   # P1① 分流:异常≠超时
-                if not _closed:
+            # r335(批次3)+r347(旧路径删除):gate 无条件化——
+            # 超时=fail-closed retry(收起动画未稳,重试整轮);
+            # 异常=放行(离线契约,原 _legacy_poll 轮询已删,
+            # 对拍验证过新路径)。r346(review M1):接收 gate
+            # 稳定帧而非布尔后重截(丢弃帧=OCR 缓存作废+HP 读
+            # 在未验证帧)。
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_CLOSED,
+                wait_stable_frame,
+            )
+            log.info('[cw][gate] path=new(shop 买前收起)')
+            try:
+                _gf = wait_stable_frame(self, profile=PROFILE_CLOSED)
+                if _gf is not None:
+                    screen = _gf
+                else:
                     return self.round_retry('收起后关态未稳定(gate 超时)',
                                             wait=1)
-            else:
-                _closed = _legacy_poll()
+            except Exception:   # noqa: BLE001  离线契约:放行
+                pass
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
         # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
@@ -225,23 +191,16 @@ class BuyShopCards(SrOperation):
         if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
                 return self.round_retry('找不到商店/收起按钮', wait=1)
-            # r312(ADR-0213 批次1;开向站):旧 sleep(0.5) 后即
-            # read_phase_round/read_game_state/买循环——开店动画
-            # ~3s 内读=半开帧(终验 P1②)。gate_shop_open on →
-            # wait_stable_frame(开态 profile)再读;off 旧等待。
-            if bool(getattr(CurrencyWarConfig(self.ctx.current_instance_idx),
-                            'gate_shop_open', False)):
-                from sr_od.application.currency_war.cw_observation_gate import (
-                    PROFILE_OPEN,
-                    wait_stable_frame,
-                )
-                log.info('[cw][gate] path=new(shop 开店)')
-                # r346:contextlib 已模块级——原局部 import 是 H1 雷
-                # (gate bug #5 同型:分支内 import + L352 分支外使用)
-                with contextlib.suppress(Exception):   # 离线契约:放行
-                    wait_stable_frame(self, profile=PROFILE_OPEN)
-            else:
-                time.sleep(0.5)
+            # r312(ADR-0213 批次1;开向站)+r347(旧路径删除):
+            # 旧 sleep(0.5) 后即读=半开帧(开店动画 ~3s,终验 P1②);
+            # gate 无条件化,异常=放行(离线契约)。
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_OPEN,
+                wait_stable_frame,
+            )
+            log.info('[cw][gate] path=new(shop 开店)')
+            with contextlib.suppress(Exception):   # 离线契约:放行
+                wait_stable_frame(self, profile=PROFILE_OPEN)
 
         # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -536,22 +495,19 @@ class BuyShopCards(SrOperation):
         # 关商店(「收起」)
         time.sleep(0.4)
         self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-        # r312(ADR-0213 批次1;买后收起站):现状买后零等待——
-        # click+~1.4s 即 read_game_state(L466 重估)+read_gold
-        # (L484 差值对拍),而关店动画 ~3s(r299 实测)→ 重估与
-        # 对拍读在半开帧(与局31 买前同构)。gate_shop_close on
-        # → wait_stable_frame 后再读;off 保持现状(买后容忍)。
-        # (r345:局部 import 删,模块级——同上方买前段)
-        if bool(getattr(CurrencyWarConfig(self.ctx.current_instance_idx),
-                        'gate_shop_close', False)):
-            from sr_od.application.currency_war.cw_observation_gate import (
-                PROFILE_CLOSED,
-                wait_stable_frame,
-            )
-            log.info('[cw][gate] path=new(shop 买后收起)')
-            # r346:contextlib 已模块级(同上,H1 雷)
-            with contextlib.suppress(Exception):   # 离线契约:放行
-                wait_stable_frame(self, profile=PROFILE_CLOSED)
+        # r312(ADR-0213 批次1;买后收起站)+r347(旧路径删除):
+        # 现状买后零等待——click+~1.4s 即 read_game_state(L466
+        # 重估)+read_gold(L484 差值对拍),而关店动画 ~3s(r299
+        # 实测)→ 重估与对拍读在半开帧(与局31 买前同构)。
+        # gate 无条件化(异常=放行,离线契约)。
+        from sr_od.application.currency_war.cw_observation_gate import (
+            PROFILE_CLOSED,
+            wait_stable_frame,
+        )
+        log.info('[cw][gate] path=new(shop 买后收起)')
+        # r346:contextlib 已模块级(同上,H1 雷)
+        with contextlib.suppress(Exception):   # 离线契约:放行
+            wait_stable_frame(self, profile=PROFILE_CLOSED)
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
         # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
         # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。

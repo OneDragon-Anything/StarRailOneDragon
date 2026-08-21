@@ -586,18 +586,11 @@ class PrepActionExecutor:
 
         r312(ADR-0213 批次1):开/关向单次验证在动画窗(~3s,
         r299 实测)可假阴性(开店「收起未出现」假失败喂恢复
-        机制噪声)。gate flag on → wait_stable_frame
-        (开态/关态 profile 指纹一致)替代单次验证;off 旧路径。
+        机制噪声)。r347(旧路径删除):gate 无条件化(原 flag
+        分支删);异常=旧单次验证(离线契约,非 flag 路径)。
         """
         screen = self._op.screenshot()
         is_open = self._op.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success
-        from sr_od.application.currency_war.currency_war_config import (
-            CurrencyWarConfig,
-        )
-        _cfg = CurrencyWarConfig(self._op.ctx.current_instance_idx)
-        _gate = bool(getattr(
-            _cfg, 'gate_shop_open' if want_open else 'gate_shop_close',
-            False))
         if want_open:
             if is_open:
                 return True, '商店已开'
@@ -607,45 +600,37 @@ class PrepActionExecutor:
                 return False, '找不到按钮-商店'
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            if _gate:
-                from sr_od.application.currency_war.cw_observation_gate import (
-                    PROFILE_OPEN,
-                    wait_stable_frame,
-                )
-                log.info('[cw][gate] path=new(ensure_shop 开向)')
-                try:
-                    ok = wait_stable_frame(
-                        self._op, profile=PROFILE_OPEN) is not None
-                except Exception:   # noqa: BLE001  离线:走旧验证
-                    ok = self._op.round_by_find_area(
-                        self._op.screenshot(), SHOP_SCREEN_NAME,
-                        '按钮-收起').is_success
-                return ok, f'开商店 {"✓" if ok else "收起未出现"}'
-            ok = self._op.round_by_find_area(
-                self._op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_OPEN,
+                wait_stable_frame,
+            )
+            log.info('[cw][gate] path=new(ensure_shop 开向)')
+            try:
+                ok = wait_stable_frame(
+                    self._op, profile=PROFILE_OPEN) is not None
+            except Exception:   # noqa: BLE001  离线:走旧验证
+                ok = self._op.round_by_find_area(
+                    self._op.screenshot(), SHOP_SCREEN_NAME,
+                    '按钮-收起').is_success
             return ok, f'开商店 {"✓" if ok else "收起未出现"}'
         if not is_open:
             return True, '商店已关'
         self._op.round_by_find_and_click_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
         self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3:验证「收起消失」前 park
-        if _gate:
-            from sr_od.application.currency_war.cw_observation_gate import (
-                PROFILE_CLOSED,
-                wait_stable_frame,
-            )
-            log.info('[cw][gate] path=new(ensure_shop 关向)')
-            try:
-                ok = wait_stable_frame(
-                    self._op, profile=PROFILE_CLOSED) is not None
-            except Exception:   # noqa: BLE001  离线:走旧验证
-                ok = not self._op.round_by_find_area(
-                    self._op.screenshot(), SHOP_SCREEN_NAME,
-                    '按钮-收起').is_success
-            return ok, f'关商店 {"✓" if ok else "收起仍在"}'
-        still = self._op.round_by_find_area(
-            self._op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success
-        return (not still), f'关商店 {"✓" if not still else "收起仍在"}'
+        from sr_od.application.currency_war.cw_observation_gate import (
+            PROFILE_CLOSED,
+            wait_stable_frame,
+        )
+        log.info('[cw][gate] path=new(ensure_shop 关向)')
+        try:
+            ok = wait_stable_frame(
+                self._op, profile=PROFILE_CLOSED) is not None
+        except Exception:   # noqa: BLE001  离线:走旧验证
+            ok = not self._op.round_by_find_area(
+                self._op.screenshot(), SHOP_SCREEN_NAME,
+                '按钮-收起').is_success
+        return ok, f'关商店 {"✓" if ok else "收起仍在"}'
 
     # ===== 战斗域 =====
 

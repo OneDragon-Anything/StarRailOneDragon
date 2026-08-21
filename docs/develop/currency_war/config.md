@@ -90,3 +90,5 @@
 - 2026-08-17(同日三批,ADR-0204):删 `economy_mode`/`event_whitelist`;hp 阈值迁代码常量
   (`cw_state.HP_SAFE_THRESHOLD`/`DIFFICULTY_HP_TABLE`,`effective_hp_threshold` 去 config 参);
   `strategy_seed`/`max_rounds` 降开发/实验字段。配置面至此与 §3 目标态一致。
+- 2026-08-22:观测 gate 对拍期结束——`gate_director`/`gate_shop_close`/`gate_shop_open`/
+  `gate_hook` 4 个 yml-only 调试 flag 删除(ADR-0216;gate 无条件化,旧路径分支删除)。

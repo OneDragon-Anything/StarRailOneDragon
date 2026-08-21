@@ -368,6 +368,28 @@ class PrepDirector(SrOperation):
         #(与 _probe_node_reward 同挂点;原 run() 入口调用已删)。
         return self._run_loop(match)
 
+    def _try_collapse_open_shop(self) -> bool:
+        """r346/r347:环入口遇开商店稳定态(战斗胜利后新回合游戏可
+        能自动开)→ 收起返回 True(调用方 round_retry 重进);非开态
+        (真特效/overlay)返回 False(调用方 bail 交外环消化)。
+
+        HP/gold 读取语义本要求关态(shop.py 同款收起逻辑)。
+        离线契约:探测/点击异常 → False(放行,等价旧探针 except
+        break;不让容忍路径把离线 mock 测试炸掉)。
+        """
+        try:
+            _sc = self.screenshot()
+            if not self.round_by_find_area(
+                    _sc, SHOP_SCREEN_NAME, '按钮-收起',
+                    crop_first=False).is_success:
+                return False
+            log.info('[cw][director] 环入口开商店态(合法态非特效)→ 收起重进')
+            self.round_by_find_and_click_area(
+                _sc, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+            return True
+        except Exception:   # noqa: BLE001  离线契约
+            return False
+
     def _run_loop(self, match) -> OperationRoundResult:
         """环循环主体(可离线 mock 测):observe → decide → execute → 再 observe。"""
         session = match.session
@@ -385,67 +407,36 @@ class PrepDirector(SrOperation):
         # 的舞台锚(按钮-出战)」——shop 开态帧不再放行(该帧
         # SIFT 本就不可信);②探 3 次仍不 clean 也**不再
         # fall-through 盲 observe**,bail 重试(外环重进消化)。
-        # r310(ADR-0213 批次1 接线):gate_director flag on 时
-        # 走 wait_stable_frame(min_stable_s 首尾指纹一致+圆数
-        # 门双保险——比单锚 3 探强);off 保持旧路径(对拍期)。
-        # None→_bail 同 reason(常量化,3-strike 聚合);异常
-        # raise 由 except 接住=放行旧探针循环(离线契约)。
-        from sr_od.application.currency_war.currency_war_config import (
-            CurrencyWarConfig,
-        )
-        _gate_on = bool(getattr(
-            CurrencyWarConfig(self.ctx.current_instance_idx),
-            'gate_director', False))
+        # r347(旧路径删除,用户定调「几个节点没问题后删」):对拍
+        # 验证已过(局38 r1-r3 新路径 3 节点干净+path=old 恒 0),
+        # gate_director 无条件化——删 flag 分支与旧 3 探针循环。
+        # ⚠️ 特效消化等待(用户 2026-08-16 实证)语义保留:gate 的
+        # 时间稳定窗就是消化门;离线契约(截图异常 raise)=放行
+        # _observe(None→自截图,行为同旧探针 except break)。
+        # r310(ADR-0213 批次1)原接线说明:gate_director flag on 时
+        # 走 wait_stable_frame;off 保持旧路径(对拍期)——对拍期
+        # 已结束,r347 起只有新路径。
+        # r346:开商店容忍路径(gate 超时先探合法开态,收起重进;
+        # 真特效/overlay 才 bail 3-strike)。
         _gate_frame = None
-        if _gate_on:
+        _gate_err = False
+        try:
             from sr_od.application.currency_war.cw_observation_gate import (
                 PROFILE_CLOSED,
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(director 环入口)')
-            _gate_err = False
-            try:
-                _gate_frame = wait_stable_frame(
-                    self, profile=PROFILE_CLOSED)
-            except Exception:   # noqa: BLE001  离线契约
-                _gate_err = True   # P1① 分流:异常≠超时,走旧探针
-            if _gate_frame is None and not _gate_err:
-                # r346(局38 r2 停机根因):战斗胜利后新回合备战进入时
-                # 商店可能开着(游戏行为,稳定合法态)——gate 只认关态
-                # 会把它误当「特效未消化」3-strike 停机。开商店态先
-                # 收起再重进环(HP/gold 读取语义本要求关态,shop.py
-                # 同款);真特效/overlay 才走原 bail 交外环。
-                _sc = self.screenshot()
-                if self.round_by_find_area(
-                        _sc, SHOP_SCREEN_NAME, '按钮-收起',
-                        crop_first=False).is_success:
-                    log.info('[cw][director] 环入口开商店态(合法态非特效)'
-                             '→ 收起重进')
-                    self.round_by_find_and_click_area(
-                        _sc, SHOP_SCREEN_NAME, '按钮-收起',
-                        success_wait=1.0)
-                    return self.round_retry('环入口商店开,已收起重进')
-                return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
-            if _gate_err:
-                _gate_on = False   # 落回旧探针循环(其 except break 放行)
-        if not _gate_on:
-            for _try in range(3):
-                try:
-                    _probe = self.screenshot()   # 新鲜帧(review:旧 last_screenshot 短路复用旧帧,miss 重试退化盲等)
-                    _prep_clean = self.round_by_find_area(
-                        _probe, '货币战争-备战', '按钮-出战',
-                        crop_first=False).is_success
-                    if _prep_clean:
-                        break
-                    log.info('[cw][director] 环入口非 clean 备战帧(shop开/特效/overlay)→ 等 1s 消化(try %d)',
-                             _try + 1)
-                    time.sleep(1.0)
-                except Exception:   # noqa: BLE001  离线/无画面环境直接放行
-                    break
-            else:
-                # 3 次都不 clean:盲 observe 会在毒帧上喂 update_target
-                # (P0① 实锤路径)→ bail 交外环重进(而非带病决策)
-                return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
+            _gate_frame = wait_stable_frame(
+                self, profile=PROFILE_CLOSED)
+        except Exception:   # noqa: BLE001  离线契约:放行(observe 自截图)
+            _gate_err = True   # 异常≠超时:超时走容忍探测,异常直接放行
+            log.debug('[cw][gate] 环入口 gate 异常(离线契约)→ 放行')
+        if _gate_frame is None and not _gate_err:
+            # r346:先探开商店态(合法稳定态,收起重进);非开态才是
+            # 真特效/overlay → bail 交外环(3-strike 聚合)。
+            if self._try_collapse_open_shop():
+                return self.round_retry('环入口商店开,已收起重进')
+            return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
         # r344:gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
         # OCR 一次,observe 的 id_mark 判定/observe_full 全命中),
         # 且观察对象=已验证稳定帧;旧路径(gate off/异常)None=
@@ -572,30 +563,23 @@ class PrepDirector(SrOperation):
             # 同挂点迁入**(审查 P0③:原挂 run() 入口一次性读,
             # skip 69%——shop 开态帧读不了节点行,与本钩子
             # r280-294 四次静默同病根)。
-            # r314(ADR-0213 批次1):gate_hook flag on → 两个
-            # probe 前置 wait_stable_frame(钩子自带的 4.5s 窗
-            # 统一走 gate;超时=跳过 reward 采集,异常=放行
-            # 旧路径;弹窗态首版不切,仍由 r304 流程承担)。
+            # r314(ADR-0213 批次1)+r347(旧路径删除):probe 前置
+            # wait_stable_frame 无条件化(原 gate_hook flag 分支删;
+            # 超时=跳过 reward 采集,异常=放行——离线契约)。
             if 'EnsureShopClosed' in key and progressed:
                 _run_reward_probe = True
-                from sr_od.application.currency_war.currency_war_config import (
-                    CurrencyWarConfig,
-                )
-                if bool(getattr(
-                        CurrencyWarConfig(self.ctx.current_instance_idx),
-                        'gate_hook', False)):
+                try:
                     from sr_od.application.currency_war.cw_observation_gate import (
                         PROFILE_CLOSED,
                         wait_stable_frame,
                     )
                     log.info('[cw][gate] path=new(钩子前置)')
-                    try:
-                        if wait_stable_frame(
-                                self, profile=PROFILE_CLOSED) is None:
-                            log.info('[cw][gate] 钩子前置超时→跳过 reward 采集')
-                            _run_reward_probe = False
-                    except Exception:   # noqa: BLE001  离线契约:放行
-                        pass
+                    if wait_stable_frame(
+                            self, profile=PROFILE_CLOSED) is None:
+                        log.info('[cw][gate] 钩子前置超时→跳过 reward 采集')
+                        _run_reward_probe = False
+                except Exception:   # noqa: BLE001  离线契约:放行
+                    pass
                 self._probe_node_type()
                 if _run_reward_probe:
                     self._probe_node_reward()
