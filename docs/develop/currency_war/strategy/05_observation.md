@@ -8,6 +8,8 @@
 |---|---|---|
 | `cw_observation` | 备战屏 | `read_game_state` → GameState(gold/hp/level/board/shop/bench/deployed…) |
 | `cw_obs_core` | 共享基础设施 | screen_info 区域读取 + OCR helper |
+| `cw_observation_gate` | 稳定门原语(ADR-0213) | `wait_stable_frame`:时间稳定窗(屏判定+per-area 像素指纹首尾一致)+ 三 profile(关态/开态/弹窗态);gate 是「等画面稳定」的单一实现(旧 sleep/单锚/轮询 已删,ADR-0216);末帧供调用方复用(全图 OCR 按 id(image) 缓存贯穿) |
+| `cw_observe_full` | 组装层(ADR-0213) | `observe_full`:一次全面识别(state/board/bench/deployed/hp/gold/节点行/shop;含 substate 与 gold==0 重读),director 与 recognizer 共源 |
 | `cw_identity_obs` | 备战屏视觉身份(SIFT,非 OCR) | bench/deployed 角色身份 |
 | `cw_node_obs` | 节点选项 overlay | EncounterOption/SupplyOption/MegastarOption/PartnerOption |
 | `cw_settlement_obs` | 结算屏 | 战后小队 HP(观测回路输入;失败屏 hp=0 conf=1.0) |
@@ -30,7 +32,9 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 
 ## 4. cw_telemetry:决策迹采集
 
-三路 jsonl(`.debug/temp/currency_war/replay/`):**outcomes**(每节点结算)、**decisions**(每决策点 state 快照 + 候选分 + 选择 + 理由;live 扩容字段:active_strategies / dp_posture 影子 / ledger_fingerprint / megastar·encounter·supply pick)、**runs**(局摘要,含免费窗口登记字段)。默认 `enabled=False` 门控,config `debug_telemetry` 一开全收。外生事件(节点转换/弹窗)与执行失败事件各自落盘(能力画像/预案触发频率语料)。
+三路 jsonl(`.debug/temp/currency_war/replay/`):**outcomes**(每节点结算;含板深快照 board_before/bench_count,r339)、**decisions**(每决策点 state 快照 + 候选分 + 选择 + 理由;live 扩容字段:active_strategies / dp_posture 影子 / ledger_fingerprint / megastar·encounter·supply pick)、**runs**(局摘要,含免费窗口登记字段)。默认 `enabled=False` 门控,config `debug_telemetry` 一开全收。外生事件(节点转换/弹窗)与执行失败事件各自落盘(能力画像/预案触发频率语料)。
+
+**查询端(判读单一源,CLI)**:`python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all`——rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买(配方件标★,refresh 波不丢);anomalies=异常标记(金≥40 且 0买0升/单轮掉血≥25/plan_error);hp=掉血×板深分解(与 sim hp_events 同构,r339);economy=金轨迹/滞留轮标记。复盘新需求 = 新视图/查询参数,不写一次性脚本。
 
 **回放语义**:replay = 把录制的 state 喂给策略比对决策——**回归测试与调试工具,不是胜率裁判**(obs 序列是当时策略产生的,换策略后游戏演化路径本就不同;真实 A/B 必须实机,07 §replay)。
 

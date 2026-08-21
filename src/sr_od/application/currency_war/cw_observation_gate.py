@@ -14,11 +14,13 @@
 - 消化门失败走既有 _bail 3-strike(session 计数),不引入
   round_fail 路径(battle_loop 忽略返回值→ping-pong)。
 
-flag(终审③文档漂移修):gate_director / gate_shop_close /
-gate_shop_open / gate_hook——CurrencyWarConfig 字段(默认
-off;save() 白名单已含)。锚判定=框架 screen_utils
-.get_match_screen_name(id_mark 体系;r324);指纹基元=
-cv2_utils.fingerprint_in_rects/same(r324 下沉)。
+flag(终审③文档漂移修→r347 已删):gate 曾以
+gate_director / gate_shop_close / gate_shop_open / gate_hook
+四个 CurrencyWarConfig flag 双轨对拍;对拍期结束后无条件化
+(ADR-0216),flag 与旧路径分支已删——gate 是唯一路径。锚
+判定=框架 screen_utils.get_match_screen_name(id_mark 体系;
+r324);指纹基元= cv2_utils.fingerprint_in_rects/same(r324
+下沉)。
 """
 from __future__ import annotations
 
