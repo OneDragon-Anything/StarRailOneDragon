@@ -465,16 +465,17 @@ class LineStrategy(DefaultCwStrategy):
         def _tier_gap(f: str) -> tuple[int, int]:
             c = _board.get(f, 0)
             return (max(0, 3 - c), -c)   # 缺口小者优先;平局 count 高者先
-        _ranked = sorted((f for f, c in _board.items() if c >= 1),
-                         key=_tier_gap)
-        _board_factions = set(_ranked)
+        _board_factions = {f for f, c in _board.items() if c >= 1}
         for card in sorted(
                 (c for c in (st2.shop or state.shop or [])
                  if c.name and c.faction in _board_factions
                  and c.name not in _bought and c.cost <= budget),
                 key=lambda c: (_tier_gap(c.faction), -c.cost)):
+            # review-H(r352c):break→continue——排序键跨组无价格序,
+            # 首张买不起即 break 会跳过同组更便宜卡与后续组可买卡
+            # (boss 窗金滞留部分复发,正是 r352 要修的症状)
             if budget - card.cost < 0:
-                break
+                continue
             if len([a for a in actions if isinstance(a, BuyCard)]) >= 3 + len(sells):
                 break
             if not self._buy_guards(card, st2,
@@ -483,6 +484,10 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             actions.append(BuyCard(card))
             budget -= card.cost
+            # review-M1(r352c):循环内更新 _bought——防同名卡在
+            # 同窗重复买入超 3合1 上限(_buy_guards 计数不含
+            # 本段已计划买入)
+            _bought.add(card.name)
             log.info('[cw][boss-breaker] r352 板面集中买:%s(%s,板面阵营'
                      '堆深 gap=%d cnt=%d) 余 budget=%d',
                      card.name, card.faction,
@@ -993,11 +998,17 @@ class LineStrategy(DefaultCwStrategy):
                 # 引擎阵营不再是线内需求的替代品)
                 line = line_of(session.locked_line)
                 # _parse_tiers 返 dict{羁绊:档位};allow 只需键集(r350)
-                allow = set(_LinePseudoComp._parse_tiers(
-                    line.p2p3_forms.get(
-                        f'P{state.plane}', '') or
-                    line.p2p3_forms.get('P2', ''))) \
-                    if line is not None else set()
+                # review-M2(r352c):line 查不到(理论态,线库重构后旧 session
+                # 残留 line_id)回退引擎门而非空集——空集=挂件
+                # 通道全锁死,比宽松门更贵
+                if line is None:
+                    allow = set(_ENGINE_FACTIONS)
+                else:
+                    # _parse_tiers 返 dict{羁绊:档位};allow 只需键集(r350)
+                    allow = set(_LinePseudoComp._parse_tiers(
+                        line.p2p3_forms.get(
+                            f'P{state.plane}', '') or
+                            line.p2p3_forms.get('P2', '')))
                 allow.discard('')
             else:
                 allow = set(_ENGINE_FACTIONS)   # 桥方向期:引擎门
