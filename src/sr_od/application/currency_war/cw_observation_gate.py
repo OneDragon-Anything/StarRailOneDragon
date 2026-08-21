@@ -124,7 +124,7 @@ def _fp_same(a: tuple, b: tuple) -> bool:
     return True
 
 
-def cv2_abs_diff(x, y) -> numpy.ndarray:
+def cv2_abs_diff(x, y):
     import cv2
     return cv2.absdiff(x, y)
 
