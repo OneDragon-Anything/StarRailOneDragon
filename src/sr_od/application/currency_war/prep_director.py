@@ -156,15 +156,21 @@ class PrepDirector(SrOperation):
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
-    def _observe(self, heavy: bool) -> PrepObservation:
+    def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
         """组装备战观察。heavy=True(环入口 + 每个执行过的游戏动作后):SIFT 身份 + GameState
-        + cap 全重读;False(控制流/拒绝步后):只现读轻字段,heavy 字段沿用缓存。"""
+        + cap 全重读;False(控制流/拒绝步后):只现读轻字段,heavy 字段沿用缓存。
+
+        screen 传入时(r344:gate 末帧)复用该帧不重截——gate 稳定帧的全图 OCR 已
+        按 id(image) 缓存,本方法所有 crop_first=False 读取(id_mark 判定/
+        observe_full)全部缓存命中,heavy 观察的 OCR 成本归零;且观察的就是
+        「已验证稳定」的那一帧(gate 语义),而非稳定后又隔一拍的帧。
+        """
         # 光标 parking(审计 P0,2026-08-16,用户指示):上个动作(买牌点购买经验/拖拽停目标/
         # 点球)后光标停在点击处,与识别区重叠 → OCR/SIFT 污染(M38 level 毒化根因链)。
         # F1 契约:heavy 在每个执行过的游戏动作后必调 → 此处 park 覆盖全部动作后首读。
         if heavy:
             self.park_cursor()
-        screen: MatLike = self.screenshot()
+        screen = screen if screen is not None else self.screenshot()
         obs = PrepObservation()
         if not self._bench_pts:
             self._bench_pts = row_area_centers(self.ctx, '备战栏')
@@ -425,7 +431,11 @@ class PrepDirector(SrOperation):
                 # 3 次都不 clean:盲 observe 会在毒帧上喂 update_target
                 # (P0① 实锤路径)→ bail 交外环重进(而非带病决策)
                 return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
-        obs = self._observe(heavy=True)   # 环入口重观察 + 对账
+        # r344:gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
+        # OCR 一次,observe 的 id_mark 判定/observe_full 全命中),
+        # 且观察对象=已验证稳定帧;旧路径(gate off/异常)None=
+        # _observe 自截图,行为不变。
+        obs = self._observe(heavy=True, screen=_gate_frame)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
         # r287→r292:钩子挂点迁至 EnsureShopClosed 执行成功后

@@ -51,7 +51,12 @@ PROFILE_CLOSED: dict = {
         Rect(60, 895, 320, 975),     # LV/XP
         Rect(250, 30, 520, 120),     # 阶段区(位面-轮次)
     ),
-    'timeout_s': 4.5,               # r299 实测关店动画 ~3s
+    'timeout_s': 12.0,              # r344:全图 OCR poll ~5s/轮(首区
+                                    # 触发后同帧余区缓存命中)——预算须
+                                    # ≥2 轮 poll(首轮设指纹+次轮比对,
+                                    # 相邻 poll 间隔已>min_stable_s)+
+                                    # 余量;旧 4.5s<单轮成本=结构性饿死
+                                    #(局37 ping-pong 停机根因)
     'min_stable_s': 0.8,
 }
 
@@ -64,7 +69,7 @@ PROFILE_OPEN: dict = {
         Rect(1620, 890, 1700, 945),   # gold 数字区(开态右下)
         Rect(300, 228, 1560, 326),    # 商店牌行
     ),
-    'timeout_s': 4.5,
+    'timeout_s': 12.0,               # r344:同 PROFILE_CLOSED 成本口径
     'min_stable_s': 0.8,
 }
 
@@ -79,7 +84,7 @@ PROFILE_POPUP: dict = {
     'fingerprint_rects': (
         Rect(1000, 580, 1560, 1010),  # 节点预计收入明细区
     ),
-    'timeout_s': 3.0,
+    'timeout_s': 12.0,               # r344:同 CLOSED/OPEN 成本口径
     'min_stable_s': 0.6,
 }
 
@@ -108,16 +113,20 @@ def wait_stable_frame(
     - 截图异常→raise(调用方 except=放行旧路径);
       超时→None(per-callsite 语义表);
     - clock 可注入(测试 seam)。
-    - r344(实机首验 bug,局37 停机根因):poll 成本模型——
-      id_mark 判定必须 crop_first=True(裁剪后按区 OCR ~0.2s/
-      区)。crop_first=False 是全图 OCR(~5s/帧),poll 循环
-      每帧新截图无缓存可复用 → 单轮 poll 就吞掉 4.5s 超时
-      预算,稳定窗结构性不可能达成(diag {'screen':0,'fp':1,
-      'ok':0} = 只跑了一轮);离线测试(注入 clock+假截图)
-      测不出时序成本。另加 one-shot grace poll:首轮已取到
-      指纹样本但从未比对过一次时,超时后允许一次额外 poll
-      (有界 deadline+1 poll),防重载机器下 poll 成本仍超
-      预算的同类饿死。
+    - r344(实机首验 bug,局37 停机根因):**poll 成本模型**——
+      超时预算必须按「单轮 poll 实际成本」设定。全图 OCR
+      (crop_first=False,~5s/帧实机)按 id(image) 缓存,同帧
+      多消费者(gate 判 4 个 id_mark 区首区触发、后续全缓存
+      命中;gate 末帧传 _observe 后 heavy 观察全部命中)共享
+      一次全图 OCR——这是项目统一口径(用户定调 2026-08-22:
+      尽量 crop_first=False 复用 OCR 缓存)。旧 timeout 4.5s
+      < 单轮 poll 成本 → 首轮 poll 后 deadline 已过,稳定窗
+      结构性不可能达成(diag {'screen':0,'fp':1,'ok':0});
+      修法=timeout 调 12s(≥2 轮 poll+余量),而非改 cropped
+      口径(cropped 丢弃缓存复用且小 area 易漏字)。另加
+      one-shot grace poll:首轮已取到指纹样本但从未比对过
+      一次时,超时后允许一次额外 poll(有界),防更慢机器下
+      预算仍不足的同类饿死。
     """
     from one_dragon.base.screen import screen_utils
     from one_dragon.utils import cv2_utils
@@ -145,13 +154,14 @@ def wait_stable_frame(
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
         # 画面判定:框架 is_target_screen(id_mark 体系;一次调用
         # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)。
-        # r344:crop_first=True——poll 循环每帧新截图,全图 OCR
-        # 无缓存复用却 ~5s/轮(实机局37 实证吞掉超时预算);
-        # 裁剪按区 OCR ~0.2s/区,是 poll 循环唯一可承受的口径
+        # r344(用户定调):crop_first=False=全图 OCR 按 id(image)
+        # 缓存——首 id_mark 区触发(~5s),同屏其余区/同帧后续
+        # 消费者(_observe heavy 等)全部缓存命中;poll 成本由
+        # timeout_s 预算吸收(见 profile 常量注)
         _name = screen_utils.get_match_screen_name(
             ctx=op.ctx, screen=frame,
             screen_name_list=list(profile['screen_list']),
-            crop_first=True)
+            crop_first=False)
         if _name != profile['expect_screen']:
             _diag['screen'] += 1
             _sleep(_POLL_S)
