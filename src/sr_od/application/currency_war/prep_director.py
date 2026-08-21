@@ -760,8 +760,11 @@ class PrepDirector(SrOperation):
             self.ctx.controller.click(1555, 930)
             _time.sleep(1.0)
             screen1 = self.screenshot()
+            # r300b:cw_shot_unique 签名 (image, label) 位置参——
+            # 首版 prefix= kwarg 在截图行即 TypeError(catch 吞,
+            # 截图/OCR 全没执行)
             from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            cw_shot_unique(screen1, prefix='cw_reward')
+            cw_shot_unique(screen1, 'cw_reward')
             # r300(实测 'int' object has no attribute 'x'):
             # OCR 走框架 _ocr 惯例(rect 必传;弹窗内容区实测
             # x1000-1560,y370-1010)
