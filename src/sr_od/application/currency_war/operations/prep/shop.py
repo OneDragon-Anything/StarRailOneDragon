@@ -9,6 +9,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_obs_core import (
     HP_MAX,
     SHOP_SCREEN_NAME,
@@ -133,9 +134,10 @@ class BuyShopCards(SrOperation):
             # (gate on 超时=fail-closed retry;gate 异常/flag off
             # =旧轮询,fail-open 语义留证批次4 删)。旧三份重复
             # (off 路径/gate-err fallback/r311 遗留)合一。
-            from sr_od.application.currency_war.currency_war_config import (
-                CurrencyWarConfig,
-            )
+            # r345:CurrencyWarConfig 改模块级 import——原局部
+            # import 在本 if 分支内,shop 关态入口(分支跳过)+
+            # 后方 L226 引用 = UnboundLocalError(局38 实机,
+            # gate bug #5:条件分支内局部 import + 分支外使用)
             _gate_on = bool(getattr(
                 CurrencyWarConfig(self.ctx.current_instance_idx),
                 'gate_shop_close', False))
@@ -534,9 +536,7 @@ class BuyShopCards(SrOperation):
         # (L484 差值对拍),而关店动画 ~3s(r299 实测)→ 重估与
         # 对拍读在半开帧(与局31 买前同构)。gate_shop_close on
         # → wait_stable_frame 后再读;off 保持现状(买后容忍)。
-        from sr_od.application.currency_war.currency_war_config import (
-            CurrencyWarConfig,
-        )
+        # (r345:局部 import 删,模块级——同上方买前段)
         if bool(getattr(CurrencyWarConfig(self.ctx.current_instance_idx),
                         'gate_shop_close', False)):
             from sr_od.application.currency_war.cw_observation_gate import (
