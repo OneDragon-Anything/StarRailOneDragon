@@ -436,11 +436,28 @@ class BuyShopCards(SrOperation):
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
                     self.ctx.controller.click(refresh_btn)
                     log.info(f'[cw-shop] Refresh click @({refresh_btn.x},{refresh_btn.y})')
-                    # 刷新后等待 1.0s(2026-08-17:0.8→1.0;阮·梅/白厄单帧 miss 归因=刷新动画/settle
-                    # 瞬时帧,38 样本离线全识别+重读自愈双实锤——根治 stylized 漏读不现实,多等 0.2s
-                    # 降瞬时 miss 率。成本:MAX_REFRESH=4 硬墙 → 每轮 BuyShopCards 最多 +0.8s,
-                    # 对策略「45s 免费刷新窗口」可忽略)。M35 防抖(下方 hook 重读 2 帧)仍是兜底。
-                    time.sleep(1.0)   # 刷新动画
+                    # r325(P1⑤ 等画面审查):刷新后固定 sleep(1.0)
+                    # 改**两帧一致门**——牌行区指纹连续两帧一致才
+                    # 采快照/重 plan(刷新动画帧上的 SIFT miss 是
+                    # r97/38 样本实证的根因;基元=cv2_utils
+                    # fingerprint_in_rects/same,r324 下沉件)。
+                    # 超时 2.5s 回退旧 sleep 语义(不阻塞买牌)。
+                    from one_dragon.base.geometry.rectangle import Rect
+                    from one_dragon.utils import cv2_utils as _cvu
+                    _rects = (Rect(300, 228, 1560, 326),)   # 商店牌行
+                    _base = None
+                    _stable = False
+                    import time as _t3
+                    for _ in range(8):   # ≤2s@0.25s 步长
+                        _t3.sleep(0.25)
+                        _fp = _cvu.fingerprint_in_rects(
+                            self.screenshot(), _rects)
+                        if _base is not None and _cvu.fingerprint_same(_fp, _base):
+                            _stable = True
+                            break
+                        _base = _fp
+                    if not _stable:
+                        _t3.sleep(0.5)   # 超时回退(≈旧 1.0s 总量)
                     total_refresh += 1
                     did_refresh = True
                     # r97 供给快照(refresh 波):刷出来的新牌面落盘(局18 教训:只记进店帧
