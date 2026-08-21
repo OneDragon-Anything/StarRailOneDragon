@@ -194,6 +194,10 @@ class StrategySession:
     # on_round_end 消费(节点类型分层的遥测/复盘输入;替代 r260 结算屏
     # OCR 二手推断——'基础奖励'金币区误判实锤)。None=未读到(退普通战斗)。
     node_type_current: str | None = None
+    # r266:上帧 upcoming 槽类型序列(idx 升序)——current 高亮态 Hu 不匹配
+    # (恒 None 实锤)时左移推断用:本轮 current = 上帧 upcoming[0]
+    # (节点行固定序列左移一位)。
+    upcoming_types: list[str] | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

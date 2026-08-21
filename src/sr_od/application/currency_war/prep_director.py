@@ -649,15 +649,28 @@ class PrepDirector(SrOperation):
             log.info(f'[cw-director][nodeseq] n={len(slots)} | {summary}')
             self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
             # r265:current 槽类型写 session(battle_loop on_round_end 消费——
-            # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)
+            # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
+            # r266(current 恒 None 修复):current 高亮态 Hu 不匹配(模板只对
+            # future 生效)+OCR 标签错位守卫 → current 直读恒 None。
+            # 修:**last-known upcoming**——上一备战帧 upcoming[i] 就是本轮
+            # current(节点行固定序列左移);本帧 upcoming 同时存下轮用。
             try:
                 _sess = (self.ctx.cw_match.session
                          if self.ctx.cw_match is not None else None)
                 if _sess is not None:
                     _cur = next((s for s in slots if s.state == 'current'),
                                 None)
-                    _sess.node_type_current = (
-                        _cur.node_type if _cur is not None else None)
+                    _direct = _cur.node_type if _cur is not None else None
+                    if _direct is None:
+                        # 左移推断:上帧 upcoming[0](idx 最小的未来槽)= 本轮 current
+                        _prev = getattr(_sess, 'upcoming_types', None) or []
+                        _direct = _prev[0] if _prev else None
+                    _sess.node_type_current = _direct
+                    # 存本帧 upcoming(下轮左移用; idx 升序)
+                    _sess.upcoming_types = [
+                        s.node_type for s in sorted(
+                            (x for x in slots if x.state == 'upcoming'),
+                            key=lambda x: x.idx) if s.node_type]
             except Exception:   # noqa: BLE001  best-effort 写入
                 pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
