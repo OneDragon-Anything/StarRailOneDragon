@@ -33,6 +33,25 @@ if TYPE_CHECKING:
 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
 
+
+def streak_gold(streak: int) -> int:
+    """连胜奖励金(真值源=奖励弹窗,VLM 判读 2026-08-23,r305)。
+
+    四档:0-1→1,2-4→2,5→3,6+→4(r298 首版漏第四档)。
+    单一源:sim 收入模型(cw_sim)与决策 EV(line_strategy r307)
+    都 import 此函数,防双表漂移。"""
+    if streak < 2:
+        return 1
+    if streak < 5:
+        return 2
+    if streak < 6:
+        return 3
+    return 4
+
+
+#: 基础奖励(弹窗实测恒 5;6/7 样本 P1r3/r4/r6/r7+P2r1,r2 孤例 4 待复核)
+BASE_REWARD_GOLD: int = 5
+
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。
 # streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):

@@ -28,6 +28,9 @@ from sr_od.application.currency_war.cw_bridge_pool import (
     BRIDGE_POOL_P2,
     pick_bridge,
 )
+
+# r307:连胜奖励真值(cw_economy 单一源;奖励弹窗实测)
+from sr_od.application.currency_war.cw_economy import streak_gold
 from sr_od.application.currency_war.cw_line_library_v1 import (
     LINE_LIBRARY_V1,
     line_of,
@@ -394,7 +397,17 @@ class LineStrategy(DefaultCwStrategy):
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         actions: list = []
         xp = xp_click_cost(state)
-        budget = max(0, state.gold - _BOSS_BREAKER_FLOOR)
+        # r307(用户定调:奖励真值接入决策):连胜档 EV——
+        # 连胜≥2 时下节点奖励 2+(vs 断了 0-1 档 1),保连胜
+        # 期望 ≈ +1/节点×剩余节点(r6-r8 +3 金>攒 1 息)→
+        # 连胜期地板降 5(更激进投资板面;r282 模拟:连胜是
+        # 胜负手);连胜 0-1(已断)恢复 10。
+        _streak = getattr(session, 'last_streak', 0) or 0
+        _floor = 5 if _streak >= 2 else _BOSS_BREAKER_FLOOR
+        budget = max(0, state.gold - _floor)
+        if _streak >= 2 and _floor != _BOSS_BREAKER_FLOOR:
+            log.info('[cw][boss-breaker] 连胜 %d(奖励档 %d)→ 地板降 %d',
+                     _streak, streak_gold(_streak), _floor)
         if xp > 0 and budget >= xp and state.level < 8:
             actions.append(LevelUp(xp))
             budget -= xp
