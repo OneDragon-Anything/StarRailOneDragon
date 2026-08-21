@@ -518,9 +518,33 @@ class PrepDirector(SrOperation):
             # 同挂点迁入**(审查 P0③:原挂 run() 入口一次性读,
             # skip 69%——shop 开态帧读不了节点行,与本钩子
             # r280-294 四次静默同病根)。
+            # r314(ADR-0213 批次1):gate_hook flag on → 两个
+            # probe 前置 wait_stable_frame(钩子自带的 4.5s 窗
+            # 统一走 gate;超时=跳过 reward 采集,异常=放行
+            # 旧路径;弹窗态首版不切,仍由 r304 流程承担)。
             if 'EnsureShopClosed' in key and progressed:
+                _run_reward_probe = True
+                from sr_od.application.currency_war.currency_war_config import (
+                    CurrencyWarConfig,
+                )
+                if bool(getattr(
+                        CurrencyWarConfig(self.ctx.current_instance_idx),
+                        'gate_hook', False)):
+                    from sr_od.application.currency_war.cw_observation_gate import (
+                        PROFILE_CLOSED,
+                        wait_stable_frame,
+                    )
+                    log.info('[cw][gate] path=new(钩子前置)')
+                    try:
+                        if wait_stable_frame(
+                                self, profile=PROFILE_CLOSED) is None:
+                            log.info('[cw][gate] 钩子前置超时→跳过 reward 采集')
+                            _run_reward_probe = False
+                    except Exception:   # noqa: BLE001  离线契约:放行
+                        pass
                 self._probe_node_type()
-                self._probe_node_reward()
+                if _run_reward_probe:
+                    self._probe_node_reward()
 
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(环出口)', wait=3)
