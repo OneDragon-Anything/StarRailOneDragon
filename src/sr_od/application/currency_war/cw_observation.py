@@ -100,7 +100,11 @@ def _expected_level(plane: int, round_num: int) -> int:
 
 # ===== 备战单字段读取(失败 → 安全默认)=====
 def read_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
-    """当前金币(r319:miss→None 保真版;契约伴生 read_gold 仍返 0)。"""
+    """当前金币(r319:miss→None 保真版;契约伴生 read_gold 仍返 0)。
+
+    保留裁剪读 + 3x 放大(2026-08-24 crop-first 审计):小目标 stylized 数字,全图 det 几乎
+    总漏——放大破 det 天花板,与全图帧缓存不兼容;理由详见 ``read_gold`` docstring。
+    """
     rect = _area_rect(ctx, A_GOLD)
     if rect is None:
         return None
@@ -137,11 +141,10 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
     rect = _area_rect(ctx, '按钮-刷新概率表', SHOP_SCREEN_NAME)   # 概率条在开商店子态屏
     if rect is None:
         return None
-    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-    if crop.size == 0:
-        return None
     from sr_od.application.currency_war.cw_shop_odds import parse_prob_bar
-    texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(image=crop)]
+    # 全图 OCR + rect 过滤(2026-08-24 crop-first 审计转换;fixture shop_open.webp 对拍
+    # 与裁剪读逐字等价)。read_game_state 链同帧多 reader 共享一次全图识别(帧级缓存)。
+    texts = [r.data for r in _ocr(ctx, screen, rect)]
     return parse_prob_bar(texts)
 
 
@@ -387,6 +390,8 @@ def read_total_damage(ctx: SrContext, screen: MatLike, rect: tuple[int, int, int
     (stage7 输出诊断;hp_trend 已隐含输出主路径 ``is_run_dead``)。**战斗实时屏未建档**(``screens=[]``,
     ``rect`` 调用方传固定坐标临时;TODO 战斗屏建档后改 area)。3.5.4 reader 就位,接线(战斗时机 + 建档)待 stage7。
     无单独总伤害字段 → 角色明细求和(2026-08-12 视觉大模型确认)。
+    保留裁剪读(2026-08-24 crop-first 审计):伤害列密集数字行,裁切隔离 det 更稳;rect 为
+    调用方临时坐标(非 screen_info area),≥70% 过滤契约无 fixture 可对拍;诊断用非主路径。
     """
     x1, y1, x2, y2 = rect
     crop = screen[y1:y2, x1:x2]
@@ -511,12 +516,18 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
     **斜杠特殊处理**(用户 D-53):``/`` 常被识成 ``1``/``l``/``I``/``i``/``|`` → 把「数字间的非数字单字符」
     normalize 成 ``/`` 再正则(``re.sub(r'(?<=\\d)\\D(?=\\d)', '/', blob)``);slash→``1`` 致 X 虚高由 X>Y guard 兜。
 
-    **cap = level**(D-53 实测核正):无钻石/宝钻/诅咒时 deploy cap = 团队等级(5 fixture 跨 lv3/4/5/7 核:
-    5/5@lv5、4/4@lv4、3/4@lv4、0/3@lv3、6/7@lv7,Y 恒=level)。钻石/财富宝钻 +1 团队槽 → cap=level+1
-    (>level 即钻石加成,recognizer 据此告警 D-50)。⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。
+    **cap = level + 宝钻数**(D-53 实测核正):无加成时 deploy cap = 团队等级(5 fixture 跨 lv3/4/5/7 核:
+    5/5@lv5、4/4@lv4、3/4@lv4、0/3@lv3、6/7@lv7,Y 恒=level)。财富宝钻 +1 团队槽且
+    **可叠加**——官方效果原文「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」
+    (cw_equipment_data)= 按拥有计数非按穿戴(局38 r2 实证 cap5/lv3=两宝钻,2026-08-22)。
+    ⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废;旧「+1 封顶」
+    假设同废(叠加无上界,消费端域检查见 prep_director 审计#15 已反转)。
 
     X(deployed)sanity:deployed 不可能 > cap;X>cap 时(如 a8_start "10/3",真值 0/3,slash 噪声致 X 虚高)
     X 不可信 → 返 (None, Y)(deployed 未知走 fallback,但 cap Y 仍准)。
+
+    保留裁剪读(2026-08-24 crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题——
+    全图 OCR 把 "X/Y" 与周边文字并框/漏斜杠;裁切(padding 给足)是 D-53 实证的稳读前提。
     """
     rect = _area_rect(ctx, '区域-部署数')
     if rect is None:
@@ -547,8 +558,9 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
 def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台上方中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
 
-    实机 **cap=level**(D-53 实测核正:5 fixture 跨 lv3/4/5/7,Y 恒=level;无钻石/宝钻/诅咒时)。
-    钻石/财富宝钻加成时 cap=level+1(>level 即钻石加成,recognizer 据此告警 D-50,后排可能>6)。
+    实机 **cap=level+宝钻数**(D-53 实测核正:无加成时 5 fixture 跨 lv3/4/5/7,Y 恒=level)。
+    财富宝钻 +1 团队槽且**可叠加**(官方「拥有即+1 无论穿戴」,局38 r2 实证 cap5/lv3;
+    详见 ``_read_deploy_paddle`` docstring)。
     DeployBench 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
     旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。reader 实现细节/根因见 ``_read_deploy_paddle``。
     """

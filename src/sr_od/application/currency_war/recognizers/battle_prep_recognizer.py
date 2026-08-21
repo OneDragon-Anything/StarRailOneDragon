@@ -227,10 +227,11 @@ class BattlePrepRecognizer(ScreenRecognizer):
                 {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_reward_spheres(ctx, image)
             ] or None),
         )
-        # D-50:deploy_cap > level = 钻石/财富宝钻加成(+1 团队槽)→ 后排可能>6(read_equipped count=6 漏)
+        # D-50:deploy_cap > level = 宝钻加成(团队槽+1/个,可叠加——局38 r2 cap5/lv3 实证)
+        # → 后排可能>6(read_equipped count=6 漏;布局按 max(6,cap) 取档,见 cw_back_layout)
         if state.deploy_cap is not None and state.deploy_cap > state.level:
             cw_log('recognize', step='team_size', target='后排', attn=True,
-                   anomaly=f'deploy_cap={state.deploy_cap}>level={state.level}(钻石/宝钻加成)→后排可能>6(read_equipped count=6 漏,D-50)',
+                   anomaly=f'deploy_cap={state.deploy_cap}>level={state.level}(宝钻×{state.deploy_cap - state.level} 叠加)→后排可能>6(read_equipped count=6 漏,D-50)',
                    level=state.level, deploy_cap=state.deploy_cap,
                    shot=cw_shot(image, f'team_cap{state.deploy_cap}_lv{state.level}'))
         return asdict(state)
