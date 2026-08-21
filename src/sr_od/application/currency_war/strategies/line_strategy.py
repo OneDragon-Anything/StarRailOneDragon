@@ -455,13 +455,24 @@ class LineStrategy(DefaultCwStrategy):
         # wants 买完后,剩余预算买**板面已有阵营**的件(ADR-0219 板深
         # 杠杆真实落点:上阵阵营人次是 HP 直接杠杆;boss 决战质量期,
         # 线形态不是唯一价值,堆板面同阵营深度优先)。cap 3 同窗。
+        # r352b(局41 判读):板面 8 阵营各 1-2 人的散面下,「任意
+        # 板面阵营」仍买散件——集中买必须**按档位接近度排序**:
+        # 优先「count 最高/最接近下一档」的阵营(羁绊档位跃迁才是
+        # 深度质变点;2→3 档 > 1→2 档 > 新开 1 档)。
         _bought = {a.card.name for a in actions if isinstance(a, BuyCard)}
-        _board_factions = {f for f, c in (st2.board or {}).items() if c >= 1}
+        _board = st2.board or {}
+        # 阵营按「距下一档的缺口,同缺 solidarity 高者先」排序
+        def _tier_gap(f: str) -> tuple[int, int]:
+            c = _board.get(f, 0)
+            return (max(0, 3 - c), -c)   # 缺口小者优先;平局 count 高者先
+        _ranked = sorted((f for f, c in _board.items() if c >= 1),
+                         key=_tier_gap)
+        _board_factions = set(_ranked)
         for card in sorted(
                 (c for c in (st2.shop or state.shop or [])
                  if c.name and c.faction in _board_factions
                  and c.name not in _bought and c.cost <= budget),
-                key=lambda c: -c.cost):
+                key=lambda c: (_tier_gap(c.faction), -c.cost)):
             if budget - card.cost < 0:
                 break
             if len([a for a in actions if isinstance(a, BuyCard)]) >= 3 + len(sells):
@@ -473,7 +484,10 @@ class LineStrategy(DefaultCwStrategy):
             actions.append(BuyCard(card))
             budget -= card.cost
             log.info('[cw][boss-breaker] r352 板面集中买:%s(%s,板面阵营'
-                     '堆深) 余 budget=%d', card.name, card.faction, budget)
+                     '堆深 gap=%d cnt=%d) 余 budget=%d',
+                     card.name, card.faction,
+                     max(0, 3 - _board.get(card.faction, 0)),
+                     _board.get(card.faction, 0), budget)
         return actions
 
     def _catchup_actions(self, state: GameState,
