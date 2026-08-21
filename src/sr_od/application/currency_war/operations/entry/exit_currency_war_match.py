@@ -36,7 +36,11 @@ class ExitCurrencyWarMatch(SrOperation):
             log.info('[cw-exit] 放弃并结算 → 结算页')
             return self.round_wait(wait=2)
 
-        # 结算页 1:挑战失败/下一步
+        # 结算页 1:挑战失败/下一步。胜利结算屏(局30 实证卡点):
+        # 按钮文案是「继续挑战」——先试它,再「下一步」
+        if self.round_by_ocr_and_click(screen, '继续挑战', success_wait=3).is_success:
+            log.info('[cw-exit] 胜利结算 → 继续挑战')
+            return self.round_wait(wait=2)
         if self.round_by_ocr_and_click(screen, '下一步', success_wait=3).is_success:
             return self.round_wait(wait=2)
 
