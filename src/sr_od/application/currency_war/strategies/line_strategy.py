@@ -405,7 +405,15 @@ class LineStrategy(DefaultCwStrategy):
         actions: list = []
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         xp = xp_click_cost(state)
-        if state.gold - xp >= _INTEREST_FLOOR and xp > 0:
+        # r262(局15 板深根因):旧门 gold-xp>=50 过严——买件把金压
+        # 在 50 下,等级一路滞后(局15 全程 lv4-6,六连胜期金峰仅 23-40,
+        # 从未到 54)→ 人口=档数上限,lv 低连档都摆不满 → r7 遭遇 -28/
+        # r9 boss -36 的板深不足。人口是被动力(每买+4XP),P1 早期
+        # (r≤6,lv<6)用宽松门(保 10 金即可):板面碾压才是连胜保息的
+        # 来源;后期(lv≥6)维持满息门(利息引擎优先)。
+        _lvl_gate = 10 if (state.plane == 1 and state.round_num <= 6
+                           and state.level < 6) else _INTEREST_FLOOR
+        if state.gold - xp >= _lvl_gate and xp > 0:
             actions.append(LevelUp(xp))
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
@@ -437,10 +445,16 @@ class LineStrategy(DefaultCwStrategy):
         # 无方向 → 买散件 → r3 起每轮 -13 流血到 boss。
         # 经济象限原本无刷新通道(_maybe_refresh 只挂 war);
         # 早期花 2 金找方向 vs 每轮漏 13 HP 是纯赚交易。
+        # 门按**方向件购买**判(模拟实锤:散件凑对不该拦刷新——
+        # 首版 any(BuyCard) 门让散店永不刷,r4 建立率 0 提升)。
         from sr_od.application.currency_war.cw_state import RefreshShop
         if (state.plane == 1 and state.round_num <= 4
                 and session.locked_line is None and not session.bridge_id
-                and not any(isinstance(a, BuyCard) for a in actions)):
+                and not any(
+                    isinstance(a, BuyCard)
+                    and (self._bridge_seed(a.card, state)
+                         or a.card.faction in _ENGINE_FACTIONS)
+                    for a in actions)):
             _dir_cnt = sum(
                 1 for c in (state.shop or [])
                 if c.name and (self._bridge_seed(c, state)
