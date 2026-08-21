@@ -272,8 +272,16 @@ class BuyShopCards(SrOperation):
             target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
 
             _fp_v = _form_progress(match.session.target_comp, state) if match.session.target_comp is not None else -1.0
+            # r295(用户定调:判读必须看节点类型——判读人看日志时
+            # 备战帧没有节点上下文,r8"+2 回升"会被误读成遭遇段
+            # 胜利):state 行带 node(本节点类型)+next(下节点,
+            # 左移推断源)——判读一眼看出"这轮备战的是什么节点"。
+            _node = getattr(match.session, 'node_type_current', None) or '?'
+            _upc = getattr(match.session, 'upcoming_types', None) or []
+            _next = _upc[0] if _upc else '?'
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
-                     f'plane={state.plane} round={state.round_num} board={state.board} '
+                     f'plane={state.plane} round={state.round_num} node={_node} '
+                     f'next={_next} board={state.board} '
                      f'target={target_name!r} fp={_fp_v:.2f} bench={len(state.bench)}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
