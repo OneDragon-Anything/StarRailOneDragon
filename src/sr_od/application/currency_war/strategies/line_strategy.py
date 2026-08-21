@@ -450,6 +450,30 @@ class LineStrategy(DefaultCwStrategy):
                     [a for a in actions if isinstance(a, BuyCard)])):
                 actions.append(BuyCard(card))
                 budget -= card.cost
+        # r352(局38/40 双局实锤:boss 段金 44/77 滞留买 0——锁线门
+        # 拒全部线外件,深 12 进 boss 仍 -34):板面集中买兜底——线内
+        # wants 买完后,剩余预算买**板面已有阵营**的件(ADR-0219 板深
+        # 杠杆真实落点:上阵阵营人次是 HP 直接杠杆;boss 决战质量期,
+        # 线形态不是唯一价值,堆板面同阵营深度优先)。cap 3 同窗。
+        _bought = {a.card.name for a in actions if isinstance(a, BuyCard)}
+        _board_factions = {f for f, c in (st2.board or {}).items() if c >= 1}
+        for card in sorted(
+                (c for c in (st2.shop or state.shop or [])
+                 if c.name and c.faction in _board_factions
+                 and c.name not in _bought and c.cost <= budget),
+                key=lambda c: -c.cost):
+            if budget - card.cost < 0:
+                break
+            if len([a for a in actions if isinstance(a, BuyCard)]) >= 3 + len(sells):
+                break
+            if not self._buy_guards(card, st2,
+                                    len([a for a in actions
+                                         if isinstance(a, BuyCard)])):
+                continue
+            actions.append(BuyCard(card))
+            budget -= card.cost
+            log.info('[cw][boss-breaker] r352 板面集中买:%s(%s,板面阵营'
+                     '堆深) 余 budget=%d', card.name, card.faction, budget)
         return actions
 
     def _catchup_actions(self, state: GameState,
