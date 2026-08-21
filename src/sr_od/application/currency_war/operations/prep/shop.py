@@ -132,8 +132,21 @@ class BuyShopCards(SrOperation):
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
         if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
             self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-            time.sleep(0.4)
-            screen = self.screenshot()
+            # r309(用户指正「等画面稳定」):固定 sleep(0.4) 后的帧
+            # 未必收起完成(动画延迟)→ read_hp 落在半开帧仍 100
+            # (局31 18:53 实证:陈久门拒结算值时 fallback 进毒读)。
+            # 修:轮询等「收起按钮消失」(≤2s),关态稳定才读 HP。
+            import time as _t
+            _closed = False
+            for _ in range(5):
+                _t.sleep(0.4)
+                screen = self.screenshot()
+                if not self.round_by_find_area(
+                        screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+                    _closed = True
+                    break
+            if not _closed:
+                log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
         hp_value = read_hp(self.ctx, screen)
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
