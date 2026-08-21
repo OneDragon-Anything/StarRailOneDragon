@@ -48,21 +48,22 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
 
-# 收入模型(r296 分段修正,用户口述 2026-08-23 最高权威:
-# 连胜 0-1→1金,2-4→2金,5+→3金——奖励弹窗真值源,待 r280
-# 采集实证微调;基础 5 + 利息 min(5, gold//10))
+# 收入模型(VLM 判读 2026-08-23:基础奖励随节点变!r2=4/r3=5
+# ——BASE_INCOME=5 是近似;利息 min(5, gold//10) 游戏文本实证)
 BASE_INCOME: int = 5
 INTEREST_CAP: int = 5
 
 
 def streak_gold(streak: int) -> int:
-    """连胜奖励分段(用户口述+2026-08-23 弹窗实测校准:
-    表为 0-1→1,2-4→2,5→3,6+→3;与 r296 首版差异:0-1 也给 1)。"""
+    """连胜奖励分段(VLM 双样本判读 2026-08-23,弹窗真值:
+    0-1→1,2-4→2,5→3,**6+→4**——第四档 r298 漏建)。"""
     if streak < 2:
         return 1
     if streak < 5:
         return 2
-    return 3
+    if streak < 6:
+        return 3
+    return 4
 
 # 战斗结算(25 局 HP 轨迹校准;方向=锁线/桥认领)
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
