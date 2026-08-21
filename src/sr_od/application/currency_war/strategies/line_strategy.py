@@ -31,6 +31,11 @@ from sr_od.application.currency_war.cw_bridge_pool import (
 
 # r307:连胜奖励真值(cw_economy 单一源;奖励弹窗实测)
 from sr_od.application.currency_war.cw_economy import streak_gold
+
+# r353:引擎阵营真源(桥池派生)——原本文件手维护副本是双源
+from sr_od.application.currency_war.cw_line_defs import (
+    ENGINE_FACTIONS as _ENGINE_FACTIONS,
+)
 from sr_od.application.currency_war.cw_line_library_v1 import (
     LINE_LIBRARY_V1,
     line_of,
@@ -82,10 +87,6 @@ _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
 #: 追赶 → 恒 LevelUp 不买牌——P1 早期人口低于基线是常态不是
 #: 落后;只有等级已够高(人口上限打开)仍低于基线才算追赶)
 _CATCHUP_MIN_LEVEL: int = 6
-#: 三大引擎羁绊(r242 挂件质量门:有方向期只买引擎阵营的卡,
-#: 散阵营凑对只服务无方向的冷启动期)
-_ENGINE_FACTIONS: frozenset = frozenset(
-    {'仙舟', '列车同行', '持续伤害'})
 #: r247 P2 预囤轮数门(P1 末期起提前买 P2 桥 core 囤 bench;
 #: 7 = P1 后段,boss 前还有 1-2 购买轮的窗口)
 _P2_PRECACHE_ROUND: int = 7

@@ -34,6 +34,13 @@ class BridgeCombo:
 
 
 #: 桥线池(按 r191 P1 榜验证强度排序;数据底:81/41/31 篇)
+#: r353(局38-42 四局同型失败判读,V4.0 口径对齐):原三桥全
+#: V3.7「仙舟+DOT」系——V4.0+ A830+ 不提升羁绊基础伤害 →
+#: 怪血翻倍而 DOT 不涨,3 仙舟+2DOT 过渡**不稳**;V4.0 攻略
+#: 过渡框架(sources/V4.0-4.4_公共_难度攻略.md §中期过渡):
+#: 1-3/1-4 开 2DOT+2列车 或 **2DOT+2贝洛伯格**;1-6 前开
+#: 3仙舟+2DOT/4列车。新增 dot_belog 早期桥(1-3 窗口的
+#: 第二选项);狼狩系另入引擎阵营(见 line_strategy r353)。
 BRIDGE_POOL: list[BridgeCombo] = [
     BridgeCombo(
         bridge_id='xianzhou_dot',
@@ -60,6 +67,27 @@ BRIDGE_POOL: list[BridgeCombo] = [
         core=['三月七', '椒丘', '艾丝妲'],
         flex=['卡芙卡', '赛飞儿'],
         budget=5,
+        phase='P1',
+    ),
+    BridgeCombo(
+        bridge_id='dot_belog',
+        engine_bonds={'持续伤害': 2, '贝洛伯格': 2},
+        fixed=['希儿'],
+        core=['桑博', '娜塔莎', '卡芙卡'],
+        flex=['艾丝妲', '赛飞儿'],
+        budget=6,
+        phase='P1',
+    ),
+    # r353:狼狩桥(前期 3 档最容易成的伤害羁绊:7 人 3 个
+    # 1 费;V4.0 五家能打伤害羁绊之一)。飞霄/椒丘双 1 费
+    # 開局即成型;3 狼狩+2DOT = 3.7 必修三的标准过渡)。
+    BridgeCombo(
+        bridge_id='hunt3',
+        engine_bonds={'狼狩': 3, '持续伤害': 2},
+        fixed=['飞霄'],
+        core=['椒丘', '貊泽', '灵砂'],
+        flex=['卡芙卡', '镜流'],
+        budget=6,
         phase='P1',
     ),
 ]
