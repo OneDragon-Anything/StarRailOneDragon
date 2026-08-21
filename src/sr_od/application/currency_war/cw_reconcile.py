@@ -171,11 +171,14 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
     from one_dragon.utils import log_utils
     try:
         # r330 帧态门:非备战类精准帧直接跳过(动画帧星读回退
-        # 常发,留证只是噪声)
-        from sr_od.application.currency_war.cw_obs_core import (
-            is_prep_like_frame,
-        )
-        if ctx is not None and not is_prep_like_frame(ctx, screen):
+        # 常发,留证只是噪声)。screen=None(测试/无帧上下文)
+        # 不拦——留证本身是离线安全操作。
+        if screen is not None:
+            from sr_od.application.currency_war.cw_obs_core import (
+                is_prep_like_frame,
+            )
+        if screen is not None and ctx is not None \
+                and not is_prep_like_frame(ctx, screen):
             return
         _p = Path('.debug/temp/currency_war/star_regression_hook.flag')
         _p.parent.mkdir(parents=True, exist_ok=True)
