@@ -332,7 +332,8 @@ class PrepDirector(SrOperation):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        self._probe_node_type()   # [采集钩子·临时] 节点类型标定(自 battle_prep 搬入;采完删)
+        # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
+        #(与 _probe_node_reward 同挂点;原 run() 入口调用已删)。
         return self._run_loop(match)
 
     def _run_loop(self, match) -> OperationRoundResult:
@@ -345,17 +346,30 @@ class PrepDirector(SrOperation):
         # 帧读 = 污染。环入口先截一帧探「备战标识」,miss(被特效遮)→ 等 1s 重试,最多 3 次
         # 让特效播完再观察(非交互 overlay 播完即走;交互型由下方 event_overlay 检测 bail)。
         # 探针 best-effort(截图/识别异常不阻塞 —— 离线 mock 测试无真画面)。
+        # r297(审查 P0①:单锚过弱实锤 16:42:35 deployed 6人读成
+        # 1人——「购买经验」按钮在 shop 开/关两态均可见,特效
+        # 盖舞台不盖底部按钮时门照样放行;全日志消化门 0 触发
+        # 而污染证据 370+682 次):①锚改「备战屏(shop 关)专属
+        # 的舞台锚(按钮-出战)」——shop 开态帧不再放行(该帧
+        # SIFT 本就不可信);②探 3 次仍不 clean 也**不再
+        # fall-through 盲 observe**,bail 重试(外环重进消化)。
         for _try in range(3):
             try:
                 _probe = self.screenshot()   # 新鲜帧(review:旧 last_screenshot 短路复用旧帧,miss 重试退化盲等)
-                if self.round_by_find_area(_probe, SHOP_SCREEN_NAME, '备战标识-购买经验',
-                                           crop_first=False).is_success:
+                _prep_clean = self.round_by_find_area(
+                    _probe, '货币战争-备战', '按钮-出战',
+                    crop_first=False).is_success
+                if _prep_clean:
                     break
-                log.info('[cw][director] 环入口画面被特效/overlay 遮(备战标识 miss)→ 等 1s 消化(try %d)',
+                log.info('[cw][director] 环入口非 clean 备战帧(shop开/特效/overlay)→ 等 1s 消化(try %d)',
                          _try + 1)
                 time.sleep(1.0)
             except Exception:   # noqa: BLE001  离线/无画面环境直接放行
                 break
+        else:
+            # 3 次都不 clean:盲 observe 会在毒帧上喂 update_target
+            # (P0① 实锤路径)→ bail 交外环重进(而非带病决策)
+            return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
@@ -473,11 +487,13 @@ class PrepDirector(SrOperation):
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
 
-            # r292(r280/r287/r289 钩子挂点终修):EnsureShopClosed
-            # 执行成功 = 店确定已关的**唯一可靠时点**——此前三次
-            # 挂点(run 入口/环入口 _observe 后)都在 step1 关店
-            # **之前**,shop 开态守卫恒 return,钩子整局静默。
+            # r292+P0③(r297):reward 采集钩子挂点(EnsureShopClosed
+            # 执行成功后=店确定关的可靠时点)。**_probe_node_type
+            # 同挂点迁入**(审查 P0③:原挂 run() 入口一次性读,
+            # skip 69%——shop 开态帧读不了节点行,与本钩子
+            # r280-294 四次静默同病根)。
             if 'EnsureShopClosed' in key and progressed:
+                self._probe_node_type()
                 self._probe_node_reward()
 
             if isinstance(action, StartBattle) and progressed:
