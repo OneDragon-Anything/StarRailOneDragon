@@ -398,14 +398,27 @@ class LineStrategy(DefaultCwStrategy):
         if xp > 0 and budget >= xp and state.level < 8:
             actions.append(LevelUp(xp))
             budget -= xp
+        # r293(局27 实锤:破息窗只 LvUp 买 0):bench 8 时
+        # _buy_guards 容量守卫(<9)拒第 1 张——破息窗缺卖腾位
+        # (economy 有 卖→买 序,破息窗只买)。修:买前卖
+        # off-target 散件(cap 2,同 economy 腾位逻辑)。
+        sells = self._sell_off_target(state, session, cap=2)
+        if sells:
+            actions.extend(sells)
+            from copy import deepcopy
+            st2 = deepcopy(state)
+            st2 = self._apply_sells(st2, sells)
+        else:
+            st2 = state
         wants = sorted(
-            (c for c in (state.shop or [])
-             if c.name and (self._line_wants(c, state, session)
-                            or self._pair_wants(c, state, session))
+            (c for c in (st2.shop or state.shop or [])
+             if c.name and (self._line_wants(c, st2, session)
+                            or self._pair_wants(c, st2, session))
              and c.cost <= budget),
             key=lambda c: -c.cost)     # 降序:买得起的最强
         for card in wants:
-            if self._buy_guards(card, state, len(actions)):
+            if self._buy_guards(card, st2, len(
+                    [a for a in actions if isinstance(a, BuyCard)])):
                 actions.append(BuyCard(card))
                 budget -= card.cost
         return actions
