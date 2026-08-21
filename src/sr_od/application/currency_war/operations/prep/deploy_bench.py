@@ -521,6 +521,7 @@ class DeployBench(SrOperation):
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
+        _skipped = 0   # 合法跳过(去重/配方底线/源槽已空)≠ 上阵失败
         _cap_stopped = False
         for bi in order:
             # live 2026-08-15(match5 根因终定位):起始 cap 检查只做一次 —— 循环中途 deployed 达 cap 后
@@ -538,6 +539,7 @@ class DeployBench(SrOperation):
             if _cid and _cid in _deployed_cids:
                 log.info(f'[cw-deploy] 去重(5.1.7,不变量 cw_plan.deploy_legal 同源):'
                          f'bench槽{bi+1}({_cid}) 已 deployed,跳过')
+                _skipped += 1
                 continue
             # r288(局23/24 连续实锤:锁 jizi 线列车 3 档吃板挤掉仙舟,
             # 仙舟 2→1 → r3-r4 battle -13×2):配方基础线优先仲裁——
@@ -551,11 +553,13 @@ class DeployBench(SrOperation):
                 if _train_now >= 2 and _xz_now < 3:
                     log.info(f'[cw-deploy] 配方底线(r288):列车{_train_now}档+仙舟{_xz_now}'
                              f'→列车件留bench(仙舟<3 基础线优先,防挤占)')
+                    _skipped += 1
                     continue
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
             if not slot_occupied(self.screenshot(), int(bench[bi].x), int(bench[bi].y)):
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查空(起始帧假阳/已上阵) → 跳过')
+                _skipped += 1
                 continue
             # 5.1.6:按角色 position_pref 选排(前台→前排、后台/flex→后排);对应排满 fallback 另一排(避免不上场)。
             pref = _bench_pos.get(bi, 'back')   # SIFT 漏读身份 → 默认 back(后排槽多 6 > 前排 4,安全)
@@ -633,9 +637,14 @@ class DeployBench(SrOperation):
                     with contextlib.suppress(Exception):
                         self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
                     chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
-        if placed < len(order) and not _cap_stopped:
-            log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/{len(order)}(失败帧已存证)')
-        log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order)}')
+        # r349(局38 判读):合法跳过(去重/配方底线/源槽已空)≠ 上阵失败——
+        # 旧 `placed < len(order)` 把「target 已在场,bench 同名拷贝被去重」
+        # 误报 [cw!] 假警报(placed=0/2,局38 01:29 实证)。分母扣除跳过数。
+        if placed + _skipped < len(order) and not _cap_stopped:
+            log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/'
+                        f'{len(order) - _skipped}(跳过{_skipped};失败帧已存证)')
+        log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order) - _skipped}'
+                 f'(跳过{_skipped})')
 
     def _get_templates(self) -> AvatarTemplates | None:
         """加载 avatar SIFT 模板(缓存到 ctx.cw_avatar_templates,首次 load 后复用)。"""
