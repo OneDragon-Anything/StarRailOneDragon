@@ -94,15 +94,12 @@ class HandlePlannerEvent(SrOperation):
             self.ctx.controller.click(self.DETAIL_CLOSE)
             time.sleep(0.8)
             return self.round_retry(wait=1)
-        # 4. 点确认(CONFIRM 常量;若确认已自动跳过此点无害)
-        self.ctx.controller.click(self.CONFIRM)
-        time.sleep(1.5)   # 等面板
-        # 5. 若弹出「属性详情」面板(选卡后自动弹)→ 关闭
-        screen2 = self.screenshot()
-        ocr2 = self.ctx.ocr_service.get_ocr_result_map(
-            image=screen2, rect=None, color_range=None, crop_first=False,
+        # 4. 点确认+验关(r326/P1⑦ 等画面审查:确认落空→
+        # overlay 不关→外环反复重跑本节点——confirm_and_verify
+        # 统一收尾,计节点预算兜底替代无限重点)
+        from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+            confirm_and_verify,
         )
-        if any('属性详情' in t for t in ocr2):
-            self.ctx.controller.click(self.DETAIL_CLOSE)
-            time.sleep(0.8)
-        return self.round_success(status=f'策划事件已处理({pick.reason})')
+        return confirm_and_verify(
+            self, confirm_point=self.CONFIRM,
+            entry_keyword='策划', tag='cw-planner')
