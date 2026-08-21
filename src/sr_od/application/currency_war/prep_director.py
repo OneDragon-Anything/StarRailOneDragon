@@ -333,6 +333,7 @@ class PrepDirector(SrOperation):
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
         self._probe_node_type()   # [采集钩子·临时] 节点类型标定(自 battle_prep 搬入;采完删)
+        self._probe_node_reward()  # [采集钩子·临时] 节点奖励明细(r280;用户交办采数据)
         return self._run_loop(match)
 
     def _run_loop(self, match) -> OperationRoundResult:
@@ -675,6 +676,59 @@ class PrepDirector(SrOperation):
                 pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-director] nodeseq skip: {e}')
+
+    def _probe_node_reward(self) -> None:
+        """[采集钩子·临时] 节点奖励明细采集(r280;用户交办,采完删)。
+
+        用户口述(2026-08-23,最高权威):备战画面商店按钮左侧六边形
+        图标+数字 → 点开可见本节点预期金币奖励明细(连胜 0-1→1金,
+        2-4→2金…+ 节点基础奖励)。**先采集一段时间,看基础奖励会
+        不会变,之后再接策略**。
+
+        实现capture-only(零风险):每节点一次——点六边形(1555,930,
+        实证 2026-08-23)→ 截图存 shots(cw_reward 前缀)→ OCR 全
+        文本记 log → 点空白(960,150)关弹窗。不解析(解析等样本攒
+        够后按真实弹窗结构写);关闭若失败下一轮备战自愈(弹窗点
+        备战标识会消,采集门每节点一次不会刷屏)。
+        """
+        import time as _time
+
+        try:
+            _match = self.ctx.cw_match
+            if _match is None:
+                return
+            _sess = _match.session
+            _key = f'{getattr(_sess, "_reward_probed_key", None)}'
+            from sr_od.application.currency_war.cw_observation import (
+                read_phase_round,
+            )
+            screen0 = self.screenshot()
+            _plane, _round = read_phase_round(self.ctx, screen0)
+            cur_key = f'{_plane}:{_round}'
+            if _key == cur_key:   # 本节点已采
+                return
+            _sess._reward_probed_key = cur_key
+            # 仅 shop 关态 clean 备战帧(商店开时六边形被遮)
+            if self.round_by_find_area(screen0, '货币战争-备战-开商店',
+                                       '备战标识-购买经验').is_success:
+                return
+            if not self.round_by_find_area(screen0, '货币战争-备战',
+                                           '备战标识-购买经验').is_success:
+                return
+            self.ctx.controller.click(1555, 930)
+            _time.sleep(1.0)
+            screen1 = self.screenshot()
+            from sr_od.application.currency_war.cw_observe import cw_shot_unique
+            cw_shot_unique(screen1, prefix='cw_reward')
+            _texts = [
+                r.data for r in self.ctx.ocr_service.get_ocr_result_list(
+                    image=screen1, rect=None, crop_first=False)]
+            log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
+                     _plane, _round, _texts[:20])
+            self.ctx.controller.click(960, 150)   # 关弹窗(空白)
+            _time.sleep(0.6)
+        except Exception as e:   # noqa: BLE001  采集 best-effort,不阻塞备战
+            log.info(f'[cw][reward-probe] skip: {e}')
 
     def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
         """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
