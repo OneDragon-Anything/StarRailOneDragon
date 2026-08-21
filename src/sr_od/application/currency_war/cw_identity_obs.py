@@ -340,10 +340,14 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复。
     """
     chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
-    # [停机钩子·临时,建档后删(用户 2026-08-18 定调)]召唤物/特殊形态建档:
+    # [停机钩子·偏常驻兜底(hook审计 S3/r351 分类修正:触发=「占用且全部识别
+    # 路径不认识」= 兜一切未知物品变体,比临时建档面宽——真删了,下个新物品
+    # 变体会被当空槽乱操作,比停机贵;保留,识别覆盖新变体时自然不再触发)]
+    # 召唤物/特殊形态建档(用户 2026-08-18 定调):
     # 槽位占用(slot_occupied CV)真 + SIFT 认不出 = 未建档单位现身 → **停机保画面**,
     # AI 现场点该槽 → 右侧详情面板出角色名(身份 ground truth 源)+ 外观对照 → 定名建档
-    # (portrait_plaza/<名>/raw.png 白框法裁剪 + roster 核条目)→ 删本钩子。
+    # (portrait_plaza/<名>/raw.png 白框法裁剪 + roster 核条目)→ 处理完删 flag
+    # (钩子段在识别覆盖该物品变体前保留)。
     # ⚠️ r78 新误触模式守卫:**角色详情面板开着时跳过** —— 详情面板(x1400+)盖住 bench
     # 右端(slot7-9),被遮槽 SIFT 看到的是面板 UI(实锤:summon_unknown__e1fb06c8 帧
     # slot9 裁出的是搜索图标,详情面板上还明晃晃写着「藿藿」本尊)→ 假「占用未识别」
@@ -461,7 +465,8 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                         f'   (r100j 教训:卡包变体 TM 0.54 漏检;物品占槽是常态,识别不全就停机等建档)\n'
                         f'3. 若为真召唤物:portrait_plaza/<名>/raw.png 建模板(白框裁 '
                         f'{(_rect.x1, _rect.y1, _rect.x2, _rect.y2)})→ roster 核条目\n'
-                        f'4. 建档完成 → 本钩子自然不再触发(flag 自删);别把钩子降级留证——'
+                        f'4. 建档完成 → 处理完删本 flag;钩子段在识别覆盖该物品变体前'
+                        f'保留(偏常驻兜底,hook审计 S3);别把钩子降级留证——'
                         f'未建档物品被当空槽/普通占用乱操作比停机更贵(2026-08-20 用户纠偏)。\n'
                         f'截图: {_shot}', encoding='utf-8')
                     _log.warning('[cw!][summon] 备战 slot%s 占用未识别(物品变体或召唤物)'

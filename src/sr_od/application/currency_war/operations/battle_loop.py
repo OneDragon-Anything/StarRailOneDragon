@@ -459,21 +459,10 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
             return self.round_wait(wait=2)
 
-        # [停机钩子·临时] 未完整建档节点 + 待排查节点 → 停机给 AI 按 od-dev-screen-onboarding 建档/排查。
-        # 建档/排查完删该 tuple 项。
-        # - 巨星(盛会之星)已完整建档(2026-08-13)→ 移出,0b 接管。
-        # - 投资环境/投资策略/补给/选择伙伴 → 均已完整建档(2026-08-13~15)→ 移出,各自分支接管。
-        # - 祈愿试炼已完整建档(2026-08-17:doc+fixture+id_mark 测补齐;handler HandleWishTrial
-        #   2026-08-08 live 验证)→ 移出,**0c 分支接管**。⚠️ 教训:此钩子曾把每个新 run 在进
-        #   对局循环首帧(游戏停在祈愿屏)时停掉——游戏状态恰停在待建档屏时,钩子=每局必停,
-        #   被误判为「外部会话拦截」排查了一整晚(r24-r31)。钩子停机的前提是该屏**偶发**出现;
-        #   建档完成后立即删除,别留到「下次遇到」。
-        for _scr, _area, _tag in ():
-            if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
-                self.save_screenshot(prefix=f'{_tag}_hook')
-                Path(f'.debug/temp/currency_war/{_tag}_hook.flag').write_text(_tag, encoding='utf-8')
-                log.info(f'[cw-hook] {_tag} 节点(未建档)→ 停机给 AI 建档 + 接决策')
-                self.ctx.run_context.stop_running()
+        # [历史停机钩子已全部建档移除](hook审计 S8/r351 删死代码:循环体
+        # `for ... in ():` 永不执行)——r24 教训见 git:钩子停机的前提是该屏
+        # **偶发**出现;建档完成后立即删除,别留到「下次遇到」(曾致每局必停
+        # 被误判「外部会话拦截」排查一整晚)。
 
         # [观测钩子·常驻,44 号战斗过程观测] 战斗中画面低频采样(≥15s/帧 → battle_frames/,
         # 内容哈希去重防同一战斗刷屏;非交互死时间的边际证据,结算屏/备战屏不采)。
@@ -945,9 +934,13 @@ class CurrencyWarRunLoop(SrOperation):
             log.info(f'[cw-alloc] update 失败(跳过): {e}')
 
     def _handle_unknown_fallback(self) -> OperationRoundResult:
-        """临时随机态停机钩子(方案 D,M43-resume 修复 2026-08-16):loop 尾部兜底 ——
-        所有分支不命中(战斗特效帧 OCR 乱码/新未建档画面)→ streak 累计 → 保画面停机待建档。
-        曾被 _allocator_update 插入位置错误卷进方法体(从未执行)→ loop 隐式返 None(19:59 实锤)。
+        """[常驻兜底] loop 尾未知画面安全网(hook审计 S5/r351 分类修正:
+        触发条件=「loop 尾所有分支不命中」= 兜一切未知的常驻安全网,
+        **不是临时随机态钩子**——按临时写有误删风险;移除条件=该类
+        未知态全部建档,实际不可达,长期保留)。方案 D,M43-resume 修复
+        2026-08-16:战斗特效帧 OCR 乱码/新未建档画面 → streak 累计 →
+        保画面停机待建档。曾被 _allocator_update 插入位置错误卷进方法体
+        (从未执行)→ loop 隐式返 None(19:59 实锤)。
         """
         if getattr(self, '_unknown_last_iter', -1) == self._iter - 1:
             self._unknown_streak = getattr(self, '_unknown_streak', 0) + 1
@@ -961,14 +954,18 @@ class CurrencyWarRunLoop(SrOperation):
                              / 'currency_war' / 'unknown_state.flag')
                 _sentinel.parent.mkdir(parents=True, exist_ok=True)
                 _sentinel.write_text(
-                    f'持久未识别画面停机钩子:iter={self._iter} streak={self._unknown_streak}\n'
+                    f'[HOOK-STOP] 持久未识别画面停机钩子([常驻兜底] loop 尾安全网):'
+                    f'battle_loop._handle_unknown_fallback iter={self._iter} '
+                    f'streak={self._unknown_streak}\n'
                     f'处理流程(r100k 补,别跳过):\n'
                     f'1. 用截图离线分析:analyze_screen(screenshot=<shot 路径>) 看已建档命中;\n'
                     f'2. 未命中 → 按元素语义判断:新画面/弹窗 → od-dev-screen-onboarding 建档\n'
-                    f'   + battle_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ 考虑加大\n'
-                    f'   UNKNOWN_STOP_THRESHOLD 或加等待,不是新画面;\n'
+                    f'   + battle_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ **先确认\n'
+                    f'   非新画面(analyze_screen 为准)才可**加大 UNKNOWN_STOP_THRESHOLD\n'
+                    f'   或加等待,不是新画面;\n'
                     f'3. 建档完删本 flag + 重启 MCP server;若判断为瞬时帧误触发 → 删 flag\n'
                     f'   直接重跑(阈值/防抖在 UNKNOWN_STOP_THRESHOLD)。\n'
+                    f'移除条件:该类未知态全部建档(实际不可达,长期保留)。\n'
                     f'shot={_shot}', encoding='utf-8')
                 log.info('[cw!] [loop] 持久未识别画面 → stop_running 待 AI 建档 shot=%s streak=%s',
                          _shot, self._unknown_streak)

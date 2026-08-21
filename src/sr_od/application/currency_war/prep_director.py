@@ -282,8 +282,14 @@ class PrepDirector(SrOperation):
             # - 其余(宝钻叠加但档已实拍,如 cap5/lv3→6 槽基线)→ debug 记宝钻数。
             if cap is not None and cap < st.level:
                 from sr_od.application.currency_war.cw_observe import obs_conflict
+                # hook审计 L9(r351):verdict 补处理步骤——r350b 只补了
+                # unverified 分支,这半还是裸的(deploy_cap 案例同款)
                 obs_conflict('deploy_cap_vs_level', st.level, cap, screen,
-                             verdict='留证-cap低于level不可能(cap或level读错)',
+                             verdict=('留证-cap<level不可能(cap或level读错;'
+                                      '处理:看截图读「区域-部署数」X/Y 原文核 X>Y guard '
+                                      '是否该拒,level 查 XP 反推是否一致;'
+                                      '确认 reader 缺陷则修 read_deploy_cap/level 守卫;'
+                                      '单次按 OCR 噪声忽略,复现 ≥3 次才排期)'),
                              source='paddle_cap')
             elif cap is not None:
                 from sr_od.application.currency_war.cw_back_layout import (
@@ -322,9 +328,14 @@ class PrepDirector(SrOperation):
                 _spread = abs(dep_n - _cv_occ)
                 if _spread > 1:
                     from sr_od.application.currency_war.cw_observe import obs_conflict
+                    # hook审计 L8(r351):verdict 补处理步骤(原只列根因无指引)
                     obs_conflict('deployed_count_2src',
                                  {'paddle_x': dep_n, 'cv_occupied': _cv_occ},
-                                 'spread>1', screen, verdict='留证-双源分歧(paddle拆框/CV阈值)',
+                                 'spread>1', screen,
+                                 verdict=('留证-双源分歧(处理:看截图数前排+后排占用实数,'
+                                          '与 paddle X 对拍;哪源对修哪源——paddle 对→CV '
+                                          '阈值/遮挡误漏,CV 对→X/Y 拆框;'
+                                          '单次按噪声忽略,同局 ≥3 次排期修)'),
                                  source='director_heavy')
             # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
             # 缓存 state 生成时的可信度就是它的可信度)
@@ -736,10 +747,26 @@ class PrepDirector(SrOperation):
         if n >= PrepDirector.BAIL_SAME_REASON_DIAG:
             # MED-7:同因 bail≥3 = 外环 3 次未消化该弹层(bail↔重入 ping-pong,MAX_ITER 兜底
             # 需多小时)→ 升级停机钩子(方案 D):存证 + stop_running 保画面待 AI 建档/排查。
+            # hook审计 S4(r351):补 sentinel flag 三要素——接管者从 status=stopped +
+            # 本 flag 即知谁停的/怎么处理/钩子分类,不走「不知道谁停的」四层排查。
+            import time as _t
             log.warning(f'[cw!][director] 同因 bail ×{n}: {reason} → 升级停机(ping-pong,保画面建档)')
             import contextlib
             with contextlib.suppress(Exception):
                 self.save_screenshot(prefix='bail_pingpong')
+            with contextlib.suppress(Exception):
+                from pathlib import Path as _P
+                _P('.debug/temp/currency_war/bail_pingpong_hook.flag').write_text(
+                    f'[HOOK-STOP] bail ping-pong 停机钩子(常驻兜底):prep_director._bail\n'
+                    f'触发:同因 BailToOuter ×{n}(reason={reason})——外环 3 次未消化该弹层。\n'
+                    f'处理步骤:1. 看 .debug/images/bail_pingpong_* 截图识别该弹层/overlay;\n'
+                    f'   2. 已建档屏 → battle_loop 分发应有 handler,grep 该屏名查为何没接住\n'
+                    f'      (派发条件/锚点失效?);3. 新画面 → od-dev-screen-onboarding 建档\n'
+                    f'      + 加 handler;4. 合法重复出现 → 确认 _clear_bail_count 为何没清\n'
+                    f'      (handler 成功路径漏调?)。\n'
+                    f'移除条件:本钩子是 ping-pong 安全网,常驻不删;处理完删本 flag\n'
+                    f'+ run_standalone_app 重启对局。ts={_t.strftime("%m-%d %H:%M:%S")}\n',
+                    encoding='utf-8')
             rc = getattr(self.ctx, 'run_context', None)
             if rc is not None:
                 with contextlib.suppress(Exception):

@@ -181,8 +181,19 @@ class HandleInvestStrategy(SrOperation):
                     _shot = self.save_screenshot(prefix='cw_strat_refresh_fail')
                     _fp = _P('.debug/temp/currency_war/refresh_click_fail.flag')
                     _fp.parent.mkdir(parents=True, exist_ok=True)
+                    # hook审计 S7(r351):flag 补三要素(同 handle_invest_env S6)
+                    import time as _t2
                     _fp.write_text(
-                        f'count {self._refresh_count}->{_cnt2} candidates_same shot={_shot}',
+                        f'[HOOK-STOP] strategy 刷新点击未生效停机钩子(临时):handle_invest_strategy\n'
+                        f'触发:点了「按钮-刷新」后候选不变且剩余次数未减({self._refresh_count}->{_cnt2})'
+                        f'→ 点击没落到真按钮(yml 坐标是 VLM 猜测未实锤)。\n'
+                        f'处理步骤:1. 看 shot={_shot},离线(VLM/对拍 refresh_ui_samples.jsonl\n'
+                        f'   次数文本坐标)定位真实刷新按钮坐标;\n'
+                        f'   2. upsert_screen_area 更新「货币战争-投资策略/按钮-刷新」;\n'
+                        f'   3. 删本 flag + 重启 MCP server,重跑验证(次数应 -1)。\n'
+                        f'删除条件:按钮坐标实锤后删本停机段(handle_invest_strategy 搜\n'
+                        f'   「refresh_click_fail」),保留正常刷新流。\n'
+                        f'ts={_t2.strftime("%m-%d %H:%M:%S")}\n',
                         encoding='utf-8')
                     log.warning('[cw!] [strat] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s',
                                 _shot)

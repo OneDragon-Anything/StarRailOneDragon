@@ -907,7 +907,9 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         if (_prep_streak is not None and _sess.last_streak != 0
                 and abs(_sess.last_streak) != _prep_streak):
             obs_conflict('streak', _sess.last_streak, _prep_streak, screen,
-                         verdict='留证-双源不等(结算带符号 vs 备战magnitude,一方误读)',
+                         verdict=('留证-双源不等(结算带符号 vs 备战magnitude,一方误读;'
+                                  '处理:单次按噪声忽略,同局 JSONL 频发 >10 行/时'
+                                  '→ 排查 read_streak 与结算 streak reader'),
                          source='settlement_vs_prep', plane=state.plane, round_num=state.round_num)
     else:
         state.streak = read_streak(ctx, screen) or 0
@@ -931,11 +933,15 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
             _calc_c = _computed.get(_f)
             if _calc_c is None:
                 obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed}, f'OCR有computed无:{_f}',
-                             screen, verdict='留证-tracked漏阵营角色(OCR可见但计算无)',
+                             screen, verdict=('留证-tracked漏阵营角色(OCR可见但计算无;'
+                                              '处理:单次按噪声,频发 >10 行/时→排查 tracked '
+                                              '身份漏认(_reconcile 漂移源)'),
                              source='computed_vs_ocr')
             elif _calc_c != _ocr_c:
                 obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                             screen, verdict='采新-computed(可见行count不等,tracked漂移或OCR误读)',
+                             screen, verdict=('采新-computed(可见行count不等,tracked漂移或OCR误读;'
+                                              '处理:裁决已自动(采 computed);频发 >10 行/时'
+                                              '→排查对账纠漂链'),
                              source='computed_vs_ocr', faction=_f)
         state.board = _computed
         # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)
@@ -963,11 +969,15 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
             # 观察冲突审计 #10(2026-08-16):截断=双源分歧(tracked 多计于 board OCR,如 deploy SIFT 漂移)
             # —— 静默截断毒化部署近似;留证供毒化率统计。
             obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
-                         verdict='截断-tracked多计(board OCR 为准)', source='tracked_vs_board')
+                         verdict=('截断-tracked多计(board OCR 为准;处理:裁决已自动;'
+                                  '频发 >10 行/时→排查 deploy SIFT 漂移'),
+                         source='tracked_vs_board')
             state.deployed = state.deployed[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
         elif len(state.deployed) < _board_n:
             obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
-                         verdict='补齐-tracked少计(rebuild 无身份)', source='tracked_vs_board')
+                         verdict=('补齐-tracked少计(rebuild 无身份;处理:裁决已自动;'
+                                  '频发 >10 行/时→排查 rebuild 身份读取'),
+                         source='tracked_vs_board')
             _rebuild = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
             state.deployed.extend(_rebuild[len(state.deployed):])   # 补无身份(tracked 少计,如 sell 漂移)
     else:
