@@ -37,6 +37,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     """
     if session is None:
         return False
+    _pending_evidence: list[tuple] = []   # r336:留证队列(对账位统一消费)
     old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars]
     old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed]
     if not bench and not deployed and (old_b or old_d):
@@ -98,11 +99,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                 # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
                 # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
                 # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
+                # r336(批次4:钩子归位):留证调用从 reconcile 深处
+                # 改**队列记录**——真正落盘由 director 对账位统一
+                # 触发(消费统一观察;r330 帧态门在 _star_stop_hook
+                # 内,双层保护)。reconcile 只登记,不做 IO。
                 if _old_s >= 2:
                     _reg[_n] = _reg.get(_n, 0) + 1
-                    if _reg[_n] >= 2 and ctx is not None and _reg[_n] % 5 == 0:
-                        _star_stop_hook(ctx, session, _n, _old_s, _s, screen, source,
-                                        stop_run=False)
+                    _pending_evidence.append((_n, _old_s, _s, source))
         elif _n in _pend or _n in _reg:
             _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;r79:pop 防抖——
             # 名字可能只在 _reg 不在 _pend,原 del 抛 KeyError 打断备战环,实锤 丹恒·饮月)
@@ -130,6 +133,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)
+    # r336(批次4:钩子归位)——「对账&hook」位统一消费留证
+    # 队列(原 reconcile 深处散调;计数节流每 5 次留一张不变,
+    # _star_stop_hook 内 r330 帧态门保留=双层保护)。
+    for _n, _o_s, _s, _src in _pending_evidence:
+        if _reg.get(_n, 0) >= 2 and ctx is not None and _reg[_n] % 5 == 0:
+            _star_stop_hook(ctx, session, _n, _o_s, _s, screen, _src,
+                            stop_run=False)
     return True
 
 

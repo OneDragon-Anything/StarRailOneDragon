@@ -90,6 +90,12 @@ class CurrencyWarRunLoop(SrOperation):
     # (22:34:46/50)、bench_unidentified 钩子在 overlay 帧误采(11:17 投资策略帧)。
     # 门语义:备战分支**连续**命中 ≥ 本值才派 PrepDirector;期间只观察(overlay 弹出后 0e 系
     # 分支先于本分支接管,处理完回备战时门重新计时——链式 overlay 逐个消化)。
+    # ⚖️ ADR-0213 批次4 归属声明(r336):本门是「分支分发层」的
+    # 排程性迁移防御(overlay-after-prep),与 PrepPhase 环内
+    # gate(帧内动画防御)正交——**不迁入 gate 体系**(review
+    # 双方实证:双帧替代丢时间维度会重开 M47);结算屏/事件
+    # overlay 帧的识别走各 handler 自带锚+置信度门,同属
+    # 本层职责(三道防线:锚存在/conf≥0.9/同屏指纹去重)。
     PREP_SETTLE_S: ClassVar[float] = 3.0
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):

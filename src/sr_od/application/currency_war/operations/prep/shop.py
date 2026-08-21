@@ -129,20 +129,32 @@ class BuyShopCards(SrOperation):
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
         if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
             self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-            # r309(用户指正「等画面稳定」):固定 sleep(0.4) 后的帧
-            # 未必收起完成(动画延迟)→ read_hp 落在半开帧仍 100
-            # (局31 18:53 实证:陈久门拒结算值时 fallback 进毒读)。
-            # 修:轮询等「收起按钮消失」(≤2s),关态稳定才读 HP。
-            # r311(ADR-0213 批次1):gate_shop_close flag on →
-            # wait_stable_frame(关态 profile:出战锚+指纹一致,
-            # 比按钮消失更强);None=超时→round_retry(fail-closed,
-            # 替代旧 fail-open 毒读);异常→except 放行旧轮询。
+            # r335(批次3 收尾):三路等待收敛为一个局部轮询函数
+            # (gate on 超时=fail-closed retry;gate 异常/flag off
+            # =旧轮询,fail-open 语义留证批次4 删)。旧三份重复
+            # (off 路径/gate-err fallback/r311 遗留)合一。
             from sr_od.application.currency_war.currency_war_config import (
                 CurrencyWarConfig,
             )
             _gate_on = bool(getattr(
                 CurrencyWarConfig(self.ctx.current_instance_idx),
                 'gate_shop_close', False))
+
+            def _legacy_poll() -> bool:
+                """旧轮询(收起按钮消失 ≤2s);未稳仅 log(fail-open)。"""
+                import time as _t
+                _ok = False
+                for _ in range(5):
+                    _t.sleep(0.4)
+                    screen = self.screenshot()
+                    if not self.round_by_find_area(
+                            screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+                        _ok = True
+                        break
+                if not _ok:
+                    log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
+                return _ok
+
             _closed = False
             if _gate_on:
                 from sr_od.application.currency_war.cw_observation_gate import (
@@ -150,40 +162,18 @@ class BuyShopCards(SrOperation):
                     wait_stable_frame,
                 )
                 log.info('[cw][gate] path=new(shop 买前收起)')
-                _gate_err = False
                 try:
                     if wait_stable_frame(self, profile=PROFILE_CLOSED) \
                             is not None:
                         _closed = True
+                        screen = self.screenshot()
                 except Exception:   # noqa: BLE001  离线契约
-                    _gate_err = True   # P1① 分流:异常≠超时
-                if not _closed and not _gate_err:
+                    _closed = _legacy_poll()   # P1① 分流:异常≠超时
+                if not _closed:
                     return self.round_retry('收起后关态未稳定(gate 超时)',
                                             wait=1)
-                if _gate_err:
-                    # 异常→放行旧轮询(其 fail-open 语义保留为
-                    # 批次3 收敛项;此处仅保持等价)
-                    import time as _t
-                    for _ in range(5):
-                        _t.sleep(0.4)
-                        screen = self.screenshot()
-                        if not self.round_by_find_area(
-                                screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-                            _closed = True
-                            break
-                elif _closed:
-                    screen = self.screenshot()
             else:
-                import time as _t
-                for _ in range(5):
-                    _t.sleep(0.4)
-                    screen = self.screenshot()
-                    if not self.round_by_find_area(
-                            screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-                        _closed = True
-                        break
-                if not _closed:
-                    log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
+                _closed = _legacy_poll()
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
         # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
