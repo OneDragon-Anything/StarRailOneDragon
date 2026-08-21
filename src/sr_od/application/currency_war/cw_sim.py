@@ -102,6 +102,8 @@ class SimResult:
     level: int = 3
     locked_line: str | None = None
     bridge_id: str | None = None
+    # r338 诊断基建:逐轮事件 (round, node_type, delta, dir_established)
+    hp_events: list[tuple[int, str, int, bool]] = field(default_factory=list)
 
 
 class _Pool:
@@ -305,6 +307,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         st.hp = max(0, int(st.hp + delta))
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
+        res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
         if st.hp <= 0:
             break
     res.final_hp = st.hp
