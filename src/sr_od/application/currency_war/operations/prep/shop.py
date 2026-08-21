@@ -1,5 +1,6 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
+import contextlib
 import time
 from copy import deepcopy
 from typing import ClassVar
@@ -170,10 +171,13 @@ class BuyShopCards(SrOperation):
                 )
                 log.info('[cw][gate] path=new(shop 买前收起)')
                 try:
-                    if wait_stable_frame(self, profile=PROFILE_CLOSED) \
-                            is not None:
+                    # r346(review M1):接收 gate 稳定帧而非布尔后重截——
+                    # 丢弃帧=gate 全图 OCR 缓存作废+HP 读在未验证帧上,
+                    # 且多付 ~5s 重 OCR(与 r344b 缓存贯穿设计冲突)
+                    _gf = wait_stable_frame(self, profile=PROFILE_CLOSED)
+                    if _gf is not None:
                         _closed = True
-                        screen = self.screenshot()
+                        screen = _gf
                 except Exception:   # noqa: BLE001  离线契约
                     _closed = _legacy_poll()   # P1① 分流:异常≠超时
                 if not _closed:
@@ -232,7 +236,8 @@ class BuyShopCards(SrOperation):
                     wait_stable_frame,
                 )
                 log.info('[cw][gate] path=new(shop 开店)')
-                import contextlib
+                # r346:contextlib 已模块级——原局部 import 是 H1 雷
+                # (gate bug #5 同型:分支内 import + L352 分支外使用)
                 with contextlib.suppress(Exception):   # 离线契约:放行
                     wait_stable_frame(self, profile=PROFILE_OPEN)
             else:
@@ -544,7 +549,7 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 买后收起)')
-            import contextlib
+            # r346:contextlib 已模块级(同上,H1 雷)
             with contextlib.suppress(Exception):   # 离线契约:放行
                 wait_stable_frame(self, profile=PROFILE_CLOSED)
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件

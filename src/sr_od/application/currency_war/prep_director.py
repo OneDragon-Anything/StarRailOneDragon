@@ -410,6 +410,21 @@ class PrepDirector(SrOperation):
             except Exception:   # noqa: BLE001  离线契约
                 _gate_err = True   # P1① 分流:异常≠超时,走旧探针
             if _gate_frame is None and not _gate_err:
+                # r346(局38 r2 停机根因):战斗胜利后新回合备战进入时
+                # 商店可能开着(游戏行为,稳定合法态)——gate 只认关态
+                # 会把它误当「特效未消化」3-strike 停机。开商店态先
+                # 收起再重进环(HP/gold 读取语义本要求关态,shop.py
+                # 同款);真特效/overlay 才走原 bail 交外环。
+                _sc = self.screenshot()
+                if self.round_by_find_area(
+                        _sc, SHOP_SCREEN_NAME, '按钮-收起',
+                        crop_first=False).is_success:
+                    log.info('[cw][director] 环入口开商店态(合法态非特效)'
+                             '→ 收起重进')
+                    self.round_by_find_and_click_area(
+                        _sc, SHOP_SCREEN_NAME, '按钮-收起',
+                        success_wait=1.0)
+                    return self.round_retry('环入口商店开,已收起重进')
                 return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
             if _gate_err:
                 _gate_on = False   # 落回旧探针循环(其 except break 放行)
