@@ -25,6 +25,18 @@ if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
 
+from sr_od.application.currency_war.cw_identity_obs import (
+    ensure_portrait_templates,
+    read_bench_chars,
+    read_deployed_chars,
+)
+from sr_od.application.currency_war.cw_observation import (
+    read_game_state,
+    read_node_sequence,
+    read_shop_cards,
+)
+
+
 def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  source: str, op=None) -> dict:
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
@@ -42,17 +54,8 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
     原则,批次3 收敛);reconcile 经 director 的既有回调链
     (source 已传入,star 防抖/obs_conflict 由 director 在回填
     时调用——避免组装层持 session 双写)。
+    (r331:import 提模块级——测试 monkeypatch 按模块属性打桩。)
     """
-    from sr_od.application.currency_war.cw_identity_obs import (
-        ensure_portrait_templates,
-        read_bench_chars,
-        read_deployed_chars,
-    )
-    from sr_od.application.currency_war.cw_observation import (
-        read_game_state,
-        read_node_sequence,
-        read_shop_cards,
-    )
     out: dict = {'tier': tier, 'source': source, 'gold_reread': False}
     if tier == 'heavy':
         templates = ensure_portrait_templates(ctx)
