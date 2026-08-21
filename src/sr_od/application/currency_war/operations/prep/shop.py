@@ -141,8 +141,13 @@ class BuyShopCards(SrOperation):
                 'gate_shop_close', False))
 
             def _legacy_poll() -> bool:
-                """旧轮询(收起按钮消失 ≤2s);未稳仅 log(fail-open)。"""
+                """旧轮询(收起按钮消失 ≤2s);未稳仅 log(fail-open)。
+
+                ⚠ 返回稳定帧供后续 read_hp_opt 用(闭包写外层
+                screen 需 nonlocal——预核发现旧版轮询会更新
+                screen,收敛版丢了会静默用旧帧)。"""
                 import time as _t
+                nonlocal screen
                 _ok = False
                 for _ in range(5):
                     _t.sleep(0.4)
