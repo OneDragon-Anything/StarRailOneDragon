@@ -270,25 +270,40 @@ class PrepDirector(SrOperation):
             # 后异帧——跨帧对拍在轮转动画窗内可假分歧(低概率,
             # 留证非阻塞);r334 后重读仅在 shop 开态,窗口缩小。
             cap = read_deploy_cap(self.ctx, screen)
-            # 观察冲突审计 #15(2026-08-16;⚠ 2026-08-22 域反转,局38 判读):
-            # 原域「cap ∈ {level, level+1}」(D-53 单宝钻假设)太窄——
-            # 财富宝钻官方效果「拥有即可使团队规模上限+1,**无论是否被
-            # 角色穿戴**」(cw_equipment_data 官方原文)= 按拥有计数**可
-            # 叠加**(局38 r2 实证 cap5/lv3=两宝钻;back_layout 五组实测
-            # lv4+1宝钻=cap5 先例)。真异常方向反转:
-            # - cap < level → 不可能(读错/毒化)→ 留证(三源网 M38 天敌,
-            #   verdict 同步改「不可能向」);
-            # - cap > level+1 → 合法(宝钻×(cap-level) 叠加)→ debug 记
-            #   宝钻数(人口/板深模型可用信息),不再占 [cw!] 假警报
-            #   (旧窄域跨局假响 5 shots:19:13-00:56)。
+            # 观察冲突审计 #15(2026-08-16;⚠ 2026-08-22 两段反转,ADR-0220+用户点题):
+            # 原域「cap ∈ {level, level+1}」(D-53 单宝钻假设)太窄——财富宝钻官方效果
+            # 「拥有即可使团队规模上限+1,无论是否被角色穿戴」可叠加(局38 r2 实证
+            # cap5/lv3=两宝钻)。反转后两段:
+            # - cap < level → 不可能(读错/毒化)→ 留证(三源网 M38 天敌);
+            # - cap > level+1 且落入**未实拍后排档**(7/9/10/11,格点推导未经狸猫局
+            #   级实拍,用户 2026-08-22 点题:该 hook 的采集用途)→ obs_conflict
+            #   留证(带处理步骤:本局实拍验证布局档,错位则 upsert 校正)——
+            #   **不得降 debug**(r348 曾误降,静音了 7/9 后台建档采集信号);
+            # - 其余(宝钻叠加但档已实拍,如 cap5/lv3→6 槽基线)→ debug 记宝钻数。
             if cap is not None and cap < st.level:
                 from sr_od.application.currency_war.cw_observe import obs_conflict
                 obs_conflict('deploy_cap_vs_level', st.level, cap, screen,
                              verdict='留证-cap低于level不可能(cap或level读错)',
                              source='paddle_cap')
-            elif cap is not None and cap > st.level + 1:
-                log.debug('[cw][obs] cap=%d > level+1(宝钻×%d 叠加,合法)',
-                          cap, cap - st.level)
+            elif cap is not None:
+                from sr_od.application.currency_war.cw_back_layout import (
+                    _UNVERIFIED_BACK_SLOTS,
+                    effective_back_slots,
+                )
+                _slots = effective_back_slots(cap)
+                if _slots in _UNVERIFIED_BACK_SLOTS:
+                    from sr_od.application.currency_war.cw_observe import obs_conflict
+                    obs_conflict('deploy_cap_unverified_layout', st.level,
+                                 cap, screen,
+                                 verdict=(f'留证-后排{_slots}槽档未实拍(格点推导;'
+                                          f'处理:本局识别/拖拽逐位验证该档坐标,'
+                                          f'错位则 upsert 后排{_slots}槽-* 校正'
+                                          f'并从 _UNVERIFIED_BACK_SLOTS 移除;'
+                                          f'正常则仅移除该档)'),
+                                 source='layout_unverified')
+                else:
+                    log.debug('[cw][obs] cap=%d > level+1(宝钻×%d 叠加,合法)',
+                              cap, cap - st.level)
             dep_n = read_deployed_count(self.ctx, screen)
             if cap is not None and dep_n is not None:
                 obs.deploy_vacancy = max(0, cap - dep_n)

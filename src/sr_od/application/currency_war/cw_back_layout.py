@@ -34,6 +34,13 @@ _LAYOUT_PREFIX: dict[int, str] = {
     11: '后排11槽',
 }
 
+#: 未实拍档(用户口径 2026-08-22:只有 8 后台做过狸猫局实拍级建档——qwen
+#: grounding+交互定名;6=多局基线;**7/9/10/11 系格点推导/暗框级,遇到该档
+#: 局需留证采集实拍验证**)。消费方:prep_director 的 cap 域检查分支——
+#: cap 落入未实拍档时 obs_conflict 留证(处理步骤见 verdict),供判读人
+#: 顺带实拍(upsert 校正后从此集合移除)。
+_UNVERIFIED_BACK_SLOTS: frozenset[int] = frozenset({7, 9, 10, 11})
+
 #: 后排 y 带(所有布局共用;槽 rect 高约 600-739)
 _BACK_Y1, _BACK_Y2 = 600, 739
 
