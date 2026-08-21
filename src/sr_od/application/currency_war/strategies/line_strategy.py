@@ -386,7 +386,14 @@ class LineStrategy(DefaultCwStrategy):
             # 剩余预算的形态件购买:金按扣除经验后计,
             # 地板用扣后金的 war 档(30)——但若扣后 <50 原本
             # 是满息态,买件地板应保 50(不因升人口破息)。
-            st2 = state
+            # r272(审查②#5 活 bug 修):st2 原是**别名**——直接改
+            # 入参 state.gold,而 shop.py 在调 decide_prep 前已把
+            # state 存进 session.last_state → catchup 态回合污染
+            # last_state.gold(少记 cost),shop 的 gold 差值对拍
+            # 基线同步被污染 → 假 obs_conflict。修:deepcopy
+            # 隔离(与 _apply_sells 同纪律)。
+            import copy
+            st2 = copy.deepcopy(state)
             st2.gold = state.gold - cost
             floor_after = (_INTEREST_FLOOR
                            if state.gold >= _INTEREST_FLOOR
