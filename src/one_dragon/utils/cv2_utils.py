@@ -317,6 +317,41 @@ def is_same_image(i1: MatLike, i2: MatLike, threshold: float = 1) -> bool:
     return np.mean((i1 - i2) ** 2) < threshold
 
 
+def fingerprint_in_rects(img: MatLike, rects) -> tuple:
+    """分区像素指纹:逐 rect 裁切→灰度→缩到 8x8(帧稳定判据用)。
+
+    与全图 ``is_same_image`` 互补:游戏帧常含局部恒动区(立绘
+    idle 呼吸/背景 VFX),全图 MSE 恒不等;按业务指定静区(数字/
+    文本 HUD)取指纹,恒动区天然排除在外。
+    (CW 观测 gate r324 自私有实现下沉;唯一源。)
+    """
+    parts = []
+    for r in rects:
+        crop = img[r.y1:r.y2, r.x1:r.x2]
+        if crop.size == 0:
+            parts.append(np.zeros((8, 8), dtype=np.uint8))
+            continue
+        gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+        parts.append(cv2.resize(gray, (8, 8)))
+    return tuple(parts)
+
+
+def fingerprint_same(a: tuple, b: tuple, max_mean_diff: float = 3.0) -> bool:
+    """指纹一致=逐区灰度均差 ≤ 阈值(容忍截屏低比特噪声)。
+
+    字节恒等判据被截屏管线噪声否决(同源两帧也不恒等,实测);
+    真变化(数字滚动/文本切换)均差远超默认阈值。
+    """
+    if len(a) != len(b):
+        return False
+    for x, y in zip(a, b, strict=True):
+        if x.shape != y.shape:
+            return False
+        if float(np.mean(cv2.absdiff(x, y))) > max_mean_diff:
+            return False
+    return True
+
+
 def color_similarity_2d(image, color):
     """
     PhotoShop 魔棒功能的容差是一样的，颜色差值 = abs(max(RGB差值)) + abs(min(RGB差值))

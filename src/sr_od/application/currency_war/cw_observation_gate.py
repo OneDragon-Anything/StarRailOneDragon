@@ -34,56 +34,49 @@ if TYPE_CHECKING:
 # ===== profile 常量(两态+弹窗;锚/读区/超时收敛于此,调用方只选套) =====
 
 #: 关态(备战+商店关)。
-#: 锚设计(用户指路修正 2026-08-23:大部分画面已建档且带
-#: 准确 id_mark,别造 absence 新原语):
-#: - presence=「按钮-出战」(备战屏 id_mark,局35 奖励面板
-#:   帧实测 0.9999 命中——面板不遮出战按钮);
-#: - shop 开帧的排除靠**开商店屏自己的 id_mark presence**
-#:   「按钮-收起」:round_by_find_area(screen='开商店屏')的
-#:   语义就是「该屏该锚命中」(框架 screen_info 坐标+文本
-#:   双重约束),不是裸文字匹配——开帧必中,备战帧实测不中
-#:   (fixture 补给节点.webp 验证)。
-#: 圆数门弃用(局35 误杀奖励面板帧——「读不到圆」在 shop
-#: 开帧与奖励面板帧语义相反)。
+#: 锚设计(用户指路+r324 轮子审查修法1):**删自拼 presence/
+#: absence 双锚**——用框架 screen_match 精准判定一次搞定:
+#: get_match_screen_name(['备战','开商店'])精准命中「备战」
+#: = 关态(id_mark 全中体系:备战屏 id_mark=购买经验/出战/
+#: 前台/后台,开商店屏精准命中时必然不是关态)。
+#: 圆数门弃用(局35 误杀奖励面板帧)。
 PROFILE_CLOSED: dict = {
-    'anchor_screen': '货币战争-备战',
-    'anchor_area': '按钮-出战',          # 关态 id_mark presence
-    'absence_screen': '货币战争-备战-开商店',
-    'absence_area': '按钮-收起',         # 开态 id_mark(开帧必中→拒)
+    'screen_list': ('货币战争-备战', '货币战争-备战-开商店'),
+    'expect_screen': '货币战争-备战',
     # 读区像素指纹(1080p;排除表:立绘 idle 呼吸区/球区 VFX)
     'fingerprint_rects': (
         Rect(1408, 23, 1498, 103),  # HP 数字区(关态右上真值)
         Rect(60, 895, 320, 975),     # LV/XP
         Rect(250, 30, 520, 120),     # 阶段区(位面-轮次)
     ),
-    'circle_gate': False,           # 误杀实证(局35),弃用
     'timeout_s': 4.5,               # r299 实测关店动画 ~3s
     'min_stable_s': 0.8,
 }
 
-#: 开态(商店开):锚=按钮-收起 presence(⚠ 禁用「备战标识-购买
-#: 经验」——shop 开/关两态均可见,r297 实证)。
+#: 开态(商店开):同用框架精准判定——精准命中「开商店屏」
+#: (其 id_mark=收起/购买经验 全中)。
 PROFILE_OPEN: dict = {
-    'anchor_screen': '货币战争-备战-开商店',
-    'anchor_area': '按钮-收起',
+    'screen_list': ('货币战争-备战-开商店',),
+    'expect_screen': '货币战争-备战-开商店',
     'fingerprint_rects': (
         Rect(1620, 890, 1700, 945),   # gold 数字区(开态右下)
         Rect(300, 228, 1560, 326),    # 商店牌行
     ),
-    'circle_gate': False,
     'timeout_s': 4.5,
     'min_stable_s': 0.8,
 }
 
 #: 弹窗态(奖励采集钩子点六边形后):锚=弹窗标题区 OCR「金币说明」。
 PROFILE_POPUP: dict = {
-    'anchor_screen': '货币战争-备战',
-    'anchor_area': '',               # 弹窗未建档:ocr_keyword 代替
-    'ocr_keyword': '金币说明',
+    # r324 修法3:弹窗改走建档(upsert_screen_area「标识-金币
+    # 说明」id_mark 待建)——ocr_keyword 特例是绕过建档的平行
+    # 通道,审查标重复。建档前此 profile 不接线(钩子仍走
+    # r304 流程;钩子本身「采完删」,见方案 v4)。
+    'screen_list': ('货币战争-金币说明弹窗',),
+    'expect_screen': '货币战争-金币说明弹窗',
     'fingerprint_rects': (
         Rect(1000, 580, 1560, 1010),  # 节点预计收入明细区
     ),
-    'circle_gate': False,
     'timeout_s': 3.0,
     'min_stable_s': 0.6,
 }
@@ -91,64 +84,31 @@ PROFILE_POPUP: dict = {
 #: 帧间隔(方案 v4:0.2-0.3s)
 _POLL_S: float = 0.25
 
-#: 指纹比较阈值(局36 diag 实证:静态 UI 区帧间像素也不恒等
-#: ——截屏管线低比特噪声/合成抖动;字节级比对恒 fail
-#: (fp=5/anchor=0)。8x8 灰度均差 ≤ 此值视为同帧。
-_FP_MAX_MEAN_DIFF: float = 3.0
-
-
-def _fingerprint(frame: MatLike, rects: tuple[Rect, ...]) -> tuple:
-    """读区像素指纹(逐区 8x8 灰度)。"""
-    import cv2
-    import numpy as np
-    parts = []
-    for r in rects:
-        crop = frame[r.y1:r.y2, r.x1:r.x2]
-        if crop.size == 0:
-            parts.append(np.zeros((8, 8), dtype=np.uint8))
-            continue
-        gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-        small = cv2.resize(gray, (8, 8))
-        parts.append(small)
-    return tuple(parts)
-
-
-def _fp_same(a: tuple, b: tuple) -> bool:
-    """指纹一致=逐区均差 ≤ 阈值(容忍截屏噪声,非字节恒等)。"""
-    import numpy as np
-    if len(a) != len(b):
-        return False
-    for x, y in zip(a, b, strict=True):
-        if isinstance(x, bytes) or isinstance(y, bytes):
-            return False   # 旧格式不比
-        if float(np.mean(cv2_abs_diff(x, y))) > _FP_MAX_MEAN_DIFF:
-            return False
-    return True
-
-
-def cv2_abs_diff(x, y):
-    import cv2
-    return cv2.absdiff(x, y)
+# r324(轮子审查修法2):指纹原语下沉 one_dragon.utils.cv2_utils
+# (fingerprint_in_rects/fingerprint_same,与 is_same_image 并列)——
+# gate 不再私有实现;阈值语义注解见 cv2_utils(局36 diag 实证)。
 
 
 def wait_stable_frame(
         op: SrOperation, *, profile: dict,
         timeout_s: float | None = None,
         clock=None) -> MatLike | None:
-    """等待画面稳定(方案 v4 定案语义;终验 P1① 修正)。
+    """等待画面稳定(r324 重构:框架能力复用版)。
 
-    - 先 park_cursor(op 方法;签名传 op 因 park_cursor 是
-      SrOperation 成员,ctx 上没有——D-2.1);
-    - 循环:截帧 → 锚命中(OCR/圆数门)→ 首尾帧指纹一致且
-      持续 min_stable_s → 返回稳定帧;
-    - **截图异常 → raise**(终验 P1①:异常与超时必须分流——
-      折叠进 None 会被按 None 语义表接线成 3-strike 停机,
-      把离线/瞬断升级成停局,违背环级测试依赖的 except-break
-      放行语义;调用方 try/except 接住=放行旧路径);
-    - 超时 → None(调用方按 per-callsite 语义表处理:
-      director=同因 bail / shop=round_retry / 钩子=skip+log);
-    - clock 可注入(默认 time.monotonic;测试 seam,Y-4)。
+    - 锚判定=**框架 screen_match 精准判定**(id_mark 全中):
+      get_match_screen_name(profile['screen_list'])精准命中
+      expect_screen——删自拼 presence/absence(轮子审查 A2)
+      与 ocr_keyword 特例(A5);
+    - 帧一致=**cv2_utils.is_same_in_rects**(审查 A3:指纹
+      下沉框架,与 is_same_image 并列);
+    - 时间维度稳定窗(min_stable_s 首尾帧)+异常/超时分流
+      (raise vs None)是本模块仅存的净增量(审查 D);
+    - 截图异常→raise(调用方 except=放行旧路径);
+      超时→None(per-callsite 语义表);
+    - clock 可注入(测试 seam)。
     """
+    from one_dragon.base.screen import screen_utils
+    from one_dragon.utils import cv2_utils
     _now = clock or time.monotonic
     _sleep = (lambda s: None) if clock else time.sleep
     t0 = _now()
@@ -159,45 +119,25 @@ def wait_stable_frame(
         op.park_cursor()
     stable_since = None
     first_fp = None
-    _diag = {'anchor': 0, 'absence': 0, 'circle': 0, 'fp': 0, 'ok': 0}
+    _diag = {'screen': 0, 'fp': 0, 'ok': 0}
     while _now() < deadline:
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
-        # 锚命中(presence)
-        if profile.get('ocr_keyword'):
-            if not op.round_by_ocr(frame, profile['ocr_keyword']).is_success:
-                _diag['anchor'] += 1
-                _sleep(_POLL_S)
-                stable_since = None
-                continue
-        elif not op.round_by_find_area(
-                frame, profile['anchor_screen'],
-                profile['anchor_area'], crop_first=False).is_success:
-            _diag['anchor'] += 1
+        # 画面判定:框架 is_target_screen(id_mark 体系;一次调用
+        # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)
+        _name = screen_utils.get_match_screen_name(
+            ctx=op.ctx, screen=frame,
+            screen_name_list=list(profile['screen_list']),
+            crop_first=False)
+        if _name != profile['expect_screen']:
+            _diag['screen'] += 1
             _sleep(_POLL_S)
             stable_since = None
             continue
-        # 互斥锚(absence):shop 开态按钮可见 = 非关态 → 拒
-        # (对拍局35:替代圆数门——奖励面板帧读不到圆≠shop 开)
-        if profile.get('absence_area') and op.round_by_find_area(
-                frame, profile['absence_screen'],
-                profile['absence_area'], crop_first=False).is_success:
-            _diag['absence'] += 1
-            _sleep(_POLL_S)
-            stable_since = None
-            continue
-        # 圆数门(弃用——局35 实证误杀奖励面板帧;保留字段兼容)
-        if profile.get('circle_gate'):
-            from sr_od.application.currency_war.cw_observation import (
-                read_node_sequence,
-            )
-            if not read_node_sequence(op.ctx, frame):
-                _diag['circle'] += 1
-                _sleep(_POLL_S)
-                stable_since = None
-                continue
-        # 指纹首尾一致(阈值比较——字节恒等被截屏噪声否决,局36)
-        fp = _fingerprint(frame, profile['fingerprint_rects'])
-        if first_fp is None or not _fp_same(fp, first_fp):
+        # 帧一致:框架 per-rect(与全图 is_same_image 并列的增量)
+        fp = cv2_utils.fingerprint_in_rects(
+            frame, profile['fingerprint_rects'])
+        if first_fp is None or not cv2_utils.fingerprint_same(
+                fp, first_fp):
             _diag['fp'] += 1
             first_fp = fp
             stable_since = _now()
@@ -205,11 +145,10 @@ def wait_stable_frame(
             continue
         if stable_since is not None and \
                 _now() - stable_since >= profile['min_stable_s']:
-            _name = profile.get('anchor_area') or profile.get('ocr_keyword')
-            log.info(f'[cw][gate] stable frame (profile={_name}, {_now() - t0:.1f}s)')
+            log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s)')
             return frame
         _diag['ok'] += 1
         _sleep(_POLL_S)
-    _name = profile.get('anchor_area') or profile.get('ocr_keyword')
-    log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) profile={_name} diag={_diag}')
+    log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) '
+             f'profile={profile["expect_screen"]} diag={_diag}')
     return None
