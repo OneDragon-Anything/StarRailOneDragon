@@ -68,4 +68,17 @@ class ExitCurrencyWarMatch(SrOperation):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=2)
 
-        return self.round_retry(wait=1)
+        # r279(用户交办,分支③实证建档 2026-08-23):战斗中(不可识别
+        # 画面)→ 右上角 X → 「货币战争-战斗暂停」(新档)→「撤退」→
+        # 中断挑战弹窗(上方「放弃并结算」分支接管)。修战斗中 retry
+        # 死循环(旧版全分支不命中)。
+        if self.round_by_find_area(screen, '货币战争-战斗暂停',
+                                   '标识-战斗暂停').is_success:
+            if self.round_by_find_and_click_area(
+                    screen, '货币战争-战斗暂停', '按钮-撤退',
+                    success_wait=2).is_success:
+                log.info('[cw-exit] 战斗暂停→撤退 → 中断挑战弹窗')
+                return self.round_wait(wait=2)
+        # 战斗中(未暂停态):点右上角 X 弹暂停(实证 2026-08-23)
+        self.ctx.controller.click(1843, 42)
+        return self.round_wait(wait=1.5)
