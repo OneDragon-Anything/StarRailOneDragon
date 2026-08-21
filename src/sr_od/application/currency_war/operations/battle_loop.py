@@ -690,6 +690,11 @@ class CurrencyWarRunLoop(SrOperation):
             # (Y-1c/D-2.3 七轮 review 实证)。修:连续 N 次失败
             # →告警+视为停滞(交 stall 哨兵/unknown 兜底链),
             # 不再无限静默重派。
+            # ⚠ 语义澄清(review 第9条):round_fail 在本节点
+            # node_max_retry_times=400 下**不停机**——刻意:
+            # 消除的是「静默」(无日志)而非「重试」;warning 进
+            # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
+            # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
             _ok = PrepDirector(self.ctx).execute()
             if not _ok:
                 self._director_fail_streak = getattr(

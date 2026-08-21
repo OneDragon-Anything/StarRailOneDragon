@@ -215,7 +215,8 @@ class PrepDirector(SrOperation):
                 observe_full,
             )
             _of = observe_full(self.ctx, screen, tier='heavy',
-                               source='director', op=self)
+                               source='director', op=self,
+                               shop_open=obs.shop_open)   # r334:F2 门
             templates = ensure_portrait_templates(self.ctx)   # M-2:复用单一源(路径+缓存)
             if templates is not None:
                 obs.bench_chars = _of.get('bench_chars') or []
@@ -258,6 +259,10 @@ class PrepDirector(SrOperation):
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。
             obs.substate = _of.get('substate') or {}
+            # ⚠ r334(review 第4条):以下 cap/双源审计用 heavy 段
+            # 开头的旧 screen,而 st 可能来自 gold 重读的 0.3-0.9s
+            # 后异帧——跨帧对拍在轮转动画窗内可假分歧(低概率,
+            # 留证非阻塞);r334 后重读仅在 shop 开态,窗口缩小。
             cap = read_deploy_cap(self.ctx, screen)
             # 观察冲突审计 #15(2026-08-16):cap Y ∈ {level, level+1}(D-53 域知识:无加成=level,
             # 钻石/宝钻=level+1)→ Y 是 level 的**第三独立源**(空间远离 Lv/XP 区,不受同一光标

@@ -38,7 +38,7 @@ from sr_od.application.currency_war.cw_observation import (
 
 
 def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
-                 source: str, op=None) -> dict:
+                 source: str, op=None, shop_open: bool = False) -> dict:
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
@@ -70,8 +70,13 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         # stylized 间歇漏与帧稳定正交,重读是第二道)。
         # ⚠ 重读=**重新截图**(同帧重读结果恒同);
         # op 不可用(离线)时跳过(返原值)。
+        # r334(review 第5条:恢复 F2 门)——gold 仅 shop 开态
+        # 可信(关态读空恒 0):重读也只在开态做,否则每个
+        # 关态 heavy 白付 3×0.3s+3 次全量 OCR(系统性变慢)
+        # 且换入的 st2 来自 0.3-0.9s 后异帧(轮转窗内 board
+        # 可回退)。shop_open 由调用方传(它有帧上下文)。
         import time
-        if st.gold == 0 and op is not None:
+        if st.gold == 0 and op is not None and shop_open:
             for _ in range(3):
                 time.sleep(0.3)
                 try:
