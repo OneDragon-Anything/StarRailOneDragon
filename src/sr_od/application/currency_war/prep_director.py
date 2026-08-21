@@ -333,7 +333,6 @@ class PrepDirector(SrOperation):
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
         self._probe_node_type()   # [采集钩子·临时] 节点类型标定(自 battle_prep 搬入;采完删)
-        self._probe_node_reward()  # [采集钩子·临时] 节点奖励明细(r280;用户交办采数据)
         return self._run_loop(match)
 
     def _run_loop(self, match) -> OperationRoundResult:
@@ -360,6 +359,11 @@ class PrepDirector(SrOperation):
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
+        # r287(r280 钩子触发时机修):钩子原挂 run() 入口——但入口
+        # 帧商店**必开**(备战 overlay 先渲染商店,step1 才关)→
+        # 守卫永不 clean,钩子整局静默(局22/23/24 前段实证)。
+        # 移到环循环首帧(shop 已关+特效消化后),才是 clean 备战态。
+        self._probe_node_reward()
         # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
         # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
         # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
