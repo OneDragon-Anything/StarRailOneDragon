@@ -10,7 +10,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
-from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_obs_core import (
     HP_MAX,
     SHOP_SCREEN_NAME,
@@ -136,17 +135,44 @@ class BuyShopCards(SrOperation):
             # 未必收起完成(动画延迟)→ read_hp 落在半开帧仍 100
             # (局31 18:53 实证:陈久门拒结算值时 fallback 进毒读)。
             # 修:轮询等「收起按钮消失」(≤2s),关态稳定才读 HP。
-            import time as _t
+            # r311(ADR-0213 批次1):gate_shop_close flag on →
+            # wait_stable_frame(关态 profile:出战锚+指纹一致,
+            # 比按钮消失更强);None=超时→round_retry(fail-closed,
+            # 替代旧 fail-open 毒读);异常→except 放行旧轮询。
+            from sr_od.application.currency_war.currency_war_config import (
+                CurrencyWarConfig,
+            )
+            _gate_on = bool(getattr(
+                CurrencyWarConfig(self.ctx.current_instance_idx),
+                'gate_shop_close', False))
             _closed = False
-            for _ in range(5):
-                _t.sleep(0.4)
+            if _gate_on:
+                from sr_od.application.currency_war.cw_observation_gate import (
+                    PROFILE_CLOSED,
+                    wait_stable_frame,
+                )
+                log.info('[cw][gate] path=new(shop 买前收起)')
+                try:
+                    if wait_stable_frame(self, profile=PROFILE_CLOSED) \
+                            is not None:
+                        _closed = True
+                except Exception:   # noqa: BLE001  离线契约:放行旧路径
+                    _closed = False
+                if not _closed:
+                    return self.round_retry('收起后关态未稳定(gate 超时)',
+                                            wait=1)
                 screen = self.screenshot()
-                if not self.round_by_find_area(
-                        screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-                    _closed = True
-                    break
-            if not _closed:
-                log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
+            else:
+                import time as _t
+                for _ in range(5):
+                    _t.sleep(0.4)
+                    screen = self.screenshot()
+                    if not self.round_by_find_area(
+                            screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+                        _closed = True
+                        break
+                if not _closed:
+                    log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
         hp_value = read_hp(self.ctx, screen)
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
