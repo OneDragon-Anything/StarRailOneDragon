@@ -709,11 +709,18 @@ class LineStrategy(DefaultCwStrategy):
         """战力:分层补强(线内件优先;地板仍保——战力≠panic)。
         终审 S3:逐张扣减预算。⑧-3:冷启动兜底(同 economy
         的 _pair_wants——P2 未锁线+war 不再恒 0 买)。
-        r239:A2 刷新(shop 无线内件时 D 一次)+A4 守卫。"""
+        r239:A2 刷新(shop 无线内件时 D 一次)+A4 守卫。
+        r274(局19 实锤:war 低金冻结):_WAR_FLOOR=30 是"扣后
+        保 30"的守卫,但金 28 < 30 时所有卡被 L716 拒 → 战力
+        态整轮冻结(买0/卖0/刷0),板面不长流血到死。修:金
+        低于 war 地板时**降级地板**到 economy 语义(金少时
+        买得起什么买什么;战力意图由谓词保证,不靠冻结)。"""
         actions: list = []
         rem = state.gold
+        _floor = _WAR_FLOOR if state.gold >= _WAR_FLOOR \
+            else 5   # 低金降级:保 5 出走(与 economy 低位地板一致)
         for card in (state.shop or []):
-            if rem - card.cost < _WAR_FLOOR:
+            if rem - card.cost < _floor:
                 continue
             if not self._buy_guards(card, state, len(actions)):
                 continue
