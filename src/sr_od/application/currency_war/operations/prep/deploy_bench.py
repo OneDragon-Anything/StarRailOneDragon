@@ -433,10 +433,18 @@ class DeployBench(SrOperation):
         # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):read_deployed_chars → deployed char_id;
         # bench 角色已 deployed → deploy 循环跳过(避免场上重复角色 + 买/部署同名)。
         _deployed_cids: set[str] = set()
+        _deployed_fac: dict[str, int] = {}   # r288 配方底线仲裁用
         if templates is not None:
             _deployed_cids = {bc.char_id for bc in read_deployed_chars(self.ctx, scr, templates) if bc.char_id}
             if _deployed_cids:
                 log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
+            # 已上场角色的阵营档(多阵营角色每阵营 +1,同板面 OCR 口径)
+            from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+            for _dc in _deployed_cids:
+                _dch = _CH.get(_dc)
+                if _dch:
+                    for _f in (_dch.factions or ()):
+                        _deployed_fac[_f] = _deployed_fac.get(_f, 0) + 1
         tgt_idx, rest = [], []
         # live 2026-08-15:target 优先 = 阵营交集 **或** core_char(_bench_cid;辅助如花火/瓦尔特
         # 阵营 ∉ comp 阵营,只按 _bonds 判会把核心辅助排到 rest 尾部 → 上场晚/被换血)。
@@ -531,6 +539,19 @@ class DeployBench(SrOperation):
                 log.info(f'[cw-deploy] 去重(5.1.7,不变量 cw_plan.deploy_legal 同源):'
                          f'bench槽{bi+1}({_cid}) 已 deployed,跳过')
                 continue
+            # r288(局23/24 连续实锤:锁 jizi 线列车 3 档吃板挤掉仙舟,
+            # 仙舟 2→1 → r3-r4 battle -13×2):配方基础线优先仲裁——
+            # 仙舟档 < 基础线(攻略[20] 3仙舟+2DOT)时,列车件封顶
+            # 2 档(锁线路径的线内件上板也要守配方底线;配方纪律
+            # 此前只在散 pair 路径生效,锁线路径无守门=审查②盲区)。
+            _fac = _bench_fac.get(bi, '')
+            if _fac == '列车同行' and _RECIPE is not None:
+                _train_now = _deployed_fac.get('列车同行', 0)
+                _xz_now = _deployed_fac.get('仙舟', 0)
+                if _train_now >= 2 and _xz_now < 3:
+                    log.info(f'[cw-deploy] 配方底线(r288):列车{_train_now}档+仙舟{_xz_now}'
+                             f'→列车件留bench(仙舟<3 基础线优先,防挤占)')
+                    continue
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
             if not slot_occupied(self.screenshot(), int(bench[bi].x), int(bench[bi].y)):
@@ -581,6 +602,9 @@ class DeployBench(SrOperation):
                 # 防 bench 同角色 2 张时第 2 张重复 drag(场上已有该角色 → 上场失败)。
                 if _cid:
                     _deployed_cids.add(_cid)
+                # r288:成功上场同步阵营档(配方底线仲裁的状态源)
+                if _fac:
+                    _deployed_fac[_fac] = _deployed_fac.get(_fac, 0) + 1
                 if _match is not None and getattr(_match, 'bench_slot_map', None):
                     _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
                     if _gone is not None:
