@@ -359,11 +359,8 @@ class PrepDirector(SrOperation):
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
-        # r287(r280 钩子触发时机修):钩子原挂 run() 入口——但入口
-        # 帧商店**必开**(备战 overlay 先渲染商店,step1 才关)→
-        # 守卫永不 clean,钩子整局静默(局22/23/24 前段实证)。
-        # 移到环循环首帧(shop 已关+特效消化后),才是 clean 备战态。
-        self._probe_node_reward()
+        # r287→r292:钩子挂点迁至 EnsureShopClosed 执行成功后
+        #(见 _run_loop while 内;此处保留说明,原调用已删)。
         # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
         # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
         # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
@@ -475,6 +472,13 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 执行异常 {key}: {e} → 本环 fail')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
+
+            # r292(r280/r287/r289 钩子挂点终修):EnsureShopClosed
+            # 执行成功 = 店确定已关的**唯一可靠时点**——此前三次
+            # 挂点(run 入口/环入口 _observe 后)都在 step1 关店
+            # **之前**,shop 开态守卫恒 return,钩子整局静默。
+            if 'EnsureShopClosed' in key and progressed:
+                self._probe_node_reward()
 
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(环出口)', wait=3)
