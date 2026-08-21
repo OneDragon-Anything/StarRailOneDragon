@@ -272,14 +272,13 @@ class LineStrategy(DefaultCwStrategy):
             return self._emergency_actions(state, session)
         if cat:
             return self._catchup_actions(state, session)
-        # r278(boss 前破息,杠杆分析 r276/r277 实验):P1 r8 备战
-        # = boss 前最后投资窗。13 局 boss 掉血实证分布
-        # [14..36] 中位 32 → r8 HP≥92 才稳;EV 模型(r263)破息
-        # 小搜全档正期望;模拟 r277:r8 破息(60%成功)HP≥60
-        # 12%→21%。旧触发(war/emergency)太晚——r8 无条件
-        # 进投资态(地板降 _BOSS_BREAKER_FLOOR,买满线内件+
-        # 升星件),一搏 boss。
-        if state.plane == 1 and state.round_num >= 8 \
+        # r278→r285(节点骨架杠杆重定位):骨架实证 slot5-6 遭遇
+        # 高发(60%/70%),cw_sim 定量 r6/r7 合计 -28.6 HP(P1 失血
+        # 的 130%)——**遭遇对才是血口**,r8(reward +2)破息太晚。
+        # 修:破息窗从 r8 提前到 r5/r6(slot5/6 的前夜);r8 保底
+        # (节点可能变异 battle)。boss 前投资逻辑不变(地板/
+        # 升人口/买最强)。
+        if state.plane == 1 and state.round_num >= 5 \
                 and not session.v2_state[1]:
             return self._boss_breaker_actions(state, session)
         if session.v2_state[0] == cw_phase_machine.MODE_ECONOMY:
@@ -384,10 +383,12 @@ class LineStrategy(DefaultCwStrategy):
 
     def _boss_breaker_actions(self, state: GameState,
                               session: StrategySession) -> list:
-        """r278:boss 前破息投资(P1 r8 备战,boss 最后一窗)。
+        """r278/r285:遭遇预备破息投资(P1 r5-r8 备战)。
+        骨架实证:slot5-6 遭遇高发(60%/70%)=P1 血口(cw_sim
+        r6+r7 合计 -28.6);r285 窗口前移到 r5。
         结构同 _emergency(budget 内买满线内件),差异:
         ① 地板 _BOSS_BREAKER_FLOOR(10,非 REBIRTH 20——
-        boss 赢了进 P2 有收入重建,boss 输了 HP 反正保不住);
+        撑过遭遇/boss 后有收入重建,撑不过 HP 反正保不住);
         ② 升人口优先(板深杠杆:局16 配方7档 boss 仅 -12);
         ③ 线内件按价**降序**(买得起的最强件,不是最便宜)。"""
         from sr_od.application.currency_war.cw_economy import xp_click_cost
