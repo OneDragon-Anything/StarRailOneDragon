@@ -159,6 +159,80 @@ def battle_delta(round_num: int, dir_round: int,
     return int(-loss)
 
 
+# r340 实机分布(31 局 outcomes 全量差分,645 轮):
+# 逐 run 差分 battle -7.3 / boss -25.1 / encounter -12.2;
+# **板深条件化**(decisions board join,深=Σ阵营人次):
+# battle 深[6-8] -1.0 vs [3-5] -11.3 vs [15-17] -7.1(非单调,
+# 深 12+ 才稳);boss 深15+ -23.7 vs 深12 -27.9。
+# 池结构:{node_type: {depth_bucket: [Δ...]}}——sim 结算按
+# 当轮实deep采样(经验分布,无参数假设)。
+_LIVE_DELTA_POOL: dict | None = None
+_DEPTH_BUCKET_W: int = 3   # 板深分桶宽
+
+
+def live_delta_pool() -> dict:
+    """懒加载板深条件化实机 Δ 池;无数据退空(走旧模型)。"""
+    global _LIVE_DELTA_POOL
+    if _LIVE_DELTA_POOL is None:
+        import json
+        from pathlib import Path
+        pool: dict = {}
+        try:
+            rep = Path('.debug/temp/currency_war/replay')
+            # 该轮末 board 深度(同轮多行 decisions 取最后)
+            boards: dict = {}
+            for ln in (rep / 'decisions.jsonl').read_text(
+                    encoding='utf-8').splitlines():
+                if not ln.strip():
+                    continue
+                d = json.loads(ln)
+                st = d.get('state') or {}
+                b = st.get('board') or {}
+                boards[(d.get('run_id'), d.get('plane'),
+                        d.get('round_num'))] = sum(b.values())
+            seqs: dict[str, list] = {}
+            for ln in (rep / 'outcomes.jsonl').read_text(
+                    encoding='utf-8').splitlines():
+                if not ln.strip():
+                    continue
+                o = json.loads(ln)
+                if o.get('hp_after') is None:
+                    continue
+                seqs.setdefault(o.get('run_id'), []).append(o)
+            for run, seq in seqs.items():
+                for a, b in zip(seq, seq[1:], strict=False):
+                    k = (run, b.get('plane'), b.get('round_num'))
+                    dep = boards.get(k)
+                    if dep is None:
+                        continue
+                    nt = b.get('node_type') or ''
+                    nt = {'普通战斗': 'battle', '遭遇': 'encounter',
+                          '奖励': 'reward', '首领': 'boss',
+                          '补给': 'supply'}.get(nt, nt)
+                    bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+                    pool.setdefault(nt, {}).setdefault(bucket, []).append(
+                        b['hp_after'] - a['hp_after'])
+        except Exception:   # noqa: BLE001  离线/无数据 → 空池(走旧模型)
+            pass
+        _LIVE_DELTA_POOL = pool
+    return _LIVE_DELTA_POOL
+
+
+def live_delta_for(node_type: str, depth: int,
+                   rng: random.Random) -> int | None:
+    """按节点类型+板深取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。"""
+    _map = live_delta_pool().get(node_type) or {}
+    bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+    pool = _map.get(bucket)
+    if not pool:
+        # 相邻桶回退(数据稀疏桶,如深[18+]并到[15])
+        for off in (-1, 1):
+            pool = _map.get(bucket + off * _DEPTH_BUCKET_W)
+            if pool:
+                break
+    return rng.choice(pool) if pool else None
+
+
 def boss_delta(dir_round: int, rng: random.Random,
                multiplier: float = 1.0) -> int:
     """P1 boss(r9)HP 变化(校准层;按方向建立早晚分档)。
@@ -303,7 +377,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             res.dir_round = rn
         # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
         # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
-        delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
+        # r340:板深条件化实机 Δ 池优先(经验分布重放——
+        # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
+        # 无匹配桶回退旧方向二元模型。
+        _dep = sum((st.board or {}).values())
+        _ld = live_delta_for(nodes[rn - 1], _dep, rng) \
+            if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
+        if _ld is not None:
+            delta = _ld
+        else:
+            delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
         st.hp = max(0, int(st.hp + delta))
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
