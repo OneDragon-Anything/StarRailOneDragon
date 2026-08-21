@@ -188,7 +188,23 @@ class BuyShopCards(SrOperation):
         if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
                 return self.round_retry('找不到商店/收起按钮', wait=1)
-            time.sleep(0.5)
+            # r312(ADR-0213 批次1;开向站):旧 sleep(0.5) 后即
+            # read_phase_round/read_game_state/买循环——开店动画
+            # ~3s 内读=半开帧(终验 P1②)。gate_shop_open on →
+            # wait_stable_frame(开态 profile)再读;off 旧等待。
+            if bool(getattr(CurrencyWarConfig(self.ctx.current_instance_idx),
+                            'gate_shop_open', False)):
+                from sr_od.application.currency_war.cw_observation_gate import (
+                    PROFILE_OPEN,
+                    wait_stable_frame,
+                )
+                log.info('[cw][gate] path=new(shop 开店)')
+                try:
+                    wait_stable_frame(self, profile=PROFILE_OPEN)
+                except Exception:   # noqa: BLE001  离线契约:放行
+                    pass
+            else:
+                time.sleep(0.5)
 
         # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -456,6 +472,25 @@ class BuyShopCards(SrOperation):
         # 关商店(「收起」)
         time.sleep(0.4)
         self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+        # r312(ADR-0213 批次1;买后收起站):现状买后零等待——
+        # click+~1.4s 即 read_game_state(L466 重估)+read_gold
+        # (L484 差值对拍),而关店动画 ~3s(r299 实测)→ 重估与
+        # 对拍读在半开帧(与局31 买前同构)。gate_shop_close on
+        # → wait_stable_frame 后再读;off 保持现状(买后容忍)。
+        from sr_od.application.currency_war.currency_war_config import (
+            CurrencyWarConfig,
+        )
+        if bool(getattr(CurrencyWarConfig(self.ctx.current_instance_idx),
+                        'gate_shop_close', False)):
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_CLOSED,
+                wait_stable_frame,
+            )
+            log.info('[cw][gate] path=new(shop 买后收起)')
+            try:
+                wait_stable_frame(self, profile=PROFILE_CLOSED)
+            except Exception:   # noqa: BLE001  离线契约:放行
+                pass
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
         # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
         # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
