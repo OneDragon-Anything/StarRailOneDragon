@@ -116,7 +116,7 @@ def _fp_same(a: tuple, b: tuple) -> bool:
     import numpy as np
     if len(a) != len(b):
         return False
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=True):
         if isinstance(x, bytes) or isinstance(y, bytes):
             return False   # 旧格式不比
         if float(np.mean(cv2_abs_diff(x, y))) > _FP_MAX_MEAN_DIFF:
