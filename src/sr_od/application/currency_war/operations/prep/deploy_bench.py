@@ -37,6 +37,14 @@ from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwCha
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
+# r263b 过渡配方(攻略[20] 口径):基础 3仙舟+2DOT,渐进 +2列车2护盾。
+# deploy 配方纪律用:配方基础(_RECIPE_BASE 档)未满时,off-recipe
+# 阵营 pair 不上板(防散件稀释配方深度;局15 r6-r8 实证散 6-8 档
+# vs 配方 5 档 = r7 遭遇 -28 根因)。
+_RECIPE: frozenset[str] = frozenset(
+    {'仙舟', '持续伤害', '列车同行', '护盾'})
+_RECIPE_BASE: int = 5   # 3仙舟+2DOT 基础线
+
 
 class DeployBench(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
@@ -457,10 +465,23 @@ class DeployBench(SrOperation):
         # (vacancy>2,等级 7-8 撑起的人口)空位本身就是战力,散牌该填位(M18 实测放置 3/18、满员率 76%,
         # 未达上限弹窗频发 = 留 bench 过严的回归)。门:plane≥2 或 vacancy>2 → 散牌照旧上场。
         _fill_mode = (len(front_empty) + len(back_empty)) > 2
+        # r263b(配方纪律,局15 鉴别诊断):配方基础未满(<5 档)时,
+        # **非配方件即使成对也不上板**(占槽稀释配方深度)。
+        _board_recipe = sum(
+            v for k, v in (_sess.last_state.board
+                           if _sess is not None
+                           and _sess.last_state is not None
+                           else {}).items()
+            if k in _RECIPE)
+        _recipe_starved = _board_recipe < _RECIPE_BASE
         for i in list(rest):
             if i not in _bench_cid:
                 continue   # SIFT 未识别:照旧上(无法判 target/阵营)
             _f = _bench_fac.get(i)
+            if _f is not None and _f not in _RECIPE and _recipe_starved:
+                rest.remove(i)   # 非配方件 + 配方基础未满 → 留 bench
+                _held.append(i)
+                continue
             if _f is not None and _pair_counts.get(_f, 0) >= 2:
                 continue   # 同阵营成对(board+bench ≥2):凑过渡羁绊,上
             if _fill_mode:

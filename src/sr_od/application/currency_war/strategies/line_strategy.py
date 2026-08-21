@@ -405,14 +405,14 @@ class LineStrategy(DefaultCwStrategy):
         actions: list = []
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         xp = xp_click_cost(state)
-        # r262(局15 板深根因):旧门 gold-xp>=50 过严——买件把金压
-        # 在 50 下,等级一路滞后(局15 全程 lv4-6,六连胜期金峰仅 23-40,
-        # 从未到 54)→ 人口=档数上限,lv 低连档都摆不满 → r7 遭遇 -28/
-        # r9 boss -36 的板深不足。人口是被动力(每买+4XP),P1 早期
-        # (r≤6,lv<6)用宽松门(保 10 金即可):板面碾压才是连胜保息的
-        # 来源;后期(lv≥6)维持满息门(利息引擎优先)。
-        _lvl_gate = 10 if (state.plane == 1 and state.round_num <= 6
-                           and state.level < 6) else _INTEREST_FLOOR
+        # r263b(鉴别诊断修正):局15 r7 掉血根因不是缺槽位(lv5/总11档
+        # 槽位够)而是**配方纪律**——攻略[20] 过渡配方「3仙舟+2DOT 基础
+        # →+2列车2护盾」,局15 r6-r8 仙舟DOT 只有 2 档(配方基础没满)
+        # 就发散买散件(减益×2/星核猎手/燃血/公司/群攻占板一半)。
+        # 等级门:lv<5 宽松(攻略[13] lv5+羁绊配方≈能过 P1),
+        # lv>=5 恢复满息门(过渡成型攒息)。
+        _lvl_gate = 10 if (state.plane == 1 and state.level < 5) \
+            else _INTEREST_FLOOR
         if state.gold - xp >= _lvl_gate and xp > 0:
             actions.append(LevelUp(xp))
         if state.gold >= _INTEREST_FLOOR:
