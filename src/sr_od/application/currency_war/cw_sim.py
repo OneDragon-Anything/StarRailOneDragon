@@ -57,7 +57,11 @@ STREAK_CAP_GOLD: int = 3
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
 WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 方向已立的轮结算
 LOSS_BASE: float = 7.0              # 未立方向的 r3 基础损
-LOSS_PER_ROUND: float = 3.5         # 未立方向每多一轮加重
+LOSS_PER_ROUND: float = 4.0         # 未立方向每多一轮加重(r7≈-23 对齐观测)
+# r259 二次校准(139 轮干净差分):lv7 后段观测中位 -23(无方向)/
+# -31(锁线晚的弱队),原 3.5 系数低估后段流血 → 提到 4.0。
+# 方向分桶样本小(4-10)且与「发牌差的队锁线晚」混杂,方向二元模型
+# 保留为 v1;后续样本攒够换「板深×方向×轮次」联合模型。
 BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     # (方向建立轮上限, boss 基础损, 抖动幅度)
     (2, 14.0, 8.0),
