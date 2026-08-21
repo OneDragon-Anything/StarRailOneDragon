@@ -353,23 +353,49 @@ class PrepDirector(SrOperation):
         # 的舞台锚(按钮-出战)」——shop 开态帧不再放行(该帧
         # SIFT 本就不可信);②探 3 次仍不 clean 也**不再
         # fall-through 盲 observe**,bail 重试(外环重进消化)。
-        for _try in range(3):
+        # r310(ADR-0213 批次1 接线):gate_director flag on 时
+        # 走 wait_stable_frame(min_stable_s 首尾指纹一致+圆数
+        # 门双保险——比单锚 3 探强);off 保持旧路径(对拍期)。
+        # None→_bail 同 reason(常量化,3-strike 聚合);异常
+        # raise 由 except 接住=放行旧探针循环(离线契约)。
+        from sr_od.application.currency_war.currency_war_config import (
+            CurrencyWarConfig,
+        )
+        _gate_on = bool(getattr(
+            CurrencyWarConfig(self.ctx.current_instance_idx),
+            'gate_director', False))
+        _gate_frame = None
+        if _gate_on:
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_CLOSED,
+                wait_stable_frame,
+            )
+            log.info('[cw][gate] path=new(director 环入口)')
             try:
-                _probe = self.screenshot()   # 新鲜帧(review:旧 last_screenshot 短路复用旧帧,miss 重试退化盲等)
-                _prep_clean = self.round_by_find_area(
-                    _probe, '货币战争-备战', '按钮-出战',
-                    crop_first=False).is_success
-                if _prep_clean:
+                _gate_frame = wait_stable_frame(
+                    self, profile=PROFILE_CLOSED)
+            except Exception:   # noqa: BLE001  离线契约:放行旧路径
+                _gate_frame = None
+            if _gate_frame is None:
+                return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
+        if not _gate_on:
+            for _try in range(3):
+                try:
+                    _probe = self.screenshot()   # 新鲜帧(review:旧 last_screenshot 短路复用旧帧,miss 重试退化盲等)
+                    _prep_clean = self.round_by_find_area(
+                        _probe, '货币战争-备战', '按钮-出战',
+                        crop_first=False).is_success
+                    if _prep_clean:
+                        break
+                    log.info('[cw][director] 环入口非 clean 备战帧(shop开/特效/overlay)→ 等 1s 消化(try %d)',
+                             _try + 1)
+                    time.sleep(1.0)
+                except Exception:   # noqa: BLE001  离线/无画面环境直接放行
                     break
-                log.info('[cw][director] 环入口非 clean 备战帧(shop开/特效/overlay)→ 等 1s 消化(try %d)',
-                         _try + 1)
-                time.sleep(1.0)
-            except Exception:   # noqa: BLE001  离线/无画面环境直接放行
-                break
-        else:
-            # 3 次都不 clean:盲 observe 会在毒帧上喂 update_target
-            # (P0① 实锤路径)→ bail 交外环重进(而非带病决策)
-            return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
+            else:
+                # 3 次都不 clean:盲 observe 会在毒帧上喂 update_target
+                # (P0① 实锤路径)→ bail 交外环重进(而非带病决策)
+                return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
         obs = self._observe(heavy=True)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
