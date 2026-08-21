@@ -1045,12 +1045,17 @@ class LineStrategy(DefaultCwStrategy):
     def _buy_guards(card, state: GameState,
                     planned_buys: int) -> bool:
         """A4(审计):买牌守卫——同名副本 ≤3(3合1 上限,
-        第4张纯浪费)+ bench 容量(已提案数计入)。"""
+        第4张纯浪费)+ bench 容量(已提案数计入)。
+        r355(局44 判读):copies 按星级加权——2★=2 张份,
+        3★=3 张份(合成后单张已含多份原料;原按名字数 1,
+        2★在场再买 1★= 冗余第 4 份,局44 四买飞霄实证)。"""
         if not card.name:
             return False
-        copies = sum(1 for b in (state.bench or [])
+        copies = sum(getattr(b, 'star', 1) or 1
+                     for b in (state.bench or [])
                      if b.char_id == card.name)
-        copies += sum(1 for d in (state.deployed or [])
+        copies += sum(getattr(d, 'star', 1) or 1
+                      for d in (state.deployed or [])
                       if getattr(d, 'char_id', '') == card.name)
         if copies >= 3:
             return False
