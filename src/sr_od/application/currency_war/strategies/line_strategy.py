@@ -463,6 +463,27 @@ class LineStrategy(DefaultCwStrategy):
                 _cost = state.shop_refresh_cost or 2
                 if st2.gold - _cost >= 5:
                     actions.append(RefreshShop(_cost))
+        # r268(配方找件刷新,局17 实锤):r5-r8 配方基础未满
+        # (板面 仙舟/DOT/列车/护盾 档 <5)且店里无配方件可买 →
+        # 刷一次找件(r258 同模式,门换配方判据)。局17 P1 零刷新
+        # +仙舟只发 1-2 张 → 基础冻住 → boss -34。概率分析:仙舟
+        # 供给充足(每轮期望 0.7 张)——缺的是主动找,不是发牌。
+        if state.plane == 1 and 5 <= state.round_num <= 8:
+            _RECIPE = {'仙舟', '持续伤害', '列车同行', '护盾'}
+            _board = st2.board or {}
+            _recipe_lv = sum(v for k, v in _board.items()
+                             if k in _RECIPE)
+            if _recipe_lv < 5 and not any(
+                    isinstance(a, BuyCard)
+                    and a.card.faction in _RECIPE
+                    for a in actions):
+                _shop_recipe = sum(
+                    1 for c in (state.shop or [])
+                    if c.name and c.faction in _RECIPE)
+                if _shop_recipe == 0:
+                    _cost = state.shop_refresh_cost or 2
+                    if st2.gold - _cost >= 5:
+                        actions.append(RefreshShop(_cost))
         return actions
 
     def _buy_actions(self, state: GameState,
