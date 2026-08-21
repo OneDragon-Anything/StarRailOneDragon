@@ -762,9 +762,13 @@ class PrepDirector(SrOperation):
             screen1 = self.screenshot()
             from sr_od.application.currency_war.cw_observe import cw_shot_unique
             cw_shot_unique(screen1, prefix='cw_reward')
-            _texts = [
-                r.data for r in self.ctx.ocr_service.get_ocr_result_list(
-                    image=screen1, rect=None, crop_first=False)]
+            # r300(实测 'int' object has no attribute 'x'):
+            # OCR 走框架 _ocr 惯例(rect 必传;弹窗内容区实测
+            # x1000-1560,y370-1010)
+            from one_dragon.base.geometry.rectangle import Rect
+            from sr_od.application.currency_war.cw_obs_core import _ocr
+            _texts = _ocr(self.ctx, screen1,
+                          Rect(1000, 370, 1560, 1010))
             log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
                      _plane, _round, _texts[:20])
             self.ctx.controller.click(960, 150)   # 关弹窗(空白)
