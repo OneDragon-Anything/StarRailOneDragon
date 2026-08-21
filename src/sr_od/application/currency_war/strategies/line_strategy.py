@@ -670,6 +670,21 @@ class LineStrategy(DefaultCwStrategy):
                         or self._pair_wants(card, state, session):
                     actions.append(BuyCard(card))
                     rem -= 1
+        # r342(板深杠杆;sim r341h 分解实证):P1 期方向件买后
+        # 余钱+余位 → 收 cost≤2 散件上板(不与配方抢钱——floor
+        # 门保持;板深甜点 深6 起 Δ-11→-1,散件填充是量化最大
+        # 增益源:B 实验 5.33% vs 基线 1.67%)。保守版:仅 P1、
+        # cost≤2、guards 全走。
+        if state.plane == 1:
+            for card in (state.shop or []):
+                if rem - card.cost < floor or card.cost > 2:
+                    continue
+                if id(card) in {id(a.card) for a in actions}:
+                    continue
+                if not self._buy_guards(card, state, len(actions)):
+                    continue
+                actions.append(BuyCard(card))
+                rem -= card.cost
         return actions
 
     @staticmethod
