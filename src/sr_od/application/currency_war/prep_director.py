@@ -757,7 +757,10 @@ class PrepDirector(SrOperation):
             if _key == cur_key:   # 本节点已采
                 return
             _sess._reward_probed_key = cur_key
-            self.ctx.controller.click(1555, 930)
+            # r302:controller.click 需 Point 对象(裸 int 在坐标
+            # 转换层炸 'int' has no .x——四代 skip 的共同根因)
+            from one_dragon.base.geometry.point import Point
+            self.ctx.controller.click(Point(1555, 930))
             _time.sleep(1.0)
             screen1 = self.screenshot()
             # r300b:cw_shot_unique 签名 (image, label) 位置参——
@@ -774,7 +777,7 @@ class PrepDirector(SrOperation):
                           Rect(1000, 370, 1560, 1010))
             log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
                      _plane, _round, _texts[:20])
-            self.ctx.controller.click(960, 150)   # 关弹窗(空白)
+            self.ctx.controller.click(Point(960, 150))   # 关弹窗(空白,r302 Point)
             _time.sleep(0.6)
         except Exception as e:   # noqa: BLE001  采集 best-effort,不阻塞备战
             log.info(f'[cw][reward-probe] skip: {e}')

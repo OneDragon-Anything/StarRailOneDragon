@@ -80,5 +80,9 @@ class ExitCurrencyWarMatch(SrOperation):
                 log.info('[cw-exit] 战斗暂停→撤退 → 中断挑战弹窗')
                 return self.round_wait(wait=2)
         # 战斗中(未暂停态):点右上角 X 弹暂停(实证 2026-08-23)
-        self.ctx.controller.click(1843, 42)
+        # r302:controller.click 需 Point 对象(裸 int 坐标在
+        # game2win_pos 坐标转换层炸 'int' has no .x——op 异常+
+        # 采集钩子 skip 的共同根因)
+        from one_dragon.base.geometry.point import Point
+        self.ctx.controller.click(Point(1843, 42))
         return self.round_wait(wait=1.5)
