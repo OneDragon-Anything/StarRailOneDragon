@@ -1,6 +1,5 @@
 # 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
-import contextlib
 import time
 from copy import deepcopy
 from typing import ClassVar
@@ -20,7 +19,6 @@ from sr_od.application.currency_war.cw_observation import (
     new_bench_slots,
     read_game_state,
     read_gold,
-    read_hp,
     read_shop_cards,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -173,14 +171,30 @@ class BuyShopCards(SrOperation):
                         break
                 if not _closed:
                     log.info('[cw][shop] 收起动画未完成(2s),HP 帧可能不稳')
-        hp_value = read_hp(self.ctx, screen)
+        # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
+        # (miss→None 显式化);None 走结算真值链,无结算值→
+        # 100 兜底+log(方案 v4 D-4.4 语义定义)。
+        # 旧「>=HP_MAX 重读 2 次」保留(None≠100 分流后,
+        # 该循环只处理真满血误读,语义更纯)。
+        from sr_od.application.currency_war.cw_observation import read_hp_opt
+        match = self.ctx.cw_match   # r317:提前(None 兜底链要用)
+        _hp_raw = read_hp_opt(self.ctx, screen)
+        if _hp_raw is None:
+            # 结算真值(新鲜度门在下方统一处理,此处只取
+            # last_hp 或 100 兜底)
+            _hp_raw = (match.session.last_hp
+                       if (match is not None
+                           and getattr(match.session, 'last_hp', None)
+                           is not None) else 100)
+            log.info('[cw][shop] HP 区 miss→%s(结算真值/兜底)', _hp_raw)
+        hp_value = _hp_raw
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
         if hp_value >= HP_MAX:
             for _ in range(2):
                 time.sleep(0.4)
-                _v = read_hp(self.ctx, self.screenshot())
-                if _v < HP_MAX:
+                _v = read_hp_opt(self.ctx, self.screenshot())
+                if _v is not None and _v < HP_MAX:
                     hp_value = _v
                     break
 
@@ -199,10 +213,9 @@ class BuyShopCards(SrOperation):
                     wait_stable_frame,
                 )
                 log.info('[cw][gate] path=new(shop 开店)')
-                try:
+                import contextlib
+                with contextlib.suppress(Exception):   # 离线契约:放行
                     wait_stable_frame(self, profile=PROFILE_OPEN)
-                except Exception:   # noqa: BLE001  离线契约:放行
-                    pass
             else:
                 time.sleep(0.5)
 
@@ -214,7 +227,7 @@ class BuyShopCards(SrOperation):
 
         # 无强信号保持 —— 等价旧 _target_comp class-attr 逻辑,但状态进 session 跨回合持久)。用 shop 关闭帧
         # hp 覆盖的 state(M6 钉死行为等价:hp 真值 → maybe_pivot 的 hp_safe 信号正确触发,非 shop 开帧的假 100)。
-        match = self.ctx.cw_match
+        # (match 已在 HP 读段提前取——r317)
         # live round4 读 100 实际 58)→ 保血/maybe_pivot 信号失效。结算屏「小队生命值NN」可靠 → 用它
         # 给 prep state.hp(HP 结算→下回合 prep 不变)。round1 无结算 → None → 退 read_hp(round1 读对)。
         # ⚖️ r68 review 新鲜度门(单源 helper cw_strategy.gated_hp;director 环入口同门):
@@ -487,10 +500,9 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 买后收起)')
-            try:
+            import contextlib
+            with contextlib.suppress(Exception):   # 离线契约:放行
                 wait_stable_frame(self, profile=PROFILE_CLOSED)
-            except Exception:   # noqa: BLE001  离线契约:放行
-                pass
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
         # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
         # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。

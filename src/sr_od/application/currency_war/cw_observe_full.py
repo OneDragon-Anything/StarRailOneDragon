@@ -26,14 +26,16 @@ if TYPE_CHECKING:
 
 
 def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
-                 source: str) -> dict:
+                 source: str, op=None) -> dict:
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_chars/deployed_chars:SIFT 身份(templates 未加载
       → None,调用方沿用缓存);
     - state:GameState(read_game_state);
-    - gold_reread:bool——是否走了 MED-2 gold==0 重读;
+    - gold_reread:bool——是否走了 MED-2 gold==0 重读
+      (**重新截图**重读——同帧重读结果恒同,无意义;
+      op 可传则用 op.screenshot(),不可传(离线)跳过重读);
     - substate:dict 标注各模块可读性(node_seq/shop_cards)。
 
     本函数纯组装:session 写/缓存回填由 director 做(单写者
@@ -62,12 +64,17 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
             out['deployed_chars'] = None
         st = read_game_state(ctx, frame)
         # MED-2 gold==0 重读(OCR 弱点;帧稳定≠OCR 稳定——
-        # stylized 间歇漏与帧稳定正交,重读是第二道)
+        # stylized 间歇漏与帧稳定正交,重读是第二道)。
+        # ⚠ 重读=**重新截图**(同帧重读结果恒同);
+        # op 不可用(离线)时跳过(返原值)。
         import time
-        if st.gold == 0:
+        if st.gold == 0 and op is not None:
             for _ in range(3):
                 time.sleep(0.3)
-                st2 = read_game_state(ctx, frame)
+                try:
+                    st2 = read_game_state(ctx, op.screenshot())
+                except Exception:   # noqa: BLE001  离线契约
+                    break
                 if st2.gold > 0:
                     st = st2
                     out['gold_reread'] = True

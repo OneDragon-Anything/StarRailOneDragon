@@ -58,7 +58,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
     read_gold,
-    read_hp,
+    read_hp_opt,  # r317:模块级(monkeypatch 打桩按模块属性)
     read_level,
     read_streak,
 )
@@ -108,7 +108,7 @@ class _BattlePrepState:
 
     gold: int                       # 当前金币(read_gold,读不到→0,安全保守)
     phase: tuple[int, int] | None   # (位面, 轮次);读不到→None(不伪造)
-    hp: int                         # 小队剩余血量(read_hp,读不到→100 健康先验)
+    hp: int | None                   # 小队剩余血量(read_hp_opt,读不到→None;r317 同源 director)
     streak: int | None              # 连胜/连败 magnitude(read_streak,读不到→None)
     deploy_count: int | None        # 已部署角色数(read_deployed_count,读不到→None)
     deploy_cap: int | None          # deploy cap 真值(read_deploy_cap,读不到→None)
@@ -131,7 +131,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
     extras_doc: dict[str, str] = {
         'gold': '当前金币(int;读不到→0,安全保守默认)',
         'phase': '(位面, 轮次) 二元组,如 [1,3] = 位面1 第3轮;读不到→None(不伪造)',
-        'hp': '小队剩余血量(int,0-100;读不到→100 健康先验)',
+        'hp': '小队剩余血量(int|None;读不到→None 与 director 同源;r317)',
         'streak': '连胜/连败 magnitude(int;读不到→None)',
         'deploy_count': '已部署角色数(int;读不到→None)',
         'deploy_cap': '部署上限真值(int;>level 表示钻石/财富宝钻加成 +1 团队槽;读不到→None)',
@@ -202,10 +202,15 @@ class BattlePrepRecognizer(ScreenRecognizer):
             owned_equips = _owned or None
         phase = _read_phase_round_pure(ctx, image)
         level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
+        # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
+        # (miss→None;与 director 同源——消掉「MCP 报 100 而
+        # director gated=26」双真相)。extras 序列化 None→
+        # 合法 null(backend json.dumps 预校验);extras_doc
+        # 文案同步「读不到→None」。(模块级 import。)
         state = _BattlePrepState(
             gold=read_gold(ctx, image),
             phase=phase,
-            hp=read_hp(ctx, image),
+            hp=read_hp_opt(ctx, image),
             streak=read_streak(ctx, image),
             deploy_count=read_deployed_count(ctx, image),
             deploy_cap=read_deploy_cap(ctx, image),
