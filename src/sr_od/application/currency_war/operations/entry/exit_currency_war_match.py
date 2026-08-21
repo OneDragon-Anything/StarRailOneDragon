@@ -1,4 +1,5 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+# r279/r302/r303 实战验证(战斗中/胜利结算/失败链三路 ✓);
+# 投资策略屏分支 r303b 手动链验证(画面档齐)。
 
 """从货币战争对局中退出(放弃+结算)回大厅。
 
@@ -6,8 +7,10 @@
 支持入口:备战阶段 / 战斗中 / **事件 overlay**(投资策略/环境/补给/遭遇/巨星 —— 先 escape 回备战)
 (任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
 """
+import time
 from typing import ClassVar
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -63,7 +66,17 @@ class ExitCurrencyWarMatch(SrOperation):
         # 修 bug:事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环(2026-08-04 实测卡 210s+)。
         if self.round_by_ocr_and_click(screen, '返回备战界面', success_wait=2).is_success:
             return self.round_wait(wait=2)
-        # 其他事件 overlay(补给/遭遇/巨星/详情/可合成列表)→ Esc 关回备战
+        # r303b(局30 实证):「返回备战界面」点后可能弹投资策略
+        # 三选一(退局途中绕不过)→ 选左卡+确认(任意策略都行,
+        # 本局反正要弃)→ 回备战再走 Esc 链
+        if self.round_by_find_area(screen, '货币战争-投资策略',
+                                   '标识-请选择投资策略').is_success:
+            self.ctx.controller.click(Point(460, 475))   # 左卡
+            time.sleep(1.2)
+            scr2 = self.screenshot()
+            self.round_by_ocr_and_click(scr2, '确认', success_wait=2)
+            log.info('[cw-exit] 投资策略三选一(退局途中)→ 左卡+确认')
+            return self.round_wait(wait=2)
         if (self.round_by_ocr(screen, '补给阶段').is_success
                 or self.round_by_ocr(screen, '遭遇其一').is_success
                 or self.round_by_ocr(screen, '盛会之星').is_success
@@ -87,6 +100,5 @@ class ExitCurrencyWarMatch(SrOperation):
         # r302:controller.click 需 Point 对象(裸 int 坐标在
         # game2win_pos 坐标转换层炸 'int' has no .x——op 异常+
         # 采集钩子 skip 的共同根因)
-        from one_dragon.base.geometry.point import Point
         self.ctx.controller.click(Point(1843, 42))
         return self.round_wait(wait=1.5)
