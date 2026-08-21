@@ -14,9 +14,11 @@
 - 消化门失败走既有 _bail 3-strike(session 计数),不引入
   round_fail 路径(battle_loop 忽略返回值→ping-pong)。
 
-flag:CurrencyWarConfig.observation_gate_enabled(默认 off,
-旧路径;save() 白名单必须含——GUI 静默抹值前科)。
-批次1 接线点见方案 v4;本文件先落地原语(flag off 零影响)。
+flag(终审③文档漂移修):gate_director / gate_shop_close /
+gate_shop_open / gate_hook——CurrencyWarConfig 字段(默认
+off;save() 白名单已含)。锚判定=框架 screen_utils
+.get_match_screen_name(id_mark 体系;r324);指纹基元=
+cv2_utils.fingerprint_in_rects/same(r324 下沉)。
 """
 from __future__ import annotations
 

@@ -90,6 +90,10 @@ class PrepObservation:
     """
     state: GameState | None = None        # heavy 重读;gold 仅 shop_open 时可信(F2)
     state_gold_trusted: bool = False      # F2:state.gold 是否可信(= heavy 时 shop 开)
+    # r333(批次3):子态可读性(observe_full 产出;heavy 刷新/
+    # light 沿用)——node_seq/shop_cards 本帧是否可读(按子态
+    # 尽力读,跨步拼装全面性;方案 v5 A5)。
+    substate: dict = field(default_factory=dict)
     bench_chars: list[BenchChar] = field(default_factory=list)   # heavy: SIFT 身份
     deployed_chars: list[BenchChar] = field(default_factory=list)
     spheres: list = field(default_factory=list)       # read_reward_spheres [(color, Point, r)]
@@ -234,7 +238,26 @@ class PrepDirector(SrOperation):
             # MED-2 gold==0 重读已在 observe_full 内(r331 收敛
             # 双源:此处不再重复——终审「双源易漏同步」风险)
             if session is not None:
+                # r333(批次3:单写者语义——hp 双源收口):写
+                # last_state 前过 gated_hp(与 shop.py 同门同
+                # 单源 helper)——修「director 写 32(gated)→
+                # shop 写 100(现读)」反向翻转(r68 comp churn
+                # 主燃料;终审 D-4)。两写者保留(各有上下文)
+                # 但**写出的 hp 同源**:结算真值优先,新鲜度
+                # 门拒绝陈值。
+                _st_t = ((st.plane - 1) * 9 + st.round_num) \
+                    if (st.plane and st.round_num) else None
+                from sr_od.application.currency_war.cw_strategy import (
+                    gated_hp as _gh,
+                )
+                st.hp = _gh(st.hp, session, _st_t,
+                            current_readable=bool(
+                                getattr(st, 'hp_readable', True)))
                 session.last_state = st
+            # r333(批次3:substate 消费)——observe_full 的可读性
+            # 标注落 PrepObservation(下游对账/日志可判;轻步
+            # 沿用缓存,同 _cached_state 语义)。
+            obs.substate = _of.get('substate') or {}
             cap = read_deploy_cap(self.ctx, screen)
             # 观察冲突审计 #15(2026-08-16):cap Y ∈ {level, level+1}(D-53 域知识:无加成=level,
             # 钻石/宝钻=level+1)→ Y 是 level 的**第三独立源**(空间远离 Lv/XP 区,不受同一光标

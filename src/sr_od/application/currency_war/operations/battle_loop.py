@@ -684,7 +684,23 @@ class CurrencyWarRunLoop(SrOperation):
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 RunSupplyNode)')
                 return self.round_wait(wait=2)
-            PrepDirector(self.ctx).execute()
+            # r332(批次3/终审①③:battle_loop 消费返回值——
+            # 旧版忽略 execute() 结果 → director 失败后下轮
+            # 无条件重派新实例(实例计数清零)= 无限 ping-pong
+            # (Y-1c/D-2.3 七轮 review 实证)。修:连续 N 次失败
+            # →告警+视为停滞(交 stall 哨兵/unknown 兜底链),
+            # 不再无限静默重派。
+            _ok = PrepDirector(self.ctx).execute()
+            if not _ok:
+                self._director_fail_streak = getattr(
+                    self, '_director_fail_streak', 0) + 1
+                if self._director_fail_streak >= 5:
+                    log.warning('[cw!][loop] PrepDirector 连续 %d 次失败'
+                                '(gate/环异常?)→ 本轮按未知画面处理'
+                                '(哨兵/兜底链接管)', self._director_fail_streak)
+                    return self.round_fail('PrepDirector 连续失败(停滞)')
+            else:
+                self._director_fail_streak = 0
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
