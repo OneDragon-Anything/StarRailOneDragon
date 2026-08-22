@@ -32,7 +32,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md)(plaza API 生成器族/图鉴实采/运行时自采/经济常量溯源/**建模增量层**——API 给不了的属性怎么建、各实体增量清单与消费点) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
-| 运行状态/焦点/待办 | `.debug/temp/currency_war/cw_dev/进度.md`(任务树,操作对象) |
+| 运行状态/焦点/待办 | `.debug/temp/currency_war/cw_dev/进度.md`(任务树,操作对象)。**卫生纪律**:只放活状态(焦点/待办/判读结论)——轮次叙事/过期焦点/已完成轮次记录不进,切到同目录 `进度_归档_*.md` 留指针;超 ~800 行即触发归档整理(过程时序归属见 od-dev-progress-tracking 边界节,决策 why 单一源=ADR) |
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度树,一律不进共享文档。**
 
