@@ -214,7 +214,9 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
 _SAMPLER_VERSION: int = 1   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
-_AUTO_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
+# 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
+_AUTO_REPLAY_DIR = Path(__file__).resolve().parents[4] / '.debug' \
+    / 'temp' / 'currency_war' / 'replay'
 
 
 class DeltaPoolUnavailable(RuntimeError):
@@ -358,13 +360,18 @@ def resolve_pool(pool: str | Path = 'auto', *,
         out = (snap, fp, f'path:{pool.name}')
     elif pool == 'auto':
         d = Path(auto_dir) if auto_dir else _AUTO_REPLAY_DIR
-        p_map, _meta = _pool_from_replay(d)
+        p_map, meta = _pool_from_replay(d)
         if not p_map:
             raise DeltaPoolUnavailable(
-                f'auto 池源不可用: {d}(缺失/空/不可解析)。'
+                f'auto 池源不可用: {d.resolve()}(缺失/空/不可解析)。'
                 "显式指定 pool='snapshot'(主仓提交快照)或 "
                 "pool='fallback'(退旧方向二元模型,结果打标)")
-        out = (p_map, pool_fingerprint(p_map), 'auto')
+        # 审查#4:半写行/整文件重写窗口 → 静默减样池——计数并入
+        # source_label 披露(非空池也可见,不只覆盖空池)
+        _skip = sum(meta.get('skipped_lines', {}).values()) \
+            + meta.get('unlabeled_dropped', 0)
+        label = 'auto' + (f'(skip{_skip})' if _skip else '')
+        out = (p_map, pool_fingerprint(p_map), label)
     else:
         raise ValueError(
             f'pool 参数非法: {pool!r}(auto/snapshot/fallback/Path)')
@@ -739,7 +746,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
 
 
 # sim 账本落盘根目录(与生产 replay 隔离;写入器有目录守卫)
-SIM_RUNS_DIR = Path('.debug/temp/currency_war/sim_runs')
+SIM_RUNS_DIR = _AUTO_REPLAY_DIR.parent / 'sim_runs'   # 仓根锚定(同上)
 _SIM_RUNS_KEEP: int = 20   # 批次保留数(防无限累积;旧的自动清理)
 _NT_TO_PROD = {'battle': '普通战斗', 'encounter': '遭遇',
                'reward': '奖励', 'boss': '首领', 'supply': '补给'}
