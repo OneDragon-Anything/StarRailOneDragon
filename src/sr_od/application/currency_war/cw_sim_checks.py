@@ -73,7 +73,9 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
                 continue
             reason = a.get('reason') or 'unknown'
             if reason not in ('pair', 'off'):
-                continue   # 方向件/其它通道(见 docstring)
+                # r383b:copy=开局轮同名副本(3合1 素材,口述[15]
+                # 压缩牌库)——合法放行,非门失效;区分见 docstring。
+                continue
             card = a.get('card') or {}
             out.append(
                 f"p{row.get('plane')}r{row.get('round_num')} "

@@ -778,6 +778,12 @@ class LineStrategy(DefaultCwStrategy):
             from sr_od.application.currency_war.cw_line_defs import (
                 classify_buy,
             )
+            # r383b:同名副本购买打专属标签——冷启动检查器
+            # (check_coldstart_seed_squander)按 reason∈{pair,off}
+            # 报门失效;副本素材是 r383b 的合法放行(口述[15]),
+            # 必须与门失效形态区分,否则检查器对合法行为空转报警。
+            if LineStrategy._has_same_name_copy(card, state):
+                return 'copy'
             return classify_buy(card, state)
         return ''
 
@@ -1145,11 +1151,35 @@ class LineStrategy(DefaultCwStrategy):
             from sr_od.application.currency_war.cw_line_defs import (
                 classify_buy,
             )
+            # r383b(局58/61 对照;口述[1][15] 依据):开局轮第三件
+            # 聚集是 r3 胜负边际变量(局58 r1-r2 买 3 件→r3 胜;
+            # 局59/60 只 2 件→败)。刷不刷违反口述[1](r1/r2 奖励
+            # 节点不 D 牌)——正道是**多买**:[15] 压缩牌库语义,
+            # 已拥有同名 1★的 1 费 = 3合1 副本素材 + 池噪声抽走,
+            # 买它既不违反方向门(它已在 owned,方向已认)也不白花
+            # (合成原料)。放行面:方向件 ∪ 引擎 ∪ **同名副本**。
+            if LineStrategy._has_same_name_copy(card, state):
+                return True
             return classify_buy(card, state) in ('bridge_seed', 'engine')
         if card.faction not in owned_factions \
                 and len(owned_factions) >= 3:
             return False    # A5:阵营上限
         return card.faction in owned_factions
+
+    @staticmethod
+    def _has_same_name_copy(card, state: GameState) -> bool:
+        """r383b:已拥有同名卡(bench/deployed 任一)→ 副本素材真。
+
+        口述[15]:买的 1/2 星是 3合1 副本素材+压缩牌库;开局轮
+        已拥有的同名 1 费 = 方向已认的加厚(2★ 前置),非线外散买。
+        副本上限仍由 _buy_guards 的 copies<3 管(这里只判「有」)。
+        """
+        if not card.name:
+            return False
+        if any(b.char_id == card.name for b in (state.bench or [])):
+            return True
+        return any(getattr(d, 'char_id', '') == card.name
+                   for d in (state.deployed or []))
 
     @staticmethod
     def _buy_guards(card, state: GameState,
