@@ -270,23 +270,32 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         seqs.setdefault(o.get('run_id'), []).append(o)
     pool: dict = {}
     per_run_rounds: dict[str, int] = {}
+    unlabeled_dropped = 0
     for run, seq in seqs.items():
         seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
         per_run_rounds[str(run)] = len(seq)
         for a, b in zip(seq, seq[1:], strict=False):
+            raw_nt = b.get('node_type') or ''
+            nt = {'普通战斗': 'battle', '遭遇': 'encounter',
+                  '奖励': 'reward', '首领': 'boss',
+                  '补给': 'supply'}.get(raw_nt, raw_nt)
+            if not nt:
+                # 2026-08-22 retrofix(ADR-0239 配套)后历史死链标签
+                # 置 None——无标签行不入池(与快照生成器 v2 同口径;
+                # 审查#1:否则 auto/snapshot 两态指纹结构性永不相等,
+                # 指纹相等性无法用作收敛判据)。
+                unlabeled_dropped += 1
+                continue
             k = (run, b.get('plane'), b.get('round_num'))
             dep = boards.get(k)
             if dep is None:
                 continue
-            nt = b.get('node_type') or ''
-            nt = {'普通战斗': 'battle', '遭遇': 'encounter',
-                  '奖励': 'reward', '首领': 'boss',
-                  '补给': 'supply'}.get(nt, nt)
             bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(bucket, []).append(
                 b['hp_after'] - a['hp_after'])
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
-            'skipped_lines': skipped}
+            'skipped_lines': skipped,
+            'unlabeled_dropped': unlabeled_dropped}
     return pool, meta
 
 
@@ -334,7 +343,15 @@ def resolve_pool(pool: str | Path = 'auto', *,
     elif isinstance(pool, Path):
         doc = _json_loads_path(pool)
         snap = _normalize_pool(doc['snapshot'])
-        out = (snap, pool_fingerprint(snap), f'path:{pool.name}')
+        fp = pool_fingerprint(snap)
+        _meta_fp = (doc.get('meta') or {}).get('fingerprint')
+        if _meta_fp is not None and _meta_fp != fp:
+            # 审查#2:Path 模式校验 meta 指纹(失配 JSON 静默接受
+            # = 历史重放的可信前提缺失)
+            raise RuntimeError(
+                f'快照文件指纹失配: {pool}(meta {_meta_fp} vs 重算 '
+                f'{fp})——文件被改或导出时损坏,重导出')
+        out = (snap, fp, f'path:{pool.name}')
     elif pool == 'auto':
         d = Path(auto_dir) if auto_dir else _AUTO_REPLAY_DIR
         p_map, _meta = _pool_from_replay(d)
@@ -349,6 +366,12 @@ def resolve_pool(pool: str | Path = 'auto', *,
             f'pool 参数非法: {pool!r}(auto/snapshot/fallback/Path)')
     _RESOLVED_CACHE[key] = out
     return out
+
+
+def reset_resolved_cache() -> None:
+    """清空池解析缓存(审查#3:同路径文件更新后进程内仍返旧池;
+    生成器/测试改写快照文件后调用,拿新指纹)。"""
+    _RESOLVED_CACHE.clear()
 
 
 def _json_loads_path(p: Path) -> dict:

@@ -40,6 +40,40 @@ def recipe_kinds_1cost() -> int:
                in RECIPE_FACTIONS)
 
 
+def classify_buy(card, state, session=None) -> str:
+    """买牌身份分类单一源(① 账本 reason 与 r368 冷启动门共用)。
+
+    判卡**身份**(与创建路径无关;路径语义 reason 由各创建点
+    自填 line/board_focus/emergency/swap/plan):
+    - ``'bridge_seed'``:桥名单件(BRIDGE_POOL fixed∪core,P1)
+    - ``'engine'``:引擎阵营件(全羁绊判定,同 _bridge_seed 口径)
+    - ``'pair'``:凑对件(与已拥有阵营同阵营)
+    - ``'off'``:线外/杂卡
+
+    锁线形态键的 'line' 判定属 _line_wants 形态逻辑,不在此
+    复制(单一源防漂移:allow 键集派生只在 _line_wants)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    ch = CHARACTERS.get(card.name)
+    card_bonds = (set(ch.factions) | set(ch.flows)) if ch \
+        else {card.faction}
+    if (state.plane or 1) <= 1:
+        names: set[str] = set()
+        for combo in BRIDGE_POOL:
+            names.update(combo.fixed + combo.core)
+        if card.name in names:
+            return 'bridge_seed'
+    if card_bonds & set(ENGINE_FACTIONS):
+        return 'engine'
+    owned = set(state.board.keys())
+    for b in (state.bench or []):
+        if b.faction and b.faction != '?':
+            owned.add(b.faction)
+    if card.faction in owned:
+        return 'pair'
+    return 'off'
+
+
 # ===== r356(策略架构反思 B):P1 阶段目标形态检查点 =====
 # 局38-44 七败的结构性判读:决策系统对「成型进度」无感知、对
 # 「成型 deadline」无响应——各局在不同 seed 下投影出不同表层

@@ -74,7 +74,11 @@ def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
 
 
 def build_pool(src_dir: Path, runs_filter: set[str] | None):
-    """构建 {节点: {深度桶: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。"""
+    """构建 {节点: {深度桶: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。
+
+    守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
+    """
+    _assert_guards(src_dir)
     skipped: dict[str, int] = {}
     boards: dict = {}
     for d in _iter_jsonl(src_dir / 'decisions.jsonl', skipped):

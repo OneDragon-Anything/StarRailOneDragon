@@ -877,7 +877,7 @@ def _best_improving_action(
                     if not (_fp < COMMIT_FRAC and _strengthens and _room):
                         continue
         after_buy = simulate(state, BuyCard(card=card))
-        seq = [BuyCard(card=card)]
+        seq = [BuyCard(card=card, reason='plan')]
         # review M3:deploy 去重对齐游戏 5.1.7(场上同名禁双)—— 旧模拟把 2★ 与场上 1★ 双上阵,
         # 估值虚高 + 运行时滞留 bench。同名已 deployed → 不 deploy(留 bench 待 3合1 合并)。
         _dep_ids = {b.char_id for b in state.deployed if b.char_id}
@@ -1017,7 +1017,7 @@ def _best_improving_action(
                 (0 if c.name in TEMPO_POOL or c.name in EARLY_CORE_POOL else 1),
                 card_cost(c)))
             card = _sk_candidates[0]
-            seq: list[Action] = [BuyCard(card=card)]
+            seq: list[Action] = [BuyCard(card=card, reason='plan')]
             after_buy = simulate(state, seq[0])
             _dep_ids = {b.char_id for b in state.deployed if b.char_id}
             if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
@@ -1089,7 +1089,7 @@ def _best_improving_action(
                     break   # 板+席满,买无所居
                 if not _compress_release(_cost, _sim.gold, _hunt_tiers):
                     continue
-                best.append(BuyCard(card=c))
+                best.append(BuyCard(card=c, reason='plan'))
                 _sim = simulate(_sim, best[-1])
                 log.info('[cw-plan] 压缩扫尾:+%s(cost%s,gold%s→%s,§7-15 牌库压缩)',
                          c.name, _cost, _sim.gold + _cost, _sim.gold)

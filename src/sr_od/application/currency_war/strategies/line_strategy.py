@@ -398,14 +398,14 @@ class LineStrategy(DefaultCwStrategy):
             key=lambda c: c.cost)
         for card in wants:
             if self._buy_guards(card, state, len(actions)):
-                actions.append(BuyCard(card))
+                actions.append(BuyCard(card, reason='line'))
                 budget -= card.cost
         if actions:
             return actions
         cards = sorted((c for c in (state.shop or []) if c.name),
                        key=lambda c: -c.cost)
         if cards and cards[0].cost <= budget:
-            return [BuyCard(cards[0])]
+            return [BuyCard(cards[0], reason='emergency')]
         return []
 
     def _boss_breaker_actions(self, state: GameState,
@@ -484,7 +484,9 @@ class LineStrategy(DefaultCwStrategy):
         for card in wants:
             if self._buy_guards(card, st2, len(
                     [a for a in actions if isinstance(a, BuyCard)])):
-                actions.append(BuyCard(card))
+                actions.append(BuyCard(
+                    card, reason=self._want_label(
+                        card, st2, session, include_bridge=False)))
                 budget -= card.cost
         # r352(局38/40 双局实锤:boss 段金 44/77 滞留买 0——锁线门
         # 拒全部线外件,深 12 进 boss 仍 -34):板面集中买兜底——线内
@@ -531,7 +533,7 @@ class LineStrategy(DefaultCwStrategy):
                                     len([a for a in actions
                                          if isinstance(a, BuyCard)])):
                 continue
-            actions.append(BuyCard(card))
+            actions.append(BuyCard(card, reason='board_focus'))
             budget -= card.cost
             # review-M1(r352c):循环内更新 _bought——防同名卡在
             # 同窗重复买入超 3合1 上限(_buy_guards 计数不含
@@ -743,6 +745,33 @@ class LineStrategy(DefaultCwStrategy):
                 st2.gold -= _cost
         return actions
 
+    def _want_label(self, card, state: GameState,
+                    session: StrategySession, *,
+                    include_bridge: bool = True,
+                    include_pair: bool = True,
+                    include_p2_core: bool = False) -> str:
+        """OR 链买入标签(① 账本 reason 单一源;'' = 不买)。
+
+        序:line(线内形态门)> bridge_seed(桥名单)>
+        p2_core(P2 核心收件,include_p2_core 时)>
+        pair(凑对——板面空时即 r368 冷启动门,标签取
+        classify_buy 身份 bridge_seed/engine,局49 类检查的
+        判据面)。flags 与各调用点原 OR 链谓词集**严格一致**
+        (不多查谓词 = 行为不变,只加标签)。
+        """
+        if self._line_wants(card, state, session):
+            return 'line'
+        if include_bridge and self._bridge_seed(card, state):
+            return 'bridge_seed'
+        if include_p2_core and self._p2_core_wants(card, state, session):
+            return 'p2_core'
+        if include_pair and self._pair_wants(card, state, session):
+            from sr_od.application.currency_war.cw_line_defs import (
+                classify_buy,
+            )
+            return classify_buy(card, state)
+        return ''
+
     def _buy_actions(self, state: GameState,
                      session: StrategySession, floor: int) -> list:
         """买入步(r240 抽出:卖后状态上的买;守卫同 A4)。"""
@@ -755,10 +784,11 @@ class LineStrategy(DefaultCwStrategy):
             if not self._buy_guards(card, state, len(actions)):
                 continue
             # r269:P2 期加收 P2 桥 core(转换通道;局17 金 95 攒死)
-            if self._line_wants(card, state, session) \
-                    or self._bridge_seed(card, state) \
-                    or self._p2_core_wants(card, state, session):
-                actions.append(BuyCard(card))
+            _lbl = self._want_label(
+                card, state, session,
+                include_pair=False, include_p2_core=True)
+            if _lbl:
+                actions.append(BuyCard(card, reason=_lbl))
                 rem -= card.cost
         bought = {id(a.card) for a in actions}
         for card in (state.shop or []):
@@ -766,10 +796,9 @@ class LineStrategy(DefaultCwStrategy):
                     and id(card) not in bought:
                 if not self._buy_guards(card, state, len(actions)):
                     continue
-                if self._line_wants(card, state, session) \
-                        or self._bridge_seed(card, state) \
-                        or self._pair_wants(card, state, session):
-                    actions.append(BuyCard(card))
+                _lbl = self._want_label(card, state, session)
+                if _lbl:
+                    actions.append(BuyCard(card, reason=_lbl))
                     rem -= 1
         # r343(review J/F 处置):r342 散件填充**撤除**——修正
         # 深度代理(可 deploy 件数,对齐实机 _should_deploy)后
@@ -868,7 +897,7 @@ class LineStrategy(DefaultCwStrategy):
             return []
         log.info('[cw][sell4gold] 腾金:卖 bench[%d](回收 %d)买 %s(差 %d)',
                  best[0], best[1], want.name, shortfall)
-        return [SellBench(best[0]), BuyCard(want)]
+        return [SellBench(best[0]), BuyCard(want, reason='swap')]
 
     def _sell_off_target(self, state: GameState,
                          session: StrategySession, cap: int = 2) -> list:
@@ -992,10 +1021,9 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             if not self._buy_guards(card, state, len(actions)):
                 continue
-            if self._line_wants(card, state, session) \
-                    or self._pair_wants(card, state, session) \
-                    or self._bridge_seed(card, state):
-                actions.append(BuyCard(card))
+            _lbl = self._want_label(card, state, session)
+            if _lbl:
+                actions.append(BuyCard(card, reason=_lbl))
                 rem -= card.cost
                 if len(actions) >= 2:
                     break
@@ -1083,19 +1111,13 @@ class LineStrategy(DefaultCwStrategy):
         # 1 费全买(局49:5 金清空,2 张线外,桥后主线零供给,r6 才
         # 锁线已迟)。修:**冷启动首购只放行桥名单 ∪ 引擎阵营**
         # (与 _bridge_seed 同名单——买进来的每一张都是方向件)。
+        # ①(sim 判读同构基建):名单判定收口 classify_buy 单一源
+        # (门与账本 reason 共用,防第二源漂移)。
         if not owned_factions:
-            from sr_od.application.currency_war.cw_bridge_pool import (
-                BRIDGE_POOL,
+            from sr_od.application.currency_war.cw_line_defs import (
+                classify_buy,
             )
-            from sr_od.application.currency_war.cw_chars import CHARACTERS
-            _names = set()
-            for combo in (BRIDGE_POOL if state.plane <= 1 else []):
-                _names.update(combo.fixed + combo.core)
-            ch = CHARACTERS.get(card.name)
-            card_bonds0 = (set(ch.factions) | set(ch.flows)) if ch \
-                else {card.faction}
-            return bool(card.name in _names
-                        or card_bonds0 & set(_ENGINE_FACTIONS))
+            return classify_buy(card, state) in ('bridge_seed', 'engine')
         if card.faction not in owned_factions \
                 and len(owned_factions) >= 3:
             return False    # A5:阵营上限

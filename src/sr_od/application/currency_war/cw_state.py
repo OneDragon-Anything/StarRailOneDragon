@@ -180,6 +180,7 @@ def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
 @dataclass
 class BuyCard:
     card: ShopCard
+    reason: str = ''   # 买入分类(① 账本 reason 单一源;line/bridge_seed/p2_core/pair/engine/board_focus/emergency/swap/plan;''=旧调用未标)
 
 
 @dataclass
