@@ -15,9 +15,6 @@
 """
 from __future__ import annotations
 
-# 冷启动方向件白名单(r368+r371b 门语义:classify_buy 身份集)
-_COLDSTART_OK = frozenset({'bridge_seed', 'engine'})
-
 
 def check_ledger_consistency(rows: list[dict]) -> list[str]:
     """账本内部一致性(锁账本本身没写坏;generic,sim 批量内嵌)。
@@ -49,16 +46,18 @@ def check_ledger_consistency(rows: list[dict]) -> list[str]:
 def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     """局49 指纹(首条回灌断言;ADR-0240+r371b;r368 修前形态)。
 
-    指纹:plane1 r≤2(开局轮)时 **pair 通道**(reason='pair')
-    买入身份(channel)∉{bridge_seed,engine}——r368+r371b 冷启动
-    门在该窗口只放行方向件,violation 即门失效/回归(局49:
-    5 金清空买杂卡;局53:系统 bench 带卡致 owned 非空漏拦)。
+    指纹:plane1 r≤2(开局轮)时买入 reason ∈ {'pair','off'}——
+    _want_label 的 pair 谓词分支返回 classify_buy **身份**,非方向
+    件的该分支产物就是 'pair'(同阵营线外)或 'off'(异阵营线外,
+    **局49 原始形态**:翡翠/大丽花对空板 A5 门放行)。r368+r371b
+    冷启动门在该窗口只放行方向件,violation 即门失效/回归。
 
     - r371b 起(sim 判读同构基建后)冷启动门在 **sim 内可达**
     (旧版 owned 空 判据被开局系统卡架空——二轮审查#3 的
     「只对构造账本」限制解除,已进 _BATCH_CHECKS);
-    - 只查 pair 通道(reason='pair'):line 通道是锁线形态
-    逻辑辖区、emergency/swap/board_focus 各有语义,不越权;
+    - 合法不报:reason=bridge_seed/engine(pair 通道放行的
+    方向件)、line(锁线形态逻辑辖区)/p2_core/emergency/
+    swap/board_focus(其它通道各有语义,不越权);
     - **生产栈账本仍不适用**:生产买牌走 cw_plan(reason=
     'plan'),不辖于 r368 门——拿生产 decisions.jsonl 跑必误报。
     """
@@ -69,16 +68,14 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
         for a in row.get('actions') or []:
             if a.get('__type__') != 'BuyCard':
                 continue
-            if (a.get('reason') or 'unknown') != 'pair':
-                continue   # 只查 pair 通道(门辖区)
-            channel = a.get('channel') or 'unknown'
-            if channel not in _COLDSTART_OK:
-                card = a.get('card') or {}
-                out.append(
-                    f"p{row.get('plane')}r{row.get('round_num')} "
-                    f"冷启动 pair 通道买入非方向件: "
-                    f"{card.get('name')}(channel={channel}, "
-                    f"cost={card.get('cost')})")
+            reason = a.get('reason') or 'unknown'
+            if reason not in ('pair', 'off'):
+                continue   # 方向件/其它通道(见 docstring)
+            card = a.get('card') or {}
+            out.append(
+                f"p{row.get('plane')}r{row.get('round_num')} "
+                f"冷启动买入非方向件: {card.get('name')}"
+                f"(reason={reason}, cost={card.get('cost')})")
     return out
 
 
