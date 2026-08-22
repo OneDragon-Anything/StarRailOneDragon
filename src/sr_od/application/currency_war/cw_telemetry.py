@@ -670,6 +670,10 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
         rfs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         board = " ".join(f"{k2}×{v}" for k2, v in (st.get("board") or {}).items()) or "(空)"
+        # sim 批次:board 恒空 → 显示账本代理维度(深/核;判读不断档)
+        _simd = d.get('sim')
+        if _simd is not None:
+            board = f"(sim 深={_simd.get('depth')} 核={_simd.get('core_count')})"
         act_s = f"买{buys}" + (f"/升{lvs}" if lvs else "") + (f"/D{rfs}" if rfs else "")
         # r226 v2 字段读出(策略 v2 对拍视图;空则省略——default 局全空)
         v2 = d.get("v2_mode") or ""
@@ -765,12 +769,16 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
         delta = (prev_hp - hp) if (prev_hp is not None and hp is not None) else None
         _b = o.get("board_before") or {}
         depth = sum(_b.values())
+        # sim 批次:board 恒空(设计如此)→ 回退账本深度(sim.depth
+        # = _deployable_depth 口径,与生产 board 语义同源 r343)
+        _sim = o.get("sim") or {}
+        depth_s = str(depth) if _b else str(_sim.get('depth', '-'))
         bench = o.get("bench_count")
         delta_s = f'{-delta:+d}' if delta is not None else '-'
         lines.append(
             f"  p{o.get('plane')}r{o.get('round_num')} {o.get('node_type') or '?':8s}"
             f" hp={hp} Δ={delta_s}"
-            f" 板深={depth if _b else '-'} bench={bench if bench is not None else '-'}")
+            f" 板深={depth_s} bench={bench if bench is not None else '-'}")
         if hp is not None:
             prev_hp = hp
     return lines
@@ -819,6 +827,16 @@ def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
     lines: list[str] = []
     for k in sorted(best):
         d = best[k]
+        # sim 批次:board 恒空(档位恒 0 误导)→ 三维同屏换账本代理
+        # 维度(深度/核心在场/方向态;core_count 按 target 路由)
+        _simd = d.get('sim')
+        if _simd is not None:
+            lines.append(
+                f"  p{k[0]}r{k[1]} 深={_simd.get('depth')}"
+                f" 核={_simd.get('core_count')}"
+                f"{' ✓方向' if _simd.get('dir_established') else ''}"
+                f" tgt={d.get('target_comp') or '-'}")
+            continue
         board = (d.get('state') or {}).get('board') or {}
         activated = {}
         for fac, cnt in board.items():
@@ -910,9 +928,10 @@ def _cli_main() -> None:
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
-                         '根目录 sim_runs;"latest" 同缺省)。已知形状差异:'
-                         'ts=轮序号(生产 ISO 串)/board 恒空/comp_tag '
-                         "空方向写'?'(生产'')/bench 为 dict 列表")
+                         '根目录 sim_runs;"latest" 同缺省)。sim 语义差异:'
+                         'board 系字段恒空(hp/tiers/rounds 视图自动回退'
+                         '账本深度/核心维度);planexec 不适用(sim 无'
+                         '执行层分离);ts=轮序号(生产 ISO 串)')
     args = ap.parse_args()
     if args.sim_batch:
         # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构
