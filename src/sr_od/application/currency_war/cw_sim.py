@@ -20,11 +20,15 @@
 
     res = simulate_p1(seed=42, use_refresh=False)   # A/B 对照
     report = simulate_p1_batch(n=500)               # 批量统计
+    # Δ 池三态(⓪ 可复现基建):auto(默认,缺源 raise 不静默)/
+    # snapshot(主仓提交快照,CI/跨机基准)/fallback(显式退旧
+    # 模型,结果打标);A/B 对照同进程同池即可,跨日基线须核指纹。
 """
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_shop_odds import (
@@ -122,6 +126,10 @@ class SimResult:
     # r341 诊断基建:逐轮板深(Σbench;deployed 上场在 sim 未
     # 建模——bench 即板深代理)——杠杆实验的观测端
     depth_trail: list[int] = field(default_factory=list)
+    # ⓪ 可复现基建:本局所用 Δ 池指纹与来源(裸 seed 不构成
+    # 重放承诺,重放 = seed + 指纹;跨日基线对照必须同指纹)
+    pool_fingerprint: str = ''
+    pool_source: str = ''
 
 
 class _Pool:
@@ -190,66 +198,177 @@ def battle_delta(round_num: int, dir_round: int,
 # +引擎单件,capped by level)——对齐实机 _should_deploy。
 _SIM_ENGINE_FACTIONS: frozenset[str] = frozenset(
     ('仙舟', '狼狩', '银河学者', '列车同行'))
-_LIVE_DELTA_POOL: dict | None = None
 _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 
+# --- Δ 池三态解析(⓪ 快照化;对抗审查一轮#1/二轮#1/#5 定谳) -----
+# 校准数据可复现性纪律:
+# - **缺源大声报错,禁止隐式静默回退**(实测同 seed 有池/无池可
+#   翻转 hp_ge_60 判定:seed42 final 36 vs 55)——回退必须显式
+#   pool='fallback',结果行打标 pool_source;
+# - **指纹 = hash(池内容+桶宽+采样器版本)**,随 SimResult/批量
+#   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
+# - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
+#   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
+_SAMPLER_VERSION: int = 1   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_AUTO_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
 
-def live_delta_pool() -> dict:
-    """懒加载板深条件化实机 Δ 池;无数据退空(走旧模型)。"""
-    global _LIVE_DELTA_POOL
-    if _LIVE_DELTA_POOL is None:
-        import json
-        from pathlib import Path
-        pool: dict = {}
-        try:
-            rep = Path('.debug/temp/currency_war/replay')
-            # 该轮末 board 深度(同轮多行 decisions 取最后)
-            boards: dict = {}
-            for ln in (rep / 'decisions.jsonl').read_text(
-                    encoding='utf-8').splitlines():
-                if not ln.strip():
-                    continue
-                d = json.loads(ln)
-                st = d.get('state') or {}
-                b = st.get('board') or {}
-                boards[(d.get('run_id'), d.get('plane'),
-                        d.get('round_num'))] = sum(b.values())
-            seqs: dict[str, list] = {}
-            for ln in (rep / 'outcomes.jsonl').read_text(
-                    encoding='utf-8').splitlines():
-                if not ln.strip():
-                    continue
-                o = json.loads(ln)
-                if o.get('hp_after') is None:
-                    continue
-                seqs.setdefault(o.get('run_id'), []).append(o)
-            for run, seq in seqs.items():
-                for a, b in zip(seq, seq[1:], strict=False):
-                    k = (run, b.get('plane'), b.get('round_num'))
-                    dep = boards.get(k)
-                    if dep is None:
-                        continue
-                    nt = b.get('node_type') or ''
-                    nt = {'普通战斗': 'battle', '遭遇': 'encounter',
-                          '奖励': 'reward', '首领': 'boss',
-                          '补给': 'supply'}.get(nt, nt)
-                    bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-                    pool.setdefault(nt, {}).setdefault(bucket, []).append(
-                        b['hp_after'] - a['hp_after'])
-        except Exception:   # noqa: BLE001  离线/无数据 → 空池(走旧模型)
-            pass
-        _LIVE_DELTA_POOL = pool
-    return _LIVE_DELTA_POOL
+
+class DeltaPoolUnavailable(RuntimeError):
+    """auto 模式找不到可用 Δ 池源——显式选 snapshot/fallback。"""
+
+
+def pool_fingerprint(pool: dict) -> str:
+    """池指纹:hash(池内容规范化 + 桶宽 + 采样器版本)。
+
+    只哈希内容盖不住采样器语义(分桶宽/回退策略变了,同 seed
+    结果变而指纹仍显示命中——二轮#5),故语义常量一并入指纹。
+    """
+    import hashlib
+    import json as _json
+    canon = _json.dumps(
+        {n: {str(b): sorted(v) for b, v in sorted(buckets.items())}
+         for n, buckets in sorted(pool.items())},
+        ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(
+        f'v{_SAMPLER_VERSION}|w{_DEPTH_BUCKET_W}|{canon}'.encode()).hexdigest()[:16]
+
+
+def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
+    """从生产 replay jsonl 构建 Δ 池 + 构成 meta。
+
+    配对口径(r340 起):decisions 每轮取末行板深(Σboard),
+    outcomes 同 run 按 (plane, round) 排序后相邻轮 hp 差分。
+    半写行跳过并计数(生产 append 进行中尾行可能撕裂)。
+    """
+    import json as _json
+    skipped: dict[str, int] = {}
+
+    def _rows(name: str) -> list[dict]:
+        out: list[dict] = []
+        f = replay_dir / name
+        if not f.exists():
+            return out
+        for ln in f.read_text(encoding='utf-8').splitlines():
+            if not ln.strip():
+                continue
+            try:
+                out.append(_json.loads(ln))
+            except _json.JSONDecodeError:
+                skipped[name] = skipped.get(name, 0) + 1
+        return out
+
+    boards: dict = {}
+    for d in _rows('decisions.jsonl'):
+        st = d.get('state') or {}
+        b = st.get('board') or {}
+        boards[(d.get('run_id'), d.get('plane'),
+                d.get('round_num'))] = sum(b.values())
+    seqs: dict[str, list] = {}
+    for o in _rows('outcomes.jsonl'):
+        if o.get('hp_after') is None:
+            continue
+        seqs.setdefault(o.get('run_id'), []).append(o)
+    pool: dict = {}
+    per_run_rounds: dict[str, int] = {}
+    for run, seq in seqs.items():
+        seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
+        per_run_rounds[str(run)] = len(seq)
+        for a, b in zip(seq, seq[1:], strict=False):
+            k = (run, b.get('plane'), b.get('round_num'))
+            dep = boards.get(k)
+            if dep is None:
+                continue
+            nt = b.get('node_type') or ''
+            nt = {'普通战斗': 'battle', '遭遇': 'encounter',
+                  '奖励': 'reward', '首领': 'boss',
+                  '补给': 'supply'}.get(nt, nt)
+            bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+            pool.setdefault(nt, {}).setdefault(bucket, []).append(
+                b['hp_after'] - a['hp_after'])
+    meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
+            'skipped_lines': skipped}
+    return pool, meta
+
+
+def _normalize_pool(raw: dict) -> dict:
+    """桶键归一 int(json round-trip 会变字符串键——str 键会让
+    live_delta_for 的 int 桶查询全 miss = 快照静默失效)。"""
+    return {n: {int(b): list(v) for b, v in buckets.items()}
+            for n, buckets in raw.items()}
+
+
+_RESOLVED_CACHE: dict[str, tuple[dict, str, str]] = {}
+
+
+def resolve_pool(pool: str | Path = 'auto', *,
+                 auto_dir: Path | None = None) -> tuple[dict, str, str]:
+    """Δ 池三态解析 → (pool_map, fingerprint, source_label)。
+
+    - ``'auto'``(默认):生产 replay 实时构建(进程内缓存一次
+      冻结);缺源/空池 raise DeltaPoolUnavailable——**不静默**;
+    - ``'snapshot'``:主仓提交快照 ``cw_delta_pool_data``
+      (CI/跨机可复现基准;重生成 tools/cw/gen_delta_pool_snapshot.py);
+    - ``'fallback'``:显式退旧方向二元模型(结果打标,供无池
+      环境的语义测试);
+    - :class:`Path`:JSON 快照文件(生成器 --export-json 产物,
+      历史版本重放用)。
+    """
+    key = repr((str(pool), str(auto_dir)))
+    if key in _RESOLVED_CACHE:
+        return _RESOLVED_CACHE[key]
+    if pool == 'fallback':
+        out = ({}, pool_fingerprint({}), 'fallback')
+    elif pool == 'snapshot':
+        from sr_od.application.currency_war.cw_delta_pool_data import (
+            META as _META,
+        )
+        from sr_od.application.currency_war.cw_delta_pool_data import (
+            SNAPSHOT as _SNAP_RAW,
+        )
+        _SNAP = _normalize_pool(_SNAP_RAW)
+        if pool_fingerprint(_SNAP) != _META.get('fingerprint'):
+            raise RuntimeError(
+                '快照指纹失配:cw_delta_pool_data 被手改或指纹逻辑'
+                '漂移——重跑 tools/cw/gen_delta_pool_snapshot.py')
+        out = (_SNAP, _META['fingerprint'], 'snapshot')
+    elif isinstance(pool, Path):
+        doc = _json_loads_path(pool)
+        snap = _normalize_pool(doc['snapshot'])
+        out = (snap, pool_fingerprint(snap), f'path:{pool.name}')
+    elif pool == 'auto':
+        d = Path(auto_dir) if auto_dir else _AUTO_REPLAY_DIR
+        p_map, _meta = _pool_from_replay(d)
+        if not p_map:
+            raise DeltaPoolUnavailable(
+                f'auto 池源不可用: {d}(缺失/空/不可解析)。'
+                "显式指定 pool='snapshot'(主仓提交快照)或 "
+                "pool='fallback'(退旧方向二元模型,结果打标)")
+        out = (p_map, pool_fingerprint(p_map), 'auto')
+    else:
+        raise ValueError(
+            f'pool 参数非法: {pool!r}(auto/snapshot/fallback/Path)')
+    _RESOLVED_CACHE[key] = out
+    return out
+
+
+def _json_loads_path(p: Path) -> dict:
+    import json as _json
+    return _json.loads(p.read_text(encoding='utf-8'))
 
 
 def live_delta_for(node_type: str, depth: int,
-                   rng: random.Random) -> int | None:
+                   rng: random.Random, *,
+                   pool_map: dict | None = None) -> int | None:
     """按节点类型+板深取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
 
-    r343(review E 修):邻桶回退只向**浅**侧(bucket-W)——
-    深侧封顶 15 后 +W 是死码,且向深回退=偏乐观(深=掉血少)。
+    ⓪ 起 pool_map 显式注入(resolve_pool 产物;None=auto 解析,
+    缺源 raise 不静默)。r343(review E 修):邻桶回退只向**浅**侧
+    (bucket-W)——深侧封顶 15 后 +W 是死码,且向深回退=偏乐观
+    (深=掉血少)。
     """
-    _map = live_delta_pool().get(node_type) or {}
+    if pool_map is None:
+        pool_map = resolve_pool('auto')[0]
+    _map = pool_map.get(node_type) or {}
     bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
     pool = _map.get(bucket)
     if not pool:
@@ -311,17 +430,24 @@ def _direction_established(session: StrategySession) -> bool:
 
 
 def simulate_p1(seed: int, *, use_refresh: bool = True,
-                strategy=None, session=None) -> SimResult:
+                strategy=None, session=None,
+                pool: str | Path = 'auto') -> SimResult:
     """单局 P1 模拟(决策跑真策略代码)。
 
-    :param seed: 随机种子(同 seed 同局,可复现)
+    :param seed: 随机种子(同 seed 同局,可复现——**须同池指纹**,
+        见 ``pool``;SimResult.pool_fingerprint 记录本局所用池)
     :param use_refresh: False 时剔除 RefreshShop 动作(A/B 对照用)
     :param strategy: 注入策略(默认 LineStrategy;测试可换桩)
     :param session: 注入会话(默认新建;跨局复用场景可传)
+    :param pool: Δ 池三态(⓪):'auto'(生产 replay,缺源 raise)/
+        'snapshot'(主仓提交快照,CI/跨机基准)/'fallback'(显式
+        退旧模型,结果打标)/Path(JSON 快照,历史重放)。
+        A/B 对照同进程同池即可;**跨日基线对照须核指纹一致**。
     """
     from sr_od.application.currency_war.strategies.line_strategy import (
         LineStrategy,
     )
+    pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
     pool = _Pool(rng)
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
@@ -343,7 +469,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 faction=(CHARACTERS[n].factions or ['散'])[0]))
     sess = session or StrategySession()
     sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
-    res = SimResult(seed=seed)
+    res = SimResult(seed=seed, pool_fingerprint=pool_fp,
+                    pool_source=pool_src)
     xp = 0
     streak = 0
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
@@ -424,7 +551,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _dep = min(st.level, sum(c for f, c in _fc2.items() if c >= 2)
                    + sum(c for f, c in _fc2.items()
                          if c == 1 and f in _SIM_ENGINE_FACTIONS))
-        _ld = live_delta_for(nodes[rn - 1], _dep, rng) \
+        _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                             pool_map=pool_map) \
             if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
         if _ld is not None:
             delta = _ld
@@ -455,16 +583,24 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
 
 
 def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
-                      seed_base: int = 0) -> dict:
-    """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。"""
+                      seed_base: int = 0,
+                      pool: str | Path = 'auto') -> dict:
+    """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
+
+    返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
+    对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
+    """
     import statistics
-    results = [simulate_p1(seed_base + i, use_refresh=use_refresh)
+    results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
+                           pool=pool)
                for i in range(n)]
     hps = [r.final_hp for r in results]
     dirs = [r.dir_round for r in results]
     established = [d for d in dirs if d < 99]
     return {
         'n': n,
+        'pool_fingerprint': results[0].pool_fingerprint,
+        'pool_source': results[0].pool_source,
         'hp_ge_60': sum(1 for h in hps if h >= 60) / n,
         'avg_final_hp': statistics.mean(hps),
         # r370(新验收对齐,goal rev5):战斗节点败场 ≤2 概率
