@@ -30,6 +30,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层:统计骨架×逐篇细节×机制解释) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
+| 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md)(plaza API 生成器族/图鉴实采/运行时自采——含连胜档金与节点奖励的临时采集钩子现状) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | `.debug/temp/currency_war/cw_dev/进度.md`(任务树,操作对象) |
 
@@ -95,4 +96,5 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - **测试锁锁旧行为**:改门/常量前 grep 全部消费点含测试断言——很多「不买/不做」断言是旧路径的副作用,不是真语义;预判行为变化清单,逐项判「意图内还是副作用」。
 - **叙述≠证据**:「轨迹最佳」「修复链收敛」是故事;真证据 = sim 分布变化 + 锁断言 + 判读锚点事前预测事后核对。
 - **生成器分层**:改注册表前查 `tools/cw/` 是否有该文件的生成器(`*_data.py` 数据层勿手编;判断层文件反向标注);改错层 = 被覆盖或双源。
+- **临时采集钩子会积压**:钩子必须带删留条件;盘点时查 `.debug/temp/currency_war/shots/` 前缀分布与代码内「采完删」标记——样本攒够就离线判读→进真值→删钩子,别让临时变常驻(详 references/data-collection.md)。
 - **改完不验旧锁就提交**:提交前三步 = ①grep 消费点与锁值 ②ruff+直接影响测试 ③耦合模块全量一次通过(子集绿是伪安全)。
