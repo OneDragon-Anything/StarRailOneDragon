@@ -43,6 +43,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 ```
 
 - rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买;hp=掉血×板深;economy=金轨迹/滞留;anomalies=异常标记。
+- **生产局秒级自检**(checks 子命令):`cw_telemetry checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
 - **别为复盘写一次性脚本**——新复盘需求 = 新视图/查询参数;确需脚本用完即删。
 - 每局跑完**必做**局后判读:异常条目当场定位根因(查 log + supply),定位不了不准进下一局——异常跨局存活 = 回归在累积。
 - 结论必须声明数据边界(如「基于进店帧,refresh 波不可见」);边界不够先补遥测字段再下结论。
