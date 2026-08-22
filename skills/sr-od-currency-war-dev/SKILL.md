@@ -30,7 +30,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层:统计骨架×逐篇细节×机制解释) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
-| 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md)(plaza API 生成器族/图鉴实采/运行时自采——含连胜档金与节点奖励的临时采集钩子现状) |
+| 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md)(plaza API 生成器族/图鉴实采/运行时自采/经济常量溯源/**建模增量层**——API 给不了的属性怎么建、各实体增量清单与消费点) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | `.debug/temp/currency_war/cw_dev/进度.md`(任务树,操作对象) |
 

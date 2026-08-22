@@ -57,6 +57,30 @@
 - 合成图谱 `cw_synthesis`:图鉴「合成公式」OCR → **K7 图数学派生**(21 交叉确证+7 自配逻辑确证);孤立节点(如光能电池 0 交叉)标注待人工核实机理,不入图。
 - 节点类型/连胜数的**读取**(非采集):节点行 `cw_node_reader`(HoughCircles+HSV+Hu+OCR);连胜 `parse_streak`(结算屏「连胜×N」前缀=方向,fixture 核实)——这些是观测层不是数据采集,别混。
 
+## 五、建模增量层(API 给不了的人工属性)
+
+官方 API 给的是**事实**(名字/效果原文/数值),策略消费不了原文——各实体在注册表里有人工建模的增量层。**建模方法论**:
+
+### 方法论(怎么建一个增量属性)
+
+1. **问「哪个决策消费它」再动手**:每个建模字段对应一个决策消费点(mechanics_fit/boss_fit/equip_fit/经济算账/星级目标…),没有消费点的属性不建——防止「为建模而建模」的装饰字段。
+2. **效果原文 → 结构化数值,只收能进模型的**:经济效果按语义归位到具名字段(一次性 vs 每节点 vs 触发式分开;ADR-0142 曾把 9 条重复性效果错装 instant_gold,按原文归位修正)。战力类不进经济模型(走战力评估);反向激励的(损血换钱)只建档不进分。
+3. **边界靠效果原文,不脑补**:仅建 API 文本明说的数值;歧义处标注释;异质效果(契约/时代/规则类环境)不硬塞一个维度,**待分类建模**而非硬建模。
+4. **人判维度标注判断层身份**:category/评级/站位要求等是人的判断——判断层文件头反向标注「生成器不写本文件」,防被覆盖。
+5. **对拍锚防漂移**:跨层字段(如 comp.plaza_carry 指向聚类 carry 名)让两层数据互相可校验;孤儿校验(overlay 引用 base 不存在的键 → import 即炸)。
+6. **机制特例单独建模,不泛化**(如开拓者双形态按排归一、银狼升费多档):特例进注册表的机制字段/映射表,别把特例逻辑散进消费代码。
+
+### 各实体增量清单(查「这字段哪来的/谁消费」)
+
+| 实体 | 增量属性(人维护) | 消费点 |
+|---|---|---|
+| **投资策略/环境**(`cw_investments`) | `EconomyEffect` 27 字段(给金/免费刷/利息覆写/难度Δ/连胜倍率/合成触发族…,ADR-0131/0142/0205/0211 四轮);`PICK_VALUE`/`ENV_PICK_VALUE`/`SURVIVAL_PICKS` 选卡分;`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定 | decide_event 选卡/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
+| **角色**(`cw_chars`) | char_type/f 流派阵营两分/independent/开拓者形态映射(按排归一) | 部署站位/羁绊计数/压缩牌库 |
+| **羁绊**(`cw_factions`) | category 四分类(combat/economy/support/independent)/tiers/note 人判注记 | 评分/成型判定/骨架派生 |
+| **comp**(`cw_comps`) | 核心/弹性二分/form_tiers/key_equips(可重复)/countered_by_bosses/mechanic_attributes(词缀双向)/shared_chars(转型成本)/char_positions(comp 级站位覆盖)/LevelGoal 曲线(等级→动作+星目标) | select_comp/maybe_pivot/装备分配/mechanics_fit/boss_fit |
+| **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |
+| **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档星率→星级目标先验)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
+
 ## 采集钩子纪律(与 od-dev-stop-hooks 分工)
 
 - **临时采集钩子必须带删留条件**(「采齐删/采完删」写进注释);用 `cw_shot_unique`(内容哈希去重)存样本到 `.debug/temp/currency_war/shots/`,前缀即域名。
