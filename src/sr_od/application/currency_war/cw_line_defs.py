@@ -46,6 +46,11 @@ def recipe_kinds_1cost() -> int:
 # 卡点(七局七根因=发散信号)。本表 = 缺失的控制变量。
 # 口径:V4.0 过渡框架(transitions.md §1)+ 用户节奏(user_playstyle
 # [2][12][13]):r3 桥雏形 / r6 配方 5 档 / r8 成型锁方向。
+# ⚠️ r358(用户点题「不只是看羁绊,要看羁绊里的角色」):
+# combo_methodology 终版模型——「仙舟3」没有核心三人组是空壳
+# 档位:核心池 = 饮月(输出/双阵营枢纽/装备优先)+藿藿(仙舟∩
+# 治疗唯一)+爻光(叠段发动机),功能链各占一环不可拆;DOT2
+# 才是「随意凑数」。检查点必须同时看档位+核心在场。
 _P1_FORMATION_TARGETS: dict[str, int] = {
     'bridge2': 2,    # r1-r3:桥方向 ≥2 阵营各 ≥2 档
     'recipe5': 5,    # r4-r6:配方线 recipe_tier ≥5(RECIPE_BASE)
@@ -54,27 +59,54 @@ _P1_FORMATION_TARGETS: dict[str, int] = {
 #: 各 deadline 的轮界(含);r9=boss 决战窗不适用检查点
 _P1_FORMATION_ROUND_EDGES: tuple[int, int, int] = (3, 6, 8)
 
+#: r358:核心三人组(combo_methodology 终版:功能链不可拆;
+# 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
+_CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
+#: r358:核心池三人组的达标数(到齐=3)
+_CORE_TRIO_TARGET: int = 3
+
+
+def core_trio_count(board_names) -> int:
+    """r358:核心三人组在场数(board 名单 ∩ 核心池)。
+
+    board_names:在场角色名集合(消费方从 state.deployed/bench
+    提取 char_id)。「在场」口径 = deployed(上阵)——核心在
+    bench 不贡献档位(deploy 围栏已放行,r357)。
+    """
+    return sum(1 for n in _CORE_TRIO if n in board_names)
+
 
 def p1_formation_target(round_num: int,
-                        board: dict[str, int]) -> tuple[str, int, int]:
-    """P1 成型进度检查(r356)→ (阶段键, 目标档, 当前档)。
+                        board: dict[str, int],
+                        board_names=None) -> tuple[str, int, int]:
+    """P1 成型进度检查(r356/r358)→ (阶段键, 目标值, 当前值)。
 
-    阶段判据(V4.0 过渡节奏):
+    阶段判据(V4.0 过渡节奏 + r358 核心角色维):
     - r≤3(bridge2):桥雏形 = 板面引擎阵营中 ≥2 档的阵营数 ≥2;
-      当前档 = 达标阵营数(目标 2);
-    - r≤6(recipe5):recipe_tier(board) ≥ RECIPE_BASE;
-    - r≤8(recipe7):recipe_tier ≥ 7(渐进 +2 列车/护盾);
+    - r≤6(recipe5):max(recipe_tier, 核心三人组在场数×等效档)
+      ——r358:核心 1 人 = 引擎枢纽到位的档位等价(用户口径
+      「羁绊里的角色」;核心三人组到齐+配方 5 档 = 完全成型,
+      检查值 = min(recipe_tier, 5) 与核心数的组合:值 =
+      recipe_tier + core_count(核心在场使同档位更实)的上限
+      截断在 target——简化实现:cur = recipe_tier if
+      core_count >= 2 else max(0, recipe_tier - 2)(无核心时
+      档位打折——空壳档位不算数);
+    - r≤8(recipe7):同上,目标 7;
     - r9+:返 ('boss', 0, 0)(决战窗,检查点不适用)。
-    消费方(formation_push):gap>0 → 当轮全预算补差。
     """
     if round_num <= _P1_FORMATION_ROUND_EDGES[0]:
         cur = sum(1 for f, c in board.items()
                   if c >= 2 and f in ENGINE_FACTIONS)
         return 'bridge2', _P1_FORMATION_TARGETS['bridge2'], cur
+    core_n = (core_trio_count(board_names)
+              if board_names is not None else _CORE_TRIO_TARGET)
     if round_num <= _P1_FORMATION_ROUND_EDGES[1]:
-        return 'recipe5', _P1_FORMATION_TARGETS['recipe5'], \
-            recipe_tier(board)
+        base = recipe_tier(board)
+        # r358:核心 <2 时档位打折(空壳档位);到齐按原值
+        cur = base if core_n >= 2 else max(0, base - 2)
+        return 'recipe5', _P1_FORMATION_TARGETS['recipe5'], cur
     if round_num <= _P1_FORMATION_ROUND_EDGES[2]:
-        return 'recipe7', _P1_FORMATION_TARGETS['recipe7'], \
-            recipe_tier(board)
+        base = recipe_tier(board)
+        cur = base if core_n >= 2 else max(0, base - 2)
+        return 'recipe7', _P1_FORMATION_TARGETS['recipe7'], cur
     return 'boss', 0, 0

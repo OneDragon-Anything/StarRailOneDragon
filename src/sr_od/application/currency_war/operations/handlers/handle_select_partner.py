@@ -134,6 +134,10 @@ class HandleSelectPartner(SrOperation):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
+            # r358d(遥测接线):伙伴选择落 session → read_game_state
+            # 回写 state.partner_char(复盘维度;选中确认后写)。
+            if match is not None and options and 0 <= idx < len(options):
+                match.session.chosen_partner = options[idx].char_id or ''
             if cands and 0 <= idx < len(cands):
                 _name, cx, cy = cands[idx]
                 portrait = Point(cx, cy - HandleSelectPartner.PORTRAIT_DY_ABOVE_LABEL)

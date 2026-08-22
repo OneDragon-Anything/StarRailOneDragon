@@ -290,12 +290,17 @@ class LineStrategy(DefaultCwStrategy):
         # RECIPE_FACTIONS∩板面,防散面固化);独立 push 支
         # (r356 首版)在 sim 实证 89% 空手+替换掉实战购买
         # 反而更差(hp_ge_60 2.2%→0.3%),撤——围栏内嵌。
+        # r358(用户点题):检查点加核心角色维——「羁绊里的
+        # 角色」:核心三人组(爻光/藿藿/饮月)<2 在场时档位
+        # 打折(空壳档位不算成型)。
         if state.plane == 1 and state.round_num >= 5:
             from sr_od.application.currency_war.cw_line_defs import (
                 p1_formation_target,
             )
+            _names = {d.char_id for d in (state.deployed or [])
+                      if getattr(d, 'char_id', '')}
             _phase, _tgt, _cur = p1_formation_target(
-                state.round_num, state.board or {})
+                state.round_num, state.board or {}, _names)
             if _phase != 'boss' and _cur < _tgt:
                 log.info('[cw][formation] r%d %s %d/%d 未达标'
                          '(集中买走配方围栏)', state.round_num,

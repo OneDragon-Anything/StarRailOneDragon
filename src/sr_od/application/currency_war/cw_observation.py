@@ -961,6 +961,24 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
+        # r358d(遥测全面性审计接线,ADR-0229 缺口清单):观察了但
+        # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
+        # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
+        # 连胜门)同源。注入点单一(此处),default_strategy 的
+        # update_target 注入保留(两处都幂等:非空才覆)。
+        _sess = _match.session
+        if getattr(_sess, 'active_env', ''):
+            state.active_env = str(_sess.active_env)
+        if getattr(_sess, 'briefing_bosses', None):
+            state.plane_bosses = list(_sess.briefing_bosses)
+        if getattr(_sess, 'briefing_affixes', None):
+            state.enemy_affixes = list(_sess.briefing_affixes)
+        _mg = getattr(_sess, 'chosen_megastar', None)
+        if _mg:
+            state.megastar_char = _mg
+        _pt = getattr(_sess, 'chosen_partner', None)
+        if _pt:
+            state.partner_char = _pt
     if _tracked_dep:
         import copy
         state.deployed = copy.deepcopy(_tracked_dep)

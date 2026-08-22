@@ -81,6 +81,10 @@ class RunMegastarNode(RunNode):
             self.ctx.controller.click(candidate)
             if _match is not None:
                 _match.session.megastar_candidate_clicked = True   # session 级:跨 re-dispatch 持久
+                # r358d(遥测接线):巨星选择落 session → read_game_state
+                # 回写 state.megastar_char(复盘「绑定与 comp 匹配」维度)。
+                if options and 0 <= idx < len(options):
+                    _match.session.chosen_megastar = options[idx].char_id or ''
             time.sleep(0.6)
         # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
         self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)

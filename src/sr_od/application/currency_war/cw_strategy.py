@@ -225,6 +225,10 @@ class StrategySession:
     # 环入口清零,同 defer_count 宿主模式 —— 策略无状态,主流程阶段只能住 session,F6)。
     prep_phase: int = 0
     # r3 review④:动态 setattr 升正式字段(asdict/repr 完整;getattr 兜底随之可删)
+    # r358d(遥测接线,ADR-0229 缺口):选择类 handler 写 → read_game_state
+    # 回写 state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
+    chosen_megastar: str = ''
+    chosen_partner: str = ''
     pivot_cooldown_until: int = 0                      # r7 pivot 冷却(转线后 N 轮封信号 1/2;保命豁免在调用侧)
     drought_excluded: list[str] = field(default_factory=list)   # r20 极端 drought 弃线名单(r7 review:单槽会被第二条死线覆盖→振荡;死线不复活,局级=session 新建)
     commit_signals: object = None   # ADR-0209 CommitSignals(定型信号累积器;惰性建——default_factory 会引环形导入,update_target 首调时建)
