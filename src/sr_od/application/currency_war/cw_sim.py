@@ -702,7 +702,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                       'bench': [{'char_id': b.char_id,
                                  'faction': b.faction,
                                  'slot': b.slot}
-                                for b in st.bench]},
+                                for b in st.bench],
+                      # r391(执行层代理配套):deployed/cap 入账本
+                      # ——「开局 deploy<cap」检查项的数据源
+                      # (r387 类 bug 的 sim 常态化防线)。deployed
+                      # 形状对齐 rounds 视图消费(dict 带
+                      # position_pref,同 bench 形状)。
+                      'deployed': [{'char_id': d.char_id,
+                                    'faction': d.faction,
+                                    'slot': d.slot,
+                                    'position_pref': d.position_pref}
+                                   for d in (st.deployed or [])
+                                   if getattr(d, 'char_id', '')],
+                      'cap': st.max_units()},
             'actions': _acts,
             'sim': {
                 'node': nodes[rn - 1], 'delta': delta,

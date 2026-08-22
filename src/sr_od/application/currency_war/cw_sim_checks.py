@@ -43,6 +43,49 @@ def check_ledger_consistency(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
+    """局62 指纹(r387 回灌断言;ADR-0249 执行层代理)。
+
+    指纹:开局轮后(plane1 r2-r4,首两轮系统卡未定排除)deployed
+    数 < cap 且 bench 有可上件(≥1 张)——r387 修前形态(配方
+    围栏无条件拦散牌,cap=3 只上 1 人空槽白丢血)。r390 执行层
+    代理落地后 sim 内可达(deployed=真实围栏输出);变异探针
+    实证:关 cap_roomy 守卫 → loss≤2 0.017→0.117 涌现
+    (本检查=该差异的常态化拦截)。
+
+    边界:bench 空(没牌可上)不报;**差 1 以内的贴 cap 不报**
+    (配方围栏+cap 紧张是合法形态——r387 修的是「富余仍拦」);
+    **跨轮持续性门**(连续 2 轮 deployed≤cap-2 才报):sim 代理
+    在决策前生成、同轮买入后不刷新——单轮差 2 常是「买了还没
+    重新部署」的过渡态(game14 实证:r2 4/6→r3 6/6),连续 2 轮
+    才是围栏系统性拦截的指纹。
+    """
+    out: list[str] = []
+    _short_rounds: list[int] = []   # deployed≤cap-2 的轮号
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        rn = row.get('round_num') or 0
+        if not (2 <= rn <= 4):
+            continue
+        st = row.get('state') or {}
+        deployed = st.get('deployed')
+        cap = st.get('cap')
+        if deployed is None or not cap:
+            continue
+        bench = st.get('bench') or []
+        if len(bench) + len(deployed) <= cap:
+            continue
+        if len(deployed) < cap - 1:
+            _short_rounds.append(rn)
+    for a, b in zip(_short_rounds, _short_rounds[1:], strict=False):
+        if b - a == 1:
+            out.append(
+                f"p1r{a}-r{b}: deployed 连续 ≤cap-2"
+                f"(bench 有货,围栏系统性拦截空槽——r387 修前形态)")
+    return out
+
+
 def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     """局49 指纹(首条回灌断言;ADR-0240+r371b;r368 修前形态)。
 
@@ -89,6 +132,7 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
+    'deploy_fills_cap': check_deploy_fills_cap,
 }
 
 
