@@ -154,3 +154,5 @@
 | [0255](0255-transition-formation-metrics.md) | 过渡阵容成型指标:引擎乐高/配方档/三人组三层(r394/r394c) | accepted | 2026-08-23 | 用户点题「模拟位面1能否凑到过渡阵容」:账本 board_factions 字段+三指标;判据对齐 combo_methodology 784 篇定档(r394c:引擎≥2 且含大引擎,纯中引擎组合不算——首版只判≥2 误判贝2+减益2);60 局暴露空壳档位结构 recipe5=88% vs engines2=43%,策略主攻首个量化靶子 |
 | [0256](0256-sellbench-income-field.md) | SellBench.income 生产补采:sim↔生产账本卖出回金对齐(r381;部分落地2/9,余7处挂sim批) | accepted | 2026-08-23 | sell_refund 口径入 cw_state.SellBench(None=未标);已标仅 line 2 处——9bb56950 message 虚报覆盖面(_sell_income_of 不存在),以代码 grep 为准 |
 | [0257](0257-opening-hold-target-vacuum.md) | 开局装备 hold 的 target 真空修正(对抗审查 R3;纯函数化+8锁) | accepted | 2026-08-23 | 重启后首局 r≤2 乱穿残留根治:开局门无条件,r70 form 门要 target;两门解耦+版本 checklist 锚点 |
+| [0258](0258-deploy-ignition-sort.md) | deploy 点火增量排序:四体系判据进场位(r404-A1) | accepted | 2026-08-23 | ignition_gain 首键(恰好凑满 tier 的最优先);正确但非当时主病灶(真根因=重复件占位,0259);按交接文档补写 |
+| [0259](0259-deploy-dedup-round-names.md) | deploy 同名去重扩到本轮已上名单(r404-A2;重复件占位根修) | accepted | 2026-08-23 | 5.1.7 真守卫;engines2 0.433→0.100=挤非法水分(旧 sim 引用须验此边界),HP 三指标大涨;按交接文档补写 |
