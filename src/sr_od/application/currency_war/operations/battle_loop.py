@@ -323,6 +323,25 @@ class CurrencyWarRunLoop(SrOperation):
         hp = getattr(self, '_last_outcome_hp', None)
         return hp if hp is not None else fallback_hp
 
+    @staticmethod
+    def _node_type_from_table(_session, plane: int | None,
+                              round_num: int | None) -> str | None:
+        """r362:current 无值时按开局帧槽序表查本节点类型(首节点冷启动兜底)。
+
+        plane_node_table(r306 开局帧读的完整槽序,session 级):slot i 的
+        类型 ≈ 该位面第 i+1 节点(reward/reward/battle/battle/supply… 实证
+        稳定,变异位仅 slot5/6)。位面重启后 session 重建 → 表也重建,无
+        跨局污染。查不到(表空/越界)→ None(调用方退普通战斗)。
+        """
+        try:
+            _table = getattr(_session, 'plane_node_table', None) or []
+            _r = int(round_num or 0)
+            if _table and 1 <= _r <= len(_table):
+                return str(_table[_r - 1])
+        except Exception:   # noqa: BLE001  best-effort 兜底
+            pass
+        return None
+
     def _record_round_outcome(self, screen) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
@@ -346,8 +365,17 @@ class CurrencyWarRunLoop(SrOperation):
             # session.node_seq)——结算屏 OCR 是二手推断(r260 首版全屏搜'奖励'
             # 误中金币区'基础奖励',r265 area 版仍是推断),弃。
             # 此处只消费 session 里备战期读到的本节点类型。
+            # r362(用户点破「1-1/1-2 是奖励,记录全普通战斗」):**首节点
+            # 冷启动缺口**——r1 备战期 nodeseq 首帧常 skip(非 clean 帧),
+            # upcoming_types 空 → 左移无值 → current=None → 恒回退
+            # 「普通战斗」(r1/r2 恒 reward 实锤,局47)。修:current 无值时
+            # 按「本位面已见节点数」查 plane_node_table(开局帧完整槽序,
+            # r306 已存;reward/supply 等 1-9 槽序稳定,首帧读到的表对
+            # 整个位面有效——变异位仅 slot5/6,前 4 槽查表恒准)。
             _node = 'boss' if _is_boss else (
-                getattr(_session, 'node_type_current', None) or '普通战斗')
+                getattr(_session, 'node_type_current', None)
+                or self._node_type_from_table(_session, _plane, _round)
+                or '普通战斗')
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
                                       comp_tag=_comp_tag, node_type=_node)
             # killed 文本兜底(2026-08-18 用户语义:「扣血=战斗失败」):输轮结算屏形态 =
