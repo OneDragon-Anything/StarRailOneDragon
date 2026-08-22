@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 # ⚠️ 本文件**拖拽机制已验证**(2026-08-13:中心拖+hold0,推翻 avatar 假设(原 ADR-0100,文件已删,见 ADR-0120);统一走 DragCwChar.drag_char);
 # 其余部署逻辑(CV 占用 / SIFT 身份 / cap 门 / off-target 卖)仍待逐画面 review。
 
