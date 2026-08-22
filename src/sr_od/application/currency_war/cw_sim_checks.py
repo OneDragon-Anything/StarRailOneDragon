@@ -6,16 +6,16 @@
   传进来(二轮#7,非模块级 import 不构成循环);
 - **分布级预警在 batch 内嵌**(默认开,--checks False 关);
   确定性回归走测试仓合成账本双向锁(检查逻辑本身的锁);
-- **局49 指纹断言只对构造账本跑**(check_coldstart_seed_
-  squander):sim 开局 bench 先填 4 张已知阵营卡 → r368 冷启动
-  门在 sim 内不可达(二轮#3),跑 sim 批次 = 空转/随机误报;
-  faction='?' 开局模拟模式是单独立项。
+- **局49 指纹(r371b 起)sim 内可达**:冷启动门判据扩到
+  「owned 空 或 plane1 r≤2」后,sim 开局系统卡不再架空门——
+  检查升级进 _BATCH_CHECKS 批量跑(旧版「只对构造账本」限制
+  是二轮审查#3 基于 r368 判据的结论,已被 r371b 推翻)。
 
 每条检查的 docstring 记来源局号/指纹(学费账本;ADR 见对应条目)。
 """
 from __future__ import annotations
 
-# 冷启动方向件白名单(r368 门语义:classify_buy label 集)
+# 冷启动方向件白名单(r368+r371b 门语义:classify_buy 身份集)
 _COLDSTART_OK = frozenset({'bridge_seed', 'engine'})
 
 
@@ -47,38 +47,46 @@ def check_ledger_consistency(rows: list[dict]) -> list[str]:
 
 
 def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
-    """局49 指纹(首条回灌断言;ADR-0240;r368 修前形态)。
+    """局49 指纹(首条回灌断言;ADR-0240+r371b;r368 修前形态)。
 
-    指纹:r1 无方向(target_comp 空)时,买入含白名单外标签
-    (off/pair/board_focus/emergency/swap/plan/unknown)——冷启动
-    首购只放行桥名单∪引擎(r368 门),violation 即旧病形态。
-    **只对构造账本跑**:sim 内冷启动门不可达(见模块 docstring);
-    **仅 v2/sim 栈账本适用**——生产栈 r1 买牌走 cw_plan
-    (reason='plan'),不辖于 r368 门,拿生产账本跑此检查必误报。
+    指纹:plane1 r≤2(开局轮)时 **pair 通道**(reason='pair')
+    买入身份(channel)∉{bridge_seed,engine}——r368+r371b 冷启动
+    门在该窗口只放行方向件,violation 即门失效/回归(局49:
+    5 金清空买杂卡;局53:系统 bench 带卡致 owned 非空漏拦)。
+
+    - r371b 起(sim 判读同构基建后)冷启动门在 **sim 内可达**
+    (旧版 owned 空 判据被开局系统卡架空——二轮审查#3 的
+    「只对构造账本」限制解除,已进 _BATCH_CHECKS);
+    - 只查 pair 通道(reason='pair'):line 通道是锁线形态
+    逻辑辖区、emergency/swap/board_focus 各有语义,不越权;
+    - **生产栈账本仍不适用**:生产买牌走 cw_plan(reason=
+    'plan'),不辖于 r368 门——拿生产 decisions.jsonl 跑必误报。
     """
     out: list[str] = []
     for row in rows:
-        if row.get('round_num') != 1:
+        if row.get('plane') != 1 or (row.get('round_num') or 9) > 2:
             continue
-        if row.get('target_comp'):
-            continue   # 已有方向,非冷启动形态
         for a in row.get('actions') or []:
             if a.get('__type__') != 'BuyCard':
                 continue
-            reason = a.get('reason') or 'unknown'
-            if reason not in _COLDSTART_OK:
-                name = (a.get('card') or {}).get('name') or a.get('name')
-                cost = (a.get('card') or {}).get('cost') or a.get('cost')
+            if (a.get('reason') or 'unknown') != 'pair':
+                continue   # 只查 pair 通道(门辖区)
+            channel = a.get('channel') or 'unknown'
+            if channel not in _COLDSTART_OK:
+                card = a.get('card') or {}
                 out.append(
-                    f"r1 冷启动买入非方向件: {name}"
-                    f"(reason={reason}, cost={cost})")
-        return out   # 只查 r1
+                    f"p{row.get('plane')}r{row.get('round_num')} "
+                    f"冷启动 pair 通道买入非方向件: "
+                    f"{card.get('name')}(channel={channel}, "
+                    f"cost={card.get('cost')})")
     return out
 
 
-# 批量内嵌的 generic 检查集(分布级;局49 类构造检查不在此列)
+# 批量内嵌检查集(分布级;r371b 后冷启动门 sim 内可达,局49
+# 检查升级进批量——真实 sim 批次自动扫)
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
+    'coldstart_direction': check_coldstart_seed_squander,
 }
 
 
