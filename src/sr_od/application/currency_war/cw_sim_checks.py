@@ -58,8 +58,11 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     - 合法不报:reason=bridge_seed/engine(pair 通道放行的
     方向件)、line(锁线形态逻辑辖区)/p2_core/emergency/
     swap/board_focus(其它通道各有语义,不越权);
-    - **生产栈账本仍不适用**:生产买牌走 cw_plan(reason=
-    'plan'),不辖于 r368 门——拿生产 decisions.jsonl 跑必误报。
+    - **仅 LineStrategy(v2)栈账本适用**:生产配置 strategy_id=
+      line_v2 时实机 decisions.jsonl 同样适用(BuyCard.reason 是
+      共享 dataclass,生产遥测同带标签);**default 栈**(买牌走
+      cw_plan,reason='plan')不辖于 r368 门,跑此检查必误报——
+      生产侧按局 strategy_id/actions reason 词表判栈后选择。
     """
     out: list[str] = []
     for row in rows:

@@ -649,6 +649,61 @@ def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
     return best
 
 
+def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
+    """生产遥测接 checks(决策项 1):对最近 N 局跑栈适配的检查集。
+
+    - 判栈(逐局):strategy_id=='line_v2' 或开局轮 BuyCard reason
+      含 v2 词表(line/bridge_seed/engine/pair/off)→ v2 栈;
+      reason 全 'plan'/空 → default 栈(cw_plan,不辖 r368 门);
+    - v2 栈局跑 check_coldstart_seed_squander(生产 decisions 行
+      顶层 plane/round_num/actions 与检查输入兼容;BuyCard.reason
+      是共享 dataclass,生产遥测同带标签);
+    - ledger_consistency 不跑(需 sim 键;生产金对账归
+      econ_reconcile 工具链,不重复造轮子);
+    - 输出行化(判读 CLI 风格),违规局带 run_id 可溯源。
+    """
+    from sr_od.application.currency_war.cw_sim_checks import (
+        check_coldstart_seed_squander,
+    )
+    _V2_REASONS = {'line', 'bridge_seed', 'engine', 'pair', 'off',
+                   'p2_core', 'board_focus', 'emergency', 'swap'}
+    runs = _list_runs(replay_dir)[-recent:]
+    lines: list[str] = []
+    for rid in runs:
+        best = _load_decisions_rounds(replay_dir, rid)
+        rows = sorted(best.values(), key=lambda d: (d.get('plane') or 0,
+                                                    d.get('round_num') or 0))
+        # 判栈:strategy_id 字段优先,退 reason 词表
+        sid = next((d.get('strategy_id') for d in rows
+                    if d.get('strategy_id')), '')
+        if sid == 'line_v2':
+            stack = 'v2'
+        else:
+            early_reasons = {
+                (a.get('reason') or '')
+                for d in rows
+                if (d.get('plane') or 1) == 1 and (d.get('round_num') or 9) <= 2
+                for a in (d.get('actions') or [])
+                if a.get('__type__') == 'BuyCard'}
+            if early_reasons & _V2_REASONS:
+                stack = 'v2'
+            elif early_reasons & {'plan'}:
+                stack = 'default'
+            else:
+                stack = '?'   # 开局轮无买牌,无法判;跑检查无害(无买=无违规)
+        if stack == 'default':
+            lines.append(f'{rid}: [default 栈] coldstart 跳过(cw_plan '
+                         '不辖 r368 门)')
+            continue
+        v = check_coldstart_seed_squander(rows)
+        tag = f'[{stack} 栈]' if stack != 'v2' else '[v2]'
+        lines.append(f'{rid}: {tag} coldstart '
+                     + ('✓ 无违规' if not v else f'⚠ {len(v)} 条'))
+        for item in v:
+            lines.append(f'    {item}')
+    return lines
+
+
 def _list_runs(replay_dir: Path) -> list[str]:
     ids: list[str] = []
     for d in read_jsonl(replay_dir / "outcomes.jsonl"):
@@ -934,7 +989,7 @@ def _cli_main() -> None:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(prog='cw_telemetry',
                                  description='货币战争遥测查询(复盘判读单一入口)')
-    ap.add_argument('cmd', choices=['query'])
+    ap.add_argument('cmd', choices=['query', 'checks'])
     ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
     ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
     ap.add_argument('--view', default='rounds',
@@ -965,6 +1020,11 @@ def _cli_main() -> None:
     else:
         replay_dir = Path(args.replay_dir)
     runs = _list_runs(replay_dir)
+    if args.cmd == 'checks':
+        print('[checks] 生产遥测栈适配检查(coldstart)')
+        print('\n'.join(run_checks_on_replay(replay_dir,
+                                             args.recent or 5)))
+        return
     if not runs:
         print('(无 replay 数据)')
         return
