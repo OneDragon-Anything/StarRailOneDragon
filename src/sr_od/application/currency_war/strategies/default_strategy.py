@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 内置默认策略(``DefaultCwStrategy``,``STRATEGY_ID="default"``)。
 
 **阶段 1(Phase 1)薄封装委托**:每个钩子直接调既有模块函数(``cw_events/cw_plan 等(原 cw_events,ADR-0145 拆分)``/``cw_comps``),
@@ -660,10 +658,10 @@ class DefaultCwStrategy(CwStrategy):
             if s > best_s:
                 best_i, best_s = i, s
         return best_i
-    # ===== 备战决策环步级决策(doc 15 §5.1-5.3 参考实现;P1)=====
+    # ===== 备战决策环步级决策(strategy/03(原 doc 15§5.1-5.3) 参考实现;P1)=====
 
     def decide_prep_action(self, obs, session: StrategySession, config):
-        """备战决策环步级决策 = doc 15 §5.1-5.3 参考实现(奖励收取 → 腾席链 → 主流程)。"
+        """备战决策环步级决策 = strategy/03(原 doc 15§5.1-5.3) 参考实现(奖励收取 → 腾席链 → 主流程)。"
 
         规则序(每步全量重判,先命中先出):
         1. 武装箱 overlay 开 → PickBoxCard(执行器默认选卡,v7 M-3;OpenBox 两步链第二步);
@@ -798,7 +796,7 @@ class DefaultCwStrategy(CwStrategy):
 
         阶段位在**出动作时**前移(策略看不到执行结果;失败由框架 fail/屏蔽/恢复链兜住,
         失败动作不无限重提案)。M-6 门:进 RunBuyPhase 前保证 free>0,否则跳过买牌直奔部署
-        (防 shop.py 内 _handle_bench_full 位置式卖,doc 15 §8 P1 残留风险)。
+        (防 shop.py 内 _handle_bench_full 位置式卖,strategy/03(原 doc 15§8) P1 残留风险)。
         """
         if session.prep_phase <= 0:
             session.prep_phase = 1

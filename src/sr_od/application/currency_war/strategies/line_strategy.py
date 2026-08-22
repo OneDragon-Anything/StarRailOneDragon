@@ -928,6 +928,19 @@ class LineStrategy(DefaultCwStrategy):
         return out
 
     @staticmethod
+    def _refund_of(bc) -> int | None:
+        """卖出预期回金(r381 交接⑤;sell_refund 口径,账本对齐)。"""
+        try:
+            from sr_od.application.currency_war.cw_chars import CHARACTERS
+            ch = CHARACTERS.get(getattr(bc, 'char_id', ''))
+            if ch is None or not ch.cost:
+                return None
+            from sr_od.application.currency_war.cw_state import sell_refund
+            return sell_refund(getattr(bc, 'star', 1) or 1, ch.cost)
+        except Exception:   # noqa: BLE001  记录 best-effort
+            return None
+
+    @staticmethod
     def _protect_set(session: StrategySession) -> set[str]:
         """保护集(卖出双路径共享:线 carry+opportunistic+桥名单)。"""
         protect: set[str] = set()
@@ -958,7 +971,7 @@ class LineStrategy(DefaultCwStrategy):
                 break
             if not b.char_id or b.char_id in protect:
                 continue
-            out.append(SellBench(i))
+            out.append(SellBench(i, income=self._refund_of(b)))
         return out[:2]
 
     def _sell_for_interest(self, state: GameState,
@@ -1001,7 +1014,7 @@ class LineStrategy(DefaultCwStrategy):
             new_total = total + refund
             if state.gold + new_total > _INTEREST_FLOOR:
                 break                    # 超满息线不再加
-            sold.append(SellBench(bench_idx=idx))
+            sold.append(SellBench(bench_idx=idx, income=refund))
             total = new_total
             if (state.gold + total) // 10 > state.gold // 10:
                 break                    # 组合跨档,最小卖出集
