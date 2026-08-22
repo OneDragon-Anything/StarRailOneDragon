@@ -391,8 +391,11 @@ class PrepDirector(SrOperation):
         session = match.session
         session.defer_count = 0
         session.prep_phase = 0
-        # r364(局47 死循环):gold 真值等待计数环入口清(跨轮重置)
-        session.free_bench_gold_wait = 0
+        # r366b(review A1 修,实证驱动):free_bench_gold_wait **不在环入口清**——
+        # 局47 死循环实际路径 = run() 环入口 bench-full 分支 round_wait 后外环
+        # 重派 Director 重入 run()(每次重入环入口清零 → 计数永不到 2 →
+        # EnsureShopOpen 无限重发,修复失效)。改:**警告解除时清**(下方
+        # read_bench_full False 分支)——警告持续期间计数跨 run() 重入存活。
         session.prep_phase_retry = 0
         self._executor = PrepActionExecutor(self, self.ctx)
         self._steps = 0
@@ -495,7 +498,13 @@ class PrepDirector(SrOperation):
         # 警告解除后才继续常规决策。每次环入口重判(警告可反复出现)。
         from sr_od.application.currency_war.cw_observation import read_bench_full
         _scr_full = getattr(self, 'last_screenshot', None)
-        if _scr_full is not None and read_bench_full(self.ctx, _scr_full):
+        _bench_full_now = (_scr_full is not None
+                           and read_bench_full(self.ctx, _scr_full))
+        if not _bench_full_now:
+            # r366b(review A1):警告解除 → 等待计数清零(正常态恢复预算)
+            if getattr(session, 'free_bench_gold_wait', 0):
+                session.free_bench_gold_wait = 0
+        if _bench_full_now:
             log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
             # r2 review#1(P0):曾用 type() 造假 obs(缺 tomes 等字段)→ 策略一读即 AttributeError
             # 炸环。改 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)。

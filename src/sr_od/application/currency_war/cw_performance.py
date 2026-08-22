@@ -61,8 +61,12 @@ class RoundOutcome:
 
 
 # 节点类型 → 预期掉血(相对值;r6 F2 归一化用)。先验,历史 refine。
+# r366b(review B5):补 '奖励'/'补给'/'巨星'(r366 结算屏真值可产出,
+# 此前落 .get 默认 1.0 轻微拉高该 comp 预期掉血)。奖励/补给非战斗
+# 节点=期望 0;巨星按强敌档先验 2.0(待实测 refine)。
 EXPECTED_DROP: dict[str, float] = {
     "普通战斗": 1.0, "精英": 1.5, "遭遇": 1.2, "boss": 3.0,
+    "奖励": 0.0, "补给": 0.0, "巨星": 2.0,
 }
 HP_CONFIDENCE_THRESHOLD: float = 0.7   # 低于此置信度的 outcome 不进 trend(r5)
 

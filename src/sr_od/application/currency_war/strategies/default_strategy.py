@@ -759,10 +759,19 @@ class DefaultCwStrategy(CwStrategy):
                 if _lk2 <= 1:
                     log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
                     return EnsureShopOpen()
-                # r364:第 2 次仍无真值 = 无进展环(EnsureShopOpen 成功但
-                # trusted 刷新时机不在此环)→ 放弃等待,直落链 c 卖牌
-                # (卖回金也是金;卡 50min 的代价 >> 卖一张散件)。
-                log.info('[cw][prep] 腾席链b:gold 真值等待 %d 次无进展 → 放弃,落链 c(局47 死循环修)',
+                # r366b(review A3 修,补齐注释宣称的中间态):第 2 次仍无
+                # 真值 = 无进展环 → **先用 stale gold 试算 level_up_gate**
+                # (level_up_cost 缺省 4;金够就升——升级破满席是最优解,
+                # 卡 50min 代价 >> 一次可能失败的 LevelUp);gate 拒才落
+                # 链 c 卖牌。零下行:LevelUp 失败被框架 fail 链兜住。
+                _stale = self._pseudo_state(obs, session)
+                _stale.level_up_cost = getattr(_stale, 'level_up_cost', None) or 4
+                if cw_plan.level_up_gate(_stale, target):
+                    log.info('[cw][prep] 腾席链b:等待 %d 次无真值 → stale gold=%s 试升级'
+                             '(cap+1 破满席;失败自然落链 c)',
+                             _lk2, _stale.gold)
+                    return LevelUp()
+                log.info('[cw][prep] 腾席链b:gold 真值等待 %d 次无进展且 stale 试算不过 → 落链 c(局47 死循环修)',
                          _lk2)
         # c. 卖最弱(_weakest_bench_idx 含 3合1 重复件保护;全保护 → None)
         # r364 兜底:全保护(None)且 b 等待超限 → **强制卖 bench 首

@@ -40,9 +40,28 @@ def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
                  if '挑战成功' in t or '挑战结束' in t), None)
     if _hdr is None:
         return None
-    for t in ocr_texts[_hdr + 1:_hdr + 5]:
+    # r366b(review B1):窗口扩到 hdr 自身(OCR 把头部与类型词粘成
+    # '挑战成功战斗' 的形态)+ 带前缀形态匹配(emoji/词缀 '👩首领')。
+    # 前缀白名单(而非长度门——'基础奖励' 4 字也过长度门,实测误中):
+    # 允许 = 头部词本身(粘着)与 ≤1 个装饰字符(emoji/点号);修饰词
+    # 前缀('基础''火热'等)不在白名单 → 拒。
+    _ALLOWED_PREFIX = ('挑战成功', '挑战结束', '👩', '●', '★')
+    _TYPES = {'战斗': '普通战斗', '奖励': '奖励', '遭遇': '遭遇',
+              '补给': '补给', '首领': 'boss', '巨星': '巨星'}
+
+    def _match(t: str) -> str | None:
         if t in _TYPES:
             return _TYPES[t]
+        for k in _TYPES:
+            if t.endswith(k):
+                _pre = t[:-len(k)]
+                if _pre in ('',) or any(_pre.startswith(p) for p in _ALLOWED_PREFIX):
+                    return _TYPES[k]
+        return None
+    for t in ([ocr_texts[_hdr]] + ocr_texts[_hdr + 1:_hdr + 5]):
+        _m = _match(t)
+        if _m is not None:
+            return _m
     return None
 
 
@@ -163,8 +182,11 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     hp = parse_settlement_hp(ocr_texts)
     # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
+    # r366b(review B3):传参='boss'(battle_loop 专项 OCR '首领',证据更强)
+    # 不被屏面解析降级覆盖——屏面误读'战斗'会把 boss 3.0 期望拉到 1.0。
     _st_node = parse_settlement_node_type(ocr_texts)
-    if _st_node is not None and _st_node != node_type:
+    if (_st_node is not None and _st_node != node_type
+            and node_type != 'boss'):
         log.info('[cw-settle] node_type 结算屏真值「%s」覆盖传入「%s」(r366)',
                  _st_node, node_type)
         node_type = _st_node
