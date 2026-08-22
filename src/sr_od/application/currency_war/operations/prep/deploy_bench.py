@@ -33,6 +33,9 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_deployed_chars,
 )
 from sr_od.application.currency_war.cw_line_defs import (
+    ENGINE_FACTIONS as _ENGINE_FENCE,
+)
+from sr_od.application.currency_war.cw_line_defs import (
     RECIPE_BASE as _RECIPE_BASE,
 )
 from sr_od.application.currency_war.cw_line_defs import (
@@ -47,6 +50,12 @@ from sr_od.operations.sr_operation import SrOperation
 # frozenset 与 line_strategy 的局部 set 双源;两份审查共同点名)。
 # 语义:配方基础(_RECIPE_BASE 档)未满时,off-recipe 阵营 pair
 # 不上板(防散件稀释配方;局15 r6-r8 实证)。
+# r357(局44 判读,r353 集成缺口):围栏集 = RECIPE ∪ ENGINE
+# (桥派生)——r353 把狼狩/贝洛伯格入桥后,买来的 hunt3 件被
+# 旧四阵营围栏按「非配方」摁 bench(局44 r2 板 2/5 空槽+
+# bench 7 实证:四飞霄全 bench)。V4.0 过渡配方含 3狼狩系,
+# 围栏必须随桥派生集走(单一源)。
+_DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
 
 class DeployBench(SrOperation):
@@ -489,8 +498,8 @@ class DeployBench(SrOperation):
             if i not in _bench_cid:
                 continue   # SIFT 未识别:照旧上(无法判 target/阵营)
             _f = _bench_fac.get(i)
-            if _f is not None and _f not in _RECIPE and _recipe_starved:
-                rest.remove(i)   # 非配方件 + 配方基础未满 → 留 bench
+            if _f is not None and _f not in _DEPLOY_FENCE and _recipe_starved:
+                rest.remove(i)   # 非过渡配方件 + 配方基础未满 → 留 bench
                 _held.append(i)
                 continue
             if _f is not None and _pair_counts.get(_f, 0) >= 2:
