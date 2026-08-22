@@ -362,6 +362,11 @@ class BuyShopCards(SrOperation):
                 'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
                 'v2_locked_line': _sess.locked_line or '',
                 'v2_bridge': _sess.bridge_id or '',
+                # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
+                # ——应急/追赶 latch 决定 decide_prep 走哪条分支,
+                # 缺它重放系统性偏差(同 r101 当年补 sess_* 的理由)。
+                'sess_v2_state': list(_sess.v2_state)
+                if getattr(_sess, 'v2_state', None) else None,
             }
             cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 

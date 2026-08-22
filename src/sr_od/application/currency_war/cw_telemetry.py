@@ -103,6 +103,10 @@ class DecisionTrace:
     v2_mode: str = ""                             # economy/war(滞回当前模式)
     v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
     v2_bridge: str = ""                           # 当前桥线 id(""=无)
+    # r359(回放忠实化,ADR-0231):v2 相位机元组(应急/追赶 latch
+    # 全量)——重放 decide_prep 分支忠实还原的缺失件。可选,旧记录
+    # 缺省 None;list 形态 = v2_state 元组逐位。
+    sess_v2_state: list | None = None
 
 
 @dataclass
@@ -264,6 +268,8 @@ class TelemetryRecorder:
             trace.v2_mode = str(extra.get('v2_mode', ''))
             trace.v2_locked_line = str(extra.get('v2_locked_line', ''))
             trace.v2_bridge = str(extra.get('v2_bridge', ''))
+            _v2s = extra.get('sess_v2_state')
+            trace.sess_v2_state = list(_v2s) if _v2s else None
         if self.enabled:
             if gold_point:
                 self._gold_trajectory.setdefault(run_id, []).append(state.gold)
