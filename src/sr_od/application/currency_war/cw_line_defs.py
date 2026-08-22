@@ -64,9 +64,13 @@ _P1_FORMATION_ROUND_EDGES: tuple[int, int, int] = (3, 6, 8)
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
 #: r358:核心池三人组的达标数(到齐=3)
 _CORE_TRIO_TARGET: int = 3
+#: r363b(review A-5):折扣豁免阈值——核心 ≥2(功能链双枢)即视
+#: 档位足额;<2 = 空壳档位打折 -2。与 _CORE_TRIO_TARGET(3=到齐)
+#: 语义不同:折扣判「够不够拆」,target 判「到齐没」。
+_CORE_DISCOUNT_MIN: int = 2
 
 
-def core_trio_count(board_names) -> int:
+def core_trio_count(board_names: set[str] | frozenset[str]) -> int:
     """r358:核心三人组在场数(board 名单 ∩ 核心池)。
 
     board_names:在场角色名集合(消费方从 state.deployed/bench
@@ -78,7 +82,8 @@ def core_trio_count(board_names) -> int:
 
 def p1_formation_target(round_num: int,
                         board: dict[str, int],
-                        board_names=None) -> tuple[str, int, int]:
+                        board_names: set[str] | frozenset[str] | None = None,
+                        ) -> tuple[str, int, int]:
     """P1 成型进度检查(r356/r358)→ (阶段键, 目标值, 当前值)。
 
     ⚠ board_names=None/空集 = tracked 身份 miss(review A 守卫):
@@ -103,11 +108,11 @@ def p1_formation_target(round_num: int,
               else core_trio_count(board_names))
     if round_num <= _P1_FORMATION_ROUND_EDGES[1]:
         base = recipe_tier(board)
-        # r358:核心 <2 时档位打折(空壳档位);到齐按原值
-        cur = base if core_n >= 2 else max(0, base - 2)
+        # r358:核心 <_CORE_DISCOUNT_MIN 时档位打折(空壳档位)
+        cur = base if core_n >= _CORE_DISCOUNT_MIN else max(0, base - 2)
         return 'recipe5', _P1_FORMATION_TARGETS['recipe5'], cur
     if round_num <= _P1_FORMATION_ROUND_EDGES[2]:
         base = recipe_tier(board)
-        cur = base if core_n >= 2 else max(0, base - 2)
+        cur = base if core_n >= _CORE_DISCOUNT_MIN else max(0, base - 2)
         return 'recipe7', _P1_FORMATION_TARGETS['recipe7'], cur
     return 'boss', 0, 0

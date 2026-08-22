@@ -151,11 +151,15 @@ def _restore_session(strat, d: dict, sess):
     _v2s = d.get('sess_v2_state')
     if _v2s and len(_v2s) >= 8:
         # r359 起记录:相位机元组忠实还原(应急/追赶 latch)
+        # r363b(review D-2):== 与 initial_state() 动态对齐——状态机
+        # 扩位时宁可不还原(走默认演化)也不静默截断。
         import contextlib
         with contextlib.suppress(TypeError, ValueError):
-            sess.v2_state = (str(_v2s[0]), bool(_v2s[1]), bool(_v2s[2]),
-                             int(_v2s[3]), int(_v2s[4]), int(_v2s[5]),
-                             int(_v2s[6]), int(_v2s[7]))
+            from sr_od.application.currency_war import cw_phase_machine
+            if len(_v2s) == len(cw_phase_machine.initial_state()):
+                sess.v2_state = (str(_v2s[0]), bool(_v2s[1]), bool(_v2s[2]),
+                                 int(_v2s[3]), int(_v2s[4]), int(_v2s[5]),
+                                 int(_v2s[6]), int(_v2s[7]))
 
 
 def main() -> None:

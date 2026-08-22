@@ -58,11 +58,14 @@ from sr_od.operations.sr_operation import SrOperation
 _DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
 
-def _tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
+def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
+                    deployed_fac: dict[str, int]) -> int:
     """r361 补档键:该角色上阵后任一阵营计数**恰达激活档** → 1,否则 0。
 
-    纯函数(模块级可测):``bonds`` = 角色全部羁绊 tag 集合,
-    ``deployed_fac`` = 当前板面阵营计数;档表单一源 FACTIONS.tiers。
+    纯函数(模块级可测):``bonds`` = 角色全部羁绊 tag 集合
+    (factions+flows,同 _bench_id 口径;review B-1 已把生产
+    _deployed_fac 统一为全羁绊口径);``deployed_fac`` = 当前
+    板面阵营计数;档表单一源 FACTIONS.tiers。
     """
     from sr_od.application.currency_war.cw_factions import FACTIONS
     for _f in bonds:
@@ -642,8 +645,12 @@ class DeployBench(SrOperation):
                 if _cid:
                     _deployed_cids.add(_cid)
                 # r288:成功上场同步阵营档(配方底线仲裁的状态源)
-                if _fac:
-                    _deployed_fac[_fac] = _deployed_fac.get(_fac, 0) + 1
+                # r363b(review B-2 修):增量口径对齐初始快照——该角色
+                # **全部**羁绊(factions+flows)各 +1(旧只计第一阵营,
+                # 多阵营角色上阵后与真实板面漂移,r288 门错判风险)。
+                _bonds_all = (_bench_id.get(bi) or ())
+                for _f2 in _bonds_all:
+                    _deployed_fac[_f2] = _deployed_fac.get(_f2, 0) + 1
                 if _match is not None and getattr(_match, 'bench_slot_map', None):
                     _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
                     if _gone is not None:
