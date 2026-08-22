@@ -130,6 +130,10 @@ class SimResult:
     # 重放承诺,重放 = seed + 指纹;跨日基线对照必须同指纹)
     pool_fingerprint: str = ''
     pool_source: str = ''
+    # ① 判读同构账本:每轮一行(轮内多段聚合;字段与遥测 jsonl
+    # 同构 + sim 专属键挂 'sim' 下)。由 write_batch_ledger 落盘
+    # sim_runs/<batch_id>/{decisions,outcomes}.jsonl 两流。
+    ledger: list[dict] = field(default_factory=list)
 
 
 class _Pool:
@@ -452,6 +456,21 @@ def _direction_established(session: StrategySession) -> bool:
     return bool(session.locked_line or session.bridge_id)
 
 
+def _deployable_depth(st: GameState) -> int:
+    """可 deploy 件数(① 收口:此前三处内联重算口径不一)。
+
+    口径 r343(review F/J):阵营 count≥2 的 bench 卡数 + 单张
+    引擎阵营件,capped by level——对齐实机 _should_deploy。
+    depth_trail / Δ 池采样 / 账本 depth 共用本函数(单一源)。
+    """
+    from collections import Counter as _C
+    _fc = _C(b.faction for b in (st.bench or []))
+    _deployable = sum(cnt for f, cnt in _fc.items() if cnt >= 2)
+    _deployable += sum(cnt for f, cnt in _fc.items()
+                       if cnt == 1 and f in _SIM_ENGINE_FACTIONS)
+    return min(st.level, _deployable)
+
+
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
                 pool: str | Path = 'auto') -> SimResult:
@@ -472,7 +491,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     )
     pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
-    pool = _Pool(rng)
+    cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
     strat = strategy or LineStrategy()
     st = GameState()
@@ -482,11 +501,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         cost = rng.choices(
             [c for c, _ in START_BENCH_COST_WEIGHTS],
             weights=[w for _, w in START_BENCH_COST_WEIGHTS], k=1)[0]
-        names = [n for n in pool.copies
-                 if CHARACTERS[n].cost == cost and pool.copies[n] > 0]
+        names = [n for n in cards_pool.copies
+                 if CHARACTERS[n].cost == cost and cards_pool.copies[n] > 0]
         if names:
             n = rng.choice(names)
-            pool.take(n)
+            cards_pool.take(n)
             st.bench.append(BenchChar(
                 slot=len(st.bench) + 1, char_id=n,
                 faction=(CHARACTERS[n].factions or ['散'])[0]))
@@ -498,9 +517,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     streak = 0
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         st.round_num = rn
-        st.gold += BASE_INCOME + min(INTEREST_CAP, st.gold // 10) \
-            + streak_gold(streak) + _event_gold(rn, rng)   # streak_gold 单一源 cw_economy(0-1→1,2-4→2,5→3,6+→4,r305);事件金 ADR-0233
-        st.shop = pool.draw_shop(st.level)
+        # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
+        _gold_before = st.gold
+        _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
+        _inc = {'base': BASE_INCOME,
+                'interest': min(INTEREST_CAP, st.gold // 10),
+                'streak': streak_gold(streak),   # 单一源 cw_economy(r305)
+                'event': _inc_event}
+        st.gold += sum(_inc.values())
+        st.shop = cards_pool.draw_shop(st.level)
+        _waves = [[{'name': c.name, 'faction': c.faction, 'cost': c.cost}
+                   for c in st.shop]]   # ① 账本:牌面波(supply 视图)
+        # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
+        _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
+        _acts: list[dict] = []
+        _segs_used = 0
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
         # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -529,17 +560,31 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if not isinstance(a, RefreshShop)]
             if not acts:
                 break
+            _segs_used += 1
             progressed = False
             for a in acts:
                 if isinstance(a, RefreshShop):
                     res.refreshes += 1
-                    st.gold -= (st.shop_refresh_cost or 2)
-                    st.shop = pool.draw_shop(st.level)
+                    _cost_r = (st.shop_refresh_cost or 2)
+                    st.gold -= _cost_r
+                    _spend['refresh'] += _cost_r
+                    _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
+                    st.shop = cards_pool.draw_shop(st.level)
+                    _waves.append(
+                        [{'name': c.name, 'faction': c.faction,
+                          'cost': c.cost} for c in st.shop])
                     progressed = True
                     break          # 刷后立即 re-decide(见新店)
                 if isinstance(a, BuyCard):
-                    pool.take(a.card.name)
+                    cards_pool.take(a.card.name)
                     st.gold -= a.card.cost
+                    _spend['buys'][a.reason or 'unknown'] = \
+                        _spend['buys'].get(a.reason or 'unknown', 0) \
+                        + a.card.cost
+                    _acts.append({'__type__': 'BuyCard',
+                                  'name': a.card.name,
+                                  'cost': a.card.cost,
+                                  'reason': a.reason or 'unknown'})
                     xp += XP_PER_BUY
                     st.bench.append(BenchChar(
                         slot=len(st.bench) + 1, char_id=a.card.name,
@@ -547,14 +592,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     progressed = True
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
+                    _spend['levelup'] += 4
+                    _acts.append({'__type__': 'LevelUp', 'cost': 4})
                     xp += 4
                     progressed = True
                 elif isinstance(a, SellBench):
                     if 0 <= a.bench_idx < len(st.bench):
                         bc = st.bench.pop(a.bench_idx)
                         ch = CHARACTERS.get(bc.char_id)
-                        st.gold += (ch.cost if ch and ch.cost else 1)
-                        pool.ret(bc.char_id)
+                        _sell_v = (ch.cost if ch and ch.cost else 1)
+                        st.gold += _sell_v
+                        _spend['sell_income'] += _sell_v
+                        _acts.append({'__type__': 'SellBench',
+                                      'name': bc.char_id,
+                                      'income': _sell_v})
+                        cards_pool.ret(bc.char_id)
                         progressed = True
             if not progressed:
                 break
@@ -568,12 +620,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # r340:板深条件化实机 Δ 池优先(经验分布重放——
         # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
         # 无匹配桶回退旧方向二元模型。
-        # r343:同修正——Δ 采样用可 deploy 深度(口径同上)
-        from collections import Counter as _C2
-        _fc2 = _C2(b.faction for b in st.bench)
-        _dep = min(st.level, sum(c for f, c in _fc2.items() if c >= 2)
-                   + sum(c for f, c in _fc2.items()
-                         if c == 1 and f in _SIM_ENGINE_FACTIONS))
+        # r343:同修正——Δ 采样用可 deploy 深度;① 收口进
+        # _deployable_depth 单一源(原三处内联口径不一)
+        _dep = _deployable_depth(st)
         _ld = live_delta_for(nodes[rn - 1], _dep, rng,
                              pool_map=pool_map) \
             if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
@@ -585,17 +634,35 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         streak = streak + 1 if delta > 0 else 0
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
-        # r343(review F/J 修:深度代理对齐实机 deploy 口径)——
-        # 散件 drop 实机不上场(_should_deploy 的阵营 count≥2/
-        # 框架件判据),「bench 数」代理系统性高估。改为
-        # **可 deploy 件数**(阵营 count≥2 的 bench 卡数, capped
-        # by level;框架件近似=引擎阵营)。
-        from collections import Counter as _C
-        _fc = _C(b.faction for b in st.bench)
-        _deployable = sum(cnt for f, cnt in _fc.items() if cnt >= 2)
-        _deployable += sum(cnt for f, cnt in _fc.items()
-                           if cnt == 1 and f in _SIM_ENGINE_FACTIONS)
-        res.depth_trail.append(min(st.level, _deployable))
+        # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
+        # 记 deployed 代理名单口径——_CORE_TRIO 绑仙舟,非仙舟线
+        # 局恒 0,v2 线id→comp 映射补齐前按线分桶判读,审查二轮#8)
+        _depth = _deployable_depth(st)
+        res.depth_trail.append(_depth)
+        from sr_od.application.currency_war.cw_line_defs import (
+            core_trio_count,
+        )
+        res.ledger.append({
+            'ts': rn,   # 单调轮序号(非墙钟;审查①#9)
+            'plane': 1, 'round_num': rn,
+            'gold': st.gold, 'hp': st.hp,
+            'target_comp': (sess.locked_line or sess.bridge_id or ''),
+            'state': {'board': {}, 'level': st.level,
+                      'bench': [b.char_id for b in st.bench]},
+            'actions': _acts,
+            'sim': {
+                'node': nodes[rn - 1], 'delta': delta,
+                'gold_before': _gold_before,
+                'income': _inc, 'spend': _spend,
+                'depth': _depth,
+                'core_count': core_trio_count(
+                    {d.char_id for d in (st.deployed or [])
+                     if getattr(d, 'char_id', '')}),
+                'shop_waves': _waves,
+                'dir_established': res.dir_round <= rn,
+                'segments': _segs_used,
+            },
+        })
         if st.hp <= 0:
             break
     res.final_hp = st.hp
@@ -607,25 +674,31 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
 
 def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       seed_base: int = 0,
-                      pool: str | Path = 'auto') -> dict:
+                      pool: str | Path = 'auto',
+                      ledger: bool | Path = True,
+                      checks: bool = True) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
     返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
     对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
+
+    :param ledger: True=落两流账本到 ``sim_runs/<batch_id>/"``"
+        (decisions+outcomes.jsonl,判读 CLI 可查);Path=显式目录;
+        False=不落盘。batch_id 含时间戳,自动保留最近
+        ``_SIM_RUNS_KEEP`` 个批次。
+    :param checks: 跑完执行 cw_sim_checks 异常断言(②;默认开,
+        结果挂 ``checks_violations``)。
     """
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
                            pool=pool)
                for i in range(n)]
-    hps = [r.final_hp for r in results]
-    dirs = [r.dir_round for r in results]
-    established = [d for d in dirs if d < 99]
-    return {
+    report = {
         'n': n,
         'pool_fingerprint': results[0].pool_fingerprint,
         'pool_source': results[0].pool_source,
-        'hp_ge_60': sum(1 for h in hps if h >= 60) / n,
-        'avg_final_hp': statistics.mean(hps),
+        'hp_ge_60': sum(1 for h in (r.final_hp for r in results) if h >= 60) / n,
+        'avg_final_hp': statistics.mean(r.final_hp for r in results),
         # r370(新验收对齐,goal rev5):战斗节点败场 ≤2 概率
         # (battle/encounter/boss 计分,奖励/补给不计;hp_events
         # 的 delta<0=败)。与实机 outcomes killed+node_type 同构。
@@ -634,10 +707,88 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             if sum(1 for _, nt, d, _ in r.hp_events
                    if nt in ('battle', 'encounter', 'boss') and d < 0) <= 2
         ) / n,
-        'dir_by_r2': sum(1 for d in dirs if d <= 2) / n,
-        'dir_by_r4': sum(1 for d in dirs if d <= 4) / n,
-        'dir_never': sum(1 for d in dirs if d >= 99) / n,
-        'avg_dir_round': (statistics.mean(established)
-                          if established else float('nan')),
+        'dir_by_r2': sum(1 for d in (r.dir_round for r in results) if d <= 2) / n,
+        'dir_by_r4': sum(1 for d in (r.dir_round for r in results) if d <= 4) / n,
+        'dir_never': sum(1 for d in (r.dir_round for r in results) if d >= 99) / n,
+        'avg_dir_round': (statistics.mean(
+            [d for d in (r.dir_round for r in results) if d < 99])
+            if any(r.dir_round < 99 for r in results) else float('nan')),
         'avg_refreshes': sum(r.refreshes for r in results) / n,
     }
+    if ledger is not False:
+        out = (Path(ledger) if isinstance(ledger, Path)
+               else _default_sim_runs_dir(report['pool_fingerprint'], n,
+                                          seed_base))
+        report['ledger_dir'] = str(write_batch_ledger(
+            results, out, pool_fp=report['pool_fingerprint']))
+    if checks:
+        from sr_od.application.currency_war.cw_sim_checks import (
+            run_checks_on_ledgers,
+        )
+        report['checks_violations'] = run_checks_on_ledgers(
+            [r.ledger for r in results])
+    return report
+
+
+# sim 账本落盘根目录(与生产 replay 隔离;写入器有目录守卫)
+SIM_RUNS_DIR = Path('.debug/temp/currency_war/sim_runs')
+_SIM_RUNS_KEEP: int = 20   # 批次保留数(防无限累积;旧的自动清理)
+_NT_TO_PROD = {'battle': '普通战斗', 'encounter': '遭遇',
+               'reward': '奖励', 'boss': '首领', 'supply': '补给'}
+
+
+def _default_sim_runs_dir(pool_fp: str, n: int, seed_base: int) -> Path:
+    import time
+    stamp = time.strftime('%Y%m%d_%H%M%S')
+    return SIM_RUNS_DIR / f'sim_{stamp}_n{n}_s{seed_base}_{pool_fp[:8]}'
+
+
+def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
+                       pool_fp: str = '') -> Path:
+    """两流账本落盘:``<out_dir>/{decisions,outcomes}.jsonl``。
+
+    - decisions 每轮一行(SimResult.ledger;run_id=batch 目录名);
+    - outcomes 每轮一行(OutcomeRecord 同构:生产 node_type 词表
+      + hp_after + board_before/bench_count;sim 专属键挂 'sim');
+    - **守卫:out_dir 不得是生产 replay 目录**(自中毒防线,
+      生成器侧另有源目录断言,双保险)。
+    """
+    import json as _json
+    out_dir = Path(out_dir)
+    _prod = _AUTO_REPLAY_DIR.resolve()
+    if out_dir.resolve() == _prod or _prod in out_dir.resolve().parents:
+        raise RuntimeError(
+            f'sim 账本禁写生产 replay 目录: {out_dir}(自中毒回路;'
+            f'落盘目标只能是 {SIM_RUNS_DIR} 下或显式独立目录)')
+    out_dir.mkdir(parents=True, exist_ok=True)
+    run_id = out_dir.name
+    with (out_dir / 'decisions.jsonl').open('w', encoding='utf-8') as f_d, \
+         (out_dir / 'outcomes.jsonl').open('w', encoding='utf-8') as f_o:
+        for r in results:
+            for row in r.ledger:
+                row = dict(row)
+                row['run_id'] = run_id
+                row['schema_version'] = 1
+                f_d.write(_json.dumps(row, ensure_ascii=False) + '\n')
+                o = {
+                    'schema_version': 1, 'ts': row['ts'],
+                    'run_id': run_id, 'plane': row['plane'],
+                    'round_num': row['round_num'],
+                    'node_type': _NT_TO_PROD.get(
+                        row['sim']['node'], row['sim']['node']),
+                    'comp_tag': row['target_comp'] or '?',
+                    'hp_after': row['hp'],
+                    'board_before': {}, 'bench_count':
+                        len(row['state']['bench']),
+                    'sim': {'delta': row['sim']['delta'],
+                            'depth': row['sim']['depth'],
+                            'killed': row['sim']['delta'] < 0},
+                }
+                f_o.write(_json.dumps(o, ensure_ascii=False) + '\n')
+    # 保留清理(旧批次滚动删除)
+    if SIM_RUNS_DIR.exists():
+        batches = sorted(p for p in SIM_RUNS_DIR.iterdir() if p.is_dir())
+        for old in batches[:-_SIM_RUNS_KEEP]:
+            import shutil
+            shutil.rmtree(old, ignore_errors=True)
+    return out_dir
