@@ -11,3 +11,4 @@
 | [0007](0007-local-cw-block-convergence.md) | AGENTS.local CW 块收敛(细节迁 skill,本节只留通用授权) | accepted | 2026-08-22 |
 | [0008](0008-modeling-increment-methodology.md) | 建模增量层成文(方法论六条+实体清单) | accepted | 2026-08-22 |
 | [0009](0009-sim-deep-mining-directions.md) | sim 深度挖掘方向成文(诚实性分层+五方向) | accepted | 2026-08-22 |
+| [0010](0010-adversarial-review-discipline.md) | 子代理对抗审查纪律(方案先攻后信) | accepted | 2026-08-22 |
