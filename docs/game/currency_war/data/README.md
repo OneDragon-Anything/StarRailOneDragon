@@ -1,4 +1,4 @@
-# 货币战争 · 基础资料索引(cw_data/;⚠️ 2026-08-18 大收敛:注册表已建模的数据 doc 已删,本目录仅存未建模唯一源)
+# 货币战争 · 基础资料索引(⚠️ 2026-08-18 大收敛:注册表已建模的数据 doc 已删,本目录仅存未建模唯一源)
 
 > **用途**:策略配置地基 + 理解攻略术语。**只存原始数据**,不含策略代码。
 > **数据基准**:V4.4 赛季(数据抓取日 2026-08-03)。
@@ -33,6 +33,11 @@
 | ~~equipment.md~~(已删 2026-08-18) | 装备 → **代码单一源** `cw_equipment.EQUIPMENTS`(158) | 158 | 🟢 注册表 |
 | [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制(**注册表未建,本文唯一源**) | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
+| [bosses.md](bosses.md) | boss 克制关系全集(**注册表未建,本文唯一源**) | V4.4 全量 | 🟢/🟡 |
+| [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准对拍源) | 29 聚类 | 🟢 官方 API |
+
+> 战力表数据(power_table_meta,`tools/cw/gen_power_table.py` 生成)是**策略系统校准数据**,
+> 归 [develop/currency_war/power_table_meta.md](../../develop/currency_war/power_table_meta.md)。
 
 ---
 
@@ -73,7 +78,7 @@
 货币战争是赛季制(gameplay:"赛季重新划分角色定位/羁绊/费用/投资策略"),版本更新数据会变。**更新步骤**:
 
 1. **查版本变更**:读官方赛季扩充说明 article —— V3.8=`71454150`、V4.0=`73128301`、V4.2=`74751746`、V4.4=`76641553`(新版本找对应 article)→ 知道改了哪些(新角色/羁绊调整/费用变/新投资策略环境/新装备)。
-2. **重抓米游社图鉴**:chrome-devtools + Edge → `channel/map/209` 各子频道(员工=210/装备=211/投资策略=212/投资环境=213/羁绊=214)→ API `content/info?content_id=<id>` 顺序取(见"复现方法")→ 覆盖对应 cw_data/ 文件。
+2. **重抓米游社图鉴**:chrome-devtools + Edge → `channel/map/209` 各子频道(员工=210/装备=211/投资策略=212/投资环境=213/羁绊=214)→ API `content/info?content_id=<id>` 顺序取(见"复现方法")→ 同步代码注册表。
 3. **核对 diffs**:新抓 vs 旧,标变更(factions tiers 变?character 费用/阵营变?新事件?新装备?)→ 更新 `cw_factions.py` / `currency_war_config.py` / `COMP_LIBRARY`。
 4. **源标注**:每条数据标米游社 content_id/URL + 版本(V4.x),便于追溯 + 下次更新定位。**一切游戏数据都要有来源**(用户要求:攻略可看其他源,具体游戏数据以米游社/游戏内为准)。
 5. **回归测试**:`cw_factions`/config 改后跑 `sr-od-test/test/sr_od/app/currency_war/`,确保策略代码不崩。

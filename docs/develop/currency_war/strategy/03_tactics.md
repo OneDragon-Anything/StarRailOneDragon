@@ -23,11 +23,13 @@
 | 控制流 | DeferSpheres(球留置,环级计数)/ BailToOuter |
 | 组合(过渡) | RunBuyPhase(BuyShopCards)/ RunDeploy(DeployBench)/ RunEquip(EquipAll) |
 
-组合动作保留四项板上行为(DeployBench 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。
+组合动作保留四项板上行为(DeployBench 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。**deploy 围栏**(配方饥饿期非过渡件留 bench)= `_DEPLOY_FENCE` = RECIPE∪ENGINE 桥派生单一源(ADR-0226)。
 
 ## 3. cw_plan:备战动作规划
 
-**硬门贪心**(bench-full / gold≥0 / level≤10 门内,选 eval-delta 最大的动作序列)+ **蒙特卡洛 D 牌**(`_refresh_expected_delta`:扣刷新金采样 shop 取最优买+deploy 均值 − base;采样 = 先按等级采费用(`REFRESH_PROB`)再按角色均匀采)+ **D 牌动态上限**(`_refresh_cap`:常规基线,关键回合——P3/搜核心/HP 危险急救——放宽;奖励节点收紧;拿刷新减费策略再提)+ **level_plan 硬 gate**(level_up + afford 直接执行,非纯贪心 delta)+ **腾席链**(deploy 空位 > 升级扩容 > 卖最弱保 3合1 件 > Defer)+ **两阶段 refresh**(刷新后 shop 未知,重 OCR 再 plan)。boss 关前不攒息 + 刷牌放宽(ADR-0128)。
+**硬门贪心**(bench-full / gold≥0 / level≤10 门内,选 eval-delta 最大的动作序列)+ **蒙特卡洛 D 牌**(`_refresh_expected_delta`:扣刷新金采样 shop 取最优买+deploy 均值 − base;采样 = 先按等级采费用(`REFRESH_PROB`)再按角色均匀采)+ **D 牌动态上限**(`_refresh_cap`:常规基线,关键回合——P3/搜核心/HP 危险急救——放宽;奖励节点收紧;拿刷新减费策略再提)+ **level_plan 硬 gate**(level_up + afford 直接执行,非纯贪心 delta;LineStrategy 破息窗提案走 **LevelUp 总成本门**——clicks×单击价升不完不提案,ADR-0223)+ **腾席链**(deploy 空位 > 升级扩容 > 卖最弱保 3合1 件 > Defer)+ **两阶段 refresh**(刷新后 shop 未知,重 OCR 再 plan)。boss 关前不攒息 + 刷牌放宽(ADR-0128)。
+
+**LineStrategy 的 P1 r5+ 决战窗**(接管 economy 分派):成型检查点(`p1_formation_target`:r3 桥2/r6 配方5/r8 配方7,ADR-0225)→ boss_breaker(板面集中买 + 配方围栏:recipe_tier<BASE 时只买 RECIPE∩板面,ADR-0221/0225)+ 买牌守卫 copies 星级加权(ADR-0224)。
 
 ## 4. cw_evaluate:局面评估
 

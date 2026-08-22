@@ -1,7 +1,7 @@
 # 星穹铁道游戏知识建档
 
 > bot 自动化所需的游戏知识(画面 + 玩法)建档。给 AI 编码时理解「bot 当前走到哪个画面、按什么玩法逻辑走」用。
-> 画面建档方法论见 skill `od-dev-screen-onboarding`;玩法建档见 `sr-od-dev-gameplay-onboarding`。
+> 画面建档方法论见 skill `od-dev-screen-onboarding`;玩法建档见 `od-dev-gameplay-automation`。
 
 ## 分层:识别模型 vs 知识文档
 

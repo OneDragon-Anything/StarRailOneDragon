@@ -24,6 +24,9 @@
 - 目标用户画像(日常玩家 + 成就刷取)→ 配置面(角色/投资策略/投资环境 × 禁用/优先 + strategy_id)
 - 归属判据:用户偏好才进配置;游戏客观数据归注册表、校准参数归代码(ADR-0203)。
 
+### [power_table_meta.md](power_table_meta.md) —— 战力表校准数据(生成勿手编)
+- `tools/cw/gen_power_table.py` 产物;`cw_power_table_data.py` 的人读对拍源。
+
 ## 代码引用稳定路径
 
 - 模块职责地图(模块 → 设计文档)→ [strategy/README §模块地图](strategy/README.md)

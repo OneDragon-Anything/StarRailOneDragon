@@ -116,3 +116,10 @@
 | [0218](0218-depth-delta-pool.md) | sim 板深条件化实机Δ池+板深语义修正(校准层真机制化) | accepted | 2026-08-22 | depth=min(level,bench) 上阵代理(旧 bench 语义致杠杆实验全平);31 局 645 轮 {node:深度桶:Δ} 经验分布重放(battle 深6+ Δ-1.0 vs 浅 -11.3);join 版池丢死局轮假分布踩坑存档;A/B hp≥60 6.3→8.0% |
 | [0219](0219-scatter-fill-retraction.md) | P1 散件填充落地又撤回(bench≠上阵代理伪影) | accepted | 2026-08-22 | ↺ 推翻 r342:sim 1.8 倍增益是「bench 计数=上阵」代理错位伪影,修 deploy 口径后归零(3.20 vs 3.20);持久教训=sim 上实机前必核代理语义;板深杠杆真实落点=阵营集中买+升级节奏 |
 | [0220](0220-deploy-cap-diamond-stacking.md) | deploy cap 合法域反转:宝钻可叠加+未实拍后排档采集信号 | accepted | 2026-08-22 | 局38 cap5/lv3 域外+2 判读:排除新角色/后台单位,命中宝钻叠加(官方「拥有即+1 无论穿戴」);三段:cap<level 留证读错检测/cap 落未实拍档{7,9,10,11}留证采集(r350b 用户点题:7/9 后台待实拍,r348 曾误降 debug 静音)/已实拍档 debug 记宝钻数;hook 教训=verdict 必须带处理步骤 |
+| [0221](0221-boss-window-board-faction-buy.md) | boss 窗板面集中买与档位排序 | accepted | 2026-08-22 | 局38/40 金滞留买0+局41 散面:线内 wants 买完后剩余预算买板面已有阵营件,按距 3 档缺口排序(2→3 档跃迁>新开档);r352c 修 break→continue+`_bought` 循环更新 |
+| [0222](0222-bridge-pool-v40-alignment.md) | 过渡桥池 V4.0 口径对齐(狼狩/贝洛伯格入池;引擎阵营单一源) | accepted | 2026-08-22 | 局38-42 四局同型失败=V3.7 旧口径;新增 dot_belog/hunt3 桥;line_strategy 手抄副本删,改 import 派生集(五阵营);局43 r1-r8 四局最佳实证 |
+| [0223](0223-levelup-total-cost-gate.md) | 破息窗 LevelUp 总成本门 | accepted | 2026-08-22 | 局43 金28 半吊子点经验 12 击金尽没升级→boss 裸奔;提案前算 clicks×cost 升不完不提案;三旧锁语义修正(「不买」实为 LevelUp 分食副作用) |
+| [0224](0224-buy-guard-star-weighted-copies.md) | 买牌守卫 copies 星级加权 | accepted | 2026-08-22 | 局44 四买飞霄(2★在场 copies 按名字数1,第4张冗余);copies=Σstar(bench+deployed 同名);裸 2★ 买第 1 张保留攒件路径 |
+| [0225](0225-p1-formation-checkpoint-fence.md) | P1 成型检查点与集中买配方围栏 | accepted(核心角色维 r358 进行中) | 2026-08-22 | 七局七根因=发散信号(成型进度无感知死循环);p1_formation_target 检查点+集中买配方围栏;独立 push 支经 sim 否决(89%空手更差);跨局证据=配方满线局才过线,深度无关 |
+| [0226](0226-deploy-fence-bridge-derived.md) | deploy 围栏随桥派生集 | accepted | 2026-08-22 | 局44 四飞霄被旧四阵营围栏摁 bench(板2/5空槽+bench7);_DEPLOY_FENCE=RECIPE∪ENGINE 单一源 import;纯散阵营仍拒(r263b 纪律保持) |
+| [0227](0227-redesign-header-ruling-archive.md) | redesign 裁定史归档(头部瘦身) | accepted | 2026-08-22 | 头部 143 行 r201-r220 裁定流水违反 ADR-0210 四禁;单 ADR 归档裁定链(含正文落点映射),头部压缩为状态声明;后续新裁定直接写独立 ADR |
