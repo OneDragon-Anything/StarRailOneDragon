@@ -124,3 +124,4 @@
 | [0226](0226-deploy-fence-bridge-derived.md) | deploy 围栏随桥派生集 | accepted | 2026-08-22 | 局44 四飞霄被旧四阵营围栏摁 bench(板2/5空槽+bench7);_DEPLOY_FENCE=RECIPE∪ENGINE 单一源 import;纯散阵营仍拒(r263b 纪律保持) |
 | [0227](0227-redesign-header-ruling-archive.md) | redesign 裁定史归档(头部瘦身) | accepted | 2026-08-22 | 头部 143 行 r201-r220 裁定流水违反 ADR-0210 四禁;单 ADR 归档裁定链(含正文落点映射),头部压缩为状态声明;后续新裁定直接写独立 ADR |
 | [0228](0228-research-comps-layer-dissolution.md) | 撤销 research/comps 打法卡层(final_comps 十类为单一源) | accepted | 2026-08-22 | comps(20卡,COMP_LIBRARY 轴)与 final_comps(十类,CARRY 轴)内容双源;用户裁定删 comps——17 卡覆盖度审计为十类子集删,3 套长尾(昼神阿雅/景元/龙丹)增量并入 final_longtail_others;ADR-0212「打法卡」概念由 final_comps 类文档承担 |
+| [0229](0229-telemetry-quality-3d-view.md) | 遥测判读三维同屏(角色星级+装备分配入 tiers 视图) | accepted | 2026-08-22 | 数据完整但视图单维(板深/截断名字/装备零显示)→判读看羁绊忽略角色、装备乱用不可见;tiers 视图三维同屏(deployed 名+★/装备归属/owned 滞留);方法论进 skill telemetry-reading;实测首查即见核心三人组/星级/身份miss |

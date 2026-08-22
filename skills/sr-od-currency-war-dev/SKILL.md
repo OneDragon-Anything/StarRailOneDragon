@@ -49,7 +49,10 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
 - 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`(漏检/未建档/顺序异常);格式标准单一源在 strategy/05 §6。
 - 旧自主推进代码带 `# 未验证` 注释:进对应画面复审(重点补日志/截图让每步可观测)后删注释才能信——复审是义务不是可跳的。
+- **阵容质量 = 三维**(羁绊档位 × 角色构成 × 装备分配)——只看羁绊 = 空壳盲判(羁绊够但核心不在场/装备乱用都看不见;数据在 state.deployed[].star/equips 里,别被视图边界限制)。
 - 反例论据(为什么严):历届单点断层各自存活 3+ 局才被抓、把单帧牌面当全序列误判健康线弃线——详见 design/ ADR。
+
+细则(维度清单/视图覆盖矩阵/保真位先行):[references/telemetry-reading.md](references/telemetry-reading.md)
 
 ## 验证工作台(反馈梯度,按成本升序)
 

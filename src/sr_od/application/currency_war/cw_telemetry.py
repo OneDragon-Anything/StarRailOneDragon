@@ -775,8 +775,8 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
 
 
 def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
-    """视图:羁绊激活档逐轮(配方成型判读的硬指标;r120 起 deploy 配方 target
-    生效后,档数应随轮上升;恒 0 = 配方没真正上场)。"""
+    """视图:羁绊激活档逐轮 + 角色构成(星级) + 装备分配(r358 三维同屏;
+    配方成型判读的硬指标;恒 0 = 配方没真正上场)。"""
     from sr_od.application.currency_war.cw_factions import FACTIONS
     best = _load_decisions_rounds(replay_dir, run_id)
     lines: list[str] = []
@@ -790,11 +790,25 @@ def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
             if tier > 0:
                 activated[fac] = tier
         total = sum(activated.values())
-        dep = [c.get('char_id') for c in ((d.get('state') or {}).get('deployed') or [])
-               if c.get('char_id')]
         mark = '' if total else '  ← 档0'
         lines.append(f"  p{k[0]}r{k[1]} 激活档={total} {activated if activated else ''}{mark}")
-        lines.append(f"    deployed={dep[:7]}")
+        # r358(用户点题「看羁绊忽略角色/装备乱用不可见」):阵容质量三维
+        # 同屏——角色构成(名字+星级)+ 装备分配(谁穿了什么)。不再截断
+        # [:7](后期 9-10 人,截断藏人);未知名(身份 miss)保留槽位计数。
+        _deployed = (d.get('state') or {}).get('deployed') or []
+        dep_str = ' '.join(
+            f"{c.get('char_id') or '?'}{'★' * (c.get('star') or 1)}"
+            for c in _deployed) or '(空板)'
+        lines.append(f"    deployed={dep_str}")
+        _eq_pairs = [(c.get('char_id') or '?', c.get('equips') or [])
+                     for c in _deployed if (c.get('equips'))]
+        if _eq_pairs:
+            lines.append('    装备=' + ' '.join(
+                f"{n}[{','.join(eq)}]" for n, eq in _eq_pairs))
+        _owned = (d.get('state') or {}).get('equips') or []
+        if _owned:
+            lines.append(f"    owned装备={len(_owned)}件(滞留未穿判读): "
+                         f"{','.join(_owned[:8])}{'…' if len(_owned) > 8 else ''}")
     return lines
 
 
