@@ -467,6 +467,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'n': n,
         'hp_ge_60': sum(1 for h in hps if h >= 60) / n,
         'avg_final_hp': statistics.mean(hps),
+        # r370(新验收对齐,goal rev5):战斗节点败场 ≤2 概率
+        # (battle/encounter/boss 计分,奖励/补给不计;hp_events
+        # 的 delta<0=败)。与实机 outcomes killed+node_type 同构。
+        'battle_losses_le_2': sum(
+            1 for r in results
+            if sum(1 for _, nt, d, _ in r.hp_events
+                   if nt in ('battle', 'encounter', 'boss') and d < 0) <= 2
+        ) / n,
         'dir_by_r2': sum(1 for d in dirs if d <= 2) / n,
         'dir_by_r4': sum(1 for d in dirs if d <= 4) / n,
         'dir_never': sum(1 for d in dirs if d >= 99) / n,
