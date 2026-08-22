@@ -509,51 +509,66 @@ def _first_trio_round(res, target: int) -> int | None:
     return None
 
 
-# r394b:引擎池模型(combo_methodology.md 最终模型 r148+r149;
-# 官方 plaza API 784 篇 Early 统计定档:两两组合 153 篇全是大
-# 引擎对,81/41/31)。
-# 大引擎(羁绊即伤害源): 仙舟3/列车2+/DOT2;
-# 中引擎(拉条/资源型): 贝洛伯格2/减益2/燃血2/战技点2。
-# 过渡阵容判定 = 已达成引擎数 ≥2 **且含至少一个大引擎**
-# (r394c 修正:首版只判 ≥2,贝2+减益2 无大引擎的板面被误判)。
-_BIG_ENGINES: tuple[tuple[str, int], ...] = (
+# r397/r399(用户定调重写 transition_combos.md;废除 r148/r149 大/中
+# 引擎分层——旧词来源可疑且「大+中过不了位面1」被 895 帖数据证实):
+# 过渡阵容 = **一级羁绊即有伤害**的 combat 羁绊两两组合——
+# 仙舟3(召唤神舟)/列车2(星穹列车撞击)/DOT2(敌方回合超激发)。
+# 人员要求:DOT2/列车2 无要求;仙舟3 用藿藿+饮月+爻光效果最好
+# (功能链,95% 帖含全三人组);**希儿系**(r399 用户实战确认)=希儿
+# 在场 AND(量子≥2 OR 贝≥2)——伤害在希儿技能层,量子/贝是放大器,
+# 无希儿时不能独立当过渡(第四体系,单卡依赖)。
+# 通用羁绊(战技点/护盾/学者/减益…)不是过渡主体——四种都不含的
+# 49 帖全是直通线。
+_TRANSITION_TRAITS: tuple[tuple[str, int], ...] = (
     ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
 )
-_MID_ENGINES: tuple[tuple[str, int], ...] = (
-    ('贝洛伯格', 2), ('减益', 2), ('燃血', 2), ('战技点', 2),
-)
 
 
-def _engines_count(board_factions: dict[str, int]) -> int:
-    """r394b:板面达成的引擎数(大+中,独立判据)。"""
-    return sum(1 for bond, tier in _BIG_ENGINES + _MID_ENGINES
-               if board_factions.get(bond, 0) >= tier)
+def _engines_count(board_factions: dict[str, int],
+                   deployed_names: frozenset[str] | set[str] = frozenset()
+                   ) -> int:
+    """过渡体系达成数(三选几+希儿系;两两组合=过渡成型)。
 
-
-def _transition_formed(board_factions: dict[str, int]) -> bool:
-    """r394c:过渡阵容成型判据(文档单一源语义):
-
-    引擎数 ≥2 **且含至少一个大引擎**——纯中引擎组合(贝2+减益2)
-    不算过渡成型(784 篇两两组合 153 篇全是大引擎对)。
+    r399:希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
+    与三羁绊同级可组合(列车2+希儿系 13 帖/仙舟+希儿系 3/DOT+希儿
+    系 2/量贝同开 6)。
     """
-    big = sum(1 for bond, tier in _BIG_ENGINES
-              if board_factions.get(bond, 0) >= tier)
-    return big >= 1 and _engines_count(board_factions) >= 2
+    n = sum(1 for bond, tier in _TRANSITION_TRAITS
+            if board_factions.get(bond, 0) >= tier)
+    seele = ('希儿' in deployed_names
+             and (board_factions.get('量子同频', 0) >= 2
+                  or board_factions.get('贝洛伯格', 0) >= 2))
+    if seele:
+        n += 1
+    return n
+
+
+def _transition_formed(board_factions: dict[str, int],
+                       deployed_names: frozenset[str] | set[str] = frozenset()
+                       ) -> bool:
+    """过渡阵容成型判据(transition_combos.md 2026-08-23 定稿):
+
+    四种体系(仙舟3/列车2/DOT2/希儿系)**两两组合**=成型
+    (三选二 140/328 帖;希儿系×三过渡 18 帖);
+    单个=「过渡的过渡」(DOT2 可单独当起点但不等于成型)。
+    """
+    return _engines_count(board_factions, deployed_names) >= 2
 
 
 def _first_engines_round(res, target: int) -> int | None:
-    """r394c:过渡阵容成型(引擎≥target 且含大引擎)首达轮。
+    """r399:过渡体系达成数首达 target 的最小轮。
 
-    判据走 _transition_formed(文档语义:≥2 且含至少一个大引擎);
-    target=1 语义=至少一大引擎点火(阶段0.5)。
+    判据走 _engines_count(四体系:仙舟3/列车2/DOT2/希儿系各算一个;
+    希儿系需 deployed 含希儿——ledger 的 state.deployed 提供名单);
+    target=2=过渡成型(两两组合),target=1=单体系点火
+    (DOT2 单独可当「过渡的过渡」起点)。
     """
     for row in res.ledger:
-        bf = (row.get('state') or {}).get('board_factions') or {}
-        if not bf:
-            continue
-        big = sum(1 for bond, tier in _BIG_ENGINES
-                  if bf.get(bond, 0) >= tier)
-        if _engines_count(bf) >= target and big >= 1:
+        st = row.get('state') or {}
+        bf = st.get('board_factions') or {}
+        dep = frozenset(d.get('char_id', '')
+                        for d in (st.get('deployed') or []))
+        if bf and _engines_count(bf, dep) >= target:
             return row.get('round_num')
     return None
 
@@ -926,17 +941,12 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             [d for d in (r.dir_round for r in results) if d < 99])
             if any(r.dir_round < 99 for r in results) else float('nan')),
         'avg_refreshes': sum(r.refreshes for r in results) / n,
-        # r394(过渡阵容成型指标;判据单一源=_P1_FORMATION_TARGETS):
-        # 配方 5 档(RECIPE_BASE)在 r6 前达成的局占比——「位面1
-        # 能否顺利凑到过渡阵容」的直接分布度量(此前只有锁线轮,
-        # 板面档位不可观测)。达成轮取 ledger 的 board_factions
-        # 首达 recipe_tier≥5 的最小轮;boss 局 r9 末仍未达=未凑成。
-        # r394b(用户点题「目标不只是三人组」):**引擎乐高模型**
-        # (transition_combos.md 总模型)——过渡阵容=凑出≥2 个独立
-        # 引擎(大引擎 DOT2/列车2+/仙舟3 两两组合都成立),核心
-        # 三人组只是仙舟DOT 组合的核心层,不是全部。三指标:
-        # engines2_by_r6=达成≥2 引擎(含≥1 大引擎)的 r6 前占比;
-        # recipe5_by_r6=配方 5 档;trio3_by_r8=三人组(核心层)。
+        # r394/r399(过渡阵容成型指标;判据单一源=transition_combos.md
+        # 2026-08-23 定稿:四体系两两组合):
+        # engines2_by_r6=四体系(仙舟3/列车2/DOT2/希儿系)达成≥2 的
+        # r6 前占比——「位面1 能否顺利凑到过渡阵容」的直接度量。
+        # 希儿系=希儿在场 AND(量2 OR 贝2),伤害在希儿技能层,
+        # 量子/贝是放大器(单卡依赖,r399 用户实战确认)。
         'engines2_by_r6': sum(
             1 for r in results
             if _first_engines_round(r, 2) is not None
