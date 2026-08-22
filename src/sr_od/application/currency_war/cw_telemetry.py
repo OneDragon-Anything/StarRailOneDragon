@@ -209,6 +209,8 @@ class TelemetryRecorder:
         self._gold_trajectory: dict[str, list[int]] = {}
         self._comms: dict[str, list[str]] = {}
         self._difficulty: dict[str, str] = {}
+        # r363(审计 P1-7):gold 采样的回合去重键(见 record_decision)
+        self._gold_last_key: tuple | None = None
 
     def _path(self, name: str) -> Path:
         return self.replay_dir / name
@@ -271,8 +273,16 @@ class TelemetryRecorder:
             _v2s = extra.get('sess_v2_state')
             trace.sess_v2_state = list(_v2s) if _v2s else None
         if self.enabled:
+            # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
+            # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
+            # **recorder 内部按 (run_id, plane, round) 去重**——每回合
+            # 只收首个 gold_point=True 采样;调用方参数语义保留(显式
+            # False 仍全跳)。同轮后续步进值不再进 gold_trajectory。
             if gold_point:
-                self._gold_trajectory.setdefault(run_id, []).append(state.gold)
+                _gk = (run_id, state.plane, state.round_num)
+                if _gk != self._gold_last_key:
+                    self._gold_last_key = _gk
+                    self._gold_trajectory.setdefault(run_id, []).append(state.gold)
             # _comms 不受 gold_point 连坐(r69 review):gold 采样按回合、target 序列按变化,
             # 语义不同 —— director 步进记录(gold_point=False)产生的换线也要落账,否则
             # 「同节点双 pivot」只记终态 1 次,churn 被记账低估一半。
@@ -620,14 +630,21 @@ def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
 #   uv run python -m sr_od.application.currency_war.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|all]
 
 def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
-    """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。"""
+    """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。
+
+    r363(审计 P1-8):并列(同 action 数)时取 **ts 最晚**(末帧)——
+    旧严格大于让最早的行胜出,轮末 state(买后 board/gold)被首帧
+    (空板)代表,收入/执行判读失真。
+    """
     best: dict = {}
     for d in read_jsonl(replay_dir / "decisions.jsonl"):
         if run_id and d.get("run_id") != run_id:
             continue
         k = (d.get("plane"), d.get("round_num"))
         n = len(d.get("actions") or [])
-        if k not in best or n > len(best[k].get("actions") or []):
+        if k not in best or n > len(best[k].get("actions") or []) or (
+                n == len(best[k].get("actions") or [])
+                and (d.get("ts") or '') > (best[k].get("ts") or '')):
             best[k] = d
     return best
 
