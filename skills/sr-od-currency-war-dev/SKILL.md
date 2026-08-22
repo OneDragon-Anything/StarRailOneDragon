@@ -27,7 +27,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | as-built 策略正文(结构/语义/边界) | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(十类深读,唯一源) |
-| 阵容知识怎么提炼(版本更新重跑深读时) | `research/combo_methodology.md` 开头「证据三层」:统计骨架(carry 聚类)× 逐篇细节(攻略帖全文精读)× 机制解释(技能/羁绊/装备/投资效果的游戏数据本体)——单靠统计发现不了细节,机制不成立的高频做法标存疑 |
+| 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层:统计骨架×逐篇细节×机制解释) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
@@ -71,6 +71,14 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - CW op 禁无条件 ESC(备战屏 ESC 弹中断挑战);画面疑问走 `analyze_screen` 先行(离线可用,传截图路径)。
 
 细则(交接序/监控武装/常见运行坑):[references/runtime-ops.md](references/runtime-ops.md)
+
+## 阵容知识工程(提炼/深读/修订/版本重跑)
+
+**证据三层**(核心纪律,缺层即盲区):统计骨架(plaza API 聚类给主流/代表——**单靠统计发现不了细节**)× 逐篇细节(攻略帖全文精读给运营思路/时序/条件——必须逐个看,不能偷懒)× 机制解释(游戏数据本体:角色技能/羁绊/装备/投资策略·环境效果——**给「玩法为什么是这样」**)。工作流:统计给候选 → 逐篇读细节 → 游戏数据验证机制;「为什么」成立才收编,机制不成立的高频做法标 [社区] 存疑。
+
+结论落点:final_comps 类文档(叙事)+ `cw_comps.py COMP_LIBRARY`(结构化字段)——两者非镜像,互不触发同步义务。用户口述与攻略冲突以口述为准。
+
+细则(从零提炼流程/单套修订/版本更新重跑/防坑):[references/compo-knowledge.md](references/compo-knowledge.md)
 
 ## 文档同步(行为变更三同步)
 
