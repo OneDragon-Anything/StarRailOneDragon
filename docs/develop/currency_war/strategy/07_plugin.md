@@ -10,13 +10,14 @@
 | `StrategySession` | `cw_strategy` | 每局状态(target_comp / rng / performance / memory 私有 scratch);框架每局新建、局终销毁 |
 | `CurrencyWarMatch` | `cw_strategy` | strategy+session 轻容器,挂 `ctx.cw_match`(显式声明,局终置 None 防跨局污染) |
 | `StrategyManager` | `cw_strategy_manager` | 自动发现:BUILTIN(`strategies/`)+ THIRD_PARTY(`plugins/currency_war_strategies/` 子目录);`STRATEGY_ID` 唯一性强校验;对标 app 插件机制(无 factory/config 间接层,`cls()` 即实例化) |
-| `DefaultCwStrategy` | `strategies/default_strategy` | 内置具现(每个钩子委托既有模块函数);自定义两条路:继承 ABC 全自研 / 继承 Default 只覆盖关心的钩子 |
+| `DefaultCwStrategy` | `strategies/default_strategy` | 内置具现 v1(每个钩子委托既有模块函数);自定义两条路:继承 ABC 全自研 / 继承 Default 只覆盖关心的钩子 |
+| `LineStrategy` | `strategies/line_strategy` | **现行生产策略 v2**(继承 Default,只覆盖 4 策略性钩子:锁线/桥线/四象限/应急 + `decide_prep` 决战窗;`strategy_id=line_v2`,生产 checks 按此判栈,ADR-0245) |
 
 ## 2. 钩子清单
 
 **生命周期**:`create_session`(每局)/ `on_match_start` / `on_round_end(obs)`(默认 `performance.record`——观测驱动回路)/ `on_match_end(outcome)`。
 
-**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_prep_action(obs, session, config)`**(备战单步——PrepDirector 环的唯一决策口,03 §1)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner`(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
+**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_prep(state, session, config)`**(备战整段计划——复合动作 RunBuyPhase 路径的决策口,返回动作列表;LineStrategy 的四象限/应急/决战窗在此,03 §3)/ **`decide_prep_action(obs, session, config)`**(备战单步——PrepDirector 环的决策口,03 §1;两个备战口并存:环走单步、复合走整段)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner`(策划事件选项,银狼命运卜者类,r104 接策略模块)(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
 
 **state 供给契约**:框架在调 `update_target` 前产出与生产一致的 state(shop 关闭帧 hp 覆盖 → 开 shop 读 gold/board/shop),策略不自己截图。
 

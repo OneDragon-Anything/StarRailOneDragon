@@ -2,7 +2,7 @@
 
 - 日期:2026-08-14
 - 状态:已接受(P1 已实现 2026-08-14:prep_director.py + prep_actions.py + decide_prep_action 钩子 + DefaultCwStrategy 具现 + 挂载切换;live 验证待做)
-- 设计详文:[strategy/15_prep_director.md](../strategy/15_prep_director.md)
+- 设计详文:[strategy/03_tactics.md §1-2(PrepDirector 环;原 15_prep_director.md 已并入)](../strategy/03_tactics.md)
 
 ## 背景
 

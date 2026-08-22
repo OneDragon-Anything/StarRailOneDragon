@@ -6,12 +6,8 @@
 (纯函数 / op / recognizer)直接调 ``cw_log`` / ``cw_shot`` 记观测,**不需透传 logger/shot_dir 参数**
 (避免每加一个监测点都改签名链 read_equipped_below ← read_row_equipped ← recognizer)。
 
-日志格式:
-- ``[cw][op][step][target] fields`` —— 普通(常规识别/流程)
-- ``[cw!][op][step][target] fields`` —— 需关注(漏检 MISS / 顺序异常 / UNKNOWN 未建档画面);``attn=True``
-- ``| shot=<名>`` —— 配对截图(``cw_shot`` 返名),grep 漏检后看截图定位根因
-
-检索:漏检 ``grep "[cw!].*MISS"`` / 未建档画面 ``grep "[cw!].*UNKNOWN"`` / 全 CW ``grep "[cw]"``(grep 方括号是字符类,引号或转义字面匹配)。
+日志格式(A 族,本 helper 产出):``[cw]/[cw!]`` + ``[op][step][target]``(step/target 可空)+ fields + ``| shot=``;
+两族前缀(A 识别观测层 / B ``[cw-<tag>]`` 流程层)与检索口径的**单一源 = docs/develop/currency_war/strategy/05_observation.md §6**。
 
 并发安全:logger 只读(全局配置,``info`` 不写状态);``cw_shot`` 存文件(副作用,但 MISS/异常罕见,
 同名覆盖最新,并发竞争可接受)。纯函数可用(不写 ctx/session 状态,与 ``recognize`` 纯读原则兼容)。

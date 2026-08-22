@@ -14,12 +14,12 @@
 - ~~invest_cards.md~~ → `cw_invest_data`(plaza API 生成器直灌注册表,ADR-0150)
 - ~~comp_library.md~~ → `cw_comps.COMP_LIBRARY`(20 套,含 V4.4 评级)
 
-**保留(注册表未建模的唯一源)**:
+**保留(未全量建模:注册表承载结构化数据,本文承载叙事/启示层)**:
 - [README](data/README.md) —— 索引 + 数据源 / 抓取通道 / 剩余缺口
 - [gameplay.md](data/gameplay.md) —— 官方玩法说明(content/6564 全文)+ 机制速查(**有限行动值(AV)限时** 等)
-- [competitors.md](data/competitors.md) —— ~50 敌人词缀全集 V4.4(按机制分类;⚠️ 代码注册表未建,唯一源)
-- [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta)
-- [bosses.md](data/bosses.md) —— boss 克制(⚠️ 代码注册表未建,唯一源)
+- [competitors.md](data/competitors.md) —— ~50 敌人词缀机制分类/克制叙事(**词缀效果原文已入注册表 `affix_effects_data`,HandleBriefing 运行时采集;机制克/利映射在 `cw_comps.MECHANIC_COUNTERS`**)+ 竞争对手阵营(未建模,唯一源)
+- [advantage_layouts.md](data/advantage_layouts.md) —— 优势布局(跨局 meta;注册表未建,唯一源)
+- [bosses.md](data/bosses.md) —— boss 克制(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20)+ `matchup`;本文=逐 boss 技能叙事/克制启示层**)
 
 ## `research/` —— 玩法研究(我们提炼/核实的知识,活文档)
 

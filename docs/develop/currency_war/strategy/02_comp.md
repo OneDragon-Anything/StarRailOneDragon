@@ -7,7 +7,8 @@
 `cw_comps.COMP_LIBRARY`,数据源 `cw_plaza_comps`(plaza API 生成,勿手编)。`Comp` 关键字段语义:
 
 - **`factions` vs `flex_factions`**:核心羁绊(成型判定用)与弹性羁绊(亲和不断判)二分——M2「核心锁死 × 弹性填充」;评估板面时朝弹性羁绊铺**不算 spread**。
-- `core_chars` 核心角色;`form_tiers` 各羁绊成型档;`level_plan` 等级→动作曲线(骨架与参数的接缝:无 comp 走通用兜底);`key_equips` 关键装备(有序,合成优先级);`form_difficulty` 成型难度(easy/medium/hard,选型关键维度);`countered_by_bosses`/affix 双向(克它的与利它的词缀);`star_goals`(缺省 = `default_star_goal`:≤3费追3星、≥4费追2星,M6 升星经济学)。
+- `core_chars` 核心角色;`shared_chars`/`transition_chars`(跨线共享/过渡衔接件);`form_tiers` 各羁绊成型档;`level_plan` 等级→动作曲线(**`star_goals` 是 `LevelGoal` 字段**——按等级段给目标星的追星曲线,缺省 = `default_star_goal` 费用档规则,M6 升星经济学);`key_equips` 关键装备(有序,合成优先级);`form_difficulty` 成型难度(easy/medium/hard,选型关键维度);`countered_by_bosses`/affix 双向(克它的与利它的词缀);`mechanic_attributes`(机制属性,与 `MECHANIC_COUNTERS` 同本体);`char_positions` comp 特定站位覆盖(ADR-0139);`weak_planes` 保命 pivot 位面过滤(ADR-0174)。
+- P1 双轨期的「目标阵容」另有**过渡配方伪 comp**(`cw_recipe.RecipeComp`,README §模块地图):双轨期 plan/deploy 拿配方伪 comp,配方完成度即 P1 胜利条件;终局线 P1 内冻结换线(定义型 augment 除外)。
 
 ## 2. comp_score 与 select_comp
 

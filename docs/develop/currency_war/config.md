@@ -47,7 +47,8 @@
   `faction_build_around` 用 **all() 语义**(多个必含 = 全部在场,多羁绊成就要求),与角色轴 any() 刻意不同。
 - **必含轴保留**:成就局常需「一定用某阵容」,「优先」表达不了「一定」。
 - 消费端落点:comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
-  (select_comp);选卡侧 `decide_event` 打分环加 priority +30 / forbid −10000(策略走策略轴、
+  (select_comp);选卡侧 `decide_event` 打分环加 priority `STEERING_PRIORITY_BONUS` /
+  forbid `STEERING_FORBID_PENALTY`(常量在 cw_events;策略走策略轴、
   env 注册表命中走环境轴;子串匹配 OCR 容错;全被禁 → 分数落刷新阈值下自然建议刷新兜底)。
 - 预设(§3.2)打包这些轴,不自建平行评分。
 
@@ -56,39 +57,18 @@
 成就预设 = 转向轴打包(如「8 减益」= 减益流派必含 + 相干策略优先),非特殊代码路径 —— bot 按
 偏好打、成就自然达成。
 
-## 4. 运行控制与实验:只留 strategy_id(定稿;ADR-0204 执行完毕)
+## 4. 运行控制与实验:只留 strategy_id(定稿;ADR-0204)
 
-用户问「运行控制与实验是不是只剩 strategy_id 有必要」——结论:**是**,2026-08-17 批准执行完毕:
+配置面的运行控制收敛结论(用户裁定):**用户面只留 `strategy_id`**——「选哪个脑」是真实用户选择:默认策略够日常;**画像 2 的成就玩法未来=选专用策略插件**(如「8 减益成就策略」),这是比逐字段转向更高一层的入口,策略插件体系(11 号)对用户的唯一暴露点。
 
-| 字段 | 结论 | 理由 |
+| 字段 | 定位 | 语义 |
 |---|---|---|
-| `strategy_id` | **保留(用户面)** | 「选哪个脑」是真实用户选择:默认策略够日常;**画像 2 的成就玩法未来=选专用策略插件**(如「8 减益成就策略」),这是比逐字段转向更高一层的入口。策略插件体系(11 号)对用户的唯一暴露点,删了插件就不可达。 |
-| `strategy_seed` | ✅ 已降为开发/实验字段(config 内显式分段注释,不进未来 GUI) | A/B 复现调试用;用户不需要确定性,且只种子化策略内部随机(游戏侧种子化不到),对用户是虚承诺。 |
-| `max_rounds` | ✅ 已降为开发/实验字段(同上) | 多轮采样验证用;一次 app 运行本就是一整局,用户无「跑半局」需求。 |
-| `economy_mode` | ✅ 已删(ADR-0204) | 死配置:node_plan 各区间都有明确 spend_mode,`adaptive` 只在 fallback 区间出现,用户改了几乎无感;经济姿态属「策略质量」(bot 的事),非用户偏好。 |
-| `hp_safe_threshold` | ✅ 已迁代码常量 `cw_state.HP_SAFE_THRESHOLD`(ADR-0204) | 校准参数:难度阶梯已按 A1-A8 自动派生,用户对「A7 该在 52 血弃息」不会有个人意见。 |
-| `difficulty_hp_override` | ✅ 已迁代码常量 `cw_state.DIFFICULTY_HP_TABLE`(ADR-0204) | 同上;整张阶梯表是策略校准(随实机校准走 git),非用户面。 |
+| `strategy_id` | **用户面** | 选策略插件(`default` = 不配置即内置打法;现行生产 v2 = `line_v2`) |
+| `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机(游戏侧种子化不到,对用户是虚承诺,07 §4) |
+| `max_rounds` | 开发/实验(同上) | 多轮采样验证;一次 app 运行本就是一整局 |
+
+> 已出清字段(`economy_mode`/`event_whitelist` 删、`hp_safe_threshold`/`difficulty_hp_override` 迁代码常量 `cw_state.HP_SAFE_THRESHOLD`/`DIFFICULTY_HP_TABLE`、gate_* 4 个 yml-only flag 删)的**why 与过程 → [ADR-0204](decisions/0204-config-prune-batch2.md) / [ADR-0216](decisions/0216-gate-old-path-removal.md)**;阵营轴保留与必含轴确认的用户裁定 → ADR-0203。
 
 ## 5. 待用户定的事项
 
-- ~~faction_priority / faction_forbid 的去留~~ —— **已定(2026-08-17):保留**。用户定调「成就需要
-  特定阵容」,阵营轴(含新增 `faction_build_around`)是成就玩法的直接表达。
-- ~~「优先/必含」对策略改动是否过大~~ —— **已定(2026-08-17):确认增加**。评估结论改动小
-  (消费端 `_passes_steering`/`_priority_boost`/`decide_event` 打分环均为增量块,策略主干零改),
-  当日已落地(strategy/env priority/forbid + faction_build_around,测试覆盖)。
-- ~~§4 提议项 + event_whitelist~~ —— **已定(2026-08-17):全部执行**(ADR-0204)。用户追问
-  event_whitelist 为何不删后复核:保留理由(「指定具体分值的精调」)不成立 —— 引擎调参非用户
-  偏好,已删。
-- 无待定项;后续配置演进(GUI setting card / 预设)按 §3 目标态实施。
-
-## 6. 变更记录
-
-- 2026-08-17:建文;`dot_punish_envs` 删除(ADR-0203 单一源迁移);记录用户画像定调与目标配置面。
-- 2026-08-17(同日二批):用户确认阵营轴保留(成就需特定阵容)+ 必含轴确认;落地
-  `faction_build_around`(all 语义)+ `strategy/env_priority/forbid`(decide_event 打分环),
-  策略主干零改,CW 测试 701 例全过。
-- 2026-08-17(同日三批,ADR-0204):删 `economy_mode`/`event_whitelist`;hp 阈值迁代码常量
-  (`cw_state.HP_SAFE_THRESHOLD`/`DIFFICULTY_HP_TABLE`,`effective_hp_threshold` 去 config 参);
-  `strategy_seed`/`max_rounds` 降开发/实验字段。配置面至此与 §3 目标态一致。
-- 2026-08-22:观测 gate 对拍期结束——`gate_director`/`gate_shop_close`/`gate_shop_open`/
-  `gate_hook` 4 个 yml-only 调试 flag 删除(ADR-0216;gate 无条件化,旧路径分支删除)。
+无待定项;后续配置演进(GUI setting card / 预设)按 §3 目标态实施。历史裁定(阵营轴保留/必含轴/§4 出清)已收进 ADR-0203/0204,变更过程不再在此记流水。

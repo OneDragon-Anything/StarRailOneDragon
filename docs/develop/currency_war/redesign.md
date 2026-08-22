@@ -362,7 +362,7 @@ plaza_methodology M1-M16 + economy §1-8)
 ### 4.7 融合产生的三处方案修正(r203,上表挖出的)
 
 1. **应急≠花光([18] 死亡螺旋警惕)**:§5.4 的「放弃利息」修正为
-   「利息让位但保留重生基数(留20金级);无法止损才升级花光;
+   「利息让位但保留重生基数(`_REBIRTH_FLOOR`);无法止损才升级花光;
    位面末最后一战除外」——对齐[18]「断息之后经济可能再也无法
    支撑完成整局」
 2. **bench_windows 字段([21] 买而不上)**:线库新增 final 核心
@@ -448,6 +448,15 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
 
 ### 5.4 应急模式
 
+> **落地现状(Phase A 简版,r216;as-built)**:触发/退出均为**绝对 HP 档**——
+> `line_strategy._EMERGENCY_HP`(触发:`state.hp ≤ _EMERGENCY_HP` 喂 E3;
+> 退出:恢复即喂 E8_restart,**无 HEAL_HYSTERESIS/EMERGENCY_EXIT_HOLD
+> 保持计数**——比值档触发与滞回退出属 Phase B 蓝图,未落地);追赶 = 状态机
+> cat 位(E5/E6 按 pop_low),人口基线 `_POP_BASELINE` + 等级门
+> `_CATCHUP_MIN_LEVEL`(level 以下的人口落后是常态非追赶,r232)。重生基数
+> 与利息地板见 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR`/`_MID_INTEREST_FLOOR`。
+> 下方设计文本保留为 Phase B 完整蓝图(ADR-0227 两阶段裁定)。
+
 ```
 触发(存量语义):剩余可承受败局数 = HP / 单次战斗典型掉血
   ≤ 危险档(DANGER_ROUNDS)→ 触发
@@ -455,7 +464,7 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
   遥测按形态分层标定;**表外形态(miss 形态)的掉血**用
   「低置信形态池」的合并分布(遥测探索局积累),不用全池均值
 行为(优先级高于经济/战力模式;**[18] 死亡螺旋修正 r203**:
-  应急≠花光——利息让位但**保留重生基数**(留 20 金级),
+  应急≠花光——利息让位但**保留重生基数**(`_REBIRTH_FLOOR`),
   无法止损(战力模式+降档仍连续 miss)才升级为全额投入;
   位面末最后一战除外(赢了带板进下位面,无后续经济问题)):
   利息让位(保留重生基数)/不升人口买即战力/生存装插队/
@@ -603,17 +612,19 @@ StrategySession+Manager+prep 执行环)与 redesign 正交——
 投资优先序→decide_invest(已有);累积态→StrategySession 扩展字段
 (对齐 §5.5 清单)。
 
-| 现有模块 | 处置(r204) |
+| 现有模块 | 处置(r204;**as-built 更新 2026-08-24**) |
 |---|---|
 | CwStrategy ABC / StrategySession / Manager | **保留**(插件骨架;session 扩展累积态字段) |
 | prep_director / prep_actions(执行环) | **保留**(接入前过 review——带「未验证」头) |
 | cw_shop_odds(概率/超几何期望)/cw_investments(策略台账)/cw_state(机制常量) | **保留复用**(roll_affordable 金计价门=D 决策数学核,target 档主动 D 复用) |
-| cw_economy / cw_plan / cw_evaluate | **替换**(经济分/硬门贪心/评估函数→战力表+模式分支;fallback 保留一版本周期) |
-| cw_comps / cw_transition | **替换**(→线库+桥线池 r207) |
+| cw_economy / cw_plan / cw_evaluate | **部分保留复用**(as-built 修正:纯函数 `streak_gold`/`xp_click_cost` 被 LineStrategy 复用;plan/evaluate 的旧策略路径随 default 栈保留 fallback,LineStrategy 不消费) |
+| cw_comps / cw_transition | **替换**(→线库+桥线池 r207;as-built:COMP_LIBRARY/双轨字段仍由 cw_comps/cw_transition 承载,替换的是「选线决策」入口) |
 | cw_horizon(DP)/cw_first_passage | **姿态源退役,分配能力保留升级路径**(r205 精确化:DP 的板强/掉血先验被战力表替代[手造映射失真,涌现验证未达成];但 DP 的日程经济分配能力无继承者——初版用规则式分配[50金息律/分层补强/应急基数,用户口述本身是规则式]覆盖;**升级路径**:实跑发现规则式分配系统性次优时,DP 状态机重启、板强项接战力表输出=混合架构——代码保留不废) |
 | cw_run_allocator(跨局 Thompson) | **保留**(跨局层,本方案未覆盖——见 §10 补充) |
-| cw_telemetry | 扩展 schema(§6 原有清单;**Phase A 前置**——
-  门槛⓪/① 回放需要形态键字段,r13 标注) |
+| cw_telemetry | 扩展 schema(§6 原有清单;**Phase A 前置**——门槛⓪/① 回放需要形态键字段,r13 标注) |
+| **(新增落地)`cw_power_table`/`cw_line_library_v1`/`cw_line_defs`/`cw_bridge_pool`/`cw_signal_lock`/`cw_phase_machine`/`strategies/line_strategy`** | **Phase A 落地产物**(2026-08-21 起);职责地图见 [strategy/README §模块地图](strategy/README.md) |
+| **(新增落地)`cw_recipe`** | **过渡配方一等公民模型**(r100):P1 双轨期 plan/deploy 拿配方伪 comp,「配方完成度即 P1 胜利条件」(ADR-0225/0243) |
+| **(新增落地)sim/回放基建:`cw_sim`/`cw_sim_checks`/`cw_delta_pool_data`/`cw_replay`/`cw_match_recorder`/`cw_plan_replay_audit`** | **验证主链**(2026-08-24 起):sim 批量(真代码层同源+校准层+实机 Δ 池,ADR-0218/0242)→ 回放对拍 → 实机最后一步;不进生产执行链 |
 
 **感知质量门继承(r204,代码已验证的防线,新实现不得丢)**:
 last_hp 时效门(结算 HP 仅紧邻节点可覆盖,防陈值毒化应急触发)/
@@ -708,7 +719,11 @@ Step 5 实跑校准:遥测 hp 对拍;探索局打标隔离(校准管道与
 ```
 **第三轮对抗(r213 子agent)判定:不能直接开工——文档不自洽+
 排期失真级,非方向错误**。五处修正已并入本节:
-①时序装置=4(补 D 卡失败计数+已访问线集合——降级路径依赖)
+①时序装置=4(miss/pass 复合计数、PIVOT_GUARD、D 卡失败计数
+  +已访问线集合——降级路径依赖;**落地成员见 `cw_phase_machine`
+  常量:MISS_STREAK_M/PASS_STREAK_M/PIVOT_GUARD_N/ROLL_FAIL_N
+  +visited 位,应急退出保持未落地**——r213 原案含「应急退出
+  保持」,r216 简版落地时移除,见 §5.4 落地现状注)
 ②门槛体系加⓪(旧遥测回填)与双超阈处置(不开工回炉保守系数)
 ③删「反常识信号加权」字面(Phase A 无感知载体,Phase B 判定
   推迟至 ~100 局)
@@ -720,12 +735,13 @@ Step 5 实跑校准:遥测 hp 对拍;探索局打标隔离(校准管道与
     受击流最高;查询语义降级:只在位面边界 boss 节点做权威
     判定,位面内其他节点走线内节奏+掉血观测)
   四象限动作表 + 星级三档 + 利息地板/50金息律 + 牌库压缩
-  应急模式(留20金版;追赶期简化为「升人口置顶」一句话)
+  应急模式(绝对 HP 档简版,`_EMERGENCY_HP`+`_REBIRTH_FLOOR`;追赶期简化为「升人口置顶」一句话)
   信号 2 层锁线(核心卡,**识别层就绪为前置里程碑**)
   桥线池(数据派生排序)
   3 条线 × 7 字段 + bench_windows + DOT 兜底线
-  滞回最小集(**4 装置**:miss/pass 复合计数、PIVOT_GUARD、
-    应急退出保持、D 卡失败计数+已访问线集合——r213 补)
+  滞回最小集(4 装置:miss/pass 复合计数、PIVOT_GUARD、
+    D 卡失败计数+已访问线集合——r213 补;落地=
+    `cw_phase_machine` 四常量+visited,**应急退出保持未落地**)
 开工门槛(写代码前;⓪→③顺序):
   ⓪ 旧遥测回填:形态键字段(星级/核心在场)补齐——缺失则
      门槛①的驱动型分桶不可判定(升格原因:r213 攻击2)
@@ -785,25 +801,29 @@ MODE_EXIT_COOLDOWN 并入 PASS_STREAK_M(退出条件合一)
 PIVOT_BAN_K + PIVOT_COOLDOWN → PIVOT_GUARD(单计数器,
   期内禁再换线+禁回购旧线件,豁免共享)
 COARSE_TOLERANCE 并入 miss 计数(粗证据=加权输入,非独立装置)
-合并后时序装置=3:复合计数/PIVOT_GUARD/应急退出保持
+合并后时序装置=4:复合计数(miss/pass)/PIVOT_GUARD/D 卡失败
+计数/已访问线集合(应急退出保持随 r216 简版移除;落地=
+`cw_phase_machine` MISS_STREAK_M/PASS_STREAK_M/PIVOT_GUARD_N/
+ROLL_FAIL_N + visited)
 ```
 
-| 常量 | 语义 | 出处 | Phase |
+| 设计常量 | 语义 | 出处 | 落地常量(Phase A as-built) |
 |---|---|---|---|
-| CONSERVATIVE_FACTOR | 作者-试用折扣(**按驱动型分层三档**,受击流最高;r208 A3) | §2/Step0 | A |
-| MISS_STREAK_M / PASS_STREAK_M | 滞回进入/退出计数(退出含冷却;r208 合并 MODE_EXIT_COOLDOWN) | §5.5 | A |
-| COARSE_TOLERANCE | 粗证据折算 miss 权重(r208:并入 miss 计数,非独立装置) | §4.1 | A |
-| PIVOT_GUARD | 换线守卫(r208 合并 BAN_K+COOLDOWN:期内禁再换线+禁回购) | §5.5 | A |
-| DANGER_ROUNDS | 应急危险档(可承受败局数) | §5.4 | A |
-| HEAL_HYSTERESIS | 应急退出安全档(存量档位) | §5.4 | A |
-| EMERGENCY_EXIT_HOLD | 应急退出保持计数(战斗节点) | §5.4 | A |
-| CATCHUP_TOLERANCE | 追赶退出人口容差(带回滞;追赶期=升人口置顶一句话版) | §5.4 | A |
-| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | A |
-| AB_MIN_GAMES | AB 对照最小局数 | §8 | A |
-| DURATION_TOLERANCE | 局均时长容差 | §8 | A |
-| CATCHUP_FLOOR_RELIEF | 追赶期利息地板下浮系数(矩阵版砍,简化保留档) | §5.4 | B |
-| EXPLORE_REPEAT_MIN | 遥测正证据复现下限(三层置信的条目级) | §4.1/§11 | B(~100-200局) |
-| NEG_EVIDENCE_MIN | 遥测否决的最小尝试数(条目级,只降置信) | §4.1 | B(~100-200局) |
-| VETO_REVIVE_PASS | 否决撤销:重测队列连续通过次数 | §4.1 | B(v2+) |
-| 信号阈值组 | 各层信号置信下限/累计判据(含感知漏检校正;r208 A8) | §4.4 | A(2层)/B(全层) |
-| 回退阈值组 | 三级回退各级篇数阈值 | §4.1 | A |
+| CONSERVATIVE_FACTOR | 作者-试用折扣(**按驱动型分层三档**,受击流最高;r208 A3) | §2/Step0 | `cw_power_table.CONSERVATIVE_FACTOR_REACTIVE/_BURST/_ACTION` |
+| MISS_STREAK_M / PASS_STREAK_M | 滞回进入/退出计数(退出含冷却;r208 合并 MODE_EXIT_COOLDOWN) | §5.5 | `cw_phase_machine` 同名 ✓ |
+| COARSE_TOLERANCE | 粗证据折算 miss 权重(r208:并入 miss 计数,非独立装置) | §4.1 | (并入 miss 计数,无独立常量) |
+| PIVOT_GUARD | 换线守卫(r208 合并 BAN_K+COOLDOWN:期内禁再换线+禁回购) | §5.5 | `cw_phase_machine.PIVOT_GUARD_N` |
+| DANGER_ROUNDS | 应急危险档(可承受败局数) | §5.4 | **简版改绝对 HP 档**:`line_strategy._EMERGENCY_HP`(r216) |
+| HEAL_HYSTERESIS | 应急退出安全档(存量档位) | §5.4 | **未落地**(E8 恢复即切,无滞回;Phase B 蓝图) |
+| EMERGENCY_EXIT_HOLD | 应急退出保持计数(战斗节点) | §5.4 | **未落地**(同上) |
+| CATCHUP_TOLERANCE | 追赶退出人口容差(带回滞;追赶期=升人口置顶一句话版) | §5.4 | `line_strategy._POP_BASELINE`+`_CATCHUP_MIN_LEVEL`(等级门版,r232) |
+| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | `line_strategy._INTEREST_FLOOR`/`_MID_INTEREST_FLOOR`/`_WAR_FLOOR` |
+| AB_MIN_GAMES | AB 对照最小局数 | §8 | (未落独立常量;AB 纪律按验证工作台执行) |
+| DURATION_TOLERANCE | 局均时长容差 | §8 | (未落地) |
+| CATCHUP_FLOOR_RELIEF | 追赶期利息地板下浮系数(矩阵版砍,简化保留档) | §5.4 | 未落地(Phase B) |
+| EXPLORE_REPEAT_MIN | 遥测正证据复现下限(三层置信的条目级) | §4.1/§11 | 未落地(Phase B) |
+| NEG_EVIDENCE_MIN | 遥测否决的最小尝试数(条目级,只降置信) | §4.1 | 未落地(Phase B) |
+| VETO_REVIVE_PASS | 否决撤销:重测队列连续通过次数 | §4.1 | 未落地(Phase B v2+) |
+| 信号阈值组 | 各层信号置信下限/累计判据(含感知漏检校正;r208 A8) | §4.4 | `cw_signal_lock`(2 层,A)/Phase B 全层 |
+| 回退阈值组 | 三级回退各级篇数阈值 | §4.1 | `cw_power_table.POWER_EXACT_MIN`/`POWER_COARSE_MIN` 等 |
+| (r213 补)D 卡失败计数+已访问线集合 | 降级路径依赖装置 | §5.5 | `cw_phase_machine.ROLL_FAIL_N` + visited 位(`LINE_BITS`) |

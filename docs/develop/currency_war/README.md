@@ -6,6 +6,9 @@
 
 ## 目录结构(复杂 app 拆分,依据 ADR-0003)
 
+### [redesign.md](redesign.md) —— 系统设计定稿(策略 v2 重设计)
+- 分层架构 / 决策循环 / 数据层 / Phase A-B 落地地图;策略 v2 模块族(战力表/桥线池/线库/信号锁/状态机+LineStrategy/过渡配方)的设计依据。
+
 ### [strategy/](strategy/) —— 策略设计正文(as-built)
 - [README](strategy/README.md) —— 总览:每回合决策链 + 模块地图 + 核心哲学 + 旧编号对照
 - [01 姿态与经济](strategy/01_posture.md) —— DP 求解器(花钱节奏单一姿态源)/ 效果台账 / 息引擎 / 目标函数
@@ -32,6 +35,7 @@
 - 模块职责地图(模块 → 设计文档)→ [strategy/README §模块地图](strategy/README.md)
 - `cw_performance.py` → [strategy/05](strategy/05_observation.md)(观测反馈)
 - `cw_shop_odds.py` 牌池证据 → [game/research/economy](../../game/currency_war/research/economy.md)
+- sim/回放基建(`cw_sim`/`cw_sim_checks`/`cw_replay`/`cw_match_recorder` 等)→ [strategy/README §模块地图](strategy/README.md) + [strategy/05 §5](strategy/05_observation.md);验证工作台用法(批量/对拍/Δ 池)→ `sr-od-currency-war-dev` skill 的 verification.md
 - 注册表 = 游戏数据单一源(对应 data 文档已删,ADR-0210;生成器重跑流程见 [game 侧 README](../../game/currency_war/README.md))
 
 ## 关联 skill

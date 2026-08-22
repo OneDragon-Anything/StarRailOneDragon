@@ -80,7 +80,7 @@ class CurrencyWarConfig(YamlConfig):
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
-        # gate 无条件化——ADR-0213 对拍期结束;yml 残留键无害,
+        # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,
         # get() 不再读)。
 
     def save(self) -> None:

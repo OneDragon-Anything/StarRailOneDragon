@@ -38,20 +38,22 @@ battle_loop(主循环,屏幕级路由)
 |---|---|---|---|
 | 信息模型 | `cw_state` | GameState/Action/MatchOutcome 等核心类型;sell_refund;hp 阈值派生 | [06](06_input_model.md) |
 | 注册表 | `cw_chars`/`cw_factions`/`cw_equipment`/`cw_invest_data`+`cw_investments`/`cw_comps`/`cw_shop_odds`/`cw_synthesis`/`cw_enemy_data`/`affix_effects_data` | 游戏数据单一源(名称/效果/关系/概率);`cw_plaza_comps` 为生成产物 | [06](06_input_model.md) |
-| 战力表(策略v2) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层,生成勿手编) | 形态×位面→验证篇数(敢用白名单);三级回退+分层保守系数;[redesign](../redesign.md) Phase A | [06](06_input_model.md) |
-| 桥线池(策略v2) | `cw_bridge_pool` | 未锁线时的购买方向(手牌重合度选桥;fixed/core/flex 三档;V4.0 口径五桥含 hunt3/dot_belog,ADR-0222);`ENGINE_FACTIONS` 从桥池 engine_bonds 派生(单一源) | [06](06_input_model.md) |
-| 过渡配方/检查点 | `cw_line_defs` | RECIPE_FACTIONS/RECIPE_BASE/ENGINE_FACTIONS 常量单一源 + `p1_formation_target` P1 成型检查点(r3 桥2/r6 配方5/r8 配方7,ADR-0225) | [06](06_input_model.md) |
-| 线库v1(策略v2) | `cw_line_library_v1` | 三线档案(姬子/绯英/DOT兜底;七字段;degrade/bench_windows 为 Phase B 预埋) | [06](06_input_model.md) |
-| 信号锁线(策略v2) | `cw_signal_lock` | 信号 2 层:核心卡到手→锁线(纯策略判断,识别层职责归现有代码) | [06](06_input_model.md) |
-| 状态机+LineStrategy(策略v2) | `cw_phase_machine`(4装置转移纯函数,七性质穷举锁定)+`strategies/line_strategy`(继承 Default 只覆盖 4 策略性钩子:锁线/桥线/四象限/应急;P1 r5+ 决战窗 = 成型检查点→boss_breaker 集中买+配方围栏,ADR-0221/0225) | [redesign](../redesign.md) Phase A 决策循环 | [07](07_plugin.md) |
+| 战力表(策略v2) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层,生成勿手编) | 形态×位面→验证篇数(敢用白名单);三级回退+分层保守系数;[redesign](../redesign.md) Phase A | [redesign §4.1](../redesign.md) · [数据 meta](../power_table_meta.md) |
+| 桥线池(策略v2) | `cw_bridge_pool` | 未锁线时的购买方向(手牌重合度选桥;fixed/core/flex 三档;V4.0 口径五桥含 hunt3/dot_belog,ADR-0222);`ENGINE_FACTIONS` 从桥池 engine_bonds 派生(单一源) | [redesign §4.2](../redesign.md) |
+| 过渡配方/检查点 | `cw_line_defs` | RECIPE_FACTIONS/RECIPE_BASE/ENGINE_FACTIONS 常量单一源 + `p1_formation_target` P1 成型检查点(轮窗常量 `_*_FORMATION_*` 见 cw_line_defs,ADR-0225/0241) | [redesign](../redesign.md) · [02](02_comp.md) |
+| 过渡配方一等公民模型(策略v2) | `cw_recipe` | P1 双轨期决策中心:配方伪 comp(RecipeComp)令 plan/deploy 评分自动转向配方完成度;「配方完成度即 P1 胜利条件」(user_playstyle [20]-[23]/[26];ADR-0225/0243) | [redesign](../redesign.md) · [02](02_comp.md) |
+| 线库v1(策略v2) | `cw_line_library_v1` | 三线档案(姬子/绯英/DOT兜底;七字段;degrade/bench_windows 为 Phase B 预埋) | [redesign](../redesign.md) |
+| 信号锁线(策略v2) | `cw_signal_lock` | 信号 2 层:核心卡到手→锁线(纯策略判断,识别层职责归现有代码) | [redesign](../redesign.md) |
+| 状态机+LineStrategy(策略v2) | `cw_phase_machine`(时序装置转移纯函数,七性质穷举锁定)+`strategies/line_strategy`(继承 Default 只覆盖 4 策略性钩子:锁线/桥线/四象限/应急;P1 r5+ 决战窗 = 成型检查点→boss_breaker 集中买+配方围栏,ADR-0221/0225) | [redesign](../redesign.md) Phase A 决策循环 | [redesign](../redesign.md) · [07](07_plugin.md) |
 | 姿态/经济 | `cw_horizon`(DP 求解器)/`cw_effect_ledger`/`cw_economy` | 跨期花钱节奏(升/刷/攒)单一姿态源;既持效果台账;经济纯函数 | [01](01_posture.md) |
 | 战略 | `cw_comps`(select_comp/pivot)/`cw_transition`(双轨过渡)/`cw_line_tribunal`(战略审判)/`cw_run_allocator`(跨局)/`cw_first_passage`(目标函数)/`cw_progress_curves`(期望进度线) | 打什么阵容、何时定型/转型、跨局选臂 | [02](02_comp.md) |
 | 战术 | `cw_plan`/`cw_evaluate`/`cw_bundle` | 备战动作规划/局面评估/回合内联合行动束 | [03](03_tactics.md) |
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`cw_telemetry` | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |
-| 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/default_strategy` | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
-| 离线工具 | `cw_weight_search`(CEM 权重搜索)/`cw_divergence_stats`(姿态分歧频率)/`cw_plan_replay_audit`(plan 对拍) | 消费 telemetry 的离线分析,不进生产链 | [05](05_observation.md) |
+| sim/回放基建 | `cw_sim`(P1 全流程模拟器:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`cw_sim_checks`(账本检查,实机学费回灌载体)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器)/`cw_plan_replay_audit`(plan 对拍) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) · [redesign §6](../redesign.md) |
+| 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/default_strategy`/`strategies/line_strategy`(现行生产 v2) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
+| 离线工具 | `cw_weight_search`(CEM 权重搜索)/`cw_divergence_stats`(姿态分歧频率)/`cw_progress_curves` | 消费 telemetry 的离线分析,不进生产链 | [05](05_observation.md) |
 
 ## 分篇
 

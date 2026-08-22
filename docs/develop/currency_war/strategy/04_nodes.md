@@ -24,7 +24,7 @@
 
 | 决策点 | 策略函数 | 执行 op |
 |---|---|---|
-| 买牌/升/刷/deploy/卖 | plan → decide_prep_action | PrepDirector + prep_actions |
+| 买牌/升/刷/deploy/卖 | plan → decide_prep(复合动作 RunBuyPhase 路径)/ decide_prep_action(环) | PrepDirector + prep_actions |
 | 投资策略/环境 | decide_invest(→decide_event) | handle_invest_strategy / handle_invest_env |
 | 遭遇 | decide_encounter | handle_encounter |
 | 补给 | decide_supply | run_supply_node(含刷新流) |
@@ -32,6 +32,9 @@
 | 伙伴 | decide_partner | handle_select_partner |
 | 武装箱选卡 | 执行器默认(key_equips→材料通用性) | handle_armory_box |
 | 祈愿试炼 | naive | handle_wish_trial |
+| 策划事件(命运卜者等) | decide_planner(cw_events;PlannerOption/PlannerPick,r104 接策略模块) | handle_planner_event |
+| 命运卜者强化 | 执行器(强化卡选择) | handle_fortune_picker |
+| 装备拾取 | 执行器 | handle_equip_pick |
 
 ## 6. 边界
 

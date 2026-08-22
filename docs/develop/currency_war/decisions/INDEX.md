@@ -5,6 +5,7 @@
 > 文件名 `00NN-<slug>.md`,NN = 原 D-NN 号(保留可追溯,代码/文档里的 D-NN 引用据此映射)。
 > D-15/D-16 自主推进期已删(不可信);D-77 源文件缺(引用存在,条目未写)。
 > ADR-0100(D-100,deploy avatar mouseDown)被 ADR-0120 实测全盘推翻,2026-08-15 删除文件(0120 完整记录其错误;git 历史可查)。
+> **提案号 ADR 引用注记(2026-08-24)**:代码/文档中引用的 **ADR-0160/0161/0166/0167/0172/0194** 是 redesign 期「提案 N 号」工作文件占用的编号(15 号敌情注册表 / 18 号首达目标函数 / 19 号伤害双账本 / K2 校准环境 / 21 号线组合首口 / 24 号 CEM 权重搜索),文件已按惯例删档(同「N 号文件删档」),**未生成独立 ADR 条目**。现存记录落点:0161/0166 → 本表 0168(处置裁定)与 0170;0160 → `cw_enemy_data.py` 头部(结论)与本表 0177(实采升级);0172 → `cw_comps.py` B3 注释;0194 → `cw_weight_search.py` 头部;0167(0168 引用的 K2 依赖)→ 无独立存档,上下文见本表 0168。
 
 | 编号 | 标题 | Status | 日期 | 一句话 |
 |------|------|--------|------|--------|
@@ -141,3 +142,4 @@
 | [0243](0243-bridge-deploy-identity.md) | 桥期 deploy 身份:四桥映射补全 hunt3/dot_belog | accepted | 2026-08-22 | 五局同指纹反思(25e3838d)统一根因=桥期无 target 真空:hunt3 不在 _BRIDGE_FW_MAP→transition_framework=''→deploy target/豁免全空→配方核心与散板同序竞争,板满滞留 bench(局53:仙舟对躺 bench);修=FRAMEWORK_FACTIONS 加 狼狩/贝洛伯格+map 补全(不入 FRAMEWORKS,pick_framework 三主流不变)+刷新门<2→<3;「买对的人没上场」 |
 | [0244](0244-shop-unk-stop-restore.md) | shop 未识别卡恢复停机留证(撤销 r34 降级) | accepted | 2026-08-24 | 用户裁决「未识别不能降级」:r34 留证不停机=带病跑(错过建档窗口+残缺牌面决策);恢复方案 D(截图+flag 三要素+stop+保画面,M35 防抖保留);阻断代价用户知会接受;「待用户确认」待办闭环 |
 | [0245](0245-production-checks-integration.md) | 生产遥测接 checks(栈判别+检查子集适配) | accepted | 2026-08-24 | strategy_id=line_v2 解封:生产跑的就是 LineStrategy,BuyCard.reason 共享 dataclass 生产同带标签;栈判别(id 优先/退词表)+coldstart 子集(default 栈跳过),金对账归 econ_reconcile 不双源;检查器自身由变异自检锁钉死(去门必须涌现违规,审查 316ebbc0 证据 CI 化) |
+| [0246](0246-doc-drift-repair-batch.md) | 文档漂移修复批(as-built 对齐代码实况;38 条) | accepted | 2026-08-24 | 三路对拍审查出 38 条系统性漂移(v1→v2 滞后):05 §6 日志两族前缀+可用 grep 口径重写/README 模块地图导航修复+sim 基建入图/redesign §5.4 落地现状注记+附录 A 落地常量映射/06 字段表重对齐/03 动作表·04 接线表·07 钩子清单补全/提案号 ADR(0160-0194)INDEX 映射注记/game 侧注册表状态+正当防卫数值修正;设计文本按 ADR-0227 保留为 Phase B 蓝图,分歧处加注记桥不重写 |

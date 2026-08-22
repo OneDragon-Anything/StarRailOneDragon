@@ -31,13 +31,13 @@
 | ~~invest_cards.md~~(已删 2026-08-18) | 同上(plaza API 直灌注册表,人读版 doc 双源已撤) | 334+83 | 🟢 注册表 |
 | ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `cw_investments`(plaza 全量) | ~82 | 🟢 注册表 |
 | ~~equipment.md~~(已删 2026-08-18) | 装备 → **代码单一源** `cw_equipment.EQUIPMENTS`(158) | 158 | 🟢 注册表 |
-| [competitors.md](competitors.md) | 敌人词缀(~50)/竞争对手阵营/节点机制(**注册表未建,本文唯一源**) | ~50词缀 | 🟡 米游社图鉴无「竞争对手」分类(🔴 20个竞争对手阵营待实机) |
+| [competitors.md](competitors.md) | 敌人词缀(~50)机制分类/克制叙事 + 竞争对手阵营(**词缀效果原文已入注册表 `affix_effects_data.AFFIX_EFFECTS`——运行时采集 ground truth;本文保留机制分类与克制启示层;20 个竞争对手阵营仍未建模,本文唯一源**) | ~50词缀 | 🟡 词缀=米游社攻略统计+实机采集校准(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
-| [bosses.md](bosses.md) | boss 克制关系全集(**注册表未建,本文唯一源**) | V4.4 全量 | 🟢/🟡 |
+| [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
 | [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准对拍源) | 29 聚类 | 🟢 官方 API |
 
 > 战力表数据(power_table_meta,`tools/cw/gen_power_table.py` 生成)是**策略系统校准数据**,
-> 归 [develop/currency_war/power_table_meta.md](../../develop/currency_war/power_table_meta.md)。
+> 归 [develop/currency_war/power_table_meta.md](../../../develop/currency_war/power_table_meta.md)。
 
 ---
 
@@ -63,10 +63,10 @@
 | **米游社图鉴 vs 游戏内数据银行差额** | ~~策略差19(315/334)~~ **已闭**(plaza API 334 全量,ADR-0150)、环境差5 已闭(API 83)、装备差2(153/155) | 投资策略/环境已切 plaza API 直出(`gen_plaza_invest.py`,内建 diff);装备差 2 🔴 待实机补 |
 | **竞争对手阵营(20个)** | A8 boss 阵营/克制关系 | 米游社图鉴 channel/map/209 **无「竞争对手」子频道**(只有员工/装备/投资策略/投资环境/羁绊5类)。游戏内数据银行有20个竞争对手阵营 → 🔴 需实机 OCR 或米游社专页(待日后收录) |
 | 概念股"角色:/装备:"具体清单 | 概念股送的精确角色名 | 图鉴原文是图标,抓取被剥离;效果文本已含规律(送某羁绊角色+装备) |
-| 敌人词缀完整名单+精确效果 | A8 对策配置 | 米游社图鉴未收录词缀(competitors.md 现为攻略统计🟡),需实机 OCR 落库 |
+| 敌人词缀完整名单(效果已采) | A8 对策配置 | 词缀**效果原文**已由 HandleBriefing 运行时采集入 `affix_effects_data`(进行中,实机遇新词缀自动补);米游社图鉴无词缀分类,名单补全靠实采;competitors.md 机制分类为攻略统计🟡 |
 | 罗刹站位/类型 | 角色表小缺口 | content/6252 单独取(本次批量漏取) |
 | **优势布局全量(钻钞 cost + 效果原文)** | 跨局 meta(R2-1 / 09) | advantage_layouts.md 暂用 bwiki;米游社图鉴 channel/map/209 **无此项**,玩法说明 6564 只有机制 → 待米游社专页(若日后收录)或实机校准 |
-| **费用刷新概率表(等级 × 1-5 费)** | A4 牌池模型精度(蒙特卡洛 D 牌) | bwiki/gachabase 均无精确表;可能游戏内才公开 → 实机 OCR 逐等级记录 OR 米游社专页(若日后收录) |
+| **费用刷新概率表(等级 × 1-5 费)** | ~~A4 牌池模型精度~~ **已闭** | `cw_shop_odds.REFRESH_PROB` 游戏内实机 OCR 全量落地(ADR-0091);economy.md 指常量名 |
 | 装备合成配方(哪 2 简易→哪进阶) | 07 装备合成树(EQUIP_RECIPES) | EQUIPMENTS 注册表有效果无逐条配方;待 content/info 逐条补或实机 |
 
 > **注**:旧文件 `../cw_game_data.md` 已废弃,数据已拆分到本目录各文件。
