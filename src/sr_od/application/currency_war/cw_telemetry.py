@@ -181,7 +181,9 @@ class ExogenousEvent:
     ts: str = ""
     run_id: str = ""
     round_num: int = 0
-    kind: str = ""                  # node_enter/popup/briefing/condition_trigger/user_action
+    kind: str = ""                  # node_enter/popup/briefing(r378b 收敛:仅这三种有生产者;
+    # condition_trigger/user_action 从 schema 删——测量链 review B1 实锤零
+    # 写入点,声明的 kind 无生产者=消费端等死链(node_type 同型病))
     detail: str = ""
     state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
 
@@ -378,7 +380,7 @@ class TelemetryRecorder:
                          state: GameState | None = None) -> None:
         """记外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
 
-        kind:node_enter/popup/briefing/condition_trigger/user_action;
+        kind:node_enter/popup/briefing(r378b 收敛,见 ExogenousRecord);
         state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义)。
         """
         snap: dict[str, Any] = {}

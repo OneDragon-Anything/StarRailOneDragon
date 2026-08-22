@@ -577,6 +577,14 @@ class CurrencyWarRunLoop(SrOperation):
                 screen, '货币战争-简报', '按钮-下一步', success_wait=2)
             if _nx.is_success:
                 log.info('[cw-loop] 位面简报 → 点下一步(词缀/首领已采集)')
+                # r378b(测量链 review B1):exogenous 生产端补 briefing——
+                # schema 声明的 kind 此前零写入(死链同构),简报词缀是
+                # 22 号预案频率统计的输入。
+                with contextlib.suppress(Exception):   # 遥测 best-effort
+                    cw_telemetry.record_exogenous(
+                        0, 'briefing',
+                        detail=f'affixes={getattr(self.ctx, "cw_briefing_affixes", None)}'
+                               f' bosses={getattr(self.ctx, "cw_briefing_bosses", None)}')
                 return self.round_wait(wait=1.5)
             return self.round_retry(wait=2)
 
@@ -854,6 +862,11 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-中断挑战弹窗', '标识-中断挑战',
                                   crop_first=False).is_success:
             log.info('[cw] [loop] [1g] 中断挑战 dialog(误触)→ 点右上X关闭回备战')
+            # r378b(测量链 review B1):exogenous 生产端补 popup——
+            # 误触弹窗是外生事件高频源(bug#2 ESC 三次实锤),22 号
+            # 预案的「弹窗干扰频率」此前零数据。
+            with contextlib.suppress(Exception):   # 遥测 best-effort
+                cw_telemetry.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
             _btn = self.round_by_find_and_click_area(
                 screen, '货币战争-中断挑战弹窗', '按钮-关闭')
             if _btn.is_success:

@@ -57,6 +57,18 @@ def _assert_guards(src_dir: Path) -> None:
             '池源只能是生产 replay 目录')
 
 
+# r378b(测量链 review B3):事故局隔离清单——这些 run 的遥测被判定
+# 不可信(双进程写侧竞争/观测链断),生成器**默认物理排除**防回灌
+# (只「作废判读信任」不排池,下次全量重生成会悄悄流回快照)。
+# 增删条目在此登记(带一句事故原因),源头治理靠 daemon 修复。
+QUARANTINED_RUNS: dict[str, str] = {
+    # 2026-08-22 双进程事故(r377):18:56 restart orphan 残留,两代
+    # server 并行写 outcomes(killed 全 None=写侧竞争表征)。
+    'run_20260822_185613': 'r377 双进程写竞争(局55)',
+    'run_20260822_191028': 'r377 双进程写竞争(局56/57 重启交错)',
+}
+
+
 def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
     """逐行解析 jsonl;半写行(撕裂尾行)跳过+计数,不静默。"""
     out: list[dict] = []
@@ -80,9 +92,13 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     """
     _assert_guards(src_dir)
     skipped: dict[str, int] = {}
+    quarantined_hits: set[str] = set()
     boards: dict = {}
     for d in _iter_jsonl(src_dir / 'decisions.jsonl', skipped):
         if runs_filter and d.get('run_id') not in runs_filter:
+            continue
+        if d.get('run_id') in QUARANTINED_RUNS:
+            quarantined_hits.add(d.get('run_id'))
             continue
         st = d.get('state') or {}
         b = st.get('board') or {}
@@ -92,6 +108,9 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         if o.get('hp_after') is None:
             continue
         if runs_filter and o.get('run_id') not in runs_filter:
+            continue
+        if o.get('run_id') in QUARANTINED_RUNS:
+            quarantined_hits.add(o.get('run_id'))
             continue
         seqs.setdefault(o.get('run_id'), []).append(o)
     pool: dict = {}
@@ -122,9 +141,12 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         'runs_filter': (sorted(runs_filter) if runs_filter else 'all'),
         'skipped_lines': skipped,
         'unlabeled_dropped': unlabeled_dropped,
+        # r378b:隔离清单实际命中的 run(没命中=清单过期,该清理)
+        'quarantined_hits': sorted(quarantined_hits),
         'depth_bucket_w': DEPTH_BUCKET_W,
         'note': 'v2 只收可信标签行(2026-08-22 retrofix 后:死链'
-                '历史 node_type 置 None 已丢弃计数);跨策略版本混杂'
+                '历史 node_type 置 None 已丢弃计数);事故局物理排除'
+                '(QUARANTINED_RUNS,r378b);跨策略版本混杂'
                 '已知(一轮#10),过滤走 --runs 重生成',
     }
     return pool, meta
