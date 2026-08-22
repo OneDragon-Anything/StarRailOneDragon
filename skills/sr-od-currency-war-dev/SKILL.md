@@ -27,6 +27,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | as-built 策略正文(结构/语义/边界) | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(十类深读,唯一源) |
+| 阵容知识怎么提炼(版本更新重跑深读时) | `research/combo_methodology.md` 开头「证据三层」:统计骨架(carry 聚类)× 逐篇细节(攻略帖全文精读)× 机制解释(技能/羁绊/装备/投资效果的游戏数据本体)——单靠统计发现不了细节,机制不成立的高频做法标存疑 |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
