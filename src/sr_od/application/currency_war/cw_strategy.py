@@ -208,6 +208,9 @@ class StrategySession:
     # r363(审计 P0-2):左移推断的轮次锚——同轮多次 probe 不重做
     # 左移(防 current 超前一位写下一节点类型)。
     nodeseq_probe_anchor: tuple | None = None
+    # r364(局47 死循环):腾席链 b 的 gold 真值等待计数(>1 次无
+    # 进展 → 放弃等待落链 c;环入口清零)。
+    free_bench_gold_wait: int = 0
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

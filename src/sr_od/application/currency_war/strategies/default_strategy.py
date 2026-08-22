@@ -738,21 +738,48 @@ class DefaultCwStrategy(CwStrategy):
                         return DeployMove(from_slot=bc.slot, to_row=row, to_slot=empty)
         # b. 升级扩容(cap+1 → 回 a):gold 需可信(framework F2 state_gold_trusted,MED-1 接线;
         # shop 开态 + fresh state 才信 —— 关态读空/缓存过期都会误判无金 → 链 c 误卖)
+        # r364(局47 死循环修:50min 卡「警告→M-6→链b 要真值→EnsureShopOpen
+        # →警告」40 次):**进展保证**——EnsureShopOpen 成功 ≠ 下一轮
+        # state_gold_trusted 就 True(obs 快照刷新时机在环外),前提永不
+        # 满足 = 无进展环。修:同环第 2 次进链 b 仍无真值 → 不再等,
+        # 直接试 LevelUp(state.level_up_cost OCR 真值优先,缺省 4;
+        # 金不够 gate 拒 → 自然落链 c,比死等好)。计数在环入口清
+        # (director 环=同轮;跨轮重置)。
         if st.level < 10:
+            _lk = getattr(session, 'free_bench_gold_wait', 0)
             if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
+                session.free_bench_gold_wait = 0
                 fresh = self._fresh_state(obs, session)
                 if cw_plan.level_up_gate(fresh, target):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
                     return LevelUp()
             else:
-                log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
-                return EnsureShopOpen()
+                _lk2 = getattr(session, 'free_bench_gold_wait', 0) + 1
+                session.free_bench_gold_wait = _lk2
+                if _lk2 <= 1:
+                    log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
+                    return EnsureShopOpen()
+                # r364:第 2 次仍无真值 = 无进展环(EnsureShopOpen 成功但
+                # trusted 刷新时机不在此环)→ 放弃等待,直落链 c 卖牌
+                # (卖回金也是金;卡 50min 的代价 >> 卖一张散件)。
+                log.info('[cw][prep] 腾席链b:gold 真值等待 %d 次无进展 → 放弃,落链 c(局47 死循环修)',
+                         _lk2)
         # c. 卖最弱(_weakest_bench_idx 含 3合1 重复件保护;全保护 → None)
+        # r364 兜底:全保护(None)且 b 等待超限 → **强制卖 bench 首
+        # 个非在场件**(保护是优化不是死锁理由;卡 50min 实证全保护
+        # 也是死循环形态之一)。正常路径(未超限)不受影响。
         idx = cw_plan._weakest_bench_idx(st, config.character_priority, target)
         if idx is not None and idx < len(st.bench):
             bc = st.bench[idx]
             log.info(f'[cw][prep] 腾席链c:卖最弱 槽{bc.slot}({bc.char_id})')
             return SellBench(slot=bc.slot)
+        if getattr(session, 'free_bench_gold_wait', 0) > 1:
+            _dep_all = cw_plan.deployed_name_set(st)
+            for bc in st.bench:
+                if bc.char_id and bc.char_id not in _dep_all:
+                    log.info(f'[cw][prep] 腾席链c(r364 强制):全保护死锁 → 卖 槽{bc.slot}'
+                             f'({bc.char_id})')
+                    return SellBench(slot=bc.slot)
         # d. 全是有用角色 → 留置(DeferSpheres;框架计 defer_count,门=2)
         log.info('[cw][prep] 腾席链d:无可卖/不可升 → DeferSpheres(球留置)')
         return DeferSpheres()

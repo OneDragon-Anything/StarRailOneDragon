@@ -391,6 +391,8 @@ class PrepDirector(SrOperation):
         session = match.session
         session.defer_count = 0
         session.prep_phase = 0
+        # r364(局47 死循环):gold 真值等待计数环入口清(跨轮重置)
+        session.free_bench_gold_wait = 0
         session.prep_phase_retry = 0
         self._executor = PrepActionExecutor(self, self.ctx)
         self._steps = 0
