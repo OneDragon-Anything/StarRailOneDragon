@@ -462,11 +462,15 @@ class DeployBench(SrOperation):
             if _deployed_cids:
                 log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
             # 已上场角色的阵营档(多阵营角色每阵营 +1,同板面 OCR 口径)
+            # r361b(review B 修:口径统一):补 flows——_tier_completes
+            # 的补档键按 factions+flows 全羁绊判档,而此处只累 factions
+            # → 流派补档件(击破2→3)在生产永不优先,锁测试锁了个
+            # 生产走不到的路径。同口径修复(板面 OCR 含流派行)。
             from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
             for _dc in _deployed_cids:
                 _dch = _CH.get(_dc)
                 if _dch:
-                    for _f in (_dch.factions or ()):
+                    for _f in ((_dch.factions or ()) + (_dch.flows or ())):
                         _deployed_fac[_f] = _deployed_fac.get(_f, 0) + 1
         tgt_idx, rest = [], []
         # live 2026-08-15:target 优先 = 阵营交集 **或** core_char(_bench_cid;辅助如花火/瓦尔特

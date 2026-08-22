@@ -81,16 +81,14 @@ def p1_formation_target(round_num: int,
                         board_names=None) -> tuple[str, int, int]:
     """P1 成型进度检查(r356/r358)→ (阶段键, 目标值, 当前值)。
 
+    ⚠ board_names=None/空集 = tracked 身份 miss(review A 守卫):
+    无法判核心在场 → **不折扣**(按纯档位算)——空集打折会把
+    SIFT 全 miss 的局恒判「未成型」(r361b 前的陷阱)。
+
     阶段判据(V4.0 过渡节奏 + r358 核心角色维):
     - r≤3(bridge2):桥雏形 = 板面引擎阵营中 ≥2 档的阵营数 ≥2;
-    - r≤6(recipe5):max(recipe_tier, 核心三人组在场数×等效档)
-      ——r358:核心 1 人 = 引擎枢纽到位的档位等价(用户口径
-      「羁绊里的角色」;核心三人组到齐+配方 5 档 = 完全成型,
-      检查值 = min(recipe_tier, 5) 与核心数的组合:值 =
-      recipe_tier + core_count(核心在场使同档位更实)的上限
-      截断在 target——简化实现:cur = recipe_tier if
-      core_count >= 2 else max(0, recipe_tier - 2)(无核心时
-      档位打折——空壳档位不算数);
+    - r≤6(recipe5):核心三人组在场 ≥2 时档位足额,否则 -2 折扣
+      (空壳档位不算数;cur = max(0, recipe_tier - 2));
     - r≤8(recipe7):同上,目标 7;
     - r9+:返 ('boss', 0, 0)(决战窗,检查点不适用)。
     """
@@ -98,8 +96,11 @@ def p1_formation_target(round_num: int,
         cur = sum(1 for f, c in board.items()
                   if c >= 2 and f in ENGINE_FACTIONS)
         return 'bridge2', _P1_FORMATION_TARGETS['bridge2'], cur
-    core_n = (core_trio_count(board_names)
-              if board_names is not None else _CORE_TRIO_TARGET)
+    # r361b(review A 守卫):board_names 空集 = tracked 身份全 miss
+    # → 不折扣(判不了核心在场 ≠ 核心不在场;恒打折会让 SIFT
+    # 故障期永走围栏)。None = 老调用兼容(不判核心,足额)。
+    core_n = (_CORE_TRIO_TARGET if not board_names
+              else core_trio_count(board_names))
     if round_num <= _P1_FORMATION_ROUND_EDGES[1]:
         base = recipe_tier(board)
         # r358:核心 <2 时档位打折(空壳档位);到齐按原值

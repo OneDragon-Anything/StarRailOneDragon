@@ -54,6 +54,21 @@ from sr_od.application.currency_war.cw_economy import streak_gold  # noqa: E402,
 BASE_INCOME: int = 5
 INTEREST_CAP: int = 5
 
+# r360(v7 分轮次裁决):实机对账残差=奖励球/节点事件金未建模,
+# 随轮次增长(r1→r2 中位 +1 … r8→r9 中位 +9)。校准层注入
+# (ADR-0233):按轮次经验分布采样,让 sim 金压力对齐实机
+# (策略的攒息/破息行为分布依赖真实金流)。
+EVENT_GOLD_BY_ROUND: dict[int, tuple[float, ...]] = {
+    1: (1,), 2: (5.5,), 3: (2,), 4: (2,), 5: (2,),
+    6: (2,), 7: (4,), 8: (9,),
+}
+
+
+def _event_gold(round_num: int, rng: random.Random) -> int:
+    """奖励球/节点事件金(校准层;v7 各轮中位,±2 抖动)。"""
+    base = EVENT_GOLD_BY_ROUND.get(round_num, (4,))[0]
+    return max(0, int(base + rng.uniform(-2, 2)))
+
 # 战斗结算(25 局 HP 轨迹校准;方向=锁线/桥认领)
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
 WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 方向已立的轮结算
@@ -334,7 +349,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         st.round_num = rn
         st.gold += BASE_INCOME + min(INTEREST_CAP, st.gold // 10) \
-            + streak_gold(streak)   # r296 用户口述分段(0-1→0,2-4→2,5+→3)
+            + streak_gold(streak) + _event_gold(rn, rng)   # streak_gold 单一源 cw_economy(0-1→1,2-4→2,5→3,6+→4,r305);事件金 ADR-0233
         st.shop = pool.draw_shop(st.level)
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
@@ -342,6 +357,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 执行+买后重估(r251):刷→见新店→(再刷或买)。
         # r273 修:sim 逐动作消费,遇 RefreshShop 执行后立即
         # re-decide(捕捉"刷到就买"),段数上限防死循环。
+        # r361b(ADR-0219 代理语义纪律,第三次命中):r358 检查点核心维
+        # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
+        # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。修:sim 侧
+        # deployed 代理 = bench 引擎件(同 depth_trail 的 _deployable
+        # 口径,ADR-0218 depth 语义一致)——供 update_target/检查点读。
+        from collections import Counter as _C0
+        _fc0 = _C0(b.faction for b in st.bench)
+        st.deployed = [
+            BenchChar(slot=i + 1, faction=b.faction,
+                      char_id=b.char_id if getattr(b, 'char_id', '') else '')
+            for i, b in enumerate(st.bench)
+            if (_fc0.get(b.faction, 0) >= 2
+                or b.faction in _SIM_ENGINE_FACTIONS)
+        ]
         for _seg in range(8):
             strat.update_target(st, sess, None)
             acts = strat.decide_prep(st, sess, None)
