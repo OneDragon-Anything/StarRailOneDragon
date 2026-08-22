@@ -285,7 +285,21 @@ class LineStrategy(DefaultCwStrategy):
         # 之外最高优先——P1 r5+ 的投资窗不因象限漂移失效)。
         # r278→r285(节点骨架杠杆):slot5-6 遭遇高发,cw_sim
         # r6/r7 合计 -28.6 HP——遭遇对是血口,r8 太晚。
+        # r356(架构反思 B):P1 r5-r8 过**成型检查点**——配方
+        # gap>0 时 boss_breaker 的集中买加配方围栏(只买
+        # RECIPE_FACTIONS∩板面,防散面固化);独立 push 支
+        # (r356 首版)在 sim 实证 89% 空手+替换掉实战购买
+        # 反而更差(hp_ge_60 2.2%→0.3%),撤——围栏内嵌。
         if state.plane == 1 and state.round_num >= 5:
+            from sr_od.application.currency_war.cw_line_defs import (
+                p1_formation_target,
+            )
+            _phase, _tgt, _cur = p1_formation_target(
+                state.round_num, state.board or {})
+            if _phase != 'boss' and _cur < _tgt:
+                log.info('[cw][formation] r%d %s %d/%d 未达标'
+                         '(集中买走配方围栏)', state.round_num,
+                         _phase, _cur, _tgt)
             return self._boss_breaker_actions(state, session)
         if cat:
             return self._catchup_actions(state, session)
@@ -476,13 +490,25 @@ class LineStrategy(DefaultCwStrategy):
         # 板面阵营」仍买散件——集中买必须**按档位接近度排序**:
         # 优先「count 最高/最接近下一档」的阵营(羁绊档位跃迁才是
         # 深度质变点;2→3 档 > 1→2 档 > 新开 1 档)。
+        # r356(架构反思 B·围栏):配方未满(recipe_tier<RECIPE_BASE)
+        # 时集中买限定 RECIPE_FACTIONS∩板面——tier_gap 在散面上
+        # =随机堆散阵营,恰与配方集中相反(反思报告点名的洞)。
         _bought = {a.card.name for a in actions if isinstance(a, BuyCard)}
         _board = st2.board or {}
+        from sr_od.application.currency_war.cw_line_defs import (
+            RECIPE_BASE,
+            RECIPE_FACTIONS,
+            recipe_tier,
+        )
+        _board_factions = {f for f, c in _board.items() if c >= 1}
+        if recipe_tier(_board) < RECIPE_BASE:
+            _fenced = _board_factions & set(RECIPE_FACTIONS)
+            if _fenced:
+                _board_factions = _fenced   # 围栏:配方未满只买配方阵营
         # 阵营按「距下一档的缺口,同缺 solidarity 高者先」排序
         def _tier_gap(f: str) -> tuple[int, int]:
             c = _board.get(f, 0)
             return (max(0, 3 - c), -c)   # 缺口小者优先;平局 count 高者先
-        _board_factions = {f for f, c in _board.items() if c >= 1}
         for card in sorted(
                 (c for c in (st2.shop or state.shop or [])
                  if c.name and c.faction in _board_factions
