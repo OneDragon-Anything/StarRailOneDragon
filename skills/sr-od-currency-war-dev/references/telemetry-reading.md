@@ -1,48 +1,80 @@
-# 遥测判读方法论(看什么/怎么读/视图缺口)
+# 遥测判读方法论(看什么/怎么读/覆盖与缺口)
 
 > SKILL.md §判读 的展开。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。
 
-## 核心原则
+## 核心原则(用户定调)
 
-- **采集的基本都是有用的数据**:decisions.jsonl 的 state 是 GameState 全量序列化(deployed 含 char_id/star/equips、bench、owned 装备栏、shop、streak、保真位…)。判读不该受限于现成视图——视图没显示的维度,直查原始 jsonl(join 键 run_id+round_num)。
-- **保真位先行**:hp_readable/gold_readable/board_readable=False 的轮,数值是 miss 兜底不是真值——判读先滤掉假数据,别把兜底当观测下结论。
-- **单局归因是判读大忌**:一局的相关≠因果;结论要跨局对照(近 N 局同维并列)。
+1. **观察的数据都是对决策有用的**——GameState 的每个字段都对应一个决策消费点;遥测要全记,复盘要全面(羁绊/角色/装备/站位/经验/商店/投资策略环境都看),不是只看最显眼的维度。
+2. **采集的基本都有用,别被视图边界限制**:decisions.jsonl 的 state 是全量序列化;视图没显示的维度直查 jsonl(join 键 run_id+round_num)。视图覆盖是渐进的,判读面不能跟着视图走。
+3. **保真位先行**:hp_readable/gold_readable/board_readable=False 的轮,数值是 miss 兜底不是真值——先滤假数据再下结论。
+4. **单局归因是判读大忌**:结论要跨局对照(近 N 局同维并列),单局相关≠因果。
 
-## 阵容质量 = 三维,缺一维就是盲判
+## 观察面全量清单( GameState 32 字段 → 复盘问题)
 
-教训存档(用户点名):**看羁绊忽略角色**(羁绊档够但核心角色不在场=空壳档位,星级演进无人看)、**装备乱用不可见**(carry 没拿 key_equips/装备乱穿/owned 滞留,所有视图都不显示装备)。羁绊档位只是三维之一:
+按判读主题分组;「视图」列 = 现成查询覆盖(无 = 直查 jsonl);「空」= 采集缺口(字段恒空,见文末):
 
-| 维度 | 看什么 | 数据源 |
+### 阵容质量(三维,缺一即盲判)
+| 字段 | 视图 | 复盘问题 |
 |---|---|---|
-| **羁绊档位** | 配方成型进度(激活档逐轮升?恒 0=配方没上场) | board → tiers 视图 |
-| **角色构成** | 核心角色在场吗(羁绊够≠核心在,空壳识别);星级演进(核心到 2★ 了吗,何时到的);同名冗余 | state.deployed[].char_id + star |
-| **装备分配** | carry 拿到 key_equips 了吗;谁穿了什么(乱穿=强度浪费);owned 栏滞留(有装备没人穿=分配断线) | state.deployed[].equips + state.equips |
+| board | rounds/tiers | 羁绊档位构成;配方成型进度 |
+| board_next_tier | 无 | 距下档几人(差一人没凑上=供给问题) |
+| deployed(char_id/star/equips/position_pref) | tiers(名+★+装备) | 核心在场吗(空壳档位);星级演进(核心 2★ 何时到);装备归属(carry 拿 key_equips 了吗/乱穿);**站位**(前排数 vs 设计) |
+| bench | 无(仅 outcome bench_count) | bench 囤什么(压缩件/final 囤件/滞留件);席满管理 |
+| equips(owned) | tiers(owned 行) | 装备滞留/合成材料囤积 |
+| plane_bosses | **空** | boss 克制兑现(counter 线该避没避) |
+| enemy_affixes | **空** | 词条 counter 兑现 |
 
-## 判读维度清单(逐项过,别只看最显眼的)
-
-1. **HP 轨迹**(hp 视图):逐轮 Δ + 节点类型;中期掉血轨迹注定不达标即早停;板深只是粗代理——同板深不同构成掉血差大(三维质量才是解释变量)。
-2. **阵容三维**(上表):每局至少扫一遍 deployed 构成 + 装备归属。
-3. **经济轨迹**(economy 视图):滞留轮(金≥20 花=0)/收入对不上(息+连胜+基础核对,引到档金真值)。
-4. **购买明细**(supply 视图):全波牌面 vs 实际购买——该买没买(供给在手里错过)/不该买买(散件固化);refresh 波不丢。
-5. **执行对拍**(plan_vs_exec 视图):plan 说买什么 vs 次轮 board/bench 实际——执行层吞动作的缺口。
-6. **异常标记**(anomalies 视图):金≥40 且 0买0升 / 单轮掉血≥25 / plan_error——逐条定位根因,定位不了不进下一局。
-7. **胜负真值**(outcomes):killed/progress_delta/streak——输轮也记(扣血=战斗失败的游戏内记录)。
-8. **换线序列**(decisions 的 target_comp 变化):同节点双 pivot = churn 信号。
-
-## 视图覆盖矩阵(缺口=直查 jsonl)
-
-| 维度 | 视图 | 缺口补法 |
+### 经济与节奏
+| 字段 | 视图 | 复盘问题 |
 |---|---|---|
-| 掉血/板深 | hp | 板深粗代理,构成看 jsonl |
-| 羁绊档 | tiers | — |
-| 角色构成 | tiers(deployed 行) | 星级/装备不全时直查 state.deployed |
-| **装备分配** | **无专门视图** | 直查 jsonl:state.deployed 各项 equips + state.equips(owned);新判读需求按「新视图/查询参数」纪律补,别写一次性脚本 |
-| 经济 | economy | — |
-| 购买 | supply | — |
-| 执行 | plan_vs_exec | — |
+| gold | rounds/economy | 轨迹/滞留轮/息核对 |
+| level | rounds(部分) | 升级节奏 vs 5→7→9 基线;错过窗口 |
+| xp_progress | 无 | 经验点了几下/何时升级;半吊子点经验(金尽未升级) |
+| level_up_cost / shop_refresh_cost | 无 | 折扣卡生效核对 |
+| streak | **空**(state)·outcomes 有 | 连胜-保息抉择是否如设计触发 |
+| bench_full_flag | **空** | 席满轮与腾席动作对齐 |
+
+### 供给与选择
+| 字段 | 视图 | 复盘问题 |
+|---|---|---|
+| shop | supply | 全波牌面 vs 购买:该买没买(错过供给)/不该买买(散件固化) |
+| refresh_probs | 无(7/39 有数据) | 轮岗概率条(环境效果兑现) |
+| shop_locked | **空** | 锁店策略维持 |
+| active_env | **空**(仅选卡时) | 环境选择与路线匹配 |
+| active_strategies | trace 顶层 | 持卡演进(选了什么/何时;台账回放) |
+| megastar_char / partner_char | **空** | 巨星/伙伴选择与 comp 匹配 |
+
+### 局环境与难度
+| 字段 | 视图 | 复盘问题 |
+|---|---|---|
+| node_type | hp | 节点类型×掉血(P1 遭遇凶于 boss?) |
+| enemy_difficulty | 无(39/39 有数据) | 难度曲线实测;降难度卡生效 |
+| hp/hp_readable | rounds/hp | 轨迹+保真 |
+| plane_modifiers | **空** | 位面修正(战个痛快)对掉血调制 |
+| selected_difficulty | runs 概览 | 职级对照 |
+| front_max/back_max | 无 | 槽位异常(cap 变体检出) |
+| focus_factions | 无 | focus 漂移(churn 源) |
+
+### 决策迹(trace 顶层,非 state)
+target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、sess_*(session 态快照)、v2_mode/locked_line/bridge(策略 v2)、dp_posture(影子姿态)——AB 对拍与「为什么这么决策」的回放源。
+
+## 判读流程(局后必做)
+
+1. `--recent N` 概览 → 锁定目标局;
+2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);
+3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
+4. **economy** 看滞留/收入核对;**supply** 看购买对错;
+5. **anomalies** 逐条定位根因(定位不了不进下一局);
+6. 按当期判读主题,直查 jsonl 补视图外维度(站位=deployed 的 position_pref;经验=xp_progress…);
+7. 结论写进度树,声明数据边界。
+
+## 已知缺口(判读时心里有数)
+
+- **视图缺口**:上表「无」标记——按「新复盘需求=新视图」纪律渐进补,别写一次性脚本。
+- **采集缺口(state 恒空,待接线)**:streak(决策侧未读,仅结算记)、active_env(选后未回写 state)、plane_bosses/enemy_affixes(简报读了没挂决策 state)、megastar_char/partner_char/plane_modifiers/bench_full_flag/shop_locked(同)。这些维度的复盘暂用 log/结算屏侧数据兜底;接线属于采集工作项,记进度树推进。
 
 ## 判读纪律
 
-- 异常条目当场定位(查 log + supply);跨局存活 = 回归在累积。
+- 异常条目当场定位;跨局存活 = 回归在累积。
 - 结论声明数据边界(「基于进店帧,refresh 波牌面不可见」这类)。
 - 新复盘需求 = 新视图/查询参数(schema 变更查询同步),不是新 py 文件。

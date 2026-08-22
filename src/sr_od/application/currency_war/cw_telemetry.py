@@ -653,8 +653,15 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         lock = d.get("v2_locked_line") or ""
         bridge = d.get("v2_bridge") or ""
         v2_s = f" v2=[{v2}|{lock or '-'}|{bridge or '-'}]" if (v2 or lock or bridge) else ""
+        # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
+        # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
+        _xp = st.get("xp_progress")
+        xp_s = f" xp={_xp[0]}/{_xp[1]}" if _xp else ""
+        _dep = st.get("deployed") or []
+        _front = sum(1 for c in _dep if c.get("position_pref") == "front")
+        pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
         lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                     f" {act_s:<10} | {board}{v2_s}")
+                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}")
     return lines
 
 
