@@ -467,6 +467,70 @@ def _direction_established(session: StrategySession) -> bool:
     return bool(session.locked_line or session.bridge_id)
 
 
+def _board_factions_of(deployed) -> dict[str, int]:
+    """r394:上场角色的阵营计数(生产 board 口径,flows 并计)。
+
+    「过渡阵容凑到没有」的判据输入:recipe_tier(配方档位)/
+    三人组在场上——此前 sim 账本 board 恒空,成型质量不可观测。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    out: dict[str, int] = {}
+    for d in (deployed or []):
+        cid = getattr(d, 'char_id', '') or ''
+        ch = _CH.get(cid)
+        if ch is None:
+            continue
+        for f in (ch.factions or ()) + (ch.flows or ()):
+            out[f] = out.get(f, 0) + 1
+    return out
+
+
+def _first_tier_round(res, tier: int) -> int | None:
+    """r394:配方档位首达轮(ledger 的 board_factions 逐轮查
+    recipe_tier≥tier 的最小轮;查不到=None)。"""
+    from sr_od.application.currency_war.cw_line_defs import recipe_tier
+    for row in res.ledger:
+        bf = (row.get('state') or {}).get('board_factions') or {}
+        if bf and recipe_tier(bf) >= tier:
+            return row.get('round_num')
+    return None
+
+
+def _first_trio_round(res, target: int) -> int | None:
+    """r394:核心三人组上场首达轮(deployed∩_CORE_TRIO 计数
+    ≥target 的最小轮;查不到=None)。"""
+    from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
+    for row in res.ledger:
+        dep = (row.get('state') or {}).get('deployed') or []
+        cnt = sum(1 for d in dep
+                  if d.get('char_id') in _CORE_TRIO)
+        if cnt >= target:
+            return row.get('round_num')
+    return None
+
+
+# r394b:大引擎门槛(transition_combos.md 引擎池表;羁绊计数
+# ≥门槛即引擎达成——DOT2/列车2+/仙舟3,两两组合都成立)。
+_BIG_ENGINES: tuple[tuple[str, int], ...] = (
+    ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
+)
+
+
+def _engines_count(board_factions: dict[str, int]) -> int:
+    """r394b:板面达成的大引擎数(独立判据,组合自由)。"""
+    return sum(1 for bond, tier in _BIG_ENGINES
+               if board_factions.get(bond, 0) >= tier)
+
+
+def _first_engines_round(res, target: int) -> int | None:
+    """r394b:引擎达成数首达 target 的最小轮(过渡阵容=≥2 引擎)。"""
+    for row in res.ledger:
+        bf = (row.get('state') or {}).get('board_factions') or {}
+        if bf and _engines_count(bf) >= target:
+            return row.get('round_num')
+    return None
+
+
 def _deployable_depth(st: GameState) -> int:
     """可 deploy 件数(① 收口:此前三处内联重算口径不一)。
 
@@ -732,6 +796,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'gold': st.gold, 'hp': st.hp,
             'target_comp': (sess.locked_line or sess.bridge_id or ''),
             'state': {'board': {}, 'level': st.level,
+                      # r394(过渡阵容判据接线):板面阵营档位——
+                      # deployed 的 factions 计数(生产 board 口径;
+                      # 旧恒空 dict 让「r几凑到配方X档/三人组上场」
+                      # 在 sim 判读不可见)。recipe_tier 判据的输入。
+                      'board_factions': _board_factions_of(st.deployed),
                       # bench 对齐生产 BenchChar 形状(dict 带
                       # char_id/faction——视图/检查读 b['faction']
                       # 不炸;审查#3)
@@ -830,6 +899,29 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             [d for d in (r.dir_round for r in results) if d < 99])
             if any(r.dir_round < 99 for r in results) else float('nan')),
         'avg_refreshes': sum(r.refreshes for r in results) / n,
+        # r394(过渡阵容成型指标;判据单一源=_P1_FORMATION_TARGETS):
+        # 配方 5 档(RECIPE_BASE)在 r6 前达成的局占比——「位面1
+        # 能否顺利凑到过渡阵容」的直接分布度量(此前只有锁线轮,
+        # 板面档位不可观测)。达成轮取 ledger 的 board_factions
+        # 首达 recipe_tier≥5 的最小轮;boss 局 r9 末仍未达=未凑成。
+        # r394b(用户点题「目标不只是三人组」):**引擎乐高模型**
+        # (transition_combos.md 总模型)——过渡阵容=凑出≥2 个独立
+        # 引擎(大引擎 DOT2/列车2+/仙舟3 两两组合都成立),核心
+        # 三人组只是仙舟DOT 组合的核心层,不是全部。三指标:
+        # engines2_by_r6=达成≥2 引擎(含≥1 大引擎)的 r6 前占比;
+        # recipe5_by_r6=配方 5 档;trio3_by_r8=三人组(核心层)。
+        'engines2_by_r6': sum(
+            1 for r in results
+            if _first_engines_round(r, 2) is not None
+            and _first_engines_round(r, 2) <= 6) / n,
+        'recipe5_by_r6': sum(
+            1 for r in results
+            if _first_tier_round(r, 5) is not None
+            and _first_tier_round(r, 5) <= 6) / n,
+        'trio3_by_r8': sum(
+            1 for r in results
+            if _first_trio_round(r, 3) is not None
+            and _first_trio_round(r, 3) <= 8) / n,
     }
     if ledger is not False:
         out = (Path(ledger) if isinstance(ledger, Path)
