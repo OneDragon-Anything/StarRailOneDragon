@@ -1,5 +1,4 @@
-
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
+# 已下线待重接(battle_prep 决策:late-game target 充足时重接;当前零调用,off-target 清理由 deploy_bench._sell_offtarget_deployed 承担;代码经 2026-08-24 复审,重接时按画面复核即可)
 
 """货币战争 清存量 off-target deployed(点 deployed 头像→详情面板露阵营+出售按钮)。
 

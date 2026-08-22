@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
 """货币战争 投资策略 3 选 1 op(从主循环拆出)。
 

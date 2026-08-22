@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 
 import time
 from typing import ClassVar
@@ -48,7 +47,7 @@ class BattlePrepCycle(SrOperation):
     def buy(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ① 买牌(BuyShopCards)')
         # 识别核对/节点标定钩子已随 P1 挂载切换搬入 PrepDirector(环入口对账 + _probe_node_type;
-        # doc 15 §7 L1)。本类保留为 P3 前回退路径,不再重复采集。
+        # strategy/03(原 doc 15 §7 L1))。本类保留为 P3 前回退路径,不再重复采集。
         return self.round_by_op_result(BuyShopCards(self.ctx).execute())
 
     @node_from(from_name='买牌')

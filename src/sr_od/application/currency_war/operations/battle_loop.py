@@ -754,7 +754,7 @@ class CurrencyWarRunLoop(SrOperation):
             log.info('[cw-loop] 前台无角色提示 → 确认关闭(下轮 PrepDirector 前排保证重部署)')
             return self.round_wait(wait=1.5)
 
-        # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,doc 15/ADR-0123;原 BattlePrepCycle
+        # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,strategy/03(原 doc 15)/ADR-0123;原 BattlePrepCycle
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
