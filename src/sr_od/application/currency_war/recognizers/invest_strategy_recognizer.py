@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争**投资策略画面**额外识别器(per-screen recognizer)。
 
 ``analyze_screen`` 精准命中「货币战争-投资策略」后,框架按 ``screen_name`` 查表调用本识别器,把当前

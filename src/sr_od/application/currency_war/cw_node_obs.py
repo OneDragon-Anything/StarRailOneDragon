@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 **节点选项观测**:遭遇/补给/巨星/伙伴 overlay 截图 → ``EncounterOption`` 等
 (喂 ``cw_events.decide_*`` / 策略 ``decide_encounter`` 等钩子)。
 

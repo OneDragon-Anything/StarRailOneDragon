@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争角色识别:SIFT 特征匹配模板库(纯 CV;库由调用方传 ``avatar_dir``,生产用立绘库)。
 
 **生产实际用的库(2026-08-17 起)**:``deploy_bench._get_templates`` 等加载
@@ -73,10 +71,8 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
     return templates
 
 
-def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
-    """SIFT + ratio test + RANSAC 内点数(越大越匹配;<4 good 直接返回)。"""
-    if sdesc is None or tdesc is None or len(skp) < 4 or len(tkp) < 4:
-        return 0
+def _ratio_good(tdesc, sdesc, knn: float = 0.75) -> list:
+    """ratio test 通过的 good 匹配(免 RANSAC;两阶段第一阶段)。"""
     matches = _MATCHER.knnMatch(tdesc, sdesc, k=2)
     good: list = []
     for t in matches:
@@ -85,6 +81,11 @@ def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
         m, n = t
         if m.distance < knn * n.distance:
             good.append(m)
+    return good
+
+
+def _ransac_inliers(skp, tkp, good: list) -> int:
+    """good 匹配的 RANSAC 内点数(mask None → good 数,同旧语义)。"""
     if len(good) < 4:
         return len(good)
     tp = np.float32([tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
@@ -93,6 +94,18 @@ def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
     if mask is None:
         return len(good)
     return int((mask.ravel() == 1).sum())
+
+
+def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
+    """SIFT + ratio test + RANSAC 内点数(越大越匹配;<4 good 直接返回)。
+
+    单模板完整算(旧路径;``identify_character`` 已不走此函数,改两阶段
+    惰性 RANSAC)。保留作单一语义参考与离线诊断。
+    """
+    if sdesc is None or tdesc is None or len(skp) < 4 or len(tkp) < 4:
+        return 0
+    good = _ratio_good(tdesc, sdesc, knn)
+    return _ransac_inliers(skp, tkp, good)
 
 
 def identify_character(
@@ -117,10 +130,40 @@ def identify_character(
     """
     gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)   # sr_od screen 是 RGB(screencapper BGRA2RGB;D-52 装备侧同类修,本处 2026-08-19 补)
     skp, sdesc = _SIFT.detectAndCompute(gray, None)
-    scores: list[tuple[str, int]] = [
-        (cid, _inliers(skp, sdesc, tkp, tdesc))
-        for cid, (_g, tkp, tdesc) in templates.items()
-    ]
+    if sdesc is None or len(skp) < 4:
+        # 旧路径此况全模板返 0 → best=0 < min_inliers;等价直返
+        return None, 0
+    # 两阶段惰性 RANSAC(2026-08-24 性能优化;决策语义与旧全扫逐位等价,
+    # ADR-0247):
+    # 阶段1 全模板 ratio-test good 数(免 RANSAC,knnMatch 是 BF 高效项);
+    # 阶段2 按 good 降序惰性 RANSAC,剪枝 g ≤ best/ambiguity_ratio ——
+    #   内点 ≤ good(RANSAC 只减不加),被剪者不可能超 best、也不可能
+    #   在歧义触发时占第二(歧义需 second > best/ratio,被剪者 g ≤
+    #   best/ratio 恒不满足)→ best/second_id/歧义判定与全扫一致。
+    #   剪枝记录 upper bound(g)不参与任何决策路径。ratio≤1 时不剪
+    #   (threshold 退化会破等价,防御)。
+    goods: list[tuple[str, list]] = []
+    for cid, (_g, tkp, tdesc) in templates.items():
+        if tdesc is None or len(tkp) < 4:
+            goods.append((cid, []))
+            continue
+        goods.append((cid, _ratio_good(tdesc, sdesc)))
+    goods.sort(key=lambda t: -len(t[1]))
+    scores: list[tuple[str, int]] = []
+    best: int = 0
+    _prune_ok = ambiguity_ratio > 1.0
+    for cid, good in goods:
+        g = len(good)
+        if g < 4:
+            scores.append((cid, g))
+            continue
+        if _prune_ok and best > 0 and g <= best / ambiguity_ratio:
+            scores.append((cid, g))   # upper bound;决策不可达(见上)
+            continue
+        inl = _ransac_inliers(skp, templates[cid][1], good)
+        scores.append((cid, inl))
+        if inl > best:
+            best = inl
     scores.sort(key=lambda t: -t[1])
     best_id, best = scores[0]
     second_id, second = (scores[1] if len(scores) > 1 else ('', 0))

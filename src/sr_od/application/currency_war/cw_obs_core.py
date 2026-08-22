@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 OCR 观测层共享基础设施:screen_info 区域读取 + OCR helper + 常量。
 
 各画面观测模块(``cw_briefing_obs`` 简报 / ``cw_settlement_obs`` 结算 / ``cw_observation`` 备战)

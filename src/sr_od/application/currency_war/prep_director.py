@@ -1,12 +1,11 @@
-# 未验证(P1 新建,2026-08-14;设计 doc 15 v7 + ADR-0123;环流程待实机跑验)
 # review 修订(review round-1,2026-08-14):H-1 观察分层(执行过的游戏动作一律 heavy 重读,
 # light 仅控制流;light 沿用上次 heavy 缓存)/H-2 恢复-屏蔽-bail 分型语义/M-2 模板路径复用
 # ensure_portrait_templates/M-3 gold 可信标记/L-1 对账漂移 [cw!]+截图/L-4 强制出战异常兜底。
 
-"""货币战争 备战决策环(PrepDirector)—— 两层环之内环(框架层;doc 15)。
+"""货币战争 备战决策环(PrepDirector)—— 两层环之内环(框架层;strategy/03(原 doc 15))。
 
 **框架不含任何玩法判断**:何时收球/卖谁/何时出战 = 策略(CwStrategy.decide_prep_action);
-本模块只保证八项框架不变式(F1-F8,doc 15 §5.0):
+本模块只保证八项框架不变式(F1-F8,strategy/03(原 doc 15§5.0)):
 - F1 单步契约: 每步 = observe → decide_prep_action → execute(带验证) → 再 observe
 - F2 观察真实: obs 只由现成 reader 产出;gold 可信度由框架显式标记
   (state_gold_trusted:仅 shop 开态重读的 state 才 True,关态读空不可信)
@@ -126,7 +125,7 @@ class PrepDirector(SrOperation):
 
     单「决策环」节点 + 内部 while;环级预算 MAX_STEPS(步数)与 STALL_LIMIT(零进展)
     兜底强制出战(F5);ping-pong 由外环 MAX_ITER=2000 承担(勿引 node_max_retry —— round_wait
-    不消耗 node 重试预算,operation.py:453-461 仅 RETRY 递增;doc 15 §7 v7 M-1)。
+    不消耗 node 重试预算,operation.py:453-461 仅 RETRY 递增;strategy/03(原 doc 15§7) v7 M-1)。
     """
 
     # 环级预算(§7 环级:步数>60 或 stall≥5 且恢复已试尽 → 强制 StartBattle;实跑校准 §10)
@@ -539,7 +538,7 @@ class PrepDirector(SrOperation):
             except Exception:   # noqa: BLE001  遥测 best-effort
                 pass
             return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
-        # MED-4:战略层 update_target 环入口调一次(doc 15 §6;RunBuyPhase 内 shop.py:166 仍会
+        # MED-4:战略层 update_target 环入口调一次(strategy/03(原 doc 15§6);RunBuyPhase 内 shop.py:166 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
         # ⚖️ r68 review:**入口先过 HP 新鲜度门再调**(cw_strategy.gated_hp,与 shop.py 同门)——
         # 旧版 obs.state.hp 常是 shop 开态 100 兜底 → maybe_pivot 在假 hp 上做信号1涌现判定,
