@@ -1067,6 +1067,25 @@ class LineStrategy(DefaultCwStrategy):
         for b in (state.bench or []):
             if b.faction and b.faction != '?':
                 owned_factions.add(b.faction)
+        # r368(局49 判读,r1 线外全买根因):板面空+bench 空(开局
+        # 首购)时凑对语义不存在(「同阵营成对」要求已有第一块砖)
+        # ——旧版 A5 门(len<3 全放行)让 r1 把盛会之星/公司等线外
+        # 1 费全买(局49:5 金清空,2 张线外,桥后主线零供给,r6 才
+        # 锁线已迟)。修:**冷启动首购只放行桥名单 ∪ 引擎阵营**
+        # (与 _bridge_seed 同名单——买进来的每一张都是方向件)。
+        if not owned_factions:
+            from sr_od.application.currency_war.cw_bridge_pool import (
+                BRIDGE_POOL,
+            )
+            from sr_od.application.currency_war.cw_chars import CHARACTERS
+            _names = set()
+            for combo in (BRIDGE_POOL if state.plane <= 1 else []):
+                _names.update(combo.fixed + combo.core)
+            ch = CHARACTERS.get(card.name)
+            card_bonds0 = (set(ch.factions) | set(ch.flows)) if ch \
+                else {card.faction}
+            return bool(card.name in _names
+                        or card_bonds0 & set(_ENGINE_FACTIONS))
         if card.faction not in owned_factions \
                 and len(owned_factions) >= 3:
             return False    # A5:阵营上限
