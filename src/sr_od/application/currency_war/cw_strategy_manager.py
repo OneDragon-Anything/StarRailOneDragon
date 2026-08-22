@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 策略发现管理器(StrategyManager + StrategyInfo)。
 
 对标 ``ApplicationFactoryManager`` 的「约定式文件扫描 + BUILTIN/THIRD_PARTY 双源 + 元数据 +

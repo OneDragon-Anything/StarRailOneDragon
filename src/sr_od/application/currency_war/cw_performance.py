@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 观测反馈层(PerformanceTracker + comp_viability + 死局检测;纯逻辑,可测,不碰游戏)。
 
 **哲学(用户 2026-08-03 定调)**:观测驱动 ≠ 预测驱动。不建精确战斗模拟器(星铁战斗太复杂、

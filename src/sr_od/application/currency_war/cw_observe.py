@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 可观测框架(统一日志 + 截图,CW 各模块共用)。
 
 全局 logger(``log_utils.log``)+ shot_dir(``.debug/temp/currency_war/shots/``),CW 任何模块

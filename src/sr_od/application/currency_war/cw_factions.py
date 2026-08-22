@@ -1,14 +1,11 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 阵营/羁绊(factions)数据库。
 
 ⚠️ **本文件是判断层(人维护)**:category/note/desc 是人工判断,生成器
 (tools/cw/gen_factions.py)**不写本文件**——它只生成数据层
-``cw_factions_data.py``(TRAIT_TIERS/TRAIT_ROLES,勿手编)与文档层
-``docs/game/currency_war/data/traits/``。手改数据请改生成器源并重跑,勿双源。
+``cw_factions_data.py``(TRAIT_TIERS/TRAIT_ROLES,勿手编)。手改数据请改生成器源并重跑,勿双源。
 
 **来源**:米游社百科「货币战争图鉴」(V4.4,2026-08-03 抓取,权威 🟢 原文);
-效果全文 desc 由 r155 从官方 config API 灌入(版本升级→重跑生成器→对拍)。
+效果全文 desc 由 r155 从官方 config API 灌入(版本升级→重跑生成器,stdout 渲染全文对拍 desc)。
 **版本依赖**:羁绊构成与激活阈值随赛季更新变动,以米游社百科/游戏图鉴为准、实机左面板
 OCR 为真值;本表是 V4.4 快照,供策略 eval 用。
 
@@ -31,8 +28,8 @@ class FactionInfo:
     cn: str  # 中文名
     category: str  # "combat" | "economy" | "support" | "independent"
     tiers: tuple[int, ...]  # 激活阈值(几人激活第 N 层)
-    note: str = ""  # 简述效果(人判注记;效果全文在 docs/game/currency_war/data/traits/(生成器产出)与本表 desc)
-    desc: str = ""  # 效果原文(官方 config API 逐字(r155 灌入);全文另见 docs/game/currency_war/data/traits/)
+    note: str = ""  # 简述效果(人判注记)
+    desc: str = ""  # 效果原文(官方 config API 逐字,r155 灌入;效果全文单一源=本字段,版本更新重跑生成器 stdout 对拍)
 
     def members(self, include_flows: bool = True) -> list[str]:
         """该羁绊的成员角色名(从 CHARACTERS 反查;include_flows=True 含流派羁绊成员)。
@@ -44,7 +41,8 @@ class FactionInfo:
         return [c.name for c in chars_by_faction(self.cn, include_flows=include_flows)]
 
 
-# 米游社百科 V4.4 权威(docs/game/currency_war/data/traits/ 生成器目录为源;\r\n# desc 由 r155 从官方 config 灌入,版本升级→重跑 tools/cw/gen_factions.py→对拍更新)。
+# 米游社百科 V4.4 权威(数据层 cw_factions_data 由 tools/cw/gen_factions.py 生成,勿手编;
+# desc 由 r155 从官方 config 灌入,版本升级→重跑生成器→stdout 渲染全文对拍 desc)。
 # 分类按效果归类;tiers 为逐层激活人数。
 FACTIONS: dict[str, FactionInfo] = {
     # ===== 阵营羁绊(13)=====

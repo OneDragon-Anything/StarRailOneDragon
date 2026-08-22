@@ -1,4 +1,4 @@
-"""货币战争 · 羁绊(traits)数据生成器(官方 traits.json → 注册表数据层 + 明细文档)。
+"""货币战争 · 羁绊(traits)数据生成器(官方 traits.json → 注册表数据层)。
 
 数据源:.debug/temp/currency_war/plaza/trait_detail.json(子代理采集,lineup/index 按羁绊筛,
 V4.4 过滤;采集器 .debug/temp/cw_trait_probe_14*.py 版本更新重跑)
@@ -6,9 +6,12 @@ V4.4 过滤;采集器 .debug/temp/cw_trait_probe_14*.py 版本更新重跑)
 
 产出:
   1. src/sr_od/application/currency_war/cw_factions_data.py —— TRAIT_TIERS(官方 tiers:
-     name → 激活阈值序列)+ TRAIT_ROLES(官方成员名单);
-     效果全文不放代码(无代码消费方,策略层用结构化字段),在文档层(下)。
-  2. docs/game/currency_war/data/traits/<名>.md —— 每羁绊一档(tiers 逐层/效果/成员)。
+     name → 激活阈值序列)+ TRAIT_ROLES(官方成员名单)。
+  2. **stdout 效果对拍输出**(不写文件):逐羁绊渲染 effect_rich 全文,供版本更新时人工
+     对拍 `cw_factions.FACTIONS` 的 desc(效果全文单一源在注册表 desc 字段)。
+     ⚖️ 原「docs/game/currency_war/data/traits/ 每羁绊一档」文档层已删(2026-08-18
+     数据单一源收敛:注册表 desc 即全文,不再维护平行文档);生成器不再写该目录,
+     防重跑复活已删文档层。
 
 效果文本渲染(官方纯文本 effect 字段对 display=all 属性同样丢词,不可直接用,须从
 effect_rich 自行渲染):
@@ -36,11 +39,10 @@ REPO = Path(__file__).resolve().parents[2]
 PLAZA_DIR = REPO / ".debug/temp/currency_war/plaza"
 SRC_JSON = PLAZA_DIR / "trait_detail.json"
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_factions_data.py"
-DOC_DIR = REPO / "docs/game/currency_war/data/traits"
-# r156 写目标白名单守卫:生成器**只允许**写以下路径(数据层+文档层);
-# 判断层(cw_factions.py 等)永不在此列——若有人改动 DATA_PY/DOC_DIR
+# r156 写目标白名单守卫:生成器**只允许**写以下路径(数据层);
+# 判断层(cw_factions.py 等)永不在此列——若有人改动 DATA_PY
 # 指向判断层文件,此处断言拦截(防误覆盖人工维护的注册表)。
-WRITABLE_TARGETS = (DATA_PY, DOC_DIR)
+WRITABLE_TARGETS = (DATA_PY,)
 
 
 def _assert_writable_targets() -> None:
@@ -115,27 +117,17 @@ def main() -> None:
             return txt
         return (t.get("effect") or "").strip()
 
-    def layer_text(t: dict, lr: dict) -> str:
-        """分层效果:优先 layer.effect_rich 渲染,回退纯文本。"""
-        rich = lr.get("effect_rich") or ""
-        if rich:
-            txt, ws = render_rich(rich, prop_map)
-            warns.extend(f"{t['name']}(第{lr.get('layer')}层): {w}" for w in ws)
-            return txt
-        return (lr.get("effect") or "").strip()
-
     warns: list[str] = []
 
     # ---- 1) 数据模块 ----
     lines = [
         "# 警告:本文件由 tools/cw/gen_factions.py 生成(traits.json V" + version + "),勿手编;版本更新重跑。",
         "# 重跑: uv run python tools/cw/gen_factions.py",
-        "# 同源产物(人读文档层,效果全文在此): docs/game/currency_war/data/traits/<羁绊名>.md",
         '"""羁绊官方数据(V' + version + "):tiers(激活阈值)/roles(成员)。",
         "",
         "来源:lineup/index 按羁绊筛采集(V4.4 过滤);采集器与过程见 .debug 工作区。",
-        "分工:数据层(本模块)生成;category/note 等人判层在 cw_factions.FACTIONS 手维护。",
-        "效果全文不入代码(无代码消费方),在 docs/game/currency_war/data/traits/ 文档层。",
+        "分工:数据层(本模块)生成;category/note/desc 等人判层在 cw_factions.FACTIONS 手维护",
+        "(效果全文单一源 = FACTIONS desc 字段;对拍渲染:重跑生成器看 stdout)。",
         '"""',
         "from __future__ import annotations",
         "",
@@ -160,52 +152,12 @@ def main() -> None:
     DATA_PY.write_text("\n".join(lines), encoding="utf-8")
     print(f"[data] -> {DATA_PY}")
 
-    # ---- 2) 明细文档 ----
-    DOC_DIR.mkdir(parents=True, exist_ok=True)
-    for t in traits:
-        nm = t["name"]
-        layers = t.get("layers") or []
-        lt = [int(lr["layer"]) for lr in layers]
-        quals = [lr.get("quality") for lr in layers]
-        roles = sorted(set(t.get("roles") or []))
-        doc = [
-            "---",
-            f"name: {nm}",
-            f"trait_id: {t.get('trait_id')}",
-            f"trait_type: {t.get('trait_type')}  # 0=阵营/流派 1=? 2=独立",
-            f"tiers: {lt}",
-            f"version: {version}",
-            "generated_by: tools/cw/gen_factions.py",
-            "related_code: src/sr_od/application/currency_war/cw_factions_data.py",
-            "---",
-            "",
-            f"# {nm}",
-            "",
-            f"![]({t.get('icon_url') or ''})",
-            "",
-            "## 激活档位",
-            "",
-            "| 层 | 所需人数 | 档色 |",
-            "|---|---|---|",
-        ]
-        for idx, (lv, q) in enumerate(zip(lt, quals, strict=False)):
-            doc.append(f"| {idx + 1} | {lv} | {q} |")
-        doc += ["", "## 效果(官方全文,自 effect_rich 渲染)", "", effect_text(t) or "(见分层效果)"]
-        if layers:
-            doc += ["", "## 分层效果", ""]
-            for lr in layers:
-                doc.append(f"- **第{lr.get('layer')}人**:{layer_text(t, lr)}")
-        doc += [
-            "",
-            "## 成员(官方名单)",
-            "",
-            " / ".join(roles) or "(无)",
-            "",
-        ]
-        for rm in t.get("remarks") or []:
-            doc.append(f"> {rm.get('remark', '')}".strip())
-        (DOC_DIR / f"{nm}.md").write_text("\n".join(doc), encoding="utf-8")
-    print(f"[docs] {len(traits)} 羁绊 -> {DOC_DIR}")
+    # ---- 2) 效果对拍输出(stdout,不写文件) ----
+    # 版本更新时人工对拍 cw_factions.FACTIONS 的 desc 是否需同步(单一源在注册表)。
+    print("\n[effects] 逐羁绊效果全文(对拍 FACTIONS.desc 用):")
+    for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
+        print(f"--- {t['name']} ---")
+        print(effect_text(t) or "(无总效果文本)")
 
     if warns:
         print(f"\n[warn] {len(warns)} 条渲染警告(未知标签/属性,需补档):")

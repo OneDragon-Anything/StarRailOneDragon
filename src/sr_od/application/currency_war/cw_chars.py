@@ -1,9 +1,7 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 角色领域模型(Character + CHARACTERS 注册表;meta 层,V4.4)。
 
-**来源**:米游社百科「货币战争图鉴·员工」`channel/map/209/210`(content/info API,2026-08-03),
-详 ``docs/game/currency_war/data/characters.md``(74 名,含站位/类型/阵营/流派/source)。
+**来源**:米游社百科「货币战争图鉴·员工」`channel/map/209/210`(content/info API,2026-08-03;
+人读 data doc 已删 2026-08-18,注册表即单一源)。
 
 **为什么建模**(用户 2026-08-03):核心实体(角色/阵营/策略/环境/装备)应是**正规 model 类 + 注册表**
 (可查询、可校验、有类型关系),而非字符串散落各处。本模块是角色域:
@@ -164,7 +162,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("景元", 5, "front", "输出", "仙舟", "群攻", source="6137"),  # trait 对齐 plaza:-能量(2026-08-15)
     _ch("托帕&账账", 5, "back", "输出、辅助", "公司", "追击", source="6136"),
     _ch("瓦尔特", 5, "front", "输出、辅助", "列车同行、星间旅人", "减益", source="6135"),
-    _ch("罗刹", 4, "back", "治疗", "星间旅人", "治疗", source="6252"),  # 费用勘误5→4+站位对齐 plaza Back(2028-08-15)
+    _ch("罗刹", 4, "back", "治疗", "星间旅人", "治疗", source="6252"),  # 费用勘误5→4+站位对齐 plaza Back(2026-08-15)
     # —— 特殊召唤单位(投资策略赠送;不可拖动/不可卖,固定占后排)——
     # r75 狸猫局建档:投资策略「龙虎兄弟狸」送双狸猫(弟弟狸小虎=蓝/哥哥狸小龙=红,同造型
     # 异色 → identify_character 色相仲裁区分,_RED_HUE_PAIRS)。cost=0(非购买单位);

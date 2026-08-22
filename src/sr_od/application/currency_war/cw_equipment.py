@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """cw_equipment 视觉识别(SIFT;**手维护,非生成**)。
 
 数据模型(Equipment / EQUIPMENTS / get_equip)在 ``cw_equipment_data``(由

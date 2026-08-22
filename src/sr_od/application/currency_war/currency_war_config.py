@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争配置。
 
 策略层字段(faction/character/event 优先级等)= **meta 层,版本依赖**:游戏更新会改
@@ -18,7 +16,7 @@ DEFAULT_FACTION_PRIORITY: list[str] = [
     "贝洛伯格", "仙舟", "盛会之星", "昼之半神", "巡海游侠", "群攻", "追击", "狼狩",
 ]
 
-# 万用核心角色(出现就抓,不限流派);费用据米游社 V4.4 权威(docs/game/currency_war/data/characters.md)
+# 万用核心角色(出现就抓,不限流派);费用据 cw_chars.CHARACTERS(单一源,plaza 对齐)
 DEFAULT_CHARACTER_PRIORITY: list[str] = [
     # 5 费拼图(后期找)
     "昔涟", "云璃", "流萤",  # 流萤=5费(星核猎手/击破主 C)

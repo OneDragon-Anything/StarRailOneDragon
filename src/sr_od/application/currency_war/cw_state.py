@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 策略状态模型(GameState + Action + 前瞻 simulate)。
 
 策略采用「评估函数 + 贪心改进」架构(见 cw_evaluate.evaluate / cw_plan.plan):
@@ -185,7 +183,17 @@ class BuyCard:
 
 @dataclass
 class SellBench:
+    """bench 卖出动作。
+
+    r381(交接⑤,sim↔生产账本 income 对齐):sim 侧卖出回金按
+    ``cost`` 1:1(cw_sim L630);生产真值 = ``sell_refund(star, cost)``
+    (2★×3+手续费)。两侧本就不同源——sim 简化只对 1★ 准。补采:
+    ``income`` 字段记录**创建时的预期回金**(策略侧算 sell_refund),
+    账本/经济对账消费;未传 = None(sim 与旧调用兼容,sim 侧仍按
+    自己的 cost 口径执行,不读此字段——它是**记录**不是**指令**)。
+    """
     bench_idx: int   # bench 列表索引
+    income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
 
 
 @dataclass
