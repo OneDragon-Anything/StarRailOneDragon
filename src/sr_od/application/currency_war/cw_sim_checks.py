@@ -127,12 +127,47 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
+    """r388 反向指纹(装备层代理回灌断言;r393)。
+
+    指纹:战斗轮(r3+,装备持有语义=r388 开局 hold 后)owned_equips
+    非空但 equipped 空 **连续 2 轮**——装备该穿不穿(白板挨打;
+    r388 修的是反向「开局乱穿」,本检查防「hold 太宽不穿」的
+    过矫回归)。开局 r1-r2(r388 hold 语义)不报。
+
+    边界:deployed 空(没人可穿)不报;owned 全是工具类(不可穿)
+    的判定交由 equip_allocation 语义(不可穿件不会进 equipped,
+    也不会被移出 owned——按 owned 余量判,工具留 owned 是合法)。
+    近似:owned>0 且 equipped=0 且 deployed>0 连续 2 战斗轮 → 报
+    (工具误报由 owned 名单含工具的概率压低,后续可精化)。
+    """
+    out: list[str] = []
+    _stalls: list[int] = []
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        rn = row.get('round_num') or 0
+        node = (row.get('sim') or {}).get('node')
+        if node not in ('battle', 'encounter', 'boss') or rn < 3:
+            continue
+        st = row.get('state') or {}
+        if st.get('owned_equips') and not st.get('equipped') \
+                and st.get('deployed'):
+            _stalls.append(rn)
+    for a, b in zip(_stalls, _stalls[1:], strict=False):
+        if b - a == 1:
+            out.append(f"p1r{a}-r{b}: owned 非空连续零穿着"
+                       f"(白板挨打——r388 hold 过矫形态)")
+    return out
+
+
 # 批量内嵌检查集(分布级;r371b 后冷启动门 sim 内可达,局49
 # 检查升级进批量——真实 sim 批次自动扫)
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
     'deploy_fills_cap': check_deploy_fills_cap,
+    'equip_worn_in_battle': check_equip_worn_in_battle,
 }
 
 

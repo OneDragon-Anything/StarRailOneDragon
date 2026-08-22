@@ -687,6 +687,42 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # count 绑死仙舟非仙舟线局恒 0,审查二轮#8)
         _depth = _deployable_depth(st)
         res.depth_trail.append(_depth)
+        # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
+        # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
+        # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
+        # EquipAll 同源)分配给 deployed → 账本 equipped 字段。
+        # 装备获取采样:通用装备池按 _EQUIP_VALUE 键 + 无名池
+        # (OCR 漏读形态);带钻概率 15%(实机简报词缀影响的粗估,
+        # 校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
+        _equipped_now: list[tuple[str, str]] = []
+        if nodes[rn - 1] == 'supply':
+            from sr_od.application.currency_war.cw_events import (
+                _EQUIP_VALUE as _EV,
+            )
+            from sr_od.application.currency_war.cw_events import (
+                SupplyOption,
+                decide_supply,
+            )
+            _pool_names = list(_EV.keys()) + ['未知装备']
+            _opts = []
+            for _oi in range(3):
+                _eq = rng.choice(_pool_names)
+                _opts.append(SupplyOption(
+                    idx=_oi, char='', equip=_eq,
+                    has_diamond=rng.random() < 0.15))
+            _pick = decide_supply(_opts, st, sess.target_comp, None)
+            st.equips.append(_opts[_pick.idx].equip)
+            if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
+                st.equips.append('钻石')
+        if st.equips and st.deployed:
+            from sr_od.application.currency_war.cw_comps import (
+                equip_allocation,
+            )
+            _equipped_now = equip_allocation(
+                sess.target_comp, st.deployed, list(st.equips))
+            for _who, _what in _equipped_now:
+                if _what in st.equips:
+                    st.equips.remove(_what)
         from sr_od.application.currency_war.cw_line_defs import (
             core_count_for,
         )
@@ -714,7 +750,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                     'position_pref': d.position_pref}
                                    for d in (st.deployed or [])
                                    if getattr(d, 'char_id', '')],
-                      'cap': st.max_units()},
+                      'cap': st.max_units(),
+                      # r393(装备层代理):本轮分配结果(谁穿了什么)
+                      # +owned 余量——「开局零穿着/乱穿」检查项数据源。
+                      'equipped': [{'char': w, 'equip': e}
+                                   for w, e in _equipped_now],
+                      'owned_equips': list(st.equips)},
             'actions': _acts,
             'sim': {
                 'node': nodes[rn - 1], 'delta': delta,
