@@ -1,6 +1,8 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 RunNode 基类:对局内一个节点的生命周期 owner。
+
+(头 # 未验证 标记已清,2026-08-24 架构 review 卫生项:子类
+supply/megastar 均已 live 跑过——局47 r5 补给 RunSupplyNode
+正常处理实证;基类 committed-but-verifying 语义经多局验证。)
 
 op 划分方法论(2026-08-04 实践提炼,详 ``.debug/temp/currency_war/runnode_decomposition.md``;
 后续沉淀进 od-dev skills):
