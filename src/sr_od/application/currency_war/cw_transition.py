@@ -64,6 +64,14 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)
     '列车': ('列车同行',),               # 4 列车
     '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
+    # r373(五局反思 25e3838d,局53 铁证):hunt3/dot_belog 桥此前不在
+    # line_strategy._BRIDGE_FW_MAP → transition_framework='' → deploy
+    # target 集/框架豁免全空 → 桥件+配方核心只能走散牌通道与 8 阵营
+    # 散板同序竞争,板满即永久滞留 bench(「买对的人没上场」根因)。
+    # 狼狩/贝洛伯格 = 桥池 engine_bonds 的目标羁绊(不入 FRAMEWORKS
+    # ——pick_framework 的早期框架选择仍只认仙舟/列车/量子三主流)。
+    '狼狩': ('狼狩', '持续伤害'),        # hunt3 桥:3狼狩+2DOT
+    '贝洛伯格': ('持续伤害', '贝洛伯格'),  # dot_belog 桥:2DOT+2贝
 }
 FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
 

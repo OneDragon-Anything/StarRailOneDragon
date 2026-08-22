@@ -251,10 +251,16 @@ class LineStrategy(DefaultCwStrategy):
         # 语义:未锁线+P1 = 双轨期(过渡),framework = 桥名映射
         session.dual_track_phase = (session.locked_line is None
                                     and state.plane < 2)
+        # r373(五局反思 25e3838d):四桥映射补全 hunt3/dot_belog——桥期
+        # 无 framework 身份 = deploy 无 target 真空(局53 铁证:仙舟核心
+        # 对躺 bench,狼狩桥+散件上场,五局 r3/r4 双败指纹的 deploy 侧
+        # 根因)。框架阵营定义在 cw_transition.FRAMEWORK_FACTIONS。
         _BRIDGE_FW_MAP = {
             'xianzhou_dot': '仙舟', 'xianzhou_train': '仙舟',
             'train_dot': '列车',
             'train4_shield3': '列车',
+            'hunt3': '狼狩',
+            'dot_belog': '贝洛伯格',
         }
         session.transition_framework = (
             _BRIDGE_FW_MAP.get(session.bridge_id or '', ''))
@@ -675,7 +681,10 @@ class LineStrategy(DefaultCwStrategy):
                 1 for c in (state.shop or [])
                 if c.name and (self._bridge_seed(c, state)
                                or c.faction in _ENGINE_FACTIONS))
-            if _dir_cnt < 2:
+            # r373(五局反思):2→3——买到 2 张方向件就停 = 局48 三人组
+            # 只是首发店恰好 3 张的运气;第 3 件把「桥对子」升级成
+            # 「桥+配方核心」(r3 出战质量的决定变量)。
+            if _dir_cnt < 3:
                 _cost = state.shop_refresh_cost or 2
                 if st2.gold - _cost >= 5:
                     actions.append(RefreshShop(_cost))
