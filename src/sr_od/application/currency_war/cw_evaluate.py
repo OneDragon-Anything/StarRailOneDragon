@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 """货币战争 评估函数(阶段键控加权的羁绊 + 经济 + 角色质量,A3;optionality/α(t) 承诺-期权 design 02/03;transition_tempo ADR-0140;target_progress 目标进度项)。
 
 自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。

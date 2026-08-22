@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 """货币战争 经济 / 等级 / 节奏骨架模型(纯函数:金 / 经验 / 息 / 刷新成本,ADR-0131 EconomyEffect 消费 + 0129 单击经验模型 + 0142 重复性效果折算;node_plan 节点×等级节奏骨架,14 §2 —— 三层共享底层,economy/evaluate/plan 均消费)。
 
 自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。
@@ -178,7 +177,7 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
 
 
 def _xp_gold_floor(state: GameState, want_level: bool) -> int:
-    """买经验时的存金地板(用户节奏 economy_research §7(docs/develop/currency_war/strategy/);**玩法理解**: gameplay/currency_war.md 策略模型 S1)。
+    """买经验时的存金地板(用户节奏 user_playstyle §7(docs/game/currency_war/research/;**玩法理解**: gameplay/currency_war.md 策略模型 S1)。
 
     非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
     追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。

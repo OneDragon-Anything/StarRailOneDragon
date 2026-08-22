@@ -190,7 +190,7 @@ def _is_garbage_affix(name: str, effect: str) -> bool:
 def write_affix_effects(updates: dict[str, str]) -> bool:
     """把 ``updates`` 的**合格**词缀效果 merge 进 ``affix_effects_data.py`` 注册表。
 
-    写入策略(D-81,治 OCR 污染 ground truth;详见 decisions.md):
+    写入策略(D-81 → ADR-0081,治 OCR 污染 ground truth;详见该 ADR):
 
     - **garbage 守卫**:``_is_garbage_affix`` 拒(「下一步」按钮文字 / 空)→ 不写。
     - **existing 不覆盖**:词缀效果是**静态游戏数据**(不随对局变,每场只是选不同词缀,效果本身固定);

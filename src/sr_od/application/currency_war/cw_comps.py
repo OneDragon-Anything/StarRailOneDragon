@@ -1,5 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
-
 """货币战争 阵容库 + 战略层评分(comp_score / select_comp;纯逻辑,可测,不碰游戏)。
 
 战略层(阶段 2,A2):从「reactive 加深领先」升级到「围绕目标阵容 commit + 转型 + 巨星」。
@@ -7,7 +5,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 
 数据与设计依据(详 ``docs/develop/currency_war/strategy/02_comp.md`` +
 ``05_observation.md`` + ``docs/game/currency_war/data/plaza_meta.md``):
-- ``COMP_LIBRARY``:19 套(V4.4 起步 8 套 → ADR-0152 plaza 784 篇高难帖校准扩充)。
+- ``COMP_LIBRARY``:起步 roster(V4.4 起步 8 套 → ADR-0152 plaza 784 篇高难帖校准扩充,现 20 套)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(strength/form_difficulty/level_plan 取舍)—— ``plaza_carry`` 字段
   是两层对拍锚点。覆盖易/中/难成型 + 各机制(含 debuff=buff 的燃血、augment 定义型的黑塔纪元)。
@@ -113,7 +111,7 @@ class ScoreContext:
     plane: int = 1
     round_num: int = 1
     gold: int = 0
-# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡)+ factions.md(燃血角斗场原文)。
+# 来源:docs/game/currency_war/data/competitors.md(V4.4 ~50 敌人词缀全集,米游社玩家攻略统计 🟡;词缀效果原文=affix_effects_data)+ cw_factions.FACTIONS desc(燃血角斗场原文)。
 # 机制名跨版本稳;具体词缀属哪个机制随版本变(随 competitors.md 实机 OCR 更新)。
 # 只建模"对某类 comp 方向相反"的词缀(策略相关);纯数值怪强化(首领强化等)无 comp 交互,不入表。
 
@@ -355,7 +353,7 @@ COMP_LIBRARY: list[Comp] = [
         name="命运圣杯红A", factions=["命运圣杯"], core_chars=["Archer", "远坂凛"],
         form_tiers={"命运圣杯": 3}, strength="S", form_difficulty="medium", early_power="中",
         # V4.4 评级(76807134):Archer 95 = S 级真神;攻略(76924524):高倍率九五核心+远坂凛+圣杯→+150%攻击+战技点
-        # ⚠️ core_chars 用图鉴规范名:"Archer" 非"红A"(OCR/char_id 匹配靠 characters.md)
+        # ⚠️ core_chars 用图鉴规范名:"Archer" 非"红A"(OCR/char_id 匹配靠 cw_chars.CHARACTERS 注册表)
         # ADR-0152(plaza 62 篇):3星率 0.18(5费 carry 常驻 2 星);速升9级节奏为主
         # 评审🔴(费用勘误):圣杯四人 = Archer 5费/Saber 3费/吉尔伽美什 2费/远坂凛 1费(注册表),
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
@@ -1617,7 +1615,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     return None
 
 
-# 盛会之星巨星 buff 表(米游社 factions.md 原文,2→6 档;select_megastar 按绑定选):
+# 盛会之星巨星 buff 表(米游社原文;2→6 档;select_megastar 按绑定选):
 #   星期日:前台首位前台强度+后台首位后台强度(24%→132%)——前台单核乘法直乘
 #   黑天鹅:每个5费角色伤害增幅(5%→28%)——5费成群的高费队最大乘区(5个=+140%)
 #   知更鸟:幸运一击率(10%→55%)——暴击引擎(群攻/欢愉/追击)

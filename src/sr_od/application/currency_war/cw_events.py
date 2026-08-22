@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 """货币战争 事件节点决策:投资策略/环境 3 选 1(decide_event;ADR-0143/0144 pick_value)+ 遭遇(decide_encounter)+ 补给(decide_supply)+ 巨星/伙伴选项类型。
 
 自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。

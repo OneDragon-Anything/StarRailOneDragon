@@ -1,4 +1,3 @@
-# 未验证(货币战争自主推进期代码,需进对应画面按 od-dev-screen-onboarding 等 skill review 重审后才能信)
 """货币战争 备战动作规划:plan 硬门贪心(bench-full/gold≥0/level≤10)+ 蒙特卡洛 D 牌(A1)+ 部署/卖牌/腾席链。
 
 自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。
@@ -100,9 +99,9 @@ def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factio
 
 def _weakest_bench_idx(state: GameState, character_priority: list[str],
                        target_comp: Comp | None = None) -> int | None:
-    """最弱可卖 bench 下标(腾席链 c 步 / plan 硬门共用;doc 15 §5.2c)。
+    """最弱可卖 bench 下标(腾席链 c 步 / plan 硬门共用;strategy/03(原 doc 15§5.2c))。
 
-    **3合1 重复件保护**(doc 15 §4.1 待加项,2026-08-14 P1 落地):bench 内同名 ≥2 张 =
+    **3合1 重复件保护**(strategy/03(原 doc 15§4.1) 待加项,2026-08-14 P1 落地):bench 内同名 ≥2 张 =
     3合1 进行中(再买 1 张即自动升星,价值远超残值)→ 保护不卖;全被保护 → 返回 None
     (无可卖,调用方走 DeferSpheres/留置)。
     """
@@ -459,12 +458,12 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
 
 
 def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
-    """买经验硬门(plan()/PrepDirector 腾席链 b 步共用单一源;doc 15 §5.2b / §4.1;ADR-0129)。
+    """买经验硬门(plan()/PrepDirector 腾席链 b 步共用单一源;strategy/03(原 doc 15§5.2b) / §4.1;ADR-0129)。
 
     条件 = level<10 + 该买经验(_want_level_up)+ 存金允许(扣单击价后不破 _xp_gold_floor)。
     旧门要求 gold≥整级大金(36-60)→ 实际每击仅 4-8 金 → 过度保守 → 升级滞后(M15 live 实锤)。
     ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
-    (PrepDirector: EnsureShopOpen 后重读;doc 15 §5.2b M2)。
+    (PrepDirector: EnsureShopOpen 后重读;strategy/03(原 doc 15§5.2b) M2)。
 
     **溢出金 XP 放行(r85,用户 50 金息律「>50 的每一分都无存钱意义,该升级就升级」)**:
     金 ≥ INTEREST_THRESHOLD + 单击价 时(息满溢出区),_want_level_up 的 False
