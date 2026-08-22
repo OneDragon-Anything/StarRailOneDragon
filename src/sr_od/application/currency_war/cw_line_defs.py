@@ -90,7 +90,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int:
     """
     if not target:
         return core_trio_count(board_names)
-    line_id = target[4:] if target.startswith('v2:') else target
+    line_id = target[3:] if target.startswith('v2:') else target   # 'v2:' 是 3 字符(off-by-one 曾致 izi_train 查空)
     # 先桥池(精确 id 匹配;core 是主集合,fixed 是前置必买件)
     for combo in BRIDGE_POOL:
         cid = getattr(combo, 'bridge_id',
