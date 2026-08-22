@@ -97,6 +97,21 @@ def _prioritize_wearable(
     return prioritized + rest
 
 
+def _transition_hold_active(tgt_comp, form: float, dual: bool, opening_round: bool) -> bool:
+    """过渡期装备 hold 总门(r70 × r388 × 对抗审查 R3 修正)。
+
+    - r388:开局轮(P1 r≤2)hold **无条件生效**——key_equips 白名单来自
+      target,target 真空(重启后首局,skill 明载 target 重选断档)时白名单
+      为空;旧判 ``tgt_comp is not None`` 会让 r388/r70 两条 hold 全不
+      生效,r388 所修的「开局乱穿」恰在这最高频窗口残留(ADR-0257)。
+    - r70:已定型(target 在)且 0<form<COMMIT_FRAC 且非双轨 → hold。
+    """
+    if opening_round:
+        return True
+    from sr_od.application.currency_war.cw_comps import COMMIT_FRAC
+    return tgt_comp is not None and 0.0 < form < COMMIT_FRAC and not dual
+
+
 class EquipAll(SrOperation):
     """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
@@ -297,7 +312,6 @@ class EquipAll(SrOperation):
         _form = 0.0
         if _tgt_comp is not None and deployed:
             from sr_od.application.currency_war.cw_comps import (
-                COMMIT_FRAC,
                 form_progress,
             )
             from sr_od.application.currency_war.cw_state import GameState
@@ -305,23 +319,21 @@ class EquipAll(SrOperation):
             _form = form_progress(_tgt_comp, _st)
         _dual = bool(getattr(_match.session, 'last_state', None) is not None
                      and _match.session.last_state.dual_track_phase) if _match is not None else False
-        _transition_hold = (_tgt_comp is not None and 0.0 < _form < COMMIT_FRAC
-                            and not _dual)   # r70:双轨期不再 hold(穿给当前 5 人)
         # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
         # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
         # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);
         # key_equips 命中件照穿(命中即阵容意图明确),gen 散件
         # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
         # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
+        # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
         _round_now = (getattr(_match.session, 'last_state', None).round_num
                       if (_match is not None and getattr(_match.session, 'last_state', None) is not None
                           and getattr(_match.session.last_state, 'plane', 1) == 1) else None)
         _opening_round = _round_now is not None and _round_now <= 2
-        if _opening_round:
-            _transition_hold = _tgt_comp is not None
+        _transition_hold = _transition_hold_active(_tgt_comp, _form, _dual, _opening_round)
         if _transition_hold:
-            log.info('[cw-equip] 过渡期持有(form=%.2f < %.2f):非 key_equips 不穿(攒给成型核心)',
-                     _form, COMMIT_FRAC)
+            log.info('[cw-equip] 过渡期持有(opening=%s form=%.2f):非 key_equips 不穿(攒给成型核心)',
+                     _opening_round, _form)
         if deployed:
             occupied_m7: dict[tuple[str, int], list[str]] = {}
             for row, prefix in (('front', '前排'), ('back', '后排')):
