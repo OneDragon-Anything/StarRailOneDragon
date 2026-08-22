@@ -57,6 +57,19 @@ from sr_od.operations.sr_operation import SrOperation
 _DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
 
+def _cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
+    """r387:空位 > 必上件数(target+成对)→ cap 富余——配方围栏放行散牌填空。
+
+    配方纪律(r263b)防的是「散件挤占 target 槽位」(cap 竞争),不是「填空」:
+    cap 富余时散牌填空不稀释任何人(配方件来了仍有位);紧张(空位 ≤ 必上)→
+    围栏照旧。局62 r2 实锤根因:deploy_cap=3 只上 1 人(三月七成对),bench 躺
+    5 张(艾丝妲/阿格莱雅/缇宝/万敌全被判「不成对/非 target」留 bench)——两条
+    纪律真冲突,r263b 无条件拦截压过 M18 填位。用户 live 口径「随便上填空位
+    也可以」。锁测试:test_cw_r387_deploy_fill_vacancy(3 条)。
+    """
+    return front_empty + back_empty > must_up
+
+
 def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
                     deployed_fac: dict[str, int]) -> int:
     """r361 补档键:该角色上阵后任一阵营计数**恰达激活档** → 1,否则 0。
@@ -522,12 +535,20 @@ class DeployBench(SrOperation):
                            else {}).items()
             if k in _RECIPE)
         _recipe_starved = _board_recipe < _RECIPE_BASE
+        # r387(富余=填空):必上件数 = target 候选 + 同阵营成对件(两者必然要上);
+        # 空位扣除必上仍有富余 → 配方围栏放行散牌填空(围栏只在 cap 紧张时拦)。
+        _roomy = _cap_roomy_of(
+            len(front_empty), len(back_empty),
+            len(tgt_idx) + sum(1 for i in rest
+                               if _bench_fac.get(i) is not None
+                               and _pair_counts.get(_bench_fac[i], 0) >= 2))
         for i in list(rest):
             if i not in _bench_cid:
                 continue   # SIFT 未识别:照旧上(无法判 target/阵营)
             _f = _bench_fac.get(i)
-            if _f is not None and _f not in _DEPLOY_FENCE and _recipe_starved:
-                rest.remove(i)   # 非过渡配方件 + 配方基础未满 → 留 bench
+            if (_f is not None and _f not in _DEPLOY_FENCE
+                    and _recipe_starved and not _roomy):
+                rest.remove(i)   # 非过渡配方件 + 配方基础未满 + cap 紧张 → 留 bench
                 _held.append(i)
                 continue
             if _f is not None and _pair_counts.get(_f, 0) >= 2:
