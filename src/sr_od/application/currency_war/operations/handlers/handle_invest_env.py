@@ -25,7 +25,6 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_events import decide_event
 from sr_od.application.currency_war.cw_investments import is_known_env
 from sr_od.application.currency_war.cw_observation import area_center
-from sr_od.application.currency_war.cw_observe import cw_shot_unique
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
@@ -55,7 +54,7 @@ class HandleInvestEnv(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
-        self._refresh_count: int = 0        # OCR 到的「剩余次数:N」(钩子写入;ADR-0146 刷新流读)
+        self._refresh_count: int = 0        # OCR 到的「剩余次数:N」(刷新流读;ADR-0146)
         self._refresh_text_pt = None        # 次数文本坐标(刷新圆钮动态锚;2026-08-16 CV 实测)
 
     # 刷新按钮动态定位(2026-08-16 CV 实测):env 屏刷新圆钮 = 「剩余次数:N」文本左侧 ~100px 同 y
@@ -101,31 +100,17 @@ class HandleInvestEnv(SrOperation):
 
         opts = self._read_options(screen)
 
-        # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1:环境屏刷新)]刷新 UI 标定:
-        # 2026-08-15 M19 环境屏 OCR 实锤「剩余次数:1」可读,但全屏 OCR 无「刷新」按钮文字(疑图标按钮)
-        # → ① 整屏 cw_shot_unique 存档(离线 VLM 定位按钮坐标);② 记次数文本坐标 → refresh_ui_samples.jsonl。
-        cw_shot_unique(screen, 'env_refresh_ui')
+        # ADR-0146 刷新流(生产依赖):OCR「剩余次数:N」→ 记次数 + 文本锚(刷新圆钮动态定位)。
+        # 原临时采集钩子已删(结论已达成:jsonl 落盘与整屏 cw_shot_unique 移除,按钮=文本左侧
+        # 图标圆钮,2026-08-16 CV 实锤;样本归档 refresh_ui_samples.jsonl)。
         import re as _re
 
         for _t, _m in (self._ocr_map or {}).items():
             _mm = _re.search(r'剩余次数[：:]?\s*(\d+)', _t)
             if _mm and _m.max is not None:
-                import json as _json
-                from datetime import datetime as _dt
-                from pathlib import Path as _P
-                _p = _P('.debug/temp/currency_war/refresh_ui_samples.jsonl')
-                _p.parent.mkdir(parents=True, exist_ok=True)
-                with _p.open('a', encoding='utf-8') as _f:
-                    _f.write(_json.dumps({
-                        'ts': _dt.now().isoformat(timespec='seconds'),
-                        'kind': 'env',
-                        'count': int(_mm.group(1)),
-                        'text_x': int(_m.max.center.x), 'text_y': int(_m.max.center.y),
-                        'text': _t,
-                    }, ensure_ascii=False) + '\n')
-                self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
-                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))   # 按钮锚(动态定位)
-                log.info(f'[cw-env] 刷新UI采集: 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
+                self._refresh_count = int(_mm.group(1))
+                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))
+                log.info(f'[cw-env] 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)

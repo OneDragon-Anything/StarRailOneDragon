@@ -708,33 +708,9 @@ class PrepActionExecutor:
         # live 修复(2026-08-14):OperationResult 字段是 success(非 is_success —— 那是
         # OperationRoundResult 的字段);旧 getattr 恒 False → 组合动作全被误判失败。
         ok = bool(result is not None and getattr(result, 'success', False))
-        if name == '装备':
-            self._verify_equipped()   # L-1:_verify_equipped 随 RunEquip 保留(自 battle_prep 搬入)
         status = getattr(result, 'status', '')
         log.info(f'[cw][composite] {name} → {"✓" if ok else "✗"} {status}')
         return ok, f'{name} {status}'
-
-    def _verify_equipped(self) -> None:
-        """[装备核对钩子·临时] EquipAll 后 read_row_equipped → log(对比 EquipAll 意图核装备识别)。
-
-        自 battle_prep._verify_equipped 搬入(P1 挂载切换,doc §7 L-1:_verify_equipped 不进 Director
-        观察阶段,随 RunEquip 组合动作保留)。核完装备 reader 删本方法 + _run_composite 调用。
-        """
-        try:
-            from sr_od.application.currency_war.cw_equipment import (
-                ensure_equip_tm_templates,
-            )
-            from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
-
-            grays = ensure_equip_tm_templates(self._ctx)
-            if grays is None:
-                return
-            scr = self._op.screenshot()
-            front = read_row_equipped(self._ctx, scr, grays, '前排', 4)
-            back = read_row_equipped(self._ctx, scr, grays, '后排', 6)
-            log.info(f'[cw-hook][equip] read 已穿装备: front={front} back={back}')
-        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
-            log.info(f'[cw-hook][equip] skip: {e}')
 
 
 # ===== 恢复原语(§13.3;动作连败 2 次时先试,bail 是恢复失败后的上抛)=====

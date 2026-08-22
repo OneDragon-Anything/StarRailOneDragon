@@ -198,12 +198,13 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 旧版 killed 恒 None + 输轮(挑战结束+前往结算,走 loop 3b)从不产生 outcome 行 →
     # telemetry 只见赢轮,「P2 输给谁/扣多少」全盲。
     _won = parse_settlement_won(ocr_texts)
-    # [采集钩子·临时,档金表采齐后删(r63)]连胜档金真值:结算屏「获得金币总览」分行(基础奖励/
+    # [采集钩子·临时,采完删(r63)]连胜档金真值:结算屏「获得金币总览」分行(基础奖励/
     # 利息/连胜)只在整屏 OCR 可见 —— read_round_outcome 的调用方传的 screen 是整屏,此处
-    # 连胜 ≥3 时存整屏(去重),离线拆「连胜 ×N → 连胜金」真值表,替换 _refresh_cap 的保守门。
+    # 连胜 ≥5 时存整屏(去重),离线拆「连胜 ×N → 连胜金」真值表,替换 _refresh_cap 的保守门。
+    # (r72-73 收窄:3/4 档已 VLM 双样本验证完毕,只缺 5/6 档样本 → 条件 3→5)
     try:
         _streak_raw = parse_streak(ocr_texts)
-        if _streak_raw >= 3:
+        if _streak_raw >= 5:
             from sr_od.application.currency_war.cw_observe import cw_shot_unique
             cw_shot_unique(screen, f'streak_gold_st{_streak_raw}')
     except Exception:   # noqa: BLE001  采集 best-effort

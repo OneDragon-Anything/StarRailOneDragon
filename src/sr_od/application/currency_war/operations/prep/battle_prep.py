@@ -62,30 +62,7 @@ class BattlePrepCycle(SrOperation):
     def equip(self) -> OperationRoundResult:
         log.info('[cw-prep] 备战单轮 ③ 装备(EquipAll)')
         _r = self.round_by_op_result(EquipAll(self.ctx).execute())
-        self._verify_equipped()   # [装备核对钩子·临时] EquipAll 后 read_row_equipped → log(对比 EquipAll 意图核装备识别)
         return _r
-
-    def _verify_equipped(self) -> None:
-        """[装备核对钩子·临时] EquipAll(drag 穿戴 / 触发合成)后 read_row_equipped → log 已穿装备。
-
-        对比 EquipAll 意图(拖了哪些装备到哪些槽):若拖了但 read 没读到 / 合成结果没识别 → 装备识别(reader)错。
-        采:截图(详情面板关后,clean 帧)+ log ``[cw-hook][equip]``。仅 log read 结果(意图对比离线 / 人眼),
-        不阻塞备战。核完装备 reader 删本方法 + equip 调用(临时钩子,用完即删)。
-        """
-        try:
-            from sr_od.application.currency_war.cw_equipment import (
-                ensure_equip_tm_templates,
-            )
-            from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
-            _grays = ensure_equip_tm_templates(self.ctx)
-            if _grays is None:
-                return
-            _scr = self.screenshot()
-            _fe = read_row_equipped(self.ctx, _scr, _grays, '前排', 4)
-            _be = read_row_equipped(self.ctx, _scr, _grays, '后排', 6)
-            log.info(f'[cw-hook][equip] read 已穿装备: front={_fe} back={_be}')
-        except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
-            log.info(f'[cw-hook][equip] skip:{e}')
 
     @node_from(from_name='装备')
     @operation_node(name='出战')

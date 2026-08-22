@@ -57,7 +57,7 @@ class HandleInvestStrategy(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
-        self._refresh_count: int = 0        # OCR 到的「刷新次数N」(钩子写入;ADR-0146 刷新流读)
+        self._refresh_count: int = 0        # OCR 到的「刷新次数N」(刷新流读;ADR-0146)
 
     # 刷新按钮动态定位(2026-08-16 用户指认圆形按钮 + CV 实测):按钮 = 圆形图标,
     # 位于「刷新次数N」文本**左侧 ~88px** 同 y(r≈24);文本 x 有两种位置(476/974,随屏
@@ -105,11 +105,9 @@ class HandleInvestStrategy(SrOperation):
         if not self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             return self.round_fail('非投资策略屏')
 
-        # [采集钩子·临时,采完删(进度文件 2026-08-15 缺口1)]刷新 UI 标定:OCR y790-890 横带找
-        # 「刷新次数N」→ 记次数+按钮x。为 PickEvent.refresh 接入(缺口1)提供坐标/次数真值。
-        # 整屏 cw_shot_unique 存档(env 屏同款;刷新按钮疑图标,OCR 无文字 → 离线 VLM 定位)。
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique as _shot
-        _shot(screen, 'strategy_refresh_ui')
+        # ADR-0146 刷新流(生产依赖):OCR「刷新次数N」→ 记次数 + 文本锚(_try_click_refresh
+        # 动态定位刷新圆钮用)。原临时采集钩子已删(结论已达成:样本 574 张归档
+        # refresh_ui_samples.jsonl,2026-08-17 标结论;jsonl 落盘与整屏 cw_shot_unique 移除)。
         import re as _re
 
         from one_dragon.base.geometry.rectangle import Rect as _Rect
@@ -117,21 +115,9 @@ class HandleInvestStrategy(SrOperation):
                 image=screen, rect=_Rect(300, 790, 1650, 890), crop_first=False).items():
             _mm = _re.search(r'刷新次数\s*(\d+)', _t)
             if _mm and _m.max is not None:
-                import json as _json
-                from datetime import datetime as _dt
-                from pathlib import Path as _P
-                _p = _P('.debug/temp/currency_war/refresh_ui_samples.jsonl')
-                _p.parent.mkdir(parents=True, exist_ok=True)
-                with _p.open('a', encoding='utf-8') as _f:
-                    _f.write(_json.dumps({
-                        'ts': _dt.now().isoformat(timespec='seconds'),
-                        'count': int(_mm.group(1)),
-                        'btn_x': int(_m.max.center.x), 'btn_y': int(_m.max.center.y),
-                        'text': _t,
-                    }, ensure_ascii=False) + '\n')
-                self._refresh_count = int(_mm.group(1))   # ADR-0146 刷新流消费
-                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))   # 按钮锚(动态定位)
-                log.info(f'[cw-strat] 刷新UI采集: 次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
+                self._refresh_count = int(_mm.group(1))
+                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))
+                log.info(f'[cw-strat] 刷新次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
                 break
 
         opts = self._read_options(screen)
@@ -178,6 +164,7 @@ class HandleInvestStrategy(SrOperation):
                 if _cnt2 is not None and _cnt2 >= self._refresh_count:
                     # 次数读到了且没减 = 真没生效 → 停机存证(_cnt2 None = OCR miss,不判假阳停机;review ④)
                     _shot = self.save_screenshot(prefix='cw_strat_refresh_fail')
+                    from pathlib import Path as _P
                     _fp = _P('.debug/temp/currency_war/refresh_click_fail.flag')
                     _fp.parent.mkdir(parents=True, exist_ok=True)
                     # hook审计 S7(r351):flag 补三要素(同 handle_invest_env S6)

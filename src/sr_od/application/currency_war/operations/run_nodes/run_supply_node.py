@@ -44,43 +44,7 @@ class RunSupplyNode(RunNode):
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
         return self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success
 
-    def _collect_refresh_ui(self, screen) -> None:
-        """[采集钩子·临时,采完删]补给屏刷新 UI 标定(缺口1 第三屏;矛盾仲裁)。
-
-        代码注释断言「supply 无刷新按钮」(refresh_used=True 跳过找钻),但游戏规则文档
-        (advantage_layouts.md,用户口径)说「补给可刷 1 次(未出钻建议重刷)」—— 用数据仲裁:
-        OCR 找「刷新次数N|剩余次数:N」记次数+坐标;整屏 cw_shot_unique 存档(VLM 离线核按钮)。
-        有按钮 → refresh_used 改 False + 点击流(ADR-0146 同款);无 → 注释转正实锤。
-        """
-        try:
-            from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            cw_shot_unique(screen, 'supply_refresh_ui')
-            import re as _re
-
-            ocr_map = self.ctx.ocr_service.get_ocr_result_map(
-                image=screen, rect=None, color_range=None, crop_first=False)
-            for _t, _m in ocr_map.items():
-                _mm = _re.search(r'(?:刷新次数|剩余次数)[：:]?\s*(\d+)', _t)
-                if _mm and _m.max is not None:
-                    import json as _json
-                    from datetime import datetime as _dt
-                    from pathlib import Path as _P
-                    _p = _P('.debug/temp/currency_war/refresh_ui_samples.jsonl')
-                    _p.parent.mkdir(parents=True, exist_ok=True)
-                    with _p.open('a', encoding='utf-8') as _f:
-                        _f.write(_json.dumps({
-                            'ts': _dt.now().isoformat(timespec='seconds'),
-                            'kind': 'supply', 'count': int(_mm.group(1)),
-                            'text_x': int(_m.max.center.x), 'text_y': int(_m.max.center.y),
-                            'text': _t,
-                        }, ensure_ascii=False) + '\n')
-                    log.info('[cw-supply] 刷新UI采集: %s @(%d,%d)', _t, _m.max.center.x, _m.max.center.y)
-                    break
-        except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞补给流程
-            pass
-
     def _do_action(self, screen) -> None:
-        self._collect_refresh_ui(screen)
         # T#99 接 decide_supply:OCR 补给选项(每列=角色+装备)→ 策略按 target_comp.key_equips 契合 + 装备
         # 通用价值选(替代盲点 CARD_BODY)。钻识别双通道 ✅(SIFT 主+文本兜底,cw_node_obs)。
         # 刷新按钮 ✅ 实锤(2026-08-17 VLM 判建档图 + refresh_ui_samples 多局数据:图标按钮
