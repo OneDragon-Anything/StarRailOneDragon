@@ -51,6 +51,35 @@ def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
     return 0
 
 
+# r404-A1(四体系判据,与 cw_sim._TRANSITION_TRAITS 同语义;此模块
+# 不 import cw_sim——sim 消费本模块,反向 import 成环——这里
+# 单列同源常量,两边注释互指)。
+TRANSITION_TRAITS: tuple[tuple[str, int], ...] = (
+    ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
+)
+
+
+def ignition_gain(bonds, deployed_fac: dict[str, int]) -> int:
+    """r404-A1 点火增量:该角色上阵后「过渡体系达成数」的增量。
+
+    体系=仙舟3/列车2/DOT2(transition_combos.md 四体系的三羁绊
+    部分;希儿系在 deploy 排序无意义——希儿本人是 target 件)。
+    增量>0 = 这张是「恰好点火」件(第 tier 人);优先级最高的
+    上场候选——60 局 r6 归因:未成型局 44% =「差1人·bench有货
+    未上」,根因是 r251 排序只看阵营身份不看点火(冗余第4仙舟
+    挤掉点火列车2,探针实证)。
+    """
+
+    def _sys_count(fac: dict[str, int]) -> int:
+        return sum(1 for bond, tier in TRANSITION_TRAITS
+                   if fac.get(bond, 0) >= tier)
+
+    after = dict(deployed_fac)
+    for f in bonds:
+        after[f] = after.get(f, 0) + 1
+    return _sys_count(after) - _sys_count(deployed_fac)
+
+
 def select_deployments(
     bench: list[BenchChar],
     deployed_cids: set[str],
@@ -91,8 +120,11 @@ def select_deployments(
         is_tgt = bool(bonds & set(target_factions)) or cid in target_cores \
             or cid in fw_carry
         (tgt_idx if is_tgt else rest).append(i)
-    tgt_idx.sort(key=lambda i: tier_completes(
-        _bonds_of(bench[i]), deployed_fac), reverse=True)
+    # r404-A1:tgt 初始序也按点火首键(围栏前的序影响 cap 竞争时
+    # 谁先上;旧版纯 tier_completes)
+    tgt_idx.sort(key=lambda i: (
+        -ignition_gain(_bonds_of(bench[i]), deployed_fac),
+        -tier_completes(_bonds_of(bench[i]), deployed_fac)))
 
     held: list[int] = []
     fill_mode = vacancy > 2
@@ -122,11 +154,22 @@ def select_deployments(
     board_empty = len(deployed_cids) == 0
     if board_empty and not tgt_idx and not rest and held:
         rest.append(held.pop(0))   # 板空保底:上 1 个
-    # r251:引擎 pair 优先(cap 竞争时先到先得)
+    # r404-A1:点火增量首键——「恰好让某体系凑满 tier 的那张」
+    # 排最前(冗余件/无关件让位)。r251 引擎身份键降为次键
+    # (探针实证:vacancy=1 时冗余第4仙舟曾挤掉点火列车2)。
     _ENGINE = {'仙舟', '列车同行', '持续伤害'}
-    rest.sort(key=lambda i: 0 if (bench_fac.get(i) in _ENGINE
-                                  or _bonds_of(bench[i]) & _ENGINE) else 1)
-    order = tgt_idx + rest
+    rest.sort(key=lambda i: (
+        -ignition_gain(_bonds_of(bench[i]), deployed_fac),
+        0 if (bench_fac.get(i) in _ENGINE or
+              _bonds_of(bench[i]) & _ENGINE) else 1))
+    # r404-A1:桶序修正——tgt 全体压 rest 的旧序会让「冗余 tgt 件」
+    # 挤掉「点火 rest 件」(探针④:第4仙舟压点火三月七)。点火增量
+    # >0 的 rest 件先于 ignition=0 的 tgt 件上场(点火=四体系成型
+    # 的关键跳变,语义高于 target 身份;tgt 内部序已按点火排)。
+    ignite_rest = [i for i in rest
+                   if ignition_gain(_bonds_of(bench[i]), deployed_fac) > 0]
+    plain_rest = [i for i in rest if i not in ignite_rest]
+    order = ignite_rest + tgt_idx + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
     up: list[int] = []
     for i in order:
