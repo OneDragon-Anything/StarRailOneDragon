@@ -78,6 +78,9 @@ class CurrencyWarRunLoop(SrOperation):
     # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
     STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
     STALL_N: ClassVar[int] = 6
+    #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
+    #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
+    BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
@@ -192,6 +195,13 @@ class CurrencyWarRunLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
+    @staticmethod
+    def _watch_in_battle_grace(battle_ts: float | None, now: float) -> bool:
+        """战斗窗口宽限判定(纯函数,ADR-0250):``battle_ts`` 非空且未超
+        ``BATTLE_WATCH_GRACE_S`` → True(watch 不计数)。None/超时 → False。"""
+        return (battle_ts is not None
+                and now - battle_ts < CurrencyWarRunLoop.BATTLE_WATCH_GRACE_S)
+
     def _stall_watch_tick(self, screen) -> None:
         """r119 停滞 watchdog:同屏指纹连续相同 → 哨兵(不停机,日志+flag 双通道)。
 
@@ -203,6 +213,19 @@ class CurrencyWarRunLoop(SrOperation):
         """
         if self._iter % CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY != 0:
             return
+        # ADR-0250(战斗窗口宽限,局54 哨兵误报复盘):出战后的战斗进行期是
+        # 合法静止(实测 4-5.5min > watch 阈值 ≈2.5min),且战斗 HUD 关键词
+        # 可全程不含豁免词(局54 实锤:4 词缀+3 首领+难度常驻简报信息面板,
+        # 「决战在即」是词缀名非战斗标语)→ 关键词豁免兜不住,误报稀释真哨兵
+        # 信号。窗口内不计数;宽限过 → 恢复正常判定(出战卡死类真挂死仍可触发)。
+        # 开窗=备战环出口(出战);关窗=on_round_end(结算观测)/备战分支再入。
+        if self._watch_in_battle_grace(
+                getattr(self, '_battle_ts', None), time.monotonic()):
+            self._stall_count = 0
+            self._stall_last_fp = None
+            return
+        if getattr(self, '_battle_ts', None) is not None:
+            self._battle_ts = None   # 宽限已过 → 恢复正常停滞判定
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
@@ -368,6 +391,7 @@ class CurrencyWarRunLoop(SrOperation):
 
         喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
         记掉血 trend(观测驱动,非预测)+ 写 ``session.last_hp``(达阈;给下回合 prep 真值 hp)。
+        进本函数 = 战斗结束已见结算屏 → 战斗窗口关(ADR-0250,watch 恢复)。
         **仅从分支3(按钮-继续挑战 = 已确认 round-end 结算屏)调用**,故无内部结算屏 gate —— 原 gate 查
         「挑战结束」与实屏「挑战成功」不符 → 永不命中 → on_round_end 从不调 → performance/last_hp 全不喂
         (P1.5 观测回路 + prep-hp 真值机制双双静默死;2026-08-07 捕结算屏实锤「挑战成功」修复)。
@@ -376,6 +400,7 @@ class CurrencyWarRunLoop(SrOperation):
         """
         if self.ctx.cw_match is None:
             return
+        self._battle_ts = None   # ADR-0250:见结算屏 → 战斗窗口关(watch 恢复)
         try:
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
@@ -759,6 +784,7 @@ class CurrencyWarRunLoop(SrOperation):
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
         if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             self._frame_is_prep = True   # 稳定门 bookkeeping(本帧走备战分支)
+            self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
             # ⚖️ 子态稳定门(2026-08-18 用户定调):结算→备战先渲染→节点类型 overlay 后弹
             # (普通战斗=商店面板/奖励/投资类…;策略→环境链式)—— 半开帧分发 = 未定型画面
             # 上行动(M47 ClickSpheres 误点 / bench_unidentified overlay 帧误采,两类实锤)。
@@ -813,6 +839,8 @@ class CurrencyWarRunLoop(SrOperation):
                     return self.round_fail('PrepDirector 连续失败(停滞)')
             else:
                 self._director_fail_streak = 0
+                # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
+                self._battle_ts = time.monotonic()
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
