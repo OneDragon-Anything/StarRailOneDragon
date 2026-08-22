@@ -58,6 +58,20 @@ from sr_od.operations.sr_operation import SrOperation
 _DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
 
+def _tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
+    """r361 补档键:该角色上阵后任一阵营计数**恰达激活档** → 1,否则 0。
+
+    纯函数(模块级可测):``bonds`` = 角色全部羁绊 tag 集合,
+    ``deployed_fac`` = 当前板面阵营计数;档表单一源 FACTIONS.tiers。
+    """
+    from sr_od.application.currency_war.cw_factions import FACTIONS
+    for _f in bonds:
+        _now = (deployed_fac.get(_f, 0) or 0) + 1
+        if _now in (FACTIONS.get(_f).tiers if FACTIONS.get(_f) else ()):
+            return 1
+    return 0
+
+
 class DeployBench(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
@@ -466,6 +480,14 @@ class DeployBench(SrOperation):
             _is_tgt = (((_bonds and _bonds & _tgt) or _cid0 in _cores)
                        if _tgt else False) or _cid0 in _fw_carry
             (tgt_idx if _is_tgt else rest).append(i)
+        # r361(局46 实锤,tgt 序内补档优先):cap 满序竞争时桥件(飞霄,
+        # 桥 core)先占坑、补档件(丹恒·饮月,仙舟 2→3 恰达 tier1)留
+        # bench → 全程激活档 0(配方满线=生存线,近 10 局唯二 HP≥60 均
+        # 配方 5 档满线)。修:tgt 候选内按「上阵后任一阵营**恰达激活
+        # 档**」降序(稳定排序保 slot 序);桥件无档跃迁仍后置——cap
+        # 有余照上,r356 hunt3 桥件语义不受损。
+        tgt_idx.sort(key=lambda i: _tier_completes(
+            _bench_id.get(i) or (), _deployed_fac), reverse=True)
         # ADR-0130(用户节奏 §7-1「开场买牌囤 bench 不上阵」+ 复查确认 spread 种子):off-target 散牌
         # 单张**留 bench 不上阵**(对齐 planner `_should_deploy` 语义)—— 上场条件:① target;② 同阵营
         # 成对(board+bench 计数 ≥2,凑过渡羁绊,「买过渡阵容」人玩节奏);③ SIFT 未识别(无法判,
