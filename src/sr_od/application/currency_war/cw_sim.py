@@ -690,10 +690,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold_before': _gold_before,
                 'income': _inc, 'spend': _spend,
                 'depth': _depth,
+                # core_count 语义=core_routed(core_count_for 按
+                # target 路由;known-line-no-core=None)。**此前的
+                # 账本批次是旧三人组口径,聚合端按 ledger_semantics
+                # 过滤**(manifest 键;审查#2:口径混桶=③ 噪声)
                 'core_count': core_count_for(
                     sess.locked_line or sess.bridge_id or '',
                     {d.char_id for d in (st.deployed or [])
                      if getattr(d, 'char_id', '')}),
+                # deployed 代理名单(审查#5:tiers sim 行可渲染
+                # 角色构成——比只有计数信息量高一档)
+                'deployed': [d.char_id for d in (st.deployed or [])
+                             if getattr(d, 'char_id', '')],
                 'shop_waves': _waves,
                 'dir_established': res.dir_round <= rn,
                 'segments': _segs_used,
@@ -846,13 +854,16 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                         'shop': w['cards'],
                     }, ensure_ascii=False) + '\n')
     # manifest(审查#5:写半失败无标记 → 残批被当有效批;判读端
-    # 可校验 manifest 在+行数匹配才认批)
+    # 可校验 manifest 在+行数匹配才认批)。ledger_semantics 标记
+    # 账本字段语义版本(审查#2:core_count 三人组→按线路由变更
+    # 无标记,新旧批次混存=③ 聚合静默混桶)。
     (out_dir / 'manifest.json').write_text(_json.dumps({
         'n': len(results),
         'seeds': [r.seed for r in results],
         'pool_fingerprint': pool_fp or (
             results[0].pool_fingerprint if results else ''),
         'rounds_rows': sum(len(r.ledger) for r in results),
+        'ledger_semantics': 'core_routed',
     }, ensure_ascii=False), encoding='utf-8')
     # 保留清理(旧批次滚动删除;只清 sim_ 前缀批——用户显式传的
     # 非 sim 目录不动,审查#5)

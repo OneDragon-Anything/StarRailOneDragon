@@ -75,35 +75,44 @@ def classify_buy(card, state) -> str:
     return 'off'
 
 
-def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int:
+def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int | None:
     """按 target 语境的核心在场数(账本 core_count 单一口径;③ 攒数据地基)。
 
     核心定义三源(线库 core_cards / 桥池 fixed+core / 仙舟三人组
-    _CORE_TRIO)此前各管各的,非仙舟线局 core_count 恒 0(二轮#8)
-    ——本函数按 target 路由到正确源:
+    _CORE_TRIO)按 target 路由:
     - ``'v2:<line_id>'``(锁线)→ LineV1.core_cards 在场数;
-    - 桥 id(xianzhou_dot/hunt3/…)→ BRIDGE_POOL 的 fixed+core
-      在场数;
-    - 空 target → _CORE_TRIO(旧缺省口径,兼容 r358 语义)。
+    - 桥 id(先查 P1 池,再 P2 池)→ fixed+core 在场数;
+    - **已知线但 core_cards=[]**(dot_fallback 兜底线,不锁信号)
+      → ``None``(无核心概念——别退三人组:审查#1,dot 桶攒
+      三人组计数=③ 源头噪声);
+    - 空 target → _CORE_TRIO(旧缺省口径,兼容 r358 语义);
+    - 查不到线的 target(理论态)→ 同退三人组。
 
     消费方:sim 账本 core_count、Δ池扩核心键先验(按线分桶)。
+    跨线不可比:核心定义随 target 切换(桥名单→线 carry),
+    时间序列判读注意换线轮语义突变(审查#6)。
     """
     if not target:
         return core_trio_count(board_names)
     line_id = target[3:] if target.startswith('v2:') else target   # 'v2:' 是 3 字符(off-by-one 曾致 izi_train 查空)
-    # 先桥池(精确 id 匹配;core 是主集合,fixed 是前置必买件)
-    for combo in BRIDGE_POOL:
-        cid = getattr(combo, 'bridge_id',
-                      getattr(combo, 'combo_id', ''))
-        if cid == line_id:
+    # 先桥池(P1+P2;直接属性访问——审查#3:getattr 链会在改名时
+    # 静默错路由,AttributeError 即暴露)
+    from sr_od.application.currency_war.cw_bridge_pool import (
+        BRIDGE_POOL,
+        BRIDGE_POOL_P2,
+    )
+    for combo in (*BRIDGE_POOL, *BRIDGE_POOL_P2):
+        if combo.bridge_id == line_id:
             names = set(combo.fixed + combo.core)
             return sum(1 for n in names if n in board_names)
-    # 再线库(core_cards)
+    # 再线库(core_cards;已知线但空 → None:无核心概念)
     from sr_od.application.currency_war.cw_line_library_v1 import (
         line_of,
     )
     line = line_of(line_id)
-    if line is not None and line.core_cards:
+    if line is not None:
+        if not line.core_cards:
+            return None
         return sum(1 for c in line.core_cards if c in board_names)
     # 未知 target(理论态)→ 退三人组缺省,不 crash
     return core_trio_count(board_names)

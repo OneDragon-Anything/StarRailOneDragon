@@ -772,7 +772,10 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
         # sim 批次:board 恒空(设计如此)→ 回退账本深度(sim.depth
         # = _deployable_depth 口径,与生产 board 语义同源 r343)
         _sim = o.get("sim") or {}
-        depth_s = str(depth) if _b else str(_sim.get('depth', '-'))
+        # sim 行板深带 *(审查#4:sim depth=可部署潜力/生产=已部署
+        # 事实,跨 run 并排判读需可辨)
+        depth_s = str(depth) if _b else (
+            f"{_sim.get('depth', '-')}*" if _sim else '-')
         bench = o.get("bench_count")
         delta_s = f'{-delta:+d}' if delta is not None else '-'
         lines.append(
@@ -825,17 +828,29 @@ def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
     from sr_od.application.currency_war.cw_factions import FACTIONS
     best = _load_decisions_rounds(replay_dir, run_id)
     lines: list[str] = []
+    prev_tgt = None
     for k in sorted(best):
         d = best[k]
+        # 换线标记(审查#6:核= 随 tgt 切换定义,跨线时间序列
+        # 判读需可辨「数字跳水=换线非丢核心」)
+        _tgt = d.get('target_comp') or ''
+        mark = ' ↹' if (prev_tgt is not None and _tgt != prev_tgt) else ''
+        prev_tgt = _tgt
         # sim 批次:board 恒空(档位恒 0 误导)→ 三维同屏换账本代理
-        # 维度(深度/核心在场/方向态;core_count 按 target 路由)
+        # 维度(深度/核心在场/方向态;core_count 按 target 路由,
+        # **跨线不可比**——核心定义随 tgt 切换,↹ 标换线轮)
         _simd = d.get('sim')
         if _simd is not None:
+            _cc = _simd.get('core_count')
+            _cc_s = '-' if _cc is None else str(_cc)
             lines.append(
                 f"  p{k[0]}r{k[1]} 深={_simd.get('depth')}"
-                f" 核={_simd.get('core_count')}"
+                f" 核={_cc_s}"
                 f"{' ✓方向' if _simd.get('dir_established') else ''}"
-                f" tgt={d.get('target_comp') or '-'}")
+                f" tgt={_tgt or '-'}{mark}")
+            _dep = _simd.get('deployed') or []
+            if _dep:
+                lines.append(f"    deployed={' '.join(_dep)}")
             continue
         board = (d.get('state') or {}).get('board') or {}
         activated = {}
