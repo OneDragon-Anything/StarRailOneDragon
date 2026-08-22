@@ -13,3 +13,4 @@
 | [0009](0009-sim-deep-mining-directions.md) | sim 深度挖掘方向成文(诚实性分层+五方向) | accepted | 2026-08-22 |
 | [0010](0010-adversarial-review-discipline.md) | 子代理对抗审查纪律(方案先攻后信) | accepted | 2026-08-22 |
 | [0011](0011-goal-schedule-calibration.md) | goal/schedule 自主推进校准节(元纪律入 skill) | accepted | 2026-08-22 |
+| [0012](0012-live-issue-triage-backfill-loop.md) | 实机暴露问题的分诊与回灌闭环(A/B 类分诊+判读同构+回灌纪律) | accepted | 2026-08-24 |
