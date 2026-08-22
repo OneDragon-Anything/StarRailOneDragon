@@ -13,8 +13,11 @@
 ## 构成
 
 - `SKILL.md`:必做 checklist(8 步开发循环)+ 单一源地图 + 判读/验证/运维/文档同步/防坑的核心判据。
-- `references/verification.md`:验证工作台细则(sim A/B 纪律、代理语义自检、单帧锁模板、实机判读)。
+- `references/verification.md`:验证工作台细则(sim A/B 纪律、诚实性分层、分诊与回灌、变异探针、单帧锁模板、实机判读)。
+- `references/telemetry-reading.md`:遥测判读方法论(观察面全量清单、视图覆盖矩阵、采集缺口)。
 - `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈、运行坑)。
+- `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层)。
+- `references/compo-knowledge.md`:阵容知识工程(证据三层、提炼/修订/版本重跑流程)。
 - `design/`:本文件 + 决策存档。
 
 ## 与其它约定层的分工
