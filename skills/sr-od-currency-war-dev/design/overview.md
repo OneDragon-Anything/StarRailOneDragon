@@ -1,0 +1,24 @@
+# sr-od-currency-war-dev · 设计总览
+
+## 定位
+
+货币战争(Currency War)自动化的**开发·维护·自主推进操作手册**,项目内 dev skill(跟仓库走,不独立发布)。回答三件事:知识在哪(单一源地图)、按什么纪律改(设计先行+三份文档前置)、用什么验证与运维(反馈梯度+实机运维)。
+
+## 边界
+
+- **不管**:新玩法从零搭建(od-dev-gameplay-automation)、通用任务树方法(od-dev-progress-tracking)、停机钩子生命周期(od-dev-stop-hooks)、画面建档(od-dev-screen-onboarding)、写单个 op(od-dev-write-operation)——CW 场景下按 SKILL.md 入口序路由到它们,本 skill 不复述其内容。
+- **不管**:游戏机制知识本身(在哪查由单一源地图指路)、策略的具体行为语义(strategy/01-07 是源)。
+- 面向**已存在的 CW app**;若 CW 被推倒重写,本 skill 随之修订。
+
+## 构成
+
+- `SKILL.md`:必做 checklist(8 步开发循环)+ 单一源地图 + 判读/验证/运维/文档同步/防坑的核心判据。
+- `references/verification.md`:验证工作台细则(sim A/B 纪律、代理语义自检、单帧锁模板、实机判读)。
+- `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈、运行坑)。
+- `design/`:本文件 + 决策存档。
+
+## 与其它约定层的分工
+
+- 全局/项目 AGENTS:always-on 通用纪律(工作流级);本 skill 只管 CW 特定操作,通用部分不复述(但**自包含重述**改策略纪律的关键判据——见 ADR-0003)。
+- `docs/`:知识与设计本体;本 skill 是「怎么消费/维护它们」的操作规程。
+- `.debug/temp/currency_war/cw_dev/进度.md`:运行状态;本 skill 的操作对象(读写),不是知识源。
