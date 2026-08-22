@@ -588,17 +588,23 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if isinstance(a, BuyCard):
                     cards_pool.take(a.card.name)
                     st.gold -= a.card.cost
-                    _spend['buys'][a.reason or 'unknown'] = \
-                        _spend['buys'].get(a.reason or 'unknown', 0) \
-                        + a.card.cost
+                    _ch = a.reason or 'unknown'
+                    _spend['buys'][_ch] = \
+                        _spend['buys'].get(_ch, 0) + a.card.cost
                     # 序列化形状对齐生产 serialize_action(card 嵌套;
-                    # 视图读 a['card']['cost'],平铺会让 economy 算 0)
+                    # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
+                    # reason=**通道**(创建点语义);channel=**身份**
+                    # (classify_buy——通道经济分析别混桶,审查#7)
+                    from sr_od.application.currency_war.cw_line_defs import (
+                        classify_buy as _cb,
+                    )
                     _acts.append({'__type__': 'BuyCard',
                                   'card': {'x': a.card.x,
                                            'faction': a.card.faction,
                                            'name': a.card.name,
                                            'cost': a.card.cost},
-                                  'reason': a.reason or 'unknown'})
+                                  'reason': _ch,
+                                  'channel': _cb(a.card, st)})
                     xp += XP_PER_BUY
                     st.bench.append(BenchChar(
                         slot=len(st.bench) + 1, char_id=a.card.name,
@@ -663,7 +669,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'gold': st.gold, 'hp': st.hp,
             'target_comp': (sess.locked_line or sess.bridge_id or ''),
             'state': {'board': {}, 'level': st.level,
-                      'bench': [b.char_id for b in st.bench]},
+                      # bench 对齐生产 BenchChar 形状(dict 带
+                      # char_id/faction——视图/检查读 b['faction']
+                      # 不炸;审查#3)
+                      'bench': [{'char_id': b.char_id,
+                                 'faction': b.faction,
+                                 'slot': b.slot}
+                                for b in st.bench]},
             'actions': _acts,
             'sim': {
                 'node': nodes[rn - 1], 'delta': delta,
@@ -740,8 +752,13 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         from sr_od.application.currency_war.cw_sim_checks import (
             run_checks_on_ledgers,
         )
-        report['checks_violations'] = run_checks_on_ledgers(
+        rep_checks = run_checks_on_ledgers(
             [r.ledger for r in results])
+        # 审查#6:报告自带 seed_base/n——games 索引 → seed =
+        # seed_base+idx,跨日志传阅时索引可独立解读
+        for v in rep_checks.values():
+            v['seed_base'] = seed_base
+        report['checks_violations'] = rep_checks
     return report
 
 
@@ -754,7 +771,7 @@ _NT_TO_PROD = {'battle': '普通战斗', 'encounter': '遭遇',
 
 def _default_sim_runs_dir(pool_fp: str, n: int, seed_base: int) -> Path:
     import time
-    stamp = time.strftime('%Y%m%d_%H%M%S')
+    stamp = time.strftime('%Y%m%d_%H%M%S') + f'{time.monotonic_ns() % 1000:03d}'
     return SIM_RUNS_DIR / f'sim_{stamp}_n{n}_s{seed_base}_{pool_fp[:8]}'
 
 
@@ -796,7 +813,7 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                     'round_num': row['round_num'],
                     'node_type': _NT_TO_PROD.get(
                         row['sim']['node'], row['sim']['node']),
-                    'comp_tag': row['target_comp'] or '?',
+                    'comp_tag': row['target_comp'] or '',
                     'hp_after': row['hp'],
                     'board_before': {}, 'bench_count':
                         len(row['state']['bench']),
@@ -819,9 +836,20 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                         'event': w['event'], 'gold': w['gold'],
                         'shop': w['cards'],
                     }, ensure_ascii=False) + '\n')
-    # 保留清理(旧批次滚动删除)
+    # manifest(审查#5:写半失败无标记 → 残批被当有效批;判读端
+    # 可校验 manifest 在+行数匹配才认批)
+    (out_dir / 'manifest.json').write_text(_json.dumps({
+        'n': len(results),
+        'seeds': [r.seed for r in results],
+        'pool_fingerprint': pool_fp or (
+            results[0].pool_fingerprint if results else ''),
+        'rounds_rows': sum(len(r.ledger) for r in results),
+    }, ensure_ascii=False), encoding='utf-8')
+    # 保留清理(旧批次滚动删除;只清 sim_ 前缀批——用户显式传的
+    # 非 sim 目录不动,审查#5)
     if SIM_RUNS_DIR.exists():
-        batches = sorted(p for p in SIM_RUNS_DIR.iterdir() if p.is_dir())
+        batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
+                         if p.is_dir() and p.name.startswith('sim_'))
         for old in batches[:-_SIM_RUNS_KEEP]:
             import shutil
             shutil.rmtree(old, ignore_errors=True)

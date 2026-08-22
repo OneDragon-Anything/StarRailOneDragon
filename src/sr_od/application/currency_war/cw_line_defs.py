@@ -40,11 +40,12 @@ def recipe_kinds_1cost() -> int:
                in RECIPE_FACTIONS)
 
 
-def classify_buy(card, state, session=None) -> str:
-    """买牌身份分类单一源(① 账本 reason 与 r368 冷启动门共用)。
+def classify_buy(card, state) -> str:
+    """买牌**身份**分类单一源(① 账本 reason 与 r368 冷启动门共用)。
 
-    判卡**身份**(与创建路径无关;路径语义 reason 由各创建点
-    自填 line/board_focus/emergency/swap/plan):
+    判卡身份(与购买路径无关;路径语义由各创建点记 BuyCard.reason
+    ——line/board_focus/emergency/swap/plan 是**通道**,身份是
+    本函数输出;账本 actions 里两字段分列,通道经济分析别混桶):
     - ``'bridge_seed'``:桥名单件(BRIDGE_POOL fixed∪core,P1)
     - ``'engine'``:引擎阵营件(全羁绊判定,同 _bridge_seed 口径)
     - ``'pair'``:凑对件(与已拥有阵营同阵营)

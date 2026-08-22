@@ -910,7 +910,9 @@ def _cli_main() -> None:
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
-                         '根目录 sim_runs;"latest" 同缺省)')
+                         '根目录 sim_runs;"latest" 同缺省)。已知形状差异:'
+                         'ts=轮序号(生产 ISO 串)/board 恒空/comp_tag '
+                         "空方向写'?'(生产'')/bench 为 dict 列表")
     args = ap.parse_args()
     if args.sim_batch:
         # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构

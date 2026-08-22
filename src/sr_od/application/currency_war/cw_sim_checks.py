@@ -52,7 +52,9 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     指纹:r1 无方向(target_comp 空)时,买入含白名单外标签
     (off/pair/board_focus/emergency/swap/plan/unknown)——冷启动
     首购只放行桥名单∪引擎(r368 门),violation 即旧病形态。
-    **只对构造账本跑**:sim 内冷启动门不可达(见模块 docstring)。
+    **只对构造账本跑**:sim 内冷启动门不可达(见模块 docstring);
+    **仅 v2/sim 栈账本适用**——生产栈 r1 买牌走 cw_plan
+    (reason='plan'),不辖于 r368 门,拿生产账本跑此检查必误报。
     """
     out: list[str] = []
     for row in rows:
