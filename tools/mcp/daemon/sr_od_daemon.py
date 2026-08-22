@@ -41,20 +41,42 @@ def find_sr_od_mcp_server_process() -> psutil.Process | None:
     通过全局进程枚举按命令行特征(``sr_od.backend.entry.server``)匹配,
     不依赖易失的 ``Popen`` handle,故 daemon 自身重启后仍能找回主 server。
 
+    r378(双进程事故修):启动命令是 ``uv run python -m sr_od...``——
+    按特征匹配会**同时命中 uv wrapper 和它 spawn 的 python 子进程**,
+    取第一个命中的往往是 wrapper。此前 stop 杀 wrapper → python
+    server orphan 继续占端口(24001)→ 新 server 绑不上端口但
+    start 只查 wrapper 存活 → SUCCESS 假报 → 双代进程并行写日志/
+    遥测(局55/56 数据作废实证)。修:**优先返回真正的 python server
+    进程**(命令行含 sys.executable/python 特征),wrapper 退而求次
+    (能找到 wrapper 说明启动链在,但 server 可能没起)。
+
     Returns:
-        主 server 进程;未找到时返回 ``None``。
+        主 server 进程(python 优先,其次 uv wrapper);未找到 ``None``。
     """
+    wrapper: psutil.Process | None = None
     for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
         try:
             cmdline = proc.info['cmdline']
             if not cmdline:
                 continue
+            hit = False
             for i, arg in enumerate(cmdline):
-                if arg == '-m' and i + 1 < len(cmdline) and cmdline[i + 1] == 'sr_od.backend.entry.server':
-                    return proc
+                if arg == '-m' and i + 1 < len(cmdline) \
+                        and cmdline[i + 1] == 'sr_od.backend.entry.server':
+                    hit = True
+                    break
+            if not hit:
+                continue
+            # python 直跑(exe 名含 python) = 真正的 server;uv wrapper
+            # 的 exe 名是 uv/uv.exe。优先 python(它是占端口/写日志的实体)。
+            exe_name = (proc.info['name'] or '').lower()
+            if 'python' in exe_name:
+                return proc
+            if wrapper is None:
+                wrapper = proc
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
-    return None
+    return wrapper
 
 
 def _get_server_port(proc: psutil.Process) -> int | None:
@@ -148,9 +170,23 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
 
             time.sleep(2)
 
-            if process.poll() is None:
+            # r378(双进程事故修):SUCCESS 必须**端口真 LISTEN**——
+            # uv wrapper 活着≠server 起来(端口被 orphan 占时,新 server
+            # 绑不上会静默挂/退出,而 wrapper 仍存活)。轮询最多 ~10s,
+            # 绑上才 SUCCESS;超时报 ERROR(此时多半有 orphan 占端口,
+            # 提示先 taskkill /T 清理,防双进程并行写遥测)。
+            _listen_ok = False
+            for _ in range(5):
+                if is_port_in_use(port):
+                    _listen_ok = True
+                    break
+                time.sleep(2)
+            if process.poll() is None and _listen_ok:
                 return f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n端口: {port}\n日志: {log_path}"
-            return f"[ERROR] 启动失败(返回码 {process.returncode})\n日志: {log_path}"
+            _hint = ('' if _listen_ok else
+                     f'\n[提示] 端口 {port} 未监听——若被旧进程占用,先 taskkill /PID <旧pid> /T /F 清理再 start')
+            return (f"[ERROR] 启动失败(返回码 {process.returncode},"
+                    f"端口监听={_listen_ok}){_hint}\n日志: {log_path}")
 
         except Exception as e:
             return f"[ERROR] 启动异常: {e}"
@@ -177,6 +213,18 @@ def stop_sr_od_mcp_server() -> str:
         if alive:
             for p in alive:
                 p.kill()
+
+        # r378(双进程事故修):terminate/kill 后**验证实体真的死了**——
+        # ①重新枚举:python server 进程(按新 find 语义)是否仍存在
+        # (orphan 没死透时存在);②端口是否仍 LISTEN。任一活着 →
+        # 报 WARN(调用方 restart 据此停下,不再盲目 start 出双进程)。
+        time.sleep(1)
+        leftover = find_sr_od_mcp_server_process()
+        port_still = is_port_in_use(MCP_SERVER_PORT)
+        if leftover is not None or port_still:
+            return (f'[WARN] 停止信号已发但残留: 进程={leftover.pid if leftover else None}'
+                    f' 端口{MCP_SERVER_PORT}占用={port_still}'
+                    f'(orphan 未死透;restart 请勿直接 start,先手动 taskkill /PID <pid> /T /F)')
 
         return f"[SUCCESS] 主 MCP server 已停止 (PID: {proc.pid})"
 
@@ -211,8 +259,10 @@ def restart_sr_od_mcp_server() -> str:
 
     stop_result = stop_sr_od_mcp_server()
 
-    if "[ERROR]" in stop_result:
-        return f"[ERROR] 重启失败 - 停止阶段出错:\n{stop_result}"
+    # r378:ERROR **和 WARN 都拦**——WARN=残留 orphan,此时 start
+    # 必然端口冲突 → 双进程并行写遥测(局55/56 事故链)。停下让人清。
+    if '[ERROR]' in stop_result or '[WARN]' in stop_result:
+        return f"[ERROR] 重启失败 - 停止阶段有残留/出错:\n{stop_result}"
 
     time.sleep(2)
 
