@@ -663,12 +663,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
         # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
-        # 记 deployed 代理名单口径——_CORE_TRIO 绑仙舟,非仙舟线
-        # 局恒 0,v2 线id→comp 映射补齐前按线分桶判读,审查二轮#8)
+        # 按 target 语境路由 core_count_for——③ 攒数据地基:线库
+        # core_cards/桥池 fixed+core/三人组单一口径,旧 core_trio_
+        # count 绑死仙舟非仙舟线局恒 0,审查二轮#8)
         _depth = _deployable_depth(st)
         res.depth_trail.append(_depth)
         from sr_od.application.currency_war.cw_line_defs import (
-            core_trio_count,
+            core_count_for,
         )
         res.ledger.append({
             'ts': rn,   # 单调轮序号(非墙钟;审查①#9)
@@ -689,7 +690,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold_before': _gold_before,
                 'income': _inc, 'spend': _spend,
                 'depth': _depth,
-                'core_count': core_trio_count(
+                'core_count': core_count_for(
+                    sess.locked_line or sess.bridge_id or '',
                     {d.char_id for d in (st.deployed or [])
                      if getattr(d, 'char_id', '')}),
                 'shop_waves': _waves,

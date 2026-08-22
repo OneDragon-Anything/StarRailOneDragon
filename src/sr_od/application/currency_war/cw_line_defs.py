@@ -75,6 +75,40 @@ def classify_buy(card, state) -> str:
     return 'off'
 
 
+def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int:
+    """按 target 语境的核心在场数(账本 core_count 单一口径;③ 攒数据地基)。
+
+    核心定义三源(线库 core_cards / 桥池 fixed+core / 仙舟三人组
+    _CORE_TRIO)此前各管各的,非仙舟线局 core_count 恒 0(二轮#8)
+    ——本函数按 target 路由到正确源:
+    - ``'v2:<line_id>'``(锁线)→ LineV1.core_cards 在场数;
+    - 桥 id(xianzhou_dot/hunt3/…)→ BRIDGE_POOL 的 fixed+core
+      在场数;
+    - 空 target → _CORE_TRIO(旧缺省口径,兼容 r358 语义)。
+
+    消费方:sim 账本 core_count、Δ池扩核心键先验(按线分桶)。
+    """
+    if not target:
+        return core_trio_count(board_names)
+    line_id = target[4:] if target.startswith('v2:') else target
+    # 先桥池(精确 id 匹配;core 是主集合,fixed 是前置必买件)
+    for combo in BRIDGE_POOL:
+        cid = getattr(combo, 'bridge_id',
+                      getattr(combo, 'combo_id', ''))
+        if cid == line_id:
+            names = set(combo.fixed + combo.core)
+            return sum(1 for n in names if n in board_names)
+    # 再线库(core_cards)
+    from sr_od.application.currency_war.cw_line_library_v1 import (
+        line_of,
+    )
+    line = line_of(line_id)
+    if line is not None and line.core_cards:
+        return sum(1 for c in line.core_cards if c in board_names)
+    # 未知 target(理论态)→ 退三人组缺省,不 crash
+    return core_trio_count(board_names)
+
+
 # ===== r356(策略架构反思 B):P1 阶段目标形态检查点 =====
 # 局38-44 七败的结构性判读:决策系统对「成型进度」无感知、对
 # 「成型 deadline」无响应——各局在不同 seed 下投影出不同表层
