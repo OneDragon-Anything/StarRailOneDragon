@@ -1113,7 +1113,13 @@ class LineStrategy(DefaultCwStrategy):
         # (与 _bridge_seed 同名单——买进来的每一张都是方向件)。
         # ①(sim 判读同构基建):名单判定收口 classify_buy 单一源
         # (门与账本 reason 共用,防第二源漂移)。
-        if not owned_factions:
+        # r371b(局53 实锤):冷启动判据从「owned 空」扩为
+        # **开局轮(r≤2)**——开局 bench 常有系统发的卡(局53:
+        # 飞霄/乱破/风堇/千冶·刃 4 张自带,owned 非空 → r368 门
+        # 不触发 → 阿格莱雅(昼之半神)对上自带的 风堇 凑对放行,
+        # 又一张线外)。开局轮内任何线外 1 费凑对都是局49 病。
+        if not owned_factions or (state.plane == 1
+                                  and state.round_num <= 2):
             from sr_od.application.currency_war.cw_line_defs import (
                 classify_buy,
             )
