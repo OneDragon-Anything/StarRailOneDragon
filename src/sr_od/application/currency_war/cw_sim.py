@@ -31,9 +31,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
-from sr_od.application.currency_war.cw_line_defs import (
-    ENGINE_FACTIONS as _SIM_ENGINE_FACTIONS,  # r375:消手抄双源(见 _DEPTH_BUCKET_W 处注释)
-)
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
@@ -473,16 +470,14 @@ def _direction_established(session: StrategySession) -> bool:
 def _deployable_depth(st: GameState) -> int:
     """可 deploy 件数(① 收口:此前三处内联重算口径不一)。
 
-    口径 r343(review F/J):阵营 count≥2 的 bench 卡数 + 单张
-    引擎阵营件,capped by level——对齐实机 _should_deploy。
+    口径 r390(执行层代理落地):**读 st.deployed**(真实围栏输出,
+    cw_deploy_logic.select_deployments 与 DeployBench op 同源)——
+    旧口径数 bench 阵营对(r343),deploy 代理升级后两者脱钩
+    (r387 变异探针差异死在这:围栏改了,板深没读)。
     depth_trail / Δ 池采样 / 账本 depth 共用本函数(单一源)。
     """
-    from collections import Counter as _C
-    _fc = _C(b.faction for b in (st.bench or []))
-    _deployable = sum(cnt for f, cnt in _fc.items() if cnt >= 2)
-    _deployable += sum(cnt for f, cnt in _fc.items()
-                       if cnt == 1 and f in _SIM_ENGINE_FACTIONS)
-    return min(st.level, _deployable)
+    _dep = len(st.deployed or [])
+    return min(st.level, _dep)
 
 
 def simulate_p1(seed: int, *, use_refresh: bool = True,
@@ -556,18 +551,42 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # re-decide(捕捉"刷到就买"),段数上限防死循环。
         # r361b(ADR-0219 代理语义纪律,第三次命中):r358 检查点核心维
         # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
-        # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。修:sim 侧
-        # deployed 代理 = bench 引擎件(同 depth_trail 的 _deployable
-        # 口径,ADR-0218 depth 语义一致)——供 update_target/检查点读。
-        from collections import Counter as _C0
-        _fc0 = _C0(b.faction for b in st.bench)
-        st.deployed = [
-            BenchChar(slot=i + 1, faction=b.faction,
-                      char_id=b.char_id if getattr(b, 'char_id', '') else '')
-            for i, b in enumerate(st.bench)
-            if (_fc0.get(b.faction, 0) >= 2
-                or b.faction in _SIM_ENGINE_FACTIONS)
-        ]
+        # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。
+        # r390(用户定调「这些问题明明都可以模拟发现」):deployed 代理
+        # 从「bench 引擎件直进」升级为 **deploy_bench 真实围栏逻辑**
+        # (cw_deploy_logic.select_deployments 纯函数,与 DeployBench op
+        # 同一源)——r373/r387 类执行层 bug 从此 sim 可发现。target 集
+        # 从 session 语义取(桥期 transition_framework 阵营∪配方阵营,
+        # r373 同型);未识别(char_id 空)照旧上,与 op 一致。
+        from sr_od.application.currency_war import cw_deploy_logic as _dl
+        _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
+        try:
+            _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
+                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
+            _tf = frozenset(getattr(sess, 'target_comp', None).factions
+                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
+            _fw_name = getattr(sess, 'transition_framework', '') or ''
+            _fw = frozenset()
+            if _fw_name:
+                from sr_od.application.currency_war.cw_transition import (
+                    TRANSITION_PACK,
+                )
+                _fw = frozenset(
+                    n for n, (f, t) in TRANSITION_PACK.items()
+                    if (f == _fw_name or f == '通用') and t != 'drop')
+        except Exception:   # noqa: BLE001  代理 best-effort
+            pass
+        _up_idx, _held_idx = _dl.select_deployments(
+            st.bench,
+            deployed_cids=set(),
+            deployed_fac=dict(st.board),
+            board=dict(st.board),
+            cap=st.max_units(),
+            target_factions=_tf,
+            target_cores=_tc,
+            fw_carry=_fw,
+        )
+        st.deployed = [st.bench[i] for i in _up_idx if i < len(st.bench)]
         for _seg in range(8):
             strat.update_target(st, sess, None)
             acts = strat.decide_prep(st, sess, None)
