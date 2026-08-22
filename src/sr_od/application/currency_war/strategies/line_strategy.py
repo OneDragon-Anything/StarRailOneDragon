@@ -702,7 +702,17 @@ class LineStrategy(DefaultCwStrategy):
             recipe_tier,
         )
         from sr_od.application.currency_war.cw_state import RefreshShop
-        if state.plane == 1 and 5 <= state.round_num <= 8:
+        # r369(局50 判读):窗口 r5-r8 → r3-r8——r258 早期窗(r≤4)
+        # 要求「未成桥」,r268 窗要求 r≥5,**成桥于 r1-r3 的局在 r4
+        # 落进两窗空隙**(局50 实锤:r4 配方 4 档/店里无配方件/金 29,
+        # 全门过但窗口未到 → 零刷新;r5 才刷到仙舟件时 HP 已 64)。
+        # 配方成型速度 < 掉血速度是 P1 失败主因(46/49/50 三局同判),
+        # 找件越早越便宜(早期金机会成本低)。
+        # ⚠ 期望账已含胜利回血(用户口述:战斗胜利回血 ~+2/场,
+        # 与「长线作战」连胜实证 80→82→84 一致):赢轮净掉血 =
+        # 节点伤害-2,刷新找件加速成型 = 把输轮(-11~-13)转成
+        # 赢轮(+2),每早成型一轮的 HP 期望收益 ~13-15。
+        if state.plane == 1 and 3 <= state.round_num <= 8:
             from sr_od.application.currency_war.cw_chars import (
                 CHARACTERS,
             )
