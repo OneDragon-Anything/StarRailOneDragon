@@ -16,8 +16,34 @@ import re
 
 from cv2.typing import MatLike
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_obs_core import HP_MAX, HP_MIN
 from sr_od.context.sr_context import SrContext
+
+
+def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
+    """结算屏节点类型(纯函数;r366,ADR-0239)→ 中文标准词或 None。
+
+    权威源 = 结算屏自身头部:``挑战成功/挑战结束`` 后 1-4 个 token 内
+    出现的类型词(奖励/战斗/遭遇/补给/首领)。实跑 token 形态(2026-08-22
+    局48 七轮实锤):
+    - reward: ['挑战成功','奖励','Lv.3',...]
+    - battle: ['挑战成功','1-3X点','战斗','火热连胜×1',...]('1-N'带 OCR 噪声)
+    - encounter: ['挑战结束','遭遇','火热连胜×0',...]
+    精确 token 匹配(非包含):'基础奖励'≠'奖励' 不会误中(r260 弃结算屏
+    OCR 的旧顾虑是全屏搜'奖励'误中金币区——邻位窗口+精确匹配根除)。
+    读时点 = record outcome 那一刻的同一张屏,零跨帧状态,首节点覆盖。
+    """
+    _TYPES = {'战斗': '普通战斗', '奖励': '奖励', '遭遇': '遭遇',
+              '补给': '补给', '首领': 'boss', '巨星': '巨星'}
+    _hdr = next((i for i, t in enumerate(ocr_texts)
+                 if '挑战成功' in t or '挑战结束' in t), None)
+    if _hdr is None:
+        return None
+    for t in ocr_texts[_hdr + 1:_hdr + 5]:
+        if t in _TYPES:
+            return _TYPES[t]
+    return None
 
 
 def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
@@ -123,17 +149,25 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     """结算屏 → ``RoundOutcome``(观测回路 P1.5;``on_round_end`` 输入)。
 
     OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
-    (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag/node_type 由调用方
-    (loop,知当前节点 + ``session.target_comp``)传入 —— 结算屏本身不暴露这些。
+    (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
+    (loop)传入。node_type:**结算屏自身解析优先**(r366/ADR-0239——局48 实锤 prep 流
+    RunBuyPhase 下 EnsureShopClosed 零执行,node_type 生产链全死,传参恒回退普通战斗);
+    解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
     ✅ 已接线(2026-08-07 起):battle_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
     strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
-    node_type:结算屏含「首领」→ boss,否则普通战斗(粗档;boss/elite 细分待节点追踪 refine)。
     """
     from sr_od.application.currency_war.cw_performance import RoundOutcome
     ocr_texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(
         image=screen, rect=None, crop_first=False)]
     hp = parse_settlement_hp(ocr_texts)
+    # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
+    # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
+    _st_node = parse_settlement_node_type(ocr_texts)
+    if _st_node is not None and _st_node != node_type:
+        log.info('[cw-settle] node_type 结算屏真值「%s」覆盖传入「%s」(r366)',
+                 _st_node, node_type)
+        node_type = _st_node
     # 失败结算屏(「挑战失败」= 团灭)→ hp_after=0 确定(parse_settlement_hp 在失败屏常读到
     # 「生命值❤!」等非数字 → None,但失败 = hp 0 是 ground truth)。boss 结算屏「挑战结束」无
     # 「生命值」前缀(只裸数字)→ 暂 conf=0(后续实机核实 boss 结算屏 hp 位置 refine)。
