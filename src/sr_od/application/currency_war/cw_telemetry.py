@@ -657,9 +657,13 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     - 判栈(逐局):strategy_id=='line_v2' 或开局轮 BuyCard reason
       含 v2 词表(line/bridge_seed/engine/pair/off)→ v2 栈;
       reason 全 'plan'/空 → default 栈(cw_plan,不辖 r368 门);
-    - v2 栈局跑 check_coldstart_seed_squander(生产 decisions 行
-      顶层 plane/round_num/actions 与检查输入兼容;BuyCard.reason
-      是共享 dataclass,生产遥测同带标签);
+      非空未知 sid → 显式跳过(未来新栈不盲跑,审查#5);
+    - **开局轮逐行全检**(审查#3:_load_decisions_rounds 的
+      max-actions 单行选取是有损投影——生产开局轮实测 5-6 行,
+      pre-refresh 波的违规买牌可被 post-refresh 大行静默挤掉;
+      checks 只聚合开局轮 r≤2 的**全部行**的 BuyCard);
+    - **可判性声明**(审查#2:开局轮买牌 reason 缺失=打标不全
+      时代数据,输出 ⊘ 无法判 而非 ✓——不把不可判伪装成健康);
     - ledger_consistency 不跑(需 sim 键;生产金对账归
       econ_reconcile 工具链,不重复造轮子);
     - 输出行化(判读 CLI 风格),违规局带 run_id 可溯源。
@@ -672,33 +676,49 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     runs = _list_runs(replay_dir)[-recent:]
     lines: list[str] = []
     for rid in runs:
-        best = _load_decisions_rounds(replay_dir, rid)
-        rows = sorted(best.values(), key=lambda d: (d.get('plane') or 0,
-                                                    d.get('round_num') or 0))
-        # 判栈:strategy_id 字段优先,退 reason 词表
-        sid = next((d.get('strategy_id') for d in rows
+        # 开局轮逐行(plane1 r≤2;不走 max-actions reducer——审查#3)
+        rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
+                if d.get('run_id') == rid
+                and (d.get('plane') or 1) == 1
+                and (d.get('round_num') or 9) <= 2]
+        rows.sort(key=lambda d: ((d.get('round_num') or 0),
+                                 (d.get('ts') or '')))
+        all_rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
+                    if d.get('run_id') == rid]
+        # 判栈:strategy_id 字段优先,退开局 reason 词表(逐行)
+        sid = next((d.get('strategy_id') for d in all_rows
                     if d.get('strategy_id')), '')
+        early_buys = [a for d in rows for a in (d.get('actions') or [])
+                      if a.get('__type__') == 'BuyCard']
+        early_reasons = {(a.get('reason') or '') for a in early_buys}
         if sid == 'line_v2':
             stack = 'v2'
+        elif sid and sid != 'default':
+            lines.append(f'{rid}: [未知栈 {sid}] coldstart 跳过'
+                         '(ADR-0245:新栈不盲跑)')
+            continue
+        elif early_reasons & _V2_REASONS:
+            stack = 'v2'
+        elif early_reasons & {'plan'}:
+            stack = 'default'
+        elif early_buys:
+            stack = 'v2'   # 有买但 reason 全空(旧栈时代?);可判性另行声明
         else:
-            early_reasons = {
-                (a.get('reason') or '')
-                for d in rows
-                if (d.get('plane') or 1) == 1 and (d.get('round_num') or 9) <= 2
-                for a in (d.get('actions') or [])
-                if a.get('__type__') == 'BuyCard'}
-            if early_reasons & _V2_REASONS:
-                stack = 'v2'
-            elif early_reasons & {'plan'}:
-                stack = 'default'
-            else:
-                stack = '?'   # 开局轮无买牌,无法判;跑检查无害(无买=无违规)
+            stack = '?'    # 开局轮零买牌,无法判栈;跑检查无害(无买=无违规)
         if stack == 'default':
             lines.append(f'{rid}: [default 栈] coldstart 跳过(cw_plan '
                          '不辖 r368 门)')
             continue
+        # 可判性:开局轮买牌 reason 缺失数(审查#2——✓ 必须真可判)
+        untagged = sum(1 for a in early_buys
+                       if not (a.get('reason') or '').strip())
         v = check_coldstart_seed_squander(rows)
         tag = f'[{stack} 栈]' if stack != 'v2' else '[v2]'
+        if untagged and not v:
+            lines.append(f'{rid}: {tag} coldstart ⊘ 无法判'
+                         f'({untagged} 笔开局买未打标——旧数据;'
+                         f'ba7ce6f3 后新局可判)')
+            continue
         lines.append(f'{rid}: {tag} coldstart '
                      + ('✓ 无违规' if not v else f'⚠ {len(v)} 条'))
         for item in v:

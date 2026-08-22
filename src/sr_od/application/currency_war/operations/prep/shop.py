@@ -464,7 +464,10 @@ class BuyShopCards(SrOperation):
         #   画面跑 analyze_screen + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知 → 建档/补库。
         # M35 防抖(2026-08-16):全槽 unknown 但 Fate 角色全在库 → 判商店开态动画/settle 瞬时读失败
         # (0.3s sleep 偶不够)——停机前重读 2 帧(各 1s),仍 unknown 才真停(真缺模板不会因重读消失)。
-        if total_buy == 0 and any(not c.name for c in state.shop):
+        # f570a76e 审查#1 修:**去 total_buy 门**——「买了≥1 张+仍有未识别槽」
+        # 恰是在残缺牌面上做了买牌决策(ADR-0244 裁决理由本尊),原门让它
+        # 零留证通过 = 暗门;防抖重读对任何未识别残留都该跑。
+        if any(not c.name for c in state.shop):
             _unk = [i + 1 for i, c in enumerate(state.shop) if not c.name]
             for _ in range(2):
                 time.sleep(1.0)
@@ -473,7 +476,7 @@ class BuyShopCards(SrOperation):
                 if not _unk:
                     log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
                     break
-            if _unk and total_buy == 0:
+            if _unk:
                 # [停机钩子·恢复]r34 曾降级为留证不停机(理由:连续两局
                 # 阻断实跑);2026-08-24 用户裁决**不能降级,恢复停机**——
                 # 未识别卡按非 target 跳过 = 带病跑:错过新内容建档窗口
@@ -482,7 +485,10 @@ class BuyShopCards(SrOperation):
                 _shot = self.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
                 from datetime import datetime as _dt
                 from pathlib import Path as _P
-                _fp = _P('.debug/temp/currency_war/shop_unk.flag')
+                # 绝对路径锚仓根(审查#4:相对路径在 daemon spawn 的
+                # 非 CWD 进程里落错地方,AI 巡检靠 flag 发现停机会失明)
+                _fp = _P(__file__).resolve().parents[5] / '.debug' / 'temp' \
+                    / 'currency_war' / 'shop_unk.flag'
                 _fp.parent.mkdir(parents=True, exist_ok=True)
                 _fp.write_text(
                     f'[HOOK-STOP] shop 未识别卡停机钩子(方案D,恢复):operations/prep/shop.py buy\n'
