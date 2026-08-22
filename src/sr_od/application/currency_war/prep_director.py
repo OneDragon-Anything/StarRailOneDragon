@@ -828,6 +828,16 @@ class PrepDirector(SrOperation):
                 _sess = (self.ctx.cw_match.session
                          if self.ctx.cw_match is not None else None)
                 if _sess is not None:
+                    # r363(审计 P0-1/P0-2):首帧(r1 或重启后)写开局
+                    # 槽序表——r362 的 battle_loop 兜底此前**无写入者**
+                    # (审计实锤死读);plane_node_table = 本帧全部槽
+                    # (current+upcoming+past 按 idx)的类型序。
+                    _all = sorted(slots, key=lambda s: s.idx)
+                    _seq = [s.node_type for s in _all if s.node_type]
+                    if _seq and not getattr(_sess, 'plane_node_table', None):
+                        _sess.plane_node_table = _seq
+                        log.info('[cw-director][nodeseq] 槽序表存 %d 槽:%s',
+                                 len(_seq), _seq)
                     # r290(current 覆盖链改左移优先):OCR 标签
                     # 位置门(r80)拦不住相邻同类标签(局20 实证:
                     # r3 结算屏「战斗」vs current 读 reward——
@@ -835,13 +845,28 @@ class PrepDirector(SrOperation):
                     # current 直读不可信。改:**左移推断优先**
                     # (上帧 upcoming[0],r266 已有),OCR 标签
                     # 只在左移无值时兜底(开局首帧)。
-                    _prev = getattr(_sess, 'upcoming_types', None) or []
-                    _direct = _prev[0] if _prev else None
-                    if _direct is None:
+                    # r363(审计 P0-2 修):左移**锚定轮次**——同轮
+                    # 多次 probe(开店/关店/重开)时 upcoming 还是本轮
+                    # 的,旧代码会把 current 写成下一节点(超前一位)。
+                    # 只在上次 probe 是更早轮次时才左移;同轮保持原值。
+                    _st_now = (self.ctx.cw_match.session.last_state
+                               if self.ctx.cw_match is not None else None)
+                    _anchor = (_st_now.plane, _st_now.round_num) \
+                        if _st_now is not None else None
+                    _prev_anchor = getattr(
+                        _sess, 'nodeseq_probe_anchor', None)
+                    if _anchor is not None and _anchor != _prev_anchor:
+                        _prev = getattr(_sess, 'upcoming_types', None) or []
+                        _direct = _prev[0] if _prev else None
+                        if _direct is not None:
+                            _sess.node_type_current = _direct
+                        _sess.nodeseq_probe_anchor = _anchor
+                    # current 直读兜底(首帧:无左移源时)
+                    if getattr(_sess, 'node_type_current', None) is None:
                         _cur = next((s for s in slots
                                      if s.state == 'current'), None)
-                        _direct = _cur.node_type if _cur is not None else None
-                    _sess.node_type_current = _direct
+                        if _cur is not None and _cur.node_type:
+                            _sess.node_type_current = _cur.node_type
                     # 存本帧 upcoming(下轮左移用; idx 升序)
                     _sess.upcoming_types = [
                         s.node_type for s in sorted(

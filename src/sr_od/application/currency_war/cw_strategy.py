@@ -201,7 +201,13 @@ class StrategySession:
     # r306(用户指路):开局帧完整槽序——**离线统计源**(跨局累积
     # 建「位面典型节点表」进 sim 骨架/策略知识)+ 左移兜底参照。
     # 决策主源 = 实时识别(每备战帧读节点行,应对策略改节点)。
+    # r363(审计 P0-1):battle_loop 首节点兜底消费此表——写入端
+    # 在 prep_director._probe_node_type 首帧(此前 r362 修复无写
+    # 入者,审计实锤死读)。
     plane_node_table: list[str] | None = None
+    # r363(审计 P0-2):左移推断的轮次锚——同轮多次 probe 不重做
+    # 左移(防 current 超前一位写下一节点类型)。
+    nodeseq_probe_anchor: tuple | None = None
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向故改结算源)。
     last_streak: int = 0

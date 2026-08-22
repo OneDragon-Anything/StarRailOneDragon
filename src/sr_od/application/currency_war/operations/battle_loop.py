@@ -101,6 +101,11 @@ class CurrencyWarRunLoop(SrOperation):
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
+        # r363(审计 P1-6):runs summary 兜底——中止/卡死/停机局从不走
+        # 3c 回大厅 → record_run_summary 永不调(近 6 局无 runs 行实锤)。
+        # 机制:正常终局写 summary 后置 _summary_written;loop 实例被
+        # 回收时未写 → 补一条 abandoned(gold 轨迹由 recorder 内存带)。
+        self._summary_written: bool = False
         # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后,停在下一轮备战屏(analyze board/star)。
         # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
@@ -324,6 +329,22 @@ class CurrencyWarRunLoop(SrOperation):
         return hp if hp is not None else fallback_hp
 
     @staticmethod
+    def _normalize_node_type(raw: str) -> str:
+        """r363(审计 P0-1):节点类型词汇表统一(三源→中文标准词)。
+
+        输入可能是:英文 Hu token(battle/reward/encounter/supply/boss/
+        megastar)、OCR 中文(奖励/遭遇/补给/首领/巨星/战斗)、旧中文兜底
+        (普通战斗)。输出 = cw_performance.EXPECTED_DROP 键域的中文标准词
+        (普通战斗/精英/遭遇/boss/补给/奖励/巨星)。未知原样透传(不吞错)。
+        """
+        _MAP = {'battle': '普通战斗', 'reward': '奖励', 'encounter': '遭遇',
+                'supply': '补给', 'boss': 'boss', 'megastar': '巨星',
+                '战斗': '普通战斗', '奖励': '奖励', '遭遇': '遭遇',
+                '补给': '补给', '首领': 'boss', '巨星': '巨星',
+                '普通战斗': '普通战斗', '精英': '精英'}
+        return _MAP.get((raw or '').strip(), raw or '普通战斗')
+
+    @staticmethod
     def _node_type_from_table(_session, plane: int | None,
                               round_num: int | None) -> str | None:
         """r362:current 无值时按开局帧槽序表查本节点类型(首节点冷启动兜底)。
@@ -365,14 +386,11 @@ class CurrencyWarRunLoop(SrOperation):
             # session.node_seq)——结算屏 OCR 是二手推断(r260 首版全屏搜'奖励'
             # 误中金币区'基础奖励',r265 area 版仍是推断),弃。
             # 此处只消费 session 里备战期读到的本节点类型。
-            # r362(用户点破「1-1/1-2 是奖励,记录全普通战斗」):**首节点
-            # 冷启动缺口**——r1 备战期 nodeseq 首帧常 skip(非 clean 帧),
-            # upcoming_types 空 → 左移无值 → current=None → 恒回退
-            # 「普通战斗」(r1/r2 恒 reward 实锤,局47)。修:current 无值时
-            # 按「本位面已见节点数」查 plane_node_table(开局帧完整槽序,
-            # r306 已存;reward/supply 等 1-9 槽序稳定,首帧读到的表对
-            # 整个位面有效——变异位仅 slot5/6,前 4 槽查表恒准)。
-            _node = 'boss' if _is_boss else (
+            # r363(审计 P0-1:词汇表三源混写):中文兜底/英文 token/OCR
+            # 中文混在同一列(全量 829 行 8 种值),下游 EXPECTED_DROP/
+            # sim Δ池/视图按错误桶聚合。统一经 _normalize_node_type
+            # 出口(中文标准词),三源进一个 normalizer。
+            _node = 'boss' if _is_boss else self._normalize_node_type(
                 getattr(_session, 'node_type_current', None)
                 or self._node_type_from_table(_session, _plane, _round)
                 or '普通战斗')
@@ -435,6 +453,25 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter += 1
         if self._iter > CurrencyWarRunLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
+        # r363(审计 P1-6):stop 信号/超时路径补 abandoned summary——
+        # 中止局(手停/哨兵/停机钩子)不走 3c 回大厅 → runs.jsonl 无此局
+        # (近 6 局实锤,跨局统计分母偏)。loop 顶检测停止请求即补记,
+        # 正常终局已写标记跳过(result 归 win/loss)。
+        if (not self._summary_written
+                and self.ctx.run_context.is_context_stop
+                and self.ctx.cw_match is not None):
+            import contextlib
+            with contextlib.suppress(Exception):   # 遥测 best-effort
+                _st_ab = self.ctx.cw_match.session.last_state
+                cw_telemetry.record_run_summary(
+                    result='abandoned',
+                    plane_reached=_st_ab.plane if _st_ab else 1,
+                    rounds_survived=_st_ab.round_num if _st_ab else 0,
+                    final_hp=self._last_true_hp(
+                        _st_ab.hp if _st_ab else 0),
+                    notes='stopped-mid-run(r363 兜底)')
+                self._summary_written = True
+                log.info('[cw][loop] 中止局 summary 兜底:abandoned')
         screen = self.last_screenshot
 
         # r119 停滞 watchdog(用户 2026-08-21 纠偏「卡 30min 没发现」):
@@ -919,6 +956,7 @@ class CurrencyWarRunLoop(SrOperation):
                     rounds_survived=_outcome.final_round,
                     final_hp=self._last_true_hp(_outcome.final_hp),
                     notes='auto')
+                self._summary_written = True
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 
