@@ -200,8 +200,15 @@ def battle_delta(round_num: int, dir_round: int,
 # sim CLI(短命),新遥测数据要重跑进程生效。
 # r343(review F/J):深度代理=可 deploy 件数(阵营 count≥2
 # +引擎单件,capped by level)——对齐实机 _should_deploy。
-_SIM_ENGINE_FACTIONS: frozenset[str] = frozenset(
-    ('仙舟', '狼狩', '银河学者', '列车同行'))
+# r375:引擎阵营消手抄双源——直接挂 cw_line_defs.ENGINE_FACTIONS
+# (桥池 engine_bonds 派生)。手抄副本曾三处漂移:缺 持续伤害/
+# 贝洛伯格(r373 给 dot_belog 桥补了生产 deploy 身份,sim 代理
+# 没跟 → 该桥局板深低估,ADR-0219 病),多 银河学者(不在任何
+# 桥 engine_bonds)。别名保留(r343 源码锁与历史注释引用)。
+from sr_od.application.currency_war.cw_line_defs import (
+    ENGINE_FACTIONS as _SIM_ENGINE_FACTIONS,
+)
+
 _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 
 # --- Δ 池三态解析(⓪ 快照化;对抗审查一轮#1/二轮#1/#5 定谳) -----
