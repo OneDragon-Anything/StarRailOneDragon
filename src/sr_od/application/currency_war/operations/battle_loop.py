@@ -550,6 +550,36 @@ class CurrencyWarRunLoop(SrOperation):
                 self._clear_bail_count('事件overlay:equip_pick')
             return self.round_wait(wait=2)
 
+        # 0a0b. 位面简报屏(r374,局54 哨兵实锤 30 iter stall):P2/P3 开局前
+        #       的简报(三 boss+词缀+「下一步」)。屏已建档(货币战争-简报,
+        #       按钮area「按钮-下一步」)但**位面过渡后的 loop 首见帧**走不到
+        #       尾部分支 5——该屏全屏 OCR 耗时 3s+(文字密集),一帧多次全屏
+        #       OCR 查询把 iter 拖到 10s+;更早的结算帧分支 6 点空白加速后,
+        #       过渡到简报的半开帧反复 round_wait。修:0x 头部 find_area 优先
+        #       命中即点按钮 area(单次区域查询,绕开全屏 OCR 依赖),并采简报
+        #       真值(词缀/boss/难度 → ctx,与 StartCurrencyWarMatch 同槽)。
+        if self.round_by_find_area(screen, '货币战争-简报', '标识-本场对局首领', crop_first=False).is_success:
+            # 简报真值采集(boss_fit/mechanics_fit 输入;同 StartCurrencyWarMatch 槽位)
+            try:
+                from sr_od.application.currency_war.cw_briefing_obs import (
+                    read_affixes,
+                    read_bosses,
+                )
+                _aff = read_affixes(self.ctx, screen)
+                if _aff:
+                    self.ctx.cw_briefing_affixes = _aff
+                _bs = read_bosses(self.ctx, screen)
+                if _bs:
+                    self.ctx.cw_briefing_bosses = _bs
+            except Exception:   # noqa: BLE001  采集 best-effort
+                pass
+            _nx = self.round_by_find_and_click_area(
+                screen, '货币战争-简报', '按钮-下一步', success_wait=2)
+            if _nx.is_success:
+                log.info('[cw-loop] 位面简报 → 点下一步(词缀/首领已采集)')
+                return self.round_wait(wait=1.5)
+            return self.round_retry(wait=2)
+
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
         #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
