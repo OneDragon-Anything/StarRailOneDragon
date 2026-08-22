@@ -307,6 +307,18 @@ class EquipAll(SrOperation):
                      and _match.session.last_state.dual_track_phase) if _match is not None else False
         _transition_hold = (_tgt_comp is not None and 0.0 < _form < COMMIT_FRAC
                             and not _dual)   # r70:双轨期不再 hold(穿给当前 5 人)
+        # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
+        # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
+        # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);
+        # key_equips 命中件照穿(命中即阵容意图明确),gen 散件
+        # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
+        # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
+        _round_now = (getattr(_match.session, 'last_state', None).round_num
+                      if (_match is not None and getattr(_match.session, 'last_state', None) is not None
+                          and getattr(_match.session.last_state, 'plane', 1) == 1) else None)
+        _opening_round = _round_now is not None and _round_now <= 2
+        if _opening_round:
+            _transition_hold = _tgt_comp is not None
         if _transition_hold:
             log.info('[cw-equip] 过渡期持有(form=%.2f < %.2f):非 key_equips 不穿(攒给成型核心)',
                      _form, COMMIT_FRAC)
