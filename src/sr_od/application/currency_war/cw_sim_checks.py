@@ -55,6 +55,8 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
 
     边界:bench 空(没牌可上)不报;**差 1 以内的贴 cap 不报**
     (配方围栏+cap 紧张是合法形态——r387 修的是「富余仍拦」);
+    **同名副本不算「可上货」**(r404-A2:5.1.7 同角色在场只 1,
+    第二张同名留 bench 是 3合1 素材的合法囤积,不是围栏拦截);
     **跨轮持续性门**(连续 2 轮 deployed≤cap-2 才报):sim 代理
     在决策前生成、同轮买入后不刷新——单轮差 2 常是「买了还没
     重新部署」的过渡态(game14 实证:r2 4/6→r3 6/6),连续 2 轮
@@ -74,7 +76,11 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
         if deployed is None or not cap:
             continue
         bench = st.get('bench') or []
-        if len(bench) + len(deployed) <= cap:
+        # r404-A2:可上货=非同名副本(在场名单外的名字)
+        dep_names = {d.get('char_id') for d in deployed}
+        usable = [b for b in bench
+                  if b.get('char_id') not in dep_names]
+        if len(usable) + len(deployed) <= cap:
             continue
         if len(deployed) < cap - 1:
             _short_rounds.append(rn)

@@ -171,13 +171,23 @@ def select_deployments(
     plain_rest = [i for i in rest if i not in ignite_rest]
     order = ignite_rest + tgt_idx + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
+    # r404-A2:同名去重(5.1.7 不变量:同角色在场只 1)扩到
+    # **本轮已上名单**——旧版只查传入 deployed_cids(实机=开局
+    # 一次读取/sim=恒空集),本轮内第二张同名(cid 不在 deployed_
+    # cids)照样上——60 局实证 40 局「重复件占位」的直接机制
+    # (爻光×3 同场=第2张起对体系零增益白占 cap)。3合1 素材
+    # 留 bench(r383b 囤件语义不受影响:囤的是 bench 不是上场)。
     up: list[int] = []
+    _up_names: set[str] = set()
     for i in order:
         if len(deployed_cids) + len(up) >= cap:
             held.append(i)
             continue
         cid = getattr(bench[i], 'char_id', '') or ''
-        if cid and cid in deployed_cids:
-            continue    # 去重(5.1.7)
+        if cid and (cid in deployed_cids or cid in _up_names):
+            held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
+            continue
         up.append(i)
+        if cid:
+            _up_names.add(cid)
     return up, held
