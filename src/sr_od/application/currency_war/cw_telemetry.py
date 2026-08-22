@@ -794,12 +794,19 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
                          if isinstance(a, dict) and a.get("__type__") == "LevelUp")
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
+        # 卖牌回金(⑤:此前漏计——含卖轮的 income 系统性偏负;
+        # sim 账本行带 income 字段,生产行暂无(卖值不在动作里,
+        # 补采前按 0 = 与旧口径一致,不回归)
+        sell_in = sum((a.get("income") or 0) for a in acts
+                      if isinstance(a, dict) and a.get("__type__") == "SellBench")
         g = d.get("gold") or 0
-        income = (g - prev_gold + spend) if prev_gold is not None else None
+        income = ((g - prev_gold + spend - sell_in)
+                  if prev_gold is not None else None)
         flag = ' ⚠滞留' if (g >= 20 and spend == 0) else ''
+        sell_s = f' 卖+{sell_in}' if sell_in else ''
         lines.append(
             f"  p{k[0]}r{k[1]} g={g}"
-            f" 花={spend} 收={'-' if income is None else income}{flag}")
+            f" 花={spend}{sell_s} 收={'-' if income is None else income}{flag}")
         prev_gold = g
     return lines
 
@@ -889,6 +896,9 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
 
 def _cli_main() -> None:
     import argparse
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):   # GBK 控制台遇 ⚠/★ 崩
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(prog='cw_telemetry',
                                  description='货币战争遥测查询(复盘判读单一入口)')
     ap.add_argument('cmd', choices=['query'])
@@ -898,8 +908,26 @@ def _cli_main() -> None:
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
                              'hp', 'economy', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
+    ap.add_argument('--sim-batch', default='', metavar='BATCH',
+                    help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
+                         '根目录 sim_runs;"latest" 同缺省)')
     args = ap.parse_args()
-    replay_dir = Path(args.replay_dir)
+    if args.sim_batch:
+        # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构
+        # ({decisions,outcomes,shop_snapshots}.jsonl),视图零分叉
+        from sr_od.application.currency_war.cw_sim import SIM_RUNS_DIR
+        if args.sim_batch == 'latest':
+            batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
+                             if p.is_dir())
+            if not batches:
+                print('(无 sim 批次——先跑 simulate_p1_batch)')
+                return
+            replay_dir = batches[-1]
+        else:
+            replay_dir = SIM_RUNS_DIR / args.sim_batch
+        print(f"[sim 批次] {replay_dir.name}")
+    else:
+        replay_dir = Path(args.replay_dir)
     runs = _list_runs(replay_dir)
     if not runs:
         print('(无 replay 数据)')

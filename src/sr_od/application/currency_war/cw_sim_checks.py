@@ -65,9 +65,11 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
                 continue
             reason = a.get('reason') or 'unknown'
             if reason not in _COLDSTART_OK:
+                name = (a.get('card') or {}).get('name') or a.get('name')
+                cost = (a.get('card') or {}).get('cost') or a.get('cost')
                 out.append(
-                    f"r1 冷启动买入非方向件: {a.get('name')}"
-                    f"(reason={reason}, cost={a.get('cost')})")
+                    f"r1 冷启动买入非方向件: {name}"
+                    f"(reason={reason}, cost={cost})")
         return out   # 只查 r1
     return out
 

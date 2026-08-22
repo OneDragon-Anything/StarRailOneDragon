@@ -526,8 +526,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'event': _inc_event}
         st.gold += sum(_inc.values())
         st.shop = cards_pool.draw_shop(st.level)
-        _waves = [[{'name': c.name, 'faction': c.faction, 'cost': c.cost}
-                   for c in st.shop]]   # ① 账本:牌面波(supply 视图)
+        _waves = [{'event': 'offer', 'gold': st.gold,
+                   'cards': [{'name': c.name, 'faction': c.faction,
+                              'cost': c.cost} for c in st.shop]}
+                  ]   # ① 账本:牌面波(supply 视图;gold=该波时点金)
         # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
         _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
         _acts: list[dict] = []
@@ -571,8 +573,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
                     st.shop = cards_pool.draw_shop(st.level)
                     _waves.append(
-                        [{'name': c.name, 'faction': c.faction,
-                          'cost': c.cost} for c in st.shop])
+                        {'event': 'refresh', 'gold': st.gold,
+                         'cards': [{'name': c.name, 'faction': c.faction,
+                                    'cost': c.cost} for c in st.shop]})
                     progressed = True
                     break          # 刷后立即 re-decide(见新店)
                 if isinstance(a, BuyCard):
@@ -581,9 +584,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _spend['buys'][a.reason or 'unknown'] = \
                         _spend['buys'].get(a.reason or 'unknown', 0) \
                         + a.card.cost
+                    # 序列化形状对齐生产 serialize_action(card 嵌套;
+                    # 视图读 a['card']['cost'],平铺会让 economy 算 0)
                     _acts.append({'__type__': 'BuyCard',
-                                  'name': a.card.name,
-                                  'cost': a.card.cost,
+                                  'card': {'x': a.card.x,
+                                           'faction': a.card.faction,
+                                           'name': a.card.name,
+                                           'cost': a.card.cost},
                                   'reason': a.reason or 'unknown'})
                     xp += XP_PER_BUY
                     st.bench.append(BenchChar(
@@ -604,6 +611,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.gold += _sell_v
                         _spend['sell_income'] += _sell_v
                         _acts.append({'__type__': 'SellBench',
+                                      'bench_idx': a.bench_idx,
                                       'name': bc.char_id,
                                       'income': _sell_v})
                         cards_pool.ret(bc.char_id)
@@ -761,10 +769,15 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
             f'sim 账本禁写生产 replay 目录: {out_dir}(自中毒回路;'
             f'落盘目标只能是 {SIM_RUNS_DIR} 下或显式独立目录)')
     out_dir.mkdir(parents=True, exist_ok=True)
-    run_id = out_dir.name
+    base_id = out_dir.name
     with (out_dir / 'decisions.jsonl').open('w', encoding='utf-8') as f_d, \
-         (out_dir / 'outcomes.jsonl').open('w', encoding='utf-8') as f_o:
+         (out_dir / 'outcomes.jsonl').open('w', encoding='utf-8') as f_o, \
+         (out_dir / 'shop_snapshots.jsonl').open('w',
+                                                 encoding='utf-8') as f_s:
         for r in results:
+            # 每局独立 run_id(带 seed——判读视图按 run 过滤时一局一局
+            # 看,且 id 即重放地址:simulate_p1(<seed>) 重放该局)
+            run_id = f'{base_id}_s{r.seed}'
             for row in r.ledger:
                 row = dict(row)
                 row['run_id'] = run_id
@@ -785,6 +798,16 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                             'killed': row['sim']['delta'] < 0},
                 }
                 f_o.write(_json.dumps(o, ensure_ascii=False) + '\n')
+                # 第三流:牌面波(生产 shop_snapshots 同 schema——
+                # supply 视图零改动可查 sim 批次)
+                for w in row['sim'].get('shop_waves') or []:
+                    f_s.write(_json.dumps({
+                        'schema_version': 1, 'ts': row['ts'],
+                        'run_id': run_id, 'plane': row['plane'],
+                        'round_num': row['round_num'],
+                        'event': w['event'], 'gold': w['gold'],
+                        'shop': w['cards'],
+                    }, ensure_ascii=False) + '\n')
     # 保留清理(旧批次滚动删除)
     if SIM_RUNS_DIR.exists():
         batches = sorted(p for p in SIM_RUNS_DIR.iterdir() if p.is_dir())
@@ -792,3 +815,62 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
             import shutil
             shutil.rmtree(old, ignore_errors=True)
     return out_dir
+
+
+def _cli_main() -> None:
+    """④ seed 重放入口(可复现 bug 报告:seed+池指纹 → 逐轮决策)。
+
+    用法:
+        uv run python -m sr_od.application.currency_war.cw_sim \\
+            replay --seed 42 --pool snapshot
+    checks 报的 games 索引 → seed = seed_base + idx,同参数重放。
+    池指纹不符(历史 bug 对新池)→ 提示换池版本,不硬跑(⓪ 纪律)。
+    """
+    import argparse
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    ap = argparse.ArgumentParser(prog='cw_sim')
+    ap.add_argument('cmd', choices=['replay', 'batch'])
+    ap.add_argument('--seed', type=int, default=0)
+    ap.add_argument('--n', type=int, default=100)
+    ap.add_argument('--seed-base', type=int, default=0)
+    ap.add_argument('--pool', default='snapshot',
+                    help='auto/snapshot/fallback/JSON 路径')
+    ap.add_argument('--expect-fingerprint', default='',
+                    help='期望池指纹(不符即拒——历史报告对旧池重放)')
+    args = ap.parse_args()
+    pool_arg = args.pool
+    if args.cmd == 'replay':
+        r = simulate_p1(args.seed, pool=pool_arg)
+        if args.expect_fingerprint and \
+                r.pool_fingerprint != args.expect_fingerprint:
+            print(f'池指纹不符: 期望 {args.expect_fingerprint} '
+                  f'实得 {r.pool_fingerprint}(换池版本或 Path 快照)')
+            return
+        print(f"=== seed {args.seed} | 池 {r.pool_source} "
+              f"{r.pool_fingerprint[:8]} | 末HP {r.final_hp} "
+              f"| dir r{r.dir_round} ===")
+        for row in r.ledger:
+            s = row['sim']
+            buys = [f"{(a.get('card') or {}).get('name')}"
+                    f"({a.get('reason', '?')})"
+                    for a in row['actions']
+                    if a.get('__type__') == 'BuyCard']
+            print(f"  r{row['round_num']} {s['node']:<9} "
+                  f"Δ{s['delta']:+3d} hp={row['hp']:>3} "
+                  f"g={row['gold']:>3} 深{s['depth']:>2} "
+                  f"花={sum(s['spend']['buys'].values())} "
+                  f"tgt={row['target_comp'] or '-'} "
+                  f"买={','.join(buys) or '-'}")
+    else:
+        rep = simulate_p1_batch(args.n, seed_base=args.seed_base,
+                                pool=pool_arg)
+        for k in ('n', 'hp_ge_60', 'battle_losses_le_2', 'avg_final_hp',
+                  'pool_fingerprint'):
+            print(f'{k}: {rep[k]}')
+        print('checks:', rep['checks_violations'])
+
+
+if __name__ == '__main__':
+    _cli_main()
