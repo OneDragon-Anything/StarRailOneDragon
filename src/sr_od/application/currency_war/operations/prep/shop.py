@@ -474,12 +474,33 @@ class BuyShopCards(SrOperation):
                     log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
                     break
             if _unk and total_buy == 0:
-                # r34 降级留证不停机(原停机采集连续两局阻断实跑;主开发不在场时纯阻断)。
-                # 未识别卡按非 target 处理跳过即可(bot 能推进),截图留证给模板补档。
-                log.warning(f'[cw!][shop][hook] 未识别卡槽{_unk}(留证不停机,昔涟诗篇/立绘缺?'
-                            f'——r34 降级:原停机采集阻断实跑)')
-                self.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
-                # 不 stop:继续(未识别卡在 plan 中已是未知卡,买牌逻辑自然跳过)
+                # [停机钩子·恢复]r34 曾降级为留证不停机(理由:连续两局
+                # 阻断实跑);2026-08-24 用户裁决**不能降级,恢复停机**——
+                # 未识别卡按非 target 跳过 = 带病跑:错过新内容建档窗口
+                # 且买牌决策在残缺牌面上做(潜在新卡/新版本内容不可见)。
+                # 代价已知会(阻断实跑),用户明示接受。
+                _shot = self.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
+                from datetime import datetime as _dt
+                from pathlib import Path as _P
+                _fp = _P('.debug/temp/currency_war/shop_unk.flag')
+                _fp.parent.mkdir(parents=True, exist_ok=True)
+                _fp.write_text(
+                    f'[HOOK-STOP] shop 未识别卡停机钩子(方案D,恢复):operations/prep/shop.py buy\n'
+                    f'触发:未购买且商店槽{_unk}未识别(防抖重读 2 帧后仍 miss)——\n'
+                    f'   新版本新卡/昔涟诗篇类非角色内容/立绘缺。r34 降级已被用户否决\n'
+                    f'   (2026-08-24:未识别不能降级,带病跑错过建档窗口)。\n'
+                    f'处理步骤:1. 看 shot={_shot};对停机画面跑 analyze_screen\n'
+                    f'   + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知;\n'
+                    f'   2. 新卡 → 建档(screen_info/立绘库);瞬时帧类 → 调上方\n'
+                    f'   RefreshShop 后等待;3. 删本 flag + 重启 MCP server 重跑。\n'
+                    f'删除条件:连续多局零触发(未知内容建模收敛)后按 skill\n'
+                    f'   od-dev-stop-hooks 生命周期判据评估删除。\n'
+                    f'ts={_dt.now().strftime("%m-%d %H:%M:%S")}\n',
+                    encoding='utf-8')
+                log.warning('[cw!] [shop] 未识别卡槽%s(重读后仍 miss)→ 停机留画面'
+                            '待建档 shot=%s(用户裁决恢复:未识别不能降级)', _unk, _shot)
+                self.ctx.run_context.stop_running()
+                return self.round_fail(status=f'shop 未识别卡槽{_unk},停机留证')
 
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
         # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBench 实读
