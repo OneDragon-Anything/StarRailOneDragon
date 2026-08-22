@@ -32,7 +32,7 @@ from pathlib import Path
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_line_defs import (
-    ENGINE_FACTIONS as _SIM_ENGINE_FACTIONS,   # r375:消手抄双源(见 _DEPTH_BUCKET_W 处注释)
+    ENGINE_FACTIONS as _SIM_ENGINE_FACTIONS,  # r375:消手抄双源(见 _DEPTH_BUCKET_W 处注释)
 )
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
