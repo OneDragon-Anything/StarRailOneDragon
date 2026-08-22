@@ -509,24 +509,51 @@ def _first_trio_round(res, target: int) -> int | None:
     return None
 
 
-# r394b:大引擎门槛(transition_combos.md 引擎池表;羁绊计数
-# ≥门槛即引擎达成——DOT2/列车2+/仙舟3,两两组合都成立)。
+# r394b:引擎池模型(combo_methodology.md 最终模型 r148+r149;
+# 官方 plaza API 784 篇 Early 统计定档:两两组合 153 篇全是大
+# 引擎对,81/41/31)。
+# 大引擎(羁绊即伤害源): 仙舟3/列车2+/DOT2;
+# 中引擎(拉条/资源型): 贝洛伯格2/减益2/燃血2/战技点2。
+# 过渡阵容判定 = 已达成引擎数 ≥2 **且含至少一个大引擎**
+# (r394c 修正:首版只判 ≥2,贝2+减益2 无大引擎的板面被误判)。
 _BIG_ENGINES: tuple[tuple[str, int], ...] = (
     ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
+)
+_MID_ENGINES: tuple[tuple[str, int], ...] = (
+    ('贝洛伯格', 2), ('减益', 2), ('燃血', 2), ('战技点', 2),
 )
 
 
 def _engines_count(board_factions: dict[str, int]) -> int:
-    """r394b:板面达成的大引擎数(独立判据,组合自由)。"""
-    return sum(1 for bond, tier in _BIG_ENGINES
+    """r394b:板面达成的引擎数(大+中,独立判据)。"""
+    return sum(1 for bond, tier in _BIG_ENGINES + _MID_ENGINES
                if board_factions.get(bond, 0) >= tier)
 
 
+def _transition_formed(board_factions: dict[str, int]) -> bool:
+    """r394c:过渡阵容成型判据(文档单一源语义):
+
+    引擎数 ≥2 **且含至少一个大引擎**——纯中引擎组合(贝2+减益2)
+    不算过渡成型(784 篇两两组合 153 篇全是大引擎对)。
+    """
+    big = sum(1 for bond, tier in _BIG_ENGINES
+              if board_factions.get(bond, 0) >= tier)
+    return big >= 1 and _engines_count(board_factions) >= 2
+
+
 def _first_engines_round(res, target: int) -> int | None:
-    """r394b:引擎达成数首达 target 的最小轮(过渡阵容=≥2 引擎)。"""
+    """r394c:过渡阵容成型(引擎≥target 且含大引擎)首达轮。
+
+    判据走 _transition_formed(文档语义:≥2 且含至少一个大引擎);
+    target=1 语义=至少一大引擎点火(阶段0.5)。
+    """
     for row in res.ledger:
         bf = (row.get('state') or {}).get('board_factions') or {}
-        if bf and _engines_count(bf) >= target:
+        if not bf:
+            continue
+        big = sum(1 for bond, tier in _BIG_ENGINES
+                  if bf.get(bond, 0) >= tier)
+        if _engines_count(bf) >= target and big >= 1:
             return row.get('round_num')
     return None
 
