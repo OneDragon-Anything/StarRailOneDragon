@@ -198,17 +198,22 @@ def _copy_swap_useless(card: ShopCard, state: GameState,
 
 
 def _copy_swap_blocked(card: ShopCard, state: GameState,
-                       session: StrategySession) -> bool:
-    """r410 守卫×目标件豁免(ADR-0303):在场目标件(∈ _target_names
-    保护集)不被 copy_swap 守卫拦。
+                       session: StrategySession,
+                       registry: DecisionV2Registry | None = None) -> bool:
+    """r410 守卫×目标件豁免(ADR-0303 落地;ADR-0304 裁决**默认关
+    =回退 0302 守卫直通**)。
 
-    守卫本意防「无效换卡」(同名换同名纯耗,r410 局72 实证);但目标件
-    在保护集内=deploy 侧本就不会当 off_target 卖,守卫前提不成立;
-    且目标件的第 2 份语义不同——3合1 素材/阵容深度,非换卡。批㉞
-    审计实证:20% 在场目标件卡次(483 次)被该守卫误拦。非目标件
-    照旧受守卫辖(v1 判据不动,v1 臂不受本豁免影响)。
+    开关=registry.copy_swap_target_exempt(默认 False):True 时在场
+    目标件(∈ _target_names 保护集)不被 copy_swap 守卫拦;False 时
+    豁免不生效(回退守卫直通,v1 判据原样辖全部卡)。豁免代码留作
+    A/B 通道(裁决依据见 ADR-0304)。
+
+    守卫本意防「无效换卡」(同名换同名纯耗,r410 局72 实证)。批㉞
+    审计:20% 在场目标件卡次(483 次)被守卫拦;ADR-0303 豁免落地
+    三窗一致小负(-4.67/-0.90/-0.27)→ ADR-0304 指挥官裁决回退。
     """
-    if card.name in _target_names(state, session):
+    if (registry is not None and registry.copy_swap_target_exempt
+            and card.name in _target_names(state, session)):
         return False
     return _copy_swap_useless(card, state, session)
 
@@ -350,10 +355,10 @@ def generate_candidates(state: GameState, session: StrategySession,
             continue    # 未识别卡不买(感知纪律)
         if _star_weighted_copies(card.name, state) >= registry.copies_cap:
             continue    # 副本上限(第 4 份纯浪费)
-        if _copy_swap_blocked(card, state, session):
+        if _copy_swap_blocked(card, state, session, registry):
             continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
             # 在场副本会被 off-target 卖出 → 买新副本=换卡纯耗;
-            # 目标件豁免见 _copy_swap_blocked,ADR-0303)
+            # 目标件豁免开关见 _copy_swap_blocked,ADR-0303/0304)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue

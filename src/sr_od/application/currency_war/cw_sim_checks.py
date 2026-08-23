@@ -3272,7 +3272,8 @@ def check_decision_v2_supply_label_consistency() -> dict:
                 continue
             copies = _c._star_weighted_copies(card.name, st)
             blocked = (copies >= DEFAULT_REGISTRY.copies_cap
-                       or _c._copy_swap_blocked(card, st, sess))
+                       or _c._copy_swap_blocked(card, st, sess,
+                                                DEFAULT_REGISTRY))
             tag = None if blocked else _c._buy_tag(
                 card, st, sess, DEFAULT_REGISTRY)
             has_cand = card.name in cand_names

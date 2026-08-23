@@ -45,6 +45,12 @@ class DecisionV2Registry:
     #: 同名副本上限(星级加权 3 份;第 4 份纯浪费——line_strategy
     #: ._buy_guards 同语义,此处注册表化)
     copies_cap: int = 3
+    #: copy_swap 守卫×目标件豁免开关(ADR-0303 落地,ADR-0304 裁决
+    #: **默认关=回退 0302 守卫直通**):True=在场目标件(∈ _target_names
+    #: 保护集)第 2 份不被 r410 守卫拦;False=回退(豁免代码留,
+    #: A/B 通道可开)。裁决依据:ADR-0303 三窗小负(-4.67/-0.90/-0.27
+    #: 一致向负)未兑现批㉞「下批杠杆」预期——指挥官裁决回退。
+    copy_swap_target_exempt: bool = False
     #: [31] 凑档降级的成本带上限(1-2 费=P1 过渡带)
     bond_fallback_max_cost: int = 2
     #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
