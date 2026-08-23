@@ -365,6 +365,14 @@ def score_candidate(cand: Candidate, state: GameState,
         # ([17]「>50 该买就买」+[18]「不为苟住破息」)。常量在
         # registry(crisis_buy_bias/crisis_buy_tags;ADR-0303 上移)。
         val += registry.crisis_buy_bias
+    if (cand.tag in registry.goldrich_buy_tags
+            and val == 0.0
+            and (state.gold or 0) >= registry.goldrich_min_gold):
+        # ADR-0305 件3:金充裕买偏置(常态域;crisis 偏置的邻域
+        # 对偶)——金充裕段 0 分板面差分的成型/凑对/核心件顶成正
+        # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
+        # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
+        val += registry.goldrich_buy_bias
     return val, {'base': base, 'after': after}
 
 

@@ -201,6 +201,26 @@ class DecisionV2Registry:
     refresh_starve_discount: float = 0.6
     #: 评分侧联动的饥饿金阈值(金< 此值触发折扣)
     refresh_starve_gold: int = 40
+    # ===== ADR-0305 件3:金充裕买偏置(批㉞④ 评分域杠杆) =====
+    #: 金充裕段(≥goldrich_min_gold)的 0 分板面差分买候选顶成正分
+    #: 的偏置。诊断(20 局 probe,seed 520-539):金 28-41 段 110 轮,
+    #: 店有引擎 54 轮中 9 轮零采纳,主导拒因=「非正分」(0 分板面
+    #: 差分 27 次,bond_fallback 32/bridge_core 15/pair 11/engine_seed
+    #: 5 张卡评 0)——金充裕时板面差分 0 的成型/凑对件被一刀切拒,
+    #: 金滞留无变现通道。**三窗 A/B 否决默认开**(0.5 臂 gap
+    #: −1.80/+0.03/+2.47 无一致方向,SD 带 12-16 内):成型加速
+    #: 确认(battles_before_e2 3.17→2.38)但 hp 不跟——rung2 保护弱
+    #: (池 rung2 桶胜率 44.4%),与件2 结论同根。**默认 0=关闭,
+    #: 通道保留**(A/B 可开,同 form_refresh_ev 模式)。
+    goldrich_buy_bias: float = 0.0
+    #: 偏置生效的金下沿(观察段下沿 28;花 1-4 金在此段内不破
+    #: 30/40 息档的段内花费)
+    goldrich_min_gold: int = 28
+    #: 偏置辖的买标签(经济类 bond_fallback 不辖:凑数散件金充裕
+    #: 也不值得占 bench;辖成型/核心/凑对/副本四类)
+    goldrich_buy_tags: frozenset[str] = frozenset({
+        'engine_seed', 'pair', 'copy', 'bridge_core',
+    })
     # ===== 成型找件刷新(ADR-0301 strike2,域 b) =====
     #: 成型找件刷新 EV:未成型(引擎数<target)且当前店无引擎卡时,
     #: 刷新=定向找件。**双窗 A/B 否决(30+30 配对 -4.13/-4.70,

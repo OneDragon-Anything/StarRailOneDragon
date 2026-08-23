@@ -766,6 +766,23 @@ def _first_engines_round(res, target: int) -> int | None:
     return None
 
 
+def _battles_before_engines(res, target: int = 2) -> int | None:
+    """ADR-0305 件2(口径修正):首达 target 引擎数前经历的战斗结算数。
+
+    背景:0304 附带观察「v1 到达 rung2 的战斗轮次 30 vs v2 10」的
+    口径未在代码定义(一次性诊断数字),0305 复测(20 局配对,seed
+    500-519)两臂几乎相等(53 vs 50)——该数字不可再引用。本函数
+    把口径钉死:**hp_events 中 round < _first_engines_round(target)
+    的战斗类节点(battle/encounter/boss)计数**;未达 target 返 None
+    (与 _first_engines_round 同 None 语义,均值只对达成局算)。
+    """
+    e2 = _first_engines_round(res, target)
+    if e2 is None:
+        return None
+    return sum(1 for rn, nt, _, _ in res.hp_events
+               if rn < e2 and nt in ('battle', 'encounter', 'boss'))
+
+
 def _deployable_depth(st: GameState) -> int:
     """可 deploy 件数(① 收口:此前三处内联重算口径不一)。
 
@@ -1363,6 +1380,13 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             1 for r in results
             if _first_trio_round(r, 3) is not None
             and _first_trio_round(r, 3) <= 8) / n,
+        # ADR-0305 件2:到达 e2 前的战斗结算数(口径钉死,防 0304
+        # 「30 vs 10」类未定义口径误读;None=未达 e2 不计入均值)
+        'avg_battles_before_e2': (round(statistics.mean(
+            [b for b in (_battles_before_engines(r, 2) for r in results)
+             if b is not None]), 2)
+            if any(_first_engines_round(r, 2) is not None
+                   for r in results) else None),
         # ADR-0283(批⑰ F6):全批 bench 满守卫跳过的买总次数(超容买
         # 披露;0=守卫未介入,>0 = 满仓态买门判读须对照此计数)
         'bench_full_skipped_buys': sum(
