@@ -291,6 +291,23 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_sim_pool_no_cost_truncation(copies: dict[str, int]) -> dict:
+    """批④F1(实机已裁决;ADR-0272):sim 牌池不得按费用截断。
+
+    判据:池 copies(名→剩余副本)必须含 4 费与 5 费角色——旧
+    `_Pool(max_cost=3)` 把 4/5 费概率质量静默重归一化(lv9 4费
+    .30→0),14 个 4 费角色不进池,低费虚高频 = 供给失真。P1 等级
+    可达 9(REFRESH_PROB lv7 起 5 费 .01→lv9 .10)→ 5 费可达,
+    一并入池。simulate_p1 池构造后硬断言本检查(不变式,违规即
+    raise);batch 报告 `checks_violations` 同步披露。纯 dict 入参,
+    不 import cw_sim。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    missing = [cost for cost in (4, 5) if not any(
+        CHARACTERS[n].cost == cost for n in copies)]
+    return {'violations': len(missing), 'missing_costs': missing}
+
+
 # 批量内嵌检查集(分布级;r371b 后冷启动门 sim 内可达,局49
 # 检查升级进批量——真实 sim 批次自动扫)
 _BATCH_CHECKS = {

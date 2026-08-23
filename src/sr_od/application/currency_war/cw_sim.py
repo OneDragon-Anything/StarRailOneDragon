@@ -138,23 +138,28 @@ class SimResult:
 
 class _Pool:
     """有限牌池(真机制):每卡剩余副本,买走即减、卖出回池;
-    槽抽取 = REFRESH_PROB 定费用档 → 池内均匀。"""
+    槽抽取 = REFRESH_PROB 定费用档 → 池内均匀。
 
-    def __init__(self, rng: random.Random, max_cost: int = 3):
+    ADR-0272(批④F1,实机已裁决):**不按费用截断**——全角色入池
+    (1-5 费),出率由 REFRESH_PROB 按等级自然给出(lv5 起 4 费
+    .02→lv9 .30;lv7 起 5 费 .01→lv9 .10——P1 等级可达 9,5 费
+    可达故入池)。旧 max_cost=3 截断把 4/5 费概率质量静默重归一化
+    (lv9 4费 .30→0),14 个 4 费角色不进池——低费虚高频 = 供给
+    失真。表源=游戏内概率表 OCR(D-91),无位面维度。"""
+
+    def __init__(self, rng: random.Random):
         self.rng = rng
-        self.max_cost = max_cost
         self.copies: dict[str, int] = {
             name: POOL_COPIES_PER_CARD[ch.cost]
             for name, ch in CHARACTERS.items()
-            if ch.cost and ch.cost <= max_cost
+            if ch.cost
         }
 
     def draw_shop(self, level: int) -> list[ShopCard]:
         out: list[ShopCard] = []
         for i in range(5):
             dist = REFRESH_PROB.get(level, {})
-            costs = [c for c in dist
-                     if c <= self.max_cost and dist[c] > 0]
+            costs = [c for c in dist if dist[c] > 0]
             if not costs:
                 continue
             cost = self.rng.choices(
@@ -657,6 +662,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
     cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
+    # ADR-0272:池构造后硬断言无费用截断(不变式;检查函数单一源
+    # 在 cw_sim_checks——纯 dict 入参,不构成 import 环)
+    from sr_od.application.currency_war.cw_sim_checks import (
+        check_sim_pool_no_cost_truncation as _chk_pool,
+    )
+    if _chk_pool(cards_pool.copies)['violations']:
+        raise RuntimeError(
+            'sim 牌池被费用截断(4/5 费角色缺失)——ADR-0272 禁止;'
+            '检查 cw_sim._Pool 构造')
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
     strat = strategy or LineStrategy()
     st = GameState()
@@ -1045,6 +1059,12 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             check_delta_pool_bucket_min_n(_pm)
         rep_checks['depth_cliff_monotonicity'] = \
             check_depth_cliff_monotonicity(_pm)
+        # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_sim_pool_no_cost_truncation as _chk_pool,
+        )
+        rep_checks['sim_pool_no_cost_truncation'] = \
+            _chk_pool(_Pool(random.Random(0)).copies)
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():
