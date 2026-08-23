@@ -639,9 +639,18 @@ class DeployBench(SrOperation):
             # 同语义门(running 阵营档仲裁)——sim 从此能测出本形态。
             _fac = _bench_fac.get(bi, '')
             if _fac == '列车同行' and _RECIPE is not None:
+                # ADR-0261 裁决修订3(单一源):门的 2/3 档数值从
+                # TRANSITION_TRAITS 派生(与 cw_deploy_logic.select_
+                # deployments 的 r288 门同源)——旧硬编码 2/3 是历史双源。
+                from sr_od.application.currency_war.cw_deploy_logic import (
+                    TRANSITION_TRAITS as _TT,
+                )
+                _tier_of = dict(_TT)
+                _train_cap = _tier_of.get('列车同行', 2)
+                _xz_base = _tier_of.get('仙舟', 3)
                 _train_now = _deployed_fac.get('列车同行', 0)
                 _xz_now = _deployed_fac.get('仙舟', 0)
-                if _train_now >= 2 and _xz_now < 3:
+                if _train_now >= _train_cap and _xz_now < _xz_base:
                     log.info(f'[cw-deploy] 配方底线(r288):列车{_train_now}档+仙舟{_xz_now}'
                              f'→列车件留bench(仙舟<3 基础线优先,防挤占)')
                     _skipped += 1

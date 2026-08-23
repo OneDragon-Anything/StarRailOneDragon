@@ -79,3 +79,27 @@ cap=7)对 `cw_deploy_logic.select_deployments` 复现:**纯函数让姬子
 ignition 首键修正——点火引擎件不再被非引擎 tgt 件压在序后。sim 侧
 影响(engines2 分布变化)由指挥官下段跑 sim 批量对照验证,本段只落
 代码+锁。
+
+### 裁决修订三条(2026-08-24 决策对抗裁决后追加,均已落实)
+
+1. **修订1(轴①·验证顺序)——新 sim 基线落盘**:`simulate_p1_batch`
+   n=60、pool='snapshot'、seed_base=0(与 ADR-0260 批同种子域),
+   纯函数+r288(ignition 排序系 r404-A1 既有,sim 侧唯一新增变量=
+   r288 门):
+   - engines2_by_r6 = **0.150**;recipe5_by_r6 = **0.500**;
+     hp_ge_60 = 0.067;avg_final_hp = 40.9;battle_losses_le_2 = 0.25;
+     trio3_by_r8 = 0.0
+   - 池指纹 `942d3f79c09e2eb5`(snapshot);四检查网
+     (ledger/coldstart/deploy_fills_cap/equip_worn)全 0 违规
+   - **旧 engines2=0.150 作废为对照锚**:ADR-0260(修复1)的 A/B 是
+     在无 r288 门的 sim 上测的,有混杂;后续 A/B 以本基线为锚。
+     (注:本批 engines2 恰与旧值同数——r288 门在 n=60 的 r6 窗内
+     触发率低,数值巧合非语义不变;结论以同指纹同种子 A/B 为准)
+2. **修订2(轴②·增量计数)**:纯函数 r288 门用**循环内逐件增量维护**
+   的 `_fac_run` 阵营计数判断(每上一件按全羁绊 r363b 口径 +1,与
+   op 侧 `_deployed_fac` drag 循环 L671-673 同口径),不用入参初始
+   快照——避免门系统性偏松;RECIPE 门闩语义保持。
+3. **修订3(轴③·单一源)**:门的「列车≥2/仙舟<3」数值从
+   `cw_deploy_logic.TRANSITION_TRAITS` 派生(`dict(TRANSITION_
+   TRAITS)['列车同行']`/`['仙舟']`)——不造第三处硬编码;op 侧
+   r288 分支的历史硬编码 2/3 已同步改为同源引用。

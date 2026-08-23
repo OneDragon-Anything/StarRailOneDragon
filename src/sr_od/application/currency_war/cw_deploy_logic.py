@@ -193,9 +193,16 @@ def select_deployments(
     # 列车≥2 且仙舟<3 → 列车件让位留 bench(仙舟基础线优先,防列车
     # 第 3 人挤占配方深度;局23/24 实锤的既定配方纪律)。op 侧在 drag
     # 循环内逐件动态仲裁(每次成功上场同步阵营档);此处用 running
-    # 副本等价模拟——上场一件即把其全羁绊计入,后续候选按更新后的
-    # 计数仲裁。门判定的阵营口径 = bench_fac(主阵营),与 op 的
-    # _bench_fac 同源。
+    # 副本 `_fac_run` 等价模拟(ADR-0261 裁决修订2:**循环内逐件增量
+    # 维护**,每上一件按全羁绊 r363b 口径 +1,不得用入参初始快照——
+    # 否则门系统性偏松)。门判定的阵营口径 = bench_fac(主阵营),与
+    # op 的 _bench_fac 同源。
+    # 修订3(单一源):门的 2/3 档数值**从 TRANSITION_TRAITS 派生**
+    # (列车2/仙舟3 = 过渡体系 tier,同一批数字)——不造第三处硬编码;
+    # op 侧 r288 的历史硬编码点已同步改为本派生引用。
+    _tier_of = dict(TRANSITION_TRAITS)
+    _train_cap = _tier_of.get('列车同行', 2)
+    _xz_base = _tier_of.get('仙舟', 3)
     _fac_run = dict(deployed_fac)
     for i in order:
         if len(deployed_cids) + len(up) >= cap:
@@ -206,8 +213,8 @@ def select_deployments(
             held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
             continue
         if bench_fac.get(i) == '列车同行' \
-                and _fac_run.get('列车同行', 0) >= 2 \
-                and _fac_run.get('仙舟', 0) < 3:
+                and _fac_run.get('列车同行', 0) >= _train_cap \
+                and _fac_run.get('仙舟', 0) < _xz_base:
             held.append(i)   # r288:列车件让位(仙舟基础线优先)
             continue
         up.append(i)
