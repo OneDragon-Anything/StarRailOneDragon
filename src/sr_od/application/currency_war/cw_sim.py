@@ -36,6 +36,7 @@ from sr_od.application.currency_war.cw_shop_odds import (
     REFRESH_PROB,
 )
 from sr_od.application.currency_war.cw_state import (
+    BENCH_CAPACITY,
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
     BenchChar,
@@ -814,6 +815,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
         _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
         _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
+        _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
         _acts: list[dict] = []
         _segs_used = 0
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
@@ -899,6 +901,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     progressed = True
                     break          # 刷后立即 re-decide(见新店)
                 if isinstance(a, BuyCard):
+                    # ADR-0283(批⑰ F6):生产 bench 满 = 硬模态拒买
+                    # (ADR-0136;cw_identity_obs「备战席已满」球点不动),
+                    # sim 旧无守卫 → 单轮 4-8 连买把 bench 顶到 11-17
+                    # (批⑰ 3/300 局)——满仓局的买门/腾位门读的是生产
+                    # 不可能出现的状态。守卫:合并域(bench+deployed,
+                    # _merge_bench 全场域)中 bench 槽为约束——deployed
+                    # 不占备战槽,故判据 = len(bench) ≥ BENCH_CAPACITY
+                    # (9);超容买跳过(金/牌池均不消费)+ 计数披露。
+                    if len(st.bench) >= BENCH_CAPACITY:
+                        _bench_full_skips += 1
+                        continue
                     cards_pool.take(a.card.name)
                     st.gold -= a.card.cost
                     _ch = a.reason or 'unknown'
@@ -1108,6 +1121,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'segments': _segs_used,
                 # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
                 'merges': _merges,
+                # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
+                # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
+                'bench_full_skipped_buys': _bench_full_skips,
             },
         })
         if st.hp <= 0:
@@ -1179,6 +1195,11 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             1 for r in results
             if _first_trio_round(r, 3) is not None
             and _first_trio_round(r, 3) <= 8) / n,
+        # ADR-0283(批⑰ F6):全批 bench 满守卫跳过的买总次数(超容买
+        # 披露;0=守卫未介入,>0 = 满仓态买门判读须对照此计数)
+        'bench_full_skipped_buys': sum(
+            (row.get('sim') or {}).get('bench_full_skipped_buys', 0)
+            for r in results for row in r.ledger),
     }
     if ledger is not False:
         out = (Path(ledger) if isinstance(ledger, Path)
