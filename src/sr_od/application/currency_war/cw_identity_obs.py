@@ -300,38 +300,54 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
         # r81:后排槽数 = max(6, cap)(cap=5 实测仍 6 槽,花火/姬子 SIFT 命中基线)→
         # 只对「有效槽数无档」停机(cap≤6 恒基线,不停机 —— 旧 `>4 且 ≠6` 会误停 cap5)。
         _slots_n = effective_back_slots(_cap)
+        # r414(2026-08-23 12槽误档事故):超已知档上限(>11)大概率 OCR 误读
+        # (cap=12 实为 8/8 离线复析实锤)——不停机只留证,按 6 槽基线降级跑
+        # (cap 误读的高值会让 _slots_n 落在未注册区间,真超档需游戏版本演进,
+        # 届时钩子停机的现场流程仍适用;判据与 prep_director r414 同源)。
+        _KNOWN_MAX_SLOTS = 11
         if ctx.run_context is not None and _slots_n not in _layout_prefixes():
-            # r330(钩子归位·帧态门,用户循环「稳定→观察→对账&hook」):
-            # 停机/采集只在备战类精准帧触发——过渡/动画帧跳过
-            # (本钩子埋在 reader 深处,调用方未必先过 gate)。
-            from sr_od.application.currency_war.cw_obs_core import (
-                is_prep_like_frame,
-            )
-            if not is_prep_like_frame(ctx, screen):
-                from one_dragon.utils.log_utils import log as _log0
-                _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
-                           '→ 跳过(过渡帧防误触)', _slots_n)
+            if _slots_n > _KNOWN_MAX_SLOTS:
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict('deploy_cap_out_of_range', _cap, _slots_n, screen,
+                             verdict=('留证-cap 超已知档(OCR 误读大概率,如 8/8→12;'
+                                      '处理:核区域-部署数原文;复现≥3次排期修守卫;'
+                                      '本帧按 6 槽基线降级跑,不停机)'),
+                             source='layout_range_guard')
+                # 降级路径:back_slots 已在 L282 按 cap 取过且无档 →
+                # back_row_slot_rects_ctx 内部已回退基线(选档逻辑),
+                # 此处直接跳过停机钩子继续正常读取。
             else:
-                from pathlib import Path as _P
+                # r330(钩子归位·帧态门,用户循环「稳定→观察→对账&hook」):
+                # 停机/采集只在备战类精准帧触发——过渡/动画帧跳过
+                # (本钩子埋在 reader 深处,调用方未必先过 gate)。
+                from sr_od.application.currency_war.cw_obs_core import (
+                    is_prep_like_frame,
+                )
+                if not is_prep_like_frame(ctx, screen):
+                    from one_dragon.utils.log_utils import log as _log0
+                    _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
+                               '→ 跳过(过渡帧防误触)', _slots_n)
+                else:
+                    from pathlib import Path as _P
 
-                from one_dragon.utils.log_utils import log as _log
-                from sr_od.application.currency_war.cw_observe import cw_shot_unique
-                _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
-                if _shot is not None:
-                    _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
-                        f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap}'
-                        f'(有效后排 {_slots_n} 槽)布局未建档。\n'
-                        f'现场验证流程(参照 8 槽闭环 r76):\n'
-                        f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
-                        f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
-                        f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
-                        f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
-                        f'5. cw_back_layout._LAYOUT_PREFIX 登记;\n'
-                        f'6. 删本 flag + 重启 MCP server。\n'
-                        f'截图: {_shot}', encoding='utf-8')
-                    _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
-                              _slots_n, _cap, _shot)
-                    ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
+                    from one_dragon.utils.log_utils import log as _log
+                    from sr_od.application.currency_war.cw_observe import cw_shot_unique
+                    _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
+                    if _shot is not None:
+                        _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
+                            f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap}'
+                            f'(有效后排 {_slots_n} 槽)布局未建档。\n'
+                            f'现场验证流程(参照 8 槽闭环 r76):\n'
+                            f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
+                            f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
+                            f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
+                            f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
+                            f'5. cw_back_layout._LAYOUT_PREFIX 登记;\n'
+                            f'6. 删本 flag + 重启 MCP server。\n'
+                            f'截图: {_shot}', encoding='utf-8')
+                        _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
+                                  _slots_n, _cap, _shot)
+                        ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
     return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')

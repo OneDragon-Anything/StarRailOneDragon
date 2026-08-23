@@ -292,15 +292,23 @@ class PrepDirector(SrOperation):
                              source='paddle_cap')
             elif cap is not None:
                 from sr_od.application.currency_war.cw_back_layout import (
+                    _LAYOUT_PREFIX,
                     _UNVERIFIED_BACK_SLOTS,
                     effective_back_slots,
                 )
                 _slots = effective_back_slots(cap)
-                if _slots in _UNVERIFIED_BACK_SLOTS:
+                # r414(2026-08-23 12槽误档事故):判定从「白名单枚举
+                # (12 不在未实拍集→放行成『宝钻×7 合法』debug)」改为
+                # 「**超出已注册档全集即留证**」——OCR 误读的超范围值
+                # (cap=12 实为 8/8,离线复析实锤)不再被宝钻叠加语义
+                # 合理化;宝钻真实叠加域 = 已注册档(6-11)内的 cap>level。
+                if _slots not in _LAYOUT_PREFIX or _slots in _UNVERIFIED_BACK_SLOTS:
                     from sr_od.application.currency_war.cw_observe import obs_conflict
+                    _unregistered = _slots not in _LAYOUT_PREFIX
                     obs_conflict('deploy_cap_unverified_layout', st.level,
                                  cap, screen,
-                                 verdict=(f'留证-后排{_slots}槽档未实拍(格点推导;'
+                                 verdict=(f'留证-后排{_slots}槽档'
+                                          f'{"未注册(超已知档6-11,大概率OCR误读;处理:核区域-部署数X/Y原文,复现≥3次修 read_deploy_cap 守卫)" if _unregistered else "未实拍(格点推导)"};'
                                           f'处理:本局识别/拖拽逐位验证该档坐标,'
                                           f'错位则 upsert 后排{_slots}槽-* 校正'
                                           f'并从 _UNVERIFIED_BACK_SLOTS 移除;'
