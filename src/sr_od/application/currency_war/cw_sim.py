@@ -237,10 +237,14 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-_SAMPLER_VERSION: int = 2   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 3   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
+# v3(ADR-0279,批⑬):battle 桶键 depth→rung(成型度一维分桶,
+# 守卫邻接宽随键语义 = rung±1);encounter/boss 维持 depth 分桶
+# (批⑬ F1 encounter rung 桶样本不足,暂不分)。历史报告对旧池
+# (v2 指纹)重放同样须用导出 JSON 快照。
 _BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
 # 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
 # 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
@@ -293,11 +297,18 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         return out
 
     boards: dict = {}
+    # ADR-0279(批⑬):battle rung 判据需上场名单(希儿系=单卡
+    # 依赖)——从 decisions join deployed;join 缺失时希儿系可能
+    # 漏计(rung 低估 1 档),与批⑬盲区声明一致。
+    deployed_names: dict = {}
     for d in _rows('decisions.jsonl'):
         st = d.get('state') or {}
         b = st.get('board') or {}
-        boards[(d.get('run_id'), d.get('plane'),
-                d.get('round_num'))] = sum(b.values())
+        k = (d.get('run_id'), d.get('plane'), d.get('round_num'))
+        boards[k] = sum(b.values())
+        deployed_names[k] = frozenset(
+            x.get('char_id') or '' for x in (st.get('deployed') or [])
+            if isinstance(x, dict))
     seqs: dict[str, list] = {}
     for o in _rows('outcomes.jsonl'):
         if o.get('hp_after') is None:
@@ -325,9 +336,23 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
             dep = boards.get(k)
             if dep is None:
                 continue
-            bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(bucket, []).append(
-                b['hp_after'] - a['hp_after'])
+            delta = b['hp_after'] - a['hp_after']
+            if nt == 'battle':
+                # ADR-0279(批⑬ F1/F2/F4):battle 按 rung 一维分桶
+                # ——depth-only 池把成型信息扔掉(d9 成型桶 sim 高估
+                # 战损 ~6.4hp/场);rung 输入 = 结算前 board_before
+                # (主阵营计数)+decisions deployed(希儿系单卡判据),
+                # rung 定义单一源 = _engines_count(与 boss_settle_
+                # delta 同源)。depth 维弃用(批⑬ F3:depth×rung 二维
+                # 键 27 格仅 3 格够,样本粉碎)。
+                bucket = _engines_count(
+                    b.get('board_before') or {},
+                    deployed_names.get(k, frozenset()))
+            else:
+                # encounter/boss 暂沿用 depth 分桶(批⑬ F1:encounter
+                # rung 桶全线不足 4/9/2,攒样后下次快照并入)。
+                bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+            pool.setdefault(nt, {}).setdefault(bucket, []).append(delta)
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
             'skipped_lines': skipped,
             'unlabeled_dropped': unlabeled_dropped}
@@ -419,15 +444,24 @@ def _json_loads_path(p: Path) -> dict:
     return _json.loads(p.read_text(encoding='utf-8'))
 
 
-def live_delta_for(node_type: str, depth: int,
+def live_delta_for(node_type: str, key: int,
                    rng: random.Random, *,
                    pool_map: dict | None = None) -> int | None:
-    """按节点类型+板深取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
+    """按节点类型 + 分桶键取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
+
+    **桶键语义按节点分流(ADR-0279,批⑬)**:
+
+    - ``battle``:``key`` = 成型度 rung(0-4,池桶键即 rung;
+      与 ``boss_settle_delta`` 的 rung 定义同源 ``_engines_count``)。
+      桶不可达时逐级下探更低 rung(信息最接近的可及桶);全不可达
+      → 全池合并兜底(rung 信息缺,保经验分布方差;批⑬ F3「池均值
+      兜底」形态);池空 → None。
+    - ``encounter``/``boss``:``key`` = 板深(批⑬ F1 encounter rung
+      样本不足暂沿用 depth 分桶)。桶宽 ``_DEPTH_BUCKET_W``,缺桶
+      浅侧回退(bucket-W,r343 E:向深回退=偏乐观)。
 
     ⓪ 起 pool_map 显式注入(resolve_pool 产物;None=auto 解析,
-    缺源 raise 不静默)。r343(review E 修):邻桶回退只向**浅**侧
-    (bucket-W)——深侧封顶 15 后 +W 是死码,且向深回退=偏乐观
-    (深=掉血少)。
+    缺源 raise 不静默)。
 
     **防饥饿守卫(ADR-0268,批③ F1)**:命中的桶 n<_BUCKET_MIN_N
     时不裸采样——n=1 的桶(如 battle 桶 6 恒 -11)等于把该深度
@@ -436,20 +470,36 @@ def live_delta_for(node_type: str, depth: int,
     深邻桶、该节点全池均匀,取**方差最小**者采样(合并天然加权,
     样本多的邻桶主导);候选并列时按 浅邻→深邻→全池 序(确定
     性)。无任何可合并邻桶(极端小池)时退回裸样本——守卫降级
-    采样,不改变「缺桶 → None」的既有两态语义。
+    采样,不改变「缺桶 → None」的既有两态语义(depth 路;battle
+    路的全池兜底见上)。邻接宽随键语义:battle=rung±1,其余
+    =桶宽 ±_DEPTH_BUCKET_W。
     """
     if pool_map is None:
         pool_map = resolve_pool('auto')[0]
     _map = pool_map.get(node_type) or {}
-    bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-    src_b = bucket if _map.get(bucket) else bucket - _DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
-    samples = _map.get(src_b)
-    if not samples:
-        return None
+    if node_type == 'battle':
+        # ADR-0279:rung 桶(键域 0-4)
+        src_b = min(max(int(key), 0), 4)
+        while src_b not in _map and src_b > 0:
+            src_b -= 1
+        samples = _map.get(src_b)
+        if not samples:
+            # 全池兜底(批⑬ F3):rung 信息缺 → 经验分布整体采样
+            samples = [d for v in _map.values() for d in v]
+        if not samples:
+            return None
+        width = 1
+    else:
+        bucket = min(key // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+        src_b = bucket if _map.get(bucket) else bucket - _DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
+        samples = _map.get(src_b)
+        if not samples:
+            return None
+        width = _DEPTH_BUCKET_W
     if len(samples) >= _BUCKET_MIN_N:
         return rng.choice(samples)
     cands: list[list[int]] = []
-    for nb in (src_b - _DEPTH_BUCKET_W, src_b + _DEPTH_BUCKET_W):
+    for nb in (src_b - width, src_b + width):
         merged_neighbor = _map.get(nb)
         if merged_neighbor:
             cands.append(list(samples) + list(merged_neighbor))
@@ -479,20 +529,31 @@ def boss_delta(dir_round: int, rng: random.Random,
     return int(-(36.0 * multiplier + rng.uniform(0, 10.0)))
 
 
-def boss_settle_delta(st: GameState, dir_round: int,
-                      rng: random.Random) -> int:
-    """ADR-0277:boss Δ池桶不可达时的胜负面结算(胜率=f(成型度))。
+def _settle_rung(st: GameState) -> int:
+    """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle
+    Δ池 rung 分桶的采样键**单一源**)。
 
-    成型度 rung = 四体系达成数(`_engines_count` 口径:仙舟3/列车2/
-    DOT2/希儿系)——按 ``BOSS_WIN_P_BY_ENGINES`` 掷胜:胜 →
-    ``BOSS_WIN_DELTA`` 小额;负 → 旧 ``boss_delta`` 档。仅当
-    ``live_delta_for`` 返 None(无可及桶)时由调用方使用;Δ池
-    可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
+    口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
+    输入 = _board_factions_of(deployed)(factions+flows 并计)+
+    上场名单(希儿系单卡判据)。
     """
     _bf = _board_factions_of(st.deployed)
     _names = frozenset(d.char_id for d in (st.deployed or [])
                        if getattr(d, 'char_id', ''))
-    rung = _engines_count(_bf, _names)
+    return _engines_count(_bf, _names)
+
+
+def boss_settle_delta(st: GameState, dir_round: int,
+                      rng: random.Random) -> int:
+    """ADR-0277:boss Δ池桶不可达时的胜负面结算(胜率=f(成型度))。
+
+    成型度 rung = 四体系达成数(`_settle_rung` 单一源口径)——按
+    ``BOSS_WIN_P_BY_ENGINES`` 掷胜:胜 → ``BOSS_WIN_DELTA`` 小额;
+    负 → 旧 ``boss_delta`` 档。仅当 ``live_delta_for`` 返 None
+    (无可及桶)时由调用方使用;Δ池可及桶命中时经验分布优先
+    (池是实机真值,sim 规则表是补洞)。
+    """
+    rung = _settle_rung(st)
     p = BOSS_WIN_P_BY_ENGINES[min(rung, len(BOSS_WIN_P_BY_ENGINES) - 1)]
     if rng.random() < p:
         return BOSS_WIN_DELTA
@@ -912,10 +973,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 无匹配桶回退旧方向二元模型。
         # r343:同修正——Δ 采样用可 deploy 深度;① 收口进
         # _deployable_depth 单一源(原三处内联口径不一)
+        # ADR-0279(批⑬ F4):battle Δ 采样键=rung(成型度一维
+        # 分桶,与 boss_settle_delta 同源 _settle_rung)——depth-
+        # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
+        # vs 实机 32% 裂口的最大已定量化分量;encounter/boss 维持
+        # depth 键(批⑬ F1 encounter 样本不足)。
         _dep = _deployable_depth(st)
-        _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                             pool_map=pool_map) \
-            if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
+        if nodes[rn - 1] == 'battle':
+            _ld = live_delta_for('battle', _settle_rung(st), rng,
+                                 pool_map=pool_map)
+        elif nodes[rn - 1] in ('encounter', 'boss'):
+            _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                 pool_map=pool_map)
+        else:
+            _ld = None
         if _ld is not None:
             delta = _ld
         elif nodes[rn - 1] == 'boss':
@@ -1117,6 +1188,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             results, out, pool_fp=report['pool_fingerprint']))
     if checks:
         from sr_od.application.currency_war.cw_sim_checks import (
+            check_battle_rung_pool_bucket_lock,
             check_delta_pool_bucket_min_n,
             check_depth_cliff_monotonicity,
             run_checks_on_ledgers,
@@ -1130,6 +1202,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             check_delta_pool_bucket_min_n(_pm)
         rep_checks['depth_cliff_monotonicity'] = \
             check_depth_cliff_monotonicity(_pm)
+        # ADR-0279(批⑬):battle rung 分桶锁(真值表/边界声明/
+        # 池域覆盖);fallback 空池不辖
+        rep_checks['battle_rung_pool_bucket_lock'] = \
+            check_battle_rung_pool_bucket_lock(_pm)
         # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_sim_pool_no_cost_truncation as _chk_pool,

@@ -415,9 +415,15 @@ def check_depth_cliff_monotonicity(
     由检查项 1 辖,本检查只评可信桶,避免饥饿噪声淹没结构性
     单调违反)。均值含回合混杂声明:深桶样本多来自晚轮,违反
     时先查桶×轮分布再下结论。
+
+    ADR-0279:battle 桶键已是 rung(非 depth)——本检查的深度
+    单调方向不辖 battle(rung 方向锁在 battle_rung_pool_bucket_
+    lock 真值表;r2 方差未判,批⑬盲区声明)。
     """
     out: list[str] = []
     for nt, buckets in sorted(pool_map.items()):
+        if nt == 'battle':   # rung 键,深度单调语义不辖(ADR-0279)
+            continue
         ok = sorted(
             (int(b), v) for b, v in buckets.items() if len(v) >= min_n)
         for (b1, v1), (b2, v2) in zip(ok, ok[1:], strict=False):
@@ -465,6 +471,79 @@ def check_ab_depth_boundary_confound(ledgers_a: list[list[dict]],
                 f'桶{b} 仅 {arm} 臂到达(A n={na}, B n={nb})'
                 f'——两臂 Δ 采样跨桶边界,hp 差含池混杂')
     return out
+
+
+# --- 批⑬ 检查项(2026-08-24 裁决落地;ADR-0279) ---------------------
+# battle Δ池 rung 分桶锁:sim 压测批⑬ F1/F2/F7 的常态化防线。
+
+# 批⑬ F2 真值表(battle rung 桶均值;全量 replay 分桶实测,
+# r0 n=26 / r1 n=24 双主桶)。r2 方差未判(时代分层混杂)/r3 无
+# 样本——真值表只锁双主桶;池重生成后均值漂移 >3hp 报警
+# (判据表原值)。
+BATTLE_RUNG_TRUTH: dict[int, float] = {0: -11.5, 1: -6.3}
+BATTLE_RUNG_DRIFT_MAX: float = 3.0
+BATTLE_RUNG_MAIN_MIN_N: int = 10   # 批⑬ F1 主桶门槛(主桶各≥10)
+# 批⑬ F7:boss 池域覆盖锁——重生成不得丢失既有极值样本(旧域
+# [-36,-13] 的 -36 下界)。F7 原始读数「-42」是**决策帧口径**
+# (run154910 r9 决策帧 hp100 → 结算 58);本池口径 = outcomes
+# 相邻轮差分,该局 boss Δ=71→58=-13 已入池——-42 差分不可达,
+# 扩域诉求按差分口径兑现为「域不缩」(ADR-0279 Considered Options)。
+BOSS_POOL_DOMAIN_FLOOR: int = -36
+
+
+def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
+    """批⑬ 检查项 battle_rung_pool_bucket_lock(ADR-0279)。
+
+    判据(批⑬检查项设计表原文):
+    - battle rung 桶真值表(r0 -11.5/r1 -6.3)锁进池——rung0/rung1
+      双主桶存在且 n≥10,均值距真值漂移 ≤3hp;
+    - battle 桶键全落 rung 域(0-4)——出现 depth 域键(≥6)= rung
+      分桶未生效(快照未重生成/生成器回归);
+    - encounter 未分桶边界声明:encounter 非空时桶键应含 depth 域
+      (≥6)键(批⑬ F1:encounter rung 样本不足暂沿用 depth 分桶,
+      全落 rung 域 = 边界声明被破坏);
+    - boss 池域覆盖:boss 池非空时 min ≤ -36(重生成不丢失既有
+      极值样本;批⑬ F7 的 -42 是决策帧口径读数,outcomes 差分
+      口径下不可达,见 BOSS_POOL_DOMAIN_FLOOR 注)。
+
+    空 battle 池(fallback/历史 Path 快照)不辖,violations=0。
+    """
+    battle = pool_map.get('battle') or {}
+    if not battle:
+        return {'violations': 0,
+                'note': 'battle 池空(fallback/Path 历史快照)不辖'}
+    out: list[str] = []
+    depth_like = sorted(int(b) for b in battle if int(b) > 4)
+    if depth_like:
+        out.append(f'battle 桶键 {depth_like[:5]} 落 depth 域(≥6)'
+                   f'——rung 分桶未生效(ADR-0279:重跑生成器)')
+    for rg, truth in sorted(BATTLE_RUNG_TRUTH.items()):
+        v = battle.get(rg) or []
+        if not v:
+            out.append(f'battle rung{rg} 桶缺失(批⑬ F1 双主桶)')
+            continue
+        if len(v) < BATTLE_RUNG_MAIN_MIN_N:
+            out.append(f'battle rung{rg} n={len(v)}'
+                       f'<{BATTLE_RUNG_MAIN_MIN_N}(主桶饥饿)')
+        mean = sum(v) / len(v)
+        if abs(mean - truth) > BATTLE_RUNG_DRIFT_MAX:
+            out.append(f'battle rung{rg} 均值{mean:+.1f} 距批⑬真值'
+                       f'{truth:+.1f} 漂移>{BATTLE_RUNG_DRIFT_MAX}hp'
+                       f'(池与真值表失配)')
+    enc = pool_map.get('encounter') or {}
+    if enc and all(int(b) <= 4 for b in enc):
+        out.append('encounter 桶键全落 rung 域(≤4)——批⑬ F1 边界'
+                   '声明被破坏(encounter 样本不足暂 depth 分桶)')
+    boss_vals = [d for v in (pool_map.get('boss') or {}).values()
+                 for d in v]
+    if boss_vals and min(boss_vals) > BOSS_POOL_DOMAIN_FLOOR:
+        out.append(f'boss 池域 min={min(boss_vals)} 未覆盖批⑬ F7 '
+                   f'新极值(≤{BOSS_POOL_DOMAIN_FLOOR})'
+                   f'——快照未重生成或语料缺失')
+    return {'violations': len(out), 'issues': out[:6],
+            'battle_bucket_means': {
+                str(b): round(sum(v) / len(v), 2)
+                for b, v in sorted(battle.items())}}
 
 
 # --- 批⑩/批⑪ 检查项(2026-08-24 裁决落地;ADR-0276/0277) ---------
@@ -670,17 +749,19 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
 
 # 批⑩ 检查项 anchor_registry_n300:基线锚登记制——engines2/recipe5/
 # avg_hp 等锚一律 n=300 口径登记(池指纹必附),n=60 值只作快速回归
-# 哨兵。数值为 ADR-0276/0277(merge+win 校准)落地批 n=300 实测。
+# 哨兵。数值为 ADR-0276/0277(merge+win 校准)→ ADR-0279(battle
+# rung 分桶)落地批 n=300 实测;旧值(ADR-0277 批,e19afdfa 池)
+# 对照表进 ADR-0279。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': 'e19afdfa4173077e',
-    'recorded': '2026-08-24(ADR-0276/0277 落地批,n=300,seed 0-299)',
+    'pool_fingerprint_prefix': 'd891233d28be3493',
+    'recorded': '2026-08-24(ADR-0279 battle rung 分桶批,n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.277,     # 旧栈 0.083(merge 前;批⑩ F1 锚)
-        'avg_final_hp': 28.81,       # 旧 26.03;win 校准 +4 抬升
-        'hp_ge_60': 0.04,            # 旧 0.017(boss 恒败钉死解除)
-        'battle_losses_le_2': 0.033,  # 旧 0.027
+        'engines2_by_r6': 0.277,     # ADR-0279 批不变(0.2767;分桶只动结算层)
+        'avg_final_hp': 28.95,       # 旧 28.81;rung 分桶小幅抬升
+        'hp_ge_60': 0.067,           # 旧 0.04;向实机 32% 收敛中(ADR-0279 表)
+        'battle_losses_le_2': 0.08,  # 旧 0.033
         'recipe5_by_r6': 0.62,
-        'avg_refreshes': 1.11,       # 旧 1.61(merge 后买通道活,早刷减少)
+        'avg_refreshes': 1.113,      # 旧 1.11
     },
 }
 

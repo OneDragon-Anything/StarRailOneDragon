@@ -3,6 +3,8 @@
 数据源:.debug/temp/currency_war/replay/{decisions,outcomes}.jsonl
 (生产遥测 append 流)。配对口径与 cw_sim._pool_from_replay 同源:
 decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
+桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
+decisions deployed join);encounter/boss=深度桶。
 
 产出:src/sr_od/application/currency_war/cw_delta_pool_data.py ——
 SNAPSHOT {节点: {深度桶: [Δ]}} + META(构成/过滤/指纹)。
@@ -85,8 +87,21 @@ def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
     return out
 
 
+def _engines_count_of(bf: dict, names: frozenset) -> int:
+    """rung = _engines_count 单一源(cw_sim;ADR-0279)——battle 桶键。"""
+    sys.path.insert(0, str(REPO / 'src'))
+    from sr_od.application.currency_war.cw_sim import (  # noqa: E402
+        _engines_count,
+    )
+    return _engines_count(bf, names)
+
+
 def build_pool(src_dir: Path, runs_filter: set[str] | None):
-    """构建 {节点: {深度桶: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。
+    """构建 {节点: {桶键: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。
+
+    桶键语义(ADR-0279,批⑬):battle=成型度 rung(结算前
+    board_before + decisions deployed join 算希儿系);encounter/
+    boss=深度桶(批⑬ F1 encounter rung 样本不足暂沿用)。
 
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
     """
@@ -94,6 +109,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     skipped: dict[str, int] = {}
     quarantined_hits: set[str] = set()
     boards: dict = {}
+    deployed_names: dict = {}
     for d in _iter_jsonl(src_dir / 'decisions.jsonl', skipped):
         if runs_filter and d.get('run_id') not in runs_filter:
             continue
@@ -102,7 +118,11 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             continue
         st = d.get('state') or {}
         b = st.get('board') or {}
-        boards[(d.get('run_id'), d.get('plane'), d.get('round_num'))] = sum(b.values())
+        k = (d.get('run_id'), d.get('plane'), d.get('round_num'))
+        boards[k] = sum(b.values())
+        deployed_names[k] = frozenset(
+            x.get('char_id') or '' for x in (st.get('deployed') or [])
+            if isinstance(x, dict))
     seqs: dict[str, list] = {}
     for o in _iter_jsonl(src_dir / 'outcomes.jsonl', skipped):
         if o.get('hp_after') is None:
@@ -132,9 +152,17 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             dep = boards.get(k)
             if dep is None:
                 continue
-            bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(bucket, []).append(
-                b2['hp_after'] - a['hp_after'])
+            delta = b2['hp_after'] - a['hp_after']
+            if nt == 'battle':
+                # ADR-0279(批⑬):battle 按 rung 一维分桶(结算前
+                # board_before + deployed join;depth 维弃用,F3)。
+                bucket = _engines_count_of(
+                    b2.get('board_before') or {},
+                    deployed_names.get(k, frozenset()))
+            else:
+                # encounter/boss 暂沿用 depth 分桶(批⑬ F1)。
+                bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
+            pool.setdefault(nt, {}).setdefault(bucket, []).append(delta)
     meta = {
         'source_dir': str(src_dir),
         'runs': per_run_rounds,
@@ -144,10 +172,17 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         # r378b:隔离清单实际命中的 run(没命中=清单过期,该清理)
         'quarantined_hits': sorted(quarantined_hits),
         'depth_bucket_w': DEPTH_BUCKET_W,
+        # ADR-0279(批⑬):battle 桶键=rung(真值表随重生成锁定;
+        # cw_sim_checks.BATTLE_RUNG_TRUTH 漂移报警消费此表口径)
+        'battle_rung': {
+            str(b): {'n': len(v), 'mean': round(sum(v) / len(v), 2)}
+            for b, v in sorted((pool.get('battle') or {}).items())},
         'note': 'v2 只收可信标签行(2026-08-22 retrofix 后:死链'
                 '历史 node_type 置 None 已丢弃计数);事故局物理排除'
                 '(QUARANTINED_RUNS,r378b);跨策略版本混杂'
-                '已知(一轮#10),过滤走 --runs 重生成',
+                '已知(一轮#10),过滤走 --runs 重生成;'
+                'v3(ADR-0279,批⑬)battle 桶键 depth→rung'
+                '(成型度一维分桶),encounter/boss 维持 depth 桶',
     }
     return pool, meta
 
