@@ -255,6 +255,12 @@ class StrategySession:
     # LineStrategy.on_match_start 用 initial_state() 规范化)
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
+    # r406(ADR-0266,压测经济批 [12]/①残差):本局**曾达满息**(时点金≥50)
+    # 标志——追级(LevelUp)资格的息引擎前置判据。LineStrategy.decide_prep
+    # 每次入口采样 state.gold≥50 时置 True(局内单调,不清零;重启丢 session
+    # 语义与 v2_state 同,重放/续跑路径靠本字段 False 保守)。None 安全:
+    # getattr 兜底 False(旧 session 反序列化)。
+    v2_ever_full_interest: bool = False
     # r246:普通战斗败检测的上一轮 HP(r246 P2 三连败实锤——
     # hp_after 降幅 ≥10 = 节点实际打输,喂 E1_miss 攒滞回)
     v2_prev_hp: int | None = None

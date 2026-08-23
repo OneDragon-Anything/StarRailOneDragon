@@ -147,12 +147,18 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
     r388 修的是反向「开局乱穿」,本检查防「hold 太宽不穿」的
     过矫回归)。开局 r1-r2(r388 hold 语义)不报。
 
-    边界:deployed 空(没人可穿)不报;owned 全是工具类(不可穿)
-    的判定交由 equip_allocation 语义(不可穿件不会进 equipped,
-    也不会被移出 owned——按 owned 余量判,工具留 owned 是合法)。
+    边界:deployed 空(没人可穿)不报;**合成保留组件(ADR-0265
+    RESERVED_COMPONENTS)不计入「owned 非空」**——组件 P1 留
+    owned 待合成是修复语义本身,owned 全组件时 equipped 空合法;
+    其余工具类(不可穿)的判定交由 equip_allocation 语义(不可穿
+    件不会进 equipped,也不会被移出 owned——按 owned 余量判,工具
+    留 owned 是合法)。
     近似:owned>0 且 equipped=0 且 deployed>0 连续 2 战斗轮 → 报
     (工具误报由 owned 名单含工具的概率压低,后续可精化)。
     """
+    from sr_od.application.currency_war.cw_synthesis import (
+        RESERVED_COMPONENTS,
+    )
     out: list[str] = []
     _stalls: list[int] = []
     for row in rows:
@@ -163,13 +169,87 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
         if node not in ('battle', 'encounter', 'boss') or rn < 3:
             continue
         st = row.get('state') or {}
-        if st.get('owned_equips') and not st.get('equipped') \
+        _owned = [e for e in (st.get('owned_equips') or [])
+                  if e not in RESERVED_COMPONENTS]
+        if _owned and not st.get('equipped') \
                 and st.get('deployed'):
             _stalls.append(rn)
     for a, b in zip(_stalls, _stalls[1:], strict=False):
         if b - a == 1:
             out.append(f"p1r{a}-r{b}: owned 非空连续零穿着"
                        f"(白板挨打——r388 hold 过矫形态)")
+    return out
+
+
+def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
+    """压测经济批 [12]/①残差指纹(升级门息引擎前置;ADR-0266;r406)。
+
+    指纹:lv≥5(追级段)的 LevelUp 发生在「息引擎未立」——时点金
+    (本轮首波金,=收入后花销前)<50 **且** 本局此前从未有任何轮
+    金 ≥50。追级局形态:每轮 40-50 徘徊反复够升级门槛,50 永远
+    攒不满(压测 25.9% 局终局未满 50,14/15 从未攒到)。
+
+    近似声明:①升级前等级用**上一轮账本 level**(轮内升级完成会
+    抬高本行 level,prev_level 才是购买时的等级;首轮 prev=3);
+    ②时点金 = shop_waves 首波 gold(决策发生在收入后/花销前);
+    ③「曾达满息」按此前各轮 max(首波金, 轮末金) ≥50——轮中段
+    金峰(买后卖回)不可见,声明数据边界。合法放行:lv<5(r263
+    过渡成型基线宽松门)、曾满息、时点金≥50(gold-cost≥50 分支
+    的上界)均不报;时点金 <50 但 gold-cost≥50 的合法升级会**误报
+    成可疑**(cost 不可逐动作重演——压测原批按账本逐动作重演过,
+    检查侧退化为保守近似,违规率高发时按 seed 重放精查)。
+    """
+    out: list[str] = []
+    ever_full = False
+    prev_level = 3
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        waves = (row.get('sim') or {}).get('shop_waves') or []
+        gold0 = waves[0].get('gold') if waves else row.get('gold')
+        has_lv = any(a.get('__type__') == 'LevelUp'
+                     for a in row.get('actions') or [])
+        if has_lv and prev_level >= 5 \
+                and gold0 is not None and gold0 < 50 and not ever_full:
+            out.append(
+                f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
+                f" 且未曾满息(lv{prev_level} 追级,息引擎未立"
+                f"——ADR-0266 违规)")
+        end_gold = row.get('gold')
+        if (gold0 is not None and gold0 >= 50) \
+                or (end_gold is not None and end_gold >= 50):
+            ever_full = True
+        prev_level = (row.get('state') or {}).get('level') or prev_level
+    return out
+
+
+def check_no_component_equipped_p1(rows: list[dict]) -> list[str]:
+    """压测经济批 [29] 指纹(装备组件保留;ADR-0265;r405)。
+
+    指纹:P1 任意轮 equipped 含合成保留组件(cw_synthesis.
+    RESERVED_COMPONENTS = 7 件标准基础件 ∪ 光能电池)——
+    过渡期把组件穿给过渡角色 = 锁死合成路线 + 浪费转移成本
+    (口述 [29],局70 实机 + sim 16/60 局同构实证,sim/实机
+    同一 equip_allocation 纯函数)。
+
+    0 容忍:key_equips 豁免在 equip_allocation 内部(comp 显式
+    声明的关键装备意图;COMP_LIBRARY 实查零重叠),违规即
+    过滤失效/回归。P1 窗口(plane==1 全轮,不只 supply 轮——
+    组件可跨轮滞留 equipped)。
+    """
+    from sr_od.application.currency_war.cw_synthesis import (
+        RESERVED_COMPONENTS,
+    )
+    out: list[str] = []
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        for eq in (row.get('state') or {}).get('equipped') or []:
+            if eq.get('equip') in RESERVED_COMPONENTS:
+                out.append(
+                    f"p1r{row.get('round_num')} 合成组件被穿着:"
+                    f" {eq.get('equip')} → {eq.get('char')}"
+                    f"(ADR-0265 组件保留违规)")
     return out
 
 
@@ -180,6 +260,8 @@ _BATCH_CHECKS = {
     'coldstart_direction': check_coldstart_seed_squander,
     'deploy_fills_cap': check_deploy_fills_cap,
     'equip_worn_in_battle': check_equip_worn_in_battle,
+    'no_component_equipped_p1': check_no_component_equipped_p1,
+    'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
 }
 
 

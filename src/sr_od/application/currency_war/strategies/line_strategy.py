@@ -269,7 +269,20 @@ class LineStrategy(DefaultCwStrategy):
 
     def decide_prep(self, state: GameState, session: StrategySession,
                     config) -> list:
-        """v2 备战计划:应急判定→象限动作(Phase A 简化范围)。"""
+        """v2 备战计划:应急判定→象限动作(Phase A 简化范围)。
+
+        r406(ADR-0266):薄包装——分发后采样息引擎(时点金≥50 记
+        「曾达满息」,局内单调)。采样在**分发之后**:本笔决策的
+        升级门读的是「此前是否曾达」——首次到 56 的当轮不受自家
+        采样解锁(否则一轮内满金→花光的追级形态门失效)。"""
+        acts = self._decide_prep_dispatch(state, session, config)
+        if state.gold >= _INTEREST_FLOOR:
+            session.v2_ever_full_interest = True
+        return acts
+
+    def _decide_prep_dispatch(self, state: GameState,
+                              session: StrategySession, config) -> list:
+        """decide_prep 的四象限分发体(r406 拆出;原逻辑不变)。"""
         self._ensure_state(session)
         # --- 应急(存量语义,简版 HP 档) ---
         if self._emergency(state) and not session.v2_state[1]:
@@ -459,16 +472,34 @@ class LineStrategy(DefaultCwStrategy):
         # 是最差结局(金没了等级没变战力没买)。clicks_to_next_level
         # 按 xp_progress 实读算总击数;升不起 → 金留给买牌
         # (买牌对 HP 的边际 ≥ 半吊子经验)。
+        # r406(ADR-0266,压测经济批 [12]/①残差:25.9% 局终局未满 50,
+        # 14/15 「从未攒到 50」——每轮 40-50 徘徊反复够升级门槛的
+        # 追级形态):追级加**息引擎前置**——本局曾达满息,或本笔
+        # 升级花完后金仍 ≥50(满息结余)。两者皆无 = 息引擎未立,
+        # 升级花销吃掉息基 → 50 永远攒不满([12]「追级的前提是息
+        # 引擎已立」;[17] 的「满息即花」由 gold-total≥50 分支保住:
+        # 50 以上的富余仍可升级)。lv≥5 才辖(lv<5 是 [13] 过渡
+        # 成型基线,r263 宽松门保留)。
         from sr_od.application.currency_war.cw_economy import (
             clicks_to_next_level,
         )
         _clicks = clicks_to_next_level(state)
         _lv_total = xp * _clicks if _clicks else 0
         if _lv_total > 0 and budget >= _lv_total and state.level < 8:
-            actions.append(LevelUp(xp))
-            budget -= _lv_total
-            log.info('[cw][boss-breaker] LevelUp 总成本 %d(%d 击)',
-                     _lv_total, _clicks)
+            _engine_ok = (getattr(session, 'v2_ever_full_interest', False)
+                          or state.gold - _lv_total >= _INTEREST_FLOOR)
+            if state.level < 5 or _engine_ok:
+                actions.append(LevelUp(xp))
+                budget -= _lv_total
+                log.info('[cw][boss-breaker] LevelUp 总成本 %d(%d 击)'
+                         ' 息引擎%s',
+                         _lv_total, _clicks,
+                         '已立' if _engine_ok else '未立(lv<5 豁免)')
+            else:
+                log.info('[cw][boss-breaker] LevelUp 总成本 %d 息引擎'
+                         '未立(未曾满息且花完 %d<50)→ 拒,金攒息'
+                         '(ADR-0266)', _lv_total,
+                         state.gold - _lv_total)
         # r293(局27 实锤:破息窗只 LvUp 买 0):bench 8 时
         # _buy_guards 容量守卫(<9)拒第 1 张——破息窗缺卖腾位
         # (economy 有 卖→买 序,破息窗只买)。修:买前卖
@@ -568,20 +599,29 @@ class LineStrategy(DefaultCwStrategy):
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         cost = xp_click_cost(state)
         actions: list = []
+        # r406(ADR-0266):追赶升人口同辖息引擎前置(追级形态;
+        # lv≥5 才辖——追赶门 _CATCHUP_MIN_LEVEL=6 已保证 lv≥6,
+        # 此处仅防未来门下移)。未立且花完 <50 → 不升,金攒息。
         if state.gold - cost >= _WAR_FLOOR:
-            actions.append(LevelUp(cost))
-            # 剩余预算的形态件购买:金按扣除经验后计,
-            # 地板用扣后金的 war 档(30)——但若扣后 <50 原本
-            # 是满息态,买件地板应保 50(不因升人口破息)。
+            _engine_ok = (getattr(session, 'v2_ever_full_interest', False)
+                          or state.gold - cost >= _INTEREST_FLOOR)
+            if state.level < 5 or _engine_ok:
+                actions.append(LevelUp(cost))
+            # 剩余预算的形态件购买:金按扣除**真实提案的**经验后计
+            # (息引擎拒升时 cost 不扣),地板用扣后金的 war 档(30)
+            # ——但若扣后 <50 原本是满息态,买件地板应保 50(不因
+            # 升人口破息)。
             # r272(审查②#5 活 bug 修):st2 原是**别名**——直接改
             # 入参 state.gold,而 shop.py 在调 decide_prep 前已把
             # state 存进 session.last_state → catchup 态回合污染
             # last_state.gold(少记 cost),shop 的 gold 差值对拍
             # 基线同步被污染 → 假 obs_conflict。修:deepcopy
             # 隔离(与 _apply_sells 同纪律)。
+            # r406(ADR-0266):息引擎拒升时 buys 照跑(war 地板自守),
+            # st2 只扣真实提案的花销。
             import copy
             st2 = copy.deepcopy(state)
-            st2.gold = state.gold - cost
+            st2.gold = state.gold - (cost if actions else 0)
             floor_after = (_INTEREST_FLOOR
                            if state.gold >= _INTEREST_FLOOR
                            else _WAR_FLOOR)
