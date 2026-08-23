@@ -926,6 +926,10 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
+            # battle_end 时序锚(2026-08-23,用户点名的观察缺口):首见结算屏=战斗
+            # 结束的可判事件。「战斗结束→备战画面」切段用它做起点,备战 gate 的
+            # 「备战相位进入」日志做终点——screen_flow_timing.md ①尾部从此可切。
+            log.info('[cw-loop][battle_end] 结算屏首见(战斗结束锚点)')
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
             # C-1(r2 review,2026-08-16):计数锚点 = 新结算帧(非命中帧)——结算屏点击不生效循环 k 轮时,
             # 旧行为每轮 +1 → rounds_done 虚增 → max_rounds=N>1 时提前停备战。改:同屏指纹(结果文本行)
