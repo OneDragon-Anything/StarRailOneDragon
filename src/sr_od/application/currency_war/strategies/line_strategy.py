@@ -78,9 +78,8 @@ _RECIPE_REFRESH_MAX: int = 3
 # r278 boss 前破息地板:boss 赢了 P2 有收入重建,输了 HP
 # 反正保不住 → 比 REBIRTH(20)激进;比 0 保守(留买经验余量)
 _BOSS_BREAKER_FLOOR: int = 10
-# r282 P1 中期息平台(配方成立后建 20:吃息 2/轮+投资余量;
-# 模拟:9 轮总收入 63→77,r8 可投 4→20)
-_MID_INTEREST_FLOOR: int = 20
+# (r282 20 金息平台已删,ADR-0270:消费点与路由互斥,300 局 0 激活;
+# P3 已证金≥50 后息成本=0,平台语义弱化)
 _WAR_FLOOR: int = 30
 #: 位面人口基线(r191 中位;追赶判定的参照)
 _POP_BASELINE: dict[int, int] = {1: 5, 2: 7, 3: 9}
@@ -291,18 +290,32 @@ class LineStrategy(DefaultCwStrategy):
         # 逐条 pop,先弹的低 idx 把后续提案的 idx 全部左移 → 卖错名
         # (r4 提案 卖青雀 实卖娜塔莎——本轮已买件,F1 残留 5 局的
         # 根因,seed 25/36/56/57/58 实证)。修:批内 SellBench 按
-        # idx **降序**重排(先弹高 idx 不影响低 idx,名称语义
-        # 不变);只重排卖出的相对序,买/升/刷保持原位。
+        # idx **降序**重排(先弹高 idx 不影响低 idx,名称语义不变)。
+        # r410b 补漏:多条卖通道独立扫同一 bench 可能**重复提案同一
+        # idx**(off_target 与 precache 各自判同一最弱槽)——同 idx
+        # 二次 pop 漂移卖掉相邻件(seed36 r3 姬子槽双提案 → 二弹
+        # 卖掉本轮已买的绯英)。去重保一条(两通道本就同意图)。
         _sell_pos = [i for i, a in enumerate(acts)
                      if isinstance(a, SellBench)]
         if len(_sell_pos) > 1:
-            _sorted_pos = sorted(
-                _sell_pos,
-                key=lambda i: acts[i].bench_idx, reverse=True)
-            _reordered = [acts[i] for i in _sorted_pos]
-            for _dst, _sell_a in zip(_sell_pos, _reordered,
-                                     strict=True):
-                acts[_dst] = _sell_a
+            _seen_idx: set[int] = set()
+            _kept = []
+            for _i in _sell_pos:
+                _a = acts[_i]
+                if _a.bench_idx in _seen_idx:
+                    continue   # 重复槽位提案:保一条
+                _seen_idx.add(_a.bench_idx)
+                _kept.append(_a)
+            _kept.sort(key=lambda a: a.bench_idx, reverse=True)
+            _new_acts: list = []
+            for a in acts:
+                if isinstance(a, SellBench):
+                    if _kept:
+                        _new_acts.append(_kept.pop(0))
+                    # _kept 空 = 去重删除的重复槽位提案,丢弃
+                else:
+                    _new_acts.append(a)
+            acts = _new_acts
         if state.gold >= _INTEREST_FLOOR:
             session.v2_ever_full_interest = True
         session.v2_round_bought.update(
@@ -452,7 +465,7 @@ class LineStrategy(DefaultCwStrategy):
              and c.cost <= budget),
             key=lambda c: c.cost)
         for card in wants:
-            if self._buy_guards(card, state, len(actions)):
+            if self._buy_guards(card, state, len(actions), session):
                 actions.append(BuyCard(card, reason='line'))
                 budget -= card.cost
         if actions:
@@ -557,7 +570,8 @@ class LineStrategy(DefaultCwStrategy):
             key=lambda c: -c.cost)     # 降序:买得起的最强
         for card in wants:
             if self._buy_guards(card, st2, len(
-                    [a for a in actions if isinstance(a, BuyCard)])):
+                    [a for a in actions if isinstance(a, BuyCard)]),
+                    session):
                 actions.append(BuyCard(
                     card, reason=self._want_label(
                         card, st2, session, include_bridge=False)))
@@ -605,7 +619,8 @@ class LineStrategy(DefaultCwStrategy):
                 break
             if not self._buy_guards(card, st2,
                                     len([a for a in actions
-                                         if isinstance(a, BuyCard)])):
+                                         if isinstance(a, BuyCard)]),
+                                    session):
                 continue
             actions.append(BuyCard(card, reason='board_focus'))
             budget -= card.cost
@@ -692,21 +707,10 @@ class LineStrategy(DefaultCwStrategy):
             else _INTEREST_FLOOR
         if state.gold - xp >= _lvl_gate and xp > 0:
             actions.append(LevelUp(xp))
-        # r282(局21 经济判读:9 轮总收入 63 vs snowball 83——
-        # 「金峰 18-25 从不吃满息」):P1 配方成立(板配方≥5 档,
-        # r263b 判据)后建 **20 金息平台**(B 模式:兼顾配方投入
-        # 与吃息 2/轮;模拟 9 轮 +14 金收入,r8 可投 4→20)。
-        # 旧 floor=gold%10「档内全花」把保息理解反了(金 18 花
-        # 到 8 反而掉档)。配方未满期照旧全花(凑件优先)。
-        from sr_od.application.currency_war.cw_line_defs import (
-            recipe_tier as _recipe_tier,
-        )
-        _recipe_ok = _recipe_tier(state.board or {}) >= 5
+        # (r282 20 金息平台分支已删,ADR-0270:与 _buy_actions 路由互斥,
+        # 300 局 0 激活的死门;P3 已证金≥50 后息成本=0)
         if state.gold >= _INTEREST_FLOOR:
             floor = _INTEREST_FLOOR
-        elif state.plane == 1 and _recipe_ok and state.round_num <= 8 \
-                and state.gold >= 30:
-            floor = _MID_INTEREST_FLOOR   # 20 平台:吃息 2 保投资余量
         elif state.gold >= 10:
             floor = state.gold % 10    # 保息档,档内全花(配方未满)
         else:
@@ -883,7 +887,7 @@ class LineStrategy(DefaultCwStrategy):
         for card in (state.shop or []):
             if rem - card.cost < floor:
                 continue
-            if not self._buy_guards(card, state, len(actions)):
+            if not self._buy_guards(card, state, len(actions), session):
                 continue
             # r269:P2 期加收 P2 桥 core(转换通道;局17 金 95 攒死)
             _lbl = self._want_label(
@@ -896,7 +900,8 @@ class LineStrategy(DefaultCwStrategy):
         for card in (state.shop or []):
             if card.cost == 1 and rem - 1 >= floor \
                     and id(card) not in bought:
-                if not self._buy_guards(card, state, len(actions)):
+                if not self._buy_guards(card, state, len(actions),
+                                        session):
                     continue
                 _lbl = self._want_label(card, state, session)
                 if _lbl:
@@ -1185,7 +1190,7 @@ class LineStrategy(DefaultCwStrategy):
         for card in (state.shop or []):
             if rem - card.cost < _floor:
                 continue
-            if not self._buy_guards(card, state, len(actions)):
+            if not self._buy_guards(card, state, len(actions), session):
                 continue
             _lbl = self._want_label(card, state, session)
             if _lbl:
@@ -1376,13 +1381,51 @@ class LineStrategy(DefaultCwStrategy):
                    for d in (state.deployed or []))
 
     @staticmethod
+    def _copy_swap_useless(card, state: GameState,
+                           session: StrategySession) -> bool:
+        """r410(ADR-0267 同族:同名跨副本无效换卡;局72 r8 实证)。
+
+        形态:买同名 #2(reason=line 等,买时合法)→ deploy 侧
+        sell-offtarget 卖掉在场旧 #1(羁绊 ∩ target_factions=∅,
+        卖时也「合法」)→ #2 顶替上阵。净效果=同角色换卡,白付
+        操作+装备转移(买 3 金/卖回 3 金,0 金损但纯耗)。
+
+        守卫镜像 deploy 侧保留判据(deploy_bench
+        _sell_offtarget_deployed):在场副本会被保留(char_id ∈
+        target_cores 或 bonds ∩ target_factions)→ 买副本合法
+        (凑对/3合1);所有在场副本会被卖 → 买新件=换卡 → 拒。"""
+        if not card.name:
+            return False
+        dep_copies = [d for d in (state.deployed or [])
+                      if getattr(d, 'char_id', '') == card.name]
+        if not dep_copies:
+            return False
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        _tc = getattr(session, 'target_comp', None)
+        t_fac = set(getattr(_tc, 'factions', ()) or ()) if _tc else set()
+        t_core = set(getattr(_tc, 'core_chars', ()) or ()) if _tc else set()
+        for d in dep_copies:
+            if d.char_id in t_core:
+                return False   # core 显式保留 → 买副本合法
+            ch = CHARACTERS.get(d.char_id)
+            bonds = (set(ch.factions) | set(ch.flows)) if ch \
+                else {d.faction}
+            if bonds & t_fac:
+                return False   # target 阵营单位保留 → 凑对合法
+        return True   # 在场副本全会被 deploy 卖 → 买=无效换卡
+
+    @staticmethod
     def _buy_guards(card, state: GameState,
-                    planned_buys: int) -> bool:
+                    planned_buys: int,
+                    session: StrategySession | None = None) -> bool:
         """A4(审计):买牌守卫——同名副本 ≤3(3合1 上限,
         第4张纯浪费)+ bench 容量(已提案数计入)。
         r355(局44 判读):copies 按星级加权——2★=2 张份,
         3★=3 张份(合成后单张已含多份原料;原按名字数 1,
-        2★在场再买 1★= 冗余第 4 份,局44 四买飞霄实证)。"""
+        2★在场再买 1★= 冗余第 4 份,局44 四买飞霄实证)。
+        r410(ADR-0267 同族):同名在场副本会被 off-target 卖出
+        (deploy 侧判据)→ 买新副本=无效换卡,拒(session=None
+        的旧调用不辖)。"""
         if not card.name:
             return False
         copies = sum(getattr(b, 'star', 1) or 1
@@ -1392,6 +1435,9 @@ class LineStrategy(DefaultCwStrategy):
                       for d in (state.deployed or [])
                       if getattr(d, 'char_id', '') == card.name)
         if copies >= 3:
+            return False
+        if session is not None \
+                and LineStrategy._copy_swap_useless(card, state, session):
             return False
         # bench 容量:9 槽(r240 off-by-one 修:>8 才拒,
         # 即最多买到 9 满;原 >=8 在卖 1 张后 8 张仍触界

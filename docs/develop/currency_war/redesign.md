@@ -454,7 +454,7 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
 > 保持计数**——比值档触发与滞回退出属 Phase B 蓝图,未落地);追赶 = 状态机
 > cat 位(E5/E6 按 pop_low),人口基线 `_POP_BASELINE` + 等级门
 > `_CATCHUP_MIN_LEVEL`(level 以下的人口落后是常态非追赶,r232)。重生基数
-> 与利息地板见 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR`/`_MID_INTEREST_FLOOR`。
+> 与利息地板见 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR`。
 > 下方设计文本保留为 Phase B 完整蓝图(ADR-0227 两阶段裁定)。
 
 ```
@@ -817,7 +817,7 @@ ROLL_FAIL_N + visited)
 | HEAL_HYSTERESIS | 应急退出安全档(存量档位) | §5.4 | **未落地**(E8 恢复即切,无滞回;Phase B 蓝图) |
 | EMERGENCY_EXIT_HOLD | 应急退出保持计数(战斗节点) | §5.4 | **未落地**(同上) |
 | CATCHUP_TOLERANCE | 追赶退出人口容差(带回滞;追赶期=升人口置顶一句话版) | §5.4 | `line_strategy._POP_BASELINE`+`_CATCHUP_MIN_LEVEL`(等级门版,r232) |
-| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | `line_strategy._INTEREST_FLOOR`/`_MID_INTEREST_FLOOR`/`_WAR_FLOOR` |
+| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | `line_strategy._INTEREST_FLOOR`/`_WAR_FLOOR`(r282 20 平台已删,ADR-0270) |
 | AB_MIN_GAMES | AB 对照最小局数 | §8 | (未落独立常量;AB 纪律按验证工作台执行) |
 | DURATION_TOLERANCE | 局均时长容差 | §8 | (未落地) |
 | CATCHUP_FLOOR_RELIEF | 追赶期利息地板下浮系数(矩阵版砍,简化保留档) | §5.4 | 未落地(Phase B) |
