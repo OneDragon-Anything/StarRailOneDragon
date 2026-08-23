@@ -145,8 +145,20 @@ class DecisionV2Registry:
     bench_form_weight: float = 0.35
     #: 目标件持有进度项天花板系数(ADR-0295:持有进度保留显影但
     #: 封顶折减——顶格不再=满形态;targets=min(此系数, n/base)
-    #: ×target_hold_value,未标定)
+    #: ×target_hold_value)。ADR-0301 网格:1.0 无单独增益,维持 0.8
     target_hold_cap_frac: float = 0.8
+    #: 引擎分数进度项单位值(ADR-0301 成型攻坚,每满进度引擎)。
+    #: 依据:P3 已证 e0→e1 +1.4/e1→e2 +1.6 金/轮——买进度件是
+    #: 正期望期权,但 rung_value 只在整数档跨越(deployed 上场)
+    #: 显影;deployed=cap 时进度件躺 bench(×bench_form_weight),
+    #: 混合域阈值不跨越 → 评分恒 0 → 「评分没买」主因(20 局
+    #: 诊断 135/171 段引擎买候选评 0.0 被非正分拒)。本项对进度
+    #: 小数余量(Σmin(w/tier,1)−整数引擎数)显影,与 rung 整数档
+    #: 互补不双计(跨越时余量清零,值转进 rung_value)。0=关闭。
+    #: **双窗网格标定 1.0**(A 窗 hp_ge_60 0→0.167 / B 窗
+    #: 0.2→0.233,唯一双窗一致臂;2.0/4.0 过冲在 B 窗翻车——
+    #: 高单位下进度件挤掉目标件买入)
+    engine_frac_unit: float = 1.0
     #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
     #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0
@@ -163,6 +175,21 @@ class DecisionV2Registry:
     refresh_starve_discount: float = 0.6
     #: 评分侧联动的饥饿金阈值(金< 此值触发折扣)
     refresh_starve_gold: int = 40
+    # ===== 成型找件刷新(ADR-0301 strike2,域 b) =====
+    #: 成型找件刷新 EV:未成型(引擎数<target)且当前店无引擎卡时,
+    #: 刷新=定向找件。**双窗 A/B 否决(30+30 配对 -4.13/-4.70,
+    #: hp_ge_60 双降)**:找件命中率低于常量 EV 假设,且高分刷新
+    #: 挤掉同轮买入;通道保留注册默认关闭(A/B 可开,同
+    #: refresh_game_cap 模式)
+    form_refresh_ev: float = 0.0
+    #: 成型找件刷新生效轮界(r≤ 此值;r7 遭遇前是找件窗,
+    #: 常规 refresh_max_round=6 不辖本通道)
+    form_refresh_max_round: int = 7
+    #: 成型找件刷新金保底(找件可破常态息档但不破此底——
+    #: 金流抽干防护,高于常规 refresh_min_gold 的 20)
+    form_refresh_min_gold: int = 30
+    #: 「已成型」判定阈值(引擎数 ≥ 此值=不再找件刷)
+    form_refresh_engines_target: int = 2
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)

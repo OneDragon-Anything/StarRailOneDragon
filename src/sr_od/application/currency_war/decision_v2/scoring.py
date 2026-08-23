@@ -119,6 +119,29 @@ def _held_star_weighted(state: GameState) -> list:
     return held
 
 
+def _engine_frac_remainder(state: GameState,
+                           registry: DecisionV2Registry) -> float:
+    """过渡体系进度小数余量(ADR-0301 成型进度项)。
+
+    progress=Σ min(加权计数/tier, 1)(三羁绊,混合域权重同
+    board_rung_x);engines=整数引擎数(含希儿系)。余量
+    =max(0, progress−engines):未跨越阈值的进度部分。买入
+    进度件(bench ×0.35 / deployed ×1.0)推高余量 → 评分显影;
+    阈值跨越瞬间余量清零、值转进 rung_value(整数档)——与
+    rung 互补不双计。希儿系是 deployed 二元判定,无小数进度,
+    不参与本项。
+    """
+    from sr_od.application.currency_war.cw_sim import (
+        _TRANSITION_TRAITS,
+        _engines_count,
+    )
+    fac, _main, dep = _held_form_weights(state, registry)
+    engines = _engines_count(fac, dep)
+    progress = sum(min(fac.get(b, 0.0) / tier, 1.0)
+                   for b, tier in _TRANSITION_TRAITS)
+    return max(0.0, progress - engines)
+
+
 def score_state(state: GameState, registry: DecisionV2Registry,
                 session: StrategySession | None = None) -> dict[str, float]:
     """板面形态→期望 查表(评分的单一真值;只看形态维)。"""
@@ -152,6 +175,10 @@ def score_state(state: GameState, registry: DecisionV2Registry,
                            n / max(1, registry.target_hold_base))
                        * registry.target_hold_value)
     depth = _deployable_depth(state) * registry.depth_unit_value
+    # 引擎分数进度(ADR-0301):未跨越整数档的进度余量 × 单位值
+    # (P3 期权价值;0=关闭——A/B 基线臂)
+    eng_frac = (_engine_frac_remainder(state, registry)
+                * registry.engine_frac_unit)
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
     # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
     # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
@@ -163,7 +190,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     return {'rung': round(rung, 3), 'power': round(power, 3),
             'interest': round(float(interest), 3),
             'depth': round(depth, 3), 'level': round(level_ev, 3),
-            'targets': round(targets, 3)}
+            'targets': round(targets, 3),
+            'eng_frac': round(eng_frac, 3)}
 
 
 def _deployable_depth(state: GameState) -> int:
@@ -237,6 +265,31 @@ _PIPELINE_TAGS = frozenset({
 })
 
 
+def _shop_has_engine_card(state: GameState) -> bool:
+    """店内是否有引擎件(过渡体系阵营/希儿;ADR-0301 找件判据,
+    与诊断口径同源:仙舟/列车同行/持续伤害/量子同频/贝洛伯格)。"""
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    _eng_facs = {'仙舟', '列车同行', '持续伤害', '量子同频', '贝洛伯格'}
+    for c in (state.shop or []):
+        if not c.name:
+            continue
+        if c.name == '希儿':
+            return True
+        ch = _CH.get(c.name)
+        if ch is not None and (_eng_facs & (set(ch.factions or ())
+                                            | set(ch.flows or ()))):
+            return True
+    return False
+
+
+def _engines_formed(state: GameState,
+                    registry: DecisionV2Registry) -> int:
+    """整数引擎数(混合域权重口径;与 board_rung_x 同源)。"""
+    from sr_od.application.currency_war.cw_sim import _engines_count
+    fac, _main, dep = _held_form_weights(state, registry)
+    return _engines_count(fac, dep)
+
+
 def score_candidate(cand: Candidate, state: GameState,
                     session: StrategySession,
                     registry: DecisionV2Registry,
@@ -266,6 +319,20 @@ def score_candidate(cand: Candidate, state: GameState,
                     and (state.gold or 0) < registry.refresh_starve_gold):
                 ev *= registry.refresh_starve_discount
             val = ev - (cand.action.cost or 0)
+        # ADR-0301 成型找件通道(域 b):未成型+店无引擎件时刷新=
+        # 定向找件,独立轮界/金门(常规门辖不到 r7 找件窗);
+        # 饥饿折扣同辖(防找件链在低金抽干金流)
+        if (registry.form_refresh_ev > 0
+                and state.round_num <= registry.form_refresh_max_round
+                and (state.gold or 0) >= registry.form_refresh_min_gold
+                and _engines_formed(state, registry)
+                < registry.form_refresh_engines_target
+                and not _shop_has_engine_card(state)):
+            ev_f = registry.form_refresh_ev
+            if (registry.refresh_starve_discount < 1.0
+                    and (state.gold or 0) < registry.refresh_starve_gold):
+                ev_f *= registry.refresh_starve_discount
+            val = max(val, ev_f - (cand.action.cost or 0))
         return val, {'base': base, 'after': None, 'refresh_ev': val}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
