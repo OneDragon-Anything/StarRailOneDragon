@@ -843,16 +843,23 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     """一战前备战屏(商店已开)→ GameState(喂 plan)。
 
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
-    hp 不可 OCR → 默认 100。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
+    hp 读不到 → ``reconcile_hp`` 对账(ADR-0282:沿用 session.last_hp_real,开局无真值才
+    兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
     state = GameState()
     _gold_opt = read_gold_opt(ctx, screen)
     state.gold = 0 if _gold_opt is None else _gold_opt
     state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
+    # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
+    # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
+    # 先验触发保血方向对);全无真值(开局)才兜底 100。state.hp=决策用值,
+    # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
+    from sr_od.application.currency_war.cw_reconcile import reconcile_hp
     _hp_opt = read_hp_opt(ctx, screen)
-    state.hp = 100 if _hp_opt is None else _hp_opt
-    state.hp_readable = _hp_opt is not None   # 遥测保真(insights hp=100 毒化)
+    _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    state.hp, state.hp_readable = reconcile_hp(
+        _sess_hp, _hp_opt, screen, source='read_game_state')
     state.plane, state.round_num = read_phase_round(ctx, screen)
     # r80(审计 P0):boss 轮次语义门 —— 「首领」标签在 boss 前夕也会出现在即将到来的
     # boss 节点下方(2-7 实证),round<8 时必是张冠李戴 → 拒(boss=位面最后节点 ≥9 轮)

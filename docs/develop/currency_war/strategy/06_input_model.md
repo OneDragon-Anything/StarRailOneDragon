@@ -17,12 +17,12 @@
 | 整局固定事实 | `selected_difficulty`(职级,两阶难度模型:职级定起始敌难+词缀、`enemy_difficulty` 随节点递增可被持卡压低;详 [gameplay](../../../game/gameplay/currency_war.md))/ `plane_bosses`(→派生 `current_boss`)/ `enemy_affixes`(简报+节点词缀) |
 | 经济 | `gold` / `level` / `level_up_cost` / `xp_progress` / `streak` / `shop_refresh_cost` / `refresh_probs`(商店开态概率条真值 {费用档:概率},投资环境轮岗翻倍的直接观测;None=未读/商店关→`_sample_cost` 退基线表) |
 | 棋盘 | `deployed` / `bench`(元素类 `BenchChar`:槽位/身份/阵营/星级/前后排/装备,装备记在角色身上)/ `front_max`·`back_max` / `bench_full_flag` / `board`(阵营激活 count + tier)/ `board_next_tier`(各阵营下个 tier 阈值,聚焦裁切 OCR 才稳读;comp/progress 评分消费) |
-| 保真位(r319) | `hp_readable` / `gold_readable` / `board_readable`(「值是否真读到」标记;int/dict 契约下动画帧 miss 与真值不可区分;遥测/对拍消费,决策默认不用) |
+| 保真位(r319) | `hp_readable` / `gold_readable` / `board_readable`(「值是否真读到」标记;int/dict 契约下动画帧 miss 与真值不可区分;遥测/对拍消费,决策默认不用。hp 失读时值=沿用真值非兜底 100,ADR-0282) |
 | 商店 | `shop`(ShopCard:阵营/名/费用/星级)/ `shop_locked`(⚠ **死字段**:全仓无写入者恒 False;ADR-0230 登记为留工作项) |
 | 双轨期(策略 v2,ADR-0209) | `dual_track_phase`(P1 未定型标记,update_target 每回合刷新)/ `focus_factions`(flex 收敛白名单;update_target 写入,evaluate 消费) |
 | 投资选择 | `active_env` / `active_strategies` / `megastar_char` / `partner_char` |
 | 装备/资源 | `equips`(持有装备名列表) |
-| 生命 | `hp`(备战 shop 关态才显示) |
+| 生命 | `hp`(备战 shop 关态才显示;读不到时经对账层 `reconcile_hp` 沿用 session 真值,开局无真值才兜底 100——ADR-0282) |
 
 ## 3. 注册表地图(游戏数据单一源,`src/sr_od/application/currency_war/`)
 

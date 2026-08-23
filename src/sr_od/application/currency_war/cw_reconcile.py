@@ -143,6 +143,61 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     return True
 
 
+#: ADR-0282:hp 同域大幅上行留证阈值。HP 只降不升(结算语义,insights 实证),
+#: 备战现读较 last_hp_real 上行 ≥ 此值 = 疑 OCR 误读/特殊回复 → obs_conflict 留证
+#: (仍采新:真值帧是物理读数,判读侧消费证据)。
+HP_REAL_JUMP_CONFLICT: int = 30
+
+
+def reconcile_hp(session, new_hp: int | None, screen=None, *,
+                 source: str = 'read_game_state',
+                 node_t: int | None = None) -> tuple[int, bool]:
+    """hp 对账统一入口(ADR-0282,用户三层设计·对账层;run165501 毒化案根治)。
+
+    hp 与 bench/deployed 不同源(SIFT 双源),它的「读失败」形态 = shop 开态
+    血量区物理为空(read_hp_opt → None)——**None ≠ 漂移是读失败,保旧不写**
+    (复用 ``reconcile_tracking`` 双空读守卫思想,2026-08-03 安全设计「读不到
+    兜底 100」在遥测/决策侧毒化的根治)。
+
+    三层分工(用户原话要点):
+    - **对账层(本函数)**:读不到 → 沿用 ``session.last_hp_real``(保旧不写);
+      真值帧(非 None)才写回 last_hp_real(=「session 更新只在关态真值帧」,
+      shop 开态读不到自然不写);新读非 None 且同域大幅上行(HP 只降不升)
+      → obs_conflict 留证。
+    - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
+      安全(低血先验触发保血方向对);全无真值(开局)才兜底 100。
+    - **记录层**:遥测按返回的 readable 位分字段记(hp_readable=False=读不到,
+      hp=沿用值),不把兜底/沿用值混进「真 100」。
+
+    Args:
+        session: StrategySession(last_hp_real 被写回;None=离线/测试,只透传)
+        new_hp: read_hp_opt 现读(None=读不到,shop 开态血量区空)
+        screen: 冲突帧(传则 obs_conflict 存去重截图)
+        source: 证据行来源标记
+        node_t: 全局节点号((plane-1)*9+round;留证锚,可 None)
+
+    Returns:
+        (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(last_hp_real, False);
+        全无真值(开局)=(100, False) 健康先验兜底。
+    """
+    if new_hp is None:
+        old = getattr(session, 'last_hp_real', None) if session is not None else None
+        if old is not None:
+            log.info(f'[cw][{source}] hp 读不到(shop 开态/血量区空)→ '
+                     f'沿用 last_hp_real={old}(保旧不写,ADR-0282)')
+            return old, False
+        return 100, False   # 开局全无真值 → 兜底 100(健康先验;readable=False 披露)
+    old = getattr(session, 'last_hp_real', None) if session is not None else None
+    if old is not None and new_hp - old >= HP_REAL_JUMP_CONFLICT:
+        _conflict('hp', old, new_hp, screen,
+                  verdict=('留证-同域大幅上行(HP只降不升,疑OCR误读/特殊回复;'
+                           '处理:采新现读真值帧;频发→查血量区遮挡/误读)'),
+                  source=source, node_t=node_t)
+    if session is not None:
+        session.last_hp_real = new_hp
+    return new_hp, True
+
+
 def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
               **ctx) -> None:
     """obs_conflict 封装(best-effort,导入失败/异常不阻塞)。**ctx 透传(如 char=)。"""

@@ -175,6 +175,11 @@ class StrategySession:
     # prep 现读 —— 低 conf 结算轮(boss 胜利屏 hp 裸数字常读不到)last_hp 残留陈值,无条件覆盖
     # = 陈 hp 冻结毒化每回合 prep(保血/转型永不触发;P1 boss 赢→hp1 进 P2 秒死 ×3 的观测链根因)。
     last_hp_t: int | None = None
+    # ADR-0282(hp 三层·对账层,用户设计 2026-08-23):备战屏血量**最后真值**
+    # (read_game_state 真值帧经 reconcile_hp 写;shop 开态血量区物理为空 →
+    # 读不到=保旧沿用此值,**不是兜底 100**)。与 last_hp(结算屏真值,gated_hp
+    # 新鲜度门消费)分工:本字段是备战现读域的对账锚。开局首真值帧前为 None。
+    last_hp_real: int | None = None
     # r70 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target
     # (cw_transition.pick_framework 按 board+bench+shop 持有选定;update_target 每轮刷新)。
     transition_framework: str = ''

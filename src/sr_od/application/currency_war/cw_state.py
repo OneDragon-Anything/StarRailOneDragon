@@ -78,8 +78,8 @@ class GameState:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int = 100          # 小队生命值(锁血决策用;未知默认 100)
-    hp_readable: bool = True   # hp 是否真读到(False=100 是默认兜底;遥测保真,决策不用)
+    hp: int = 100          # 小队生命值(锁血决策用;读不到时=沿用 last_hp_real / 开局兜底 100,ADR-0282)
+    hp_readable: bool = True   # hp 是否真读到(False=读不到,ADR-0282:hp 此时为沿用值/兜底值;遥测保真,决策不用)
     # r319(ADR-0213 批次2):gold/board 可读保真位(对齐 hp_readable
     # 模式——int/dict 契约下动画帧 miss 与真值不可区分;消费方
     # 遥测/对拍用,决策默认不用)。
