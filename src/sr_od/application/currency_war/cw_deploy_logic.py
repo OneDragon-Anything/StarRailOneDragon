@@ -150,8 +150,15 @@ def select_deployments(
         if not cid:
             continue    # 未识别:照旧上(围栏无法判)
         f = bench_fac.get(i)
+        # [31] 凑档降级(部署侧;ADR-0288):无目标件可上(tgt 空)时,
+        # 凑档件——board∪bench 主阵营计数 ≥2(含自身 = board 已有
+        # ≥1,入后凑 2 档)——不被配方围栏拦:降级上场「有总比没有
+        # 厉害」(P3:e0→e1 +1.4 金/轮);tgt 空集时不存在挤占目标件
+        # 位置的问题(tgt 非空时围栏照旧——降级件不挤目标件)。
+        _bond_paired = f is not None and pair_counts.get(f, 0) >= 2
         if f is not None and f not in DEPLOY_FENCE \
-                and recipe_starved and not roomy:
+                and recipe_starved and not roomy \
+                and not (not tgt_idx and _bond_paired):
             rest.remove(i)
             held.append(i)
             continue

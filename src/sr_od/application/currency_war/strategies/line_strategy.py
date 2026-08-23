@@ -904,6 +904,11 @@ class LineStrategy(DefaultCwStrategy):
                     and not self._in_round_sold(card.name, state, session):
                 return 'copy'
             return classify_buy(card, state)
+        # [31] 凑档降级(ADR-0288):谓词 else 分支——主通道(line/
+        # bridge_seed/engine_seed/p2_core/pair)全不收且锁线时本波
+        # 目标件全缺 → 凑 2 档降级买入(门见 _bond_fallback_wants)。
+        if self._bond_fallback_wants(card, state, session):
+            return 'bond_fallback'
         return ''
 
     def _buy_actions(self, state: GameState,
@@ -1657,6 +1662,55 @@ class LineStrategy(DefaultCwStrategy):
                 if combo.bridge_id == session.bridge_id:
                     return card.name in combo.fixed + combo.core
         return False
+
+    def _bond_fallback_wants(self, card, state: GameState,
+                             session: StrategySession) -> bool:
+        """[31] 凑档降级通道(买侧;ADR-0288,用户口述权威)。
+
+        谓词 else 分支(与 _line_wants 锁线主通道无互斥关系):
+        锁线时**本波目标件全缺**(carry/opportunistic/当前位面
+        桥 core 均不在店)→ 买「能与当前 board∪bench 阵营凑成
+        2 档」的非目标卡(阵营计数:board+bench 同阵营 ≥1 且该卡
+        入后 ≥2)——「没有 top4 不能躺平,用手上已有的其他羁绊
+        先凑数,有总比没有厉害」(P3 已证 e0→e1 +1.4 金/轮)。
+
+        门(全过才放行):
+        - 锁线且线库可查(未锁线的桥方向期不辖——桥 fixed/core
+          本身就是目标件集,无「全缺」语义);
+        - 战斗轮起(r≥3;P3 口径:r1-r2 无战斗,买件纯付息损);
+        - 本波目标件全缺(任一在店 → 主通道该买它,不走降级);
+        - [30] 成本带:1-2 费(P1 过渡带——降级件也要买在
+          过渡件的主成本带内,不追高费散件);
+        - 凑 2 档:card.faction ∈ board∪bench 已有阵营。
+        bench 满由 _buy_guards(容量)+既有腾位卖通道协同辖
+        (同款最弱件逻辑,不重复建);副本上限/无效换卡守卫同
+        _buy_guards。reason='bond_fallback'(遥测/检查项
+        bond_fallback_purchase_validity 可判读,0 容忍)。"""
+        if not session.locked_line or not card.name:
+            return False
+        if state.round_num < 3:
+            return False    # P3:r1-r2 无战斗,纯付息不触发
+        line = line_of(session.locked_line)
+        if line is None:
+            return False
+        pool = BRIDGE_POOL if state.plane == 1 else BRIDGE_POOL_P2
+        core_names = {n for combo in pool for n in combo.core}
+        # 本波目标件全缺(与 _line_wants 锁线主通道的目标定义同源:
+        # carry / opportunistic / 当前位面桥 core)
+        for c in (state.shop or []):
+            if c.name and (c.name == line.carry
+                           or c.name in line.opportunistic_cards
+                           or c.name in core_names):
+                return False
+        if card.cost > 2:
+            return False    # [30] 成本带:1-2 费过渡带
+        fac = card.faction
+        if not fac or fac == '?':
+            return False
+        owned = set(state.board.keys())
+        owned |= {b.faction for b in (state.bench or [])
+                  if b.faction and b.faction != '?'}
+        return fac in owned
 
     @staticmethod
     def _p2_precache_wants(card, state: GameState,
