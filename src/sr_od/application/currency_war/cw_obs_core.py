@@ -86,18 +86,59 @@ def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
     return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
 
 
+#: 上层屏名单(ADR-0269 两段式第一段):会盖在备战底层 UI 之上的画面/弹窗。
+#: 这些画面在场时备战 id_mark 往往仍可见 → 单判「备战/开商店」会在中间态放行
+#: (局72 12:57 伙伴误拖实锤:选择伙伴画面被判备战帧)。**逐个**判定,
+#: 不能把名单与备战屏合并成一次 get_match_screen_name 调用——框架按注册序
+#: 返首个命中,备战在前则上层帧照样先中备战(对抗审查轴①)。
+#: 名单按 assets/game_data/screen_info 的 screen_name 全名核对(2026-08-24)。
+UPPER_SCREENS: tuple[str, ...] = (
+    '货币战争-选择伙伴',
+    '货币战争-祈愿试炼',
+    '货币战争-遭遇节点',
+    '货币战争-投资策略',
+    '货币战争-投资环境',
+    '货币战争-盛会之星',
+    '货币战争-位面过渡',
+    '货币战争-积分奖励',
+    '货币战争-简报',
+    '货币战争-中断挑战弹窗',
+    '货币战争-未达上限警告',
+    '货币战争-提示-前台无角色',
+    '货币战争-武装箱弹窗',
+    '货币战争-商店刷新概率表',
+    '货币战争-攻略码输入弹窗',
+    '货币战争-备战-角色详情',
+    '货币战争-星徽详情',
+    '货币战争-星徽秘典弹窗',
+    '货币战争-补给',
+    '货币战争-难度确认',
+    '货币战争-阵容编辑',
+    '货币战争-模式选择',
+)
+
+
 def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
-    """帧态判据(r330,用户循环「稳定→观察→对账&hook」的 hook 门):
-    画面精准命中 备战屏 或 开商店屏(id_mark 体系,框架
-    screen_utils)→ True;过渡帧/结算/事件/动画帧 → False。
+    """帧态判据(r330 → ADR-0269 两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
+    get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧,局72
+    伙伴误拖实锤:上层不排除时选择伙伴帧被放行);**全部未命中后**再判
+    备战/开商店双屏(id_mark 体系,框架 screen_utils)→ True;过渡帧/结算/
+    事件/动画帧 → False。
 
     用途:**采集·停机钩子自检**——埋在 reader 深处的钩子
     (summon/bookcard/layout/star)任何调用路径下先过本判据,
     过渡帧不触发(防误采/误停;局35 类动画帧实证形态)。
-    best-effort:识别异常 → False(保守,不触发钩子)。
+    OCR 成本:上层判定与备战判定同帧复用全图 OCR 缓存(crop_first=False),
+    对抗报告已证成本可忽略。best-effort:识别异常 → False(保守,不触发钩子)。
     """
     try:
         from one_dragon.base.screen import screen_utils
+        for _upper in UPPER_SCREENS:
+            if screen_utils.get_match_screen_name(
+                    ctx=ctx, screen=screen,
+                    screen_name_list=[_upper],
+                    crop_first=False) is not None:
+                return False
         name = screen_utils.get_match_screen_name(
             ctx=ctx, screen=screen,
             screen_name_list=[SCREEN_NAME, SHOP_SCREEN_NAME],
