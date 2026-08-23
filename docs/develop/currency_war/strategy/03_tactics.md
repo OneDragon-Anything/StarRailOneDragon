@@ -34,6 +34,8 @@
 
 **同轮买卖互斥**(ADR-0267):decide_prep 薄包装维护 round-scoped 已买集/已卖集(`session.v2_round_bought`/`v2_round_sold`,按 `(plane, round_num)` 换轮重置)——轮内任一段买过的卡名,四条卖通道(off_target/interest/precache/for_gold)禁卖(3合1 让位豁免:同名副本星级加权 ≥3 的冗余件放行);对称臂:卖通道提案即时入已卖集,engine_seed 对集内卡名禁买(防同 call 卖→买回)。拆「engine_seed 买→卖通道卖→再买」永动机(bench 满员态段间互踩,自由批 F1);先卖后买不同名的同轮序不受限。
 
+**carry 腾位门**(ADR-0280):`_carry_bench_gate` 挂 economy/boss_breaker/war 三买通道尾——P1 r≤`_CARRY_GATE_MAX_ROUND`(=7,收益域:r8-r9 miss 无差异;r9 boss 轮不触发)锁线局,carry 在店+金足(不破调用方地板)+bench 满(≥9)+零 off-target 可卖时,**降保护集卖最弱件再买**(reason=`carry_gate`)。「最弱件」弱序=非保护件 > 非当前线件 > 非桥件 > 副本冗余(镜像 `_copy_swap_useless` 保留判据);3合1 完整份(星级加权 copies==3)不腾,超上限冗余(>3)先腾;卖出件入 `v2_round_sold` 同轮不回买。根因:保护集(双桥池全名单+锁线名单)窒息卖通道(批⑯ F3),强制买已证零效应(批⑯ F4)。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

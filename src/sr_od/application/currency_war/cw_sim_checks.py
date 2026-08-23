@@ -365,6 +365,56 @@ def check_bench_full_deadlock_probe(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
+    """批⑯ F3/F4(ADR-0280):carry 腾位门死锁指纹。
+
+    指纹:P1 r≤7(收益域——r8-r9 miss 买不买无差异,批⑯ F4)、
+    锁线、carry 在店(任一牌面波)且金足(波时点金≥cost,批⑯ F3
+    口径:gold−已提案花销≥cost)、bench=9 满、**当轮零买入且零卖出**
+    ——即腾位门该出手而未出手(基线 56 局/148 事件,18.7%)。
+    修复后该指纹应归 0(腾位门产出 SellBench+BuyCard,行不再
+    「零买零卖」);残留违规=保护集窒息复发或门条件漏边。
+
+    残留声明:金足口径不含息档地板(economy 满息态 gold-cost<
+    floor 的合法 miss 会留小额残差),与批⑯ F3 观测口径一致——
+    按指纹消费,不按硬零消费。
+    """
+    from sr_od.application.currency_war.cw_line_library_v1 import line_of
+    out: list[str] = []
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        rn = row.get('round_num') or 0
+        if rn > 7:
+            continue   # 收益域:r8-r9 不辖(批⑯ F4)
+        line = line_of(row.get('target_comp') or '')
+        if line is None or not line.carry:
+            continue
+        st = row.get('state') or {}
+        if len(st.get('bench') or []) < 9:
+            continue
+        # 未持有口径(批⑯ F3:miss=carry 在店+金足+**未持有**):
+        # bench/deployed 已有 carry 名 = 已持有,不辖([21] 买而不上
+        # 的合法囤件形态;修后 r416b 诊断实证 4/25 残留全是此口径差)
+        owned = {b.get('char_id') for b in st.get('bench') or []}
+        owned |= {d.get('char_id') for d in st.get('deployed') or []}
+        if line.carry in owned:
+            continue
+        if any(a.get('__type__') in ('BuyCard', 'SellBench')
+               for a in row.get('actions') or []):
+            continue   # 有买或有腾位动作 → 非死锁形态
+        for w in (row.get('sim') or {}).get('shop_waves') or []:
+            if any(c.get('name') == line.carry
+                   and (w.get('gold') or 0) >= (c.get('cost') or 0)
+                   for c in w.get('cards') or []):
+                out.append(
+                    f"p1r{rn}: carry {line.carry} 在店+金足+bench=9"
+                    f"+零买零卖(carry 腾位门死锁指纹——批⑯ F3,"
+                    f"ADR-0280)")
+                break
+    return out
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -374,7 +424,65 @@ _BATCH_CHECKS = {
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
     'bench_full_deadlock_probe': check_bench_full_deadlock_probe,
+    'carry_gate_bench_deadlock': check_carry_gate_bench_deadlock,
 }
+
+
+def check_protect_set_bench_share(ledgers: list[list[dict]]) -> dict:
+    """批⑯ F3(ADR-0280):保护集 bench 占有率披露(设计张力指标)。
+
+    判据(批⑯设计表原文):锁线局 r6+ 保护件占 bench 槽 ≥7/9 →
+    披露级——本检查不构成违规(violations 恒 0),供保护集收窄
+    裁决跨批对照(基线批⑯ F3:保护集均 7.45/槽,faction-close
+    1.52/槽,真可卖 0.51/事件)。
+
+    保护集口径与 line_strategy._protect_set 同源镜像(双桥池
+    fixed∪core+锁线 carry+opportunistic;检查模块不 import 策略,
+    值漂移由锁测试双向暴露——同 _ENGINES_TRAITS_SYNC 纪律)。
+    跨局聚合检查(吃全批账本,调用方显式调;未进 _BATCH_CHECKS
+    的逐局循环——cw_sim 接线归下批)。
+    """
+    from sr_od.application.currency_war.cw_bridge_pool import (
+        BRIDGE_POOL,
+        BRIDGE_POOL_P2,
+    )
+    from sr_od.application.currency_war.cw_line_library_v1 import line_of
+    base_protect: set[str] = set()
+    for pool in (BRIDGE_POOL, BRIDGE_POOL_P2):
+        for combo in pool:
+            base_protect.update(combo.fixed + combo.core)
+    shares: list[float] = []
+    n_ge7 = 0
+    peak: dict = {'where': '', 'prot': 0, 'bench': 0, 'share': 0.0}
+    for rows in ledgers:
+        for row in rows:
+            if row.get('plane') != 1 \
+                    or (row.get('round_num') or 0) < 6:
+                continue
+            line = line_of(row.get('target_comp') or '')
+            if line is None:
+                continue   # 未锁线局不辖
+            protect = (base_protect | {line.carry}
+                       | set(line.opportunistic_cards))
+            names = [b.get('char_id') for b in
+                     (row.get('state') or {}).get('bench') or []
+                     if b.get('char_id')]
+            if not names:
+                continue
+            prot_n = sum(1 for n in names if n in protect)
+            share = prot_n / len(names)
+            shares.append(share)
+            if prot_n >= 7:
+                n_ge7 += 1
+            if share > peak['share']:
+                peak = {'where': f"p1r{row.get('round_num')}",
+                        'prot': prot_n, 'bench': len(names),
+                        'share': round(share, 3)}
+    return {'violations': 0,   # 披露级(批⑯设计表):设计张力指标
+            'rows': len(shares), 'ge_7_of_9_rows': n_ge7,
+            'ge_7_share': round(n_ge7 / len(shares), 3) if shares else None,
+            'avg_share': round(sum(shares) / len(shares), 3) if shares else None,
+            'peak': peak}
 
 
 # --- Δ池标定检查(压测批③ F1 检查项 1/2/3;ADR-0268) ---------------

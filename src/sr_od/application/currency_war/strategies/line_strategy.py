@@ -93,6 +93,11 @@ _P2_PRECACHE_ROUND: int = 7
 #: r247 P2 预囤容量门(bench 上限,严于全局 cap 9——留 3合1 空间;
 #: 第九轮对抗审查 R3)
 _P2_PRECACHE_MAX_BENCH: int = 7
+#: r416(ADR-0280,批⑯ F3/F4)carry 腾位门收益域上限:r8 以前
+#: (r≤7)才生效——批⑯ F4 实证 r8-r9 的 miss 买不买对终局 HP
+#: 无差异(终局段买入不改变 P1 结算曲线);r9 boss 轮不触发腾位
+#: (boss 轮禁令 [32] 同族,由 r≤7 一并覆盖)。
+_CARRY_GATE_MAX_ROUND: int = 7
 
 
 class LineStrategy(DefaultCwStrategy):
@@ -639,6 +644,17 @@ class LineStrategy(DefaultCwStrategy):
                      card.name, card.faction,
                      max(0, 3 - _board.get(card.faction, 0)),
                      _board.get(card.faction, 0), budget)
+        # r416b(ADR-0280):boss_breaker 常规通道在 cap 满+全保护
+        # 形态下 st2 仍是原 state(零卖)→ wants 的容量守卫全拒、
+        # 板面集中买同拒 → 整窗零动作(批⑯ F3 死锁形态,seg0 实证
+        # segments=0)。修:常规通道跑完后若**本窗零买零卖**且金≥
+        # boss 地板,补跑 carry 腾位门(唯一剩余出口)。
+        if not any(isinstance(a, (BuyCard, SellBench))
+                   for a in actions) and state.gold >= _floor:
+            import contextlib
+            with contextlib.suppress(Exception):
+                actions.extend(self._carry_bench_gate(
+                    state, session, _floor, bought=set(_bought)))
         return actions
 
     def _catchup_actions(self, state: GameState,
@@ -747,6 +763,12 @@ class LineStrategy(DefaultCwStrategy):
         import contextlib
         with contextlib.suppress(Exception):   # 腾金失败不阻塞常规经济
             actions.extend(self._sell_for_gold(st2, session, floor))
+            # r416(ADR-0280):carry 腾位门——bench 满且零可卖时
+            # 降保护集卖最弱件买 carry(F3 窒息根因的解)
+            actions.extend(self._carry_bench_gate(
+                st2, session, floor,
+                bought={a.card.name for a in actions
+                        if isinstance(a, BuyCard)}))
         # r258(早期方向刷新,HP≥60 根因):P1 r≤4 方向窗口期,
         # 未锁线未成桥且店里方向件 <2 → 刷一次找种子。
         # 25 局 HP 轨迹实锤:好局(84/100/84)全部 r1 就有方向
@@ -1015,6 +1037,126 @@ class LineStrategy(DefaultCwStrategy):
         session.v2_round_sold.add(state.bench[best[0]].char_id)   # r408
         return [SellBench(best[0]), BuyCard(want, reason='swap')]
 
+    def _carry_bench_gate(self, state: GameState,
+                          session: StrategySession, floor: int,
+                          bought: set[str] | None = None) -> list:
+        """r416(ADR-0280,批⑯ F3/F4 裁决):carry 腾位门——carry
+        在店+金足+bench 满(≥9)时**降保护集卖最弱件再买**,不是
+        硬塞买(强制买已证零效应:批⑯ F4 干预臂 300 局仅 10 事件
+        可注入,配对差统计零)。
+
+        根因(批⑯ F3):miss 的 93% 撞容量墙——_protect_set(双桥池
+        fixed∪core 全名单+锁线 opportunistic+carry,20+ 名字)把
+        bench 变成只进不出的仓库(137/148 事件 bench=9 且零可卖件,
+        唯一稀缺=bench 槽,口述[22])。
+
+        门(全过才腾位):
+        ① 收益域:P1 r≤_CARRY_GATE_MAX_ROUND(r8-r9 miss 无差异,
+           批⑯ F4;r9 boss 轮不触发,boss 轮禁令 [32] 同族);
+        ② 锁线且 carry 在店、未持有、金足(gold-cost≥floor,按
+           调用方地板语义——不破息档);
+        ③ bench 满(≥9)且**无 off-target 可卖件**(有则直接
+           卖→买通道已解,不走保护集降级);
+        ④ 「最弱件」= 保护集内 off-line 价值最低,与 r410
+           _copy_swap_useless 的保留判据同源镜像(保留=当前线件
+           /桥件,弱序:非保护件 > 非线件 > 非桥件 > 副本冗余);
+           3合1 保护不动——完整 3合1 份(星级加权 copies==3)不腾
+           (卖一份=拆合成材料),超上限冗余(copies>3,第 4 份
+           _buy_guards 已判纯浪费)优先腾;_round_sell_blocked
+           的 ≥3 让位豁免机制保留不覆写;
+        ⑤ 卖出件入 v2_round_sold 同轮不回买(r408 对称臂同源)。
+        """
+        from sr_od.application.currency_war.cw_state import (
+            BuyCard,
+            SellBench,
+        )
+        if state.plane != 1 or state.round_num > _CARRY_GATE_MAX_ROUND:
+            return []
+        if session.locked_line is None:
+            return []
+        line = line_of(session.locked_line)
+        if line is None or not line.carry:
+            return []
+        if bought and line.carry in bought:
+            return []   # 本批已提案买 carry → 无 miss
+        carry_card = next((c for c in (state.shop or [])
+                           if c.name == line.carry), None)
+        if carry_card is None:
+            return []
+        if self._has_same_name_copy(carry_card, state) \
+                or any(b.char_id == line.carry
+                       for b in (state.deployed or [])):
+            return []   # 已持有(场/架;副本走常规 copy 通道)
+        if self._in_round_sold(line.carry, state, session):
+            return []   # 本轮刚卖过 carry,不回买(r408)
+        if state.gold - carry_card.cost < floor:
+            return []   # 金不足(不破调用方地板/息档)
+        bench = state.bench or []
+        if len(bench) < 9:
+            return []   # 未满 → 常规买通道可达
+        # ③ 直接卖通道可用(off-target 可卖件存在)→ 不降保护集
+        #    (口径=同轮 economy 的 off_target cap1 卖在 seg0 已提案;
+        #    但战力象限(boss_breaker cap2)走的也是同判据——本门
+        #    只在「零可卖」时降级,r416b seed24 实证 close 阵营
+        #    faction-close 维度才是真窒息:全 bench 都在 close 或
+        #    保护集内时才继续)
+        protect = self._protect_set(session)
+        close = set(state.board.keys())
+        for b in bench:
+            if (b.char_id and b.char_id not in protect
+                    and b.faction not in close
+                    and not self._round_sell_blocked(b, state, session)):
+                return []
+        # ④ 降保护集:挑 off-line 价值最低件(弱序升序取最小;
+        # 「当前线件」=carry+opportunistic(锁线一等公民),桥 core
+        # 只是位面转换件——弱序上低于线件,高于桥外件)
+        in_line = {line.carry} | set(line.opportunistic_cards)
+        in_bridge = {n for pool in (BRIDGE_POOL, BRIDGE_POOL_P2)
+                     for combo in pool for n in combo.fixed + combo.core}
+
+        def _copies(b) -> int:
+            n = sum(getattr(x, 'star', 1) or 1
+                    for x in (state.bench or [])
+                    if x.char_id == b.char_id)
+            return n + sum(getattr(d, 'star', 1) or 1
+                           for d in (state.deployed or [])
+                           if getattr(d, 'char_id', '') == b.char_id)
+
+        cands: list[tuple[tuple, int, object]] = []
+        for i, b in enumerate(bench):
+            if not b.char_id or b.char_id == line.carry:
+                continue
+            if self._round_sell_blocked(b, state, session):
+                continue
+            _cp = _copies(b)
+            if _cp == 3:
+                continue   # 3合1 保护不动(完整合成份不腾)
+            # r416b:carry 在场(不在架)时,架内冗余副本(≥2 份)
+            # =「合成份缺席场」——卖 1 份触发 3合1 合并回场,腾位
+            # 兼得升星,弱序等同超上限冗余(最弱级)
+            _carry_on_board = any(
+                d.char_id == line.carry for d in (state.deployed or []))
+            _absent_mergeable = (_carry_on_board and b.char_id != line.carry
+                                 and _cp >= 2)
+            key = (b.char_id in protect,
+                   b.char_id in in_line,
+                   b.char_id in in_bridge,
+                   0 if (_cp > 3 or _absent_mergeable) else 1,
+                   _cp)
+            cands.append((key, i, b))
+        if not cands:
+            return []
+        cands.sort(key=lambda c: c[0])
+        _k, idx, weakest = cands[0]
+        log.info('[cw][carry-gate] r%d 腾位:降保护集卖 %s'
+                 '(保护=%s 线件=%s 桥件=%s 副本=%d)买 carry %s',
+                 state.round_num, weakest.char_id, _k[0], _k[1],
+                 _k[2], _copies(weakest), line.carry)
+        session.v2_round_sold.add(weakest.char_id)   # r408 对称臂
+        return [SellBench(bench_idx=idx,
+                          income=self._refund_of(weakest)),
+                BuyCard(carry_card, reason='carry_gate')]
+
     def _sell_off_target(self, state: GameState,
                          session: StrategySession, cap: int = 2) -> list:
         """A3 修复:锁线后卖非保护 bench 件(死库存回收,
@@ -1207,6 +1349,12 @@ class LineStrategy(DefaultCwStrategy):
         # A2:shop 无线内件可买 → D 一次
         if not any(isinstance(a, BuyCard) for a in actions):
             actions.extend(self._maybe_refresh(state, session, rem))
+        # r416(ADR-0280):carry 腾位门(war 象限 r<5 早锁线场景;
+        # P1 r≥5 恒走 boss_breaker,此处只是补口)
+        actions.extend(self._carry_bench_gate(
+            state, session, _floor,
+            bought={a.card.name for a in actions
+                    if isinstance(a, BuyCard)}))
         return actions
 
     @staticmethod
