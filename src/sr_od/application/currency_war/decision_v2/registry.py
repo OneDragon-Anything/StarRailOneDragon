@@ -56,9 +56,14 @@ class DecisionV2Registry:
     #: 过滤链层级序:应急 > 追赶 > 模式(redesign §5.4 唯一真值序)
     filter_chain_order: tuple[str, ...] = ('emergency', 'catchup', 'mode')
     #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
+    #: ADR-0302 应急集内容修正(合流批 ADR-0303 并入):补 for_gold
+    #: (卖弱件)+levelup(升级)——应急态语义=战力买+卖弱件+升级,
+    #: 旧窄集把两通道在应急态整体滤死(批㉝ F4);pair/copy/
+    #: bond_fallback/synthesize 在应急态仍滤出(ADR-0300 应急集保持窄)
     emergency_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'carry_gate', 'off_target', 'free_bench', 'deploy',
+        'for_gold', 'levelup',
     })
     catchup_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
@@ -82,6 +87,10 @@ class DecisionV2Registry:
     })
     #: 应急 HP 档(触发层2 应急过滤;line_strategy._EMERGENCY_HP 镜像)
     emergency_hp: int = 25
+    #: ADR-0302 危机囤金金线(合流批 ADR-0303 上移):应急态金 ≥ 此值
+    #: 时进危机囤金态(战力买偏置+搜牌解锁)。依据:批㉝ F3 指纹阈值
+    #: 40(hp≤25 且金≥40 只升不买,金囤 85+ 板濒死零动作)
+    crisis_hoard_gold: int = 40
     #: 追赶等级门(P1 早期人口低于基线是常态;line_strategy
     #: ._CATCHUP_MIN_LEVEL 镜像)
     catchup_min_level: int = 6
@@ -164,6 +173,17 @@ class DecisionV2Registry:
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0
     #: 双窗逐位同分(任何正值同等翻转 0 分卖)
     off_target_sell_bias: float = 0.5
+    #: ADR-0302 危机战力买偏置(合流批 ADR-0303 上移;量级=
+    #: off_target_sell_bias 量级的买侧对偶;只把 0 分板面差分顶成
+    #: 正分——金 52→49 的息崖 -25 不被它翻越,危机花费止于满息平台,
+    #: 符合 [18]「不为苟住破息引擎」)
+    crisis_buy_bias: float = 1.0
+    #: 偏置辖的战力买标签(经济类买 pair/copy/bond_fallback 本就被
+    #: 应急滤出,此处显式枚举防未来标签集变化误伤)
+    crisis_buy_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'engine_seed', 'carry_gate',
+    })
     #: 评分侧联动折扣(ADR-0297 刷新×追级并存,采纳方案):金<
     #: refresh_starve_gold 时 refresh_ev 乘此系数——排序自然让位给
     #: 追级/买入。**已按 ADR-0297 双窗+终验标定:0.6/40**(金<40 时

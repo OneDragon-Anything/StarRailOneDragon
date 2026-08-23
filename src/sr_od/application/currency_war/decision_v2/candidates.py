@@ -197,6 +197,22 @@ def _copy_swap_useless(card: ShopCard, state: GameState,
     return LineStrategy._copy_swap_useless(card, state, session)
 
 
+def _copy_swap_blocked(card: ShopCard, state: GameState,
+                       session: StrategySession) -> bool:
+    """r410 守卫×目标件豁免(ADR-0303):在场目标件(∈ _target_names
+    保护集)不被 copy_swap 守卫拦。
+
+    守卫本意防「无效换卡」(同名换同名纯耗,r410 局72 实证);但目标件
+    在保护集内=deploy 侧本就不会当 off_target 卖,守卫前提不成立;
+    且目标件的第 2 份语义不同——3合1 素材/阵容深度,非换卡。批㉞
+    审计实证:20% 在场目标件卡次(483 次)被该守卫误拦。非目标件
+    照旧受守卫辖(v1 判据不动,v1 臂不受本豁免影响)。
+    """
+    if card.name in _target_names(state, session):
+        return False
+    return _copy_swap_useless(card, state, session)
+
+
 def _buy_tag(card: ShopCard, state: GameState,
              session: StrategySession, registry: DecisionV2Registry) -> str | None:
     """单卡标签裁决(优先序=registry.buy_tag_priority;纯查询)。
@@ -334,9 +350,10 @@ def generate_candidates(state: GameState, session: StrategySession,
             continue    # 未识别卡不买(感知纪律)
         if _star_weighted_copies(card.name, state) >= registry.copies_cap:
             continue    # 副本上限(第 4 份纯浪费)
-        if _copy_swap_useless(card, state, session):
+        if _copy_swap_blocked(card, state, session):
             continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
-            # 在场副本会被 off-target 卖出 → 买新副本=换卡纯耗)
+            # 在场副本会被 off-target 卖出 → 买新副本=换卡纯耗;
+            # 目标件豁免见 _copy_swap_blocked,ADR-0303)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue

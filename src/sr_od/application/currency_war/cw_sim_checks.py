@@ -1214,6 +1214,76 @@ def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
         f"ADR-0294 件2 采样过滤静默剔除+生产侧恒 0 分——批㉛ F2 待清偿)"]
 
 
+def check_equip_supply_wear_closure(rows: list[dict]) -> list[str]:
+    """批㉜ 检查项(供给面-穿戴面耦合锁):非保留件获取后必须上过身。
+
+    判据:本局经供给获取(owned∪equipped 首现口径)的装备名,凡不在
+    cw_synthesis.RESERVED_COMPONENTS(P1 合成保留件,ADR-0265 有意
+    不穿)者,局内必须至少上身一次——前提是本局有过部署(board 非空
+    的轮行存在)。违规 = 价值面(decide_supply 给分选入)与穿戴面
+    (equip_allocation 放置)脱钩:装备被高分选中却永远躺在 owned
+    (批㉜ 锚 n=100 基线:非保留件获取/上身 1:1,0 违规;蓄能帆
+    入池 12 局 12 上身)。
+    """
+    from sr_od.application.currency_war.cw_synthesis import (
+        RESERVED_COMPONENTS,
+    )
+    acquired: set[str] = set()
+    worn: set[str] = set()
+    deployed_seen = False
+    for row in rows:
+        st = row.get('state') or {}
+        for n in (st.get('owned_equips') or []):
+            acquired.add(n)
+        for pair in (st.get('equipped') or []):
+            worn.add(pair.get('equip'))
+        if st.get('board'):
+            deployed_seen = True
+    if not deployed_seen:
+        return []
+    stuck = sorted(n for n in acquired - worn
+                   if n and n not in RESERVED_COMPONENTS)
+    if not stuck:
+        return []
+    return [
+        f"非保留件获取后整局未上身 {stuck}"
+        f"(供给价值面与穿戴面脱钩——批㉜)"]
+
+
+def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
+    """批㉜ 检查项(策略域待裁决披露,预期红灯):价值表对策略层
+    自声明关键装备的通用价值覆盖。
+
+    判据:COMP_LIBRARY key_equips 被 ≥3 个阵容引用(策略层自声明
+    「重要」)且在 EQUIPMENT_ROSTER 内的装备名,应存在于
+    _EQUIP_VALUE——缺失 = 该装备在本阵容未锁线时(decide_supply 第 3
+    分支,key_fit +10 不触发)通用价值恒 0 分,与策略层自己的重要性
+    声明矛盾。批㉜ F4 实测缺口:光速螺旋桨(5 comps)/动能激发剑
+    (3 comps)。本检查不消费账本行(逐局循环里每 game 披露一次);
+    裁决归策略域(补值入表 / 显式裁决「通用价值确为 0」后按
+    ADR-0298 同款语义处理),裁决前恒红。
+    """
+    from collections import Counter
+
+    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.cw_equipment_data import (
+        EQUIPMENT_ROSTER,
+    )
+    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
+    kc: Counter[str] = Counter()
+    for c in COMP_LIBRARY:
+        for k in c.key_equips:
+            kc[k] += 1
+    gap = sorted((n, v) for n, v in kc.items()
+                 if v >= 3 and n in EQUIPMENT_ROSTER
+                 and n not in _EQUIP_VALUE)
+    if not gap:
+        return []
+    return [
+        f"策略层 key_equips ≥3 引用但价值表缺值 {gap}"
+        f"(未锁线局通用价值恒 0——批㉜ F4 待策略域裁决)"]
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -1247,6 +1317,9 @@ _BATCH_CHECKS = {
     'supply_pool_roster_purity': check_supply_pool_roster_purity,
     'equip_value_table_roster_coherence':
         check_equip_value_table_roster_coherence,
+    'equip_supply_wear_closure': check_equip_supply_wear_closure,
+    'equip_value_strategy_key_coverage':
+        check_equip_value_strategy_key_coverage,
 }
 
 
@@ -2943,6 +3016,112 @@ def check_decision_v2_arbiter_matrix() -> dict:
             'constraints': rep['constraints']}
 
 
+def check_decision_v2_telemetry_contract() -> dict:
+    """批㉝(decision_v2 首超审计·题②):可解释性遥测契约锁。
+
+    判据:``DecisionV2Strategy.decide_prep`` 执行后,
+    ``session.last_candidate_scores`` 必须满足——
+    ① 轮次戳新鲜(last_candidate_scores_round == 当前轮);
+    ② 键格式可解析(``r<轮>:<标签>:<desc>`` ——遥测判读可用性
+       的地基,键崩坏=判读端整字段不可读);
+    ③ 分值为数值;
+    ④ 有采纳动作时至少 1 个键(采纳必须留痕)。
+    披露(非违规):键数与分值多样性——批㉝ 实测均分仅 ~1.1 键/
+    ~1.0 个不同分值(只记 accepted,看不到落选替代方案的分),
+    「每轮候选×分数」的可解释性承诺只兑现一半,登记待策略域
+    裁决(是否把 result.log 未采纳行也写入遥测)。
+    """
+    import re
+
+    from sr_od.application.currency_war.cw_state import (
+        BenchChar,
+        GameState,
+        ShopCard,
+    )
+    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision_v2.strategy import (
+        DecisionV2Strategy,
+    )
+    # 探针:中局常态(金足/店有目标件/bench 有杂件)——必有采纳
+    s = GameState()
+    s.plane, s.round_num, s.level, s.gold, s.hp = 1, 5, 5, 60, 80
+    s.board = {'仙舟': 2, '持续伤害': 1}
+    s.deployed = [BenchChar(slot=0, char_id='藿藿', faction='仙舟'),
+                  BenchChar(slot=1, char_id='爻光', faction='仙舟')]
+    s.bench = [BenchChar(slot=0, char_id='丹恒·饮月', faction='仙舟'),
+               BenchChar(slot=1, char_id='青雀', faction='仙舟')]
+    s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
+              ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
+    sess = StrategySession()
+    strat = DecisionV2Strategy()
+    strat.update_target(s, sess, None)
+    acts = strat.decide_prep(s, sess, None)
+    scores = dict(getattr(sess, 'last_candidate_scores', {}) or {})
+    violations: list[str] = []
+    if getattr(sess, 'last_candidate_scores_round', -1) != s.round_num:
+        violations.append(f'轮次戳陈旧: {sess.last_candidate_scores_round}'
+                          f' != r{s.round_num}')
+    key_re = re.compile(r'^r(\d+):([a-zA-Z_0-9]+):(.+)$')
+    bad_keys = [k for k in scores if not key_re.match(k)]
+    if bad_keys:
+        violations.append(f'键格式不可解析: {bad_keys[:3]}')
+    non_num = [k for k, v in scores.items()
+               if not isinstance(v, (int, float))]
+    if non_num:
+        violations.append(f'分值非数值: {non_num[:3]}')
+    if acts and not scores:
+        violations.append(f'有采纳动作({len(acts)})但遥测零键(采纳未留痕)')
+    return {'violations': len(violations), 'detail': violations,
+            'n_actions': len(acts), 'n_keys': len(scores),
+            'distinct_scores': len(set(scores.values())),
+            'note': '批㉝:键均分稀薄(只记 accepted)为已登记披露,'
+                    '待策略域裁决是否记未采纳行'}
+
+
+def check_decision_v2_crisis_gold_hoard(ledgers: list[list[dict]]) -> dict:
+    """批㉝(题①解剖·危机局指纹):危机态囤金零买入哨兵(披露级)。
+
+    判据(仅 d2_ 前缀批次辖):某局存在轮 r∈[5,8] hp≤25(危机态),
+    且从该轮起 ≥2 个后续轮 gold≥40 且这些轮零 BuyCard → 违规
+    (息引擎门/满息地板把危机局锁进「囤金不补板」形态;批㉝
+    seeds 0-99 实测 20 危机局中 1 例完整形态 s1:hp17 金85 r5+
+    零买只升)。披露级非 0 容忍:危机局买入大多仍有响应(18/20),
+    本哨兵防的是「金在手板濒死却零买」这一最重形态的回归扩大。
+    """
+    violations: list[str] = []
+    is_d2 = False
+    for rows in ledgers:
+        if not rows:
+            continue
+        rows = sorted(rows, key=lambda x: x.get('round_num', 0))
+        d2_here = any(
+            (a.get('reason') or '').startswith('d2_')
+            for row in rows for a in row.get('actions') or [])
+        if d2_here:
+            is_d2 = True
+        if not d2_here:
+            continue
+        rid = rows[0].get('run_id', '?')
+        crisis_start = next((row['round_num'] for row in rows
+                             if row.get('round_num', 0) >= 5
+                             and row.get('hp', 99) <= 25), None)
+        if crisis_start is None:
+            continue
+        tail = [row for row in rows
+                if row.get('round_num', 0) >= crisis_start]
+        hoard_rounds = [row for row in tail if row.get('gold', 0) >= 40]
+        buys_tail = sum(1 for row in tail for a in row.get('actions') or []
+                        if a.get('__type__') == 'BuyCard')
+        if len(hoard_rounds) >= 2 and buys_tail == 0:
+            violations.append(
+                f'{rid}: r{crisis_start} 起 hp≤25 危机,'
+                f'{len(hoard_rounds)} 轮金≥40 且尾段零买')
+    return {'violations': len(violations), 'detail': violations,
+            'd2_batch': is_d2,
+            'note': '披露级:危机态囤金零买入(批㉝ 指纹 s1 形态);'
+                    '仅 d2 批次辖'}
+
+
 # --- 清偿批:批级聚合入口(cw_sim 接线随 worker X 合流) ---------
 
 def run_batch_level_checks(ledgers: list[list[dict]],
@@ -2999,6 +3178,14 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             check_decision_v2_candidate_coverage(ledgers),
         'decision_v2_arbiter_matrix':
             check_decision_v2_arbiter_matrix(),
+        # 批㉝(首超审计):可解释性遥测契约 + 危机囤金哨兵
+        'decision_v2_telemetry_contract':
+            check_decision_v2_telemetry_contract(),
+        'decision_v2_crisis_gold_hoard':
+            check_decision_v2_crisis_gold_hoard(ledgers),
+        # 批㉞(供给 vs 标签审计):直通门标签-候选一致性不变式
+        'decision_v2_supply_label_consistency':
+            check_decision_v2_supply_label_consistency(),
     }
     if pool_map is not None:
         out['encounter_rung_sample_budget'] = \
@@ -3009,3 +3196,94 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         out['anchor_lowchannel_registry'] = \
             check_anchor_lowchannel_registry(report)
     return out
+
+
+# --- 批㉞(供给 vs 标签审计):直通门标签-候选一致性 --------------------
+
+def check_decision_v2_supply_label_consistency() -> dict:
+    """批㉞:engine_seed/pair/copy 全直通后,标签裁决与候选生成必须
+    双向一致(0 容忍结构不变式)。
+
+    背景:攻坚批「店里没有类 17 轮升并列第一(供给面约束)」论断的
+    审计题——sim 实测(n=100,指纹 066c4185)M1(应放行但无候选)= 0,
+    供给不稀疏(目标件零在场最长连轮 4,均值 1.2);本检查把该不变式
+    固化为回归锁:**对探针态店内每张有名卡,买候选存在 ⟺ 未被
+    copies_cap/copy_swap 豁免且 _buy_tag 非 None**。任一方向破坏
+    (标签漏接 = M1;幽灵候选 = 生成器绕过豁免)即红。
+
+    变异自检:测试仓锁测试 monkeypatch _buy_tag 关标签 → 必须涌现
+    违规(去门变异必红)。
+    """
+    from sr_od.application.currency_war.cw_state import (
+        BenchChar,
+        BuyCard,
+        GameState,
+        ShopCard,
+    )
+    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision_v2 import candidates as _c
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        generate_candidates,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+
+    def _mk(plane: int, rn: int, level: int, gold: int, bench, shop,
+            line: str | None, bridge: str | None):
+        st = GameState()
+        st.plane, st.round_num = plane, rn
+        st.level, st.gold, st.hp = level, gold, 80
+        st.bench = list(bench)
+        st.shop = list(shop)
+        sess = StrategySession()
+        sess.locked_line = line
+        sess.bridge_id = bridge
+        return st, sess
+
+    # 探针态覆盖:无方向种子态(引擎门)/ 锁线态(carry+凑档)/
+    # 副本上限态(copies_cap)/ bench 杂件(卖通道不被误判为买候选)
+    probes = [
+        _mk(1, 2, 3, 20,
+            [BenchChar(slot=0, char_id='青雀', faction='仙舟')],
+            [ShopCard(x=1, faction='仙舟', name='刃', cost=3),
+             ShopCard(x=2, faction='巡猎', name='希儿', cost=5)],
+            None, None),
+        _mk(1, 5, 5, 40,
+            [BenchChar(slot=0, char_id='藿藿', faction='仙舟'),
+             BenchChar(slot=1, char_id='娜塔莎', faction='护盾')],
+            [ShopCard(x=1, faction='智识', name='姬子', cost=4),
+             ShopCard(x=2, faction='仙舟', name='三月七', cost=1)],
+            'jizi', None),
+        _mk(1, 6, 6, 30,
+            [BenchChar(slot=0, char_id='青雀', faction='仙舟'),
+             BenchChar(slot=1, char_id='青雀', faction='仙舟'),
+             BenchChar(slot=2, char_id='青雀', faction='仙舟')],
+            [ShopCard(x=1, faction='仙舟', name='青雀', cost=1)],
+            'jizi', None),
+    ]
+    violations: list[str] = []
+    for pi, (st, sess) in enumerate(probes):
+        cands = generate_candidates(st, sess, DEFAULT_REGISTRY)
+        cand_names = {c.action.card.name for c in cands
+                      if isinstance(c.action, BuyCard)}
+        for card in (st.shop or []):
+            if not card.name:
+                continue
+            copies = _c._star_weighted_copies(card.name, st)
+            blocked = (copies >= DEFAULT_REGISTRY.copies_cap
+                       or _c._copy_swap_blocked(card, st, sess))
+            tag = None if blocked else _c._buy_tag(
+                card, st, sess, DEFAULT_REGISTRY)
+            has_cand = card.name in cand_names
+            if tag is not None and not has_cand:
+                violations.append(
+                    f'探针{pi} p{st.plane}r{st.round_num} {card.name}: '
+                    f'tag={tag} 但无买候选(M1 标签漏接)')
+            if tag is None and has_cand:
+                violations.append(
+                    f'探针{pi} p{st.plane}r{st.round_num} {card.name}: '
+                    f'无标签/被豁免但存在买候选(幽灵候选)')
+    return {'violations': len(violations), 'detail': violations,
+            'note': '批㉞ 供给 vs 标签一致性:候选存在⟺标签非None且'
+                    '未被 copies_cap/copy_swap 豁免;红 = 直通门回归'}

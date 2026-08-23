@@ -27,8 +27,6 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.filters import (
-    _CRISIS_BUY_BIAS,
-    _CRISIS_BUY_TAGS,
     crisis_hoard_active,
 )
 from sr_od.application.currency_war.decision_v2.registry import (
@@ -358,15 +356,15 @@ def score_candidate(cand: Candidate, state: GameState,
         # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
         # 供刷新/买入(ADR-0291 遗留,ADR-0293 标定)
         val += registry.off_target_sell_bias
-    if (cand.tag in _CRISIS_BUY_TAGS
+    if (cand.tag in registry.crisis_buy_tags
             and crisis_hoard_active(state, registry)):
         # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40,
         # 批㉝ F3 指纹)战力买候选板面差分恒 0.00 被仲裁器「非正分」
         # 拒 → 金囤 85+ 板濒死零动作。偏置只顶 0 分差分为正——
         # 金 52→49 的息崖(-25)不被翻越,危机花费止于满息平台
         # ([17]「>50 该买就买」+[18]「不为苟住破息」)。常量在
-        # filters(_CRISIS_BUY_BIAS/_CRISIS_BUY_TAGS,合流批上移)。
-        val += _CRISIS_BUY_BIAS
+        # registry(crisis_buy_bias/crisis_buy_tags;ADR-0303 上移)。
+        val += registry.crisis_buy_bias
     return val, {'base': base, 'after': after}
 
 
