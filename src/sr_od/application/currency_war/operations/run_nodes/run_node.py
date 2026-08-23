@@ -42,6 +42,15 @@ class RunNode(SrOperation):
         screen = self.last_screenshot
         # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
         if not self._in_node(screen):
+            # ADR-0264 方案 B:overlay 关闭(已离开本节点画面)的验证帧
+            # 预置为关态稳定基线——外层回备战分支的 gate 跳过「从零等
+            # 2 轮」;gate 仍须过一次「锚命中+指纹一致」确认(不裸跳)。
+            # best-effort(离线 mock 帧不阻塞)。
+            from sr_od.application.currency_war.cw_observation_gate import (
+                PROFILE_CLOSED,
+                preset_stable_baseline,
+            )
+            preset_stable_baseline(screen, profile=PROFILE_CLOSED)
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
         # 仍在节点内 → 做一个动作;round_retry 重跑本节点(计 node_max_retry_times 预算,超 → FAIL bail)。
         self._do_action(screen)

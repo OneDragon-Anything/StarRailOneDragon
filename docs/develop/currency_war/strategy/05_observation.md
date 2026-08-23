@@ -8,7 +8,7 @@
 |---|---|---|
 | `cw_observation` | 备战屏 | `read_game_state` → GameState(gold/hp/level/board/shop/bench/deployed…) |
 | `cw_obs_core` | 共享基础设施 | screen_info 区域读取 + OCR helper |
-| `cw_observation_gate` | 稳定门原语(ADR-0213) | `wait_stable_frame`:时间稳定窗(屏判定+per-area 像素指纹首尾一致)+ 三 profile(关态/开态/弹窗态);gate 是「等画面稳定」的单一实现(旧 sleep/单锚/轮询 已删,ADR-0216);末帧供调用方复用(全图 OCR 按 id(image) 缓存贯穿) |
+| `cw_observation_gate` | 稳定门原语(ADR-0213) | `wait_stable_frame`:时间稳定窗(屏判定+per-area 像素指纹首尾一致)+ 三 profile(关态/开态/弹窗态);gate 是「等画面稳定」的单一实现(旧 sleep/单锚/轮询 已删,ADR-0216);末帧供调用方复用(全图 OCR 按 id(image) 缓存贯穿);提速两层(ADR-0264):`fast_confirm`(锚命中 1 次后确认轮跳 OCR 只比指纹,变化即回锚定;profile 键可关回旧行为)+ `preset_stable_baseline`(overlay 验关成功帧预置基线,首锚消费 1 轮达标,不裸跳) |
 | `cw_observe_full` | 组装层(ADR-0213) | `observe_full`:一次全面识别(state/board/bench/deployed/hp/gold/节点行/shop;含 substate 与 gold==0 重读),director 与 recognizer 共源 |
 | `cw_identity_obs` | 备战屏视觉身份(SIFT,非 OCR) | bench/deployed 角色身份 |
 | `cw_node_obs` | 节点选项 overlay | EncounterOption/SupplyOption/MegastarOption/PartnerOption |

@@ -58,8 +58,17 @@ def confirm_and_verify(
     op.ctx.controller.mouse_move(confirm_point)
     op.ctx.controller.click(confirm_point)
     time.sleep(confirm_wait)
-    if op.round_by_ocr(op.screenshot(), entry_keyword, lcs_percent=lcs_percent).is_success:
+    frame = op.screenshot()
+    if op.round_by_ocr(frame, entry_keyword, lcs_percent=lcs_percent).is_success:
         log.info(f'[{tag}] 确认后 {entry_keyword!r} 仍在 → round_retry(确认未落地 bug#1 / 或隐藏多步 overlay)')
         return op.round_retry(wait=1)
     log.info(f'[{tag}] {entry_keyword!r} 已消失 → overlay 关,推进')
+    # ADR-0264 方案 B:overlay 关闭后的首帧(= 验关帧)预置为关态
+    # 稳定基线——外层回备战分支的 gate 跳过「从零等 2 轮」;gate 仍
+    # 须过一次「锚命中+指纹一致」确认(不裸跳)。best-effort。
+    from sr_od.application.currency_war.cw_observation_gate import (
+        PROFILE_CLOSED,
+        preset_stable_baseline,
+    )
+    preset_stable_baseline(frame, profile=PROFILE_CLOSED)
     return op.round_success(wait=success_wait)

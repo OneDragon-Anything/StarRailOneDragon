@@ -58,8 +58,13 @@ PROFILE_CLOSED: dict = {
                                     # ≥2 轮 poll(首轮设指纹+次轮比对,
                                     # 相邻 poll 间隔已>min_stable_s)+
                                     # 余量;旧 4.5s<单轮成本=结构性饿死
-                                    #(局37 ping-pong 停机根因)
+                                    #(局37 ping-pong 停机根因)。
+                                    # ADR-0264:fast_confirm 下后续确认轮
+                                    # 免 OCR,预算只覆盖首锚轮更绰绰有余
     'min_stable_s': 0.8,
+    'fast_confirm': True,           # ADR-0264 方案 A:锚命中 1 次后,
+                                    # 后续稳定确认轮跳过全图 OCR 只比
+                                    # 指纹;置 False 关回旧行为(A/B)
 }
 
 #: 开态(商店开):同用框架精准判定——精准命中「开商店屏」
@@ -73,6 +78,7 @@ PROFILE_OPEN: dict = {
     ),
     'timeout_s': 12.0,               # r344:同 PROFILE_CLOSED 成本口径
     'min_stable_s': 0.8,
+    'fast_confirm': True,            # ADR-0264 方案 A(同 CLOSED 注)
 }
 
 #: 弹窗态(奖励采集钩子点六边形后):锚=弹窗标题区 OCR「金币说明」。
@@ -88,6 +94,7 @@ PROFILE_POPUP: dict = {
     ),
     'timeout_s': 12.0,               # r344:同 CLOSED/OPEN 成本口径
     'min_stable_s': 0.6,
+    'fast_confirm': True,            # ADR-0264 方案 A(同 CLOSED 注)
 }
 
 #: 帧间隔(方案 v4:0.2-0.3s)
@@ -97,10 +104,40 @@ _POLL_S: float = 0.25
 # (fingerprint_in_rects/fingerprint_same,与 is_same_image 并列)——
 # gate 不再私有实现;阈值语义注解见 cv2_utils(局36 diag 实证)。
 
+# ADR-0264 方案 B:overlay 关闭后预置的稳定基线
+# {expect_screen: (指纹, 单调时钟时间)}——单次消费(pop),由
+# wait_stable_frame 在首次锚命中时取用;最新预置覆盖旧值。
+_PRESET_BASELINE: dict[str, tuple] = {}
+
+
+def preset_stable_baseline(frame: MatLike, *, profile: dict,
+                           clock=None) -> None:
+    """overlay 成功关闭后预置稳定基线(ADR-0264 方案 B)。
+
+    用户口述流程规律(设计依据):进节点 → 备战 → 按节点类型弹
+    大 overlay(补给/遭遇/投资策略/环境)→ overlay 完成后进内
+    备战 → 动画开商店,**次序固定**——overlay 关闭本身是流程推进
+    的确定性信号,关闭后的首帧即稳定候选。调用方(overlay
+    handler 收尾助手)在验关成功后调本函数预置基线,下一次
+    wait_stable_frame 跳过「从零等 2 轮」;**只预置基线,不裸
+    跳**——gate 仍须过一次「锚命中 + 指纹一致」确认才放行。
+
+    best-effort:指纹计算失败静默跳过(离线 mock 帧不阻塞调用方)。
+    """
+    from one_dragon.utils import cv2_utils
+    try:
+        fp = cv2_utils.fingerprint_in_rects(
+            frame, profile['fingerprint_rects'])
+        _PRESET_BASELINE[profile['expect_screen']] = (
+            fp, (clock or time.monotonic)())
+    except Exception:   # noqa: BLE001  best-effort(离线契约)
+        pass
+
 
 def wait_stable_frame(
         op: SrOperation, *, profile: dict,
         timeout_s: float | None = None,
+        fast_confirm: bool | None = None,
         clock=None) -> MatLike | None:
     """等待画面稳定(r324 重构:框架能力复用版)。
 
@@ -129,6 +166,22 @@ def wait_stable_frame(
       one-shot grace poll:首轮已取到指纹样本但从未比对过
       一次时,超时后允许一次额外 poll(有界),防更慢机器下
       预算仍不足的同类饿死。
+    - (ADR-0264 方案 A,fast_confirm 指纹-only 确认轮):
+      实测 poll=截图+全图 OCR 锚判定 avg 0.38s/轮(GPU
+      DirectML),min_stable_s=0.8 被流程成本淹没(②备战相位
+      →稳定帧中位 50.4s、④纯稳定门 8.1s)。锚命中 1 次
+      (get_match_screen_name 确认目标屏)后,后续稳定确认轮
+      跳过全图 OCR,只做「截图+指纹比对」(纯 CV 毫秒级);
+      **指纹变化即回锚定模式**(指纹-only 看不见屏切换,变化
+      = 可能已离屏,下一轮重做全图 OCR 锚判定;指纹 rects 已
+      排除呼吸区/VFX,静止屏上指纹漂移罕见)。r327 锚 miss
+      重置语义保留。fast_confirm 显式传参 > profile 键,默认
+      开;置 False 关回旧行为做 A/B。
+    - (ADR-0264 方案 B,overlay 完成预置基线):overlay
+      handler 验关成功后调 preset_stable_baseline 预置「关闭
+      后首帧指纹」——gate 首次锚命中时消费(pop),指纹一致则
+      稳定窗从预置时刻起算,预置距今 ≥ min_stable_s 即一轮
+      达标;**不裸跳**(仍须锚命中 + 指纹一致确认一次)。
     """
     from one_dragon.base.screen import screen_utils
     from one_dragon.utils import cv2_utils
@@ -142,9 +195,13 @@ def wait_stable_frame(
         op.park_cursor()
     stable_since = None
     first_fp = None
-    _diag = {'screen': 0, 'fp': 0, 'ok': 0}
+    _diag = {'screen': 0, 'fp': 0, 'ok': 0, 'fast': 0}
     _grace_used = False   # r344:超时后的一次额外 poll(见函数头注)
     _compared = False     # 是否完成过至少一次指纹比对
+    # ADR-0264 方案 A:fast 开关(显式传参 > profile 键;缺省开)
+    _fast = (fast_confirm if fast_confirm is not None
+             else profile.get('fast_confirm', True))
+    _fast_active = False  # 当前轮是否跳过锚 OCR(指纹-only 确认)
     while True:
         if _now() >= deadline:
             # r344:已有指纹样本但从未比对过 → 允许一次额外 poll
@@ -154,45 +211,75 @@ def wait_stable_frame(
                 break
             _grace_used = True
         frame = op.screenshot()   # 异常直传(调用方 except=放行旧路径)
-        # 画面判定:框架 is_target_screen(id_mark 体系;一次调用
-        # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)。
-        # r344(用户定调):crop_first=False=全图 OCR 按 id(image)
-        # 缓存——首 id_mark 区触发(~5s),同屏其余区/同帧后续
-        # 消费者(_observe heavy 等)全部缓存命中;poll 成本由
-        # timeout_s 预算吸收(见 profile 常量注)
-        _name = screen_utils.get_match_screen_name(
-            ctx=op.ctx, screen=frame,
-            screen_name_list=list(profile['screen_list']),
-            crop_first=False)
-        if _name != profile['expect_screen']:
-            _diag['screen'] += 1
-            _sleep(_POLL_S)
-            # r327(终审 B):锚 miss 连 first_fp 一起重置——
-            # 只重置 stable_since 会在「锚短暂 miss 后恢复且
-            # 指纹未变」时卡死:L139 same 成立跳过重设分支,
-            # stable_since 恒 None → 稳定窗永不达成 → 必超时
-            # →(director 站)同因 3 次 3-strike 停机——瞬时锚
-            # miss 被放大成停局,违背时间稳定窗初衷。
-            stable_since = None
-            first_fp = None
-            continue
+        if not _fast_active:
+            # 画面判定:框架 is_target_screen(id_mark 体系;一次调用
+            # 替代自拼 presence/absence 双锚与 ocr_keyword 特例)。
+            # r344(用户定调):crop_first=False=全图 OCR 按 id(image)
+            # 缓存——首 id_mark 区触发(~5s),同屏其余区/同帧后续
+            # 消费者(_observe heavy 等)全部缓存命中;poll 成本由
+            # timeout_s 预算吸收(见 profile 常量注)
+            _name = screen_utils.get_match_screen_name(
+                ctx=op.ctx, screen=frame,
+                screen_name_list=list(profile['screen_list']),
+                crop_first=False)
+            if _name != profile['expect_screen']:
+                _diag['screen'] += 1
+                _sleep(_POLL_S)
+                # r327(终审 B):锚 miss 连 first_fp 一起重置——
+                # 只重置 stable_since 会在「锚短暂 miss 后恢复且
+                # 指纹未变」时卡死:L139 same 成立跳过重设分支,
+                # stable_since 恒 None → 稳定窗永不达成 → 必超时
+                # →(director 站)同因 3 次 3-strike 停机——瞬时锚
+                # miss 被放大成停局,违背时间稳定窗初衷。
+                stable_since = None
+                first_fp = None
+                continue
+        else:
+            # ADR-0264 方案 A:指纹-only 确认轮(跳过全图 OCR)
+            _diag['fast'] += 1
         # 帧一致:框架 per-rect(与全图 is_same_image 并列的增量)
         fp = cv2_utils.fingerprint_in_rects(
             frame, profile['fingerprint_rects'])
-        if first_fp is None or not cv2_utils.fingerprint_same(
+        if first_fp is not None and not cv2_utils.fingerprint_same(
                 fp, first_fp):
             _diag['fp'] += 1
             first_fp = fp
             stable_since = _now()
+            # ADR-0264 方案 A 兜底:指纹变化即回锚定模式——指纹-only
+            # 确认轮看不见屏切换,变化(无论动画残留还是已离屏)后
+            # 下一轮重做全图 OCR 锚判定再决定是否恢复快确认。
+            _fast_active = False
             _sleep(_POLL_S)
             continue
+        if first_fp is None:
+            # ADR-0264 方案 B:消费 overlay 预置基线(单次 pop)——
+            # 指纹一致则稳定窗从预置时刻起算(仍须本次锚命中,
+            # 非裸跳);预置距今 ≥ min_stable_s 即一轮达标。
+            _preset = _PRESET_BASELINE.pop(
+                profile['expect_screen'], None)
+            if _preset is not None and cv2_utils.fingerprint_same(
+                    fp, _preset[0]):
+                first_fp = _preset[0]
+                stable_since = _preset[1]
+            else:
+                _diag['fp'] += 1
+                first_fp = fp
+                stable_since = _now()
+                _sleep(_POLL_S)
+                # 锚已命中(本轮做过 OCR 判定)→ 后续确认轮可跳 OCR
+                _fast_active = _fast
+                continue
         _compared = True
         if stable_since is not None and \
                 _now() - stable_since >= profile['min_stable_s']:
-            log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s)')
+            log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s'
+                     f'{", fast" if _diag["fast"] else ""}'
+                     f'{", preset" if stable_since is not None and stable_since < t0 else ""})')
             return frame
         _diag['ok'] += 1
         _sleep(_POLL_S)
+        # 锚命中后的后续确认轮跳过全图 OCR(ADR-0264 方案 A)
+        _fast_active = _fast
     log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) '
              f'profile={profile["expect_screen"]} '
              f'diag={_diag} grace={_grace_used}')
