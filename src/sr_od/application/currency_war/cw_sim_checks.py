@@ -36,6 +36,7 @@
   protect_set_bench_share + 清偿批披露/哨兵(见该函数注释);
 - 池级(吃 Δ 池 dict):delta_pool_bucket_min_n /
   depth_cliff_monotonicity / battle_rung_pool_bucket_lock /
+  reward_delta_pool_bucket_lock(ADR-0292)/
   sim_pool_no_cost_truncation + encounter_rung_sample_budget;
 - 语料级(吃 outcomes/summary dict,调用方显式调):
   attach_run_detector / hp_monotonic_sentinel /
@@ -1390,7 +1391,61 @@ def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
                 for b, v in sorted(battle.items())}}
 
 
-# --- 批⑩/批⑪ 检查项(2026-08-24 裁决落地;ADR-0276/0277) ---------
+# --- ADR-0292(批㉗ F3/F4)reward/supply Δ池分布锁 ---------------------
+# 批㉗ F4 断言的「右胖尾 mean 9.15/p90+39」经语料复核为**跨 run 配对
+# 伪影**:同 run 内奖励轮差分 n=43 全 +2;+27~+61/负值样本只出现在
+# 「上一 run 末行 → 下一 run 首个奖励行」的跨 run 相邻行(reward 常为
+# run 首节点,配对未按 run_id 分组即混入)。真值 = 恒 +2 分布。
+REWARD_POOL_TRUTH_MEAN: float = 2.0    # 语料真值(同 run 差分,n=43)
+REWARD_POOL_DRIFT_MAX: float = 1.0     # 均值漂移带(hp)
+REWARD_POOL_MIN_N: int = 30            # 语料 n=43(2026-08-24)
+# 伪影哨兵带:真值分布内不应出现跨 run 量级的大正值/负值(若语料
+# 未来真出现回血机制,先按数据治理纪律核 run 边界再放宽本带)
+REWARD_POOL_MAX_ABS: int = 20
+
+
+def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
+    """批㉗ 检查项 reward_delta_pool_bucket_lock(ADR-0292)。
+
+    判据(规格原文「分布入池且均值≈语料真值」):
+    - reward 池非空且 n≥30(分布**入池**:结算采样源是语料经验
+      分布而非 EARLY_WIN_DELTA 常数);
+    - 全样本均值距语料真值(+2.0)漂移 ≤1hp;
+    - 跨 run 配对伪影哨兵:max |Δ| ≤ 20 且无负值——批㉗ F4 的
+      +27~+61/−2 形态若在重生成后涌现,先查生成器 run 分组/语料
+      接管段,不当作真值入锚;
+    - supply 池语料零样本(标签未见),非空时同判。
+
+    空 reward/supply 池(fallback/历史 Path 快照)不辖,violations=0
+    (同 battle 锁空池语义;分布入池的回归防线 = 采样器版本锁 +
+    快照自洽锁,见 test_cw_adr0292_reward_pool_sampling)。
+    """
+    if not (pool_map.get('reward') or pool_map.get('supply')):
+        return {'violations': 0,
+                'note': 'reward/supply 池空(fallback/Path 历史快照)不辖'}
+    out: list[str] = []
+    stats: dict = {}
+    for nt in ('reward', 'supply'):
+        vals = [d for v in (pool_map.get(nt) or {}).values() for d in v]
+        if not vals:
+            continue
+        mean = sum(vals) / len(vals)
+        stats[nt] = {'n': len(vals), 'mean': round(mean, 2),
+                     'max': max(vals), 'min': min(vals)}
+        if nt == 'reward' and len(vals) < REWARD_POOL_MIN_N:
+            out.append(f'reward n={len(vals)}<{REWARD_POOL_MIN_N}'
+                       f'(分布证据不足)')
+        if abs(mean - REWARD_POOL_TRUTH_MEAN) > REWARD_POOL_DRIFT_MAX:
+            out.append(f'{nt} 均值{mean:+.2f} 距语料真值'
+                       f'{REWARD_POOL_TRUTH_MEAN:+.1f} 漂移>'
+                       f'{REWARD_POOL_DRIFT_MAX}hp')
+        if max(vals) > REWARD_POOL_MAX_ABS or min(vals) < 0:
+            out.append(f'{nt} 域[{min(vals)},{max(vals)}] 越伪影哨兵带'
+                       f'(0~{REWARD_POOL_MAX_ABS})——疑跨 run 配对伪影'
+                       f'混入(批㉗ F4 形态),先核生成器 run 分组')
+    return {'violations': len(out), 'issues': out[:6], **stats}
+
+
 # 以下为**批级聚合检查**(吃全批账本,跨局聚合;由 simulate_p1_batch
 # 显式调用,不进 _BATCH_CHECKS 的逐局循环)与豁免边裁决探针。
 
@@ -1660,17 +1715,21 @@ def check_ab_resolution_floor(hps_a: list[float],
 # 哨兵。数值演进链:ADR-0276/0277(merge+win 校准)→ ADR-0279
 # (battle rung 分桶)→ ADR-0284(商店槽消费,批㉒ F3 波及:成型类
 # 指标回落到真实供给口径——旧值含幻影槽超买水分,新旧对照表进
-# ADR-0284)。
+# ADR-0284)→ ADR-0292(reward/supply Δ池采样 + 池数据增长
+# 2026-08-23 晚批语料,battle 桶增样 r0 26→40/r1 24→31;换锚主因
+# = 池数据增长,**采样语义本身 A/B 差 0.85hp 在分辨率底 ±2.80 内**,
+# 归因分解见 ADR-0292 回归验证节)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': 'd891233d28be3493',
-    'recorded': '2026-08-24(ADR-0284 商店槽消费批,n=300,seed 0-299)',
+    'pool_fingerprint_prefix': '066c41856dd5d4f5',
+    'recorded': '2026-08-24(ADR-0292 reward/supply Δ池采样批,'
+                'n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.237,     # 旧 0.277(ADR-0279);幻影供给挤水分
-        'avg_final_hp': 29.25,       # 旧 28.95
-        'hp_ge_60': 0.047,           # 旧 0.067
-        'battle_losses_le_2': 0.073,  # 旧 0.08
-        'recipe5_by_r6': 0.533,      # 旧 0.62
-        'avg_refreshes': 3.943,      # 旧 1.113(真供给逼出刷新需求)
+        'engines2_by_r6': 0.407,     # 旧 0.237(ADR-0284);池增长侧
+        'avg_final_hp': 33.98,       # 旧 29.25
+        'hp_ge_60': 0.127,           # 旧 0.047(向实机 32% 收敛中)
+        'battle_losses_le_2': 0.127,  # 旧 0.073
+        'recipe5_by_r6': 0.713,      # 旧 0.533
+        'avg_refreshes': 4.003,      # 旧 3.943
     },
 }
 

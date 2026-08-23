@@ -259,7 +259,7 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-_SAMPLER_VERSION: int = 3   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 4   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -267,6 +267,11 @@ _SAMPLER_VERSION: int = 3   # 桶化/邻桶回退/采样语义变更时 +1(指�
 # 守卫邻接宽随键语义 = rung±1);encounter/boss 维持 depth 分桶
 # (批⑬ F1 encounter rung 桶样本不足,暂不分)。历史报告对旧池
 # (v2 指纹)重放同样须用导出 JSON 快照。
+# v4(ADR-0292,批㉗ F3/F4):reward/supply 结算由恒 EARLY_WIN_DELTA
+# 改 Δ池经验分布采样(depth 桶 + 全池兜底);批㉗ F4 的「右胖尾
+# mean 9.15/p90+39」经语料复核为**跨 run 配对伪影**(同 run 奖励轮
+# 差分 n=43 全 +2;+27~+61/负值样本只出现在跨 run 相邻行),入池
+# 真值 = 恒 +2 分布——历史报告对旧池(v3 指纹)重放须用导出 JSON。
 _BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
 # 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
 # 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
@@ -481,6 +486,11 @@ def live_delta_for(node_type: str, key: int,
     - ``encounter``/``boss``:``key`` = 板深(批⑬ F1 encounter rung
       样本不足暂沿用 depth 分桶)。桶宽 ``_DEPTH_BUCKET_W``,缺桶
       浅侧回退(bucket-W,r343 E:向深回退=偏乐观)。
+    - ``reward``/``supply``(ADR-0292,批㉗ F3/F4):depth 桶 + 缺桶
+      浅侧回退沿用,再缺 → **该节点全池合并兜底**——奖励/补给零
+      战力交互,语料差分无深度条件性(n=43 全 +2),分桶只是沿既有
+      维度的载体;不让 r1-r2 浅板深轮退恒常数(池有真值就采样)。
+      池空 → None(调用方回退 EARLY_WIN_DELTA)。
 
     ⓪ 起 pool_map 显式注入(resolve_pool 产物;None=auto 解析,
     缺源 raise 不静默)。
@@ -515,6 +525,10 @@ def live_delta_for(node_type: str, key: int,
         bucket = min(key // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
         src_b = bucket if _map.get(bucket) else bucket - _DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
         samples = _map.get(src_b)
+        if not samples and node_type in ('reward', 'supply'):
+            # ADR-0292:reward/supply 全池兜底(缺桶不退常数,
+            # 语料真值优先;防饥饿守卫照常辖)
+            samples = [d for v in _map.values() for d in v]
         if not samples:
             return None
         width = _DEPTH_BUCKET_W
@@ -604,8 +618,10 @@ def sample_node_sequence(rng: random.Random) -> list[str]:
 
 def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random) -> int:
-    """按节点类型的 HP 变化(r260 分层):
-    reward/supply 零战力要求 → 不掉血(小胜 +2 长线作战回血观测);
+    """按节点类型的 HP 变化(r260 分层;ADR-0292 起 reward/supply 的
+    **池回退档**——Δ池可及时结算侧优先池采样):
+    reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
+    池真值同分布);
     battle → 方向二元模型;
     encounter → boss 档 × ENCOUNTER_MULT(档位不可观,均值近似);
     boss → boss 档。"""
@@ -1109,6 +1125,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         elif nodes[rn - 1] in ('encounter', 'boss'):
             _ld = live_delta_for(nodes[rn - 1], _dep, rng,
                                  pool_map=pool_map)
+        elif nodes[rn - 1] in ('reward', 'supply'):
+            # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
+            # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
+            # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
+            # 池缺 → live_delta_for None → node_delta 回退常数。
+            _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                 pool_map=pool_map)
         else:
             _ld = None
         if _ld is not None:
@@ -1122,10 +1145,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
         # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
         # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
-        # 均未触界,非 cap 证明)——暂按 cap 100 钳制,防批㉗ reward
-        # 胖尾修复(+20~39 回血)落地后 hp 破百使 hp_ge_60 反向虚高;
-        # 实机满血样本核真后更新本常量(检查项 hp_upper_bound_truth
-        # 锁 hp>100 恒 0)。
+        # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
+        # 胖尾(+20~39 回血)落地后 hp 破百的担忧已随 ADR-0292 复核
+        # 消解(胖尾为跨 run 配对伪影,池真值恒 +2,实测触界率 0),
+        # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
+        # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
         st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
         streak = streak + 1 if delta > 0 else 0
         # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
@@ -1357,6 +1381,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             check_battle_rung_pool_bucket_lock,
             check_delta_pool_bucket_min_n,
             check_depth_cliff_monotonicity,
+            check_reward_delta_pool_bucket_lock,
             run_checks_on_ledgers,
         )
         rep_checks = run_checks_on_ledgers(
@@ -1372,6 +1397,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 池域覆盖);fallback 空池不辖
         rep_checks['battle_rung_pool_bucket_lock'] = \
             check_battle_rung_pool_bucket_lock(_pm)
+        # ADR-0292(批㉗ F3/F4):reward/supply Δ 分布入池 + 均值对拍
+        # 语料真值(含跨 run 配对伪影哨兵)
+        rep_checks['reward_delta_pool_bucket_lock'] = \
+            check_reward_delta_pool_bucket_lock(_pm)
         # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_sim_pool_no_cost_truncation as _chk_pool,
