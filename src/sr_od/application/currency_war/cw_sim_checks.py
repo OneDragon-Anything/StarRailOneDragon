@@ -365,6 +365,33 @@ def check_bench_full_deadlock_probe(rows: list[dict]) -> list[str]:
     return out
 
 
+# ADR-0285(批㉑ F1 裁决):carry 门金足判据对齐调用方地板——
+# 检查模块不 import 策略(依赖方向纪律),地板值与 line_strategy
+# 三档同步维护(值漂移由 floor 边界双向锁暴露,同
+# _ENGINES_TRAITS_SYNC 纪律):_INTEREST_FLOOR=50 / _WAR_FLOOR=30 /
+# _BOSS_BREAKER_FLOOR=10(P1 r≥5 恒 boss_breaker;连胜降档 5 /
+# economy 低位 0 更宽松 → 取梯级最大保保守:宁可漏报不误报,
+# 对齐后残留违规即真死锁/门漏边)。
+_CARRY_FLOOR_INTEREST: int = 50
+_CARRY_FLOOR_WAR: int = 30
+_CARRY_FLOOR_BOSS: int = 10
+
+
+def _carry_floor_est(round_num: int, gold: int) -> int:
+    """carry 腾位门地板保守估计(按象限梯级最大;ADR-0285)。
+
+    r≥5 恒 boss_breaker(地板 10);r<5 economy(50/gold%10/0)
+    或 war(30/5)象限并存 → 取梯级最大。
+    """
+    if round_num >= 5:
+        return _CARRY_FLOOR_BOSS
+    if gold >= _CARRY_FLOOR_INTEREST:
+        return _CARRY_FLOOR_INTEREST
+    if gold >= _CARRY_FLOOR_WAR:
+        return _CARRY_FLOOR_WAR
+    return max(gold % 10, 5) if gold >= 10 else 5
+
+
 def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
     """批⑯ F3/F4(ADR-0280):carry 腾位门死锁指纹。
 
@@ -375,9 +402,11 @@ def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
     修复后该指纹应归 0(腾位门产出 SellBench+BuyCard,行不再
     「零买零卖」);残留违规=保护集窒息复发或门条件漏边。
 
-    残留声明:金足口径不含息档地板(economy 满息态 gold-cost<
-    floor 的合法 miss 会留小额残差),与批⑯ F3 观测口径一致——
-    按指纹消费,不按硬零消费。
+    金足口径(ADR-0285,批㉑ F1 裁决):wave_gold − cost ≥
+    _carry_floor_est(轮次, wave_gold)——旧口径 wave_gold≥cost
+    不含调用方地板,把「金足但破息档地板」的合法 miss 误报为
+    死锁(seed30/39 恒 2 违规的结构成因,r416 起逐 commit 恒 2);
+    对齐后违规应真归 0,残留即真死锁信号。
     """
     from sr_od.application.currency_war.cw_line_library_v1 import line_of
     out: list[str] = []
@@ -404,13 +433,15 @@ def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
                for a in row.get('actions') or []):
             continue   # 有买或有腾位动作 → 非死锁形态
         for w in (row.get('sim') or {}).get('shop_waves') or []:
+            _g = w.get('gold') or 0
             if any(c.get('name') == line.carry
-                   and (w.get('gold') or 0) >= (c.get('cost') or 0)
+                   and _g - (c.get('cost') or 0)
+                   >= _carry_floor_est(rn, _g)
                    for c in w.get('cards') or []):
                 out.append(
-                    f"p1r{rn}: carry {line.carry} 在店+金足+bench=9"
-                    f"+零买零卖(carry 腾位门死锁指纹——批⑯ F3,"
-                    f"ADR-0280)")
+                    f"p1r{rn}: carry {line.carry} 在店+金足(含地板)"
+                    f"+bench=9+零买零卖(carry 腾位门死锁指纹"
+                    f"——批⑯ F3,ADR-0280/0285)")
                 break
     return out
 
@@ -915,21 +946,77 @@ ENDGOLD_RATIO_MAX: float = 1.5   # 收敛阈值(仍 >1.5 = 滞留金虚高未收
 
 
 def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
-    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276)。
+    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276/0285)。
 
     判据:sim 末轮金均值 vs 实机 24.3 的比值——3合1 建模落地后
     重测此比值为收敛判据(批⑩ F5:sim 52.5 = 2.2×,「sim 虚高
     1.6-2.3×」形态)。违规 = 比值 > 1.5(买通道死锁/滞留金虚高
     未恢复判读力)。
+
+    双口径(ADR-0285,批㉑ F3/F5):r419 超容买守卫(ADR-0283)
+    拦截的合法滞留(bench 满时策略仍提案买,金留下)混入总口径
+    分子,endgold 51.9→58.1 漂移全部来自它——**净滞留口径 =
+    末金 − bench_full_skipped_gold 折算**,判读可区分「策略滞留」
+    vs「守卫拦截」;违规按净口径(总口径并行披露供跨批对照)。
     """
-    golds = [rows[-1].get('gold') for rows in ledgers if rows]
-    golds = [g for g in golds if g is not None]
+    golds: list[float] = []
+    skip_gold: list[float] = []
+    for rows in ledgers:
+        if not rows:
+            continue
+        g = rows[-1].get('gold')
+        if g is None:
+            continue
+        golds.append(g)
+        skip_gold.append(sum(
+            (r.get('sim') or {}).get('bench_full_skipped_gold', 0)
+            for r in rows))
     avg = sum(golds) / len(golds) if golds else 0.0
+    avg_sk = sum(skip_gold) / len(skip_gold) if skip_gold else 0.0
     ratio = avg / REAL_AVG_ENDGOLD if golds else 0.0
-    return {'violations': 1 if ratio > ENDGOLD_RATIO_MAX else 0,
+    net_avg = avg - avg_sk
+    net_ratio = net_avg / REAL_AVG_ENDGOLD if golds else 0.0
+    return {'violations': 1 if net_ratio > ENDGOLD_RATIO_MAX else 0,
             'sim_avg_endgold': round(avg, 2),
             'real_avg_endgold': REAL_AVG_ENDGOLD,
-            'ratio': round(ratio, 2)}
+            'ratio': round(ratio, 2),
+            # 净滞留口径(ADR-0285):守卫残金剔除后的策略真滞留
+            'guard_skipped_gold_avg': round(avg_sk, 2),
+            'net_endgold_avg': round(net_avg, 2),
+            'net_ratio': round(net_ratio, 2)}
+
+
+def check_ab_resolution_floor(hps_a: list[float],
+                              hps_b: list[float]) -> dict:
+    """批㉒ F4(ADR-0285):A/B 配对差分辨率底披露。
+
+    单流 RNG 共享(节点序/开局 bench/事件金/商店抽同一条流)只
+    消掉约 1/3 方差(批㉒ 实测耦合比 0.675,38.2% 局 A/B hp 完全
+    相同)——**|Δavg| < 1.96·sd_pair/√n 的差值在噪声带内,不得
+    叙述为方向性结论**(n=300 实测底 ±1.93hp;底按本批配对差
+    现算,勿写死)。A/B 报告调用方(simulate_p1_ab / 手工对照)
+    附本披露;批㉑ 判 r416 +0.08 为噪声与此一致。n<30 不判
+    (声明数据边界)。
+    """
+    import math
+    import statistics
+    n = min(len(hps_a), len(hps_b))
+    if n < 2:
+        return {'violations': 0, 'n': n, 'note': 'n<2 不判(数据边界)'}
+    diffs = [a - b for a, b in zip(hps_a[:n], hps_b[:n], strict=False)]
+    mean_diff = sum(diffs) / n
+    sd = statistics.stdev(diffs)
+    floor = 1.96 * sd / math.sqrt(n) if sd > 0 else 0.0
+    noise_band = abs(mean_diff) < floor
+    return {'violations': 0,   # 披露级:标注噪声带,不构成违规
+            'n': n,
+            'mean_diff': round(mean_diff, 3),
+            'sd_pair': round(sd, 3),
+            'ci95_floor': round(floor, 3),
+            'noise_band': noise_band,
+            'note': ('差值在噪声带内(|Δavg|<95% 底),'
+                     '不得叙述为方向性结论' if noise_band
+                     else '差值超过 95% 底,可叙述方向')}
 
 
 # 批⑩ 检查项 anchor_registry_n300:基线锚登记制——engines2/recipe5/

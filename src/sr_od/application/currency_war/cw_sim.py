@@ -828,6 +828,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
         _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
         _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
+        _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
         _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
         _acts: list[dict] = []
         _segs_used = 0
@@ -924,6 +925,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # (9);超容买跳过(金/牌池均不消费)+ 计数披露。
                     if len(st.bench) >= BENCH_CAPACITY:
                         _bench_full_skips += 1
+                        _bench_full_skip_gold += a.card.cost
                         continue
                     # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
                     # ——买走即下架(生产语义:槽买后消失)。旧 sim
@@ -1163,6 +1165,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
                 # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
                 'bench_full_skipped_buys': _bench_full_skips,
+                # ADR-0285(批㉑ F3/F5):守卫拦截买折算金(净滞留口径
+                # = 末金 − 本值;判读区分「策略滞留」vs「守卫拦截」)
+                'bench_full_skipped_gold': _bench_full_skip_gold,
                 # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
                 # 店外;真策略批次应恒 0,检查项归 0 锁)
                 'phantom_rebuys': _phantom_rebuys,
@@ -1247,6 +1252,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'bench_full_skipped_buys': sum(
             (row.get('sim') or {}).get('bench_full_skipped_buys', 0)
             for r in results for row in r.ledger),
+        # ADR-0285(批㉑ F3):守卫拦截买折算金总额(净滞留口径输入)
+        'bench_full_skipped_gold': sum(
+            (row.get('sim') or {}).get('bench_full_skipped_gold', 0)
+            for r in results for row in r.ledger),
         # ADR-0284(批㉒ F1/F5):幻影再买提案与池 take 地板命中
         # (真策略批次双 0;>0 = 槽消费回归/池守恒破)
         'phantom_rebuys': sum(r.phantom_rebuys for r in results),
@@ -1312,6 +1321,37 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             v['seed_base'] = seed_base
         report['checks_violations'] = rep_checks
     return report
+
+
+def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
+                   seed_base: int = 0) -> dict:
+    """A/B 对照报告(同 seed 配对双臂 + 分辨率底;ADR-0285 件4)。
+
+    批㉒ F4 实测:单流 RNG 共享只消掉约 1/3 方差(耦合比 0.675,
+    n=300 底 ±1.93hp)——**|Δavg_hp| < 95% 底的差值在噪声带内,
+    不得叙述为方向性结论**(报告带 ``noise_band`` 标注;底按本批
+    配对差 sd 现算,勿写死 1.93)。默认 A=刷新开/B=刷新关,同
+    seed 配对。
+    """
+    from sr_od.application.currency_war.cw_sim_checks import (
+        check_ab_resolution_floor,
+    )
+    res_a = [simulate_p1(seed_base + i, use_refresh=True, pool=pool)
+             for i in range(n)]
+    res_b = [simulate_p1(seed_base + i, use_refresh=False, pool=pool)
+             for i in range(n)]
+    # 双臂 headline(直接从 results 聚合)
+    import statistics
+    hps_a = [r.final_hp for r in res_a]
+    hps_b = [r.final_hp for r in res_b]
+    return {
+        'n': n, 'pool_fingerprint': res_a[0].pool_fingerprint,
+        'avg_hp_a': round(statistics.mean(hps_a), 2),
+        'avg_hp_b': round(statistics.mean(hps_b), 2),
+        'hp_ge_60_a': sum(1 for h in hps_a if h >= 60) / n,
+        'hp_ge_60_b': sum(1 for h in hps_b if h >= 60) / n,
+        'ab_resolution_floor': check_ab_resolution_floor(hps_a, hps_b),
+    }
 
 
 # sim 账本落盘根目录(与生产 replay 隔离;写入器有目录守卫)
