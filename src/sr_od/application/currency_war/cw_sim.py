@@ -45,6 +45,8 @@ from sr_od.application.currency_war.cw_state import (
     RefreshShop,
     SellBench,
     ShopCard,
+    _merge_bench,
+    sell_refund,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 
@@ -107,6 +109,19 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     (6, 30.0, 8.0),
     (99, 36.0, 10.0),
 )
+
+# ADR-0277(批⑪ F1):boss 胜分支——boss Δ池桶仅存 depth≥12/15,
+# P1(depth≤7)结构性不可达 → live_delta_for 恒 None → 旧 boss_delta
+# 恒负无胜 branch,sim 300/300 boss 恒败,hp 类指标天花板被钉死、
+# 成型度与 final_hp 零耦合(批⑪ F1/F2 同根)。修:胜率 = f(成型度
+# rung,四体系数;批③ H3 实测矩阵:boss e0/e1=0、e2=0.25;rung≥3
+# 零样本,沿用 e2 值不虚构,待实机 boss 胜局样本积累后拟合)。
+# 胜时 Δ = 胜利小额(+2,与 reward/supply 的 EARLY_WIN_DELTA 同档;
+# 「大胜」形态(局69 hp75)待样本后再校准幅度)。
+# ⚠️ P1 初始 HP=80 非 100(cw_sim simulate_p1 `st.hp = 80`;批⑪
+# 自纠记档——按 100 锚算 boss 损失会出伪影)。
+BOSS_WIN_P_BY_ENGINES: tuple[float, ...] = (0.0, 0.0, 0.25)
+BOSS_WIN_DELTA: int = 2
 
 
 @dataclass
@@ -464,6 +479,26 @@ def boss_delta(dir_round: int, rng: random.Random,
     return int(-(36.0 * multiplier + rng.uniform(0, 10.0)))
 
 
+def boss_settle_delta(st: GameState, dir_round: int,
+                      rng: random.Random) -> int:
+    """ADR-0277:boss Δ池桶不可达时的胜负面结算(胜率=f(成型度))。
+
+    成型度 rung = 四体系达成数(`_engines_count` 口径:仙舟3/列车2/
+    DOT2/希儿系)——按 ``BOSS_WIN_P_BY_ENGINES`` 掷胜:胜 →
+    ``BOSS_WIN_DELTA`` 小额;负 → 旧 ``boss_delta`` 档。仅当
+    ``live_delta_for`` 返 None(无可及桶)时由调用方使用;Δ池
+    可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
+    """
+    _bf = _board_factions_of(st.deployed)
+    _names = frozenset(d.char_id for d in (st.deployed or [])
+                       if getattr(d, 'char_id', ''))
+    rung = _engines_count(_bf, _names)
+    p = BOSS_WIN_P_BY_ENGINES[min(rung, len(BOSS_WIN_P_BY_ENGINES) - 1)]
+    if rng.random() < p:
+        return BOSS_WIN_DELTA
+    return boss_delta(dir_round, rng)
+
+
 def sample_node_sequence(rng: random.Random) -> list[str]:
     """P1 节点序列(r306b 实证统计:25 开局帧众数表)。
 
@@ -696,6 +731,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     streak = 0
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         st.round_num = rn
+        # 批⑤ F4(ADR-0276):决策前写 session.node_type_current——
+        # 生产语义 = prep_director 备战期存下一节点类型(r308 保连胜
+        # 门/节点感知消费读 session);sim 旧不写 → 门在 sim 恒盲
+        # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
+        # (battle/encounter/boss/…)。
+        sess.node_type_current = nodes[rn - 1]
         # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
         _gold_before = st.gold
         _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
@@ -711,6 +752,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                   ]   # ① 账本:牌面波(supply 视图;gold=该波时点金)
         # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
         _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
+        _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
         _acts: list[dict] = []
         _segs_used = 0
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
@@ -816,9 +858,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                   'reason': _ch,
                                   'channel': _cb(a.card, st)})
                     xp += XP_PER_BUY
+                    # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
+                    # 执行层——生产 simulate(BuyCard) 每次买入后调
+                    # _merge_bench(全场域 bench+deployed,同名同星
+                    # ≥3 → star+1、删 2 张),sim 旧不接 → 副本占席
+                    # → bench 满 → 买通道死 → 滞留金 2.2× 虚高
+                    # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
+                    # (每次合并净减 2 个单位;载体在场时 deployed
+                    # 计数不变)。
+                    _pre_units = len(st.bench) + len(st.deployed)
                     st.bench.append(BenchChar(
                         slot=len(st.bench) + 1, char_id=a.card.name,
                         faction=a.card.faction))
+                    _merge_bench(st.bench, st.deployed)
+                    _merges += (_pre_units + 1
+                                - len(st.bench) - len(st.deployed)) // 2
                     progressed = True
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
@@ -830,7 +884,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if 0 <= a.bench_idx < len(st.bench):
                         bc = st.bench.pop(a.bench_idx)
                         ch = CHARACTERS.get(bc.char_id)
-                        _sell_v = (ch.cost if ch and ch.cost else 1)
+                        # ADR-0276:卖出回金接生产 sell_refund 单一源
+                        # ——merge 落地后 bench 可有 star≥2(1星=cost、
+                        # 2星=3×cost−1…),旧恒按 1星 cost 退会低估
+                        # 合成件价值、卖出通道失真。
+                        _sell_v = (sell_refund(bc.star, ch.cost)
+                                   if ch and ch.cost else 1)
                         st.gold += _sell_v
                         _spend['sell_income'] += _sell_v
                         _acts.append({'__type__': 'SellBench',
@@ -859,10 +918,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if nodes[rn - 1] in ('battle', 'encounter', 'boss') else None
         if _ld is not None:
             delta = _ld
+        elif nodes[rn - 1] == 'boss':
+            # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
+            # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
+            # 价值链接通(hp 类指标恢复判读力)。
+            delta = boss_settle_delta(st, res.dir_round, rng)
         else:
             delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
         st.hp = max(0, int(st.hp + delta))
         streak = streak + 1 if delta > 0 else 0
+        # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
+        # = 结算「连胜×N」写 session(default_strategy.on_settlement),
+        # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
+        # 只存本地变量算收入,决策侧连胜响应恒盲。
+        sess.last_streak = streak
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
         # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
@@ -966,6 +1035,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'shop_waves': _waves,
                 'dir_established': res.dir_round <= rn,
                 'segments': _segs_used,
+                # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
+                'merges': _merges,
             },
         })
         if st.hp <= 0:
@@ -1065,6 +1136,28 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         )
         rep_checks['sim_pool_no_cost_truncation'] = \
             _chk_pool(_Pool(random.Random(0)).copies)
+        # 批⑩/批⑪ 检查项(ADR-0276/0277):批级聚合检查——boss 胜率
+        # 校准/成型-hp 耦合哨兵/升级 binding/末段刷新闭合/末金校准/
+        # 锚登记制;吃全批账本(跨局聚合,不进 _BATCH_CHECKS 的逐局循环)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_anchor_registry_n300,
+            check_boss_win_calibration,
+            check_formation_hp_coupling_sentinel,
+            check_levelup_binding,
+            check_r5plus_refresh_closure,
+            check_sim_endgold_calib,
+        )
+        _ledgers = [r.ledger for r in results]
+        rep_checks['boss_win_calibration'] = \
+            check_boss_win_calibration(_ledgers)
+        rep_checks['formation_hp_coupling_sentinel'] = \
+            check_formation_hp_coupling_sentinel(_ledgers)
+        rep_checks['levelup_binding_check'] = check_levelup_binding(_ledgers)
+        rep_checks['r5plus_refresh_closure'] = \
+            check_r5plus_refresh_closure(_ledgers)
+        rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
+        rep_checks['anchor_registry_n300'] = \
+            check_anchor_registry_n300(report)
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():

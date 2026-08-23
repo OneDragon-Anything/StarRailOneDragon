@@ -264,8 +264,10 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     边界:卖→买的同轮序(先卖腾位再买入)是合法经济动作,不报;
     **3合1 让位豁免的检查侧镜像**:reason='copy' 的买入是 r383b
     同名副本素材(口述[15] 压缩牌库),其同名卖出=卖合成冗余的
-    让位(ADR-0267 豁免边),不报——振荡主通道(engine_seed/line/
-    bridge_seed 等单次买入被当轮卖回)仍 0 容忍。
+    让位(ADR-0267 豁免边),不报——**批⑩ F3 裁决(ADR-0276)扩
+    豁免边**:reason='engine_seed' 同名买入 ≥2(同轮)同属 3合1
+    素材收集语境(买青雀×3 后卖冗余 1),同样豁免;单张买入即卖
+    (振荡主通道)仍 0 容忍。
     仅 v2 栈(line_v2)账本适用(default 栈 reason='plan' 的
     卖出语义不同,生产侧按 strategy_id 分栈后选择)。
     """
@@ -273,16 +275,27 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     for row in rows:
         bought: list[str] = []
         _copy_names: set[str] = set()
+        _seed_buys: dict[str, int] = {}   # 批⑩ F3 裁决(ADR-0276)
         for a in row.get('actions') or []:
             if a.get('__type__') == 'BuyCard':
                 _n = (a.get('card') or {}).get('name')
                 if _n and a.get('reason') == 'copy':
                     _copy_names.add(_n)   # 3合1 收集语境:让位豁免
+                elif _n and a.get('reason') == 'engine_seed':
+                    _seed_buys[_n] = _seed_buys.get(_n, 0) + 1
+                    bought.append(_n)
                 elif _n:
                     bought.append(_n)
             elif a.get('__type__') == 'SellBench' \
                     and a.get('name') in bought \
                     and a.get('name') not in _copy_names:
+                # 批⑩ F3 裁决(ADR-0276):engine_seed 同名买入 ≥2
+                # (同轮) = 3合1 素材收集语境,其同名卖出 = 合成冗余
+                # 让位(与 copy 豁免同族),不报;单张买入即卖 = 振荡
+                # (r408 主通道)仍 0 容忍。
+                if a.get('name') in _seed_buys \
+                        and _seed_buys[a.get('name')] >= 2:
+                    continue
                 out.append(
                     f"p{row.get('plane')}r{row.get('round_num')} "
                     f"同轮买后卖: {a.get('name')}"
@@ -310,6 +323,48 @@ def check_sim_pool_no_cost_truncation(copies: dict[str, int]) -> dict:
 
 # 批量内嵌检查集(分布级;r371b 后冷启动门 sim 内可达,局49
 # 检查升级进批量——真实 sim 批次自动扫)
+def check_bench_full_deadlock_probe(rows: list[dict]) -> list[str]:
+    """批⑩ F4 指纹(bench 满复合死锁常态检查;ADR-0276)。
+
+    指纹:连续 ≥3 轮 零 BuyCard 且 bench 满(≥9)且 gold>20 且
+    **deployed < cap**(上通道同时堵——围栏拦散牌,deploy 没满)——
+    买通道(bench_is_full 门)与上通道(配方围栏)互锁,滞留金无
+    出口(seed174 r3-r9 零买入仅刷新×2+LevelUp×11,末 HP 37;
+    批⑩ F4 首个完整机制链样本)。deployed=cap 的末段停买(板满+
+    攒金)是合法终局形态,不报——判据表原文的「bench=9 且零买入
+    且金>20」在末段普遍成立(n=60 预跑 41/60 误报,deployed<cap
+    才是 F4 的特异性维度)。
+
+    3合1 merge 接入 sim 执行层(ADR-0276)后副本被消化、席位
+    回流,本形态应消失;涌现即买/上通道回归。生产侧 merge 同在
+    (simulate/mutate_bench_deployed 同源)——生产同型理论上可达,
+    违规按真死锁处理,非 sim-only 形态。连续窗口用连续 3 个
+    停滞轮(轮号相邻)判,孤立 2 轮(过渡态)不报。
+    """
+    out: list[str] = []
+    _stall_rounds: list[int] = []
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        st = row.get('state') or {}
+        has_buy = any(a.get('__type__') == 'BuyCard'
+                      for a in row.get('actions') or [])
+        _dep_n = len(st.get('deployed') or [])
+        if not has_buy \
+                and len(st.get('bench') or []) >= 9 \
+                and (row.get('gold') or 0) > 20 \
+                and _dep_n < (st.get('cap') or 99):
+            _stall_rounds.append(row.get('round_num') or 0)
+    for a, b, c in zip(_stall_rounds, _stall_rounds[1:],
+                       _stall_rounds[2:], strict=False):
+        if b - a == 1 and c - b == 1:
+            out.append(
+                f"p1r{a}-r{c}: bench 满(≥9)连续 ≥3 轮零买入且金>20"
+                f"(买/上通道互锁——批⑩ F4 死锁形态,ADR-0276)")
+            break
+    return out
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -318,6 +373,7 @@ _BATCH_CHECKS = {
     'no_component_equipped_p1': check_no_component_equipped_p1,
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
+    'bench_full_deadlock_probe': check_bench_full_deadlock_probe,
 }
 
 
@@ -409,6 +465,244 @@ def check_ab_depth_boundary_confound(ledgers_a: list[list[dict]],
                 f'桶{b} 仅 {arm} 臂到达(A n={na}, B n={nb})'
                 f'——两臂 Δ 采样跨桶边界,hp 差含池混杂')
     return out
+
+
+# --- 批⑩/批⑪ 检查项(2026-08-24 裁决落地;ADR-0276/0277) ---------
+# 以下为**批级聚合检查**(吃全批账本,跨局聚合;由 simulate_p1_batch
+# 显式调用,不进 _BATCH_CHECKS 的逐局循环)与豁免边裁决探针。
+
+
+def check_engine_seed_sell_exemption(rows: list[dict]) -> list[str]:
+    """批⑩ F3 裁决探针(engine_seed 让位豁免边;ADR-0276)。
+
+    判据(判据表原文):对照生产 r408 语义判 engine_seed 同名副本
+    买入后的同轮卖出属「让位豁免」还是振荡——裁决=**豁免边扩到
+    engine_seed 收集语境**(同轮同名买入 ≥2,与 copy 豁免同族:
+    买 3 同名+卖冗余 1 是 3合1 素材收集,非通道互踩)。本探针只报
+    豁免边之外的残留振荡(单张 engine_seed 买入即同轮卖回),与
+    check_no_same_round_buy_sell 的豁免边界单一源一致(实现各自
+    独立,判据漂移时双向锁会红)。
+    """
+    out: list[str] = []
+    for row in rows:
+        _seed_buys: dict[str, int] = {}
+        _sold: set[str] = set()
+        for a in row.get('actions') or []:
+            if a.get('__type__') == 'BuyCard' \
+                    and a.get('reason') == 'engine_seed':
+                _n = (a.get('card') or {}).get('name')
+                if _n:
+                    _seed_buys[_n] = _seed_buys.get(_n, 0) + 1
+            elif a.get('__type__') == 'SellBench' and a.get('name'):
+                _n = a.get('name')
+                if _n in _seed_buys and _seed_buys[_n] < 2 \
+                        and _n not in _sold:
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"engine_seed 单张买入即同轮卖回: {_n}"
+                        f"(振荡,非 3合1 收集语境——ADR-0276 裁决)")
+                    _sold.add(_n)
+    return out
+
+
+# 四体系口径(同步自 cw_sim._engines_count/_TRANSITION_TRAITS——检查
+# 模块不 import cw_sim,依赖方向纪律;值漂移由双向锁暴露)
+_ENGINES_TRAITS_SYNC: tuple[tuple[str, int], ...] = (
+    ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
+)
+
+
+def _rung_of_row(row: dict) -> int:
+    """账本行的成型度 rung(四体系数;希儿系=希儿在场且量2/贝2)。"""
+    st = row.get('state') or {}
+    bf = st.get('board_factions') or {}
+    dep = frozenset(d.get('char_id', '')
+                    for d in (st.get('deployed') or []))
+    n = sum(1 for bond, tier in _ENGINES_TRAITS_SYNC
+            if bf.get(bond, 0) >= tier)
+    if '希儿' in dep and (bf.get('量子同频', 0) >= 2
+                          or bf.get('贝洛伯格', 0) >= 2):
+        n += 1
+    return n
+
+
+def check_boss_win_calibration(ledgers: list[list[dict]]) -> dict:
+    """批⑪ F1 验收(boss 胜率校准;ADR-0277)。
+
+    判据(判据表原文):300 局 boss 胜率 >0 且随 depth 单调。
+    - 胜 = boss 轮 sim.delta ≥ 0(outcomes.killed 同极性);
+    - 违规 ①:boss 轮存在但 0 胜(结构性恒败回归——胜分支失效);
+    - 违规 ②:可信深度桶(n≥5)间胜率随深度递减(胜率=f(成型度)
+      且成型度与板深正相关 → 聚合胜率应单调不减;n<5 薄桶不判,
+      声明数据边界)。
+    """
+    wins = tot = 0
+    by_depth: dict[int, list[int]] = {}
+    for rows in ledgers:
+        for row in rows:
+            s = row.get('sim') or {}
+            if s.get('node') != 'boss':
+                continue
+            dep = s.get('depth')
+            win = 1 if (s.get('delta') or 0) >= 0 else 0
+            wins += win
+            tot += 1
+            if dep is not None:
+                b = min(int(dep) // _POOL_DEPTH_BUCKET_W, 5) \
+                    * _POOL_DEPTH_BUCKET_W
+                by_depth.setdefault(b, [0, 0])
+                by_depth[b][0] += win
+                by_depth[b][1] += 1
+    issues: list[str] = []
+    if tot > 0 and wins == 0:
+        issues.append(f'boss {tot} 轮 0 胜(结构性恒败回归,'
+                      f'ADR-0277 胜分支失效)')
+    ok = sorted((b, w, n) for b, (w, n) in by_depth.items() if n >= 5)
+    for (b1, w1, n1), (b2, w2, n2) in zip(ok, ok[1:], strict=False):
+        if w2 / n2 < w1 / n1:
+            issues.append(
+                f'深度桶{b1} 胜率{w1 / n1:.2f} > 桶{b2} '
+                f'{w2 / n2:.2f}(胜率随深度应单调不减)')
+    return {'violations': len(issues), 'boss_rounds': tot,
+            'boss_wins': wins, 'issues': issues[:5]}
+
+
+def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
+    """批⑪ F2 验收哨兵(成型→hp 价值链;ADR-0277)。
+
+    判据(判据表原文):e≥2 局(任一轮 rung≥2)与未达局的 final_hp
+    差——win 侧校准落地前恒≈0(批⑪ 实测 26.9 vs 26.0,零耦合);
+    落地后应显著为正,否则校准失败。违规 = 双侧都有局且差 ≤0
+    (成型局不比未达局活得久 = 价值链仍断)。
+    """
+    formed: list[int] = []
+    unformed: list[int] = []
+    for rows in ledgers:
+        if not rows:
+            continue
+        hp = rows[-1].get('hp')
+        if hp is None:
+            continue
+        (formed if any(_rung_of_row(r) >= 2 for r in rows)
+         else unformed).append(int(hp))
+    diff = (sum(formed) / len(formed) - sum(unformed) / len(unformed)) \
+        if formed and unformed else None
+    violations = 1 if (diff is not None and diff <= 0) else 0
+    return {'violations': violations, 'formed_n': len(formed),
+            'unformed_n': len(unformed),
+            'formed_hp': round(sum(formed) / len(formed), 2) if formed else None,
+            'unformed_hp': round(sum(unformed) / len(unformed), 2) if unformed else None,
+            'diff': round(diff, 2) if diff is not None else None}
+
+
+def check_levelup_binding(ledgers: list[list[dict]]) -> dict:
+    """批⑪ F4 披露(LevelUp binding 率;ADR-0277)。
+
+    判据(判据表原文):LevelUp 动作时 len(deployed) ≥ level 记
+    binding(当轮 depth 可受益:dep<lv 时 depth=min 卡在 dep),
+    否则记 loose;r8/r9 loose 占比 >60% 报警(阈值策略语义批⑪
+    裁:60% 取判据表原值)。升级前等级 = 上一轮账本 level(轮内
+    升级完成会抬高本行 level;首轮 prev=3,同批③检查近似声明)。
+    r9 升级在 P1 内收益恒 0(P1 截止 r9;P2 入口继承价值 sim
+    不可判)——本检查辖 r8/r9 窗口披露,不断言 r9 该不该升。
+    """
+    binding = loose = 0
+    for rows in ledgers:
+        prev_level = 3
+        for row in rows:
+            if (row.get('round_num') or 0) in (8, 9):
+                if any(a.get('__type__') == 'LevelUp'
+                       for a in row.get('actions') or []):
+                    dep_n = len((row.get('state') or {}).get('deployed')
+                                or [])
+                    if dep_n >= prev_level:
+                        binding += 1
+                    else:
+                        loose += 1
+            prev_level = ((row.get('state') or {}).get('level')
+                          or prev_level)
+    total = binding + loose
+    share = loose / total if total else 0.0
+    return {'violations': 1 if (total and share > 0.6) else 0,
+            'binding': binding, 'loose': loose, 'loose_share': round(share, 3)}
+
+
+def check_r5plus_refresh_closure(ledgers: list[list[dict]]) -> dict:
+    """批⑪ F6 披露(r5+ 刷新闭合;ADR-0277)。
+
+    判据:sim r5-r9 刷新次数(批⑪ 实测 0/483,78% 刷新集中 r3/r4,
+    r5 后刷通道事实关闭)——实机遥测对照后定性。**纯披露型**
+    (violations 恒 0):刷新次数偏离 0 不是违规,是行为变化信号
+    (成本带窗口开合),供跨批对照。
+    """
+    n = 0
+    for rows in ledgers:
+        for row in rows:
+            if (row.get('round_num') or 0) >= 5:
+                n += sum(1 for a in row.get('actions') or []
+                         if a.get('__type__') == 'RefreshShop')
+    return {'violations': 0, 'r5plus_refreshes': n}
+
+
+# 实机末金均值(批⑧ F1,18 局;批⑩ F5 对照侧:sim 52.5 vs 实机
+# 24.3 = 2.2× 虚高)。merge 落地(ADR-0276)后此比值应为收敛判据。
+REAL_AVG_ENDGOLD: float = 24.3
+ENDGOLD_RATIO_MAX: float = 1.5   # 收敛阈值(仍 >1.5 = 滞留金虚高未收敛)
+
+
+def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
+    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276)。
+
+    判据:sim 末轮金均值 vs 实机 24.3 的比值——3合1 建模落地后
+    重测此比值为收敛判据(批⑩ F5:sim 52.5 = 2.2×,「sim 虚高
+    1.6-2.3×」形态)。违规 = 比值 > 1.5(买通道死锁/滞留金虚高
+    未恢复判读力)。
+    """
+    golds = [rows[-1].get('gold') for rows in ledgers if rows]
+    golds = [g for g in golds if g is not None]
+    avg = sum(golds) / len(golds) if golds else 0.0
+    ratio = avg / REAL_AVG_ENDGOLD if golds else 0.0
+    return {'violations': 1 if ratio > ENDGOLD_RATIO_MAX else 0,
+            'sim_avg_endgold': round(avg, 2),
+            'real_avg_endgold': REAL_AVG_ENDGOLD,
+            'ratio': round(ratio, 2)}
+
+
+# 批⑩ 检查项 anchor_registry_n300:基线锚登记制——engines2/recipe5/
+# avg_hp 等锚一律 n=300 口径登记(池指纹必附),n=60 值只作快速回归
+# 哨兵。数值为 ADR-0276/0277(merge+win 校准)落地批 n=300 实测。
+ANCHOR_REGISTRY_N300: dict = {
+    'pool_fingerprint_prefix': 'e19afdfa4173077e',
+    'recorded': '2026-08-24(ADR-0276/0277 落地批,n=300,seed 0-299)',
+    'metrics': {
+        'engines2_by_r6': 0.277,     # 旧栈 0.083(merge 前;批⑩ F1 锚)
+        'avg_final_hp': 28.81,       # 旧 26.03;win 校准 +4 抬升
+        'hp_ge_60': 0.04,            # 旧 0.017(boss 恒败钉死解除)
+        'battle_losses_le_2': 0.033,  # 旧 0.027
+        'recipe5_by_r6': 0.62,
+        'avg_refreshes': 1.11,       # 旧 1.61(merge 后买通道活,早刷减少)
+    },
+}
+
+
+def check_anchor_registry_n300(report: dict) -> dict:
+    """批⑩ 检查项(锚登记制;ADR-0276)。
+
+    判据(判据表原文):下次基线引用能直接取 n=300 值——本检查
+    验证报告含登记表的全部锚指标(缺 = 登记制断裂),并披露与
+    登记值的漂移(跨批对照用;drift 非违规——策略改动本就改变
+    基线,违规只盯「引用键缺失」)。n=60 快验报告引用本表时,
+    drift 仅作噪声带参考(批⑩ F1:n=60 噪声带 ±0.071)。
+    """
+    metrics = ANCHOR_REGISTRY_N300['metrics']
+    missing = [k for k in metrics if k not in report]
+    drift = {k: round(float(report[k]) - v, 4)
+             for k, v in metrics.items() if k in report
+             and isinstance(report[k], (int, float))}
+    return {'violations': len(missing), 'missing': missing,
+            'drift': drift,
+            'pool_fp_match': str(report.get('pool_fingerprint', ''))
+            .startswith(ANCHOR_REGISTRY_N300['pool_fingerprint_prefix'])}
 
 
 def run_checks_on_ledgers(ledgers: list[list[dict]]) -> dict[str, dict]:
