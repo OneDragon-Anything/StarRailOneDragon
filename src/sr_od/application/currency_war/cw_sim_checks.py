@@ -369,9 +369,9 @@ def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
     """批⑯ F3/F4(ADR-0280):carry 腾位门死锁指纹。
 
     指纹:P1 r≤7(收益域——r8-r9 miss 买不买无差异,批⑯ F4)、
-    锁线、carry 在店(任一牌面波)且金足(波时点金≥cost,批⑯ F3
-    口径:gold−已提案花销≥cost)、bench=9 满、**当轮零买入且零卖出**
-    ——即腾位门该出手而未出手(基线 56 局/148 事件,18.7%)。
+    锁线、carry 在店(任一牌面波)且金足(批⑯ F3 口径:gold−已提案
+    花销≥cost)、bench=9 满、**当轮零买入且零卖出**——即腾位门
+    该出手而未出手(基线 56 局/148 事件,18.7%)。
     修复后该指纹应归 0(腾位门产出 SellBench+BuyCard,行不再
     「零买零卖」);残留违规=保护集窒息复发或门条件漏边。
 
@@ -415,6 +415,81 @@ def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_shop_slot_consumption(rows: list[dict]) -> list[str]:
+    """批㉒ F1(ADR-0284):商店槽消费不变式——波内同名买入数 ≤
+    该波同名供给槽位数。
+
+    生产语义:槽买后消失(买走即下架)。旧 sim 买入不消费槽 →
+    同槽幻影再买(批㉒ 账本实测 65.13% 买轮含槽再买、超量槽买
+    3553 次/300 局、单槽最高 6 连买),3合1 被同槽重复点击无限
+    兜底 → 成型类指标系统性偏乐观(批㉒ F3:trio3/engines2/
+    formed_n 全部含幻影供给水分)。判据走账本波序列:
+    RefreshShop 动作切波(动作序与波序同源——刷新后立即
+    re-decide),波内逐笔 BuyCard 按名计数,超该波供给即违规
+    (执行层忘消费槽 / 账本写坏)。被守卫跳过的买(bench 满/
+    幻影槽)不入 actions,不影响本判据。
+    """
+    out: list[str] = []
+    for row in rows:
+        if row.get('plane') != 1:
+            continue
+        waves = (row.get('sim') or {}).get('shop_waves') or []
+        if not waves:
+            continue
+        rn = row.get('round_num')
+
+        def _supply(wave: dict) -> dict[str, int]:
+            s: dict[str, int] = {}
+            for c in wave.get('cards') or []:
+                n = c.get('name')
+                if n:
+                    s[n] = s.get(n, 0) + 1
+            return s
+
+        supply = _supply(waves[0])
+        bought: dict[str, int] = {}
+        wi = 0
+        for a in row.get('actions') or []:
+            t = a.get('__type__')
+            if t == 'RefreshShop':
+                wi += 1
+                if wi >= len(waves):
+                    break
+                supply = _supply(waves[wi])
+                bought = {}
+            elif t == 'BuyCard':
+                n = (a.get('card') or {}).get('name')
+                if not n:
+                    continue
+                bought[n] = bought.get(n, 0) + 1
+                if bought[n] > supply.get(n, 0):
+                    out.append(
+                        f"p1r{rn}: {n} 波内买入 {bought[n]} 份 > "
+                        f"供给 {supply.get(n, 0)} 槽(槽消费缺失"
+                        f"/账本写坏——批㉒ F1,ADR-0284)")
+    return out
+
+
+def check_phantom_rebuy_disclosure(rows: list[dict]) -> list[str]:
+    """批㉒ F1(ADR-0284):幻影再买披露归 0 锁。
+
+    判据:执行层已消费槽/店外卡的买提案数(账本 sim.phantom_
+    rebuys)应恒 0——真策略提案恒来自 st.shop 活槽;>0 = 策略
+    对已买槽再提案(批㉒ F1 幻影通道回归)或店外构造混入真批次
+    (仅测试桩合法)。批㉒ 设计为披露口径(buys − 波内供给槽
+    上限),槽消费落地(ADR-0284)后升格归 0 锁:修复前 65.13%
+    买轮含槽再买 → 修复后 0。
+    """
+    out: list[str] = []
+    for row in rows:
+        n = (row.get('sim') or {}).get('phantom_rebuys') or 0
+        if n:
+            out.append(
+                f"p1r{row.get('round_num')}: 幻影再买提案 {n} 次"
+                f"(已消费槽/店外——批㉒ F1 回归,ADR-0284)")
+    return out
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -425,6 +500,8 @@ _BATCH_CHECKS = {
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
     'bench_full_deadlock_probe': check_bench_full_deadlock_probe,
     'carry_gate_bench_deadlock': check_carry_gate_bench_deadlock,
+    'shop_slot_consumption': check_shop_slot_consumption,
+    'phantom_rebuy_disclosure': check_phantom_rebuy_disclosure,
 }
 
 
@@ -857,19 +934,20 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
 
 # 批⑩ 检查项 anchor_registry_n300:基线锚登记制——engines2/recipe5/
 # avg_hp 等锚一律 n=300 口径登记(池指纹必附),n=60 值只作快速回归
-# 哨兵。数值为 ADR-0276/0277(merge+win 校准)→ ADR-0279(battle
-# rung 分桶)落地批 n=300 实测;旧值(ADR-0277 批,e19afdfa 池)
-# 对照表进 ADR-0279。
+# 哨兵。数值演进链:ADR-0276/0277(merge+win 校准)→ ADR-0279
+# (battle rung 分桶)→ ADR-0284(商店槽消费,批㉒ F3 波及:成型类
+# 指标回落到真实供给口径——旧值含幻影槽超买水分,新旧对照表进
+# ADR-0284)。
 ANCHOR_REGISTRY_N300: dict = {
     'pool_fingerprint_prefix': 'd891233d28be3493',
-    'recorded': '2026-08-24(ADR-0279 battle rung 分桶批,n=300,seed 0-299)',
+    'recorded': '2026-08-24(ADR-0284 商店槽消费批,n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.277,     # ADR-0279 批不变(0.2767;分桶只动结算层)
-        'avg_final_hp': 28.95,       # 旧 28.81;rung 分桶小幅抬升
-        'hp_ge_60': 0.067,           # 旧 0.04;向实机 32% 收敛中(ADR-0279 表)
-        'battle_losses_le_2': 0.08,  # 旧 0.033
-        'recipe5_by_r6': 0.62,
-        'avg_refreshes': 1.113,      # 旧 1.11
+        'engines2_by_r6': 0.237,     # 旧 0.277(ADR-0279);幻影供给挤水分
+        'avg_final_hp': 29.25,       # 旧 28.95
+        'hp_ge_60': 0.047,           # 旧 0.067
+        'battle_losses_le_2': 0.073,  # 旧 0.08
+        'recipe5_by_r6': 0.533,      # 旧 0.62
+        'avg_refreshes': 3.943,      # 旧 1.113(真供给逼出刷新需求)
     },
 }
 

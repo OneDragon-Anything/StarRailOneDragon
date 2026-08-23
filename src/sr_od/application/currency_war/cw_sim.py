@@ -150,6 +150,11 @@ class SimResult:
     # 同构 + sim 专属键挂 'sim' 下)。由 write_batch_ledger 落盘
     # sim_runs/<batch_id>/{decisions,outcomes}.jsonl 两流。
     ledger: list[dict] = field(default_factory=list)
+    # ADR-0284(批㉒ F1/F5):幻影再买提案数(已消费槽/店外构造;
+    # 真策略批次应恒 0)与牌池 take 地板命中数(copies≤0 仍 take;
+    # 槽消费落地后池超卖不可达,>0 = 池守恒破)
+    phantom_rebuys: int = 0
+    pool_floor_hits: int = 0
 
 
 class _Pool:
@@ -165,6 +170,9 @@ class _Pool:
 
     def __init__(self, rng: random.Random):
         self.rng = rng
+        # ADR-0284(批㉒ F5):take 逼近池地板时如实记(copies≤0
+        # 仍 take 的次数;旧 max(0,…) 静默吞——真批次应恒 0)
+        self.floor_hits: int = 0
         self.copies: dict[str, int] = {
             name: POOL_COPIES_PER_CARD[ch.cost]
             for name, ch in CHARACTERS.items()
@@ -191,6 +199,10 @@ class _Pool:
         return out
 
     def take(self, name: str) -> None:
+        # ADR-0284(批㉒ F5):池地板如实记——批㉒ 实测 27 份/卡
+        # 下地板不可达(潜伏),未来降池容量/共享池时 >0 即暴露。
+        if self.copies.get(name, 0) <= 0:
+            self.floor_hits += 1
         self.copies[name] = max(0, self.copies.get(name, 0) - 1)
 
     def ret(self, name: str) -> None:
@@ -816,6 +828,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
         _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
         _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
+        _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
         _acts: list[dict] = []
         _segs_used = 0
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
@@ -912,6 +925,32 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if len(st.bench) >= BENCH_CAPACITY:
                         _bench_full_skips += 1
                         continue
+                    # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
+                    # ——买走即下架(生产语义:槽买后消失)。旧 sim
+                    # 买入不消费槽 → 同槽幻影再买(批㉒ 账本实测
+                    # 65.13% 买轮含槽再买、单槽最高 6 连买),3合1
+                    # 被同槽重复点击无限兜底 → 成型类指标系统性
+                    # 偏乐观(批㉒ F3)。槽匹配:引用同一 → 同名
+                    # 兜底(策略构造副本形态);无槽且本轮曾上架
+                    # 该名 = 已消费槽再买 → 跳过(金/池不消费)+
+                    # 披露;本轮从未上架 = 店外构造(测试桩)→
+                    # legacy 执行 + 披露计数(真策略提案恒来自
+                    # st.shop,检查项 phantom_rebuy_disclosure 锁
+                    # 真批次恒 0)。
+                    _slot = next((c for c in st.shop if c is a.card),
+                                 None)
+                    if _slot is None:
+                        _slot = next(
+                            (c for c in st.shop
+                             if c.name == a.card.name), None)
+                    if _slot is not None:
+                        st.shop.remove(_slot)
+                    else:
+                        _phantom_rebuys += 1
+                        _offered = {c.get('name') for w in _waves
+                                    for c in w.get('cards') or []}
+                        if a.card.name in _offered:
+                            continue   # 已消费槽再买:不可执行
                     cards_pool.take(a.card.name)
                     st.gold -= a.card.cost
                     _ch = a.reason or 'unknown'
@@ -1124,6 +1163,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
                 # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
                 'bench_full_skipped_buys': _bench_full_skips,
+                # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
+                # 店外;真策略批次应恒 0,检查项归 0 锁)
+                'phantom_rebuys': _phantom_rebuys,
             },
         })
         if st.hp <= 0:
@@ -1132,6 +1174,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res.level = st.level
     res.locked_line = sess.locked_line
     res.bridge_id = sess.bridge_id
+    # ADR-0284:单局披露(幻影再买/池地板;真批次双 0)
+    res.phantom_rebuys = sum(
+        (row.get('sim') or {}).get('phantom_rebuys', 0)
+        for row in res.ledger)
+    res.pool_floor_hits = cards_pool.floor_hits
     return res
 
 
@@ -1200,6 +1247,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'bench_full_skipped_buys': sum(
             (row.get('sim') or {}).get('bench_full_skipped_buys', 0)
             for r in results for row in r.ledger),
+        # ADR-0284(批㉒ F1/F5):幻影再买提案与池 take 地板命中
+        # (真策略批次双 0;>0 = 槽消费回归/池守恒破)
+        'phantom_rebuys': sum(r.phantom_rebuys for r in results),
+        'pool_floor_hits': sum(r.pool_floor_hits for r in results),
     }
     if ledger is not False:
         out = (Path(ledger) if isinstance(ledger, Path)
