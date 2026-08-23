@@ -4,8 +4,9 @@
 全部集中在此,``DecisionV2Registry`` 可整体注入(A/B:两套注册表各跑
 一臂,sim 配对对照)——**禁止隐式排序、禁止散落硬编码**。
 
-数值口径(初版骨架,**未标定**——ADR-0290 实施序③:EARLY_WIN_DELTA
-真值化 + deploy 时序落地后才标定权重;当前值只求结构正确):
+数值口径(**已部分标定**,ADR-0293 首轮标定:refresh 族/目标件
+持有基线四参已按 20 局诊断+30 局配对验证标定;其余仍为骨架初值,
+后续批次继续):
 - 档位期望:P3 已证边际(e0→e1 +1.4 / e1→e2 +1.6 金/轮)→ 累计档值;
 - 战力:H3 阶梯矩阵胜率(e0 13.9% / e1 41.6% / e2 77.8%,n=187/89/9);
 - 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
@@ -108,9 +109,19 @@ class DecisionV2Registry:
     interest_rounds: float = 5.0
     #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
     rung_frac_per_recipe_tier: float = 0.3
-    #: 刷新常量 EV(板面查表不可预知新店 → 表外常量;未标定=0,
-    #: 骨架版不主动刷新;标定 gate 后换 P(配方件|刷) 期望模型)
-    refresh_ev: float = 0.0
+    #: 刷新常量 EV(板面查表不可预知新店 → 表外常量;**已标定**,
+    #: ADR-0293:2.5=早刷净收益(成本 2 + 0.5 方向期权);恒刷会
+    #: 抽干金流,配 refresh_max_round/refresh_min_gold 双门)
+    refresh_ev: float = 2.5
+    #: 刷新 EV 生效轮界(r≤ 此值才按 refresh_ev 计正值;超出恒负分
+    #: 不刷)。标定依据(ADR-0293):v1 r258 早期方向刷新 + 中期找件
+    #: (1.76 次/局);恒刷(=9)抽干金流挤死升级,过窄(=3)中期
+    #: 找件断供,双窗 A/B 定 6
+    refresh_max_round: int = 6
+    #: 刷新金保底(金< 此值不刷)。标定依据:无保底时刷后 re-decide
+    #: 链把早期金抽干至 <10,中期永远够不到满息平台 → [12] 息引擎
+    #: 门锁死晚期升级通道(0.45 次 vs v1 6.25 次;标定批诊断,ADR-0293)
+    refresh_min_gold: int = 20
     #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
     #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
     depth_unit_value: float = 2.0
@@ -121,9 +132,16 @@ class DecisionV2Registry:
     #: 目标件持有进度项(板面形态维:持有域内∈当前目标集的件数
     #: /基线,封顶计值——cap 饱和+店员非引擎阵营时买入恒 0 分被
     #: 「非正分」拒,r3-r6 空转攒金团灭的解;集合隶属计数,非
-    #: 单卡边际拆分;未标定)
+    #: 单卡边际拆分;base **已标定**=9(ADR-0293:base=6 时第 7 件
+    #: 起目标件 0 分,中期买入饥饿→板弱团灭;9 让第 7-9 件显影
+    #: 正分,30 局 mean 31.37/团灭 0)
     target_hold_value: float = 3.0
-    target_hold_base: int = 6
+    target_hold_base: int = 9
+    #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
+    #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
+    #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0
+    #: 双窗逐位同分(任何正值同等翻转 0 分卖)
+    off_target_sell_bias: float = 0.5
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -175,5 +193,6 @@ class DecisionV2Registry:
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'catchup')
 
 
-#: 默认注册表(骨架初版;A/B 时构造改动副本注入 DecisionV2Strategy)
+#: 默认注册表(ADR-0293 标定后;A/B 时构造改动副本注入
+#: DecisionV2Strategy)
 DEFAULT_REGISTRY = DecisionV2Registry()

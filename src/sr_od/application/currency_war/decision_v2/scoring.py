@@ -211,14 +211,27 @@ def score_candidate(cand: Candidate, state: GameState,
     base = score_state(state, registry, session)
     if cand.tag == 'refresh':
         # 刷新的板面形态不可预知(新店随机)→ 查表外常量 EV
-        # (未标定=0:骨架版不主动刷新;标定 gate 后接 P(hit) 期望)
-        val = registry.refresh_ev - (cand.action.cost or 0)
+        # (未标定=0:骨架版不主动刷新;标定 gate 后接 P(hit) 期望)。
+        # 轮界门(registry.refresh_max_round):早期方向刷新(v1 r258
+        # 同语义),中后期恒刷会抽干金流挤死升级通道(标定批诊断);
+        # 金保底门(refresh_min_gold):防刷后 re-decide 链把金抽干
+        # 至 <10,中期够不到满息平台锁死 [12] 息引擎(标定批诊断)
+        if (state.round_num > registry.refresh_max_round
+                or (state.gold or 0) < registry.refresh_min_gold):
+            val = -cand.action.cost or -1.0
+        else:
+            val = registry.refresh_ev - (cand.action.cost or 0)
         return val, {'base': base, 'after': None, 'refresh_ev': val}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
         return 0.0, {'base': base, 'after': None}
     after = score_state(after_state, registry, session)
     val = sum(after.values()) - sum(base.values())
+    if cand.tag in ('off_target', 'for_gold', 'free_bench'):
+        # 弱件换金偏置(registry.off_target_sell_bias):持有域溢出
+        # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
+        # 供刷新/买入(ADR-0291 遗留,ADR-0293 标定)
+        val += registry.off_target_sell_bias
     return val, {'base': base, 'after': after}
 
 
