@@ -137,6 +137,15 @@ class DecisionV2Registry:
     #: 正分,30 局 mean 31.37/团灭 0)
     target_hold_value: float = 3.0
     target_hold_base: int = 9
+    #: 形态域 bench 折减权重(ADR-0295 混合域):形态计数 deployed
+    #: 星级×1.0 主导、bench 星级×此权重折减——ADR-0293 残差根因
+    #: (持有域等权代理 r7-r8 全顶格而真实战力弱,seed 900032 一切
+    #: 买入 0.00 分)的定向修;初值 0.35 由 20 局诊断定(ADR-0295)
+    bench_form_weight: float = 0.35
+    #: 目标件持有进度项天花板系数(ADR-0295:持有进度保留显影但
+    #: 封顶折减——顶格不再=满形态;targets=min(此系数, n/base)
+    #: ×target_hold_value,未标定)
+    target_hold_cap_frac: float = 0.8
     #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
     #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0

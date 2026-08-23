@@ -49,26 +49,58 @@ def board_rung_x(state: GameState,
                  registry: DecisionV2Registry) -> float:
     """板面形态维 x:过渡体系数(整数档)+ 配方档小数(H3 插值用)。
 
-    形态域=**持有域**(deployed∪bench,未标定取舍):bench 件是
-    部署管线的直接储备(买后按 cap 上板),cap 饱和时买入的形态
-    期权只在持有域显影——纯 deployed 域下饱和后一切买入恒 0 分,
-    决策活性死(smoke 实证)。体系判定与 sim/判读同源
-    (cw_sim._engines_count:仙舟3/列车2/DOT2/希儿系);配方档小数
-    =recipe_tier/RECIPE_BASE × 系数(未标定)。标定 gate 后形态域
-    可整体换回 deployed 域(注入 registry/参数化)。
+    形态域=**混合域**(ADR-0295:deployed 星级×1.0 主导 + bench 星级
+    ×registry.bench_form_weight 折减)。ADR-0293 标定残差根因:持有域
+    (deployed∪bench 等权)形态代理在 r7-r8 全顶格而真实战力弱
+    (bench 囤种子件撑满代理 → 一切买入 0.00 分,seed 900032 实证)。
+    折减后 bench 件仍是形态期权(买入经部署管线上板即全额显影),
+    但囤 bench 不再封顶 rung。体系判定与 sim/判读同源
+    (cw_sim._engines_count:仙舟3/列车2/DOT2/希儿系;希儿系要求
+    希儿 deployed 在场——bench 希儿不算引擎,deployed 主导语义);
+    配方档小数 =recipe_tier/RECIPE_BASE × 系数(未标定)。
     """
-    from sr_od.application.currency_war.cw_sim import (
-        _board_counts_of,
-        _board_factions_of,
-        _engines_count,
-    )
-    held = _held_star_weighted(state)
-    names = frozenset(d.char_id for d in held
-                      if getattr(d, 'char_id', ''))
-    engines = _engines_count(_board_factions_of(held), names)
-    frac = min(recipe_tier(_board_counts_of(held)) / RECIPE_BASE, 1.0)
+    from sr_od.application.currency_war.cw_sim import _engines_count
+    fac, main, dep_names = _held_form_weights(state, registry)
+    engines = _engines_count(fac, dep_names)
+    frac = min(recipe_tier(main) / RECIPE_BASE, 1.0)
     return min(2.0, float(engines)
                + registry.rung_frac_per_recipe_tier * frac)
+
+
+def _held_form_weights(state: GameState,
+                       registry: DecisionV2Registry
+                       ) -> tuple[dict[str, float], dict[str, float],
+                                  frozenset[str]]:
+    """混合域加权聚合:(factions+flows 计数, 主阵营计数, deployed 名集)。
+
+    deployed 件按星级全额(与星级加权展开同口径),bench 件按
+    星级×bench_form_weight 折减(ADR-0295);聚合口径与 cw_sim
+    ._board_factions_of / _board_counts_of 同构(此处加权复刻而非
+    复用——cw_sim 计数函数按件数 +1,不支持分数权重)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    fac: dict[str, float] = {}
+    main: dict[str, float] = {}
+    dep_names: set[str] = set()
+
+    def _add(d, w: float) -> None:
+        ch = _CH.get(getattr(d, 'char_id', '') or '')
+        if ch is not None:
+            for f in (ch.factions or ()) + (ch.flows or ()):
+                fac[f] = fac.get(f, 0.0) + w
+        f0 = getattr(d, 'faction', '') or ''
+        if f0 and f0 != '?':
+            main[f0] = main.get(f0, 0.0) + w
+
+    for d in state.deployed or []:
+        star = max(1, int(getattr(d, 'star', 1) or 1))
+        _add(d, float(star))
+        if getattr(d, 'char_id', ''):
+            dep_names.add(d.char_id)
+    for d in state.bench or []:
+        star = max(1, int(getattr(d, 'star', 1) or 1))
+        _add(d, star * registry.bench_form_weight)
+    return fac, main, frozenset(dep_names)
 
 
 def _held_star_weighted(state: GameState) -> list:
@@ -77,7 +109,8 @@ def _held_star_weighted(state: GameState) -> list:
     3合1 合并(3 副本→1 件升星)在件数计数上是「掉件」,星级不
     加权时合并触发买被评负分(买入→合并→引擎/配方计数反降,
     smoke 实证 -13 分全弃)——星级加权让合并的战力显影为计数。
-    未标定代理;标定 gate 后随形态域整体可换。
+    ADR-0295 后仅服务目标件持有进度项(形态 rung 已换混合域加权,
+    见 _held_form_weights)。
     """
     held: list = []
     for d in (state.deployed or []) + (state.bench or []):
@@ -103,7 +136,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
                 if (state.gold or 0) >= registry.interest_floor else 0.0)
     # 目标件持有进度(集合隶属计数:持有域内∈目标集的星级加权
     # 件数/基线,封顶——形态维之一;cap 饱和时目标件的持有期权
-    # 在此项显影,未标定)
+    # 在此项显影,未标定)。ADR-0295:天花板折减(target_hold_
+    # cap_frac)——持有进度顶格不再=满形态(残差根因的配套修)
     targets = 0.0
     if session is not None:
         from sr_od.application.currency_war.decision_v2.candidates import (
@@ -114,7 +148,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
             held = _held_star_weighted(state)
             n = sum(1 for d in held
                     if getattr(d, 'char_id', '') in tset)
-            targets = (min(1.0, n / max(1, registry.target_hold_base))
+            targets = (min(registry.target_hold_cap_frac,
+                           n / max(1, registry.target_hold_base))
                        * registry.target_hold_value)
     depth = _deployable_depth(state) * registry.depth_unit_value
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
