@@ -869,6 +869,9 @@ def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
     差——win 侧校准落地前恒≈0(批⑪ 实测 26.9 vs 26.0,零耦合);
     落地后应显著为正,否则校准失败。违规 = 双侧都有局且差 ≤0
     (成型局不比未达局活得久 = 价值链仍断)。
+    小批护栏(ADR-0286):任一侧 <5 局 = 均值噪声主导,只披露不
+    判定(CI smoke n=25 曾以 formed_n=2 的 −0.35 假红;真批次
+    n≥300 两侧几十局起,护栏不削判定力)。
     """
     formed: list[int] = []
     unformed: list[int] = []
@@ -882,12 +885,17 @@ def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
          else unformed).append(int(hp))
     diff = (sum(formed) / len(formed) - sum(unformed) / len(unformed)) \
         if formed and unformed else None
-    violations = 1 if (diff is not None and diff <= 0) else 0
-    return {'violations': violations, 'formed_n': len(formed),
-            'unformed_n': len(unformed),
-            'formed_hp': round(sum(formed) / len(formed), 2) if formed else None,
-            'unformed_hp': round(sum(unformed) / len(unformed), 2) if unformed else None,
-            'diff': round(diff, 2) if diff is not None else None}
+    small_n = formed and unformed and min(len(formed), len(unformed)) < 5
+    violations = 1 if (diff is not None and diff <= 0
+                       and not small_n) else 0
+    out = {'violations': violations, 'formed_n': len(formed),
+           'unformed_n': len(unformed),
+           'formed_hp': round(sum(formed) / len(formed), 2) if formed else None,
+           'unformed_hp': round(sum(unformed) / len(unformed), 2) if unformed else None,
+           'diff': round(diff, 2) if diff is not None else None}
+    if small_n:
+        out['note'] = '样本不足(<5/侧)只披露不判定'
+    return out
 
 
 def check_levelup_binding(ledgers: list[list[dict]]) -> dict:

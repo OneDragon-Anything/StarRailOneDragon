@@ -5,15 +5,17 @@
 > 一行。用途:新字段的「三消费面」检查(策略/遥测/sim 代理,ADR-0219
 > 纪律)以此为底账;改 sim 接线时更新对应行。
 >
-> 对账:**已接 16(批前 13 + ADR-0271 接入 board + ADR-0276 接入
-> node_type/streak[session 口径])+ 必须接线 12 +
-> 观测冗余豁免 3 + 结构未建 5 = 36**。(任务书原锁 13+3+3+13=32 与
-> 字段总数 36 不符,按实测归类对账;批前「已接 13」与任务书口径一致。)
+> 对账:**已接 17(批前 13 + ADR-0271 接入 board + ADR-0276 接入
+> node_type/streak[session 口径]+ ADR-0286 接入 xp_progress/
+> refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0])+ 必须接线 12 +
+> 观测冗余豁免 3 + 结构未建 5 = 37**。(任务书原锁 13+3+3+13=32 与
+> 字段总数不符,按实测归类对账;批前「已接 13」与任务书口径一致;
+> ADR-0286 新增 deploy_cap 字段 → 总数 36→37。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
 > 栈(LineStrategy)影响面小;P3 = 随依赖结构建设顺带接入。
 
-## 一、已接线(16;sim 语义 = 生产语义或其 P1 域内真值)
+## 一、已接线(17;sim 语义 = 生产语义或其 P1 域内真值)
 
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
@@ -31,6 +33,9 @@
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
 | bench_full_flag | 恒 None → `bench_is_full()` 走 BENCH_CAPACITY=9 计数兜底 | OCR「备战席已满」警告 | 已接(兜底口径=生产 OCR 缺失路径同源;ADR-0271 后计数为真备战数) | — |
+| xp_progress | 买牌/买经验累 XP_PER_BUY,轮末升级按 XP_TO_NEXT_LEVEL 清零结转(ADR-0286) | XP 条 OCR;economy clicks_to_next_level/追级门 | 已接(ADR-0286 真值化——旧恒 None,clicks_to_next_level 恒按 0 进度估) | — |
+| refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表(ADR-0286) | 商店开态概率条 OCR(r77 轮岗:每备战阶段随机翻倍一档);line_strategy _sample_cost 实读消费 | 已接(ADR-0286 轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
+| deploy_cap | 宝钻通道参数化 diamond_cap_prob(每备战期以此概率 +1 宝钻,cap=level+宝钻数;默认 0 = 通道建好不注入,与旧树同态) | read_deploy_cap_debounced 防抖真值(cap<level/\|cap−level\|>2 重读一帧仍异拒 None);max_units() 优先消费、level 兜底 | 已接(通道;频率待实机语料统计后标定,ADR-0286) | P3 |
 
 ## 二、必须接线(12;决策消费存在,sim 未接)
 
@@ -38,11 +43,9 @@
 |---|---|---|---|---|
 | node_type | 决策前写 session.node_type_current(ADR-0276);state.node_type 仍不写 | 顶部标签 OCR;evaluate reward/boss 分、economy 利息门、boss 窗 | 已接(session 口径——策略消费读 session) | — |
 | streak | 结算后写 session.last_streak(ADR-0276);state.streak 仍不写 | 结算连胜 OCR;evaluate 连胜分、economy win_reward | 已接(session 口径;收入侧早已有 streak_gold) | — |
-| xp_progress | sim 本地 xp,未写 state | XP 条 OCR;economy 升级计划 _expected_level | 未接(数据已在手) | P1 |
 | level_up_cost | LevelUp 硬编码扣 4 | OCR 购买经验金币数;xp_click_cost 真值优先 | 未接(sim 4=fallback 值) | P1 |
 | selected_difficulty | 恒 ""(阈值回退 40) | 难度确认屏;effective_hp_threshold 职级表 | 未接(应按模拟难度设 A8) | P1 |
 | board_next_tier | 恒 {} | 左面板 X/Y 的 Y(聚焦裁切 OCR);comp/progress 距档评分 | 未接(可由 FACTIONS 注册表派生) | P1 |
-| refresh_probs | 恒 None(退基线表) | 商店开态概率条 OCR(r77 轮岗:每备战阶段随机翻倍一档);line_strategy _sample_cost 实读消费 | 未接(轮岗机制未采样——sim 恒用基线表,轮岗局供给结构失真) | P1 |
 | active_strategies | 恒 [] | 已持有投资策略;economy 聚合/spend_mode/effect_ledger | 未接(投资策略事件层未建,见结构未建) | P2 |
 | active_env | 恒 "" | 已选投资环境(简报);ENV_COMP_AFFINITY | 未接(环境选择层未建) | P2 |
 | enemy_affixes | 恒 [] | 简报词缀;mechanics_fit | 未接(简报层未建) | P2 |
@@ -76,9 +79,11 @@
   (9.64 均值)——候选件合法持位形态,非副本堆积;滞留金 2.17×
   未收敛,残差定位到 P1 末段花金通道(P2 继承价值 sim 不可判),
   以 `sim_endgold_calib` 披露追踪。
-- **轮岗未采样**(refresh_probs 行):投资环境轮岗每备战阶段随机
-  翻倍一档费用概率,sim 恒基线表——供给分布与 D牌期望类结论的
-  分布尾部失真。
+- **轮岗已建模**(ADR-0286):每备战期 20% 掷轮岗(随机可翻倍档 ×2,
+  其余档重归一),draw_shop/_sample_cost 消费轮岗后表——对齐生产 20%
+  帧率(批㉓ F4);lv1-3 纯 1 费无可翻倍档恒基线,与生产同态。
+- **宝钻 cap 通道参数化、默认 0**(ADR-0286):cap=level+宝钻数的获取
+  频率待实机语料统计(replay cap 键落地后可采),标定前 baseline 不注入。
 - **boss 胜负面已校准**(ADR-0277):回退路径胜率=f(成型度),
   但幅度层「大胜 boss」未建模、rung≥3 无样本——hp 类 A/B 方向
   可信、点值 ±30% 浮动。
