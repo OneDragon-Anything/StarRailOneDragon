@@ -169,15 +169,21 @@ class LineStrategy(DefaultCwStrategy):
         counter/降级显式路径,Phase A 只降级装置)。
         """
         if session.locked_line is None:
-            # ⑧-1 修复:锁信号加「可负担/已持有」门——商店可见
-            # 但买不起的 CARRY 不锁(对抗8:金<3 刷出姬子即锁线
-            # → 之后只认名单卡,桥件停买,空过挨打)。
-            # owned(bench+deployed)的名字不受此门(已在手)
+            # ⑧-1 修复 → 批⑨ F2 裁决降级(ADR-0278):「可负担/已持有」
+            # 门**不再过滤锁信号**——实机 0/353 帧 + sim 0/300 局双侧
+            # 零咬合(门从不改变 check_core_signal 结果,纯死门 + 未来
+            # 误拦风险:金回流的帧本可锁线)。降级为日志观测:门本会
+            # 过滤掉锁定信号的帧(锁定卡不在 持有∪可负担 集)记日志,
+            # 供跨局对照(若观测到门曾实质拦截,凭日志恢复门)。
             names = self._visible_names(state)
-            affordable = self._affordable_cores(state)
-            owned = self._owned_names(state)
-            r = check_core_signal(
-                [n for n in names if n in owned or n in affordable])
+            r = check_core_signal(names)
+            if r.locked:
+                gated = (self._owned_names(state)
+                         | self._affordable_cores(state))
+                if r.matched_name not in gated:
+                    log.info('[cw][v2] ⑧-1 可负担门(已降级,ADR-0278)'
+                             '观测:锁定卡 %s 不在 持有∪可负担 集'
+                             '(旧门本会拦截此锁线)', r.matched_name)
             if r.locked:
                 session.locked_line = r.line_id
                 self._feed(session, 'E7_lock')
