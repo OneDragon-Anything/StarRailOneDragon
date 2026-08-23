@@ -48,12 +48,20 @@ _sell_scatter_for_precache / _sell_for_gold)在同一张卡上互踩:
    不触发」——「未持有」在满员态先判容量;卖了腾位后的同轮买入由调用方
    st2(卖出后状态)承载,且被门 1 拦住振荡环。
 3. **对称臂:同轮已卖不回买**(锁测试发现):卖通道提案即时入
-   `v2_round_sold`,engine_seed / copy 标签 / pair 凑对通道对集内
-   卡名禁买——否则「卖通道刚卖→st2(卖出后状态)见未持有→同
-   call 买回」以 1 对/轮的缩幅永动机存活(每轮仍白拿 4 XP、
+   `v2_round_sold`,engine_seed / copy 标签 / pair 凑对 / line 通道
+   对集内卡名禁买——否则「卖通道刚卖→st2(卖出后状态)见未持有→
+   同 call 买回」以 1 对/轮的缩幅永动机存活(每轮仍白拿 4 XP、
    引擎种子仍归零;copy 通道的「买副本→卖冗余→再买副本」同病)。
    卖出提案在生成点写入(`_sell_for_interest` 的撤销分支只记
    最终存活提案)。
+4. **批内 SellBench 索引降序(r408b 补漏,指挥官验收发现)**:同批
+   多条 SellBench 的 bench_idx 都基于**卖出前** bench——执行器
+   (sim/实机 op)逐条 pop,先弹低 idx 把后续提案 idx 左移 →
+   **卖错名**(seed57 r4:提案卖青雀,弹掉 idx0 刃后实卖本轮已买
+   的娜塔莎——按名互斥被索引漂移绕过;n=60 残留 5 局 seed
+   25/36/56/57/58 的根因)。修:decide_prep 薄包装内批内
+   SellBench 按 idx **降序**重排(先弹高 idx 不影响低 idx,
+   提案名=实打名;买/升/刷保持原位)。
 
 合法动作保持:先卖后买的同轮序(卖杂牌腾位→买方向件)不受限——互斥只禁
 「买→卖」方向;跨轮买卖(合理倒手,r383b copy 语义)不在辖内。
@@ -89,5 +97,8 @@ _sell_scatter_for_precache / _sell_for_gold)在同一张卡上互踩:
 - 复现探针(修前 7 对/修后 0,用完即删);单帧锁
   `test_cw_r408_round_buy_sell_mutex.py`:互斥(买了不卖)/容量门(满员
   不买)/3合1 让位豁免/振荡 XP 不再白拿(多段循环零 buy-sell 对)/换轮
-  重置+对称臂(刚卖同名不回买)。
+  重置+对称臂(刚卖同名不回买)/批内降序(索引不漂移)/5 残留 seed
+  逐局重放零违规(25/36/56/57/58)。
+- 验收口径:`simulate_p1_batch(n=60, pool='snapshot', seed_base=0)`
+  的 `no_same_round_buy_sell` = 0(指挥官验收发现的残留已归零)。
 - sim A/B:归下段(压测官批次对照,hp/engines2 分布以 batch 报告为准)。

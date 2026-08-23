@@ -286,6 +286,23 @@ class LineStrategy(DefaultCwStrategy):
             session.v2_round_bought = set()
             session.v2_round_sold = set()
         acts = self._decide_prep_dispatch(state, session, config)
+        # r408b(ADR-0267 补漏:索引漂移):同一动作批内多条 SellBench
+        # 的 bench_idx 都基于**卖出前的 bench**——执行器(sim/实机 op)
+        # 逐条 pop,先弹的低 idx 把后续提案的 idx 全部左移 → 卖错名
+        # (r4 提案 卖青雀 实卖娜塔莎——本轮已买件,F1 残留 5 局的
+        # 根因,seed 25/36/56/57/58 实证)。修:批内 SellBench 按
+        # idx **降序**重排(先弹高 idx 不影响低 idx,名称语义
+        # 不变);只重排卖出的相对序,买/升/刷保持原位。
+        _sell_pos = [i for i, a in enumerate(acts)
+                     if isinstance(a, SellBench)]
+        if len(_sell_pos) > 1:
+            _sorted_pos = sorted(
+                _sell_pos,
+                key=lambda i: acts[i].bench_idx, reverse=True)
+            _reordered = [acts[i] for i in _sorted_pos]
+            for _dst, _sell_a in zip(_sell_pos, _reordered,
+                                     strict=True):
+                acts[_dst] = _sell_a
         if state.gold >= _INTEREST_FLOOR:
             session.v2_ever_full_interest = True
         session.v2_round_bought.update(
@@ -829,7 +846,8 @@ class LineStrategy(DefaultCwStrategy):
         判据面)。flags 与各调用点原 OR 链谓词集**严格一致**
         (不多查谓词 = 行为不变,只加标签)。
         """
-        if self._line_wants(card, state, session):
+        if self._line_wants(card, state, session) \
+                and not self._in_round_sold(card.name, state, session):
             return 'line'
         if include_bridge and self._bridge_seed(card, state):
             return 'bridge_seed'
