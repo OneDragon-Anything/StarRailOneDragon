@@ -68,6 +68,50 @@ battle-only 口径(普通战斗/遭遇/boss)同型:tier7+ core1 100%
 - tier7+ 各格样本 ≥10 后重跑本文脚本
   (`.debug/temp/currency_war/cw_dev/h3_crosstab.py`,参数化在头部)。
 
+## 真 core 口径首版(2026-08-24 升级;deployed 同轮联结)
+
+「遥测补 deployed 角色名」已核实**不必改采集端**:decisions 行
+`state.deployed[].char_id` 历史覆盖 94.1%,按 `(run_id, round_num)`
+同轮联结 outcomes 命中 169/170(all)/61/62(battle)——角色名
+一直躺在语料里,升级是纯离线活
+(脚本 `.debug/temp/currency_war/cw_dev/h3_trio_crosstab.py`,
+报告 `h3_trio_report.json`,随语料增长可重跑)。
+
+**口径两版**:①对全体 comp 取 core 最大重叠——**弃用**(任何
+阵容都撞得上某个 comp 的 core,指标膨胀:无 core0 格,vs 阵营
+代理 core0 n=64);②**主导 comp 锚定**(板面阵营与 comp 声明的
+factions 最大重叠者为该局主导 comp,数其 core_chars 在场数)——
+正口径,产生 core0 格。
+
+**首版结果(killed 权威口径,core=主导 comp 的 core 在场数)**:
+
+| 档位 | core | n(all) | 败率(all) | n(battle) | 败率(battle) |
+|---|---|---|---|---|---|
+| tier<5 | 0 | 30 | 36.7% | 12 | 75.0% |
+| tier<5 | 1 | 75 | 36.0% | 23 | 73.9% |
+| tier<5 | 2 | 5 | 80.0% | 1 | —(n<3) |
+| tier5-6 | 0 | 14 | 57.1% | 7 | 57.1% |
+| tier5-6 | 1 | 23 | 78.3% | 13 | 92.3% |
+| tier5-6 | 2 | 5 | 60.0% | 1 | —(n<3) |
+| tier7+ | 0 | 4 | 25.0% | 2 | —(n<3) |
+| tier7+ | 1 | 12 | 75.0% | 2 | —(n<3) |
+| tier7+ | 2 | 1 | —(n<3) | 0 | — |
+
+**判读(诚实边界)**:
+
+1. **tier7+ 梯度结论在新口径下证据不足**:battle 口径各格 n≤2,
+   阵营代理版的「core1 100% vs core2 50%」在真 core 口径重排为
+   core1 n=12(75%)/core2 n=1——**方向不再可叙述**。上文的
+   50pp 梯度结论**证据等级降为「未确认」**(两口径的 core 定义
+   不同,格子不可直接对照);
+2. **意外信号(仅登记)**:tier5-6 出现 core1(78.3%,n=23)>
+   core0(57.1%,n=14)的反向差 21pp——与「更多 core 更少损失」
+   预期反号;混杂因素未控:同桶内后期轮 core 更全且敌人更强
+   (轮次/难度未分层),不构成结论;
+3. **结论**:档内 trio 梯度的裁决仍需语料增长,脚本已就绪随局数
+   自动收敛;「档内细分只挂 tier≥7」的消费建议维持,但前提
+   (tier7+ 有独立梯度)当前未获真 core 口径支持。
+
 ## 来源
 
 - 脚本:`.debug/temp/currency_war/cw_dev/h3_crosstab.py`(2026-08-25);
