@@ -264,6 +264,15 @@ class StrategySession:
     # r246:普通战斗败检测的上一轮 HP(r246 P2 三连败实锤——
     # hp_after 降幅 ≥10 = 节点实际打输,喂 E1_miss 攒滞回)
     v2_prev_hp: int | None = None
+    # r408(ADR-0267,F1 振荡):同轮已买集(round-scoped)——
+    # key=(plane, round_num),轮变更时由 LineStrategy.decide_prep 重置;
+    # 卖通道对集内卡名禁卖(3合1 让位豁免见 line_strategy._round_sell_blocked)。
+    # 重启/重放丢 session → 空集保守(只失去互斥,不引入新行为)。
+    v2_round_key: tuple | None = None
+    v2_round_bought: set[str] = field(default_factory=set)
+    # r408 对称臂:同轮已卖集——engine_seed 对集内卡名禁买(防
+    # 「卖通道刚卖→st2 见未持有→同 call 买回」的缩幅永动机,1 对/轮)。
+    v2_round_sold: set[str] = field(default_factory=set)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;

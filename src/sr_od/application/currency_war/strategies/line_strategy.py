@@ -53,6 +53,7 @@ from sr_od.application.currency_war.cw_state import (
     BuyCard,
     GameState,
     LevelUp,
+    SellBench,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.strategies.default_strategy import (
@@ -274,10 +275,28 @@ class LineStrategy(DefaultCwStrategy):
         r406(ADR-0266):薄包装——分发后采样息引擎(时点金≥50 记
         「曾达满息」,局内单调)。采样在**分发之后**:本笔决策的
         升级门读的是「此前是否曾达」——首次到 56 的当轮不受自家
-        采样解锁(否则一轮内满金→花光的追级形态门失效)。"""
+        采样解锁(否则一轮内满金→花光的追级形态门失效)。
+        r408(ADR-0267,F1 振荡):同轮已买/已卖集维护——段间(round 内
+        8 段)买过的卡名入集,卖通道对集内卡名禁卖;卖过的卡名入
+        已卖集,engine_seed 对集内卡名禁买(防同 call 卖→买回),
+        一起拆掉「engine_seed 买→卖通道卖→engine_seed 再买」永动机。"""
+        key = (state.plane, state.round_num)
+        if session.v2_round_key != key:
+            session.v2_round_key = key
+            session.v2_round_bought = set()
+            session.v2_round_sold = set()
         acts = self._decide_prep_dispatch(state, session, config)
         if state.gold >= _INTEREST_FLOOR:
             session.v2_ever_full_interest = True
+        session.v2_round_bought.update(
+            a.card.name for a in acts
+            if isinstance(a, BuyCard) and a.card.name)
+        for a in acts:
+            if isinstance(a, SellBench) \
+                    and 0 <= a.bench_idx < len(state.bench or []):
+                _n = state.bench[a.bench_idx].char_id
+                if _n:
+                    session.v2_round_sold.add(_n)
         return acts
 
     def _decide_prep_dispatch(self, state: GameState,
@@ -516,7 +535,7 @@ class LineStrategy(DefaultCwStrategy):
             (c for c in (st2.shop or state.shop or [])
              if c.name and (self._line_wants(c, st2, session)
                             or self._pair_wants(c, st2, session)
-                            or self._engine_seed_wants(c, st2))
+                            or self._engine_seed_wants(c, st2, session))
              and c.cost <= budget),
             key=lambda c: -c.cost)     # 降序:买得起的最强
         for card in wants:
@@ -816,7 +835,7 @@ class LineStrategy(DefaultCwStrategy):
             return 'bridge_seed'
         # A3 修复1(ADR-0260):P1 引擎件放行通道——与 seed/pair 门
         # 并行(不推翻既有判据,加一条放行)。判据见 _engine_seed_wants。
-        if self._engine_seed_wants(card, state):
+        if self._engine_seed_wants(card, state, session):
             return 'engine_seed'
         if include_p2_core and self._p2_core_wants(card, state, session):
             return 'p2_core'
@@ -828,7 +847,11 @@ class LineStrategy(DefaultCwStrategy):
             # (check_coldstart_seed_squander)按 reason∈{pair,off}
             # 报门失效;副本素材是 r383b 的合法放行(口述[15]),
             # 必须与门失效形态区分,否则检查器对合法行为空转报警。
-            if LineStrategy._has_same_name_copy(card, state):
+            # r408(ADR-0267 对称臂辖 copy):本轮刚卖过同名 → 不回买
+            # (copy 通道的「买副本→卖冗余→再买副本」是缩幅振荡,
+            # 白拿 XP 同 F1;3合1 素材跨轮照买)。
+            if LineStrategy._has_same_name_copy(card, state) \
+                    and not self._in_round_sold(card.name, state, session):
                 return 'copy'
             return classify_buy(card, state)
         return ''
@@ -947,6 +970,8 @@ class LineStrategy(DefaultCwStrategy):
         for i, b in enumerate(state.bench):
             if not b.char_id or b.char_id in protect:
                 continue
+            if self._round_sell_blocked(b, state, session):
+                continue   # r408(ADR-0267):为买而卖也不吃刚买的件
             ch = CHARACTERS.get(b.char_id)
             if ch is None:
                 continue
@@ -958,6 +983,7 @@ class LineStrategy(DefaultCwStrategy):
             return []
         log.info('[cw][sell4gold] 腾金:卖 bench[%d](回收 %d)买 %s(差 %d)',
                  best[0], best[1], want.name, shortfall)
+        session.v2_round_sold.add(state.bench[best[0]].char_id)   # r408
         return [SellBench(best[0]), BuyCard(want, reason='swap')]
 
     def _sell_off_target(self, state: GameState,
@@ -975,8 +1001,10 @@ class LineStrategy(DefaultCwStrategy):
             if len(out) >= cap:
                 break
             if bc.char_id and bc.char_id not in protect \
-                    and bc.faction not in close:
+                    and bc.faction not in close \
+                    and not self._round_sell_blocked(bc, state, session):
                 out.append(SellBench(bench_idx=i))
+                session.v2_round_sold.add(bc.char_id)   # r408 同轮已卖集
         return out
 
     @staticmethod
@@ -1006,6 +1034,42 @@ class LineStrategy(DefaultCwStrategy):
                 protect.update(line.opportunistic_cards)
         return protect
 
+    @staticmethod
+    def _round_sell_blocked(bc, state: GameState,
+                            session: StrategySession) -> bool:
+        """r408(ADR-0267,F1 振荡):同轮买卖互斥——本轮已买入的
+        卡名,卖通道不得卖出(买→卖→买的永动机拆解)。
+
+        3合1 让位豁免:同名副本(星级加权,同 _buy_guards 口径)≥3
+        = 合成后冗余件,卖出是让位非振荡,放行。
+        轮键不匹配(重启丢 session/跨轮残留)→ 空集保守。"""
+        if not getattr(bc, 'char_id', ''):
+            return False
+        sess = session
+        if getattr(sess, 'v2_round_key', None) \
+                != (state.plane, state.round_num):
+            return False
+        if bc.char_id not in (getattr(sess, 'v2_round_bought', None) or ()):
+            return False
+        copies = sum(getattr(b, 'star', 1) or 1
+                     for b in (state.bench or [])
+                     if b.char_id == bc.char_id)
+        copies += sum(getattr(d, 'star', 1) or 1
+                      for d in (state.deployed or [])
+                      if getattr(d, 'char_id', '') == bc.char_id)
+        return copies < 3
+
+    @staticmethod
+    def _in_round_sold(name: str, state: GameState,
+                       session: StrategySession) -> bool:
+        """r408(ADR-0267 对称臂):该卡名本轮是否刚被卖出(买通道
+        回读——engine_seed/copy 不回买;轮键不匹配保守 False)。"""
+        if not name:
+            return False
+        return (getattr(session, 'v2_round_key', None)
+                == (state.plane, state.round_num)
+                and name in (getattr(session, 'v2_round_sold', None) or ()))
+
     def _sell_scatter_for_precache(self, state: GameState,
                                    session: StrategySession) -> list:
         """r257 P1 末卖散腾囤位:bench 满(>7)时卖非保护件
@@ -1023,7 +1087,10 @@ class LineStrategy(DefaultCwStrategy):
                 break
             if not b.char_id or b.char_id in protect:
                 continue
+            if self._round_sell_blocked(b, state, session):
+                continue   # r408(ADR-0267):同轮已买不让位(3合1 豁免内放行)
             out.append(SellBench(i, income=self._refund_of(b)))
+            session.v2_round_sold.add(b.char_id)   # r408 同轮已卖集
         return out[:2]
 
     def _sell_for_interest(self, state: GameState,
@@ -1050,6 +1117,8 @@ class LineStrategy(DefaultCwStrategy):
             if bc.char_id in protect or bc.faction in close \
                     or not bc.char_id:
                 continue
+            if self._round_sell_blocked(bc, state, session):
+                continue   # r408(ADR-0267):同轮已买禁卖(3合1 豁免内放行)
             ch = CHARACTERS.get(bc.char_id)
             cost = ch.cost if (ch and ch.cost) else 3
             refund = sell_refund(bc.star, cost)
@@ -1073,6 +1142,11 @@ class LineStrategy(DefaultCwStrategy):
         # 全程没跨档(白卖)→ 撤销
         if sold and (state.gold + total) // 10 == state.gold // 10:
             sold = []
+        for s in sold:   # r408:最终存活提案才入同轮已卖集(撤销的不入)
+            _bc = state.bench[s.bench_idx] \
+                if 0 <= s.bench_idx < len(state.bench) else None
+            if _bc and _bc.char_id:
+                session.v2_round_sold.add(_bc.char_id)
         return sold
 
     def _war_actions(self, state: GameState,
@@ -1107,7 +1181,8 @@ class LineStrategy(DefaultCwStrategy):
         return actions
 
     @staticmethod
-    def _engine_seed_wants(card, state: GameState) -> bool:
+    def _engine_seed_wants(card, state: GameState,
+                           session: StrategySession | None = None) -> bool:
         """A3 修复1(ADR-0260):P1 过渡期引擎件放行通道。
 
         实弹判读(A3_实机弹药 v2.1,局63-67 五局 48 次引擎件上架
@@ -1123,11 +1198,26 @@ class LineStrategy(DefaultCwStrategy):
            持续伤害——与 deploy 侧 ignition_gain 同源,import 不复制);
         ③ 未持有(bench+deployed 无同名;同名副本仍走 r383b copy 门,
            copies<3 上限仍归 _buy_guards);
-        ④ 金够/不破息档:由调用方 rem-cost<floor 语义保留(与
+        ④ 容量门(r408,ADR-0267 F1):bench 满员不触发——「未持有」
+           判据在满员态与卖出态构成永动机(买→被卖→又未持有→再买),
+           满员时先判容量;卖了腾位的同轮购买由调用方 st2(卖出后
+           状态)承载,且被同轮买卖互斥拦住振荡环;
+        ⑤ 同轮已卖不回买(r408 对称臂):session 的 v2_round_sold
+           含该卡名 → 不买(防「卖通道刚卖→st2 见未持有→同 call
+           买回」的缩幅永动机);session=None(旧调用)不辖;
+        ⑥ 金够/不破息档:由调用方 rem-cost<floor 语义保留(与
            seed/pair 门同一地板纪律,本门不加价)。
         """
         if not card.name or state.plane != 1:
             return False
+        if len(state.bench or []) >= 9:
+            return False   # r408:满员不种(ADR-0267 F1 容量门)
+        if session is not None \
+                and getattr(session, 'v2_round_key', None) \
+                == (state.plane, state.round_num) \
+                and card.name in (getattr(session, 'v2_round_sold',
+                                          None) or ()):
+            return False   # r408:本轮刚卖过,不回买
         from sr_od.application.currency_war.cw_chars import CHARACTERS
         from sr_od.application.currency_war.cw_deploy_logic import (
             TRANSITION_TRAITS,
@@ -1225,6 +1315,13 @@ class LineStrategy(DefaultCwStrategy):
         # 飞霄/乱破/风堇/千冶·刃 4 张自带,owned 非空 → r368 门
         # 不触发 → 阿格莱雅(昼之半神)对上自带的 风堇 凑对放行,
         # 又一张线外)。开局轮内任何线外 1 费凑对都是局49 病。
+        # r408(ADR-0267 对称臂辖 pair):本轮刚卖过的卡名,pair 通道
+        # 不回买(副本/冷启动引擎标签的「卖→买回」缩幅振荡,白拿
+        # XP 同 F1;3合1 素材与方向件跨轮照买)。session=None
+        # (旧调用)不辖。
+        if session is not None \
+                and LineStrategy._in_round_sold(card.name, state, session):
+            return False
         if not owned_factions or (state.plane == 1
                                   and state.round_num <= 2):
             from sr_od.application.currency_war.cw_line_defs import (
