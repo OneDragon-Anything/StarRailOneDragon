@@ -1135,6 +1135,29 @@ def check_bond_fallback_purchase_validity(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_hp_ge60_frame_lock(rows: list[dict]) -> list[str]:
+    """批㉚ F1(锚帧位锁):sim 锚 hp_ge_60 的口径 = **r9 boss 结算后**
+    的末行 hp(sim 结算先于账本 append,cw_sim L1153→L1207)。
+
+    锁的语义:完整局(末行 round_num==9)末行 node 必须 == 'boss'
+    ——若未来部署/结算/账本时序改动把末行变成 boss 前帧,锚值会
+    静默漂移到「boss 前血量」口径,与实机对照时产生帧错位伪裂口
+    (批㉚实证:prep 帧口径实机 26.1% vs 结算后口径 9.5%,同一批
+    数据差 16.6pp)。生产对照必须用 outcomes hp_after(结算后帧)
+    ——decisions 末行是备战帧、runs.jsonl final_hp 含接管段 100
+    误读污染,两者都不可作 hp_ge_60 对照锚。
+    """
+    if not rows:
+        return []
+    last = rows[-1]
+    if (last.get('round_num') or 0) == 9 \
+            and (last.get('sim') or {}).get('node') != 'boss':
+        return [
+            f"完整局末行 node={(last.get('sim') or {}).get('node')}"
+            f"≠boss:锚帧位漂移,hp_ge_60 不再是结算后口径(批㉚ F1)"]
+    return []
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -1164,6 +1187,7 @@ _BATCH_CHECKS = {
     'no_future_carry_sold': check_no_future_carry_sold,
     'dead_system_second_pivot': check_dead_system_second_pivot,
     'degrade_recover_mutex': check_degrade_recover_mutex,
+    'hp_ge60_frame_lock': check_hp_ge60_frame_lock,
 }
 
 
@@ -2742,6 +2766,115 @@ def check_adr0266_ab_guard(interest_delta: float,
                     '效应存在;主臂出现该形态 = 门被绕过的回归信号'}
 
 
+# --- ADR-0291(决策框架 v2 骨架批)检查项 -----------------------------
+
+def check_decision_v2_candidate_coverage(
+        ledgers: list[list[dict]] | None = None) -> dict:
+    """ADR-0291:候选生成必须覆盖全部合法动作类(decision_v2)。
+
+    两层判据:
+    ① **结构层(恒跑)**:对合成探针状态直接调
+       ``decision_v2.candidates.generate_candidates``——探针覆盖各
+       动作类的触发态(店有目标卡/bench 有杂件/bench 近满/有可上件/
+       同名 2 份+店有第 3 张),生成候选的动作类并集必须 == 全部
+       合法动作类(买/卖/LevelUp/Refresh/Deploy/合成)。层1 枚举
+       义务(ADR-0290)的回归锁:新增动作类型而生成器没枚举 → 红。
+    ② **执行层(账本有 d2_ 前缀 reason 时才辖)**:decision_v2 批次
+       的全批已执行动作类必须含 BuyCard/LevelUp(每批必然态,缺 =
+       死路形态);deploy/refresh/合成可策略性零采纳 → 披露不辖。
+    """
+    from sr_od.application.currency_war.cw_state import (
+        BenchChar,
+        GameState,
+        ShopCard,
+    )
+    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        ACTION_CLASSES,
+        generate_candidates,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    violations: list[str] = []
+    seen_classes: set[str] = set()
+    # 探针:锁线态(carry 在店=买;杂件在 bench=卖;等级<10+金足=
+    # LevelUp;恒 Refresh;cap 未满+围栏认可=Deploy;同名 2 份+店有
+    # 第 3 张=合成)
+    s = GameState()
+    s.plane, s.round_num, s.level, s.gold, s.hp = 1, 5, 5, 60, 80
+    s.board = {'仙舟': 2, '持续伤害': 1}
+    s.deployed = [BenchChar(slot=0, char_id='藿藿', faction='仙舟'),
+                  BenchChar(slot=1, char_id='爻光', faction='仙舟')]
+    s.bench = [BenchChar(slot=0, char_id='丹恒·饮月', faction='仙舟'),
+               BenchChar(slot=1, char_id='青雀', faction='仙舟'),
+               BenchChar(slot=2, char_id='娜塔莎', faction='护盾')]
+    s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
+              ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
+    sess = StrategySession()
+    sess.locked_line = 'jizi'
+    sess.bridge_id = None
+    for cand in generate_candidates(s, sess, DEFAULT_REGISTRY):
+        if cand.merge:
+            seen_classes.add('synthesize')
+        elif cand.tag in ('line_carry', 'line_opportunistic',
+                          'bridge_core', 'bond_fallback', 'carry_gate'):
+            seen_classes.add('buy')
+        elif cand.tag in ('off_target', 'for_gold', 'free_bench'):
+            seen_classes.add('sell')
+        else:
+            seen_classes.add(cand.tag)   # levelup / refresh / deploy
+    missing = ACTION_CLASSES - seen_classes
+    if missing:
+        violations.append(f'结构层:生成器未覆盖动作类 {sorted(missing)}')
+    # ② 执行层(仅 decision_v2 批次辖)
+    exec_classes: set[str] = set()
+    is_d2 = False
+    if ledgers:
+        for rows in ledgers:
+            for row in rows:
+                for a in row.get('actions') or []:
+                    r = a.get('reason') or ''
+                    if r.startswith('d2_'):
+                        is_d2 = True
+                        if a.get('__type__') == 'BuyCard':
+                            exec_classes.add(
+                                'synthesize' if r.endswith('_merge')
+                                else 'buy')
+                        else:
+                            exec_classes.add(a.get('__type__', ''))
+        if is_d2 and not ({'BuyCard', 'LevelUp'} & exec_classes):
+            violations.append(
+                f'执行层:d2 批次零 BuyCard/LevelUp(死路形态:'
+                f'已执行类={sorted(exec_classes)})')
+    return {'violations': len(violations), 'detail': violations,
+            'struct_classes': sorted(seen_classes),
+            'exec_classes': sorted(exec_classes) if is_d2 else None,
+            'note': '结构层恒辖;执行层仅 d2_ 前缀批次辖,buy/levelup '
+                    '必现,deploy/refresh/合成披露不辖'}
+
+
+def check_decision_v2_arbiter_matrix() -> dict:
+    """ADR-0291:仲裁器完备性审计表无空格(资源维×回合态维)。
+
+    判据(ADR-0290 对抗修订④):``decision_v2.registry`` 的审计矩阵
+    每格=约束名(存在于 constraints 清单)或显式 ``('none', 原因)``
+    声明;空格/未知约束名=违规。新增动作类型或资源维时本检查强制
+    过检(通道制漏门病 r408/[32] 全是事后补的根治)。
+    """
+    from sr_od.application.currency_war.decision_v2.arbiter import (
+        build_audit_report,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    rep = build_audit_report(DEFAULT_REGISTRY)
+    return {'violations': len(rep['violations']),
+            'detail': rep['violations'],
+            'matrix': rep['matrix'],
+            'constraints': rep['constraints']}
+
+
 # --- 清偿批:批级聚合入口(cw_sim 接线随 worker X 合流) ---------
 
 def run_batch_level_checks(ledgers: list[list[dict]],
@@ -2793,6 +2926,11 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             check_recipe_refresh_ev_guard(ledgers),
         'boss_round_real_actions':
             check_boss_round_real_actions(ledgers),
+        # ADR-0291(决策框架 v2 骨架批):候选覆盖面 + 审计表完备性
+        'decision_v2_candidate_coverage':
+            check_decision_v2_candidate_coverage(ledgers),
+        'decision_v2_arbiter_matrix':
+            check_decision_v2_arbiter_matrix(),
     }
     if pool_map is not None:
         out['encounter_rung_sample_budget'] = \
