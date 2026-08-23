@@ -26,6 +26,11 @@ from sr_od.application.currency_war.cw_state import (
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision_v2.filters import (
+    _CRISIS_BUY_BIAS,
+    _CRISIS_BUY_TAGS,
+    crisis_hoard_active,
+)
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
@@ -319,6 +324,15 @@ def score_candidate(cand: Candidate, state: GameState,
                     and (state.gold or 0) < registry.refresh_starve_gold):
                 ev *= registry.refresh_starve_discount
             val = ev - (cand.action.cost or 0)
+        # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40)
+        # 的刷新=定向搜战力件(常规轮界门辖不到 r7+ 危机窗;批㉝
+        # F3 实证:seed 75 危机尾段店无战力件,囤金无变现通道)。
+        # 止步线=囤金线 40(<40 crisis 态解除→回常规门,r7+ 恒负分);
+        # 买侧息崖仍在(52→49 的买不被翻越)——危机搜牌属 [18]
+        # 「位面末最后一战 ALL IN」例外域
+        if crisis_hoard_active(state, registry):
+            val = max(val,
+                      registry.refresh_ev - (cand.action.cost or 0))
         # ADR-0301 成型找件通道(域 b):未成型+店无引擎件时刷新=
         # 定向找件,独立轮界/金门(常规门辖不到 r7 找件窗);
         # 饥饿折扣同辖(防找件链在低金抽干金流)
@@ -344,6 +358,15 @@ def score_candidate(cand: Candidate, state: GameState,
         # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
         # 供刷新/买入(ADR-0291 遗留,ADR-0293 标定)
         val += registry.off_target_sell_bias
+    if (cand.tag in _CRISIS_BUY_TAGS
+            and crisis_hoard_active(state, registry)):
+        # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40,
+        # 批㉝ F3 指纹)战力买候选板面差分恒 0.00 被仲裁器「非正分」
+        # 拒 → 金囤 85+ 板濒死零动作。偏置只顶 0 分差分为正——
+        # 金 52→49 的息崖(-25)不被翻越,危机花费止于满息平台
+        # ([17]「>50 该买就买」+[18]「不为苟住破息」)。常量在
+        # filters(_CRISIS_BUY_BIAS/_CRISIS_BUY_TAGS,合流批上移)。
+        val += _CRISIS_BUY_BIAS
     return val, {'base': base, 'after': after}
 
 
