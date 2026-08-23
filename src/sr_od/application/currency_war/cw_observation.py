@@ -86,7 +86,8 @@ def _expected_level(plane: int, round_num: int) -> int:
     """阶段期望等级(**单一源 cw_economy._expected_level**;参数序 (plane, round_num) 转接)。
 
     level 不可 OCR 时作兜底:≈ 真实等级,使 economy level_val≈0(不误判欠等级 → 不滥升)
-    + max_units≈ 真实(模拟 deploy 容量合理)。
+    + max_units≈ 真实(deploy_cap 真值优先、level 兜底;ADR-0286/D-53:
+    cap=level+宝钻数,兜底仅宝钻局偏差)。
     ⚠️ r90 审计必修:此副本曾与 economy 侧漂移(改刻度忘了这里)——统一 import 单一源,
     本函数只做参数序转接(消费方按 (plane, round) 调)。
     """
@@ -565,6 +566,43 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     return _read_deploy_paddle(ctx, screen)[1]
 
 
+# cap 真值防抖门(ADR-0286,批㉔ F5 前置):cap 与 level 的合法域 = level ≤ cap ≤ level+2
+# (宝钻可叠加但实机语料未见 >2;cap<level 不可能——唯一合法 diff=−1 形态是诅咒泽尔里奇
+# −1 cap,未见实例,先按域拒)。|cap−level|>2 或 cap<level = paddle 误读族(ADR-0281
+# 15 行 old=5/6→new=3/4 实测),直接进决策 = 把读错抬到决策层 → 重读一帧再核,仍异拒信。
+DEPLOY_CAP_MAX_DIFF: int = 2
+
+
+def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
+                              level: int) -> int | None:
+    """cap 真值防抖读(ADR-0286,与 r414 域判定同族):域外值重读一帧,仍域外 → None 拒信。
+
+    域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``(cap<level 不可能、
+    |cap−level|>2 未见于实机语料=误读族)。域外时独立再截一帧重读:
+    重读入域 → 采重读值;仍域外 → obs_conflict 留证 + None(调用方 max_units
+    兜底 level,与「未读到」同态)。截图失败(异常)按重读不可得处理。
+    """
+    cap = read_deploy_cap(ctx, screen)
+    if cap is None or level <= 0:
+        return cap
+    if level <= cap <= level + DEPLOY_CAP_MAX_DIFF:
+        return cap
+    cap2 = None
+    try:
+        screen2 = ctx.controller.screenshot()
+        cap2 = read_deploy_cap(ctx, screen2)
+    except Exception:   # noqa: BLE001  重读帧不可得(控制器异常)按未读到处理
+        cap2 = None
+    if cap2 is not None and level <= cap2 <= level + DEPLOY_CAP_MAX_DIFF:
+        return cap2
+    obs_conflict('deploy_cap_domain', cap, cap2, screen,
+                 verdict=('拒信-域外(cap<level 不可能/|cap−level|>2 未见于语料;'
+                          '重读一帧仍域外 → None,决策兜底 level;'
+                          '复现 ≥3 次排查 read_deploy_cap/level 读链'),
+                 source='paddle_cap_debounce')
+    return None
+
+
 def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> tuple[dict[str, tuple[int, int]], bool]:
     """OCR 左面板 → ({阵营: (count, next_tier)}, honest)。
 
@@ -895,6 +933,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
     if _match is not None and _match.session is not None and _lv_authoritative:
         _match.session.last_level_obs = state.level
+    # ADR-0286(批㉔ F1):cap 真值接线——防抖后写入 state.deploy_cap
+    # (决策层 max_units() 优先读真值、level 兜底;读不到/域外拒信 → None
+    # 保持兜底语义,与旧恒 level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
+    state.deploy_cap = read_deploy_cap_debounced(ctx, screen, state.level)
     # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
     _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
     state.enemy_difficulty = _ed if _ed is not None else read_enemy_difficulty(ctx, screen)

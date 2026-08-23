@@ -70,9 +70,13 @@ class GameState:
     round_num: int = 1     # 位面内轮次 1-6
     node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
     enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度;boss 血量 base×1.052^难度)。None=未读到(stylized OCR 常空)
-    level: int = 1         # 玩家等级 = 可上阵数上限(封顶 10)
+    level: int = 1         # 玩家等级 = 可上阵数上限基准(封顶 10)
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
+    # 部署上限真值(= level + 财富宝钻数,可叠加;D-53/局38 r2 实证)。
+    # None=未读到/防抖拒信 → max_units() 兜底 level(ADR-0286)。防抖门在
+    # cw_observation.read_deploy_cap_debounced(cap<level 或 |cap-level|>2 重读一帧,仍异拒)。
+    deploy_cap: int | None = None
     level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,用 XP_CLICK_COST_FALLBACK 兜底)
     shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
@@ -121,8 +125,15 @@ class GameState:
         return deepcopy(self)
 
     def max_units(self) -> int:
-        """可上阵数 = 等级(机制确定),封顶 10。"""
-        return min(self.level, self.front_max + self.back_max)
+        """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;封顶 10(4前+6后)。
+
+        14 个消费点(cw_plan/cw_evaluate/cw_events)经本单点收口——cap 接线只改此处即全接。
+        deploy_cap < level(防抖漏网噪声)视为不可信,兜底 level。
+        """
+        base = (self.deploy_cap
+                if self.deploy_cap is not None and self.deploy_cap >= self.level
+                else self.level)
+        return min(base, self.front_max + self.back_max)
 
     def deployed_count(self) -> int:
         return len(self.deployed)
