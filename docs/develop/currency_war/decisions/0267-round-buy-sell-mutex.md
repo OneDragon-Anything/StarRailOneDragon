@@ -61,7 +61,19 @@ _sell_scatter_for_precache / _sell_for_gold)在同一张卡上互踩:
    的娜塔莎——按名互斥被索引漂移绕过;n=60 残留 5 局 seed
    25/36/56/57/58 的根因)。修:decide_prep 薄包装内批内
    SellBench 按 idx **降序**重排(先弹高 idx 不影响低 idx,
-   提案名=实打名;买/升/刷保持原位)。
+   提案名=实打名;买/升/刷保持原位)。r410b 再补:**重复槽位
+   提案去重**——多条卖通道独立扫同一 bench 可能对同一 idx 各提
+   一条(off_target 与 precache 同判一最弱槽),同 idx 二次 pop
+   漂移卖掉相邻件(seed36 r3 姬子槽双提案 → 二弹卖掉本轮已买
+   的绯英);去重保一条(两通道本就同意图)。
+5. **同名跨副本无效换卡守卫(r410,局72 r8 实证,用户目击)**:
+   买同名 #2(reason=line,买时合法)→ deploy 侧 sell-offtarget
+   卖在场旧 #1(羁绊∩target_factions=∅,卖时也「合法」)→ #2
+   顶替——净效果=同角色换卡,白付操作+装备转移。买通道前置守卫
+   (`_copy_swap_useless`,挂 `_buy_guards` 可选 session 参):
+   镜像 deploy 保留判据,同名在场副本会被保留(∈target_cores
+   或 bonds∩target_factions)→ 买副本合法(凑对/3合1);
+   所有在场副本会被卖 → 拒买(省 3 金+操作)。
 
 合法动作保持:先卖后买的同轮序(卖杂牌腾位→买方向件)不受限——互斥只禁
 「买→卖」方向;跨轮买卖(合理倒手,r383b copy 语义)不在辖内。
@@ -97,7 +109,8 @@ _sell_scatter_for_precache / _sell_for_gold)在同一张卡上互踩:
 - 复现探针(修前 7 对/修后 0,用完即删);单帧锁
   `test_cw_r408_round_buy_sell_mutex.py`:互斥(买了不卖)/容量门(满员
   不买)/3合1 让位豁免/振荡 XP 不再白拿(多段循环零 buy-sell 对)/换轮
-  重置+对称臂(刚卖同名不回买)/批内降序(索引不漂移)/5 残留 seed
+  重置+对称臂(刚卖同名不回买)/批内降序+重复槽位去重(索引不漂移)/
+  无效换卡守卫(off-target 在场不买/target 在场凑对合法)/5 残留 seed
   逐局重放零违规(25/36/56/57/58)。
 - 验收口径:`simulate_p1_batch(n=60, pool='snapshot', seed_base=0)`
   的 `no_same_round_buy_sell` = 0(指挥官验收发现的残留已归零)。
