@@ -60,6 +60,10 @@ START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源)
 from sr_od.application.currency_war.cw_economy import streak_gold  # noqa: E402,F401
 
+# HP 上界(批㉘ F6,ADR-0287):游戏机制真值无文档证据,暂 cap 100
+# (实机满血样本核真后更新;检查项 hp_upper_bound_truth 锁 hp>100 恒 0)
+HP_UPPER_BOUND: int = 100
+
 BASE_INCOME: int = 5
 INTEREST_CAP: int = 5
 
@@ -880,55 +884,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # r361b(ADR-0219 代理语义纪律,第三次命中):r358 检查点核心维
         # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
         # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。
-        # r390(用户定调「这些问题明明都可以模拟发现」):deployed 代理
-        # 从「bench 引擎件直进」升级为 **deploy_bench 真实围栏逻辑**
-        # (cw_deploy_logic.select_deployments 纯函数,与 DeployBench op
-        # 同一源)——r373/r387 类执行层 bug 从此 sim 可发现。target 集
-        # 从 session 语义取(桥期 transition_framework 阵营∪配方阵营,
-        # r373 同型);未识别(char_id 空)照旧上,与 op 一致。
-        from sr_od.application.currency_war import cw_deploy_logic as _dl
-        _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
-        try:
-            _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
-                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
-            _tf = frozenset(getattr(sess, 'target_comp', None).factions
-                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
-            _fw_name = getattr(sess, 'transition_framework', '') or ''
-            _fw = frozenset()
-            if _fw_name:
-                from sr_od.application.currency_war.cw_transition import (
-                    TRANSITION_PACK,
-                )
-                _fw = frozenset(
-                    n for n, (f, t) in TRANSITION_PACK.items()
-                    if (f == _fw_name or f == '通用') and t != 'drop')
-        except Exception:   # noqa: BLE001  代理 best-effort
-            pass
-        # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
-        # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
-        # DeployMove:bench.pop → deployed.append → board 聚合)。
-        # 旧代理「deployed=bench 切片不弹出」且每轮从零重算:bench
-        # 恒含已上阵件(批⑦ 实证 94.6% 轮 bench≥9 虚高、极大 25),
-        # 所有席位门(_P2_PRECACHE_MAX_BENCH/破息窗/bench_is_full)
-        # 在 sim 读假数据。修正后:deployed 跨轮累积(生产跟踪态),
-        # select_deployments 吃真实 deployed_cids/deployed_fac/cap
-        # 语义;board = deployed 主阵营聚合(生产 board 口径)。
-        _dep_cids = {d.char_id for d in st.deployed if d.char_id}
-        _dep_fac = _board_factions_of(st.deployed)
-        _up_idx, _held_idx = _dl.select_deployments(
-            st.bench,
-            deployed_cids=_dep_cids,
-            deployed_fac=_dep_fac,
-            board=dict(st.board),
-            cap=st.max_units(),
-            target_factions=_tf,
-            target_cores=_tc,
-            fw_carry=_fw,
-        )
-        for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
-            if _i < len(st.bench):
-                st.deployed.append(st.bench.pop(_i))
-        st.board = _board_counts_of(st.deployed)
+        # ADR-0287(批㉘ F1-F5,deploy_after_buy_semantics):部署块
+        # 从轮首移到**买/升级之后**(生产序对齐:battle_prep.py 备战
+        # 单轮 ⓪收球→①买牌→②部署→③装备→④出战)。旧轮首序让当轮
+        # 买的件/当轮升级腾出的 cap 滞后一轮上板(n=300 观测 33.0%
+        # 轮存在「当轮可上未上」,1124 件次),结算键(rung/depth)读
+        # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
+        # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
+        # 从 session 现读(生产语义:买后 update_target 已刷新)。
         for _seg in range(8):
             strat.update_target(st, sess, None)
             acts = strat.decide_prep(st, sess, None)
@@ -1062,6 +1025,69 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             st.level += 1
         # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
+        # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
+        # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
+        # (cw_deploy_logic.select_deployments 纯函数,与 DeployBench op
+        # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
+        # session **买后**现读(生产:买牌段 update_target 已刷新,
+        # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
+        from sr_od.application.currency_war import cw_deploy_logic as _dl
+        _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
+        try:
+            _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
+                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
+            _tf = frozenset(getattr(sess, 'target_comp', None).factions
+                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
+            _fw_name = getattr(sess, 'transition_framework', '') or ''
+            _fw = frozenset()
+            if _fw_name:
+                from sr_od.application.currency_war.cw_transition import (
+                    TRANSITION_PACK,
+                )
+                _fw = frozenset(
+                    n for n, (f, t) in TRANSITION_PACK.items()
+                    if (f == _fw_name or f == '通用') and t != 'drop')
+        except Exception:   # noqa: BLE001  代理 best-effort
+            pass
+        # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
+        # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
+        # DeployMove:bench.pop → deployed.append → board 聚合)。
+        # deployed 跨轮累积(生产跟踪态),select_deployments 吃真实
+        # deployed_cids/deployed_fac/cap 语义;board = deployed 主阵营
+        # 聚合(生产 board 口径)。ADR-0287:此处 cap=st.max_units()
+        # 在轮末升级后读 → LevelUp 当轮腾出的 cap 立即生效(批㉘ F5
+        # 「升级→上阵」链断一轮的修复)。
+        _dep_cids = {d.char_id for d in st.deployed if d.char_id}
+        _dep_fac = _board_factions_of(st.deployed)
+        _up_idx, _held_idx = _dl.select_deployments(
+            st.bench,
+            deployed_cids=_dep_cids,
+            deployed_fac=_dep_fac,
+            board=dict(st.board),
+            cap=st.max_units(),
+            target_factions=_tf,
+            target_cores=_tc,
+            fw_carry=_fw,
+        )
+        for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
+            if _i < len(st.bench):
+                st.deployed.append(st.bench.pop(_i))
+        st.board = _board_counts_of(st.deployed)
+        # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
+        # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
+        # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
+        # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
+        _lag_idx, _ = _dl.select_deployments(
+            st.bench,
+            deployed_cids={d.char_id for d in st.deployed if d.char_id},
+            deployed_fac=_board_factions_of(st.deployed),
+            board=dict(st.board),
+            cap=st.max_units(),
+            target_factions=_tf,
+            target_cores=_tc,
+            fw_carry=_fw,
+        )
+        _deploy_lag_units = len(_lag_idx)
         if res.dir_round == 99 and _direction_established(sess):
             res.dir_round = rn
         # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
@@ -1094,7 +1120,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             delta = boss_settle_delta(st, res.dir_round, rng)
         else:
             delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
-        st.hp = max(0, int(st.hp + delta))
+        # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
+        # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
+        # 均未触界,非 cap 证明)——暂按 cap 100 钳制,防批㉗ reward
+        # 胖尾修复(+20~39 回血)落地后 hp 破百使 hp_ge_60 反向虚高;
+        # 实机满血样本核真后更新本常量(检查项 hp_upper_bound_truth
+        # 锁 hp>100 恒 0)。
+        st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
         streak = streak + 1 if delta > 0 else 0
         # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
         # = 结算「连胜×N」写 session(default_strategy.on_settlement),
@@ -1215,6 +1247,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
                 # 店外;真策略批次应恒 0,检查项归 0 锁)
                 'phantom_rebuys': _phantom_rebuys,
+                # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
+                # (买后部署语义下应恒 0;检查项 deploy_after_buy_
+                # semantics / ledger_deploy_lag_disclosure 的数据源)
+                'deploy_lag_units': _deploy_lag_units,
             },
         })
         if st.hp <= 0:
@@ -1304,6 +1340,11 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # (真策略批次双 0;>0 = 槽消费回归/池守恒破)
         'phantom_rebuys': sum(r.phantom_rebuys for r in results),
         'pool_floor_hits': sum(r.pool_floor_hits for r in results),
+        # ADR-0287(批㉘ F1):全批残留可上件总数(买后部署语义下
+        # 应 0;>0 = 部署时序回归/围栏漏上,检查项扫出)
+        'deploy_lag_units': sum(
+            (row.get('sim') or {}).get('deploy_lag_units', 0)
+            for r in results for row in r.ledger),
     }
     if ledger is not False:
         out = (Path(ledger) if isinstance(ledger, Path)
