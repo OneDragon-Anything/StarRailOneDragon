@@ -139,7 +139,10 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
     if (state.plane == 1 and state.level >= 5
             and state.gold < INTEREST_THRESHOLD
             and state.node_type not in ('boss',) and state.hp >= 30):
-        _click_cost = 4 + state.level   # xp_click_cost 简算(lv5=9/格)
+        # ADR-0275:旧「4+level」简算与生产 flat-4(XP_CLICK_COST_FALLBACK,OCR 实读
+        # 优先)互相矛盾;实机对拍(VLM 三帧 lv4/lv7 均 4 金/击)裁决 flat-4 →
+        # 统一走 xp_click_cost(单一源;商业间谍折扣同享)。
+        _click_cost = xp_click_cost(state)
         if state.gold < _click_cost + 10:
             return False
     if target_comp is not None:

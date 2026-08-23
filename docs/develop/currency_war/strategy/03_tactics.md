@@ -28,7 +28,7 @@
 
 ## 3. cw_plan:备战动作规划
 
-**硬门贪心**(bench-full / gold≥0 / `LEVEL_MAX` 门内,选 eval-delta 最大的动作序列)+ **蒙特卡洛 D 牌**(`_refresh_expected_delta`:扣刷新金采样 shop 取最优买+deploy 均值 − base;采样 = 先按等级采费用(`REFRESH_PROB`)再按角色均匀采)+ **D 牌动态上限**(`_refresh_cap`,**定义在 cw_evaluate**、cw_plan 消费:常规基线,关键回合——P3/搜核心/HP 危险急救——放宽;奖励节点收紧;拿刷新减费策略再提)+ **level_plan 硬 gate**(level_up + afford 直接执行,非纯贪心 delta;LineStrategy 破息窗提案走 **LevelUp 总成本门**——clicks×单击价升不完不提案,ADR-0223)+ **腾席链**(deploy 空位 > 升级扩容 > 卖最弱保 3合1 件 > Defer)+ **两阶段 refresh**(刷新后 shop 未知,重 OCR 再 plan)。boss 关前不攒息 + 刷牌放宽(ADR-0128)。
+**硬门贪心**(bench-full / gold≥0 / `LEVEL_MAX` 门内,选 eval-delta 最大的动作序列)+ **蒙特卡洛 D 牌**(`_refresh_expected_delta`:扣刷新金采样 shop 取最优买+deploy 均值 − base;采样 = 先按等级采费用(`REFRESH_PROB`)再按角色均匀采)+ **D 牌动态上限**(`_refresh_cap`,**定义在 cw_evaluate**、cw_plan 消费:常规基线,关键回合——P3/搜核心/HP 危险急救——放宽;奖励节点收紧;拿刷新减费策略再提)+ **level_plan 硬 gate**(level_up + afford 直接执行,非纯贪心 delta;LineStrategy 破息窗提案走 **LevelUp 总成本门**——clicks×单击价升不完不提案,ADR-0223)+ **腾席链**(deploy 空位 > 卖杂件(off-target,ADR-0274) > 升级扩容(boss 轮禁 + 真缺人口前置 + 息引擎前置,ADR-0274) > 卖最弱保 3合1 件 > Defer)+ **两阶段 refresh**(刷新后 shop 未知,重 OCR 再 plan)。boss 关前不攒息 + 刷牌放宽(ADR-0128)。XP 单击价 = flat-4(`XP_CLICK_COST_FALLBACK`,OCR 通道 stylized 不可检,ADR-0275)。
 
 **LineStrategy 的 P1 r5+ 决战窗**(接管 economy 分派):成型检查点(`p1_formation_target`,轮窗常量 `_P1_FORMATION_TARGETS`/`_P1_FORMATION_ROUND_EDGES` 见 cw_line_defs,ADR-0225/0241)→ boss_breaker(板面集中买 + 配方围栏:recipe_tier<BASE 时只买 RECIPE∩板面,ADR-0221/0225)+ 买牌守卫 copies 星级加权(ADR-0224)。买入标签链(`_want_label`)含 **engine_seed 放行通道**:P1 未持有的过渡体系阵营件(TRANSITION_TRAITS 键,含 flow 羁绊)金够即买,与 seed/pair 门并行、地板语义调用方保留;bench 满员不触发(容量门,ADR-0267)。追级(LevelUp)在 boss_breaker/追赶两窗加**息引擎前置**:lv≥5 且未曾满息且花完 <50 不提案(曾达满息 latch ∨ 花完 ≥50 放行;lv<5 过渡成型基线豁免,ADR-0266)。
 
