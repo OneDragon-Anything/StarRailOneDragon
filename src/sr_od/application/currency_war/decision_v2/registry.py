@@ -151,6 +151,17 @@ class DecisionV2Registry:
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0
     #: 双窗逐位同分(任何正值同等翻转 0 分卖)
     off_target_sell_bias: float = 0.5
+    #: 评分侧联动折扣(ADR-0297 刷新×追级并存,采纳方案):金<
+    #: refresh_starve_gold 时 refresh_ev 乘此系数——排序自然让位给
+    #: 追级/买入。**已按 ADR-0297 双窗+终验标定:0.6/40**(金<40 时
+    #: EV=1.5-2=-0.5 恒负分不刷;≥40 全额)是全部并存变体中唯一
+    #: 双窗一致臂(原窗 -5.23/验证窗 -4.80;终验 n=100 -5.76);
+    #: lvl 2.07→6.27(通道病治愈,≈v1 6.83)refr 10.3→2.91。
+    #: 约束侧(方案 a:refresh_game_cap/levelup_reserve_gold)为本批
+    #: 诊断否决的通道(双窗不稳),保留为注册 A/B 通道默认关闭
+    refresh_starve_discount: float = 0.6
+    #: 评分侧联动的饥饿金阈值(金< 此值触发折扣)
+    refresh_starve_gold: int = 40
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -162,6 +173,7 @@ class DecisionV2Registry:
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
         'boss_levelup_ban',    # [32] boss 轮禁升级腾席
         'deploy_cap',          # 上阵数 ≤ max_units
+        'refresh_budget',      # ADR-0297 每局刷新预算+追级保留金
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     interest_floor: int = 50      # [17] 满息地板(常态/追赶)
@@ -170,6 +182,13 @@ class DecisionV2Registry:
     boss_floor: int = 10          # r278 boss 破息地板
     #: [12] 追级息引擎前置:LevelUp 需「曾达满息」或花完仍 ≥50
     levelup_interest_engine_gate: bool = True
+    #: ADR-0297 刷新×追级并存·约束侧(方案 a,诊断否决默认关闭):
+    #: 每局刷新预算上限(v1 量级 4-6);0=不限。诊断证据:cap+reserve
+    #: 双窗不稳(原窗 -3.27/验证窗 -11.70),评分侧联动更稳
+    refresh_game_cap: int = 0
+    #: ADR-0297 追级保留金(约束侧,同上默认关闭):等级未满时,
+    #: 刷新后金低于此值即让位(不刷只攒);0=关闭
+    levelup_reserve_gold: int = 0
     #: [32] boss 轮判定(node_type_current='boss';P1 r9 兜底同辖)
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
     #: LevelUp 等级上限(封顶 10)

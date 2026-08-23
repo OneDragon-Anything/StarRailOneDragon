@@ -255,7 +255,14 @@ def score_candidate(cand: Candidate, state: GameState,
                 or (state.gold or 0) < registry.refresh_min_gold):
             val = -cand.action.cost or -1.0
         else:
-            val = registry.refresh_ev - (cand.action.cost or 0)
+            ev = registry.refresh_ev
+            # ADR-0297 评分侧联动(方案 b):金低于追级饥饿阈值时
+            # refresh_ev 打折(1.0=关闭)——排序自然让位给追级/买入,
+            # 与约束侧(层4 refresh_budget)互斥使用的通道
+            if (registry.refresh_starve_discount < 1.0
+                    and (state.gold or 0) < registry.refresh_starve_gold):
+                ev *= registry.refresh_starve_discount
+            val = ev - (cand.action.cost or 0)
         return val, {'base': base, 'after': None, 'refresh_ev': val}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:

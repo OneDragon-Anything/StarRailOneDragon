@@ -174,6 +174,23 @@ def _check_constraint(name: str, cand: Candidate,
                 if not ok:
                     return '息引擎未立([12]:曾达满息或花后≥50)'
         return None
+    if name == 'refresh_budget':
+        # ADR-0297 刷新×追级并存(约束侧,方案 a):刷新链曾以
+        # re-decide 抽干金→[12] 息引擎门锁死升级(lvl 2 vs v1 7);
+        # 两通道并存=刷新留预算、追级留保底金,非二选一。
+        if isinstance(a, RefreshShop):
+            used = getattr(session, 'v2_refresh_used', 0)
+            if registry.refresh_game_cap > 0 \
+                    and used >= registry.refresh_game_cap:
+                return (f'局刷新预算{registry.refresh_game_cap}已用尽'
+                        f'({used})')
+            if registry.levelup_reserve_gold > 0 \
+                    and state.level < registry.level_max:
+                cost = _cost_of(cand)
+                if working.gold - cost < registry.levelup_reserve_gold:
+                    return (f'追级保留金(金{working.gold}-费{cost}'
+                            f'<{registry.levelup_reserve_gold})')
+        return None
     if name == 'deploy_cap':
         if isinstance(a, DeployMove):
             if len(working.deployed or []) >= working.max_units():
@@ -278,6 +295,10 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                         'breakdown': bd})
         if accepted:
             res.actions.append(cand.action)   # 段尾:刷后 re-decide
+            # ADR-0297:局刷新计数(预算约束的数据源;sim 局=独立
+            # session,生产局=session 生命周期同构)
+            session.v2_refresh_used = getattr(
+                session, 'v2_refresh_used', 0) + 1
     return res
 
 
