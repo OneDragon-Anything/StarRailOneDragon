@@ -9,6 +9,12 @@
 bench/deployed/目标集/围栏集/cap,输出「谁上场」。DeployBench op
 与 cw_sim 都调它——同一份逻辑,实机改=sim 改,漂移不可能。
 
+⚠️ 已知漂移(ADR-0261,2026-08-24 探针实证):DeployBench op 的
+`_deploy_deterministic` 实为**语义近似副本**而非调用本函数——① op
+排序无 ignition_gain 首键(r404-A1 只落了本模块);② op 有 r288
+配方底线门(列车≥2 且仙舟<3 拦列车件)本模块没有(=sim 盲区,
+局64 姬子躺 bench 的生产机制)。修复待主会话裁决,本模块暂不改。
+
 注意:op 侧还有画面依赖部分(SIFT 读身份/槽位坐标/drag 验证),
 那些留在 op;这里只收**纯决策**。输入的 bench 用 BenchChar,
 身份可判(char_id 空串=未识别,围栏语义「照旧上」保留)。
