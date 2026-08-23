@@ -1,0 +1,179 @@
+"""决策框架 v2 注册表(ADR-0290 对抗修订③:剪枝显式化/全注册表化)。
+
+评分表 / 剪枝 K / 标签优先与互斥 / 过滤链 / 约束清单 / 完备性审计表
+全部集中在此,``DecisionV2Registry`` 可整体注入(A/B:两套注册表各跑
+一臂,sim 配对对照)——**禁止隐式排序、禁止散落硬编码**。
+
+数值口径(初版骨架,**未标定**——ADR-0290 实施序③:EARLY_WIN_DELTA
+真值化 + deploy 时序落地后才标定权重;当前值只求结构正确):
+- 档位期望:P3 已证边际(e0→e1 +1.4 / e1→e2 +1.6 金/轮)→ 累计档值;
+- 战力:H3 阶梯矩阵胜率(e0 13.9% / e1 41.6% / e2 77.8%,n=187/89/9);
+- 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
+- 地板初值镜像 line_strategy 同名常量(_EMERGENCY_HP 等;注册表化
+  后 line_strategy 值演进不自动跟随——A/B 语义:两臂可故意不同)。
+
+决策见 docs/develop/currency_war/decisions/0291-decision-v2-skeleton.md。
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class DecisionV2Registry:
+    """决策框架 v2 全部可调参数与显式注册结构(单一注入点)。"""
+
+    # ===== 层1:候选生成(剪枝显式化——K 值/排序键/标签优先序) =====
+    #: 买候选标签优先序(单卡只取首个命中标签;顺序即裁决,可 A/B)
+    buy_tag_priority: tuple[str, ...] = (
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'bond_fallback', 'carry_gate',
+    )
+    #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
+    #: Candidate.merge=True;覆盖全部目标类买入)
+    #: 卖候选标签优先序(off_target 最先;free_bench=腾位让位 [32])
+    sell_tag_priority: tuple[str, ...] = (
+        'off_target', 'for_gold', 'free_bench',
+    )
+    #: 部署候选 top-K(K 与排序键显式:排序键=围栏序 cw_deploy_logic
+    #: .select_deployments 的点火首键+桶序——同一源,不另造排序)
+    deploy_top_k: int = 3
+    deploy_sort_key: str = 'cw_deploy_logic_fence'
+    #: 卖候选上限(bench 每件都生成,但执行轮内采纳上限——防整板清仓)
+    sell_top_k: int = 2
+    #: 同名副本上限(星级加权 3 份;第 4 份纯浪费——line_strategy
+    #: ._buy_guards 同语义,此处注册表化)
+    copies_cap: int = 3
+    #: [31] 凑档降级的成本带上限(1-2 费=P1 过渡带)
+    bond_fallback_max_cost: int = 2
+    #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
+    bond_fallback_min_round: int = 3
+    #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
+    carry_gate_max_round: int = 7
+
+    # ===== 层2:硬过滤链(redesign §3 覆盖态严格优先序)=====
+    #: 过滤链层级序:应急 > 追赶 > 模式(redesign §5.4 唯一真值序)
+    filter_chain_order: tuple[str, ...] = ('emergency', 'catchup', 'mode')
+    #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
+    emergency_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'carry_gate', 'off_target', 'free_bench', 'deploy',
+    })
+    catchup_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'levelup', 'off_target', 'free_bench', 'deploy',
+    })
+    economy_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core', 'carry_gate',
+        'bond_fallback', 'off_target', 'for_gold', 'free_bench',
+        'levelup', 'refresh', 'deploy',
+    })
+    war_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core', 'bond_fallback',
+        'carry_gate', 'off_target', 'for_gold', 'free_bench', 'levelup',
+        'deploy',
+    })
+    #: 追赶窗口约束:追赶期禁 for_gold(不折现卖件)+ 禁 refresh
+    #: (升人口窗口的钱不进刷新;redesign「追赶=升人口置顶」)
+    catchup_forbidden_tags: frozenset[str] = frozenset({
+        'for_gold', 'refresh',
+    })
+    #: 应急 HP 档(触发层2 应急过滤;line_strategy._EMERGENCY_HP 镜像)
+    emergency_hp: int = 25
+    #: 追赶等级门(P1 早期人口低于基线是常态;line_strategy
+    #: ._CATCHUP_MIN_LEVEL 镜像)
+    catchup_min_level: int = 6
+    #: 位面人口基线(r191 中位;line_strategy._POP_BASELINE 镜像)
+    pop_baseline: dict[int, int] = field(
+        default_factory=lambda: {1: 5, 2: 7, 3: 9})
+
+    # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
+    #: 档位累计值(金/轮;P3 边际 e0→e1 +1.4 / e1→e2 +1.6 累计)
+    rung_value: dict[int, float] = field(
+        default_factory=lambda: {0: 0.0, 1: 1.4, 2: 3.0})
+    #: H3 战力阶梯(battle 胜率;rung 插值键,x>2 取 2)
+    h3_win_rate: dict[int, float] = field(
+        default_factory=lambda: {0: 0.139, 1: 0.416, 2: 0.778})
+    #: 档值折算的剩余轮数估计(P1 9 节点骨架的中段估值;未标定)
+    rounds_left_est: float = 5.0
+    #: 剩余战斗节点估计(同上,未标定)
+    battles_left_est: float = 5.0
+    #: 单场战斗典型掉血([27] B+P 合成;P1 battle -7~-13 取中;未标定)
+    expected_battle_loss: float = 10.0
+    #: HP→金换算(P3:4.4HP≈2.2金 → 0.5 金/HP)
+    hp_to_gold: float = 0.5
+    #: 利息封顶档([17]:50 金息律,5 金/轮)
+    interest_cap: int = 5
+    #: 息 EV 折算轮数(与 rounds_left_est 同源口径)
+    interest_rounds: float = 5.0
+    #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
+    rung_frac_per_recipe_tier: float = 0.3
+    #: 刷新常量 EV(板面查表不可预知新店 → 表外常量;未标定=0,
+    #: 骨架版不主动刷新;标定 gate 后换 P(配方件|刷) 期望模型)
+    refresh_ev: float = 0.0
+    #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
+    #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
+    depth_unit_value: float = 2.0
+    #: 追级 EV 单位值(ADR-0290 层2 查表项「追级 EV」:等级→部署
+    #: cap→板深的期权价值;小数等级=level+xp 进度比,单击经验
+    #: 即分数性推进;未标定)
+    level_unit_value: float = 1.0
+    #: 目标件持有进度项(板面形态维:持有域内∈当前目标集的件数
+    #: /基线,封顶计值——cap 饱和+店员非引擎阵营时买入恒 0 分被
+    #: 「非正分」拒,r3-r6 空转攒金团灭的解;集合隶属计数,非
+    #: 单卡边际拆分;未标定)
+    target_hold_value: float = 3.0
+    target_hold_base: int = 6
+
+    # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
+    #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
+    constraints: tuple[str, ...] = (
+        'gold_floor',          # 金≥地板(地板按覆盖态分派)
+        'interest_rule',       # [11][17][28] 息档保持/满息结余
+        'bench_capacity',      # bench 9 槽(含本轮已采纳买)
+        'copies_cap',          # 同名星级加权 ≤3 份
+        'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
+        'boss_levelup_ban',    # [32] boss 轮禁升级腾席
+        'deploy_cap',          # 上阵数 ≤ max_units
+    )
+    #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
+    interest_floor: int = 50      # [17] 满息地板(常态/追赶)
+    war_floor: int = 30           # 战力模式地板(计划内补强非 panic)
+    rebirth_floor: int = 20       # [18] 应急保留重生基数
+    boss_floor: int = 10          # r278 boss 破息地板
+    #: [12] 追级息引擎前置:LevelUp 需「曾达满息」或花完仍 ≥50
+    levelup_interest_engine_gate: bool = True
+    #: [32] boss 轮判定(node_type_current='boss';P1 r9 兜底同辖)
+    boss_round_node_types: frozenset[str] = frozenset({'boss'})
+    #: LevelUp 等级上限(封顶 10)
+    level_max: int = 10
+    #: bench 槽容量(游戏常数 9)
+    bench_capacity: int = 9
+
+    # ===== 完备性审计表(ADR-0290 对抗修订④)=====
+    #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
+    #: ('none', 显式声明原因)。「无约束覆盖」必须显式声明,禁止空格。
+    #: 检查项 decision_v2_arbiter_matrix 锁「无空格 + 约束名存在」。
+    audit_matrix: dict[tuple[str, str], tuple[str, ...] | tuple[str, str]] = field(
+        default_factory=lambda: {
+            # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
+            ('gold', 'boss'): ('gold_floor', 'interest_rule'),
+            ('gold', 'emergency'): ('gold_floor',),
+            ('gold', 'catchup'): ('gold_floor', 'interest_rule'),
+            ('bench', 'boss'): ('bench_capacity',),
+            ('bench', 'emergency'): ('bench_capacity',),
+            ('bench', 'catchup'): ('bench_capacity',),
+            ('slot', 'boss'): ('boss_levelup_ban',),
+            ('slot', 'emergency'): ('bench_capacity',),
+            ('slot', 'catchup'): ('deploy_cap',),
+            ('round_mutex', 'boss'): ('same_round_mutex',),
+            ('round_mutex', 'emergency'): ('same_round_mutex',),
+            ('round_mutex', 'catchup'): ('same_round_mutex',),
+        })
+    #: 审计表两维的显式枚举(新增动作类型/资源维时审计表强制过检)
+    audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
+    audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'catchup')
+
+
+#: 默认注册表(骨架初版;A/B 时构造改动副本注入 DecisionV2Strategy)
+DEFAULT_REGISTRY = DecisionV2Registry()

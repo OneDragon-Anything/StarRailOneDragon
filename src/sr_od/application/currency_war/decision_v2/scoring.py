@@ -1,0 +1,234 @@
+"""决策框架 v2 层3:板面查表评分(ADR-0290 对抗修订①)。
+
+评分对象=**候选后板面**:apply 候选到 state 副本(轻量 apply——买/升级
+后接部署管线,只改评分需要的维)→ 查「板面形态→期望」表。
+
+**禁止单卡边际拆分**(P3 证的是 e0→e1/e1→e2 档位边际,非单卡;
+e2 格 n=9/±30%)——本模块对板面只看形态维(过渡体系数/配方档/金),
+不做任何「这张卡值多少」的拆分。
+
+查表项(初版,registry 注入可 A/B;**未标定**——标定 gate 见
+ADR-0290 实施序③):
+- 档位×P3 系数(rung_value:e0→e1 +1.4 / e1→e2 +1.6 金/轮累计);
+- 息律 EV([17]:min(5, gold//10) × 剩余轮);
+- H3 战力表插值(胜率阶梯 × 掉血期望 × HP 金价)。
+score 返回 (value, breakdown)——每轮候选×分数表判读可直接读。
+"""
+from __future__ import annotations
+
+from sr_od.application.currency_war.cw_line_defs import (
+    RECIPE_BASE,
+    recipe_tier,
+)
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    simulate,
+)
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision_v2.registry import (
+    DecisionV2Registry,
+)
+
+
+def _interp(table: dict[int, float], x: float) -> float:
+    """阶梯表线性插值(键 0/1/2;x 超界取端点值)。"""
+    xs = sorted(table)
+    if x <= xs[0]:
+        return table[xs[0]]
+    if x >= xs[-1]:
+        return table[xs[-1]]
+    for lo, hi in zip(xs, xs[1:], strict=False):
+        if lo <= x <= hi:
+            frac = (x - lo) / (hi - lo)
+            return table[lo] * (1 - frac) + table[hi] * frac
+    return table[xs[-1]]
+
+
+def board_rung_x(state: GameState,
+                 registry: DecisionV2Registry) -> float:
+    """板面形态维 x:过渡体系数(整数档)+ 配方档小数(H3 插值用)。
+
+    形态域=**持有域**(deployed∪bench,未标定取舍):bench 件是
+    部署管线的直接储备(买后按 cap 上板),cap 饱和时买入的形态
+    期权只在持有域显影——纯 deployed 域下饱和后一切买入恒 0 分,
+    决策活性死(smoke 实证)。体系判定与 sim/判读同源
+    (cw_sim._engines_count:仙舟3/列车2/DOT2/希儿系);配方档小数
+    =recipe_tier/RECIPE_BASE × 系数(未标定)。标定 gate 后形态域
+    可整体换回 deployed 域(注入 registry/参数化)。
+    """
+    from sr_od.application.currency_war.cw_sim import (
+        _board_counts_of,
+        _board_factions_of,
+        _engines_count,
+    )
+    held = _held_star_weighted(state)
+    names = frozenset(d.char_id for d in held
+                      if getattr(d, 'char_id', ''))
+    engines = _engines_count(_board_factions_of(held), names)
+    frac = min(recipe_tier(_board_counts_of(held)) / RECIPE_BASE, 1.0)
+    return min(2.0, float(engines)
+               + registry.rung_frac_per_recipe_tier * frac)
+
+
+def _held_star_weighted(state: GameState) -> list:
+    """持有域(deployed∪bench)的星级加权展开:2★ 计 2 份、3★ 计 3 份。
+
+    3合1 合并(3 副本→1 件升星)在件数计数上是「掉件」,星级不
+    加权时合并触发买被评负分(买入→合并→引擎/配方计数反降,
+    smoke 实证 -13 分全弃)——星级加权让合并的战力显影为计数。
+    未标定代理;标定 gate 后随形态域整体可换。
+    """
+    held: list = []
+    for d in (state.deployed or []) + (state.bench or []):
+        star = max(1, int(getattr(d, 'star', 1) or 1))
+        held.extend([d] * star)
+    return held
+
+
+def score_state(state: GameState, registry: DecisionV2Registry,
+                session: StrategySession | None = None) -> dict[str, float]:
+    """板面形态→期望 查表(评分的单一真值;只看形态维)。"""
+    x = board_rung_x(state, registry)
+    rung = _interp(registry.rung_value, x) * registry.rounds_left_est
+    win = _interp(registry.h3_win_rate, x)
+    power = (win * registry.expected_battle_loss
+             * registry.hp_to_gold * registry.battles_left_est)
+    # 息 EV 只在满息平台(≥interest_floor)上计值——平台由层4 阶梯
+    # 地板/interest_rule 维护;<50 金的政策是「档内全花,息让位配方」
+    # (v1 同式),评分若对 <50 的档位跨越扣息 EV = 与地板政策双重
+    # 计罚,合法买入被评负分全弃(smoke 实证);单一源对齐
+    interest = (min(registry.interest_cap, (state.gold or 0) // 10)
+                * registry.interest_rounds
+                if (state.gold or 0) >= registry.interest_floor else 0.0)
+    # 目标件持有进度(集合隶属计数:持有域内∈目标集的星级加权
+    # 件数/基线,封顶——形态维之一;cap 饱和时目标件的持有期权
+    # 在此项显影,未标定)
+    targets = 0.0
+    if session is not None:
+        from sr_od.application.currency_war.decision_v2.candidates import (
+            _target_names,
+        )
+        tset = _target_names(state, session)
+        if tset:
+            held = _held_star_weighted(state)
+            n = sum(1 for d in held
+                    if getattr(d, 'char_id', '') in tset)
+            targets = (min(1.0, n / max(1, registry.target_hold_base))
+                       * registry.target_hold_value)
+    depth = _deployable_depth(state) * registry.depth_unit_value
+    # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
+    # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
+    # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
+    _xp = state.xp_progress or (0, 1)
+    _xp_cur = _xp[0]
+    _xp_need = _xp[1] if len(_xp) > 1 and _xp[1] > 0 else 1
+    level_frac = state.level + min(1.0, _xp_cur / max(1, _xp_need))
+    level_ev = level_frac * registry.level_unit_value
+    return {'rung': round(rung, 3), 'power': round(power, 3),
+            'interest': round(float(interest), 3),
+            'depth': round(depth, 3), 'level': round(level_ev, 3),
+            'targets': round(targets, 3)}
+
+
+def _deployable_depth(state: GameState) -> int:
+    """可用深度=min(level, deployed+bench)(板面形态维,非单卡拆分)。
+
+    持有件对 cap 的覆盖:bench 件是「可上场深度」的储备(经部署
+    管线显影);骨架初版曾用 min(level, deployed)——囤 bench 的买
+    与升级在 cap 未放开时恒 0 分被「非正分」拒,决策活性死(升级
+    买经验通道全灭)。未标定。
+    """
+    return min(state.level,
+               len(state.deployed or []) + len(state.bench or []))
+
+
+def _deploy_pipeline(state: GameState,
+                     session: StrategySession) -> None:
+    """轻量 apply 的部署管线:围栏序把 bench 可上件推到 cap(就地)。
+
+    与生产 DeployBench/sim 部署块同一源(select_deployments);
+    只服务评分(改 deployed/board 维),不产生动作。
+    """
+    from sr_od.application.currency_war import cw_deploy_logic as dl
+    from sr_od.application.currency_war.cw_sim import _board_counts_of
+    for _ in range(3):
+        deployed_cids = {d.char_id for d in (state.deployed or [])
+                         if getattr(d, 'char_id', '')}
+        from sr_od.application.currency_war.cw_sim import (
+            _board_factions_of,
+        )
+        tc = getattr(session, 'target_comp', None)
+        up_idx, _ = dl.select_deployments(
+            list(state.bench or []),
+            deployed_cids=deployed_cids,
+            deployed_fac=_board_factions_of(state.deployed),
+            board=dict(state.board or {}),
+            cap=state.max_units(),
+            target_factions=frozenset(getattr(tc, 'factions', None) or ()),
+            target_cores=frozenset(getattr(tc, 'core_chars', None) or ()),
+        )
+        if not up_idx:
+            return
+        for i in sorted(up_idx, reverse=True):
+            if i < len(state.bench or []):
+                state.deployed.append(state.bench.pop(i))
+        state.board = _board_counts_of(state.deployed)
+
+
+def apply_for_score(cand: Candidate, state: GameState,
+                    session: StrategySession,
+                    ) -> GameState | None:
+    """轻量 apply:候选→state 副本(只改评分需要的维)。
+
+    买/升级/部署后接部署管线(买件的板面价值经「买入→上场」链显影);
+    卖/刷新为原子 apply;None=该候选不查表(refresh EV 恒走常量)。
+    """
+    s = simulate(state, cand.action)
+    if cand.tag == 'refresh':
+        return None
+    if cand.tag in _PIPELINE_TAGS:
+        _deploy_pipeline(s, session)
+    return s
+
+
+#: 经部署管线显影板面价值的标签(买/升级/部署);卖=原子 apply
+_PIPELINE_TAGS = frozenset({
+    'line_carry', 'line_opportunistic', 'bridge_core',
+    'bond_fallback', 'carry_gate', 'levelup', 'deploy',
+})
+
+
+def score_candidate(cand: Candidate, state: GameState,
+                    session: StrategySession,
+                    registry: DecisionV2Registry,
+                    ) -> tuple[float, dict]:
+    """单候选评分:apply 后板面查表 − 基线板面查表(相对值)。
+
+    禁止单卡边际拆分——差值全部来自板面形态维(档位/战力/息)与
+    即时金流(卖出回金/刷新费经息档与 refresh_ev 常量显影)。
+    """
+    base = score_state(state, registry, session)
+    if cand.tag == 'refresh':
+        # 刷新的板面形态不可预知(新店随机)→ 查表外常量 EV
+        # (未标定=0:骨架版不主动刷新;标定 gate 后接 P(hit) 期望)
+        val = registry.refresh_ev - (cand.action.cost or 0)
+        return val, {'base': base, 'after': None, 'refresh_ev': val}
+    after_state = apply_for_score(cand, state, session)
+    if after_state is None:
+        return 0.0, {'base': base, 'after': None}
+    after = score_state(after_state, registry, session)
+    val = sum(after.values()) - sum(base.values())
+    return val, {'base': base, 'after': after}
+
+
+def score_all(cands: list[Candidate], state: GameState,
+              session: StrategySession,
+              registry: DecisionV2Registry,
+              ) -> list[tuple[Candidate, float, dict]]:
+    """全候选评分(层3 入口;返回 (候选, 分, breakdown) 列表)。"""
+    out: list[tuple[Candidate, float, dict]] = []
+    for c in cands:
+        v, bd = score_candidate(c, state, session, registry)
+        out.append((c, round(v, 4), bd))
+    return out
