@@ -262,96 +262,185 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
     return out
 
 
+def _session_level(ctx: SrContext) -> int | None:
+    """session 等级链(``last_level_obs`` 单调链 vs ``last_state.level`` 取大)→ 无 session/无值 → None。
+
+    布局选档的 level 源(ADR-0281:后排槽数由 level 驱动;``_resolve_level`` 维护的
+    单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
+    """
+    try:
+        m = ctx.cw_match
+        if m is None or m.session is None:
+            return None
+        lv = getattr(m.session, 'last_level_obs', 0) or 0
+        st = m.session.last_state
+        if st is not None and st.level:
+            lv = max(lv, st.level)
+        return lv or None
+    except Exception:   # noqa: BLE001
+        return None
+
+
 def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates,
-                        deploy_cap: int | None = None) -> list[BenchChar]:
+                        level: int | None = None) -> list[BenchChar]:
     """舞台已上阵角色(前排 4 + 后排 N)→ list[BenchChar](position_pref=front/back)。
 
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
-    deploy_cap(r75 布局表):后排槽位数,选 ``cw_back_layout.BACK_ROW_LAYOUTS`` 布局 ——
-    **槽位变化时布局整体重排非尾部追加**(用户 2026-08-19 口述;8 槽实拍位1 x428 vs
-    6 槽 x604),旧固定「后排-1..6」在 7/8 槽局全错位。None → 从帧读 ``read_deploy_cap``,
-    读不到 → 6 槽基线(旧行为)。
+    布局选档 **level 驱动**(ADR-0281,旧 cap 驱动已废:cap 与布局无关,两帧同 lv7
+    cap8/9 同为 8 格实证):level=None → session 等级链(``_session_level``)→ 仍无 →
+    6 槽基线。旧 deploy_cap 参数已移除(cap 误读不再影响选档)。
     """
     from sr_od.application.currency_war.cw_back_layout import (
+        _layout_prefixes,
         back_row_slot_rects_ctx,
+        effective_back_slots,
         fallback_back_slots,
+        note_pending_7slots,
     )
-    from sr_od.application.currency_war.cw_observation import read_deploy_cap
-    if deploy_cap is None:
-        deploy_cap = read_deploy_cap(ctx, screen)
-    back_slots = back_row_slot_rects_ctx(ctx, deploy_cap or 6) or fallback_back_slots()
-    # r77d 布局停机钩子(用户 2026-08-20 定调:7/9 槽**要停机 + 现场拖角色验证**):
-    # 无档布局 ≠ 只存帧离线测 —— 离线暗框检测有背景噪声风险(8 槽首版 grounding
-    # 误换算教训),真值坐标必须现场交互闭环(拖角色到各槽 → 逐槽识别 → 详情面板
-    # 锚定)。遇无档 cap → 存帧(哈希去重)+ sentinel flag + **停机保画面**,AI 现场按
-    # flag 流程执行;档位补齐(upsert 后排N槽-1..N + _LAYOUT_PREFIX 登记)后不再触发。
-    # [ADR-0263 同病核查] 本钩子**免疫** overlay 遮挡(共享守卫思路 =
-    # cw_obs_core 的 overlay 排除,但此处不适用):触发条件 =
-    # effective_back_slots(cap)**无档**,判据来自 deploy_cap(舞台上方中央 X/Y
-    # OCR 指示),不裁备战 slot rect —— overlay(右侧 x≥1000,盖备战栏带)不改
-    # 变该判据;overlay 开着误停的唯一路径是 cap 被 OCR 误读成 7/8/9,而 X/Y
-    # 指示在顶部中央不被 overlay 遮 → 无需区域可见性守卫。
+    if level is None:
+        level = _session_level(ctx) or 6
+    back_slots = back_row_slot_rects_ctx(ctx, level) or fallback_back_slots()
+    # 布局停机钩子(r77d 起,ADR-0281 语义适配):停机条件 = **level 对应档无档**
+    # —— 现 6/8 都有档,正常运行永不触发;留着守「补档窗口」(_LAYOUT_PREFIX 已
+    # 登记而 screen_info 档未跟上,如未来 7 格确认后的过渡)。lv6 待采态走
+    # note_pending_7slots 留证(不停机,保守按 6 格跑)。真值坐标必须现场交互
+    # 闭环(拖角色逐位验证),离线暗框检测有 grounding 误换算教训。
+    # [ADR-0263 同病核查] 本钩子免疫 overlay 遮挡:判据来自 session level,
+    # 不裁备战 slot rect;帧态门(is_prep_like_frame)再排过渡帧。
     try:
-        from sr_od.application.currency_war.cw_back_layout import (
-            _layout_prefixes,
-            effective_back_slots,
-        )
-        _cap = deploy_cap or 6
-        # r81:后排槽数 = max(6, cap)(cap=5 实测仍 6 槽,花火/姬子 SIFT 命中基线)→
-        # 只对「有效槽数无档」停机(cap≤6 恒基线,不停机 —— 旧 `>4 且 ≠6` 会误停 cap5)。
-        _slots_n = effective_back_slots(_cap)
-        # r414(2026-08-23 12槽误档事故):超已知档上限(>11)大概率 OCR 误读
-        # (cap=12 实为 8/8 离线复析实锤)——不停机只留证,按 6 槽基线降级跑
-        # (cap 误读的高值会让 _slots_n 落在未注册区间,真超档需游戏版本演进,
-        # 届时钩子停机的现场流程仍适用;判据与 prep_director r414 同源)。
-        _KNOWN_MAX_SLOTS = 11
+        _slots_n = effective_back_slots(level)
+        note_pending_7slots(screen, level, 'read_deployed_chars')
         if ctx.run_context is not None and _slots_n not in _layout_prefixes():
-            if _slots_n > _KNOWN_MAX_SLOTS:
-                from sr_od.application.currency_war.cw_observe import obs_conflict
-                obs_conflict('deploy_cap_out_of_range', _cap, _slots_n, screen,
-                             verdict=('留证-cap 超已知档(OCR 误读大概率,如 8/8→12;'
-                                      '处理:核区域-部署数原文;复现≥3次排期修守卫;'
-                                      '本帧按 6 槽基线降级跑,不停机)'),
-                             source='layout_range_guard')
-                # 降级路径:back_slots 已在 L282 按 cap 取过且无档 →
-                # back_row_slot_rects_ctx 内部已回退基线(选档逻辑),
-                # 此处直接跳过停机钩子继续正常读取。
+            # r330(钩子归位·帧态门):停机/采集只在备战类精准帧触发——过渡/动画帧跳过
+            from sr_od.application.currency_war.cw_obs_core import (
+                is_prep_like_frame,
+            )
+            if not is_prep_like_frame(ctx, screen):
+                from one_dragon.utils.log_utils import log as _log0
+                _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
+                           '→ 跳过(过渡帧防误触)', _slots_n)
             else:
-                # r330(钩子归位·帧态门,用户循环「稳定→观察→对账&hook」):
-                # 停机/采集只在备战类精准帧触发——过渡/动画帧跳过
-                # (本钩子埋在 reader 深处,调用方未必先过 gate)。
-                from sr_od.application.currency_war.cw_obs_core import (
-                    is_prep_like_frame,
-                )
-                if not is_prep_like_frame(ctx, screen):
-                    from one_dragon.utils.log_utils import log as _log0
-                    _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
-                               '→ 跳过(过渡帧防误触)', _slots_n)
-                else:
-                    from pathlib import Path as _P
+                from pathlib import Path as _P
 
-                    from one_dragon.utils.log_utils import log as _log
-                    from sr_od.application.currency_war.cw_observe import cw_shot_unique
-                    _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
-                    if _shot is not None:
-                        _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
-                            f'后排布局停机钩子(用户 2026-08-20 指示):deploy_cap={_cap}'
-                            f'(有效后排 {_slots_n} 槽)布局未建档。\n'
-                            f'现场验证流程(参照 8 槽闭环 r76):\n'
-                            f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
-                            f'2. 关商店 → 拖 bench 角色到各槽(阵容满则拖前排/横拖挪位)逐位识别验证;\n'
-                            f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
-                            f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
-                            f'5. cw_back_layout._LAYOUT_PREFIX 登记;\n'
-                            f'6. 删本 flag + 重启 MCP server。\n'
-                            f'截图: {_shot}', encoding='utf-8')
-                        _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
-                                  _slots_n, _cap, _shot)
-                        ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
+                from one_dragon.utils.log_utils import log as _log
+                from sr_od.application.currency_war.cw_observe import cw_shot_unique
+                _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
+                if _shot is not None:
+                    _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
+                        f'后排布局停机钩子(ADR-0281):level={level}(有效后排 {_slots_n} 槽)'
+                        f'布局未建档(_LAYOUT_PREFIX 已登记而 screen_info 无档,补档窗口态)。\n'
+                        f'现场验证流程(参照 8 槽闭环 r76):\n'
+                        f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
+                        f'2. 关商店 → 拖 bench 角色到各槽逐位识别验证;\n'
+                        f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
+                        f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
+                        f'5. 删本 flag + 重启 MCP server。\n'
+                        f'截图: {_shot}', encoding='utf-8')
+                    _log.info('[cw-hook][layout] 后排 %d 槽无档(level=%s)→ 停机现场拖拽验证(截图 %s)',
+                              _slots_n, level, _shot)
+                    ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
-    return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
-            + identify_slots(screen, templates, back_slots, 'back'))
+    front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
+    back = identify_slots(screen, templates, back_slots, 'back')
+    # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort
+    check_system_unit_layout(screen, back, back_slots, templates,
+                             source='read_deployed_chars')
+    return front + back
+
+
+# 系统单位布局自检:实测 x 与所选档右格中心的容差(px;ADR-0281 用户口述模型:
+# 系统单位恒最右,差 >40 = 选错档)。40 < 半格宽 71,一个格位错(142)必超。
+_SYSTEM_UNIT_LAYOUT_TOL_PX: int = 40
+# 自检扫描带(x 带:覆盖 6/8 格全部布局 + 幻影时代的假想范围;y = 后排槽带)
+_SYS_CHECK_X1, _SYS_CHECK_X2 = 250, 1700
+_SYS_CHECK_Y1, _SYS_CHECK_Y2 = 600, 740
+_sysunit_conflict_ts: dict[str, float] = {}
+
+
+def _sift_locate_x(band: MatLike, templates: AvatarTemplates, char_id: str,
+                   x_off: int) -> float | None:
+    """SIFT 单点定位:在 band(后排带灰度)里定位 ``char_id`` 模板 → 画面 x 坐标。
+
+    同 ``identify_character`` 的 SIFT 机制,但用 homography 投影模板中心(部分
+    可见也能定位,优于 TM——TM 要求模板 ≤ band 且狸猫兄弟灰度互撞)。定位失败 → None。
+    """
+    from sr_od.application.currency_war.currency_war_char_id import (
+        _SIFT,
+        _ratio_good,
+        ransac_locate_x,
+    )
+    entry = templates.get(char_id)
+    if entry is None:
+        return None
+    _g, tkp, tdesc = entry
+    skp, sdesc = _SIFT.detectAndCompute(band, None)
+    if sdesc is None or tdesc is None or len(skp) < 4 or len(tkp) < 4:
+        return None
+    good = _ratio_good(tdesc, sdesc)
+    if len(good) < 8:
+        return None
+    return ransac_locate_x(tkp, skp, good, _g, x_off)
+
+
+def check_system_unit_layout(
+    screen: MatLike,
+    back_chars: list[BenchChar],
+    back_slots: list[tuple[int, Rect]],
+    templates: AvatarTemplates,
+    source: str = 'read_deployed_chars',
+) -> None:
+    """系统单位恒最右布局自检(ADR-0281 件3,常设判别器)。
+
+    模型(用户口述权威):狸猫(狸小虎/狸小龙)/佩佩类系统召唤单位恒占布局**最右
+    槽位(们)**,布局格数变 → 其 x 跟着最右格移动。判别:后排读到系统单位
+    (char_id 判定 = roster cost==0 段)时,SIFT 实测其 x,与所选档最右 k 格中心
+    (k=系统单位数)对拍;任一差 > ``_SYSTEM_UNIT_LAYOUT_TOL_PX`` →
+    ``obs_conflict('layout_mismatch_by_system_unit')``(节流 300s)。
+
+    与空槽签名法交叉实证过(三触发帧狸猫@1329/1467 只与 8 格自洽)。纯读
+    best-effort,失败不抛。佩佩暂无 roster/模板条目 → 现覆盖狸猫对(有模板者)。
+    """
+    import time as _time
+
+    try:
+        sys_units = []
+        for c in back_chars:
+            ch = get_char(c.char_id) if c.char_id else None
+            if ch is not None and ch.cost == 0:
+                sys_units.append(c.char_id)
+        if not sys_units:
+            return
+        band = cv2.cvtColor(screen[_SYS_CHECK_Y1:_SYS_CHECK_Y2,
+                                   _SYS_CHECK_X1:_SYS_CHECK_X2],
+                            cv2.COLOR_RGB2GRAY)
+        located = []
+        for cid in sys_units:
+            x = _sift_locate_x(band, templates, cid, _SYS_CHECK_X1)
+            if x is not None:
+                located.append((cid, x))
+        if not located:
+            return
+        located.sort(key=lambda t: t[1])
+        centers = sorted((r.x1 + r.x2) / 2 for _i, r in back_slots)
+        k = min(len(located), len(centers))
+        for (cid, x), exp in zip(located[-k:], centers[-k:], strict=True):
+            if abs(x - exp) > _SYSTEM_UNIT_LAYOUT_TOL_PX:
+                now = _time.monotonic()
+                if now - _sysunit_conflict_ts.get(source, -1e9) < 300.0:
+                    return
+                _sysunit_conflict_ts[source] = now
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict(
+                    'layout_mismatch_by_system_unit', exp, round(x, 1), screen,
+                    verdict=(f'留证-系统单位({cid})实测 x={x:.0f} 与所选档右格中心 '
+                             f'{exp:.0f} 差>{_SYSTEM_UNIT_LAYOUT_TOL_PX}px → 布局选错档'
+                             f'(ADR-0281 恒最右模型);处理:核该局 level 与所用档,'
+                             f'交互实锤(拖角色/详情面板)后校正 screen_info 布局'),
+                    source=source, char_id=cid)
+                return
+    except Exception:   # noqa: BLE001  自检 best-effort,绝不阻塞身份读取
+        pass
 
 
 def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> list[BenchChar]:

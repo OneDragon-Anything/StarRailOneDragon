@@ -269,16 +269,12 @@ class PrepDirector(SrOperation):
             # 后异帧——跨帧对拍在轮转动画窗内可假分歧(低概率,
             # 留证非阻塞);r334 后重读仅在 shop 开态,窗口缩小。
             cap = read_deploy_cap(self.ctx, screen)
-            # 观察冲突审计 #15(2026-08-16;⚠ 2026-08-22 两段反转,ADR-0220+用户点题):
-            # 原域「cap ∈ {level, level+1}」(D-53 单宝钻假设)太窄——财富宝钻官方效果
-            # 「拥有即可使团队规模上限+1,无论是否被角色穿戴」可叠加(局38 r2 实证
-            # cap5/lv3=两宝钻)。反转后两段:
+            # 观察冲突审计 #15(2026-08-16;⚠ 2026-08-22 两段反转,ADR-0220+用户点题;
+            # 2026-08-23 ADR-0281 再适配):财富宝钻官方效果「拥有即可使团队规模
+            # 上限+1,无论是否被角色穿戴」可叠加(局38 r2 实证 cap5/lv3=两宝钻)。
+            # 布局与 cap 无关(ADR-0281:level 驱动)后本检查只剩:
             # - cap < level → 不可能(读错/毒化)→ 留证(三源网 M38 天敌);
-            # - cap > level+1 且落入**未实拍后排档**(7/9/10/11,格点推导未经狸猫局
-            #   级实拍,用户 2026-08-22 点题:该 hook 的采集用途)→ obs_conflict
-            #   留证(带处理步骤:本局实拍验证布局档,错位则 upsert 校正)——
-            #   **不得降 debug**(r348 曾误降,静音了 7/9 后台建档采集信号);
-            # - 其余(宝钻叠加但档已实拍,如 cap5/lv3→6 槽基线)→ debug 记宝钻数。
+            # - cap ≥ level → 合法(cap>level=宝钻叠加,debug 记宝钻数)。
             if cap is not None and cap < st.level:
                 from sr_od.application.currency_war.cw_observe import obs_conflict
                 # hook审计 L9(r351):verdict 补处理步骤——r350b 只补了
@@ -291,36 +287,21 @@ class PrepDirector(SrOperation):
                                       '单次按 OCR 噪声忽略,复现 ≥3 次才排期)'),
                              source='paddle_cap')
             elif cap is not None:
+                # ADR-0281(布局模型重审,r414 语义适配):布局选档改 **level 驱动**
+                # —— cap 误读(如 8/8→12)不再影响选档,旧「cap 落入未实拍档留证」
+                # 分支随之作废(7/9/10/11 档是循环论证幻影,已删)。本块只剩:
+                # ① lv6 待采态留证(7 格存在性,note_pending_7slots);
+                # ② 宝钻叠加(cap>level)记 debug(与布局无关,纯经济信息)。
                 from sr_od.application.currency_war.cw_back_layout import (
-                    _LAYOUT_PREFIX,
-                    _UNVERIFIED_BACK_SLOTS,
-                    effective_back_slots,
+                    note_pending_7slots,
                 )
-                _slots = effective_back_slots(cap)
-                # r414(2026-08-23 12槽误档事故):判定从「白名单枚举
-                # (12 不在未实拍集→放行成『宝钻×7 合法』debug)」改为
-                # 「**超出已注册档全集即留证**」——OCR 误读的超范围值
-                # (cap=12 实为 8/8,离线复析实锤)不再被宝钻叠加语义
-                # 合理化;宝钻真实叠加域 = 已注册档(6-11)内的 cap>level。
-                if _slots not in _LAYOUT_PREFIX or _slots in _UNVERIFIED_BACK_SLOTS:
-                    from sr_od.application.currency_war.cw_observe import obs_conflict
-                    _unregistered = _slots not in _LAYOUT_PREFIX
-                    obs_conflict('deploy_cap_unverified_layout', st.level,
-                                 cap, screen,
-                                 verdict=(f'留证-后排{_slots}槽档'
-                                          f'{"未注册(超已知档6-11,大概率OCR误读;处理:核区域-部署数X/Y原文,复现≥3次修 read_deploy_cap 守卫)" if _unregistered else "未实拍(格点推导)"};'
-                                          f'处理:本局识别/拖拽逐位验证该档坐标,'
-                                          f'错位则 upsert 后排{_slots}槽-* 校正'
-                                          f'并从 _UNVERIFIED_BACK_SLOTS 移除;'
-                                          f'正常则仅移除该档)'),
-                                 source='layout_unverified')
-                else:
-                    # review-L1(r353b):else 分支承接所有已实拍档的
-                    # cap≥level——cap==level 是常态(无宝钻),别打
-                    # "宝钻×0"误导判读;仅真叠加(cap>level)才记
-                    if cap > st.level:
-                        log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法)',
-                                  cap, cap - st.level)
+                note_pending_7slots(screen, st.level, 'prep_director',
+                                    extra={'cap': cap})
+                # review-L1(r353b):cap==level 是常态(无宝钻),别打
+                # "宝钻×0"误导判读;仅真叠加(cap>level)才记
+                if cap > st.level:
+                    log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法)',
+                              cap, cap - st.level)
             dep_n = read_deployed_count(self.ctx, screen)
             if cap is not None and dep_n is not None:
                 obs.deploy_vacancy = max(0, cap - dep_n)

@@ -96,6 +96,28 @@ def _ransac_inliers(skp, tkp, good: list) -> int:
     return int((mask.ravel() == 1).sum())
 
 
+def ransac_locate_x(tkp, skp, good: list, tmpl_gray: MatLike, x_off: int = 0) -> float | None:
+    """SIFT 单点定位:good 匹配的 homography 把**模板中心**投影到场景 → 场景 x 坐标。
+
+    与 ``_ransac_inliers`` 同向(query=模板 / train=场景);部分可见也能定位
+    (homography 拟合整体变换,不依赖模板完整在画)。定位失败(匹配不足/homography
+    奇异)→ None。``x_off`` = band 在全图中的 x 偏移(band 裁切定位用)。
+    用途:系统单位恒最右布局自检(ADR-0281,cw_identity_obs.check_system_unit_layout)。
+    """
+    if len(good) < 8:
+        return None
+    tp = np.float32([tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+    sp = np.float32([skp[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+    h_mat, _ = cv2.findHomography(tp, sp, cv2.RANSAC, 5.0)
+    if h_mat is None:
+        return None
+    th, tw = tmpl_gray.shape[:2]
+    p = h_mat @ np.array([tw / 2.0, th / 2.0, 1.0])
+    if abs(p[2]) < 1e-6:
+        return None
+    return float(p[0] / p[2]) + x_off
+
+
 def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
     """SIFT + ratio test + RANSAC 内点数(越大越匹配;<4 good 直接返回)。
 

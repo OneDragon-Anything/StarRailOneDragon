@@ -124,6 +124,20 @@ def _deployment_order(tgt_idx: list[int], rest: list[int],
     return ignite_rest + tgt_sorted + plain_rest
 
 
+def exclude_system_units(chars: list) -> list:
+    """剔除系统单位(ADR-0281 件4):cost==0 的 roster 特殊召唤单位(狸小虎/狸小龙/
+    佩佩类)恒最右、**不可拖** —— 重排/换排/卖出等一切拖拽候选一律剔除(拖必失败,
+    游戏拒 → 3 次重试白烧;选中态光效还可能假成功)。char_id 未知/不在 roster → 保留
+    (未知单位保持旧行为,由识别侧钩子管)。"""
+    out = []
+    for d in chars:
+        ch = get_char(d.char_id) if getattr(d, 'char_id', '') else None
+        if ch is not None and ch.cost == 0:
+            continue
+        out.append(d)
+    return out
+
+
 class DeployBench(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
@@ -138,8 +152,9 @@ class DeployBench(SrOperation):
     def _row_centers(self, prefix: str) -> list[Point]:
         """从 screen_info 读**全部** ``{prefix}-N`` 区域中心(按 N 升序)。
 
-        数量 = screen_info 已建模数(不硬编码):前排 4 / 备战栏 9 / 后排 基准 6。
-        **后排 >6**(财富宝钻 +1)时 screen_info 补 后排-7+ area 后本方法自动跟上(读全)。
+        数量 = screen_info 已建模数(不硬编码):前排 4 / 备战栏 9 / 后排按
+        ``_back_row_centers_by_level`` 选档(6/8 格两档,ADR-0281;**别假设
+        「后排-」只有 6 个**——档前缀由调用方传入)。
         """
         si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
         if si is None:
@@ -156,26 +171,40 @@ class DeployBench(SrOperation):
         pts.sort(key=lambda t: t[0])
         return [p for _, p in pts]
 
-    def _back_row_centers_by_cap(self) -> list[Point]:
-        """r77e:后排槽位按 deploy_cap 选档布局(狸猫局 8 槽错位根修)。
+    def _session_level(self) -> int | None:
+        """session 等级链(``last_level_obs`` 单调链 vs ``last_state.level`` 取大)→ None(无 session)。
 
-        槽数 = effective_back_slots(cap) = max(6, cap)(r81:cap5 实测仍 6 槽,
-        五组数据全吻合);按「后排N槽-」档取(与 read_deployed_chars 同源);
-        读不到/无档 → 退基线「后排-」(旧行为)。r80 审计 d:无档补 [cw!] 告警。
+        布局选档的 level 源(ADR-0281:后排槽数 level 驱动,cap 与布局无关)。
+        """
+        _m = self.ctx.cw_match
+        if _m is None or _m.session is None:
+            return None
+        lv = getattr(_m.session, 'last_level_obs', 0) or 0
+        st = _m.session.last_state
+        if st is not None and st.level:
+            lv = max(lv, st.level)
+        return lv or None
+
+    def _back_row_centers_by_level(self) -> list[Point]:
+        """r77e→ADR-0281:后排槽位按 **level** 选档布局(狸猫局 8 槽错位根修)。
+
+        槽数 = ``effective_back_slots(level)``(level≤5→6 / ≥7→8 / ==6→保守 6+
+        留证);按「后排N槽-」档取(与 read_deployed_chars 同源);level 读不到/无档
+        → 退基线「后排-」(旧行为)。旧 cap 驱动已废(cap=宝钻叠加,与布局无关)。
         """
         from one_dragon.utils.log_utils import log as _log
         from sr_od.application.currency_war.cw_back_layout import (
             _LAYOUT_PREFIX,
             effective_back_slots,
+            note_pending_7slots,
         )
-        from sr_od.application.currency_war.cw_observation import read_deploy_cap
-        cap = read_deploy_cap(self.ctx, self.last_screenshot)
-        n = effective_back_slots(cap) if cap else 6
+        lv = self._session_level() or 6
+        note_pending_7slots(self.last_screenshot, lv, 'deploy_bench')
+        n = effective_back_slots(lv)
         if n in _LAYOUT_PREFIX:
             return self._row_centers(_LAYOUT_PREFIX[n])
-        if cap and n not in _LAYOUT_PREFIX:
-            _log.warning('[cw!][layout] deploy 侧 后排 %d 槽布局未建档(退 6 槽基线;'
-                         '停机钩子在识别侧已/将触发现场验证)', n)
+        _log.warning('[cw!][layout] deploy 侧 后排 %d 槽布局未建档(退 6 槽基线;'
+                     '补档流程见 ADR-0281)', n)
         return self._row_centers('后排')
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
@@ -195,11 +224,12 @@ class DeployBench(SrOperation):
 
         bench = self._row_centers('备战栏')
         front = self._row_centers('前排')
-        # r77e 审计 BUG-4b/1c:后排槽位必须按 **cap 档布局**取(与 read_deployed_chars
-        # 同源)——狸猫局 cap=8 时基线 6 槽坐标错位(编号↔坐标两套参照系):_deploy_deterministic
-        # 漏计固定单位(cap 假未满白拖)+ _sell_offtarget_deployed 用 8 槽编号索引 6 槽表
-        # → 卖错邻槽(把 target 卖掉,成型度崩)。统一走 cw_back_layout 选档。
-        back = self._back_row_centers_by_cap()
+        # r77e 审计 BUG-4b/1c → ADR-0281:后排槽位必须按 **level 档布局**取(与
+        # read_deployed_chars 同源)——狸猫局 lv7+ 的 8 槽坐标若用基线 6 槽会错位
+        # (编号↔坐标两套参照系):_deploy_deterministic 漏计固定单位(假未满白拖)
+        # + _sell_offtarget_deployed 用 8 槽编号索引 6 槽表 → 卖错邻槽。统一走
+        # cw_back_layout 选档(level 驱动)。
+        back = self._back_row_centers_by_level()
         if len(bench) == 0:
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
             return self.round_success(DeployBench.STATUS_NO_BENCH)
@@ -298,7 +328,10 @@ class DeployBench(SrOperation):
         出战硬要求 > 站位偏好。"""
         if templates is None:
             return
-        deployed = read_deployed_chars(self.ctx, self.screenshot(), templates)
+        _all_deployed = read_deployed_chars(self.ctx, self.screenshot(), templates)
+        # ADR-0281 件4:系统单位剔除统一走 exclude_system_units(r250 场内版此前取
+        # back_chars[0] 可能选中狸猫 → 拖必失败白烧重试)。
+        deployed = exclude_system_units(_all_deployed)
         if not deployed:
             return
         # r250 前排保证(场内版):前排全空 + 后排有人 → 挪一
@@ -334,8 +367,8 @@ class DeployBench(SrOperation):
         moved = 0
         for d in deployed:
             ch = get_char(d.char_id) if d.char_id else None
-            if ch is None or ch.cost == 0:
-                continue
+            if ch is None:
+                continue   # 系统单位(cost==0)已在函数头统一剔除(ADR-0281 件4)
             want = ch.position_pref()
             cur = d.position_pref or 'back'
             if want == cur:
@@ -455,15 +488,18 @@ class DeployBench(SrOperation):
         # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
         # 上阵的代价 > 高读白拖一次,不对称取舍)。
         _cap = read_deploy_cap(self.ctx, scr)
-        # r80 审计 d-风险1:入场帧(收起商店 1s 过渡)失读时 _back_row_centers_by_cap 已退
-        # 基线 6 槽;此处 fresh 帧重读到真 cap → **重建 back 布局**(否则整轮卖侧错位)。
-        # r81:槽数 = max(6, cap)(effective_back_slots)。
+        # r80 审计 d-风险1:入场帧(收起商店 1s 过渡)失读时布局已退基线 6 槽;
+        # 此处 fresh 帧按 **level** 重建 back 布局(ADR-0281:level 驱动;cap 误读
+        # 不再影响选档——cap 只用于上面的板满门)。
         from sr_od.application.currency_war.cw_back_layout import (
             _LAYOUT_PREFIX,
             effective_back_slots,
+            note_pending_7slots,
         )
-        if _cap is not None:
-            _n = effective_back_slots(_cap)
+        _lv = self._session_level()
+        if _lv is not None:
+            note_pending_7slots(scr, _lv, 'deploy_bench.midloop')
+            _n = effective_back_slots(_lv)
             if _n in _LAYOUT_PREFIX:
                 back = self._row_centers(_LAYOUT_PREFIX[_n])
         if _cap is None:
@@ -776,7 +812,9 @@ class DeployBench(SrOperation):
         ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
         首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
         """
-        deployed = read_deployed_chars(self.ctx, self.last_screenshot, templates) if templates else []
+        deployed = exclude_system_units(
+            read_deployed_chars(self.ctx, self.last_screenshot, templates)
+        ) if templates else []
         _sell = Point(70, 846)
         sold = 0
         for d in deployed:
@@ -786,13 +824,7 @@ class DeployBench(SrOperation):
                 continue
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
-                continue
-            # r77e 审计 BUG-1b:固定召唤单位(狸小虎/狸小龙/佩佩类,cost=0 不可购买语义)
-            # **不可拖动/不可卖** —— faction 空 → 不命中 target 分支,会被判 off-target
-            # 进卖路径(游戏拒 → 3 次重试 ~6s/只白烧;选中态光效还可能假成功虚增 sold)。
-            # cost==0 = roster 特殊召唤单位段标记,continue 保平安。
-            if ch.cost == 0:
-                continue
+                continue   # 系统单位(cost==0)已在入口剔除(ADR-0281 件4)
             bonds = set(ch.factions) | set(ch.flows)
             if bonds & target_factions:
                 continue   # target 单位,保留

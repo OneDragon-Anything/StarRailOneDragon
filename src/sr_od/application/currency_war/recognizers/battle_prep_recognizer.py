@@ -60,7 +60,6 @@ from sr_od.application.currency_war.cw_observation import (
     read_level,
     read_streak,
 )
-from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
 from sr_od.application.currency_war.cw_state import BenchChar
 
 if TYPE_CHECKING:
@@ -167,16 +166,21 @@ class BattlePrepRecognizer(ScreenRecognizer):
         """
         # 装备(slot_idx → 装备名;先读,再注入 BenchChar.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
         # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
+        # 后排装备槽按 level 选档(ADR-0281:lv7+ → 8 格档「后排8槽」;固定 6 会漏位7-8)。
+        phase0 = _read_phase_round_pure(ctx, image)
+        level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
+        from sr_od.application.currency_war.cw_back_layout import back_prefix_for_level
+        _back_pfx, _back_n = back_prefix_for_level(level0)
         equip_grays = ensure_equip_tm_templates(ctx)
         front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
-        back_equips = read_row_equipped(ctx, image, equip_grays, '后排', 6) if equip_grays is not None else {}
+        back_equips = read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n) if equip_grays is not None else {}
         # 角色复用 BenchChar(read_deployed_chars 已返,含 star);只补 equips(按 slot 对齐注入)
         templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
         front_line: list[BenchChar] | None = None
         back_line: list[BenchChar] | None = None
         bench: list[BenchChar] | None = None
         if templates is not None:
-            deployed = read_deployed_chars(ctx, image, templates)
+            deployed = read_deployed_chars(ctx, image, templates, level=level0)
             bench_chars = read_bench_chars(ctx, image, templates)
             for c in deployed:
                 c.equips = (front_equips if c.position_pref == 'front' else back_equips).get(c.slot, [])
@@ -198,8 +202,10 @@ class BattlePrepRecognizer(ScreenRecognizer):
                     'inliers': eq_inliers,
                 })
             owned_equips = _owned or None
-        phase = _read_phase_round_pure(ctx, image)
-        level = read_level(ctx, image, phase[0], phase[1]) if phase else read_level(ctx, image, 0, 0)
+        phase = phase0
+        level = level0
+        # D-50 旧告警(cap>level → 后排可能>6)已随 ADR-0281 作废:cap=宝钻叠加,
+        # 与布局无关(两帧同 lv7 cap8/9 同为 8 格);宝钻信息由 prep_director debug 记。
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None;与 director 同源——消掉「MCP 报 100 而
         # director gated=26」双真相)。extras 序列化 None→
@@ -225,11 +231,4 @@ class BattlePrepRecognizer(ScreenRecognizer):
                 {'color': c, 'cx': p.x, 'cy': p.y, 'r': r} for c, p, r in read_reward_spheres(ctx, image)
             ] or None),
         )
-        # D-50:deploy_cap > level = 宝钻加成(团队槽+1/个,可叠加——局38 r2 cap5/lv3 实证)
-        # → 后排可能>6(read_equipped count=6 漏;布局按 max(6,cap) 取档,见 cw_back_layout)
-        if state.deploy_cap is not None and state.deploy_cap > state.level:
-            cw_log('recognize', step='team_size', target='后排', attn=True,
-                   anomaly=f'deploy_cap={state.deploy_cap}>level={state.level}(宝钻×{state.deploy_cap - state.level} 叠加)→后排可能>6(read_equipped count=6 漏,D-50)',
-                   level=state.level, deploy_cap=state.deploy_cap,
-                   shot=cw_shot(image, f'team_cap{state.deploy_cap}_lv{state.level}'))
         return asdict(state)
