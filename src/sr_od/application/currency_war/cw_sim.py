@@ -123,8 +123,8 @@ class SimResult:
     bridge_id: str | None = None
     # r338 诊断基建:逐轮事件 (round, node_type, delta, dir_established)
     hp_events: list[tuple[int, str, int, bool]] = field(default_factory=list)
-    # r341 诊断基建:逐轮板深(Σbench;deployed 上场在 sim 未
-    # 建模——bench 即板深代理)——杠杆实验的观测端
+    # r341 诊断基建:逐轮板深(_deployable_depth=min(level, len(
+    # deployed));r390 起读 deployed,ADR-0271 起为真上场名单)
     depth_trail: list[int] = field(default_factory=list)
     # ⓪ 可复现基建:本局所用 Δ 池指纹与来源(裸 seed 不构成
     # 重放承诺,重放 = seed + 指纹;跨日基线对照必须同指纹)
@@ -518,6 +518,23 @@ def _board_factions_of(deployed) -> dict[str, int]:
     return out
 
 
+def _board_counts_of(deployed) -> dict[str, int]:
+    """ADR-0271:board 主阵营计数(生产 DeployMove 口径)。
+
+    生产 board[faction] += 1 按角色**主阵营**(BenchChar.faction)
+    逐件累加;与 _board_factions_of(factions+flows 并计,判读用)
+    是两个口径——state.board 消费方(line_strategy recipe 门/在场
+    阵营集合)按生产口径喂。未识别(char_id 空)不计(生产 OCR
+    空板同形)。"""
+    out: dict[str, int] = {}
+    for d in (deployed or []):
+        f = getattr(d, 'faction', '') or ''
+        if not f or f == '?':
+            continue
+        out[f] = out.get(f, 0) + 1
+    return out
+
+
 def _first_tier_round(res, tier: int) -> int | None:
     """r394:配方档位首达轮(ledger 的 board_factions 逐轮查
     recipe_tier≥tier 的最小轮;查不到=None)。"""
@@ -715,17 +732,31 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if (f == _fw_name or f == '通用') and t != 'drop')
         except Exception:   # noqa: BLE001  代理 best-effort
             pass
+        # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
+        # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
+        # DeployMove:bench.pop → deployed.append → board 聚合)。
+        # 旧代理「deployed=bench 切片不弹出」且每轮从零重算:bench
+        # 恒含已上阵件(批⑦ 实证 94.6% 轮 bench≥9 虚高、极大 25),
+        # 所有席位门(_P2_PRECACHE_MAX_BENCH/破息窗/bench_is_full)
+        # 在 sim 读假数据。修正后:deployed 跨轮累积(生产跟踪态),
+        # select_deployments 吃真实 deployed_cids/deployed_fac/cap
+        # 语义;board = deployed 主阵营聚合(生产 board 口径)。
+        _dep_cids = {d.char_id for d in st.deployed if d.char_id}
+        _dep_fac = _board_factions_of(st.deployed)
         _up_idx, _held_idx = _dl.select_deployments(
             st.bench,
-            deployed_cids=set(),
-            deployed_fac=dict(st.board),
+            deployed_cids=_dep_cids,
+            deployed_fac=_dep_fac,
             board=dict(st.board),
             cap=st.max_units(),
             target_factions=_tf,
             target_cores=_tc,
             fw_carry=_fw,
         )
-        st.deployed = [st.bench[i] for i in _up_idx if i < len(st.bench)]
+        for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
+            if _i < len(st.bench):
+                st.deployed.append(st.bench.pop(_i))
+        st.board = _board_counts_of(st.deployed)
         for _seg in range(8):
             strat.update_target(st, sess, None)
             acts = strat.decide_prep(st, sess, None)
@@ -870,7 +901,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'plane': 1, 'round_num': rn,
             'gold': st.gold, 'hp': st.hp,
             'target_comp': (sess.locked_line or sess.bridge_id or ''),
-            'state': {'board': {}, 'level': st.level,
+            'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——
                       # deployed 的 factions 计数(生产 board 口径;
                       # 旧恒空 dict 让「r几凑到配方X档/三人组上场」
@@ -1075,7 +1106,11 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                         row['sim']['node'], row['sim']['node']),
                     'comp_tag': row['target_comp'] or '',
                     'hp_after': row['hp'],
-                    'board_before': {}, 'bench_count':
+                    # ADR-0271:board 真值(deployed 主阵营聚合;
+                    # 旧恒空 dict 让 rounds/economy 视图板面恒缺)
+                    'board_before': dict(
+                        (row['state'] or {}).get('board') or {}),
+                    'bench_count':
                         len(row['state']['bench']),
                     'sim': {'delta': row['sim']['delta'],
                             'depth': row['sim']['depth'],
