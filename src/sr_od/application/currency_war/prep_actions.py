@@ -603,7 +603,7 @@ class PrepActionExecutor:
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(ensure_shop 开向)')
-            # ADR-0264 修订:开店动画=操作段(2s 预估+单校验)
+            # ADR-0264 终裁加速器②:开店动画=操作段(2s 基线重置点)
             try:
                 ok = wait_stable_frame(
                     self._op, profile=PROFILE_OPEN,
@@ -623,7 +623,7 @@ class PrepActionExecutor:
             wait_stable_frame,
         )
         log.info('[cw][gate] path=new(ensure_shop 关向)')
-        # ADR-0264 修订:收起动画=操作段(2s 预估+单校验)
+        # ADR-0264 终裁加速器②:收起动画=操作段(2s 基线重置点)
         try:
             ok = wait_stable_frame(
                 self._op, profile=PROFILE_CLOSED,

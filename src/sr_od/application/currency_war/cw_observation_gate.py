@@ -59,16 +59,13 @@ PROFILE_CLOSED: dict = {
                                     # 相邻 poll 间隔已>min_stable_s)+
                                     # 余量;旧 4.5s<单轮成本=结构性饿死
                                     #(局37 ping-pong 停机根因)。
-                                    # ADR-0264:fast_confirm 下后续确认轮
-                                    # 免 OCR,预算只覆盖首锚轮更绰绰有余
+                                    # ADR-0264 终裁:fast_confirm 下确认
+                                    # 轮免 OCR(纯 CV ~50ms/轮),预算
+                                    # 只覆盖首锚轮更绰绰有余
     'min_stable_s': 0.8,
-    'fast_confirm': True,           # ADR-0264 方案 A:锚命中 1 次后,
-                                    # 后续稳定确认轮跳过全图 OCR 只比
-                                    # 指纹;置 False 关回旧行为(A/B)
-    'flow_aware': True,             # ADR-0264 修订:流程分段开关——
-                                    # True 时调用方可传 segment=
-                                    # 'node_end'/'op_settle' 选差异化
-                                    # 稳定策略;False 一律走完整门
+    'fast_confirm': True,           # ADR-0264 终裁骨架:锚命中后稳定
+                                    # 确认轮跳过全图 OCR 只比指纹;
+                                    # 置 False 关回旧行为(A/B 回退)
 }
 
 #: 开态(商店开):同用框架精准判定——精准命中「开商店屏」
@@ -82,8 +79,7 @@ PROFILE_OPEN: dict = {
     ),
     'timeout_s': 12.0,               # r344:同 PROFILE_CLOSED 成本口径
     'min_stable_s': 0.8,
-    'fast_confirm': True,            # ADR-0264 方案 A(同 CLOSED 注)
-    'flow_aware': True,              # ADR-0264 修订(同 CLOSED 注)
+    'fast_confirm': True,            # ADR-0264 终裁骨架(同 CLOSED 注)
 }
 
 #: 弹窗态(奖励采集钩子点六边形后):锚=弹窗标题区 OCR「金币说明」。
@@ -99,17 +95,22 @@ PROFILE_POPUP: dict = {
     ),
     'timeout_s': 12.0,               # r344:同 CLOSED/OPEN 成本口径
     'min_stable_s': 0.6,
-    'fast_confirm': True,            # ADR-0264 方案 A(同 CLOSED 注)
-    'flow_aware': True,              # ADR-0264 修订(同 CLOSED 注)
+    'fast_confirm': True,            # ADR-0264 终裁骨架(同 CLOSED 注)
 }
 
 #: 帧间隔(方案 v4:0.2-0.3s)
 _POLL_S: float = 0.25
 
-#: 操作段(op_settle)预估等待(ADR-0264 修订;用户口述定调
-#: 2026-08-24:「备战期间的特效/overlay(买角色/部署特效)是
-#: 短暂的,预估 2 秒等待就好了」)。
+#: 操作段(op_settle)预估等待(ADR-0264 终裁加速器②;用户口述
+#: 定调 2026-08-24:「备战期间的特效/overlay(买角色/部署特效)
+#: 是短暂的,预估 2 秒等待就好了」)。语义=**指纹基线重置点**:
+#: 特效后先等 2s 再取指纹基线(防特效中间帧当基线),随后指纹
+#: 快 poll 正常确认稳定窗。
 _OP_SETTLE_S: float = 2.0
+
+#: 最近一次 op_settle 预估等待的时长(测试内省 seam;None=本进程
+#: 未走过 op_settle 段)。
+_LAST_SETTLE_WAIT: float | None = None
 
 # r324(轮子审查修法2):指纹原语下沉 one_dragon.utils.cv2_utils
 # (fingerprint_in_rects/fingerprint_same,与 is_same_image 并列)——
@@ -194,24 +195,24 @@ def wait_stable_frame(
       后首帧指纹」——gate 首次锚命中时消费(pop),指纹一致则
       稳定窗从预置时刻起算,预置距今 ≥ min_stable_s 即一轮
       达标;**不裸跳**(仍须锚命中 + 指纹一致确认一次)。
-    - (ADR-0264 修订,flow_aware 流程分段;用户口述定调
-      2026-08-24:「节点结束后流程是稳定的,这部分可以优化;
-      备战期间的特效/overlay(买角色/部署特效)是短暂的,
-      预估 2 秒等待就好了」)——调用方按所处流程段传 segment:
-      - ``'node_end'``(高信任段:battle_end 锚→备战首见→
-        overlay,次序固定):**锚命中(id_mark 精准判定)即返
-        帧**,不坐等指纹双轮确认;id_mark 全中本身就是强屏
-        身份。锚 miss 照旧轮询(等画面渲染到位),超时→None
-        走调用方既有容忍链(等价回退);残留的 overlay 弹出由
-        调用方既有 event_overlay 检测/兜底接管。
-      - ``'op_settle'``(操作段:买/部署/装备特效短暂):先固定
-        睡 ``_OP_SETTLE_S``(用户预估 2s)再进主循环,且稳定窗
-        降为「单次指纹一致即过」(min_stable_s 视为 0——首帧
-        设基线+次帧一致=一次校验通过);校验不过(特效意外
-        拖长)→ 循环内自然回退逐轮(完整门语义)。
-      - ``None`` / profile ``flow_aware=False``:完整稳定门
-        (旧行为,开关可整体关回做 A/B)。方案 A(fast_confirm)
-        作为逐轮模式内部的实现细节保留(操作段/完整门通用)。
+    - (ADR-0264 终裁,融合:指纹快 poll = 测量驱动骨架,用户
+      流程知识 = 加速器;**不做「锚命中即推进」的纯信任放行**
+      ——测量驱动对未知画面形态鲁棒,纯先验信任在游戏版本
+      更新加新特效时有带噪观察的失效面;速度上融合收益≈两者
+      之和,稳定性上完胜)——用户口述定调 2026-08-24:「节点
+      结束后流程是稳定的,这部分可以优化;备战期间的特效/
+      overlay 是短暂的,预估 2 秒等待就好了」。两个应用点:
+      1. 节点结束段加速(隐含于骨架):锚命中后**立即**进指纹
+         快 poll,不等额外的全图 OCR 轮——锚命中帧即设指纹
+         基线,后续确认轮全部纯 CV(min_stable_s 从「被 ~5s
+         OCR poll 量化」变为真实测量);
+      2. 操作段(``segment='op_settle'``,买/部署/装备特效后):
+         **2s 预估等待作为指纹基线重置点**——先等 2s 再取
+         基线(防特效中间帧当基线),随后指纹快 poll 正常确认
+         min_stable_s 稳定窗(非单校验放行);校验不过(特效
+         意外拖长)→ 循环内回锚定/重设基线(完整门语义)。
+      回退开关 = ``fast_confirm``(profile 键,显式传参优先;
+      False = 每轮 poll 都做全图 OCR 锚判定的旧完整门)。
     """
     from one_dragon.base.screen import screen_utils
     from one_dragon.utils import cv2_utils
@@ -223,40 +224,14 @@ def wait_stable_frame(
     import contextlib
     with contextlib.suppress(Exception):   # 离线无控制器
         op.park_cursor()
-    # ADR-0264 修订:流程分段开关(profile 键,缺省开;False=
-    # segment 一律忽略,回完整门旧行为)
-    _flow_aware = profile.get('flow_aware', True)
-    _seg = segment if _flow_aware else None
-    if _seg == 'node_end':
-        # 高信任段:锚命中即返帧(见函数头注;无指纹双轮/无
-        # grace——grace 是指纹样本饿死兜底,本段不设指纹)
-        _n = 0
-        while _now() < deadline:
-            frame = op.screenshot()   # 异常直传(调用方 except=放行)
-            _n += 1
-            _name = screen_utils.get_match_screen_name(
-                ctx=op.ctx, screen=frame,
-                screen_name_list=list(profile['screen_list']),
-                crop_first=False)
-            if _name == profile['expect_screen']:
-                # 高信任推进:残留 overlay 预置基线一并消费
-                _PRESET_BASELINE.pop(profile['expect_screen'], None)
-                log.info(f'[cw][gate] stable frame '
-                         f'({profile["expect_screen"]}, {_now() - t0:.1f}s'
-                         f', seg=node_end, polls={_n})')
-                return frame
-            _sleep(_POLL_S)
-        log.info(f'[cw][gate] timeout ({_now() - t0:.1f}s) '
-                 f'profile={profile["expect_screen"]} '
-                 f'seg=node_end polls={_n}')
-        return None
+    # ADR-0264 终裁加速器②:操作段 2s 预估等待 = 指纹基线重置点
+    #(先等再取基线,防特效中间帧当基线;随后正常快 poll 确认窗)
+    global _LAST_SETTLE_WAIT
     _settle_waited = False
-    _min_stable = profile['min_stable_s']
-    if _seg == 'op_settle':
-        # 操作段:固定预估等待(用户定调 2s)后再开始校验
+    if segment == 'op_settle':
         _sleep(_OP_SETTLE_S)
+        _LAST_SETTLE_WAIT = _OP_SETTLE_S
         _settle_waited = True
-        _min_stable = 0.0   # 单次指纹一致即过(见函数头注)
     stable_since = None
     first_fp = None
     _diag = {'screen': 0, 'fp': 0, 'ok': 0, 'fast': 0}
@@ -335,7 +310,7 @@ def wait_stable_frame(
                 continue
         _compared = True
         if stable_since is not None and \
-                _now() - stable_since >= _min_stable:
+                _now() - stable_since >= profile['min_stable_s']:
             log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s'
                      f'{", settle" if _settle_waited else ""}'
                      f'{", fast" if _diag["fast"] else ""}'

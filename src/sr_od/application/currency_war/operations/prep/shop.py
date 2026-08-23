@@ -141,7 +141,7 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 买前收起)')
-            # ADR-0264 修订:收起动画=操作段(短暂)——2s 预估+单校验
+            # ADR-0264 终裁加速器②:收起动画=操作段(2s 基线重置点)
             try:
                 _gf = wait_stable_frame(
                     self, profile=PROFILE_CLOSED, segment='op_settle')
@@ -200,7 +200,7 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 开店)')
-            # ADR-0264 修订:开店动画=操作段(~3s<2s 预估+逐轮兜底)
+            # ADR-0264 终裁加速器②:开店动画=操作段(2s 基线重置点)
             with contextlib.suppress(Exception):   # 离线契约:放行
                 wait_stable_frame(self, profile=PROFILE_OPEN,
                                   segment='op_settle')
