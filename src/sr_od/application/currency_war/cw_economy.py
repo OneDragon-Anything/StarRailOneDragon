@@ -33,19 +33,20 @@ if TYPE_CHECKING:
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
 
 
-def streak_gold(streak: int) -> int:
-    """连胜奖励金(真值源=奖励弹窗,VLM 判读 2026-08-23,r305)。
+STREAK_GOLD_TABLE: tuple[int, ...] = (1, 1, 2, 2, 2, 3, 4)
+"""连胜金实测真值表(索引=连胜数,越界取末值;49/49 样本,economy.md §10.1;ADR-0262)。
 
-    四档:0-1→1,2-4→2,5→3,6+→4(r298 首版漏第四档)。
+弹窗底部固定规则表,与对局状态无关:0-1→1 / 2-4→2 / 5→3 / 6+→4(末位即 6+ 档)。"""
+
+
+def streak_gold(streak: int) -> int:
+    """连胜奖励金(真值源=奖励弹窗 VLM 判读 2026-08-23,r305;表化 ADR-0262)。
+
+    查 STREAK_GOLD_TABLE,越界(连胜 6+)取表尾。
     单一源:sim 收入模型(cw_sim)与决策 EV(line_strategy r307)
     都 import 此函数,防双表漂移。"""
-    if streak < 2:
-        return 1
-    if streak < 5:
-        return 2
-    if streak < 6:
-        return 3
-    return 4
+    idx = max(0, min(streak, len(STREAK_GOLD_TABLE) - 1))
+    return STREAK_GOLD_TABLE[idx]
 
 
 #: 基础奖励(弹窗实测恒 5;6/7 样本 P1r3/r4/r6/r7+P2r1,r2 孤例 4 待复核)
