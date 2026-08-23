@@ -28,7 +28,7 @@ class DecisionV2Registry:
     #: 买候选标签优先序(单卡只取首个命中标签;顺序即裁决,可 A/B)
     buy_tag_priority: tuple[str, ...] = (
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'bond_fallback', 'carry_gate',
+        'engine_seed', 'bond_fallback', 'carry_gate',
     )
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
@@ -58,21 +58,21 @@ class DecisionV2Registry:
     #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
     emergency_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'carry_gate', 'off_target', 'free_bench', 'deploy',
+        'engine_seed', 'carry_gate', 'off_target', 'free_bench', 'deploy',
     })
     catchup_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'levelup', 'off_target', 'free_bench', 'deploy',
+        'engine_seed', 'levelup', 'off_target', 'free_bench', 'deploy',
     })
     economy_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core', 'carry_gate',
-        'bond_fallback', 'off_target', 'for_gold', 'free_bench',
-        'levelup', 'refresh', 'deploy',
+        'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
+        'carry_gate', 'bond_fallback', 'off_target', 'for_gold',
+        'free_bench', 'levelup', 'refresh', 'deploy',
     })
     war_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core', 'bond_fallback',
-        'carry_gate', 'off_target', 'for_gold', 'free_bench', 'levelup',
-        'deploy',
+        'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
+        'bond_fallback', 'carry_gate', 'off_target', 'for_gold',
+        'free_bench', 'levelup', 'deploy',
     })
     #: 追赶窗口约束:追赶期禁 for_gold(不折现卖件)+ 禁 refresh
     #: (升人口窗口的钱不进刷新;redesign「追赶=升人口置顶」)

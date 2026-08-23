@@ -4,7 +4,8 @@
 (标签仅作层2过滤域标记,ADR-0290 对抗修订③):
 
 - 买:店内每张可识别卡 × 标签(line_carry / line_opportunistic /
-  bridge_core / bond_fallback[31] / carry_gate 腾位)+ 3合1 合成标记
+  bridge_core / engine_seed[ADR-0299 过渡体系首块砖] /
+  bond_fallback[31] / carry_gate 腾位)+ 3合1 合成标记
   (同名第 3 张副本买入即合成,Candidate.merge=True);
 - 卖:bench 每件 × 理由(off_target 常态死库存 / for_gold 应急态弱件
   / free_bench 腾位让位)——v1 卖通道豁免(engine_seed 年龄豁免
@@ -51,7 +52,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
 #: 买候选标签集 / 卖候选标签集 / 动作类枚举(检查项 coverage 消费)
 BUY_TAGS: frozenset[str] = frozenset({
     'line_carry', 'line_opportunistic', 'bridge_core',
-    'bond_fallback', 'carry_gate',
+    'engine_seed', 'bond_fallback', 'carry_gate',
 })
 SELL_TAGS: frozenset[str] = frozenset({
     'off_target', 'for_gold', 'free_bench',
@@ -115,7 +116,13 @@ def _target_names(state: GameState,
         if line is not None:
             names.add(line.carry)
             names.update(line.opportunistic_cards)
-        names.update(n for combo in pool for n in combo.core)
+        # ADR-0299:锁线期目标集并入当前位面全部桥的 fixed∪core
+        # (与未锁分支同口径)——v1 _bridge_seed 不分锁线态,任何桥的
+        # fixed 件(如飞霄)都是方向件;旧版只并 core → 锁线后 fixed
+        # 件候选不生成(买入面缺口,seed 900003 r2 实证)+ 无保护
+        # 被当 off_target 卖(v1 line1554「买进来的每一张都是方向件」)
+        names.update(n for combo in pool
+                     for n in set(combo.fixed) | set(combo.core))
     elif session.bridge_id:
         for combo in pool:
             if combo.bridge_id == session.bridge_id:
@@ -137,6 +144,25 @@ def _star_weighted_copies(name: str, state: GameState) -> int:
     return n
 
 
+def _engine_seed_wants(card: ShopCard, state: GameState,
+                       session: StrategySession) -> bool:
+    """过渡体系种子件放行门(ADR-0299):v1 LineStrategy.
+    _engine_seed_wants 的直通单一源(与 _seed_age_blocked 同式,
+    不复制判据)。
+
+    P1 过渡期,卡属过渡体系阵营(仙舟/列车同行/持续伤害)且未持有
+    同名 → 候选(引擎乐高第一块砖)。v1 实弹判读(ADR-0260):
+    凑档/锁线判据漏 21% 金够 cost1-3 引擎核心件——这正是 v2 买入
+    面缺口的主导层(合流总验 buys 9.3 vs v1 15,解剖表 layer1
+    21.6%,集中在 r1-r2)。金够/不破息档由层4 gold_floor/
+    interest_rule 辖(v1 同:本门不加价)。
+    """
+    from sr_od.application.currency_war.strategies.line_strategy import (
+        LineStrategy,
+    )
+    return LineStrategy._engine_seed_wants(card, state, session)
+
+
 def _buy_tag(card: ShopCard, state: GameState,
              session: StrategySession, registry: DecisionV2Registry) -> str | None:
     """单卡标签裁决(优先序=registry.buy_tag_priority;纯查询)。
@@ -151,6 +177,8 @@ def _buy_tag(card: ShopCard, state: GameState,
     # ——无 top4 目标件时「用手上已有的其他羁绊先凑数,纯散件不买」)
     # +r≥3+1-2 费带+凑 2 档
     no_direction = not session.locked_line and not session.bridge_id
+    if not is_target and _engine_seed_wants(card, state, session):
+        return 'engine_seed'    # ADR-0299:过渡体系首块砖(v1 ADR-0260 门镜像)
     if (not is_target and (session.locked_line or no_direction)
             and state.round_num >= registry.bond_fallback_min_round
             and 1 <= (card.cost or 3) <= registry.bond_fallback_max_cost
