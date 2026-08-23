@@ -253,6 +253,44 @@ def check_no_component_equipped_p1(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
+    """压测自由批 F1 指纹(同轮买卖互斥;ADR-0267;r408)。
+
+    指纹:同轮(同账本行)内「BuyCard(X) 先于 SellBench(X)」——
+    bench 满员态 engine_seed 买通道与卖通道在同名卡上互踩,单轮
+    最高 8 连振荡(自由批实测 235 次/38 局),白拿 XP/引擎种子
+    归零/boss 轮段预算烧尽。r408 修后 0 容忍。
+
+    边界:卖→买的同轮序(先卖腾位再买入)是合法经济动作,不报;
+    **3合1 让位豁免的检查侧镜像**:reason='copy' 的买入是 r383b
+    同名副本素材(口述[15] 压缩牌库),其同名卖出=卖合成冗余的
+    让位(ADR-0267 豁免边),不报——振荡主通道(engine_seed/line/
+    bridge_seed 等单次买入被当轮卖回)仍 0 容忍。
+    仅 v2 栈(line_v2)账本适用(default 栈 reason='plan' 的
+    卖出语义不同,生产侧按 strategy_id 分栈后选择)。
+    """
+    out: list[dict] = []
+    for row in rows:
+        bought: list[str] = []
+        _copy_names: set[str] = set()
+        for a in row.get('actions') or []:
+            if a.get('__type__') == 'BuyCard':
+                _n = (a.get('card') or {}).get('name')
+                if _n and a.get('reason') == 'copy':
+                    _copy_names.add(_n)   # 3合1 收集语境:让位豁免
+                elif _n:
+                    bought.append(_n)
+            elif a.get('__type__') == 'SellBench' \
+                    and a.get('name') in bought \
+                    and a.get('name') not in _copy_names:
+                out.append(
+                    f"p{row.get('plane')}r{row.get('round_num')} "
+                    f"同轮买后卖: {a.get('name')}"
+                    f"(ADR-0267 买卖互斥违规)")
+                bought.remove(a.get('name'))   # 每对只报一次
+    return out
+
+
 # 批量内嵌检查集(分布级;r371b 后冷启动门 sim 内可达,局49
 # 检查升级进批量——真实 sim 批次自动扫)
 _BATCH_CHECKS = {
@@ -262,7 +300,98 @@ _BATCH_CHECKS = {
     'equip_worn_in_battle': check_equip_worn_in_battle,
     'no_component_equipped_p1': check_no_component_equipped_p1,
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
+    'no_same_round_buy_sell': check_no_same_round_buy_sell,
 }
+
+
+# --- Δ池标定检查(压测批③ F1 检查项 1/2/3;ADR-0268) ---------------
+# 前两条吃池 dict(simulate_p1_batch 有 resolve_pool 产物;纯 dict
+# 入参,不 import cw_sim);第三条吃两臂账本(A/B 对照调用方使用,
+# 不进 _BATCH_CHECKS——单臂批次无对照对象)。
+_POOL_BUCKET_MIN_N = 5       # 同 cw_sim._BUCKET_MIN_N(值同步维护)
+_POOL_DEPTH_BUCKET_W = 3     # 同 cw_sim._DEPTH_BUCKET_W(值同步维护)
+
+
+def check_delta_pool_bucket_min_n(pool_map: dict,
+                                  min_n: int = _POOL_BUCKET_MIN_N,
+                                  ) -> dict:
+    """压测批③ F1 检查项 1(ADR-0268):Δ池被采样桶的饥饿审计。
+
+    判据:任一节点类型的任一深度桶 n<min_n → 违规——该桶真值
+    不可靠(sim 防饥饿守卫会降级采样,但池本身饥饿说明**经验
+    分布在该桶缺证据**,方向判断须声明边界)。批③ 实锤:battle
+    桶6 n=1 恒 -11(深度 6 悬崖伪惩罚的来源)、encounter 全桶
+    n≤1。生产语料该桶同样不足时,守卫是唯一解(补样不可得)。
+    """
+    hungry: list[str] = []
+    for nt, buckets in sorted(pool_map.items()):
+        for b, v in sorted(buckets.items(), key=lambda x: int(x[0])):
+            if len(v) < min_n:
+                hungry.append(f'{nt}:桶{b}(n={len(v)})')
+    return {'violations': len(hungry), 'buckets': hungry[:10]}
+
+
+def check_depth_cliff_monotonicity(
+        pool_map: dict, min_n: int = _POOL_BUCKET_MIN_N) -> dict:
+    """压测批③ F1 检查项 2(ADR-0268):桶均值随深度单调不减血。
+
+    判据:同一节点类型内,可信桶(n≥min_n)的 Δ 均值随深度
+    **单调不减血**(更深板 ≥ 更浅板,板深效应的既定方向)——
+    违反即深度条件化失去方向意义(池不可用于方向判断,桶间差异
+    是混杂而非效应)。批③ 实锤:桶6 -11 vs 桶9 -7.1(桶6 饥饿
+    由检查项 1 辖,本检查只评可信桶,避免饥饿噪声淹没结构性
+    单调违反)。均值含回合混杂声明:深桶样本多来自晚轮,违反
+    时先查桶×轮分布再下结论。
+    """
+    out: list[str] = []
+    for nt, buckets in sorted(pool_map.items()):
+        ok = sorted(
+            (int(b), v) for b, v in buckets.items() if len(v) >= min_n)
+        for (b1, v1), (b2, v2) in zip(ok, ok[1:], strict=False):
+            m1 = sum(v1) / len(v1)
+            m2 = sum(v2) / len(v2)
+            if m2 < m1:
+                out.append(
+                    f'{nt}:桶{b1}均值{m1:+.1f} > 桶{b2}均值{m2:+.1f}'
+                    f'(更深反而更痛——池不可用于方向判断)')
+    return {'violations': len(out), 'pairs': out[:10]}
+
+
+def check_ab_depth_boundary_confound(ledgers_a: list[list[dict]],
+                                     ledgers_b: list[list[dict]],
+                                     ) -> list[str]:
+    """压测批③ F1 检查项 3(ADR-0268):A/B 深度分布跨桶边界混杂标。
+
+    判据:两臂战斗类轮(battle/encounter/boss)的深度桶占用集
+    不对称——某桶仅一臂到达 → 两臂的 Δ 采样来自不同经验分布,
+    hp 差含「池桶差异」混杂,不能读作策略效应(打标而非否决:
+    对照结论须先剥离池混杂,如 fallback 口径复核)。批③ 实锤:
+    B/C 臂把板深推过桶 6 边界后摔进 battle 桶6 n=1 恒 -11 悬崖,
+    snapshot 口径 hp 降幅大半由此贡献。
+    """
+    def _hist(ledgers: list[list[dict]]) -> dict[int, int]:
+        h: dict[int, int] = {}
+        for rows in ledgers:
+            for row in rows:
+                s = row.get('sim') or {}
+                dep = s.get('depth')
+                if s.get('node') in ('battle', 'encounter', 'boss') \
+                        and dep is not None:
+                    b = min(int(dep) // _POOL_DEPTH_BUCKET_W, 5) \
+                        * _POOL_DEPTH_BUCKET_W
+                    h[b] = h.get(b, 0) + 1
+        return h
+
+    ha, hb = _hist(ledgers_a), _hist(ledgers_b)
+    out: list[str] = []
+    for b in sorted(set(ha) | set(hb)):
+        na, nb = ha.get(b, 0), hb.get(b, 0)
+        if (na > 0) != (nb > 0):
+            arm = 'A' if na else 'B'
+            out.append(
+                f'桶{b} 仅 {arm} 臂到达(A n={na}, B n={nb})'
+                f'——两臂 Δ 采样跨桶边界,hp 差含池混杂')
+    return out
 
 
 def run_checks_on_ledgers(ledgers: list[list[dict]]) -> dict[str, dict]:

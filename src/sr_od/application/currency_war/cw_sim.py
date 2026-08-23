@@ -217,7 +217,12 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-_SAMPLER_VERSION: int = 1   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 2   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+# v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
+# (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
+# 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
+_BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
+# 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
 # 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
 _AUTO_REPLAY_DIR = Path(__file__).resolve().parents[4] / '.debug' \
     / 'temp' / 'currency_war' / 'replay'
@@ -403,15 +408,43 @@ def live_delta_for(node_type: str, depth: int,
     缺源 raise 不静默)。r343(review E 修):邻桶回退只向**浅**侧
     (bucket-W)——深侧封顶 15 后 +W 是死码,且向深回退=偏乐观
     (深=掉血少)。
+
+    **防饥饿守卫(ADR-0268,批③ F1)**:命中的桶 n<_BUCKET_MIN_N
+    时不裸采样——n=1 的桶(如 battle 桶 6 恒 -11)等于把该深度
+    锁死在唯一样本上,任何把板深推过桶边界的策略臂都被系统性
+    伪惩罚(深度 6 悬崖)。降级策略:候选 = 本桶∪浅邻桶、本桶∪
+    深邻桶、该节点全池均匀,取**方差最小**者采样(合并天然加权,
+    样本多的邻桶主导);候选并列时按 浅邻→深邻→全池 序(确定
+    性)。无任何可合并邻桶(极端小池)时退回裸样本——守卫降级
+    采样,不改变「缺桶 → None」的既有两态语义。
     """
     if pool_map is None:
         pool_map = resolve_pool('auto')[0]
     _map = pool_map.get(node_type) or {}
     bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-    pool = _map.get(bucket)
-    if not pool:
-        pool = _map.get(bucket - _DEPTH_BUCKET_W)   # 浅侧回退
-    return rng.choice(pool) if pool else None
+    src_b = bucket if _map.get(bucket) else bucket - _DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
+    samples = _map.get(src_b)
+    if not samples:
+        return None
+    if len(samples) >= _BUCKET_MIN_N:
+        return rng.choice(samples)
+    cands: list[list[int]] = []
+    for nb in (src_b - _DEPTH_BUCKET_W, src_b + _DEPTH_BUCKET_W):
+        merged_neighbor = _map.get(nb)
+        if merged_neighbor:
+            cands.append(list(samples) + list(merged_neighbor))
+    all_pool = [d for v in _map.values() for d in v]
+    if len(all_pool) > len(samples):
+        cands.append(all_pool)
+    if not cands:
+        return rng.choice(samples)
+
+    def _pvar(seq: list[int]) -> float:
+        import statistics
+        return statistics.pvariance(seq) if len(seq) > 1 else 0.0
+
+    best = min(cands, key=_pvar)
+    return rng.choice(best)
 
 
 def boss_delta(dir_round: int, rng: random.Random,
@@ -968,10 +1001,19 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             results, out, pool_fp=report['pool_fingerprint']))
     if checks:
         from sr_od.application.currency_war.cw_sim_checks import (
+            check_delta_pool_bucket_min_n,
+            check_depth_cliff_monotonicity,
             run_checks_on_ledgers,
         )
         rep_checks = run_checks_on_ledgers(
             [r.ledger for r in results])
+        # ADR-0268:池级检查(桶饥饿/深崖单调)——批③ F1 的常态
+        # 化防线;fallback 空池无违规属预期(池语义检查不辖旧模型)
+        _pm, _, _ = resolve_pool(pool)
+        rep_checks['delta_pool_bucket_min_n'] = \
+            check_delta_pool_bucket_min_n(_pm)
+        rep_checks['depth_cliff_monotonicity'] = \
+            check_depth_cliff_monotonicity(_pm)
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():
