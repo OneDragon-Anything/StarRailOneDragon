@@ -795,8 +795,10 @@ def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
 def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     """生产遥测接 checks(决策项 1):对最近 N 局跑栈适配的检查集。
 
-    - 判栈(逐局):strategy_id=='line_v2' 或开局轮 BuyCard reason
-      含 v2 词表(line/bridge_seed/engine/pair/off)→ v2 栈;
+    - 判栈(逐局):strategy_id∈{'line_v2','decision_v2'} 或开局轮
+      BuyCard reason 含 v2 词表(line/bridge_seed/engine/pair/off)
+      → v2 栈(line_v2/decision_v2:后者继承 LineStrategy,reason
+      词表与 coldstart 检查集同辖);
       reason 全 'plan'/空 → default 栈(cw_plan,不辖 r368 门);
       非空未知 sid → 显式跳过(未来新栈不盲跑,审查#5);
     - **开局轮逐行全检**(审查#3:_load_decisions_rounds 的
@@ -815,7 +817,8 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
         check_coldstart_seed_squander,
     )
     lines: list[str] = list(check_summary_write_path_coverage(replay_dir))
-    # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈合法词)
+    # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈
+    # [line_v2/decision_v2] 合法词)
     _V2_REASONS = {'line', 'bridge_seed', 'engine', 'engine_seed', 'pair',
                    'off', 'p2_core', 'board_focus', 'emergency', 'swap'}
     runs = _list_runs(replay_dir)[-recent:]
@@ -835,7 +838,7 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
         early_buys = [a for d in rows for a in (d.get('actions') or [])
                       if a.get('__type__') == 'BuyCard']
         early_reasons = {(a.get('reason') or '') for a in early_buys}
-        if sid == 'line_v2':
+        if sid in ('line_v2', 'decision_v2'):
             stack = 'v2'
         elif sid and sid != 'default':
             lines.append(f'{rid}: [未知栈 {sid}] coldstart 跳过'
