@@ -661,18 +661,33 @@ class DefaultCwStrategy(CwStrategy):
     # ===== 备战决策环步级决策(strategy/03(原 doc 15§5.1-5.3) 参考实现;P1)=====
 
     def decide_prep_action(self, obs, session: StrategySession, config):
-        """备战决策环步级决策 = strategy/03(原 doc 15§5.1-5.3) 参考实现(奖励收取 → 腾席链 → 主流程)。"
+        """备战决策环步级决策 = strategy/03(原 doc 15§5.1-5.3) 参考实现(奖励收取 → 腾席链 → 主流程)。
 
         规则序(每步全量重判,先命中先出):
         1. 武装箱 overlay 开 → PickBoxCard(执行器默认选卡,v7 M-3;OpenBox 两步链第二步);
         2. 有箱 → OpenBox(箱白占席,先开=腾席+得装备;两步非一步,F1/L-5);
         3. 有球且有空席 → ClickSpheres(k=min(free, n);掉箱由规则 1/2 下步统筹);
-        4. 有球无空席且 defer<2 → 腾席链一步(deploy 空位 > 升级 > 卖最弱 > DeferSpheres);
+        4. 有球无空席且 defer<2 → 腾席链一步(deploy 空位 > 卖杂件 > 升级 > 卖最弱 > DeferSpheres;
+           ADR-0274 口述[32]:卖件优先于升级,boss 轮禁升级);
         5. 球箱皆无 或 defer≥2 → 主流程(买→部署→装备→出战,Run* 组合;P1 过渡)。
 
         obs P1 恒空字段(overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
         gold 仅 shop_open 且 obs.state fresh 时可信(关态读空,§5.2b M2)。
         """
+        step = self._decide_prep_action_impl(obs, session, config)
+        # r412(ADR-0274):息引擎 latch 采样(后置,ADR-0266 同款语义)——本笔
+        # 决策读「此前」是否曾达满息,决策后置位(首达当轮自家不解锁);
+        # default 栈此前无采样端 → 腾席链 b 的引擎门只剩花完≥50 单臂。
+        try:
+            if (getattr(obs, 'state_gold_trusted', False) and obs.state is not None
+                    and obs.state.gold >= 50):
+                session.v2_ever_full_interest = True
+        except Exception:   # noqa: BLE001  采样 best-effort
+            pass
+        return step
+
+    def _decide_prep_action_impl(self, obs, session: StrategySession, config):
+        """decide_prep_action 的实现体(入口 docstring 见上层;拆分只为 latch 后置采样)。"""
         if obs.box_overlay_open:
             return PickBoxCard(card_idx=None)   # 执行器默认选卡(P1 住执行器;P5 上移策略)
         # r11 review P0:defer 门(对照收球规则 4)——OpenTome 失败反复重试时(执行器连败置
@@ -698,6 +713,72 @@ class DefaultCwStrategy(CwStrategy):
         if obs.spheres and obs.free_bench_slots <= 0 and session.defer_count < 2:
             return self._free_bench_step(obs, session, config)
         return self._main_flow_step(obs, session, config)
+
+    @staticmethod
+    def _is_boss_round(st: GameState) -> bool:
+        """boss 轮判定(位面末节点;ADR-0274 口述[32])。
+
+        判定源同 update_target 的 `_boss_window` 前两支:node_type=='boss'
+        (权威源=备战节点行 read_node_sequence)或 round_num≥9 先验(supply
+        节点例外——r9 补给不是 boss)。位面切换首战(plane≥2 r1)不含:那是
+        pivot 冻结窗语义,不是「位面末节点」。
+        """
+        nt = st.node_type or ''
+        return nt == 'boss' or (st.round_num >= 9 and nt != 'supply')
+
+    @staticmethod
+    def _cap_shortfall(st: GameState, target) -> int:
+        """真缺人口缺口(ADR-0274 口述[32]「cap-deployed≥1 才可能考虑升级」):
+        想上场(``_should_deploy`` 同链 a 判据)而 cap 装不下的 bench 件数——
+        现有空位可吸纳的先扣,剩余即被 cap 卡住的真实缺口。缺口 0(板没满 /
+        空位够装)→ 升级不产生可兑现的人口收益,不升。
+        """
+        cap = min(10, st.level or 1)
+        dep = sum(1 for d in (st.deployed or []) if getattr(d, 'char_id', ''))
+        vacancy = max(0, cap - dep)
+        worth = [bc for bc in (st.bench or [])
+                 if bc.char_id and cw_plan._should_deploy(bc, st, target)]
+        return max(0, len(worth) - vacancy)
+
+    @staticmethod
+    def _levelup_engine_ok(st: GameState, session: StrategySession) -> bool:
+        """息引擎门(ADR-0266 同款,ADR-0274 堵腾席链 b 这第三条升级通道):
+        lv<5 豁免(过渡成型基线,r263);否则 = 本局曾达满息 latch
+        (``v2_ever_full_interest``;default 栈采样端 r412 补)∨ 升级总成本
+        花完后金仍 ≥50(``_INTEREST_FLOOR`` 满息结余)。"""
+        if st.level < 5:
+            return True
+        if getattr(session, 'v2_ever_full_interest', False):
+            return True
+        from sr_od.application.currency_war.cw_economy import clicks_to_next_level
+        total = clicks_to_next_level(st) * cw_plan.xp_click_cost(st)
+        return st.gold - total >= 50
+
+    @staticmethod
+    def _bench_junk_idx(st: GameState, character_priority: list[str],
+                        target) -> int | None:
+        """bench 杂件下标(off-target 且最低价值;腾席链 a2,ADR-0274)。
+
+        判据 = ``_card_supports_target`` False(off-target;deploy 卖
+        off-target 腾位的同一判源)+ 3合1 重复件保护(同 ``_weakest_bench_idx``)
+        + ``_bench_sell_value`` 最低价值排序。无可卖杂件 → None(升级前置
+        「杂件卖无可卖」即 a2 返 None)。
+        """
+        from collections import Counter
+        if not st.bench:
+            return None
+        counts = Counter((bc.char_id, bc.star) for bc in st.bench if bc.char_id)
+        close = cw_plan._close_factions(st)
+        best_i, best_v = None, None
+        for i, bc in enumerate(st.bench):
+            if not bc.char_id or counts[(bc.char_id, bc.star)] >= 2:
+                continue
+            if cw_plan._card_supports_target(bc.char_id, bc.faction, st, target):
+                continue
+            v = cw_plan._bench_sell_value(bc, character_priority, close, target)
+            if best_v is None or v < best_v:
+                best_i, best_v = i, v
+        return best_i
 
     def _free_bench_step(self, obs, session: StrategySession, config):
         """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。
@@ -734,7 +815,25 @@ class DefaultCwStrategy(CwStrategy):
                         log.info(f'[cw][prep] 腾席链a:deploy空位 → 槽{bc.slot}({bc.char_id})'
                                  f' → {row}{empty}')
                         return DeployMove(from_slot=bc.slot, to_row=row, to_slot=empty)
-        # b. 升级扩容(cap+1 → 回 a):gold 需可信(framework F2 state_gold_trusted,MED-1 接线;
+        # a2. 卖杂件(ADR-0274,口述[32]「腾席需求优先用卖件解决」):bench 满
+        # 先卖 off-target 杂件,再考虑升级。判据复用 deploy/_concentration 的
+        # ``_card_supports_target``(off-target 判定单一源);价值排序复用
+        # ``_bench_sell_value``(最低价值先卖);3合1 重复件保护同链 c。
+        # target=None(reactive 早段)跳过——无 off-target 语义,防全卖。
+        if target is not None:
+            _j = self._bench_junk_idx(st, config.character_priority, target)
+            if _j is not None and _j < len(st.bench):
+                bc = st.bench[_j]
+                log.info(f'[cw][prep] 腾席链a2:卖杂件 槽{bc.slot}({bc.char_id})'
+                         '(ADR-0274 卖件优先于升级)')
+                return SellBench(slot=bc.slot)
+        # b. 升级扩容(cap+1 → 回 a):**三前置**(ADR-0274,口述[32],局72 r9
+        # 腾席链连升 5→6→7 进 boss 剩 4 金实证):①boss 轮(位面末节点)一律
+        # 禁升级腾席(升级的 cap 收益下轮才兑现,boss 当轮不上场);②真缺人口
+        # (cap 缺口≥1——现有空位可吸纳的应上场件扣完后仍有富余,「cap-deployed
+        # ≥1」即不缺);③息引擎门(ADR-0266 同款,堵这条第三升级通道的漏网)。
+        # 前置不过直接落链 c(卖件/Defer),不再为 gold 真值空等(等待只为升级,
+        # 不升就不必开店)。gold 需可信(framework F2 state_gold_trusted,MED-1 接线;
         # shop 开态 + fresh state 才信 —— 关态读空/缓存过期都会误判无金 → 链 c 误卖)
         # r364(局47 死循环修:50min 卡「警告→M-6→链b 要真值→EnsureShopOpen
         # →警告」40 次):**进展保证**——EnsureShopOpen 成功 ≠ 下一轮
@@ -743,12 +842,14 @@ class DefaultCwStrategy(CwStrategy):
         # 直接试 LevelUp(state.level_up_cost OCR 真值优先,缺省 4;
         # 金不够 gate 拒 → 自然落链 c,比死等好)。计数在环入口清
         # (director 环=同轮;跨轮重置)。
-        if st.level < 10:
+        if (st.level < 10 and not self._is_boss_round(st)
+                and self._cap_shortfall(st, target) >= 1):
             _lk = getattr(session, 'free_bench_gold_wait', 0)
             if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
                 session.free_bench_gold_wait = 0
                 fresh = self._fresh_state(obs, session)
-                if cw_plan.level_up_gate(fresh, target):
+                if (cw_plan.level_up_gate(fresh, target)
+                        and self._levelup_engine_ok(fresh, session)):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
                     return LevelUp()
             else:
@@ -764,7 +865,8 @@ class DefaultCwStrategy(CwStrategy):
                 # 链 c 卖牌。零下行:LevelUp 失败被框架 fail 链兜住。
                 _stale = self._pseudo_state(obs, session)
                 _stale.level_up_cost = getattr(_stale, 'level_up_cost', None) or 4
-                if cw_plan.level_up_gate(_stale, target):
+                if (cw_plan.level_up_gate(_stale, target)
+                        and self._levelup_engine_ok(_stale, session)):
                     log.info('[cw][prep] 腾席链b:等待 %d 次无真值 → stale gold=%s 试升级'
                              '(cap+1 破满席;失败自然落链 c)',
                              _lk2, _stale.gold)
@@ -862,6 +964,12 @@ class DefaultCwStrategy(CwStrategy):
         # 空转——r≥8 终局件提前上场+配方 carry 可被卖。单一源在 session
         # (r73 RC3),此处与 shop 循环态同款拷贝。
         st.dual_track_phase = bool(getattr(session, 'dual_track_phase', False))
+        # r412(ADR-0274):node_type 补拷——腾席链 b 的 boss 轮禁升判定需要;
+        # 权威源 = 备战节点行(prep_director 存 session.node_type_current),
+        # 退化 last_state.node_type。
+        st.node_type = (getattr(session, 'node_type_current', None)
+                        or (session.last_state.node_type if session.last_state is not None else '')
+                        or '')
         return st
 
     def _fresh_state(self, obs, session: StrategySession) -> GameState:
