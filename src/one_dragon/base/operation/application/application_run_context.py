@@ -376,9 +376,9 @@ class ApplicationRunContext:
             return self.last_run_result
 
         self.last_run_result = result
-        if self.is_context_running:
-            self.switch_context_pause_and_run()
-
+        # 停止路径状态直达 STOP,不借 switch_context_pause_and_run 绕道:
+        # 借双向切换器会打「暂停运行」日志并发出 PAUSE 事件,误导外部归因(似有外部 pause);
+        # PAUSE 态下被停也直接落 STOP(暂停中被停=合理)。
         self._run_state = ApplicationRunContextStateEnum.STOP
         if dispatch_event:
             self.event_bus.dispatch_event(
@@ -418,7 +418,7 @@ class ApplicationRunContext:
         """
         停止运行。
 
-        将上下文状态设置为停止，如果正在运行则先暂停，然后发送停止事件。
+        将上下文状态设置为停止(RUNNING/PAUSE 均直达 STOP,不再绕道暂停),发送停止事件。
         已经停止时返回首次收口结果，不重复发送停止事件或覆盖结束原因。
 
         Args:
