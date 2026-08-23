@@ -141,8 +141,10 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 买前收起)')
+            # ADR-0264 修订:收起动画=操作段(短暂)——2s 预估+单校验
             try:
-                _gf = wait_stable_frame(self, profile=PROFILE_CLOSED)
+                _gf = wait_stable_frame(
+                    self, profile=PROFILE_CLOSED, segment='op_settle')
                 if _gf is not None:
                     screen = _gf
                 else:
@@ -198,8 +200,10 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 开店)')
+            # ADR-0264 修订:开店动画=操作段(~3s<2s 预估+逐轮兜底)
             with contextlib.suppress(Exception):   # 离线契约:放行
-                wait_stable_frame(self, profile=PROFILE_OPEN)
+                wait_stable_frame(self, profile=PROFILE_OPEN,
+                                  segment='op_settle')
 
         # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
         config = CurrencyWarConfig(self.ctx.current_instance_idx)

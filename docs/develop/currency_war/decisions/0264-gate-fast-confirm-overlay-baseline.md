@@ -1,4 +1,4 @@
-# ADR-0264: 稳定门提速——fast_confirm 指纹-only 确认轮 + overlay 完成预置基线
+# ADR-0264: 稳定门提速——fast_confirm + overlay 预置基线 + flow_aware 流程分段
 
 - **Status**: accepted(代码+锁落地;实机收益待验收:①②链段重标定)
 - **Date**: 2026-08-24
@@ -17,6 +17,33 @@ avg **0.38s/轮**,`min_stable_s=0.8` 被流程成本淹没——实测 ② 备�
 先显示备战画面 → 动画开商店,**次序固定**——overlay 关闭本身是流程
 推进的**确定性信号**。旧 gate 对这个信号零利用:overlay 关完后仍从零
 开始「设基线轮 + 确认轮」。
+
+## Revision(2026-08-24 用户流程定调 → flow_aware 流程分段)
+
+用户定调(口述权威,原话要点):「**节点结束后流程是稳定的,这部分
+可以优化;备战期间的特效/overlay(买角色/部署特效)是短暂的,预估
+2 秒等待就好了**」。据此把「一刀切指纹快 poll」升级为**流程分段的
+差异化稳定策略**(指挥官设计修订,worker J 规格):
+
+1. **节点结束段(`segment='node_end'`,高信任段)**——battle_end
+   锚→备战首见→overlay,次序固定(用户口述规律):**锚命中
+   (id_mark 精准判定)即返帧**,不坐等指纹双轮确认;id_mark 全中
+   本身是强屏身份。锚 miss 照旧轮询;超时→None 走调用方既有容忍
+   链(等价回退);残留 overlay 弹出由调用方既有 event_overlay
+   检测/兜底接管。当前 ②中位 50.4s 的大头在此段。
+2. **操作段(`segment='op_settle'`,短扰动段)**——买/部署/装备
+   特效短暂:固定 2s 预估等待(用户给的数,`_OP_SETTLE_S`)后
+   **单次指纹校验**(首帧设基线+次帧一致=一次校验通过,
+   min_stable_s 视为 0);校验不过(特效意外拖长)→ 循环内自然
+   回退逐轮(完整门语义)。
+3. **兜底**:profile 键 `flow_aware`(缺省 True)整体关回完整门
+   旧行为(A/B);原方案 A(fast_confirm)保留,作为逐轮模式
+   内部的实现细节(操作段/完整门通用)。
+
+接线:director 环入口=node_end(环入口均为次序固定的高信任进入:
+battle 后新备战相位 / overlay 关后重进 / bail 重进);商店门
+(shop 买前收起/开店、EnsureShopClosed 两向、钩子前置)=op_settle。
+battle_loop 不动(battle_end 锚刚落)。
 
 ## Considered Options
 
@@ -64,6 +91,9 @@ avg **0.38s/轮**,`min_stable_s=0.8` 被流程成本淹没——实测 ② 备�
   切换(overlay 弹出/商店开)都改变指纹 → 回锚定兜底。
 - 预置基线可能过期(overlay 关后画面又动了)→ 指纹不匹配即走正常
   从零路径,无裸跳路径。
-- 锁测试 `test_cw_gate_fast_confirm.py` 5 条(fast 跳 OCR / 指纹变化
-  回锚 / False 关回旧行为 / 预置 1 轮达标+单次消费 / 预置过期回落);
-  r327 回归锁改 `fast_confirm=False` 保持每轮 OCR 旧口径(注明)。
+- 锁测试 `test_cw_gate_fast_confirm.py` 10 条:初版 5 条(fast 跳
+  OCR / 指纹变化回锚 / False 关回旧行为 / 预置 1 轮达标+单次消费 /
+  预置过期回落)+ 修订 5 条(node_end 锚命中即返+基线一并消费 /
+  node_end 超时 None / op_settle 单校验通过 / 校验失败回退逐轮 /
+  flow_aware=False 忽略 segment);r327 回归锁改 `fast_confirm=False`
+  保持每轮 OCR 旧口径(注明)。

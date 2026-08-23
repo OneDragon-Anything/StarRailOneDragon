@@ -471,8 +471,12 @@ class PrepDirector(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(director 环入口)')
+            # ADR-0264 修订:环入口=高信任段(battle_end 锚→备战首见
+            # →overlay,次序固定;overlay 关后重进同理)——锚命中即
+            # 推进,不坐等指纹双轮;残留 overlay 由 _observe 的
+            # event_overlay 检测/兜底接管(既有安全网)。
             _gate_frame = wait_stable_frame(
-                self, profile=PROFILE_CLOSED)
+                self, profile=PROFILE_CLOSED, segment='node_end')
         except Exception:   # noqa: BLE001  离线契约:放行(observe 自截图)
             _gate_err = True   # 异常≠超时:超时走容忍探测,异常直接放行
             log.debug('[cw][gate] 环入口 gate 异常(离线契约)→ 放行')
@@ -625,8 +629,12 @@ class PrepDirector(SrOperation):
                         wait_stable_frame,
                     )
                     log.info('[cw][gate] path=new(钩子前置)')
+                    # ADR-0264 修订:EnsureShopClosed 成功后=操作段
+                    #(收起动画短暂)——2s 预估等待+单指纹校验,校验
+                    #不过回退逐轮(完整门语义)。
                     if wait_stable_frame(
-                            self, profile=PROFILE_CLOSED) is None:
+                            self, profile=PROFILE_CLOSED,
+                            segment='op_settle') is None:
                         log.info('[cw][gate] 钩子前置超时→跳过 reward 采集')
                         _run_reward_probe = False
                 except Exception:   # noqa: BLE001  离线契约:放行

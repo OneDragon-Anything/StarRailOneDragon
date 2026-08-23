@@ -603,9 +603,11 @@ class PrepActionExecutor:
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(ensure_shop 开向)')
+            # ADR-0264 修订:开店动画=操作段(2s 预估+单校验)
             try:
                 ok = wait_stable_frame(
-                    self._op, profile=PROFILE_OPEN) is not None
+                    self._op, profile=PROFILE_OPEN,
+                    segment='op_settle') is not None
             except Exception:   # noqa: BLE001  离线:走旧验证
                 ok = self._op.round_by_find_area(
                     self._op.screenshot(), SHOP_SCREEN_NAME,
@@ -621,9 +623,11 @@ class PrepActionExecutor:
             wait_stable_frame,
         )
         log.info('[cw][gate] path=new(ensure_shop 关向)')
+        # ADR-0264 修订:收起动画=操作段(2s 预估+单校验)
         try:
             ok = wait_stable_frame(
-                self._op, profile=PROFILE_CLOSED) is not None
+                self._op, profile=PROFILE_CLOSED,
+                segment='op_settle') is not None
         except Exception:   # noqa: BLE001  离线:走旧验证
             ok = not self._op.round_by_find_area(
                 self._op.screenshot(), SHOP_SCREEN_NAME,
