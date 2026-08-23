@@ -9,6 +9,7 @@
 - ``decisions.jsonl``:每回合决策迹(state 快照 + target_comp + candidate_scores + eval_breakdown + actions)。
 - ``outcomes.jsonl``:每回合观测结果(RoundOutcome 双侧)。
 - ``runs.jsonl``:每局 summary(difficulty / result / plane_reached / pivots / gold 轨迹)。
+  多路径兜底(ADR-0273):``start_run`` 先补 FAIL/崩溃/重启路径漏写的行(source=recovered)。
 
 **schema 稳定**:字段名跨版本不变(``schema_version`` 标版本);数值随版本/实玩变。新增字段加在末尾、
 可选,不破坏旧记录。复盘/ML 代码按 (run_id, round_num) join decisions ↔ outcomes。
@@ -61,6 +62,14 @@ def serialize_action(action: Action) -> dict[str, Any]:
     d = _to_jsonable(action)
     d["__type__"] = type(action).__name__
     return d
+
+
+def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:
+    """append 一行 JSON 到指定 .jsonl 文件(ADR-0273:兜底回填/常规写共用,不依赖 recorder 单例)。"""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open('a', encoding='utf-8') as f:
+        f.write(json.dumps(payload, ensure_ascii=False) + '\n')
 
 
 # ===== trace 数据结构(schema 稳定)=====
@@ -150,6 +159,9 @@ class RunSummary:
     # —— live 观测扩容(strategy/05_observation)——
     death_window: str = ""          # 39 号免费窗口登记:""=竞争局 / "must_die" / "free"(局终判定)
     strategies_held: list[str] = field(default_factory=list)   # 终局持卡(台账回放)
+    # —— ADR-0273(批⑧ F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
+    # 兜底回填(从 outcomes/decisions 重算,盖 FAIL/崩溃/重启杀局路径)。
+    source: str = ""
 
 
 @dataclass
@@ -219,9 +231,7 @@ class TelemetryRecorder:
         """append 一行 JSON(name.jsonl)。enabled=False 时 no-op。"""
         if not self.enabled:
             return
-        self.replay_dir.mkdir(parents=True, exist_ok=True)
-        with self._path(name).open("a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        append_jsonl(self.replay_dir / name, payload)
 
     def start_run(self, run_id: str, difficulty: str) -> None:
         """登记一次 run(difficulty 记录,便于后续 summary)。"""
@@ -422,8 +432,16 @@ def get_recorder() -> TelemetryRecorder:
 
 
 def start_run(difficulty: str = "") -> str:
-    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。loop __init__ 调。"""
+    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。loop __init__ 调。
+
+    ADR-0273:开局先补上一局(们)缺的 summary 行 —— FAIL/崩溃/重启杀局路径
+    不走 3c/stop 收口,此处在下一局起点从 outcomes/decisions 重算兜底(幂等)。
+    """
     global _CURRENT_RUN_ID, _CURRENT_DIFFICULTY
+    try:
+        recover_dangling_run_summaries()
+    except Exception as e:   # noqa: BLE001  兜底 best-effort,不阻塞开局
+        log.warning('[cw][telemetry] summary 兜底回填失败(不阻塞开局): %s', e)
     _CURRENT_RUN_ID = datetime.now().strftime('run_%Y%m%d_%H%M%S')
     _CURRENT_DIFFICULTY = difficulty
     get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
@@ -510,6 +528,129 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
         return
     get_recorder().record_run_summary(_CURRENT_RUN_ID, result, plane_reached,
                                       rounds_survived, final_hp, notes=notes)
+
+
+# ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
+# r363 兜底只盖「loop 顶 stop 信号」路径;battle_loop FAIL(对局循环超时/节点失败)/
+# 进程崩溃 / 重启杀局不走 3c 回大厅也不经 stop 检测 → runs.jsonl 缺行(8/22 起
+# 16/18 局缺汇总实锤),一切以 runs.jsonl 为分母的跨局统计失真。修复:收口改
+# 「多路径兜底」——start_run(每局起点)先扫 outcomes.jsonl 里没有 summary 行的
+# run,从 outcomes/decisions 重算补一条(source='recovered';幂等,已 summaried
+# 的 run 不重复)。数据治理:真值可从逐轮行重算 → 补算回填;无 outcomes 的
+# 开局失败局(假局守卫合法跳过)→ 留缺口不造伪值。
+
+def _runs_summarized(replay_dir: Path) -> set[str]:
+    """runs.jsonl 已有 summary 行的 run_id 集(幂等判据单一源)。"""
+    return {r.get('run_id') for r in read_jsonl(replay_dir / 'runs.jsonl')
+            if r.get('run_id')}
+
+
+def build_recovered_summary(replay_dir: Path, run_id: str) -> RunSummary | None:
+    """从 outcomes/decisions 重建一局 summary(ADR-0273 数据治理:补算回填)。
+
+    - 末条真值按 (plane, round) 排序取最后(round_num 是位面内编号,跨位面
+      重建须按 (plane, round) 排序——批⑧边界声明);
+    - final_hp 取 conf≥0.9 末条 hp_after(镜像 loop `_last_true_hp` 语义:
+      死局 hp 读不到时兜底 100 毒化,高置信真值优先);final_hp≤0 → 'loss'
+      (战败结算屏 hp=0 补录链),否则 'abandoned'(FAIL/崩溃/重启局无终局判定);
+    - 无 outcomes → None(留缺口,不造伪值)。
+    """
+    outcomes = [o for o in read_jsonl(replay_dir / 'outcomes.jsonl')
+                if o.get('run_id') == run_id]
+    if not outcomes:
+        return None
+    outcomes.sort(key=lambda o: (o.get('plane') or 1, o.get('round_num') or 0,
+                                 o.get('ts') or ''))
+    last = outcomes[-1]
+    plane_reached = max((o.get('plane') or 1) for o in outcomes)
+    _conf_rows = [o for o in outcomes if (o.get('hp_confidence') or 0) >= 0.9]
+    final_hp = int((_conf_rows[-1] if _conf_rows else last).get('hp_after') or 0)
+    result = 'loss' if final_hp <= 0 else 'abandoned'
+    decisions = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
+                 if d.get('run_id') == run_id]
+    difficulty = next((d.get('difficulty') for d in decisions if d.get('difficulty')), '')
+    # gold 轨迹:每 (plane, round) 首采样(镜像 recorder 内存去重键 r363)
+    gold_traj: list[int] = []
+    _seen: set = set()
+    for d in decisions:
+        k = (d.get('plane'), d.get('round_num'))
+        if k in _seen:
+            continue
+        _seen.add(k)
+        gold_traj.append(int(d.get('gold') or 0))
+    # pivot:target_comp 序列连续去重后的转移数(内存 _comms 同语义)
+    comms: list[str] = []
+    for d in decisions:
+        t = d.get('target_comp') or ''
+        if t and (not comms or comms[-1] != t):
+            comms.append(t)
+    return RunSummary(
+        ts=datetime.now().isoformat(timespec='seconds'),
+        run_id=run_id, difficulty=difficulty,
+        result=result, plane_reached=plane_reached,
+        rounds_survived=int(last.get('round_num') or 0),
+        final_hp=final_hp, comps_committed=comms,
+        pivot_count=max(0, len(comms) - 1),
+        gold_trajectory=gold_traj,
+        notes='recovered:FAIL/crash/restart 兜底(ADR-0273)',
+        source='recovered',
+    )
+
+
+def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list[str]:
+    """补齐 runs.jsonl 缺行(幂等;start_run 每局起点调,盖 FAIL/崩溃/重启路径)。
+
+    returns 本次补写的 run_id 列表(已 summaried 的不重复;无 outcomes 的跳过)。
+    """
+    d = Path(replay_dir) if replay_dir is not None else get_recorder().replay_dir
+    if not (d / 'outcomes.jsonl').exists():
+        return []
+    known = _runs_summarized(d)
+    ids: list[str] = []
+    _seen: set = set()
+    for o in read_jsonl(d / 'outcomes.jsonl'):
+        rid = o.get('run_id')
+        if rid and rid not in known and rid not in _seen:
+            _seen.add(rid)
+            ids.append(rid)
+    rec = get_recorder()
+    recovered: list[str] = []
+    for rid in ids:
+        summary = build_recovered_summary(d, rid)
+        if summary is None:
+            continue
+        append_jsonl(d / 'runs.jsonl', _to_jsonable(summary))
+        # 内存累积同步清理(防跨 run 泄漏;语义同 record_run_summary 尾部)
+        rec._gold_trajectory.pop(rid, None)
+        rec._comms.pop(rid, None)
+        rec._difficulty.pop(rid, None)
+        recovered.append(rid)
+    if recovered:
+        log.info('[cw][telemetry] summary 兜底回填 %d 局(ADR-0273):%s',
+                 len(recovered), ','.join(recovered))
+    return recovered
+
+
+def check_summary_write_path_coverage(replay_dir: Path, recent: int = 10) -> list[str]:
+    """检查项 ``summary_write_path_coverage``(批⑧设计,ADR-0273 入栈)。
+
+    判据 = 最近 N 个(有 outcomes 的)run 全部有 summary 行(含 source=recovered
+    兜底行)。违规行带 run_id 溯源;连续 10 局 100% = 修复验收线。
+    """
+    ids: list[str] = []
+    for o in read_jsonl(replay_dir / 'outcomes.jsonl'):
+        rid = o.get('run_id')
+        if rid and (not ids or ids[-1] != rid):
+            ids.append(rid)
+    recent_ids = ids[-recent:]
+    if not recent_ids:
+        return ['[coverage] ⊘ 无 outcomes 语料,无法判']
+    known = _runs_summarized(replay_dir)
+    missing = [rid for rid in recent_ids if rid not in known]
+    if missing:
+        return [f'[coverage] ⚠ summary_write_path_coverage {len(missing)}/{len(recent_ids)} 局缺行:'
+                + ','.join(missing)]
+    return [f'[coverage] ✓ summary_write_path_coverage 最近 {len(recent_ids)} 局 100%']
 
 
 def bucket_card_texts(anchors: list[tuple[int, int]], items: list[tuple[str, int, int]],
@@ -664,16 +805,18 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
       时代数据,输出 ⊘ 无法判 而非 ✓——不把不可判伪装成健康);
     - ledger_consistency 不跑(需 sim 键;生产金对账归
       econ_reconcile 工具链,不重复造轮子);
-    - 输出行化(判读 CLI 风格),违规局带 run_id 可溯源。
+    - 输出行化(判读 CLI 风格),违规局带 run_id 可溯源;
+    - ADR-0273:头部附 ``summary_write_path_coverage``(runs.jsonl 断流守卫,
+      与逐局检查正交——它是「分母完整性」,先于一切逐局判读)。
     """
     from sr_od.application.currency_war.cw_sim_checks import (
         check_coldstart_seed_squander,
     )
+    lines: list[str] = list(check_summary_write_path_coverage(replay_dir))
     # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈合法词)
     _V2_REASONS = {'line', 'bridge_seed', 'engine', 'engine_seed', 'pair',
                    'off', 'p2_core', 'board_focus', 'emergency', 'swap'}
     runs = _list_runs(replay_dir)[-recent:]
-    lines: list[str] = []
     for rid in runs:
         # 开局轮逐行(plane1 r≤2;不走 max-actions reducer——审查#3)
         rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
