@@ -9,11 +9,14 @@
 bench/deployed/目标集/围栏集/cap,输出「谁上场」。DeployBench op
 与 cw_sim 都调它——同一份逻辑,实机改=sim 改,漂移不可能。
 
-⚠️ 已知漂移(ADR-0261,2026-08-24 探针实证):DeployBench op 的
-`_deploy_deterministic` 实为**语义近似副本**而非调用本函数——① op
-排序无 ignition_gain 首键(r404-A1 只落了本模块);② op 有 r288
-配方底线门(列车≥2 且仙舟<3 拦列车件)本模块没有(=sim 盲区,
-局64 姬子躺 bench 的生产机制)。修复待主会话裁决,本模块暂不改。
+⚠️ 漂移已对齐(ADR-0261 裁决「1+3 组合」落地,2026-08-24):
+① DeployBench op `_deploy_deterministic` 排序已补 ignition_gain 首键
+(经本模块 `ignition_gain`,与 select_deployments 同语义);② 本模块
+select_deployments 已补 r288 配方底线门(列车≥2 且仙舟<3 → 列车件
+让位留 bench,与 op 侧 r288 同语义)——sim 从此能测出「引擎件被配方
+底线拦」形态(局64 姬子躺 bench 不再是 sim 盲区)。对齐后 op 与本
+函数的行为差异只剩「读屏 vs 内存态」(op 的 SIFT 读身份/槽位坐标/
+drag 验证留在 op)。
 
 注意:op 侧还有画面依赖部分(SIFT 读身份/槽位坐标/drag 验证),
 那些留在 op;这里只收**纯决策**。输入的 bench 用 BenchChar,
@@ -102,7 +105,8 @@ def select_deployments(
 
     语义与 DeployBench op 的 deterministic 段逐条对应
     (ADR-0130 散牌围栏/r361 补档序/r251 引擎对优先/r387 cap 富余
-    填空/板空保底),唯一省略:SIFT 未识别(char_id 空)照旧上
+    填空/r404-A1 点火首键+桶序/r288 配方底线门/板空保底),唯一省略:
+    SIFT 未识别(char_id 空)照旧上
     ——调用方传空 char_id 即走该分支。
     cap 语义 = 已 deployed 数 + 本轮上场数 ≤ cap(cap=None 不限,
     调用方传大数)。
@@ -185,6 +189,14 @@ def select_deployments(
     # 留 bench(r383b 囤件语义不受影响:囤的是 bench 不是上场)。
     up: list[int] = []
     _up_names: set[str] = set()
+    # r288 配方底线门(ADR-0261 裁决选项3,与 deploy_bench op 同语义):
+    # 列车≥2 且仙舟<3 → 列车件让位留 bench(仙舟基础线优先,防列车
+    # 第 3 人挤占配方深度;局23/24 实锤的既定配方纪律)。op 侧在 drag
+    # 循环内逐件动态仲裁(每次成功上场同步阵营档);此处用 running
+    # 副本等价模拟——上场一件即把其全羁绊计入,后续候选按更新后的
+    # 计数仲裁。门判定的阵营口径 = bench_fac(主阵营),与 op 的
+    # _bench_fac 同源。
+    _fac_run = dict(deployed_fac)
     for i in order:
         if len(deployed_cids) + len(up) >= cap:
             held.append(i)
@@ -193,7 +205,14 @@ def select_deployments(
         if cid and (cid in deployed_cids or cid in _up_names):
             held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
             continue
+        if bench_fac.get(i) == '列车同行' \
+                and _fac_run.get('列车同行', 0) >= 2 \
+                and _fac_run.get('仙舟', 0) < 3:
+            held.append(i)   # r288:列车件让位(仙舟基础线优先)
+            continue
         up.append(i)
         if cid:
             _up_names.add(cid)
+        for f in _bonds_of(bench[i]):
+            _fac_run[f] = _fac_run.get(f, 0) + 1
     return up, held

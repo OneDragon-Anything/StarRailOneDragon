@@ -87,6 +87,43 @@ def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
     return 0
 
 
+def _deployment_order(tgt_idx: list[int], rest: list[int],
+                      bench_id: dict[int, set[str]],
+                      bench_fac: dict[int, str],
+                      deployed_fac: dict[str, int]) -> list[int]:
+    """r404-A1/ADR-0258 点火排序(ADR-0261 裁决选项1;模块级可测,锁测试直调)。
+
+    与 cw_deploy_logic.select_deployments 的排序**同语义**(单一源
+    `ignition_gain`,import 不复制):
+    - tgt 序:点火增量首键(-ignition_gain)+ r361 补档键次键
+      (旧版纯 tier_completes,无点火键);
+    - rest 序:点火增量首键 + r251 引擎身份键次键(降为次键——
+      探针实证 vacancy=1 时冗余第4仙舟曾挤掉点火列车2);
+    - 桶序修正:点火 rest 件先于 ignition=0 的 tgt 件(纯函数侧
+      探针④:冗余 tgt 件压点火 rest 件)。
+
+    输入口径与 _deploy_deterministic 内部字典一致:``bench_id`` =
+    bench_idx(0-based) → 全羁绊集;``bench_fac`` = bench_idx → 主阵营;
+    ``deployed_fac`` = 起始板面阵营计数(全羁绊口径,静态——排序只做
+    一次,与纯函数一致;r288 门的动态仲裁在 drag 循环内另行维护)。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        ignition_gain as _ign,
+    )
+    _ENGINE = {'仙舟', '列车同行', '持续伤害'}
+    tgt_sorted = sorted(tgt_idx, key=lambda i: (
+        -_ign(bench_id.get(i) or (), deployed_fac),
+        -_tier_completes(bench_id.get(i) or (), deployed_fac)))
+    rest_sorted = sorted(rest, key=lambda i: (
+        -_ign(bench_id.get(i) or (), deployed_fac),
+        0 if (bench_fac.get(i) in _ENGINE
+              or (bench_id.get(i, set()) & _ENGINE)) else 1))
+    ignite_rest = [i for i in rest_sorted
+                   if _ign(bench_id.get(i) or (), deployed_fac) > 0]
+    plain_rest = [i for i in rest_sorted if i not in ignite_rest]
+    return ignite_rest + tgt_sorted + plain_rest
+
+
 class DeployBench(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
@@ -499,14 +536,12 @@ class DeployBench(SrOperation):
             _is_tgt = (((_bonds and _bonds & _tgt) or _cid0 in _cores)
                        if _tgt else False) or _cid0 in _fw_carry
             (tgt_idx if _is_tgt else rest).append(i)
-        # r361(局46 实锤,tgt 序内补档优先):cap 满序竞争时桥件(飞霄,
-        # 桥 core)先占坑、补档件(丹恒·饮月,仙舟 2→3 恰达 tier1)留
-        # bench → 全程激活档 0(配方满线=生存线,近 10 局唯二 HP≥60 均
-        # 配方 5 档满线)。修:tgt 候选内按「上阵后任一阵营**恰达激活
-        # 档**」降序(稳定排序保 slot 序);桥件无档跃迁仍后置——cap
-        # 有余照上,r356 hunt3 桥件语义不受损。
-        tgt_idx.sort(key=lambda i: _tier_completes(
-            _bench_id.get(i) or (), _deployed_fac), reverse=True)
+        # r361(局46 实锤,tgt 序内补档优先)+ r404-A1/ADR-0258 点火首键
+        # (ADR-0261 裁决选项1):排序统一走 `_deployment_order`(与纯函数
+        # cw_deploy_logic.select_deployments 同语义)——tgt/rest 序均加
+        # ignition_gain 首键 + 桶序修正(点火 rest 件先于 ignition=0 的
+        # tgt 件)。旧版此处只有 r361 tier_completes + r251 引擎身份键,
+        # 无点火键(r404-A1 当时只落了纯函数侧)。
         # ADR-0130(用户节奏 §7-1「开场买牌囤 bench 不上阵」+ 复查确认 spread 种子):off-target 散牌
         # 单张**留 bench 不上阵**(对齐 planner `_should_deploy` 语义)—— 上场条件:① target;② 同阵营
         # 成对(board+bench 计数 ≥2,凑过渡羁绊,「买过渡阵容」人玩节奏);③ SIFT 未识别(无法判,
@@ -566,16 +601,12 @@ class DeployBench(SrOperation):
                 log.info(f'[cw-deploy] 板空保底:上 1 个散牌(body > 空板):{_fallback}')
         if _held:
             log.info(f'[cw-deploy] 散牌留 bench(不成对/非 target,ADR-0130):slots={[h + 1 for h in _held]}')
-        # r251 修 B(引擎 pair 优先):cap 有限时 pair 吸引子先到先得——
-        # 狼狩2(散)占满 cap 3-4,仙舟 pair(藿藿2★+爻光)坐板凳
-        # (第六局 r4-r6 实证:引擎件在场外,散 pair 白挨打)。
-        # 排序:引擎阵营 pair 提到散 pair 前(不动 target 优先序)。
-        _ENGINE = {'仙舟', '列车同行', '持续伤害'}
-        rest.sort(key=lambda i: (
-            0 if (_bench_fac.get(i) in _ENGINE
-                  or (_bench_id.get(i, set()) & _ENGINE))
-            else 1))
-        order = tgt_idx + rest
+        # r251 修 B(引擎 pair 优先)+ r404-A1 点火首键(ADR-0261 裁决
+        # 选项1):cap 有限时序竞争——「恰好点火」件(第 tier 人)最优先,
+        # r251 引擎身份键降为次键(纯函数侧探针实证:vacancy=1 时冗余
+        # 第4仙舟曾挤掉点火列车2)。排序体单一源 `_deployment_order`。
+        order = _deployment_order(tgt_idx, rest, _bench_id, _bench_fac,
+                                  _deployed_fac)
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
@@ -604,6 +635,8 @@ class DeployBench(SrOperation):
             # 仙舟档 < 基础线(攻略[20] 3仙舟+2DOT)时,列车件封顶
             # 2 档(锁线路径的线内件上板也要守配方底线;配方纪律
             # 此前只在散 pair 路径生效,锁线路径无守门=审查②盲区)。
+            # ADR-0261 裁决选项3:cw_deploy_logic.select_deployments 已补
+            # 同语义门(running 阵营档仲裁)——sim 从此能测出本形态。
             _fac = _bench_fac.get(bi, '')
             if _fac == '列车同行' and _RECIPE is not None:
                 _train_now = _deployed_fac.get('列车同行', 0)

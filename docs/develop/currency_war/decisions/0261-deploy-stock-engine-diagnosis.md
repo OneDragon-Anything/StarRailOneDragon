@@ -50,3 +50,32 @@ cap=7)对 `cw_deploy_logic.select_deployments` 复现:**纯函数让姬子
   否则 sim 继续测不出该形态);
 - 实机验证锚点(裁决后修复生效时):局末 bench 不再有「引擎件×n
   + deployed 非引擎件 + cap 未满」形态。
+
+## 裁决落地(2026-08-24,指挥官裁定「1+3 组合」;原诊断不动)
+
+主会话裁决采纳选项 1 + 选项 3 组合(选项 2「r288 门加引擎件豁免」
+未采纳——r288 保持既定配方纪律不变):
+
+1. **选项1(op 补 ignition 排序)**:`deploy_bench.py` 排序统一走
+   新增模块级 `_deployment_order`(import `cw_deploy_logic.ignition_gain`
+   单一源,不复制)——tgt 序 `(-ignition_gain, -tier_completes)`、
+   rest 序 `(-ignition_gain, r251 引擎身份键)`、桶序修正(点火 rest
+   件先于 ignition=0 的 tgt 件),与 r404-A1/ADR-0258 纯函数语义一致;
+2. **选项3(纯函数补 r288 门)**:`cw_deploy_logic.select_deployments`
+   上场循环补 r288 配方底线门(主阵营=列车同行 且 running 列车≥2
+   且仙舟<3 → 让位留 bench;running 阵营档随每件上场累加,等价 op
+   drag 循环的动态仲裁)——**消 sim 盲区**:sim 从此能测出「引擎件
+   被配方底线拦」形态(局64 姬子躺 bench 不再 sim 不可见);
+3. **对齐后差异面**:op 与纯函数的行为差异只剩「读屏 vs 内存态」
+   (op 的 SIFT 读身份/槽位坐标/drag 验证);诊断提到的两处漂移
+   (排序首键/r288 门)均已双向对齐,无其它漂移点残留。
+
+配套锁测试:bfd1c21 两条诊断锁按新语义更新(局64 形态纯函数**同样**
+拦姬子=对齐锚;点火形态门不触发);新增 `test_cw_a3_deploy_align.py`
+3 条(op 排序点火首键探针形态/tgt 内点火首键/op 与纯函数同输入序一致)。
+
+效果预期:局64 形态(列车2 已达+仙舟<3)两侧一致拦截列车第 3 人
+(r288 纪律保持);「deployed 非引擎 + bench 点火引擎件」形态由
+ignition 首键修正——点火引擎件不再被非引擎 tgt 件压在序后。sim 侧
+影响(engines2 分布变化)由指挥官下段跑 sim 批量对照验证,本段只落
+代码+锁。
