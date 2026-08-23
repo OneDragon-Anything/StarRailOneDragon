@@ -34,6 +34,8 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
+    ROTATION_CHANCE,
+    rotation_probs,
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
@@ -179,10 +181,13 @@ class _Pool:
             if ch.cost
         }
 
-    def draw_shop(self, level: int) -> list[ShopCard]:
+    def draw_shop(self, level: int,
+                  probs: dict[int, float] | None = None) -> list[ShopCard]:
+        """抽一帧商店;``probs`` 非空 = 轮岗翻倍后的概率表(ADR-0286,生产
+        概率条 OCR 真值同构),None = 基线 REFRESH_PROB。"""
         out: list[ShopCard] = []
         for i in range(5):
-            dist = REFRESH_PROB.get(level, {})
+            dist = probs if probs is not None else REFRESH_PROB.get(level, {})
             costs = [c for c in dist if dist[c] > 0]
             if not costs:
                 continue
@@ -750,9 +755,23 @@ def _deployable_depth(st: GameState) -> int:
     return min(st.level, _dep)
 
 
+def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
+    """本备战期轮岗事件(ADR-0286/批㉓ F4):概率 ROTATION_CHANCE 掷中 →
+    随机一档(基线 0<p<0.5 才可能被翻倍)×2 → 完整概率表;
+    未掷中/该等级无可翻倍档 → None(基线表,生产「未读到概率条」同态)。"""
+    if rng.random() >= ROTATION_CHANCE:
+        return None
+    base = REFRESH_PROB.get(level, {})
+    tiers = [c for c, p in base.items() if 0 < p < 0.5]
+    if not tiers:
+        return None
+    return rotation_probs(level, rng.choice(tiers))
+
+
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
-                pool: str | Path = 'auto') -> SimResult:
+                pool: str | Path = 'auto',
+                diamond_cap_prob: float = 0.0) -> SimResult:
     """单局 P1 模拟(决策跑真策略代码)。
 
     :param seed: 随机种子(同 seed 同局,可复现——**须同池指纹**,
@@ -764,6 +783,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         'snapshot'(主仓提交快照,CI/跨机基准)/'fallback'(显式
         退旧模型,结果打标)/Path(JSON 快照,历史重放)。
         A/B 对照同进程同池即可;**跨日基线对照须核指纹一致**。
+    :param diamond_cap_prob: 财富宝钻获取通道(ADR-0286/批㉔ F4):每备战期
+        以此概率获得 1 颗财富宝钻(cap = level + 宝钻数,可叠加)。**注入频率
+        待实机语料统计,默认 0 = 通道建好但不注入**(baseline 与旧树可配对)。
     """
     from sr_od.application.currency_war.strategies.line_strategy import (
         LineStrategy,
@@ -802,6 +824,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res = SimResult(seed=seed, pool_fingerprint=pool_fp,
                     pool_source=pool_src)
     xp = 0
+    # ADR-0286(批㉓ F3):xp_progress 真值化——sim 结算处维护(与生产 OCR 真值
+    # 同语义),买牌/买经验累 XP_PER_BUY,升级按 XP_TO_NEXT_LEVEL 清零结转;
+    # line_v2 的 clicks_to_next_level 消费点从此读到真值(旧恒 None → 恒按
+    # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。
+    st.xp_progress = (0, XP_TO_NEXT_LEVEL.get(st.level, 4))
+    # ADR-0286(批㉔ F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
+    _diamonds = 0
     streak = 0
     for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         st.round_num = rn
@@ -819,7 +848,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'streak': streak_gold(streak),   # 单一源 cw_economy(r305)
                 'event': _inc_event}
         st.gold += sum(_inc.values())
-        st.shop = cards_pool.draw_shop(st.level)
+        # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
+        # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
+        # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
+        st.refresh_probs = _roll_rotation(rng, st.level)
+        # ADR-0286(批㉔ F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
+        if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
+            _diamonds += 1
+        # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
+        # → max_units() 兜底 level(与生产防抖拒信路径同态)
+        st.deploy_cap = st.level + _diamonds if _diamonds else None
+        st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
         _waves = [{'event': 'offer', 'gold': st.gold,
                    'cards': [{'name': c.name, 'faction': c.faction,
                               'cost': c.cost} for c in st.shop]}
@@ -907,7 +946,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     st.gold -= _cost_r
                     _spend['refresh'] += _cost_r
                     _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
-                    st.shop = cards_pool.draw_shop(st.level)
+                    st.shop = cards_pool.draw_shop(st.level,
+                                                   probs=st.refresh_probs)
                     _waves.append(
                         {'event': 'refresh', 'gold': st.gold,
                          'cards': [{'name': c.name, 'faction': c.faction,
@@ -973,6 +1013,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                   'reason': _ch,
                                   'channel': _cb(a.card, st)})
                     xp += XP_PER_BUY
+                    st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                     # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
                     # 执行层——生产 simulate(BuyCard) 每次买入后调
                     # _merge_bench(全场域 bench+deployed,同名同星
@@ -993,7 +1034,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     st.gold -= 4
                     _spend['levelup'] += 4
                     _acts.append({'__type__': 'LevelUp', 'cost': 4})
-                    xp += 4
+                    xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
+                    st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                     progressed = True
                 elif isinstance(a, SellBench):
                     if 0 <= a.bench_idx < len(st.bench):
@@ -1018,6 +1060,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
             xp -= XP_TO_NEXT_LEVEL[st.level]
             st.level += 1
+        # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
+        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
         if res.dir_round == 99 and _direction_established(sess):
             res.dir_round = rn
         # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;

@@ -88,6 +88,33 @@ def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
     return None
 
 
+# 轮岗事件概率:生产 20% 决策行(361/1806,replay 2026-08-24 批㉓ F4)带轮岗翻倍
+# 概率条真值 → sim 每备战期以本概率掷轮岗事件(ADR-0286;机制 = cw_plan r77
+# 接线声明:投资环境轮岗每备战阶段随机翻倍一档费用概率,概率条直接印在商店上)。
+ROTATION_CHANCE: float = 0.2
+
+
+def rotation_probs(level: int, tier: int) -> dict[int, float] | None:
+    """轮岗翻倍 ``tier`` 档后的完整概率表(供 sim 抽店 / A-B 用;ADR-0286)。
+
+    模型(与生产 parse_prob_bar 读到的概率条同构,基线某档 ×2):
+    - 翻倍档 p' = 2p(锁:轮岗帧的档概率 = 基线×2);
+    - 其余档按剩余质量重归一 p' = p·(1−2p)/(1−p)——翻倍档吃掉自己原质量的一倍。
+      实读对拍(lv6 1费翻倍:基线 30/40/25/5 → 实读 60/22/15/3):本模型给
+      60/22.9/14.3/2.9,与整数百分比实读在舍入邻域内一致。
+    - 该档基线 p=0(该等级不出此费)或 2p≥1(无剩余质量可吃,如 lv1-3 纯 1 费)
+      → 轮岗不可能落此档,返 None。
+    """
+    base = REFRESH_PROB.get(level, {})
+    p = base.get(tier, 0.0)
+    if p <= 0 or 2 * p >= 1.0:
+        return None
+    scale = (1.0 - 2 * p) / (1.0 - p)
+    out = {c: (2 * p if c == tier else pc * scale)
+           for c, pc in base.items() if pc > 0}
+    return out
+
+
 def _refresh_dist(p: float, v: int, a: int, c: int, k_need: int, j: int) -> list[float]:
     """一次刷新得 x 张目标牌的概率分布(x=0..k_need);k_need=还需目标牌数。
 
