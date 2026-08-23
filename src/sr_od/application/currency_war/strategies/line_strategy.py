@@ -484,7 +484,8 @@ class LineStrategy(DefaultCwStrategy):
         wants = sorted(
             (c for c in (st2.shop or state.shop or [])
              if c.name and (self._line_wants(c, st2, session)
-                            or self._pair_wants(c, st2, session))
+                            or self._pair_wants(c, st2, session)
+                            or self._engine_seed_wants(c, st2))
              and c.cost <= budget),
             key=lambda c: -c.cost)     # 降序:买得起的最强
         for card in wants:
@@ -762,6 +763,7 @@ class LineStrategy(DefaultCwStrategy):
         """OR 链买入标签(① 账本 reason 单一源;'' = 不买)。
 
         序:line(线内形态门)> bridge_seed(桥名单)>
+        engine_seed(P1 未持有引擎件放行,ADR-0260)>
         p2_core(P2 核心收件,include_p2_core 时)>
         pair(凑对——板面空时即 r368 冷启动门,标签取
         classify_buy 身份 bridge_seed/engine,局49 类检查的
@@ -772,6 +774,10 @@ class LineStrategy(DefaultCwStrategy):
             return 'line'
         if include_bridge and self._bridge_seed(card, state):
             return 'bridge_seed'
+        # A3 修复1(ADR-0260):P1 引擎件放行通道——与 seed/pair 门
+        # 并行(不推翻既有判据,加一条放行)。判据见 _engine_seed_wants。
+        if self._engine_seed_wants(card, state):
+            return 'engine_seed'
         if include_p2_core and self._p2_core_wants(card, state, session):
             return 'p2_core'
         if include_pair and self._pair_wants(card, state, session):
@@ -1059,6 +1065,39 @@ class LineStrategy(DefaultCwStrategy):
         if not any(isinstance(a, BuyCard) for a in actions):
             actions.extend(self._maybe_refresh(state, session, rem))
         return actions
+
+    @staticmethod
+    def _engine_seed_wants(card, state: GameState) -> bool:
+        """A3 修复1(ADR-0260):P1 过渡期引擎件放行通道。
+
+        实弹判读(A3_实机弹药 v2.1,局63-67 五局 48 次引擎件上架
+        全轮对拍):**判据漏 21%**——金够的 cost1-3 引擎核心件被
+        跳过(姬子·启行×3/丹恒·饮月×2/藿藿×2/忘归人×2/星期日;
+        r6 金 19-52 仍不买)——凑档/锁线判据不识「未持有引擎件」
+        的独立价值(引擎乐高第一块砖,combo_methodology:引擎实体
+        > 羁绊档位)。
+
+        门(与既有 seed/pair 门并行,不替换):
+        ① P1 过渡期(plane==1);
+        ② 卡属过渡体系阵营(TRANSITION_TRAITS 键 = 仙舟/列车同行/
+           持续伤害——与 deploy 侧 ignition_gain 同源,import 不复制);
+        ③ 未持有(bench+deployed 无同名;同名副本仍走 r383b copy 门,
+           copies<3 上限仍归 _buy_guards);
+        ④ 金够/不破息档:由调用方 rem-cost<floor 语义保留(与
+           seed/pair 门同一地板纪律,本门不加价)。
+        """
+        if not card.name or state.plane != 1:
+            return False
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        from sr_od.application.currency_war.cw_deploy_logic import (
+            TRANSITION_TRAITS,
+        )
+        ch = CHARACTERS.get(card.name)
+        card_bonds = (set(ch.factions) | set(ch.flows)) if ch \
+            else {card.faction}
+        if not card_bonds & {f for f, _t in TRANSITION_TRAITS}:
+            return False
+        return not LineStrategy._has_same_name_copy(card, state)
 
     @staticmethod
     def _bridge_seed(card, state: GameState) -> bool:

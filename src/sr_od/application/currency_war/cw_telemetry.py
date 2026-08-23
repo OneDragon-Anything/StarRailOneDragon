@@ -669,8 +669,9 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     from sr_od.application.currency_war.cw_sim_checks import (
         check_coldstart_seed_squander,
     )
-    _V2_REASONS = {'line', 'bridge_seed', 'engine', 'pair', 'off',
-                   'p2_core', 'board_focus', 'emergency', 'swap'}
+    # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈合法词)
+    _V2_REASONS = {'line', 'bridge_seed', 'engine', 'engine_seed', 'pair',
+                   'off', 'p2_core', 'board_focus', 'emergency', 'swap'}
     runs = _list_runs(replay_dir)[-recent:]
     lines: list[str] = []
     for rid in runs:

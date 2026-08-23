@@ -60,10 +60,15 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
     **跨轮持续性门**(连续 2 轮 deployed≤cap-2 才报):sim 代理
     在决策前生成、同轮买入后不刷新——单轮差 2 常是「买了还没
     重新部署」的过渡态(game14 实证:r2 4/6→r3 6/6),连续 2 轮
-    才是围栏系统性拦截的指纹。
+    才是围栏系统性拦截的指纹;
+    **增长豁免**(ADR-0260):连续 2 轮短缺但 deployed 在**增长**
+    不报——deploy 代理先于买入跑,每轮都买入新可上件时,账本
+    快照恒见「上轮买、未部署」滞后一拍的形态(engine_seed 放行
+    后买面变宽,seed4 r2 4/6→r3 5/7 实证);围栏系统性拦截的
+    指纹是 deployed 停滞,不是增长。
     """
     out: list[str] = []
-    _short_rounds: list[int] = []   # deployed≤cap-2 的轮号
+    _short_rounds: list[tuple[int, int]] = []   # (轮号, deployed 数)
     for row in rows:
         if row.get('plane') != 1:
             continue
@@ -83,9 +88,10 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
         if len(usable) + len(deployed) <= cap:
             continue
         if len(deployed) < cap - 1:
-            _short_rounds.append(rn)
-    for a, b in zip(_short_rounds, _short_rounds[1:], strict=False):
-        if b - a == 1:
+            _short_rounds.append((rn, len(deployed)))
+    for (a, da), (b, db) in zip(_short_rounds, _short_rounds[1:],
+                                strict=False):
+        if b - a == 1 and db <= da:   # ADR-0260 增长豁免
             out.append(
                 f"p1r{a}-r{b}: deployed 连续 ≤cap-2"
                 f"(bench 有货,围栏系统性拦截空槽——r387 修前形态)")
