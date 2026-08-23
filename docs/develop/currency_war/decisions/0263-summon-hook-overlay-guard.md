@@ -1,6 +1,6 @@
-# ADR-0263: summon 停机钩子加右侧 overlay 关闭守卫
+# ADR-0263: summon 停机钩子 区域可见性守卫(通用 overlay 遮挡判定)
 
-- **Status**: accepted
+- **Status**: accepted(架构升级版:单 overlay 补丁 → 通用区域可见性守卫)
 - **Date**: 2026-08-24
 
 ## Context
@@ -12,50 +12,58 @@ slot6 白框 rect `(1004,847,1118,978)` 裁出的是**右侧奖励/金币说明 
 模板 good=0)→ 误报「占用未识别」停机。稍后面板关闭,同 rect 裁到真立绘,
 阿格莱雅正常识别。
 
-既有帧态门 `is_prep_like_frame`(r330)只判「备战/开商店精准帧」,**不检测右侧
-overlay** —— 本帧是备战态精准帧,门放行,守卫缺口在 overlay 维度。
-
-同病核查(layout / bookcard 钩子,`cw_identity_obs.read_deployed_chars` /
-`read_bench_chars`):
-
-- **layout 钩子免疫**:触发条件 = 有效后排槽数无档,判据来自 deploy_cap
-  (舞台上方中央 X/Y OCR 指示),**不裁备战 slot rect**;X/Y 指示在顶部中央,
-  不被右侧 overlay(x≥1000,盖备战栏带)遮挡 → 判据不受 overlay 影响。
-- **bookcard 钩子免疫**:触发极性是 `find_bookcards` 的**正向 TM 命中**
-  (书册卡模板 ≥0.75 于 slot rect 内),非 summon 的「占用 + 识别不匹配」缺位
-  判定 —— overlay 盖住槽位只会让模板匹配不到(不触发),overlay 自身内容对
-  书册卡模板 TM 到不了 0.75(同库互撞实测 ≤0.505 量级)→ 无假阳性路径。
+既有帧态门 `is_prep_like_frame`(r330)只判「备战/开商店屏级精准帧」,**不感知
+overlay 维度** —— 本帧是备战态精准帧,门放行。分层缺口:帧态门管「哪个屏」,
+没人管「屏上的区域是否被遮」。
 
 ## Considered Options
 
-1. **overlay 守卫跳过(采纳)** —— 右侧 overlay 在场 → 本帧跳过识别判定
-   (不 flag 不停机),等下一帧 overlay 关了再判。判据全部复用既有机制
-   (无新坐标/新模板):①备战屏「标识-简易装备」area(battle_loop 0g 的
-   阿哈大悦 overlay 锚)OCR 到文本;②全图 OCR 含「金币说明」关键词(本次
-   误触帧特征;探测法同 `_overlay_confirm` 全屏关键词路,crop_first=False
-   复用同帧 OCR 缓存)。任一在场即拦。bot 侧 `battle_loop` 0g 已有 overlay
-   自动处理分支,overlay 会被消费关掉,守卫只损失 overlay 开着的少数帧。
-2. **overlay 自动关闭(钩子内主动点掉再判)** —— 钩子埋在 reader 深处
+1. **通用区域可见性守卫(采纳)** —— 新函数
+   `cw_obs_core.prep_areas_unobstructed(ctx, screen, rects)`:锚注册表
+   `_KNOWN_OVERLAYS`(每条 = 锚 area + 覆盖带 Rect)驱动,锚 OCR 命中且覆盖带
+   与目标 rect 相交 → 判被遮。不是 summon 专属补丁:任何「裁固定 rect 做判定」
+   的钩子在判定前都可用同一函数自检。选它因为它修的是**分层缺口**(区域可见性
+   维度缺失),不是单个 overlay 的症状;新 overlay 发现时注册表追加一行即可。
+2. **单 overlay 关键词补丁(首版实现,已被 1 吸收)** —— 全图 OCR 含「金币说明」
+   → 跳过。能修本次误触,但下一个 overlay(阿哈大悦装备选择等)出现时还要再
+   打一个补丁;关键词探测无区域语义,不能回答「我这个 rect 是否被遮」。
+   其实现保留为选项 1 的一个锚探针实例。
+3. **overlay 自动关闭(钩子内主动点掉再判)** —— 钩子埋在 reader 深处
    (`read_bench_chars` 被识别/对账多路径调用),reader 带副作用点击违反
    观测层纯读约定;且 overlay 属于 battle_loop 已处理的 UI 态,reader 内
    重复处理双源。拒绝。
-3. **rect 动态定位(overlay 开时重算 slot rect)** —— 每帧动态定位成本高、
+4. **rect 动态定位(overlay 开时重算 slot rect)** —— 每帧动态定位成本高、
    且 overlay 下立绘被部分遮挡,SIFT 未必匹配;为罕见帧引入新定位机制,
    复杂度不成比例。拒绝。
 
 ## Decision
 
-`cw_identity_obs.py` 新增 `_right_overlay_open(ctx, screen)`(best-effort,
-异常 → False 回落旧判定);summon 钩子在 `is_prep_like_frame` 通过后、存
-sentinel/停机前调用,在场即 break 跳过本帧。layout / bookcard 钩子按同病
-核查结论免疫,代码注释记录核查依据(防后人重复排查)。
+- `cw_obs_core` 新增 `prep_areas_unobstructed`(best-effort,异常 → True 回落
+  旧判定)+ `_KNOWN_OVERLAYS` 注册表:
+  - 「金币说明面板」:锚 = screen_info 新建档「标识-金币说明」(证据帧
+    034f8ef3 离线 OCR 定位标题 x1013-1149/y383-421,pc_rect (1000,370,1165,435),
+    命中 conf 0.997);覆盖带 = 同帧实测内容范围取整 `Rect(990,360,1480,1000)`
+    (收入明细+连胜规则表,盖备战栏 6-9)。
+  - 「阿哈大悦装备选择」:锚 = 既有「标识-简易装备」(battle_loop 0g);范围
+    未采样 → 保守全屏带(None)。
+- summon 钩子:`is_prep_like_frame` 通过后、存 sentinel/停机前,对候选 slot
+  rect 调 `prep_areas_unobstructed`,被遮即 break 跳过本帧(不 flag 不停机),
+  等下一帧 overlay 关了再判。
+- bookcard 钩子:同一函数加固。它本身极性免疫(见下),但停机后的「点开启」
+  动作在 overlay 下同样落空 → 停机前确认书册卡槽 rect 未被遮。
+- layout 钩子:**免疫,不接守卫**——触发条件 = effective_back_slots(cap) 无档,
+  判据来自 deploy_cap(舞台上方中央 X/Y OCR 指示),不裁备战 slot rect;X/Y
+  指示在顶部中央不被右侧 overlay 遮 → 无假阳性路径(代码注释记录核查依据)。
 
 ## Consequences
 
-- 右侧 overlay 开着时的「占用未识别」帧不再停机;overlay 被 battle_loop
-  消费关闭后下一帧正常判定 —— 真未知物品的发现延迟至多一个 overlay 周期。
-- 守卫锚「金币说明」尚无 screen_info area(「货币战争-金币说明弹窗」建档
-  待建,见 `cw_observation_gate.PROFILE_POPUP` 注);目前走全图 OCR 关键词,
-  建档后可切 area rect(行为不变,读取更省)。
-- 锁测试 `test_cw_adr0263_overlay_guard.py`:两态断言(overlay 开不停机 /
-  关正常停)+ 判据①(简易装备锚)单独拦截。
+- overlay 开着时的「占用未识别」帧不再停机;overlay 被 battle_loop 消费关闭后
+  下一帧正常判定 —— 真未知物品的发现延迟至多一个 overlay 周期。
+- 区域语义:覆盖带外的 rect 不受锚命中影响(slot1-5 不被金币说明面板误拦),
+  比首版「关键词在场全跳」更精确。
+- 「金币说明」已建档为 screen_info area(此前 gate PROFILE_POPUP 注明的
+  「货币战争-金币说明弹窗」独立屏建档仍待建,不阻塞本守卫)。
+- 后续发现新遮挡 overlay:采样锚 + 覆盖带 → `_KNOWN_OVERLAYS` 追加一行,
+  全部接线钩子自动受益。
+- 锁测试 `test_cw_adr0263_overlay_guard.py`:函数层 4 条(被遮/带外/锚未命中/
+  全屏带)+ 钩子层 2 条(overlay 开不停机 / 关正常停机)。

@@ -107,6 +107,56 @@ def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
         return False
 
 
+# 已知会遮挡备战画面的 overlay 注册表(ADR-0263 区域可见性守卫):
+# 每条 = (overlay 名, 锚所在屏, 锚 area 名, 锚文本, 覆盖带 Rect|None)。
+# 锚命中(area OCR 到锚文本)且覆盖带与目标 rect 相交 → 目标被遮挡;
+# 覆盖带 None = 全屏遮挡(锚命中即全部遮挡)。新 overlay 发现时在此追加。
+_KNOWN_OVERLAYS: tuple[tuple[str, str, str, str, Rect | None], ...] = (
+    # 奖励/金币说明面板(局69 summon 误触实证):标题「金币说明」锚(screen_info
+    # 「标识-金币说明」,证据帧 034f8ef3 建档);覆盖带 = 该帧实测内容范围
+    # x1000-1470 / y370-990(收入明细+连胜规则表,盖备战栏 6-9),取整留余量。
+    ('金币说明面板', SCREEN_NAME, '标识-金币说明', '金币说明',
+     Rect(990, 360, 1480, 1000)),
+    # 阿哈大悦装备选择 overlay(battle_loop 0g):全屏选卡 UI(点装备自动关),
+    # 锚 = 既有「标识-简易装备」;范围未采样 → 保守全屏带。
+    ('阿哈大悦装备选择', SCREEN_NAME, '标识-简易装备', '简易装备', None),
+)
+
+
+def _rects_overlap(a: Rect, b: Rect) -> bool:
+    """两 1080p Rect 是否相交(开区间语义,边贴边不算遮)。"""
+    return a.x1 < b.x2 and b.x1 < a.x2 and a.y1 < b.y2 and b.y1 < a.y2
+
+
+def prep_areas_unobstructed(ctx: SrContext, screen: MatLike,
+                            rects: list[Rect] | tuple[Rect, ...]) -> bool:
+    """通用区域可见性守卫(ADR-0263):给定 rect 组当前未被已知 overlay 遮挡。
+
+    背景(局69 实证):右侧奖励/金币说明 overlay 开着时盖在备战栏上,固定
+    slot rect 裁到 overlay 内容 → SIFT 零匹配 → 假「占用未识别」停机。
+    帧态门 ``is_prep_like_frame`` 只判屏级(备战/开商店精准帧),不感知 overlay
+    —— 本函数补「区域级」维度,供各停机/采集钩子在裁 rect 判定前自检。
+
+    判定:遍历 ``_KNOWN_OVERLAYS``,锚 area OCR 到锚文本(全图 OCR 缓存复用,
+    crop_first=False)且覆盖带与任一目标 rect 相交 → False(被遮);全部不遮
+    → True。best-effort:异常 → True(守卫不拦,回落旧判定)。
+
+    :param rects: 待判定可见性的 1080p rect(如停机钩子要裁的 slot rect)。
+    """
+    try:
+        for _name, _scr, _area, _text, _band in _KNOWN_OVERLAYS:
+            r = _area_rect(ctx, _area, _scr)
+            if r is None:
+                continue
+            if not any(_text in (t.data or '') for t in _ocr(ctx, screen, r)):
+                continue
+            if _band is None or any(_rects_overlap(_band, t) for t in rects):
+                return False
+        return True
+    except Exception:   # noqa: BLE001  守卫 best-effort;异常=不拦,回落旧判定
+        return True
+
+
 def _first_int(texts: list[str]) -> int | None:
     """从文本列表提取第一个整数(逐文本正则);无则 None。"""
     for t in texts:
