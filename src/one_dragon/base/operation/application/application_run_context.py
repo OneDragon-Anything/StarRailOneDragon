@@ -42,6 +42,9 @@ class ApplicationRunResult:
     app_id: str
     instance_idx: int | None
     group_id: str | None
+    # 停止来源(开放文本,如 'mcp:stop_run' / 'hook:summon_unknown' / 'gui:hotkey');
+    # 非 STOPPED 结束或未带来源的停止为空串。
+    stop_source: str = ''
 
 
 class ApplicationRunContextStateEnum(StrEnum):
@@ -354,11 +357,22 @@ class ApplicationRunContext:
         self,
         result: ApplicationRunResult,
         dispatch_event: bool = True,
+        stop_reason: str = '',
     ) -> ApplicationRunResult:
-        """统一收口运行结束逻辑。"""
+        """统一收口运行结束逻辑。
+
+        Args:
+            result: 运行结果对象。
+            dispatch_event: 是否发送停止事件。
+            stop_reason: 停止来源(stop_running 传入),仅用于幂等 no-op 日志。
+        """
         if self.is_context_stop:
             if self.last_run_result is None:
                 self.last_run_result = result
+            else:
+                log.info('忽略重复停止请求(reason=%s),保留首次结果(%s/%s)',
+                         stop_reason or '(空)', self.last_run_result.finish_reason,
+                         self.last_run_result.stop_source or '(无来源)')
             return self.last_run_result
 
         self.last_run_result = result
@@ -400,15 +414,20 @@ class ApplicationRunContext:
             log.error("运行前初始化失败")
             return False
 
-    def stop_running(self) -> ApplicationRunResult:
+    def stop_running(self, reason: str = '') -> ApplicationRunResult:
         """
         停止运行。
 
         将上下文状态设置为停止，如果正在运行则先暂停，然后发送停止事件。
         已经停止时返回首次收口结果，不重复发送停止事件或覆盖结束原因。
+
+        Args:
+            reason: 停止来源标识(开放文本,如 'mcp:stop_run' / 'hook:summon_unknown'
+                / 'gui:hotkey'),写入结果 ``stop_source`` 供归因;空串表示未声明来源。
         """
         result = self._create_run_result(RunFinishReason.STOPPED)
-        return self._finish_running(result)
+        result.stop_source = reason
+        return self._finish_running(result, stop_reason=reason)
 
     def switch_context_pause_and_run(self):
         """

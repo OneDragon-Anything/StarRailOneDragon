@@ -99,7 +99,7 @@ class RunStatusResult:
         duration_seconds: 截至查询时的耗时;不可用时 None。
         current_node: 运行中当前节点名;终态 None。
         retry_count: 运行中当前节点重试次数;终态 None。
-        last_status: OperationResult.status(失败原因 / "人工结束" / 成功描述);运行中 None。
+        last_status: OperationResult.status(失败原因 / "已停止[来源]"(stop_source,如 mcp:stop_run / hook:* / gui:*) / 成功描述);运行中 None。
         failed_node: 仅 failed:失败停在哪一步;否则 None。
     """
     state: str

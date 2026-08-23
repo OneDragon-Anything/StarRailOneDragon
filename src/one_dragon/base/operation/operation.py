@@ -406,7 +406,9 @@ class Operation(OperationBase):
                 op_result = self.op_fail(Operation.STATUS_TIMEOUT)
                 break
             if self.ctx.run_context.is_context_stop:
-                op_result = self.op_fail('人工结束')
+                # 带停止来源(见 ApplicationRunResult.stop_source),替代旧文案「人工结束」
+                _src = getattr(self.ctx.run_context.last_run_result, 'stop_source', '') or 'unknown'
+                op_result = self.op_fail(f'已停止[{_src}]')
                 break
             elif self.ctx.run_context.is_context_pause:
                 time.sleep(1)

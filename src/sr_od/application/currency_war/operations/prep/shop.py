@@ -504,7 +504,7 @@ class BuyShopCards(SrOperation):
                     encoding='utf-8')
                 log.warning('[cw!] [shop] 未识别卡槽%s(重读后仍 miss)→ 停机留画面'
                             '待建档 shot=%s(用户裁决恢复:未识别不能降级)', _unk, _shot)
-                self.ctx.run_context.stop_running()
+                self.ctx.run_context.stop_running(reason='hook:shop_unknown_card')
                 return self.round_fail(status=f'shop 未识别卡槽{_unk},停机留证')
 
         # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。

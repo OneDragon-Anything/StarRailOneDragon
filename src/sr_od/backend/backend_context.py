@@ -275,7 +275,7 @@ class RunSlot:
         finally:
             # —— 固化终态(任何路径都执行,镜像原 RunSlot finally)——
             terminal = (RunState.SUCCESS if (result is not None and result.success)
-                        else RunState.STOPPED if (result is not None and result.status == '人工结束')
+                        else RunState.STOPPED if (result is not None and result.status.startswith('已停止'))
                         else RunState.FAILED)
             if failed_node is None:
                 failed_node = self._node_name() or (result.status if result is not None else None)
@@ -340,7 +340,7 @@ class RunSlot:
             if self.future is None or self.future.done():
                 return False, None
             source = self.source
-        self._ctx.run_context.stop_running()
+        self._ctx.run_context.stop_running(reason='mcp:stop_run')
         return True, source
 
     def shutdown(self) -> None:

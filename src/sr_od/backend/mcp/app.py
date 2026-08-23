@@ -118,7 +118,8 @@ def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusResu
             current_node, retry_count, last_status, failed_node}``。
             ``state`` 取值 ``idle``(无运行)/``running``/``success``/``failed``/``stopped``;
             ``current_node``/``retry_count`` 仅运行中有值;``last_status`` 仅终态有值
-            (成功描述 / 失败原因 / ``人工结束``);``failed_node`` 仅 failed 时有值
+            (成功描述 / 失败原因 / ``已停止[来源]``(来源=stop_source,如
+            ``mcp:stop_run`` / ``hook:*`` / ``gui:*``));``failed_node`` 仅 failed 时有值
             (失败停在哪一步,排障锚点);``started_at`` 为 ISO 时间戳,可作 tail 日志锚点。
         """
         return backend.query_status()

@@ -1109,7 +1109,7 @@ class CurrencyWarRunLoop(SrOperation):
                          _shot, self._unknown_streak)
             except Exception as e:  # noqa: BLE001  钩子失败不阻塞
                 log.warning('[cw-loop] unknown stop 钩子失败(不阻塞): %s', e)
-            self.ctx.run_context.stop_running()
+            self.ctx.run_context.stop_running(reason='hook:battle_unknown_screen')
             return self.round_fail(status='持久未识别画面,停机待建档')
         return self.round_retry(wait=2)
 

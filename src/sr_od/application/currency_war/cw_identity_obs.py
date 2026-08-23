@@ -325,7 +325,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                         f'截图: {_shot}', encoding='utf-8')
                     _log.info('[cw-hook][layout] 后排 %d 槽无档(cap=%s)→ 停机现场拖拽验证(截图 %s)',
                               _slots_n, _cap, _shot)
-                    ctx.run_context.stop_running()
+                    ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
     return (identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
@@ -405,7 +405,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                         from one_dragon.utils.log_utils import log as _log2
                         _log2.warning('[cw!][bookcard] 书册卡在场(已识别,内容未知)→ 停机点开确认'
                                       '(流程见 flag;确认后删钩子)')
-                        ctx.run_context.stop_running()
+                        ctx.run_context.stop_running(reason='hook:bookcard_confirm')
         except Exception:   # noqa: BLE001  确认钩子 best-effort
             pass
         _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
@@ -469,7 +469,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                         f'截图: {_shot}', encoding='utf-8')
                     _log.warning('[cw!][summon] 备战 slot%s 占用未识别(物品变体或召唤物)'
                                  '→ 停机现场建档(别降级;处理流程见 flag): %s', _slot, _shot)
-                    ctx.run_context.stop_running()
+                    ctx.run_context.stop_running(reason='hook:summon_unknown')
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass

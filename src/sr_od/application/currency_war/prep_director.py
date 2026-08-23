@@ -784,7 +784,7 @@ class PrepDirector(SrOperation):
             rc = getattr(self.ctx, 'run_context', None)
             if rc is not None:
                 with contextlib.suppress(Exception):
-                    rc.stop_running()
+                    rc.stop_running(reason='hook:director_bail_pingpong')
             return self.round_fail(status=f'同因 bail ×{n}({reason}) 停机待建档')
         log.info(f'[cw][director] BailToOuter({reason}) → 交外环')
         return self.round_success(f'BailToOuter({reason})', wait=1)

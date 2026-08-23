@@ -181,7 +181,7 @@ class HandleInvestEnv(SrOperation):
                         f'ts={_t2.strftime("%m-%d %H:%M:%S")}\n',
                         encoding='utf-8')
                     log.warning('[cw!] [env] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s', _shot)
-                    self.ctx.run_context.stop_running()
+                    self.ctx.run_context.stop_running(reason='hook:env_refresh_click_fail')
                     return self.round_fail(status='env 刷新点击未生效,停机存证')
                 log.info('[cw-env] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):

@@ -207,6 +207,6 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
             f'{char} 预估{old_star}★×多节点读回{new_star}★ → '
             f'保画面排查星级识别(sentinel: star_regression_hook.flag;修好删 _star_stop_hook)')
         if stop_run:
-            ctx.run_context.stop_running()
+            ctx.run_context.stop_running(reason='hook:star_regression')
     except Exception:  # noqa: BLE001  停机失败不阻塞对账写回
         pass
