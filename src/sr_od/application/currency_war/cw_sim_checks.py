@@ -1158,6 +1158,62 @@ def check_hp_ge60_frame_lock(rows: list[dict]) -> list[str]:
     return []
 
 
+def check_supply_pool_roster_purity(rows: list[dict]) -> list[str]:
+    """批㉛ 检查项(ADR-0294 件2 回归锁):供给采样池注册表纯净性。
+
+    判据:每轮账本 state.owned_equips / state.equipped 的装备名必须
+    ⊆ EQUIPMENT_ROSTER(注册表单一源)——ADR-0294 件2 修复后,
+    sim 供给采样池 = _EQUIP_VALUE ∩ EQUIPMENT_ROSTER,注册表外
+    名(价值表死名/「未知装备」)不得再进 owned 池或被穿上。
+    违规 = 采样池过滤被绕过/回退(phantom_equip 通道回归),或
+    账本写入端混入未建模名(0 容忍)。
+    """
+    from sr_od.application.currency_war.cw_equipment_data import (
+        EQUIPMENT_ROSTER,
+    )
+    out: list[str] = []
+    for row in rows:
+        st = row.get('state') or {}
+        bad: set[str] = set()
+        for e in (st.get('owned_equips') or []):
+            if e not in EQUIPMENT_ROSTER:
+                bad.add(e)
+        for pair in (st.get('equipped') or []):
+            if pair.get('equip') not in EQUIPMENT_ROSTER:
+                bad.add(str(pair.get('equip')))
+        if bad:
+            out.append(
+                f"p1r{row.get('round_num')}: 注册表外装备进池/上身 "
+                f"{sorted(bad)}(供给采样池纯净性破——批㉛,ADR-0294 件2)")
+    return out
+
+
+def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
+    """批㉛ 检查项(数据层债披露,预期红灯):价值表键-注册表一致性。
+
+    判据:_EQUIP_VALUE(cw_events,V4.4 先验)的每个键应存在于
+    EQUIPMENT_ROSTER——注册表外键 = 死名(游戏已改名/先验陈旧),
+    它们被 ADR-0294 件2 的采样过滤静默剔除出 sim 供给池(批㉛ 实测
+    3/12 键、约 20% 表值质量),且 decide_supply 生产侧对真名供给
+    恒打 0 分(价值表查不到)。本检查**不消费账本行**(逐局循环里
+    每 game 重复披露一次,直至数据层清偿);清偿 = 修/删价值表死名
+    (数据治理纪律:能修复就修复,不能就删),修后本检查归 0。
+    批㉛ F2 登记:超级电池/能量饮料/翁瓦克 3 死名——**ADR-0298 已清偿**
+    (语料核证为表残留:超级电池=超充站 buff 词/能量饮料=零出现/
+    翁瓦克=局外遗器名误收;翁瓦克 4 分转投蓄能帆),本检查现应恒绿。
+    """
+    from sr_od.application.currency_war.cw_equipment_data import (
+        EQUIPMENT_ROSTER,
+    )
+    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
+    stale = sorted(n for n in _EQUIP_VALUE if n not in EQUIPMENT_ROSTER)
+    if not stale:
+        return []
+    return [
+        f"价值表死名 {stale}(不在 EQUIPMENT_ROSTER;"
+        f"ADR-0294 件2 采样过滤静默剔除+生产侧恒 0 分——批㉛ F2 待清偿)"]
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -1188,6 +1244,9 @@ _BATCH_CHECKS = {
     'dead_system_second_pivot': check_dead_system_second_pivot,
     'degrade_recover_mutex': check_degrade_recover_mutex,
     'hp_ge60_frame_lock': check_hp_ge60_frame_lock,
+    'supply_pool_roster_purity': check_supply_pool_roster_purity,
+    'equip_value_table_roster_coherence':
+        check_equip_value_table_roster_coherence,
 }
 
 
@@ -2808,7 +2867,12 @@ def check_decision_v2_candidate_coverage(
                   BenchChar(slot=1, char_id='爻光', faction='仙舟')]
     s.bench = [BenchChar(slot=0, char_id='丹恒·饮月', faction='仙舟'),
                BenchChar(slot=1, char_id='青雀', faction='仙舟'),
-               BenchChar(slot=2, char_id='娜塔莎', faction='护盾')]
+               BenchChar(slot=2, char_id='娜塔莎', faction='护盾'),
+               # ADR-0296 探针修正:上方注释判据「同名 2 份+店有第
+               # 3 张」但旧探针只放了 1 份饮月 → 合成候选在任何
+               # 生成器语义下都不可能触发(结构性不可绿);补第 2 份
+               # 使判据成立(买入第 3 张 → merge 候选)。
+               BenchChar(slot=3, char_id='丹恒·饮月', faction='仙舟')]
     s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
               ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
     sess = StrategySession()
