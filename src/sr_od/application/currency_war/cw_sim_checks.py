@@ -2907,7 +2907,11 @@ def check_decision_v2_candidate_coverage(
                                 else 'buy')
                         else:
                             exec_classes.add(a.get('__type__', ''))
-        if is_d2 and not ({'BuyCard', 'LevelUp'} & exec_classes):
+        # ADR-0296:买映射为小写 'buy'(与结构层动作类名对齐),旧字面
+        # {'BuyCard','LevelUp'} 里 BuyCard 永不可命中(buy≠BuyCard)
+        # → 有买无升级的健康批也误报死路;LevelUp 账本行不带 d2_
+        # reason(sim 序列化无 reason),故死路判据实际锚=buy。
+        if is_d2 and 'buy' not in exec_classes:
             violations.append(
                 f'执行层:d2 批次零 BuyCard/LevelUp(死路形态:'
                 f'已执行类={sorted(exec_classes)})')

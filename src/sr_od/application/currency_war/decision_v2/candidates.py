@@ -6,11 +6,18 @@
 - 买:店内每张可识别卡 × 标签(line_carry / line_opportunistic /
   bridge_core / bond_fallback[31] / carry_gate 腾位)+ 3合1 合成标记
   (同名第 3 张副本买入即合成,Candidate.merge=True);
-- 卖:bench 每件 × 理由(off_target / for_gold / free_bench 腾位让位);
+- 卖:bench 每件 × 理由(off_target 常态死库存 / for_gold 应急态弱件
+  / free_bench 腾位让位)——v1 卖通道豁免(engine_seed 年龄豁免
+  ADR-0289 §5 / 3合1 素材豁免 / r408 同轮已买)全部在生成器层过滤
+  (ADR-0296;别在评分层重复判);
 - LevelUp / RefreshShop;
 - Deploy:board∪bench→槽位组合的 top-K(K 与排序键在 registry 显式;
   排序键=围栏序 cw_deploy_logic.select_deployments,与生产 DeployBench
-  同一源,不另造排序)。
+  同一源,不另造排序);
+- 合成(3合1 独立通道,ADR-0296):bench∪deployed 同名同星 ≥3 份
+  (cw_state._merge_bench 全场域口径的镜像)→ 每组一个 synthesize
+  候选;另:店内第 3 张同名 1★ 副本买入即合成,买候选带
+  Candidate.merge=True(两路共同构成 synthesize 动作类)。
 
 纯函数(只读 state/session,不 mutate),sim 可测;层2/3/4 分别见
 filters.py / scoring.py / arbiter.py。
@@ -24,7 +31,6 @@ from sr_od.application.currency_war.cw_bridge_pool import (
     BRIDGE_POOL_P2,
 )
 from sr_od.application.currency_war.cw_economy import xp_click_cost
-from sr_od.application.currency_war.cw_line_defs import ENGINE_FACTIONS
 from sr_od.application.currency_war.cw_line_library_v1 import line_of
 from sr_od.application.currency_war.cw_state import (
     Action,
@@ -66,6 +72,24 @@ class Candidate:
     merge: bool = False            # 3合1 合成候选(买第 3 张同名副本)
     needs_slot: bool = False       # 买时 bench 满(需先腾位;[32])
     breakdown_hint: dict = field(default_factory=dict)   # 生成期注记
+
+
+@dataclass
+class Synthesize:
+    """3合1 合成候选的执行体(候选层本地类型,ADR-0296;不进
+    cw_state.Action 联合——合成在执行层是**自动机制**:
+    simulate/_merge_bench 在同名同星 ≥3 时就地合并,无独立点击)。
+
+    本类是层1 枚举完备性的载体:待合并态(全场域已有完整 3 份)
+    显影为候选,评分交给 scoring 现有函数(升星形态增益;当前
+    simulate 对本类型 no-op → 板面查表恒 0 分差 →「非正分」不执行,
+    形态域批后继按需接消费)。执行侧双保险:sim 执行链按
+    isinstance 分派(未知类型安全跳过);DecisionV2 非默认策略。
+    """
+
+    name: str                      # 同名组角色名
+    star: int                      # 组内星级(合并后 star+1)
+    copies: int = 3                # 组内份数(≥3)
 
 
 def _owned_factions(state: GameState) -> set[str]:
@@ -151,32 +175,74 @@ def _buy_tag(card: ShopCard, state: GameState,
     return None
 
 
+def _seed_age_blocked(bc: BenchChar, state: GameState,
+                      session: StrategySession) -> bool:
+    """engine_seed 年龄豁免(ADR-0289 §5;单一源=line_strategy.
+
+    _seed_age_blocked 的直通——买入 ≤2 轮且同轮份数 <2 的种子不进
+    可卖集;生成器层过滤(ADR-0296),别在评分层重复判。
+    """
+    from sr_od.application.currency_war.strategies.line_strategy import (
+        LineStrategy,
+    )
+    return LineStrategy._seed_age_blocked(bc, state, session)
+
+
+def _sell_blocked(bc: BenchChar, state: GameState,
+                  session: StrategySession) -> bool:
+    """卖出豁免过滤(v1 卖通道语义对齐,ADR-0296;纯查询)。
+
+    - r408(ADR-0267)同轮已买不卖(买→卖→买永动机拆解);
+      3合1 让位豁免:同名星级加权 ≥3 份 = 合成后冗余件,放行;
+    - engine_seed 年龄豁免(ADR-0289 §5):买入 ≤2 轮种子不卖;
+    - 3合1 素材豁免:同名星级加权恰 3 份(完整合成份)不卖
+      (卖一份 = 拆合成材料;v1 carry 腾位门 _cp==3 不动同语义)。
+    """
+    name = bc.char_id or ''
+    if not name:
+        return True    # 未识别件不卖(感知纪律)
+    if (getattr(session, 'v2_round_key', None)
+            == (state.plane, state.round_num)
+            and name in (getattr(session, 'v2_round_bought', None) or ())
+            and _star_weighted_copies(name, state) < 3):
+        return True    # r408 同轮已买(<3 份非让位语境)
+    if _seed_age_blocked(bc, state, session):
+        return True    # 种子 2 轮窗(ADR-0289 §5)
+    # 完整 3合1 份(素材豁免;>3 冗余可卖)
+    return _star_weighted_copies(name, state) == 3
+
+
 def _sell_tag(bc: BenchChar, state: GameState,
               session: StrategySession,
               registry: DecisionV2Registry) -> str | None:
-    """bench 单件卖出理由(优先序=registry.sell_tag_priority)。
+    """bench 单件卖出理由(优先序=registry.sell_tag_priority;ADR-0296)。
 
-    - off_target:非目标件且非引擎件(protect 集外);
-    - for_gold:目标件但同名副本超额(星级加权 >3 份的冗余份);
-    - free_bench:bench 满时的腾位让位([32]:腾席优先用卖解决)。
+    - off_target:常态非目标死库存(protect=_target_names 外);
+    - for_gold:应急态弱件折现(应急判定 = hp≤registry.emergency_hp,
+      与 filters.is_emergency 同式——模块内联防 import 环);
+    - free_bench:bench 满时的腾位让位([32]:目标件也降保护集让位,
+      v1 carry 腾位门语义;冗余份/杂件在此前标签先命中)。
+
+    引擎件不另设保护(v1 无 engine 阵营级卖禁;件值经评分层板面形态
+    显影——卖出后形态查表自然降分,非正分即拒,ADR-0290 层2 语义)。
     """
+    if _sell_blocked(bc, state, session):
+        return None
     protect = _target_names(state, session)
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    ch = CHARACTERS.get(bc.char_id or '')
-    bonds = (set(ch.factions) | set(ch.flows)) if ch else {bc.faction}
-    is_engine = bool(bonds & set(ENGINE_FACTIONS))
-    copies = _star_weighted_copies(bc.char_id or '', state)
+    name = bc.char_id or ''
+    is_target = name in protect
+    emergency = state.hp <= registry.emergency_hp
+    bench_full = len(state.bench or []) >= registry.bench_capacity
     for tag in registry.sell_tag_priority:
         if tag == 'off_target':
-            if bc.char_id not in protect and not is_engine:
+            if not is_target and not emergency:
                 return tag
         elif tag == 'for_gold':
-            if copies > registry.copies_cap:
+            if emergency and not is_target:
                 return tag
         elif tag == 'free_bench':
-            if (len(state.bench or []) >= registry.bench_capacity
-                    and bc.char_id not in protect):
-                return tag
+            if bench_full:
+                return tag    # 腾位让位:bench 满时目标件也降保护集
     return None
 
 
@@ -229,6 +295,35 @@ def generate_candidates(state: GameState, session: StrategySession,
     ))
     # --- Deploy(top-K;排序键=围栏序,K=registry.deploy_top_k)---
     out.extend(_deploy_candidates(state, session, registry))
+    # --- 合成(独立通道,ADR-0296:bench∪deployed 同名同星 ≥3)---
+    out.extend(_synthesize_candidates(state))
+    return out
+
+
+def _synthesize_candidates(state: GameState) -> list[Candidate]:
+    """3合1 合成候选:全场域同名同星 ≥3 份 → 每组一个候选。
+
+    cw_state._merge_bench 语义镜像(生产同源):分组键=(char_id, star),
+    合并域=bench∪deployed(3合1 是全场);组内 ≥3 → 合成 1 份升星。
+    sim 里买入即自动合并 → 该通道常态零触发,服务**枚举完备性**
+    (ADR-0290 层1 义务:live 重建态的待合并显影)与检查项覆盖。
+    """
+    groups: dict[tuple[str, int], int] = {}
+    for it in list(state.bench or []) + list(state.deployed or []):
+        name = getattr(it, 'char_id', '') or ''
+        if not name:
+            continue
+        star = max(1, int(getattr(it, 'star', 1) or 1))
+        groups[(name, star)] = groups.get((name, star), 0) + 1
+    out: list[Candidate] = []
+    for (name, star), cnt in sorted(groups.items()):
+        if cnt < 3:
+            continue
+        out.append(Candidate(
+            action=Synthesize(name=name, star=star, copies=cnt),
+            tag='synthesize', source='merge_pool', merge=True,
+            breakdown_hint={'name': name, 'star': star, 'copies': cnt},
+        ))
     return out
 
 
