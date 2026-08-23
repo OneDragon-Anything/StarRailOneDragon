@@ -332,6 +332,23 @@ class LineStrategy(DefaultCwStrategy):
         session.v2_round_bought.update(
             a.card.name for a in acts
             if isinstance(a, BuyCard) and a.card.name)
+        # ADR-0289 §5 裁决(红项 127/300,ADR-0294 件1):engine_seed
+        # 购入轮登记——卖通道 ≤2 轮年龄豁免(_seed_age_blocked)的
+        # 单一数据源。值=(轮键, 同轮份数):同轮同名 ≥2 份=3合1
+        # 素材收集语境(冗余让位合法),与 check_engine_seed_
+        # not_resold 的豁免边镜像。r408 只辖同轮,本登记补跨轮窗。
+        _seed_log = getattr(session, 'v2_seed_bought', None)
+        if _seed_log is None:   # 旧 session 反序列化兜底(空=不拦)
+            _seed_log = session.v2_seed_bought = {}
+        for a in acts:
+            if isinstance(a, BuyCard) \
+                    and getattr(a, 'reason', '') == 'engine_seed' \
+                    and a.card.name:
+                _prev = _seed_log.get(a.card.name)
+                if _prev is not None and _prev[0] == key:
+                    _seed_log[a.card.name] = (key, _prev[1] + 1)
+                else:
+                    _seed_log[a.card.name] = (key, 1)
         for a in acts:
             if isinstance(a, SellBench) \
                     and 0 <= a.bench_idx < len(state.bench or []):
@@ -1028,6 +1045,8 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             if self._round_sell_blocked(b, state, session):
                 continue   # r408(ADR-0267):为买而卖也不吃刚买的件
+            if self._seed_age_blocked(b, state, session):
+                continue   # ADR-0289 §5:≤2 轮种子不卖(跨轮年龄豁免)
             ch = CHARACTERS.get(b.char_id)
             if ch is None:
                 continue
@@ -1110,7 +1129,11 @@ class LineStrategy(DefaultCwStrategy):
         for b in bench:
             if (b.char_id and b.char_id not in protect
                     and b.faction not in close
-                    and not self._round_sell_blocked(b, state, session)):
+                    and not self._round_sell_blocked(b, state, session)
+                    and not self._seed_age_blocked(b, state, session)):
+                # (末项 ADR-0289 §5:种子 2 轮窗内 off-target 也不选
+                # ——卖通道已同豁免,本门不得错位把「唯一可卖=种子」
+                # 误判成「直接卖通道可解」而空手返回)
                 return []
         # ④ 降保护集:挑 off-line 价值最低件(弱序升序取最小;
         # 「当前线件」=carry+opportunistic(锁线一等公民),桥 core
@@ -1128,6 +1151,10 @@ class LineStrategy(DefaultCwStrategy):
                            if getattr(d, 'char_id', '') == b.char_id)
 
         cands: list[tuple[tuple, int, object]] = []
+        # ADR-0289 §5:种子 2 轮窗内候选单独存——bench 真满且无
+        # 其他可卖时兜底放行(本门前置 bench≥9,空 cands+非空
+        # seed_cands = 不腾则 carry 死锁,豁免让位给 carry)
+        _seed_cands: list[tuple[tuple, int, object]] = []
         for i, b in enumerate(bench):
             if not b.char_id or b.char_id == line.carry:
                 continue
@@ -1148,7 +1175,12 @@ class LineStrategy(DefaultCwStrategy):
                    b.char_id in in_bridge,
                    0 if (_cp > 3 or _absent_mergeable) else 1,
                    _cp)
+            if self._seed_age_blocked(b, state, session):
+                _seed_cands.append((key, i, b))   # 种子 2 轮窗:兜底序
+                continue
             cands.append((key, i, b))
+        if not cands:
+            cands = _seed_cands   # 唯一可卖=种子:carry 死锁豁免(仍选最弱)
         if not cands:
             return []
         cands.sort(key=lambda c: c[0])
@@ -1178,7 +1210,9 @@ class LineStrategy(DefaultCwStrategy):
                 break
             if bc.char_id and bc.char_id not in protect \
                     and bc.faction not in close \
-                    and not self._round_sell_blocked(bc, state, session):
+                    and not self._round_sell_blocked(bc, state, session) \
+                    and not self._seed_age_blocked(bc, state, session):
+                # (末项 ADR-0289 §5:≤2 轮 engine_seed 不进可卖集)
                 out.append(SellBench(bench_idx=i))
                 session.v2_round_sold.add(bc.char_id)   # r408 同轮已卖集
         return out
@@ -1236,6 +1270,30 @@ class LineStrategy(DefaultCwStrategy):
         return copies < 3
 
     @staticmethod
+    def _seed_age_blocked(bc, state: GameState,
+                          session: StrategySession | None) -> bool:
+        """ADR-0289 §5 裁决(红项 127/300,ADR-0294 件1):engine_seed
+        年龄豁免——买入 ≤2 轮的引擎种子不进可卖集(种子被当回合
+        素材卖回=种子归零+白烧预算;r408 只辖同轮,本豁免补跨轮
+        2 轮窗,锁:买入 r=N → r=N+1/N+2 卖不选、r=N+3 可卖)。
+
+        豁免边(与 check_engine_seed_not_resold 镜像):同轮同名
+        买入 ≥2 份 = 3合1 素材收集语境(冗余让位合法)不拦;位面
+        不符/无记录/旧 session(缺 v2_seed_bought)= 不拦(保守)。
+        carry 腾位门消费同豁免,但 bench 真满且无其他可卖时兜底
+        放行(见 _carry_bench_gate,防 carry 死锁)。"""
+        name = getattr(bc, 'char_id', '')
+        if not name or session is None:
+            return False
+        rec = (getattr(session, 'v2_seed_bought', None) or {}).get(name)
+        if rec is None:
+            return False
+        key, cnt = rec
+        if key[0] != state.plane:
+            return False
+        return 0 <= state.round_num - key[1] <= 2 and cnt < 2
+
+    @staticmethod
     def _in_round_sold(name: str, state: GameState,
                        session: StrategySession) -> bool:
         """r408(ADR-0267 对称臂):该卡名本轮是否刚被卖出(买通道
@@ -1265,6 +1323,8 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             if self._round_sell_blocked(b, state, session):
                 continue   # r408(ADR-0267):同轮已买不让位(3合1 豁免内放行)
+            if self._seed_age_blocked(b, state, session):
+                continue   # ADR-0289 §5:≤2 轮种子不让位(跨轮窗)
             out.append(SellBench(i, income=self._refund_of(b)))
             session.v2_round_sold.add(b.char_id)   # r408 同轮已卖集
         return out[:2]
@@ -1295,6 +1355,8 @@ class LineStrategy(DefaultCwStrategy):
                 continue
             if self._round_sell_blocked(bc, state, session):
                 continue   # r408(ADR-0267):同轮已买禁卖(3合1 豁免内放行)
+            if self._seed_age_blocked(bc, state, session):
+                continue   # ADR-0289 §5:≤2 轮种子不卖(跨轮窗)
             ch = CHARACTERS.get(bc.char_id)
             cost = ch.cost if (ch and ch.cost) else 3
             refund = sell_refund(bc.star, cost)

@@ -28,7 +28,7 @@
 | bench | 开局 4 张+买 append(含 3合1 merge,ADR-0276)+卖 pop+上阵 pop(ADR-0271) | 备战栏 SIFT 跟踪 | 已接(ADR-0276 起 merge 同源 `_merge_bench`;合并数入账本 sim.merges) | — |
 | deployed | select_deployments 围栏输出,跨轮累积(ADR-0271) | bot 跟踪已上阵 | 已接 | — |
 | board | deployed 主阵营聚合(ADR-0271) | OCR 左面板阵营计数 | 已接(ADR-0271) | — |
-| equips | supply 3选1 采样+equip_allocation(r393) | 装备区 OCR | 已接(代理) | — |
+| equips | supply 3选1 采样(池=注册表过滤后的装备名,ADR-0294 件2)+equip_allocation(r393);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR | 已接(代理) | — |
 | shop_refresh_cost | 恒默认 2(读 `st.shop_refresh_cost or 2`) | OCR 刷新金币数 | 已接(P1 无投资减免域内 2=真值;减免随 active_strategies 结构) | P3 |
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |

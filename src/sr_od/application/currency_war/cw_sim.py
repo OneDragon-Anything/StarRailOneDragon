@@ -161,6 +161,10 @@ class SimResult:
     # 槽消费落地后池超卖不可达,>0 = 池守恒破)
     phantom_rebuys: int = 0
     pool_floor_hits: int = 0
+    # ADR-0294 件2(ADR-0289 §5 裁决):supply 带钻选项被选中次数
+    # (占位实体披露计数——'钻石' 不再以真装备身份进 owned 池,
+    # 只在此计数披露,phantom_equip_no_wear 回归 0 容忍)
+    phantom_supply_picks: int = 0
 
 
 class _Pool:
@@ -1169,11 +1173,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
         # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
         # EquipAll 同源)分配给 deployed → 账本 equipped 字段。
-        # 装备获取采样:通用装备池按 _EQUIP_VALUE 键 + 无名池
-        # (OCR 漏读形态);带钻概率 15%(实机简报词缀影响的粗估,
-        # 校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
+        # 装备获取采样:通用装备池按 _EQUIP_VALUE 键(注册表过滤,
+        # ADR-0294 件2,见下);带钻概率 15%(实机简报词缀影响的
+        # 粗估,校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
+        # ADR-0294 件2(ADR-0289 §5 裁决,红项 174/300):采样池
+        # 只进注册表认识的装备名(EQUIPMENT_ROSTER 单一源)——
+        # '未知装备' 与价值表旧名(注册表外)不进 owned 池;带钻
+        # 是词缀元数据,不再以 '钻石' 占位实体进池(占位实体只进
+        # 披露计数 res.phantom_supply_picks,不进池)。
         _equipped_now: list[tuple[str, str]] = []
         if nodes[rn - 1] == 'supply':
+            from sr_od.application.currency_war.cw_equipment_data import (
+                EQUIPMENT_ROSTER,
+            )
             from sr_od.application.currency_war.cw_events import (
                 _EQUIP_VALUE as _EV,
             )
@@ -1181,7 +1193,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 SupplyOption,
                 decide_supply,
             )
-            _pool_names = list(_EV.keys()) + ['未知装备']
+            _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
             _opts = []
             for _oi in range(3):
                 _eq = rng.choice(_pool_names)
@@ -1191,7 +1203,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _pick = decide_supply(_opts, st, sess.target_comp, None)
             st.equips.append(_opts[_pick.idx].equip)
             if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
-                st.equips.append('钻石')
+                res.phantom_supply_picks += 1   # 披露计数(不进池)
         if st.equips and st.deployed:
             from sr_od.application.currency_war.cw_comps import (
                 equip_allocation,
@@ -1363,6 +1375,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ADR-0284(批㉒ F1/F5):幻影再买提案与池 take 地板命中
         # (真策略批次双 0;>0 = 槽消费回归/池守恒破)
         'phantom_rebuys': sum(r.phantom_rebuys for r in results),
+        # ADR-0294 件2:supply 带钻选中总数(占位实体披露;带钻
+        # 是词缀元数据不进 owned 池,此计数是它唯一的 sim 痕迹)
+        'phantom_supply_picks': sum(
+            r.phantom_supply_picks for r in results),
         'pool_floor_hits': sum(r.pool_floor_hits for r in results),
         # ADR-0287(批㉘ F1):全批残留可上件总数(买后部署语义下
         # 应 0;>0 = 部署时序回归/围栏漏上,检查项扫出)
@@ -1429,6 +1445,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
         rep_checks['anchor_registry_n300'] = \
             check_anchor_registry_n300(report)
+        # ADR-0294 件3(ADR-0289 接线欠账):批级聚合入口并入——
+        # 清偿批的批级披露/哨兵/条件型检查一次跑全(逐局锁已由
+        # run_checks_on_ledgers 自动扫;worker X 合流后本欠账清偿)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            run_batch_level_checks,
+        )
+        rep_checks.update(run_batch_level_checks(
+            _ledgers, report=report, pool_map=_pm))
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():

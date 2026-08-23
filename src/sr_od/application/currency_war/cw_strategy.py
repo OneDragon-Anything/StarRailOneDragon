@@ -278,6 +278,13 @@ class StrategySession:
     # r408 对称臂:同轮已卖集——engine_seed 对集内卡名禁买(防
     # 「卖通道刚卖→st2 见未持有→同 call 买回」的缩幅永动机,1 对/轮)。
     v2_round_sold: set[str] = field(default_factory=set)
+    # ADR-0289 §5 裁决(红项 127/300,ADR-0294 件1):engine_seed
+    # 购入轮登记——char_id → ((plane, round_num), 同轮份数);卖通道
+    # ≤2 轮年龄豁免(line_strategy._seed_age_blocked)的单一数据源。
+    # 同轮 ≥2 份=3合1 素材语境豁免(镜像 check_engine_seed_not_
+    # resold);旧 session 反序列化缺字段 → 空 dict 保守(只失去豁免)。
+    v2_seed_bought: dict[str, tuple[tuple[int, int], int]] = \
+        field(default_factory=dict)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;

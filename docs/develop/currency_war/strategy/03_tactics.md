@@ -32,9 +32,9 @@
 
 **LineStrategy 的 P1 r5+ 决战窗**(接管 economy 分派):成型检查点(`p1_formation_target`,轮窗常量 `_P1_FORMATION_TARGETS`/`_P1_FORMATION_ROUND_EDGES` 见 cw_line_defs,ADR-0225/0241)→ boss_breaker(板面集中买 + 配方围栏:recipe_tier<BASE 时只买 RECIPE∩板面,ADR-0221/0225)+ 买牌守卫 copies 星级加权(ADR-0224)。买入标签链(`_want_label`)含 **engine_seed 放行通道**:P1 未持有的过渡体系阵营件(TRANSITION_TRAITS 键,含 flow 羁绊)金够即买,与 seed/pair 门并行、地板语义调用方保留;bench 满员不触发(容量门,ADR-0267)。追级(LevelUp)在 boss_breaker/追赶两窗加**息引擎前置**:lv≥5 且未曾满息且花完 <50 不提案(曾达满息 latch ∨ 花完 ≥50 放行;lv<5 过渡成型基线豁免,ADR-0266)。
 
-**同轮买卖互斥**(ADR-0267):decide_prep 薄包装维护 round-scoped 已买集/已卖集(`session.v2_round_bought`/`v2_round_sold`,按 `(plane, round_num)` 换轮重置)——轮内任一段买过的卡名,四条卖通道(off_target/interest/precache/for_gold)禁卖(3合1 让位豁免:同名副本星级加权 ≥3 的冗余件放行);对称臂:卖通道提案即时入已卖集,engine_seed 对集内卡名禁买(防同 call 卖→买回)。拆「engine_seed 买→卖通道卖→再买」永动机(bench 满员态段间互踩,自由批 F1);先卖后买不同名的同轮序不受限。
+**同轮买卖互斥**(ADR-0267):decide_prep 薄包装维护 round-scoped 已买集/已卖集(`session.v2_round_bought`/`v2_round_sold`,按 `(plane, round_num)` 换轮重置)——轮内任一段买过的卡名,四条卖通道(off_target/interest/precache/for_gold)禁卖(3合1 让位豁免:同名副本星级加权 ≥3 的冗余件放行);对称臂:卖通道提案即时入已卖集,engine_seed 对集内卡名禁买(防同 call 卖→买回)。拆「engine_seed 买→卖通道卖→再买」永动机(bench 满员态段间互踩,自由批 F1);先卖后买不同名的同轮序不受限。**engine_seed 年龄豁免**(ADR-0289 §5/ADR-0294 件1)补跨轮窗:decide_prep 把 reason=engine_seed 的存活提案登记进 `session.v2_seed_bought`(char_id → (轮键, 同轮份数)),买入 ≤2 轮的种子在全部卖通道不进可卖集(种子归零=白烧预算;同轮同名 ≥2 份=3合1 素材语境豁免;锁:买入 r=N → r=N+1/N+2 卖不选、r=N+3 可卖)。
 
-**carry 腾位门**(ADR-0280):`_carry_bench_gate` 挂 economy/boss_breaker/war 三买通道尾——P1 r≤`_CARRY_GATE_MAX_ROUND`(=7,收益域:r8-r9 miss 无差异;r9 boss 轮不触发)锁线局,carry 在店+金足(不破调用方地板)+bench 满(≥9)+零 off-target 可卖时,**降保护集卖最弱件再买**(reason=`carry_gate`)。「最弱件」弱序=非保护件 > 非当前线件 > 非桥件 > 副本冗余(镜像 `_copy_swap_useless` 保留判据);3合1 完整份(星级加权 copies==3)不腾,超上限冗余(>3)先腾;卖出件入 `v2_round_sold` 同轮不回买。根因:保护集(双桥池全名单+锁线名单)窒息卖通道(批⑯ F3),强制买已证零效应(批⑯ F4)。
+**carry 腾位门**(ADR-0280):`_carry_bench_gate` 挂 economy/boss_breaker/war 三买通道尾——P1 r≤`_CARRY_GATE_MAX_ROUND`(=7,收益域:r8-r9 miss 无差异;r9 boss 轮不触发)锁线局,carry 在店+金足(不破调用方地板)+bench 满(≥9)+零 off-target 可卖时,**降保护集卖最弱件再买**(reason=`carry_gate`)。「最弱件」弱序=非保护件 > 非当前线件 > 非桥件 > 副本冗余(镜像 `_copy_swap_useless` 保留判据);3合1 完整份(星级加权 copies==3)不腾,超上限冗余(>3)先腾;卖出件入 `v2_round_sold` 同轮不回买。根因:保护集(双桥池全名单+锁线名单)窒息卖通道(批⑯ F3),强制买已证零效应(批⑯ F4)。腾位卖出同走 engine_seed 年龄豁免(ADR-0294 件1):窗内种子不腾——唯一可卖=种子且 bench 真满时兜底放行(不腾则 carry 死锁,豁免让位给 carry)。
 
 ## 4. cw_evaluate:局面评估
 
