@@ -67,3 +67,21 @@ overlay 维度** —— 本帧是备战态精准帧,门放行。分层缺口:帧
   全部接线钩子自动受益。
 - 锁测试 `test_cw_adr0263_overlay_guard.py`:函数层 4 条(被遮/带外/锚未命中/
   全屏带)+ 钩子层 2 条(overlay 开不停机 / 关正常停机)。
+
+## Revision(2026-08-24,ADR-0269 合并退役)
+
+`prep_areas_unobstructed` + `_KNOWN_OVERLAYS` 注册表**退役删除**:
+summon/bookcard 钩子的 overlay 排除合并为——
+
+- **帧态门升级为两段式**(ADR-0269):上层屏(选择伙伴/事件类/详情类等
+  22 屏)在场 → 非 prep-like → 钩子跳过。原「阿哈大悦装备选择」全屏带锚
+  随之退役:全屏 overlay 盖 id_mark → 备战屏不命中,两段式天然排除,
+  无需锚。
+- **金币说明保留锚判定作补充第三段**(`cw_obs_core.gold_info_overlay_open`):
+  它是 C 类无档案 overlay(无独立 screen 档案,进不了 UPPER_SCREENS),
+  两段式看不见 → 锚 OCR(标识-金币说明)命中即跳过。原「覆盖带与目标
+  rect 相交」的区域语义随之简化为帧级锚判定(锚开 → 整帧跳过):带外
+  slot1-5 也跳过一帧是可接受代价(下一帧 overlay 关闭即恢复),换实现
+  单一(无带维护)。
+- 锁测试改写:函数层 3 条(锚命中/未命中/area 缺失)+ 退役守卫断言
+  + 钩子层 3 条(overlay 开不停机 / 关正常停机 / 上层屏门前置不停机)。

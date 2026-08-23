@@ -285,8 +285,8 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     # 误换算教训),真值坐标必须现场交互闭环(拖角色到各槽 → 逐槽识别 → 详情面板
     # 锚定)。遇无档 cap → 存帧(哈希去重)+ sentinel flag + **停机保画面**,AI 现场按
     # flag 流程执行;档位补齐(upsert 后排N槽-1..N + _LAYOUT_PREFIX 登记)后不再触发。
-    # [ADR-0263 同病核查] 本钩子**免疫** overlay 遮挡(共享守卫函数 =
-    # cw_obs_core.prep_areas_unobstructed,但此处不适用):触发条件 =
+    # [ADR-0263 同病核查] 本钩子**免疫** overlay 遮挡(共享守卫思路 =
+    # cw_obs_core 的 overlay 排除,但此处不适用):触发条件 =
     # effective_back_slots(cap)**无档**,判据来自 deploy_cap(舞台上方中央 X/Y
     # OCR 指示),不裁备战 slot rect —— overlay(右侧 x≥1000,盖备战栏带)不改
     # 变该判据;overlay 开着误停的唯一路径是 cap 被 OCR 误读成 7/8/9,而 X/Y
@@ -407,20 +407,19 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                         is_prep_like_frame,
                     )
                     if is_prep_like_frame(ctx, screen):
-                        # ADR-0263 区域可见性守卫(bookcard 同病加固,与 summon
-                        # 同一通用函数):本钩子虽是正向 TM 极性(overlay 盖槽只会
-                        # 匹配不到,理论上免疫),但停机后的「点开启」动作在 overlay
-                        # 下同样落空 → 停机前确认书册卡槽 rect 未被遮。
+                        # ADR-0263 Revision 第三段:金币说明 overlay(C 类无档案,
+                        # 进不了两段式的 UPPER_SCREENS)以锚 OCR 判定补充排除
+                        # —— 停机后的「点开启」动作在 overlay 下会落空。
                         from sr_od.application.currency_war.cw_obs_core import (
-                            prep_areas_unobstructed,
+                            gold_info_overlay_open,
                         )
                         _bc_rect = next((r for i, r in _bench_slots9
                                          if i == _bc[0][0]), None)
                         if (_bc_rect is not None
-                                and not prep_areas_unobstructed(ctx, screen, [_bc_rect])):
+                                and gold_info_overlay_open(ctx, screen)):
                             from one_dragon.utils.log_utils import log as _lg3
-                            _lg3.info('[cw-hook][bookcard] 书册卡在场但 slot rect 被'
-                                      'overlay 遮挡 → 跳过(区域可见性守卫,ADR-0263)')
+                            _lg3.info('[cw-hook][bookcard] 书册卡在场但金币说明'
+                                      'overlay 开着 → 跳过(ADR-0263 rev 锚段)')
                         else:
                             _fp2.write_text(
                                 f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
@@ -473,19 +472,21 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                     _lg0.info('[cw-hook][summon] slot%s 占用未识别但帧非备战态'
                               '→ 跳过(过渡帧防误触)', _slot)
                     break
-                # ADR-0263 区域可见性守卫(局69 实证,通用函数):右侧奖励/金币
-                # 说明 overlay 开着时盖住备战栏右端,固定 slot rect 裁到 overlay
-                # 内容 → SIFT 零匹配 → 假「占用未识别」停机。本 slot rect 被已知
-                # overlay 遮挡 → 本帧跳过识别判定(不 flag 不停机),等下一帧
-                # overlay 关了再判。守卫 = cw_obs_core.prep_areas_unobstructed
-                # (锚注册表驱动,bookcard 钩子同用,非 summon 专属补丁)。
+                # ADR-0263 Revision 第三段(金币说明锚):右侧奖励/金币说明
+                # overlay 是 C 类无档案 overlay(无独立 screen 档案,进不了
+                # is_prep_like_frame 两段式的 UPPER_SCREENS)→ 停机前以锚 OCR
+                # 判定补充排除:overlay 开着时盖住备战栏右端,固定 slot rect
+                # 裁到 overlay 内容 → SIFT 零匹配 → 假「占用未识别」停机
+                # (局69 实证)。锚命中 → 本帧跳过识别判定(不 flag 不停机),
+                # 等下一帧 overlay 关了再判。其余 overlay(阿哈大悦等全屏类)
+                # 由两段式第一段天然覆盖:全屏 UI 盖 id_mark → 备战屏不命中。
                 from sr_od.application.currency_war.cw_obs_core import (
-                    prep_areas_unobstructed,
+                    gold_info_overlay_open,
                 )
-                if not prep_areas_unobstructed(ctx, screen, [_rect]):
+                if gold_info_overlay_open(ctx, screen):
                     from one_dragon.utils.log_utils import log as _lg1
-                    _lg1.info('[cw-hook][summon] slot%s 占用未识别但 slot rect 被'
-                              'overlay 遮挡 → 跳过(区域可见性守卫,ADR-0263)', _slot)
+                    _lg1.info('[cw-hook][summon] slot%s 占用未识别但金币说明'
+                              'overlay 开着 → 跳过(ADR-0263 rev 锚段)', _slot)
                     break
                 _shot = cw_shot_unique(screen, 'summon_unknown')
                 if _shot is not None and ctx.run_context is not None:
