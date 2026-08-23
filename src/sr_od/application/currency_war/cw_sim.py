@@ -121,14 +121,52 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
 # P1(depth≤7)结构性不可达 → live_delta_for 恒 None → 旧 boss_delta
 # 恒负无胜 branch,sim 300/300 boss 恒败,hp 类指标天花板被钉死、
 # 成型度与 final_hp 零耦合(批⑪ F1/F2 同根)。修:胜率 = f(成型度
-# rung,四体系数;批③ H3 实测矩阵:boss e0/e1=0、e2=0.25;rung≥3
-# 零样本,沿用 e2 值不虚构,待实机 boss 胜局样本积累后拟合)。
+# rung)。rung0/1/2 = 批③ H3 实测矩阵(boss e0/e1=0、e2=0.25);
+# **rung≥3 零样本**:ADR-0306 裁决——胜率不再拍脑袋沿用 e2 值,
+# 改为 **rung2 桶实测外推**(快照 META battle_rung[2] 的 killed
+# 权威口径胜率;证据标注与兜底见 ``boss_win_p``)。
 # 胜时 Δ = 胜利小额(+2,与 reward/supply 的 EARLY_WIN_DELTA 同档;
 # 「大胜」形态(局69 hp75)待样本后再校准幅度)。
 # ⚠️ P1 初始 HP=80 非 100(cw_sim simulate_p1 `st.hp = 80`;批⑪
 # 自纠记档——按 100 锚算 boss 损失会出伪影)。
 BOSS_WIN_P_BY_ENGINES: tuple[float, ...] = (0.0, 0.0, 0.25)
 BOSS_WIN_DELTA: int = 2
+# ADR-0306:rung≥3 胜率外推源(rung2 桶实测,killed 权威口径)。
+BOSS_WIN_P_EXTRAPOLATED_MIN_RUNG: int = 3
+# 快照 META 无 rung2 实测胜率时的兜底(与旧表 e2 值一致,防 META
+# 字段缺失时静默归零)。
+BOSS_WIN_P_FALLBACK: float = 0.25
+
+
+def boss_win_p(rung: int) -> float:
+    """ADR-0306:boss 胜分支的逐 rung 胜率(单一取值口)。
+
+    - rung<3:``BOSS_WIN_P_BY_ENGINES``(批③ H3 实测矩阵);
+    - rung≥3:**rung2 桶实测外推**——源 = 快照 ``cw_delta_pool_data``
+      META ``battle_rung['2']['win_killed']``(killed 权威口径;
+      语料增量后重生成快照自动跟新,单一源不手维护);META 缺字段
+      时退 ``BOSS_WIN_P_FALLBACK``。
+    外推证据边界(ADR-0306):rung2 实测 n(killed 已知)小样本 +
+    battle→boss 跨节点外推;实机 boss rung≥3 胜局样本积累后应改为
+    直接拟合(登记在检查项 delta_pool_bucket_coverage 的贫困披露)。
+    """
+    if rung < BOSS_WIN_P_EXTRAPOLATED_MIN_RUNG:
+        return BOSS_WIN_P_BY_ENGINES[min(rung, len(BOSS_WIN_P_BY_ENGINES) - 1)]
+    cached = globals().get('_BOSS_WIN_P_EXTRAPOLATED')
+    if cached is None:
+        cached = BOSS_WIN_P_FALLBACK
+        try:
+            from sr_od.application.currency_war.cw_delta_pool_data import (
+                META as _META,
+            )
+            v = ((_META.get('battle_rung') or {}).get('2') or {}) \
+                .get('win_killed')
+            if isinstance(v, (int, float)) and 0.0 <= v <= 1.0:
+                cached = float(v)
+        except ImportError:
+            pass
+        globals()['_BOSS_WIN_P_EXTRAPOLATED'] = cached
+    return cached
 
 
 @dataclass
@@ -263,7 +301,7 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-_SAMPLER_VERSION: int = 4   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 5   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -276,6 +314,10 @@ _SAMPLER_VERSION: int = 4   # 桶化/邻桶回退/采样语义变更时 +1(指�
 # mean 9.15/p90+39」经语料复核为**跨 run 配对伪影**(同 run 奖励轮
 # 差分 n=43 全 +2;+27~+61/负值样本只出现在跨 run 相邻行),入池
 # 真值 = 恒 +2 分布——历史报告对旧池(v3 指纹)重放须用导出 JSON。
+# v5(ADR-0306,Δ池扩容批):boss 胜分支 rung≥3 胜率由拍脑袋 0.25 改
+# rung2 桶实测外推(boss_win_p,快照 META 单一源);快照 META 新增
+# 胜判定权威口径(killed)逐桶统计与桶贫困披露。池内容不变但校准
+# 语义变 → 旧锚全作废重记(ADR-0306 回归验证节)。
 _BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
 # 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
 # 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
@@ -588,13 +630,14 @@ def boss_settle_delta(st: GameState, dir_round: int,
     """ADR-0277:boss Δ池桶不可达时的胜负面结算(胜率=f(成型度))。
 
     成型度 rung = 四体系达成数(`_settle_rung` 单一源口径)——按
-    ``BOSS_WIN_P_BY_ENGINES`` 掷胜:胜 → ``BOSS_WIN_DELTA`` 小额;
+    ``boss_win_p``(ADR-0306:rung≥3 = rung2 桶实测外推)掷胜:
+    胜 → ``BOSS_WIN_DELTA`` 小额;
     负 → 旧 ``boss_delta`` 档。仅当 ``live_delta_for`` 返 None
     (无可及桶)时由调用方使用;Δ池可及桶命中时经验分布优先
     (池是实机真值,sim 规则表是补洞)。
     """
     rung = _settle_rung(st)
-    p = BOSS_WIN_P_BY_ENGINES[min(rung, len(BOSS_WIN_P_BY_ENGINES) - 1)]
+    p = boss_win_p(rung)
     if rng.random() < p:
         return BOSS_WIN_DELTA
     return boss_delta(dir_round, rng)
@@ -1419,6 +1462,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     if checks:
         from sr_od.application.currency_war.cw_sim_checks import (
             check_battle_rung_pool_bucket_lock,
+            check_delta_pool_bucket_coverage,
             check_delta_pool_bucket_min_n,
             check_depth_cliff_monotonicity,
             check_reward_delta_pool_bucket_lock,
@@ -1437,6 +1481,17 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 池域覆盖);fallback 空池不辖
         rep_checks['battle_rung_pool_bucket_lock'] = \
             check_battle_rung_pool_bucket_lock(_pm)
+        # ADR-0306 件5:桶覆盖披露(n≥10 或 META bucket_poverty 显式
+        # 披露)——snapshot 池带 META 披露;auto/fallback 无披露载体,
+        # 贫困桶计违规(可见性优先)
+        _meta = None
+        if pool == 'snapshot':
+            from sr_od.application.currency_war.cw_delta_pool_data import (
+                META as _META_SNAP,
+            )
+            _meta = _META_SNAP
+        rep_checks['delta_pool_bucket_coverage'] = \
+            check_delta_pool_bucket_coverage(_pm, meta=_meta)
         # ADR-0292(批㉗ F3/F4):reward/supply Δ 分布入池 + 均值对拍
         # 语料真值(含跨 run 配对伪影哨兵)
         rep_checks['reward_delta_pool_bucket_lock'] = \

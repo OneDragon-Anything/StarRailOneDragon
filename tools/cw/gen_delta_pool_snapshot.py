@@ -43,6 +43,13 @@ WRITABLE_TARGETS = (DATA_PY,)
 NT_MAP = {'普通战斗': 'battle', '遭遇': 'encounter', '奖励': 'reward',
           '首领': 'boss', '补给': 'supply'}
 DEPTH_BUCKET_W = 3   # 与 cw_sim._DEPTH_BUCKET_W 同值(指纹输入)
+# ADR-0306:桶覆盖披露门槛(检查项 delta_pool_bucket_coverage 判据)
+# —— 各桶 n≥10 或进 bucket_poverty 显式披露;n<10 的桶真值方向
+# 不可靠,消费方(胜率外推/方向判断)须声明边界。
+BUCKET_COVERAGE_MIN_N = 10
+# ADR-0306:battle rung 键域(0-4,与 cw_sim.live_delta_for 同域);
+# 域内缺失的 rung 桶也进贫困披露(「缺」≠「空桶可忽略」)。
+BATTLE_RUNG_DOMAIN = range(0, 5)
 
 
 def _assert_guards(src_dir: Path) -> None:
@@ -96,6 +103,58 @@ def _engines_count_of(bf: dict, names: frozenset) -> int:
     return _engines_count(bf, names)
 
 
+def _raw_line_count(path: Path) -> int:
+    """非空行计数(含半写撕裂行——增量盘点的原始账,配对口径另计)。"""
+    if not path.exists():
+        return 0
+    return sum(1 for ln in path.read_text(encoding='utf-8').splitlines()
+               if ln.strip())
+
+
+def _win_stats(deltas: list, killed_list: list) -> dict:
+    """ADR-0306:battle 桶胜率双口径统计(权威=killed,对照=Δ≥0)。
+
+    - ``win_killed``:killed 已知行中 killed=True 占比(**权威口径**,
+      消费方 = cw_sim.boss_win_p 的 rung≥3 外推);
+    - ``win_delta``:全样本 Δ≥0 占比(旧口径,对照披露);
+    - ``killed_known``/``killed_unknown``:胜率分母披露;
+    - ``sign_disagree``:killed 已知行中两口径判定异号数。
+    """
+    known = [k for k in killed_list if k is not None]
+    n_known = len(known)
+    win_k = sum(1 for k in known if k)
+    win_d = sum(1 for d in deltas if d >= 0)
+    disagree = sum(
+        1 for d, k in zip(deltas, killed_list, strict=False)
+        if k is not None and bool(k) != (d >= 0))
+    return {
+        'win_killed': round(win_k / n_known, 4) if n_known else None,
+        'win_delta': round(win_d / len(deltas), 4) if deltas else None,
+        'killed_known': n_known,
+        'killed_unknown': len(killed_list) - n_known,
+        'sign_disagree': disagree,
+    }
+
+
+def _poverty_list(pool: dict, battle_killed: dict) -> list[str]:
+    """ADR-0306 件2:桶贫困披露(n<10 的桶 + battle rung 域缺桶)。"""
+    out: list[str] = []
+    battle = pool.get('battle') or {}
+    for rg in BATTLE_RUNG_DOMAIN:
+        v = battle.get(rg) or []
+        if len(v) >= BUCKET_COVERAGE_MIN_N:
+            continue
+        out.append(f'battle:桶{rg}(n={len(v)})'
+                   if v else f'battle:桶{rg}(缺)')
+    for nt, buckets in sorted((pool or {}).items()):
+        if nt == 'battle':
+            continue
+        for b, v in sorted(buckets.items(), key=lambda x: int(x[0])):
+            if len(v) < BUCKET_COVERAGE_MIN_N:
+                out.append(f'{nt}:桶{b}(n={len(v)})')
+    return out
+
+
 def build_pool(src_dir: Path, runs_filter: set[str] | None):
     """构建 {节点: {桶键: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。
 
@@ -106,6 +165,10 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
     """
     _assert_guards(src_dir)
+    _source_rows = {
+        'decisions.jsonl': _raw_line_count(src_dir / 'decisions.jsonl'),
+        'outcomes.jsonl': _raw_line_count(src_dir / 'outcomes.jsonl'),
+    }
     skipped: dict[str, int] = {}
     quarantined_hits: set[str] = set()
     boards: dict = {}
@@ -134,6 +197,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             continue
         seqs.setdefault(o.get('run_id'), []).append(o)
     pool: dict = {}
+    battle_killed: dict[int, list] = {}   # ADR-0306:battle 逐样本 killed(None=未观测)
     per_run_rounds: dict[str, int] = {}
     unlabeled_dropped = 0
     for run, seq in seqs.items():
@@ -159,6 +223,10 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 bucket = _engines_count_of(
                     b2.get('board_before') or {},
                     deployed_names.get(k, frozenset()))
+                # ADR-0306:胜判定权威口径 = killed(结算屏 extras;
+                # Δ=相邻轮差分是派生量)——逐样本留档供 META 逐桶
+                # 胜率统计(boss_win_p rung≥3 外推消费)。
+                battle_killed.setdefault(bucket, []).append(b2.get('killed'))
             else:
                 # encounter/boss 暂沿用 depth 分桶(批⑬ F1)。
                 bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
@@ -173,16 +241,33 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         'quarantined_hits': sorted(quarantined_hits),
         'depth_bucket_w': DEPTH_BUCKET_W,
         # ADR-0279(批⑬):battle 桶键=rung(真值表随重生成锁定;
-        # cw_sim_checks.BATTLE_RUNG_TRUTH 漂移报警消费此表口径)
+        # cw_sim_checks.BATTLE_RUNG_TRUTH 漂移报警消费此表口径)。
+        # ADR-0306:逐桶胜率统计——权威口径 killed(结算屏 extras),
+        # Δ≥0 仅作对照披露;killed=None 行只入 Δ 分布不入胜率
+        # (killed_known 为分母);sign_disagree=killed 已知行中
+        # 两口径判定不同号的样本数(实测 0/61,ADR-0306 件3)。
         'battle_rung': {
-            str(b): {'n': len(v), 'mean': round(sum(v) / len(v), 2)}
+            str(b): dict(
+                {'n': len(v), 'mean': round(sum(v) / len(v), 2)},
+                **_win_stats(v, battle_killed.get(b, [])))
             for b, v in sorted((pool.get('battle') or {}).items())},
+        # ADR-0306 件1:语料行数账(重生成时的增量盘点基准)——
+        # 下次扩容批以 outcomes/decisions 现行数 vs 本值为增量。
+        'source_rows': dict(_source_rows),
+        # ADR-0306 件2:桶贫困显式披露(n<10 或 battle rung 域缺桶)
+        # —— 检查项 delta_pool_bucket_coverage 消费;「语料不足」
+        # 如实报,不虚构样本。
+        'bucket_poverty': _poverty_list(pool, battle_killed),
         'note': 'v2 只收可信标签行(2026-08-22 retrofix 后:死链'
                 '历史 node_type 置 None 已丢弃计数);事故局物理排除'
                 '(QUARANTINED_RUNS,r378b);跨策略版本混杂'
                 '已知(一轮#10),过滤走 --runs 重生成;'
                 'v3(ADR-0279,批⑬)battle 桶键 depth→rung'
-                '(成型度一维分桶),encounter/boss 维持 depth 桶',
+                '(成型度一维分桶),encounter/boss 维持 depth 桶;'
+                'v4(ADR-0306)胜判定权威口径=killed(结算屏 extras;'
+                'Δ 为派生量,异号实证 0/61 killed 已知行——0305 的'
+                '「3/9 异号」系 tier×core 与 rung 两分桶错位对照的'
+                '伪影),META 逐桶双口径胜率+桶贫困披露+语料行数账',
     }
     return pool, meta
 

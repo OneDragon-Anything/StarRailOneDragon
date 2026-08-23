@@ -1549,6 +1549,52 @@ def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
                 for b, v in sorted(battle.items())}}
 
 
+# --- ADR-0306(Δ池扩容批)桶覆盖披露检查 ------------------------------
+# 各桶 n≥10 或在快照 META bucket_poverty 显式披露贫困(n<10 /
+# battle rung 域缺桶)——「语料不足」如实报,不虚构样本;未披露的
+# 贫困桶 = 快照 META 与池内容失配(重生成断裂)。
+DELTA_POOL_COVERAGE_MIN_N = 10  # 同 gen_delta_pool_snapshot.BUCKET_COVERAGE_MIN_N(值同步维护)
+
+
+def check_delta_pool_bucket_coverage(pool_map: dict,
+                                     meta: dict | None = None) -> dict:
+    """ADR-0306 件5 检查项 delta_pool_bucket_coverage。
+
+    判据:
+    - 任一节点任一桶 n<``DELTA_POOL_COVERAGE_MIN_N`` → 贫困桶,
+      必须出现在 ``meta['bucket_poverty']``(生成器写入的显式披露)
+      ——未披露 = 违规(贫困桶的胜率外推/方向判断缺边界声明);
+    - battle rung 域(0-4)缺桶同样须披露(缺桶≠可忽略:采样走
+      下探/兜底链,消费方须知情);
+    - ``meta=None``(auto 池/fallback,无快照 META)时贫困桶一律
+      计违规——auto 池无披露载体,贫困即应可见;
+    - 空池(fallback/历史 Path 快照)不辖,violations=0(池语义
+      检查不辖旧模型,同 battle_rung_pool_bucket_lock 先例)。
+    """
+    if not any((pool_map or {}).values()):
+        return {'violations': 0, 'poor_buckets': [],
+                'undisclosed': [], 'disclosed_by_meta': bool(meta),
+                'note': '池空(fallback/Path 历史快照)不辖'}
+    poor: list[str] = []
+    battle = pool_map.get('battle') or {}
+    for rg in range(0, 5):
+        v = battle.get(rg) or []
+        if len(v) < DELTA_POOL_COVERAGE_MIN_N:
+            poor.append(f'battle:桶{rg}(n={len(v)})' if v
+                        else f'battle:桶{rg}(缺)')
+    for nt, buckets in sorted((pool_map or {}).items()):
+        if nt == 'battle':
+            continue
+        for b, v in sorted(buckets.items(), key=lambda x: int(x[0])):
+            if len(v) < DELTA_POOL_COVERAGE_MIN_N:
+                poor.append(f'{nt}:桶{b}(n={len(v)})')
+    disclosed = set((meta or {}).get('bucket_poverty') or [])
+    undisclosed = [p for p in poor if p not in disclosed]
+    return {'violations': len(undisclosed), 'poor_buckets': poor[:12],
+            'undisclosed': undisclosed[:6],
+            'disclosed_by_meta': bool(meta)}
+
+
 # --- ADR-0292(批㉗ F3/F4)reward/supply Δ池分布锁 ---------------------
 # 批㉗ F4 断言的「右胖尾 mean 9.15/p90+39」经语料复核为**跨 run 配对
 # 伪影**:同 run 内奖励轮差分 n=43 全 +2;+27~+61/负值样本只出现在
@@ -1868,6 +1914,45 @@ def check_ab_resolution_floor(hps_a: list[float],
                      else '差值超过 95% 底,可叙述方向')}
 
 
+#: 批㉟(战役收官归因审计):方向性叙述的最小配对窗 n。
+#: 实证:0302-0304 收官「三窗领先 -3.00/-1.00/-0.27」全部产生于
+#: n=30 窗(0-29/900000-29/900030-59),逐窗 95% 底 ~±5hp——方向性
+#: 叙述越过自身分辨率底;同代码同池在 n=100 anchor 窗(seeds 0-99)
+#: gap=+1.87 符号相反、900000 族 n=100 双窗 +0.19/+2.07、异族窗
+#: 500000/123450 +7.10/+2.69——n=30 的「领先」在更大窗上不稳。
+#: n<100 只允许披露级(claim='noise'),不允许方向性叙述。
+AB_VERDICT_MIN_N = 100
+
+#: 方向性叙述词表(claim 参数;命中才辖,平局/噪声叙述不辖)。
+_AB_VERDICT_DIRECTIONAL = frozenset({'leads', 'behind', '领先', '落后'})
+
+
+def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
+                           claim: str) -> dict:
+    """批㉟ 检查项:A/B 方向性叙述的窗口口径守卫(判罚面)。
+
+    与 ``check_ab_resolution_floor``(披露面)配对:floor 只标注噪声
+    带,本函数对「越底仍叙述方向」记违规。判据:
+    ① n < ``AB_VERDICT_MIN_N`` 时方向性叙述 = 违规(窗分辨率不足);
+    ② |mean_diff| < 1.96·sd_pair/√n 时方向性叙述 = 违规(噪声带内);
+    非方向叙述(平局/噪声/披露)不辖。来源:批㉟ 战役收官归因审计
+    (sim_压测_批㉟;0302-0304 三窗 n=30 领先叙述被 n=100 复验翻转)。
+    """
+    import math
+    directional = claim in _AB_VERDICT_DIRECTIONAL
+    reasons: list[str] = []
+    if directional and n < AB_VERDICT_MIN_N:
+        reasons.append(f'verdict_below_min_n(n={n}<{AB_VERDICT_MIN_N})')
+    if directional and n >= 2 and sd_pair > 0:
+        floor = 1.96 * sd_pair / math.sqrt(n)
+        if abs(mean_diff) < floor:
+            reasons.append(f'verdict_within_noise_band(|{mean_diff:.2f}|'
+                           f'<{floor:.2f})')
+    return {'violations': len(reasons), 'reasons': reasons,
+            'n': n, 'claim': claim, 'directional': directional,
+            'min_n': AB_VERDICT_MIN_N}
+
+
 # 批⑩ 检查项 anchor_registry_n300:基线锚登记制——engines2/recipe5/
 # avg_hp 等锚一律 n=300 口径登记(池指纹必附),n=60 值只作快速回归
 # 哨兵。数值演进链:ADR-0276/0277(merge+win 校准)→ ADR-0279
@@ -1877,17 +1962,21 @@ def check_ab_resolution_floor(hps_a: list[float],
 # 2026-08-23 晚批语料,battle 桶增样 r0 26→40/r1 24→31;换锚主因
 # = 池数据增长,**采样语义本身 A/B 差 0.85hp 在分辨率底 ±2.80 内**,
 # 归因分解见 ADR-0292 回归验证节)。
+# 旧锚(066c4185,ADR-0292 批)已失效:ADR-0306(Δ池扩容批)
+# _SAMPLER_VERSION 4→5 + boss 胜分支 rung≥3 胜率改 rung2 桶实测外推
+# (0.25→0.667)——**校准修正非策略变化**,hp_ge_60 0.127→0.137 上移
+# 属预期;历史报告对旧池重放须用 v4 指纹导出 JSON 快照。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': '066c41856dd5d4f5',
-    'recorded': '2026-08-24(ADR-0292 reward/supply Δ池采样批,'
-                'n=300,seed 0-299)',
+    'pool_fingerprint_prefix': '886f8a39c87c8c6b',
+    'recorded': '2026-08-25(ADR-0306 Δ池扩容批:v5 池+胜率外推,'
+                '校准修正换锚,n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.407,     # 旧 0.237(ADR-0284);池增长侧
-        'avg_final_hp': 33.98,       # 旧 29.25
-        'hp_ge_60': 0.127,           # 旧 0.047(向实机 32% 收敛中)
-        'battle_losses_le_2': 0.127,  # 旧 0.073
-        'recipe5_by_r6': 0.713,      # 旧 0.533
-        'avg_refreshes': 4.003,      # 旧 3.943
+        'engines2_by_r6': 0.39,       # 旧 0.407(066c4185;池指纹变更重记)
+        'avg_final_hp': 35.68,        # 旧 33.98
+        'hp_ge_60': 0.137,            # 旧 0.127(向实机 32% 收敛中)
+        'battle_losses_le_2': 0.167,  # 旧 0.127
+        'recipe5_by_r6': 0.71,        # 旧 0.713
+        'avg_refreshes': 3.87,        # 旧 4.003
     },
 }
 
@@ -3288,3 +3377,67 @@ def check_decision_v2_supply_label_consistency() -> dict:
     return {'violations': len(violations), 'detail': violations,
             'note': '批㉞ 供给 vs 标签一致性:候选存在⟺标签非None且'
                     '未被 copies_cap/copy_swap 豁免;红 = 直通门回归'}
+
+
+# --- 批㊱ 检查项(2026-08-24;供给回声销账审计 / 三臂基线) -------------
+
+def check_paired_prefork_wave_identity(ledgers_a: list[list[dict]],
+                                       ledgers_b: list[list[dict]],
+                                       ) -> dict:
+    """批㊱:同 seed 双臂配对的「分叉前牌面恒等」不变式(0 容忍)。
+
+    背景(供给回声 61.6%→59.4% 销账审计,n=100 @066c4185):两臂策略
+    均为确定性策略时,同 seed 的 RNG 流在**首轮动作差异出现之前**
+    必须同源——任一轮只要此前两臂的动作序列(买/卖/刷/升/部署,
+    按账本 __type__ 逐条)完全一致,该轮首帧牌面(shop_waves[0])
+    必须逐位一致;分叉后的牌面/后续波差异(含刷新)是合法回声。
+    违规 = sim 决策段在分叉前不对称消费 RNG,或策略侧引入隐藏
+    随机性——此时「供给回声」「同 seed 配对差」类指标的合法性
+    前提破裂(测得的差可能是引擎噪声而非策略效应)。
+
+    交付口径:探针配对态不变式(需两臂账本,不入 run_batch_level_checks
+    单臂签名;锁测试以 v1/v2 双臂直跑钉死 + 篡改变异必红)。
+    """
+    def _wave0(rows: list[dict]) -> dict[int, list[str]]:
+        out: dict[int, list[str]] = {}
+        for row in rows:
+            waves = (row.get('sim') or {}).get('shop_waves') or []
+            cards = waves[0].get('cards') or [] if waves else []
+            out[row.get('round_num')] = [c.get('name') for c in cards]
+        return out
+
+    def _act_sig(rows: list[dict]) -> dict[int, list[tuple]]:
+        out: dict[int, list[tuple]] = {}
+        for row in rows:
+            sig: list[tuple] = []
+            for a in row.get('actions') or []:
+                t = a.get('__type__')
+                if t == 'BuyCard':
+                    sig.append(('B', (a.get('card') or {}).get('name'),
+                                (a.get('card') or {}).get('cost')))
+                elif t == 'SellBench':
+                    sig.append(('S', a.get('bench_idx')))
+                else:
+                    sig.append((t,))
+            out[row.get('round_num')] = sig
+        return out
+
+    violations: list[str] = []
+    for gi, (ra, rb) in enumerate(zip(ledgers_a, ledgers_b, strict=False)):
+        wa, wb = _wave0(ra), _wave0(rb)
+        sa, sb = _act_sig(ra), _act_sig(rb)
+        diverged = False
+        for rn in sorted(set(sa) | set(sb)):
+            if diverged:
+                break   # 分叉后差异合法,不再检查
+            if wa.get(rn) != wb.get(rn):
+                violations.append(
+                    f'game{gi} r{rn}: 动作分叉前首帧牌面不一致'
+                    f'(A={wa.get(rn)} B={wb.get(rn)})'
+                    f'——分叉前 RNG 消费不对称/策略隐藏随机性')
+                diverged = True
+            elif sa.get(rn) != sb.get(rn):
+                diverged = True   # 本轮动作开始分叉(首波已核一致)
+    return {'violations': len(violations), 'detail': violations,
+            'note': '批㊱ 分叉前牌面恒等:配对臂动作分叉前每轮首波'
+                    '必须逐位一致;红 = sim/策略侧隐藏随机性'}
