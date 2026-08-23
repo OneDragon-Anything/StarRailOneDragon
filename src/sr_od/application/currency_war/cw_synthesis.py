@@ -76,11 +76,18 @@ SELF_RECIPES: dict[str, str] = {
     "很硬的甲": "量产型装甲",
 }
 
-# 光能电池专属进阶(孤立节点,机理待游戏内核实;见模块 docstring)。
+# 光能电池(孤立节点,机理待游戏内核实;见模块 docstring)。
 GUANGNENG_ONLY: list[str] = [
     "电光履", "战场进化手册", "蓄能帆", "冷笑话引擎",
     "绝对热量", "光能盾牌", "行星钻地弹",
 ]
+
+# 合成保留组件集(ADR-0265;用户口述 [29]「定阵容前不浪费装备合成/穿着」):
+# SYNTHESIS_BASES ∪ {光能电池}。P1(plane==1)阶段这些组件**不入穿戴池**
+# (cw_comps.equip_allocation 消费本常量——单一源,别在装备层复制清单),
+# 留在 owned 待合成;合成路线不被过渡穿着锁死。
+RESERVED_COMPONENTS: frozenset[str] = frozenset(
+    SYNTHESIS_BASES | {"光能电池"})
 
 
 def cross_components(advance: str) -> tuple[str, str] | None:

@@ -1254,6 +1254,7 @@ EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49
 
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                       occupied: dict[tuple[str, int], list[str]] | None = None,
+                      plane: int = 1,
                       ) -> list[tuple[str, str]]:
     """(角色名, 装备名) 分配序列 —— carry 先拿 key_equips(按序),其余 core 次之,剩余兜底前排。
 
@@ -1267,7 +1268,27 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
     char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
     纯函数(可离线测);EquipAll 消费(ADR-0154)。
+
+    ADR-0265(用户口述 [29],压测 [29] 16/60 局实证):plane==1 时
+    **合成保留组件**(cw_synthesis.RESERVED_COMPONENTS = 7 件标准基础件 ∪ 光能电池)
+    不入穿戴池——组件留在 owned 待合成,过渡穿着=锁死合成路线+浪费转移成本。
+    **豁免边界**:组件恰是该阵容 key_equips 时放行(key_equips 是 comp 显式声明的
+    关键装备意图,角色特定价值 > 合成保留;COMP_LIBRARY 42 处 key_equips 实查无
+    一处包含 RESERVED_COMPONENTS 内名字——豁免是防御性判据,当前零命中,
+    未来 comp 若显式要求组件(如「合成前过渡穿着」打法)不需改本函数)。
+    plane≥2 无此过滤(P2/P3 过渡期结束,合成窗口关闭,组件穿着不再锁路线)。
     """
+    # ADR-0265:P1 组件保留过滤(key_equips 豁免;comp=None 时无豁免信息,
+    # 组件一律保留——v2 未锁线期本就不该散穿)
+    if plane == 1:
+        from sr_od.application.currency_war.cw_synthesis import (
+            RESERVED_COMPONENTS,
+        )
+        _key_set = set(comp.key_equips) if comp is not None else set()
+        pool = [e for e in owned
+                if e not in RESERVED_COMPONENTS or e in _key_set]
+    else:
+        pool = list(owned)
     occ = occupied or {}
     by_name: dict[str, list] = {}
     for d in deployed:
@@ -1281,7 +1302,6 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
     out: list[tuple[str, str]] = []
-    pool = list(owned)
     if comp is not None and comp.key_equips:
         # 接收者顺序:plaza_carry(carry)优先,再 core_chars 顺序;只发给场上且容量 >0 者
         order: list[str] = []

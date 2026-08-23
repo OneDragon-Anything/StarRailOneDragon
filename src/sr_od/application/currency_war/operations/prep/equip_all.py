@@ -390,8 +390,15 @@ class EquipAll(SrOperation):
                 if not wearable:
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     break
-                alloc = equip_allocation(_tgt_comp, deployed,
-                                         [n for n, _ in wearable], occupied_m7)
+                alloc = equip_allocation(
+                    _tgt_comp, deployed,
+                    [n for n, _ in wearable], occupied_m7,
+                    # ADR-0265:P1 组件保留(合成组件不入穿戴池;
+                    # plane 从 last_state 读,与 r388 开局轮判同源)
+                    plane=(getattr(_match.session, 'last_state', None).plane
+                           if (_match is not None
+                               and getattr(_match.session, 'last_state', None)
+                               is not None) else 1))
                 if _transition_hold:
                     # 过渡期:过滤掉 gen 兜底项(分配序列中非 key_equips 命中的),只穿命脉件
                     _keys = set(_tgt_comp.key_equips) if _tgt_comp else set()
