@@ -5,6 +5,7 @@
 
 - 买:店内每张可识别卡 × 标签(line_carry / line_opportunistic /
   bridge_core / engine_seed[ADR-0299 过渡体系首块砖] /
+  pair[ADR-0300 凑对搭档件] / copy[ADR-0300 同名副本素材] /
   bond_fallback[31] / carry_gate 腾位)+ 3合1 合成标记
   (同名第 3 张副本买入即合成,Candidate.merge=True);
 - 卖:bench 每件 × 理由(off_target 常态死库存 / for_gold 应急态弱件
@@ -52,7 +53,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
 #: 买候选标签集 / 卖候选标签集 / 动作类枚举(检查项 coverage 消费)
 BUY_TAGS: frozenset[str] = frozenset({
     'line_carry', 'line_opportunistic', 'bridge_core',
-    'engine_seed', 'bond_fallback', 'carry_gate',
+    'engine_seed', 'pair', 'copy', 'bond_fallback', 'carry_gate',
 })
 SELL_TAGS: frozenset[str] = frozenset({
     'off_target', 'for_gold', 'free_bench',
@@ -163,6 +164,39 @@ def _engine_seed_wants(card: ShopCard, state: GameState,
     return LineStrategy._engine_seed_wants(card, state, session)
 
 
+def _pair_wants(card: ShopCard, state: GameState,
+                session: StrategySession) -> bool:
+    """凑对搭档件放行门(ADR-0300):v1 LineStrategy._pair_wants 的
+    直通单一源(与 _engine_seed_wants 同式,不复制判据)。
+
+    v1 语义(判据全部在单一源内):冷启动首购只放行 桥名单 ∪
+    引擎阵营 ∪ 同名副本(r368/r371b/r383b);方向期阵营门
+    (r350:锁线=线形态羁绊,桥=引擎阵营);A5 spread 门
+    (已有阵营 ≥3 不再开新阵营);常态=同阵营凑对;r408 同轮
+    已卖不回买。解剖表残余 layer1 的 pair 桶(v1 reason=pair)
+    由本通道清偿。金够/不破息档由层4 gold_floor 辖(v1 同)。
+    """
+    from sr_od.application.currency_war.strategies.line_strategy import (
+        LineStrategy,
+    )
+    return LineStrategy._pair_wants(card, state, session)
+
+
+def _copy_swap_useless(card: ShopCard, state: GameState,
+                       session: StrategySession) -> bool:
+    """同名跨副本无效换卡守卫(ADR-0300):v1 _buy_guards 的
+    r410 臂直通单一源(保留判据镜像——在场副本会被 deploy 侧
+    off-target 卖出时,买新副本=纯耗换卡,不生成候选)。
+
+    True=无效换卡(拒);False=合法(在场副本被保留:core 显式
+    保留或 bonds ∩ target_factions 凑对保留 → 买副本合法)。
+    """
+    from sr_od.application.currency_war.strategies.line_strategy import (
+        LineStrategy,
+    )
+    return LineStrategy._copy_swap_useless(card, state, session)
+
+
 def _buy_tag(card: ShopCard, state: GameState,
              session: StrategySession, registry: DecisionV2Registry) -> str | None:
     """单卡标签裁决(优先序=registry.buy_tag_priority;纯查询)。
@@ -179,6 +213,19 @@ def _buy_tag(card: ShopCard, state: GameState,
     no_direction = not session.locked_line and not session.bridge_id
     if not is_target and _engine_seed_wants(card, state, session):
         return 'engine_seed'    # ADR-0299:过渡体系首块砖(v1 ADR-0260 门镜像)
+    # ADR-0300:pair/copy 通道(v1 _want_label 的 pair 臂镜像,
+    # 序=engine_seed 之后、bond_fallback 之前,与 v1 OR 链一致)
+    if not is_target and _pair_wants(card, state, session):
+        from sr_od.application.currency_war.strategies.line_strategy import (
+            LineStrategy,
+        )
+        # r383b 副本标签拆分(与 v1 _want_label 同式):同名副本素材
+        # 打专属 'copy'(检查器按 reason 区分门失效与合法放行)
+        if LineStrategy._has_same_name_copy(card, state) \
+                and not LineStrategy._in_round_sold(card.name, state,
+                                                    session):
+            return 'copy'
+        return 'pair'
     if (not is_target and (session.locked_line or no_direction)
             and state.round_num >= registry.bond_fallback_min_round
             and 1 <= (card.cost or 3) <= registry.bond_fallback_max_cost
@@ -287,6 +334,9 @@ def generate_candidates(state: GameState, session: StrategySession,
             continue    # 未识别卡不买(感知纪律)
         if _star_weighted_copies(card.name, state) >= registry.copies_cap:
             continue    # 副本上限(第 4 份纯浪费)
+        if _copy_swap_useless(card, state, session):
+            continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
+            # 在场副本会被 off-target 卖出 → 买新副本=换卡纯耗)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue

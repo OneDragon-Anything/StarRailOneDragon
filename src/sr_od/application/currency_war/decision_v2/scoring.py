@@ -228,9 +228,12 @@ def apply_for_score(cand: Candidate, state: GameState,
 
 
 #: 经部署管线显影板面价值的标签(买/升级/部署);卖=原子 apply
+#: (ADR-0300:pair/copy 买件同走管线——bench 折减权重下纯囤件
+#: 显影不足,买入→上场链让凑对/副本的板面形态价值可评)
 _PIPELINE_TAGS = frozenset({
     'line_carry', 'line_opportunistic', 'bridge_core',
     'bond_fallback', 'carry_gate', 'levelup', 'deploy',
+    'pair', 'copy',
 })
 
 
