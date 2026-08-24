@@ -146,7 +146,13 @@ class BackToNormalWorldPlus(SrOperation):
 
         # 其他情况 - 均点击右上角触发返回上一级
         result = self.round_by_click_area('菜单', '右上角返回')
-        return self.round_wait(result.status, wait=1)
+        # 兜底分支必须用 round_retry（计入 node_max_retry_times）而非 round_wait：
+        # 框架中 WAIT 不消耗 retry（operation.py 循环里 WAIT 直接 continue、且任何非 RETRY
+        # 结果会把 node_retry_times 清零），兜底点击无法改变画面时会无限循环
+        # （2026-08-24 实跑：战斗结算画面点右上角无效，兜底卡约 2 小时拖垮整条龙）。
+        # 正常「连续退多级菜单」不受影响：每退一级后画面变化、check_screen 命中其他
+        # 分支返回 WAIT/SUCCESS，node_retry_times 被清零，不会累计到 20 次上限。
+        return self.round_retry(result.status, wait=1)
 
     def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
         op = SimUniExit(self.ctx, is_in_x, temporarily_leave=True)

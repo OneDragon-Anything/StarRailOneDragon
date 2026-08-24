@@ -37,7 +37,10 @@ class SimUniFightElite(SrOperation):
         """
         now = time.time()
         screen = self.last_screenshot
-        result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
+        # crop_first=True:怪物头顶「等级84+名字」全图 OCR 会并成一个检测框,
+        # 按 area.rect 过滤(重叠≥70%)永远不够 → 静默漏检;先裁剪再 OCR 从并框中
+        # 切出等级部分(ADR-0215 第 3 条,同 中断挑战弹窗 文本-小队生命值 先例)。
+        result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级', crop_first=True)
 
         if result.is_success:
             return self.round_success(status=result.status)
@@ -59,7 +62,8 @@ class SimUniFightElite(SrOperation):
     @operation_node(name='战斗')
     def _fight(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级')
+        # crop_first=True:同 _check_enemy,怪物头顶等级与名字并框,须裁剪后识别(ADR-0215 第 3 条)。
+        result = self.round_by_find_area(screen, '模拟宇宙', '怪物上方等级', crop_first=True)
         if result.is_success:  # 还没有进入战斗 可能是使用近战角色没有攻击到
             self.ctx.controller.initiate_attack()
             return self.round_retry('尝试攻击进入战斗画面', wait=1)
