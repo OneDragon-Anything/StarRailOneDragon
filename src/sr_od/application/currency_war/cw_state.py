@@ -260,10 +260,17 @@ class FillSpec:
     (deploy/undeploy/sell 应用后的 bench 列表序)——事务语义里填位是
     第 2 步,第 1 步迁移后的 bench 才是填位候选池(步2 实现批声明的
     草案级细化,C1 允许)。
+
+    ``expect``(W43 leader 裁决 2,代际校验;草案级扩字段,默认 ''=不
+    校验):提案生成时该 idx 指向内容的期望名(bench 源 = char_id,
+    shop 源 = card.name)——提案生成→应用之间槽位内容可能已变,应用时
+    不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
     """
+
     source: str                        # 'bench' | 'shop'(shop 时带 card 索引)
     idx: int
     row: str                           # 'front' | 'back'
+    expect: str = ''                   # 代际校验期望名(''=不校验)
 
 
 @dataclass
@@ -272,6 +279,7 @@ class SellDeployed:
     deployed_idx: int          # state.deployed 列表索引(定位锚,同 SellBench 口径)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
+    expect: str = ''           # 代际校验期望名(W43 裁决2;''=不校验,不符→拒绝)
 
 
 @dataclass
@@ -285,6 +293,10 @@ class SwapDeploy:
     deployed_idx: int
     bench_idx: int
     reason: str = ''
+    # 代际校验期望名(W43 裁决2;''=不校验):谷底回滚类「上轮登记、
+    # 下轮才发」的提案跨了状态代际,idx 可能已指向别人——不符即拒绝。
+    expect_deployed: str = ''  # 期望下场者名
+    expect_bench: str = ''     # 期望上场者名
 
 
 @dataclass
@@ -311,6 +323,12 @@ class CompTransaction:
     sell: list[tuple[int, str]]        # [(idx, 'bench'|'deployed')] 直接卖出项
     fill: list[FillSpec] | None = None # 人口缺口填位(第 2 步可同轮或下轮;None=另行走常规填位)
     reason: str = ''                   # 账本(如 'evolve:DOT2→仙舟3'/'branch_pivot')
+    # 代际校验期望名(W43 leader 裁决 2;草案级扩字段,默认 None=不校验):
+    # 与 deploy/undeploy/sell 的索引**同序**对齐;应用时 idx 指向内容与
+    # 期望不符 → 整事务拒绝(stale_proposal)。空串项跳过该项校验。
+    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序
+    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序
+    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域)
 
 
 Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
@@ -464,6 +482,20 @@ def _log_action(s: GameState, action_name: str, result: str,
     s.action_log.append(entry)
 
 
+def board_unique_key(bc: BenchChar) -> str | None:
+    """板上同名唯一性判据键(W43 leader 裁决 1:场上同角色仅 1;r404-A2 同源)。
+
+    - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
+    - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
+    - 其余 = char_id 本身。
+    """
+    cid = getattr(bc, 'char_id', '') or ''
+    if not cid:
+        return None
+    from sr_od.application.currency_war.cw_chars import is_trailblazer
+    return '__trailblazer__' if is_trailblazer(cid) else cid
+
+
 def _resolve_comp_transaction(
         s: GameState, tx: CompTransaction) -> tuple[str, dict]:
     """CompTransaction 全量校验(原子性前置;不改动状态)。
@@ -506,6 +538,31 @@ def _resolve_comp_transaction(
     dep_chars = [(s.bench[i], r) for (i, r) in dep]
     sell_b_chars = [s.bench[i] for i in sell_b]
     sell_d_chars = [s.deployed[i] for i in sell_d]
+    # 代际校验(W43 leader 裁决 2):提案生成→应用之间 bench/deployed 序
+    # 可能已被同批先行动作改变——expect 序列与索引同序对齐,idx 指向
+    # 内容与提案不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
+    if tx.expect_deploy is not None:
+        if len(tx.expect_deploy) != len(dep):
+            return 'stale_proposal:expect_deploy_len', {}
+        for (i, _r), name in zip(dep, tx.expect_deploy, strict=False):
+            if name and s.bench[i].char_id != name:
+                return (f'stale_proposal:deploy_bench:{name}'
+                        f'!={s.bench[i].char_id}'), {}
+    if tx.expect_undeploy is not None:
+        if len(tx.expect_undeploy) != len(und):
+            return 'stale_proposal:expect_undeploy_len', {}
+        for i, name in zip(und, tx.expect_undeploy, strict=False):
+            if name and s.deployed[i].char_id != name:
+                return (f'stale_proposal:undeploy:{name}'
+                        f'!={s.deployed[i].char_id}'), {}
+    if tx.expect_sell is not None:
+        if len(tx.expect_sell) != len(sell):
+            return 'stale_proposal:expect_sell_len', {}
+        for (i, dom), name in zip(sell, tx.expect_sell, strict=False):
+            actual = (s.bench[i] if dom == 'bench' else s.deployed[i])
+            if name and actual.char_id != name:
+                return (f'stale_proposal:sell_{dom}:{name}'
+                        f'!={actual.char_id}'), {}
     # 金:卖出收入 − shop 填位费用(sell_refund / card_cost 单一源)
     income = sum(sell_refund(c.star, _bench_char_cost(c))
                  for c in sell_b_chars + sell_d_chars)
@@ -514,6 +571,9 @@ def _resolve_comp_transaction(
         if f.source == 'shop':
             if not 0 <= f.idx < len(s.shop):
                 return f'fill_shop_idx_out_of_range:{f.idx}', {}
+            if f.expect and s.shop[f.idx].name != f.expect:
+                return (f'stale_proposal:fill_shop:{f.expect}'
+                        f'!={s.shop[f.idx].name}'), {}
             shop_fill_cards.append(s.shop[f.idx])
     fill_cost = sum(card_cost(c) for c in shop_fill_cards)
     if s.gold + income - fill_cost < 0:
@@ -532,6 +592,10 @@ def _resolve_comp_transaction(
                 and not 0 <= f.idx < len(post_bench):
             return (f'fill_bench_idx_out_of_range:{f.idx}'
                     f'>{len(post_bench)}', {})
+        if f.source == 'bench' and 0 <= f.idx < len(post_bench) \
+                and f.expect and post_bench[f.idx].char_id != f.expect:
+            return (f'stale_proposal:fill_bench:{f.expect}'
+                    f'!={post_bench[f.idx].char_id}'), {}
     # deployed 上限(冻结 invariant)与排上限
     n_dep_final = n_d - len(und) - len(sell_d) + len(dep_b) + len(fill)
     if n_dep_final > s.max_units():
@@ -546,6 +610,30 @@ def _resolve_comp_transaction(
     n_back_final = n_dep_final - n_front_final   # 总终态 − 前排终态
     if n_back_final > s.back_max:
         return f'back_overflow:{n_back_final}>{s.back_max}', {}
+    # 同名唯一性(W43 leader 裁决 1:场上同角色仅 1):终态 deployed 名单
+    # 查重——留下的旧档 + deploy 新上 + fill 填位(bench 源/买后即上)。
+    # 任一重复 → 整事务拒绝(reason='duplicate_on_board',进 action_log;
+    # board/factions 虚高的污染源,W43 A/B 实测旧臂 54% 轮同名重复)。
+    _gone_d = set(und) | set(sell_d)
+    final_keys: set[str] = set()
+    _final_units: list[BenchChar | None] = [
+        s.deployed[i] for i in range(n_d) if i not in _gone_d]
+    _final_units += [c for c, _r in dep_chars]
+    _final_units += [post_bench[f.idx] for f in fill
+                     if f.source == 'bench' and 0 <= f.idx < len(post_bench)]
+    for c in _final_units:
+        k = board_unique_key(c)
+        if k is None:
+            continue
+        if k in final_keys:
+            return f'duplicate_on_board:{k}', {}
+        final_keys.add(k)
+    for card in shop_fill_cards:
+        if not card.name:
+            continue
+        if card.name in final_keys:
+            return f'duplicate_on_board:{card.name}', {}
+        final_keys.add(card.name)
     return '', {
         'und_chars': und_chars, 'dep_chars': dep_chars,
         'sell_bench_chars': sell_b_chars, 'sell_deployed_chars': sell_d_chars,
@@ -697,22 +785,38 @@ def simulate(state: GameState, action: Action) -> GameState:
             s.xp_progress = (_cur, XP_TO_NEXT_LEVEL.get(s.level, _cur))
     elif isinstance(action, DeployMove):
         if 0 <= action.bench_idx < len(s.bench):
-            bc = s.bench.pop(action.bench_idx)
-            # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
-            _apply_row_to_char(bc, action.to_row)
-            s.deployed.append(bc)
-            s.board[action.faction] = s.board.get(action.faction, 0) + 1
+            _k = board_unique_key(s.bench[action.bench_idx])
+            # 同名唯一性(W43 裁决 1):单卡上场同理——已在场同名 → 拒绝
+            # (进 action_log;bench 同名副本是 3合1 素材,合成走 bench 域)。
+            if _k is not None and any(board_unique_key(d) == _k
+                                      for d in s.deployed):
+                _log_action(s, 'DeployMove', 'rejected',
+                            reason=f'duplicate_on_board:{_k}')
+            else:
+                bc = s.bench.pop(action.bench_idx)
+                # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
+                _apply_row_to_char(bc, action.to_row)
+                s.deployed.append(bc)
+                s.board[action.faction] = s.board.get(action.faction, 0) + 1
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1,步2):卖场上单位——deployed 生命周期开口。
         if 0 <= action.deployed_idx < len(s.deployed):
-            sold = s.deployed.pop(action.deployed_idx)
-            # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
-            s.gold += sell_refund(sold.star, _bench_char_cost(sold))
-            # 装备回收进 owned 池(🟡 同 _apply_comp_transaction 假设,待 live 核)
-            s.equips.extend(sold.equips)
-            s.board = _recount_board(s.deployed)
-            _log_action(s, 'SellDeployed', 'applied', reason=action.reason,
-                        char=sold.char_id)
+            _tgt = s.deployed[action.deployed_idx]
+            # 代际校验(W43 裁决 2):期望名不符 = 陈旧提案 → 拒绝不套用
+            if action.expect and _tgt.char_id != action.expect:
+                _log_action(s, 'SellDeployed', 'rejected',
+                            reason=(f'stale_proposal:{action.expect}'
+                                    f'!={_tgt.char_id}'),
+                            char=_tgt.char_id)
+            else:
+                sold = s.deployed.pop(action.deployed_idx)
+                # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
+                s.gold += sell_refund(sold.star, _bench_char_cost(sold))
+                # 装备回收进 owned 池(🟡 同 _apply_comp_transaction 假设,待 live 核)
+                s.equips.extend(sold.equips)
+                s.board = _recount_board(s.deployed)
+                _log_action(s, 'SellDeployed', 'applied', reason=action.reason,
+                            char=sold.char_id)
         else:
             _log_action(s, 'SellDeployed', 'rejected',
                         reason=f'deployed_idx_out_of_range:{action.deployed_idx}',
@@ -723,15 +827,34 @@ def simulate(state: GameState, action: Action) -> GameState:
                 and 0 <= action.bench_idx < len(s.bench):
             out_char = s.deployed[action.deployed_idx]
             in_char = s.bench[action.bench_idx]
-            _row = out_char.position_pref
-            s.deployed[action.deployed_idx] = in_char
-            s.bench[action.bench_idx] = out_char
-            # 上场者继承下场者的排(含开拓者形态归一);下场者保留原
-            # position_pref 记录(回 bench 后不消费,再上场时重写)
-            _apply_row_to_char(in_char, _row)
-            s.board = _recount_board(s.deployed)
-            _log_action(s, 'SwapDeploy', 'applied', reason=action.reason,
-                        in_char=in_char.char_id, out_char=out_char.char_id)
+            # 代际校验(W43 裁决 2):跨轮登记的换位提案 idx 已指向别人 → 拒绝
+            if (action.expect_deployed
+                    and out_char.char_id != action.expect_deployed) \
+                    or (action.expect_bench
+                        and in_char.char_id != action.expect_bench):
+                _log_action(s, 'SwapDeploy', 'rejected',
+                            reason=(f'stale_proposal:'
+                                    f'{action.expect_deployed}/{action.expect_bench}'
+                                    f'!={out_char.char_id}/{in_char.char_id}'))
+            else:
+                # 同名唯一性(W43 裁决 1):上场者与场上其余单位同名 → 拒绝
+                _k = board_unique_key(in_char)
+                if _k is not None and any(
+                        board_unique_key(d) == _k
+                        for _i, d in enumerate(s.deployed)
+                        if _i != action.deployed_idx):
+                    _log_action(s, 'SwapDeploy', 'rejected',
+                                reason=f'duplicate_on_board:{_k}')
+                else:
+                    _row = out_char.position_pref
+                    s.deployed[action.deployed_idx] = in_char
+                    s.bench[action.bench_idx] = out_char
+                    # 上场者继承下场者的排(含开拓者形态归一);下场者保留原
+                    # position_pref 记录(回 bench 后不消费,再上场时重写)
+                    _apply_row_to_char(in_char, _row)
+                    s.board = _recount_board(s.deployed)
+                    _log_action(s, 'SwapDeploy', 'applied', reason=action.reason,
+                                in_char=in_char.char_id, out_char=out_char.char_id)
         else:
             _log_action(s, 'SwapDeploy', 'rejected',
                         reason=(f'idx_out_of_range:'
@@ -779,6 +902,11 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
             bench.pop(action.bench_idx)
     elif isinstance(action, DeployMove):
         if 0 <= action.bench_idx < len(bench):
+            # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
+            _k = board_unique_key(bench[action.bench_idx])
+            if _k is not None and any(board_unique_key(d) == _k
+                                      for d in deployed):
+                return
             bc = bench.pop(action.bench_idx)
             _apply_row_to_char(bc, action.to_row)
             # 开拓者形态切换(同 simulate 语义,单一源 helper)
@@ -786,13 +914,27 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
         # GameState 域,本函数不管——与 simulate 单一源规则一致)
-        if 0 <= action.deployed_idx < len(deployed):
-            deployed.pop(action.deployed_idx)
+        if 0 <= action.deployed_idx < len(deployed) \
+                and (not action.expect
+                     or deployed[action.deployed_idx].char_id == action.expect):
+            deployed.pop(action.deployed_idx)   # 陈旧提案(代际不符)no-op
     elif isinstance(action, SwapDeploy):
         if 0 <= action.deployed_idx < len(deployed) \
                 and 0 <= action.bench_idx < len(bench):
             out_char = deployed[action.deployed_idx]
             in_char = bench[action.bench_idx]
+            # 代际校验 + 同名唯一性(W43 裁决 1/2,与 simulate 同源)
+            if ((action.expect_deployed
+                 and out_char.char_id != action.expect_deployed)
+                    or (action.expect_bench
+                        and in_char.char_id != action.expect_bench)):
+                return   # 陈旧提案 no-op
+            _k = board_unique_key(in_char)
+            if _k is not None and any(
+                    board_unique_key(d) == _k
+                    for _i, d in enumerate(deployed)
+                    if _i != action.deployed_idx):
+                return
             _row = out_char.position_pref
             deployed[action.deployed_idx] = in_char
             bench[action.bench_idx] = out_char

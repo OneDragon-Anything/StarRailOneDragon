@@ -32,6 +32,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
+from sr_od.application.currency_war.cw_deploy_logic import (
+    TRANSITION_TRAITS as _TRANSITION_TRAITS,
+)
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
@@ -728,6 +731,22 @@ def _direction_established(session: StrategySession) -> bool:
                 and getattr(ist, 'locked_comp', ''))
 
 
+def _target_comp_label(session: StrategySession) -> str:
+    """账本 ``target_comp`` 字段(W43 leader 裁决 3):v2 锁线/桥 → v3 意向。
+
+    decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
+    ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名)——旧口径
+    恒空让 decisions.jsonl / comp_tag 对新栈失去判读价值(W43 §3 遥测
+    缺口)。优先级:v2 字段非空优先(旧臂语义不变),空则回退 v3 意向名。
+    """
+    v2 = getattr(session, 'locked_line', None) \
+        or getattr(session, 'bridge_id', None)
+    if v2:
+        return v2
+    ist = getattr(session, 'v3_intention', None)
+    return (getattr(ist, 'locked_comp', '') or '') if ist is not None else ''
+
+
 def _board_factions_of(deployed) -> dict[str, int]:
     """r394:上场角色的阵营计数(生产 board 口径,flows 并计)。
 
@@ -797,9 +816,10 @@ def _first_trio_round(res, target: int) -> int | None:
 # 无希儿时不能独立当过渡(第四体系,单卡依赖)。
 # 通用羁绊(战技点/护盾/学者/减益…)不是过渡主体——四种都不含的
 # 49 帖全是直通线。
-_TRANSITION_TRAITS: tuple[tuple[str, int], ...] = (
-    ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
-)
+# W47 统一化:``_TRANSITION_TRAITS`` 改 alias import 自模块头
+# (``cw_deploy_logic.TRANSITION_TRAITS``,其本体已从 SYSTEM_CARDS 派生,
+# 单一源;原先两模块各写一份同值常量对、注释互指——漂移窗口=任一侧单改)。
+# 消费本名的 scoring._engine_frac_remainder 等 import 路径不变。
 
 
 def _engines_count(board_factions: dict[str, int],
@@ -1208,6 +1228,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if _tx_fill_cost:
                         _entry['fill_cost'] = _tx_fill_cost
                     _acts.append(_entry)
+                    if _applied and _shop_fill_cards:
+                        # W43 leader 裁决 2(phantom_rebuys 根治):事务
+                        # fill 已消费店槽——同批后续 BuyCard 是对陈旧
+                        # state.shop 的提案,作废并立即重决策(同
+                        # RefreshShop 的 break-redecide 语义),不套用
+                        # 陈旧引用。
+                        break
             if not progressed:
                 break
         while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
@@ -1401,7 +1428,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'ts': rn,   # 单调轮序号(非墙钟;审查①#9)
             'plane': 1, 'round_num': rn,
             'gold': st.gold, 'hp': st.hp,
-            'target_comp': (sess.locked_line or sess.bridge_id or ''),
+            'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——
                       # deployed 的 factions 计数(生产 board 口径;

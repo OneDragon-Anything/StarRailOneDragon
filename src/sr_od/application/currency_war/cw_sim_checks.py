@@ -150,6 +150,18 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
     return out
 
 
+def _normalize_buy_reason(reason: str) -> str:
+    """买入 reason 归一化(W43 leader 裁决 4)。
+
+    decision_v2 栈的账本 reason 带 ``d2_`` 前缀(可再带 ``_merge`` 尾,
+    ``arbiter._materialize``)——检查器豁免边/计数用裸 reason 精确匹配时,
+    ``d2_copy``/``d2_engine_seed`` 会同时造成**误报**(豁免失效)与
+    **失明**(指纹匹配不上)。本 helper 与 coldstart 检查既有归一化做法
+    同款(单一源化),三检查器统一走这里。
+    """
+    return (reason or '').removeprefix('d2_').removesuffix('_merge')
+
+
 def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     """局49 指纹(首条回灌断言;ADR-0240+r371b;r368 修前形态)。
 
@@ -179,11 +191,9 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
             if a.get('__type__') != 'BuyCard':
                 continue
             reason = a.get('reason') or 'unknown'
-            # decision_v2 栈 reason 带 'd2_' 前缀(+'_merge' 尾,
-            # arbiter._materialize L333)——归一化后再匹配,防
-            # d2_pair/d2_off 违规指纹对本检查无声失效(leader
-            # 核实 2026-08-24,观察局首验)。
-            reason = reason.removeprefix('d2_').removesuffix('_merge')
+            # d2_ 前缀归一化(原 2026-08-24 leader 核实;W48 裁决 4 起
+            # 单一源到 _normalize_buy_reason)
+            reason = _normalize_buy_reason(reason)
             if reason not in ('pair', 'off'):
                 # r383b:copy=开局轮同名副本(3合1 素材,口述[15]
                 # 压缩牌库)——合法放行,非门失效;区分见 docstring。
@@ -336,9 +346,10 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
         for a in row.get('actions') or []:
             if a.get('__type__') == 'BuyCard':
                 _n = (a.get('card') or {}).get('name')
-                if _n and a.get('reason') == 'copy':
+                _rs = _normalize_buy_reason(a.get('reason') or '')
+                if _n and _rs == 'copy':
                     _copy_names.add(_n)   # 3合1 收集语境:让位豁免
-                elif _n and a.get('reason') == 'engine_seed':
+                elif _n and _rs == 'engine_seed':
                     _seed_buys[_n] = _seed_buys.get(_n, 0) + 1
                     bought.append(_n)
                 elif _n:
@@ -455,7 +466,8 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
         rn = row.get('round_num') or 0
         for a in row.get('actions') or []:
             t = a.get('__type__')
-            if t == 'BuyCard' and a.get('reason') == 'engine_seed':
+            if t == 'BuyCard' and _normalize_buy_reason(
+                    a.get('reason') or '') == 'engine_seed':
                 _n = (a.get('card') or {}).get('name')
                 if not _n:
                     continue
@@ -529,10 +541,11 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
                 _n = (a.get('card') or {}).get('name')
                 if not _n:
                     continue
-                if a.get('reason') == 'copy':
+                _rs = _normalize_buy_reason(a.get('reason') or '')
+                if _rs == 'copy':
                     copy_names.add(_n)
                 else:
-                    if a.get('reason') == 'engine_seed':
+                    if _rs == 'engine_seed':
                         seed_buys[_n] = seed_buys.get(_n, 0) + 1
                     bought.append(_n)
             elif t == 'SellBench' and a.get('name') in bought \
