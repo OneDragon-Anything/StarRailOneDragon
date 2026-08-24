@@ -1310,7 +1310,7 @@
     - 544
     - 923
     - 880
-    - 975
+    - 1000
     text: 退出关卡
     lcs_percent: 0.7
     template_sub_dir: ''
@@ -4321,10 +4321,10 @@
   - area_name: 差分宇宙-暂离
     id_mark: false
     pc_rect:
-    - 1312
-    - 876
-    - 1391
-    - 924
+    - 1323
+    - 782
+    - 1786
+    - 840
     text: 暂离
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -5609,10 +5609,10 @@
   - area_name: 勾选-本局不再提示
     id_mark: false
     pc_rect:
-    - 882
-    - 574
-    - 942
-    - 604
+    - 804
+    - 570
+    - 1020
+    - 622
     text: 本局不再提示
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -5623,10 +5623,10 @@
   - area_name: 按钮-确认
     id_mark: false
     pc_rect:
-    - 1131
-    - 638
-    - 1187
-    - 668
+    - 1128
+    - 634
+    - 1219
+    - 693
     text: 确认
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -6136,6 +6136,20 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+  - area_name: 文本-数据统计-伤害
+    id_mark: false
+    pc_rect:
+    - 1130
+    - 580
+    - 1310
+    - 860
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: currency_war_wish_trial
   screen_name: 货币战争-祈愿试炼
   pc_alt: false
@@ -6411,10 +6425,10 @@
   - area_name: 按钮-刷新
     id_mark: false
     pc_rect:
-    - 1563
-    - 455
-    - 1620
-    - 490
+    - 1560
+    - 451
+    - 1646
+    - 508
     text: 刷新
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -7683,10 +7697,10 @@
   - area_name: 标识-标题-保存阵容
     id_mark: false
     pc_rect:
-    - 270
-    - 160
-    - 450
-    - 220
+    - 266
+    - 156
+    - 566
+    - 226
     text: 保存阵容
     lcs_percent: 0.5
     template_sub_dir: ''

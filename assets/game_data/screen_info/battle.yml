@@ -36,7 +36,7 @@ area_list:
   - 544
   - 923
   - 880
-  - 975
+  - 1000
   text: 退出关卡
   lcs_percent: 0.7
   template_sub_dir: ''

@@ -106,6 +106,13 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     return None
 
 
+# W40:「数据统计」面板伤害列区(结算屏右侧;win/ended 两 fixture 实测校准,
+# 2026-08-25)——「数据统计」标题下方右列,每角色一行伤害值(「396.3万」形,
+# 实测 token x∈[1196,1280]、行 y 随上阵数下探;区放宽留边)。1080p 坐标
+# (项目既有前提,截图像素与游戏空间 1:1)。
+_STAT_COL_RECT = (1130, 580, 1310, 860)
+
+
 def parse_streak(ocr_texts: list[str]) -> int:
     """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 − / 未读到 0;纯函数可单测)。
 
@@ -186,6 +193,39 @@ def parse_settlement_won(ocr_texts: list[str]) -> bool | None:
     return None
 
 
+def parse_settlement_damage(items: list) -> int | None:
+    """结算屏「数据统计」面板己方伤害求和 → damage_dealt(纯函数;W40)。
+
+    W23 定谳:结算屏无敌方血量通道,「数据统计」面板的**己方角色伤害明细**
+    是 enemy_hp_after 的最接近语义代理(面板求和≈总输出,与敌方剩余血量强
+    负相关)。面板**就在结算屏本体右侧列**(win/ended 两 fixture 实锤:
+    「数据统计」标题 (~1120,554) 下方,每角色一行「试用」徽标 + 伤害值
+    「396.3万」/「137.0万」形,**无需点开放大镜子面板**)——本函数与
+    ``parse_settlement_hp`` 消费**同一帧**全图 OCR(``items`` 带坐标,按
+    image 缓存零额外识别),读点 = ``_record_round_outcome`` 记录时点
+    (继续挑战点击前),零跨帧状态。
+
+    判据(双守卫):① token = 「<数字>万」形(``396.3万`` → 3963000;金币
+    明细的裸数字 10/5/4 无「万」后缀,天然区分);② 检测框中心落在右列
+    区(``_STAT_COL_RECT``;左侧金币列同形噪声的第二道防线)。求和所有
+    命中行;无命中 → None(面板不可见/OCR 未读,不冒认 0)。
+    """
+    x1, y1, x2, y2 = _STAT_COL_RECT
+    total = 0
+    hit = False
+    for it in items:
+        t = (getattr(it, 'data', '') or '').strip()
+        m = re.fullmatch(r'(\d+(?:\.\d+)?)万', t)
+        if not m:
+            continue
+        cx = it.x + (getattr(it, 'width', 0) or 0) / 2
+        cy = it.y + (getattr(it, 'height', 0) or 0) / 2
+        if x1 <= cx <= x2 and y1 <= cy <= y2:
+            total += int(round(float(m.group(1)) * 10000))
+            hit = True
+    return total if hit else None
+
+
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,
                        comp_tag: str, node_type: str = '普通战斗'):
     """结算屏 → ``RoundOutcome``(观测回路 P1.5;``on_round_end`` 输入)。
@@ -200,9 +240,14 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
     """
     from sr_od.application.currency_war.cw_performance import RoundOutcome
-    ocr_texts = [r.data for r in ctx.ocr_service.get_ocr_result_list(
-        image=screen, rect=None, crop_first=False)]
+    _items = ctx.ocr_service.get_ocr_result_list(
+        image=screen, rect=None, crop_first=False)
+    ocr_texts = [r.data for r in _items]
     hp = parse_settlement_hp(ocr_texts)
+    # W40:damage_dealt 生产(W23 定谳的最大数据缺口 0/239)——「数据统计」
+    # 面板就在结算屏本体右侧列,同一帧全图 OCR 即可解析(坐标在 items 里),
+    # 无需点开子面板/额外截图。读不到(面板被遮/OCR 漏)→ None 保持旧锁。
+    damage = parse_settlement_damage(_items)
     # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
     # r366b(review B3):传参='boss'(battle_loop 专项 OCR '首领',证据更强)
@@ -233,4 +278,5 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         streak=parse_streak(ocr_texts),   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
         killed=_won,
         progress_delta=parse_settlement_progress(ocr_texts),
+        damage_dealt=damage,   # W40:数据统计面板伤害求和(同帧;读不到 None)
     )

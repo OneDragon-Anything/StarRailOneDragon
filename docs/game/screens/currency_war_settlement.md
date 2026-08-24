@@ -35,6 +35,7 @@ source_image: screens/货币战争-结算/win.webp
 - **胜负(is_failed)**:标题「挑战成功」→ is_failed=false;「挑战失败」→ true。recognizer 产 `is_failed`。
 - **获得金币总数 + 明细**(基础奖励/利息/连胜):本轮金币收益(`文本-获得金币总数`,动态)。
 - **掉落晶矿**:本轮掉落(晶矿,动态;非穿戴装备 —— combat 掉晶矿,装备由补给节点出)。
+- **己方伤害明细(damage_dealt)**:「数据统计」右列每角色一行伤害值(`文本-数据统计-伤害` 区,「396.3万」形,求和≈总输出;2026-08-25 W40 建档+`parse_settlement_damage` reader。**面板就在结算屏本体右侧列,无需点开放大镜子**)——W23 定谳:结算屏无敌方血量,此为 enemy_hp_after 的最接近代理。
 
 ## 识别快照
 
@@ -49,6 +50,6 @@ source_image: screens/货币战争-结算/win.webp
 
 - **失败态 fixture 待采**:本档有成功态(win)+ 结束态(ended)。**「挑战失败」态**(真输,标题/布局/奖励 待现场)待采 —— 补后调 recognizer(is_failed 判据)。
 - **is_failed 判据(D-66 纠正 D-65)**:recognizer 用 `_FAIL_MARKER='挑战失败'` substring 判(`settlement_recognizer.py`,**非** `标识-挑战成功` area LCS)。故 挑战成功/结束 → is_failed=false ✓(结束≠失败,非误读),挑战失败 → is_failed=true ✓。**逻辑正确,无需修**。(`标识-挑战成功` area 确 LCS 匹配挑战结束,但该 area 非 id_mark、不参与 is_failed,命名瑕疵不影响。)
-- screen_info:`按钮-继续挑战`(id_mark)+ `标识-挑战成功` + `标识-数据统计` + `文本-小队生命值` + `文本-获得金币总数`(区域,待 recognizer 读值校)。
+- screen_info:`按钮-继续挑战`(id_mark)+ `标识-挑战成功` + `标识-数据统计` + `文本-小队生命值` + `文本-获得金币总数`(区域,待 recognizer 读值校)+ `文本-数据统计-伤害`(伤害列定位区,W40)。
 - 奖励明细区(基础奖励/利息/连胜/掉落晶矿)暂未建 area —— bot 要读明细时增量加。
 - 触发流:备战 → 出战 →(未达上限警告?)→ 自动战斗 → 本屏 → 继续 → 下一轮(见 `currency_war_deploy_warning.md`)。

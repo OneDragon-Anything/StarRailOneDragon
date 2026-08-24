@@ -117,10 +117,10 @@ area_list:
 - area_name: 按钮-刷新
   id_mark: false
   pc_rect:
-  - 1563
-  - 455
-  - 1620
-  - 490
+  - 1560
+  - 451
+  - 1646
+  - 508
   text: 刷新
   lcs_percent: 0.5
   template_sub_dir: ''

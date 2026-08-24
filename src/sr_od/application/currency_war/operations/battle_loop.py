@@ -483,7 +483,7 @@ class CurrencyWarRunLoop(SrOperation):
                 _session.last_hp_t = _now_t
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
-            # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
+            # node_type/comp_tag/damage_dealt(W40:结算屏数据统计面板同帧解析)已在 _obs。
             cw_telemetry.record_outcome(_obs, source=_source)
             if _obs.hp_confidence >= 0.9:
                 self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)

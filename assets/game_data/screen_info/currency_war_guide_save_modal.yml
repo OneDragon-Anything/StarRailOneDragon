@@ -5,10 +5,10 @@ area_list:
 - area_name: 标识-标题-保存阵容
   id_mark: false
   pc_rect:
-  - 270
-  - 160
-  - 450
-  - 220
+  - 266
+  - 156
+  - 566
+  - 226
   text: 保存阵容
   lcs_percent: 0.5
   template_sub_dir: ''

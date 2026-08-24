@@ -103,10 +103,10 @@ area_list:
 - area_name: 差分宇宙-暂离
   id_mark: false
   pc_rect:
-  - 1312
-  - 876
-  - 1391
-  - 924
+  - 1323
+  - 782
+  - 1786
+  - 840
   text: 暂离
   lcs_percent: 0.5
   template_sub_dir: ''

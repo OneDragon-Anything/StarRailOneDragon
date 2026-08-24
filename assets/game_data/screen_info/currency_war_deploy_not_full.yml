@@ -19,10 +19,10 @@ area_list:
 - area_name: 勾选-本局不再提示
   id_mark: false
   pc_rect:
-  - 882
-  - 574
-  - 942
-  - 604
+  - 804
+  - 570
+  - 1020
+  - 622
   text: 本局不再提示
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -33,10 +33,10 @@ area_list:
 - area_name: 按钮-确认
   id_mark: false
   pc_rect:
-  - 1131
-  - 638
-  - 1187
-  - 668
+  - 1128
+  - 634
+  - 1219
+  - 693
   text: 确认
   lcs_percent: 0.5
   template_sub_dir: ''
