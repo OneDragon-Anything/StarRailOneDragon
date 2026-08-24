@@ -1,6 +1,10 @@
 # 0290 - 决策框架治本:候选生成 × 期望评分 × 预算仲裁(取代通道堆叠)
 
-- **Status**: accepted(2026-08-23;对抗审查修订后采纳——报告 audit/adversarial-framework-0290.md,四修订点已并入本文)
+- **Status**: accepted(2026-08-23;对抗审查修订后采纳——报告 audit/adversarial-framework-0290.md,四修订点已并入本文)。
+  **迁移机制部分 superseded(2026-08-25,ADR-0309 载体批)**:Decision 里的「渐进迁移:
+  ④并行开关+锁迁移(以决策面比例度量)⑤删通道」安排被 ADR-0309 的 registry 双注册
+  A/B 窗口+纪律族移植取代(decision_v2 成为唯一策略载体,不再继承 LineStrategy);
+  **四层框架本体(层1 候选×层2 过滤×层3 评分×层4 仲裁+完备性审计表)不变,继续有效**。
 - **Context**:line_strategy 1868 行 23 方法,decide_prep 分发五通道(emergency/boss_breaker/catchup/economy/war),
   通道内各自 if-else 谓词。29 批压测的症状族全数指向该架构:振荡族(买卖两通道无全局视野)/腾席链烧金
   (升级藏在腾席通道)/carry 躺 bench(买与部署谓词不一致)/死门族(通道可达性靠路由 if 无人全局审计)/

@@ -285,6 +285,18 @@ class StrategySession:
     # resold);旧 session 反序列化缺字段 → 空 dict 保守(只失去豁免)。
     v2_seed_bought: dict[str, tuple[tuple[int, int], int]] = \
         field(default_factory=dict)
+    # —— 决策框架 v2 载体批(W35,ADR-0309)扩展态:意向分层/演进/纪律 ——
+    # (新载体 decision_v2 的跨步状态;None=未初始化——旧策略局全空可区分)
+    v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
+    v3_evolution: object = None      # cw_evolution.EvolutionState(中断恢复/谷底回滚)
+    v3_hoard: object = None          # cw_intention.HoardTarget(囤货目标集,买侧唯一消费面)
+    v3_core_names: set = field(default_factory=set)   # 意向核心名集(line_carry 标签裁决)
+    v3_mode: str = ''                # 本轮模式('economy'|'war';纪律族每轮写)
+    v3_alarm: object = None          # discipline.BloodAlarmTracker(掉血三臂)
+    v3_pending_rollback: object = None   # 谷底回滚待发动作(on_round_end→下轮 decide_prep)
+    v3_prev_hp: int | None = None        # 掉血三臂的上一节点 HP(结算真值链)
+    v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
+    v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
     # r23 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
     prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;

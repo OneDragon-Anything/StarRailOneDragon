@@ -49,7 +49,11 @@ def is_catchup(state: GameState, session: StrategySession,
 
 
 def current_mode(session: StrategySession) -> str:
-    """当前模式(economy/war;读 cw_phase_machine 状态机 mode 位)。"""
+    """当前模式(economy/war;载体批 W35:新载体读 session.v3_mode——
+    纪律族 assess_discipline 每轮写;旧 v2_state 兜底)。"""
+    v3 = getattr(session, 'v3_mode', None)
+    if v3 in ('economy', 'war'):
+        return v3
     v2 = getattr(session, 'v2_state', None)
     if not v2:
         return 'economy'

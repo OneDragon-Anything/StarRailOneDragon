@@ -11,7 +11,8 @@
 | `CurrencyWarMatch` | `cw_strategy` | strategy+session 轻容器,挂 `ctx.cw_match`(显式声明,局终置 None 防跨局污染) |
 | `StrategyManager` | `cw_strategy_manager` | 自动发现:BUILTIN(`strategies/`)+ THIRD_PARTY(`plugins/currency_war_strategies/` 子目录);`STRATEGY_ID` 唯一性强校验;对标 app 插件机制(无 factory/config 间接层,`cls()` 即实例化) |
 | `DefaultCwStrategy` | `strategies/default_strategy` | 内置具现 v1(每个钩子委托既有模块函数);自定义两条路:继承 ABC 全自研 / 继承 Default 只覆盖关心的钩子 |
-| `LineStrategy` | `strategies/line_strategy` | **现行生产策略 v2**(继承 Default,只覆盖 4 策略性钩子:锁线/桥线/四象限/应急 + `decide_prep` 决战窗;`strategy_id=line_v2`,生产 checks 按此判栈,ADR-0245) |
+| `LineStrategy` | `strategies/line_strategy` | **deprecated(ADR-0309 载体批;停用不删)**:旧生产策略 v2 A/B 臂(`strategy_id=line_v2`,回退开关——config 切回即用;C5=窗口期脚手架,清理批随删降级;删除门槛=sim A/B 验收通过即删,leader 裁定,不等实机;禁止新增功能) |
+| `DecisionV2Strategy` | `decision_v2/strategy`(注册桥 `strategies/decision_v2_strategy`) | **唯一策略载体**(ADR-0309):独立 `DefaultCwStrategy` 实现(不再继承 LineStrategy);战略层=cw_intention 意向分层锁线(update_target 写 `v3_hoard`/target_comp=COMP_LIBRARY v2 真 Comp);备战=纪律族视图(`decision_v2/discipline`:应急/boss_breaker/carry_gate/catchup/掉血三臂/位面末 ALL IN 限定/保血通道)× 演进引擎(cw_evolution 显式 CompTransaction)× 四层(候选→过滤→评分→仲裁,ADR-0290);层1 目标件源=hoard_target_set+体系卡引擎件+PLUGIN_LIBRARY;`strategy_id=decision_v2` |
 
 ## 2. 钩子清单
 

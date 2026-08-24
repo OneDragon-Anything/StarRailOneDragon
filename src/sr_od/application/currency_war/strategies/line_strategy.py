@@ -1,5 +1,16 @@
 """货币战争 · 策略 v2(LineStrategy;Phase A Day 9;redesign §5)。
 
+⚠️ **DEPRECATED(ADR-0309 载体批,2026-08-25;清理条件 2026-08-25 用户
+裁定改 sim 门槛)**:本文件已**停用为旧策略 A/B 臂**——``decision_v2`` 成为
+唯一策略载体(裁决终版第三选项),纪律族(应急/boss_breaker/carry_gate/
+catchup)已移植进 ``decision_v2/discipline.py`` 并语义重接(locked_line
+派生 → 意向分层输入)。本文件**暂不删**(C5 兼容契约=窗口期脚手架:
+registry 双注册保活,config ``strategy_id='line_v2'`` 可切回——回退开关,
+A/B 基线对照期可用;清理批随删降级);**删除门槛=sim A/B 验收通过**
+(新策略 P1 域行为正确且不劣于旧基线即删,leader 裁定,不等实机——
+ADR-0309 同步记录)。**禁止在本文件新增功能**;行为修复双臂同步时以
+decision_v2 侧为单一源。
+
 **CwStrategy 具现**——继承 DefaultCwStrategy,只覆盖策略性钩子;
 执行性钩子(球/箱/典籍/腾席链骨架/encounter/supply/megastar/
 partner)全继承(r225 代码盘点的复用边界)。

@@ -28,7 +28,8 @@ class DecisionV2Registry:
     #: 买候选标签优先序(单卡只取首个命中标签;顺序即裁决,可 A/B)
     buy_tag_priority: tuple[str, ...] = (
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'pair', 'copy', 'bond_fallback', 'carry_gate',
+        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
+        'carry_gate',
     )
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
@@ -68,23 +69,25 @@ class DecisionV2Registry:
     #: bond_fallback/synthesize 在应急态仍滤出(ADR-0300 应急集保持窄)
     emergency_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'carry_gate', 'off_target', 'free_bench', 'deploy',
-        'for_gold', 'levelup',
+        'engine_seed', 'plugin', 'carry_gate', 'off_target',
+        'free_bench', 'deploy', 'for_gold', 'levelup',
     })
     catchup_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'pair', 'copy', 'levelup', 'off_target',
-        'free_bench', 'deploy',
+        'engine_seed', 'plugin', 'pair', 'copy', 'levelup',
+        'off_target', 'free_bench', 'deploy',
     })
     economy_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
-        'pair', 'copy', 'carry_gate', 'bond_fallback', 'off_target',
-        'for_gold', 'free_bench', 'levelup', 'refresh', 'deploy',
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'engine_seed', 'plugin', 'pair', 'copy', 'carry_gate',
+        'bond_fallback', 'off_target', 'for_gold', 'free_bench',
+        'levelup', 'refresh', 'deploy',
     })
     war_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
-        'pair', 'copy', 'bond_fallback', 'carry_gate', 'off_target',
-        'for_gold', 'free_bench', 'levelup', 'deploy',
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
+        'carry_gate', 'off_target', 'for_gold', 'free_bench',
+        'levelup', 'deploy',
     })
     #: 追赶窗口约束:追赶期禁 for_gold(不折现卖件)+ 禁 refresh
     #: (升人口窗口的钱不进刷新;redesign「追赶=升人口置顶」)
@@ -188,7 +191,7 @@ class DecisionV2Registry:
     #: 应急滤出,此处显式枚举防未来标签集变化误伤)
     crisis_buy_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'carry_gate',
+        'engine_seed', 'plugin', 'carry_gate',
     })
     #: 评分侧联动折扣(ADR-0297 刷新×追级并存,采纳方案):金<
     #: refresh_starve_gold 时 refresh_ev 乘此系数——排序自然让位给
