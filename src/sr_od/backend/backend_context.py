@@ -274,16 +274,31 @@ class RunSlot:
             result = OperationResult(success=False, status=f'执行异常: {e}')
         finally:
             # —— 固化终态(任何路径都执行,镜像原 RunSlot finally)——
-            terminal = (RunState.SUCCESS if (result is not None and result.success)
-                        else RunState.STOPPED if (result is not None and result.status.startswith('已停止'))
-                        else RunState.FAILED)
-            if failed_node is None:
-                failed_node = self._node_name() or (result.status if result is not None else None)
+            # 内层再兜一层异常(2026-08-24 终态残留 bug):此前 finally 内任何一处
+            # 抛异常(候选:status=None 时 startswith / _node_name 属性链)会让 future
+            # 以异常态完成且被 executor 静默吞掉——线程回池、future done,但
+            # terminal_state 永不赋值 → /game/status 恒 running(daemon restart 守卫
+            # 被误拒),而 stop_run/新 _start 又认为无运行(sim 3 次实证 19:27/21:09/
+            # 21:58,py-spy 全线程 idle + future done + status=running 三证齐)。
+            # 兜底保证固化不变量「finally 必达」:异常时强制 FAILED + 栈留痕。
+            try:
+                terminal = (RunState.SUCCESS if (result is not None and result.success)
+                            else RunState.STOPPED if (result is not None and result.status.startswith('已停止'))
+                            else RunState.FAILED)
+                if failed_node is None:
+                    failed_node = self._node_name() or (result.status if result is not None else None)
+            except Exception as e:  # noqa: BLE001 固化前置计算炸 → 强制失败终态,别让状态悬空
+                from one_dragon.utils.log_utils import log as _diag_log
+                _diag_log.error('[slot-diag] 终态计算异常(强制 FAILED): %s', e, exc_info=True)
+                terminal = RunState.FAILED
+                result = OperationResult(success=False, status=f'终态计算异常: {e}')
             with self._lock:
                 self.terminal_state = terminal
                 self.last_status = result.status if result is not None else '执行异常'
                 self.failed_node = failed_node if terminal == RunState.FAILED else None   # 仅 FAILED 记失败节点
                 self.finished_at = time.time()
+            from one_dragon.utils.log_utils import log as _diag_log
+            _diag_log.info('[slot-diag] _run finally 固化: terminal=%s op_id=%s', terminal, self.op_id)
         return result
 
     def _node_name(self) -> str | None:
