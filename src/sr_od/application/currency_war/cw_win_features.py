@@ -2,6 +2,8 @@
 
 从 decisions 帧 ``state.deployed``(战前上场名单,角色级)提取训练特征:
 BoW 角色计数 / 星级分布 / 羁绊档位计数 / 装备件数 / total_cost 完成度代理。
+node_type 等非 deployed 派生特征由训练表侧 join 提供,见
+``features_from_deployed`` docstring 的消费契约。
 
 设计单一源 = ``.debug/temp/currency_war/cw_dev/win_model_design/ADR_草稿.md`` §1
 (TFT 特征 → CW 映射表)。本模块是**纯函数**(无 I/O / 无游戏依赖),
@@ -45,7 +47,9 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``char_count`` / ``bow``:上场人数与角色计数(BoW;空 char_id 不计);
     - ``star_sum`` / ``star_hist``:星级总和与分布({1:..,2:..,3:..});
     - ``equip_count``:装备件数(``deployed[].equips``,已装备口径;
-      未装备池 ``state.equips`` 不在此);
+      未装备池 ``state.equips`` 不在此)。**当前语料零方差**(10927 条
+      deployed 仅 1.1% 非空,批38 审计)——M1 不指望它有贡献,
+      语料攒厚后自然生效,训练侧可按需排除;
     - ``total_cost``:Σ 注册表 ``cost``×计数——**完成度代理,已知偏差**:
       注册表 cost=起始费,升星升费未建模(cw_chars 银狼LV.999 注释,
       ADR 草稿风险 4),系统性低估高星阵容;
@@ -56,6 +60,13 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``tier_hist``:羁绊档位直方图({1:..,2:..,3:..,4:..},
       每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
     - ``max_tier``:最高激活档位(阵容成型度粗粒度代理)。
+
+    ⚠️ **node_type 不在本函数输出里**(设计决策,批38 审计修订):
+    node_type(普通战斗/遭遇/boss)是**训练表侧 join 的强先验特征**
+    (批38:胜率 0.309/0.040/0.056),不是 ``deployed`` 派生量——本函数
+    只做 deployed 派生特征,不引入「入参原样透传出参」的伪特征。
+    消费侧(sim 结算器 / 训练脚本)拼特征向量时须**显式加入 node_type**
+    (训练表已由 ``win_model_build_table.py`` join 带上该列)。
     """
     bow: dict[str, int] = {}
     star_hist: dict[int, int] = {}
