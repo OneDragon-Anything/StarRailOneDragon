@@ -52,13 +52,15 @@ from sr_od.application.currency_war.cw_system_cards import (
     card_pieces,
 )
 
-# 体系卡 →(判据阵营, 目标档);tier 阈值派生自 FACTIONS 注册表(单一源,
-# 版本更新自动传导;希儿系双分支取量子侧作演进目标锚)。
+# 体系卡 →(判据阵营, 目标档);W47 统一化:card→faction 映射改从
+# ``SystemCard.judge_factions`` 字段派生(第三处重复消除;原先本表/
+# cw_system_cards._card_factions/card_active 三处各写一遍),tier 阈值
+# 仍派生自 FACTIONS 注册表(单一源,版本更新自动传导;希儿系双分支取
+# judge_factions 首位=量子侧作演进目标锚,与原值一致)。
 _CARD_FACTION_TIER: dict[str, tuple[str, int]] = {
-    'xianzhou3': ('仙舟', FACTIONS['仙舟'].tiers[0]),
-    'dot2': ('持续伤害', FACTIONS['持续伤害'].tiers[0]),
-    'train2': ('列车同行', FACTIONS['列车同行'].tiers[0]),
-    'seele': ('量子同频', FACTIONS['量子同频'].tiers[0]),
+    card.card_id: (card.judge_factions[0],
+                   FACTIONS[card.judge_factions[0]].tiers[0])
+    for card in SYSTEM_CARDS.values()
 }
 
 

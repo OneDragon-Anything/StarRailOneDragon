@@ -269,14 +269,23 @@ _PIPELINE_TAGS = frozenset({
 
 
 def _shop_has_engine_card(state: GameState) -> bool:
-    """店内是否有引擎件(过渡体系阵营/希儿;ADR-0301 找件判据,
-    与诊断口径同源:仙舟/列车同行/持续伤害/量子同频/贝洛伯格)。"""
+    """店内是否有引擎件(过渡体系阵营/希儿;ADR-0301 找件判据)。
+
+    W47 统一化:阵营/引擎名改读 ``cw_system_cards`` 派生 helper
+    (``system_judge_factions``/``engine_char_names``,与诊断口径同源
+    靠 import 不靠手抄——第五张体系卡加入自动传导)。
+    """
     from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
-    _eng_facs = {'仙舟', '列车同行', '持续伤害', '量子同频', '贝洛伯格'}
+    from sr_od.application.currency_war.cw_system_cards import (
+        engine_char_names,
+        system_judge_factions,
+    )
+    _eng_facs = system_judge_factions()
+    _eng_names = engine_char_names()
     for c in (state.shop or []):
         if not c.name:
             continue
-        if c.name == '希儿':
+        if c.name in _eng_names:
             return True
         ch = _CH.get(c.name)
         if ch is not None and (_eng_facs & (set(ch.factions or ())

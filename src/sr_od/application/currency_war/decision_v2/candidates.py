@@ -222,9 +222,6 @@ def _buy_tag(card: ShopCard, state: GameState,
     bench_full = len(state.bench or []) >= registry.bench_capacity
     is_target = card.name in targets
     v3_carrier = getattr(session, 'v3_hoard', None) is not None
-    has_direction = v3_carrier or bool(session.locked_line) \
-        or bool(session.bridge_id)
-    no_direction = not has_direction
     if not is_target and engine_seed_wants(card, state, session):
         return 'engine_seed'    # 点3:引擎件见即买(C2 名单)
     if not is_target and pair_wants(card, state, session):
@@ -234,7 +231,10 @@ def _buy_tag(card: ShopCard, state: GameState,
         return 'pair'
     if not is_target and _plugin_ok(card, state, session):
         return 'plugin'         # class5:插件买来即上(有位才买)
-    if (not is_target and (has_direction or no_direction)
+    # [31] bond_fallback 门无方向约束(W47 清理:原 `has_direction or
+    # no_direction` 恒真死条件——两变量互斥取或=永 True,删除后语义不变;
+    # 锁测试见 test_cw_w47_unification 的双向触发用例)
+    if (not is_target
             and state.round_num >= registry.bond_fallback_min_round
             and 1 <= (card.cost or 3) <= registry.bond_fallback_max_cost
             and card.faction in _owned_factions(state)):

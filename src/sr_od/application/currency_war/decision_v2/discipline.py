@@ -54,19 +54,12 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import StrategySession
 
 # ===== 体系卡引擎件(铁三角+希儿;C2 单一源 import 不复制)=====
-from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
+# W47 统一化:engine_char_names 函数本体上移至 cw_system_cards(注册表旁),
+# 本模块 import 复用——消费点(candidates/engine_seed_wants/carry 保护集)零变化。
+from sr_od.application.currency_war.cw_system_cards import engine_char_names
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
-
-
-def engine_char_names() -> frozenset[str]:
-    """四体系卡的引擎件名全集(铁三角三人组+希儿;点3 见即买名单)。"""
-    out: set[str] = set()
-    for card in SYSTEM_CARDS.values():
-        out.update(card.engine_required)
-    return frozenset(out)
-
 
 # ===== 纯谓词族(v1 line_strategy 移植;不依赖线库/桥池) =====
 

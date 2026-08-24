@@ -139,6 +139,11 @@ class Comp:
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
     equip_synergy: dict[str, str] = field(default_factory=dict)
     """件间关系(铁三角:少一件链断)——描述性元数据,判断层手编。"""
+    bond_signal: str | None = None
+    """②类专属羁绊信号名(cw_intention detect_signals 层②消费;W47 统一化:
+    原 ``cw_intention.FAMILY_BOND_SIGNALS`` 手编 crosswalk 迁移进各条,
+    判断层手编数据化)。值 = 该家族的「专属羁绊」规范名;**按设计无②信号
+    的家族(希儿量子:量子/贝是放大器;白厄反甲:独立羁绊绑死单卡)= None**。"""
 
     @property
     def all_factions(self) -> set[str]:
@@ -412,6 +417,7 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=5,
         # ===== v2(W25,C4):姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
         family="姬子列车", branch_key="A/B 未拆(词条前置分岔;拆分留后续批)",
+        bond_signal="列车同行",   # ②类信号:四人 100% 固定
         form_tiers_max={"列车同行": 4},
         sub_tiers={"护盾": 2, "减益": 2},   # A 流护盾2(50% 盾循环必然)/B 流减益2(58%)——分支依赖,拆分批归位
         equip_assign={"姬子·启行": ["火力风暴潮", "高周波电锯"], "三月七": ["以牙还牙甲"], "花火": ["冷笑话引擎"]},
@@ -455,6 +461,7 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=6,
         # ===== v2(W25):圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====
         family="圣杯双C", branch_key="A Archer 战技点线(~34%)", branch_of="双王圣杯",
+        bond_signal="命运圣杯",   # ②类信号:2 档开任务=燃料线入口
         special_systems={"grail_quest": {"产出": "Archer(圣杯任务链产出,非商店购买)", "触发": "圣杯 2 档开任务", "接棒": "任务完成即接棒 Saber"}},
         substitute_plan=[
             {"替班者": "Saber", "顶位": "Archer 主C(前中期)", "身份": "Saber 打到 Archer 到手;Archer 不来则 Saber 一直 C(任务系统照吃)", "分岔点": "Archer 任务完成"},
@@ -502,6 +509,7 @@ COMP_LIBRARY: list[Comp] = [
         # v2 迁移(W25):银狼LV.999 由 transition(卖)改 substitute_plan(不卖,转档)——C4 替班语义
         # ===== v2(W25):欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族", branch_key="绯英档(资源锚 6 级;无信号默认落点)", branch_of="狼尊欢愉",
+        bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
         form_tiers_max={"欢愉": 6},   # v2:欢愉 4-6 档(≤4 档即主流)
         equip_assign={"绯英": ["火力风暴潮", "永动机"], "爻光": ["冷笑话引擎"], "瓦尔特": ["高周波电锯"]},
         # ↑ v2 教义:绯英=永动机(天赋装备化)+风暴潮;全队皮靴(本批恒等约束下未单列,拆分批放开)
@@ -556,6 +564,7 @@ COMP_LIBRARY: list[Comp] = [
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
         # ===== v2(W25):黄泉减益家族(无流派;第四件=装备池)=====
         family="黄泉减益", branch_key="无流派(第四件=装备池)",
+        bond_signal="减益",   # ②类信号:4-6 档主体,到前 DOT 班底共享牌桌
         form_tiers_max={"巡海游侠": 4, "减益": 6},   # v2:减益 4-6 档/巡海 4
         sub_tiers={"击破": 2},   # v2:击破 58% 升格候选
         equip_assign={"黄泉": ["高周波电锯", EquipChoice("pool", ("永动机", "光速螺旋桨", "火力风暴潮"))]},
@@ -623,6 +632,7 @@ COMP_LIBRARY: list[Comp] = [
         transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(W25):远坂凛是 core(1 星即够),移出 transition
         # ===== v2(W25):圣杯双C家族·B Saber 能量线(~25%)=====
         family="圣杯双C", branch_key="B Saber 能量线(~25%;能量 5 为硬约束——口述「哪怕下远坂凛都不能拆能量」)", branch_of="命运圣杯红A",
+        bond_signal="命运圣杯",   # ②类信号:2 档开任务=燃料线入口
         special_systems={"grail_quest": {"产出": "Archer 接棒(非商店购买)", "触发": "圣杯 2 档开任务", "备注": "本线即替班形态常态化:Saber 从 P2 打到 Archer 到手;Archer 不来则 Saber 一直 C"}},
         equip_assign={"Saber": ["火力风暴潮", "永动机", "冷笑话引擎"], "吉尔伽美什": ["高周波电锯"]},
         # ↑ v2 教义:Saber=充能件(永动机/冷笑话引擎/电光履,主C 满能自拉条伪永动)
@@ -679,6 +689,7 @@ COMP_LIBRARY: list[Comp] = [
         transition_chars=["艾丝妲", "丹恒·腾荒"], typical_form_round=6,   # v2 迁移(W25):黑塔(小黑塔)是 core/替班C,移出 transition
         # ===== v2(W25):大黑塔群攻家族(档位=连续深度谱,非流派)=====
         family="大黑塔群攻", branch_key="档位=连续深度谱(群攻3+学者2 众数 29% → 完全体群攻5+学者4 仅 19%,低档通关是常态)",
+        bond_signal="银河学者",   # ②类信号:星级总量成长
         form_tiers_max={"群攻": 5, "银河学者": 4},
         equip_assign={"大黑塔": ["高周波电锯"], "黑塔": ["永动机", "蓄能帆", "电光履"]},
         # ↑ v2 教义:大黑塔=电锯+风暴潮;小黑塔=战场进化手册(星级装备)+充能三件套
@@ -763,6 +774,7 @@ COMP_LIBRARY: list[Comp] = [
         shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"], typical_form_round=5,   # v2 迁移(W25):爻光是 core,移出 transition
         # ===== v2(W25):欢愉族家族·银狼档(资源锚 9 级;与绯英档互含单向:银狼局含绯英 76%)=====
         family="欢愉族", branch_key="银狼档(资源锚 9 级;分流判据=升费资源是否到位)", branch_of="绯英欢愉",
+        bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
         form_tiers_max={"欢愉": 7},   # v2:欢愉 5-7 档(阿哈装备栏全解锁=指数点)
         # v2:星核 2=笑点泵(银狼每攻 7 次放 40 笑点欢愉技)——本套已列主档 form_tiers(星核猎手2),不入 sub_tiers(不重复);绯英 76% 在场沉淀
         special_systems={
@@ -844,6 +856,7 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=5,
         # ===== v2(W25):万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====
         family="万敌燃血", branch_key="无流派(装备收敛)",
+        bond_signal="夜之半神",   # ②类信号:夜半 2(96% 必配,主档)
         form_tiers_max={"燃血": 6},   # v2:燃血 4-6 档;夜之半神 2(96% 必配)=form_tiers 下限口径不变
         sub_tiers={"战技点": 2},   # v2:战技点 2(90%,第三引擎);风堇=第二记录器(治疗转伤害)
         equip_assign={"万敌": ["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"]},
@@ -879,6 +892,7 @@ COMP_LIBRARY: list[Comp] = [
         transition_chars=["桑博", "艾丝妲"], typical_form_round=4,   # v2 迁移(W25):卡芙卡是 core,移出 transition
         # ===== v2(W25):DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分批落位)=====
         family="DOT卡芙卡", branch_key="A 引爆流(~47%;分岔变量=carry×装备×副羁绊)",
+        bond_signal="持续伤害",   # ②类信号:开局即战力,前期=终局同体一路加深
         form_tiers_max={"持续伤害": 6},   # v2:DOT 6 档(A 流一路加深 2→4→6)
         sub_tiers={"减益": 2},   # v2:星核 2(57%)已在 form_tiers(星核猎手2);减益 2(43%)
         equip_assign={"卡芙卡": ["火力风暴潮"], "海瑟音": ["反重力皮靴", "光速螺旋桨"], "黑天鹅": ["蓄能帆"]},
@@ -932,6 +946,7 @@ COMP_LIBRARY: list[Comp] = [
         typical_form_round=5,
         # ===== v2(W25):DOT卡芙卡家族·桑博专家变体(v2 明言:策略入口变体,不独立成套)=====
         family="DOT卡芙卡", branch_key="桑博专家变体(开局信号=「特邀专家:桑博」portal,C 槽换桑博+靴流;策略入口变体非兄弟分支,不设 branch_of)",
+        bond_signal="持续伤害",   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"桑博": ["火力风暴潮", "火力风暴潮"], "卡芙卡": ["冷笑话引擎"]},
         # ↑ 桑博装备越早越好;卡芙卡过渡给随便骰子
         flex_factions=["星核猎手", "减益", "昼之半神"],

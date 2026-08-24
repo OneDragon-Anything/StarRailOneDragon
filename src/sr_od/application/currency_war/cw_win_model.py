@@ -21,6 +21,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from sr_od.application.currency_war.cw_chars import CHARACTERS
+from sr_od.application.currency_war.cw_factions import FACTIONS
+from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
+from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
 from sr_od.application.currency_war.cw_win_features import features_from_deployed
 
 #: 模型产物目录(W30 训练输出;gitignored,模型走运行时资产惯例不进 git)。
@@ -29,11 +33,16 @@ _MODEL_PATH = _MODEL_DIR / 'w30_lr_killed.joblib'
 _META_PATH = _MODEL_DIR / 'w30_meta.json'
 _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 
-#: 引擎实体单一源:docs/game/currency_war/research/transition_combos.md
-#: 仙舟3 核心三人组(铁三角)+ DOT2 件池 + 希儿单卡引擎。
-_TRIO = ('藿藿', '丹恒·饮月', '爻光')
-_DOT_POOL = ('艾丝妲', '椒丘', '卡芙卡', '桑博')
-_SEELE = '希儿'
+#: 引擎实体单一源(W47 统一化,原先三组具名字面量改 import/派生):
+#: - 铁三角 = ``cw_line_defs._CORE_TRIO`` 注册表真值(注册表 import 不复制);
+#: - DOT 件池 = ``FACTIONS['持续伤害']`` 成员的 ≤2 费子集(过渡件口径,
+#:   海瑟音4/黑天鹅5 是终局件不进池);
+#: - 希儿 = ``SYSTEM_CARDS['seele'].engine_required``(卡注册表)。
+_TRIO = tuple(sorted(_CORE_TRIO))
+_DOT_POOL = tuple(sorted(
+    m for m in FACTIONS['持续伤害'].members()
+    if m in CHARACTERS and CHARACTERS[m].cost <= 2))
+_SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 
 

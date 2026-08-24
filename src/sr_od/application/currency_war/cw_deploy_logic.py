@@ -25,12 +25,14 @@ drag 验证留在 op)。
 from __future__ import annotations
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
+from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
     RECIPE_FACTIONS,
 )
 from sr_od.application.currency_war.cw_state import BenchChar
+from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
 
 
 def _bonds_of(bc: BenchChar) -> set[str]:
@@ -61,10 +63,14 @@ def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
 
 
 # r404-A1(四体系判据,与 cw_sim._TRANSITION_TRAITS 同语义;此模块
-# 不 import cw_sim——sim 消费本模块,反向 import 成环——这里
-# 单列同源常量,两边注释互指)。
-TRANSITION_TRAITS: tuple[tuple[str, int], ...] = (
-    ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
+# 不 import cw_sim——sim 消费本模块,反向 import 成环——sim 侧改为
+# alias import 本常量,两边不再各写一份)。
+# W47 统一化:三羁绊(阵营, 阈值)对改从 SYSTEM_CARDS 派生(排除 seele 卡
+# ——希儿系是 deployed 单卡判定非阵营计数,deploy 排序/形态维无意义,
+# 见 ignition_gain 注);tier 阈值经 FACTIONS 注册表,单一源。
+TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
+    (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
+    for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
 )
 
 
