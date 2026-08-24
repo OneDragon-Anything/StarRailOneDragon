@@ -140,6 +140,11 @@ class OutcomeRecord:
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。
     board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
     bench_count: int = 0               # 战前 bench 数(板深第二维)
+    # —— W28(行来源标记,镜像 RunSummary.source/ADR-0273 惯例):''=结算屏真值行;
+    # 'recovered'=relaunch 残留结算屏(启动宽限内首见,round_num 已按屏面「X-Y」
+    # 尽力校正,训练侧可剔);'synthetic_supply'=补给节点合成行(无结算屏节点的
+    # 遥测补行,hp 用 last_state 快照非屏面真值)。
+    source: str = ""
 
 
 @dataclass
@@ -304,7 +309,7 @@ class TelemetryRecorder:
                     comms.append(target_comp)
         self._append("decisions.jsonl", _to_jsonable(trace))
 
-    def record_outcome(self, run_id: str, outcome) -> None:
+    def record_outcome(self, run_id: str, outcome, source: str = "") -> None:
         """记一条观测结果(outcomes.jsonl)。outcome: cw_performance.RoundOutcome。
 
         r339:自动附战前板面快照(board_before/bench_count,从
@@ -312,6 +317,8 @@ class TelemetryRecorder:
         校准数据源;miss 容错,缺省空)。ctx match 经
         set_ctx_match 注册(启动时),record 端无 ctx 参数
         侵入。
+        source(W28):行来源标记(''/'recovered'/'synthetic_supply',
+        见 OutcomeRecord.source 注)。
         """
         _board, _bench = {}, 0
         try:
@@ -339,6 +346,7 @@ class TelemetryRecorder:
             progress_delta=outcome.progress_delta,
             streak=outcome.streak,
             board_before=_board, bench_count=_bench,
+            source=source,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 
@@ -504,11 +512,14 @@ def record_decision(state: GameState, target_comp: str,
                                    extra=_extra, gold_point=gold_point)
 
 
-def record_outcome(outcome) -> None:
-    """便捷:用 current_run_id 记一条观测结果。loop 战斗后调。"""
+def record_outcome(outcome, source: str = "") -> None:
+    """便捷:用 current_run_id 记一条观测结果。loop 战斗后调。
+
+    source(W28):行来源标记(''/'recovered'/'synthetic_supply')。
+    """
     if not _CURRENT_RUN_ID:
         return
-    get_recorder().record_outcome(_CURRENT_RUN_ID, outcome)
+    get_recorder().record_outcome(_CURRENT_RUN_ID, outcome, source=source)
 
 
 def record_exogenous(round_num: int, kind: str, detail: str = '',

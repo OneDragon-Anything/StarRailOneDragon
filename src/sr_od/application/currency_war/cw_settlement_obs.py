@@ -63,6 +63,31 @@ def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
     return None
 
 
+def parse_settlement_round(ocr_texts: list[str]) -> tuple[int, int] | None:
+    """结算屏头部「X-Y」→ (plane, round)(纯函数;W28 缺陷①修 a)。
+
+    relaunch 残留结算屏场景(W23 定因):run 启动首帧即结算屏(上一进程留下),
+    loop 的 last-known plane/round 缓存已被 reset → read_phase_round 兜底 (1,1)
+    → 残留屏上的真实轮次(如 r6 结算)被错记成 r1。结算屏**头部自身**带
+    「X-Y」轮次标识(实跑 token 形态:['挑战结束','1-6','战斗',...],与
+    parse_settlement_node_type 同一窗口),此处直接解析恢复真值。
+
+    - 只在头部(挑战成功/挑战结束)后 5 token 窗口内找(防误中远处数字对);
+    - 值域守卫:plane∈1-3、round∈1-9(嵌进正则字符类;位面/轮次越界=OCR 假阳);
+    - 前后不得紧邻数字(``(?<!\\d)``/``(?!\\d)``:防「11-6」这类粘连噪声的子串误取)。
+    解析不出 → None(调用方保留 last-known 兜底值)。
+    """
+    _hdr = next((i for i, t in enumerate(ocr_texts)
+                 if '挑战成功' in t or '挑战结束' in t), None)
+    if _hdr is None:
+        return None
+    for t in ocr_texts[_hdr:_hdr + 5]:
+        m = re.search(r'(?<!\d)([1-3])\s*-\s*([1-9])(?!\d)', t)
+        if m:
+            return int(m.group(1)), int(m.group(2))
+    return None
+
+
 def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
     """结算屏「小队生命值<N>」→ hp_after(纯函数,可单测;P1.5)。
 

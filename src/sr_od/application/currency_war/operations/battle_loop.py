@@ -17,7 +17,11 @@ from sr_od.application.currency_war.cw_observation import (
     read_round_outcome,
     reset_phase_round_cache,
 )
-from sr_od.application.currency_war.cw_performance import HP_CONFIDENCE_THRESHOLD
+from sr_od.application.currency_war.cw_performance import (
+    HP_CONFIDENCE_THRESHOLD,
+    RoundOutcome,
+)
+from sr_od.application.currency_war.cw_settlement_obs import parse_settlement_round
 from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
@@ -81,6 +85,11 @@ class CurrencyWarRunLoop(SrOperation):
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
+    #: W28 缺陷①(relaunch 残留结算屏):run 启动后此宽限内**首见**结算屏 =
+    #: 上一进程留下的残留屏(新 match 从进入到首个真结算要过简报+策略+备战,
+    #: 分钟级;残留屏在首帧即命中,实测 <2s)。该行 outcome 打 source='recovered'
+    #: 并按屏面「X-Y」解析真实轮次,防 r6/r7 结算被错记成 r1(W23 两例实锤)。
+    RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
@@ -132,6 +141,10 @@ class CurrencyWarRunLoop(SrOperation):
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         cw_telemetry.start_run(difficulty=_diff_for_telemetry)
+        # W28 缺陷①:run 启动时刻 + 首见结算屏标记(relaunch 残留结算判据,
+        # 见 RELAUNCH_SETTLE_GRACE_S 注)。
+        self._run_start_ts: float = time.monotonic()
+        self._first_settlement_seen: bool = False
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
@@ -401,9 +414,22 @@ class CurrencyWarRunLoop(SrOperation):
         if self.ctx.cw_match is None:
             return
         self._battle_ts = None   # ADR-0250:见结算屏 → 战斗窗口关(watch 恢复)
+        # W28 缺陷①:启动宽限内首见结算屏 = relaunch 残留屏(上一进程留下)——
+        # 该行打 recovered 标记 + 按屏面「X-Y」恢复真实轮次(修法 a+b 都做:
+        # 轮次可解析则直接校正,不可解析也有标记供训练侧剔除)。
+        _residual = self._mark_relaunch_residual()
+        _source = 'recovered' if _residual else ''
         try:
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
+            if _residual:
+                _ocr_texts = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
+                    image=screen, rect=None, color_range=None, crop_first=False)]
+                _scr = parse_settlement_round(_ocr_texts)
+                if _scr is not None:
+                    log.warning('[cw][loop] relaunch 残留结算屏:round 按「%s-%s」校正(原兜底 P%s-r%s)',
+                                _scr[0], _scr[1], _plane, _round)
+                    _plane, _round = _scr
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
             # r260/r265(用户两轮指路修正):节点类型的**权威源 = 备战画面节点行**
@@ -458,7 +484,7 @@ class CurrencyWarRunLoop(SrOperation):
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag 已在 _obs;damage_dealt/killed 待 L1 结算屏建档(ADR-0166)。
-            cw_telemetry.record_outcome(_obs)
+            cw_telemetry.record_outcome(_obs, source=_source)
             if _obs.hp_confidence >= 0.9:
                 self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
             # 外生事件(strategy/05 telemetry,预案触发频率语料):战斗节点完成
@@ -472,6 +498,54 @@ class CurrencyWarRunLoop(SrOperation):
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type)
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
             log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
+
+    def _mark_relaunch_residual(self) -> bool:
+        """W28 缺陷①:本帧是否 relaunch 残留结算屏(启动宽限内首见结算)。
+
+        判据(三条件同时):新 match(cw_match 是本次 run 新建,relaunch 后 server
+        重启必为 True)+ 本 run 首见结算屏 + 距 start_run < RELAUNCH_SETTLE_GRACE_S。
+        新对局从进入到首个真结算需过简报/策略/备战(分钟级),宽限内首见只能是
+        上一进程残留(W23 两例 ts 距启动 <2s 实锤)。**只标记不改行为**;调用后
+        置 _first_settlement_seen(每 run 至多判一次)。
+        """
+        _res = (not self._first_settlement_seen and self._is_new_match
+                and time.monotonic() - self._run_start_ts
+                < CurrencyWarRunLoop.RELAUNCH_SETTLE_GRACE_S)
+        self._first_settlement_seen = True
+        return _res
+
+    def _record_supply_outcome(self, screen) -> None:
+        """W28 缺陷②:补给节点完成 → 合成一行 outcome(node_type='补给')。
+
+        补给是唯一无结算屏的节点(W23 定因:r5 34/34 全缺)——节点完成绕过
+        分支3 的结算写入点 → hp_after/金币/装备选择在 outcomes 零行。本方法在
+        RunSupplyNode 成功完成点补一行:**复用 cw_telemetry.record_outcome 单一
+        写入入口**,带 source='synthetic_supply'(镜像 ADR-0273 行来源标记)防与
+        结算屏真值行混淆。hp 用 last_state 快照(最近备战观察;hp_readable=False
+        时置信度记 0,hp 字段不冒认真值)。plane/round 用 last-known(补给屏顶栏
+        被遮,read_phase_round 走缓存)。只写遥测,不喂 on_round_end/last_hp
+        (不改策略行为面)。失败不阻塞对局(观测为辅)。
+        """
+        try:
+            _m = self.ctx.cw_match
+            if _m is None:
+                return
+            _session = _m.session
+            _plane, _round = read_phase_round(self.ctx, screen)
+            _st = _session.last_state
+            _hp = _st.hp if _st is not None else 0
+            _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
+            _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            _obs = RoundOutcome(
+                round_num=_round, plane=_plane, node_type='补给', comp_tag=_comp_tag,
+                hp_after=_hp, hp_confidence=_conf,
+                killed=True,   # 语义=节点通过(非战斗击杀;synthetic 行专用)
+            )
+            cw_telemetry.record_outcome(_obs, source='synthetic_supply')
+            log.info('[cw-loop] 补给节点完成 → 合成 outcome 行 P%s-r%s hp=%s(conf=%s)',
+                     _plane, _round, _hp, _conf)
+        except Exception as e:  # noqa: BLE001  合成行失败不阻塞对局
+            log.warning('[cw-loop] 补给合成 outcome 失败(不阻塞): %s', e)
 
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
@@ -700,7 +774,11 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=2)
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
-            RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
+            _rs = RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
+            # W28 缺陷②:补给节点完成 → 合成 outcome 行(无结算屏节点的遥测补行;
+            # 仅成功时记,失败重试由下轮 0e 再入,不重复写)。
+            if _rs is not None and getattr(_rs, 'success', False):
+                self._record_supply_outcome(screen)
             return self.round_wait(wait=2)
 
         # 0f. 节点武装箱弹窗(「武装突入」类节点,2026-08-15 M19 首见停机建档)→
