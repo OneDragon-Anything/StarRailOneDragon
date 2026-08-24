@@ -3883,6 +3883,12 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
     - **hp 跳变违规**:``killed=False`` 且 ``hp_before-hp_after<=0``
       (败局 hp 不可能不降——跳变 = 接管帧错值/回填错位;实证
       run_20260823_154910:3→58,-55);
+    - **hp 缺失违规**(批40 补):``killed=False`` 且 ``hp_after`` 缺失
+      (None)——败局 boss 行缺 hp_after,掉血口径不可算,静默通过 =
+      判读面盲区(批40 边界复审发现原实现漏辖);
+    - **地板下违规**(批40 补):``killed=False`` 且 ``hp_after==0``
+      (地板=1,hp 归零即败、killed 应为 True——0 且未标 killed = 写端
+      矛盾,批40 边界复审发现原实现漏辖);
     - **删失披露(note 级)**:``killed=False`` 且 ``hp_after==1`` 的
       行计数 + 行号——这些行的 boss 掉血是下界非真值,任何伤害口径
       必须剔除或单独标注。
@@ -3905,6 +3911,17 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
                      else (rows[i - 1].get('hp_after')
                            if i > 0 else None))
         if not k:
+            if hp_after is None:
+                violations.append(
+                    f'行{i}({r.get("run_id")} r{r.get("round_num")}):'
+                    f'killed=False 但 hp_after 缺失(败局 boss 行掉血口径'
+                    f'不可算,采集缺口,批40)')
+                continue
+            if hp_after == 0:
+                violations.append(
+                    f'行{i}({r.get("run_id")} r{r.get("round_num")}):'
+                    f'killed=False 但 hp_after==0(hp 地板=1,归零即败应标'
+                    f'killed=True——写端矛盾,批40)')
             if hp_after == 1:
                 censored.append(i)
             if hp_before is not None and hp_after is not None \
@@ -3925,6 +3942,7 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
         'boss_rows': len(boss_idx), 'bad_label': bad_label,
         'censored_rows': len(censored), 'censored_idx': censored,
         'censor_note': censor_note,
-        'note': 'boss 行 hp 地板删失守卫(批39);红 = killed 采集断裂/'
-                '败局 hp 未降;censor_note 非空 = 伤害口径须剔删失行',
+        'note': 'boss 行 hp 地板删失守卫(批39/批40);红 = killed 采集断裂'
+                '/败局 hp 未降/hp_after 缺失/hp_after==0 矛盾;'
+                'censor_note 非空 = 伤害口径须剔删失行',
     }
