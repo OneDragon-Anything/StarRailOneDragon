@@ -31,6 +31,7 @@ from sr_od.application.currency_war.cw_evolution import (
     evolution_step,
     rollback_weakest,
 )
+from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
     hoard_target_set,
@@ -50,6 +51,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     BloodAlarmTracker,
     assess_discipline,
     carry_gate_actions,
+    liquidity_actions,
 )
 from sr_od.application.currency_war.decision_v2.filters import (
     filter_candidates,
@@ -92,7 +94,13 @@ class DecisionV2Strategy(DefaultCwStrategy):
 
     def on_match_start(self, state: GameState, session: StrategySession,
                        config) -> None:
-        """扩展态初始化(意向/演进/报警;v2 同轮簿记一并清零)。"""
+        """扩展态初始化(意向/演进/报警;v2 同轮簿记一并清零)。
+
+        W51:补清 ``v3_intention_key``/``v3_prev_hp``/``v3_last_
+        intention_event``——session 跨局复用(续跑/replay 路径)时,
+        旧局轮键会让新局 (1,1) 撞键被段级守卫误吞(首轮意向不驱动)、
+        旧局终值 HP 会污染三臂首 record 的 hp_before。
+        """
         super().on_match_start(state, session, config)
         session.v3_intention = IntentionState()
         session.v3_evolution = EvolutionState()
@@ -101,6 +109,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_core_names = set()
         session.v3_mode = 'economy'
         session.v3_pending_rollback = None
+        session.v3_intention_key = None
+        session.v3_prev_hp = None
+        session.v3_last_intention_event = ''
         session.v2_round_key = None
         session.v2_round_bought = set()
         session.v2_round_sold = set()
@@ -116,10 +127,12 @@ class DecisionV2Strategy(DefaultCwStrategy):
             tracker = session.v3_alarm = BloodAlarmTracker()
         hp_after = getattr(obs, 'hp_after', None)
         node_type = getattr(obs, 'node_type', None) or ''
-        t = (state.plane - 1) * 9 + state.round_num
+        # N2 同源:obs.plane 比 state.plane 权威(结算时位面可能已推进)
+        plane = getattr(obs, 'plane', None) or state.plane
+        t = (plane - 1) * NODES_PER_PLANE + state.round_num
         hp_before = getattr(session, 'v3_prev_hp', None)
         if hp_before is not None and hp_after:
-            tracker.record(node_type, hp_before, hp_after, t)
+            tracker.record(node_type, hp_before, hp_after, t, plane=plane)
             # 点6 谷底回滚:转型中(上次替换名单非空)单场掉血 >15
             # → 回滚一件最弱替换位后放缓(显式动作下轮发)
             mem = session.v3_evolution
@@ -200,6 +213,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
         cands = generate_candidates(state, session, registry)          # 层1
         kept, _flog = filter_candidates(cands, state, session, reg_view)  # 层2
         scored = score_all(kept, state, session, registry)             # 层3
+        # ⑤b 金不足变现通道(压库件凑金,leader 追加 2026-08-25):
+        # 层3 分数选最高优先金不足买,变现卖件前置(层4 工作态不感知
+        # 变现金=对同轮其余候选保守)
+        actions.extend(liquidity_actions(state, session, registry,
+                                         scored))
         result = arbitrate(scored, state, session, reg_view)           # 层4
         actions.extend(result.actions)
         # 执行 log → session.last_candidate_scores(遥测判读可直接读)

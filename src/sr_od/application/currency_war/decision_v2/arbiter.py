@@ -127,14 +127,18 @@ def _check_constraint(name: str, cand: Candidate,
         return f'破息档({working.gold}→{after})'
     if name == 'bench_capacity':
         if isinstance(a, BuyCard):
-            if len(working.bench or []) + pending_bench >= registry.bench_capacity:
+            from sr_od.application.currency_war.cw_state import (
+                bench_occupied,
+            )
+            if bench_occupied(working.bench or []) + pending_bench \
+                    >= registry.bench_capacity:
                 return 'bench 满(需先腾位;[32] 腾席优先用卖)'
         return None
     if name == 'copies_cap':
         if isinstance(a, BuyCard) and a.card.name:
             copies = sum(getattr(b, 'star', 1) or 1
                          for b in (working.bench or [])
-                         if b.char_id == a.card.name)
+                         if b is not None and b.char_id == a.card.name)
             copies += sum(getattr(d, 'star', 1) or 1
                           for d in (working.deployed or [])
                           if getattr(d, 'char_id', '') == a.card.name)
@@ -147,10 +151,10 @@ def _check_constraint(name: str, cand: Candidate,
         sold = getattr(session, 'v2_round_sold', set()) or set()
         if isinstance(a, SellBench):
             idx = a.bench_idx
-            if 0 <= idx < len(state.bench or []):
-                nm = state.bench[idx].char_id
-                if nm and nm in bought:
-                    return f'同轮已买 {nm}'
+            _bc = (state.bench[idx]
+                   if 0 <= idx < len(state.bench or []) else None)
+            if _bc is not None and _bc.char_id and _bc.char_id in bought:
+                return f'同轮已买 {_bc.char_id}'
         if isinstance(a, BuyCard) and a.card.name in sold:
             return f'同轮已卖 {a.card.name}'
         return None
@@ -239,17 +243,18 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 刷新放行与否在收尾裁决(段语义:刷后 re-decide)
             refresh_cand = (cand, val, bd)
             continue
-        # 索引漂移防护(r408b 同族):卖/上阵 pop 与 3合1 merge 会左移
-        # 后续 bench 下标——目标名(生成期)与工作态现名不一致即拒,
-        # 防止「提案卖 A 实际弹 B」。
+        # 索引漂移防护(r408b 同族):紧缩表时代 pop/merge 会左移后续
+        # bench 下标——ADR-0316 槽位模型下索引恒稳,本守卫保留作语义
+        # 防线(目标名与工作态现槽名不一致仍拒;空槽=已被动过也拒)。
         a = cand.action
         if isinstance(a, (SellBench, DeployMove)):
             intended = cand.breakdown_hint.get('name')
-            cur = (working.bench[a.bench_idx].char_id
+            _bc = (working.bench[a.bench_idx]
                    if 0 <= a.bench_idx < len(working.bench or []) else None)
+            cur = _bc.char_id if _bc is not None else None
             if intended and cur != intended:
                 verdicts.append(f'index_drift:目标 {intended} '
-                                f'现槽 {cur}(先弹高槽位致左移)')
+                                f'现槽 {cur}(槽位已被前序动作消费)')
         for cname in registry.constraints:
             reason = _check_constraint(
                 cname, cand, working, state, session, registry,
