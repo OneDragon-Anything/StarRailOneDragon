@@ -58,7 +58,10 @@ _UNIT_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("符玄", "unit", "T1", "team", source="三B T1:分摊+免死"),
     PluginEntry("瓦尔特", "unit", "T1", "team", frozenset({"姬子列车"}),
                 source="三B T1:推条+延后倒计时;姬子A 反震流必拿(吸仇恨件互斥外的时间死穴解药)"),
-    PluginEntry("银狼·本体", "unit", "T1", "team", source="三B T1:全体降防"),
+    PluginEntry("银狼", "unit", "T1", "team", source="三B T1:全体降防"),
+    # ↑ W55(R2 §2 银狼·本体条):plugin_id 修正为注册表规范名「银狼」(cw_chars.CHARACTERS 键,
+    #   与升费链 carry「银狼LV.999」是两个条目)——旧值「银狼·本体」不在 CHARACTERS,
+    #   买门按名匹配永不命中(PluginEntry docstring 承诺单卡=角色规范名,此处曾违约)。
     PluginEntry("花火", "unit", "T1", "team", source="三B T1:拉条+产战技点"),
     PluginEntry("星期日", "unit", "T1", "team", source="三B T1:拉条+能量+蒙福者"),
     # --- T2 标准增益(7)---
@@ -83,10 +86,12 @@ _UNIT_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("杰帕德", "unit", "T3", "team", source="三B T3(⚠️反震流禁用:分受击概率,攻略 #48;盾系→万敌禁用)"),
 )
 
-# ===== 小羁绊插件(14 个;三C 定稿 W17 效果复核版)=====
+# ===== 小羁绊插件(15 个;三C 定稿 W17 效果复核版)=====
 # T1 全队通用(仅 3)/T2 混合型+双向效果/T3 队员口径(只 buff 本羁绊成员,对症才碰);
 # 另有角色特定型 2 个。出池:巡海游侠1(自 buff 不给全队,「槽位效率最高」作废);
 # DOT2 归体系卡(P1 层);独立羁绊 7 个绑死单卡,不进池。
+# W55(R2 §2 🔴):补 `圣杯2`——三C T3 定稿明列 15 个小羁绊,建库时静默落 14 且无出池
+# 记录,违反「取三C 最晚定稿节」建库基准;本批补齐(测试锁 smalls==15)。
 _SMALL_FACTION_PLUGINS: tuple[PluginEntry, ...] = (
     # --- T1 全队通用(3)---
     PluginEntry("列车2", "small_faction", "T1", "team", source="三C T1:撞击+20% 全体强度"),
@@ -109,6 +114,11 @@ _SMALL_FACTION_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("公司2", "small_faction", "T3", "member", source="三C T3:混合型(同上)"),
     PluginEntry("击破2", "small_faction", "T3", "member", frozenset({"黄泉减益"}),
                 source="三C T3;黄泉线 58% 升格候选(sub_tiers 对拍锚)"),
+    # W55(R2 §2 🔴 补齐):三C T3 定稿名单明列「圣杯2」,建库时静默丢弃(15→14)。
+    # 效果=命运圣杯 2 档开祈愿试炼任务链(产出 Archer;comp_elements 三·4 圣杯任务系统)。
+    # majority_lines 不标:圣杯双C 两线它是主档骨架(form_tiers 命运圣杯 3),插件身份不在该线成立。
+    PluginEntry("圣杯2", "small_faction", "T3", "member",
+                source="三C T3 定稿(15 件全落);命运圣杯 2 档开祈愿试炼任务链,队员口径对症才碰"),
     # --- 角色特定型(按交集逻辑用;三C)---
     PluginEntry("星间旅人1", "small_faction", "T3", "char", source="三C 角色特定:羁绊数值套在逐角色条款上(选谁=选效果),量级待实机"),
     PluginEntry("盛会之星2", "small_faction", "T3", "char", source="三C 角色特定:逐角色条款(巨星绑定)"),
@@ -184,6 +194,10 @@ PLUGIN_DISABLE_MATRIX: dict[tuple[str, str], str] = {
     ("砂金", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
     ("丹恒·腾荒", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
     ("杰帕德", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
+    # W55(R2 §2 三月七漏行):注册表 三月七 flows=("护盾",) 且效果含「行动护盾」(cw_chars:106)——
+    # 按判定法(阵容机制原文×插件机制原文)她是盾系单卡,须入盾系×万敌矩阵;
+    # 三B 原文「砂金/腾荒/杰帕德等」的「等」即留此口,买门接线前收齐,防万敌线买进负资产件。
+    ("三月七", "万敌燃血"): "盾系单卡×燃血无法获盾(行动护盾,官方原文;R2 §2 漏行补齐)",
     # 杰帕德 × 吸仇恨流(反震/反甲:吸仇恨件互斥,分受击概率,攻略 #48)
     ("杰帕德", "姬子列车"): "反震流吸仇恨互斥:与三月七外骨骼分受击概率(攻略 #48)",
     ("杰帕德", "白厄反甲"): "反甲流吸仇恨互斥(同姬子A,白厄前排法则+外骨骼类吸仇恨)",

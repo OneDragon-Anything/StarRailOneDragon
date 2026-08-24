@@ -411,7 +411,11 @@ COMP_LIBRARY: list[Comp] = [
         # 装备 top:风暴潮352/电锯190/以牙还牙甲116/冷笑话56 → 双风暴+电锯+以牙还牙(跨分支覆盖)。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
-        key_equips=["火力风暴潮", "高周波电锯", "以牙还牙甲", "冷笑话引擎"],
+        key_equips=["火力风暴潮", "高周波电锯", "自适应外骨骼", "冷笑话引擎"],
+        # ↑ W55(R2 §1 姬子条):「以牙还牙甲」→「自适应外骨骼」——旧值重排把甲错给三月七,
+        #   v2 教义 A 流铁三角=三月七 自适应外骨骼(吸仇恨刚需)/姬子 以牙还牙甲×2-3;
+        #   恒等约束(多重集不变)下以 A 流首选件(外骨骼)替换 B 流错位件。B 流拆分批放开恒等时
+        #   姬子侧补 以牙还牙甲×2。
         countered_by_bosses=[], mechanic_attributes=["治疗护盾"],
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         typical_form_round=5,
@@ -420,9 +424,9 @@ COMP_LIBRARY: list[Comp] = [
         bond_signal="列车同行",   # ②类信号:四人 100% 固定
         form_tiers_max={"列车同行": 4},
         sub_tiers={"护盾": 2, "减益": 2},   # A 流护盾2(50% 盾循环必然)/B 流减益2(58%)——分支依赖,拆分批归位
-        equip_assign={"姬子·启行": ["火力风暴潮", "高周波电锯"], "三月七": ["以牙还牙甲"], "花火": ["冷笑话引擎"]},
-        # ↑ 本批=旧平铺表的到人重排(与旧 key_equips 多重集恒等);A 流铁三角完整版
-        # (三月七=自适应外骨骼+皮靴 / 姬子=以牙还牙甲×2-3)与 B 流配装留 A/B 拆分批落位
+        equip_assign={"姬子·启行": ["火力风暴潮", "高周波电锯"], "三月七": ["自适应外骨骼"], "花火": ["冷笑话引擎"]},
+        # ↑ W55(R2 §1):三月七=自适应外骨骼(v2 教义 A 流,吸仇恨刚需;旧值「以牙还牙甲」是旧平铺
+        #   重排残留——甲属姬子A流×2-3)。B 流完整配装留 A/B 拆分批落位
         equip_synergy={"铁三角": "自适应外骨骼吸仇恨→以牙还牙甲反伤→皮靴加速,少一件链断(教义:comp_elements 三·3)"},
         # 吸仇恨件互斥:不要杰帕德(分受击概率,攻略 #48)→ 已入 PLUGIN_DISABLE_MATRIX(cw_plugins.py),此处不重复(防双源)
         special_systems={"navigator": {"绑定": "三月七(A 流必绑,85%+ 共识)", "时间函数": "前期保命绑三月,后期可换绑(饮月/星期日)"}},
@@ -455,7 +459,10 @@ COMP_LIBRARY: list[Comp] = [
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
-        key_equips=["火力风暴潮", "高周波电锯", "动能激发剑", "碎星斩舰刀"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
+        key_equips=["火力风暴潮", "动能激发剑", "动能激发剑", "碎星斩舰刀"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
+        # ↑ W55(R2 §1 红A条):「高周波电锯」→「动能激发剑」(第二把)——v2 教义 Archer=**战技点件**
+        #   (动能激发剑:回合开始+消耗各回 1 战技点,战技点燃料层主C 的本命件);
+        #   电锯是旧平铺残件、v2 专属装备此前一件未进。闪闪侧(反重力皮靴)在双王条目同步修
         mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
         shared_chars=["远坂凛", "瓦尔特"], transition_chars=["符玄", "知更鸟", "花火"],
         typical_form_round=6,
@@ -466,7 +473,9 @@ COMP_LIBRARY: list[Comp] = [
         substitute_plan=[
             {"替班者": "Saber", "顶位": "Archer 主C(前中期)", "身份": "Saber 打到 Archer 到手;Archer 不来则 Saber 一直 C(任务系统照吃)", "分岔点": "Archer 任务完成"},
         ],
-        equip_assign={"Archer": ["火力风暴潮", "高周波电锯"], "远坂凛": ["动能激发剑"], "Saber": ["碎星斩舰刀"]},   # Saber 键经 substitute_plan 容纳(替班者)
+        equip_assign={"Archer": ["火力风暴潮", "动能激发剑"], "远坂凛": ["动能激发剑"], "Saber": ["碎星斩舰刀"]},   # Saber 键经 substitute_plan 容纳(替班者)
+        # ↑ W55(R2 §1):Archer 首选换 动能激发剑(v2:Archer=战技点件;旧「高周波电锯」为旧平铺残件),
+        #   旧 Archer 位电锯让渡给 动能激发剑(远坂凛同持第二把,战技点燃料层教义)
         level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率);评审🟡6:远坂凛 1费
             4: LevelGoal("roll", target_cost=1, target_chars=["远坂凛"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
@@ -499,7 +508,9 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
-        form_tiers={"欢愉": 3, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
+        form_tiers={"欢愉": 4, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
+        # ↑ W55(R2 §1 区间收口):欢愉下限 3→4——v2 教义「欢愉 4-6 档(≤4 档即主流)」,旧 3 是
+        #   plaza 校准残留(v2 前 form_tiers 值);上限侧 form_tiers_max=6 不变,区间=4-6 对齐 v2
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],
@@ -552,7 +563,9 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "千冶·刃", "瓦尔特"],
-        form_tiers={"巡海游侠": 3, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
+        form_tiers={"巡海游侠": 4, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
+        # ↑ W55(R2 §1 区间收口):巡海游侠下限 3→4——v2 教义「巡海 4(后排星级 1/3/6/12 倍放大)」,
+        #   旧 3 是 plaza 校准残留;form_tiers_max=4 不变,区间收敛为单点 4 对齐 v2
         # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
         # ADR-0152(plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
         # 改「千冶·刃」(V4.4 实战常驻是千冶·刃,非本体刃);装备 top:电锯56/风暴潮28/光速螺旋桨26/永动机24。
@@ -627,15 +640,18 @@ COMP_LIBRARY: list[Comp] = [
         # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
         # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
-        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
+        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
+        # ↑ W55(R2 §1 闪闪条):「高周波电锯」→「反重力皮靴」——v2 教义 闪闪=**反重力皮靴**(41%,
+        #   锁轴速度载体;comp_definitions_v2 圣杯A);电锯是旧平铺残件
         mechanic_attributes=["连携高频开大"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
         transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(W25):远坂凛是 core(1 星即够),移出 transition
         # ===== v2(W25):圣杯双C家族·B Saber 能量线(~25%)=====
         family="圣杯双C", branch_key="B Saber 能量线(~25%;能量 5 为硬约束——口述「哪怕下远坂凛都不能拆能量」)", branch_of="命运圣杯红A",
         bond_signal="命运圣杯",   # ②类信号:2 档开任务=燃料线入口
         special_systems={"grail_quest": {"产出": "Archer 接棒(非商店购买)", "触发": "圣杯 2 档开任务", "备注": "本线即替班形态常态化:Saber 从 P2 打到 Archer 到手;Archer 不来则 Saber 一直 C"}},
-        equip_assign={"Saber": ["火力风暴潮", "永动机", "冷笑话引擎"], "吉尔伽美什": ["高周波电锯"]},
+        equip_assign={"Saber": ["火力风暴潮", "永动机", "冷笑话引擎"], "吉尔伽美什": ["反重力皮靴"]},
         # ↑ v2 教义:Saber=充能件(永动机/冷笑话引擎/电光履,主C 满能自拉条伪永动)
+        # W55(R2 §1):吉尔伽美什(闪闪)高周波电锯→反重力皮靴(v2 教义 闪闪=反重力皮靴 41%,锁轴速度载体)
         flex_factions=["列车同行", "战技点", "治疗", "盛会之星"],
         plaza_carry="Saber",
         level_plan={
@@ -745,6 +761,9 @@ COMP_LIBRARY: list[Comp] = [
         # ===== v2(W25):白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
         family="白厄反甲", branch_key="A/B 未拆(副羁绊层分岔:A 巡海 64%/B 列车护盾 29%;B 实为白厄借列车骨架)",
         sub_tiers={"护盾": 2},   # B 流副档(多数停护盾 2);A 流前排法则=标签数量×星级优先
+        # ↑ W55(R2 §1 白厄条 补欠账注释):v2 A 巡海流(~64%)核心副羁绊=「巡海 3+」——A/B 未拆下
+        #   sub_tiers 只收了 B 流 {护盾2},巡海 3 属 A 流、现仅在 flex_factions(板面不罚但完成度不数);
+        #   A/B 拆分批落位时补 sub_tiers={"护盾": 2, "巡海游侠": 3}(分支依赖,同姬子 sub_tiers 口径)
         equip_assign={"白厄": ["以牙还牙甲", "以牙还牙甲·特权", "热血沸腾拳"], "三月七": ["高周波电锯"]},
         # ↑ 本批=旧平铺表到人重排;完整反甲链(以牙还牙甲×3+掩体生成枪持续群盾,生存位=绝对热量)留 A/B 拆分批
         equip_synergy={"反甲链": "以牙还牙甲×3 受击反伤核心 + 掩体生成枪(千冶·刃,持续群盾);A/B 配装槽按 boss/压力切换"},
@@ -770,7 +789,9 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # ADR-0152 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
-        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层"],
+        key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层"],
+        # ↑ W55(R2 §1 狼尊条):「高周波电锯」→「反重力皮靴」(第二双)——v2 教义 银狼=风暴潮+
+        #   **速度件**(升费链要行动),电锯非速度件(旧值重排残留);爻光本就是皮靴(攻略:爻光双鞋)
         shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"], typical_form_round=5,   # v2 迁移(W25):爻光是 core,移出 transition
         # ===== v2(W25):欢愉族家族·银狼档(资源锚 9 级;与绯英档互含单向:银狼局含绯英 76%)=====
         family="欢愉族", branch_key="银狼档(资源锚 9 级;分流判据=升费资源是否到位)", branch_of="绯英欢愉",
@@ -781,8 +802,9 @@ COMP_LIBRARY: list[Comp] = [
             "aha_slots": {"档位": 7, "语义": "7 人档全解锁后装备=输出,装备数量本身进阵容强度公式"},
             "cost_escalation": {"角色": "银狼LV.999", "起始": "低费(升费链)", "目标费": 5, "备注": "养成路线是阵容定义的一部分,非静态名单"},
         },
-        equip_assign={"银狼LV.999": ["火力风暴潮", "高周波电锯"], "爻光": ["反重力皮靴"], "开拓者·欢愉": ["光速螺旋桨"]},
-        # ↑ v2 教义:银狼=风暴潮+速度件(升费链要行动);全队永动机群(阿哈装备栏全开后装备=输出,恒等约束下未单列)
+        equip_assign={"银狼LV.999": ["火力风暴潮", "反重力皮靴"], "爻光": ["反重力皮靴"], "开拓者·欢愉": ["光速螺旋桨"]},
+        # ↑ W55(R2 §1):银狼LV.999 首选 高周波电锯→反重力皮靴(v2:银狼=风暴潮+速度件,升费链要
+        #   行动;电锯非速度件=旧值重排残留)。全队永动机群(阿哈装备栏全开后装备=输出)恒等约束下未单列,拆分批放开
         substitute_plan=[
             {"替班者": "绯英", "顶位": "银狼LV.999 主C(银狼 9 级到前)", "身份": "绯英当主 C 直至银狼 9 级到手;到后不卖,降副C沉淀(数据常态 76%)", "分岔点": "银狼 LV.999 到手→家族内转档"},
         ],
@@ -841,12 +863,16 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "千冶·刃", "长夜月", "刻律德菈", "缇宝"],
-        form_tiers={"夜之半神": 2, "燃血": 2}, strength="A", form_difficulty="medium", early_power="中",
+        form_tiers={"夜之半神": 2, "燃血": 4}, strength="A", form_difficulty="medium", early_power="中",
+        # ↑ W55(R2 §1 区间收口):燃血下限 2→4——v2 教义「燃血 4-6 档」,旧 2 是 ADR-0152 plaza
+        #   「夜2+燃2」实证值(v2 文档未同步);form_tiers_max=6 不变,区间=4-6 对齐 v2。
+        #   ⚠️ 行为面:form_progress 成型判定从 燃血2 抬到 4(意图内,见 W55 报告波及面节)
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         # ↺ ADR-0152(plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
         # 场最高;5级搜牌 26/40(1费 carry 5 级 D 标准节奏)。**form_tiers 校准(评审🔴4)**:旧 夜4+燃4
         # 仅 15% 帖达标 —— 榜首帖实跑 夜2+燃2(「7人成型」= 万敌+6弹性辅助;另一帖明言「夜神燃血也不
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
+        # [W55 修正:燃血下限已随 v2 教义回升 2→4(见 form_tiers 行注释);夜之半神保 2 不变]
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
         char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
@@ -974,7 +1000,8 @@ def get_comp(name: str) -> Comp | None:
 
 def _owned_chars(state: GameState) -> set[str]:
     """已持有的角色名集合(bench + deployed)。"""
-    return {bc.char_id for bc in (*state.bench, *state.deployed) if bc.char_id}
+    return {bc.char_id for bc in (*state.bench, *state.deployed)
+            if bc is not None and bc.char_id}
 
 
 def form_progress(comp: Comp, state: GameState) -> float:
@@ -1349,6 +1376,8 @@ def _held_base_copies(state: GameState) -> dict[str, int]:
     bench = list(getattr(state, 'bench', []) or [])
     deployed = list(getattr(state, 'deployed', []) or [])
     for bc in (*bench, *deployed):
+        if bc is None:
+            continue   # ADR-0316 bench 槽位表空槽
         cid = getattr(bc, 'char_id', None)
         if not cid:
             continue
