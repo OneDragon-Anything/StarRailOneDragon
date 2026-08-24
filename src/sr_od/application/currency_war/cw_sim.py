@@ -9,9 +9,10 @@
 - **校准模拟层**(参数有默认、可注入覆盖):
   开局 bench 构成(4 张,65% 1费/35% 2费——遥测校准);
   每轮收入(基础 5 + 息 + 连胜奖);
-  战斗结算 `battle_delta/boss_delta`(25 局 HP 轨迹校准的二元
-  方向模型:方向未立=流血,已立=小胜;**板深→胜率转化未建模**,
-  已知缺口,后续版本补)。
+  战斗结算:Δ池优先(实机经验分布采样);池不可达时的回退层
+  胜负面 = **W31 实测节点×轮次胜率阶梯**(n=192 replay 语料,
+  ``NODE_WIN_P_LADDER`` 单一源,ADR-0308),损益幅度沿用旧
+  方向二元模型的幅度层(25 局 HP 轨迹校准)。
 
 用途:策略改动先过本模拟(A/B 对照),再上实机验证(40min/局)。
 典型用法::
@@ -89,15 +90,17 @@ def _event_gold(round_num: int, rng: random.Random) -> int:
     base = EVENT_GOLD_BY_ROUND.get(round_num, (4,))[0]
     return max(0, int(base + rng.uniform(-2, 2)))
 
-# 战斗结算(25 局 HP 轨迹校准;方向=锁线/桥认领)
+# 战斗结算幅度层(25 局 HP 轨迹校准;胜负面自 ADR-0308 起由
+# W31 节点×轮次胜率阶梯掷,幅度常量沿用本组)
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
-WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 方向已立的轮结算
-LOSS_BASE: float = 7.0              # 未立方向的 r3 基础损
-LOSS_PER_ROUND: float = 4.0         # 未立方向每多一轮加重(r7≈-23 对齐观测)
+WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 战斗胜时的轮结算
+LOSS_BASE: float = 7.0              # r3 基础损
+LOSS_PER_ROUND: float = 4.0         # 每多一轮加重(r7≈-23 对齐观测)
 # r259 二次校准(139 轮干净差分):lv7 后段观测中位 -23(无方向)/
 # -31(锁线晚的弱队),原 3.5 系数低估后段流血 → 提到 4.0。
-# 方向分桶样本小(4-10)且与「发牌差的队锁线晚」混杂,方向二元模型
-# 保留为 v1;后续样本攒够换「板深×方向×轮次」联合模型。
+# 方向分桶样本小(4-10)且与「发牌差的队锁线晚」混杂;ADR-0308 起
+# 胜负面不再由方向门控(幅度层保留方向无关的轮次递增),后续样本
+# 攒够换「板深×方向×轮次」联合模型。
 #
 # r260(用户指路:节点类型必须分层)——**真实节点序列**来自实跑
 # read_node_sequence 日志(nodeseq):每个位面的节点行是
@@ -124,56 +127,56 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     (99, 36.0, 10.0),
 )
 
-# ADR-0277(批⑪ F1):boss 胜分支——boss Δ池桶仅存 depth≥12/15,
-# P1(depth≤7)结构性不可达 → live_delta_for 恒 None → 旧 boss_delta
-# 恒负无胜 branch,sim 300/300 boss 恒败,hp 类指标天花板被钉死、
-# 成型度与 final_hp 零耦合(批⑪ F1/F2 同根)。修:胜率 = f(成型度
-# rung)。rung0/1/2 = 批③ H3 实测矩阵(boss e0/e1=0、e2=0.25);
-# **rung≥3 零样本**:ADR-0306 裁决——胜率不再拍脑袋沿用 e2 值,
-# 改为 **rung2 桶实测外推**(快照 META battle_rung[2] 的 killed
-# 权威口径胜率;证据标注与兜底见 ``boss_win_p``)。
-# 胜时 Δ = 胜利小额(+2,与 reward/supply 的 EARLY_WIN_DELTA 同档;
-# 「大胜」形态(局69 hp75)待样本后再校准幅度)。
-# ⚠️ P1 初始 HP=80 非 100(cw_sim simulate_p1 `st.hp = 80`;批⑪
-# 自纠记档——按 100 锚算 boss 损失会出伪影)。
-BOSS_WIN_P_BY_ENGINES: tuple[float, ...] = (0.0, 0.0, 0.25)
+# ===== W31 实测节点×轮次胜率阶梯(回退层胜负面单一源;ADR-0308) =====
+# 来源:replay outcomes 语料 plane=1 & killed 非空 & board_before 非空
+# = n=192(killed True 104 / False 88),按 (node_type, round) 统计的
+# killed 胜率——W31 报告(`.debug/temp/currency_war/cw_dev/deep_read/
+# W31_报告.md` §2)。替换旧拍脑袋胜负面:
+#   battle  方向二元门控(方向已立→胜)——胜率从未按节点实测;
+#   encounter 结构性恒败(p=0);
+#   boss    rung 表 (0, 0, 0.25) + rung2 桶外推(ADR-0306,跨节点
+#           外推边界已声明)。
+# 逐轮实测:奖励轮 r1/r2/r8 全胜;battle r3 0.30 / r4 0.29;
+# encounter r7 0.04;boss r9 0.05。未观测的 (node, round) 组合按
+# 节点类型边际值兜底(``NODE_WIN_P_BY_TYPE``)。
+# ⚠️ 数据边界(ADR-0308):语料全部来自旧策略(line_strategy)病局
+# ——「六局同型败的镜像」(进度树 W30/W31 收账判读),阶梯是旧
+# 策略在各种板面下的**边际**胜率,不含成型度条件性(rung 维被
+# 压平);decision_v2 新策略语料攒够后**应重标本表**(届时遥测
+# board_before 补记角色名+星级,W31 §6.1,条件性才可标定)。
+NODE_WIN_P_LADDER: dict[tuple[str, int], float] = {
+    ('battle', 3): 0.30,
+    ('battle', 4): 0.29,
+    ('encounter', 7): 0.04,
+    ('boss', 9): 0.05,
+}
+NODE_WIN_P_BY_TYPE: dict[str, float] = {
+    'reward': 1.0,    # 零战力节点,实测 100% 胜
+    'supply': 1.0,
+    'battle': 0.29,
+    'encounter': 0.04,
+    'boss': 0.05,
+}
+# 胜时小额(与 reward/supply 的 EARLY_WIN_DELTA 同档;「大胜」
+# 形态待样本后校准幅度——W31 语料只有 killed 二值,无胜幅度分层)。
+# ⚠️ P1 初始 HP=80 非 100(simulate_p1 `st.hp = 80`;批⑪ 自纠记档
+# ——按 100 锚算 boss 损失会出伪影)。
 BOSS_WIN_DELTA: int = 2
-# ADR-0306:rung≥3 胜率外推源(rung2 桶实测,killed 权威口径)。
-BOSS_WIN_P_EXTRAPOLATED_MIN_RUNG: int = 3
-# 快照 META 无 rung2 实测胜率时的兜底(与旧表 e2 值一致,防 META
-# 字段缺失时静默归零)。
-BOSS_WIN_P_FALLBACK: float = 0.25
 
 
-def boss_win_p(rung: int) -> float:
-    """ADR-0306:boss 胜分支的逐 rung 胜率(单一取值口)。
+def node_win_p(node_type: str, round_num: int = 0) -> float:
+    """节点胜率单一取值口(ADR-0308;回退层胜负面)。
 
-    - rung<3:``BOSS_WIN_P_BY_ENGINES``(批③ H3 实测矩阵);
-    - rung≥3:**rung2 桶实测外推**——源 = 快照 ``cw_delta_pool_data``
-      META ``battle_rung['2']['win_killed']``(killed 权威口径;
-      语料增量后重生成快照自动跟新,单一源不手维护);META 缺字段
-      时退 ``BOSS_WIN_P_FALLBACK``。
-    外推证据边界(ADR-0306):rung2 实测 n(killed 已知)小样本 +
-    battle→boss 跨节点外推;实机 boss rung≥3 胜局样本积累后应改为
-    直接拟合(登记在检查项 delta_pool_bucket_coverage 的贫困披露)。
+    (node, round) 实测组合优先(``NODE_WIN_P_LADDER``),缺组合退
+    节点类型边际(``NODE_WIN_P_BY_TYPE``)。语料边界见常量注释:
+    旧策略病局镜像、无成型度条件性——新策略语料攒够后重标。
     """
-    if rung < BOSS_WIN_P_EXTRAPOLATED_MIN_RUNG:
-        return BOSS_WIN_P_BY_ENGINES[min(rung, len(BOSS_WIN_P_BY_ENGINES) - 1)]
-    cached = globals().get('_BOSS_WIN_P_EXTRAPOLATED')
-    if cached is None:
-        cached = BOSS_WIN_P_FALLBACK
-        try:
-            from sr_od.application.currency_war.cw_delta_pool_data import (
-                META as _META,
-            )
-            v = ((_META.get('battle_rung') or {}).get('2') or {}) \
-                .get('win_killed')
-            if isinstance(v, (int, float)) and 0.0 <= v <= 1.0:
-                cached = float(v)
-        except ImportError:
-            pass
-        globals()['_BOSS_WIN_P_EXTRAPOLATED'] = cached
-    return cached
+    if node_type in ('reward', 'supply'):
+        return NODE_WIN_P_BY_TYPE[node_type]
+    v = NODE_WIN_P_LADDER.get((node_type, round_num))
+    if v is None:
+        v = NODE_WIN_P_BY_TYPE.get(node_type, 0.0)
+    return v
 
 
 @dataclass
@@ -277,10 +280,17 @@ class _Pool:
 
 def battle_delta(round_num: int, dir_round: int,
                  rng: random.Random) -> int:
-    """普通战斗 HP 变化(校准层;方向二元模型)。"""
+    """普通战斗 HP 变化(校准层回退;ADR-0308)。
+
+    胜负面 = W31 实测阶梯 ``node_win_p('battle', round_num)``
+    (n=192;旧方向二元门控「已立→胜」废弃——胜率从未按节点实测,
+    语料实测方向已立后战斗胜率仍 ~0.29);胜 → ``WIN_DELTAS``,
+    负 → 旧损益幅度层(LOSS_BASE/LOSS_PER_ROUND,25 局轨迹校准,
+    保留)。``dir_round`` 保留签名兼容,不再参与胜负判定。
+    """
     if round_num <= 2:
         return EARLY_WIN_DELTA
-    if dir_round <= round_num:
+    if rng.random() < node_win_p('battle', round_num):
         return rng.choice(WIN_DELTAS)
     loss = LOSS_BASE + LOSS_PER_ROUND * (round_num - 3) \
         + rng.uniform(-3, 4)
@@ -315,7 +325,11 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-_SAMPLER_VERSION: int = 5   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+# v6(ADR-0308,W37):回退层胜负面换 W31 实测节点×轮次胜率阶梯
+# (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
+# boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
+# 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
+_SAMPLER_VERSION: int = 6   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -641,18 +655,17 @@ def _settle_rung(st: GameState) -> int:
 
 def boss_settle_delta(st: GameState, dir_round: int,
                       rng: random.Random) -> int:
-    """ADR-0277:boss Δ池桶不可达时的胜负面结算(胜率=f(成型度))。
+    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=W31 阶梯)。
 
-    成型度 rung = 四体系达成数(`_settle_rung` 单一源口径)——按
-    ``boss_win_p``(ADR-0306:rung≥3 = rung2 桶实测外推)掷胜:
-    胜 → ``BOSS_WIN_DELTA`` 小额;
-    负 → 旧 ``boss_delta`` 档。仅当 ``live_delta_for`` 返 None
-    (无可及桶)时由调用方使用;Δ池可及桶命中时经验分布优先
-    (池是实机真值,sim 规则表是补洞)。
+    胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
+    n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
+    旧 rung 条件胜率(ADR-0277/0306 的 0/0/0.25 + rung2 外推)已被
+    W31 实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
+    条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
+    仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
+    Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
     """
-    rung = _settle_rung(st)
-    p = boss_win_p(rung)
-    if rng.random() < p:
+    if rng.random() < node_win_p('boss', st.round_num):
         return BOSS_WIN_DELTA
     return boss_delta(dir_round, rng)
 
@@ -680,24 +693,39 @@ def sample_node_sequence(rng: random.Random) -> list[str]:
 def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random) -> int:
     """按节点类型的 HP 变化(r260 分层;ADR-0292 起 reward/supply 的
-    **池回退档**——Δ池可及时结算侧优先池采样):
+    **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
+    节点回退档胜负面 = W31 实测阶梯 ``node_win_p``):
     reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
     池真值同分布);
-    battle → 方向二元模型;
-    encounter → boss 档 × ENCOUNTER_MULT(档位不可观,均值近似);
-    boss → boss 档。"""
+    battle → 阶梯掷胜(W31:n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
+    encounter → 阶梯掷胜(0.04),胜 +2/负 boss 档 × ENCOUNTER_MULT
+    (档位不可观,均值近似);
+    boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。"""
     if node in ('reward', 'supply'):
         return EARLY_WIN_DELTA
     if node == 'encounter':
+        if rng.random() < node_win_p('encounter', round_num):
+            return EARLY_WIN_DELTA
         return boss_delta(dir_round, rng, multiplier=ENCOUNTER_MULT)
     if node == 'boss':
+        if rng.random() < node_win_p('boss', round_num):
+            return BOSS_WIN_DELTA
         return boss_delta(dir_round, rng)
     return battle_delta(round_num, dir_round, rng)
 
 
 def _direction_established(session: StrategySession) -> bool:
-    """方向判据 = 策略自身认领(锁线/桥),与遥测 target 字段一致。"""
-    return bool(session.locked_line or session.bridge_id)
+    """方向判据 = 策略自身认领(锁线/桥/意向锁定),与遥测 target 字段一致。
+
+    W35 载体批:decision_v2 的方向=``v3_intention`` 意向分层锁定(裁决
+    「locked_line 派生改意向分层输入」);旧臂(line_v2)仍读 locked_line/
+    bridge_id——双注册 A/B 两臂同判据覆盖。
+    """
+    if session.locked_line or session.bridge_id:
+        return True
+    ist = getattr(session, 'v3_intention', None)
+    return bool(ist is not None and getattr(ist, 'phase', '') == 'locked'
+                and getattr(ist, 'locked_comp', ''))
 
 
 def _board_factions_of(deployed) -> dict[str, int]:

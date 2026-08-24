@@ -47,10 +47,11 @@
   anchor_seed_portability_n600 / rare_metric_min_n /
   adr0266_ab_guard / mc_faction_calib;
 - 批㊲(ADR-0306 对抗审计):delta_pool_poverty_selfconsistency
-  (贫困披露↔池内容双向结构对拍)/ boss_win_p_cache_freshness
-  (外推值进程内缓存一致性)/ boss_rung_corpus_sample_gate(boss
+  (贫困披露↔池内容双向结构对拍)/ boss_rung_corpus_sample_gate(boss
   rung 语料样本门);随批加固 ab_verdict_claim 词表反转(默认辖)
-  + paired_prefork_wave_identity 扩全波。
+  + paired_prefork_wave_identity 扩全波。(boss_win_p_cache_
+  freshness 随 ADR-0308 废除——rung 外推机制已被 W31 节点胜率
+  阶梯替换,无进程内缓存可查。)
 - 批37(难度读链翻转判读鲁棒性,commit 09cf8296):
   difficulty_curve_live_contamination(逐帧真读/简报兜底值混入
   难度曲线的污染判读守卫——live=False 恒值帧与 live 真值并存时,
@@ -1814,45 +1815,43 @@ def _rung_of_row(row: dict) -> int:
     return n
 
 
-def check_boss_win_calibration(ledgers: list[list[dict]]) -> dict:
-    """批⑪ F1 验收(boss 胜率校准;ADR-0277)。
+#: boss 恒败回归判定的 n 地板(ADR-0308):W31 阶梯 boss 胜率
+#: ~0.05,小于此轮数的 0 胜是抽样噪声(0.95^n),不判回归。
+_BOSS_WIN_MIN_ROUNDS: int = 100
 
-    判据(判据表原文):300 局 boss 胜率 >0 且随 depth 单调。
+
+def check_boss_win_calibration(ledgers: list[list[dict]]) -> dict:
+    """批⑪ F1 验收(boss 胜率校准;ADR-0277 → ADR-0308 修订)。
+
     - 胜 = boss 轮 sim.delta ≥ 0(outcomes.killed 同极性);
-    - 违规 ①:boss 轮存在但 0 胜(结构性恒败回归——胜分支失效);
-    - 违规 ②:可信深度桶(n≥5)间胜率随深度递减(胜率=f(成型度)
-      且成型度与板深正相关 → 聚合胜率应单调不减;n<5 薄桶不判,
-      声明数据边界)。
+    - 违规 ①:boss 轮 ≥ ``_BOSS_WIN_MIN_ROUNDS`` 且 0 胜(结构性
+      恒败回归——胜分支失效)。n 地板 = ADR-0308 修订:回退层
+      胜负面换 W31 阶梯后 boss 实测胜率仅 ~0.05,小批(如 smoke
+      n=25)全负是**抽样噪声不是回归**(0.95^25≈28%)——原「存在
+      即判」判据在该量级下恒假红;n≥100 时 0 胜概率 <1%,恢复
+      判定力;
+    - 旧违规 ②(胜率随深度单调)已删(ADR-0308):W31 阶梯的
+      胜负面与深度/成型度**无条件性**(语料是旧策略病局镜像,
+      条件性未标定);池侧 boss 深度桶也无单调先验——保留该
+      判据 = 把已废弃的 ADR-0277 设计(胜率=f(成型度))当真值
+      锁,合法校准变更必假红。
     """
     wins = tot = 0
-    by_depth: dict[int, list[int]] = {}
     for rows in ledgers:
         for row in rows:
             s = row.get('sim') or {}
             if s.get('node') != 'boss':
                 continue
-            dep = s.get('depth')
-            win = 1 if (s.get('delta') or 0) >= 0 else 0
-            wins += win
+            wins += 1 if (s.get('delta') or 0) >= 0 else 0
             tot += 1
-            if dep is not None:
-                b = min(int(dep) // _POOL_DEPTH_BUCKET_W, 5) \
-                    * _POOL_DEPTH_BUCKET_W
-                by_depth.setdefault(b, [0, 0])
-                by_depth[b][0] += win
-                by_depth[b][1] += 1
     issues: list[str] = []
-    if tot > 0 and wins == 0:
+    if tot >= _BOSS_WIN_MIN_ROUNDS and wins == 0:
         issues.append(f'boss {tot} 轮 0 胜(结构性恒败回归,'
-                      f'ADR-0277 胜分支失效)')
-    ok = sorted((b, w, n) for b, (w, n) in by_depth.items() if n >= 5)
-    for (b1, w1, n1), (b2, w2, n2) in zip(ok, ok[1:], strict=False):
-        if w2 / n2 < w1 / n1:
-            issues.append(
-                f'深度桶{b1} 胜率{w1 / n1:.2f} > 桶{b2} '
-                f'{w2 / n2:.2f}(胜率随深度应单调不减)')
+                      f'ADR-0308 胜分支失效)')
     return {'violations': len(issues), 'boss_rounds': tot,
-            'boss_wins': wins, 'issues': issues[:5]}
+            'boss_wins': wins,
+            'min_rounds': _BOSS_WIN_MIN_ROUNDS,
+            'issues': issues[:5]}
 
 
 def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
@@ -2085,17 +2084,26 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # _SAMPLER_VERSION 4→5 + boss 胜分支 rung≥3 胜率改 rung2 桶实测外推
 # (0.25→0.667)——**校准修正非策略变化**,hp_ge_60 0.127→0.137 上移
 # 属预期;历史报告对旧池重放须用 v4 指纹导出 JSON 快照。
+# 旧锚(886f8a39,ADR-0306 批)已失效:ADR-0308(W37,W31 节点×
+# 轮次胜率阶梯进回退层)_SAMPLER_VERSION 5→6——回退层胜负面换
+# 实测边际(旧策略病局语料):hp 类指标**下移属预期**(boss 回退
+# 胜率 rung2 0.25/rung≥3 0.667 → 0.05;battle 回退 ~0.29;此前
+# rung 外推本身是跨节点拍脑袋外推,高估);策略侧指标零漂移
+# (engines2/recipe5/refreshes 逐位持平 = 只有结算校准变了,
+# 决策行为面没动)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': '886f8a39c87c8c6b',
-    'recorded': '2026-08-25(ADR-0306 Δ池扩容批:v5 池+胜率外推,'
+    'pool_fingerprint_prefix': 'fd48f13568fae796',
+    'recorded': '2026-08-24(ADR-0308 W37:v6 池+W31 节点胜率阶梯,'
                 '校准修正换锚,n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.39,       # 旧 0.407(066c4185;池指纹变更重记)
-        'avg_final_hp': 35.68,        # 旧 33.98
-        'hp_ge_60': 0.137,            # 旧 0.127(向实机 32% 收敛中)
-        'battle_losses_le_2': 0.167,  # 旧 0.127
-        'recipe5_by_r6': 0.71,        # 旧 0.713
-        'avg_refreshes': 3.87,        # 旧 4.003
+        'engines2_by_r6': 0.39,       # 旧 0.39(886f8a39;策略面零漂移)
+        'avg_final_hp': 32.08,        # 旧 35.68(hp 类下移=校准修正预期)
+        'hp_ge_60': 0.09,             # 旧 0.137(同上;实机对照口径
+                                      # 需用 W31 同源语料胜率,勿直接
+                                      # 与旧锚串比)
+        'battle_losses_le_2': 0.1,    # 旧 0.167
+        'recipe5_by_r6': 0.71,        # 旧 0.71(策略面零漂移)
+        'avg_refreshes': 3.87,        # 旧 3.87(策略面零漂移)
     },
 }
 
@@ -3680,54 +3688,8 @@ def check_delta_pool_poverty_selfconsistency(pool_map: dict,
                     '红 = 披露断裂/格式漂移'}
 
 
-#: boss_win_p 兜底值镜像(同步自 cw_sim.BOSS_WIN_P_FALLBACK;检查
-#: 模块不 import cw_sim,依赖方向纪律——值漂移由双向锁暴露)。
-_BOSS_WIN_P_FALLBACK_MIRROR: float = 0.25
-
-
-def check_boss_win_p_cache_freshness(
-        cached_value: float | None,
-        meta_win_killed: float | None) -> dict:
-    """批㊲ 检查项:boss_win_p 进程内缓存 vs 当前 META 的一致性(条件)。
-
-    背景(ADR-0306 件2 缓存边界):``cw_sim.boss_win_p`` 的 rung≥3
-    外推值**首次调用后固化**在模块级 ``_BOSS_WIN_P_EXTRAPOLATED``
-    ——批㊲ 探针实证(batch37_sim_probe):进程内把 META
-    ``battle_rung['2']['win_killed']`` 换成 0.5 后,``boss_win_p(3)``
-    仍返 0.6667。长进程(MCP server 内工具/长测试会话)在快照
-    重生成后续用旧外推值,**静默**。衍生缺口:JSON 快照回放
-    (``resolve_pool(Path)``)只换 pool_map,掷胜率不随 JSON 走
-    ——「重放=seed+指纹」承诺对 boss 掷胜分支失效(指纹不含
-    boss_win_p)。
-
-    判据:``cached_value`` 非 None 且 ``meta_win_killed`` 非 None 时
-    两值必须一致;META 缺字段时缓存应 == 兜底 0.25(镜像值,
-    漂移由双向锁暴露);缓存未建(None)只披露不辖。调用方
-    (锁测试/批报告接线)从 ``cw_sim`` 模块 globals 取缓存值与
-    当前 META 值传入——本检查不 import cw_sim。
-    """
-    violations: list[str] = []
-    note = ''
-    if cached_value is None:
-        note = '缓存未建(boss_win_p 尚未被调用)——不辖'
-    elif meta_win_killed is None:
-        if abs(float(cached_value)
-               - _BOSS_WIN_P_FALLBACK_MIRROR) > 1e-9:
-            violations.append(
-                f'META 缺 rung2 胜率字段但缓存 {cached_value}≠兜底 '
-                f'{_BOSS_WIN_P_FALLBACK_MIRROR}(fallback 语义回归)')
-        else:
-            note = 'META 缺字段,缓存=兜底(合法 fallback)'
-    elif abs(float(cached_value) - float(meta_win_killed)) > 1e-9:
-        violations.append(
-            f'缓存 {cached_value} ≠ META {meta_win_killed}'
-            f'(boss_win_p 固化后 META 已变:快照重生成/替换——长进程'
-            f'续用旧外推值,须重启进程或清缓存;JSON 回放场景掷胜率'
-            f'不随池走,重放不可复现,批㊲)')
-    else:
-        note = '一致'
-    return {'violations': len(violations), 'detail': violations,
-            'cached': cached_value, 'meta': meta_win_killed, 'note': note}
+#: (批㊲ boss_win_p_cache_freshness 已随 ADR-0308 废除:rung 外推
+#: 机制被 W31 节点胜率阶梯替换,无进程内缓存可查。)
 
 
 def check_boss_rung_corpus_sample_gate(
