@@ -65,6 +65,7 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     LevelUp,
     SellBench,
+    bench_occupied,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.strategies.default_strategy import (
@@ -471,14 +472,16 @@ class LineStrategy(DefaultCwStrategy):
     @staticmethod
     def _visible_names(state: GameState) -> list[str]:
         names = [c.name for c in (state.shop or []) if c.name]
-        names += [b.char_id for b in (state.bench or []) if b.char_id]
+        names += [b.char_id for b in (state.bench or [])
+                  if b is not None and b.char_id]
         names += [d.char_id for d in (state.deployed or [])
                   if getattr(d, 'char_id', '')]
         return names
 
     @staticmethod
     def _owned_names(state: GameState) -> set[str]:
-        s = {b.char_id for b in (state.bench or []) if b.char_id}
+        s = {b.char_id for b in (state.bench or [])
+         if b is not None and b.char_id}
         s |= {d.char_id for d in (state.deployed or [])
               if getattr(d, 'char_id', '')}
         return s
@@ -772,7 +775,7 @@ class LineStrategy(DefaultCwStrategy):
         # 追加卖散件腾位——预囤门 r254 因 bench 满而关闭的
         # 窗口重开(13 局实锤:bench 7-8 是常态,P2 core 囤不进)
         if (state.plane == 1 and state.round_num >= 7
-                and len(state.bench or []) > _P2_PRECACHE_MAX_BENCH):
+                and bench_occupied(state.bench or []) > _P2_PRECACHE_MAX_BENCH):
             sells += self._sell_scatter_for_precache(state, session)
         st2 = self._apply_sells(state, sells)
         actions.extend(sells)
@@ -989,10 +992,12 @@ class LineStrategy(DefaultCwStrategy):
             if idx is None or idx >= len(st2.bench):
                 continue
             bc = st2.bench[idx]
+            if bc is None:
+                continue   # ADR-0316 槽位表空槽
             ch = CHARACTERS.get(bc.char_id)
             cost = ch.cost if (ch and ch.cost) else 3
             st2.gold += sell_refund(bc.star, cost)
-            st2.bench.pop(idx)
+            st2.bench[idx] = None   # 槽位置 None(ADR-0316;不 pop 移位)
         return st2
 
     def _maybe_refresh(self, state: GameState, session: StrategySession,
@@ -1052,6 +1057,8 @@ class LineStrategy(DefaultCwStrategy):
         from sr_od.application.currency_war.cw_chars import CHARACTERS
         best: tuple[int, int] | None = None   # (bench_idx, refund)
         for i, b in enumerate(state.bench):
+            if b is None:
+                continue
             if not b.char_id or b.char_id in protect:
                 continue
             if self._round_sell_blocked(b, state, session):
@@ -1127,8 +1134,9 @@ class LineStrategy(DefaultCwStrategy):
         if state.gold - carry_card.cost < floor:
             return []   # 金不足(不破调用方地板/息档)
         bench = state.bench or []
-        if len(bench) < 9:
-            return []   # 未满 → 常规买通道可达
+        from sr_od.application.currency_war.cw_state import bench_occupied
+        if bench_occupied(bench) < 9:
+            return []   # 未满 → 常规买通道可达(ADR-0316 占用数口径)
         # ③ 直接卖通道可用(off-target 可卖件存在)→ 不降保护集
         #    (口径=同轮 economy 的 off_target cap1 卖在 seg0 已提案;
         #    但战力象限(boss_breaker cap2)走的也是同判据——本门
@@ -1138,6 +1146,8 @@ class LineStrategy(DefaultCwStrategy):
         protect = self._protect_set(session)
         close = set(state.board.keys())
         for b in bench:
+            if b is None:
+                continue
             if (b.char_id and b.char_id not in protect
                     and b.faction not in close
                     and not self._round_sell_blocked(b, state, session)
@@ -1156,7 +1166,7 @@ class LineStrategy(DefaultCwStrategy):
         def _copies(b) -> int:
             n = sum(getattr(x, 'star', 1) or 1
                     for x in (state.bench or [])
-                    if x.char_id == b.char_id)
+                    if x is not None and x.char_id == b.char_id)
             return n + sum(getattr(d, 'star', 1) or 1
                            for d in (state.deployed or [])
                            if getattr(d, 'char_id', '') == b.char_id)
@@ -1167,6 +1177,8 @@ class LineStrategy(DefaultCwStrategy):
         # seed_cands = 不腾则 carry 死锁,豁免让位给 carry)
         _seed_cands: list[tuple[tuple, int, object]] = []
         for i, b in enumerate(bench):
+            if b is None:
+                continue
             if not b.char_id or b.char_id == line.carry:
                 continue
             if self._round_sell_blocked(b, state, session):
@@ -1217,6 +1229,8 @@ class LineStrategy(DefaultCwStrategy):
         close = set(state.board.keys())
         out: list = []
         for i, bc in enumerate(state.bench):
+            if bc is None:
+                continue
             if len(out) >= cap:
                 break
             if bc.char_id and bc.char_id not in protect \
@@ -1274,7 +1288,7 @@ class LineStrategy(DefaultCwStrategy):
             return False
         copies = sum(getattr(b, 'star', 1) or 1
                      for b in (state.bench or [])
-                     if b.char_id == bc.char_id)
+                     if b is not None and b.char_id == bc.char_id)
         copies += sum(getattr(d, 'star', 1) or 1
                       for d in (state.deployed or [])
                       if getattr(d, 'char_id', '') == bc.char_id)
@@ -1325,10 +1339,16 @@ class LineStrategy(DefaultCwStrategy):
         protect = self._protect_set(session)
         out: list = []
         for i, b in enumerate(state.bench or []):
+            if b is None:
+                continue
             if (state.plane != 1
                     or state.round_num < _P2_PRECACHE_ROUND):
                 break
-            if len(state.bench) - len(out) <= _P2_PRECACHE_MAX_BENCH:
+            from sr_od.application.currency_war.cw_state import (
+                bench_occupied,
+            )
+            if bench_occupied(state.bench) - len(out) \
+                    <= _P2_PRECACHE_MAX_BENCH:
                 break
             if not b.char_id or b.char_id in protect:
                 continue
@@ -1361,6 +1381,8 @@ class LineStrategy(DefaultCwStrategy):
         # 可卖候选(退款降序——大退款优先)
         candidates: list[tuple[int, int]] = []   # (refund, bench_idx)
         for i, bc in enumerate(state.bench):
+            if bc is None:
+                continue
             if bc.char_id in protect or bc.faction in close \
                     or not bc.char_id:
                 continue
@@ -1465,8 +1487,10 @@ class LineStrategy(DefaultCwStrategy):
         """
         if not card.name or state.plane != 1:
             return False
-        if len(state.bench or []) >= 9:
-            return False   # r408:满员不种(ADR-0267 F1 容量门)
+        # r408:满员不种(ADR-0267 F1 容量门;ADR-0316 占用数口径)
+        from sr_od.application.currency_war.cw_state import bench_occupied
+        if bench_occupied(state.bench or []) >= 9:
+            return False
         if session is not None \
                 and getattr(session, 'v2_round_key', None) \
                 == (state.plane, state.round_num) \
@@ -1555,6 +1579,8 @@ class LineStrategy(DefaultCwStrategy):
                 return False
         owned_factions = set(state.board.keys())
         for b in (state.bench or []):
+            if b is None:
+                continue
             if b.faction and b.faction != '?':
                 owned_factions.add(b.faction)
         # r368(局49 判读,r1 线外全买根因):板面空+bench 空(开局
@@ -1607,7 +1633,8 @@ class LineStrategy(DefaultCwStrategy):
         """
         if not card.name:
             return False
-        if any(b.char_id == card.name for b in (state.bench or [])):
+        if any(b is not None and b.char_id == card.name
+               for b in (state.bench or [])):
             return True
         return any(getattr(d, 'char_id', '') == card.name
                    for d in (state.deployed or []))
@@ -1662,7 +1689,7 @@ class LineStrategy(DefaultCwStrategy):
             return False
         copies = sum(getattr(b, 'star', 1) or 1
                      for b in (state.bench or [])
-                     if b.char_id == card.name)
+                     if b is not None and b.char_id == card.name)
         copies += sum(getattr(d, 'star', 1) or 1
                       for d in (state.deployed or [])
                       if getattr(d, 'char_id', '') == card.name)
@@ -1673,8 +1700,9 @@ class LineStrategy(DefaultCwStrategy):
             return False
         # bench 容量:9 槽(r240 off-by-one 修:>8 才拒,
         # 即最多买到 9 满;原 >=8 在卖 1 张后 8 张仍触界
-        # → r6 死锁没解干净)
-        return len(state.bench or []) + planned_buys < 9
+        # → r6 死锁没解干净)。ADR-0316:占用数口径。
+        from sr_od.application.currency_war.cw_state import bench_occupied
+        return bench_occupied(state.bench or []) + planned_buys < 9
 
     @staticmethod
     def _recover_line_from_board(state: GameState) -> str | None:
@@ -1781,7 +1809,8 @@ class LineStrategy(DefaultCwStrategy):
         if not fac or fac == '?':
             return False
         owned = set(state.board.keys())
-        owned |= {b.faction for b in (state.bench or [])
+        owned |= {b.faction for b in (state.bench or []) if b is not None
+
                   if b.faction and b.faction != '?'}
         return fac in owned
 
@@ -1804,7 +1833,7 @@ class LineStrategy(DefaultCwStrategy):
             return False
         if session.v2_state and session.v2_state[1]:
             return False    # 应急不囤
-        if len(state.bench or []) > _P2_PRECACHE_MAX_BENCH:
+        if bench_occupied(state.bench or []) > _P2_PRECACHE_MAX_BENCH:
             return False
         line = line_of(session.locked_line) if session.locked_line else None
         if line is None:

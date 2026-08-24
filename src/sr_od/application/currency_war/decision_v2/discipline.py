@@ -21,9 +21,13 @@
   地板承载,不再走独立动作分支;
 - 同轮互斥/种子年龄豁免(r408/ADR-0289 §5)→ 纯谓词移植(不依赖线库)。
 
-行为纪律(strategy_v4 逐条):
+行为纪律(strategy_v4 逐条;W51 语义修复批对齐 R1 审查 leader 裁决,
+报警语义 why 详 ADR-0313,carry_gate 弱序/变现通道详 ADR-0314):
 - **hp 报警语义**(点4/[W10 D8-5]):掉血三臂判据是**报警不是触发**——
-  报警激活处置梯度(弃息 D 保血),**永不单独触发 ALL IN**;
+  报警激活处置梯度(①自然凑羁绊上界 1 个战斗节点 → ②弃息 D 保血),
+  **永不单独触发 ALL IN**;位面末最后一战的 ALL IN 由
+  ``plane_last_battle`` 授权([18]——报警态下位面末同样开通,
+  报警只是不作为 ALL IN 的触发条件);
 - **位面末 ALL IN 限定**(点7/[18]):「花光提质量」仅位面末最后一战
   (boss 节点+轮=位面节点数)——``allin_window`` 是唯一把地板清零的路径;
 - **保血通道**(点12):遭遇前战力不足+战斗语义掉血趋势 → 弃息 D 保血
@@ -49,6 +53,7 @@ from sr_od.application.currency_war.cw_state import (
     BuyCard,
     GameState,
     SellBench,
+    bench_occupied,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -67,7 +72,8 @@ from sr_od.application.currency_war.decision_v2.registry import (
 def star_weighted_copies(name: str, state: GameState) -> int:
     """同名星级加权副本数(bench+deployed;2★=2 份,3★=3 份)。"""
     n = sum(getattr(b, 'star', 1) or 1
-            for b in (state.bench or []) if b.char_id == name)
+            for b in (state.bench or []) if b is not None
+            and b.char_id == name)
     n += sum(getattr(d, 'star', 1) or 1
              for d in (state.deployed or [])
              if getattr(d, 'char_id', '') == name)
@@ -127,8 +133,8 @@ def engine_seed_wants(card, state: GameState,
     """
     if not card.name or state.plane != 1:
         return False
-    if len(state.bench or []) >= BENCH_CAPACITY:
-        return False   # r408:满员不种(ADR-0267 F1 容量门)
+    if bench_occupied(state.bench or []) >= BENCH_CAPACITY:
+        return False   # r408:满员不种(ADR-0267 F1 容量门;ADR-0316 占用数)
     if session is not None and in_round_sold(card.name, state, session):
         return False
     if has_same_name_copy(card, state):
@@ -150,7 +156,8 @@ def has_same_name_copy(card, state: GameState) -> bool:
     """r383b:已拥有同名卡(bench/deployed 任一)→ 副本素材真。"""
     if not card.name:
         return False
-    if any(b.char_id == card.name for b in (state.bench or [])):
+    if any(b is not None and b.char_id == card.name
+           for b in (state.bench or [])):
         return True
     return any(getattr(d, 'char_id', '') == card.name
                for d in (state.deployed or []))
@@ -226,7 +233,7 @@ def pair_wants(card, state: GameState,
             return False
     owned_factions = set(state.board.keys())
     for b in (state.bench or []):
-        if b.faction and b.faction != '?':
+        if b is not None and b.faction and b.faction != '?':
             owned_factions.add(b.faction)
     if not owned_factions or (state.plane == 1 and state.round_num <= 2):
         # 冷启动:引擎件 ∪ 同名副本 ∪ 方向阵营件(classify_buy 单一源)
@@ -266,39 +273,69 @@ def copy_swap_useless(card, state: GameState,
 
 # ===== 掉血报警三臂(点4〔修A2 勿动〕;战斗语义,非战斗节点不计入不重置)=====
 
+#: [19]② 血量安全边际低线:hp < 此值 = 报警档([W10 D8-5] hp<40 语义
+#: 同源)——掉血报警分支里血边际已低时处置梯度直接生效(跳过①自然窗)
+BLOOD_MARGIN_LOW_HP: int = 40
+#: 处置梯度①「自然凑羁绊」的自然补强窗上界(战斗节点数;strategy_v4
+#: 点4 S4「上界 1 轮」——1 个战斗节点自然补强未达标 → 直入②弃息 D)
+BLOOD_GRADIENT_NATURAL_BATTLES: int = 1
+
 
 @dataclass
 class BloodAlarmTracker:
     """掉血三臂判据的跨步记忆(挂 session.v3_alarm;重启丢 session 保守重置)。
 
-    - ``recent_losses``:(全局节点号, 战斗净掉血)滚动窗——②滚动 3 节点
-      累计 ≥20(急性)/③滚动 5 节点累计 ≥30(慢性漂移);
+    - ``recent_losses``:(全局节点号, 战斗净掉血)滚动窗——窗口单位=
+      **连续战斗节点**(W51 语义修复:战斗节点计数器,非日历轮;点4
+      「3 轮内」按战斗语义读作「最近 3 个战斗节点」);②最近 3 个
+      战斗节点累计 ≥20(急性)/③最近 5 个战斗节点累计 ≥30(慢性漂移);
+      **跨位面重置**(慢性臂横跨整个位面的按轮漂移根修);
     - ``consec_battle_fails``:①连续 2 场战斗失败;
+    - ``alarm_battles``:处置梯度计时——报警激活期间累计喂入的战斗
+      节点数(=1 → ①自然补强窗内;>1 → 窗耗尽未达标;报警解除清零);
     - 非战斗节点:不入窗、不清臂(点4 冻结语义)。
     """
 
     recent_losses: deque = field(default_factory=lambda: deque(maxlen=5))
     consec_battle_fails: int = 0
+    alarm_battles: int = 0
+    plane: int | None = None
 
     _BATTLE_NODES: frozenset[str] = frozenset(
-        {'battle', '遭遇', 'boss', '精英'})
+        {'battle', '普通战斗', 'boss', '精英', '遭遇'})
 
     def record(self, node_type: str, hp_before: int, hp_after: int,
-               t: int) -> None:
-        """on_round_end 喂入(结算真值;hp_after 为空帧跳过)。"""
+               t: int, plane: int | None = None) -> None:
+        """on_round_end 喂入(结算真值;hp_after 为空帧跳过)。
+
+        ``plane`` 传入时做跨位面重置判定(位面变更 → 三臂全清,
+        不带旧位面的掉血趋势进新位面)。
+        """
+        if plane is not None and plane != self.plane:
+            self.plane = plane
+            self.recent_losses.clear()
+            self.consec_battle_fails = 0
+            self.alarm_battles = 0
         if node_type not in self._BATTLE_NODES:
             return   # 非战斗节点不计入也不重置任何一臂
         loss = max(0, hp_before - hp_after)
         self.recent_losses.append((t, loss))
-        # ①连续失败代理:单场净掉血 ≥10 视为该节点实际打输(r246 口径)
+        # ①连续失败代理:单场净掉血 ≥10 视为该节点实际打输(r246 口径;
+        # W51 标注:「失败」是代理语义——高难打赢但大掉血场也计入,
+        # 阈值属 sim 校准域,实机语料积累后校准)
         if loss >= 10:
             self.consec_battle_fails += 1
         else:
             self.consec_battle_fails = 0
+        # 处置梯度①计时(S4 上界 1 轮):报警激活期间累计的战斗节点数
+        if self.alarm_active():
+            self.alarm_battles += 1
+        else:
+            self.alarm_battles = 0
 
     def alarm_active(self) -> bool:
-        """三臂并集:①连续 2 场战斗失败;②滚动 3 节点累计 ≥20;
-        ③滚动 5 节点累计 ≥30(阈值=设计推断,sim 校准,W10 摆动域)。"""
+        """三臂并集:①连续 2 场战斗失败;②最近 3 个战斗节点累计 ≥20;
+        ③最近 5 个战斗节点累计 ≥30(阈值=设计推断,sim 校准,W10 摆动域)。"""
         if self.consec_battle_fails >= 2:
             return True
         losses = [loss for _t, loss in self.recent_losses]
@@ -334,7 +371,8 @@ class DisciplineView:
         reg = registry
         if self.allin:
             # [18] 位面末最后一战 ALL IN:地板全清零(唯一路径;hp 报警
-            # 不触发 ALL IN——alarm 路径永远到不了这里)
+            # 不是 ALL IN 的触发——报警态下此窗开通是位面末授权,
+            # 非「报警触发」)
             reg = replace(reg, interest_floor=0, war_floor=0,
                           rebirth_floor=0, boss_floor=0,
                           refresh_min_gold=0)
@@ -376,8 +414,9 @@ def assess_discipline(state: GameState, session: StrategySession,
     语义重接要点(strategy_v4 点4/点7/点12):
     - 应急(hp≤emergency_hp):rebirth 地板由层4 ``_active_floor`` 分派
       (is_emergency 优先),此处只标 coverage/mode;
-    - 掉血报警(三臂):**报警不是触发**——处置=war 模式+保血通道
-      (硬节点放行 refresh 弃息 D),不动地板、不 ALL IN;
+    - 掉血报警(三臂):**报警不是触发**——处置梯度①自然补强窗
+      (mode=economy)→②弃息 D 保血(war+硬节点放行 refresh);
+      不动地板;ALL IN 仅当位面末(``plane_last_battle``,[18] 授权);
     - boss_breaker:P1 r≥5 遭遇预备窗/boss 节点,war 模式+破息地板 10
       (连胜 EV 5);
     - ALL IN:仅 ``plane_last_battle``([18] 位面末最后一战限定)。
@@ -388,11 +427,28 @@ def assess_discipline(state: GameState, session: StrategySession,
                               allin=plane_last_battle(state, session))
     tracker = getattr(session, 'v3_alarm', None)
     if tracker is not None and tracker.alarm_active():
-        # 点12 保血通道:遭遇/boss 前弃息 D 保血(报警语义:处置梯度,
-        # 非 ALL IN——allin 恒 False 由本分支字面保证)
+        # 处置梯度三步(strategy_v4 点4 S4;W51 补全时限与血边际):
+        # ①自然凑羁绊——上界 1 个战斗节点(报警激活后首个战斗节点窗
+        # 内 mode=economy,不弃息,给自然补强机会);
+        # 窗耗尽未达标(alarm_battles>BLOOD_GRADIENT_NATURAL_BATTLES)
+        # 或血边际已低([19]② hp<BLOOD_MARGIN_LOW_HP——血 <40 本就是
+        # 报警档,梯度直接生效)→ ②弃息 D 保血(war+硬节点放行
+        # refresh,点12 保血通道);
+        # ③位面末最后一战 ALL IN(allin=plane_last_battle——[18]/点4
+        # 授权;报警不是 ALL IN 的触发,位面末才是)。
+        # [19]③「来牌顺不顺」未消费(欠账声明:定性变量,sim 层无载体,
+        # 挂实机语料后补)。
         hard = node in ('encounter', 'boss', '遭遇')
-        return DisciplineView(coverage='blood_alarm', mode='war',
-                              allin=False, allow_refresh_in_war=hard)
+        escalated = (tracker.alarm_battles > BLOOD_GRADIENT_NATURAL_BATTLES
+                     or state.hp < BLOOD_MARGIN_LOW_HP)
+        if escalated:
+            return DisciplineView(
+                coverage='blood_alarm', mode='war',
+                allin=plane_last_battle(state, session),
+                allow_refresh_in_war=hard)
+        return DisciplineView(
+            coverage='blood_alarm', mode='economy',
+            allin=plane_last_battle(state, session))
     boss_window = (node in registry.boss_round_node_types
                    or (state.plane == 1 and state.round_num >= 5))
     if boss_window:
@@ -410,6 +466,17 @@ def assess_discipline(state: GameState, session: StrategySession,
 # ===== carry_gate(bench 满腾位买意向核心;v1 r416 语义重接)=====
 
 
+def _line_protect_set(comp) -> set[str]:
+    """意向线正料保护集(核心+共享+替班+引擎件;carry_gate 与金不足
+    变现通道共用单一源——防两处各自派生漂移)。"""
+    protect = set(comp.core_chars) | set(comp.shared_chars)
+    for p in comp.substitute_plan:
+        if p.get('替班者'):
+            protect.add(p['替班者'])
+    protect |= engine_char_names()
+    return protect
+
+
 def carry_gate_actions(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry,
                        bought: set[str] | None = None) -> list:
@@ -419,8 +486,17 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     (``intention_core`` of COMP_LIBRARY v2 锁定套)。门(全过才腾位):
     ①收益域 P1 r≤carry_gate_max_round;②意向锁定且核心在店、未持有、
     金足(不破 war 地板);③bench 满(≥9)且无直接可卖件(保护集外
-    且非近轮种子);④降保护集挑 off-line 价值最低件(弱序:非保护>
-    非核心>副本冗余;3合1 完整份不动);⑤卖出件入同轮已卖集不回买。
+    且非近轮种子);④降保护集挑 off-line 价值最低件(弱序:非保护 >
+    副本冗余/超上限;3合1 完整份不动;r416b absent_mergeable
+    [上场份缺席的 ≥2 加权副本]弱序等同超上限冗余=最弱级;种子
+    2 轮窗件单列兜底——唯一可卖=种子时豁免放行防 carry 死锁,
+    仍选最弱,ADR-0289 §5 年龄保护在降保护集阶段让位于 carry);
+    ⑤卖出件入同轮已卖集不回买。
+
+    保护集口径(W51 声明修正,与实际实现对齐):**意向线正料派生**
+    = core_chars ∪ shared_chars ∪ 替班者 ∪ 引擎件(engine_char_names)
+    ——非 ``session.v3_hoard`` 全集(后者含跨线骨架/装备材料,口径
+    更宽);跨线囤件不在保护集,可被降级卖出腾位买核心。
     """
     ist = getattr(session, 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked':
@@ -448,36 +524,49 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     if state.gold - carry_card.cost < registry.war_floor:
         return []
     bench = state.bench or []
-    if len(bench) < BENCH_CAPACITY:
-        return []   # 未满 → 常规买通道可达
+    if bench_occupied(bench) < BENCH_CAPACITY:
+        return []   # 未满 → 常规买通道可达(ADR-0316:容量=占用数)
     # 保护集 = 意向线核心+共享+替班(正料不卖)+引擎件(种子)
-    protect = set(comp.core_chars) | set(comp.shared_chars)
-    for p in comp.substitute_plan:
-        if p.get('替班者'):
-            protect.add(p['替班者'])
-    protect |= engine_char_names()
+    protect = _line_protect_set(comp)
     # ③ 直接卖通道可用 → 不降保护集
     board_factions = set(state.board.keys())
     for b in bench:
-        if (b.char_id and b.char_id not in protect
+        if (b is not None and b.char_id and b.char_id not in protect
                 and b.faction not in board_factions
                 and not round_sell_blocked(b, state, session)
                 and not seed_age_blocked(b, state, session)):
             return []
     # ④ 降保护集:off-line 价值最低件
+    # r416b absent_mergeable:该角色上场份缺席(deployed 无同名)且
+    # 架内加权副本 ≥2 → 「合成份缺席场」冗余——纯 bench 合成素材,
+    # 卖 1 份仍留副本,弱序等同超上限冗余(最弱级)。
+    # (W51 适配说明:v1 原条件「carry 在场」与本门②的「carry 未持有」
+    # 前置互斥=死码;按 r416b 意图(缺席场的冗余副本)改判「该角色
+    # 上场份缺席」,依据 ADR-0314。)
+    deployed_names = {getattr(d, 'char_id', '') for d in state.deployed or []}
     cands: list[tuple[tuple, int, object]] = []
+    # 种子 2 轮窗(ADR-0289 §5)候选单列:bench 真满且无非种子可卖时
+    # 兜底放行(仍选最弱)——不腾则 carry 死锁,豁免让位给 carry
+    # (v1 _seed_cands 同式移植,W51 补)
+    seed_cands: list[tuple[tuple, int, object]] = []
     for i, b in enumerate(bench):
-        if not b.char_id or b.char_id == carry:
+        if b is None or not b.char_id or b.char_id == carry:
             continue
         if round_sell_blocked(b, state, session):
             continue
         cp = star_weighted_copies(b.char_id, state)
         if cp == 3:
             continue   # 3合1 完整份不腾
+        absent_mergeable = (b.char_id not in deployed_names and cp >= 2)
         key = (b.char_id in protect,
-               0 if cp > 3 else 1,   # 超上限冗余最弱
+               0 if (cp > 3 or absent_mergeable) else 1,   # 冗余最弱
                cp)
+        if seed_age_blocked(b, state, session):
+            seed_cands.append((key, i, b))
+            continue
         cands.append((key, i, b))
+    if not cands:
+        cands = seed_cands   # 唯一可卖=种子:carry 死锁豁免(仍选最弱)
     if not cands:
         return []
     cands.sort(key=lambda c: c[0])
@@ -491,3 +580,115 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     session.v2_round_sold.add(weakest.char_id)   # r408 对称臂
     return [SellBench(bench_idx=idx, income=refund),
             BuyCard(carry_card, reason='carry_gate')]
+
+
+# ===== 金不足变现通道(压库件凑金;leader 追加 2026-08-25) =====
+
+#: 变现通道辖的买侧标签(守卫②:不为非目标件变现——只有更高优先级
+#: 购买才配动用压库资产:目标件三标签+引擎件+插件;pair/copy/
+#: bond_fallback 凑数凑对类与 refresh/levelup 不辖)
+LIQUIDITY_BUY_TAGS: frozenset[str] = frozenset({
+    'line_carry', 'line_opportunistic', 'bridge_core',
+    'engine_seed', 'plugin',
+})
+
+
+def liquidity_actions(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry,
+                      scored: list[tuple]) -> list:
+    """金不足变现通道(压库件=「活期存款」,双重身份的收益兑现侧)。
+
+    设计依据:压库件占池(买入动机)之外还是可变现资产——金不足时
+    卖压库件不是损失,是压库策略的收益兑现。现状缺口:gold_short
+    直接拒绝购买,无主动变现路径。
+
+    流程:层3 分数序里选**最高分的金不足优先买**(gold-cost<地板),
+    检查 bench 可变现资产——卖件序(strategy_v4 点5 的通道内简化):
+    净0 件(1星/1费,全额退)最先 → 低费散件 → 升星沉淀件最后
+    (同档按费升序);变现到够则同轮顺序动作组 [Sell…, Buy] 执行
+    (卖先于买,序保证金到位)。
+
+    守卫:
+    - ②不为非目标件变现:只辖 ``LIQUIDITY_BUY_TAGS`` 的金不足买;
+    - 保护集(``_line_protect_set``,意向线正料+引擎件)不卖——
+      卖的是压库件不是正料;无锁定意向时仅引擎件受护;
+    - 同轮已买(r408)/种子年龄窗(ADR-0289 §5)/3合1 完整份不动;
+    - 变现不足额时**整体放弃**(不半途而废卖一半);
+    - 每轮最多救援一笔(最高分金不足买)。
+
+    边界(声明):绕过层4 仲裁直发(carry_gate 同模式)——层4 工作
+    态不感知变现金,对同轮其余候选保守(可能漏接次优先买,可接受);
+    买候选的 copies_cap/同名互斥由生成期保证。
+    """
+    from sr_od.application.currency_war.decision_v2.arbiter import (
+        _active_floor,
+    )
+    floor = _active_floor(state, session, registry)
+    target = None
+    for cand, val, _bd in sorted(scored, key=lambda t: -t[1]):
+        if val <= 0:
+            continue
+        a = cand.action
+        if cand.tag not in LIQUIDITY_BUY_TAGS \
+                or not isinstance(a, BuyCard):
+            continue
+        if a.card.name in (getattr(session, 'v2_round_sold', None) or ()):
+            continue   # r408:同轮已卖不回买
+        if state.gold - (a.card.cost or 3) < floor:
+            target = (cand, a.card.cost or 3)
+            break
+    if target is None:
+        return []
+    cand, cost = target
+    shortfall = floor + cost - state.gold
+    if shortfall <= 0:
+        return []
+    ist = getattr(session, 'v3_intention', None)
+    comp = None
+    if isinstance(ist, IntentionState) and ist.phase == 'locked':
+        from sr_od.application.currency_war.cw_comps import get_comp
+        comp = get_comp(ist.locked_comp)
+    protect = _line_protect_set(comp) if comp is not None \
+        else set(engine_char_names())
+    buy_name = cand.action.card.name
+    sellable: list[tuple[tuple, int, object, int]] = []
+    for i, b in enumerate(state.bench or []):
+        if b is None or not b.char_id or b.char_id == buy_name:
+            continue
+        if b.char_id in protect:
+            continue
+        if round_sell_blocked(b, state, session) \
+                or seed_age_blocked(b, state, session):
+            continue
+        if star_weighted_copies(b.char_id, state) == 3:
+            continue   # 3合1 完整份不动
+        ch = CHARACTERS.get(b.char_id)
+        if ch is None or not ch.cost:
+            continue   # 未知费级回金不可估,不入变现序
+        star = getattr(b, 'star', 1) or 1
+        refund = sell_refund(star, ch.cost)
+        net0 = refund >= ch.cost
+        key = (0 if net0 else 1, ch.cost, star)
+        sellable.append((key, i, b, refund))
+    sellable.sort(key=lambda s: s[0])
+    sells: list = []
+    got = 0
+    for _key, idx, _b, refund in sellable:
+        if got >= shortfall:
+            break
+        sells.append(SellBench(bench_idx=idx, income=refund))
+        got += refund
+    if got < shortfall:
+        return []   # 变现不足额 → 整体放弃(不卖一半)
+    log.info('[cw][d2][liquidity] r%d 变现 %d 件凑金 %d 买 %s(%s)',
+             state.round_num, len(sells), shortfall,
+             buy_name, cand.tag)
+    for s in sells:
+        nm = state.bench[s.bench_idx].char_id
+        if nm:
+            session.v2_round_sold.add(nm)   # r408 对称臂(原索引读
+            # state.bench——与发射序无关:bench_idx 是生成期原索引,
+            # 本函数不 mutate state)
+    # ADR-0316 槽位模型下 SellBench 置 None 不移位,任意发射序零漂移
+    # ——旧降序重排(紧缩表 pop 左移的症状补丁)已删,发射序 = 弱序选择序。
+    return [*sells, BuyCard(cand.action.card, reason='d2_' + cand.tag)]

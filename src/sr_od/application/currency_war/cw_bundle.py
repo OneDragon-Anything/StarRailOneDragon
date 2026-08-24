@@ -41,7 +41,7 @@ def _owned_faction_counts(state: GameState) -> dict[str, int]:
     """bench + deployed 的阵营计数(交互项的「买前」基线)。"""
     counts: dict[str, int] = {}
     for bc in [*state.bench, *state.deployed]:
-        if bc.faction and bc.faction != '?':
+        if bc is not None and bc.faction and bc.faction != '?':
             counts[bc.faction] = counts.get(bc.faction, 0) + 1
     return counts
 
@@ -49,7 +49,7 @@ def _owned_faction_counts(state: GameState) -> dict[str, int]:
 def _owned_name_counts(state: GameState) -> dict[str, int]:
     counts: dict[str, int] = {}
     for bc in [*state.bench, *state.deployed]:
-        if bc.char_id:
+        if bc is not None and bc.char_id:
             counts[bc.char_id] = counts.get(bc.char_id, 0) + 1
     return counts
 

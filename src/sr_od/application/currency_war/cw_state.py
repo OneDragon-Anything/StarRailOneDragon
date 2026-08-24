@@ -103,7 +103,13 @@ class GameState:
     board_next_tier: dict[str, int] = field(default_factory=dict)
     deployed: list[BenchChar] = field(default_factory=list)
     shop: list[ShopCard] = field(default_factory=list)
-    bench: list[BenchChar] = field(default_factory=list)
+    # bench = 槽位语义模型(ADR-0316):**定长 BENCH_CAPACITY(9)槽表**,
+    # 元素 BenchChar | None(空槽);列表下标 0-8 = 物理槽位 1-9 减一
+    # (BenchChar.slot 保留 1-based 屏幕槽号,信息位;权威槽位=下标)。
+    # 卖出/上阵置 None 不移位 → 索引跨动作组稳定(同轮多笔 SellBench
+    # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
+    # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
+    bench: list[BenchChar | None] = field(default_factory=list)
     plane_bosses: list[str] = field(default_factory=list)   # 3 位面 boss 名(= 简报屏「3 阵营」;current_boss 派生;strategy/06)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
     active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
@@ -135,6 +141,15 @@ class GameState:
     # 旧动作(BuyCard 等)不记(零行为变化)。
     action_log: list[dict] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        """bench 槽位模型(ADR-0316):构造/反序列化 pad None 到定长 9。
+
+        传入超长(>9)= 非法输入,保留原样由容量检查暴露(不静默截断)。
+        """
+        if len(self.bench) < BENCH_CAPACITY:
+            self.bench = list(self.bench) \
+                + [None] * (BENCH_CAPACITY - len(self.bench))
+
     def copy(self) -> GameState:
         return deepcopy(self)
 
@@ -159,10 +174,10 @@ class GameState:
         return sum(1 for c in self.deployed if c.position_pref == "back")
 
     def bench_is_full(self) -> bool:
-        """备战席是否满:OCR 警告标志优先,否则按固定 9 槽。"""
+        """备战席是否满:OCR 警告标志优先,否则按固定 9 槽(占用数)。"""
         if self.bench_full_flag is not None:
             return self.bench_full_flag
-        return len(self.bench) >= BENCH_CAPACITY
+        return bench_occupied(self.bench) >= BENCH_CAPACITY
 
     @property
     def current_boss(self) -> str | None:
@@ -196,6 +211,62 @@ def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
                 back_left -= 1
             deployed.append(BenchChar(slot=len(deployed), faction=faction, star=1, position_pref=pref))
     return deployed
+
+
+# ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
+
+
+def iter_occupied(bench: list[BenchChar | None]):
+    """迭代占用槽(滤 None)——bench 迭代单一源,禁止裸 ``for b in bench``。"""
+    return (b for b in bench if b is not None)
+
+
+def bench_occupied(bench: list[BenchChar | None]) -> int:
+    """bench 占用槽数(容量判据单一源,禁止 ``len(bench)``)。"""
+    return sum(1 for b in bench if b is not None)
+
+
+def bench_place(bench: list[BenchChar | None], bc: BenchChar) -> int | None:
+    """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
+
+    放置时归一 ``bc.slot = 下标+1``(物理槽位 1-9,与 live 读链
+    ``read_bench_chars`` 的 1-based 槽号同坐标系)。
+    """
+    for i, b in enumerate(bench):
+        if b is None:
+            bc.slot = i + 1
+            bench[i] = bc
+            return i
+    return None
+
+
+def bench_clear(bench: list[BenchChar | None], idx: int) -> BenchChar | None:
+    """清空占用槽(卖出/上阵语义:置 None 不移位);空槽/越界返回 None。"""
+    if 0 <= idx < len(bench) and bench[idx] is not None:
+        bc = bench[idx]
+        bench[idx] = None
+        return bc
+    return None
+
+
+def pad_bench(bench: list[BenchChar | None]) -> list[BenchChar | None]:
+    """pad None 到定长 BENCH_CAPACITY(就地补足,返回同引用)。"""
+    while len(bench) < BENCH_CAPACITY:
+        bench.append(None)
+    return bench
+
+
+def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
+    """紧缩序列 → 槽位表(顺序放置;BenchChar.slot 已带 1-based 物理槽号
+    时按槽放置)。旧语料/紧缩构造入槽位模型的适配单一源。"""
+    bench: list[BenchChar | None] = [None] * BENCH_CAPACITY
+    for bc in chars:
+        slot = bc.slot if 1 <= bc.slot <= BENCH_CAPACITY else None
+        if slot is not None and bench[slot - 1] is None:
+            bench[slot - 1] = bc
+        else:
+            bench_place(bench, bc)
+    return bench
 
 
 # ===== Action(动作;simulate 前瞻用) =====
@@ -258,10 +329,10 @@ class FillSpec:
 
     契约包 C1(冻结):``source`` = 'bench' | 'shop'(shop 时 ``idx`` 为
     ``state.shop`` 列表索引);``row`` = 'front' | 'back'。
-    在 CompTransaction.fill 中,**bench 源的 idx 按后置 bench 口径解析**
-    (deploy/undeploy/sell 应用后的 bench 列表序)——事务语义里填位是
-    第 2 步,第 1 步迁移后的 bench 才是填位候选池(步2 实现批声明的
-    草案级细化,C1 允许)。
+    在 CompTransaction.fill 中,**bench 源的 idx = 槽位下标(0-8,定长稳定,
+    ADR-0316)**——生成期索引 = 执行期索引,天然免疫 pop 漂移(F3 根治)。
+    填位候选池 = 迁移(deploy/undeploy/sell)后的 bench 槽位表(deploy/sell
+    清槽、undeploy 放回首个空槽),校验/应用端按同一视图解析。
 
     ``expect``(W43 leader 裁决 2,代际校验;草案级扩字段,默认 ''=不
     校验):提案生成时该 idx 指向内容的期望名(bench 源 = char_id,
@@ -358,7 +429,8 @@ def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
                      star=card.star, position_pref=position_pref)
 
 
-def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None) -> None:
+def _merge_bench(bench: list[BenchChar | None],
+                 deployed: list[BenchChar] | None = None) -> None:
     """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
 
     游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
@@ -367,49 +439,57 @@ def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None
     「预估 2★ 读回 1★」star 回退停机钩子两度触发。合成载体:场上同名卡
     升星优先(触发处常见态),无场上卡则 bench 首张升星。
 
+    ADR-0316 槽位语义:bench 侧被合成的份**置 None 腾槽**(对照画面:
+    三份合成后腾出槽),deployed 侧按身份删除(deployed 保持紧缩表);
+    合成载体留在原槽位。
+
     deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
     """
-    pools: list[list[BenchChar]] = [bench]
+    pools: list[list] = [bench]
     if deployed is not None:
         pools.append(deployed)
     # 不动点循环(r6 review#1:两轮上限在级联合并 3×1★→2★→…不够;while 直到
     # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止)
     while True:
         merged_any = False
-        for pool in pools:
-            for c in list(pool):
-                if not c.char_id:
+        occupied = [c for c in bench if c is not None]
+        for c in occupied + list(deployed or []):
+            if not c.char_id:
+                continue
+            # 全场同名同星组(对象引用,跨池)
+            group = [x for p in pools for x in (p if p is bench else p)
+                     if x is not None and x.char_id == c.char_id
+                     and x.star == c.star]
+            if len(group) < 3:
+                continue
+            take = group[:3]
+            # 载体:场上优先(身份比较——dataclass 值相等会让 `in` 误真)
+            carrier = next((x for x in take
+                            if deployed is not None
+                            and any(x is y for y in deployed)), take[0])
+            carrier.star += 1
+            # 合成装备继承(C6 装备守恒,🟡 游戏侧「合成吃装去向」未见实机证据,
+            # 按随载体继承建模保账本守恒——同 sell 回收的保守假设口径):
+            for x in take:
+                if x is not carrier:
+                    carrier.equips = list(carrier.equips) + list(x.equips)
+            # 删其余两张:bench 侧置 None(槽位语义);deployed 侧身份删除
+            # (同名同星 dataclass 值相等会删错对象,身份索引)
+            for x in take:
+                if x is carrier:
                     continue
-                # 全场同名同星组(对象引用,跨池)
-                group = [x for p in pools for x in p
-                         if x.char_id == c.char_id and x.star == c.star]
-                if len(group) < 3:
-                    continue
-                take = group[:3]
-                # 载体:场上优先(身份比较——dataclass 值相等会让 `in` 误真)
-                carrier = next((x for x in take
-                                if deployed is not None
-                                and any(x is y for y in deployed)), take[0])
-                carrier.star += 1
-                # 合成装备继承(C6 装备守恒,🟡 游戏侧「合成吃装去向」未见实机证据,
-                # 按随载体继承建模保账本守恒——同 sell 回收的保守假设口径):
-                for x in take:
-                    if x is not carrier:
-                        carrier.equips = list(carrier.equips) + list(x.equips)
-                # 删其余两张:**身份索引**删除(r6 review#2:list.remove 按值相等
-                # 删第一个命中,同名同星 dataclass 值相等会删错对象)
-                for x in take:
-                    if x is carrier:
-                        continue
-                    for p in pools:
-                        _idx = next((i for i, y in enumerate(p) if y is x), None)
-                        if _idx is not None:
-                            del p[_idx]
+                if any(x is b for b in bench):
+                    for i, b in enumerate(bench):
+                        if b is x:
+                            bench[i] = None
                             break
-                merged_any = True
-                break   # 重扫(列表已变)
-            if merged_any:
-                break
+                elif deployed is not None:
+                    _idx = next((i for i, y in enumerate(deployed)
+                                 if y is x), None)
+                    if _idx is not None:
+                        del deployed[_idx]
+            merged_any = True
+            break   # 重扫(列表已变)
         if not merged_any:
             break
 
@@ -518,7 +598,8 @@ def _resolve_comp_transaction(
     后续应用所需的对象引用快照与终态计数(引用快照防应用中途索引漂移)。
     校验项见 CompTransaction docstring(金/槽/索引域/排上限)。
     """
-    n_b, n_d = len(s.bench), len(s.deployed)
+    n_b = bench_occupied(s.bench)   # ADR-0316:容量=占用数
+    n_d = len(s.deployed)
     und = list(tx.undeploy or [])
     dep = list(tx.deploy or [])
     sell = list(tx.sell or [])
@@ -527,12 +608,17 @@ def _resolve_comp_transaction(
     dep_rows = [r for _i, r in dep]
     sell_b = [i for i, d in sell if d == 'bench']
     sell_d = [i for i, d in sell if d == 'deployed']
-    # 索引域:范围 + 同域去重 + 跨子步互斥
+    # 索引域:范围(bench=槽位下标 0-8 且须占用)+ 同域去重 + 跨子步互斥
     for label, idxs, n in (('undeploy', und, n_d), ('deploy', dep_b, n_b),
                            ('sell_bench', sell_b, n_b),
                            ('sell_deployed', sell_d, n_d)):
-        if any(not 0 <= i < n for i in idxs):
-            return f'{label}_idx_out_of_range', {}
+        if label == 'undeploy' or label == 'sell_deployed':
+            if any(not 0 <= i < n for i in idxs):
+                return f'{label}_idx_out_of_range', {}
+        else:
+            if any(not 0 <= i < len(s.bench) or s.bench[i] is None
+                   for i in idxs):
+                return f'{label}_idx_out_of_range', {}
         if len(set(idxs)) != len(idxs):
             return f'{label}_dup_idx', {}
     if set(dep_b) & set(sell_b):
@@ -597,19 +683,25 @@ def _resolve_comp_transaction(
     n_bench_final = n_b - len(dep_b) - len(sell_b) + len(und)
     if n_bench_final > BENCH_CAPACITY:
         return f'bench_overflow:{n_bench_final}>{BENCH_CAPACITY}', {}
-    # 后置 bench(fill bench 源的解析域:迁移后的 bench 对象序)
+    # 后置 bench(fill bench 源的解析域,ADR-0316):**槽位表视图**——迁移
+    # (deploy/sell 清槽、undeploy 放回首个空槽)后的 bench,与 _apply 应用
+    # 序同式构造(sell → undeploy → deploy)。fill 的 bench 源 idx 直接按
+    # 槽位下标解析(定长稳定,生成期=执行期,无 pop 漂移——F3 根治)。
     _gone_b = set(dep_b) | set(sell_b)
-    post_bench = [c for i, c in enumerate(s.bench) if i not in _gone_b] \
-        + und_chars
+    post_bench: list[BenchChar | None] = list(s.bench)
+    for i in sell_b:
+        post_bench[i] = None            # 步 1:sell 的 bench 槽清空
+    for c in und_chars:
+        bench_place(post_bench, c)      # 步 2:undeploy 放回首个空槽(同应用序)
+    for i in dep_b:
+        post_bench[i] = None            # 步 3:deploy 的 bench 槽清空
     for f in fill:
-        if f.source == 'bench' \
-                and not 0 <= f.idx < len(post_bench):
-            return (f'fill_bench_idx_out_of_range:{f.idx}'
-                    f'>{len(post_bench)}', {})
-        if f.source == 'bench' and 0 <= f.idx < len(post_bench) \
-                and f.expect and post_bench[f.idx].char_id != f.expect:
-            return (f'stale_proposal:fill_bench:{f.expect}'
-                    f'!={post_bench[f.idx].char_id}'), {}
+        if f.source == 'bench':
+            if not 0 <= f.idx < BENCH_CAPACITY or post_bench[f.idx] is None:
+                return (f'fill_bench_idx_out_of_range:{f.idx}', {})
+            if f.expect and post_bench[f.idx].char_id != f.expect:
+                return (f'stale_proposal:fill_bench:{f.expect}'
+                        f'!={post_bench[f.idx].char_id}'), {}
     # deployed 上限(冻结 invariant)与排上限
     n_dep_final = n_d - len(und) - len(sell_d) + len(dep_b) + len(fill)
     if n_dep_final > s.max_units():
@@ -634,7 +726,9 @@ def _resolve_comp_transaction(
         s.deployed[i] for i in range(n_d) if i not in _gone_d]
     _final_units += [c for c, _r in dep_chars]
     _final_units += [post_bench[f.idx] for f in fill
-                     if f.source == 'bench' and 0 <= f.idx < len(post_bench)]
+                     if f.source == 'bench'
+                     and 0 <= f.idx < BENCH_CAPACITY
+                     and post_bench[f.idx] is not None]
     for c in _final_units:
         k = board_unique_key(c)
         if k is None:
@@ -671,11 +765,22 @@ def _tx_state_view(bench: list[BenchChar],
     return view
 
 
-def _remove_by_identity(pool: list[BenchChar], target: BenchChar) -> None:
-    """按身份索引删除(同名同星 dataclass 值相等会删错对象;同 _merge_bench 纪律)。"""
+def _remove_by_identity(pool: list, target: BenchChar) -> None:
+    """按身份索引删除(deployed 等紧缩表;同名同星 dataclass 值相等会删错
+    对象,同 _merge_bench 纪律)。bench 槽位表勿用——用
+    ``_bench_clear_by_identity``(置 None 不移位)。"""
     _idx = next((i for i, y in enumerate(pool) if y is target), None)
     if _idx is not None:
         del pool[_idx]
+
+
+def _bench_clear_by_identity(bench: list[BenchChar | None],
+                             target: BenchChar) -> None:
+    """bench 槽位表按身份清槽(ADR-0316:置 None 不移位)。"""
+    for i, b in enumerate(bench):
+        if b is target:
+            bench[i] = None
+            return
 
 
 def _apply_comp_transaction(s: GameState, tx: CompTransaction,
@@ -683,29 +788,33 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
     """应用已校验通过的事务(就地;调用前必须经 _resolve_comp_transaction)。
 
     应用序:sell → undeploy → deploy → fill(填位的 bench 源按后置 bench
-    的 plan['post_bench'] 序解析)。终态重算 board(_recount_board 单一源)。
+    槽位表(plan['post_bench'])解析——ADR-0316 槽位下标,不 pop 不移位)。
+    终态重算 board(_recount_board 单一源)。
     卖出单位的装备回收进 ``state.equips``(owned 池;🟡 游戏侧「卖带装
     单位装备去向」未见实机证据,暂按回收建模保装备守恒,待 live 核)。
     """
     for c in plan['sell_bench_chars'] + plan['sell_deployed_chars']:
         s.gold += sell_refund(c.star, _bench_char_cost(c))
         s.equips.extend(c.equips)
-        _remove_by_identity(s.bench, c)
+        _bench_clear_by_identity(s.bench, c)
         _remove_by_identity(s.deployed, c)
     for c in plan['und_chars']:
         _remove_by_identity(s.deployed, c)
-        s.bench.append(c)
+        bench_place(s.bench, c)
     for c, row in plan['dep_chars']:
-        _remove_by_identity(s.bench, c)
+        _bench_clear_by_identity(s.bench, c)
         _apply_row_to_char(c, row)
         s.deployed.append(c)
     post_bench = plan['post_bench']
     for f in plan['fill']:
         if f.source == 'bench':
-            if not 0 <= f.idx < len(post_bench):
+            # ADR-0316:bench 源 idx = 槽位下标,post_bench 是迁移后槽位表
+            # 视图(与 s.bench 同槽位)——按身份清槽,不 pop 不移位。
+            if not 0 <= f.idx < len(post_bench) \
+                    or post_bench[f.idx] is None:
                 continue   # 校验已过;防御性兜底
-            c = post_bench.pop(f.idx)
-            _remove_by_identity(s.bench, c)
+            c = post_bench[f.idx]
+            _bench_clear_by_identity(s.bench, c)
             _apply_row_to_char(c, f.row)
             s.deployed.append(c)
         else:   # shop:买后即上(card_cost 已在金校验扣除)
@@ -765,18 +874,24 @@ def simulate(state: GameState, action: Action) -> GameState:
         state_equips_multiset,
     )
     s = state.copy()
+    pad_bench(s.bench)   # ADR-0316 定长不变量:调用方可能构造短 bench
+    # (直接赋值绕过 __post_init__);copy 不触发 __post_init__,入口防御 pad
     _equips_action = isinstance(action, (BuyCard, SellBench, SellDeployed,
                                          SwapDeploy, CompTransaction))
     _pre_equips = state_equips_multiset(state) if _equips_action else None
     if isinstance(action, BuyCard):
+        # ADR-0316 槽位语义:买入放首个空槽;无空槽=拒(bench_full 语义
+        # 不变——金不扣、牌不下架,整动作 no-op)
+        if bench_place(s.bench, _card_to_bench(action.card)) is None:
+            return state.copy()
         s.gold -= card_cost(action.card)
-        s.bench.append(_card_to_bench(action.card))
         _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
         # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
         s.shop = [c for c in s.shop if c.x != action.card.x]
     elif isinstance(action, SellBench):
-        if 0 <= action.bench_idx < len(s.bench):
-            sold = s.bench.pop(action.bench_idx)
+        # ADR-0316:校验槽占用后置 None(索引跨动作组稳定)
+        sold = bench_clear(s.bench, action.bench_idx)
+        if sold is not None:
             s.gold += sell_refund(sold.star, _bench_char_cost(sold))
             # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed/CompTransaction
             # 同一建模假设——卖带装单位装备回收,🟡 待 live 核。修复前本分支
@@ -798,8 +913,10 @@ def simulate(state: GameState, action: Action) -> GameState:
                 s.level += 1
             s.xp_progress = (_cur, XP_TO_NEXT_LEVEL.get(s.level, _cur))
     elif isinstance(action, DeployMove):
-        if 0 <= action.bench_idx < len(s.bench):
-            _k = board_unique_key(s.bench[action.bench_idx])
+        _target = (s.bench[action.bench_idx]
+                   if 0 <= action.bench_idx < len(s.bench) else None)
+        if _target is not None:
+            _k = board_unique_key(_target)
             # 同名唯一性(W43 裁决 1):单卡上场同理——已在场同名 → 拒绝
             # (进 action_log;bench 同名副本是 3合1 素材,合成走 bench 域)。
             if _k is not None and any(board_unique_key(d) == _k
@@ -807,7 +924,7 @@ def simulate(state: GameState, action: Action) -> GameState:
                 _log_action(s, 'DeployMove', 'rejected',
                             reason=f'duplicate_on_board:{_k}')
             else:
-                bc = s.bench.pop(action.bench_idx)
+                bc = bench_clear(s.bench, action.bench_idx)
                 # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
                 _apply_row_to_char(bc, action.to_row)
                 s.deployed.append(bc)
@@ -851,7 +968,8 @@ def simulate(state: GameState, action: Action) -> GameState:
     elif isinstance(action, SwapDeploy):
         # 动作 v2(契约包 C1,步2):场上场下对调,装备随人走(对象迁移)。
         if 0 <= action.deployed_idx < len(s.deployed) \
-                and 0 <= action.bench_idx < len(s.bench):
+                and 0 <= action.bench_idx < len(s.bench) \
+                and s.bench[action.bench_idx] is not None:
             out_char = s.deployed[action.deployed_idx]
             in_char = s.bench[action.bench_idx]
             # 代际校验(W43 裁决 2):跨轮登记的换位提案 idx 已指向别人 → 拒绝
@@ -911,30 +1029,34 @@ def simulate(state: GameState, action: Action) -> GameState:
     return s
 
 
-def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
+def mutate_bench_deployed(bench: list[BenchChar | None],
+                          deployed: list[BenchChar],
                           action: Action) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(task#105 运行时同步用;/)。
 
     与 ``simulate`` 的区别:``simulate`` 返回新 ``GameState`` copy(前瞻语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
-    sell→pop),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
+    sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
     ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。
+    ADR-0316:bench 是槽位表(定长 9,None=空槽)——入口防御性 pad。
     LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
     """
+    pad_bench(bench)
     if isinstance(action, BuyCard):
-        bench.append(_card_to_bench(action.card))
+        bench_place(bench, _card_to_bench(action.card))
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, SellBench):
-        if 0 <= action.bench_idx < len(bench):
-            bench.pop(action.bench_idx)
+        bench_clear(bench, action.bench_idx)
     elif isinstance(action, DeployMove):
-        if 0 <= action.bench_idx < len(bench):
+        _tgt = (bench[action.bench_idx]
+                if 0 <= action.bench_idx < len(bench) else None)
+        if _tgt is not None:
             # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
-            _k = board_unique_key(bench[action.bench_idx])
+            _k = board_unique_key(_tgt)
             if _k is not None and any(board_unique_key(d) == _k
                                       for d in deployed):
                 return
-            bc = bench.pop(action.bench_idx)
+            bc = bench_clear(bench, action.bench_idx)
             _apply_row_to_char(bc, action.to_row)
             # 开拓者形态切换(同 simulate 语义,单一源 helper)
             deployed.append(bc)
@@ -947,7 +1069,8 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
             deployed.pop(action.deployed_idx)   # 陈旧提案(代际不符)no-op
     elif isinstance(action, SwapDeploy):
         if 0 <= action.deployed_idx < len(deployed) \
-                and 0 <= action.bench_idx < len(bench):
+                and 0 <= action.bench_idx < len(bench) \
+                and bench[action.bench_idx] is not None:
             out_char = deployed[action.deployed_idx]
             in_char = bench[action.bench_idx]
             # 代际校验 + 同名唯一性(W43 裁决 1/2,与 simulate 同源)
@@ -983,20 +1106,22 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
         if reject:
             return   # 原子:拒绝即整体不动
         for c in plan['sell_bench_chars']:
-            _remove_by_identity(bench, c)
+            _bench_clear_by_identity(bench, c)
         for c in plan['sell_deployed_chars']:
             _remove_by_identity(deployed, c)
         for c in plan['und_chars']:
             _remove_by_identity(deployed, c)
-            bench.append(c)
+            bench_place(bench, c)
         for c, row in plan['dep_chars']:
-            _remove_by_identity(bench, c)
+            _bench_clear_by_identity(bench, c)
             _apply_row_to_char(c, row)
             deployed.append(c)
         post_bench = plan['post_bench']
         for f in plan['fill']:
-            if f.source == 'bench' and 0 <= f.idx < len(post_bench):
-                c = post_bench.pop(f.idx)
-                _remove_by_identity(bench, c)
+            if f.source == 'bench' \
+                    and 0 <= f.idx < len(post_bench) \
+                    and post_bench[f.idx] is not None:
+                c = post_bench[f.idx]   # ADR-0316 槽位下标;不 pop 不移位
+                _bench_clear_by_identity(bench, c)
                 _apply_row_to_char(c, f.row)
                 deployed.append(c)

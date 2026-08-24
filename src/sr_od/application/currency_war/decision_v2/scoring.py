@@ -22,6 +22,7 @@ from sr_od.application.currency_war.cw_line_defs import (
 )
 from sr_od.application.currency_war.cw_state import (
     GameState,
+    bench_occupied,
     simulate,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -101,6 +102,8 @@ def _held_form_weights(state: GameState,
         if getattr(d, 'char_id', ''):
             dep_names.add(d.char_id)
     for d in state.bench or []:
+        if d is None:
+            continue   # ADR-0316 槽位表空槽
         star = max(1, int(getattr(d, 'star', 1) or 1))
         _add(d, star * registry.bench_form_weight)
     return fac, main, frozenset(dep_names)
@@ -116,7 +119,8 @@ def _held_star_weighted(state: GameState) -> list:
     见 _held_form_weights)。
     """
     held: list = []
-    for d in (state.deployed or []) + (state.bench or []):
+    for d in (state.deployed or []) + [b for b in (state.bench or [])
+                                       if b is not None]:
         star = max(1, int(getattr(d, 'star', 1) or 1))
         held.extend([d] * star)
     return held
@@ -206,7 +210,7 @@ def _deployable_depth(state: GameState) -> int:
     买经验通道全灭)。未标定。
     """
     return min(state.level,
-               len(state.deployed or []) + len(state.bench or []))
+               len(state.deployed or []) + bench_occupied(state.bench or []))
 
 
 def _deploy_pipeline(state: GameState,
@@ -226,7 +230,7 @@ def _deploy_pipeline(state: GameState,
         )
         tc = getattr(session, 'target_comp', None)
         up_idx, _ = dl.select_deployments(
-            list(state.bench or []),
+            [b for b in (state.bench or []) if b is not None],
             deployed_cids=deployed_cids,
             deployed_fac=_board_factions_of(state.deployed),
             board=dict(state.board or {}),
@@ -236,9 +240,15 @@ def _deploy_pipeline(state: GameState,
         )
         if not up_idx:
             return
+        # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标后置 None
+        _occ = [i for i, b in enumerate(state.bench or [])
+                if b is not None]
         for i in sorted(up_idx, reverse=True):
-            if i < len(state.bench or []):
-                state.deployed.append(state.bench.pop(i))
+            if i < len(_occ):
+                bc = state.bench[_occ[i]]
+                if bc is not None:
+                    state.deployed.append(bc)
+                    state.bench[_occ[i]] = None
         state.board = _board_counts_of(state.deployed)
 
 

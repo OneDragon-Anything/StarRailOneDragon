@@ -68,7 +68,7 @@ def classify_buy(card, state) -> str:
         return 'engine'
     owned = set(state.board.keys())
     for b in (state.bench or []):
-        if b.faction and b.faction != '?':
+        if b is not None and b.faction and b.faction != '?':
             owned.add(b.faction)
     if card.faction in owned:
         return 'pair'

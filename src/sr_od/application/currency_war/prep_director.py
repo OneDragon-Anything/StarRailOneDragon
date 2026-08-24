@@ -57,7 +57,11 @@ from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
 )
-from sr_od.application.currency_war.cw_state import BenchChar, GameState
+from sr_od.application.currency_war.cw_state import (
+    BenchChar,
+    GameState,
+    bench_from_compact,
+)
 from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
     ClickSpheres,
@@ -236,7 +240,9 @@ class PrepDirector(SrOperation):
             # plan 路径 boss 判定全死码的根因);仿 last_hp 模式。
             if session is not None and st.node_type:
                 session.last_node_type = st.node_type
-            st.bench = list(obs.bench_chars or (session.tracked_bench_chars if session else []))
+            st.bench = bench_from_compact(
+                list(obs.bench_chars
+                     or (session.tracked_bench_chars if session else [])))
             obs.state = st
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:

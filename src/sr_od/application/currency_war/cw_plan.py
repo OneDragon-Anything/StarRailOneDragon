@@ -54,6 +54,7 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     ShopCard,
     _bench_char_cost,
+    bench_occupied,
     card_cost,
     effective_hp_threshold,
     sell_refund,
@@ -105,19 +106,25 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str],
     3合1 进行中(再买 1 张即自动升星,价值远超残值)→ 保护不卖;全被保护 → 返回 None
     (无可卖,调用方走 DeferSpheres/留置)。
     """
-    if not state.bench:
+    if bench_occupied(state.bench) == 0:
         return None
     from collections import Counter
     # 按 (char_id, star) 计数(review L-5):3合1 只合并同名同星,同名不同星不构成进度 → 不保护
-    _counts = Counter((bc.char_id, bc.star) for bc in state.bench if bc.char_id)
+    _counts = Counter((bc.char_id, bc.star) for bc in state.bench
+                      if bc is not None and bc.char_id)
     _protected = {i for i, bc in enumerate(state.bench)
-                  if bc.char_id and _counts[(bc.char_id, bc.star)] >= 2}
-    _candidates = [i for i in range(len(state.bench)) if i not in _protected]
+                  if bc is not None and bc.char_id
+                  and _counts[(bc.char_id, bc.star)] >= 2}
+    # ADR-0316 槽位表:只收占用槽(None 槽不可卖,跳过)
+    _candidates = [i for i, bc in enumerate(state.bench)
+                   if bc is not None and i not in _protected]
     if not _candidates:
         return None   # 全是 3合1 进行件:无可卖(调用方 DeferSpheres/留置)
     close = _close_factions(state)
     return min(_candidates,
-               key=lambda i: _bench_sell_value(state.bench[i], character_priority, close, target_comp))
+               key=lambda i: _bench_sell_value(state.bench[i],
+                                               character_priority, close,
+                                               target_comp))
 
 
 
@@ -125,8 +132,11 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str],
 def _distinct_factions(state: GameState) -> set[str]:
     """已 collect 的阵营集合 = board(deployed ground truth)+ bench(不含 '?'/空)。"""
     factions = set(state.board.keys())
-    factions.update(bc.faction for bc in state.bench if bc.faction and bc.faction != '?')
+    factions.update(bc.faction for bc in state.bench
+                    if bc is not None and bc.faction and bc.faction != '?')
     return factions
+
+
 def _concentration_delta(card: ShopCard, state: GameState,
                          target_comp: Comp | None = None) -> float:
     """买这张牌对 concentration 的影响(加到 buy delta,L1)。
@@ -232,6 +242,8 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
     # 计过一次,_char_synergies 又含主阵营 → 双计把持有 1 张虚抬成 2,评审Y1 门
     # (买后达激活档)提前放行,恰是要拦的「不激活白占位」。
     for _bc in state.bench:
+        if _bc is None:
+            continue
         for _f in (_char_synergies(getattr(_bc, 'char_id', ''))
                    - {getattr(_bc, 'faction', '')}):
             counts[_f] = counts.get(_f, 0) + 1
@@ -256,9 +268,18 @@ def _bench_faction_counts(state: GameState) -> dict[str, int]:
     """已 collect 各阵营计数 = board(deployed ground truth)+ bench(_should_deploy 用)。"""
     counts: dict[str, int] = dict(state.board)
     for c in state.bench:
-        if c.faction and c.faction != '?':
+        if c is not None and c.faction and c.faction != '?':
             counts[c.faction] = counts.get(c.faction, 0) + 1
     return counts
+
+
+def bench_place_probe(state: GameState) -> int | None:
+    """买入后的落位槽下标(ADR-0316 适配:cw_plan 旧读 bench[-1],槽位表
+    下=**首个空槽**——买前找 None 槽即买后位置;满仓=买被拒 → None)。"""
+    for i, b in enumerate(state.bench or []):
+        if b is None:
+            return i
+    return None
 
 
 
@@ -404,6 +425,8 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
     _dep_names = {bc.char_id for bc in state.deployed if bc.char_id}
     _bench_cnt: dict[str, int] = {}
     for _bc in state.bench:
+        if _bc is None:
+            continue
         if _bc.char_id:
             _bench_cnt[_bc.char_id] = _bench_cnt.get(_bc.char_id, 0) + 1
     for card in state.shop:
@@ -419,11 +442,15 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
                          and _card_hits_target(card.name, card.faction, target_comp))):
             continue
         after = simulate(state, BuyCard(card=card))
-        if after.deployed_count() < after.max_units() and after.bench:
-            bc = after.bench[-1]
+        # ADR-0316:买入落「首个空槽」——买前 probe 该槽,买后该槽即刚买件
+        _buy_slot = bench_place_probe(state)
+        if (after.deployed_count() < after.max_units() and _buy_slot is not None
+                and after.bench[_buy_slot] is not None
+                and after.bench[_buy_slot].char_id == card.name):
+            bc = after.bench[_buy_slot]
             row, ok = _pick_deploy_row(after, bc, target_comp)
             if ok:
-                after = simulate(after, DeployMove(bench_idx=len(after.bench) - 1,
+                after = simulate(after, DeployMove(bench_idx=_buy_slot,
                                                    to_row=row, faction=bc.faction))
         # 口径与真实买(_best_improving_action)一致:eval + concentration(char_quality 已计 priority)
         # review🔴 补 concentration(原漏→D牌估值偏);review🟡 去 priority*2(char_quality 一处计,原三重过度偏置)
@@ -587,7 +614,7 @@ def _sell_offline_for_focus(state: GameState, actions: list,
     framework(r72 review:session 单一源透传,替旧 bench-only 重推导——混持/散件场景
     旧法 `_fw=''` → keep 集恒空,「买→不上→卖」循环只修了半边)。
     """
-    if target is None or not state.bench:
+    if target is None or bench_occupied(state.bench) == 0:
         return
     from sr_od.application.currency_war.cw_state import simulate as _sim
     sold = 0
@@ -598,6 +625,8 @@ def _sell_offline_for_focus(state: GameState, actions: list,
     _fw_keep = ({n for n, (f, t) in TRANSITION_PACK.items()
                  if (f == framework or f == '通用') and t != 'drop'} if framework else set())
     for bc in list(state.bench):
+        if bc is None:
+            continue
         if sold >= sell_cap:
             break
         if not bc.char_id:
@@ -663,7 +692,9 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
         # 见 cw_state._SELL_MULT/cw_comps/cw_shop_odds 同源语义):star 折 3**(star-1)。
         # 旧 sum(bc.star)(2★=2/3★=3)配 <2 阈值 → 持 2 张 1★ 即被判「已到 2★ 不在追」,
         # 实际差 1 张才能合并 → 该费级被移出追猎集,压缩买少覆盖一类该买的费级。
-        return sum(3 ** max(bc.star - 1, 0) for bc in (*state.deployed, *state.bench)
+        return sum(3 ** max(bc.star - 1, 0)
+                   for bc in (*state.deployed,
+                              *(b for b in state.bench if b is not None))
                    if bc.char_id == name)
 
     for comp in comps:
@@ -676,7 +707,7 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
                 continue
             if _equiv_copies(name) < 3:   # ①+②:core 未到 2★(=3 张 1★ 等价)→ 在追
                 tiers.add(int(_cost))
-    for bc in (*state.deployed, *state.bench):
+    for bc in (*state.deployed, *(b for b in state.bench if b is not None)):
         if bc.star >= 2 and bc.char_id:   # ③:已 2★ → 3★ 机会追猎
             ch = CHARACTERS.get(bc.char_id)
             _cost = getattr(ch, 'cost', None)
@@ -749,11 +780,14 @@ def _best_improving_action(
             _deployed_name_counts[_bc.char_id] = _deployed_name_counts.get(_bc.char_id, 0) + 1
     _bench_name_counts: dict[str, int] = {}
     for _bc in state.bench:
+        if _bc is None:
+            continue
         if _bc.char_id:
             _bench_name_counts[_bc.char_id] = _bench_name_counts.get(_bc.char_id, 0) + 1
     # review L2:星敏感计数 —— 商店牌恒 1★,3合1 材料须同名**同星**;deployed/bench 的 2★+ 不算材料。
     def _star1(coll, name: str) -> int:
-        return sum(1 for b in coll if b.char_id == name and b.star == 1)
+        return sum(1 for b in coll
+                   if b is not None and b.char_id == name and b.star == 1)
     def _copies(name: str) -> int:
         return _star1(state.deployed, name) + _star1(state.bench, name)
     # ADR-0209(接线 3/6):双轨买牌——双轨期(dual_track_phase)放行面收窄为:
@@ -802,7 +836,8 @@ def _best_improving_action(
             # 同名 1费买第 2/3 张集 2★ = 免费战力(合完还能原价卖),不属死钱。
             continue
         # 备战席)。买+deploy 原子:deploy 有位则买的牌上任(bench 不增);deploy 满则落 bench → bench 满才 skip。
-        if state.deployed_count() >= state.max_units() and len(state.bench) >= BENCH_CAPACITY:
+        if state.deployed_count() >= state.max_units() \
+                and bench_occupied(state.bench) >= BENCH_CAPACITY:
             continue
         # level_plan buying gate(task#18):攒金升级期间(_saving)抑制散牌,但仍允许 target
         # 阵营/core/优先角色牌(深化 target 值得花,且不该被攒金阻塞)。升级本身由 plan() 硬 gate 执行,
@@ -828,7 +863,7 @@ def _best_improving_action(
                     _strengthens_s = (state.board.get(card.faction, 0) >= 2
                                       or card.name in character_priority)
                 _room_s = (state.deployed_count() < state.max_units()
-                           or len(state.bench) < BENCH_CAPACITY)
+                           or bench_occupied(state.bench) < BENCH_CAPACITY)
                 # r62 压缩放行(用户 §7-15:压缩=全局供给策略,非泄金;判定纯函数同上)
                 # ——攒金期照买(「保息前提下多买」语义,攒金门只该拦真泄金散牌)。
                 _compress_ok = _compress_release(card_cost(card), state.gold, _hunt_tiers)
@@ -872,7 +907,7 @@ def _best_improving_action(
                     _strengthens = (_board_only.get(card.faction, 0) >= 2
                                     or card.name in character_priority)
                     _room = (state.deployed_count() < state.max_units()
-                             or len(state.bench) < BENCH_CAPACITY)
+                             or bench_occupied(state.bench) < BENCH_CAPACITY)
                     if not (_fp < COMMIT_FRAC and _strengthens and _room):
                         continue
         after_buy = simulate(state, BuyCard(card=card))
@@ -880,13 +915,17 @@ def _best_improving_action(
         # review M3:deploy 去重对齐游戏 5.1.7(场上同名禁双)—— 旧模拟把 2★ 与场上 1★ 双上阵,
         # 估值虚高 + 运行时滞留 bench。同名已 deployed → 不 deploy(留 bench 待 3合1 合并)。
         _dep_ids = {b.char_id for b in state.deployed if b.char_id}
-        if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
-                and after_buy.bench[-1].char_id not in _dep_ids
-                and _should_deploy(after_buy.bench[-1], after_buy, target_comp)):
-            bc = after_buy.bench[-1]
+        # ADR-0316:买入落「首个空槽」——买前 probe(买后该槽即刚买件;买后
+        # probe 是下一个空槽,非落位)。merge 可能吃掉刚买件(3合1)→ 槽空守卫。
+        _buy_slot = bench_place_probe(state)
+        if (after_buy.deployed_count() < after_buy.max_units() and _buy_slot is not None
+                and after_buy.bench[_buy_slot] is not None
+                and after_buy.bench[_buy_slot].char_id not in _dep_ids
+                and _should_deploy(after_buy.bench[_buy_slot], after_buy, target_comp)):
+            bc = after_buy.bench[_buy_slot]
             row, ok = _pick_deploy_row(after_buy, bc, target_comp)
             if ok:
-                seq.append(DeployMove(bench_idx=len(after_buy.bench) - 1, to_row=row, faction=bc.faction))
+                seq.append(DeployMove(bench_idx=_buy_slot, to_row=row, faction=bc.faction))
         after = after_buy
         for a in seq[1:]:
             after = simulate(after, a)
@@ -919,6 +958,8 @@ def _best_improving_action(
     # 2) 上任已拥有的 bench 角色(按 position_pref 分流;M3:同名去重同 1))
     # r94:内联同名守卫删(_should_deploy 顶部统一执行 deploy_legal 不变量)
     for i, bc in enumerate(state.bench):
+        if bc is None:
+            continue
         if state.deployed_count() >= state.max_units():
             break
         if not _should_deploy(bc, state, target_comp):
@@ -1019,12 +1060,17 @@ def _best_improving_action(
             seq: list[Action] = [BuyCard(card=card, reason='plan')]
             after_buy = simulate(state, seq[0])
             _dep_ids = {b.char_id for b in state.deployed if b.char_id}
-            if (after_buy.deployed_count() < after_buy.max_units() and after_buy.bench
-                    and after_buy.bench[-1].char_id not in _dep_ids):
-                bc = after_buy.bench[-1]
+            # ADR-0316:买入落「首个空槽」(买前 probe;买后该槽即刚买件)
+            _buy_slot = bench_place_probe(state)
+            if (after_buy.deployed_count() < after_buy.max_units()
+                    and _buy_slot is not None
+                    and after_buy.bench[_buy_slot] is not None
+                    and after_buy.bench[_buy_slot].char_id not in _dep_ids):
+                bc = after_buy.bench[_buy_slot]
                 row, ok = _pick_deploy_row(after_buy, bc, target_comp)
                 if ok:
-                    seq.append(DeployMove(bench_idx=len(after_buy.bench) - 1, to_row=row, faction=bc.faction))
+                    seq.append(DeployMove(bench_idx=_buy_slot, to_row=row,
+                                          faction=bc.faction))
             log.info('[cw-plan] ADR-0149 骨架买(1息档,档位保留):%s(cost%s,gold%s,deploy=%s)',
                      card.name, card.cost, state.gold, len(seq) > 1)
             return seq
@@ -1079,12 +1125,14 @@ def _best_improving_action(
                     # r68 review:扫尾副本计数分星 —— 商店牌恒 1★,3合1 材料须同名同星(主循环
                     # _star1 同口径);旧裸数名把 2★+ 也计入 → 假满副本误拦真材料(62 轮同族病复发)。
                     _copies = sum(1 for b in (*_sim.deployed, *_sim.bench)
-                                  if b.char_id == c.name and b.star == 1)
+                                  if b is not None
+                                  and b.char_id == c.name and b.star == 1)
                     if _copies >= 3:
                         continue   # 3合1 满副本(与主循环同门)
                     if c.name in {b.char_id for b in _sim.deployed if b.char_id} and _cost > 1:
                         continue   # 场上同名散牌不集(同主循环;1费例外集 2★)
-                if _sim.deployed_count() >= _sim.max_units() and len(_sim.bench) >= BENCH_CAPACITY:
+                if _sim.deployed_count() >= _sim.max_units() \
+                        and bench_occupied(_sim.bench) >= BENCH_CAPACITY:
                     break   # 板+席满,买无所居
                 if not _compress_release(_cost, _sim.gold, _hunt_tiers):
                     continue
@@ -1125,7 +1173,7 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
                              character_priority: list[str], config,
                              target_comp: Comp | None = None) -> None:
     """凑整吃息:卖出能跨一个 10 倍数(+1 档息)的非关键 bench 牌(循环,最多 3 张)。"""
-    if state.gold >= INTEREST_THRESHOLD or not state.bench:
+    if state.gold >= INTEREST_THRESHOLD or bench_occupied(state.bench) == 0:
         return
     # node_plan(14 §2.2):节点 spend_mode 花光成型(allin,P3)/ 升人口(level,P2)/ 抢升(rush_level)
     # 档位不囤息(卖息与节奏相悖)。⚠️ 本函数是 spend_mode 的**动作消费者**(allin/level → 跳卖息动作);
@@ -1151,6 +1199,8 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
         close = _close_factions(cur)
         best_idx = None
         for i, bc in enumerate(cur.bench):
+            if bc is None:
+                continue   # ADR-0316 槽位表空槽
             if bc.char_id in character_priority or bc.char_id in _tc or bc.faction in close:
                 continue
             # review 🔴:target 核心不卖凑息(承诺贯穿卖路径;防卖刚买的 target 核心凑息)

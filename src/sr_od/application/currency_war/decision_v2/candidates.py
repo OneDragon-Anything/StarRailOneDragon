@@ -37,6 +37,7 @@ from sr_od.application.currency_war.cw_state import (
     RefreshShop,
     SellBench,
     ShopCard,
+    bench_occupied,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.discipline import (
@@ -113,7 +114,7 @@ def _owned_factions(state: GameState) -> set[str]:
     """board∪bench 的已有阵营集合(bond_fallback 凑档判据输入)。"""
     out = {f for f, c in (state.board or {}).items() if c > 0}
     for b in (state.bench or []):
-        if b.faction and b.faction != '?':
+        if b is not None and b.faction and b.faction != '?':
             out.add(b.faction)
     return out
 
@@ -219,7 +220,7 @@ def _buy_tag(card: ShopCard, state: GameState,
     [32] 腾席需求优先用卖解决)。
     """
     targets = _target_names(state, session)
-    bench_full = len(state.bench or []) >= registry.bench_capacity
+    bench_full = bench_occupied(state.bench or []) >= registry.bench_capacity
     is_target = card.name in targets
     v3_carrier = getattr(session, 'v3_hoard', None) is not None
     if not is_target and engine_seed_wants(card, state, session):
@@ -285,7 +286,7 @@ def _sell_tag(bc: BenchChar, state: GameState,
     name = bc.char_id or ''
     is_target = name in protect
     emergency = state.hp <= registry.emergency_hp
-    bench_full = len(state.bench or []) >= registry.bench_capacity
+    bench_full = bench_occupied(state.bench or []) >= registry.bench_capacity
     for tag in registry.sell_tag_priority:
         if tag == 'off_target':
             if not is_target and not emergency:
@@ -330,8 +331,10 @@ def generate_candidates(state: GameState, session: StrategySession,
             needs_slot=(tag == 'carry_gate'),
             breakdown_hint={'cost': card.cost},
         ))
-    # --- 卖(bench 每件)---
+    # --- 卖(bench 每件;ADR-0316 槽位表——idx=槽位下标,空槽跳过)---
     for idx, bc in enumerate(state.bench or []):
+        if bc is None:
+            continue
         tag = _sell_tag(bc, state, session, registry)
         if tag is None:
             continue
@@ -366,6 +369,8 @@ def _synthesize_candidates(state: GameState) -> list[Candidate]:
     """
     groups: dict[tuple[str, int], int] = {}
     for it in list(state.bench or []) + list(state.deployed or []):
+        if it is None:
+            continue   # ADR-0316 槽位表空槽
         name = getattr(it, 'char_id', '') or ''
         if not name:
             continue
@@ -394,7 +399,7 @@ def _deploy_candidates(state: GameState, session: StrategySession,
                      if getattr(d, 'char_id', '')}
     from sr_od.application.currency_war.cw_sim import _board_factions_of
     up_idx, _held = dl.select_deployments(
-        list(state.bench or []),
+        [b for b in (state.bench or []) if b is not None],
         deployed_cids=deployed_cids,
         deployed_fac=_board_factions_of(state.deployed),
         board=dict(state.board or {}),
@@ -402,13 +407,17 @@ def _deploy_candidates(state: GameState, session: StrategySession,
         target_factions=target_factions,
         target_cores=target_cores,
     )
+    # ADR-0316:select_deployments 吃紧缩占用序,回映射到槽位下标
+    _occ_idx = [i for i, b in enumerate(state.bench or []) if b is not None]
     out: list[Candidate] = []
     for i in up_idx[:registry.deploy_top_k]:
-        if i >= len(state.bench or []):
+        if i >= len(_occ_idx):
             continue
-        bc = state.bench[i]
+        bc = state.bench[_occ_idx[i]]
+        if bc is None:
+            continue
         out.append(Candidate(
-            action=DeployMove(bench_idx=i,
+            action=DeployMove(bench_idx=_occ_idx[i],
                               to_row=bc.position_pref or 'back',
                               faction=bc.faction or '?'),
             tag='deploy', source='fence',

@@ -170,7 +170,7 @@ def star_achievement(comp: Comp, state: GameState) -> float:
     """
     if not comp.core_chars:
         return 0.0
-    stars = [bc.star for bc in (*state.bench, *state.deployed)
+    stars = [bc.star for bc in [x for x in state.bench if x is not None] + list(state.deployed)
              if bc.char_id in comp.core_chars]
     if not stars:
         return 0.0

@@ -498,8 +498,10 @@ def decide_planner(options: list[PlannerOption], state: GameState,
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
         _tgt_factions & {'欢愉', '量子同频'})
     # 在场判定:bench+deployed 的 char_id(信息缺失=空列表→不降权,保守)
-    _pool = list(getattr(state, 'deployed', None) or []) + list(getattr(state, 'bench', None) or [])
-    _owned = {getattr(bc, 'char_id', '') for bc in _pool}
+    _pool = list(getattr(state, 'deployed', None) or []) + \
+        [b for b in (state.bench or []) if b is not None]
+    _owned = {getattr(bc, 'char_id', '') for bc in _pool
+              if getattr(bc, 'char_id', '')}
     wolf_owned = ('银狼LV.999' in _owned) if _owned else True
 
     best_idx, best_score, best_reason = 0, -1.0, ''

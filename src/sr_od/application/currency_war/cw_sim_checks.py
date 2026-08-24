@@ -3203,7 +3203,9 @@ def check_decision_v2_candidate_coverage(
                # 3 张」但旧探针只放了 1 份饮月 → 合成候选在任何
                # 生成器语义下都不可能触发(结构性不可绿);补第 2 份
                # 使判据成立(买入第 3 张 → merge 候选)。
-               BenchChar(slot=3, char_id='丹恒·饮月', faction='仙舟')]
+               BenchChar(slot=3, char_id='丹恒·饮月', faction='仙舟'),
+               # ADR-0316:pad 到槽位表定长
+               None, None, None, None, None]
     s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
               ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
     sess = StrategySession()
@@ -3307,7 +3309,8 @@ def check_decision_v2_telemetry_contract() -> dict:
     s.deployed = [BenchChar(slot=0, char_id='藿藿', faction='仙舟'),
                   BenchChar(slot=1, char_id='爻光', faction='仙舟')]
     s.bench = [BenchChar(slot=0, char_id='丹恒·饮月', faction='仙舟'),
-               BenchChar(slot=1, char_id='青雀', faction='仙舟')]
+               BenchChar(slot=1, char_id='青雀', faction='仙舟'),
+               None, None, None, None, None, None, None]   # ADR-0316 pad
     s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
               ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
     sess = StrategySession()
@@ -3477,6 +3480,7 @@ def check_decision_v2_supply_label_consistency() -> dict:
         BuyCard,
         GameState,
         ShopCard,
+        pad_bench,
     )
     from sr_od.application.currency_war.cw_strategy import StrategySession
     from sr_od.application.currency_war.decision_v2 import candidates as _c
@@ -3492,7 +3496,7 @@ def check_decision_v2_supply_label_consistency() -> dict:
         st = GameState()
         st.plane, st.round_num = plane, rn
         st.level, st.gold, st.hp = level, gold, 80
-        st.bench = list(bench)
+        st.bench = pad_bench(list(bench))   # ADR-0316 槽位表
         st.shop = list(shop)
         sess = StrategySession()
         sess.locked_line = line

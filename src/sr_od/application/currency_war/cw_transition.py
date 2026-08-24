@@ -126,7 +126,7 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
             if fw in portal:
                 counts[fw] += 3   # 环境先验等效权(约 3 张框架件;可被实际来牌翻越)
                 break
-    for bc in (*deployed, *bench):
+    for bc in (*deployed, *(b for b in bench if b is not None)):
         ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
         if ent and ent[0] in counts:
             counts[ent[0]] += 1
@@ -134,7 +134,7 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     # 防 shop 半权蒸发导致现任框架闪烁回退 ''(买→不上→被当散牌卖的 r70
     # 历史病回归)。启动判定仍用合并权。
     owned = dict.fromkeys(FRAMEWORKS, 0)
-    for bc in (*deployed, *bench):
+    for bc in (*deployed, *(b for b in bench if b is not None)):
         ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
         if ent and ent[0] in owned:
             owned[ent[0]] += 1

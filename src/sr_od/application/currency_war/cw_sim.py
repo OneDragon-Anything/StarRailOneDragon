@@ -57,6 +57,10 @@ from sr_od.application.currency_war.cw_state import (
     SwapDeploy,
     _bench_char_cost,
     _merge_bench,
+    bench_clear,
+    bench_occupied,
+    bench_place,
+    iter_occupied,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -959,7 +963,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     strat = strategy or LineStrategy()
     st = GameState()
     st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
-    st.bench = []
+    # bench 槽位表(ADR-0316):GameState() 已 pad 9 空槽,勿重置为
+    # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
     for _ in range(START_BENCH_COUNT):
         cost = rng.choices(
             [c for c, _ in START_BENCH_COST_WEIGHTS],
@@ -969,8 +974,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         if names:
             n = rng.choice(names)
             cards_pool.take(n)
-            st.bench.append(BenchChar(
-                slot=len(st.bench) + 1, char_id=n,
+            bench_place(st.bench, BenchChar(
+                slot=0, char_id=n,
                 faction=(CHARACTERS[n].factions or ['散'])[0]))
     sess = session or StrategySession()
     sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
@@ -1077,9 +1082,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # (批⑰ 3/300 局)——满仓局的买门/腾位门读的是生产
                     # 不可能出现的状态。守卫:合并域(bench+deployed,
                     # _merge_bench 全场域)中 bench 槽为约束——deployed
-                    # 不占备战槽,故判据 = len(bench) ≥ BENCH_CAPACITY
-                    # (9);超容买跳过(金/牌池均不消费)+ 计数披露。
-                    if len(st.bench) >= BENCH_CAPACITY:
+                    # 不占备战槽,故判据 = 占用数 ≥ BENCH_CAPACITY(9,
+                    # ADR-0316 槽位表);超容买跳过(金/牌池均不消费)+
+                    # 计数披露。
+                    if bench_occupied(st.bench) >= BENCH_CAPACITY:
                         _bench_full_skips += 1
                         _bench_full_skip_gold += a.card.cost
                         continue
@@ -1138,13 +1144,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
                     # (每次合并净减 2 个单位;载体在场时 deployed
                     # 计数不变)。
-                    _pre_units = len(st.bench) + len(st.deployed)
-                    st.bench.append(BenchChar(
-                        slot=len(st.bench) + 1, char_id=a.card.name,
+                    _pre_units = bench_occupied(st.bench) + len(st.deployed)
+                    bench_place(st.bench, BenchChar(
+                        slot=0, char_id=a.card.name,
                         faction=a.card.faction))
                     _merge_bench(st.bench, st.deployed)
                     _merges += (_pre_units + 1
-                                - len(st.bench) - len(st.deployed)) // 2
+                                - bench_occupied(st.bench)
+                                - len(st.deployed)) // 2
                     progressed = True
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
@@ -1154,8 +1161,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                     progressed = True
                 elif isinstance(a, SellBench):
-                    if 0 <= a.bench_idx < len(st.bench):
-                        bc = st.bench.pop(a.bench_idx)
+                    # ADR-0316:槽位置 None(占用校验在 bench_clear)
+                    bc = bench_clear(st.bench, a.bench_idx)
+                    if bc is not None:
                         ch = CHARACTERS.get(bc.char_id)
                         # ADR-0276:卖出回金接生产 sell_refund 单一源
                         # ——merge 落地后 bench 可有 star≥2(1星=cost、
@@ -1189,7 +1197,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _sold_names = [
                             st.bench[i].char_id
                             for i, d in a.sell if d == 'bench'
-                            and 0 <= i < len(st.bench)] + [
+                            and 0 <= i < len(st.bench)
+                            and st.bench[i] is not None] + [
                             st.deployed[i].char_id
                             for i, d in a.sell if d == 'deployed'
                             and 0 <= i < len(st.deployed)]
@@ -1294,8 +1303,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             res.fence_skips += 1
             # board 已由 cw_state.simulate 的 _recount_board 维护一致
         else:
+            # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
+            # 返回 up_idx 是占用序下标,下方回映射槽位下标)
+            _occ_idx = [i for i, b in enumerate(st.bench) if b is not None]
             _up_idx, _held_idx = _dl.select_deployments(
-                st.bench,
+                [b for b in st.bench if b is not None],
                 deployed_cids=_dep_cids,
                 deployed_fac=_dep_fac,
                 board=dict(st.board),
@@ -1304,16 +1316,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 target_cores=_tc,
                 fw_carry=_fw,
             )
-            for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
-                if _i < len(st.bench):
-                    st.deployed.append(st.bench.pop(_i))
+            # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
+            # (ADR-0271 上阵即出 bench 语义不变)
+            for _i in _up_idx:
+                if _i < len(_occ_idx):
+                    bc = st.bench[_occ_idx[_i]]
+                    if bc is not None:
+                        st.deployed.append(bc)
+                        st.bench[_occ_idx[_i]] = None
             st.board = _board_counts_of(st.deployed)
             # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
             # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
             # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
             # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
             _lag_idx, _ = _dl.select_deployments(
-                st.bench,
+                [b for b in st.bench if b is not None],
                 deployed_cids={d.char_id for d in st.deployed if d.char_id},
                 deployed_fac=_board_factions_of(st.deployed),
                 board=dict(st.board),
@@ -1453,11 +1470,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                       'board_factions': _board_factions_of(st.deployed),
                       # bench 对齐生产 BenchChar 形状(dict 带
                       # char_id/faction——视图/检查读 b['faction']
-                      # 不炸;审查#3)
+                      # 不炸;审查#3)。ADR-0316:序列化保持**占用序
+                      # 紧缩**(null 槽不落账本——下游 checks/视图按
+                      # 紧缩数组消费,零迁移;占用数=len)
                       'bench': [{'char_id': b.char_id,
                                  'faction': b.faction,
                                  'slot': b.slot}
-                                for b in st.bench],
+                                for b in iter_occupied(st.bench)],
                       # r391(执行层代理配套):deployed/cap 入账本
                       # ——「开局 deploy<cap」检查项的数据源
                       # (r387 类 bug 的 sim 常态化防线)。deployed

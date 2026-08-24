@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     COMP_LIBRARY,
@@ -44,6 +45,7 @@ from sr_od.application.currency_war.cw_state import (
     CompTransaction,
     FillSpec,
     GameState,
+    bench_occupied,
     simulate,
 )
 from sr_od.application.currency_war.cw_system_cards import (
@@ -132,13 +134,14 @@ def _char_factions(bc: BenchChar) -> set[str]:
 
 def _owned_names(state: GameState) -> set[str]:
     """在手角色名全集(bench ∪ deployed;「到手」口径)。"""
-    return {bc.char_id for bc in (*state.bench, *state.deployed) if bc.char_id}
+    return {bc.char_id for bc in (*state.bench, *state.deployed)
+            if bc is not None and bc.char_id}
 
 
 def _faction_in_hand(state: GameState, faction: str) -> int:
     """该羁绊在手人数(bench ∪ deployed;2换1 的「目标羁绊档」按在手计)。"""
     return sum(1 for bc in (*state.bench, *state.deployed)
-               if faction in _char_factions(bc))
+               if bc is not None and faction in _char_factions(bc))
 
 
 def _board_tier(state: GameState, faction: str) -> int:
@@ -368,7 +371,8 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         return (opt.faction in _char_factions(bc)) \
             or (bc.char_id in target_member_names)
 
-    bench_new = [bc for bc in state.bench if _is_new_line(bc)]
+    bench_new = [bc for bc in state.bench
+                 if bc is not None and _is_new_line(bc)]
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
     deployed_keep = [d for d in state.deployed if _is_new_line(d)]
@@ -379,7 +383,9 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     bench_new = bench_new[:max(0, room)]
 
     # 去向:旧档下场进 bench 保回滚窗(高星/高费优先保留),溢出卖出
-    bench_free = BENCH_CAPACITY - (len(state.bench) - len(bench_new))
+    # (ADR-0316:bench 占用数口径)
+    bench_free = BENCH_CAPACITY - (bench_occupied(state.bench)
+                                   - len(bench_new))
     retained = sorted(old_line, key=lambda d: (
         -d.star, -(CHARACTERS[d.char_id].cost
                    if CHARACTERS.get(d.char_id) else 0)))
@@ -479,7 +485,8 @@ def _substitute_candidates(state: GameState,
                 if primary in board_factions:
                     names |= {p.get('替班者', '') for p in comp.substitute_plan}
     names.discard('')
-    return [bc for bc in state.bench if bc.char_id in names]
+    return [bc for bc in state.bench
+            if bc is not None and bc.char_id in names]
 
 
 def _fill_candidates(state: GameState, target: Comp | None) -> list[BenchChar]:
@@ -488,6 +495,8 @@ def _fill_candidates(state: GameState, target: Comp | None) -> list[BenchChar]:
     family = target.family if target is not None and target.family else ''
     ranked: list[tuple[tuple[int, int], int, BenchChar]] = []
     for i, bc in enumerate(state.bench):
+        if bc is None:
+            continue   # ADR-0316 槽位表空槽
         if _is_waiting_true_core(bc.char_id, state):
             continue   # 真核心 bench 等档:不填散位
         if bc.char_id in subs:
@@ -525,8 +534,9 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
     ``state`` = **事务后状态**(``simulate(state_pre, tx)`` 的产物——后置
     bench 正是 FillSpec bench 源的解析域,C1 口径);``target`` 草案级可选参
     (缺省从板上优势羁绊推断——替班/禁用矩阵需要目标 comp 语境)。
-    多个 bench 源填位的 ``idx`` 按 ``_apply_comp_transaction`` 的 pop 语义
-    逐个左移修正(第 k 个已选前的候选已被 pop)。
+    多个 bench 源填位的 ``idx`` = **槽位下标(0-8,ADR-0316)**——应用端按
+    槽位表视图取件不 pop,生成期索引 = 执行期索引,无左移修正(F3 根治;
+    旧 pop 语义的逐选左移修正已删)。
     """
     gap = state.max_units() - state.deployed_count()
     if gap <= 0:
@@ -534,7 +544,7 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
     comp = target if target is not None else _target_of(state)
     cands = _fill_candidates(state, comp)
     fills: list[FillSpec] = []
-    removed: set[int] = set()   # 已选 bench 源的原始下标(pop 语义左移修正)
+    removed: set[int] = set()   # 已选 bench 源的槽位下标(同槽不重复选)
     front_left = state.front_max - state.front_count()
     back_left = state.back_max - state.back_count()
     for bc in cands:
@@ -550,11 +560,10 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
         else:
             back_left -= 1
         orig = _identity_index(state.bench, bc)
-        # ``_apply_comp_transaction`` 对 fill 按序 pop:第 k 个填位的 idx =
-        # 其原始下标左侧尚未被 pop 的元素数(逐选左移,契约草案级口径)
-        idx = sum(1 for j in range(orig) if j not in removed)
+        if orig in removed:
+            continue   # 同槽防御(候选来自占用件,天然不同槽)
         removed.add(orig)
-        fills.append(FillSpec('bench', idx, row))
+        fills.append(FillSpec('bench', orig, row))
     # bench 候选枯竭 → shop 插件(单卡)补位(金够且不禁用)
     if len(fills) < gap:
         family = comp.family if comp is not None and comp.family else ''
@@ -570,8 +579,18 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
                 continue
             cost = card.cost or 3
             if state.gold < cost:
+                # S7(可观测性,不变行为):金不足跳过某件 → 留 log 行(此前静默
+                # 留空,判读侧看不见「为什么缺口没填满」);格式对照 discipline
+                # 的 [cw][d2][liquidity] 行。
+                log.info('[cw][d2][fill-skip] 金不足 %s(费%d 现金%d)',
+                         card.name, cost, state.gold)
                 continue
             fills.append(FillSpec('shop', i, 'back'))
+    if len(fills) < gap:
+        # S7:缺口未填满(bench/店候选枯竭、金不足或槽不足)→ 汇总留一行,
+        # 防静默留空(只加可观测性,不改填位行为)。
+        log.info('[cw][d2][fill-skip] 源不足 留空位:%d(bench/店候选枯竭或金不足)',
+                 gap - len(fills))
     return fills
 
 
@@ -695,21 +714,31 @@ def rollback_weakest(state: GameState,
     weakest = min(deployed_of_new, key=_weak_key)
     d_idx = next(i for i, d in enumerate(state.deployed) if d is weakest)
     retained = [b for b in state.bench
-                if b.char_id in memory.last_retained]
+                if b is not None and b.char_id in memory.last_retained]
     if retained:
         b_idx = next(i for i, b in enumerate(state.bench)
                      if b is retained[0])
         memory.paused = True
-        return _swap_action(d_idx, b_idx)
+        # §1.7 expect 代际校验(W52 r4):expect 从**候选生成时的 state 快照**
+        # 取名(本函数收到的 state 即选件快照,与 d_idx/b_idx 同源),禁止从
+        # 执行期 working 取——working 被同批先行动作改变,取名=校验恒过,
+        # 防线失效。发射即填,cw_state 侧不符 → stale_proposal 整动作拒。
+        return _swap_action(
+            d_idx, b_idx,
+            expect_deployed=state.deployed[d_idx].char_id,
+            expect_bench=retained[0].char_id)
     memory.paused = True
-    return _sell_action(d_idx)
+    return _sell_action(d_idx, expect=state.deployed[d_idx].char_id)
 
 
-def _swap_action(d_idx: int, b_idx: int) -> Action:
+def _swap_action(d_idx: int, b_idx: int, *,
+                 expect_deployed: str = '', expect_bench: str = '') -> Action:
     from sr_od.application.currency_war.cw_state import SwapDeploy
-    return SwapDeploy(d_idx, b_idx, reason='valley_rollback')
+    return SwapDeploy(d_idx, b_idx, reason='valley_rollback',
+                      expect_deployed=expect_deployed,
+                      expect_bench=expect_bench)
 
 
-def _sell_action(d_idx: int) -> Action:
+def _sell_action(d_idx: int, *, expect: str = '') -> Action:
     from sr_od.application.currency_war.cw_state import SellDeployed
-    return SellDeployed(d_idx, reason='valley_rollback')
+    return SellDeployed(d_idx, reason='valley_rollback', expect=expect)

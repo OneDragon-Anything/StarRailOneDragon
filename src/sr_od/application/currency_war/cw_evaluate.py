@@ -31,6 +31,7 @@ from sr_od.application.currency_war.cw_factions import (
 )
 from sr_od.application.currency_war.cw_state import (
     GameState,
+    bench_occupied,
     effective_hp_threshold,
 )
 
@@ -160,6 +161,8 @@ def char_quality_score(state: GameState, character_priority: list[str],
     if target_comp is not None:
         core_names = set(getattr(target_comp, 'core_chars', ()) or ())
     for bc in (*state.bench, *state.deployed):
+        if bc is None:
+            continue   # ADR-0316 bench 槽位表空槽
         if bc.char_id in character_priority:
             score += CHAR_PRIORITY_BONUS * bc.star
         elif bc.char_id in core_names:
@@ -336,7 +339,7 @@ def _stash_form_progress(target_comp: Comp, state: GameState) -> float:
         return 0.0
     bench_f: dict[str, int] = {}
     for bc in state.bench:
-        if bc.faction and bc.faction != '?':
+        if bc is not None and bc.faction and bc.faction != '?':
             bench_f[bc.faction] = bench_f.get(bc.faction, 0) + 1
     total = 0.0
     n = 0
@@ -426,7 +429,9 @@ def evaluate(state: GameState, config, faction_priority: list[str],
         # BENCH_TARGET 不随 α 缩:持有 target 牌始终奖励(早期也要攒核心件;board 满→买 target 到 bench→
         # delta>0→bot 买→level up 后 deploy→target 深堆)。delta 中 phantom bench 抵消(plan greedy 消,净 delta 正确)。
         _bench_tgt = sum(1 for bc in state.bench
-                         if _card_hits_target(bc.char_id, bc.faction, target_comp))
+                         if bc is not None
+                         and _card_hits_target(bc.char_id, bc.faction,
+                                               target_comp))
         score += BENCH_TARGET_WEIGHT * _bench_tgt
     # optionality(灵活期权,F-3):早期(α 小)保 ≥2 comp 通用角色,晚期(α→1)让位 commit。
     # 即使 reactive(target=None)也奖 —— 未 commit 时更该保灵活(通用角色随时可并入将来 target)。
@@ -530,12 +535,13 @@ def optionality_score(state: GameState) -> float:
     集成时在 _bench_sell_value 加)。**未含 transition_chars**(已降级为参考字段,ADR-0149 由两级池替代)。
     评审🟡8:角色→comp 计数改调 ``char_routes()`` 单一源(原处自建 dict 同构实现,双源易漂移)。
     """
-    if not state.bench:
+    if bench_occupied(state.bench) == 0:
         return 0.0
     routes = char_routes()
     score = 0.0
     for bc in state.bench:
-        if bc.char_id and len(routes.get(bc.char_id, ())) >= 2:
+        if bc is not None and bc.char_id \
+                and len(routes.get(bc.char_id, ())) >= 2:
             score += OPTIONALITY_PER_CHAR
     return score
 

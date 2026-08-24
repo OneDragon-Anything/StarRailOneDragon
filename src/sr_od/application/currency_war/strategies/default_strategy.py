@@ -184,6 +184,8 @@ class DefaultCwStrategy(CwStrategy):
             from collections import Counter as _Ctr
             _flex_cnt = _Ctr()
             for bc in (*state.bench, *state.deployed):
+                if bc is None:
+                    continue
                 if bc.faction in _tc.flex_factions:
                     _flex_cnt[bc.faction] += 1
             _board_flex = {f: c for f, c in state.board.items() if f in _tc.flex_factions}
@@ -316,7 +318,9 @@ class DefaultCwStrategy(CwStrategy):
         EMERGENT_SIGNAL_COUNT: int = 1
         _counts: dict[str, int] = dict(state.board)
         for _bc in state.bench:
-            if _bc.faction and _bc.faction != '?':
+            if _bc is None:
+                continue
+            if _bc is not None and _bc.faction and _bc.faction != '?':
                 _counts[_bc.faction] = _counts.get(_bc.faction, 0) + 1
         _has_signal = any(_c >= EMERGENT_SIGNAL_COUNT for _c in _counts.values())
         if session.target_comp is None and not _has_signal:
@@ -465,7 +469,7 @@ class DefaultCwStrategy(CwStrategy):
             _stash = getattr(session, 'stash_comp', None)
             if _stash is not None:
                 _tgt_names |= set(getattr(_stash, 'core_chars', ()) or ())
-            _new_line_n = sum(1 for bc in (state.bench or [])
+            _new_line_n = sum(1 for bc in (state.bench or []) if bc is not None
                               if getattr(bc, 'char_id', '') in _tgt_names)
             _cap = max(2, min(_cap, _new_line_n + 2))   # 基线2+新线件数(渐进清,不一次光)
             log.info('[cw][target] 定型边沿 1:1 置换:bench 新线件 %d → 卖散 cap %d '
@@ -736,7 +740,7 @@ class DefaultCwStrategy(CwStrategy):
         cap = min(10, st.level or 1)
         dep = sum(1 for d in (st.deployed or []) if getattr(d, 'char_id', ''))
         vacancy = max(0, cap - dep)
-        worth = [bc for bc in (st.bench or [])
+        worth = [bc for bc in (st.bench or []) if bc is not None
                  if bc.char_id and cw_plan._should_deploy(bc, st, target)]
         return max(0, len(worth) - vacancy)
 
@@ -767,11 +771,12 @@ class DefaultCwStrategy(CwStrategy):
         from collections import Counter
         if not st.bench:
             return None
-        counts = Counter((bc.char_id, bc.star) for bc in st.bench if bc.char_id)
+        counts = Counter((bc.char_id, bc.star) for bc in st.bench
+                       if bc is not None and bc.char_id)
         close = cw_plan._close_factions(st)
         best_i, best_v = None, None
         for i, bc in enumerate(st.bench):
-            if not bc.char_id or counts[(bc.char_id, bc.star)] >= 2:
+            if bc is None or not bc.char_id or counts[(bc.char_id, bc.star)] >= 2:
                 continue
             if cw_plan._card_supports_target(bc.char_id, bc.faction, st, target):
                 continue
@@ -885,7 +890,7 @@ class DefaultCwStrategy(CwStrategy):
         if getattr(session, 'free_bench_gold_wait', 0) > 1:
             _dep_all = cw_plan.deployed_name_set(st)
             for bc in st.bench:
-                if bc.char_id and bc.char_id not in _dep_all:
+                if bc is not None and bc.char_id and bc.char_id not in _dep_all:
                     log.info(f'[cw][prep] 腾席链c(r364 强制):全保护死锁 → 卖 槽{bc.slot}'
                              f'({bc.char_id})')
                     return SellBench(slot=bc.slot)

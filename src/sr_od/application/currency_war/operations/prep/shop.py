@@ -29,6 +29,7 @@ from sr_od.application.currency_war.cw_state import (
     LevelUp,
     RefreshShop,
     SellBench,
+    bench_from_compact,
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
@@ -296,7 +297,9 @@ class BuyShopCards(SrOperation):
                              source='shop_rescue')
             # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
             if match.session.tracked_bench_chars:
-                state.bench = deepcopy(match.session.tracked_bench_chars)  # copy 防下游 plan 污染持久态
+                # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
+                state.bench = bench_from_compact(
+                    deepcopy(match.session.tracked_bench_chars))  # copy 防下游 plan 污染持久态
                 log.info(f'[cw] tracked_bench_chars(seed)={[(c.char_id, c.star) for c in state.bench]}')
             elif match.session.tracked_bench:
                 state.bench = _tracked_bench_chars(match.session.tracked_bench)

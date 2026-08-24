@@ -196,7 +196,7 @@ def _char_traits(ch) -> tuple[str, ...]:
 def _owned_names(state: GameState) -> set[str]:
     """在场∪bench 的角色名集合(char_id 已识别者;tracking 未识别的槽不计)。"""
     names: set[str] = set()
-    for c in list(state.deployed) + list(state.bench):
+    for c in list(state.deployed) + [x for x in state.bench if x is not None]:
         if getattr(c, 'char_id', ''):
             names.add(c.char_id)
     return names
@@ -310,7 +310,7 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
         # 双分支只计一次;希儿本人既是引擎又属双分支,也只计一次)
         members: set[str] = set()
         for fac in _card_factions(card):
-            for c in list(state.deployed) + list(state.bench):
+            for c in list(state.deployed) + [x for x in state.bench if x is not None]:
                 if not getattr(c, 'char_id', ''):
                     continue
                 ch = CHARACTERS.get(c.char_id)
@@ -321,7 +321,7 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
         return len(members)
     fac = _card_factions(card)[0]
     n = 0
-    for c in list(state.deployed) + list(state.bench):
+    for c in list(state.deployed) + [x for x in state.bench if x is not None]:
         if not getattr(c, 'char_id', ''):
             continue
         ch = CHARACTERS.get(c.char_id)

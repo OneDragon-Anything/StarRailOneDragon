@@ -26,7 +26,11 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
-from sr_od.application.currency_war.cw_state import Action, GameState
+from sr_od.application.currency_war.cw_state import (
+    Action,
+    GameState,
+    bench_occupied,
+)
 
 log = log_utils.log
 
@@ -327,7 +331,8 @@ class TelemetryRecorder:
                 if _m is not None else None
             if _st is not None:
                 _board = dict(getattr(_st, 'board', None) or {})
-                _bench = len(getattr(_st, 'bench', None) or [])
+                # ADR-0316:bench 槽位表 len 恒 9,计数=占用数
+                _bench = bench_occupied(getattr(_st, 'bench', None) or [])
                 # r339c(review B:语义注)——last_state 是**最近一次
                 # 备战观察**(结算前最后一读≈战前;P2 后段可能隔一
                 # 轮旧值:结算触发在下次备战观察前)。字段名
@@ -408,7 +413,7 @@ class TelemetryRecorder:
                     'level': getattr(state, 'level', None),
                     'plane': getattr(state, 'plane', None),
                     'round_num': getattr(state, 'round_num', None),
-                    'bench_count': len(getattr(state, 'bench', []) or [])}   # r68 review:旧 tracked_bench 字段 GameState 没有(恒 0)
+                    'bench_count': bench_occupied(getattr(state, 'bench', []) or [])}   # ADR-0316 占用数(r68 review:旧 tracked_bench 字段 GameState 没有(恒 0))
         rec = ExogenousEvent(ts=datetime.now().isoformat(timespec="seconds"),
                              run_id=run_id, round_num=round_num,
                              kind=kind, detail=detail, state_snapshot=snap)

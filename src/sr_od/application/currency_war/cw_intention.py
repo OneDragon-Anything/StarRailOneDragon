@@ -174,16 +174,15 @@ def _visible_chars(state: GameState) -> set[str]:
         if card.name:
             names.add(card.name)
     for bc in list(state.bench) + list(state.deployed):
-        if bc.char_id:
+        if bc is not None and bc.char_id:
             names.add(bc.char_id)
     return names
-
 
 def _bond_counts(state: GameState) -> dict[str, int]:
     """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加)。"""
     counts: dict[str, int] = dict(state.board)
     for bc in state.bench:
-        if bc.faction and bc.faction != '?':
+        if bc is not None and bc.faction and bc.faction != '?':
             counts[bc.faction] = counts.get(bc.faction, 0) + 1
     return counts
 
@@ -279,7 +278,7 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
     # 数据缺口声明:升费资源(道具)暂无 GameState 字段——以升费链角色到手
     # (cost_escalation['角色'] 在 bench/deployed)作「资源到位」代理;字段接入后扩。
     owned = {bc.char_id for bc in list(state.bench) + list(state.deployed)
-             if bc.char_id}
+             if bc is not None and bc.char_id}
     for c in comps:
         ce = c.special_systems.get('cost_escalation')
         if ce and ce.get('角色') in owned:
@@ -295,7 +294,8 @@ def _asset_thickness(comp: Comp, state: GameState) -> float:
     SKELETON_ASSET_WEIGHT。终件 = core_chars;骨架件 = 跨线骨架名单 ∩ (core∪shared)。
     """
     pool = list(state.deployed) + list(state.bench)
-    star_of = {bc.char_id: bc.star for bc in pool if bc.char_id}
+    star_of = {bc.char_id: bc.star for bc in pool
+               if bc is not None and bc.char_id}
     final_pieces = sum(star_of.get(name, 0) for name in comp.core_chars)
     skeleton = (set(CROSS_LINE_SKELETON)
                 & (set(comp.core_chars) | set(comp.shared_chars)))

@@ -36,6 +36,7 @@ from sr_od.application.currency_war.cw_state import (
     BenchChar,
     GameState,
     ShopCard,
+    bench_from_compact,
 )
 from sr_od.application.currency_war.cw_telemetry import DEFAULT_REPLAY_DIR
 
@@ -66,8 +67,11 @@ def _rebuild_state(snap: dict) -> GameState:
                          faction=b.get('faction') or '?',
                          star=b.get('star') or 1,
                          position_pref=b.get('position_pref') or 'back')
-    st.bench = [_bc(b, i) for i, b in enumerate(snap.get('bench') or [])
-                if isinstance(b, dict)]
+    # ADR-0316:历史快照是紧缩序,经 bench_from_compact 转槽位表
+    # (slot 带 1-based 槽号时按槽放置,否则顺序放置)
+    st.bench = bench_from_compact([
+        _bc(b, i) for i, b in enumerate(snap.get('bench') or [])
+        if isinstance(b, dict)])
     # r359:deployed 重建(formation 检查点/star/equips 消费;r358 三维)
     st.deployed = [_bc(b, i) for i, b in enumerate(snap.get('deployed') or [])
                    if isinstance(b, dict)]
