@@ -44,7 +44,7 @@ class HandlePlannerEvent(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
 
-    @operation_node(node_name='处理策划事件', is_start_node=True, node_max_retry_times=5)
+    @operation_node(name='处理策划事件', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
         screen = self.screenshot()
         # 1. OCR 两卡区域文字(卡描述 y~300-420 带,左卡 x<960 / 右卡 x≥960)

@@ -141,6 +141,21 @@ class CurrencyWarRunLoop(SrOperation):
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         cw_telemetry.start_run(difficulty=_diff_for_telemetry)
+        # R4-1(W52 §3.1):recovered 三字段(_run_start_ts/_first_settlement_seen/
+        # _is_new_match)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
+        # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
+        # __init__ 不随 execute 重入重跑(原写在 __init__ → 重入不重置,R4 审查
+        # 报告检查项 4:「漏标不误标」保守退化,此处根治)。
+        # _is_new_match 与 match 建立块必须**同块迁移**:_is_new_match 的求值
+        # (ctx.cw_match is None)在「match 尚未建立」时点才有意义——只迁三字段
+        # 会让首次 execute 重判时 cw_match 恒已存在(_is_new_match 恒 False,
+        # on_match_start/残留屏判定双双失活)。整块迁移后:首次 execute 时序与
+        # 原 __init__ 等价(本方法在首个节点运行前执行);execute 重入时重判
+        # ——cw_match 若已建立则不再当新局(保守方向:漏标不误标,R4 已证)。
+
+    def handle_init(self) -> None:
+        """run 级状态初始化(框架钩子:每次 execute() 开头由
+        ``_init_before_execute`` 调用;见类注 R4-1 迁移说明)。"""
         # W28 缺陷①:run 启动时刻 + 首见结算屏标记(relaunch 残留结算判据,
         # 见 RELAUNCH_SETTLE_GRACE_S 注)。
         self._run_start_ts: float = time.monotonic()

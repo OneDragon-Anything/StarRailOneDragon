@@ -40,6 +40,12 @@ class EquipsInconsistencyError(RuntimeError):
             f'账面={sorted(ledger)} 画面={sorted(visible)}')
 
 
+#: 对账异常元组(R4-2 §3.2 单点化:消费方 except 本元组,新增对账异常
+#: 只改这里)
+EQUIPS_CONSISTENCY_ERRORS: tuple[type[BaseException], ...] = (
+    EquipsInconsistencyError,)
+
+
 def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
                               source: str) -> None:
     """动作前对账(契约 C6 草案签名 + ``visible`` 可读面参数,草案级细化)。

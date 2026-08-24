@@ -409,7 +409,7 @@ class DeployBench(SrOperation):
         if _match is None or _match.session is None:
             return
         from sr_od.application.currency_war.cw_bench_equips import (
-            EquipsInconsistencyError,
+            EQUIPS_CONSISTENCY_ERRORS,
             assert_equips_consistency,
         )
         from sr_od.application.currency_war.cw_equipment import (
@@ -435,7 +435,7 @@ class DeployBench(SrOperation):
                 # 然后画面真值覆盖(deployed 侧画面 = truth,tracking 是 bench 侧单一源)。
                 try:
                     assert_equips_consistency(c, eq, source='deploy_bench.snapshot')
-                except EquipsInconsistencyError as e:
+                except EQUIPS_CONSISTENCY_ERRORS as e:   # R4-2:元组单一源(上游演化只改那处)
                     log.warning('[cw!] %s(账本漂移,画面真值覆盖)', e)
                 c.equips = list(eq)
                 _n += len(eq)
