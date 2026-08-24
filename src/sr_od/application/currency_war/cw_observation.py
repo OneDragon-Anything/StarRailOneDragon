@@ -658,15 +658,22 @@ def read_board(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
 
 def board_from_tracked(tracked: list) -> dict[str, int] | None:
-    """从 tracked_deployed(身份可靠时)**计算** board 阵营计数(用户 2026-08-16 定:以算为准)。
+    """从 tracked_deployed(身份可靠时)**计算** board 羁绊计数(用户 2026-08-16 定:以算为准)。
 
     OCR 左面板的坑:激活阵营多时**一页显示不全要滚动** → OCR 只读可视区,滚出屏的静默漏
     (board 是 form_progress/pivot/economy 的地基,漏阵营 = 半成型误判)。角色注册表
     (``cw_chars.CHARACTERS``)已有全量阵营数据 → 每个已上场已知身份角色贡献其全部阵营,
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
+    口径(ADR-0312,W50):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
+    ——L1 全集(factions+flows+independent,开拓者按排归一)**+ L2 星徽装备
+    羁绊贡献**(``tracked_deployed[].equips``,deploy_bench 读回在案):
+    星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
+    该羁绊行 +1,是面板真值的一部分(W49 §2:此前缺维度 → computed_vs_ocr
+    常态化误报 + 星徽局档位系统性低估)。
+
     Returns:
-        {阵营: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
+        {羁绊: 在场人数};**tracked 空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
         (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突留证会暴露
         混合频率)。**无阵营已知角色不 bail**(2026-08-17):白厄「救世主」复制效果不计人数
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
@@ -674,38 +681,33 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
     """
     if not tracked:
         return None
+    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
     for bc in tracked:
+        tags = unit_bond_tags(bc)
+        if tags:
+            for t in tags:
+                counts[t] = counts.get(t, 0) + 1
+            continue
+        # 零标签:区分「合法零贡献」与「身份不可算」——
         cid = getattr(bc, 'char_id', '') or ''
         if not cid or cid == '?':
             return None
-        # 开拓者形态归一(用户 2026-08-16):前台=记忆/后台=欢愉,拖排即切换;羁绊按「当前排」
-        # 的形态计(欢愉形态被拖上前排 → 欢愉羁绊消失)。position_pref 即当前排(simulate/
-        # mutate DeployMove 写 to_row;identify_slots 上阵排写 row)。
         from sr_od.application.currency_war.cw_chars import (
             is_trailblazer,
             trailblazer_form,
         )
-        if is_trailblazer(cid):
-            cid = trailblazer_form(cid, getattr(bc, 'position_pref', '') or 'back')
-        ch = get_char(cid)
+        _cid = cid
+        if is_trailblazer(_cid):
+            _cid = trailblazer_form(
+                _cid, getattr(bc, 'position_pref', '') or 'back')
+        ch = get_char(_cid)
         if ch is None:
-            return None
-        # 独立羁绊(救世主/领航员/挚爱之人…)左面板显示为一行(14:52 live OCR 实证含「救世主」)
-        # → 计入保持与面板同口径;否则 computed_vs_ocr 对拍每帧误报「OCR有computed无」留证噪声。
-        # comp 层消费只查 comp.factions,不受该键影响。
-        if ch.independent:
-            counts[ch.independent] = counts.get(ch.independent, 0) + 1
-        # 羁绊 = 阵营类(factions)+ 流派类(flows:能量/欢愉/击破…)都进左面板计数(OCR board
-        # 同口径 —— 只数 factions 会系统性漏流派羁绊;开拓者「欢愉」正是 flows,实测暴露)。
-        for f in (*ch.factions, *ch.flows):
-            counts[f] = counts.get(f, 0) + 1
-        if not (ch.factions or ch.flows or ch.independent):
-            return None  # 三者皆空 = 注册表数据异常,保守退 OCR
-        # 无阵营但有独立羁绊(白厄「救世主」)或 factions 空 flows 非空(布洛妮娅 燃血):身份已知
-        # 不 bail,上方已计入各自贡献。白厄复制效果不计人数(官方 trait 3005)→ 零阵营贡献即精确
-        # (2026-08-17 修:旧版 not ch.factions 即 None,白厄/布洛妮娅上场整链误退 OCR,
-        # 恰丢掉计算路径的抗滚动优势)。
+            return None   # 注册表无此角色:阵营贡献算不出,保守退 OCR
+        if ch.factions or ch.flows or ch.independent:
+            continue      # 防御:有角色标签则 tags 非空,理论不可达
+        # 三者皆空且装备无贡献 = 注册表数据异常(旧版同判)→ 保守退 OCR
+        return None
     return counts
 
 

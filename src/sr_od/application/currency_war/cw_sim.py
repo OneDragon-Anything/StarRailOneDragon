@@ -332,7 +332,14 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
 # boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
 # 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
-_SAMPLER_VERSION: int = 6   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 7   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+# v7(ADR-0312,W50 口径统一):采样键 _deployable_depth 从
+# min(level, len(deployed)) 改 **Σboard(全集口径)**——与池语料
+# (decisions state.board 求和,实机全集口径)同口径;旧键与池语料
+# 不同口径,同一局面两侧落不同桶,采样系统性偏浅(W49 Q4)。同时
+# state.board 本身换全集口径(_recount_board)——池内容不变但 sim
+# 侧查询/结算键变 → 快照 META 指纹重算 + ANCHOR_REGISTRY_N300 锚
+# 重记(ADR-0308 同款流程)。
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -647,10 +654,12 @@ def _settle_rung(st: GameState) -> int:
     Δ池 rung 分桶的采样键**单一源**)。
 
     口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
-    输入 = _board_factions_of(deployed)(factions+flows 并计)+
-    上场名单(希儿系单卡判据)。
+    输入 = **board 全集口径**(ADR-0312,W50:_recount_board——对齐生产
+    outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
+    缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
-    _bf = _board_factions_of(st.deployed)
+    from sr_od.application.currency_war.cw_state import _recount_board
+    _bf = _recount_board(st.deployed)
     _names = frozenset(d.char_id for d in (st.deployed or [])
                        if getattr(d, 'char_id', ''))
     return _engines_count(_bf, _names)
@@ -766,20 +775,16 @@ def _board_factions_of(deployed) -> dict[str, int]:
 
 
 def _board_counts_of(deployed) -> dict[str, int]:
-    """ADR-0271:board 主阵营计数(生产 DeployMove 口径)。
+    """board 全集计数(ADR-0312,W50 口径统一)。
 
-    生产 board[faction] += 1 按角色**主阵营**(BenchChar.faction)
-    逐件累加;与 _board_factions_of(factions+flows 并计,判读用)
-    是两个口径——state.board 消费方(line_strategy recipe 门/在场
-    阵营集合)按生产口径喂。未识别(char_id 空)不计(生产 OCR
+    **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
+    旧「主阵营逐件累加」口径已废:state.board 消费方(line_strategy
+    recipe 门/在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
+    星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
+    分叉(W49 Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
-    out: dict[str, int] = {}
-    for d in (deployed or []):
-        f = getattr(d, 'faction', '') or ''
-        if not f or f == '?':
-            continue
-        out[f] = out.get(f, 0) + 1
-    return out
+    from sr_od.application.currency_war.cw_state import _recount_board
+    return _recount_board(deployed)
 
 
 def _first_tier_round(res, tier: int) -> int | None:
@@ -889,16 +894,18 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
 
 
 def _deployable_depth(st: GameState) -> int:
-    """可 deploy 件数(① 收口:此前三处内联重算口径不一)。
+    """板深 = **Σboard(全集口径)**(ADR-0312,W50 桶键统一)。
 
-    口径 r390(执行层代理落地):**读 st.deployed**(真实围栏输出,
-    cw_deploy_logic.select_deployments 与 DeployBench op 同源)——
-    旧口径数 bench 阵营对(r343),deploy 代理升级后两者脱钩
-    (r387 变异探针差异死在这:围栏改了,板深没读)。
-    depth_trail / Δ 池采样 / 账本 depth 共用本函数(单一源)。
+    池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
+    角色每人贡献 ≥2)——sim 采样键旧用 ``min(level, len(deployed))``
+    与池语料不同口径:同一局面在池里落深桶、sim 查询落浅桶,采样系统性
+    偏向低桶/miss(W49 Q4「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
+    键/depth_trail/账本 depth 的单一源,与池语料同口径(Σboard,不加
+    level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
+    r390 的「读 deployed 不数 bench」语义由 board=_recount_board
+    (deployed 派生)间接保留。
     """
-    _dep = len(st.deployed or [])
-    return min(st.level, _dep)
+    return sum((st.board or {}).values())
 
 
 def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
@@ -1421,6 +1428,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             for _who, _what in _equipped_now:
                 if _what in st.equips:
                     st.equips.remove(_what)
+                # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
+                # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
+                # tracked_deployed[].equips 同语义);防重守卫(跨轮对同一
+                # 人重复分配同一件不双记)。
+                for d in st.deployed:
+                    if d.char_id == _who:
+                        if _what not in d.equips:
+                            d.equips.append(_what)
+                        break
         from sr_od.application.currency_war.cw_line_defs import (
             core_count_for,
         )
@@ -1450,7 +1466,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                       'deployed': [{'char_id': d.char_id,
                                     'faction': d.faction,
                                     'slot': d.slot,
-                                    'position_pref': d.position_pref}
+                                    'position_pref': d.position_pref,
+                                    # ADR-0312(W50):装备随人进账本——
+                                    # 检查镜像(_board_agg_of_deployed_
+                                    # row)复算星徽羁绊贡献需要它
+                                    'equips': list(getattr(d, 'equips', ())
+                                                   or ())}
                                    for d in (st.deployed or [])
                                    if getattr(d, 'char_id', '')],
                       'cap': st.max_units(),

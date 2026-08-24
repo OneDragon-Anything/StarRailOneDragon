@@ -29,8 +29,8 @@
 | shop | _Pool 抽店(REFRESH_PROB;ADR-0272 全费) | 商店牌面 OCR/SIFT | 已接 | — |
 | bench | 开局 4 张+买 append(含 3合1 merge,ADR-0276)+卖 pop+上阵 pop(ADR-0271) | 备战栏 SIFT 跟踪 | 已接(ADR-0276 起 merge 同源 `_merge_bench`;合并数入账本 sim.merges) | — |
 | deployed | select_deployments 围栏输出,跨轮累积(ADR-0271) | bot 跟踪已上阵 | 已接 | — |
-| board | deployed 主阵营聚合(ADR-0271) | OCR 左面板阵营计数 | 已接(ADR-0271) | — |
-| equips | supply 3选1 采样(池=注册表过滤后的装备名,ADR-0294 件2)+equip_allocation(r393);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR | 已接(代理) | — |
+| board | deployed 羁绊全集聚合(ADR-0312:主阵营单标签口径已废;per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,L1+L2 含星徽装备贡献;DeployMove 增量、动作 v2 全量重算) | OCR 左面板阵营计数 / board_from_tracked 计算(同口径) | 已接(ADR-0312 全集口径) | — |
+| equips | supply 3选1 采样(池=注册表过滤后的装备名,ADR-0294 件2)+equip_allocation(r393)+分配结果回写 BenchChar.equips(ADR-0312,星徽羁绊贡献进 board);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR;tracked_deployed[].equips(deploy_bench 读回) | 已接(代理) | — |
 | shop_refresh_cost | 恒默认 2(读 `st.shop_refresh_cost or 2`) | OCR 刷新金币数 | 已接(P1 无投资减免域内 2=真值;减免随 active_strategies 结构) | P3 |
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
@@ -75,6 +75,21 @@
 | shop_locked | 恒 False | 商店锁定 | 未建(sim 无锁店行为,策略亦未用) | P3 |
 | megastar_char | 恒 None | 巨星节点绑定角色(回写复盘) | 未建(巨星节点层) | P3 |
 | partner_char | 恒 None | 伙伴节点选择(回写复盘) | 未建(伙伴节点层) | P3 |
+
+## 羁绊口径分层(ADR-0312;board 统计语义单一源声明)
+
+羁绊计数(board / 板深 / rung / 档位)分三层,**逐层消费、不跨层引用**:
+
+| 层 | 内容 | 消费方 | 状态 |
+|---|---|---|---|
+| L1 纯羁绊全集 | 角色标签:factions+flows+independent,开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | **三处一致**(实机 `board_from_tracked` / sim `_recount_board` / checks 镜像,per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,ADR-0312 起) |
+| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **雏形落地**(ADR-0312:equips 消费链通,sim equip_allocation 回写) |
+| L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | win_model 特征、power_table、结算校准层 | 未建(挂「语料积累后」,W49 裁决 4) |
+
+判读边界:Δ池桶键(encounter/boss/reward/supply 深度桶)与池语料
+同口径 = Σboard(L1+L2 全集,ADR-0312 v7);battle rung 输入
+`_recount_board`。历史批次(≤ v6 池指纹)的板深/rung 数字与本版本
+**不可裸串比**(桶语义变,跨版本对照须导出 JSON 快照重放)。
 
 ## 已知接线缺口的影响面(判读边界)
 

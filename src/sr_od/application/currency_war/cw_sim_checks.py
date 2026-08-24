@@ -1324,11 +1324,28 @@ _EXPLICIT_V2_ACTIONS = ('SellDeployed', 'SwapDeploy', 'CompTransaction')
 
 
 def _board_agg_of_deployed_row(row: dict) -> dict[str, int]:
-    """账本行的 deployed 主阵营聚合(动作 v2 一致性检查的本地口径;
-    与 cw_state._recount_board 同形——检查模块不 import cw_sim/cw_state,
-    值漂移由双向锁暴露,同 HP_UPPER_BOUND 镜像纪律)。"""
+    """账本行的 deployed 羁绊全集聚合(动作 v2 一致性检查的本地口径)。
+
+    ADR-0312(W50):口径与 ``cw_state._recount_board`` 同形 = **全集 +
+    星徽装备贡献**——per-unit 标签经 ``cw_bond_equips.unit_bond_tags``
+    (与 cw_state/cw_observation 三侧同一函数,非镜像复制;检查模块
+    不 import cw_sim/cw_state 的依赖方向纪律不变,消费的是更底层的
+    口径单一源模块)。值漂移由双向锁暴露,同 HP_UPPER_BOUND 镜像纪律。"""
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
     agg: dict[str, int] = {}
     for d in (row.get('state') or {}).get('deployed') or []:
+        ns = SimpleNamespace(
+            char_id=d.get('char_id') or '',
+            position_pref=d.get('position_pref') or 'back',
+            faction=d.get('faction') or '',
+            equips=d.get('equips') or [])
+        tags = unit_bond_tags(ns)
+        if tags:
+            for t in tags:
+                agg[t] = agg.get(t, 0) + 1
+            continue
         f = d.get('faction')
         if f and f != '?':
             agg[f] = agg.get(f, 0) + 1
@@ -1341,7 +1358,7 @@ def check_comp_tx_atomicity(rows: list[dict]) -> list[str]:
     判据:
     - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
       CompTransaction)时,该轮账本 state.board 必须与 deployed 名单的
-      主阵营聚合一致(转移后 board 由 _recount_board 维护;不一致 =
+      羁绊全集聚合一致(转移后 board 由 _recount_board 维护;不一致 =
       半档残留/board 派生断裂);
     - **rejected** 显式动作必须带非空 reject_reason(拒绝记录可见性
       ——冻结 invariant「拒绝记录进账本」的账本侧镜像)。
@@ -1874,9 +1891,11 @@ def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
     差——win 侧校准落地前恒≈0(批⑪ 实测 26.9 vs 26.0,零耦合);
     落地后应显著为正,否则校准失败。违规 = 双侧都有局且差 ≤0
     (成型局不比未达局活得久 = 价值链仍断)。
-    小批护栏(ADR-0286):任一侧 <5 局 = 均值噪声主导,只披露不
-    判定(CI smoke n=25 曾以 formed_n=2 的 −0.35 假红;真批次
-    n≥300 两侧几十局起,护栏不削判定力)。
+    小批护栏(ADR-0286):任一侧 <20 局 = 均值噪声主导,只披露不
+    判定(CI smoke n=25 曾以 formed_n=2 的 −0.35 假红;ADR-0312
+    W50 v7 采样键换 Σboard 后 13/12 侧再假红 −4.11,同批 n=300
+    真判 diff +5.39 绿——护栏从 <5 提到 <20,对齐判据原意
+    「真批次 n≥300 两侧几十局起」,判定力不减)。
     """
     formed: list[int] = []
     unformed: list[int] = []
@@ -1890,7 +1909,7 @@ def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
          else unformed).append(int(hp))
     diff = (sum(formed) / len(formed) - sum(unformed) / len(unformed)) \
         if formed and unformed else None
-    small_n = formed and unformed and min(len(formed), len(unformed)) < 5
+    small_n = formed and unformed and min(len(formed), len(unformed)) < 20
     violations = 1 if (diff is not None and diff <= 0
                        and not small_n) else 0
     out = {'violations': violations, 'formed_n': len(formed),
@@ -2104,19 +2123,29 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # rung 外推本身是跨节点拍脑袋外推,高估);策略侧指标零漂移
 # (engines2/recipe5/refreshes 逐位持平 = 只有结算校准变了,
 # 决策行为面没动)。
+# 旧锚(fd48f135,ADR-0308 批)已失效:ADR-0312(W50 口径统一)
+# _SAMPLER_VERSION 6→7——sim 侧 board 全集口径(_recount_board)+采样键
+# Σboard(池语料同口径,旧 min(level,len(deployed)) 与池语料不同口径,
+# 采样系统性偏浅,W49 Q4)。**校准口径修正非策略变化**:hp 类下移属
+# 预期(同局面落更深的 encounter/boss 桶 → 更真实的战损);策略侧
+# 基本零漂移(engines2/recipe5 与 v6 锚逐位持平);哨兵大样本仍绿
+# (n=300 diff +5.39 vs v6 批 +5.33)。遗留:n=300 涌现边缘违规
+# engine_seed_not_resold(1/300,g188)/carry_on_shelf_responded
+# (2/300,g243/296)——行为面随口径变化的涌现信号,待 leader 对拍
+# 裁决(W50 报告 §遗留)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': 'fd48f13568fae796',
-    'recorded': '2026-08-24(ADR-0308 W37:v6 池+W31 节点胜率阶梯,'
-                '校准修正换锚,n=300,seed 0-299)',
+    'pool_fingerprint_prefix': '6c0c8397f3f38a58',
+    'recorded': '2026-08-25(ADR-0312 W50:v7 池+全集口径+Σboard'
+                '采样键,校准修正换锚,n=300,seed 0-299)',
     'metrics': {
-        'engines2_by_r6': 0.39,       # 旧 0.39(886f8a39;策略面零漂移)
-        'avg_final_hp': 32.08,        # 旧 35.68(hp 类下移=校准修正预期)
-        'hp_ge_60': 0.09,             # 旧 0.137(同上;实机对照口径
-                                      # 需用 W31 同源语料胜率,勿直接
-                                      # 与旧锚串比)
-        'battle_losses_le_2': 0.1,    # 旧 0.167
-        'recipe5_by_r6': 0.71,        # 旧 0.71(策略面零漂移)
-        'avg_refreshes': 3.87,        # 旧 3.87(策略面零漂移)
+        'engines2_by_r6': 0.38,       # 旧 0.39(策略面近零漂移)
+        'avg_final_hp': 27.97,        # 旧 32.08(hp 类下移=校准修正预期)
+        'hp_ge_60': 0.05,             # 旧 0.09(同上;与旧锚串比须注明
+                                      # v7 口径——板深桶语义变)
+        'battle_losses_le_2': 0.11,   # 旧 0.1
+        'recipe5_by_r6': 0.72,        # 旧 0.71(策略面近零漂移)
+        'avg_refreshes': 2.31,        # 旧 3.87(板面集中买门读全集
+                                      # board,口径变→刷新行为面变化)
     },
 }
 

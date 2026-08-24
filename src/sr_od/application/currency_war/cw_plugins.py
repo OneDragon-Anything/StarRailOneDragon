@@ -22,7 +22,7 @@ A 套是插件、在 B 套是正料,完全正常。``majority_lines`` 字段承�
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 @dataclass(frozen=True)
@@ -35,8 +35,10 @@ class PluginEntry:
       ——单卡分界=T1/T2 职能稀缺性、T3 稳定性差/条件触发(三B);小羁绊分界=
       效果给谁(三C:全队通用/混合型/队员口径);
     - ``effect_scope``:'team'(全队通用)| 'member'(队员口径)| 'char'(角色特定);
-    - ``majority_lines``:线内身份标注——该插件在某家族/套出现率过半(已是骨架,
-      插件身份不在这些线成立);家族键 = ``cw_comps.V2_FAMILIES``;
+    - ``majority_lines``:线内身份标注——该插件的全部**过半线家族列表**
+      (W16 统计搬运,W50 补全为完整列表;旧部分标注[只记反例线]已废);
+      单卡条目从 ``W16_MAJORITY_LINES`` 程序同步(单一写入口),小羁绊
+      条目手注(三C 口径);家族键 = ``cw_comps.V2_FAMILIES``;
     - ``source``:证据指针(comp_elements_and_plugins 三B/三C 定稿节)。
     """
     plugin_id: str
@@ -112,7 +114,66 @@ _SMALL_FACTION_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("盛会之星2", "small_faction", "T3", "char", source="三C 角色特定:逐角色条款(巨星绑定)"),
 )
 
+# ===== W16 过半线统计(线内身份标注单一源;2026-08-25 W50 补全,W47 条2裁决①)=====
+# 来源:`.debug/temp/currency_war/cw_dev/deep_read/W16_报告.md` A2(过滤②,N=809 帖
+# v4.4+沙盒过滤口径)——「某线出现率 ≥50%」的家族键集合(V2_FAMILIES;绯英/银狼
+# 两线同归欢愉族 → 家族键去重后计数少于线数)。**数据搬运非新统计**。
+# 覆盖:8 张骨架件(≥3 线过半;千冶·刃/开拓者·记忆不在插件池——骨架身份,
+# 但跨线骨架派生 CROSS_LINE_SKELETON 需要它们的过半数据)+ 4 张边界卡
+# (恰 2 线过半且全局 ≥15%,W16 A2 边界组;开拓者·欢愉两线同族 → 1 键)。
+W16_MAJORITY_LINES: dict[str, frozenset[str]] = {
+    # --- 8 张骨架件(A2 表;线明细见 W16 报告)---
+    '瓦尔特': frozenset({'姬子列车', '黄泉减益', 'DOT卡芙卡', '欢愉族',
+                         '希儿量子', '圣杯双C'}),          # 7 线(绯英/银狼同族)
+    '千冶·刃': frozenset({'万敌燃血', '黄泉减益', 'DOT卡芙卡', '白厄反甲',
+                          '希儿量子', '姬子列车', '欢愉族', '圣杯双C'}),  # 8 线
+    '符玄': frozenset({'希儿量子', '欢愉族', '圣杯双C', '万敌燃血',
+                       'DOT卡芙卡'}),                      # 6 线
+    '星期日': frozenset({'姬子列车', '白厄反甲', '圣杯双C'}),   # 3 线
+    '开拓者·记忆': frozenset({'圣杯双C', '姬子列车', '白厄反甲'}),  # 3 线
+    '花火': frozenset({'希儿量子', '万敌燃血', '圣杯双C', '欢愉族'}),  # 4 线
+    '缇宝': frozenset({'大黑塔群攻', '万敌燃血', '希儿量子', '黄泉减益'}),  # 4 线
+    '刻律德菈': frozenset({'万敌燃血', '希儿量子', '圣杯双C'}),   # 3 线
+    # --- 边界组(恰 2 线过半且全局 ≥15%;A2 边界注)---
+    '三月七': frozenset({'姬子列车', '白厄反甲'}),        # 姬子88/白厄87
+    '姬子·启行': frozenset({'姬子列车', '白厄反甲'}),     # 姬子100/白厄82
+    '开拓者·欢愉': frozenset({'欢愉族'}),                # 绯英96/银狼94(同族)
+    '藿藿': frozenset({'欢愉族', '圣杯双C'}),             # 绯英72/圣杯55
+}
+
+
+def cross_line_skeleton() -> tuple[str, ...]:
+    """跨线骨架名单派生(W47 条2 裁决①重启;strategy_v4 点0 弱意向囤货集)。
+
+    规则(W16 A2 口径,数据源 = W16_MAJORITY_LINES):
+    - **≥3 线过半**(家族键数 ≥3)→ 骨架件(8 张);
+    - **恰 2 家族过半的边界卡**,排除「过半线中以它为 carry 的线级定义件」
+      (``COMP_LIBRARY.plaza_carry``;姬子·启行 = 姬子线 carry,该线采购
+      本就含它,无跨线信息)→ 双身份 2 张(三月七/藿藿;开拓者·欢愉
+      两线同族 1 键,天然不进边界)。
+
+    派生结果与原手写 10 名快照一致(cw_intention 测试锁;不等 = 数据错)。
+    """
+    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    carries = {c.plaza_carry for c in COMP_LIBRARY if getattr(c, 'plaza_carry', '')}
+    out: set[str] = set()
+    for name, fams in W16_MAJORITY_LINES.items():
+        if len(fams) >= 3 or len(fams) == 2 and name not in carries:
+            out.add(name)
+    return tuple(sorted(out))
+
+
 PLUGIN_LIBRARY: dict[str, PluginEntry] = {p.plugin_id: p for p in (*_UNIT_PLUGINS, *_SMALL_FACTION_PLUGINS)}
+
+# W50(W47 条2 裁决①):单卡插件的 majority_lines 与 W16 统计表**程序同步**
+# (单一写入口——过半线刷新只改 W16_MAJORITY_LINES,上方的部分标注字面量
+# 被 W16 全集覆盖;小羁绊插件的 majority_lines 仍手注[三C 口径,无 W16 单卡
+# 统计])。锁测试对拍两侧一致。
+
+PLUGIN_LIBRARY.update({
+    p.plugin_id: replace(p, majority_lines=W16_MAJORITY_LINES[p.plugin_id])
+    for p in _UNIT_PLUGINS if p.plugin_id in W16_MAJORITY_LINES
+})
 
 # ===== 禁用矩阵(硬冲突行,教义手编;判定法=阵容机制原文 × 插件机制原文)=====
 # 键 (plugin_id, family|comp名);值 = 机制原因。硬冲突=见了不买;机制不打架但位置/资源

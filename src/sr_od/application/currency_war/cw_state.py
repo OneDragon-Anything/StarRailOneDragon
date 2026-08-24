@@ -6,11 +6,13 @@
 
 字段多由实机 OCR 填充(见 strategy_design.md §8 接线);未填(None/默认)时决策安全降级。
 
-**board 模型**(2026-08-03 review r1 修正):
-- ``board`` = 已上阵阵营计数(OCR 左面板 cw_observation.read_board 填充)。
+**board 模型**(2026-08-03 review r1 修正;ADR-0312 W50 口径统一):
+- ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
+  贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;对齐实机
+  ``board_from_tracked`` = 游戏左面板真值)。旧主阵营单标签口径已废(W49 Q4)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
-  已上阵的优先角色 + 站位分流。两者应一致(deployed 按阵营聚合计数 == board)。
-- simulate(DeployMove) 同时更新 deployed(append) 与 board[faction]+=1。
+  已上阵的优先角色 + 站位分流。两者应一致(deployed 按羁绊全集聚合 == board)。
+- simulate(DeployMove) 同时更新 deployed(append) 与 board(_recount_board 重算)。
 - simulate(BuyCard) 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
@@ -441,15 +443,27 @@ def _bench_char_cost(bc: BenchChar) -> int:
 
 def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
     """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
-    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源
-    (口径 = 主阵营聚合,空/未知阵营不计,与 cw_sim._board_counts_of 同形;
-    跨模块不 import,值漂移由 checks 的 board↔deployed 一致性锁双向暴露)。"""
+    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
+
+    口径(ADR-0312,W50 口径统一):**羁绊全集 + 星徽装备贡献**——
+    factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
+    计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
+    per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
+    未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
+    单标签(空/'?' 不计,生产 OCR 空板同形)。值漂移由 checks 的
+    board↔deployed 一致性锁双向暴露。"""
+    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
     for d in (deployed or []):
-        f = getattr(d, 'faction', '') or ''
-        if not f or f == '?':
+        tags = unit_bond_tags(d)
+        if tags:
+            for t in tags:
+                out[t] = out.get(t, 0) + 1
             continue
-        out[f] = out.get(f, 0) + 1
+        # 身份未知兜底:faction 字段单标签(旧主阵营口径的未知路径,保留)
+        f = getattr(d, 'faction', '') or ''
+        if f and f != '?':
+            out[f] = out.get(f, 0) + 1
     return out
 
 
@@ -797,7 +811,20 @@ def simulate(state: GameState, action: Action) -> GameState:
                 # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
                 _apply_row_to_char(bc, action.to_row)
                 s.deployed.append(bc)
-                s.board[action.faction] = s.board.get(action.faction, 0) + 1
+                # ADR-0312(W50 口径统一):**增量**全集计数——board 可能来自
+                # OCR 真值而 deployed 尚空(生产 read_game_state 填充序),
+                # 全量重算会抹掉 OCR 提供的计数;增量 += 与旧 DeployMove
+                # 语义同形,口径升级 = 单位标签从主阵营单标签换 unit_bond_tags
+                # 全集(星徽/卡带贡献在内)。
+                from sr_od.application.currency_war.cw_bond_equips import (
+                    unit_bond_tags,
+                )
+                _tags = unit_bond_tags(bc)
+                if not _tags:
+                    _f = getattr(bc, 'faction', '') or ''
+                    _tags = (_f,) if _f and _f != '?' else ()
+                for _t in _tags:
+                    s.board[_t] = s.board.get(_t, 0) + 1
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1,步2):卖场上单位——deployed 生命周期开口。
         if 0 <= action.deployed_idx < len(s.deployed):

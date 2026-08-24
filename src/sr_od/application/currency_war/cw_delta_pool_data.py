@@ -52,8 +52,8 @@ META: dict = {
     "reward:桶15(n=3)"
   ],
   "depth_bucket_w": 3,
-  "fingerprint": "fd48f13568fae796",
-  "note": "v2 只收可信标签行(2026-08-22 retrofix 后:死链历史 node_type 置 None 已丢弃计数);事故局物理排除(QUARANTINED_RUNS,r378b);跨策略版本混杂已知(一轮#10),过滤走 --runs 重生成;v3(ADR-0279,批⑬)battle 桶键 depth→rung(成型度一维分桶),encounter/boss 维持 depth 桶;v4(ADR-0306)胜判定权威口径=killed(结算屏 extras;Δ 为派生量,异号实证 0/61 killed 已知行——0305 的「3/9 异号」系 tier×core 与 rung 两分桶错位对照的伪影),META 逐桶双口径胜率+桶贫困披露+语料行数账",
+  "fingerprint": "6c0c8397f3f38a58",
+  "note": "v2 只收可信标签行(2026-08-22 retrofix 后:死链历史 node_type 置 None 已丢弃计数);事故局物理排除(QUARANTINED_RUNS,r378b);跨策略版本混杂已知(一轮#10),过滤走 --runs 重生成;v3(ADR-0279,批⑬)battle 桶键 depth→rung(成型度一维分桶),encounter/boss 维持 depth 桶;v4(ADR-0306)胜判定权威口径=killed(结算屏 extras;Δ 为派生量,异号实证 0/61 killed 已知行——0305 的「3/9 异号」系 tier×core 与 rung 两分桶错位对照的伪影),META 逐桶双口径胜率+桶贫困披露+语料行数账;v5(ADR-0312,W50)池内容不变,sampler v6→v7(采样键 Σboard 全集口径)指纹随版本重算——META 仅 fingerprint/sampler_version 两键手更,余键与生成器产物一致(重生成时自动收敛)",
   "quarantined_hits": [],
   "runs": {
     "run_20260822_170001": 4,
@@ -87,7 +87,7 @@ META: dict = {
     "run_20260823_200621": 7
   },
   "runs_filter": "all",
-  "sampler_version": 6,
+  "sampler_version": 7,
   "skipped_lines": {},
   "source_dir": "D:\\code\\workspace\\StarRailOneDragon\\.debug\\temp\\currency_war\\replay",
   "source_rows": {

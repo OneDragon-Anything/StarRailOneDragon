@@ -42,6 +42,9 @@ from sr_od.application.currency_war.cw_comps import (
     get_comp,
 )
 from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
+from sr_od.application.currency_war.cw_plugins import (
+    cross_line_skeleton as _cross_line_skeleton,
+)
 from sr_od.application.currency_war.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
@@ -63,15 +66,14 @@ FAMILY_BOND_MIN_COUNT: int = 2
 # 6 级搜绯英三星,无信号时的默认落点」)。四体系顺来牌支归点2,P1 侧不在本模块。
 FALLBACK_COMP_NAME: str = '绯英欢愉'
 
-# 跨线骨架件(strategy_v4「目标件」定义节 class3,W16 过滤名单:全局 ≥3 线
-# 出现率过半 8 张 + 双身份 2 张「骨架(过半线)+插件(其余线)」)。
-# 弱意向态只囤这批(点0:撤销后去向——只囤跨线骨架件)。
-CROSS_LINE_SKELETON: tuple[str, ...] = (
-    # W16 八张(≥3 线出现率过半)
-    '瓦尔特', '千冶·刃', '符玄', '星期日', '开拓者·记忆', '花火', '缇宝', '刻律德菈',
-    # 双身份(三月七:姬子88/白厄87;藿藿:绯英72/圣杯55)
-    '三月七', '藿藿',
-)
+# 跨线骨架件(strategy_v4「目标件」定义节 class3)。弱意向态只囤这批
+# (点0:撤销后去向——只囤跨线骨架件)。
+# W50(W47 条2 裁决①):**派生**自 ``cw_plugins.W16_MAJORITY_LINES``
+# (≥3 线过半 8 张 + 恰 2 家族过半且非线级 carry 的边界 2 张),不再
+# 手写——手写快照的脱锚风险(W45 判定)消除;派生规则与 W16 A2 口径
+# 见 ``cw_plugins.cross_line_skeleton``。快照测试锁派生结果 == 原 10 名
+# (不等 = 数据错)。
+CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
 # ②类专属信号注册表(family → 专属羁绊名)。W47 统一化:原手编 crosswalk
 # 迁移为 ``Comp.bond_signal`` 数据字段(cw_comps 各条,值从本表原样迁移;
