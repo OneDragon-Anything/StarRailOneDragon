@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_economy import xp_click_cost
 from sr_od.application.currency_war.cw_plugins import (
     PLUGIN_LIBRARY,
@@ -38,6 +39,7 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     ShopCard,
     bench_occupied,
+    sell_refund,
     will_merge_on_buy,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -341,8 +343,15 @@ def generate_candidates(state: GameState, session: StrategySession,
         tag = _sell_tag(bc, state, session, registry)
         if tag is None:
             continue
+        # P2 修复(独立 review):带 income 回金——主采纳通道(arbiter)此前
+        # 不补 income,执行侧 gold 对拍 +0 误报(gold_delta 冲突);与
+        # carry_gate(discipline)/补偿器(remediation)带 income 路径同口径。
+        _income: int | None = None
+        _ch = CHARACTERS.get(bc.char_id)
+        if _ch is not None and _ch.cost:
+            _income = sell_refund(getattr(bc, 'star', 1) or 1, _ch.cost)
         out.append(Candidate(
-            action=SellBench(bench_idx=idx),
+            action=SellBench(bench_idx=idx, income=_income),
             tag=tag, source='bench',
             breakdown_hint={'name': bc.char_id},
         ))

@@ -542,8 +542,15 @@ class BuyShopCards(SrOperation):
                     if ok:
                         # tracking 同步:置 None 不紧缩(mutate_bench_deployed 已支持
                         # SellBench 分支,ADR-0316)
+                        # P1 修复(独立 review):mutate 入口 pad_bench 按 index 补 None,
+                        # 紧凑态 tracked(对账写回,含中间空槽)直接传入会 index≠槽位 → 清错槽;
+                        # 与守卫/决策层同源,先经 bench_from_compact 统一为槽位表语义,
+                        # 就地(切片赋值保同一引用)再 mutate。
+                        _tracked = match.session.tracked_bench_chars
+                        _tracked[:] = bench_from_compact(
+                            [bc for bc in _tracked if bc is not None])
                         mutate_bench_deployed(
-                            match.session.tracked_bench_chars,
+                            _tracked,
                             match.session.tracked_deployed, action)
                         # ADR-0328 执行域对齐:卖出件入同轮已卖集(同轮不回买)。
                         # 决策层已在动作采纳处登记(arbiter/carry_gate/补偿器),此处
