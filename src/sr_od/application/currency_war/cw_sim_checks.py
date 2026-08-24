@@ -3883,15 +3883,26 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
     - **hp 跳变违规**:``killed=False`` 且 ``hp_before-hp_after<=0``
       (败局 hp 不可能不降——跳变 = 接管帧错值/回填错位;实证
       run_20260823_154910:3→58,-55);
-    - **hp 缺失违规**(批40 补):``killed=False`` 且 ``hp_after`` 缺失
-      (None)——败局 boss 行缺 hp_after,掉血口径不可算,静默通过 =
-      判读面盲区(批40 边界复审发现原实现漏辖);
-    - **地板下违规**(批40 补):``killed=False`` 且 ``hp_after==0``
-      (地板=1,hp 归零即败、killed 应为 True——0 且未标 killed = 写端
-      矛盾,批40 边界复审发现原实现漏辖);
+    - **hp 缺失违规**(批40 补,批41 复审改判维持):``killed=False`` 且
+      ``hp_after`` 缺失(None)——败局 boss 行缺 hp_after,掉血口径不可算,
+      静默通过 = 判读面盲区。⚠️ 批41 边界复审:当前写端(``cw_settlement_obs.
+      read_round_outcome`` hp None 兜 0 + telemetry dataclass ``hp_after:int``)
+      **不产 None**——本分支实为 schema 防御(防未来写端变更/外部语料),
+      非已观测语料缺口(语料实证 21 boss 行无 None);
+    - **hp==0 披露(note 级,批41 改判)**:``killed=False`` 且 ``hp_after==0``
+      ——批40 原判「写端矛盾(归零即败应标 killed=True)」是**语义倒置**:
+      killed = 玩家击败对手(``挑战成功``),团灭 = 打不过 → killed=False
+      恰是正确标签;写端 ``cw_settlement_obs`` 失败屏 hp=0 是 ground truth
+      (conf=1.0),且 ``HP_MIN=0``(``cw_obs_core``)OCR 可解析真 0。故
+      ``killed=False + hp_after==0`` = 合法团灭形态,与 ==1 同族按**删失
+      披露**处理(伤害口径须剔除),不作违规;
     - **删失披露(note 级)**:``killed=False`` 且 ``hp_after==1`` 的
       行计数 + 行号——这些行的 boss 掉血是下界非真值,任何伤害口径
       必须剔除或单独标注。
+
+    ``hp_before`` 回填(批41 补守卫):缺省取上一行 ``hp_after`` 时**须同
+    ``run_id``——跨 run 边界回填会用上一局末 hp 当本局 boss 前值,产出
+    伪「hp 未降」违规(批40 遗留:回填不分 run 边界)。
     """
     boss_idx = [i for i, r in enumerate(rows)
                 if r.get('node_type') == 'boss']
@@ -3907,21 +3918,22 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
             bad_label += 1
             continue
         hp_after = r.get('hp_after')
+        # 批41:上一行回填须同 run——跨 run 边界 = 上一局末 hp,非本局前值
+        _prev = rows[i - 1] if i > 0 else None
         hp_before = (r.get('hp_before') if r.get('hp_before') is not None
-                     else (rows[i - 1].get('hp_after')
-                           if i > 0 else None))
+                     else (_prev.get('hp_after')
+                           if _prev is not None
+                           and _prev.get('run_id') == r.get('run_id')
+                           else None))
         if not k:
             if hp_after is None:
                 violations.append(
                     f'行{i}({r.get("run_id")} r{r.get("round_num")}):'
                     f'killed=False 但 hp_after 缺失(败局 boss 行掉血口径'
-                    f'不可算,采集缺口,批40)')
+                    f'不可算,采集缺口/schema 防御,批40/批41)')
                 continue
             if hp_after == 0:
-                violations.append(
-                    f'行{i}({r.get("run_id")} r{r.get("round_num")}):'
-                    f'killed=False 但 hp_after==0(hp 地板=1,归零即败应标'
-                    f'killed=True——写端矛盾,批40)')
+                censored.append(i)   # 批41 改判:团灭合法形态,与 ==1 同族删失披露
             if hp_after == 1:
                 censored.append(i)
             if hp_before is not None and hp_after is not None \
@@ -3934,15 +3946,15 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
         violations.append(f'{bad_label} 行 boss killed 非 bool(采集断裂,'
                           f'批㊲同型;外推无同节点对照地基)')
     censor_note = (
-        f'{len(censored)} 行 killed=False 且 hp_after==1(boss 掉血为'
-        f'下界非真值,右删失——伤害口径必须剔除或单独标注,行号 '
-        f'{censored},批39)') if censored else None
+        f'{len(censored)} 行 killed=False 且 hp_after∈{{0,1}}(boss 掉血为'
+        f'下界/团灭非真值,右删失——伤害口径必须剔除或单独标注,行号 '
+        f'{censored},批39/批41)') if censored else None
     return {
         'violations': len(violations), 'detail': violations,
         'boss_rows': len(boss_idx), 'bad_label': bad_label,
         'censored_rows': len(censored), 'censored_idx': censored,
         'censor_note': censor_note,
-        'note': 'boss 行 hp 地板删失守卫(批39/批40);红 = killed 采集断裂'
-                '/败局 hp 未降/hp_after 缺失/hp_after==0 矛盾;'
-                'censor_note 非空 = 伤害口径须剔删失行',
+        'note': 'boss 行 hp 地板删失守卫(批39/40/41);红 = killed 采集断裂'
+                '/败局 hp 未降/hp_after 缺失;'
+                'censor_note 非空 = 伤害口径须剔删失行(含 hp_after==0 团灭行)',
     }
