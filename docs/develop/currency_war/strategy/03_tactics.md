@@ -38,6 +38,8 @@
 
 **decision_v2 纪律族:掉血报警梯度**(strategy_v4 点4/点12;ADR-0313):`BloodAlarmTracker` 三臂(连续战斗失败 / 最近 3·5 个**战斗节点**累计掉血)激活时按处置梯度行动——①自然补强窗(窗上界 `BLOOD_GRADIENT_NATURAL_BATTLES` 个战斗节点,`mode='economy'` 不弃息)→ 窗耗尽或血边际低于 `BLOOD_MARGIN_LOW_HP` → ②弃息 D 保血(war+硬节点放行 refresh)。三臂窗口单位=战斗节点计数器(非战斗节点不计入不重置),跨位面全臂重置。**报警不是 ALL IN 的触发**;位面末最后一战(`plane_last_battle`)的 ALL IN 授权在报警态下同样开通(授权来自位面末,非报警)——`allin` 是唯一清零地板的路径。「来牌顺不顺」([19]③)未消费(定性变量,声明欠账挂实机语料)。
 
+**decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(无显式成型停手门);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

@@ -21,6 +21,7 @@ from sr_od.application.currency_war.cw_line_defs import (
     recipe_tier,
 )
 from sr_od.application.currency_war.cw_state import (
+    BuyCard,
     GameState,
     SellBench,
     bench_occupied,
@@ -30,6 +31,7 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.filters import (
     crisis_hoard_active,
+    is_emergency,
 )
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
@@ -161,7 +163,9 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # 息 EV 只在满息平台(≥interest_floor)上计值——平台由层4 阶梯
     # 地板/interest_rule 维护;<50 金的政策是「档内全花,息让位配方」
     # (v1 同式),评分若对 <50 的档位跨越扣息 EV = 与地板政策双重
-    # 计罚,合法买入被评负分全弃(smoke 实证);单一源对齐
+    # 计罚,合法买入被评负分全弃(smoke 实证);单一源对齐。
+    # war 破息窗的 50 平台破碎(50→49)只付真实息损的平滑见
+    # score_candidate 的 ADR-0332 息崖平滑段(不动本项绝对值)。
     interest = (min(registry.interest_cap, (state.gold or 0) // 10)
                 * registry.interest_rounds
                 if (state.gold or 0) >= registry.interest_floor else 0.0)
@@ -313,6 +317,31 @@ def _engines_formed(state: GameState,
     return _engines_count(fac, dep)
 
 
+def _cand_is_engine_piece(cand: Candidate) -> bool:
+    """候选是否为过渡体系引擎件(factions∪flows∩TRANSITION_TRAITS 或 希儿)。
+
+    与 cw_sim._engines_count 的体系判定同源(四体系成员;引擎判定单源
+    在 cw_deploy_logic.TRANSITION_TRAITS);希儿系=单卡判定——买入囤
+    bench 是成型路径(部署后才成引擎,[13] 成型进度),与计数语义
+    (deployed 在场才算引擎)互补不冲突。
+    """
+    a = cand.action
+    if not isinstance(a, BuyCard):
+        return False
+    name = getattr(a.card, 'name', '') or ''
+    if name == '希儿':
+        return True
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    ch = _CH.get(name)
+    if ch is None:
+        return False
+    # TRANSITION_TRAITS = (bond, tier) 序列(与 cw_sim._engines_count
+    # 同源解包口径;勿 set(dict)——dict 语义下会给 tuple 集)
+    from sr_od.application.currency_war.cw_sim import _TRANSITION_TRAITS
+    eng_bonds = {b for b, _t in _TRANSITION_TRAITS}
+    return bool((set(ch.factions or ()) | set(ch.flows or ())) & eng_bonds)
+
+
 def score_candidate(cand: Candidate, state: GameState,
                     session: StrategySession,
                     registry: DecisionV2Registry,
@@ -371,6 +400,22 @@ def score_candidate(cand: Candidate, state: GameState,
         return 0.0, {'base': base, 'after': None}
     after = score_state(after_state, registry, session)
     val = sum(after.values()) - sum(base.values())
+    if (state.plane == 1 and state.round_num >= 5
+            and not is_emergency(state, registry)
+            and (state.gold or 0) >= registry.interest_floor
+            and (after_state.gold or 0) < registry.interest_floor):
+        # ADR-0332 息崖平滑(war 破息窗):买入跌破 50 满息平台时,评分
+        # 原扣全平台消失(-25),而同一窗口纪律侧(boss_breaker r≥5 P1,
+        # floor 10 / 保血弃息)授权破 50 花费——双重计罚让 gold 50-53
+        # 带买入恒死(实机「金 42→71 攒息期零买」的评分侧机制)。此处把
+        # 息损修正为**真实档位损失**(跨档数×interest_rounds,[17] 息律),
+        # 50→49 只付 -5;emergency 保持 -25([18] 不为苟住破息,ADR-0302
+        # 锁);经济态(<50 政策)与 war 窗非破平台带不受影响。
+        _gb = state.gold or 0
+        _ga = after_state.gold or 0
+        _orig_pen = (after.get('interest', 0.0) - base.get('interest', 0.0))
+        _real_loss = -(_gb // 10 - _ga // 10) * registry.interest_rounds
+        val += _real_loss - _orig_pen
     if cand.tag in ('off_target', 'for_gold', 'free_bench'):
         # 弱件换金偏置(registry.off_target_sell_bias):持有域溢出
         # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
@@ -404,6 +449,22 @@ def score_candidate(cand: Candidate, state: GameState,
         # ([17]「>50 该买就买」+[18]「不为苟住破息」)。常量在
         # registry(crisis_buy_bias/crisis_buy_tags;ADR-0303 上移)。
         val += registry.crisis_buy_bias
+    if (registry.forming_bias > 0
+            and state.plane == 1 and state.round_num >= 5
+            and not is_emergency(state, registry)
+            and _engines_formed(state, registry) < 2
+            and _cand_is_engine_piece(cand)
+            and -registry.interest_rounds <= val
+            <= registry.forming_bias_val_max):
+        # ADR-0332 成型补充偏置(成型度权重;W64 Ring3 同族评分活性修):
+        # P1 破息窗 + 板面未成型(引擎<2,[13] 成型即停手的前提不满足=应
+        # 继续买配方件)时,引擎件买入的「成型期权」显影——cap 饱和/冗余
+        # 档位下买入不改评分维(base==after)被「非正分」拒(ADR-0301
+        # 残余),而 [27] 每场质量战把中期投资在全节点持续变现。偏置只顶
+        # val∈[-interest_rounds, +0.5](单档真实息损内;emergency 的 -25
+        # 息崖([18])与深负分不被翻越),量级=引擎完成期权(win 跳升×剩余
+        # 战斗),registry 注入可 A/B;成型后(引擎≥2)偏置关闭 → 停手攒息。
+        val += registry.forming_bias
     if (cand.tag in registry.goldrich_buy_tags
             and val == 0.0
             and (state.gold or 0) >= registry.goldrich_min_gold):

@@ -257,6 +257,17 @@ class DecisionV2Registry:
     goldrich_buy_tags: frozenset[str] = frozenset({
         'engine_seed', 'pair', 'copy', 'bridge_core',
     })
+    # ===== ADR-0332 成型补充偏置(d2 评分批;P1 boss 转化) =====
+    #: 成型补充偏置:未成型(引擎<2)+ 引擎件候选在破息窗(r≥5 P1,非应急)
+    #: 的 0/小负分买入顶成正分的偏置。依据=[13] 成型即停手(未成型=继续买
+    #: 配方件)+[27] 每场质量战(引擎完成 win 跳升×剩余战斗≈4.5-5.4 金);
+    #: 量级=完成期权的保守下限,只顶 val∈[-interest_rounds, +0.5](单档
+    #: 真实息损内;emergency 的 -25 息崖([18])与深负分不被翻越)。
+    #: 0=关闭(A/B 通道,同 form_refresh_ev 模式)。
+    forming_bias: float = 5.0
+    #: 成型补充偏置的顶分上沿(原分 > 此值不加偏置——不叠加已正分买入,
+    #: 防 ADR-0301「高单位下进度件挤掉目标件」过冲)
+    forming_bias_val_max: float = 0.5
     # ===== 成型找件刷新(ADR-0301 strike2,域 b) =====
     #: 成型找件刷新 EV:未成型(引擎数<target)且当前店无引擎卡时,
     #: 刷新=定向找件。**双窗 A/B 否决(30+30 配对 -4.13/-4.70,
