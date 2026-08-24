@@ -48,6 +48,8 @@ battle_loop(主循环,屏幕级路由)
 | decision_v2(唯一策略载体) | `decision_v2/`(strategy=独立 DefaultCwStrategy 实现+discipline 纪律族+candidates/filters/scoring/arbiter 四层+registry) | 战略层=cw_intention 意向分层(update_target 写 v3_hoard/target_comp=COMP_LIBRARY v2 真 Comp);目标件=hoard_target_set+体系卡引擎件+PLUGIN_LIBRARY;演进=cw_evolution(evolution_step 进决策循环发显式 CompTransaction);纪律族=应急/boss_breaker/carry_gate/catchup/掉血三臂(报警梯度:①自然窗→②弃息 D→③位面末 ALL IN,ADR-0313)/保血通道;carry_gate 弱序与保护集口径(ADR-0314) | [0290](../decisions/0290-decision-framework-candidate-scoring.md)(框架本体)+[0309](../decisions/0309-decision-v2-sole-carrier.md)(载体迁移)+[0313](../decisions/0313-blood-alarm-semantics-final.md)+[0314](../decisions/0314-carry-gate-weak-order.md) · [07](07_plugin.md) |
 | 姿态/经济 | `cw_horizon`(DP 求解器)/`cw_effect_ledger`/`cw_economy` | 跨期花钱节奏(升/刷/攒)单一姿态源;既持效果台账;经济纯函数 | [01](01_posture.md) |
 | 战略 | `cw_comps`(select_comp/pivot)/`cw_transition`(双轨过渡)/`cw_line_tribunal`(战略审判)/`cw_run_allocator`(跨局)/`cw_first_passage`(目标函数)/`cw_progress_curves`(期望进度线) | 打什么阵容、何时定型/转型、跨局选臂 | [02](02_comp.md) |
+| 演进引擎 | `cw_evolution` | 阵容替换通用法则:evolution_step 统一入口四步(propose→evaluate 三条件[③人口=信息位不阻断,发令枪=①∧②]→execute 整档 CompTransaction→fill 空位规则);中断恢复 pending 重校验/谷底回滚一件最弱(ADR-0319) | [02 §10](02_comp.md) |
+| 终局意向 | `cw_intention` | 意向分层纯逻辑:信号五层/锁线撤销析取两出口(miss-N 窗口冻结逐出 / 高层信号过可达对照)/降格终局 absorbing;锁后只输出囤货目标集合写 v3_hoard(买侧唯一消费面,不改板上)(ADR-0319) | [02 §11](02_comp.md) |
 | 战术 | `cw_plan`/`cw_evaluate`/`cw_bundle` | 备战动作规划/局面评估/回合内联合行动束 | [03](03_tactics.md) |
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
