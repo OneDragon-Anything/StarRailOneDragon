@@ -37,16 +37,34 @@ class ScreenState(Enum):
     AHA_MASK: str = '欢愉假面'
 
 
+def _normalize_level_region_name(region_name: str) -> str:
+    """楼层名 OCR 形变规范化(无歧义形变,方向唯一):
+
+    2026-08-24 实证形变(裁剪小图 OCR 的系统性误读):
+    - '区域-战斗' → '·区域一战斗'(连接符 '-' 读成 '一';前导装饰点 '·')
+    分隔符 '一'/'/'/'|' → '-' 是无歧义方向(楼层名只含 '区域-XX' 一种结构);
+    '·'/'·'/空格 为装饰/噪声直接剔。
+    """
+    return region_name.replace('一', '-').replace('·', '').replace(' ', '').replace('/', '-').replace('|', '-')
+
+
 def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]:
     """
     获取当前画面的楼层类型
+
+    OCR 结果先过形变规范化(_normalize_level_region_name)再做子串全等:
+    楼层名是「区域-XX」固定结构短文本,互为兄弟类型(区域-战斗/区域-遭遇
+    只差 1 字),LCS 模糊匹配在容错 1 字形变的阈值下与兄弟误配同分,不可用;
+    规范化把无歧义形变('-'→'一' 等)归一后,子串全等零误配面。
+    (rect 曾把 '区' 切掉致 '域-战斗',已修 rect x1 50→25。)
+
     :param ctx: 上下文
     :param screen: 游戏画面
     :return:
     """
     area = ctx.screen_loader.get_area('模拟宇宙', '楼层类型')
     part = cv2_utils.crop_image_only(screen, area.rect)
-    region_name = ctx.ocr.run_ocr_single_line(part)
+    region_name = _normalize_level_region_name(ctx.ocr.run_ocr_single_line(part))
     level_type_list: List[SimUniLevelType] = [enum.value for enum in SimUniLevelTypeEnum]
     target_list = [gt(level_type.type_name, 'game') for level_type in level_type_list]
     targets = [i for i, w in enumerate(target_list) if w in region_name]

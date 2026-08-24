@@ -4377,7 +4377,7 @@
   - area_name: 楼层类型
     id_mark: false
     pc_rect:
-    - 50
+    - 25
     - 0
     - 330
     - 60
