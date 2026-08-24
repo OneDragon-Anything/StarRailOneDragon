@@ -125,6 +125,13 @@ class GameState:
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
     partner_char: str | None = None          # 选择的伙伴(选择伙伴节点)
+    # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy/
+    # CompTransaction)的执行结果逐条记录(applied/rejected + reason)
+    # ——事务拒绝必须可见(checks 消费;冻结 invariant「拒绝记录进账本」)。
+    # 三消费面:策略不读(决策禁依赖账本);遥测经 sim ledger 的 actions
+    # 序列化间接可见;sim 代理 = 本字段自身(simulate 写、cw_sim 转录)。
+    # 旧动作(BuyCard 等)不记(零行为变化)。
+    action_log: list[dict] = field(default_factory=list)
 
     def copy(self) -> GameState:
         return deepcopy(self)
@@ -243,7 +250,71 @@ class PickEvent:
     refresh: bool = False
 
 
-Action = BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
+@dataclass
+class FillSpec:
+    """人口缺口填位描述(CompTransaction.fill 元素 / 独立填位动作共用)。
+
+    契约包 C1(冻结):``source`` = 'bench' | 'shop'(shop 时 ``idx`` 为
+    ``state.shop`` 列表索引);``row`` = 'front' | 'back'。
+    在 CompTransaction.fill 中,**bench 源的 idx 按后置 bench 口径解析**
+    (deploy/undeploy/sell 应用后的 bench 列表序)——事务语义里填位是
+    第 2 步,第 1 步迁移后的 bench 才是填位候选池(步2 实现批声明的
+    草案级细化,C1 允许)。
+    """
+    source: str                        # 'bench' | 'shop'(shop 时带 card 索引)
+    idx: int
+    row: str                           # 'front' | 'back'
+
+
+@dataclass
+class SellDeployed:
+    """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。"""
+    deployed_idx: int          # state.deployed 列表索引(定位锚,同 SellBench 口径)
+    income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
+    reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
+
+
+@dataclass
+class SwapDeploy:
+    """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
+
+    装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
+    无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
+    开拓者按目标排做形态归一(同 DeployMove 语义,单一源)。
+    """
+    deployed_idx: int
+    bench_idx: int
+    reason: str = ''
+
+
+@dataclass
+class CompTransaction:
+    """整档组合替换事务(转型讨论两步解耦的第 1 步,原子执行)——契约包 C1。
+
+    一次敲定:换谁上、谁下、谁直接卖、谁进 bench(完整方案预定义)。
+    语义保证:sim 执行时整体应用,任一子步资源不足(金/槽)则整个事务拒绝,
+    不产生半档中间态。
+
+    字段口径(步2 实现批声明):
+    - ``deploy``/``undeploy``/``sell`` 的索引均按**事务前状态**解析
+      (bench_idx → state.bench,deployed_idx → state.deployed);
+    - 同域索引不得重复;deploy(bench) 与 sell(bench) 不得指向同槽,
+      undeploy 与 sell(deployed) 不得指向同槽;
+    - ``fill`` 的 bench 源按**后置 bench**解析(见 FillSpec);
+    - 金校验 = 卖出收入(sell_refund 口径)− shop 填位费用(card_cost)
+      后 gold ≥ 0;
+    - 槽校验 = 终态 bench ≤ BENCH_CAPACITY、终态 deployed ≤ max_units()、
+      终态 front ≤ front_max / back ≤ back_max(冻结 invariant)。
+    """
+    deploy: list[tuple[int, str]]      # [(bench_idx, 'front'|'back')] 新档成员上场
+    undeploy: list[int]                # 旧档成员 deployed_idx 列表(下场)
+    sell: list[tuple[int, str]]        # [(idx, 'bench'|'deployed')] 直接卖出项
+    fill: list[FillSpec] | None = None # 人口缺口填位(第 2 步可同轮或下轮;None=另行走常规填位)
+    reason: str = ''                   # 账本(如 'evolve:DOT2→仙舟3'/'branch_pivot')
+
+
+Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
+          | SellDeployed | SwapDeploy | CompTransaction)   # 动作集 v2(契约包 C1,步2)
 
 
 @dataclass
@@ -345,6 +416,203 @@ def _bench_char_cost(bc: BenchChar) -> int:
     return c.cost if c and c.cost else 3
 
 
+def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
+    """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
+    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源
+    (口径 = 主阵营聚合,空/未知阵营不计,与 cw_sim._board_counts_of 同形;
+    跨模块不 import,值漂移由 checks 的 board↔deployed 一致性锁双向暴露)。"""
+    out: dict[str, int] = {}
+    for d in (deployed or []):
+        f = getattr(d, 'faction', '') or ''
+        if not f or f == '?':
+            continue
+        out[f] = out.get(f, 0) + 1
+    return out
+
+
+def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
+    """记录实际站位 + 开拓者换排形态归一(DeployMove/动作 v2 单一源)。
+
+    拖到另一排 = 命途切换(前台记忆/后台欢愉),羁绊随之变 → char_id
+    同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。
+    """
+    bc.position_pref = to_row
+    from sr_od.application.currency_war.cw_chars import get_char as _get_char
+    from sr_od.application.currency_war.cw_chars import (
+        is_trailblazer,
+        trailblazer_form,
+    )
+    if bc.char_id and is_trailblazer(bc.char_id):
+        bc.char_id = trailblazer_form(bc.char_id, to_row)
+        _tc = _get_char(bc.char_id)
+        if _tc is not None and _tc.factions:
+            bc.faction = _tc.factions[0]
+
+
+def _log_action(s: GameState, action_name: str, result: str,
+                reason: str = '', **extra) -> None:
+    """动作 v2 账本写入(契约包 C1 冻结 invariant:拒绝记录进账本)。"""
+    entry: dict = {'action': action_name, 'result': result}
+    if reason:
+        entry['reason'] = reason
+    entry.update(extra)
+    s.action_log.append(entry)
+
+
+def _resolve_comp_transaction(
+        s: GameState, tx: CompTransaction) -> tuple[str, dict]:
+    """CompTransaction 全量校验(原子性前置;不改动状态)。
+
+    返回 ``(reject_reason, plan)``:reject_reason 空 = 通过,plan 含
+    后续应用所需的对象引用快照与终态计数(引用快照防应用中途索引漂移)。
+    校验项见 CompTransaction docstring(金/槽/索引域/排上限)。
+    """
+    n_b, n_d = len(s.bench), len(s.deployed)
+    und = list(tx.undeploy or [])
+    dep = list(tx.deploy or [])
+    sell = list(tx.sell or [])
+    fill = list(tx.fill or [])
+    dep_b = [i for i, _r in dep]
+    dep_rows = [r for _i, r in dep]
+    sell_b = [i for i, d in sell if d == 'bench']
+    sell_d = [i for i, d in sell if d == 'deployed']
+    # 索引域:范围 + 同域去重 + 跨子步互斥
+    for label, idxs, n in (('undeploy', und, n_d), ('deploy', dep_b, n_b),
+                           ('sell_bench', sell_b, n_b),
+                           ('sell_deployed', sell_d, n_d)):
+        if any(not 0 <= i < n for i in idxs):
+            return f'{label}_idx_out_of_range', {}
+        if len(set(idxs)) != len(idxs):
+            return f'{label}_dup_idx', {}
+    if set(dep_b) & set(sell_b):
+        return 'deploy_sell_bench_overlap', {}
+    if set(und) & set(sell_d):
+        return 'undeploy_sell_deployed_overlap', {}
+    for _i, r in dep:
+        if r not in ('front', 'back'):
+            return f'deploy_row_invalid:{r}', {}
+    for f in fill:
+        if f.source not in ('bench', 'shop'):
+            return f'fill_source_invalid:{f.source}', {}
+        if f.row not in ('front', 'back'):
+            return f'fill_row_invalid:{f.row}', {}
+    # 引用快照(应用阶段按身份操作,索引不再漂移)
+    und_chars = [s.deployed[i] for i in und]
+    dep_chars = [(s.bench[i], r) for (i, r) in dep]
+    sell_b_chars = [s.bench[i] for i in sell_b]
+    sell_d_chars = [s.deployed[i] for i in sell_d]
+    # 金:卖出收入 − shop 填位费用(sell_refund / card_cost 单一源)
+    income = sum(sell_refund(c.star, _bench_char_cost(c))
+                 for c in sell_b_chars + sell_d_chars)
+    shop_fill_cards: list[ShopCard] = []
+    for f in fill:
+        if f.source == 'shop':
+            if not 0 <= f.idx < len(s.shop):
+                return f'fill_shop_idx_out_of_range:{f.idx}', {}
+            shop_fill_cards.append(s.shop[f.idx])
+    fill_cost = sum(card_cost(c) for c in shop_fill_cards)
+    if s.gold + income - fill_cost < 0:
+        return (f'gold_short:{s.gold}+{income}-{fill_cost}<0', {})
+    # bench 容量:终态 = 现 − deploy − sell_bench + undeploy
+    # (填位只出不入:bench 源出队,shop 源买后即上,净 0)
+    n_bench_final = n_b - len(dep_b) - len(sell_b) + len(und)
+    if n_bench_final > BENCH_CAPACITY:
+        return f'bench_overflow:{n_bench_final}>{BENCH_CAPACITY}', {}
+    # 后置 bench(fill bench 源的解析域:迁移后的 bench 对象序)
+    _gone_b = set(dep_b) | set(sell_b)
+    post_bench = [c for i, c in enumerate(s.bench) if i not in _gone_b] \
+        + und_chars
+    for f in fill:
+        if f.source == 'bench' \
+                and not 0 <= f.idx < len(post_bench):
+            return (f'fill_bench_idx_out_of_range:{f.idx}'
+                    f'>{len(post_bench)}', {})
+    # deployed 上限(冻结 invariant)与排上限
+    n_dep_final = n_d - len(und) - len(sell_d) + len(dep_b) + len(fill)
+    if n_dep_final > s.max_units():
+        return f'deploy_cap_exceeded:{n_dep_final}>{s.max_units()}', {}
+    _removed_front = sum(1 for c in und_chars + sell_d_chars
+                         if c.position_pref == 'front')
+    _added_front = sum(1 for r in dep_rows + [f.row for f in fill]
+                       if r == 'front')
+    n_front_final = s.front_count() - _removed_front + _added_front
+    if n_front_final > s.front_max:
+        return f'front_overflow:{n_front_final}>{s.front_max}', {}
+    n_back_final = n_dep_final - n_front_final   # 总终态 − 前排终态
+    if n_back_final > s.back_max:
+        return f'back_overflow:{n_back_final}>{s.back_max}', {}
+    return '', {
+        'und_chars': und_chars, 'dep_chars': dep_chars,
+        'sell_bench_chars': sell_b_chars, 'sell_deployed_chars': sell_d_chars,
+        'fill': fill, 'post_bench': post_bench,
+        'shop_fill_cards': shop_fill_cards,
+        'income': income, 'fill_cost': fill_cost,
+    }
+
+
+def _tx_state_view(bench: list[BenchChar],
+                   deployed: list[BenchChar]) -> GameState:
+    """mutate_bench_deployed 侧的事务校验视图:共享 bench/deployed 引用,
+    金/上限取宽松值(金 10^9、level 10)——本函数域只做**索引域/身份
+    转移校验**(金/cap/排上限的权威校验在 simulate 侧,GameState 全字段
+    才是校验域;此处宽松 = 不因缺上下文误拒合法转移)。"""
+    view = GameState()
+    view.gold = 10 ** 9
+    view.level = 10
+    view.bench = bench
+    view.deployed = deployed
+    return view
+
+
+def _remove_by_identity(pool: list[BenchChar], target: BenchChar) -> None:
+    """按身份索引删除(同名同星 dataclass 值相等会删错对象;同 _merge_bench 纪律)。"""
+    _idx = next((i for i, y in enumerate(pool) if y is target), None)
+    if _idx is not None:
+        del pool[_idx]
+
+
+def _apply_comp_transaction(s: GameState, tx: CompTransaction,
+                            plan: dict) -> None:
+    """应用已校验通过的事务(就地;调用前必须经 _resolve_comp_transaction)。
+
+    应用序:sell → undeploy → deploy → fill(填位的 bench 源按后置 bench
+    的 plan['post_bench'] 序解析)。终态重算 board(_recount_board 单一源)。
+    卖出单位的装备回收进 ``state.equips``(owned 池;🟡 游戏侧「卖带装
+    单位装备去向」未见实机证据,暂按回收建模保装备守恒,待 live 核)。
+    """
+    for c in plan['sell_bench_chars'] + plan['sell_deployed_chars']:
+        s.gold += sell_refund(c.star, _bench_char_cost(c))
+        s.equips.extend(c.equips)
+        _remove_by_identity(s.bench, c)
+        _remove_by_identity(s.deployed, c)
+    for c in plan['und_chars']:
+        _remove_by_identity(s.deployed, c)
+        s.bench.append(c)
+    for c, row in plan['dep_chars']:
+        _remove_by_identity(s.bench, c)
+        _apply_row_to_char(c, row)
+        s.deployed.append(c)
+    post_bench = plan['post_bench']
+    for f in plan['fill']:
+        if f.source == 'bench':
+            if not 0 <= f.idx < len(post_bench):
+                continue   # 校验已过;防御性兜底
+            c = post_bench.pop(f.idx)
+            _remove_by_identity(s.bench, c)
+            _apply_row_to_char(c, f.row)
+            s.deployed.append(c)
+        else:   # shop:买后即上(card_cost 已在金校验扣除)
+            card = s.shop[f.idx] if 0 <= f.idx < len(s.shop) else None
+            if card is None:
+                continue
+            s.gold -= card_cost(card)
+            s.shop.remove(card)
+            bc = _card_to_bench(card)
+            _apply_row_to_char(bc, f.row)
+            s.deployed.append(bc)
+    s.board = _recount_board(s.deployed)
+
+
 def effective_hp_threshold(state: GameState) -> int:
     """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE`` 有对应键 → 取覆盖值;
     否则回退 ``HP_SAFE_THRESHOLD``(40)。
@@ -410,21 +678,56 @@ def simulate(state: GameState, action: Action) -> GameState:
     elif isinstance(action, DeployMove):
         if 0 <= action.bench_idx < len(s.bench):
             bc = s.bench.pop(action.bench_idx)
-            bc.position_pref = action.to_row  # 记录实际站位
-            # 开拓者形态切换(用户 2026-08-16):拖到另一排 = 命途切换(前台记忆/后台欢愉),
-            # 羁绊随之变 → char_id 同步换成目标排形态,board/装备/一切下游计算自然对。
-            from sr_od.application.currency_war.cw_chars import get_char as _get_char
-            from sr_od.application.currency_war.cw_chars import (
-                is_trailblazer,
-                trailblazer_form,
-            )
-            if bc.char_id and is_trailblazer(bc.char_id):
-                bc.char_id = trailblazer_form(bc.char_id, action.to_row)
-                _tc = _get_char(bc.char_id)
-                if _tc is not None and _tc.factions:
-                    bc.faction = _tc.factions[0]
+            # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
+            _apply_row_to_char(bc, action.to_row)
             s.deployed.append(bc)
             s.board[action.faction] = s.board.get(action.faction, 0) + 1
+    elif isinstance(action, SellDeployed):
+        # 动作 v2(契约包 C1,步2):卖场上单位——deployed 生命周期开口。
+        if 0 <= action.deployed_idx < len(s.deployed):
+            sold = s.deployed.pop(action.deployed_idx)
+            # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
+            s.gold += sell_refund(sold.star, _bench_char_cost(sold))
+            # 装备回收进 owned 池(🟡 同 _apply_comp_transaction 假设,待 live 核)
+            s.equips.extend(sold.equips)
+            s.board = _recount_board(s.deployed)
+            _log_action(s, 'SellDeployed', 'applied', reason=action.reason,
+                        char=sold.char_id)
+        else:
+            _log_action(s, 'SellDeployed', 'rejected',
+                        reason=f'deployed_idx_out_of_range:{action.deployed_idx}',
+                        char='')
+    elif isinstance(action, SwapDeploy):
+        # 动作 v2(契约包 C1,步2):场上场下对调,装备随人走(对象迁移)。
+        if 0 <= action.deployed_idx < len(s.deployed) \
+                and 0 <= action.bench_idx < len(s.bench):
+            out_char = s.deployed[action.deployed_idx]
+            in_char = s.bench[action.bench_idx]
+            _row = out_char.position_pref
+            s.deployed[action.deployed_idx] = in_char
+            s.bench[action.bench_idx] = out_char
+            # 上场者继承下场者的排(含开拓者形态归一);下场者保留原
+            # position_pref 记录(回 bench 后不消费,再上场时重写)
+            _apply_row_to_char(in_char, _row)
+            s.board = _recount_board(s.deployed)
+            _log_action(s, 'SwapDeploy', 'applied', reason=action.reason,
+                        in_char=in_char.char_id, out_char=out_char.char_id)
+        else:
+            _log_action(s, 'SwapDeploy', 'rejected',
+                        reason=(f'idx_out_of_range:'
+                                f'd{action.deployed_idx}/b{action.bench_idx}'))
+    elif isinstance(action, CompTransaction):
+        # 动作 v2(契约包 C1,步2):整档替换事务——先全量校验后应用,
+        # 任一子步资源不足 → 整体拒绝(原状态返回 + 拒绝记录进账本,
+        # 冻结 invariant:执行后无半档残留)。
+        reject, plan = _resolve_comp_transaction(s, action)
+        if reject:
+            _log_action(s, 'CompTransaction', 'rejected',
+                        reason=f'{reject}|tx_reason={action.reason or ""}')
+        else:
+            _apply_comp_transaction(s, action, plan)
+            _log_action(s, 'CompTransaction', 'applied', reason=action.reason,
+                        income=plan['income'], fill_cost=plan['fill_cost'])
     elif isinstance(action, RefreshShop):
         s.gold -= action.cost
         # shop 内容变化未知(随机),不模拟具体牌;仅扣金
@@ -451,12 +754,54 @@ def mutate_bench_deployed(bench: list[BenchChar], deployed: list[BenchChar],
     elif isinstance(action, DeployMove):
         if 0 <= action.bench_idx < len(bench):
             bc = bench.pop(action.bench_idx)
-            bc.position_pref = action.to_row
-            # 开拓者形态切换(同 simulate 语义,单一源):换排 = 换命途,char_id 归一到目标排形态
-            from sr_od.application.currency_war.cw_chars import (
-                is_trailblazer,
-                trailblazer_form,
-            )
-            if bc.char_id and is_trailblazer(bc.char_id):
-                bc.char_id = trailblazer_form(bc.char_id, action.to_row)
+            _apply_row_to_char(bc, action.to_row)
+            # 开拓者形态切换(同 simulate 语义,单一源 helper)
             deployed.append(bc)
+    elif isinstance(action, SellDeployed):
+        # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
+        # GameState 域,本函数不管——与 simulate 单一源规则一致)
+        if 0 <= action.deployed_idx < len(deployed):
+            deployed.pop(action.deployed_idx)
+    elif isinstance(action, SwapDeploy):
+        if 0 <= action.deployed_idx < len(deployed) \
+                and 0 <= action.bench_idx < len(bench):
+            out_char = deployed[action.deployed_idx]
+            in_char = bench[action.bench_idx]
+            _row = out_char.position_pref
+            deployed[action.deployed_idx] = in_char
+            bench[action.bench_idx] = out_char
+            _apply_row_to_char(in_char, _row)
+    elif isinstance(action, CompTransaction):
+        # 动作 v2(契约包 C1):转移部分原子应用(金/排上限校验在
+        # simulate 侧,这里只做 bench/deployed 身份同步;shop 源填位
+        # 的卡数据不在本函数域——生产执行点买牌走 BuyCard,故剥离
+        # shop 填位后再校验/应用,bench 侧转移不受影响)。
+        _tx = action
+        if action.fill and any(f.source == 'shop' for f in action.fill):
+            _tx = CompTransaction(
+                deploy=action.deploy, undeploy=action.undeploy,
+                sell=action.sell,
+                fill=[f for f in action.fill if f.source == 'bench'],
+                reason=action.reason)
+        reject, plan = _resolve_comp_transaction(
+            _tx_state_view(bench, deployed), _tx)
+        if reject:
+            return   # 原子:拒绝即整体不动
+        for c in plan['sell_bench_chars']:
+            _remove_by_identity(bench, c)
+        for c in plan['sell_deployed_chars']:
+            _remove_by_identity(deployed, c)
+        for c in plan['und_chars']:
+            _remove_by_identity(deployed, c)
+            bench.append(c)
+        for c, row in plan['dep_chars']:
+            _remove_by_identity(bench, c)
+            _apply_row_to_char(c, row)
+            deployed.append(c)
+        post_bench = plan['post_bench']
+        for f in plan['fill']:
+            if f.source == 'bench' and 0 <= f.idx < len(post_bench):
+                c = post_bench.pop(f.idx)
+                _remove_by_identity(bench, c)
+                _apply_row_to_char(c, f.row)
+                deployed.append(c)

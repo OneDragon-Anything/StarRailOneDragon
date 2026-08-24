@@ -1306,6 +1306,87 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
         f"(未锁线局通用价值恒 0——批㉜ F4 待策略域裁决)"]
 
 
+_EXPLICIT_V2_ACTIONS = ('SellDeployed', 'SwapDeploy', 'CompTransaction')
+
+
+def _board_agg_of_deployed_row(row: dict) -> dict[str, int]:
+    """账本行的 deployed 主阵营聚合(动作 v2 一致性检查的本地口径;
+    与 cw_state._recount_board 同形——检查模块不 import cw_sim/cw_state,
+    值漂移由双向锁暴露,同 HP_UPPER_BOUND 镜像纪律)。"""
+    agg: dict[str, int] = {}
+    for d in (row.get('state') or {}).get('deployed') or []:
+        f = d.get('faction')
+        if f and f != '?':
+            agg[f] = agg.get(f, 0) + 1
+    return agg
+
+
+def check_comp_tx_atomicity(rows: list[dict]) -> list[str]:
+    """动作 v2(契约包 C1 验收3,步2):显式动作后的一致性/半档残留锁。
+
+    判据:
+    - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
+      CompTransaction)时,该轮账本 state.board 必须与 deployed 名单的
+      主阵营聚合一致(转移后 board 由 _recount_board 维护;不一致 =
+      半档残留/board 派生断裂);
+    - **rejected** 显式动作必须带非空 reject_reason(拒绝记录可见性
+      ——冻结 invariant「拒绝记录进账本」的账本侧镜像)。
+    """
+    out: list[str] = []
+    for row in rows:
+        acts = row.get('actions') or []
+        has_applied = any(
+            a.get('__type__') in _EXPLICIT_V2_ACTIONS
+            and a.get('result') == 'applied' for a in acts)
+        if has_applied:
+            board = dict((row.get('state') or {}).get('board') or {})
+            agg = _board_agg_of_deployed_row(row)
+            if agg != board:
+                out.append(
+                    f"p1r{row.get('round_num')}: 显式动作后 board 与 "
+                    f"deployed 聚合不一致(board={board} agg={agg}"
+                    f"——半档残留/派生断裂,契约包 C1)")
+        for a in acts:
+            if a.get('__type__') in _EXPLICIT_V2_ACTIONS \
+                    and a.get('result') == 'rejected' \
+                    and not a.get('reject_reason'):
+                out.append(
+                    f"p1r{row.get('round_num')}: 拒绝的显式动作缺 "
+                    f"reject_reason(拒绝记录可见性,契约包 C1)")
+    return out
+
+
+def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
+    """动作 v2(契约包 C1 + 六矛盾裁决1,步2):围栏跳过可见性/同轮配对锁。
+
+    判据(裁决1:显式>围栏,同轮互斥;围栏跳过必须记账本一行):
+    - 轮内含显式部署动作(含 rejected——发出即占用显式通道)→ 该轮
+      actions 必须恰有一条 skip_fence 且 reason 非空(缺 = 围栏静默
+      跳过或叠加,双违规;多 = 误记);
+    - skip_fence 存在但轮内无显式动作 = 误记(围栏没跳却记账)。
+    """
+    out: list[str] = []
+    for row in rows:
+        acts = row.get('actions') or []
+        explicit = [a for a in acts
+                    if a.get('__type__') in _EXPLICIT_V2_ACTIONS]
+        skips = [a for a in acts if a.get('__type__') == 'skip_fence']
+        rn = row.get('round_num')
+        if explicit and not skips:
+            out.append(
+                f"p1r{rn}: 显式部署动作未配对 skip_fence"
+                f"(围栏静默跳过/叠加——六矛盾裁决1)")
+        if skips and not explicit:
+            out.append(
+                f"p1r{rn}: skip_fence 无同轮显式动作(误记,裁决1)")
+        if len(skips) > 1:
+            out.append(f"p1r{rn}: 同轮多条 skip_fence(应恰一行)")
+        for _s in skips:
+            if not _s.get('reason'):
+                out.append(f"p1r{rn}: skip_fence 缺 reason(裁决1)")
+    return out
+
+
 _BATCH_CHECKS = {
     'ledger_consistency': check_ledger_consistency,
     'coldstart_direction': check_coldstart_seed_squander,
@@ -1342,6 +1423,9 @@ _BATCH_CHECKS = {
     'equip_supply_wear_closure': check_equip_supply_wear_closure,
     'equip_value_strategy_key_coverage':
         check_equip_value_strategy_key_coverage,
+    # --- 动作 v2(契约包 C1,步2):显式动作一致性/围栏配对 ---
+    'comp_tx_atomicity': check_comp_tx_atomicity,
+    'skip_fence_pairing': check_skip_fence_pairing,
 }
 
 

@@ -5,17 +5,19 @@
 > 一行。用途:新字段的「三消费面」检查(策略/遥测/sim 代理,ADR-0219
 > 纪律)以此为底账;改 sim 接线时更新对应行。
 >
-> 对账:**已接 17(批前 13 + ADR-0271 接入 board + ADR-0276 接入
+> 对账:**已接 18(批前 13 + ADR-0271 接入 board + ADR-0276 接入
 > node_type/streak[session 口径]+ ADR-0286 接入 xp_progress/
-> refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0])+ 必须接线 12 +
-> 观测冗余豁免 3 + 结构未建 5 = 37**。(任务书原锁 13+3+3+13=32 与
-> 字段总数不符,按实测归类对账;批前「已接 13」与任务书口径一致;
-> ADR-0286 新增 deploy_cap 字段 → 总数 36→37。)
+> refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0]+ 契约包 C1
+> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 4 +
+> 结构未建 5 = 39**。(任务书原锁 13+3+3+13=32 与字段总数不符,按实测
+> 归类对账;批前「已接 13」与任务书口径一致;ADR-0286 新增 deploy_cap
+> 字段 → 总数 36→37;批㉖ F1 新增 enemy_difficulty_live、契约包 C1
+> 新增 action_log → 37→39。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
 > 栈(LineStrategy)影响面小;P3 = 随依赖结构建设顺带接入。
 
-## 一、已接线(17;sim 语义 = 生产语义或其 P1 域内真值)
+## 一、已接线(18;sim 语义 = 生产语义或其 P1 域内真值)
 
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
@@ -36,6 +38,7 @@
 | xp_progress | 买牌/买经验累 XP_PER_BUY,轮末升级按 XP_TO_NEXT_LEVEL 清零结转(ADR-0286) | XP 条 OCR;economy clicks_to_next_level/追级门 | 已接(ADR-0286 真值化——旧恒 None,clicks_to_next_level 恒按 0 进度估) | — |
 | refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表(ADR-0286) | 商店开态概率条 OCR(r77 轮岗:每备战阶段随机翻倍一档);line_strategy _sample_cost 实读消费 | 已接(ADR-0286 轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
 | deploy_cap | 宝钻通道参数化 diamond_cap_prob(每备战期以此概率 +1 宝钻,cap=level+宝钻数;默认 0 = 通道建好不注入,与旧树同态) | read_deploy_cap_debounced 防抖真值(cap<level/\|cap−level\|>2 重读一帧仍异拒 None);max_units() 优先消费、level 兜底 | 已接(通道;频率待实机语料统计后标定,ADR-0286) | P3 |
+| action_log | cw_state.simulate 对动作 v2(SellDeployed/SwapDeploy/CompTransaction)逐条写 applied/rejected 记录;cw_sim 转录进轮账本 actions、checks(comp_tx_atomicity)消费 | 生产侧无对应(账本走遥测 actions 流;拒绝可见性 invariant 的 sim 侧载体) | 已接(契约包 C1 步2;策略不读——决策禁依赖账本) | — |
 
 ## 二、必须接线(12;决策消费存在,sim 未接)
 
@@ -54,13 +57,14 @@
 | focus_factions | 恒 None | update_target 写入(ADR-0209);evaluate 消费 | 未接(同上) | P3 |
 | enemy_difficulty | 恒 None | 左上难度 OCR(常空);cw_events 选卡难度罚 | 未接(生产亦常空,决策安全降级) | P3 |
 
-## 三、观测冗余豁免(3;保真位,sim 完美观测假设下无决策语义)
+## 三、观测冗余豁免(4;保真位,sim 完美观测假设下无决策语义)
 
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
 | hp_readable | 恒默认 True | hp 是否真读到(遥测保真;决策不用) | 豁免(sim 假设完美观测=终态,「识别噪声注入不做」) | — |
 | gold_readable | 恒默认 True | gold 是否真读到(同上) | 豁免(同上) | — |
 | board_readable | 恒默认 True | board 是否真读到(空 dict 双义标注) | 豁免(同上) | — |
+| enemy_difficulty_live | 恒默认 False | 难度值是否逐帧真读(批㉖ F1 保真位;判读过滤用,决策不用) | 豁免(sim 假设完美观测;生产亦仅判读侧消费) | — |
 
 ## 四、结构未建(5;依赖的事件/画面层 sim 未建模)
 

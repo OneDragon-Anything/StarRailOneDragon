@@ -43,13 +43,20 @@ from sr_od.application.currency_war.cw_state import (
     XP_TO_NEXT_LEVEL,
     BenchChar,
     BuyCard,
+    CompTransaction,
     GameState,
     LevelUp,
     RefreshShop,
     SellBench,
+    SellDeployed,
     ShopCard,
+    SwapDeploy,
+    _bench_char_cost,
     _merge_bench,
     sell_refund,
+)
+from sr_od.application.currency_war.cw_state import (
+    simulate as _simulate_state,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 
@@ -203,6 +210,13 @@ class SimResult:
     # (占位实体披露计数——'钻石' 不再以真装备身份进 owned 池,
     # 只在此计数披露,phantom_equip_no_wear 回归 0 容忍)
     phantom_supply_picks: int = 0
+    # 动作 v2(契约包 C1,步2):显式部署动作(SellDeployed/SwapDeploy/
+    # CompTransaction)被整体拒绝的次数(原子性拒绝披露;真策略当前
+    # 不发显式动作 → 恒 0,演进引擎 C3 接入后 >0 即决策侧提案越界信号)
+    explicit_action_rejects: int = 0
+    # 动作 v2:围栏跳过轮数(显式动作发出轮 select_deployments 自动
+    # 部署让位——裁决1「显式>围栏,同轮互斥」;账本同步记 skip_fence 行)
+    fence_skips: int = 0
 
 
 class _Pool:
@@ -953,6 +967,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
         _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
         _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
+        # 动作 v2(契约包 C1,步2):本轮策略是否发出显式部署动作
+        # (SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
+        # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥)
+        _explicit_deploy_seen = False
         _acts: list[dict] = []
         _segs_used = 0
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
@@ -1098,6 +1116,70 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                       'income': _sell_v})
                         cards_pool.ret(bc.char_id)
                         progressed = True
+                elif isinstance(a, (SellDeployed, SwapDeploy,
+                                    CompTransaction)):
+                    # 动作 v2(契约包 C1,步2):显式部署通道执行——
+                    # 转移语义在 cw_state.simulate 单一源(全量校验+原子
+                    # 应用),此处转录账本 + 池守恒/经济记账同步。
+                    _explicit_deploy_seen = True
+                    # 预状态引用快照(池 ret / 经济记账用;simulate 会
+                    # deepcopy,引用不跨界)
+                    _sold_names: list[str] = []
+                    _shop_fill_cards: list[ShopCard] = []
+                    if isinstance(a, SellDeployed) \
+                            and 0 <= a.deployed_idx < len(st.deployed):
+                        _sold = st.deployed[a.deployed_idx]
+                        _sold_names = [_sold.char_id]
+                    elif isinstance(a, CompTransaction):
+                        _sold_names = [
+                            st.bench[i].char_id
+                            for i, d in a.sell if d == 'bench'
+                            and 0 <= i < len(st.bench)] + [
+                            st.deployed[i].char_id
+                            for i, d in a.sell if d == 'deployed'
+                            and 0 <= i < len(st.deployed)]
+                        _shop_fill_cards = [
+                            st.shop[f.idx] for f in (a.fill or [])
+                            if f.source == 'shop'
+                            and 0 <= f.idx < len(st.shop)]
+                    _new = _simulate_state(st, a)
+                    _log = _new.action_log[-1] if _new.action_log else {}
+                    _applied = _log.get('result') == 'applied'
+                    _tx_income = int(_log.get('income', 0) or 0)
+                    _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
+                    if _applied and isinstance(a, SellDeployed) \
+                            and 0 <= a.deployed_idx < len(st.deployed):
+                        # SellDeployed 的 income 未进 action_log(单动作
+                        # 无事务汇总)——预状态现算(与 simulate 同口径)
+                        _tx_income = sell_refund(
+                            _sold.star, _bench_char_cost(_sold))
+                    if _applied:
+                        st = _new   # 整体替换(事务原子;simulate 单一源)
+                        for _n in _sold_names:
+                            if _n:
+                                cards_pool.ret(_n)
+                        for _c in _shop_fill_cards:
+                            cards_pool.take(_c.name)
+                            xp += XP_PER_BUY   # 买牌同源给 XP(ADR-0129)
+                        _spend['sell_income'] += _tx_income
+                        if _tx_fill_cost:
+                            _ch = a.reason or 'tx_fill'
+                            _spend['buys'][_ch] = \
+                                _spend['buys'].get(_ch, 0) + _tx_fill_cost
+                        progressed = True
+                    else:
+                        res.explicit_action_rejects += 1
+                    _entry = {'__type__': type(a).__name__,
+                              'reason': getattr(a, 'reason', ''),
+                              'result':
+                                  'applied' if _applied else 'rejected'}
+                    if not _applied:
+                        _entry['reject_reason'] = _log.get('reason', '')
+                    if _tx_income:
+                        _entry['income'] = _tx_income
+                    if _tx_fill_cost:
+                        _entry['fill_cost'] = _tx_fill_cost
+                    _acts.append(_entry)
             if not progressed:
                 break
         while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
@@ -1139,35 +1221,46 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 「升级→上阵」链断一轮的修复)。
         _dep_cids = {d.char_id for d in st.deployed if d.char_id}
         _dep_fac = _board_factions_of(st.deployed)
-        _up_idx, _held_idx = _dl.select_deployments(
-            st.bench,
-            deployed_cids=_dep_cids,
-            deployed_fac=_dep_fac,
-            board=dict(st.board),
-            cap=st.max_units(),
-            target_factions=_tf,
-            target_cores=_tc,
-            fw_carry=_fw,
-        )
-        for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
-            if _i < len(st.bench):
-                st.deployed.append(st.bench.pop(_i))
-        st.board = _board_counts_of(st.deployed)
-        # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
-        # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
-        # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
-        # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
-        _lag_idx, _ = _dl.select_deployments(
-            st.bench,
-            deployed_cids={d.char_id for d in st.deployed if d.char_id},
-            deployed_fac=_board_factions_of(st.deployed),
-            board=dict(st.board),
-            cap=st.max_units(),
-            target_factions=_tf,
-            target_cores=_tc,
-            fw_carry=_fw,
-        )
-        _deploy_lag_units = len(_lag_idx)
+        # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):显式动作发出轮
+        # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
+        # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
+        # check_skip_fence_pairing 同轮配对锁)。
+        _deploy_lag_units = 0
+        if _explicit_deploy_seen:
+            _acts.append({'__type__': 'skip_fence',
+                          'reason': 'explicit_action_v2'})
+            res.fence_skips += 1
+            # board 已由 cw_state.simulate 的 _recount_board 维护一致
+        else:
+            _up_idx, _held_idx = _dl.select_deployments(
+                st.bench,
+                deployed_cids=_dep_cids,
+                deployed_fac=_dep_fac,
+                board=dict(st.board),
+                cap=st.max_units(),
+                target_factions=_tf,
+                target_cores=_tc,
+                fw_carry=_fw,
+            )
+            for _i in sorted(_up_idx, reverse=True):   # 降序 pop 保索引
+                if _i < len(st.bench):
+                    st.deployed.append(st.bench.pop(_i))
+            st.board = _board_counts_of(st.deployed)
+            # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
+            # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
+            # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
+            # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
+            _lag_idx, _ = _dl.select_deployments(
+                st.bench,
+                deployed_cids={d.char_id for d in st.deployed if d.char_id},
+                deployed_fac=_board_factions_of(st.deployed),
+                board=dict(st.board),
+                cap=st.max_units(),
+                target_factions=_tf,
+                target_cores=_tc,
+                fw_carry=_fw,
+            )
+            _deploy_lag_units = len(_lag_idx)
         if res.dir_round == 99 and _direction_established(sess):
             res.dir_round = rn
         # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
@@ -1347,6 +1440,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # (买后部署语义下应恒 0;检查项 deploy_after_buy_
                 # semantics / ledger_deploy_lag_disclosure 的数据源)
                 'deploy_lag_units': _deploy_lag_units,
+                # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
+                # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
+                'fence_skipped': _explicit_deploy_seen,
             },
         })
         if st.hp <= 0:
@@ -1452,6 +1548,11 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'deploy_lag_units': sum(
             (row.get('sim') or {}).get('deploy_lag_units', 0)
             for r in results for row in r.ledger),
+        # 动作 v2(契约包 C1,步2):显式动作拒绝/围栏跳过全批披露
+        # (真策略不发显式动作 → 双 0;演进引擎 C3 接入后作决策质量信号)
+        'explicit_action_rejects': sum(
+            r.explicit_action_rejects for r in results),
+        'fence_skips': sum(r.fence_skips for r in results),
     }
     if ledger is not False:
         out = (Path(ledger) if isinstance(ledger, Path)
