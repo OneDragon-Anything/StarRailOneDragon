@@ -55,6 +55,9 @@
   difficulty_curve_live_contamination(逐帧真读/简报兜底值混入
   难度曲线的污染判读守卫——live=False 恒值帧与 live 真值并存时,
   全帧口径的爬升/均值必须判废,live-only 过滤是硬前提)。
+- 批38(win_model M1 训练表特征面):win_train_table_feature_health
+  (训练前门——零方差特征/tier≥2 覆盖样本门/killed 标签断裂,
+  语料级显式调,不进 sim 批量内嵌)。
 """
 from __future__ import annotations
 
@@ -3751,4 +3754,91 @@ def check_difficulty_curve_live_contamination(rows: list[dict]) -> dict:
                       r.get('enemy_difficulty')) for r in live][:12],
         'note': '难度曲线 live 帧污染守卫(批37);红 = 假恒值混入/'
                 '保真位缺失——全帧难度口径判废',
+    }
+
+
+# --- 批38 检查项(2026-08-25;win_model M1 训练表特征面审计) -----
+
+
+_WIN_TABLE_NUMERIC_FEATURES = (
+    'char_count', 'star_sum', 'equip_count', 'total_cost', 'max_tier')
+
+
+def _point_biserial(xs: list[float], ys: list[int]) -> float | None:
+    """点二列相关(特征×二值标签);样本不足或零方差返 None。"""
+    n = len(xs)
+    if n < 3:
+        return None
+    mu_x = sum(xs) / n
+    mu_y = sum(ys) / n
+    sx = (sum((x - mu_x) ** 2 for x in xs) / n) ** 0.5
+    sy = (sum((b - mu_y) ** 2 for b in ys) / n) ** 0.5
+    if sx == 0 or sy == 0:
+        return None
+    cov = sum((x - mu_x) * (b - mu_y)
+              for x, b in zip(xs, ys, strict=True)) / n
+    return cov / (sx * sy)
+
+
+def check_win_train_table_feature_health(rows: list[dict]) -> dict:
+    """批38 检查项:win_model 训练表特征健康审计(训练前门;语料级显式调)。
+
+    背景(win_model M1 第一段已合入 f1836d71;批38 实测 111 行训练表,
+    报告 sim_压测_批38):``equip_count`` 全 0(零方差,装备维对 M1 无
+    贡献——replay 语料 10927 个 deployed 条目仅 123 个(1.1%)有装备,
+    写端正常,是语料面事实而非 bug);``total_cost``/``star_sum``/
+    ``char_count`` 与 killed 的点二列相关近零且符号为负(-0.04/-0.06/
+    -0.02,完成度代理在 A8 早期语料无区分度),唯一正分离特征
+    ``max_tier``(r=+0.23)但 tier≥2 样本仅 3 例——高成型区零地基,
+    与批㊲ boss 语料样本门同型的覆盖缺口。
+
+    判据(吃训练表行 ``{'char_count','star_sum','equip_count',
+    'total_cost','max_tier','killed'}``;killed 必须全 bool):
+    - **零方差违规**:_WIN_TABLE_NUMERIC_FEATURES 中任一特征在表内
+      取值恒一(该特征对模型无区分度,训练前必须剔除或显式豁免);
+    - **tier 覆盖违规**:``max_tier>=2`` 样本 <3(高成型区外推无
+      地基——与批㊲ check_boss_rung_corpus_sample_gate 同型的样本门,
+      门未就绪前 win 概率对高成型阵容只可标「单点敏感度」);
+    - **标签断裂违规**:killed 非 bool 的行存在(写端 schema 断裂);
+    - 空表不辖;相关系数/正负占比只披露不判红(样本量小,方向性
+      结论留给扩容后)。
+    """
+    if not rows:
+        return {'violations': 0, 'note': '空训练表,不辖', 'rows': 0}
+    violations: list[str] = []
+    bad_label = [i for i, r in enumerate(rows)
+                 if not isinstance(r.get('killed'), bool)]
+    if bad_label:
+        violations.append(f'{len(bad_label)} 行 killed 非 bool'
+                          f'(写端 schema 断裂)')
+    ys = [1 if r.get('killed') else 0 for r in rows
+          if isinstance(r.get('killed'), bool)]
+    feat_stats: dict[str, dict] = {}
+    for key in _WIN_TABLE_NUMERIC_FEATURES:
+        vals = [r.get(key) or 0 for r in rows]
+        mu = sum(vals) / len(vals)
+        zero_var = all(v == vals[0] for v in vals)
+        feat_stats[key] = {
+            'min': min(vals), 'max': max(vals), 'mean': round(mu, 3),
+            'zero_variance': zero_var,
+            'r_with_killed': _point_biserial(vals, ys)
+            if len(vals) == len(ys) else None,
+        }
+        if zero_var:
+            violations.append(
+                f'特征 {key} 全表恒值 {vals[0]}(零方差无区分度——'
+                f'训练前必须剔除或显式豁免,批38)')
+    tier_ge2 = sum(1 for r in rows if (r.get('max_tier') or 0) >= 2)
+    if tier_ge2 < 3:
+        violations.append(
+            f'max_tier>=2 样本仅 {tier_ge2} 例(<3,高成型区外推零地基;'
+            f'win 概率对高成型阵容只可标「单点敏感度」,批38 同型批㊲)')
+    pos = sum(ys)
+    return {
+        'violations': len(violations), 'detail': violations,
+        'rows': len(rows), 'label_known': len(ys),
+        'pos': pos, 'neg': len(ys) - pos,
+        'features': feat_stats, 'tier_ge2_samples': tier_ge2,
+        'note': 'win_model 训练表特征健康审计(批38);红 = 零方差特征/'
+                'tier 覆盖门未就绪/标签断裂——训练前必须处理',
     }
