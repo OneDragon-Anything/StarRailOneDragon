@@ -38,8 +38,15 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     if session is None:
         return False
     _pending_evidence: list[tuple] = []   # r336:留证队列(对账位统一消费)
-    old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars]
-    old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed]
+    # W68 根修(ADR-0316 形状契约):tracked_bench_chars 在买牌后被
+    # mutate_bench_deployed→pad_bench 就地 pad 成定长 9 槽**含 None**
+    # (槽位表语义写入端)——本消费端假设紧凑无 None 是双写冲突,曾致
+    # 验证局 206 次 AttributeError 崩溃-重派循环(2026-08-25 实录)。
+    # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
+    old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars
+             if bc is not None]
+    old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed
+             if bc is not None]
     if not bench and not deployed and (old_b or old_d):
         log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
         _conflict('tracking', f'{old_b}|{old_d}', '[]|[]', screen,
@@ -120,9 +127,10 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     session.star_pending_regression = _pend
     session.star_regression_count = _reg
     # 防抖可能原地改 bench/deployed 副本 star(r58 review P2②)→ 纠漂判定与日志必须
-    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。
-    new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
-    new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
+    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。W68:bench/deployed 入参
+    # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
+    new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
+    new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
         session.tracked_bench_chars = list(bench)

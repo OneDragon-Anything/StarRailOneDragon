@@ -922,7 +922,9 @@ class CurrencyWarRunLoop(SrOperation):
             # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
             # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
             _ok = PrepDirector(self.ctx).execute()
-            if not _ok:
+            if not _ok or not _ok.success:   # W68:OperationResult 无 __bool__,
+                # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码
+                # (验证局 206 次崩溃-重派无限循环实录);success 才是判据。
                 self._director_fail_streak = getattr(
                     self, '_director_fail_streak', 0) + 1
                 if self._director_fail_streak >= 5:

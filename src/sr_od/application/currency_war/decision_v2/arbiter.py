@@ -29,6 +29,10 @@ from sr_od.application.currency_war.cw_state import (
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision_v2.discipline import (
+    register_round_bought,
+    register_round_sold,
+)
 from sr_od.application.currency_war.decision_v2.filters import (
     current_mode,
     is_catchup,
@@ -260,6 +264,39 @@ def _cost_of(cand: Candidate) -> int:
     return 0    # 卖/部署:无花费(卖回金)
 
 
+def _register_accepted(a: Action, state: GameState,
+                       session: StrategySession) -> None:
+    """采纳动作的同轮簿记(ADR-0328):登记点=动作采纳处(同一事务域),
+    非 decide_prep 尾部——同趟先采纳 BUY X 后,后续 SELL X(段首旧副本)
+    候选的 r408 守卫立即可见(no_same_round_buy_sell 回归 96/400 的
+    根因:r408 守卫读上一段已买集,同趟 buy+sell 双双过)。对称臂
+    (先卖后买不回买)同辖——采纳 SellBench 即登记已卖集。
+
+    BuyCard → v2_round_bought(register_round_bought,轮键校验)+
+    engine_seed 购入轮登记(ADR-0289 §5,seed_age_blocked 数据源;
+    随采纳处一并完成);SellBench → v2_round_sold(卖名取 state
+    快照槽位,与 same_round_mutex 守卫同源)。
+    """
+    if isinstance(a, BuyCard) and a.card.name:
+        register_round_bought([a.card.name], state, session)
+        if getattr(a, 'reason', '') in ('engine_seed', 'd2_engine_seed'):
+            key = (state.plane, state.round_num)
+            if getattr(session, 'v2_round_key', None) == key:
+                _log = getattr(session, 'v2_seed_bought', None)
+                if _log is None:
+                    _log = session.v2_seed_bought = {}
+                _prev = _log.get(a.card.name)
+                if _prev is not None and _prev[0] == key:
+                    _log[a.card.name] = (key, _prev[1] + 1)
+                else:
+                    _log[a.card.name] = (key, 1)
+    elif isinstance(a, SellBench):
+        if 0 <= a.bench_idx < len(state.bench or []):
+            _bc = state.bench[a.bench_idx]
+            if _bc is not None and _bc.char_id:
+                register_round_sold([_bc.char_id], state, session)
+
+
 def arbitrate(scored: list[tuple[Candidate, float, dict]],
               state: GameState, session: StrategySession,
               registry: DecisionV2Registry,
@@ -334,7 +371,12 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             'breakdown': bd,
         })
         if accepted:
-            res.actions.append(_materialize(cand, state))
+            _a = _materialize(cand, state)
+            res.actions.append(_a)
+            # ADR-0328:采纳即登记(r408 同轮簿记在动作采纳处完成——
+            # 同趟后续 SELL/BUY 同名候选的守卫立即可见,不再等
+            # decide_prep 尾部统一回写)。
+            _register_accepted(_a, state, session)
             working = simulate(working, cand.action)
             if cand.tag in ('off_target', 'for_gold', 'free_bench'):
                 sells_accepted += 1
@@ -422,6 +464,11 @@ def _run_remediation_pass(working: GameState, state: GameState,
             res.actions.extend(acts)
         else:
             res.actions[_first_refresh:_first_refresh] = acts
+        # ADR-0328:补偿动作采纳即登记(卖侧补偿器构造时已
+        # register_round_sold,此处幂等;买侧受益重发补登
+        # v2_round_bought——同趟后续候选的守卫可见)。
+        for a in acts:
+            _register_accepted(a, state, session)
     else:
         if rlog:
             rlog[-1]['outcome'] = 'abandon'
@@ -485,18 +532,22 @@ def _describe(cand: Candidate, state: GameState) -> str:
         slot = ' [需腾位]' if cand.needs_slot else ''
         return f'买 {a.card.name}({a.card.cost}费){extra}{slot}'
     if isinstance(a, SellBench):
-        nm = ''
+        nm = '?'
         if 0 <= a.bench_idx < len(state.bench or []):
-            nm = state.bench[a.bench_idx].char_id or '?'
+            _bc = state.bench[a.bench_idx]
+            if _bc is not None:
+                nm = _bc.char_id or '?'
         return f'卖 bench[{a.bench_idx}] {nm}'
     if isinstance(a, LevelUp):
         return f'买经验(-{a.cost}金)'
     if isinstance(a, RefreshShop):
         return f'刷新(-{a.cost or 2}金)'
     if isinstance(a, DeployMove):
-        nm = ''
+        nm = '?'
         if 0 <= a.bench_idx < len(state.bench or []):
-            nm = state.bench[a.bench_idx].char_id or '?'
+            _bc = state.bench[a.bench_idx]
+            if _bc is not None:
+                nm = _bc.char_id or '?'
         return f'上阵 bench[{a.bench_idx}] {nm}->{a.to_row}'
     return str(a)
 

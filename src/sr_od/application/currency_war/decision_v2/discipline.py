@@ -581,6 +581,10 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     log.info('[cw][d2][carry-gate] r%d 腾位:降保护集卖 %s 买意向核心 %s',
              state.round_num, weakest.char_id, carry)
     register_round_sold([weakest.char_id], state, session)   # r408 对称臂
+    # ADR-0328:腾位买即登记同轮已买集(登记点=动作采纳处,非 decide_prep
+    # 尾)——carry_gate 先于 arbitrate 执行,不登记则同趟 arbitrate 内
+    # SELL carry(段首旧副本)候选的 r408 守卫仍读空已买集,双双过。
+    register_round_bought([carry], state, session)
     return [SellBench(bench_idx=idx, income=refund),
             BuyCard(carry_card, reason='carry_gate')]
 
@@ -685,7 +689,7 @@ def register_round_sold(names, state: GameState,
     """卖出件入同轮已卖集(r408 对称臂;带轮键自校验,防跨轮误写)。
 
     四卖件通道统一走本 helper(设计 §4):carry_gate ④/两补偿器/
-    strategy 主循环;BuyCard 侧 v2_round_bought 登记保持原样(非缺口)。
+    arbiter 主循环(采纳处,ADR-0328)。
     """
     key = (state.plane, state.round_num)
     if getattr(session, 'v2_round_key', None) != key:
@@ -696,3 +700,25 @@ def register_round_sold(names, state: GameState,
     for n in names:
         if n:
             sold.add(n)
+
+
+def register_round_bought(names, state: GameState,
+                          session: StrategySession) -> None:
+    """买入件入同轮已买集(r408 主臂;带轮键自校验,防跨轮误写)。
+
+    ADR-0328 时序修复:登记点从 decide_prep 尾部(arbitrate 之后)
+    前移到**动作采纳处**(同一事务域)——同趟 arbitrate 内先采纳
+    BUY X 后,后续 SELL X(段首旧副本)候选的守卫立即可见
+    (no_same_round_buy_sell 回归 96/400 的根因:r408 守卫读的是
+    上一段已买集,同趟 buy+sell 双双过)。三买发射点统一走本
+    helper:arbiter 主循环采纳/补偿趟受益买重发/carry_gate 腾位买。
+    """
+    key = (state.plane, state.round_num)
+    if getattr(session, 'v2_round_key', None) != key:
+        return    # 轮键不匹配(跨轮误写防御;set 下轮重置)
+    bought = getattr(session, 'v2_round_bought', None)
+    if bought is None:
+        session.v2_round_bought = bought = set()
+    for n in names:
+        if n:
+            bought.add(n)

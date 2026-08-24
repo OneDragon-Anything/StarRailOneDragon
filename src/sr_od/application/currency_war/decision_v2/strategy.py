@@ -39,8 +39,10 @@ from sr_od.application.currency_war.cw_intention import (
 )
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
+    CompTransaction,
     GameState,
-    SellBench,
+    SellDeployed,
+    simulate,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.arbiter import arbitrate
@@ -199,12 +201,22 @@ class DecisionV2Strategy(DefaultCwStrategy):
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:
+            # ADR-0328:谷底回滚的 SellDeployed 卖出件同样登记同轮已卖集
+            # (arbitrate 前;同趟 BUY 同名候选被已卖禁买拒)
+            self._register_early_sells([session.v3_pending_rollback],
+                                       state, session)
             actions.append(session.v3_pending_rollback)
             session.v3_pending_rollback = None
         # ② 演进引擎进决策循环(点6 统一入口;显式 CompTransaction)
         if session.v3_evolution is not None:
-            actions.extend(
-                evolution_step(state, session, session.v3_evolution))
+            ev_acts = evolution_step(state, session, session.v3_evolution)
+            # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
+            # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
+            # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟
+            # BUY 同名候选被已卖禁买拒(seed 0 r1「COMP 卖桑博 +
+            # BUY 桑博」振荡,检查器按账本序报 no_same)。
+            self._register_early_sells(ev_acts, state, session)
+            actions.extend(ev_acts)
         # ③ 纪律族评估(覆盖态/模式/ALL IN 窗/保血通道)
         disc = assess_discipline(state, session, registry)
         session.v3_mode = disc.mode
@@ -215,12 +227,26 @@ class DecisionV2Strategy(DefaultCwStrategy):
                     if isinstance(a, BuyCard)}))
         # ⑤ 四层(层2/层4 消费纪律视图;层3 评分用原表)
         reg_view = disc.arbiter_registry(registry)
+        # ADR-0328 执行域对齐:arbitrate 的 state 参数 = **前置已采纳动作
+        # simulate 后**的执行域(演进 COMP/谷底回滚/carry_gate),非决策
+        # 入口原始态——arbitrate 内 working 从执行域初始化,index_drift/
+        # same_round_mutex 基于「真实执行序」的槽位内容校验(W66 seed
+        # 0/6/14 实证:前置 COMP 改变槽位后,SellBench(idx) 决策域与
+        # 执行域错位 → 实卖错件[刚买的同名卡] → 账本「BUY X → SELL X」
+        # 假象违规,no_same 96/400 的主要来源)。候选生成/过滤/评分仍用
+        # 原始 state(候选 idx 语义=原始槽;评分=决策时点)。
+        exec_state = state
+        if actions:
+            _wk = state.copy()
+            for _a in actions:
+                _wk = simulate(_wk, _a)
+            exec_state = _wk
         cands = generate_candidates(state, session, registry)          # 层1
         kept, _flog = filter_candidates(cands, state, session, reg_view)  # 层2
         scored = score_all(kept, state, session, registry)             # 层3
         # (W52/ADR-0326:旧 ⑤b liquidity_actions 已删——金不足变现收编
         # 进层4 末段补偿趟 _compensate_gold,触发源=实际拒绝事件)
-        result = arbitrate(scored, state, session, reg_view,
+        result = arbitrate(scored, exec_state, session, reg_view,
                            disc_view=disc)                    # 层4
         actions.extend(result.actions)
         # 执行 log → session.last_candidate_scores(遥测判读可直接读)
@@ -228,25 +254,13 @@ class DecisionV2Strategy(DefaultCwStrategy):
             f"r{state.round_num}:{r['tag']}:{r['desc']}": r['score']
             for r in result.log[:10] if r['accepted']}
         session.last_candidate_scores_round = state.round_num
-        # 同轮集回写(互斥约束跨段累积)+ 种子购入轮登记(ADR-0289 §5)
-        for a in actions:
-            if isinstance(a, BuyCard) and a.card.name:
-                session.v2_round_bought.add(a.card.name)
-                if getattr(a, 'reason', '') in ('engine_seed',
-                                                'd2_engine_seed'):
-                    _prev = session.v2_seed_bought.get(a.card.name)
-                    if _prev is not None and _prev[0] == key:
-                        session.v2_seed_bought[a.card.name] = (
-                            key, _prev[1] + 1)
-                    else:
-                        session.v2_seed_bought[a.card.name] = (key, 1)
-            elif isinstance(a, SellBench) \
-                    and 0 <= a.bench_idx < len(state.bench or []):
-                # W52(S5/ADR-0327):卖件登记统一走 register_round_sold
-                # helper(r408 对称臂;带轮键自校验)
-                nm = state.bench[a.bench_idx].char_id
-                if nm:
-                    register_round_sold([nm], state, session)
+        # ADR-0328:同轮已买/已卖集登记已前移到**动作采纳处**(arbiter
+        # 主循环/补偿趟/carry_gate 内部,采纳即登记)——此处不再兜底
+        # 回写:守卫在采纳时立即可见(no_same_round_buy_sell 回归根因
+        # = 旧登记点延迟到 arbitrate 之后,同趟 BUY X 采纳后 SELL X
+        # 旧副本候选的 r408 守卫读的是上一段已买集)。engine_seed
+        # 购入轮登记(ADR-0289 §5,seed_age_blocked 数据源)随采纳
+        # 处一并完成(arbiter._register_accepted)。
         log.info('[cw][d2] r%d %s/%s 地板%d:演进 %d+采纳 %d/%d 候选(%s)',
                  state.round_num, disc.coverage, disc.mode, result.floor,
                  len([a for a in actions
@@ -257,6 +271,39 @@ class DecisionV2Strategy(DefaultCwStrategy):
         return actions
 
     # ===== 内部 =====
+
+    @staticmethod
+    def _register_early_sells(acts, state: GameState,
+                              session: StrategySession) -> None:
+        """ADR-0328 第四卖发射点:arbitrate **之前**已发射的卖动作
+        (演进替换事务 ``CompTransaction.sell`` / 谷底回滚
+        ``SellDeployed``)登记同轮已卖集。
+
+        这两类卖不经 arbitrate 的 same_round_mutex 守卫(不产生
+        SellBench 候选),而 arbitrate 同趟可能采纳 BUY 同名候选——
+        seed 0 r1「COMP 卖桑博(旧档解除)+ BUY 桑博(店新副本)」
+        振荡,检查器按账本序报 no_same_round_buy_sell。登记后
+        arbitrate 的 BUY 候选被已卖禁买拒,同轮同名买卖互斥闭合。
+        CompTransaction 被拒(事务校验失败)时登记保守多记,下轮
+        重置,不破坏不变量。
+        """
+        names: list[str] = []
+        for a in acts:
+            if isinstance(a, CompTransaction):
+                for idx, domain in a.sell or []:
+                    src = state.deployed if domain == 'deployed' \
+                        else state.bench
+                    if 0 <= idx < len(src or []) and src[idx] is not None:
+                        _n = src[idx].char_id
+                        if _n:
+                            names.append(_n)
+            elif isinstance(a, SellDeployed):
+                if 0 <= a.deployed_idx < len(state.deployed or []):
+                    _n = state.deployed[a.deployed_idx].char_id
+                    if _n:
+                        names.append(_n)
+        if names:
+            register_round_sold(names, state, session)
 
     @staticmethod
     def _ensure_state(session: StrategySession) -> None:
