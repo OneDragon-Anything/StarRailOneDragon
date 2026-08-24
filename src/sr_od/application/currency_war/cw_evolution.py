@@ -373,6 +373,21 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
 
     bench_new = [bc for bc in state.bench
                  if bc is not None and _is_new_line(bc)]
+    # W65 修法1(ADR-0323):部署名单**按名去重**——同名多副本只取最高星一件
+    # 上场,其余副本留 bench 作 3合1 合成素材(合成进度,不卖;[22] 囤度内)。
+    # 根因:2+ 张同名副本全量进 deploy 名单 → 终态 deployed 同名重复 →
+    # duplicate_on_board 整事务拒(cw_state 同名唯一性;W64 模式 B,seed 81
+    # 49 次可执行全拒、每轮刷屏;同 bug 非万敌专属——艾丝妲×2 同被拒)。
+    # 去重键 = char_id;未识别(char_id 空)无法判同名,保留原样不折叠。
+    _best_new: dict[str, BenchChar] = {}
+    for _bc in bench_new:
+        if not _bc.char_id:
+            continue
+        _prev = _best_new.get(_bc.char_id)
+        if _prev is None or _bc.star > _prev.star:
+            _best_new[_bc.char_id] = _bc
+    bench_new = [bc for bc in bench_new
+                 if not bc.char_id or bc is _best_new.get(bc.char_id)]
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
     deployed_keep = [d for d in state.deployed if _is_new_line(d)]

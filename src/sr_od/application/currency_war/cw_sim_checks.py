@@ -1391,16 +1391,19 @@ def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
     """动作 v2(契约包 C1 + 六矛盾裁决1,步2):围栏跳过可见性/同轮配对锁。
 
     判据(裁决1:显式>围栏,同轮互斥;围栏跳过必须记账本一行):
-    - 轮内含显式部署动作(含 rejected——发出即占用显式通道)→ 该轮
-      actions 必须恰有一条 skip_fence 且 reason 非空(缺 = 围栏静默
-      跳过或叠加,双违规;多 = 误记);
-    - skip_fence 存在但轮内无显式动作 = 误记(围栏没跳却记账)。
+    - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
+      CompTransaction)→ 该轮 actions 必须恰有一条 skip_fence 且
+      reason 非空(缺 = 围栏静默跳过或叠加,双违规;多 = 误记);
+    - **rejected** 显式动作**不**占显式通道(W65/ADR-0323:被拒不消耗
+      围栏,同轮围栏照跑)→ 不要求配对;被拒轮若仍记 skip_fence = 误记;
+    - skip_fence 存在但轮内无 applied 显式动作 = 误记(围栏没跳却记账)。
     """
     out: list[str] = []
     for row in rows:
         acts = row.get('actions') or []
         explicit = [a for a in acts
-                    if a.get('__type__') in _EXPLICIT_V2_ACTIONS]
+                    if a.get('__type__') in _EXPLICIT_V2_ACTIONS
+                    and a.get('result') == 'applied']
         skips = [a for a in acts if a.get('__type__') == 'skip_fence']
         rn = row.get('round_num')
         if explicit and not skips:
@@ -3339,6 +3342,51 @@ def check_decision_v2_telemetry_contract() -> dict:
                     '待策略域裁决是否记未采纳行'}
 
 
+def check_decision_v2_remedy_loop(ledgers: list[list[dict]]) -> dict:
+    """W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3 报警(设计容量不足
+    信号)。
+
+    判据(仅 d2_ 前缀批次辖):某局存在**连续 ≥3 轮** sim.
+    remedy_abandoned=1(补偿趟事务性重验整组放弃)——连续放弃 =
+    设计在持续产出「想补偿但补偿不上」的拒绝,弱序降级链尽头被反复
+    打脸;单发放弃是合法(资源不足),连续 3 轮是结构信号(该窗口
+    策略层缺变现/腾位杠杆)。
+
+    变异自检:测试仓锁测试 monkeypatch 补偿趟(arbiter._run_
+    remediation_pass 置空)或删 abandon 置位 → 去门变异必红
+    (检查器自身由变异自检锁钉死;锁见 test_cw_w52_remediation.py)。
+    """
+    violations: list[str] = []
+    is_d2 = False
+    for rows in ledgers:
+        if not rows:
+            continue
+        rows = sorted(rows, key=lambda x: x.get('round_num', 0))
+        d2_here = any(
+            (a.get('reason') or '').startswith('d2_')
+            for row in rows for a in row.get('actions') or [])
+        if d2_here:
+            is_d2 = True
+        if not d2_here:
+            continue
+        rid = rows[0].get('run_id', '?')
+        run = 0
+        for row in rows:
+            if (row.get('sim') or {}).get('remedy_abandoned'):
+                run += 1
+                if run >= 3:
+                    violations.append(
+                        f'{rid}: r{row.get("round_num")} 起连续 '
+                        f'{run} 轮补偿放弃(设计容量不足)')
+                    break
+            else:
+                run = 0
+    return {'violations': len(violations), 'detail': violations,
+            'd2_batch': is_d2,
+            'note': '连续放弃轮 ≥3 = 补偿趟结构失败信号(§1.5-3);'
+                    '单发放弃合法(资源不足)'}
+
+
 def check_decision_v2_crisis_gold_hoard(ledgers: list[list[dict]]) -> dict:
     """批㉝(题①解剖·危机局指纹):危机态囤金零买入哨兵(披露级)。
 
@@ -3444,6 +3492,9 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             check_decision_v2_telemetry_contract(),
         'decision_v2_crisis_gold_hoard':
             check_decision_v2_crisis_gold_hoard(ledgers),
+        # W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3(容量不足信号)
+        'decision_v2_remedy_loop':
+            check_decision_v2_remedy_loop(ledgers),
         # 批㉞(供给 vs 标签审计):直通门标签-候选一致性不变式
         'decision_v2_supply_label_consistency':
             check_decision_v2_supply_label_consistency(),

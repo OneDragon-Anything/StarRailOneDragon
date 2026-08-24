@@ -192,7 +192,18 @@ def select_deployments(
     ignite_rest = [i for i in rest
                    if ignition_gain(_bonds_of(bench[i]), deployed_fac) > 0]
     plain_rest = [i for i in rest if i not in ignite_rest]
-    order = ignite_rest + tgt_idx + plain_rest
+    # W65 修法3b(ADR-0323):意向锁定的线核心优先于过渡填充件——tgt 中
+    # target_cores 成员(锁定 comp 的 core_chars;sim/candidates 从
+    # session.target_comp 注入)提到最前,「同 cap 内先核心后填充」
+    # ([21] 变阵窗口语义:锁定线核心在窗口优先上板;对照 [20]:过渡配方
+    # 照常占位,但核心不因 cap 竞争被填充件挤掉;不扩 cap)。
+    # 非锁定局 target_cores 空 → 本桶恒空,序不变;r404-A1「点火 >
+    # 冗余 target」语义保留(core_tgt 之外的 tgt 仍在 ignite_rest 之后)。
+    _core_set = set(target_cores)
+    core_tgt = [i for i in tgt_idx
+                if (getattr(bench[i], 'char_id', '') or '') in _core_set]
+    other_tgt = [i for i in tgt_idx if i not in core_tgt]
+    order = core_tgt + ignite_rest + other_tgt + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
     # r404-A2:同名去重(5.1.7 不变量:同角色在场只 1)扩到
     # **本轮已上名单**——旧版只查传入 deployed_cids(实机=开局

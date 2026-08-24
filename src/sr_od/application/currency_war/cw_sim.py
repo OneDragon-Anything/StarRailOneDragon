@@ -1027,12 +1027,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
         _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
         _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
-        # 动作 v2(契约包 C1,步2):本轮策略是否发出显式部署动作
-        # (SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
-        # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥)
+        # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
+        # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
+        # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
+        # W65/ADR-0323:被拒事务不置位,围栏照跑)
         _explicit_deploy_seen = False
         _acts: list[dict] = []
         _segs_used = 0
+        # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
+        # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
+        # 的「连续放弃轮」数据源)
+        _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
         # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -1184,7 +1189,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 动作 v2(契约包 C1,步2):显式部署通道执行——
                     # 转移语义在 cw_state.simulate 单一源(全量校验+原子
                     # 应用),此处转录账本 + 池守恒/经济记账同步。
-                    _explicit_deploy_seen = True
+                    # W65 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
+                    # 下方 applied 分支置位——**只有真执行(未被拒)的显式
+                    # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
+                    # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;W64
+                    # Ring5:被拒事务也 skip_fence,90 次/11 局)。
                     # 预状态引用快照(池 ret / 经济记账用;simulate 会
                     # deepcopy,引用不跨界)
                     _sold_names: list[str] = []
@@ -1218,6 +1227,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _tx_income = sell_refund(
                             _sold.star, _bench_char_cost(_sold))
                     if _applied:
+                        # W65 修法3(ADR-0323):显式动作**真执行**才置位
+                        # (被拒不跳围栏,见上方分支注释)
+                        _explicit_deploy_seen = True
                         st = _new   # 整体替换(事务原子;simulate 单一源)
                         for _n in _sold_names:
                             if _n:
@@ -1292,10 +1304,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 「升级→上阵」链断一轮的修复)。
         _dep_cids = {d.char_id for d in st.deployed if d.char_id}
         _dep_fac = _board_factions_of(st.deployed)
-        # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):显式动作发出轮
+        # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
         # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
         # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
-        # check_skip_fence_pairing 同轮配对锁)。
+        # check_skip_fence_pairing 同轮配对锁;W65/ADR-0323:被拒事务
+        # 不置位 → 不跳围栏 → 板面欠载不再被事务风暴封死)。
         _deploy_lag_units = 0
         if _explicit_deploy_seen:
             _acts.append({'__type__': 'skip_fence',
@@ -1538,6 +1551,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                 # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
                 'fence_skipped': _explicit_deploy_seen,
+                # W52(ADR-0326):本轮补偿趟是否放弃(0/1;连续放弃轮
+                # ≥3 由检查项 decision_v2_remedy_loop 报警——设计容量
+                # 不足信号)
+                'remedy_abandoned': 1 if getattr(
+                    sess, 'v3_remedy_abandoned', 0)
+                    > _remedy_abandons_before else 0,
             },
         })
         if st.hp <= 0:

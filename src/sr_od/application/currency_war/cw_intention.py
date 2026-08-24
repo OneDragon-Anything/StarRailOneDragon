@@ -431,7 +431,13 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     factions = set(comp.form_tiers) | set(comp.sub_tiers)
     if factions:
         for name, c in CHARACTERS.items():
-            if set(c.factions) & factions:
+            # W65 修法2(ADR-0323):目标集判定用「阵营 ∪ 流派」全集与档位键
+            # 作交集——旧版只查 c.factions,而档位键常含**流派系羁绊**
+            # (万敌单C form_tiers 燃血=flows、DOT 持续伤害、黄泉减益、击破等),
+            # flows 成员(刃/镜流/布洛妮娅 等)被目标集排除 → 锁定线采购面残
+            # (W64 Ring1:燃血 8 成员 3 名缺位)。泛化修正,非万敌特判
+            # (candidates 的 _char_factions 同式全集口径)。
+            if (set(c.factions) | set(c.flows)) & factions:
                 chars.add(name)
     taboos = set(comp.equip_taboos)
     equips = {e for e in derive_key_equips(comp) if e not in taboos}
