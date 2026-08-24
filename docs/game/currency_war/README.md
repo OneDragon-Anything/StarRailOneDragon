@@ -23,16 +23,11 @@
 
 ## `research/` —— 玩法研究(我们提炼/核实的知识,活文档)
 
-索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ **combat(战斗机制:三乘区/星级/血量星/连胜)** / **transitions(过渡体系:P1 骨架/护航/买牌纪律)** / plaza_methodology(M1-M16 玩法方法论)/ **final_comps(终局阵容十类深读,单套 comp 打法知识单一源)** / invest_effects(投资效果全量分类)。与 `sources/`(外部原文存档,按版本冻结)相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
+索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ **combat(战斗机制:三乘区/星级/血量星/连胜)** / **transitions(过渡体系:P1 骨架/护航/买牌纪律)** / plaza_methodology(M1-M16 玩法方法论)/ **final_comps(终局阵容十类深读,单套 comp 打法知识单一源)** / invest_effects(投资效果全量分类)。与原 `sources/` 外部攻略存档相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
 
-## `sources/` —— 外部原文存档(`阵容_` 阵容攻略 / `公共_` 公共知识;按版本冻结)
+## `sources/` —— 已删除(2026-08-23,commit eb9c72a1)
 
-保真纪律与命名规约见 [sources/README](sources/README.md):只带来源元数据头,原文不改,我们的批注不进存档;提炼后的现行结论以 [research/](research/README.md) 为准。
-
-- [阵容_README](sources/V4.4_阵容_README.md) —— 跨阵容 pattern(评级总览 / 开局过渡分级 / 通用角色 / 通用装备 / 成型节奏共性,V4.4)
-- 逐套:17 套(V3.7×5 / V3.8×5 / V4.0×1 / V4.2×1 / V4.4×5)见各文件(V 前缀即版本)
-- [公共_视频目录](sources/公共_视频目录.md) —— UP「甘泽成谣雨成诗」45 个币战视频按版本编目 + 转录状态
-- [公共_核心机制](sources/V3.7_公共_核心机制.md) / [公共_经济运营](sources/V3.7_公共_经济运营.md) / [公共_前期过渡](sources/V3.7_公共_前期过渡.md)(V3.7 必修一/二/三)/ [公共_难度攻略](sources/V4.0-4.4_公共_难度攻略.md)(A830-A850 难度环境 + 中期过渡三套护航,V4.0/V4.2/V4.4)
+原为外部攻略原文存档(17 套阵容攻略 + 公共知识必修一/二/三 + 难度攻略 + 视频目录,V3.7-V4.4 按版本冻结)。**用户裁决整体删除**:版本过期致误引(如 V4.0 狼狩/贝洛伯格过渡建议已被 V4.4 实测推翻)。原文不恢复;有实质细节(阵容配置/数值/操作要领/适用边界)且文档仅有简记的条目,已从 git 历史(`git show eb9c72a1~1:...`)内联回填至 research/ 各篇,补记块统一标注「攻略存档已删[eb9c72a1],信源=过期攻略存档(版本 V3.7/V4.x,已被 V4.4 实测部分推翻)」。提炼后的现行结论以 [research/](research/README.md) 为准。
 
 ## 画面事实
 画面(screen doc,游戏提供的 UI)算游戏玩法,仍在 [docs/game/screens/](../screens/)(`currency_war_*.md`)。
