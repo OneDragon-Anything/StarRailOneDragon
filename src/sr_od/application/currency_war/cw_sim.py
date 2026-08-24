@@ -828,7 +828,7 @@ def _transition_formed(board_factions: dict[str, int],
 
     四种体系(仙舟3/列车2/DOT2/希儿系)**两两组合**=成型
     (三选二 140/328 帖;希儿系×三过渡 18 帖);
-    单个=「过渡的过渡」(DOT2 可单独当起点但不等于成型)。
+    单个体系点火不等于成型(门槛低的体系如 DOT2 可单独当起点)。
     """
     return _engines_count(board_factions, deployed_names) >= 2
 
@@ -839,7 +839,7 @@ def _first_engines_round(res, target: int) -> int | None:
     判据走 _engines_count(四体系:仙舟3/列车2/DOT2/希儿系各算一个;
     希儿系需 deployed 含希儿——ledger 的 state.deployed 提供名单);
     target=2=过渡成型(两两组合),target=1=单体系点火
-    (DOT2 单独可当「过渡的过渡」起点)。
+    (门槛低的体系如 DOT2 可单独当起点)。
     """
     for row in res.ledger:
         st = row.get('state') or {}

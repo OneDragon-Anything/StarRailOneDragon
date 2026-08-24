@@ -41,8 +41,6 @@ from sr_od.application.currency_war.cw_state import GameState
 _XIANZHOU_TIER: int = FACTIONS['仙舟'].tiers[0]              # 3(仙舟≥3 激活)
 _DOT_TIER: int = FACTIONS['持续伤害'].tiers[0]               # 2(持续伤害≥2)
 _TRAIN_TIER: int = FACTIONS['列车同行'].tiers[0]             # 2(列车同行≥2)
-_QUANTUM_TIER: int = FACTIONS['量子同频'].tiers[0]           # 2(希儿 OR 分支)
-_BELLY_TIER: int = FACTIONS['贝洛伯格'].tiers[0]             # 2(希儿 OR 分支)
 
 _SEELE: str = '希儿'   # 卡4 引擎单卡(伤害全在她技能层,量子/贝是放大器)
 
@@ -52,8 +50,15 @@ _WEIGHT_INTENT_ALIGNED: float = 0.5   # 意向同向 tie-break(非一票否决;�
 #   来牌——tie-break 只裁同分,不得翻越「来牌主判据」)
 _WEIGHT_AFFIX_LIKE: float = 1.5       # 词条吃:每条命中
 _WEIGHT_AFFIX_FEAR: float = -3.0      # 词条怕:每条命中(怕>吃,counter 警惕优先)
-_WEIGHT_DOT_FIRST: float = 1.0        # DOT2 默认首站加成(可达时;p1_definition 组合规则3)
-_WEIGHT_TRIO_READY: float = 6.0       # 铁三角一轮成型直取仙舟3(例外条款,权重盖过常规差)
+# 激活所需件数(readiness 分母;ADR-0311 统一维度:「门槛低」=容易被先凑出,
+# 不是优先级特权——对所有卡统一生效,新羁绊加入零改动)
+_ACTIVATION_PIECES: dict[str, int] = {
+    'xianzhou3': _XIANZHOU_TIER,      # 3
+    'dot2': _DOT_TIER,                # 2
+    'train2': _TRAIN_TIER,            # 2
+    'seele': 3,                       # 希儿+2 放大器≈3(判据折算,草案级)
+}
+_WEIGHT_READINESS: float = 1.0        # readiness=pieces/激活所需件数(统一维度,全卡生效)
 
 # 意向→体系同向映射(草案级;家族键 = cw_comps.V2_FAMILIES 子集,未知键→无加成)
 _INTENT_CARD_MAP: dict[str, str] = {
@@ -71,6 +76,10 @@ class SystemCard:
     - ``judge``:判据描述(文档性;**函数 ``card_active`` 才是权威**);
     - ``engine_required``:引擎件(仙舟=铁三角三人;其余空);
     - ``star_goal``:星级目标(仙舟铁三角 2★;希儿 3★;其余不追);
+    - ``judge_factions``:判据阵营元组(希儿系双元组=('量子同频','贝洛伯格');
+      其余单元组)——**卡→阵营映射的单一数据源**(W47 统一化:原先在
+      ``_card_factions``/``card_active``/``cw_evolution._CARD_FACTION_TIER``
+      三处各写一遍,加第五张卡要改三处 → 字段化后零散 if 消除);
     - ``affix_likes``/``affix_fears``:词条吃怕表(数据字段;输入=
       ``pick_card_combination(affixes=...)`` 的敌方词缀名,逐条命中计数)。
     """
@@ -79,6 +88,7 @@ class SystemCard:
     judge: str
     engine_required: list[str]
     star_goal: dict[str, int]
+    judge_factions: tuple[str, ...] = ()
     affix_likes: list[str] = field(default_factory=list)
     affix_fears: list[str] = field(default_factory=list)
 
@@ -89,6 +99,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
         judge='仙舟≥3 人(3 人档激活);引擎=铁三角功能链不可拆(缺一=空壳)',
         engine_required=sorted(_CORE_TRIO),
         star_goal=dict.fromkeys(_CORE_TRIO, 2),   # 铁三角 2★ 即成型;不追 3★
+        judge_factions=('仙舟',),
         affix_likes=[],                          # 词条泛用(神君不挑敌方形态)
         affix_fears=[],
     ),
@@ -97,6 +108,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
         judge='持续伤害≥2 人(2 人档激活,最低门槛);无引擎要求',
         engine_required=[],
         star_goal={},                            # 星级不追
+        judge_factions=('持续伤害',),
         affix_likes=['忍无可忍', '同步行动', '应激反应'],   # 吃敌方频动→DOT 多结算
         affix_fears=['净化身心'],                # 敌解负面+回血(羁绊注册表 note:该环境别玩 DOT)
     ),
@@ -105,6 +117,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
         judge='列车同行≥2 人;无引擎(凑出就能用)',
         engine_required=[],
         star_goal={},
+        judge_factions=('列车同行',),
         affix_likes=[],                          # 词条泛用
         affix_fears=[],
     ),
@@ -113,6 +126,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
         judge='希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2);引擎=希儿单卡',
         engine_required=[_SEELE],
         star_goal={_SEELE: 3},                   # 希儿追 3★(高饥渴线,从 P1 就可开始)
+        judge_factions=('量子同频', '贝洛伯格'),   # 双分支(顺序=演进目标锚取首位)
         affix_likes=[],
         affix_fears=['量子熄火'],                # 量子属性伤害限 1(重开级 counter)
     ),
@@ -224,8 +238,8 @@ def card_active(card: SystemCard, state: GameState) -> bool:
     if card.card_id == 'seele':
         if not _seele_on_board(state):
             return False
-        return (_faction_count(state, '量子同频') >= _QUANTUM_TIER
-                or _faction_count(state, '贝洛伯格') >= _BELLY_TIER)
+        return any(_faction_count(state, f) >= FACTIONS[f].tiers[0]
+                   for f in card.judge_factions)
     raise ValueError(f'未知体系卡: {card.card_id}')
 
 
@@ -248,11 +262,37 @@ def engine_missing(card: SystemCard, owned: set[str]) -> list[str]:
 # ===== 件数/组合选择(组合规则 1-3;权重草案级)=====
 
 def _card_factions(card: SystemCard) -> tuple[str, ...]:
-    """该体系卡的判据阵营(希儿系双分支;其余单阵营)。"""
-    if card.card_id == 'seele':
-        return ('量子同频', '贝洛伯格')
-    return ({'xianzhou3': '仙舟', 'dot2': '持续伤害',
-             'train2': '列车同行'}[card.card_id],)
+    """该体系卡的判据阵营(希儿系双分支;其余单阵营)。
+
+    W47 统一化:映射本体已字段化为 ``SystemCard.judge_factions``
+    (本函数保留为兼容视图,行为=原样返回字段)。
+    """
+    return card.judge_factions
+
+
+def engine_char_names() -> frozenset[str]:
+    """四体系卡的引擎件名全集(铁三角三人组+希儿;点3 见即买名单)。
+
+    W47 统一化:原 ``decision_v2/discipline.engine_char_names`` 的函数体
+    上移到本模块(注册表旁,单一源);discipline 侧改为 import 本函数,
+    对外签名/消费点零变化。
+    """
+    out: set[str] = set()
+    for card in SYSTEM_CARDS.values():
+        out.update(card.engine_required)
+    return frozenset(out)
+
+
+def system_judge_factions() -> frozenset[str]:
+    """体系卡判据阵营并集(仙舟/持续伤害/列车同行/量子同频/贝洛伯格)。
+
+    W47 统一化:``decision_v2/scoring._shop_has_engine_card`` 原手抄这五家
+    阵营(ADR-0301 找件判据),第五张体系卡加入时不传导 → 改读本 helper。
+    """
+    out: set[str] = set()
+    for card in SYSTEM_CARDS.values():
+        out.update(card.judge_factions)
+    return frozenset(out)
 
 
 def card_pieces(card: SystemCard, state: GameState) -> int:
@@ -313,34 +353,28 @@ def _affix_weight(card: SystemCard, affixes: list[str]) -> float:
 
 def pick_card_combination(state: GameState, intent: str | None = None,
                            affixes: list[str] | None = None) -> CombinationDecision:
-    """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级)。
+    """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级;ADR-0311)。
 
-    - 主判据=来牌(``card_pieces``,哪系件先到);
+    - 主判据=来牌(``card_pieces``,哪系件先到)+ readiness 统一维度
+      (``pieces / 激活所需件数``,对所有卡统一生效——门槛低的体系(DOT2=2 件)
+      天然容易被先凑出,不是优先级特权;新羁绊加入零改动);
     - 次=意向同向 tie-break(intent=家族键,非一票否决,同分裁决);
     - 词条输入(affixes=敌方词缀名;频动旺→DOT 权重升,净化身心→DOT 权重降);
-    - DOT2 默认首站:可达(在手 DOT 件 ≥2)即加成;
-      例外=仙舟铁三角一轮成型(三人全在手)直取仙舟3;
+    - 三人全在手时仙舟3 的 pieces/readiness 自然最高,无需例外条款;
     - 空窗(四系件数为 0 且无可达)→ blank_window=True,chosen=[]。
     """
     affixes = list(affixes or [])
-    owned = _owned_names(state)
     states = {cid: card_state_of(card, state) for cid, card in SYSTEM_CARDS.items()}
     scores: dict[str, float] = {}
     for cid, cs in states.items():
         card = SYSTEM_CARDS[cid]
-        w = cs.pieces * _WEIGHT_PIECE + _affix_weight(card, affixes)
+        readiness = cs.pieces / _ACTIVATION_PIECES[cid]
+        w = cs.pieces * _WEIGHT_PIECE + readiness * _WEIGHT_READINESS
+        w += _affix_weight(card, affixes)
         if intent is not None and _INTENT_CARD_MAP.get(intent) == cid:
             w += _WEIGHT_INTENT_ALIGNED
         scores[cid] = w
     ruling: list[str] = []
-    trio_ready = card_engine_complete(SYSTEM_CARDS['xianzhou3'], owned)
-    dot_reachable = states['dot2'].pieces >= _DOT_TIER
-    if trio_ready:
-        scores['xianzhou3'] += _WEIGHT_TRIO_READY
-        ruling.append('铁三角一轮成型→直取仙舟3(例外条款)')
-    if dot_reachable and not trio_ready:
-        scores['dot2'] += _WEIGHT_DOT_FIRST
-        ruling.append('DOT2 可达→默认首站加成')
     ranked = sorted(scores, key=lambda cid: (-scores[cid], cid))
     top = ranked[0]
     if scores[top] <= 0.0:
