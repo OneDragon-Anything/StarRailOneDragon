@@ -21,6 +21,11 @@ from sr_od.application.currency_war.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
     RoundOutcome,
 )
+from sr_od.application.currency_war.cw_resume_lock import (
+    locked_after_start_battle,
+    probe_resolve,
+    resume_candidate,
+)
 from sr_od.application.currency_war.cw_settlement_obs import parse_settlement_round
 from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
@@ -169,6 +174,11 @@ class CurrencyWarRunLoop(SrOperation):
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
         # 停 app / 手停 / 重启 server 后 cw_match 清(None)→ 下次 run 重新 new(新局)。
         self._is_new_match: bool = self.ctx.cw_match is None
+        # W62 件1(ADR-0329):恢复局(locked-resume)检测状态。
+        # 候选 = 新 match(无本局记录),首个备战相位 round>1 时探针裁决;续跑恒 False。
+        self._cw_resume_candidate: bool = self._is_new_match
+        self._cw_locked_resume: bool = False   # 锁定确认(探针零响应)→ 直接出战
+        self._cw_locked_round: int = 0         # 锁定确认时的轮次(遥测/日志锚)
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
         if self._is_new_match:
             _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
@@ -890,6 +900,62 @@ class CurrencyWarRunLoop(SrOperation):
                          self.PREP_SETTLE_S)
             if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
                 return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
+            # W62 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
+            # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
+            # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
+            # =商店按钮零响应);锁定态跳过全部备战交互直接出战(复用 StartBattle
+            # 执行体,内含未达上限确认),出战成功即解除(章1.5)。误判防线:候选
+            # 撤回(1-1 正常新局)/探针可开(非锁定)两处都不进锁定分支。
+            if self._cw_resume_candidate:
+                _pr = read_phase_round(self.ctx, screen)
+                if not resume_candidate(self._is_new_match, _pr[0], _pr[1]):
+                    self._cw_resume_candidate = False   # 1-1 正常新局,撤回候选
+                else:
+                    self.round_by_find_and_click_area(
+                        screen, '货币战争-备战', '按钮-商店', success_wait=1.2)
+                    _opened = self.round_by_find_area(
+                        self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
+                        crop_first=False).is_success
+                    self._cw_resume_candidate = False
+                    if probe_resolve(_opened) == 'normal':
+                        # 非锁定(误判防线):收起关店,清候选 → 落常规 PrepDirector
+                        self.round_by_find_and_click_area(
+                            self.screenshot(), '货币战争-备战-开商店', '按钮-收起',
+                            success_wait=1.0)
+                        log.info('[cw-loop] 恢复候选但商店可开 → 非锁定,走常规')
+                    else:
+                        self._cw_locked_resume = True
+                        self._cw_locked_round = _pr[1]
+                        import contextlib
+                        with contextlib.suppress(Exception):   # 遥测 best-effort
+                            cw_telemetry.record_exogenous(
+                                _pr[1], 'locked_resume',
+                                detail=f'P{_pr[0]}-r{_pr[1]} shop-probe-zero')
+                        log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
+                                    '零响应)→ 直接出战', _pr[0], _pr[1])
+            if self._cw_locked_resume:
+                from sr_od.application.currency_war.prep_actions import (
+                    PrepActionExecutor,
+                    StartBattle,
+                )
+                progressed, detail = PrepActionExecutor(
+                    self, self.ctx).execute(StartBattle())
+                if progressed:
+                    self._cw_locked_resume = locked_after_start_battle(progressed)
+                    self._battle_ts = time.monotonic()   # ADR-0250:战斗窗口开
+                    import contextlib
+                    with contextlib.suppress(Exception):   # 遥测 best-effort
+                        cw_telemetry.get_recorder().record_exec_event(
+                            run_id=cw_telemetry.current_run_id() or '-',
+                            round_num=self._cw_locked_round,
+                            action_family='LockedResume_StartBattle',
+                            screen='battle_prep', event='start_battle',
+                            reason='locked_resume')
+                    log.info('[cw-loop] 锁定恢复局 → 出战成功,锁解除(恢复正常循环)')
+                    return self.round_wait(wait=3)
+                log.warning('[cw!][loop] 锁定模式出战未落地(%s)→ retry(保锁定)',
+                            detail)
+                return self.round_retry(wait=2)
             # 过渡门说明(r7 review P0-B):0e 系分支(上方)先于本分支检查同截图同三元组(id_mark
             # 位置判),OCR 按 id(image) 缓存 → 到达此处时 overlay 检查必全 False——旧「半开帧
             # 等 1.2s」门为不可达死码,已删;其继任者 = 上方子态稳定门(连续 3s,非同帧检查)。

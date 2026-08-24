@@ -14,6 +14,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -76,11 +77,21 @@ class ExitCurrencyWarMatch(SrOperation):
         # 本局反正要弃)→ 回备战再走 Esc 链
         if self.round_by_find_area(screen, '货币战争-投资策略',
                                    '标识-请选择投资策略').is_success:
-            self.ctx.controller.click(Point(460, 475))   # 左卡
+            # W62 件3(ADR-0329):确认按钮点击不落地修复——旧版
+            # ``round_by_ocr_and_click(scr2, '确认')`` 全屏 OCR 搜「确认」
+            # 对 stylized 按钮静默失配(验证局清场 748s 卡行;手动
+            # (460,475)+(978,984) 两击解锁,(978,984) = screen_info
+            # 「按钮-确认」area 中心)→ 改用 area 中心点击,与生产路径
+            # HandleInvestStrategy 同源(同屏同按钮 area 中心,实机验证可靠);
+            # 点击带 bug#1 mouse_move 缓解(partner reset 根因同类)。
+            _confirm = (area_center(self.ctx, '按钮-确认', '货币战争-投资策略')
+                        or Point(978, 983))   # 兜底常量 = HandleInvestStrategy.CONFIRM
+            self.ctx.controller.mouse_move(Point(460, 475))   # 左卡
+            self.ctx.controller.click(Point(460, 475))
             time.sleep(1.2)
-            scr2 = self.screenshot()
-            self.round_by_ocr_and_click(scr2, '确认', success_wait=2)
-            log.info('[cw-exit] 投资策略三选一(退局途中)→ 左卡+确认')
+            self.ctx.controller.mouse_move(_confirm)
+            self.ctx.controller.click(_confirm)
+            log.info('[cw-exit] 投资策略三选一(退局途中)→ 左卡+确认(area 定位)')
             return self.round_wait(wait=2)
         if (self.round_by_ocr(screen, '补给阶段').is_success
                 or self.round_by_ocr(screen, '遭遇其一').is_success

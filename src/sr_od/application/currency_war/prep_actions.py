@@ -204,6 +204,48 @@ def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     return [p for _, p in pts]
 
 
+def sell_point(ctx: SrContext) -> Point:
+    """出售区落点(单一源):screen_info「货币战争-备战.区域-出售区」中心;
+    缺失/未建档兜底 ``PrepActionExecutor.SELL_POINT`` 常量(硬编码坐标)。
+
+    W62 件2(ADR-0329,设计章2.6):出售区原是硬编码坐标
+    (``SELL_POINT = Point(70, 846)``,prep_actions/deploy_bench/shop.py 三处同值
+    ——游戏机制为「拖到左下区域即出售」,无按钮)→ 补 screen_info area 后
+    经本 helper 读中心,硬编码作兜底(与 ``LEVEL_UP_FALLBACK`` 同模式)。
+    """
+    return area_center(ctx, '区域-出售区') or PrepActionExecutor.SELL_POINT
+
+
+def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
+    """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
+
+    d2 卖通道生产接线(shop.py prefix 循环 SellBench 分支)与 prep_actions
+    ``_sell_bench`` 共用本 helper:「拖→出售区→验源槽空」一段(DragCwChar.drag_char
+    内含验源槽像素变 + retry);tracking 同步由调用方各自做。失焦守卫同
+    ``PrepActionExecutor._drag`` 语义(窗口后台化时拖拽输入静默丢,r9 实证)。
+
+    Args:
+        op: 调用方 op(取 ctx.controller 操作 + screenshot 验证)。
+        ctx: SrContext。
+        bench_idx: 槽位下标 0-8(ADR-0316:列表下标 = 物理备战栏槽位 1-9 减一)。
+    """
+    pts = row_area_centers(ctx, '备战栏')
+    if not (0 <= bench_idx < len(pts)):
+        return False
+    try:
+        gw = ctx.controller.game_win
+        if not gw.is_win_active:
+            log.warning('[cw!][drag] 窗口失焦(拖拽输入将静默丢)→ 先激活')
+            gw.active()
+            time.sleep(0.3)
+    except Exception:   # noqa: BLE001  焦点守卫 best-effort
+        pass
+    from sr_od.application.currency_war.operations.dev.drag_cw_char import (
+        DragCwChar,
+    )
+    return DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
+
+
 class PrepActionExecutor:
     """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
@@ -461,18 +503,19 @@ class PrepActionExecutor:
     # ===== 席位域 =====
 
     def _sell_bench(self, action: SellBench) -> tuple[bool, str]:
-        """卖备战槽角色:drag 槽中心 → 出售区;drag_char 内验源槽空。"""
-        src = self._bench_pts[action.slot - 1]
-        ok = self._drag(src, PrepActionExecutor.SELL_POINT)
+        """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
+        drag_char 内验源槽空)。"""
+        ok = drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
         if ok:
             self._track_remove_bench(action.slot)
         return ok, f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}'
 
     def _sell_deployed(self, action: SellDeployed) -> tuple[bool, str]:
-        """卖上阵角色:drag 排槽中心 → 出售区;drag_char 内验源槽空。"""
+        """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源);
+        drag_char 内验源槽空。"""
         pts = self._front_pts if action.row == 'front' else self._back_pts
         src = pts[action.slot - 1]
-        ok = self._drag(src, PrepActionExecutor.SELL_POINT)
+        ok = self._drag(src, sell_point(self._ctx))
         if ok:
             self._track_remove_deployed(action.row, action.slot)
         return ok, f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}'
@@ -514,8 +557,10 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
+        # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
         match.session.tracked_bench_chars = [
-            bc for bc in match.session.tracked_bench_chars if bc.slot != slot]
+            bc for bc in match.session.tracked_bench_chars
+            if bc is not None and bc.slot != slot]
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
         match = self._ctx.cw_match
@@ -530,9 +575,12 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        moved = [bc for bc in match.session.tracked_bench_chars if bc.slot == from_slot]
+        # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
+        moved = [bc for bc in match.session.tracked_bench_chars
+                 if bc is not None and bc.slot == from_slot]
         match.session.tracked_bench_chars = [
-            bc for bc in match.session.tracked_bench_chars if bc.slot != from_slot]
+            bc for bc in match.session.tracked_bench_chars
+            if bc is not None and bc.slot != from_slot]
         for bc in moved:
             bc.position_pref = to_row
             bc.slot = to_slot

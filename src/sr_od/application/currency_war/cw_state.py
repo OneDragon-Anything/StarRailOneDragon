@@ -261,6 +261,11 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
     时按槽放置)。旧语料/紧缩构造入槽位模型的适配单一源。"""
     bench: list[BenchChar | None] = [None] * BENCH_CAPACITY
     for bc in chars:
+        # 形状双源防御(ADR-0316 持久态契约):输入可能是 pad 态(定长 9 含
+        # None,如 mutate_bench_deployed 就地 pad 后的 session.tracked_bench_chars)
+        # 或紧凑态(无 None)——两种形态都是本适配源的输入域,None 直接跳过。
+        if bc is None:
+            continue
         slot = bc.slot if 1 <= bc.slot <= BENCH_CAPACITY else None
         if slot is not None and bench[slot - 1] is None:
             bench[slot - 1] = bc

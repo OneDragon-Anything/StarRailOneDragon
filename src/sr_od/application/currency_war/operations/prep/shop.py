@@ -34,8 +34,34 @@ from sr_od.application.currency_war.cw_state import (
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.prep_actions import sell_point
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+
+def sell_guard_ok(expected: str | None, live: str | None) -> bool:
+    """卖前对拍守卫(W62 件2 设计章2.5 轻守卫;ADR-0329)。
+
+    生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
+    ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
+    (3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal,与 cw_state 拒绝
+    语义同词)。两表同源于循环顶(``state.bench = bench_from_compact(tracked)``),
+    mid-loop 漂移必被抓。残余风险(不防「tracked 名字本身错」)= buy-OCR 误读,
+    属既有跟踪保真度问题(W57 F6),不在本批根治。
+    """
+    return bool(expected) and live is not None and live == expected
+
+
+def expected_gold_after_actions(state_gold: int, spend: int,
+                                sell_income: int) -> int:
+    """买后预期金(W62 件2 设计章2.7 必改项;ADR-0329):开店金 − 花出 + 卖入。
+
+    gold 差值对拍口径:卖出接线后,卖轮实际金 = state.gold − spend + sell_income
+    (游戏侧卖出入账),与旧 ``_expected = state.gold - _spend`` 恒差 income →
+    每卖轮误报 gold_delta 冲突留证。修 = 对拍纳入卖入(与 ``query_economy``
+    的 income 口径同式:income 在 actions 里)。
+    """
+    return state_gold - spend + sell_income
 
 
 def _form_progress(comp, state) -> float:
@@ -80,7 +106,11 @@ class BuyShopCards(SrOperation):
       避开 plan 的 bench_idx→物理槽映射复杂度)。
     - **D牌两阶段(r6 F8)**:plan emit RefreshShop 后,simulate 不换牌 → 其后的 BuyCard 是旧 shop
       失效决策。故每轮执行**至首个 RefreshShop(含)**,刷新后重 OCR shop + 重 plan(MAX_REFRESH 硬墙)。
-    - **跳过** ``SellBench`` —— v1 不读 bench 身份;「备战席已满」由本 op 前置处理(位置式)覆盖。
+    - **SellBench(W62 件2/ADR-0329 起执行)**:v1 曾跳过(v1 不读 bench 身份;「备战席已满」由
+      ``_handle_bench_full`` 位置式覆盖)——W51 槽位语义合流后 bench_idx=槽位下标(ADR-0316),
+      d2 卖通道(liquidity/carry_gate/arbiter)发射的 ``SellBench(bench_idx)`` 在此分支执行:
+      防误卖轻守卫(生成期快照 vs 执行期实况名对拍)→ 拖 备战栏-(idx+1) → 出售区(单一源)
+      → 置 None 不紧缩(tracking 同步)→ 卖出件入同轮已卖集(r408 对称臂执行域加固)。
 
     牌位点击中心从 screen_info ``商店牌-1..5`` 读(cw_observation.shop_card_click_points)。
     前置:已在「货币战争-备战」(商店未开)。买完关商店,交上层 deploy。
@@ -92,6 +122,12 @@ class BuyShopCards(SrOperation):
     REFRESH_FALLBACK: ClassVar[Point] = Point(1592, 472)   # 「刷新」按钮兜底(screen_info 按钮-刷新)
     # D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
     MAX_REFRESH: ClassVar[int] = 4
+    # W62 件1(ADR-0329)加强通道开关(默认关):同进程续跑盲区(主判据 _is_new_match
+    # 只覆盖进程外恢复;run A 锁定态被停 → run B 续跑时 _is_new_match=False 不检测)
+    # 的可选补强 —— 开商店失败分型(点「按钮-商店」后验「按钮-收起」连续 2 次零响应
+    # → 判锁定恢复局 → 直接出战,与主通道共用 StartBattle 分支)。保守版默认关,
+    # 待实机验证主通道后再评估开启。
+    LOCKED_RESUME_ENHANCED: ClassVar[bool] = False
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-商店买牌')
@@ -193,6 +229,11 @@ class BuyShopCards(SrOperation):
         # 开商店(gold/shop/board 须 shop 开才显示;HP 此时被遮但上面已读过)
         if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
+                # W62 件1 加强通道(默认关):按钮点击即失败(找不到/未落地)→ 零响应计数
+                if BuyShopCards.LOCKED_RESUME_ENHANCED:
+                    _r_enh = self._locked_resume_enhanced()
+                    if _r_enh is not None:
+                        return _r_enh
                 return self.round_retry('找不到商店/收起按钮', wait=1)
             # r312(ADR-0213 批次1;开向站)+r347(旧路径删除):
             # 旧 sleep(0.5) 后即读=半开帧(开店动画 ~3s,终验 P1②);
@@ -206,6 +247,15 @@ class BuyShopCards(SrOperation):
             with contextlib.suppress(Exception):   # 离线契约:放行
                 wait_stable_frame(self, profile=PROFILE_OPEN,
                                   segment='op_settle')
+            # W62 件1 加强通道(默认关):点后验「按钮-收起」——零响应连续 2 次 → 判锁定
+            if BuyShopCards.LOCKED_RESUME_ENHANCED:
+                _opened_now = self.round_by_find_area(
+                    self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起',
+                    crop_first=False).is_success
+                if not _opened_now:
+                    _r_enh = self._locked_resume_enhanced()
+                    if _r_enh is not None:
+                        return _r_enh
 
         # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -253,6 +303,8 @@ class BuyShopCards(SrOperation):
         match.strategy.update_target(_tgt_state, match.session, config)
 
         total_buy = total_level = total_refresh = 0
+        # W62 件2(ADR-0329):卖通道执行计数(income 遥测 + gold 对拍纳入卖入)
+        total_sell = total_sell_income = total_sell_skip = total_sell_fail = 0
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
@@ -454,6 +506,61 @@ class BuyShopCards(SrOperation):
                             state.plane, state.round_num)
                     except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
                         pass
+                elif isinstance(action, SellBench):
+                    # W62 件2(ADR-0329):d2 卖通道生产接线(design 章2.3)。
+                    # bench_idx = 槽位下标 0-8(ADR-0316),生成期索引 = 执行期索引;
+                    # 执行置 None 不紧缩(mutate_bench_deployed),多笔任意发射序零漂移。
+                    # ── 防误卖轻守卫(design 章2.5):生成期快照 state.bench(循环顶真值)
+                    #    vs 执行期实况 tracked(买/卖/合并随动)——mid-loop 槽位内容已被
+                    #    前序动作消费(3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal)。
+                    _expected = (state.bench[action.bench_idx].char_id
+                                 if (0 <= action.bench_idx < len(state.bench)
+                                     and state.bench[action.bench_idx] is not None)
+                                 else None)
+                    _live = None
+                    if match is not None and match.session is not None:
+                        # tracked 可能是紧凑列表(对账写回)或 pad 态(买后 mutate)→
+                        # 统一经 bench_from_compact 转槽位表再按下标取(与 state.bench 同源)。
+                        _live_table = bench_from_compact(
+                            [bc for bc in match.session.tracked_bench_chars
+                             if bc is not None])
+                        _live = (_live_table[action.bench_idx].char_id
+                                 if (0 <= action.bench_idx < len(_live_table)
+                                     and _live_table[action.bench_idx] is not None)
+                                 else None)
+                    if not sell_guard_ok(_expected, _live):
+                        log.warning(
+                            '[cw-shop] SellBench 守卫拦截(stale_proposal):idx=%s'
+                            ' 期望=%s 现=%s → 跳过(下轮重 plan 会重评估)',
+                            action.bench_idx, _expected, _live)
+                        total_sell_skip += 1
+                        continue   # 不卖错件
+                    from sr_od.application.currency_war.prep_actions import (
+                        drag_bench_to_sell,
+                    )
+                    ok = drag_bench_to_sell(self, self.ctx, action.bench_idx)
+                    if ok:
+                        # tracking 同步:置 None 不紧缩(mutate_bench_deployed 已支持
+                        # SellBench 分支,ADR-0316)
+                        mutate_bench_deployed(
+                            match.session.tracked_bench_chars,
+                            match.session.tracked_deployed, action)
+                        # ADR-0328 执行域对齐:卖出件入同轮已卖集(同轮不回买)。
+                        # 决策层已在动作采纳处登记(arbiter/carry_gate/补偿器),此处
+                        # 执行侧幂等加固——执行成功是卖出事实的权威(register_round_sold
+                        # 带轮键自校验,跨轮误写防御)。
+                        from sr_od.application.currency_war.decision_v2.discipline import (
+                            register_round_sold,
+                        )
+                        register_round_sold([_expected], state, match.session)
+                        total_sell += 1
+                        total_sell_income += action.income or 0
+                        log.info('[cw-shop] Sell bench%d %s(+%s) ✓',
+                                 action.bench_idx, _expected, action.income or '?')
+                    else:
+                        total_sell_fail += 1   # 拖 3 次源槽未变(现有语义)
+                        log.warning('[cw-shop] Sell bench%d %s 拖3次源槽未变',
+                                    action.bench_idx, _expected)
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
@@ -567,12 +674,16 @@ class BuyShopCards(SrOperation):
         # 关店后实际读数 —— expected = 开店金 − Σ买价 − 升级费 − 刷新费(read_gold stylized 间歇漏,
         # 但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有毒(stylized 漏读 / cost 错 /
         # 未观收入),留证统计毒化率;机制核对器(r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
-        if total_buy or total_level or total_refresh:
+        if total_buy or total_level or total_refresh or total_sell:
             _spend = (sum(a.card.cost for a in actions if isinstance(a, BuyCard) and a.card.x in bought_x)
                       + sum(a.cost for a in actions if isinstance(a, LevelUp))
                       + total_refresh * (state.shop_refresh_cost or 2))
             _final_gold = read_gold(self.ctx, self.screenshot())
-            _expected = state.gold - _spend
+            # W62 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
+            # state.gold − 花出 + 卖入(游戏侧卖出入账);旧 _expected = state.gold − _spend
+            # 与实读金恒差 income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
+            _expected = expected_gold_after_actions(
+                state.gold, _spend, total_sell_income)
             if _final_gold is not None and abs(_final_gold - _expected) > 2:
                 from sr_od.application.currency_war.cw_observe import (
                     obs_conflict as _oc,
@@ -583,6 +694,7 @@ class BuyShopCards(SrOperation):
                     spend=_spend)
         return self.round_success(
             f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
+            f'卖{total_sell}张(+{total_sell_income}金,守卫拦{total_sell_skip}) '
             f'(gold={state.gold} lv={state.level} plane={state.plane})'
         )
 
@@ -599,6 +711,33 @@ class BuyShopCards(SrOperation):
         if isinstance(a, SellBench):
             return f'Sell(bench{a.bench_idx})'
         return type(a).__name__
+
+    def _locked_resume_enhanced(self) -> OperationRoundResult | None:
+        """W62 件1 加强通道(ADR-0329,``LOCKED_RESUME_ENHANCED`` 默认关)。
+
+        同进程续跑盲区(主判据 ``_is_new_match`` 只覆盖进程外恢复;run A 在锁定态
+        被停 → run B 续跑时不检测)的可选补强:开商店失败分型——点「按钮-商店」后
+        验「按钮-收起」,**连续 2 次零响应**(复用 loop 探针同款判定)→ 判锁定恢复局
+        → 直接出战(与主通道共用 StartBattle 执行体)。失败链从「重试耗尽」变成
+        「语义识别 + 分支切换」。
+
+        Returns:
+            None = 未达 2 次零响应/未触发(维持既有失败链,调用方 round_retry);
+            非 None = 已接管(出战成功/失败结果)。
+        """
+        self._shop_open_fail_count = getattr(
+            self, '_shop_open_fail_count', 0) + 1
+        if self._shop_open_fail_count < 2:
+            # 第 1 次零响应:与探针同款先 retry 再验一次(2 次才实锤,防动画慢误判)
+            return self.round_retry('开商店零响应(1/2,加强通道计数)', wait=1)
+        from sr_od.application.currency_war.prep_actions import (
+            PrepActionExecutor,
+            StartBattle,
+        )
+        progressed, detail = PrepActionExecutor(self, self.ctx).execute(StartBattle())
+        if progressed:
+            return self.round_success(f'锁定恢复局(加强通道):出战成功 {detail}')
+        return self.round_fail(f'锁定恢复局出战未落地(加强通道): {detail}')
 
     def _handle_bench_full(self, screen) -> bool:
         """备战席已满 → 升等级 + 循环卖前几个 bench 清警告(位置式,不需角色身份)。
@@ -622,7 +761,9 @@ class BuyShopCards(SrOperation):
             if not self.round_by_ocr(fresh, '备战席已满').is_success:
                 break
             bench_x = 438 + sell_i * 125  # bench-1..5 中心(横间距 ~125;溢出时多卖)
-            self.ctx.controller.drag_to(end=Point(70, 846), start=Point(bench_x, 912), duration=0.8)
+            # W62 件2(ADR-0329):出售区落点单一源(screen_info「区域-出售区」,兜底常量)
+            self.ctx.controller.drag_to(end=sell_point(self.ctx),
+                                        start=Point(bench_x, 912), duration=0.8)
             time.sleep(1)
             for _ in range(4):
                 self.ctx.controller.click(level_btn)
