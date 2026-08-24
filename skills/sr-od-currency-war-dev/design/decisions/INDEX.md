@@ -14,5 +14,7 @@
 | [0010](0010-adversarial-review-discipline.md) | 子代理对抗审查纪律(方案先攻后信) | accepted | 2026-08-22 |
 | [0011](0011-goal-schedule-calibration.md) | goal/schedule 自主推进校准节(元纪律入 skill) | accepted | 2026-08-22 |
 | [0012](0012-live-issue-triage-backfill-loop.md) | 实机暴露问题的分诊与回灌闭环(A/B 类分诊+判读同构+回灌纪律) | accepted | 2026-08-24 |
+| [0014](0014-sim-stress-tester-freeform.md) | sim 压力测试官自由发挥形态与三次纠偏史 | accepted | 2026-08-23 |
+| [0015](0015-batch-archaeology-migration.md) | 批号考古抽象化迁移(SKILL.md 规范 4 债务清偿) | accepted | 2026-08-24 |
 
-- 0014 sim 压力测试官自由发挥形态与三次纠偏史(accepted 2026-08-23)
+> 0013 缺号:无对应决策文件,疑为编号笔误后跳过。
