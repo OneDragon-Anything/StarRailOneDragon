@@ -54,10 +54,15 @@
 - 批37(难度读链翻转判读鲁棒性,commit 09cf8296):
   difficulty_curve_live_contamination(逐帧真读/简报兜底值混入
   难度曲线的污染判读守卫——live=False 恒值帧与 live 真值并存时,
-  全帧口径的爬升/均值必须判废,live-only 过滤是硬前提)。
+  全帧口径的爬升/均值必须判废,live-only 过滤是硬前提;批39 补
+  note 级部分污染披露——值集相交的混帧(live{8}+nonlive{8,108}
+  型)不再静默,mixed_note 披露混帧计数与两组值集)。
 - 批38(win_model M1 训练表特征面):win_train_table_feature_health
   (训练前门——零方差特征/tier≥2 覆盖样本门/killed 标签断裂,
   语料级显式调,不进 sim 批量内嵌)。
+- 批39(r9 boss 语料判读口径):boss_hp_floor_censoring(boss 行
+  hp 地板删失披露 + killed 采集断裂/败局 hp 未降跳变红——
+  hp_after==1 的败局掉血是下界非真值,伤害口径必须剔删失行)。
 """
 from __future__ import annotations
 
@@ -3746,14 +3751,27 @@ def check_difficulty_curve_live_contamination(rows: list[dict]) -> dict:
             f'live 真值 {live_vals} 与 non-live 兜底值 {nonlive_vals} '
             f'不相交且并存(全帧爬升口径 {climb_all} 全为假恒值污染,'
             f'判读必须 live-only 过滤,批37)')
+    # 批39 note 级:live 与 non-live 并存即使值集相交也是部分污染
+    # (live{8}+nonlive{8,108} 型——假 108 兜底值藏进交集内,值集交集
+    # 判据捕不到;批38 复审 P1/P2 实证静默放行)。不红(相交兜底无害
+    # 不判废整段),但必须披露混帧计数与两组值集供调用方选窗。
+    mixed_note: str | None = None
+    if live and nonlive:
+        mixed_note = (
+            f'live {len(live)} 帧 {live_vals} 与 non-live '
+            f'{len(nonlive)} 帧 {nonlive_vals} 并存(批39 note 级部分'
+            f'污染披露:值集相交≠无污染,混帧段全帧口径仍须 live-only '
+            f'过滤,假兜底值可藏于交集内)')
     return {
         'violations': len(violations), 'detail': violations,
         'nonnull': len(nn), 'live_n': len(live), 'nonlive_n': len(nonlive),
         'live_vals': live_vals, 'nonlive_vals': nonlive_vals,
+        'mixed_note': mixed_note,
         'live_seq': [(r.get('plane'), r.get('round_num'),
                       r.get('enemy_difficulty')) for r in live][:12],
-        'note': '难度曲线 live 帧污染守卫(批37);红 = 假恒值混入/'
-                '保真位缺失——全帧难度口径判废',
+        'note': '难度曲线 live 帧污染守卫(批37;批39 补部分污染 note '
+                '级披露);红 = 假恒值混入/保真位缺失——全帧难度口径'
+                '判废;mixed_note 非空 = 混帧需 live-only 选窗',
     }
 
 
@@ -3841,4 +3859,72 @@ def check_win_train_table_feature_health(rows: list[dict]) -> dict:
         'features': feat_stats, 'tier_ge2_samples': tier_ge2,
         'note': 'win_model 训练表特征健康审计(批38);红 = 零方差特征/'
                 'tier 覆盖门未就绪/标签断裂——训练前必须处理',
+    }
+
+
+# --- 批39 检查项(2026-08-25;r9 boss 语料判读口径守卫) -----
+
+
+def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
+    """批39 检查项:boss 行 hp 地板删失与异常跳变守卫(判读面;语料级显式调)。
+
+    背景(批39 语料实证,21 boss 行/34 局,报告 sim_压测_批39):败局
+    ``hp_after`` 被 1 点地板截断——「boss 掉血 18-24」的行实为 hp 早已
+    见底,真实掉血 ≥ 观测值(**右删失**);把删失值当真值参与「boss
+    伤害 vs 板面特征」相关/分组 = 系统性低估重败局的伤害。批39 扫描
+    当场踩过:先按全行算掉血再发现 hp_after==1 的行 11/19,险些得出
+    「散板 boss 伤害更轻」的反向结论。
+
+    判据(吃 outcomes 行 ``{'node_type','killed','hp_after'}``,可选
+    ``hp_before`` 键;缺省取上一行 ``hp_after``;只辖 ``node_type==
+    'boss'`` 行):
+    - **标签断裂违规**:boss 行 ``killed`` 非 bool(None = 采集断裂,
+      与批㊲ boss 语料样本门同型;实证 21 行中 1 行 None);
+    - **hp 跳变违规**:``killed=False`` 且 ``hp_before-hp_after<=0``
+      (败局 hp 不可能不降——跳变 = 接管帧错值/回填错位;实证
+      run_20260823_154910:3→58,-55);
+    - **删失披露(note 级)**:``killed=False`` 且 ``hp_after==1`` 的
+      行计数 + 行号——这些行的 boss 掉血是下界非真值,任何伤害口径
+      必须剔除或单独标注。
+    """
+    boss_idx = [i for i, r in enumerate(rows)
+                if r.get('node_type') == 'boss']
+    if not boss_idx:
+        return {'violations': 0, 'note': '无 boss 行,不辖', 'boss_rows': 0}
+    violations: list[str] = []
+    censored: list[int] = []
+    bad_label = 0
+    for i in boss_idx:
+        r = rows[i]
+        k = r.get('killed')
+        if not isinstance(k, bool):
+            bad_label += 1
+            continue
+        hp_after = r.get('hp_after')
+        hp_before = (r.get('hp_before') if r.get('hp_before') is not None
+                     else (rows[i - 1].get('hp_after')
+                           if i > 0 else None))
+        if not k:
+            if hp_after == 1:
+                censored.append(i)
+            if hp_before is not None and hp_after is not None \
+                    and hp_before - hp_after <= 0:
+                violations.append(
+                    f'行{i}({r.get("run_id")} r{r.get("round_num")}):'
+                    f'killed=False 但 hp {hp_before}->{hp_after} 未降'
+                    f'(败局不可能——接管帧错值/回填错位,批39)')
+    if bad_label:
+        violations.append(f'{bad_label} 行 boss killed 非 bool(采集断裂,'
+                          f'批㊲同型;外推无同节点对照地基)')
+    censor_note = (
+        f'{len(censored)} 行 killed=False 且 hp_after==1(boss 掉血为'
+        f'下界非真值,右删失——伤害口径必须剔除或单独标注,行号 '
+        f'{censored},批39)') if censored else None
+    return {
+        'violations': len(violations), 'detail': violations,
+        'boss_rows': len(boss_idx), 'bad_label': bad_label,
+        'censored_rows': len(censored), 'censored_idx': censored,
+        'censor_note': censor_note,
+        'note': 'boss 行 hp 地板删失守卫(批39);红 = killed 采集断裂/'
+                '败局 hp 未降;censor_note 非空 = 伤害口径须剔删失行',
     }
