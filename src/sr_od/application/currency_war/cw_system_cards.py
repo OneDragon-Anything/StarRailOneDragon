@@ -10,10 +10,11 @@
   W26 测试锚;本文件只 import 不复制)。
 
 **契约偏差声明(C2 落地时点)**:
-1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— C6 的按排羁绊
-   聚合 API(``board_by_row``)尚未落地(归 C6 实现批),本批按任务规格接
-   ``GameState``(判据语义不变:全板合计口径与 C6 的「全板合计视图」一致;
-   C6 落地后可在本函数内一行换源,判据零变化);
+1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— **已换源
+   (W38,C6 落地,偏差①闭环)**:``_faction_count`` 身份口径改读
+   ``cw_board_by_row.board_by_row(deployed)`` 全板合计视图(全仓按排聚合单一源);
+   判据语义零变化(仍取 max(board OCR, 身份计数));``card_active`` 入口签名
+   保持 ``GameState``(C2 落地批任务规格,BoardByRow 经由内部消费);
 2. C2 伪码返回 ``EngineState`` —— 本批按任务规格返回 ``bool``(缺件审计走
    ``engine_missing``;EngineState 包装留给 decision_v2 接线批,非本批接口面);
 3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本批按任务
@@ -30,6 +31,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from sr_od.application.currency_war.cw_board_by_row import board_by_row
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
@@ -191,17 +193,12 @@ def _faction_count(state: GameState, faction: str) -> int:
 
     deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
     取 max 容错——**判激活侧非计费侧**,漏判激活比多判更伤(体系卡是 P1 战力主体)。
-    身份口径 = CHARACTERS[char_id].factions 全集(多羁绊角色每系都计,如饮月
-    仙舟+列车同行双计)——与 board 左面板多阵营计数口径一致。
+    身份口径 = C6 ``board_by_row`` 全板合计视图(全仓按排聚合单一源,W38 换源
+    闭环契约偏差①;口径与旧内联版逐字一致:CHARACTERS[char_id] 羁绊全集,
+    多羁绊角色每系都计)。
     """
     cnt_board = state.board.get(faction, 0)
-    cnt_ident = 0
-    for c in state.deployed:
-        if not getattr(c, 'char_id', ''):
-            continue
-        ch = CHARACTERS.get(c.char_id)
-        if ch is not None and faction in _char_traits(ch):
-            cnt_ident += 1
+    cnt_ident = board_by_row(state.deployed).count(faction)
     return max(cnt_board, cnt_ident)
 
 

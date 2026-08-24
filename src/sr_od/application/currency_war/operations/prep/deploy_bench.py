@@ -408,6 +408,10 @@ class DeployBench(SrOperation):
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
+        from sr_od.application.currency_war.cw_bench_equips import (
+            EquipsInconsistencyError,
+            assert_equips_consistency,
+        )
         from sr_od.application.currency_war.cw_equipment import (
             ensure_equip_tm_templates,
         )
@@ -426,6 +430,13 @@ class DeployBench(SrOperation):
                 continue
             eq = (front_eq if c.position_pref == 'front' else back_eq).get(slot, [])
             if eq:
+                # C6 装备对账(契约 2,W38):deployed 侧画面可读 → 与账面交叉校验,
+                # 不一致告警留痕(禁静默用账;哨兵停机留证归后续实机运维批),
+                # 然后画面真值覆盖(deployed 侧画面 = truth,tracking 是 bench 侧单一源)。
+                try:
+                    assert_equips_consistency(c, eq, source='deploy_bench.snapshot')
+                except EquipsInconsistencyError as e:
+                    log.warning('[cw!] %s(账本漂移,画面真值覆盖)', e)
                 c.equips = list(eq)
                 _n += len(eq)
         if _n:

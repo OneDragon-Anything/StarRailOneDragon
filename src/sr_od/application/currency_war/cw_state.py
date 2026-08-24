@@ -371,6 +371,11 @@ def _merge_bench(bench: list[BenchChar], deployed: list[BenchChar] | None = None
                                 if deployed is not None
                                 and any(x is y for y in deployed)), take[0])
                 carrier.star += 1
+                # 合成装备继承(C6 装备守恒,🟡 游戏侧「合成吃装去向」未见实机证据,
+                # 按随载体继承建模保账本守恒——同 sell 回收的保守假设口径):
+                for x in take:
+                    if x is not carrier:
+                        carrier.equips = list(carrier.equips) + list(x.equips)
                 # 删其余两张:**身份索引**删除(r6 review#2:list.remove 按值相等
                 # 删第一个命中,同名同星 dataclass 值相等会删错对象)
                 for x in take:
@@ -648,8 +653,19 @@ def simulate(state: GameState, action: Action) -> GameState:
 
     买入落 bench(3 合 1 自动升星);上阵(DeployMove)把角色从 bench 移到 deployed +
     board[faction]+=1(保留身份/站位供 char_quality 与站位分流用)。
+
+    C6 装备守恒对账(W38):装备相关动作(BuyCard/SellBench/SellDeployed/
+    SwapDeploy/CompTransaction)执行前后跑账本快照比对——mismatch 记
+    action_log(``EquipsLedger`` 条目,checks/遥测可见),不静默(cw_bench_equips 单一源)。
     """
+    from sr_od.application.currency_war.cw_bench_equips import (
+        ledger_mismatch,
+        state_equips_multiset,
+    )
     s = state.copy()
+    _equips_action = isinstance(action, (BuyCard, SellBench, SellDeployed,
+                                         SwapDeploy, CompTransaction))
+    _pre_equips = state_equips_multiset(state) if _equips_action else None
     if isinstance(action, BuyCard):
         s.gold -= card_cost(action.card)
         s.bench.append(_card_to_bench(action.card))
@@ -660,6 +676,10 @@ def simulate(state: GameState, action: Action) -> GameState:
         if 0 <= action.bench_idx < len(s.bench):
             sold = s.bench.pop(action.bench_idx)
             s.gold += sell_refund(sold.star, _bench_char_cost(sold))
+            # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed/CompTransaction
+            # 同一建模假设——卖带装单位装备回收,🟡 待 live 核。修复前本分支
+            # 漏回收 = 账本凭空消失,EquipsLedger 对账必报)。
+            s.equips.extend(sold.equips)
     elif isinstance(action, LevelUp):
         # 真实语义(ADR-0129):一次「购买经验」= +XP_PER_BUY 经验、-单击金币;攒够当前级门槛自动
         # 升级(跨级结转溢出)。旧模型「一次动作 = 升 1 级 + 扣整级大金」与机制不符 → 升级门过度
@@ -732,6 +752,12 @@ def simulate(state: GameState, action: Action) -> GameState:
         s.gold -= action.cost
         # shop 内容变化未知(随机),不模拟具体牌;仅扣金
     # PickEvent 不在本模拟范围(event 单独决策)
+    if _pre_equips is not None:
+        # C6 装备守恒对账:mismatch 记账本(禁静默;漂移由 checks/测试锁暴露)
+        _diffs = ledger_mismatch(_pre_equips, state_equips_multiset(s))
+        if _diffs:
+            _log_action(s, 'EquipsLedger', 'mismatch',
+                        reason=f'{type(action).__name__}:{",".join(_diffs)}')
     return s
 
 
