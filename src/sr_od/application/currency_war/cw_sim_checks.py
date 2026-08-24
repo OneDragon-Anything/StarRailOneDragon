@@ -51,6 +51,10 @@
   (外推值进程内缓存一致性)/ boss_rung_corpus_sample_gate(boss
   rung 语料样本门);随批加固 ab_verdict_claim 词表反转(默认辖)
   + paired_prefork_wave_identity 扩全波。
+- 批37(难度读链翻转判读鲁棒性,commit 09cf8296):
+  difficulty_curve_live_contamination(逐帧真读/简报兜底值混入
+  难度曲线的污染判读守卫——live=False 恒值帧与 live 真值并存时,
+  全帧口径的爬升/均值必须判废,live-only 过滤是硬前提)。
 """
 from __future__ import annotations
 
@@ -3692,4 +3696,59 @@ def check_boss_rung_corpus_sample_gate(
         'note': '直拟合门(known≥3/桶)未全就绪前,rung≥3 掷胜外推'
                 '只可标「单点外推敏感度」(批㉗ F6);批㊲ 反证:'
                 'battle→boss 同 rung 胜率不可平移(rung1 0.5 vs 0/9)',
+    }
+
+
+# --- 批37 检查项(2026-08-25;难度读链翻转 09cf8296 判读鲁棒性) -----
+
+
+def check_difficulty_curve_live_contamination(rows: list[dict]) -> dict:
+    """批37 检查项:难度曲线 live 帧污染守卫(判读面;语料级显式调)。
+
+    背景(批㉖ F1 读链翻转,commit 09cf8296):``enemy_difficulty``
+    旧链 = session 简报恒值(实测 108)压死逐帧真读,35 局 1785 帧
+    零爬升样本;翻转后真读优先 + ``enemy_difficulty_live`` 保真位。
+    批37 语料实证(首真值局 run_20260824_100252,36 帧):live 真值
+    恒 8(plane1 r1-2,12 帧)与 non-live 兜底恒 108(24 帧)并存
+    ——**全帧口径的爬升/均值是垃圾**(max−min=100 全来自假恒值)。
+
+    判据(吃 decisions 行 ``{'plane','round_num','enemy_difficulty',
+    'enemy_difficulty_live'}``;live 位缺失按 non-live 处理并单列):
+    - **污染违规**:live 帧存在且 non-live 帧取值集与 live 真值集
+      不相交(non-live 兜底值混入会制造假尖峰/假爬升)——该 run 的
+      全帧难度口径判废,必须 live-only 过滤;
+    - **schema 违规**:有难度读数但 live 位缺失(翻转后 schema 必须
+      携带保真位;调用方选窗时对历史局(翻转前)自行豁免);
+    - 全 live / 无难度读数 / 空行 → 不辖(披露 live 覆盖率)。
+    """
+    nn = [r for r in rows if r.get('enemy_difficulty') is not None]
+    if not nn:
+        return {'violations': 0, 'note': '无难度读数帧,不辖',
+                'nonnull': 0}
+    live = [r for r in nn if r.get('enemy_difficulty_live') is True]
+    nonlive = [r for r in nn if r.get('enemy_difficulty_live') is not True]
+    missing_flag = [r for r in nn
+                    if r.get('enemy_difficulty_live') is None]
+    violations: list[str] = []
+    live_vals = sorted({r.get('enemy_difficulty') for r in live})
+    nonlive_vals = sorted({r.get('enemy_difficulty') for r in nonlive})
+    if missing_flag:
+        violations.append(
+            f'{len(missing_flag)} 帧有难度读数但缺 enemy_difficulty_live '
+            f'保真位(09cf8296 后 schema 必携;历史局由调用方豁免)')
+    if live and nonlive and not (set(live_vals) & set(nonlive_vals)):
+        climb_all = max(r.get('enemy_difficulty') for r in nn) \
+            - min(r.get('enemy_difficulty') for r in nn)
+        violations.append(
+            f'live 真值 {live_vals} 与 non-live 兜底值 {nonlive_vals} '
+            f'不相交且并存(全帧爬升口径 {climb_all} 全为假恒值污染,'
+            f'判读必须 live-only 过滤,批37)')
+    return {
+        'violations': len(violations), 'detail': violations,
+        'nonnull': len(nn), 'live_n': len(live), 'nonlive_n': len(nonlive),
+        'live_vals': live_vals, 'nonlive_vals': nonlive_vals,
+        'live_seq': [(r.get('plane'), r.get('round_num'),
+                      r.get('enemy_difficulty')) for r in live][:12],
+        'note': '难度曲线 live 帧污染守卫(批37);红 = 假恒值混入/'
+                '保真位缺失——全帧难度口径判废',
     }
