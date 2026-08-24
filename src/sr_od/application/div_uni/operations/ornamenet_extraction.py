@@ -186,10 +186,34 @@ class ChallengeOrnamentExtraction(SrOperation):
     @operation_node(name='等待副本加载', node_max_retry_times=20)
     def wait_mission_loaded(self) -> OperationRoundResult:
         """
-        等待副本加载
-        :return:
+        等待副本加载。
+        途中可能弹对话框(编队角色位空缺等),只认「角色图标」会盲等超时
+        (2026-08-24 实证:支援角色未找到 → 编队 3 人 → 「当前编队中仍有
+        角色位空缺,是否继续出战?」弹窗卡住 20 次失败)。
+        处置:默认选「确认」继续出战——外层开拓力计划按「计划次数未完成
+        会一直重试」的语义循环,点取消+FAIL 会死循环重进同一弹窗;继续出战
+        让战斗进行,打不过(battle_fail_times≥5)反而是可靠的中断器(用户定调)。
         """
         screen = self.last_screenshot
+
+        # 开拓力不足 → 点取消(打不了,同历战余响 check_dialog 语义;次数由外层体力门控)
+        result = self.round_by_find_area(screen, '挑战副本', '开拓力弹框-标题')
+        if result.is_success:
+            return self.round_by_find_and_click_area(
+                screen, '挑战副本', '开拓力弹框-取消',
+                success_wait=1, retry_wait=1,
+            )
+
+        # 其余提示类弹窗(编队空缺/次数用完/阵亡)→ 点确认继续出战
+        for title_area in ('提示弹框-标题', '阵亡弹框-标题'):
+            result = self.round_by_find_area(screen, '挑战副本', title_area)
+            if result.is_success:
+                confirm_area = title_area.replace('标题', '确认')
+                return self.round_by_find_and_click_area(
+                    screen, '挑战副本', confirm_area,
+                    success_wait=2, retry_wait=1,
+                )
+
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
     @node_from(from_name='等待副本加载')
