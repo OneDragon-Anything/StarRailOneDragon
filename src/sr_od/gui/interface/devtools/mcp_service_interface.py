@@ -186,7 +186,10 @@ def _start_server(port: int) -> str:
     cmd = _server_command(root, port)
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     # GUI 不直接持有 server 对象，只保留子进程日志供页面尾读展示。
-    with open(log_path, 'w', encoding='utf-8') as log_file:
+    # append 对齐 daemon 的 r95 审计修(截断销毁上一 run 的 op 级证据不可诊断);
+    # 职责划分(2026-08-24)后此文件只承接 stdout 兜底(uvicorn/print/traceback),
+    # server 框架日志在 .log/mcp_server.log,截断危害已消但 append 仍更稳。
+    with open(log_path, 'a', encoding='utf-8') as log_file:
         process = subprocess.Popen(
             cmd,
             cwd=str(root),

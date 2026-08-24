@@ -36,7 +36,7 @@ def render_instructions() -> str:
 约束:
 - 输入注入到活跃游戏窗口,需游戏在线(先 check_game_window);大世界等锁光标画面,click_game 传 pc_alt=True。
 - 配置生效:server 启动时把配置(当前实例 / 账号 / 各 yml)读进内存缓存,运行时不再重读文件。故 GUI 改配置、手改 yml、改 op 代码,server 都不自动跟随 —— 经 daemon 重启 server(`restart_sr_od_mcp_server`)即生效(客户端**无需**重连)。只有改 MCP 自身元信息(instructions / tool 描述 / 增减 method)才需客户端 /mcp 重连获取新元信息。遇到"改了配置 / 代码但行为没变",先想这条。
-- 出错别猜:画面不对 / op 失败 → 先 analyze_screen 看现状 + 查 log(.debug/sr_od_mcp/main_server.log),再决定。
+- 出错别猜:画面不对 / op 失败 → 先 analyze_screen 看现状 + 查 server 运行日志(.log/mcp_server.log,框架日志专属文件),再决定;main_server.log 只是 stdout 兜底(uvicorn 启动行/traceback),不再承载 op 日志。
 - 安全:不主动改用户配置(yml);消耗周限的玩法先向用户确认再跑。
 
 开发者场景(验证 op / 画面建档 / 调试):调 get_mcp_usage_guide('sr_dev_validate_op')。"""
@@ -97,7 +97,7 @@ def render_dev_validate_op_guide() -> str:
 3. list_operations / describe_operation 确认 op_id 与参数。
 4. run_operation(op_id=..., args=..., block=True) 跑;跑完看返回 status。
 5. 战斗 op 边界:op 只到「判断战斗结束返回 status」,结束后操作(领奖/撤退/进下一层)交外层 —— op 返回后看 status 决定下一步,别以为跑完就全完事。
-6. 验证:op 返回后 analyze_screen / 视觉看画面是否符合预期;失败查 log(.debug/sr_od_mcp/main_server.log)看节点流转卡哪。
+6. 验证:op 返回后 analyze_screen / 视觉看画面是否符合预期;失败查 server 运行日志(.log/mcp_server.log)看节点流转卡哪。
 7. 改了 op 代码 → 经 daemon 重启 server(清 Python import 缓存)+ 重连,否则跑的是旧代码。"""
 
 
