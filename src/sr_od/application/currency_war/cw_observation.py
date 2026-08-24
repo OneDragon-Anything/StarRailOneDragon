@@ -937,9 +937,20 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # (决策层 max_units() 优先读真值、level 兜底;读不到/域外拒信 → None
     # 保持兜底语义,与旧恒 level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
     state.deploy_cap = read_deploy_cap_debounced(ctx, screen, state.level)
-    # enemy_difficulty:优先 session.enemy_difficulty(简报「敌人难度N」读,3.5.2);fallback 备战 read(常 null)
-    _ed = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
-    state.enemy_difficulty = _ed if _ed is not None else read_enemy_difficulty(ctx, screen)
+    # enemy_difficulty(批㉖ F1 裁决·读链翻转):逐帧真读(备战「文本-难度」
+    # OCR)优先——session 值来自开局简报(数值≈108 恒定),旧链「session 优先」
+    # 把逐帧真读结构性压死(92.7% 覆盖恒 108,难度爬升真值从未落盘)。
+    # 翻转后:真读命中 → 用真值+live=True;真读 None(stylized OCR 常空,
+    # 已知)→ 回退 session 恒值,live=False;双源皆无 → None。
+    # 判读纪律:live=False 帧的值是简报恒值,别当「难度 vs 轮次」曲线样本。
+    _ed_session = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
+    _ed_live = read_enemy_difficulty(ctx, screen)
+    if _ed_live is not None:
+        state.enemy_difficulty = _ed_live
+        state.enemy_difficulty_live = True
+    else:
+        state.enemy_difficulty = _ed_session
+        state.enemy_difficulty_live = False
     state.level_up_cost = read_level_up_cost(ctx, screen)
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);

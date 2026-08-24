@@ -49,7 +49,7 @@ def _rebuild_state(snap: dict) -> GameState:
     st = GameState()
     for k in ('gold', 'hp', 'level', 'plane', 'round_num', 'node_type',
               'streak', 'shop_refresh_cost', 'level_up_cost',
-              'enemy_difficulty', 'active_env'):
+              'enemy_difficulty', 'enemy_difficulty_live', 'active_env'):
         v = snap.get(k)
         if v is not None:
             setattr(st, k, v)

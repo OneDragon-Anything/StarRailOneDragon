@@ -70,6 +70,11 @@ class GameState:
     round_num: int = 1     # 位面内轮次 1-6
     node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
     enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度;boss 血量 base×1.052^难度)。None=未读到(stylized OCR 常空)
+    # 难度真伪保真位(批㉖ F1:读链翻转后真读/回退可分,对齐 hp_readable 模式):
+    # True=当轮逐帧真读(备战「文本-难度」OCR 命中);False=回退简报恒值(session,
+    # 开局写死 ≈108 不随轮爬升)或双源皆无。判读侧据此过滤:**False 帧的值别当
+    # 「难度 vs 轮次」爬升曲线样本**(ADR 待 leader 定号,批㉖ F1 裁决)。
+    enemy_difficulty_live: bool = False
     level: int = 1         # 玩家等级 = 可上阵数上限基准(封顶 10)
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
