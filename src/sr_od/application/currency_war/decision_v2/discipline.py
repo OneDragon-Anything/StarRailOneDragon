@@ -280,6 +280,17 @@ BLOOD_MARGIN_LOW_HP: int = 40
 #: 点4 S4「上界 1 轮」——1 个战斗节点自然补强未达标 → 直入②弃息 D)
 BLOOD_GRADIENT_NATURAL_BATTLES: int = 1
 
+#: 25/40 两档并存口径(W52/S2 顺手 docstring;两线不是二选一):
+#: - **25 = 应急清仓线**(``registry.emergency_hp``):hp≤25 触发应急
+#:   覆盖态(rebirth 地板 20,层2 应急过滤,危机囤金态)——低于此线
+#:   已不是「报警」而是「应急」,处置=清仓止损;
+#: - **40 = 报警降档线**(``BLOOD_MARGIN_LOW_HP``):hp<40 使掉血报警
+#:   的处置梯度跳过①自然补强窗直入②弃息 D 保血(war+硬节点放行
+#:   refresh)——报警语义([18] hp 低是运营质量报警),不触发 ALL IN。
+#: 两线并存:报警(40 线)是处置梯度切换的加速条件,应急(25 线)是
+#: 覆盖态触发;补偿机制(ADR-0326)只消费资源门槛事件,两线都只作
+#: 辖域授权条件,不是补偿触发器。
+
 
 @dataclass
 class BloodAlarmTracker:
@@ -536,34 +547,26 @@ def carry_gate_actions(state: GameState, session: StrategySession,
                 and not round_sell_blocked(b, state, session)
                 and not seed_age_blocked(b, state, session)):
             return []
-    # ④ 降保护集:off-line 价值最低件
-    # r416b absent_mergeable:该角色上场份缺席(deployed 无同名)且
-    # 架内加权副本 ≥2 → 「合成份缺席场」冗余——纯 bench 合成素材,
-    # 卖 1 份仍留副本,弱序等同超上限冗余(最弱级)。
-    # (W51 适配说明:v1 原条件「carry 在场」与本门②的「carry 未持有」
-    # 前置互斥=死码;按 r416b 意图(缺席场的冗余副本)改判「该角色
-    # 上场份缺席」,依据 ADR-0314。)
-    deployed_names = {getattr(d, 'char_id', '') for d in state.deployed or []}
+    # ④ 降保护集:off-line 价值最低件(统一弱序 sell_priority_key,
+    # ADR-0327——absent_mergeable/超上限归 redundancy=0;加权副本≥2
+    # 的 3合1 进行中素材由键统一挡,AD9-2-3)
     cands: list[tuple[tuple, int, object]] = []
     # 种子 2 轮窗(ADR-0289 §5)候选单列:bench 真满且无非种子可卖时
     # 兜底放行(仍选最弱)——不腾则 carry 死锁,豁免让位给 carry
-    # (v1 _seed_cands 同式移植,W51 补)
+    # (v1 _seed_cands 同式移植,W51 补;豁免是 carry 专属时序,键不管)
     seed_cands: list[tuple[tuple, int, object]] = []
     for i, b in enumerate(bench):
         if b is None or not b.char_id or b.char_id == carry:
             continue
-        if round_sell_blocked(b, state, session):
-            continue
-        cp = star_weighted_copies(b.char_id, state)
-        if cp == 3:
-            continue   # 3合1 完整份不腾
-        absent_mergeable = (b.char_id not in deployed_names and cp >= 2)
-        key = (b.char_id in protect,
-               0 if (cp > 3 or absent_mergeable) else 1,   # 冗余最弱
-               cp)
         if seed_age_blocked(b, state, session):
+            cp = star_weighted_copies(b.char_id, state)
+            key = (b.char_id in protect,
+                   0 if cp > 3 else 1, cp)
             seed_cands.append((key, i, b))
             continue
+        key = sell_priority_key(b, state, session, protect, registry)
+        if key is None:
+            continue   # r408 同轮已买/加权副本≥2(AD9-2-3)/未识别统一挡
         cands.append((key, i, b))
     if not cands:
         cands = seed_cands   # 唯一可卖=种子:carry 死锁豁免(仍选最弱)
@@ -577,118 +580,119 @@ def carry_gate_actions(state: GameState, session: StrategySession,
         refund = sell_refund(getattr(weakest, 'star', 1) or 1, ch.cost)
     log.info('[cw][d2][carry-gate] r%d 腾位:降保护集卖 %s 买意向核心 %s',
              state.round_num, weakest.char_id, carry)
-    session.v2_round_sold.add(weakest.char_id)   # r408 对称臂
+    register_round_sold([weakest.char_id], state, session)   # r408 对称臂
     return [SellBench(bench_idx=idx, income=refund),
             BuyCard(carry_card, reason='carry_gate')]
 
 
-# ===== 金不足变现通道(压库件凑金;leader 追加 2026-08-25) =====
+# ===== 金不足变现通道(已收编,W52/ADR-0326)=====
+# liquidity_actions + LIQUIDITY_BUY_TAGS 已删——语义收编进
+# decision_v2/remediation.py 的 _compensate_gold(通用回连机制,
+# 触发源从层3 预测 state.gold 换层4 实际 working.gold);
+# remedy_buy_tags(含 carry_gate)迁 registry。既有测试锁语义化
+# 重写见 test_cw_w35_decision_v2_carrier.py(liquidity → 补偿器)。
 
-#: 变现通道辖的买侧标签(守卫②:不为非目标件变现——只有更高优先级
-#: 购买才配动用压库资产:目标件三标签+引擎件+插件;pair/copy/
-#: bond_fallback 凑数凑对类与 refresh/levelup 不辖)
-LIQUIDITY_BUY_TAGS: frozenset[str] = frozenset({
-    'line_carry', 'line_opportunistic', 'bridge_core',
-    'engine_seed', 'plugin',
-})
+# ===== S5 统一卖件弱序(W52/ADR-0327;纪律族单一源)=====
+# 四卖件通道(carry_gate ④/两补偿器/层3 off_target 评分)统一消费
+# sell_priority_key——禁各通道手搓弱序(双源漂移温床,设计 §4)。
 
 
-def liquidity_actions(state: GameState, session: StrategySession,
-                      registry: DecisionV2Registry,
-                      scored: list[tuple]) -> list:
-    """金不足变现通道(压库件=「活期存款」,双重身份的收益兑现侧)。
+def _sell_expected_loss(cost: int, registry: DecisionV2Registry) -> float:
+    """[22]③ 再遇代价 × W4 终局贯穿率(点5 键静态近似;ADR-0327)。
 
-    设计依据:压库件占池(买入动机)之外还是可变现资产——金不足时
-    卖压库件不是损失,是压库策略的收益兑现。现状缺口:gold_short
-    直接拒绝购买,无主动变现路径。
-
-    流程:层3 分数序里选**最高分的金不足优先买**(gold-cost<地板),
-    检查 bench 可变现资产——卖件序(strategy_v4 点5 的通道内简化):
-    净0 件(1星/1费,全额退)最先 → 低费散件 → 升星沉淀件最后
-    (同档按费升序);变现到够则同轮顺序动作组 [Sell…, Buy] 执行
-    (卖先于买,序保证金到位)。
-
-    守卫:
-    - ②不为非目标件变现:只辖 ``LIQUIDITY_BUY_TAGS`` 的金不足买;
-    - 保护集(``_line_protect_set``,意向线正料+引擎件)不卖——
-      卖的是压库件不是正料;无锁定意向时仅引擎件受护;
-    - 同轮已买(r408)/种子年龄窗(ADR-0289 §5)/3合1 完整份不动;
-    - 变现不足额时**整体放弃**(不半途而废卖一半);
-    - 每轮最多救援一笔(最高分金不足买)。
-
-    边界(声明):绕过层4 仲裁直发(carry_gate 同模式)——层4 工作
-    态不感知变现金,对同轮其余候选保守(可能漏接次优先买,可接受);
-    买候选的 copies_cap/同名互斥由生成期保证。
+    loss = remeet_rounds(cost) × through_rate(cost)——费级表在
+    registry(remeet_window_rounds/through_rate,sim 校准域)。
     """
-    from sr_od.application.currency_war.decision_v2.arbiter import (
-        _active_floor,
+    remeet = registry.remeet_window_rounds.get(cost, 30)
+    through = registry.through_rate.get(cost, 0.15)
+    return remeet * through
+
+
+def sell_priority_key(bc, state: GameState,
+                      session: StrategySession,
+                      protect: set[str] | None = None,
+                      registry: DecisionV2Registry | None = None,
+                      ) -> tuple | None:
+    """统一卖件弱序键(升序=最先卖;None=不可卖,调用方跳过)。
+
+    键结构(逐位比较;前段=既有豁免/守卫的复合,后段=点5 期望损失键):
+      (in_protect,          # 保护集外最先进(保护集成员垫底)
+       redundancy,          # 0=冗余最弱(超上限/absent_mergeable,
+                            #   carry_gate ④ 同档),1=常态
+       expected_loss,       # 再遇代价×终局贯穿率(点5 键;静态近似)
+       net0_rank,           # 净0 件(1星/1费,全额退)置 0 最先
+       cost, star)          # 同档按费升序/星升序(确定性兜底)
+
+    守卫(复用既有谓词,不重定义;任一命中 → None):
+      round_sell_blocked(r408 同轮已买)/seed_age_blocked(ADR-0289 §5
+      年龄窗;种子单列兜底逻辑由 carry_gate ④/补偿器保留在外——
+      豁免是专属时序,键不管)/未识别(空名)/**加权副本 ≥2**(3合1
+      进行中素材与完整份,AD9-2-3/ADR-0327——防补偿/腾位通道拆
+      合成进度)。
+
+    槽位模型(ADR-0316):入参 bc=BenchChar(None 槽由调用方枚举时
+    跳过);返回键不含槽位号——发射时由调用方带槽位号(置 None 语义)。
+    ``registry`` 可选(期望损失表;缺省用模块默认注册表——A/B 注入
+    时调用方显式传)。
+    """
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
     )
-    floor = _active_floor(state, session, registry)
-    target = None
-    for cand, val, _bd in sorted(scored, key=lambda t: -t[1]):
-        if val <= 0:
-            continue
-        a = cand.action
-        if cand.tag not in LIQUIDITY_BUY_TAGS \
-                or not isinstance(a, BuyCard):
-            continue
-        if a.card.name in (getattr(session, 'v2_round_sold', None) or ()):
-            continue   # r408:同轮已卖不回买
-        if state.gold - (a.card.cost or 3) < floor:
-            target = (cand, a.card.cost or 3)
-            break
-    if target is None:
-        return []
-    cand, cost = target
-    shortfall = floor + cost - state.gold
-    if shortfall <= 0:
-        return []
-    ist = getattr(session, 'v3_intention', None)
-    comp = None
-    if isinstance(ist, IntentionState) and ist.phase == 'locked':
-        from sr_od.application.currency_war.cw_comps import get_comp
-        comp = get_comp(ist.locked_comp)
-    protect = _line_protect_set(comp) if comp is not None \
-        else set(engine_char_names())
-    buy_name = cand.action.card.name
-    sellable: list[tuple[tuple, int, object, int]] = []
-    for i, b in enumerate(state.bench or []):
-        if b is None or not b.char_id or b.char_id == buy_name:
-            continue
-        if b.char_id in protect:
-            continue
-        if round_sell_blocked(b, state, session) \
-                or seed_age_blocked(b, state, session):
-            continue
-        if star_weighted_copies(b.char_id, state) == 3:
-            continue   # 3合1 完整份不动
-        ch = CHARACTERS.get(b.char_id)
-        if ch is None or not ch.cost:
-            continue   # 未知费级回金不可估,不入变现序
-        star = getattr(b, 'star', 1) or 1
-        refund = sell_refund(star, ch.cost)
-        net0 = refund >= ch.cost
-        key = (0 if net0 else 1, ch.cost, star)
-        sellable.append((key, i, b, refund))
-    sellable.sort(key=lambda s: s[0])
-    sells: list = []
-    got = 0
-    for _key, idx, _b, refund in sellable:
-        if got >= shortfall:
-            break
-        sells.append(SellBench(bench_idx=idx, income=refund))
-        got += refund
-    if got < shortfall:
-        return []   # 变现不足额 → 整体放弃(不卖一半)
-    log.info('[cw][d2][liquidity] r%d 变现 %d 件凑金 %d 买 %s(%s)',
-             state.round_num, len(sells), shortfall,
-             buy_name, cand.tag)
-    for s in sells:
-        nm = state.bench[s.bench_idx].char_id
-        if nm:
-            session.v2_round_sold.add(nm)   # r408 对称臂(原索引读
-            # state.bench——与发射序无关:bench_idx 是生成期原索引,
-            # 本函数不 mutate state)
-    # ADR-0316 槽位模型下 SellBench 置 None 不移位,任意发射序零漂移
-    # ——旧降序重排(紧缩表 pop 左移的症状补丁)已删,发射序 = 弱序选择序。
-    return [*sells, BuyCard(cand.action.card, reason='d2_' + cand.tag)]
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    name = getattr(bc, 'char_id', '') or ''
+    if not name:
+        return None    # 未识别(空名)
+    if name not in CHARACTERS:
+        return None    # 未识别(注册表外——费级/回金/合成进度不可估)
+    if round_sell_blocked(bc, state, session):
+        return None
+    if seed_age_blocked(bc, state, session):
+        return None
+    if star_weighted_copies(name, state) >= 2:
+        return None    # 3合1 进行中素材/完整份不卖(AD9-2-3)
+    ch = CHARACTERS.get(name)
+    cost = ch.cost if ch is not None and ch.cost else 3
+    star = max(1, int(getattr(bc, 'star', 1) or 1))
+    cp = star_weighted_copies(name, state)
+    deployed_names = {getattr(d, 'char_id', '') for d in
+                      (state.deployed or [])}
+    absent_mergeable = (name not in deployed_names and cp >= 2)
+    in_protect = 1 if (protect and name in protect) else 0
+    redundancy = 0 if (cp > 3 or absent_mergeable) else 1
+    loss = _sell_expected_loss(cost, reg)
+    net0 = 0 if star == 1 else 1
+    return (in_protect, redundancy, loss, net0, cost, star)
+
+
+def sell_score_weight(cost: int,
+                      registry: DecisionV2Registry) -> float:
+    """卖分缩放权重(S5 评分侧;ADR-0327):w=sell_key_weight_scale×
+    (1+min_loss)/(1+loss),封顶 1.0。
+
+    净0 件(1费,min-loss 档)w=1、升星沉淀件(高再遇代价)w→小——
+    只改同通道内卖件**相对序**,不改「卖不卖」的正分门槛
+    (纯占位件 val=bias×w>0 仍可卖)。scale=1 即回退均一 bias(A/B)。
+    """
+    min_loss = min(_sell_expected_loss(c, registry)
+                   for c in registry.remeet_window_rounds)
+    loss = _sell_expected_loss(cost, registry)
+    return min(1.0, registry.sell_key_weight_scale
+               * (1.0 + min_loss) / (1.0 + loss))
+
+
+def register_round_sold(names, state: GameState,
+                        session: StrategySession) -> None:
+    """卖出件入同轮已卖集(r408 对称臂;带轮键自校验,防跨轮误写)。
+
+    四卖件通道统一走本 helper(设计 §4):carry_gate ④/两补偿器/
+    strategy 主循环;BuyCard 侧 v2_round_bought 登记保持原样(非缺口)。
+    """
+    key = (state.plane, state.round_num)
+    if getattr(session, 'v2_round_key', None) != key:
+        return    # 轮键不匹配(跨轮误写防御;set 下轮重置)
+    sold = getattr(session, 'v2_round_sold', None)
+    if sold is None:
+        session.v2_round_sold = sold = set()
+    for n in names:
+        if n:
+            sold.add(n)

@@ -59,6 +59,39 @@ class DecisionV2Registry:
     #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
+    # ===== 层4 补偿趟(W52 回连机制;ADR-0326)=====
+    #: 补偿辖的买侧标签(= 旧 LIQUIDITY_BUY_TAGS 语义迁入,含
+    #: 'carry_gate'——ADR-0326 H1:该标签落「非核心目标件+bench 满+
+    #: 早期轮」,与 v3_core_names 空窗下的目标件,金补偿路径对两种
+    #: 标签都稳健;不为非目标件变现——只有更高优先级购买才配动用
+    #: 压库资产;pair/copy/bond_fallback 凑数凑对类与 refresh/levelup
+    #: 不辖[refresh 的补偿走 S2 报警辖域,不经本标签集])
+    remedy_buy_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'engine_seed', 'plugin', 'carry_gate',
+    })
+    #: 补偿受益候选的分数下沿(被拒分 ≤ 此值不为它补偿——只救高价值买)
+    remedy_min_score: float = 0.5
+    #: 报警升级态 refresh 金不足是否纳入补偿(S2 残余;默认开)
+    remedy_alarm_refresh: bool = True
+
+    # ===== S5 统一卖件弱序(W52/ADR-0327)=====
+    #: [22]③ 再遇窗口表(费级→再遇期望轮数):1费 11(7-15 中值)/
+    #: 5费 120(60-180 中值,7-8 级窗口);2-4费线性内插。首版三档
+    #: 近似,sim 校准域(ADR-0327)——消费方 sell_priority_key。
+    remeet_window_rounds: dict[int, int] = field(default_factory=lambda: {
+        1: 11, 2: 25, 3: 40, 4: 60, 5: 120})
+    #: W4 去向表派生的费级终局贯穿率(E→F 留存;ADR-0327):
+    #: 证据等级=**推断近似**——W4 报告(Q1)为逐角色值(贯穿层
+    #: 2费 骨架 0.66-0.95 / 消耗品 1费 0.05,费级非严格单调),
+    #: 此处取费级趋势近似(高费件终局留存低);sim 校准域。
+    through_rate: dict[int, float] = field(default_factory=lambda: {
+        1: 0.20, 2: 0.20, 3: 0.15, 4: 0.12, 5: 0.10})
+    #: 卖分缩放权重常数(S5 评分侧;w=sell_key_weight_scale×
+    #: (1+min_loss)/(1+loss),封顶 1.0——1=不缩放(回退均一 bias);
+    #: A/B 通道保留)
+    sell_key_weight_scale: float = 1.0
+
     # ===== 层2:硬过滤链(redesign §3 覆盖态严格优先序)=====
     #: 过滤链层级序:应急 > 追赶 > 模式(redesign §5.4 唯一真值序)
     filter_chain_order: tuple[str, ...] = ('emergency', 'catchup', 'mode')

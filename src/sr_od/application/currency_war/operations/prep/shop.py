@@ -30,6 +30,7 @@ from sr_od.application.currency_war.cw_state import (
     RefreshShop,
     SellBench,
     bench_from_compact,
+    bench_occupied,
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
@@ -300,9 +301,11 @@ class BuyShopCards(SrOperation):
                 # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
                 state.bench = bench_from_compact(
                     deepcopy(match.session.tracked_bench_chars))  # copy 防下游 plan 污染持久态
-                log.info(f'[cw] tracked_bench_chars(seed)={[(c.char_id, c.star) for c in state.bench]}')
+                log.info(f'[cw] tracked_bench_chars(seed)='
+                         f'{[(c.char_id, c.star) for c in state.bench if c is not None]}')
             elif match.session.tracked_bench:
-                state.bench = _tracked_bench_chars(match.session.tracked_bench)
+                # ADR-0316:旧 seed 路径同样走槽位表(紧凑→定长 9 含 None),不直接覆盖契约
+                state.bench = bench_from_compact(_tracked_bench_chars(match.session.tracked_bench))
                 log.info(f'[cw] tracked_bench(旧 seed)={match.session.tracked_bench}')
             # 读 comp 成型度 —— overlay 时 board 不可读,用上次备战读的近似。
             match.session.last_state = state
@@ -339,7 +342,7 @@ class BuyShopCards(SrOperation):
             log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
                      f'plane={state.plane} round={state.round_num} node={_node} '
                      f'next={_next} board={state.board} '
-                     f'target={target_name!r} fp={_fp_v:.2f} bench={len(state.bench)}')
+                     f'target={target_name!r} fp={_fp_v:.2f} bench={bench_occupied(state.bench)}')
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
             # r97 供给快照(进店首见):全波牌面真值源之一 —— 只记 decisions 会丢 refresh 波

@@ -287,9 +287,19 @@ class SellBench:
     ``income`` 字段记录**创建时的预期回金**(策略侧算 sell_refund),
     账本/经济对账消费;未传 = None(sim 与旧调用兼容,sim 侧仍按
     自己的 cost 口径执行,不读此字段——它是**记录**不是**指令**)。
+
+    ``expect``(ADR-0317 代际校验第三块,ADR-0326 §1.7 激活;''=不校验):
+    提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
+    槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
+    (对齐 SellDeployed/SwapDeploy 既有守卫形态)。
+    **防线写入端核查(ADR-0326 §1.7,W57-F5 纪律)**:发射点=
+    remediation 两补偿器(_compensate_gold/_compensate_bench,从候选
+    生成时 state 快照取名);锁面=test_cw_w52_remediation.py 的
+    expect 正反锁(校验被触发,非恒放行)。
     """
     bench_idx: int   # bench 列表索引
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
+    expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
 
 
 @dataclass
@@ -497,6 +507,29 @@ def _merge_bench(bench: list[BenchChar | None],
 def card_cost(card: ShopCard) -> int:
     """牌的费用:OCR 读到用真值,未知按 3 估(费用 1-5 中位)。"""
     return card.cost or 3
+
+
+def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
+                      deployed: list[BenchChar] | None = None) -> bool:
+    """买第 3 份同名同 1★ 即合成(S3/H3 口径,ADR-0325)。
+
+    判据 = ``_merge_bench`` 分组键同口径:**同名同 1★ 计数(全场
+    bench∪deployed)==2 且待买为 1★**——买后恰达 3 份触发合并。
+    显式**不用星级加权**(1 个 2★ 加权 2 但同星计数=1,不合成交
+    bench 净 +1;旧 candidates.will_merge 加权判据的误标例)。
+    消费点:candidates.will_merge(生成侧)/arbiter bench_capacity 豁免
+    (仲裁侧)/simulate 满员合并买入(执行侧)——三处共用,防漂移。
+    """
+    if (card.star or 1) != 1:
+        return False
+    n = 0
+    for b in bench or []:
+        if b is not None and b.char_id == card.name and b.star == 1:
+            n += 1
+    for d in deployed or []:
+        if getattr(d, 'char_id', '') == card.name and d.star == 1:
+            n += 1
+    return n == 2
 
 
 def sell_refund(star: int, cost: int) -> int:
@@ -881,22 +914,45 @@ def simulate(state: GameState, action: Action) -> GameState:
     _pre_equips = state_equips_multiset(state) if _equips_action else None
     if isinstance(action, BuyCard):
         # ADR-0316 槽位语义:买入放首个空槽;无空槽=拒(bench_full 语义
-        # 不变——金不扣、牌不下架,整动作 no-op)
-        if bench_place(s.bench, _card_to_bench(action.card)) is None:
-            return state.copy()
+        # 不变——金不扣、牌不下架,整动作 no-op)。
+        # S3(ADR-0325):**合并买入**例外——买第 3 份同名 1★ 即合成
+        # (净腾 1 槽:占位 +1 合成清 2),满员时也通:新卡临时挂槽位表
+        # 尾部参与 _merge_bench(合成后恒被消费置 None),再截回定长 9。
+        new_bc = _card_to_bench(action.card)
+        placed = bench_place(s.bench, new_bc) is not None
+        if not placed:
+            if not will_merge_on_buy(action.card, s.bench, s.deployed):
+                return state.copy()
+            s.bench.append(new_bc)   # 临时尾槽(合成必清;非载体)
         s.gold -= card_cost(action.card)
         _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
+        if not placed:
+            s.bench.pop()            # 截回定长 9(尾部恒 None——载体优先
+            # deployed/首份旧卡,新卡恒非载体)
         # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
         s.shop = [c for c in s.shop if c.x != action.card.x]
     elif isinstance(action, SellBench):
         # ADR-0316:校验槽占用后置 None(索引跨动作组稳定)
-        sold = bench_clear(s.bench, action.bench_idx)
-        if sold is not None:
-            s.gold += sell_refund(sold.star, _bench_char_cost(sold))
-            # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed/CompTransaction
-            # 同一建模假设——卖带装单位装备回收,🟡 待 live 核。修复前本分支
-            # 漏回收 = 账本凭空消失,EquipsLedger 对账必报)。
-            s.equips.extend(sold.equips)
+        # ADR-0317 代际校验第三块(ADR-0326 §1.7):expect 非空且与槽内名
+        # 不符 = 陈旧提案 → no-op + stale_proposal 语义(对齐
+        # SellDeployed/SwapDeploy 既有守卫;emit 端=remediation 补偿器)
+        _tgt = (s.bench[action.bench_idx]
+                if 0 <= action.bench_idx < len(s.bench) else None)
+        if _tgt is not None and action.expect \
+                and _tgt.char_id != action.expect:
+            _log_action(s, 'SellBench', 'rejected',
+                        reason=(f'stale_proposal:{action.expect}'
+                                f'!={_tgt.char_id}'),
+                        char=_tgt.char_id)
+        else:
+            sold = bench_clear(s.bench, action.bench_idx)
+            if sold is not None:
+                s.gold += sell_refund(sold.star, _bench_char_cost(sold))
+                # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed/
+                # CompTransaction 同一建模假设——卖带装单位装备回收,
+                # 🟡 待 live 核。修复前本分支漏回收 = 账本凭空消失,
+                # EquipsLedger 对账必报)。
+                s.equips.extend(sold.equips)
     elif isinstance(action, LevelUp):
         # 真实语义(ADR-0129):一次「购买经验」= +XP_PER_BUY 经验、-单击金币;攒够当前级门槛自动
         # 升级(跨级结转溢出)。旧模型「一次动作 = 升 1 级 + 扣整级大金」与机制不符 → 升级门过度
@@ -1046,7 +1102,13 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
         bench_place(bench, _card_to_bench(action.card))
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, SellBench):
-        bench_clear(bench, action.bench_idx)
+        # ADR-0317 代际校验(与 simulate 同源):expect 非空且不符 →
+        # 陈旧提案 no-op(不移除)
+        if 0 <= action.bench_idx < len(bench) \
+                and bench[action.bench_idx] is not None \
+                and (not action.expect
+                     or bench[action.bench_idx].char_id == action.expect):
+            bench_clear(bench, action.bench_idx)
     elif isinstance(action, DeployMove):
         _tgt = (bench[action.bench_idx]
                 if 0 <= action.bench_idx < len(bench) else None)

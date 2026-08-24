@@ -51,7 +51,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     BloodAlarmTracker,
     assess_discipline,
     carry_gate_actions,
-    liquidity_actions,
+    register_round_sold,
 )
 from sr_od.application.currency_war.decision_v2.filters import (
     filter_candidates,
@@ -115,6 +115,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v2_round_key = None
         session.v2_round_bought = set()
         session.v2_round_sold = set()
+        session.v2_remedy_used = False   # W52(ADR-0326):补偿轮键跨局清零
+        session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False
 
@@ -187,6 +189,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v2_round_key = key
             session.v2_round_bought = set()
             session.v2_round_sold = set()
+            # W52(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
+            # (防环 §1.5-1);随同轮簿记一并清零。
+            session.v2_remedy_used = False
         # 息引擎采样(r406:曾达满息;LevelUp 门 [12] 消费)——采样在
         # 决策入口(本笔决策读「此前是否曾达」,首达当轮不受自家解锁)
         if state.gold >= registry.interest_floor:
@@ -213,12 +218,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
         cands = generate_candidates(state, session, registry)          # 层1
         kept, _flog = filter_candidates(cands, state, session, reg_view)  # 层2
         scored = score_all(kept, state, session, registry)             # 层3
-        # ⑤b 金不足变现通道(压库件凑金,leader 追加 2026-08-25):
-        # 层3 分数选最高优先金不足买,变现卖件前置(层4 工作态不感知
-        # 变现金=对同轮其余候选保守)
-        actions.extend(liquidity_actions(state, session, registry,
-                                         scored))
-        result = arbitrate(scored, state, session, reg_view)           # 层4
+        # (W52/ADR-0326:旧 ⑤b liquidity_actions 已删——金不足变现收编
+        # 进层4 末段补偿趟 _compensate_gold,触发源=实际拒绝事件)
+        result = arbitrate(scored, state, session, reg_view,
+                           disc_view=disc)                    # 层4
         actions.extend(result.actions)
         # 执行 log → session.last_candidate_scores(遥测判读可直接读)
         session.last_candidate_scores = {
@@ -239,9 +242,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
                         session.v2_seed_bought[a.card.name] = (key, 1)
             elif isinstance(a, SellBench) \
                     and 0 <= a.bench_idx < len(state.bench or []):
+                # W52(S5/ADR-0327):卖件登记统一走 register_round_sold
+                # helper(r408 对称臂;带轮键自校验)
                 nm = state.bench[a.bench_idx].char_id
                 if nm:
-                    session.v2_round_sold.add(nm)
+                    register_round_sold([nm], state, session)
         log.info('[cw][d2] r%d %s/%s 地板%d:演进 %d+采纳 %d/%d 候选(%s)',
                  state.round_num, disc.coverage, disc.mode, result.floor,
                  len([a for a in actions

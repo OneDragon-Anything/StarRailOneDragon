@@ -22,6 +22,7 @@ from sr_od.application.currency_war.cw_line_defs import (
 )
 from sr_od.application.currency_war.cw_state import (
     GameState,
+    SellBench,
     bench_occupied,
     simulate,
 )
@@ -373,8 +374,27 @@ def score_candidate(cand: Candidate, state: GameState,
     if cand.tag in ('off_target', 'for_gold', 'free_bench'):
         # 弱件换金偏置(registry.off_target_sell_bias):持有域溢出
         # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
-        # 供刷新/买入(ADR-0291 遗留,ADR-0293 标定)
-        val += registry.off_target_sell_bias
+        # 供刷新/买入(ADR-0291 遗留,ADR-0293 标定)。
+        # S5(ADR-0327):均一 bias 改按键缩放——w=sell_score_weight
+        # (期望损失归一化:净0 件 w=1、升星沉淀件 w→小);只改同通道
+        # 内卖件**相对序**,不改「卖不卖」的正分门槛(纯占位件
+        # val=bias×w>0 仍可卖;未知费级件 w=1 保底)。
+        w = 1.0
+        if isinstance(cand.action, SellBench):
+            _bc = (state.bench[cand.action.bench_idx]
+                   if 0 <= cand.action.bench_idx < len(state.bench or [])
+                   else None)
+            if _bc is not None:
+                from sr_od.application.currency_war.cw_chars import (
+                    CHARACTERS as _CH,
+                )
+                _c = _CH.get(getattr(_bc, 'char_id', '') or '')
+                if _c is not None and _c.cost:
+                    from sr_od.application.currency_war.decision_v2.discipline import (
+                        sell_score_weight,
+                    )
+                    w = sell_score_weight(_c.cost, registry)
+        val += registry.off_target_sell_bias * w
     if (cand.tag in registry.crisis_buy_tags
             and crisis_hoard_active(state, registry)):
         # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40,

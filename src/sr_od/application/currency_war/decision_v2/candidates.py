@@ -38,6 +38,7 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     ShopCard,
     bench_occupied,
+    will_merge_on_buy,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.discipline import (
@@ -321,9 +322,11 @@ def generate_candidates(state: GameState, session: StrategySession,
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue
-        # 3合1:买入后同名 1★ 副本恰达 3 份 → 合成候选
-        will_merge = star_weighted_copies(card.name, state) == 2 \
-            and card.star == 1
+        # 3合1:买入后同名同 1★ 副本恰达 3 份 → 合成候选
+        # (S3/H3 口径,ADR-0325:与 _merge_bench 分组键同口径的
+        # will_merge_on_buy——显式不用星级加权,1× 2★ 加权 2 但
+        # 同星计数=1 不合成,旧加权判据误标例已修)
+        will_merge = will_merge_on_buy(card, state.bench, state.deployed)
         out.append(Candidate(
             action=BuyCard(card, reason=''),
             tag=tag, source='shop',
