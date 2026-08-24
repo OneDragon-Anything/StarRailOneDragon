@@ -59,7 +59,12 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
       factions+flows 并计);
     - ``tier_hist``:羁绊档位直方图({1:..,2:..,3:..,4:..},
       每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
-    - ``max_tier``:最高激活档位(阵容成型度粗粒度代理)。
+    - ``max_tier``:最高激活档位(阵容成型度粗粒度代理);
+    - ``tier3_count``:tier_hist 中档位==3 的羁绊个数。批39 压测实证
+      (``.debug/temp/currency_war/cw_dev/sim_压测_批39/报告.md``):
+      tier-3 羁绊数是 P1 boss 胜负近似分界(t3≤2 → 0/19 胜;t3=3 的
+      板唯一胜)——max_tier 不区分「有几个 t3 羁绊」(3×tier-3 板与
+      1×tier-3 板同值),tier3_count 补上这一维度。
 
     ⚠️ **node_type 不在本函数输出里**(设计决策,批38 审计修订):
     node_type(普通战斗/遭遇/boss)是**训练表侧 join 的强先验特征**
@@ -115,4 +120,5 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
         'faction_counts': faction_counts,
         'tier_hist': {str(k): v for k, v in sorted(tier_hist.items())},
         'max_tier': max_tier,
+        'tier3_count': tier_hist.get(3, 0),
     }
