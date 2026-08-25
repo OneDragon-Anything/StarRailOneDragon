@@ -416,6 +416,8 @@ class BuyShopCards(SrOperation):
                 'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
                 'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
+                # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)
+                'formed_stop': bool(getattr(_sess, 'v3_formed_stop', False)),
                 # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
                 # v2_* 恒空串/None,字段保留作历史 schema 兼容;
                 # decision_v2 的模式/意向走 v3_* 字段)

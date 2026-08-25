@@ -507,6 +507,10 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
     装备上,断买仍违规)。W93 病例:run_20260825_130151 r7-r9 金
     59→90 溢出,目标件第 2 份生成层(r410 守卫)+评分层(份数零
     显影)双盲区,三连零买只靠升级滴漏。
+    豁免(ADR-0343):行带 formed_stop=True 的轮**重置 streak**——
+    成型停手是 [13]「过渡成型即可停手攒息」的正确行为,与 [17]
+    在「成型」谓词处分割状态空间(未成型金趴窝=违规,成型停手=
+    守息);旧局无该字段不豁免(兼容)。
     """
     rid = rows[0].get('run_id', '?') if rows else '?'
     streak = first_r = 0
@@ -514,6 +518,9 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
     for row in rows:
         if (row.get('plane') or 1) != 1:
             continue    # 只辖 P1(金跨位面继承,P2+ 语义另裁)
+        if row.get('formed_stop'):
+            streak = 0   # ADR-0343:成型停手轮=合法零买,断 streak
+            continue
         gold = row.get('gold') or 0
         spent = any(a.get('__type__') in ('BuyCard', 'LevelUp')
                     for a in row.get('actions') or [])

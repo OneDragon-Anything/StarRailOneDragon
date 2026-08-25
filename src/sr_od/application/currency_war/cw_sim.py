@@ -1033,6 +1033,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _explicit_deploy_seen = False
         _acts: list[dict] = []
         _segs_used = 0
+        # ADR-0343:成型停手轮内 OR 聚合——一轮多决策段,演进事务可
+        # 轮中改变板面使成型态中途点亮(段前的买入合法);行标志=
+        # 「本任一段曾处于停手态」(检查器豁免消费:有买的轮本就
+        # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
+        # 语义正确辖域)
+        _round_formed_stop = False
         # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
         # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
         # 的「连续放弃轮」数据源)
@@ -1057,6 +1063,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         for _seg in range(8):
             strat.update_target(st, sess, config)
             acts = strat.decide_prep(st, sess, config)
+            _round_formed_stop = _round_formed_stop or bool(
+                getattr(sess, 'v3_formed_stop', False))
             if not use_refresh:
                 acts = [a for a in acts
                         if not isinstance(a, RefreshShop)]
@@ -1482,6 +1490,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'ts': rn,   # 单调轮序号(非墙钟;审查①#9)
             'plane': 1, 'round_num': rn,
             'gold': st.gold, 'hp': st.hp,
+            # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
+            'formed_stop': _round_formed_stop,
             'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——

@@ -142,6 +142,15 @@ class DecisionV2Registry:
     pop_baseline: dict[int, int] = field(
         default_factory=lambda: {1: 5, 2: 7, 3: 9})
 
+    # ===== 成型停手纪律([13] 停手线;ADR-0343)=====
+    #: 总开关(False=旧行为,成型后照买;A/B 通道)
+    formed_stop_enabled: bool = True
+    #: 停手辖轮下界(P1 r≥此值才辖;W97/W105 晚买证据窗=r7-r9)
+    formed_stop_min_round: int = 7
+    #: 成型等级下界([13]「lv5-6」取下界语义:等级到位=≥5;
+    #: 上界是常见值描述非门)
+    formed_stop_min_level: int = 5
+
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 档位累计值(金/轮;P3 边际 e0→e1 +1.4 / e1→e2 +1.6 累计)
     rung_value: dict[int, float] = field(

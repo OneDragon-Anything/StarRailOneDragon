@@ -109,6 +109,7 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_hoard = None
         session.v3_core_names = set()
         session.v3_mode = 'economy'
+        session.v3_formed_stop = False   # ADR-0343:成型停手标志(层2 写,遥测读)
         session.v3_pending_rollback = None
         session.v3_intention_key = None
         session.v3_prev_hp = None

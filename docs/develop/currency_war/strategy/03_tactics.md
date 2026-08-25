@@ -38,7 +38,9 @@
 
 **decision_v2 纪律族:掉血报警梯度**(strategy_v4 点4/点12;ADR-0313):`BloodAlarmTracker` 三臂(连续战斗失败 / 最近 3·5 个**战斗节点**累计掉血)激活时按处置梯度行动——①自然补强窗(窗上界 `BLOOD_GRADIENT_NATURAL_BATTLES` 个战斗节点,`mode='economy'` 不弃息)→ 窗耗尽或血边际低于 `BLOOD_MARGIN_LOW_HP` → ②弃息 D 保血(war+硬节点放行 refresh)。三臂窗口单位=战斗节点计数器(非战斗节点不计入不重置),跨位面全臂重置。**报警不是 ALL IN 的触发**;位面末最后一战(`plane_last_battle`)的 ALL IN 授权在报警态下同样开通(授权来自位面末,非报警)——`allin` 是唯一清零地板的路径。「来牌顺不顺」([19]③)未消费(定性变量,声明欠账挂实机语料)。
 
-**decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(无显式成型停手门);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。
+**decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(评分侧无成型停手语义;显式停手门见 ADR-0343);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。
+
+**成型停手门(ADR-0343;[13] 停手线显式化)**:层2 后置**动作级**步(`filters.formed_stop_active`+`filter_candidates` 尾段)——P1 r≥`formed_stop_min_round`(7)∧lv≥`formed_stop_min_level`(5)∧意向 locked 线 `form_tiers` 全键满足∧`intention_core` bench∪deployed ≥2★ 五项全过,丢弃全部 BuyCard 候选(应急态不豁免;levelup/refresh/卖/合装例外)。标志 `session.v3_formed_stop`→sim 账本(轮内 OR 聚合)/生产遥测 `formed_stop` 字段;`overflow_gold_zero_buy_streak` 检查器对成型轮重置 streak。开关 `formed_stop_enabled`(registry)。触发面 2/200 局(W107);e2 代理门判别实验证「晚买有害」非因果——P2-4 杠杆重定向未成型局晚买质量。
 
 **decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed
 配方亲和过滤**(开关 `engine_affinity_enabled` 在 registry;判据
