@@ -895,6 +895,23 @@ def check_hp_upper_bound_truth(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_hp1_dead_end_candidate(rows: list[dict]) -> list[str]:
+    """W120 P9(死局锚;run 监控侧标记):HP=1 ⟺ 0hp 保底已耗尽 ⟹
+    下一败局即终局——**候选下界标记,非违规、非触发线**(violations
+    恒 0;hp1_rounds 披露供早停判读:HP=1 局的继续局期望 = P(全胜)×
+    通关价值 − 时间成本,板面/日程联合判在 cw_first_passage,本检查
+    只提供锚)。早停裁决归编排者/哨兵,检查器不自动停局。
+    (数据面走 hp1_dead_end_rounds,本函数保持 _BATCH_CHECKS 签名。)
+    """
+    return []   # 披露型:违规恒空
+
+
+def hp1_dead_end_rounds(rows: list[dict]) -> list[int]:
+    """check_hp1_dead_end_candidate 的数据面(批报告聚合读)。"""
+    return [r.get('round_num') for r in rows
+            if r.get('hp') is not None and r.get('hp') <= 1]
+
+
 
 def check_hp_ge60_frame_lock(rows: list[dict]) -> list[str]:
     """批㉚ F1(锚帧位锁):sim 锚 hp_ge_60 的口径 = **r9 boss 结算后**
@@ -1160,6 +1177,8 @@ _BATCH_CHECKS = {
     'deploy_after_buy_semantics': check_deploy_after_buy_semantics,
     'ledger_deploy_lag_disclosure': check_ledger_deploy_lag_disclosure,
     'hp_upper_bound_truth': check_hp_upper_bound_truth,
+    # W120 P9:HP=1 死局/早停候选标记(披露型,violations 恒 0)
+    'hp1_dead_end_candidate': check_hp1_dead_end_candidate,
     # --- ADR-0289 检查项清偿批(逐局违规锁) ---
     'gold_nonneg': check_gold_nonneg_invariant,
     'bench_capacity': check_bench_capacity_invariant,

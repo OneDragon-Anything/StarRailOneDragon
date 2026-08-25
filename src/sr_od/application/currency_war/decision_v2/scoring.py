@@ -459,6 +459,10 @@ def score_candidate(cand: Candidate, state: GameState,
         # 剥离用,arbiter.interest_rule 消费)
         # (轮界门 refresh_max_round=早期方向刷新/金保底门 refresh_min_gold
         # =防 re-decide 链抽干金流锁死息引擎——ADR-0293 标定批双门)
+        # ⚠️ 步③注意(W120 证明批检验点1):本常量 EV 是**单次刷新边际**
+        # 口径,对 k≥3 目标(合 2 星)系统性低估 D 通道——V_D 化时必须用
+        # 批口径(expected_refreshes(level,cost,k)×SHOP_REFRESH_COST,
+        # cw_shop_odds.expected_refreshes_for_card 现成),勿复用本常量。
         # ADR-0348 扑满低危战斗(口述定谒 2026-08-26):过热局 reward
         # 节点按「低危战斗」处理——战斗向刷新理由开放(为凑伤害拿奖励,
         # 轮界门豁免);金保底门保留(无掉血之虞,金保底防抽干与节点
