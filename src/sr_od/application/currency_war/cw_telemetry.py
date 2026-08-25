@@ -302,7 +302,13 @@ class TelemetryRecorder:
         )
         if extra:
             trace.active_strategies = list(extra.get('active_strategies', []))
-            trace.dp_posture = dict(extra.get('dp_posture', {}))
+            # dp_posture 双契约容错(r620 自动附 dict / W119 shop.py 附 str;
+            # 2026-08-26 run13 实机:dict(str) 对 str 炸 ValueError——统一收窄到
+            # str 契约,dict 值序列化兜底;326 行的 str 赋值是权威契约)
+            _dpp_raw = extra.get('dp_posture', '')
+            if isinstance(_dpp_raw, dict):
+                _dpp_raw = str(_dpp_raw)
+            trace.dp_posture = _dpp_raw
             trace.ledger_fingerprint = str(extra.get('ledger_fingerprint', ''))
             # r101 session 态快照(redesign/102 前提改造)
             trace.sess_framework = str(extra.get('sess_framework', ''))
