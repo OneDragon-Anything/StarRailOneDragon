@@ -282,11 +282,12 @@ class RunSlot:
             # 21:58,py-spy 全线程 idle + future done + status=running 三证齐)。
             # 兜底保证固化不变量「finally 必达」:异常时强制 FAILED + 栈留痕。
             try:
+                _status = result.status if (result is not None and result.status) else ''
                 terminal = (RunState.SUCCESS if (result is not None and result.success)
-                            else RunState.STOPPED if (result is not None and result.status.startswith('已停止'))
+                            else RunState.STOPPED if _status.startswith('已停止')
                             else RunState.FAILED)
                 if failed_node is None:
-                    failed_node = self._node_name() or (result.status if result is not None else None)
+                    failed_node = self._node_name() or (_status or None)
             except Exception as e:  # noqa: BLE001 固化前置计算炸 → 强制失败终态,别让状态悬空
                 from one_dragon.utils.log_utils import log as _diag_log
                 _diag_log.error('[slot-diag] 终态计算异常(强制 FAILED): %s', e, exc_info=True)
