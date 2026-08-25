@@ -418,6 +418,11 @@ class BuyShopCards(SrOperation):
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
                 # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)
                 'formed_stop': bool(getattr(_sess, 'v3_formed_stop', False)),
+                # W114/ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口
+                # 算,session 写,此处只透传给遥测 rounds 行)
+                'phase': getattr(_sess, 'v3_phase', '') or '',
+                'form_ok': bool(getattr(_sess, 'v3_form_ok', False)),
+                'form_score': round(float(getattr(_sess, 'v3_form_score', 0.0) or 0.0), 3),
                 # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
                 # v2_* 恒空串/None,字段保留作历史 schema 兼容;
                 # decision_v2 的模式/意向走 v3_* 字段)

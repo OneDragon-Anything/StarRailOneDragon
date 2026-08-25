@@ -57,6 +57,11 @@ from sr_od.application.currency_war.decision_v2.discipline import (
 from sr_od.application.currency_war.decision_v2.filters import (
     filter_candidates,
 )
+from sr_od.application.currency_war.decision_v2.phase import (
+    derive_phase,
+    form_ok,
+    form_score,
+)
 from sr_od.application.currency_war.decision_v2.registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
@@ -121,6 +126,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False
+        # W114/ADR-0346 相位影子观测:派生量初始化(每轮 decide_prep 重算;
+        # 零消费——只写 session 供遥测读,任何决策路径不得读它改行为)
+        session.v3_phase = 'FORM'
+        session.v3_form_ok = False
+        session.v3_form_score = 0.0
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:
@@ -198,6 +208,13 @@ class DecisionV2Strategy(DefaultCwStrategy):
         # 决策入口(本笔决策读「此前是否曾达」,首达当轮不受自家解锁)
         if state.gold >= registry.interest_floor:
             session.v2_ever_full_interest = True
+        # W114/ADR-0346 相位影子观测:每轮决策入口计算一次相位+form_ok+
+        # form_score,写 session 供遥测(shop 轮行/sim 账本)。**零消费**:
+        # 纯派生计算,不进任何 if-then 决策分支;派生量不落跨轮存储。
+        _phase = derive_phase(state, session, registry)
+        session.v3_phase = _phase.value
+        session.v3_form_ok = form_ok(state, session, registry)
+        session.v3_form_score = form_score(state, registry)
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

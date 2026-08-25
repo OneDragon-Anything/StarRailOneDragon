@@ -123,6 +123,18 @@ class DecisionTrace:
     # 全量)——重放 decide_prep 分支忠实还原的缺失件。可选,旧记录
     # 缺省 None;list 形态 = v2_state 元组逐位。
     sess_v2_state: list | None = None
+    # —— W114/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
+    # phase(FORM/HOARD/SPEND 派生相位)/form_ok(三件套谓词,裁决后
+    # 无等级项)/form_score(上场阵容 rung 副指标,∈[0,1])。可选,
+    # 旧记录缺省不破坏 schema。
+    phase: str = ""
+    form_ok: bool = False
+    form_score: float = 0.0
+    # ADR-0343 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
+    # DecisionTrace 字段:shop/prep_director 均已在 extra 传
+    # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
+    # (W114 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
+    formed_stop: bool = False
 
 
 @dataclass
@@ -297,6 +309,11 @@ class TelemetryRecorder:
             trace.v2_bridge = str(extra.get('v2_bridge', ''))
             _v2s = extra.get('sess_v2_state')
             trace.sess_v2_state = list(_v2s) if _v2s else None
+            # W114/ADR-0346 相位影子观测 + ADR-0343 formed_stop 缺口补挂
+            trace.phase = str(extra.get('phase', ''))
+            trace.form_ok = bool(extra.get('form_ok', False))
+            trace.form_score = float(extra.get('form_score', 0.0))
+            trace.formed_stop = bool(extra.get('formed_stop', False))
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
@@ -1053,6 +1070,13 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         lock = d.get("v2_locked_line") or ""
         bridge = d.get("v2_bridge") or ""
         v2_s = f" v2=[{v2}|{lock or '-'}|{bridge or '-'}]" if (v2 or lock or bridge) else ""
+        # W114/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空)
+        _ph = d.get("phase") or ""
+        _fok = d.get("form_ok")
+        _fsc = d.get("form_score")
+        ph_s = (f" ph={_ph}" + ("/ok" if _fok else "")
+                + (f"/{_fsc:.2f}" if isinstance(_fsc, (int, float)) else "")
+                ) if _ph else ""
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
         _xp = st.get("xp_progress")
@@ -1061,7 +1085,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
         lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}")
+                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ph_s}")
     return lines
 
 

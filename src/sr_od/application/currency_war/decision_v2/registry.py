@@ -151,6 +151,14 @@ class DecisionV2Registry:
     #: 上界是常见值描述非门)
     formed_stop_min_level: int = 5
 
+    # ===== 相位影子观测(W114/ADR-0346,经济循环总模型步①;不消费)=====
+    #: 兜底局(意向未锁)form_ok 降级门:form_score ≥ 此值判「战力 OK」
+    #: (W113 §3.1;sim 校准域)。初值量纲推算:form_score 满分=2 过渡
+    #: 体系(rung2,H3 胜率 77.8%),1 体系=0.5(rung1,胜率 41.6%)——
+    #: 「战力 OK」保守取 1 体系档 = 0.5(与 formed_stop_min_round=7 的
+    #: 「成型下界」保守取向同族;影子期只进遥测,步② 切授权前 sim 标定)
+    phase_form_score_gate: float = 0.5
+
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 档位累计值(金/轮;P3 边际 e0→e1 +1.4 / e1→e2 +1.6 累计)
     rung_value: dict[int, float] = field(

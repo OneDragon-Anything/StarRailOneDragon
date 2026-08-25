@@ -1043,6 +1043,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
         # 的「连续放弃轮」数据源)
         _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
+        # W114/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
+        # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
+        _round_phase: str = ''
+        _round_form_ok: bool = False
+        _round_form_score: float = 0.0
+        _phase_snap = False
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
         # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -1065,6 +1071,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             acts = strat.decide_prep(st, sess, config)
             _round_formed_stop = _round_formed_stop or bool(
                 getattr(sess, 'v3_formed_stop', False))
+            if not _phase_snap:
+                _phase_snap = True   # 轮入口首段快照(W114 影子)
+                _round_phase = str(getattr(sess, 'v3_phase', '') or '')
+                _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
+                _round_form_score = round(float(
+                    getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
             if not use_refresh:
                 acts = [a for a in acts
                         if not isinstance(a, RefreshShop)]
@@ -1492,6 +1504,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'gold': st.gold, 'hp': st.hp,
             # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
             'formed_stop': _round_formed_stop,
+            # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
+            'phase': _round_phase,
+            'form_ok': _round_form_ok,
+            'form_score': _round_form_score,
             'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——
