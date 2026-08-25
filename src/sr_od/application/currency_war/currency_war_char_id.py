@@ -46,28 +46,39 @@ AvatarTemplates = dict[str, tuple[MatLike, tuple, np.ndarray]]
 
 
 def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
-    """加载目录下所有角色头像模板(``<id>/raw.png``),预计算 SIFT 关键点/描述子。
+    """加载目录下所有角色头像模板,预计算 SIFT 关键点/描述子。
+
+    模板文件:每角色目录 ``raw.png``(主模板,官方图鉴 art)+ 可选变体
+    ``raw_*.png``(现场采集 art,如商店卡立绘与图鉴 pose 不同时补采样;
+    键带 ``#k`` 后缀,识别返回时剥离——见 ``identify_character`` 返回值)。
+    2026-08-26 run20 停机事故实证:开拓者·欢愉图鉴 art 对商店卡仅 5 内点
+    (阈值 10),玩家名遮挡卡名时 SIFT 是唯一通道 → 变体机制必要。
 
     若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
     (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
     """
     templates: AvatarTemplates = {}
     for child in sorted(avatar_dir.iterdir()):
-        raw = child / 'raw.png'
-        if not raw.is_file():
+        if not child.is_dir():
             continue
-        img = cv2.imdecode(np.fromfile(str(raw), dtype=np.uint8), cv2.IMREAD_COLOR)
-        if img is None:
-            continue
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        mask_file = child / 'mask.png'
-        mask = None
-        if mask_file.is_file():
-            m = cv2.imdecode(np.fromfile(str(mask_file), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-            if m is not None and m.shape == gray.shape:
-                mask = m
-        kp, desc = _SIFT.detectAndCompute(gray, mask)
-        templates[child.name] = (gray, kp, desc)
+        variant_idx = 0
+        for raw in sorted(child.glob('raw*.png')):
+            if raw.stem != 'raw' and (not raw.name.startswith('raw_') or 'bak' in raw.stem):
+                continue   # raw_bak*.png 等备份文件不进库;变体=raw_*.png(现场采样)
+            img = cv2.imdecode(np.fromfile(str(raw), dtype=np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                continue
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            mask_file = child / 'mask.png'
+            mask = None
+            if mask_file.is_file():
+                m = cv2.imdecode(np.fromfile(str(mask_file), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+                if m is not None and m.shape == gray.shape:
+                    mask = m
+            kp, desc = _SIFT.detectAndCompute(gray, mask)
+            key = child.name if variant_idx == 0 else f'{child.name}#{variant_idx}'
+            templates[key] = (gray, kp, desc)
+            variant_idx += 1
     return templates
 
 
@@ -191,13 +202,17 @@ def identify_character(
     second_id, second = (scores[1] if len(scores) > 1 else ('', 0))
     if best < min_inliers:
         return None, best
+    # 变体模板键(#k 后缀)剥离:同一角色的多 art 模板互不构成「歧义」——
+    # 同 cid 变体在 top2 时取高者即最终答案(2026-08-26 变体机制)。
+    _base = best_id.split('#')[0]
     if second > 0 and best < ambiguity_ratio * second:
-        # r75 色相仲裁:top2 是已知同型异色对 → 色相差定夺
-        arb = _hue_arbitrate(slot_img, best_id, second_id)
-        if arb is not None:
-            return arb, best
-        return None, best
-    return best_id, best
+        if second_id.split('#')[0] != _base:
+            # r75 色相仲裁:top2 是已知同型异色对 → 色相差定夺
+            arb = _hue_arbitrate(slot_img, _base, second_id.split('#')[0])
+            if arb is not None:
+                return arb, best
+            return None, best
+    return _base, best
 
 
 #: 同型异色对(冷色成员, 暖色成员)——歧义时按 slot 色相偏向哪边仲裁(r75 狸猫兄弟)
