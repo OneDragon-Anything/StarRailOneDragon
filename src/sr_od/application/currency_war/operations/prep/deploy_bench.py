@@ -46,7 +46,8 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 # r263b 过渡配方纪律 → r271 收口 cw_line_defs 单一源(此前模块级
-# frozenset 与 line_strategy 的局部 set 双源;两份审查共同点名)。
+# frozenset 与旧 line_strategy 的局部 set 双源;两份审查共同点名;
+# line_strategy 随 ADR-0336 已删)。
 # 语义:配方基础(_RECIPE_BASE 档)未满时,off-recipe 阵营 pair
 # 不上板(防散件稀释配方;局15 r6-r8 实证)。
 # r357(局44 判读,r353 集成缺口):围栏集 = RECIPE ∪ ENGINE

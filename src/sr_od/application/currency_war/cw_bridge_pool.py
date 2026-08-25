@@ -40,7 +40,7 @@ class BridgeCombo:
 #: 过渡框架(sources/V4.0-4.4_公共_难度攻略.md §中期过渡):
 #: 1-3/1-4 开 2DOT+2列车 或 **2DOT+2贝洛伯格**;1-6 前开
 #: 3仙舟+2DOT/4列车。新增 dot_belog 早期桥(1-3 窗口的
-#: 第二选项);狼狩系另入引擎阵营(见 line_strategy r353)。
+#: 第二选项);狼狩系另入引擎阵营(见 ADR-0336 前 line_strategy r353)。
 BRIDGE_POOL: list[BridgeCombo] = [
     BridgeCombo(
         bridge_id='xianzhou_dot',
@@ -111,8 +111,8 @@ BRIDGE_POOL_P2: list[BridgeCombo] = [
 #: 从战力表自动派生——redesign §4.2 的「数据派生」指 P1/P2 榜
 #: 数据决定**哪些组合够格入池**(81/41/31 篇的门槛),入池后
 #: 的角色构成是调研产物。
-#: 版本漂移防护(⑧-5 修正):**尚未接线**——line_strategy 当前
-#: 不对 bridge 调 check;接线排在 Phase B(桥成立性验证);
+#: 版本漂移防护(⑧-5 修正):**尚未接线**——旧 line_strategy 不对
+#: bridge 调 check(ADR-0336 已删);接线排在 Phase B(桥成立性验证);
 #: 在此之前本注释如实声明「无运行时守卫」。
 
 #: 构造期一致性断言:combo.phase 必须与所在池一致(S3)

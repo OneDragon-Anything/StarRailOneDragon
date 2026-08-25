@@ -14,7 +14,7 @@
 
 **与旧件的关系(载体批新旧交替)**:`cw_signal_lock.py`(Phase A 信号 2 层,
 LineV1 载体)与 `cw_line_library_v1` 是旧件,本模块是其 v4 后继——按 COMP_LIBRARY
-v2 家族键工作;旧件不动、不 import,接线切换归后续 decision_v2 重建批。
+v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 
 模块构成:
 - ``detect_signals(state)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/

@@ -50,14 +50,11 @@ def is_catchup(state: GameState, session: StrategySession,
 
 def current_mode(session: StrategySession) -> str:
     """当前模式(economy/war;载体批 W35:新载体读 session.v3_mode——
-    纪律族 assess_discipline 每轮写;旧 v2_state 兜底)。"""
+    纪律族 assess_discipline 每轮写;旧 v2_state 兜底随 ADR-0336 删除)。"""
     v3 = getattr(session, 'v3_mode', None)
     if v3 in ('economy', 'war'):
         return v3
-    v2 = getattr(session, 'v2_state', None)
-    if not v2:
-        return 'economy'
-    return v2[0] if v2[0] in ('economy', 'war') else 'economy'
+    return 'economy'
 
 
 def _allowed_tags(state: GameState, session: StrategySession,

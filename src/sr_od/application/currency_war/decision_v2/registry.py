@@ -10,8 +10,8 @@
 - 档位期望:P3 已证边际(e0→e1 +1.4 / e1→e2 +1.6 金/轮)→ 累计档值;
 - 战力:H3 阶梯矩阵胜率(e0 13.9% / e1 41.6% / e2 77.8%,n=187/89/9);
 - 息律:[17][28](50 金息律 / P1 满息通关)进 interest_rule 约束;
-- 地板初值镜像 line_strategy 同名常量(_EMERGENCY_HP 等;注册表化
-  后 line_strategy 值演进不自动跟随——A/B 语义:两臂可故意不同)。
+- 地板初值镜像旧 line_strategy 同名常量(_EMERGENCY_HP 等;
+  旧两臂 A/B 语义随 ADR-0336 结束,注册表独立演进)。
 
 决策见 docs/develop/currency_war/decisions/0291-decision-v2-skeleton.md。
 """
@@ -127,16 +127,18 @@ class DecisionV2Registry:
     catchup_forbidden_tags: frozenset[str] = frozenset({
         'for_gold', 'refresh',
     })
-    #: 应急 HP 档(触发层2 应急过滤;line_strategy._EMERGENCY_HP 镜像)
+    #: 应急 HP 档(触发层2 应急过滤;旧 line_strategy._EMERGENCY_HP
+    #: 镜像,ADR-0336 后独立)
     emergency_hp: int = 25
     #: ADR-0302 危机囤金金线(合流批 ADR-0303 上移):应急态金 ≥ 此值
     #: 时进危机囤金态(战力买偏置+搜牌解锁)。依据:批㉝ F3 指纹阈值
     #: 40(hp≤25 且金≥40 只升不买,金囤 85+ 板濒死零动作)
     crisis_hoard_gold: int = 40
-    #: 追赶等级门(P1 早期人口低于基线是常态;line_strategy
-    #: ._CATCHUP_MIN_LEVEL 镜像)
+    #: 追赶等级门(P1 早期人口低于基线是常态;旧 line_strategy
+    #: ._CATCHUP_MIN_LEVEL 镜像,ADR-0336 后独立)
     catchup_min_level: int = 6
-    #: 位面人口基线(r191 中位;line_strategy._POP_BASELINE 镜像)
+    #: 位面人口基线(r191 中位;旧 line_strategy._POP_BASELINE 镜像,
+    #: ADR-0336 后独立)
     pop_baseline: dict[int, int] = field(
         default_factory=lambda: {1: 5, 2: 7, 3: 9})
 

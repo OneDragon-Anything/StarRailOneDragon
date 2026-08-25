@@ -7,7 +7,7 @@
 ## 目录结构(复杂 app 拆分,依据 ADR-0003)
 
 ### [redesign.md](redesign.md) —— 系统设计定稿(策略 v2 重设计)
-- 分层架构 / 决策循环 / 数据层 / Phase A-B 落地地图;策略 v2 模块族(战力表/桥线池/线库/信号锁/状态机+LineStrategy/过渡配方)的设计依据。
+- 分层架构 / 决策循环 / 数据层 / Phase A-B 落地地图;策略 v2 模块族(战力表/桥线池/过渡配方)的设计依据;旧线库/信号锁/状态机+LineStrategy 随 ADR-0336 删除。
 
 ### [strategy/](strategy/) —— 策略设计正文(as-built)
 - [README](strategy/README.md) —— 总览:每回合决策链 + 模块地图 + 核心哲学 + 旧编号对照

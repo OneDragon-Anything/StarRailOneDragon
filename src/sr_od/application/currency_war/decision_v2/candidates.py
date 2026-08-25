@@ -1,7 +1,7 @@
 """决策框架 v2 层1:候选生成器(ADR-0290;纯函数 state→list[Candidate])。
 
-**载体批(W35)层1 换源**(裁决终版第三选项;不再 import line_strategy/
-线库/桥池):
+**载体批(W35)层1 换源**(裁决终版第三选项;旧 line_strategy/线库
+随 ADR-0336 删除,本包零 import):
 
 - 目标件 → ``session.v3_hoard``(``cw_intention.hoard_target_set`` 的
   char_targets——意向线骨架采购集/跨线骨架/兜底线,买侧唯一消费面);
@@ -135,39 +135,6 @@ def _intention_family(session: StrategySession) -> str:
     return comp.family if comp is not None else ''
 
 
-def _legacy_target_names(state: GameState,
-                         session: StrategySession) -> set[str]:
-    """旧本体论目标集(线库/桥池派生;**A/B 窗兼容垫片,步 5 锁迁移后删**)。
-
-    仅当 session 呈旧载体形态(``v3_hoard`` 缺失且 ``locked_line``/
-    ``bridge_id`` 已设——旧锁单测的直调形态)时被 ``_target_names`` 消费;
-    生产新载体 ``update_target`` 每轮写 ``v3_hoard``,恒走意向源。
-    """
-    from sr_od.application.currency_war.cw_bridge_pool import (
-        BRIDGE_POOL,
-        BRIDGE_POOL_P2,
-    )
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    names: set[str] = set()
-    pool = BRIDGE_POOL if state.plane <= 1 else BRIDGE_POOL_P2
-    if session.locked_line:
-        line = line_of(session.locked_line)
-        if line is not None:
-            names.add(line.carry)
-            names.update(line.opportunistic_cards)
-        names.update(n for combo in pool
-                     for n in set(combo.fixed) | set(combo.core))
-    elif session.bridge_id:
-        for combo in pool:
-            if combo.bridge_id == session.bridge_id:
-                names.update(combo.fixed)
-                names.update(combo.core)
-    else:
-        names.update(n for combo in pool
-                     for n in set(combo.fixed) | set(combo.core))
-    return names
-
-
 def _target_names(state: GameState,
                   session: StrategySession) -> set[str]:
     """当前方向的目标件名集(载体批换源:意向分层输入)。
@@ -175,9 +142,8 @@ def _target_names(state: GameState,
     - 意向载体(``session.v3_hoard`` 由 ``update_target`` 每轮写):
       hoard char_targets(locked/weak/fallback 模式各自的目标集)+
       体系卡引擎件(铁三角+希儿——引擎件任何模式下都是方向件);
-    - ``v3_hoard`` 缺失且旧载体字段已设:旧线库/桥池派生(A/B 窗
-      兼容垫片,步 5 锁迁移后删——见 ``_legacy_target_names``);
-    - 全缺(未走 update_target 的裸 session):引擎件全集(种子语义)。
+    - 全缺(未走 update_target 的裸 session):引擎件全集(种子语义;
+      旧线库/桥池派生垫片随 ADR-0336 删除——生产恒写 v3_hoard)。
     """
     hoard = getattr(session, 'v3_hoard', None)
     if hoard is not None:
@@ -185,11 +151,9 @@ def _target_names(state: GameState,
         # 方向件,点3 见即买)
         return set(engine_char_names()) | set(
             getattr(hoard, 'char_targets', ()) or ())
-    if session.locked_line or session.bridge_id:
-        return _legacy_target_names(state, session)
-    # 裸 session(未走 update_target):旧种子语义——当前位面全部桥的
-    # fixed∪core 并集(方向永远锁得上的最小集;引擎件 ⊆ 桥名单)
-    return _legacy_target_names(state, session)
+    # 裸 session(未走 update_target):引擎件全集(种子语义——方向
+    # 永远锁得上的最小集)
+    return set(engine_char_names())
 
 
 def _core_names(session: StrategySession) -> set[str]:

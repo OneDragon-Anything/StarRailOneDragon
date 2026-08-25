@@ -1,9 +1,9 @@
 """决策框架 v2 策略具现(ADR-0290/0291/0306 载体批;DecisionV2Strategy)。
 
-**载体批(W35)重建**:不再继承 ``LineStrategy``——独立 ``CwStrategy``
-实现(继承 ``DefaultCwStrategy`` 只复用**执行性钩子**:球/箱/遭遇/补给/
-巨星/伙伴/prep 步级;战略与备战决策全部自持)。层1 换源(裁决终版第三
-选项):
+**载体批(W35)重建**:不继承旧 ``LineStrategy``(ADR-0336 已删)——独立
+``CwStrategy`` 实现(继承 ``DefaultCwStrategy`` 只复用**执行性钩子**:
+球/箱/遭遇/补给/巨星/伙伴/prep 步级;战略与备战决策全部自持)。
+层1 换源(裁决终版第三选项):
 
 - 信号/锁线 → ``cw_intention``(意向分层状态机;strategy_v4 点0);
 - 体系/组合 → ``cw_system_cards``(四体系卡+组合规则;点1/点2);
@@ -18,9 +18,8 @@
 预算仲裁;纪律族经 ``assess_discipline`` 产出的注册表**视图**作用于
 层2/层4(评分恒用原表——ALL IN 窗不扭曲息 EV 平台语义)。
 
-**registry 双注册(C5)**:新旧策略同 ``StrategyManager`` 注册
-(``decision_v2``/``line_v2``),config ``strategy_id`` 切换;回退开关
-=配置切回 ``line_v2``(窗口期全程可用)。
+**唯一策略载体**(ADR-0309;ADR-0336 删除旧臂):config ``strategy_id``
+可选 ``decision_v2``/``default``;回退路径=git revert(见 ADR-0336)。
 """
 from __future__ import annotations
 
@@ -318,5 +317,3 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v3_evolution = EvolutionState()
         if session.v3_alarm is None:
             session.v3_alarm = BloodAlarmTracker()
-        if session.v2_state is None:
-            session.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)

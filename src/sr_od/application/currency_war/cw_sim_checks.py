@@ -19,21 +19,25 @@
   consistency / coldstart_direction / deploy_fills_cap /
   equip_worn_in_battle / no_component_equipped_p1 /
   levelup_interest_engine_gate / no_same_round_buy_sell /
-  bench_full_deadlock_probe / carry_gate_bench_deadlock /
+  bench_full_deadlock_probe /
   shop_slot_consumption / deploy_after_buy_semantics /
-  bond_fallback_purchase_validity + 清偿批:gold_nonneg /
+  + 清偿批:gold_nonneg /
   bench_capacity / deployed_schema_filter / engine_seed_not_
   resold / buys_at_full_bench / oscillation_xp_cap /
   levelup_flat4_lock / phantom_equip_no_wear /
-  carry_on_shelf_responded / no_future_carry_sold /
-  dead_system_second_pivot / degrade_recover_mutex;
+  degrade_recover_mutex;
+  (旧 v1 线库语义检查器——carry_gate_bench_deadlock /
+  bond_fallback_purchase_validity / carry_on_shelf_responded /
+  no_future_carry_sold / dead_system_second_pivot /
+  protect_set_bench_share / carry_gate_outcome_tracking /
+  recipe_refresh_ev_guard——随 v1 策略删除,ADR-0336)
 - 逐局披露归 0 锁:phantom_rebuy_disclosure /
   ledger_deploy_lag_disclosure / hp_upper_bound_truth;
 - 批级聚合(cw_sim 接线;清偿批新条目经 run_batch_level_checks
   聚合入口,cw_sim.py 接线随 worker X 合流后并入 simulate_p1_
   batch):boss_win_calibration / formation_hp_coupling_sentinel /
-  levelup_binding / r5plus_refresh_closure / sim_endgold_calib /
-  protect_set_bench_share + 清偿批披露/哨兵(见该函数注释);
+  levelup_binding / r5plus_refresh_closure / sim_endgold_calib
+  + 清偿批披露/哨兵(见该函数注释);
 - 池级(吃 Δ 池 dict):delta_pool_bucket_min_n /
   depth_cliff_monotonicity / battle_rung_pool_bucket_lock /
   reward_delta_pool_bucket_lock(ADR-0292)/
@@ -177,11 +181,12 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     - 合法不报:reason=bridge_seed/engine(pair 通道放行的
     方向件)、line(锁线形态逻辑辖区)/p2_core/emergency/
     swap/board_focus(其它通道各有语义,不越权);
-    - **仅 LineStrategy(v2)栈账本适用**:生产配置 strategy_id=
-      line_v2/decision_v2 时实机 decisions.jsonl 同样适用(BuyCard.reason 是
-      共享 dataclass,生产遥测同带标签);**default 栈**(买牌走
-      cw_plan,reason='plan')不辖于 r368 门,跑此检查必误报——
-      生产侧按局 strategy_id/actions reason 词表判栈后选择。
+    - **仅 v2 栈账本适用**:生产配置 strategy_id=
+      decision_v2(旧 line_v2 随 ADR-0336 已删)时实机 decisions.jsonl
+      同样适用(BuyCard.reason 是共享 dataclass,生产遥测同带标签);
+      **default 栈**(买牌走 cw_plan,reason='plan')不辖于 r368 门,
+      跑此检查必误报——生产侧按局 strategy_id/actions reason 词表
+      判栈后选择。
     """
     out: list[str] = []
     for row in rows:
@@ -613,165 +618,6 @@ def check_phantom_equip_no_wear(rows: list[dict]) -> list[str]:
     return out
 
 
-def check_carry_on_shelf_responded(rows: list[dict]) -> list[str]:
-    """成型批 carry_on_shelf_responded(终局线 carry 在架响应;ADR-0289)。
-
-    判据(设计表原文):任意波 carry(终局线)在架且波金≥cost+10
-    → 该轮必有 BuyCard(carry 或引擎件)或日志拒绝原因。sim 账本
-    无拒绝原因字段 → 违规锁口径:终局线(末次非空 target_comp)
-    锁定轮内,carry 在架 + 波金−cost≥10 + **轮末 bench<9**
-    (满员滞留由 carry_gate_bench_deadlock 辖)+ **carry 未持有**
-    (已持有 = 囤件合法形态,同 ADR-0280 口径)且该轮无目标件/
-    引擎件买入 → 违规。设计基线 21/60 零持有;r416 腾位门后
-    残留即漏边。轮末 bench 是决策时点的下界近似(买后 bench 更
-    高,方向只放宽不收紧——漏判风险小于误判)。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    final_comp = ''
-    for row in rows:
-        if row.get('target_comp'):
-            final_comp = row['target_comp']
-    line = line_of(final_comp) if final_comp else None
-    if line is None or not line.carry:
-        return []
-    carry = line.carry
-    targets = {carry} | set(line.core_cards) \
-        | set(line.opportunistic_cards)
-    out: list[str] = []
-    for row in rows:
-        if row.get('plane') != 1 or row.get('target_comp') != final_comp:
-            continue
-        st = row.get('state') or {}
-        if len(st.get('bench') or []) >= 9:
-            continue
-        owned = {b.get('char_id') for b in st.get('bench') or []}
-        owned |= {d.get('char_id') for d in st.get('deployed') or []}
-        if carry in owned:
-            continue
-        responded = any(
-            a.get('__type__') == 'BuyCard'
-            and ((a.get('card') or {}).get('name') in targets
-                 or a.get('reason') in ('engine_seed', 'engine',
-                                        'bridge_seed', 'line'))
-            for a in row.get('actions') or [])
-        if responded:
-            continue
-        hit = False
-        for w in (row.get('sim') or {}).get('shop_waves') or []:
-            for c in w.get('cards') or []:
-                if c.get('name') == carry \
-                        and (w.get('gold') or 0) - (c.get('cost') or 0) \
-                        >= 10:
-                    out.append(
-                        f"p1r{row.get('round_num')}: carry {carry} 在架"
-                        f"金足(≥cost+10)未响应(无目标/引擎件买入"
-                        f"——成型批 carry_on_shelf_responded)")
-                    hit = True
-                    break
-            if hit:
-                break
-    return out
-
-
-def check_no_future_carry_sold(rows: list[dict]) -> list[str]:
-    """成型批 no_future_carry_sold(终局线 carry P1 零卖出;0 容忍)。
-
-    判据(设计表原文):终局线 carry 在 P1 阶段零卖出——现状
-    (设计时)7 次。carry 是终局线的引擎本体,P1 卖出 = 线死信号
-    (腾位门弱序把 carry 当最弱件卖 = ADR-0280 保护集回归)。
-    终局线口径 = 末次非空 target_comp(卖出时点可能尚未锁线,
-    用终局线回看是设计原意「未来 carry 不得卖」)。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    final_comp = ''
-    for row in rows:
-        if row.get('target_comp'):
-            final_comp = row['target_comp']
-    line = line_of(final_comp) if final_comp else None
-    if line is None or not line.carry:
-        return []
-    out: list[str] = []
-    for row in rows:
-        if row.get('plane') != 1:
-            continue
-        for a in row.get('actions') or []:
-            if a.get('__type__') == 'SellBench' \
-                    and a.get('name') == line.carry:
-                out.append(
-                    f"p1r{row.get('round_num')}: 终局线 carry "
-                    f"{line.carry} 被卖出(线死信号——成型批 "
-                    f"no_future_carry_sold 0 容忍)")
-    return out
-
-
-def _engine_of_line(line) -> tuple[str, int] | None:
-    """线的引擎体系(bond, tier):线内卡(carry/core/opportunistic)
-    的阵营命中 _ENGINES_TRAITS_SYNC 首个引擎档。识别不出 → None
-    (dead_system 检查披露跳过;希儿系非阵营档不辖)。
-    """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    names = [line.carry] + list(line.core_cards) \
-        + list(line.opportunistic_cards)
-    for bond, tier in _ENGINES_TRAITS_SYNC:
-        for n in names:
-            ch = CHARACTERS.get(n)
-            if ch and bond in (ch.factions or []):
-                return bond, tier
-    return None
-
-
-def check_dead_system_second_pivot(rows: list[dict]) -> list[str]:
-    """成型批 dead_system_second_pivot(死线二次 pivot;ADR-0289)。
-
-    判据(设计表原文):目标线所属体系供给<tier 连续 3 轮 →
-    必须 pivot 或记原因——现状(设计时)13/60 死体系、二次 pivot
-    0。
-
-    **口径修正(ADR-0289 n=300 验证轮)**:首版按「阵营全卡在店
-    数<tier」实现,n=300 实测 253/300 红——列车同行全池仅 1-2
-    名成员,「阵营供给<2」是常态而非死线信号,与设计时观测
-    (13/60)量级矛盾,判为首版口径错(证据驱动修正,非调绿):
-    「体系供给」的可行读法 = **线目标件(carry∪core∪
-    opportunistic)在店连续 3 轮零出现**(该线在当前发牌流里
-    已无进货渠道)。体系识别(引擎 bond)不命中(非四引擎线)
-    → 披露跳过。修正后仍大量红 = 真死守形态,如实报。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    final_comp = ''
-    for row in rows:
-        if row.get('target_comp'):
-            final_comp = row['target_comp']
-    line = line_of(final_comp) if final_comp else None
-    if line is None:
-        return []
-    targets = {line.carry} | set(line.core_cards) \
-        | set(line.opportunistic_cards)
-    out: list[str] = []
-    short = 0
-    last_rn: int | None = None
-    for row in rows:
-        if row.get('plane') != 1 or row.get('target_comp') != final_comp:
-            short = 0   # target 变了 = pivot 发生,窗口断
-            continue
-        rn = row.get('round_num') or 0
-        if last_rn is not None and rn - last_rn > 1:
-            short = 0   # 轮号不连续(跨段),窗口断
-        supply = sum(
-            1
-            for w in (row.get('sim') or {}).get('shop_waves') or []
-            for c in w.get('cards') or []
-            if c.get('name') in targets)
-        short = short + 1 if supply == 0 else 0
-        last_rn = rn
-        if short >= 3:
-            out.append(
-                f"p1r{rn}: 线目标件(carry/core/opportunistic)连续 "
-                f"{short} 轮零出现未 pivot(死线死守——成型批 "
-                f"dead_system_second_pivot,口径修正见 ADR-0289)")
-            short = 0   # 报一次断窗,防刷屏
-    return out
-
-
 def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
     """批⑯ F5(degrade_recover_mutex;条件违规;ADR-0289 清偿)。
 
@@ -850,87 +696,6 @@ def check_bench_full_deadlock_probe(rows: list[dict]) -> list[str]:
                 f"p1r{a}-r{c}: bench 满(≥9)连续 ≥3 轮零买入且金>20"
                 f"(买/上通道互锁——批⑩ F4 死锁形态,ADR-0276)")
             break
-    return out
-
-
-# ADR-0285(批㉑ F1 裁决):carry 门金足判据对齐调用方地板——
-# 检查模块不 import 策略(依赖方向纪律),地板值与 line_strategy
-# 三档同步维护(值漂移由 floor 边界双向锁暴露,同
-# _ENGINES_TRAITS_SYNC 纪律):_INTEREST_FLOOR=50 / _WAR_FLOOR=30 /
-# _BOSS_BREAKER_FLOOR=10(P1 r≥5 恒 boss_breaker;连胜降档 5 /
-# economy 低位 0 更宽松 → 取梯级最大保保守:宁可漏报不误报,
-# 对齐后残留违规即真死锁/门漏边)。
-_CARRY_FLOOR_INTEREST: int = 50
-_CARRY_FLOOR_WAR: int = 30
-_CARRY_FLOOR_BOSS: int = 10
-
-
-def _carry_floor_est(round_num: int, gold: int) -> int:
-    """carry 腾位门地板保守估计(按象限梯级最大;ADR-0285)。
-
-    r≥5 恒 boss_breaker(地板 10);r<5 economy(50/gold%10/0)
-    或 war(30/5)象限并存 → 取梯级最大。
-    """
-    if round_num >= 5:
-        return _CARRY_FLOOR_BOSS
-    if gold >= _CARRY_FLOOR_INTEREST:
-        return _CARRY_FLOOR_INTEREST
-    if gold >= _CARRY_FLOOR_WAR:
-        return _CARRY_FLOOR_WAR
-    return max(gold % 10, 5) if gold >= 10 else 5
-
-
-def check_carry_gate_bench_deadlock(rows: list[dict]) -> list[str]:
-    """批⑯ F3/F4(ADR-0280):carry 腾位门死锁指纹。
-
-    指纹:P1 r≤7(收益域——r8-r9 miss 买不买无差异,批⑯ F4)、
-    锁线、carry 在店(任一牌面波)且金足(批⑯ F3 口径:gold−已提案
-    花销≥cost)、bench=9 满、**当轮零买入且零卖出**——即腾位门
-    该出手而未出手(基线 56 局/148 事件,18.7%)。
-    修复后该指纹应归 0(腾位门产出 SellBench+BuyCard,行不再
-    「零买零卖」);残留违规=保护集窒息复发或门条件漏边。
-
-    金足口径(ADR-0285,批㉑ F1 裁决):wave_gold − cost ≥
-    _carry_floor_est(轮次, wave_gold)——旧口径 wave_gold≥cost
-    不含调用方地板,把「金足但破息档地板」的合法 miss 误报为
-    死锁(seed30/39 恒 2 违规的结构成因,r416 起逐 commit 恒 2);
-    对齐后违规应真归 0,残留即真死锁信号。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    out: list[str] = []
-    for row in rows:
-        if row.get('plane') != 1:
-            continue
-        rn = row.get('round_num') or 0
-        if rn > 7:
-            continue   # 收益域:r8-r9 不辖(批⑯ F4)
-        line = line_of(row.get('target_comp') or '')
-        if line is None or not line.carry:
-            continue
-        st = row.get('state') or {}
-        if len(st.get('bench') or []) < 9:
-            continue
-        # 未持有口径(批⑯ F3:miss=carry 在店+金足+**未持有**):
-        # bench/deployed 已有 carry 名 = 已持有,不辖([21] 买而不上
-        # 的合法囤件形态;修后 r416b 诊断实证 4/25 残留全是此口径差)
-        owned = {b.get('char_id') for b in st.get('bench') or []}
-        owned |= {d.get('char_id') for d in st.get('deployed') or []}
-        if line.carry in owned:
-            continue
-        if any(a.get('__type__') in ('BuyCard', 'SellBench')
-               for a in row.get('actions') or []):
-            continue   # 有买或有腾位动作 → 非死锁形态
-        for w in (row.get('sim') or {}).get('shop_waves') or []:
-            _g = w.get('gold') or 0
-            if any(c.get('name') == line.carry
-                   and _g - (c.get('cost') or 0)
-                   >= _carry_floor_est(rn, _g)
-                   for c in w.get('cards') or []):
-                out.append(
-                    f"p1r{rn}: carry {line.carry} 在店+金足(含地板)"
-                    f"+bench=9+零买零卖(carry 腾位门死锁指纹"
-                    f"——批⑯ F3,ADR-0280/0285)")
-                break
     return out
 
 
@@ -1067,108 +832,6 @@ def check_hp_upper_bound_truth(rows: list[dict]) -> list[str]:
                 f"(上界钳制回归/真值已改未同步——批㉘ F6,ADR-0287)")
     return out
 
-
-def check_bond_fallback_purchase_validity(rows: list[dict]) -> list[str]:
-    """[31] 凑档降级(ADR-0288):bond_fallback 买入谓词有效性,0 容忍。
-
-    判据:每笔 reason='bond_fallback' 的 BuyCard 必须满足买侧谓词
-    (line_strategy._bond_fallback_wants 的账本侧镜像):
-    ① 锁线(target_comp 可查线库;未锁线买入 = 谓词首门失效);
-    ② 战斗轮(r≥3;P3:r1-r2 买件纯付息);
-    ③ 本波目标件全缺(该笔买入时的牌面波——按 RefreshShop 动作
-    切波重放,波内槽消费后——无 carry/opportunistic/P1 桥 core 任一);
-    ④ [30] 成本带:cost ≤ 2;
-    ⑤ 凑 2 档:card.faction ∈ 决策时点 board∪bench 已有阵营(轮末
-    bench ∪ 轮末 board(部署侧)∪ 本轮卖出/更早买入件重构;副本
-    同阵营也计——买 #2 与在场 #1 凑 2 档是合法语义,copies 上限
-    由 _buy_guards 管)。
-    违规任一 = 谓词门失效/回归。目标集口径与 _bond_fallback_wants
-    同源镜像(检查模块不 import 策略,依赖方向纪律;漂移由双向锁
-    暴露)。sim 为 P1 口径,桥 core 名单取 BRIDGE_POOL。
-    """
-    from sr_od.application.currency_war.cw_bridge_pool import BRIDGE_POOL
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    p1_core = {n for combo in BRIDGE_POOL for n in combo.core}
-    out: list[str] = []
-    for row in rows:
-        rn = row.get('round_num') or 0
-        st = row.get('state') or {}
-        line = line_of(row.get('target_comp') or '')
-        targets: set[str] = set()
-        if line is not None:
-            targets = ({line.carry} | set(line.opportunistic_cards)
-                       | p1_core)
-        # ⑤ 的「已有阵营」重构:决策时点的 bench = 轮末 bench ∪ 本轮
-        # 卖出件 ∪ 本轮更早买入件(部署在买后,轮末 board 已含部署侧;
-        # 买入→卖出/买入→部署的件在轮末 bench 不可见,从动作序找回;
-        # SellBench 只有名字,faction 查注册表)。方向只放宽不收紧
-        # ——漏判风险小于误判(0 容忍检查误报会淹死真违规)。
-        base_owned = set((st.get('board') or {}).keys())
-        base_owned |= {b.get('faction') for b in st.get('bench') or []
-                       if b.get('faction') and b.get('faction') != '?'}
-        waves = (row.get('sim') or {}).get('shop_waves') or []
-        wi = 0
-        bought_in_wave: dict[str, int] = {}
-        owned = set(base_owned)
-        for a in row.get('actions') or []:
-            t = a.get('__type__')
-            if t == 'RefreshShop':
-                wi += 1
-                bought_in_wave = {}
-                continue
-            if t == 'SellBench' and a.get('name'):
-                ch = CHARACTERS.get(a['name'])
-                if ch and ch.factions:
-                    owned.add(ch.factions[0])
-                continue
-            if t == 'BuyCard':
-                _c = a.get('card') or {}
-                _n = _c.get('name')
-                if _n:
-                    # 槽消费语义(ADR-0284):波内买走即下架——重放
-                    # 剩余槽,买时点判「目标件全缺」才与决策时点的
-                    # st.shop 同口径(先买走的目标件不算「在店」)。
-                    bought_in_wave[_n] = bought_in_wave.get(_n, 0) + 1
-                    # 更早买入件入 owned;**当前 bond_fallback 件自身
-                    # 不入**(副本与自己凑 2 档由 copies≥2 判,但首买
-                    # 件自身不能自我满足「已有第一块砖」)。
-                    if _c.get('faction') and _c['faction'] != '?' \
-                            and a.get('reason') != 'bond_fallback':
-                        owned.add(_c['faction'])
-                if a.get('reason') != 'bond_fallback':
-                    continue
-            else:
-                continue
-            card = a.get('card') or {}
-            name = card.get('name')
-            where = f"p{row.get('plane')}r{rn} bond_fallback {name}"
-            if line is None:
-                out.append(f"{where}: 未锁线(谓词首门失效,ADR-0288)")
-                continue
-            if rn < 3:
-                out.append(f"{where}: r{rn}<3 非战斗轮(P3 纯付息,"
-                           f"ADR-0288)")
-            if (card.get('cost') or 0) > 2:
-                out.append(f"{where}: cost={card.get('cost')}>2"
-                           f"([30] 成本带违规,ADR-0288)")
-            wave_supply: dict[str, int] = {}
-            if wi < len(waves):
-                for c in waves[wi].get('cards') or []:
-                    if c.get('name'):
-                        wave_supply[c['name']] = \
-                            wave_supply.get(c['name'], 0) + 1
-            remaining = {n for n, k in wave_supply.items()
-                         if k - bought_in_wave.get(n, 0) > 0}
-            hit = remaining & targets
-            if hit:
-                out.append(f"{where}: 波内仍有目标件 {sorted(hit)[:3]}"
-                           f"(应走主通道,ADR-0288)")
-            fac = card.get('faction')
-            if not fac or fac == '?' or fac not in owned:
-                out.append(f"{where}: faction={fac} 不在 board∪bench"
-                           f"已有阵营(凑 2 档不成立,ADR-0288)")
-    return out
 
 
 def check_hp_ge60_frame_lock(rows: list[dict]) -> list[str]:
@@ -1430,13 +1093,11 @@ _BATCH_CHECKS = {
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
     'bench_full_deadlock_probe': check_bench_full_deadlock_probe,
-    'carry_gate_bench_deadlock': check_carry_gate_bench_deadlock,
     'shop_slot_consumption': check_shop_slot_consumption,
     'phantom_rebuy_disclosure': check_phantom_rebuy_disclosure,
     'deploy_after_buy_semantics': check_deploy_after_buy_semantics,
     'ledger_deploy_lag_disclosure': check_ledger_deploy_lag_disclosure,
     'hp_upper_bound_truth': check_hp_upper_bound_truth,
-    'bond_fallback_purchase_validity': check_bond_fallback_purchase_validity,
     # --- ADR-0289 检查项清偿批(逐局违规锁) ---
     'gold_nonneg': check_gold_nonneg_invariant,
     'bench_capacity': check_bench_capacity_invariant,
@@ -1446,9 +1107,6 @@ _BATCH_CHECKS = {
     'oscillation_xp_cap': check_oscillation_xp_cap,
     'levelup_flat4_lock': check_levelup_flat4_ledger_lock,
     'phantom_equip_no_wear': check_phantom_equip_no_wear,
-    'carry_on_shelf_responded': check_carry_on_shelf_responded,
-    'no_future_carry_sold': check_no_future_carry_sold,
-    'dead_system_second_pivot': check_dead_system_second_pivot,
     'degrade_recover_mutex': check_degrade_recover_mutex,
     'hp_ge60_frame_lock': check_hp_ge60_frame_lock,
     'supply_pool_roster_purity': check_supply_pool_roster_purity,
@@ -1463,61 +1121,6 @@ _BATCH_CHECKS = {
 }
 
 
-def check_protect_set_bench_share(ledgers: list[list[dict]]) -> dict:
-    """批⑯ F3(ADR-0280):保护集 bench 占有率披露(设计张力指标)。
-
-    判据(批⑯设计表原文):锁线局 r6+ 保护件占 bench 槽 ≥7/9 →
-    披露级——本检查不构成违规(violations 恒 0),供保护集收窄
-    裁决跨批对照(基线批⑯ F3:保护集均 7.45/槽,faction-close
-    1.52/槽,真可卖 0.51/事件)。
-
-    保护集口径与 line_strategy._protect_set 同源镜像(双桥池
-    fixed∪core+锁线 carry+opportunistic;检查模块不 import 策略,
-    值漂移由锁测试双向暴露——同 _ENGINES_TRAITS_SYNC 纪律)。
-    跨局聚合检查(吃全批账本,调用方显式调;未进 _BATCH_CHECKS
-    的逐局循环——cw_sim 接线归下批)。
-    """
-    from sr_od.application.currency_war.cw_bridge_pool import (
-        BRIDGE_POOL,
-        BRIDGE_POOL_P2,
-    )
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    base_protect: set[str] = set()
-    for pool in (BRIDGE_POOL, BRIDGE_POOL_P2):
-        for combo in pool:
-            base_protect.update(combo.fixed + combo.core)
-    shares: list[float] = []
-    n_ge7 = 0
-    peak: dict = {'where': '', 'prot': 0, 'bench': 0, 'share': 0.0}
-    for rows in ledgers:
-        for row in rows:
-            if row.get('plane') != 1 \
-                    or (row.get('round_num') or 0) < 6:
-                continue
-            line = line_of(row.get('target_comp') or '')
-            if line is None:
-                continue   # 未锁线局不辖
-            protect = (base_protect | {line.carry}
-                       | set(line.opportunistic_cards))
-            names = [b.get('char_id') for b in
-                     (row.get('state') or {}).get('bench') or []
-                     if b.get('char_id')]
-            if not names:
-                continue
-            prot_n = sum(1 for n in names if n in protect)
-            share = prot_n / len(names)
-            shares.append(share)
-            if prot_n >= 7:
-                n_ge7 += 1
-            if share > peak['share']:
-                peak = {'where': f"p1r{row.get('round_num')}",
-                        'prot': prot_n, 'bench': len(names),
-                        'share': round(share, 3)}
-    return {'violations': 0,   # 披露级(批⑯设计表):设计张力指标
-            'rows': len(shares), 'ge_7_of_9_rows': n_ge7,
-            'ge_7_share': round(n_ge7 / len(shares), 3) if shares else None,
-            'avg_share': round(sum(shares) / len(shares), 3) if shares else None,
-            'peak': peak}
 
 
 # --- Δ池标定检查(压测批③ F1 检查项 1/2/3;ADR-0268) ---------------
@@ -2358,7 +1961,8 @@ def check_p2_precache_gate_closure(ledgers: list[list[dict]]) -> dict:
     关闭占比——P1-only sim 下它是「末段花金主通道是否存在」的
     代理读数;实机对照后定性。**依赖标注**:策略内部函数不进
     账本 → 代理口径 = r≥7 轮末 bench>7 占位(门关);策略侧
-    直读口径待遥测/账本接线(批⑫ 机制锚 line_strategy.py:1514+)。
+    直读口径待遥测/账本接线(旧 line_strategy 机制锚随
+    ADR-0336 删除——decision_v2 侧同代理口径)。
     """
     closed = tot = 0
     for rows in ledgers:
@@ -2515,53 +2119,6 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
                     'out_of_band 非空即违规'}
 
 
-def check_carry_gate_outcome_tracking(ledgers: list[list[dict]]) -> dict:
-    """批⑰ carry_gate_outcome_tracking(carry 买件终局位置;披露)。
-
-    判据(设计表原文):gate 买件终局位置披露(deployed/bench/
-    sold 三分);P2 视域裁决的地基。口径:锁线局内对 line.carry
-    的每笔买入,按末行位置分类(bench=仍在备战、deployed=上场、
-    sold=买入后任轮被卖、未持有=既不在末行也无卖出记录=合成
-    消化/merge)。「gate 买件」以名字口径近似(reason 通道字段
-    在 BuyCard 上不稳定),判读声明边界。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    ch = {'deployed': 0, 'bench': 0, 'sold': 0, 'merged_or_gone': 0}
-    buys = 0
-    for rows in ledgers:
-        final_comp = ''
-        for row in rows:
-            if row.get('target_comp'):
-                final_comp = row['target_comp']
-        if not final_comp:
-            continue
-        line = line_of(final_comp)
-        if line is None or not line.carry:
-            continue
-        bought_rn: list[int] = [row.get('round_num') or 0
-                                for row in rows
-                                for a in row.get('actions') or []
-                                if a.get('__type__') == 'BuyCard'
-                                and (a.get('card') or {})
-                                .get('name') == line.carry]
-        if not bought_rn:
-            continue
-        buys += len(bought_rn)
-        sold = any(a.get('__type__') == 'SellBench'
-                   and a.get('name') == line.carry
-                   for row in rows for a in row.get('actions') or [])
-        last = rows[-1].get('state') or {}
-        if sold:
-            ch['sold'] += 1
-        elif any(d.get('char_id') == line.carry
-                 for d in last.get('deployed') or []):
-            ch['deployed'] += 1
-        elif any(b.get('char_id') == line.carry
-                 for b in last.get('bench') or []):
-            ch['bench'] += 1
-        else:
-            ch['merged_or_gone'] += 1
-    return {'violations': 0, 'carry_buy_games': buys, **ch}
 
 
 def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
@@ -2859,41 +2416,6 @@ def check_shop_cost_conformance(ledgers: list[list[dict]]) -> dict:
                     '只辖 zero-supply 强条件'}
 
 
-def check_recipe_refresh_ev_guard(ledgers: list[list[dict]]) -> dict:
-    """批⑥ recipe_refresh_ev_guard(配方刷新命中率;代理披露)。
-
-    判据(设计表原文):配方找件窗刷新按 cw_shop_odds 期望价值
-    显式判(策略侧 EV 门);批④ F1 真值落地后重跑定去留——设计
-    时本批 EV≈0/偏负。**依赖标注**:策略侧 EV 门未实现 → 代理
-    观测:每笔 RefreshShop 后新波是否含目标件(锁定线 carry/
-    opportunistic/core)——命中率即刷新收益侧的账本读数,EV 门
-    落地后作为其验收基线。
-    """
-    from sr_od.application.currency_war.cw_line_library_v1 import line_of
-    hits = tot = 0
-    for rows in ledgers:
-        for row in rows:
-            line = line_of(row.get('target_comp') or '')
-            if line is None:
-                continue
-            targets = {line.carry} | set(line.core_cards) \
-                | set(line.opportunistic_cards)
-            waves = (row.get('sim') or {}).get('shop_waves') or []
-            wi = 0
-            for a in row.get('actions') or []:
-                if a.get('__type__') != 'RefreshShop':
-                    continue
-                wi += 1
-                if wi >= len(waves):
-                    break
-                tot += 1
-                if any(c.get('name') in targets
-                       for c in waves[wi].get('cards') or []):
-                    hits += 1
-    return {'violations': 0, 'refreshes': tot, 'target_hits': hits,
-            'hit_rate': round(hits / tot, 3) if tot else None,
-            'note': '代理观测(EV 门策略侧未实现);批④ 真值落地'
-                    '后作验收基线'}
 
 
 def check_boss_round_real_actions(ledgers: list[list[dict]]) -> dict:
@@ -3212,8 +2734,14 @@ def check_decision_v2_candidate_coverage(
     s.shop = [ShopCard(x=1, faction='仙舟', name='丹恒·饮月', cost=2),
               ShopCard(x=2, faction='护盾', name='三月七', cost=1)]
     sess = StrategySession()
-    sess.locked_line = 'jizi'
-    sess.bridge_id = None
+    # ADR-0336:旧载体探针形态(locked_line='jizi' 走线库派生)已随
+    # line_strategy 删除失效——改用 v3_hoard 意向载体(生产真实形态):
+    # hoard char_targets 含店卡 → buy 类候选生成。
+    from sr_od.application.currency_war.cw_intention import HoardTarget
+    sess.v3_intention = None
+    sess.v3_hoard = HoardTarget(
+        frozenset({'丹恒·饮月', '三月七'}), frozenset(), 'locked')
+    sess.v3_core_names = {'丹恒·饮月'}
     for cand in generate_candidates(s, sess, DEFAULT_REGISTRY):
         if cand.merge:
             seen_classes.add('synthesize')
@@ -3457,8 +2985,6 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'streak_break_interest_fires':
             check_streak_break_interest_fires(ledgers),
         'mc_faction_calib': check_mc_faction_calib(ledgers),
-        'carry_gate_outcome_tracking':
-            check_carry_gate_outcome_tracking(ledgers),
         'streak_combat_only_income':
             check_streak_combat_only_income(ledgers),
         'shop_distinct_names_invariant':
@@ -3478,8 +3004,6 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'pool_hit_rate_disclosure':
             check_pool_hit_rate_disclosure(ledgers),
         'shop_cost_conformance': check_shop_cost_conformance(ledgers),
-        'recipe_refresh_ev_guard':
-            check_recipe_refresh_ev_guard(ledgers),
         'boss_round_real_actions':
             check_boss_round_real_actions(ledgers),
         # ADR-0291(决策框架 v2 骨架批):候选覆盖面 + 审计表完备性

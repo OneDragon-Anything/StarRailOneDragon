@@ -11,14 +11,14 @@
 | `CurrencyWarMatch` | `cw_strategy` | strategy+session 轻容器,挂 `ctx.cw_match`(显式声明,局终置 None 防跨局污染) |
 | `StrategyManager` | `cw_strategy_manager` | 自动发现:BUILTIN(`strategies/`)+ THIRD_PARTY(`plugins/currency_war_strategies/` 子目录);`STRATEGY_ID` 唯一性强校验;对标 app 插件机制(无 factory/config 间接层,`cls()` 即实例化) |
 | `DefaultCwStrategy` | `strategies/default_strategy` | 内置具现 v1(每个钩子委托既有模块函数);自定义两条路:继承 ABC 全自研 / 继承 Default 只覆盖关心的钩子 |
-| `LineStrategy` | `strategies/line_strategy` | **deprecated(ADR-0309 载体批;停用不删)**:旧生产策略 v2 A/B 臂(`strategy_id=line_v2`,回退开关——config 切回即用;C5=窗口期脚手架,清理批随删降级;删除门槛=sim A/B 验收通过即删,leader 裁定,不等实机;禁止新增功能) |
+| `LineStrategy` | `strategies/line_strategy` | **已删(ADR-0336)**:旧生产策略 v2(ADR-0309 载体批停用;删除门槛=sim A/B 验收通过即删,leader 裁定,W66 条件性通过后执行删除;回退路径=git revert 删除 commit) |
 | `DecisionV2Strategy` | `decision_v2/strategy`(注册桥 `strategies/decision_v2_strategy`) | **唯一策略载体**(ADR-0309):独立 `DefaultCwStrategy` 实现(不再继承 LineStrategy);战略层=cw_intention 意向分层锁线(update_target 写 `v3_hoard`/target_comp=COMP_LIBRARY v2 真 Comp);备战=纪律族视图(`decision_v2/discipline`:应急/boss_breaker/carry_gate/catchup/掉血三臂/位面末 ALL IN 限定/保血通道)× 演进引擎(cw_evolution 显式 CompTransaction)× 四层(候选→过滤→评分→仲裁,ADR-0290);层1 目标件源=hoard_target_set+体系卡引擎件+PLUGIN_LIBRARY;`strategy_id=decision_v2` |
 
 ## 2. 钩子清单
 
 **生命周期**:`create_session`(每局)/ `on_match_start` / `on_round_end(obs)`(默认 `performance.record`——观测驱动回路)/ `on_match_end(outcome)`。
 
-**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_prep(state, session, config)`**(备战整段计划——复合动作 RunBuyPhase 路径的决策口,返回动作列表;LineStrategy 的四象限/应急/决战窗在此,03 §3)/ **`decide_prep_action(obs, session, config)`**(备战单步——PrepDirector 环的决策口,03 §1;两个备战口并存:环走单步、复合走整段)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner`(策划事件选项,银狼命运卜者类,r104 接策略模块)(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
+**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_prep(state, session, config)`**(备战整段计划——复合动作 RunBuyPhase 路径的决策口,返回动作列表;decision_v2 的四象限/应急/决战窗在此,03 §3)/ **`decide_prep_action(obs, session, config)`**(备战单步——PrepDirector 环的决策口,03 §1;两个备战口并存:环走单步、复合走整段)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner`(策划事件选项,银狼命运卜者类,r104 接策略模块)(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
 
 **state 供给契约**:框架在调 `update_target` 前产出与生产一致的 state(shop 关闭帧 hp 覆盖 → 开 shop 读 gold/board/shop),策略不自己截图。
 

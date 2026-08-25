@@ -30,7 +30,7 @@
 - **无损购买窗口**:金低于无损窗口上限(`cw_plan.NO_LOSS_GOLD_CEILING`;1 息档内)买过渡件不损息还压缩牌库——攒息不拦无损买。
 - **连胜破息门**:连胜 ≥ `WIN_STREAK_BREAK_INTEREST` 时破息提质量维持连胜(断连胜亏 > 利息亏,ADR-0117);货币战争**无连败补偿,只计连胜**(ADR-0128)。
 - **奖励节点守卫**:必胜节点(无战斗/连胜白拿)刷牌的战斗向理由全关(`_refresh_cap` 收紧)。
-- **血量换经济边界**:血危时经济让位保血,但保留重生基数(`line_strategy._REBIRTH_FLOOR`)。
+- **血量换经济边界**:血危时经济让位保血,但保留重生基数(旧 `line_strategy._REBIRTH_FLOOR`,ADR-0336 后常量随删;decision_v2 的 emergency 地板语义见 [0313](../decisions/0313-blood-alarm-semantics-final.md))。
 
 ## 5. 压缩买链(1 费免费牌池操纵的执行语义)
 

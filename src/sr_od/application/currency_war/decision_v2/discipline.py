@@ -1,9 +1,10 @@
-"""决策框架 v2 纪律族(载体批 W35;自 line_strategy 移植+语义重接)。
+"""决策框架 v2 纪律族(载体批 W35;自旧 line_strategy 移植+语义重接,
+ADR-0336 后 line_strategy 已删,本包为唯一纪律族)。
 
 **单一源**:`.debug/temp/currency_war/cw_dev/deep_read/strategy_v4.md` 点4(掉血
 报警三臂/处置梯度时限)/点7(血线分级动作侧/位面末 ALL IN 限定)/点12(保血通道/
 奖励关三态护栏)+ 裁决终版「第三选项」(纪律族移植,locked_line 派生改意向分层
-输入——本模块**不 import** line_strategy/线库/桥池,方向输入一律是
+输入——本模块**不 import** 线库/桥池,方向输入一律是
 ``cw_intention`` 的意向态与 ``session.v3_*`` 视图)。
 
 移植清单(v1 → v2 语义重接对照,详 W35_报告):
@@ -33,7 +34,8 @@
 - **保血通道**(点12):遭遇前战力不足+战斗语义掉血趋势 → 弃息 D 保血
   (放行 refresh 搜牌),三态护栏(贴息态/守息态)由层4 interest_rule 承载。
 
-常量值镜像 line_strategy 同名初值(地板族);注册表化后两臂可故意不同(A/B)。
+常量值镜像旧 line_strategy 同名初值(地板族);注册表化后独立演进
+(旧两臂 A/B 语义随 ADR-0336 结束)。
 """
 from __future__ import annotations
 
@@ -66,7 +68,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
 
-# ===== 纯谓词族(v1 line_strategy 移植;不依赖线库/桥池) =====
+# ===== 纯谓词族(v1 移植;不依赖线库/桥池,ADR-0336 后无旧件) =====
 
 
 def star_weighted_copies(name: str, state: GameState) -> int:
@@ -174,8 +176,7 @@ def _direction_factions(session: StrategySession) -> set[str] | None:
     """方向期阵营门(v1 r350 的语义重接):意向锁定 = 意向线主/副档羁绊;
 
     无方向(未锁/弱意向/兜底)= 过渡体系阵营(仙舟/列车同行/持续伤害)。
-    A/B 窗兼容垫片:旧载体形态(``v3_intention`` 缺失且 ``locked_line``
-    已设)回退线库形态羁绊(步 5 锁迁移后删)。None = 无方向信息。
+    None = 无方向信息(旧载体垫片已随 ADR-0336 删除——生产恒走意向源)。
     """
     ist = getattr(session, 'v3_intention', None)
     if ist is not None and isinstance(ist, IntentionState) \
@@ -184,18 +185,6 @@ def _direction_factions(session: StrategySession) -> set[str] | None:
         comp = get_comp(ist.locked_comp)
         if comp is not None:
             return set(comp.form_tiers) | set(comp.sub_tiers)
-    if ist is None and getattr(session, 'locked_line', None):
-        # 旧载体垫片:锁线形态羁绊(v1 r350 同式)
-        from sr_od.application.currency_war.cw_line_library_v1 import (
-            line_of,
-        )
-        line = line_of(session.locked_line or '')
-        if line is not None:
-            form = line.p2p3_forms.get('P2', '')
-            allow = {p.rstrip('0123456789') for p in form.split('+')}
-            allow.discard('')
-            if allow:
-                return allow
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
@@ -217,14 +206,12 @@ def pair_wants(card, state: GameState,
     if session is not None and in_round_sold(card.name, state, session):
         return False
     # 方向期阵营门(仅**有方向**时辖——v1 r350 同式:无方向不过滤):
-    # 意向锁定=意向线主/副档羁绊;旧载体锁线=线形态羁绊(垫片);
-    # 有桥=过渡体系阵营。
+    # 意向锁定=意向线主/副档羁绊(旧载体 locked_line 垫片已删,
+    # ADR-0336——生产恒走意向源)。
     ist = getattr(session, 'v3_intention', None)
     has_direction = (
-        (ist is not None and isinstance(ist, IntentionState)
-         and ist.phase == 'locked' and ist.locked_comp)
-        or (ist is None and bool(getattr(session, 'locked_line', None)
-                                 or getattr(session, 'bridge_id', None))))
+        ist is not None and isinstance(ist, IntentionState)
+        and ist.phase == 'locked' and ist.locked_comp)
     allow: set[str] | None = None
     if has_direction:
         allow = _direction_factions(session)

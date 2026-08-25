@@ -814,10 +814,10 @@ def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
 def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     """生产遥测接 checks(决策项 1):对最近 N 局跑栈适配的检查集。
 
-    - 判栈(逐局):strategy_id∈{'line_v2','decision_v2'} 或开局轮
-      BuyCard reason 含 v2 词表(line/bridge_seed/engine/pair/off)
-      → v2 栈(line_v2/decision_v2:后者继承 LineStrategy,reason
-      词表与 coldstart 检查集同辖);
+    - 判栈(逐局):strategy_id∈{'line_v2'[历史,ADR-0336 已删],
+      'decision_v2'} 或开局轮 BuyCard reason 含 v2 词表
+      (line/bridge_seed/engine/pair/off) → v2 栈(reason 词表与
+      coldstart 检查集同辖);
       reason 全 'plan'/空 → default 栈(cw_plan,不辖 r368 门);
       非空未知 sid → 显式跳过(未来新栈不盲跑,审查#5);
     - **开局轮逐行全检**(审查#3:_load_decisions_rounds 的

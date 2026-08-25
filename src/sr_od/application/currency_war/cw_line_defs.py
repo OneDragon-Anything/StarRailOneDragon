@@ -1,10 +1,10 @@
 """货币战争 过渡配方/引擎阵营 常量单一源(r271 统一)。
 
 两份子代理审查(2026-08-23)共同点名的头号双源:
-- 配方四阵营(仙舟/持续伤害/列车同行/护盾)在 line_strategy
-  是函数局部 set(r268 刷门/r263b 判据 ×3 处),deploy_bench 是
-  模块 frozenset(r263b 纪律);配方基础档一边具名(_RECIPE_BASE=5)
-  一边字面;
+- 配方四阵营(仙舟/持续伤害/列车同行/护盾)在旧 line_strategy
+  (ADR-0336 已删)是函数局部 set(r268 刷门/r263b 判据 ×3 处),
+  deploy_bench 是模块 frozenset(r263b 纪律);配方基础档一边
+  具名(_RECIPE_BASE=5)一边字面;
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
 本模块 = 单一源;消费方一律 import,不再本地定义。
@@ -124,15 +124,12 @@ def classify_buy(card, state) -> str:
 def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int | None:
     """按 target 语境的核心在场数(账本 core_count 单一口径;③ 攒数据地基)。
 
-    核心定义三源(线库 core_cards / 桥池 fixed+core / 仙舟三人组
-    _CORE_TRIO)按 target 路由:
-    - ``'v2:<line_id>'``(锁线)→ LineV1.core_cards 在场数;
+    核心定义两源(桥池 fixed+core / 仙舟三人组 _CORE_TRIO)按 target
+    路由(旧 v1 线库 core_cards 随 ADR-0336 删除——decision_v2 的
+    target 是 COMP_LIBRARY v2 套名,不消费线库):
     - 桥 id(先查 P1 池,再 P2 池)→ fixed+core 在场数;
-    - **已知线但 core_cards=[]**(dot_fallback 兜底线,不锁信号)
-      → ``None``(无核心概念——别退三人组:审查#1,dot 桶攒
-      三人组计数=③ 源头噪声);
     - 空 target → _CORE_TRIO(旧缺省口径,兼容 r358 语义);
-    - 查不到线的 target(理论态)→ 同退三人组。
+    - 查不到桥的 target(理论态/COMP 名)→ 同退三人组。
 
     消费方:sim 账本 core_count、Δ池扩核心键先验(按线分桶)。
     跨线不可比:核心定义随 target 切换(桥名单→线 carry),
@@ -141,7 +138,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     if not target:
         return core_trio_count(board_names)
     line_id = target[3:] if target.startswith('v2:') else target   # 'v2:' 是 3 字符(off-by-one 曾致 izi_train 查空)
-    # 先桥池(P1+P2;直接属性访问——审查#3:getattr 链会在改名时
+    # 桥池(P1+P2;直接属性访问——审查#3:getattr 链会在改名时
     # 静默错路由,AttributeError 即暴露)
     from sr_od.application.currency_war.cw_bridge_pool import (
         BRIDGE_POOL,
@@ -151,16 +148,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
         if combo.bridge_id == line_id:
             names = set(combo.fixed + combo.core)
             return sum(1 for n in names if n in board_names)
-    # 再线库(core_cards;已知线但空 → None:无核心概念)
-    from sr_od.application.currency_war.cw_line_library_v1 import (
-        line_of,
-    )
-    line = line_of(line_id)
-    if line is not None:
-        if not line.core_cards:
-            return None
-        return sum(1 for c in line.core_cards if c in board_names)
-    # 未知 target(理论态)→ 退三人组缺省,不 crash
+    # 未知 target(理论态/COMP 名)→ 退三人组缺省,不 crash
     return core_trio_count(board_names)
 
 

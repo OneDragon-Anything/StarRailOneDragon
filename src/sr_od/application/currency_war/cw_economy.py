@@ -43,7 +43,8 @@ def streak_gold(streak: int) -> int:
     """连胜奖励金(真值源=奖励弹窗 VLM 判读 2026-08-23,r305;表化 ADR-0262)。
 
     查 STREAK_GOLD_TABLE,越界(连胜 6+)取表尾。
-    单一源:sim 收入模型(cw_sim)与决策 EV(line_strategy r307)
+    单一源:sim 收入模型(cw_sim)与决策 EV(旧 line_strategy r307,
+    ADR-0336 已删;现 decision_v2 经 sim/plan 共用)
     都 import 此函数,防双表漂移。"""
     idx = max(0, min(streak, len(STREAK_GOLD_TABLE) - 1))
     return STREAK_GOLD_TABLE[idx]

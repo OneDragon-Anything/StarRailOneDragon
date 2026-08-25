@@ -1,4 +1,5 @@
-"""决策回放 harness(r98 建立;r359 升级支持 LineStrategy/v2 态忠实还原)。
+"""决策回放 harness(r98 建立;r359 升级支持 v2 态忠实还原;ADR-0336
+删除 LineStrategy 后仅支持 decision_v2/default 两栈)。
 
 用途:策略改动后,对**历史局的 GameState 快照**重放 decide_prep,秒级看到
 「这个改动动了哪些决策、方向对不对」——验证成本从实跑 20-40min 压到秒级,
@@ -8,9 +9,9 @@
 
 用法:
   uv run python -m sr_od.application.currency_war.cw_replay \
-      [--run ID] [--rounds N] [--diff] [--strategy line|default]
+      [--run ID] [--rounds N] [--diff] [--strategy decision_v2|default]
   --diff:与当时实跑 actions 对比(改动效果 = 与基线的分歧行)
-  --strategy line(默认,现行生产 v2)/ default(旧策略)
+  --strategy decision_v2(默认,现行生产 v2)/ default(内置 v1 打法)
 
 ⚠️ 结论边界(必须自持,防过度解读):
 - **分歧 ≠ 变好/变差,只 = 行为漂移**。obs 序列是当时策略产生的,
@@ -21,7 +22,7 @@
 - 低置信回合(hp_readable=False 等)的对比结论打 ⚠(兜底毒值)。
 
 LIMITS(诚实边界):
-- 旧记录(r359 前)无 sess_v2_state → line 重放的应急/追赶 latch 从
+- 旧记录(decision_v2 前)无 v3_* 态 → 重放的意向/演进 latch 从
   默认态演化(增量演化式),分支可能与实跑不同——判读聚焦购买/升级
   动作族,分支级分歧看新采集的局。
 - target/commit 层不重算(target 用快照当时值);deployed 按快照
@@ -149,21 +150,6 @@ def _restore_session(strat, d: dict, sess):
         if not isinstance(sess.commit_signals, CommitSignals):
             sess.commit_signals = CommitSignals()
         sess.commit_signals.scores = {k: float(v) for k, v in _cs.items()}
-    # v2(LineStrategy)
-    sess.locked_line = d.get('v2_locked_line') or None
-    sess.bridge_id = d.get('v2_bridge') or None
-    _v2s = d.get('sess_v2_state')
-    if _v2s and len(_v2s) >= 8:
-        # r359 起记录:相位机元组忠实还原(应急/追赶 latch)
-        # r363b(review D-2):== 与 initial_state() 动态对齐——状态机
-        # 扩位时宁可不还原(走默认演化)也不静默截断。
-        import contextlib
-        with contextlib.suppress(TypeError, ValueError):
-            from sr_od.application.currency_war import cw_phase_machine
-            if len(_v2s) == len(cw_phase_machine.initial_state()):
-                sess.v2_state = (str(_v2s[0]), bool(_v2s[1]), bool(_v2s[2]),
-                                 int(_v2s[3]), int(_v2s[4]), int(_v2s[5]),
-                                 int(_v2s[6]), int(_v2s[7]))
 
 
 def main() -> None:
@@ -172,7 +158,7 @@ def main() -> None:
     run_id = ''
     rounds = 0
     diff = False
-    strategy = 'line'
+    strategy = 'decision_v2'
     i = 0
     while i < len(args):
         if args[i] == '--run':
@@ -190,11 +176,11 @@ def main() -> None:
         else:
             i += 1
 
-    if strategy == 'line':
-        from sr_od.application.currency_war.strategies.line_strategy import (
-            LineStrategy,
+    if strategy == 'decision_v2':
+        from sr_od.application.currency_war.decision_v2.strategy import (
+            DecisionV2Strategy,
         )
-        strat = LineStrategy()
+        strat = DecisionV2Strategy()
         sess = strat.create_session(_Cfg())
     else:
         from sr_od.application.currency_war.strategies.default_strategy import (

@@ -65,7 +65,8 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     '列车': ('列车同行',),               # 4 列车
     '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
     # r373(五局反思 25e3838d,局53 铁证):hunt3/dot_belog 桥此前不在
-    # line_strategy._BRIDGE_FW_MAP → transition_framework='' → deploy
+    # 旧 line_strategy._BRIDGE_FW_MAP(ADR-0336 已删)→
+    # transition_framework='' → deploy
     # target 集/框架豁免全空 → 桥件+配方核心只能走散牌通道与 8 阵营
     # 散板同序竞争,板满即永久滞留 bench(「买对的人没上场」根因)。
     # 狼狩/贝洛伯格 = 桥池 engine_bonds 的目标羁绊(不入 FRAMEWORKS

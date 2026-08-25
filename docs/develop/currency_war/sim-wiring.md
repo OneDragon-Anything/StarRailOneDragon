@@ -15,7 +15,7 @@
 > 新增 action_log → 37→39。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
-> 栈(LineStrategy)影响面小;P3 = 随依赖结构建设顺带接入。
+> 栈(decision_v2)影响面小;P3 = 随依赖结构建设顺带接入。
 
 ## 一、已接线(18;sim 语义 = 生产语义或其 P1 域内真值)
 
@@ -36,7 +36,7 @@
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
 | bench_full_flag | 恒 None → `bench_is_full()` 走 BENCH_CAPACITY=9 计数兜底 | OCR「备战席已满」警告 | 已接(兜底口径=生产 OCR 缺失路径同源;ADR-0271 后计数为真备战数) | — |
 | xp_progress | 买牌/买经验累 XP_PER_BUY,轮末升级按 XP_TO_NEXT_LEVEL 清零结转(ADR-0286) | XP 条 OCR;economy clicks_to_next_level/追级门 | 已接(ADR-0286 真值化——旧恒 None,clicks_to_next_level 恒按 0 进度估) | — |
-| refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表(ADR-0286) | 商店开态概率条 OCR(r77 轮岗:每备战阶段随机翻倍一档);line_strategy _sample_cost 实读消费 | 已接(ADR-0286 轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
+| refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表(ADR-0286) | 商店开态概率条 OCR(r77 轮岗:每备战阶段随机翻倍一档);decision_v2 成本采样实读消费 | 已接(ADR-0286 轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
 | deploy_cap | 宝钻通道参数化 diamond_cap_prob(每备战期以此概率 +1 宝钻,cap=level+宝钻数;默认 0 = 通道建好不注入,与旧树同态) | read_deploy_cap_debounced 防抖真值(cap<level/\|cap−level\|>2 重读一帧仍异拒 None);max_units() 优先消费、level 兜底 | 已接(通道;频率待实机语料统计后标定,ADR-0286) | P3 |
 | action_log | cw_state.simulate 对动作 v2(SellDeployed/SwapDeploy/CompTransaction)逐条写 applied/rejected 记录;cw_sim 转录进轮账本 actions、checks(comp_tx_atomicity)消费 | 生产侧无对应(账本走遥测 actions 流;拒绝可见性 invariant 的 sim 侧载体) | 已接(契约包 C1 步2;策略不读——决策禁依赖账本) | — |
 
@@ -53,7 +53,7 @@
 | active_env | 恒 "" | 已选投资环境(简报);ENV_COMP_AFFINITY | 未接(环境选择层未建) | P2 |
 | enemy_affixes | 恒 [] | 简报词缀;mechanics_fit | 未接(简报层未建) | P2 |
 | plane_bosses | 恒 [] | 简报 3 位面 boss;boss_fit/select_comp | 未接(简报层未建) | P2 |
-| dual_track_phase | 恒 False(LineStrategy 经 session 位消费) | default 栈写 state 位;plan/prefilter 消费 | 未接(LineStrategy 栈无 state 位消费,接线随栈归一) | P3 |
+| dual_track_phase | 恒 False(decision_v2 经 session 位消费) | default 栈写 state 位;plan/prefilter 消费 | 未接(decision_v2 栈无 state 位消费,接线随栈归一) | P3 |
 | focus_factions | 恒 None | update_target 写入(ADR-0209);evaluate 消费 | 未接(同上) | P3 |
 | enemy_difficulty | 恒 None | 左上难度 OCR(常空);cw_events 选卡难度罚 | 未接(生产亦常空,决策安全降级) | P3 |
 

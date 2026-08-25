@@ -448,13 +448,12 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
 
 ### 5.4 应急模式
 
-> **落地现状(Phase A 简版,r216;as-built)**:触发/退出均为**绝对 HP 档**——
-> `line_strategy._EMERGENCY_HP`(触发:`state.hp ≤ _EMERGENCY_HP` 喂 E3;
-> 退出:恢复即喂 E8_restart,**无 HEAL_HYSTERESIS/EMERGENCY_EXIT_HOLD
-> 保持计数**——比值档触发与滞回退出属 Phase B 蓝图,未落地);追赶 = 状态机
-> cat 位(E5/E6 按 pop_low),人口基线 `_POP_BASELINE` + 等级门
-> `_CATCHUP_MIN_LEVEL`(level 以下的人口落后是常态非追赶,r232)。重生基数
-> 与利息地板见 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR`。
+> **落地现状(Phase A 简版,r216;as-built;ADR-0336 更新)**:触发/退出均为**绝对 HP 档**——
+> `decision_v2/registry.emergency_hp`(触发:状态层应急过滤;旧 `line_strategy._EMERGENCY_HP`
+> 随 ADR-0336 删除,语义由 decision_v2 纪律族 emergency 承载);
+> 追赶 = 等级门 `registry.catchup_min_level`/`pop_baseline`(旧 `_POP_BASELINE`/
+> `_CATCHUP_MIN_LEVEL` 随删)。重生基数与利息地板语义见 decision_v2 纪律族
+> (旧 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR` 随删)。
 > 下方设计文本保留为 Phase B 完整蓝图(ADR-0227 两阶段裁定)。
 
 ```
@@ -605,24 +604,26 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
 
 **关键发现(代码审计)**:现有 `CwStrategy` 插件骨架(ABC 12 钩子+
 StrategySession+Manager+prep 执行环)与 redesign 正交——
-**redesign 就是一个新的 CwStrategy 具现**(如 `LineStrategy`),
-不推翻框架。钩子映射:锁线→update_target;决策循环→decide_prep;
+**redesign 就是一个新的 CwStrategy 具现**(如 `DecisionV2Strategy`;
+旧 `LineStrategy` 具现随 ADR-0336 删除),不推翻框架。钩子映射:锁线→
+update_target;决策循环→decide_prep;
 装备公式→decide_supply;M13 遭遇权衡→decide_encounter(已有三分支
 雏形);idol_plan→decide_megastar(现 idx=0 桩,填实);
 投资优先序→decide_invest(已有);累积态→StrategySession 扩展字段
 (对齐 §5.5 清单)。
 
-| 现有模块 | 处置(r204;**as-built 更新 2026-08-24**) |
+| 现有模块 | 处置(r204;**as-built 更新 2026-08-24/ADR-0336**) |
 |---|---|
 | CwStrategy ABC / StrategySession / Manager | **保留**(插件骨架;session 扩展累积态字段) |
 | prep_director / prep_actions(执行环) | **保留**(接入前过 review——带「未验证」头) |
 | cw_shop_odds(概率/超几何期望)/cw_investments(策略台账)/cw_state(机制常量) | **保留复用**(roll_affordable 金计价门=D 决策数学核,target 档主动 D 复用) |
-| cw_economy / cw_plan / cw_evaluate | **部分保留复用**(as-built 修正:纯函数 `streak_gold`/`xp_click_cost` 被 LineStrategy 复用;plan/evaluate 的旧策略路径随 default 栈保留 fallback,LineStrategy 不消费) |
+| cw_economy / cw_plan / cw_evaluate | **部分保留复用**(as-built 修正:纯函数 `streak_gold`/`xp_click_cost` 被 decision_v2 复用;plan/evaluate 的旧策略路径随 default 栈保留 fallback,decision_v2 不消费) |
 | cw_comps / cw_transition | **替换**(→线库+桥线池 r207;as-built:COMP_LIBRARY/双轨字段仍由 cw_comps/cw_transition 承载,替换的是「选线决策」入口) |
 | cw_horizon(DP)/cw_first_passage | **姿态源退役,分配能力保留升级路径**(r205 精确化:DP 的板强/掉血先验被战力表替代[手造映射失真,涌现验证未达成];但 DP 的日程经济分配能力无继承者——初版用规则式分配[50金息律/分层补强/应急基数,用户口述本身是规则式]覆盖;**升级路径**:实跑发现规则式分配系统性次优时,DP 状态机重启、板强项接战力表输出=混合架构——代码保留不废) |
 | cw_run_allocator(跨局 Thompson) | **保留**(跨局层,本方案未覆盖——见 §10 补充) |
 | cw_telemetry | 扩展 schema(§6 原有清单;**Phase A 前置**——门槛⓪/① 回放需要形态键字段,r13 标注) |
-| **(新增落地)`cw_power_table`/`cw_line_library_v1`/`cw_line_defs`/`cw_bridge_pool`/`cw_signal_lock`/`cw_phase_machine`/`strategies/line_strategy`** | **Phase A 落地产物**(2026-08-21 起);职责地图见 [strategy/README §模块地图](strategy/README.md) |
+| **(已删)`cw_line_library_v1`/`cw_signal_lock`/`cw_phase_machine`/`strategies/line_strategy`** | **随 LineStrategy 删除(ADR-0336)**:旧策略 v2 落地产物;职责已由 decision_v2 族(cw_intention 意向/COMP_LIBRARY v2/纪律族)承接 |
+| **(保留)`cw_power_table`/`cw_line_defs`/`cw_bridge_pool`** | **Phase A 落地产物**(2026-08-21 起;decision_v2 继续消费);职责地图见 [strategy/README §模块地图](strategy/README.md) |
 | **(新增落地)`cw_recipe`** | **过渡配方一等公民模型**(r100):P1 双轨期 plan/deploy 拿配方伪 comp,「配方完成度即 P1 胜利条件」(ADR-0225/0243) |
 | **(新增落地)sim/回放基建:`cw_sim`/`cw_sim_checks`/`cw_delta_pool_data`/`cw_replay`/`cw_match_recorder`/`cw_plan_replay_audit`** | **验证主链**(2026-08-24 起):sim 批量(真代码层同源+校准层+实机 Δ 池,ADR-0218/0242)→ 回放对拍 → 实机最后一步;不进生产执行链 |
 
@@ -810,20 +811,20 @@ ROLL_FAIL_N + visited)
 | 设计常量 | 语义 | 出处 | 落地常量(Phase A as-built) |
 |---|---|---|---|
 | CONSERVATIVE_FACTOR | 作者-试用折扣(**按驱动型分层三档**,受击流最高;r208 A3) | §2/Step0 | `cw_power_table.CONSERVATIVE_FACTOR_REACTIVE/_BURST/_ACTION` |
-| MISS_STREAK_M / PASS_STREAK_M | 滞回进入/退出计数(退出含冷却;r208 合并 MODE_EXIT_COOLDOWN) | §5.5 | `cw_phase_machine` 同名 ✓ |
+| MISS_STREAK_M / PASS_STREAK_M | 滞回进入/退出计数(退出含冷却;r208 合并 MODE_EXIT_COOLDOWN) | §5.5 | (旧 `cw_phase_machine` 随 ADR-0336 删;模式判定现由 decision_v2 的 v3_mode 承载) |
 | COARSE_TOLERANCE | 粗证据折算 miss 权重(r208:并入 miss 计数,非独立装置) | §4.1 | (并入 miss 计数,无独立常量) |
-| PIVOT_GUARD | 换线守卫(r208 合并 BAN_K+COOLDOWN:期内禁再换线+禁回购) | §5.5 | `cw_phase_machine.PIVOT_GUARD_N` |
-| DANGER_ROUNDS | 应急危险档(可承受败局数) | §5.4 | **简版改绝对 HP 档**:`line_strategy._EMERGENCY_HP`(r216) |
+| PIVOT_GUARD | 换线守卫(r208 合并 BAN_K+COOLDOWN:期内禁再换线+禁回购) | §5.5 | (旧 `cw_phase_machine.PIVOT_GUARD_N` 随删;意向撤销析取两出口见 cw_intention,ADR-0319) |
+| DANGER_ROUNDS | 应急危险档(可承受败局数) | §5.4 | **简版改绝对 HP 档**:`decision_v2/registry.emergency_hp`(旧 `line_strategy._EMERGENCY_HP` 随 ADR-0336 删) |
 | HEAL_HYSTERESIS | 应急退出安全档(存量档位) | §5.4 | **未落地**(E8 恢复即切,无滞回;Phase B 蓝图) |
 | EMERGENCY_EXIT_HOLD | 应急退出保持计数(战斗节点) | §5.4 | **未落地**(同上) |
-| CATCHUP_TOLERANCE | 追赶退出人口容差(带回滞;追赶期=升人口置顶一句话版) | §5.4 | `line_strategy._POP_BASELINE`+`_CATCHUP_MIN_LEVEL`(等级门版,r232) |
-| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | `line_strategy._INTEREST_FLOOR`/`_WAR_FLOOR`(r282 20 平台已删,ADR-0270) |
+| CATCHUP_TOLERANCE | 追赶退出人口容差(带回滞;追赶期=升人口置顶一句话版) | §5.4 | `decision_v2/registry.pop_baseline`+`catchup_min_level`(等级门版 r232;旧 line_strategy 常量随 ADR-0336 删) |
+| INTEREST_FLOOR | 利息地板(金币下限) | §4.2 与 §5.2 | (旧 `line_strategy._INTEREST_FLOOR`/`_WAR_FLOOR` 随删;r282 20 平台已删,ADR-0270) |
 | AB_MIN_GAMES | AB 对照最小局数 | §8 | (未落独立常量;AB 纪律按验证工作台执行) |
 | DURATION_TOLERANCE | 局均时长容差 | §8 | (未落地) |
 | CATCHUP_FLOOR_RELIEF | 追赶期利息地板下浮系数(矩阵版砍,简化保留档) | §5.4 | 未落地(Phase B) |
 | EXPLORE_REPEAT_MIN | 遥测正证据复现下限(三层置信的条目级) | §4.1/§11 | 未落地(Phase B) |
 | NEG_EVIDENCE_MIN | 遥测否决的最小尝试数(条目级,只降置信) | §4.1 | 未落地(Phase B) |
 | VETO_REVIVE_PASS | 否决撤销:重测队列连续通过次数 | §4.1 | 未落地(Phase B v2+) |
-| 信号阈值组 | 各层信号置信下限/累计判据(含感知漏检校正;r208 A8) | §4.4 | `cw_signal_lock`(2 层,A)/Phase B 全层 |
+| 信号阈值组 | 各层信号置信下限/累计判据(含感知漏检校正;r208 A8) | §4.4 | (旧 `cw_signal_lock` 随 ADR-0336 删;信号分层现由 cw_intention 承载)/Phase B 全层 |
 | 回退阈值组 | 三级回退各级篇数阈值 | §4.1 | `cw_power_table.POWER_EXACT_MIN`/`POWER_COARSE_MIN` 等 |
 | (r213 补)D 卡失败计数+已访问线集合 | 降级路径依赖装置 | §5.5 | `cw_phase_machine.ROLL_FAIL_N` + visited 位(`LINE_BITS`) |

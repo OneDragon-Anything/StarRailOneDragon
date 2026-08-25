@@ -416,16 +416,16 @@ class BuyShopCards(SrOperation):
                 'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
                 'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
-                # r226 策略 v2 字段(正式字段直接读,B1 修正:
-                # default 局 v2_state=None → v2_mode 落空串,
-                # 「v2_* 全空=default」判读规则成立)
+                # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
+                # v2_* 恒空串/None,字段保留作历史 schema 兼容;
+                # decision_v2 的模式/意向走 v3_* 字段)
                 'strategy_id': getattr(config, 'strategy_id', 'default'),
                 'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
                 'v2_locked_line': _sess.locked_line or '',
                 'v2_bridge': _sess.bridge_id or '',
                 # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
-                # ——应急/追赶 latch 决定 decide_prep 走哪条分支,
-                # 缺它重放系统性偏差(同 r101 当年补 sess_* 的理由)。
+                # (LineStrategy 时代字段;ADR-0336 后恒 None,保留
+                # 兼容历史回放)
                 'sess_v2_state': list(_sess.v2_state)
                 if getattr(_sess, 'v2_state', None) else None,
             }

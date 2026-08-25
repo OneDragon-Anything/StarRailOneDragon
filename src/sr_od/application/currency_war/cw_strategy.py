@@ -250,28 +250,30 @@ class StrategySession:
     last_candidate_scores: dict[str, float] = field(default_factory=dict)   # 选线轮的 top-3 实际排序分(r6 遥测补)
     last_candidate_scores_round: int = -1              # 分数轮次戳(shop 侧判陈旧清空)
     _supply_refresh_used: bool = False                 # 补给刷新 1 次已用(r2#2 跨实例)
-    # —— 策略 v2(LineStrategy)扩展态——正式字段(评审 B-bg:动态
-    # setattr 会在「session 新建而 on_match_start 未走」路径崩;
-    # 且 asdict/telemetry 看不见动态属性——升正式,r3 review④ 同判例)——
+    # —— 策略 v2 扩展态——正式字段(评审 B-bg:动态 setattr 会在
+    # 「session 新建而 on_match_start 未走」路径崩;且 asdict/telemetry
+    # 看不见动态属性——升正式,r3 review④ 同判例)——
     # 默认值 None(评审 B1:default 局遥测 v2_* 应全空可区分——
     # 不能用元组默认,否则 default 呈现假 economy 污染 AB 对拍)
+    # ⚠️ ADR-0336:LineStrategy 已删——v2_state/locked_line/bridge_id/
+    # v2_prev_hp 是 v1 遗留字段,decision_v2 不写(恒 None/空),保留
+    # 仅作遥测 schema 与历史回放兼容;v2_round_*/v2_seed_bought/
+    # v2_ever_full_interest/v2_remedy_used 被 decision_v2 消费(保留)。
     v2_state: tuple | None = None
-    # cw_phase_machine 状态元组(None=default 未初始化;
-    # LineStrategy.on_match_start 用 initial_state() 规范化)
-    locked_line: str | None = None                     # 锁定线 id(None=未锁)
-    bridge_id: str | None = None                       # 当前桥线 id(None=无)
+    # cw_phase_machine 状态元组(None=未初始化;v1 遗留,ADR-0336)
+    locked_line: str | None = None                     # 锁定线 id(None=未锁;v1 遗留)
+    bridge_id: str | None = None                       # 当前桥线 id(None=无;v1 遗留)
     # r406(ADR-0266,压测经济批 [12]/①残差):本局**曾达满息**(时点金≥50)
-    # 标志——追级(LevelUp)资格的息引擎前置判据。LineStrategy.decide_prep
+    # 标志——追级(LevelUp)资格的息引擎前置判据。decision_v2.decide_prep
     # 每次入口采样 state.gold≥50 时置 True(局内单调,不清零;重启丢 session
-    # 语义与 v2_state 同,重放/续跑路径靠本字段 False 保守)。None 安全:
+    # 重放/续跑路径靠本字段 False 保守)。None 安全:
     # getattr 兜底 False(旧 session 反序列化)。
     v2_ever_full_interest: bool = False
-    # r246:普通战斗败检测的上一轮 HP(r246 P2 三连败实锤——
-    # hp_after 降幅 ≥10 = 节点实际打输,喂 E1_miss 攒滞回)
+    # r246:普通战斗败检测的上一轮 HP(v1 遗留,ADR-0336 后无人写)
     v2_prev_hp: int | None = None
     # r408(ADR-0267,F1 振荡):同轮已买集(round-scoped)——
-    # key=(plane, round_num),轮变更时由 LineStrategy.decide_prep 重置;
-    # 卖通道对集内卡名禁卖(3合1 让位豁免见 line_strategy._round_sell_blocked)。
+    # key=(plane, round_num),轮变更时由 decision_v2.decide_prep 重置;
+    # 卖通道对集内卡名禁卖(3合1 让位豁免见 decision_v2.discipline)。
     # 重启/重放丢 session → 空集保守(只失去互斥,不引入新行为)。
     v2_round_key: tuple | None = None
     v2_round_bought: set[str] = field(default_factory=set)
@@ -280,7 +282,7 @@ class StrategySession:
     v2_round_sold: set[str] = field(default_factory=set)
     # ADR-0289 §5 裁决(红项 127/300,ADR-0294 件1):engine_seed
     # 购入轮登记——char_id → ((plane, round_num), 同轮份数);卖通道
-    # ≤2 轮年龄豁免(line_strategy._seed_age_blocked)的单一数据源。
+    # ≤2 轮年龄豁免(decision_v2.discipline 种子年龄)的单一数据源。
     # 同轮 ≥2 份=3合1 素材语境豁免(镜像 check_engine_seed_not_
     # resold);旧 session 反序列化缺字段 → 空 dict 保守(只失去豁免)。
     v2_seed_bought: dict[str, tuple[tuple[int, int], int]] = \

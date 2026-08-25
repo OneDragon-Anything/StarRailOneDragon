@@ -1,8 +1,9 @@
 """货币战争 P1 全流程模拟器(公共测试基建)。
 
 诚实性分层(哪些是真机制,哪些是校准模拟——每层可独立替换):
-- **真代码层**:策略决策(`LineStrategy.update_target` + `decide_prep`,
-  生产逻辑直接跑)、发牌概率(`cw_shop_odds.REFRESH_PROB`,游戏内
+- **真代码层**:策略决策(`DecisionV2Strategy.update_target` + `decide_prep`,
+  生产逻辑直接跑;旧 `LineStrategy` 已删,ADR-0336)、发牌概率
+  (`cw_shop_odds.REFRESH_PROB`,游戏内
   OCR 权威表)、有限牌池(`POOL_COPIES_PER_CARD` 27/27/9/9/9,
   买走即减/卖出回池)、角色注册表(`CHARACTERS`)、升级 XP 表
   (`XP_TO_NEXT_LEVEL` + 买牌 4XP)。
@@ -731,31 +732,24 @@ def node_delta(node: str, round_num: int, dir_round: int,
 
 
 def _direction_established(session: StrategySession) -> bool:
-    """方向判据 = 策略自身认领(锁线/桥/意向锁定),与遥测 target 字段一致。
+    """方向判据 = 策略自身认领(意向锁定),与遥测 target 字段一致。
 
-    W35 载体批:decision_v2 的方向=``v3_intention`` 意向分层锁定(裁决
-    「locked_line 派生改意向分层输入」);旧臂(line_v2)仍读 locked_line/
-    bridge_id——双注册 A/B 两臂同判据覆盖。
+    ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
+    ``session.v3_intention`` 意向分层锁定(旧臂 line_v2 的
+    locked_line/bridge_id 读取随 ADR-0336 删除)。
     """
-    if session.locked_line or session.bridge_id:
-        return True
     ist = getattr(session, 'v3_intention', None)
     return bool(ist is not None and getattr(ist, 'phase', '') == 'locked'
                 and getattr(ist, 'locked_comp', ''))
 
 
 def _target_comp_label(session: StrategySession) -> str:
-    """账本 ``target_comp`` 字段(W43 leader 裁决 3):v2 锁线/桥 → v3 意向。
+    """账本 ``target_comp`` 字段(W43 leader 裁决 3):v3 意向。
 
     decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
-    ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名)——旧口径
-    恒空让 decisions.jsonl / comp_tag 对新栈失去判读价值(W43 §3 遥测
-    缺口)。优先级:v2 字段非空优先(旧臂语义不变),空则回退 v3 意向名。
+    ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
+    字段回退随 ADR-0336 删除)。
     """
-    v2 = getattr(session, 'locked_line', None) \
-        or getattr(session, 'bridge_id', None)
-    if v2:
-        return v2
     ist = getattr(session, 'v3_intention', None)
     return (getattr(ist, 'locked_comp', '') or '') if ist is not None else ''
 
@@ -782,8 +776,8 @@ def _board_counts_of(deployed) -> dict[str, int]:
     """board 全集计数(ADR-0312,W50 口径统一)。
 
     **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
-    旧「主阵营逐件累加」口径已废:state.board 消费方(line_strategy
-    recipe 门/在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
+    旧「主阵营逐件累加」口径已废:state.board 消费方(recipe 门/
+    在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
     星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
     分叉(W49 Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
@@ -928,13 +922,14 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
                 pool: str | Path = 'auto',
-                diamond_cap_prob: float = 0.0) -> SimResult:
+                diamond_cap_prob: float = 0.0,
+                config=None) -> SimResult:
     """单局 P1 模拟(决策跑真策略代码)。
 
     :param seed: 随机种子(同 seed 同局,可复现——**须同池指纹**,
         见 ``pool``;SimResult.pool_fingerprint 记录本局所用池)
     :param use_refresh: False 时剔除 RefreshShop 动作(A/B 对照用)
-    :param strategy: 注入策略(默认 LineStrategy;测试可换桩)
+    :param strategy: 注入策略(默认 DecisionV2Strategy;测试可换桩)
     :param session: 注入会话(默认新建;跨局复用场景可传)
     :param pool: Δ 池三态(⓪):'auto'(生产 replay,缺源 raise)/
         'snapshot'(主仓提交快照,CI/跨机基准)/'fallback'(显式
@@ -943,9 +938,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     :param diamond_cap_prob: 财富宝钻获取通道(ADR-0286/批㉔ F4):每备战期
         以此概率获得 1 颗财富宝钻(cap = level + 宝钻数,可叠加)。**注入频率
         待实机语料统计,默认 0 = 通道建好但不注入**(baseline 与旧树可配对)。
+    :param config: 策略配置桩(默认 None)。decision_v2 栈不读 config;
+        A/B 对照臂 default 栈(DefaultCwStrategy)需要
+        ``faction_priority``/``character_priority`` 等字段——对照
+        runner 传 SimpleNamespace 桩(ADR-0336 对照臂方案)。
     """
-    from sr_od.application.currency_war.strategies.line_strategy import (
-        LineStrategy,
+    from sr_od.application.currency_war.decision_v2.strategy import (
+        DecisionV2Strategy,
     )
     pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
@@ -960,7 +959,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'sim 牌池被费用截断(4/5 费角色缺失)——ADR-0272 禁止;'
             '检查 cw_sim._Pool 构造')
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
-    strat = strategy or LineStrategy()
+    strat = strategy or DecisionV2Strategy()
     st = GameState()
     st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
     # bench 槽位表(ADR-0316):GameState() 已 pad 9 空槽,勿重置为
@@ -1056,8 +1055,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
         # 从 session 现读(生产语义:买后 update_target 已刷新)。
         for _seg in range(8):
-            strat.update_target(st, sess, None)
-            acts = strat.decide_prep(st, sess, None)
+            strat.update_target(st, sess, config)
+            acts = strat.decide_prep(st, sess, config)
             if not use_refresh:
                 acts = [a for a in acts
                         if not isinstance(a, RefreshShop)]
@@ -1409,9 +1408,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         res.hp_trail.append(st.hp)
         res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
         # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
-        # 按 target 语境路由 core_count_for——③ 攒数据地基:线库
-        # core_cards/桥池 fixed+core/三人组单一口径,旧 core_trio_
-        # count 绑死仙舟非仙舟线局恒 0,审查二轮#8)
+        # 按 target 语境路由 core_count_for——③ 攒数据地基:
+        # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
+        # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
+        # 线局恒 0,审查二轮#8)
         _depth = _deployable_depth(st)
         res.depth_trail.append(_depth)
         # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
@@ -1522,8 +1522,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # target 路由;known-line-no-core=None)。**此前的
                 # 账本批次是旧三人组口径,聚合端按 ledger_semantics
                 # 过滤**(manifest 键;审查#2:口径混桶=③ 噪声)
+                # ADR-0336:target 用 v3 意向名(旧 v1 字段已删)
                 'core_count': core_count_for(
-                    sess.locked_line or sess.bridge_id or '',
+                    _target_comp_label(sess),
                     {d.char_id for d in (st.deployed or [])
                      if getattr(d, 'char_id', '')}),
                 # deployed 代理名单(审查#5:tiers sim 行可渲染
@@ -1563,8 +1564,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             break
     res.final_hp = st.hp
     res.level = st.level
-    res.locked_line = sess.locked_line
-    res.bridge_id = sess.bridge_id
+    # ADR-0336:locked_line/bridge_id 字段保留(输出结构兼容),
+    # 赋值取 v3 意向锁定名(v1 线库字段已删;无锁定=None)
+    res.locked_line = _target_comp_label(sess) or None
+    res.bridge_id = None
     # ADR-0284:单局披露(幻影再买/池地板;真批次双 0)
     res.phantom_rebuys = sum(
         (row.get('sim') or {}).get('phantom_rebuys', 0)
