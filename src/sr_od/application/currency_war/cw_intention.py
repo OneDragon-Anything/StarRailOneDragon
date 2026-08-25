@@ -136,6 +136,20 @@ class IntentionState:
     phase: str = 'unlocked'            # 'unlocked' | 'locked' | 'weak'
     locked_comp: str = ''              # 锁定线(COMP_LIBRARY 套名)
     p1_pair: tuple[str, ...] = ()      # P1 配方锁:体系对(过渡体系键;P2+ 恒空)
+    """**P1 锁定目标数据形态(ADR-0357;显式可读,约束基准契约)**:
+
+    - 读口 = ``session.v3_intention.p1_pair``——四体系键的二元组,按
+      ``_P1_PAIR_PREF`` 序规整,非空即「P1 锁定帧目标=该体系对」;
+      空元组=空窗期(未锁);P2+ 恒空(P2+ 锁定目标=``locked_comp``)。
+    - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
+      (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
+      (与 ``cw_sim._engines_count`` 同口径)。
+    - 遥测:``cw_telemetry.serialize_intention`` 字段全量序列化自动
+      携带(不隐式——单帧锁断言 p1_pair 落 decisions 行,见 W145 测试)。
+    - **后续「通道约束批」(W143 补充判读:决策通道两面孔按锁定目标约束/
+      末轮禁用)以本字段为约束基准**——opportunistic/bond_fallback 通道
+      的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp。
+    """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
