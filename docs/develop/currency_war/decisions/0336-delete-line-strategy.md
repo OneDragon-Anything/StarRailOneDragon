@@ -1,6 +1,6 @@
 # 0336 - 旧策略栈删除:line_strategy + 配套模块
 
-- **Status**: accepted(2026-08-25;ADR-0310 步 5 锁迁移清偿;删除门槛 W66 条件性通过 + W67 no_same 归零后执行)
+- **Status**: accepted(2026-08-25;ADR-0310 步 5 锁迁移清偿;删除门槛 W66 条件性通过 + W67 no_same 归零后执行;AD8 对抗后维持,附四条件见 Consequences 末)
 - **Context**:ADR-0309/0310 载体批后 decision_v2 为唯一策略载体,旧 `LineStrategy`(line_v2)停用不删作 A/B 对照臂与回退开关。删除门槛(sim A/B 验收通过即删,leader 裁定,不等实机)经 W66 合流总验**条件性通过**:
   - hp 不劣:符号 gap(v1−v2)=+1.52(n=400 配对,95% CI 底 ±2.41);
   - 过程不劣/部分更优:trio3 0.19 vs 0.055;v1 独有病根 `dead_system_second_pivot` 0.51/局(204/400)随删除自动消灭=删除净收益;
@@ -18,5 +18,6 @@
   6. **测试**:删 45 个锁 v1 行为的测试文件(LineStrategy 单帧锁/r2xx-4xx 系列/状态机/信号锁/主测试);改 10 个(梯度开关/载体测试/策略注册/检查器 repay/core_count/b36 双臂/buy_reason/adr0286/adr0291/0295/0296/0299/0300/r410/r420/w48 等——旧载体形态测试改意向载体,sim 默认策略变化适配);cw_quick.txt 移除已删文件条目。
 - **Consequences**:
   - 正:旧策略栈清零(死重/双源/兼容垫片全清);sim 默认=生产唯一载体,对照臂常驻(default)保留 A/B 方法论;v1 病根(dead_system 0.51/局)随删消失。
-  - 负:config 切回 `line_v2` 的回退路径消失(ADR-0310 C5 窗口关闭)——回滚=git revert 本删除 commit;ledger_consistency/coldstart_direction 的 v2 已知债继续存续(d2 行为面,豁免表登记)。
+  - 负:config 切回 `line_v2` 的回退路径消失(ADR-0310 C5 窗口关闭)——回滚 SOP(三层,W79b review 补):主仓 `git revert ff430f79` + **测试仓 `git revert a2ad66c`(必须同步——不同步则 45 个 v1 锁测试缺失且 smoke 豁免表已删 dead_system 条目而 revert 后该检查器带 204/400 病根恢复,smoke 必红)** + 主仓子模块指针 `git revert 90df85e7`;ledger_consistency(账本 bug,单独修非 d2 批)/coldstart_direction(v2 高频真实缺陷,d2 批带修+补 v2 等价变异自检——原 v1 门单帧锁/变异自检锁随删,W79b 指出防线空缺)。
   - 兼容:遥测 schema 的 v2_* 字段与判栈保留(历史数据可判);session v1 遗留字段保留(反序列化兼容)。
+- **AD8 对抗(2026-08-25)四条件与张力补记**:裁决=有条件稳固。①**承诺漂移如实记录**:本 ADR Context 承诺「v1 停用不删作 A/B 对照」,执行为全删+default 降格臂——v2 vs v1 永久不可重跑,后续证据口径以 W66 存档为唯一基线;②**统计叙述修正**:W66「hp 不劣」实为 CI[-0.89,+3.93] 内不显著(点估计 v1 优 1.52,功效~30%)——此后 sim 对照报告禁用「不劣」措辞,必写 CI+点估计+功效;no_same 归零验证域=seeds 0-99(100-399 约 71 违规未复验)→ 补验批挂策略池;③**时机张力**:删除依据 100% 为 sim(不可外推实机),v2 实机完整验证局为 0——W72 验证局即刻优先,书面接受无 v1 对照的归因降级;④**coldstart 防线**:v2 独有缺陷(79/400)的门锁+变异自检锁随删空缺,限期并入 d2 批补 v2 等价防线;d2 批前重估回滚窗口(测试载体已改,窗口窄)。
