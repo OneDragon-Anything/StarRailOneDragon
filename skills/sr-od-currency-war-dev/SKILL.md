@@ -117,7 +117,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 - **单跑道**:MCP 一次一个 run;`run_standalone_app('currency_war')` 启动,`get_run_status` 查进度,`stop_run` 停。
 - **实机通道(AI 会话无原生 MCP 工具时)**:`.debug/temp/currency_war/cw_dev/mcp_call.ps1`(Streamable HTTP 直调:session 管理+SSE 解析+404 重连)——`pwsh -File mcp_call.ps1 -Tool <工具名> -ArgsJson '<json>'`;run_standalone_app/get_run_status/stop_run/run_operation/analyze_screen 全通。**两个坑**:①`run_operation` 的参数键名是 `args` 不是 `params`;②server 重启后旧会话 ID 失效,删 `.debug/temp/currency_war/cw_dev/.mcp_session_id` 再调(脚本自动重连)。演进路径(高频需求时):把 server 挂进 DSH MCP 配置获得原生工具,或 daemon 加转发——当下脚本是最轻解。
-- **改代码必须重启 MCP server 才生效,且重启杀对局** → 改动攒批、局中不改;对局状态(session)在内存,重启全丢,重启后首局 target 重选是已知断档,判读注意。
+- **改代码必须重启 MCP server 才生效,且重启杀对局** → 改动攒批、局中不改;对局状态(session)在内存,重启全丢,重启后首局 target 重选是已知断档,判读注意。**重启前四步确认**:① `git status` 干净(或仅剩声明过的挂起件);② 全量 pytest 0 failed;③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按残局清理序/入口 op 回大厅)。
 - **早停判据**(无信息量局,满足任一即 stop_run + 判读 + 修复 + 重启跑新局):① 形态死局(连续多轮板面无引擎件且店里有种子没买);② 验证已得(本轮要验证的行为已观察到,后续无新信息);③ 已知未修问题主导(局是旧代码跑的、修复已 commit 待加载);④ **重大修复待加载=无条件早停重开(2026-08-23 用户定调「对于有重大突破的,早停重开」)**——重大策略/战力修复 commit 后,在跑的旧代码局素材价值趋零,继续跑=验证延迟;stop → 判读锚点核对 → 重启加载 → 起新局验证。例外:对照局(AB 对拍)与终验局不适用。
 - **残局清理序**(停局/崩局后回到大厅才能起新局;结算屏残留会让 app 启动死循环):**优先一键 op `ExitCurrencyWarMatch`(operations/entry/exit_currency_war_match.py)——经 `run_operation` 调用,支持全入口态(备战/战斗中含暂停 X/投资策略等 overlay/胜负结算/失败链),放弃+结算 3 页+回大厅一次完成(2026-08-24 用户定调)**;手动 ESC 链只是 op 不可用时的兜底:结算屏「继续挑战」→ 等自动战斗打完 → 备战态 ESC → 「放弃并结算」→ 失败页「下一步」×2 → 「返回货币战争」→ `analyze_screen` 确认精准命中**货币战争-大厅**。用 screen_info 的 area 名定位,不背坐标。
 - **监控三层**(长时自主推进时):进程内哨兵 flag + 后台哨兵脚本(触发即 exit=推送通知;重武前查旧实例,单实例纪律)+ 定时轮询兜底。**哨兵脚本组**(都在 `.debug/temp/currency_war/`,可重建):
@@ -131,9 +131,12 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
   **重武三步(硬序,防实例堆积——第六局残留 3 实例+runs_gap 重复×2 实证)**:①`job_list` 查 running 的同名哨兵脚本→②`job_kill` 杀净旧实例(含上一局残留)→③再武装。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。
 
   **哨兵/早停脚本前几跳=试用期**:报警先核时间戳与归属(旧行重放/中途武装无上下文/局后空窗三类误报实证),再信内容;watcher 上线不算完,前几跳逐一复盘。用户要用电脑时全停实机。
+  **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python .debug\temp\currency_war\<脚本>.py` 后台起(退出码即警报);查旧=job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位;job id 记进度树「点名册」节。
 - CW op 禁无条件 ESC(备战屏 ESC 弹中断挑战);画面疑问走 `analyze_screen` 先行(离线可用,传截图路径)。
 - **布局/坐标类建档的交互实锤纪律(布局误档事故沉淀,2026-08-23;实证见 design/decisions/)**:暗框检测/格点外推/VLM 计数都只是**假设级**证据——布局档案的**唯一终审=交互实锤**(拖角色到目标槽看落位+点占位槽开详情面板锚定,用户定调);外推超出实测档位范围不得直接落档,只能登记为待验证假设。判读侧对偶:**OCR 单帧读数(cap/部署数)可被同源污染**——cap-level≥2 存疑(宝钻语义+1),先重读再采信;VLM 各输出维度可信度独立评价(坐标不可信不等于计数不可信),用户玩家经验与数据冲突时先核数据再动档案。
 - **重启接管段的遥测降权(满血误报实证,2026-08-23,明细见 design/decisions/)**:server 重启后新 run 段的首个战斗结算前,遥测 hp/gold 是**接管帧错值**(session 真值丢,画面恢复期血量 UI 非战斗血条→误读满值)——判读纪律:**接管段 hp 一律不可作判据,以首个真实战斗结算屏(extras.hp_after)为准**;「满血/满金开局」级结论必核上游局的 boss 结算真值(HP 跨位面继承非重置,用户纠错在案)。
+- **首局判读锚点模板**(重开/重启后首局,事前写跑完核对;条目按当期改动点裁剪):① 决策日志 strategy_id=当期预期栈;② P1 r1 备战 hp 起步值=当期基线;③ [cw] 决策日志流动;④ 本批改动点预期生效行为(新语义无崩溃/新检测触发);⑤ 有恢复局设计时:接手即直接出战。
+- **常置 flag 处置**:`.debug/temp/currency_war/` 长期存在的 `.flag` 是既有登记项,别当新事故——按其登记时的步骤走;已被后续 ADR/revert 裁定取代的登记项,待顺手删(处置记录在进度树)。
 
 细则(交接序/监控武装/常见运行坑):[references/runtime-ops.md](references/runtime-ops.md)
 
