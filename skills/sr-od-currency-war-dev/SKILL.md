@@ -82,6 +82,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - [ ] 耗时核:量测数字 vs 预期量级差 >3 倍=效率缺陷打回(先定位再交)
 - [ ] 产物亲读:sim 批读 json 原始数据;实机批核 runs.jsonl result 字段
 - [ ] 行为变更批:ADR/正文/注释三同步带了吗(没带=打回或记欠账)
+- [ ] 泛化步:bug 修复类交付,「**同类还有吗**」的排查派了吗——没派=一行记账「为何不派」(金不足/idx/kwarg 四连实证,用户四次替我补此步);检查面已固化的引用即可(如五查)
 
 ## 验证工作台(反馈梯度,按成本升序)
 
