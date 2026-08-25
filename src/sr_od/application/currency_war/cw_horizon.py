@@ -39,6 +39,50 @@ _XP_NEED: dict[int, int] = {1: 4, 2: 4, **XP_TO_NEXT_LEVEL}
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
 
+# ===== 位面日程(DP 视界的槽序排布;ADR-0368,W169) =====
+#: 日程先验:(位面1, 位面2, 位面3) 各自轮数。P1=9 结构已知;P2 真值 7
+#: 但以 session 表为准(生产自适应);P3 未知期保持 9 先验。
+#: 默认值 ≡ 旧 27 槽均匀切片((t+1)%9 boss / t//9 位面),即本常量下
+#: difficulty_scale / node_income / solve 与旧代码逐位一致(P1 零漂移的结构保证)。
+DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
+    NODES_PER_PLANE, NODES_PER_PLANE, NODES_PER_PLANE)
+
+
+def plane_offsets(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> tuple[int, ...]:
+    """日程 → 各位面起始槽(累计偏移;(9,9,9)→(0,9,18) ≡ 旧 9 切片)。"""
+    offs: list[int] = []
+    acc = 0
+    for length in pl:
+        offs.append(acc)
+        acc += length
+    return tuple(offs)
+
+
+def plane_end_slots(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> frozenset[int]:
+    """日程 → 各位面末槽(boss 奖金槽;(9,9,9)→{8,17,26} ≡ 旧 (t+1)%9==0)。"""
+    offs = plane_offsets(pl)
+    return frozenset(offs[i] + pl[i] - 1 for i in range(len(pl)))
+
+
+def schedule_of(session) -> tuple[int, int, int]:
+    """DP 位面日程真值(ADR-0368,单一源)。
+
+    真值源 = ``session.plane_lengths_seen``(prep_director 每位面首帧随
+    plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
+    未揭晓位面回退 9 先验。脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
+    (同 W154/ADR-0366 超长脏表封顶语义)。duck-typed 读 session,
+    horizon 纯函数章程不破。
+
+    P1 等价性:P1 期 seen 至多 [9] → (9,9,9) ≡ 旧常量日程,solve memo
+    同键命中同一解对象——P1 逐位不变是结构保证。
+    """
+    seen = getattr(session, 'plane_lengths_seen', None) or []
+    out = []
+    for i in range(3):
+        length = int(seen[i]) if i < len(seen) else NODES_PER_PLANE
+        out.append(min(max(length, 1), NODES_PER_PLANE))
+    return tuple(out)
+
 
 def nodes_of_plane(session) -> int:
     """本位面轮数真值(ADR-0366,W167 口径断层修复的单一源)。
@@ -74,9 +118,21 @@ def nodes_of_plane(session) -> int:
 HP_LOSS_PRIOR: dict[int, float] = {0: 14.0, 1: 7.0, 2: 2.5, 3: 0.8}
 
 
-def difficulty_scale(t: int) -> float:
-    """位面难度曲线(A8:敌人难度随位面/节点走高;M29-M39 实测 P2 是墙)。"""
-    plane, node = divmod(t, NODES_PER_PLANE)
+def difficulty_scale(t: int,
+                     pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> float:
+    """位面难度曲线(A8:敌人难度随位面/节点走高;M29-M39 实测 P2 是墙)。
+
+    pl=位面日程(ADR-0368):槽 t 按日程偏移归属位面,node=位面内下标;
+    t 超出日程尾按末位面吸收(查询端 clamp 前的防御)。默认日程 ≡ 旧
+    divmod(t, 9) 逐位一致。
+    """
+    offs = plane_offsets(pl)
+    plane = 0
+    for i in range(len(offs) - 1, -1, -1):
+        if t >= offs[i]:
+            plane = i
+            break
+    node = t - offs[plane]
     if plane == 0:
         return 0.5 if node < 4 else (0.9 if node < 8 else 1.4)
     if plane == 1:
@@ -113,12 +169,17 @@ def interest(gold: int) -> int:
     return min(gold // 10, GOLD_CAP_INTEREST // 10)
 
 
-def node_income(t: int, b: float | None = None) -> int:
+def node_income(t: int, b: float | None = None,
+                pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> int:
     """节点收入:基础 + 连胜档(**板强耦合**:b≥2.2 打得赢吃 4 金连胜档;b 弱连败 1 金 ——
     真实机制里连胜金是经济主件,板弱 = 掉血 + 收入掉档双输;V1.1 平坦 3 金切断该耦合,
-    DP 用安全余量换利息系统性欠升级,与 meta「P1 末必 7」相悖,故耦合)。"""
+    DP 用安全余量换利息系统性欠升级,与 meta「P1 末必 7」相悖,故耦合)。
+
+    boss 奖金槽=日程位面末槽(ADR-0368;默认日程 ≡ 旧 (t+1)%9==0 逐位一致
+    ——修复前 P2 boss 实在 t=15 却按幻影 t=17 发奖,P2 末轮收入模型偏瘦 2 金)。
+    """
     inc = BASE_INCOME + (4 if (b is None or b_eff_level_free(b)) else 1)
-    if (t + 1) % NODES_PER_PLANE == 0:
+    if t in plane_end_slots(pl):
         inc += BOSS_BONUS
     return inc
 
@@ -190,11 +251,30 @@ class HorizonSolution:
     _NR: int = len(RB_STEPS)
     _NLEV: int = LEVEL_MAX - LEVEL_MIN + 1
 
-    def __init__(self, act=None, val=None) -> None:
+    # —— 位面日程(ADR-0368):默认 ≡ 旧 27 槽均匀切片 ——
+    _pl: tuple[int, int, int] = DEFAULT_PLANE_LENGTHS
+    _offs: tuple[int, ...] = (0, 9, 18)
+    _total: int = TOTAL_NODES
+
+    def __init__(self, act=None, val=None,
+                 pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> None:
         self._act = act
         self._val = val
         self._policy_cache = None
         self._value_cache = None
+        self._pl = tuple(pl)
+        self._offs = plane_offsets(self._pl)
+        self._total = sum(self._pl)
+
+    def slot_of(self, plane: int, round_num: int) -> int:
+        """(位面, 轮) → 本解日程的槽序号(ADR-0368 查询映射单一源)。
+
+        越界防御:plane 夹 [1, len(pl)](末位面吸收)、round 夹本位面轮数、
+        槽号夹 [0, total-1]。默认日程下 ≡ 旧 ``t=(p-1)*9+r-1`` 逐位一致。
+        """
+        p = min(max(int(plane), 1), len(self._pl)) - 1
+        r = min(max(int(round_num), 1), self._pl[p])
+        return min(self._offs[p] + r - 1, self._total - 1)
 
     # 兼容旧字段式访问(构造空解的旧调用路径)
     @property
@@ -222,8 +302,8 @@ class HorizonSolution:
         # 旧 dict 版 float 键静默 miss → fallback,新版显式取整 —— 兼容且更诚实)
         # v6 布局 [t, Li, gi, hi, rbi](向量化求解的产出序;Li 内层使 (g,h,rbi) 块连续)
         t = int(t)
-        if t >= TOTAL_NODES:
-            t = TOTAL_NODES - 1
+        if t >= self._total:
+            t = self._total - 1
         gi = min(int(gold) // GOLD_STEP, self._NG - 1)
         Li = min(max(int(level), LEVEL_MIN), LEVEL_MAX) - LEVEL_MIN
         hi = (min(max(int(hp), HP_MIN), HP_MAX) - HP_MIN) // HP_BUCKET
@@ -240,7 +320,7 @@ class HorizonSolution:
         # v7 热路径:预表 + bisect 最近邻(实测 ~2.3→~1µs;每回合数次查询,一局省微秒级,
         # 但影子模式全量对拍/批量评估场景次数放大 10^4)
         rbi = _rb_to_index(rb)
-        i = (((min(int(t), TOTAL_NODES - 1) * self._NLEV
+        i = (((min(int(t), self._total - 1) * self._NLEV
                + min(max(int(level), LEVEL_MIN), LEVEL_MAX) - LEVEL_MIN)
               * self._NG + min(int(gold) // GOLD_STEP, self._NG - 1))
              * self._NH + (min(max(int(hp), HP_MIN), HP_MAX) - HP_MIN) // HP_BUCKET
@@ -254,14 +334,14 @@ class HorizonSolution:
         return float(self._val[self._idx(t, gold, level, hp, _rb_to_index(rb))])
 
     def _materialize(self) -> None:
-        """数组 → dict 视图(旧消费端兼容;一次性;t 层 0..TOTAL_NODES-1;
+        """数组 → dict 视图(旧消费端兼容;一次性;t 层 0..total-1;
         v6 布局 [t, Li, gi, hi, rbi] flat)。"""
         self._policy_cache = {}
         self._value_cache = {}
         if self._act is None:
             return
         act, val = self._act, self._val
-        for t in range(TOTAL_NODES):
+        for t in range(self._total):
             for Li in range(self._NLEV):
                 L = Li + LEVEL_MIN
                 base_tL = (t * self._NLEV + Li) * self._NG
@@ -283,7 +363,8 @@ class HorizonSolution:
                             self._value_cache[(t, g, L, h, rbi)] = float(val[i])
 
 
-def _hp_loss(t: int, level: int, rb: float) -> float:
+def _hp_loss(t: int, level: int, rb: float,
+             pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> float:
     """掉血 = 先验在 b_eff 上**线性插值**(非整数桶):板强每 +0.1 都有平滑边际 —— 整数桶会把
     b2.2 与 b2.6 判同档,升级失去全部边际收益,V1.1 实测 P1 末停 lv5 不追(band 违例根因)。"""
     b = b_eff(level, rb)
@@ -291,13 +372,19 @@ def _hp_loss(t: int, level: int, rb: float) -> float:
     frac = b - lo
     hi = min(3, lo + 1)
     base = HP_LOSS_PRIOR[lo] + (HP_LOSS_PRIOR[hi] - HP_LOSS_PRIOR[lo]) * frac
-    return base * difficulty_scale(t)
+    return base * difficulty_scale(t, pl)
 
 
-def solve(ledger=None) -> HorizonSolution:
+def solve(ledger=None,
+          pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> HorizonSolution:
     """逆向递推。状态 (t, g1, L, h5, rbi) = 27×111×10×20×5 ≈ 3M × 8 姿态;
     v6 numpy 向量化求解 ~0.3s(标量时代分钟级,已淘汰;慢的不是求解而是
     HorizonSolution.policy/value 的 3M 条目 dict 物化,生产路径勿触碰)。
+
+    pl=位面日程(ADR-0368,W169 DP 视界槽序重排):槽序按真实位面轮数排
+    (P2 查询期=(9,7,9):boss 奖金落在 P2 真实末轮 t=15,幻影 t=16/17 两槽
+    消除,P3 前移至 t=16,总程 25 槽)。默认 (9,9,9) ≡ 旧 27 槽均匀切片
+    (逐位一致,P1 零漂移的结构保证)。
 
     ledger(ADR-0202/53 号盲区 2 根治,effect-blind 修复):EffectLedger 注入 →
     收入/息/成本全走台账突变视图(node_income_with/interest_with/level_cost_with);
@@ -309,16 +396,18 @@ def solve(ledger=None) -> HorizonSolution:
         node_income_with,
     )
     _has_ledger = ledger is not None
+    _ends = plane_end_slots(pl)
+    _total = sum(pl)
 
     def _income(t: int, b2: float) -> int:
         if _has_ledger:
             # 台账路径:基础+连胜档在 DP 侧算,乘子/日程由 mutations/calendar 注入
             base = BASE_INCOME + (4 if b_eff_level_free(b2) else 1)
-            if (t + 1) % NODES_PER_PLANE == 0:
+            if t in _ends:
                 base += BOSS_BONUS
             streak_part = 4 * 1.0   # 连胜档金(node_income 的 +4 已入 base;此处保持同构)
             return int(node_income_with(t, float(base) - 4.0, streak_part, ledger))
-        return node_income(t, b2)
+        return node_income(t, b2, pl)
 
     def _interest(g2: int) -> int:
         if _has_ledger:
@@ -346,21 +435,21 @@ def solve(ledger=None) -> HorizonSolution:
     _h_grid = _np.arange(_NHP) * HP_BUCKET + HP_MIN
     _L_grid = _np.arange(LEVEL_MIN, LEVEL_MAX + 1)
 
-    _V = _np.zeros((TOTAL_NODES + 1, _NLEV, _NG, _NHP, _NRB))
-    _ACT = _np.zeros((TOTAL_NODES, _NLEV, _NG, _NHP, _NRB), dtype=_np.int8)
+    _V = _np.zeros((_total + 1, _NLEV, _NG, _NHP, _NRB))
+    _ACT = _np.zeros((_total, _NLEV, _NG, _NHP, _NRB), dtype=_np.int8)
     # 终局(广播:存活奖励 + 金/级/血残值;死亡 0 由初始化承载)
-    _V[TOTAL_NODES] = (SURVIVAL_W
-                       + GOLD_RESIDUAL_W * _g_grid[None, :, None, None]
-                       + LEVEL_RESIDUAL_W * _L_grid[:, None, None, None]
-                       + HP_RESIDUAL_W * _h_grid[None, None, :, None])
+    _V[_total] = (SURVIVAL_W
+                  + GOLD_RESIDUAL_W * _g_grid[None, :, None, None]
+                  + LEVEL_RESIDUAL_W * _L_grid[:, None, None, None]
+                  + HP_RESIDUAL_W * _h_grid[None, None, :, None])
 
-    for t in range(TOTAL_NODES - 1, -1, -1):
+    for t in range(_total - 1, -1, -1):
         # 每 t 预表(纯函数,量小标量算)
         _drop = _np.zeros((_NLEV, _NRB))
         _inc = _np.zeros((_NLEV, _NRB), dtype=_np.int64)
         for Li in range(_NLEV):
             for rbi in range(_NRB):
-                _drop[Li, rbi] = _hp_loss(t, int(_L_grid[Li]), RB_STEPS[rbi])
+                _drop[Li, rbi] = _hp_loss(t, int(_L_grid[Li]), RB_STEPS[rbi], pl)
                 _inc[Li, rbi] = _income(t, b_eff(int(_L_grid[Li]), RB_STEPS[rbi]))
         _rbi2_map = {rolls: _np.array([
             min(range(_NRB), key=lambda i: abs(RB_STEPS[i] - min(RB_MAX, rb + 0.12 * rolls)))
@@ -400,7 +489,8 @@ def solve(ledger=None) -> HorizonSolution:
             _V[t, Li] = _best_v
             _ACT[t, Li] = _best_a.astype(_np.int8)
     # 产出 flat 一维(posture/_materialize 按同布局索引;act int8 ≈ 3MB,val ≈ 25MB)
-    return HorizonSolution(act=_ACT.ravel().copy(), val=_V[:TOTAL_NODES].ravel().copy())
+    return HorizonSolution(act=_ACT.ravel().copy(), val=_V[:_total].ravel().copy(),
+                           pl=pl)
 
 
 # ===== V1 涌现验证 =====
@@ -487,35 +577,45 @@ def ledger_fingerprint(ledger) -> str:
     return hashlib.md5(payload.encode()).hexdigest()[:12]
 
 
-_CACHE_MEMO: dict[str, HorizonSolution] = {}
+_CACHE_MEMO: dict[tuple[str, tuple[int, ...]], HorizonSolution] = {}
 
 
-def solve_cached(ledger=None) -> HorizonSolution:
-    """按台账指纹的进程内 memo(v6:求解向量化后 ~0.3s,**盘 pickle 层已移除**——
-    读 27MB 盘缓存比直接重解更慢,缓存变成负资产;memo 仍保留:同指纹重复查询零成本,
-    台账注入场景(每持卡组合)各自 memo)。"""
+def solve_cached(ledger=None,
+                 pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> HorizonSolution:
+    """按(台账指纹, 位面日程)的进程内 memo(v6:求解向量化后 ~0.3s,**盘 pickle 层已移除**——
+    读 27MB 盘缓存比直接重解更慢,缓存变成负资产;memo 仍保留:同键重复查询零成本,
+    台账/日程注入场景(每持卡组合/每位面日程)各自 memo)。"""
     fp = ledger_fingerprint(ledger)
-    if fp not in _CACHE_MEMO:
-        _CACHE_MEMO[fp] = solve(ledger)
-    return _CACHE_MEMO[fp]
+    key = (fp, tuple(pl))
+    if key not in _CACHE_MEMO:
+        _CACHE_MEMO[key] = solve(ledger, pl)
+    return _CACHE_MEMO[key]
 
 
-def _solved(strategies: list[str] | None = None) -> HorizonSolution:
-    """生产路径解(进程内指纹 memo)。
+def _solved(strategies: list[str] | None = None,
+            session=None) -> HorizonSolution:
+    """生产路径解(进程内(指纹, 日程) memo)。
 
     strategies(intake #6 接线,2026-08-18):持有投资策略 → ``build_ledger``
     台账注入解(ADR-0202 effect-blind 修复 —— 息帽/免费刷/日程收入进 DP 世界
     模型);空/None → base 解。**旧版恒 base 解** = 「采购专员/免费刷新爆发」等
     经济卡持有与否 DP 姿态无差(67-P1c 哨兵指纹恒 'base' 的根因)。
     同持卡组合指纹 memo → 零成本;新指纹首次向量化求解 ~0.3s(一局组合数有限)。
+
+    session(ADR-0368,W169):传则按 ``schedule_of(session)`` 取本局已揭晓
+    位面日程(P2 查询期=(9,7,9):boss 落真实末轮/幻影尾消除/P3 前移);
+    缺省 None = (9,9,9) 先验日程 ≡ 旧行为(v1 栈纯函数消费端零漂移)。
     """
     if strategies:
         from sr_od.application.currency_war.cw_effect_ledger import (
             build_ledger,
             effects_from_strategies,
         )
-        return solve_cached(build_ledger(effects_from_strategies(list(strategies))))
-    return solve_cached()
+        return solve_cached(
+            build_ledger(effects_from_strategies(list(strategies))),
+            schedule_of(session) if session is not None else DEFAULT_PLANE_LENGTHS)
+    return solve_cached(
+        None, schedule_of(session) if session is not None else DEFAULT_PLANE_LENGTHS)
 
 
 def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: int,
@@ -533,14 +633,20 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
     拖满 P1 全程(信号3 连续 pivot 永不达标)→ lv6 带 boss,P2 hp 门接力 →
     carry 等级窗口全局不存在。位面末(P1 r8+ / P2 r8+)定型与否都该追级
     (boss/P3 在前,5-6 人口硬吃必死)。
+
+    ADR-0368(W169):槽序映射改 ``sol.slot_of(plane, round)``。本接缝无
+    session 透传面(v1 栈 get_node_goal/遥测影子查询均为纯函数调用)→ 恒用
+    先验日程 ≡ 旧 ``t=(p-1)*9+r-1`` 逐位一致(真值日程消费端=decision_v2
+    ev.dp_posture,生产决策主干)。
     """
     global _SEAM_WARNED
-    t = (min(plane, 3) - 1) * NODES_PER_PLANE + min(round_num, NODES_PER_PLANE) - 1
-    if not (0 <= t < TOTAL_NODES):
-        return None
     try:
         from sr_od.application.currency_war.cw_economy import NodeGoal
-        p = _solved(strategies).posture(t, gold, level, hp, 0.0)
+        sol = _solved(strategies)
+        t = sol.slot_of(plane, round_num)
+        if not (0 <= t < sol._total):
+            return None
+        p = sol.posture(t, gold, level, hp, 0.0)
         # r87:P1/P2 位面末(r≥8)不再压 rush_level(boss/P3 前人口必追)
         _late_plane = round_num >= NODES_PER_PLANE - 1
         if p.level_up and (committed or _late_plane):

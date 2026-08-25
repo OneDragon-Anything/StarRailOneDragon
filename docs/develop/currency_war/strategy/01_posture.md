@@ -7,6 +7,7 @@
 **是什么**:离线一次性解出的「花钱节奏手册」——对(节点 × 金 × 等级 × 血 × 板强)全状态组合逆向递推,求每状态最优**姿态**;运行时 O(1) 查表。它是全系统唯一做跨全节点(`cw_horizon.TOTAL_NODES`)全局权衡的器官:战术层只看单步,它看「现在省的 50 金到 P3 值多少存活率」。
 
 - **状态空间与递推**:维度与常量(`NODES_PER_PLANE`/`GOLD_MAX`/`LEVEL_MIN·MAX`/`HP_BUCKET`/`RB_STEPS`)见模块头部;金步长为 1(日程 +1/+2 金不得被量化蒸发,ADR-0202);掉血模型 = 板强线性插值 × 难度缩放的**期望近似**;终值含存活奖励 + 金/级/血残值(无血残值会系统性欠升级,V1.1 教训)。
+- **位面日程(ADR-0368)**:槽序不按 27 槽均匀 9 切片——`solve(ledger, pl)` 按位面日程排槽:boss 奖金落日程位面末槽、总程=日程求和;真值源 `schedule_of(session)` 读 `session.plane_lengths_seen`(prep_director 每位面首帧随开局槽序表记录,未揭晓位面回退 9 先验,P3 进表即自适应);查询映射单一源 `HorizonSolution.slot_of(plane, round)`;解缓存 memo 键=(台账指纹, 日程)。默认日程 ≡ 旧均匀切片(P1 零漂移的结构保证);v1 栈纯函数消费端(`get_node_goal`/遥测影子查询)与 `cw_first_passage` hp 地板仍用先验日程(遗留记档,ADR-0368)。
 - **姿态空间**:8 个「升?× D0/D2/D4/D6」组合,动作码 int8;`posture()` / `value_at()` 为唯一生产查询口(值/动作表是紧凑数组,`policy`/`value` property 仅为旧测试兼容的惰性物化)。
 - **消费端**:`cw_economy`(spend_mode 档位)、`cw_comps`(node goals)、`cw_evaluate`、`cw_plan`、`cw_state`、`cw_telemetry`(影子记录)。
 - **效果感知注入**:持有效果改变世界规则时(息 cap / 单击价 / 连胜乘子 / 节点日程)按台账指纹重解(ADR-0202);纯时点金不改变指纹不重解。生产当前查「无效果」基线解,效果解切流由发布层控制。

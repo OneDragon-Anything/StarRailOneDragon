@@ -137,16 +137,17 @@ def dp_posture(state: GameState, session: StrategySession):
     返回 ``Posture``(save/level_up/refresh_budget);查询异常返回 None
     (调用方保守回退,对局不停——与 ``_horizon_node_goal`` 同款纪律:
     记 [cw!] 可 grep 证据)。
+
+    ADR-0368(W169):槽序映射改 ``sol.slot_of(plane, round)``——按本局
+    已揭晓位面日程排槽(P2 查询期=(9,7,9):boss 奖金落真实末轮/幻影尾
+    两槽消除/P3 前移)。session 表缺(裸 session/sim P1 段)→ 先验日程
+    ≡ 旧 ``t=(p-1)*9+r-1`` 逐位一致。
     """
     try:
-        from sr_od.application.currency_war.cw_horizon import (
-            NODES_PER_PLANE,
-            _solved,
-        )
-        t = ((min(state.plane, 3) - 1) * NODES_PER_PLANE
-             + min(max(1, state.round_num), NODES_PER_PLANE) - 1)
-        return _solved(list(state.active_strategies or ())).posture(
-            t, state.gold, state.level, state.hp, 0.0)
+        from sr_od.application.currency_war.cw_horizon import _solved
+        sol = _solved(list(state.active_strategies or ()), session)
+        t = sol.slot_of(state.plane, state.round_num)
+        return sol.posture(t, state.gold, state.level, state.hp, 0.0)
     except Exception as e:   # noqa: BLE001
         log.warning('[cw!][d2][ev] DP 姿态查询异常(p%sr%s gold%s lv%s '
                     'hp%s):%s → 调用方保守回退',

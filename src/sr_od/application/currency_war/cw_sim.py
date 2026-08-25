@@ -1152,6 +1152,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 生产语义对齐:开局帧槽序表写 session(prep_director
             # 首帧写;battles_left_p2 消费,ADR-0361)
             sess.plane_node_table = list(nodes)
+            # ADR-0368(W169):位面日程真值序列(生产=prep_director 每位面
+            # 首帧 append;sim P1 段不写表 → 进场补记 P1 真值 9,保
+            # seen 序=位面序;cw_horizon.schedule_of 消费)
+            sess.plane_node_table_plane = _seg_plane
+            _seen = sess.plane_lengths_seen
+            if _seen is None:
+                _seen = []
+                sess.plane_lengths_seen = _seen
+            from sr_od.application.currency_war.cw_horizon import (
+                NODES_PER_PLANE as _NPP,
+            )
+            while len(_seen) < _seg_plane - 1:
+                _seen.append(_NPP)
+            _seen.append(len(nodes))
         for rn in range(1, _seg_rounds + 1):
             _ts += 1
             st.round_num = rn

@@ -79,6 +79,31 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
+def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
+    """开局帧槽序表的**每位面首帧**写入(ADR-0368,W169)。
+
+    旧 write-once 守卫(``not plane_node_table``)使 P1 的 9 槽表整局滞留:
+    生产进 P2 后 7 槽真值永不落盘 → nodes_of_plane / battles_left_p2 /
+    DP 位面日程(cw_horizon.schedule_of)在生产 P2 全部读陈旧 P1 表恒 9
+    (连表缺回退告警都不发——表「在」但是错的)。修:按
+    ``plane_node_table_plane`` 锚定,位面变更即重写(位面内恒定语义不变,
+    同位面多次 probe 不覆写);同时 append ``plane_lengths_seen``
+    (DP 位面日程真值序列,P3 进表即自适应)。
+
+    返回是否写入(供调用方记日志)。纯 session 写入,无画面依赖,可单测。
+    """
+    if not seq or plane is None:
+        return False
+    if getattr(sess, 'plane_node_table_plane', None) == plane:
+        return False
+    sess.plane_node_table = list(seq)
+    sess.plane_node_table_plane = plane
+    if sess.plane_lengths_seen is None:
+        sess.plane_lengths_seen = []
+    sess.plane_lengths_seen.append(len(seq))
+    return True
+
+
 @dataclass
 class PrepObservation:
     """备战决策环统一观察(§3;决策单一输入,组合现成 reader 不新写识别)。
@@ -846,10 +871,13 @@ class PrepDirector(SrOperation):
                     # (current+upcoming+past 按 idx)的类型序。
                     _all = sorted(slots, key=lambda s: s.idx)
                     _seq = [s.node_type for s in _all if s.node_type]
-                    if _seq and not getattr(_sess, 'plane_node_table', None):
-                        _sess.plane_node_table = _seq
-                        log.info('[cw-director][nodeseq] 槽序表存 %d 槽:%s',
-                                 len(_seq), _seq)
+                    _st_now = (self.ctx.cw_match.session.last_state
+                               if self.ctx.cw_match is not None else None)
+                    _plane_now = (_st_now.plane
+                                  if _st_now is not None else None)
+                    if store_plane_table(_sess, _seq, _plane_now):
+                        log.info('[cw-director][nodeseq] 槽序表存 p%s %d 槽:%s',
+                                 _plane_now, len(_seq), _seq)
                     # r290(current 覆盖链改左移优先):OCR 标签
                     # 位置门(r80)拦不住相邻同类标签(局20 实证:
                     # r3 结算屏「战斗」vs current 读 reward——
@@ -861,8 +889,6 @@ class PrepDirector(SrOperation):
                     # 多次 probe(开店/关店/重开)时 upcoming 还是本轮
                     # 的,旧代码会把 current 写成下一节点(超前一位)。
                     # 只在上次 probe 是更早轮次时才左移;同轮保持原值。
-                    _st_now = (self.ctx.cw_match.session.last_state
-                               if self.ctx.cw_match is not None else None)
                     _anchor = (_st_now.plane, _st_now.round_num) \
                         if _st_now is not None else None
                     _prev_anchor = getattr(
