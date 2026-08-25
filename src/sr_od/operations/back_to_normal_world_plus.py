@@ -1,9 +1,13 @@
 import time
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import (
     SimUniChooseBless,
@@ -18,8 +22,15 @@ from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import
 from sr_od.application.sim_universe.operations.sim_uni_event import SimUniEvent
 from sr_od.application.sim_universe.operations.sim_uni_exit import SimUniExit
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.interact.talk_interact import TalkInteract
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.screen_state import common_screen_state
+
+# NPC 对话态脱困用的「告别」类选项词表(LCS 高阈值匹配,防同屏其他选项误配)。
+# 词表是设计先行的保守集:2026-08-26 事故现场选项为「告别」(用户口述);
+# 后续按 od-dev-screen-onboarding 用守卫采集的截图样本核对/扩充,再考虑建 screen_info 档。
+NPC_DIALOG_FAREWELL_WORDS: list[str] = ['告别', '离开', '再见']
+NPC_DIALOG_FAREWELL_LCS: float = 0.7
 
 
 class BackToNormalWorldPlus(SrOperation):
@@ -144,6 +155,15 @@ class BackToNormalWorldPlus(SrOperation):
         if result.is_success:
             return self.round_wait(result.status, wait=2)
 
+        # 对话态守卫(2026-08-26 实机事故根修,NPC 对话态下兜底点击会命中对话隐藏按钮):
+        # 登录落点等活动摊位 NPC 对话态时,右上角图标全被对话 UI 遮蔽,前面所有分支
+        # 都不命中,原兜底直接点「菜单-右上角返回」——该坐标与对话的隐藏按钮重叠,
+        # 一点就把对话 UI 收掉 → 裸场景假象 + 键盘输入被吞 → 后续判断全乱。
+        # 守卫在兜底之前先检测对话态并走脱困序,检测不命中才落回原兜底。
+        dialog_result = self.check_npc_dialog(screen)
+        if dialog_result is not None:
+            return dialog_result
+
         # 其他情况 - 均点击右上角触发返回上一级
         result = self.round_by_click_area('菜单', '右上角返回')
         # 兜底分支必须用 round_retry（计入 node_max_retry_times）而非 round_wait：
@@ -153,6 +173,51 @@ class BackToNormalWorldPlus(SrOperation):
         # 正常「连续退多级菜单」不受影响：每退一级后画面变化、check_screen 命中其他
         # 分支返回 WAIT/SUCCESS，node_retry_times 被清零，不会累计到 20 次上限。
         return self.round_retry(result.status, wait=1)
+
+    def check_npc_dialog(self, screen: MatLike) -> OperationRoundResult | None:
+        """
+        对话态守卫：检测当前是否处于 NPC 对话态，是则走脱困序（推进/告别），否则返回 None 落回兜底。
+
+        检测与动作坐标全部复用 TalkInteract 的既有已验证常量（交谈交互区 + 空白推进点击点），
+        不引入未验证的新坐标。脱困序为逐帧反应式（本方法每轮重跑，无跨轮状态）：
+
+        1. 告别类选项可见 → 点它退出对话（对完后续帧由「角色图标」分支接管）；
+        2. 有其他选项但无告别词 → 不乱点未知选项（可能接受任务/开商店），点空白推进，
+           用 round_retry 计入节点预算，有界退出而非破坏性误点；
+        3. 交互区无任何文字 → 无法确认对话态，返回 None 落回原兜底。
+
+        :param screen: 游戏画面
+        :return: 命中对话态时返回对应的 round 结果；否则 None
+        """
+        part = cv2_utils.crop_image_only(screen, TalkInteract.INTERACT_RECT)
+
+        farewell_map = self.ctx.ocr.match_words(
+            part, words=NPC_DIALOG_FAREWELL_WORDS, lcs_percent=NPC_DIALOG_FAREWELL_LCS,
+        )
+        if len(farewell_map) > 0:
+            # 采集钩子(临时,对话态建档后整段删除):守卫首次实证命中时留截图样本,
+            # 供 od-dev-screen-onboarding 离线核对选项词表/坐标。
+            self.save_screenshot(prefix='npc_dialog_guard')
+            log.info('[对话态守卫] 命中告别类选项 %s,点击退出对话', list(farewell_map.keys()))
+            for r in farewell_map.values():
+                to_click: Point = r.max.center + TalkInteract.INTERACT_RECT.left_top
+                # 与 TalkInteract 同款:先移上去停留再点,提高选项选中稳定性
+                self.ctx.controller.mouse_move(to_click)
+                time.sleep(0.1)
+                if self.ctx.controller.click(press_time=0.1, pc_alt=True):
+                    return self.round_wait('对话态-告别', wait=1)
+
+        ocr_map = self.ctx.ocr.run_ocr(part)
+        if len(ocr_map) > 0:
+            # 有选项但没匹配到告别词:不点未知选项(语义不明,可能触发任务/购物),
+            # 点空白推进对话(选项出现前的对话文本阶段可推进),交给下一帧重新判定。
+            log.info('[对话态守卫] 检测到未知对话选项 %s,不乱点,点空白推进', list(ocr_map.keys()))
+            to_click = Point(self.ctx.project_config.screen_standard_width // 2,
+                             self.ctx.project_config.screen_standard_height - 100)
+            self.ctx.controller.click(to_click)
+            return self.round_retry('对话态-未知选项', wait=1)
+
+        return None
 
     def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
         op = SimUniExit(self.ctx, is_in_x, temporarily_leave=True)
