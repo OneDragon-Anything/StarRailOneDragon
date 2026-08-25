@@ -66,7 +66,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 细则(维度清单/视图覆盖矩阵/保真位先行):[references/telemetry-reading.md](references/telemetry-reading.md)
 
-## 验证工作台(反馈梯度,按成本升序)
+## 验证工作台(反馈梯度,按成本升序;收账工单=`cw_dev/deep_read/交付验收清单.md` 照单逐项核——方法论五面见 od-dev-agent-autonomous-mode 验收侧)
 
 实机一局按数十分钟计,是**最后一步**;实机运行期间 = 做 1-4 的窗口,不是等结果:
 
