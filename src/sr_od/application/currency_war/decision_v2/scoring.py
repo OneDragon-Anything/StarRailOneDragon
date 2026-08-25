@@ -424,6 +424,70 @@ def vd_target_core(state: GameState,
     return intention_core(comp)
 
 
+def engine_jump_gold(eng_from: int, state: GameState,
+                     registry: DecisionV2Registry) -> float:
+    """单级引擎跳变(e→e+1)的金值(W131/ADR-0352,买侧 V 的量纲基准)。
+
+    与 vd_refresh_score 的收益侧**同式同源**(ADR-0349 金口径):
+
+        jump(e) = Δrung_value(e→e+1) × R(跨位面剩余节点)
+                  + Δh3_win_rate(e→e+1) × expected_battle_loss
+                    × hp_to_gold × battles_left_est
+
+    诊断背景(W131):层3 板面分的收益侧视界是 rounds_left_est=5 /
+    battles_left_est=5(骨架初值),而 interest_rule 的 C_interest 视界
+    是 R=跨位面剩余节点(≈20-23)——同一跳变在层3 只显影 ~7-8 金,
+    在 C 的量纲下是 ~28-41 金,**收益/成本两侧视界错档一整个量级**
+    是买侧 EV 门恒拒的主因。本函数把「引擎完成的组合跳变」按 C 的
+    同一视界(R)折金,作为买侧候选的金口径价值锚;e≥2(封顶档)
+    无跳变,返回 0。
+    """
+    if eng_from < 0 or eng_from + 1 > 2:
+        return 0.0
+    from sr_od.application.currency_war.decision_v2.ev import (
+        cross_plane_remaining_nodes,
+    )
+    r = cross_plane_remaining_nodes(state)
+    drung = (registry.rung_value.get(eng_from + 1, 0.0)
+             - registry.rung_value.get(eng_from, 0.0))
+    dwin = (registry.h3_win_rate.get(eng_from + 1, 0.0)
+            - registry.h3_win_rate.get(eng_from, 0.0))
+    return (drung * r + dwin * registry.expected_battle_loss
+            * registry.hp_to_gold * registry.battles_left_est)
+
+
+def formation_gold_account(base: GameState, after: GameState,
+                           registry: DecisionV2Registry) -> float:
+    """买候选对阵容完成度的贡献,**按组合跳变计值**(W131/ADR-0352)。
+
+    与 ADR-0349 D 侧「核心 2★ 完成按整跳变计值」同思路——买件的
+    完成度贡献不是单件散分(层3 的 targets/eng_frac 族,O(1-3) 的
+    未标定分单位),而是它推进的组合跳变金值:
+
+    - 候选 apply 后**跨越整数引擎档**(deploy 管线显影):每跨一级
+      计该级全额跳变金(engine_jump_gold);
+    - 未跨档:**小数进度增量 × 下一级跳变金**(组合计值:一件进度
+      件的价值=它在通往跳变的路上占的份额;全部进度件凑齐时份额
+      之和=全额跳变,与「余量清零、值转进整数档」的 rung/eng_frac
+      互补语义一致,不双计)。
+
+    消费点:score_candidate 写入 bd['form_gold'],arbiter.interest_rule
+    的买侧 V 取 max(层3 分剥离息分量, 本账)(单一 EV 账内取大者,
+    不与层3 序分叠加——层3 分继续辖候选排序/正分门)。
+    """
+    e0 = _engines_formed(base, registry)
+    e1 = _engines_formed(after, registry)
+    gold = 0.0
+    for e in range(e0, min(e1, 2)):
+        gold += engine_jump_gold(e, base, registry)
+    if e1 == e0 and e1 < 2:
+        d_rem = (_engine_frac_remainder(after, registry)
+                 - _engine_frac_remainder(base, registry))
+        if d_rem > 0:
+            gold += d_rem * engine_jump_gold(e0, base, registry)
+    return gold
+
+
 def vd_refresh_score(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> float | None:
     """V_D 批口径评分(W126/ADR-0349,经济循环总模型步③;P5 主定理)。
@@ -594,6 +658,12 @@ def score_candidate(cand: Candidate, state: GameState,
         return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
     after = score_state(after_state, registry, session)
     val = sum(after.values()) - sum(base.values())
+    # W131/ADR-0352 买侧组合跳变金账:买候选对完成度的贡献按组合跳变
+    # 计值(与 V_D 收益侧同式同源,R 视界),供 interest_rule 的买侧 V
+    # 消费(max 取大,不进层3 序分——序分继续辖排序/正分门)。
+    form_gold = 0.0
+    if isinstance(cand.action, BuyCard):
+        form_gold = formation_gold_account(state, after_state, registry)
     # W119/ADR-0347:bd['int_emb'] = 本候选分数内**实际嵌入的息分量**
     # (EV 授权的 V 剥离单一源——arbiter.interest_rule 消费:
     # V = val − int_emb)。默认=息差;ADR-0332 平滑生效时改写为
@@ -673,7 +743,8 @@ def score_candidate(cand: Candidate, state: GameState,
         # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
         # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
         val += registry.goldrich_buy_bias
-    return val, {'base': base, 'after': after, 'int_emb': int_emb}
+    return val, {'base': base, 'after': after, 'int_emb': int_emb,
+                 'form_gold': round(form_gold, 3)}
 
 
 def score_all(cands: list[Candidate], state: GameState,

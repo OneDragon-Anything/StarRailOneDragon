@@ -209,8 +209,23 @@ def _check_constraint(name: str, cand: Candidate,
             return None    # [11] 1 费净0(1★卖出全额退)
         if after // 10 >= (working.gold // 10):
             return None    # 同息档内花费([11] 不损息)
-        c = interest_cost(working.gold, cost, state)
+        # W131/ADR-0352 买侧标定:V 取「层3 分剥离息分量」与「组合跳变
+        # 金账(bd['form_gold'],scoring 单一源——引擎跳变/进度份额按
+        # C 同视界 R 折金)」的较大者;C 用回档折中口径(R_eff=min(R,
+        # interest_recovery_rounds))——买是一次性金→板兑换,P6 回档
+        # 账辖;「持续低金」的政策态由相位地板辖,不在此重复计罚。
+        # 刷新(D)不辖本分支:V_D 批口径+平面 R 上界逐位保留(P5⑤
+        # 金 50/51 拒 D 的退化输出,W126 锁②)。EV>0 放行公式不变。
+        buy_side = isinstance(a, BuyCard)
+        c = interest_cost(
+            working.gold, cost, state,
+            recovery_rounds=(registry.interest_recovery_rounds
+                             if buy_side else None))
         v = val - (bd or {}).get('int_emb', 0.0)
+        if buy_side:
+            fg = (bd or {}).get('form_gold') or 0.0
+            if fg > v:
+                v = fg
         ev = v - c
         if ev > 0:
             if auth is not None:

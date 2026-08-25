@@ -57,26 +57,40 @@ def cross_plane_remaining_nodes(state: GameState) -> int:
 
 
 def interest_cost(gold: int, cost: int,
-                  state: GameState) -> int:
+                  state: GameState,
+                  recovery_rounds: float | None = None) -> float:
     """C_interest(W113 §3.2(b)):跨过的 10 金档数 × R(跨位面口径)。
 
     结算息按**花后金**计(结算序:先结算息再进收入,cw_horizon DP 的
     ``interest(g2)`` 同口径)——tiers_crossed = 花前档 − 花后档。
 
-    **口径声明(W113 §3.2(b)⟲R2/F05,W126 落码)**:本式是**平面 R
+    **口径声明(W113 §3.2(b)⟲R2/F05,W126 落码)**:本式默认是**平面 R
     上界口径**——假设跨档后金停在低档直到位面末,每轮损满息差。
     依 P5⑤ 的口径注记:该口径在「守息纪律语义」下成立([3]「花完
     仍保 50」= 本公式在 50 档边界的自然输出);与之并存的另一口径是
     P6 回档账下界(破档后 1-2 轮回档,真实息损 1-3 金)——上界偏紧
     (拒绝偏多),按保守侧落(P5⑤:「R≥3 即拒」是上界口径的输出,
-    **放行边界比它宽,不作为放行阈值承诺**)。放行边界的校准=步③
-    批口径上线后的 sim 对拍(V_D 金口径收益侧 vs 本 C 的量级对拍),
-    校准前不得改公式回退口径。
+    **放行边界比它宽,不作为放行阈值承诺**)。
+
+    **W131/ADR-0352 校准落地(sim 对拍后)**:买侧跨档消费改用
+    ``recovery_rounds`` 折中口径——R_eff = min(R, recovery_rounds)
+    (registry.interest_recovery_rounds,初值 3.0)。依据:①买是
+    一次性金→板面资产兑换,破档后随每轮收入 1-2 轮回档(P6 回档账
+    下界 1-3 金);「停在低档到位面末」的上界前提描述的是 FORM 段
+    持续花钱的政策态,那个态由相位地板(form_floor/interest_floor)
+    与层4 地板辖,不在本门重复计罚;②刷新(D)保持上界口径不动——
+    D 的花费是同轮可反复的搜寻消耗,「刷穿 50 后继续刷」正是上界
+    前件,P5⑤ 金 50/51 拒 D 的退化输出(W126 锁②)逐位保留。
+    recovery_rounds 的网格精调(1-5)留后续 sim 批,本值为 P6 下界
+    与平面上界的中点偏保守侧。
     """
     if gold <= 0 or cost <= 0:
         return 0
     tiers = gold // 10 - (gold - cost) // 10
-    return max(0, tiers) * cross_plane_remaining_nodes(state)
+    r = cross_plane_remaining_nodes(state)
+    if recovery_rounds is not None:
+        r = min(r, recovery_rounds)
+    return float(max(0, tiers) * r)
 
 
 def dp_posture(state: GameState, session: StrategySession):
