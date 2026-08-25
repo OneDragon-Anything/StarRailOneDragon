@@ -36,6 +36,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 WATCH_DIR = REPO_ROOT / '.debug' / 'temp' / 'currency_war'
 # 事件哨兵旧水位文件:不删 = 读旧水位误报(局47 实证)
 SENTINEL_POS = WATCH_DIR / 'cw_sentinel.pos'
+# 在岗状态文件(脚本名+PID+启动时刻,一行一件;重武时整批重写)——
+# DETACHED 起的哨兵对会话后台任务面板不可见,此文件让任何人不扫进程表也能看什么在岗
+STATUS_FILE = WATCH_DIR / 'rewatch.status'
 
 # 哨兵脚本名 → 武装说明(顺序即默认启动顺序)
 WATCHERS: dict[str, str] = {
@@ -117,13 +120,16 @@ def arm(wanted: list[str], keep_pos: bool) -> None:
 
     env = {**os.environ, 'PYTHONUTF8': '1'}
     detach = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    # 状态文件整批重写(重武=先杀净再起,旧内容必过期)
+    status_lines: list[str] = []
     for key in wanted:
         script = WATCH_DIR / WATCHERS[key][0]
         if not script.exists():
             print(f'[3/4 重武] 失败:脚本不存在 {script}')
             sys.exit(2)
         # 口径与 runtime-ops 一致:uv run python <脚本>,后台脱离本进程存活
-        subprocess.Popen(
+        # (DETACHED 对用户不可见,故 PID 落状态文件供任何人核对在岗情况)
+        proc = subprocess.Popen(
             ['uv', 'run', 'python', str(script)],
             cwd=REPO_ROOT,
             env=env,
@@ -132,7 +138,11 @@ def arm(wanted: list[str], keep_pos: bool) -> None:
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
         )
-        print(f'[3/4 重武] 已起 {key} → {WATCHERS[key][0]}({WATCHERS[key][1]})')
+        started_at = time.strftime('%Y-%m-%d %H:%M:%S')
+        status_lines.append(f'{key} pid={proc.pid} started={started_at}')
+        print(f'[3/4 重武] 已起 {key} → {WATCHERS[key][0]}(launcher pid={proc.pid};{WATCHERS[key][1]})')
+    STATUS_FILE.write_text('\n'.join(status_lines) + '\n', encoding='utf-8')
+    print(f'[3/4 重武] 在岗状态已写入:{STATUS_FILE}')
 
 
 def verify(expected: int) -> None:
