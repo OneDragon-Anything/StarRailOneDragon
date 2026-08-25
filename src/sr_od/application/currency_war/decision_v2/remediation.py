@@ -477,7 +477,7 @@ def _compensate_slot(working: GameState, state: GameState,
             # gold_floor 按 n×总价的逐动作重验在 arbiter 侧(每组动作
             # 各自 _check_constraint+simulate);受益 DeployMove 本轮仍拒
             # (升级解的是下轮——cap+n 次点击后才 +1,下轮部署管线消化)
-            # auth_basis=授权依据观测(ADR-0353):整组同一臂(前置守卫
+            # auth_basis=授权依据观测(ADR-0354):整组同一臂(前置守卫
             # 按 n×总价一次判);记录非指令,行为零改动。
             return [LevelUp(cost=cost, auth_basis=_basis)
                     for _ in range(n)]

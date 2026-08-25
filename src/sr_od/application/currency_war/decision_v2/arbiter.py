@@ -309,7 +309,7 @@ def _check_constraint(name: str, cand: Candidate,
                 return RejectReason(
                     'boss_levelup_ban', '', 0,
                     '息引擎总账拒([12] EV 化:平台账不过/无人口位/金不足)')
-            # 授权依据观测(ADR-0353):放行臂名记进动作对象(sim 账本
+            # 授权依据观测(ADR-0354):放行臂名记进动作对象(sim 账本
             # auth 键→检查器 levelup_interest_engine_gate;记录非指令,
             # 行为零改动)。拒绝路径不写(未过账=无授权,检查器侧可见)。
             a.auth_basis = _basis

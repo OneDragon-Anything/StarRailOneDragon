@@ -1192,7 +1192,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
                     _spend['levelup'] += 4
-                    # auth=授权依据观测(ADR-0353):LevelUp.auth_basis
+                    # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
                     # 放行臂名(pop_slot/dp/static_ev;''=default 栈旧调用
                     # 或未过账)——检查器 levelup_interest_engine_gate
                     # 判据消费;记录非指令。

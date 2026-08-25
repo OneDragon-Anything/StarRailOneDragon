@@ -1,4 +1,4 @@
-# ADR-0353: 检查器 levelup_interest_engine_gate 判据重定义(读授权依据)
+# ADR-0354: 检查器 levelup_interest_engine_gate 判据重定义(读授权依据)
 
 - 状态: accepted
 - 日期: 2026-08-26

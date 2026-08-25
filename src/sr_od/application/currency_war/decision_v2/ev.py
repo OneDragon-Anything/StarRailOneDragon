@@ -209,7 +209,7 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
                            int_emb: float = 0.0) -> bool:
     """bool 包装:判据本体在 ``levelup_ev_basis``(返回放行臂名;''=拒)。
 
-    ADR-0353 观测拆分(检查器判据重定义批,W131):授权依据=放行臂名,
+    ADR-0354 观测拆分(检查器判据重定义批,W131):授权依据=放行臂名,
     行为零改动。判据 docstring 与三路语义见 ``levelup_ev_basis``。
     """
     return levelup_ev_basis(state, session, registry, working_gold,
@@ -228,7 +228,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     'static_ev'=③ 静态 EV 平台账 / ''=拒。消费点:arbiter 升级门与
     remediation 补偿臂(放行时写入 ``LevelUp.auth_basis`` 观测字段→sim
     账本 LevelUp 行 auth 键→检查器 levelup_interest_engine_gate 判据
-    重定义,W131/ADR-0353)、levelup_ev_authorized(bool 包装)。
+    重定义,W131/ADR-0354)、levelup_ev_authorized(bool 包装)。
     ——以下为原判据语义(W119/ADR-0347;W126/ADR-0349 修订):
     升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347;W126/ADR-0349 修订)。
 

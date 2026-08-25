@@ -254,7 +254,7 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
-    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0353;旧 ADR-0266/r406 指纹)。
+    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0354;旧 ADR-0266/r406 指纹)。
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp}**。
@@ -299,7 +299,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
-                    f" {kind}——ADR-0353 违规)")
+                    f" {kind}——ADR-0354 违规)")
         prev_level = (row.get('state') or {}).get('level') or prev_level
     return out
 
