@@ -9,6 +9,10 @@
 > **息律节点无关 / hp低是报警不是触发 / final 买而不上 / 过渡是配方不是散买** ——
 > 与原则冲突的改动方向(如新造节点特例、把报警线当 spending 触发器)一律重想。
 
+## 为什么有策略 v2(动机;裁定史 ADR-0227,砍除归档 ADR-0365)
+
+v1 的四个假设被 784 篇投稿深读(r167-r187)与用户系列裁定(r149-r192)推翻:①终局阵容成员写死(实际:核心角色固定,副羁绊按来牌灵活替换);②过渡与终局两套独立数据靠某时刻"切换"(实际:阵容连续演化,开局引擎由来牌决定);③没有"当前阵容能否过接下来的节点"的判断(买/升/存息缺时机依据);④装备与领航员静态绑定(实际:装备公式跟核心驱动型走且有时序,领航员是时间函数)。v2(现行 decision_v2 族)围绕这四点重建;形态战力证据表在 game/research/power_baseline。
+
 ## 核心哲学(三条,贯穿全系统)
 
 1. **像人一样玩,观测驱动非预测驱动**:用每回合 OCR 掉血/胜负等**观测结果**当反馈信号;不预测战斗(为什么砍掉战斗模拟器:ADR 见 INDEX)。
@@ -38,10 +42,10 @@ battle_loop(主循环,屏幕级路由)
 |---|---|---|---|
 | 信息模型 | `cw_state` | GameState/Action/MatchOutcome 等核心类型;sell_refund;hp 阈值派生 | [06](06_input_model.md) |
 | 注册表 | `cw_chars`/`cw_factions`/`cw_equipment`/`cw_invest_data`+`cw_investments`/`cw_comps`/`cw_shop_odds`/`cw_synthesis`/`cw_enemy_data`/`affix_effects_data` | 游戏数据单一源(名称/效果/关系/概率);`cw_plaza_comps` 为生成产物 | [06](06_input_model.md) |
-| 战力表(策略v2) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层,生成勿手编) | 形态×位面→验证篇数(敢用白名单);三级回退+分层保守系数;[redesign](../redesign.md) Phase A | [redesign §4.1](../redesign.md) · [数据 meta](../power_table_meta.md) |
-| 桥线池(策略v2) | `cw_bridge_pool` | 未锁线时的购买方向(手牌重合度选桥;fixed/core/flex 三档;W126/ADR-0350 删已封存 hunt3/dot_belog 两桥,存活三桥全四体系);`ENGINE_FACTIONS` 从桥池 engine_bonds 派生(单一源,={仙舟,持续伤害,列车同行}) | [redesign §4.2](../redesign.md) · [0350](../decisions/0350-retire-sealed-factions-scoring.md) |
-| 过渡配方/检查点 | `cw_line_defs` | RECIPE_FACTIONS/RECIPE_BASE/ENGINE_FACTIONS 常量单一源 + `p1_formation_target` P1 成型检查点(轮窗常量 `_*_FORMATION_*` 见 cw_line_defs,ADR-0225/0241) | [redesign](../redesign.md) · [02](02_comp.md) |
-| 过渡配方一等公民模型(策略v2) | `cw_recipe` | P1 双轨期决策中心:配方伪 comp(RecipeComp)令 plan/deploy 评分自动转向配方完成度;「配方完成度即 P1 胜利条件」(user_playstyle [20]-[23]/[26];ADR-0225/0243) | [redesign](../redesign.md) · [02](02_comp.md) |
+| 战力表(策略v2) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层,生成勿手编) | 形态×位面→验证篇数(敢用白名单);三级回退+分层保守系数;策略 v2 Phase A | [02](02_comp.md) · [数据 meta](../power_table_meta.md) |
+| 桥线池(策略v2) | `cw_bridge_pool` | 未锁线时的购买方向(手牌重合度选桥;fixed/core/flex 三档;W126/ADR-0350 删已封存 hunt3/dot_belog 两桥,存活三桥全四体系);`ENGINE_FACTIONS` 从桥池 engine_bonds 派生(单一源,={仙舟,持续伤害,列车同行}) | [02](02_comp.md) · [0350](../decisions/0350-retire-sealed-factions-scoring.md) |
+| 过渡配方/检查点 | `cw_line_defs` | RECIPE_FACTIONS/RECIPE_BASE/ENGINE_FACTIONS 常量单一源 + `p1_formation_target` P1 成型检查点(轮窗常量 `_*_FORMATION_*` 见 cw_line_defs,ADR-0225/0241) | [02](02_comp.md) |
+| 过渡配方一等公民模型(策略v2) | `cw_recipe` | P1 双轨期决策中心:配方伪 comp(RecipeComp)令 plan/deploy 评分自动转向配方完成度;「配方完成度即 P1 胜利条件」(user_playstyle [20]-[23]/[26];ADR-0225/0243) | [02](02_comp.md) |
 | 线库v1(策略v2,**已删**) | `cw_line_library_v1` | 三线档案(姬子/绯英/DOT兜底)随 LineStrategy 删除(ADR-0336);历史数据见 git | [0336](../decisions/0336-delete-line-strategy.md) |
 | 信号锁线(策略v2,**已删**) | `cw_signal_lock` | 信号 2 层(核心卡到手→锁线)随 LineStrategy 删除(ADR-0336);信号分层现由 cw_intention 承载 | [0336](../decisions/0336-delete-line-strategy.md) |
 | 状态机(策略v2,**已删**) | `cw_phase_machine` | 相位机随 LineStrategy 删除(ADR-0336);模式判定现由 decision_v2 的 v3_mode 承载 | [0336](../decisions/0336-delete-line-strategy.md) |
@@ -54,7 +58,7 @@ battle_loop(主循环,屏幕级路由)
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`cw_telemetry` | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |
-| sim/回放基建 | `cw_sim`(P1 全流程模拟器:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`cw_sim_checks`(账本检查,实机学费回灌载体;池新鲜度报警 ADR-0344)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_delta_pool_gen`(池生成核心+局终自动再生管线,ADR-0344;CLI 壳 tools/cw/gen_delta_pool_snapshot.py)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器)/`cw_plan_replay_audit`(plan 对拍) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) · [redesign §6](../redesign.md) |
+| sim/回放基建 | `cw_sim`(P1 全流程模拟器:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`cw_sim_checks`(账本检查,实机学费回灌载体;池新鲜度报警 ADR-0344)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_delta_pool_gen`(池生成核心+局终自动再生管线,ADR-0344;CLI 壳 tools/cw/gen_delta_pool_snapshot.py)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器)/`cw_plan_replay_audit`(plan 对拍) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) |
 | 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/default_strategy`/`strategies/decision_v2_strategy`(现行生产 v2;旧 line_strategy 已删,ADR-0336) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
 | 离线工具 | `cw_weight_search`(CEM 权重搜索)/`cw_divergence_stats`(姿态分歧频率)/`cw_progress_curves` | 消费 telemetry 的离线分析,不进生产链 | [05](05_observation.md) |
 
@@ -93,3 +97,10 @@ battle_loop(主循环,屏幕级路由)
 | 19 二轮扫描 | 溶解(M16→research/plaza;裁定→ADR-0211;其余已落地或撤回) |
 | 20 live 观测规划 | [05](05_observation.md)(telemetry schema) |
 | economy_research | game/research/{economy, user_playstyle} |
+
+## 边界与已知风险(原 v2 设计期声明精简,ADR-0365;若与各分篇 as-built 冲突以分篇为准)
+
+- **感知边界**:对手阵容细节/敌方词条实时变化不可得——counter 判定只用可识别信号;P3 决赛圈对手针对不在范围。
+- **显式未覆盖**:事件选项语义/装备配方级选择等曾列为 v2 排除项,现状见各分篇(04/03)。
+- **版本漂移**:游戏版本切换需重提取数据(生成器可重跑);战力/桥线等先验表随版本过期。
+- **跨局分配**(cw_run_allocator)与本层正交,单独演进(02)。

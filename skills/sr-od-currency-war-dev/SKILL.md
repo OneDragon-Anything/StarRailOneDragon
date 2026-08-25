@@ -39,7 +39,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 |---|---|
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
-| 系统设计定稿(架构/数据层/决策循环) | `docs/develop/currency_war/redesign.md` |
+| 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 + `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
 | as-built 策略正文(结构/语义/边界) | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
@@ -121,7 +121,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## 防坑清单(高频犯过的)
 
-- **逐局打补丁陷阱**:连续多局每局修一个新卡点 = 发散信号(缺的是成型进度类的控制变量,不是又一个单点修)——连续 3 局以上不同根因时,停下做架构层反思(读 redesign + 三份文档),别修 r(N+1)。
+- **逐局打补丁陷阱**:连续多局每局修一个新卡点 = 发散信号(缺的是成型进度类的控制变量,不是又一个单点修)——连续 3 局以上不同根因时,停下做架构层反思(读 strategy/README 总览 + 三份文档),别修 r(N+1)。
 - **测试锁锁旧行为**:改门/常量前 grep 全部消费点含测试断言——很多「不买/不做」断言是旧路径的副作用,不是真语义;预判行为变化清单,逐项判「意图内还是副作用」。
 - **叙述≠证据**:「轨迹最佳」「修复链收敛」是故事;真证据 = sim 分布变化 + 锁断言 + 判读锚点事前预测事后核对。
 - **生成器分层**:改注册表前查 `tools/cw/` 是否有该文件的生成器(`*_data.py` 数据层勿手编;判断层文件反向标注);改错层 = 被覆盖或双源。
