@@ -85,16 +85,6 @@ def crisis_hoard_active(state: GameState,
             and (state.gold or 0) >= registry.crisis_hoard_gold)
 
 
-def is_catchup(state: GameState, session: StrategySession,
-               registry: DecisionV2Registry) -> bool:
-    """追赶修饰态(等级门版:等级已够高仍低于位面基线才算追赶;
-    P1 早期人口低于基线是常态非落后——r232)。"""
-    pop = len(state.deployed or [])
-    baseline = registry.pop_baseline.get(state.plane, 7)
-    return (pop < baseline - 1
-            and state.level >= registry.catchup_min_level)
-
-
 def current_mode(session: StrategySession) -> str:
     """当前模式(economy/war;载体批 W35:新载体读 session.v3_mode——
     纪律族 assess_discipline 每轮写;旧 v2_state 兜底随 ADR-0336 删除)。"""
@@ -109,20 +99,22 @@ def _allowed_tags(state: GameState, session: StrategySession,
                                                         frozenset[str]]:
     """按覆盖态优先序选 (放行标签集, 禁标签集)。
 
-    应急 > 追赶 > 模式;上级命中即返回,下级不再参与。
+    应急 > 模式(追赶态已随 W126/ADR-0349 退场);上级命中即返回,
+    下级不再参与。
     """
     if is_emergency(state, registry):
         # ADR-0302/0303:应急集=registry.emergency_tags(已含卖弱件
         # for_gold+升级 levelup)。危机囤金态(金≥crisis_hoard_gold)
         # 额外放行 refresh——金在手而店无战力件时搜牌补板是唯一变现
         # 通道([17]「>50 的每一分都没有存的意义,该D牌D牌」);
-        # 金<crisis_hoard_gold 的应急态 refresh 仍滤出(应急集收窄不变)
+        # 金<crisis_hoard_gold 的应急态 refresh 仍滤出(应急集收窄不变)。
+        # 评分侧:危机 D 与常态同走 V_D 批口径金账(W126/ADR-0349
+        # E7 应急 D 变现 EV 化——同一本账,不是另一个门;本解锁只管
+        # 候选在场,放行由 V_D>0 决定)
         allowed = registry.emergency_tags
         if crisis_hoard_active(state, registry):
             allowed = allowed | frozenset({'refresh'})
         return allowed, frozenset()
-    if is_catchup(state, session, registry):
-        return registry.catchup_tags, registry.catchup_forbidden_tags
     if current_mode(session) == 'economy':
         return registry.economy_tags, frozenset()
     return registry.war_tags, frozenset()
@@ -142,8 +134,7 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
-             else 'catchup' if is_catchup(state, session, registry)
-             else 'mode')
+             else 'mode')   # 追赶态已退场(W126/ADR-0349)
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
     kept: list[Candidate] = []

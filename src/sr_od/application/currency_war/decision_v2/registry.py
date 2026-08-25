@@ -93,8 +93,10 @@ class DecisionV2Registry:
     sell_key_weight_scale: float = 1.0
 
     # ===== 层2:硬过滤链(redesign §3 覆盖态严格优先序)=====
-    #: 过滤链层级序:应急 > 追赶 > 模式(redesign §5.4 唯一真值序)
-    filter_chain_order: tuple[str, ...] = ('emergency', 'catchup', 'mode')
+    #: 过滤链层级序:应急 > 模式(追赶态已随 W126/ADR-0349 退场——人口落后
+    #: 由通道 2 人口位升级+通道 4 概率等级窗+EV 总账涌现,兜底局由 form_score
+    #: 承接「人口别落后」观察;位面绝对基线 {5,7,9} 是阵容无关的粗糙代理)
+    filter_chain_order: tuple[str, ...] = ('emergency', 'mode')
     #: 各层放行标签集(候选标签仅作过滤域标记,不携带优先级——ADR-0290)
     #: ADR-0302 应急集内容修正(合流批 ADR-0303 并入):补 for_gold
     #: (卖弱件)+levelup(升级)——应急态语义=战力买+卖弱件+升级,
@@ -105,11 +107,8 @@ class DecisionV2Registry:
         'engine_seed', 'plugin', 'carry_gate', 'off_target',
         'free_bench', 'deploy', 'for_gold', 'levelup',
     })
-    catchup_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'levelup',
-        'off_target', 'free_bench', 'deploy',
-    })
+    #: 追赶窗口约束与追赶标签集已随 W126/ADR-0349 删除(用户 2026-08-25
+    #: 裁决 F6/Q4:人口落后=阵容没上满的表现,由通道 2/4+EV 涌现承接)
     economy_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'plugin', 'pair', 'copy', 'carry_gate',
@@ -124,8 +123,14 @@ class DecisionV2Registry:
     })
     #: 追赶窗口约束:追赶期禁 for_gold(不折现卖件)+ 禁 refresh
     #: (升人口窗口的钱不进刷新;redesign「追赶=升人口置顶」)
-    catchup_forbidden_tags: frozenset[str] = frozenset({
-        'for_gold', 'refresh',
+    #: war 标签集(W126/ADR-0349:refresh 进 war 集——「war 模式滤 refresh」
+    #: 废除,D 是一等花钱通道([17]「该D牌D牌」不因 war 覆盖态消失;
+    #: 授权仍由 V_D 批口径评分+interest_rule EV 门辖,标签集只管在场)
+    war_tags: frozenset[str] = frozenset({
+        'line_carry', 'line_opportunistic', 'bridge_core',
+        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
+        'carry_gate', 'off_target', 'for_gold', 'free_bench',
+        'levelup', 'deploy', 'refresh',
     })
     #: 应急 HP 档(触发层2 应急过滤;旧 line_strategy._EMERGENCY_HP
     #: 镜像,ADR-0336 后独立)
@@ -134,13 +139,8 @@ class DecisionV2Registry:
     #: 时进危机囤金态(战力买偏置+搜牌解锁)。依据:批㉝ F3 指纹阈值
     #: 40(hp≤25 且金≥40 只升不买,金囤 85+ 板濒死零动作)
     crisis_hoard_gold: int = 40
-    #: 追赶等级门(P1 早期人口低于基线是常态;旧 line_strategy
-    #: ._CATCHUP_MIN_LEVEL 镜像,ADR-0336 后独立)
-    catchup_min_level: int = 6
-    #: 位面人口基线(r191 中位;旧 line_strategy._POP_BASELINE 镜像,
-    #: ADR-0336 后独立)
-    pop_baseline: dict[int, int] = field(
-        default_factory=lambda: {1: 5, 2: 7, 3: 9})
+    #: (catchup_min_level/pop_baseline 已随 W126/ADR-0349 删除:追赶态退场,
+    #: 通道 2 人口位([33])+通道 4 概率等级窗([3])+EV 总账涌现承接)
 
     # ===== 成型停手纪律([13] 停手线;ADR-0343;W119/ADR-0347 收编)=====
     #: 总开关(False=旧行为,成型后照买;A/B 通道)
@@ -201,19 +201,15 @@ class DecisionV2Registry:
     interest_rounds: float = 5.0
     #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
     rung_frac_per_recipe_tier: float = 0.3
-    #: 刷新常量 EV(板面查表不可预知新店 → 表外常量;**已标定**,
-    #: ADR-0293:2.5=早刷净收益(成本 2 + 0.5 方向期权);恒刷会
-    #: 抽干金流,配 refresh_max_round/refresh_min_gold 双门)
-    refresh_ev: float = 2.5
-    #: 刷新 EV 生效轮界(r≤ 此值才按 refresh_ev 计正值;超出恒负分
-    #: 不刷)。标定依据(ADR-0293):v1 r258 早期方向刷新 + 中期找件
-    #: (1.76 次/局);恒刷(=9)抽干金流挤死升级,过窄(=3)中期
-    #: 找件断供,双窗 A/B 定 6
-    refresh_max_round: int = 6
-    #: 刷新金保底(金< 此值不刷)。标定依据:无保底时刷后 re-decide
-    #: 链把早期金抽干至 <10,中期永远够不到满息平台 → [12] 息引擎
-    #: 门锁死晚期升级通道(0.45 次 vs v1 6.25 次;标定批诊断,ADR-0293)
-    refresh_min_gold: int = 20
+    #: 刷新常量 EV 族已随 W126/ADR-0349 删除(refresh_ev/refresh_max_round/
+    #: refresh_min_gold/refresh_starve_*/refresh_game_cap/levelup_reserve_
+    #: gold/form_refresh_*:refresh 附庸闸整体退场——D 候选评分改 V_D 批口径
+    #: (scoring.vd_refresh_score,P5 定理:expected_refreshes×刷价 vs 收益侧),
+    #: 预算前提=C_interest 在 50 档边界的输出(G2,不设常量金门))
+    #: 扑满节点(奖励型战斗)刷新 EV(W126:轮界门删除后,扑满凑伤害 D 的
+    #: 独立小额 EV——受 piggy_refresh_round_cap 辖(P8:s≤2金/节点),
+    #: 扫满即无证拒;值=旧 refresh_ev 沿用,语义收窄到扑满节点专属)
+    piggy_refresh_ev: float = 2.5
     #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
     #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
     depth_unit_value: float = 2.0
@@ -284,17 +280,10 @@ class DecisionV2Registry:
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'plugin', 'carry_gate',
     })
-    #: 评分侧联动折扣(ADR-0297 刷新×追级并存,采纳方案):金<
-    #: refresh_starve_gold 时 refresh_ev 乘此系数——排序自然让位给
-    #: 追级/买入。**已按 ADR-0297 双窗+终验标定:0.6/40**(金<40 时
-    #: EV=1.5-2=-0.5 恒负分不刷;≥40 全额)是全部并存变体中唯一
-    #: 双窗一致臂(原窗 -5.23/验证窗 -4.80;终验 n=100 -5.76);
-    #: lvl 2.07→6.27(通道病治愈,≈v1 6.83)refr 10.3→2.91。
-    #: 约束侧(方案 a:refresh_game_cap/levelup_reserve_gold)为本批
-    #: 诊断否决的通道(双窗不稳),保留为注册 A/B 通道默认关闭
-    refresh_starve_discount: float = 0.6
-    #: 评分侧联动的饥饿金阈值(金< 此值触发折扣)
-    refresh_starve_gold: int = 40
+    #: (refresh_starve_discount/refresh_starve_gold/refresh_game_cap/
+    #: levelup_reserve_gold 已随 W126/ADR-0349 删除:刷新×追级并存仲裁
+    #: 的评分折扣与约束侧 A/B 通道整体退场——并存由 V_D(概率窗二分:
+    #: goal=level_up 时 D 让位)与升级总账自然裁决,不再需要外加折扣)
     # ===== ADR-0305 件3:金充裕买偏置(批㉞④ 评分域杠杆) =====
     #: 金充裕段(≥goldrich_min_gold)的 0 分板面差分买候选顶成正分
     #: 的偏置。诊断(20 局 probe,seed 520-539):金 28-41 段 110 轮,
@@ -332,21 +321,10 @@ class DecisionV2Registry:
     #: (散买断,空窗/成型可开新);False=关闭(回 W70 行为,全引擎件
     #: 见即买)——A/B 通道,默认开。
     engine_affinity_enabled: bool = True
-    # ===== 成型找件刷新(ADR-0301 strike2,域 b) =====
-    #: 成型找件刷新 EV:未成型(引擎数<target)且当前店无引擎卡时,
-    #: 刷新=定向找件。**双窗 A/B 否决(30+30 配对 -4.13/-4.70,
-    #: hp_ge_60 双降)**:找件命中率低于常量 EV 假设,且高分刷新
-    #: 挤掉同轮买入;通道保留注册默认关闭(A/B 可开,同
-    #: refresh_game_cap 模式)
-    form_refresh_ev: float = 0.0
-    #: 成型找件刷新生效轮界(r≤ 此值;r7 遭遇前是找件窗,
-    #: 常规 refresh_max_round=6 不辖本通道)
-    form_refresh_max_round: int = 7
-    #: 成型找件刷新金保底(找件可破常态息档但不破此底——
-    #: 金流抽干防护,高于常规 refresh_min_gold 的 20)
-    form_refresh_min_gold: int = 30
-    #: 「已成型」判定阈值(引擎数 ≥ 此值=不再找件刷)
-    form_refresh_engines_target: int = 2
+    #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
+    #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
+    #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内
+    #: 的定向找件是 V_D 的本体场景,不再需要独立常量通道))
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -358,7 +336,6 @@ class DecisionV2Registry:
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
         'boss_levelup_ban',    # [32] boss 轮禁升级腾席
         'deploy_cap',          # 上阵数 ≤ max_units
-        'refresh_budget',      # ADR-0297 每局刷新预算+追级保留金
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     interest_floor: int = 50      # [17] 满息地板(常态/追赶)
@@ -367,13 +344,9 @@ class DecisionV2Registry:
     boss_floor: int = 10          # r278 boss 破息地板
     #: (levelup_interest_engine_gate 已随 W119 删除:[12] 门收编 EV 总账
     #:  ——ev.levelup_ev_authorized 单一裁决,ADR-0347;A1/A2 镜像清)
-    #: ADR-0297 刷新×追级并存·约束侧(方案 a,诊断否决默认关闭):
-    #: 每局刷新预算上限(v1 量级 4-6);0=不限。诊断证据:cap+reserve
-    #: 双窗不稳(原窗 -3.27/验证窗 -11.70),评分侧联动更稳
-    refresh_game_cap: int = 0
-    #: ADR-0297 追级保留金(约束侧,同上默认关闭):等级未满时,
-    #: 刷新后金低于此值即让位(不刷只攒);0=关闭
-    levelup_reserve_gold: int = 0
+    #: (refresh_game_cap/levelup_reserve_gold 已随 W126/ADR-0349 删除:
+    #: refresh_budget 约束整体退场,D 的预算由 V_D 批口径评分+
+    #: gold_floor/interest_rule 辖)
     #: [32] boss 轮判定(node_type_current='boss';P1 r9 兜底同辖)
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
     #: LevelUp 等级上限(封顶 10)
@@ -388,22 +361,23 @@ class DecisionV2Registry:
     audit_matrix: dict[tuple[str, str], tuple[str, ...] | tuple[str, str]] = field(
         default_factory=lambda: {
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
+            # ('catchup' 列已随 W126/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
             ('gold', 'emergency'): ('gold_floor',),
-            ('gold', 'catchup'): ('gold_floor', 'interest_rule'),
+            ('gold', 'mode'): ('gold_floor', 'interest_rule'),
             ('bench', 'boss'): ('bench_capacity',),
             ('bench', 'emergency'): ('bench_capacity',),
-            ('bench', 'catchup'): ('bench_capacity',),
+            ('bench', 'mode'): ('bench_capacity',),
             ('slot', 'boss'): ('boss_levelup_ban',),
             ('slot', 'emergency'): ('bench_capacity',),
-            ('slot', 'catchup'): ('deploy_cap',),
+            ('slot', 'mode'): ('deploy_cap',),
             ('round_mutex', 'boss'): ('same_round_mutex',),
             ('round_mutex', 'emergency'): ('same_round_mutex',),
-            ('round_mutex', 'catchup'): ('same_round_mutex',),
+            ('round_mutex', 'mode'): ('same_round_mutex',),
         })
     #: 审计表两维的显式枚举(新增动作类型/资源维时审计表强制过检)
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
-    audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'catchup')
+    audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
 
 
 #: 默认注册表(ADR-0293 标定后;A/B 时构造改动副本注入

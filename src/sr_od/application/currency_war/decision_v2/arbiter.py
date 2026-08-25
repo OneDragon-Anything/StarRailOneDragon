@@ -41,7 +41,6 @@ from sr_od.application.currency_war.decision_v2.ev import (
 )
 from sr_od.application.currency_war.decision_v2.filters import (
     current_mode,
-    is_catchup,
     is_emergency,
 )
 from sr_od.application.currency_war.decision_v2.phase import (
@@ -69,7 +68,7 @@ class ArbiterResult:
 
     actions: list[Action] = field(default_factory=list)
     log: list[dict] = field(default_factory=list)
-    coverage: str = 'mode'          # emergency / catchup / mode
+    coverage: str = 'mode'          # emergency / mode(追赶态已退场,ADR-0349)
     floor: int = 0                  # 本轮生效地板
     #: 资源型拒绝事件(补偿的受益候选;W52 回连机制输入,ADR-0326)
     rejections: list[Rejection] = field(default_factory=list)
@@ -104,14 +103,12 @@ def _active_floor(state: GameState, session: StrategySession,
 
 def _round_state_dims(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> set[str]:
-    """当前命中的回合态维(审计表列)。"""
+    """当前命中的回合态维(审计表列;'catchup' 已随 W126/ADR-0349 退场)。"""
     dims: set[str] = set()
     if boss_window_active(state, session, registry):
         dims.add('boss')
     if is_emergency(state, registry):
         dims.add('emergency')
-    if is_catchup(state, session, registry):
-        dims.add('catchup')
     return dims
 
 
@@ -128,7 +125,7 @@ def _check_constraint(name: str, cand: Candidate,
     W52(ADR-0326):拒绝原因从裸 str 升为 ``RejectReason``——资源型
     约束(gold_floor/bench_capacity/deploy_cap)填 resource/shortfall
     (补偿路由键/缺口量,程序可读);纪律型拒绝(interest_rule/
-    copies_cap/same_round_mutex/boss_levelup_ban/refresh_budget)
+    copies_cap/same_round_mutex/boss_levelup_ban)
     resource='' shortfall=0 占位,**不进回连**(§1.1 捕获条件)。
     log 行格式不变(``f'{cname}:{reason.describe}'``)。
 
@@ -145,10 +142,12 @@ def _check_constraint(name: str, cand: Candidate,
             return None
         floor = _active_floor(state, session, registry)
         if cand.tag == 'levelup':
-            # 升级通道的金门槛让位 [12] EV/DP 总账(boss_levelup_ban 块内
-            # levelup_ev_authorized 单一裁决,ADR-0347);保险丝=form_floor
-            # (EV/DP 授权的花费也止于本金下限)
-            floor = min(floor, registry.form_floor)
+            # W126/ADR-0349:升级的金门槛整体让位 boss_levelup_ban 块的
+            # ev.levelup_ev_authorized 单一裁决——可负担性(after≥0 入口门)
+            # + 三路授权(① 人口位保险丝=可负担性,34 帧误拒修订;② DP
+            # 平台未破;③ 静态总账含省刷金项)全在那处收口;此处再设
+            # form_floor 保险丝=双重门(34 帧误拒的拦截者之二)。
+            return None
         elif (not is_emergency(state, registry)
               and current_mode(session) == 'economy'
               and not boss_window_active(state, session, registry)
@@ -293,26 +292,7 @@ def _check_constraint(name: str, cand: Candidate,
                     int_emb=(bd or {}).get('int_emb', 0.0)):
                 return RejectReason(
                     'boss_levelup_ban', '', 0,
-                    '息引擎总账拒([12] EV 化:平台账不过/无人口位)')
-        return None
-    if name == 'refresh_budget':
-        # ADR-0297 刷新×追级并存(约束侧,方案 a):刷新链曾以
-        # re-decide 抽干金→[12] 息引擎门锁死升级(lvl 2 vs v1 7);
-        # 两通道并存=刷新留预算、追级留保底金,非二选一。
-        if isinstance(a, RefreshShop):
-            used = getattr(session, 'v2_refresh_used', 0)
-            if registry.refresh_game_cap > 0 \
-                    and used >= registry.refresh_game_cap:
-                return RejectReason('refresh_budget', '', 0,
-                                    (f'局刷新预算{registry.refresh_game_cap}'
-                                     f'已用尽({used})'))
-            if registry.levelup_reserve_gold > 0 \
-                    and state.level < registry.level_max:
-                cost = _cost_of(cand)
-                if working.gold - cost < registry.levelup_reserve_gold:
-                    return RejectReason('refresh_budget', '', 0,
-                                        (f'追级保留金(金{working.gold}-费'
-                                         f'{cost}<{registry.levelup_reserve_gold})'))
+                    '息引擎总账拒([12] EV 化:平台账不过/无人口位/金不足)')
         return None
     if name == 'deploy_cap':
         if isinstance(a, DeployMove):
@@ -384,7 +364,6 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         disc_view = assess_discipline(state, session, registry)
     floor = _active_floor(state, session, registry)
     coverage = ('emergency' if is_emergency(state, registry)
-                else 'catchup' if is_catchup(state, session, registry)
                 else 'mode')
     working = state.copy()
     ordered = sorted(scored, key=lambda t: -t[1])
@@ -479,12 +458,10 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         res.log.append(row)
         if accepted:
             res.actions.append(cand.action)   # 段尾:刷后 re-decide
-            # ADR-0297:局刷新计数(预算约束的数据源;sim 局=独立
-            # session,生产局=session 生命周期同构)
-            session.v2_refresh_used = getattr(
-                session, 'v2_refresh_used', 0) + 1
             # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数(同轮 re-decide
-            # 链可见;scoring 豁免门消费,单节点支出 s≤2金辖)
+            # 链可见;scoring 豁免门消费,单节点支出 s≤2金辖)。
+            # (ADR-0297 局刷新计数 v2_refresh_used 已随 W126/ADR-0349
+            # refresh_budget 约束退场删除——无消费点)
             session.v2_round_refreshes = getattr(
                 session, 'v2_round_refreshes', 0) + 1
         elif reason.resource:

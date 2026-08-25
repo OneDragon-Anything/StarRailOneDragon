@@ -399,6 +399,106 @@ def _shop_has_engine_card(state: GameState) -> bool:
     return False
 
 
+def vd_target_core(state: GameState,
+                   session: StrategySession) -> str:
+    """V_D 的目标件(单一目标,与 P5 概率表的「找谁」一致):
+
+    意向锁定线的具名核心(``intention_core``,撤销计数③同源)——
+    [3]「看自己核心在几级刷新概率大」的 D 找件对象就是核心;
+    [31] 硬约束:非目标件不为凑羁绊 D(填充件只搭自然刷新便车)。
+    未锁线/核心不可解析 → ''(D 通道关闭——V_D 需要具名目标,
+    兜底局无概率表语境)。
+    """
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        intention_core,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
+            or not ist.locked_comp:
+        return ''
+    from sr_od.application.currency_war.cw_comps import get_comp
+    comp = get_comp(ist.locked_comp)
+    if comp is None:
+        return ''
+    return intention_core(comp)
+
+
+def vd_refresh_score(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry) -> float | None:
+    """V_D 批口径评分(W126/ADR-0349,经济循环总模型步③;P5 主定理)。
+
+    **金口径总账**(W113 §3.2(c)⟲R2 / P5 检验点①):
+
+        V_D = 收益 − 成本
+        收益 = 2★核心完成的成型跳变金值(F15 战力折算,registry 单一源):
+               Δrung_value(e1→e2) × R(跨位面剩余节点)
+               + Δh3_win_rate × expected_battle_loss × hp_to_gold
+                 × battles_left_est
+        成本 = expected_refreshes_for_card(level, cost, star=2, owned=j)
+               × 刷价 —— **批口径**(找到 k 张的总期望刷金;
+               ``cw_shop_odds`` 现成,禁单次边际口径——P5 已证对
+               k≥3 目标系统性低估 D 通道)
+
+    语义要点:
+    - 收益按「核心 2★ 完成」计值(成型三件套第三件收口,整跳变的
+      兑现绑定件);j 张已持时成本侧自动放大(E 随剩余张数增长),
+      远未齐时 V_D 自然为负(攒自然刷新,不硬 D)——P5 边界语义;
+    - **目标等级窗二分**([3]/W113 §3.3 冲突消解):level_plan 目标说
+      ``level_up``(窗外)→ 返回 None(D 让位给升,「没到就少刷新、
+      多买经验」);``roll``/``stable``(窗内/峰值停留)→ V_D 生效
+      (判据=``_resolve_level_goal`` 单一源,comp 自带 level_plan 优先);
+    - 金 50/51 边界的守息纪律不由本函数辖——由 arbiter.interest_rule
+      的 C_interest 表达(P5⑤ 已证=定理退化输出,G2:不设常量金门);
+    - 峰值以上停留(P5 边界 b):E(L) 已是当前等级真值,升级收益侧的
+      对照账在 ev.levelup_refresh_saving(ΔE≤0 时自然为 0)。
+    """
+    import math
+
+    core = vd_target_core(state, session)
+    if not core:
+        return None
+    # 概率窗二分:goal 说 level_up(窗外)→ D 让位([3] 二分)
+    from sr_od.application.currency_war.cw_economy import (
+        _resolve_level_goal,
+    )
+    goal = _resolve_level_goal(
+        state, getattr(session, 'target_comp', None))
+    if goal is not None and goal.action == 'level_up':
+        return None
+    # 核心已完成 2★(任一份 star≥2)→ 找件目标消失
+    copies = [d for d in list(state.deployed or [])
+              + [b for b in (state.bench or []) if b is not None]
+              if getattr(d, 'char_id', '') == core]
+    if not copies or max(getattr(d, 'star', 1) or 1 for d in copies) >= 2:
+        return None
+    j = len(copies)   # 全 1★ 的基础副本数(2★ 已在上面短路)
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    ch = _CH.get(core)
+    if ch is None or not ch.cost:
+        return None
+    from sr_od.application.currency_war.cw_shop_odds import (
+        expected_refreshes_for_card,
+    )
+    e = expected_refreshes_for_card(
+        state.level, ch.cost, target_star=2, owned=j)
+    if math.isinf(e) or e <= 0:
+        return None    # 该等级刷不到此费(p=0)→ D 无对象
+    # 收益侧:F15 成型跳变金值(registry 常量单一源,零新魔数)
+    from sr_od.application.currency_war.decision_v2.ev import (
+        cross_plane_remaining_nodes,
+    )
+    r = cross_plane_remaining_nodes(state)
+    drung = (registry.rung_value.get(2, 0.0)
+             - registry.rung_value.get(1, 0.0))
+    dwin = (registry.h3_win_rate.get(2, 0.0)
+            - registry.h3_win_rate.get(1, 0.0))
+    benefit = (drung * r + dwin * registry.expected_battle_loss
+               * registry.hp_to_gold * registry.battles_left_est)
+    spend = e * (state.shop_refresh_cost or 2)
+    return benefit - spend
+
+
 def _engines_formed(state: GameState,
                     registry: DecisionV2Registry) -> int:
     """整数引擎数(混合域权重口径;与 board_rung_x 同源)。"""
@@ -449,68 +549,44 @@ def score_candidate(cand: Candidate, state: GameState,
     """单候选评分:apply 后板面查表 − 基线板面查表(相对值)。
 
     禁止单卡边际拆分——差值全部来自板面形态维(档位/战力/息)与
-    即时金流(卖出回金/刷新费经息档与 refresh_ev 常量显影)。
+    即时金流(卖出回金);refresh 候选走 V_D 批口径金账
+    (vd_refresh_score,W126/ADR-0349)。
     """
     base = score_state(state, registry, session)
     if cand.tag == 'refresh':
-        # 刷新的板面形态不可预知(新店随机)→ 查表外常量 EV
-        # (未标定=0:骨架版不主动刷新;标定 gate 后接 P(hit) 期望)。
+        # W126/ADR-0349 V_D 批口径(P5 检验点①):refresh 附庸闸
+        # (refresh_max_round 轮界/refresh_min_gold 金门/refresh_ev 常量
+        # /饥饿折扣/危机 max 分支/成型找件通道)整体退场——D 候选
+        # 评分=vd_refresh_score 的金口径总账(收益=核心 2★ 完成的
+        # 成型跳变金值,成本=expected_refreshes×刷价批口径)。
         # W119/ADR-0347:bd['int_emb']=0(刷新分内无息分量——EV 授权
-        # 剥离用,arbiter.interest_rule 消费)
-        # (轮界门 refresh_max_round=早期方向刷新/金保底门 refresh_min_gold
-        # =防 re-decide 链抽干金流锁死息引擎——ADR-0293 标定批双门)
-        # ⚠️ 步③注意(W120 证明批检验点1):本常量 EV 是**单次刷新边际**
-        # 口径,对 k≥3 目标(合 2 星)系统性低估 D 通道——V_D 化时必须用
-        # 批口径(expected_refreshes(level,cost,k)×SHOP_REFRESH_COST,
-        # cw_shop_odds.expected_refreshes_for_card 现成),勿复用本常量。
+        # 剥离用,arbiter.interest_rule 消费;金 50/51 拒 D 是 C_interest
+        # 在 50 档边界的自然输出,P5⑤,不设常量金门(G2))。
         # ADR-0348 扑满低危战斗(口述定谒 2026-08-26)×W120 P8 上限
         # (W122 F-01):过热局 reward 节点按「奖励型战斗」处理——轻投入
-        # 凑羁绊刷伤害拿奖励,**禁深花保血**(boss/遭遇窗的下探授权对
-        # 扑满全部不适用)。战斗向刷新理由开放(轮界门豁免)但受 P8
-        # 上限辖:单节点凑羁绊支出 s≤0.277R(采前 R=6-9 → s≤2金)→
-        # 豁免限 piggy_refresh_round_cap 次/节点(超出按无证拒,回常规
-        # 门恒负分);金保底门保留。
+        # 凑羁绊刷伤害拿奖励,**禁深花保血**。凑羁绊 D 不是 V_D 的
+        # 核心找件语境(找件=核心概率表,凑羁绊=店内羁绊件),走
+        # piggy_refresh_ev 独立小额账;受 P8 上限辖:s≤0.277R(采前
+        # R=6-9 → s≤2金)→ 豁免限 piggy_refresh_round_cap 次/节点,
+        # 超出按无证拒(V_D 不足以放行时回负分)。
         from sr_od.application.currency_war.decision_v2.ev import (
             reward_node_is_battle,
         )
+        vd = vd_refresh_score(state, session, registry)
         _piggy = (reward_node_is_battle(state)
                   and getattr(session, 'v2_round_refreshes', 0)
                   < registry.piggy_refresh_round_cap)
-        if ((state.round_num > registry.refresh_max_round and not _piggy)
-                or (state.gold or 0) < registry.refresh_min_gold):
-            val = -cand.action.cost or -1.0
+        if _piggy:
+            val = registry.piggy_refresh_ev \
+                - (cand.action.cost or 0)
+            if vd is not None:
+                val = max(val, vd)
+        elif vd is not None:
+            val = vd
         else:
-            ev = registry.refresh_ev
-            # ADR-0297 评分侧联动(方案 b):金低于追级饥饿阈值时
-            # refresh_ev 打折(1.0=关闭)——排序自然让位给追级/买入,
-            # 与约束侧(层4 refresh_budget)互斥使用的通道
-            if (registry.refresh_starve_discount < 1.0
-                    and (state.gold or 0) < registry.refresh_starve_gold):
-                ev *= registry.refresh_starve_discount
-            val = ev - (cand.action.cost or 0)
-        # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40)
-        # 的刷新=定向搜战力件(常规轮界门辖不到 r7+ 危机窗;批㉝
-        # F3 实证:seed 75 危机尾段店无战力件,囤金无变现通道)。
-        # 止步线=囤金线 40(<40 crisis 态解除→回常规门,r7+ 恒负分);
-        # 买侧息崖仍在(52→49 的买不被翻越)——危机搜牌属 [18]
-        # 「位面末最后一战 ALL IN」例外域
-        if crisis_hoard_active(state, registry):
-            val = max(val,
-                      registry.refresh_ev - (cand.action.cost or 0))
-        # ADR-0301 成型找件通道(域 b):未成型+店无引擎件时刷新=
-        # 定向找件,独立轮界/金门(常规门辖不到 r7 找件窗);
-        # 饥饿折扣同辖(防找件链在低金抽干金流)
-        if (registry.form_refresh_ev > 0
-                and state.round_num <= registry.form_refresh_max_round
-                and (state.gold or 0) >= registry.form_refresh_min_gold
-                and _engines_formed(state, registry)
-                < registry.form_refresh_engines_target
-                and not _shop_has_engine_card(state)):
-            ev_f = registry.form_refresh_ev
-            if (registry.refresh_starve_discount < 1.0
-                    and (state.gold or 0) < registry.refresh_starve_gold):
-                ev_f *= registry.refresh_starve_discount
-            val = max(val, ev_f - (cand.action.cost or 0))
+            # 无目标语境(未锁线/核心已齐/窗外/该等级刷不到):
+            # D 让位——刷新金只用于找目标件/保血急救([31] 硬约束)
+            val = -(cand.action.cost or 2)
         return val, {'base': base, 'after': None, 'refresh_ev': val,
                      'int_emb': 0.0}
     after_state = apply_for_score(cand, state, session)

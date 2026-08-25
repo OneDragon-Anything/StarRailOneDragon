@@ -71,7 +71,8 @@ Early/Middle/Final 阵容+通关事实=该形态在该位面"能过"的下限证
 │     + 滞回计数(战斗节点为计数单位)                         │
 │     → 经济/战力模式                                       │
 │  5. 象限仲裁表取动作 → 执行(买/卖/合装/站位/换线)          │
-│  覆盖态优先序(严格):应急 > 追赶期修饰 > 模式(经济/战力)     │
+│  覆盖态优先序(严格):应急 > 模式(经济/战力)                  │
+│  (追赶期修饰已随 W126/ADR-0349 退场——人口位/概率窗/EV 承接) │
 └────────────────────────────────────────────────────┘
        │              │             │
   战力表           线库           规则集
@@ -452,8 +453,10 @@ DP 旧用法:概率/收益进目标函数 → 全局求解最优路径
 > **落地现状(Phase A 简版,r216;as-built;ADR-0336 更新)**:触发/退出均为**绝对 HP 档**——
 > `decision_v2/registry.emergency_hp`(触发:状态层应急过滤;旧 `line_strategy._EMERGENCY_HP`
 > 随 ADR-0336 删除,语义由 decision_v2 纪律族 emergency 承载);
-> 追赶 = 等级门 `registry.catchup_min_level`/`pop_baseline`(旧 `_POP_BASELINE`/
-> `_CATCHUP_MIN_LEVEL` 随删)。重生基数与利息地板语义见 decision_v2 纪律族
+> **追赶态已随 W126/ADR-0349 退场**(用户 2026-08-25 裁决 F6/Q4:人口落后=
+> 阵容没上满的表现,由人口位升级([33])+概率等级窗([3])+EV 总账涌现承接,
+> 兜底局由 form_score 承接观察;catchup_min_level/pop_baseline 已删)。
+> 重生基数与利息地板语义见 decision_v2 纪律族
 > (旧 `_REBIRTH_FLOOR`/`_INTEREST_FLOOR` 随删)。
 > 下方设计文本保留为 Phase B 完整蓝图(ADR-0227 两阶段裁定)。
 

@@ -42,6 +42,8 @@
 
 **decision_v2 经济授权(ADR-0347;经济循环总模型步②「切授权」)**:常态经济行为由**相位**(FORM/HOARD/SPEND 派生量,W114 步①上线)驱动——地板族=FORM→`form_floor`(保险丝,Q1 四档 sim 对照待标定)/HOARD=SPEND→`interest_floor`(覆盖态优先序不变:应急/boss 窗/war 先于相位);跨档消费走 **EV 授权**(`interest_rule`:V=层3分剥离息分量 − C=跨档数×跨位面剩余节点,[11] 同档/1费/满息结余特例保留);升级走 **EV 总账**(`ev.levelup_ev_authorized`:[33] 人口位 / DP 花费授权(平台未破)/ 静态平台账——[12] 息引擎门与 E6 latch 收编退场);**DP 接线**=v2 栈首次真实消费 `cw_horizon` 解(轮缓存 `session.v3_dp_posture`,遥测 dp_posture 字段);boss 窗统一节点图口径(`boss_window_active`,轮数只作 node_type 缺读兜底);「经济过热」类环境的 reward 节点按**低危战斗**处理(扑满守卫,ADR-0348:战斗向刷新理由开放+地板不降——扑满不掉血,目标=伤害阵容拿奖励)。
 
+**decision_v2 三通道调度(ADR-0349;经济循环总模型步③「切调度」收口)**:买/升/D 三通道竞争同一笔金——**D 候选批口径化**(`scoring.vd_refresh_score` 金账:收益=核心 2★ 完成的成型跳变金值(rung Δ×跨位面 R+胜率跳变×掉血×HP 金价,registry 单一源)/成本=`expected_refreshes_for_card` 批口径×刷价;目标=锁定线具名核心且已开张;**概率窗二分**=level_plan goal 说 level_up 时 D 让位([3]));**升级总账加省刷金项**(`ev.levelup_refresh_saving`=刷价×ΔE 批口径,k 放大,峰值以上为 0——P5 定理检验点②);人口位保险丝=可负担性(34 帧误拒修订,升级金检查单点在 ev,gold_floor 对 levelup 让位);refresh 附庸闸(轮界/金门/常量 EV/饥饿折扣/预算约束/成型找件通道)与**追赶态**整体退场(人口落后由人口位升级+概率等级窗+EV 涌现);war 模式与危机态的 D 与常态同账(标签集只管候选在场);扑满节点凑伤害 D 走 `piggy_refresh_ev`×`piggy_refresh_round_cap`(P8 上限)。
+
 **成型停手门(ADR-0343;[13] 停手线显式化;W119/ADR-0347 收编 form_ok)**:层2 后置**动作级**步(`filters.formed_stop_active`+`filter_candidates` 尾段)——P1 ∧ r≥max(锁定线 `typical_form_round`,`formed_stop_min_round`)(comp 派生辖轮)∧ `form_ok`(谓词本体在 `decision_v2/phase`:意向锁∧`form_tiers` 全键满足∧核心**上场** 2★;无等级项),丢弃全部 BuyCard 候选(应急态不豁免;levelup/refresh/卖/合装例外)。标志 `session.v3_formed_stop`→sim 账本(轮内 OR 聚合)/生产遥测 `formed_stop` 字段;`overflow_gold_zero_buy_streak` 检查器对成型轮重置 streak。开关 `formed_stop_enabled`(registry)。
 
 **decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed

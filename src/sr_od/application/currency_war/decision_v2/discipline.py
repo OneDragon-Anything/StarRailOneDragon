@@ -17,9 +17,10 @@ ADR-0336 后 line_strategy 已删,本包为唯一纪律族)。
   件买核心:carry 从 ``line_of(locked_line).carry`` 换 ``intention_core``(
   COMP_LIBRARY v2 的 plaza_carry/core_chars[0]);保护集从桥池名单换
   hoard 目标集;
-- catchup(_catchup_actions / E5/E6)→ ``pop_baseline``+``catchup_min_level``
-  等级门:判定语义原样移植(r232);执行侧由层2 过滤(catchup_tags)+层4
-  地板承载,不再走独立动作分支;
+- catchup(_catchup_actions/E5/E6)→ **已随 W126/ADR-0349 退场**(用户
+  2026-08-25 裁决 F6/Q4:人口落后=阵容没上满的表现——通道 2 人口位
+  ([33])+通道 4 概率等级窗([3])+EV 总账涌现承接;兜底局由 form_score
+  按上场计算承接「人口别落后」的观察);
 - 同轮互斥/种子年龄豁免(r408/ADR-0289 §5)→ 纯谓词移植(不依赖线库)。
 
 行为纪律(strategy_v4 逐条;W51 语义修复批对齐 R1 审查 leader 裁决,
@@ -362,10 +363,12 @@ class DisciplineView:
     """一轮的纪律族裁决(层2/层4 的视图输入)。
 
     - ``coverage``:'emergency' | 'blood_alarm' | 'boss_breaker' |
-      'catchup' | 'mode'(判读/遥测锚点);
+      'mode'(判读/遥测锚点;追赶态 'catchup' 已随 W126/ADR-0349 退场);
     - ``mode``:'war'|'economy'(filters/interest_rule 消费);
     - ``allin``:位面末最后一战([18] 限定)——**唯一**清零地板的路径;
-    - ``allow_refresh_in_war``:保血通道(点12)——报警+硬节点放行 refresh;
+    - ``allow_refresh_in_war``:保血通道(点12)——报警+硬节点放行 refresh
+      (remediation S2 消费;层2 的 war 标签集已含 refresh,W126/ADR-0349
+      「war 滤 refresh」废除——本字段只剩补偿辖域语义);
     - ``war_floor_override``:boss_breaker 破息窗地板(v1 r278/r308 EV 移植)。
     """
 
@@ -377,19 +380,16 @@ class DisciplineView:
 
     def arbiter_registry(self, registry: DecisionV2Registry
                          ) -> DecisionV2Registry:
-        """层4 仲裁用注册表视图(地板/标签集按纪律调整;评分仍用原表)。"""
+        """层4 仲裁用注册表视图(地板按纪律调整;评分仍用原表)。"""
         reg = registry
         if self.allin:
             # [18] 位面末最后一战 ALL IN:地板全清零(唯一路径;hp 报警
             # 不是 ALL IN 的触发——报警态下此窗开通是位面末授权,
             # 非「报警触发」)
             reg = replace(reg, interest_floor=0, war_floor=0,
-                          rebirth_floor=0, boss_floor=0,
-                          refresh_min_gold=0)
+                          rebirth_floor=0, boss_floor=0)
         elif self.war_floor_override is not None:
             reg = replace(reg, war_floor=self.war_floor_override)
-        if self.allow_refresh_in_war:
-            reg = replace(reg, war_tags=reg.war_tags | frozenset({'refresh'}))
         return reg
 
 
@@ -460,7 +460,8 @@ def _streak_floor(state: GameState, session: StrategySession,
 
 def assess_discipline(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> DisciplineView:
-    """纪律族评估(覆盖态优先序:应急 > 掉血报警 > boss_breaker > 追赶 > 模式)。
+    """纪律族评估(覆盖态优先序:应急 > 掉血报警 > boss_breaker > 模式;
+    追赶态已随 W126/ADR-0349 退场——人口落后由通道 2/4+EV 涌现承接)。
 
     语义重接要点(strategy_v4 点4/点7/点12):
     - 应急(hp≤emergency_hp):rebirth 地板由层4 ``_active_floor`` 分派
@@ -508,9 +509,6 @@ def assess_discipline(state: GameState, session: StrategySession,
             coverage='boss_breaker', mode='war',
             allin=plane_last_battle(state, session),
             war_floor_override=floor)
-    from sr_od.application.currency_war.decision_v2.filters import is_catchup
-    if is_catchup(state, session, registry):
-        return DisciplineView(coverage='catchup', mode='economy')
     return DisciplineView(coverage='mode', mode='economy')
 
 

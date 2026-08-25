@@ -11,7 +11,8 @@
   发 ``cw_state`` v2 的 CompTransaction/FillSpec;点6/点11);
 - 目标件 → ``hoard_target_set``+COMP_LIBRARY v2(定义节 class1-5);
 - 插件消费 → ``PLUGIN_LIBRARY``(candidates 层1);
-- 纪律族(应急/boss_breaker/carry_gate/catchup/保血通道)→
+- 纪律族(应急/boss_breaker/carry_gate/保血通道;追赶态已随
+  W126/ADR-0349 退场)→
   ``decision_v2.discipline``(移植+语义重接;点4/点7/点12)。
 
 备战计划仍走四层:层1 候选生成 → 层2 硬过滤 → 层3 板面评分 → 层4

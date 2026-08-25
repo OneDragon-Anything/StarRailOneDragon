@@ -62,6 +62,16 @@ def interest_cost(gold: int, cost: int,
 
     结算息按**花后金**计(结算序:先结算息再进收入,cw_horizon DP 的
     ``interest(g2)`` 同口径)——tiers_crossed = 花前档 − 花后档。
+
+    **口径声明(W113 §3.2(b)⟲R2/F05,W126 落码)**:本式是**平面 R
+    上界口径**——假设跨档后金停在低档直到位面末,每轮损满息差。
+    依 P5⑤ 的口径注记:该口径在「守息纪律语义」下成立([3]「花完
+    仍保 50」= 本公式在 50 档边界的自然输出);与之并存的另一口径是
+    P6 回档账下界(破档后 1-2 轮回档,真实息损 1-3 金)——上界偏紧
+    (拒绝偏多),按保守侧落(P5⑤:「R≥3 即拒」是上界口径的输出,
+    **放行边界比它宽,不作为放行阈值承诺**)。放行边界的校准=步③
+    批口径上线后的 sim 对拍(V_D 金口径收益侧 vs 本 C 的量级对拍),
+    校准前不得改公式回退口径。
     """
     if gold <= 0 or cost <= 0:
         return 0
@@ -110,13 +120,84 @@ def _interest_at(gold: int, registry: DecisionV2Registry) -> int:
     return min(registry.interest_cap, max(0, gold) // 10)
 
 
+def levelup_refresh_saving(state: GameState, session: StrategySession,
+                           registry: DecisionV2Registry) -> float:
+    """V_level 收益侧的省刷金项(W126/ADR-0349,P5 检验点②)。
+
+    升级把目标核心的刷新概率抬档 → 找牌期望刷金下降,省下的刷金
+    是升级的**收益侧金值**(P5 ④ 的「省 28g」口径):
+
+        saving = 刷价 × max(0, E_refresh(L) − E_refresh(L+1))
+
+    E 用批口径(``expected_refreshes_for_card``,star=2,owned=j)——
+    **随目标张数 k 自动放大**(P5 边界 a:c=2@L4 k=1 时升级省钱 <
+    升级成本 → 判负;k=3 才打平;单看「概率提高」不构成升级理由,
+    收益侧必须过 k 放大后的总账)。ΔE≤0(峰值以上,P5 边界 b)→
+    saving=0(峰值级/峰值以上停留最优,不设独立「峰值惩罚」判据,
+    Z4/[7] 落地声明)。无锁定核心/核心已 2★/该费不可刷 → 0。
+
+    消费点:levelup_ev_authorized ③ 静态 EV 账的 V 侧(金口径,
+    与 C 的 R×档损同量级——W123 §3.4 的 V/C 量级不匹配在本批
+    V_D/V_level 金口径化后解除)。
+    """
+    core = _vd_core_of(session)
+    if not core:
+        return 0.0
+    copies = _vd_core_copies(state, core)
+    if not copies or max(getattr(d, 'star', 1) or 1
+                         for d in copies) >= 2:
+        return 0.0
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    ch = _CH.get(core)
+    if ch is None or not ch.cost:
+        return 0.0
+    from sr_od.application.currency_war.cw_shop_odds import (
+        expected_refreshes_for_card,
+    )
+    j = len(copies)
+    e_now = expected_refreshes_for_card(
+        state.level, ch.cost, target_star=2, owned=j)
+    e_next = expected_refreshes_for_card(
+        state.level + 1, ch.cost, target_star=2, owned=j)
+    return max(0.0, e_now - e_next) * (state.shop_refresh_cost or 2)
+
+
+def _vd_core_of(session: StrategySession) -> str:
+    """V_D/V_level 共用的目标核心解析(scoring.vd_target_core 同源;
+    ev 不 import decision_v2 包内模块——本地复刻判据,两处保持同值)。"""
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        intention_core,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
+            or not ist.locked_comp:
+        return ''
+    from sr_od.application.currency_war.cw_comps import get_comp
+    comp = get_comp(ist.locked_comp)
+    if comp is None:
+        return ''
+    return intention_core(comp)
+
+
+def _vd_core_copies(state: GameState, core: str) -> list:
+    """核心的持有副本(deployed∪bench;V_D/V_level 同源口径)。"""
+    return [d for d in list(state.deployed or [])
+            + [b for b in (state.bench or []) if b is not None]
+            if getattr(d, 'char_id', '') == core]
+
+
 def levelup_ev_authorized(state: GameState, session: StrategySession,
                           registry: DecisionV2Registry,
                           working_gold: int, cost: int,
                           targets: set[str],
                           val: float = 0.0,
                           int_emb: float = 0.0) -> bool:
-    """升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347)。
+    """升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347;W126/ADR-0349 修订)。
+
+    可负担性入口门(W126):working_gold < cost → 直接拒(任何授权臂
+    都不含「花超本金」——W119 后 gold_floor 对 levelup 让位本函数
+    单一裁决,可负担性在此收口)。
 
     三路放行(任一):
     ① **[33] 人口位**(一等例外,口述 [33]/[32](a);W121 G1 修正
@@ -126,11 +207,19 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
        (部署动作,非升级动作;[32](b):cap−deployed≥1 时再升纯浪费)
        → 当轮战力兑现,通常 >C_interest,总账自然放行——[12] 拦的是
        「空位追级」;
+       **W126 保险丝修订(34 帧误拒复核)**:人口位的花后下限从
+       form_floor 放宽为**可负担性(after≥0)**——W123 实测 34 帧
+       「位满+bench 目标件」升级组被 form_floor 拦截(多为
+       remediation 多击整组,花后 0-19):人口位的价值=当轮战力
+       兑现(具体件上场,非收益端估计),form_floor 防「估乐观」的
+       语义对它不适用;抽干金流防护由可负担性+下轮收入自然承接。
     ② **DP 花费授权**(W113 §3.2(d) 单步落地):DP 姿态说升级 **且**
        花后不破息平台(working_gold−cost ≥ interest_floor)——DP 内生
        优化了金/级/存活的全程期望,说升且平台未破即放行;
     ③ **静态 EV 账**:V − C ≥ 0。V = 层3分剥离息分量(升级的等级/
-       深度期权值);C = (即时档损 + 满息平台延迟损) × R(跨位面):
+       深度期权值)**+ 省刷金项**(levelup_refresh_saving,k 放大的
+       金口径收益侧,W126/P5 检验点②);C = (即时档损 + 满息平台
+       延迟损) × R(跨位面):
        - 即时档损 = interest(花前) − interest(花后)(结算按花后金);
        - 平台延迟损 = 花后 < interest_floor 时的满息缺口
          (interest_cap − interest(花后))——息引擎未立时追级把金
@@ -141,16 +230,15 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     随 E6 退场删除——曾满息不构成破平台的授权,破平台必须过账;
     旧 P1 lv<5 宽松门(gate=10)删除——早期升级由 ①/② 承接(人口位
     等着上场是早期升级的主因;DP 对低等级几乎恒说升)。
-    ① 的保险丝:花后仍须 ≥ form_floor([33] 人口位是阵容服务,不是
-    抽干金流的许可——EV 授权的花费同样止于本金下限)。
     """
     after = working_gold - cost
+    if after < 0:
+        return False   # 可负担性入口门(W126;gold_floor 已让位本函数)
     # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源;
     # W121 G1:cap 满 ∧ bench 有目标件——W113 §3.3 原文「deployed<cap 且
     # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
     from sr_od.application.currency_war.cw_state import bench_occupied
-    if after >= registry.form_floor \
-            and len(state.deployed or []) >= state.max_units():
+    if len(state.deployed or []) >= state.max_units():
         bench = state.bench or []
         if bench_occupied(bench) > 0 and any(
                 b is not None and b.char_id in targets
@@ -161,8 +249,8 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     if posture is not None and getattr(posture, 'level_up', False) \
             and after >= registry.interest_floor:
         return True
-    # ③ 静态 EV 账(V−C≥0)
-    v = val - int_emb
+    # ③ 静态 EV 账(V−C≥0;V 含省刷金项,W126/P5 检验点②)
+    v = val - int_emb + levelup_refresh_saving(state, session, registry)
     loss_now = _interest_at(working_gold, registry) \
         - _interest_at(after, registry)
     platform = (registry.interest_cap - _interest_at(after, registry)) \
