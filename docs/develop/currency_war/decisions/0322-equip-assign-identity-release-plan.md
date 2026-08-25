@@ -5,7 +5,7 @@
 - 背靠:W55 R2 数据修正批 §4-3 提案(报告指针:
   `.debug/temp/currency_war/cw_dev/deep_read/W55_报告.md` §1「到人矛盾
   4 处」+ §4-3);R2 审查 §6「恒等绿无法暴露到人错配」判断;C5 契约
-  (A/B 兼容)与 ADR-0309(line_v2 回退开关及删除门槛)。
+  (A/B 兼容)与 ADR-0310(line_v2 回退开关及删除门槛)。
 - 落点:计划对象 = `cw_comps.py`(`Comp.key_equips`/`derive_key_equips`)
   + 恒等测试 `test_derive_key_equips_identity_all_comps`(其 docstring
   已被 W55 预埋改写声明)。
@@ -57,7 +57,7 @@ A/B 拆分必然要动 equip_assign 结构——放开与拆分**同批**做,避
 
 **风险与对策**:
 
-- **line_v2 兼容臂的消费**:line_v2(ADR-0309 回退开关)在删除门槛
+- **line_v2 兼容臂的消费**:line_v2(ADR-0310 回退开关)在删除门槛
   (sim A/B 验收通过)之前仍消费 `key_equips`——放开时若 line_v2 未删,
   参考集降级**不删字段不删函数**正是对策:line_v2 继续读
   `derive_key_equips` 派生值,行为零变化(它从来到人粒度就靠

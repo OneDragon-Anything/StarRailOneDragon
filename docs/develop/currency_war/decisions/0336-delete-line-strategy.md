@@ -1,7 +1,7 @@
 # 0336 - 旧策略栈删除:line_strategy + 配套模块
 
 - **Status**: accepted(2026-08-25;ADR-0310 步 5 锁迁移清偿;删除门槛 W66 条件性通过 + W67 no_same 归零后执行;AD8 对抗后维持,附四条件见 Consequences 末)
-- **Context**:ADR-0309/0310 载体批后 decision_v2 为唯一策略载体,旧 `LineStrategy`(line_v2)停用不删作 A/B 对照臂与回退开关。删除门槛(sim A/B 验收通过即删,leader 裁定,不等实机)经 W66 合流总验**条件性通过**:
+- **Context**:ADR-0310 载体批后 decision_v2 为唯一策略载体,旧 `LineStrategy`(line_v2)停用不删作 A/B 对照臂与回退开关。删除门槛(sim A/B 验收通过即删,leader 裁定,不等实机)经 W66 合流总验**条件性通过**:
   - hp 不劣:符号 gap(v1−v2)=+1.52(n=400 配对,95% CI 底 ±2.41);
   - 过程不劣/部分更优:trio3 0.19 vs 0.055;v1 独有病根 `dead_system_second_pivot` 0.51/局(204/400)随删除自动消灭=删除净收益;
   - 条件① no_same 归零:W67 修复(ADR-0328);条件② 删除前 v2 全量 checks 复跑:完成;条件③ ledger_consistency d2 已知债:登记不阻塞。
