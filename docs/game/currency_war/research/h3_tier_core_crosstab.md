@@ -116,7 +116,6 @@ factions 最大重叠者为该局主导 comp,数其 core_chars 在场数)——
 
 - 脚本:`.debug/temp/currency_war/cw_dev/h3_crosstab.py`(2026-08-25);
 - 原始报告 JSON:`.debug/temp/currency_war/cw_dev/h3_crosstab_report.json`;
-- H3 阶梯(e0 13.9%/e1 41.6%/e2 77.8%)来源:
-  `research/math_proofs.md` H3(实机 99 局);
+- H3 阶梯(e0 13.9%/e1 41.6%/e2 77.8%,n=187/89/9)**口径注(2026-08-26)**:阶梯 = **战斗节点胜率按档分桶**(99 局全部战斗样本,合计 285);与本文交叉表(191 行轮级语料,含奖励节点 68 行)**是同语料池的两个不同口径统计**——n 底数不同属口径差非矛盾。引用阶梯一律指胜率口径(math_proofs p03 单篇为规范出处);
 - 决策关联:ADR-0304(档内细分悬置)→ 本文=其登记的实机交叉表首版;
   ADR-0305(本批)。
