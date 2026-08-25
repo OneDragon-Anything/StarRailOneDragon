@@ -27,6 +27,7 @@
 import argparse
 import contextlib
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -62,6 +63,13 @@ def _cmdline_text(proc: psutil.Process) -> str:
         return ''
 
 
+def _is_on_duty(text: str, name: str) -> bool:
+    """词级匹配(W133 低危①):裸子串 `name in text` 会把 'cw_sentinel_x' 类
+    同前缀名误计在岗 → --verify 假绿。正则 \b 边界('_' 是词字符,前缀延长名
+    不构成边界)排除;匹配语义其余不变。"""
+    return bool(text) and re.search(rf'\b{re.escape(name)}\b', text) is not None
+
+
 def find_old_watchers() -> list[psutil.Process]:
     """查旧:按命令行匹配三个哨兵脚本名的进程(排除自身)。"""
     me = os.getpid()
@@ -72,7 +80,7 @@ def find_old_watchers() -> list[psutil.Process]:
         text = _cmdline_text(proc)
         if not text:
             continue
-        if any(name in text for name in WATCHER_CMD_NAMES):
+        if any(_is_on_duty(text, name) for name in WATCHER_CMD_NAMES):
             found.append(proc)
     return found
 
@@ -130,15 +138,19 @@ def verify(expected: int) -> None:
     for proc in procs:
         text = _cmdline_text(proc)
         for name in WATCHER_CMD_NAMES:
-            if text and name in text:
+            if _is_on_duty(text, name):
                 on_duty[name].append(proc.pid)
     duty = {name for name, pids in on_duty.items() if pids}
     n = len(duty)
-    # 状态文件整批重写(每件一行:脚本名+pid 链+核对时刻)
+    # 状态文件整批重写(每件一行:脚本名+pid 链+核对时刻);原子写(W133 低危③):
+    # 写临时文件 + os.replace——两处并发核岗时整批直写会互踩(last-writer-wins
+    # 半写态),replace 在同目录保证原子替换,读方永远见完整批次。
     checked_at = time.strftime('%Y-%m-%d %H:%M:%S')
     lines = [f'{name} pids={",".join(map(str, on_duty[name]))} checked={checked_at}'
              for name in sorted(duty)]
-    STATUS_FILE.write_text('\n'.join(lines) + ('\n' if lines else ''), encoding='utf-8')
+    tmp = STATUS_FILE.with_name(STATUS_FILE.name + '.tmp')
+    tmp.write_text('\n'.join(lines) + ('\n' if lines else ''), encoding='utf-8')
+    os.replace(tmp, STATUS_FILE)
     if n == expected:
         detail = ', '.join(sorted(duty)) if duty else '(无)'
         print(f'[核岗] {n} 件在岗(期望 {expected};{detail};进程数 {len(procs)})✅')
