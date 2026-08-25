@@ -48,9 +48,21 @@
 | 单套 comp 打法(入场/退场信号/counter/装备叙事) | [final_comps/](final_comps/README.md) 各类文档(2026-08-22 起单一源;原 comps/ 打法卡层已撤销合并) |
 | 投资卡效果全量分类与可建模边界(API 裁定) | [invest_effects.md](invest_effects.md) |
 
+## 策略相关文档(改策略前的必读面;单一源在本节)
+
+**策略工作的基线 = research/ 全部文档 + data/ 全部未建模数据文档**(research 按上方「玩家理解序」读:机制是纪律的前提,纪律是过渡的前提,过渡是终局的前提)——策略判断横跨经济/战斗/阵容/终局,漏任何一面都判错;不读全就无法预判改动波及面。
+
+- research/ **唯一排除**:screen_flow_timing(画面流转时序,运行时/运维侧,非策略面)。
+- data/(`docs/game/currency_war/data/`,**全部策略相关**):gameplay(官方玩法说明)/ competitors(词缀机制+20 竞争阵营唯一源)/ bosses(boss 克制启示)/ advantage_layouts(跨局 meta 增益)/ plaza_meta(实战 meta)。已建模入代码注册表的数据已删 doc,查值直接看注册表(清单见 data/README)。
+- research/ **核心三篇**(★):user_playstyle(口述权威,全文精读)/ transition_combos(过渡配方落码依据)/ power_baseline(形态白名单)。
+- proofs/ 单篇按命题按需读(math_proofs 是命题状态表)。
+- 日常增量的按任务补读组合见下方「任务路由」表(路由表是**增量跟踪**用,不是基线的替代)。
+
+消费方(sr-od-currency-war-dev skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。
+
 ## 任务路由(做什么任务,先读什么组合)
 
-> 防单篇自闭:不同任务的关键知识散在不同篇——只读一篇≈读局部。判读类另有前置三问(sr-od-currency-war-dev skill 判读节),本表是其文档来源。
+> 防单篇自闭:不同任务的关键知识散在不同的篇——只读一篇≈读局部。判读类另有前置三问(sr-od-currency-war-dev skill 判读节),本表是其文档来源。
 
 | 任务 | 先读组合 |
 |---|---|

@@ -12,6 +12,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 当次任务 | 主节(门) | 细则 |
 |---|---|---|
 | 改策略 / 修 bug / 迭代算法(开发循环) | ☐ 必做 checklist(8 步完成门) | 按步骤链各节 |
+| 出策略方案 / 策略分歧裁决 / 疑问该问谁 | §策略工作(统一处理链) | strategy-work |
 | 判读一局 / 跨局对照 | §判读(前置三问硬门) | telemetry-reading |
 | 起局 / 停局 / 监控 / 残局清理 | §实机运维(重启四步/重武三步/早停判据) | runtime-ops |
 | sim 批量 / A/B / 压测 | §验证工作台(差异必须解释;代理语义自检) | verification |
@@ -27,7 +28,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 1. ☐ **读进度树 + 确认运行前提**:`.debug/progress/` 根下的**当前活跃迭代目录**(未封存)的入口 `进度.md`(运行状态单一源,本 skill 的操作对象;结构规范=od-dev-progress-tracking §2.5)对齐当前焦点;会话起点再确认 CW app 在应用列表、游戏窗口有效。**必做**
 2. ☐ **查钩子痕迹**:`.debug/temp/currency_war/*.flag` + 哨兵/后台通知——有停机 flag 先按 `od-dev-stop-hooks` 处理并删 flag,再继续(产物路径/命名/三类钩子统一约定见 references/data-collection.md「钩子统一使用」)。**必做**
 3. ☐ **判读上局遥测**:CW 遥测 CLI(§判读)找**不合理**处;判读结论写进进度树再动代码——单局数据≠结论,跨局对照+声明数据边界。**必做**
-4. ☐ **改策略前读文档**:user_playstyle 全文 + strategy/README 入口序 + 相关 as-built 篇(§单一源地图)——回答「改动违反哪条既有原则/落在 redesign 哪一层」;**自创新层=偏离设计,停下问「为什么设计里没有它」;重构优先于打补丁**。**必做**
+4. ☐ **改策略前读文档**(判据单一源=strategy-work §3):user_playstyle 全文 + strategy 入口序 + 相关 as-built 篇 + 任务→文档路由表;**自创新层=偏离设计,停下问;重构优先于打补丁**。**必做**
 5. ☐ **设计先行**:落点函数/影响消费点(含测试锁)/预期行为变化/验证法,写清再动代码——「现象→定位函数→改」缺设计层是常犯病。**必做**
 6. ☐ **按反馈梯度验证**:ruff → 单帧锁测试 → 全量(**= `uv run pytest sr-od-test/` 根级,含根级 test_cw_*.py 旧锁;`sr-od-test/test/` 子目录不算全量**) → sim 批量对照+回放对拍 diff → 实机(§验证工作台)——**禁止跳到实机试错,禁止 sleep 等实机**。**必做**
 7. ☐ **行为变更三同步**:ADR(why)+ strategy as-built 正文(语义)+ 代码注释引 ADR-NN——commit 前完成(§文档同步)。**必做**
@@ -37,10 +38,10 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 要什么 | 去哪 |
 |---|---|
+| **策略工作统一说明**(思路/核心骨架/改前必做/验证/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 + `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
-| as-built 策略正文(结构/语义/边界) | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
@@ -52,14 +53,16 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度树,一律不进共享文档。**
 
-## 判读(遥测 CLI,数据判读同源)
+## 策略工作(统一入口:改策略/出方案/策略分歧/疑问分流)
+
+策略是 CW 的核心环节。思路/核心骨架(数学期望·50 息律·双层目标·阵容结构判据)/改前必做(文档门·任务→文档路由)/策略特有验证纪律/疑问三滤网(先证后裁)——单一源 = **[references/strategy-work.md](references/strategy-work.md)**。## 判读(遥测 CLI,数据判读同源)
 
 **判读前置三问(硬门;答不出不判读)**:
 1. **该位面的目标是什么?**——P1=[28] 双指标验收:**息基保住 × 形态白名单内**+过渡核心 2★([13] 成型停手线);出口金 ~50 是守息的表征**不是单指标验收**(单优化它会产出「金 92 板面弱」假达标);**HP 从来不是 P1 验收**([2] 可卖血/[18] hp=报警)——拿 HP 当验收=目标函数错。
 2. **这局锁的什么线?**——四体系过渡(transitions 开局分级:拿到逆天投资策略才配锁直通线)or 直通终局线?锁直通却没直通条件=P1 板面零伤害引擎([27] 罚款吃满)。
 3. **板面在不在白名单?**——power_baseline P1 形态表;不在表内的形态(如纯经济凑数位)不是「体系长成了」。
 
-**任务→文档组合路由**(完整表=research/README「任务路由」节;**只读一篇=读局部**):判读一局→playstyle[28][18][27]+power_baseline+transitions §1;改买入/锁定→playstyle 全文+transition_combos+transitions+economy;改评分/经济→playstyle+economy;掉血归因→playstyle[27]+combat;换阵/装备→playstyle[21][24][29]+combo_methodology;终局设计→final_comps/+plaza_methodology;阶段转型→transitions 换血点+playstyle[26]。
+判读及策略任务的文档组合路由表 → `docs/game/currency_war/research/README.md`「任务路由」节。
 
 ```
 uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
@@ -110,6 +113,15 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 **证据三层**(核心纪律,缺层即盲区):统计骨架(plaza API 聚类给主流/代表——单靠统计发现不了细节)× 逐篇细节(攻略帖全文精读给运营思路/时序/条件——必须逐个看)× 机制解释(游戏数据本体给「玩法为什么是这样」)——「为什么」成立才收编,机制不成立的高频做法标 [社区] 存疑。结论落点:final_comps 类文档(叙事)+ `cw_comps.py COMP_LIBRARY`(结构化字段)——两者非镜像,互不触发同步义务。用户口述与攻略冲突以口述为准。细则(提炼流程/单套修订/版本重跑/三笔账):[references/compo-knowledge.md](references/compo-knowledge.md)
 
+## 派单规范(自主推进派 worker 时,prompt 必含的节)
+
+子 agent 是干净上下文,相关文档在它世界里不存在——按批的类型带齐:
+
+1. **前置阅读**(策略行为面批必含:worker/压测官/调研):相关 user_playstyle 条目/strategy 篇/ADR 路径(文档集同 checklist 步 4)。不带=它只能凭猜乱来,不合格派单。
+2. **判据来源**(判定类批必含——产出物是判定/分档/取舍的):以效果/机制审查为主体(逐对象过决定资格的机制属性),统计量只作佐证列;倒置(统计主体+效果一句带过)=不合格派单。
+3. **动作五查**(Action 新增/改动批必含):前置阅读节引「防坑清单·动作索引五查」条(见该节)。
+4. **文档面**(行为变更批必含——会改策略行为/语义/权重/字段含义的):ADR+as-built 三同步的归属,本批自带或显式声明「归编排者后续批」,二选一缺省=自带(纯测试批可免;W50/W51 实证:不声明,文档欠账必堆回编排者)。
+
 ## 文档同步(行为变更三同步)
 
 策略行为/权重/算法语义/config·screen_info·GameState 字段/实跑根因任一变更 → commit 前:
@@ -134,16 +146,6 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - **实机学费不复盘 = 重交学费**:实机定位的策略行为病只修代码、不回灌 sim 检查项/单帧锁 → 同类病下次仍靠实机暴露(数十分钟/局);感知/运行时 bug 则相反——归 fixture 帧锁/回放对拍/哨兵防线,别为它扩 sim(分诊判据见 verification.md「实机暴露问题的分诊与回灌」)。
 - **动作索引五查**(W57 沉淀,idx 族四连坑反推;完整判据版见 `.debug/temp/currency_war/cw_dev/deep_read/W57_报告.md` §4):策略代码发射**动作对象列表**(Action)给执行层,新增/改动动作类型或发射点时必过:①带索引/槽位的字段,注释声明**坐标系**(状态 list 下标 / 画面物理槽位 / 识别序号)与取值时机(生成期快照 / 执行期现读);②动作会从被索引容器**删元素**的,构造「组内两笔引用同容器、前者先删」的最小反例走一遍执行序(删除即左移);③一个 decide 函数**拼接 ≥2 个源**的动作时,后源不得默认前源没动过容器;④**期望值校验类防线字段**(expect/锚定)合入时 grep 写入端——零写入=死防线,校验逻辑再全也是恒放行;⑤sim 与执行层对同一 Action 各有实现时**逐行对拍索引语义**——同式地错比单路错更隐蔽(两路一起偏,sim 检查项失明)。判定类批的派单 prompt 引本条。
 
-## 玩法疑问分流(问用户前过三滤网;ADR-0019)
-
-产生玩法不确定时按序过三滤网,**第三滤网才轮到问用户**:
-
-1. **经济滤网**:是经济取舍吗(何时花/花多少/刷新还是升级/买不买/留多少)→ **用数学答**——EV 公式/刷新概率表(`REFRESH_PROB`)/DP 姿态/口述已含的经济理论([3]/[17]/[22]④「经济期望是统一标尺」)。存在可计算期望答案的问题**不是用户问题**。**输出是命题不是答案(2026-08-25 用户升标)**:用户口述的经济直觉(含新口述)立为命题进 `math_proofs.md` 证明——证明成立=策略质量保证(口述给方向,数学给保证);证伪=回炉口述标注边界(P4 先例:压库增益证伪,口述保留执行判据修正)。策略分歧的裁决同走此道:**已证的直接引用结论裁决,没证的立项去证(进「待证明」节),证据到位才裁决——先证后裁,不先裁后证**。
-2. **事实滤网**:是游戏机制事实吗(掉血公式/奖励结构/概率/交互行为)→ 查注册表/研究文档/图鉴;查不到 = **采集挂账+保守值标注**继续推进;口述已有的直接引(口述是最高权威,属本滤网而非第三)。
-3. **裁决滤网**:数学等价/多方案均自洽/用户风格偏好 → 才构成用户问题(玩法口述级取舍本就是用户权威域)。
-
-判例(2026-08-25 五问事件,ADR-0019):「boss 前留多少金」被用户反问「为什么要问这种问题」——答案是口述 [3] 的直接应用(该等级概率大→刷新找牌,刷新前提=**花后仍保 50 金**;需升级才提概率→升级);「前两轮买不买」= EV 自动覆盖(开局金 5-10 无息可损,买=零息损压库,统一经济策略)。反向:「扑满关怎么应对」一句口述(不掉血/没奖励损失大/凑羁绊刷伤害)顶十次推断——但那是机制行为口述,属第二滤网的权威源,不是把经济账外包给直觉。
-
 ## goal / schedule 自我校准(自主推进元纪律)
 
-goal 轮醒来第一动作 = 过上方 8 步 checklist;schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网七角色与派单硬规范/对抗审查两形态/实机素材泵/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+goal 轮醒来第一动作 = 过上方 8 步 checklist;schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网四角色提示词模板/AGENTS.local 候选/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。

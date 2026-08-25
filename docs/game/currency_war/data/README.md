@@ -22,15 +22,11 @@
 
 ## 文件说明
 
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment.EQUIPMENTS`,158)。**注册表模块全景与各模块职责 → `docs/develop/currency_war/strategy/06_input_model.md`**(信息模型 as-built,含注册表清单);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录仅存**未建模的唯一源**:
+
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
 | [gameplay.md](gameplay.md) | 米游社官方玩法说明(content/6564 全文)+ 机制框架速查 | — | 🟢 完整 |
-| ~~factions.md + traits.json + traits/~~(已删 2026-08-18) | 羁绊 → **代码单一源** `cw_factions.FACTIONS`(32,plaza 采集灌入) | 32 | 🟢 注册表 |
-| ~~characters.md + characters/~~(已删 2026-08-18) | 角色花名册 → **代码单一源** `cw_chars.CHARACTERS`(72;双盲核对 doc↔注册表 100% 重合后删) | 72 | 🟢 注册表 |
-| ~~investment_strategies.md~~(已删,ADR-0150) | 投资策略 → **代码单一源** `src/sr_od/application/currency_war/cw_invest_data.py`(plaza API 官方 334 条,`tools/cw/gen_plaza_invest.py` 生成,版本更新重跑) | 334 | 🟢 官方 API 全量(与游戏内数据银行同口径) |
-| ~~invest_cards.md~~(已删 2026-08-18) | 同上(plaza API 直灌注册表,人读版 doc 双源已撤) | 334+83 | 🟢 注册表 |
-| ~~investment_envs.md~~(已删,D-68) | 投资环境 → **代码单一源** `cw_investments`(plaza 全量) | ~82 | 🟢 注册表 |
-| ~~equipment.md~~(已删 2026-08-18) | 装备 → **代码单一源** `cw_equipment.EQUIPMENTS`(158) | 158 | 🟢 注册表 |
 | [competitors.md](competitors.md) | 敌人词缀(~50)机制分类/克制叙事 + 竞争对手阵营(**词缀效果原文已入注册表 `affix_effects_data.AFFIX_EFFECTS`——运行时采集 ground truth;本文保留机制分类与克制启示层;20 个竞争对手阵营仍未建模,本文唯一源**) | ~50词缀 | 🟡 词缀=米游社攻略统计+实机采集校准(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
 | [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
