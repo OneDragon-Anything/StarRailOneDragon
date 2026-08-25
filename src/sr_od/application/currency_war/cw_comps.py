@@ -144,6 +144,17 @@ class Comp:
     原 ``cw_intention.FAMILY_BOND_SIGNALS`` 手编 crosswalk 迁移进各条,
     判断层手编数据化)。值 = 该家族的「专属羁绊」规范名;**按设计无②信号
     的家族(希儿量子:量子/贝是放大器;白厄反甲:独立羁绊绑死单卡)= None**。"""
+    global_accumulators: dict[str, str] = field(default_factory=dict)
+    """全局累积型角色标注(W127 阵容知识批;user_playstyle[21] 定谒例外)。
+    键 = 角色规范名(⊆ core_chars ∪ shared_chars),值 = 累积类型:
+    - 'hp_charge_stack':场上事件(受击)驱动的全局叠层(万敌:受伤充能+
+      生命上限永久提高)——适用「有空位就上」部署例外(环境条件满足时);
+    - 'cost_escalation':升费链(银狼LV.999 3→4→5 费)——累积持久但由
+      购买/D 驱动而非上场时间,**不适用「有空位就上」例外**,仅早买早D
+      (已被 [22] 囤件与 level_plan 建模,此处只作类型区分)。
+    判据与全量扫描见 ``docs/game/currency_war/research/final_comps/accumulator_family.md``。
+    部署例外规则**尚未实现**——消费点应为 decision_v2/candidates._deploy_candidates
+    / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
     @property
     def all_factions(self) -> set[str]:
@@ -810,6 +821,9 @@ COMP_LIBRARY: list[Comp] = [
         ],
         flex_factions=["星间旅人", "战技点", "列车同行"],
         plaza_carry="银狼LV.999",
+        # W127 全局累积型标注:银狼=升费链(cost_escalation)——累积持久(费用档不清零)
+        # 但由购买/D 驱动非上场时间,**不适用「有空位就上」部署例外**;仅作类型区分。
+        global_accumulators={"银狼LV.999": "cost_escalation"},
         level_plan={  # 评审🟡6:银狼LV.999 3费(升费到5,标3=起始找牌档)
             4: LevelGoal("roll", target_cost=3, target_chars=["银狼LV.999", "爻光"]),
             5: LevelGoal("level_up"), 6: LevelGoal("level_up"), 7: LevelGoal("level_up"),
@@ -893,6 +907,9 @@ COMP_LIBRARY: list[Comp] = [
         # 无替班:v2 明言万敌 1 费开局即在(56% 局 P1 板上),无空窗;P2 加深档数
         flex_factions=["群攻", "量子同频", "战技点", "治疗", "命运圣杯", "减益"],
         plaza_carry="万敌",
+        # W127 全局累积型标注:万敌=受击驱动全局叠层(受伤充能+生命上限永久提高,
+        # 用户定谒 [21] 例外)——环境满足(敌方多动/反伤类词条)时适用「有空位就上」。
+        global_accumulators={"万敌": "hp_charge_stack"},
         level_plan={  # 1费 carry:5 级 D 干 3星(0.93 全场最高);boss 前成型即停
             3: LevelGoal("roll", target_cost=1, target_chars=["万敌"]),
             4: LevelGoal("roll", target_cost=1, target_chars=["万敌"], star_goals={"万敌": 2}),
