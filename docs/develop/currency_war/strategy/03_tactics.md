@@ -44,7 +44,8 @@
 
 **decision_v2 三通道调度(ADR-0349;经济循环总模型步③「切调度」收口;P2 段 V_D 修法 ADR-0361)**:买/升/D 三通道竞争同一笔金——**D 候选批口径化**(`scoring.vd_refresh_score` 金账:收益=核心 2★ 完成的成型跳变金值(rung Δ×跨位面 R+胜率跳变×掉血×HP 金价,registry 单一源)/成本=`expected_refreshes_for_card` 批口径×刷价;目标=锁定线具名核心且已开张;**概率窗二分**=level_plan goal 说 level_up 时 D 让位([3]);**P2 段(plane≥2,ADR-0361)**:窗二分改消费 DP `refresh_budget` 授权(「升级+D」=并行预算;预算 0 仍让位,DP 异常回退 level_plan 门),成本换决策成本口径 `C_dec`=Δinterest×min(R,`vd_p2_recovery_rounds`)+ρ·s(P11:溢余段面值高估≥20×,[17] 溢余即花)+预算硬界 批口径刷金≤g−`boss_floor`,收益换存活口径(`vd_p2_loss`/`battles_left_p2` state 槽序表推导);A/B 通道 `vd_p2_enabled`,P1 分支逐位不动);**升级总账加省刷金项**(`ev.levelup_refresh_saving`=刷价×ΔE 批口径,k 放大,峰值以上为 0——P5 定理检验点②);人口位保险丝=可负担性(34 帧误拒修订,升级金检查单点在 ev,gold_floor 对 levelup 让位);refresh 附庸闸(轮界/金门/常量 EV/饥饿折扣/预算约束/成型找件通道)与**追赶态**整体退场(人口落后由人口位升级+概率等级窗+EV 涌现);war 模式与危机态的 D 与常态同账(标签集只管候选在场);扑满节点凑伤害 D 走 `piggy_refresh_ev`×`piggy_refresh_round_cap`(P8 上限)。
 
-**成型停手门(ADR-0343;[13] 停手线显式化;W119/ADR-0347 收编 form_ok)**:层2 后置**动作级**步(`filters.formed_stop_active`+`filter_candidates` 尾段)——P1 ∧ r≥max(锁定线 `typical_form_round`,`formed_stop_min_round`)(comp 派生辖轮)∧ `form_ok`(谓词本体在 `decision_v2/phase`:意向锁∧`form_tiers` 全键满足∧核心**上场** 2★;无等级项),丢弃全部 BuyCard 候选(应急态不豁免;levelup/refresh/卖/合装例外)。标志 `session.v3_formed_stop`→sim 账本(轮内 OR 聚合)/生产遥测 `formed_stop` 字段;`overflow_gold_zero_buy_streak` 检查器对成型轮重置 streak。开关 `formed_stop_enabled`(registry)。
+**成型停手门(ADR-0343;[13] 停手线显式化;W119/ADR-0347 收编 form_ok)**:层2 后置**动作级**步(`filters.formed_stop_active`+`filter_candidates` 尾段)——P1 ∧ r≥max(锁定线 `typical_form_round`,`formed_stop_min_round`)(comp 派生辖轮)∧ `form_ok`(谓词本体在 `decision_v2/phase`:意向锁∧`form_tiers` 全键满足∧核心**上场** 2★;无等级项;①锁局 P1(comp 锁)另要求体系对引擎数
+≥`phase_fallback_min_engines`——[13] P1 验收仍是体系对,ADR-0367),丢弃全部 BuyCard 候选(应急态不豁免;levelup/refresh/卖/合装例外)。标志 `session.v3_formed_stop`→sim 账本(轮内 OR 聚合)/生产遥测 `formed_stop` 字段;`overflow_gold_zero_buy_streak` 检查器对成型轮重置 streak。开关 `formed_stop_enabled`(registry)。
 
 **decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed
 配方亲和过滤**(开关 `engine_affinity_enabled` 在 registry;判据
@@ -57,13 +58,14 @@
 `cw_line_defs`(`board_max_recipe_tier`/`board_recipe_faction_count`/
 `board_total_faction_count`)。
 
-**decision_v2 买侧通道锁定目标约束(ADR-0359)**:锁定帧(约束基准
-`cw_intention.locked_buy_scope`=P1 配方对成员集 ∪ comp 锁定采购集;空窗/
+**decision_v2 买侧通道锁定目标约束(ADR-0359;①锁局副方向 ∪ 见 ADR-0367)**:锁定帧(约束基准
+`cw_intention.locked_buy_scope`=P1 配方对成员集 ∪ comp 锁定采购集 ∪ ①锁局过渡对成员集(ADR-0367,
+`transition_pair`);空窗/
 弱意向/降格=None 不辖)时,`line_opportunistic`/`bond_fallback` 买候选中
 目标件 ∉ 锁定目标体系集者**评分降级**(常量 `off_lock_buy_penalty` 在
 registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充件让位目标件
 而非禁买);位面末轮 boss 窗的非目标 opportunistic 件**直接拒**
-(`final_fence`;目标件+填充照旧)。应急态豁免([18]);开关
+(`final_fence`;目标件+填充+对件照旧)。应急态豁免([18]);开关
 `buy_lock_constraint_enabled`(A/B 通道)。语义=约束「方向」:锁定后买侧
 材料供给不再喂换档挤出(W147:挤出执行侧的保留序/deploy 围栏是另一批)。
 

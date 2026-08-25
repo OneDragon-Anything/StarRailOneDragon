@@ -153,6 +153,23 @@ class IntentionState:
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
+    transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(W166/ADR-0367)
+    """**①资格锁定局的过渡对保护副方向(ADR-0367;约束基准契约)**:
+
+    - 非空 ⟺ plane==1 ∧ phase=='locked' ∧ P1_RECIPE_LOCK 开(此时 P1 的
+      comp 锁只可能来自①资格通道)∧ P1_LOCK_TRANSITION_PAIR 开;
+      其余(P2+/配方锁局/weak/降格/空窗)恒空。
+    - 派生口径与 ``p1_pair`` 同源(``_derive_p1_pair``,四体系支持度
+      top-2,随资产重派生)——两字段是同一口径在不同锁定帧的实例;
+      ``p1_pair`` 是配方锁局的**锁定产物**,本字段是①锁局的**受保护
+      副方向**(comp 采购集仍为主方向,[23] 直通权不变)。
+    - 语义:对件享二级囤货([22]④,便宜囤对件不与 comp 主方向抢预算)
+      与成型优先([13] P1 验收仍是体系对);消费面 =
+      ``locked_buy_scope``/``locked_faction_scope``(∪ 同式扩展,买侧
+      免 demote/fence + evolve 保护基准扩辖)+ ``_direction_factions``
+      (pair 通道放行)+ ``form_ok``(成型停手加体系对判据)。
+    - 遥测:``cw_telemetry.serialize_intention`` 字段全量序列化自动携带。
+    """
     forced: bool = False               # 强制锁线产生(P3 入口)
     weak_comp: str = ''                # 降级来源线(遥测;弱意向不指向具体线)
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
@@ -361,6 +378,21 @@ P1_PAIR_LOCK_MIN_SUPPORT: float = 0.5
 囤货方向落四体系全集(p1_transition)。"""
 
 
+# ===== ①锁局过渡对保护副方向(W166/ADR-0367;sim A/B 通道)=====
+P1_LOCK_TRANSITION_PAIR: bool = True
+"""①资格锁定局(P1 锁终局 comp)的过渡对保护副方向开关(ADR-0367)。
+False=关闭(sim A/B 基线臂,回 W164 前行为:①锁局无副方向字段,
+scope/guard/成型验收均仅辖 comp 线)。
+
+诊断来源:W164 §1.3——inject on 口径 strict_mal 0.20 vs off 0.05 的
+差值 15 局全部来自①资格通道:注入信号 r1 锁终局 comp,其采购集把囤货
+方向从过渡引擎引开(engines2_by_r6 0.27→0.15)+ evolve 按 comp 线换档
+拆过渡体系(S2 挤出 19/20 mal 局)=W145 主灶(ADR-0357)在①通道的残留。
+flag 放模块级(仿 P1_RECIPE_LOCK 先例)而非 decision_v2 registry:三个
+落点中 guard 消费方(cw_evolution)不读 registry,模块 flag 单点辖全部
+(消费面经 ``transition_pair`` 字段空集自动回退)。"""
+
+
 def _owned_chars(state: GameState) -> set[str]:
     """已到手角色名(bench+deployed;不含 shop 可见——[23] 锁定由
     贯穿件=到手,店里出现过不构成方向承诺)。"""
@@ -532,6 +564,13 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
     ist.p1_pair = ()   # comp 锁定取代配方锁(ADR-0357:①资格通道)
+    # W166/ADR-0367:①锁局(P1∧配方锁开)同时派生过渡对副方向
+    # (与 p1_pair 同口径;P2+ 强制锁线/旧通道 P1 锁均不辖)。
+    ist.transition_pair = (
+        _derive_p1_pair(state)
+        if (state.plane == 1 and P1_RECIPE_LOCK and P1_LOCK_TRANSITION_PAIR)
+        else ()
+    )
     ist.lock_layer = sig.layer if not forced else 1   # 强制锁线视作最高层(不可被出口②撤)
     ist.lock_plane = state.plane
     ist.lock_round = state.round_num
@@ -549,6 +588,9 @@ def update_intention(state: GameState, ist: IntentionState,
     """
     if ist.demoted_endgame:
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
+    if state.plane != 1 and ist.transition_pair:
+        # 出 P1:过渡对副方向退场(W166;P2+ 锁定目标=locked_comp 唯一)
+        ist.transition_pair = ()
     visible = _visible_chars(state)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
@@ -571,6 +613,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''
                 ist.lock_layer = 0
+                ist.transition_pair = ()   # 锁撤销 → 副方向随之退场(W166)
                 ist.last_event = f'evict:frozen:{track.frozen_rounds}'
                 sigs = [s for s in sigs if s.layer != 3]   # 不触发③
         else:
@@ -585,6 +628,7 @@ def update_intention(state: GameState, ist: IntentionState,
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
                     ist.lock_layer = 0
+                    ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
                     ist.last_event = f'revoke:miss{track.miss_count}'
                     revoked = True
         if ist.phase == 'locked':
@@ -598,9 +642,21 @@ def update_intention(state: GameState, ist: IntentionState,
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
                     ist.lock_layer = 0
+                    ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
                     ist.last_event = f'revoke:higher:{s.comp_name}(L{s.layer})'
                     revoked = True
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
+
+    if ist.phase == 'locked' and state.plane == 1 \
+            and P1_RECIPE_LOCK and P1_LOCK_TRANSITION_PAIR:
+        # W166/ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
+        # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
+        # 终局线,不辖过渡副方向)。配方锁局(phase='unlocked')不进本支。
+        pair = _derive_p1_pair(state)
+        if pair != ist.transition_pair:
+            ist.transition_pair = pair
+            ist.last_event = ('lock_pair:' + '+'.join(pair)) \
+                if pair else 'lock_pair:wait'
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
         # P1 过渡配方锁(W145/ADR-0357):P1 的锁定产物=体系对;
@@ -723,6 +779,9 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
     - P1 配方锁定帧 = ``_pair_members(p1_pair)``(体系对两体系全成员,
       含其二体系——对成员集本身即两体系的并);
     - comp 锁定帧(P1①资格通道 / P2+)= ``_line_hoard(comp)`` 角色采购集;
+      **①锁局(P1)∪ 过渡对成员集(W166/ADR-0367)**——二级囤货语义
+      ([22]④):对件免 demote/免 final_fence,但不进 hoard 目标件集
+      (comp 主序对副序,主方向与核心件优先级不动);
     - weak(撤销后去向=跨线骨架)/demoted_endgame 不辖:方向已撤或已
       降格,约束基准不存在(弱意向期的跨线骨架囤货本身不受本约束辖)。
     """
@@ -731,6 +790,8 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
     scope: set[str] = set()
     if ist.p1_pair:
         scope |= _pair_members(tuple(ist.p1_pair))
+    if getattr(ist, 'transition_pair', ()):
+        scope |= _pair_members(tuple(ist.transition_pair))
     if ist.phase == 'locked' and ist.locked_comp:
         comp = get_comp(ist.locked_comp)
         if comp is not None:
@@ -751,6 +812,9 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
       与 ``_pair_members`` 同口径);
     - comp 锁定帧(P1①资格通道 / P2+)= ``locked_comp`` 主/副档键
       (``form_tiers`` ∪ ``sub_tiers``,与 ``_line_hoard`` 档位键同式);
+      **①锁局(P1)∪ 过渡对体系键(W166/ADR-0367,与 ``locked_buy_scope``
+      同式扩位)**——对体系提案不再按 off-lock 降级/解除,protect 基准
+      (cw_evolution 围栏/保留序)同步扩辖(R2:换血可以拆引擎不行);
     - 两者皆空(空窗/weak/降格终局)→ None(无锁定帧,不约束——[31]①
       空窗期四体系全集是方向,不存在「off-lock 提案」)。
     """
@@ -759,6 +823,12 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
     keys: set[str] = set()
     if ist.p1_pair:
         for sys in ist.p1_pair:
+            if sys == SEELE_SYSTEM:
+                keys |= {'量子同频', '贝洛伯格'}
+            else:
+                keys.add(sys)
+    if getattr(ist, 'transition_pair', ()):
+        for sys in ist.transition_pair:
             if sys == SEELE_SYSTEM:
                 keys |= {'量子同频', '贝洛伯格'}
             else:

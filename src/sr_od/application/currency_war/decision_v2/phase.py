@@ -152,6 +152,16 @@ def form_ok(state: GameState, session: StrategySession,
     core = intention_core(comp)
     if not core:
         return False
+    # W166/ADR-0367:①锁局 P1 的成型验收补体系对判据——[13]/[20] P1
+    # 验收形态是体系对(过渡成型≈过 P1),comp 三件套只是主方向进度;
+    # 只看 comp 三件套会在 P1 提前停手饿死过渡引擎(W164:engines2_by_r6
+    # 0.27→0.15 的组成面)。transition_pair 非空 ⟺ P1 ①锁局,配方锁局
+    # /P2+/未锁局不辖。口径=兜底门 engines(与 unlocked 路径同判据族)。
+    if getattr(ist, 'transition_pair', ()) \
+            and state.plane == 1 \
+            and fallback_engines_count(state) \
+            < registry.phase_fallback_min_engines:
+        return False
     for d in state.deployed or []:
         if d is not None and getattr(d, 'char_id', '') == core \
                 and (getattr(d, 'star', 1) or 1) >= 2:
