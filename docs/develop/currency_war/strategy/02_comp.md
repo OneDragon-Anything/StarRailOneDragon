@@ -73,7 +73,7 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 **信号五层**(`detect_signals`,①>②>③>④ 严格分层):
 
 - ① 策略驱动:投资环境/投资策略亲和表命中(近硬绑);
-- ② 类专属羁绊:家族专属羁绊计数达阈(`FAMILY_BOND_MIN_COUNT`)——信号表 `FAMILY_BOND_SIGNALS` 从 `Comp.bond_signal` 数据字段派生(ADR-0320,不手编);
+- ② 类专属羁绊:家族专属羁绊计数达阈(`FAMILY_BOND_MIN_COUNT`)——信号表 `FAMILY_BOND_SIGNALS` 从 `Comp.bond_signal` 数据字段派生(ADR-0320,不手编);**资格门(ADR-0338)**:羁绊副产品计数不构成直通终局线的锁线资格——信号发射前要求 `_direct_line_qualified`(资格 = 亲和表反查:持有策略/环境指向该 comp);无资格不发②(意向保持 unlocked,囤货落⑤兜底);
 - ③ 核心卡:具名意向核心(`intention_core`:plaza carry 且在 core_chars 内者,否则 core_chars 首位——单一核心保证 miss 计数良定义)在店/到手;
 - ④ 资源:升费链角色到手作资源到位代理(升费资源暂无 GameState 字段);
 - ⑤ 兜底线:`FALLBACK_COMP_NAME`(欢愉族绯英档,无信号默认落点)——**不在 detect_signals 产出**,信号列表为空时解析侧落兜底。

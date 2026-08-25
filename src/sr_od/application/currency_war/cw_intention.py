@@ -232,6 +232,24 @@ def _core_reachable(comp: Comp, state: GameState,
     return encounter_window_rounds(core, state.level) <= total_remaining_nodes(state)
 
 
+def _direct_line_qualified(state: GameState, comp_name: str) -> bool:
+    """直通终局线资格判定(ADR-0338;W85 五局同型根因修复)。
+
+    资格单一源 = 亲和表反查(**派生,不手写名单**):
+    - 策略侧:任一持有策略 ``s ∈ state.active_strategies`` 在
+      ``AUGMENT_COMP_AFFINITY`` 中指向该 comp(如 黑塔纪元→大黑塔银河学者);
+    - 环境侧:``state.active_env`` 在 ``ENV_COMP_AFFINITY`` 中指向该 comp
+      (如 银河学者概念股→大黑塔银河学者)。
+
+    无任何表项的 comp(万敌单C/DOT队/黄泉线等)恒无资格 —— 它们的终局线
+    只能由③核心卡(贯穿件到手,[23] 合法)或后续注册的资格项锁线。
+    """
+    for s in state.active_strategies:
+        if comp_name in AUGMENT_COMP_AFFINITY.get(s, {}):
+            return True
+    return comp_name in ENV_COMP_AFFINITY.get(state.active_env, {})
+
+
 def detect_signals(state: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
@@ -257,12 +275,16 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
                 out.append(IntentionSignal(1, 'strategy', comp_name,
                                            f'策略[{s}]×{w}', w))
 
-    # ② 类专属:家族专属羁绊信号(板上+bench 计数达阈;希儿量子/白厄反甲无②)
+    # ② 类专属:家族专属羁绊信号(板上+bench 计数达阈;希儿量子/白厄反甲无②)。
+    # ADR-0338 资格门:羁绊副产品计数(学者2/夜半2/列车2 等)不是直通资格
+    # ——直通终局线的锁线资格 = 持有对应投资策略/环境(亲和表反查);
+    # 无资格不发②信号(意向保持 unlocked,囤货落⑤兜底,P1 板面归四体系
+    # 过渡逻辑;贯穿件到手走③,[23] 合法路径不变)。
     counts = _bond_counts(state)
     for fam, bond in FAMILY_BOND_SIGNALS.items():
         if counts.get(bond, 0) >= FAMILY_BOND_MIN_COUNT:
             for c in comps:
-                if c.family == fam:
+                if c.family == fam and _direct_line_qualified(state, c.name):
                     out.append(IntentionSignal(
                         2, 'family_bond', c.name,
                         f'{bond}×{counts[bond]}(≥{FAMILY_BOND_MIN_COUNT})', 0.5))
