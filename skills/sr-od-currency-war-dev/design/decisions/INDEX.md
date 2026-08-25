@@ -20,5 +20,6 @@
 | [0017](0017-entry-triage-layer.md) | 入口分诊层(任务轴→工作流轴的翻译器) | accepted | 2026-08-25 |
 | [0018](0018-goal-schedule-discipline-mechanized.md) | goal/schedule 自检纪律机制化替代(部分撤销 0011 细则层) | accepted | 2026-08-25 |
 | [0019](0019-question-triage-math-first.md) | 玩法疑问分流三滤网(经济/事实/裁决——存在可计算期望答案的问题不是用户问题) | accepted | 2026-08-25 |
+| [0020](0020-autonomous-loop-generic-section-removal.md) | autonomous-loop 三节删除(通用机制归位公共 skill) | accepted | 2026-08-26 |
 
 > 0013 缺号:无对应决策文件,疑为编号笔误后跳过。

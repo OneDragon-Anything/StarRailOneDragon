@@ -146,4 +146,4 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## goal / schedule 自我校准(自主推进元纪律)
 
-goal 轮醒来第一动作 = 过上方 8 步 checklist;schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网七角色与派单硬规范/编排者-worker 分工/对抗审查两形态/实机素材泵/数学期望标尺)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+goal 轮醒来第一动作 = 过上方 8 步 checklist;schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网七角色与派单硬规范/对抗审查两形态/实机素材泵/数学期望标尺)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
