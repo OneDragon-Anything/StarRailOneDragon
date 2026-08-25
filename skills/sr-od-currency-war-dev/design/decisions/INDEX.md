@@ -3,7 +3,7 @@
 | 编号 | 标题 | Status | 日期 |
 |---|---|---|---|
 | [0001](0001-sr-specific-repo-placement.md) | 本仓 skills/ + sr-od- 前缀(不进公共仓) | accepted | 2026-08-22 |
-| [0002](0002-workflow-axis-organization.md) | SKILL.md 按工作流组织(非知识类型) | accepted | 2026-08-22 |
+| [0002](0002-workflow-axis-organization.md) | SKILL.md 按工作流组织(非知识类型) | 部分推翻(0024 撤全局 checklist) | 2026-08-22 |
 | [0003](0003-restate-discipline-self-contained.md) | 通用纪律自包含重述,不引个人本地文件 | accepted | 2026-08-22 |
 | [0004](0004-operational-runtime-targets.md) | gitignored 运行时产物可作操作对象引用 | accepted | 2026-08-22 |
 | [0005](0005-compo-methodology-home-skill.md) | 阵容知识方法论的家 = skill(docs 留判例+指针) | accepted | 2026-08-22 |
@@ -24,5 +24,6 @@
 | [0021](0021-autonomous-loop-reinjection-refactor.md) | autonomous-loop 按「只被读一次」重构:过程纪律三问落位再注入通道(入口字段/提醒词/事件节) | superseded(0022) | 2026-08-26 |
 | [0022](0022-autonomous-loop-three-chapters-four-roles.md) | autonomous-loop 三章节化与提醒网四角色(修订 0021 落位表;strategy-work 新建;提示词纯度原则) | accepted | 2026-08-26 |
 | [0023](0023-verification-split-into-three-docs.md) | 验证细则按手段拆三文档(sim-testing 新建/单帧锁归策略文档/verification.md 删除) | accepted | 2026-08-27 |
+| [0024](0024-domain-checklists-drop-universal-loop.md) | 通用开发循环撤销:checklist 域自管理(部分推翻 0002/0016/0017 的全局 8 步) | accepted | 2026-08-27 |
 
 > 0013 缺号:无对应决策文件,疑为编号笔误后跳过。

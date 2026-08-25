@@ -12,13 +12,13 @@
 
 ## 构成
 
-- `SKILL.md`:入口分诊表(任务→主节/门)+ 必做 checklist(8 步开发循环)+ 单一源地图 + 判读/验证/运维/文档同步/防坑的**判据层**(每轮要锚定的核心;细则按节下沉 references,见 ADR-0016/0017)。
-- `references/sim-testing.md`:模拟测试专属说明(入口与 A/B、诚实性分层+已知边界+可复现性、武器库、压测官与双批挖掘、多批验收纪律、实机问题的分诊与回灌;见 ADR-0023)。
+- `SKILL.md`:入口分诊表(任务→主节/门,路由到各域 checklist)+ 单一源地图 + 测试分层 + 判读/运维/文档同步/防坑的**判据层**(每轮要锚定的核心;细则按节下沉 references,见 ADR-0016/0017/0024)。
+- `references/sim-testing.md`:模拟测试专属说明(sim 改动 checklist、入口与 A/B、诚实性分层+已知边界+可复现性、武器库、压测官与双批挖掘、多批验收纪律、实机问题的分诊与回灌;见 ADR-0023)。
 - `references/telemetry-reading.md`:遥测判读方法论(观察面全量清单、视图覆盖矩阵、采集缺口、数据侧纪律)。
 - `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈与哨兵脚本组、判读与建档的运维侧纪律、运行坑)。
 - `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
-- `references/strategy-work.md`:策略工作统一说明(思路/核心骨架/改前必做/策略验证纪律与单帧锁出口/疑问三滤网)。
+- `references/strategy-work.md`:策略工作统一说明(策略改动 checklist、思路/核心骨架/改前必做/策略验证纪律与单帧锁出口/疑问三滤网)。
 - `references/autonomous-loop.md`:CW 编排资产(schedule 提醒网四角色与提示词模板/派单规范指针/哨兵报警消费;goal/schedule 消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode,见 ADR-0018/0020/0021)。
 - `design/`:本文件 + 决策存档。
 

@@ -5,34 +5,23 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 # 货币战争开发·维护·自主推进
 
-> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门);开发循环轮**没做完 8 步不算完成**。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读),决策依据在 `design/decisions/`。
+> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门);**每个域自带自己的必做 checklist**(策略改动在 strategy-work、sim 改动在 sim-testing)——开发循环轮没做完所属域的 checklist 不算完成。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读),决策依据在 `design/decisions/`。
 
 ## 入口分诊(按当次任务定位;「门」=该任务的硬判据)
 
 | 当次任务 | 主节(门) | 细则 |
 |---|---|---|
-| 改策略 / 修 bug / 迭代算法(开发循环) | ☐ 必做 checklist(8 步完成门) | 按步骤链各节 |
+| 改策略 / 迭代算法 | strategy-work「策略改动 checklist」(判读→文档门→设计→验证阶梯→三同步) | strategy-work |
 | 出策略方案 / 策略分歧裁决 / 疑问该问谁 | §策略工作(统一处理链) | strategy-work |
 | 判读一局 / 跨局对照 | §判读(前置三问硬门) | telemetry-reading |
 | 起局 / 停局 / 监控 / 残局清理 | §实机运维(重启四步/重武三步/早停判据) | runtime-ops |
-| sim 批量 / A/B / 压测 | §验证工作台(差异必须解释;代理语义自检) | sim-testing |
+| sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「sim 改动 checklist」(池指纹/回放对拍/变异探针) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | §阵容知识工程(证据三层) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(goal/schedule 消息 / worker 派发与交付验收 / 哨兵报警响应 / 对抗) | §goal/schedule 自我校准(提醒=按 prompt+当期并行度执行)+ §交付验收(7 条逐项核) | autonomous-loop |
 | ADR / as-built 维护 | §文档同步(三同步) | — |
 
-开发循环轮永远从 checklist 进(它内部已含判读/验证/同步各步);分诊主要服务窄任务与新会话入口。
-
-## 必做 checklist(每轮开发循环)
-
-1. ☐ **读进度树 + 确认运行前提**:`.debug/progress/` 根下的**当前活跃迭代目录**(未封存)的入口 `进度.md`(运行状态单一源,本 skill 的操作对象;结构规范=od-dev-progress-tracking §2.5)对齐当前焦点;会话起点再确认 CW app 在应用列表、游戏窗口有效。**必做**
-2. ☐ **查钩子痕迹**:`.debug/temp/currency_war/*.flag` + 哨兵/后台通知——有停机 flag 先按 `od-dev-stop-hooks` 处理并删 flag,再继续(产物路径/命名/三类钩子统一约定见 references/data-collection.md「钩子统一使用」)。**必做**
-3. ☐ **判读上局遥测**:CW 遥测 CLI(§判读)找**不合理**处;判读结论写进进度树再动代码——单局数据≠结论,跨局对照+声明数据边界。**必做**
-4. ☐ **改策略前读文档**(判据单一源=strategy-work §3):user_playstyle 全文 + strategy 入口序 + 相关 as-built 篇 + 任务→文档路由表;**自创新层=偏离设计,停下问;重构优先于打补丁**。**必做**
-5. ☐ **设计先行**:落点函数/影响消费点(含测试锁)/预期行为变化/验证法,写清再动代码——「现象→定位函数→改」缺设计层是常犯病。**必做**
-6. ☐ **按反馈梯度验证**:ruff → 单帧锁测试 → 全量(**= `uv run pytest sr-od-test/` 根级,含根级 test_cw_*.py 旧锁;`sr-od-test/test/` 子目录不算全量**) → sim 批量对照+回放对拍 diff → 实机(§验证工作台)——**禁止跳到实机试错,禁止 sleep 等实机**。**必做**
-7. ☐ **行为变更三同步**:ADR(why)+ strategy as-built 正文(语义)+ 代码注释引 ADR-NN——commit 前完成(§文档同步)。**必做**
-8. ☐ **实机局判读锚点事前写**(预测什么会变),跑完核对;无信息量局按早停判据停(§实机运维)。**必做**
+开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度树/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目入口文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
 ## 单一源地图(知识在哪,别造第二源)
 
@@ -42,7 +31,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **模拟测试说明**(sim 能信什么/武器库/压测官/分诊与回灌) | [references/sim-testing.md](references/sim-testing.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
-| 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 + `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
+| 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md`(分篇入口)+ `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
@@ -81,7 +70,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## 交付验收(自主推进收 worker 账时逐项核;方法论五面见 od-dev-agent-autonomous-mode「交付验收清单」节)
 
-- [ ] 测试亲跑:按 worker 声明的层复现(L1/L3 命令见 §验证工作台)——「声称绿」不算
+- [ ] 测试亲跑:按 worker 声明的层复现(L1/L3 命令见 §验证)——「声称绿」不算
 - [ ] 边界核:`git diff --stat` vs 任务书声明文件集;越界逐个判(并行期禁 add -A)
 - [ ] 数字:CI+点估计+功效齐报(**禁「归零/不劣」措辞**);sim 批必报池指纹(跨日对照核指纹一致,旧锚数据标注不可比)
 - [ ] 断言抽查:报告里的源码行号抽 3-5 个亲核——worker 论断=可推翻假设
@@ -90,17 +79,10 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - [ ] 行为变更批:ADR/正文/注释三同步带了吗(没带=打回或记欠账)
 - [ ] 泛化步:bug 修复类交付,「**同类还有吗**」的排查派了吗——没派=一行记账「为何不派」(金不足/idx/kwarg 四连实证,用户四次替我补此步);检查面已固化的引用即可(如五查)
 
-## 验证工作台(反馈梯度,按成本升序)
+## 验证(测试分层,各域 checklist 消费)
 
-分层验证:L1 快速集=`uv run pytest @sr-od-test/cw_quick.txt`(~3min,CW 域)/L2=L1+受影响域点名/L3 全量=`uv run pytest sr-od-test/`(~5min,**仅 commit 前一次**)。实机一局按数十分钟计,是**最后一步**;实机运行期间 = 做 1-4 的窗口,不是等结果:
-
-1. **文档对照**(零成本):设计里预期是什么,行为偏离了哪条。
-2. **sim 批量**(秒级):`cw_sim.py` 的 P1 批量入口(基线/对照显式 `pool='snapshot'`,跨日对照核池指纹一致),A/B 对照同参数分布(达标占比/败场≤2 占比/均值/方向建立率)。sim 是可深度挖掘的基建(真代码层同源+校准层可注入+实机 Δ 池重放):回放对拍/稀有态扫描/参数敏感度/经济对账——细则见 [references/sim-testing.md](references/sim-testing.md)。
-3. **telemetry 跨局对照**(分钟):历史局同类证据聚合(如「配方满线局才过线」的跨局表)。
-4. **单帧锁测试**(分钟):构造 GameState → 断言 decide_prep 输出,进 `sr-od-test/test/sr_od/app/currency_war/`。sim/实机发现的情况**固化成单帧锁**才算回归资产(细则见 [references/strategy-work.md](references/strategy-work.md) §4)。
-5. **实机**(局级):判读锚点事前写;验收 = 连续多局达标(以当期目标为准)。
-
-策略验证纪律(基线→对照/分布验收/实机多局/单帧锁出口)单一源 = [references/strategy-work.md](references/strategy-work.md) §4;**sim A/B 与多批并行的验收纪律**(符号先核/三窗/v1 同进程重跑/合流总验/残差逐层下移/单源直通/里程碑叙述/穷举式结论/校准层天花板/连环证伪)、**sim 压力测试官**、**模拟灵活使用与双批挖掘**、**实机暴露问题的分诊与回灌**(感知 bug vs 策略病,防线完全不同)——细则全在 [references/sim-testing.md](references/sim-testing.md)。
+- L1 快速集 = `uv run pytest @sr-od-test/cw_quick.txt`(~3min,CW 域)/ L2 = L1+受影响域点名 / L3 全量 = `uv run pytest sr-od-test/`(~5min,**仅 commit 前一次**;含根级 test_cw_*.py 旧锁,`sr-od-test/test/` 子目录不算全量)。
+- 策略改动的完整验证阶梯(基线→sim→单帧锁→实机)单一源 = strategy-work §4;sim 改动的验证 = sim-testing「sim 改动 checklist」;**禁止跳到实机试错,禁止 sleep 等实机**——实机运行期间 = 做便宜层的窗口。
 
 ## 实机运维
 
@@ -120,7 +102,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 子 agent 是干净上下文,相关文档在它世界里不存在——按批的类型带齐:
 
-1. **前置阅读**(策略行为面批必含:worker/压测官/调研):相关 user_playstyle 条目/strategy 篇/ADR 路径(文档集同 checklist 步 4)。不带=它只能凭猜乱来,不合格派单。
+1. **前置阅读**(策略行为面批必含:worker/压测官/调研):相关 user_playstyle 条目/strategy 篇/ADR 路径(文档集同 strategy-work §3)。不带=它只能凭猜乱来,不合格派单。
 2. **判据来源**(判定类批必含——产出物是判定/分档/取舍的):以效果/机制审查为主体(逐对象过决定资格的机制属性),统计量只作佐证列;倒置(统计主体+效果一句带过)=不合格派单。
 3. **动作五查**(Action 新增/改动批必含):前置阅读节引「防坑清单·动作索引五查」条(见该节)。
 4. **文档面**(行为变更批必含——会改策略行为/语义/权重/字段含义的):ADR+as-built 三同步的归属,本批自带或显式声明「归编排者后续批」,二选一缺省=自带(纯测试批可免;历次实证:任务书不声明文档归属,worker 按文件集拒碰 docs/ 完全正确,文档欠账必堆回编排者)。
@@ -151,4 +133,4 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## goal / schedule 自我校准(自主推进元纪律)
 
-goal 轮醒来第一动作 = 过上方 8 步 checklist;schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网四角色提示词模板/AGENTS.local 候选/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+goal 轮醒来第一动作 = 过当期任务所属域的 checklist(分诊表路由);schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网四角色提示词模板/AGENTS.local 候选/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。

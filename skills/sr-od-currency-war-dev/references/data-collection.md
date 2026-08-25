@@ -87,7 +87,7 @@
 
 | 产物 | 落点 | 命名 | 消费入口 |
 |---|---|---|---|
-| 停机 flag+sentinel 截图 | `.debug/temp/currency_war/*.flag`(+同名截图) | flag 文件名 = 钩子标识;内容含 flag 三要素(见 od-dev-stop-hooks §2.2) | SKILL.md checklist 第 2 步 → od-dev-stop-hooks §1 现场协议 |
+| 停机 flag+sentinel 截图 | `.debug/temp/currency_war/*.flag`(+同名截图) | flag 文件名 = 钩子标识;内容含 flag 三要素(见 od-dev-stop-hooks §2.2) | od-dev-stop-hooks §1 现场协议 |
 | 采集样本 | `.debug/temp/currency_war/shots/` | 前缀 = 数据域名(`cw_shot_unique` 内容哈希去重) | 本文件 §三 钩子清单 |
 | 哨兵水位/状态 | `.debug/temp/currency_war/*.pos` 等 | 按哨兵脚本自定;重武前删旧水位 | runtime-ops 监控栈 |
 
