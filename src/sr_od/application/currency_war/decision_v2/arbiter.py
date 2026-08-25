@@ -190,12 +190,17 @@ def _check_constraint(name: str, cand: Candidate,
         return None
     if name == 'same_round_mutex':
         # r408 族:同轮已买禁卖 / 已卖禁买(session 集由 strategy 维护)
+        # ADR-0337(W82):SellBench 分支读 **working** 槽位(与 index_drift
+        # 同快照源)——r408 语义=「卖动作执行时真正卖出的卡」不可为同轮
+        # 已买;旧读 state(exec_state)槽位在演进 CompTransaction 腾空槽
+        # + 同趟买入同名落槽时短路放行,实卖刚买同名卡(「BUY X→SELL X」
+        # 账本,no_same 3/300 残留,seeds 259/304/342)。
         bought = getattr(session, 'v2_round_bought', set()) or set()
         sold = getattr(session, 'v2_round_sold', set()) or set()
         if isinstance(a, SellBench):
             idx = a.bench_idx
-            _bc = (state.bench[idx]
-                   if 0 <= idx < len(state.bench or []) else None)
+            _bc = (working.bench[idx]
+                   if 0 <= idx < len(working.bench or []) else None)
             if _bc is not None and _bc.char_id and _bc.char_id in bought:
                 return RejectReason('same_round_mutex', '', 0,
                                     f'同轮已买 {_bc.char_id}')
