@@ -217,10 +217,17 @@ def _bond_counts(state: GameState) -> dict[str, int]:
     return counts
 
 
-def plane_remaining_nodes(state: GameState) -> int:
-    """位面内剩余节点数(含当前轮;冻结超限的对照量)。"""
-    r = min(max(1, state.round_num), NODES_PER_PLANE)
-    return NODES_PER_PLANE - r + 1
+def plane_remaining_nodes(state: GameState, session=None) -> int:
+    """位面内剩余节点数(含当前轮;冻结超限的对照量)。
+
+    ADR-0366:位面轮数按 ``nodes_of_plane(session)`` 本位面真值(P2=7;
+    旧按全局 9 计使 P2 冻结超限对照量虚高 2 轮)。session 缺省 None →
+    回退 P1 先验(裸调用/旧签名兼容)。
+    """
+    from sr_od.application.currency_war.cw_horizon import nodes_of_plane
+    n = nodes_of_plane(session) if session is not None else NODES_PER_PLANE
+    r = min(max(1, state.round_num), n)
+    return n - r + 1
 
 
 def total_remaining_nodes(state: GameState) -> int:
@@ -533,7 +540,8 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
-def update_intention(state: GameState, ist: IntentionState) -> IntentionState:
+def update_intention(state: GameState, ist: IntentionState,
+                     session=None) -> IntentionState:
     """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 GameState)。
 
     序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)→
@@ -557,7 +565,8 @@ def update_intention(state: GameState, ist: IntentionState) -> IntentionState:
             # 窗口冻结:未开窗不计 miss;冻结超位面剩余节点 → 移出候选集,
             # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
             track.frozen_rounds += 1
-            if track.frozen_rounds > plane_remaining_nodes(state):
+            # ADR-0366:冻结超限对照量按本位面真值(session 透传,P2=7)
+            if track.frozen_rounds > plane_remaining_nodes(state, session):
                 ist.evicted.add(ist.locked_comp)
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''

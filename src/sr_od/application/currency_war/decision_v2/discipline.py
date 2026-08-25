@@ -46,7 +46,7 @@ from dataclasses import dataclass, field, replace
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_economy import streak_gold
-from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+from sr_od.application.currency_war.cw_horizon import nodes_of_plane
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
     intention_core,
@@ -197,7 +197,19 @@ def _direction_factions(session: StrategySession) -> set[str] | None:
         from sr_od.application.currency_war.cw_comps import get_comp
         comp = get_comp(ist.locked_comp)
         if comp is not None:
-            return set(comp.form_tiers) | set(comp.sub_tiers)
+            allow = set(comp.form_tiers) | set(comp.sub_tiers)
+            # W166/ADR-0367:①锁局过渡对副方向放行(locked_faction_scope
+            # 同式扩位)——pair 通道的方向门不拦对体系件(二级囤货,
+            # [22]④;comp 档位键仍为主方向)。transition_pair 非空 ⟺
+            # P1 ①锁局(IntentionState 契约),无需 state 判位面。
+            tp = getattr(ist, 'transition_pair', ()) or ()
+            if tp:
+                for sys in tp:
+                    if sys == '希儿系':
+                        allow |= {'量子同频', '贝洛伯格'}
+                    else:
+                        allow.add(sys)
+            return allow
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
@@ -420,7 +432,9 @@ def boss_window_active(state: GameState, session: StrategySession,
 def _hard_node(state: GameState, session: StrategySession) -> bool:
     """硬节点分类(掉血风险节点;W119/ADR-0347 单一源)。
 
-    = encounter/boss/遭遇 ∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
+    = encounter/boss/遭遇 ∪ 普通战斗且位面内剩余 ≤3(boss 临近;剩余按
+    ``nodes_of_plane(session)`` 本位面真值——ADR-0366:P2=7 轮,旧按 9 计
+    使窗推迟两轮)。
     消费点:_streak_floor(连胜 EV 地板)与 assess_discipline 保血
     通道的 hard 判定(两处同源,禁散写)。
 
@@ -432,14 +446,16 @@ def _hard_node(state: GameState, session: StrategySession) -> bool:
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
     if node in ('encounter', 'boss', '遭遇'):
         return True
-    remaining = max(0, NODES_PER_PLANE - state.round_num)
+    remaining = max(0, nodes_of_plane(session) - state.round_num)
     return node in ('battle', '战斗') and remaining <= 3
 
 
 def plane_last_battle(state: GameState, session: StrategySession) -> bool:
-    """位面末最后一战([18]):当前节点=boss 且轮=位面节点数。"""
+    """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
+    ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
+    ADR-0366 口径断层修复)。"""
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
-    return node in ('boss',) and state.round_num >= NODES_PER_PLANE
+    return node in ('boss',) and state.round_num >= nodes_of_plane(session)
 
 
 def _streak_floor(state: GameState, session: StrategySession,
@@ -461,7 +477,7 @@ def _streak_floor(state: GameState, session: StrategySession,
     ADR-0356;**「5」是授权带宽不是账本输出**,判读勿当已标定值引用。
     """
     streak = getattr(session, 'last_streak', 0) or 0
-    remaining = max(0, NODES_PER_PLANE - state.round_num)
+    remaining = max(0, nodes_of_plane(session) - state.round_num)
     tier_now = streak_gold(streak) if streak >= 2 else 0
     ev_reward = (tier_now - 1) * remaining      # 断了回到 1 档(上界口径,见上注)
     ev_interest = 0.25                           # v1 魔数(未标定,见上注;真值 0-3 金回档口径)

@@ -106,11 +106,12 @@ def battles_left_p2(state: GameState, session: StrategySession,
     """P2 收益侧的「本位面剩余战斗节点」推导(W154/ADR-0361,P12 检验点③:
     战斗数用 state 推导,非 registry 缺省 5)。
 
-    推导源=``session.plane_node_table``(r306 开局帧槽序表:本位面 9 槽
-    的节点类型序,prep_director 首帧写、位面内恒定)——从当前轮起数
+    推导源=``session.plane_node_table``(r306 开局帧槽序表:本位面
+    槽位的节点类型序,prep_director 首帧写、位面内恒定;位面轮数
+    per-plane——P1=9/P2=7,ADR-0366)——从当前轮起数
     非战斗 token(reward/supply)之外的剩余槽位数(未知 token 按战斗
     计:每个节点默认是战斗,reward/supply 才是例外;表只辖本位面
-    NODES_PER_PLANE 槽,越界槽不数)。
+    槽,越界槽不数)。
 
     表缺失/越界(裸 session/sim P1 段/开局首帧前)→ 退
     ``registry.battles_left_est``(P1 骨架缺省,保守侧)。
@@ -119,8 +120,9 @@ def battles_left_p2(state: GameState, session: StrategySession,
     table = getattr(session, 'plane_node_table', None) or []
     r = state.round_num
     if table:
-        # 表只辖本位面(NODES_PER_PLANE 槽);越界槽不数(防御脏表)
-        remaining = [str(t) for t in table[max(0, r - 1):NODES_PER_PLANE]]
+        # 表只辖本位面(表长=本位面轮数,ADR-0366);超长脏表以
+        # NODES_PER_PLANE 为最大先验封顶(W154 越界槽不数守卫保留)
+        remaining = [str(t) for t in table[max(0, r - 1):min(len(table), NODES_PER_PLANE)]]
         if remaining:
             return float(sum(
                 1 for t in remaining if t not in NON_BATTLE_NODE_TOKENS))

@@ -179,7 +179,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
         key = (state.plane, state.round_num)
         if session.v3_intention_key != key:
             session.v3_intention_key = key
-            update_intention(state, ist)
+            # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值)
+            update_intention(state, ist, session)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
         session.target_comp = comp
         hoard = hoard_target_set(state, ist)

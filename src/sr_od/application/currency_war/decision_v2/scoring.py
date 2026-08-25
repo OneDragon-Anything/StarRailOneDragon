@@ -673,12 +673,14 @@ def _off_lock_demotion(cand: Candidate, state: GameState,
     if cand.tag == 'line_opportunistic' \
             and registry.off_lock_final_fence_enabled:
         from sr_od.application.currency_war.cw_horizon import (
-            NODES_PER_PLANE,
+            nodes_of_plane,
         )
         from sr_od.application.currency_war.decision_v2.discipline import (
             boss_window_active,
         )
-        if state.round_num >= NODES_PER_PLANE \
+        # ADR-0366:位面末轮门按本位面真值(P2=7→r7 即末轮;旧按 9 计
+        # P2 的 final_fence 永不触发,与 ADR-0359 的「位面末」语义不符)
+        if state.round_num >= nodes_of_plane(session) \
                 and boss_window_active(state, session, registry):
             return 'final_fence'
     return 'demote'

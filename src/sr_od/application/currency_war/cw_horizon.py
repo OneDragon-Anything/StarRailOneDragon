@@ -36,6 +36,38 @@ XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价(ADR-0129 实测 4-8 区间
 # XP 门槛表:cw_state 权威表从 3 级起(1/2 级游戏内近乎白送,表未收录)→ 本地先验补 1/2 级
 _XP_NEED: dict[int, int] = {1: 4, 2: 4, **XP_TO_NEXT_LEVEL}
 
+#: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
+_NODES_OF_PLANE_WARNED: set[str] = set()
+
+
+def nodes_of_plane(session) -> int:
+    """本位面轮数真值(ADR-0366,W167 口径断层修复的单一源)。
+
+    真值源 = ``session.plane_node_table``(r306 开局帧实读槽序表,
+    prep_director 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
+    语料实证)、P3 首局进表即自适应。表缺(裸 session/None/sim P1 段/
+    开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性
+    ``[cw!][horizon]`` 告警(P3 真值未知期,回退事件即记档通道)。
+
+    P1 等价性:生产 P1 表恒 9 槽;sim P1 段不写表(ADR-0362 只在 P2
+    进场写)→ 两路 P1 取值 ≡ 旧常量,逐位不变是结构保证。
+
+    duck-typed 读 session(不 import 会话类型,horizon 纯函数章程不破)。
+    """
+    table = getattr(session, 'plane_node_table', None)
+    if table:
+        return len(table)
+    from one_dragon.utils.log_utils import log as _log
+    global _NODES_OF_PLANE_WARNED
+    key = repr(type(session).__name__)
+    if key not in _NODES_OF_PLANE_WARNED:
+        _NODES_OF_PLANE_WARNED.add(key)
+        _log.warning('[cw!][horizon] plane_node_table 缺(%s)→ 本位面轮数'
+                     '回退先验 NODES_PER_PLANE=%d(表回填后自适应)',
+                     key, NODES_PER_PLANE)
+    return NODES_PER_PLANE
+
+
 # 板强 → 每战斗节点期望掉血(平坦先验 × 位面难度曲线;插件可替换)。
 # 校准原则(涌现验证地形):好节奏(及时升人口+追星)可活、乱玩(板 0-1)必死 —— V1.0 首版
 # {0:14,1:8,2:3.5,3:1.5}+陡难度曲线下 A8 无解(全路径死 → 值全 0 → DP 退化存息)。

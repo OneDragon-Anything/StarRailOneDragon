@@ -904,11 +904,13 @@ def evolution_step(state: GameState, session=None,
         mem.paused = False
     # 冻结扩到遭遇前:不启动新替换(pending 记下,恢复时重校验)
     frozen = state.node_type in _ENCOUNTER_NODES
-    # W160/ADR-0363 件2:位面末窗(剩 ≤1 轮,round_num ≥ NODES_PER_PLANE-1)
+    # W160/ADR-0363 件2 / ADR-0366 口径修正:位面末窗(剩 ≤1 轮,
+    # round_num ≥ 本位面轮数-1;P1=9→r8-9、P2=7→r6-7——旧版按全局
+    # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 W165 #3 定案)
     final_window = False
     if final_freeze:
-        from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
-        final_window = state.round_num >= NODES_PER_PLANE - 1
+        from sr_od.application.currency_war.cw_horizon import nodes_of_plane
+        final_window = state.round_num >= nodes_of_plane(session) - 1
 
     def _try(opt: UpgradeOption) -> list[Action]:
         if _backoff_active(mem, opt, state):
