@@ -185,8 +185,9 @@ Early/Middle/Final 阵容+通关事实=该形态在该位面"能过"的下限证
   仍约束跨桥通用件)
 锁线后:按桥线×线兼容性决定组件留或卖
 **经济期的通用积累方向(未锁线时,桥线配方之外的补充)**:
-  保值件优先级(折价可承受的次优,诚实声明):
-    1. 跨线通用骨架件(瓦尔特/星期日/花火/符玄)
+  保值件优先级(折价可承受的次优,诚实声明;排序依据=M3 存活率:
+    早期核心 > 终局枢纽 > 纯过渡只买不囤):
+    1. 跨线通用骨架件(千冶·刃居首,其次瓦尔特/星期日/花火/符玄等枢纽)
     2. 双羁绊桥线件升星  3. 经验/人口
   金币纪律:保值件购买受利息地板约束
 **桥线驱动的混合边界(对抗辩论产出,精确表)**:
@@ -623,7 +624,7 @@ update_target;决策循环→decide_prep;
 | cw_run_allocator(跨局 Thompson) | **保留**(跨局层,本方案未覆盖——见 §10 补充) |
 | cw_telemetry | 扩展 schema(§6 原有清单;**Phase A 前置**——门槛⓪/① 回放需要形态键字段,r13 标注) |
 | **(已删)`cw_line_library_v1`/`cw_signal_lock`/`cw_phase_machine`/`strategies/line_strategy`** | **随 LineStrategy 删除(ADR-0336)**:旧策略 v2 落地产物;职责已由 decision_v2 族(cw_intention 意向/COMP_LIBRARY v2/纪律族)承接 |
-| **(保留)`cw_power_table`/`cw_line_defs`/`cw_bridge_pool`** | **Phase A 落地产物**(2026-08-21 起;decision_v2 继续消费);职责地图见 [strategy/README §模块地图](strategy/README.md) |
+| **(保留)`cw_power_table`/`cw_line_defs`/`cw_bridge_pool`** | **Phase A 落地产物**(2026-08-21 起)。as-built 更正(2026-08-25 W116 复读核):**cw_power_table 生产链零消费**(仅测试引用——「查战力表定经济/战力模式」的核心洞察未接线,形态判据实由 formed_stop 族承担);cw_bridge_pool 经 cw_line_defs 被 deploy 围栏消费(活);战力表明确定位=离线白名单/校准源,在线判据归 form_ok(经济循环总模型),或显式弃用 |
 | **(新增落地)`cw_recipe`** | **过渡配方一等公民模型**(r100):P1 双轨期 plan/deploy 拿配方伪 comp,「配方完成度即 P1 胜利条件」(ADR-0225/0243) |
 | **(新增落地)sim/回放基建:`cw_sim`/`cw_sim_checks`/`cw_delta_pool_data`/`cw_replay`/`cw_match_recorder`/`cw_plan_replay_audit`** | **验证主链**(2026-08-24 起):sim 批量(真代码层同源+校准层+实机 Δ 池,ADR-0218/0242)→ 回放对拍 → 实机最后一步;不进生产执行链 |
 
