@@ -738,10 +738,15 @@ def _direction_established(session: StrategySession) -> bool:
     ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
     ``session.v3_intention`` 意向分层锁定(旧臂 line_v2 的
     locked_line/bridge_id 读取随 ADR-0336 删除)。
+    W145/ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
+    终局 comp 锁与配方对锁任一成立即方向已立(纯遥测口径)。
     """
     ist = getattr(session, 'v3_intention', None)
-    return bool(ist is not None and getattr(ist, 'phase', '') == 'locked'
-                and getattr(ist, 'locked_comp', ''))
+    if ist is None:
+        return False
+    if getattr(ist, 'phase', '') == 'locked' and getattr(ist, 'locked_comp', ''):
+        return True
+    return bool(getattr(ist, 'p1_pair', ()))
 
 
 def _target_comp_label(session: StrategySession) -> str:
@@ -749,10 +754,18 @@ def _target_comp_label(session: StrategySession) -> str:
 
     decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
     ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
-    字段回退随 ADR-0336 删除)。
+    字段回退随 ADR-0336 删除)。W145/ADR-0357:P1 配方锁局无 comp 锁,
+    标签=``过渡配方·A+B``(体系对;遥测可读性,不进任何决策)。
     """
     ist = getattr(session, 'v3_intention', None)
-    return (getattr(ist, 'locked_comp', '') or '') if ist is not None else ''
+    if ist is not None:
+        locked = getattr(ist, 'locked_comp', '') or ''
+        if locked:
+            return locked
+        pair = getattr(ist, 'p1_pair', ()) or ()
+        if pair:
+            return '过渡配方·' + '+'.join(pair)
+    return ''
 
 
 def _board_factions_of(deployed) -> dict[str, int]:

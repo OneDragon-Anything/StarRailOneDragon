@@ -20,6 +20,10 @@
 LineV1 载体)与 `cw_line_library_v1` 是旧件,本模块是其 v4 后继——按 COMP_LIBRARY
 v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 
+**P1 过渡配方锁(W145/ADR-0357)**:位面 1 的锁定产物=过渡配方体系对
+(transition_combos 两两组合;[20] 过渡是配方不是散买),终局 comp 锁定
+只保留①类资格通道,P2+ 照旧锁 comp。详见 ``P1_RECIPE_LOCK`` 注释。
+
 模块构成:
 - ``detect_signals(state)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/
   ④资源/⑤由解析侧兜底,本函数不发⑤信号);
@@ -123,10 +127,15 @@ class LineTrack:
 
 @dataclass
 class IntentionState:
-    """锁线/撤销状态机(未锁 unlocked / 锁定 locked / 弱意向 weak)。"""
+    """锁线/撤销状态机(未锁 unlocked / 锁定 locked / 弱意向 weak)。
+
+    P1(W145/ADR-0357):锁定产物=过渡配方体系对(``p1_pair``)——终局 comp
+    锁定只保留①类资格通道;P2+ ``p1_pair`` 恒空,comp 锁定照旧。
+    """
 
     phase: str = 'unlocked'            # 'unlocked' | 'locked' | 'weak'
     locked_comp: str = ''              # 锁定线(COMP_LIBRARY 套名)
+    p1_pair: tuple[str, ...] = ()      # P1 配方锁:体系对(过渡体系键;P2+ 恒空)
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
@@ -145,7 +154,9 @@ class HoardTarget:
     - ``char_targets``:角色件集合(意向线骨架采购集 / 跨线骨架 / 兜底线);
     - ``equip_targets``:装备材料件(意向线 equip_assign 派生,剔除 equip_taboos);
     - ``mode``:'locked' | 'forced' | 'weak' | 'fallback' | 'demoted_endgame'
-      (买侧按 mode 区分囤货语义:意向件照囤/插件台阶/兜底方向/降格满配骨架)。
+      | 'p1_pair' | 'p1_transition'(买侧按 mode 区分囤货语义:意向件照囤/
+      插件台阶/兜底方向/降格满配骨架;P1 两态=配方对成员集/空窗引擎全集,
+      ADR-0357)。
     """
 
     char_targets: frozenset[str]
@@ -305,6 +316,100 @@ def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
     return not _direct_line_qualified(state, comp.name)
 
 
+# ===== P1 过渡配方锁(W145/ADR-0357;sim A/B 通道)=====
+P1_RECIPE_LOCK: bool = True
+"""P1 意向锁定产物=过渡配方体系对(ADR-0357)。False=关闭(sim A/B
+基线臂,回 W143 前行为:P1 ②③④可锁终局 comp)。
+
+诊断来源:W143 §3.3——56/100 锁 DOT 系 comp(仅覆盖 DOT2 单引擎,
+第二体系件对锁定策略是「非目标件」),engines2 成率 10-19%;绯英⑤兜底
+方向零引擎覆盖成率 5%;vs 希儿量子 33%。P1 锁终局 comp 与 [20]
+「过渡是配方不是散买」系统性错配。"""
+
+#: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_sim._engines_count
+#: 的希儿系哨兵同口径)。
+SEELE_SYSTEM: str = '希儿系'
+
+#: P1 配方对平手序 = 激活占比降序(transition_combos 数据附录:
+#: 列车 .360 > DOT .329 > 仙舟 .292;希儿系垫底=单卡依赖)。
+_P1_PAIR_PREF: tuple[str, ...] = ('列车同行', '持续伤害', '仙舟', SEELE_SYSTEM)
+
+P1_PAIR_LOCK_MIN_SUPPORT: float = 0.5
+"""配方对锁定门槛:最高体系支持度 ≥ 此值才锁(=三羁绊系 ≥1 件或
+希儿在手;设计推断,sim 校准)。空窗期([31]① 开局常态)不锁,
+囤货方向落四体系全集(p1_transition)。"""
+
+
+def _owned_chars(state: GameState) -> set[str]:
+    """已到手角色名(bench+deployed;不含 shop 可见——[23] 锁定由
+    贯穿件=到手,店里出现过不构成方向承诺)。"""
+    return {bc.char_id for bc in list(state.bench) + list(state.deployed)
+            if bc is not None and bc.char_id}
+
+
+def _p1_system_support(state: GameState) -> dict[str, float]:
+    """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
+    与 ``cw_sim._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
+
+    三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
+    单一源);希儿系 = 希儿在手 0.6 基础分(3费单卡即战力)+ 量2/贝2
+    各 0.2(放大器点火;transition_combos 希儿线节)。
+    """
+    counts: dict[str, int] = {}
+    for bc in list(state.bench) + list(state.deployed):
+        if bc is None or not bc.char_id:
+            if bc is not None and bc.faction and bc.faction != '?':
+                counts[bc.faction] = counts.get(bc.faction, 0) + 1
+            continue
+        ch = CHARACTERS.get(bc.char_id)
+        if ch is None:
+            continue
+        for f in set(ch.factions) | set(ch.flows):
+            counts[f] = counts.get(f, 0) + 1
+    sup = {b: counts.get(b, 0) / t for b, t in TRANSITION_TRAITS}
+    if '希儿' in _owned_chars(state):
+        sup[SEELE_SYSTEM] = (
+            0.6
+            + (0.2 if counts.get('量子同频', 0) >= 2 else 0.0)
+            + (0.2 if counts.get('贝洛伯格', 0) >= 2 else 0.0)
+        )
+    else:
+        sup[SEELE_SYSTEM] = 0.0
+    return sup
+
+
+def _derive_p1_pair(state: GameState) -> tuple[str, ...]:
+    """P1 配方对派生:支持度 top-2(平手按激活占比序),规整为
+    ``_P1_PAIR_PREF`` 序的二元组;最高支持度未达门槛 → ()(空窗不锁)。
+
+    体系对随资产**重派生**([20]「变体按来牌选」——支持度只增,变更
+    是来牌选型不是 pivot;[23] 冻结语义辖终局线,不辖 P1 配方)。
+    """
+    sup = _p1_system_support(state)
+    ranked = sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
+    if sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
+        return ()
+    return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
+def _pair_members(pair: tuple[str, ...]) -> set[str]:
+    """体系对的囤货成员集:各体系羁绊(阵营∪流派)下的注册表成员;
+    希儿系 = 希儿 ∪ 量子同频 ∪ 贝洛伯格 成员(放大器池)。"""
+    bonds: set[str] = set()
+    for sys in pair:
+        if sys == SEELE_SYSTEM:
+            bonds |= {'量子同频', '贝洛伯格'}
+        else:
+            bonds.add(sys)
+    out: set[str] = set()
+    for name, c in CHARACTERS.items():
+        if (set(c.factions) | set(c.flows)) & bonds:
+            out.add(name)
+    if SEELE_SYSTEM in pair:
+        out.add('希儿')
+    return out
+
+
 def detect_signals(state: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
@@ -405,6 +510,7 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
           forced: bool = False) -> None:
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
+    ist.p1_pair = ()   # comp 锁定取代配方锁(ADR-0357:①资格通道)
     ist.lock_layer = sig.layer if not forced else 1   # 强制锁线视作最高层(不可被出口②撤)
     ist.lock_plane = state.plane
     ist.lock_round = state.round_num
@@ -474,6 +580,22 @@ def update_intention(state: GameState, ist: IntentionState) -> IntentionState:
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
+        # P1 过渡配方锁(W145/ADR-0357):P1 的锁定产物=体系对;
+        # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
+        # 只保留①类资格通道(直通终局线资格,ADR-0338/0341 语义零改动)。
+        # 方向产物=按手上资产派生的体系对(transition_combos 两两组合)。
+        if state.plane == 1 and P1_RECIPE_LOCK:
+            sigs = [s for s in sigs
+                    if _direct_line_qualified(state, s.comp_name)]
+            pair = _derive_p1_pair(state)
+            if pair != ist.p1_pair:
+                ist.p1_pair = pair
+                ist.last_event = ('p1_pair:' + '+'.join(pair)) \
+                    if pair else 'p1_pair:wait'
+        elif ist.p1_pair:
+            # 进 P2:配方锁退场,comp 锁定通道照旧(P2+ 锁定产物=终局 comp)
+            ist.p1_pair = ()
+            ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
         if best is not None:
             _lock(ist, state, best)
@@ -533,8 +655,11 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
     """锁后效果接口:输出「囤货目标集合」供买侧消费([21]:只改囤货方向,不改板上)。
 
     - locked/forced:意向线采购集;
+    - P1(W145/ADR-0357):非 comp 锁定局 → 配方方向——体系对成员集
+      (p1_pair)/四体系引擎件全集(p1_transition,空窗);绯英⑤兜底
+      不再辖 P1(零引擎覆盖,W143 实证 e2 成率 5%);
     - weak:只囤跨线骨架件(撤销后去向);
-    - unlocked 无信号:⑤兜底 = 绯英档采购集(「无信号时的默认落点」);
+    - unlocked 无信号(P2+):⑤兜底 = 绯英档采购集(「无信号时的默认落点」);
     - demoted_endgame:降格终局 = 通用骨架满配(四体系板深强化归点4/点6,不在本模块)。
     """
     if ist.demoted_endgame:
@@ -546,6 +671,14 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
             chars, equips = _line_hoard(comp)
             return HoardTarget(frozenset(chars), frozenset(equips),
                                'forced' if ist.forced else 'locked')
+    if state.plane == 1 and P1_RECIPE_LOCK:
+        # P1 配方方向(ADR-0357):体系对成员集;空窗=四体系全集。
+        # 过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
+        # key_equips 判定)——equip_targets 恒空。
+        pair = ist.p1_pair or ()
+        members = _pair_members(pair) if pair else _pair_members(_P1_PAIR_PREF)
+        return HoardTarget(frozenset(members), frozenset(),
+                           'p1_pair' if pair else 'p1_transition')
     if ist.phase == 'weak':
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'weak')
     comp = get_comp(FALLBACK_COMP_NAME)
