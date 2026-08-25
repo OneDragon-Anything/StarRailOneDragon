@@ -262,12 +262,21 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '历史 node_type 置 None 已丢弃计数);事故局物理排除'
                 '(QUARANTINED_RUNS,r378b);跨策略版本混杂'
                 '已知(一轮#10),过滤走 --runs 重生成;'
-                'v3(ADR-0279,批⑬)battle 桶键 depth→rung'
+                'sampler v3(ADR-0279,批⑬)battle 桶键 depth→rung'
                 '(成型度一维分桶),encounter/boss 维持 depth 桶;'
-                'v4(ADR-0306)胜判定权威口径=killed(结算屏 extras;'
-                'Δ 为派生量,异号实证 0/61 killed 已知行——0305 的'
-                '「3/9 异号」系 tier×core 与 rung 两分桶错位对照的'
-                '伪影),META 逐桶双口径胜率+桶贫困披露+语料行数账',
+                'v4(ADR-0292,批㉗)reward/supply 改 Δ池经验分布采样;'
+                'v5(ADR-0306)胜判定权威口径=killed(结算屏 extras;'
+                'Δ 为派生量,异号实证 0——0305 的「3/9 异号」系'
+                'tier×core 与 rung 两分桶错位对照的伪影;2026-08-25'
+                '全量复审计 killed 已知行 84 条异号 0),META 逐桶'
+                '双口径胜率+桶贫困披露+语料行数账;'
+                'v6(ADR-0308,W37)回退层胜负面换 W31 实测阶梯'
+                '(池内容不变仅语义变,指纹随版本重算);'
+                'v7(ADR-0312,W50)采样键 _deployable_depth 改 Σboard'
+                '全集口径(与池语料同口径,池内容不变);'
+                'v7 内容扩容(ADR-0334,W73):2026-08-25 夜间实机 5 局'
+                '新增 45 行重生成,boss 桶真值锚——池内容变(指纹'
+                '重算),采样语义不变(版本仍 7)',
     }
     return pool, meta
 

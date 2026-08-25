@@ -40,6 +40,17 @@
 
 **decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(无显式成型停手门);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。
 
+**decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed
+配方亲和过滤**(开关 `engine_affinity_enabled` 在 registry;判据
+`_engine_seed_affinity` 在 candidates)——板面已有过渡体系未成型时,新体系
+引擎件不生成 engine_seed 候选(散买断,语义=[20] 过渡是配方不是散买:
+配方=体系内加法,先深堆已有体系再开新体系);**空窗**(板面无过渡体系)放行
+(第一体系要开,[31])、**全部成型**(引擎≥2)放行(两两组合可开新体系)、
+深化件放行;希儿系/非三羁绊件不辖。与 forming_bias(评分活性)正交:forming
+管「买不买」,亲和管「买哪个体系」。新 sim 指标(板面集中度度量)纯函数在
+`cw_line_defs`(`board_max_recipe_tier`/`board_recipe_faction_count`/
+`board_total_faction_count`)。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

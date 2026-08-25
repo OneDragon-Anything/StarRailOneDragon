@@ -5,6 +5,11 @@ from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+
+# W75(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
+# 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
+# `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
+from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -118,10 +123,12 @@ class CurrencyWarRunLoop(SrOperation):
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
-        # r363(审计 P1-6):runs summary 兜底——中止/卡死/停机局从不走
-        # 3c 回大厅 → record_run_summary 永不调(近 6 局无 runs 行实锤)。
-        # 机制:正常终局写 summary 后置 _summary_written;loop 实例被
-        # 回收时未写 → 补一条 abandoned(gold 轨迹由 recorder 内存带)。
+        # W75(ADR-0335):runs summary 收口——中止/卡死/停机局不走 3c 回大厅
+        # → record_run_summary 永不调(近 6 局无 runs 行实锤,r363 在 loop 顶
+        # 的 stop 检查因 execute() 先查 stop 几乎永不触发,四局 [RUNS-GAP]
+        # 哨兵连报)。机制:正常终局(3c)写 summary 后置本标记;``after_operation_done``
+        # 收口钩子(成功/失败/停止全路径必达)检查未写 → 补一条 stopped/abandoned
+        # (hp/plane/round 取最后已知值)。
         self._summary_written: bool = False
         # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后,停在下一轮备战屏(analyze board/star)。
         # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
@@ -389,6 +396,52 @@ class CurrencyWarRunLoop(SrOperation):
         hp = getattr(self, '_last_outcome_hp', None)
         return hp if hp is not None else fallback_hp
 
+    def after_operation_done(self, result: '_OperationResult') -> None:
+        """局终 runs summary 收口(W75/ADR-0335;治本 r363 死码)。
+
+        r363 把 stop 兜底放在 loop() 顶 —— 但 ``operation.execute()`` 每轮前
+        (operation.py:408)先查 ``is_context_stop``,stop 到达后 ``loop()`` 不再被调,
+        loop 顶检查几乎永不触发(MCP stop 四局 [RUNS-GAP] 哨兵连报实锤)。
+        本钩子在 ``execute()`` 全路径收口(after_operation_done 对成功/失败/停止
+        必达,operation.py:492):未写 summary 的对局在此补写,hp/plane/round
+        取最后已知值(session.last_state;hp 走 ``_last_true_hp`` 防 100 兜底毒化),
+        result='stopped'(停止) / 'abandoned'(超时/异常退出)。
+        """
+        super().after_operation_done(result)
+        self._write_terminal_summary_if_needed()
+
+    def _write_terminal_summary_if_needed(self) -> None:
+        """局终/中止 summary 补写(幂等:_summary_written 守卫 + 假局守卫)。
+
+        正常终局(3c 回大厅)已写 → 跳过;开局失败/无对局数据(假局)不写
+        (镜像 3c 的 r10 守卫:无任何 round_outcome 却回大厅 = 开局失败,
+        不拼假 loss 污染分母)。停止/超时/异常 → 取最后已知值补写。
+        """
+        if self._summary_written:
+            return
+        if getattr(self, '_last_outcome_hp', None) is None and self._rounds_done == 0:
+            return   # 假局守卫(镜像 3c):无 outcome 数据不写假 summary
+        _m = self.ctx.cw_match
+        _st = _m.session.last_state if _m is not None else None
+        if _st is None:
+            return   # 无最后已知态(理论上不可达:有 outcome 必有 state)
+        try:
+            _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
+            _final_hp = self._last_true_hp(_st.hp)
+            cw_telemetry.record_run_summary(
+                result='stopped' if _stopped else 'abandoned',
+                plane_reached=_st.plane,
+                rounds_survived=_st.round_num,
+                final_hp=_final_hp,
+                notes=('stopped:operation 收口(W75)' if _stopped
+                       else 'abandoned:operation 异常收口(W75)'))
+            self._summary_written = True
+            log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
+                     'stopped' if _stopped else 'abandoned',
+                     _st.plane, _st.round_num, _final_hp)
+        except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞退出
+            log.warning('[cw][loop] 局终 summary 收口失败(不阻塞): %s', e)
+
     @staticmethod
     def _normalize_node_type(raw: str) -> str:
         """r363(审计 P0-1):节点类型词汇表统一(三源→中文标准词)。
@@ -577,25 +630,11 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter += 1
         if self._iter > CurrencyWarRunLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
-        # r363(审计 P1-6):stop 信号/超时路径补 abandoned summary——
-        # 中止局(手停/哨兵/停机钩子)不走 3c 回大厅 → runs.jsonl 无此局
-        # (近 6 局实锤,跨局统计分母偏)。loop 顶检测停止请求即补记,
-        # 正常终局已写标记跳过(result 归 win/loss)。
-        if (not self._summary_written
-                and self.ctx.run_context.is_context_stop
-                and self.ctx.cw_match is not None):
-            import contextlib
-            with contextlib.suppress(Exception):   # 遥测 best-effort
-                _st_ab = self.ctx.cw_match.session.last_state
-                cw_telemetry.record_run_summary(
-                    result='abandoned',
-                    plane_reached=_st_ab.plane if _st_ab else 1,
-                    rounds_survived=_st_ab.round_num if _st_ab else 0,
-                    final_hp=self._last_true_hp(
-                        _st_ab.hp if _st_ab else 0),
-                    notes='stopped-mid-run(r363 兜底)')
-                self._summary_written = True
-                log.info('[cw][loop] 中止局 summary 兜底:abandoned')
+        # W75(ADR-0335):stop 路径 runs summary 收口已从 loop 顶迁到
+        # ``after_operation_done`` —— r363 在 loop() 顶检查 is_context_stop,
+        # 但 operation.execute() 每轮前(operation.py:408)先查 stop,stop 到达后
+        # loop() 不再被调 → 原检查几乎永不触发(MCP stop 四局 [RUNS-GAP] 实锤)。
+        # 收口钩子对成功/失败/停止全路径必达(operation.py:492),见类注。
         screen = self.last_screenshot
 
         # r119 停滞 watchdog(用户 2026-08-21 纠偏「卡 30min 没发现」):

@@ -325,21 +325,31 @@ def _cand_is_engine_piece(cand: Candidate) -> bool:
     bench 是成型路径(部署后才成引擎,[13] 成型进度),与计数语义
     (deployed 在场才算引擎)互补不冲突。
     """
+    return bool(_cand_system_bonds(cand))
+
+
+def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
+    """候选卡所属的过渡体系键集(TRANSITION_TRAITS 键;希儿系单列)。
+
+    ``_cand_is_engine_piece`` 的键来源:TRANSITION_TRAITS (bond, tier)
+    解包(与 cw_sim._engines_count 体系判定同源);希儿系以 '希儿系'
+    哨兵键返回(单卡二元判定,不进三羁绊的档位计数口径)。
+    返回空集 = 非配方件。
+    """
     a = cand.action
     if not isinstance(a, BuyCard):
-        return False
+        return frozenset()
     name = getattr(a.card, 'name', '') or ''
     if name == '希儿':
-        return True
+        return frozenset({'希儿系'})
     from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
     ch = _CH.get(name)
     if ch is None:
-        return False
-    # TRANSITION_TRAITS = (bond, tier) 序列(与 cw_sim._engines_count
-    # 同源解包口径;勿 set(dict)——dict 语义下会给 tuple 集)
+        return frozenset()
     from sr_od.application.currency_war.cw_sim import _TRANSITION_TRAITS
     eng_bonds = {b for b, _t in _TRANSITION_TRAITS}
-    return bool((set(ch.factions or ()) | set(ch.flows or ())) & eng_bonds)
+    return frozenset((set(ch.factions or ()) | set(ch.flows or ()))
+                     & eng_bonds)
 
 
 def score_candidate(cand: Candidate, state: GameState,

@@ -2137,18 +2137,18 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # (2/300,g243/296)——行为面随口径变化的涌现信号,待 leader 对拍
 # 裁决(W50 报告 §遗留)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': '6c0c8397f3f38a58',
-    'recorded': '2026-08-25(ADR-0312 W50:v7 池+全集口径+Σboard'
-                '采样键,校准修正换锚,n=300,seed 0-299)',
+    'pool_fingerprint_prefix': '46066bbe90647c02',
+    'recorded': '2026-08-25(ADR-0334 W73:语料扩容重生成,池内容变'
+                '指纹重算,n=300,seed 0-299;W72 在飞树——合流后'
+                '若策略面漂移按 drift 披露处置)',
     'metrics': {
-        'engines2_by_r6': 0.38,       # 旧 0.39(策略面近零漂移)
-        'avg_final_hp': 27.97,        # 旧 32.08(hp 类下移=校准修正预期)
-        'hp_ge_60': 0.05,             # 旧 0.09(同上;与旧锚串比须注明
-                                      # v7 口径——板深桶语义变)
-        'battle_losses_le_2': 0.11,   # 旧 0.1
-        'recipe5_by_r6': 0.72,        # 旧 0.71(策略面近零漂移)
-        'avg_refreshes': 2.31,        # 旧 3.87(板面集中买门读全集
-                                      # board,口径变→刷新行为面变化)
+        'engines2_by_r6': 0.33,       # 旧 0.38(ADR-0312 6c0c8397 锚)
+        'avg_final_hp': 28.69,        # 旧 27.97(hp 上移=池扩容含今夜'
+                                      # 部分更优战斗样本,校准修正)
+        'hp_ge_60': 0.08,             # 旧 0.05(同上)
+        'battle_losses_le_2': 0.11,   # 旧 0.11
+        'recipe5_by_r6': 0.67,        # 旧 0.72(策略面微漂,同 W72 在飞)
+        'avg_refreshes': 2.36,        # 旧 2.31
     },
 }
 

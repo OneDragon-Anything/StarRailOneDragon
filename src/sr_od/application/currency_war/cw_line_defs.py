@@ -32,6 +32,52 @@ def recipe_tier(board: dict[str, int]) -> int:
     return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
 
 
+# ===== W72(ADR-0333):板面体系集中度度量(新 sim 指标先建后用) =====
+# 语义单一源 = user_playstyle [20](过渡是配方不是散买):过渡配方=体系内
+# 加法(DOT2→仙舟3→列车2 混挂→列车4),每步都是配方件不是任意正分件。
+# 本组函数是 sim 过程指标的纯函数原语(输入 board dict,无状态,可单帧锁),
+# 消费方 = cw_sim 批量诊断脚本 / 评分层集中度判据(scoring 侧同源另行包装)。
+
+
+def board_system_tiers(board: dict[str, int]) -> dict[str, int]:
+    """板面各过渡体系档位计数(board 键口径,deployed 聚合)。
+
+    体系键 = 过渡四体系的羁绊键(仙舟/列车同行/持续伤害;希儿系是
+    deployed 单卡二元判定,不进档位计数——与 cw_sim._engines_count
+    的计数语义对齐)。非体系键不进结果。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    return {bond: board.get(bond, 0) for bond, _tier in TRANSITION_TRAITS}
+
+
+def board_max_recipe_tier(board: dict[str, int]) -> int:
+    """板面最大配方体系档位(集中度核心度量:深堆度)。
+
+    取四体系档位计数的最大值(0=无体系)。「配方加法」语义下该值越大
+    板面越集中;散面(各体系 1 档)该值=1 而阵营数很高——与阵营数
+    合读才能区分「深堆 vs 散面」。
+    """
+    tiers = board_system_tiers(board)
+    return max(tiers.values()) if tiers else 0
+
+
+def board_recipe_faction_count(board: dict[str, int]) -> int:
+    """板面配方阵营数(计数>0 的配方体系家数;散面度)。
+
+    四体系里几家在板上有件(≥1 档)。与 board_max_recipe_tier 合读:
+    深堆=max_tier 高且家数少;散面=max_tier 低(多为 1)且家数多。
+    """
+    tiers = board_system_tiers(board)
+    return sum(1 for v in tiers.values() if v > 0)
+
+
+def board_total_faction_count(board: dict[str, int]) -> int:
+    """板面总阵营数(全量散面度;非配方阵营也计入)。"""
+    return sum(1 for v in board.values() if v > 0)
+
+
 def recipe_kinds_1cost() -> int:
     """1 费配方件的种类数(找件刷概率用;r269b 第三处手搓的收口)。"""
     from sr_od.application.currency_war.cw_chars import CHARACTERS

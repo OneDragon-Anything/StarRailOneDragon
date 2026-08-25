@@ -9,7 +9,11 @@
 - ``decisions.jsonl``:每回合决策迹(state 快照 + target_comp + candidate_scores + eval_breakdown + actions)。
 - ``outcomes.jsonl``:每回合观测结果(RoundOutcome 双侧)。
 - ``runs.jsonl``:每局 summary(difficulty / result / plane_reached / pivots / gold 轨迹)。
-  多路径兜底(ADR-0273):``start_run`` 先补 FAIL/崩溃/重启路径漏写的行(source=recovered)。
+  **写端三路径**(result 取值 win/loss/abandoned/stopped,ADR-0335):
+  - 3c 回大厅 = 正常终局(win/loss);
+  - ``battle_loop.after_operation_done`` 收口 = 停止/超时/异常退出
+    (stopped/abandoned,hp/plane/round 取最后已知值);
+  - ADR-0273 兜底:``start_run`` 先补 FAIL/崩溃/重启路径漏写的行(source=recovered)。
 
 **schema 稳定**:字段名跨版本不变(``schema_version`` 标版本);数值随版本/实玩变。新增字段加在末尾、
 可选,不破坏旧记录。复盘/ML 代码按 (run_id, round_num) join decisions ↔ outcomes。
@@ -158,7 +162,7 @@ class RunSummary:
     ts: str = ""
     run_id: str = ""
     difficulty: str = ""
-    result: str = ""                # "win" / "loss" / "abandoned"
+    result: str = ""                # "win" / "loss" / "abandoned" / "stopped"(W75:停止路径,ADR-0335)
     plane_reached: int = 0          # 到达的最高位面
     rounds_survived: int = 0
     final_hp: int = 0
@@ -549,13 +553,12 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
 
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
-# r363 兜底只盖「loop 顶 stop 信号」路径;battle_loop FAIL(对局循环超时/节点失败)/
-# 进程崩溃 / 重启杀局不走 3c 回大厅也不经 stop 检测 → runs.jsonl 缺行(8/22 起
-# 16/18 局缺汇总实锤),一切以 runs.jsonl 为分母的跨局统计失真。修复:收口改
-# 「多路径兜底」——start_run(每局起点)先扫 outcomes.jsonl 里没有 summary 行的
-# run,从 outcomes/decisions 重算补一条(source='recovered';幂等,已 summaried
-# 的 run 不重复)。数据治理:真值可从逐轮行重算 → 补算回填;无 outcomes 的
-# 开局失败局(假局守卫合法跳过)→ 留缺口不造伪值。
+# 写端三路径:① 3c 回大厅(正常终局 win/loss);② W75 after_operation_done
+# 收口(停止/超时/异常退出 result='stopped'/'abandoned',battle_loop.py 类注);
+# ③ 本兜底(进程崩溃/重启杀局,start_run 每局起点补 source='recovered')。
+# r363 曾在 loop() 顶查 is_context_stop —— 但 operation.execute() 每轮前
+# (operation.py:408)先查 stop,stop 到达后 loop() 不再被调,原检查几乎永不
+# 触发(MCP stop 四局 [RUNS-GAP] 实锤),故收口迁 after_operation_done(ADR-0335)。
 
 def _runs_summarized(replay_dir: Path) -> set[str]:
     """runs.jsonl 已有 summary 行的 run_id 集(幂等判据单一源)。"""

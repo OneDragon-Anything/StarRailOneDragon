@@ -215,6 +215,49 @@ def _plugin_ok(card: ShopCard, state: GameState,
     return len(state.deployed or []) < state.max_units()
 
 
+def _engine_seed_affinity(card: ShopCard, state: GameState,
+                          registry: DecisionV2Registry) -> bool:
+    """engine_seed 的板面配方亲和过滤(ADR-0333;candidates 层,非评分排序)。
+
+    语义单一源 = user_playstyle [20](过渡是配方不是散买——每步都是
+    配方件不是任意正分件)+ [31] 空窗期(四体系不一定开局凑得到,
+    手上有什么先凑)+ [20] 两两组合(成型后可开新体系):
+
+    - **空窗**(板面无任何过渡体系件,计数≥1)→ 放行(第一体系要开);
+    - 板面已有体系**未成型**(存在计数≥1 且 <tier 的体系)→ 只放行
+      **深化件**(该卡属于板面已有体系);**新体系第 1 件拒**(散买主源:
+      engine_seed 跨体系见即买,sim 实证 21% 买入=新体系+已有未成型);
+    - 板面已有体系全部成型(引擎≥2)→ 放行(两两组合可开新体系)。
+
+    与 cw_sim._engines_count 的体系判定同源(TRANSITION_TRAITS 键,
+    希儿系=deployed 二元判定不进档位计数,本过滤只辖三羁绊)。
+    """
+    if not registry.engine_affinity_enabled:
+        return True    # A/B 通道:关闭=回 W70 行为(全引擎件见即买)
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    tiers = dict(TRANSITION_TRAITS)
+    board = state.board or {}
+    # 该卡所属体系(TRANSITION_TRAITS 键;希儿系不辖)
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    ch = CHARACTERS.get(card.name)
+    if ch is None:
+        return True   # 未识别卡不辖(engine_seed_wants 已挡注册表外)
+    bonds = (set(ch.factions or ()) | set(ch.flows or ())) & set(tiers)
+    if not bonds:
+        return True   # 非三羁绊体系件(engine_seed 不辖)
+    # 板面体系态
+    has_any = any(board.get(b, 0) >= 1 for b in tiers)
+    if not has_any:
+        return True   # 空窗:第一体系要开
+    unformed = any(1 <= board.get(b, 0) < t for b, t in tiers.items())
+    if not unformed:
+        return True   # 全部成型:可开新体系(两两组合)
+    # 未成型 + 该卡是否深化已有体系
+    return any(board.get(b, 0) >= 1 for b in bonds)
+
+
 def _buy_tag(card: ShopCard, state: GameState,
              session: StrategySession, registry: DecisionV2Registry) -> str | None:
     """单卡标签裁决(纯查询;序=registry.buy_tag_priority 语义)。
@@ -227,6 +270,9 @@ def _buy_tag(card: ShopCard, state: GameState,
     is_target = card.name in targets
     v3_carrier = getattr(session, 'v3_hoard', None) is not None
     if not is_target and engine_seed_wants(card, state, session):
+        if not _engine_seed_affinity(card, state, registry):
+            return None    # ADR-0333:板面已有未成型体系时,新体系引擎件
+            # 不生成(散买断)——空窗/成型可开新,深化件放行([20]/[31])
         return 'engine_seed'    # 点3:引擎件见即买(C2 名单)
     if not is_target and pair_wants(card, state, session):
         if has_same_name_copy(card, state) \
