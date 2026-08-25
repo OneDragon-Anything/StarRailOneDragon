@@ -186,6 +186,9 @@ class CurrencyWarRunLoop(SrOperation):
         self._cw_resume_candidate: bool = self._is_new_match
         self._cw_locked_resume: bool = False   # 锁定确认(探针零响应)→ 直接出战
         self._cw_locked_round: int = 0         # 锁定确认时的轮次(遥测/日志锚)
+        # W103 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
+        self._cw_strategy_dead_streak: int = 0
+        self._cw_dead_prev_key: tuple[int, int] | None = None
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
         if self._is_new_match:
             _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
@@ -939,6 +942,39 @@ class CurrencyWarRunLoop(SrOperation):
                          self.PREP_SETTLE_S)
             if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
                 return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
+            # W103 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
+            # strategy_id 的决策行(决策层整轮未参与;W98 两局实录:57/61 行恒空、
+            # P1 全程 0 买、金囤 91/100,兜底打满 40min 垃圾局)→ 停局重启加载
+            # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:策略死了,
+            # 继续跑=零信息量局。结算点=备战入口查**上一轮**(本轮决策尚未发生,
+            # 查本轮恒空会误杀);telemetry 关闭时本检查让位(无数据=无判据)。
+            if cw_telemetry.get_recorder().enabled:
+                _dk = read_phase_round(self.ctx, screen)
+                if _dk and _dk[0]:
+                    _key = (int(_dk[0]), int(_dk[1]))
+                    if _key != self._cw_dead_prev_key:
+                        _dead_key = self._cw_dead_prev_key
+                        _live = cw_telemetry.strategy_round_live(
+                            cw_telemetry.current_run_id() or '', _dead_key) \
+                            if _dead_key is not None else True
+                        self._cw_strategy_dead_streak = (
+                            cw_telemetry.dead_streak_transition(
+                                _dead_key, _key,
+                                self._cw_strategy_dead_streak, _live))
+                        if _dead_key is not None and not _live:
+                            log.warning('[cw!][loop] 策略失活轮 P%s-r%s'
+                                        '(streak=%d,该轮无 strategy_id 决策行)',
+                                        _dead_key[0], _dead_key[1],
+                                        self._cw_strategy_dead_streak)
+                        self._cw_dead_prev_key = _key
+                        if self._cw_strategy_dead_streak >= 2:
+                            log.warning('[cw!][loop] 策略失活连击 %d ≥2 → '
+                                        '停局(重启加载策略;ADR-0342)',
+                                        self._cw_strategy_dead_streak)
+                            self.ctx.run_context.stop_running(
+                                reason='cw:strategy_dead_early_stop')
+                            return self.round_wait(
+                                wait=1.0, status='策略失活早停(ADR-0342)')
             # W62 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征

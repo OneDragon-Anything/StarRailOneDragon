@@ -471,6 +471,90 @@ def current_run_id() -> str:
     return _CURRENT_RUN_ID
 
 
+# ===== W103 件1/件2(ADR-0342):策略失活检测 =====
+# 病灶实录(W98 两局 run_20260825_003757/011957):崩溃恢复局 decisions
+# 全行 strategy_id='' 且零策略动作族(BuyCard/SellBench/CompTransaction/
+# LevelUp 除 op 层兜底外),观测层活着(EnsureShopClosed 行照写)、店里
+# 明明读到目标件——决策层整局未点火,兜底打满 40min 产出 0 买垃圾局。
+
+_STRATEGY_LIVE_CACHE: dict[tuple[str, float], set[tuple[int, int]]] = {}
+
+
+def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
+    """该 run 中「存在带非空 strategy_id 决策行」的 (plane, round) 集。
+
+    decisions.jsonl 按 mtime 缓存(每个写入窗口只全文扫一次;跨 run 追加
+    文件随局数线性增长,逐 round 查询不该每次全扫)。
+    """
+    path = get_recorder().replay_dir / 'decisions.jsonl'
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return set()
+    ck = (run_id, mtime)
+    if ck in _STRATEGY_LIVE_CACHE:
+        return _STRATEGY_LIVE_CACHE[ck]
+    live: set[tuple[int, int]] = set()
+    for d in read_jsonl(path):
+        if d.get('run_id') == run_id and d.get('strategy_id'):
+            live.add((int(d.get('plane') or 1), int(d.get('round_num') or 0)))
+    # 缓存只留最新 mtime 条目(防长期运行膨胀)
+    _STRATEGY_LIVE_CACHE.clear()
+    _STRATEGY_LIVE_CACHE[ck] = live
+    return live
+
+
+def strategy_round_live(run_id: str, key: tuple[int, int]) -> bool:
+    """(plane, round) 是否有带 strategy_id 的决策行(W103 件1 查询端)。"""
+    return key in _strategy_live_rounds(run_id)
+
+
+def dead_streak_transition(prev_key: tuple[int, int] | None,
+                           key: tuple[int, int],
+                           streak: int, live: bool) -> int:
+    """策略失活连击状态机(W103 件1;纯函数,battle_loop 消费)。
+
+    语义:进入新 round key 时对**上一轮** prev_key 的 live 结果结算——
+    本轮的决策行还没写(检查点在备战入口,决策发生在本相位内),查本轮
+    恒 False;查上一轮才是完整轮。同 key 重入(过渡帧/重试)不重复计数。
+    live=True 复位;False 递增。
+    """
+    if prev_key is None or prev_key == key:
+        return streak
+    return 0 if live else streak + 1
+
+
+def check_strategy_live_streak(all_rows: list[dict],
+                               streak_threshold: int = 3) -> list[str]:
+    """生产检查项(W103 件2;run_checks_on_replay 消费):策略失活局/失活段。
+
+    判据:该 run 的 (plane, round) 全集中,「无任何带 strategy_id 决策行」
+    的连续轮数 ≥ streak_threshold → 违规。W98 两局实录=整局恒空(全程
+    57/61 轮),streak=轮数 → 必报;阈值取 3(整局空与 W98 形态远超;
+    <3 的孤立空轮多为暂态/接管帧,不报警——非 sim 检查,生产局判栈用,
+    与 sim 检查网(cw_sim_checks)分栈:sim 批 strategy 恒在,跑了也是
+    恒绿,不进 _BATCH_CHECKS)。
+    """
+    rounds: dict[tuple[int, int], bool] = {}   # key → live
+    for d in all_rows:
+        k = (int(d.get('plane') or 1), int(d.get('round_num') or 0))
+        rounds[k] = rounds.get(k, False) or bool(d.get('strategy_id'))
+    streak = worst = 0
+    for k in sorted(rounds):
+        if k[0] != 1:
+            continue   # P1 先辖(P2/P3 轮次恢复语义不同,语料不足不判)
+        if not rounds[k]:
+            streak += 1
+            worst = max(worst, streak)
+        else:
+            streak = 0
+    if worst >= streak_threshold:
+        dead_n = sum(1 for k in rounds if k[0] == 1 and not rounds[k])
+        return [f'P1 策略失活连续 {worst} 轮(共 {dead_n} 轮无 '
+                f'strategy_id 决策行——W98 恢复兜底局形态,ADR-0342)']
+    return []
+
+
 def record_decision(state: GameState, target_comp: str,
                     candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
                     actions: list[Action], gold_point: bool = True,
@@ -851,6 +935,11 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
                                  (d.get('ts') or '')))
         all_rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
                     if d.get('run_id') == rid]
+        # W103 件2(ADR-0342):策略失活检查先行(不依赖判栈——失活局
+        # 恰恰 strategy_id='' 无法判栈,不能被栈跳过逻辑连坐)。
+        _dead = check_strategy_live_streak(all_rows)
+        if _dead:
+            lines.append(f'{rid}: [策略失活] ⚠ {"; ".join(_dead)}')
         # 判栈:strategy_id 字段优先,退开局 reason 词表(逐行)
         sid = next((d.get('strategy_id') for d in all_rows
                     if d.get('strategy_id')), '')
