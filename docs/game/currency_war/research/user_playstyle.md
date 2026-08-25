@@ -5,6 +5,11 @@
 > 版本基准:V4.4。
 > ⚠️ **改任何策略代码前必读本文件全文**(用户 2026-08-20 定调:后续每次改策略之前,
 > 都应整体考虑这里记录的原则,而不是逐条打补丁)。
+> **定位边界(读前必知)**:本篇是「人怎么打」的口述纪律,是玩法知识的一面而非全部——
+> 机制事实(息档结构 / 牌池 / 伤害乘区)在 [economy](economy.md) / [combat](combat.md),
+> 过渡阵容逐线定义与形态白名单在 [transition_combos](transition_combos.md) / [power_baseline](power_baseline.md),
+> 终局打法在 [final_comps/](final_comps/README.md)。**只读本篇判读一局 = 读局部**;
+> 判读该带的文档组合与阅读顺序见 [README](README.md)(任务路由 + 玩家理解序)。
 
 ## 开局与奖励节点
 

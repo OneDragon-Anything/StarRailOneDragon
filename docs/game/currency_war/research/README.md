@@ -7,6 +7,30 @@
 
 `[口述]` 用户 A8 实战口述 > `[图鉴]` 游戏内图鉴 / 实机实测 > `[米游社]` > `[社区]` bwiki/NGA/攻略(单源或推算标 🟡,未找到标 🔴)
 
+## 玩家理解序(新读者从哪读起;依赖驱动)
+
+> 顺序判据 = 玩法依赖:**机制是纪律的前提**(不懂息档/牌池/乘区,就读不懂纪律为什么这样定),**纪律是过渡的前提**(过渡篇大量按条目号引用 user_playstyle),**过渡与形态证据是终局的前提**。
+
+1. **玩法机制**(游戏怎么运转;自足无前置):
+   - [combat.md](combat.md) — 战斗侧:伤害三乘区 / 星级收益 / 扣血结构(为什么装备与星级重要)
+   - [economy.md](economy.md) — 经济侧:牌池 / 刷新概率 / 商店槽位行为(买与刷的机制边界)
+   - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
+   - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
+2. **玩家纪律**(人怎么打;机制之上的打法约束,口述最高权威):
+   - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济息律 / 升级 / 阵容 / 装备纪律(条目 [1]-[33],策略校准第一入口)
+3. **过渡体系与战力证据**(P1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
+   - [transitions.md](transitions.md) — 过渡叙事:开局分级(锁线资格)/ 成型停手线 / 换血点 / 护航
+   - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐线定义(引擎池 / 核心池;落码依据)
+   - [power_baseline.md](power_baseline.md) ★ — 形态 × 位面能否过的证据表(bot 敢用白名单)
+   - [stage_transitions.md](stage_transitions.md) — P1→P2→P3 阵容演化定量(加法不换件的数据边界)
+   - [h3_tier_core_crosstab.md](h3_tier_core_crosstab.md) — 档位 × 核心在场 × 败率交叉(实机语料统计)
+4. **终局阵容**(P2/P3 打什么):
+   - [final_comps/](final_comps/README.md) ★ — 终局十类分类索引 + 单套 comp 打法单一源
+5. **方法论与证明**(怎么读阵容 / 怎么论证策略;工具篇,可穿插读):
+   - [combo_methodology.md](combo_methodology.md) — 阵容理解方法论(技能 / 羁绊 / 玩法三层)+ 攻略黑话查证纪律
+   - [plaza_methodology.md](plaza_methodology.md) — 玩法方法论 M1-M16(资源入口 / 核心×弹性 / 升星经济学 / 装备优先级…)
+   - [math_proofs.md](math_proofs.md) — 策略命题的数学期望证明集(「为什么成立」的家)
+
 ## 索引(什么问题查哪篇)
 
 | 问题 | 文件 |

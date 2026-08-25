@@ -1,12 +1,37 @@
 ---
 gameplay_name: 货币战争(零和博弈)
 app_id: currency_war
-last_updated: 2026-08-22
+last_updated: 2026-08-25
 source: WebSearch 官方玩法说明 + 攻略 + 实机建图(8 屏)+ B 站 UP「甘泽成谣雨成诗」必修/难度/阵容视频转录交叉核实(2026-08-12,见 sources/公共_*.md + sources/阵容_*.md)
 involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局类型选择, 货币战争-开对局确认, 货币战争-位面简报, 货币战争-投资环境, 货币战争-备战, 货币战争-备战-开商店, 货币战争-备战-装备详情, 货币战争-结算, 货币战争-挑战成功, 货币战争-挑战失败, 货币战争-中断挑战弹窗, 货币战争-遭遇节点, 货币战争-补给阶段, 货币战争-投资策略, 货币战争-巨星强化, 货币战争-骇入策划]
 ---
 
 # 货币战争 · 零和博弈(currency_war)
+
+> **本页 = 货币战争的认知入口**(想了解这个玩法的人 / agent 从这里进):先读下面「一段概览」与「按主题导读」,深入知识在 [game/currency_war/research](../currency_war/research/README.md)(判读与策略依据)与 [develop/currency_war](../../develop/currency_war/)(设计与实现);本页下半部「玩法机制」保留本页独有的稳定事实(口述 / 实测标注)。
+
+## 一段概览:一局怎么打(从 research 提炼)
+
+一局 = 3 个位面、每位面多个节点。核心循环:备战阶段商店发 5 张牌 → 花金币买牌 / 刷新 / 买经验升等级(**等级 = 上阵人数上限**)→ 配前台(作战)/ 后台(支援)站位 → 出战自动战斗 → 按节点结果扣血推进。水平的分水岭在**经济**:利息按金币档位(10 的倍数)结算、50 金封顶 5 金/轮([user_playstyle](../currency_war/research/user_playstyle.md) [17]),「守息」与「该花就花」的节奏纪律贯穿全局(同篇);**位面 1 靠过渡阵容**——四种过渡体系两两组合,活到成型即停手攒息([transitions](../currency_war/research/transitions.md) / [transition_combos](../currency_war/research/transition_combos.md));P2/P3 逐步换向**终局阵容**([final_comps](../currency_war/research/final_comps/README.md) 十类)。验收口径不是满血而是「**带经济过位面**」:P1 健康态 = 息基保住 × 形态达标双指标([user_playstyle](../currency_war/research/user_playstyle.md) [28]);血量掉光 = 整局失败,第三位面一次遭遇最多扣 70 血(见下机制速查)。
+
+## 按主题导读(想了解 X → 读哪篇)
+
+| 想了解 | 去读 |
+|---|---|
+| 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | [user_playstyle.md](../currency_war/research/user_playstyle.md)(口述最高权威) |
+| 经济机制:牌池 / 刷新概率 / 商店行为 | [economy.md](../currency_war/research/economy.md) |
+| 战斗机制:伤害乘区 / 星级 / 扣血结构 | [combat.md](../currency_war/research/combat.md) |
+| 对局画面流程与各屏事实 | [screen_flow_timing.md](../currency_war/research/screen_flow_timing.md) + [screens/](../screens/)(currency_war_* 各屏) |
+| 过渡阵容(P1 怎么活到成型) | [transitions.md](../currency_war/research/transitions.md) → [transition_combos.md](../currency_war/research/transition_combos.md) |
+| 什么形态能过哪个位面 | [power_baseline.md](../currency_war/research/power_baseline.md) |
+| 位面间阵容演化(P1→P2→P3) | [stage_transitions.md](../currency_war/research/stage_transitions.md) |
+| 终局阵容打法(十类) | [final_comps/](../currency_war/research/final_comps/README.md) |
+| 投资策略 / 环境效果全景 | [invest_effects.md](../currency_war/research/invest_effects.md) |
+| 阵容理解方法 / 攻略黑话查证 | [combo_methodology.md](../currency_war/research/combo_methodology.md) |
+| 高玩方法论(M1-M16)/ 策略数学证明 | [plaza_methodology.md](../currency_war/research/plaza_methodology.md) / [math_proofs.md](../currency_war/research/math_proofs.md) |
+| bot 策略设计 as-built 与决策(ADR) | [docs/develop/currency_war/](../../develop/currency_war/)(strategy/ + decisions/) |
+
+> 新读者的推荐顺序(依赖驱动:机制 → 纪律 → 过渡 → 阵容 → 方法论)见 [research/README.md「玩家理解序」](../currency_war/research/README.md)。
 
 3.7 版上线的**大型常驻玩法**(赛季制,与模拟宇宙交替更新),**类自走棋(auto-battler)+ 肉鸽**。
 战斗**自动进行**(非手动操作),玩家专注经济/羁绊策略。⚠️ **每节点战斗有「有限行动值(AV)」限时**(米游社百科 content/6564,存 data/gameplay.md:13;用户 2026-08-11 确认,旧记"非限时"误):未在限内消灭全部敌人 → **扣小队生命值**(非判负)→ **输出不足体现为扣血**(扣血越多越可能输出低/超时,与"扛不住"同表现为 hp 降)。→ 输出能力重要(限时内击杀),hp_trend 已隐含输出信号。✅ **结算画面仍显示「通过」该节点**(用户 2026-08-12 确认:超时**仅扣血、结算仍显示通过**,**无节点级失败态**;HP 耗尽才整局结束 —— 见下「失败」)。奖励约 4000 星琼 + 深度沉浸器 + 助燃券。
