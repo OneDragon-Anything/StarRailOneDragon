@@ -69,27 +69,10 @@ BRIDGE_POOL: list[BridgeCombo] = [
         budget=5,
         phase='P1',
     ),
-    BridgeCombo(
-        bridge_id='dot_belog',
-        engine_bonds={'持续伤害': 2, '贝洛伯格': 2},
-        fixed=['希儿'],
-        core=['桑博', '娜塔莎', '卡芙卡'],
-        flex=['艾丝妲', '赛飞儿'],
-        budget=6,
-        phase='P1',
-    ),
-    # r353:狼狩桥(前期 3 档最容易成的伤害羁绊:7 人 3 个
-    # 1 费;V4.0 五家能打伤害羁绊之一)。飞霄/椒丘双 1 费
-    # 開局即成型;3 狼狩+2DOT = 3.7 必修三的标准过渡)。
-    BridgeCombo(
-        bridge_id='hunt3',
-        engine_bonds={'狼狩': 3, '持续伤害': 2},
-        fixed=['飞霄'],
-        core=['椒丘', '貊泽', '灵砂'],
-        flex=['卡芙卡', '镜流'],
-        budget=6,
-        phase='P1',
-    ),
+    # W126/ADR-0350:dot_belog(2DOT+2贝)与 hunt3(3狼狩+2DOT)两桥已删
+    # ——狼狩/贝洛伯格体系随 2026-08-24 四体系封闭裁定封存(W124-H2 债:
+    # 桥池/评分层仍奖励已封存线),git 可查;贝洛伯格只在希儿系判据内
+    # 保留计数(cw_evaluate._seele_system_activated),不作独立伤害源。
 ]
 
 #: P2 桥(列车4+护盾3=40 篇验证的 P2→P3 平滑桥;r191 P2 榜)

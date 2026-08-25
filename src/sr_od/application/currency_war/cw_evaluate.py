@@ -13,7 +13,9 @@ from sr_od.application.currency_war.cw_comps import (
     clamp,
     escort_for,
     form_progress,
-    skeleton_factions,
+)
+from sr_od.application.currency_war.cw_deploy_logic import (
+    TRANSITION_TRAITS as _TRANSITION_TRAITS,
 )
 from sr_od.application.currency_war.cw_economy import (
     HP_DISTRESS_FRAC,
@@ -436,8 +438,9 @@ def evaluate(state: GameState, config, faction_priority: list[str],
     # optionality(灵活期权,F-3):早期(α 小)保 ≥2 comp 通用角色,晚期(α→1)让位 commit。
     # 即使 reactive(target=None)也奖 —— 未 commit 时更该保灵活(通用角色随时可并入将来 target)。
     score += (1.0 - alpha) * OPTIONALITY_WEIGHT * optionality_score(state)
-    # 过渡羁绊(P1 保血基础设施,review round-4 HIGH-2):早期凑能打伤害的羁绊(仙舟/狼狩/dot/列车/贝洛伯格)
-    # 稳血到成型(限时 AV 下前期有输出不超时);fades as commit(α→1)。board 阵营数 OCR → 真信号现成。
+    # 过渡羁绊(P1 保血基础设施,review round-4 HIGH-2):早期凑能打伤害的
+    # 羁绊(四体系:仙舟/列车/dot/希儿系,W126/ADR-0350 修正——狼狩/贝洛伯格
+    # 已封存摘除)稳血到成型(限时 AV 下前期有输出不超时);fades as commit(α→1)。
     score += (1.0 - alpha) * transition_tempo_score(state, target_comp)
     return score
 
@@ -547,13 +550,21 @@ def optionality_score(state: GameState) -> float:
 
 
 
-# 过渡羁绊(P1 能打伤害的羁绊,前期凑出保血;review round-4 HIGH-2;comps/README「开局过渡分级」人上人级)。
+# 过渡羁绊(P1 能打伤害的羁绊,前期凑出保血;review round-4 HIGH-2)。
 # 限时 AV 下前期靠这些羁绊组合稳血到成型(DOT 慢热 P1 弱死根因之一 = 无过渡羁绊支撑)。
 # 全局过渡基础设施(非 per-comp):任何 comp 的 P1 都可拿这些羁绊 tempo。
-# ADR-0152(M4 方法论接线):主集从注册表派生(``cw_comps.skeleton_factions``:最低档 ≤3 人 +
-# ≤2费成员 ≥2 —— plaza 实战开局组合的生成判据,版本更新自动传导);持续伤害/治疗手工补 ——
-# 它们的过渡价值是**角色效果驱动**(桑博/艾丝妲带 DoT、藿藿/娜塔莎奶)非低费成员充足,派生判据筛不到。
-TRANSITION_FACTIONS: set[str] = skeleton_factions() | {'持续伤害', '治疗'}
+# W126/ADR-0350 四体系修正:旧「五家人上人」(仙舟/狼狩/dot/列车/贝洛伯格,
+# V4.0 过渡口径)已随 2026-08-24 四体系封闭裁定封存——狼狩/贝洛伯格从
+# 独立伤害源奖励中摘除;贝洛伯格是希儿系放大器,只在希儿系判据内保留
+# 贝计数(``_seele_system_activated``,与 cw_sim._engines_count 同源),
+# 不得作独立伤害源计分。主集从 TRANSITION_TRAITS(四体系三羁绊单一源,
+# cw_deploy_logic 派生自 SYSTEM_CARDS)取 + 治疗手工补(角色效果驱动:
+# 藿藿/娜塔莎奶,派生判据筛不到);持续伤害随 TRAITS 自带。
+TRANSITION_FACTIONS: set[str] = {b for b, _t in _TRANSITION_TRAITS} | {'治疗'}
+
+#: 希儿系激活的判据阵营(贝洛伯格在此保留计数——希儿系放大器,
+#: 非独立伤害源;与 cw_sim._engines_count 的 seele 分支同式)
+_SEELE_JUDGE_FACTIONS: tuple[str, ...] = ('量子同频', '贝洛伯格')
 
 TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(激活档)的过渡羁绊的早期保血分(占位,阶段 6 校准)
 
@@ -571,11 +582,24 @@ def _tier_activated(faction: str, count: int) -> bool:
 
 
 
+def _seele_system_activated(state: GameState) -> bool:
+    """希儿系激活判据(W126/ADR-0350):希儿在场(deployed)且
+    量子同频/贝洛伯格任一 ≥2——贝洛伯格是希儿系放大器,**只在希儿系
+    判据内保留贝计数,不得作独立伤害源**(与 cw_sim._engines_count
+    的 seele 分支同式;r399 口径)。"""
+    if not any(getattr(d, 'char_id', '') == '希儿'
+               for d in state.deployed):
+        return False
+    return any(state.board.get(f, 0) >= 2
+               for f in _SEELE_JUDGE_FACTIONS)
+
+
 def transition_tempo_score(state: GameState,
                           target_comp: Comp | None = None) -> float:
     """P1 过渡羁绊分(review round-4 HIGH-2):board 凑出(激活档)能打伤害的过渡羁绊 → 早期保血(限时 AV 不超时)。
 
-    人上人级 = 2 个能打伤害羁绊组合(仙舟/狼狩/dot/列车/贝洛伯格),稳血到成型。最多奖 2 个(更多边际
+    人上人级 = 2 个能打伤害羁绊组合(**四体系**:仙舟/列车/dot/希儿系,W126/ADR-0350——
+    旧五家的狼狩/贝洛伯格已随四体系封闭裁定摘除,贝洛伯格只在希儿系判据内保留计数),稳血到成型。最多奖 2 个(更多边际
     递减);与 optionality 同(1−α)早期强调 —— 早期保期权/过渡,fades as commit(α→1)让位 target。
     board 阵营数 OCR 读 → 真信号现成。**双计说明(评审🟡7 更正)**:target 的核心阵营深堆会同时拿
     synergy(tier 效果)+tempo(早期能扛)—— 这是 intended(过渡期 target 阵营本来就既成型又保血),
@@ -587,6 +611,8 @@ def transition_tempo_score(state: GameState,
     羁绊凑出(≥2)额外加分 —— 护航是「有方向的过渡」(服务真主 C),比散凑过渡羁绊更值得买/留。
     """
     n = sum(1 for f in TRANSITION_FACTIONS if _tier_activated(f, state.board.get(f, 0)))
+    if _seele_system_activated(state):
+        n += 1   # 希儿系(第四体系;r399:deployed 二元判定+量/贝任一 ≥2)
     score = min(n, 2) * TRANSITION_TEMPO_BONUS
     ec = escort_for(target_comp)
     if ec is not None and (state.plane, state.round_num) <= (ec.retire_plane, ec.retire_round):
