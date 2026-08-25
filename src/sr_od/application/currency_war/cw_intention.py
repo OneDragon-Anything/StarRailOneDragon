@@ -11,6 +11,10 @@
 - [23] 终局线由贯穿件锁定,不是 pivot → 锁定后撤销**只有两个出口**(析取):
   ①意向核心 N 轮不可得(只计刷新窗已开的轮,窗口冻结语义);②更高层级替代
   信号且过可达性对照。分数涌现换线不进本模块。
+- [23]/[21] 的 P1 时序面(ADR-0341):贯穿件 P1 可买可囤([21] bench 等窗口),
+  但**终局专属线(锁线方向不含过渡引擎)在 P1 的③/④锁线证据被资格门拦下**——
+  资格 = ①类(策略/环境亲和;transitions §1「拿到逆天投资策略才配锁直通线」);
+  P2/P3 ③照旧([23] 路径不变,本门只收紧 P1 时机)。
 
 **与旧件的关系(载体批新旧交替)**:`cw_signal_lock.py`(Phase A 信号 2 层,
 LineV1 载体)与 `cw_line_library_v1` 是旧件,本模块是其 v4 后继——按 COMP_LIBRARY
@@ -41,6 +45,7 @@ from sr_od.application.currency_war.cw_comps import (
     derive_key_equips,
     get_comp,
 )
+from sr_od.application.currency_war.cw_deploy_logic import TRANSITION_TRAITS
 from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
 from sr_od.application.currency_war.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
@@ -250,6 +255,56 @@ def _direct_line_qualified(state: GameState, comp_name: str) -> bool:
     return comp_name in ENV_COMP_AFFINITY.get(state.active_env, {})
 
 
+# ===== P1 锁线资格门(W101/ADR-0341;sim A/B 通道)=====
+P1_FINAL_LINE_GATE: bool = True
+"""P1 终局专属线锁线证据门(ADR-0341)。False=关闭(sim A/B 基线臂)。
+诊断来源:W97 §5 P0-1——万敌单C 被③锁 30.5%(61/200),hp 19.7 vs DOT 类
+过渡线 28.5-30.7(差 9-11);三线合计 36.5% 局,反事实 +~3.3 hp。"""
+
+_ENGINE_BOND_KEYS: frozenset[str] = frozenset(b for b, _t in TRANSITION_TRAITS)
+"""三羁绊体系键(仙舟/列车同行/持续伤害;派生自 cw_deploy_logic.TRANSITION_TRAITS
+单一源,与 scoring/cw_sim/deploy_logic 的体系判定同源)。希儿系=单卡二元判定
+不占羁绊键(与 scoring '希儿系' 哨兵同口径)。"""
+
+
+def _p1_transition_eligible(comp: Comp) -> bool:
+    """线的锁线方向是否仍喂养过渡引擎(资格门的「过渡线」支;ADR-0341)。
+
+    三支全部派生,无手写线名(ADR-0338「派生优于快照」同款):
+    - ⑤兜底线(FALLBACK_COMP_NAME):未锁分支的囤货=同线采购集
+      (hoard_target_set),门对其恒 no-op;
+    - 希儿 ∈ core:希儿系=四体系之一,单卡即战力(伤害在希儿技能层);
+    - 主/副档 ∩ 三羁绊体系键 ≠ ∅:锁线方向=意向线主/副档羁绊
+      (discipline 方向期阵营门的消费对象),档位即体系 → 锁了仍在买引擎件
+      (DOT队/专家桑博DOT/列车同行;[20] 过渡是配方——4列车保送 P2 即其
+      升级层)。
+    其余线=终局专属(万敌单C/黄泉减益/双王圣杯/命运圣杯红A/大黑塔银河学者/
+    狼尊欢愉/反甲白厄):前期战力来自通用引擎池而非自身目标件
+    (transition_combos 直通终局线节),锁线会把囤货方向从过渡引擎上引开。
+    """
+    if comp.name == FALLBACK_COMP_NAME:
+        return True
+    if '希儿' in comp.core_chars:
+        return True
+    tier_keys = set(comp.form_tiers) | set(comp.sub_tiers)
+    return bool(tier_keys & _ENGINE_BOND_KEYS)
+
+
+def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
+    """P1 终局专属线锁线证据门是否拦下该线(ADR-0341)。
+
+    拦截 = 门开 ∧ plane==1 ∧ 非过渡线 ∧ 无①类资格(策略/环境亲和,
+    与 W85 ②门同一资格源 _direct_line_qualified)。P2/P3 不辖——
+    [21] 上场窗口(姬子=7级/万敌=1-9 变阵点)与 1-8 换血点都在 P1 之后,
+    终局线在 P2 起锁是 [23] 全文语义。
+    """
+    if not P1_FINAL_LINE_GATE or state.plane != 1:
+        return False
+    if _p1_transition_eligible(comp):
+        return False
+    return not _direct_line_qualified(state, comp.name)
+
+
 def detect_signals(state: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
@@ -290,20 +345,28 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
                         f'{bond}×{counts[bond]}(≥{FAMILY_BOND_MIN_COUNT})', 0.5))
 
     # ③ 核心卡:具名意向核心在店/到手
+    # ADR-0341 P1 资格门:终局专属线(锁线方向不含过渡引擎)在 P1 的③证据
+    # 被拦下(贯穿件照买照囤 [21],只是不构成 P1 锁线证据);过渡线/持资格
+    # 线/P2+/门关照旧。证据类=「某张卡在场」,非①类「策略/环境」。
     for c in comps:
         core = intention_core(c)
         if core and core in visible:
+            if _p1_gate_blocks(state, c):
+                continue
             out.append(IntentionSignal(3, 'core_card', c.name,
                                        f'核心[{core}]可见', 1.0))
 
     # ④ 资源:升费资源等特殊系统锚(④层)。
     # 数据缺口声明:升费资源(道具)暂无 GameState 字段——以升费链角色到手
     # (cost_escalation['角色'] 在 bench/deployed)作「资源到位」代理;字段接入后扩。
+    # ADR-0341:④与③同为「卡/资源到手」证据类,P1 终局专属线同门。
     owned = {bc.char_id for bc in list(state.bench) + list(state.deployed)
              if bc is not None and bc.char_id}
     for c in comps:
         ce = c.special_systems.get('cost_escalation')
         if ce and ce.get('角色') in owned:
+            if _p1_gate_blocks(state, c):
+                continue
             out.append(IntentionSignal(4, 'resource', c.name,
                                        f'升费链[{ce.get("角色")}]已到手', 0.5))
     return out

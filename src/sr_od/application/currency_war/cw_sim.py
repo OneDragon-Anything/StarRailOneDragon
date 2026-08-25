@@ -1219,6 +1219,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _applied = _log.get('result') == 'applied'
                     _tx_income = int(_log.get('income', 0) or 0)
                     _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
+                    # W101:applied 事务的 bench 净腾位数(执行点真值;账本
+                    # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
+                    # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
+                    _tx_bench_delta = (
+                        bench_occupied(st.bench) - bench_occupied(_new.bench)
+                        if isinstance(a, CompTransaction) else 0)
                     if _applied and isinstance(a, SellDeployed) \
                             and 0 <= a.deployed_idx < len(st.deployed):
                         # SellDeployed 的 income 未进 action_log(单动作
@@ -1248,6 +1254,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                               'reason': getattr(a, 'reason', ''),
                               'result':
                                   'applied' if _applied else 'rejected'}
+                    if _applied and _tx_bench_delta:
+                        _entry['bench_delta'] = _tx_bench_delta
                     if not _applied:
                         _entry['reject_reason'] = _log.get('reason', '')
                     if _tx_income:

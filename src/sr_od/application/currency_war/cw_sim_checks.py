@@ -541,7 +541,14 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
 
     容量口径(近似声明):期初 bench = 上一轮末 bench;本轮可买
     上限 = 9 − 期初 + 本轮卖出数 + 2×本轮 merges(3合1 每次腾
-    2 席;守卫在执行层逐笔判,账本只能轮末重放近似)。
+    2 席;守卫在执行层逐笔判,账本只能轮末重放近似)+ 本轮 bench
+    腾位数(DeployMove 上阵 + applied CompTransaction 的
+    bench_delta 披露[执行点真值,W101 涌现修正]:过渡型板面轮内
+    重排变多,缺该项会把合法买误报超容——seeds 18/22 实证,r8
+    九买伴随 8 笔事务,执行层守卫 cw_sim r419 逐笔判活状态无回归)。
+    SwapDeploy 净零/SellDeployed 不动 bench/shop 源填位不占
+    bench,均不计;旧账本(无 bench_delta 字段)按 0 读——重放
+    旧批时该检查以现口径为准,历史违规记录见 git 历史。
     """
     out: list[str] = []
     prev_bench = 0
@@ -550,13 +557,21 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
         acts = row.get('actions') or []
         buys = sum(1 for a in acts if a.get('__type__') == 'BuyCard')
         sells = sum(1 for a in acts if a.get('__type__') == 'SellBench')
+        deploys = sum(1 for a in acts if a.get('__type__') == 'DeployMove')
+        for a in acts:
+            if a.get('__type__') == 'CompTransaction' \
+                    and a.get('result') == 'applied':
+                # W101:applied 事务的 bench 净腾位(执行点真值
+                # bench_delta;账本不展开事务明细,重放只能吃该披露)
+                deploys += int(a.get('bench_delta', 0) or 0)
         merges = (row.get('sim') or {}).get('merges') or 0
-        allowed = 9 - prev_bench + sells + 2 * merges
+        allowed = 9 - prev_bench + sells + 2 * merges + deploys
         if buys > max(allowed, 0):
             out.append(
                 f"p{row.get('plane')}r{row.get('round_num')}: 买入 {buys}"
                 f" 笔超容量上限 {max(allowed, 0)}(期初 bench {prev_bench}"
-                f"+卖 {sells}+merge {merges}——满仓买守卫回归,"
+                f"+卖 {sells}+merge {merges}+腾位 {deploys}"
+                f"——满仓买守卫回归,"
                 f"自由批/ADR-0283)")
         prev_bench = len(st.get('bench') or [])
     return out
