@@ -445,6 +445,35 @@ def _derive_p1_pair(state: GameState) -> tuple[str, ...]:
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
 
 
+def p1_early_pair(state: GameState,
+                  ist: IntentionState | None) -> tuple[str, ...]:
+    """P1 早期新件买入门的配方对读口(W179/ADR-0372;只读,不落字段)。
+
+    与 ``_derive_p1_pair`` 同口径(支持度 top-2 + ``_P1_PAIR_PREF`` 序
+    规整),但**未锁形态期同样派生**(无 ``P1_PAIR_LOCK_MIN_SUPPORT``
+    门槛)——这是对现行 ``p1_pair``/``transition_pair`` 仅锁后非空的
+    语义扩展:买入门要的是「当前资产下的配方方向」,空窗期([31]①
+    四体系不一定开局凑到)同样有 top-2 方向,不该因为不够锁而没方向。
+
+    - 锁定帧优先用意向字段(①锁局 transition_pair / 配方锁 p1_pair
+      ——两字段是同一口径在不同锁定帧的实例);
+    - 未锁/空窗/weak:现场派生(无门槛);
+    - P1 外恒 ()(买入门只辖 P1)。
+    """
+    if state.plane != 1:
+        return ()
+    if ist is not None:
+        tp = tuple(getattr(ist, 'transition_pair', ()) or ())
+        if tp:
+            return tp
+        pp = tuple(getattr(ist, 'p1_pair', ()) or ())
+        if pp:
+            return pp
+    sup = _p1_system_support(state)
+    ranked = sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
+    return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
 def _pair_members(pair: tuple[str, ...]) -> set[str]:
     """体系对的囤货成员集:各体系羁绊(阵营∪流派)下的注册表成员;
     希儿系 = 希儿 ∪ 量子同频 ∪ 贝洛伯格 成员(放大器池)。"""

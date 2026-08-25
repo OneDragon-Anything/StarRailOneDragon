@@ -128,6 +128,7 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
         session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数
+        session.v2_round_p1_early = 0    # W179/ADR-0372:早期买入门轮笔数
         # W114/ADR-0346 相位观测(自 W119 起被消费)+ W119/ADR-0347
         # DP 姿态轮缓存载体:初始化(每轮 decide_prep 重算)
         session.v3_phase = 'FORM'
@@ -211,6 +212,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
             # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数器(轮键重置;
             # arbiter 刷新采纳处递增,scoring 豁免门消费)
             session.v2_round_refreshes = 0
+            # W179/ADR-0372:早期买入门单轮笔数(轮键重置;arbiter
+            # gold_floor 放行采纳处递增)
+            session.v2_round_p1_early = 0
         # (W119/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
         # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
         # W114/ADR-0346 相位观测 + W119 切授权:每轮决策入口计算一次

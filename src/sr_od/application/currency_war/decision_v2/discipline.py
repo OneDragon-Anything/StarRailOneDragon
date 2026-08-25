@@ -262,6 +262,46 @@ def pair_wants(card, state: GameState,
     return card.faction in owned_factions
 
 
+def p1_early_gate_open(state: GameState, session: StrategySession,
+                       registry: DecisionV2Registry) -> frozenset[str] | None:
+    """P1 早期新件买入门的窗判据(W179/ADR-0372;返回门内可买的
+    未持有 distinct 对成员名集,窗关返回 None)。
+
+    窗(轮级条件,逐笔的息档/单轮上限由消费点 arbiter.gold_floor 辖):
+
+    - P1 ∧ ``registry.p1_early_gate_enabled``;
+    - 派生配方对非空(``cw_intention.p1_early_pair``——锁定帧用意向
+      字段,**未锁形态期同样派生**,对现行两字段仅锁后非空的语义扩展);
+    - 未持有 distinct 对成员数 ≥ ``p1_early_min_missing``(缺件密度,
+      [22]③ 弃购代价=再遇窗口的账面化);
+    - bench 余槽 ≥ 1([22]② 唯一稀缺=bench 槽)。
+
+    散买边界三条件(W175 §4,任一失守=越界)在此与消费点共同成立:
+    target ∈ 配方对成员(本函数返回集)/ 只搭自然刷新便车(不授权
+    任何刷新金——买门与 W170 刷门管辖动作不交集)/ distinct 未持有
+    (返回集定义);同名重复不辖(3合1 素材语境交既有 copy 豁免面)。
+    """
+    if state.plane != 1 or not registry.p1_early_gate_enabled:
+        return None
+    from sr_od.application.currency_war.cw_intention import (
+        _pair_members,
+        p1_early_pair,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    pair = p1_early_pair(state, ist if isinstance(ist, IntentionState)
+                         else None)
+    if not pair:
+        return None
+    owned = ({getattr(d, 'char_id', '') for d in state.deployed or ()}
+             | {b.char_id for b in (state.bench or []) if b is not None})
+    unheld = frozenset(_pair_members(pair) - owned)
+    if len(unheld) < registry.p1_early_min_missing:
+        return None
+    if bench_occupied(state.bench or []) >= registry.bench_capacity:
+        return None
+    return unheld
+
+
 def copy_swap_useless(card, state: GameState,
                       session: StrategySession) -> bool:
     """r410(ADR-0267 同族):同名跨副本无效换卡守卫(镜像 deploy 侧保留

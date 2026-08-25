@@ -31,6 +31,7 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
     boss_window_active,
+    p1_early_gate_open,
     register_round_bought,
     register_round_sold,
 )
@@ -175,6 +176,9 @@ def _check_constraint(name: str, cand: Candidate,
                     f'HOARD 攒息(金{working.gold}-费{cost} 破档;'
                     f'档线{working.gold // 10 * 10})')
         if working.gold - cost < floor:
+            if _p1_early_buy_exempt(cand, working, state, session,
+                                    registry, auth):
+                return None    # W179/ADR-0372:早期买入门放行(同息档)
             shortfall = floor + cost - working.gold
             return RejectReason('gold_floor', 'gold', shortfall,
                                 f'金<{floor}(地板;现{working.gold}-费{cost})')
@@ -334,6 +338,57 @@ def _cost_of(cand: Candidate) -> int:
     return 0    # 卖/部署:无花费(卖回金)
 
 
+def _p1_early_buy_exempt(cand: Candidate, working: GameState,
+                         state: GameState, session: StrategySession,
+                         registry: DecisionV2Registry,
+                         auth: dict | None = None) -> bool:
+    """W179/ADR-0372 P1 早期新件买入门:gold_floor 拒绝前的逐笔放行判据。
+
+    修 pass_buy 形态(W173/W175:own<门槛=买少了——缺件曾 1-3 费出现在
+    店、金 7-15 金穷轮,被 FORM 相位地板 20 一刀切拦掉;[11] 口径:档内
+    购买不损息,攒息不该拦无损购买)。轮级窗在
+    ``discipline.p1_early_gate_open``(P1 ∧ 派生配方对——**未锁形态期
+    同样派生**——∧ 未持有 distinct ≥ k ∧ bench 余槽 ≥1),此处辖逐笔:
+
+    - 常态经济态才放行(非应急/boss 窗/war——[18]/[32] 纪律态优先,
+      买入门不越权改它们的地板);FORM 相位地板段是本门主要辖域
+      (HOARD 段 [11] 同档例外已在 gold_floor 相位地板分支存在);
+    - **买入后同息档**([11] 逐字口径:(working.gold − cost)//10 ==
+      working.gold // 10;**不设第二道金常数门**——跨档购买照旧走
+      interest_rule 的 EV 授权,不在本门放行);
+    - 单轮放行笔数 < ``p1_early_round_cap``(防 r1 扫店;采纳处经
+      auth['p1_early'] 计数,session.v2_round_p1_early,轮键重置)。
+
+    授权依据 trace:auth['p1_early'] 进执行 log(判读「为什么放行」)。
+    """
+    if not isinstance(cand.action, BuyCard):
+        return False
+    if is_emergency(state, registry) \
+            or boss_window_active(state, session, registry) \
+            or current_mode(session) != 'economy':
+        return False
+    gate = p1_early_gate_open(state, session, registry)
+    if not gate or cand.action.card.name not in gate:
+        return False
+    # 同名重复不辖(W175 散买边界③:distinct=对 working 现持判定——同轮
+    # 前笔买入后,同名第二笔不再是「未持有新件」,交既有 copy 豁免面,
+    # 本门不再授权(3合1 素材语境走正常通道)
+    _name = cand.action.card.name
+    if _name in ({getattr(d, 'char_id', '') for d in working.deployed or ()}
+                 | {b.char_id for b in (working.bench or [])
+                    if b is not None}):
+        return False
+    cost = cand.action.card.cost or 3
+    if (working.gold - cost) // 10 != (working.gold or 0) // 10:
+        return False    # 跨息档([11]:跨档损息,不走本门)
+    if getattr(session, 'v2_round_p1_early', 0) >= registry.p1_early_round_cap:
+        return False
+    if auth is not None:
+        auth['p1_early'] = (f'早期门同息档放行(金{working.gold}-费{cost}'
+                            f',对缺{len(gate)})')
+    return True
+
+
 def _register_accepted(a: Action, state: GameState,
                        session: StrategySession) -> None:
     """采纳动作的同轮簿记(ADR-0328):登记点=动作采纳处(同一事务域),
@@ -447,6 +502,11 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         if accepted:
             _a = _materialize(cand, state)
             res.actions.append(_a)
+            # W179/ADR-0372:早期买入门的单轮笔数计数(轮键重置见
+            # strategy.decide_prep;auth trace 在 row['ev_auth'] 可判读)
+            if auth_note.get('p1_early'):
+                session.v2_round_p1_early = (
+                    getattr(session, 'v2_round_p1_early', 0) + 1)
             # ADR-0328:采纳即登记(r408 同轮簿记在动作采纳处完成——
             # 同趟后续 SELL/BUY 同名候选的守卫立即可见,不再等
             # decide_prep 尾部统一回写)。

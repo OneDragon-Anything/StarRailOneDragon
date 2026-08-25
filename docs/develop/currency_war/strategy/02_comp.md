@@ -96,3 +96,5 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 **锁后效果接口**(`hoard_target_set` → `HoardTarget`):输出囤货目标集合 = 角色件(char_targets:意向线采购集,core/shared/替班/羁绊成员)+ 装备件(equip_targets:意向线 equip_assign 派生,剔具名 equip_taboos)+ mode('locked'/'forced'/'weak'/'fallback'/'demoted_endgame',买侧按 mode 区分囤货语义)。生产载体 = decision_v2 的 `update_target` 每轮把它写进 `session.v3_hoard`,是**买侧唯一消费面**——意向模块不产出任何上场/换人动作(意向管方向、演进管换档)。弱意向态撤销后去向 = 只囤跨线骨架件(`CROSS_LINE_SKELETON`,从 W16 过半统计派生,ADR-0312)。
 
 撤销阈值/信号阈等常量(`CORE_MISS_N`/`SKELETON_ASSET_WEIGHT`/`FAMILY_BOND_MIN_COUNT`)属 sim 校准域,值只在代码。
+
+**配方对只读派生口 `p1_early_pair`**(ADR-0372,P1 早期新件买入门的读口):与 `_derive_p1_pair` 同口径(支持度 top-2),但**未锁形态期同样派生**(无锁门槛)——锁定帧优先用意向字段(transition_pair/p1_pair),未锁/空窗现场派生,P1 外恒空;只读不落字段,不改变 `p1_pair`/`transition_pair` 的锁定产物契约。

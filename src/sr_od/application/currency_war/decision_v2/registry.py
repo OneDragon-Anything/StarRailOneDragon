@@ -416,6 +416,29 @@ class DecisionV2Registry:
     #: 豁免复核 = 净效果 pair on-board 与引擎数不减(ADR-0363 件2
     #: 防丢语义同向:补上不是拆)。
     evolve_engine_completion_enabled: bool = True
+    # ===== W179/ADR-0372 P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
+    #: 总开关:False=回 W174 后行为(A/B 基线臂;FORM 相位地板对配方对
+    #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 BuyCard
+    #: 放行「买入后同息档」的购买(窗语义见 discipline.p1_early_gate_open
+    #: 与 arbiter 的逐笔息档/单轮上限检查)——修 W173/W175 的 pass_buy
+    #: 形态(own<门槛=买少了:缺件曾 1-3 费出现在店、金 7-15 金穷轮,
+    #: 被 FORM 地板 20 一刀切拦掉,违反口述 [11] 档内购买不损息)。
+    p1_early_gate_enabled: bool = True
+    #: 窗的缺件密度门槛:派生配方对(cw_intention.p1_early_pair,未锁期
+    #: 同样派生)未持有 distinct 对成员数 ≥ 此值才开窗。标定(W179,
+    #: n=100 池 861fc9f6):全体 P1 轮 unheld 分布 [8,16](r1 p10=14 /
+    #: r9 p10=8),pass_buy 病灶轮 unheld 11-15——k 在 [1,8] 带内对本
+    #: 分布**无区分度**(诚实记档:operative 约束=息档口径+单轮上限+
+    #: 层3评分),取 6=「板面远未覆盖配方对」的语义守卫(关掉假想的
+    #: 近成型窄窗,防未来分布漂移把门开进不该开的段)。
+    p1_early_min_missing: int = 6
+    #: 单轮放行笔数上限(防 r1 扫店):同息档口径下金 12-19 连买 1费
+    #: 可达 2-9 笔(W179 标定:门内笔数 p50 0-1 / p90 1-3 / max 7,
+    #: 病灶轮 1-2 笔)——取 1=「目标件刷新出现=唯一最高优先级,只买它」
+    #: ([31]② 逐字口径;n=100 扫描 cap1 出口金 34.23 与基线 34.25 持平
+    #: =P13 同档零损的理论预测逐位兑现;cap2 −2.3 金换 hp +1.3,
+    #: 出口金口径上不如 cap1 干净)。每轮增量支出 ≤3 金,息损上界=档内 0。
+    p1_early_round_cap: int = 1
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内
