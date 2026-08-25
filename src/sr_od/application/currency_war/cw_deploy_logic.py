@@ -74,6 +74,35 @@ TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
 )
 
 
+# W192/ADR-0375 守卫辖域体系集:四过渡体系全辖(三羁绊 + 希儿系
+# 单卡判据,tier=1)。辖域语义与 TRANSITION_TRAITS 的 deploy 排序语义
+# **分离**——后者是阵营计数排序维(希儿系单卡判定在 deploy 维无意义,
+# 故排除,历史理由保留),但 ADR-0373 卖侧守卫/ADR-0371 保护集借用
+# 该常量后「四体系」声称只剩三羁绊辖域(W190 巡检两件发现)。守卫/
+# 保护类消费改用本集,不再借 TRANSITION_TRAITS(一常量两语义的根修)。
+SEELE_SYSTEM_KEY: str = '希儿系'
+#: 希儿系放大器阵营(量子/贝——伤害在希儿技能层,放大器非独立伤害源,
+#: transition_combos.md 四体系表;桑博=贝+DOT 双籍是常态不是边界)
+SEELE_AMP_FACTIONS: frozenset[str] = frozenset({'量子同频', '贝洛伯格'})
+#: 守卫辖域体系集(GUARD_SYSTEM_TIERS 的本体:三羁绊 + 希儿系 tier=1)
+GUARD_SYSTEM_TIERS: tuple[tuple[str, int], ...] = (
+    TRANSITION_TRAITS + ((SEELE_SYSTEM_KEY, 1),))
+
+
+def is_seele_system_member(char_id: str, bonds: set[str]) -> bool:
+    """希儿系贡献件判据(单卡 + 放大器;守卫/保护辖域口径,W192)。
+
+    希儿本人(单卡)+ 量子同频/贝洛伯格放大器件——与 cw_evolution.
+    _engine_systems_formed/_contributes_engine_system/_is_member 的
+    希儿系分支同口径(W174 已有单卡判据先例,此处提为单一源函数)。
+    tier=1:希儿系作为四过渡体系之一的档(user_playstyle 四体系封闭
+    裁定,transitions.md;希儿系引擎=希儿在场 ∧ 放大器 ≥2,但**恢复
+    种子**的辖域口径取贡献件全计——清空任意最后一件贡献件都使该体系
+    归零,owned 计数含希儿与全部放大器件)。
+    """
+    return char_id == '希儿' or bool(bonds & SEELE_AMP_FACTIONS)
+
+
 def ignition_gain(bonds, deployed_fac: dict[str, int]) -> int:
     """r404-A1 点火增量:该角色上阵后「过渡体系达成数」的增量。
 

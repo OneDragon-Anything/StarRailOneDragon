@@ -111,21 +111,26 @@ def sole_engine_sell_blocked(bc, state: GameState,
                              ) -> bool:
     """W184/ADR-0373 卖侧唯一体系引擎守卫(谓词;不改板面只辖卖出)。
 
-    判据:该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
-    持续伤害——全羁绊 factions∪flows 口径,「持续伤害」是流派非阵营)
-    成员,且其所属某体系的**在手件数**(bench∪deployed 逐件计,含
-    本件)≤ 该体系 tier 门槛 → 卖出即「清空该体系当前唯一 owned
-    引擎件」(owned=1)或「在手数跌破 tier」(owned=tier),不可卖。
-    owned > tier(冗余件)照旧可卖——体系有余量时的清仓不受辖。
+    判据:该件是四过渡体系成员——三羁绊(TRANSITION_TRAITS:仙舟/
+    列车同行/持续伤害——全羁绊 factions∪flows 口径,「持续伤害」是
+    流派非阵营)**或希儿系贡献件**(W192/ADR-0375 辖域补全,**核心
+    条件辖**:希儿本人唯一种子不卖;放大器件仅当希儿在手时按放大
+    阵营成型门槛 2 辖)——且卖出会使所属体系「清空唯一 owned 引擎
+    件」或「在手数跌破成型门槛」时,不可卖。冗余件照旧可卖——体系
+    有余量时的清仓不受辖。
 
     语义依据:[31] top4 引擎羁绊是胜率保证、引擎件是方向件非可回收
     填充件;[22]① 买了再卖不损金 → 留住最后一件的成本=1 个 bench
     槽,弃掉的代价=该体系的恢复种子清零。修 W181 §3 谱系:演进换线
     把旧体系件下场到 bench 后,off_target 把它当死库存卖出(卖出的
     件均非 engine_char_names 名单件,方向切换后即失去目标身份)→
-    体系引擎永不回场(S2 evict unrecovered)。
+    体系引擎永不回场(S2 evict unrecovered)。W192 前辖域=TT 派生
+    集显式排除 seele(cw_deploy_logic deploy 排序语义被守卫借用),
+    希儿系贡献件可被任意卖出=清空 tier=1 体系唯一件(W190 洞一)。
 
-    flag=registry.sell_sole_engine_guard_enabled(关=逐位回现行)。
+    flag=registry.sell_sole_engine_guard_enabled(总开关,关=逐位回
+    W179 后行为)+ registry.guard_seele_scope_enabled(W192 辖域
+    补全开关,关=逐位回 W188 后行为=三羁绊辖域)。
     """
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
@@ -142,20 +147,54 @@ def sole_engine_sell_blocked(bc, state: GameState,
         return False    # 未识别/注册表外件:既有守卫已挡,不重复辖
     bonds = set(ch.factions) | set(ch.flows)
     hit = {b: t for b, t in TRANSITION_TRAITS if b in bonds}
-    if not hit:
-        return False    # 非 TT 体系件:off_target/free_bench 合法面不辖
-    counts = dict.fromkeys(hit, 0)
-    for p in (*state.bench, *state.deployed):
-        if p is None or not p.char_id:
-            continue
-        pc = CHARACTERS.get(p.char_id)
-        if pc is None:
-            continue
-        pb = set(pc.factions) | set(pc.flows)
-        for b in hit:
-            if b in pb:
-                counts[b] += 1
-    return any(counts[b] <= t for b, t in hit.items())
+    blocked = False
+    if hit:
+        counts = dict.fromkeys(hit, 0)
+        for p in (*state.bench, *state.deployed):
+            if p is None or not p.char_id:
+                continue
+            pc = CHARACTERS.get(p.char_id)
+            if pc is None:
+                continue
+            pb = set(pc.factions) | set(pc.flows)
+            for b in hit:
+                if b in pb:
+                    counts[b] += 1
+        blocked = any(counts[b] <= t for b, t in hit.items())
+    # W192/ADR-0375 希儿系辖域(**核心条件辖**,域修正:无条件辖首版
+    # n=300 A/B 回归 never2 9→11,回归局全程无希儿——被堵全是不帯
+    # 核心的孤立放大器件;transition_combos 域事实「没有希儿时量子/贝
+    # 不能独立当过渡(28 帖全部含希儿)」→ 无核心时放大器不是体系件):
+    # - 希儿本人:在手副本 ≤1(唯一种子)→ 卖出即清空单卡依赖体系
+    #   的不可替核心,拒;
+    # - 放大器件:仅当希儿在手(bench∪deployed)时辖——其放大阵营
+    #   (量子同频/贝洛伯格,全羁绊口径)在手件数 ≤2(引擎成型门槛,
+    #   与 TT 系 tier=成型门槛同构)→ 卖出跌破成型线,拒;希儿不在
+    #   手 → 放大器照旧 off_target 合法面(孤立贝/量件非体系件)。
+    # 桑博=贝+DOT 双籍件与 TT 辖域并计,两判据独立评估取或。
+    if not blocked and reg.guard_seele_scope_enabled:
+        from sr_od.application.currency_war.cw_deploy_logic import (
+            SEELE_AMP_FACTIONS,
+        )
+        pool = [p for p in (*state.bench, *state.deployed)
+                if p is not None and p.char_id]
+        if name == '希儿':
+            blocked = sum(1 for p in pool
+                          if p.char_id == '希儿') <= 1
+        else:
+            amp = bonds & SEELE_AMP_FACTIONS
+            if amp and any(p.char_id == '希儿' for p in pool):
+                counts = dict.fromkeys(amp, 0)
+                for p in pool:
+                    pc = CHARACTERS.get(p.char_id)
+                    if pc is None:
+                        continue
+                    pb = set(pc.factions) | set(pc.flows)
+                    for f in amp:
+                        if f in pb:
+                            counts[f] += 1
+                blocked = any(c <= 2 for c in counts.values())
+    return blocked
 
 
 def seed_age_blocked(bc, state: GameState,

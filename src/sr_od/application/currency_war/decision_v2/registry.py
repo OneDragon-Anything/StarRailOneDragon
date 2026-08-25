@@ -443,7 +443,8 @@ class DecisionV2Registry:
     #: 总开关:False=逐位回 W179 后行为(A/B 基线臂)。True 时
     #: discipline.sole_engine_sell_blocked 命中的件不进任何卖件通道——
     #: 判据=该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
-    #: 持续伤害,全羁绊 factions∪flows 口径)成员,且其所属某体系的
+    #: 持续伤害,全羁绊 factions∪flows 口径;W192 起希儿系贡献件另经
+    #: guard_seele_scope_enabled 并入辖域)成员,且其所属某体系的
     #: 在手件数(bench∪deployed 逐件计)≤ 该体系 tier 门槛 → 卖出会
     #: 「清空该体系当前唯一 owned 引擎件」或「在手数跌破 tier」。
     #: 消费面=candidates._sell_tag(arbiter off_target/for_gold/
@@ -456,6 +457,19 @@ class DecisionV2Registry:
     #: execute_replacement 保留序卖出(ADR-0360 件3+ADR-0363 件1
     #: 已辖)/谷底回滚 SellDeployed(恢复机件)。
     sell_sole_engine_guard_enabled: bool = True
+    # ===== W192/ADR-0375 希儿系守卫辖域补全(W190 巡检两件)=====
+    #: 希儿系(四过渡体系之一,单卡判据)并入卖侧唯一体系引擎守卫与
+    #: 演进保护集辖域(**核心条件辖**,域修正见 ADR-0375):希儿本人
+    #: 唯一种子不可卖/恒保护;放大器件(量子同频/贝洛伯格)仅当希儿
+    #: 在手时辖(卖拒=放大阵营在手 ≤2 成型门槛;保护集并入——补完
+    #: undeploy/execute_replacement 保留序不下);无希儿时放大器
+    #: 不是体系件(transition_combos:28 帖全部含希儿),照旧合法面。
+    #: False=逐位回 W188 后行为(辖域=TRANSITION_TRAITS 三羁绊——
+    #: deploy 排序语义被 ADR-0373/0371 借用造成的缺口,见 W190 洞一/二)。
+    #: **新 flag 而非复用 sell_sole_engine_guard_enabled**:后者 off 会
+    #: 连 TT 三羁绊辖域一起关,A/B 配对臂(只隔离辖域差)与回退粒度
+    #: 都不对;辖域修正是 0373/0371「四体系」声称的语义补全,默认开。
+    guard_seele_scope_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

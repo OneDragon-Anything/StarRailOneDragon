@@ -206,7 +206,9 @@ def _pair_systems(session) -> dict[str, int]:
 
 
 def _engine_completion_tx(state: GameState,
-                          session) -> tuple[CompTransaction, str] | None:
+                          session,
+                          seele_scope: bool = True,
+                          ) -> tuple[CompTransaction, str] | None:
     """W174/ADR-0371 引擎补完事务构造(own-gap 修法主件)。
 
     触发:pair 体系 owned(bench∪deployed,全羁绊口径)≥ tier ∧
@@ -275,8 +277,16 @@ def _engine_completion_tx(state: GameState,
         return None   # 手握的全是同名副本(合成素材)→ 无可上,归常规通道
 
     # 保护集(undeploy/sell 不碰):pair 全体系成员 ∪ 锁定目标件/引擎件
-    _protected_dep = _locked_protected_names(state.deployed, session)
-    _protected_bench = _locked_protected_names(state.bench, session)
+    # (W192/ADR-0375:含希儿系贡献件——seele_scope 注入,**核心条件辖**
+    # (希儿恒保护;放大器件仅当希儿在手),undeploy 不下希儿系引擎件,
+    # 「净效果引擎数不减」的结构保证对四体系成立)
+    _seele_core = any(bc.char_id == '希儿' for bc in pool)
+    _protected_dep = _locked_protected_names(
+        state.deployed, session, seele_scope=seele_scope,
+        seele_core_in_hand=_seele_core)
+    _protected_bench = _locked_protected_names(
+        state.bench, session, seele_scope=seele_scope,
+        seele_core_in_hand=_seele_core)
 
     def _is_protected(bc: BenchChar, extra: set[str]) -> bool:
         if bc.char_id and bc.char_id in extra:
@@ -381,14 +391,25 @@ def _off_lock_opt(opt: UpgradeOption, session) -> bool:
 
 
 def _locked_protected_names(old_line: list[BenchChar],
-                            session) -> set[str]:
+                            session, seele_scope: bool = True,
+                            seele_core_in_hand: bool = False,
+                            ) -> set[str]:
     """W155/ADR-0360 件3:old_line 中的「保护件」名集(保留序种子同级)。
 
     - 锁定目标件:锁定帧(``locked_buy_scope``)采购集内的件
       (W147:保护的是锁定目标件,不是一切库存——[23] 终局线贯穿件
       锁定语义;weak/降格终局不辖);
     - 引擎件:全羁绊 ∩ 四体系三羁绊(TRANSITION_TRAITS;[31] top4
-      恒为方向件,任何模式都保护——与 cw_deploy_logic 引擎判定同源)。
+      恒为方向件,任何模式都保护——与 cw_deploy_logic 引擎判定同源);
+    - 希儿系贡献件(W192/ADR-0375 辖域补全,``seele_scope`` 注入,
+      **核心条件辖**——与 discipline.sole_engine_sell_blocked 同判据:
+      无条件辖首版 n=300 回归 never2 9→11,回归局全程无希儿,
+      transition_combos「没有希儿时量子/贝不能独立当过渡(28 帖全部
+      含希儿)」):希儿本人恒保护(单卡依赖体系不可替核心,
+      ``seele_scope`` 开即辖);放大器件仅当 ``seele_core_in_hand``
+      (希儿在 bench∪deployed,调用方从 state 全池计算)时保护
+      ——W190 洞二形态(希儿系引擎已成型被补完 undeploy 拆)希儿
+      恒在场,条件辖覆盖之。
     """
     out: set[str] = set()
     from sr_od.application.currency_war.cw_intention import (
@@ -403,10 +424,16 @@ def _locked_protected_names(old_line: list[BenchChar],
                     if d is not None and d.char_id in scope}
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
+        is_seele_system_member,
     )
     eng_bonds = {b for b, _t in TRANSITION_TRAITS}
     for d in old_line:
-        if d is not None and d.char_id and eng_bonds & _char_factions(d):
+        if d is None or not d.char_id:
+            continue
+        fs = _char_factions(d)
+        if eng_bonds & fs or (
+                seele_scope and is_seele_system_member(d.char_id, fs)
+                and (d.char_id == '希儿' or seele_core_in_hand)):
             out.add(d.char_id)
     return out
 
@@ -704,7 +731,8 @@ def _deploy_row(bc: BenchChar, comp: Comp | None,
 
 def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                         memory: EvolutionState | None = None,
-                        session=None, engine_guard: bool = True) -> list[Action]:
+                        session=None, engine_guard: bool = True,
+                        seele_scope: bool = True) -> list[Action]:
     """④-1 生成整档替换 CompTransaction(决策在执行前一起定)。
 
     完整方案一次敲定:新档成员上场(核心优先)+ 旧档整档解除(羁绊不在目标
@@ -809,7 +837,12 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     # (ADR-0316:bench 占用数口径)
     bench_free = BENCH_CAPACITY - (bench_occupied(state.bench)
                                    - len(bench_new))
-    _protected = _locked_protected_names(old_line, session)
+    _seele_core = any(
+        (getattr(b, 'char_id', '') or '') == '希儿'
+        for b in (*state.bench, *state.deployed) if b is not None)
+    _protected = _locked_protected_names(
+        old_line, session, seele_scope=seele_scope,
+        seele_core_in_hand=_seele_core)
     retained = sorted(old_line, key=lambda d: (
         # W88/ADR-0339 件3:种子窗口件保留最优先(见 docstring)。
         # W155/ADR-0360 件3(同型扩位):锁定目标件/引擎件与种子窗同级
@@ -1070,7 +1103,8 @@ def evolution_step(state: GameState, session=None,
                    off_lock_penalty: float = 0.0,
                    engine_guard: bool = True,
                    final_freeze: bool = True,
-                   engine_completion: bool = True) -> list[Action]:
+                   engine_completion: bool = True,
+                   seele_scope: bool = True) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
 
     propose → evaluate →(最优 verdict)execute → fill;返回待执行动作序列
@@ -1099,6 +1133,11 @@ def evolution_step(state: GameState, session=None,
     时,先于常规提案发补完事务(bench 体系件上场,room 不足换下最弱
     非保护件);末窗豁免复核 = 净效果 pair on-board 与引擎数不减
     (与件2 防丢语义同向:补上不是拆)。关 = 回 W170 后行为。
+
+    W192/ADR-0375:``seele_scope``(registry ``guard_seele_scope_
+    enabled`` 注入,A/B 通道)——希儿系贡献件并入保护集(``_locked_
+    protected_names`` 单点,辖补完 undeploy 与 execute_replacement
+    保留序两面);关 = 回 W188 后行为(辖域=TRANSITION_TRAITS)。
     """
     mem = memory if memory is not None else EvolutionState()
     # 恢复语义:谷底暂停 → 下个非遭遇轮解暂停再续
@@ -1123,7 +1162,8 @@ def evolution_step(state: GameState, session=None,
         if not verdict.execute:
             return []
         actions = execute_replacement(verdict, state, mem, session,
-                                      engine_guard=engine_guard)
+                                      engine_guard=engine_guard,
+                                      seele_scope=seele_scope)
         if not actions:
             return []
         tx = actions[0]
@@ -1178,7 +1218,7 @@ def evolution_step(state: GameState, session=None,
     # 才算配方)。被拒 → 退避登记后落回常规提案,不阻塞本轮流。
     if engine_completion:
         comp_pair = _pair_systems(session)
-        built = _engine_completion_tx(state, session)
+        built = _engine_completion_tx(state, session, seele_scope=seele_scope)
         if built is not None:
             tx_c, sys_key = built
             sig_c = (_COMPLETION_REASON, sys_key, 0, '', '')
