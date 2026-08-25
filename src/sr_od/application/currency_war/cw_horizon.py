@@ -97,8 +97,8 @@ def b_eff_level_free(b: float) -> bool:
 
 # ===== DP =====
 # D1(ADR-0202/53 号网格约束):金步长 5→1——台账日程的 +1/+2 级小额度(长期主义 7/按劳 1)
-# 在步长 5 下被量化静默蒸发;状态空间 27×111×10×20×5 ≈ 3M × 8 姿态,求解分钟级(实测
-# ~3min),可忽略。posture() 的 g5 归一同步兼容(步长 1 下 gold//1*1=gold 恒等)。
+# 在步长 5 下被量化静默蒸发;状态空间 27×111×10×20×5 ≈ 3M × 8 姿态(标量版实测 ~3min,
+# v6 向量化后 ~0.3s,见 solve 内注释)。posture() 的 g5 归一同步兼容(步长 1 下 gold//1*1=gold 恒等)。
 GOLD_STEP, GOLD_MAX = 1, 110
 HP_BUCKET, HP_MIN, HP_MAX = 5, 5, 100
 LEVEL_MIN, LEVEL_MAX = 1, 10
@@ -263,7 +263,9 @@ def _hp_loss(t: int, level: int, rb: float) -> float:
 
 
 def solve(ledger=None) -> HorizonSolution:
-    """逆向递推。状态 (t, g5, L, h5, rbi) ≈ 27×23×10×20×5 ≈ 620k × 8 姿态 ≈ 5M 评估(分钟级,离线)。
+    """逆向递推。状态 (t, g1, L, h5, rbi) = 27×111×10×20×5 ≈ 3M × 8 姿态;
+    v6 numpy 向量化求解 ~0.3s(标量时代分钟级,已淘汰;慢的不是求解而是
+    HorizonSolution.policy/value 的 3M 条目 dict 物化,生产路径勿触碰)。
 
     ledger(ADR-0202/53 号盲区 2 根治,effect-blind 修复):EffectLedger 注入 →
     收入/息/成本全走台账突变视图(node_income_with/interest_with/level_cost_with);
