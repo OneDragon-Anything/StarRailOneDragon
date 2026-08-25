@@ -446,12 +446,25 @@ def _streak_floor(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry,
                   base_floor: int) -> int:
     """boss_breaker 连胜 EV 地板(v1 r308 移植):连胜 ≥2 + 硬节点 +
-    EV(保连胜奖励 × 剩余节点)> 一次性息损失 → 地板降 5。"""
+    EV(保连胜奖励 × 剩余节点)> 一次性息损失 → 地板降 5。
+
+    ⚠️ 口径声明(W137/P10④/ADR-0356,零行为变更的注释升级):
+    本判据的账**未标定**,fire 方向被 P10③ 支持但两侧口径错档——
+    - cost 侧 0.25 是 v1 魔数,非真值(回档口径真值 0-3 金,
+      ``interest_cost(..., recovery_rounds)`` 同源);
+    - reward 侧 (tier−1)×remaining 是「平面全胜」上界(胜率加权期望
+      ≈×0.416,e1 档;boss r9 时 remaining=0 恒不 fire);
+    - 真支柱是**免掉血项**(硬节点败 −17.7~−24.9 HP × 0.5金/HP
+      ≈ 8.8-12.4 金,P10③)——本判据漏计,补上后深花授权带更宽。
+    正确修法=随 W113 §8-2 收编(boss 窗旁路 → SPEND 段节点级授权,
+    V 侧按 [27] 掉血期望+连胜金胜率加权)整体重写,标定挂账
+    ADR-0356;**「5」是授权带宽不是账本输出**,判读勿当已标定值引用。
+    """
     streak = getattr(session, 'last_streak', 0) or 0
     remaining = max(0, NODES_PER_PLANE - state.round_num)
     tier_now = streak_gold(streak) if streak >= 2 else 0
-    ev_reward = (tier_now - 1) * remaining      # 断了回到 1 档
-    ev_interest = 0.25                           # 一次性息损失
+    ev_reward = (tier_now - 1) * remaining      # 断了回到 1 档(上界口径,见上注)
+    ev_interest = 0.25                           # v1 魔数(未标定,见上注;真值 0-3 金回档口径)
     hard_node = _hard_node(state, session)
     if streak >= 2 and hard_node and ev_reward > ev_interest:
         return 5
