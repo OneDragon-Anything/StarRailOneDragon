@@ -1933,6 +1933,11 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # 提交快照 v8(0bf6c0d6),与 W157 simulate_p2_ab 同池;P1 侧 drift
 # 相对 W140 锚 = 池口径修正(污染清除)+语料前移(至 08-26)合成,
 # 非策略变化(W157 决策代码零改动,杠杆全在 harness 层,W156 结论)。
+# ⚠️ 池出处勘误(W165 巡检 #2):「主仓提交快照」措辞失实——git 内无此池
+# JSON(Δ池快照 .gitignore);真身=本地导出件
+# .debug/temp/currency_war/w157_p2/pool_v8_plane_keyed.json(meta 指纹
+# 0bf6c0d695f5052c 亲核)。跨池重放以该导出件为准;登记即导出纪律见
+# ADR-0362 遗留(锚池资产随批落 .debug,勿再只留指纹)。
 # 常红披露(非本批引入,见各检查项口径):equip_value_strategy_key_
 # coverage(批㉜ 策略域待裁决恒红)/delta_pool_bucket_min_n+depth_
 # cliff_monotonicity(池语料贫困,META 披露)。

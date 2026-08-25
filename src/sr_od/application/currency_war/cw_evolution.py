@@ -577,10 +577,14 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     if engine_guard:
         # 投影用 provisional 截断(守卫改动 deployed_keep 前,按现留场数
         # 估上限内的新上场名单——未截断的 bench_new 会高估事务后引擎数,
-        # 漏掉真丢失)
+        # 漏掉真丢失)。同名去重先行(W165 巡检 #5):bench_new 与留场件
+        # 同名的卡投影时虚增引擎数(终态 deployed 不重复,同名不会都上场)
+        # → 漏触发守卫;与 L600 的去重同基准,仅在投影侧提前。
+        _proj_names = {d.char_id for d in deployed_keep if d.char_id}
         proj_room = state.max_units() - len(deployed_keep)
-        lost = _lost_engine_systems(
-            state, [*deployed_keep, *bench_new[:max(0, proj_room)]])
+        proj_new = [bc for bc in bench_new[:max(0, proj_room)]
+                    if not bc.char_id or bc.char_id not in _proj_names]
+        lost = _lost_engine_systems(state, [*deployed_keep, *proj_new])
         if lost:
             keep_extra = [d for d in old_line
                           if _contributes_engine_system(d, lost)]
