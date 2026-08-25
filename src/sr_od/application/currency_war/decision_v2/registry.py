@@ -439,6 +439,23 @@ class DecisionV2Registry:
     #: =P13 同档零损的理论预测逐位兑现;cap2 −2.3 金换 hp +1.3,
     #: 出口金口径上不如 cap1 干净)。每轮增量支出 ≤3 金,息损上界=档内 0。
     p1_early_round_cap: int = 1
+    # ===== W184/ADR-0373 卖侧唯一体系引擎守卫(S2 恶化谱系)=====
+    #: 总开关:False=逐位回 W179 后行为(A/B 基线臂)。True 时
+    #: discipline.sole_engine_sell_blocked 命中的件不进任何卖件通道——
+    #: 判据=该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
+    #: 持续伤害,全羁绊 factions∪flows 口径)成员,且其所属某体系的
+    #: 在手件数(bench∪deployed 逐件计)≤ 该体系 tier 门槛 → 卖出会
+    #: 「清空该体系当前唯一 owned 引擎件」或「在手数跌破 tier」。
+    #: 消费面=candidates._sell_tag(arbiter off_target/for_gold/
+    #: free_bench 候选生成)+ discipline.sell_priority_key 守卫
+    #: (carry_gate ④/两补偿器统一挡)。修「演进换线把旧体系件下场到
+    #: bench 后被 off_target 当死库存卖出 → 体系引擎永不回场」
+    #: (W181 §3:S2 恶化 {37,71,90,43} 与 W174 残差 {45} 全此链;
+    #: 卖出的件均非 engine_char_names 名单件,方向切换后失去目标身份)。
+    #: 不辖:非 TT 件/owned>tier 的冗余件(体系有余量时清仓照旧)/
+    #: execute_replacement 保留序卖出(ADR-0360 件3+ADR-0363 件1
+    #: 已辖)/谷底回滚 SellDeployed(恢复机件)。
+    sell_sole_engine_guard_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

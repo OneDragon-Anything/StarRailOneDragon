@@ -52,6 +52,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     pair_wants,
     round_sell_blocked,
     seed_age_blocked,
+    sole_engine_sell_blocked,
     star_weighted_copies,
 )
 from sr_od.application.currency_war.decision_v2.registry import (
@@ -295,6 +296,8 @@ def _sell_tag(bc: BenchChar, state: GameState,
         return None
     if round_sell_blocked(bc, state, session):
         return None
+    if sole_engine_sell_blocked(bc, state, registry):
+        return None   # W184/ADR-0373:唯一体系引擎件不生成卖候选
     protect = _target_names(state, session)
     name = bc.char_id or ''
     is_target = name in protect

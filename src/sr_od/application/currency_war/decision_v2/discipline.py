@@ -106,6 +106,58 @@ def round_sell_blocked(bc, state: GameState,
     return star_weighted_copies(bc.char_id, state) < 3
 
 
+def sole_engine_sell_blocked(bc, state: GameState,
+                             registry: DecisionV2Registry | None = None,
+                             ) -> bool:
+    """W184/ADR-0373 卖侧唯一体系引擎守卫(谓词;不改板面只辖卖出)。
+
+    判据:该件是四过渡体系(TRANSITION_TRAITS 三羁绊:仙舟/列车同行/
+    持续伤害——全羁绊 factions∪flows 口径,「持续伤害」是流派非阵营)
+    成员,且其所属某体系的**在手件数**(bench∪deployed 逐件计,含
+    本件)≤ 该体系 tier 门槛 → 卖出即「清空该体系当前唯一 owned
+    引擎件」(owned=1)或「在手数跌破 tier」(owned=tier),不可卖。
+    owned > tier(冗余件)照旧可卖——体系有余量时的清仓不受辖。
+
+    语义依据:[31] top4 引擎羁绊是胜率保证、引擎件是方向件非可回收
+    填充件;[22]① 买了再卖不损金 → 留住最后一件的成本=1 个 bench
+    槽,弃掉的代价=该体系的恢复种子清零。修 W181 §3 谱系:演进换线
+    把旧体系件下场到 bench 后,off_target 把它当死库存卖出(卖出的
+    件均非 engine_char_names 名单件,方向切换后即失去目标身份)→
+    体系引擎永不回场(S2 evict unrecovered)。
+
+    flag=registry.sell_sole_engine_guard_enabled(关=逐位回现行)。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if not reg.sell_sole_engine_guard_enabled:
+        return False
+    name = getattr(bc, 'char_id', '') or ''
+    ch = CHARACTERS.get(name)
+    if ch is None:
+        return False    # 未识别/注册表外件:既有守卫已挡,不重复辖
+    bonds = set(ch.factions) | set(ch.flows)
+    hit = {b: t for b, t in TRANSITION_TRAITS if b in bonds}
+    if not hit:
+        return False    # 非 TT 体系件:off_target/free_bench 合法面不辖
+    counts = dict.fromkeys(hit, 0)
+    for p in (*state.bench, *state.deployed):
+        if p is None or not p.char_id:
+            continue
+        pc = CHARACTERS.get(p.char_id)
+        if pc is None:
+            continue
+        pb = set(pc.factions) | set(pc.flows)
+        for b in hit:
+            if b in pb:
+                counts[b] += 1
+    return any(counts[b] <= t for b, t in hit.items())
+
+
 def seed_age_blocked(bc, state: GameState,
                      session: StrategySession | None) -> bool:
     """ADR-0289 §5:engine_seed 年龄豁免——买入 ≤2 轮且同轮份数 <2 的种子
@@ -733,7 +785,8 @@ def sell_priority_key(bc, state: GameState,
     守卫(复用既有谓词,不重定义;任一命中 → None):
       round_sell_blocked(r408 同轮已买)/seed_age_blocked(ADR-0289 §5
       年龄窗;种子单列兜底逻辑由 carry_gate ④/补偿器保留在外——
-      豁免是专属时序,键不管)/未识别(空名)/**加权副本 ≥2**(3合1
+      豁免是专属时序,键不管)/sole_engine_sell_blocked(W184/ADR-0373
+      唯一体系引擎件)/未识别(空名)/**加权副本 ≥2**(3合1
       进行中素材与完整份,AD9-2-3/ADR-0327——防补偿/腾位通道拆
       合成进度)。
 
@@ -755,6 +808,8 @@ def sell_priority_key(bc, state: GameState,
         return None
     if seed_age_blocked(bc, state, session):
         return None
+    if sole_engine_sell_blocked(bc, state, reg):
+        return None    # W184/ADR-0373:唯一体系引擎件不进任何卖件通道
     if star_weighted_copies(name, state) >= 2:
         return None    # 3合1 进行中素材/完整份不卖(AD9-2-3)
     ch = CHARACTERS.get(name)
