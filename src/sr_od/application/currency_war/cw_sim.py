@@ -1002,7 +1002,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
         _inc = {'base': BASE_INCOME,
                 'interest': min(INTEREST_CAP, st.gold // 10),
-                'streak': streak_gold(streak),   # 单一源 cw_economy(r305)
+                # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点不发
+                # 连胜金——run13 r2 奖励结算屏=基础5+连胜×0(无 streak 分量);
+                # 战斗轮 counter0 照发 table[0]=1(run15 r3=5+3+1)。
+                'streak': 0 if nodes[rn - 1] in ('reward', 'supply')
+                else streak_gold(streak),   # 单一源 cw_economy(r305)
                 'event': _inc_event}
         st.gold += sum(_inc.values())
         # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
@@ -1435,7 +1439,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
         # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
         st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
-        streak = streak + 1 if delta > 0 else 0
+        # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点既不计连胜数
+        # 也不发连胜金——run13 r1/r2 奖励全过后计数仍 0(r2 结算屏连胜×0),
+        # run15 r3 战斗轮按 counter0 结算。战斗类节点(battle/encounter/
+        # boss)胜后计数+发金语义不变(delta>0 计连胜)。
+        if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
+            streak = streak + 1 if delta > 0 else 0
         # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
         # = 结算「连胜×N」写 session(default_strategy.on_settlement),
         # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜

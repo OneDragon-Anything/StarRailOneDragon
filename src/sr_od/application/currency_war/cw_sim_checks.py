@@ -2283,24 +2283,32 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
 
 
 def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
-    """批⑱ streak_combat_only_income(连胜金仅战斗轮口径;披露)。
+    """W129 streak_combat_only_income(连胜金仅战斗轮口径;已裁决,断言化)。
 
-    判据(设计表原文):连胜金按「仅战斗轮计胜负」重算并列披露
-    (sim.income.streak_combat);与 streak 字段并存供真值裁决后
-    切换。重算口径 = _combat_streak_by_round 的 streak 进
-    cw_economy.streak_gold 真值表(与账本 income.streak 并列,
-    不替换)。
+    口径裁决(2026-08-26,run13/run15 实机;ADR-0351):奖励/补给节点
+    既不计连胜数也不发连胜金(结算屏无 streak 分量);战斗/遭遇/boss
+    轮胜后计数+发金不变(counter0 照发 table[0]=1,run15 r3=5+3+1)。
+    sim 发金已按此口径修正(cw_sim 收入段)→ 本检查从「双口径并列
+    披露」收紧为断言:**奖励/补给轮 income.streak != 0 即违规**;
+    combat-only 重算和并列保留为披露面(对拍 sim 计数侧与重放口径
+    的残差,>0=奖励轮计数侧回归)。
     """
     from sr_od.application.currency_war.cw_economy import streak_gold
-    ledger_sum = combat_sum = 0
+    violations = ledger_sum = combat_sum = 0
     for rows in ledgers:
         streaks = _combat_streak_by_round(rows)
         for row in rows:
-            ledger_sum += ((row.get('sim') or {})
-                           .get('income') or {}).get('streak', 0) or 0
+            sim = row.get('sim') or {}
+            node = sim.get('node')
+            inc_streak = (sim.get('income') or {}).get('streak', 0) or 0
+            ledger_sum += inc_streak
+            if node in ('reward', 'supply'):
+                if inc_streak != 0:
+                    violations += 1
+                continue   # 战斗口径连胜金不含奖励/补给轮(裁决口径)
             combat_sum += streak_gold(
                 streaks.get(row.get('round_num') or 0, 0))
-    return {'violations': 0, 'ledger_streak_income': ledger_sum,
+    return {'violations': violations, 'ledger_streak_income': ledger_sum,
             'combat_only_streak_income': combat_sum,
             'delta': combat_sum - ledger_sum}
 
