@@ -68,6 +68,7 @@ from sr_od.application.currency_war.cw_state import (
     simulate as _simulate_state,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.cw_telemetry import serialize_intention
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
@@ -1533,6 +1534,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'form_score': _round_form_score,
             'dp_posture': _round_dp_posture,
             'piggy_reward': _round_piggy,
+            # W146 v3 意向状态(与生产 decisions 行同构;sim 分析批
+            # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
+            # 才能区分 unlocked/weak/locked)
+            'v3_intention': serialize_intention(
+                getattr(sess, 'v3_intention', None)),
             'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——

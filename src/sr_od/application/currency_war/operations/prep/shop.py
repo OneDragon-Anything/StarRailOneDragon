@@ -443,8 +443,15 @@ class BuyShopCards(SrOperation):
                 # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
                 # (LineStrategy 时代字段;ADR-0336 后恒 None,保留
                 # 兼容历史回放)
+                # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
+                # (LineStrategy 时代字段;ADR-0336 后恒 None,保留
+                # 兼容历史回放)
                 'sess_v2_state': list(_sess.v2_state)
                 if getattr(_sess, 'v2_state', None) else None,
+                # W146 v3 意向状态落遥测(ADR-0336 后 v2_locked_line
+                # 恒空,锁定时点/目标只有这里可读;None=无意向状态机)
+                'v3_intention': cw_telemetry.serialize_intention(
+                    getattr(_sess, 'v3_intention', None)),
             }
             cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 

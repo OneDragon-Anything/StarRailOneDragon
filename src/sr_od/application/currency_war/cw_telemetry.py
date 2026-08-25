@@ -24,7 +24,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -70,6 +70,37 @@ def serialize_action(action: Action) -> dict[str, Any]:
     d = _to_jsonable(action)
     d["__type__"] = type(action).__name__
     return d
+
+
+def serialize_intention(ist: Any) -> dict[str, Any] | None:
+    """v3 意向状态(IntentionState)→ JSON-safe dict(W146)。
+
+    ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
+    只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
+    「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
+    全量落遥测(W145 锁定目标改过渡配方的实机验证依赖它)。
+
+    - ``None`` = session 无意向状态机(default 栈/未初始化)——与
+      「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
+      不用猜;
+    - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
+      嵌套 LineTrack 同构)——IntentionState 字段演进(如 W145 调整
+      锁定语义)时自动跟上,不改本函数。
+
+    只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
+    """
+    if not is_dataclass(ist):
+        return None
+    out: dict[str, Any] = {}
+    for f in fields(ist):
+        v = getattr(ist, f.name)
+        if isinstance(v, set):
+            out[f.name] = sorted(v)
+        elif is_dataclass(v):
+            out[f.name] = _to_jsonable(v)
+        else:
+            out[f.name] = v
+    return out
 
 
 def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:
@@ -143,6 +174,12 @@ class DecisionTrace:
     # ADR-0348 ↺:扑满节点识别(过热局 reward 帧;②b 观测/实机建档
     # 数据面——识别≠深花授权)。可选,旧记录缺省 False。
     piggy_reward: bool = False
+    # —— W146 v3 意向状态(cw_intention.IntentionState 全量序列化;
+    # ADR-0336 后 v2_locked_line/v2_mode 恒空,锁定真值在此)——
+    # None=无意向状态机(default 栈);dict 且 phase='unlocked'=有意向
+    # 未锁;phase='locked' 时 locked_comp=锁定目标(COMP_LIBRARY 套名)。
+    # 可选,旧记录缺省 None 不破坏 schema。
+    v3_intention: dict[str, Any] | None = None
 
 
 @dataclass
@@ -331,6 +368,9 @@ class TelemetryRecorder:
             trace.formed_stop = bool(extra.get('formed_stop', False))
             trace.dp_posture = str(extra.get('dp_posture', ''))
             trace.piggy_reward = bool(extra.get('piggy_reward', False))
+            # W146 v3 意向状态(serialize_intention 产物直传)
+            _ist = extra.get('v3_intention')
+            trace.v3_intention = _ist if isinstance(_ist, dict) else None
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
@@ -1087,6 +1127,13 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         lock = d.get("v2_locked_line") or ""
         bridge = d.get("v2_bridge") or ""
         v2_s = f" v2=[{v2}|{lock or '-'}|{bridge or '-'}]" if (v2 or lock or bridge) else ""
+        # W146 v3 意向状态直读(锁定时点/锁定目标;None/default 局省略)
+        _ist = d.get('v3_intention')
+        ist_s = ''
+        if isinstance(_ist, dict):
+            ist_s = (f" ist=[{_ist.get('phase', '')}"
+                     f"|{_ist.get('locked_comp', '') or '-'}]"
+                     + ('/降格' if _ist.get('demoted_endgame') else ''))
         # W114/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空)
         _ph = d.get("phase") or ""
         _fok = d.get("form_ok")
@@ -1108,7 +1155,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
         lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ph_s}{dpp_s}")
+                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}")
     return lines
 
 
