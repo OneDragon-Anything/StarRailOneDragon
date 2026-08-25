@@ -488,6 +488,83 @@ def formation_gold_account(base: GameState, after: GameState,
     return gold
 
 
+def _vd_p1_pair(state: GameState, session: StrategySession,
+                registry: DecisionV2Registry) -> float | None:
+    """P1 体系对缺件找牌账(W170/ADR-0369,候选 b;P2 分支不辖)。
+
+    授权语义(每次放行答得出「找什么」=具名缺件,[31] 刷新金只用于找
+    目标件——锁定帧体系对成员即二级目标件,ADR-0367):
+
+    - **窗**:``transition_pair``/``p1_pair`` 非空(锁定帧副方向/配方锁)
+      ∧ 缺件 ≥1(对成员集有未持有者)∧ **金 ≥ interest_floor + 刷价 +
+      缺件买价**([3]「刷新后还能买之后保证 50 金」的单次逐字口径;
+      [17] 守息边界由该前提表达,不设常量金门之外的第二道门);
+    - **收益**:e_cur<2 时=下一档引擎跳变金值(engine_jump_gold 同式同源,
+      [13] 过渡成型≈过 P1 的完成度账);e_cur≥2(已成型)→ 无对象;
+    - **成本**:批口径 E₁×刷价(E₁=当前等级刷出 1 张该缺件的期望刷新数,
+      k=1)——E 的概率表即 [3]「到概率等级才 D」的载体:错等级(如 1费
+      @lv6)E 膨胀 → 账自然负 → 拒(「没到就少刷新」),溢余段也不为
+      低概率搜刮放行(刷是找目标件,不是为刷而刷);
+    - 缺件取账最大者(多缺件时找「最容易到手且账最优」的一件)。
+    """
+    if state.plane != 1 or not registry.vd_p1_pair_enabled:
+        return None
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        _pair_members,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        return None
+    pair = (tuple(getattr(ist, 'transition_pair', ()) or ())
+            or tuple(getattr(ist, 'p1_pair', ()) or ()))
+    if not pair:
+        return None
+    owned = ({getattr(d, 'char_id', '') for d in state.deployed or ()}
+             | {getattr(b, 'char_id', '')
+                for b in (state.bench or []) if b is not None})
+    missing = _pair_members(pair) - owned
+    if not missing:
+        return None
+    e_cur = _engines_formed(state, registry)
+    if e_cur >= 2:
+        return None    # 已成型([13] 停手线)→ 找件对象消失
+    benefit = engine_jump_gold(e_cur, state, registry)
+    if benefit <= 0:
+        return None
+    import math
+
+    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.cw_shop_odds import (
+        DISTINCT_CARDS_PER_COST,
+        POOL_COPIES_PER_CARD,
+        expected_refreshes,
+        refresh_prob,
+    )
+    refresh_cost = state.shop_refresh_cost or 2
+    best: float | None = None
+    for name in missing:
+        ch = _CH.get(name)
+        if ch is None or not ch.cost:
+            continue
+        p = refresh_prob(state.level, ch.cost)
+        if p <= 0:
+            continue    # 该等级刷不到此费 → 无对象
+        e1 = expected_refreshes(
+            p, DISTINCT_CARDS_PER_COST.get(ch.cost, 13),
+            POOL_COPIES_PER_CARD.get(ch.cost, 9), 0, 1, 0)
+        if math.isinf(e1) or e1 <= 0:
+            continue
+        # [3] 单次预算前提:一次刷 + 买入后仍 ≥ 满息地板
+        if (state.gold or 0) < registry.interest_floor + refresh_cost \
+                + ch.cost:
+            continue
+        val = benefit - e1 * refresh_cost
+        if best is None or val > best:
+            best = val
+    return best
+
+
 def vd_refresh_score(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> float | None:
     """V_D 批口径评分(W126/ADR-0349,经济循环总模型步③;P5 主定理)。
@@ -517,8 +594,9 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     - **P2 段成本/收益口径**(W154/ADR-0361,P11/P12):成本=机会成本
       C_dec(Δinterest×min(R, recovery_rounds_p2)+ρ·s,替换批口径面值;
       [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;收益=存活语境参数
-      (loss_p2/battles_left_p2 state 推导)。P1 分支逐位不动(P5⑤
-      退化输出与 P1 骨架参数保留,P1 sim 零漂移回归门);
+      (loss_p2/battles_left_p2 state 推导)。P1 core 通道逐位不动(P5⑤
+      退化输出与 P1 骨架参数保留);W170/ADR-0369 为 P1 增 pair 缺件
+      找牌通道(vd_p1_pair_enabled 辖,见 _vd_p1_pair);
     - 金 50/51 边界的守息纪律不由本函数辖——由 arbiter.interest_rule
       的 C_interest 表达(P5⑤ 已证=定理退化输出,G2:不设常量金门);
     - 峰值以上停留(P5 边界 b):E(L) 已是当前等级真值,升级收益侧的
@@ -528,10 +606,14 @@ def vd_refresh_score(state: GameState, session: StrategySession,
 
     core = vd_target_core(state, session)
     if not core:
-        return None
+        # W170/ADR-0369:core 无对象(未锁 comp/配方锁局 p1_pair 帧)时
+        # pair 缺件通道仍可评估(配方锁局的 p1_pair 帧本就无 locked_comp;
+        # P2/未锁无对帧由 _vd_p1_pair 自身辖域回 None)
+        return _vd_p1_pair(state, session, registry)
     # 概率窗二分([3]/W113 §3.3;W154/ADR-0361 P2 修订):
-    # - P1:goal 说 level_up(窗外)→ D 让位(「没到就少刷新、多买经验」,
-    #   攒本金语境——逐位不动,P1 sim 零漂移回归门);
+    # - P1 core 通道:goal 说 level_up(窗外)→ core 让位(「没到就少刷新、
+    #   多买经验」);W170/ADR-0369 起 level_plan 窗**只辖 core 通道**,
+    #   pair 缺件通道(_vd_p1_pair)自带独立窗(缺件∧[3] 单次预算前提);
     # - P2(plane≥2 且 vd_p2_enabled):窗二分改**消费 DP refresh_budget
     #   授权**——DP 姿态说「升级+D」时升级与 D 是**并行授权**(DP 日程表
     #   已把 level_cost+2×rolls 算进同一笔预算),level_plan 互斥把 D 预算
@@ -554,13 +636,18 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         elif goal is not None and goal.action == 'level_up':
             return None
     elif goal is not None and goal.action == 'level_up':
-        return None
+        # W170/ADR-0369:level_plan 窗只辖 core 通道(core 让位给升,
+        # 「没到就少刷新、多买经验」);pair 缺件通道走自己的窗(缺件∧
+        # [3] 单次预算前提,见 _vd_p1_pair)——P2 分支(上方)不受此辖
+        return _vd_p1_pair(state, session, registry)
     # 核心已完成 2★(任一份 star≥2)→ 找件目标消失
     copies = [d for d in list(state.deployed or [])
               + [b for b in (state.bench or []) if b is not None]
               if getattr(d, 'char_id', '') == core]
     if not copies or max(getattr(d, 'star', 1) or 1 for d in copies) >= 2:
-        return None
+        # core 副本 0(从未入手)/已 2★ → core 找件对象消失;pair 缺件
+        # 通道仍可评估(W170/ADR-0369:never-2 局的主形态=core copies0)
+        return _vd_p1_pair(state, session, registry)
     j = len(copies)   # 全 1★ 的基础副本数(2★ 已在上面短路)
     from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
     ch = _CH.get(core)
@@ -608,7 +695,11 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         return benefit - c_dec
     benefit = (drung * r + dwin * registry.expected_battle_loss
                * registry.hp_to_gold * registry.battles_left_est)
-    return benefit - spend
+    p1_core = benefit - spend
+    # W170/ADR-0369:roll/stable 窗内 core 与 pair 缺件两本找件总账取大
+    # (同一 RefreshShop 动作的两种具名「找什么」,core 语义逐位保留)
+    pair_v = _vd_p1_pair(state, session, registry)
+    return p1_core if pair_v is None else max(p1_core, pair_v)
 
 
 def _engines_formed(state: GameState,

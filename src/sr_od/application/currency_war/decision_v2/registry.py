@@ -237,6 +237,12 @@ class DecisionV2Registry:
     #: 溢余金流动性影子价 ρ(P11:纯溢余段 C_dec 下界=0 后的期权项上界;
     #: P10① 携带溢价利息分量背书,W151 四局实证实现值≈0 → 起步 0)
     vd_p2_liquidity_rho: float = 0.0
+    #: P1 体系对缺件找牌通道总开关(W170/ADR-0369):False=回 W166 前行为
+    #: (P1 找牌只有 core 通道,level_plan 窗互斥逐位旧语义)——A/B 基线臂。
+    #: True=P1 锁定帧(配方锁 p1_pair/①锁 transition_pair)缺件 ∧ 金≥
+    #: interest_floor+刷价+买价([3] 单次预算前提)时,pair 缺件账参与
+    #: V_D(scoring._vd_p1_pair;core 通道不受本开关辖)
+    vd_p1_pair_enabled: bool = True
     #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
     #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
     depth_unit_value: float = 2.0
