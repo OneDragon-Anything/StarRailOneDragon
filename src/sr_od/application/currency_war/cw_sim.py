@@ -1192,7 +1192,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 elif isinstance(a, LevelUp):
                     st.gold -= 4
                     _spend['levelup'] += 4
-                    _acts.append({'__type__': 'LevelUp', 'cost': 4})
+                    # auth=授权依据观测(ADR-0353):LevelUp.auth_basis
+                    # 放行臂名(pop_slot/dp/static_ev;''=default 栈旧调用
+                    # 或未过账)——检查器 levelup_interest_engine_gate
+                    # 判据消费;记录非指令。
+                    _lv_auth = getattr(a, 'auth_basis', '')
+                    _acts.append({'__type__': 'LevelUp', 'cost': 4,
+                                  'auth': _lv_auth})
                     xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                     st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                     progressed = True

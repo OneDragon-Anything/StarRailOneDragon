@@ -254,43 +254,52 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
-    """压测经济批 [12]/①残差指纹(升级门息引擎前置;ADR-0266;r406)。
+    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0353;旧 ADR-0266/r406 指纹)。
 
-    指纹:lv≥5(追级段)的 LevelUp 发生在「息引擎未立」——时点金
-    (本轮首波金,=收入后花销前)<50 **且** 本局此前从未有任何轮
-    金 ≥50。追级局形态:每轮 40-50 徘徊反复够升级门槛,50 永远
-    攒不满(压测 25.9% 局终局未满 50,14/15 从未攒到)。
+    **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
+    (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp}**。
+    授权依据 = sim 账本 LevelUp 行的 ``auth`` 键(LevelUp.auth_basis
+    观测字段,arbiter 升级门/remediation 补偿臂放行时写入,单一源=
+    ``ev.levelup_ev_basis``)。
 
-    近似声明:①升级前等级用**上一轮账本 level**(轮内升级完成会
-    抬高本行 level,prev_level 才是购买时的等级;首轮 prev=3);
+    重定义动机(W123 §3.3/§5.2):旧判据「金<50 且未曾满息即违规」把
+    [33] 人口位(W123 实测 378 违规中绝大多数,W126 后 206)的合法
+    <50 升级全数计违规——授权语义(W119/ADR-0347)落地后,判据应读
+    授权依据而非金阈值。合法放行面:① pop_slot([33] 人口位:cap 满∧
+    bench 有等待上场的目标件)、② dp(DP 花费授权,平台未破);
+    ③ static_ev(静态 EV 平台账)**不在白名单**——W123 明示该臂
+    花后<50 的帧量级 0-1,保留计违规(保守侧:静态账是估值端,息
+    引擎口径下可疑面不豁免;涌现≥量级再裁决)。无 auth 键/空值 =
+    无授权依据(default 栈旧调用/未过账路径)→ 违规。
+
+    近似声明(承旧):①升级前等级用**上一轮账本 level**(轮内升级
+    完成会抬高本行 level,prev_level 才是购买时的等级;首轮 prev=3);
     ②时点金 = shop_waves 首波 gold(决策发生在收入后/花销前);
-    ③「曾达满息」按此前各轮 max(首波金, 轮末金) ≥50——轮中段
-    金峰(买后卖回)不可见,声明数据边界。合法放行:lv<5(r263
-    过渡成型基线宽松门)、曾满息、时点金≥50(gold-cost≥50 分支
-    的上界)均不报;时点金 <50 但 gold-cost≥50 的合法升级会**误报
-    成可疑**(cost 不可逐动作重演——压测原批按账本逐动作重演过,
-    检查侧退化为保守近似,违规率高发时按 seed 重放精查)。
+    ③授权依据是**放行时点的臂名快照**(动作对象携带),检查器不复
+    判——重演需要 cost/val 等决策期中间量,账本不携(声明数据边界);
+    gold≥50 的升级不报(与旧判据同:息平台在场,无追级风险面)。
     """
     out: list[str] = []
-    ever_full = False
     prev_level = 3
     for row in rows:
         if row.get('plane') != 1:
             continue
         waves = (row.get('sim') or {}).get('shop_waves') or []
         gold0 = waves[0].get('gold') if waves else row.get('gold')
-        has_lv = any(a.get('__type__') == 'LevelUp'
-                     for a in row.get('actions') or [])
-        if has_lv and prev_level >= 5 \
-                and gold0 is not None and gold0 < 50 and not ever_full:
-            out.append(
-                f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
-                f" 且未曾满息(lv{prev_level} 追级,息引擎未立"
-                f"——ADR-0266 违规)")
-        end_gold = row.get('gold')
-        if (gold0 is not None and gold0 >= 50) \
-                or (end_gold is not None and end_gold >= 50):
-            ever_full = True
+        for a in row.get('actions') or []:
+            if a.get('__type__') != 'LevelUp':
+                continue
+            basis = a.get('auth', '')
+            if prev_level >= 5 and gold0 is not None and gold0 < 50 \
+                    and basis not in ('pop_slot', 'dp'):
+                if basis == 'static_ev':
+                    kind = 'static_ev 估值账放行(息引擎口径下保留可疑)'
+                else:
+                    kind = '无授权依据'
+                out.append(
+                    f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
+                    f" 授权依据={basis or '(空)'}(lv{prev_level}"
+                    f" {kind}——ADR-0353 违规)")
         prev_level = (row.get('state') or {}).get('level') or prev_level
     return out
 

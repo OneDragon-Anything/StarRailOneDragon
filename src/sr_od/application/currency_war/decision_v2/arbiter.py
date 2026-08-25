@@ -36,7 +36,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
 )
 from sr_od.application.currency_war.decision_v2.ev import (
     interest_cost,
-    levelup_ev_authorized,
+    levelup_ev_basis,
     round_posture,
 )
 from sr_od.application.currency_war.decision_v2.filters import (
@@ -300,14 +300,19 @@ def _check_constraint(name: str, cand: Candidate,
             from sr_od.application.currency_war.decision_v2.candidates import (
                 _target_names,
             )
-            if not levelup_ev_authorized(
-                    state, session, registry, working.gold, cost,
-                    _target_names(state, session),
-                    val=val,
-                    int_emb=(bd or {}).get('int_emb', 0.0)):
+            _basis = levelup_ev_basis(
+                state, session, registry, working.gold, cost,
+                _target_names(state, session),
+                val=val,
+                int_emb=(bd or {}).get('int_emb', 0.0))
+            if not _basis:
                 return RejectReason(
                     'boss_levelup_ban', '', 0,
                     '息引擎总账拒([12] EV 化:平台账不过/无人口位/金不足)')
+            # 授权依据观测(ADR-0353):放行臂名记进动作对象(sim 账本
+            # auth 键→检查器 levelup_interest_engine_gate;记录非指令,
+            # 行为零改动)。拒绝路径不写(未过账=无授权,检查器侧可见)。
+            a.auth_basis = _basis
         return None
     if name == 'deploy_cap':
         if isinstance(a, DeployMove):

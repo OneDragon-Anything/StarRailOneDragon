@@ -446,7 +446,7 @@ def _compensate_slot(working: GameState, state: GameState,
         boss_window_active,
     )
     from sr_od.application.currency_war.decision_v2.ev import (
-        levelup_ev_authorized,
+        levelup_ev_basis,
     )
     boss = boss_window_active(state, session, registry)
     cap_level_driven = (state.deploy_cap is None
@@ -470,13 +470,17 @@ def _compensate_slot(working: GameState, state: GameState,
         # authorized 单一裁决,[33] 人口位/DP 花费授权;按 n×总价口径
         # ——设计 H2 整组事务性重验。补偿路径无层3 分,V 侧只有 ①②
         # 两路可授权——满员换位场景 bench 有等上场件,[33] 常真)
-        if levelup_ev_authorized(
-                state, session, registry, working.gold, total,
-                _target_names(state, session)):
+        _basis = levelup_ev_basis(
+            state, session, registry, working.gold, total,
+            _target_names(state, session))
+        if _basis:
             # gold_floor 按 n×总价的逐动作重验在 arbiter 侧(每组动作
             # 各自 _check_constraint+simulate);受益 DeployMove 本轮仍拒
             # (升级解的是下轮——cap+n 次点击后才 +1,下轮部署管线消化)
-            return [LevelUp(cost=cost) for _ in range(n)]
+            # auth_basis=授权依据观测(ADR-0353):整组同一臂(前置守卫
+            # 按 n×总价一次判);记录非指令,行为零改动。
+            return [LevelUp(cost=cost, auth_basis=_basis)
+                    for _ in range(n)]
     # ② SwapDeploy 臂:场上最弱(deployed 中非 target_cores/非引擎件,
     # 弱序=(star, cost)升序,与填位优先级同源)↔ 被拒上场的 bench 件
     tc = getattr(session, 'target_comp', None)

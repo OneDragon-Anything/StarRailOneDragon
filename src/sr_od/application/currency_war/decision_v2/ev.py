@@ -202,12 +202,35 @@ def _vd_core_copies(state: GameState, core: str) -> list:
 
 
 def levelup_ev_authorized(state: GameState, session: StrategySession,
-                          registry: DecisionV2Registry,
-                          working_gold: int, cost: int,
-                          targets: set[str],
-                          val: float = 0.0,
-                          int_emb: float = 0.0) -> bool:
-    """升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347;W126/ADR-0349 修订)。
+                           registry: DecisionV2Registry,
+                           working_gold: int, cost: int,
+                           targets: set[str],
+                           val: float = 0.0,
+                           int_emb: float = 0.0) -> bool:
+    """bool 包装:判据本体在 ``levelup_ev_basis``(返回放行臂名;''=拒)。
+
+    ADR-0353 观测拆分(检查器判据重定义批,W131):授权依据=放行臂名,
+    行为零改动。判据 docstring 与三路语义见 ``levelup_ev_basis``。
+    """
+    return levelup_ev_basis(state, session, registry, working_gold,
+                            cost, targets, val=val, int_emb=int_emb) != ''
+
+
+def levelup_ev_basis(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry,
+                     working_gold: int, cost: int,
+                     targets: set[str],
+                     val: float = 0.0,
+                     int_emb: float = 0.0) -> str:
+    """升级通道 EV 总账裁决,返回**放行臂名**(授权依据单一源)。
+
+    返回:'pop_slot'=① [33] 人口位 / 'dp'=② DP 花费授权 /
+    'static_ev'=③ 静态 EV 平台账 / ''=拒。消费点:arbiter 升级门与
+    remediation 补偿臂(放行时写入 ``LevelUp.auth_basis`` 观测字段→sim
+    账本 LevelUp 行 auth 键→检查器 levelup_interest_engine_gate 判据
+    重定义,W131/ADR-0353)、levelup_ev_authorized(bool 包装)。
+    ——以下为原判据语义(W119/ADR-0347;W126/ADR-0349 修订):
+    升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347;W126/ADR-0349 修订)。
 
     可负担性入口门(W126):working_gold < cost → 直接拒(任何授权臂
     都不含「花超本金」——W119 后 gold_floor 对 levelup 让位本函数
@@ -247,7 +270,7 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     """
     after = working_gold - cost
     if after < 0:
-        return False   # 可负担性入口门(W126;gold_floor 已让位本函数)
+        return ''        # 可负担性入口门(W126;gold_floor 已让位本函数)
     # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源;
     # W121 G1:cap 满 ∧ bench 有目标件——W113 §3.3 原文「deployed<cap 且
     # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
@@ -257,12 +280,12 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
         if bench_occupied(bench) > 0 and any(
                 b is not None and b.char_id in targets
                 for b in bench):
-            return True
+            return 'pop_slot'
     # ② DP 花费授权(平台未破)
     posture = round_posture(state, session)
     if posture is not None and getattr(posture, 'level_up', False) \
             and after >= registry.interest_floor:
-        return True
+        return 'dp'
     # ③ 静态 EV 账(V−C≥0;V 含省刷金项,W126/P5 检验点②)
     v = val - int_emb + levelup_refresh_saving(state, session, registry)
     loss_now = _interest_at(working_gold, registry) \
@@ -270,7 +293,7 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     platform = (registry.interest_cap - _interest_at(after, registry)) \
         if after < registry.interest_floor else 0
     c = (max(0, loss_now) + platform) * cross_plane_remaining_nodes(state)
-    return v - c >= 0
+    return 'static_ev' if v - c >= 0 else ''
 
 
 #: 扑满守卫环境名(ADR-0348;W113 §8-5/E1):「本局的全部奖励节点替换为

@@ -310,6 +310,14 @@ class SellBench:
 @dataclass
 class LevelUp:
     cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
+    auth_basis: str = ''
+    # 授权依据**记录**字段(非指令;检查器判据重定义批/W131,ADR-0353):
+    # 放行臂名('pop_slot'=①[33]人口位 / 'dp'=②DP 花费授权 /
+    # 'static_ev'=③静态 EV 平台账;''=未过 ev.levelup_ev_authorized 的
+    # 旧调用/未接线路径)。由 arbiter 升级门与 remediation 补偿臂在
+    # **放行时**写入(sim 账本 actions 侧序列化为 LevelUp 行的 auth 键,
+    # 检查器 levelup_interest_engine_gate 消费)。仿 SellBench.income
+    # 「记录不是指令」形态——执行层不读此字段,行为零改动。
 
 
 @dataclass
