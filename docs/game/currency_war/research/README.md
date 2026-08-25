@@ -19,7 +19,7 @@
 2. **玩家纪律**(人怎么打;机制之上的打法约束,口述最高权威):
    - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济息律 / 升级 / 阵容 / 装备纪律(条目 [1]-[33],策略校准第一入口)
 3. **过渡体系与战力证据**(P1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
-   - [transitions.md](transitions.md) — 过渡叙事:开局分级(锁线资格)/ 成型停手线 / 换血点 / 护航
+   - [transitions.md](transitions.md) — 过渡叙事:开局分级(锁线资格)/ 成型停手线 / 换血点 / 护航(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐线定义(引擎池 / 核心池;落码依据)
    - [power_baseline.md](power_baseline.md) ★ — 形态 × 位面能否过的证据表(bot 敢用白名单)
    - [stage_transitions.md](stage_transitions.md) — P1→P2→P3 阵容演化定量(加法不换件的数据边界)
@@ -38,7 +38,7 @@
 | 人怎么打(开局/经济/等级/阵容/装备的基准节奏) | [user_playstyle.md](user_playstyle.md) ★策略校准第一入口 |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
-| 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航/买牌纪律 | [transitions.md](transitions.md) |
+| 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
 | **过渡阵容逐线定义**(引擎池/核心池/直通族结构;落码依据) | [transition_combos.md](transition_combos.md) ★ |
 | **终局阵容分类**(final comps 分类索引+逐类累积;CARRY/羁绊双维;**单套 comp 打法知识单一源**) | [final_comps/README.md](final_comps/README.md) ★ |
 | **阵容战力基线**(形态×位面能否过的证据表;bot 敢用白名单) | [power_baseline.md](power_baseline.md) ★ |
