@@ -119,9 +119,13 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     """升级通道 EV 总账裁决([12] 息引擎门收编;ADR-0347)。
 
     三路放行(任一):
-    ① **[33] 人口位**(一等例外,口述 [33]/[32](a)):有框架单位等着
-       上场(deployed<cap 且 bench 有目标/引擎件)→ 当轮战力兑现,
-       通常 >C_interest,总账自然放行——[12] 拦的是「空 cap 追级」;
+    ① **[33] 人口位**(一等例外,口述 [33]/[32](a);W121 G1 修正
+       W113 §3.3 通道 2 的反向措辞):触发 = **cap−deployed==0(位子
+       满)∧ bench 有等待上场的框架/目标成型件**——「有单位等上场」的
+       字面义是位子满了才需要升;deployed<cap 时该件直接上场即可
+       (部署动作,非升级动作;[32](b):cap−deployed≥1 时再升纯浪费)
+       → 当轮战力兑现,通常 >C_interest,总账自然放行——[12] 拦的是
+       「空位追级」;
     ② **DP 花费授权**(W113 §3.2(d) 单步落地):DP 姿态说升级 **且**
        花后不破息平台(working_gold−cost ≥ interest_floor)——DP 内生
        优化了金/级/存活的全程期望,说升且平台未破即放行;
@@ -141,10 +145,12 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     抽干金流的许可——EV 授权的花费同样止于本金下限)。
     """
     after = working_gold - cost
-    # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源)
+    # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源;
+    # W121 G1:cap 满 ∧ bench 有目标件——W113 §3.3 原文「deployed<cap 且
+    # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
     from sr_od.application.currency_war.cw_state import bench_occupied
     if after >= registry.form_floor \
-            and len(state.deployed or []) < state.max_units():
+            and len(state.deployed or []) >= state.max_units():
         bench = state.bench or []
         if bench_occupied(bench) > 0 and any(
                 b is not None and b.char_id in targets
