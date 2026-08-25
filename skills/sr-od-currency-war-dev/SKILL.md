@@ -22,7 +22,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 要什么 | 去哪 |
 |---|---|
-| **自主推进模式运转框架**(开启仪式/指挥官-worker 编排/四来源盘点/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill;CW 实例资产目录=`.debug/temp/currency_war/cw_dev/自主推进.md`) |
+| **自主推进模式运转框架**(开启仪式/编排者-worker 编排/四来源盘点/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill;CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5) |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
 | 系统设计定稿(架构/数据层/决策循环) | `docs/develop/currency_war/redesign.md` |
 | as-built 策略正文(结构/语义/边界) | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 |
