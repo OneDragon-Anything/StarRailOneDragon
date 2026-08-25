@@ -2292,15 +2292,28 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
     披露」收紧为断言:**奖励/补给轮 income.streak != 0 即违规**;
     combat-only 重算和并列保留为披露面(对拍 sim 计数侧与重放口径
     的残差,>0=奖励轮计数侧回归)。
+
+    W133 缺键守卫:账本行 schema 演化(如 node→node_type)时裸
+    `.get()` 静默读 None → 奖励轮永远走不进断言分支 → violations
+    恒 0、全量仍绿(断言永久失明)。生产账本(cw_sim L1570 起)
+    每行必带 sim.node 与 sim.income.streak → 缺任一键 = 数据异常,
+    计入 violations 并经 missing_key_rows 披露,不静默绿(锁:
+    test_cw_sim_checks_streak_income)。
     """
     from sr_od.application.currency_war.cw_economy import streak_gold
     violations = ledger_sum = combat_sum = 0
+    missing_key_rows = 0
     for rows in ledgers:
         streaks = _combat_streak_by_round(rows)
         for row in rows:
-            sim = row.get('sim') or {}
-            node = sim.get('node')
-            inc_streak = (sim.get('income') or {}).get('streak', 0) or 0
+            sim = row.get('sim')
+            inc = sim.get('income') if isinstance(sim, dict) else None
+            if (not isinstance(sim, dict) or 'node' not in sim
+                    or not isinstance(inc, dict) or 'streak' not in inc):
+                missing_key_rows += 1   # schema 异常:计入违规,不静默跳过
+                continue
+            node = sim['node']
+            inc_streak = inc['streak'] or 0
             ledger_sum += inc_streak
             if node in ('reward', 'supply'):
                 if inc_streak != 0:
@@ -2308,9 +2321,11 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
                 continue   # 战斗口径连胜金不含奖励/补给轮(裁决口径)
             combat_sum += streak_gold(
                 streaks.get(row.get('round_num') or 0, 0))
-    return {'violations': violations, 'ledger_streak_income': ledger_sum,
+    return {'violations': violations + missing_key_rows,
+            'ledger_streak_income': ledger_sum,
             'combat_only_streak_income': combat_sum,
-            'delta': combat_sum - ledger_sum}
+            'delta': combat_sum - ledger_sum,
+            'missing_key_rows': missing_key_rows}
 
 
 def check_shop_distinct_names_invariant(ledgers: list[list[dict]]) -> dict:
