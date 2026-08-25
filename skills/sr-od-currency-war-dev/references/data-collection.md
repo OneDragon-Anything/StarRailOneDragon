@@ -81,8 +81,18 @@
 | **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |
 | **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档星率→星级目标先验)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
 
-## 采集钩子纪律(与 od-dev-stop-hooks 分工)
+## 钩子统一使用(产物路径与纪律;分工见 od-dev-stop-hooks)
 
-- **临时采集钩子必须带删留条件**(「采齐删/采完删」写进注释);用 `cw_shot_unique`(内容哈希去重)存样本到 `.debug/temp/currency_war/shots/`,前缀即域名。
-- **停机 vs 采集分流**:bot 能继续推进但数据想要 → 采集(截图继续跑);bot 卡住无法推进 → 停机钩子(方案 D)。全生命周期判据见 od-dev-stop-hooks。
-- 处理流程:样本攒够 → 离线判读(OCR/VLM)→ 真值进注册表/常量 → **删钩子+删样本**(或改名存档);别让临时钩子变常驻。
+**产物路径约定(CW 一切钩子运行时产物统一落点)**:`.debug/temp/currency_war/`——推导自项目两级约定(临时文件统一放项目根 `.debug/temp/` + 玩法工作区 `.debug/temp/<玩法>/`),新埋任何钩子的产物路径遵循同约定,别另开新根。
+
+| 产物 | 落点 | 命名 | 消费入口 |
+|---|---|---|---|
+| 停机 flag+sentinel 截图 | `.debug/temp/currency_war/*.flag`(+同名截图) | flag 文件名 = 钩子标识;内容含 flag 三要素(见 od-dev-stop-hooks §2.2) | SKILL.md checklist 第 2 步 → od-dev-stop-hooks §1 现场协议 |
+| 采集样本 | `.debug/temp/currency_war/shots/` | 前缀 = 数据域名(`cw_shot_unique` 内容哈希去重) | 本文件 §三 钩子清单 |
+| 哨兵水位/状态 | `.debug/temp/currency_war/*.pos` 等 | 按哨兵脚本自定;重武前删旧水位 | runtime-ops 监控栈 |
+
+**纪律**:
+
+- **临时钩子必须带删留条件**(「采齐删/采完删」写进注释);处理流程:样本攒够 → 离线判读(OCR/VLM)→ 真值进注册表/常量 → **删钩子+删样本**(或改名存档);别让临时钩子变常驻。
+- **停机 vs 采集分流**:bot 能继续推进但数据想要 → 采集(截图继续跑);bot 卡住无法推进 → 停机钩子(op 节点内检测目标态 → 存 sentinel(截图+flag)→ 直调 `run_context.stop_running()` → `return` 不点击保画面;作法细则见 od-dev-write-operation references/runtime-craft「钩子触发停 bot 留画面」)。全生命周期判据见 od-dev-stop-hooks。
+- 长期存在的 `.flag` 可能是常驻兜底登记项(处置见 runtime-ops「常置 flag 处置」),别一律当临时残留。

@@ -12,16 +12,17 @@
 
 ## 构成
 
-- `SKILL.md`:必做 checklist(8 步开发循环)+ 单一源地图 + 判读/验证/运维/文档同步/防坑的核心判据。
-- `references/verification.md`:验证工作台细则(sim A/B 纪律、诚实性分层、分诊与回灌、变异探针、单帧锁模板、实机判读)。
-- `references/telemetry-reading.md`:遥测判读方法论(观察面全量清单、视图覆盖矩阵、采集缺口)。
-- `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈、运行坑)。
-- `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层)。
-- `references/compo-knowledge.md`:阵容知识工程(证据三层、提炼/修订/版本重跑流程)。
+- `SKILL.md`:入口分诊表(任务→主节/门)+ 必做 checklist(8 步开发循环)+ 单一源地图 + 判读/验证/运维/文档同步/防坑的**判据层**(每轮要锚定的核心;细则按节下沉 references,见 ADR-0016/0017)。
+- `references/verification.md`:验证工作台细则(sim A/B 与多批验收纪律、压测官、灵活使用与双批挖掘、诚实性分层、分诊与回灌、变异探针、单帧锁模板、实机判读)。
+- `references/telemetry-reading.md`:遥测判读方法论(观察面全量清单、视图覆盖矩阵、采集缺口、数据侧纪律)。
+- `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈与哨兵脚本组、判读与建档的运维侧纪律、运行坑)。
+- `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
+- `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
+- `references/autonomous-loop.md`:CW 编排资产(schedule 提醒网七角色与派单模板/编排者(orchestrator)-worker 编排/对抗审查/实机素材泵/数学期望标尺/哨兵报警消费;goal/schedule 消费纪律已机制化,见 ADR-0018)。
 - `design/`:本文件 + 决策存档。
 
 ## 与其它约定层的分工
 
 - 全局/项目 AGENTS:always-on 通用纪律(工作流级);本 skill 只管 CW 特定操作,通用部分不复述(但**自包含重述**改策略纪律的关键判据——见 ADR-0003)。
 - `docs/`:知识与设计本体;本 skill 是「怎么消费/维护它们」的操作规程。
-- `.debug/temp/currency_war/cw_dev/进度.md`:运行状态;本 skill 的操作对象(读写),不是知识源。
+- `.debug/progress/` 当前活跃迭代目录的入口 `进度.md`:运行状态;本 skill 的操作对象(读写),不是知识源(多迭代三层结构,规范=od-dev-progress-tracking §2.5)。

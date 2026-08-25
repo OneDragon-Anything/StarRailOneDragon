@@ -4,6 +4,8 @@
 
 accepted(2026-08-22;用户指令「goal 和 schedule 都能收到,想想在哪里提醒自己:按 skill 来/不陷入局部乱改/保持代码架构/文档同步/子 agent 对抗」)
 
+> 2026-08-25:细则层(goal 轮纪律 5 条+schedule 提醒纪律 2 条)被 [ADR-0018](0018-goal-schedule-discipline-mechanized.md) 机制化替代撤销——七角色提醒网建成后,自检内容已是提醒 prompt 本身;「校准点放 skill 内、离工作现场近」的落点原则仍有效。
+
 ## Context
 
 goal 长对话(100+ 轮实证)注意力会被「当前最显眼的刺激」稀释,最初指令失效——表现为干等/逐局打补丁/跳过文档直改代码。schedule 校准注入有效但依赖用户手工设置;且 AGENTS.local 的通用版自校准节不在 CW skill 内,goal 轮的智能体可能没读。
