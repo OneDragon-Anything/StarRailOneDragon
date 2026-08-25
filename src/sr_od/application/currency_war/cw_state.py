@@ -844,6 +844,14 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         _apply_row_to_char(c, row)
         s.deployed.append(c)
     post_bench = plan['post_bench']
+    # W126 索引漂移修复(动作索引五查②③同族):shop fill 按校验期已解析的
+    # 卡对象消费(``plan['shop_fill_cards']``,与 fill 的 shop 源子序列同序)
+    # ——**禁在 fill 循环内按下标现读 ``s.shop[f.idx]`` 再 remove**:前一笔
+    # remove 左移列表,后续 f.idx 全部失效 → 买错卡(错档部署)+记错账
+    # (W126 sim ledger_consistency 12/100 金不守恒实证:两笔 2费 fill 被
+    # 读成 2费+4费,Δ−6 vs 记账−4;②a 前 form_floor 保险丝拦住多笔
+    # shop fill 事务,曝光 2/100——步③ 放宽可负担性后升至 12/100)。
+    _shop_fills = iter(plan['shop_fill_cards'])
     for f in plan['fill']:
         if f.source == 'bench':
             # ADR-0316:bench 源 idx = 槽位下标,post_bench 是迁移后槽位表
@@ -855,12 +863,12 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
             _bench_clear_by_identity(s.bench, c)
             _apply_row_to_char(c, f.row)
             s.deployed.append(c)
-        else:   # shop:买后即上(card_cost 已在金校验扣除)
-            card = s.shop[f.idx] if 0 <= f.idx < len(s.shop) else None
+        else:   # shop:买后即上(卡对象取自校验期解析——见上方索引漂移注)
+            card = next(_shop_fills, None)
             if card is None:
                 continue
             s.gold -= card_cost(card)
-            s.shop.remove(card)
+            _remove_by_identity(s.shop, card)
             bc = _card_to_bench(card)
             _apply_row_to_char(bc, f.row)
             s.deployed.append(bc)
