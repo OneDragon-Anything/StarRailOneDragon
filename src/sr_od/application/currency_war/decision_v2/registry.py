@@ -223,6 +223,20 @@ class DecisionV2Registry:
     #: (arbiter.interest_rule 的 BuyCard 分支);刷新(D)与升级平台账
     #: 保持平面 R 上界不动(P5⑤ 退化输出/平台语义)。
     interest_recovery_rounds: float = 3.0
+    # ===== W154/ADR-0361 P2 段 V_D 修法(P11/P12 口径;常数归本层可 A/B 注入)=====
+    #: P2 段 V_D 口径总开关:False=回 W153 前行为(窗二分=level_plan 互斥,
+    #: 成本=批口径面值,收益=P1 骨架参数)——A/B 基线臂。P1 分支与开关无关
+    #: (逐位不动,P1 sim 零漂移回归门)。
+    vd_p2_enabled: bool = True
+    #: P2 掉血期望(P12 收益侧:[27] B+P 公式的 P2 实测带 15-17 取保守中值 16;
+    #: 真值采集点=结算屏 OCR 三项拆解,采前 16 为保守中值)
+    vd_p2_loss: float = 16.0
+    #: P2 穿 50 段回档轮上界(P11 成本侧:P2 收入 13-19/轮 → 回档 ≤2.31 轮;
+    #: C_dec 的 Δinterest × min(R, 此值))
+    vd_p2_recovery_rounds: float = 2.31
+    #: 溢余金流动性影子价 ρ(P11:纯溢余段 C_dec 下界=0 后的期权项上界;
+    #: P10① 携带溢价利息分量背书,W151 四局实证实现值≈0 → 起步 0)
+    vd_p2_liquidity_rho: float = 0.0
     #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
     #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
     depth_unit_value: float = 2.0
@@ -356,6 +370,18 @@ class DecisionV2Registry:
     #: 零目标件买入;末轮买入无恢复轮次)。目标件+填充(bond_fallback,
     #: [31]④ 梯队)不辖。
     off_lock_final_fence_enabled: bool = True
+    # ===== W155/ADR-0361 evolve 换血事务锁定目标件保护(W147 执行半边)=====
+    #: 总开关:False=回 W150 后行为(A/B 基线臂)。锁定帧
+    #: (cw_intention.locked_faction_scope 非 None)时,演进提案
+    #: (cw_evolution.propose_upgrades)中「目标体系 ∉ 锁定体系集」者在
+    #: 最优选择序(_best_option)中减 evolve_off_lock_penalty——
+    #: 降级非禁换(W147 基调:成局 22% 良性中性轮换,禁换会伤;
+    #: 优先级式让位,全部机会均 off-lock 时照选最优)。
+    evolve_lock_constraint_enabled: bool = True
+    #: off-lock 演进提案降级分(与 off_lock_buy_penalty 同阶设计:
+    #: 让非锁定线提案在同轮竞争中让位锁定线;量级=一档
+    #: _TIER_WEIGHT 的 3 倍,跨档压制单档优势)
+    evolve_off_lock_penalty: float = 3.0
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

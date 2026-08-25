@@ -93,6 +93,40 @@ def interest_cost(gold: int, cost: int,
     return float(max(0, tiers) * r)
 
 
+#: 非战斗节点 token 集(battles_left_p2 的排除口径;英文=Hu 槽序表词表,
+#: 中文=结算屏归一词表,双词表容错)。巨星(megastar)按战斗计(有伤害
+#: 要求的节点,[27] 掉血辖)。
+NON_BATTLE_NODE_TOKENS: frozenset[str] = frozenset({
+    'reward', 'supply', '奖励', '补给',
+})
+
+
+def battles_left_p2(state: GameState, session: StrategySession,
+                    registry: DecisionV2Registry) -> float:
+    """P2 收益侧的「本位面剩余战斗节点」推导(W154/ADR-0361,P12 检验点③:
+    战斗数用 state 推导,非 registry 缺省 5)。
+
+    推导源=``session.plane_node_table``(r306 开局帧槽序表:本位面 9 槽
+    的节点类型序,prep_director 首帧写、位面内恒定)——从当前轮起数
+    非战斗 token(reward/supply)之外的剩余槽位数(未知 token 按战斗
+    计:每个节点默认是战斗,reward/supply 才是例外;表只辖本位面
+    NODES_PER_PLANE 槽,越界槽不数)。
+
+    表缺失/越界(裸 session/sim P1 段/开局首帧前)→ 退
+    ``registry.battles_left_est``(P1 骨架缺省,保守侧)。
+    """
+    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    table = getattr(session, 'plane_node_table', None) or []
+    r = state.round_num
+    if table:
+        # 表只辖本位面(NODES_PER_PLANE 槽);越界槽不数(防御脏表)
+        remaining = [str(t) for t in table[max(0, r - 1):NODES_PER_PLANE]]
+        if remaining:
+            return float(sum(
+                1 for t in remaining if t not in NON_BATTLE_NODE_TOKENS))
+    return float(registry.battles_left_est)
+
+
 def dp_posture(state: GameState, session: StrategySession):
     """DP 日程表姿态查询(W113 §8-6 净新增接线;ADR-0347)。
 

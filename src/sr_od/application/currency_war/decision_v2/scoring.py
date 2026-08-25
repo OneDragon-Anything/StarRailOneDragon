@@ -512,6 +512,13 @@ def vd_refresh_score(state: GameState, session: StrategySession,
       ``level_up``(窗外)→ 返回 None(D 让位给升,「没到就少刷新、
       多买经验」);``roll``/``stable``(窗内/峰值停留)→ V_D 生效
       (判据=``_resolve_level_goal`` 单一源,comp 自带 level_plan 优先);
+      **P2 修订(W154/ADR-0361)**:窗二分改消费 DP ``refresh_budget``
+      授权(升级与 D 并行;DP 异常保守回退 level_plan 门);
+    - **P2 段成本/收益口径**(W154/ADR-0361,P11/P12):成本=机会成本
+      C_dec(Δinterest×min(R, recovery_rounds_p2)+ρ·s,替换批口径面值;
+      [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;收益=存活语境参数
+      (loss_p2/battles_left_p2 state 推导)。P1 分支逐位不动(P5⑤
+      退化输出与 P1 骨架参数保留,P1 sim 零漂移回归门);
     - 金 50/51 边界的守息纪律不由本函数辖——由 arbiter.interest_rule
       的 C_interest 表达(P5⑤ 已证=定理退化输出,G2:不设常量金门);
     - 峰值以上停留(P5 边界 b):E(L) 已是当前等级真值,升级收益侧的
@@ -522,13 +529,31 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     core = vd_target_core(state, session)
     if not core:
         return None
-    # 概率窗二分:goal 说 level_up(窗外)→ D 让位([3] 二分)
+    # 概率窗二分([3]/W113 §3.3;W154/ADR-0361 P2 修订):
+    # - P1:goal 说 level_up(窗外)→ D 让位(「没到就少刷新、多买经验」,
+    #   攒本金语境——逐位不动,P1 sim 零漂移回归门);
+    # - P2(plane≥2 且 vd_p2_enabled):窗二分改**消费 DP refresh_budget
+    #   授权**——DP 姿态说「升级+D」时升级与 D 是**并行授权**(DP 日程表
+    #   已把 level_cost+2×rolls 算进同一笔预算),level_plan 互斥把 D 预算
+    #   整个吞掉 = 评分层让一拍变让整个位面(W152 断点②:13/14 帧打空)。
+    #   refresh_budget>0 → 窗开;=0(纯存/纯升)→ 让位;DP 查询异常
+    #   (None)→ 保守回退 P1 的 level_plan 门(对局不停)。
     from sr_od.application.currency_war.cw_economy import (
         _resolve_level_goal,
     )
     goal = _resolve_level_goal(
         state, getattr(session, 'target_comp', None))
-    if goal is not None and goal.action == 'level_up':
+    if state.plane >= 2 and registry.vd_p2_enabled:
+        from sr_od.application.currency_war.decision_v2.ev import (
+            round_posture,
+        )
+        posture = round_posture(state, session)
+        if posture is not None:
+            if getattr(posture, 'refresh_budget', 0) <= 0:
+                return None
+        elif goal is not None and goal.action == 'level_up':
+            return None
+    elif goal is not None and goal.action == 'level_up':
         return None
     # 核心已完成 2★(任一份 star≥2)→ 找件目标消失
     copies = [d for d in list(state.deployed or [])
@@ -557,9 +582,32 @@ def vd_refresh_score(state: GameState, session: StrategySession,
              - registry.rung_value.get(1, 0.0))
     dwin = (registry.h3_win_rate.get(2, 0.0)
             - registry.h3_win_rate.get(1, 0.0))
+    spend = e * (state.shop_refresh_cost or 2)
+    if state.plane >= 2 and registry.vd_p2_enabled:
+        # W154/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧;P1 分支不动):
+        #   benefit^P2 = Δrung×R + Δh3_win × loss_p2 × hp_to_gold
+        #                × battles_left_p2(state 推导,非缺省 5)
+        #   C_dec(g,s) = Δinterest × min(R, recovery_rounds_p2)
+        #                + ρ × s        —— 替换批口径面值 spend(P11:
+        #   溢余段金堆到死,面值成本高估 ≥20×;[17] 溢余即花)
+        # 预算硬界必须在(P11 推论):C_dec→0 后 EV 不再是约束,约束移到
+        # 预算层——批口径期望刷金 s ≤ g − boss_floor,防「C=0 无限刷」。
+        from sr_od.application.currency_war.decision_v2.ev import (
+            battles_left_p2,
+        )
+        benefit = (drung * r + dwin * registry.vd_p2_loss
+                   * registry.hp_to_gold
+                   * battles_left_p2(state, session, registry))
+        if spend > state.gold - registry.boss_floor:
+            return None
+        d_int = (min(state.gold // 10, registry.interest_cap)
+                 - min(int(state.gold - spend) // 10,
+                       registry.interest_cap))
+        c_dec = (max(0, d_int) * min(r, registry.vd_p2_recovery_rounds)
+                 + registry.vd_p2_liquidity_rho * spend)
+        return benefit - c_dec
     benefit = (drung * r + dwin * registry.expected_battle_loss
                * registry.hp_to_gold * registry.battles_left_est)
-    spend = e * (state.shop_refresh_cost or 2)
     return benefit - spend
 
 
