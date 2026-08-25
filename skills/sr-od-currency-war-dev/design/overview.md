@@ -18,7 +18,7 @@
 - `references/runtime-ops.md`:实机运维细则(交接序、残局画面清单、监控栈与哨兵脚本组、判读与建档的运维侧纪律、运行坑)。
 - `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
-- `references/autonomous-loop.md`:CW 编排资产(schedule 提醒网七角色与派单模板/派发扫描源 C+E/对抗审查/实机素材泵/数学期望标尺/哨兵报警消费;goal/schedule 消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode,见 ADR-0018/0020)。
+- `references/autonomous-loop.md`:CW 编排资产(schedule 提醒网七角色与派单模板/派发扫描源 C+E/对抗审查/实机素材泵/哨兵报警消费;数学期望标尺在 SKILL.md 三滤网经济滤网;goal/schedule 消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode,见 ADR-0018/0020)。
 - `design/`:本文件 + 决策存档。
 
 ## 与其它约定层的分工
