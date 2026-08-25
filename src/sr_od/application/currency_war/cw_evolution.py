@@ -115,6 +115,104 @@ class EvolutionState:
     last_deployed: list[str] = field(default_factory=list)
     last_retained: list[str] = field(default_factory=list)
     last_reason: str = ''
+    # W155/ADR-0360 件2(提案去重退避):被拒事务的提案签名 → (plane,
+    # round) 拒绝时点;``_backoff_active`` 消费(同 plane 且 2 轮内不
+    # 重提同签名提案——W143 rejected 死循环 34 局:同因(duplicate_
+    # on_board)重提零清障,s26 连续三轮原样重提)。
+    reject_backoff: dict[tuple, tuple[int, int]] = field(default_factory=dict)
+
+
+# W155/ADR-0360 件2:退避窗(轮;拒绝后 2 轮内同签名提案不重提)
+_REJECT_BACKOFF_ROUNDS: int = 2
+
+
+def _opt_signature(opt: UpgradeOption) -> tuple:
+    """提案签名(退避键):kind/faction/target_tier/comp_name/source。"""
+    return (opt.kind, opt.faction, opt.target_tier,
+            opt.comp_name, opt.source)
+
+
+def _record_reject(memory: EvolutionState, opt: UpgradeOption,
+                   state: GameState) -> None:
+    """登记被拒提案签名 + 旧条目清理(防字典无界增长)。"""
+    if memory is None:
+        return
+    sig = _opt_signature(opt)
+    memory.reject_backoff[sig] = (state.plane, state.round_num)
+    if len(memory.reject_backoff) > 32:
+        cur = (state.plane, state.round_num)
+        memory.reject_backoff = {
+            k: v for k, v in memory.reject_backoff.items()
+            if v[0] != cur[0]
+            or cur[1] - v[1] < _REJECT_BACKOFF_ROUNDS * 4}
+
+
+def _backoff_active(memory: EvolutionState | None, opt: UpgradeOption,
+                    state: GameState) -> bool:
+    """该提案是否在退避窗内(同 plane 且距拒绝 < 退避窗轮数)。"""
+    if memory is None:
+        return False
+    entry = memory.reject_backoff.get(_opt_signature(opt))
+    if entry is None:
+        return False
+    return entry[0] == state.plane \
+        and state.round_num - entry[1] < _REJECT_BACKOFF_ROUNDS
+
+
+def _off_lock_opt(opt: UpgradeOption, session) -> bool:
+    """W155/ADR-0360 件1:该演进提案是否 off-lock(目标体系 ∉ 锁定体系集)。
+
+    判据(W147 §4):锁定帧(``cw_intention.locked_faction_scope`` 非
+    None)下,提案目标 faction(Comp 来源连主档键一起查)与锁定体系集
+    无交集 = off-lock——这类提案的 ``execute_replacement`` 会把锁定
+    目标件划进 old_line 整档解除(216 轮次,仙舟3 占 138)。无锁定帧
+    (空窗/weak/降格终局)恒 False([31]① 空窗期不存在 off-lock)。
+    """
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        locked_faction_scope,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        return False
+    scope = locked_faction_scope(ist)
+    if scope is None:
+        return False
+    if opt.source == 'comp':
+        comp = get_comp(opt.comp_name) if opt.comp_name else None
+        if comp is not None and set(comp.form_tiers) & scope:
+            return False
+    return opt.faction not in scope
+
+
+def _locked_protected_names(old_line: list[BenchChar],
+                            session) -> set[str]:
+    """W155/ADR-0360 件3:old_line 中的「保护件」名集(保留序种子同级)。
+
+    - 锁定目标件:锁定帧(``locked_buy_scope``)采购集内的件
+      (W147:保护的是锁定目标件,不是一切库存——[23] 终局线贯穿件
+      锁定语义;weak/降格终局不辖);
+    - 引擎件:全羁绊 ∩ 四体系三羁绊(TRANSITION_TRAITS;[31] top4
+      恒为方向件,任何模式都保护——与 cw_deploy_logic 引擎判定同源)。
+    """
+    out: set[str] = set()
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        locked_buy_scope,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if isinstance(ist, IntentionState):
+        scope = locked_buy_scope(ist)
+        if scope is not None:
+            out |= {d.char_id for d in old_line if d.char_id in scope}
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    eng_bonds = {b for b, _t in TRANSITION_TRAITS}
+    for d in old_line:
+        if d.char_id and eng_bonds & _char_factions(d):
+            out.add(d.char_id)
+    return out
 
 
 def _identity_index(pool: list[BenchChar], target: BenchChar) -> int:
@@ -397,6 +495,15 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
     deployed_keep = [d for d in state.deployed if _is_new_line(d)]
+    # W155/ADR-0360 件2(生成侧守卫,ADR-0317 同型):bench 新线候选与
+    # **留场新线 deployed** 同名 → 剔除(3合1 素材留 bench,同 W65 语义)
+    # ——W65 去重只折叠 bench 内部同名,没查 deployed:留场新线同名 +
+    # bench 副本进 deploy 名单 → 终态 deployed 同名重复 → duplicate_
+    # on_board 整事务拒(s26 连续三轮同因重提零清障的根因形态)。
+    _kept_names = {d.char_id for d in deployed_keep if d.char_id}
+    if _kept_names:
+        bench_new = [bc for bc in bench_new
+                     if not bc.char_id or bc.char_id not in _kept_names]
     # 旧档:非新线成员整档解除
     old_line = [d for d in state.deployed if not _is_new_line(d)]
     # 人口上限内的上场数(③摆不下也上:先换掉旧档,超 cap 再裁非核心新件)
@@ -407,10 +514,15 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     # (ADR-0316:bench 占用数口径)
     bench_free = BENCH_CAPACITY - (bench_occupied(state.bench)
                                    - len(bench_new))
+    _protected = _locked_protected_names(old_line, session)
     retained = sorted(old_line, key=lambda d: (
-        # W88/ADR-0339 件3:种子窗口件保留最优先(见 docstring);其余
-        # 按原序(高星/高费优先保留)
-        0 if _fresh_seed(d, state, session) else 1,
+        # W88/ADR-0339 件3:种子窗口件保留最优先(见 docstring)。
+        # W155/ADR-0360 件3(同型扩位):锁定目标件/引擎件与种子窗同级
+        # 最优先——溢出卖出先吃非保护件(W147:60 笔目标件离场 59 笔
+        # 被动;strict 局挤出后 59% 不回场;[23] 锁定目标件/[31] top4
+        # 引擎件是保护对象,填充件可回收语义保留([31]④))。
+        0 if (_fresh_seed(d, state, session)
+              or d.char_id in _protected) else 1,
         -d.star, -(CHARACTERS[d.char_id].cost
                    if CHARACTERS.get(d.char_id) else 0)))
     retained = retained[:max(0, bench_free)]
@@ -659,7 +771,8 @@ def _fresh_seed(d, state: GameState, session) -> bool:
 
 
 def evolution_step(state: GameState, session=None,
-                   memory: EvolutionState | None = None) -> list[Action]:
+                   memory: EvolutionState | None = None,
+                   off_lock_penalty: float = 0.0) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
 
     propose → evaluate →(最优 verdict)execute → fill;返回待执行动作序列
@@ -669,6 +782,12 @@ def evolution_step(state: GameState, session=None,
     谷底回滚暂停(``memory.paused``)= 回滚一件最弱替换位后放缓
     (``rollback_weakest``),下个非遭遇轮再续,不重演整组合。
     ``memory`` 草案级可选参(缺省每次新建=无记忆;session 挂载归载体批)。
+
+    W155/ADR-0360 件1:``off_lock_penalty`` > 0 时,锁定帧下 off-lock
+    提案(目标体系 ∉ ``locked_faction_scope``)在最优选择序中降级
+    (减分非禁换——全部机会均 off-lock 时照选最优;[20][31] 空窗/降级
+    方向语义保留)。件2:被拒事务**不再发射**(旧版 simulate 拒了仍返回
+    tx → 每轮原样重提 = rejected 死循环)并登记退避签名。
     """
     mem = memory if memory is not None else EvolutionState()
     # 恢复语义:谷底暂停 → 下个非遭遇轮解暂停再续
@@ -680,6 +799,8 @@ def evolution_step(state: GameState, session=None,
     frozen = state.node_type in _ENCOUNTER_NODES
 
     def _try(opt: UpgradeOption) -> list[Action]:
+        if _backoff_active(mem, opt, state):
+            return []   # W155 件2:退避窗内同签名提案不重提
         verdict = evaluate_upgrade(opt, state)   # 三条件重校验(恢复语义)
         if not verdict.execute:
             return []
@@ -689,14 +810,26 @@ def evolution_step(state: GameState, session=None,
         tx = actions[0]
         assert isinstance(tx, CompTransaction)
         post = simulate(state, tx)
-        if post.action_log and post.action_log[-1].get('result') == 'applied':
-            fills = fill_gap_after(tx, post)
-            if fills:
-                tx.fill = fills
-                re = simulate(state, tx)
-                if not (re.action_log and
-                        re.action_log[-1].get('result') == 'applied'):
-                    tx.fill = None   # 填位拖垮原子性 → 剥离,另轮走常规填位
+        if not (post.action_log and
+                post.action_log[-1].get('result') == 'applied'):
+            # W155/ADR-0360 件2:事务被 simulate 拒 → 不发射 + 退避登记
+            # (旧版拒了仍返回 tx,每轮原样重提零清障;W143:34/85 失败局
+            # rejected≥5 死循环,典型 reject_reason=duplicate_on_board)。
+            log.info('[cw][ev][reject-backoff] 提案 %s%s%d(%s) 被拒(%s),'
+                     '本轮不发射,退避 %d 轮',
+                     opt.kind, opt.faction, opt.target_tier, opt.comp_name,
+                     post.action_log[-1].get('reason', '')
+                     if post.action_log else '',
+                     _REJECT_BACKOFF_ROUNDS)
+            _record_reject(mem, opt, state)
+            return []
+        fills = fill_gap_after(tx, post)
+        if fills:
+            tx.fill = fills
+            re = simulate(state, tx)
+            if not (re.action_log and
+                    re.action_log[-1].get('result') == 'applied'):
+                tx.fill = None   # 填位拖垮原子性 → 剥离,另轮走常规填位
         return [tx]
 
     if mem.pending is not None:
@@ -707,26 +840,46 @@ def evolution_step(state: GameState, session=None,
 
     if frozen:
         # 本轮不启动新替换;可执行的最优机会登记为 pending(下次恢复重校验)
-        best = _best_option(state, session)
+        best = _best_option(state, session, mem, off_lock_penalty)
         if best is not None:
             mem.pending = best
         return []
 
-    best = _best_option(state, session)
+    best = _best_option(state, session, mem, off_lock_penalty)
     if best is None:
         return []
     return _try(best)
 
 
-def _best_option(state: GameState, session=None) -> UpgradeOption | None:
-    """可执行机会里的最优(effect_score 降序;无 → None)。"""
+def _best_option(state: GameState, session=None,
+                 memory: EvolutionState | None = None,
+                 off_lock_penalty: float = 0.0) -> UpgradeOption | None:
+    """可执行机会里的最优(选择序降序;无 → None)。
+
+    W155/ADR-0360 件1:``off_lock_penalty`` > 0 且锁定帧时,off-lock 提案
+    的**选择序分** = effect_score − penalty(不改 effect_score 本身,
+    evaluate_upgrade 的 2换1 裁决不受辖——降级非禁换);件2:退避窗内
+    的提案跳过。
+    """
+
+    def _choice_score(opt: UpgradeOption) -> float:
+        if off_lock_penalty <= 0:
+            return opt.effect_score
+        return opt.effect_score - (
+            off_lock_penalty if _off_lock_opt(opt, session) else 0.0)
+
     best: UpgradeOption | None = None
+    best_score = 0.0
     for opt in propose_upgrades(state, session):
+        if memory is not None and _backoff_active(memory, opt, state):
+            continue
         verdict = evaluate_upgrade(opt, state)
         if not verdict.execute:
             continue
-        if best is None or opt.effect_score > best.effect_score:
+        score = _choice_score(opt)
+        if best is None or score > best_score:
             best = opt
+            best_score = score
     return best
 
 

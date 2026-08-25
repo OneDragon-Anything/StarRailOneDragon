@@ -64,6 +64,8 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 
 **中断恢复与谷底回滚**(`EvolutionState` 跨步记忆,调用方持有):遭遇/boss 轮**冻结**——不启动新替换,最优机会登记 `pending`,恢复 = 下个非遭遇轮入口三条件重校验(替换本身是原子事务,冻结打断的永远是「还没开始的那次」);`paused` = 谷底回滚后的放缓标志,下个非遭遇轮解暂停再续;`last_deployed`/`last_retained` = 上次替换的上场/保留名单,`rollback_weakest`(转型期单场掉血超阈值触发,观测归调用方)回滚**一件**最弱替换位(有 bench 保留件则换回,无则退役)后置 paused。
 
+**锁定目标件保护**(ADR-0360,四件全部优先级/围栏式非禁换):①锁定帧(`cw_intention.locked_faction_scope`)下 off-lock 提案在最优选择序(`_best_option`)降分(降级非禁换,`evaluate_upgrade` 三条件不辖;A/B 通道 `registry.evolve_lock_constraint_enabled`);②`execute_replacement` 保留序:old_line 溢出卖出先吃非保护件——锁定目标件(`locked_buy_scope` 采购集)/引擎件(全羁绊 ∩ `TRANSITION_TRAITS`)与种子窗口件(ADR-0339)同级最优先;③deploy 围栏锁定键放行(`select_deployments` 的 `locked_factions` 参,ADR-0226 同型,按全羁绊匹配);④提案去重/退避:bench 新线候选与留场新线 deployed 同名剔除(生成侧守卫,ADR-0317),被 simulate 拒的事务不发射并按签名退避(`EvolutionState.reject_backoff`,窗口 `_REJECT_BACKOFF_ROUNDS` 在代码)。
+
 **边界**:替换决策不消费 bench 装备字段(按角色身份 + 羁绊档判断,装备只随人走——装备分配是独立决策面);效果评分是量化代理而非战斗模拟(核心哲学 2)。
 
 ## 11. cw_intention:终局意向分层

@@ -625,11 +625,24 @@ class DeployBench(SrOperation):
             len(tgt_idx) + sum(1 for i in rest
                                if _bench_fac.get(i) is not None
                                and _pair_counts.get(_bench_fac[i], 0) >= 2))
+        # W155/ADR-0360 件4:锁定帧体系键(cw_intention.locked_faction_scope)
+        # 并入围栏放行集——锁定 comp 的非 RECIPE∪ENGINE 阵营件不再被
+        # 配方围栏摁 bench(与 cw_deploy_logic.select_deployments 同语义;
+        # 无锁定帧/读失败 → 空集=回旧行为)。
+        try:
+            from sr_od.application.currency_war.cw_intention import (
+                locked_faction_scope as _lfs,
+            )
+            _locked_fac = _lfs(getattr(_sess, 'v3_intention', None)) \
+                or frozenset()
+        except Exception:   # noqa: BLE001 —— 围栏兜底 best-effort
+            _locked_fac = frozenset()
         for i in list(rest):
             if i not in _bench_cid:
                 continue   # SIFT 未识别:照旧上(无法判 target/阵营)
             _f = _bench_fac.get(i)
             if (_f is not None and _f not in _DEPLOY_FENCE
+                    and not ((_bench_id.get(i) or frozenset()) & _locked_fac)
                     and _recipe_starved and not _roomy):
                 rest.remove(i)   # 非过渡配方件 + 配方基础未满 + cap 紧张 → 留 bench
                 _held.append(i)

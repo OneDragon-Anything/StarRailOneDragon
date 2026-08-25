@@ -728,3 +728,34 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
             chars, _equips = _line_hoard(comp)
             scope |= chars
     return frozenset(scope) if scope else None
+
+
+def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
+    """锁定帧的体系(羁绊键)集(W155/ADR-0360;evolve 提案/部署围栏消费)。
+
+    与 ``locked_buy_scope`` 同判据的**阵营口径**版本(W147 归因:off-lock
+    evolve 提案的 target_factions 不含锁定 faction → 锁定目标件被
+    execute_replacement 划进 old_line 整档解除——约束需要的是体系键不是
+    件名):
+
+    - P1 配方锁定帧 = ``p1_pair`` 体系键(希儿系展开=量子同频+贝洛伯格,
+      与 ``_pair_members`` 同口径);
+    - comp 锁定帧(P1①资格通道 / P2+)= ``locked_comp`` 主/副档键
+      (``form_tiers`` ∪ ``sub_tiers``,与 ``_line_hoard`` 档位键同式);
+    - 两者皆空(空窗/weak/降格终局)→ None(无锁定帧,不约束——[31]①
+      空窗期四体系全集是方向,不存在「off-lock 提案」)。
+    """
+    if ist is None:
+        return None
+    keys: set[str] = set()
+    if ist.p1_pair:
+        for sys in ist.p1_pair:
+            if sys == SEELE_SYSTEM:
+                keys |= {'量子同频', '贝洛伯格'}
+            else:
+                keys.add(sys)
+    if ist.phase == 'locked' and ist.locked_comp:
+        comp = get_comp(ist.locked_comp)
+        if comp is not None:
+            keys |= set(comp.form_tiers) | set(comp.sub_tiers)
+    return frozenset(keys) if keys else None

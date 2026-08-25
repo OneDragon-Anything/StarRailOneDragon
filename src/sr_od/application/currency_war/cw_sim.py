@@ -1337,6 +1337,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
         from sr_od.application.currency_war import cw_deploy_logic as _dl
         _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
+        # W155/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
+        _lf = frozenset()
         try:
             _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
                             or ()) if getattr(sess, 'target_comp', None) else frozenset()
@@ -1351,6 +1353,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _fw = frozenset(
                     n for n, (f, t) in TRANSITION_PACK.items()
                     if (f == _fw_name or f == '通用') and t != 'drop')
+            from sr_od.application.currency_war.cw_intention import (
+                locked_faction_scope as _lfs,
+            )
+            _lf = _lfs(getattr(sess, 'v3_intention', None)) or frozenset()
         except Exception:   # noqa: BLE001  代理 best-effort
             pass
         # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
@@ -1387,6 +1393,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 target_factions=_tf,
                 target_cores=_tc,
                 fw_carry=_fw,
+                locked_factions=_lf,
             )
             # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
             # (ADR-0271 上阵即出 bench 语义不变)

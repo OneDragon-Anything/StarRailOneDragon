@@ -242,7 +242,13 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v3_pending_rollback = None
         # ② 演进引擎进决策循环(点6 统一入口;显式 CompTransaction)
         if session.v3_evolution is not None:
-            ev_acts = evolution_step(state, session, session.v3_evolution)
+            # W155/ADR-0360 件1:锁定帧 off-lock 演进提案降级分从 registry
+            # 注入(总开关关/0 = 回 W150 后行为)
+            ev_acts = evolution_step(
+                state, session, session.v3_evolution,
+                off_lock_penalty=(
+                    registry.evolve_off_lock_penalty
+                    if registry.evolve_lock_constraint_enabled else 0.0))
             # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
             # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
             # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟

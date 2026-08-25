@@ -106,6 +106,7 @@ def select_deployments(
     target_factions: frozenset[str] | set[str] = frozenset(),
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
+    locked_factions: frozenset[str] | set[str] = frozenset(),
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
@@ -116,6 +117,12 @@ def select_deployments(
     ——调用方传空 char_id 即走该分支。
     cap 语义 = 已 deployed 数 + 本轮上场数 ≤ cap(cap=None 不限,
     调用方传大数)。
+
+    W155/ADR-0360 件4(deploy 围栏兜底,ADR-0226 同型扩位):
+    ``locked_factions`` = 锁定帧体系键(``cw_intention.locked_faction_
+    scope``)并入围栏放行集——锁定 comp 的阵营(欢愉/公司等非 RECIPE ∪
+    ENGINE 阵营)不再被配方围栏摁 bench(W147:strict 局挤出后 59% 不回
+    场,围栏是回场路径;[23] 锁定目标件保护,空窗期无锁定帧不辖)。
     """
     vacancy = front_total + back_total - len(deployed_cids)
     vacancy = max(vacancy, 0)
@@ -162,7 +169,11 @@ def select_deployments(
         # 厉害」(P3:e0→e1 +1.4 金/轮);tgt 空集时不存在挤占目标件
         # 位置的问题(tgt 非空时围栏照旧——降级件不挤目标件)。
         _bond_paired = f is not None and pair_counts.get(f, 0) >= 2
+        # W155/ADR-0360 件4:锁定帧体系键(常为流派键——燃血/欢愉等,
+        # 而围栏基准键=主阵营)按**全羁绊**匹配放行;未传锁定帧时
+        # `not (... & 空)` 恒 True,围栏行为与旧版逐位一致
         if f is not None and f not in DEPLOY_FENCE \
+                and not (_bonds_of(bench[i]) & set(locked_factions)) \
                 and recipe_starved and not roomy \
                 and not (not tgt_idx and _bond_paired):
             rest.remove(i)
