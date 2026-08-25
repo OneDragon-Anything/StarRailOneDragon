@@ -582,6 +582,60 @@ def _cand_is_engine_piece(cand: Candidate) -> bool:
     return bool(_cand_system_bonds(cand))
 
 
+def _off_lock_demotion(cand: Candidate, state: GameState,
+                       session: StrategySession,
+                       registry: DecisionV2Registry) -> str:
+    """W150/ADR-0359 买侧通道锁定目标约束的降级裁决。
+
+    锁定帧(``cw_intention.locked_buy_scope`` 非 None)时,
+    ``registry.off_lock_buy_tags`` 辖的买候选中「目标件 ∉ 锁定目标
+    体系集」者降级——约束是**方向**不是绞索(W147 基调:优先级/围栏
+    式非禁换):
+
+    - ``'demote'``:层3 评分减 off_lock_buy_penalty(降级非禁绝,
+      板面差分显著为正仍可过;[31]④ 填充不变量——填充件可回收,
+      通道保持可买,只让位目标件);
+    - ``'final_fence'``:位面末轮 boss 窗的 line_opportunistic 非目标
+      件直接拒(W143 strict 型联判的末轮面;目标件+填充不辖);
+    - ``''``:无锁定帧/目标件在域/非辖标签/应急态([18] hp 报警时
+      战力优先方向次要)→ 不降级。
+
+    A/B 通道:``registry.buy_lock_constraint_enabled`` False=回 W145
+    后行为(恒 '')。
+    """
+    if not registry.buy_lock_constraint_enabled:
+        return ''
+    if cand.tag not in registry.off_lock_buy_tags:
+        return ''
+    if is_emergency(state, registry):
+        return ''
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        locked_buy_scope,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        return ''
+    scope = locked_buy_scope(ist)
+    if scope is None:
+        return ''
+    name = getattr(getattr(cand.action, 'card', None), 'name', '') or ''
+    if not name or name in scope:
+        return ''
+    if cand.tag == 'line_opportunistic' \
+            and registry.off_lock_final_fence_enabled:
+        from sr_od.application.currency_war.cw_horizon import (
+            NODES_PER_PLANE,
+        )
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            boss_window_active,
+        )
+        if state.round_num >= NODES_PER_PLANE \
+                and boss_window_active(state, session, registry):
+            return 'final_fence'
+    return 'demote'
+
+
 def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
     """候选卡所属的过渡体系键集(TRANSITION_TRAITS 键;希儿系单列)。
 
@@ -743,8 +797,20 @@ def score_candidate(cand: Candidate, state: GameState,
         # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
         # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
         val += registry.goldrich_buy_bias
-    return val, {'base': base, 'after': after, 'int_emb': int_emb,
-                 'form_gold': round(form_gold, 3)}
+    # W150/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
+    # forming_bias/goldrich 等偏置先行计入,本约束最后收口,防
+    # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
+    off_lock = _off_lock_demotion(cand, state, session, registry)
+    if off_lock == 'final_fence':
+        val = min(val, 0.0) - 1.0   # 末轮围栏:可靠非正分拒(仲裁层
+        # 「非正分」收口,log 可见)
+    elif off_lock:
+        val -= registry.off_lock_buy_penalty
+    out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
+              'form_gold': round(form_gold, 3)}
+    if off_lock:
+        out_bd['off_lock'] = off_lock
+    return val, out_bd
 
 
 def score_all(cands: list[Candidate], state: GameState,

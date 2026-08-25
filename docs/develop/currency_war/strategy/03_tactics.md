@@ -57,6 +57,16 @@
 `cw_line_defs`(`board_max_recipe_tier`/`board_recipe_faction_count`/
 `board_total_faction_count`)。
 
+**decision_v2 买侧通道锁定目标约束(ADR-0359)**:锁定帧(约束基准
+`cw_intention.locked_buy_scope`=P1 配方对成员集 ∪ comp 锁定采购集;空窗/
+弱意向/降格=None 不辖)时,`line_opportunistic`/`bond_fallback` 买候选中
+目标件 ∉ 锁定目标体系集者**评分降级**(常量 `off_lock_buy_penalty` 在
+registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充件让位目标件
+而非禁买);位面末轮 boss 窗的非目标 opportunistic 件**直接拒**
+(`final_fence`;目标件+填充照旧)。应急态豁免([18]);开关
+`buy_lock_constraint_enabled`(A/B 通道)。语义=约束「方向」:锁定后买侧
+材料供给不再喂换档挤出(W147:挤出执行侧的保留序/deploy 围栏是另一批)。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

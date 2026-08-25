@@ -700,3 +700,31 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'fallback')
     chars, equips = _line_hoard(comp)
     return HoardTarget(frozenset(chars), frozenset(equips), 'fallback')
+
+
+def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
+    """锁定帧买侧目标约束基准(W150/ADR-0359;W143 补充判读的通道半边)。
+
+    opportunistic/bond_fallback 买通道「目标/非目标」判定输入 =
+    ``p1_pair``(非空时)∪ ``locked_comp`` 采购集(``IntentionState.p1_pair``
+    的约束基准契约,本函数是该契约的单一实现);两者皆空(空窗/弱意向/
+    降格终局)→ None(无锁定帧,不约束——[31]① 空窗期四体系全集是方向,
+    不存在「非目标件」)。
+
+    - P1 配方锁定帧 = ``_pair_members(p1_pair)``(体系对两体系全成员,
+      含其二体系——对成员集本身即两体系的并);
+    - comp 锁定帧(P1①资格通道 / P2+)= ``_line_hoard(comp)`` 角色采购集;
+    - weak(撤销后去向=跨线骨架)/demoted_endgame 不辖:方向已撤或已
+      降格,约束基准不存在(弱意向期的跨线骨架囤货本身不受本约束辖)。
+    """
+    if ist is None:
+        return None
+    scope: set[str] = set()
+    if ist.p1_pair:
+        scope |= _pair_members(tuple(ist.p1_pair))
+    if ist.phase == 'locked' and ist.locked_comp:
+        comp = get_comp(ist.locked_comp)
+        if comp is not None:
+            chars, _equips = _line_hoard(comp)
+            scope |= chars
+    return frozenset(scope) if scope else None

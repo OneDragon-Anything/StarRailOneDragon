@@ -334,6 +334,28 @@ class DecisionV2Registry:
     #: (散买断,空窗/成型可开新);False=关闭(回 W70 行为,全引擎件
     #: 见即买)——A/B 通道,默认开。
     engine_affinity_enabled: bool = True
+    # ===== W150/ADR-0359 买侧通道锁定目标约束(W143 补充判读通道半边)=====
+    #: 总开关:False=回 W145 后行为(A/B 基线臂)。锁定帧
+    #: (cw_intention.locked_buy_scope 非 None)时,off_lock_buy_tags 辖的
+    #: 买通道候选中「目标件 ∉ 锁定目标体系集」者在层3评分减
+    #: off_lock_buy_penalty(降级非禁绝——板面差分显著为正仍可过;
+    #: [31]④ 填充不变量:填充通道保持可回收垫层语义,不硬禁)。
+    buy_lock_constraint_enabled: bool = True
+    #: 约束辖的买标签(W147 基调:优先级/围栏式,禁一刀切禁绝——
+    #: 通道=run17 实证的 d2_line_opportunistic/d2_bond_fallback 两通道)
+    off_lock_buy_tags: frozenset[str] = frozenset({
+        'line_opportunistic', 'bond_fallback',
+    })
+    #: 非目标件降级分(设计推断,sim 校准;量级=target_hold_value 同阶,
+    #: 让非目标件在同轮竞争中让位目标件,且与形成偏置(forming_bias)
+    #: 同阶以抵消其对新体系引擎件的顶分)
+    off_lock_buy_penalty: float = 3.0
+    #: 末轮围栏(候选 B):位面末轮 boss 窗(discipline.plane_last_battle
+    #: 口径)时 line_opportunistic 的非目标件直接拒(W143 strict 型=
+    #: 末轮 opportunistic 买∧引擎上场件下降联判,run17 直证 r9 四张
+    #: 零目标件买入;末轮买入无恢复轮次)。目标件+填充(bond_fallback,
+    #: [31]④ 梯队)不辖。
+    off_lock_final_fence_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内
