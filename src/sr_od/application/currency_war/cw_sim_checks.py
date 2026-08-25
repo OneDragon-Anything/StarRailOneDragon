@@ -1909,19 +1909,40 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # engine_seed_not_resold(1/300,g188)/carry_on_shelf_responded
 # (2/300,g243/296)——行为面随口径变化的涌现信号,待 leader 对拍
 # 裁决(W50 报告 §遗留)。
+# 旧锚(46066bbe,ADR-0334 W73 批)已失效:其后三批有口径/行为影响的
+# 改动叠加——W126 切调度(ADR-0349,V_D 批口径化等决策面改动=策略
+# 变化)+ W129 连胜金口径(ADR-0351,奖励节点不计连胜/counter0 发 1 金
+# =校准口径变化,金轨迹系统性 −4~−6 金/局)+ W132 form_ok 兜底门
+# 结构判据(ADR-0353,有效体系数≥2 替代连续分门=策略变化)。混合
+# 漂移:engines2/recipe5/refreshes 下移属策略变化预期,hp 类下移属
+# 连胜金口径(经济变弱→板面更浅→战损更深)与兜底门收严的合成;
+# 分批归因细表见 ADR-0355。W129 报告已记档「跨日对照不可比,后续
+# sim 批需重建基线」——本锚即该重建。
+# 新锚池口径(ADR-0355/W140):池=w118 导出快照(pool_snapshot.json
+# 指纹 bab146c68c5df11a,resolve_pool Path 模式),与 W126/W131/W132/
+# W135 各 A/B 臂同源——跨批 A/B 对照可比性优先。**注意:主仓提交
+# 快照(cw_delta_pool_data)指纹随局终自动再生管线(ADR-0344)持续
+# 前移(HEAD=4d28822c,工作树在飞=ddfea057),与本锚指纹不同——
+# 用 snapshot 池跑的 n=60 快验 pool_fp_match=False 属预期,drift 才
+# 是对照主体;跨池对照一律走 Path 重放本锚池。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': '46066bbe90647c02',
-    'recorded': '2026-08-25(ADR-0334 W73:语料扩容重生成,池内容变'
-                '指纹重算,n=300,seed 0-299;W72 在飞树——合流后'
-                '若策略面漂移按 drift 披露处置)',
+    'pool_fingerprint_prefix': 'bab146c68c5df11a',
+    'recorded': '2026-08-26(W140/ADR-0355:三批前置影响后重建——W126 '
+                '切调度策略变化+W129 连胜金口径变化+W132 兜底门收严,'
+                'n=300,seed 0-299,池=Path 重放 w118 导出快照 '
+                'bab146c68c5df11a)',
     'metrics': {
-        'engines2_by_r6': 0.33,       # 旧 0.38(ADR-0312 6c0c8397 锚)
-        'avg_final_hp': 28.69,        # 旧 27.97(hp 上移=池扩容含今夜'
-                                      # 部分更优战斗样本,校准修正)
-        'hp_ge_60': 0.08,             # 旧 0.05(同上)
-        'battle_losses_le_2': 0.11,   # 旧 0.11
-        'recipe5_by_r6': 0.67,        # 旧 0.72(策略面微漂,同 W72 在飞)
-        'avg_refreshes': 2.36,        # 旧 2.31
+        'engines2_by_r6': 0.15,       # 旧 0.33(46066bbe 锚;W126/W132 策略
+                                      # 收严:刷金减+兜底门要 2 体系,过渡
+                                      # 成型率下移属预期)
+        'avg_final_hp': 19.81,        # 旧 28.69(−8.88 合成漂移:W129 金
+                                      # 口径 −4~−6 金/局为主+板面变浅战损
+                                      # 加深,归因表见 ADR-0355)
+        'hp_ge_60': 0.03,             # 旧 0.08(同上,hp 长尾整体下移)
+        'battle_losses_le_2': 0.05,   # 旧 0.11(同上)
+        'recipe5_by_r6': 0.48,        # 旧 0.67(W126 买侧批口径+兜底门收严)
+        'avg_refreshes': 1.23,        # 旧 2.36(V_D 批口径化后刷新显著
+                                      # 收敛,W126 A/B 已见)
     },
 }
 
