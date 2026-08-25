@@ -253,7 +253,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
                 # W160/ADR-0363:S1 型修法两件(引擎下界守卫/末轮演进
                 # 冻结)从 registry 注入(A/B 通道,关=回 W155 后行为)
                 engine_guard=registry.evolve_engine_guard_enabled,
-                final_freeze=registry.evolve_final_freeze_enabled)
+                final_freeze=registry.evolve_final_freeze_enabled,
+                # W174/ADR-0371:引擎补完守卫(own-gap 修法,A/B 通道,
+                # 关=回 W170 后行为)
+                engine_completion=registry.evolve_engine_completion_enabled)
             # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
             # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
             # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟

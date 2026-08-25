@@ -404,6 +404,18 @@ class DecisionV2Registry:
     #: 无回场窗,「加深收益 < 引擎丢失风险」在该窗口系统性为真
     #: (W159 §1:r_loss 90% 落 r8-9)。
     evolve_final_freeze_enabled: bool = True
+    # ===== W174/ADR-0371 引擎补完守卫(own-gap 修法)=====
+    #: 总开关:False=回 W170 后行为(A/B 基线臂)。True 时
+    #: cw_evolution.evolution_step 在常规演进提案**之前**发补完事务:
+    #: pair 体系(p1_pair ∪ transition_pair,含希儿系单卡判据)
+    #: owned(bench∪deployed,全羁绊口径)≥ tier ∧ on-board
+    #: (board_factions 口径)< tier → bench 该体系成员上场,room 不足
+    #: 换下最弱非保护件(保护=pair 成员/引擎件/锁定目标件/种子窗)。
+    #: 修「拥有≥门槛却从未同时上场」(W173:8/11 never-2 局,件躺备战
+    #: 席到局终;[20] 件上场才算配方,[13] 过渡成型≈过 P1)。末窗冻结
+    #: 豁免复核 = 净效果 pair on-board 与引擎数不减(ADR-0363 件2
+    #: 防丢语义同向:补上不是拆)。
+    evolve_engine_completion_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

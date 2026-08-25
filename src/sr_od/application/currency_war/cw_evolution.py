@@ -135,9 +135,14 @@ def _opt_signature(opt: UpgradeOption) -> tuple:
 def _record_reject(memory: EvolutionState, opt: UpgradeOption,
                    state: GameState) -> None:
     """登记被拒提案签名 + 旧条目清理(防字典无界增长)。"""
+    _record_reject_sig(memory, _opt_signature(opt), state)
+
+
+def _record_reject_sig(memory: EvolutionState | None, sig: tuple,
+                       state: GameState) -> None:
+    """裸签名版退避登记(W174 补完事务用;清理策略同 _record_reject)。"""
     if memory is None:
         return
-    sig = _opt_signature(opt)
     memory.reject_backoff[sig] = (state.plane, state.round_num)
     if len(memory.reject_backoff) > 32:
         cur = (state.plane, state.round_num)
@@ -157,6 +162,196 @@ def _backoff_active(memory: EvolutionState | None, opt: UpgradeOption,
         return False
     return entry[0] == state.plane \
         and state.round_num - entry[1] < _REJECT_BACKOFF_ROUNDS
+
+
+def _backoff_sig_active(memory: EvolutionState | None, sig: tuple,
+                        state: GameState) -> bool:
+    """裸签名版退避查询(W174 补完事务用;与 _backoff_active 同窗判据)。"""
+    if memory is None:
+        return False
+    entry = memory.reject_backoff.get(sig)
+    if entry is None:
+        return False
+    return entry[0] == state.plane \
+        and state.round_num - entry[1] < _REJECT_BACKOFF_ROUNDS
+
+
+# ===== W174/ADR-0371:引擎补完守卫(own-gap 修法)=====
+
+#: 补完事务 reason 前缀(末窗冻结豁免判据;见 _engine_completion_tx)
+_COMPLETION_REASON: str = 'evolve:engine_complete'
+
+
+def _pair_systems(session) -> dict[str, int]:
+    """意向帧的体系对键→档(p1_pair ∪ transition_pair;tier 单一源
+    TRANSITION_TRAITS;希儿系哨兵键档=1,单卡判据——希儿本人上场即成)。"""
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    from sr_od.application.currency_war.cw_intention import IntentionState
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        return {}
+    keys: list[str] = []
+    for tup in (getattr(ist, 'p1_pair', ()) or (),
+                getattr(ist, 'transition_pair', ()) or ()):
+        keys.extend(tup)
+    out: dict[str, int] = {}
+    for k in dict.fromkeys(keys):
+        if k in dict(TRANSITION_TRAITS):
+            out[k] = dict(TRANSITION_TRAITS)[k]
+        elif k == '希儿系':
+            out[k] = 1
+    return out
+
+
+def _engine_completion_tx(state: GameState,
+                          session) -> tuple[CompTransaction, str] | None:
+    """W174/ADR-0371 引擎补完事务构造(own-gap 修法主件)。
+
+    触发:pair 体系 owned(bench∪deployed,全羁绊口径)≥ tier ∧
+    on-board(board_factions 口径) < tier——「拥有已够却从未同时上场」
+    (W173:8/11 never-2 局)。动作:bench 该体系成员(同名去重/最高星
+    优先)上场;room 不足 undeploy 最弱**非保护**件(保护集 = pair
+    成员 ∪ 引擎件 ∪ 锁定目标件 ∪ 种子窗,复用既有保护判据);bench
+    容量不足 sell 最弱非保护 bench 件腾位;腾不出 → None(落回常规提案)。
+
+    结构保证(末窗冻结豁免的依据,ADR-0363 件2 同向):只下非保护件
+    = pair/引擎贡献件不下场 → 净效果 pair on-board 计数与引擎数不减。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    from sr_od.application.currency_war.cw_sim import _board_factions_of
+    pair = _pair_systems(session)
+    if not pair:
+        return None
+    bf = _board_factions_of(state.deployed)
+    deployed_names = {d.char_id for d in state.deployed if d.char_id}
+    pool = [bc for bc in (*state.bench, *state.deployed)
+            if bc is not None and bc.char_id]
+    tier_of = dict(TRANSITION_TRAITS)
+
+    def _is_member(sys_key: str, bc: BenchChar) -> bool:
+        """体系成员判据(希儿系=单卡+量子/贝放大器,与 _engine_systems_
+        formed 同口径;三羁绊系=全羁绊含体系键)。"""
+        if sys_key == '希儿系':
+            return bc.char_id == '希儿' \
+                or bool(_char_factions(bc) & {'量子同频', '贝洛伯格'})
+        return sys_key in _char_factions(bc)
+
+    def _owned_cnt(sys_key: str) -> int:
+        return sum(1 for bc in pool if _is_member(sys_key, bc))
+
+    # 缺口体系:owned 已够 ∧ 上场不足(希儿系=单卡:希儿在手 ∧ 未上场
+    # → on-board 恒 0,缺口 1)
+    deficits: list[tuple[float, str, int, int]] = []
+    for sys_key, tier in pair.items():
+        if sys_key == '希儿系':
+            if '希儿' in {bc.char_id for bc in pool} \
+                    and '希儿' not in deployed_names:
+                deficits.append((1.0, sys_key, tier, 0))
+            continue
+        owned = _owned_cnt(sys_key)
+        on_board = bf.get(sys_key, 0)
+        if owned >= tier > on_board:
+            deficits.append((on_board / tier, sys_key, tier, on_board))
+    if not deficits:
+        return None
+    _, sys_key, tier, on_board = sorted(
+        deficits, key=lambda t: (-t[0], list(tier_of).index(t[1])
+                                 if t[1] in tier_of else 99))[0]
+
+    # 上场候选:bench 的该体系成员(同名已在场剔除 = 3合1 素材不上,
+    # W65 语义;最高星优先),取缺口数
+    up_cands = sorted(
+        (bc for bc in state.bench
+         if bc is not None and _is_member(sys_key, bc)
+         and (not bc.char_id or bc.char_id not in deployed_names)),
+        key=lambda bc: -(bc.star or 1))
+    need_n = tier - on_board
+    up_cands = up_cands[:max(0, need_n)]
+    if not up_cands:
+        return None   # 手握的全是同名副本(合成素材)→ 无可上,归常规通道
+
+    # 保护集(undeploy/sell 不碰):pair 全体系成员 ∪ 锁定目标件/引擎件
+    _protected_dep = _locked_protected_names(state.deployed, session)
+    _protected_bench = _locked_protected_names(state.bench, session)
+
+    def _is_protected(bc: BenchChar, extra: set[str]) -> bool:
+        if bc.char_id and bc.char_id in extra:
+            return True
+        if not bc.char_id:
+            return True   # 未识别:不敢动
+        return any(_is_member(k, bc) for k in pair)
+
+    def _weak_key(bc: BenchChar) -> tuple[int, int]:
+        c = CHARACTERS.get(bc.char_id)
+        return (bc.star or 1, c.cost if c is not None else 0)
+
+    room = state.max_units() - len(state.deployed)
+    undeploy_n = max(0, len(up_cands) - room)
+    # undeploy 候选:deployed 非保护件,最弱先下
+    undeploy_cands = sorted(
+        (d for d in state.deployed
+         if d.char_id and not _is_protected(d, _protected_dep)),
+        key=_weak_key)[:undeploy_n]
+    if len(undeploy_cands) < undeploy_n:
+        return None   # 无可下件(全保护)→ 不硬拆,归常规通道
+    # bench 容量:终态 = 现 − deploy − sell_bench + undeploy ≤ BENCH_CAPACITY
+    bench_free = (BENCH_CAPACITY - bench_occupied(state.bench)
+                  - len(up_cands) + len(undeploy_cands))
+    sell_n = max(0, -bench_free)
+    sell_cands: list[BenchChar] = []
+    if sell_n:
+        sell_cands = sorted(
+            (b for b in state.bench
+             if b is not None and not _is_protected(b, _protected_bench)),
+            key=_weak_key)[:sell_n]
+        if len(sell_cands) < sell_n:
+            return None   # 腾不出 bench 位 → 不发射
+    # 排容量核算(undeploy 释放的排位给 deploy 用)
+    front_left = state.front_max - state.front_count() \
+        + sum(1 for d in undeploy_cands if d.position_pref == 'front')
+    back_left = state.back_max - state.back_count() \
+        + sum(1 for d in undeploy_cands if d.position_pref == 'back')
+    deploy_entries = []
+    for bc in up_cands:
+        row = _deploy_row(bc, None, front_left, back_left)
+        if row == 'front':
+            front_left -= 1
+        else:
+            back_left -= 1
+        deploy_entries.append((_identity_index(state.bench, bc), row))
+    undeploy_idx = [_identity_index(state.deployed, d)
+                    for d in undeploy_cands]
+    sell_entries = [(_identity_index(state.bench, b), 'bench')
+                    for b in sell_cands]
+    reason = f'{_COMPLETION_REASON}:{sys_key}{tier}'
+    tx = CompTransaction(deploy=deploy_entries, undeploy=undeploy_idx,
+                         sell=sell_entries, fill=None, reason=reason)
+    return tx, sys_key
+
+
+def _completion_freeze_exempt(state: GameState, post,
+                              pair: dict[str, int]) -> bool:
+    """末窗冻结豁免复核:补完事务净效果 = pair 体系 on-board 计数逐体系
+    不减 ∧ 总引擎数不减(构造器结构保证的事后复核,ADR-0363 件2 同向)。"""
+    from sr_od.application.currency_war.cw_sim import (
+        _board_factions_of,
+        _engines_count,
+    )
+    pre_bf = _board_factions_of(state.deployed)
+    post_bf = _board_factions_of(post.deployed)
+    for sys_key in pair:
+        if sys_key == '希儿系':
+            continue   # 哨兵键非羁绊键:由下方引擎数总核覆盖
+        if post_bf.get(sys_key, 0) < pre_bf.get(sys_key, 0):
+            return False
+    pre_names = {d.char_id for d in state.deployed if d.char_id}
+    post_names = {d.char_id for d in post.deployed if d.char_id}
+    return _engines_count(post_bf, post_names) \
+        >= _engines_count(pre_bf, pre_names)
 
 
 def _off_lock_opt(opt: UpgradeOption, session) -> bool:
@@ -204,13 +399,14 @@ def _locked_protected_names(old_line: list[BenchChar],
     if isinstance(ist, IntentionState):
         scope = locked_buy_scope(ist)
         if scope is not None:
-            out |= {d.char_id for d in old_line if d.char_id in scope}
+            out |= {d.char_id for d in old_line
+                    if d is not None and d.char_id in scope}
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
     eng_bonds = {b for b, _t in TRANSITION_TRAITS}
     for d in old_line:
-        if d.char_id and eng_bonds & _char_factions(d):
+        if d is not None and d.char_id and eng_bonds & _char_factions(d):
             out.add(d.char_id)
     return out
 
@@ -873,7 +1069,8 @@ def evolution_step(state: GameState, session=None,
                    memory: EvolutionState | None = None,
                    off_lock_penalty: float = 0.0,
                    engine_guard: bool = True,
-                   final_freeze: bool = True) -> list[Action]:
+                   final_freeze: bool = True,
+                   engine_completion: bool = True) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
 
     propose → evaluate →(最优 verdict)execute → fill;返回待执行动作序列
@@ -895,6 +1092,13 @@ def evolution_step(state: GameState, session=None,
     注入,A/B 通道)——件1 引擎下界守卫透传 execute_replacement;
     件2 位面末窗(剩 ≤1 轮)演进换档(undeploy/sell 非空)冻结不发射,
     纯加深/填位照旧(与 W150 final_fence 买侧末轮围栏语义对齐)。
+
+    W174/ADR-0371:``engine_completion``(registry
+    ``evolve_engine_completion_enabled`` 注入,A/B 通道)——引擎补完
+    守卫:pair 体系(p1_pair ∪ transition_pair)「拥有≥档 ∧ 上场<档」
+    时,先于常规提案发补完事务(bench 体系件上场,room 不足换下最弱
+    非保护件);末窗豁免复核 = 净效果 pair on-board 与引擎数不减
+    (与件2 防丢语义同向:补上不是拆)。关 = 回 W170 后行为。
     """
     mem = memory if memory is not None else EvolutionState()
     # 恢复语义:谷底暂停 → 下个非遭遇轮解暂停再续
@@ -968,6 +1172,46 @@ def evolution_step(state: GameState, session=None,
         if best is not None:
             mem.pending = best
         return []
+
+    # W174/ADR-0371:引擎补完守卫——「拥有≥门槛 ∧ 上场<门槛」的 pair 体系
+    # 先于常规提案([13] 过渡成型≈过 P1,成型缺口=发令枪级;[20] 件上场
+    # 才算配方)。被拒 → 退避登记后落回常规提案,不阻塞本轮流。
+    if engine_completion:
+        comp_pair = _pair_systems(session)
+        built = _engine_completion_tx(state, session)
+        if built is not None:
+            tx_c, sys_key = built
+            sig_c = (_COMPLETION_REASON, sys_key, 0, '', '')
+            if not _backoff_sig_active(mem, sig_c, state):
+                post = simulate(state, tx_c)
+                applied = post.action_log and \
+                    post.action_log[-1].get('result') == 'applied'
+                freeze_ok = True
+                if applied and final_window and \
+                        (tx_c.undeploy or tx_c.sell):
+                    # 末窗豁免复核(ADR-0363 件2 同向:补上不是拆);
+                    # 不过豁免 → 按冻结纪律不发射(纯 deploy 不进本支)
+                    freeze_ok = _completion_freeze_exempt(
+                        state, post, comp_pair)
+                    if not freeze_ok:
+                        log.info('[cw][ev][complete-freeze] r%d 补完事务'
+                                 '未过豁免复核(%s)——末窗不发射',
+                                 state.round_num, tx_c.reason)
+                if applied and freeze_ok:
+                    log.info('[cw][ev][engine-complete] r%d %s'
+                             '(deploy=%d undeploy=%d sell=%d)',
+                             state.round_num, tx_c.reason,
+                             len(tx_c.deploy), len(tx_c.undeploy or []),
+                             len(tx_c.sell or []))
+                    mem.pending = None
+                    return [tx_c]
+                if not applied:
+                    log.info('[cw][ev][complete-reject] 补完事务 %s 被拒'
+                             '(%s),退避 %d 轮', tx_c.reason,
+                             post.action_log[-1].get('reason', '')
+                             if post.action_log else '',
+                             _REJECT_BACKOFF_ROUNDS)
+                    _record_reject_sig(mem, sig_c, state)
 
     best = _best_option(state, session, mem, off_lock_penalty)
     if best is None:
