@@ -463,14 +463,19 @@ def score_candidate(cand: Candidate, state: GameState,
         # 口径,对 k≥3 目标(合 2 星)系统性低估 D 通道——V_D 化时必须用
         # 批口径(expected_refreshes(level,cost,k)×SHOP_REFRESH_COST,
         # cw_shop_odds.expected_refreshes_for_card 现成),勿复用本常量。
-        # ADR-0348 扑满低危战斗(口述定谒 2026-08-26):过热局 reward
-        # 节点按「低危战斗」处理——战斗向刷新理由开放(为凑伤害拿奖励,
-        # 轮界门豁免);金保底门保留(无掉血之虞,金保底防抽干与节点
-        # 无关)。地板不降(discipline._hard_node 不辖)。
+        # ADR-0348 扑满低危战斗(口述定谒 2026-08-26)×W120 P8 上限
+        # (W122 F-01):过热局 reward 节点按「奖励型战斗」处理——轻投入
+        # 凑羁绊刷伤害拿奖励,**禁深花保血**(boss/遭遇窗的下探授权对
+        # 扑满全部不适用)。战斗向刷新理由开放(轮界门豁免)但受 P8
+        # 上限辖:单节点凑羁绊支出 s≤0.277R(采前 R=6-9 → s≤2金)→
+        # 豁免限 piggy_refresh_round_cap 次/节点(超出按无证拒,回常规
+        # 门恒负分);金保底门保留。
         from sr_od.application.currency_war.decision_v2.ev import (
             reward_node_is_battle,
         )
-        _piggy = reward_node_is_battle(state)
+        _piggy = (reward_node_is_battle(state)
+                  and getattr(session, 'v2_round_refreshes', 0)
+                  < registry.piggy_refresh_round_cap)
         if ((state.round_num > registry.refresh_max_round and not _piggy)
                 or (state.gold or 0) < registry.refresh_min_gold):
             val = -cand.action.cost or -1.0

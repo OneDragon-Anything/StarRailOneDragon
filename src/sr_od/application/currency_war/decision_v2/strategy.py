@@ -126,6 +126,7 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
+        session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数
         # W114/ADR-0346 相位观测(自 W119 起被消费)+ W119/ADR-0347
         # DP 姿态轮缓存载体:初始化(每轮 decide_prep 重算)
         session.v3_phase = 'FORM'
@@ -205,6 +206,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
             # W52(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
             # (防环 §1.5-1);随同轮簿记一并清零。
             session.v2_remedy_used = False
+            # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数器(轮键重置;
+            # arbiter 刷新采纳处递增,scoring 豁免门消费)
+            session.v2_round_refreshes = 0
         # (W119/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
         # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
         # W114/ADR-0346 相位观测 + W119 切授权:每轮决策入口计算一次

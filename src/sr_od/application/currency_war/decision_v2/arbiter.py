@@ -483,6 +483,10 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # session,生产局=session 生命周期同构)
             session.v2_refresh_used = getattr(
                 session, 'v2_refresh_used', 0) + 1
+            # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数(同轮 re-decide
+            # 链可见;scoring 豁免门消费,单节点支出 s≤2金辖)
+            session.v2_round_refreshes = getattr(
+                session, 'v2_round_refreshes', 0) + 1
         elif reason.resource:
             # 资源型拒绝捕获点②(N2/S2):refresh 收尾裁决的金拒也是
             # 拒绝事件——漏收则 S2 报警态 refresh 变现链死。
