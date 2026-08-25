@@ -165,5 +165,29 @@ def levelup_ev_authorized(state: GameState, session: StrategySession,
     return v - c >= 0
 
 
-#: (扑满守卫环境名单与 reward_node_is_battle 见 ADR-0348 批;
-#: 本文件其余部分=W119/ADR-0347 切授权)
+#: 扑满守卫环境名(ADR-0348;W113 §8-5/E1):「本局的全部奖励节点替换为
+#: 次元/超级次元扑满」的投资环境——奖励节点带战力要求(扑满要打)。
+#: 名单从 ``cw_invest_data.PLAZA_PORTALS`` 按效果文本派生(单一源,
+#: 版本重跑自动跟上;断言锁见 test_cw_w119)。
+def _overheated_env_names() -> frozenset[str]:
+    from sr_od.application.currency_war.cw_invest_data import PLAZA_PORTALS
+    return frozenset(
+        p.name for p in PLAZA_PORTALS
+        if '奖励节点替换' in (p.effect or ''))
+
+
+REWARD_BATTLE_ENVS: frozenset[str] = _overheated_env_names()
+
+
+def reward_node_is_battle(state: GameState) -> bool:
+    """扑满守卫(ADR-0348):当前节点为 reward 且环境命中「经济过热」类
+    (奖励节点替换为扑满)→ 按战斗节点处理。
+
+    消费点:discipline 硬节点分类(连胜 EV 地板/保血通道辖域)。挂账项
+    (ADR-0348):投资效果表「奖励节点变战斗」机制突变项 / DP 台账指纹
+    / 节点识别扑满模板(cw_node_reader 自陈未建,留实机)——本批只接
+    v2 栈的节点分类;掉血三臂(BloodAlarmTracker)是旁路,**不辖**。
+    """
+    node = getattr(state, 'node_type', '') or ''
+    env = getattr(state, 'active_env', '') or ''
+    return node == 'reward' and env in REWARD_BATTLE_ENVS

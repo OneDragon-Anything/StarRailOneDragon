@@ -418,15 +418,23 @@ def boss_window_active(state: GameState, session: StrategySession,
 
 
 def _hard_node(state: GameState, session: StrategySession) -> bool:
-    """硬节点分类(掉血风险节点;W119/ADR-0347 单一源)。
+    """硬节点分类(掉血风险节点;W119/ADR-0347 单一源+ADR-0348 扑满守卫)。
 
-    = encounter/boss/遭遇 ∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
+    = encounter/boss/遭遇 ∪ 扑满守卫命中(reward 节点 ×「经济过热」类
+    环境——奖励节点被替换为次元扑满,带战力要求,按战斗节点处理;
+    ADR-0348)∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
     消费点:_streak_floor(连胜 EV 地板)与 assess_discipline 保血
     通道的 hard 判定(两处同源,禁散写)。
     """
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
     if node in ('encounter', 'boss', '遭遇'):
         return True
+    if node == 'reward':
+        from sr_od.application.currency_war.decision_v2.ev import (
+            reward_node_is_battle,
+        )
+        if reward_node_is_battle(state):
+            return True   # 扑满守卫(ADR-0348):过热局奖励节点=战斗节点
     remaining = max(0, NODES_PER_PLANE - state.round_num)
     return node in ('battle', '战斗') and remaining <= 3
 
@@ -484,7 +492,8 @@ def assess_discipline(state: GameState, session: StrategySession,
         # 授权;报警不是 ALL IN 的触发,位面末才是)。
         # [19]③「来牌顺不顺」未消费(欠账声明:定性变量,sim 层无载体,
         # 挂实机语料后补)。
-        # hard=硬节点分类单一源(_hard_node)
+        # hard=硬节点分类单一源(_hard_node;扑满守卫 ADR-0348 在彼接线:
+        # 过热局 reward 节点按战斗节点处理→保血通道辖)
         hard = _hard_node(state, session)
         escalated = (tracker.alarm_battles > BLOOD_GRADIENT_NATURAL_BATTLES
                      or state.hp < BLOOD_MARGIN_LOW_HP)
