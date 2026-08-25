@@ -969,6 +969,10 @@ class DefaultCwStrategy(CwStrategy):
         # 空转——r≥8 终局件提前上场+配方 carry 可被卖。单一源在 session
         # (r73 RC3),此处与 shop 循环态同款拷贝。
         st.dual_track_phase = bool(getattr(session, 'dual_track_phase', False))
+        # W148(ADR-0358,W92 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
+        # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
+        # 面特征可见;空快照=默认 [] 语义不变)。
+        st.equips = list(session.last_owned_equips)
         # r412(ADR-0274):node_type 补拷——腾席链 b 的 boss 轮禁升判定需要;
         # 权威源 = 备战节点行(prep_director 存 session.node_type_current),
         # 退化 last_state.node_type。

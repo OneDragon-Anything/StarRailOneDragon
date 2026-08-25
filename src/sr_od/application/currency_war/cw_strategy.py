@@ -229,6 +229,11 @@ class StrategySession:
     # 拷贝到 state 供 _refresh_cap 等消费 —— 原接线只加 GameState 字段而 handler 写 session,
     # 停机隔离期从未 live 跑过,首跑暴露 AttributeError)。
     active_strategies: list[str] = field(default_factory=list)
+    # owned 穿戴池快照(W148,ADR-0358,W92 修法 A):EquipAll 每轮 read_equips 后写
+    # (仅穿戴类,工具类过滤同 equip_all._TOOL_CATEGORIES);_pseudo_state 拷入决策
+    # state.equips → decisions 遥测可见。修「持有面有读点、无写链、决策/遥测全盲」
+    # (W92 实证:3,061 条 decisions 里 state.equips 0 条非空)。
+    last_owned_equips: list[str] = field(default_factory=list)
     # —— 备战决策环(PrepDirector,doc 15 / ADR-0123)计数宿主 ——
     # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
     # 策略/框架经 DeferSpheres +1;门=2(§5.1 规则 3 防规则 2↔3 空转环)。)

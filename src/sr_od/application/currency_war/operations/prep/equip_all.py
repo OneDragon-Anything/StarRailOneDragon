@@ -45,6 +45,18 @@ from sr_od.operations.sr_operation import SrOperation
 _TOOL_CATEGORIES: set[str] = {'工具'}
 
 
+def _owned_wearable_names(hits: list) -> list[str]:
+    """read_equips 命中 → 穿戴类 owned 名单(工具类过滤;ADR-0358 搬运链写端)。
+
+    与主流程 ``wearable`` 同过滤口径(非工具类即穿戴候选);W92 修法 A:owned
+    持有面原先有读点、无写链,决策/遥测全盲(3,061 条 decisions 里 state.equips
+    0 条非空)——本函数供 ``equip_all`` 写 ``session.last_owned_equips``。
+    """
+    return [n for n, _, _ in hits
+            if EQUIPMENTS.get(n) is not None
+            and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+
+
 def _below_icon_diff(
     screen_pre: MatLike, screen_post: MatLike, avatar_x: int,
     below_y: int = 479, bx_half: int = 35, by_half: int = 30,
@@ -387,6 +399,11 @@ class EquipAll(SrOperation):
                 wearable = [(n, p) for n, p, _ in hits
                             if EQUIPMENTS.get(n) is not None
                             and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                # ADR-0358(W92 修法 A)搬运链写端:owned 穿戴池快照进 session,
+                # 供 _pseudo_state 拷入决策 state.equips(持有面遥测/特征可见)。
+                # 每次现读都覆写(穿戴后 owned 减少,末次读=最新持有面)。
+                if _match is not None and _match.session is not None:
+                    _match.session.last_owned_equips = [n for n, _ in wearable]
                 if not wearable:
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     break
@@ -469,6 +486,9 @@ class EquipAll(SrOperation):
             # 过滤工具类(拆装扳手/冶金炉等非 drag 穿,D-32 拆/转化副作用)
             wearable = [(n, p) for n, p, _ in hits
                         if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+            # ADR-0358(W92 修法 A)搬运链写端(旧 front-only 路径同链)
+            if _match is not None and _match.session is not None:
+                _match.session.last_owned_equips = [n for n, _ in wearable]
             if not wearable:
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break

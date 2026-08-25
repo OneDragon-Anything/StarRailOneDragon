@@ -61,11 +61,15 @@ DOT_POOL = ('艾丝妲', '椒丘', '卡芙卡', '桑博')
 SEELE = '希儿'
 
 # --- 特征列序(工件 schema 单一顺序;零方差列保留、系数自然学 0) ---
+# M2 增列(W148,ADR-0358/W92 修法 A+C):owned_equip_count(持有面,state.equips
+# 快照,搬运链修复后语料再生)、prev_damage(同 run 上一战斗行 damage_dealt 的
+# lag-1——敌方强度/我方输出代理;**不用同局 damage_dealt**,结算才可得=标签泄漏)。
 NUM_FEATURES = [
     'char_count', 'star_sum', 'star2_plus', 'total_cost',
     'max_tier', 'tier3_count', 'tier_sum', 'n_tier1', 'n_tier2',
     'rung', 'engine_pieces', 'core2_count', 'top1_share',
     'gold_before', 'dot_pieces', 'engine_trio', 'seele', 'round_num',
+    'owned_equip_count', 'prev_damage',
 ]
 NT_FEATURES = [f'nt_{nt}' for nt in BATTLE_NODE_TYPES]
 FEATURE_COLS = NUM_FEATURES + NT_FEATURES
@@ -124,6 +128,7 @@ def build_table(outcomes_path: Path, decisions_path: Path,
 
     reasons: Counter[str] = Counter()
     rows: list[dict] = []
+    prev_damage_by_run: dict[str, float] = {}   # lag-1 damage_dealt(M2,防同局泄漏)
     for o in iter_jsonl(outcomes_path):
         if (o.get('node_type') or '') not in BATTLE_NODE_TYPES:
             continue
@@ -154,10 +159,19 @@ def build_table(outcomes_path: Path, decisions_path: Path,
         gold = state.get('gold')
         if not isinstance(gold, (int, float)):
             gold = frame.get('gold')
+        # M2 特征(W148):owned 持有面 + lag-1 伤害(同局 damage_dealt 不入,
+        # 结算才可得 = 标签泄漏;W92 修法 C 的防泄漏落法)
+        owned = state.get('equips') or []
+        prev_damage = prev_damage_by_run.get(run_id, 0.0)
+        _dmg = o.get('damage_dealt')
+        if isinstance(_dmg, (int, float)):
+            prev_damage_by_run[run_id] = float(_dmg)
         rows.append({
             **{k: feats[k] for k in feats if k in NUM_FEATURES},
             **extra_features(deployed, feats),
             'gold_before': gold,
+            'owned_equip_count': len(owned),
+            'prev_damage': prev_damage,
             **{f'nt_{nt}': 1 if o.get('node_type') == nt else 0
                for nt in BATTLE_NODE_TYPES},
             'killed': killed,
@@ -392,7 +406,7 @@ def main() -> None:
             'rows': stats['rows'], 'pos': pos, 'neg': neg,
             'seed': args.seed,
             'table_file': table_path.name,
-            'trained_at': '2026-08-25',
+            'trained_at': __import__('datetime').date.today().isoformat(),
         },
         'holdout': {
             'frac': args.holdout_frac, 'held_runs': sorted({runs[i] for i in te}),
