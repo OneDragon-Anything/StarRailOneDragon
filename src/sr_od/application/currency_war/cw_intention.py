@@ -37,11 +37,11 @@ from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
-    AUGMENT_COMP_AFFINITY,
     COMP_LIBRARY,
-    ENV_COMP_AFFINITY,
     V2_FAMILIES,
     Comp,
+    augment_affinity,
+    augment_env_affinity,
     derive_key_equips,
     get_comp,
 )
@@ -250,9 +250,9 @@ def _direct_line_qualified(state: GameState, comp_name: str) -> bool:
     只能由③核心卡(贯穿件到手,[23] 合法)或后续注册的资格项锁线。
     """
     for s in state.active_strategies:
-        if comp_name in AUGMENT_COMP_AFFINITY.get(s, {}):
+        if comp_name in augment_affinity(s):
             return True
-    return comp_name in ENV_COMP_AFFINITY.get(state.active_env, {})
+    return comp_name in augment_env_affinity(state.active_env)
 
 
 # ===== P1 锁线资格门(W101/ADR-0341;sim A/B 通道)=====
@@ -320,12 +320,12 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
 
     # ① 策略驱动:投资环境 / 投资策略字段出现 → 对应线(近硬绑亲和表)
     if state.active_env:
-        for comp_name, w in ENV_COMP_AFFINITY.get(state.active_env, {}).items():
+        for comp_name, w in augment_env_affinity(state.active_env).items():
             if get_comp(comp_name) is not None:
                 out.append(IntentionSignal(1, 'env', comp_name,
                                            f'环境[{state.active_env}]×{w}', w))
     for s in state.active_strategies:
-        for comp_name, w in AUGMENT_COMP_AFFINITY.get(s, {}).items():
+        for comp_name, w in augment_affinity(s).items():
             if get_comp(comp_name) is not None:
                 out.append(IntentionSignal(1, 'strategy', comp_name,
                                            f'策略[{s}]×{w}', w))

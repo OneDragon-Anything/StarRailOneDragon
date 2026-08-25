@@ -330,6 +330,26 @@ AUGMENT_COMP_AFFINITY: dict[str, dict[str, float]] = {
     "量子同频星徽套组": {"希儿量子": 0.8},
     "量子力学": {"希儿量子": 0.6},
 }
+
+
+def augment_affinity(name: str) -> dict[str, float]:
+    """AUGMENT_COMP_AFFINITY 规范化查询(OCR 名先归一,run_20260826_004527 缺陷链同型)。
+
+    入参可能是 OCR 原始名(如 `飞光•传剑`——OCR 把 `·` 误读为 `•`),裸 dict 直查会
+    静默 miss → 定义型 comp 解锁/评分失效。所有持卡名/候选名查本表一律走此函数,
+    不直接 ``AUGMENT_COMP_AFFINITY.get(name)``(归一单一源 = cw_investments.normalize_invest_name,
+    AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)。
+    """
+    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    return AUGMENT_COMP_AFFINITY.get(normalize_invest_name(name), {})
+
+
+def augment_env_affinity(name: str) -> dict[str, float]:
+    """ENV_COMP_AFFINITY 规范化查询(OCR 环境名先归一;同 augment_affinity)。"""
+    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    return ENV_COMP_AFFINITY.get(normalize_invest_name(name), {})
+
+
 # 全局过渡池(ADR-0152,按 M3 跨阶段存活率拆两级;plaza 784 篇 P(进终局|Early在场) 实证):
 #   EARLY_CORE_POOL(存活 ≥0.8):「有体系牌来就拿下」—— 买了就是开局(期权重叠,不存在过渡浪费);
 #   TEMPO_POOL(存活 <0.45):纯保血打工(骨架件)—— 1星买卖近无损,毕业即卖(1-8 分界换血)。
@@ -1196,7 +1216,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
     hits = 0
     best_affinity = 0.0
     for name in active_strategies:
-        aff = AUGMENT_COMP_AFFINITY.get(name, {}).get(comp.name, 0.0)
+        aff = augment_affinity(name).get(comp.name, 0.0)
         best_affinity = max(best_affinity, aff)
         s = get_strategy(name)
         if s is None:
@@ -1223,6 +1243,8 @@ def env_fit(comp: Comp, env: str) -> float | None:
     """
     if not env:
         return None
+    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    env = normalize_invest_name(env)   # OCR 间隔号形变归一(如 •→·),run_20260826_004527 同型
     # P1-2: T0 env 近乎硬绑某 comp
     if env in ENV_COMP_AFFINITY:
         affinity = ENV_COMP_AFFINITY[env].get(comp.name, 0.0)
@@ -1473,7 +1495,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
         # ADR-0152(评审🔴3b)定义型 augment 近乎硬绑:黑塔纪元类(affinity≥0.9)拿到即改写本局
         # —— ×1.5 压过板面对他 comp 的既有投入(实测:lv5 板{列车:2} 时 held ×1.4 不足以翻转
         # progress 0.45×0.5 的领先;M1 资源入口)。与 held 乘子叠乘(fit=1.0 时总 ~×2.1)。
-        if any(AUGMENT_COMP_AFFINITY.get(a, {}).get(comp.name, 0.0) >= 0.9
+        if any(augment_affinity(a).get(comp.name, 0.0) >= 0.9
                for a in ctx.held_strategies):
             s *= 1.5
         s *= _board_alignment(comp, state)
@@ -1798,7 +1820,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # ADR-0152(评审🔴3c)定义型 augment 解锁 commit 锁:黑塔纪元类(affinity≥0.9)到手 =
         # 局内最大机会事件(M1 资源入口),与 losing streak 同级解锁 —— 否则 commit 后 augment
         # 定义型 comp 永远进不来(中心卖点静默失效)。
-        _defining_new = any(AUGMENT_COMP_AFFINITY.get(a, {}).get(best.name, 0.0) >= 0.9
+        _defining_new = any(augment_affinity(a).get(best.name, 0.0) >= 0.9
                             for a in ctx.held_strategies)
         # r36 换线供给门(用户实锤「装备乱来」根因链:祈愿定义型解锁 r4 转 命运圣杯红A →
         # 该线 5 轮零供给 → form 卡死 → 装备过渡期持有永不过渡 → 旧残留+新全攒):

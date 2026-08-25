@@ -406,7 +406,7 @@ class DefaultCwStrategy(CwStrategy):
                                                 tracker=session.performance)
                 if _piv_all is not None and _piv_all is not session.target_comp:
                     _defining = any(
-                        cw_comps.AUGMENT_COMP_AFFINITY.get(a, {}).get(_piv_all.name, 0.0) >= 0.9
+                        cw_comps.augment_affinity(a).get(_piv_all.name, 0.0) >= 0.9
                         for a in score_ctx.held_strategies)
                     if _defining:
                         piv = _piv_all
@@ -497,11 +497,11 @@ class DefaultCwStrategy(CwStrategy):
         pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
         # 信号喂入:所选卡对各线的 affinity → comp 分贡献
         try:
-            from sr_od.application.currency_war.cw_comps import AUGMENT_COMP_AFFINITY
+            from sr_od.application.currency_war.cw_comps import augment_affinity
             src = 'invest_strategy' if kind == 'strategy' else 'invest_env'
             scores: dict[str, float] = {}
             for opt in options:
-                aff = AUGMENT_COMP_AFFINITY.get(opt, {})
+                aff = augment_affinity(opt)
                 for comp_name, v in aff.items():
                     scores[comp_name] = max(scores.get(comp_name, 0.0), v)
             if scores:

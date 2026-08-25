@@ -339,9 +339,41 @@ INVESTMENT_ENVS: dict[str, InvestmentEnv] = _build_envs()
 
 
 # ===== 派生:ENV_FACTION_MAP(投资环境 → 加成阵营;从 INVESTMENT_ENVS 派生,单一真相源)=====
+# ===== OCR 分隔符归一(查找边界单一源;AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)=====
+# 实机缺陷链(run_20260826_004527):OCR 把间隔号 `·`(U+00B7)误读为圆点 `•`(U+2022)——
+# handle_invest_strategy L216 告警 `'全都要•彩'` 注册表 miss → 原始 OCR 名 append 进
+# session.active_strategies → cw_economy 按名聚合经济效果精确查 miss → **策略经济效果被
+# 静默丢弃**(真金影响);cw_events 品质查同样先吃 miss。
+# 先例:cw_chars_data L5「规范名:• 已统一为·」(数据层手改);本函数是查找层归一
+# (注册表数据不动,遥测/采集路径 invest_cards.jsonl 保留原始 OCR 名不改——原始证据不碰)。
+# 无歧义性已量化(2026-08-26):INVESTMENT_STRATEGIES(335)/INVESTMENT_ENVS(83)中
+# 含 `·` 的条目 33+1(如 全都要·彩/采购专员·彩/银·金·彩),含 bullet 族字符
+# (•/‧/∙/・)的正规名 **0 条** → 归一不会撞任何真名。
+_INVEST_SEP_CANON = '·'          # U+00B7 间隔号(注册表规范分隔符)
+_INVEST_SEP_VARIANTS = (         # OCR 误读形变族 → 一律归一到 U+00B7
+    '•',   # U+2022 bullet(实机日志实锤)
+    '‧',   # U+2027 hyphenation point
+    '∙',   # U+2219 bullet operator
+    '・',  # U+30FB 片假名中点
+)
+
+
+def normalize_invest_name(name: str) -> str:
+    """投资策略/环境名 OCR 形变归一(仅无歧义分隔符映射,不碰其它语义符号)。
+
+    所有按名查找注册表的入口(get_strategy/get_env/economy_effect_of/
+    pick_value_of/is_known_env/env_faction)在查找前先归一入参——消费点统一受益,
+    不逐 call site 改;写入端(采集/telemetry/session 存量名)保持原样。
+    """
+    for v in _INVEST_SEP_VARIANTS:
+        if v in name:
+            name = name.replace(v, _INVEST_SEP_CANON)
+    return name
+
+
 def env_faction(env_name: str) -> str:
     """投资环境加成的阵营(概念股/邀请的 faction;无则 "")。"""
-    e = INVESTMENT_ENVS.get(env_name)
+    e = INVESTMENT_ENVS.get(normalize_invest_name(env_name))
     return e.faction if e is not None else ""
 
 
@@ -351,8 +383,8 @@ def envs_boosting_faction(faction: str) -> list[str]:
 
 
 def get_env(name: str) -> InvestmentEnv | None:
-    """按规范名取 InvestmentEnv;无则 None。"""
-    return INVESTMENT_ENVS.get(name)
+    """按规范名取 InvestmentEnv;无则 None(入参先经 normalize_invest_name 归一分隔符形变)。"""
+    return INVESTMENT_ENVS.get(normalize_invest_name(name))
 
 
 def is_known_env(name: str) -> bool:
@@ -362,12 +394,16 @@ def is_known_env(name: str) -> bool:
     见 od-dev-gameplay-automation 完成判据反馈)。注册表外的名字可能是:① 赛季新增未收录;
     ② OCR 误识;③ 锁定未命名环境(数据银行 ??? 无法收录)。
     """
-    return name in INVESTMENT_ENVS
+    return normalize_invest_name(name) in INVESTMENT_ENVS
 
 
 def economy_effect_of(name: str) -> EconomyEffect:
-    """单策略经济效果(无/未注册 → 全 0 EconomyEffect;ADR-0131)。"""
-    s = INVESTMENT_STRATEGIES.get(name)
+    """单策略经济效果(无/未注册 → 全 0 EconomyEffect;ADR-0131)。
+
+    入参先归一(normalize_invest_name)——session.active_strategies 里的存量 OCR 原始名
+    (如 `全都要•彩`)也走此入口,归一后经济效果不再静默丢(run_20260826_004527 缺陷链)。
+    """
+    s = INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
     return s.economy if (s is not None and s.economy is not None) else EconomyEffect()
 
 
@@ -527,8 +563,9 @@ def strategy_bindings(strategy: InvestmentStrategy) -> tuple[frozenset[str], fro
 
 
 def get_strategy(name: str) -> InvestmentStrategy | None:
-    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 335,miss = OCR 形变,走 pick_value_of 的 LCS)。"""
-    return INVESTMENT_STRATEGIES.get(name)
+    """按规范名取 InvestmentStrategy;无则 None(注册表已全量 335,miss = OCR 形变,走 pick_value_of 的 LCS;
+    入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`,run_20260826_004527)。"""
+    return INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
 
 # ===== ADR-0143 选卡价值基准分(全量评估表派生;.debug/temp/currency_war/strategy_eval_full.tsv)=====
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
@@ -878,6 +915,7 @@ def pick_value_of(name: str) -> int | None:
     """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS(0.6 + 长度差守卫,评审建议6:
     |Δlen|≤3 —— 防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染由 cw_events 守卫
     另行拦截,此处只管策略表内部);未评估(codex 新条目/完全未知)→ None(回落品质先验)。"""
+    name = normalize_invest_name(name)
     s = INVESTMENT_STRATEGIES.get(name)
     if s is not None and s.pick_value > 0:
         return s.pick_value
