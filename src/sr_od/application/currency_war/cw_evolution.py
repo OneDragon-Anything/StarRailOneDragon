@@ -344,13 +344,19 @@ def _deploy_row(bc: BenchChar, comp: Comp | None,
 
 
 def execute_replacement(verdict: UpgradeVerdict, state: GameState,
-                        memory: EvolutionState | None = None) -> list[Action]:
+                        memory: EvolutionState | None = None,
+                        session=None) -> list[Action]:
     """④-1 生成整档替换 CompTransaction(决策在执行前一起定)。
 
     完整方案一次敲定:新档成员上场(核心优先)+ 旧档整档解除(羁绊不在目标
     集且非目标成员者下场)+ 被换下成员去向(bench 保留优先——保回滚窗
     1-2 轮(点6 谷底预案),bench 溢出才卖)。DOT 同体线自然退化为加深
     (旧档空 → undeploy/sell 空,纯 deploy)。
+
+    W88(ADR-0339 件3):保留优先级里**种子 2 轮窗件最优先**——旧档
+    换血卖出窗口内 engine_seed 买入(买侧见即买 vs 换血卖侧互踩,seed16
+    姬子·启行 r4 买 r5 换血卖);窗口内种子下场进 bench,溢出卖出改吃
+    非种子件(窗口 ≤2 轮,延迟卖出有界)。
     """
     if not verdict.execute:
         return []
@@ -402,6 +408,9 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     bench_free = BENCH_CAPACITY - (bench_occupied(state.bench)
                                    - len(bench_new))
     retained = sorted(old_line, key=lambda d: (
+        # W88/ADR-0339 件3:种子窗口件保留最优先(见 docstring);其余
+        # 按原序(高星/高费优先保留)
+        0 if _fresh_seed(d, state, session) else 1,
         -d.star, -(CHARACTERS[d.char_id].cost
                    if CHARACTERS.get(d.char_id) else 0)))
     retained = retained[:max(0, bench_free)]
@@ -635,6 +644,20 @@ def fill_slot_policy(state: GameState,
 _ENCOUNTER_NODES = {'遭遇', 'boss'}   # 冻结扩到遭遇前:不启动新替换
 
 
+def _fresh_seed(d, state: GameState, session) -> bool:
+    """W88/ADR-0339 件3:该上场件是否为种子 2 轮窗内的 engine_seed 买入
+    (seed_age_blocked 同判据;session 缺省/无记录=False)。"""
+    if session is None:
+        return False
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        seed_age_blocked,
+    )
+    try:
+        return seed_age_blocked(d, state, session)
+    except Exception:   # noqa: BLE001 —— deployed/deployed 形状差异兜底
+        return False
+
+
 def evolution_step(state: GameState, session=None,
                    memory: EvolutionState | None = None) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
@@ -660,7 +683,7 @@ def evolution_step(state: GameState, session=None,
         verdict = evaluate_upgrade(opt, state)   # 三条件重校验(恢复语义)
         if not verdict.execute:
             return []
-        actions = execute_replacement(verdict, state, mem)
+        actions = execute_replacement(verdict, state, mem, session)
         if not actions:
             return []
         tx = actions[0]

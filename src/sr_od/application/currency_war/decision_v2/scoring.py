@@ -152,6 +152,35 @@ def _engine_frac_remainder(state: GameState,
     return max(0.0, progress - engines)
 
 
+def _core_star_count(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry) -> float:
+    """核心升星持有量(W88/ADR-0339,[13] 三件套第三件的评分显影)。
+
+    持有域内 star≥2 且∈目标集(意向目标∪引擎件——引擎件任何模式下
+    都是方向件)的件数;deployed 全额、bench ×registry.bench_form_weight
+    折减(ADR-0295 混合域同式)。star 此前只在阵营计数(star×权重)与
+    targets 星级加权显影,engines 封顶后 2★ 分差≈0——换阵卖 2★ 不罚分
+    /凑合副本 ≈0 分(第六局 run_20260825_115418:r1 三月七 2★ 达成、
+    r6 换阵卖出、boss 板全 1★,-32 伤害罚款残留)。
+    """
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    tset = _target_names(state, session)
+    if not tset:
+        return 0.0
+    n = 0.0
+    for d in (state.deployed or []):
+        if d is not None and getattr(d, 'star', 1) >= 2 \
+                and getattr(d, 'char_id', '') in tset:
+            n += 1.0
+    for b in (state.bench or []):
+        if b is not None and getattr(b, 'star', 1) >= 2 \
+                and getattr(b, 'char_id', '') in tset:
+            n += registry.bench_form_weight
+    return n
+
+
 def score_state(state: GameState, registry: DecisionV2Registry,
                 session: StrategySession | None = None) -> dict[str, float]:
     """板面形态→期望 查表(评分的单一真值;只看形态维)。"""
@@ -191,6 +220,11 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # (P3 期权价值;0=关闭——A/B 基线臂)
     eng_frac = (_engine_frac_remainder(state, registry)
                 * registry.engine_frac_unit)
+    # 核心升星价值(ADR-0339):[13] 过渡核心 2★ 的独立伤害维显影
+    # (rung/engines 只辖羁绊计数,power 只按 engines 档插值——2★ 的
+    # [27] 伤害减罚此前零显影);0=关闭
+    core_star = (_core_star_count(state, session, registry)
+                 * registry.core_star_unit)
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
     # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
     # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
@@ -203,7 +237,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
             'interest': round(float(interest), 3),
             'depth': round(depth, 3), 'level': round(level_ev, 3),
             'targets': round(targets, 3),
-            'eng_frac': round(eng_frac, 3)}
+            'eng_frac': round(eng_frac, 3),
+            'core_star': round(core_star, 3)}
 
 
 def _deployable_depth(state: GameState) -> int:

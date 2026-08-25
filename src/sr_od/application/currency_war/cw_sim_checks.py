@@ -464,6 +464,12 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
     豁免边(与 ADR-0276 同轮豁免同族):买入轮同名买入 ≥2 =
     3合1 素材收集语境,其冗余让位不报(合成消化时序内卖出合法);
     单张买入即跨轮卖回(振荡主通道)仍 0 容忍。
+
+    W88(ADR-0339 件3):真根因=carry_gate 死锁豁免(discipline
+    ``_seed_cands`` 兜底)在唯可卖=新鲜种子时卖种子买 carry——
+    已裁决移除(窗口内种子赢过腾位,carry 延后有界);本检查器
+    语义不变,0 容忍恢复成立(seed16 姬子·启行 r4 买 r6 卖 r7 再
+    买的涌现形态随兜底移除消失)。
     """
     out: list[str] = []
     seed_buys: dict[str, tuple[int, int]] = {}   # name → (轮号, 同轮份数)

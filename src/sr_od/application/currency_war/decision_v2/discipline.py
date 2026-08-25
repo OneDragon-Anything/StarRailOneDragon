@@ -108,7 +108,13 @@ def round_sell_blocked(bc, state: GameState,
 def seed_age_blocked(bc, state: GameState,
                      session: StrategySession | None) -> bool:
     """ADR-0289 §5:engine_seed 年龄豁免——买入 ≤2 轮且同轮份数 <2 的种子
-    不进可卖集(跨轮窗;同轮 ≥2 份=3合1 素材语境豁免)。"""
+    不进可卖集(跨轮窗;同轮 ≥2 份=3合1 素材语境豁免)。
+
+    W88(ADR-0339 件3):cnt≥2 豁免加**实际持有对账**(star_weighted_
+    copies≥2)——采纳处登记可能在同轮重复计数(采纳后被执行层否决的
+    买入也留痕,seed16 姬子·启行单买 cnt=2 实证),幻影 cnt 会静默解除
+    种子保护 → 买/卖互踩;以「真持有 ≥2 份」为素材语境判据。
+    """
     name = getattr(bc, 'char_id', '')
     if not name or session is None:
         return False
@@ -118,7 +124,13 @@ def seed_age_blocked(bc, state: GameState,
     key, cnt = rec
     if key[0] != state.plane:
         return False
-    return 0 <= state.round_num - key[1] <= 2 and cnt < 2
+    if not 0 <= state.round_num - key[1] <= 2:
+        return False
+    if cnt < 2:
+        return True
+    # cnt≥2:素材语境豁免仅当**真持有** ≥2 份;幻影计数(登记重复/
+    # 执行层否决留痕)不解除保护
+    return star_weighted_copies(name, state) < 2
 
 
 def engine_seed_wants(card, state: GameState,
@@ -538,27 +550,23 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     # ADR-0327——absent_mergeable/超上限归 redundancy=0;加权副本≥2
     # 的 3合1 进行中素材由键统一挡,AD9-2-3)
     cands: list[tuple[tuple, int, object]] = []
-    # 种子 2 轮窗(ADR-0289 §5)候选单列:bench 真满且无非种子可卖时
-    # 兜底放行(仍选最弱)——不腾则 carry 死锁,豁免让位给 carry
-    # (v1 _seed_cands 同式移植,W51 补;豁免是 carry 专属时序,键不管)
-    seed_cands: list[tuple[tuple, int, object]] = []
+    # 种子 2 轮窗(ADR-0289 §5)**绝对不让位**(W88/ADR-0339 件3 裁决):
+    # 旧版 W51「carry 死锁豁免」在唯可卖=新鲜种子时仍卖种子买 carry
+    # ——买侧见即买 engine_seed 与卖侧 carry_gate 互踩(seed16 姬子·启行
+    # r4 买 r6 卖 r7 再买,检查器 0 容忍与设计豁免矛盾)。裁决:窗口内
+    # 种子赢过 carry 腾位(卖种子换 carry 的期望=再遇窗口双倍化,[22]③
+    # 弃购代价),本轮不腾、carry 延后——窗口 ≤2 轮自然解锁,死锁有界。
     for i, b in enumerate(bench):
         if b is None or not b.char_id or b.char_id == carry:
             continue
         if seed_age_blocked(b, state, session):
-            cp = star_weighted_copies(b.char_id, state)
-            key = (b.char_id in protect,
-                   0 if cp > 3 else 1, cp)
-            seed_cands.append((key, i, b))
             continue
         key = sell_priority_key(b, state, session, protect, registry)
         if key is None:
             continue   # r408 同轮已买/加权副本≥2(AD9-2-3)/未识别统一挡
         cands.append((key, i, b))
     if not cands:
-        cands = seed_cands   # 唯一可卖=种子:carry 死锁豁免(仍选最弱)
-    if not cands:
-        return []
+        return []   # 唯一可卖=窗口内种子:carry_gate 让位延后(上注)
     cands.sort(key=lambda c: c[0])
     _k, idx, weakest = cands[0]
     refund = None

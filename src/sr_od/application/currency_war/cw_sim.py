@@ -1498,7 +1498,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                       'deployed': [{'char_id': d.char_id,
                                     'faction': d.faction,
                                     'slot': d.slot,
-                                    'position_pref': d.position_pref,
+                                    'star': int(getattr(d, 'star', 1) or 1),   # W88/ADR-0339:星级入账本(2★ 达成率度量)
+                                     'position_pref': d.position_pref,
                                     # ADR-0312(W50):装备随人进账本——
                                     # 检查镜像(_board_agg_of_deployed_
                                     # row)复算星徽羁绊贡献需要它
