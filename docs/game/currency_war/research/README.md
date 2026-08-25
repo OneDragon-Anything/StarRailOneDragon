@@ -29,7 +29,7 @@
 5. **方法论与证明**(怎么读阵容 / 怎么论证策略;工具篇,可穿插读):
    - [combo_methodology.md](combo_methodology.md) — 阵容理解方法论(技能 / 羁绊 / 玩法三层)+ 攻略黑话查证纪律
    - [plaza_methodology.md](plaza_methodology.md) — 玩法方法论 M1-M16(资源入口 / 核心×弹性 / 升星经济学 / 装备优先级…)
-   - [math_proofs.md](math_proofs.md) — 策略命题的数学期望证明集(「为什么成立」的家)
+   - [math_proofs.md](math_proofs.md) — 策略命题的数学期望证明集**索引**(命题状态表;单篇证明在 [proofs/](proofs/) 目录,一命题一篇含推导过程与数字表;计算脚本在 `tools/cw/proofs/`)
 
 ## 索引(什么问题查哪篇)
 
@@ -44,6 +44,7 @@
 | **阵容战力基线**(形态×位面能否过的证据表;bot 敢用白名单) | [power_baseline.md](power_baseline.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/枢纽分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
+| 策略命题证明(某结论为什么成立/口述直觉的数学保证) | [math_proofs.md](math_proofs.md) 索引 → [proofs/](proofs/) 单篇 |
 | 单套 comp 打法(入场/退场信号/counter/装备叙事) | [final_comps/](final_comps/README.md) 各类文档(2026-08-22 起单一源;原 comps/ 打法卡层已撤销合并) |
 | 投资卡效果全量分类与可建模边界(API 裁定) | [invest_effects.md](invest_effects.md) |
 
