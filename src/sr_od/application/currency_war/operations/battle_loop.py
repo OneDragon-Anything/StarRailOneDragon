@@ -359,36 +359,8 @@ class CurrencyWarRunLoop(SrOperation):
             log.warning('[cw-loop] 星徽秘典选卡异常(不阻塞): %s', e)
             self.ctx.controller.click(Point(660, 300))
 
-    def _battle_frame_sample(self, screen) -> None:
-        """[观测钩子·常驻,44 号]战斗中画面低频采样。
-
-        判「战斗中」= 非备战屏(round_by_find_area 备战失败 + 非 popup);≥15s 一帧;
-        内容哈希去重(同画面不重复存)。采到的是「loop 等待循环路过时的战斗画面」,
-        非全量(战斗动画帧率远高于采样率)——边际证据用,足够 44 号起步。
-        """
-        import time as _time
-        now = _time.time()
-        if now - getattr(self, '_last_bframe_ts', 0.0) < 15.0:
-            return
-        try:
-            if self.round_by_find_area(screen, '货币战争-备战', '标识-备战阶段',
-                                       crop_first=False).is_success:
-                return   # 备战屏不采
-        except Exception:   # noqa: BLE001
-            return
-        # r2 review#4:曾只哈希前 30KB(顶部 5 行,战斗帧中部差异被吞)——resize 灰度
-        # 64x36 哈希全帧(降采样后整帧信息都进哈希)
-        import cv2
-        _small = cv2.resize(cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY), (64, 36))
-        h = hash(_small.tobytes())
-        if h == getattr(self, '_last_bframe_hash', 0):
-            return
-        self._last_bframe_ts = now
-        self._last_bframe_hash = h
-        out_dir = Path('.debug/temp/currency_war/battle_frames')
-        out_dir.mkdir(parents=True, exist_ok=True)
-        cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))[1].tofile(
-            str(out_dir / f'bf_{int(now)}.png'))
+        # (44 号战斗帧观测钩子已删,W106 裁决:观测使命由结算遥测覆盖,产物
+        #  battle_frames/ 10778 文件 24.39GB 零消费者;删钩子纪律=使命完成删整段)
 
     def _last_true_hp(self, fallback_hp: int) -> int:
         """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
@@ -695,12 +667,6 @@ class CurrencyWarRunLoop(SrOperation):
         # `for ... in ():` 永不执行)——r24 教训见 git:钩子停机的前提是该屏
         # **偶发**出现;建档完成后立即删除,别留到「下次遇到」(曾致每局必停
         # 被误判「外部会话拦截」排查一整晚)。
-
-        # [观测钩子·常驻,44 号战斗过程观测] 战斗中画面低频采样(≥15s/帧 → battle_frames/,
-        # 内容哈希去重防同一战斗刷屏;非交互死时间的边际证据,结算屏/备战屏不采)。
-        import contextlib
-        with contextlib.suppress(Exception):   # 观测 best-effort
-            self._battle_frame_sample(screen)
 
         # 0a0. 选择装备 overlay(r129,局37 r3 哨兵推送实证:**必须在 0a 选择伙伴前**——
         #      装备选择的副题也是「请选择1个」,选择伙伴屏的 标识-选择伙伴(文本
