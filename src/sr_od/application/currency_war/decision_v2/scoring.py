@@ -459,7 +459,15 @@ def score_candidate(cand: Candidate, state: GameState,
         # 剥离用,arbiter.interest_rule 消费)
         # (轮界门 refresh_max_round=早期方向刷新/金保底门 refresh_min_gold
         # =防 re-decide 链抽干金流锁死息引擎——ADR-0293 标定批双门)
-        if (state.round_num > registry.refresh_max_round
+        # ADR-0348 扑满低危战斗(口述定谒 2026-08-26):过热局 reward
+        # 节点按「低危战斗」处理——战斗向刷新理由开放(为凑伤害拿奖励,
+        # 轮界门豁免);金保底门保留(无掉血之虞,金保底防抽干与节点
+        # 无关)。地板不降(discipline._hard_node 不辖)。
+        from sr_od.application.currency_war.decision_v2.ev import (
+            reward_node_is_battle,
+        )
+        _piggy = reward_node_is_battle(state)
+        if ((state.round_num > registry.refresh_max_round and not _piggy)
                 or (state.gold or 0) < registry.refresh_min_gold):
             val = -cand.action.cost or -1.0
         else:

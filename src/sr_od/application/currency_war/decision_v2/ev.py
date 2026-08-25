@@ -180,13 +180,15 @@ REWARD_BATTLE_ENVS: frozenset[str] = _overheated_env_names()
 
 
 def reward_node_is_battle(state: GameState) -> bool:
-    """扑满守卫(ADR-0348):当前节点为 reward 且环境命中「经济过热」类
-    (奖励节点替换为扑满)→ 按战斗节点处理。
+    """扑满守卫(ADR-0348;口述定谒 2026-08-26=低危战斗):当前节点为
+    reward 且环境命中「经济过热」类(奖励节点替换为扑满)→ 扑满节点。
 
-    消费点:discipline 硬节点分类(连胜 EV 地板/保血通道辖域)。挂账项
-    (ADR-0348):投资效果表「奖励节点变战斗」机制突变项 / DP 台账指纹
-    / 节点识别扑满模板(cw_node_reader 自陈未建,留实机)——本批只接
-    v2 栈的节点分类;掉血三臂(BloodAlarmTracker)是旁路,**不辖**。
+    扑满关不掉血(全局机制 0hp 保底 1hp,机制真值),真损失=打不过
+    没奖励——处置=确保伤害阵容拿奖励,**非深花保血**:
+    - 战斗向刷新理由开放(scoring refresh 轮界门豁免,金保底保留);
+    - 地板不降(discipline._hard_node 不辖)。
+    挂账项(ADR-0348):投资效果表「奖励节点变战斗(低危)」机制突变项 /
+    DP 台账指纹 / 节点识别扑满模板(cw_node_reader 自陈未建,留实机)。
     """
     node = getattr(state, 'node_type', '') or ''
     env = getattr(state, 'active_env', '') or ''

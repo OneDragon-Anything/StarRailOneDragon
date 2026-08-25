@@ -418,23 +418,20 @@ def boss_window_active(state: GameState, session: StrategySession,
 
 
 def _hard_node(state: GameState, session: StrategySession) -> bool:
-    """硬节点分类(掉血风险节点;W119/ADR-0347 单一源+ADR-0348 扑满守卫)。
+    """硬节点分类(掉血风险节点;W119/ADR-0347 单一源)。
 
-    = encounter/boss/遭遇 ∪ 扑满守卫命中(reward 节点 ×「经济过热」类
-    环境——奖励节点被替换为次元扑满,带战力要求,按战斗节点处理;
-    ADR-0348)∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
+    = encounter/boss/遭遇 ∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
     消费点:_streak_floor(连胜 EV 地板)与 assess_discipline 保血
     通道的 hard 判定(两处同源,禁散写)。
+
+    **扑满节点(过热局 reward)不辖**(ADR-0348 口述定谒 2026-08-26:
+    扑满关不掉血——真损失是「打不过没奖励」,处置=确保伤害阵容去拿
+    奖励,**不深花保血**)——「低危战斗」的战斗向买/刷开放在 scoring
+    侧(refresh 轮界豁免,`ev.reward_node_is_battle`),地板不降。
     """
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
     if node in ('encounter', 'boss', '遭遇'):
         return True
-    if node == 'reward':
-        from sr_od.application.currency_war.decision_v2.ev import (
-            reward_node_is_battle,
-        )
-        if reward_node_is_battle(state):
-            return True   # 扑满守卫(ADR-0348):过热局奖励节点=战斗节点
     remaining = max(0, NODES_PER_PLANE - state.round_num)
     return node in ('battle', '战斗') and remaining <= 3
 
