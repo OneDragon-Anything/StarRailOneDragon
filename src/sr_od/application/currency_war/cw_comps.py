@@ -1013,6 +1013,22 @@ def get_comp(name: str) -> Comp | None:
     return None
 
 
+def hp_charge_stack_chars() -> frozenset[str]:
+    """``hp_charge_stack`` 型全局累积角色名全集(W127 标注派生,单一源)。
+
+    消费点 = decision_v2.phase 兜底门豁免(ADR-0353):该型角色(万敌:受伤
+    充能+生命上限永久提高)的累积由**场上事件**驱动,上场即真实累积战力,
+    与过渡体系同格;``cost_escalation`` 型(银狼)累积由购买驱动,不在此集
+    (Comp.global_accumulators 字段 docstring 明示其不适用部署类例外)。
+    """
+    return frozenset(
+        char
+        for c in COMP_LIBRARY
+        for char, acc in (c.global_accumulators or {}).items()
+        if acc == 'hp_charge_stack'
+    )
+
+
 # ===== 评分 helper(comp 相关)=====
 
 def _owned_chars(state: GameState) -> set[str]:

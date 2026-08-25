@@ -18,15 +18,16 @@ session 丢失):
     SPEND := form_ok AND gold ≥ interest_floor  # 满息平台,花溢余
 
 form_ok 谓词(裁决后版本,**无等级项**——等级通过上场完整性进入判定:
-人口上限不够→羁绊单位/核心上不了场→判据为假→留在 FORM):
 
-    form_ok := intention_locked
-               AND bond_tiers_met        # ∀(f,t)∈comp.form_tiers: board[f]≥t
-               AND core_deployed_ok      # intention_core 已上场 且 star≥2
+    form_ok(锁定) := intention_locked
+                      AND bond_tiers_met        # ∀(f,t)∈comp.form_tiers: board[f]≥t
+                      AND core_deployed_ok      # intention_core 已上场 且 star≥2
+    form_ok(兜底) := r≥phase_fallback_min_round
+                      AND 有效体系数≥phase_fallback_min_engines   # ADR-0353
 
-意向未锁定(兜底局)时降级用连续量:``form_score ≥ phase_form_score_gate``
-且 ``round_num ≥ phase_fallback_min_round``(W119 校准判据,防 r2-r3
-弱板误转真;门值标定留步②b)。
+人口上限不够→羁绊单位/核心上不了场→判据为假→留在 FORM(等级经上场完整性
+进入判定,兜底局同理:deployed 上不满→体系凑不齐→FORM)。form_score 自
+W132/ADR-0353 起为纯遥测观测,不进任何判据。
 """
 from __future__ import annotations
 
@@ -61,6 +62,10 @@ def form_score(state: GameState,
     ``rung_frac_per_recipe_tier × recipe_tier/RECIPE_BASE``),封顶 2 档后
     除以 2 归一。
 
+    **W132/ADR-0353 起为纯遥测观测**(sim 账本/生产 decisions.jsonl 字段
+    保留),不进任何判据——旧兜底门(score≥gate)被 run15 型散板(单体系
+    +配方档小数=0.65)绕过两证,判据改结构化(见 ``fallback_engines_count``)。
+
     与 ``scoring.board_rung_x``(混合域:bench 星级×bench_form_weight 折减
     计入)的差异是**刻意的**:form_score 是纯观测口径(不进评分/决策,
     无双源互斥风险);bench 囤件不计入——「上场了才算战力」。
@@ -84,6 +89,34 @@ def form_score(state: GameState,
     return max(0.0, min(1.0, x / 2.0))
 
 
+def fallback_engines_count(state: GameState) -> int:
+    """兜底门有效体系数(W132/ADR-0353;结构判据,deployed 口径)。
+
+    = 四过渡体系达成数(``_engines_count`` 单一源:仙舟3/列车2/DOT2/希儿系)
+      + hp_charge_stack 型全局累积角色豁免(上场 2★ 各计 1;万敌——
+      ``cw_comps.hp_charge_stack_chars`` W127 字段派生;``cost_escalation``
+      型不豁免:累积由购买驱动,不构成上场战力)。
+
+    判据基准 = transition_combos 定稿「两两组合=过渡成型」;「核心 2★」
+    豁免门槛与 form_ok 三件套路径的裁决同向(保守)。
+    """
+    from sr_od.application.currency_war.cw_comps import hp_charge_stack_chars
+    from sr_od.application.currency_war.cw_sim import (
+        _board_factions_of,
+        _engines_count,
+    )
+    deployed = [d for d in (state.deployed or []) if d is not None]
+    fac = _board_factions_of(deployed)
+    dep_names = frozenset(
+        getattr(d, 'char_id', '') or '' for d in deployed)
+    n = _engines_count(fac, dep_names)
+    exempt = hp_charge_stack_chars()
+    n += sum(1 for d in deployed
+             if (getattr(d, 'char_id', '') or '') in exempt
+             and (getattr(d, 'star', 1) or 1) >= 2)
+    return n
+
+
 def form_ok(state: GameState, session: StrategySession,
             registry: DecisionV2Registry) -> bool:
     """战力 OK 判定(相位切换谓词;与 formed_stop 同谓词族,无轮界/辖域)。
@@ -91,21 +124,24 @@ def form_ok(state: GameState, session: StrategySession,
     - 意向 locked 且锁定线可解析:三件套判定(意向锁 × 羁绊凑够 ×
       核心已上场 2★)。「核心须上场」是 2026-08-25 用户裁决——
       ``intention_core(comp)`` 必须在 ``state.deployed``(上场)且
-      star≥2;躺 bench 不算(bench 囤件≠战力)。
+      star≥2;躺 bench 不算(bench 囤件≠战力)。**W132/ADR-0353:此
+      路径语义零改动**。
     - 线不可解析/无 form_tiers(反甲类):保守判 False(与
       formed_stop_active 同保守口径——「羁绊凑够」无定义不辖)。
-    - 意向未锁(兜底局):降级 ``form_score ≥ phase_form_score_gate``
-      **且** ``round_num ≥ phase_fallback_min_round``(W119/ADR-0347 校准
-      判据,W113 §8-11:W118 实测 score 门单独在 r2-r3 即误转真——1
-      过渡体系≠战力 OK;两判据合取,标定留 ②b)。人口落后自然压低
-      form_score(deployed 上不满 → 引擎数低),承接「人口别落后」的
-      观察。
+    - 意向未锁(兜底局):降级**结构判据**(W132/ADR-0353):
+      ``round_num ≥ phase_fallback_min_round`` **且**
+      ``fallback_engines_count(state) ≥ phase_fallback_min_engines``——
+      板面真收敛到 ≥2 过渡体系(或 1 体系+万敌 2★ 豁免)才判「战力 OK」。
+      旧 score≥gate 门被 run15 型散板(单体系+配方档小数)绕过,已删;
+      form_score 保留为纯遥测观测。人口落后自然压低体系达成数(deployed
+      上不满 → 引擎凑不齐),承接「人口别落后」的观察。
     """
     ist = getattr(session, 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked':
         if state.round_num < registry.phase_fallback_min_round:
             return False
-        return form_score(state, registry) >= registry.phase_form_score_gate
+        return fallback_engines_count(state) \
+            >= registry.phase_fallback_min_engines
     from sr_od.application.currency_war.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)
     if comp is None or not comp.form_tiers:
