@@ -497,6 +497,40 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
+    """W96 溢出金断买(W93 根因回灌;[17] >50 溢余该花;违规型)。
+
+    判据:位面1 内连续 ≥2 个决策轮金 >50 且零买入(BuyCard)——
+    金趴在 50 上方不动 = [17]「>50 的每一分都该花」被违反。升级
+    (LevelUp)也算花金,有升级的轮不计数(金在滴漏不算冻结);
+    [32] boss 轮 LevelUp 禁令辖内的轮照常计数(boss 轮该花在买牌/
+    装备上,断买仍违规)。W93 病例:run_20260825_130151 r7-r9 金
+    59→90 溢出,目标件第 2 份生成层(r410 守卫)+评分层(份数零
+    显影)双盲区,三连零买只靠升级滴漏。
+    """
+    rid = rows[0].get('run_id', '?') if rows else '?'
+    streak = first_r = 0
+    worst = worst_r = 0
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue    # 只辖 P1(金跨位面继承,P2+ 语义另裁)
+        gold = row.get('gold') or 0
+        spent = any(a.get('__type__') in ('BuyCard', 'LevelUp')
+                    for a in row.get('actions') or [])
+        if gold > 50 and not spent:
+            if streak == 0:
+                first_r = row.get('round_num') or 0
+            streak += 1
+            if streak > worst:
+                worst, worst_r = streak, first_r
+        else:
+            streak = 0
+    if worst >= 2:
+        return [f'{rid}: P1 溢出金断买 {worst} 连'
+                f'(r{worst_r} 起,金>50 零买零升级——[17] 溢余该花)']
+    return []
+
+
 def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
     """自由批(bench 满不买;0 容忍;ADR-0283 守卫的账本锁)。
 
@@ -1109,6 +1143,7 @@ _BATCH_CHECKS = {
     'bench_capacity': check_bench_capacity_invariant,
     'deployed_schema_filter': check_deployed_schema_filter,
     'engine_seed_not_resold': check_engine_seed_not_resold,
+    'overflow_gold_zero_buy_streak': check_overflow_gold_zero_buy_streak,
     'buys_at_full_bench': check_buys_at_full_bench,
     'oscillation_xp_cap': check_oscillation_xp_cap,
     'levelup_flat4_lock': check_levelup_flat4_ledger_lock,

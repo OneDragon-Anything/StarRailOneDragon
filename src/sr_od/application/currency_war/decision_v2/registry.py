@@ -220,6 +220,16 @@ class DecisionV2Registry:
     #: 后 2★ 分差≈0 → 换阵卖 2★ 不罚分/凑合副本 ≈0 分(升星投资
     #: 系统性贬值)。0=关闭(A/B 基线臂)。
     core_star_unit: float = 3.0
+    #: 3合1 中间进度项单位值(W96/ADR-0340,[13] 副本凑合爬坡段:
+    #: 目标件第 2 份 1★ 的期权显影)。core_star 只辖 star≥2,W93
+    #: 断买根因①:第 2 份买入在 targets/eng_frac/core_star/rung
+    #: 全维度零 delta → 「非正分」拒 → 金 59→90 溢出趴三轮
+    #: (run_20260825_130151 r7-r9,[17] >50 每一分都该花)。每名
+    #: 只计第 2 份(第 3 份 merge 后 core_star 承接,不双计);
+    #: deployed 域 ×1.0 / 纯 bench 域 ×bench_form_weight(ADR-0295
+    #: 同式)。初值=core_star_unit 同量级(同一 2★ 目的地的期权),
+    #: 未网格标定,sim A/B 方向见 deep_read/W96_报告.md;0=关闭。
+    merge_progress_unit: float = 3.0
     #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
     #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0

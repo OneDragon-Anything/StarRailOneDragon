@@ -181,6 +181,56 @@ def _core_star_count(state: GameState, session: StrategySession,
     return n
 
 
+def _merge_progress_count(state: GameState, session: StrategySession,
+                          registry: DecisionV2Registry) -> float:
+    """3合1 中间进度项(W96/ADR-0340,[13] 副本凑合 × [17] 溢余该花)。
+
+    目标集内、尚无 star≥2 持有的名字,其 1★ 副本份数的中间进度:
+    每名只计第 2 份(份数 1→2 = 1 进度;第 3 份 merge 成 2★ 后由
+    core_star 承接,star≥2 持有则本项对该名让位,两侧不双计)。
+    域权重 ADR-0295 同式:该名有 deployed 副本 ×1.0,纯 bench 副本
+    ×bench_form_weight 折减。修的是 W93 断买根因①:目标件第 2 份
+    (1★)买入在 targets(集合隶属封顶)/eng_frac(只辖三过渡体系)/
+    core_star(star≥2 门)/rung(整数档)全维度零 delta → 仲裁层
+    「非正分」拒 → 金 59→90 溢出趴三轮([17] >50 每一分都该花)。
+    """
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    tset = _target_names(state, session)
+    if not tset:
+        return 0.0
+    dep_c: dict[str, int] = {}
+    ben_c: dict[str, int] = {}
+    star2: set[str] = set()
+    for d in (state.deployed or []):
+        name = getattr(d, 'char_id', '') or ''
+        if d is None or name not in tset:
+            continue
+        star = getattr(d, 'star', 1) or 1
+        if star >= 2:
+            star2.add(name)
+        else:
+            dep_c[name] = dep_c.get(name, 0) + 1
+    for b in (state.bench or []):
+        name = getattr(b, 'char_id', '') or ''
+        if b is None or name not in tset:
+            continue
+        star = getattr(b, 'star', 1) or 1
+        if star >= 2:
+            star2.add(name)
+        else:
+            ben_c[name] = ben_c.get(name, 0) + 1
+    n = 0.0
+    for name in set(dep_c) | set(ben_c):
+        if name in star2:
+            continue    # 已 2★:core_star 承接,本项让位
+        copies = dep_c.get(name, 0) + ben_c.get(name, 0)
+        if copies >= 2:
+            n += 1.0 if dep_c.get(name, 0) > 0 else registry.bench_form_weight
+    return n
+
+
 def score_state(state: GameState, registry: DecisionV2Registry,
                 session: StrategySession | None = None) -> dict[str, float]:
     """板面形态→期望 查表(评分的单一真值;只看形态维)。"""
@@ -225,6 +275,10 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # [27] 伤害减罚此前零显影);0=关闭
     core_star = (_core_star_count(state, session, registry)
                  * registry.core_star_unit)
+    # 3合1 中间进度(ADR-0340):目标件第 2 份(1★)的期权显影
+    # ——core_star 的 star≥2 门之前的爬坡段;0=关闭(A/B 基线臂)
+    merge_progress = (_merge_progress_count(state, session, registry)
+                      * registry.merge_progress_unit)
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
     # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
     # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
@@ -238,7 +292,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
             'depth': round(depth, 3), 'level': round(level_ev, 3),
             'targets': round(targets, 3),
             'eng_frac': round(eng_frac, 3),
-            'core_star': round(core_star, 3)}
+            'core_star': round(core_star, 3),
+            'merge_progress': round(merge_progress, 3)}
 
 
 def _deployable_depth(state: GameState) -> int:
