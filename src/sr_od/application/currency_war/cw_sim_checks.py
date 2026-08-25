@@ -1193,6 +1193,71 @@ _BATCH_CHECKS = {
 _POOL_BUCKET_MIN_N = 5       # 同 cw_sim._BUCKET_MIN_N(值同步维护)
 _POOL_DEPTH_BUCKET_W = 3     # 同 cw_sim._DEPTH_BUCKET_W(值同步维护)
 
+# W109(ADR-0344):池新鲜度滞后红线——runs.jsonl 里晚于池内最新 run
+# 的行数 ≥ 此值 = 再生管线断。2 = 1 局容忍(再生挂局终后、下一局
+# 未结束前 lag=1 是管线健康瞬态)+1 局缓冲;>2 只能是钩子/手工链
+# 断了(2026-08-25 事故:池停 41 局 12 小时零报警)。
+POOL_FRESHNESS_LAG_LIMIT = 2
+
+
+def check_pool_freshness(replay_dir=None, *,
+                         lag_limit: int = POOL_FRESHNESS_LAG_LIMIT) -> dict:
+    """W109(ADR-0344):Δ池快照新鲜度——再生管线断裂的常设报警。
+
+    判据:快照 ``META.runs`` 覆盖的最新 run_id,距本机生产
+    ``runs.jsonl`` 的最新 run_id 落后 ≥lag_limit 局 → 违规(管线断)。
+    lag 口径 = runs.jsonl 中晚于池内最新 run_id 的行数(run_id 为
+    ``run_YYYYMMDD_HHMMSS``,字典序即时间序)。META 经数据模块取
+    (镜像 resolve_pool 的访问方式;本检查只读构成元数据,不消费
+    池数值)。
+
+    边界:本机无 replay(CI/裸 checkout)→ 跳过不辖(freshness 是
+    **本机管线**属性,不是池内容属性);池 META.runs 为空 → 违规
+    (快照异常)。
+
+    接线:sim 批量 checks(simulate_p1_batch,snapshot/auto 池)+
+    生产局终钩子(cw_telemetry 再生后自检)双端。
+    """
+    import json
+    from pathlib import Path
+
+    from sr_od.application.currency_war import cw_delta_pool_data as _dpd
+    if replay_dir is None:
+        from sr_od.application.currency_war.cw_delta_pool_gen import (
+            REPLAY_DIR as _rd,
+        )
+        replay_dir = _rd
+    runs_path = Path(replay_dir) / 'runs.jsonl'
+    if not runs_path.exists():
+        return {'violations': 0, 'lag': None, 'skipped': 'no local replay'}
+    real_ids: set[str] = set()
+    for ln in runs_path.read_text(encoding='utf-8').splitlines():
+        if not ln.strip():
+            continue
+        try:
+            rid = json.loads(ln).get('run_id')
+        except json.JSONDecodeError:
+            continue   # 半写行容忍(与生成器同口径)
+        if rid:
+            real_ids.add(str(rid))
+    pool_runs = {str(r) for r in (_dpd.META.get('runs') or {})}
+    if not pool_runs:
+        return {'violations': 1, 'lag': None,
+                'detail': ['池 META.runs 为空——快照异常或未生成']}
+    pool_latest = max(pool_runs)
+    lag = sum(1 for rid in real_ids if rid > pool_latest)
+    detail: list[str] = []
+    if lag >= lag_limit:
+        detail.append(
+            f'Δ池快照落后实机 {lag} 局(池内最新 {pool_latest},实机最新 '
+            f'{max(real_ids) if real_ids else "?"})——局终自动再生管线断'
+            '(ADR-0344):查 cw_telemetry 局终钩子日志,或手工重跑 '
+            'uv run python tools/cw/gen_delta_pool_snapshot.py')
+    return {'violations': len(detail), 'lag': lag,
+            'pool_latest': pool_latest,
+            'real_latest': max(real_ids) if real_ids else None,
+            'detail': detail}
+
 
 def check_delta_pool_bucket_min_n(pool_map: dict,
                                   min_n: int = _POOL_BUCKET_MIN_N,

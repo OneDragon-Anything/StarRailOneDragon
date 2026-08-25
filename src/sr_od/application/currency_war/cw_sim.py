@@ -1733,6 +1733,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 语料真值(含跨 run 配对伪影哨兵)
         rep_checks['reward_delta_pool_bucket_lock'] = \
             check_reward_delta_pool_bucket_lock(_pm)
+        # W109(ADR-0344):池新鲜度——snapshot/auto 池与本机生产
+        # replay 落后 ≥2 局 = 再生管线断(池停 12h 零报警事故的
+        # 常设防线);fallback 无池语义不辖;无本机 replay(CI)跳过。
+        if pool in ('snapshot', 'auto'):
+            from sr_od.application.currency_war.cw_sim_checks import (
+                check_pool_freshness,
+            )
+            rep_checks['pool_freshness'] = check_pool_freshness()
         # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_sim_pool_no_cost_truncation as _chk_pool,

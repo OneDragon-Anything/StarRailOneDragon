@@ -54,7 +54,7 @@ battle_loop(主循环,屏幕级路由)
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`cw_telemetry` | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |
-| sim/回放基建 | `cw_sim`(P1 全流程模拟器:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`cw_sim_checks`(账本检查,实机学费回灌载体)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器)/`cw_plan_replay_audit`(plan 对拍) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) · [redesign §6](../redesign.md) |
+| sim/回放基建 | `cw_sim`(P1 全流程模拟器:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`cw_sim_checks`(账本检查,实机学费回灌载体;池新鲜度报警 ADR-0344)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_delta_pool_gen`(池生成核心+局终自动再生管线,ADR-0344;CLI 壳 tools/cw/gen_delta_pool_snapshot.py)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器)/`cw_plan_replay_audit`(plan 对拍) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) · [redesign §6](../redesign.md) |
 | 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/default_strategy`/`strategies/decision_v2_strategy`(现行生产 v2;旧 line_strategy 已删,ADR-0336) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
 | 离线工具 | `cw_weight_search`(CEM 权重搜索)/`cw_divergence_stats`(姿态分歧频率)/`cw_progress_curves` | 消费 telemetry 的离线分析,不进生产链 | [05](05_observation.md) |
 

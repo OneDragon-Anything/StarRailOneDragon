@@ -387,6 +387,9 @@ class TelemetryRecorder:
         self._gold_trajectory.pop(run_id, None)
         self._comms.pop(run_id, None)
         self._difficulty.pop(run_id, None)
+        # W109(ADR-0344):局终→Δ池快照自动再生(runs.jsonl 每新增
+        # 一行即触发;管线断 12 小时零报警事故的治本)。best-effort。
+        _regenerate_delta_pool_after_run()
 
     def record_exec_event(self, run_id: str, round_num: int, action_family: str,
                           screen: str, event: str, reason: str = "",
@@ -733,7 +736,45 @@ def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list
     if recovered:
         log.info('[cw][telemetry] summary 兜底回填 %d 局(ADR-0273):%s',
                  len(recovered), ','.join(recovered))
+        # W109(ADR-0344):兜底行也是 runs.jsonl 新增——同样触发池再生
+        # (崩溃恢复局的语料此刻才齐,不等到下一局正常局终)。
+        _regenerate_delta_pool_after_run()
     return recovered
+
+
+def _regenerate_delta_pool_after_run() -> None:
+    """W109(ADR-0344):局终→Δ池快照自动再生 + 新鲜度自检。
+
+    事故背景:2026-08-25 查实池快照停在凌晨(41 局),当天 4 局未入
+    池——sim encounter/boss 零胜例把 P1 后段钉死全败,管线断 12
+    小时无任何报警。治本 = 再生随 runs.jsonl 写入端走(正常局终
+    record_run_summary + 崩溃兜底 recover_dangling_run_summaries),
+    加新鲜度检查项双端挂(sim 批 + 生产自检)。
+
+    best-effort 纪律:再生/自检失败只记日志,**绝不向局终收尾传播
+    异常**(遥测基建故障不许影响对局本体)。
+    """
+    try:
+        from sr_od.application.currency_war.cw_delta_pool_gen import (
+            regenerate_snapshot,
+        )
+        fp = regenerate_snapshot(quiet=True)
+    except Exception as e:   # noqa: BLE001
+        log.warning('[cw][pool-pipeline] Δ池再生失败(不阻塞局终,ADR-0344): %s', e)
+        return
+    log.info('[cw][pool-pipeline] 局终自动再生 Δ池快照: %s', fp)
+    try:
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_pool_freshness,
+        )
+        verdict = check_pool_freshness()
+        if verdict.get('violations'):
+            # 再生刚成功却仍滞后 = 新局语料没进池(如 outcomes 缺行)
+            # ——正是新鲜度检查要抓的病态,留痕不抛。
+            log.warning('[cw][pool-pipeline] 再生后池新鲜度仍滞后'
+                        '(ADR-0344): %s', verdict)
+    except Exception as e:   # noqa: BLE001
+        log.warning('[cw][pool-pipeline] 新鲜度自检异常(不阻塞): %s', e)
 
 
 def check_summary_write_path_coverage(replay_dir: Path, recent: int = 10) -> list[str]:
