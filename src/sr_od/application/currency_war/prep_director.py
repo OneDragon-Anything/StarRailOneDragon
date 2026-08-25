@@ -903,6 +903,9 @@ class PrepDirector(SrOperation):
         图标+数字 → 点开可见本节点预期金币奖励明细(连胜 0-1→1金,
         2-4→2金…+ 节点基础奖励)。**先采集一段时间,看基础奖励会
         不会变,之后再接策略**。
+        2026-08-25 用户口述修正:**P1 基础节点奖励已采清**(economy.md
+        §10:基础恒 5+连胜四档,49 样本),当前缺口=**P2/P3 基础节点
+        奖励** → 钩子限 plane≥2,P1 不再采集。
 
         实现capture-only(零风险):每节点一次——点六边形(1555,930,
         实证 2026-08-23)→ 截图存 shots(cw_reward 前缀)→ OCR 全
@@ -946,6 +949,12 @@ class PrepDirector(SrOperation):
             if _key == cur_key:   # 本节点已采
                 return
             _sess._reward_probed_key = cur_key
+            # 2026-08-25 用户口述:P1 已采清(economy.md §10),缺口=
+            # P2/P3 → P1 节点直接跳过(记键防同节点重入重复等待)。
+            if _plane is not None and _plane < 2:
+                log.info('[cw][reward-probe] P1 奖励已采清→跳过'
+                         '(plane=%s)', _plane)
+                return
             # r302:controller.click 需 Point 对象(裸 int 在坐标
             # 转换层炸 'int' has no .x——四代 skip 的共同根因)
             from one_dragon.base.geometry.point import Point
@@ -1012,6 +1021,8 @@ class PrepDirector(SrOperation):
                 eval_breakdown={'prep_step': float(self._steps)},
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
                 gold_point=False,   # r68 review:步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
+                extra={'formed_stop': bool(getattr(
+                    self._session(), 'v3_formed_stop', False))},  # ADR-0343 豁免联动
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
             log.debug(f'[cw-director] telemetry skip: {e}')
