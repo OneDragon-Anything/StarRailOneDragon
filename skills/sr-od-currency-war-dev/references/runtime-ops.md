@@ -25,7 +25,7 @@
 2. 残局清理(SKILL.md §实机运维 的清理序;遭遇/投资 overlay 多半要先进后出——「返回备战界面」→ ESC 中断)。判定每一步用 `analyze_screen`,认 screen 名不认感觉。
 3. `analyze_screen` 确认**货币战争-大厅**精准命中。
 4. 重启 MCP(有待加载代码时)→ 重连。
-5. 哨兵重武装:删旧哨兵位置文件(cw_sentinel.pos)再起新实例(单实例纪律——先查 job/进程列表确认旧的不在);**不删 pos = 读旧水位误报**(2026-08-22 局47 实证:命中 2 小时前旧局 ERROR;root cause = 没按本条走)。重挂定时轮询时更新提示词里的当期判读重点(过期提示词会误导)。
+5. 哨兵重武装:删旧哨兵位置文件(cw_sentinel.pos)再起新实例(单实例纪律——先查 job/进程列表确认旧的不在);**不删 pos = 读旧水位误报**(历次实证:命中 2 小时前旧局 ERROR;root cause = 没按本条走)。重挂定时轮询时更新提示词里的当期判读重点(过期提示词会误导)。
 6. 起新局。
 
 ## 残局画面清单(按 screen 名)
@@ -53,8 +53,8 @@
 | `cw_early_stop.py` | 早停(判据=口述[28] 框架:P1 出口金<50 或 HP=1 才候选;HP<70 降观察报警不停局) | **首条遥测落后**再武装(早武装=自愈退出) |
 | `cw_runs_gap.py` | runs 断流 | 随局 |
 
-- **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python .debug\temp\currency_war\<脚本>.py` 后台起(退出码即警报);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位;job id 记进度树「点名册」节。
-- **重武三步(硬序,防实例堆积)**:查旧 → kill 净(含上一局残留)→ 再武装。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。
+- **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python .debug\temp\currency_war\<脚本>.py` 后台起(退出码即警报);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 P2 投资策略误报经信道送达并处置实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位(rewatch 杀净时顺手删);job id 记进度树「点名册」节。
+- **重武三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。
 - **试用期纪律**:哨兵/早停脚本前几跳 = 试用期——报警先核时间戳与归属(旧行重放/中途武装无上下文/局后空窗三类误报实证),再信内容;watcher 上线不算完,前几跳逐一复盘。
 
 ## 判读与建档的运维侧纪律
