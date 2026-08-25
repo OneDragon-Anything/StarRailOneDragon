@@ -258,16 +258,16 @@ class StrategySession:
     # ⚠️ ADR-0336:LineStrategy 已删——v2_state/locked_line/bridge_id/
     # v2_prev_hp 是 v1 遗留字段,decision_v2 不写(恒 None/空),保留
     # 仅作遥测 schema 与历史回放兼容;v2_round_*/v2_seed_bought/
-    # v2_ever_full_interest/v2_remedy_used 被 decision_v2 消费(保留)。
+    # v2_remedy_used 被 decision_v2 消费(保留);v2_ever_full_interest
+    # 自 W119(ADR-0347,E6 latch 退场)起仅 default 栈消费(v2 走
+    # ev.levelup_ev_authorized 总账)。
     v2_state: tuple | None = None
     # cw_phase_machine 状态元组(None=未初始化;v1 遗留,ADR-0336)
     locked_line: str | None = None                     # 锁定线 id(None=未锁;v1 遗留)
     bridge_id: str | None = None                       # 当前桥线 id(None=无;v1 遗留)
     # r406(ADR-0266,压测经济批 [12]/①残差):本局**曾达满息**(时点金≥50)
-    # 标志——追级(LevelUp)资格的息引擎前置判据。decision_v2.decide_prep
-    # 每次入口采样 state.gold≥50 时置 True(局内单调,不清零;重启丢 session
-    # 重放/续跑路径靠本字段 False 保守)。None 安全:
-    # getattr 兜底 False(旧 session 反序列化)。
+    # 标志。W119/ADR-0347 起 decision_v2 不再消费(E6 latch 随 [12] 门
+    # 收编 EV 总账退场);default 栈仍读写(冻结)——字段保留。
     v2_ever_full_interest: bool = False
     # r246:普通战斗败检测的上一轮 HP(v1 遗留,ADR-0336 后无人写)
     v2_prev_hp: int | None = None

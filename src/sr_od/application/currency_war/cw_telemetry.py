@@ -135,6 +135,11 @@ class DecisionTrace:
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
     # (W114 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
     formed_stop: bool = False
+    # —— W119/ADR-0347 授权依据 trace(经济循环总模型步②「切授权」):
+    # dp_posture=当轮 DP 日程表姿态 tag(存息/升级/D 预算;""=查询
+    # 失败/default 栈)。EV 放行值在 decisions 行 log 的 ev_auth 键
+    # (arbiter 执行 log)。可选,旧记录缺省不破坏 schema。
+    dp_posture: str = ""
 
 
 @dataclass
@@ -310,10 +315,12 @@ class TelemetryRecorder:
             _v2s = extra.get('sess_v2_state')
             trace.sess_v2_state = list(_v2s) if _v2s else None
             # W114/ADR-0346 相位影子观测 + ADR-0343 formed_stop 缺口补挂
+            # + W119/ADR-0347 授权依据 trace(dp_posture)
             trace.phase = str(extra.get('phase', ''))
             trace.form_ok = bool(extra.get('form_ok', False))
             trace.form_score = float(extra.get('form_score', 0.0))
             trace.formed_stop = bool(extra.get('formed_stop', False))
+            trace.dp_posture = str(extra.get('dp_posture', ''))
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
@@ -1077,6 +1084,9 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         ph_s = (f" ph={_ph}" + ("/ok" if _fok else "")
                 + (f"/{_fsc:.2f}" if isinstance(_fsc, (int, float)) else "")
                 ) if _ph else ""
+        # W119/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
+        _dpp = d.get("dp_posture") or ""
+        dpp_s = f" dp={_dpp}" if _dpp else ""
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
         _xp = st.get("xp_progress")
@@ -1085,7 +1095,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
         lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ph_s}")
+                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ph_s}{dpp_s}")
     return lines
 
 

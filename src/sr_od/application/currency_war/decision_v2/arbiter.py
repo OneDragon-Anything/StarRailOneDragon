@@ -30,13 +30,23 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
+    boss_window_active,
     register_round_bought,
     register_round_sold,
+)
+from sr_od.application.currency_war.decision_v2.ev import (
+    interest_cost,
+    levelup_ev_authorized,
+    round_posture,
 )
 from sr_od.application.currency_war.decision_v2.filters import (
     current_mode,
     is_catchup,
     is_emergency,
+)
+from sr_od.application.currency_war.decision_v2.phase import (
+    Phase,
+    derive_phase,
 )
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
@@ -69,32 +79,34 @@ class ArbiterResult:
 
 def _active_floor(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry) -> int:
-    """地板分派(覆盖态优先序同层2;[18]/[32]/redesign §5.2)。"""
+    """地板分派(W119/ADR-0347 相位地板;覆盖态优先序不变——应急/boss/
+    war 旁路与节点授权先于相位,逐位保留)。
+
+    - 应急 → rebirth_floor([18],旁路不动);
+    - boss 窗(节点图统一口径 boss_window_active)→ boss_floor;
+    - war 模式(报警升级/boss_breaker 覆盖)→ war_floor;
+    - 常态 → **相位地板**(W113 §3.4 替换行,阶梯地板退场):
+      FORM → form_floor(保险丝,EV 授权下的本金下限;Q1 四档 sim
+      对照待校准,本批只接线);HOARD/SPEND → interest_floor(满息
+      平台,只花溢余)。HOARD 的 [11] 无损购买例外在同档/1费放行
+      (gold_floor 内实现,非地板值变化)。
+    """
     if is_emergency(state, registry):
         return registry.rebirth_floor
-    node = getattr(session, 'node_type_current', None) or ''
-    if node in registry.boss_round_node_types or \
-            (state.plane == 1 and state.round_num >= 9):
+    if boss_window_active(state, session, registry):
         return registry.boss_floor
     if current_mode(session) == 'war':
         return registry.war_floor
-    # 经济/追赶:阶梯地板(v1 _economy_actions 734-739 同式镜像——
-    # ≥50 保满息;10-49 档内全花(配方未满,息让位);<10 零息全花。
-    # 骨架初版恒 50 是 smoke「0/N 买入」根因之一:金<53 全拒)
-    if state.gold >= registry.interest_floor:
-        return registry.interest_floor
-    if state.gold >= 10:
-        return state.gold % 10
-    return 0
+    if derive_phase(state, session, registry) is Phase.FORM:
+        return registry.form_floor
+    return registry.interest_floor
 
 
 def _round_state_dims(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> set[str]:
     """当前命中的回合态维(审计表列)。"""
     dims: set[str] = set()
-    node = getattr(session, 'node_type_current', None) or ''
-    if node in registry.boss_round_node_types or \
-            (state.plane == 1 and state.round_num >= 9):
+    if boss_window_active(state, session, registry):
         dims.add('boss')
     if is_emergency(state, registry):
         dims.add('emergency')
@@ -107,6 +119,9 @@ def _check_constraint(name: str, cand: Candidate,
                       working: GameState, state: GameState,
                       session: StrategySession,
                       registry: DecisionV2Registry,
+                      val: float = 0.0,
+                      bd: dict | None = None,
+                      auth: dict | None = None,
                       ) -> RejectReason | None:
     """单约束裁决:通过返回 None,拒绝返回结构化原因(判读可读)。
 
@@ -116,6 +131,12 @@ def _check_constraint(name: str, cand: Candidate,
     copies_cap/same_round_mutex/boss_levelup_ban/refresh_budget)
     resource='' shortfall=0 占位,**不进回连**(§1.1 捕获条件)。
     log 行格式不变(``f'{cname}:{reason.describe}'``)。
+
+    W119(ADR-0347):``val``/``bd`` = 层3 分数与 breakdown(interest_rule
+    的 EV 授权消费——V 从分数剥离息分量取得,单一源不重算);补偿重验
+    路径(_resource_blocked/_beneficiary_recheck)不查 interest_rule,
+    缺省 0 即可。``auth`` = 授权依据 trace 出口(判读「为什么放行」,
+    验证门 5):interest_rule 的 EV 放行值写 auth['ev_auth'] 进执行 log。
     """
     a = cand.action
     if name == 'gold_floor':
@@ -123,15 +144,52 @@ def _check_constraint(name: str, cand: Candidate,
         if cost <= 0:
             return None
         floor = _active_floor(state, session, registry)
+        if cand.tag == 'levelup':
+            # 升级通道的金门槛让位 [12] EV/DP 总账(boss_levelup_ban 块内
+            # levelup_ev_authorized 单一裁决,ADR-0347);保险丝=form_floor
+            # (EV/DP 授权的花费也止于本金下限)
+            floor = min(floor, registry.form_floor)
+        elif (not is_emergency(state, registry)
+              and current_mode(session) == 'economy'
+              and not boss_window_active(state, session, registry)
+              and derive_phase(state, session, registry)
+              is not Phase.FORM):
+            # 相位地板域(HOARD/SPEND,W119/ADR-0347):
+            # - SPEND(金 ≥50):破平台候选让位 interest_rule 的 EV 授权
+            #   (此处硬拒会架空总账——EV>0 的破息买是本批的合法放行面);
+            # - HOARD(金 <50):[11] 无损购买例外(同档/1费)放行,
+            #   跨档拒(攒息——三通道默认关,例外=[11]/[33]/DP 花费授权)。
+            if working.gold >= registry.interest_floor:
+                if working.gold - cost < registry.interest_floor:
+                    return None    # 交 interest_rule EV 裁决
+            else:
+                posture = round_posture(state, session)
+                dp_spend = posture is not None and (
+                    posture.level_up or posture.refresh_budget > 0)
+                if cost == 1 \
+                        or (working.gold - cost) // 10 >= working.gold // 10 \
+                        or (dp_spend and cand.tag in ('levelup', 'refresh')):
+                    return None    # [11] 同档/1费;DP 说花→授权放行(§3.2d)
+                return RejectReason(
+                    'gold_floor', 'gold',
+                    working.gold % 10 + cost,
+                    f'HOARD 攒息(金{working.gold}-费{cost} 破档;'
+                    f'档线{working.gold // 10 * 10})')
         if working.gold - cost < floor:
             shortfall = floor + cost - working.gold
             return RejectReason('gold_floor', 'gold', shortfall,
                                 f'金<{floor}(地板;现{working.gold}-费{cost})')
         return None
     if name == 'interest_rule':
-        # [11][17][28]:息档保持——常态(经济)下花费不得降息档,
-        # 除非 1 费(卖出全额退=净0)或花后仍 ≥50(满息结余);
-        # war/boss/应急覆盖态交给 gold_floor 的地板,不辖息档。
+        # [11][17][28] → W119/ADR-0347 EV 授权(W113 §3.2(d)):
+        # 跨档消费判 EV = V − C_interest,V = 层3分剥离息分量(bd['int_emb'],
+        # scoring 声明自己嵌入的息分量,单一源),C_interest = 跨档数 × R
+        # (R=跨位面剩余节点,ev.interest_cost)。EV>0 放行(含破息),
+        # ≤0 拒——恒拒语义退场,[11] 同档/1费/满息结余特例**原样保留**
+        # (它们是 EV 规则的零息损特例)。升级(levelup)不辖——升级的
+        # 总账在 boss_levelup_ban 块的 levelup_ev_authorized(平台账,
+        # 含息引擎未立的延迟损,口径不同,双门并设会双重计罚)。
+        # war/boss/应急覆盖态交给 gold_floor 的地板,不辖息档(原语义)。
         cost = _cost_of(cand)
         if cost <= 0 or cand.tag in ('levelup',):
             return None
@@ -139,11 +197,10 @@ def _check_constraint(name: str, cand: Candidate,
             return None
         if is_emergency(state, registry):
             return None
-        node = getattr(session, 'node_type_current', None) or ''
-        if node in registry.boss_round_node_types:
+        if boss_window_active(state, session, registry):
             return None
-        # 金<50 时辖权让位 gold_floor 的阶梯地板(v1 语义:档内全花,
-        # 配方未满息让位)——此处只保护「从 ≥50 跌破 50」的降息档
+        # 金<50 时辖权让位 gold_floor 的相位地板(HOARD 摊档/FORM 保险丝)
+        # ——此处只辖「从 ≥50 跌破 50」的降息档(原辖域保留)
         if working.gold < registry.interest_floor:
             return None
         after = working.gold - cost
@@ -153,8 +210,16 @@ def _check_constraint(name: str, cand: Candidate,
             return None    # [11] 1 费净0(1★卖出全额退)
         if after // 10 >= (working.gold // 10):
             return None    # 同息档内花费([11] 不损息)
+        c = interest_cost(working.gold, cost, state)
+        v = val - (bd or {}).get('int_emb', 0.0)
+        ev = v - c
+        if ev > 0:
+            if auth is not None:
+                auth['ev_auth'] = round(ev, 1)   # 授权依据 trace(放行)
+            return None    # EV 授权放行(含破息)
         return RejectReason('interest_rule', '', 0,
-                            f'破息档({working.gold}→{after})')
+                            f'EV≤0 破息拒(V{v:.1f}-C{c}={ev:.1f},'
+                            f'{working.gold}→{after})')
     if name == 'bench_capacity':
         if isinstance(a, BuyCard):
             from sr_od.application.currency_war.cw_state import (
@@ -211,24 +276,24 @@ def _check_constraint(name: str, cand: Candidate,
     if name == 'boss_levelup_ban':
         # [32] boss 轮禁升级腾席(升级 cap 收益下轮才兑现)
         if isinstance(a, LevelUp):
-            node = getattr(session, 'node_type_current', None) or ''
-            if node in registry.boss_round_node_types or \
-                    (state.plane == 1 and state.round_num >= 9):
+            if boss_window_active(state, session, registry):
                 return RejectReason('boss_levelup_ban', '', 0,
                                     'boss 轮禁升级([32])')
-            if registry.levelup_interest_engine_gate:
-                # [12] 追级息引擎前置:曾达满息 或 花后仍 ≥50;
-                # P1 lv<5 宽松(gate=10,v1 _economy_actions _lvl_gate
-                # 同式镜像——否则等级恒 1→cap 1→板面 1 件,团灭)
-                cost = _cost_of(cand)
-                if state.plane == 1 and state.level < 5:
-                    ok = working.gold - cost >= 10
-                else:
-                    ok = (getattr(session, 'v2_ever_full_interest', False)
-                          or working.gold - cost >= registry.interest_floor)
-                if not ok:
-                    return RejectReason('boss_levelup_ban', '', 0,
-                                        '息引擎未立([12]:曾达满息或花后≥50)')
+            # [12] 追级息引擎门 → EV 总账收编(W119/ADR-0347;A1 镜像
+            # 与 E6 latch 一并退场,单一裁决点在 ev.levelup_ev_authorized:
+            # [33] 人口位 / DP 花费授权(平台未破)/ 静态 EV 平台账)
+            cost = _cost_of(cand)
+            from sr_od.application.currency_war.decision_v2.candidates import (
+                _target_names,
+            )
+            if not levelup_ev_authorized(
+                    state, session, registry, working.gold, cost,
+                    _target_names(state, session),
+                    val=val,
+                    int_emb=(bd or {}).get('int_emb', 0.0)):
+                return RejectReason(
+                    'boss_levelup_ban', '', 0,
+                    '息引擎总账拒([12] EV 化:平台账不过/无人口位)')
         return None
     if name == 'refresh_budget':
         # ADR-0297 刷新×追级并存(约束侧,方案 a):刷新链曾以
@@ -352,9 +417,11 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if intended and cur != intended:
                 verdicts.append(f'index_drift:目标 {intended} '
                                 f'现槽 {cur}(槽位已被前序动作消费)')
+        auth_note: dict = {}
         for cname in registry.constraints:
             reason = _check_constraint(
-                cname, cand, working, state, session, registry)
+                cname, cand, working, state, session, registry,
+                val=val, bd=bd, auth=auth_note)
             if reason is not None:
                 verdicts.append(f'{cname}:{reason.describe}')
                 # 资源型拒绝捕获点①(W52/ADR-0326):仅 resource 非空进
@@ -368,13 +435,16 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if sells_accepted >= registry.sell_top_k:
                 accepted = False
                 verdicts.append(f'sell_top_k:{registry.sell_top_k}')
-        res.log.append({
+        row = {
             'tag': cand.tag, 'score': val,
             'desc': _describe(cand, state),
             'accepted': accepted,
             'reject': '; '.join(verdicts) if verdicts else '',
             'breakdown': bd,
-        })
+        }
+        if auth_note:
+            row['ev_auth'] = auth_note   # 授权依据 trace(ADR-0347)
+        res.log.append(row)
         if accepted:
             _a = _materialize(cand, state)
             res.actions.append(_a)
@@ -388,20 +458,25 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     if refresh_cand is not None:
         cand, val, bd = refresh_cand
         reason = None
+        auth_note: dict = {}
         if val <= 0:
             reason = RejectReason('refresh', '', 0, '非正分')
         if reason is None:
             for cname in registry.constraints:
                 reason = _check_constraint(cname, cand, working, state,
-                                           session, registry)
+                                           session, registry, val=val, bd=bd,
+                                           auth=auth_note)
                 if reason is not None:
                     break
         accepted = reason is None
-        res.log.append({'tag': 'refresh', 'score': val,
-                        'desc': f'刷新(-{cand.action.cost or 2}金)',
-                        'accepted': accepted,
-                        'reject': reason.describe if reason else '',
-                        'breakdown': bd})
+        row = {'tag': 'refresh', 'score': val,
+               'desc': f'刷新(-{cand.action.cost or 2}金)',
+               'accepted': accepted,
+               'reject': reason.describe if reason else '',
+               'breakdown': bd}
+        if auth_note:
+            row['ev_auth'] = auth_note
+        res.log.append(row)
         if accepted:
             res.actions.append(cand.action)   # 段尾:刷后 re-decide
             # ADR-0297:局刷新计数(预算约束的数据源;sim 局=独立

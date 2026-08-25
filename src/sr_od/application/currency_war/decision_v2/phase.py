@@ -1,12 +1,12 @@
-"""决策框架 v2 相位派生(W114/ADR-0346,经济循环总模型步①「影子」)。
+"""决策框架 v2 相位派生(W114/ADR-0346 影子;W119/ADR-0347 起被消费)。
 
 设计依据:.debug/temp/currency_war/cw_dev/deep_read/W113_经济循环总模型设计.md §3.1
 (2026-08-25 用户裁决版:等级不作为独立门槛、核心须上场、追赶态删除)。
 
-**本批是影子观测**:``derive_phase``/``form_ok``/``form_score`` 每轮在
-decide_prep 入口计算一次并写 session/遥测,**不被任何决策逻辑消费**——
-为步②(切授权)/步③(切调度)提供对照基线。任何 if-相位-then-改行为
-的代码都违反本批的存在理由(零行为变化)。
+**W114 影子期已结束(步② 切授权)**:相位/form_ok/form_score 仍是每轮
+decide_prep 入口计算一次的派生量(不落跨轮存储),但自 W119 起被决策
+消费——地板族(``arbiter._active_floor`` 相位驱动)与成型停手
+(``filters.formed_stop_active`` 消费 form_ok)读它。
 
 相位是**派生量**(由可观测变量即时算出,不存跨轮状态,天然免疫
 session 丢失):
@@ -22,7 +22,9 @@ form_ok 谓词(裁决后版本,**无等级项**——等级通过上场完整性
                AND bond_tiers_met        # ∀(f,t)∈comp.form_tiers: board[f]≥t
                AND core_deployed_ok      # intention_core 已上场 且 star≥2
 
-意向未锁定(兜底局)时降级用连续量:``form_score ≥ phase_form_score_gate``。
+意向未锁定(兜底局)时降级用连续量:``form_score ≥ phase_form_score_gate``
+且 ``round_num ≥ phase_fallback_min_round``(W119 校准判据,防 r2-r3
+弱板误转真;门值标定留步②b)。
 """
 from __future__ import annotations
 
@@ -91,11 +93,16 @@ def form_ok(state: GameState, session: StrategySession,
     - 线不可解析/无 form_tiers(反甲类):保守判 False(与
       formed_stop_active 同保守口径——「羁绊凑够」无定义不辖)。
     - 意向未锁(兜底局):降级 ``form_score ≥ phase_form_score_gate``
-      (防止兜底局永远停在 FORM);人口落后自然压低 form_score
-      (deployed 上不满 → 引擎数低),承接「人口别落后」的观察。
+      **且** ``round_num ≥ phase_fallback_min_round``(W119/ADR-0347 校准
+      判据,W113 §8-11:W118 实测 score 门单独在 r2-r3 即误转真——1
+      过渡体系≠战力 OK;两判据合取,标定留 ②b)。人口落后自然压低
+      form_score(deployed 上不满 → 引擎数低),承接「人口别落后」的
+      观察。
     """
     ist = getattr(session, 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked':
+        if state.round_num < registry.phase_fallback_min_round:
+            return False
         return form_score(state, registry) >= registry.phase_form_score_gate
     from sr_od.application.currency_war.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)

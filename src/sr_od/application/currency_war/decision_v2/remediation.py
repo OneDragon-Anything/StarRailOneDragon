@@ -418,8 +418,9 @@ def _compensate_slot(working: GameState, state: GameState,
       点击整组——n=ceil(剩余XP/XP_PER_BUY)(剩余XP=升 1 级所需-当前
       级内进度,读 state.xp_progress);整组=[LevelUp]*n(LevelUp.cost=
       单击花金,总价=n×单价);**整组事务性重验**(arbiter 侧重验
-      gold_floor 按 n×总价;boss_levelup_ban 与息引擎门「花后仍 ≥50
-      按总价口径」在本函数前置守卫);非 boss 轮才发;cap 由 level
+      gold_floor 按 n×总价;boss 轮判定(boss_window_active 统一口径)
+      与息引擎门(ev.levelup_ev_authorized,W119/ADR-0347 总账化)
+      在本函数前置守卫);非 boss 轮才发;cap 由 level
       驱动才发(deploy_cap 真值绑定>level 时升级不抬 cap,改走 ②)。
       cap+n 次点击后才 +1,下轮起部署管线自然消化;受益 DeployMove
       本轮仍拒——显式注释「升级解的是下轮」,不假装同轮通(设计 §9-2);
@@ -438,9 +439,16 @@ def _compensate_slot(working: GameState, state: GameState,
     if in_char is None:
         return []
     # ① LevelUp 臂(优先:升级不损件;H2 n 次点击整组)
-    node = getattr(session, 'node_type_current', None) or ''
-    boss = node in registry.boss_round_node_types \
-        or (state.plane == 1 and state.round_num >= 9)
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        boss_window_active,
+    )
+    from sr_od.application.currency_war.decision_v2.ev import (
+        levelup_ev_authorized,
+    )
+    boss = boss_window_active(state, session, registry)
     cap_level_driven = (state.deploy_cap is None
                         or state.deploy_cap <= state.level)
     if not boss and state.level < registry.level_max \
@@ -458,14 +466,13 @@ def _compensate_slot(working: GameState, state: GameState,
         _need = _XP_TO_NEXT_LEVEL.get(state.level, _XP_PER_BUY * 2)
         n = max(1, -(-(max(0, _need - _cur)) // _XP_PER_BUY))
         total = n * cost
-        # 息引擎门([12];按 n×总价口径——设计 H2 整组事务性重验)
-        if state.plane == 1 and state.level < 5:
-            ok_interest = working.gold - total >= 10
-        else:
-            ok_interest = (getattr(session, 'v2_ever_full_interest', False)
-                           or working.gold - total
-                           >= registry.interest_floor)
-        if ok_interest:
+        # 息引擎门 → EV 总账(W119/ADR-0347,A2 镜像清:ev.levelup_ev_
+        # authorized 单一裁决,[33] 人口位/DP 花费授权;按 n×总价口径
+        # ——设计 H2 整组事务性重验。补偿路径无层3 分,V 侧只有 ①②
+        # 两路可授权——满员换位场景 bench 有等上场件,[33] 常真)
+        if levelup_ev_authorized(
+                state, session, registry, working.gold, total,
+                _target_names(state, session)):
             # gold_floor 按 n×总价的逐动作重验在 arbiter 侧(每组动作
             # 各自 _check_constraint+simulate);受益 DeployMove 本轮仍拒
             # (升级解的是下轮——cap+n 次点击后才 +1,下轮部署管线消化)

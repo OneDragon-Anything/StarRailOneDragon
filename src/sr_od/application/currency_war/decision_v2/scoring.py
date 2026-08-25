@@ -455,10 +455,10 @@ def score_candidate(cand: Candidate, state: GameState,
     if cand.tag == 'refresh':
         # 刷新的板面形态不可预知(新店随机)→ 查表外常量 EV
         # (未标定=0:骨架版不主动刷新;标定 gate 后接 P(hit) 期望)。
-        # 轮界门(registry.refresh_max_round):早期方向刷新(v1 r258
-        # 同语义),中后期恒刷会抽干金流挤死升级通道(标定批诊断);
-        # 金保底门(refresh_min_gold):防刷后 re-decide 链把金抽干
-        # 至 <10,中期够不到满息平台锁死 [12] 息引擎(标定批诊断)
+        # W119/ADR-0347:bd['int_emb']=0(刷新分内无息分量——EV 授权
+        # 剥离用,arbiter.interest_rule 消费)
+        # (轮界门 refresh_max_round=早期方向刷新/金保底门 refresh_min_gold
+        # =防 re-decide 链抽干金流锁死息引擎——ADR-0293 标定批双门)
         if (state.round_num > registry.refresh_max_round
                 or (state.gold or 0) < registry.refresh_min_gold):
             val = -cand.action.cost or -1.0
@@ -494,12 +494,18 @@ def score_candidate(cand: Candidate, state: GameState,
                     and (state.gold or 0) < registry.refresh_starve_gold):
                 ev_f *= registry.refresh_starve_discount
             val = max(val, ev_f - (cand.action.cost or 0))
-        return val, {'base': base, 'after': None, 'refresh_ev': val}
+        return val, {'base': base, 'after': None, 'refresh_ev': val,
+                     'int_emb': 0.0}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
-        return 0.0, {'base': base, 'after': None}
+        return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
     after = score_state(after_state, registry, session)
     val = sum(after.values()) - sum(base.values())
+    # W119/ADR-0347:bd['int_emb'] = 本候选分数内**实际嵌入的息分量**
+    # (EV 授权的 V 剥离单一源——arbiter.interest_rule 消费:
+    # V = val − int_emb)。默认=息差;ADR-0332 平滑生效时改写为
+    # 真实档损(平滑后的净嵌入),两处保持同值。
+    int_emb = after.get('interest', 0.0) - base.get('interest', 0.0)
     if (state.plane == 1 and state.round_num >= 5
             and not is_emergency(state, registry)
             and (state.gold or 0) >= registry.interest_floor
@@ -516,6 +522,7 @@ def score_candidate(cand: Candidate, state: GameState,
         _orig_pen = (after.get('interest', 0.0) - base.get('interest', 0.0))
         _real_loss = -(_gb // 10 - _ga // 10) * registry.interest_rounds
         val += _real_loss - _orig_pen
+        int_emb = float(_real_loss)
     if cand.tag in ('off_target', 'for_gold', 'free_bench'):
         # 弱件换金偏置(registry.off_target_sell_bias):持有域溢出
         # 件的卖分本为 0(被「非正分」拒),偏置让占位件可换金
@@ -573,7 +580,7 @@ def score_candidate(cand: Candidate, state: GameState,
         # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
         # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
         val += registry.goldrich_buy_bias
-    return val, {'base': base, 'after': after}
+    return val, {'base': base, 'after': after, 'int_emb': int_emb}
 
 
 def score_all(cands: list[Candidate], state: GameState,

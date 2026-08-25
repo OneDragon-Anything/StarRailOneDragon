@@ -393,6 +393,44 @@ class DisciplineView:
         return reg
 
 
+def boss_window_active(state: GameState, session: StrategySession,
+                       registry: DecisionV2Registry) -> bool:
+    """boss 破息窗统一口径(W113 §8-2;W119/ADR-0347)。
+
+    主判据=**节点图**:node_type ∈ boss_round_node_types(boss 节点)。
+    轮数口径**全仓只在此处保留**,且仅作 node_type 缺读兜底:P1 位面末
+    r≥boss_window_fallback_round(9)且节点类型不可读 → 按 boss 窗处理
+    (P1 末节点恒为 boss 的节点图先验)。
+
+    旧双口径收编说明:discipline 旧「P1 r≥5 遭遇预备窗」(无论节点
+    类型一律 war)与 arbiter/remediation 旧「P1 r≥9」三处轮数口径
+    一次收进本函数——节点图可读且非 boss 时不再按轮数入窗(W115-B2
+    审计:轮数代理是 boss 临近的双口径漂移源)。
+    消费点:arbiter._active_floor/_round_state_dims/interest_rule/
+    boss_levelup_ban、remediation._compensate_slot、本模块 assess_
+    discipline。
+    """
+    node = getattr(session, 'node_type_current', None) or state.node_type or ''
+    if node:
+        return node in registry.boss_round_node_types
+    return (state.plane == 1
+            and state.round_num >= registry.boss_window_fallback_round)
+
+
+def _hard_node(state: GameState, session: StrategySession) -> bool:
+    """硬节点分类(掉血风险节点;W119/ADR-0347 单一源)。
+
+    = encounter/boss/遭遇 ∪ 普通战斗且位面内剩余 ≤3(boss 临近)。
+    消费点:_streak_floor(连胜 EV 地板)与 assess_discipline 保血
+    通道的 hard 判定(两处同源,禁散写)。
+    """
+    node = getattr(session, 'node_type_current', None) or state.node_type or ''
+    if node in ('encounter', 'boss', '遭遇'):
+        return True
+    remaining = max(0, NODES_PER_PLANE - state.round_num)
+    return node in ('battle', '战斗') and remaining <= 3
+
+
 def plane_last_battle(state: GameState, session: StrategySession) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数。"""
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
@@ -405,13 +443,11 @@ def _streak_floor(state: GameState, session: StrategySession,
     """boss_breaker 连胜 EV 地板(v1 r308 移植):连胜 ≥2 + 硬节点 +
     EV(保连胜奖励 × 剩余节点)> 一次性息损失 → 地板降 5。"""
     streak = getattr(session, 'last_streak', 0) or 0
-    node = getattr(session, 'node_type_current', None) or ''
     remaining = max(0, NODES_PER_PLANE - state.round_num)
     tier_now = streak_gold(streak) if streak >= 2 else 0
     ev_reward = (tier_now - 1) * remaining      # 断了回到 1 档
     ev_interest = 0.25                           # 一次性息损失
-    hard_node = node in ('encounter', 'boss', '遭遇') or \
-        (node in ('battle', '战斗') and remaining <= 3)
+    hard_node = _hard_node(state, session)
     if streak >= 2 and hard_node and ev_reward > ev_interest:
         return 5
     return base_floor
@@ -427,11 +463,11 @@ def assess_discipline(state: GameState, session: StrategySession,
     - 掉血报警(三臂):**报警不是触发**——处置梯度①自然补强窗
       (mode=economy)→②弃息 D 保血(war+硬节点放行 refresh);
       不动地板;ALL IN 仅当位面末(``plane_last_battle``,[18] 授权);
-    - boss_breaker:P1 r≥5 遭遇预备窗/boss 节点,war 模式+破息地板 10
+    - boss_breaker:boss 节点(boss_window_active 统一口径,W119/ADR-0347:
+      节点图为主,轮数只作 node_type 缺读兜底),war 模式+破息地板 10
       (连胜 EV 5);
     - ALL IN:仅 ``plane_last_battle``([18] 位面末最后一战限定)。
     """
-    node = getattr(session, 'node_type_current', None) or state.node_type or ''
     if state.hp <= registry.emergency_hp:
         return DisciplineView(coverage='emergency', mode='war',
                               allin=plane_last_battle(state, session))
@@ -448,7 +484,8 @@ def assess_discipline(state: GameState, session: StrategySession,
         # 授权;报警不是 ALL IN 的触发,位面末才是)。
         # [19]③「来牌顺不顺」未消费(欠账声明:定性变量,sim 层无载体,
         # 挂实机语料后补)。
-        hard = node in ('encounter', 'boss', '遭遇')
+        # hard=硬节点分类单一源(_hard_node)
+        hard = _hard_node(state, session)
         escalated = (tracker.alarm_battles > BLOOD_GRADIENT_NATURAL_BATTLES
                      or state.hp < BLOOD_MARGIN_LOW_HP)
         if escalated:
@@ -459,9 +496,7 @@ def assess_discipline(state: GameState, session: StrategySession,
         return DisciplineView(
             coverage='blood_alarm', mode='economy',
             allin=plane_last_battle(state, session))
-    boss_window = (node in registry.boss_round_node_types
-                   or (state.plane == 1 and state.round_num >= 5))
-    if boss_window:
+    if boss_window_active(state, session, registry):
         floor = _streak_floor(state, session, registry, registry.boss_floor)
         return DisciplineView(
             coverage='boss_breaker', mode='war',

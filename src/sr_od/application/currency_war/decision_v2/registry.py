@@ -142,22 +142,38 @@ class DecisionV2Registry:
     pop_baseline: dict[int, int] = field(
         default_factory=lambda: {1: 5, 2: 7, 3: 9})
 
-    # ===== 成型停手纪律([13] 停手线;ADR-0343)=====
+    # ===== 成型停手纪律([13] 停手线;ADR-0343;W119/ADR-0347 收编)=====
     #: 总开关(False=旧行为,成型后照买;A/B 通道)
     formed_stop_enabled: bool = True
-    #: 停手辖轮下界(P1 r≥此值才辖;W97/W105 晚买证据窗=r7-r9)
+    #: 停手辖轮**全局下界**(W97/W105 晚买证据窗=r7-r9);实际辖轮=
+    #: max(锁定线 typical_form_round, 此值)——comp 派生(W115-B1,
+    #: 固定 r≥7 会固化「早成型阵容多买两轮」偏差)
     formed_stop_min_round: int = 7
-    #: 成型等级下界([13]「lv5-6」取下界语义:等级到位=≥5;
-    #: 上界是常见值描述非门)
-    formed_stop_min_level: int = 5
+    # (formed_stop_min_level 已随 W119 删除:等级不作为独立门槛——
+    #  2026-08-25 用户裁决 Q2,等级通过上场完整性进入 form_ok 判定)
 
-    # ===== 相位影子观测(W114/ADR-0346,经济循环总模型步①;不消费)=====
+    # ===== 相位观测与授权(W114/ADR-0346 影子;W119/ADR-0347 切授权)=====
     #: 兜底局(意向未锁)form_ok 降级门:form_score ≥ 此值判「战力 OK」
     #: (W113 §3.1;sim 校准域)。初值量纲推算:form_score 满分=2 过渡
     #: 体系(rung2,H3 胜率 77.8%),1 体系=0.5(rung1,胜率 41.6%)——
     #: 「战力 OK」保守取 1 体系档 = 0.5(与 formed_stop_min_round=7 的
-    #: 「成型下界」保守取向同族;影子期只进遥测,步② 切授权前 sim 标定)
+    #: 「成型下界」保守取向同族;门值标定留步②b sim 网格)
     phase_form_score_gate: float = 0.5
+    #: 兜底局 form_ok 的轮数下限(W119/ADR-0347 校准判据,W113 §8-11):
+    #: W118 实测 A 臂兜底局 form_score≥0.5 在 r2-r3 即转真(首真直方图
+    #: r2=10/r3=4)——1 过渡体系≠战力 OK,抱弱板进 HOARD 攒息=守弱板
+    #: 掉血。加轮数下限判据(与 gate 合取;取 5:灭 r2-r3 误转真,r5 双
+    #: 体系帧保留;标定留 ②b,独立于 Q1 四档对照)
+    phase_fallback_min_round: int = 5
+    #: FORM 相位地板=保险丝(W113 Q1 已裁决:决策器=EV 授权,FORM_FLOOR
+    #: 只防收益端估乐观时花光本金;初值 20=沿用应急保底语义,**Q1 四档
+    #: sim 对照(不设/10/20/30)待校准,本批只接线不标定**)
+    form_floor: int = 20
+    #: boss 破息窗 node_type 缺读兜底轮(W119/ADR-0347 统一口径:
+    #: boss 窗主判据=节点图 node_type∈boss_round_node_types,轮数口径
+    #: 全仓只留 discipline.boss_window_active 一处且仅作缺读兜底——
+    #: P1 末节点恒为 boss 的节点图先验,r≥9 兜底)
+    boss_window_fallback_round: int = 9
 
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 档位累计值(金/轮;P3 边际 e0→e1 +1.4 / e1→e2 +1.6 累计)
@@ -344,8 +360,8 @@ class DecisionV2Registry:
     war_floor: int = 30           # 战力模式地板(计划内补强非 panic)
     rebirth_floor: int = 20       # [18] 应急保留重生基数
     boss_floor: int = 10          # r278 boss 破息地板
-    #: [12] 追级息引擎前置:LevelUp 需「曾达满息」或花完仍 ≥50
-    levelup_interest_engine_gate: bool = True
+    #: (levelup_interest_engine_gate 已随 W119 删除:[12] 门收编 EV 总账
+    #:  ——ev.levelup_ev_authorized 单一裁决,ADR-0347;A1/A2 镜像清)
     #: ADR-0297 刷新×追级并存·约束侧(方案 a,诊断否决默认关闭):
     #: 每局刷新预算上限(v1 量级 4-6);0=不限。诊断证据:cap+reserve
     #: 双窗不稳(原窗 -3.27/验证窗 -11.70),评分侧联动更稳

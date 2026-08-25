@@ -9,16 +9,16 @@ redesign §3/§5.4 覆盖态**严格优先序**:应急(HP 危急)→ 追赶修�
 链选择与谓词映射,不含数值(ADR-0302 暂驻本模块的应急集补充标签/
 危机囤金常量已由合流批 ADR-0303 上移 registry)。
 
-成型停手(ADR-0343)是覆盖态之后的**动作级后置步**(非第四覆盖态):
-formed_stop_active 五项判定([13] 三件套+r7+辖域)命中时丢弃全部
-BuyCard 候选——语义是「不再买牌」而非「收窄某域」,按动作类型拦
-(对标签表漂移稳健);标志落 session.v3_formed_stop 供遥测/检查器。
+成型停手(ADR-0343;W119/ADR-0347 收编 form_ok)是覆盖态之后的
+**动作级后置步**(非第四覆盖态):formed_stop 判定(P1 ∧ comp 派生
+辖轮 ∧ form_ok)命中时丢弃全部 BuyCard 候选——语义是「不再买牌」
+而非「收窄某域」,按动作类型拦(对标签表漂移稳健);标志落
+session.v3_formed_stop 供遥测/检查器。
 """
 from __future__ import annotations
 
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
-    intention_core,
 )
 from sr_od.application.currency_war.cw_state import BuyCard, GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -36,18 +36,18 @@ def is_emergency(state: GameState,
 
 def formed_stop_active(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> bool:
-    """成型停手态([13] 停手线;ADR-0343)。
+    """成型停手态([13] 停手线;ADR-0343,W119/ADR-0347 收编 form_ok)。
 
-    判定=五项全过(每一项映射 [13] 三件套 + 证据窗 + 位面辖域):
-    1. P1 ∧ r≥formed_stop_min_round(7)——[13] 是位面 1 过渡语义,
-       W97/W105 晚买有害证据窗=r7-r9;P2/P3 终局线恢复要买,不辖;
-    2. level≥formed_stop_min_level(5)——[13]「lv5-6」下界(等级到位);
-    3. 意向 locked 且锁定线可解析——[13] 的「过渡阵容」预设配方
-       (unlocked/兜底局「羁绊凑够」无定义,保守不辖);
-    4. 羁绊凑够——锁定线 form_tiers 全键满足(board 计数≥tier 下限;
-       cw_comps form_tiers 文档「几人激活算成型」,成型判定读下限);
-    5. 过渡核心 2 星——intention_core 在 bench∪deployed 最大 star≥2
-       (与 discipline carry_gate 同一核心单一源)。
+    判定(W114 交接注记落地——谓词族单一源,删本函数内重复实现):
+    1. P1([13] 是位面 1 过渡语义;P2/P3 终局线恢复要买,不辖);
+    2. r ≥ max(锁定线 typical_form_round, formed_stop_min_round)——
+       comp 派生辖轮(W115-B1:固定 r≥7 与自家 typical_form_round 4-8
+       矛盾,早成型阵容不必多买两轮、晚成型不提前停;typical 缺读取
+       全局下界);
+    3. form_ok(state, session, registry)——成型谓词本体在
+       decision_v2.phase(意向锁×羁绊凑够×核心上场 2★;裁决后无
+       等级项——等级通过上场完整性进入判定)。与 W114 前差异:
+       核心必须上场 2★(旧 bench∪deployed);lv≥5 项删除(Q2 裁决)。
 
     命中后层2 后置步丢弃全部 BuyCard 候选(应急态亦不豁免——
     W105 指认的「低血→应急强制买」反因正是本纪律的对象;[13] 板面
@@ -56,26 +56,20 @@ def formed_stop_active(state: GameState, session: StrategySession,
     """
     if not registry.formed_stop_enabled:
         return False
-    if state.plane != 1 or state.round_num < registry.formed_stop_min_round:
+    if state.plane != 1:
         return False
-    if state.level < registry.formed_stop_min_level:
-        return False
+    min_round = registry.formed_stop_min_round
     ist = getattr(session, 'v3_intention', None)
-    if not isinstance(ist, IntentionState) or ist.phase != 'locked':
+    if isinstance(ist, IntentionState) and ist.phase == 'locked':
+        from sr_od.application.currency_war.cw_comps import get_comp
+        comp = get_comp(ist.locked_comp)
+        if comp is not None and comp.typical_form_round:
+            min_round = max(comp.typical_form_round,
+                            registry.formed_stop_min_round)
+    if state.round_num < min_round:
         return False
-    from sr_od.application.currency_war.cw_comps import get_comp
-    comp = get_comp(ist.locked_comp)
-    if comp is None or not comp.form_tiers:
-        return False   # 线不可解析/无羁绊线(反甲类):保守不辖
-    board = state.board or {}
-    if any((board.get(f) or 0) < t for f, t in comp.form_tiers.items()):
-        return False
-    core = intention_core(comp)
-    if not core:
-        return False
-    pool = [bc for bc in list(state.bench or []) + list(state.deployed or [])
-            if bc is not None and bc.char_id == core]
-    return any((getattr(bc, 'star', 1) or 1) >= 2 for bc in pool)
+    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    return form_ok(state, session, registry)
 
 
 def crisis_hoard_active(state: GameState,

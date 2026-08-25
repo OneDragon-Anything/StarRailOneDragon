@@ -1048,6 +1048,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _round_phase: str = ''
         _round_form_ok: bool = False
         _round_form_score: float = 0.0
+        _round_dp_posture: str = ''
         _phase_snap = False
         # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
         # RefreshShop 动作后**独立重决策一段**——r270 连刷在
@@ -1077,6 +1078,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
                 _round_form_score = round(float(
                     getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
+                # W119/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
+                _round_dp_posture = str(getattr(getattr(
+                    getattr(sess, 'v3_dp_posture', None),
+                    'posture', None), 'tag', '') or '')
             if not use_refresh:
                 acts = [a for a in acts
                         if not isinstance(a, RefreshShop)]
@@ -1508,6 +1513,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'phase': _round_phase,
             'form_ok': _round_form_ok,
             'form_score': _round_form_score,
+            'dp_posture': _round_dp_posture,
             'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——

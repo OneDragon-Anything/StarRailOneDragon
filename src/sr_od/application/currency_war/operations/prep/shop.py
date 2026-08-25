@@ -423,6 +423,11 @@ class BuyShopCards(SrOperation):
                 'phase': getattr(_sess, 'v3_phase', '') or '',
                 'form_ok': bool(getattr(_sess, 'v3_form_ok', False)),
                 'form_score': round(float(getattr(_sess, 'v3_form_score', 0.0) or 0.0), 3),
+                # W119/ADR-0347 授权依据 trace:当轮 DP 日程表姿态
+                # (ev.RoundPosture.posture.tag;""=查询失败/default 栈)
+                'dp_posture': str(getattr(getattr(
+                    getattr(_sess, 'v3_dp_posture', None),
+                    'posture', None), 'tag', '') or ''),
                 # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
                 # v2_* 恒空串/None,字段保留作历史 schema 兼容;
                 # decision_v2 的模式/意向走 v3_* 字段)
