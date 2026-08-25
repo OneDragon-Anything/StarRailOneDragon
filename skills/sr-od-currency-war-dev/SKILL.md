@@ -66,7 +66,16 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 细则(维度清单/视图覆盖矩阵/保真位先行):[references/telemetry-reading.md](references/telemetry-reading.md)
 
-## 验证工作台(反馈梯度,按成本升序;收账工单=`cw_dev/deep_read/交付验收清单.md` 照单逐项核——方法论五面见 od-dev-agent-autonomous-mode 验收侧)
+## 交付验收(收账时逐项核;方法论五面见 od-dev-agent-autonomous-mode「交付验收清单」节)
+
+- [ ] 测试亲跑:按 worker 声明的层复现(L1/L3 命令见上节)——「声称绿」不算
+- [ ] 边界核:`git diff --stat` vs 任务书声明文件集;越界逐个判(并行期禁 add -A)
+- [ ] 数字:CI+点估计+功效齐报(**禁「归零/不劣」措辞**);sim 批必报池指纹(当前锚 46066bbe,旧锚数据标注不可比)
+- [ ] 断言抽查:报告里的源码行号抽 3-5 个亲核——worker 论断=可推翻假设
+- [ ] 耗时核:量测数字 vs 预期量级差 >3 倍=效率缺陷打回(先定位再交)
+- [ ] 产物亲读:sim 批读 json 原始数据;实机批核 runs.jsonl result 字段
+- [ ] 行为变更批:ADR/正文/注释三同步带了吗(没带=打回或记欠账)
+## 验证工作台(反馈梯度,按成本升序;分层验证:L1 快速集=`uv run pytest @sr-od-test/cw_quick.txt`(~3min,CW 域)/L2=L1+受影响域点名/L3 全量=`uv run pytest sr-od-test/`(~5min,**仅 commit 前一次**))
 
 实机一局按数十分钟计,是**最后一步**;实机运行期间 = 做 1-4 的窗口,不是等结果:
 
