@@ -39,6 +39,13 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 ## 判读(遥测 CLI,数据判读同源)
 
+**判读前置三问(硬门,2026-08-25 五局误判教训;答不出不判读)**:
+1. **该位面的目标是什么?**——P1=[28] 50 金通关+形态白名单内+过渡核心 2★([13] 成型停手线);**HP 从来不是 P1 验收**([2] 可卖血/[18] hp=报警)——拿 HP 当验收=目标函数错,过程指标再准都是精确地错。
+2. **这局锁的什么线?**——四体系过渡(transitions 开局分级:拿到逆天投资策略才配锁直通线)or 直通终局线?锁直通却没直通条件=P1 板面零伤害引擎([27] 罚款吃满)。
+3. **板面在不在白名单?**——power_baseline P1 形态表(仙舟3+DOT2/列车4 等,784 篇验证);不在表内的形态(如纯经济凑数位)不是「体系长成了」。
+
+**任务→文档组合路由**(判读/策略工作的必读组合,单一源与完整表=research/README「任务路由」节):判读一局→playstyle[28][18][27]+power_baseline+transitions §1;改买入/锁定→playstyle 全文+transition_combos+transitions+economy;改评分/经济→playstyle+economy;掉血归因→playstyle[27]+combat;换阵/装备→playstyle[21][24][29]+combo_methodology;终局设计→final_comps/+plaza_methodology;阶段转型→transitions 换血点+playstyle[26]。**只读一篇=读局部**(五局误判实证)。
+
 ```
 uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
 ```
