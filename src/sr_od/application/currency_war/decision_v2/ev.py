@@ -186,15 +186,20 @@ REWARD_BATTLE_ENVS: frozenset[str] = _overheated_env_names()
 
 
 def reward_node_is_battle(state: GameState) -> bool:
-    """扑满守卫(ADR-0348;口述定谒 2026-08-26=低危战斗):当前节点为
-    reward 且环境命中「经济过热」类(奖励节点替换为扑满)→ 扑满节点。
+    """扑满守卫识别(ADR-0348 ↺ 修正 2026-08-26):当前节点为 reward
+    且环境命中「经济过热」类(奖励节点替换为扑满)→ 扑满节点。
 
-    扑满关不掉血(全局机制 0hp 保底 1hp,机制真值),真损失=打不过
-    没奖励——处置=确保伤害阵容拿奖励,**非深花保血**:
-    - 战斗向刷新理由开放(scoring refresh 轮界门豁免,金保底保留);
-    - 地板不降(discipline._hard_node 不辖)。
-    挂账项(ADR-0348):投资效果表「奖励节点变战斗(低危)」机制突变项 /
-    DP 台账指纹 / 节点识别扑满模板(cw_node_reader 自陈未建,留实机)。
+    **奖励型战斗节点:轻投入凑羁绊刷伤害拿奖励,禁深花保血**(口述
+    [16]+math_proofs P8:s<0.277R≈2金,深花远超正期望界;boss/遭遇
+    窗的下探授权对扑满全部不适用)。消费面:
+    - scoring refresh 轮界豁免×P8 上限(piggy_refresh_round_cap);
+    - 遥测:decisions 行/sim 账本 piggy_reward 字段(rounds 视图
+      显 P=扑满;②b 观测与实机建档的数据面);
+    - **不进** discipline._hard_node(连胜破息地板/报警保血刷新
+      授权不辖——↺ 修正撤销的初版接线)。
+    挂账(ADR-0348):效果表「奖励型战斗」突变项 / DP 台账指纹 /
+    节点识别扑满模板(留实机)/ P8 V 折算与 2 金上限的消费点接线排
+    ③(与 V_D 批口径同批)。
     """
     node = getattr(state, 'node_type', '') or ''
     env = getattr(state, 'active_env', '') or ''

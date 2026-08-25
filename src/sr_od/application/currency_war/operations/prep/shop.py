@@ -428,6 +428,11 @@ class BuyShopCards(SrOperation):
                 'dp_posture': str(getattr(getattr(
                     getattr(_sess, 'v3_dp_posture', None),
                     'posture', None), 'tag', '') or ''),
+                # ADR-0348 ↺:扑满节点识别遥测(过热局 reward 帧 True;
+                # ②b 观测与实机建档数据面——识别≠深花授权,消费边界
+                # =scoring 豁免×P8 上限)
+                'piggy_reward': bool(getattr(_sess, 'v3_piggy_reward',
+                                             False)),
                 # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
                 # v2_* 恒空串/None,字段保留作历史 schema 兼容;
                 # decision_v2 的模式/意向走 v3_* 字段)

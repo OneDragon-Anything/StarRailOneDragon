@@ -224,9 +224,12 @@ class DecisionV2Strategy(DefaultCwStrategy):
         from sr_od.application.currency_war.decision_v2.ev import (
             RoundPosture,
             dp_posture,
+            reward_node_is_battle,
         )
         session.v3_dp_posture = RoundPosture(
             key, dp_posture(state, session))
+        # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
+        session.v3_piggy_reward = reward_node_is_battle(state)
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

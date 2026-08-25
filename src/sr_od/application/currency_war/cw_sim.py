@@ -1082,6 +1082,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_dp_posture = str(getattr(getattr(
                     getattr(sess, 'v3_dp_posture', None),
                     'posture', None), 'tag', '') or '')
+                # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
+                _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
+                                            False))
             if not use_refresh:
                 acts = [a for a in acts
                         if not isinstance(a, RefreshShop)]
@@ -1514,6 +1517,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'form_ok': _round_form_ok,
             'form_score': _round_form_score,
             'dp_posture': _round_dp_posture,
+            'piggy_reward': _round_piggy,
             'target_comp': _target_comp_label(sess),
             'state': {'board': dict(st.board), 'level': st.level,
                       # r394(过渡阵容判据接线):板面阵营档位——

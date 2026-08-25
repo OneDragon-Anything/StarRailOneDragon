@@ -140,6 +140,9 @@ class DecisionTrace:
     # 失败/default 栈)。EV 放行值在 decisions 行 log 的 ev_auth 键
     # (arbiter 执行 log)。可选,旧记录缺省不破坏 schema。
     dp_posture: str = ""
+    # ADR-0348 ↺:扑满节点识别(过热局 reward 帧;②b 观测/实机建档
+    # 数据面——识别≠深花授权)。可选,旧记录缺省 False。
+    piggy_reward: bool = False
 
 
 @dataclass
@@ -321,6 +324,7 @@ class TelemetryRecorder:
             trace.form_score = float(extra.get('form_score', 0.0))
             trace.formed_stop = bool(extra.get('formed_stop', False))
             trace.dp_posture = str(extra.get('dp_posture', ''))
+            trace.piggy_reward = bool(extra.get('piggy_reward', False))
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
@@ -1087,6 +1091,9 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         # W119/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
         _dpp = d.get("dp_posture") or ""
         dpp_s = f" dp={_dpp}" if _dpp else ""
+        # ADR-0348 ↺:扑满节点识别标记
+        if d.get("piggy_reward"):
+            dpp_s += " P=扑满"
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
         _xp = st.get("xp_progress")
