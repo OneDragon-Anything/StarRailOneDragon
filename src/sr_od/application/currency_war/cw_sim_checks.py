@@ -1480,16 +1480,22 @@ REWARD_POOL_MAX_ABS: int = 20
 
 
 def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
-    """批㉗ 检查项 reward_delta_pool_bucket_lock(ADR-0292)。
+    """批㉗ 检查项 reward_delta_pool_bucket_lock(ADR-0292;W111 判据修正
+    见 ADR-0345)。
 
     判据(规格原文「分布入池且均值≈语料真值」):
     - reward 池非空且 n≥30(分布**入池**:结算采样源是语料经验
       分布而非 EARLY_WIN_DELTA 常数);
-    - 全样本均值距语料真值(+2.0)漂移 ≤1hp;
-    - 跨 run 配对伪影哨兵:max |Δ| ≤ 20 且无负值——批㉗ F4 的
+    - reward 全样本均值距语料真值(+2.0)漂移 ≤1hp;
+    - reward 跨 run 配对伪影哨兵:max |Δ| ≤ 20 且无负值——批㉗ F4 的
       +27~+61/−2 形态若在重生成后涌现,先查生成器 run 分组/语料
       接管段,不当作真值入锚;
-    - supply 池语料零样本(标签未见),非空时同判。
+    - supply **无真值锚**(W111/ADR-0345):批㉗ 落地时语料 supply 零
+      样本,「非空时同判 reward」是外推假设;W109 再生后语料首现
+      supply 真实样本(同 run 差分 Δ=0,n=1)——数据证伪 +2.0 锚。
+      supply 只辖伪影哨兵(|Δ|>20 的跨 run 量大跳变,符号不敏感:
+      无真值锚时负值不能直接判伪影),样本量入 stats 披露不设门
+      (n 不足=证据不足,非违规——同空池语义)。
 
     空 reward/supply 池(fallback/历史 Path 快照)不辖,violations=0
     (同 battle 锁空池语义;分布入池的回归防线 = 采样器版本锁 +
@@ -1507,17 +1513,25 @@ def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
         mean = sum(vals) / len(vals)
         stats[nt] = {'n': len(vals), 'mean': round(mean, 2),
                      'max': max(vals), 'min': min(vals)}
-        if nt == 'reward' and len(vals) < REWARD_POOL_MIN_N:
-            out.append(f'reward n={len(vals)}<{REWARD_POOL_MIN_N}'
-                       f'(分布证据不足)')
-        if abs(mean - REWARD_POOL_TRUTH_MEAN) > REWARD_POOL_DRIFT_MAX:
-            out.append(f'{nt} 均值{mean:+.2f} 距语料真值'
-                       f'{REWARD_POOL_TRUTH_MEAN:+.1f} 漂移>'
-                       f'{REWARD_POOL_DRIFT_MAX}hp')
-        if max(vals) > REWARD_POOL_MAX_ABS or min(vals) < 0:
-            out.append(f'{nt} 域[{min(vals)},{max(vals)}] 越伪影哨兵带'
-                       f'(0~{REWARD_POOL_MAX_ABS})——疑跨 run 配对伪影'
-                       f'混入(批㉗ F4 形态),先核生成器 run 分组')
+        if nt == 'reward':
+            # reward:语料真值锚完整辖(n 门 + 均值带 + 伪影哨兵带)
+            if len(vals) < REWARD_POOL_MIN_N:
+                out.append(f'reward n={len(vals)}<{REWARD_POOL_MIN_N}'
+                           f'(分布证据不足)')
+            if abs(mean - REWARD_POOL_TRUTH_MEAN) > REWARD_POOL_DRIFT_MAX:
+                out.append(f'reward 均值{mean:+.2f} 距语料真值'
+                           f'{REWARD_POOL_TRUTH_MEAN:+.1f} 漂移>'
+                           f'{REWARD_POOL_DRIFT_MAX}hp')
+            if max(vals) > REWARD_POOL_MAX_ABS or min(vals) < 0:
+                out.append(f'reward 域[{min(vals)},{max(vals)}] 越伪影'
+                           f'哨兵带(0~{REWARD_POOL_MAX_ABS})——疑跨 run'
+                           f'配对伪影混入(批㉗ F4 形态),先核生成器'
+                           f' run 分组')
+        elif max(abs(d) for d in vals) > REWARD_POOL_MAX_ABS:
+            # supply:无真值锚,只辖跨 run 量大跳变伪影(符号不敏感)
+            out.append(f'supply 域[{min(vals)},{max(vals)}] 越伪影'
+                       f'哨兵带(|Δ|>{REWARD_POOL_MAX_ABS})——疑跨 run'
+                       f'配对伪影混入,先核生成器 run 分组')
     return {'violations': len(out), 'issues': out[:6], **stats}
 
 
