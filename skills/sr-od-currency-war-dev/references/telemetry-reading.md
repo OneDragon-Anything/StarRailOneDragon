@@ -82,6 +82,8 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 - **别为复盘写一次性脚本**——新复盘需求 = 新视图/查询参数;确需脚本用完即删。
 - **阵容质量 = 三维**(羁绊档位 × 角色构成 × 装备分配)——只看羁绊 = 空壳盲判(羁绊够但核心不在场/装备乱用都看不见;数据在 state.deployed[].star/equips 里,别被视图边界限制)。
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
+- **sim 批次同法可查**:sim 局产出与遥测 jsonl 同构(判读 CLI 加 `--sim-batch`,详见 [sim-testing.md](sim-testing.md) §6)——本文全部判读手法对 sim 批次同样成立。
+- 判读定位的策略行为病**必须回灌 sim**(检查项/单帧锁),闭环纪律见 [sim-testing.md](sim-testing.md) §6;需要锁死的确定行为固化成单帧锁,见 [strategy-work.md](strategy-work.md) §4。
 
 ## 数据侧纪律(先查档,再动手)
 

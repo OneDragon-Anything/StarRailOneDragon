@@ -15,7 +15,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 出策略方案 / 策略分歧裁决 / 疑问该问谁 | §策略工作(统一处理链) | strategy-work |
 | 判读一局 / 跨局对照 | §判读(前置三问硬门) | telemetry-reading |
 | 起局 / 停局 / 监控 / 残局清理 | §实机运维(重启四步/重武三步/早停判据) | runtime-ops |
-| sim 批量 / A/B / 压测 | §验证工作台(差异必须解释;代理语义自检) | verification |
+| sim 批量 / A/B / 压测 | §验证工作台(差异必须解释;代理语义自检) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | §阵容知识工程(证据三层) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(goal/schedule 消息 / worker 派发与交付验收 / 哨兵报警响应 / 对抗) | §goal/schedule 自我校准(提醒=按 prompt+当期并行度执行)+ §交付验收(7 条逐项核) | autonomous-loop |
@@ -38,7 +38,8 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 要什么 | 去哪 |
 |---|---|
-| **策略工作统一说明**(思路/核心骨架/改前必做/验证/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md) |
+| **策略工作统一说明**(思路/核心骨架/改前必做/验证与单帧锁/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md) |
+| **模拟测试说明**(sim 能信什么/武器库/压测官/分诊与回灌) | [references/sim-testing.md](references/sim-testing.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md` + 01-07 分篇 + `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
@@ -94,12 +95,12 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 分层验证:L1 快速集=`uv run pytest @sr-od-test/cw_quick.txt`(~3min,CW 域)/L2=L1+受影响域点名/L3 全量=`uv run pytest sr-od-test/`(~5min,**仅 commit 前一次**)。实机一局按数十分钟计,是**最后一步**;实机运行期间 = 做 1-4 的窗口,不是等结果:
 
 1. **文档对照**(零成本):设计里预期是什么,行为偏离了哪条。
-2. **sim 批量**(秒级):`cw_sim.py` 的 P1 批量入口(基线/对照显式 `pool='snapshot'`,跨日对照核池指纹一致),A/B 对照同参数分布(达标占比/败场≤2 占比/均值/方向建立率)。sim 是可深度挖掘的基建(真代码层同源+校准层可注入+实机 Δ 池重放):回放对拍/稀有态扫描/参数敏感度/经济对账——细则见 [references/verification.md](references/verification.md)。
+2. **sim 批量**(秒级):`cw_sim.py` 的 P1 批量入口(基线/对照显式 `pool='snapshot'`,跨日对照核池指纹一致),A/B 对照同参数分布(达标占比/败场≤2 占比/均值/方向建立率)。sim 是可深度挖掘的基建(真代码层同源+校准层可注入+实机 Δ 池重放):回放对拍/稀有态扫描/参数敏感度/经济对账——细则见 [references/sim-testing.md](references/sim-testing.md)。
 3. **telemetry 跨局对照**(分钟):历史局同类证据聚合(如「配方满线局才过线」的跨局表)。
-4. **单帧锁测试**(分钟):构造 GameState → 断言 decide_prep 输出,进 `sr-od-test/test/sr_od/app/currency_war/`。模拟发现的情况**固化成单帧锁**才算回归资产。
+4. **单帧锁测试**(分钟):构造 GameState → 断言 decide_prep 输出,进 `sr-od-test/test/sr_od/app/currency_war/`。sim/实机发现的情况**固化成单帧锁**才算回归资产(细则见 [references/strategy-work.md](references/strategy-work.md) §4)。
 5. **实机**(局级):判读锚点事前写;验收 = 连续多局达标(以当期目标为准)。
 
-**sim A/B 与多批并行的验收纪律**(符号先核/三窗/v1 同进程重跑/合流总验/残差逐层下移/单源直通/里程碑叙述/穷举式结论/校准层天花板/连环证伪)、**sim 压力测试官**、**模拟灵活使用与双批挖掘**、**实机暴露问题的分诊与回灌**(感知 bug vs 策略病,防线完全不同)——细则全在 [references/verification.md](references/verification.md)。
+策略验证纪律(基线→对照/分布验收/实机多局/单帧锁出口)单一源 = [references/strategy-work.md](references/strategy-work.md) §4;**sim A/B 与多批并行的验收纪律**(符号先核/三窗/v1 同进程重跑/合流总验/残差逐层下移/单源直通/里程碑叙述/穷举式结论/校准层天花板/连环证伪)、**sim 压力测试官**、**模拟灵活使用与双批挖掘**、**实机暴露问题的分诊与回灌**(感知 bug vs 策略病,防线完全不同)——细则全在 [references/sim-testing.md](references/sim-testing.md)。
 
 ## 实机运维
 
@@ -145,7 +146,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - **修消费端前先验生产端点火**(ADR-0239,同型三轮修不好根因):给某字段加 fallback/修读链前,grep 运行期日志确认**生产路径执行过**——生产者不点火,修消费端全是安慰剂。配套:**跨天 append 日志的 grep 必须带日期锚点**(日志时间戳无日期,曾把昨日行当今日证据;用重启点行号/日期事件分隔)。
 - **临时采集钩子会积压**:钩子必须带删留条件;盘点时查 `.debug/temp/currency_war/shots/` 前缀分布——样本攒够就离线判读→进真值→删钩子,别让临时变常置(详 references/data-collection.md)。
 - **改完不验旧锁就提交**:提交前三步 = ①grep 消费点与锁值 ②ruff+直接影响测试 ③耦合模块全量一次通过(子集绿是伪安全)。
-- **实机学费不复盘 = 重交学费**:实机定位的策略行为病只修代码、不回灌 sim 检查项/单帧锁 → 同类病下次仍靠实机暴露(数十分钟/局);感知/运行时 bug 则相反——归 fixture 帧锁/回放对拍/哨兵防线,别为它扩 sim(分诊判据见 verification.md「实机暴露问题的分诊与回灌」)。
+- **实机学费不复盘 = 重交学费**:实机定位的策略行为病只修代码、不回灌 sim 检查项/单帧锁 → 同类病下次仍靠实机暴露(数十分钟/局);感知/运行时 bug 则相反——归 fixture 帧锁/回放对拍/哨兵防线,别为它扩 sim(分诊判据见 sim-testing.md「实机暴露问题的分诊与回灌」)。
 - **动作索引五查**(idx 族四连坑反推——历次批间互证同一动作索引语义错反复出现,实证见 design/decisions/):策略代码发射**动作对象列表**(Action)给执行层,新增/改动动作类型或发射点时必过:①带索引/槽位的字段,注释声明**坐标系**(状态 list 下标 / 画面物理槽位 / 识别序号)与取值时机(生成期快照 / 执行期现读);②动作会从被索引容器**删元素**的,构造「组内两笔引用同容器、前者先删」的最小反例走一遍执行序(删除即左移);③一个 decide 函数**拼接 ≥2 个源**的动作时,后源不得默认前源没动过容器;④**期望值校验类防线字段**(expect/锚定)合入时 grep 写入端——零写入=死防线,校验逻辑再全也是恒放行;⑤sim 与执行层对同一 Action 各有实现时**逐行对拍索引语义**——同式地错比单路错更隐蔽(两路一起偏,sim 检查项失明)。判定类批的派单 prompt 引本条。
 
 ## goal / schedule 自我校准(自主推进元纪律)
