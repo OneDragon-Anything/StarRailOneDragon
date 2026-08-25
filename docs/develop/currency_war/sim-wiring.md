@@ -31,7 +31,7 @@
 | deployed | select_deployments 围栏输出,跨轮累积(ADR-0271) | bot 跟踪已上阵 | 已接 | — |
 | board | deployed 羁绊全集聚合(ADR-0312:主阵营单标签口径已废;per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,L1+L2 含星徽装备贡献;DeployMove 增量、动作 v2 全量重算) | OCR 左面板阵营计数 / board_from_tracked 计算(同口径) | 已接(ADR-0312 全集口径) | — |
 | equips | supply 3选1 采样(池=注册表过滤后的装备名,ADR-0294 件2)+equip_allocation(r393)+分配结果回写 BenchChar.equips(ADR-0312,星徽羁绊贡献进 board);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR;tracked_deployed[].equips(deploy_bench 读回) | 已接(代理) | — |
-| shop_refresh_cost | 恒默认 2(读 `st.shop_refresh_cost or 2`) | OCR 刷新金币数 | 已接(P1 无投资减免域内 2=真值;减免随 active_strategies 结构) | P3 |
+| shop_refresh_cost | 恒默认 2(读 `st.shop_refresh_cost or 2`);注入局免费刷额度内刷价 0(W162/ADR-0364,`free_refresh_per_node`) | OCR 刷新金币数 | 已接(P1 无投资减免域内 2=真值;注入局额度内 0=cw_economy._refresh_cost 同语义) | P3 |
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
 | bench_full_flag | 恒 None → `bench_is_full()` 走 BENCH_CAPACITY=9 计数兜底 | OCR「备战席已满」警告 | 已接(兜底口径=生产 OCR 缺失路径同源;ADR-0271 后计数为真备战数) | — |
@@ -49,8 +49,8 @@
 | level_up_cost | LevelUp 硬编码扣 4 | OCR 购买经验金币数;xp_click_cost 真值优先 | 未接(sim 4=fallback 值) | P1 |
 | selected_difficulty | 恒 ""(阈值回退 40) | 难度确认屏;effective_hp_threshold 职级表 | 未接(应按模拟难度设 A8) | P1 |
 | board_next_tier | 恒 {} | 左面板 X/Y 的 Y(聚焦裁切 OCR);comp/progress 距档评分 | 未接(可由 FACTIONS 注册表派生) | P1 |
-| active_strategies | 恒 [] | 已持有投资策略;economy 聚合/spend_mode/effect_ledger | 未接(投资策略事件层未建,见结构未建) | P2 |
-| active_env | 恒 "" | 已选投资环境(简报);ENV_COMP_AFFINITY | 未接(环境选择层未建) | P2 |
+| active_strategies | **注入通道**(W162/ADR-0364):`simulate_p1(invest=)` 注入——剧本 = `cw_sim_invest.sample_invest_profile(seed)`(plaza 频次)或显式 `SimInvestProfile`;轮收入结算后按日程 append session(去重)+state 镜像;默认 invest=False = 恒 [] 零漂移 | 已持有投资策略;economy 聚合/spend_mode/effect_ledger;经济聚合子集在 sim 生效(息帽/gold_per_node/instant_gold/免费刷) | 已接(注入;默认关) | — |
+| active_env | **注入通道**(W162/ADR-0364):同上,开局写 session.active_env + state 镜像 | 已选投资环境(简报);ENV_COMP_AFFINITY/①资格通道 | 已接(注入;默认关) | — |
 | enemy_affixes | 恒 [] | 简报词缀;mechanics_fit | 未接(简报层未建) | P2 |
 | plane_bosses | 恒 [] | 简报 3 位面 boss;boss_fit/select_comp | 未接(简报层未建) | P2 |
 | dual_track_phase | 恒 False(decision_v2 经 session 位消费) | default 栈写 state 位;plan/prefilter 消费 | 未接(decision_v2 栈无 state 位消费,接线随栈归一) | P3 |

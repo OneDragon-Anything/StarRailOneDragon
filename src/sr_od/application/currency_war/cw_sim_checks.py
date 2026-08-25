@@ -1955,6 +1955,37 @@ ANCHOR_REGISTRY_N300: dict = {
     },
 }
 
+# W162/ADR-0364:**策略环境注入换锚**——invest-on 口径并行锚。off 口径
+# 锚(上表)不变(默认关 = 主路径口径);本表 = simulate_p1_batch(
+# invest=True) 的 n=300 基线(注入激活①资格通道 → P1 锁定分布/
+# 刷新分布结构性改变,W161 缺口闭合;含 D 的 P1 侧 sim 结论自此以
+# 本口径为基准)。⚠️ 池指纹 1762b1cf 与 W157 锚 0bf6c0d6 不同——快照
+# 池随局终自动再生管线(ADR-0344)前移 + 并行批在飞,跨日对照不可比;
+# on/off drift 表以**同池同 seed 配对**为准(W162 报告 §drift):
+# engines2 0.213→0.170 / recipe5 0.573→0.473 / avg_hp 24.4→21.8 /
+# avg_refreshes 0.0→0.553(①通道点火直证)/ invest_p1_lock_rate 0.51。
+# 成型类指标下移 = 锁定分布变化的预期方向(P1 锁终局 comp 把囤货
+# 方向从过渡引擎上引开,W159/W161 同结论域),非回归。
+ANCHOR_REGISTRY_N300_INVEST: dict = {
+    'pool_fingerprint_prefix': '1762b1cf',
+    'recorded': '2026-08-29(W162/ADR-0364:策略环境注入换锚——'
+                'invest=True 口径首记,n=300,seed 0-299,planes=1,'
+                '池=主仓提交快照 1762b1cf9fb44cd7)',
+    'metrics': {
+        'engines2_by_r6': 0.17,
+        'avg_final_hp': 21.80,
+        'hp_ge_60': 0.04,
+        'battle_losses_le_2': 0.08,
+        'recipe5_by_r6': 0.47,
+        'avg_refreshes': 0.55,
+        # invest 专属 headline(注入口径新增键)
+        'invest_env_rate': 1.0,
+        'avg_invest_strategies': 1.85,
+        'invest_p1_lock_rate': 0.51,
+        'avg_p1_locked_rounds': 4.23,
+    },
+}
+
 
 # --- ADR-0362(W157)P2 段检查器最小集 ---------------------------------
 # P2 段(planes>=2 批)的最低防线:金轨迹非负 + 段形状。P2 语料

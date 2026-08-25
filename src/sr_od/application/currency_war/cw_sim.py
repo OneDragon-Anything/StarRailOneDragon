@@ -36,11 +36,20 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_deploy_logic import (
     TRANSITION_TRAITS as _TRANSITION_TRAITS,
 )
+from sr_od.application.currency_war.cw_investments import (
+    aggregate_economy,
+    economy_effect_of,
+)
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
     ROTATION_CHANCE,
     rotation_probs,
+)
+from sr_od.application.currency_war.cw_sim_invest import (
+    InvestInjectionState,
+    SimInvestProfile,
+    sample_invest_profile,
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
@@ -258,6 +267,12 @@ class SimResult:
     p2_combat_wins: int = 0         # 其中 delta>=0 的胜场数
     p2_hp0: bool = False            # 死在 P2 段(终局 hp<=0)
     p2_refreshes: int = 0           # P2 段 RefreshShop 次数(D 次数)
+    # ===== 投资注入观测(W162/ADR-0364;invest 注入时填,默认空/0)=====
+    invest_env: str = ''            # 本局注入的投资环境名(空 = 无)
+    invest_strategies: tuple[str, ...] = ()   # 本局实际注入持有的策略名序
+    p1_locked_rounds: int = 0       # P1 段意向 phase=='locked' 的轮数
+                                      # (①资格通道激活直证——无注入语料下
+                                      # 恒 0,W161 缺口闭合前后对照键)
 
 
 class _Pool:
@@ -1017,7 +1032,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 pool: str | Path = 'auto',
                 diamond_cap_prob: float = 0.0,
                 config=None,
-                planes: int = 1) -> SimResult:
+                planes: int = 1,
+                invest: SimInvestProfile | bool = False) -> SimResult:
     """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
     追加 P2 段——W157/ADR-0362 案 a 最小可用)。
 
@@ -1044,6 +1060,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         A/B 对照臂 default 栈(DefaultCwStrategy)需要
         ``faction_priority``/``character_priority`` 等字段——对照
         runner 传 SimpleNamespace 桩(ADR-0336 对照臂方案)。
+    :param invest: 投资策略/环境注入(W162/ADR-0364;默认 False =
+        不注入,**主路径逐位零漂移**)。True = 按 seed 确定性采样
+        (plaza 实选频次表,见 cw_sim_invest);传 ``SimInvestProfile``
+        = 固定剧本(测试/A-B 配对臂)。注入写 session+state 的
+        active_strategies/active_env(实机 handler 语义),经济聚合
+        (economy_effect_of 链的已建模子集)在 sim 收入/刷价层生效,
+        意向层①资格通道(ADR-0338)因此可点火。
     """
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
@@ -1084,8 +1107,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 faction=(CHARACTERS[n].factions or ['散'])[0]))
     sess = session or StrategySession()
     sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+    # W162/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
+    # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
+    # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
+    _inv: InvestInjectionState | None = None
+    if isinstance(invest, SimInvestProfile):
+        _inv = InvestInjectionState.build(invest)
+    elif invest:
+        _inv = InvestInjectionState.build(sample_invest_profile(seed))
+    if _inv is not None:
+        if _inv.profile.active_env:
+            sess.active_env = _inv.profile.active_env
+            st.active_env = _inv.profile.active_env
     res = SimResult(seed=seed, pool_fingerprint=pool_fp,
                     pool_source=pool_src)
+    if _inv is not None:
+        res.invest_env = _inv.profile.active_env
     xp = 0
     # ADR-0286(批㉓ F3):xp_progress 真值化——sim 结算处维护(与生产 OCR 真值
     # 同语义),买牌/买经验累 XP_PER_BUY,升级按 XP_TO_NEXT_LEVEL 清零结转;
@@ -1127,15 +1164,44 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
             _gold_before = st.gold
             _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
+            # W162/ADR-0364:注入策略的经济聚合(economy_effect_of 链已建模
+            # 子集)——息帽覆写 + 每节点给金。无 active_strategies 时表达式
+            # 与旧逐位相同(零漂移);'invest' 键只在有持卡时才加(账本行
+            # 形状对默认路径不变)。
+            _agg_inv = (aggregate_economy(st.active_strategies)
+                        if st.active_strategies else None)
+            _icap = INTEREST_CAP
+            if _agg_inv is not None and _agg_inv.interest_cap_override is not None:
+                _icap = _agg_inv.interest_cap_override
             _inc = {'base': BASE_INCOME,
-                    'interest': min(INTEREST_CAP, st.gold // 10),
+                    'interest': min(_icap, st.gold // 10),
                     # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点不发
                     # 连胜金——run13 r2 奖励结算屏=基础5+连胜×0(无 streak 分量);
                     # 战斗轮 counter0 照发 table[0]=1(run15 r3=5+3+1)。
                     'streak': 0 if nodes[rn - 1] in ('reward', 'supply')
                     else streak_gold(streak),   # 单一源 cw_economy(r305)
                     'event': _inc_event}
+            if _agg_inv is not None and _agg_inv.gold_per_node:
+                _inc['invest'] = _agg_inv.gold_per_node
             st.gold += sum(_inc.values())
+            # W162/ADR-0364:本轮策略选卡注入(overlay 在备战期出现 → 收入
+            # 结算后、决策前;实机写点 = handle_invest_strategy 的 session
+            # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
+            # 免费刷额度在选卡后按当前持卡聚合重算(当轮选的卡当轮生效)。
+            if _inv is not None:
+                _pk = _inv.picks_by_key.get((_seg_plane, rn))
+                if _pk is not None and _pk not in sess.active_strategies:
+                    sess.active_strategies.append(_pk)
+                    st.active_strategies = list(sess.active_strategies)
+                    st.gold += economy_effect_of(_pk).instant_gold
+            _free_r = (_agg_inv.free_refresh_per_node
+                       if _agg_inv is not None else 0)
+            if _inv is not None:
+                # 注入局:免费刷额度按**选卡后**持卡重算(当轮选的卡当轮生效)
+                _free_r = (aggregate_economy(st.active_strategies)
+                           .free_refresh_per_node
+                           if st.active_strategies else 0)
+            _free_used = 0
             # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
             # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
             # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
@@ -1229,6 +1295,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if st.plane >= 2:
                             res.p2_refreshes += 1   # ADR-0362:P2 段 D 次数
                         _cost_r = (st.shop_refresh_cost or 2)
+                        # W162/ADR-0364:策略免费刷额度(如 加油站 每节点
+                        # 1 次;cw_economy._refresh_cost 同语义)——额度内
+                        # 刷价 0。无持卡/无额度时与旧逐位相同。
+                        if _free_r and _free_used < _free_r:
+                            _cost_r = 0
+                            _free_used += 1
                         st.gold -= _cost_r
                         _spend['refresh'] += _cost_r
                         _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
@@ -1536,6 +1608,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _deploy_lag_units = len(_lag_idx)
             if res.dir_round == 99 and _direction_established(sess):
                 res.dir_round = rn
+            # W162/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
+            # 注入前语料下 P1 恒 unlocked/p1_pair,此键恒 0[W161])
+            if (_seg_plane == 1
+                    and getattr(sess, 'v3_intention', None) is not None
+                    and getattr(sess.v3_intention, 'phase', '') == 'locked'):
+                res.p1_locked_rounds += 1
             # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
             # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
             # r340:板深条件化实机 Δ 池优先(经验分布重放——
@@ -1792,6 +1870,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         (row.get('sim') or {}).get('phantom_rebuys', 0)
         for row in res.ledger)
     res.pool_floor_hits = cards_pool.floor_hits
+    if _inv is not None:
+        # W162/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
+        res.invest_strategies = tuple(sess.active_strategies)
     return res
 
 
@@ -1816,11 +1897,15 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       pool: str | Path = 'auto',
                       ledger: bool | Path = True,
                       checks: bool = True,
-                      planes: int = 1) -> dict:
+                      planes: int = 1,
+                      invest: SimInvestProfile | bool = False) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
     :param planes: 透传 ``simulate_p1``(1=P1 段——历史口径逐位不变;
         2=追加 P2 段,报告增 P2 headline 四联,ADR-0362/W157)。
+    :param invest: 透传 ``simulate_p1``(W162/ADR-0364;注入批报告增
+        invest headline 三联:环境注入率/持卡均值/P1 锁定轮——含 D 的
+        P1 侧结论自此批起以注入口径为基准)。
 
     返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
     对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
@@ -1834,7 +1919,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     """
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
-                           pool=pool, planes=planes)
+                           pool=pool, planes=planes, invest=invest)
                for i in range(n)]
     # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
     # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;
@@ -1879,6 +1964,20 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'avg_p2_refreshes': (round(statistics.mean(
             [r.p2_refreshes for r in _entered]), 2)
             if _entered else None),
+        # ===== invest headline 三联(W162/ADR-0364;invest 注入时有意义)=====
+        # 环境注入率/P1 持卡均值/P1 锁定轮分布(①资格通道激活直证:
+        # 无注入语料下 invest_p1_lock_rate 恒 0——W161 缺口闭合对照键)
+        'invest_env_rate': (sum(1 for r in results if r.invest_env) / n
+                            if invest else None),
+        'avg_invest_strategies': (round(statistics.mean(
+            [len(r.invest_strategies) for r in results]), 2)
+            if invest else None),
+        'invest_p1_lock_rate': (sum(
+            1 for r in results if r.p1_locked_rounds > 0) / n
+            if invest else None),
+        'avg_p1_locked_rounds': (round(statistics.mean(
+            [r.p1_locked_rounds for r in results]), 2)
+            if invest else None),
         # r394/r399(过渡阵容成型指标;判据单一源=transition_combos.md
         # 2026-08-23 定稿:四体系两两组合):
         # engines2_by_r6=四体系(仙舟3/列车2/DOT2/希儿系)达成≥2 的
