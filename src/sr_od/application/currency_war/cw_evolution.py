@@ -220,6 +220,71 @@ def _identity_index(pool: list[BenchChar], target: BenchChar) -> int:
     return next(i for i, y in enumerate(pool) if y is target)
 
 
+# ===== W160/ADR-0363 件1:引擎下界守卫(观察 helper) =====
+
+def _engine_systems_formed(board_factions: dict[str, int],
+                           deployed_names: set[str]) -> set[str]:
+    """已成型引擎体系键集(TRANSITION_TRAITS 三羁绊 + 希儿系哨兵键)。
+
+    与 ``cw_sim._engines_count`` 同口径的**键级**版本(W158 度量的
+    engines_count 即其计数)——守卫需要知道「拆的是哪个体系」,
+    计数接口答不了,这里键级展开、计数口径仍单一源在 cw_sim
+    (tier 阈值经 TRANSITION_TRAITS 同源派生)。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS,
+    )
+    out: set[str] = set()
+    for bond, tier in TRANSITION_TRAITS:
+        if board_factions.get(bond, 0) >= tier:
+            out.add(bond)
+    if '希儿' in deployed_names and (
+            board_factions.get('量子同频', 0) >= 2
+            or board_factions.get('贝洛伯格', 0) >= 2):
+        out.add('希儿系')
+    return out
+
+
+def _lost_engine_systems(state: GameState,
+                         post_deployed: list[BenchChar]) -> set[str]:
+    """事务净效果会拆掉的引擎体系键集(守卫触发面)。
+
+    仅当事务前引擎数 ≥2 且事务后投影 <2 时非空(engines<2 的局不辖
+    ——那是成型问题不是丢失问题;≥2→≥2 的良性换血同样不辖,W158 §4:
+    围栏不能压死良性轮换)。post_deployed = 事务后仍在场的名单投影
+    (留场件 + 新上场件)。board 口径 = ``cw_sim._board_factions_of``
+    (生产 board 口径,flows 并计;与 W158 strict 度量同源)。
+    """
+    from sr_od.application.currency_war.cw_sim import (
+        _board_factions_of,
+        _engines_count,
+    )
+    pre_bf = _board_factions_of(state.deployed)
+    pre_names = {d.char_id for d in state.deployed if d.char_id}
+    if _engines_count(pre_bf, pre_names) < 2:
+        return set()
+    post_bf = _board_factions_of(post_deployed)
+    post_names = {d.char_id for d in post_deployed if d.char_id}
+    if _engines_count(post_bf, post_names) >= 2:
+        return set()
+    return (_engine_systems_formed(pre_bf, pre_names)
+            - _engine_systems_formed(post_bf, post_names))
+
+
+def _contributes_engine_system(bc: BenchChar, systems: set[str]) -> bool:
+    """该件是否贡献指定引擎体系键集(希儿系=希儿本体+量子/贝放大器)。"""
+    if not bc.char_id or not systems:
+        return False
+    fs = _char_factions(bc)
+    for key in systems:
+        if key == '希儿系':
+            if bc.char_id == '希儿' or fs & {'量子同频', '贝洛伯格'}:
+                return True
+        elif key in fs:
+            return True
+    return False
+
+
 # ===== 观测 helper(纯逻辑;不 import cw_observation 保持离线可测) =====
 
 def _char_factions(bc: BenchChar) -> set[str]:
@@ -443,7 +508,7 @@ def _deploy_row(bc: BenchChar, comp: Comp | None,
 
 def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                         memory: EvolutionState | None = None,
-                        session=None) -> list[Action]:
+                        session=None, engine_guard: bool = True) -> list[Action]:
     """④-1 生成整档替换 CompTransaction(决策在执行前一起定)。
 
     完整方案一次敲定:新档成员上场(核心优先)+ 旧档整档解除(羁绊不在目标
@@ -455,6 +520,11 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     换血卖出窗口内 engine_seed 买入(买侧见即买 vs 换血卖侧互踩,seed16
     姬子·启行 r4 买 r5 换血卖);窗口内种子下场进 bench,溢出卖出改吃
     非种子件(窗口 ≤2 轮,延迟卖出有界)。
+
+    W160/ADR-0363 件1:``engine_guard`` True(默认,registry
+    ``evolve_engine_guard_enabled`` 注入)时,事务净效果使过渡引擎数
+    从 ≥2 跌破 2 → 被拆引擎体系的 deployed 贡献件获得新线同级留场
+    资格(见下方守卫块)。
     """
     if not verdict.execute:
         return []
@@ -495,17 +565,42 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
     deployed_keep = [d for d in state.deployed if _is_new_line(d)]
+    # 旧档:非新线成员整档解除
+    old_line = [d for d in state.deployed if not _is_new_line(d)]
+    # W160/ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
+    # (cw_sim._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
+    # deployed 贡献件获得新线同级**留场资格**(不划 old_line 下场),
+    # 换血可以,拆引擎不行。护的是在场引擎贡献([31] top4 是胜率
+    # 保证),不是库存(库存保护=ADR-0360 件3 的保留序,两者互补);
+    # engines<2 局与 ≥2→≥2 的良性换血均不辖(W158 §4:围栏不压
+    # 良性轮换)。留场件挤占 room → 新上场数收紧(bench_new 截断)。
+    if engine_guard:
+        # 投影用 provisional 截断(守卫改动 deployed_keep 前,按现留场数
+        # 估上限内的新上场名单——未截断的 bench_new 会高估事务后引擎数,
+        # 漏掉真丢失)
+        proj_room = state.max_units() - len(deployed_keep)
+        lost = _lost_engine_systems(
+            state, [*deployed_keep, *bench_new[:max(0, proj_room)]])
+        if lost:
+            keep_extra = [d for d in old_line
+                          if _contributes_engine_system(d, lost)]
+            if keep_extra:
+                deployed_keep = [*deployed_keep, *keep_extra]
+                old_line = [d for d in old_line
+                            if not _contributes_engine_system(d, lost)]
+                log.info('[cw][ev][engine-guard] 引擎下界守卫:'
+                         '%s 体系贡献件 %d 件留场(engines≥2 不拆)',
+                         '/'.join(sorted(lost)), len(keep_extra))
     # W155/ADR-0360 件2(生成侧守卫,ADR-0317 同型):bench 新线候选与
     # **留场新线 deployed** 同名 → 剔除(3合1 素材留 bench,同 W65 语义)
     # ——W65 去重只折叠 bench 内部同名,没查 deployed:留场新线同名 +
     # bench 副本进 deploy 名单 → 终态 deployed 同名重复 → duplicate_
     # on_board 整事务拒(s26 连续三轮同因重提零清障的根因形态)。
+    # (守卫先于此步:留场引擎件的名字也进同名去重基准。)
     _kept_names = {d.char_id for d in deployed_keep if d.char_id}
     if _kept_names:
         bench_new = [bc for bc in bench_new
                      if not bc.char_id or bc.char_id not in _kept_names]
-    # 旧档:非新线成员整档解除
-    old_line = [d for d in state.deployed if not _is_new_line(d)]
     # 人口上限内的上场数(③摆不下也上:先换掉旧档,超 cap 再裁非核心新件)
     room = state.max_units() - len(deployed_keep)
     bench_new = bench_new[:max(0, room)]
@@ -772,7 +867,9 @@ def _fresh_seed(d, state: GameState, session) -> bool:
 
 def evolution_step(state: GameState, session=None,
                    memory: EvolutionState | None = None,
-                   off_lock_penalty: float = 0.0) -> list[Action]:
+                   off_lock_penalty: float = 0.0,
+                   engine_guard: bool = True,
+                   final_freeze: bool = True) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
 
     propose → evaluate →(最优 verdict)execute → fill;返回待执行动作序列
@@ -788,6 +885,12 @@ def evolution_step(state: GameState, session=None,
     (减分非禁换——全部机会均 off-lock 时照选最优;[20][31] 空窗/降级
     方向语义保留)。件2:被拒事务**不再发射**(旧版 simulate 拒了仍返回
     tx → 每轮原样重提 = rejected 死循环)并登记退避签名。
+
+    W160/ADR-0363:``engine_guard``/``final_freeze``(registry
+    ``evolve_engine_guard_enabled``/``evolve_final_freeze_enabled``
+    注入,A/B 通道)——件1 引擎下界守卫透传 execute_replacement;
+    件2 位面末窗(剩 ≤1 轮)演进换档(undeploy/sell 非空)冻结不发射,
+    纯加深/填位照旧(与 W150 final_fence 买侧末轮围栏语义对齐)。
     """
     mem = memory if memory is not None else EvolutionState()
     # 恢复语义:谷底暂停 → 下个非遭遇轮解暂停再续
@@ -797,6 +900,11 @@ def evolution_step(state: GameState, session=None,
         mem.paused = False
     # 冻结扩到遭遇前:不启动新替换(pending 记下,恢复时重校验)
     frozen = state.node_type in _ENCOUNTER_NODES
+    # W160/ADR-0363 件2:位面末窗(剩 ≤1 轮,round_num ≥ NODES_PER_PLANE-1)
+    final_window = False
+    if final_freeze:
+        from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+        final_window = state.round_num >= NODES_PER_PLANE - 1
 
     def _try(opt: UpgradeOption) -> list[Action]:
         if _backoff_active(mem, opt, state):
@@ -804,11 +912,21 @@ def evolution_step(state: GameState, session=None,
         verdict = evaluate_upgrade(opt, state)   # 三条件重校验(恢复语义)
         if not verdict.execute:
             return []
-        actions = execute_replacement(verdict, state, mem, session)
+        actions = execute_replacement(verdict, state, mem, session,
+                                      engine_guard=engine_guard)
         if not actions:
             return []
         tx = actions[0]
         assert isinstance(tx, CompTransaction)
+        if final_window and (tx.undeploy or tx.sell):
+            # W160/ADR-0363 件2:末窗换档拆板冻结——末轮换档天然无
+            # 回场窗(W159 §1:丢失 90% 落 r8-9),加深收益 < 引擎
+            # 丢失风险系统性为真;纯加深(deploy-only)不辖。
+            log.info('[cw][ev][final-freeze] r%d 演进换档冻结'
+                     '(%s,undeploy=%d sell=%d)——末窗无回场,'
+                     '纯加深/填位照旧', state.round_num, tx.reason,
+                     len(tx.undeploy or []), len(tx.sell or []))
+            return []
         post = simulate(state, tx)
         if not (post.action_log and
                 post.action_log[-1].get('result') == 'applied'):

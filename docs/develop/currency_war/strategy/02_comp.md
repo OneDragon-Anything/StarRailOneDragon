@@ -66,6 +66,8 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 
 **锁定目标件保护**(ADR-0360,四件全部优先级/围栏式非禁换):①锁定帧(`cw_intention.locked_faction_scope`)下 off-lock 提案在最优选择序(`_best_option`)降分(降级非禁换,`evaluate_upgrade` 三条件不辖;A/B 通道 `registry.evolve_lock_constraint_enabled`);②`execute_replacement` 保留序:old_line 溢出卖出先吃非保护件——锁定目标件(`locked_buy_scope` 采购集)/引擎件(全羁绊 ∩ `TRANSITION_TRAITS`)与种子窗口件(ADR-0339)同级最优先;③deploy 围栏锁定键放行(`select_deployments` 的 `locked_factions` 参,ADR-0226 同型,按全羁绊匹配);④提案去重/退避:bench 新线候选与留场新线 deployed 同名剔除(生成侧守卫,ADR-0317),被 simulate 拒的事务不发射并按签名退避(`EvolutionState.reject_backoff`,窗口 `_REJECT_BACKOFF_ROUNDS` 在代码)。
 
+**引擎下界守卫与末轮演进冻结**(ADR-0363,S1 型「成型后引擎丢失」修法):①引擎下界守卫(A/B 通道 `registry.evolve_engine_guard_enabled`)——`execute_replacement` 划 old_line 前,事务净效果使过渡引擎数(`cw_sim._engines_count` 口径)从 ≥2 跌破 2 时,被拆引擎体系的 deployed 贡献件获得**新线同级留场资格**(不划 old_line 下场;留场件挤占人口 → 新上场数收紧)——语义「换血可以,拆引擎不行」,护**在场引擎贡献**([31] top4)而非库存(库存保护=ADR-0360 件3,互补);engines<2 局与 ≥2→≥2 的良性换血不辖。②末轮演进冻结(A/B 通道 `registry.evolve_final_freeze_enabled`)——位面末窗(剩 ≤1 轮,round_num ≥ NODES_PER_PLANE−1)换档拆板事务(undeploy/sell 非空)冻结不发射,纯加深/填位照旧(与 ADR-0359 final_fence 买侧末轮围栏语义对齐:末轮换档天然无回场窗)。
+
 **边界**:替换决策不消费 bench 装备字段(按角色身份 + 羁绊档判断,装备只随人走——装备分配是独立决策面);效果评分是量化代理而非战斗模拟(核心哲学 2)。
 
 ## 11. cw_intention:终局意向分层

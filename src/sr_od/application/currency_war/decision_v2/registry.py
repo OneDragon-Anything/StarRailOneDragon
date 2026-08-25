@@ -382,6 +382,22 @@ class DecisionV2Registry:
     #: 让非锁定线提案在同轮竞争中让位锁定线;量级=一档
     #: _TIER_WEIGHT 的 3 倍,跨档压制单档优势)
     evolve_off_lock_penalty: float = 3.0
+    # ===== W160/ADR-0363 S1 型成型后引擎丢失修法(两件独立 A/B 通道)=====
+    #: 件1·引擎下界守卫:False=回 W155 后行为(A/B 基线臂)。True 时
+    #: execute_replacement 生成事务时,若事务净效果使过渡引擎数
+    #: (cw_sim._engines_count 口径)从 ≥2 跌破 2,被拆引擎体系的
+    #: deployed 贡献件获得新线同级**留场资格**(不划进 old_line 下场)
+    #: ——语义「换血可以,拆引擎不行」(ADR-0360 件3 只保「不卖」
+    #: 不保「在场」,末轮无回场窗 → 永久丢失;W159 §2:S1 局全部
+    #: 37/37 通道=evolve_tx 整批下场)。护的是在场引擎贡献,不是库存。
+    evolve_engine_guard_enabled: bool = True
+    #: 件2·末轮演进冻结:True 时位面末窗(剩 ≤1 轮,round_num ≥
+    #: NODES_PER_PLANE-1)演进换档(undeploy/sell 非空的拆板事务)
+    #: 冻结不发射——纯加深(deploy-only)与填位照旧;与 W150
+    #: final_fence(ADR-0359 买侧末轮围栏)语义对齐:末轮换档天然
+    #: 无回场窗,「加深收益 < 引擎丢失风险」在该窗口系统性为真
+    #: (W159 §1:r_loss 90% 落 r8-9)。
+    evolve_final_freeze_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

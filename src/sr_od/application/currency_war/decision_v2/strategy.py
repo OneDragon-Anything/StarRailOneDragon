@@ -248,7 +248,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
                 state, session, session.v3_evolution,
                 off_lock_penalty=(
                     registry.evolve_off_lock_penalty
-                    if registry.evolve_lock_constraint_enabled else 0.0))
+                    if registry.evolve_lock_constraint_enabled else 0.0),
+                # W160/ADR-0363:S1 型修法两件(引擎下界守卫/末轮演进
+                # 冻结)从 registry 注入(A/B 通道,关=回 W155 后行为)
+                engine_guard=registry.evolve_engine_guard_enabled,
+                final_freeze=registry.evolve_final_freeze_enabled)
             # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
             # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
             # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟
