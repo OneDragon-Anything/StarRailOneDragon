@@ -1925,26 +1925,88 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # 前移(HEAD=4d28822c,工作树在飞=ddfea057),与本锚指纹不同——
 # 用 snapshot 池跑的 n=60 快验 pool_fp_match=False 属预期,drift 才
 # 是对照主体;跨池对照一律走 Path 重放本锚池。
+# 旧锚(bab146c6,ADR-0355/W140)已失效:ADR-0362(W157,P2 段扩展)
+# Δ池 plane 维键化——_SAMPLER_VERSION 7→8,指纹随重算;键化顺手清除
+# 既有 P1 池 P2 污染(44 条 plane=2 差分混入含 16 条跨位面差分,W156
+# 勘察 §5.1),P1 桶语料变化(battle rung1 混入差分清除→均值 -3.98/
+# win_killed 0.65,旧池 -5.86/0.50)。**P2 段扩展换锚**:新锚=主仓
+# 提交快照 v8(0bf6c0d6),与 W157 simulate_p2_ab 同池;P1 侧 drift
+# 相对 W140 锚 = 池口径修正(污染清除)+语料前移(至 08-26)合成,
+# 非策略变化(W157 决策代码零改动,杠杆全在 harness 层,W156 结论)。
+# 常红披露(非本批引入,见各检查项口径):equip_value_strategy_key_
+# coverage(批㉜ 策略域待裁决恒红)/delta_pool_bucket_min_n+depth_
+# cliff_monotonicity(池语料贫困,META 披露)。
 ANCHOR_REGISTRY_N300: dict = {
-    'pool_fingerprint_prefix': 'bab146c68c5df11a',
-    'recorded': '2026-08-26(W140/ADR-0355:三批前置影响后重建——W126 '
-                '切调度策略变化+W129 连胜金口径变化+W132 兜底门收严,'
-                'n=300,seed 0-299,池=Path 重放 w118 导出快照 '
-                'bab146c68c5df11a)',
+    'pool_fingerprint_prefix': '0bf6c0d6',
+    'recorded': '2026-08-28(W157/ADR-0362:Δ池 plane 维键化后重建'
+                '——sampler v8,池=主仓提交快照 0bf6c0d695f5052c,'
+                'n=300,seed 0-299,planes=1)',
     'metrics': {
-        'engines2_by_r6': 0.15,       # 旧 0.33(46066bbe 锚;W126/W132 策略
-                                      # 收严:刷金减+兜底门要 2 体系,过渡
-                                      # 成型率下移属预期)
-        'avg_final_hp': 19.81,        # 旧 28.69(−8.88 合成漂移:W129 金
-                                      # 口径 −4~−6 金/局为主+板面变浅战损
-                                      # 加深,归因表见 ADR-0355)
-        'hp_ge_60': 0.03,             # 旧 0.08(同上,hp 长尾整体下移)
-        'battle_losses_le_2': 0.05,   # 旧 0.11(同上)
-        'recipe5_by_r6': 0.48,        # 旧 0.67(W126 买侧批口径+兜底门收严)
-        'avg_refreshes': 1.23,        # 旧 2.36(V_D 批口径化后刷新显著
-                                      # 收敛,W126 A/B 已见)
+        'engines2_by_r6': 0.20,       # 旧 0.15(bab146c6 锚;池污染清除
+                                      # +语料前移的合成漂移,见上方注)
+        'avg_final_hp': 25.03,        # 旧 19.81(同上)
+        'hp_ge_60': 0.05,             # 旧 0.03(同上)
+        'battle_losses_le_2': 0.07,   # 旧 0.05(同上)
+        'recipe5_by_r6': 0.57,        # 旧 0.48(同上)
+        'avg_refreshes': 0.0,         # 旧 1.23(⚠️ 现策略 P1 段在 sim
+                                      # 语料下 V_D 批口径化后零刷新——
+                                      # W157 抽核 5+20 seed 改前后一致
+                                      # (同 0),非池效应;锚如实记)
     },
 }
+
+
+# --- ADR-0362(W157)P2 段检查器最小集 ---------------------------------
+# P2 段(planes>=2 批)的最低防线:金轨迹非负 + 段形状。P2 语料
+# 边界(44 行/16 局)支撑行为分布验证,不支撑更多口径校准——检查
+# 面到此为止,后续语料攒厚再扩(W156 §2 分层结论)。
+
+def check_p2_gold_nonneg(ledgers: list[list[dict]]) -> dict:
+    """P2 段金轨迹非负(ADR-0362,W157)。
+
+    判据:plane=2 账本行的 gold < 0 = 违规——sim 经济层守卫
+    (地板/可负担性)在 P2 段照常辖,负金=结算/买扣款层回归。
+    无 plane=2 行的批(planes=1)恒绿。
+    """
+    games: list[int] = []
+    detail: list[str] = []
+    for idx, rows in enumerate(ledgers):
+        for row in rows:
+            if (row.get('plane') or 1) != 2:
+                continue
+            g = row.get('gold')
+            if isinstance(g, (int, float)) and g < 0:
+                games.append(idx)
+                detail.append(f"g{idx} p2r{row.get('round_num')} "
+                              f"gold={g}")
+    return {'violations': len(detail), 'games': games[:5],
+            'detail': detail[:5]}
+
+
+def check_p2_segment_shape(ledgers: list[list[dict]]) -> dict:
+    """P2 段账本形状(ADR-0362,W157):ts 单调跨位面、plane 字段
+    真值、round_num 域 1-P2_ROUNDS。
+
+    判据:①全账本 ts 严格递增(P2 段续 P1 段单调,write_batch_ledger
+    排序语义);②plane 值 ∈ {1, 2};③plane=2 行 round_num ∈
+    [1, P2_ROUNDS]。违规=位面段迭代结构回归(如 P2 行挂 plane=1
+    = 污染 P1 指标辖域)。
+    """
+    out: list[str] = []
+    for idx, rows in enumerate(ledgers):
+        last_ts = -1
+        for row in rows:
+            ts = row.get('ts')
+            if not isinstance(ts, int) or ts <= last_ts:
+                out.append(f'g{idx} ts 非单调:{ts}(prev {last_ts})')
+            last_ts = ts if isinstance(ts, int) else last_ts
+            if row.get('plane') not in (1, 2):
+                out.append(f"g{idx} plane={row.get('plane')} 越域")
+            if (row.get('plane') or 1) == 2 \
+                    and not 1 <= int(row.get('round_num') or 0) <= 7:
+                out.append(f"g{idx} p2 round_num="
+                           f"{row.get('round_num')} 越域")
+    return {'violations': len(out), 'detail': out[:6]}
 
 
 def check_anchor_registry_n300(report: dict) -> dict:
@@ -3463,19 +3525,25 @@ def check_delta_pool_poverty_selfconsistency(pool_map: dict,
     #: 贫困披露串反向解析格式(与生成器 ``_poverty_list`` 的拼串格式
     #: 对偶——解析失败 = 生成器/检查器两侧拼串逻辑漂移,单源断裂可见)。
     poverty_re = re.compile(
-        r'^(?P<nt>[a-z]+):桶(?P<b>\d+)\((?:n=(?P<n>\d+)|缺)\)$')
+        r'^(?:p2:)?(?P<nt>[a-z]+):桶(?P<b>\d+)\((?:n=(?P<n>\d+)|缺)\)$')
     if meta is None:
         return {'violations': 0, 'note': '无披露载体(meta=None)不辖'}
     if not any((pool_map or {}).values()):
         return {'violations': 0, 'note': '池空(fallback/历史快照)不辖'}
     violations: list[str] = []
-    # 披露侧:反向解析
+    # ADR-0362(W157):``p2:`` 前缀条目 = plane≥2 桶贫困披露
+    # (生成器单列,判据只辖 plane=1)——跳过双向对拍,仅计入解析
+    # 可见性(P2 桶 n<5 全贫困是语料边界,不是披露断裂)。
     disclosed: set[tuple[str, int, str, int]] = set()   # (nt, 桶, kind, n)
     unparseable: list[str] = []
+    p2_disclosed: list[str] = []
     for s in (meta.get('bucket_poverty') or []):
         m = poverty_re.match(str(s))
         if not m:
             unparseable.append(str(s))
+            continue
+        if str(s).startswith('p2:'):
+            p2_disclosed.append(str(s))
             continue
         n = m.group('n')
         disclosed.add((m.group('nt'), int(m.group('b')),
@@ -3519,6 +3587,7 @@ def check_delta_pool_poverty_selfconsistency(pool_map: dict,
     return {'violations': len(violations), 'detail': violations,
             'disclosed_n': len(disclosed), 'pool_poor_n': len(poor),
             'unparseable': unparseable[:3],
+            'p2_disclosed_n': len(p2_disclosed),
             'note': '贫困披露↔池内容双向结构对拍(批㊲);'
                     '红 = 披露断裂/格式漂移'}
 

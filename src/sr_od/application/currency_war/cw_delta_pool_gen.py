@@ -10,9 +10,13 @@ tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
 桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
 decisions deployed join);encounter/boss=深度桶。
+**plane 维(ADR-0362,W157)**:桶键外再加位面层——差分归属
+「后行位面」(P1r9→P2r1 跨位面差分归 plane=2),P1/P2 桶彻底
+分离;修 W156 发现的既有 P1 池 P2 污染(44 条 plane=2 差分混在
+无位面维的池里,含 16 条跨位面差分)。
 
 产出:src/sr_od/application/currency_war/cw_delta_pool_data.py ——
-SNAPSHOT {节点: {深度桶: [Δ]}} + META(构成/过滤/指纹)。
+SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 主仓提交(先例:REFRESH_PROB 实测概率表在 cw_shop_odds);CI 与
 跨机可复现基准靠它(裸 .debug 池随实机追加漂移,不可作基准)。
 
@@ -136,18 +140,30 @@ def _win_stats(deltas: list, killed_list: list) -> dict:
 
 
 def _poverty_list(pool: dict, battle_killed: dict) -> list[str]:
-    """ADR-0306 件2:桶贫困披露(n<10 的桶 + battle rung 域缺桶)。"""
+    """ADR-0306 件2:桶贫困披露(n<10 的桶 + battle rung 域缺桶)。
+
+    ADR-0362(W157):battle rung 域/贫困披露只辖 **plane=1** 桶
+    (检查项 delta_pool_bucket_coverage 的判据消费 plane-1 视图,
+    键格式不变);plane≥2 桶整体贫困(语料 44 行,条件化分桶
+    不做)以 ``p2:`` 前缀单列披露,不进 plane-1 判据。
+    """
     out: list[str] = []
-    battle = pool.get('battle') or {}
+    p1 = (pool.get('battle') or {}).get(1) or {}
     for rg in BATTLE_RUNG_DOMAIN:
-        v = battle.get(rg) or []
+        v = p1.get(rg) or []
         if len(v) >= BUCKET_COVERAGE_MIN_N:
             continue
         out.append(f'battle:桶{rg}(n={len(v)})'
                    if v else f'battle:桶{rg}(缺)')
-    for nt, buckets in sorted((pool or {}).items()):
+    for nt, planes in sorted((pool or {}).items()):
+        for plane in sorted(k for k in planes if int(k) >= 2):
+            for b, v in sorted(planes[plane].items(),
+                               key=lambda x: int(x[0])):
+                if len(v) < BUCKET_COVERAGE_MIN_N:
+                    out.append(f'p2:{nt}:桶{b}(n={len(v)})')
         if nt == 'battle':
-            continue
+            continue   # battle 已按 rung 域单独披露
+        buckets = planes.get(1) or {}
         for b, v in sorted(buckets.items(), key=lambda x: int(x[0])):
             if len(v) < BUCKET_COVERAGE_MIN_N:
                 out.append(f'{nt}:桶{b}(n={len(v)})')
@@ -155,11 +171,12 @@ def _poverty_list(pool: dict, battle_killed: dict) -> list[str]:
 
 
 def build_pool(src_dir: Path, runs_filter: set[str] | None):
-    """构建 {节点: {桶键: [Δ]}} + 构成 meta(与 cw_sim 同配对口径)。
+    """构建 {节点: {位面: {桶键: [Δ]}}} + 构成 meta(与 cw_sim 同配对口径)。
 
     桶键语义(ADR-0279,批⑬):battle=成型度 rung(结算前
     board_before + decisions deployed join 算希儿系);encounter/
     boss=深度桶(批⑬ F1 encounter rung 样本不足暂沿用)。
+    plane 维(ADR-0362,W157):差分归属后行位面,P1/P2 分桶。
 
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
     """
@@ -211,6 +228,10 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 # 不可信的"经验分布"是幻觉地基),计数披露。
                 unlabeled_dropped += 1
                 continue
+            # ADR-0362(W157):差分归属**后行位面**——P1r9→P2r1 的
+            # 跨位面差分归 plane=2(结算节点在 P2);位面难度语义
+            # 不同,混桶=P1 池被 P2 掉血带污染(W156 勘察 §5.1)。
+            plane = int(b2.get('plane') or 1)
             k = (run, b2.get('plane'), b2.get('round_num'))
             dep = boards.get(k)
             if dep is None:
@@ -224,12 +245,17 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                     deployed_names.get(k, frozenset()))
                 # ADR-0306:胜判定权威口径 = killed(结算屏 extras;
                 # Δ=相邻轮差分是派生量)——逐样本留档供 META 逐桶
-                # 胜率统计(boss_win_p rung≥3 外推消费)。
-                battle_killed.setdefault(bucket, []).append(b2.get('killed'))
+                # 胜率统计(boss_win_p rung≥3 外推消费);
+                # ADR-0362:胜率统计只辖 plane=1(boss_win_p 消费
+                # 面是 P1 回退层;P2 胜率语料不足,见 META note)。
+                if plane == 1:
+                    battle_killed.setdefault(bucket, []).append(
+                        b2.get('killed'))
             else:
                 # encounter/boss 暂沿用 depth 分桶(批⑬ F1)。
                 bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(bucket, []).append(delta)
+            pool.setdefault(nt, {}).setdefault(
+                plane, {}).setdefault(bucket, []).append(delta)
     meta = {
         'source_dir': str(src_dir),
         'runs': per_run_rounds,
@@ -249,7 +275,8 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             str(b): dict(
                 {'n': len(v), 'mean': round(sum(v) / len(v), 2)},
                 **_win_stats(v, battle_killed.get(b, [])))
-            for b, v in sorted((pool.get('battle') or {}).items())},
+            for b, v in sorted(
+                ((pool.get('battle') or {}).get(1) or {}).items())},
         # ADR-0306 件1:语料行数账(重生成时的增量盘点基准)——
         # 下次扩容批以 outcomes/decisions 现行数 vs 本值为增量。
         'source_rows': dict(_source_rows),
@@ -278,7 +305,14 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '重算),采样语义不变(版本仍 7);'
                 'v8(ADR-0344,W109)生成核心迁入 src(cw_delta_pool_gen)'
                 '+实机局终自动再生管线+池新鲜度检查——池内容与采样'
-                '语义不变(指纹不变);生成器头注与 CLI 壳双入口',
+                '语义不变(指纹不变);生成器头注与 CLI 壳双入口;'
+                'v9(ADR-0362,W157)Δ池 plane 维键化(SNAPSHOT 形状'
+                '{节点:{位面:{桶:[Δ]}}})——差分归属后行位面,P1/P2'
+                '桶分离;顺手清除既有 P1 池 P2 污染(44 条 plane=2 '
+                '差分混入,含 16 条跨位面差分,W156 勘察 §5.1);'
+                'P1 桶语料随污染清除小幅变化(指纹重算,锚重记;'
+                'P2 桶 n<5 全贫困,条件化分桶不做,采样走位面内'
+                '全池合并兜底/回退层掉血带)',
     }
     return pool, meta
 
@@ -335,7 +369,8 @@ def regenerate_snapshot(src_dir: Path | None = None,
         '',
     ]
     DATA_PY.write_text('\n'.join(lines), encoding='utf-8')
-    n = sum(len(v) for b in pool.values() for v in b.values())
+    n = sum(len(v) for planes in pool.values()
+            for b in planes.values() for v in b.values())
     if not quiet:
         print(f'快照已写 {DATA_PY.name}: 节点×{len(pool)} 样本×{n} '
               f'指纹 {fp} 跳过行 {meta["skipped_lines"]}')

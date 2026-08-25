@@ -172,6 +172,28 @@ NODE_WIN_P_BY_TYPE: dict[str, float] = {
 # ——按 100 锚算 boss 损失会出伪影)。
 BOSS_WIN_DELTA: int = 2
 
+# ===== P2 段校准层(W157/ADR-0362;语料边界=W151 四局解剖+16 局
+# replay plane=2 行 44 条,行为分布验证口径非 hp 点值校准) =====
+# P2 位面段轮数(boss@r7;W156 §2:16 局 outcomes 拼版,r1-r7 全在)。
+P2_ROUNDS: int = 7
+# P2 节点序列(观测拼版,逐槽一致无变异观测):
+# r1 battle(16/16)/r2 battle(10/10 到达局)/r3 supply(5/5)/
+# r4 battle(4/4)/r5 encounter(3/3)/r6 reward(3/3)/r7 boss(2/2)。
+# ⚠️ 与 economy.md §10.2 的 P2 开局帧(1 帧:battle/battle/
+# encounter/reward/encounter/reward/?)在 r3-r6 槽序不一致——
+# 开局帧 1 样本 vs outcomes 拼版 5+ 局一致,取拼版;帧间变异
+# 无观测(P1 的变异位机制不外推),多局复核后如需变异位再改。
+P2_NODE_SEQUENCE: tuple[str, ...] = (
+    'battle', 'battle', 'supply', 'battle',
+    'encounter', 'reward', 'boss',
+)
+# P2 战斗回退档:胜率 0.11(W151:P2+ 战斗 1 胜 8 败)/败掉血带
+# 15-17(W151:每败 -15~-17,B≈10+未达标罚 P;结算屏三项拆解
+# P2r1 实证 +2/-10/-15,economy.md §10.2)。Δ池 plane=2 桶可及
+# 时经验分布优先;缺桶走本带(ADR-0362)。
+P2_BATTLE_WIN_P: float = 0.11
+P2_LOSS_BAND: tuple[int, int] = (15, 17)
+
 
 def node_win_p(node_type: str, round_num: int = 0) -> float:
     """节点胜率单一取值口(ADR-0308;回退层胜负面)。
@@ -229,6 +251,13 @@ class SimResult:
     # 动作 v2:围栏跳过轮数(显式动作发出轮 select_deployments 自动
     # 部署让位——裁决1「显式>围栏,同轮互斥」;账本同步记 skip_fence 行)
     fence_skips: int = 0
+    # ===== P2 段观测(ADR-0362,W157;planes>=2 时填,默认 0/False)=====
+    p2_entered: bool = False        # 活过 P1 进场 P2(P1 段死=False)
+    p2_rounds: int = 0              # P2 段已结算轮数(0-7)
+    p2_combat_total: int = 0        # P2 段战斗类节点结算数
+    p2_combat_wins: int = 0         # 其中 delta>=0 的胜场数
+    p2_hp0: bool = False            # 死在 P2 段(终局 hp<=0)
+    p2_refreshes: int = 0           # P2 段 RefreshShop 次数(D 次数)
 
 
 class _Pool:
@@ -338,7 +367,7 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
 # boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
 # 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
-_SAMPLER_VERSION: int = 7   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 8   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v7(ADR-0312,W50 口径统一):采样键 _deployable_depth 从
 # min(level, len(deployed)) 改 **Σboard(全集口径)**——与池语料
 # (decisions state.board 求和,实机全集口径)同口径;旧键与池语料
@@ -346,6 +375,14 @@ _SAMPLER_VERSION: int = 7   # 桶化/邻桶回退/采样语义变更时 +1(指�
 # state.board 本身换全集口径(_recount_board)——池内容不变但 sim
 # 侧查询/结算键变 → 快照 META 指纹重算 + ANCHOR_REGISTRY_N300 锚
 # 重记(ADR-0308 同款流程)。
+# v8(ADR-0362,W157 P2 段扩展):Δ池 **plane 维键化**——SNAPSHOT
+# 形状 {节点:{位面:{桶:[Δ]}}},差分归属后行位面(P1r9→P2r1 跨
+# 位面差分归 plane=2);顺手清除既有 P1 池 P2 污染(44 条 plane=2
+# 差分混入无位面维的池,含 16 条跨位面差分,W156 勘察 §5.1)。
+# P1 桶语料随污染清除小幅变化 → 指纹重算 + ANCHOR_REGISTRY_N300
+# 锚重记(P2 段扩展换锚,P1 侧 drift 如实记档);live_delta_for
+# 增 plane 参(plane≥2 不跨位面回退——位面难度语义不同,缺桶走
+# 位面内兜底/回退层 P2 掉血带 15-17)。
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -381,9 +418,12 @@ def pool_fingerprint(pool: dict) -> str:
     """
     import hashlib
     import json as _json
+    # ADR-0362(W157):canon 多一层位面({节点:{位面:{桶:Δ}}})——
+    # plane 维是池内容的一部分(位面分离语义),入指纹。
     canon = _json.dumps(
-        {n: {str(b): sorted(v) for b, v in sorted(buckets.items())}
-         for n, buckets in sorted(pool.items())},
+        {n: {str(p): {str(b): sorted(v) for b, v in sorted(buckets.items())}
+             for p, buckets in sorted(planes.items())}
+         for n, planes in sorted(pool.items())},
         ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(
         f'v{_SAMPLER_VERSION}|w{_DEPTH_BUCKET_W}|{canon}'.encode()).hexdigest()[:16]
@@ -395,6 +435,8 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     配对口径(r340 起):decisions 每轮取末行板深(Σboard),
     outcomes 同 run 按 (plane, round) 排序后相邻轮 hp 差分。
     半写行跳过并计数(生产 append 进行中尾行可能撕裂)。
+    ADR-0362(W157):差分归属**后行位面**——{节点:{位面:{桶:[Δ]}}}
+    (与 cw_delta_pool_gen.build_pool 同口径;P1/P2 分桶)。
     """
     import json as _json
     skipped: dict[str, int] = {}
@@ -449,6 +491,8 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 # 指纹相等性无法用作收敛判据)。
                 unlabeled_dropped += 1
                 continue
+            # ADR-0362(W157):差分归属后行位面(P1r9→P2r1 归 plane=2)
+            plane = int(b.get('plane') or 1)
             k = (run, b.get('plane'), b.get('round_num'))
             dep = boards.get(k)
             if dep is None:
@@ -469,7 +513,8 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 # encounter/boss 暂沿用 depth 分桶(批⑬ F1:encounter
                 # rung 桶全线不足 4/9/2,攒样后下次快照并入)。
                 bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(bucket, []).append(delta)
+            pool.setdefault(nt, {}).setdefault(
+                plane, {}).setdefault(bucket, []).append(delta)
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
             'skipped_lines': skipped,
             'unlabeled_dropped': unlabeled_dropped}
@@ -477,10 +522,23 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
 
 
 def _normalize_pool(raw: dict) -> dict:
-    """桶键归一 int(json round-trip 会变字符串键——str 键会让
-    live_delta_for 的 int 桶查询全 miss = 快照静默失效)。"""
-    return {n: {int(b): list(v) for b, v in buckets.items()}
-            for n, buckets in raw.items()}
+    """桶键/位面键归一 int(json round-trip 会变字符串键——str 键会让
+    live_delta_for 的 int 桶查询全 miss = 快照静默失效;ADR-0362 起
+    池形状 {节点:{位面:{桶:[Δ]}}},两层都归一)。"""
+    return {n: {int(p): {int(b): list(v) for b, v in buckets.items()}
+                for p, buckets in planes.items()}
+            for n, planes in raw.items()}
+
+
+def plane_view(pool_map: dict, plane: int = 1) -> dict:
+    """取池的**单位面视图**({节点:{桶:[Δ]}};ADR-0362,W157)。
+
+    P1 锚定的池级检查(min_n/深崖/rung 锁/reward 锁/coverage)判据
+    全是 P1 语料口径——消费位面化池时先取本视图,检查代码零改动;
+    plane≥2 桶不进这些判据(语料贫困,走 META ``p2:`` 前缀披露)。
+    """
+    return {n: dict(planes.get(plane) or {})
+            for n, planes in (pool_map or {}).items()}
 
 
 _RESOLVED_CACHE: dict[str, tuple[dict, str, str]] = {}
@@ -563,8 +621,17 @@ def _json_loads_path(p: Path) -> dict:
 
 def live_delta_for(node_type: str, key: int,
                    rng: random.Random, *,
-                   pool_map: dict | None = None) -> int | None:
+                   pool_map: dict | None = None,
+                   plane: int = 1) -> int | None:
     """按节点类型 + 分桶键取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
+
+    **位面维(ADR-0362,W157)**:``plane`` 选池的位面层;plane≥2
+    **不跨位面回退**——位面难度语义不同(P2 掉血带 15-17 vs P1
+    battle -7~-13),跨位面借样本=口径混桶;该位面桶缺 → 位面内
+    兜底链(下探/全池合并)→ 仍空 → None(调用方走 P2 回退层
+    掉血带,见 ``node_delta`` 的 plane 分支)。P2 语料 44 行,
+    条件化分桶不做(每桶 n<5,防饥饿守卫辖)——实际采样≈位面内
+    全池合并的经验分布(W156 §2 分层结论)。
 
     **桶键语义按节点分流(ADR-0279,批⑬)**:
 
@@ -598,7 +665,9 @@ def live_delta_for(node_type: str, key: int,
     """
     if pool_map is None:
         pool_map = resolve_pool('auto')[0]
-    _map = pool_map.get(node_type) or {}
+    # ADR-0362:位面层解包({节点:{位面:{桶:[Δ]}}});plane≥2
+    # 缺桶不跨位面回退(见 docstring)
+    _map = (pool_map.get(node_type) or {}).get(plane) or {}
     if node_type == 'battle':
         # ADR-0279:rung 桶(键域 0-4)
         src_b = min(max(int(key), 0), 4)
@@ -709,7 +778,7 @@ def sample_node_sequence(rng: random.Random) -> list[str]:
 
 
 def node_delta(node: str, round_num: int, dir_round: int,
-               rng: random.Random) -> int:
+               rng: random.Random, *, plane: int = 1) -> int:
     """按节点类型的 HP 变化(r260 分层;ADR-0292 起 reward/supply 的
     **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
     节点回退档胜负面 = W31 实测阶梯 ``node_win_p``):
@@ -718,7 +787,12 @@ def node_delta(node: str, round_num: int, dir_round: int,
     battle → 阶梯掷胜(W31:n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
     encounter → 阶梯掷胜(0.04),胜 +2/负 boss 档 × ENCOUNTER_MULT
     (档位不可观,均值近似);
-    boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。"""
+    boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。
+
+    plane≥2(ADR-0362,W157):battle 回退档换 **P2 掉血带**——
+    胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料 W151,
+    P1 阶梯的 r3/r4 战斗胜率与幅度带都不辖 P2);encounter/boss
+    沿用 P1 档+标注(P2 语料 3/2 行不足,池可及时优先池采样)。"""
     if node in ('reward', 'supply'):
         return EARLY_WIN_DELTA
     if node == 'encounter':
@@ -729,6 +803,11 @@ def node_delta(node: str, round_num: int, dir_round: int,
         if rng.random() < node_win_p('boss', round_num):
             return BOSS_WIN_DELTA
         return boss_delta(dir_round, rng)
+    if plane >= 2:
+        # ADR-0362:P2 battle 回退档(掉血带 15-17,W151)
+        if rng.random() < P2_BATTLE_WIN_P:
+            return rng.choice(WIN_DELTAS)
+        return -rng.randint(P2_LOSS_BAND[0], P2_LOSS_BAND[1])
     return battle_delta(round_num, dir_round, rng)
 
 
@@ -937,11 +1016,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
                 pool: str | Path = 'auto',
                 diamond_cap_prob: float = 0.0,
-                config=None) -> SimResult:
-    """单局 P1 模拟(决策跑真策略代码)。
+                config=None,
+                planes: int = 1) -> SimResult:
+    """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
+    追加 P2 段——W157/ADR-0362 案 a 最小可用)。
 
     :param seed: 随机种子(同 seed 同局,可复现——**须同池指纹**,
         见 ``pool``;SimResult.pool_fingerprint 记录本局所用池)
+    :param planes: 1=P1 九轮(默认,**逐位不变**——回归门=旧代码
+        同 seed 同池 diff={});2=P1 段后追加 P2 七轮段(进场继承
+        P1 末态 hp/gold/board/bench/deployed/equips/意向,ADR-0362):
+        P2 节点序列 = ``P2_NODE_SEQUENCE`` 观测拼版、结算 = Δ池
+        plane=2 桶优先/回退掉血带 15-17、事件金复用 P1 表(打标
+        未校准,P2 基础收入 5 已实测,economy.md §10.1);P2 段
+        观测进 SimResult.p2_* 字段。3+(P3)未实现,显式拒绝。
     :param use_refresh: False 时剔除 RefreshShop 动作(A/B 对照用)
     :param strategy: 注入策略(默认 DecisionV2Strategy;测试可换桩)
     :param session: 注入会话(默认新建;跨局复用场景可传)
@@ -960,6 +1048,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
     )
+    if planes not in (1, 2):
+        raise ValueError(
+            f'planes 参数非法: {planes}(1=P1 段;2=P1+P2 段,ADR-0362;'
+            'P3 语料零样本未实现——案 c 缓,W156 裁决)')
     pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
     cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
@@ -1003,651 +1095,692 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # ADR-0286(批㉔ F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
     _diamonds = 0
     streak = 0
-    for rn in (1, 2, 3, 4, 5, 6, 7, 8, 9):
-        st.round_num = rn
-        # 批⑤ F4(ADR-0276):决策前写 session.node_type_current——
-        # 生产语义 = prep_director 备战期存下一节点类型(r308 保连胜
-        # 门/节点感知消费读 session);sim 旧不写 → 门在 sim 恒盲
-        # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
-        # (battle/encounter/boss/…)。
-        sess.node_type_current = nodes[rn - 1]
-        # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
-        _gold_before = st.gold
-        _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
-        _inc = {'base': BASE_INCOME,
-                'interest': min(INTEREST_CAP, st.gold // 10),
-                # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点不发
-                # 连胜金——run13 r2 奖励结算屏=基础5+连胜×0(无 streak 分量);
-                # 战斗轮 counter0 照发 table[0]=1(run15 r3=5+3+1)。
-                'streak': 0 if nodes[rn - 1] in ('reward', 'supply')
-                else streak_gold(streak),   # 单一源 cw_economy(r305)
-                'event': _inc_event}
-        st.gold += sum(_inc.values())
-        # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
-        # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
-        # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
-        st.refresh_probs = _roll_rotation(rng, st.level)
-        # ADR-0286(批㉔ F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
-        if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
-            _diamonds += 1
-        # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
-        # → max_units() 兜底 level(与生产防抖拒信路径同态)
-        st.deploy_cap = st.level + _diamonds if _diamonds else None
-        st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
-        _waves = [{'event': 'offer', 'gold': st.gold,
-                   'cards': [{'name': c.name, 'faction': c.faction,
-                              'cost': c.cost} for c in st.shop]}
-                  ]   # ① 账本:牌面波(supply 视图;gold=该波时点金)
-        # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
-        _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
-        _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
-        _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
-        _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
-        _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
-        # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
-        # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
-        # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
-        # W65/ADR-0323:被拒事务不置位,围栏照跑)
-        _explicit_deploy_seen = False
-        _acts: list[dict] = []
-        _segs_used = 0
-        # ADR-0343:成型停手轮内 OR 聚合——一轮多决策段,演进事务可
-        # 轮中改变板面使成型态中途点亮(段前的买入合法);行标志=
-        # 「本任一段曾处于停手态」(检查器豁免消费:有买的轮本就
-        # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
-        # 语义正确辖域)
-        _round_formed_stop = False
-        # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
-        # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
-        # 的「连续放弃轮」数据源)
-        _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
-        # W114/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
-        # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
-        _round_phase: str = ''
-        _round_form_ok: bool = False
-        _round_form_score: float = 0.0
-        _round_dp_posture: str = ''
-        _phase_snap = False
-        # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
-        # RefreshShop 动作后**独立重决策一段**——r270 连刷在
-        # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
-        # 执行+买后重估(r251):刷→见新店→(再刷或买)。
-        # r273 修:sim 逐动作消费,遇 RefreshShop 执行后立即
-        # re-decide(捕捉"刷到就买"),段数上限防死循环。
-        # r361b(ADR-0219 代理语义纪律,第三次命中):r358 检查点核心维
-        # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
-        # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。
-        # ADR-0287(批㉘ F1-F5,deploy_after_buy_semantics):部署块
-        # 从轮首移到**买/升级之后**(生产序对齐:battle_prep.py 备战
-        # 单轮 ⓪收球→①买牌→②部署→③装备→④出战)。旧轮首序让当轮
-        # 买的件/当轮升级腾出的 cap 滞后一轮上板(n=300 观测 33.0%
-        # 轮存在「当轮可上未上」,1124 件次),结算键(rung/depth)读
-        # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
-        # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
-        # 从 session 现读(生产语义:买后 update_target 已刷新)。
-        for _seg in range(8):
-            strat.update_target(st, sess, config)
-            acts = strat.decide_prep(st, sess, config)
-            _round_formed_stop = _round_formed_stop or bool(
-                getattr(sess, 'v3_formed_stop', False))
-            if not _phase_snap:
-                _phase_snap = True   # 轮入口首段快照(W114 影子)
-                _round_phase = str(getattr(sess, 'v3_phase', '') or '')
-                _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
-                _round_form_score = round(float(
-                    getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
-                # W119/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
-                _round_dp_posture = str(getattr(getattr(
-                    getattr(sess, 'v3_dp_posture', None),
-                    'posture', None), 'tag', '') or '')
-                # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
-                _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
-                                            False))
-            if not use_refresh:
-                acts = [a for a in acts
-                        if not isinstance(a, RefreshShop)]
-            if not acts:
-                break
-            _segs_used += 1
-            progressed = False
-            for a in acts:
-                if isinstance(a, RefreshShop):
-                    res.refreshes += 1
-                    _cost_r = (st.shop_refresh_cost or 2)
-                    st.gold -= _cost_r
-                    _spend['refresh'] += _cost_r
-                    _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
-                    st.shop = cards_pool.draw_shop(st.level,
-                                                   probs=st.refresh_probs)
-                    _waves.append(
-                        {'event': 'refresh', 'gold': st.gold,
-                         'cards': [{'name': c.name, 'faction': c.faction,
-                                    'cost': c.cost} for c in st.shop]})
-                    progressed = True
-                    break          # 刷后立即 re-decide(见新店)
-                if isinstance(a, BuyCard):
-                    # ADR-0283(批⑰ F6):生产 bench 满 = 硬模态拒买
-                    # (ADR-0136;cw_identity_obs「备战席已满」球点不动),
-                    # sim 旧无守卫 → 单轮 4-8 连买把 bench 顶到 11-17
-                    # (批⑰ 3/300 局)——满仓局的买门/腾位门读的是生产
-                    # 不可能出现的状态。守卫:合并域(bench+deployed,
-                    # _merge_bench 全场域)中 bench 槽为约束——deployed
-                    # 不占备战槽,故判据 = 占用数 ≥ BENCH_CAPACITY(9,
-                    # ADR-0316 槽位表);超容买跳过(金/牌池均不消费)+
-                    # 计数披露。
-                    if bench_occupied(st.bench) >= BENCH_CAPACITY:
-                        _bench_full_skips += 1
-                        _bench_full_skip_gold += a.card.cost
-                        continue
-                    # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
-                    # ——买走即下架(生产语义:槽买后消失)。旧 sim
-                    # 买入不消费槽 → 同槽幻影再买(批㉒ 账本实测
-                    # 65.13% 买轮含槽再买、单槽最高 6 连买),3合1
-                    # 被同槽重复点击无限兜底 → 成型类指标系统性
-                    # 偏乐观(批㉒ F3)。槽匹配:引用同一 → 同名
-                    # 兜底(策略构造副本形态);无槽且本轮曾上架
-                    # 该名 = 已消费槽再买 → 跳过(金/池不消费)+
-                    # 披露;本轮从未上架 = 店外构造(测试桩)→
-                    # legacy 执行 + 披露计数(真策略提案恒来自
-                    # st.shop,检查项 phantom_rebuy_disclosure 锁
-                    # 真批次恒 0)。
-                    _slot = next((c for c in st.shop if c is a.card),
-                                 None)
-                    if _slot is None:
-                        _slot = next(
-                            (c for c in st.shop
-                             if c.name == a.card.name), None)
-                    if _slot is not None:
-                        st.shop.remove(_slot)
-                    else:
-                        _phantom_rebuys += 1
-                        _offered = {c.get('name') for w in _waves
-                                    for c in w.get('cards') or []}
-                        if a.card.name in _offered:
-                            continue   # 已消费槽再买:不可执行
-                    cards_pool.take(a.card.name)
-                    st.gold -= a.card.cost
-                    _ch = a.reason or 'unknown'
-                    _spend['buys'][_ch] = \
-                        _spend['buys'].get(_ch, 0) + a.card.cost
-                    # 序列化形状对齐生产 serialize_action(card 嵌套;
-                    # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
-                    # reason=**通道**(创建点语义);channel=**身份**
-                    # (classify_buy——通道经济分析别混桶,审查#7)
-                    from sr_od.application.currency_war.cw_line_defs import (
-                        classify_buy as _cb,
-                    )
-                    _acts.append({'__type__': 'BuyCard',
-                                  'card': {'x': a.card.x,
-                                           'faction': a.card.faction,
-                                           'name': a.card.name,
-                                           'cost': a.card.cost},
-                                  'reason': _ch,
-                                  'channel': _cb(a.card, st)})
-                    xp += XP_PER_BUY
-                    st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
-                    # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
-                    # 执行层——生产 simulate(BuyCard) 每次买入后调
-                    # _merge_bench(全场域 bench+deployed,同名同星
-                    # ≥3 → star+1、删 2 张),sim 旧不接 → 副本占席
-                    # → bench 满 → 买通道死 → 滞留金 2.2× 虚高
-                    # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
-                    # (每次合并净减 2 个单位;载体在场时 deployed
-                    # 计数不变)。
-                    _pre_units = bench_occupied(st.bench) + len(st.deployed)
-                    bench_place(st.bench, BenchChar(
-                        slot=0, char_id=a.card.name,
-                        faction=a.card.faction))
-                    _merge_bench(st.bench, st.deployed)
-                    _merges += (_pre_units + 1
-                                - bench_occupied(st.bench)
-                                - len(st.deployed)) // 2
-                    progressed = True
-                elif isinstance(a, LevelUp):
-                    st.gold -= 4
-                    _spend['levelup'] += 4
-                    # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
-                    # 放行臂名(pop_slot/dp/static_ev;''=default 栈旧调用
-                    # 或未过账)——检查器 levelup_interest_engine_gate
-                    # 判据消费;记录非指令。
-                    _lv_auth = getattr(a, 'auth_basis', '')
-                    _acts.append({'__type__': 'LevelUp', 'cost': 4,
-                                  'auth': _lv_auth})
-                    xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
-                    st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
-                    progressed = True
-                elif isinstance(a, SellBench):
-                    # ADR-0316:槽位置 None(占用校验在 bench_clear)
-                    bc = bench_clear(st.bench, a.bench_idx)
-                    if bc is not None:
-                        ch = CHARACTERS.get(bc.char_id)
-                        # ADR-0276:卖出回金接生产 sell_refund 单一源
-                        # ——merge 落地后 bench 可有 star≥2(1星=cost、
-                        # 2星=3×cost−1…),旧恒按 1星 cost 退会低估
-                        # 合成件价值、卖出通道失真。
-                        _sell_v = (sell_refund(bc.star, ch.cost)
-                                   if ch and ch.cost else 1)
-                        st.gold += _sell_v
-                        _spend['sell_income'] += _sell_v
-                        _acts.append({'__type__': 'SellBench',
-                                      'bench_idx': a.bench_idx,
-                                      'name': bc.char_id,
-                                      'income': _sell_v})
-                        cards_pool.ret(bc.char_id)
+    # ADR-0362(W157):位面段迭代——P1 段(9 轮)后按 ``planes``
+    # 追加 P2 段(7 轮)。planes=1 时段表只含 P1 段,循环体逐位
+    # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。
+    _ts = 0   # 单调轮序号(跨位面累计;P1 段恒 == rn)
+    _segments: list[tuple[int, int, list[str]]] = [(1, 9, nodes)]
+    if planes >= 2:
+        _segments.append((2, P2_ROUNDS, list(P2_NODE_SEQUENCE)))
+    for _seg_plane, _seg_rounds, nodes in _segments:
+        if _seg_plane >= 2:
+            # 进场继承块(ADR-0362):P1 末态 hp/gold/board/bench/
+            # deployed/equips/意向**原样带过**——HP 跨位面继承是
+            # 用户纠错真值(2026-08-23,economy.md §10.2);金/board/
+            # equips 跨位面无重置证据,按全继承+标注假设(W156 表
+            # #4)。决策代码 plane-aware:p1_pair 进 P2 由意向层
+            # 自动清(cw_intention,ADR-0357),策略层零改动。
+            st.plane = _seg_plane
+            res.p2_entered = True
+            # 生产语义对齐:开局帧槽序表写 session(prep_director
+            # 首帧写;battles_left_p2 消费,ADR-0361)
+            sess.plane_node_table = list(nodes)
+        for rn in range(1, _seg_rounds + 1):
+            _ts += 1
+            st.round_num = rn
+            # 批⑤ F4(ADR-0276):决策前写 session.node_type_current——
+            # 生产语义 = prep_director 备战期存下一节点类型(r308 保连胜
+            # 门/节点感知消费读 session);sim 旧不写 → 门在 sim 恒盲
+            # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
+            # (battle/encounter/boss/…)。
+            sess.node_type_current = nodes[rn - 1]
+            # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
+            _gold_before = st.gold
+            _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
+            _inc = {'base': BASE_INCOME,
+                    'interest': min(INTEREST_CAP, st.gold // 10),
+                    # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点不发
+                    # 连胜金——run13 r2 奖励结算屏=基础5+连胜×0(无 streak 分量);
+                    # 战斗轮 counter0 照发 table[0]=1(run15 r3=5+3+1)。
+                    'streak': 0 if nodes[rn - 1] in ('reward', 'supply')
+                    else streak_gold(streak),   # 单一源 cw_economy(r305)
+                    'event': _inc_event}
+            st.gold += sum(_inc.values())
+            # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
+            # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
+            # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
+            st.refresh_probs = _roll_rotation(rng, st.level)
+            # ADR-0286(批㉔ F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
+            if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
+                _diamonds += 1
+            # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
+            # → max_units() 兜底 level(与生产防抖拒信路径同态)
+            st.deploy_cap = st.level + _diamonds if _diamonds else None
+            st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
+            _waves = [{'event': 'offer', 'gold': st.gold,
+                       'cards': [{'name': c.name, 'faction': c.faction,
+                                  'cost': c.cost} for c in st.shop]}
+                      ]   # ① 账本:牌面波(supply 视图;gold=该波时点金)
+            # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
+            _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
+            _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
+            _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
+            _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
+            _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
+            # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
+            # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
+            # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
+            # W65/ADR-0323:被拒事务不置位,围栏照跑)
+            _explicit_deploy_seen = False
+            _acts: list[dict] = []
+            _segs_used = 0
+            # ADR-0343:成型停手轮内 OR 聚合——一轮多决策段,演进事务可
+            # 轮中改变板面使成型态中途点亮(段前的买入合法);行标志=
+            # 「本任一段曾处于停手态」(检查器豁免消费:有买的轮本就
+            # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
+            # 语义正确辖域)
+            _round_formed_stop = False
+            # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
+            # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
+            # 的「连续放弃轮」数据源)
+            _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
+            # W114/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
+            # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
+            _round_phase: str = ''
+            _round_form_ok: bool = False
+            _round_form_score: float = 0.0
+            _round_dp_posture: str = ''
+            _phase_snap = False
+            # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
+            # RefreshShop 动作后**独立重决策一段**——r270 连刷在
+            # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
+            # 执行+买后重估(r251):刷→见新店→(再刷或买)。
+            # r273 修:sim 逐动作消费,遇 RefreshShop 执行后立即
+            # re-decide(捕捉"刷到就买"),段数上限防死循环。
+            # r361b(ADR-0219 代理语义纪律,第三次命中):r358 检查点核心维
+            # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
+            # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。
+            # ADR-0287(批㉘ F1-F5,deploy_after_buy_semantics):部署块
+            # 从轮首移到**买/升级之后**(生产序对齐:battle_prep.py 备战
+            # 单轮 ⓪收球→①买牌→②部署→③装备→④出战)。旧轮首序让当轮
+            # 买的件/当轮升级腾出的 cap 滞后一轮上板(n=300 观测 33.0%
+            # 轮存在「当轮可上未上」,1124 件次),结算键(rung/depth)读
+            # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
+            # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
+            # 从 session 现读(生产语义:买后 update_target 已刷新)。
+            for _seg in range(8):
+                strat.update_target(st, sess, config)
+                acts = strat.decide_prep(st, sess, config)
+                _round_formed_stop = _round_formed_stop or bool(
+                    getattr(sess, 'v3_formed_stop', False))
+                if not _phase_snap:
+                    _phase_snap = True   # 轮入口首段快照(W114 影子)
+                    _round_phase = str(getattr(sess, 'v3_phase', '') or '')
+                    _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
+                    _round_form_score = round(float(
+                        getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
+                    # W119/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
+                    _round_dp_posture = str(getattr(getattr(
+                        getattr(sess, 'v3_dp_posture', None),
+                        'posture', None), 'tag', '') or '')
+                    # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
+                    _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
+                                                False))
+                if not use_refresh:
+                    acts = [a for a in acts
+                            if not isinstance(a, RefreshShop)]
+                if not acts:
+                    break
+                _segs_used += 1
+                progressed = False
+                for a in acts:
+                    if isinstance(a, RefreshShop):
+                        res.refreshes += 1
+                        if st.plane >= 2:
+                            res.p2_refreshes += 1   # ADR-0362:P2 段 D 次数
+                        _cost_r = (st.shop_refresh_cost or 2)
+                        st.gold -= _cost_r
+                        _spend['refresh'] += _cost_r
+                        _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
+                        st.shop = cards_pool.draw_shop(st.level,
+                                                       probs=st.refresh_probs)
+                        _waves.append(
+                            {'event': 'refresh', 'gold': st.gold,
+                             'cards': [{'name': c.name, 'faction': c.faction,
+                                        'cost': c.cost} for c in st.shop]})
                         progressed = True
-                elif isinstance(a, (SellDeployed, SwapDeploy,
-                                    CompTransaction)):
-                    # 动作 v2(契约包 C1,步2):显式部署通道执行——
-                    # 转移语义在 cw_state.simulate 单一源(全量校验+原子
-                    # 应用),此处转录账本 + 池守恒/经济记账同步。
-                    # W65 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
-                    # 下方 applied 分支置位——**只有真执行(未被拒)的显式
-                    # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
-                    # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;W64
-                    # Ring5:被拒事务也 skip_fence,90 次/11 局)。
-                    # 预状态引用快照(池 ret / 经济记账用;simulate 会
-                    # deepcopy,引用不跨界)
-                    _sold_names: list[str] = []
-                    _shop_fill_cards: list[ShopCard] = []
-                    if isinstance(a, SellDeployed) \
-                            and 0 <= a.deployed_idx < len(st.deployed):
-                        _sold = st.deployed[a.deployed_idx]
-                        _sold_names = [_sold.char_id]
-                    elif isinstance(a, CompTransaction):
-                        _sold_names = [
-                            st.bench[i].char_id
-                            for i, d in a.sell if d == 'bench'
-                            and 0 <= i < len(st.bench)
-                            and st.bench[i] is not None] + [
-                            st.deployed[i].char_id
-                            for i, d in a.sell if d == 'deployed'
-                            and 0 <= i < len(st.deployed)]
-                        _shop_fill_cards = [
-                            st.shop[f.idx] for f in (a.fill or [])
-                            if f.source == 'shop'
-                            and 0 <= f.idx < len(st.shop)]
-                    _new = _simulate_state(st, a)
-                    _log = _new.action_log[-1] if _new.action_log else {}
-                    _applied = _log.get('result') == 'applied'
-                    _tx_income = int(_log.get('income', 0) or 0)
-                    _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
-                    # W101:applied 事务的 bench 净腾位数(执行点真值;账本
-                    # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
-                    # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
-                    _tx_bench_delta = (
-                        bench_occupied(st.bench) - bench_occupied(_new.bench)
-                        if isinstance(a, CompTransaction) else 0)
-                    if _applied and isinstance(a, SellDeployed) \
-                            and 0 <= a.deployed_idx < len(st.deployed):
-                        # SellDeployed 的 income 未进 action_log(单动作
-                        # 无事务汇总)——预状态现算(与 simulate 同口径)
-                        _tx_income = sell_refund(
-                            _sold.star, _bench_char_cost(_sold))
-                    if _applied:
-                        # W65 修法3(ADR-0323):显式动作**真执行**才置位
-                        # (被拒不跳围栏,见上方分支注释)
-                        _explicit_deploy_seen = True
-                        st = _new   # 整体替换(事务原子;simulate 单一源)
-                        for _n in _sold_names:
-                            if _n:
-                                cards_pool.ret(_n)
-                        for _c in _shop_fill_cards:
-                            cards_pool.take(_c.name)
-                            xp += XP_PER_BUY   # 买牌同源给 XP(ADR-0129)
-                        _spend['sell_income'] += _tx_income
+                        break          # 刷后立即 re-decide(见新店)
+                    if isinstance(a, BuyCard):
+                        # ADR-0283(批⑰ F6):生产 bench 满 = 硬模态拒买
+                        # (ADR-0136;cw_identity_obs「备战席已满」球点不动),
+                        # sim 旧无守卫 → 单轮 4-8 连买把 bench 顶到 11-17
+                        # (批⑰ 3/300 局)——满仓局的买门/腾位门读的是生产
+                        # 不可能出现的状态。守卫:合并域(bench+deployed,
+                        # _merge_bench 全场域)中 bench 槽为约束——deployed
+                        # 不占备战槽,故判据 = 占用数 ≥ BENCH_CAPACITY(9,
+                        # ADR-0316 槽位表);超容买跳过(金/牌池均不消费)+
+                        # 计数披露。
+                        if bench_occupied(st.bench) >= BENCH_CAPACITY:
+                            _bench_full_skips += 1
+                            _bench_full_skip_gold += a.card.cost
+                            continue
+                        # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
+                        # ——买走即下架(生产语义:槽买后消失)。旧 sim
+                        # 买入不消费槽 → 同槽幻影再买(批㉒ 账本实测
+                        # 65.13% 买轮含槽再买、单槽最高 6 连买),3合1
+                        # 被同槽重复点击无限兜底 → 成型类指标系统性
+                        # 偏乐观(批㉒ F3)。槽匹配:引用同一 → 同名
+                        # 兜底(策略构造副本形态);无槽且本轮曾上架
+                        # 该名 = 已消费槽再买 → 跳过(金/池不消费)+
+                        # 披露;本轮从未上架 = 店外构造(测试桩)→
+                        # legacy 执行 + 披露计数(真策略提案恒来自
+                        # st.shop,检查项 phantom_rebuy_disclosure 锁
+                        # 真批次恒 0)。
+                        _slot = next((c for c in st.shop if c is a.card),
+                                     None)
+                        if _slot is None:
+                            _slot = next(
+                                (c for c in st.shop
+                                 if c.name == a.card.name), None)
+                        if _slot is not None:
+                            st.shop.remove(_slot)
+                        else:
+                            _phantom_rebuys += 1
+                            _offered = {c.get('name') for w in _waves
+                                        for c in w.get('cards') or []}
+                            if a.card.name in _offered:
+                                continue   # 已消费槽再买:不可执行
+                        cards_pool.take(a.card.name)
+                        st.gold -= a.card.cost
+                        _ch = a.reason or 'unknown'
+                        _spend['buys'][_ch] = \
+                            _spend['buys'].get(_ch, 0) + a.card.cost
+                        # 序列化形状对齐生产 serialize_action(card 嵌套;
+                        # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
+                        # reason=**通道**(创建点语义);channel=**身份**
+                        # (classify_buy——通道经济分析别混桶,审查#7)
+                        from sr_od.application.currency_war.cw_line_defs import (
+                            classify_buy as _cb,
+                        )
+                        _acts.append({'__type__': 'BuyCard',
+                                      'card': {'x': a.card.x,
+                                               'faction': a.card.faction,
+                                               'name': a.card.name,
+                                               'cost': a.card.cost},
+                                      'reason': _ch,
+                                      'channel': _cb(a.card, st)})
+                        xp += XP_PER_BUY
+                        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                        # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
+                        # 执行层——生产 simulate(BuyCard) 每次买入后调
+                        # _merge_bench(全场域 bench+deployed,同名同星
+                        # ≥3 → star+1、删 2 张),sim 旧不接 → 副本占席
+                        # → bench 满 → 买通道死 → 滞留金 2.2× 虚高
+                        # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
+                        # (每次合并净减 2 个单位;载体在场时 deployed
+                        # 计数不变)。
+                        _pre_units = bench_occupied(st.bench) + len(st.deployed)
+                        bench_place(st.bench, BenchChar(
+                            slot=0, char_id=a.card.name,
+                            faction=a.card.faction))
+                        _merge_bench(st.bench, st.deployed)
+                        _merges += (_pre_units + 1
+                                    - bench_occupied(st.bench)
+                                    - len(st.deployed)) // 2
+                        progressed = True
+                    elif isinstance(a, LevelUp):
+                        st.gold -= 4
+                        _spend['levelup'] += 4
+                        # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
+                        # 放行臂名(pop_slot/dp/static_ev;''=default 栈旧调用
+                        # 或未过账)——检查器 levelup_interest_engine_gate
+                        # 判据消费;记录非指令。
+                        _lv_auth = getattr(a, 'auth_basis', '')
+                        _acts.append({'__type__': 'LevelUp', 'cost': 4,
+                                      'auth': _lv_auth})
+                        xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
+                        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                        progressed = True
+                    elif isinstance(a, SellBench):
+                        # ADR-0316:槽位置 None(占用校验在 bench_clear)
+                        bc = bench_clear(st.bench, a.bench_idx)
+                        if bc is not None:
+                            ch = CHARACTERS.get(bc.char_id)
+                            # ADR-0276:卖出回金接生产 sell_refund 单一源
+                            # ——merge 落地后 bench 可有 star≥2(1星=cost、
+                            # 2星=3×cost−1…),旧恒按 1星 cost 退会低估
+                            # 合成件价值、卖出通道失真。
+                            _sell_v = (sell_refund(bc.star, ch.cost)
+                                       if ch and ch.cost else 1)
+                            st.gold += _sell_v
+                            _spend['sell_income'] += _sell_v
+                            _acts.append({'__type__': 'SellBench',
+                                          'bench_idx': a.bench_idx,
+                                          'name': bc.char_id,
+                                          'income': _sell_v})
+                            cards_pool.ret(bc.char_id)
+                            progressed = True
+                    elif isinstance(a, (SellDeployed, SwapDeploy,
+                                        CompTransaction)):
+                        # 动作 v2(契约包 C1,步2):显式部署通道执行——
+                        # 转移语义在 cw_state.simulate 单一源(全量校验+原子
+                        # 应用),此处转录账本 + 池守恒/经济记账同步。
+                        # W65 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
+                        # 下方 applied 分支置位——**只有真执行(未被拒)的显式
+                        # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
+                        # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;W64
+                        # Ring5:被拒事务也 skip_fence,90 次/11 局)。
+                        # 预状态引用快照(池 ret / 经济记账用;simulate 会
+                        # deepcopy,引用不跨界)
+                        _sold_names: list[str] = []
+                        _shop_fill_cards: list[ShopCard] = []
+                        if isinstance(a, SellDeployed) \
+                                and 0 <= a.deployed_idx < len(st.deployed):
+                            _sold = st.deployed[a.deployed_idx]
+                            _sold_names = [_sold.char_id]
+                        elif isinstance(a, CompTransaction):
+                            _sold_names = [
+                                st.bench[i].char_id
+                                for i, d in a.sell if d == 'bench'
+                                and 0 <= i < len(st.bench)
+                                and st.bench[i] is not None] + [
+                                st.deployed[i].char_id
+                                for i, d in a.sell if d == 'deployed'
+                                and 0 <= i < len(st.deployed)]
+                            _shop_fill_cards = [
+                                st.shop[f.idx] for f in (a.fill or [])
+                                if f.source == 'shop'
+                                and 0 <= f.idx < len(st.shop)]
+                        _new = _simulate_state(st, a)
+                        _log = _new.action_log[-1] if _new.action_log else {}
+                        _applied = _log.get('result') == 'applied'
+                        _tx_income = int(_log.get('income', 0) or 0)
+                        _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
+                        # W101:applied 事务的 bench 净腾位数(执行点真值;账本
+                        # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
+                        # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
+                        _tx_bench_delta = (
+                            bench_occupied(st.bench) - bench_occupied(_new.bench)
+                            if isinstance(a, CompTransaction) else 0)
+                        if _applied and isinstance(a, SellDeployed) \
+                                and 0 <= a.deployed_idx < len(st.deployed):
+                            # SellDeployed 的 income 未进 action_log(单动作
+                            # 无事务汇总)——预状态现算(与 simulate 同口径)
+                            _tx_income = sell_refund(
+                                _sold.star, _bench_char_cost(_sold))
+                        if _applied:
+                            # W65 修法3(ADR-0323):显式动作**真执行**才置位
+                            # (被拒不跳围栏,见上方分支注释)
+                            _explicit_deploy_seen = True
+                            st = _new   # 整体替换(事务原子;simulate 单一源)
+                            for _n in _sold_names:
+                                if _n:
+                                    cards_pool.ret(_n)
+                            for _c in _shop_fill_cards:
+                                cards_pool.take(_c.name)
+                                xp += XP_PER_BUY   # 买牌同源给 XP(ADR-0129)
+                            _spend['sell_income'] += _tx_income
+                            if _tx_fill_cost:
+                                _ch = a.reason or 'tx_fill'
+                                _spend['buys'][_ch] = \
+                                    _spend['buys'].get(_ch, 0) + _tx_fill_cost
+                            progressed = True
+                        else:
+                            res.explicit_action_rejects += 1
+                        _entry = {'__type__': type(a).__name__,
+                                  'reason': getattr(a, 'reason', ''),
+                                  'result':
+                                      'applied' if _applied else 'rejected'}
+                        if _applied and _tx_bench_delta:
+                            _entry['bench_delta'] = _tx_bench_delta
+                        if not _applied:
+                            _entry['reject_reason'] = _log.get('reason', '')
+                        if _tx_income:
+                            _entry['income'] = _tx_income
                         if _tx_fill_cost:
-                            _ch = a.reason or 'tx_fill'
-                            _spend['buys'][_ch] = \
-                                _spend['buys'].get(_ch, 0) + _tx_fill_cost
-                        progressed = True
-                    else:
-                        res.explicit_action_rejects += 1
-                    _entry = {'__type__': type(a).__name__,
-                              'reason': getattr(a, 'reason', ''),
-                              'result':
-                                  'applied' if _applied else 'rejected'}
-                    if _applied and _tx_bench_delta:
-                        _entry['bench_delta'] = _tx_bench_delta
-                    if not _applied:
-                        _entry['reject_reason'] = _log.get('reason', '')
-                    if _tx_income:
-                        _entry['income'] = _tx_income
-                    if _tx_fill_cost:
-                        _entry['fill_cost'] = _tx_fill_cost
-                    _acts.append(_entry)
-                    if _applied and _shop_fill_cards:
-                        # W43 leader 裁决 2(phantom_rebuys 根治):事务
-                        # fill 已消费店槽——同批后续 BuyCard 是对陈旧
-                        # state.shop 的提案,作废并立即重决策(同
-                        # RefreshShop 的 break-redecide 语义),不套用
-                        # 陈旧引用。
-                        break
-            if not progressed:
-                break
-        while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
-            xp -= XP_TO_NEXT_LEVEL[st.level]
-            st.level += 1
-        # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
-        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
-        # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
-        # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
-        # (cw_deploy_logic.select_deployments 纯函数,与 DeployBench op
-        # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
-        # session **买后**现读(生产:买牌段 update_target 已刷新,
-        # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
-        from sr_od.application.currency_war import cw_deploy_logic as _dl
-        _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
-        # W155/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
-        _lf = frozenset()
-        try:
-            _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
-                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
-            _tf = frozenset(getattr(sess, 'target_comp', None).factions
-                            or ()) if getattr(sess, 'target_comp', None) else frozenset()
-            _fw_name = getattr(sess, 'transition_framework', '') or ''
-            _fw = frozenset()
-            if _fw_name:
-                from sr_od.application.currency_war.cw_transition import (
-                    TRANSITION_PACK,
+                            _entry['fill_cost'] = _tx_fill_cost
+                        _acts.append(_entry)
+                        if _applied and _shop_fill_cards:
+                            # W43 leader 裁决 2(phantom_rebuys 根治):事务
+                            # fill 已消费店槽——同批后续 BuyCard 是对陈旧
+                            # state.shop 的提案,作废并立即重决策(同
+                            # RefreshShop 的 break-redecide 语义),不套用
+                            # 陈旧引用。
+                            break
+                if not progressed:
+                    break
+            while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
+                xp -= XP_TO_NEXT_LEVEL[st.level]
+                st.level += 1
+            # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
+            st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
+            # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
+            # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
+            # (cw_deploy_logic.select_deployments 纯函数,与 DeployBench op
+            # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
+            # session **买后**现读(生产:买牌段 update_target 已刷新,
+            # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
+            from sr_od.application.currency_war import cw_deploy_logic as _dl
+            _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
+            # W155/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
+            _lf = frozenset()
+            try:
+                _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
+                                or ()) if getattr(sess, 'target_comp', None) else frozenset()
+                _tf = frozenset(getattr(sess, 'target_comp', None).factions
+                                or ()) if getattr(sess, 'target_comp', None) else frozenset()
+                _fw_name = getattr(sess, 'transition_framework', '') or ''
+                _fw = frozenset()
+                if _fw_name:
+                    from sr_od.application.currency_war.cw_transition import (
+                        TRANSITION_PACK,
+                    )
+                    _fw = frozenset(
+                        n for n, (f, t) in TRANSITION_PACK.items()
+                        if (f == _fw_name or f == '通用') and t != 'drop')
+                from sr_od.application.currency_war.cw_intention import (
+                    locked_faction_scope as _lfs,
                 )
-                _fw = frozenset(
-                    n for n, (f, t) in TRANSITION_PACK.items()
-                    if (f == _fw_name or f == '通用') and t != 'drop')
-            from sr_od.application.currency_war.cw_intention import (
-                locked_faction_scope as _lfs,
+                _lf = _lfs(getattr(sess, 'v3_intention', None)) or frozenset()
+            except Exception:   # noqa: BLE001  代理 best-effort
+                pass
+            # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
+            # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
+            # DeployMove:bench.pop → deployed.append → board 聚合)。
+            # deployed 跨轮累积(生产跟踪态),select_deployments 吃真实
+            # deployed_cids/deployed_fac/cap 语义;board = deployed 主阵营
+            # 聚合(生产 board 口径)。ADR-0287:此处 cap=st.max_units()
+            # 在轮末升级后读 → LevelUp 当轮腾出的 cap 立即生效(批㉘ F5
+            # 「升级→上阵」链断一轮的修复)。
+            _dep_cids = {d.char_id for d in st.deployed if d.char_id}
+            _dep_fac = _board_factions_of(st.deployed)
+            # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
+            # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
+            # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
+            # check_skip_fence_pairing 同轮配对锁;W65/ADR-0323:被拒事务
+            # 不置位 → 不跳围栏 → 板面欠载不再被事务风暴封死)。
+            _deploy_lag_units = 0
+            if _explicit_deploy_seen:
+                _acts.append({'__type__': 'skip_fence',
+                              'reason': 'explicit_action_v2'})
+                res.fence_skips += 1
+                # board 已由 cw_state.simulate 的 _recount_board 维护一致
+            else:
+                # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
+                # 返回 up_idx 是占用序下标,下方回映射槽位下标)
+                _occ_idx = [i for i, b in enumerate(st.bench) if b is not None]
+                _up_idx, _held_idx = _dl.select_deployments(
+                    [b for b in st.bench if b is not None],
+                    deployed_cids=_dep_cids,
+                    deployed_fac=_dep_fac,
+                    board=dict(st.board),
+                    cap=st.max_units(),
+                    target_factions=_tf,
+                    target_cores=_tc,
+                    fw_carry=_fw,
+                    locked_factions=_lf,
+                )
+                # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
+                # (ADR-0271 上阵即出 bench 语义不变)
+                for _i in _up_idx:
+                    if _i < len(_occ_idx):
+                        bc = st.bench[_occ_idx[_i]]
+                        if bc is not None:
+                            st.deployed.append(bc)
+                            st.bench[_occ_idx[_i]] = None
+                st.board = _board_counts_of(st.deployed)
+                # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
+                # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
+                # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
+                # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
+                _lag_idx, _ = _dl.select_deployments(
+                    [b for b in st.bench if b is not None],
+                    deployed_cids={d.char_id for d in st.deployed if d.char_id},
+                    deployed_fac=_board_factions_of(st.deployed),
+                    board=dict(st.board),
+                    cap=st.max_units(),
+                    target_factions=_tf,
+                    target_cores=_tc,
+                    fw_carry=_fw,
+                )
+                _deploy_lag_units = len(_lag_idx)
+            if res.dir_round == 99 and _direction_established(sess):
+                res.dir_round = rn
+            # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
+            # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
+            # r340:板深条件化实机 Δ 池优先(经验分布重放——
+            # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
+            # 无匹配桶回退旧方向二元模型。
+            # r343:同修正——Δ 采样用可 deploy 深度;① 收口进
+            # _deployable_depth 单一源(原三处内联口径不一)
+            # ADR-0279(批⑬ F4):battle Δ 采样键=rung(成型度一维
+            # 分桶,与 boss_settle_delta 同源 _settle_rung)——depth-
+            # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
+            # vs 实机 32% 裂口的最大已定量化分量;encounter/boss 维持
+            # depth 键(批⑬ F1 encounter 样本不足)。
+            _dep = _deployable_depth(st)
+            # ADR-0362:P2 段结算查 Δ池 plane=2 桶(位面内兜底,不跨
+            # 位面回退);缺桶回退层见 node_delta 的 plane 分支。
+            if nodes[rn - 1] == 'battle':
+                _ld = live_delta_for('battle', _settle_rung(st), rng,
+                                     pool_map=pool_map, plane=st.plane)
+            elif nodes[rn - 1] in ('encounter', 'boss'):
+                _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                     pool_map=pool_map, plane=st.plane)
+            elif nodes[rn - 1] in ('reward', 'supply'):
+                # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
+                # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
+                # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
+                # 池缺 → live_delta_for None → node_delta 回退常数。
+                _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                     pool_map=pool_map, plane=st.plane)
+            else:
+                _ld = None
+            if _ld is not None:
+                delta = _ld
+            elif nodes[rn - 1] == 'boss':
+                # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
+                # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
+                # 价值链接通(hp 类指标恢复判读力)。
+                delta = boss_settle_delta(st, res.dir_round, rng)
+            else:
+                delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng,
+                                   plane=st.plane)
+            # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
+            # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
+            # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
+            # 胖尾(+20~39 回血)落地后 hp 破百的担忧已随 ADR-0292 复核
+            # 消解(胖尾为跨 run 配对伪影,池真值恒 +2,实测触界率 0),
+            # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
+            # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
+            st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
+            # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点既不计连胜数
+            # 也不发连胜金——run13 r1/r2 奖励全过后计数仍 0(r2 结算屏连胜×0),
+            # run15 r3 战斗轮按 counter0 结算。战斗类节点(battle/encounter/
+            # boss)胜后计数+发金语义不变(delta>0 计连胜)。
+            if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
+                streak = streak + 1 if delta > 0 else 0
+            # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
+            # = 结算「连胜×N」写 session(default_strategy.on_settlement),
+            # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
+            # 只存本地变量算收入,决策侧连胜响应恒盲。
+            sess.last_streak = streak
+            res.hp_trail.append(st.hp)
+            # ADR-0362:P2 段事件用跨位面单调轮号(_ts);P1 段 _ts==rn
+            # (零漂移);方向判据 P2 段=「P1 内已建立」
+            res.hp_events.append(( _ts, nodes[rn - 1], delta,
+                                   res.dir_round <= rn if st.plane == 1
+                                   else res.dir_round < 99))
+            if st.plane >= 2:
+                # ADR-0362:P2 段观测(存活轮/战斗胜负)
+                res.p2_rounds += 1
+                if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
+                    res.p2_combat_total += 1
+                    res.p2_combat_wins += 1 if delta >= 0 else 0
+            # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
+            # 按 target 语境路由 core_count_for——③ 攒数据地基:
+            # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
+            # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
+            # 线局恒 0,审查二轮#8)
+            _depth = _deployable_depth(st)
+            res.depth_trail.append(_depth)
+            # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
+            # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
+            # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
+            # EquipAll 同源)分配给 deployed → 账本 equipped 字段。
+            # 装备获取采样:通用装备池按 _EQUIP_VALUE 键(注册表过滤,
+            # ADR-0294 件2,见下);带钻概率 15%(实机简报词缀影响的
+            # 粗估,校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
+            # ADR-0294 件2(ADR-0289 §5 裁决,红项 174/300):采样池
+            # 只进注册表认识的装备名(EQUIPMENT_ROSTER 单一源)——
+            # '未知装备' 与价值表旧名(注册表外)不进 owned 池;带钻
+            # 是词缀元数据,不再以 '钻石' 占位实体进池(占位实体只进
+            # 披露计数 res.phantom_supply_picks,不进池)。
+            _equipped_now: list[tuple[str, str]] = []
+            if nodes[rn - 1] == 'supply':
+                from sr_od.application.currency_war.cw_equipment_data import (
+                    EQUIPMENT_ROSTER,
+                )
+                from sr_od.application.currency_war.cw_events import (
+                    _EQUIP_VALUE as _EV,
+                )
+                from sr_od.application.currency_war.cw_events import (
+                    SupplyOption,
+                    decide_supply,
+                )
+                _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
+                _opts = []
+                for _oi in range(3):
+                    _eq = rng.choice(_pool_names)
+                    _opts.append(SupplyOption(
+                        idx=_oi, char='', equip=_eq,
+                        has_diamond=rng.random() < 0.15))
+                _pick = decide_supply(_opts, st, sess.target_comp, None)
+                st.equips.append(_opts[_pick.idx].equip)
+                if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
+                    res.phantom_supply_picks += 1   # 披露计数(不进池)
+            if st.equips and st.deployed:
+                from sr_od.application.currency_war.cw_comps import (
+                    equip_allocation,
+                )
+                _equipped_now = equip_allocation(
+                    sess.target_comp, st.deployed, list(st.equips))
+                for _who, _what in _equipped_now:
+                    if _what in st.equips:
+                        st.equips.remove(_what)
+                    # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
+                    # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
+                    # tracked_deployed[].equips 同语义);防重守卫(跨轮对同一
+                    # 人重复分配同一件不双记)。
+                    for d in st.deployed:
+                        if d.char_id == _who:
+                            if _what not in d.equips:
+                                d.equips.append(_what)
+                            break
+            from sr_od.application.currency_war.cw_line_defs import (
+                core_count_for,
             )
-            _lf = _lfs(getattr(sess, 'v3_intention', None)) or frozenset()
-        except Exception:   # noqa: BLE001  代理 best-effort
-            pass
-        # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
-        # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
-        # DeployMove:bench.pop → deployed.append → board 聚合)。
-        # deployed 跨轮累积(生产跟踪态),select_deployments 吃真实
-        # deployed_cids/deployed_fac/cap 语义;board = deployed 主阵营
-        # 聚合(生产 board 口径)。ADR-0287:此处 cap=st.max_units()
-        # 在轮末升级后读 → LevelUp 当轮腾出的 cap 立即生效(批㉘ F5
-        # 「升级→上阵」链断一轮的修复)。
-        _dep_cids = {d.char_id for d in st.deployed if d.char_id}
-        _dep_fac = _board_factions_of(st.deployed)
-        # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
-        # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
-        # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
-        # check_skip_fence_pairing 同轮配对锁;W65/ADR-0323:被拒事务
-        # 不置位 → 不跳围栏 → 板面欠载不再被事务风暴封死)。
-        _deploy_lag_units = 0
-        if _explicit_deploy_seen:
-            _acts.append({'__type__': 'skip_fence',
-                          'reason': 'explicit_action_v2'})
-            res.fence_skips += 1
-            # board 已由 cw_state.simulate 的 _recount_board 维护一致
-        else:
-            # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
-            # 返回 up_idx 是占用序下标,下方回映射槽位下标)
-            _occ_idx = [i for i, b in enumerate(st.bench) if b is not None]
-            _up_idx, _held_idx = _dl.select_deployments(
-                [b for b in st.bench if b is not None],
-                deployed_cids=_dep_cids,
-                deployed_fac=_dep_fac,
-                board=dict(st.board),
-                cap=st.max_units(),
-                target_factions=_tf,
-                target_cores=_tc,
-                fw_carry=_fw,
-                locked_factions=_lf,
-            )
-            # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
-            # (ADR-0271 上阵即出 bench 语义不变)
-            for _i in _up_idx:
-                if _i < len(_occ_idx):
-                    bc = st.bench[_occ_idx[_i]]
-                    if bc is not None:
-                        st.deployed.append(bc)
-                        st.bench[_occ_idx[_i]] = None
-            st.board = _board_counts_of(st.deployed)
-            # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
-            # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
-            # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
-            # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
-            _lag_idx, _ = _dl.select_deployments(
-                [b for b in st.bench if b is not None],
-                deployed_cids={d.char_id for d in st.deployed if d.char_id},
-                deployed_fac=_board_factions_of(st.deployed),
-                board=dict(st.board),
-                cap=st.max_units(),
-                target_factions=_tf,
-                target_cores=_tc,
-                fw_carry=_fw,
-            )
-            _deploy_lag_units = len(_lag_idx)
-        if res.dir_round == 99 and _direction_established(sess):
-            res.dir_round = rn
-        # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
-        # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
-        # r340:板深条件化实机 Δ 池优先(经验分布重放——
-        # 深[6-8] -1.0 vs [3-5] -11.3 的板深效应入 sim);
-        # 无匹配桶回退旧方向二元模型。
-        # r343:同修正——Δ 采样用可 deploy 深度;① 收口进
-        # _deployable_depth 单一源(原三处内联口径不一)
-        # ADR-0279(批⑬ F4):battle Δ 采样键=rung(成型度一维
-        # 分桶,与 boss_settle_delta 同源 _settle_rung)——depth-
-        # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
-        # vs 实机 32% 裂口的最大已定量化分量;encounter/boss 维持
-        # depth 键(批⑬ F1 encounter 样本不足)。
-        _dep = _deployable_depth(st)
-        if nodes[rn - 1] == 'battle':
-            _ld = live_delta_for('battle', _settle_rung(st), rng,
-                                 pool_map=pool_map)
-        elif nodes[rn - 1] in ('encounter', 'boss'):
-            _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                                 pool_map=pool_map)
-        elif nodes[rn - 1] in ('reward', 'supply'):
-            # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
-            # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
-            # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
-            # 池缺 → live_delta_for None → node_delta 回退常数。
-            _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                                 pool_map=pool_map)
-        else:
-            _ld = None
-        if _ld is not None:
-            delta = _ld
-        elif nodes[rn - 1] == 'boss':
-            # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
-            # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
-            # 价值链接通(hp 类指标恢复判读力)。
-            delta = boss_settle_delta(st, res.dir_round, rng)
-        else:
-            delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng)
-        # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
-        # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
-        # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
-        # 胖尾(+20~39 回血)落地后 hp 破百的担忧已随 ADR-0292 复核
-        # 消解(胖尾为跨 run 配对伪影,池真值恒 +2,实测触界率 0),
-        # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
-        # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
-        st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
-        # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点既不计连胜数
-        # 也不发连胜金——run13 r1/r2 奖励全过后计数仍 0(r2 结算屏连胜×0),
-        # run15 r3 战斗轮按 counter0 结算。战斗类节点(battle/encounter/
-        # boss)胜后计数+发金语义不变(delta>0 计连胜)。
-        if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
-            streak = streak + 1 if delta > 0 else 0
-        # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
-        # = 结算「连胜×N」写 session(default_strategy.on_settlement),
-        # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
-        # 只存本地变量算收入,决策侧连胜响应恒盲。
-        sess.last_streak = streak
-        res.hp_trail.append(st.hp)
-        res.hp_events.append((rn, nodes[rn - 1], delta, res.dir_round <= rn))
-        # ① 账本:每轮一行(轮内段聚合;depth 单一源;core_count
-        # 按 target 语境路由 core_count_for——③ 攒数据地基:
-        # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
-        # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
-        # 线局恒 0,审查二轮#8)
-        _depth = _deployable_depth(st)
-        res.depth_trail.append(_depth)
-        # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
-        # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
-        # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
-        # EquipAll 同源)分配给 deployed → 账本 equipped 字段。
-        # 装备获取采样:通用装备池按 _EQUIP_VALUE 键(注册表过滤,
-        # ADR-0294 件2,见下);带钻概率 15%(实机简报词缀影响的
-        # 粗估,校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
-        # ADR-0294 件2(ADR-0289 §5 裁决,红项 174/300):采样池
-        # 只进注册表认识的装备名(EQUIPMENT_ROSTER 单一源)——
-        # '未知装备' 与价值表旧名(注册表外)不进 owned 池;带钻
-        # 是词缀元数据,不再以 '钻石' 占位实体进池(占位实体只进
-        # 披露计数 res.phantom_supply_picks,不进池)。
-        _equipped_now: list[tuple[str, str]] = []
-        if nodes[rn - 1] == 'supply':
-            from sr_od.application.currency_war.cw_equipment_data import (
-                EQUIPMENT_ROSTER,
-            )
-            from sr_od.application.currency_war.cw_events import (
-                _EQUIP_VALUE as _EV,
-            )
-            from sr_od.application.currency_war.cw_events import (
-                SupplyOption,
-                decide_supply,
-            )
-            _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
-            _opts = []
-            for _oi in range(3):
-                _eq = rng.choice(_pool_names)
-                _opts.append(SupplyOption(
-                    idx=_oi, char='', equip=_eq,
-                    has_diamond=rng.random() < 0.15))
-            _pick = decide_supply(_opts, st, sess.target_comp, None)
-            st.equips.append(_opts[_pick.idx].equip)
-            if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
-                res.phantom_supply_picks += 1   # 披露计数(不进池)
-        if st.equips and st.deployed:
-            from sr_od.application.currency_war.cw_comps import (
-                equip_allocation,
-            )
-            _equipped_now = equip_allocation(
-                sess.target_comp, st.deployed, list(st.equips))
-            for _who, _what in _equipped_now:
-                if _what in st.equips:
-                    st.equips.remove(_what)
-                # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
-                # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
-                # tracked_deployed[].equips 同语义);防重守卫(跨轮对同一
-                # 人重复分配同一件不双记)。
-                for d in st.deployed:
-                    if d.char_id == _who:
-                        if _what not in d.equips:
-                            d.equips.append(_what)
-                        break
-        from sr_od.application.currency_war.cw_line_defs import (
-            core_count_for,
-        )
-        res.ledger.append({
-            'ts': rn,   # 单调轮序号(非墙钟;审查①#9)
-            'plane': 1, 'round_num': rn,
-            'gold': st.gold, 'hp': st.hp,
-            # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
-            'formed_stop': _round_formed_stop,
-            # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
-            'phase': _round_phase,
-            'form_ok': _round_form_ok,
-            'form_score': _round_form_score,
-            'dp_posture': _round_dp_posture,
-            'piggy_reward': _round_piggy,
-            # W146 v3 意向状态(与生产 decisions 行同构;sim 分析批
-            # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
-            # 才能区分 unlocked/weak/locked)
-            'v3_intention': serialize_intention(
-                getattr(sess, 'v3_intention', None)),
-            'target_comp': _target_comp_label(sess),
-            'state': {'board': dict(st.board), 'level': st.level,
-                      # r394(过渡阵容判据接线):板面阵营档位——
-                      # deployed 的 factions 计数(生产 board 口径;
-                      # 旧恒空 dict 让「r几凑到配方X档/三人组上场」
-                      # 在 sim 判读不可见)。recipe_tier 判据的输入。
-                      'board_factions': _board_factions_of(st.deployed),
-                      # bench 对齐生产 BenchChar 形状(dict 带
-                      # char_id/faction——视图/检查读 b['faction']
-                      # 不炸;审查#3)。ADR-0316:序列化保持**占用序
-                      # 紧缩**(null 槽不落账本——下游 checks/视图按
-                      # 紧缩数组消费,零迁移;占用数=len)
-                      'bench': [{'char_id': b.char_id,
-                                 'faction': b.faction,
-                                 'slot': b.slot}
-                                for b in iter_occupied(st.bench)],
-                      # r391(执行层代理配套):deployed/cap 入账本
-                      # ——「开局 deploy<cap」检查项的数据源
-                      # (r387 类 bug 的 sim 常态化防线)。deployed
-                      # 形状对齐 rounds 视图消费(dict 带
-                      # position_pref,同 bench 形状)。
-                      'deployed': [{'char_id': d.char_id,
-                                    'faction': d.faction,
-                                    'slot': d.slot,
-                                    'star': int(getattr(d, 'star', 1) or 1),   # W88/ADR-0339:星级入账本(2★ 达成率度量)
-                                     'position_pref': d.position_pref,
-                                    # ADR-0312(W50):装备随人进账本——
-                                    # 检查镜像(_board_agg_of_deployed_
-                                    # row)复算星徽羁绊贡献需要它
-                                    'equips': list(getattr(d, 'equips', ())
-                                                   or ())}
-                                   for d in (st.deployed or [])
-                                   if getattr(d, 'char_id', '')],
-                      'cap': st.max_units(),
-                      # r393(装备层代理):本轮分配结果(谁穿了什么)
-                      # +owned 余量——「开局零穿着/乱穿」检查项数据源。
-                      'equipped': [{'char': w, 'equip': e}
-                                   for w, e in _equipped_now],
-                      'owned_equips': list(st.equips)},
-            'actions': _acts,
-            'sim': {
-                'node': nodes[rn - 1], 'delta': delta,
-                'gold_before': _gold_before,
-                'income': _inc, 'spend': _spend,
-                'depth': _depth,
-                # core_count 语义=core_routed(core_count_for 按
-                # target 路由;known-line-no-core=None)。**此前的
-                # 账本批次是旧三人组口径,聚合端按 ledger_semantics
-                # 过滤**(manifest 键;审查#2:口径混桶=③ 噪声)
-                # ADR-0336:target 用 v3 意向名(旧 v1 字段已删)
-                'core_count': core_count_for(
-                    _target_comp_label(sess),
-                    {d.char_id for d in (st.deployed or [])
-                     if getattr(d, 'char_id', '')}),
-                # deployed 代理名单(审查#5:tiers sim 行可渲染
-                # 角色构成——比只有计数信息量高一档)
-                'deployed': [d.char_id for d in (st.deployed or [])
-                             if getattr(d, 'char_id', '')],
-                'shop_waves': _waves,
-                'dir_established': res.dir_round <= rn,
-                'segments': _segs_used,
-                # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
-                'merges': _merges,
-                # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
-                # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
-                'bench_full_skipped_buys': _bench_full_skips,
-                # ADR-0285(批㉑ F3/F5):守卫拦截买折算金(净滞留口径
-                # = 末金 − 本值;判读区分「策略滞留」vs「守卫拦截」)
-                'bench_full_skipped_gold': _bench_full_skip_gold,
-                # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
-                # 店外;真策略批次应恒 0,检查项归 0 锁)
-                'phantom_rebuys': _phantom_rebuys,
-                # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
-                # (买后部署语义下应恒 0;检查项 deploy_after_buy_
-                # semantics / ledger_deploy_lag_disclosure 的数据源)
-                'deploy_lag_units': _deploy_lag_units,
-                # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
-                # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
-                'fence_skipped': _explicit_deploy_seen,
-                # W52(ADR-0326):本轮补偿趟是否放弃(0/1;连续放弃轮
-                # ≥3 由检查项 decision_v2_remedy_loop 报警——设计容量
-                # 不足信号)
-                'remedy_abandoned': 1 if getattr(
-                    sess, 'v3_remedy_abandoned', 0)
-                    > _remedy_abandons_before else 0,
-            },
-        })
+            res.ledger.append({
+                'ts': _ts,   # 单调轮序号(跨位面累计;P1 段 == rn;审查①#9)
+                'plane': st.plane, 'round_num': rn,
+                'gold': st.gold, 'hp': st.hp,
+                # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
+                'formed_stop': _round_formed_stop,
+                # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
+                'phase': _round_phase,
+                'form_ok': _round_form_ok,
+                'form_score': _round_form_score,
+                'dp_posture': _round_dp_posture,
+                'piggy_reward': _round_piggy,
+                # W146 v3 意向状态(与生产 decisions 行同构;sim 分析批
+                # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
+                # 才能区分 unlocked/weak/locked)
+                'v3_intention': serialize_intention(
+                    getattr(sess, 'v3_intention', None)),
+                'target_comp': _target_comp_label(sess),
+                'state': {'board': dict(st.board), 'level': st.level,
+                          # r394(过渡阵容判据接线):板面阵营档位——
+                          # deployed 的 factions 计数(生产 board 口径;
+                          # 旧恒空 dict 让「r几凑到配方X档/三人组上场」
+                          # 在 sim 判读不可见)。recipe_tier 判据的输入。
+                          'board_factions': _board_factions_of(st.deployed),
+                          # bench 对齐生产 BenchChar 形状(dict 带
+                          # char_id/faction——视图/检查读 b['faction']
+                          # 不炸;审查#3)。ADR-0316:序列化保持**占用序
+                          # 紧缩**(null 槽不落账本——下游 checks/视图按
+                          # 紧缩数组消费,零迁移;占用数=len)
+                          'bench': [{'char_id': b.char_id,
+                                     'faction': b.faction,
+                                     'slot': b.slot}
+                                    for b in iter_occupied(st.bench)],
+                          # r391(执行层代理配套):deployed/cap 入账本
+                          # ——「开局 deploy<cap」检查项的数据源
+                          # (r387 类 bug 的 sim 常态化防线)。deployed
+                          # 形状对齐 rounds 视图消费(dict 带
+                          # position_pref,同 bench 形状)。
+                          'deployed': [{'char_id': d.char_id,
+                                        'faction': d.faction,
+                                        'slot': d.slot,
+                                        'star': int(getattr(d, 'star', 1) or 1),   # W88/ADR-0339:星级入账本(2★ 达成率度量)
+                                         'position_pref': d.position_pref,
+                                        # ADR-0312(W50):装备随人进账本——
+                                        # 检查镜像(_board_agg_of_deployed_
+                                        # row)复算星徽羁绊贡献需要它
+                                        'equips': list(getattr(d, 'equips', ())
+                                                       or ())}
+                                       for d in (st.deployed or [])
+                                       if getattr(d, 'char_id', '')],
+                          'cap': st.max_units(),
+                          # r393(装备层代理):本轮分配结果(谁穿了什么)
+                          # +owned 余量——「开局零穿着/乱穿」检查项数据源。
+                          'equipped': [{'char': w, 'equip': e}
+                                       for w, e in _equipped_now],
+                          'owned_equips': list(st.equips)},
+                'actions': _acts,
+                'sim': {
+                    'node': nodes[rn - 1], 'delta': delta,
+                    'gold_before': _gold_before,
+                    'income': _inc, 'spend': _spend,
+                    'depth': _depth,
+                    # core_count 语义=core_routed(core_count_for 按
+                    # target 路由;known-line-no-core=None)。**此前的
+                    # 账本批次是旧三人组口径,聚合端按 ledger_semantics
+                    # 过滤**(manifest 键;审查#2:口径混桶=③ 噪声)
+                    # ADR-0336:target 用 v3 意向名(旧 v1 字段已删)
+                    'core_count': core_count_for(
+                        _target_comp_label(sess),
+                        {d.char_id for d in (st.deployed or [])
+                         if getattr(d, 'char_id', '')}),
+                    # deployed 代理名单(审查#5:tiers sim 行可渲染
+                    # 角色构成——比只有计数信息量高一档)
+                    'deployed': [d.char_id for d in (st.deployed or [])
+                                 if getattr(d, 'char_id', '')],
+                    'shop_waves': _waves,
+                    'dir_established': (res.dir_round <= rn if st.plane == 1
+                                        else res.dir_round < 99),
+                    'segments': _segs_used,
+                    # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
+                    'merges': _merges,
+                    # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
+                    # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
+                    'bench_full_skipped_buys': _bench_full_skips,
+                    # ADR-0285(批㉑ F3/F5):守卫拦截买折算金(净滞留口径
+                    # = 末金 − 本值;判读区分「策略滞留」vs「守卫拦截」)
+                    'bench_full_skipped_gold': _bench_full_skip_gold,
+                    # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
+                    # 店外;真策略批次应恒 0,检查项归 0 锁)
+                    'phantom_rebuys': _phantom_rebuys,
+                    # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
+                    # (买后部署语义下应恒 0;检查项 deploy_after_buy_
+                    # semantics / ledger_deploy_lag_disclosure 的数据源)
+                    'deploy_lag_units': _deploy_lag_units,
+                    # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
+                    # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
+                    'fence_skipped': _explicit_deploy_seen,
+                    # W52(ADR-0326):本轮补偿趟是否放弃(0/1;连续放弃轮
+                    # ≥3 由检查项 decision_v2_remedy_loop 报警——设计容量
+                    # 不足信号)
+                    'remedy_abandoned': 1 if getattr(
+                        sess, 'v3_remedy_abandoned', 0)
+                        > _remedy_abandons_before else 0,
+                },
+            })
+            if st.hp <= 0:
+                break
+        # ADR-0362:位面段间死亡即终局(P1 段死=不进 P2,P2 段死=止)
         if st.hp <= 0:
             break
+    res.p2_hp0 = res.p2_entered and st.hp <= 0
     res.final_hp = st.hp
     res.level = st.level
     # ADR-0336:locked_line/bridge_id 字段保留(输出结构兼容),
@@ -1662,12 +1795,32 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     return res
 
 
+class _Plane1View:
+    """P1 段辖域切片(ADR-0362,W157):planes>=2 批次的 P1 锚定指标
+    只消费 plane=1 行;planes=1 时视图 ≡ 原结果(零漂移)。
+
+    hp_events 的 P1 行 ts∈1-9、P2 行 ts≥10(P2_NODE_SEQUENCE 首轮
+    ts=10)——按 ts 切片;ledger 按 plane 字段切片。
+    """
+
+    def __init__(self, r: SimResult):
+        self.ledger = [row for row in r.ledger
+                       if (row.get('plane') or 1) == 1]
+        self.hp_events = [e for e in r.hp_events if e[0] <= 9]
+        self.dir_round = r.dir_round
+        self.final_hp = r.final_hp
+
+
 def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       seed_base: int = 0,
                       pool: str | Path = 'auto',
                       ledger: bool | Path = True,
-                      checks: bool = True) -> dict:
+                      checks: bool = True,
+                      planes: int = 1) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
+
+    :param planes: 透传 ``simulate_p1``(1=P1 段——历史口径逐位不变;
+        2=追加 P2 段,报告增 P2 headline 四联,ADR-0362/W157)。
 
     返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
     对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
@@ -1681,8 +1834,13 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     """
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
-                           pool=pool)
+                           pool=pool, planes=planes)
                for i in range(n)]
+    # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
+    # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;
+    # planes=1 时视图 ≡ 原结果(零漂移)。
+    views = [_Plane1View(r) for r in results]
+    _entered = [r for r in results if r.p2_entered]
     report = {
         'n': n,
         'pool_fingerprint': results[0].pool_fingerprint,
@@ -1693,8 +1851,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # (battle/encounter/boss 计分,奖励/补给不计;hp_events
         # 的 delta<0=败)。与实机 outcomes killed+node_type 同构。
         'battle_losses_le_2': sum(
-            1 for r in results
-            if sum(1 for _, nt, d, _ in r.hp_events
+            1 for v in views
+            if sum(1 for _, nt, d, _ in v.hp_events
                    if nt in ('battle', 'encounter', 'boss') and d < 0) <= 2
         ) / n,
         'dir_by_r2': sum(1 for d in (r.dir_round for r in results) if d <= 2) / n,
@@ -1704,6 +1862,23 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             [d for d in (r.dir_round for r in results) if d < 99])
             if any(r.dir_round < 99 for r in results) else float('nan')),
         'avg_refreshes': sum(r.refreshes for r in results) / n,
+        # ===== P2 headline 四联(ADR-0362,W157;planes>=2 有意义)=====
+        # 存活轮/P2 胜率/hp0 率/D 次数——P2 修法(ADR-0361 V_D)
+        # 的行为分布验证场;比率分母=进场 P2 的局(P1 段死局不计,
+        # 与实机「活过 P1 才有 P2」幸存口径一致,W156 §3 风险声明)。
+        'p2_entered_rate': len(_entered) / n,
+        'avg_p2_rounds': (round(statistics.mean(
+            [r.p2_rounds for r in _entered]), 2)
+            if _entered else None),
+        'p2_win_rate': (round(sum(r.p2_combat_wins for r in _entered)
+                              / max(1, sum(r.p2_combat_total
+                                           for r in _entered)), 4)
+            if any(r.p2_combat_total for r in _entered) else None),
+        'p2_hp0_rate': (sum(1 for r in _entered if r.p2_hp0)
+                        / len(_entered) if _entered else None),
+        'avg_p2_refreshes': (round(statistics.mean(
+            [r.p2_refreshes for r in _entered]), 2)
+            if _entered else None),
         # r394/r399(过渡阵容成型指标;判据单一源=transition_combos.md
         # 2026-08-23 定稿:四体系两两组合):
         # engines2_by_r6=四体系(仙舟3/列车2/DOT2/希儿系)达成≥2 的
@@ -1711,24 +1886,24 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 希儿系=希儿在场 AND(量2 OR 贝2),伤害在希儿技能层,
         # 量子/贝是放大器(单卡依赖,r399 用户实战确认)。
         'engines2_by_r6': sum(
-            1 for r in results
-            if _first_engines_round(r, 2) is not None
-            and _first_engines_round(r, 2) <= 6) / n,
+            1 for v in views
+            if _first_engines_round(v, 2) is not None
+            and _first_engines_round(v, 2) <= 6) / n,
         'recipe5_by_r6': sum(
-            1 for r in results
-            if _first_tier_round(r, 5) is not None
-            and _first_tier_round(r, 5) <= 6) / n,
+            1 for v in views
+            if _first_tier_round(v, 5) is not None
+            and _first_tier_round(v, 5) <= 6) / n,
         'trio3_by_r8': sum(
-            1 for r in results
-            if _first_trio_round(r, 3) is not None
-            and _first_trio_round(r, 3) <= 8) / n,
+            1 for v in views
+            if _first_trio_round(v, 3) is not None
+            and _first_trio_round(v, 3) <= 8) / n,
         # ADR-0305 件2:到达 e2 前的战斗结算数(口径钉死,防 0304
         # 「30 vs 10」类未定义口径误读;None=未达 e2 不计入均值)
         'avg_battles_before_e2': (round(statistics.mean(
-            [b for b in (_battles_before_engines(r, 2) for r in results)
+            [b for b in (_battles_before_engines(v, 2) for v in views)
              if b is not None]), 2)
-            if any(_first_engines_round(r, 2) is not None
-                   for r in results) else None),
+            if any(_first_engines_round(v, 2) is not None
+                   for v in views) else None),
         # ADR-0283(批⑰ F6):全批 bench 满守卫跳过的买总次数(超容买
         # 披露;0=守卫未介入,>0 = 满仓态买门判读须对照此计数)
         'bench_full_skipped_buys': sum(
@@ -1773,10 +1948,13 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             run_checks_on_ledgers,
         )
         rep_checks = run_checks_on_ledgers(
-            [r.ledger for r in results])
+            [v.ledger for v in views])
         # ADR-0268:池级检查(桶饥饿/深崖单调)——批③ F1 的常态
         # 化防线;fallback 空池无违规属预期(池语义检查不辖旧模型)
+        # ADR-0362:池级检查消费 plane=1 视图(判据全 P1 语料口径,
+        # plane≥2 桶贫困走 META ``p2:`` 前缀披露,不进判据)
         _pm, _, _ = resolve_pool(pool)
+        _pm = plane_view(_pm)
         rep_checks['delta_pool_bucket_min_n'] = \
             check_delta_pool_bucket_min_n(_pm)
         rep_checks['depth_cliff_monotonicity'] = \
@@ -1817,6 +1995,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 批⑩/批⑪ 检查项(ADR-0276/0277):批级聚合检查——boss 胜率
         # 校准/成型-hp 耦合哨兵/升级 binding/末段刷新闭合/末金校准/
         # 锚登记制;吃全批账本(跨局聚合,不进 _BATCH_CHECKS 的逐局循环)
+        # ADR-0362:辖 P1 段账本(views;planes=1 时 ≡ 全量零漂移)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_anchor_registry_n300,
             check_boss_win_calibration,
@@ -1825,7 +2004,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             check_r5plus_refresh_closure,
             check_sim_endgold_calib,
         )
-        _ledgers = [r.ledger for r in results]
+        _ledgers = [v.ledger for v in views]
         rep_checks['boss_win_calibration'] = \
             check_boss_win_calibration(_ledgers)
         rep_checks['formation_hp_coupling_sentinel'] = \
@@ -1844,6 +2023,15 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         )
         rep_checks.update(run_batch_level_checks(
             _ledgers, report=report, pool_map=_pm))
+        # ADR-0362(W157):P2 段检查器最小集——金轨迹非负 + 段形状
+        # (辖 planes>=2 批次的 P2 段行;P1 批无 plane=2 行恒绿)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_p2_gold_nonneg,
+            check_p2_segment_shape,
+        )
+        _ledgers_p2 = [r.ledger for r in results]
+        rep_checks['p2_gold_nonneg'] = check_p2_gold_nonneg(_ledgers_p2)
+        rep_checks['p2_segment_shape'] = check_p2_segment_shape(_ledgers_p2)
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():
@@ -1880,6 +2068,83 @@ def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
         'hp_ge_60_a': sum(1 for h in hps_a if h >= 60) / n,
         'hp_ge_60_b': sum(1 for h in hps_b if h >= 60) / n,
         'ab_resolution_floor': check_ab_resolution_floor(hps_a, hps_b),
+    }
+
+
+def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
+                   seed_base: int = 0,
+                   planes: int = 2) -> dict:
+    """P2 段 vd_p2_enabled A/B 对照(W157/ADR-0362;ADR-0361 预留通道)。
+
+    A 臂=vd_p2_enabled 开(W154 口径:DP 窗授权+机会成本 C_dec+
+    存活收益口径)/B 臂=关(W153 前行为:P2 窗二分断死);同池同
+    seed 配对,planes=2(进场继承 + P2 七轮段)。**同进程 flag
+    对照**(W154 记档:并行期唯一安全 sim A/B 法——跨时点对照会被
+    在飞批/池重生成污染)。
+
+    headline 四联(存活轮/胜率/hp0 率/D 次数)+ D 方向对拍:
+    预期 **D 次数 on>off**(W154 四局回放 6/14 帧翻正在分布面的
+    体现——翻正帧=「差一张」找件通道打开);hp 类观测项如实报
+    (P2 回退层掉血带口径,hp0 率是观测不是验收)。
+    """
+    import dataclasses
+    import logging
+    import statistics
+
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.decision_v2.strategy import (
+        DecisionV2Strategy,
+    )
+    logging.disable(logging.CRITICAL)   # 批量跑静音(决策日志逐段刷屏)
+    try:
+        _strat_on = DecisionV2Strategy(registry=DEFAULT_REGISTRY)
+        _strat_off = DecisionV2Strategy(
+            registry=dataclasses.replace(DEFAULT_REGISTRY,
+                                         vd_p2_enabled=False))
+        res_a = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                             strategy=_strat_on) for i in range(n)]
+        res_b = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                             strategy=_strat_off) for i in range(n)]
+    finally:
+        logging.disable(logging.NOTSET)
+
+    def _headline(results: list[SimResult]) -> dict:
+        entered = [r for r in results if r.p2_entered]
+        combat_t = sum(r.p2_combat_total for r in entered)
+        return {
+            'p2_entered_rate': len(entered) / len(results),
+            'avg_p2_rounds': round(statistics.mean(
+                [r.p2_rounds for r in entered]), 2) if entered else None,
+            'p2_win_rate': (round(sum(r.p2_combat_wins for r in entered)
+                                  / combat_t, 4) if combat_t else None),
+            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
+                            / len(entered) if entered else None),
+            'total_p2_refreshes': sum(r.p2_refreshes for r in entered),
+        }
+
+    d_a = [r.p2_refreshes for r in res_a]
+    d_b = [r.p2_refreshes for r in res_b]
+    return {
+        'n': n, 'planes': planes,
+        'pool_fingerprint': res_a[0].pool_fingerprint,
+        'headline_on': _headline(res_a),
+        'headline_off': _headline(res_b),
+        # D 次数对拍(配对计数;on>off 的局数 = W154 翻正预测的
+        # 分布面证据;方向计数不含平局)
+        'refresh_direction': {
+            'on_gt_off': sum(
+                1 for a, b in zip(d_a, d_b, strict=True) if a > b),
+            'off_gt_on': sum(
+                1 for a, b in zip(d_a, d_b, strict=True) if b > a),
+            'tie': sum(
+                1 for a, b in zip(d_a, d_b, strict=True) if a == b),
+        },
+        'avg_hp_on': round(statistics.mean(
+            [r.final_hp for r in res_a]), 2),
+        'avg_hp_off': round(statistics.mean(
+            [r.final_hp for r in res_b]), 2),
     }
 
 
@@ -2001,6 +2266,8 @@ def _cli_main() -> None:
     ap.add_argument('cmd', choices=['replay', 'batch'])
     ap.add_argument('--seed', type=int, default=0)
     ap.add_argument('--n', type=int, default=100)
+    ap.add_argument('--planes', type=int, default=1,
+                    help='1=P1 段;2=追加 P2 段(ADR-0362)')
     ap.add_argument('--seed-base', type=int, default=0)
     ap.add_argument('--pool', default='snapshot',
                     help='auto/snapshot/fallback/JSON 路径')
@@ -2009,7 +2276,7 @@ def _cli_main() -> None:
     args = ap.parse_args()
     pool_arg = args.pool
     if args.cmd == 'replay':
-        r = simulate_p1(args.seed, pool=pool_arg)
+        r = simulate_p1(args.seed, pool=pool_arg, planes=args.planes)
         if args.expect_fingerprint and \
                 r.pool_fingerprint != args.expect_fingerprint:
             print(f'池指纹不符: 期望 {args.expect_fingerprint} '
@@ -2024,7 +2291,7 @@ def _cli_main() -> None:
                     f"({a.get('reason', '?')})"
                     for a in row['actions']
                     if a.get('__type__') == 'BuyCard']
-            print(f"  r{row['round_num']} {s['node']:<9} "
+            print(f"  p{row['plane']}r{row['round_num']} {s['node']:<9} "
                   f"Δ{s['delta']:+3d} hp={row['hp']:>3} "
                   f"g={row['gold']:>3} 深{s['depth']:>2} "
                   f"花={sum(s['spend']['buys'].values())} "
@@ -2032,8 +2299,10 @@ def _cli_main() -> None:
                   f"买={','.join(buys) or '-'}")
     else:
         rep = simulate_p1_batch(args.n, seed_base=args.seed_base,
-                                pool=pool_arg)
+                                pool=pool_arg, planes=args.planes)
         for k in ('n', 'hp_ge_60', 'battle_losses_le_2', 'avg_final_hp',
+                  'p2_entered_rate', 'avg_p2_rounds', 'p2_win_rate',
+                  'p2_hp0_rate', 'avg_p2_refreshes',
                   'pool_fingerprint'):
             print(f'{k}: {rep[k]}')
         print('checks:', rep['checks_violations'])

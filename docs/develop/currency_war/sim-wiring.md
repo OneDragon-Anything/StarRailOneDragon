@@ -22,9 +22,9 @@
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
 | gold | 收入模型(基础+息+连胜+事件金)+逐笔花销 | OCR 金币数 | 已接(模型) | — |
-| round_num | 轮循环 1-9 | 位面内轮次 OCR | 已接 | — |
+| round_num | 轮循环:P1 段 1-9;`planes>=2` 追加 P2 段 1-7(ADR-0362,进场继承 P1 末态) | 位面内轮次 OCR | 已接 | — |
 | level | XP 循环升级(封顶 9) | 等级 OCR/XP 推导 | 已接(封顶 9=XP 表域) | — |
-| plane | 恒 1(P1 模拟器域) | 位面 1/2/3 | 已接(域内真值) | — |
+| plane | P1 段恒 1;P2 段设 2(ADR-0362 位面段迭代;决策代码 plane-aware,`cw_economy`/`cw_intention`/V_D P2 分支自动激活) | 位面 1/2/3 | 已接(P1/P2 域内真值;P3 未实现) | — |
 | hp | 节点结算轨迹 | 小队生命值 OCR | 已接(结算模型) | — |
 | shop | _Pool 抽店(REFRESH_PROB;ADR-0272 全费) | 商店牌面 OCR/SIFT | 已接 | — |
 | bench | 开局 4 张+买 append(含 3合1 merge,ADR-0276)+卖 pop+上阵 pop(ADR-0271) | 备战栏 SIFT 跟踪 | 已接(ADR-0276 起 merge 同源 `_merge_bench`;合并数入账本 sim.merges) | — |
@@ -88,8 +88,26 @@
 
 判读边界:Δ池桶键(encounter/boss/reward/supply 深度桶)与池语料
 同口径 = Σboard(L1+L2 全集,ADR-0312 v7);battle rung 输入
-`_recount_board`。历史批次(≤ v6 池指纹)的板深/rung 数字与本版本
-**不可裸串比**(桶语义变,跨版本对照须导出 JSON 快照重放)。
+`_recount_board`。**池形状含位面层(ADR-0362 v8)**:`{节点:{位面:
+{桶:[Δ]}}}`,差分归属后行位面;plane≥2 采样不跨位面回退,缺桶走
+位面内兜底/回退层掉血带。历史批次(≤ v7 池指纹)的板深/rung 数字
+与本版本**不可裸串比**(桶语义变,跨版本对照须导出 JSON 快照重放)。
+
+## P2 段接线(ADR-0362;`simulate_p1(planes=2)`)
+
+- 进场继承:P1 末态 hp/gold/board/bench/deployed/equips/意向原样
+  带过(hp 跨位面继承=用户纠错真值;其余无重置证据按全继承标注
+  假设);`st.plane=2` 激活决策侧 plane-aware 分支,策略层零改动。
+- 节点序列:`P2_NODE_SEQUENCE`(16 局 outcomes 拼版,逐槽一致;
+  与 economy.md §10.2 单帧开局表的 r3-r6 槽序分歧注释在代码)。
+- 结算:Δ池 plane=2 桶优先 → P2 battle 回退掉血带 15-17/胜率
+  0.11(W151 语料);encounter/boss 沿用 P1 档+标注。
+- 事件金复用 P1 表(打标未校准;P2 基础收入 5 已实测,economy.md
+  §10.1);P2 事件 overlay/简报/投资二段**披露不建模**(P2 金流/
+  装备流系统性偏瘦,M3 按需)。
+- P2 headline 四联(存活轮/胜率/hp0 率/D 次数,分母=进场局)进
+  批报告;`simulate_p2_ab` 同池同 seed 配对 `vd_p2_enabled`(同进程
+  flag 对照,W154 记档)。
 
 ## 已知接线缺口的影响面(判读边界)
 
