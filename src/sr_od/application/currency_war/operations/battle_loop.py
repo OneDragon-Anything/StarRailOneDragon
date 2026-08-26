@@ -190,6 +190,8 @@ class CurrencyWarRunLoop(SrOperation):
         # 失败实证 22:17);见备战稳定门后采集块。
         self._cw_takeover_done: bool = False
         self._cw_takeover_tries: int = 0
+        # 「返回投资策略选择」按钮出现计数(症状报警用:出现=上游策略屏处理失败)
+        self._cw_back_btn_count: int = 0
         # W103 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
         self._cw_strategy_dead_streak: int = 0
         self._cw_dead_prev_key: tuple[int, int] | None = None
@@ -659,16 +661,13 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.cw_match.strategy.on_match_start(
                 _st0, self.ctx.cw_match.session, self._cw_config)
 
-        # 0. 备战被锁(顶部"返回投资策略选择"按钮)→ 点去选策略(check#4 接手)。
-        #    lcs_percent=0.9:防与「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)
-        #    误匹配 → 投资策略屏被本分支吞(点标题不动作)→ 死循环(2026-08-04 实跑发现,卡 plane1)。
-        #    真「返回投资策略选择」按钮 OCR 1.0 不受影响。
+        # 「返回投资策略选择」分支已挪入备战分支(稳定门之后,2026-08-26 用户定性:
+        # 该按钮出现 = 上游投资策略屏处理失败的 symptom)——确定是备战画面后再
+        # 特殊处理,不在备战判定前全屏扫(原位置吞掉策略屏自身 → 点标题死循环)。
         # 子态稳定门 bookkeeping(见 PREP_SETTLE_S):shift 本帧标志到 prev 后清零 ——
         # 备战分支命中时置回 True;下迭代 prev=False(非备战/overlay/结算)→ 新相位重计时。
         self._prev_frame_prep = self._frame_is_prep
         self._frame_is_prep = False
-        if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
-            return self.round_wait(wait=2)
 
         # [历史停机钩子已全部建档移除](hook审计 S8/r351 删死代码:循环体
         # `for ... in ():` 永不执行)——r24 教训见 git:钩子停机的前提是该屏
@@ -900,7 +899,11 @@ class CurrencyWarRunLoop(SrOperation):
         # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,strategy/03(原 doc 15)/ADR-0123;原 BattlePrepCycle
         #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
         #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
-        if self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
+        # 画面判定 = **双锚**(2026-08-26 用户定调「全面的 id mark」):「备战标识-购买经验」
+        # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
+        # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
+        if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
+                and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._frame_is_prep = True   # 稳定门 bookkeeping(本帧走备战分支)
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
             # ⚖️ 子态稳定门(2026-08-18 用户定调):结算→备战先渲染→节点类型 overlay 后弹
@@ -915,6 +918,19 @@ class CurrencyWarRunLoop(SrOperation):
                          self.PREP_SETTLE_S)
             if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
                 return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
+            # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
+            # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
+            # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =
+            # 补给/遭遇屏的「返回XX选择」)→ 先确定是备战画面(双锚+稳定门已过)
+            # 再特殊处理,顺带免掉每帧全屏 OCR。lcs_percent=0.9 保留:防与
+            # 「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)误匹配
+            # → 投资策略屏被吞(点标题不动作)→ 死循环(2026-08-04 实跑,卡 plane1)。
+            # 真「返回投资策略选择」按钮 OCR 1.0 不受影响。
+            if self.round_by_ocr_and_click(screen, '返回投资策略选择', success_wait=2, lcs_percent=0.9).is_success:
+                self._cw_back_btn_count += 1
+                log.warning('[cw!][loop] 返回按钮=上游选择屏处理失败症状(策略屏点歪),第%d次',
+                            self._cw_back_btn_count)
+                return self.round_wait(wait=2)
             # 接管局补采(boss+词缀,2026-08-26 用户裁决「没经过简报的局」才采):
             # 判定 = 新 match 且 session.briefing_bosses 空(bot 没走过简报链,
             # **唯一信号**,不看 round/plane——1-1 手开局是最典型接管局)。在
@@ -928,38 +944,52 @@ class CurrencyWarRunLoop(SrOperation):
             # mechanics_fit;read_game_state 每轮从 session 同步,晚接不丢)。
             # 难度不补(备战「文本-难度」有独立现读通道,用户裁决)。只试一次,
             # 失败不阻塞对局(boss 缺省=中性 0.5,与无数据同形)。
+            # **可交互门(B 修,22:17/22:22 两轮 12retry 实证)**:稳定门保证
+            # 「是备战画面」≠「详情可点开」——boss 战后位面过场的备战半开帧
+            # id_mark 已命中但节点条是残影(交互无效)。节点条圆 ≥6(读得出
+            # =过场完成,点节点图标才开得了详情)才算可采;read_node_sequence
+            # 每帧本就在跑,此处只判读数,零额外成本。
             if (self._is_new_match and not self._cw_takeover_done
                     and not getattr(self.ctx.cw_match.session, 'briefing_bosses', None)):
-                # 22:17 实跑:boss 战后位面过场的备战半开帧触发采集,op 入口
-                # 点详情失败(过场不可开)→ 本轮放弃;flag 只在**成功或超限**
-                # 置位(_cw_takeover_tries≤2),下个稳定备战帧再试。
-                self._cw_takeover_tries += 1
-                if self._cw_takeover_tries > 2:
-                    self._cw_takeover_done = True
-                    log.info('[cw-loop] 接管补采两次未成,放弃(boss 缺省中性)')
+                _tk_slots = read_node_sequence(self.ctx, screen)
+                if _tk_slots is None:
+                    pass   # 节点条不可读(过场/overlay)→ 不消耗重试账,等下帧
                 else:
-                    _sess = self.ctx.cw_match.session
-                    from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
-                        CollectPlaneIntel,
-                    )
-                    log.info('[cw-loop] 接管局无简报 boss/词缀 → 位面详情情报采集(稳定备战帧,第%d次)',
-                             self._cw_takeover_tries)
-                    _pb = CollectPlaneIntel(self.ctx)
-                    _pb_res = _pb.execute()
-                    if _pb_res.success and getattr(self.ctx, 'cw_plane_bosses', None):
+                    self._cw_takeover_tries += 1
+                    if self._cw_takeover_tries > 2:
                         self._cw_takeover_done = True
-                        _names = [n for n in self.ctx.cw_plane_bosses if n]
-                        if _names:
-                            _sess.briefing_bosses = _names   # 复用简报消费链(session→state.plane_bosses)
-                            log.info('[cw-loop] 接管局 boss 补采完成:%s', _names)
-                        self.ctx.cw_plane_bosses = None   # 取走清空(防跨局复用)
-                    if not getattr(_sess, 'briefing_affixes', None):
-                        _affixes = getattr(self.ctx, 'cw_plane_affixes', None) or []
-                        if _affixes:
-                            _sess.briefing_affixes = list(_affixes)
-                            log.info('[cw-loop] 接管局词缀补采(位面详情横条随采):%s', _affixes)
-                        self.ctx.cw_plane_affixes = None   # 取走清空(防跨局复用)
-                    screen = self.screenshot()   # op 已关详情回备战;刷新本帧再走备战逻辑
+                        log.info('[cw-loop] 接管补采两次未成,放弃(boss 缺省中性)')
+                        # 放弃也清空两池:残留值会被下局的
+                        # `not getattr(ctx, 'cw_plane_bosses')` 判空误消费(跨局泄漏)
+                        self.ctx.cw_plane_bosses = None
+                        self.ctx.cw_plane_affixes = None
+                    else:
+                        _sess = self.ctx.cw_match.session
+                        from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
+                            CollectPlaneIntel,
+                        )
+                        log.info('[cw-loop] 接管局无简报 boss/词缀 → 位面详情情报采集(可交互备战帧,第%d次)',
+                                 self._cw_takeover_tries)
+                        _pb = CollectPlaneIntel(self.ctx)
+                        _pb_res = _pb.execute()
+                        if _pb_res.success and getattr(self.ctx, 'cw_plane_bosses', None):
+                            self._cw_takeover_done = True
+                            _names = [n for n in self.ctx.cw_plane_bosses if n]
+                            if _names:
+                                _sess.briefing_bosses = _names   # 复用简报消费链(session→state.plane_bosses)
+                                log.info('[cw-loop] 接管局 boss 补采完成:%s', _names)
+                        # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
+                        # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
+                        # 空帧清掉)②引用未定义的 _sess(放弃/等待分支都没绑定)。
+                        if not getattr(_sess, 'briefing_affixes', None):
+                            _affixes = getattr(self.ctx, 'cw_plane_affixes', None) or []
+                            if _affixes:
+                                _sess.briefing_affixes = list(_affixes)
+                                log.info('[cw-loop] 接管局词缀补采(位面详情横条随采):%s', _affixes)
+                        # 成功取走/失败残留都清空(防泄漏到下局判空)
+                        self.ctx.cw_plane_bosses = None
+                        self.ctx.cw_plane_affixes = None
+                        screen = self.screenshot()   # op 已关详情回备战;刷新本帧再走备战逻辑
             # W103 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
             # strategy_id 的决策行(决策层整轮未参与;W98 两局实录:57/61 行恒空、
             # P1 全程 0 买、金囤 91/100,兜底打满 40min 垃圾局)→ 停局重启加载
