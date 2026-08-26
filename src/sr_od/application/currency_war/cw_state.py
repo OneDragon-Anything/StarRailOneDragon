@@ -414,7 +414,10 @@ class FillSpec:
     source: str                        # 'bench' | 'shop'(shop 时带 card 索引)
     idx: int
     row: str                           # 'front' | 'back'
-    expect: str = ''                   # 代际校验期望名(''=不校验)
+    expect: str = ''
+    # 代际校验期望名(''=不校验;见 docstring)。expect-whitelist: 草案级
+    # 字段(W43 裁决 2 预留)——发射点尚未接线,属「待发射点补赋值」观察位;
+    # 接线时删本豁免(静态锁 test_expect_fields_have_writers_or_whitelist 督办)
 
 
 @dataclass
@@ -487,9 +490,11 @@ class CompTransaction:
     # 代际校验期望名(W43 leader 裁决 2;草案级扩字段,默认 None=不校验):
     # 与 deploy/undeploy/sell 的索引**同序**对齐;应用时 idx 指向内容与
     # 期望不符 → 整事务拒绝(stale_proposal)。空串项跳过该项校验。
-    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序
-    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序
-    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域)
+    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序;expect-whitelist:草案级(W43 预留,发射点未接线)
+    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序;expect-whitelist:草案级(W43 预留,发射点未接线)
+    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域);expect-whitelist:草案级(W43 预留,发射点未接线)
+    # ↑ 三者接线时删行内豁免标记(静态锁 test_expect_fields_have_writers_or_whitelist 督办);
+    # 事务整批拒语义现由 _resolve_comp_transaction 全量校验承担
 
 
 Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
