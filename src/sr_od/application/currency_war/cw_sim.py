@@ -209,7 +209,7 @@ P2_LOSS_BAND: tuple[int, int] = (15, 17)
 
 # ===== P2 战斗存活层参数化校准族(W193/ADR-0377,W186 设计 Phase 1) =====
 # 结构:win_p = clip(p0 + β·form − γ·drift(round)),form=板面质量键
-# (最小集=engines 数[deployed 口径,_settle_rung 同源]+level 折算);
+# (engines 数[deployed 口径,_settle_rung 同源]+level 折算+星级深度折算);
 # 负=分段掉血带内均匀。**校准层(非真战斗机制)**,诚实边界:
 # - 21 run 语料只够钉边界不够点估计 β——p0/β/γ 取保守值 + 敏感性带
 #   扫描为裁决口径(修法在带端点一致翻正才裁「分布级」);
@@ -228,6 +228,15 @@ P2_LOSS_BAND: tuple[int, int] = (15, 17)
 # 胜率:p0=0.11(W151/语料边际 5/37=0.135 的保守下沿);β 方向由胜例
 # board 强制为正、量级未定(胜例 form 1.25-2.25 vs 全体均值 ≈1.4,
 # 几乎无区分度)→ 保守 0.04,敏感性主扫参;γ 弱(轮梯度未识别)→ 0.02。
+# 星级分量(W230/ADR-0401,ADR-0377 form 扩展):star_depth=上场件
+# Σ(star−1)(全量口径,同 ADR-0399 HandoffSnapshot star_sum−deployed_n,
+# 纯 state 可算、生产/sim/离线回放三面同式);真值分帧校准
+# (w230_star_form/calibrate_star.py,44 combat 帧/6 胜):
+# engines=1 桶内 sd=0 → 0/8 胜,sd∈{1,2} → 3/15(0.20)——方向为正
+# (胜例集中于 sd 1-2);sd≥3 零胜但 n≤4 不可辨 → 量级未定,保守
+# form_star_weight=0.5(一颗 2★ 折半台引擎)+ 敏感性扫描端点 0/0.25/1.0;
+# 动机 = W226/W227 实证 sim 缺星级因果通道(board_tier core2 维打不
+# 出去、承接门主投资方向不可仲裁)。
 
 
 @dataclass(frozen=True)
@@ -253,6 +262,10 @@ class P2CombatCalib:
     #: form 键的 level 折算权重(form = engines + w·(level−6);
     #: engines=deployed 口径 _settle_rung 同源,0-4)
     form_level_weight: float = 0.25
+    #: form 键的星级深度折算权重(W230/ADR-0401:star_depth=上场件
+    #: Σ(star−1) 全量口径,同 ADR-0399 HandoffSnapshot;core2/board_tier
+    #: 的星级维胜率因果通道)。保守 0.5,敏感性端点 0/0.25/1.0。
+    form_star_weight: float = 0.5
     #: level 折算基准(P2 常见进场 level 6)
     form_level_base: int = 6
     #: 事件金双臂(W186 §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
@@ -273,13 +286,21 @@ P2_COMBAT_DEFAULT = P2CombatCalib()
 
 
 def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
-    """form=板面质量键(W193/ADR-0377 最小集:engines+level 折算)。
+    """form=板面质量键(W193/ADR-0377:engines+level 折算;
+    W230/ADR-0401 扩展:+星级深度折算)。
 
     engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
     W182 实测 deployed 口径与掉血对应最干净、板深无区分度。
+    star_depth = 上场件 Σ(star−1)(全量口径,同 ADR-0399
+    HandoffSnapshot——core2 维/board_tier 的星级分量因果通道,
+    W226 §⑥/W227 挂账的 sim 建模缺口)。
     """
-    return float(_settle_rung(st)) + calib.form_level_weight * (
+    star_depth = sum(
+        int(getattr(d, 'star', 1) or 1) - 1
+        for d in (st.deployed or []) if d is not None)
+    return (float(_settle_rung(st)) + calib.form_level_weight * (
         st.level - calib.form_level_base)
+        + calib.form_star_weight * star_depth)
 
 
 def p2_win_p(st: GameState, node: str, round_num: int,
@@ -2805,6 +2826,7 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
                             gammas: tuple[float, ...] = (0.0, 0.02, 0.05, 0.10),
                             event_gold_arms: tuple[str, ...] = ('p1', 'zero'),
                             form_level_weights: tuple[float, ...] = (0.25,),
+                            form_star_weights: tuple[float, ...] = (0.5,),
                             ) -> dict:
     """β/γ/事件金/form 权重敏感性扫描(W193/ADR-0377;**裁决口径**)。
 
@@ -2818,6 +2840,10 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
     ——lv 投资型修法(金流改道升级)的存活收益显影取决于 lv 项
     真实权重,故 w 入网格(端点 0=lv 零贡献 / 高档 0.5/1.0);
     默认 (0.25,) = P2_COMBAT_DEFAULT 单值,行为向后兼容。
+    ``form_star_weights``(W230/ADR-0401,同型):星级投资型修法
+    (承接门/W227)的存活收益显显取决于 star_depth 项真实权重
+    (真值分帧只定向不定量)——端点 0(星级零贡献=旧 form 形态)/
+    0.25 / 1.0;默认 (0.5,) = 单值。
     """
     import dataclasses
     import logging
@@ -2830,32 +2856,35 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
             for b in betas:
                 for g in gammas:
                     for w in form_level_weights:
-                        calib = dataclasses.replace(
-                            P2_COMBAT_DEFAULT, beta=b, gamma=g, event_gold=eg,
-                            form_level_weight=w)
-                        rs = [simulate_p1(seed_base + i, pool=pool,
-                                          planes=planes, p2_combat=calib)
-                              for i in range(n)]
-                        entered = [r for r in rs if r.p2_entered]
-                        ct = sum(r.p2_combat_total for r in entered)
-                        cw = sum(r.p2_combat_wins for r in entered)
-                        carried = [r.p2_gold_carried for r in entered
-                                   if r.p2_gold_carried is not None]
-                        table.append({
-                            'event_gold': eg, 'beta': b, 'gamma': g,
-                            'form_level_weight': w,
-                            'p2_entered_rate': len(entered) / n,
-                            'avg_p2_rounds': round(statistics.mean(
-                                [r.p2_rounds for r in entered]), 2)
-                            if entered else None,
-                            'p2_win_rate': round(cw / ct, 4) if ct else None,
-                            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
-                                            / len(entered)) if entered else None,
-                            'avg_p2_gold_carried': round(statistics.mean(
-                                carried), 2) if carried else None,
-                            'avg_final_hp': round(statistics.mean(
-                                [r.final_hp for r in rs]), 2),
-                        })
+                        for ws in form_star_weights:
+                            calib = dataclasses.replace(
+                                P2_COMBAT_DEFAULT, beta=b, gamma=g, event_gold=eg,
+                                form_level_weight=w, form_star_weight=ws)
+                            rs = [simulate_p1(seed_base + i, pool=pool,
+                                              planes=planes, p2_combat=calib)
+                                  for i in range(n)]
+                            entered = [r for r in rs if r.p2_entered]
+                            ct = sum(r.p2_combat_total for r in entered)
+                            cw = sum(r.p2_combat_wins for r in entered)
+                            carried = [r.p2_gold_carried for r in entered
+                                       if r.p2_gold_carried is not None]
+                            table.append({
+                                'event_gold': eg, 'beta': b, 'gamma': g,
+                                'form_level_weight': w, 'form_star_weight': ws,
+                                'p2_entered_rate': len(entered) / n,
+                                'avg_p2_rounds': round(statistics.mean(
+                                    [r.p2_rounds for r in entered]), 2)
+                                if entered else None,
+                                'p2_win_rate': round(cw / ct, 4) if ct else None,
+                                'p2_hp0_rate': (sum(1 for r in entered
+                                                    if r.p2_hp0)
+                                                / len(entered))
+                                if entered else None,
+                                'avg_p2_gold_carried': round(statistics.mean(
+                                    carried), 2) if carried else None,
+                                'avg_final_hp': round(statistics.mean(
+                                    [r.final_hp for r in rs]), 2),
+                            })
     finally:
         logging.disable(logging.NOTSET)
     return {
