@@ -372,6 +372,13 @@ class SimResult:
     # (占位实体披露计数——'钻石' 不再以真装备身份进 owned 池,
     # 只在此计数披露,phantom_equip_no_wear 回归 0 容忍)
     phantom_supply_picks: int = 0
+    # W213/ADR-0394:P1 出口 key_equips 命中度量(命中数 / 需求总数;
+    # 口径 = P1 段末 worn(deployed.equips)+ owned(st.equips)合并
+    # 对当时 target_comp.key_equips(计重复)的满足量;target 未锁
+    # 定或 key 为空的局 total=0,聚合端按 total>0 局求均值——W212
+    # 批 A 同口径(key_last=最后一次分配时的 key 表))
+    p1_key_hit_hits: int = 0
+    p1_key_hit_total: int = 0
     # 动作 v2(契约包 C1,步2):显式部署动作(SellDeployed/SwapDeploy/
     # CompTransaction)被整体拒绝的次数(原子性拒绝披露;真策略当前
     # 不发显式动作 → 恒 0,演进引擎 C3 接入后 >0 即决策侧提案越界信号)
@@ -1917,13 +1924,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     decide_supply,
                 )
                 _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
-                _opts = []
-                for _oi in range(3):
-                    _eq = rng.choice(_pool_names)
-                    _opts.append(SupplyOption(
-                        idx=_oi, char='', equip=_eq,
-                        has_diamond=rng.random() < 0.15))
-                _pick = decide_supply(_opts, st, sess.target_comp, None)
+
+                def _sample_supply_opts(
+                        _names: list[str]) -> list[SupplyOption]:
+                    # 发放采样(3 列;带钻 15% 粗估校准点)——两步各自
+                    # 调用一次,消耗局内 rng 流(W212 批 monkeypatch 臂
+                    # 用独立 rng 是补丁层限制,原生实现必须走局内 rng
+                    # 才与实机发放分布一致)
+                    return [SupplyOption(
+                        idx=_oi, char='', equip=rng.choice(_names),
+                        has_diamond=rng.random() < 0.15)
+                        for _oi in range(3)]
+
+                # W213/ADR-0394:生产 RunSupplyNode 是真两步——
+                # 第一步 decide_supply(refresh_used=session 标志):
+                # 带钻→直接选;全无钻且本局未刷过→返回 refresh=True
+                # (sim 旧形态漏掉这一步的分支:恒把 refresh 标志丢弃、
+                # 直接取 _opts[pick.idx]=options[0],价值评分分支
+                # 在 sim 从未执行 = 「恒取 idx0」伪影,ADR-0394);
+                # 刷新→session 标志置位(run_supply_node:71 同语义,
+                # StrategySession._supply_refresh_used 为正式字段)+
+                # 重掷 3 列再选;refresh_used=True 时 decide_supply
+                # 走 key_equips 契合(+10)+ 通用价值评分。补给刷新
+                # 免费(「剩余次数:1」,run_supply_node:50)——不耗金。
+                _opts = _sample_supply_opts(_pool_names)
+                _pick = decide_supply(_opts, st, sess.target_comp, None,
+                                      refresh_used=sess._supply_refresh_used)
+                if _pick.refresh and not sess._supply_refresh_used:
+                    sess._supply_refresh_used = True
+                    _opts = _sample_supply_opts(_pool_names)
+                    _pick = decide_supply(_opts, st, sess.target_comp, None,
+                                          refresh_used=True)
                 st.equips.append(_opts[_pick.idx].equip)
                 if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
@@ -2072,6 +2103,26 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             })
             if st.hp <= 0:
                 break
+        # W213/ADR-0394:P1 段出口 key_equips 命中度量段末快照
+        # (无论 P1 段是打满还是中途死亡都记;口径见 SimResult
+        # 字段注释)。段内变量 _seg_plane 在此可见(for 循环变量)。
+        if _seg_plane == 1:
+            _tc = getattr(sess, 'target_comp', None)
+            _keys = (list(getattr(_tc, 'key_equips', ()) or ())
+                     if _tc is not None else [])
+            _have: dict[str, int] = {}
+            for _e in (*[e for d in (st.deployed or [])
+                         for e in (getattr(d, 'equips', ()) or ())],
+                       *st.equips):
+                _have[_e] = _have.get(_e, 0) + 1
+            _need: dict[str, int] = {}
+            for _k in _keys:
+                _need[_k] = _need.get(_k, 0) + 1
+            # 口径与 W212 批 A 一致:命中 = Σ min(需求份数, 持有份数)
+            # / 需求总份数(key 表可含重复份数)
+            res.p1_key_hit_total = sum(_need.values())
+            res.p1_key_hit_hits = sum(
+                min(_n, _have.get(_k, 0)) for _k, _n in _need.items())
         # ADR-0362:位面段间死亡即终局(P1 段死=不进 P2,P2 段死=止)
         if st.hp <= 0:
             break
@@ -2378,6 +2429,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 是词缀元数据不进 owned 池,此计数是它唯一的 sim 痕迹)
         'phantom_supply_picks': sum(
             r.phantom_supply_picks for r in results),
+        # W213/ADR-0394:P1 出口 key_equips 命中率(有 key 需求局
+        # 的均值;两步语义修复后应显著高于旧「恒 idx0」形态的基线)
+        'p1_key_hit_rate': (round(statistics.mean(
+            [r.p1_key_hit_hits / r.p1_key_hit_total
+             for r in results if r.p1_key_hit_total > 0]), 3)
+            if any(r.p1_key_hit_total > 0 for r in results) else None),
+        'p1_key_hit_runs': sum(
+            1 for r in results if r.p1_key_hit_total > 0),
         'pool_floor_hits': sum(r.pool_floor_hits for r in results),
         # ADR-0287(批㉘ F1):全批残留可上件总数(买后部署语义下
         # 应 0;>0 = 部署时序回归/围栏漏上,检查项扫出)
