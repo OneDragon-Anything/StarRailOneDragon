@@ -1,45 +1,53 @@
-"""货币战争 **后排槽位布局**(level 驱动;ADR-0281 布局模型重审,2026-08-23)。
+"""货币战争 **后排槽位布局**(cap 差驱动;ADR-0385 布局模型勘误,2026-08-26)。
 
-机制(用户口述权威 + 全行签名扫描终判):后排槽数由 **level 驱动**,与 deploy_cap
-(宝钻叠加)无关 —— 两帧同 lv7 cap8/9 同为 8 格实证。真值布局:
-- lv3-5 → **6 格**(基线 534-1386 带,多局验证,screen_info ``后排-1..6``);
-- lv7-8 → **8 格**(393-1529 带,狸猫局交互实拍,screen_info ``后排8槽-1..8``);
-- lv6 → 7 格**存在性未知**(待采;按用户模型 7 格时系统单位(狸猫)应在 1174/1316)——
-  保守按 6 格跑 + ``obs_conflict`` 留证(见 :data:`_PENDING_7SLOT_LEVELS`)。
+机制(用户口述权威,2026-08-26 run 26 崩坏局后澄清 + 同日量化公式追加;
+docs/game/currency_war/research/board_structure.md):
+- **等级只定上场人数 cap,不定格子数**;正常恒 前台 4 格 + 后台 6 格;
+- **后台格数 = 6 + (cap − level)**(口述公式):钻石/召唤物使 cap 超过 level,
+  差值即后台扩展量——diff 0 → 6 格基线;diff ≥2 → 8 格(393-1529 带,狸猫局
+  交互实拍,screen_info ``后排8槽-1..8``);diff==1(钻石+1)→ 7 格**档未建档**,
+  保守退 8 格超集 + 留证(见 :func:`note_7slots_pending`)。
+- 旧 level 驱动模型(ADR-0281「level≥7→8 格」)**归因错误**(其实证局狸猫局
+  本身带召唤物=cap 差,不是 level),本模块勘误;level 只进 cap 板满门,
+  不进布局选档。run 26(lv8 无召唤物局)按 8 格坐标拖不存在的 7/8 号格 +
+  幻影空位把部署卡死在 bench = 崩坏根因①。
 
-**旧 7/9/10/11 档全是幻影**(r84「五组实测」里 cap9/10/11 是把 SIFT 命中往外推网格
-上套的循环论证:命中落在 8 格布局内,两种网格编号都解释得通;三触发帧逐格空槽签名
-证明 251-393 / 1529-1671 段为无格背景)。幻影 yml area 已删,勿再登记。
+选档单一入口 :func:`select_back_layout`(消费方:deploy_bench 拖拽坐标 /
+``cw_identity_obs.read_deployed_chars`` 槽位读取 / battle_prep_recognizer
+后排装备槽):cap 源 = ``cw_observation.read_deploy_cap``(paddle 直读权威);
+level 源 = 显式参或 session 等级链(单调链防毒化)。任一读不到 → diff 按 0
+(退 6 格基线,失败安全侧 = run 26 崩坏形态的反向)。
 
-**系统单位恒最右模型**(用户口述权威):狸猫(狸小虎/狸小龙)/佩佩等系统召唤单位
-恒占布局**最右槽位(们)**、不可拖(cost=0)、布局格数变 → 其 x 跟着最右格移动。
-落地:① 布局自检判别器(``cw_identity_obs.check_system_unit_layout``,比空槽签名便宜);
-② deploy 重排候选剔除系统单位(deploy_bench,cost==0 守卫)。
-
-**单一真相源 = screen_info**(用户 2026-08-19 定调):6 槽 = ``后排-1..6``;
-8 槽 = ``后排8槽-1..8``(狸猫局实拍,交互定名:位1藿藿/位2爻光/位7蓝狸小虎/位8红狸小龙)。
-选档:运行时按 level 取布局;查无该档 → 退 6 槽基线 + ``[cw!]`` 告警(现 6/8 都有档,
-该分支为未来新档预留)。**别在 6 槽坐标上外插**。
+单一真相源 = screen_info(6 槽 = ``后排-1..6``;8 槽 = ``后排8槽-1..8``)。
+旧 9/10/11 档是循环论证幻影(ADR-0281),已删,勿再登记。
+系统单位恒最右模型与布局自检(``cw_identity_obs.check_system_unit_layout``)
+保留作交叉验证(公式选档与画面不符时留 layout_mismatch 证据)。
 """
 from __future__ import annotations
 
 from one_dragon.base.geometry.rectangle import Rect
 
-#: level → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」)。
-#: ⚠️ 旧 7/9/10/11 档是循环论证幻影(ADR-0281),已删 —— 7 格存在性待 lv6 采集定,
-#: 定了再按交互实锤流程补档(upsert 后排7槽-1..7 + 此处登记)。
+#: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」)。
+#: ⚠️ 9/10/11 档是循环论证幻影(ADR-0281),已删;7 格待 diff==1 局交互实锤后
+#: 补档(upsert 后排7槽-1..7 + 此处登记,届时 :func:`note_7slots_pending`
+#: 自然不再触发)。
 _LAYOUT_PREFIX: dict[int, str] = {
     6: '后排',
     8: '后排8槽',
 }
 
-#: 7 格存在性待采的 level(ADR-0281):lv6 布局未知 → 保守按 6 格跑 + obs_conflict
-#: 留证(采集窗口 = lv6 局截备战帧,按用户模型 7 格时系统单位应在 1174/1316;
-#: 交互实锤定档后清空此集合并登记 _LAYOUT_PREFIX)。
-_PENDING_7SLOT_LEVELS: frozenset[int] = frozenset({6})
+#: 基线后台格数(口述:正常恒 前台 4 + 后台 6)
+_BACK_SLOTS_BASE: int = 6
+
+#: cap 差域上界(``cw_observation.DEPLOY_CAP_MAX_DIFF`` 同源;实机语料未见 >2)
+_CAP_DIFF_MAX: int = 2
 
 #: 后排 y 带(所有布局共用;槽 rect 高约 600-739)
 _BACK_Y1, _BACK_Y2 = 600, 739
+
+# 7 格留证节流(300s/源)与选档日志去重(值不变不重复打)
+_pending_note_ts: dict[str, float] = {}
+_last_sel_log: tuple[int, int, object, object] | None = None
 
 
 def _layout_prefixes() -> dict[int, str]:
@@ -47,88 +55,104 @@ def _layout_prefixes() -> dict[int, str]:
     return dict(_LAYOUT_PREFIX)
 
 
-def effective_back_slots(level: int) -> int:
-    """后排实际槽数,**level 驱动**(ADR-0281;旧 cap 驱动模型已废)。
+def back_slots_from_cap_diff(diff: int) -> int:
+    """口述公式:后台格数 = 6 + (cap − level)(纯函数,布局选档锁的测试面)。
 
-    规则:level≤5 → 6 / level≥7 → 8 / level==6 → 暂 6(7 格存在性待采,
-    调用方过 :func:`note_pending_7slots` 留证)。cap(宝钻)与布局无关
-    (两帧同 lv7 cap8/9 同为 8 格实证;cap 误读不再影响选档)。
-    消费方(选档/域检查)统一过此函数。
+    - diff < 0(cap<level 读错族,prep_director 另有 obs_conflict 留证)按 0;
+    - diff > 2(``DEPLOY_CAP_MAX_DIFF`` 域外,实机语料未见)按 2 —— 口述公式
+      与旧幻影观察自洽:cap9/10/11 的 lv7/8 局 diff ≥2 全部落 8 格档;
+    - 公式值未建档(diff==1 → 7 格)→ **保守退 8 格超集**(扩展带读全不丢系统
+      单位;拖到不存在的位 8 被游戏拒 = 廉价失败方向)。
     """
-    if level >= 7:
-        return 8
-    return 6   # ≤5 → 6;==6 → 保守 6(待采,见 _PENDING_7SLOT_LEVELS)
+    d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
+    n = _BACK_SLOTS_BASE + d
+    if n in _LAYOUT_PREFIX:
+        return n
+    return 8   # 7 格档未建档 → 8 格超集(见模块 docstring;留证在调用侧)
 
 
-_pending_note_ts: dict[str, float] = {}
+def note_7slots_pending(screen, cap, level, source: str) -> None:
+    """diff==1(钻石+1)7 格档未建档 → obs_conflict 留证(节流 300s/源;保守按
+    8 格超集跑,ADR-0385)。
 
-
-def note_pending_7slots(screen, level: int, source: str, extra=None) -> None:
-    """lv6 待采留证(节流 300s/源):7 格存在性未知,保守按 6 格跑(ADR-0281)。
-
-    采集指引(用户模型):7 格存在时系统单位(狸猫)应在 1174/1316(8 格时在
-    1316/1458);lv6 局截备战帧 + 系统单位 x 实测即可判定。best-effort 不抛。
+    采集指引:钻石局(cap=level+1,无召唤物)截备战帧 → 暗框检测 7 格槽位 x →
+    拖角色逐位交互实锤 → upsert_screen_area 后排7槽-1..7 → ``_LAYOUT_PREFIX``
+    登记 7 → 本函数自然不再触发。best-effort 不抛。
     """
     import time as _time
     try:
-        if level not in _PENDING_7SLOT_LEVELS:
-            return
         now = _time.monotonic()
         if now - _pending_note_ts.get(source, -1e9) < 300.0:
             return
         _pending_note_ts[source] = now
         from sr_od.application.currency_war.cw_observe import obs_conflict
         obs_conflict(
-            'back_7slots_pending', level, 6, screen,
-            verdict=('留证-lv6 后排 7 格存在性待采(保守按 6 格跑,ADR-0281;'
-                     '处理:lv6 局截备战帧,按用户模型 7 格时狸猫应在 1174/1316'
-                     '(8 格时 1316/1458);实锤后 upsert 后排7槽-1..7 + '
-                     '_LAYOUT_PREFIX 登记 + 清 _PENDING_7SLOT_LEVELS)'),
-            source=source, **(extra or {}))
+            'back_7slots_pending', 7, 8, screen,
+            verdict=('留证-钻石+1 局(cap=level+1)后台应为 7 格,档未建档'
+                     '(保守按 8 格超集跑,ADR-0385;处理:该类局截备战帧,'
+                     '暗框检测 7 格槽位 x → 拖角色逐位交互实锤 → '
+                     'upsert 后排7槽-1..7 → _LAYOUT_PREFIX 登记 7)'),
+            source=source, cap=cap, level=level)
     except Exception:   # noqa: BLE001
         pass
 
 
-def back_prefix_for_level(level: int) -> tuple[str, int]:
-    """level → ``(布局前缀, 槽数)``(无档退基线 ``('后排', 6)``;识别/装备等按前缀+数
-    读取的消费方用,如 battle_prep_recognizer 的后排装备槽)。"""
-    n = effective_back_slots(level)
-    p = _layout_prefixes().get(n)
-    return (p, n) if p is not None else ('后排', 6)
+def select_back_layout(ctx, screen, level: int | None = None,
+                       cap: int | None = None) -> tuple[int, str]:
+    """布局选档单一入口(ADR-0385 口述公式)→ ``(槽数, 布局前缀)``。
 
+    驱动 = 「后台格数 = 6 + (cap − level)」:
+    - cap 未传 → ``read_deploy_cap``(paddle 直读权威,X/Y 里的 Y)现读;
+    - level 未传 → session 等级链(cw_identity_obs._session_level,单调链防毒化);
+    - 任一读不到 → diff 按 0(退 6 格基线;失败安全侧);
+    - 公式值未建档(diff==1 → 7 格)→ 8 格超集 + :func:`note_7slots_pending` 留证。
 
-def back_row_slot_rects_ctx(ctx, level: int) -> list[tuple[int, Rect]] | None:
-    """按 level 从 screen_info 取 ``[(slot_idx, rect), ...]``;无档 → None(调用方退基线)。
-
-    ctx: ``SrContext``(screen_info 已加载)。level = 当前等级(session 单调链
-    last_level_obs / last_state.level);槽数 = ``effective_back_slots(level)``。
+    交叉验证:``check_system_unit_layout``(系统单位恒最右)在读板路径常设对账
+    (公式值与画面不符时留 layout_mismatch 证据,公式误读的兜底网)。
     """
-    prefix = _layout_prefixes().get(effective_back_slots(level))
-    if prefix is not None:
-        from sr_od.application.currency_war.cw_identity_obs import _area_rect
-        out: list[tuple[int, Rect]] = []
-        i = 1
-        while True:
-            rect = _area_rect(ctx, f'{prefix}-{i}')
-            if rect is None:
-                break
-            out.append((i, rect))
-            i += 1
-        if out:
-            return out
-    # 无档:[cw!] 告警(可检索)。现 6/8 都有档,该分支为未来新档预留(如 lv6 实锤
-    # 7 格前的过渡态理论不触发——lv6 保守 6 有档;真触发 = 布局表与 screen_info
-    # 失配,按 ADR-0281 交互实锤流程补档)。本函数只返 None 退基线。
     try:
-        if level and effective_back_slots(level) not in _layout_prefixes():
+        if level is None or level <= 0:
+            from sr_od.application.currency_war.cw_identity_obs import _session_level
+            level = _session_level(ctx)
+        if cap is None:
+            from sr_od.application.currency_war.cw_observation import read_deploy_cap
+            cap = read_deploy_cap(ctx, screen)
+    except Exception:   # noqa: BLE001  读源失败 → 退基线(失败安全侧)
+        cap, level = None, None
+    diff = (cap - level) if (cap is not None and level) else 0
+    n = back_slots_from_cap_diff(diff)
+    if n == 8 and diff == 1:
+        note_7slots_pending(screen, cap, level, 'select_back_layout')
+    p = _layout_prefixes().get(n, _LAYOUT_PREFIX[_BACK_SLOTS_BASE])
+    try:
+        global _last_sel_log
+        _key = (n, diff, cap, level)
+        if _key != _last_sel_log:
+            _last_sel_log = _key
             from one_dragon.utils.log_utils import log
-            log.warning('[cw!][layout] 后排 %d 槽布局未建档(退 6 槽基线,识别/拖拽将错位;'
-                        '补档:交互实锤 → upsert 后排%d槽-1..%d → _LAYOUT_PREFIX 登记)',
-                        effective_back_slots(level), effective_back_slots(level),
-                        effective_back_slots(level))
+            log.info('[cw][layout] 后排选档: %d 格(cap=%s lv=%s diff=%s;'
+                     '口述公式 6+(cap-level),ADR-0385)', n, cap, level, diff)
     except Exception:   # noqa: BLE001
         pass
-    return None
+    return n, p
+
+
+def back_row_slot_rects_ctx(ctx, prefix: str) -> list[tuple[int, Rect]]:
+    """按布局前缀从 screen_info 枚举 ``[(slot_idx, rect), ...]``(N 升序至断档)。
+
+    前缀来自 :func:`select_back_layout`(ADR-0385 公式选档);空档 → [](调用方
+    退 :func:`fallback_back_slots` 基线)。**别在 6 槽坐标上外插**。
+    """
+    from sr_od.application.currency_war.cw_identity_obs import _area_rect
+    out: list[tuple[int, Rect]] = []
+    i = 1
+    while True:
+        rect = _area_rect(ctx, f'{prefix}-{i}')
+        if rect is None:
+            break
+        out.append((i, rect))
+        i += 1
+    return out
 
 
 def fallback_back_slots() -> list[tuple[int, Rect]]:

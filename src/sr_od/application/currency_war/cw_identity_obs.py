@@ -286,61 +286,17 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     """舞台已上阵角色(前排 4 + 后排 N)→ list[BenchChar](position_pref=front/back)。
 
     空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复(**不进 read_game_state**;见模块 docstring)。
-    布局选档 **level 驱动**(ADR-0281,旧 cap 驱动已废:cap 与布局无关,两帧同 lv7
-    cap8/9 同为 8 格实证):level=None → session 等级链(``_session_level``)→ 仍无 →
-    6 槽基线。旧 deploy_cap 参数已移除(cap 误读不再影响选档)。
+    布局选档 **cap 差驱动**(ADR-0385 口述公式「后台格数 = 6+(cap−level)」,旧
+    level 驱动已废——run 26 lv8 无召唤物局按 8 格读板失真实证):select_back_layout
+    现读 read_deploy_cap(未传 level 时 session 等级链);读不到 → 6 槽基线。
     """
     from sr_od.application.currency_war.cw_back_layout import (
-        _layout_prefixes,
         back_row_slot_rects_ctx,
-        effective_back_slots,
         fallback_back_slots,
-        note_pending_7slots,
+        select_back_layout,
     )
-    if level is None:
-        level = _session_level(ctx) or 6
-    back_slots = back_row_slot_rects_ctx(ctx, level) or fallback_back_slots()
-    # 布局停机钩子(r77d 起,ADR-0281 语义适配):停机条件 = **level 对应档无档**
-    # —— 现 6/8 都有档,正常运行永不触发;留着守「补档窗口」(_LAYOUT_PREFIX 已
-    # 登记而 screen_info 档未跟上,如未来 7 格确认后的过渡)。lv6 待采态走
-    # note_pending_7slots 留证(不停机,保守按 6 格跑)。真值坐标必须现场交互
-    # 闭环(拖角色逐位验证),离线暗框检测有 grounding 误换算教训。
-    # [ADR-0263 同病核查] 本钩子免疫 overlay 遮挡:判据来自 session level,
-    # 不裁备战 slot rect;帧态门(is_prep_like_frame)再排过渡帧。
-    try:
-        _slots_n = effective_back_slots(level)
-        note_pending_7slots(screen, level, 'read_deployed_chars')
-        if ctx.run_context is not None and _slots_n not in _layout_prefixes():
-            # r330(钩子归位·帧态门):停机/采集只在备战类精准帧触发——过渡/动画帧跳过
-            from sr_od.application.currency_war.cw_obs_core import (
-                is_prep_like_frame,
-            )
-            if not is_prep_like_frame(ctx, screen):
-                from one_dragon.utils.log_utils import log as _log0
-                _log0.info('[cw-hook][layout] 后排 %d 槽无档但帧非备战态'
-                           '→ 跳过(过渡帧防误触)', _slots_n)
-            else:
-                from pathlib import Path as _P
-
-                from one_dragon.utils.log_utils import log as _log
-                from sr_od.application.currency_war.cw_observe import cw_shot_unique
-                _shot = cw_shot_unique(screen, f'back_layout_{_slots_n}slots')
-                if _shot is not None:
-                    _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
-                        f'后排布局停机钩子(ADR-0281):level={level}(有效后排 {_slots_n} 槽)'
-                        f'布局未建档(_LAYOUT_PREFIX 已登记而 screen_info 无档,补档窗口态)。\n'
-                        f'现场验证流程(参照 8 槽闭环 r76):\n'
-                        f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
-                        f'2. 关商店 → 拖 bench 角色到各槽逐位识别验证;\n'
-                        f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
-                        f'4. upsert_screen_area 后排{_slots_n}槽-1..{_slots_n}(真值);\n'
-                        f'5. 删本 flag + 重启 MCP server。\n'
-                        f'截图: {_shot}', encoding='utf-8')
-                    _log.info('[cw-hook][layout] 后排 %d 槽无档(level=%s)→ 停机现场拖拽验证(截图 %s)',
-                              _slots_n, level, _shot)
-                    ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
-    except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
-        pass
+    _slots_n, _pfx = select_back_layout(ctx, screen, level=level)
+    back_slots = back_row_slot_rects_ctx(ctx, _pfx) or fallback_back_slots()
     front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
     back = identify_slots(screen, templates, back_slots, 'back')
     # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort

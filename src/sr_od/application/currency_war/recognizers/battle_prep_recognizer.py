@@ -166,16 +166,19 @@ class BattlePrepRecognizer(ScreenRecognizer):
         """
         # 装备(slot_idx → 装备名;先读,再注入 BenchChar.equips)。备战栏 below 不读(未上阵无 icon,机制恒空,
         # 读只产假 MISS 噪声 — 某模板 val 0.55-0.56,shot miss_slot5 实证无 icon)。
-        # 后排装备槽按 level 选档(ADR-0281:lv7+ → 8 格档「后排8槽」;固定 6 会漏位7-8)。
         phase0 = _read_phase_round_pure(ctx, image)
         level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
-        from sr_od.application.currency_war.cw_back_layout import back_prefix_for_level
-        _back_pfx, _back_n = back_prefix_for_level(level0)
+        # 后排装备槽按 cap 差公式选档(W209/ADR-0385 口述「后台格数=6+(cap−level)」;
+        # 旧 level 驱动已废)。7 格档未建档保守 8 格超集(select_back_layout 内辖留证)。
+        from sr_od.application.currency_war.cw_back_layout import (
+            select_back_layout as _sel_bl,
+        )
+        _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)
+        templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
         equip_grays = ensure_equip_tm_templates(ctx)
         front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
         back_equips = read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n) if equip_grays is not None else {}
         # 角色复用 BenchChar(read_deployed_chars 已返,含 star);只补 equips(按 slot 对齐注入)
-        templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
         front_line: list[BenchChar] | None = None
         back_line: list[BenchChar] | None = None
         bench: list[BenchChar] | None = None
@@ -204,8 +207,8 @@ class BattlePrepRecognizer(ScreenRecognizer):
             owned_equips = _owned or None
         phase = phase0
         level = level0
-        # D-50 旧告警(cap>level → 后排可能>6)已随 ADR-0281 作废:cap=宝钻叠加,
-        # 与布局无关(两帧同 lv7 cap8/9 同为 8 格);宝钻信息由 prep_director debug 记。
+        # W209/ADR-0385:cap>level(宝钻/钻石叠加)不再只是经济信息——它直接编码
+        # 后排扩展量(口述公式 6+(cap−level)),布局选档已在函数头消费。
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None;与 director 同源——消掉「MCP 报 100 而
         # director gated=26」双真相)。extras 序列化 None→

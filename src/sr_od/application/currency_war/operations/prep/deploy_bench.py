@@ -10,8 +10,9 @@
 ``_sell_offtarget_deployed`` 卖 off-target 腾位(卖拖拽同样走 drag_char)。
 
 **槽位坐标**:screen_info「货币战争-备战」(备战栏 9 / 前排 4 / 后排 N),经 ``_row_centers`` 读全部已建模
-``{prefix}-N`` area。**后排 N 随财富宝钻(+1 团队规模)/ 诅咒·宝石剑泽尔里奇(−1)变化**,基准 6;>6 时
-screen_info 需补 后排-7+ area(或运行时检测传入),``_row_centers`` 自动跟上(读全,不硬编码)。
+``{prefix}-N`` area。**后排 N 按 cap 差公式选档**(ADR-0385 口述「后台格数 = 6+(cap−level)」,
+``_back_row_centers`` → ``cw_back_layout.select_back_layout`` 单一入口;旧 level 驱动已废),
+``_row_centers`` 自动跟上(读全,不硬编码)。
 """
 import time
 from pathlib import Path
@@ -139,6 +140,28 @@ def exclude_system_units(chars: list) -> list:
     return out
 
 
+def offtarget_sell_allowed(char_id: str, bonds: set[str],
+                           target_factions: set[str],
+                           target_cores: set[str]) -> bool:
+    """W209/ADR-0386:off-target 卖出候选判据(纯函数,锁测试面)。
+
+    run 26 实锤(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
+    off-target,把买/演进层仍在买入的引擎·配方体系件(仙舟三人组:藿藿×3/
+    饮月×2/爻光×1)反复卖出——同期商店 plan 不停 ``Buy(仙舟/...)`` = 买→卖→买
+    振荡(两层目标视图分歧:deploy 看终局 comp,买/演进层看意向体系对/骨架纪律)。
+    振荡熔断:**引擎/配方体系件(``_DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
+    围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
+    同源反向。真要换血走演进层显式 SellDeployed/CompTransaction(有保护集分级,
+    ADR-0382),不归 deploy 的机会性腾位通道管。
+    """
+    if char_id and char_id in target_cores:
+        return False   # core_char 辅助保留(live 花火误卖根由)
+    if bonds & target_factions:
+        return False   # target 单位,保留
+    # 引擎/配方体系件恒不卖(W209 振荡熔断,ADR-0386)
+    return not (bonds & _DEPLOY_FENCE)
+
+
 class DeployBench(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
@@ -154,7 +177,7 @@ class DeployBench(SrOperation):
         """从 screen_info 读**全部** ``{prefix}-N`` 区域中心(按 N 升序)。
 
         数量 = screen_info 已建模数(不硬编码):前排 4 / 备战栏 9 / 后排按
-        ``_back_row_centers_by_level`` 选档(6/8 格两档,ADR-0281;**别假设
+        ``_back_row_centers`` 选档(cap 差公式,ADR-0385;**别假设
         「后排-」只有 6 个**——档前缀由调用方传入)。
         """
         si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
@@ -186,27 +209,20 @@ class DeployBench(SrOperation):
             lv = max(lv, st.level)
         return lv or None
 
-    def _back_row_centers_by_level(self) -> list[Point]:
-        """r77e→ADR-0281:后排槽位按 **level** 选档布局(狸猫局 8 槽错位根修)。
+    def _back_row_centers(self) -> list[Point]:
+        """W209/ADR-0385:后排槽位按 **cap 差公式** 选档(口述「后台格数=6+(cap−level)」)。
 
-        槽数 = ``effective_back_slots(level)``(level≤5→6 / ≥7→8 / ==6→保守 6+
-        留证);按「后排N槽-」档取(与 read_deployed_chars 同源);level 读不到/无档
-        → 退基线「后排-」(旧行为)。旧 cap 驱动已废(cap=宝钻叠加,与布局无关)。
+        ``select_back_layout`` 单一入口(cap=read_deploy_cap 直读,level=session
+        等级链);7 格档未建档保守 8 格超集 + 留证。旧 level≥7→8 格模型
+        (ADR-0281)归因错误已废——run 26(lv8 无召唤物局)按 8 格坐标拖
+        不存在的 7/8 号格 + 幻影空位把部署卡死在 bench = 崩坏根因①。
         """
-        from one_dragon.utils.log_utils import log as _log
         from sr_od.application.currency_war.cw_back_layout import (
-            _LAYOUT_PREFIX,
-            effective_back_slots,
-            note_pending_7slots,
+            select_back_layout,
         )
-        lv = self._session_level() or 6
-        note_pending_7slots(self.last_screenshot, lv, 'deploy_bench')
-        n = effective_back_slots(lv)
-        if n in _LAYOUT_PREFIX:
-            return self._row_centers(_LAYOUT_PREFIX[n])
-        _log.warning('[cw!][layout] deploy 侧 后排 %d 槽布局未建档(退 6 槽基线;'
-                     '补档流程见 ADR-0281)', n)
-        return self._row_centers('后排')
+        _n, _pfx = select_back_layout(self.ctx, self.last_screenshot,
+                                      level=self._session_level())
+        return self._row_centers(_pfx)
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
     def deploy(self) -> OperationRoundResult:
@@ -225,17 +241,16 @@ class DeployBench(SrOperation):
 
         bench = self._row_centers('备战栏')
         front = self._row_centers('前排')
-        # r77e 审计 BUG-4b/1c → ADR-0281:后排槽位必须按 **level 档布局**取(与
-        # read_deployed_chars 同源)——狸猫局 lv7+ 的 8 槽坐标若用基线 6 槽会错位
-        # (编号↔坐标两套参照系):_deploy_deterministic 漏计固定单位(假未满白拖)
-        # + _sell_offtarget_deployed 用 8 槽编号索引 6 槽表 → 卖错邻槽。统一走
-        # cw_back_layout 选档(level 驱动)。
-        back = self._back_row_centers_by_level()
+        templates = self._get_templates()   # W209:先载模板(布局选档/身份读都要;缓存 ctx)
+        # W209/ADR-0385:后排槽位按 **cap 差公式** 选档(select_back_layout 单一
+        # 入口,与 read_deployed_chars 同源)——旧 level≥7→8 格模型归因错误
+        # (ADR-0281),run 26 lv8 无召唤物局按 8 格坐标拖不存在的 7/8 号格 +
+        # 幻影空位(393/1529 段恒无人)假「板未满」→ 白拖重试把部署卡死在 bench。
+        back = self._back_row_centers()
         if len(bench) == 0:
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
             return self.round_success(DeployBench.STATUS_NO_BENCH)
 
-        templates = self._get_templates()
         # deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
         _match = self.ctx.cw_match
         _board = (_match.session.last_state.board
@@ -500,20 +515,15 @@ class DeployBench(SrOperation):
         # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
         # 上阵的代价 > 高读白拖一次,不对称取舍)。
         _cap = read_deploy_cap(self.ctx, scr)
-        # r80 审计 d-风险1:入场帧(收起商店 1s 过渡)失读时布局已退基线 6 槽;
-        # 此处 fresh 帧按 **level** 重建 back 布局(ADR-0281:level 驱动;cap 误读
-        # 不再影响选档——cap 只用于上面的板满门)。
+        # W209/ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
+        # fresh 帧按 **cap 差公式** 重建 back 布局(select_back_layout 单一入口,
+        # cap 复用上面现读值——口述「后台格数=6+(cap−level)」)。
         from sr_od.application.currency_war.cw_back_layout import (
-            _LAYOUT_PREFIX,
-            effective_back_slots,
-            note_pending_7slots,
+            select_back_layout as _sel_bl,
         )
-        _lv = self._session_level()
-        if _lv is not None:
-            note_pending_7slots(scr, _lv, 'deploy_bench.midloop')
-            _n = effective_back_slots(_lv)
-            if _n in _LAYOUT_PREFIX:
-                back = self._row_centers(_LAYOUT_PREFIX[_n])
+        _n2, _pfx2 = _sel_bl(self.ctx, scr, level=self._session_level(), cap=_cap)
+        if _pfx2:
+            back = self._row_centers(_pfx2)
         if _cap is None:
             _lv_chain = (getattr(_sess, 'last_level_obs', 0)
                          if _sess is not None else 0) or 0
@@ -845,14 +855,18 @@ class DeployBench(SrOperation):
         for d in deployed:
             if sold >= max_sell:
                 break
-            if d.char_id and d.char_id in (target_cores or set()):   # core_char 辅助保留(live 花火误卖根因)
-                continue
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
                 continue   # 系统单位(cost==0)已在入口剔除(ADR-0281 件4)
             bonds = set(ch.factions) | set(ch.flows)
-            if bonds & target_factions:
-                continue   # target 单位,保留
+            if not offtarget_sell_allowed(d.char_id, bonds, target_factions,
+                                          target_cores or set()):
+                if bonds & _DEPLOY_FENCE:
+                    # W209/ADR-0386 振荡熔断:引擎/配方体系件保留(与围栏同源反向禁卖)
+                    log.info(f'[cw-deploy] off-target 卖出熔断(W209):{d.char_id}'
+                             f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
+                             f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
+                continue
             row = front if d.position_pref == 'front' else back
             if not (1 <= d.slot <= len(row)):
                 continue

@@ -318,21 +318,15 @@ class PrepDirector(SrOperation):
                                       '单次按 OCR 噪声忽略,复现 ≥3 次才排期)'),
                              source='paddle_cap')
             elif cap is not None:
-                # ADR-0281(布局模型重审,r414 语义适配):布局选档改 **level 驱动**
-                # —— cap 误读(如 8/8→12)不再影响选档,旧「cap 落入未实拍档留证」
-                # 分支随之作废(7/9/10/11 档是循环论证幻影,已删)。本块只剩:
-                # ① lv6 待采态留证(7 格存在性,note_pending_7slots);
-                # ② 宝钻叠加(cap>level)记 debug(与布局无关,纯经济信息)。
-                from sr_od.application.currency_war.cw_back_layout import (
-                    note_pending_7slots,
-                )
-                note_pending_7slots(screen, st.level, 'prep_director',
-                                    extra={'cap': cap})
+                # W209/ADR-0385:cap>level(宝钻/钻石叠加)不再只是经济信息——口述
+                # 公式「后台格数 = 6+(cap−level)」使 cap 差直接驱动布局选档
+                # (cw_back_layout.select_back_layout,含 7 格未建档留证);
+                # 旧 lv6 待采留证(note_pending_7slots)随 level 驱动模型作废删除。
                 # review-L1(r353b):cap==level 是常态(无宝钻),别打
                 # "宝钻×0"误导判读;仅真叠加(cap>level)才记
                 if cap > st.level:
-                    log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法)',
-                              cap, cap - st.level)
+                    log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法;后排扩展 +%d 格)',
+                              cap, cap - st.level, cap - st.level)
             dep_n = read_deployed_count(self.ctx, screen)
             if cap is not None and dep_n is not None:
                 obs.deploy_vacancy = max(0, cap - dep_n)
