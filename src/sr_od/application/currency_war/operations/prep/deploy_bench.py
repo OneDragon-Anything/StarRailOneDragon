@@ -41,7 +41,7 @@ from sr_od.application.currency_war.cw_line_defs import (
 from sr_od.application.currency_war.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
-from sr_od.application.currency_war.cw_observation import read_deploy_cap
+from sr_od.application.currency_war.cw_observation import read_deploy_cap_debounced
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -522,7 +522,12 @@ class DeployBench(SrOperation):
         # 诅咒-1/宝钻+1 —— 读到时直用,max 会把诅咒降级吃掉);**失读才 max 兜底**(单调链
         # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
         # 上阵的代价 > 高读白拖一次,不对称取舍)。
-        _cap = read_deploy_cap(self.ctx, scr)
+        # W218(ADR-0395):cap 直读同时驱 板满门 + 布局公式通道(select_back_layout
+        # 复用 _cap)=「读数→行动」高危点——瞬态低读(cap<level 域外,过渡帧旧值
+        # 残影 run 27 型)→ 板满假判 → 留 bench 战力真空(r60 实证,贵方向);
+        # 改走域防抖读(ADR-0286:域外重读一帧,仍域外 → None → 走下方失读
+        # max 兜底链,不在单帧瞬态值上行动;高读白拖一次被游戏拒 = 便宜方向不变)。
+        _cap = read_deploy_cap_debounced(self.ctx, scr, self._session_level())
         # W209/ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
         # fresh 帧按 **cap 差公式** 重建 back 布局(select_back_layout 单一入口,
         # cap 复用上面现读值——口述「后台格数=6+(cap−level)」)。

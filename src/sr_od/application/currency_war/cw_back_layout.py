@@ -13,7 +13,9 @@
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
 
 1. **公式通道**::func:`back_slots_from_cap_diff`「6+(cap−level)」——cap =
-   ``read_deploy_cap``(paddle 直读权威),level = session 等级链(单调链防毒化)。
+   ``read_deploy_cap_debounced``(paddle 直读 + ADR-0286 域防抖:域外重读一帧,
+   仍域外拒信退基线,W218/ADR-0395 接线;显式传 cap 的调用方自担防抖),
+   level = session 等级链(单调链防毒化)。
    「钻石局检测」由此消解(无需识别钻石图标,两 OCR 读数相减即扩展量)。
 2. **CV 通道**::func:`cv_back_slots` 画面实测——后排 y 带槽位存在性签名
    (空槽暗框 vs 无格背景的灰度 std 判别,标定见 :data:`_CV_SLOT_STD_MIN`)。
@@ -296,8 +298,14 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
             from sr_od.application.currency_war.cw_identity_obs import _session_level
             level = _session_level(ctx)
         if cap is None:
-            from sr_od.application.currency_war.cw_observation import read_deploy_cap
-            cap = read_deploy_cap(ctx, screen)
+            # W218(ADR-0395):cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
+            # diff → 公式通道选错档(格数类高危点);改走 read_deploy_cap_debounced
+            # (ADR-0286 域防抖:域外重读一帧,仍域外 → None → 下方 diff=0 退 6 格
+            # 基线,失败安全侧;level 未知时域不可判,退原直读语义)。
+            from sr_od.application.currency_war.cw_observation import (
+                read_deploy_cap_debounced,
+            )
+            cap = read_deploy_cap_debounced(ctx, screen, level)
     except Exception:   # noqa: BLE001  读源失败 → 退基线(失败安全侧)
         cap, level = None, None
     diff = (cap - level) if (cap is not None and level) else 0
