@@ -15,6 +15,7 @@
    - [combat.md](combat.md) — 战斗侧:伤害三乘区 / 星级收益 / 扣血结构(为什么装备与星级重要)
    - [economy.md](economy.md) — 经济侧:牌池 / 刷新概率 / 商店槽位行为(买与刷的机制边界)
    - [board_structure.md](board_structure.md) — 板面格子结构:前台 4/后台 6 恒定,钻石/召唤物才扩后台;等级只定上场人数 cap(推翻旧 level 驱动布局模型)
+   - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略:穿着即合成/前后台限定/冶金炉(单件刷+拖角色=刷+拆)/扳手/无用装备回收流水线/期望课题(口述权威)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
 2. **玩家纪律**(人怎么打;机制之上的打法约束,口述最高权威):
