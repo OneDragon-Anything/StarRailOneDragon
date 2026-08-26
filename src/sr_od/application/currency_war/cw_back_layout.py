@@ -186,18 +186,53 @@ def select_back_layout(ctx, screen, level: int | None = None,
     return r['n'], r['prefix']
 
 
+def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int | None]:
+    """W209h 防抖重读(ADR-0385 决策 11;run 27 停机事故:CV 瞬态假阳——
+    特效/粒子把 1458 位单帧 std 顶到 6.5(阈值 6.0 擦线过,真槽 ≥10.5/
+    背景 ≤2.9 之间无人带),公式 6 与 fixture 复测一致)。
+
+    触发条件:CV 读数产生「新格数」(≠公式值 且 ∉ 已建档档 {6,8}——即会
+    触发 7 格采集/停机的读数)。house 先例 = shop 未识别卡 r34:重读 2 帧
+    仍 miss 才真停。本处:隔 ~1s 重读 2 次,**三次一致才按 CV 值行动**;
+    任一不一致 = 瞬态自愈,退公式值。重读帧由 ``ctx`` 现截(生产)/测试
+    monkeypatch ``ctx.screenshot``(不可截 = None,按不一致处理)。
+
+    返回三次读数序列 ``[first, r2, r3]``(None = 该次不可读,视为不一致)
+    ——留证/判读消费。
+    """
+    readings = [first_cv]
+    try:
+        import time as _time
+        for _ in range(2):
+            _time.sleep(1.0)   # 隔帧重读(~1s,同 r34 house 先例节奏)
+            _scr = None
+            try:
+                if ctx is not None and hasattr(ctx, 'screenshot'):
+                    _scr = ctx.screenshot()
+            except Exception:   # noqa: BLE001  重截失败按不可读
+                _scr = None
+            readings.append(cv_back_slots(_scr) if _scr is not None else None)
+    except Exception:   # noqa: BLE001  防抖 best-effort,失败退公式
+        pass
+    return readings
+
+
 def resolve_back_slots(ctx, screen, level: int | None = None,
                        cap: int | None = None) -> dict:
     """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
 
     - ``formula_raw``/``formula_n``:公式原始格数/映射后格数(7→8 超集);
-    - ``cv_n``:CV 实测格数(None=不可判);
+    - ``cv_n``:CV 实测格数(None=不可判;防抖未通过时为 None 语义=退公式);
+    - ``cv_readings``:防抖重读序列(W209h;仅新格数读数触发时非 None);
     - ``n_raw``:对账后原始格数(不一致采 CV;公式值 7 保留 7 供钩子判档);
     - ``n``/``prefix``:运行值(未建档档 7 → 8 格超集);
     - ``cap``/``level``/``diff``:读数快照(判读/留证)。
 
     对账:一致 → 公式值;CV 实测存在且不符 → **CV 值**(画面事实>推导)+
     :func:`note_channel_conflict` 留证两值;CV None → 公式值兜底。
+    **防抖(W209h/决策 11)**:CV 新格数读数(≠公式 且 ∉{6,8})单帧不行动
+    ——重读 2 次三次一致才采 CV 值;任一不一致 = 瞬态,退公式值 + 留证
+    (阈值不动,瞬态用重读解)。
     """
     try:
         if level is None or level <= 0:
@@ -213,11 +248,33 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     formula_raw = _BACK_SLOTS_BASE + d            # 未映射真值(7 = 未建档档)
     formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
+    cv_readings: list[int | None] | None = None
     if cv_n is not None and cv_n != formula_n:
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
-        n_raw = cv_n
+        if cv_n not in _LAYOUT_PREFIX:
+            # W209h 防抖:新格数读数(会触发 7 格采集/停机)单帧不行动——
+            # 重读 2 次三次一致才采;任一不一致 = 瞬态自愈退公式 + 留证序列
+            cv_readings = _cv_confirm_readings(ctx, screen, cv_n, formula_n)
+            if not (len(cv_readings) == 3
+                    and all(r == cv_n for r in cv_readings)):
+                from one_dragon.utils.log_utils import log
+                log.info('[cw][layout] CV 新格数 %s 防抖未过(重读序列 %s;'
+                         '疑特效/粒子瞬态,W209h)→ 退公式值 %s',
+                         cv_n, cv_readings, formula_n)
+                try:
+                    from sr_od.application.currency_war.cw_observe import obs_conflict
+                    obs_conflict(
+                        'back_layout_cv_transient', cv_n, formula_n, screen,
+                        verdict=('瞬态自愈-退公式值(W209h 防抖重读;'
+                                 '重读序列见 ctx.cv_readings;阈值不动'
+                                 '(6.0 标定有据),单帧擦线读数不行动)'),
+                        source='select_back_layout', cap=cap, level=level)
+                except Exception:   # noqa: BLE001
+                    pass
+                cv_n = None   # 退公式(下游 n_raw = 公式真值)
+        n_raw = cv_n if cv_n is not None else formula_raw
     else:
         n_raw = formula_raw
     n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 7 → 8 格超集(模块 docstring)
@@ -234,6 +291,7 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     except Exception:   # noqa: BLE001
         pass
     return {'formula_raw': formula_raw, 'formula_n': formula_n, 'cv_n': cv_n,
+            'cv_readings': cv_readings,
             'n_raw': n_raw, 'n': n, 'prefix': p, 'cap': cap, 'level': level,
             'diff': diff}
 

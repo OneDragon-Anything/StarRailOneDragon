@@ -101,6 +101,18 @@ run 26 = lv8 无召唤物局(cap=level=8 → 应 6 格),代码按 8 格坐标跑
     召唤物局:记录 cap/level/CV 实测格数三点对」**,攒数据后定公式是否需
     召唤物修正项。常量 `FORMULA_SUMMON_TENSION_NOTED`(cw_back_layout)
     记档该未解项。
+11. **CV 新格数防抖重读(W209h,run 27 停机事故热修)**:run 27 起 69s 被
+    `hook:back_layout_no_profile` 停——flag「对账格数=7(公式 6/CV 7;cap=8
+    lv=8 diff=0)」;编排者复算两帧逐位 std:停机帧 1458 位=**6.5**(阈值 6.0
+    擦线过;真槽 ≥10.5/背景 ≤2.9 之间**无人带**),fixture 同位 2.2,公式
+    6 与复测一致 → **特效/粒子瞬态把单帧顶过阈值 = CV 假阳**。修法(阈值
+    不动——6.0 标定有据,瞬态问题用重读解):CV 读数产生「新格数」
+    (≠公式值 且 ∉ 已建档档 {6,8},即会触发 7 格采集/停机的读数)→ 单帧
+    不行动:隔 ~1s 重读 2 次(`ctx.screenshot` 现截),**三次一致才按 CV
+    值行动**(停机/选档);任一不一致 = 瞬态自愈,退公式值 +
+    `back_layout_cv_transient` 留证(带重读序列,resolve 返回 `cv_readings`)。
+    house 先例 = shop 未识别卡 r34(重读 2 帧仍 miss 才真停)。辖域单点
+    收敛:`resolve_back_slots` 的 CV 消费点(停机钩子读其 n_raw,自动受益)。
 
 ## Considered Options
 
