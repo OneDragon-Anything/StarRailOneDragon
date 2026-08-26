@@ -1382,10 +1382,17 @@ def evolution_step(state: GameState, session=None,
             # W160/ADR-0363 件2:末窗换档拆板冻结——末轮换档天然无
             # 回场窗(W159 §1:丢失 90% 落 r8-9),加深收益 < 引擎
             # 丢失风险系统性为真;纯加深(deploy-only)不辖。
+            # W228 同型排查件:本行与 engine-complete 同为「只记计数不记
+            # 名单」的部署观测行——一并补下场名单(格式/口径同 W228 注释,
+            # 索引按事务前 state.deployed 解析,冻结支不执行,state 未变)。
+            _ff_und_names = [d.char_id for d in
+                             (state.deployed[i]
+                              for i in (tx.undeploy or [])) if d]
             log.info('[cw][ev][final-freeze] r%d 演进换档冻结'
-                     '(%s,undeploy=%d sell=%d)——末窗无回场,'
+                     '(%s,undeploy=%d sell=%d undeployed=%s)——末窗无回场,'
                      '纯加深/填位照旧', state.round_num, tx.reason,
-                     len(tx.undeploy or []), len(tx.sell or []))
+                     len(tx.undeploy or []), len(tx.sell or []),
+                     _ff_und_names)
             return []
         post = simulate(state, tx)
         if not (post.action_log and
@@ -1451,11 +1458,19 @@ def evolution_step(state: GameState, session=None,
                                  '未过豁免复核(%s)——末窗不发射',
                                  state.round_num, tx_c.reason)
                 if applied and freeze_ok:
+                    # W228:undeploy 追加下场名单(角色名 list,空则 [])——
+                    # W220 判读问题⑥:只记计数时补完保护锚点(W192-3
+                    # 「undeploy 不含希儿系」)无法核到名单级。索引按事务前
+                    # state.deployed 解析(契约口径;本行发射于执行前,state
+                    # 未变,槽位即生成期槽位;空槽防御性滤 None,ADR-0392)。
+                    _und_names = [d.char_id for d in
+                                  (state.deployed[i]
+                                   for i in (tx_c.undeploy or [])) if d]
                     log.info('[cw][ev][engine-complete] r%d %s'
-                             '(deploy=%d undeploy=%d sell=%d)',
+                             '(deploy=%d undeploy=%d sell=%d undeployed=%s)',
                              state.round_num, tx_c.reason,
                              len(tx_c.deploy), len(tx_c.undeploy or []),
-                             len(tx_c.sell or []))
+                             len(tx_c.sell or []), _und_names)
                     mem.pending = None
                     return [tx_c]
                 if not applied:
