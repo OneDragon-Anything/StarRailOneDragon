@@ -14,6 +14,7 @@
 1. **玩法机制**(游戏怎么运转;自足无前置):
    - [combat.md](combat.md) — 战斗侧:伤害三乘区 / 星级收益 / 扣血结构(为什么装备与星级重要)
    - [economy.md](economy.md) — 经济侧:牌池 / 刷新概率 / 商店槽位行为(买与刷的机制边界)
+   - [board_structure.md](board_structure.md) — 板面格子结构:前台 4/后台 6 恒定,钻石/召唤物才扩后台;等级只定上场人数 cap(推翻旧 level 驱动布局模型)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
 2. **玩家纪律**(人怎么打;机制之上的打法约束,口述最高权威):
@@ -70,7 +71,7 @@
 | 改买入/意向/锁定逻辑 | user_playstyle 全文 + transition_combos(配方定义) + transitions(开局分级) + economy(息律) |
 | 改评分/经济类权重 | user_playstyle + economy |
 | 掉血归因/战斗机制理解 | user_playstyle [27] + combat |
-| 改换阵/部署/装备分配 | user_playstyle [21][24][29] + combo_methodology |
+| 改换阵/部署/装备分配 | user_playstyle [21][24][29] + combo_methodology + **board_structure(格子结构,布局选档前提)** |
 | 终局阵容设计 | final_comps/ + plaza_methodology |
 | 阶段转型(P1→P2→P3) | transitions §换血点 + user_playstyle [26] + plaza_methodology(阶段阵容) |
 
