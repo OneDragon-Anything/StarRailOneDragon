@@ -453,6 +453,15 @@ class BuyShopCards(SrOperation):
                 'v3_intention': cw_telemetry.serialize_intention(
                     getattr(_sess, 'v3_intention', None)),
             }
+            # W222 遥测缺口①(W220 判读实锤:两局 decisions.state.equips 恒空):
+            # owned 穿戴池的唯一 session 写端在 equip_all,读端拷贝只接在
+            # _pseudo_state(default_strategy 决策内部 state)——record 用的
+            # 本 state 是 OCR 现读对象,equip reader 不填 state.equips →
+            # 落盘链断在这里。record 前补拷(同 hp/node_type/dual_track 的
+            # session 拷贝族)。⚠️ 位置必须在 decide_prep **之后**:
+            # cw_comps 装备动态权重读 state.equips,提前拷=改决策行为
+            # (观测链修复禁越界;本行之后 plan 已定,执行走点击不读 state)。
+            state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])
             cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)

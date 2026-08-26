@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import re
 from pathlib import Path
 
@@ -18,10 +17,13 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.cv2_utils import save_image
+
+# W222 遥测缺口②同源:旧 ``logging.getLogger(__name__)`` 是无 handler 裸
+# logger(框架日志走命名 logger 'OneDragon',propagate=False 不经 root),
+# 本模块 warning/info(garbage 拒写/divergent 不覆盖/注册表新增)从未落地。
+from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.cw_obs_core import BRIEFING_SCREEN, _area_rect, _ocr
 from sr_od.context.sr_context import SrContext
-
-_log = logging.getLogger(__name__)
 
 
 def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Point]]:

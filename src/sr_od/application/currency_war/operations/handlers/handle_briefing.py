@@ -16,13 +16,19 @@ boss 候选集不进 session(无消费方;遥测/对账用)。简报在 loop 前
 入口大 op(``StartCurrencyWarMatch.advance_to_prep``)只做调度:循环检测当前屏 → 调对应独立 op
 (本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
 """
-import logging
 import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+
+# W222 遥测缺口②(W220 判读实锤:本文件日志全量 0 条):旧版
+# ``logging.getLogger(__name__)`` 是无 handler 的裸 logger——框架日志走
+# 命名 logger 'OneDragon'(log_utils.log,propagate=False 不经 root),
+# 裸模块 logger 的 INFO 无处落地 → 「简报首领候选集读得」等行从未可见,
+# 判读无法区分「read_bosses 恒空」vs「幂等跳过」。改挂框架 logger。
+from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.cw_observation import (
     load_affix_effects_from_file,
     read_affix_effect,
@@ -33,8 +39,6 @@ from sr_od.application.currency_war.cw_observation import (
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
-
-_log = logging.getLogger(__name__)
 
 
 class HandleBriefing(SrOperation):
@@ -80,6 +84,11 @@ class HandleBriefing(SrOperation):
             if _bosses:
                 self.ctx.cw_briefing_bosses = _bosses
                 _log.info('简报首领候选集读得(x 序,无位面序,不进 session): %s', _bosses)
+            else:
+                # W222:空读也要可见——此前空读无日志,「read_bosses 恒空」
+                # vs「幂等跳过」无法区分;每简报一次(节点一次成功,无重试刷屏)。
+                _log.info('简报首领候选集未读到(read_bosses 空:区域-首领行 OCR '
+                          '无 4-8 字中文名;W219 对比锚需走简报屏 OCR 兜底)')
         # 读敌人难度数值(简报「标识-敌人难度」→ ctx.cw_enemy_difficulty 中转 → session → state;3.5.2 接线)
         if self.ctx.cw_enemy_difficulty is None:
             from sr_od.application.currency_war.cw_briefing_obs import (

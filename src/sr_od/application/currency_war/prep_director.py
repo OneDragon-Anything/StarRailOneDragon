@@ -1049,6 +1049,15 @@ class PrepDirector(SrOperation):
         """F8:obs+action 序列落 telemetry(P1 仅落盘;replay 评分后置)。"""
         try:
             st = obs.state
+            if st is not None:
+                st = st.copy()
+                # W222 遥测缺口①同源(shop record 点已补,本处是步进行):
+                # obs.state 是 OCR 现读态(equips 恒空),从 session owned 快照
+                # 补拷。copy 后再写——cw_comps 装备权重读 state.equips,
+                # 原地写会污染 director 后续决策输入(观测链修复禁越界)。
+                _sess = self._session()
+                st.equips = list(getattr(_sess, 'last_owned_equips', []) or []) \
+                    if _sess is not None else []
             cw_telemetry.record_decision(
                 st if st is not None else GameState(),
                 target_comp=(self._session().target_comp.name

@@ -1,5 +1,4 @@
 
-import logging
 import time
 from typing import ClassVar
 
@@ -7,6 +6,10 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+
+# W222 遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
+# propagate=False),本文件日志从未落地 → 改挂框架 logger。
+from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.operations.handlers.handle_briefing import (
     HandleBriefing,
 )
@@ -15,8 +18,6 @@ from sr_od.application.currency_war.operations.handlers.handle_invest_env import
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
-
-_log = logging.getLogger(__name__)
 
 
 class StartCurrencyWarMatch(SrOperation):
