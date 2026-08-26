@@ -416,6 +416,13 @@ class DecisionV2Registry:
     #: 豁免复核 = 净效果 pair on-board 与引擎数不减(ADR-0363 件2
     #: 防丢语义同向:补上不是拆)。
     evolve_engine_completion_enabled: bool = True
+    # ===== W201/ADR-0381 补完缺口 owned 口径(distinct;修②)=====
+    #: 补完事务缺口判定的 owned 计数口径:True=distinct 名单数——
+    #: 同名副本是 3合1 升星素材非配方件([20] 配方=不同成员;board
+    #: 同名唯一 → 副本永远不可上,全羁绊逐件计数会造出「永远填不满
+    #: 的幻影缺口」,W200:227/276 补完轮轮空转);False=回 W174 后
+    #: 全羁绊逐件计数(ADR-0371 首版口径)。
+    engine_complete_distinct_owned: bool = True
     # ===== W179/ADR-0372 P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
     #: 总开关:False=回 W174 后行为(A/B 基线臂;FORM 相位地板对配方对
     #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 BuyCard

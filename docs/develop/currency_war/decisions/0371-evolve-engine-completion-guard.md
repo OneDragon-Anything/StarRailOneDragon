@@ -41,11 +41,15 @@ A/B 通道,关=回 W170 后行为;`cw_evolution.evolution_step` 完成提案
 分支,**先于常规提案枚举**):
 
 - 触发:pair 体系集(p1_pair ∪ transition_pair;希儿系=单卡判据,
-  希儿在手未上场)非空,且某体系 owned(bench∪deployed,全羁绊口径)
-  ≥ tier ∧ on-board(board_factions 口径)< tier → 缺口;多缺口取
+  希儿在手未上场)非空,且某体系 owned(bench∪deployed)≥ tier ∧
+  on-board(board_factions 口径)< tier → 缺口;多缺口取
   最接近成型者(board/tier 比,平手按 TRANSITION_TRAITS 序)。
+  (**owned 口径已由 ADR-0381 修订**:distinct 名单数,非本 ADR
+  首版的全羁绊逐件计数——副本是 3合1 素材非配方件,逐件计数造
+  幻影缺口;up_cands 同批加列表内同名去重。)
 - 动作 CompTransaction(`_engine_completion_tx`):bench 该体系成员
-  (同名已在场剔除=W65 3合1 素材语义;最高星优先)上场;room 不足
+  (同名已在场剔除=W65 3合1 素材语义,且列表内同名去重=ADR-0381;
+  最高星优先)上场;room 不足
   → undeploy deployed 中最弱**非保护**件(保护集=pair 全体系成员 ∪
   引擎件 ∪ 锁定目标件 ∪ 种子窗,复用 `_locked_protected_names` +
   pair 成员判据);bench 容量不足 → sell 最弱非保护 bench 件腾位;

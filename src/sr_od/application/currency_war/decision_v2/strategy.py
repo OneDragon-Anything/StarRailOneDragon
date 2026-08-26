@@ -269,6 +269,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
                 # W174/ADR-0371:引擎补完守卫(own-gap 修法,A/B 通道,
                 # 关=回 W170 后行为)
                 engine_completion=registry.evolve_engine_completion_enabled,
+                # W201/ADR-0381:补完缺口 owned 口径 distinct(A/B 通道,
+                # 关=回 W174 后全羁绊逐件计数)
+                complete_distinct=registry.engine_complete_distinct_owned,
                 # W192/ADR-0375:希儿系贡献件并入守卫/保护集辖域
                 # (A/B 通道,关=回 W188 后行为)
                 seele_scope=registry.guard_seele_scope_enabled,

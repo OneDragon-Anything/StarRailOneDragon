@@ -208,15 +208,24 @@ def _pair_systems(session) -> dict[str, int]:
 def _engine_completion_tx(state: GameState,
                           session,
                           seele_scope: bool = True,
+                          distinct_owned: bool = True,
                           ) -> tuple[CompTransaction, str] | None:
-    """W174/ADR-0371 引擎补完事务构造(own-gap 修法主件)。
+    """W174/ADR-0371 引擎补完事务构造(own-gap 修法主件;
+    W201/ADR-0381 修口径与去重,见各行注)。
 
-    触发:pair 体系 owned(bench∪deployed,全羁绊口径)≥ tier ∧
-    on-board(board_factions 口径) < tier——「拥有已够却从未同时上场」
-    (W173:8/11 never-2 局)。动作:bench 该体系成员(同名去重/最高星
-    优先)上场;room 不足 undeploy 最弱**非保护**件(保护集 = pair
-    成员 ∪ 引擎件 ∪ 锁定目标件 ∪ 种子窗,复用既有保护判据);bench
-    容量不足 sell 最弱非保护 bench 件腾位;腾不出 → None(落回常规提案)。
+    触发:pair 体系 owned(bench∪deployed)≥ tier ∧ on-board
+    (board_factions 口径)< tier——「拥有已够却从未同时上场」
+    (W173:8/11 never-2 局)。owned 口径(W201/ADR-0381,
+    ``distinct_owned`` 注入):True=distinct 名单数——同名副本是
+    3合1 升星素材非配方件([20] 配方=不同成员,板上同名唯一);
+    False=回 W174 后全羁绊逐件计数(副本凑数也计 owned)。
+    动作:bench 该体系成员(同名已在场剔除/最高星优先,且
+    **列表内同名去重**——W201 修①,仅剔「已在场」会让 bench
+    两份同名副本同进 deploy 列表被 simulate 拒 duplicate_on_board,
+    13/144/204 三局搁浅的实 bug)上场;room 不足 undeploy 最弱
+    **非保护**件(保护集 = pair 成员 ∪ 引擎件 ∪ 锁定目标件 ∪
+    种子窗,复用既有保护判据);bench 容量不足 sell 最弱非保护
+    bench 件腾位;腾不出 → None(落回常规提案)。
 
     结构保证(末窗冻结豁免的依据,ADR-0363 件2 同向):只下非保护件
     = pair/引擎贡献件不下场 → 净效果 pair on-board 计数与引擎数不减。
@@ -243,6 +252,14 @@ def _engine_completion_tx(state: GameState,
         return sys_key in _char_factions(bc)
 
     def _owned_cnt(sys_key: str) -> int:
+        # W201/ADR-0381 修②:默认 distinct 口径(同名副本是 3合1 升星
+        # 素材非配方件,board 同名唯一 → 副本永远不可上,distinct 缺口
+        # 才是真实缺口;与 W173 判据口径 factions∪flows+distinct 对齐
+        # ——_char_factions 即 factions∪flows)。off=回 W174 全羁绊
+        # 逐件计数(副本凑数也计 owned,227/276 幻影缺口源)。
+        if distinct_owned:
+            return len({bc.char_id for bc in pool
+                        if _is_member(sys_key, bc) and bc.char_id})
         return sum(1 for bc in pool if _is_member(sys_key, bc))
 
     # 缺口体系:owned 已够 ∧ 上场不足(希儿系=单卡:希儿在手 ∧ 未上场
@@ -265,14 +282,27 @@ def _engine_completion_tx(state: GameState,
                                  if t[1] in tier_of else 99))[0]
 
     # 上场候选:bench 的该体系成员(同名已在场剔除 = 3合1 素材不上,
-    # W65 语义;最高星优先),取缺口数
-    up_cands = sorted(
+    # W65 语义;最高星优先),取缺口数。**列表内同名去重**(W201 修①,
+    # 无 flag 实 bug 修复):同名只上一份(最高星),另一份留 bench
+    # ——旧版只剔「已在场」,bench 两份同名副本同进列表 → simulate
+    # 拒 duplicate_on_board → 退避关窗(W200:13/144/204 三局搁浅)。
+    # 未识别件(char_id 空)不参与折叠(身份未知不敢合并)。
+    _seen_ids: set[str] = set()
+    _cands_sorted = sorted(
         (bc for bc in state.bench
          if bc is not None and _is_member(sys_key, bc)
          and (not bc.char_id or bc.char_id not in deployed_names)),
         key=lambda bc: -(bc.star or 1))
     need_n = tier - on_board
-    up_cands = up_cands[:max(0, need_n)]
+    up_cands = []
+    for bc in _cands_sorted:
+        if bc.char_id:
+            if bc.char_id in _seen_ids:
+                continue
+            _seen_ids.add(bc.char_id)
+        up_cands.append(bc)
+        if len(up_cands) >= max(0, need_n):
+            break
     if not up_cands:
         return None   # 手握的全是同名副本(合成素材)→ 无可上,归常规通道
 
@@ -1136,6 +1166,7 @@ def evolution_step(state: GameState, session=None,
                    engine_guard: bool = True,
                    final_freeze: bool = True,
                    engine_completion: bool = True,
+                   complete_distinct: bool = True,
                    seele_scope: bool = True,
                    sell_floor: bool = True) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
@@ -1166,6 +1197,13 @@ def evolution_step(state: GameState, session=None,
     时,先于常规提案发补完事务(bench 体系件上场,room 不足换下最弱
     非保护件);末窗豁免复核 = 净效果 pair on-board 与引擎数不减
     (与件2 防丢语义同向:补上不是拆)。关 = 回 W170 后行为。
+    W201/ADR-0381:``complete_distinct``(registry
+    ``engine_complete_distinct_owned`` 注入,A/B 通道)——补完
+    缺口的 owned 计数改 distinct 名单数(副本是 3合1 素材非配方件,
+    [20] 配方=不同成员);关 = 回 W174 后全羁绊逐件计数。同批修①
+    (无 flag 实 bug):``_engine_completion_tx`` 的 up_cands 列表内
+    同名去重——旧版只剔「同名已在场」,bench 双副本同进 deploy 列表
+    被 simulate 拒 duplicate_on_board 退避关窗(W200:13/144/204)。
 
     W192/ADR-0375:``seele_scope``(registry ``guard_seele_scope_
     enabled`` 注入,A/B 通道)——希儿系贡献件并入保护集(``_locked_
@@ -1252,7 +1290,8 @@ def evolution_step(state: GameState, session=None,
     # 才算配方)。被拒 → 退避登记后落回常规提案,不阻塞本轮流。
     if engine_completion:
         comp_pair = _pair_systems(session)
-        built = _engine_completion_tx(state, session, seele_scope=seele_scope)
+        built = _engine_completion_tx(state, session, seele_scope=seele_scope,
+                                      distinct_owned=complete_distinct)
         if built is not None:
             tx_c, sys_key = built
             sig_c = (_COMPLETION_REASON, sys_key, 0, '', '')
