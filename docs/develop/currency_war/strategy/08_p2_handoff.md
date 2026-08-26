@@ -13,7 +13,15 @@
 > sim/生产双侧字段 + 档位离线标定)已实现,语义 as-built 见 §4.2
 > Phase 0 条与 §5 表;标定结论、口径收窄(core2 = 上场件全量
 > star≥2;时点 = 首轮 decide_prep 入口,gold 含 P2 r1 收入)与数据
-> 边界的单一源 = ADR-0399。Phase 1-3 仍未实现。
+> 边界的单一源 = ADR-0399。
+>
+> **Phase 1 已落地(ADR-0400,2026-09-02)**:P1 末窗承接门
+> (formed_stop 承接维 + EV 承接缺口项,判据单一源
+> ``handoff.handoff_gate_gap``;A/B ``simulate_handoff_ab``)。语义
+> as-built 见 strategy/03 成型停手门与「P1 末窗承接门」段;默认关
+> (A/B outcome 面无一致正方向,sim 对 core2 维无因果通道不可仲裁
+> ——通道保留,复验挂账 ADR-0377 form 加星级分量),数字与裁决的
+> 单一源 = ADR-0400。Phase 2-3 仍未实现。
 
 ## 1. 问题(为什么需要这个模型)
 
@@ -182,7 +190,7 @@ P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首�
 | 期 | 内容 | 批量级 | 验收 |
 |---|---|---|---|
 | **Phase 0** | ~~快照纯函数 + 双侧观测 + 离线标定~~ **已落地(ADR-0399)**:单调标定过(hp 维 (20,50) 严格单调;板面维单切点单调,总档位两档)、run 26/28 回验各自命中主罚维、零漂移门 diff={} | — | 判据 1/2 过;新单帧锁 test_cw_w224_handoff |
-| Phase 1 | formed_stop 承接维 + EV 承接缺口项(A/B flag,registry 注入) | 1-2 批 | §4.1 判据 3(hp0 率↓/存活轮↑配对);P1 零漂移;行为变更三同步 |
+| **Phase 1** | ~~formed_stop 承接维 + EV 承接缺口项(A/B flag,registry 注入)~~ **已落地(ADR-0400)**:判据 3 三面=A/B 配对(行为面过/零漂移过/outcome 面不过→**默认关**,通道保留;sim 对 core2 维无因果通道=W226 声明边界的兑现)+ 构造局锁 test_cw_w227_handoff_gate | — | 判据 3 outcome 面如实报败(hp0/存活轮无正方向),默认 flag=OFF 裁决见 ADR-0400;复验挂 ADR-0377 form 星级分量 |
 | Phase 2 | P2 早期姿态偏置(V_D 参数偏置,registry A/B) | 1 批 | 同上配对口径;敏感性端点一致 |
 | Phase 3 | hp<10 保命路径收编(三臂合账) | 1 批 | run 28 型构造局单帧锁 + sim 分层对照 |
 

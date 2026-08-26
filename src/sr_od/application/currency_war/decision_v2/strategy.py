@@ -141,6 +141,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
         # W224/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
         session.v3_handoff = None
         session.v3_handoff_plane = None
+        # W227/ADR-0400:P1 末窗承接门缺口(filters 每段写;跨局清零)
+        session.v3_handoff_gap = 0
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:

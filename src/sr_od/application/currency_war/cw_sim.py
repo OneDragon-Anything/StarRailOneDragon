@@ -1429,6 +1429,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
             # 语义正确辖域)
             _round_formed_stop = False
+            # W227/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
+            # formed_stop 承接维/EV 缺口项的判读数据面)
+            _round_handoff_gap = 0
             # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
             # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
             # 的「连续放弃轮」数据源)
@@ -1475,6 +1478,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
                     _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
                                                 False))
+                    # W227/ADR-0400:承接门缺口(filters.formed_stop_
+                    # active 写;轮入口快照,判读「门扣住哪些轮」)
+                    _round_handoff_gap = int(
+                        getattr(sess, 'v3_handoff_gap', 0) or 0)
                 if not use_refresh:
                     acts = [a for a in acts
                             if not isinstance(a, RefreshShop)]
@@ -2004,6 +2011,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold': st.gold, 'hp': st.hp,
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
+                # W227/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
+                # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
+                'handoff_gap': _round_handoff_gap,
                 # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
                 'phase': _round_phase,
                 'form_ok': _round_form_ok,
@@ -2681,6 +2691,111 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
             [r.final_hp for r in res_a]), 2),
         'avg_hp_off': round(statistics.mean(
             [r.final_hp for r in res_b]), 2),
+    }
+
+
+def simulate_handoff_ab(n: int = 300, *, pool: str | Path = 'snapshot',
+                        seed_base: int = 0, planes: int = 2,
+                        invest: bool = True) -> dict:
+    """W227/ADR-0400 P1 末窗承接门 A/B(设计件 08 §4.1 判据 3 口径)。
+
+    A 臂=handoff_gate_enabled 显式开(承接门行为;不依赖默认值——
+    默认关是 A/B 裁决产物,ADR-0400)/B 臂=关(回 W226 前行为=当前
+    默认);同池同 seed 配对、同进程 flag 对照(ADR-0362 §③)。报告三面:
+
+    - headline:P2 存活族(p2_entered/存活轮/hp0 率/胜率)——验收
+      判据 3 的主指标(hp0 率下降/存活轮上移);
+    - 末窗观测:A 臂承接门扣住轮数(ledger handoff_gap>0 的轮)、
+      r8 买入分布、进场承接档位分布(档位因果面);
+    - P1 非末窗零漂移门:plane1 round<handoff_gate_min_round 的
+      ledger 行逐 seed 逐位 diff(判据 3 后半;应恒空)。
+    """
+    import dataclasses
+    import json as _json
+    import logging
+    import statistics
+
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.decision_v2.strategy import (
+        DecisionV2Strategy,
+    )
+    logging.disable(logging.CRITICAL)
+    try:
+        _strat_on = DecisionV2Strategy(
+            registry=dataclasses.replace(DEFAULT_REGISTRY,
+                                         handoff_gate_enabled=True))
+        _strat_off = DecisionV2Strategy(registry=DEFAULT_REGISTRY)
+        res_a = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                             invest=invest, strategy=_strat_on)
+                 for i in range(n)]
+        res_b = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                             invest=invest, strategy=_strat_off)
+                 for i in range(n)]
+    finally:
+        logging.disable(logging.NOTSET)
+
+    def _headline(results: list[SimResult]) -> dict:
+        entered = [r for r in results if r.p2_entered]
+        combat_t = sum(r.p2_combat_total for r in entered)
+        return {
+            'p2_entered_rate': len(entered) / len(results),
+            'avg_p2_rounds': round(statistics.mean(
+                [r.p2_rounds for r in entered]), 2) if entered else None,
+            'p2_win_rate': (round(sum(r.p2_combat_wins for r in entered)
+                                  / combat_t, 4) if combat_t else None),
+            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
+                            / len(entered) if entered else None),
+        }
+
+    # P1 非末窗零漂移门(判据 3 后半):逐 seed 比较两臂 plane1
+    # round<handoff_gate_min_round 的账本行(逐位;含 actions/state)
+    _min_r = DEFAULT_REGISTRY.handoff_gate_min_round
+    drift_seeds: list[int] = []
+
+    def _pre_final(rows: list[dict]) -> list[dict]:
+        return [row for row in rows
+                if row.get('plane') == 1
+                and (row.get('round_num') or 0) < _min_r]
+
+    for i, (a, b) in enumerate(zip(res_a, res_b, strict=True)):
+        if _json.dumps(_pre_final(a.ledger), default=str,
+                       ensure_ascii=False) != _json.dumps(
+                _pre_final(b.ledger), default=str, ensure_ascii=False):
+            drift_seeds.append(seed_base + i)
+
+    # 末窗观测(A 臂):承接门扣住轮/r8 买数/进场档位分布
+    gate_hold_rounds = sum(
+        1 for r in res_a for row in r.ledger
+        if (row.get('handoff_gap') or 0) > 0)
+    r8_buys = [sum(1 for act in (row.get('actions') or [])
+                   if act.get('__type__') == 'BuyCard')
+               for r in res_a for row in r.ledger
+               if row.get('plane') == 1 and row.get('round_num') == _min_r]
+    tiers: dict[str, int] = {}
+    for r in res_a:
+        if r.p2_entered and r.p2_handoff:
+            t = str(r.p2_handoff.get('tier'))
+            tiers[t] = tiers.get(t, 0) + 1
+    return {
+        'n': n, 'planes': planes, 'invest': invest,
+        'pool_fingerprint': res_a[0].pool_fingerprint,
+        'headline_on': _headline(res_a),
+        'headline_off': _headline(res_b),
+        'gate_hold_rounds_on': gate_hold_rounds,
+        'r8_avg_buys_on': (round(statistics.mean(r8_buys), 2)
+                           if r8_buys else None),
+        'r8_avg_buys_off': round(statistics.mean(
+            [sum(1 for act in (row.get('actions') or [])
+                 if act.get('__type__') == 'BuyCard')
+             for r in res_b for row in r.ledger
+             if row.get('plane') == 1
+             and row.get('round_num') == _min_r]), 2),
+        'entry_tier_dist_on': tiers,
+        'p1_zero_drift': {'min_round': _min_r,
+                          'drift_seeds': drift_seeds,
+                          'ok': not drift_seeds},
     }
 
 

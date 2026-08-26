@@ -154,6 +154,38 @@ def handoff_snapshot(state: GameState,
     )
 
 
+def handoff_gate_gap(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry | None = None) -> int:
+    """P1 末窗承接门缺口(W227/ADR-0400;设计件 08 §4.2 Phase 1 挂载
+    点 a/b 的共用判据,单一源)。
+
+    返回承接缺口单位数:0=不辖(开关关/非 P1 末窗/投影档位已达标);
+    >0=投影承接档位距 ``registry.handoff_gate_tier_target`` 的差。
+    辖域 = plane==1 且 round_num>=registry.handoff_gate_min_round
+    (末窗 r8-r9 boss 窗,设计件 §4.2)——**只辖末窗**是「P1 非末窗
+    零漂移门」的结构前提(设计件 §4.1 判据 3),调用方无需重复判窗。
+
+    投影档位 = ``handoff_snapshot`` 在**当前轮决策入口**现算(纯函数,
+    hp/board 取现值 = 「若末窗后带当前资产进 P2」的近端投影;末窗内
+    距 P2 出口 ≤2 轮,板面/血量漂移有限,run 28/31 型低血局的主罚维
+    hp 在此投影下已可判)。消费面:
+
+    - ``filters.formed_stop_active``(挂载点 a:成型停手承接维——
+      缺口>0 不停手继续投资);
+    - ``arbiter.interest_rule`` 买侧 EV 账(挂载点 b:承接缺口项,
+      末窗破息投资授权放宽)。
+
+    观测:``session.v3_handoff_gap``(sim 账本轮行 handoff_gap)。
+    """
+    reg = registry if registry is not None else _default_registry()
+    if not reg.handoff_gate_enabled:
+        return 0
+    if state.plane != 1 or state.round_num < reg.handoff_gate_min_round:
+        return 0
+    snap = handoff_snapshot(state, session, reg)
+    return max(0, reg.handoff_gate_tier_target - handoff_tier(snap))
+
+
 def _default_registry() -> DecisionV2Registry:
     """延迟 import(与 phase.py 同式,防 import 环)。"""
     from sr_od.application.currency_war.decision_v2.registry import (

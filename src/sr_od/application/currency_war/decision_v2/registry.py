@@ -536,6 +536,36 @@ class DecisionV2Registry:
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内
     #: 的定向找件是 V_D 的本体场景,不再需要独立常量通道))
 
+    # ===== W227/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
+    #: 总开关:False=回 W226 前行为(formed_stop 纯 P1 语义;interest_rule
+    #: EV 账无承接项)。True 时 P1 末窗(r>=handoff_gate_min_round)投影
+    #: 承接档位(handoff.handoff_gate_gap 单一源)未达标:①成型停手线
+    #: 不停手(filters.formed_stop_active 承接维——缺口>0 继续投资,
+    #: [18] 位面末 ALL IN 的承接扩展);②interest_rule 买侧破息 EV 账
+    #: 加承接缺口项(V += handoff_ev_gap_bonus×缺口)。只辖 P1 末窗
+    #: (P1 非末窗零漂移门的结构前提)。
+    #: **默认关(A/B 裁决,ADR-0305 先例)**:n=300 同池(3be1d310)同
+    #: seed 配对,行为面已触发(r8 买 1.02 vs 0.67/门扣住 1499 轮/
+    #: P1 非末窗零漂移过)但 outcome 面无一致正方向(hp0 0.939 vs
+    #: 0.935 微升/存活轮 3.71 vs 3.77 微降,噪声带内)——W226 已声明
+    #: sim 边界:core2(星级深度)在胜率模型(ADR-0377 form=engines+
+    #: level)无因果通道,承接门主投资方向恰是该维 → sim 不可仲裁
+    #: 收益方向,禁「不劣」措辞默认开;通道保留,待 ADR-0377 form 加
+    #: 星级分量后复验(ADR-0400 验证节)。数字与裁决单一源=ADR-0400。
+    handoff_gate_enabled: bool = False
+    #: 末窗下界(r8-r9 boss 窗;设计件 §4.2「P1 r8-r9(boss 窗)」)。
+    #: 与 formed_stop_min_round(=7)的差 = r7 成型轮不受承接门辖
+    #: (承接账只算末窗,早停语义不动)
+    handoff_gate_min_round: int = 8
+    #: 承接达标总档位(handoff_tier 下限;ADR-0399 标定结论:总档位
+    #: 实际两档,门控语义足够——目标 1=「承接不足判定档」)
+    handoff_gate_tier_target: int = 1
+    #: EV 承接缺口项单位值(缺口 1 档 = 买侧 V 加此值;量级=forming_bias
+    #: 同阶的保守下限——只放宽末窗破息买的 EV 授权,不触地板族/升级账/
+    #: 刷新口径(ADR-0352 D 平面 R 上界纪律不动))
+    handoff_ev_gap_bonus: float = 5.0
+
+
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
     constraints: tuple[str, ...] = (

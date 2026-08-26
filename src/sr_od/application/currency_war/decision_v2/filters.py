@@ -17,6 +17,7 @@ session.v3_formed_stop 供遥测/检查器。
 """
 from __future__ import annotations
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
 )
@@ -48,6 +49,11 @@ def formed_stop_active(state: GameState, session: StrategySession,
        decision_v2.phase(意向锁×羁绊凑够×核心上场 2★;裁决后无
        等级项——等级通过上场完整性进入判定)。与 W114 前差异:
        核心必须上场 2★(旧 bench∪deployed);lv≥5 项删除(Q2 裁决)。
+    4. (W227/ADR-0400 承接维)r ≥ handoff_gate_min_round(末窗)时
+       还需投影承接档位达标(handoff.handoff_gate_gap==0)——form_ok
+       是 P1 语义「能不能过 P1」,承接维补「带进 P2 够不够活」:
+       末窗承接缺口>0 → 不停手继续投资([18] 位面末 ALL IN 的承接
+       扩展);非末窗 gap 恒 0,零漂移)。
 
     命中后层2 后置步丢弃全部 BuyCard 候选(应急态亦不豁免——
     W105 指认的「低血→应急强制买」反因正是本纪律的对象;[13] 板面
@@ -68,8 +74,26 @@ def formed_stop_active(state: GameState, session: StrategySession,
                             registry.formed_stop_min_round)
     if state.round_num < min_round:
         return False
+    # W227/ADR-0400 承接维:缺口在 form_ok 之前算(观测字段无论成型
+    # 与否都写——sim 账本 handoff_gap 的数据源);非末窗/开关关恒 0,
+    # 行为零漂移。
+    from sr_od.application.currency_war.decision_v2.handoff import (
+        handoff_gate_gap,
+    )
+    gap = handoff_gate_gap(state, session, registry)
+    session.v3_handoff_gap = gap
     from sr_od.application.currency_war.decision_v2.phase import form_ok
-    return form_ok(state, session, registry)
+    if not form_ok(state, session, registry):
+        return False
+    if gap > 0:
+        # 末窗承接未达标:不停手继续投资(设计件 08 §4.2 Phase 1
+        # 挂载点 a;[18] 位面末最后一战是损失最小 ALL IN 时机的承接
+        # 扩展——低血/全1★板带差资产进 P2,存金无意义,换板面战力)
+        log.info('[cw][d2] 承接门:r%d 承接缺口 %d(总档位<%d),'
+                 '不停手继续投资(ADR-0400)',
+                 state.round_num, gap, registry.handoff_gate_tier_target)
+        return False
+    return True
 
 
 def crisis_hoard_active(state: GameState,

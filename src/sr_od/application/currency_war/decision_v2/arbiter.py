@@ -235,6 +235,21 @@ def _check_constraint(name: str, cand: Candidate,
             fg = (bd or {}).get('form_gold') or 0.0
             if fg > v:
                 v = fg
+            # W227/ADR-0400 EV 承接缺口项(设计件 08 §4.2 Phase 1
+            # 挂载点 b):P1 末窗投影承接档位未达标时买侧 V 加
+            # handoff_ev_gap_bonus×缺口——末窗破息投资授权阈值放宽
+            # ([18] 位面末 ALL IN 的承接扩展;[19] 三态谱裁决变量④的
+            # 承接位)。非末窗 gap=0 零漂移;只辖买侧(板面投资)——
+            # 刷新的搜寻消耗口径不动(ADR-0352 D 平面 R 上界纪律),
+            # 升级平台账在 levelup_ev_basis,不在此双计。
+            from sr_od.application.currency_war.decision_v2.handoff import (
+                handoff_gate_gap,
+            )
+            _gap = handoff_gate_gap(state, session, registry)
+            if _gap > 0:
+                v += registry.handoff_ev_gap_bonus * _gap
+                if auth is not None:
+                    auth['handoff_gap'] = _gap   # 授权依据 trace(判读)
         ev = v - c
         if ev > 0:
             if auth is not None:
