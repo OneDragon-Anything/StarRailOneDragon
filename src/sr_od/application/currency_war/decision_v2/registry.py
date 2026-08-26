@@ -470,6 +470,32 @@ class DecisionV2Registry:
     #: 连 TT 三羁绊辖域一起关,A/B 配对臂(只隔离辖域差)与回退粒度
     #: 都不对;辖域修正是 0373/0371「四体系」声称的语义补全,默认开。
     guard_seele_scope_enabled: bool = True
+    # ===== W194/ADR-0378 [33] 稳态 LevelUp 多击组(W185 泛化)=====
+    #: 总开关:False=回 W193 后行为(A/B 基线臂——多击组只在轮内
+    #: deploy_cap 拒绝触发补偿时发射,Catch-22 原状)。True 时
+    #: arbiter 末段主动发稳态多击组(remediation.steady_state_
+    #: levelup_group):进轮 cap 满 ∧ bench 有方向件([33] 稳态字面
+    #: 语义)→ [LevelUp]*clicks_to_next_level 整组,授权=
+    #: levelup_ev_basis 按 n×总价(稳态下人口位臂天然成立)+
+    #: 逐动作 gold_floor 事务性重验(与 deploy_cap 补偿臂同一重验
+    #: 链)。修「恒 lv6 通道缺陷」(W185:每轮 1 击吞吐,lv6→lv7 需
+    #: 7 轮,死亡窗内不跨;run15 型死局的 lv7 价格带永不可达)。
+    #: 每轮至多一组(session.v2_steady_lv_used 轮键,防刷后 re-decide
+    #: 段链连发);boss 轮禁升([32])与 level_max 前置守卫保留。
+    #: **辖域 P2+**(首版全位面泛化 n=300 引入 P1 never2 9→10 回归,
+    #: W194 辙回——P1 多击已由 deploy_cap 补偿臂覆盖)。
+    levelup_multihit_enabled: bool = True
+    # ===== W194/ADR-0378 件3:P2 核心件首件同档买入门(W183 方向②)=====
+    #: 总开关:False=回 W193 后行为(A/B 基线臂)。True 时 P2 段
+    #: (plane≥2)意向核心(v3_core_names)的**首件**(working 现持无
+    #: 同名)在 gold_floor 拒绝前放行「买入后同息档」的自然店购买
+    #: (arbiter._p2_core_firstpiece_exempt)——[31]②「目标件刷新出现
+    #: =唯一最高优先级」+[11] 同档零息损+[22]③ 弃购代价=再遇窗口
+    #: (3费@lv6 E=27 次刷新 / 5费 60-180 轮)。修 W194 探针实证的
+    #: 「P2 穷轮(gold<50)核心件在店被 HOARD 地板 50 一刀切拦」
+    #: (n=10:核心在店 6 轮漏买 5,全部 gold≤12 穷轮)。单轮 1 笔
+    #: ([31]② 只买它);零刷新授权(与 W170/W185 刷门管辖不交集)。
+    p2_core_firstpiece_enabled: bool = True
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

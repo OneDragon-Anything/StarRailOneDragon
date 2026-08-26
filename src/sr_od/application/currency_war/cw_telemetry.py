@@ -87,6 +87,13 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
       嵌套 LineTrack 同构)——IntentionState 字段演进(如 W145 调整
       锁定语义)时自动跟上,不改本函数。
 
+    **可变容器深拷贝(W194/ADR-0378)**:dict/list 字段值经
+    ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
+    ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
+    落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
+    早期行**(sim P2 段改写同局 P1 行的 tracks,W193 对比门曾排除
+    该字段)。tuple/str 不可变,原样保留(类型不漂移)。
+
     只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
     """
     if not is_dataclass(ist):
@@ -97,6 +104,10 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
         if isinstance(v, set):
             out[f.name] = sorted(v)
         elif is_dataclass(v):
+            out[f.name] = _to_jsonable(v)
+        elif isinstance(v, (dict, list)):
+            # W194/ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # 见 docstring);tuple 不可变不辖(类型不漂移)
             out[f.name] = _to_jsonable(v)
         else:
             out[f.name] = v

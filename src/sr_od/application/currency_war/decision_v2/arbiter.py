@@ -179,6 +179,9 @@ def _check_constraint(name: str, cand: Candidate,
             if _p1_early_buy_exempt(cand, working, state, session,
                                     registry, auth):
                 return None    # W179/ADR-0372:早期买入门放行(同息档)
+            if _p2_core_firstpiece_exempt(cand, working, state, session,
+                                          registry, auth):
+                return None    # W194/ADR-0378:P2 核心件首件同档放行
             shortfall = floor + cost - working.gold
             return RejectReason('gold_floor', 'gold', shortfall,
                                 f'金<{floor}(地板;现{working.gold}-费{cost})')
@@ -389,6 +392,64 @@ def _p1_early_buy_exempt(cand: Candidate, working: GameState,
     return True
 
 
+def _p2_core_firstpiece_exempt(cand: Candidate, working: GameState,
+                               state: GameState,
+                               session: StrategySession,
+                               registry: DecisionV2Registry,
+                               auth: dict | None = None) -> bool:
+    """W194/ADR-0378 件3:P2 意向核心**首件**同息档买入门(W183 方向②
+    「自然店目标件首件优先买」的实现)。
+
+    病灶(W194 探针,n=10 seeds planes=2):P2 穷轮(gold<50)核心件
+    自然出现在店 6 轮漏买 5——HOARD 相位 interest_floor 50 对同档
+    ([11] 零息损口径)购买一刀切拦,弃购代价=核心再遇窗口
+    (W183:3费@lv6 E=27 次刷新 / 5费 7-8 级 60-180 轮)。
+
+    逐笔判据(与 W179 p1_early 同构,P1 的配方对语义在 P2 换为核心
+    目标语义):
+
+    - plane ≥ 2 ∧ 常态经济态(非应急/boss 窗/war——[18]/[32] 优先);
+    - 买入件 ∈ 意向核心名集(``candidates._core_names`` 单一源);
+    - **首件**:working 现持(deployed∪bench)无同名(镜像 W175
+      distinct 对 working 现持判定的纪律);
+    - **买入后同息档**([11] 逐字口径;跨档照旧走既有通道,本门
+      不设第二道金常数门);
+    - 单轮放行 < 1 笔([31]②「目标件刷新出现=唯一最高优先级,
+      只买它」;session.v2_round_p2_core,轮键重置)。
+
+    零刷新授权(与 W170/W185 刷门管辖动作不交集);授权依据 trace
+    auth['p2_core'] 进执行 log。
+    """
+    if not registry.p2_core_firstpiece_enabled \
+            or state.plane < 2 \
+            or not isinstance(cand.action, BuyCard):
+        return False
+    if is_emergency(state, registry) \
+            or boss_window_active(state, session, registry) \
+            or current_mode(session) != 'economy':
+        return False
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _core_names,
+    )
+    _name = cand.action.card.name
+    if _name not in _core_names(session):
+        return False
+    # 首件判据:对 working 现持(同轮前序买入已反映)
+    if _name in ({getattr(d, 'char_id', '') for d in working.deployed or ()}
+                 | {b.char_id for b in (working.bench or [])
+                    if b is not None}):
+        return False
+    cost = cand.action.card.cost or 3
+    if (working.gold - cost) // 10 != (working.gold or 0) // 10:
+        return False    # 跨息档([11]:跨档损息,不走本门)
+    if getattr(session, 'v2_round_p2_core', 0) >= 1:
+        return False
+    if auth is not None:
+        auth['p2_core'] = (f'P2 核心首件同息档放行(金{working.gold}'
+                           f'-费{cost})')
+    return True
+
+
 def _register_accepted(a: Action, state: GameState,
                        session: StrategySession) -> None:
     """采纳动作的同轮簿记(ADR-0328):登记点=动作采纳处(同一事务域),
@@ -507,6 +568,11 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if auth_note.get('p1_early'):
                 session.v2_round_p1_early = (
                     getattr(session, 'v2_round_p1_early', 0) + 1)
+            # W194/ADR-0378 件3:P2 核心首件门单轮笔数(轮键重置见
+            # strategy.decide_prep)
+            if auth_note.get('p2_core'):
+                session.v2_round_p2_core = (
+                    getattr(session, 'v2_round_p2_core', 0) + 1)
             # ADR-0328:采纳即登记(r408 同轮簿记在动作采纳处完成——
             # 同趟后续 SELL/BUY 同名候选的守卫立即可见,不再等
             # decide_prep 尾部统一回写)。
@@ -548,9 +614,52 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 资源型拒绝捕获点②(N2/S2):refresh 收尾裁决的金拒也是
             # 拒绝事件——漏收则 S2 报警态 refresh 变现链死。
             res.rejections.append(Rejection(reason, cand, val))
+    _steady_levelup_pass(working, state, session, registry, res)
     _run_remediation_pass(working, state, session, registry, res,
                           disc_view)
     return res
+
+
+def _steady_levelup_pass(working: GameState, state: GameState,
+                         session: StrategySession,
+                         registry: DecisionV2Registry,
+                         res: ArbiterResult) -> GameState:
+    """[33] 稳态多击组趟(W194/ADR-0378;在补偿趟**之前**——推进后的
+    working 回传给补偿趟重验,防双趟各自对着陈旧金位验证)。
+
+    每轮至多一组(``session.v2_steady_lv_used`` 轮键,decide_prep 轮首
+    重置——刷后 re-decide 段链不连发);组构造在
+    ``remediation.steady_state_levelup_group``,事务性重验与补偿组
+    同链(逐动作资源三约束+simulate,任一失败整组放弃)。
+    """
+    if getattr(session, 'v2_steady_lv_used', False):
+        return working
+    from sr_od.application.currency_war.decision_v2.remediation import (
+        steady_state_levelup_group,
+    )
+    acts = steady_state_levelup_group(working, state, session, registry)
+    if not acts:
+        return working
+    wk = working
+    for a in acts:
+        if _resource_blocked(a, wk, state, session, registry) is not None:
+            log.info('[cw][d2][steady-lv] r%d 放弃:整组事务性重验失败',
+                     state.round_num)
+            session.v3_steady_lv_abandoned = getattr(
+                session, 'v3_steady_lv_abandoned', 0) + 1
+            return working
+        wk = simulate(wk, a)
+    # 插入位置=首个已采纳 RefreshShop 之前(与补偿组同款:组内动作
+    # 语义属旧店段,refresh 后 re-decide 才自洽;无 refresh 末尾追加)
+    _first_refresh = next(
+        (i for i, a in enumerate(res.actions)
+         if isinstance(a, RefreshShop)), None)
+    if _first_refresh is None:
+        res.actions.extend(acts)
+    else:
+        res.actions[_first_refresh:_first_refresh] = acts
+    session.v2_steady_lv_used = True    # 轮键重置(decide_prep 轮首)
+    return wk
 
 
 def _run_remediation_pass(working: GameState, state: GameState,

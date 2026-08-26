@@ -407,6 +407,94 @@ def _compensate_bench(working: GameState, state: GameState,
     return [*sells, BuyCard(a.card, reason='d2_' + rej.cand.tag)]
 
 
+def steady_state_levelup_group(working: GameState, state: GameState,
+                               session: StrategySession,
+                               registry: DecisionV2Registry,
+                               ) -> list[Action]:
+    """[33] 稳态 LevelUp 多击组(W194/ADR-0378;W185 泛化方向 1 落地)。
+
+    触发面从「轮内 deploy_cap 拒绝」解耦——W185 实证该触发器结构性
+    失活(``select_deployments`` 在 deployed≥cap 时把全部 bench 件归
+    held → 无部署候选 → deploy_cap 拒绝不发生 → 多击组永不触发,
+    Catch-22:恰是升级最该提速的稳态没有任何触发器)。本函数按
+    [33] 稳态字面语义主动授权:
+
+    - **稳态判据**(进轮快照 ``state``,与 levelup_ev_basis 人口位臂
+      同源):**plane ≥ 2**(辖域限 P2+——P1 的多击通道已由
+      deploy_cap 补偿臂覆盖(W185 run16 p1r7 形态),全位面泛化在
+      n=300 引入 never2 9→10 回归,W194 辙回)+ cap 满
+      (deployed ≥ max_units)∧ bench 有方向件(∈ ``_target_names``:
+      意向骨架/引擎件)——「进轮时已满员 + 目标件躺 bench 等位」
+      ([33]:刷出框架单位 → 花金升级 → 让它上场,升级的触发时机
+      包含「有框架单位等着上场」);
+    - 前置守卫与 ``_compensate_slot`` 臂① 全同:非 boss 轮
+      ([32] 禁升)、level < level_max、cap 由 level 驱动
+      (deploy_cap 真值 > level 时升级不抬 cap);
+    - 组 = [LevelUp]*n,n=clicks_to_next_level(从 ``working``
+      xp_progress 现算——同轮主通道已采纳的单击计入后取余量);
+    - 授权 = ``levelup_ev_basis`` 按 n×总价单次判(稳态下人口位臂
+      天然成立;可负担性 after≥0 入口门),auth_basis 写入每个
+      LevelUp(ADR-0354 观测,与补偿臂同构);
+    - 金/资源事务性重验在 arbiter 侧(逐动作 _resource_blocked +
+      simulate,与补偿组同一重验链——本函数只构造不重验,
+      ``remediation_pass`` 同款契约)。
+
+    纯构造无副作用;不满足判据返回 []。
+    """
+    if not registry.levelup_multihit_enabled:
+        return []
+    if state.plane < 2:
+        return []    # 辖域 P2+(W194 裁决:P1 回归辙回,见 docstring)
+    # 稳态判据(进轮快照,与 ev.levelup_ev_basis 臂① 的 state 读点同源)
+    from sr_od.application.currency_war.cw_state import bench_occupied
+    if len(state.deployed or []) < state.max_units():
+        return []    # cap 未满:方向件直接上场即可([32](b) 升级纯浪费)
+    if bench_occupied(state.bench or []) == 0:
+        return []
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    if not any(b is not None and b.char_id in _target_names(state, session)
+               for b in (state.bench or [])):
+        return []    # bench 无方向件:非 [33] 人口位形态
+    # 前置守卫(_compensate_slot 臂① 同款)
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        boss_window_active,
+    )
+    from sr_od.application.currency_war.decision_v2.ev import (
+        levelup_ev_basis,
+    )
+    boss = boss_window_active(state, session, registry)
+    cap_level_driven = (state.deploy_cap is None
+                        or state.deploy_cap <= state.level)
+    if boss or state.level >= registry.level_max or not cap_level_driven:
+        return []
+    from sr_od.application.currency_war.cw_economy import xp_click_cost
+    from sr_od.application.currency_war.cw_state import (
+        XP_PER_BUY as _XP_PER_BUY,
+    )
+    from sr_od.application.currency_war.cw_state import (
+        XP_TO_NEXT_LEVEL as _XP_TO_NEXT_LEVEL,
+    )
+    cost = xp_click_cost(state)
+    _xp = working.xp_progress or (0, 1)
+    _cur = _xp[0] if _xp else 0
+    _need = _XP_TO_NEXT_LEVEL.get(working.level, _XP_PER_BUY * 2)
+    remain = max(0, _need - _cur)
+    if remain <= 0:
+        return []    # 已跨级(simulate 清零结转)——无余量可补
+    n = -(-remain // _XP_PER_BUY)
+    total = n * cost
+    _basis = levelup_ev_basis(
+        state, session, registry, working.gold, total,
+        _target_names(state, session))
+    if not _basis:
+        return []    # EV 总账拒([12]/可负担性;[18] hp 不作触发器)
+    log.info('[cw][d2][steady-lv] r%d 稳态多击组 %d 击(-%d金,%s)',
+             state.round_num, n, total, _basis)
+    return [LevelUp(cost=cost, auth_basis=_basis) for _ in range(n)]
+
+
 def _compensate_slot(working: GameState, state: GameState,
                      session: StrategySession,
                      registry: DecisionV2Registry, rej: Rejection,
