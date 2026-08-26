@@ -2593,13 +2593,20 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
                             betas: tuple[float, ...] = (0.0, 0.04, 0.08, 0.15),
                             gammas: tuple[float, ...] = (0.0, 0.02, 0.05, 0.10),
                             event_gold_arms: tuple[str, ...] = ('p1', 'zero'),
+                            form_level_weights: tuple[float, ...] = (0.25,),
                             ) -> dict:
-    """β/γ/事件金敏感性扫描(W193/ADR-0377;**裁决口径**)。
+    """β/γ/事件金/form 权重敏感性扫描(W193/ADR-0377;**裁决口径**)。
 
     语料不足以点估计 β(W186 §3)——P2 修法的 sim 分布结论必须呈报
     本扫描:**修法在某(β,γ)网格点翻正、在带端点(β=0 / β=0.15 /
     γ=0 / γ=0.10 / 事件金双臂)一致翻正才裁「分布级」**;单点翻正
     = 不可裁。headline:存活轮/胜率/hp0 率/金带走量(判读同构)。
+
+    ``form_level_weights``(W199/W196 发现③):β 扫描只缩放整条
+    form(engines + w·(lv−6) 同乘 β),分辨不了 engines:lv 构成比
+    ——lv 投资型修法(金流改道升级)的存活收益显影取决于 lv 项
+    真实权重,故 w 入网格(端点 0=lv 零贡献 / 高档 0.5/1.0);
+    默认 (0.25,) = P2_COMBAT_DEFAULT 单值,行为向后兼容。
     """
     import dataclasses
     import logging
@@ -2611,30 +2618,33 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
         for eg in event_gold_arms:
             for b in betas:
                 for g in gammas:
-                    calib = dataclasses.replace(
-                        P2_COMBAT_DEFAULT, beta=b, gamma=g, event_gold=eg)
-                    rs = [simulate_p1(seed_base + i, pool=pool,
-                                      planes=planes, p2_combat=calib)
-                          for i in range(n)]
-                    entered = [r for r in rs if r.p2_entered]
-                    ct = sum(r.p2_combat_total for r in entered)
-                    cw = sum(r.p2_combat_wins for r in entered)
-                    carried = [r.p2_gold_carried for r in entered
-                               if r.p2_gold_carried is not None]
-                    table.append({
-                        'event_gold': eg, 'beta': b, 'gamma': g,
-                        'p2_entered_rate': len(entered) / n,
-                        'avg_p2_rounds': round(statistics.mean(
-                            [r.p2_rounds for r in entered]), 2)
-                        if entered else None,
-                        'p2_win_rate': round(cw / ct, 4) if ct else None,
-                        'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
-                                        / len(entered)) if entered else None,
-                        'avg_p2_gold_carried': round(statistics.mean(
-                            carried), 2) if carried else None,
-                        'avg_final_hp': round(statistics.mean(
-                            [r.final_hp for r in rs]), 2),
-                    })
+                    for w in form_level_weights:
+                        calib = dataclasses.replace(
+                            P2_COMBAT_DEFAULT, beta=b, gamma=g, event_gold=eg,
+                            form_level_weight=w)
+                        rs = [simulate_p1(seed_base + i, pool=pool,
+                                          planes=planes, p2_combat=calib)
+                              for i in range(n)]
+                        entered = [r for r in rs if r.p2_entered]
+                        ct = sum(r.p2_combat_total for r in entered)
+                        cw = sum(r.p2_combat_wins for r in entered)
+                        carried = [r.p2_gold_carried for r in entered
+                                   if r.p2_gold_carried is not None]
+                        table.append({
+                            'event_gold': eg, 'beta': b, 'gamma': g,
+                            'form_level_weight': w,
+                            'p2_entered_rate': len(entered) / n,
+                            'avg_p2_rounds': round(statistics.mean(
+                                [r.p2_rounds for r in entered]), 2)
+                            if entered else None,
+                            'p2_win_rate': round(cw / ct, 4) if ct else None,
+                            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
+                                            / len(entered)) if entered else None,
+                            'avg_p2_gold_carried': round(statistics.mean(
+                                carried), 2) if carried else None,
+                            'avg_final_hp': round(statistics.mean(
+                                [r.final_hp for r in rs]), 2),
+                        })
     finally:
         logging.disable(logging.NOTSET)
     return {
