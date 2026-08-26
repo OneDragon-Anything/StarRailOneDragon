@@ -878,6 +878,18 @@ class DeployBench(SrOperation):
             row = front if d.position_pref == 'front' else back
             if not (1 <= d.slot <= len(row)):
                 continue
+            # W209e 装备资产观测(run 26 取实锤:off-target 卖出通道不查装备
+            # 价值、不留装备去向——简易装备全穿在卡芙卡/千冶·刃/风堇身上,
+            # 这批人被卖出 → 装备随人消失(owned 5 件 → 2 工具),分配池干涸
+            # 全盲)。卖出前记装备去向留痕(等价卖出回收 = 装备回 owned;
+            # 装备价值进卖出决策是更大的决策面,记 ADR-0387 待裁决,本批先
+            # 观测)。d.equips 由 _snapshot_equips_into_tracking 维护。
+            _eq = list(getattr(d, 'equips', None) or ())
+            if _eq:
+                log.warning('[cw!][deploy] off-target 卖出携带装备:%s 穿着'
+                            ' %s 随卖出离场(ADR-0387 观测;若非预期=装备资产'
+                            '流失,卖出决策该查装备价值)',
+                            d.char_id, sorted(_eq))
             src = row[d.slot - 1]
             if DragCwChar.drag_char(self, src, _sell):
                 sold += 1

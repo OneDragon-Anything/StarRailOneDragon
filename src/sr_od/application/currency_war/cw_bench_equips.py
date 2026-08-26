@@ -46,6 +46,49 @@ EQUIPS_CONSISTENCY_ERRORS: tuple[type[BaseException], ...] = (
     EquipsInconsistencyError,)
 
 
+def wear_synthesis_equivalent(ledger: list[str], visible: list[str]) -> bool:
+    """**穿着触发自动合成**的账面↔画面等价判定(W209e 取证实锤,ADR-0387)。
+
+    游戏机制(run 26 现场):角色**穿着的两件基础件若恰为某进阶配方组件**
+    (交叉两件不同/自配同件×2)→ 画面自动合成显示该进阶——
+    账面 [量产型装甲×2] ↔ 画面 [很硬的甲](SELF_RECIPES);
+    账面 [光能电池,生命之花] ↔ 画面 [绝对热量](CROSS/GUANGNENG)。
+    我们的 tracking 不建模该行为 → 旧对账把已知形态误报不一致。
+
+    判定:账面多重集经**任意次**配方替换(每次两组件 → 一进阶,件数 −1)
+    能否到达画面多重集(闭包搜索;ledger ≤6 件,搜索空间极小)。
+    """
+    if not ledger or not visible:
+        return False
+    from sr_od.application.currency_war import cw_synthesis as _syn
+
+    def _reach(cur: Counter) -> bool:
+        if cur == Counter(visible):
+            return True
+        names = list(cur)
+        # 自配:同件 ×2 → 进阶
+        for n in names:
+            if cur[n] >= 2:
+                adv = _syn.self_advance(n)
+                if adv:
+                    nxt = cur - Counter({n: 2})
+                    nxt[adv] += 1
+                    if _reach(nxt):
+                        return True
+        # 交叉:两件不同 → 进阶
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                adv = _syn.synthesize_target(names[i], names[j])
+                if adv:
+                    nxt = cur - Counter({names[i]: 1, names[j]: 1})
+                    nxt[adv] += 1
+                    if _reach(nxt):
+                        return True
+        return False
+
+    return _reach(Counter(ledger))
+
+
 def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
                               source: str) -> None:
     """动作前对账(契约 C6 草案签名 + ``visible`` 可读面参数,草案级细化)。
@@ -53,12 +96,17 @@ def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
     - ``visible=None``:该侧画面机制不可读(bench 侧盲区,W21 #17)→ 无对拍面,
       单一源 = tracking 账面,直接通过(C6 裁定的本意);
     - ``visible`` 非 None:deployed 侧 below-avatar icon 真读 → 与账面
-      ``char.equips`` 多重集比对,不一致 raise(多重集 = 同名装备可重复持有)。
+      ``char.equips`` 多重集比对,不一致 raise(多重集 = 同名装备可重复持有);
+    - **穿着合成等价豁免**(W209e/ADR-0387):多重集不等但
+      :func:`wear_synthesis_equivalent`(账面组件经配方替换到达画面)→ 视为
+      一致不 raise——调用方的画面真值覆盖逻辑照常把账面纠正为画面形态
+      (合成不可逆,画面即最新真值)。
     """
     if visible is None:
         return
     ledger = list(getattr(char, 'equips', None) or [])
-    if Counter(ledger) != Counter(visible):
+    if Counter(ledger) != Counter(visible) \
+            and not wear_synthesis_equivalent(ledger, visible):
         raise EquipsInconsistencyError(
             char_desc=f'{getattr(char, "char_id", "") or "?"}'
                       f'@{getattr(char, "position_pref", "?")}',
