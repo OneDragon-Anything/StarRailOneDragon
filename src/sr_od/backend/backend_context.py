@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from one_dragon.base.config.basic_game_config import TypeInputWay
 from one_dragon.base.controller.pc_clipboard import PcClipboard
+from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.application import application_const
@@ -262,6 +263,10 @@ class RunSlot:
                                 self.op_id = op.__class__.__name__   # open_game 未传 display_name 时 fallback 类名
                             self.app = op.op_name or op.__class__.__name__   # 优先 Operation.op_name(中文),空时类名
                         result = op.execute()
+                    except StopRunInterrupted:
+                        # 停机守卫穿透到顶层(ADR-0396):收口「已停止」,终态计算
+                        # 按 '已停止' 前缀落 STOPPED,不误标执行异常。
+                        result = OperationResult(success=False, status='已停止[guard]')
                     except Exception as e:  # noqa: BLE001 execute 抛异常也兜住,避免卡 RUNNING
                         result = OperationResult(success=False, status=f'执行异常: {e}')
                     finally:
@@ -269,7 +274,13 @@ class RunSlot:
                         failed_node = getattr(getattr(op, '_current_node', None), 'cn', None) if op is not None else None
                         with self._lock:
                             self.current_op = None
-                        run_context.stop_running()
+                        # 正常收口而非 stop_running(ADR-0396):op 自然完成后清理运行态,
+                        # 不置停机中断闩——否则后续 MCP 手动操作(残局清理)会被守卫误拦。
+                        run_context.finish_running()
+        except StopRunInterrupted:
+            # 停机守卫穿透(ADR-0396,app 路径兜底:run_application 已收口,此为
+            # refresh_config 等外层环节被拦的极端路径):不误标执行异常。
+            result = OperationResult(success=False, status='已停止[guard]')
         except Exception as e:  # noqa: BLE001 兜底:refresh_config/run_application 等抛异常也固化,避免卡 RUNNING
             result = OperationResult(success=False, status=f'执行异常: {e}')
         finally:
@@ -890,6 +901,9 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
+        # 手动入口 = 停机后的显式外部接管,消费停机中断闩(ADR-0396),
+        # 避免上一局被停后守卫拦截残局清理点击。
+        self._ctx.run_context.consume_stop_interrupted()
         controller.active_window()
         clicked = controller.click(Point(int(x), int(y)), press_time=press_time, pc_alt=pc_alt)
         return {'success': clicked, 'x': int(x), 'y': int(y), 'in_window': clicked, 'pc_alt': pc_alt}
@@ -914,9 +928,11 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
+        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
         controller.active_window()
         if press_time > 0:
-            controller.btn_controller.press(key, press_time=press_time)
+            # 走公开入口 btn_press(带停机守卫与后台模式处理),不直按 btn_controller
+            controller.btn_press(key, press_time=press_time)
         else:
             controller.btn_tap(key)
         return {'success': True, 'key': key, 'press_time': press_time}
@@ -942,6 +958,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
+        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
         controller.active_window()
         controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
         return {'success': True, 'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2), 'duration': duration}
@@ -968,6 +985,7 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
+        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
         use_cb = self._resolve_use_clipboard(use_clipboard)
         controller.active_window()
         if use_cb:

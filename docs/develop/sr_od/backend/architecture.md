@@ -69,14 +69,14 @@ src/one_dragon/base/screen/
 | 路径 | 触发入口 | 执行序列 | 进度句柄 | 结果来源 |
 |---|---|---|---|---|
 | **app** | `run_one_dragon` / `run_standalone_app` | 委托 `run_application`（复用 GUI/CLI 共享入口，内含 `start_running` / 绑定 / `execute` / `stop_running`） | `run_context.current_application` | `run_context.last_application_result` |
-| **op** | `open_game` / `run_operation`（自定义 op） | 槽自己 `start_running → op_factory(ctx) → op.execute() → stop_running` | 槽内 `current_op` | `op.execute()` 返回值 |
+| **op** | `open_game` / `run_operation`（自定义 op） | 槽自己 `start_running → op_factory(ctx) → op.execute() → finish_running()`（自然完成走 `finish_running` 收口，不置停机中断闩，见 ADR-0396） | 槽内 `current_op` | `op.execute()` 返回值 |
 
 - **单跑道互斥**收进 `_start` 锁内：`future` 未完成检查与 `executor.submit` 在同一把锁中原子完成（check-then-submit），消除跨槽 check-then-act 竞态；框架层 `run_context.start_running` 不可重入是第二重保证。
 - **字段**（单一事实源）：`source`、`op_id`（app 路径=app_id、op 路径=`package.path.ClassName` 或类名）、`run_type`（`APPLICATION` / `OPERATION`）、`app`（展示名，`_run` 内固化）、`started_at` / `finished_at`、`terminal_state`、`last_status`、`failed_node`、`current_op`（op 路径回填，app 路径为 `None`）。
 - **终态固化**：`_run` 用顶层 try/except/finally 包裹，任何路径（含 `refresh_config` / `run_application` 抛异常）都固化 `terminal_state`，避免卡 `RUNNING`。
 - **进度读取**统一：`_query_status` 在运行态读 `progress = current_op or run_context.current_application`（Application 也是 Operation，都有 `_current_node` / `node_retry_times`）；终态读固化的 `terminal_state`。
 - **配置刷新**：app 路径把 `_refresh_runtime_config` 作为 `refresh_config` 钩子注入 `_run`（槽线程内、`_start` 已赢锁后、`run_application` 前执行）——拒绝路径不进 `_run`，因此不刷新，修原跨方法刷新竞态；`current_instance_idx` 在刷新后重读（可能切实例）。`list_applications` 是只读路径，**不**刷新配置。
-- **stop**：`_stop` 对未完成运行调 `run_context.stop_running()` 发信号；operation 实际退出有过渡期，期间 `_query_status` 仍报 `running`（`RunState` 无 `STOPPING` 态，沿用现状）。
+- **stop**：`_stop` 对未完成运行调 `run_context.stop_running()` 发信号；停机中断闩置位后，controller 层停机守卫（ADR-0396）在**任何游戏输入动作前**抛 `StopRunInterrupted` 穿透执行链——信号到实际退出间不再有游戏输入落地（收口/遥测等只读收尾仍有短暂过渡期，期间 `_query_status` 仍报 `running`，`RunState` 无 `STOPPING` 态，沿用现状）。手动输入端点（`click_game` 等）先消费闩（显式外部接管放行）。
 
 `SrBackendContext.query_status()` 和 `SrBackendContext.stop()` 各自塌缩为一次 `run_slot._query_status()` / `_stop()`，不再跨槽仲裁。
 

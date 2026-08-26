@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import numpy as np
 from cv2.typing import MatLike
 
+from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.matcher.match_result import MatchResultList
 from one_dragon.base.matcher.ocr import ocr_utils
@@ -436,6 +437,18 @@ class Operation(OperationBase):
                     )
                 if self.ctx.run_context.is_context_pause:  # 有可能触发暂停的时候仍在执行指令 执行完成后 再次触发暂停回调 保证操作的暂停回调真正生效
                     self._on_pause()
+            except StopRunInterrupted:
+                # 停机守卫(controller 层)拦截了本轮内的游戏输入(ADR-0396):
+                # 收口本 op 为「已停止」后继续向上抛——不在本层吞掉,否则父链
+                # (如 ADR-0388 实证的 director 环)会继续发下一步动作。
+                _src = getattr(self.ctx.run_context.last_run_result, 'stop_source', '') or 'guard'
+                log.info('%s 停机守卫拦截,中断本轮(来源 %s)', self.display_name, _src)
+                op_result = self.op_fail(f'已停止[guard:{_src}]')
+                try:
+                    self.after_operation_done(op_result)
+                except Exception:  # noqa: BLE001 收口异常不得掩盖停止语义
+                    log.error('%s after_operation_done 异常(停机中断路径)', self.display_name, exc_info=True)
+                raise
             except Exception as e:
                 round_result: OperationRoundResult = self.round_retry('异常')
                 if self.last_screenshot is not None:

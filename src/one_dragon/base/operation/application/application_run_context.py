@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, TypeVar
 
+from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.base.operation.context_event_bus import ContextEventBus
 from one_dragon.base.operation.notify_pool import NotifyPool
 from one_dragon.base.operation.operation_base import OperationResult
@@ -113,6 +114,13 @@ class ApplicationRunContext:
 
         # 通知池，应用开始时清空重用
         self.notify_pool: NotifyPool = NotifyPool()
+
+        # 停机中断闩(ADR-0396):True = 本次运行被停止信号中断且尚未被消费。
+        # 仅 stop_running 在「运行中/暂停中被停」时置位;start_running 清位;
+        # 正常收口(finish_running / run_application 自然完成)不置位——
+        # 区别于 is_context_stop(STOP 也是 idle 初始态,不能作停机中断判据,
+        # 否则 idle 下的手动操作会被全拦)。controller 停机守卫读本闩拦截输入。
+        self._stop_interrupted: bool = False
 
     def registry_application(
         self,
@@ -338,6 +346,24 @@ class ApplicationRunContext:
         """
         return self._run_state == ApplicationRunContextStateEnum.PAUSE
 
+    @property
+    def is_stop_interrupted(self) -> bool:
+        """本次运行是否已被停止信号中断(停机守卫判据,ADR-0396)。
+
+        与 ``is_context_stop`` 的区别:后者 STOP 也是 idle 初始态;本闩只在
+        「运行中/暂停中被 stop_running 打断」后为 True,直到下一次
+        ``start_running`` 或显式 ``consume_stop_interrupted``。
+        """
+        return self._stop_interrupted
+
+    def consume_stop_interrupted(self) -> None:
+        """消费停机中断闩(置回 False)。
+
+        供停机后的显式外部接管入口调用(如 MCP 手动 click_game/key_tap 的
+        残局清理):外部主动发令 = 接管者意图,不再是幽灵执行流,应放行。
+        """
+        self._stop_interrupted = False
+
     def _create_run_result(
         self,
         finish_reason: RunFinishReason,
@@ -405,6 +431,7 @@ class ApplicationRunContext:
 
         if self.ctx.controller.init_before_context_run():
             self.last_run_result = None
+            self._stop_interrupted = False  # 新运行开始,清停机中断闩(ADR-0396)
             self._run_state = ApplicationRunContextStateEnum.RUNNING
             self.event_bus.dispatch_event(
                 ApplicationRunContextStateEventEnum.START, self._run_state
@@ -425,9 +452,32 @@ class ApplicationRunContext:
             reason: 停止来源标识(开放文本,如 'mcp:stop_run' / 'hook:summon_unknown'
                 / 'gui:hotkey'),写入结果 ``stop_source`` 供归因;空串表示未声明来源。
         """
+        # 「运行中/暂停中被停」才置停机中断闩(ADR-0396):idle 态的杂散 stop
+        # 不应把守卫留给后续(如 MCP 手动操作)。先读状态再收口(收口后恒 STOP)。
+        was_live = self.is_context_running or self.is_context_pause
         result = self._create_run_result(RunFinishReason.STOPPED)
         result.stop_source = reason
-        return self._finish_running(result, stop_reason=reason)
+        run_result = self._finish_running(result, stop_reason=reason)
+        if was_live:
+            self._stop_interrupted = True
+        return run_result
+
+    def finish_running(self) -> ApplicationRunResult:
+        """正常收口(非停止中断):运行自然结束后的清理路径专用。
+
+        与 ``stop_running`` 的唯一区别:不置 ``stop_interrupted`` 闩——
+        backend op 槽 finally 的收口调用发生在运行自然完成后(执行流已停),
+        不是用户/钩子停止,不应让停机守卫拦截后续显式外部操作
+        (如 MCP 手动点击的残局清理)。语义见 ADR-0396。
+        """
+        was_live = self.is_context_running or self.is_context_pause
+        result = self._create_run_result(RunFinishReason.STOPPED)
+        if was_live:
+            return self._finish_running(result)
+        # 已停止(idle/已被停):与 stop_running 的幂等路径一致,返回首次结果。
+        if self.last_run_result is None:
+            self.last_run_result = result
+        return self.last_run_result
 
     def switch_context_pause_and_run(self):
         """
@@ -525,6 +575,15 @@ class ApplicationRunContext:
                 RunFinishReason.COMPLETED
                 if self.last_application_result.success
                 else RunFinishReason.FAILED
+            )
+        except StopRunInterrupted:
+            # 停机守卫在 controller 层拦截输入后穿透到这(ADR-0396):收口为
+            # 「已停止」而非执行异常;stop_source 来自先到的 stop_running。
+            finish_reason = RunFinishReason.STOPPED
+            log.info('应用 %s 被停机守卫中断', app_id)
+            self.last_application_result = OperationResult(
+                success=False,
+                status=f'已停止[{getattr(self.last_run_result, "stop_source", "") or "guard"}]',
             )
         except Exception as e:
             finish_reason = RunFinishReason.FAILED

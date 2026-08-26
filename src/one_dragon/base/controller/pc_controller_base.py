@@ -125,6 +125,7 @@ class PcControllerBase(ControllerBase):
 
     def btn_tap(self, key: str) -> None:
         """按键（tap）。后台模式下先发 WM_ACTIVATE 再确保手柄输入模式。"""
+        self._check_stop_guard()  # ADR-0396 停机守卫
         if self.background_mode:
             self._send_activate()
             self._ensure_gamepad_mode()
@@ -132,6 +133,7 @@ class PcControllerBase(ControllerBase):
 
     def btn_press(self, key: str, press_time: float | None = None) -> None:
         """按住键。后台模式下先发 WM_ACTIVATE 再确保手柄输入模式。"""
+        self._check_stop_guard()  # ADR-0396 停机守卫
         if self.background_mode:
             self._send_activate()
             self._ensure_gamepad_mode()
@@ -294,6 +296,7 @@ class PcControllerBase(ControllerBase):
         Returns:
             不在窗口区域时不点击 返回False
         """
+        self._check_stop_guard()  # ADR-0396 停机守卫:停机后任何点击前中止
         if self.background_mode:
             if gamepad_key:
                 return self._gamepad_click(gamepad_key)
@@ -416,6 +419,7 @@ class PcControllerBase(ControllerBase):
             duration: 拖拽持续时间
             hold_time: 按下后保持时间(长按拾取;0 = 原行为)
         """
+        self._check_stop_guard()  # ADR-0396 停机守卫:停机后任何拖拽前中止
         if start is None:
             start = get_current_mouse_pos()
 
@@ -514,6 +518,7 @@ class PcControllerBase(ControllerBase):
             down: 负数时为向上滚动
             pos: 滚动位置 默认分辨率下的游戏窗口里的坐标
         """
+        self._check_stop_guard()  # ADR-0396 停机守卫
         if pos is None:
             pos = get_current_mouse_pos()
         win_pos = self.game_win.game2win_pos(pos)
@@ -528,12 +533,14 @@ class PcControllerBase(ControllerBase):
         Args:
             to_input: 文本
         """
+        self._check_stop_guard()  # ADR-0396 停机守卫
         self.keyboard_controller.keyboard.type(to_input)
 
     def mouse_move(self, game_pos: Point) -> None:
         """
         鼠标移动到指定的位置
         """
+        self._check_stop_guard()  # ADR-0396 停机守卫:物理光标移动同样抢用户鼠标
         win_pos = self.game_win.game2win_pos(game_pos)
         if win_pos is not None:
             pyautogui.moveTo(win_pos.x, win_pos.y)

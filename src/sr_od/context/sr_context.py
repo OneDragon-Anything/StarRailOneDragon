@@ -215,7 +215,8 @@ class SrContext(OneDragonContext):
         # 简报词缀(对局开始 debuff/boss词缀,StartCurrencyWarMatch 读 → loop 建 cw_match 时 copy 到 session.briefing_affixes)
         # 临时中转:简报在 StartCurrencyWarMatch(loop 前,cw_match=None),词缀先存此,loop __init__ 取走。
         self.cw_briefing_affixes: list[str] | None = None
-        # 简报首领(3 位面 boss 名,同上中转)→ loop __init__ copy 到 session.briefing_bosses(boss_fit 输入)
+        # 简报 boss 候选集(read_bosses 画面 x 序,无位面序语义;ADR-0397)——仅供遥测/对账,
+        # 不 copy 进 session(boss 位面序真值走 CollectPlaneIntel 实采,loop 备战稳定帧)
         self.cw_briefing_bosses: list[str] | None = None
         # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
         # copy 到 session.selected_difficulty → default_strategy 填 state → effective_hp_threshold D-32;3.5.1)
@@ -301,6 +302,11 @@ class SrContext(OneDragonContext):
             standard_height=self.project_config.screen_standard_height
         )
         self.controller.set_window_title(self._get_win_title())
+        # 停机守卫接线(ADR-0396):controller 输入入口读 run_context 停机中断闩,
+        # 停机后任何游戏输入(click/drag/按键/滚轮/输入/移光标)前抛 StopRunInterrupted。
+        # 注意挂谓词(lambda 延迟读属性)而非属性值(布尔不可调用)。
+        _run_context = self.run_context
+        self.controller.stop_guard = lambda: _run_context.is_stop_interrupted
 
     def _get_win_title(self) -> str:
         if self.game_account_config.use_custom_win_title:

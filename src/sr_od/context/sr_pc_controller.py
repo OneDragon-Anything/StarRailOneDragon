@@ -211,6 +211,7 @@ class SrPcController(PcControllerBase):
     def move_mouse_relative(self, dx: float, dy: float) -> None:
         if dx == 0 and dy == 0:
             return
+        self._check_stop_guard()  # ADR-0396 停机守卫:相对移动同样注入鼠标输入
         ctypes.windll.user32.mouse_event(self.MOUSEEVENTF_MOVE, int(dx), int(dy))
 
     def cal_move_distance_by_time(self, seconds: float):
