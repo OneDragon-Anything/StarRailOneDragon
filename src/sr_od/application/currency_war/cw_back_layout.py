@@ -42,11 +42,13 @@ from __future__ import annotations
 
 from one_dragon.base.geometry.rectangle import Rect
 
-#: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」)。
-#: ⚠️ 9/10/11 档是循环论证幻影(ADR-0281),已删;7 格待交互实锤后补档
-#: (upsert 后排7槽-1..7 + 此处登记,届时停机钩子自然不再触发)。
+#: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」;
+#: 7 槽 = 「后排7槽-N」,2026-08-26 佩佩局交互实锤建档——7 格=6 格基线右扩一格,
+#: 槽 1-6 与 6 格档同坐标、槽 7 与 8 格档 slot8 同格 1387-1529;佩佩中心 1458 实证)。
+#: ⚠️ 9/10/11 档是循环论证幻影(ADR-0281),已删。
 _LAYOUT_PREFIX: dict[int, str] = {
     6: '后排',
+    7: '后排7槽',
     8: '后排8槽',
 }
 
@@ -76,11 +78,21 @@ _CV_EXTRA_XS: tuple[int, ...] = (464, 1458)
 _CV_ANCHOR_XS: tuple[int, ...] = (606, 1031)
 #: 裁切半宽(槽 rect 宽 142 的半径,同既有槽建模)
 _CV_HALF: int = 71
-#: 槽存在判据:裁切灰度 std ≥ 本值。标定(W209 探针,sr-od-test 6 帧 6 格态
-#: ×2 端扩展位 = 12 个背景样本 std ≤ 2.9;空槽暗框 std ≥ 10.5,占位立绘
-#: 50-67;「后排7槽-P2开局局」帧两端 2.8/2.1 = 背景实为 6 格):阈值 6.0 =
-#: 背景上限 2.9 的 2.07×、空槽下限 10.5 的 0.57×,双向余量均 >1.7×。
+#: 槽存在判据(右端 1458 与锚位通用):裁切灰度 std ≥ 本值。标定(W209 探针,
+#: sr-od-test 6 帧 6 格态 ×2 端扩展位 = 12 个背景样本 std ≤ 2.9;空槽暗框
+#: std ≥ 10.5,占位立绘 50-67;「后排7槽-P2开局局」帧两端 2.8/2.1 = 背景
+#: 实为 6 格):阈值 6.0 = 背景上限 2.9 的 2.07×、空槽下限 10.5 的 0.57×,
+#: 双向余量均 >1.7×。
 _CV_SLOT_STD_MIN: float = 6.0
+#: **左端(464)专用阈值**(W209k,佩佩局定谳标定):6/7 格局羁绊面板渗入 464
+#: 裁切带 std 26.2-40.3(佩佩局 1-1 三帧实测)vs 8 格局真左格 62.5-148
+#: (狸猫局族实测)——用户口述「第 1 格=最左,左边无格」,7 格几何上 464 处
+#: **无格**(7 格槽 1-6 与 6 格基线同坐标、槽 7 右扩),该位 std 信号全是
+#: 面板渗入。阈值 48 分界无样本重叠(渗入上限 40.3 / 真格下限 62.5)。
+#: 残余风险(ADR-0385 决策 13):8 格局左1 空槽(暗框 std~10-20 < 48)会被
+#: 判无左格 → CV 读 7;无此样本,公式通道(diff≥2→8)对账兜底(7 格已建档,
+#: CV=7≠公式=8 留证后采公式值,不误档)。
+_CV_LEFT_STD_MIN: float = 48.0
 
 
 def _cv_slot_std(screen, cx: int) -> float | None:
@@ -99,9 +111,11 @@ def _cv_slot_std(screen, cx: int) -> float | None:
 def cv_back_slots(screen) -> int | None:
     """CV 通道:实测当前帧后台格数(ADR-0385 双通道件2)→ ``6 + 扩展位数`` | None。
 
-    方法:对两端扩展位(464/1458)逐位判「槽签名存在」(裁切灰度 std ≥
-    :data:`_CV_SLOT_STD_MIN`,依据见其注释);格数 = 6 + 存在数(6/7/8,
-    扩展几何 = 基线两端追加——6/8 两档共享中段的实证推论,单端扩展即 7 格)。
+    方法:对两端扩展位(464/1458)逐位判「槽签名存在」——右端用
+    :data:`_CV_SLOT_STD_MIN`,**左端用更高阈值** :data:`_CV_LEFT_STD_MIN`
+    (W209k:6/7 格局 464 处是羁绊面板渗入 std 26-40,非真格;口述「第 1 格=
+    最左,左边无格」);格数 = 6 + 存在数(6/7/8,扩展几何 = 6 格基线右扩,
+    佩佩局定谳:7 格 = 槽1-6 同 6 格坐标 + 槽7 右扩 1387-1529,8 格两端扩)。
     锚位(606/1031)任一无槽签名 → 帧不可判(overlay 遮挡/非备战态/非 1080p)
     → None(调用方退公式通道)。纯读 best-effort,异常 → None 不抛。
     """
@@ -110,9 +124,9 @@ def cv_back_slots(screen) -> int | None:
         if any(a is None or a < _CV_SLOT_STD_MIN for a in anchors):
             return None
         extras = 0
-        for x in _CV_EXTRA_XS:
+        for x, thr in ((464, _CV_LEFT_STD_MIN), (1458, _CV_SLOT_STD_MIN)):
             s = _cv_slot_std(screen, x)
-            if s is not None and s >= _CV_SLOT_STD_MIN:
+            if s is not None and s >= thr:
                 extras += 1
         return _BACK_SLOTS_BASE + extras
     except Exception:   # noqa: BLE001  CV best-effort,失败退公式
