@@ -2615,9 +2615,9 @@
   - area_name: 后排7槽-1
     id_mark: false
     pc_rect:
-    - 534
+    - 463
     - 600
-    - 675
+    - 605
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2629,9 +2629,9 @@
   - area_name: 后排7槽-2
     id_mark: false
     pc_rect:
-    - 679
+    - 605
     - 600
-    - 814
+    - 747
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2643,9 +2643,9 @@
   - area_name: 后排7槽-3
     id_mark: false
     pc_rect:
-    - 823
+    - 747
     - 600
-    - 953
+    - 889
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2657,9 +2657,9 @@
   - area_name: 后排7槽-4
     id_mark: false
     pc_rect:
-    - 967
+    - 889
     - 600
-    - 1097
+    - 1031
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2671,9 +2671,9 @@
   - area_name: 后排7槽-5
     id_mark: false
     pc_rect:
-    - 1106
+    - 1031
     - 600
-    - 1248
+    - 1173
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2685,9 +2685,9 @@
   - area_name: 后排7槽-6
     id_mark: false
     pc_rect:
-    - 1245
+    - 1173
     - 600
-    - 1386
+    - 1315
     - 739
     text: ''
     lcs_percent: 0.5
@@ -2699,9 +2699,9 @@
   - area_name: 后排7槽-7
     id_mark: false
     pc_rect:
-    - 1387
+    - 1315
     - 600
-    - 1529
+    - 1457
     - 739
     text: ''
     lcs_percent: 0.5
