@@ -297,6 +297,27 @@ class DecisionV2Registry:
     #: 同式)。初值=core_star_unit 同量级(同一 2★ 目的地的期权),
     #: 未网格标定,sim A/B 方向见 deep_read/W96_报告.md;0=关闭。
     merge_progress_unit: float = 3.0
+    #: 填充件升星期权项单位值(W232/ADR-0402 方案A,[15]/[22] 压库
+    #: 副本素材 × [27] 中期投资持续变现)。merge_progress/core_star
+    #: 只辖目标集内名字——降级梯队填充件(bond_fallback/pair 通道
+    #: 买入、板上多数)的第 2 份买入全评分维零 delta 被「非正分」
+    #: 结构性拒(W231 诊断 §②-1:478 机会八成漏买、进场 star≥2 仅
+    #: 7.7%)。本项对**已 deployed** 填充件(目标集外名字)的第 2 份
+    #: 同名 1★ 计期权分。硬边界:只辖已持有名的第 2 份(压库语义,
+    #: 不授权为填充件 D 牌刷新);copies_cap 沿用(仲裁层守卫);
+    #: 只辖已 deployed 名(纯 bench 囤件不折,ADR-0295 同式边界)。
+    #: **默认 0=关闭**(=现行为零漂移,同 goldrich_buy_bias 的
+    #: A/B 通道保留模式,ADR-0305 先例);三臂 A/B 见 W232 报告。
+    filler_star_unit: float = 0.0
+    #: 方案B(W232/ADR-0402):同名副本豁免 pair_wants 方向门。副本是
+    #: 升星素材(filler_star/merge_progress 期权通道)而非新方向投资,
+    #: 方向门拦它=语义错位(W231 §②-3:45 张/100 局同名机会被方向门拦)。
+    #: 判定位置=candidates._buy_tag 方向门(pair_wants)之前、r408 同轮
+    #: 已卖守卫之后(与冷启动例外 r383b 同型,提为全轮域)。**与 A 同臂
+    #: 开**:单独开 B 时解锁的副本买入在评分层仍零 delta(unit=0 时仅
+    #: 偶发 depth 分),零漂移门要求默认关=现行为逐位一致——两开关
+    #: 默认同为关,A/B 臂(u0.5/u1.0)同时开。
+    pair_copy_direction_exempt: bool = False
     #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
     #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
     #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0

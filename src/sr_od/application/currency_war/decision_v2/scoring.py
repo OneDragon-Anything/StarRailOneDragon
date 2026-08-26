@@ -235,6 +235,69 @@ def _merge_progress_count(state: GameState, session: StrategySession,
     return n
 
 
+def _filler_star_progress_count(state: GameState, session: StrategySession,
+                                registry: DecisionV2Registry) -> float:
+    """填充件升星期权项(W232/ADR-0402 方案A)。
+
+    merge_progress/core_star 只辖目标集(意向目标∪引擎件)——目标集外
+    的**降级梯队填充件**([31] 填充不变量下 bond_fallback/pair 通道买
+    入、板上多数的件)第 2 份 1★ 买入在所有评分维零 delta,被仲裁层
+    「非正分」结构性拒(W231 诊断:478 张已持有名机会仅 17.6% 成交,
+    进场 star≥2 仅 7.7%)。本项把「已 deployed 填充件的第 2 份同名
+    1★」计为期权分(3合1 素材进度;[15]/[22] 压库语义)。
+
+    硬边界(ADR-0402,防违反 [31] 反散件):
+    - 目标集判据=∉_target_names(与 merge_progress 互补不双计;
+      tset 空时本项关闭——无方向期没有「填充件」语义,与
+      merge_progress 的空集守卫对称);
+    - 只辖**已 deployed** 名的副本(纯 bench 囤件不折,ADR-0295
+      同式域边界——bench 上的孤立囤件不给期权,防散件囤积);
+    - 每名只计第 2 份(份数 1→2 = 1 进度);第 3 份 merge 成 2★ 后
+      本项对该名回落 0(填充名 2★ 不另计价——core_star 仍只辖目标集,
+      填充 2★ 的战力显影走阵营计数 star 加权,不双计);
+    - 不授权 D 刷(本项只是评分显影,refresh 候选走 V_D 金口径总账,
+      与本项无关);copies_cap 沿用(仲裁层 copies>=cap 守卫拦截)。
+    """
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    tset = _target_names(state, session)
+    if not tset:
+        return 0.0
+    dep_c: dict[str, int] = {}
+    ben_c: dict[str, int] = {}
+    star2: set[str] = set()
+    for d in (state.deployed or []):
+        if d is None:
+            continue
+        name = getattr(d, 'char_id', '') or ''
+        if not name or name in tset:
+            continue    # 目标集内归 merge_progress/core_star 辖
+        star = getattr(d, 'star', 1) or 1
+        if star >= 2:
+            star2.add(name)
+        else:
+            dep_c[name] = dep_c.get(name, 0) + 1
+    for b in (state.bench or []):
+        if b is None:
+            continue
+        name = getattr(b, 'char_id', '') or ''
+        if not name or name in tset:
+            continue
+        star = getattr(b, 'star', 1) or 1
+        if star >= 2:
+            star2.add(name)
+        else:
+            ben_c[name] = ben_c.get(name, 0) + 1
+    n = 0.0
+    for name in dep_c:   # 只辖已 deployed 名(bench-only 囤件不计)
+        if name in star2:
+            continue     # 已 2★:进度回落(填充 2★ 不另计价)
+        if dep_c.get(name, 0) + ben_c.get(name, 0) >= 2:
+            n += 1.0
+    return n
+
+
 def score_state(state: GameState, registry: DecisionV2Registry,
                 session: StrategySession | None = None) -> dict[str, float]:
     """板面形态→期望 查表(评分的单一真值;只看形态维)。"""
@@ -283,6 +346,11 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # ——core_star 的 star≥2 门之前的爬坡段;0=关闭(A/B 基线臂)
     merge_progress = (_merge_progress_count(state, session, registry)
                       * registry.merge_progress_unit)
+    # 填充件升星期权(W232/ADR-0402 方案A):已 deployed 填充件(目标
+    # 集外)第 2 份 1★ 的期权显影——merge_progress 的目标集外补全;
+    # 0=关闭(=现行为零漂移,A/B 基线臂)
+    filler_star = (_filler_star_progress_count(state, session, registry)
+                   * registry.filler_star_unit)
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
     # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
     # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
@@ -297,7 +365,8 @@ def score_state(state: GameState, registry: DecisionV2Registry,
             'targets': round(targets, 3),
             'eng_frac': round(eng_frac, 3),
             'core_star': round(core_star, 3),
-            'merge_progress': round(merge_progress, 3)}
+            'merge_progress': round(merge_progress, 3),
+            'filler_star': round(filler_star, 3)}
 
 
 def _deployable_depth(state: GameState) -> int:

@@ -71,6 +71,17 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 `buy_lock_constraint_enabled`(A/B 通道)。语义=约束「方向」:锁定后买侧
 材料供给不再喂换档挤出(W147:挤出执行侧的保留序/deploy 围栏是另一批)。
 
+**decision_v2 产星通道(ADR-0402;W231 诊断 A+B)**:填充件升星期权的
+评分显影+同名副本的方向门豁免——`score_state` 分项 `filler_star` = 已
+deployed 填充件(目标集外名字)的第 2 份同名 1★ 期权分(每名一次进度,
+star≥2 回落;与 merge_progress 互补不双计);生成层 r410 守卫对
+「已 deployed 名的同名副本」在开臂时豁免;`_buy_tag` 在方向阵营门之前
+放行同名副本(副本=升星素材非新方向投资,r383b 全轮域推广;A5 阵营
+上限/copies_cap/r408 同轮已卖守卫照常辖)。硬边界=[31] 反散件(只辖
+已持有名第 2 份、不授权为填充件 D 刷;bench-only 囤件不折)。开关
+`filler_star_unit`/`pair_copy_direction_exempt`(registry,默认双关=
+现行为零漂移,A/B 臂同开)。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

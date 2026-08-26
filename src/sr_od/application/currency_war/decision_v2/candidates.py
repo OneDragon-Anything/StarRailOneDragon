@@ -167,6 +167,14 @@ def _core_names(session: StrategySession) -> set[str]:
     return set()
 
 
+def _has_deployed_copy(name: str, state: GameState) -> bool:
+    """deployed 域是否已有同名件(W232/ADR-0402 方案A 的 r410 豁免判据;
+    与 discipline.has_same_name_copy 的区别=只看 deployed——filler_star
+    期权项只辖已上场名的副本,bench-only 囤件不给生成豁免)。"""
+    return any(getattr(d, 'char_id', '') == name
+               for d in (state.deployed or []))
+
+
 def _plugin_ok(card: ShopCard, state: GameState,
                session: StrategySession) -> bool:
     """插件四层过滤(定义节 class5):机制冲突?/过半线=骨架/上场有位/
@@ -241,6 +249,14 @@ def _buy_tag(card: ShopCard, state: GameState,
             return None    # ADR-0333:板面已有未成型体系时,新体系引擎件
             # 不生成(散买断)——空窗/成型可开新,深化件放行([20]/[31])
         return 'engine_seed'    # 点3:引擎件见即买(C2 名单)
+    # 方案B(W232/ADR-0402):同名副本豁免方向门——判定提到 pair_wants
+    # 方向门之前(r408 同轮已卖守卫在 discipline 层前置;冷启动例外
+    # r383b 的全轮域推广)。开关=registry.pair_copy_direction_exempt,
+    # 与 filler_star_unit 同臂开(默认关=现行为零漂移)。
+    if (not is_target and registry.pair_copy_direction_exempt
+            and has_same_name_copy(card, state)
+            and not in_round_sold(card.name, state, session)):
+        return 'copy'
     if not is_target and pair_wants(card, state, session):
         if has_same_name_copy(card, state) \
                 and not in_round_sold(card.name, state, session):
@@ -333,9 +349,16 @@ def generate_candidates(state: GameState, session: StrategySession,
             continue    # 副本上限(第 4 份纯浪费)
         if copy_swap_useless(card, state, session) \
                 and not (registry.copy_swap_target_exempt
-                         and card.name in _target_names(state, session)):
+                         and card.name in _target_names(state, session)) \
+                and not (registry.filler_star_unit > 0
+                         and _has_deployed_copy(card.name, state)):
             continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
-            # 目标件豁免开关=ADR-0303/0304 裁决默认关,通道保留)
+            # 目标件豁免开关=ADR-0303/0304 裁决默认关,通道保留);
+            # A 臂豁免(W232/ADR-0402 方案A):filler_star 开臂时,已
+            # deployed 名的同名副本(升星素材,[15]/[22] 压库语义)生成
+            # 候选——授权只到「已持有名的副本」,不授权为填充件 D 刷
+            # (copies_cap/方向门照常辖);默认关=r410 守卫现行为不变
+            # (W96 锁 test_r7_frame_generation_guard_unchanged)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue
