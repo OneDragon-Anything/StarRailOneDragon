@@ -737,10 +737,12 @@ def _resolve_comp_transaction(
     post_bench: list[BenchChar | None] = list(s.bench)
     for i in sell_b:
         post_bench[i] = None            # 步 1:sell 的 bench 槽清空
-    for c in und_chars:
-        bench_place(post_bench, c)      # 步 2:undeploy 放回首个空槽(同应用序)
     for i in dep_b:
-        post_bench[i] = None            # 步 3:deploy 的 bench 槽清空
+        post_bench[i] = None            # 步 2:deploy 源清槽(W197/ADR-0380
+        # 件③:先于 undeploy 放回,与 _apply 应用序同式——否则 bench 满
+        # 时 undeploy 放回落空,fill 的槽位解析与真实应用错位)
+    for c in und_chars:
+        bench_place(post_bench, c)      # 步 3:undeploy 放回首个空槽
     for f in fill:
         if f.source == 'bench':
             if not 0 <= f.idx < BENCH_CAPACITY or post_bench[f.idx] is None:
@@ -833,8 +835,10 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
                             plan: dict) -> None:
     """应用已校验通过的事务(就地;调用前必须经 _resolve_comp_transaction)。
 
-    应用序:sell → undeploy → deploy → fill(填位的 bench 源按后置 bench
-    槽位表(plan['post_bench'])解析——ADR-0316 槽位下标,不 pop 不移位)。
+    应用序:sell → deploy 源清槽 → undeploy → deploy → fill(填位的 bench
+    源按后置 bench 槽位表(plan['post_bench'])解析——ADR-0316 槽位下标,
+    不 pop 不移位;W197/ADR-0380 件③:deploy 源清槽先于 undeploy 放回,
+    否则 bench 满时保留件被静默丢弃——单位守恒)。
     终态重算 board(_recount_board 单一源)。
     卖出单位的装备回收进 ``state.equips``(owned 池;🟡 游戏侧「卖带装
     单位装备去向」未见实机证据,暂按回收建模保装备守恒,待 live 核)。
@@ -844,11 +848,17 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         s.equips.extend(c.equips)
         _bench_clear_by_identity(s.bench, c)
         _remove_by_identity(s.deployed, c)
+    # W197/ADR-0380 件③:deploy 源清槽先于 undeploy 放回——旧序
+    # (undeploy 先)在 bench 满时 bench_place 无空槽返回 None,保留件
+    # 被**静默删除**(无退款/不回池,单位守恒违约;终态容量校验只看
+    # 终态看不见中间态溢出)。清槽提前只影响中间态,终态与旧序一致;
+    # post_bench 构造(_resolve)同式同步。
+    for c, _row in plan['dep_chars']:
+        _bench_clear_by_identity(s.bench, c)
     for c in plan['und_chars']:
         _remove_by_identity(s.deployed, c)
         bench_place(s.bench, c)
     for c, row in plan['dep_chars']:
-        _bench_clear_by_identity(s.bench, c)
         _apply_row_to_char(c, row)
         s.deployed.append(c)
     post_bench = plan['post_bench']

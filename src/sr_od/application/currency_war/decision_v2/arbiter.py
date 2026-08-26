@@ -34,6 +34,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     p1_early_gate_open,
     register_round_bought,
     register_round_sold,
+    sole_engine_sell_blocked,
 )
 from sr_od.application.currency_war.decision_v2.ev import (
     interest_cost,
@@ -532,6 +533,23 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if intended and cur != intended:
                 verdicts.append(f'index_drift:目标 {intended} '
                                 f'现槽 {cur}(槽位已被前序动作消费)')
+        # W197/ADR-0380 件①:卖候选采纳点复检——sole_engine_sell_blocked
+        # 的下界语义此前只在候选生成(candidates._sell_tag,对批前状态
+        # 计数)生效;同段多笔同名 TT 件逐笔合法而聚合跌破 tier
+        # (136 r7 两笔三月七,列车在手 3>tier 2 → 卖后 1)。对 working
+        # (前序采纳后的状态)复检 = 前序卖出计入计数,批量语义经
+        # 逐笔复检实现;flag off 逐位回 W195 后行为。
+        if registry.sell_floor_exec_guard_enabled \
+                and isinstance(a, SellBench) \
+                and cand.tag in ('off_target', 'for_gold', 'free_bench'):
+            _fb = (working.bench[a.bench_idx]
+                   if 0 <= a.bench_idx < len(working.bench or [])
+                   else None)
+            if _fb is not None and sole_engine_sell_blocked(
+                    _fb, working, registry):
+                verdicts.append(
+                    f'sell_floor:{_fb.char_id} 在手≤tier 体系件'
+                    '(同批前序卖出已计入,ADR-0380)')
         auth_note: dict = {}
         for cname in registry.constraints:
             reason = _check_constraint(

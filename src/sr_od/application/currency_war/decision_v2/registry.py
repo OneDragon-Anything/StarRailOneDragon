@@ -470,6 +470,23 @@ class DecisionV2Registry:
     #: 连 TT 三羁绊辖域一起关,A/B 配对臂(只隔离辖域差)与回退粒度
     #: 都不对;辖域修正是 0373/0371「四体系」声称的语义补全,默认开。
     guard_seele_scope_enabled: bool = True
+    # ===== W197/ADR-0380 卖侧下界守卫执行点补全(own_gap 演进谱系)=====
+    #: 总开关:False=逐位回 W195 后行为(A/B 基线臂)。True 时
+    #: ``sole_engine_sell_blocked`` 的「TT 体系件在手≤tier 不可卖」
+    #: 语义在两个此前无守卫的执行点生效:
+    #: ① arbiter 卖候选采纳点复检(对 working 前序采纳后的状态逐笔
+    #:    复检——候选生成是对批前状态计数,同段两笔同名 TT 件逐笔
+    #:    合法而聚合跌破 tier,136 r7 两笔三月七 3→1 实证);
+    #: ② execute_replacement 溢出卖出下界(bench 满截断保留序时,
+    #:    rank0 保护件被卖出 → 改为留场不下场,新上场名单收紧——
+    #:    ADR-0373 不辖清单第 3 条对「卖出面」的豁免撤销,保留序/
+    #:    undeploy 语义不变;136 r9 benchOcc=9 卖 deployed 椒丘实证)。
+    #: 判据单一源 = discipline.sole_engine_sell_floor_plan(批量口径,
+    #: 前序可卖件计数扣减;单笔与 sole_engine_sell_blocked 逐位一致)。
+    #: 不辖:owned>tier 冗余件清仓/undeploy 下场(ADR-0373「禁下场
+    #: 压死良性轮换」语义保持)/补完事务 sell(_locked_protected_names
+    #: 引擎键∪pair 成员保护已覆盖,W192 辖域不变)。
+    sell_floor_exec_guard_enabled: bool = True
     # ===== W194/ADR-0378 [33] 稳态 LevelUp 多击组(W185 泛化)=====
     #: 总开关:False=回 W193 后行为(A/B 基线臂——多击组只在轮内
     #: deploy_cap 拒绝触发补偿时发射,Catch-22 原状)。True 时

@@ -132,9 +132,6 @@ def sole_engine_sell_blocked(bc, state: GameState,
     W179 后行为)+ registry.guard_seele_scope_enabled(W192 辖域
     补全开关,关=逐位回 W188 后行为=三羁绊辖域)。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
-        TRANSITION_TRAITS,
-    )
     from sr_od.application.currency_war.decision_v2.registry import (
         DEFAULT_REGISTRY,
     )
@@ -145,56 +142,118 @@ def sole_engine_sell_blocked(bc, state: GameState,
     ch = CHARACTERS.get(name)
     if ch is None:
         return False    # 未识别/注册表外件:既有守卫已挡,不重复辖
-    bonds = set(ch.factions) | set(ch.flows)
-    hit = {b: t for b, t in TRANSITION_TRAITS if b in bonds}
-    blocked = False
-    if hit:
-        counts = dict.fromkeys(hit, 0)
-        for p in (*state.bench, *state.deployed):
-            if p is None or not p.char_id:
-                continue
-            pc = CHARACTERS.get(p.char_id)
-            if pc is None:
-                continue
-            pb = set(pc.factions) | set(pc.flows)
-            for b in hit:
-                if b in pb:
-                    counts[b] += 1
-        blocked = any(counts[b] <= t for b, t in hit.items())
-    # W192/ADR-0375 希儿系辖域(**核心条件辖**,域修正:无条件辖首版
-    # n=300 A/B 回归 never2 9→11,回归局全程无希儿——被堵全是不帯
-    # 核心的孤立放大器件;transition_combos 域事实「没有希儿时量子/贝
-    # 不能独立当过渡(28 帖全部含希儿)」→ 无核心时放大器不是体系件):
-    # - 希儿本人:在手副本 ≤1(唯一种子)→ 卖出即清空单卡依赖体系
-    #   的不可替核心,拒;
-    # - 放大器件:仅当希儿在手(bench∪deployed)时辖——其放大阵营
-    #   (量子同频/贝洛伯格,全羁绊口径)在手件数 ≤2(引擎成型门槛,
-    #   与 TT 系 tier=成型门槛同构)→ 卖出跌破成型线,拒;希儿不在
-    #   手 → 放大器照旧 off_target 合法面(孤立贝/量件非体系件)。
-    # 桑博=贝+DOT 双籍件与 TT 辖域并计,两判据独立评估取或。
-    if not blocked and reg.guard_seele_scope_enabled:
-        from sr_od.application.currency_war.cw_deploy_logic import (
-            SEELE_AMP_FACTIONS,
-        )
-        pool = [p for p in (*state.bench, *state.deployed)
-                if p is not None and p.char_id]
-        if name == '希儿':
-            blocked = sum(1 for p in pool
-                          if p.char_id == '希儿') <= 1
+    # 判据单一源:计数底座 + 单件评估(W197/ADR-0380 起 batch 口径同源)
+    return _sell_floor_eval(name, set(ch.factions) | set(ch.flows),
+                            _sell_floor_counts(state, reg))
+
+
+def sole_engine_sell_floor_plan(bcs: list,
+                                state: GameState,
+                                registry: DecisionV2Registry | None = None,
+                                ) -> list[bool]:
+    """W197/ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
+
+    背景(136 r7 实证):arbitrate 同段可采纳多笔同名 TT 件卖候选——
+    候选生成对**批前状态**计数(列车在手 3>tier 2),逐笔合法而批内
+    聚合 3→1 跌破 tier。``sole_engine_sell_blocked`` 单件口径对同批
+    前序卖出不可见——本函数按 ``bcs`` 顺序逐笔评估,**前序判定为
+    「可卖」的件从计数扣减**(blocked 件不卖、不扣减);单笔输入时
+    与单件谓词逐位一致(同一计数底座/同一辖域判据,ADR-0373/0375)。
+
+    消费面:arbiter 卖候选采纳点(对 working 复检,前序扣减由 working
+    前序采纳天然实现)/ execute_replacement 溢出卖出下界(ADR-0380
+    件1,事务内多笔同序扣减)。
+    """
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    counts = _sell_floor_counts(state, reg)
+    out: list[bool] = []
+    for bc in bcs:
+        name = getattr(bc, 'char_id', '') or ''
+        ch = CHARACTERS.get(name)
+        if not reg.sell_sole_engine_guard_enabled or ch is None:
+            out.append(False)
+            continue
+        bonds = set(ch.factions) | set(ch.flows)
+        blocked = _sell_floor_eval(name, bonds, counts)
+        out.append(blocked)
+        if not blocked:
+            _sell_floor_decrement(name, bonds, counts)
+    return out
+
+
+def _sell_floor_counts(state: GameState,
+                       reg: DecisionV2Registry) -> dict:
+    """下界守卫计数底座(ADR-0373/0375/0380 单一源)。
+
+    返回可变计数 dict:
+    - TT 三羁绊键 → {'tier': 门槛, 'count': 在手件数(bench∪deployed
+      逐件计,全羁绊 factions∪flows 口径)};
+    - '_seele_scope'(辖域开关)/'_seele_core'(希儿在手)/
+      '_seele_core_copies'(希儿副本数)/'_seele_amp:{阵营}'(放大阵营
+      在手件数)——希儿系核心条件辖(W192/ADR-0375 判据)。
+    """
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        SEELE_AMP_FACTIONS,
+        TRANSITION_TRAITS,
+    )
+    counts: dict = {b: {'tier': t, 'count': 0} for b, t in TRANSITION_TRAITS}
+    pool = [p for p in (*state.bench, *state.deployed)
+            if p is not None and p.char_id]
+    core_copies = 0
+    amp_counts = dict.fromkeys(SEELE_AMP_FACTIONS, 0)
+    for p in pool:
+        pc = CHARACTERS.get(p.char_id)
+        if pc is None:
+            continue
+        pb = set(pc.factions) | set(pc.flows)
+        for b in counts:
+            if b in pb:
+                counts[b]['count'] += 1
+        if p.char_id == '希儿':
+            core_copies += 1
         else:
-            amp = bonds & SEELE_AMP_FACTIONS
-            if amp and any(p.char_id == '希儿' for p in pool):
-                counts = dict.fromkeys(amp, 0)
-                for p in pool:
-                    pc = CHARACTERS.get(p.char_id)
-                    if pc is None:
-                        continue
-                    pb = set(pc.factions) | set(pc.flows)
-                    for f in amp:
-                        if f in pb:
-                            counts[f] += 1
-                blocked = any(c <= 2 for c in counts.values())
+            for f in amp_counts:
+                if f in pb:
+                    amp_counts[f] += 1
+    counts['_seele_scope'] = reg.guard_seele_scope_enabled
+    counts['_seele_core_copies'] = core_copies
+    counts['_seele_core'] = core_copies > 0
+    for f, c in amp_counts.items():
+        counts[f'_seele_amp:{f}'] = c
+    return counts
+
+
+def _sell_floor_eval(name: str, bonds: set, counts: dict) -> bool:
+    """单件下界判定(对计数底座;TT ≤tier + 希儿系条件辖,两判据取或)。"""
+    blocked = any(v['count'] <= v['tier'] for b, v in counts.items()
+                  if not b.startswith('_') and b in bonds)
+    if not blocked and counts.get('_seele_scope'):
+        if name == '希儿':
+            blocked = counts.get('_seele_core_copies', 0) <= 1
+        else:
+            amp = {b for b in bonds
+                   if f'_seele_amp:{b}' in counts}
+            if amp and counts.get('_seele_core'):
+                blocked = any(counts[f'_seele_amp:{f}'] <= 2 for f in amp)
     return blocked
+
+
+def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
+    """该件将卖出 → 计数底座扣减(批量口径的前序可见性)。"""
+    for b, v in counts.items():
+        if not b.startswith('_') and b in bonds:
+            v['count'] -= 1
+    if name == '希儿':
+        counts['_seele_core_copies'] = counts.get('_seele_core_copies', 0) - 1
+        counts['_seele_core'] = counts['_seele_core_copies'] > 0
+    else:
+        for f in bonds:
+            k = f'_seele_amp:{f}'
+            if k in counts:
+                counts[k] -= 1
 
 
 def seed_age_blocked(bc, state: GameState,

@@ -732,7 +732,8 @@ def _deploy_row(bc: BenchChar, comp: Comp | None,
 def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                         memory: EvolutionState | None = None,
                         session=None, engine_guard: bool = True,
-                        seele_scope: bool = True) -> list[Action]:
+                        seele_scope: bool = True,
+                        sell_floor: bool = True) -> list[Action]:
     """④-1 生成整档替换 CompTransaction(决策在执行前一起定)。
 
     完整方案一次敲定:新档成员上场(核心优先)+ 旧档整档解除(羁绊不在目标
@@ -749,6 +750,10 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     ``evolve_engine_guard_enabled`` 注入)时,事务净效果使过渡引擎数
     从 ≥2 跌破 2 → 被拆引擎体系的 deployed 贡献件获得新线同级留场
     资格(见下方守卫块)。
+
+    W197/ADR-0380 件②:``sell_floor`` True(默认,registry
+    ``sell_floor_exec_guard_enabled`` 注入)时,溢出卖出对「TT 体系
+    件在手≤tier」的件不再卖出而改留场(见下方守卫块)。
     """
     if not verdict.execute:
         return []
@@ -855,6 +860,33 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                    if CHARACTERS.get(d.char_id) else 0)))
     retained = retained[:max(0, bench_free)]
     sold = [d for d in old_line if not any(d is r for r in retained)]
+    # W197/ADR-0380 件②:溢出卖出下界守卫——bench 满截断保留序时,
+    # rank0 保护件(TT/希儿系引擎件)也会被划进 sold(保留序是相对
+    # 优先级不是绝对保证;136 r9 benchOcc=9 卖 deployed 椒丘实证)。
+    # 「TT 体系件在手≤tier 不可卖」(ADR-0373 语义)在事务构造点生效:
+    # 命中下界的 sold 件改为**留场**(不下场不卖,回 deployed_keep,
+    # 同 engine_guard keep_extra 先例——换血可以,清空不可),新上场
+    # 名单相应收紧;undeploy/保留序语义不变。批量口径 = 事务内多笔
+    # 同序扣减(discipline.sole_engine_sell_floor_plan 单一源)。
+    if sell_floor and sold:
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            sole_engine_sell_floor_plan,
+        )
+        _plan = sole_engine_sell_floor_plan(sold, state)
+        _floor_keep = [d for d, blk in zip(sold, _plan, strict=True)
+                       if blk]
+        if _floor_keep:
+            sold = [d for d, blk in zip(sold, _plan, strict=True)
+                    if not blk]
+            deployed_keep = [*deployed_keep, *_floor_keep]
+            # 留场件占 room → 新上场收紧(排容量核算在下方,留场件
+            # 不释放排位,front/back 计数天然正确)
+            room = state.max_units() - len(deployed_keep)
+            bench_new = bench_new[:max(0, room)]
+            log.info('[cw][ev][sell-floor] 溢出卖出下界守卫:%s '
+                     '体系件 %d 件留场(在手≤tier 不可卖,ADR-0380)',
+                     '/'.join(sorted({d.char_id for d in _floor_keep
+                                      if d.char_id})), len(_floor_keep))
 
     # 索引(按事务前状态解析,契约口径;身份索引——同名同星 dataclass
     # 值相等会让 list.index 删错对象,同 cw_state._remove_by_identity 纪律)
@@ -1104,7 +1136,8 @@ def evolution_step(state: GameState, session=None,
                    engine_guard: bool = True,
                    final_freeze: bool = True,
                    engine_completion: bool = True,
-                   seele_scope: bool = True) -> list[Action]:
+                   seele_scope: bool = True,
+                   sell_floor: bool = True) -> list[Action]:
     """统一入口(冻结:任何阵容改进步动走这里)。
 
     propose → evaluate →(最优 verdict)execute → fill;返回待执行动作序列
@@ -1163,7 +1196,8 @@ def evolution_step(state: GameState, session=None,
             return []
         actions = execute_replacement(verdict, state, mem, session,
                                       engine_guard=engine_guard,
-                                      seele_scope=seele_scope)
+                                      seele_scope=seele_scope,
+                                      sell_floor=sell_floor)
         if not actions:
             return []
         tx = actions[0]

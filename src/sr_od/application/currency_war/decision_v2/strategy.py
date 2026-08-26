@@ -271,7 +271,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
                 engine_completion=registry.evolve_engine_completion_enabled,
                 # W192/ADR-0375:希儿系贡献件并入守卫/保护集辖域
                 # (A/B 通道,关=回 W188 后行为)
-                seele_scope=registry.guard_seele_scope_enabled)
+                seele_scope=registry.guard_seele_scope_enabled,
+                # W197/ADR-0380:溢出卖出下界守卫(execute_replacement
+                # 溢出卖出对 TT 体系件改留场;A/B 通道,关=回 W195 后
+                # 行为——arbiter 采纳点复检同 flag,见 arbiter.py)
+                sell_floor=registry.sell_floor_exec_guard_enabled)
             # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
             # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
             # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟
