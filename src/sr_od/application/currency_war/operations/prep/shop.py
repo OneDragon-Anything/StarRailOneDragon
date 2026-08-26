@@ -452,6 +452,12 @@ class BuyShopCards(SrOperation):
                 # 恒空,锁定时点/目标只有这里可读;None=无意向状态机)
                 'v3_intention': cw_telemetry.serialize_intention(
                     getattr(_sess, 'v3_intention', None)),
+                # W224/ADR-0399:P2 承接快照(纯观测;plane>=2 位面首帧
+                # decide_prep 写 session.v3_handoff,此处透传——仅 P2
+                # 首轮行非空,与 sim SimResult.p2_handoff 同源同构)
+                'handoff': (getattr(_sess, 'v3_handoff', None).as_dict()
+                            if getattr(_sess, 'v3_handoff', None)
+                            is not None else None),
             }
             # W222 遥测缺口①(W220 判读实锤:两局 decisions.state.equips 恒空):
             # owned 穿戴池的唯一 session 写端在 equip_all,读端拷贝只接在

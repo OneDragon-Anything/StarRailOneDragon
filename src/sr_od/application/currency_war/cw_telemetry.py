@@ -199,6 +199,10 @@ class DecisionTrace:
     # 未锁;phase='locked' 时 locked_comp=锁定目标(COMP_LIBRARY 套名)。
     # 可选,旧记录缺省 None 不破坏 schema。
     v3_intention: dict[str, Any] | None = None
+    # —— W224/ADR-0399 P2 承接快照(纯观测;plane>=2 本位面首帧
+    # decide_prep 入口算一次的七维向量+派生档位,decision_v2.handoff.
+    # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
+    handoff: dict[str, Any] | None = None
 
 
 @dataclass
@@ -390,6 +394,10 @@ class TelemetryRecorder:
             # W146 v3 意向状态(serialize_intention 产物直传)
             _ist = extra.get('v3_intention')
             trace.v3_intention = _ist if isinstance(_ist, dict) else None
+            # W224/ADR-0399:P2 承接快照(session.v3_handoff 透传;
+            # 非 dict(None)=未进 P2/缺省,旧 schema 不破坏)
+            _ho = extra.get('handoff')
+            trace.handoff = _ho if isinstance(_ho, dict) else None
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改

@@ -9,6 +9,12 @@
 > 板面/血量/经济/装备这一整套**带入 P2 的资产状态**;「承接质量」= 该状态满足
 > P2 存活与后续运营需求的程度。
 
+> **Phase 0 已落地(ADR-0399,2026-09-01)**:观测层(快照纯函数 +
+> sim/生产双侧字段 + 档位离线标定)已实现,语义 as-built 见 §4.2
+> Phase 0 条与 §5 表;标定结论、口径收窄(core2 = 上场件全量
+> star≥2;时点 = 首轮 decide_prep 入口,gold 含 P2 r1 收入)与数据
+> 边界的单一源 = ADR-0399。Phase 1-3 仍未实现。
+
 ## 1. 问题(为什么需要这个模型)
 
 两局实证败因同向(W220):
@@ -111,12 +117,16 @@ P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首�
 三层递进,**观测先行**(ADR-0346 影子模式的成功先例:phase 先影子观测一期、
 切授权在证据到位后独立成批):
 
-- **Phase 0(观测层,零行为)**:新纯函数 `handoff_snapshot(state, session) -> HandoffSnapshot`
-  (dataclass,§3.2 向量 + 派生档位)。挂载点 = P2 首轮 `decide_prep` 入口
-  (strategy.py:231 相位派生同址,plane==2 且本位面首轮时算一次写
-  `session.v3_handoff`)——与 phase 同型:**派生量、不落跨轮存储、天然免疫 session 丢失**。
-  sim 侧同函数在进场继承块(cw_sim.py:1312-1338)后采样,进 SimResult
-  (`p2_handoff_*` 字段族,与 p2_gold_carried 同批披露)。生产侧进 decisions 遥测行。
+- **Phase 0(观测层,零行为)**【已落地,ADR-0399】:纯函数
+  ``decision_v2.handoff.handoff_snapshot(state, session, registry) ->
+  HandoffSnapshot``(dataclass,§3.2 向量 + 派生档位
+  ``hp_tier/board_tier/tier``,切点常量 HANDOFF_HP_CUTS 等,标定
+  依据见 ADR-0399)。挂载点 = ``decide_prep`` 入口的位面首帧块
+  (plane>=2 且 ``session.v3_handoff_plane != state.plane`` 时算一次写
+  ``session.v3_handoff``)——与 phase 同型:**派生量、不落跨轮存储、
+  天然免疫 session 丢失**。sim 侧 ``SimResult.p2_handoff`` 与生产
+  ``DecisionTrace.handoff`` 均由同一 session 字段采样(单一源,
+  含案 b 臂 ``simulate_p2_replay_entry``)。
 - **Phase 1(门控层,P1 末窗承接账)**:承接档位作为 **P1 r8-r9(boss 窗)花钱期望的
   门槛输入**——具体挂载点两个,均为既有接口、零新层:
   a. **formed_stop 消费面**(filters,ADR-0343):成型停手线的谓词族加承接维
@@ -171,7 +181,7 @@ P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首�
 
 | 期 | 内容 | 批量级 | 验收 |
 |---|---|---|---|
-| **Phase 0** | `handoff_snapshot` 纯函数 + sim/生产双侧观测字段 + 21 run 真值离线回放标定档位 | 1 批 | §4.1 判据 1(单调)+ 判据 2(run26/28 回验);P1 零漂移门;新单帧锁(快照字段/档位边界例) |
+| **Phase 0** | ~~快照纯函数 + 双侧观测 + 离线标定~~ **已落地(ADR-0399)**:单调标定过(hp 维 (20,50) 严格单调;板面维单切点单调,总档位两档)、run 26/28 回验各自命中主罚维、零漂移门 diff={} | — | 判据 1/2 过;新单帧锁 test_cw_w224_handoff |
 | Phase 1 | formed_stop 承接维 + EV 承接缺口项(A/B flag,registry 注入) | 1-2 批 | §4.1 判据 3(hp0 率↓/存活轮↑配对);P1 零漂移;行为变更三同步 |
 | Phase 2 | P2 早期姿态偏置(V_D 参数偏置,registry A/B) | 1 批 | 同上配对口径;敏感性端点一致 |
 | Phase 3 | hp<10 保命路径收编(三臂合账) | 1 批 | run 28 型构造局单帧锁 + sim 分层对照 |

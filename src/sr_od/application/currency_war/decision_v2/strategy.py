@@ -138,6 +138,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_form_ok = False
         session.v3_form_score = 0.0
         session.v3_dp_posture = None
+        # W224/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
+        session.v3_handoff = None
+        session.v3_handoff_plane = None
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:
@@ -244,6 +247,18 @@ class DecisionV2Strategy(DefaultCwStrategy):
             key, dp_posture(state, session))
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
+        # W224/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
+        # Phase 0)——plane>=2 本位面首帧算一次写 session.v3_handoff
+        # (派生量模式,同 v3_phase;session 丢→下轮入口现算,天然免疫)。
+        # 挂载在相位派生同址、任何 P2 决策/动作之前 = 「进场继承完成后」
+        # 的承接态;sim/生产同点(sim 侧 SimResult.p2_handoff 由此采样)。
+        if state.plane >= 2 and getattr(session, 'v3_handoff_plane', None) \
+                != state.plane:
+            from sr_od.application.currency_war.decision_v2.handoff import (
+                handoff_snapshot,
+            )
+            session.v3_handoff_plane = state.plane
+            session.v3_handoff = handoff_snapshot(state, session, registry)
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

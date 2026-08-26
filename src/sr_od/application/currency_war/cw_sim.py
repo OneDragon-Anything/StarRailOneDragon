@@ -406,6 +406,11 @@ class SimResult:
     p2_lv6_round: int | None = None  # P2 段内首次 level>=6 的轮(None=未达)
     p2_lv7_round: int | None = None  # P2 段内首次 level>=7 的轮(W183:
                                      # run15 恒 lv6 卡死形态的可观测指标)
+    # W224/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot.
+    # as_dict;进场继承完成后位面首帧采样——生产同点=session.v3_handoff,
+    # 决策代码挂载零复制单一源)。None=未进 P2/策略桩未算。纯观测零漂移
+    # (不耗 rng,planes=1 路径不触及)。
+    p2_handoff: dict | None = None
     # ===== 投资注入观测(W162/ADR-0364;invest 注入时填,默认空/0)=====
     invest_env: str = ''            # 本局注入的投资环境名(空 = 无)
     invest_strategies: tuple[str, ...] = ()   # 本局实际注入持有的策略名序
@@ -2133,6 +2138,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # plane=2 行派生(金带走量/carry 笔数价格带/意向切换/lv 到达轮)。
     if res.p2_entered:
         res.p2_combat_calibrated = _p2c.calibrated
+        # W224/ADR-0399:承接快照披露(策略 decide_prep 位面首帧块写
+        # session.v3_handoff——案 b 臂同样经首轮 decide_prep 采样)。
+        _h = getattr(sess, 'v3_handoff', None)
+        res.p2_handoff = _h.as_dict() if _h is not None else None
         _p2_rows = [row for row in res.ledger
                     if (row.get('plane') or 1) == 2]
         if res.p2_hp0:
