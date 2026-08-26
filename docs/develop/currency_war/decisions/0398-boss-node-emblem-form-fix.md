@@ -83,3 +83,9 @@ ruff 绿(6 改动文件);新锁 5(test_cw_w221_boss_locate_emblem.py:徽章态�
 [fixture=run30 现场帧]/详情条标签真实 OCR 含首领/分流矩阵/battle_loop 保位静态锁/
 boss_fit None 容差)+ 头像态既有锁(test_cw_node_boss.py)双态并存;全量 pytest
 见 commit 信息。
+
+run31 实机补强(2026-08-27 00:20:24-42,`mcp_server.log`):标签验证通道首次实采
+三面 record——位面详情采集 17s 内完成,boss=['不死者联盟','虫人兵器','火花网络传媒']
+(徽章态位面=None);其中位面 2/3 从未到过(开局即采)仍头像态(SIFT 命中)。标签验证
+双态双局实锤:run30(徽章态)标签命中→skip 分流 + run31(头像态)标签命中→record
+真值,与 O1 分流矩阵逐格一致。
