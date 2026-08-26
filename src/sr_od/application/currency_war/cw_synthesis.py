@@ -149,3 +149,74 @@ def self_advance(base: str) -> str | None:
         if b == base:
             return adv
     return None
+
+
+# ===== 装备策略接入(P14 期望模型的生产化;ADR-0391)=====
+# P14(docs/game/currency_war/research/proofs/p14-equipment-acquisition-ev.md)
+# 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读锚点消费;
+# 证明脚本与本文档共享图谱单一源(本模块),数值改动自动传导。
+
+
+def component_demand(key_equips: list[str]) -> dict[str, int]:
+    """目标装备多重集 K 的**基础件需求向量**(P14 决策表的输入)。
+
+    每件 K 展开为配方组件:交叉件 = 两件不同基础(火力风暴潮 = 轮滑鞋+
+    折叠小刀);自配件 = 同基础 ×2(反重力皮靴 = 轮滑鞋×2)。K 中无配方件
+    (白昼/特权类,无常规获取通道)跳过——不产生可规划需求(P14 Q4)。
+    例:K=[反重力皮靴×2, 火力风暴潮] → {轮滑鞋: 5, 折叠小刀: 1}
+    (皮靴=轮滑鞋×2,两双=4;风暴潮再加 1 轮滑鞋+1 小刀)——对拍 P14 例 1。
+    """
+    demand: dict[str, int] = {}
+    for adv in key_equips:
+        cross = cross_components(adv)
+        if cross is not None:
+            for b in cross:
+                demand[b] = demand.get(b, 0) + 1
+            continue
+        base = self_base(adv)
+        if base is not None:
+            demand[base] = demand.get(base, 0) + 2
+    return demand
+
+
+def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
+    """**回收合格**基础件集(P14 定理 3 准入的生产化)。
+
+    判据(证明见 P14 Q3):基础件 b 回收合格 ⟺ b 不是任何目标进阶的组件
+    ——b 若能合成出想要的进阶,回收(销毁它换 1/36 抽卡机会)严格劣于
+    留着合成;只有「连合成原料都当不上」的件才允许进回收流水线
+    (2合1 → 3 件同刷,equipment_mechanics「回收流水线」节)。
+    例:K=[反重力皮靴×2, 火力风暴潮](阿雅)→ 合格 = 以太钻头/光能电池/
+    和平手枪/幸运星/生命之花/量产型装甲(轮滑鞋除外——需求 ×5)。
+    ``key_equips=None``(无目标)→ 空集:有用性无从判定,一律不当死库存
+    (保守侧,行为同旧)。
+    """
+    if not key_equips:
+        return frozenset()
+    useful = set(component_demand(key_equips))
+    return frozenset(b for b in RESERVED_COMPONENTS if b not in useful)
+
+
+def hoard_gaps(key_equips: list[str], owned: list[str]) -> dict[str, int]:
+    """「缺什么囤什么」差集(P14 结论的判读锚点):基础件需求 − 库存。
+
+    抵扣序:owned 已持有的**进阶件** 1:1 抵 K 同名需求(持有成品不再
+    需要组件);剩余需求展开组件向量后减 owned 基础件库存,取正差。
+    输出 = 「现在缺、发放流来了该囤住」的基础件及件数(P14 对实现的
+    检验点 2:遥测按组件需求向量 − 库存向量报)。
+    """
+    from collections import Counter
+    if not key_equips:
+        return {}
+    owned_ct = Counter(owned)
+    remaining_k: list[str] = []
+    for adv, need in Counter(key_equips).items():
+        remain = max(0, need - owned_ct.get(adv, 0))
+        remaining_k.extend([adv] * remain)
+    demand = component_demand(remaining_k)
+    gaps: dict[str, int] = {}
+    for b, need in demand.items():
+        lack = need - owned_ct.get(b, 0)
+        if lack > 0:
+            gaps[b] = lack
+    return gaps

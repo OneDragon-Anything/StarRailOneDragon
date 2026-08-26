@@ -1564,6 +1564,19 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     一处包含 RESERVED_COMPONENTS 内名字——豁免是防御性判据,当前零命中,
     未来 comp 若显式要求组件(如「合成前过渡穿着」打法)不需改本函数)。
     plane≥2 无此过滤(P2/P3 过渡期结束,合成窗口关闭,组件穿着不再锁路线)。
+
+    ADR-0391(P14 期望模型接入,口述「穿着即合成/囤积/回收线」):两条新纪律——
+    1. **防误合成配对守卫**(全 plane):同一角色身上不得出现互为配方的两件
+       基础件,除非 ①配对产物 ∈ key_equips 且穿者是 core(=想要的配对,
+       穿着触发合成即快路径),或 ②两件都是回收合格死库存且穿者非 core
+       (回收线 2合1 的有意触发)。口述依据:穿着触发自动合成无确认,「会被
+       角色身上的残留件带偏,可能合出非预期产物」——非预期合成不可逆地
+       消耗两件组件。
+    2. **死库存回收去向**(plane≥2 生效;P1 基础件本就全保留):回收合格
+       基础件(P14 定理 3:不是任何目标进阶的组件)优先发非 core 工具人、
+       每人至多 2 件(有意触发 2合1,产物=无用进阶,等冶金炉 3 件同刷);
+       发不完留在 owned 囤着(口述囤积原则「没什么用就先不装备囤着」)。
+       死库存不穿 core——穿着合成产物落在 core 身上=后续转移摩擦。
     """
     # ADR-0265:P1 组件保留过滤(key_equips 豁免;comp=None 时无豁免信息,
     # 组件一律保留——v2 未锁线期本就不该散穿)
@@ -1588,6 +1601,48 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                                 int(getattr(d, 'slot', 0) or 0)), [])) for d in ds)
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
+    # ===== ADR-0391:防误合成守卫 + 回收去向(P14 定理 3/4)=====
+    from sr_od.application.currency_war.cw_synthesis import (
+        RESERVED_COMPONENTS,
+        recycle_qualified,
+        synthesize_target,
+    )
+    _key_set = set(comp.key_equips) if comp is not None else set()
+    _core_set = set(comp.core_chars) if comp is not None else set()
+    _rq = recycle_qualified(list(comp.key_equips) if comp is not None else None)
+    # 基础件判定 = RESERVED_COMPONENTS(7 标准 ∪ 光能电池,恰为全 8 件基础件
+    # ——别用 SYNTHESIS_BASES,它漏光能电池,而光能电池系配方全部经它)
+    _is_basic = RESERVED_COMPONENTS.__contains__
+    # 各角色已穿基础件(occupied 画面已穿 + 本趟已分配),配对守卫的输入
+    worn_basics: dict[str, list[str]] = {}
+    for d in deployed:
+        n = getattr(d, 'char_id', None)
+        if not n:
+            continue
+        for w in occ.get((getattr(d, 'position_pref', '') or '',
+                          int(getattr(d, 'slot', 0) or 0)), []):
+            if _is_basic(w):
+                worn_basics.setdefault(n, []).append(w)
+
+    def _pairing_ok(char: str, basic: str) -> bool:
+        """基础件 basic 发给 char 是否安全(见 docstring 纪律 1 的两例外)。"""
+        for b2 in worn_basics.get(char, ()):
+            y = synthesize_target(basic, b2)
+            if y is None:
+                continue
+            if y in _key_set and char in _core_set:
+                continue    # 例外①:想要的配对,core 上穿着合成=快路径
+            if basic in _rq and b2 in _rq and char not in _core_set:
+                continue    # 例外②:回收线有意 2合1(非 core 工具人)
+            return False
+        return True
+
+    def _assign(char: str, item: str) -> None:
+        out.append((char, item))
+        capacity[char] -= 1
+        if _is_basic(item):
+            worn_basics.setdefault(char, []).append(item)
+
     out: list[tuple[str, str]] = []
     if comp is not None and comp.key_equips:
         # 接收者顺序:plaza_carry(carry)优先,再 core_chars 顺序;只发给场上且容量 >0 者
@@ -1603,9 +1658,11 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 if capacity.get(r, 0) <= 0 or not pool:
                     break
                 if w in pool:
+                    # ADR-0391:key 豁免的基础件同样过配对守卫(防非预期合成)
+                    if _is_basic(w) and not _pairing_ok(r, w):
+                        continue
                     pool.remove(w)
-                    out.append((r, w))
-                    capacity[r] -= 1
+                    _assign(r, w)
             if not pool:
                 break
     # 通用兜底:剩余 pool 按场上顺序(deployed 原序,前排先)分完
@@ -1621,21 +1678,44 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
         _others = [d for d in deployed
                    if getattr(d, 'char_id', '') and d.char_id not in comp.core_chars]
-        # core 先吃满
+        # ADR-0391 死库存回收去向:先于 core 兜底抽取(防 core 盲吃死库存),
+        # 非 core 工具人每人至多 2 件(两件互为配对 → 游戏自动 2合1 =
+        # 回收线有意触发;发不完留 owned 囤着)
+        _dead = [e for e in pool if e in _rq]
+        if _dead:
+            for _pass in range(2):
+                if not _dead:
+                    break
+                for d in _others:
+                    if not _dead:
+                        break
+                    n = d.char_id
+                    if capacity.get(n, 0) <= 0:
+                        continue
+                    e = _dead[0]
+                    if not _pairing_ok(n, e):
+                        continue    # 该工具人身上有会配错的残留件 → 换人
+                    _dead.pop(0)
+                    pool.remove(e)
+                    _assign(n, e)
+        # core 先吃满(跳过会触发非预期合成的基础件 → 留 owned)
         for cn in _cores:
             while pool and capacity.get(cn, 0) > 0:
                 g = pool.pop(0)
-                out.append((cn, g))
-                capacity[cn] -= 1
-        # 非 core:每人 1 件保底
+                if _is_basic(g) and not _pairing_ok(cn, g):
+                    continue
+                _assign(cn, g)
+        # 非 core:每人 1 件保底(同样过配对守卫)
         for d in _others:
             n = d.char_id
             if pool and capacity.get(n, 0) > 0:
-                g = pool.pop(0)
-                out.append((n, g))
-                capacity[n] -= 1
+                idx = next((i for i, e in enumerate(pool)
+                            if not (_is_basic(e) and not _pairing_ok(n, e))), None)
+                if idx is not None:
+                    _assign(n, pool.pop(idx))
         return out
-    # comp=None:轮转分配(r232 前是灌满第一人)
+    # comp=None:轮转分配(r232 前是灌满第一人);配对守卫生效
+    # (comp=None 无豁免信息 → 任何互为配方的基础件对不同人发)
     _names = [d.char_id for d in deployed if getattr(d, 'char_id', '')]
     _round = 0
     while pool:
@@ -1645,11 +1725,14 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 break
             if capacity.get(n, 0) > 0:
                 g = pool.pop(0)
-                out.append((n, g))
-                capacity[n] -= 1
+                if _is_basic(g) and not _pairing_ok(n, g):
+                    continue    # 留 owned(防非预期合成)
+                _assign(n, g)
                 _gave = True
         _round += 1
-        if not _gave or _round > EQUIP_CAPACITY:
+        if not _gave and not pool:
+            break
+        if _round > EQUIP_CAPACITY:
             break
     return out
 

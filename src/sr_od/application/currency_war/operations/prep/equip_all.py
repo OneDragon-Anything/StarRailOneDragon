@@ -396,6 +396,7 @@ class EquipAll(SrOperation):
                     break
             equipped = 0
             stall = 0
+            _snap_logged = False   # 每次装备只记一遍快照(循环重读不重复记)
             while stall < 2:
                 cur = self.screenshot()
                 if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
@@ -412,6 +413,29 @@ class EquipAll(SrOperation):
                 # 采集层无权丢数据);过滤只辖 wearable 穿戴决策。
                 if _match is not None and _match.session is not None:
                     _match.session.last_owned_equips = [n for n, _, _ in hits]
+                if not _snap_logged:
+                    # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
+                    # 每轮备战首次读板记 owned 全量快照(含工具;发放流只在
+                    # 奖励/补给/投资策略/遭遇后事件点出现)——离线 diff 相邻轮
+                    # 快照 = 各节点发放件数 → λ 与事件条件化修正(P14 记账)。
+                    _st_ref = (getattr(_match.session, 'last_state', None)
+                               if _match is not None else None)
+                    _own_ct: dict[str, int] = {}
+                    for n, _, _ in hits:
+                        _own_ct[n] = _own_ct.get(n, 0) + 1
+                    log.info('[cw!][grant] plane=%s round=%s owned=%s',
+                             getattr(_st_ref, 'plane', '?'),
+                             getattr(_st_ref, 'round_num', '?'), _own_ct)
+                    # 判读锚点(P14 检验点 2):「缺什么囤什么」——目标 K 的
+                    # 组件需求 − 当前库存正差,判读/值守按此报装备面。
+                    if _tgt_comp is not None and _tgt_comp.key_equips:
+                        from sr_od.application.currency_war.cw_synthesis import (
+                            hoard_gaps,
+                        )
+                        gaps = hoard_gaps(list(_tgt_comp.key_equips),
+                                          [n for n, _, _ in hits])
+                        log.info('[cw!][hoard] gaps=%s', gaps or '库存已覆盖需求')
+                    _snap_logged = True
                 if not wearable:
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     break
