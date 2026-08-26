@@ -370,6 +370,24 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
     return _slots
 
 
+def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
+    """位面详情屏 详情条「文本-节点类型名」OCR → 类型名(如 首领节点/奖励节点)| None。
+
+    boss 定位验证锚(W221/ADR-0398):boss 节点有**两种渲染态**——头像态
+    (run29 型,大图标 SIFT 可认)与徽章态(run30 型:最右节点=通用金色徽章、
+    详情条=「首领节点」+通用描述,本屏无身份信息)。类型名稳定可 OCR
+    (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证 +
+    徽章态分流依据(消费方 ``collect_plane_intel.conclude_plane_boss``)。
+    读不到 → None(过渡帧/OCR 失败,调用方 retry,勿当徽章态)。
+    """
+    rect = _area_rect(ctx, '文本-节点类型名', '货币战争-位面详情')
+    if rect is None:
+        return None
+    blob = ''.join(r.data for r in _ocr(ctx, screen, rect))
+    t = blob.strip()
+    return t or None
+
+
 def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 

@@ -334,8 +334,10 @@ class StrategySession:
     # 敌人难度数值(简报「敌人难度N」读 → ctx.cw_enemy_difficulty → loop copy;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
     # 位面序 boss 真值(3 位面 boss 名;唯一写入端 = CollectPlaneIntel 位面详情实采,
-    # battle_loop 首个稳定备战帧触发(ADR-0397)——简报读数降级候选集,不写本字段;boss_fit 输入)
-    briefing_bosses: list[str] = field(default_factory=list)
+    # battle_loop 首个稳定备战帧触发(ADR-0397)——简报读数降级候选集,不写本字段;boss_fit 输入。
+    # 元素可为 None = 该位面徽章态采不到身份(W221/ADR-0398)——**保位勿滤**,
+    # 滤掉会让后续位面名字左移错位)
+    briefing_bosses: list[str | None] = field(default_factory=list)
     active_env: str = ""
     # deploy/sell 同步待补(deploy=DeployBench 位置式 / sell=_handle_bench_full 位置式,后续接)。
     tracked_bench: list[str] = field(default_factory=list)

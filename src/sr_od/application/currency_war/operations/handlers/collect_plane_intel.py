@@ -2,9 +2,14 @@
 
 职责:在备战画面开位面详情,一次采集三类情报:
 - **三位面 boss**:依次点三张位面卡 → 每卡点最右(boss)节点 → 详情条
-  大图标 SIFT 对拍 boss_avatar 20 模板(用户方案:「点击最后的节点,
-  下方会有更大的图标」——锁态小图 SIFT 特征塌缩认不出,大图标破局:
-  增熵 9:1、绘师 5:2 断层命中);
+  类型名标签验「首领」→ 大图标 SIFT 对拍 boss_avatar 20 模板(用户方案:
+  「点击最后的节点,下方会有更大的图标」——锁态小图 SIFT 特征塌缩认不出,
+  大图标破局:增熵 9:1、绘师 5:2 断层命中)。**boss 节点两种渲染态
+  (W221/ADR-0398,run 29/30 同夜实证)**:头像态(节点=红框头像,大图标
+  SIFT 断层命中)与**徽章态**(节点=通用金色徽章、详情条=「首领节点」+
+  通用描述,**本屏无任何身份信息**——run 30 位面 1 带内 9 圆逐圆 SIFT
+  全拒 + 大图标 SIFT 未命中 12 次实证)→ 徽章态位面记 None 跳过
+  (``conclude_plane_boss`` 分流),不 retry 空转;
 - **敌人词缀**:位面详情词缀横条随采(词缀只在简报/位面详情/敌人信息
   浮层三画面,备战无此条——首版误判备战常驻,空读两轮后用户纠正);
 - **位面节点带**:``read_plane_detail_nodes`` 读选中位面节点(类型/序)。
@@ -56,6 +61,31 @@ _PREP_SCREEN: str = '货币战争-备战'
 _PLANE_CARD_AREAS: tuple[str, ...] = ('按钮-位面卡1', '按钮-位面卡2', '按钮-位面卡3')
 
 
+#: 详情条节点类型名 area(位面详情屏;boss 定位验证锚)
+_LABEL_AREA: str = '文本-节点类型名'
+
+
+def conclude_plane_boss(label: str | None, sift_name: str | None) -> tuple[str, str | None]:
+    """单位面 boss 读取结论(纯函数,W221/ADR-0398 测试锁锚)。
+
+    输入:详情条节点类型名 OCR(``label``)+ boss 大图标 SIFT 结果(``sift_name``)。
+    返回 ``(action, value)``:
+    - ``('record', boss名)``:标签=首领 且 SIFT 命中 → 头像态(run29 型)真值;
+    - ``('skip', None)``:标签=首领 但 SIFT 未命中 → **徽章态**(run30 型:最右
+      节点=通用金色徽章,详情条只有「首领节点」+通用描述,本屏无身份信息;
+      渲染确定性,重点也不会变)→ 记 None 跳过,不 retry 空转;
+    - ``('retry', 原因)``:标签未读出(过渡帧/OCR 失败)或非首领(点到的不是
+      boss 节点——节点带误读/布局变的兜底,位置先验失效信号)。
+    """
+    if not label:
+        return 'retry', '详情条类型名未读出(过渡帧/OCR失败)'
+    if '首领' not in label.replace(' ', ''):
+        return 'retry', f'点到的非首领节点(标签={label}),位置先验失效兜底'
+    if sift_name is None:
+        return 'skip', None
+    return 'record', sift_name
+
+
 class CollectPlaneIntel(SrOperation):
     """位面详情:一次采集位面情报(三 boss 大图标 SIFT + 词缀横条 + 节点带;
     接管局补采主通道,亦开局校准通用)。"""
@@ -79,7 +109,12 @@ class CollectPlaneIntel(SrOperation):
         return Point((r.x1 + r.x2) // 2, (r.y1 + r.y2) // 2)
 
     def _boss_node_center(self) -> Point | None:
-        """当前位面节点条的最右(boss)节点圆心(read_plane_detail_nodes 动态定位)。"""
+        """当前位面节点条的最右(boss)节点圆心(read_plane_detail_nodes 动态定位)。
+
+        位置先验(最右=首领):run 30 反例帧反而证实——点最右圆详情条显
+        「1-9 首领节点」(徽章态身份缺失但**位置仍是首领**,ADR-0398);
+        点击后再由详情条标签验证(conclude_plane_boss),先验失效走 retry 兜底。
+        """
         from sr_od.application.currency_war.cw_observation import (
             read_plane_detail_nodes,
         )
@@ -130,8 +165,9 @@ class CollectPlaneIntel(SrOperation):
 
         分支序:①已在位面详情(重跑/续采)→ 采集循环;②备战 → 点当前
         节点图标开详情(round_wait 等开);③其它屏 → retry 等。
-        采集循环(每位面):点卡 → 点 boss 节点 → 读大图标 → 未命中
-        round_retry(重点);命中 → 下一位面;三位面齐 → success(转关闭)。
+        采集循环(每位面):点卡 → 点 boss 节点(最右,位置先验)→ 详情条
+        标签验「首领」+ 大图标 SIFT → 头像态命中记录 / 徽章态记 None 跳过 /
+        标签异常 retry;三位面齐 → success(转关闭)。
         """
         screen = self.last_screenshot
         _in_pd = self.round_by_find_area(
@@ -169,6 +205,10 @@ class CollectPlaneIntel(SrOperation):
             if self._affixes:
                 _log.info('[cw-plane-intel] 词缀随采(位面详情横条):%s', self._affixes)
         if self._cur_plane >= 3:
+            _miss = [str(i + 1) for i, b in enumerate(self._plane_bosses) if b is None]
+            if _miss:
+                _log.info('[cw-plane-intel] 位面%s boss 未取得(徽章态/读取失败),'
+                          'boss_fit 对应位面走中性(尽力采披露)', ','.join(_miss))
             return self.round_success('三位面采集完')
         # ① 点位面卡(选中当前采集位面)
         card = self._area_center(_PLANE_CARD_AREAS[self._cur_plane])
@@ -183,12 +223,29 @@ class CollectPlaneIntel(SrOperation):
             return self.round_retry('节点条未读出(切卡动画中),重读')
         self.ctx.controller.click(boss_pt)
         time.sleep(1.5)
-        # ③ 读大图标 SIFT(命中即证详情条已更新到该位面 boss)
+        # ③ 读详情条:类型名标签验「首领」→ 大图标 SIFT → 结论分流(W221/ADR-0398)
         self.screenshot()
-        name = self._read_boss_big_icon()
-        if name is None:
-            return self.round_retry(f'位面{self._cur_plane + 1} 大图标未命中,重点')
-        self._plane_bosses[self._cur_plane] = name
+        from sr_od.application.currency_war.cw_observation import (
+            read_detail_node_type_label,
+        )
+        label = read_detail_node_type_label(self.ctx, self.last_screenshot)
+        name: str | None = None
+        if label and '首领' in label.replace(' ', ''):
+            name = self._read_boss_big_icon()
+            if name is None:
+                # 半更新帧防误跳:skip 是终局结论(徽章态恒 None,重试无意义),
+                # 但「标签已更新而大图标未换」的过渡帧会把头像态误判 skip →
+                # 再截一帧复读一次(零点击成本)仍 miss 才下徽章态结论。
+                time.sleep(0.5)
+                self.screenshot()
+                name = self._read_boss_big_icon()
+        action, val = conclude_plane_boss(label, name)
+        if action == 'retry':
+            return self.round_retry(f'位面{self._cur_plane + 1} {val}')
+        if action == 'skip':
+            _log.info('[cw-plane-intel] 位面%d 首领节点=徽章态(无头像无名,本屏无身份)'
+                      '→ 记 None 跳过,不空转重试(W221/ADR-0398)', self._cur_plane + 1)
+        self._plane_bosses[self._cur_plane] = val
         _log.info('[cw-plane-intel] 采集进度:%s', self._plane_bosses)
         self._cur_plane += 1
         return self.round_wait(f'位面{self._cur_plane}完成,下一位面')

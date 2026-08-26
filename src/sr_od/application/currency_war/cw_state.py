@@ -124,7 +124,9 @@ class GameState:
     # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
     # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
     bench: list[BenchChar | None] = field(default_factory=list)
-    plane_bosses: list[str] = field(default_factory=list)   # 3 位面 boss 名(= 简报屏「3 阵营」;current_boss 派生;strategy/06)
+    # 3 位面 boss 名(current_boss 派生;strategy/06;session.briefing_bosses 同步)。
+    # 元素 None = 该位面徽章态无身份(W221/ADR-0398,boss_fit 跳过 None 项)
+    plane_bosses: list[str | None] = field(default_factory=list)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
     active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
     enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)

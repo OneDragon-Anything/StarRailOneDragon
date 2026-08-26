@@ -191,7 +191,7 @@ def derive_key_equips(comp: Comp) -> list[str]:
 @dataclass
 class ScoreContext:
     """select_comp / comp_score 的每回合上下文(避免长参数列表)。"""
-    bosses: list[str] = field(default_factory=list)              # 当前/将遇 boss 名(boss_fit)
+    bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=徽章态缺失位,W221)
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
     env: str = ""                                                # 已选投资环境名(env_fit)
     held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(ADR-0135 held_strategy_fit;机会型 pivot)
@@ -1167,7 +1167,7 @@ def mechanics_fit(comp: Comp, mechanics: set[str]) -> float | None:
     return clamp(score, 0.0, 1.0)
 
 
-def boss_fit(comp: Comp, bosses: list[str]) -> float | None:
+def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
     """boss 克制(boss 名维度):命中 comp.countered_by_bosses → 降。
 
     无 boss 信息 / comp 无 countered_by_bosses → **None**(ADR-0107 动态权重剔除,治死重)。
@@ -1185,7 +1185,11 @@ def boss_fit(comp: Comp, bosses: list[str]) -> float | None:
         matchup,
         normalize_boss_name,
     )
-    canon = [normalize_boss_name(b) for b in bosses]
+    # None 项 = 该位面徽章态采不到身份(W221/ADR-0398,保位列表)→ 跳过;
+    # 全 None(无任何身份信息)→ 与空表同形返 None(动态权重剔除)。
+    canon = [normalize_boss_name(b) for b in bosses if b]
+    if not canon:
+        return None
     if comp.countered_by_bosses:
         n_hit = sum(1 for b in comp.countered_by_bosses if normalize_boss_name(b) in canon)
         return clamp(0.5 - 0.5 * n_hit, 0.0, 1.0) if n_hit else 0.5
