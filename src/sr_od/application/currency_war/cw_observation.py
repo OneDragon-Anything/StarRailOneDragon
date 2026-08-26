@@ -175,14 +175,25 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     """玩家等级(= 可上阵数上限,封顶 10)。
 
     OCR ``文本-等级``(screen_info 区域已排除下方 XP "0/6" 与「购买经验金币」,
-    仅含等级数字 + "LV." 标签)→ 取首个数字。读不到 → ``_expected_level`` 启发式兜底
-    (≈ 真实等级,使 economy level_val≈0 不误判欠等级)。
+    仅含等级数字 + "LV." 标签)→ 取首个数字。读不到 → **经验条反推**
+    (``read_xp_progress`` 的 xp_to_next 经 ``XP_TO_NEXT_LEVEL`` 倒查,如
+    "0/4" → lv3;2026-08-26 佩佩局实弹:OCR 漏读 Lv.3 小字 → 旧 ``_expected_level``
+    兜底 4 → cap−level=0 → 后排选 6 格档丢佩佩@7 —— 期望曲线假设已买经验,
+    P1 早期系统性偏高);仍读不到 → ``_expected_level`` 启发式兜底(≈ 真实等级,
+    使 economy level_val≈0 不误判欠等级)。
 
-    注:部分截图 OCR 漏读等级数字(如测试图 currency_war_shop.png 只出 "LV."),此时走兜底。
+    注:部分截图 OCR 漏读等级数字(如测试图 currency_war_shop.png 只出 "LV."),
+    此时走反推/兜底。
     """
     v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-等级'))])
     if v is not None and (LEVEL_MIN <= v <= LEVEL_MAX):
         return v
+    xp = read_xp_progress(ctx, screen)
+    if xp is not None:
+        from sr_od.application.currency_war.cw_state import XP_TO_NEXT_LEVEL
+        for lv, need in XP_TO_NEXT_LEVEL.items():
+            if need == xp[1]:
+                return lv
     return _expected_level(plane, round_num)
 
 
