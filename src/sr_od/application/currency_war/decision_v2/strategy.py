@@ -278,7 +278,11 @@ class DecisionV2Strategy(DefaultCwStrategy):
                 # W197/ADR-0380:溢出卖出下界守卫(execute_replacement
                 # 溢出卖出对 TT 体系件改留场;A/B 通道,关=回 W195 后
                 # 行为——arbiter 采纳点复检同 flag,见 arbiter.py)
-                sell_floor=registry.sell_floor_exec_guard_enabled)
+                sell_floor=registry.sell_floor_exec_guard_enabled,
+                # W202/ADR-0382:补完保护集分级(undeploy 候选枯竭且
+                # 缺口持续 ≥2 轮时降级换血;A/B 通道,关=回 0371/0381
+                # 后「不硬拆」语义)
+                grade_down=registry.engine_complete_grade_down)
             # ADR-0328 第四卖发射点:演进替换事务/谷底回滚的卖出件
             # (CompTransaction.sell / SellDeployed)不经 arbitrate 守卫
             # ——此处(arbitrate 前)登记同轮已卖集,arbitrate 同趟

@@ -423,6 +423,17 @@ class DecisionV2Registry:
     #: 的幻影缺口」,W200:227/276 补完轮轮空转);False=回 W174 后
     #: 全羁绊逐件计数(ADR-0371 首版口径)。
     engine_complete_distinct_owned: bool = True
+    # ===== W202/ADR-0382 补完保护集分级(136 型构造闭死修法)=====
+    #: 补完事务 undeploy 常规候选枯竭(deployed 全保护,W200 136:
+    #: 锁定线件+引擎件全覆,列车缺口 r6-r9 轮轮被选但 tx 永远建不出)
+    #: 且缺口体系已连续被选 ≥4 轮(标定:门 2/3 有 benign→mal 坏翻转,
+    #: 门 4 全硬门过——benign→mal=0/mal 24→20/never2 10→7)时,
+    #: 按分级序降级换血:G0 非引擎锁定线件(locked_buy_scope∩非TT,
+    #: 最可动)→ G1 未成型引擎件(下之不拆成型引擎)→ G2 已成型
+    #: 引擎件/pair 成员/希儿系贡献件恒不可动。依据 [13] 过渡成型≈
+    #: 过 P1(成型缺口=发令枪级)让位于 [23] 锁定线语义;False=回
+    #: ADR-0371/0381 后「不硬拆」。
+    engine_complete_grade_down: bool = True
     # ===== W179/ADR-0372 P1 早期新件买入门(双条件窗:缺件密度 × 息档口径)=====
     #: 总开关:False=回 W174 后行为(A/B 基线臂;FORM 相位地板对配方对
     #: 件买入照旧全拒)。True 时 arbiter.gold_floor 对满足窗的 BuyCard
