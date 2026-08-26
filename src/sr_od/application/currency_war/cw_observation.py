@@ -263,6 +263,7 @@ def read_node_type(ctx: SrContext, screen: MatLike) -> str | None:
 
 # 节点类型模板 Hu 矩缓存(module-level;``read_node_sequence`` 首调从 assets 加载)。
 _NODE_TYPE_TEMPLATES: dict | None = None
+_BOSS_TEMPLATES: dict | None = None
 # clean 备战帧的最少圆数门:基础行 8 槽 + invest-env 增(人身意外险+1 → 9);shop 开 / 过渡 / overlay
 # 遮挡时 HoughCircles 只检出 1-3 个。n < 此 → 非 clean 帧(reader 数据不可信:坏帧 Hu 畸变 → 假未识别),
 # 返 None 跳过等下轮重读。容许 2 漏检(8→6),排除所有观测到的坏帧(n≤3)。
@@ -281,12 +282,13 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     返回 None:模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:shop 开 / 过渡 / overlay
     遮挡 → 坏帧 Hu 畸变不可信)。调用方遇 None 跳过,等下个 clean 备战帧重读。详 ``cw_node_reader`` docstring。
     """
-    global _NODE_TYPE_TEMPLATES
+    global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
     from pathlib import Path
 
     from sr_od.application.currency_war.cw_node_reader import (
         NODE_ROW_RECT,
         classify_node_row,
+        load_boss_templates,
         load_node_type_templates,
     )
     if _NODE_TYPE_TEMPLATES is None:
@@ -294,8 +296,17 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
         _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
     if not _NODE_TYPE_TEMPLATES:
         return None
-    _x0, _y0, _x1, _y1 = NODE_ROW_RECT
-    _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES)
+    if _BOSS_TEMPLATES is None:
+        _bd = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
+    # 节点行区域单一源 = screen_info「区域-节点条」(2026-08-26 boss 识别批:
+    # yml 扩到含 boss 圆 ~x1354;常量仅兜底,漂移以 yml 为准)
+    _rect = _area_rect(ctx, '区域-节点条')
+    _x0, _y0, _x1, _y1 = (
+        (_rect.x1, _rect.y1, _rect.x2, _rect.y2) if _rect is not None
+        else NODE_ROW_RECT)
+    _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES,
+                               boss_templates=_BOSS_TEMPLATES or None)
     if len(_slots) < _MIN_CLEAN_CIRCLES:
         return None  # 非 clean 备战帧(shop 开 / 过渡 / overlay 遮挡 → 圆数少);数据不可信,跳过等下轮重读
     # r80(审计 P0-1):OCR 标签**带位置**锚定校验 —— 「首领」等标签会出现在即将到来的

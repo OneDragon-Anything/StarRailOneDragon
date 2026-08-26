@@ -23,8 +23,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# 节点行区域(备战顶部,全屏 1080p):y 25-120, x 540-1280(商店关闭态可见;商店打开态图标仍露在 y48-70)
-NODE_ROW_RECT: tuple[int, int, int, int] = (540, 25, 1280, 120)
+#: 节点行区域(备战顶部;含 boss 节点,2026-08-26 用户给权威范围实锺:旧值
+#: 右界 1280 把 boss 圆(~x1354,r22)截在带外——生产从未检出过 boss 节点就是
+#: 这条右界截的)。**单一源 = screen_info 备战屏「区域-节点条」area**;
+#: ``cw_observation.read_node_sequence`` 经 ``_area_rect`` 读 yml 传入,
+#: 本常量仅作纯 CV 测试与 yml 缺失时的兜底(两者漂移以 yml 为准)。
+NODE_ROW_RECT: tuple[int, int, int, int] = (544, 24, 1406, 106)
 # 判态阈值(2026-08-12 单对局实证 + 2026-08-16 V 门修正):
 # - S 分:未来(低 20-37) vs 当前/过去(高 81-136)——S<60 → 未来;
 # - V 分:当前(高 69-132) vs 过去(低 39-65)——V>67 → 当前,else 过去;
@@ -55,6 +59,7 @@ class NodeSlot:
     state: str                     # past / current / upcoming
     node_type: str | None          # best Hu 匹配(未来);None(当前/过去;当前类型由 OCR 定)
     hu_dist: float | None          # 最近 Hu 距离(未来);None(当前/过去)。> HU_DIST_UNRECOGNIZED → 未识别
+    boss: str | None = None        # 最右槽 SIFT 命中的 boss 名(见 classify boss 分支;None=非 boss 位/未命中)
 
 
 def _hu_moments(gray: np.ndarray) -> HuLike:
@@ -95,6 +100,68 @@ def load_node_type_templates(templates_dir: Path) -> dict[str, list[HuLike]]:
     return out
 
 
+#: boss SIFT 命中判据(2026-08-26 佩佩局实锺:巨鹿生物制药 好匹配 5 vs 次名
+#: 金血记忆体联盟 1,5:1 断层):好匹配 ≥3 且 ≥2×次名。TM 五版全败(图鉴
+#: 全彩+底色 vs 节点红框小图跨渲染态),SIFT 抓局部特征对底色/缩放鲁棒
+#: (与角色立绘识别同机制)。
+BOSS_SIFT_MIN_GOOD: int = 3
+BOSS_SIFT_RATIO: float = 2.0
+
+
+def load_boss_templates(templates_dir: Path) -> dict[str, tuple]:
+    """加载 boss 头像 SIFT 模板库 → ``{boss名: (keypoints, descriptors)}``。
+
+    模板源 = 竞争对手图鉴页顶导航圆形头像(``assets/template/currency_war/
+    boss_avatar/*.png``,20 件全量,2026-08-26 从 .debug/images 图鉴采集批
+    裁取;命名 = 图鉴标题 OCR = ``cw_enemy_data.BOSS_MECHANICS`` 规范名,
+    20/20 对齐)。通道:read_image → RGB → GRAY(SIFT 单通道)。
+    """
+    out: dict[str, tuple] = {}
+    sift = cv2.SIFT_create(nfeatures=2000)
+    for p in sorted(templates_dir.glob('*.png')):
+        img = cv2_utils_read_rgb_gray(str(p))
+        if img is None:
+            continue
+        kp, des = sift.detectAndCompute(img, None)
+        if des is not None and len(kp) >= 4:
+            out[p.stem] = (kp, des)
+    return out
+
+
+def cv2_utils_read_rgb_gray(path: str) -> np.ndarray | None:
+    """模板图 → 灰度(imdecode BGR → 灰度;SIFT 只用单通道,通道序无关)。"""
+    img = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        return None
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+def match_boss_sift(patch_gray: np.ndarray,
+                    boss_templates: dict[str, tuple]) -> tuple[str, int] | None:
+    """boss 候选小图(灰度)× SIFT 模板库 → (boss 名, 好匹配数) | None(未命中)。
+
+    Lowe 0.75 比率筛好匹配;命中判据 ``BOSS_SIFT_MIN_GOOD``/``BOSS_SIFT_RATIO``
+    (断层分离,防次名撞分)。节点小图(~60px)特征少,单方向(模板→节点)匹配。
+    """
+    sift = cv2.SIFT_create(nfeatures=2000)
+    kp, des = sift.detectAndCompute(patch_gray, None)
+    if des is None or len(kp) < 4:
+        return None
+    bf = cv2.BFMatcher()
+    scores: list[tuple[int, str]] = []
+    for name, (_kp_t, des_t) in boss_templates.items():
+        matches = bf.knnMatch(des_t, des, k=2)
+        good = [m for m, n in (mn for mn in matches if len(mn) == 2)
+                if m.distance < 0.75 * n.distance]
+        scores.append((len(good), name))
+    scores.sort(reverse=True)
+    g1, n1 = scores[0]
+    g2, _ = scores[1] if len(scores) > 1 else (0, '')
+    if g1 >= BOSS_SIFT_MIN_GOOD and g1 >= BOSS_SIFT_RATIO * max(g2, 1):
+        return n1, g1
+    return None
+
+
 def detect_node_circles(row_gray: np.ndarray) -> list[tuple[int, int, int]]:
     """节点行灰度图 → 圆心列表 [(cx, cy, r)](左→右排)。HoughCircles(3x 放大提小圆信噪比)。"""
     big = cv2.resize(row_gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
@@ -128,7 +195,8 @@ def _circle_state(row_rgb: np.ndarray, cx: int, cy: int) -> str:
     return 'upcoming'
 
 
-def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list[NodeSlot]:
+def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
+                      boss_templates: dict[str, tuple] | None = None) -> list[NodeSlot]:
     """节点行裁图(**RGB**,框架截图通道)→ 槽识别列表。纯 CV(无框架依赖)。
 
     ⚠️ 通道语义(2026-08-16 review P1 修正):框架截图链 GDI/mss → ``BGRA2RGB`` → **live 是
@@ -147,6 +215,12 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list
     - 未来圆 Hu 矩匹配 4 模板 → best 类型 + 最近距离;当前/过去 node_type=None(当前类型
       由上层 OCR 标签定,见 cw_observation.read_node_sequence)。
     - 未来圆 hu_dist > HU_DIST_UNRECOGNIZED → 未识别(上层触发采集 hook,如新节点类型)。
+    - **boss 槽(2026-08-26)**:``boss_templates`` 非空时,**最右槽**(首领=位面最后节点,
+      既有位置判,动态槽数适应——invest-env 增删节点不锁槽号)SIFT 对拍 boss 头像库
+      (``match_boss_sift``;红框彩色头像 vs 图鉴全彩模板,TM 五版实证跨渲染态不可行,
+      SIFT 局部特征鲁棒)。命中 → ``NodeSlot.boss=boss 名``;未命中 → None(保守,不猜)。
+      boss 槽的 Hu 类型(如撞 encounter 距离)**被 boss 识别覆盖**——头像圆的二值轮廓
+      对符号模板无意义(实锺:boss 圆 Hu 2.05 撞 encounter)。
     """
     gray = cv2.cvtColor(row_rgb, cv2.COLOR_RGB2GRAY)
     circles = detect_node_circles(gray)
@@ -181,4 +255,16 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike]) -> list
                 (_hu_distance(h, hu), t) for t, hus in templates.items() for hu in hus)
             node_type = best
         slots.append(NodeSlot(idx=i, cx=cx, cy=cy, state=state, node_type=node_type, hu_dist=hu_dist))
+    # boss 槽:最右槽 SIFT(位置判——首领恒为位面最后节点;动态槽数,不锁 9)
+    if boss_templates and slots:
+        _b = slots[-1]
+        _rr = int(_b.cy and _SAMPLE_R * 1.6)   # boss 图标更大(r22 vs 15-20),采样窗放宽
+        _rr = max(_rr, _SAMPLE_R)
+        _patch = gray[max(0, _b.cy - _rr):_b.cy + _rr,
+                      max(0, _b.cx - _rr):_b.cx + _rr]
+        if _patch.size >= 400:
+            _hit = match_boss_sift(_patch, boss_templates)
+            if _hit is not None:
+                _b.boss = _hit[0]
+                _b.node_type = None   # Hu 符号类型对头像圆无意义,覆盖(见 docstring)
     return slots
