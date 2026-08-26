@@ -316,7 +316,20 @@ class PrepActionExecutor:
     # ===== 执行入口(三失败路径之「验证失败」→ (False, detail);异常自然上抛)=====
 
     def execute(self, action: PrepAction) -> tuple[bool, str]:
-        """执行动作 → (progressed, detail)。progressed=完成验证过的进展。"""
+        """执行动作 → (progressed, detail)。progressed=完成验证过的进展。
+
+        ⚖️ W209j 刹车语义(ADR-0388,纵深防御第二层):运行中被停 → 拒绝
+        执行任何动作(点击/拖拽/出战),直接返回停止态。run 27 实证:director
+        环在 Deploy 钩子 stop_running 后仍发 StartBattle 点出战(14:09:14
+        「出战成功」)——环顶检查(第一层)之外,本入口兜底覆盖绕环路径
+        (_force_battle 恢复原语等)。判据 = last_run_result 非空(start 清
+        None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
+        """
+        _rc = getattr(self._ctx, 'run_context', None)
+        if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
+            log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
+                     '(W209j 刹车,ADR-0388)', type(action).__name__)
+            return False, '已停止[W209j刹车]'
         if isinstance(action, ClickSpheres):
             return self._click_spheres(action)
         if isinstance(action, OpenBox):

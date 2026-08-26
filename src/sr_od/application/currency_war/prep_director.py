@@ -574,6 +574,20 @@ class PrepDirector(SrOperation):
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
         while True:
+            # ⚖️ W209j 刹车语义(run 27 停机事故第三层实证,ADR-0388):停机标志
+            # 设置后本循环曾继续发 StartBattle——14:09:08 Deploy 钩子 stop_running
+            # → 14:09:14「出战成功」(log 32489/32504/32514),CW 备战不自动出战,
+            # 出战必是 bot 点的 = **停 bot 后执行流仍在落地动作**。环顶每步先查
+            # 「运行中被停」(last_run_result 非空——run_state STOP 是 idle 初始态,
+            # 不能直接用;last_run_result 在 start_running 清 None/stop 时写入,
+            # 是「本次运行被请求停止」的精确判据),已停 → 立即收口不再发任何
+            # 动作。同族钩子(star/summon/shop_unknown/battle_unknown 等)经本
+            # 循环的全部受益;op 层直连循环(battle_loop 等)各自节点自查。
+            _rc = getattr(self.ctx, 'run_context', None)
+            if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
+                log.info('[cw][director] 停机标志已设 → 环收口(不再执行动作,'
+                         'W209j 刹车语义)')
+                return self.round_fail(status='已停止[hook]')
             self._steps += 1
             if self._steps > PrepDirector.MAX_STEPS:
                 log.warning(f'[cw!][director] 步数>{PrepDirector.MAX_STEPS} → 强制出战(F5)')
