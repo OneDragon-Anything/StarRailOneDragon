@@ -7,6 +7,9 @@
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
 slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1-4 / 后排 1-N;非 bench 列表下标!
+与族 A(cw_state.Action 策略动作)同名类(SellBench/DeployMove/SellDeployed)的坐标系对照:
+族 B 物理槽位 = 族 A 下标 + 1(bench 域);deployed 域两族结构不同(族 B=row+slot
+物理排槽位,族 A=紧缩列表下标)——完整对照表见 cw_state.py Action 节约定块。
 组合动作命名映射(§7 L1):RunBuyPhase=BuyShopCards / RunDeploy=DeployBench / RunEquip=EquipAll
 (P1 过渡,P2/P3 溶解为原子)。
 """

@@ -275,6 +275,34 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
 
 
 # ===== Action(动作;simulate 前瞻用) =====
+#
+# ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
+#    「索引/槽位字段必须带定义注释」的正文展开)──────────────────────────
+#
+# 注释模板(三行,坐标系/取值时机必填;防线字段另加写入端):
+#   bench_idx: int
+#   # [索引定义] 坐标系: <哪个容器的下标 / 画面物理槽位及基>
+#   #            取值时机: <生成期快照(执行期重校验,见 expect) | 生成期=执行期(恒稳) | 事务前快照 | 执行期现读>
+#   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
+#
+# 双族对照表(CW 的「动作」有两族,同名类坐标系不同基——跨族阅读时对撞,
+# 类头已按约定标「≠ 另一族」):
+#   ┌─────────────────────┬──────────────────────────────┬──────────────────────────────┐
+#   │ 同名类               │ 族 A(cw_state,本模块)        │ 族 B(prep_actions,执行器)   │
+#   ├─────────────────────┼──────────────────────────────┼──────────────────────────────┤
+#   │ SellBench           │ bench_idx=槽位表下标 0-8      │ slot=物理槽位 1-9            │
+#   │ DeployMove          │ bench_idx=槽位表下标 0-8      │ from_slot/to_slot=物理槽位   │
+#   │                     │                             │   (前排 1-4/后排 1-N)        │
+#   │ SellDeployed        │ deployed_idx=紧缩列表下标     │ row+slot=物理排+槽位         │
+#   └─────────────────────┴──────────────────────────────┴──────────────────────────────┘
+#   换算:族 A 下标 = 族 B 物理槽位 − 1(bench);deployed 域两族结构不同(紧缩
+#   列表 vs 排+槽位),无恒等换算——消费前先认准是哪一族。
+#
+# 两个坐标系的关键差异(为什么有两族):族 A 是**状态坐标系**(GameState
+# 容器的下标,sim 与策略层用);族 B 是**画面坐标系**(屏幕物理槽位,执行器
+# 拖拽/点击用)。bench 域两族只差基(ADR-0316 槽位表使下标恒稳);deployed
+# 域族 A 仍是紧缩列表(删除左移风险由 expect 拦截,槽位表化见 ADR-0316 的
+# deployed 推广议程)。
 
 @dataclass
 class BuyCard:
@@ -285,6 +313,9 @@ class BuyCard:
 @dataclass
 class SellBench:
     """bench 卖出动作。
+
+    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316;
+    ≠ prep_actions.SellBench.slot 的物理槽位 1-9)。
 
     r381(交接⑤,sim↔生产账本 income 对齐):sim 侧卖出回金按
     ``cost`` 1:1(cw_sim L630);生产真值 = ``sell_refund(star, cost)``
@@ -302,7 +333,10 @@ class SellBench:
     生成时 state 快照取名);锁面=test_cw_w52_remediation.py 的
     expect 正反锁(校验被触发,非恒放行)。
     """
-    bench_idx: int   # bench 列表索引
+    bench_idx: int
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316 定长 9 槽,空槽 None;
+    #             ≠ prep_actions.SellBench.slot 的物理槽位 1-9)
+    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
 
@@ -322,8 +356,15 @@ class LevelUp:
 
 @dataclass
 class DeployMove:
-    """bench → 上阵(某排)。"""
+    """bench → 上阵(某排)。
+
+    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316;
+    ≠ prep_actions.DeployMove.from_slot/to_slot 的物理槽位 1-N)。
+    """
     bench_idx: int
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316;同 SellBench.bench_idx)
+    #             取值时机: 生成期=执行期(槽位表恒稳;simulate/mutate 按
+    #             下标读槽并置 None)
     to_row: str      # "front" / "back"
     faction: str     # 该角色阵营(上阵后 board[faction] += 1)
 
@@ -342,6 +383,10 @@ class PickEvent:
     刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
     """
     option_idx: int
+    # [索引定义] 坐标系: 事件选项列表下标(画面选项序,左→右 0 起;
+    #             cw_node_obs 读取时已按左→右排序)
+    #             取值时机: 生成期快照(decide 时读到的选项序;执行期
+    #             handler 按同一画面序点选,选项集跨代际变化时以画面为准)
     reason: str = ""
     refresh: bool = False
 
@@ -349,6 +394,9 @@ class PickEvent:
 @dataclass
 class FillSpec:
     """人口缺口填位描述(CompTransaction.fill 元素 / 独立填位动作共用)。
+
+    [坐标系] idx 双义随 source:bench 源=槽位下标 0-8 / shop 源=state.shop
+    列表下标(契约包 C1 冻结,详见下)。
 
     契约包 C1(冻结):``source`` = 'bench' | 'shop'(shop 时 ``idx`` 为
     ``state.shop`` 列表索引);``row`` = 'front' | 'back'。
@@ -371,8 +419,15 @@ class FillSpec:
 
 @dataclass
 class SellDeployed:
-    """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。"""
-    deployed_idx: int          # state.deployed 列表索引(定位锚,同 SellBench 口径)
+    """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
+
+    [坐标系] deployed_idx = state.deployed **紧缩列表**下标(pop 左移域——
+    批内多笔删除时索引会漂移,由 expect 按名拦截;≠ prep_actions.
+    SellDeployed 的 row+slot 物理排槽位)。
+    """
+    deployed_idx: int
+    # [索引定义] 坐标系: state.deployed 紧缩列表下标(pop 删除即左移)
+    #             取值时机: 生成期快照(执行期 expect 按名校验,不符→拒绝)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
     expect: str = ''           # 代际校验期望名(W43 裁决2;''=不校验,不符→拒绝)
@@ -382,12 +437,19 @@ class SellDeployed:
 class SwapDeploy:
     """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
 
+    [坐标系] deployed_idx = state.deployed 紧缩列表下标 / bench_idx =
+    bench 槽位表下标 0-8(两域结构不同,见 Action 节约定块双族对照表)。
+
     装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
     无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
     开拓者按目标排做形态归一(同 DeployMove 语义,单一源)。
     """
     deployed_idx: int
+    # [索引定义] 坐标系: state.deployed 紧缩列表下标(pop 左移域)
     bench_idx: int
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316,恒稳)
+    #             取值时机(两者): 生成期快照(跨轮登记的提案由
+    #             expect_deployed/expect_bench 按名校验)
     reason: str = ''
     # 代际校验期望名(W43 裁决2;''=不校验):谷底回滚类「上轮登记、
     # 下轮才发」的提案跨了状态代际,idx 可能已指向别人——不符即拒绝。
@@ -398,6 +460,9 @@ class SwapDeploy:
 @dataclass
 class CompTransaction:
     """整档组合替换事务(转型讨论两步解耦的第 1 步,原子执行)——契约包 C1。
+
+    [坐标系] deploy/sell 的 bench 侧=槽位下标 0-8;undeploy/sell 的
+    deployed 侧=紧缩列表下标——均按事务前状态解析(字段口径节冻结)。
 
     一次敲定:换谁上、谁下、谁直接卖、谁进 bench(完整方案预定义)。
     语义保证:sim 执行时整体应用,任一子步资源不足(金/槽)则整个事务拒绝,
