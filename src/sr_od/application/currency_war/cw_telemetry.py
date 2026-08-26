@@ -1176,6 +1176,12 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
             dpp_s += " P=扑满"
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
+        # ⚠️ 判读语义(W229 分型,勿再误判为「前排未满编」缺陷):
+        # - 前后分拆按 position_pref(角色命途定位)计数,deploy 按它路由落排
+        #   (ADR-0392 deployed_place);「前排固定 4」是槽位可用性不是放置目标;
+        # - 「满编」判据 = deployed 总数 = cap(=level),**不是前排占满 4**;
+        #   队伍含 N 个 back 定位角色时,位=(cap-N)前/N后 且前排留空槽 = 合法布局
+        #   (实证:run 25/28「位=3前/2后」与 deploy_bench CV 实读逐轮吻合,总数恒=cap)。
         _xp = st.get("xp_progress")
         xp_s = f" xp={_xp[0]}/{_xp[1]}" if _xp else ""
         _dep = st.get("deployed") or []
