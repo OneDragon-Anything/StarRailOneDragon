@@ -22,7 +22,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | ADR / as-built 维护 | §文档同步(三同步) | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
-开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度树/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目入口文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
+开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度树/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
 ## 单一源地图(知识在哪,别造第二源)
 
@@ -93,7 +93,7 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - **改代码必须重启 MCP server 才生效,且重启杀对局** → 改动攒批、局中不改;对局状态(session)在内存,重启全丢,重启后首局 target 重选是已知断档,判读注意。**重启前四步确认**:① `git status` 干净(或仅剩声明过的挂起件);② 全量 pytest 0 failed;③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按残局清理序回大厅)。
 - **早停判据**(无信息量局,满足任一即 stop_run + 判读 + 修复 + 重启跑新局):① 形态死局(连续多轮板面无引擎件且店里有种子没买);② 验证已得(本轮要验证的行为已观察到,后续无新信息);③ 已知未修问题主导(局是旧代码跑的、修复已 commit 待加载);④ **重大修复待加载=无条件早停重开**(用户定调「对于有重大突破的,早停重开」——重大策略/战力修复 commit 后,在跑的旧代码局素材价值趋零,继续跑=验证延迟)。例外:对照局(AB 对拍)与终验局不适用。
 - **残局清理序**(停局/崩局后回到大厅才能起新局;结算屏残留会让 app 启动死循环):**优先一键 op `ExitCurrencyWarMatch`(operations/entry/,经 `run_operation` 调用,支持全入口态——备战/战斗中含暂停 X/投资策略等 overlay/胜负结算/失败链,放弃+结算 3 页+回大厅一次完成)**;op 不可用时手动 ESC 链兜底:结算屏「继续挑战」→ 等自动战斗打完 → 备战态 ESC → 「放弃并结算」→ 失败页「下一步」×2 → 「返回货币战争」→ `analyze_screen` 确认精准命中**货币战争-大厅**。用 screen_info 的 area 名定位,不背坐标。
-- **监控三层**(长时自主推进时):进程内哨兵 flag + 后台哨兵脚本(触发即 exit=推送)+ 定时轮询兜底——哨兵脚本组(cw_sentinel/cw_early_stop/cw_runs_gap)/武装命令口径/重武三步/试用期纪律见 [references/runtime-ops.md](references/runtime-ops.md);**哨兵报警消费协议**(exit=待验证事件,先判相关性再信内容)见 [references/autonomous-loop.md](references/autonomous-loop.md)。
+- **监控三层**(自主推进打实机时;武装纪律行见 AGENTS.local,时机细则见 autonomous-loop.md §3):进程内哨兵 flag + 后台哨兵脚本(触发即 exit=推送)+ 定时轮询兜底——哨兵脚本组(cw_sentinel/cw_early_stop/cw_runs_gap)/武装命令口径/重武三步/试用期纪律见 [references/runtime-ops.md](references/runtime-ops.md);**哨兵报警消费协议**(exit=待验证事件,先判相关性再信内容)见 [references/autonomous-loop.md](references/autonomous-loop.md)。
 - CW op 禁无条件 ESC(备战屏 ESC 弹中断挑战);画面疑问走 `analyze_screen` 先行(离线可用,传截图路径)。
 - 判读与建档的运维侧纪律(**布局/坐标建档唯一终审=交互实锤**/**重启接管段遥测降权**/首局判读锚点模板/常置 flag 处置)→ [references/runtime-ops.md](references/runtime-ops.md)。
 
@@ -127,4 +127,4 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## 定时任务与事件自我校准(自主推进元纪律)
 
-定时任务提醒到达 = 按提醒 prompt + 当期 agent 额度执行;worker 汇报到达 = 先过当期任务所属域的 checklist(分诊表路由)再收账(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(定时任务四角色提示词模板/派单硬规范/AGENTS.local 冲动门禁登记/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+定时任务提醒到达 = 按提醒 prompt + 当期 agent 额度执行;worker 汇报到达 = 先过当期任务所属域的 checklist(分诊表路由)再收账(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(AGENTS.local 自主推进纪律登记/定时任务增补·实机监控/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。

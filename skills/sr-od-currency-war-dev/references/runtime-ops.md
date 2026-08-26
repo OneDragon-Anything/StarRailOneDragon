@@ -45,7 +45,7 @@
 - 轮询提示词定期换血:提示词里写死的「当前局 N=某修复首验」会过期,误导后续判读。
 - 用户要用电脑 = 全停实机(哨兵+定时+run),别抢鼠标。
 
-### 哨兵脚本组(可重建;脚本都在 `.debug/temp/currency_war/`)
+### 哨兵脚本组(版本化,住 skill 的 scripts/ 子目录:`skills/sr-od-currency-war-dev/scripts/`)
 
 | 脚本 | 角色 | 武装时机 |
 |---|---|---|
@@ -53,7 +53,7 @@
 | `cw_early_stop.py` | 早停(判据=口述[28] 框架:P1 出口金<50 或 HP=1 才候选;HP<70 降观察报警不停局) | **首条遥测落后**再武装(早武装=自愈退出) |
 | `cw_runs_gap.py` | runs 断流 | 随局 |
 
-- **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python .debug\temp\currency_war\<脚本>.py` 后台起(退出码即警报);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 P2 投资策略误报经信道送达并处置实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位(rewatch 杀净时顺手删);job id 记进度树「点名册」节。
+- **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-currency-war-dev\scripts\<脚本>.py` 后台起(退出码即警报);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 P2 投资策略误报经信道送达并处置实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位(rewatch 杀净时顺手删);job id 记进度树「工作状态·持续运行」节。
 - **重武三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。
 - **试用期纪律**:哨兵/早停脚本前几跳 = 试用期——报警先核时间戳与归属(旧行重放/中途武装无上下文/局后空窗三类误报实证),再信内容;watcher 上线不算完,前几跳逐一复盘。
 
