@@ -18,8 +18,9 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「sim 改动 checklist」(池指纹/回放对拍/变异探针) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | §阵容知识工程(证据三层) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
-| 自主推进(goal/schedule 消息 / worker 派发与交付验收 / 哨兵报警响应 / 对抗) | §goal/schedule 自我校准(提醒=按 prompt+当期并行度执行)+ §交付验收(7 条逐项核) | autonomous-loop |
+| 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | §定时任务与事件自我校准(提醒=按 prompt+当期 agent 额度执行)+ §交付验收(7 条逐项核) | autonomous-loop |
 | ADR / as-built 维护 | §文档同步(三同步) | — |
+| 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
 开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度树/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目入口文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
@@ -100,15 +101,6 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 **证据三层**(核心纪律,缺层即盲区):统计骨架(plaza API 聚类给主流/代表——单靠统计发现不了细节)× 逐篇细节(攻略帖全文精读给运营思路/时序/条件——必须逐个看)× 机制解释(游戏数据本体给「玩法为什么是这样」)——「为什么」成立才收编,机制不成立的高频做法标 [社区] 存疑。结论落点:final_comps 类文档(叙事)+ `cw_comps.py COMP_LIBRARY`(结构化字段)——两者非镜像,互不触发同步义务。用户口述与攻略冲突以口述为准。细则(提炼流程/单套修订/版本重跑/三笔账):[references/compo-knowledge.md](references/compo-knowledge.md)
 
-## 派单规范(自主推进派 worker 时,prompt 必含的节)
-
-子 agent 是干净上下文,相关文档在它世界里不存在——按批的类型带齐:
-
-1. **前置阅读**(策略行为面批必含:worker/压测官/调研):相关 user_playstyle 条目/strategy 篇/ADR 路径(文档集同 strategy-work §3)。不带=它只能凭猜乱来,不合格派单。
-2. **判据来源**(判定类批必含——产出物是判定/分档/取舍的):以效果/机制审查为主体(逐对象过决定资格的机制属性),统计量只作佐证列;倒置(统计主体+效果一句带过)=不合格派单。
-3. **动作五查**(Action 新增/改动批必含):前置阅读节引「防坑清单·动作索引五查」条(见该节)。
-4. **文档面**(行为变更批必含——会改策略行为/语义/权重/字段含义的):ADR+as-built 三同步的归属,本批自带或显式声明「归编排者后续批」,二选一缺省=自带(纯测试批可免;历次实证:任务书不声明文档归属,worker 按文件集拒碰 docs/ 完全正确,文档欠账必堆回编排者)。
-
 ## 文档同步(行为变更三同步)
 
 策略行为/权重/算法语义/config·screen_info·GameState 字段/实跑根因任一变更 → commit 前:
@@ -131,8 +123,8 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 - **临时采集钩子会积压**:钩子必须带删留条件;盘点时查 `.debug/temp/currency_war/shots/` 前缀分布——样本攒够就离线判读→进真值→删钩子,别让临时变常置(详 references/data-collection.md)。
 - **改完不验旧锁就提交**:提交前三步 = ①grep 消费点与锁值 ②ruff+直接影响测试 ③耦合模块全量一次通过(子集绿是伪安全)。
 - **实机学费不复盘 = 重交学费**:实机定位的策略行为病只修代码、不回灌 sim 检查项/单帧锁 → 同类病下次仍靠实机暴露(数十分钟/局);感知/运行时 bug 则相反——归 fixture 帧锁/回放对拍/哨兵防线,别为它扩 sim(分诊判据见 sim-testing.md「实机暴露问题的分诊与回灌」)。
-- **动作索引五查**(idx 族四连坑反推——历次批间互证同一动作索引语义错反复出现,实证见 design/decisions/):策略代码发射**动作对象列表**(Action)给执行层,新增/改动动作类型或发射点时必过:①带索引/槽位的字段,注释声明**坐标系**(状态 list 下标 / 画面物理槽位 / 识别序号)与取值时机(生成期快照 / 执行期现读);②动作会从被索引容器**删元素**的,构造「组内两笔引用同容器、前者先删」的最小反例走一遍执行序(删除即左移);③一个 decide 函数**拼接 ≥2 个源**的动作时,后源不得默认前源没动过容器;④**期望值校验类防线字段**(expect/锚定)合入时 grep 写入端——零写入=死防线,校验逻辑再全也是恒放行;⑤sim 与执行层对同一 Action 各有实现时**逐行对拍索引语义**——同式地错比单路错更隐蔽(两路一起偏,sim 检查项失明)。判定类批的派单 prompt 引本条。
+- **动作索引守卫**(五查已塌缩,2026-08-27):新字段带索引/槽位/序号语义 → 按 AGENTS.md「索引/槽位字段定义注释」补齐坐标系+取值时机(防线字段加写入端)再动工;会删元素的容器域加最小反例测试。定义约定正文+双族对照表=cw_state.py Action 节约定块;机器锁=test_cw_idx_contract(deployed 反例/expect 写入端静态锁/sim↔执行对拍)。
 
-## goal / schedule 自我校准(自主推进元纪律)
+## 定时任务与事件自我校准(自主推进元纪律)
 
-goal 轮醒来第一动作 = 过当期任务所属域的 checklist(分诊表路由);schedule 提醒到达 = 按提醒 prompt + 当期并行度执行(goal/schedule 通用机制单一源 = od-dev-agent-autonomous-mode 事件驱动模式)。CW 专属编排细则(提醒网四角色提示词模板/AGENTS.local 候选/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+定时任务提醒到达 = 按提醒 prompt + 当期 agent 额度执行;worker 汇报到达 = 先过当期任务所属域的 checklist(分诊表路由)再收账(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(定时任务四角色提示词模板/派单硬规范/AGENTS.local 冲动门禁登记/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
