@@ -220,10 +220,12 @@ class CurrencyWarRunLoop(SrOperation):
             if self.ctx.cw_enemy_difficulty is not None:
                 _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
                 self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
-            # 简报首领(3 位面 boss 名)→ copy 到 session(boss_fit 输入)
-            if self.ctx.cw_briefing_bosses:
-                _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
-                self.ctx.cw_briefing_bosses = None  # 取走清空(防跨局复用)
+            # 简报 boss 不再 copy 进 session(ADR-0397):简报三卡排列≠位面序
+            # (08-26 佩佩局实证:读数 [巨鹿,造梦互动,深穹智械] vs 位面详情亲证
+            # [巨鹿,增熵,绘师]),按序消费 = 位面 2/3 的 boss_fit 从第一天打错
+            # boss。session.briefing_bosses 唯一写入端 = 备战稳定帧 CollectPlaneIntel
+            # 实采(见 loop 备战分支实采块,开局局/接管局统一触发);ctx.cw_briefing_bosses
+            # 降级为候选集(画面 x 序,无位面序语义,仅供遥测/对账)。
         else:
             # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
             # start_run,统一在两支各自 new/延用后注册)
@@ -695,9 +697,12 @@ class CurrencyWarRunLoop(SrOperation):
         #       OCR 查询把 iter 拖到 10s+;更早的结算帧分支 6 点空白加速后,
         #       过渡到简报的半开帧反复 round_wait。修:0x 头部 find_area 优先
         #       命中即点按钮 area(单次区域查询,绕开全屏 OCR 依赖),并采简报
-        #       真值(词缀/boss/难度 → ctx,与 StartCurrencyWarMatch 同槽)。
+        #       读数(词缀/难度 → ctx 真值槽,与 StartCurrencyWarMatch 同槽;
+        #       boss → ctx 候选集,ADR-0397——无位面序语义,不进 session)。
         if self.round_by_find_area(screen, '货币战争-简报', '标识-本场对局首领', crop_first=False).is_success:
-            # 简报真值采集(boss_fit/mechanics_fit 输入;同 StartCurrencyWarMatch 槽位)
+            # 简报读数采集:词缀/难度是本局真值(→ ctx,下游 mechanics_fit/
+            # 难度);boss 是候选集(ADR-0397:画面 x 序 ≠ 位面序,仅供遥测,
+            # 不作 plane_bosses 真值——真值走 CollectPlaneIntel 实采)。
             try:
                 from sr_od.application.currency_war.cw_briefing_obs import (
                     read_affixes,
@@ -931,15 +936,19 @@ class CurrencyWarRunLoop(SrOperation):
                 log.warning('[cw!][loop] 返回按钮=上游选择屏处理失败症状(策略屏点歪),第%d次',
                             self._cw_back_btn_count)
                 return self.round_wait(wait=2)
-            # 接管局补采(boss+词缀,2026-08-26 用户裁决「没经过简报的局」才采):
-            # 判定 = 新 match 且 session.briefing_bosses 空(bot 没走过简报链,
-            # **唯一信号**,不看 round/plane——1-1 手开局是最典型接管局)。在
-            # **首个稳定备战帧**执行(画面保证在备战;首版挂 iter==1 起跑遇
-            # 战斗结算则 op 入口失败且不重来,22:03 实跑漏采实证)。
-            # CollectPlaneIntel 位面情报采集(三 boss 大图标 SIFT;简报读数
-            # 位面序错位已实证,开局局简报值另批修)+ 词缀随采(位面详情横条;
-            # 词缀只在简报/位面详情/敌人信息浮层三画面,备战无此条——首版
-            # 误判备战常驻空读两轮后用户纠正)。结果复用简报消费链进 session
+            # 开局 boss 实采(boss 采集主通道,ADR-0397):新 match 且
+            # session.briefing_bosses 空 = 本局尚无位面序真值。覆盖两种局:
+            # ①接管局(bot 没走过简报链,1-1 手开局最典型);②开局局——简报
+            # 读数已降级候选集不再写 session(简报三卡排列≠位面序,按序消费
+            # 位面 2/3 错 boss,08-26 佩佩局实证)。每局必采(~17s,三卡三点):
+            # 简报读数永远无法验真(简报卡无位面标注,连「读数矛盾才采」的
+            # 触发条件都构造不出)→ 条件采不成立,17s 换位面 2/3 boss_fit
+            # 正确。在**首个稳定备战帧**执行(画面保证在备战;首版挂 iter==1
+            # 起跑遇战斗结算则 op 入口失败且不重来,22:03 实跑漏采实证)。
+            # CollectPlaneIntel 位面情报采集(三 boss 大图标 SIFT,逐位面
+            # 真值;佩佩局 3/3 实证)+ 词缀随采(位面详情横条;词缀只在
+            # 简报/位面详情/敌人信息浮层三画面,备战无此条——首版
+            # 误判备战常驻空读两轮后用户纠正)。结果进 session
             # (bosses→state.plane_bosses/boss_fit;affixes→enemy_affixes/
             # mechanics_fit;read_game_state 每轮从 session 同步,晚接不丢)。
             # 难度不补(备战「文本-难度」有独立现读通道,用户裁决)。只试一次,
@@ -968,7 +977,7 @@ class CurrencyWarRunLoop(SrOperation):
                         from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
                             CollectPlaneIntel,
                         )
-                        log.info('[cw-loop] 接管局无简报 boss/词缀 → 位面详情情报采集(可交互备战帧,第%d次)',
+                        log.info('[cw-loop] 新局 boss/词缀无实采真值(session 空)→ 位面详情情报采集(可交互备战帧,第%d次)',
                                  self._cw_takeover_tries)
                         _pb = CollectPlaneIntel(self.ctx)
                         _pb_res = _pb.execute()
@@ -976,8 +985,8 @@ class CurrencyWarRunLoop(SrOperation):
                             self._cw_takeover_done = True
                             _names = [n for n in self.ctx.cw_plane_bosses if n]
                             if _names:
-                                _sess.briefing_bosses = _names   # 复用简报消费链(session→state.plane_bosses)
-                                log.info('[cw-loop] 接管局 boss 补采完成:%s', _names)
+                                _sess.briefing_bosses = _names   # 实采真值进 session(消费链:session→state.plane_bosses)
+                                log.info('[cw-loop] 开局 boss 实采完成(位面序真值):%s', _names)
                         # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
                         # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
                         # 空帧清掉)②引用未定义的 _sess(放弃/等待分支都没绑定)。
@@ -985,7 +994,7 @@ class CurrencyWarRunLoop(SrOperation):
                             _affixes = getattr(self.ctx, 'cw_plane_affixes', None) or []
                             if _affixes:
                                 _sess.briefing_affixes = list(_affixes)
-                                log.info('[cw-loop] 接管局词缀补采(位面详情横条随采):%s', _affixes)
+                                log.info('[cw-loop] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
                         # 成功取走/失败残留都清空(防泄漏到下局判空)
                         self.ctx.cw_plane_bosses = None
                         self.ctx.cw_plane_affixes = None

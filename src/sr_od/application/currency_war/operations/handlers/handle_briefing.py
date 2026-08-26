@@ -2,14 +2,16 @@
 
 简报屏(对局开始前预览):3 位面 boss + 敌人词缀 + 本场对局首领。本 op 职责:
 ① 识别简报屏(id_mark ``标识-本场对局首领``,简报独有 is_precise);
-② 读敌人词缀(``read_affixes``)+ 3 boss 名(``read_bosses``)→ 存 ctx 中转
-   (待 loop 建 cw_match 时 copy 到 session);
+② 读敌人词缀(``read_affixes``,本局真值)→ 存 ctx 中转(待 loop 建 cw_match 时
+   copy 到 session);读 3 boss 名(``read_bosses``)→ 存 ctx **候选集**
+   (ADR-0397:简报三卡排列≠位面序,读数不可按序当 plane_bosses 用——真值走
+   ``CollectPlaneIntel`` 位面详情实采,由 battle_loop 备战稳定帧统一触发);
 ③ 点「下一步」进投资环境。
 
-词缀/boss 链路(下游):``ctx.cw_briefing_affixes``/``bosses`` → ``session.briefing_affixes``/``bosses``
-→ ``state.enemy_affixes``/``bosses`` → ``mechanics_fit``/``boss_fit``
-(详 ``cw_observation.read_affixes``/``read_bosses``)。简报在 loop 前(``cw_match=None``),
-故词缀/boss 先临时中转 ctx,由 ``battle_loop.__init__`` 取走。
+词缀链路(下游):``ctx.cw_briefing_affixes`` → ``session.briefing_affixes``
+→ ``state.enemy_affixes`` → ``mechanics_fit``(详 ``cw_observation.read_affixes``)。
+boss 候选集不进 session(无消费方;遥测/对账用)。简报在 loop 前(``cw_match=None``),
+故词缀先临时中转 ctx,由 ``battle_loop.__init__`` 取走。
 
 入口大 op(``StartCurrencyWarMatch.advance_to_prep``)只做调度:循环检测当前屏 → 调对应独立 op
 (本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
@@ -71,10 +73,13 @@ class HandleBriefing(SrOperation):
                     # 不覆盖静态数据 / new key 加);返回是否实际写入。
                     write_affix_effects(_updates)
         if not self.ctx.cw_briefing_bosses:
+            # 候选集(ADR-0397):画面 x 序、无位面序语义——不作为 plane_bosses
+            # 真值进 session(08-26 佩佩局实证位面 2/3 错序);真值走 CollectPlaneIntel
+            # 实采。读存仅遥测/对账用(0a0b 遥测 detail 引用同槽)。
             _bosses = read_bosses(self.ctx, screen)
             if _bosses:
                 self.ctx.cw_briefing_bosses = _bosses
-                _log.info('简报首领读得: %s', _bosses)
+                _log.info('简报首领候选集读得(x 序,无位面序,不进 session): %s', _bosses)
         # 读敌人难度数值(简报「标识-敌人难度」→ ctx.cw_enemy_difficulty 中转 → session → state;3.5.2 接线)
         if self.ctx.cw_enemy_difficulty is None:
             from sr_od.application.currency_war.cw_briefing_obs import (

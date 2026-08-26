@@ -105,14 +105,19 @@ def read_briefing_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | Non
 
 
 def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
-    """简报首领行 → 3 个位面 boss 名列表(每局固定 3 boss,如 增熵能源集团/火线动力机甲/银甲武装公司)。
+    """简报首领行 → 3 个 boss 名**候选集**(画面 x 序;ADR-0397 降级,勿按序当 plane_bosses 用)。
 
     3 个位面是货币战争的玩法结构(每局 3 位面 × 每位面 1 boss),**所有难度(A5/A8/A850)都 3 个,
     不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
-    (滤数字/符号/短噪声/「阵营」2 字 label)。下游 ``state.bosses`` → ``boss_fit(comp, bosses)``
-    命中 ``comp.countered_by_bosses`` 打分。读不到 / area 缺 → [](不覆盖 state.bosses)。
+    (滤数字/符号/短噪声/「阵营」2 字 label)。**⚠️ 卡片排列 ≠ 位面序**(2026-08-26 佩佩局
+    实证:简报读 [巨鹿,造梦互动,深穹智械] vs 位面详情逐位面亲证 [巨鹿,增熵,绘师];位面 1
+    恰好两序一致,位面 2/3 从第一天就错)——本返回值只作**名字候选集**(哪些 boss 在场,
+    遥测/对账),**禁止 `plane_bosses[plane-1]` 按序消费**;位面序真值唯一来源 =
+    ``CollectPlaneIntel`` 位面详情逐位面实采(接管局接线同款,battle_loop 备战稳定帧触发)。
+
+    读不到 / area 缺 → []。
 
     ⚠️ 数据层待补(同 competitors.md,后续浏览器/图鉴采):boss 机制 + 哪些 comp 怕哪个 boss
     (``comp.countered_by_bosses``)。当前 ``comp.countered_by_bosses`` 多为空 → boss_fit 中性 0.5;识别链路先通,

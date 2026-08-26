@@ -2,7 +2,7 @@
 
 > **来源**:游戏内 **数据银行 → 竞争对手图鉴**(20 个,权威)。
 > **重采(2026-08-17 22:29-22:35,用户截图 60 张)**:图鉴 20/20 全解锁,全量重采(含此前截断的技能全文、阶段二、第 20 boss);原始截图 `.debug/temp/currency_war/boss_shots_0817/`(OCR 逐图结果 `ocr.jsonl` / 分组 `summary.md`)。早期 2026-08-05 采集已被本次覆盖校准。
-> **定位**:**「竞争对手」= 位面 boss**(每局 3 位面各 1 boss,池中随机 3)。**不是敌人词缀**(敌人词缀见 [competitors.md](competitors.md))。简报 `read_bosses` → `state.bosses` → `boss_fit`(消费端 `cw_enemy_data.py`)。
+> **定位**:**「竞争对手」= 位面 boss**(每局 3 位面各 1 boss,池中随机 3)。**不是敌人词缀**(敌人词缀见 [competitors.md](competitors.md))。位面序真值 = `CollectPlaneIntel` 位面详情实采 → `session.briefing_bosses` → `state.plane_bosses` → `boss_fit`(消费端 `cw_enemy_data.py`);简报 `read_bosses` 只产候选集(卡片排列≠位面序,ADR-0397)。
 > **用途**:boss 战斗机制(技能)→ comp 克制判断(`BOSS_MECHANICS` tag / `matchup` 结构层)。
 > ⚠️ OCR 系统性丢字已按模式修复(「我方目标/大幅提高/大量量子属性」等),存疑处以原始截图为准。
 
