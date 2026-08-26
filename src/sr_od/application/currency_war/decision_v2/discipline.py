@@ -162,7 +162,8 @@ def sole_engine_sell_floor_plan(bcs: list,
 
     消费面:arbiter 卖候选采纳点(对 working 复检,前序扣减由 working
     前序采纳天然实现)/ execute_replacement 溢出卖出下界(ADR-0380
-    件1,事务内多笔同序扣减)。
+    件1,事务内多笔同序扣减)/ remediation 两补偿器卖件组发射前过滤
+    (ADR-0384 ``_sell_floor_filter``,对 working 逐笔扣减)。
     """
     from sr_od.application.currency_war.decision_v2.registry import (
         DEFAULT_REGISTRY,
