@@ -649,6 +649,26 @@ class CurrencyWarRunLoop(SrOperation):
                     cw_telemetry.record_exogenous(_st0.round_num, 'resumed_match',
                                                   detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
                                                   state=_st0)
+                # 接管局 boss 补采(2026-08-26,用户裁决「没经过简报的局」才采):
+                # 接管局没走过简报链(briefing_bosses 空)→ CollectPlaneBosses
+                # 位面详情逐位面实采(ADR-0392 大图标 SIFT;简报读数位面序错位
+                # 已实证,开局局的简报值另批修)。首备战帧执行一次,结果进
+                # session(下游 boss_fit/plane_bosses 消费);失败不阻塞对局
+                # (boss 缺省=中性 0.5,与无数据同形)。
+                _sess = self.ctx.cw_match.session
+                if not getattr(_sess, 'briefing_bosses', None):
+                    from sr_od.application.currency_war.operations.handlers.collect_plane_bosses import (
+                        CollectPlaneBosses,
+                    )
+                    log.info('[cw-loop] 接管局无简报 boss → 位面详情补采')
+                    _pb = CollectPlaneBosses(self.ctx)
+                    _pb_res = _pb.execute()
+                    if _pb_res.success and getattr(self.ctx, 'cw_plane_bosses', None):
+                        _names = [n for n in self.ctx.cw_plane_bosses if n]
+                        if _names:
+                            _sess.briefing_bosses = _names   # 复用简报消费链(session→state.plane_bosses)
+                            log.info('[cw-loop] 接管局 boss 补采完成:%s', _names)
+                        self.ctx.cw_plane_bosses = None   # 取走清空(防跨局复用)
             self.ctx.cw_match.strategy.on_match_start(
                 _st0, self.ctx.cw_match.session, self._cw_config)
 
