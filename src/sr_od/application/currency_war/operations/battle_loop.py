@@ -672,6 +672,18 @@ class CurrencyWarRunLoop(SrOperation):
                         _sess.briefing_bosses = _names   # 复用简报消费链(session→state.plane_bosses)
                         log.info('[cw-loop] 接管局 boss 补采完成:%s', _names)
                     self.ctx.cw_plane_bosses = None   # 取走清空(防跨局复用)
+            # 接管局词缀补采(同判定分支,boss 之后):备战词缀横条常驻(零交互
+            # 纯读,不用开敌人信息浮层);难度不补(备战「文本-难度」有独立
+            # 现读通道,用户裁决 2026-08-26)。复用简报词缀消费链(session.
+            # briefing_affixes → state.enemy_affixes → mechanics_fit)。
+            if not getattr(_sess, 'briefing_affixes', None):
+                from sr_od.application.currency_war.cw_briefing_obs import (
+                    read_prep_affixes,
+                )
+                _affixes = read_prep_affixes(self.ctx, screen)
+                if _affixes:
+                    _sess.briefing_affixes = _affixes
+                    log.info('[cw-loop] 接管局词缀补采(备战横条):%s', _affixes)
             self.ctx.cw_match.strategy.on_match_start(
                 _st0, self.ctx.cw_match.session, self._cw_config)
 

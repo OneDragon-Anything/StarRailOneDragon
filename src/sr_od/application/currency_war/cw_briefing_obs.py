@@ -55,6 +55,29 @@ def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     return [name for name, _ in read_affixes_with_pos(ctx, screen)]
 
 
+def read_prep_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
+    """**备战画面**常驻词缀横条 → 敌人词缀 OCR 名列表(接管局补采通道)。
+
+    横条 = 备战屏「区域-备战词缀横条」(y970-1015,常驻 UI 不随弹层消失;
+    2026-08-26 佩佩局建档)。与简报「区域-词缀行」同内容不同位置——本函数
+    供接管局(battle_loop 首读段)在备战态直接读,**零交互**(不用开敌人
+    信息浮层)。滤噪同 ``read_affixes_with_pos``(中文 2-7 字滤数字;横条
+    首段「敌人难度108」含数字自然被滤,难度有独立通道不在此读)。
+    OCR 名 vs 数据名的映射差异透传(同简报口径,AFFIX_MECHANIC_MAP 处理)。
+    读不到 / area 缺 → []。
+    """
+    from sr_od.application.currency_war.cw_obs_core import SCREEN_NAME as PREP_SCREEN
+    rect = _area_rect(ctx, '区域-备战词缀横条', PREP_SCREEN)
+    if rect is None:
+        return []
+    out: list[str] = []
+    for r in _ocr(ctx, screen, rect):
+        name = r.data.strip()
+        if 2 <= len(name) <= 7 and re.search(r'[一-鿿]', name) and not re.search(r'\d', name):
+            out.append(name)
+    return out
+
+
 def parse_enemy_difficulty(texts: list[str]) -> int | None:
     """简报「敌人难度N」OCR → int(N;如 ``敌人难度108`` → 108;纯函数可单测)。
 
