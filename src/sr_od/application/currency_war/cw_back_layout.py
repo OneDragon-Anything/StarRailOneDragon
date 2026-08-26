@@ -5,8 +5,9 @@
 - **等级只定上场人数 cap,不定格子数**;正常恒 前台 4 格 + 后台 6 格;
 - **后台格数 = 6 + (cap − level)**(口述公式):钻石/召唤物使 cap 超过 level,
   差值即后台扩展量——diff 0 → 6 格基线;diff ≥2 → 8 格(393-1529 带,狸猫局
-  交互实拍,screen_info ``后排8槽-1..8``);diff==1(钻石+1)→ 7 格**档未建档**,
-  保守退 8 格超集运行 + 停机钩子引导采集(见下条4与 ADR-0385 件①)。
+  交互实拍,screen_info ``后排8槽-1..8``);diff==1(钻石+1)→ 7 格**已建档**
+  (2026-08-26 佩佩局 MCP 交互实锤:槽 1-6 同 6 格基线 + 槽 7 右扩
+  1387-1529,screen_info ``后排7槽-1..7``)。
 
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
 
@@ -20,19 +21,22 @@
    ``obs_conflict('back_layout_channel_conflict')`` 留证(带两值,便于判读);
    CV 不可判(帧越界/锚缺失,如 overlay 遮挡/非备战帧)→ 退公式值
    (公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
-4. 7 格档未建档 → 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
-   失败方向)+ **停机钩子**(``cw_identity_obs.read_deployed_chars``,
-   :func:`resolve_back_slots` 的 ``n_raw`` 无档时停机+flag 引导现场采集
-   7 格真值;ADR-0385 件①,「7 格存在性」已由公式回答=钻石+1,缺的只是
-   坐标档,由钩子管)。旧「lv6=7 格待采」留证机器(note_pending_7slots/
-   _PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理(ADR-0385 件②)。
+4. 7 格档已建档(2026-08-26 佩佩局,用户口述真值 + MCP 拖拽逐位实锤 +
+   CV 通道 W209k 左端阈值定标)→ diff==1 直读 7 格。**未建档新档位**(diff≥3
+   域外/CV 新观察)→ 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
+   失败方向)+ 留证钩子(``cw_identity_obs.read_deployed_chars``,n_raw 未
+   建档时 obs_conflict 留证+去重截图引导人工经 MCP 采集;ADR-0385 件①,
+   7 格即按此流程闭合后钩子自然静默)。旧「lv6=7 格待采」留证机器
+   (note_pending_7slots/_PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理
+   (ADR-0385 件②)。
 
 旧 level 驱动模型(ADR-0281「level≥7→8 格」)**归因错误**(其实证局狸猫局
 本身带召唤物=cap 差,不是 level),本模块勘误;level 只进 cap 板满门,
 不进布局选档。run 26(lv8 无召唤物局)按 8 格坐标拖不存在的 7/8 号格 +
 幻影空位把部署卡死在 bench = 崩坏根因①。
 
-单一真相源 = screen_info(6 槽 = ``后排-1..6``;8 槽 = ``后排8槽-1..8``)。
+单一真相源 = screen_info(6 槽 = ``后排-1..6``;7 槽 = ``后排7槽-1..7``;
+8 槽 = ``后排8槽-1..8``)。
 旧 9/10/11 档是循环论证幻影(ADR-0281),已删,勿再登记;「后排7槽-P2开局局」
 实拍帧经 CV 复核两端扩展位均为背景(旧 7 槽观察同属幻影,实为 6 格)。
 系统单位恒最右模型与布局自检(``cw_identity_obs.check_system_unit_layout``)
@@ -84,15 +88,16 @@ _CV_HALF: int = 71
 #: 实为 6 格):阈值 6.0 = 背景上限 2.9 的 2.07×、空槽下限 10.5 的 0.57×,
 #: 双向余量均 >1.7×。
 _CV_SLOT_STD_MIN: float = 6.0
-#: **左端(464)专用阈值**(W209k,佩佩局定谳标定):6/7 格局羁绊面板渗入 464
-#: 裁切带 std 26.2-40.3(佩佩局 1-1 三帧实测)vs 8 格局真左格 62.5-148
-#: (狸猫局族实测)——用户口述「第 1 格=最左,左边无格」,7 格几何上 464 处
-#: **无格**(7 格槽 1-6 与 6 格基线同坐标、槽 7 右扩),该位 std 信号全是
-#: 面板渗入。阈值 48 分界无样本重叠(渗入上限 40.3 / 真格下限 62.5)。
-#: 残余风险(ADR-0385 决策 13):8 格局左1 空槽(暗框 std~10-20 < 48)会被
-#: 判无左格 → CV 读 7;无此样本,公式通道(diff≥2→8)对账兜底(7 格已建档,
-#: CV=7≠公式=8 留证后采公式值,不误档)。
+#: **左端(464)三值判据**(W209k 佩佩局定谳 + 同日 P3 局盲区修正):std 单值
+#: 无法分离「8 格左1 空槽」与「6/7 格羁绊面板渗入」——实测 8 格真左格
+#: std 38.8(P3 局空槽)-148,7 格渗入 26.2-40.2,**重叠带 [26,48] 无分辨力**。
+#: 三值:≥48 → 有左格(狸猫局族 62.5-65.6);≤12 → 无左格(6 格背景
+#: 实测 ≤2.9);中间 → **CV 不可判**(:func:`cv_back_slots` 返 None 退公式
+#: ——7/8 靠 diff 公式(cap 直读权威),比硬猜诚实;ADR-0385 决策 13 残余
+#: 风险的量证收口)。
 _CV_LEFT_STD_MIN: float = 48.0
+#: 左端不可判带下界(背景上限 2.9 的 ~4x;渗入下限 26.2 之下留足间隔)
+_CV_LEFT_STD_AMBIG_LO: float = 12.0
 
 
 def _cv_slot_std(screen, cx: int) -> float | None:
@@ -112,9 +117,11 @@ def cv_back_slots(screen) -> int | None:
     """CV 通道:实测当前帧后台格数(ADR-0385 双通道件2)→ ``6 + 扩展位数`` | None。
 
     方法:对两端扩展位(464/1458)逐位判「槽签名存在」——右端用
-    :data:`_CV_SLOT_STD_MIN`,**左端用更高阈值** :data:`_CV_LEFT_STD_MIN`
-    (W209k:6/7 格局 464 处是羁绊面板渗入 std 26-40,非真格;口述「第 1 格=
-    最左,左边无格」);格数 = 6 + 存在数(6/7/8,扩展几何 = 6 格基线右扩,
+    :data:`_CV_SLOT_STD_MIN`;**左端三值**(W209k+P3 盲区修正):≥48 有格 /
+    ≤12 无格 / **中间带不可判 → 整体返 None 退公式**(「8 格左1 空槽」与
+    「6/7 格羁绊面板渗入」std 重叠带 [26,48] 无分辨力——佩佩局渗入 26.2-40.2
+    vs P3 局 8 格空左格 38.8;7/8 靠 diff 公式兜底,cap 直读权威)。
+    格数 = 6 + 存在数(6/7/8,扩展几何 = 6 格基线右扩,
     佩佩局定谳:7 格 = 槽1-6 同 6 格坐标 + 槽7 右扩 1387-1529,8 格两端扩)。
     锚位(606/1031)任一无槽签名 → 帧不可判(overlay 遮挡/非备战态/非 1080p)
     → None(调用方退公式通道)。纯读 best-effort,异常 → None 不抛。
@@ -123,11 +130,15 @@ def cv_back_slots(screen) -> int | None:
         anchors = [_cv_slot_std(screen, x) for x in _CV_ANCHOR_XS]
         if any(a is None or a < _CV_SLOT_STD_MIN for a in anchors):
             return None
+        left = _cv_slot_std(screen, 464)
+        if left is not None and _CV_LEFT_STD_AMBIG_LO < left < _CV_LEFT_STD_MIN:
+            return None   # 左端不可判带(重叠带):退公式,不硬猜
         extras = 0
-        for x, thr in ((464, _CV_LEFT_STD_MIN), (1458, _CV_SLOT_STD_MIN)):
-            s = _cv_slot_std(screen, x)
-            if s is not None and s >= thr:
-                extras += 1
+        if left is not None and left >= _CV_LEFT_STD_MIN:
+            extras += 1
+        s = _cv_slot_std(screen, 1458)
+        if s is not None and s >= _CV_SLOT_STD_MIN:
+            extras += 1
         return _BACK_SLOTS_BASE + extras
     except Exception:   # noqa: BLE001  CV best-effort,失败退公式
         return None
@@ -144,8 +155,9 @@ def back_slots_from_cap_diff(diff: int) -> int:
     - diff < 0(cap<level 读错族,prep_director 另有 obs_conflict 留证)按 0;
     - diff > 2(``DEPLOY_CAP_MAX_DIFF`` 域外,实机语料未见)按 2 —— 口述公式
       与旧幻影观察自洽:cap9/10/11 的 lv7/8 局 diff ≥2 全部落 8 格档;
-    - 公式值未建档(diff==1 → 7 格)→ **保守退 8 格超集**(扩展带读全不丢系统
-      单位;拖到不存在的位 8 被游戏拒 = 廉价失败方向)。
+    - 公式值未建档(diff≥3 域外族)→ **保守退 8 格超集**(扩展带读全不丢系统
+      单位;拖到不存在的位 8 被游戏拒 = 廉价失败方向);diff==1 → 7 格已建档
+      直读(2026-08-26 佩佩局)。
     """
     d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
     n = _BACK_SLOTS_BASE + d
@@ -291,7 +303,7 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
         n_raw = cv_n if cv_n is not None else formula_raw
     else:
         n_raw = formula_raw
-    n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 7 → 8 格超集(模块 docstring)
+    n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 未建档新档位 → 8 格超集(模块 docstring 条4)
     p = _layout_prefixes().get(n, _LAYOUT_PREFIX[_BACK_SLOTS_BASE])
     try:
         global _last_sel_log

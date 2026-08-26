@@ -210,24 +210,49 @@ def identify_slots(
     templates: AvatarTemplates,
     slots: list[tuple[int, Rect]],
     row: str,
+    min_inliers: int = 10,
+    live_only: bool = False,
 ) -> list[BenchChar]:
     """纯 CV:按槽位裁切 → SIFT 识别 → BenchChar 列表(离线可测,无 ctx 依赖)。
 
     :param slots: ``[(slot_idx, rect), ...]``;rect = 1080p 槽位矩形(来自 screen_info 或硬编码)。
     :param row: ``"front"`` / ``"back"``(已上阵排)→ BenchChar.position_pref;``""``(备战栏)→ 用
         角色固有偏好(未上阵)。
+    :param min_inliers: 识别门槛(identify_character 透传)。部署排(有场景背景)传更高
+        (``_DEPLOYED_MIN_INLIERS``);备战栏卡槽背景干净,保持默认。
+    :param live_only: 部署排专用(2026-08-26 佩佩局量证):plaza 官方 art 跨域匹配
+        在棋盘背景山水上有 **11-26 内点假阳带**(空槽实测 乱破:19/爻光:26),
+        与真命中带重叠、无阈值可分;**现场采集 art(raw_board 变体/纯现场主档)
+        才是可靠信号**(真命中 34-86,空槽上现场 art ≤11)。True 时:命中主档
+        且该角色存在现场变体 → 判跨域假阳拒(漏读走「未知」对账可见,好过
+        假阳毒板面);命中变体键或纯现场主档角色(佩佩/狸猫对)→ 收。
     :return: 命中角色的 BenchChar 列表(空槽 / 低内点 / 歧义 / 非 roster → 跳过,不进列表)。
 
     每槽:裁 ``screen[y1:y2, x1:x2]`` → ``identify_character``(SIFT 对脸库)→ ``resolve_char_name``
     → 规范名。faction 取角色首阵营(粗;权威阵营计数看 board OCR);star = ``read_star``(立绘底部
     金星计数)。
+
+    **相邻幽灵去重(2026-08-26 佩佩局)**:部署立绘比槽窗宽,单只会向相邻窗渗出 → 同名
+    角色相邻两窗双命中(真身高分 + 越界残影低分,实测 86 vs 19,悬殊 >4x;真双副本两窗
+    各自完整,分数相近)。规则:同名相邻双命中且低分 < 高分×0.5 → 判低分为残影剔除;
+    其余(分数相近/不相邻)保留。
     """
     out: list[BenchChar] = []
+    hits: list[tuple[int, BenchChar, int]] = []   # (slot_idx, char, inliers) 去重用
+    _has_variant: set[str] | None = None
+    if live_only:
+        _has_variant = {k.split('#')[0] for k in templates if '#' in k}
     for slot_idx, rect in slots:
         crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-        avatar_id, _inliers = identify_character(crop, templates)
+        avatar_id, inliers = identify_character(
+            crop, templates, min_inliers=min_inliers, return_key=live_only)
         if avatar_id is None:
             continue
+        if live_only:
+            # 主档命中但该角色有现场变体(变体没赢)→ 跨域假阳拒(docstring 量证)
+            if '#' not in avatar_id and avatar_id in _has_variant:
+                continue
+            avatar_id = avatar_id.split('#')[0]
         name = resolve_char_name(avatar_id)
         if name is None:
             continue
@@ -240,7 +265,7 @@ def identify_slots(
         if row and name and is_trailblazer(name):
             name = trailblazer_form(name, row)
         ch = get_char(name)
-        out.append(BenchChar(
+        hits.append((slot_idx, BenchChar(
             slot=slot_idx,
             char_id=name,
             # '?'=未知(名不在注册表);''=已知无阵营(白厄类;与 shop._tracked_bench_chars 同语义)
@@ -248,8 +273,35 @@ def identify_slots(
                      else ('' if ch is not None else '?')),
             star=read_star(crop),            # 立绘底部金星计数(1/2/3 星;见 read_star)
             position_pref=row if row else (ch.position_pref() if ch is not None else 'back'),
-        ))
+        ), inliers))
+    # 相邻幽灵去重(见 docstring):同名相邻双命中,低分 < 高分×0.5 → 剔低分
+    drop: set[int] = set()
+    for i, (s1, c1, n1) in enumerate(hits):
+        for j, (s2, c2, n2) in enumerate(hits):
+            if i >= j or c1.char_id != c2.char_id or abs(s1 - s2) != 1:
+                continue
+            lo, hi = (i, j) if n1 < n2 else (j, i)
+            if hits[lo][2] < _GHOST_RATIO * hits[hi][2]:
+                drop.add(lo)
+    out = [c for k, (_s, c, _n) in enumerate(hits) if k not in drop]
     return out
+
+
+#: 相邻幽灵判定比(低分 < 高分×本值 → 剔低分;实测真身 86 vs 残影 19,
+#: 真双副本分数相近不受影响;佩佩局 2026-08-26 定标,余量 86/19≈4.5x)
+_GHOST_RATIO: float = 0.5
+
+#: 部署排识别门槛(identify_character min_inliers 覆盖值):部署窗背后是场景山水
+#: (与官方 art 纹理弱撞,佩佩局空槽假阳实测 11 内点),真命中经现场变体(raw_board)
+#: ≥26;15 = 假阳上限 11 的 1.36x / 真值下限 26 的 0.58x,双向余量。备战栏卡槽
+#: 背景干净(实测真命中 35-57,无假阳),保持默认 10。
+_DEPLOYED_MIN_INLIERS: int = 15
+
+#: 部署排只认现场 art(live_only;2026-08-26 佩佩局量证):plaza 官方 art 跨域
+#: 匹配在空槽背景上有 11-26 假阳带(乱破:19/爻光:26),与占用位 plaza 对本人
+#: 分(10-27)三带重叠,阈值无解;现场变体真命中 34-86、空槽 ≤11,分离干净。
+#: 漏读代价(未知位,对账可见)< 假阳代价(幻觉角色毒化策略决策)。
+_DEPLOYED_LIVE_ONLY: bool = True
 
 
 def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]]:
@@ -297,22 +349,25 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     )
     _lay = resolve_back_slots(ctx, screen, level=level)
     back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
-    # 布局留证采集钩子(ADR-0385 决策 12,W209i 降级:原停机钩子废弃):
-    # 触发 = 对账原始格数 n_raw 无档(=7,公式 diff==1 钻石+1 或 CV 单端
-    # 扩展,W209h 防抖后)→ **obs_conflict 留证 + 去重截图,不停机**。
+    # 布局留证采集钩子(ADR-0385 决策 12,W209i 降级:原停机钩子废弃;
+    # 2026-08-26 佩佩局 7 格坐标档已建档 → 钩子对 7 静默,只对未来**未建档**
+    # 新档位(diff≥3 域外/CV 新观察)留证):
+    # 触发 = 对账原始格数 n_raw 未建档(∉ _LAYOUT_PREFIX)→ **obs_conflict 留证
+    # + 去重截图,不停机**。
     # 降级依据(run 27 停机事故实证):货币战争备战阶段是**实时倒计时**,
     # 战斗自动开打——停 bot ≠ 停游戏,run 27 hook 停机后画面自行推进到
     # 首领战败结算(14:09 停 → 14:16 结算,截图 20260826_141613),「停机
     # 保画面待采集」对实时制游戏是虚假承诺;误停代价(烧一局 + 世界状态
-    # 不可控)>> 7 格采集收益(钻石局可遇不可求)。7 格坐标改由
-    # 「CV 通道持续留证 + 人工在场时经 MCP 交互采集」(钩子只攒证据)。
-    # 帧态门(is_prep_like_frame)保留辖**留证**触发(过渡/动画帧不留证,
+    # 不可控)>> 采集收益。7 格坐标 2026-08-26 经 MCP 交互实锤采集完成
+    # (后排7槽-1..7 upsert + _LAYOUT_PREFIX 登记),本钩子自然静默。
+    # 帧态门(is_prep_like_frame)辖**留证**触发(过渡/动画帧不留证,
     # 判定素材 = 本函数入参 screen = 当前处理帧,非缓存——run 27 复盘:
     # 触发帧确为备战态,门本身有效,失效的是「停机能保画面」的假设)。
     # 帧态门 + obs_conflict 自带 300s 节流;升级路径 = 框架原生 PAUSE
     # (方案 C,未暴露;真需要现场采集时人工经 MCP 驱动)。
     try:
-        if _lay['n_raw'] not in (6, 8):
+        from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
+        if _lay['n_raw'] not in _LAYOUT_PREFIX:
             from sr_od.application.currency_war.cw_obs_core import (
                 is_prep_like_frame,
             )
@@ -323,21 +378,26 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
             else:
                 from sr_od.application.currency_war.cw_observe import obs_conflict
                 obs_conflict(
-                    'back_7slots_collect', 7, _lay['cv_n'], screen,
-                    verdict=('留证采集-7 格档未建档(W209i 降级不停机:实时制'
+                    'back_layout_unarchived_grid', _lay['n_raw'], _lay['cv_n'], screen,
+                    verdict=('留证采集-后排档未建档(W209i 降级不停机:实时制'
                              '游戏停 bot 不停游戏,run 27 停机画面自行推进到'
                              '结算实证);本行含去重截图,坐标采集需人工在场'
                              '经 MCP 交互(拖角色逐位实锤),画面可能已推进'
                              '——以截图为准;流程:暗框初测槽位 x → 拖角色'
-                             '逐位验证 → upsert 后排7槽-1..7 → _LAYOUT_PREFIX'
-                             ' 登记 7 → 本留证自然停发'),
+                             '逐位验证 → upsert 对应档 area → _LAYOUT_PREFIX'
+                             ' 登记档位 → 本留证自然停发(2026-08-26 佩佩局'
+                             ' 7 格即按此流程闭合)'),
                     source='read_deployed_chars', cap=_lay['cap'],
                     level=_lay['level'], formula=_lay['formula_raw'],
                     cv_readings=_lay.get('cv_readings'))
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
-    front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
-    back = identify_slots(screen, templates, back_slots, 'back')
+    front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front',
+                           min_inliers=_DEPLOYED_MIN_INLIERS,
+                           live_only=_DEPLOYED_LIVE_ONLY)
+    back = identify_slots(screen, templates, back_slots, 'back',
+                          min_inliers=_DEPLOYED_MIN_INLIERS,
+                          live_only=_DEPLOYED_LIVE_ONLY)
     # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort
     check_system_unit_layout(screen, back, back_slots, templates,
                              source='read_deployed_chars')

@@ -817,6 +817,7 @@ area_list:
 # W62 件2(ADR-0329):出售区(拖拽落点区域语义;游戏机制=拖到该区域即出售,无按钮)。
 # pc_rect 覆盖原硬编码 SELL_POINT=(70,846) 及周边(设计建议值,待实机对拍校准——
 # 拖拽落点区域语义 vs 精确中心;SELL_POINT 常量作缺失兜底,行为不变)。
+# (2026-08-26 回补:7 槽建档时该块被吞,自 HEAD 恢复。)
 - area_name: 区域-出售区
   id_mark: false
   pc_rect:
@@ -824,6 +825,104 @@ area_list:
   - 800
   - 120
   - 880
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-1
+  id_mark: false
+  pc_rect:
+  - 534
+  - 600
+  - 675
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-2
+  id_mark: false
+  pc_rect:
+  - 679
+  - 600
+  - 814
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-3
+  id_mark: false
+  pc_rect:
+  - 823
+  - 600
+  - 953
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-4
+  id_mark: false
+  pc_rect:
+  - 967
+  - 600
+  - 1097
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-5
+  id_mark: false
+  pc_rect:
+  - 1106
+  - 600
+  - 1248
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-6
+  id_mark: false
+  pc_rect:
+  - 1245
+  - 600
+  - 1386
+  - 739
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 后排7槽-7
+  id_mark: false
+  pc_rect:
+  - 1387
+  - 600
+  - 1529
+  - 739
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''

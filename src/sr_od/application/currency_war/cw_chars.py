@@ -169,6 +169,10 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     # 无阵营无流派(纯增益挂件,效果=【随便骰子】)。
     _ch("狸小虎", 0, "back", "", "", "", source="live:龙虎兄弟狸"),
     _ch("狸小龙", 0, "back", "", "", "", source="live:龙虎兄弟狸"),
+    # 佩佩(投资策略族召唤:招财狗/溜佩佩/佩佩驾到/佩佩客串等;plaza API 不列召唤单位
+    # → 无官方 art,模板=现场采集 portrait_plaza/佩佩/raw.png,2026-08-26 佩佩局实拍)。
+    # cost=0 系统单位:恒最右、不可拖/不可卖(同狸猫对);无阵营无流派(增益挂件)。
+    _ch("佩佩", 0, "back", "", "", "", source="live:招财狗/溜佩佩族召唤"),
 ]}
 
 # 规范名集合(从 CHARACTERS 派生;供 COMP_LIBRARY.core_chars / config.character_priority 校验)

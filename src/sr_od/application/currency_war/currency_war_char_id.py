@@ -146,6 +146,7 @@ def identify_character(
     templates: AvatarTemplates,
     min_inliers: int = 10,
     ambiguity_ratio: float = 1.5,
+    return_key: bool = False,
 ) -> tuple[str | None, int]:
     """识别槽内角色。
 
@@ -153,6 +154,11 @@ def identify_character(
     :param templates: :func:`load_avatar_templates` 的结果(op 集成时由 ctx.ih 预加载传入)。
     :param min_inliers: 最低内点数,低于此判 unknown(配饰角色/非角色会落这)。
     :param ambiguity_ratio: best 需 ≥ ratio × second 才算非歧义。
+    :param return_key: True 时命中返回**原始模板键**(可能带 ``#k`` 变体后缀,
+        如 ``卡芙卡#1``=现场采集变体),False(默认)返回剥离后的规范名 ——
+        2026-08-26 佩佩局:部署排需区分命中源(plaza 官方 art 跨域匹配在
+        棋盘背景上有 11-26 内点假阳带,现场变体才是可靠信号),调用方
+        (cw_identity_obs.identify_slots live_only)用。
     :return: ``(char_id or None, best_inliers)``。None = 未知 / 歧义 / 低于阈值。
 
     歧义仲裁(r75 狸猫兄弟案):**同型异色单位对**(狸小虎蓝/狸小龙红,同投资策略「龙虎
@@ -212,7 +218,7 @@ def identify_character(
             if arb is not None:
                 return arb, best
             return None, best
-    return _base, best
+    return (best_id if return_key else _base), best
 
 
 #: 同型异色对(冷色成员, 暖色成员)——歧义时按 slot 色相偏向哪边仲裁(r75 狸猫兄弟)
