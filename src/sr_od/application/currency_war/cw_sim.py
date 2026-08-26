@@ -1931,8 +1931,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
                 )
+                # W212/ADR-0393:补齐 equip_allocation 生产调用形态——
+                # ① plane 从 st.plane 现读(生产 EquipAll 从 last_state 读,
+                # 见 equip_all M7 调用点;旧 sim 漏传 = 恒按默认 plane=1,
+                # ADR-0391 死库存回收去向(P2/P3 生效)与 P2 组件放行在
+                # sim 从未点火);② occupied = 画面已穿(生产 occupied_m7
+                # 同语义;旧 sim 恒 None → 配对守卫看不见历史已穿,只看得
+                # 见本趟内部分配,跨轮守卫形同虚设)。BenchChar.equips
+                # (r393 写回)即跨轮已穿真值。
+                _occupied: dict[tuple[str, int], list[str]] = {}
+                for d in iter_occupied_deployed(st.deployed):
+                    _occupied[(getattr(d, 'position_pref', '') or '',
+                               int(getattr(d, 'slot', 0) or 0))
+                              ] = list(getattr(d, 'equips', ()) or ())
                 _equipped_now = equip_allocation(
-                    sess.target_comp, st.deployed, list(st.equips))
+                    sess.target_comp, st.deployed, list(st.equips),
+                    occupied=_occupied, plane=st.plane)
                 for _who, _what in _equipped_now:
                     if _what in st.equips:
                         st.equips.remove(_what)
