@@ -20,11 +20,13 @@ from sr_od.application.currency_war.cw_line_defs import (
     RECIPE_BASE,
     recipe_tier,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     BuyCard,
     GameState,
     SellBench,
     bench_occupied,
+    deployed_occupied,
+    deployed_place,
     simulate,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -100,6 +102,8 @@ def _held_form_weights(state: GameState,
             main[f0] = main.get(f0, 0.0) + w
 
     for d in state.deployed or []:
+        if d is None:   # ADR-0392 槽位表空槽
+            continue
         star = max(1, int(getattr(d, 'star', 1) or 1))
         _add(d, float(star))
         if getattr(d, 'char_id', ''):
@@ -305,7 +309,8 @@ def _deployable_depth(state: GameState) -> int:
     买经验通道全灭)。未标定。
     """
     return min(state.level,
-               len(state.deployed or []) + bench_occupied(state.bench or []))
+               deployed_occupied(state.deployed or [])   # ADR-0392
+               + bench_occupied(state.bench or []))
 
 
 def _deploy_pipeline(state: GameState,
@@ -342,7 +347,7 @@ def _deploy_pipeline(state: GameState,
             if i < len(_occ):
                 bc = state.bench[_occ[i]]
                 if bc is not None:
-                    state.deployed.append(bc)
+                    deployed_place(state.deployed, bc)   # ADR-0392 槽位落位
                     state.bench[_occ[i]] = None
         state.board = _board_counts_of(state.deployed)
 

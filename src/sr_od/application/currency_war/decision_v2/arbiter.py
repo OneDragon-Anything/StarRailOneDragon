@@ -25,6 +25,7 @@ from sr_od.application.currency_war.cw_state import (
     LevelUp,
     RefreshShop,
     SellBench,
+    deployed_occupied,  # ADR-0392 helper 导入
     simulate,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -324,7 +325,7 @@ def _check_constraint(name: str, cand: Candidate,
         return None
     if name == 'deploy_cap':
         if isinstance(a, DeployMove):
-            if len(working.deployed or []) >= working.max_units():
+            if deployed_occupied(working.deployed or []) >= working.max_units():   # ADR-0392
                 return RejectReason('deploy_cap', 'slot', 1,
                                     f'上阵满 cap({working.max_units()})')
         return None

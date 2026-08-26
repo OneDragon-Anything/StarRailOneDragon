@@ -57,6 +57,7 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     SellBench,
     bench_occupied,
+    iter_occupied_deployed,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -786,7 +787,8 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     if carry_card is None:
         return []
     if has_same_name_copy(carry_card, state) \
-            or any(d.char_id == carry for d in (state.deployed or [])):
+            or any(d.char_id == carry
+                   for d in iter_occupied_deployed(state.deployed or [])):
         return []
     if in_round_sold(carry, state, session):
         return []

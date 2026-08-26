@@ -22,7 +22,10 @@ from sr_od.application.currency_war.cw_comps import (
     mechanics_fit,
     weighted_mean,
 )
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
@@ -170,7 +173,8 @@ def star_achievement(comp: Comp, state: GameState) -> float:
     """
     if not comp.core_chars:
         return 0.0
-    stars = [bc.star for bc in [x for x in state.bench if x is not None] + list(state.deployed)
+    stars = [bc.star for bc in [x for x in state.bench if x is not None]
+             + list(iter_occupied_deployed(state.deployed))
              if bc.char_id in comp.core_chars]
     if not stars:
         return 0.0

@@ -118,6 +118,8 @@ def equips_ledger_multiset(bench: list[BenchChar], deployed: list[BenchChar],
     """装备账本全景多重集:assigned(bench+deployed 各 char.equips)+ owned 池。"""
     out: Counter = Counter()
     for c in list(bench or []) + list(deployed or []):
+        if c is None:   # ADR-0316/0392 槽位表空槽
+            continue
         out.update(getattr(c, 'equips', None) or ())
     out.update(pool or ())
     return out

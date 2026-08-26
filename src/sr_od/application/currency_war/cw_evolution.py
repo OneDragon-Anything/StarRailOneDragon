@@ -46,6 +46,8 @@ from sr_od.application.currency_war.cw_state import (
     FillSpec,
     GameState,
     bench_occupied,
+    iter_deployed_slots,
+    iter_occupied_deployed,
     simulate,
 )
 from sr_od.application.currency_war.cw_system_cards import (
@@ -260,7 +262,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
     lock_scope = (locked_buy_scope(ist)
                   if isinstance(ist, IntentionState) else None)
     bf = _board_factions_of(state.deployed)
-    names = {d.char_id for d in state.deployed if d.char_id}
+    names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
     formed = _engine_systems_formed(bf, names)
     eng_bonds = {b for b, _t in TRANSITION_TRAITS}
 
@@ -272,7 +274,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
 
     g0: list[BenchChar] = []
     g1: list[BenchChar] = []
-    for d in state.deployed:
+    for d in iter_occupied_deployed(state.deployed):
         if not d.char_id:
             continue
         if any(_is_member(k, d) for k in pair):
@@ -336,7 +338,7 @@ def _engine_completion_tx(state: GameState,
     if not pair:
         return None
     bf = _board_factions_of(state.deployed)
-    deployed_names = {d.char_id for d in state.deployed if d.char_id}
+    deployed_names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
     pool = [bc for bc in (*state.bench, *state.deployed)
             if bc is not None and bc.char_id]
     tier_of = dict(TRANSITION_TRAITS)
@@ -443,11 +445,11 @@ def _engine_completion_tx(state: GameState,
     def _weak_key(bc: BenchChar) -> tuple[int, int]:
         return _weak_piece_key(bc)
 
-    room = state.max_units() - len(state.deployed)
+    room = state.max_units() - state.deployed_count()   # ADR-0392 占用数
     undeploy_n = max(0, len(up_cands) - room)
     # undeploy 候选:deployed 非保护件,最弱先下
     undeploy_cands = sorted(
-        (d for d in state.deployed
+        (d for d in iter_occupied_deployed(state.deployed)
          if d.char_id and not _is_protected(d, _protected_dep)),
         key=_weak_key)[:undeploy_n]
     # W202/ADR-0382 保护集分级:常规候选枯竭(全保护,W200 136 型
@@ -511,8 +513,10 @@ def _completion_freeze_exempt(state: GameState, post,
             continue   # 哨兵键非羁绊键:由下方引擎数总核覆盖
         if post_bf.get(sys_key, 0) < pre_bf.get(sys_key, 0):
             return False
-    pre_names = {d.char_id for d in state.deployed if d.char_id}
-    post_names = {d.char_id for d in post.deployed if d.char_id}
+    pre_names = {d.char_id for d in iter_occupied_deployed(state.deployed)
+                 if d.char_id}
+    post_names = {d.char_id for d in iter_occupied_deployed(post.deployed)
+                  if d.char_id}
     return _engines_count(post_bf, post_names) \
         >= _engines_count(pre_bf, pre_names)
 
@@ -636,7 +640,7 @@ def _lost_engine_systems(state: GameState,
         _engines_count,
     )
     pre_bf = _board_factions_of(state.deployed)
-    pre_names = {d.char_id for d in state.deployed if d.char_id}
+    pre_names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
     if _engines_count(pre_bf, pre_names) < 2:
         return set()
     post_bf = _board_factions_of(post_deployed)
@@ -763,7 +767,7 @@ def _status_quo_score(state: GameState) -> float:
     owned = _owned_names(state)
     core_n = sum(1 for comp in COMP_LIBRARY
                  if comp.core_chars and comp.core_chars[0] in owned
-                 and any(n in {d.char_id for d in state.deployed}
+                 and any(n in {d.char_id for d in iter_occupied_deployed(state.deployed)}
                          for n in comp.core_chars[:1]))
     return best_tier * _TIER_WEIGHT + core_n * _CORE_ON_BOARD_W
 
@@ -946,9 +950,11 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                  if not bc.char_id or bc is _best_new.get(bc.char_id)]
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
-    deployed_keep = [d for d in state.deployed if _is_new_line(d)]
+    deployed_keep = [d for d in iter_occupied_deployed(state.deployed)
+                     if _is_new_line(d)]
     # 旧档:非新线成员整档解除
-    old_line = [d for d in state.deployed if not _is_new_line(d)]
+    old_line = [d for d in iter_occupied_deployed(state.deployed)
+               if not _is_new_line(d)]
     # W160/ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
     # (cw_sim._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
     # deployed 贡献件获得新线同级**留场资格**(不划 old_line 下场),
@@ -1508,7 +1514,7 @@ def rollback_weakest(state: GameState,
     """
     if not memory.last_deployed:
         return None
-    deployed_of_new = [d for d in state.deployed
+    deployed_of_new = [d for d in iter_occupied_deployed(state.deployed)
                        if d.char_id in memory.last_deployed]
     if not deployed_of_new:
         return None
@@ -1518,7 +1524,8 @@ def rollback_weakest(state: GameState,
         return (d.star, c.cost if c is not None else 0)
 
     weakest = min(deployed_of_new, key=_weak_key)
-    d_idx = next(i for i, d in enumerate(state.deployed) if d is weakest)
+    d_idx = next(i for i, d in iter_deployed_slots(state.deployed)  # ADR-0392 槽位下标
+                 if d is weakest)
     retained = [b for b in state.bench
                 if b is not None and b.char_id in memory.last_retained]
     if retained:

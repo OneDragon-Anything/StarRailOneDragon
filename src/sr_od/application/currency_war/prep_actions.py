@@ -582,9 +582,19 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        match.session.tracked_deployed = [
-            bc for bc in match.session.tracked_deployed
-            if not (bc.position_pref == row and bc.slot == slot)]
+        # ADR-0392:tracked_deployed 槽位表(置 None 不移位);(row, slot)
+        # 物理 1-based → 槽位下标(front: slot-1 / back: 4+slot-1)
+        from sr_od.application.currency_war.cw_state import (
+            DEPLOYED_FRONT_CAPACITY,
+            pad_deployed,
+        )
+        tracked = pad_deployed(list(match.session.tracked_deployed))
+        idx = (slot - 1 if row == 'front'
+               else DEPLOYED_FRONT_CAPACITY + slot - 1)
+        if 0 <= idx < len(tracked) and tracked[idx] is not None \
+                and tracked[idx].position_pref == row:
+            tracked[idx] = None
+        match.session.tracked_deployed = tracked
 
     def _track_move_deployed(self, from_slot: int, to_row: str, to_slot: int) -> None:
         """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。"""
@@ -597,10 +607,13 @@ class PrepActionExecutor:
         match.session.tracked_bench_chars = [
             bc for bc in match.session.tracked_bench_chars
             if bc is not None and bc.slot != from_slot]
+        # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
+        # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
+        from sr_od.application.currency_war.cw_state import deployed_place
         for bc in moved:
             bc.position_pref = to_row
+            deployed_place(match.session.tracked_deployed, bc)
             bc.slot = to_slot
-        match.session.tracked_deployed.extend(moved)
 
     # ===== 商店域 =====
 

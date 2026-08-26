@@ -61,8 +61,16 @@ def _to_jsonable(obj: Any) -> Any:
 
 
 def serialize_state(state: GameState) -> dict[str, Any]:
-    """GameState → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。"""
-    return _to_jsonable(state)
+    """GameState → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
+
+    ADR-0392:``deployed`` 槽位表 → **紧缩占用序**落遥测(None 空槽剔除)——
+    下游视图(rounds/win_features/replay)零迁移,占用数=len 语义不变。
+    """
+    out = _to_jsonable(state)
+    _dep = getattr(state, 'deployed', None)
+    if isinstance(_dep, list):
+        out['deployed'] = _to_jsonable([d for d in _dep if d is not None])
+    return out
 
 
 def serialize_action(action: Action) -> dict[str, Any]:

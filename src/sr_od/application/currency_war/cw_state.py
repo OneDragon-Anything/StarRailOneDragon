@@ -12,7 +12,7 @@
   ``board_from_tracked`` = 游戏左面板真值)。旧主阵营单标签口径已废(W49 Q4)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者应一致(deployed 按羁绊全集聚合 == board)。
-- simulate(DeployMove) 同时更新 deployed(append) 与 board(_recount_board 重算)。
+- simulate(DeployMove) 同时更新 deployed(槽位落位 deployed_place,ADR-0392)与 board(_recount_board 重算)。
 - simulate(BuyCard) 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
@@ -27,6 +27,13 @@ from sr_od.application.currency_war.cw_chars import CHARACTERS
 # 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。旧 SELL_VALUE{1:1,2:3,3:5} 占位(连1星都没按cost)→ 弃。
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
+# deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
+# 4-9 = 后排槽 1-6。后排实际格数随布局档 6/7/8 变(cw_back_layout,
+# = 6+(cap−level),ADR-0385)——超过 6 的扩展格属画面布局域,不进本表示
+# (表长恒 10;取舍与理由见 ADR-0392「后排布局档取舍」节)。
+DEPLOYED_FRONT_CAPACITY: int = 4
+DEPLOYED_BACK_CAPACITY: int = 6
+DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
 
 # 购买经验机制(ADR-0129;用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
 # 「购买经验」每点一次 +XP_PER_BUY 经验、花小额金币(按钮实读 state.level_up_cost);经验攒够当前级
@@ -101,7 +108,14 @@ class GameState:
     # board_next_tier = 各阵营「下个 tier 阈值」(左面板 "X/Y" 的 Y;doc 13 FactionState.next_tier)。
     # 聚焦裁切 OCR 才稳读(全屏把 "2/3" 误读 "213")。comp/progress 评分用「距下个 tier 几人」;默认空(未接/未读到)。
     board_next_tier: dict[str, int] = field(default_factory=dict)
-    deployed: list[BenchChar] = field(default_factory=list)
+    # deployed = 槽位语义模型(ADR-0392):**定长 DEPLOYED_CAPACITY(10)槽表**,
+    # 元素 BenchChar | None(空槽);下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6
+    # (BenchChar.position_pref='front'/'back' 与 slot 1-based 排内槽号保留为
+    # 信息位;权威槽位 = 下标)。卖出/下场置 None 不移位 → deployed_idx 跨
+    # 动作组恒稳(同轮多笔 SellDeployed 不可能再漂移);容量判据 = 占用数
+    # (``deployed_occupied``),**禁止 len(deployed)**;迭代一律
+    # ``iter_occupied_deployed``(裸 for 会撞 None)。
+    deployed: list[BenchChar | None] = field(default_factory=list)
     shop: list[ShopCard] = field(default_factory=list)
     # bench = 槽位语义模型(ADR-0316):**定长 BENCH_CAPACITY(9)槽表**,
     # 元素 BenchChar | None(空槽);列表下标 0-8 = 物理槽位 1-9 减一
@@ -142,13 +156,18 @@ class GameState:
     action_log: list[dict] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        """bench 槽位模型(ADR-0316):构造/反序列化 pad None 到定长 9。
+        """bench/deployed 槽位模型(ADR-0316/0392):构造/反序列化 pad None
+        到定长 9/10(紧缩前缀顺延占用 0..n-1——旧紧缩构造兼容,与 pad_bench
+        同式)。
 
-        传入超长(>9)= 非法输入,保留原样由容量检查暴露(不静默截断)。
+        传入超长(>定长)= 非法输入,保留原样由容量检查暴露(不静默截断)。
         """
         if len(self.bench) < BENCH_CAPACITY:
             self.bench = list(self.bench) \
                 + [None] * (BENCH_CAPACITY - len(self.bench))
+        if len(self.deployed) < DEPLOYED_CAPACITY:
+            self.deployed = list(self.deployed) \
+                + [None] * (DEPLOYED_CAPACITY - len(self.deployed))
 
     def copy(self) -> GameState:
         return deepcopy(self)
@@ -165,13 +184,15 @@ class GameState:
         return min(base, self.front_max + self.back_max)
 
     def deployed_count(self) -> int:
-        return len(self.deployed)
+        return deployed_occupied(self.deployed)   # ADR-0392:占用数,非 len
 
     def front_count(self) -> int:
-        return sum(1 for c in self.deployed if c.position_pref == "front")
+        return sum(1 for c in self.deployed
+                   if c is not None and c.position_pref == "front")
 
     def back_count(self) -> int:
-        return sum(1 for c in self.deployed if c.position_pref == "back")
+        return sum(1 for c in self.deployed
+                   if c is not None and c.position_pref == "back")
 
     def bench_is_full(self) -> bool:
         """备战席是否满:OCR 警告标志优先,否则按固定 9 槽(占用数)。"""
@@ -191,8 +212,10 @@ class GameState:
 
 
 def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
-                               max_count: int | None = None) -> list[BenchChar]:
-    """从 board(OCR 阵营计数真值)重建 ``deployed`` 列表 → ``deployed_count()`` 对齐实际阵上数。
+                               max_count: int | None = None) -> list[BenchChar | None]:
+    """从 board(OCR 阵营计数真值)重建 ``deployed`` 槽位表(ADR-0392;下标
+    0-3=前排/4-9=后排,按 position_pref 路由落槽)→ ``deployed_count()``
+    对齐实际阵上数。
 
     (RC1 fix):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效。本 helper 从 board
     重建 deployed。
@@ -200,17 +223,18 @@ def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
     sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
     **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
     """
-    deployed: list[BenchChar] = []
+    compact: list[BenchChar] = []
     back_left = back_max
     for faction, count in board.items():
         for _ in range(count):
-            if max_count is not None and len(deployed) >= max_count:
-                return deployed
+            if max_count is not None and len(compact) >= max_count:
+                return deployed_from_compact(compact)
             pref = "back" if back_left > 0 else "front"
             if back_left > 0:
                 back_left -= 1
-            deployed.append(BenchChar(slot=len(deployed), faction=faction, star=1, position_pref=pref))
-    return deployed
+            compact.append(BenchChar(slot=0, faction=faction, star=1,
+                                     position_pref=pref))
+    return deployed_from_compact(compact)
 
 
 # ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
@@ -274,6 +298,86 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
     return bench
 
 
+# ===== deployed 槽位语义 helpers(ADR-0392;消费端唯一合法入口)=====
+
+
+def iter_occupied_deployed(deployed: list[BenchChar | None]):
+    """迭代占用槽(滤 None)——deployed 迭代单一源,禁止裸 ``for d in deployed``。"""
+    return (d for d in deployed if d is not None)
+
+
+def iter_deployed_slots(deployed: list[BenchChar | None]):
+    """迭代 (槽位下标, 占用角色) 对(滤 None)——deployed_idx 生成端用
+    (索引 = 槽位下标,生成期=执行期恒稳,ADR-0392)。"""
+    return ((i, d) for i, d in enumerate(deployed) if d is not None)
+
+
+def deployed_occupied(deployed: list[BenchChar | None]) -> int:
+    """deployed 占用槽数(容量判据单一源,禁止 ``len(deployed)``——定长下
+    len 恒 DEPLOYED_CAPACITY)。"""
+    return sum(1 for d in deployed if d is not None)
+
+
+def deployed_slot_no(idx: int) -> int:
+    """槽位下标 → 排内 1-based 槽号信息位(0-3→前排 1-4;4-9→后排 1-6)。"""
+    return idx - DEPLOYED_FRONT_CAPACITY + 1 if idx >= DEPLOYED_FRONT_CAPACITY \
+        else idx + 1
+
+
+def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
+    """放入指定排的首个空槽(上场落位语义):position_pref='front' → 前排区
+    0-3,'back' → 后排区 4-9(ADR-0392);放置时归一 ``bc.position_pref``、
+    ``bc.slot``(排内 1-based 槽号信息位)。首选排满时落全局首个空槽兜底
+    (旧行为 append 不看排,排容量门在上游;兜底保持「合法动作必成功」)。
+    无任何空槽返回 None。入口防御 pad(短列表=紧缩前缀,兼容旧构造;
+    同 mutate_bench_deployed 的 pad_bench 入口防御)。
+    """
+    pad_deployed(deployed)
+    lo, hi = ((0, DEPLOYED_FRONT_CAPACITY) if bc.position_pref == 'front'
+              else (DEPLOYED_FRONT_CAPACITY, DEPLOYED_CAPACITY))
+    for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
+        for i in rng:
+            if deployed[i] is None:
+                bc.slot = deployed_slot_no(i)
+                deployed[i] = bc
+                return i
+    return None
+
+
+def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | None:
+    """清空占用槽(卖出/下场语义:置 None 不移位,ADR-0392);空槽/越界返回 None。"""
+    if 0 <= idx < len(deployed) and deployed[idx] is not None:
+        bc = deployed[idx]
+        deployed[idx] = None
+        return bc
+    return None
+
+
+def pad_deployed(deployed: list[BenchChar | None]) -> list[BenchChar | None]:
+    """pad None 到定长 DEPLOYED_CAPACITY(就地补足,返回同引用;紧缩前缀
+    顺延占用 0..n-1——旧紧缩构造兼容,ADR-0392)。"""
+    while len(deployed) < DEPLOYED_CAPACITY:
+        deployed.append(None)
+    return deployed
+
+
+def deployed_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
+    """紧缩序列 → 槽位表(按 position_pref 路由落槽)。旧语料/紧缩构造入
+    槽位模型的适配单一源(None 直接跳过——形状双源防御,同 bench_from_compact)。"""
+    deployed: list[BenchChar | None] = [None] * DEPLOYED_CAPACITY
+    for bc in chars:
+        if bc is None:
+            continue
+        deployed_place(deployed, bc)
+    return deployed
+
+
+def deployed_to_compact(deployed: list[BenchChar | None]) -> list[BenchChar]:
+    """槽位表 → 紧缩占用序(槽位序)。sim 账本/遥测序列化保持紧缩序的
+    单一出口(下游 checks/视图零迁移,ADR-0392 同 ADR-0316 bench 决策)。"""
+    return [d for d in deployed if d is not None]
+
+
 # ===== Action(动作;simulate 前瞻用) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
@@ -293,16 +397,16 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
 #   │ SellBench           │ bench_idx=槽位表下标 0-8      │ slot=物理槽位 1-9            │
 #   │ DeployMove          │ bench_idx=槽位表下标 0-8      │ from_slot/to_slot=物理槽位   │
 #   │                     │                             │   (前排 1-4/后排 1-N)        │
-#   │ SellDeployed        │ deployed_idx=紧缩列表下标     │ row+slot=物理排+槽位         │
+#   │ SellDeployed        │ deployed_idx=槽位表下标 0-9   │ row+slot=物理排+槽位         │
+#   │                     │   (front 0-3/back 4-9)       │                              │
 #   └─────────────────────┴──────────────────────────────┴──────────────────────────────┘
-#   换算:族 A 下标 = 族 B 物理槽位 − 1(bench);deployed 域两族结构不同(紧缩
-#   列表 vs 排+槽位),无恒等换算——消费前先认准是哪一族。
+#   换算:bench 域 族 A 下标 = 族 B 物理槽位 − 1;deployed 域(ADR-0392)
+#   族 A 下标 = (row='front': slot−1 | row='back': 4+slot−1)。
 #
 # 两个坐标系的关键差异(为什么有两族):族 A 是**状态坐标系**(GameState
 # 容器的下标,sim 与策略层用);族 B 是**画面坐标系**(屏幕物理槽位,执行器
-# 拖拽/点击用)。bench 域两族只差基(ADR-0316 槽位表使下标恒稳);deployed
-# 域族 A 仍是紧缩列表(删除左移风险由 expect 拦截,槽位表化见 ADR-0316 的
-# deployed 推广议程)。
+# 拖拽/点击用)。bench/deployed 两域族 A 均为定长槽位表(ADR-0316/0392),
+# 下标恒稳——生成期索引 = 执行期索引。
 
 @dataclass
 class BuyCard:
@@ -424,38 +528,43 @@ class FillSpec:
 class SellDeployed:
     """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
 
-    [坐标系] deployed_idx = state.deployed **紧缩列表**下标(pop 左移域——
-    批内多笔删除时索引会漂移,由 expect 按名拦截;≠ prep_actions.
-    SellDeployed 的 row+slot 物理排槽位)。
+    [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(ADR-0392;
+    front 0-3 / back 4-9,空槽 None,卖出置 None 不移位——索引跨动作组
+    恒稳;≠ prep_actions.SellDeployed 的 row+slot 物理排槽位,
+    换算 front:idx=slot−1 / back:idx=4+slot−1)。
     """
     deployed_idx: int
-    # [索引定义] 坐标系: state.deployed 紧缩列表下标(pop 删除即左移)
-    #             取值时机: 生成期快照(执行期 expect 按名校验,不符→拒绝)
+    # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392 定长 10 槽,空槽
+    #             None;≠ prep_actions.SellDeployed 的 row+slot 物理排槽位)
+    #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
-    expect: str = ''           # 代际校验期望名(W43 裁决2;''=不校验,不符→拒绝)
+    expect: str = ''           # 遥测观测字段(ADR-0392 降级:槽位恒稳后不再承担
+                               # 拦截漂移职责,记录生成期期望名供判读对照;
+                               # 校验保留——名不符仍是跨代际提案的拒绝信号)
 
 
 @dataclass
 class SwapDeploy:
     """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
 
-    [坐标系] deployed_idx = state.deployed 紧缩列表下标 / bench_idx =
-    bench 槽位表下标 0-8(两域结构不同,见 Action 节约定块双族对照表)。
+    [坐标系] deployed_idx = state.deployed 槽位表下标 0-9(ADR-0392)/
+    bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳;换算见
+    Action 节约定块双族对照表)。
 
     装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
     无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
     开拓者按目标排做形态归一(同 DeployMove 语义,单一源)。
     """
     deployed_idx: int
-    # [索引定义] 坐标系: state.deployed 紧缩列表下标(pop 左移域)
+    # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392,恒稳)
     bench_idx: int
     # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316,恒稳)
-    #             取值时机(两者): 生成期快照(跨轮登记的提案由
-    #             expect_deployed/expect_bench 按名校验)
+    #             取值时机(两者): 生成期=执行期(槽位表恒稳;expect_* 为
+    #             遥测观测字段,ADR-0392 降级——记录生成期期望名供判读)
     reason: str = ''
-    # 代际校验期望名(W43 裁决2;''=不校验):谷底回滚类「上轮登记、
-    # 下轮才发」的提案跨了状态代际,idx 可能已指向别人——不符即拒绝。
+    # 遥测观测字段(ADR-0392 降级,原 W43 裁决2 代际校验):跨轮登记的提案
+    # 在槽位表下索引恒稳;名不符仍是跨代际换人提案的拒绝信号。
     expect_deployed: str = ''  # 期望下场者名
     expect_bench: str = ''     # 期望上场者名
 
@@ -465,7 +574,8 @@ class CompTransaction:
     """整档组合替换事务(转型讨论两步解耦的第 1 步,原子执行)——契约包 C1。
 
     [坐标系] deploy/sell 的 bench 侧=槽位下标 0-8;undeploy/sell 的
-    deployed 侧=紧缩列表下标——均按事务前状态解析(字段口径节冻结)。
+    deployed 侧=槽位表下标 0-9(ADR-0392)——均按事务前状态解析且槽位
+    恒稳(字段口径节冻结)。
 
     一次敲定:换谁上、谁下、谁直接卖、谁进 bench(完整方案预定义)。
     语义保证:sim 执行时整体应用,任一子步资源不足(金/槽)则整个事务拒绝,
@@ -533,8 +643,8 @@ def _merge_bench(bench: list[BenchChar | None],
     升星优先(触发处常见态),无场上卡则 bench 首张升星。
 
     ADR-0316 槽位语义:bench 侧被合成的份**置 None 腾槽**(对照画面:
-    三份合成后腾出槽),deployed 侧按身份删除(deployed 保持紧缩表);
-    合成载体留在原槽位。
+    三份合成后腾出槽);ADR-0392:deployed 侧同样按身份置 None(deployed
+    亦为槽位表);合成载体留在原槽位。
 
     deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
     """
@@ -546,7 +656,7 @@ def _merge_bench(bench: list[BenchChar | None],
     while True:
         merged_any = False
         occupied = [c for c in bench if c is not None]
-        for c in occupied + list(deployed or []):
+        for c in occupied + [d for d in (deployed or []) if d is not None]:
             if not c.char_id:
                 continue
             # 全场同名同星组(对象引用,跨池)
@@ -566,8 +676,8 @@ def _merge_bench(bench: list[BenchChar | None],
             for x in take:
                 if x is not carrier:
                     carrier.equips = list(carrier.equips) + list(x.equips)
-            # 删其余两张:bench 侧置 None(槽位语义);deployed 侧身份删除
-            # (同名同星 dataclass 值相等会删错对象,身份索引)
+            # 删其余两张:bench/deployed 侧均按身份置 None(ADR-0316/0392
+            # 槽位语义,同名同星 dataclass 值相等会删错对象,身份索引)
             for x in take:
                 if x is carrier:
                     continue
@@ -580,7 +690,7 @@ def _merge_bench(bench: list[BenchChar | None],
                     _idx = next((i for i, y in enumerate(deployed)
                                  if y is x), None)
                     if _idx is not None:
-                        del deployed[_idx]
+                        deployed[_idx] = None
             merged_any = True
             break   # 重扫(列表已变)
         if not merged_any:
@@ -610,7 +720,7 @@ def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
         if b is not None and b.char_id == card.name and b.star == 1:
             n += 1
     for d in deployed or []:
-        if getattr(d, 'char_id', '') == card.name and d.star == 1:
+        if d is not None and d.char_id == card.name and d.star == 1:
             n += 1
     return n == 2
 
@@ -651,6 +761,8 @@ def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
     from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
     for d in (deployed or []):
+        if d is None:   # ADR-0392 槽位表空槽
+            continue
         tags = unit_bond_tags(d)
         if tags:
             for t in tags:
@@ -715,7 +827,7 @@ def _resolve_comp_transaction(
     校验项见 CompTransaction docstring(金/槽/索引域/排上限)。
     """
     n_b = bench_occupied(s.bench)   # ADR-0316:容量=占用数
-    n_d = len(s.deployed)
+    n_d = deployed_occupied(s.deployed)   # ADR-0392:容量=占用数(非 len)
     und = list(tx.undeploy or [])
     dep = list(tx.deploy or [])
     sell = list(tx.sell or [])
@@ -724,17 +836,14 @@ def _resolve_comp_transaction(
     dep_rows = [r for _i, r in dep]
     sell_b = [i for i, d in sell if d == 'bench']
     sell_d = [i for i, d in sell if d == 'deployed']
-    # 索引域:范围(bench=槽位下标 0-8 且须占用)+ 同域去重 + 跨子步互斥
-    for label, idxs, n in (('undeploy', und, n_d), ('deploy', dep_b, n_b),
-                           ('sell_bench', sell_b, n_b),
-                           ('sell_deployed', sell_d, n_d)):
-        if label == 'undeploy' or label == 'sell_deployed':
-            if any(not 0 <= i < n for i in idxs):
-                return f'{label}_idx_out_of_range', {}
-        else:
-            if any(not 0 <= i < len(s.bench) or s.bench[i] is None
-                   for i in idxs):
-                return f'{label}_idx_out_of_range', {}
+    # 索引域:范围+占用(bench=槽位下标 0-8 且须占用;deployed=槽位下标
+    # 0-9 且须占用,ADR-0392)+ 同域去重 + 跨子步互斥
+    for label, idxs in (('undeploy', und), ('deploy', dep_b),
+                        ('sell_bench', sell_b),
+                        ('sell_deployed', sell_d)):
+        pool = s.bench if 'bench' in label or label == 'deploy' else s.deployed
+        if any(not 0 <= i < len(pool) or pool[i] is None for i in idxs):
+            return f'{label}_idx_out_of_range', {}
         if len(set(idxs)) != len(idxs):
             return f'{label}_dup_idx', {}
     if set(dep_b) & set(sell_b):
@@ -841,7 +950,8 @@ def _resolve_comp_transaction(
     _gone_d = set(und) | set(sell_d)
     final_keys: set[str] = set()
     _final_units: list[BenchChar | None] = [
-        s.deployed[i] for i in range(n_d) if i not in _gone_d]
+        d for i, d in enumerate(s.deployed)
+        if d is not None and i not in _gone_d]   # ADR-0392:槽位表滤 None
     _final_units += [c for c, _r in dep_chars]
     _final_units += [post_bench[f.idx] for f in fill
                      if f.source == 'bench'
@@ -879,14 +989,15 @@ def _tx_state_view(bench: list[BenchChar],
     view.gold = 10 ** 9
     view.level = 10
     view.bench = bench
-    view.deployed = deployed
+    view.deployed = deployed   # ADR-0392:槽位表引用(bench/deployed 均含 None)
     return view
 
 
-def _remove_by_identity(pool: list, target: BenchChar) -> None:
-    """按身份索引删除(deployed 等紧缩表;同名同星 dataclass 值相等会删错
-    对象,同 _merge_bench 纪律)。bench 槽位表勿用——用
-    ``_bench_clear_by_identity``(置 None 不移位)。"""
+def _remove_by_identity(pool: list, target) -> None:
+    """按身份索引删除(shop 等紧缩表专用;同名同星 dataclass 值相等会删错
+    对象,同 _merge_bench 纪律)。bench/deployed 槽位表勿用——用
+    ``_bench_clear_by_identity`` / ``_deployed_clear_by_identity``
+    (置 None 不移位,ADR-0316/0392)。"""
     _idx = next((i for i, y in enumerate(pool) if y is target), None)
     if _idx is not None:
         del pool[_idx]
@@ -898,6 +1009,15 @@ def _bench_clear_by_identity(bench: list[BenchChar | None],
     for i, b in enumerate(bench):
         if b is target:
             bench[i] = None
+            return
+
+
+def _deployed_clear_by_identity(deployed: list[BenchChar | None],
+                                target: BenchChar) -> None:
+    """deployed 槽位表按身份清槽(ADR-0392:置 None 不移位)。"""
+    for i, d in enumerate(deployed):
+        if d is target:
+            deployed[i] = None
             return
 
 
@@ -917,7 +1037,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         s.gold += sell_refund(c.star, _bench_char_cost(c))
         s.equips.extend(c.equips)
         _bench_clear_by_identity(s.bench, c)
-        _remove_by_identity(s.deployed, c)
+        _deployed_clear_by_identity(s.deployed, c)   # ADR-0392:置 None 不移位
     # W197/ADR-0380 件③:deploy 源清槽先于 undeploy 放回——旧序
     # (undeploy 先)在 bench 满时 bench_place 无空槽返回 None,保留件
     # 被**静默删除**(无退款/不回池,单位守恒违约;终态容量校验只看
@@ -926,11 +1046,11 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
     for c, _row in plan['dep_chars']:
         _bench_clear_by_identity(s.bench, c)
     for c in plan['und_chars']:
-        _remove_by_identity(s.deployed, c)
+        _deployed_clear_by_identity(s.deployed, c)
         bench_place(s.bench, c)
     for c, row in plan['dep_chars']:
         _apply_row_to_char(c, row)
-        s.deployed.append(c)
+        deployed_place(s.deployed, c)   # ADR-0392:按排路由落槽(替代 append)
     post_bench = plan['post_bench']
     # W126 索引漂移修复(动作索引五查②③同族):shop fill 按校验期已解析的
     # 卡对象消费(``plan['shop_fill_cards']``,与 fill 的 shop 源子序列同序)
@@ -950,7 +1070,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
             c = post_bench[f.idx]
             _bench_clear_by_identity(s.bench, c)
             _apply_row_to_char(c, f.row)
-            s.deployed.append(c)
+            deployed_place(s.deployed, c)   # ADR-0392 槽位落位
         else:   # shop:买后即上(卡对象取自校验期解析——见上方索引漂移注)
             card = next(_shop_fills, None)
             if card is None:
@@ -959,7 +1079,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
             _remove_by_identity(s.shop, card)
             bc = _card_to_bench(card)
             _apply_row_to_char(bc, f.row)
-            s.deployed.append(bc)
+            deployed_place(s.deployed, bc)   # ADR-0392 槽位落位
     s.board = _recount_board(s.deployed)
 
 
@@ -1010,6 +1130,7 @@ def simulate(state: GameState, action: Action) -> GameState:
     s = state.copy()
     pad_bench(s.bench)   # ADR-0316 定长不变量:调用方可能构造短 bench
     # (直接赋值绕过 __post_init__);copy 不触发 __post_init__,入口防御 pad
+    pad_deployed(s.deployed)   # ADR-0392 同理(deployed 槽位表定长 10)
     _equips_action = isinstance(action, (BuyCard, SellBench, SellDeployed,
                                          SwapDeploy, CompTransaction))
     _pre_equips = state_equips_multiset(state) if _equips_action else None
@@ -1077,14 +1198,14 @@ def simulate(state: GameState, action: Action) -> GameState:
             # 同名唯一性(W43 裁决 1):单卡上场同理——已在场同名 → 拒绝
             # (进 action_log;bench 同名副本是 3合1 素材,合成走 bench 域)。
             if _k is not None and any(board_unique_key(d) == _k
-                                      for d in s.deployed):
+                                       for d in iter_occupied_deployed(s.deployed)):
                 _log_action(s, 'DeployMove', 'rejected',
                             reason=f'duplicate_on_board:{_k}')
             else:
                 bc = bench_clear(s.bench, action.bench_idx)
                 # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
                 _apply_row_to_char(bc, action.to_row)
-                s.deployed.append(bc)
+                deployed_place(s.deployed, bc)   # ADR-0392:按排路由落槽
                 # ADR-0312(W50 口径统一):**增量**全集计数——board 可能来自
                 # OCR 真值而 deployed 尚空(生产 read_game_state 填充序),
                 # 全量重算会抹掉 OCR 提供的计数;增量 += 与旧 DeployMove
@@ -1101,16 +1222,18 @@ def simulate(state: GameState, action: Action) -> GameState:
                     s.board[_t] = s.board.get(_t, 0) + 1
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1,步2):卖场上单位——deployed 生命周期开口。
-        if 0 <= action.deployed_idx < len(s.deployed):
+        if 0 <= action.deployed_idx < len(s.deployed) \
+                and s.deployed[action.deployed_idx] is not None:   # ADR-0392 空槽拒
             _tgt = s.deployed[action.deployed_idx]
-            # 代际校验(W43 裁决 2):期望名不符 = 陈旧提案 → 拒绝不套用
+            # 代际校验(expect=遥测观测字段,ADR-0392):名不符 = 跨代际提案 → 拒绝不套用
             if action.expect and _tgt.char_id != action.expect:
                 _log_action(s, 'SellDeployed', 'rejected',
                             reason=(f'stale_proposal:{action.expect}'
                                     f'!={_tgt.char_id}'),
                             char=_tgt.char_id)
             else:
-                sold = s.deployed.pop(action.deployed_idx)
+                sold = deployed_clear(s.deployed, action.deployed_idx)
+                # ADR-0392:置 None 不移位(deployed_idx 跨动作组恒稳)
                 # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
                 s.gold += sell_refund(sold.star, _bench_char_cost(sold))
                 # 装备回收进 owned 池(🟡 同 _apply_comp_transaction 假设,待 live 核)
@@ -1125,6 +1248,7 @@ def simulate(state: GameState, action: Action) -> GameState:
     elif isinstance(action, SwapDeploy):
         # 动作 v2(契约包 C1,步2):场上场下对调,装备随人走(对象迁移)。
         if 0 <= action.deployed_idx < len(s.deployed) \
+                and s.deployed[action.deployed_idx] is not None \
                 and 0 <= action.bench_idx < len(s.bench) \
                 and s.bench[action.bench_idx] is not None:
             out_char = s.deployed[action.deployed_idx]
@@ -1143,17 +1267,18 @@ def simulate(state: GameState, action: Action) -> GameState:
                 _k = board_unique_key(in_char)
                 if _k is not None and any(
                         board_unique_key(d) == _k
-                        for _i, d in enumerate(s.deployed)
+                        for _i, d in iter_deployed_slots(s.deployed)
                         if _i != action.deployed_idx):
                     _log_action(s, 'SwapDeploy', 'rejected',
                                 reason=f'duplicate_on_board:{_k}')
                 else:
                     _row = out_char.position_pref
-                    s.deployed[action.deployed_idx] = in_char
+                    s.deployed[action.deployed_idx] = in_char   # 槽位语义:原槽对调
                     s.bench[action.bench_idx] = out_char
                     # 上场者继承下场者的排(含开拓者形态归一);下场者保留原
                     # position_pref 记录(回 bench 后不消费,再上场时重写)
                     _apply_row_to_char(in_char, _row)
+                    in_char.slot = deployed_slot_no(action.deployed_idx)
                     s.board = _recount_board(s.deployed)
                     _log_action(s, 'SwapDeploy', 'applied', reason=action.reason,
                                 in_char=in_char.char_id, out_char=out_char.char_id)
@@ -1195,10 +1320,11 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
     ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。
-    ADR-0316:bench 是槽位表(定长 9,None=空槽)——入口防御性 pad。
+    ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
     LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
     """
     pad_bench(bench)
+    pad_deployed(deployed)
     if isinstance(action, BuyCard):
         bench_place(bench, _card_to_bench(action.card))
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
@@ -1217,21 +1343,24 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
             # 同名唯一性守卫(W43 裁决 1,与 simulate 同源):已在场同名不上
             _k = board_unique_key(_tgt)
             if _k is not None and any(board_unique_key(d) == _k
-                                      for d in deployed):
+                                      for d in iter_occupied_deployed(deployed)):
                 return
             bc = bench_clear(bench, action.bench_idx)
             _apply_row_to_char(bc, action.to_row)
             # 开拓者形态切换(同 simulate 语义,单一源 helper)
-            deployed.append(bc)
+            deployed_place(deployed, bc)   # ADR-0392:按排路由落槽
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
         # GameState 域,本函数不管——与 simulate 单一源规则一致)
         if 0 <= action.deployed_idx < len(deployed) \
+                and deployed[action.deployed_idx] is not None \
                 and (not action.expect
                      or deployed[action.deployed_idx].char_id == action.expect):
-            deployed.pop(action.deployed_idx)   # 陈旧提案(代际不符)no-op
+            deployed_clear(deployed, action.deployed_idx)
+            # ADR-0392:置 None 不移位(deployed_idx 恒稳;陈旧提案=代际不符 no-op)
     elif isinstance(action, SwapDeploy):
         if 0 <= action.deployed_idx < len(deployed) \
+                and deployed[action.deployed_idx] is not None \
                 and 0 <= action.bench_idx < len(bench) \
                 and bench[action.bench_idx] is not None:
             out_char = deployed[action.deployed_idx]
@@ -1245,13 +1374,14 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
             _k = board_unique_key(in_char)
             if _k is not None and any(
                     board_unique_key(d) == _k
-                    for _i, d in enumerate(deployed)
+                    for _i, d in iter_deployed_slots(deployed)
                     if _i != action.deployed_idx):
                 return
             _row = out_char.position_pref
-            deployed[action.deployed_idx] = in_char
+            deployed[action.deployed_idx] = in_char   # 槽位语义:原槽对调
             bench[action.bench_idx] = out_char
             _apply_row_to_char(in_char, _row)
+            in_char.slot = deployed_slot_no(action.deployed_idx)
     elif isinstance(action, CompTransaction):
         # 动作 v2(契约包 C1):转移部分原子应用(金/排上限校验在
         # simulate 侧,这里只做 bench/deployed 身份同步;shop 源填位
@@ -1271,14 +1401,14 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
         for c in plan['sell_bench_chars']:
             _bench_clear_by_identity(bench, c)
         for c in plan['sell_deployed_chars']:
-            _remove_by_identity(deployed, c)
+            _deployed_clear_by_identity(deployed, c)
         for c in plan['und_chars']:
-            _remove_by_identity(deployed, c)
+            _deployed_clear_by_identity(deployed, c)
             bench_place(bench, c)
         for c, row in plan['dep_chars']:
             _bench_clear_by_identity(bench, c)
             _apply_row_to_char(c, row)
-            deployed.append(c)
+            deployed_place(deployed, c)   # ADR-0392:按排路由落槽
         post_bench = plan['post_bench']
         for f in plan['fill']:
             if f.source == 'bench' \
@@ -1287,4 +1417,4 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                 c = post_bench[f.idx]   # ADR-0316 槽位下标;不 pop 不移位
                 _bench_clear_by_identity(bench, c)
                 _apply_row_to_char(c, f.row)
-                deployed.append(c)
+                deployed_place(deployed, c)   # ADR-0392:按排路由落槽

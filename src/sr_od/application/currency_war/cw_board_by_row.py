@@ -86,6 +86,8 @@ def board_by_row(deployed: list[BenchChar]) -> BoardByRow:
     front: dict[str, int] = {}
     back: dict[str, int] = {}
     for bc in deployed or []:
+        if bc is None:   # ADR-0392 槽位表空槽
+            continue
         tags = _trait_tags(bc)
         if not tags:
             continue

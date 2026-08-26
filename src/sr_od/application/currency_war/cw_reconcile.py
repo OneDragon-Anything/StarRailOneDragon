@@ -163,7 +163,11 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     if bench is not None:
         session.tracked_bench_chars = _merge_equips(session.tracked_bench_chars, bench)
     if deployed is not None:
-        session.tracked_deployed = _merge_equips(session.tracked_deployed, deployed)
+        # ADR-0392:tracked_deployed 是槽位表——_merge_equips 出紧缩占用序,
+        # 写回前经 deployed_from_compact 转槽位表(单一源适配)。
+        from sr_od.application.currency_war.cw_state import deployed_from_compact
+        session.tracked_deployed = deployed_from_compact(
+            _merge_equips(session.tracked_deployed, deployed))
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')

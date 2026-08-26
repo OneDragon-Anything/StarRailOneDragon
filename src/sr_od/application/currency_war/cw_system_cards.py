@@ -35,7 +35,10 @@ from sr_od.application.currency_war.cw_board_by_row import board_by_row
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
+)
 
 # ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
 _XIANZHOU_TIER: int = FACTIONS['仙舟'].tiers[0]              # 3(仙舟≥3 激活)
@@ -196,7 +199,8 @@ def _char_traits(ch) -> tuple[str, ...]:
 def _owned_names(state: GameState) -> set[str]:
     """在场∪bench 的角色名集合(char_id 已识别者;tracking 未识别的槽不计)。"""
     names: set[str] = set()
-    for c in list(state.deployed) + [x for x in state.bench if x is not None]:
+    for c in list(iter_occupied_deployed(state.deployed)) \
+            + [x for x in state.bench if x is not None]:
         if getattr(c, 'char_id', ''):
             names.add(c.char_id)
     return names
@@ -218,7 +222,8 @@ def _faction_count(state: GameState, faction: str) -> int:
 
 def _seele_on_board(state: GameState) -> bool:
     """希儿在场(= 上阵 deployed;bench 不算「在场」)。"""
-    return any(c.char_id == _SEELE for c in state.deployed)
+    return any(c.char_id == _SEELE
+               for c in iter_occupied_deployed(state.deployed))
 
 
 def card_active(card: SystemCard, state: GameState) -> bool:
@@ -310,7 +315,8 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
         # 双分支只计一次;希儿本人既是引擎又属双分支,也只计一次)
         members: set[str] = set()
         for fac in _card_factions(card):
-            for c in list(state.deployed) + [x for x in state.bench if x is not None]:
+            for c in list(iter_occupied_deployed(state.deployed)) \
+            + [x for x in state.bench if x is not None]:
                 if not getattr(c, 'char_id', ''):
                     continue
                 ch = CHARACTERS.get(c.char_id)
@@ -321,7 +327,8 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
         return len(members)
     fac = _card_factions(card)[0]
     n = 0
-    for c in list(state.deployed) + [x for x in state.bench if x is not None]:
+    for c in list(iter_occupied_deployed(state.deployed)) \
+            + [x for x in state.bench if x is not None]:
         if not getattr(c, 'char_id', ''):
             continue
         ch = CHARACTERS.get(c.char_id)

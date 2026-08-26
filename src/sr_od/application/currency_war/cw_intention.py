@@ -58,7 +58,10 @@ from sr_od.application.currency_war.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
 )
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
+)
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 / W10 摆动域)=====
 CORE_MISS_N: int = 6
@@ -565,7 +568,8 @@ def _asset_thickness(comp: Comp, state: GameState) -> float:
     板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)+ 骨架件数 ×
     SKELETON_ASSET_WEIGHT。终件 = core_chars;骨架件 = 跨线骨架名单 ∩ (core∪shared)。
     """
-    pool = list(state.deployed) + list(state.bench)
+    pool = list(iter_occupied_deployed(state.deployed)) \
+        + [b for b in state.bench if b is not None]
     star_of = {bc.char_id: bc.star for bc in pool
                if bc is not None and bc.char_id}
     final_pieces = sum(star_of.get(name, 0) for name in comp.core_chars)

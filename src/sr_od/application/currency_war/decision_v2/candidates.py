@@ -28,7 +28,7 @@ from sr_od.application.currency_war.cw_plugins import (
     PLUGIN_LIBRARY,
     plugin_disabled,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     Action,
     BenchChar,
     BuyCard,
@@ -39,6 +39,8 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     ShopCard,
     bench_occupied,
+    deployed_occupied,
+    iter_occupied_deployed,
     sell_refund,
     will_merge_on_buy,
 )
@@ -177,7 +179,7 @@ def _plugin_ok(card: ShopCard, state: GameState,
                    or plugin_disabled(card.name, family) is not None):
         return False   # ①机制冲突拒买 / ②过半线=骨架非插件
     # ③上场有位(bench 不囤插件:cap 内空位才买;替班核心例外不在买侧)
-    return len(state.deployed or []) < state.max_units()
+    return deployed_occupied(state.deployed or []) < state.max_units()   # ADR-0392 占用数
 
 
 def _engine_seed_affinity(card: ShopCard, state: GameState,
@@ -420,7 +422,7 @@ def _deploy_candidates(state: GameState, session: StrategySession,
     tc = getattr(session, 'target_comp', None)
     target_factions = frozenset(getattr(tc, 'factions', None) or ())
     target_cores = frozenset(getattr(tc, 'core_chars', None) or ())
-    deployed_cids = {d.char_id for d in (state.deployed or [])
+    deployed_cids = {d.char_id for d in iter_occupied_deployed(state.deployed or [])
                      if getattr(d, 'char_id', '')}
     from sr_od.application.currency_war.cw_sim import _board_factions_of
     up_idx, _held = dl.select_deployments(

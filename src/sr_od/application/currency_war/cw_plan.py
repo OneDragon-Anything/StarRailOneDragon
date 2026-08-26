@@ -57,6 +57,7 @@ from sr_od.application.currency_war.cw_state import (
     bench_occupied,
     card_cost,
     effective_hp_threshold,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
     sell_refund,
     simulate,
 )
@@ -325,7 +326,7 @@ def deploy_legal(bc: BenchChar, deployed_names: set[str]) -> bool:
 
 def deployed_name_set(state: GameState) -> set[str]:
     """场上角色名集(deploy_legal 的配套取数;单一源防各处自算漂移)。"""
-    return {b.char_id for b in state.deployed if b.char_id}
+    return {b.char_id for b in iter_occupied_deployed(state.deployed) if b.char_id}
 
 
 def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool:
@@ -422,7 +423,8 @@ def _best_buy_deploy_eval(state: GameState, config, faction_priority: list[str],
     target_comp: 战略层目标(A2),传给 evaluate 使 D 牌期望导向 target 成型。None=reactive。
     """
     best = evaluate(state, config, faction_priority, target_comp)
-    _dep_names = {bc.char_id for bc in state.deployed if bc.char_id}
+    _dep_names = {bc.char_id for bc in iter_occupied_deployed(state.deployed)
+                  if bc.char_id}
     _bench_cnt: dict[str, int] = {}
     for _bc in state.bench:
         if _bc is None:
@@ -693,7 +695,7 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
         # 旧 sum(bc.star)(2★=2/3★=3)配 <2 阈值 → 持 2 张 1★ 即被判「已到 2★ 不在追」,
         # 实际差 1 张才能合并 → 该费级被移出追猎集,压缩买少覆盖一类该买的费级。
         return sum(3 ** max(bc.star - 1, 0)
-                   for bc in (*state.deployed,
+                   for bc in (*iter_occupied_deployed(state.deployed),
                               *(b for b in state.bench if b is not None))
                    if bc.char_id == name)
 
@@ -707,7 +709,8 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
                 continue
             if _equiv_copies(name) < 3:   # ①+②:core 未到 2★(=3 张 1★ 等价)→ 在追
                 tiers.add(int(_cost))
-    for bc in (*state.deployed, *(b for b in state.bench if b is not None)):
+    for bc in (*iter_occupied_deployed(state.deployed),
+               *(b for b in state.bench if b is not None)):
         if bc.star >= 2 and bc.char_id:   # ③:已 2★ → 3★ 机会追猎
             ch = CHARACTERS.get(bc.char_id)
             _cost = getattr(ch, 'cost', None)
@@ -775,7 +778,7 @@ def _best_improving_action(
     # 修正语义:总副本(场上+bench)≥3 不买(纯浪费);场上已有同名时,仅 target/core 角色继续集
     # 第 2/3 张(集星意图),散牌不集(那才是 M8 死钱根因)。
     _deployed_name_counts: dict[str, int] = {}
-    for _bc in state.deployed:
+    for _bc in iter_occupied_deployed(state.deployed):
         if _bc.char_id:
             _deployed_name_counts[_bc.char_id] = _deployed_name_counts.get(_bc.char_id, 0) + 1
     _bench_name_counts: dict[str, int] = {}
@@ -914,7 +917,8 @@ def _best_improving_action(
         seq = [BuyCard(card=card, reason='plan')]
         # review M3:deploy 去重对齐游戏 5.1.7(场上同名禁双)—— 旧模拟把 2★ 与场上 1★ 双上阵,
         # 估值虚高 + 运行时滞留 bench。同名已 deployed → 不 deploy(留 bench 待 3合1 合并)。
-        _dep_ids = {b.char_id for b in state.deployed if b.char_id}
+        _dep_ids = {b.char_id for b in iter_occupied_deployed(state.deployed)
+                    if b.char_id}
         # ADR-0316:买入落「首个空槽」——买前 probe(买后该槽即刚买件;买后
         # probe 是下一个空槽,非落位)。merge 可能吃掉刚买件(3合1)→ 槽空守卫。
         _buy_slot = bench_place_probe(state)
@@ -1059,7 +1063,8 @@ def _best_improving_action(
             card = _sk_candidates[0]
             seq: list[Action] = [BuyCard(card=card, reason='plan')]
             after_buy = simulate(state, seq[0])
-            _dep_ids = {b.char_id for b in state.deployed if b.char_id}
+            _dep_ids = {b.char_id for b in iter_occupied_deployed(state.deployed)
+                    if b.char_id}
             # ADR-0316:买入落「首个空槽」(买前 probe;买后该槽即刚买件)
             _buy_slot = bench_place_probe(state)
             if (after_buy.deployed_count() < after_buy.max_units()
@@ -1129,7 +1134,8 @@ def _best_improving_action(
                                   and b.char_id == c.name and b.star == 1)
                     if _copies >= 3:
                         continue   # 3合1 满副本(与主循环同门)
-                    if c.name in {b.char_id for b in _sim.deployed if b.char_id} and _cost > 1:
+                    if c.name in {b.char_id for b in iter_occupied_deployed(_sim.deployed)
+                                  if b.char_id} and _cost > 1:
                         continue   # 场上同名散牌不集(同主循环;1费例外集 2★)
                 if _sim.deployed_count() >= _sim.max_units() \
                         and bench_occupied(_sim.bench) >= BENCH_CAPACITY:

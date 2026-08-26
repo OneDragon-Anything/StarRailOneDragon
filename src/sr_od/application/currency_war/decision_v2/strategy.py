@@ -371,7 +371,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
                         if _n:
                             names.append(_n)
             elif isinstance(a, SellDeployed):
-                if 0 <= a.deployed_idx < len(state.deployed or []):
+                if 0 <= a.deployed_idx < len(state.deployed or []) \
+                        and state.deployed[a.deployed_idx] is not None:   # ADR-0392 空槽
                     _n = state.deployed[a.deployed_idx].char_id
                     if _n:
                         names.append(_n)

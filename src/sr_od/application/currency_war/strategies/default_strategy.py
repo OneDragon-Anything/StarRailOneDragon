@@ -153,9 +153,12 @@ class DefaultCwStrategy(CwStrategy):
             _fw_bench = list(getattr(session, 'tracked_bench_chars', None) or [])
             if not _fw_bench:
                 _fw_bench = state.bench
-            _fw_deployed = list(getattr(session, 'tracked_deployed', None) or [])
+            # ADR-0392:槽位表滤 None 后给 pick_framework(紧缩视图)
+            _fw_deployed = [d for d in
+                            (getattr(session, 'tracked_deployed', None) or [])
+                            if d is not None]
             if not _fw_deployed:
-                _fw_deployed = state.deployed
+                _fw_deployed = [d for d in (state.deployed or []) if d is not None]
             _picked = pick_framework(
                 _fw_bench, _fw_deployed, state.shop,
                 current=session.transition_framework, portal=_portal)   # r72 滞后
@@ -945,6 +948,8 @@ class DefaultCwStrategy(CwStrategy):
         st = GameState()
         st.board = {}
         for bc in session.tracked_deployed:
+            if bc is None:   # ADR-0392 槽位表空槽
+                continue
             if bc.faction and bc.faction != '?':
                 st.board[bc.faction] = st.board.get(bc.faction, 0) + 1
         st.bench = list(session.tracked_bench_chars)

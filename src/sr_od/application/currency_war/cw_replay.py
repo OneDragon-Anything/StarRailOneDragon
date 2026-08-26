@@ -33,11 +33,13 @@ from __future__ import annotations
 import json
 import sys
 
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     BenchChar,
     GameState,
     ShopCard,
     bench_from_compact,
+    deployed_from_compact,
+    iter_occupied_deployed,
 )
 from sr_od.application.currency_war.cw_telemetry import DEFAULT_REPLAY_DIR
 
@@ -74,9 +76,11 @@ def _rebuild_state(snap: dict) -> GameState:
         _bc(b, i) for i, b in enumerate(snap.get('bench') or [])
         if isinstance(b, dict)])
     # r359:deployed 重建(formation 检查点/star/equips 消费;r358 三维)
-    st.deployed = [_bc(b, i) for i, b in enumerate(snap.get('deployed') or [])
-                   if isinstance(b, dict)]
-    for c in st.deployed:
+    # ADR-0392:历史快照是紧缩序,经 deployed_from_compact 转槽位表
+    st.deployed = deployed_from_compact(
+        [_bc(b, i) for i, b in enumerate(snap.get('deployed') or [])
+         if isinstance(b, dict)])
+    for c in iter_occupied_deployed(st.deployed):
         c.equips = list(c.equips or [])
     st.dual_track_phase = bool(snap.get('dual_track_phase'))
     return st

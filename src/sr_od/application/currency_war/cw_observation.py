@@ -690,11 +690,15 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
     """
-    if not tracked:
+    from sr_od.application.currency_war.cw_state import (
+        iter_occupied_deployed,
+    )
+    _occ = list(iter_occupied_deployed(tracked or []))   # ADR-0392 槽位表滤 None
+    if not _occ:
         return None
     from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
-    for bc in tracked:
+    for bc in _occ:
         tags = unit_bond_tags(bc)
         if tags:
             for t in tags:
@@ -1050,25 +1054,34 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         _pt = getattr(_sess, 'chosen_partner', None)
         if _pt:
             state.partner_char = _pt
+    # ADR-0392:deployed 是槽位表(定长 10 含 None)——对账/截断/补齐一律
+    # 走占用序(紧缩视图),再转回槽位表;len() 恒 10 不可作计数。
+    from sr_od.application.currency_war.cw_state import (
+        deployed_from_compact,
+        iter_occupied_deployed,
+    )
     if _tracked_dep:
         import copy
-        state.deployed = copy.deepcopy(_tracked_dep)
+        _occ = list(iter_occupied_deployed(copy.deepcopy(_tracked_dep)))
         _board_n = min(sum(state.board.values()), state.level)
-        if len(state.deployed) > _board_n:
+        if len(_occ) > _board_n:
             # 观察冲突审计 #10(2026-08-16):截断=双源分歧(tracked 多计于 board OCR,如 deploy SIFT 漂移)
             # —— 静默截断毒化部署近似;留证供毒化率统计。
-            obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
+            obs_conflict('deployed_align', len(_occ), _board_n, screen,
                          verdict=('截断-tracked多计(board OCR 为准;处理:裁决已自动;'
                                   '频发 >10 行/时→排查 deploy SIFT 漂移'),
                          source='tracked_vs_board')
-            state.deployed = state.deployed[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
-        elif len(state.deployed) < _board_n:
-            obs_conflict('deployed_align', len(state.deployed), _board_n, screen,
+            _occ = _occ[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
+        elif len(_occ) < _board_n:
+            obs_conflict('deployed_align', len(_occ), _board_n, screen,
                          verdict=('补齐-tracked少计(rebuild 无身份;处理:裁决已自动;'
                                   '频发 >10 行/时→排查 rebuild 身份读取'),
                          source='tracked_vs_board')
-            _rebuild = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
-            state.deployed.extend(_rebuild[len(state.deployed):])   # 补无身份(tracked 少计,如 sell 漂移)
+            _rebuild = list(iter_occupied_deployed(
+                rebuild_deployed_from_board(state.board, state.back_max,
+                                           max_count=state.level)))
+            _occ = _occ + _rebuild[len(_occ):]   # 补无身份(tracked 少计,如 sell 漂移)
+        state.deployed = deployed_from_compact(_occ)
     else:
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
     state.shop = read_shop_cards(ctx, screen)

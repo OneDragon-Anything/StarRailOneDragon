@@ -25,7 +25,10 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     total_remaining_nodes,
 )
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_state import (
+    GameState,
+    deployed_occupied,  # ADR-0392 helper 导入
+)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
@@ -312,7 +315,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     # W121 G1:cap 满 ∧ bench 有目标件——W113 §3.3 原文「deployed<cap 且
     # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
     from sr_od.application.currency_war.cw_state import bench_occupied
-    if len(state.deployed or []) >= state.max_units():
+    if deployed_occupied(state.deployed or []) >= state.max_units():   # ADR-0392
         bench = state.bench or []
         if bench_occupied(bench) > 0 and any(
                 b is not None and b.char_id in targets

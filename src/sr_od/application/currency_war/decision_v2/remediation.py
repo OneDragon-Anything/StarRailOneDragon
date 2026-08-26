@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_intention import IntentionState
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     Action,
     BuyCard,
     DeployMove,
@@ -41,6 +41,8 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     SwapDeploy,
     bench_occupied,
+    deployed_occupied,
+    iter_deployed_slots,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -479,7 +481,7 @@ def steady_state_levelup_group(working: GameState, state: GameState,
         return []    # 辖域 P2+(W194 裁决:P1 回归辙回,见 docstring)
     # 稳态判据(进轮快照,与 ev.levelup_ev_basis 臂① 的 state 读点同源)
     from sr_od.application.currency_war.cw_state import bench_occupied
-    if len(state.deployed or []) < state.max_units():
+    if deployed_occupied(state.deployed or []) < state.max_units():   # ADR-0392
         return []    # cap 未满:方向件直接上场即可([32](b) 升级纯浪费)
     if bench_occupied(state.bench or []) == 0:
         return []
@@ -607,7 +609,7 @@ def _compensate_slot(working: GameState, state: GameState,
     t_core = set(getattr(tc, 'core_chars', None) or ()) if tc else set()
     eng = set(engine_char_names())
     out_cands: list[tuple[int, int, int]] = []
-    for di, d in enumerate(state.deployed or []):
+    for di, d in iter_deployed_slots(state.deployed or []):   # ADR-0392 槽位下标恒稳
         name = getattr(d, 'char_id', '') or ''
         if name in t_core or name in eng:
             continue
@@ -634,7 +636,7 @@ def _compensate_slot(working: GameState, state: GameState,
     _k = board_unique_key(in_char)
     if _k is not None and any(
             board_unique_key(d) == _k
-            for i, d in enumerate(state.deployed or []) if i != d_idx):
+            for i, d in iter_deployed_slots(state.deployed or []) if i != d_idx):
         return []
     log.info('[cw][d2][remedy] r%d 满员换位:deployed[%d] %s ↔ '
              'bench[%d] %s', state.round_num, d_idx,

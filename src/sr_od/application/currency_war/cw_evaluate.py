@@ -35,6 +35,7 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     bench_occupied,
     effective_hp_threshold,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
 log = log_utils.log
@@ -170,7 +171,7 @@ def char_quality_score(state: GameState, character_priority: list[str],
         elif bc.char_id in core_names:
             score += CHAR_PRIORITY_BONUS * bc.star * 0.5   # target 核心星级(半权:低于用户 priority)
     # r70:场上打工牌 2★+ 计价(升星战力;1★ 不计防囤散牌)
-    for bc in state.deployed:
+    for bc in iter_occupied_deployed(state.deployed):
         if bc.char_id and bc.star >= 2 and (bc.char_id not in character_priority
                                             and bc.char_id not in core_names):
             score += CHAR_PRIORITY_BONUS * 0.25 * (bc.star - 1)

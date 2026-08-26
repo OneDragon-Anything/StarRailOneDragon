@@ -15,7 +15,7 @@
 | 域 | 动作 |
 |---|---|
 | 奖励 | ClickSpheres / OpenBox / PickBoxCard / **OpenTome**(典籍开卷,策划事件链) |
-| 席位 | SellBench(身份感知,物理槽位)/ SellDeployed / DeployMove(腾席链) |
+| 席位 | SellBench(身份感知,物理槽位)/ SellDeployed(deployed 槽位表下标 0-9,ADR-0392)/ DeployMove(腾席链) |
 | 升级 | LevelUp |
 | 战斗 | StartBattle(含未达上限确认勾选) |
 | 观察管理 | EnsureShopOpen / EnsureShopClosed(gold 只在开态、HP 只在关态可读) |

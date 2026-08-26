@@ -70,7 +70,11 @@ from sr_od.application.currency_war.cw_state import (
     bench_clear,
     bench_occupied,
     bench_place,
+    deployed_from_compact,
+    deployed_occupied,
+    deployed_place,
     iter_occupied,
+    iter_occupied_deployed,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -999,6 +1003,8 @@ def _board_factions_of(deployed) -> dict[str, int]:
     from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
     out: dict[str, int] = {}
     for d in (deployed or []):
+        if d is None:   # ADR-0392 槽位表空槽
+            continue
         cid = getattr(d, 'char_id', '') or ''
         ch = _CH.get(cid)
         if ch is None:
@@ -1556,14 +1562,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
                         # (每次合并净减 2 个单位;载体在场时 deployed
                         # 计数不变)。
-                        _pre_units = bench_occupied(st.bench) + len(st.deployed)
+                        _pre_units = (bench_occupied(st.bench)
+                                      + deployed_occupied(st.deployed))   # ADR-0392
                         bench_place(st.bench, BenchChar(
                             slot=0, char_id=a.card.name,
                             faction=a.card.faction))
                         _merge_bench(st.bench, st.deployed)
                         _merges += (_pre_units + 1
                                     - bench_occupied(st.bench)
-                                    - len(st.deployed)) // 2
+                                    - deployed_occupied(st.deployed)) // 2
                         progressed = True
                     elif isinstance(a, LevelUp):
                         st.gold -= 4
@@ -1612,7 +1619,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _sold_names: list[str] = []
                         _shop_fill_cards: list[ShopCard] = []
                         if isinstance(a, SellDeployed) \
-                                and 0 <= a.deployed_idx < len(st.deployed):
+                                and 0 <= a.deployed_idx < len(st.deployed) \
+                                and st.deployed[a.deployed_idx] is not None:   # ADR-0392 空槽
                             _sold = st.deployed[a.deployed_idx]
                             _sold_names = [_sold.char_id]
                         elif isinstance(a, CompTransaction):
@@ -1623,7 +1631,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                 and st.bench[i] is not None] + [
                                 st.deployed[i].char_id
                                 for i, d in a.sell if d == 'deployed'
-                                and 0 <= i < len(st.deployed)]
+                                and 0 <= i < len(st.deployed)
+                                and st.deployed[i] is not None]   # ADR-0392
                             _shop_fill_cards = [
                                 st.shop[f.idx] for f in (a.fill or [])
                                 if f.source == 'shop'
@@ -1640,7 +1649,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             bench_occupied(st.bench) - bench_occupied(_new.bench)
                             if isinstance(a, CompTransaction) else 0)
                         if _applied and isinstance(a, SellDeployed) \
-                                and 0 <= a.deployed_idx < len(st.deployed):
+                                and 0 <= a.deployed_idx < len(st.deployed) \
+                                and st.deployed[a.deployed_idx] is not None:   # ADR-0392
                             # SellDeployed 的 income 未进 action_log(单动作
                             # 无事务汇总)——预状态现算(与 simulate 同口径)
                             _tx_income = sell_refund(
@@ -1729,7 +1739,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 聚合(生产 board 口径)。ADR-0287:此处 cap=st.max_units()
             # 在轮末升级后读 → LevelUp 当轮腾出的 cap 立即生效(批㉘ F5
             # 「升级→上阵」链断一轮的修复)。
-            _dep_cids = {d.char_id for d in st.deployed if d.char_id}
+            _dep_cids = {d.char_id for d in iter_occupied_deployed(st.deployed)
+                         if d.char_id}
             _dep_fac = _board_factions_of(st.deployed)
             # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
             # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
@@ -1763,7 +1774,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if _i < len(_occ_idx):
                         bc = st.bench[_occ_idx[_i]]
                         if bc is not None:
-                            st.deployed.append(bc)
+                            deployed_place(st.deployed, bc)   # ADR-0392 槽位落位
                             st.bench[_occ_idx[_i]] = None
                 st.board = _board_counts_of(st.deployed)
                 # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
@@ -1772,7 +1783,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
                 _lag_idx, _ = _dl.select_deployments(
                     [b for b in st.bench if b is not None],
-                    deployed_cids={d.char_id for d in st.deployed if d.char_id},
+                    deployed_cids={d.char_id
+                                   for d in iter_occupied_deployed(st.deployed)
+                                   if d.char_id},
                     deployed_fac=_board_factions_of(st.deployed),
                     board=dict(st.board),
                     cap=st.max_units(),
@@ -1914,7 +1927,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 st.equips.append(_opts[_pick.idx].equip)
                 if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
-            if st.equips and st.deployed:
+            if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
                 )
@@ -1927,7 +1940,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
                     # tracked_deployed[].equips 同语义);防重守卫(跨轮对同一
                     # 人重复分配同一件不双记)。
-                    for d in st.deployed:
+                    for d in iter_occupied_deployed(st.deployed):
                         if d.char_id == _who:
                             if _what not in d.equips:
                                 d.equips.append(_what)
@@ -2136,8 +2149,9 @@ class P2ReplayEntry:
         st.board = dict(self.board)
         for i, u in enumerate(self.bench[:BENCH_CAPACITY]):
             st.bench[i] = self._unit(u, i + 1)
-        st.deployed = [self._unit(u, i + 1)
-                       for i, u in enumerate(self.deployed)]
+        # ADR-0392:进场态紧缩序 → 槽位表(按 position_pref 路由落槽)
+        st.deployed = deployed_from_compact(
+            [self._unit(u, i + 1) for i, u in enumerate(self.deployed)])
         st.equips = list(self.equips)
         st.streak = self.streak
         return st
