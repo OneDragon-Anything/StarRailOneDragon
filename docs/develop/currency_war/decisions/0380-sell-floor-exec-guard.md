@@ -68,7 +68,7 @@ execute_replacement/_engine_completion_tx + _sell_tag 逐笔,池 861fc9f6 重放
 |---|---|---|
 | arbiter 三卖 tag 候选(决策期) | `_sell_tag` 生成期谓词 | ADR-0373 既有 |
 | arbiter 三卖 tag 候选(采纳期,同批多笔) | working 复检 | **本批件①** |
-| carry_gate ④ / 两补偿器 | `sell_priority_key`(逐笔渐进态) | ADR-0373 既有 |
+| carry_gate ④ / 两补偿器 | `sell_priority_key`(逐笔渐进态) | ~~ADR-0373 既有~~〔W205/ADR-0384 勘误:此行原声明不实——补偿器候选对批前 state 一次性构造、组内无前序扣减,136 型异名聚合窗在补偿通道未闭合;W205 已补 `_sell_floor_filter`(批量口径,对 working)结构性闭合,见 ADR-0384。carry_gate ④ 单笔发射无聚合窗,不受辖〕 |
 | execute_replacement 溢出卖出 | 保留序优先级 → 下界留场 | 保留序=ADR-0360 件3,下界=**本批件②** |
 | 补完事务 sell/undeploy | `_locked_protected_names` 保护集 | W174/W192 既有,不变 |
 | 谷底回滚 SellDeployed | 恢复机件豁免 | ADR-0373 既有 |

@@ -176,6 +176,33 @@ def remediation_pass(working: GameState, state: GameState,
     return acts, rlog
 
 
+def _sell_floor_filter(working: GameState, state: GameState,
+                       entries: list, registry: DecisionV2Registry) -> list:
+    """W205/ADR-0384:补偿组卖件批量下界过滤(逐笔扣减口径)。
+
+    背景(W203 ①A 巡检实证,W197 边界声明不实处):两补偿器的卖件
+    候选列表对批前 ``state`` 一次性构造,``sell_priority_key`` 内的
+    ``sole_engine_sell_blocked`` 对 state 单次评估——组内多笔**异名**
+    TT 件逐笔合法(各见 count=tier+1)、合计跌破 tier(136 型同批
+    聚合窗)。修法=发射前按 ``sole_engine_sell_floor_plan``
+    (W197/ADR-0380 批量口径单一源:前序「可卖」件从计数扣减)对
+    ``working``(执行前真值——同轮前序采纳卖出已计入)过滤;flag
+    ``sell_floor_exec_guard_enabled`` 关=逐位回 W197 后行为。
+
+    ``entries`` 元素=(弱序键, bench 槽位下标, 回金);返回保持原序,
+    仅剔除下界命中件(blocked 件不卖不扣减,与 plan 语义一致)。
+    """
+    if not entries or not registry.sell_floor_exec_guard_enabled:
+        return entries
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        sole_engine_sell_floor_plan,
+    )
+    bcs = [state.bench[i] for _k, i, _r in entries]
+    flags = sole_engine_sell_floor_plan(bcs, working, registry)
+    return [e for e, blocked in zip(entries, flags, strict=True)
+            if not blocked]
+
+
 def _marginal_bond_contribution(bc, state: GameState) -> bool:
     """边际羁绊贡献守卫(r3,§0.6-①修正;ADR-0326):bc 与当前板面
     (board 阵营)能凑羁绊 → True(过渡配方正件,不进补偿卖序)。
@@ -282,6 +309,9 @@ def _compensate_gold(working: GameState, state: GameState,
         refund = sell_refund(star, ch.cost)
         sellable.append((key, i, refund))
     sellable.sort(key=lambda s: s[0])
+    # W205/ADR-0384:批量下界过滤(逐笔扣减,对 working——组内多笔
+    # 异名 TT 件合计跌破 tier 的 136 型聚合窗在此闭合)
+    sellable = _sell_floor_filter(working, state, sellable, registry)
     sells: list[SellBench] = []
     got = 0
     for _key, idx, refund in sellable:
@@ -386,6 +416,8 @@ def _compensate_bench(working: GameState, state: GameState,
     if not cands:
         cands = seed_cands   # 唯一可卖=种子:死锁豁免(仍选最弱)
     cands.sort(key=lambda c: c[0])
+    # W205/ADR-0384:批量下界过滤(_compensate_gold 同款,逐笔扣减口径)
+    cands = _sell_floor_filter(working, state, cands, registry)
     sells: list[SellBench] = []
     for _key, idx, refund in cands:
         if len(sells) >= need:
