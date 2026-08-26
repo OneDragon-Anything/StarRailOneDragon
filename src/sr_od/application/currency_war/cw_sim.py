@@ -203,6 +203,121 @@ P2_NODE_SEQUENCE: tuple[str, ...] = (
 P2_BATTLE_WIN_P: float = 0.11
 P2_LOSS_BAND: tuple[int, int] = (15, 17)
 
+# ===== P2 战斗存活层参数化校准族(W193/ADR-0377,W186 设计 Phase 1) =====
+# 结构:win_p = clip(p0 + β·form − γ·drift(round)),form=板面质量键
+# (最小集=engines 数[deployed 口径,_settle_rung 同源]+level 折算);
+# 负=分段掉血带内均匀。**校准层(非真战斗机制)**,诚实边界:
+# - 21 run 语料只够钉边界不够点估计 β——p0/β/γ 取保守值 + 敏感性带
+#   扫描为裁决口径(修法在带端点一致翻正才裁「分布级」);
+# - Δ池 plane=2 条件化(键 form×round,每桶 n≥5)留 Phase 3 自动让位
+#   (语料阈值触发,非日历);
+# - 四常数族单一注入点=P2CombatCalib(A/B 与敏感性扫描同通道)。
+# 掉血分段带校准来源(`w193_p2sim/calibrate_truth.py` 复跑,真值=
+# 生产 replay plane=2 未删失差分;hp_after==1 为败北地板删失样本弃):
+# - battle_r1 (14,28):进场首战(跨位面差分,n=6 未删失;W186 设计文本
+#   的「r1-r2 带 −4~−16」系 r2-vs-r1 相邻差分口径,不含 r1 自身——
+#   本批实测 r1 明显更重,分立成段,偏差记 ADR-0377);
+# - battle_early (4,16):r2-r3(设计口径带;本批未删失样本 15/15 落内);
+# - battle_late (15,25):r4+(设计口径带;本批未删失 19-21 落内);
+# - encounter (9,18) / boss (21,26):设计口径带(boss 样本均地板删失,
+#   取原始差分下界语义=真损 ≥ 带端)。
+# 胜率:p0=0.11(W151/语料边际 5/37=0.135 的保守下沿);β 方向由胜例
+# board 强制为正、量级未定(胜例 form 1.25-2.25 vs 全体均值 ≈1.4,
+# 几乎无区分度)→ 保守 0.04,敏感性主扫参;γ 弱(轮梯度未识别)→ 0.02。
+
+
+@dataclass(frozen=True)
+class P2CombatCalib:
+    """P2 段战斗存活层参数族(W193/ADR-0377;单一注入点,A/B 同通道)。
+
+    ``calibrated=False`` = 逐位回 W157/ADR-0362 行为(Δ池 plane=2 桶
+    优先 + ``P2_BATTLE_WIN_P`` 恒值回退档)——A/B 回退对照臂。
+    """
+
+    #: 总开关:True=参数化校准层辖 plane≥2 战斗类结算(绕过 Δ池
+    #: plane=2 合并采样——该路径被防饥饿守卫抹平条件性,ADR-0362
+    #: 已判「假条件化」;Phase 3 桶键 form×round 到量后让位池采样)
+    calibrated: bool = True
+    #: 基础胜率(语料边际保守下沿)
+    p0: float = 0.11
+    #: form(板面质量键)系数:每单位 form 的胜率增量(敏感性主扫参)
+    beta: float = 0.04
+    #: 轮次漂移系数:敌人强度随轮增长(每轮 γ)
+    gamma: float = 0.02
+    #: 胜率钳制带
+    win_p_clip: tuple[float, float] = (0.0, 0.5)
+    #: form 键的 level 折算权重(form = engines + w·(level−6);
+    #: engines=deployed 口径 _settle_rung 同源,0-4)
+    form_level_weight: float = 0.25
+    #: level 折算基准(P2 常见进场 level 6)
+    form_level_base: int = 6
+    #: 事件金双臂(W186 §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
+    #: 'zero'=P2 段事件金归零;敏感性双臂,rng 流两臂同耗保配对)
+    event_gold: str = 'p1'
+    #: 分段掉血带(败场;带内均匀采样)
+    band_battle_r1: tuple[int, int] = (14, 28)
+    band_battle_early: tuple[int, int] = (4, 16)
+    band_battle_late: tuple[int, int] = (15, 25)
+    band_encounter: tuple[int, int] = (9, 18)
+    band_boss: tuple[int, int] = (21, 26)
+    #: 胜场结算值(语料胜例 Δ=+2)
+    win_delta: int = 2
+
+
+#: 默认参数族(模块单一实例;敏感性/A/B 经 simulate_p1 的 p2_combat 注入)
+P2_COMBAT_DEFAULT = P2CombatCalib()
+
+
+def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
+    """form=板面质量键(W193/ADR-0377 最小集:engines+level 折算)。
+
+    engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
+    W182 实测 deployed 口径与掉血对应最干净、板深无区分度。
+    """
+    return float(_settle_rung(st)) + calib.form_level_weight * (
+        st.level - calib.form_level_base)
+
+
+def p2_win_p(st: GameState, node: str, round_num: int,
+             calib: P2CombatCalib) -> float:
+    """参数化胜率:clip(p0 + β·form − γ·drift(round))。
+
+    drift = max(0, round−1)(r1 无漂移;敌人强度逐轮增长的最小参数化)。
+    """
+    lo, hi = calib.win_p_clip
+    form = p2_form_key(st, calib)
+    drift = max(0, round_num - 1)
+    return min(hi, max(lo, calib.p0 + calib.beta * form
+                       - calib.gamma * drift))
+
+
+def p2_loss_band(node: str, round_num: int,
+                 calib: P2CombatCalib) -> tuple[int, int]:
+    """分段掉血带路由(battle 按 r1/r2-r3/r4+ 分段;encounter/boss 独立)。"""
+    if node == 'battle':
+        if round_num == 1:
+            return calib.band_battle_r1
+        if round_num <= 3:
+            return calib.band_battle_early
+        return calib.band_battle_late
+    if node == 'encounter':
+        return calib.band_encounter
+    return calib.band_boss
+
+
+def p2_combat_delta(st: GameState, node: str, round_num: int,
+                    rng: random.Random,
+                    calib: P2CombatCalib) -> tuple[int, float]:
+    """P2 战斗类节点参数化结算(胜→win_delta/负→分段带内均匀)。
+
+    返回 (delta, win_p)——win_p 随账本披露(检查器带锚/敏感性判读消费)。
+    """
+    wp = p2_win_p(st, node, round_num, calib)
+    if rng.random() < wp:
+        return calib.win_delta, wp
+    lo, hi = p2_loss_band(node, round_num, calib)
+    return -rng.randint(lo, hi), wp
+
 
 def node_win_p(node_type: str, round_num: int = 0) -> float:
     """节点胜率单一取值口(ADR-0308;回退层胜负面)。
@@ -267,6 +382,19 @@ class SimResult:
     p2_combat_wins: int = 0         # 其中 delta>=0 的胜场数
     p2_hp0: bool = False            # 死在 P2 段(终局 hp<=0)
     p2_refreshes: int = 0           # P2 段 RefreshShop 次数(D 次数)
+    # ===== P2 校准层与判读观测(W193/ADR-0377;planes>=2 时填)=====
+    p2_combat_calibrated: bool = False   # 本局 P2 结算走参数化校准层?
+    p2_gold_carried: int | None = None   # 金带走量(死在 P2 段时的末金;
+                                          # 活过 P2=None——W183 D1 判据族)
+    p2_buys_by_cost: dict[str, int] = field(default_factory=dict)
+                                        # P2 段买笔数按价格带 {'1-2','3','4-5'}
+                                        # (W183 价格带判读口径)
+    p2_switch_events: list[tuple[int, str, str]] = field(default_factory=list)
+                                        # 意向切换事件 (轮,前 target,后 target)
+                                        # (W182「切换后采购执行密度」数据源)
+    p2_lv6_round: int | None = None  # P2 段内首次 level>=6 的轮(None=未达)
+    p2_lv7_round: int | None = None  # P2 段内首次 level>=7 的轮(W183:
+                                     # run15 恒 lv6 卡死形态的可观测指标)
     # ===== 投资注入观测(W162/ADR-0364;invest 注入时填,默认空/0)=====
     invest_env: str = ''            # 本局注入的投资环境名(空 = 无)
     invest_strategies: tuple[str, ...] = ()   # 本局实际注入持有的策略名序
@@ -1033,7 +1161,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 diamond_cap_prob: float = 0.0,
                 config=None,
                 planes: int = 1,
-                invest: SimInvestProfile | bool = False) -> SimResult:
+                invest: SimInvestProfile | bool = False,
+                p2_combat: P2CombatCalib | None = None,
+                _p2_entry: P2ReplayEntry | None = None) -> SimResult:
     """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
     追加 P2 段——W157/ADR-0362 案 a 最小可用)。
 
@@ -1067,6 +1197,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         active_strategies/active_env(实机 handler 语义),经济聚合
         (economy_effect_of 链的已建模子集)在 sim 收入/刷价层生效,
         意向层①资格通道(ADR-0338)因此可点火。
+    :param p2_combat: P2 战斗存活层参数族(W193/ADR-0377;None=模块
+        默认 ``P2_COMBAT_DEFAULT``)。``calibrated=False`` 臂逐位回
+        W157/ADR-0362 行为(Δ池 plane=2 优先 + 恒值回退档)——A/B
+        与回退对照臂;planes=1 路径不消费本参数(零漂移)。
+    :param _p2_entry: 案 b 臂进场态注入(内部参数;``simulate_p2_replay_entry``
+        构造——跳过 P1 段与开局 bench 采样,直接从真值进场态跑 P2 段。
+        共享本函数的 P2 段循环体 = 单一源,W186 设计 §4 的消复制形态)。
     """
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
@@ -1089,24 +1226,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             '检查 cw_sim._Pool 构造')
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
     strat = strategy or DecisionV2Strategy()
-    st = GameState()
-    st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
-    # bench 槽位表(ADR-0316):GameState() 已 pad 9 空槽,勿重置为
-    # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
-    for _ in range(START_BENCH_COUNT):
-        cost = rng.choices(
-            [c for c, _ in START_BENCH_COST_WEIGHTS],
-            weights=[w for _, w in START_BENCH_COST_WEIGHTS], k=1)[0]
-        names = [n for n in cards_pool.copies
-                 if CHARACTERS[n].cost == cost and cards_pool.copies[n] > 0]
-        if names:
-            n = rng.choice(names)
-            cards_pool.take(n)
-            bench_place(st.bench, BenchChar(
-                slot=0, char_id=n,
-                faction=(CHARACTERS[n].factions or ['散'])[0]))
-    sess = session or StrategySession()
-    sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+    if _p2_entry is not None:
+        # W193/ADR-0377 案 b 臂:P1 段与开局 bench 采样跳过,直接从
+        # 真值进场态起跑(rng 不耗 nodes/bench 采样——进场态是外生
+        # 真值,重放可复现性 = seed + 进场态 + 池指纹)。下方**共享**
+        # 位面段循环体(单一源;与 simulate_p1 主入口零复制)。
+        if invest:
+            raise ValueError('案 b 臂(_p2_entry)不支持 invest 注入')
+        st = _p2_entry.build_state()
+        sess = session or StrategySession()
+        sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+        streak = _p2_entry.streak
+    else:
+        st = GameState()
+        st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
+        # bench 槽位表(ADR-0316):GameState() 已 pad 9 空槽,勿重置为
+        # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
+        for _ in range(START_BENCH_COUNT):
+            cost = rng.choices(
+                [c for c, _ in START_BENCH_COST_WEIGHTS],
+                weights=[w for _, w in START_BENCH_COST_WEIGHTS], k=1)[0]
+            names = [n for n in cards_pool.copies
+                     if CHARACTERS[n].cost == cost and cards_pool.copies[n] > 0]
+            if names:
+                n = rng.choice(names)
+                cards_pool.take(n)
+                bench_place(st.bench, BenchChar(
+                    slot=0, char_id=n,
+                    faction=(CHARACTERS[n].factions or ['散'])[0]))
+        sess = session or StrategySession()
+        sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+        streak = 0
     # W162/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
@@ -1123,22 +1273,29 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     pool_source=pool_src)
     if _inv is not None:
         res.invest_env = _inv.profile.active_env
-    xp = 0
+    xp = 0 if _p2_entry is None else _p2_entry.xp
     # ADR-0286(批㉓ F3):xp_progress 真值化——sim 结算处维护(与生产 OCR 真值
     # 同语义),买牌/买经验累 XP_PER_BUY,升级按 XP_TO_NEXT_LEVEL 清零结转;
     # line_v2 的 clicks_to_next_level 消费点从此读到真值(旧恒 None → 恒按
-    # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。
-    st.xp_progress = (0, XP_TO_NEXT_LEVEL.get(st.level, 4))
+    # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。案 b 臂=进场真值直带。
+    st.xp_progress = (_p2_entry.xp_progress if _p2_entry is not None
+                      else (0, XP_TO_NEXT_LEVEL.get(st.level, 4)))
     # ADR-0286(批㉔ F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
     _diamonds = 0
-    streak = 0
     # ADR-0362(W157):位面段迭代——P1 段(9 轮)后按 ``planes``
     # 追加 P2 段(7 轮)。planes=1 时段表只含 P1 段,循环体逐位
-    # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。
+    # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。案 b 臂(W193)段表
+    # 只含 P2 段(直接从真值进场态起跑)。
     _ts = 0   # 单调轮序号(跨位面累计;P1 段恒 == rn)
-    _segments: list[tuple[int, int, list[str]]] = [(1, 9, nodes)]
-    if planes >= 2:
-        _segments.append((2, P2_ROUNDS, list(P2_NODE_SEQUENCE)))
+    if _p2_entry is not None:
+        _segments: list[tuple[int, int, list[str]]] = [
+            (2, P2_ROUNDS, list(P2_NODE_SEQUENCE))]
+    else:
+        _segments = [(1, 9, nodes)]
+        if planes >= 2:
+            _segments.append((2, P2_ROUNDS, list(P2_NODE_SEQUENCE)))
+    # W193/ADR-0377:P2 战斗存活层参数族(单一注入点;None=模块默认)
+    _p2c = p2_combat if p2_combat is not None else P2_COMBAT_DEFAULT
     for _seg_plane, _seg_rounds, nodes in _segments:
         if _seg_plane >= 2:
             # 进场继承块(ADR-0362):P1 末态 hp/gold/board/bench/
@@ -1178,6 +1335,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
             _gold_before = st.gold
             _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
+            # W193/ADR-0377:事件金双臂(K3 零样本敏感性)——'zero' 臂
+            # P2 段事件金归零;rng 照耗(双臂同 seed 配对可比)。
+            if st.plane >= 2 and _p2c.event_gold == 'zero':
+                _inc_event = 0
             # W162/ADR-0364:注入策略的经济聚合(economy_effect_of 链已建模
             # 子集)——息帽覆写 + 每节点给金。无 active_strategies 时表达式
             # 与旧逐位相同(零漂移);'invest' 键只在有持卡时才加(账本行
@@ -1641,33 +1802,45 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # vs 实机 32% 裂口的最大已定量化分量;encounter/boss 维持
             # depth 键(批⑬ F1 encounter 样本不足)。
             _dep = _deployable_depth(st)
-            # ADR-0362:P2 段结算查 Δ池 plane=2 桶(位面内兜底,不跨
-            # 位面回退);缺桶回退层见 node_delta 的 plane 分支。
-            if nodes[rn - 1] == 'battle':
-                _ld = live_delta_for('battle', _settle_rung(st), rng,
-                                     pool_map=pool_map, plane=st.plane)
-            elif nodes[rn - 1] in ('encounter', 'boss'):
-                _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                                     pool_map=pool_map, plane=st.plane)
-            elif nodes[rn - 1] in ('reward', 'supply'):
-                # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
-                # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
-                # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
-                # 池缺 → live_delta_for None → node_delta 回退常数。
-                _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                                     pool_map=pool_map, plane=st.plane)
+            # W193/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
+            # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
+            # 判「假条件化」;Phase 3 桶键 form×round 到量[n≥5]后让位
+            # 池采样)。calibrated=False = 逐位回 W157 路径(池优先 +
+            # node_delta 回退档)。planes=1 恒不进本分支(P1 零漂移)。
+            _p2_wp: float | None = None
+            if (st.plane >= 2 and _p2c.calibrated
+                    and nodes[rn - 1] in ('battle', 'encounter', 'boss')):
+                delta, _p2_wp = p2_combat_delta(
+                    st, nodes[rn - 1], rn, rng, _p2c)
             else:
-                _ld = None
-            if _ld is not None:
-                delta = _ld
-            elif nodes[rn - 1] == 'boss':
-                # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
-                # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
-                # 价值链接通(hp 类指标恢复判读力)。
-                delta = boss_settle_delta(st, res.dir_round, rng)
-            else:
-                delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng,
-                                   plane=st.plane)
+                # ADR-0362:P2 段(uncalibrated 臂)结算查 Δ池 plane=2 桶
+                # (位面内兜底,不跨位面回退);缺桶回退层见 node_delta 的
+                # plane 分支。P1 段结算同原式(逐位零漂移)。
+                if nodes[rn - 1] == 'battle':
+                    _ld = live_delta_for('battle', _settle_rung(st), rng,
+                                         pool_map=pool_map, plane=st.plane)
+                elif nodes[rn - 1] in ('encounter', 'boss'):
+                    _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                         pool_map=pool_map, plane=st.plane)
+                elif nodes[rn - 1] in ('reward', 'supply'):
+                    # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
+                    # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
+                    # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
+                    # 池缺 → live_delta_for None → node_delta 回退常数。
+                    _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                                         pool_map=pool_map, plane=st.plane)
+                else:
+                    _ld = None
+                if _ld is not None:
+                    delta = _ld
+                elif nodes[rn - 1] == 'boss':
+                    # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
+                    # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
+                    # 价值链接通(hp 类指标恢复判读力)。
+                    delta = boss_settle_delta(st, res.dir_round, rng)
+                else:
+                    delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng,
+                                       plane=st.plane)
             # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
             # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
             # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
@@ -1821,6 +1994,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,
+                    # W193/ADR-0377:参数化胜率披露(校准层结算行;
+                    # None=非校准路径[P1 段/uncalibrated 臂/reward 类])
+                    'p2_win_p': _p2_wp,
                     'gold_before': _gold_before,
                     'income': _inc, 'spend': _spend,
                     'depth': _depth,
@@ -1875,6 +2051,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res.p2_hp0 = res.p2_entered and st.hp <= 0
     res.final_hp = st.hp
     res.level = st.level
+    # W193/ADR-0377:P2 判读同构观测(headline/账本扩展)——由账本
+    # plane=2 行派生(金带走量/carry 笔数价格带/意向切换/lv 到达轮)。
+    if res.p2_entered:
+        res.p2_combat_calibrated = _p2c.calibrated
+        _p2_rows = [row for row in res.ledger
+                    if (row.get('plane') or 1) == 2]
+        if res.p2_hp0:
+            # 金带走量:死在 P2 段时的末金(活过 P2=None——W183 D1)
+            _g = _p2_rows[-1].get('gold') if _p2_rows else None
+            res.p2_gold_carried = _g if isinstance(_g, int) else None
+        _buys: dict[str, int] = {'1-2': 0, '3': 0, '4-5': 0}
+        _prev_tgt = ''
+        for row in _p2_rows:
+            for _a in row.get('actions') or ():
+                if _a.get('__type__') != 'BuyCard':
+                    continue
+                _c = ((_a.get('card') or {}).get('cost')) or 0
+                _k = '1-2' if _c <= 2 else ('3' if _c == 3 else '4-5')
+                _buys[_k] = _buys.get(_k, 0) + 1
+            _tgt = row.get('target_comp') or ''
+            if _prev_tgt and _tgt and _tgt != _prev_tgt:
+                res.p2_switch_events.append(
+                    (int(row.get('round_num') or 0), _prev_tgt, _tgt))
+            if _tgt:
+                _prev_tgt = _tgt
+            _lv = int((row.get('state') or {}).get('level') or 0)
+            if _lv >= 6 and res.p2_lv6_round is None:
+                res.p2_lv6_round = int(row.get('round_num') or 0)
+            if _lv >= 7 and res.p2_lv7_round is None:
+                res.p2_lv7_round = int(row.get('round_num') or 0)
+        res.p2_buys_by_cost = _buys
     # ADR-0336:locked_line/bridge_id 字段保留(输出结构兼容),
     # 赋值取 v3 意向锁定名(v1 线库字段已删;无锁定=None)
     res.locked_line = _target_comp_label(sess) or None
@@ -1888,6 +2095,75 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # W162/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
         res.invest_strategies = tuple(sess.active_strategies)
     return res
+
+
+@dataclass
+class P2ReplayEntry:
+    """案 b 臂真值进场态(W193/ADR-0377;``simulate_p2_replay_entry``
+    的输入)。
+
+    字段来源 = 生产 replay decisions 的 plane=2 首行 state(锚脚本
+    构造);bench/deployed 为 dict 列表(char_id/faction/star/
+    position_pref/equips),与生产遥测同构。有限牌池消费态不可观
+    (W186 表 #4 K4)→ 满池假设 + 标注。
+    """
+
+    hp: int
+    gold: int
+    level: int
+    board: dict[str, int] = field(default_factory=dict)
+    bench: list[dict] = field(default_factory=list)
+    deployed: list[dict] = field(default_factory=list)
+    equips: list[str] = field(default_factory=list)
+    xp: int = 0
+    xp_progress: tuple[int, int] | None = None
+    streak: int = 0
+    locked_comp: str = ''
+
+    @staticmethod
+    def _unit(u: dict, slot: int) -> BenchChar:
+        return BenchChar(
+            slot=slot, char_id=u.get('char_id', ''),
+            faction=u.get('faction', '?'),
+            star=int(u.get('star', 1) or 1),
+            position_pref=u.get('position_pref', 'back'),
+            equips=list(u.get('equips') or []))
+
+    def build_state(self) -> GameState:
+        """进场态 → GameState(plane=2;bench 保 9 槽 pad 语义)。"""
+        st = GameState()
+        st.plane, st.level, st.gold, st.hp = 2, self.level, self.gold, self.hp
+        st.board = dict(self.board)
+        for i, u in enumerate(self.bench[:BENCH_CAPACITY]):
+            st.bench[i] = self._unit(u, i + 1)
+        st.deployed = [self._unit(u, i + 1)
+                       for i, u in enumerate(self.deployed)]
+        st.equips = list(self.equips)
+        st.streak = self.streak
+        return st
+
+
+def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
+                             pool: str | Path = 'snapshot',
+                             p2_combat: P2CombatCalib | None = None,
+                             use_refresh: bool = True) -> SimResult:
+    """案 b 交叉校验臂(W193/ADR-0377;W186 设计 §4/§3 锚 R1)。
+
+    从真值 P2 进场态(hp/gold/board/bench/deployed/level/意向)直接
+    跑 P2 段——**共享 ``simulate_p1`` 的 P2 段循环体**(经 ``_p2_entry``
+    注入跳过 P1 段,单一源零复制)。锚 R1 对拍口径:存活轮分布/战斗
+    胜率/逐轮掉血带覆盖/金轨迹符号,统计量落实测带内即过(**带内**
+    不是「贴近」——贴脸=过拟合警报,W186 §6);真值 run 是旧策略
+    病局,sim 跑当前策略,决策层差异 expected,锚只锁结算与经济层。
+    """
+    sess = StrategySession()
+    if entry.locked_comp:
+        from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+        if entry.locked_comp in COMP_LIBRARY:
+            sess.target_comp = COMP_LIBRARY[entry.locked_comp]
+    return simulate_p1(seed, use_refresh=use_refresh, pool=pool,
+                       session=sess, p2_combat=p2_combat,
+                       _p2_entry=entry)
 
 
 class _Plane1View:
@@ -1912,7 +2188,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       ledger: bool | Path = True,
                       checks: bool = True,
                       planes: int = 1,
-                      invest: SimInvestProfile | bool = False) -> dict:
+                      invest: SimInvestProfile | bool = False,
+                      p2_combat: P2CombatCalib | None = None) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
     :param planes: 透传 ``simulate_p1``(1=P1 段——历史口径逐位不变;
@@ -1933,7 +2210,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     """
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
-                           pool=pool, planes=planes, invest=invest)
+                           pool=pool, planes=planes, invest=invest,
+                           p2_combat=p2_combat)
                for i in range(n)]
     # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
     # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;
@@ -1978,6 +2256,45 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'avg_p2_refreshes': (round(statistics.mean(
             [r.p2_refreshes for r in _entered]), 2)
             if _entered else None),
+        # ===== P2 校准层与判读观测 headline(W193/ADR-0377;判读同构
+        # 口径对齐 W182/W183:金带走量/carry 笔数价格带/意向切换/lv 到达)=====
+        'p2_combat_calibrated': bool(
+            _entered and _entered[0].p2_combat_calibrated),
+        'avg_p2_gold_carried': (round(statistics.mean(
+            [r.p2_gold_carried for r in _entered
+             if r.p2_gold_carried is not None]), 2)
+            if any(r.p2_gold_carried is not None for r in _entered)
+            else None),
+        'p2_carry_buys': {k: sum(r.p2_buys_by_cost.get(k, 0)
+                                 for r in _entered)
+                          for k in ('1-2', '3', '4-5')},
+        'avg_p2_carry_buys': (round(statistics.mean(
+            [sum(r.p2_buys_by_cost.values()) for r in _entered]), 2)
+            if _entered else None),
+        'p2_switch_rate': (sum(1 for r in _entered if r.p2_switch_events)
+                           / len(_entered) if _entered else None),
+        'avg_p2_first_switch_round': (round(statistics.mean(
+            [r.p2_switch_events[0][0] for r in _entered
+             if r.p2_switch_events]), 2)
+            if any(r.p2_switch_events for r in _entered) else None),
+        'p2_lv7_reach_rate': (sum(1 for r in _entered
+                                  if r.p2_lv7_round is not None)
+                              / len(_entered) if _entered else None),
+        # W193/ADR-0377:校准层上下文(检查器带锚消费;bands=本批实参)
+        'p2_calib': {
+            'win_delta': (p2_combat or P2_COMBAT_DEFAULT).win_delta,
+            'bands': {
+                'battle_r1':
+                    list((p2_combat or P2_COMBAT_DEFAULT).band_battle_r1),
+                'battle_early':
+                    list((p2_combat or P2_COMBAT_DEFAULT).band_battle_early),
+                'battle_late':
+                    list((p2_combat or P2_COMBAT_DEFAULT).band_battle_late),
+                'encounter':
+                    list((p2_combat or P2_COMBAT_DEFAULT).band_encounter),
+                'boss': list((p2_combat or P2_COMBAT_DEFAULT).band_boss),
+            },
+        },
         # ===== invest headline 三联(W162/ADR-0364;invest 注入时有意义)=====
         # 环境注入率/P1 持卡均值/P1 锁定轮分布(①资格通道激活直证:
         # 无注入语料下 invest_p1_lock_rate 恒 0——W161 缺口闭合对照键)
@@ -2145,6 +2462,16 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         _ledgers_p2 = [r.ledger for r in results]
         rep_checks['p2_gold_nonneg'] = check_p2_gold_nonneg(_ledgers_p2)
         rep_checks['p2_segment_shape'] = check_p2_segment_shape(_ledgers_p2)
+        # W193/ADR-0377:P2 战斗存活层检查器(掉血带覆盖锚 + 胜率带锚;
+        # 辖 calibrated 批——uncalibrated 批恒绿跳过,legacy 档不辖)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_p2_loss_band_anchor,
+            check_p2_win_rate_band,
+        )
+        rep_checks['p2_loss_band_anchor'] = check_p2_loss_band_anchor(
+            _ledgers_p2, report=report)
+        rep_checks['p2_win_rate_band'] = check_p2_win_rate_band(
+            _ledgers_p2, report=report)
         # 审查#6:报告自带 seed_base/n——games 索引 → seed =
         # seed_base+idx,跨日志传阅时索引可独立解读
         for v in rep_checks.values():
@@ -2258,6 +2585,62 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
             [r.final_hp for r in res_a]), 2),
         'avg_hp_off': round(statistics.mean(
             [r.final_hp for r in res_b]), 2),
+    }
+
+
+def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
+                            seed_base: int = 0, planes: int = 2,
+                            betas: tuple[float, ...] = (0.0, 0.04, 0.08, 0.15),
+                            gammas: tuple[float, ...] = (0.0, 0.02, 0.05, 0.10),
+                            event_gold_arms: tuple[str, ...] = ('p1', 'zero'),
+                            ) -> dict:
+    """β/γ/事件金敏感性扫描(W193/ADR-0377;**裁决口径**)。
+
+    语料不足以点估计 β(W186 §3)——P2 修法的 sim 分布结论必须呈报
+    本扫描:**修法在某(β,γ)网格点翻正、在带端点(β=0 / β=0.15 /
+    γ=0 / γ=0.10 / 事件金双臂)一致翻正才裁「分布级」**;单点翻正
+    = 不可裁。headline:存活轮/胜率/hp0 率/金带走量(判读同构)。
+    """
+    import dataclasses
+    import logging
+    import statistics
+
+    logging.disable(logging.CRITICAL)
+    try:
+        table = []
+        for eg in event_gold_arms:
+            for b in betas:
+                for g in gammas:
+                    calib = dataclasses.replace(
+                        P2_COMBAT_DEFAULT, beta=b, gamma=g, event_gold=eg)
+                    rs = [simulate_p1(seed_base + i, pool=pool,
+                                      planes=planes, p2_combat=calib)
+                          for i in range(n)]
+                    entered = [r for r in rs if r.p2_entered]
+                    ct = sum(r.p2_combat_total for r in entered)
+                    cw = sum(r.p2_combat_wins for r in entered)
+                    carried = [r.p2_gold_carried for r in entered
+                               if r.p2_gold_carried is not None]
+                    table.append({
+                        'event_gold': eg, 'beta': b, 'gamma': g,
+                        'p2_entered_rate': len(entered) / n,
+                        'avg_p2_rounds': round(statistics.mean(
+                            [r.p2_rounds for r in entered]), 2)
+                        if entered else None,
+                        'p2_win_rate': round(cw / ct, 4) if ct else None,
+                        'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
+                                        / len(entered)) if entered else None,
+                        'avg_p2_gold_carried': round(statistics.mean(
+                            carried), 2) if carried else None,
+                        'avg_final_hp': round(statistics.mean(
+                            [r.final_hp for r in rs]), 2),
+                    })
+    finally:
+        logging.disable(logging.NOTSET)
+    return {
+        'n': n, 'planes': planes,
+        'pool_fingerprint': resolve_pool(pool)[1],
+        'grid': table,
     }
 
 

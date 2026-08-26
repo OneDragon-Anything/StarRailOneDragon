@@ -2045,6 +2045,99 @@ def check_p2_segment_shape(ledgers: list[list[dict]]) -> dict:
     return {'violations': len(out), 'detail': out[:6]}
 
 
+# --- W193/ADR-0377:P2 战斗存活层检查器(参数化校准族带锚) ------------
+# 辖 calibrated 批(report['p2_combat_calibrated']=True);uncalibrated
+# 批(legacy 回退档/Δ池路径)不辖——恒绿跳过(legacy 档的池采样值
+# 天然不在参数化带内,辖了=常红假检查)。
+
+def _p2_band_of(node: str, round_num: int, bands: dict) -> tuple[int, int]:
+    """掉血带路由(与 cw_sim.p2_loss_band 同式;bands 来自批报告
+    ``p2_calib.bands``——检查消费本批实参,非模块默认)。"""
+    if node == 'battle':
+        if round_num == 1:
+            key = 'battle_r1'
+        elif round_num <= 3:
+            key = 'battle_early'
+        else:
+            key = 'battle_late'
+    elif node == 'encounter':
+        key = 'encounter'
+    else:
+        key = 'boss'
+    return tuple(bands.get(key) or (0, 0))
+
+
+def check_p2_loss_band_anchor(ledgers: list[list[dict]],
+                              report: dict | None = None) -> dict:
+    """P2 掉血带覆盖锚(W193/ADR-0377)。
+
+    判据:calibrated 批的 plane=2 战斗类行(plane=2 ∧ node∈
+    battle/encounter/boss ∧ sim.p2_win_p 非 None)结算值必须落在
+    参数化带内——胜=win_delta(+2)/负=带内(容差 ±1 防取整边)。
+    违规=结算层绕过参数族(如回退档混入/带路由错段)。
+    """
+    if not (report or {}).get('p2_combat_calibrated'):
+        return {'violations': 0, 'detail': [],
+                'note': 'uncalibrated 批不辖(legacy 档)'}
+    calib = report.get('p2_calib') or {}
+    bands = calib.get('bands') or {}
+    win_delta = int(calib.get('win_delta', 2))
+    out: list[str] = []
+    games: list[int] = []
+    for idx, rows in enumerate(ledgers):
+        for row in rows:
+            if (row.get('plane') or 1) != 2:
+                continue
+            s = row.get('sim') or {}
+            node = s.get('node')
+            if node not in ('battle', 'encounter', 'boss'):
+                continue
+            if s.get('p2_win_p') is None:
+                continue   # 非校准路径行(reward/supply 不辖)
+            d = s.get('delta')
+            rn = int(row.get('round_num') or 0)
+            lo, hi = _p2_band_of(node, rn, bands)
+            if d == win_delta:
+                continue
+            if not -(hi + 1) <= d <= -(lo - 1):
+                out.append(f'g{idx} p2r{rn} {node} Δ={d} 带外'
+                           f'[{lo},{hi}]')
+                games.append(idx)
+    return {'violations': len(out), 'games': games[:5],
+            'detail': out[:5]}
+
+
+def check_p2_win_rate_band(ledgers: list[list[dict]],
+                           report: dict | None = None) -> dict:
+    """P2 胜率带锚(W193/ADR-0377)。
+
+    判据:calibrated 批的 P2 战斗类胜率聚合必须落在语料带
+    [0, 0.35](语料边际 0-0.15 + β 上沿 headroom;>0.35=胜率模型
+    失控[如 β 注入回归/clip 失效],<0=全败同样异常)。战斗结算数
+    <20 的批不判(样本贫困,只披露)。
+    """
+    if not (report or {}).get('p2_combat_calibrated'):
+        return {'violations': 0, 'detail': [],
+                'note': 'uncalibrated 批不辖(legacy 档)'}
+    total = wins = 0
+    for rows in ledgers:
+        for row in rows:
+            if (row.get('plane') or 1) != 2:
+                continue
+            s = row.get('sim') or {}
+            if (s.get('node') in ('battle', 'encounter', 'boss')
+                    and s.get('p2_win_p') is not None):
+                total += 1
+                wins += 1 if (s.get('delta') or 0) >= 0 else 0
+    rate = wins / total if total else None
+    out = []
+    if total >= 20 and rate is not None and not 0.0 <= rate <= 0.35:
+        out.append(f'P2 战斗胜率 {rate:.3f}({wins}/{total}) 带外[0,0.35]')
+    return {'violations': len(out), 'detail': out,
+            'win_rate': round(rate, 4) if rate is not None else None,
+            'combat_total': total}
+
+
 def check_anchor_registry_n300(report: dict) -> dict:
     """批⑩ 检查项(锚登记制;ADR-0276)。
 
