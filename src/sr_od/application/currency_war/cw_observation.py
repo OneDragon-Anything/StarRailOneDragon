@@ -327,6 +327,49 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     return _slots
 
 
+def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
+    """位面详情画面「节点条」(当前选中位面的全节点预览)→ ``NodeSlot`` 列表 | None。
+
+    与 ``read_node_sequence`` 同一 CV 核心(``classify_node_row``:定圆/判态/
+    Hu 类型/boss SIFT),差异只在输入域:
+    - 带 = screen_info「货币战争-位面详情」屏的「区域-节点条」area
+      (用户权威坐标 385,514,1596,661;2026-08-26 实锺 9 圆全检出,最右
+      SIFT boss 巨鹿生物制药=6 断层命中——与备战条同源互证);
+    - 该带是**选中位面的彩色渲染态**(位面详情里位面 2/3 也可选中展开,
+      非备战的锁灰态)→ **接管局三位面 boss 全量采集通道**:依次点三张
+      位面卡,每选中一张调本函数,boss 槽 SIFT 认该位面 boss;
+    - clean 门同 ``_MIN_CLEAN_CIRCLES``。
+    返回 None:模板未加载 / 非该画面 / 圆数不足(坏帧)。
+    """
+    from sr_od.application.currency_war.cw_node_reader import classify_node_row
+    global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
+    from pathlib import Path as _Path
+    if _NODE_TYPE_TEMPLATES is None:
+        from sr_od.application.currency_war.cw_node_reader import (
+            load_node_type_templates,
+        )
+        _d = _Path(__file__).resolve().parents[4] / 'assets' / 'game_data' / 'cw_node_types'
+        _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
+    if _BOSS_TEMPLATES is None:
+        from sr_od.application.currency_war.cw_node_reader import (
+            load_boss_templates,
+        )
+        _bd = _Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
+    if not _NODE_TYPE_TEMPLATES:
+        return None
+    # 带:位面详情屏的「区域-节点条」(坐标单一源 yml)
+    _rect = _area_rect(ctx, '区域-节点条', '货币战争-位面详情')
+    if _rect is None:
+        return None
+    _row = screen[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
+    _slots = classify_node_row(_row, _NODE_TYPE_TEMPLATES,
+                               boss_templates=_BOSS_TEMPLATES or None)
+    if len(_slots) < _MIN_CLEAN_CIRCLES:
+        return None
+    return _slots
+
+
 def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 
