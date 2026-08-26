@@ -297,18 +297,22 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     )
     _lay = resolve_back_slots(ctx, screen, level=level)
     back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
-    # 布局停机钩子(ADR-0385 件①,语义自 ADR-0281 续用、输入链改双通道):
-    # 停机条件 = **对账后原始格数(n_raw)无档**——现 6/8 有档,唯 7 格
-    # (公式 diff==1 钻石+1 或 CV 单端扩展)未建档时触发:停机保画面 +
-    # flag 引导现场拖拽采集 7 格真值(采完 upsert 后排7槽-1..7 + 登记
-    # _LAYOUT_PREFIX,永不再停)。「7 格存在性」已由口述公式回答(=钻石+1,
-    # 与等级无关),缺的只是坐标档——旧 lv6 待采留证机器已随 level 驱动
-    # 模型清理(ADR-0385 件②)。真值坐标必须现场交互闭环(拖角色逐位验证),
-    # 离线暗框检测有 grounding 误换算教训。
-    # [ADR-0263 同病核查] 本钩子判据来自 resolve 的数值(不裁备战 rect),
-    # 过渡/动画帧经帧态门(is_prep_like_frame)再排除。
+    # 布局留证采集钩子(ADR-0385 决策 12,W209i 降级:原停机钩子废弃):
+    # 触发 = 对账原始格数 n_raw 无档(=7,公式 diff==1 钻石+1 或 CV 单端
+    # 扩展,W209h 防抖后)→ **obs_conflict 留证 + 去重截图,不停机**。
+    # 降级依据(run 27 停机事故实证):货币战争备战阶段是**实时倒计时**,
+    # 战斗自动开打——停 bot ≠ 停游戏,run 27 hook 停机后画面自行推进到
+    # 首领战败结算(14:09 停 → 14:16 结算,截图 20260826_141613),「停机
+    # 保画面待采集」对实时制游戏是虚假承诺;误停代价(烧一局 + 世界状态
+    # 不可控)>> 7 格采集收益(钻石局可遇不可求)。7 格坐标改由
+    # 「CV 通道持续留证 + 人工在场时经 MCP 交互采集」(钩子只攒证据)。
+    # 帧态门(is_prep_like_frame)保留辖**留证**触发(过渡/动画帧不留证,
+    # 判定素材 = 本函数入参 screen = 当前处理帧,非缓存——run 27 复盘:
+    # 触发帧确为备战态,门本身有效,失效的是「停机能保画面」的假设)。
+    # 帧态门 + obs_conflict 自带 300s 节流;升级路径 = 框架原生 PAUSE
+    # (方案 C,未暴露;真需要现场采集时人工经 MCP 驱动)。
     try:
-        if ctx.run_context is not None and _lay['n_raw'] not in (6, 8):
+        if _lay['n_raw'] not in (6, 8):
             from sr_od.application.currency_war.cw_obs_core import (
                 is_prep_like_frame,
             )
@@ -317,29 +321,19 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                 _log0.info('[cw-hook][layout] 后排 %s 格无档但帧非备战态'
                            '→ 跳过(过渡帧防误触)', _lay['n_raw'])
             else:
-                from pathlib import Path as _P
-
-                from one_dragon.utils.log_utils import log as _log
-                from sr_od.application.currency_war.cw_observe import cw_shot_unique
-                _shot = cw_shot_unique(screen, f'back_layout_{_lay["n_raw"]}slots')
-                if _shot is not None:
-                    _P('.debug/temp/currency_war/back_layout_stop_hook.flag').write_text(
-                        f'后排布局停机钩子(ADR-0385 双通道):对账格数={_lay["n_raw"]}'
-                        f'(公式 {_lay["formula_raw"]}/CV {_lay["cv_n"]};'
-                        f'cap={_lay["cap"]} lv={_lay["level"]} diff={_lay["diff"]})'
-                        f'未建档(现仅 6/8 档)。\n'
-                        f'现场验证流程(参照 8 槽闭环 r76):\n'
-                        f'1. 暗框检测初测槽位 x(空槽矩形 center 序列);\n'
-                        f'2. 关商店 → 拖 bench 角色到各槽逐位识别验证;\n'
-                        f'3. 点 1-2 个占位槽开详情面板锚定(交互实锤);\n'
-                        f'4. upsert_screen_area 后排{_lay["n_raw"]}槽-1..{_lay["n_raw"]}(真值);\n'
-                        f'5. cw_back_layout._LAYOUT_PREFIX 登记 {_lay["n_raw"]} + 删本 flag'
-                        f' + 重启 MCP server。\n'
-                        f'截图: {_shot}', encoding='utf-8')
-                    _log.info('[cw-hook][layout] 后排 %s 格无档(公式 %s/cv %s)'
-                              '→ 停机现场拖拽验证(截图 %s)',
-                              _lay['n_raw'], _lay['formula_raw'], _lay['cv_n'], _shot)
-                    ctx.run_context.stop_running(reason='hook:back_layout_no_profile')
+                from sr_od.application.currency_war.cw_observe import obs_conflict
+                obs_conflict(
+                    'back_7slots_collect', 7, _lay['cv_n'], screen,
+                    verdict=('留证采集-7 格档未建档(W209i 降级不停机:实时制'
+                             '游戏停 bot 不停游戏,run 27 停机画面自行推进到'
+                             '结算实证);本行含去重截图,坐标采集需人工在场'
+                             '经 MCP 交互(拖角色逐位实锤),画面可能已推进'
+                             '——以截图为准;流程:暗框初测槽位 x → 拖角色'
+                             '逐位验证 → upsert 后排7槽-1..7 → _LAYOUT_PREFIX'
+                             ' 登记 7 → 本留证自然停发'),
+                    source='read_deployed_chars', cap=_lay['cap'],
+                    level=_lay['level'], formula=_lay['formula_raw'],
+                    cv_readings=_lay.get('cv_readings'))
     except Exception:   # noqa: BLE001  钩子 best-effort,绝不阻塞身份读取
         pass
     front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front')
