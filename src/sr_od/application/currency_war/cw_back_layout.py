@@ -6,7 +6,7 @@
 - **后台格数 = 6 + (cap − level)**(口述公式):钻石/召唤物使 cap 超过 level,
   差值即后台扩展量——diff 0 → 6 格基线;diff ≥2 → 8 格(393-1529 带,狸猫局
   交互实拍,screen_info ``后排8槽-1..8``);diff==1(钻石+1)→ 7 格**档未建档**,
-  保守退 8 格超集 + 留证(见 :func:`note_7slots_pending`)。
+  保守退 8 格超集运行 + 停机钩子引导采集(见下条4与 ADR-0385 件①)。
 
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
 
@@ -20,8 +20,12 @@
    ``obs_conflict('back_layout_channel_conflict')`` 留证(带两值,便于判读);
    CV 不可判(帧越界/锚缺失,如 overlay 遮挡/非备战帧)→ 退公式值
    (公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
-4. 7 格档未建档 → 8 格超集(读全扩展带;拖到不存在格被游戏拒 = 廉价失败
-   方向)+ :func:`note_7slots_pending` 采集留证。
+4. 7 格档未建档 → 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
+   失败方向)+ **停机钩子**(``cw_identity_obs.read_deployed_chars``,
+   :func:`resolve_back_slots` 的 ``n_raw`` 无档时停机+flag 引导现场采集
+   7 格真值;ADR-0385 件①,「7 格存在性」已由公式回答=钻石+1,缺的只是
+   坐标档,由钩子管)。旧「lv6=7 格待采」留证机器(note_pending_7slots/
+   _PENDING_7SLOT_LEVELS)随 level 驱动模型作废清理(ADR-0385 件②)。
 
 旧 level 驱动模型(ADR-0281「level≥7→8 格」)**归因错误**(其实证局狸猫局
 本身带召唤物=cap 差,不是 level),本模块勘误;level 只进 cap 板满门,
@@ -40,8 +44,7 @@ from one_dragon.base.geometry.rectangle import Rect
 
 #: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」)。
 #: ⚠️ 9/10/11 档是循环论证幻影(ADR-0281),已删;7 格待交互实锤后补档
-#: (upsert 后排7槽-1..7 + 此处登记,届时 :func:`note_7slots_pending`
-#: 自然不再触发)。
+#: (upsert 后排7槽-1..7 + 此处登记,届时停机钩子自然不再触发)。
 _LAYOUT_PREFIX: dict[int, str] = {
     6: '后排',
     8: '后排8槽',
@@ -56,8 +59,7 @@ _CAP_DIFF_MAX: int = 2
 #: 后排 y 带(所有布局共用;槽 rect 高约 600-739)
 _BACK_Y1, _BACK_Y2 = 600, 739
 
-# 7 格留证/双通道冲突节流(300s/源)与选档日志去重(值不变不重复打)
-_pending_note_ts: dict[str, float] = {}
+# 双通道冲突节流(300s/源)与选档日志去重(值不变不重复打)
 _channel_conflict_ts: dict[str, float] = {}
 _last_sel_log: tuple | None = None
 
@@ -138,30 +140,13 @@ def back_slots_from_cap_diff(diff: int) -> int:
     return 8   # 7 格档未建档 → 8 格超集(见模块 docstring;留证在调用侧)
 
 
-def note_7slots_pending(screen, cap, level, source: str) -> None:
-    """7 格档未建档(公式 diff==1 或 CV 单端扩展)→ obs_conflict 留证
-    (节流 300s/源;保守按 8 格超集跑,ADR-0385)。
-
-    采集指引:钻石局(cap=level+1,无召唤物)截备战帧 → 交互实锤 7 格槽位 x →
-    upsert_screen_area 后排7槽-1..7 → ``_LAYOUT_PREFIX`` 登记 7 → 本函数自然
-    不再触发。best-effort 不抛。
-    """
-    import time as _time
-    try:
-        now = _time.monotonic()
-        if now - _pending_note_ts.get(source, -1e9) < 300.0:
-            return
-        _pending_note_ts[source] = now
-        from sr_od.application.currency_war.cw_observe import obs_conflict
-        obs_conflict(
-            'back_7slots_pending', 7, 8, screen,
-            verdict=('留证-钻石+1 局(cap=level+1)后台应为 7 格,档未建档'
-                     '(保守按 8 格超集跑,ADR-0385;处理:该类局截备战帧,'
-                     '暗框检测 7 格槽位 x → 拖角色逐位交互实锤 → '
-                     'upsert 后排7槽-1..7 → _LAYOUT_PREFIX 登记 7)'),
-            source=source, cap=cap, level=level)
-    except Exception:   # noqa: BLE001
-        pass
+#: **公式-历史实证张力(ADR-0385 件3,待召唤物局数据解)**:唯一历史 8 格
+#: 实证(狸猫局 lv7 cap8/9 两帧同为 8 格)与公式 6+(8−7)=7 冲突。候选解释:
+#: ①召唤物加格不加 cap(公式需补召唤物项)/②当年 cap 读数有误/③召唤物局
+#: 两帧实为 cap9。批内不硬解:双通道对账天然覆盖(CV 为真值,公式不符 →
+#: ``back_layout_channel_conflict`` 留证);run 27+ 锚点「钻石/召唤物局记录
+#: cap/level/CV 格数三点对」攒数据后定公式是否需修正项。
+FORMULA_SUMMON_TENSION_NOTED: bool = True
 
 
 def note_channel_conflict(screen, formula_n: int, cv_n: int,
@@ -194,14 +179,25 @@ def select_back_layout(ctx, screen, level: int | None = None,
                        cap: int | None = None) -> tuple[int, str]:
     """布局选档单一入口(ADR-0385 双通道对账)→ ``(槽数, 布局前缀)``。
 
-    通道①公式:cap 未传 → ``read_deploy_cap``(paddle 直读权威)现读;
-    level 未传 → session 等级链(单调链防毒化);任一读不到 → diff 按 0。
-    通道②CV:``cv_back_slots(screen)`` 实测(锚缺失/越界 → None 退公式)。
-    对账:一致 → 公式值;不一致 → **CV 值** + :func:`note_channel_conflict`
-    留证(带两值);公式值 7(未建档)→ 8 格超集 + :func:`note_7slots_pending`。
+    委托 :func:`resolve_back_slots`(详见其对账语义与各返回字段);
+    消费方只需格数+前缀。停机钩子/留证消费 raw 字段请直调后者。
+    """
+    r = resolve_back_slots(ctx, screen, level=level, cap=cap)
+    return r['n'], r['prefix']
 
-    交叉验证:``check_system_unit_layout``(系统单位恒最右)在读板路径常设对账
-    (公式选档与画面不符时留 layout_mismatch 证据,公式误读的兜底网)。
+
+def resolve_back_slots(ctx, screen, level: int | None = None,
+                       cap: int | None = None) -> dict:
+    """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
+
+    - ``formula_raw``/``formula_n``:公式原始格数/映射后格数(7→8 超集);
+    - ``cv_n``:CV 实测格数(None=不可判);
+    - ``n_raw``:对账后原始格数(不一致采 CV;公式值 7 保留 7 供钩子判档);
+    - ``n``/``prefix``:运行值(未建档档 7 → 8 格超集);
+    - ``cap``/``level``/``diff``:读数快照(判读/留证)。
+
+    对账:一致 → 公式值;CV 实测存在且不符 → **CV 值**(画面事实>推导)+
+    :func:`note_channel_conflict` 留证两值;CV None → 公式值兜底。
     """
     try:
         if level is None or level <= 0:
@@ -214,8 +210,8 @@ def select_back_layout(ctx, screen, level: int | None = None,
         cap, level = None, None
     diff = (cap - level) if (cap is not None and level) else 0
     d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
-    raw_formula = _BACK_SLOTS_BASE + d          # 未映射真值(7 = 未建档档)
-    formula_n = back_slots_from_cap_diff(diff)  # 映射后(7 → 8 格超集)
+    formula_raw = _BACK_SLOTS_BASE + d            # 未映射真值(7 = 未建档档)
+    formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
     if cv_n is not None and cv_n != formula_n:
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
@@ -223,9 +219,7 @@ def select_back_layout(ctx, screen, level: int | None = None,
                               'select_back_layout')
         n_raw = cv_n
     else:
-        n_raw = raw_formula
-    if n_raw == 7:
-        note_7slots_pending(screen, cap, level, 'select_back_layout')
+        n_raw = formula_raw
     n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 7 → 8 格超集(模块 docstring)
     p = _layout_prefixes().get(n, _LAYOUT_PREFIX[_BACK_SLOTS_BASE])
     try:
@@ -239,7 +233,9 @@ def select_back_layout(ctx, screen, level: int | None = None,
                      n, formula_n, cv_n, cap, level, diff)
     except Exception:   # noqa: BLE001
         pass
-    return n, p
+    return {'formula_raw': formula_raw, 'formula_n': formula_n, 'cv_n': cv_n,
+            'n_raw': n_raw, 'n': n, 'prefix': p, 'cap': cap, 'level': level,
+            'diff': diff}
 
 
 def back_row_slot_rects_ctx(ctx, prefix: str) -> list[tuple[int, Rect]]:
