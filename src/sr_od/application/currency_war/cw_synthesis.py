@@ -27,10 +27,13 @@
 equipment.md 归「进阶」类别(故 ``cw_equipment.EQUIPMENTS['以太钻头'].category == '进阶'``)。
 本图谱按图鉴事实将其作基础件处理,与另 6 件简易并列。
 
-**光能电池(孤立节点,暂不入图)**:图鉴把它列在简易 tab,但其 7 件进阶(电光履/战场进化
-手册/蓄能帆/冷笑话引擎/绝对热量/光能盾牌/行星钻地弹)只出现在它自家合成列表里,与 7 件
-标准基础件 0 交叉 → 合成机理与标准 K7 不同(非两两配对)。视觉大模型读图标配对不可靠
-,**待游戏内人工核实机理**后另建;现列入 ``GUANGNENG_ONLY`` 标注。
+**光能电池系配方(官方 API 补齐,2026-08-26)**:光能电池=**第 8 件基础件**,与 7 件
+标准件各交叉一件 + 自配一件(永动机)——8 基础件 × K8 闭合:C(8,2)=28 交叉 + 8 自配
+= 36 件进阶**全量**。来源=官方活动页 API(``tools/cw/plaza_fetch.py`` config 子命令,
+equipment_list[].compose_list.childrens);旧 OCR 提取(「恰好 2 家列表交集」判据)对此
+系失明的根因=图鉴 UI 每件标准件合成列表恰 7 项被 K7 占满,光能电池交叉件在标准件侧
+显示不出来。**装备数据首选采集通道=官方 API**(id/icon/配方/属性全量结构化,版本更新
+重拉即可);游戏内图鉴采集降级为离线校验 fallback。
 
 **用途**:ComposeEquip 自动合成(后续 op)/ 评估阵容成型时算合成可达性。
 """
@@ -83,11 +86,22 @@ SELF_RECIPES: dict[str, str] = {
     "很硬的甲": "量产型装甲",
 }
 
-# 光能电池(孤立节点,机理待游戏内核实;见模块 docstring)。
-GUANGNENG_ONLY: list[str] = [
-    "电光履", "战场进化手册", "蓄能帆", "冷笑话引擎",
-    "绝对热量", "光能盾牌", "行星钻地弹",
-]
+# 光能电池系配方(官方 API config equipment_list.compose_list,2026-08-26 补齐;
+# V4.4 快照 .debug/temp/currency_war/plaza/config_v4.4.json,tools/cw/plaza_fetch.py 可重拉)。
+# 光能电池=第 8 件基础件:与 7 件标准件各交叉一件 + 自配一件(永动机)——
+# 8 基础件 × K8 闭合:C(8,2)=28 交叉 + 8 自配 = 36 件进阶全量。
+GUANGNENG_CROSS_RECIPES: dict[str, tuple[str, str]] = {
+    "行星钻地弹": ("光能电池", "以太钻头"),
+    "蓄能帆": ("光能电池", "和平手枪"),
+    "冷笑话引擎": ("光能电池", "幸运星"),
+    "战场进化手册": ("光能电池", "折叠小刀"),
+    "绝对热量": ("光能电池", "生命之花"),   # run 26 实锤互证(卡芙卡穿着合成)
+    "电光履": ("光能电池", "轮滑鞋"),
+    "光能盾牌": ("光能电池", "量产型装甲"),
+}
+GUANGNENG_SELF_RECIPES: dict[str, str] = {
+    "永动机": "光能电池",   # 光能电池×2(旧提取漏网件——自配且不在 GUANGNENG_ONLY 旧清单)
+}
 
 # 合成保留组件集(ADR-0265;用户口述 [29]「定阵容前不浪费装备合成/穿着」):
 # SYNTHESIS_BASES ∪ {光能电池}。P1(plane==1)阶段这些组件**不入穿戴池**
@@ -98,30 +112,40 @@ RESERVED_COMPONENTS: frozenset[str] = frozenset(
 
 
 def cross_components(advance: str) -> tuple[str, str] | None:
-    """交叉配方进阶的两件基础件组件;非交叉进阶或未知 → None。"""
-    return CROSS_RECIPES.get(advance)
+    """交叉配方进阶的两件基础件组件;非交叉进阶或未知 → None。
+
+    覆盖标准 K7 与光能电池系(官方 API 补齐,2026-08-26)。
+    """
+    return CROSS_RECIPES.get(advance) or GUANGNENG_CROSS_RECIPES.get(advance)
 
 
 def self_base(advance: str) -> str | None:
-    """自配进阶的基础件(×2 即得);非自配 → None。"""
-    return SELF_RECIPES.get(advance)
+    """自配进阶的基础件(×2 即得);非自配 → None。
+
+    覆盖标准 7 件自配与永动机(光能电池×2,官方 API)。
+    """
+    return SELF_RECIPES.get(advance) or GUANGNENG_SELF_RECIPES.get(advance)
 
 
 def synthesize_target(a: str, b: str) -> str | None:
     """给定两件基础件,返回能合成的交叉进阶;无交叉配方 → None。
 
-    不含自配(自配 a==b,见 ``self_advance``)。
+    不含自配(自配 a==b,见 ``self_advance``)。覆盖标准+光能电池系。
     """
     pair = {a, b}
-    for adv, (x, y) in CROSS_RECIPES.items():
+    for adv, (x, y) in {**CROSS_RECIPES, **GUANGNENG_CROSS_RECIPES}.items():
         if {x, y} == pair:
             return adv
     return None
 
 
 def self_advance(base: str) -> str | None:
-    """基础件 ×2 合成的进阶(其「进阶版」);无 → None。"""
-    for adv, b in SELF_RECIPES.items():
+    """基础件 ×2 合成的进阶(其「进阶版」);无 → None。
+
+    覆盖标准 7 件与光能电池(→永动机)。
+    """
+    merged = {**SELF_RECIPES, **GUANGNENG_SELF_RECIPES}
+    for adv, b in merged.items():
         if b == base:
             return adv
     return None
