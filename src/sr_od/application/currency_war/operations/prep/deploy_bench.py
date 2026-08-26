@@ -437,7 +437,15 @@ class DeployBench(SrOperation):
             return
         scr = self.last_screenshot
         front_eq = read_row_equipped(self.ctx, scr, equip_grays, '前排', 4)
-        back_eq = read_row_equipped(self.ctx, scr, equip_grays, '后排', 6)
+        # W209b 补漏(编排者验收发现):装备快照原固定「后排」6 格,从不随布局
+        # 选档——真 8 格局(召唤物)漏读扩展带 7/8 且槽位错位一格(c.slot 来自
+        # 8 档编号 vs 「后排」rect = 8 档 2-7 位)→ equips 挂错人。改同源
+        # select_back_layout(双通道,ADR-0385)。
+        from sr_od.application.currency_war.cw_back_layout import (
+            select_back_layout as _sel_bl,
+        )
+        _bk_n, _bk_pfx = _sel_bl(self.ctx, scr, level=self._session_level())
+        back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
         tracked = _match.session.tracked_deployed
         _n = 0
         for c in tracked:
