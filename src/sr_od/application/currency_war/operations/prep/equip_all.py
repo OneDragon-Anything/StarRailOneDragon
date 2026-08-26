@@ -347,10 +347,17 @@ class EquipAll(SrOperation):
             log.info('[cw-equip] 过渡期持有(opening=%s form=%.2f):非 key_equips 不穿(攒给成型核心)',
                      _opening_round, _form)
         if deployed:
+            # W209g 断点③:后排装备读槽随布局选档(旧硬编码 10 与布局档自相
+            # 矛盾——deploy 拖 8 格坐标、装备读固定槽;select_back_layout
+            # 双通道单一源,ADR-0385/0387)。
+            from sr_od.application.currency_war.cw_back_layout import (
+                select_back_layout as _sel_bl,
+            )
+            _bk_n, _bk_pfx = _sel_bl(self.ctx, screen)
+            _row_specs = (('front', '前排', 4), ('back', _bk_pfx, _bk_n))
             occupied_m7: dict[tuple[str, int], list[str]] = {}
-            for row, prefix in (('front', '前排'), ('back', '后排')):
-                row_occ = read_row_equipped(self.ctx, screen, tmpl_grays, prefix,
-                                            4 if row == 'front' else 10)
+            for row, prefix, n in _row_specs:
+                row_occ = read_row_equipped(self.ctx, screen, tmpl_grays, prefix, n)
                 for k, v in row_occ.items():
                     occupied_m7[(row, k)] = list(v)
             deployed_by_name: dict[str, list] = {}
@@ -380,9 +387,8 @@ class EquipAll(SrOperation):
                     log.info('[cw-equip] C6 转移落(%s→%s,diff=%.1f);重读占用', tname, cc_name, diff)
                     _cur = self.screenshot()
                     occupied_m7 = {}
-                    for row, prefix in (('front', '前排'), ('back', '后排')):
-                        row_occ = read_row_equipped(self.ctx, _cur, tmpl_grays, prefix,
-                                                    4 if row == 'front' else 10)
+                    for row, prefix, n in _row_specs:   # W209g 断点③:随布局选档
+                        row_occ = read_row_equipped(self.ctx, _cur, tmpl_grays, prefix, n)
                         for k, v in row_occ.items():
                             occupied_m7[(row, k)] = list(v)
                 else:
@@ -399,11 +405,13 @@ class EquipAll(SrOperation):
                 wearable = [(n, p) for n, p, _ in hits
                             if EQUIPMENTS.get(n) is not None
                             and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
-                # ADR-0358(W92 修法 A)搬运链写端:owned 穿戴池快照进 session,
+                # ADR-0358(W92 修法 A)搬运链写端:owned 持有面快照进 session,
                 # 供 _pseudo_state 拷入决策 state.equips(持有面遥测/特征可见)。
                 # 每次现读都覆写(穿戴后 owned 减少,末次读=最新持有面)。
+                # W209g 断点②(ADR-0387 追加):写端**全量 hits**(工具进快照,
+                # 采集层无权丢数据);过滤只辖 wearable 穿戴决策。
                 if _match is not None and _match.session is not None:
-                    _match.session.last_owned_equips = [n for n, _ in wearable]
+                    _match.session.last_owned_equips = [n for n, _, _ in hits]
                 if not wearable:
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     break
@@ -484,11 +492,15 @@ class EquipAll(SrOperation):
                 log.warning('[cw-equip] read_equips 命中但不在 EQUIPMENTS registry(名对齐缺失?R18 P1): %s',
                             sorted(set(unknown)))
             # 过滤工具类(拆装扳手/冶金炉等非 drag 穿,D-32 拆/转化副作用)
+            # ⚠️ 过滤只辖**穿戴决策**(wearable);采集写端(W209g 断点②,
+            # ADR-0387 追加)**全量**进 last_owned_equips——旧版把过滤后列表
+            # 写快照,冶金炉/扳手从不进决策快照(owned 恒空实证,run 26 两件
+            # 工具躺着无人知)。采集层无权丢数据,消费侧各自过滤。
             wearable = [(n, p) for n, p, _ in hits
                         if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
             # ADR-0358(W92 修法 A)搬运链写端(旧 front-only 路径同链)
             if _match is not None and _match.session is not None:
-                _match.session.last_owned_equips = [n for n, _ in wearable]
+                _match.session.last_owned_equips = [n for n, _, _ in hits]
             if not wearable:
                 log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                 break

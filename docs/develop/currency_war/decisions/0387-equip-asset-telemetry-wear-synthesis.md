@@ -42,6 +42,29 @@
    分配器对非自有装备无管辖权(不可脱),记观察(run 27+ 判读时注意:
    自带装备的错排不是 M7 的回归)。
 
+### 追加(W209g,编排者三断点定位——用户追问「装备采集代码怎么会没采集到」)
+
+4. **断点①对账纠漂清零装备字段(主通道,实装)**:`cw_reconcile.reconcile_
+   tracking` 原整批替换(`session.tracked_deployed = list(deployed)`),新读
+   对象 equips=[] 默认 → `_snapshot_equips_into_tracking` 写入的装备在下次
+   对账即被冲(run 26 布局错乱→纠漂狂刷→反复清零;decisions.jsonl 希儿装备
+   闪烁实证:round6 三条快照仅一条有装备)。修 = `_merge_equips` **合并
+   语义**:按 char_id 把旧 tracking 的 equips 续接到新读对象(同名多副本
+   逐个配对消耗);新读自带非空 equips(画面真值)优先;离场自然丢弃。
+5. **断点②工具在采集层被过滤(实装)**:`equip_all` 两处写端
+   (M7 主循环 L412 / 旧 front-only 路径 L491)原把 `_TOOL_CATEGORIES`
+   过滤后的 wearable 写 `last_owned_equips` → 冶金炉/扳手从不进决策快照
+   (owned 恒空实证)。修 = 写端**全量 hits**(工具进快照;采集层无权丢
+   数据),过滤只留穿戴决策层(wearable 不变)。消费端 default_strategy
+   拷入 state.equips 仅遥测/特征可见,含工具无决策副作用。
+6. **断点③装备读槽硬编码(实装)**:`equip_all` M7/C6 转移重读原硬编码
+   `'后排', 10`(deploy_bench 侧已由 W209c 修)——与布局档自相矛盾
+   (deploy 拖 8 格坐标、装备读固定槽)。修 = `_row_specs` 接
+   `select_back_layout` 双通道单一源(ADR-0385)。
+   三断点同属**遥测完整性修法域**(非策略设计):①修「采集到的数据被
+   自己冲掉」、②修「采集层丢数据」、③修「读面与布局失配」——装备使用
+   策略本体(件5 工具策略等)仍归独立策略设计件,不因数据通了就扩辖。
+
 ## Considered Options
 
 - **A.(件②)对账告警降级为「已知形态」忽略(不判图谱)**:拒绝——无图谱
@@ -59,10 +82,15 @@
 
 - `cw_bench_equips.py`:wear_synthesis_equivalent + assert_equips_consistency
   等价豁免;
+- `cw_reconcile.py`:_merge_equips 合并语义(断点①);
 - `operations/prep/deploy_bench.py`:_sell_offtarget_deployed 装备去向
   `[cw!]` 留痕;
+- `operations/prep/equip_all.py`:两处写端全量 hits(断点②)+ M7/C6 读槽
+  随布局选档(断点③);
 - 测试:test_cw_w209_wear_synthesis(实锤两配方锚/闭包链/不豁免反向与
-  无配方/assert 豁免+真漂移照 raise);
+  无配方/assert 豁免+真漂移照 raise)+ test_cw_w209_equip_telemetry
+  (对账保留 equips/画面真值优先/同名配对与离场/采集全量写/读槽随布局
+  两处源码锁);
 - 遥测判读:run 26 的 EquipsInconsistencyError(风堇/卡芙卡)= 已知形态
   (穿着合成),历史行按本 ADR 重解读;owned 装备数在 off-target 卖出后的
   骤降看 `[cw!] off-target 卖出携带装备` 行溯源;

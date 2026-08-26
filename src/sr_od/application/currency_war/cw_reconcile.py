@@ -9,6 +9,34 @@ from __future__ import annotations
 from one_dragon.utils.log_utils import log
 
 
+def _merge_equips(old_list, new_list) -> list:
+    """对账合并语义(W209g 断点①修法,ADR-0387 追加):char_id 续接保留 equips。
+
+    断点(run 26 实锤):旧版 ``session.tracked_deployed = list(deployed)``
+    整批替换,新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
+    tracking`` 写入的装备在下次对账即被冲(run 26 布局错乱→纠漂狂刷→反复
+    清零,decisions.jsonl 希儿装备闪烁实证:round6 三条快照仅一条有装备)。
+
+    修法:按 char_id 把**旧 tracking 的 equips 续接到新读对象**(同名多副本
+    逐个配对消耗,次序无关);新读自带的非空 equips(画面真值,如 deploy_bench
+    快照后传参)优先保留不覆盖;旧有新无(角色离场)自然丢弃。
+    """
+    old_eq: dict[str, list[list[str]]] = {}
+    for bc in (old_list or []):
+        if bc is not None and bc.char_id:
+            old_eq.setdefault(bc.char_id, []).append(
+                list(getattr(bc, 'equips', None) or []))
+    out = []
+    for bc in (new_list or []):
+        if bc is not None and getattr(bc, 'char_id', ''):
+            if not getattr(bc, 'equips', None):
+                pools = old_eq.get(bc.char_id)
+                if pools:
+                    bc.equips = pools.pop(0)   # 同名逐个配对消耗
+        out.append(bc)
+    return out
+
+
 def reconcile_tracking(session, bench, deployed, screen=None, *,
                        source: str = 'reconcile', ctx=None) -> bool:
     """tracking 对账统一入口:新 SIFT 读 vs 旧 session tracking,守卫后写回。
@@ -133,9 +161,9 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
-        session.tracked_bench_chars = list(bench)
+        session.tracked_bench_chars = _merge_equips(session.tracked_bench_chars, bench)
     if deployed is not None:
-        session.tracked_deployed = list(deployed)
+        session.tracked_deployed = _merge_equips(session.tracked_deployed, deployed)
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')
