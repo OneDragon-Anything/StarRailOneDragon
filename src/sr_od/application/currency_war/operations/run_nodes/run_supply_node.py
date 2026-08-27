@@ -36,9 +36,9 @@ class RunSupplyNode(RunNode):
 
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
     (char/equip/has_diamond/refreshed + 实际识别选项清单),供 overlay 消失后
-    battle_loop 合成 supply 遥测行消费(W306;synthetic_supply 合成行)。
+    battle_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
 
-    **主流程 = 采集 detour 完整循环(W311 复实现,坐标 2026-08-27 编排者 live 实测)**:
+    **主流程 = 采集 detour 完整循环(坐标 2026-08-27 实机冻结画面实测)**:
     识别补给画面(_in_node 前置门)→ 点「返回备战界面」(货币战争-补给/
     按钮-返回备战界面,实测有效)→ 备战画面等待快照管线采集(1-2 帧;显式
     phase='supply_detour'+actions=[] 非购买轮语义)→ 点「按钮-返回补给阶段」
@@ -54,7 +54,7 @@ class RunSupplyNode(RunNode):
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
     # 刷新按钮(图标式,VLM 判定 + refresh_ui_samples.jsonl 多局稳定坐标;2026-08-17)
     REFRESH_BTN: ClassVar[Point] = Point(974, 854)
-    # detour 实测时序(2026-08-27 编排者 live 冻结画面验证):回备战过渡 ~2.5s、
+    # detour 实测时序(2026-08-27 实机冻结画面验证):回备战过渡 ~2.5s、
     # 重进 overlay 过渡 ~2s;重进重试上限(area 版),area×3 全 miss 再 OCR 文本
     # 兜一枪(全败=本轮零选择动作交下轮重试整个 detour,标记仅成功后落——
     # 防带病降级成假完成)
@@ -88,14 +88,14 @@ class RunSupplyNode(RunNode):
             self._detour_done = True
 
     def _supply_detour_collect(self, match) -> bool:
-        """补给备战状态采集 detour(主流程第一步,W311):回备战 → 采集快照 → 重进 overlay。
+        """补给备战状态采集 detour(主流程第一步):回备战 → 采集快照 → 重进 overlay。
 
         标记仅在**成功重进**后落(_mark_supply_detour):失败不落,下轮重试
         整个 detour——宁可见节点预算烧尽 FAIL bail,不带病把备战屏当补给屏
         继续跑(假完成会让外环误派购买管线 = 采集轮变购买轮)。
         """
         # ① 返回备战界面(area 已建 + 实测有效:currency_war_supply 按钮-返回备战界面,
-        #    2026-08-27 编排者 live 验证 → 备战画面出现;过渡 ~2.5s)
+        #    2026-08-27 实机验证 → 备战画面出现;过渡 ~2.5s)
         rs = self.round_by_find_and_click_area(
             self.screenshot(), '货币战争-补给', '按钮-返回备战界面', success_wait=1.5)
         if rs is None or not rs.is_success:
@@ -145,7 +145,7 @@ class RunSupplyNode(RunNode):
         # target_comp.key_equips 契合 + 装备通用价值选(替代盲点 CARD_BODY)。钻识别双通道
         # ✅(SIFT 主+文本兜底,cw_node_obs);刷新按钮 @≈(974,854),无钻+未刷 → 点刷新重掷。
         match = self.ctx.cw_match
-        # W311 主流程:首次进入先做备战状态采集 detour(detour 后用新帧读选项;
+        # 主流程:首次进入先做备战状态采集 detour(detour 后用新帧读选项;
         # 未成功重进 → 本轮不做任何选择动作,防在备战屏盲点卡身/误触发购买语义)
         if self._should_supply_detour(match):
             if not self._supply_detour_collect(match):
@@ -173,9 +173,9 @@ class RunSupplyNode(RunNode):
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
-                # W306:选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
+                # 选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
                 # 是否已用),供 overlay 消失后 battle_loop 合成 supply 行消费。
-                # W306c:附**实际识别到的选项清单**(动态列数,不假定结构)——
+                # 附**实际识别到的选项清单**(动态列数,不假定结构)——
                 # 合成行与逐列内容对拍/漏读审计数据源。
                 _opt = opts[pick.idx][0]
                 set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,

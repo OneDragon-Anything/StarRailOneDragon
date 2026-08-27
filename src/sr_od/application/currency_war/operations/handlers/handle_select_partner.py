@@ -135,7 +135,7 @@ class HandleSelectPartner(SrOperation):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
-            # W312(遥测审计 G1):伙伴候选面+选择落账本(此前只有结果回写
+            # 遥测:伙伴候选面+选择落账本(此前只有结果回写
             # session.chosen_partner,候选与依据只 log)。
             record_event_choice('partner',
                                 [{'char_id': o.char_id} for o in options],

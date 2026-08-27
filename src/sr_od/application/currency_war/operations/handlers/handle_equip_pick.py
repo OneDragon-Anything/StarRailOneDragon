@@ -79,7 +79,7 @@ class HandleEquipPick(SrOperation):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw-equip-pick] 装备选择:卡=%s → 选卡%d(%s)',
                  [t[:10] for t in texts], best_i + 1, texts[best_i][:16] or 'OCR空')
-        # W312(遥测审计 G1):三选一卡名+选择落账本(此前只 log)。
+        # 遥测:三选一卡名+选择落账本(此前只 log)。
         record_event_choice('equip_pick', texts, best_i,
                             reason=f'key_equips/text_rule(best_score={best_s})')
         self.ctx.controller.mouse_move(target)

@@ -80,7 +80,7 @@ class HandlePlannerEvent(SrOperation):
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
-        # W312(遥测审计 G1):左右卡 OCR 文本+选择落账本(升费机会只有一次,
+        # 遥测:左右卡 OCR 文本+选择落账本(升费机会只有一次,
         # 选错代价复盘依赖此行;此前只 log)。
         record_event_choice('planner_event',
                             [{'text': o.text} for o in options],

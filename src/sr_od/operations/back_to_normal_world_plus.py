@@ -155,7 +155,7 @@ class BackToNormalWorldPlus(SrOperation):
         if result.is_success:
             return self.round_wait(result.status, wait=2)
 
-        # 货币战争-大厅(2026-08-27 run 46 事故根修,W286):全屏 UI 叠在大世界场景上,
+        # 货币战争-大厅(2026-08-27 run 46 事故根修):全屏 UI 叠在大世界场景上,
         # 前序分支全不命中,守卫的 INTERACT_RECT 恰罩住大厅右面板静态文字(数据银行/
         # 预期收益等)→ 曾被误判为对话态死循环。id_mark 精确命中即正面识别本画面 →
         # 点右上角关闭 X 返回大世界。
@@ -165,26 +165,26 @@ class BackToNormalWorldPlus(SrOperation):
         # 实证与真帧锁见 docs/game/screens/currency_war_lobby.md「残留态」备注与
         # 测试仓 test_back_to_normal_world_plus 的 CW 大厅残留态真帧测试。
         # 实证退出链(2026-08-27 实机):大厅 → 点关闭 X →「大世界-普通」(多数路径
-        # 一步直达);编排者 live 实证亦见中间态:误触 X 邻点(裸坐标 1857,63,与攻略
+        # 一步直达);实机验证亦见中间态:误触 X 邻点(裸坐标 1857,63,与攻略
         # 入口热区相邻)会打开「角色攻略详情」页,点该页右上同款 X 才回大世界——
         # 故本分支必须走模板 area 点击(拒绝裸坐标)且用逐帧重识别的 retry 结构,
         # 多跳中间态天然容忍(每轮重新识别当前画面)。
         # 项目规则:操作禁用 ESC,返回/关闭一律点坐标(本分支走 screen_info area)。
         # 用 round_retry 而非 round_wait:点击可能不落地,WAIT 不消耗 retry 会死循环
-        # (同本节点兜底分支 W0824 判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
+        # (同本节点兜底分支既有判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
         result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
         if result.is_success:
             self.round_by_find_and_click_area(screen, '货币战争-大厅', '按钮-关闭')
             return self.round_retry('货币战争-大厅', wait=2)
 
-        # 无名勋礼购买推广页 / 等级加速弹窗 / 主面板(W293,2026-08-27):
+        # 无名勋礼购买推广页 / 等级加速弹窗 / 主面板(2026-08-27):
         # 版本更新(2026-08-26 周期)后周期内第一次进无名勋礼,先落在整屏「购买推广页」
         # (用户口述裁决:点「开启无名勋礼」是查看/继续语义,**不会付费**)。实证退出链
-        # (编排者 2026-08-27 live 四步全走通):
+        # (2026-08-27 实机四步全走通):
         #   推广页 → 点「开启无名勋礼」→「无名勋礼等级加速」说明弹窗(点弹窗内
         #   「点击空白处关闭」提示位关闭;点弹窗外无效)→ 无名勋礼主面板 → 点右上角
         #   「按钮-关闭」→ 菜单页(既有「菜单」分支接管:开拓等级→右上角返回→大世界)。
-        # 与 W286 大厅分支同构:id_mark 精确命中即正面识别 → area 点击 + round_retry
+        # 与上方货币战争-大厅分支同构:id_mark 精确命中即正面识别 → area 点击 + round_retry
         # 逐帧重识别(点击可能不落地,WAIT 不消耗 retry 会死循环);中间态(弹窗/主面板)
         # 靠逐帧重识别天然容忍,无需跨轮状态。项目规则:操作禁用 ESC,关闭一律点
         # screen_info area。
@@ -203,12 +203,12 @@ class BackToNormalWorldPlus(SrOperation):
             self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-关闭')
             return self.round_retry('无名勋礼', wait=2)
 
-        # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本,W301):游戏级版本公告弹窗,
-        # 待机自动弹出、盖在任意画面上(非任何 app 触发)。实证结构(编排者
-        # 2026-08-27 live 走通 + fixture 已存):两页轮播,第 1 页无任何出口(只有
+        # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本):游戏级版本公告弹窗,
+        # 待机自动弹出、盖在任意画面上(非任何 app 触发)。实证结构(2026-08-27
+        # 实机走通 + fixture 已存):两页轮播,第 1 页无任何出口(只有
         # 右箭头翻页);第 2 页底部中央出「关闭」钮 → 点关闭露出底下原画面。
         # 实锤后果:无此分支时 CW 独立 app 首跑 52s 失败(兜底空转耗尽)。
-        # 与 W286/W293 同构:标题 id_mark(两页共享)正面识别本屏 → 子态区分 =
+        # 与上述大厅/无名勋礼分支同构:标题 id_mark(两页共享)正面识别本屏 → 子态区分 =
         # 「按钮-关闭」可见与否(第 2 页独有):可见点关闭,否则点右箭头翻页 →
         # round_retry 逐帧重识别(点击可能不落地,RETRY 计入 node_max_retry_times
         # 有界 FAIL,拒 WAIT 永动;多跳中间态靠逐帧重识别天然容忍)。项目规则:
@@ -251,7 +251,7 @@ class BackToNormalWorldPlus(SrOperation):
         1. 告别类选项可见（高阈值 LCS）→ 点它退出对话（对完后续帧由「角色图标」分支接管）；
         2. 交互区无告别词 → 返回 None 落回原兜底。
 
-        状态门加严(W286,2026-08-27):「交互区有字」是弱证据不再单独构成对话态——
+        状态门加严(2026-08-27):「交互区有字」是弱证据不再单独构成对话态——
         该区域是普通画面右侧面板文字的常落区,曾把货币战争-大厅静态面板文字误判成
         「未知对话选项」→ 点空白推进(选项态下推进无效)→ round_retry 永动(run 46
         卡 8+ 分钟实证实录)。真对话态下告别词未收录时落到兜底也只是有界失败,
@@ -278,7 +278,7 @@ class BackToNormalWorldPlus(SrOperation):
                 if self.ctx.controller.click(press_time=0.1, pc_alt=True):
                     return self.round_wait('对话态-告别', wait=1)
 
-        # 无告别词:交互区文字不构成对话态证据(W286 根因),返回 None 落回原兜底。
+        # 无告别词:交互区文字不构成对话态证据(run 46 大厅误判根因),返回 None 落回原兜底。
         return None
 
     def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:

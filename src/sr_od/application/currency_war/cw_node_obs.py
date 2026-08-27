@@ -101,7 +101,7 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
     return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]
 
 
-# 补给选项 y 带。2026-08-26 W261 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
+# 补给选项 y 带。2026-08-26 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
 # ① 单装备行:角色名 cy513-567 / 装备名 cy~648-716;② 双装备行(每列 角色+2 装备):
 # 第一行 y≈648、**第二行 y≈748-749** —— 旧上界 735 使②整行漏读(10 选只读出 4,
 # decide_supply 建模残缺)。上界放宽到 780:实测各帧 750-780 无任何文本中心

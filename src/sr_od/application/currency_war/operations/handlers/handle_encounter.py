@@ -8,7 +8,7 @@
 ✅ Stage C2 已接(L55):调 ``decide_encounter``(已实现,按 comp 成型度选:未成型→低难保生存 /
   成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。原「待实现/默认选左」
   过期已撤回。⚠️ affix 避开分支 N/A(选项 UI 不显词缀,战后才显)。
-坐标(task#103 化债,W265):卡身/选择经 ``cw_observation.area_center`` 读 screen_info
+坐标(screen_info 化债):卡身/选择经 ``cw_observation.area_center`` 读 screen_info
   ``currency_war_encounter``(``遭遇卡-其一/其二`` + ``按钮-选择``);缺失才用兜底常量。
   档案帧回验:sr-od-test/screens/货币战争-遭遇节点/default.webp 上 标识-遭遇节点 /
   按钮-选择 均 conf≈0.999 命中。卡身 rect center 未单独实锤(历史实测点 (665,500)/(1288,550)
@@ -68,13 +68,13 @@ class HandleEncounter(SrOperation):
                 idx = pick.idx
             reason = pick.reason
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} pick=idx{idx} {reason}')
-        # W312(遥测审计 G1):选项选择落账本(exogenous kind='event_choice')。
+        # 遥测:选项选择落账本(exogenous kind='event_choice')。
         # 此前只 log——「选了其几/两卡奖励/reason」跨局归因在遥测上断链。
         record_event_choice('encounter',
                             [{'difficulty': o.difficulty, 'rewards': o.rewards}
                              for o in options],
                             idx, reason)
-        # 卡身/选择坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
+        # 卡身/选择坐标从 screen_info 读;缺失走历史实测兜底常量。
         card_left = area_center(self.ctx, '遭遇卡-其一', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_LEFT
         card_right = area_center(self.ctx, '遭遇卡-其二', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_RIGHT
         select_btn = area_center(self.ctx, '按钮-选择', HandleEncounter.SCREEN_NAME) or HandleEncounter.SELECT_BTN

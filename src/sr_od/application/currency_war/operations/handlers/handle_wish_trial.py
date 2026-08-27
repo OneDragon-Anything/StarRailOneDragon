@@ -60,7 +60,7 @@ class HandleWishTrial(SrOperation):
         # 策略决策(r104):OCR objective → decide_wish_trial → 对应卡
         target = HandleWishTrial.FIRST_CARD
         pick_desc = 'fallback第1张'
-        objs: list[str] | None = None   # W312:策略分支外的兜底路径也留选项面(None=未读到)
+        objs: list[str] | None = None   # 策略分支外的兜底路径也留选项面(None=未读到)
         pick_idx = 0
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
@@ -77,7 +77,7 @@ class HandleWishTrial(SrOperation):
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
                 log.warning('[cw-wish] 策略决策异常(fallback 第1张): %s', e)
         log.info('[cw-wish] 祈愿决策: %s → 点 (%s,%s)', pick_desc, target.x, target.y)
-        # W312(遥测审计 G1):试炼 objective 文本+选择落账本(此前只 log)。
+        # 遥测:试炼 objective 文本+选择落账本(此前只 log)。
         record_event_choice('wish_trial', objs, pick_idx, reason=pick_desc)
         # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click,防 before_screenshot 移光标)。
         self.ctx.controller.mouse_move(target)

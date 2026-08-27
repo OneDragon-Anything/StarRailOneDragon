@@ -5,7 +5,7 @@
   类型名标签验「首领」→ 大图标 SIFT 对拍 boss_avatar 20 模板(用户方案:
   「点击最后的节点,下方会有更大的图标」——锁态小图 SIFT 特征塌缩认不出,
   大图标破局:增熵 9:1、绘师 5:2 断层命中)。**boss 节点两种渲染态
-  (W221/ADR-0398,run 29/30 同夜实证)**:头像态(节点=红框头像,大图标
+  (ADR-0398,run 29/30 同夜实证)**:头像态(节点=红框头像,大图标
   SIFT 断层命中)与**徽章态**(节点=通用金色徽章、详情条=「首领节点」+
   通用描述,**本屏无任何身份信息**——run 30 位面 1 带内 9 圆逐圆 SIFT
   全拒 + 大图标 SIFT 未命中 12 次实证)→ 徽章态位面记 None 跳过
@@ -64,7 +64,7 @@ _PLANE_CARD_AREAS: tuple[str, ...] = ('按钮-位面卡1', '按钮-位面卡2', 
 #: 详情条节点类型名 area(位面详情屏;boss 定位验证锚)
 _LABEL_AREA: str = '文本-节点类型名'
 
-# ---- 非clean帧等待门(W314)---------------------------------------------
+# ---- 非clean帧等待门 ---------------------------------------------------
 # 背景:2026-08-27 两触发点同签名(run 22:05:23 P1 收尾 / 22:10:16 P2 转换):
 # 位面转换/加载动画窗内节点条是残影,短窗连读(~2.5s 3 帧)全部非clean → op
 # 失败。治本=「等到 clean 为止 + 宽上限兜底」:非clean 读不再短窗即弃,而是
@@ -74,7 +74,7 @@ _NODE_BAR_WAIT_CAP_S: float = 90.0       # 非clean 总等待上限,超限才真
 
 
 def conclude_plane_boss(label: str | None, sift_name: str | None) -> tuple[str, str | None]:
-    """单位面 boss 读取结论(纯函数,W221/ADR-0398 测试锁锚)。
+    """单位面 boss 读取结论(纯函数,ADR-0398 测试锁锚)。
 
     输入:详情条节点类型名 OCR(``label``)+ boss 大图标 SIFT 结果(``sift_name``)。
     返回 ``(action, value)``:
@@ -167,7 +167,7 @@ class CollectPlaneIntel(SrOperation):
         return name
 
     def _nonclean_read_gate(self, reason: str) -> OperationRoundResult:
-        """非clean帧等待门(W314):节点条读不出时不短窗即弃——间隔重读等动画窗,
+        """非clean帧等待门:节点条读不出时不短窗即弃——间隔重读等动画窗,
         超宽上限(:data:`_NODE_BAR_WAIT_CAP_S`)才真失败。
 
         clean 判定语义不变(读出即 clean);上限是墙钟计时(覆盖最慢加载),
@@ -252,7 +252,7 @@ class CollectPlaneIntel(SrOperation):
         self._nonclean_wait_start = None   # 读出=clean,重置等待账
         self.ctx.controller.click(boss_pt)
         time.sleep(1.5)
-        # ③ 读详情条:类型名标签验「首领」→ 大图标 SIFT → 结论分流(W221/ADR-0398)
+        # ③ 读详情条:类型名标签验「首领」→ 大图标 SIFT → 结论分流(ADR-0398)
         self.screenshot()
         from sr_od.application.currency_war.cw_observation import (
             read_detail_node_type_label,
