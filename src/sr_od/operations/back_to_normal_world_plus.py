@@ -158,15 +158,14 @@ class BackToNormalWorldPlus(SrOperation):
         # 货币战争-大厅(2026-08-27 run 46 事故根修,W286):全屏 UI 叠在大世界场景上,
         # 前序分支全不命中,守卫的 INTERACT_RECT 恰罩住大厅右面板静态文字(数据银行/
         # 预期收益等)→ 曾被误判为对话态死循环。id_mark 精确命中即正面识别本画面 →
-        # 点右上角关闭 X 返回大世界(run 46 现场帧实证:大厅右上角有 X 关闭钮,与
-        # 战斗暂停屏 X 同族;入口逆向佐证=大厅由大世界 F 交互进入,关闭即返回)。
+        # 点右上角关闭 X 返回大世界。手势与坐标均实机验证(2026-08-27:点 X 两次
+        # 均回「大世界-普通」精准命中;入口逆向佐证=大厅由大世界 F 交互进入)。
+        # 项目规则:操作禁用 ESC,返回/关闭一律点坐标(本分支走 screen_info area)。
         # 用 round_retry 而非 round_wait:点击可能不落地,WAIT 不消耗 retry 会死循环
         # (同本节点兜底分支 W0824 判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
         result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
         if result.is_success:
-            # 坐标来源:run 46 现场帧 screenshot_20260827_181834 目测(X 图标中心);
-            # screen_info 尚无该按钮 area(yml 只读约定),建档后应迁入 area,勿在此扩点。
-            self.ctx.controller.click(Point(1857, 63))
+            self.round_by_find_and_click_area(screen, '货币战争-大厅', '按钮-关闭')
             return self.round_retry('货币战争-大厅', wait=2)
 
         # 对话态守卫(2026-08-26 实机事故根修,NPC 对话态下兜底点击会命中对话隐藏按钮):
