@@ -3,6 +3,7 @@ import math
 from PIL.ImageChops import screen
 from typing import Optional, Callable, ClassVar
 
+from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -22,6 +23,13 @@ from sr_od.operations.team.choose_team import ChooseTeam
 from sr_od.operations.wait.wait_in_world import WaitInWorld
 from sr_od.screen_state import battle_screen_state
 from sr_od.sr_map.operations.transport_to_recover import TransportToRecover
+
+# 「贪饕侵蚀」机制(2026-08-26 版本)把拟造花萼常规战斗时长拉长到不可控:侵蚀怪致死不灭+
+# 立即回血,需把生命压制到阈值比例才可击杀,实测最长 20分49秒(run 48,2026-08-27)。
+# 等待本身是信号驱动的(见 _wait_battle_result:每轮识别结算画面),下列上限只是防真死锁的
+# 兜底窗,放大不影响正常时长;收尾窗给超时后的游戏内残余战斗继续自行打完的余量。
+WAIT_RESULT_TIMEOUT_SECONDS: int = 25 * 60  # 主等待窗:覆盖实测最坏(20分49秒)+ 余量
+WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS: int = 25 * 60  # 超时收尾观察窗;两窗合计 = 单次挑战硬顶
 
 
 class UseTrailblazePower(SrOperation):
@@ -206,7 +214,9 @@ class UseTrailblazePower(SrOperation):
     @node_from(from_name='开始挑战后')
     @node_from(from_name='再来一次后确认')
     @node_from(from_name='再来一次后确认', success=False, status='无对话框')
-    @operation_node(name='等待战斗结果', timeout_seconds=600)
+    # 上限仅为防真死锁的兜底(见 WAIT_RESULT_TIMEOUT_SECONDS 注释);正常战斗按下方
+    # 结算画面信号识别结束,超时到点转「战斗超时收尾」节点继续处理,不直接放弃
+    @operation_node(name='等待战斗结果', timeout_seconds=WAIT_RESULT_TIMEOUT_SECONDS)
     def _wait_battle_result(self) -> OperationRoundResult:
         """
         等待战斗结果
@@ -229,6 +239,49 @@ class UseTrailblazePower(SrOperation):
             return self.round_success(state, wait=1)  # 稍微等待 让按键可按
         else:
             return self.round_wait('等待战斗结束', wait=1)
+
+    @node_from(from_name='等待战斗结果', success=False, status=Operation.STATUS_TIMEOUT)
+    @operation_node(name='战斗超时收尾', timeout_seconds=WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS)
+    def _wait_battle_result_timeout(self) -> OperationRoundResult:
+        """
+        等待战斗结果超时的收尾(孤 battle 防残留)。
+
+        根因实证(run 48,2026-08-27):「贪饕侵蚀」机制把战斗拖得比旧窗口长,op 放弃后
+        战斗仍在游戏内自打约 20 分钟才结束 —— 战场残留会让下一个 app 的入口导航误判。
+        因此超时后不清场不放弃:本节点继续观察至出现结算画面,主动点退出关卡,
+        把画面交还给后续流程;若二次观察窗内仍未结算才是真死锁,按失败交上层处理。
+
+        :return:
+        """
+        screen = self.screenshot()
+
+        state = battle_screen_state.get_tp_battle_screen_state(
+            self.ctx, screen,
+            battle_success=True, battle_fail=True)
+
+        if state == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
+            # 主等待窗被打断导致记账缺失:战斗实际胜利且奖励已发,补记保证体力统计一致
+            self.finish_times += self.current_challenge_times
+            log.info('超时后战斗结束 挑战成功 补记完成次数 %d', self.finish_times)
+            if self.on_battle_success is not None:
+                self.on_battle_success(self.current_challenge_times,
+                                       self.mission.power * self.current_challenge_times)
+            return self._click_exit_after_result(screen)
+        elif state == battle_screen_state.ScreenState.BATTLE_FAIL.value:
+            log.info('超时后战斗结束 战斗失败')
+            return self._click_exit_after_result(screen)
+        else:
+            # 游戏内战斗仍在自打:继续观察(wait 长轮询即可,结算信号由上面分支识别)
+            return self.round_wait('超时后继续等待战斗结束', wait=5)
+
+    def _click_exit_after_result(self, screen) -> OperationRoundResult:
+        """
+        结算画面点击退出关卡 成功(status='退出关卡按钮')沿边去完成后退出
+        :param screen: 游戏截图
+        :return:
+        """
+        return self.round_by_find_and_click_area(screen, '战斗画面', '退出关卡按钮',
+                                                 success_wait=2, retry_wait=1)
 
     @node_from(from_name='等待战斗结果')
     @operation_node(name='战斗结果处理')
@@ -282,6 +335,7 @@ class UseTrailblazePower(SrOperation):
     @node_from('点击挑战后确认', success=False)
     @node_from('点击挑战后确认', status='开拓力弹框-取消')
     @node_from('点击挑战后确认', status='退出关卡按钮')
+    @node_from(from_name='战斗超时收尾', status='退出关卡按钮')
     @operation_node(name='完成后退出')
     def back_at_last(self) -> OperationRoundResult:
         op = BackToNormalWorldPlus(self.ctx)
