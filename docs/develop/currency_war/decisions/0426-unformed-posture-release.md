@@ -86,6 +86,32 @@ FLIP = phase==FORM ∧ 未成型 ∧ g>50 ∧ hp>25
 
 本 ADR 挂账 2 的 C3 打回项(重设计=`.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md`)经 W376 开臂 A/B 裁决为**概念无效,不开臂**:通道活着(87.67% 局有濒死帧、三类删除合计 1802 笔全按设计兑现、滤死升级反模式未复发)但濒死种子集 hp0 率差 −0.38pp 不显著、死亡局 P2 存活轮数分布未后移。机制解释:**濒死帧的定义就是「再输一场即死」,省下的金在下一场开打前来不及变成板面战力**——收窄删支出不改变下一战胜负。裁决:`dying_band_account_enabled` 默认关维持(开关本体是 W373 结构先行件,删除原因通道仍被检查网与测试锁消费)。杠杆定位转上游:P1 出口血量管理与 P2 成型提速(W350 §7 两段拆解);W377 连胜动力学(`.debug/temp/currency_war/w377_streak_dynamics/REPORT.md`)量化出口 hp 为第一杠杆(前 5 轮胜场数,投入产出比 >9:1)。C4 的接线与重测见 ADR-0429(含其 2026-08-28 增补节)。
 
+## 增补(2026-08-28):FLIP 实机触发三断点修复链
+
+以下为后续演进,不改上方 Decision。定位链:Agora 定位报告 `.debug/temp/currency_war/w378_flip_missing/REPORT.md`(断点一)与 `.debug/temp/currency_war/w390_flip_bp2/REPORT.md`(断点二);修复 commit `c65ea6f1`(断点一)与 `9a01a3d0`(断点二);断点一细节归 ADR-0428。
+
+### A. 断点一:假帧守卫把沿用真值帧全量拒绝(ADR-0428)
+
+shop 开态血量区被 UI 遮挡 → OCR 恒空 → `reconcile_hp` 返回「沿用 last_hp_real 真值 + `hp_readable=False`」→ `flip_hit` 假帧守卫把两种语义不同的 False 混拒,实机 **26/26 个 P1 商店决策帧**全量拒绝,FLIP 唯一消费点(shop `decide_prep`)结构性 0 触发。修复 = GameState 新增 `hp_trusted` 可信位区分「沿用真值 vs 兜底 100 假值」,守卫改 `hp_readable or hp_trusted`;兜底帧 hp=100 时两臂(投影 100−boss_tax_p75≥emergency_hp / 持续臂 100<blood_margin_low_hp 不成立)天然不命中,无误触发面。**sim 不可见风险面实锤**:sim 的 state.hp 恒可读 → 触发面 27/300 正常,该缺口是实机专属、sim 完全不可见——ADR-0426 §7 已预警的「实机静默收窄」被证实为 100% 收窄。
+
+### B. 断点二:末窗投影臂被相位门错误辖域(相位门重排)
+
+断点一修复后第 3 例仍不触发,定位到 `flip_hit` 相位门:末窗投影臂被 `phase≠FORM` 门**整体包住**,而其机制理由「hp−boss_tax_p75<emergency_hp → 战后必入应急带」是**保命义务,与成型相位无关**(hp 不读 form_ok)。实机帧(posture_release.py 注释锚定的进店帧):phase=SPEND / hp=38 / gold=67(溢余>interest_floor)/ 投影 4<emergency_hp 命中,被相位门短路;同帧第三路径(slot 守卫第三路径)又被 `deployed<cap` 挡住(cap 满员 6/6)——两条臂双盲,release_directive 返回 None,泄息通道结构性静默。修复(`9a01a3d0`)两件:
+
+1. **flip_hit 重排**:可信位/plane/gold>floor/hp>emergency_hp 四门前置,末窗投影臂移到相位门之前(相位无关),持续兑现臂维持 FORM 辖域不动;
+2. **第三路径(规则 1)同步前移 + cap 满员规则 2 承接**:投影臂前置后,`release_directive` 的第三路径(末窗 slot 守卫压 level、显式注入泄息预算)必须先于 FLIP 判定——其理由(新槽位下位面才兑现)同样相位无关;cap 满员帧(slot 守卫 False)落 FLIP 命中后的并存裁决(追级与泄息同轮共用溢余预算,DESIGN §②规则 2)。
+
+附带漂移已声明:FORM 末窗 slot 守卫帧从「level 保留」变「第三路径压制」(与设计规则 1 原文一致)。
+
+### C. 防回归:三层锁 + 6 锁
+
+三层锁:①hp_trusted 语义/写入端**源级派生锁**(写入端唯一=read_game_state,派生式钉死);②**相位无关 r9 形态 fixture 锁**(实机观察局 r9 进店帧形态:SPEND 相位+末窗+投影命中必触发,hp 高于投影带帧拒绝);③**兜底帧不回归锁**(开局无真值 100 兜底帧两臂仍拒)。合计 6 锁(相位无关锁+非末窗零漂移锁+cap 满员规则 2 锁+旧死区锁改写等),W391 批 35 passed、全量 2303 passed/0 failed、ruff 干净(commit `9a01a3d0` 描述)。
+
+### D. 实机观察结论
+
+- **修复前**:3 例实机观察局(run `20260828_031008` / `20260828_040618` / `20260828_060339`)r9 同形态(未成型或刚成型 + boss 末窗 + 溢余金 + 投影命中)均不触发——三例同根因链(前 2 例断点一、第 3 例暴露断点二)。
+- **修复后**:释放通道首启从观察局⑦起;有效性判据 = shop 帧遥测影子行 tag 出现 `'release'`(release tag)+ **泄息去向分项账**(预算金逐笔去向:刷新/追级/结余,W385 A5 要求的账式口径)。
+
 ## Consequences
 
 - **正面**:溢余金死资本(P11)有了结构性出口;凑档卖 −84% 且残留全在豁免面;V_D 成本侧口径对齐;触发面逐帧可解释。
