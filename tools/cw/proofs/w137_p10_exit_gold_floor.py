@@ -30,10 +30,13 @@ while not (ROOT / 'pyproject.toml').exists():
 sys.path.insert(0, str(ROOT / 'src'))
 
 from sr_od.application.currency_war.cw_economy import (  # noqa: E402
-    BASE_REWARD_GOLD,
     STREAK_GOLD_TABLE,
     streak_gold,
 )
+
+# 历史口径快照(证明时点的生产值;现口径=基础奖励按节点分段 1-1=3/1-2=4/1-9=5,
+# 见 docs/game/currency_war/research/economy.md §10.1——本脚本账本冻结于当时口径,不随生产常量漂移)
+_BASE_REWARD_SNAPSHOT = 5
 from sr_od.application.currency_war.cw_horizon import (  # noqa: E402
     NODES_PER_PLANE,
     TOTAL_NODES,
@@ -84,7 +87,7 @@ def p1_exit_account() -> None:
     print('① P1 出口 1 金的携带溢价(利息通道;净收入率带宽 6-8 金/轮)')
     r_left = TOTAL_NODES - NODES_PER_PLANE
     print(f'   P1 出口后剩余节点 = P2+P3 = {r_left}')
-    print(f'   净收入率假设: 基础 {BASE_REWARD_GOLD}/轮 + 连胜金期望'
+    print(f'   净收入率假设: 基础 {_BASE_REWARD_SNAPSHOT}/轮 + 连胜金期望'
           f'(表 {STREAK_GOLD_TABLE};e1 胜率 {H3[1]} 期望 ≈1.7)→ 6.7 取带 6-8')
     print(f'   {"出口金 g0":>10} {"T(g0)@6":>8} {"T(g0)@8":>8} '
           f'{"溢价@6":>7} {"溢价@8":>7}')

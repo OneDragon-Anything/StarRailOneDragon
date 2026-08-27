@@ -90,13 +90,15 @@ START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
 
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源)
-from sr_od.application.currency_war.cw_economy import streak_gold  # noqa: E402,F401
+from sr_od.application.currency_war.cw_economy import (  # noqa: E402,F401
+    BASE_INCOME,
+    streak_gold,
+)
 
 # HP 上界(批㉘ F6,ADR-0287):游戏机制真值无文档证据,暂 cap 100
 # (实机满血样本核真后更新;检查项 hp_upper_bound_truth 锁 hp>100 恒 0)
 HP_UPPER_BOUND: int = 100
 
-BASE_INCOME: int = 5
 INTEREST_CAP: int = 5
 
 # r360(v7 分轮次裁决):实机对账残差=奖励球/节点事件金未建模,

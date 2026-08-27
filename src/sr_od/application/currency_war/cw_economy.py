@@ -50,8 +50,10 @@ def streak_gold(streak: int) -> int:
     return STREAK_GOLD_TABLE[idx]
 
 
-#: 基础奖励(弹窗实测恒 5;6/7 样本 P1r3/r4/r6/r7+P2r1,r2 孤例 4 待复核)
-BASE_REWARD_GOLD: int = 5
+#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型与 cw_horizon DP 日程收入均从此 import,防双源漂移)。
+#: 边界:基础奖励实际随节点变(VLM 判读 1-1=3/1-2=4,见 docs/game/currency_war/research/economy.md
+#: 「基础奖励」行;守卫测试 sr-od-test test_cw_r305_reward_data)——5 是统一近似值,奖励采集成表后替换为查表。
+BASE_INCOME: int = 5
 
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。

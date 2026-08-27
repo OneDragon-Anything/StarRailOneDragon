@@ -30,9 +30,12 @@ while not (ROOT / 'pyproject.toml').exists():
 sys.path.insert(0, str(ROOT / 'src'))
 
 from sr_od.application.currency_war.cw_economy import (  # noqa: E402
-    BASE_REWARD_GOLD,
     streak_gold,
 )
+
+# 历史口径快照(证明时点的生产值;现口径=基础奖励按节点分段 1-1=3/1-2=4/1-9=5,
+# 见 docs/game/currency_war/research/economy.md §10.1——本脚本账本冻结于当时口径,不随生产常量漂移)
+_BASE_REWARD_SNAPSHOT = 5
 from sr_od.application.currency_war.cw_horizon import (  # noqa: E402
     NODES_PER_PLANE,
     TOTAL_NODES,
@@ -77,7 +80,7 @@ def dp_floor(floor: int, p: float, g0: int = 10,
         round_int = 0.0
         on_floor = 0.0
         for (g, s), w in dist.items():
-            inc = interest(g) + BASE_REWARD_GOLD + streak_gold(s)
+            inc = interest(g) + _BASE_REWARD_SNAPSHOT + streak_gold(s)
             round_int += w * interest(g)
             g2 = max(0, min(g + inc, 80) - mand[t])
             spend = max(0, g2 - floor)

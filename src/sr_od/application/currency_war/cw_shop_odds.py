@@ -12,7 +12,8 @@
 **池参数**:
 - a = 每种牌副本数(1/2费=27 可升4星 / 3/4/5费=9 最高3星;均 3 倍数,3合1 决定;权威源 V3.7 必修二,
   5费=9 与 [NGA tid=45557485](https://bbs.nga.cn/read.php?tid=45557485) 实锤吻合;2026-08-12 用户确认)
-- v = 同费用种类数(1费14/2费13/3费13/4费12/5费9,from characters.md)
+- v = 同费用种类数(由角色注册表 CHARACTERS 派生,当前 1费20/2费15/3费14/4费14/5费9;
+  单一源 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
 供 ``cw_plan._refresh_expected_delta`` 的 D牌蒙特卡洛用(替代 ``_sample_shop`` 粗近似):
@@ -31,7 +32,8 @@ SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 # (5费=9 NGA tid=45557485 实锤吻合;1/2费=27 由「可升 4 星」推出,2026-08-12 用户确认)
 POOL_COPIES_PER_CARD: dict[int, int] = {1: 27, 2: 27, 3: 9, 4: 9, 5: 9}
 # v:同费用的种类数 —— 从角色注册表派生(单一真相源;改 CHARACTERS 自动传导,非硬编码)
-# 注:3费=13 与 D牌期望表(77124902)实测点吻合;其余费用随注册表,实机校准
+# 注:v 口径以本派生为准(CHARACTERS 为单一真相源);外部文章(77124902)的 v 值是
+# 其采集时点的注册表快照,与当前派生不一致时不作对拍基准
 DISTINCT_CARDS_PER_COST: dict[int, int] = {cost: len(chars_by_cost(cost)) for cost in range(1, 6)}
 
 # 刷新概率 p[level][cost](V4.4 权威,2026-08-11 游戏内"商店刷新概率"表实机 OCR;D-91)

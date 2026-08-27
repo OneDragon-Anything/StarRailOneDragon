@@ -20,12 +20,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sr_od.application.currency_war.cw_economy import BASE_INCOME
 from sr_od.application.currency_war.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
 # ===== 日程/经济先验(后续由 read_node_sequence / EconomyEffect 实测覆盖) =====
 NODES_PER_PLANE: int = 9
 TOTAL_NODES: int = NODES_PER_PLANE * 3
-BASE_INCOME: int = 5
 STREAK_INCOME: int = 3        # 连胜档(2 连 +1 递增封 4;取常态均值 3)
 BOSS_BONUS: int = 2
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
