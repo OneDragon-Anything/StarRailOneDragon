@@ -31,6 +31,7 @@ from typing import Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
 from sr_od.application.currency_war.cw_state import (
+    XP_CLICK_COST_FALLBACK,
     Action,
     GameState,
     bench_occupied,
@@ -1401,7 +1402,12 @@ ABN_DROP: int = 25     # 单轮掉血 ≥ 此 = 战力断层
 
 
 def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
-    """视图:异常标记(钱变不成板/战力断层/plan_error)。"""
+    """视图:异常标记(钱变不成板/战力断层/plan_error)。
+
+    W317(G4 读端欠账):各条目补所在轮 node_type;断层条目另补
+    enemy_affixes(W244 词缀分层)——断层归因第二分法(敌方强度
+    异常)不用再开新窗口直查 jsonl。
+    """
     best = _load_decisions_rounds(replay_dir, run_id)
     abn: list[str] = []
     for k in sorted(best):
@@ -1409,17 +1415,27 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
         acts = d.get("actions") or []
         buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
         lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        # W317:节点类型进标签(与 rounds 视图 [tag] 风格一致)
+        _nt = (d.get("state") or {}).get("node_type") or ""
+        _tag = f"[{_nt}] " if _nt else ""
         if (d.get("gold") or 0) >= ABN_GOLD and buys == 0 and lvs == 0:
-            abn.append(f"p{k[0]}r{k[1]} 金{d.get('gold')} 0买0升(钱变不成板)")
+            abn.append(f"p{k[0]}r{k[1]} {_tag}金{d.get('gold')} 0买0升(钱变不成板)")
         if (d.get("eval_breakdown") or {}).get("plan_error"):
-            abn.append(f"p{k[0]}r{k[1]} plan_error(决策崩溃,见 log)")
+            abn.append(f"p{k[0]}r{k[1]} {_tag}plan_error(决策崩溃,见 log)")
     prev_hp = None
     for o in read_jsonl(replay_dir / "outcomes.jsonl"):
         if run_id and o.get("run_id") != run_id:
             continue
         hp = o.get("hp_after")
         if prev_hp is not None and hp is not None and prev_hp - hp >= ABN_DROP:
-            abn.append(f"p{o.get('plane')}r{o.get('round_num')} 单轮掉血 {prev_hp}→{hp}(战力断层)")
+            # W317:断层行带节点类型与词缀(非空才显示;词缀=开局简报
+            # 位面级快照,语义见 OutcomeRecord.enemy_affixes)
+            _nt = o.get("node_type") or ""
+            _tag = f"[{_nt}] " if _nt else ""
+            _ax = " ".join(o.get("enemy_affixes") or [])
+            _ax_s = f" 词缀={_ax}" if _ax else ""
+            abn.append(f"p{o.get('plane')}r{o.get('round_num')} {_tag}"
+                       f"单轮掉血 {prev_hp}→{hp}(战力断层){_ax_s}")
         if hp is not None:
             prev_hp = hp
     return abn
@@ -1430,6 +1446,9 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
 
     与 sim hp_events 同构(对拍 sim 校准模型的直接读出端);
     board_before/bench_count 为 r339 起记录(旧数据缺省显示 -)。
+    W317(G4 读端欠账):行尾补 killed(1=击杀/0=未杀/?=旧数据或
+    未采到)与 boss_names(W244 boss 分层,非空才显示)——「这轮输
+    给谁」的断层归因不再需要另开窗口直查 jsonl。
     """
     lines = []
     prev_hp: int | None = None
@@ -1449,19 +1468,31 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
             f"{_sim.get('depth', '-')}*" if _sim else '-')
         bench = o.get("bench_count")
         delta_s = f'{-delta:+d}' if delta is not None else '-'
+        # W317:胜负(killed,None=未知)与 boss 身份(非空才显示;
+        # None 元素=该位面徽章态采不到,保位过滤语义见 OutcomeRecord)
+        _killed = o.get("killed")
+        k_s = '1' if _killed else ('0' if _killed is False else '?')
+        _bosses = [b for b in (o.get("boss_names") or []) if b]
+        boss_s = f" boss=[{'|'.join(_bosses)}]" if _bosses else ""
         lines.append(
             f"  p{o.get('plane')}r{o.get('round_num')} {o.get('node_type') or '?':8s}"
             f" hp={hp} Δ={delta_s}"
-            f" 板深={depth_s} bench={bench if bench is not None else '-'}")
+            f" 板深={depth_s} bench={bench if bench is not None else '-'}"
+            f" killed={k_s}{boss_s}")
         if hp is not None:
             prev_hp = hp
     return lines
 
 
 def query_economy(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(r339):金轨迹/滞留——逐轮 (gold, 收入, 花出, 息)。
+    """视图(r339):金轨迹/滞留——逐轮 (gold, 升级费, 花出, 收入)。
 
     「金花不出去」异常的量化端:滞留轮(金≥20 且花=0)标 ⚠。
+    升级花费逐轮读 decisions.state.level_up_cost(cw_observation.
+    read_level_up_cost 的 OCR 真值);该轮未读到(None,旧数据或缺省)
+    时按 XP_CLICK_COST_FALLBACK 兜底常量计入并在 `lv=` 后标 `?`
+    (成本项可能有偏,判读可辨)。升级成本与 gold 并列显示——
+    「这轮升得起吗」直接对照,不再需要另开窗口查 decisions.state。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
     lines = []
@@ -1472,8 +1503,11 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
         spend = sum((a.get("card", {}).get("cost") or 0)
                     for a in acts if isinstance(a, dict)
                     and a.get("__type__") == "BuyCard")
-        spend += 4 * sum(1 for a in acts
-                         if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        luc = (d.get("state") or {}).get("level_up_cost")
+        luc_s = f"{luc}" if luc else f"{XP_CLICK_COST_FALLBACK}?"
+        spend += (luc or XP_CLICK_COST_FALLBACK) * sum(
+            1 for a in acts
+            if isinstance(a, dict) and a.get("__type__") == "LevelUp")
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         # 卖牌回金(⑤:此前漏计——含卖轮的 income 系统性偏负;
@@ -1487,7 +1521,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
         flag = ' ⚠滞留' if (g >= 20 and spend == 0) else ''
         sell_s = f' 卖+{sell_in}' if sell_in else ''
         lines.append(
-            f"  p{k[0]}r{k[1]} g={g}"
+            f"  p{k[0]}r{k[1]} g={g} lv={luc_s}"
             f" 花={spend}{sell_s} 收={'-' if income is None else income}{flag}")
         prev_gold = g
     return lines
