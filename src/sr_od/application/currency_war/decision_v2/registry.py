@@ -659,6 +659,16 @@ class DecisionV2Registry:
     #: 6-7 次;消耗计数 session.v3_dir_refresh_used,decide_prep 轮首
     #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
+    #: **本常量是非绑定约束(W274/ADR-0413)**:合资格授权窗 = gap>0 ∧
+    #: r>=handoff_gate_min_round(8),P1 共九轮 ⇒ 窗内至多两轮 ×
+    #: per_round 2 = **局执行上限 4 次 < 本值**,math 上不可能触顶;
+    #: 实测(n=100,v11 冻结池)单局授权分布 {0:27,1:6,2:64,3:3},
+    #: max=3,cap 从未 bind——W274 四臂配对 AB(n=200,同池同 seed)
+    #: cap 6/10/14 三臂**逐位一致**(指标与配对差全零)。历史候选档
+    #: 留证:cap10/cap14 曾作为「第二跳吞吐量级」修复候选(W254-R 断点),
+    #: 实验证明无效,勿重复试错。「加量」的有效旋钮是
+    #: directed_refresh_per_round 与授权窗宽度(gate_min_round 前移),
+    #: 非 game_cap(见 ADR-0413 Considered Options)。
     directed_refresh_game_cap: int = 6
 
     # ===== W251/ADR-0408 假设 A:r3/r4 投资节奏前置(评分偏置)=====
