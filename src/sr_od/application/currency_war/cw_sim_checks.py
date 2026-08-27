@@ -1673,6 +1673,14 @@ def check_pool_freshness(replay_dir=None, *,
     import json
     from pathlib import Path
 
+    # 池冻结(退役第一步):战斗类节点已切粗参数两态模型
+    # (cw_coarse_battle),再生管线停更是**有意停机**而非断裂——
+    # 新鲜度滞后不再构成违规,检查跳过(delta 模式对照臂恢复辖)。
+    from sr_od.application.currency_war import cw_coarse_battle as _cb
+    if _cb.BATTLE_ENGINE_MODE == 'coarse':
+        return {'violations': 0, 'lag': None,
+                'skipped': 'Δ池已冻结(退役第一步):战斗类节点已切'
+                           '粗参数两态模型,快照停更为预期'}
     from sr_od.application.currency_war import cw_delta_pool_data as _dpd
     if replay_dir is None:
         from sr_od.application.currency_war.cw_delta_pool_gen import (

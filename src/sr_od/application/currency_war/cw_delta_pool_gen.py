@@ -51,6 +51,16 @@ DATA_PY = REPO / 'src/sr_od/application/currency_war/cw_delta_pool_data.py'
 # _data.py 数据层文件;判断层/策略文件永不在此列。
 WRITABLE_TARGETS = (DATA_PY,)
 
+#: 退役第一步冻结标志(战斗分支切 cw_coarse_battle 后置位):
+#: True = regenerate_snapshot 一律 raise,快照停更。撤销 = 退役回滚
+#: 路径的一部分,须经编排者裁决(不能只翻标志——战斗分支消费已摘)。
+_DELTA_POOL_FROZEN: bool = True
+
+
+class DeltaPoolFrozen(RuntimeError):
+    """Δ池快照再生已被冻结标志拦下(退役第一步,见模块内标志注)。"""
+
+
 # 节点类型归一(与 cw_sim._pool_from_replay 同表)
 NT_MAP = {'普通战斗': 'battle', '遭遇': 'encounter', '奖励': 'reward',
           '首领': 'boss', '补给': 'supply'}
@@ -378,10 +388,21 @@ def regenerate_snapshot(src_dir: Path | None = None,
                         *, quiet: bool = False) -> str:
     """重生成快照并写 DATA_PY(CLI 与局终自动再生共用的唯一入口)。
 
+    **已冻结(退役第一步)**:战斗类节点结算已切粗参数两态模型
+    (cw_coarse_battle),快照停更——本函数一律 raise,CLI 壳与
+    局终自动再生(ADR-0344)随之停跑(局终钩子 best-effort 捕获,
+    只留日志不阻塞对局)。保留代码文件,删除归退役清理批;重启
+    再生须先撤销 ``_DELTA_POOL_FROZEN`` 并经编排者裁决。
+
     返回新池指纹。空池 raise(调用方 best-effort 捕获;局终钩子
     不让异常外传)。生成纪律:头部勿手编警告+写目标白名单守卫在
     :func:`build_pool` / :func:`_assert_guards` 内生效。
     """
+    if _DELTA_POOL_FROZEN:
+        raise DeltaPoolFrozen(
+            'Δ池已冻结(退役第一步):战斗类节点已切粗参数两态模型'
+            '(cw_coarse_battle),快照停更;重启再生需先撤销'
+            ' cw_delta_pool_gen._DELTA_POOL_FROZEN(编排者裁决)')
     src = Path(src_dir) if src_dir is not None else REPLAY_DIR
     _assert_guards(src)
     pool, meta = build_pool(src, runs_filter)

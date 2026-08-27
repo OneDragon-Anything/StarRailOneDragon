@@ -1954,40 +1954,55 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0362:P2 段(uncalibrated 臂)结算查 Δ池 plane=2 桶
                 # (位面内兜底,不跨位面回退);缺桶回退层见 node_delta 的
                 # plane 分支。P1 段结算同原式(逐位零漂移)。
-                if nodes[rn - 1] == 'battle':
-                    _ld = live_delta_for('battle', _settle_rung(st), rng,
-                                         pool_map=pool_map, plane=st.plane)
-                elif nodes[rn - 1] == 'boss':
-                    # W240/ADR-0404:boss 采样键=净星深(修 Σboard 升星
-                    # 方向冲突,见 live_delta_for docstring)。
-                    _ld = live_delta_for(
-                        'boss', deployed_star_depth(st), rng,
-                        pool_map=pool_map, plane=st.plane)
-                elif nodes[rn - 1] == 'encounter':
-                    # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
-                    # _settle_rung——depth 键下期望伤害真平,W250 查证;
-                    # live_delta_for 桶缺逐级下探路径与 battle 共用)。
-                    _ld = live_delta_for('encounter', _settle_rung(st), rng,
-                                         pool_map=pool_map, plane=st.plane)
-                elif nodes[rn - 1] in ('reward', 'supply'):
-                    # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
-                    # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
-                    # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
-                    # 池缺 → live_delta_for None → node_delta 回退常数。
-                    _ld = live_delta_for(nodes[rn - 1], _dep, rng,
-                                         pool_map=pool_map, plane=st.plane)
+                # 粗参数两态模型(coarse_battle 模块单一源):战斗类
+                # 节点(battle/encounter/boss)默认脱离 Δ池经验分布,
+                # 改胜态查表(+2)/败态节点级伤害直方采样;``delta``
+                # 模式保留原 Δ池路径作对照臂(粗模型转正前的三率对拍
+                # 验证批消费)。reward/supply 两模式下均仍走 Δ池。
+                _node = nodes[rn - 1]
+                from sr_od.application.currency_war import (
+                    cw_coarse_battle as _cb,
+                )
+                if (_cb.BATTLE_ENGINE_MODE == 'coarse'
+                        and _node in ('battle', 'encounter', 'boss')):
+                    delta = _cb.sample_battle_delta(
+                        _node, _settle_rung(st), st.hp, rng,
+                        difficulty=getattr(st, 'enemy_difficulty', None))
                 else:
-                    _ld = None
-                if _ld is not None:
-                    delta = _ld
-                elif nodes[rn - 1] == 'boss':
-                    # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
-                    # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
-                    # 价值链接通(hp 类指标恢复判读力)。
-                    delta = boss_settle_delta(st, res.dir_round, rng)
-                else:
-                    delta = node_delta(nodes[rn - 1], rn, res.dir_round, rng,
-                                       plane=st.plane)
+                    if _node == 'battle':
+                        _ld = live_delta_for('battle', _settle_rung(st), rng,
+                                             pool_map=pool_map, plane=st.plane)
+                    elif _node == 'boss':
+                        # W240/ADR-0404:boss 采样键=净星深(修 Σboard 升星
+                        # 方向冲突,见 live_delta_for docstring)。
+                        _ld = live_delta_for(
+                            'boss', deployed_star_depth(st), rng,
+                            pool_map=pool_map, plane=st.plane)
+                    elif _node == 'encounter':
+                        # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
+                        # _settle_rung——depth 键下期望伤害真平,W250 查证;
+                        # live_delta_for 桶缺逐级下探路径与 battle 共用)。
+                        _ld = live_delta_for('encounter', _settle_rung(st), rng,
+                                             pool_map=pool_map, plane=st.plane)
+                    elif _node in ('reward', 'supply'):
+                        # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
+                        # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
+                        # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
+                        # 池缺 → live_delta_for None → node_delta 回退常数。
+                        _ld = live_delta_for(_node, _dep, rng,
+                                             pool_map=pool_map, plane=st.plane)
+                    else:
+                        _ld = None
+                    if _ld is not None:
+                        delta = _ld
+                    elif _node == 'boss':
+                        # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
+                        # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
+                        # 价值链接通(hp 类指标恢复判读力)。
+                        delta = boss_settle_delta(st, res.dir_round, rng)
+                    else:
+                        delta = node_delta(_node, rn, res.dir_round, rng,
+                                           plane=st.plane)
             # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
             # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
             # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
