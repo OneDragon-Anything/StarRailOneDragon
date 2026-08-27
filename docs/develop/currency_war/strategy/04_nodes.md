@@ -10,7 +10,7 @@
 
 ## 2. cw_difficulty_account:难度账本
 
-难度「可算可读」的记账层(ADR-0199):恒等式(基础难度 + 词缀 + 持卡修正 + 连胜通胀,残差桶对账)+ `marginal_value`(难度差的三态钟形定价 + P1 尖峰——A8 一层遭遇常比 boss 凶 + 地板衰减 + 溢出守卫);`from_strategies` 从持卡注册表建账(伟大征服「难度+连胜」类耦合不漏)。消费口:decide_encounter(经 survey19 包装)、boss 血量参照(`1.052^难度`,competitors.md)。
+难度「可算可读」的记账层(ADR-0199):恒等式(基础难度 + 词缀 + 持卡修正 + 连胜通胀,残差桶对账)+ `marginal_value`(难度差的三态钟形定价 + P1 尖峰——A8 一层遭遇常比 boss 凶 + 地板衰减 + 溢出守卫);`from_strategies` 从持卡注册表建账(伟大征服「难度+连胜」类耦合不漏)。消费口:decide_encounter(经 survey19 包装)、boss 血量参照(`1.052^难度`,competitors.md——⚠️ 该公式已按 ADR-0424 裁决默认关闭,跨难度外推禁用,competitors.md 段头已标作废)。
 
 ## 3. cw_survey19_hooks:二轮扫描落地件
 
