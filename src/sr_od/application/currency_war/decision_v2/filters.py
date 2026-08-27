@@ -93,8 +93,8 @@ def formed_stop_active(state: GameState, session: StrategySession,
     if state.round_num < min_round:
         return False
     # W227/ADR-0400 承接维:缺口在 form_ok 之前算(观测字段无论成型
-    # 与否都写——sim 账本 handoff_gap 的数据源);非末窗/开关关恒 0,
-    # 行为零漂移。
+    # 与否都写——sim 账本 handoff_gap 的数据源);非末窗恒 0,
+    # P1 非末窗零漂移(ADR-0411 起承接门无条件启用)。
     from sr_od.application.currency_war.decision_v2.handoff import (
         handoff_gate_gap,
     )

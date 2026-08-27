@@ -537,34 +537,34 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         if val <= 0:
             # 评分制语义:非正分候选不执行(相对不动的期望不增;
             # 骨架版防「只剩负 EV 刷新也执行」的段空转)。
-            # C 臂豁免(W242/ADR-0405 C 项,末窗星级定向授权):P1 末窗
-            # 承接缺口 gap>0 时 'copy' 标签买候选(同名副本=升星素材,
-            # 星级投资的承接价值计入)放行进入约束链——W231 主因:副本
-            # 评分零维(merge_progress/core_star/targets 全辖目标集名)
-            # 被本门结构性拒,到不了 interest_rule 的 EV 账。防双计:
-            # 授权值零新增——EV 放行值由 W227 缺口项
+            # C 豁免(W242/ADR-0405 C 项,末窗星级定向授权;ADR-0411
+            # 起无条件启用):P1 末窗承接缺口 gap>0 时 'copy' 标签买候选
+            # (同名副本=升星素材,星级投资的承接价值计入)放行进入约束链
+            # ——W231 主因:副本评分零维(merge_progress/core_star/targets
+            # 全辖目标集名)被本门结构性拒,到不了 interest_rule 的 EV 账。
+            # 防双计:授权值零新增——EV 放行值由 W227 缺口项
             # (handoff_ev_gap_bonus×gap)独担,本门只补「评分零维进不了
             # EV 账」的通道缺口;金地板/copies_cap/bench 容量等约束链
             # 照常辖(放行≠必买)。只辖 'copy' 标签(定向授权,不辖
-            # 其它零分候选);非末窗/三 flag 关 → gap=0 零行为。
+            # 其它零分候选);非末窗 gap=0 零行为。
             _copy_ok = False
             if cand.tag == 'copy':
                 from sr_od.application.currency_war.decision_v2.handoff import (  # noqa: E501
-                    star_directed_gap,
+                    handoff_gate_gap,
                 )
-                _copy_ok = star_directed_gap(state, session, registry) > 0
-            # M-A 定向 D 牌授权窗(W252/ADR-0409,W249 诊断修法):负分
-            # 刷新在「授权窗开」时放行进入收尾裁决(实际放行与预算消耗
-            # 在收尾块,见下)——W249 H3 病灶「策略从不支付搜索成本」:
-            # 追名 peak≥2(某目标件差最后一张凑 3合1)∧末窗承接缺口
-            # gap>0 时,策略此前把刷新预算分配为零(全程 0.44 次/局),
-            # 双核心不可达的主导约束。**只辖刷新维**(防双计,W232 A/B/
-            # W242 C 各辖买牌维,互斥边界):本豁免只让候选越过非正分门,
-            # 不修改分数、不动买侧授权路径;同一次刷新只有一个授权来源。
-            # 辖域=plane==1(应急态不排除:[27] 星级投资的危机授权先例
-            # ADR-0302 危机买偏置同族,低 hp 出口局恰是 W249 病灶人群;
-            # 金代价由收尾的可负担性下限+局级预算封顶兜住);非末窗
-            # gap=0 零行为。
+                _copy_ok = handoff_gate_gap(state, session, registry) > 0
+            # M-A 定向 D 牌授权窗(W252/ADR-0409,W249 诊断修法;
+            # ADR-0411 起无条件启用):负分刷新在「授权窗开」时放行进入
+            # 收尾裁决(实际放行与预算消耗在收尾块,见下)——W249 H3 病灶
+            # 「策略从不支付搜索成本」:追名 peak≥2(某目标件差最后一张
+            # 凑 3合1)∧末窗承接缺口 gap>0 时,策略此前把刷新预算分配为
+            # 零(全程 0.44 次/局),双核心不可达的主导约束。**只辖刷新维**
+            # (防双计,W232 A/B/W242 C 各辖买牌维,互斥边界):本豁免只让
+            # 候选越过非正分门,不修改分数、不动买侧授权路径;同一次刷新
+            # 只有一个授权来源。辖域=plane==1(应急态不排除:[27] 星级投资
+            # 的危机授权先例 ADR-0302 危机买偏置同族,低 hp 出口局恰是
+            # W249 病灶人群;金代价由收尾的可负担性下限+局级预算封顶兜住);
+            # 非末窗 gap=0 零行为。
             _dir_ok = False
             if cand.tag == 'refresh' and state.plane == 1:
                 _dir_ok = directed_refresh_budget(

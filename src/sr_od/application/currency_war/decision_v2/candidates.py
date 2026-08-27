@@ -253,15 +253,15 @@ def _buy_tag(card: ShopCard, state: GameState,
     # 方向门之前(r408 同轮已卖守卫在 discipline 层前置;冷启动例外
     # r383b 的全轮域推广)。开关=registry.pair_copy_direction_exempt,
     # 与 filler_star_unit 同臂开(默认关=现行为零漂移)。
-    # C 臂(W242/ADR-0405 C 项):末窗星级定向授权 gap>0(handoff.
-    # star_directed_gap 单一源)时同域豁免——gap 条件化分支,与
-    # pair_copy_direction_exempt 三 flag 正交(单独开=零行为)。
+    # C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):末窗星级定向
+    # 授权 gap>0(handoff.handoff_gate_gap 单一源)时同域豁免——gap
+    # 条件化分支。
     from sr_od.application.currency_war.decision_v2.handoff import (
-        star_directed_gap,
+        handoff_gate_gap,
     )
     if (not is_target
             and (registry.pair_copy_direction_exempt
-                 or star_directed_gap(state, session, registry) > 0)
+                 or handoff_gate_gap(state, session, registry) > 0)
             and has_same_name_copy(card, state)
             and not in_round_sold(card.name, state, session)):
         return 'copy'
@@ -349,12 +349,12 @@ def generate_candidates(state: GameState, session: StrategySession,
     覆盖面由检查项 decision_v2_candidate_coverage 锁(全部动作类)。
     """
     out: list[Candidate] = []
-    # C 臂豁免判定(W242/ADR-0405):末窗星级定向授权 gap(延迟 import
-    # 防环,与 arbiter 消费 handoff 同式)
+    # C 豁免判定(W242/ADR-0405;ADR-0411 起无条件启用):末窗星级定向
+    # 授权 gap(延迟 import 防环,与 arbiter 消费 handoff 同式)
     from sr_od.application.currency_war.decision_v2.handoff import (
-        star_directed_gap,
+        handoff_gate_gap,
     )
-    _sd_gap = star_directed_gap(state, session, registry)
+    _sd_gap = handoff_gate_gap(state, session, registry)
     # --- 买(店内每卡)---
     for card in (state.shop or []):
         if not card.name:
@@ -373,10 +373,10 @@ def generate_candidates(state: GameState, session: StrategySession,
             # A 臂豁免(W232/ADR-0402 方案A):filler_star 开臂时,已
             # deployed 名的同名副本(升星素材,[15]/[22] 压库语义)生成
             # 候选——授权只到「已持有名的副本」,不授权为填充件 D 刷
-            # (copies_cap/方向门照常辖);默认关=r410 守卫现行为不变
-            # (W96 锁 test_r7_frame_generation_guard_unchanged);
-            # C 臂豁免(W242/ADR-0405 C 项):末窗星级定向授权 gap>0 时
-            # 同域放行(W232 A 豁免的 gap 条件化分支,flag 三正交)
+            # (copies_cap/方向门照常辖);
+             # C 臂豁免(W242/ADR-0405 C 项;ADR-0411 起 gap 无条件启用):
+             # 末窗星级定向授权 gap>0 时同域放行(W232 A 豁免的
+             # gap 条件化分支)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue

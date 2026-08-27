@@ -558,22 +558,17 @@ class DecisionV2Registry:
     #: 的定向找件是 V_D 的本体场景,不再需要独立常量通道))
 
     # ===== W227/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
-    #: 总开关:False=回 W226 前行为(formed_stop 纯 P1 语义;interest_rule
-    #: EV 账无承接项)。True 时 P1 末窗(r>=handoff_gate_min_round)投影
-    #: 承接档位(handoff.handoff_gate_gap 单一源)未达标:①成型停手线
-    #: 不停手(filters.formed_stop_active 承接维——缺口>0 继续投资,
-    #: [18] 位面末 ALL IN 的承接扩展);②interest_rule 买侧破息 EV 账
-    #: 加承接缺口项(V += handoff_ev_gap_bonus×缺口)。只辖 P1 末窗
-    #: (P1 非末窗零漂移门的结构前提)。
-    #: **默认关(A/B 裁决,ADR-0305 先例)**:n=300 同池(3be1d310)同
-    #: seed 配对,行为面已触发(r8 买 1.02 vs 0.67/门扣住 1499 轮/
-    #: P1 非末窗零漂移过)但 outcome 面无一致正方向(hp0 0.939 vs
-    #: 0.935 微升/存活轮 3.71 vs 3.77 微降,噪声带内)——W226 已声明
-    #: sim 边界:core2(星级深度)在胜率模型(ADR-0377 form=engines+
-    #: level)无因果通道,承接门主投资方向恰是该维 → sim 不可仲裁
-    #: 收益方向,禁「不劣」措辞默认开;通道保留,待 ADR-0377 form 加
-    #: 星级分量后复验(ADR-0400 验证节)。数字与裁决单一源=ADR-0400。
-    handoff_gate_enabled: bool = False
+    #: ADR-0411 flag 家族清理(2026-09-03):承接门自本批起**无条件启用**
+    #: ——历史 handoff_gate_enabled 布尔字段删除。验证史:W247/W254-R
+    #: 两轮复核 gate 单开 outcome 无正方向(W254 判边际为负),但门是
+    #: star/refresh 两通道授权的判据语境(gap 单一源),行为面随其一并
+    #: 转正;裁决与四通道验证结论单一源 = ADR-0411。
+    #: 行为语义:P1 末窗(r>=handoff_gate_min_round)投影承接档位
+    #: (handoff.handoff_gate_gap 单一源)未达标:①成型停手线不停手
+    #: (filters.formed_stop_active 承接维,[18] 位面末 ALL IN 的承接
+    #: 扩展);②interest_rule 买侧破息 EV 账加缺口项
+    #: (handoff_ev_gap_bonus×缺口)。只辖 P1 末窗(P1 非末窗零漂移
+    #: 门的结构前提)。量级常量保留供调优。
     #: 末窗下界(r8-r9 boss 窗;设计件 §4.2「P1 r8-r9(boss 窗)」)。
     #: 与 formed_stop_min_round(=7)的差 = r7 成型轮不受承接门辖
     #: (承接账只算末窗,早停语义不动)
@@ -586,18 +581,17 @@ class DecisionV2Registry:
     #: 刷新口径(ADR-0352 D 平面 R 上界纪律不动))
     handoff_ev_gap_bonus: float = 5.0
 
-    # ===== W238/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1 最小可验第一步)=====
-    #: 投影总开关(与 handoff_gate_enabled **正交**:本 flag 只在门开时被
-    #: 消费,单独开=零行为)。True 时 handoff_gate_gap 末窗投影的 hp 维由
-    #: 「当前 hp(boss 前)」换「boss 后投影 hp」:
+    # ===== W238/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1)=====
+    #: ADR-0411 flag 家族清理:投影自本批起**无条件启用**——历史
+    #: handoff_boss_project 布尔字段删除(曾默认关:W238 三臂 A/B 后
+    #: 未解锁;转正裁决见 ADR-0411——量级问题非行为开关)。语义:
+    #: handoff_gate_gap 末窗投影的 hp 维由「当前 hp(boss 前)」换
+    #: 「boss 后投影 hp」:
     #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
     #: E[boss 伤害|净星深档](r9 无 +2;W240 起档键=净星深,
     #: ADR-0404)。修标定口径错位(喂给
     #: HANDOFF_HP_CUTS(boss 后真值标定,ADR-0399)的 hp 取 boss 前值
     #: = hp 维系统性高估一档;设计件 09 §2)。
-    #: **默认关(A/B 裁决,ADR-0400/0402 双关默认先例)**:投影只改门输入,
-    #: 关=逐位现行为(hp 维零漂移);裁决数字见 ADR-0403。
-    handoff_boss_project: bool = False
     #: E[boss 伤害|净星深档] 常数表(**正数=期望掉血量**;离线标定非
     #: 运行时预测)。标定源=Δ池 plane=1 boss 桶(**净星深键** = 上场件
     #: Σ(star−1) 桶 min(sd//3,5)*3,W240/ADR-0404 替旧 Σboard 键——
@@ -632,32 +626,33 @@ class DecisionV2Registry:
 
     # ===== W242/ADR-0405 末窗星级定向授权(W232 挂账 C 项;设计件 08
     # §4.2 Phase 1b 星级投资方向)=====
-    #: 总开关(与 handoff_gate_enabled / handoff_boss_project 三 flag
-    #: 正交):True 时 P1 末窗(r>=handoff_gate_min_round)承接缺口
-    #: gap>=1(handoff.handoff_gate_gap 单一源复用)对**同名副本买入**
-    #: 给定向授权——candidates 层放行副本候选生成(r410 守卫+方向门,
-    #: W232 A/B 豁免的 gap 条件化分支)+ arbiter 非正分门放行副本
-    #: (W231 主因:副本评分零维被结构性拒,到不了 EV 账)。**授权值
-    #: 单一源 = interest_rule 的 handoff_ev_gap_bonus×gap(W227 缺口
-    #: 项,C 项零新增数值通道/零新常量,防双计)**;地板族/copies_cap/
-    #: r408 同轮守卫/bench 容量照常辖。默认关论证见 ADR-0405。
-    handoff_star_directed: bool = False
+    #: ADR-0411 flag 家族清理:末窗星级定向授权自本批起**无条件启用**
+    #: ——历史 handoff_star_directed 布尔字段删除。验证史:W242 四臂
+    #: A/B 行为面强正(core2≥1 进场率 +150%)但单独不改变结局;转正
+    #: 依据 = star 是 W231「评分结构性拒副本」病灶的正解且 sim 无挤出
+    #: (量级不足属参数调优非行为开关,裁决见 ADR-0411)。行为语义:
+    #: P1 末窗(r>=handoff_gate_min_round)承接缺口 gap>=1
+    #: (handoff.handoff_gate_gap 单一源)对**同名副本买入**给定向授权
+    #: ——candidates 层放行副本候选生成(r410 守卫+方向门,W232 A/B
+    #: 豁免的 gap 条件化分支)+ arbiter 非正分门放行副本(W231 主因:
+    #: 副本评分零维被结构性拒,到不了 EV 账)。**授权值单一源 =
+    #: interest_rule 的 handoff_ev_gap_bonus×gap(零新增数值通道/
+    #: 防双计)**;地板族/copies_cap/r408 同轮守卫/bench 容量照常辖。
 
     # ===== W252/ADR-0409 M-A 定向 D 牌授权窗(W249 诊断修法)=====
-    #: 总开关(**与 handoff_gate_enabled / handoff_boss_project 三 flag
-    #: 正交**:budget 只在 gate 开路径内被消费,单独开=零行为,W242 C 项
-    #: 先例):True 时 P1 末窗承接缺口 gap>0(handoff.handoff_gate_gap
-    #: 单一源复用)**且**存在追名 peak≥2 的目标件(意向核心名集内某名
-    #: star 加权在手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新
-    #: (RefreshShop)开放有界预算——修 W249 H3 病灶「策略从不支付
-    #: 搜索成本」:追名 peak 卡死在 2 张时补最后一跳的期望刷新代价
-    #: (~6-17 次/颗)恰落入金余量尾部窗口,但策略此前刷新分配为零。
-    #: **只辖刷新维**(防双计,W232 A/B/W242 C 各辖买牌维,互斥边界:
-    #: 同一动作只有一条授权来源——买候选走既有 interest_rule 缺口项/
-    #: copy 放行路径不动;refresh 候选要么走既有 V_D 正分/gold_floor
-    #: 路径(预算开/关逐位一致),要么凭本预算有界放行,无叠加);
-    #: copies_cap/r408/bench 容量等约束链照常辖。默认关论证见 ADR-0409。
-    handoff_refresh_directed: bool = False
+    #: ADR-0411 flag 家族清理:M-A 定向刷新自本批起**无条件启用**
+    #: ——历史 handoff_refresh_directed 布尔字段删除。验证史:W252
+    #: 三臂 AB merges +47%/hp0 改善但 cap6≈半跳量级;转正依据 = M-A
+    #: 是 W249「策略从不支付搜索成本」病灶的对症修法且方向为正
+    #: (量的解锁归 cap 提升独立批,裁决见 ADR-0411)。行为语义:P1
+    #: 末窗承接缺口 gap>0(handoff.handoff_gate_gap 单一源复用)**且**
+    #: 存在追名 peak≥2 的目标件(锁定采购目标名集内某名 star 加权在
+    #: 手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新(RefreshShop)
+    #: 开放有界预算。**只辖刷新维**(防双计,W232 A/B/W242 C 各辖买牌
+    #: 维,互斥边界:同一动作只有一条授权来源——买候选走既有
+    #: interest_rule 缺口项/copy 放行路径不动;refresh 候选要么走既有
+    #: V_D 正分/gold_floor 路径,要么凭本预算有界放行,无叠加);
+    #: copies_cap/r408/bench 容量等约束链照常辖。
     #: 单合资格轮刷新次数上限(W249 白盒估算初值:每轮 ≤2 次)
     directed_refresh_per_round: int = 2
     #: 每局刷新总上限(W249 白盒估算初值:≈覆盖一颗 2★ 的第二跳
