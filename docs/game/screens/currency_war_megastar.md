@@ -50,7 +50,7 @@ source_image: screens/货币战争-盛会之星/未选择.webp
 
 - **id_mark(2026-08-13 定型)**:盛会之星 = 标题「盛会之星」+ 购买经验(组合);备战 id_mark 含被盖的「前台区域」→ overlay 帧备战不 is_precise → 不撞车(同「选择伙伴」模型,见 ADR-0122)。
 - **「强化角色未选择」语义(用户 2026-08-13 澄清,务必记)**:该文字在**出战按钮上方(备战侧)**,= 巨星(强化)选择未确认 → **出战被锁**的提示(意思是"由于未选择,所以不能出战");**非 overlay 内要再选一个强化角色的必选步骤**。选巨星候选 → 点确认选择 → overlay 关、出战恢复。handler `RunMegastarNode`(选候选 → 确认,跳过强化角色)正确。
-- **screen_info 现状**:`currency_war_megastar.yml` —— `标识-盛会之星` + `备战标识-购买经验`(组合 id_mark)+ `按钮-请选择强化角色`。⚠️ 候选/确认坐标当前在 handler ClassVar(`CANDIDATE_LEFT/RIGHT/CONFIRM`),**未进 screen_info**(TODO task#20:坐标进 screen_info 作单一真相源)。
+- **screen_info 现状**:`currency_war_megastar.yml` —— `标识-盛会之星` + `备战标识-购买经验`(组合 id_mark)+ `按钮-请选择强化角色` + `候选-左`/`候选-右`(候选卡身选中区,W265 建)+ `按钮-确认选择`(W265 建)。候选/确认坐标单一真相源在 screen_info;handler ClassVar(`CANDIDATE_LEFT/RIGHT/CONFIRM`)仅作 screen_info 缺失兜底(W265 改 area_center 读取)。
 - handler `RunMegastarNode`(选候选 → 确认)+ `decide_megastar`(按 buff 契合)+ 候选 OCR `read_megastar_options` 已接;候选有名字 → OCR 可识别(优于选择伙伴的盲选)。
 - **触发条件(羁绊激活 ≥2)**:用户告知 + 受控实验(上阵 1 个未激活不弹)印证,待更多 live 样本固证。
 - fixture 已归档 `sr-od-test/screens/货币战争-盛会之星/未选择.webp`(2026-08-13,未选态)。
