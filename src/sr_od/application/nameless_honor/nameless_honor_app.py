@@ -130,6 +130,17 @@ class NamelessHonorApp(SrApplication):
             if result.is_success:
                 return self.round_wait(result.status, wait=1)
 
+        # 版本更新说明弹窗(W293,2026-08-27 run 48 实证):一键领取后可能弹
+        # 「无名勋礼等级加速」说明弹窗(全宽横幅,背景模糊;与推广页退出链是同一
+        # 张弹窗,screen_info 已独立建档)。关闭手势=点弹窗内「点击空白处关闭」
+        # 提示位(编排者 live 实证 (960,736);点弹窗外部 (400,400) 无效)——
+        # 该提示位坐标(≈737)与本屏领取弹窗的「按钮-点击空白处关闭」(≈945)不同,
+        # 故必须走弹窗独立屏的 area。命中后 round_wait 重跑本节点等回主界面。
+        result = self.round_by_find_and_click_area(
+            screen, '无名勋礼-等级加速弹窗', '按钮-点击空白处关闭')
+        if result.is_success:
+            return self.round_wait(result.status, wait=1)
+
         return self.round_retry('未知画面状态', wait=1)
 
     @node_from(from_name='点击无名勋礼', status=STATUS_NO_ALERT)  # 无名勋礼没有红点

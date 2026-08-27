@@ -34,6 +34,7 @@ involves_screens: [菜单, 无名勋礼-购买推广页, 无名勋礼-等级加�
 - `_click_tab_1`(切到**奖励** tab)→ `_claim_reward`(奖励 tab 一键领取,`无名勋礼-奖励-一键领取` area)→ `_check_screen_after_reward`。
 - tab 切换用 `phone_menu_utils.get_nameless_honor_tab_pos`(`nameless_honor_1`=奖励、`nameless_honor_2`=任务 模板)。
 - `back_at_first` / `back_at_last`:首尾返回。
+- **领取后的版本说明弹窗** [口述+实机实证]:点「一键领取」成功后可能弹「无名勋礼等级加速」弹窗(同上节弹窗,关闭手势=点弹窗内「点击空白处关闭」提示位;`_check_screen_after_reward` 已建候选,run 48「未知画面状态」失败实证后补)。
 
 ## 画面(phone_menu 无名勋礼子态)
 

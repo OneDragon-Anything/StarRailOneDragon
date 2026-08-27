@@ -37,3 +37,7 @@
 
 - 判据:用户口述(版本首进机制 + 点开启不付费)+ 编排者 live 退出链实证(2026-08-27,截图存档 `.debug/sr_od_mcp/screenshot/screenshot_20260827_185941_767254.png` / `..._190554_379781.png`)。
 - 验证:ruff(主仓 op + 测试仓测试文件);直测 `test_back_to_normal_world_plus.py` 10/10;id_mark 全集 `test_id_mark.py` 0 failed。
+
+## Scope 扩充:app 领取后同款弹窗候选(2026-08-27 run 48 实证补充)
+
+run 48 实机:无名勋礼 app 领取奖励(`按钮-奖励-一键领取` 点击成功)后也会弹同一张「无名勋礼等级加速」说明弹窗(标题 (834,378) + 提示 (875,723)),`_check_screen_after_reward` 旧三候选(secondary UI/奖励-取消/主面板「点击空白处关闭」)全不命中 → 「未知画面状态」×4 → op 失败(组自愈继续)。修法:`_check_screen_after_reward` 补第四候选——命中「无名勋礼-等级加速弹窗/按钮-点击空白处关闭」(独立屏 area,提示位 ≈(960,737),点外部无效)→ 点关闭 → `round_wait` 重跑本节点等回主界面。同屏建档零新增,复用本 ADR 的弹窗 screen_info。测试锁 +2(弹窗帧走新候选 WAIT 且不触旧候选 / 主面板帧 secondary UI 路径不变)+ 契约引用 +1。
