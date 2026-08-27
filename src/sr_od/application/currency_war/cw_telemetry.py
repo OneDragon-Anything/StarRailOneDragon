@@ -308,12 +308,16 @@ class ExogenousEvent:
     round_num: int = 0
     kind: str = ""                  # node_enter/popup/briefing/event_choice(r378b 收敛到
     # 有生产者的值:前三种见 22/31 号预案;event_choice(W312,遥测审计 G1)=
-    # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind,
-    # 结构化载荷在 choice(detail 只放一行人读摘要——审计 G1:这族此前只 log 不落盘)
+    # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind;
+    # sell_income(W323,遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
+    # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
+    # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
+    # (detail 只放一行人读摘要)
     detail: str = ""
     state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
-    choice: dict[str, Any] | None = None   # W312(G1):选项选择快照 {event/options/n_options/
-    # pick_idx/reason}。仅 kind='event_choice' 行携带;旧记录与其它 kind 恒 None(缺省兼容)。
+    choice: dict[str, Any] | None = None   # 结构化载荷(W312 event_choice:{event/options/
+    # n_options/pick_idx/reason};W323 sell_income:{slot/char/gold_delta})。
+    # 旧记录与其它 kind 恒 None(缺省兼容)。
 
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -852,6 +856,42 @@ def record_event_choice(event: str, options: list | None, pick_idx: int,
     get_recorder().record_exogenous(
         _CURRENT_RUN_ID, round_num, 'event_choice',
         detail=f'{event} pick=idx{pick_idx} {reason}', choice=choice)
+
+
+def record_sell_income(state: GameState, slot: int, char_id: str,
+                       gold_before: int | None, gold_after: int | None) -> None:
+    """W323(遥测审计 G2):卖牌执行点实收回金落盘(exogenous.jsonl,
+    kind='sell_income')。
+
+    生产者 = shop.py SellBench 执行分支(拖拽卖出成功后):gold_before 取
+    拖拽前 gold OCR 读数,gold_after 取卖出入账后读数,差值即实收回金。
+    为什么不记进 decisions 行的 actions:actions 是执行前 plan 快照,序列化
+    时卖出尚未发生;sim 行的 income 字段是计划值,生产行只有执行点能拿到
+    实际值。economy 视图(query_economy)按 (plane, round) 聚合本行补
+    「卖回」格——此前卖牌收入只能靠 gold 差分倒推,混入利息/连胜金噪声。
+
+    参数:
+        state: 卖出时点的备战 GameState(round_num/plane/gold 进快照);
+        slot: bench 槽位下标 0-8(ADR-0316,与 SellBench.bench_idx 同坐标系);
+        char_id: 被卖角色名(生成期快照,守卫通过的那件);
+        gold_before/gold_after: 执行前后 gold OCR 读数;任一读不到(OCR miss,
+        stylized 漏读)传 None → gold_delta=None(视图计 0 并标 ? 提示有偏),
+        旧数据(无本行)视图回退 actions income 口径,不回归。
+    run_id 空直接 no-op(与 record_exogenous 同门控);best-effort 由调用方
+    try/except 兜底,观测失败不阻断业务流。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    delta = ((gold_after - gold_before)
+             if (gold_before is not None and gold_after is not None) else None)
+    round_num = int(getattr(state, 'round_num', 0) or 0)
+    get_recorder().record_exogenous(
+        _CURRENT_RUN_ID, round_num, 'sell_income',
+        detail=(f'sell slot={slot} {char_id or "?"} '
+                f'+{delta if delta is not None else "?"}金'),
+        state=state,
+        choice={'slot': int(slot), 'char': str(char_id or ''),
+                'gold_delta': delta})
 
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
@@ -1485,7 +1525,7 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
 
 
 def query_economy(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(r339):金轨迹/滞留——逐轮 (gold, 升级费, 花出, 收入)。
+    """视图(r339):金轨迹/滞留——逐轮 (gold, 升级费, 花出, 收入, 卖回)。
 
     「金花不出去」异常的量化端:滞留轮(金≥20 且花=0)标 ⚠。
     升级花费逐轮读 decisions.state.level_up_cost(cw_observation.
@@ -1493,8 +1533,27 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
     时按 XP_CLICK_COST_FALLBACK 兜底常量计入并在 `lv=` 后标 `?`
     (成本项可能有偏,判读可辨)。升级成本与 gold 并列显示——
     「这轮升得起吗」直接对照,不再需要另开窗口查 decisions.state。
+    卖回格(W323,遥测审计 G2):优先聚合 exogenous kind='sell_income'
+    行的实收 gold_delta(shop.py 执行点落盘);该轮有行但 delta=None
+    (OCR miss)计 0 并标 `?`;无行(旧数据/sim 局)回退 decisions
+    actions 的 SellBench.income 口径(与 sim 账本一致,不回归)。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
+    # W323:执行点实收卖回聚合(键 = (plane, round),与 decisions 主键同坐标系)
+    sell_obs: dict[tuple, int] = {}
+    sell_obs_unknown: set[tuple] = set()
+    for r in read_jsonl(replay_dir / "exogenous.jsonl"):
+        if (r.get("kind") or "") != "sell_income":
+            continue
+        if run_id and r.get("run_id") != run_id:
+            continue
+        k = ((r.get("state_snapshot") or {}).get("plane"),
+             r.get("round_num"))
+        d = (r.get("choice") or {}).get("gold_delta")
+        if d is None:
+            sell_obs_unknown.add(k)
+        else:
+            sell_obs[k] = sell_obs.get(k, 0) + int(d)
     lines = []
     prev_gold: int | None = None
     for k in sorted(best):
@@ -1510,16 +1569,19 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
             if isinstance(a, dict) and a.get("__type__") == "LevelUp")
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
-        # 卖牌回金(⑤:此前漏计——含卖轮的 income 系统性偏负;
-        # sim 账本行带 income 字段,生产行暂无(卖值不在动作里,
-        # 补采前按 0 = 与旧口径一致,不回归)
-        sell_in = sum((a.get("income") or 0) for a in acts
-                      if isinstance(a, dict) and a.get("__type__") == "SellBench")
+        # 卖牌回金(W323 前口径⑤:漏计——含卖轮的 income 系统性偏负)。
+        # 优先级:执行点实收(exogenous)> actions 计划值(sim 行;生产行
+        # serialize_action 的 SellBench 不带 income,恒 0 不干扰)。
+        sell_act = sum((a.get("income") or 0) for a in acts
+                       if isinstance(a, dict) and a.get("__type__") == "SellBench")
+        unknown = k in sell_obs_unknown
+        sell_in = sell_obs.get(k, sell_act if k not in sell_obs_unknown else 0)
         g = d.get("gold") or 0
         income = ((g - prev_gold + spend - sell_in)
                   if prev_gold is not None else None)
         flag = ' ⚠滞留' if (g >= 20 and spend == 0) else ''
-        sell_s = f' 卖+{sell_in}' if sell_in else ''
+        sell_s = (f' 卖+{sell_in}' + ('?' if unknown else '')) \
+            if (sell_in or unknown) else ''
         lines.append(
             f"  p{k[0]}r{k[1]} g={g} lv={luc_s}"
             f" 花={spend}{sell_s} 收={'-' if income is None else income}{flag}")

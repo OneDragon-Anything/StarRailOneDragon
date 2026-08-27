@@ -575,6 +575,11 @@ class BuyShopCards(SrOperation):
                     from sr_od.application.currency_war.prep_actions import (
                         drag_bench_to_sell,
                     )
+                    # W323(遥测审计 G2):卖牌实收回金=执行前后 gold OCR 差,
+                    # 拖拽前取基数(拖拽本身不改金;miss=None,视图回退兼容)。
+                    _gold_before = None
+                    with contextlib.suppress(Exception):   # 观测 best-effort 不阻断卖出
+                        _gold_before = read_gold(self.ctx, self.screenshot())
                     ok = drag_bench_to_sell(self, self.ctx, action.bench_idx)
                     if ok:
                         # tracking 同步:置 None 不紧缩(mutate_bench_deployed 已支持
@@ -599,6 +604,18 @@ class BuyShopCards(SrOperation):
                         register_round_sold([_expected], state, match.session)
                         total_sell += 1
                         total_sell_income += action.income or 0
+                        # W323(遥测审计 G2):实收回金落盘(exogenous
+                        # kind='sell_income',消费=economy 视图卖回格)。
+                        # 计划值 action.income 是 sim 口径;生产行只有这里
+                        # 能拿到执行前后 gold 差。best-effort 不阻断买牌。
+                        try:
+                            time.sleep(0.5)   # 卖出入账动画(与买卖 sleep 同量级)
+                            _gold_after = read_gold(self.ctx, self.screenshot())
+                            cw_telemetry.record_sell_income(
+                                state, action.bench_idx, _expected or '',
+                                _gold_before, _gold_after)
+                        except Exception:   # noqa: BLE001  观测 best-effort
+                            pass
                         log.info('[cw-shop] Sell bench%d %s(+%s) ✓',
                                  action.bench_idx, _expected, action.income or '?')
                     else:
