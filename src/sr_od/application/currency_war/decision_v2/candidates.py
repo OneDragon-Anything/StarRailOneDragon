@@ -253,7 +253,15 @@ def _buy_tag(card: ShopCard, state: GameState,
     # 方向门之前(r408 同轮已卖守卫在 discipline 层前置;冷启动例外
     # r383b 的全轮域推广)。开关=registry.pair_copy_direction_exempt,
     # 与 filler_star_unit 同臂开(默认关=现行为零漂移)。
-    if (not is_target and registry.pair_copy_direction_exempt
+    # C 臂(W242/ADR-0405 C 项):末窗星级定向授权 gap>0(handoff.
+    # star_directed_gap 单一源)时同域豁免——gap 条件化分支,与
+    # pair_copy_direction_exempt 三 flag 正交(单独开=零行为)。
+    from sr_od.application.currency_war.decision_v2.handoff import (
+        star_directed_gap,
+    )
+    if (not is_target
+            and (registry.pair_copy_direction_exempt
+                 or star_directed_gap(state, session, registry) > 0)
             and has_same_name_copy(card, state)
             and not in_round_sold(card.name, state, session)):
         return 'copy'
@@ -341,6 +349,12 @@ def generate_candidates(state: GameState, session: StrategySession,
     覆盖面由检查项 decision_v2_candidate_coverage 锁(全部动作类)。
     """
     out: list[Candidate] = []
+    # C 臂豁免判定(W242/ADR-0405):末窗星级定向授权 gap(延迟 import
+    # 防环,与 arbiter 消费 handoff 同式)
+    from sr_od.application.currency_war.decision_v2.handoff import (
+        star_directed_gap,
+    )
+    _sd_gap = star_directed_gap(state, session, registry)
     # --- 买(店内每卡)---
     for card in (state.shop or []):
         if not card.name:
@@ -351,6 +365,8 @@ def generate_candidates(state: GameState, session: StrategySession,
                 and not (registry.copy_swap_target_exempt
                          and card.name in _target_names(state, session)) \
                 and not (registry.filler_star_unit > 0
+                         and _has_deployed_copy(card.name, state)) \
+                and not (_sd_gap > 0
                          and _has_deployed_copy(card.name, state)):
             continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
             # 目标件豁免开关=ADR-0303/0304 裁决默认关,通道保留);
@@ -358,7 +374,9 @@ def generate_candidates(state: GameState, session: StrategySession,
             # deployed 名的同名副本(升星素材,[15]/[22] 压库语义)生成
             # 候选——授权只到「已持有名的副本」,不授权为填充件 D 刷
             # (copies_cap/方向门照常辖);默认关=r410 守卫现行为不变
-            # (W96 锁 test_r7_frame_generation_guard_unchanged)
+            # (W96 锁 test_r7_frame_generation_guard_unchanged);
+            # C 臂豁免(W242/ADR-0405 C 项):末窗星级定向授权 gap>0 时
+            # 同域放行(W232 A 豁免的 gap 条件化分支,flag 三正交)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue

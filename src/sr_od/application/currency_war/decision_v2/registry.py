@@ -623,6 +623,19 @@ class DecisionV2Registry:
     #: boss 尚隔一轮)加;r9 直面 boss 不加
     handoff_boss_reward_bonus: int = 2
 
+    # ===== W242/ADR-0405 末窗星级定向授权(W232 挂账 C 项;设计件 08
+    # §4.2 Phase 1b 星级投资方向)=====
+    #: 总开关(与 handoff_gate_enabled / handoff_boss_project 三 flag
+    #: 正交):True 时 P1 末窗(r>=handoff_gate_min_round)承接缺口
+    #: gap>=1(handoff.handoff_gate_gap 单一源复用)对**同名副本买入**
+    #: 给定向授权——candidates 层放行副本候选生成(r410 守卫+方向门,
+    #: W232 A/B 豁免的 gap 条件化分支)+ arbiter 非正分门放行副本
+    #: (W231 主因:副本评分零维被结构性拒,到不了 EV 账)。**授权值
+    #: 单一源 = interest_rule 的 handoff_ev_gap_bonus×gap(W227 缺口
+    #: 项,C 项零新增数值通道/零新常量,防双计)**;地板族/copies_cap/
+    #: r408 同轮守卫/bench 容量照常辖。默认关论证见 ADR-0405。
+    handoff_star_directed: bool = False
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)

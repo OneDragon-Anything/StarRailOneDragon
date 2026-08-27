@@ -197,7 +197,7 @@ P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首�
 | 期 | 内容 | 批量级 | 验收 |
 |---|---|---|---|
 | **Phase 0** | ~~快照纯函数 + 双侧观测 + 离线标定~~ **已落地(ADR-0399)**:单调标定过(hp 维 (20,50) 严格单调;板面维单切点单调,总档位两档)、run 26/28 回验各自命中主罚维、零漂移门 diff={} | — | 判据 1/2 过;新单帧锁 test_cw_w224_handoff |
-| **Phase 1** | ~~formed_stop 承接维 + EV 承接缺口项(A/B flag,registry 注入)~~ **已落地(ADR-0400)**:判据 3 三面=A/B 配对(行为面过/零漂移过/outcome 面不过→**默认关**,通道保留;sim 对 core2 维无因果通道=W226 声明边界的兑现)+ 构造局锁 test_cw_w227_handoff_gate | — | 判据 3 outcome 面如实报败(hp0/存活轮无正方向),默认 flag=OFF 裁决见 ADR-0400;复验挂 ADR-0377 form 星级分量 |
+| **Phase 1** | ~~formed_stop 承接维 + EV 承接缺口项(A/B flag,registry 注入)~~ **已落地(ADR-0400)**:判据 3 三面=A/B 配对(行为面过/零漂移过/outcome 面不过→**默认关**,通道保留;sim 对 core2 维无因果通道=W226 声明边界的兑现)+ 构造局锁 test_cw_w227_handoff_gate;**Phase 1b 星级投资方向(末窗星级定向授权,W232 挂账 C 项)已落地(ADR-0405)**:gap≥1 时同名副本买入选定授权(candidates 放行+非正分门放行;授权值由缺口项单一源独担,flag 默认关) | — | 判据 3 outcome 面如实报败(hp0/存活轮无正方向),默认 flag=OFF 裁决见 ADR-0400;复验挂 ADR-0377 form 星级分量 |
 | Phase 2 | P2 早期姿态偏置(V_D 参数偏置,registry A/B) | 1 批 | 同上配对口径;敏感性端点一致 |
 | Phase 3 | hp<10 保命路径收编(三臂合账) | 1 批 | run 28 型构造局单帧锁 + sim 分层对照 |
 

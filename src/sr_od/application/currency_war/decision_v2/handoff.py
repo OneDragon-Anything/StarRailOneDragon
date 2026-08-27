@@ -200,6 +200,32 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
     return max(0, reg.handoff_gate_tier_target - handoff_tier(snap))
 
 
+def star_directed_gap(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry | None = None) -> int:
+    """末窗星级定向授权缺口(W242/ADR-0405,W232 挂账 C 项;设计件 08
+    §4.2 Phase 1b 星级投资方向)。
+
+    返回值语义 = ``handoff_gate_gap``(单一源复用,不建第二套缺口公式)
+    在 ``registry.handoff_star_directed`` 开时的值;flag 关/gate 关/
+    非末窗/投影达标 → 0(=零行为,三 flag 正交的结构前提:本 flag 只在
+    门开路径内被消费,单独开=零行为,与 ``handoff_boss_project`` 同式)。
+
+    消费面(C 项定向授权的两半,ADR-0405 授权点论证):
+
+    - ``candidates`` 生成层:gap>0 时放行同名副本候选生成(r410 守卫 +
+      方向门,= W232 A/B 豁免的 gap 条件化分支——不是授权点:不豁免
+      评分/约束,copies_cap/r408/bench 容量照常辖);
+    - ``arbiter`` 非正分门:gap>0 时放行 'copy' 标签买候选(W231 主因:
+      副本评分零维被结构性拒,到不了 EV 账);**授权值本身零新增**——
+      EV 账由 ``interest_rule`` 的 W227 缺口项
+      (``handoff_ev_gap_bonus``×gap)独担,防双计。
+    """
+    reg = registry if registry is not None else _default_registry()
+    if not reg.handoff_star_directed:
+        return 0
+    return handoff_gate_gap(state, session, reg)
+
+
 def boss_projected_hp(state: GameState, hp_now: int,
                       registry: DecisionV2Registry) -> int:
     """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数;

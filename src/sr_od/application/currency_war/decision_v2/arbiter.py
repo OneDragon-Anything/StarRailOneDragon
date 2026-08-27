@@ -527,12 +527,29 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         verdicts: list[str] = []
         if val <= 0:
             # 评分制语义:非正分候选不执行(相对不动的期望不增;
-            # 骨架版防「只剩负 EV 刷新也执行」的段空转)
-            res.log.append({'tag': cand.tag, 'score': val,
-                            'desc': _describe(cand, state),
-                            'accepted': False, 'reject': '非正分',
-                            'breakdown': bd})
-            continue
+            # 骨架版防「只剩负 EV 刷新也执行」的段空转)。
+            # C 臂豁免(W242/ADR-0405 C 项,末窗星级定向授权):P1 末窗
+            # 承接缺口 gap>0 时 'copy' 标签买候选(同名副本=升星素材,
+            # 星级投资的承接价值计入)放行进入约束链——W231 主因:副本
+            # 评分零维(merge_progress/core_star/targets 全辖目标集名)
+            # 被本门结构性拒,到不了 interest_rule 的 EV 账。防双计:
+            # 授权值零新增——EV 放行值由 W227 缺口项
+            # (handoff_ev_gap_bonus×gap)独担,本门只补「评分零维进不了
+            # EV 账」的通道缺口;金地板/copies_cap/bench 容量等约束链
+            # 照常辖(放行≠必买)。只辖 'copy' 标签(定向授权,不辖
+            # 其它零分候选);非末窗/三 flag 关 → gap=0 零行为。
+            _copy_ok = False
+            if cand.tag == 'copy':
+                from sr_od.application.currency_war.decision_v2.handoff import (  # noqa: E501
+                    star_directed_gap,
+                )
+                _copy_ok = star_directed_gap(state, session, registry) > 0
+            if not _copy_ok:
+                res.log.append({'tag': cand.tag, 'score': val,
+                                'desc': _describe(cand, state),
+                                'accepted': False, 'reject': '非正分',
+                                'breakdown': bd})
+                continue
         if cand.tag == 'refresh':
             # 刷新放行与否在收尾裁决(段语义:刷后 re-decide)
             refresh_cand = (cand, val, bd)
