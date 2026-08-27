@@ -56,35 +56,9 @@
 
 - research/ **唯一排除**:screen_flow_timing(画面流转时序,运行时/运维侧,非策略面)。
 - data/(`docs/game/currency_war/data/`,**全部策略相关**):gameplay(官方玩法说明)/ competitors(词缀机制+20 竞争阵营唯一源)/ bosses(boss 克制启示)/ advantage_layouts(跨局 meta 增益)/ plaza_meta(实战 meta)。已建模入代码注册表的数据已删 doc,查值直接看注册表(清单见 data/README)。
-- research/ **核心三篇**(★):user_playstyle(口述权威,全文精读)/ transition_combos(过渡配方落码依据)/ power_baseline(形态白名单)。
 - proofs/ 单篇按命题按需读(math_proofs 是命题状态表)。
-- 日常增量的按任务补读组合见下方「任务路由」表(路由表是**增量跟踪**用,不是基线的替代)。
 
 消费方(sr-od-currency-war-dev skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。
-
-## 任务路由(做什么任务,先读什么组合)
-
-> 防单篇自闭:不同任务的关键知识散在不同的篇——只读一篇≈读局部。判读类另有前置三问(sr-od-currency-war-dev skill 判读节),本表是其文档来源。
-
-| 任务 | 先读组合 |
-|---|---|
-| 判读一局(局后复盘) | user_playstyle [28][18][27] + power_baseline(形态白名单) + transitions §1(锁线资格) |
-| 改买入/意向/锁定逻辑 | user_playstyle 全文 + transition_combos(配方定义) + transitions(开局分级) + economy(息律) |
-| 改评分/经济类权重 | user_playstyle + economy |
-| 掉血归因/战斗机制理解 | user_playstyle [27] + combat |
-| 改换阵/部署/装备分配 | user_playstyle [21][24][29] + combo_methodology + **board_structure(格子结构,布局选档前提)** |
-| 终局阵容设计 | final_comps/ + plaza_methodology |
-| 阶段转型(P1→P2→P3) | transitions §换血点 + user_playstyle [26] + plaza_methodology(阶段阵容) |
-
-> 条目号(如 [28])指 user_playstyle.md 的口述条目编号——最高权威来源,判读判据优先锚定它。
-
-## 关键互链(读 A 篇时该跳去的 B 篇)
-
-- user_playstyle [20](过渡是配方)→ 配方逐线定义在 transition_combos;资格判据(什么条件配走哪条线)在 transitions §1
-- user_playstyle [28](50 金通关 P1)→ 达标形态见 power_baseline P1 榜
-- user_playstyle [31](羁绊降级梯队)→ 凑数位定性(哪些羁绊是经济挂件零输出)在 transition_combos
-- transitions §1 开局分级 → 直通线资格枚举=锁线判据权威源(代码消费点 cw_intention,ADR-0338)
-- power_baseline 位面骨架 → P1→P3 形态演进的用户口径在 user_playstyle [26]
 
 ## 关系图
 

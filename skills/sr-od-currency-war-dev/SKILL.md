@@ -57,7 +57,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 三问口径展开与条目依据 → [references/strategy-work.md](references/strategy-work.md) §2。
 
-判读及策略任务的文档组合路由表 → `docs/game/currency_war/research/README.md`「任务路由」节。
+策略相关文档基线(改策略前必读面;全目录+阅读顺序) → `docs/game/currency_war/research/README.md`「策略相关文档」节。
 
 ```
 uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
