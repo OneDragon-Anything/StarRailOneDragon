@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from contextlib import suppress
 from dataclasses import dataclass
@@ -32,6 +33,14 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
     时退避重试;全部失败则**放弃本次轮转**,继续向当前文件追加并推迟到下一个
     时点再试 —— 日志短暂跨天不切分是可接受的降级,写日志抛异常污染调用方
     (pytest 随机红)不可接受。其余 OSError 照常上抛。
+
+    另两处同族守卫(跨零点错乱时间线的实证根因是标准库 doRollover 失败时
+    ``rolloverAt`` 不推进 → 每条日志重试换名、重试窗口内换名偶发成功会把
+    别的写入流甩进已改名的归档文件,出现"延迟重放流混入实时流"):
+    ① 换名已成功但随后的旧归档清理被占用 → 视作轮转完成,只推进时点,
+       绝不重试(对已不存在的源文件再 rename 会抛 FileNotFoundError 逃逸);
+    ② 全败降级重开流时,只在无流时补开 —— 并发 emit 的 shouldRollover
+       可能在本方法关闭流之后已重开流,直接赋值会丢弃活句柄造成同进程双写。
     """
 
     def __init__(
@@ -81,13 +90,25 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
                 )
                 if not occupied:
                     raise
+                if not os.path.exists(self.baseFilename):
+                    # 换名本体已成功(源文件不在了),失败发生在其后的旧归档
+                    # 清理(getFilesToDelete 的 os.remove 撞外部查看器句柄)。
+                    # 视作轮转完成:只推进轮转时点,流交给 FileHandler.emit 的
+                    # 惰性重开(delay=True 时保持 None);不重试 —— 此时重试会对
+                    # 不存在的源文件 rename,抛 FileNotFoundError 直接逃逸。
+                    self.rolloverAt = self.computeRollover(int(time.time()))
+                    return
                 if attempt < _ROTATE_RETRY_COUNT - 1:
                     time.sleep(min(_ROTATE_RETRY_BASE_DELAY * (2 ** attempt), 0.8))
 
         # 重试全失败:放弃本次轮转(日志短暂跨天不切分是可接受的降级),
         # 重开当前文件保持可写,并把下一个轮转时点推迟一个冷却期 —— 到期自动
         # 再试,届时占用方(其他进程的轮转窗口通常 <1s)早已释放。
-        self.stream = self._open()
+        # 只在无流时补开:重试期间并发 emit 的 shouldRollover 会因流为 None
+        # 重开流继续写当前文件,这里若无条件赋值会把那个活句柄变成游离的
+        # 第二写句柄(同进程双写,与跨进程双写同症状)。
+        if self.stream is None:
+            self.stream = self._open()
         self.rolloverAt = int(time.time()) + int(_ROTATE_DEFER_COOLDOWN_SECONDS)
         # 静默降级:不向调用方抛错(调用方大多只是想记一行日志)。
 
