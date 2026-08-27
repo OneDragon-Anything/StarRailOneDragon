@@ -1215,10 +1215,14 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
     best = _load_decisions_rounds(replay_dir, run_id)
     # 仅收「无决策行」的键(如 supply 合成行);有决策的轮以 decisions 为准
     _out_only: dict = {}
+    # W306 显示闭环:全部 outcomes 建 map —— 决策行的 source 也要能打
+    # (source 在 outcomes 行,decisions 行没有;合成补给行等无决策轮才有非空 source)
+    _out_by_k: dict = {}
     for o in read_jsonl(replay_dir / "outcomes.jsonl"):
         if run_id and o.get("run_id") != run_id:
             continue
         k = (o.get("plane"), o.get("round_num"))
+        _out_by_k[k] = o
         if k not in best and k not in _out_only:
             _out_only[k] = o
     lines = []
@@ -1282,9 +1286,13 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _dep = st.get("deployed") or []
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
-        # W306:节点类型直读(单看数字不知道是什么节点——判读第一眼维度)
+        # W306:节点类型 + 行来源直读(单看数字不知道是什么节点/这行哪来的
+        # ——node_type 取 state(战斗后观测),source 取 outcomes 同键行
+        # (''=结算真值行,'synthetic_supply'/'recovered' 特例),合成显示 [src|nt])
         _nt = st.get("node_type") or ""
-        nt_s = f" [{_nt}]" if _nt else ""
+        _src = (_out_by_k.get(k) or {}).get("source") or ""
+        _tag = "|".join(x for x in (_src, _nt) if x)
+        nt_s = f" [{_tag}]" if _tag else ""
         lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
                       f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}")
     return lines
@@ -1298,6 +1306,13 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
             continue
         snaps.setdefault((s.get("plane"), s.get("round_num")), []).append(s)
     best = _load_decisions_rounds(replay_dir, run_id)
+    # W306 显示闭环:同键 outcome 的 node_type/source 打进每轮头行
+    # (synthetic 补给行无 decisions,靠 outcomes 兜出节点语境)
+    _out_by_k: dict = {}
+    for o in read_jsonl(replay_dir / "outcomes.jsonl"):
+        if run_id and o.get("run_id") != run_id:
+            continue
+        _out_by_k[(o.get("plane"), o.get("round_num"))] = o
     # 配方框架(cw_transition;import 失败退空 = 全牌不标)
     try:
         from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
@@ -1310,7 +1325,13 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
         acts = (d.get("actions") or []) if d else []
         buys = [a.get("card", {}).get("name") for a in acts
                 if isinstance(a, dict) and a.get("__type__") == "BuyCard"]
-        lines.append(f"  p{k[0]}r{k[1]} tgt={(d or {}).get('target_comp', '?')}")
+        _o = _out_by_k.get(k) or {}
+        _st_d = (d.get("state") or {}) if d else {}
+        _tag = "|".join(x for x in (_o.get("source") or "",
+                                    _st_d.get("node_type")
+                                    or _o.get("node_type") or "") if x)
+        tag_s = f" [{_tag}]" if _tag else ""
+        lines.append(f"  p{k[0]}r{k[1]}{tag_s} tgt={(d or {}).get('target_comp', '?')}")
         for s in snaps.get(k, []):
             cards = [(c.get('name'), c.get('faction'), c.get('cost')) for c in (s.get('shop') or [])]
             star = [f"★{n}({f})" for n, f, _c in cards
