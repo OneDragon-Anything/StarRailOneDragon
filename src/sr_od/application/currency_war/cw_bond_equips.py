@@ -12,10 +12,11 @@
 
 - **L1 纯羁绊全集**:factions + flows + independent(独立羁绊行与左面板
   同口径),开拓者按当前排归一形态(前排=记忆/后排=欢愉);
-- **L2 装备羁绊贡献(雏形,本模块落地)**:星徽「装备者加入【X】羁绊」/
-  欢愉卡带「加入欢愉,已是成员则计数+1」/星核猎手卡带「羁绊计数+1」
-  ——装备后左面板该羁绊行人数 +1,是面板真值的一部分(W49 §2:
-  此前三处全缺 → computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
+- **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
+  (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述 2026-08-28
+  修订 W49 的「无条件+1」口径)/ 欢愉卡带与星核猎手卡带 = **计数 +1**
+  (无条件,可双计)——装备贡献是面板真值的一部分(W49 §2:此前三处全缺
+  → computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
 - L3 全战力(装备 props 强度/投资环境/档位效果数值)**不在本模块**,
   归 win_model 迭代(W49 裁决 4)。
 """
@@ -39,33 +40,56 @@ _RX_TAPE = re.compile(r'加入「(.+?)」羁绊')
 _RX_TAPE_COUNT = re.compile(r'「(.+?)」羁绊计数\+1')
 
 
-def _parse_grants(eq) -> tuple[str, ...]:
-    """单件装备的羁绊贡献解析 → (羁绊名, ...)。
+def _parse_badge(eq) -> tuple[str, ...]:
+    """星徽的羁绊贡献 → (羁绊名,) 或 ()。
 
-    - 星徽(category='星徽')→ 「装备者加入【X】羁绊」;
-    - 骇客卡带:欢愉卡带系「加入「X」羁绊,若已是成员则计数+1」——
-      **净效果 = 无条件 +1**(非成员:加入即 +1;已是成员:条款保证
-      计数仍 +1——这是唯一突破「一人一标签」上限的机制:成员佩戴者
-      对该羁绊贡献 2 = 自身 1 + 卡 1,W49 §2);星核猎手卡带系
-      「「X」羁绊计数+1」同无条件 +1;
-    - 其余装备(进阶/特权/白昼/命运/简易/工具)无羁绊贡献 → ()。
+    **语义(用户口述 2026-08-28,最高权威)**:星徽 = 给装备者**额外增加一个羁绊**
+    ——只把没有该羁绊的单位变成成员;装备者已是该羁绊成员时**不重复计数**
+    (≠ 卡带的「计数+1」)。unit_bond_tags 按 add-if-absent 消费本表。
     """
-    if eq is None:
+    if eq is None or eq.category != '星徽':
         return ()
-    if eq.category == '星徽':
-        m = _RX_BADGE.search(eq.effect or '')
-        return (m.group(1),) if m else ()
-    if eq.category == '骇客':
-        m = _RX_TAPE.search(eq.effect or '')
-        if m:
-            return (m.group(1),)
-        m2 = _RX_TAPE_COUNT.search(eq.effect or '')
-        if m2:
-            return (m2.group(1),)
+    m = _RX_BADGE.search(eq.effect or '')
+    return (m.group(1),) if m else ()
+
+
+def _parse_tape(eq) -> tuple[str, ...]:
+    """骇客卡带的羁绊贡献 → (羁绊名,) 或 ()。
+
+    两系卡带都是**无条件计数 +1**(可双计,区别于星徽):
+    - 欢愉卡带系「加入…若已是成员,则计数+1」——净效果无条件 +1
+      (非成员:加入即 +1;已是成员:条款保证仍 +1);
+    - 星核猎手卡带系「计数+1」直接无条件。
+    """
+    if eq is None or eq.category != '骇客':
+        return ()
+    m = _RX_TAPE.search(eq.effect or '')
+    if m:
+        return (m.group(1),)
+    m2 = _RX_TAPE_COUNT.search(eq.effect or '')
+    if m2:
+        return (m2.group(1),)
     return ()
 
 
-# 装备 → 羁绊贡献表(import 时从注册表派生;注册表数据层演进自动跟)
+def _parse_grants(eq) -> tuple[str, ...]:
+    """单件装备的羁绊贡献解析(星徽+卡带并集)→ (羁绊名, ...)。
+
+    仅作查询面兼容(equip_bond_grants 消费);计数语义的分流
+    (星徽 add-if-absent / 卡带无条件+1)在 unit_bond_tags 内按类别表执行。
+    """
+    return _parse_badge(eq) or _parse_tape(eq)
+
+
+# 星徽授予表(import 时从注册表派生;unit_bond_tags 按 add-if-absent 消费)
+_BADGE_BOND_GRANTS: dict[str, tuple[str, ...]] = {
+    eq.name: _parse_badge(eq) for eq in EQUIPMENTS.values()
+}
+# 卡带授予表(无条件 +1,可双计)
+_TAPE_BOND_GRANTS: dict[str, tuple[str, ...]] = {
+    eq.name: _parse_tape(eq) for eq in EQUIPMENTS.values()
+}
+# 并集视图(查询面兼容;W50 起存在,语义分流见上两表)
 _EQUIP_BOND_GRANTS: dict[str, tuple[str, ...]] = {
     eq.name: _parse_grants(eq) for eq in EQUIPMENTS.values()
 }
@@ -77,14 +101,16 @@ def equip_bond_grants(equip_name: str) -> tuple[str, ...]:
 
 
 def unit_bond_tags(bc) -> tuple[str, ...]:
-    """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 星徽装备贡献;ADR-0312)。
+    """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献;ADR-0312)。
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
       开拓者按 ``position_pref`` 归一形态(前排=记忆/后排=欢愉,
       与 board_from_tracked/W21 #13 同口径);
-    - 装备:``bc.equips`` 逐件查 ``equip_bond_grants``——加入式星徽/卡带
-      追加该羁绊(净效果无条件 +1;成员佩戴者对该羁绊贡献 2 = 自身 1 +
-      卡 1,「一人一标签」上限的唯一突破机制);
+    - 装备分两类语义(用户口述 2026-08-28,最高权威):
+      * **星徽 = 额外增加一个羁绊**(add-if-absent):只把没有该羁绊的
+        单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
+      * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
+        对该羁绊贡献 2 = 自身 1 + 卡 1);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
       board_from_tracked 整体 bail;_recount_board 回退 faction 字段)。
 
@@ -103,6 +129,12 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
     tags: list[str] = [*ch.factions, *ch.flows]
     if ch.independent:
         tags.append(ch.independent)
+    seen = set(tags)
     for eq in (getattr(bc, 'equips', None) or []):
-        tags.extend(_EQUIP_BOND_GRANTS.get(eq, ()))
+        for b in _TAPE_BOND_GRANTS.get(eq, ()):
+            tags.append(b)                 # 卡带:无条件 +1(可双计)
+        for b in _BADGE_BOND_GRANTS.get(eq, ()):
+            if b not in seen:              # 星徽:额外增加一个羁绊(已有不重复)
+                seen.add(b)
+                tags.append(b)
     return tuple(tags)
