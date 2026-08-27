@@ -143,6 +143,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_handoff_plane = None
         # W227/ADR-0400:P1 末窗承接门缺口(filters 每段写;跨局清零)
         session.v3_handoff_gap = 0
+        # W238/ADR-0403:boss 投影 hp 披露(投影开时 handoff_gate_gap 写;
+        # None=投影关/非末窗,判读「boss 后投影 hp」面)
+        session.v3_handoff_hp_proj = None
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:

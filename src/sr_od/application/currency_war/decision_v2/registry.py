@@ -586,6 +586,36 @@ class DecisionV2Registry:
     #: 刷新口径(ADR-0352 D 平面 R 上界纪律不动))
     handoff_ev_gap_bonus: float = 5.0
 
+    # ===== W238/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1 最小可验第一步)=====
+    #: 投影总开关(与 handoff_gate_enabled **正交**:本 flag 只在门开时被
+    #: 消费,单独开=零行为)。True 时 handoff_gate_gap 末窗投影的 hp 维由
+    #: 「当前 hp(boss 前)」换「boss 后投影 hp」:
+    #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
+    #: E[boss 伤害|板深档](r9 无 +2)。修标定口径错位(喂给
+    #: HANDOFF_HP_CUTS(boss 后真值标定,ADR-0399)的 hp 取 boss 前值
+    #: = hp 维系统性高估一档;设计件 09 §2)。
+    #: **默认关(A/B 裁决,ADR-0400/0402 双关默认先例)**:投影只改门输入,
+    #: 关=逐位现行为(hp 维零漂移);裁决数字见 ADR-0403。
+    handoff_boss_project: bool = False
+    #: E[boss 伤害|板深档] 常数表(**正数=期望掉血量**;离线标定非运行时
+    #: 预测)。标定源=Δ池 plane=1 boss 桶(板深键 min(Σboard//3,5)*3,
+    #: 与 sim 采样键同口径)地板删失行剔除(hp_after∈{0,1}=下界非真值,
+    #: ADR-0307 口径)后的桶均值:n=27 未删失/删失 21(桶 9:n=4/桶 12:
+    #: n=17/桶 15:n=6);标定脚本与逐行明细=ADR-0403。**已知边界**:
+    #: 删失剔除使留存样本偏向「存活 boss 的局」(弱板真值伤害被低估);
+    #: 键 Σboard 与升星方向冲突(3合1 减件数→键下移,sim 判升星升 boss
+    #: 伤害,与 [27] 机制相反)——实证与处置声明见 ADR-0403(声明边界,
+    #: 键改净星深留池重生成批)。
+    handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {
+        9: 29.25, 12: 30.35, 15: 17.5,
+    })
+    #: 缺桶 fallback(表外板深档):全池未删失均值(n=27,|−27.33|)
+    handoff_boss_e_damage_default: float = 27.33
+    #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
+    #: 回复下唯一正项)——只在 round_num==handoff_gate_min_round(r8,
+    #: boss 尚隔一轮)加;r9 直面 boss 不加
+    handoff_boss_reward_bonus: int = 2
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)

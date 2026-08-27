@@ -32,6 +32,7 @@ P1→P2 切换时点(plane>=2 本位面首轮 decide_prep 入口)对带入 P2 �
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from dataclasses import replace as dataclasses_replace
 
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -168,14 +169,22 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
     投影档位 = ``handoff_snapshot`` 在**当前轮决策入口**现算(纯函数,
     hp/board 取现值 = 「若末窗后带当前资产进 P2」的近端投影;末窗内
     距 P2 出口 ≤2 轮,板面/血量漂移有限,run 28/31 型低血局的主罚维
-    hp 在此投影下已可判)。消费面:
+    hp 在此投影下已可判)。**hp 维 boss 投影(W238/ADR-0403,设计件
+    09 §3.1)**:``registry.handoff_boss_project`` 开时,末窗快照 hp 维
+    由「当前 hp(boss 前)」换「boss 后投影 hp」——修标定口径错位
+    (``HANDOFF_HP_CUTS`` 的标定语料是 P2 进场真值 hp=**boss 结算后**
+    (ADR-0399),末窗喂 boss 前 hp = hp 维系统性高估一档);投影公式
+    与常数表语义见 ``registry`` W238 块。快照本身不动(Phase 0 语义
+    = P2 进场真值,两层口径各归各位)。消费面:
 
     - ``filters.formed_stop_active``(挂载点 a:成型停手承接维——
       缺口>0 不停手继续投资);
     - ``arbiter.interest_rule`` 买侧 EV 账(挂载点 b:承接缺口项,
       末窗破息投资授权放宽)。
 
-    观测:``session.v3_handoff_gap``(sim 账本轮行 handoff_gap)。
+    观测:``session.v3_handoff_gap``(sim 账本轮行 handoff_gap);投影
+    hp 披露 ``session.v3_handoff_hp_proj``(投影开时写,sim 账本轮行
+    handoff_hp_proj;关时不写=零漂移)。
     """
     reg = registry if registry is not None else _default_registry()
     if not reg.handoff_gate_enabled:
@@ -183,7 +192,37 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
     if state.plane != 1 or state.round_num < reg.handoff_gate_min_round:
         return 0
     snap = handoff_snapshot(state, session, reg)
+    if reg.handoff_boss_project:
+        snap = dataclasses_replace(
+            snap, hp=boss_projected_hp(state, snap.hp, reg))
+        if session is not None:
+            session.v3_handoff_hp_proj = snap.hp
     return max(0, reg.handoff_gate_tier_target - handoff_tier(snap))
+
+
+def boss_projected_hp(state: GameState, hp_now: int,
+                      registry: DecisionV2Registry) -> int:
+    """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数)。
+
+    hp_proj = hp + 2(r8 奖励胜,唯一正项) − E[boss 伤害|板深档];
+    r9(直面 boss)无 +2。板深档键 = Σboard 桶(min(dep//3,5)*3,与
+    Δ池 boss 桶采样键同口径——``cw_sim._deployable_depth`` 单一源,
+    不建第二套分桶);缺桶走 ``handoff_boss_e_damage_default``
+    (全池未删失均值)。常数表标定口径(删失剔除)与已知边界(样本
+    存活偏差/Σboard 升星方向冲突)见 registry W238 块与 ADR-0403。
+    钳制 [0, 100](与 sim hp 结算钳制同界,HP_UPPER_BOUND 语义)。
+    """
+    from sr_od.application.currency_war.cw_sim import (
+        _DEPTH_BUCKET_W,
+        _deployable_depth,
+    )
+    depth = _deployable_depth(state)
+    bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+    dmg = registry.handoff_boss_e_damage.get(
+        bucket, registry.handoff_boss_e_damage_default)
+    bonus = (registry.handoff_boss_reward_bonus
+             if state.round_num == registry.handoff_gate_min_round else 0)
+    return max(0, min(100, int(round(hp_now + bonus - dmg))))
 
 
 def _default_registry() -> DecisionV2Registry:

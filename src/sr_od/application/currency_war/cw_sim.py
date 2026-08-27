@@ -1453,6 +1453,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # W227/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
             # formed_stop 承接维/EV 缺口项的判读数据面)
             _round_handoff_gap = 0
+            # W238/ADR-0403:boss 投影 hp 披露(None=投影关/非末窗)
+            _round_handoff_hp_proj = None
             # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
             # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
             # 的「连续放弃轮」数据源)
@@ -1503,6 +1505,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # active 写;轮入口快照,判读「门扣住哪些轮」)
                     _round_handoff_gap = int(
                         getattr(sess, 'v3_handoff_gap', 0) or 0)
+                    # W238/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
+                    _round_handoff_hp_proj = getattr(
+                        sess, 'v3_handoff_hp_proj', None)
                 if not use_refresh:
                     acts = [a for a in acts
                             if not isinstance(a, RefreshShop)]
@@ -2035,6 +2040,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # W227/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
                 # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
                 'handoff_gap': _round_handoff_gap,
+                # W238/ADR-0403:boss 投影 hp(None=投影关/非末窗;判读
+                # 「boss 后投影 hp」面,与 handoff_gap 同点快照)
+                'handoff_hp_proj': _round_handoff_hp_proj,
                 # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
                 'phase': _round_phase,
                 'form_ok': _round_form_ok,
@@ -2718,18 +2726,31 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
 def simulate_handoff_ab(n: int = 300, *, pool: str | Path = 'snapshot',
                         seed_base: int = 0, planes: int = 2,
                         invest: bool = True) -> dict:
-    """W227/ADR-0400 P1 末窗承接门 A/B(设计件 08 §4.1 判据 3 口径)。
+    """W227/ADR-0400 P1 末窗承接门 A/B + W238/ADR-0403 hp 投影臂(三臂
+    +正交臂;设计件 08 §4.1 判据 3 / 09 §6 第一步口径)。
 
-    A 臂=handoff_gate_enabled 显式开(承接门行为;不依赖默认值——
-    默认关是 A/B 裁决产物,ADR-0400)/B 臂=关(回 W226 前行为=当前
-    默认);同池同 seed 配对、同进程 flag 对照(ADR-0362 §③)。报告三面:
+    四臂同池同 seed 配对、同进程 flag 对照(ADR-0362 §③):
+
+    - **off**(基线)= 双 flag 关(当前默认);
+    - **gate**(headline_on)= ``handoff_gate_enabled`` 开、投影关
+      (W227 原两臂语义,键名保留兼容);
+    - **proj**(headline_proj)= 门开 + ``handoff_boss_project`` 开
+      (boss 后投影 hp 喂档位切点);
+    - **proj_only**(正交性核验,不进 headline)= 仅投影开、门关——
+      投影只在 ``handoff_gate_gap`` 门开路径内被消费,此臂 ledger
+      应与 off 臂**整局逐位一致**(两 flag 正交的结构证据)。
+
+    报告四面:
 
     - headline:P2 存活族(p2_entered/存活轮/hp0 率/胜率)——验收
       判据 3 的主指标(hp0 率下降/存活轮上移);
-    - 末窗观测:A 臂承接门扣住轮数(ledger handoff_gap>0 的轮)、
-      r8 买入分布、进场承接档位分布(档位因果面);
+    - 末窗观测:各行为臂承接门扣住轮数(ledger handoff_gap>0 的轮)、
+      r8 买入分布、进场承接档位分布 + **盲区修复行为差**
+      (``blindspot``:同 seed 同轮 proj 臂 gap≥1 而 gate 臂 gap=0 的
+      轮数/局数——run28/31/33 型「板面达标 hp 临界」局投影门触发而
+      现投影门不触发的行为差证据,设计件 09 §2);
     - P1 非末窗零漂移门:plane1 round<handoff_gate_min_round 的
-      ledger 行逐 seed 逐位 diff(判据 3 后半;应恒空)。
+      ledger 行逐 seed 逐位 diff(判据 3 后半;应恒空;gate/proj 两臂)。
     """
     import dataclasses
     import json as _json
@@ -2744,16 +2765,26 @@ def simulate_handoff_ab(n: int = 300, *, pool: str | Path = 'snapshot',
     )
     logging.disable(logging.CRITICAL)
     try:
-        _strat_on = DecisionV2Strategy(
-            registry=dataclasses.replace(DEFAULT_REGISTRY,
-                                         handoff_gate_enabled=True))
-        _strat_off = DecisionV2Strategy(registry=DEFAULT_REGISTRY)
-        res_a = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                             invest=invest, strategy=_strat_on)
-                 for i in range(n)]
-        res_b = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                             invest=invest, strategy=_strat_off)
-                 for i in range(n)]
+        _reg_gate = dataclasses.replace(DEFAULT_REGISTRY,
+                                        handoff_gate_enabled=True)
+        _reg_proj = dataclasses.replace(_reg_gate, handoff_boss_project=True)
+        _reg_proj_only = dataclasses.replace(DEFAULT_REGISTRY,
+                                             handoff_boss_project=True)
+        _strat_gate = DecisionV2Strategy(registry=_reg_gate)
+        _strat_proj = DecisionV2Strategy(registry=_reg_proj)
+        _strat_proj_only = DecisionV2Strategy(registry=_reg_proj_only)
+        res_gate = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                                invest=invest, strategy=_strat_gate)
+                    for i in range(n)]
+        res_off = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                               invest=invest) for i in range(n)]
+        res_proj = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                                invest=invest, strategy=_strat_proj)
+                    for i in range(n)]
+        res_proj_only = [simulate_p1(seed_base + i, pool=pool, planes=planes,
+                                     invest=invest,
+                                     strategy=_strat_proj_only)
+                         for i in range(n)]
     finally:
         logging.disable(logging.NOTSET)
 
@@ -2770,53 +2801,93 @@ def simulate_handoff_ab(n: int = 300, *, pool: str | Path = 'snapshot',
                             / len(entered) if entered else None),
         }
 
-    # P1 非末窗零漂移门(判据 3 后半):逐 seed 比较两臂 plane1
-    # round<handoff_gate_min_round 的账本行(逐位;含 actions/state)
+    def _dump(obj) -> str:
+        return _json.dumps(obj, default=str, ensure_ascii=False)
+
+    # 正交性核验:proj_only(仅投影开)vs off 整局 ledger 逐位一致
+    # (投影的消费点全在 handoff_gate_gap 门开路径内,结构零漂移)
+    proj_only_drift_seeds = [
+        seed_base + i for i, (p, o) in enumerate(
+            zip(res_proj_only, res_off, strict=True))
+        if _dump(p.ledger) != _dump(o.ledger)]
+
+    # P1 非末窗零漂移门(判据 3 后半):逐 seed 比较行为臂 vs 基线臂
+    # plane1 round<handoff_gate_min_round 的账本行(逐位;含 actions/state)
     _min_r = DEFAULT_REGISTRY.handoff_gate_min_round
-    drift_seeds: list[int] = []
 
     def _pre_final(rows: list[dict]) -> list[dict]:
         return [row for row in rows
                 if row.get('plane') == 1
                 and (row.get('round_num') or 0) < _min_r]
 
-    for i, (a, b) in enumerate(zip(res_a, res_b, strict=True)):
-        if _json.dumps(_pre_final(a.ledger), default=str,
-                       ensure_ascii=False) != _json.dumps(
-                _pre_final(b.ledger), default=str, ensure_ascii=False):
-            drift_seeds.append(seed_base + i)
+    drift_gate_seeds: list[int] = []
+    drift_proj_seeds: list[int] = []
+    for i, (g, p, o) in enumerate(
+            zip(res_gate, res_proj, res_off, strict=True)):
+        if _dump(_pre_final(g.ledger)) != _dump(_pre_final(o.ledger)):
+            drift_gate_seeds.append(seed_base + i)
+        if _dump(_pre_final(p.ledger)) != _dump(_pre_final(o.ledger)):
+            drift_proj_seeds.append(seed_base + i)
 
-    # 末窗观测(A 臂):承接门扣住轮/r8 买数/进场档位分布
-    gate_hold_rounds = sum(
-        1 for r in res_a for row in r.ledger
-        if (row.get('handoff_gap') or 0) > 0)
-    r8_buys = [sum(1 for act in (row.get('actions') or [])
-                   if act.get('__type__') == 'BuyCard')
-               for r in res_a for row in r.ledger
-               if row.get('plane') == 1 and row.get('round_num') == _min_r]
-    tiers: dict[str, int] = {}
-    for r in res_a:
-        if r.p2_entered and r.p2_handoff:
-            t = str(r.p2_handoff.get('tier'))
-            tiers[t] = tiers.get(t, 0) + 1
+    # 盲区修复行为差(设计件 09 §2):同 seed 同轮 proj gap≥1 ∧ gate
+    # gap=0 —— hp 临界局投影门触发、现投影门不触发的轮(逐轮配对)
+    blindspot_rounds = 0
+    blindspot_games: set[int] = set()
+    for i, (g, p) in enumerate(zip(res_gate, res_proj, strict=True)):
+        g_gap = {(row.get('plane'), row.get('round_num')):
+                 row.get('handoff_gap') or 0 for row in g.ledger}
+        for row in p.ledger:
+            if ((row.get('handoff_gap') or 0) > 0
+                    and (g_gap.get((row.get('plane'), row.get('round_num')))
+                         or 0) == 0):
+                blindspot_rounds += 1
+                blindspot_games.add(seed_base + i)
+
+    # 末窗观测(行为臂):承接门扣住轮/r8 买数/进场档位分布
+    def _gate_hold_rounds(results: list[SimResult]) -> int:
+        return sum(1 for r in results for row in r.ledger
+                   if (row.get('handoff_gap') or 0) > 0)
+
+    def _r8_avg_buys(results: list[SimResult]) -> float | None:
+        buys = [sum(1 for act in (row.get('actions') or [])
+                    if act.get('__type__') == 'BuyCard')
+                for r in results for row in r.ledger
+                if row.get('plane') == 1 and row.get('round_num') == _min_r]
+        return round(statistics.mean(buys), 2) if buys else None
+
+    def _entry_tiers(results: list[SimResult]) -> dict[str, int]:
+        tiers: dict[str, int] = {}
+        for r in results:
+            if r.p2_entered and r.p2_handoff:
+                t = str(r.p2_handoff.get('tier'))
+                tiers[t] = tiers.get(t, 0) + 1
+        return tiers
+
     return {
         'n': n, 'planes': planes, 'invest': invest,
-        'pool_fingerprint': res_a[0].pool_fingerprint,
-        'headline_on': _headline(res_a),
-        'headline_off': _headline(res_b),
-        'gate_hold_rounds_on': gate_hold_rounds,
-        'r8_avg_buys_on': (round(statistics.mean(r8_buys), 2)
-                           if r8_buys else None),
-        'r8_avg_buys_off': round(statistics.mean(
-            [sum(1 for act in (row.get('actions') or [])
-                 if act.get('__type__') == 'BuyCard')
-             for r in res_b for row in r.ledger
-             if row.get('plane') == 1
-             and row.get('round_num') == _min_r]), 2),
-        'entry_tier_dist_on': tiers,
+        'pool_fingerprint': res_gate[0].pool_fingerprint,
+        'headline_off': _headline(res_off),
+        'headline_on': _headline(res_gate),
+        'headline_proj': _headline(res_proj),
+        'gate_hold_rounds_on': _gate_hold_rounds(res_gate),
+        'gate_hold_rounds_proj': _gate_hold_rounds(res_proj),
+        'r8_avg_buys_off': _r8_avg_buys(res_off),
+        'r8_avg_buys_on': _r8_avg_buys(res_gate),
+        'r8_avg_buys_proj': _r8_avg_buys(res_proj),
+        'entry_tier_dist_on': _entry_tiers(res_gate),
+        'entry_tier_dist_proj': _entry_tiers(res_proj),
+        # 盲区修复行为差(设计件 09 §6 第一步验收:投影臂在 hp 临界局
+        # gap≥1 触发、现投影臂不触发的行为差)
+        'blindspot': {'rounds': blindspot_rounds,
+                      'games': len(blindspot_games),
+                      'game_seeds': sorted(blindspot_games)},
+        'proj_only_orthogonality': {'drift_seeds': proj_only_drift_seeds,
+                                    'ok': not proj_only_drift_seeds},
         'p1_zero_drift': {'min_round': _min_r,
-                          'drift_seeds': drift_seeds,
-                          'ok': not drift_seeds},
+                          'drift_seeds_gate': drift_gate_seeds,
+                          'drift_seeds_proj': drift_proj_seeds,
+                          'ok': not drift_gate_seeds
+                          and not drift_proj_seeds},
     }
 
 
