@@ -173,6 +173,68 @@ def read_hp(ctx: SrContext, screen: MatLike) -> int:
     return 100 if v is None else v
 
 
+def _ocr_upscaled(ctx: SrContext, screen: MatLike, rect: Rect | None,
+                  scale: int = 3) -> list:
+    """裁剪 + 放大后 OCR(read_gold 实证的小目标 det 天花板手法)。
+
+    小字区域(XP 条 / 等级数字)原生分辨率下 paddle det 漏检 → 双失读级联:
+    等级 OCR 与 XP 反推同帧皆空 → 决策落 ``_expected_level`` 启发式(假设已买经验,
+    P1 早期系统性偏高 +2)→ cap<level 域守卫拒信 deploy_cap(W322 判读,冲突帧
+    6f41536e/23dee97a 实锤:画面 Lv.3/3、Lv.4/4 自洽,虚高全在 level 侧)。
+    3x CUBIC 放大后三张冲突帧 XP 与等级全恢复读数(离线对拍)。
+    """
+    if rect is None:
+        return []
+    if screen is None:
+        # 测试注入态(mock ocr_service,screen 不承载像素;仓内既有约定)→ 不裁剪直接透传
+        return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return []
+    up = cv2.resize(crop, (crop.shape[1] * scale, crop.shape[0] * scale),
+                    interpolation=cv2.INTER_CUBIC)
+    return ctx.ocr_service.get_ocr_result_list(image=up)
+
+
+def read_level_raw_opt(ctx: SrContext, screen: MatLike) -> int | None:
+    """「文本-等级」区直读等级(**无任何兜底**;None=失读,调用方决定退路)。
+
+    放大读(失读根因与手法见 ``_ocr_upscaled``)。值域 ``LEVEL_MIN..LEVEL_MAX`` 外按失读处理。
+    read_level(决策)与 read_game_state(三源解析基值)共用本直读,prep_actions
+    ``_read_level_raw``(完成验证)同源语义,不再各写一份裁剪 OCR。
+    """
+    v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, _area_rect(ctx, '文本-等级'))])
+    if v is not None and (LEVEL_MIN <= v <= LEVEL_MAX):
+        return v
+    return None
+
+
+def _parse_xp_pair(blob: str) -> tuple[int, int] | None:
+    """XP 文本 → ``(cur, next)``;解析不出 → None(纯函数可单测)。
+
+    两级解析(字段先验:格式恒为 "X/Y",next ∈ ``XP_TO_NEXT_LEVEL.values()``):
+    1. 斜杠误识兜底(D-53 同款):数字间非数字单字符 normalize 成 ``/`` 再正则;
+    2. **斜杠被识成数字 '1'**("2/4"→"214"、"4/6"→"416",W322 冲突帧实测):
+       遍历 '1' 位插入 '/' 拆分,仅当两侧皆数字且 next 落在等级表分母集合时采
+       ——表分母 {4,6,20,40,52,72,84} 作强先验,普通 XP 数字串(如真 cur=12 的
+       "12" 开头)不会被误拆成非法分母。
+    """
+    norm = re.sub(r'(?<=\d)\D(?=\d)', '/', blob)
+    m = re.search(r'(\d+)\s*/\s*(\d+)', norm)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    _valid_next = set(XP_TO_NEXT_LEVEL.values())
+    for i, ch in enumerate(blob):
+        if ch != '1':
+            continue
+        cur_s, nxt_s = blob[:i], blob[i + 1:]
+        if cur_s.isdigit() and nxt_s.isdigit():
+            cur, nxt = int(cur_s), int(nxt_s)
+            if nxt in _valid_next and cur <= nxt:
+                return cur, nxt
+    return None
+
+
 def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> int:
     """玩家等级(= 可上阵数上限,封顶 10)。
 
@@ -187,8 +249,8 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     注:部分截图 OCR 漏读等级数字(如测试图 currency_war_shop.png 只出 "LV."),
     此时走反推/兜底。
     """
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-等级'))])
-    if v is not None and (LEVEL_MIN <= v <= LEVEL_MAX):
+    v = read_level_raw_opt(ctx, screen)
+    if v is not None:
         return v
     xp = read_xp_progress(ctx, screen)
     if xp is not None:
@@ -398,10 +460,10 @@ def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
 
     OCR ``文本-升级所需经验`` 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
     """
-    blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-升级所需经验')))
-    m = re.search(r'(\d+)\s*/\s*(\d+)', blob)
-    if m:
-        cur, nxt = int(m.group(1)), int(m.group(2))
+    blob = ''.join(r.data for r in _ocr_upscaled(ctx, screen, _area_rect(ctx, '文本-升级所需经验')))
+    pair = _parse_xp_pair(blob)
+    if pair is not None:
+        cur, nxt = pair
         if 0 <= cur <= nxt <= 100:      # sanity:cur≤next,XP 上限合理(封顶 10 级,每级 XP 个位~十几)
             return cur, nxt
     return None
@@ -1030,9 +1092,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
     # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
     state.xp_progress = read_xp_progress(ctx, screen)
-    _lv_raw = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-等级'))])
-    if _lv_raw is not None and not (LEVEL_MIN <= _lv_raw <= LEVEL_MAX):
-        _lv_raw = None
+    _lv_raw = read_level_raw_opt(ctx, screen)
     _xp_lv = _level_from_xp(state.xp_progress)
     _match = getattr(ctx, 'cw_match', None)
     _last_lv = 0

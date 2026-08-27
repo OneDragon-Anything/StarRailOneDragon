@@ -167,22 +167,11 @@ def _read_level_raw(ctx: SrContext, screen) -> int | None:
     """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**;review MED-8)。
 
     read_level 的兜底曲线适合决策估值,不适合完成验证(期望值>实际时假成功)。漏读返 None,
-    调用方决定基线退路。
+    调用方决定基线退路。放大读与读链单一源 = ``cw_observation.read_level_raw_opt``。
     """
-    from sr_od.application.currency_war.cw_obs_core import (
-        LEVEL_MAX,
-        LEVEL_MIN,
-        _first_int,
-        _ocr,
-    )
+    from sr_od.application.currency_war.cw_observation import read_level_raw_opt
 
-    rect = _area_rect(ctx, '文本-等级')
-    if rect is None:
-        return None
-    v = _first_int([r.data for r in _ocr(ctx, screen, rect)])
-    if v is not None and (LEVEL_MIN <= v <= LEVEL_MAX):
-        return v
-    return None
+    return read_level_raw_opt(ctx, screen)
 
 
 def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
