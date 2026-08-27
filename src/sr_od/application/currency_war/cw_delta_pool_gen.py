@@ -9,7 +9,9 @@ tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 (生产遥测 append 流)。配对口径与 cw_sim._pool_from_replay 同源:
 decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
 桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
-decisions deployed join);encounter/boss=深度桶。
+decisions deployed join);encounter/reward/supply=深度桶;**boss=
+净星深桶(ADR-0404,W240:上场件 Σ(star−1),deployed_star_depth
+同式——修 W238 实证的 Σboard 键升星方向冲突)**。
 **plane 维(ADR-0362,W157)**:桶键外再加位面层——差分归属
 「后行位面」(P1r9→P2r1 跨位面差分归 plane=2),P1/P2 桶彻底
 分离;修 W156 发现的既有 P1 池 P2 污染(44 条 plane=2 差分混在
@@ -106,6 +108,13 @@ def _engines_count_of(bf: dict, names: frozenset) -> int:
     return _engines_count(bf, names)
 
 
+def _star_depth_of(rows) -> int:
+    """净星深 = cw_sim._star_depth_from_rows 单一源(W240/ADR-0404
+    boss 桶键;防池侧/sim 侧双公式漂移)。"""
+    from sr_od.application.currency_war.cw_sim import _star_depth_from_rows
+    return _star_depth_from_rows(rows)
+
+
 def _raw_line_count(path: Path) -> int:
     """非空行计数(含半写撕裂行——增量盘点的原始账,配对口径另计)。"""
     if not path.exists():
@@ -175,7 +184,9 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
 
     桶键语义(ADR-0279,批⑬):battle=成型度 rung(结算前
     board_before + decisions deployed join 算希儿系);encounter/
-    boss=深度桶(批⑬ F1 encounter rung 样本不足暂沿用)。
+    reward/supply=深度桶(批⑬ F1 encounter rung 样本不足暂沿用);
+    boss=净星深桶(W240/ADR-0404:上场件 Σ(star−1),修 Σboard 键
+    3合1 升星方向冲突)。
     plane 维(ADR-0362,W157):差分归属后行位面,P1/P2 分桶。
 
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
@@ -188,6 +199,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     skipped: dict[str, int] = {}
     quarantined_hits: set[str] = set()
     boards: dict = {}
+    star_depths: dict = {}   # W240/ADR-0404:boss 桶键=净星深
     deployed_names: dict = {}
     for d in _iter_jsonl(src_dir / 'decisions.jsonl', skipped):
         if runs_filter and d.get('run_id') not in runs_filter:
@@ -199,6 +211,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         b = st.get('board') or {}
         k = (d.get('run_id'), d.get('plane'), d.get('round_num'))
         boards[k] = sum(b.values())
+        star_depths[k] = _star_depth_of(st.get('deployed'))
         deployed_names[k] = frozenset(
             x.get('char_id') or '' for x in (st.get('deployed') or [])
             if isinstance(x, dict))
@@ -234,6 +247,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             plane = int(b2.get('plane') or 1)
             k = (run, b2.get('plane'), b2.get('round_num'))
             dep = boards.get(k)
+            sd = star_depths.get(k)
             if dep is None:
                 continue
             delta = b2['hp_after'] - a['hp_after']
@@ -251,8 +265,16 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 if plane == 1:
                     battle_killed.setdefault(bucket, []).append(
                         b2.get('killed'))
+            elif nt == 'boss':
+                # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
+                # cw_sim.deployed_star_depth 同式)——Σboard 键下
+                # 3合1 升星使键 −2/次落浅桶而浅桶期望伤害更大,与
+                # [27]「星级↑=战力↑」相反(W238 实证)。
+                if sd is None:
+                    continue
+                bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
             else:
-                # encounter/boss 暂沿用 depth 分桶(批⑬ F1)。
+                # encounter/reward/supply 沿用 depth 分桶(批⑬ F1)。
                 bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(
                 plane, {}).setdefault(bucket, []).append(delta)
@@ -312,7 +334,20 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '差分混入,含 16 条跨位面差分,W156 勘察 §5.1);'
                 'P1 桶语料随污染清除小幅变化(指纹重算,锚重记;'
                 'P2 桶 n<5 全贫困,条件化分桶不做,采样走位面内'
-                '全池合并兜底/回退层掉血带)',
+                '全池合并兜底/回退层掉血带);'
+                '⚠️ 版本号勘误(W240):上条 v9 在 cw_sim._SAMPLER_VERSION'
+                ' 里=8(生成器 note 链自 W109 批起与采样器常量错位+1),'
+                '自 v10 起两链对齐;'
+                'v10(ADR-0404,W240)boss 桶键 Σboard→净星深(上场件'
+                ' Σ(star−1),ADR-0399 star_depth 同源口径;修 W238 实证'
+                '的升星方向冲突——3合1 使 Σboard −2/次落浅桶而浅桶期望'
+                '伤害更大,sim 判升星升 boss 伤害与 [27] 机制相反);'
+                'P1 boss 语料 49 行全落桶 0(旧 9/12/15 桶条件性=键口径'
+                '伪影);encounter/reward/supply 桶键不动;池内容变'
+                '(指纹重算),W238 常数表随批重标定(registry '
+                'handoff_boss_e_damage 键域 {9,12,15}→{0});'
+                'sampler 常量同步 8→10(_SAMPLER_VERSION,META '
+                'sampler_version 对齐 note 链)',
     }
     return pool, meta
 

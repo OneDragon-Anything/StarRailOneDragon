@@ -285,19 +285,41 @@ class P2CombatCalib:
 P2_COMBAT_DEFAULT = P2CombatCalib()
 
 
+def deployed_star_depth(st: GameState) -> int:
+    """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
+    HandoffSnapshot star_sum−deployed_n;纯 state 可算、生产/sim/
+    离线回放三面同式)。
+
+    消费点:p2_form_key 星级分量(W230/ADR-0401)与 **Δ池 boss 桶键**
+    (W240/ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
+    浅桶的方向冲突;净星深下 1★→2★ 合并键 +1 永不落浅桶,买 bench
+    副本不扰动)。已知边界:2★→3★ 合并键 −1(3 副本 Σ(star−1)=3 →
+    载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
+    语料攒厚后复核。
+    """
+    return sum(
+        int(getattr(d, 'star', 1) or 1) - 1
+        for d in (st.deployed or []) if d is not None)
+
+
+def _star_depth_from_rows(rows) -> int:
+    """净星深(replay 行口径):decisions ``state.deployed`` 条目
+    (dict 形态)Σ(star−1)——与 :func:`deployed_star_depth` 同式,
+    池语料侧(_pool_from_replay/cw_delta_pool_gen)共用,防双源。"""
+    return sum(int(x.get('star') or 1) - 1
+               for x in (rows or []) if isinstance(x, dict))
+
+
 def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
     """form=板面质量键(W193/ADR-0377:engines+level 折算;
     W230/ADR-0401 扩展:+星级深度折算)。
 
     engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
     W182 实测 deployed 口径与掉血对应最干净、板深无区分度。
-    star_depth = 上场件 Σ(star−1)(全量口径,同 ADR-0399
-    HandoffSnapshot——core2 维/board_tier 的星级分量因果通道,
-    W226 §⑥/W227 挂账的 sim 建模缺口)。
+    star_depth = ``deployed_star_depth`` 单一源(core2 维/board_tier
+    的星级分量因果通道,W226 §⑥/W227 挂账的 sim 建模缺口)。
     """
-    star_depth = sum(
-        int(getattr(d, 'star', 1) or 1) - 1
-        for d in (st.deployed or []) if d is not None)
+    star_depth = deployed_star_depth(st)
     return (float(_settle_rung(st)) + calib.form_level_weight * (
         st.level - calib.form_level_base)
         + calib.form_star_weight * star_depth)
@@ -547,7 +569,7 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
 # boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
 # 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
-_SAMPLER_VERSION: int = 8   # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 10  # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v7(ADR-0312,W50 口径统一):采样键 _deployable_depth 从
 # min(level, len(deployed)) 改 **Σboard(全集口径)**——与池语料
 # (decisions state.board 求和,实机全集口径)同口径;旧键与池语料
@@ -562,7 +584,20 @@ _SAMPLER_VERSION: int = 8   # 桶化/邻桶回退/采样语义变更时 +1(指�
 # P1 桶语料随污染清除小幅变化 → 指纹重算 + ANCHOR_REGISTRY_N300
 # 锚重记(P2 段扩展换锚,P1 侧 drift 如实记档);live_delta_for
 # 增 plane 参(plane≥2 不跨位面回退——位面难度语义不同,缺桶走
-# 位面内兜底/回退层 P2 掉血带 15-17)。
+# 位面内兜底/回退层 P2 掉血带 15-17)。⚠️ 版本号勘误(W240):本条在
+# 快照 note 链里记作 v9(生成器 note 链自 W109 批起与 _SAMPLER_VERSION
+# 错位 +1);快照 note 链自 v10 起与本常量对齐。
+# v10(ADR-0404,W240):**boss 桶键 Σboard→净星深**(上场件
+# Σ(star−1),与 ADR-0399 HandoffSnapshot star_sum−deployed_n /
+# p2_form_key star_depth 同源口径;单一源=_boss_star_depth)。修
+# W238 实证的方向冲突(3合1 消耗场上副本 → Σboard −2/次 → 键落浅桶,
+# 而浅桶期望伤害更大 → sim 判「升星→boss 伤害↑」与 [27] 机制相反):
+# 净星深下 1★→2★ 合并键 +1 永不落浅桶;重生成后 P1 boss 语料
+# (49 行)全落桶 0——旧 Σboard 桶 9/12/15 的「条件性」系键口径伪影,
+# 真值≈无条件期望 27.57(≈旧全池 fallback 27.33,交叉自洽)。
+# encounter/reward/supply 桶键不动(Σboard);池内容变(指纹重算)+
+# W238 常数表重标定(registry handoff_boss_e_damage 键域
+# {9,12,15}→{0})。
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
@@ -636,6 +671,9 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         return out
 
     boards: dict = {}
+    # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1))——decisions
+    # deployed 行 join;encounter/reward/supply 仍用 Σboard(boards)。
+    star_depths: dict = {}
     # ADR-0279(批⑬):battle rung 判据需上场名单(希儿系=单卡
     # 依赖)——从 decisions join deployed;join 缺失时希儿系可能
     # 漏计(rung 低估 1 档),与批⑬盲区声明一致。
@@ -645,6 +683,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         b = st.get('board') or {}
         k = (d.get('run_id'), d.get('plane'), d.get('round_num'))
         boards[k] = sum(b.values())
+        star_depths[k] = _star_depth_from_rows(st.get('deployed'))
         deployed_names[k] = frozenset(
             x.get('char_id') or '' for x in (st.get('deployed') or [])
             if isinstance(x, dict))
@@ -675,6 +714,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
             plane = int(b.get('plane') or 1)
             k = (run, b.get('plane'), b.get('round_num'))
             dep = boards.get(k)
+            sd = star_depths.get(k)
             if dep is None:
                 continue
             delta = b['hp_after'] - a['hp_after']
@@ -689,9 +729,17 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 bucket = _engines_count(
                     b.get('board_before') or {},
                     deployed_names.get(k, frozenset()))
+            elif nt == 'boss':
+                # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
+                # deployed_star_depth 同式)——Σboard 键下 3合1 升星
+                # 使键 −2/次落浅桶而浅桶期望伤害更大,与 [27]「星级↑
+                # =战力↑」相反(W238 实证);净星深下 1★→2★ 合并键 +1。
+                if sd is None:
+                    continue
+                bucket = min(sd // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
             else:
-                # encounter/boss 暂沿用 depth 分桶(批⑬ F1:encounter
-                # rung 桶全线不足 4/9/2,攒样后下次快照并入)。
+                # encounter/reward/supply 沿用 depth 分桶(批⑬ F1:
+                # encounter rung 桶全线不足 4/9/2,攒样后下次快照并入)。
                 bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(
                 plane, {}).setdefault(bucket, []).append(delta)
@@ -820,9 +868,14 @@ def live_delta_for(node_type: str, key: int,
       桶不可达时逐级下探更低 rung(信息最接近的可及桶);全不可达
       → 全池合并兜底(rung 信息缺,保经验分布方差;批⑬ F3「池均值
       兜底」形态);池空 → None。
-    - ``encounter``/``boss``:``key`` = 板深(批⑬ F1 encounter rung
-      样本不足暂沿用 depth 分桶)。桶宽 ``_DEPTH_BUCKET_W``,缺桶
-      浅侧回退(bucket-W,r343 E:向深回退=偏乐观)。
+    - ``encounter``:``key`` = 板深(批⑬ F1 encounter rung 样本不足
+      暂沿用 depth 分桶)。桶宽 ``_DEPTH_BUCKET_W``,缺桶浅侧回退
+      (bucket-W,r343 E:向深回退=偏乐观)。
+    - ``boss``:``key`` = **净星深**(W240/ADR-0404:上场件 Σ(star−1),
+      ``deployed_star_depth`` 单一源;旧 Σboard 键与 3合1 升星方向
+      冲突——升星使 Σboard −2 落浅桶而浅桶期望伤害更大,sim 判
+      「升星→boss 伤害↑」与 [27] 机制相反)。分桶/缺桶浅侧回退
+      沿用 depth 桶式。
     - ``reward``/``supply``(ADR-0292,批㉗ F3/F4):depth 桶 + 缺桶
       浅侧回退沿用,再缺 → **该节点全池合并兜底**——奖励/补给零
       战力交互,语料差分无深度条件性(n=43 全 +2),分桶只是沿既有
@@ -1177,6 +1230,9 @@ def _deployable_depth(st: GameState) -> int:
     level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
     r390 的「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
+    **辖域(W240/ADR-0404 后)**:encounter/reward/supply 桶键与观测面
+    (depth_trail/账本);**boss 桶键已改净星深**(deployed_star_depth,
+    修 Σboard 与升星方向冲突)。
     """
     return sum((st.board or {}).values())
 
@@ -1857,8 +1913,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ADR-0279(批⑬ F4):battle Δ 采样键=rung(成型度一维
             # 分桶,与 boss_settle_delta 同源 _settle_rung)——depth-
             # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
-            # vs 实机 32% 裂口的最大已定量化分量;encounter/boss 维持
-            # depth 键(批⑬ F1 encounter 样本不足)。
+            # vs 实机 32% 裂口的最大已定量化分量;encounter 维持 depth
+            # 键(批⑬ F1 encounter 样本不足);boss 键=净星深
+            # (W240/ADR-0404,修升星方向冲突)。
             _dep = _deployable_depth(st)
             # W193/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
@@ -1877,8 +1934,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if nodes[rn - 1] == 'battle':
                     _ld = live_delta_for('battle', _settle_rung(st), rng,
                                          pool_map=pool_map, plane=st.plane)
-                elif nodes[rn - 1] in ('encounter', 'boss'):
-                    _ld = live_delta_for(nodes[rn - 1], _dep, rng,
+                elif nodes[rn - 1] == 'boss':
+                    # W240/ADR-0404:boss 采样键=净星深(修 Σboard 升星
+                    # 方向冲突,见 live_delta_for docstring)。
+                    _ld = live_delta_for(
+                        'boss', deployed_star_depth(st), rng,
+                        pool_map=pool_map, plane=st.plane)
+                elif nodes[rn - 1] == 'encounter':
+                    _ld = live_delta_for('encounter', _dep, rng,
                                          pool_map=pool_map, plane=st.plane)
                 elif nodes[rn - 1] in ('reward', 'supply'):
                     # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA

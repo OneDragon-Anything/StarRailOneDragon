@@ -202,21 +202,24 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
 
 def boss_projected_hp(state: GameState, hp_now: int,
                       registry: DecisionV2Registry) -> int:
-    """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数)。
+    """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数;
+    W240/ADR-0404 键改净星深)。
 
-    hp_proj = hp + 2(r8 奖励胜,唯一正项) − E[boss 伤害|板深档];
-    r9(直面 boss)无 +2。板深档键 = Σboard 桶(min(dep//3,5)*3,与
-    Δ池 boss 桶采样键同口径——``cw_sim._deployable_depth`` 单一源,
-    不建第二套分桶);缺桶走 ``handoff_boss_e_damage_default``
-    (全池未删失均值)。常数表标定口径(删失剔除)与已知边界(样本
-    存活偏差/Σboard 升星方向冲突)见 registry W238 块与 ADR-0403。
-    钳制 [0, 100](与 sim hp 结算钳制同界,HP_UPPER_BOUND 语义)。
+    hp_proj = hp + 2(r8 奖励胜,唯一正项) − E[boss 伤害|净星深档];
+    r9(直面 boss)无 +2。档键 = 净星深桶(min(净星深//3,5)*3,净星深
+    =上场件 Σ(star−1),``cw_sim.deployed_star_depth`` 单一源,与 Δ池
+    boss 桶采样键同口径,不建第二套分桶;W240 起替旧 Σboard 桶——
+    Σboard 下 3合1 升星使键落浅桶而浅桶期望伤害更大,与 [27] 机制
+    相反);缺桶走 ``handoff_boss_e_damage_default``(全池未删失均值)。
+    常数表标定口径(删失剔除)与已知边界(样本存活偏差)见 registry
+    W238/W240 块与 ADR-0403/0404。钳制 [0, 100](与 sim hp 结算钳制
+    同界,HP_UPPER_BOUND 语义)。
     """
     from sr_od.application.currency_war.cw_sim import (
         _DEPTH_BUCKET_W,
-        _deployable_depth,
+        deployed_star_depth,
     )
-    depth = _deployable_depth(state)
+    depth = deployed_star_depth(state)
     bucket = min(depth // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
     dmg = registry.handoff_boss_e_damage.get(
         bucket, registry.handoff_boss_e_damage_default)
