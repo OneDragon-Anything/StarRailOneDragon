@@ -131,6 +131,48 @@ def dying_band_active(state: GameState, session: StrategySession,
     return state.hp <= _next_battle_loss(state, session, registry)
 
 
+def c1_directed_active(state: GameState, session: StrategySession,
+                       registry: DecisionV2Registry) -> bool:
+    """C1 溢余必花定向辖域(P1 末窗投影安全带;FLIP 正交补集)。
+
+    设计=唯一规格:`.debug/temp/currency_war/w382_c1_design/DESIGN.md`
+    §2/§3(路线 B);总开关 registry.c1_directed_spend_enabled(默认关
+    =零漂移锚)。五条件缺一不可:
+
+    1. 开关开;
+    2. hp 可信位(hp_readable or hp_trusted,与 posture_release.flip_hit
+       同款守卫——兜底 100 帧不评估;shop 开态沿用真值帧放行,ADR-0428);
+    3. P1(本通道批辖域;末窗投影语义的 boss 税锚为 P1 语料标定);
+    4. 末窗=posture_release.boss_first_buy_phase(经 discipline.
+       boss_window_active 统一口径)——**不重算末窗谓词**(ADR-0426
+       死分支教训:下游消费必须挂活判定单一源);
+    5. 投影安全带 d=hp−boss_tax_p75 ≥ emergency_hp ∧ 溢余段
+       g>interest_floor——与 FLIP 末窗投影臂(d<emergency_hp)按 d
+       一刀切互斥(辖域正交,非合并;d≥emergency_hp 时 hp≥59,应急态
+       结构性不可达,无重叠面)。
+
+    溢余段花金零息损(P11,成本恒 0),定向语义的期望账方向=只保留
+    对 boss 战胜率有增量的支出(Δp≤0 支出确定性零收益);逐动作判定
+    见 filter_candidates 的 C1 段(与濒死带同款 Δp_board 符号谓词)。
+    破息分支(g≤50 跨档)不在本辖域——过账判据存档于 registry 注释,
+    待 E[R̄] 标定后评估。
+    """
+    if not registry.c1_directed_spend_enabled:
+        return False
+    if not (state.hp_readable or state.hp_trusted):
+        return False
+    if state.plane != 1:
+        return False
+    if (state.hp - registry.boss_tax_p75) < registry.emergency_hp:
+        return False    # d<25 投影必入应急带:FLIP 末窗投影臂辖区,C1 让位
+    if (state.gold or 0) <= registry.interest_floor:
+        return False    # 只辖溢余段(必花语义的成本恒 0 前提,P11)
+    from sr_od.application.currency_war.decision_v2.posture_release import (
+        boss_first_buy_phase,
+    )
+    return boss_first_buy_phase(state, session, registry)
+
+
 def formed_stop_active(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> bool:
     """成型停手态([13] 停手线;ADR-0343,W119/ADR-0347 收编 form_ok)。
@@ -266,6 +308,17 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     可买+上的名集件(目标∪高费强件,名单在此只作评分先验)放行定向
     刷新,否则删(原因 'blind_refresh');卖(变现)/部署非支出,不辖。
     链日志行带 'dying_band' 原因。默认关=逐位一致(零漂移)。
+
+    C1 溢余必花定向收窄(registry.c1_directed_spend_enabled,默认关
+    =零漂移;辖域=c1_directed_active,P1 末窗投影安全带 d≥emergency_hp
+    ∧ 溢余段,与 FLIP/濒死带辖区零交集):命中间内对支出候选做与濒死带
+    同款 Δp_board 符号判定(溢余段花金成本恒 0,只删对 boss 战胜率
+    零增量的支出)——BuyCard:有空位可上或 3合1 即时合成(合成后上场
+    星级即涨,本窗战力增量)放行,纯 hoard 买删(原因 'c1_hoard_buy');
+    RefreshShop:店内有可买+上的名集件放行定向刷新,否则删(原因
+    'c1_blind_refresh');LevelUp:升完立刻多上 1 件放行,否则删(原因
+    'c1_levelup_no_deploy');卖/部署非支出不辖。链日志行带 'c1_directed'
+    原因。贡献候选间的相对排序仍由 EV 评分层单一裁决,本通道不改分。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
@@ -273,13 +326,16 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
     dying = dying_band_active(state, session, registry)
+    c1 = c1_directed_active(state, session, registry)
     refreshable = frozenset()
-    if dying:
+    if dying or c1:
+        # 濒死带/C1 两辖区的定向刷新存在性名集(同款判据复用;两辖区按
+        # hp 结构互斥——濒死帧 hp≤25 恒不在 C1 辖区 hp≥59,不会同帧双评估)
         refreshable = _refreshable_names(state, session, registry)
-    shop_has_play = dying and _deploy_free(state) >= 1 and any(
+    shop_has_play = (dying or c1) and _deploy_free(state) >= 1 and any(
         c.name in refreshable for c in (state.shop or []))
     bench_n = 0
-    if dying:
+    if dying or c1:
         from sr_od.application.currency_war.cw_state import bench_occupied
         bench_n = bench_occupied(state.bench or [])
     kept: list[Candidate] = []
@@ -288,6 +344,7 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
         db_drop = ''   # 本行是否被濒死带收窄拦(Δp_board 符号判定)
+        c1_drop = ''   # 本行是否被 C1 定向收窄拦(同款符号判定)
         if ok and formed_stop and isinstance(c.action, BuyCard):
             if not _formed_stop_buy_allowed(c.action.card.name,
                                             state, session):
@@ -312,6 +369,25 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                 if not (bench_n >= 1 and _deploy_free(state) < bench_n):
                     ok = False
                     db_drop = 'levelup_no_deploy'
+        if ok and c1:
+            # C1 定向收窄(与濒死带同款 Δp_board 符号判定,辖域不同):
+            # 溢余段花金成本恒 0(P11),只删对 boss 战胜率零增量的支出
+            if isinstance(c.action, BuyCard):
+                # Δp_board = 1 if free≥1 或 3合1 即时合成 else 0
+                # (合成候选买入即升星上场,本窗战力增量)
+                if _deploy_free(state) < 1 and not c.merge:
+                    ok = False
+                    c1_drop = 'c1_hoard_buy'
+            elif isinstance(c.action, RefreshShop):
+                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据)
+                if not shop_has_play:
+                    ok = False
+                    c1_drop = 'c1_blind_refresh'
+            elif isinstance(c.action, LevelUp):
+                # Δp_board = 1 iff 升完立刻多上 1 件(同濒死带公式)
+                if not (bench_n >= 1 and _deploy_free(state) < bench_n):
+                    ok = False
+                    c1_drop = 'c1_levelup_no_deploy'
         entry = {'tag': c.tag, 'kept': ok, 'level': level,
                  'formed_stop': fs_drop,
                  **({'formed_stop_exempt': True}
@@ -320,6 +396,8 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                         and c.tag not in forbidden) else {})}
         if db_drop:
             entry['dying_band'] = db_drop
+        if c1_drop:
+            entry['c1_directed'] = c1_drop
         log.append(entry)
         if ok:
             kept.append(c)

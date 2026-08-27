@@ -946,6 +946,41 @@ class DecisionV2Registry:
     #: w375_dual_source_calib.json boss_bucket_injection),非魔数。
     line_switch_boss_ci_halfwidth: float = 1.53
 
+    # ===== C1 溢余必花定向优先级(P1 末窗投影安全带;FLIP 正交补集)=====
+    #: 设计=唯一规格:`.debug/temp/currency_war/w382_c1_design/DESIGN.md`
+    #: §2(期望账)/§3(路线 B 辖域裁决)。辖域裁决=与 FLIP 末窗投影臂
+    #: (ADR-0426)同锚两分支的**正交补集**:末窗帧按投影残差
+    #: d = hp − boss_tax_p75 一刀切,d < emergency_hp 归 FLIP 泄息义务
+    #: (既有,不动),d ≥ emergency_hp 归本通道评估——辖域互斥由谓词
+    #: 构造保证,不靠开关序。
+    #: 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。True 时
+    #: P1 末窗(discipline.boss_window_active 统一口径)∧ 投影安全带
+    #: (d ≥ emergency_hp)∧ 溢余段(g > interest_floor,[17])∧ hp
+    #: 可信位(hp_readable or hp_trusted,ADR-0428 同款守卫)帧内,
+    #: 支出候选按 boss 战胜率增量做定向收窄(filters 层2 符号判定,判据
+    #: 复用濒死带同款 Δp_board 逐动作谓词):可部署买/3合1 即时合成买、
+    #: 升完立刻多上件的 LevelUp、店有可买+上名集件的定向刷新放行;
+    #: 零增量支出(纯 hoard 买/盲刷/升完无件可上)删。数学账(规格 §2):
+    #: 溢余段花金零息损(P11 参数无关确定性结论,成本恒 0),收益=
+    #: Δp × E[损血|boss 败] × hp_to_gold 金当量——Δp≤0 的支出确定性
+    #: 零收益;「溢余必花+定向 boss 战力」的优先级语义=零贡献支出让位
+    #: 有增量支出,贡献间的相对排序仍归 EV 评分层单一裁决(禁双判定源,
+    #: 评分末窗权重不在本通道重复)。判据单一源纪律:末窗锚=
+    #: ``posture_release.boss_first_buy_phase``(唯一 latch 所有者经
+    #: discipline 统一口径),filters 不重算末窗谓词;阈值全部复用
+    #: registry 单一源(boss_tax_p75/emergency_hp/interest_floor),
+    #: 不立第二常量(常量即判定源,复刻即双源)。
+    #: **破息分支存档(本批不实现,待 E[R̄] 标定后评估)**:息线以下
+    #: (g≤50)跨档破息花 X 的过账判据 = Δp(X) × 13.35 > 息损(X, g,
+    #: R̄),其中 13.35 = E[损血|boss 败](26.7)× hp_to_gold(0.5)的
+    #: 金当量系数,息损 = Δfloor(g/10) × R̄(R̄=花后剩余生息轮数,P2
+    #: 死亡率压制下保守区间 [4,10],精确期望未标定)。线性近似
+    #: Δp(X)=k·X 时门槛 k > R̄/(10×13.35) ≈ 0.03~0.075/金;现有最乐观
+    #: 传导链 proxy(P17 +8 hp 链)隐含 k ≤ 0.012/金,比门槛低 2.5~6 倍
+    #: → 破息分支当前账面不成立,默认不触发;E[R̄] 从既有语料 runs.jsonl
+    #: 离线标定到位后按上式重裁,公式与代入验证见规格 §2.3。
+    c1_directed_spend_enabled: bool = False
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
