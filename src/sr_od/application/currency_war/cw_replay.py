@@ -62,7 +62,8 @@ def _rebuild_state(snap: dict) -> GameState:
     st.board = dict(snap.get('board') or {})
     st.shop = [ShopCard(x=c.get('x', 0), faction=c.get('faction') or '?',
                         name=c.get('name') or '', cost=c.get('cost') or 1,
-                        star=c.get('star') or 1)
+                        star=c.get('star') or 1,
+                        merge_preview=c.get('merge_preview') or 0)
                for c in (snap.get('shop') or []) if isinstance(c, dict)]
     def _bc(b: dict, i: int) -> BenchChar:
         return BenchChar(slot=b.get('slot') or i + 1,

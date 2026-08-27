@@ -205,6 +205,89 @@ def read_star(crop: MatLike) -> int:
     return max(count, 1)
 
 
+# ===== 升星预览✦(商店牌头顶;W104 发现 / W282 接线,ADR-0416)=====
+# 商店牌 art 顶部「已持同名同星副本数」✦显影 = merge_progress 份数的游戏内视觉印证
+# (迭代档案 W104:买第 3 张即 3合1 升星,✦ 数 = 已持份数)。
+# ⚠️ 不能复用金星 _STAR_GOLD(10-45/V>150):fixture 实测该窗口把亮色立绘背景/金发全部吃进
+# (card5 顶带 mask 连成 146px 大域,card1 砂金金发 3 个大域)。✦ 是自发光更烈的橙金:
+# 核心样本 H=25-30 / S≥60 / **V=255 饱和截断**(背景 V 163-198 / 金发 V≤243),独立严窗口。
+_PREVIEW_GOLD_LO: tuple[int, int, int] = (22, 60, 248)
+_PREVIEW_GOLD_HI: tuple[int, int, int] = (40, 255, 255)
+# ✦ TM 阈值(fixture 标定 2026-09-05:真✦ val 0.96/0.99,负样本 max 0.475
+# [shop_open card5 金发噪声],0.60 居中余量 ~0.12/0.13)。
+_PREVIEW_TM_THRESH: float = 0.60
+# ✦ 只出现在牌 art 顶部(裁切 rect y1=70,✦ 带本地 y 0-25 / 全高 190 → 0.25 倍冗余盖动态偏移)。
+_PREVIEW_BAND_RATIO: float = 0.25
+# 单✦二值 mask 模板(29x25 area281,从 shop_open_preview_star.webp card5 左✦提取;模块级缓存)。
+_PREVIEW_TMPL_CACHE: MatLike | None = None
+# peak 局部 area 门(二值单✦ 281;容遮挡残缺,下限防孤立噪声点;上限防两✦粘连大域被当单峰)。
+_PREVIEW_AREA_MIN: int = 60
+_PREVIEW_AREA_MAX: int = 600
+
+
+def _load_preview_sparkle_tmpl() -> MatLike | None:
+    """加载升星预览✦二值 mask 模板(模块级缓存);缺失返 None(read_merge_preview 返 0)。
+
+    模板为 HSV 严窗口二值 mask 的灰度存图(0/255,通道序无语义,故 cv2.imwrite 直存、
+    不走 save_image RGB 约定——与 star_gold_tmpl.png 同性质)。
+    """
+    global _PREVIEW_TMPL_CACHE
+    if _PREVIEW_TMPL_CACHE is None:
+        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'star' / 'shop_preview_sparkle_tmpl.png'
+        if p.exists():
+            _PREVIEW_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
+    return _PREVIEW_TMPL_CACHE
+
+
+def read_merge_preview(crop: MatLike) -> int:
+    """数商店牌头顶升星预览✦(= 已持同名同星副本份数;买第 3 张即 3合1,W104/ADR-0416)。
+
+    ``crop`` = 商店牌-N area 的 RGB crop(read_shop_cards 同源裁切)。算法 = read_star 同族
+    (HSV 严窗口 → 二值 mask → TM 模板匹配 → NMS 分离相邻✦ → peak 局部 area 门),差异:
+    ① 窗口在**顶部带**(y < _PREVIEW_BAND_RATIO·h)非底部;② mask 用更严的 V≥248
+    自发光窗口(见 _PREVIEW_GOLD_LO 注);③ **无匹配返 0 非 fallback**——0 = 「无✦」是
+    合法语义(该牌无已持副本),与 read_star「角色必有星」的 fallback 1 性质不同。
+
+    :return: ✦ 数(≥0);空图/模板缺 → 0(fail-silent:观测冗余信号读不到≠无副本真值,
+    消费方须按「未观测」对待,不得当「确认无副本」)。
+    """
+    if crop is None or crop.size == 0:
+        return 0
+    tmpl = _load_preview_sparkle_tmpl()
+    if tmpl is None:
+        return 0
+    h, w = crop.shape[:2]
+    band = crop[0:int(h * _PREVIEW_BAND_RATIO), :]
+    hsv = cv2.cvtColor(band, cv2.COLOR_RGB2HSV)
+    mask = cv2.inRange(hsv, _PREVIEW_GOLD_LO, _PREVIEW_GOLD_HI)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    th, tw = tmpl.shape[:2]
+    if mask.shape[0] < th or mask.shape[1] < tw:
+        return 0
+    res = cv2.matchTemplate(mask, tmpl, cv2.TM_CCOEFF_NORMED)
+    if float(res.max()) < _PREVIEW_TM_THRESH:
+        return 0
+    # NMS 分离相邻✦(两✦可粘连成 58px 大域,TM 各峰独立取;互距 > tw*0.5)
+    min_dist = tw * 0.5
+    ys, xs = np.where(res >= _PREVIEW_TM_THRESH)
+    pts = sorted(zip(ys, xs, strict=True), key=lambda p: res[p[0], p[1]], reverse=True)
+    peaks: list[tuple[int, int]] = []
+    for y, x in pts:
+        if all((y - py) ** 2 + (x - px) ** 2 > min_dist ** 2 for py, px in peaks):
+            peaks.append((int(y), int(x)))
+    # peak 局部 area 门(见 _PREVIEW_AREA_MIN/MAX 注;不设形状 circ 门——单样本标定
+    # 阶段无第二形状证据,阈值 0.60 + 严 HSV 窗 + area 门已够本信号「冗余印证」定位)
+    count = 0
+    for py, px in peaks:
+        local = mask[py:py + th, px:px + tw]
+        if local.size < th * tw:
+            continue
+        area = int((local > 0).sum())
+        if _PREVIEW_AREA_MIN <= area <= _PREVIEW_AREA_MAX:
+            count += 1
+    return count
+
+
 def identify_slots(
     screen: MatLike,
     templates: AvatarTemplates,

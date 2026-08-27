@@ -980,7 +980,8 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
         "run_id": _CURRENT_RUN_ID,
         "plane": plane, "round_num": round_num,
         "event": event, "gold": gold,
-        "shop": [{k: getattr(c, k, None) for k in ('name', 'faction', 'cost', 'star')}
+        "shop": [{k: getattr(c, k, None)
+                  for k in ('name', 'faction', 'cost', 'star', 'merge_preview')}
                  for c in shop],
     })
 
@@ -1243,7 +1244,10 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
             cards = [(c.get('name'), c.get('faction'), c.get('cost')) for c in (s.get('shop') or [])]
             star = [f"★{n}({f})" for n, f, _c in cards
                     if n in recipe_names or (f in ('仙舟', '列车同行') and n)]
-            mark = ('  ' + ' '.join(star)) if star else ''
+            # 升星预览✦(ADR-0416):>0 才显影,0/缺字段(旧数据)不显
+            previews = [f"✦{c.get('name')}x{c.get('merge_preview')}"
+                        for c in (s.get('shop') or []) if c.get('merge_preview')]
+            mark = ('  ' + ' '.join(star + previews)) if (star or previews) else ''
             lines.append(f"    [{s.get('event')}] g={s.get('gold')} {cards}{mark}")
         if not snaps.get(k):
             lines.append("    (无 shop 快照——旧数据只记进店帧,refresh 波丢失)")

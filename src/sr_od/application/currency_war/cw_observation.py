@@ -49,6 +49,7 @@ from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
+    read_merge_preview,
     resolve_char_name,
 )
 from sr_od.application.currency_war.cw_obs_core import (
@@ -872,6 +873,8 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             name=name,
             cost=(ch.cost if ch is not None else 0),
             star=1,
+            # 升星预览✦(W104/W282,ADR-0416):与 SIFT 同 crop 只多一次顶部带 mask+TM,零额外裁切
+            merge_preview=read_merge_preview(crop),
         ))
     # ~~shop_unknown_card 采集钩子已删(2026-08-17 归因闭环)~~:38 张存档样本离线对拍全识别
     # (73-119 内点,plaza 库)——全部是刷新动画/settle 瞬时帧 miss,非真未知卡;阮·梅/白厄挂账

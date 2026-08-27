@@ -59,6 +59,12 @@ class ShopCard:
     name: str = ""       # 角色名(OCR);未知 ""
     cost: int = 0        # 费用(OCR);未知 0(eval 按默认 3 估,详见 cw_decisions)
     star: int = 1        # 商店里已是几星
+    # 升星预览✦数(商店牌 art 头顶显影,W104/ADR-0416):= 已持同名同星副本份数,
+    # 买第 3 张即 3合1 升星——bot tracking merge_progress 的视觉印证(观测层冗余信号)。
+    # 坐标系 = 商店牌-N area crop 顶部带本地像素(read_merge_preview);取值时机 = 进店帧快照。
+    # 0 = 无✦,**双义**(真无副本 ∨ 读不到 fail-silent)——消费方按「未观测」对待,
+    # 不得当「确认无副本」做否定性决策;sim 不建模(恒 0,视觉信号离线无源)。
+    merge_preview: int = 0
 
 
 @dataclass

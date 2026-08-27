@@ -19,6 +19,8 @@
 
 **读取互斥**:gold 只在 shop 开态、HP 只在关态可读——由 EnsureShopOpen/Closed 动作显式管理,框架校验读取前置态。设计原则:签名 + 失败语义(字段 OCR 失败 → None/上回合值 + confidence=0,不抛错)+ sanity bounds(越界字段本回合作废防级联)。
 
+**升星预览✦(ADR-0416)**:`read_shop_cards` 每张牌附带 `merge_preview`(`cw_identity_obs.read_merge_preview`)——商店牌 art 顶部✦数 = 已持同名同星副本份数(买第 3 张即 3合1),是 bot tracking merge_progress 的视觉印证(观测冗余信号,`ShopCard` 字段注释载语义)。0 为双义(真无副本 ∨ fail-silent 读不到,模板缺失即恒 0),消费方按「未观测」对待;评分层尚未接此信号(decision_v2 merge_progress 走 bot tracking),sim 不建模。
+
 ## 2. cw_reconcile:对账公共层
 
 tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 → L1 全图 OCR 对比 → L2 不一致兜底递进[裁剪再识/点击探查/定向重读] → L3 递进到底仍不一致 = 上游出错信号,保守恢复不硬猜)。环入口对账一步;单笔动作后验证互补回合总账。
