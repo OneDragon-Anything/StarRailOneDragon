@@ -711,7 +711,8 @@ def vd_refresh_score(state: GameState, session: StrategySession,
       授权(升级与 D 并行;DP 异常保守回退 level_plan 门);
     - **P2 段成本/收益口径**(W154/ADR-0361,P11/P12):成本=机会成本
       C_dec(Δinterest×min(R, recovery_rounds_p2)+ρ·s,替换批口径面值;
-      [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;收益=存活语境参数
+      [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;release 门辖帧息损项计 0
+      (单一源=posture_release.spend_gate_active,同 score_state 息 EV 项);收益=存活语境参数
       (loss_p2/battles_left_p2 state 推导)。P1 收益侧同法治理
       (ADR-0425:战斗数槽序表推导+掉血遥测拟合,P15);W170/
       ADR-0369 为 P1 增 pair 缺件找牌通道(vd_p1_pair_enabled 辖,见 _vd_p1_pair);
@@ -806,9 +807,23 @@ def vd_refresh_score(state: GameState, session: StrategySession,
                    * battles_left_plane(state, session, registry))
         if spend > state.gold - registry.boss_floor:
             return None
-        d_int = (min(state.gold // 10, registry.interest_cap)
-                 - min(int(state.gold - spend) // 10,
-                       registry.interest_cap))
+        # release 帧泄息义务激活(判据单一源=posture_release.spend_gate_active
+        # 读 session.v3_release,与 score_state 息 EV 项同判据)时息损项计 0:
+        # 溢余段预算=g−interest_floor 已裁定必花,D 的息账罚分与花钱义务
+        # 对冲(罚分过重时 V_D 回负 → D 候选让位,泄息意图在 D 通道仍被
+        # 息账对冲);只拆息损项,流动性成本 ρ·spend 是真实刷金代价保留。
+        # 开关关(基线臂)时零漂移。
+        _rel_gate = False
+        if session is not None and registry.release_spend_gate_enabled:
+            from sr_od.application.currency_war.decision_v2.posture_release import (
+                spend_gate_active,
+            )
+            _rel_gate = spend_gate_active(session, registry)
+        d_int = 0.0
+        if not _rel_gate:
+            d_int = (min(state.gold // 10, registry.interest_cap)
+                     - min(int(state.gold - spend) // 10,
+                           registry.interest_cap))
         c_dec = (max(0, d_int) * min(r, registry.vd_p2_recovery_rounds)
                  + registry.vd_p2_liquidity_rho * spend)
         return benefit - c_dec
