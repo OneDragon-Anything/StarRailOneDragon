@@ -299,8 +299,9 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     濒死带支出收窄(设计=`.debug/temp/currency_war/w373_c3c4_redesign/
     REDESIGN.md` §2,registry.dying_band_account_enabled):濒死帧
     (dying_band_active)命中时按 Δp_board(本轮支出后、下一战开打前
-    的上场位增加数)做符号判定——BuyCard:有空位(free≥1)则买后可部署
-    放行,无空位删(原因 'hoard_buy',本轮不可能上场的纯 hoard 买,含
+    的上场位增加数)做符号判定——BuyCard:有空位(free≥1)或 3合1 即时
+    合成(bench 对子买店同名牌升星上场,同 C1 侧判据)放行,其余无空位
+    买删(原因 'hoard_buy',本轮不可能上场的纯 hoard 买,含
     final 目标件「买而不上」——濒死帧来不及按 [21] 兑现,设计内意图);
     LevelUp:bench 有可上件且空位不足时升完立刻多上 1 件放行,否则删
     (原因 'levelup_no_deploy'——可部署性谓词,不是动作类型黑名单,
@@ -353,9 +354,10 @@ def filter_candidates(cands: list[Candidate], state: GameState,
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
         if ok and dying:
             if isinstance(c.action, BuyCard):
-                # Δp_board = 1 if free≥1 else 0(买后即可部署,部署由
-                # 既有 deploy 候选免费完成)
-                if _deploy_free(state) < 1:
+                # Δp_board = 1 if free≥1 或 3合1 即时合成 else 0(买后
+                # 即可部署,部署由既有 deploy 候选免费完成;bench 对子
+                # 买店同名牌即时合成 2★ 上场,可部署性同 C1 侧判据)
+                if _deploy_free(state) < 1 and not c.merge:
                     ok = False
                     db_drop = 'hoard_buy'
             elif isinstance(c.action, RefreshShop):
