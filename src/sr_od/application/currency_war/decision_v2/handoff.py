@@ -241,8 +241,10 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
     - ``handoff_gate_gap > 0`` 承接缺口成立(gap 单一源复用;gate 关时
       恒 0——本 flag 与 gate/boss 投影三 flag 正交,单独开=零行为,
       W242 C 项先例);
-    - 存在「追名 peak≥2」的目标件:**意向目标名集**(``_core_names``,
-      candidates 层单一源)中某名的全场在手副本(star 加权,
+    - 存在「追名 peak≥2」的目标件:**锁定采购目标名集**(``_target_names``,
+      candidates 层单一源——含核心与其余锁定线目标件;W252 实测 comp
+      核心名 peak=2 在末窗决策帧近乎不出现[4/210]而目标件集 132/210,
+      「追名」本体=正在收集的锁定线件)中某名的全场在手副本(star 加权,
       ``star_weighted_copies``)恰 ≥2 且 <3 ——即该名距 2★ 只差最后
       一张,补跳的期望刷新代价(~6-17 次,E 随费用档)在金余量允许
       的尾部窗口内才开始有意义;peak<2(收集线远未起步,自然进店
@@ -265,11 +267,15 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
     if not reg.handoff_refresh_directed:
         return 0
     from sr_od.application.currency_war.decision_v2.candidates import (
-        _core_names,
+        _target_names,
     )
-    # 追名 peak≥2 判据:目标集内某名 star 加权副本 ∈ [2,3)(差最后一张)
-    for name in _core_names(session):
-        c = _weighted_copies_of(name, state)
+
+    # 追名 peak≥2 判据:锁定采购目标名集内某名 star 加权副本 ∈ [2,3)
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        star_weighted_copies,
+    )
+    for name in _target_names(state, session):
+        c = star_weighted_copies(name, state)
         if 2 <= c < 3:
             break
     else:
@@ -280,15 +286,6 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
     used = getattr(session, 'v3_dir_refresh_used', 0)
     return max(0, min(reg.directed_refresh_per_round,
                       reg.directed_refresh_game_cap - used))
-
-
-def _weighted_copies_of(name: str, state: GameState) -> int:
-    """单名 star 加权副本数(deployed∪bench;
-    ``cw_sim.star_weighted_copies`` 单一源转发,防第二公式)。"""
-    from sr_od.application.currency_war.cw_sim import (
-        star_weighted_copies,
-    )
-    return star_weighted_copies(name, state)
 
 
 def boss_projected_hp(state: GameState, hp_now: int,

@@ -46,6 +46,12 @@ from sr_od.application.currency_war.decision_v2.filters import (
     current_mode,
     is_emergency,
 )
+
+# W252/ADR-0409:M-A 收尾裁决消费(延迟 import 防环不必要——handoff
+# 不回 import arbiter;直连单一源)
+from sr_od.application.currency_war.decision_v2.handoff import (
+    directed_refresh_budget,
+)
 from sr_od.application.currency_war.decision_v2.phase import (
     Phase,
     derive_phase,
@@ -544,7 +550,23 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                     star_directed_gap,
                 )
                 _copy_ok = star_directed_gap(state, session, registry) > 0
-            if not _copy_ok:
+            # M-A 定向 D 牌授权窗(W252/ADR-0409,W249 诊断修法):负分
+            # 刷新在「授权窗开」时放行进入收尾裁决(实际放行与预算消耗
+            # 在收尾块,见下)——W249 H3 病灶「策略从不支付搜索成本」:
+            # 追名 peak≥2(某目标件差最后一张凑 3合1)∧末窗承接缺口
+            # gap>0 时,策略此前把刷新预算分配为零(全程 0.44 次/局),
+            # 双核心不可达的主导约束。**只辖刷新维**(防双计,W232 A/B/
+            # W242 C 各辖买牌维,互斥边界):本豁免只让候选越过非正分门,
+            # 不修改分数、不动买侧授权路径;同一次刷新只有一个授权来源。
+            # 辖域=plane==1(应急态不排除:[27] 星级投资的危机授权先例
+            # ADR-0302 危机买偏置同族,低 hp 出口局恰是 W249 病灶人群;
+            # 金代价由收尾的可负担性下限+局级预算封顶兜住);非末窗
+            # gap=0 零行为。
+            _dir_ok = False
+            if cand.tag == 'refresh' and state.plane == 1:
+                _dir_ok = directed_refresh_budget(
+                    state, session, registry) > 0
+            if not (_copy_ok or _dir_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
@@ -635,10 +657,36 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         cand, val, bd = refresh_cand
         reason = None
         auth_note: dict = {}
+        # M-A 预算消耗裁决(W252/ADR-0409):非正分刷新能到这里说明已在
+        # 非正分门凭预算豁免越过——收尾逐笔扣预算并**取代两道息纪律门**
+        # (gold_floor 的 HOARD 攒息拒 / interest_rule 的 EV≤0 拒):
+        # 这两道正是「策略从不支付搜索成本」的纪律载体,定向授权的本体
+        # 语义=按有界额度显式裁定末窗搜索成本(局级 cap 封顶代价);
+        # 放行仍照付刷价(simulate 真值扣金)+可负担性下限(花后 ≥
+        # boss_floor,P1 出口金生存边际)兜底。其余约束对 refresh 无涉;
+        # 正分刷新(V_D)不进本分支,既有路径逐位不动。
+        _ma_ok = False
         if val <= 0:
-            reason = RejectReason('refresh', '', 0, '非正分')
+            _b = directed_refresh_budget(state, session, registry) \
+                if state.plane == 1 else 0
+            if _b > 0:
+                _used_r = getattr(session, 'v3_dir_refresh_round', 0)
+                _cost = cand.action.cost or 2
+                if _used_r < min(registry.directed_refresh_per_round, _b) \
+                        and (working.gold or 0) - _cost \
+                        >= registry.boss_floor:
+                    _ma_ok = True
+                    auth_note['dir_refresh'] = (
+                        f'M-A 有界预算放行(轮用{_used_r}/'
+                        f'{registry.directed_refresh_per_round},'
+                        f'局耗{getattr(session, "v3_dir_refresh_used", 0)}'
+                        f'/{registry.directed_refresh_game_cap})')
+            if not _ma_ok:
+                reason = RejectReason('refresh', '', 0, '非正分')
         if reason is None:
             for cname in registry.constraints:
+                if _ma_ok and cname in ('gold_floor', 'interest_rule'):
+                    continue    # M-A 授权面取代两道息纪律门(见上)
                 reason = _check_constraint(cname, cand, working, state,
                                            session, registry, val=val, bd=bd,
                                            auth=auth_note)
@@ -655,6 +703,18 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         res.log.append(row)
         if accepted:
             res.actions.append(cand.action)   # 段尾:刷后 re-decide
+            # M-A 预算消耗计数(局级+轮级;轮键 v3_dir_refresh_key 由
+            # decide_prep 轮首重置与 p1_early 同式;正分刷新不计入——
+            # 只辖 M-A 授权面)
+            if auth_note.get('dir_refresh'):
+                key = (state.plane, state.round_num)
+                if getattr(session, 'v3_dir_refresh_key', None) != key:
+                    session.v3_dir_refresh_key = key
+                    session.v3_dir_refresh_round = 0
+                session.v3_dir_refresh_round = getattr(
+                    session, 'v3_dir_refresh_round', 0) + 1
+                session.v3_dir_refresh_used = getattr(
+                    session, 'v3_dir_refresh_used', 0) + 1
             # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数(同轮 re-decide
             # 链可见;scoring 豁免门消费,单节点支出 s≤2金辖)。
             # (ADR-0297 局刷新计数 v2_refresh_used 已随 W126/ADR-0349
