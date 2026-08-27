@@ -254,23 +254,26 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
-    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0354;旧 ADR-0266/r406 指纹)。
+    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0354;旧 ADR-0266/r406 指纹;
+    W255/ADR-0410 static_ev 并入合法面)。
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
-    (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp}**。
-    授权依据 = sim 账本 LevelUp 行的 ``auth`` 键(LevelUp.auth_basis
-    观测字段,arbiter 升级门/remediation 补偿臂放行时写入,单一源=
-    ``ev.levelup_ev_basis``)。
+    (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
+    static_ev}**。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
+    (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
+    时写入,单一源=``ev.levelup_ev_basis``)。
 
     重定义动机(W123 §3.3/§5.2):旧判据「金<50 且未曾满息即违规」把
     [33] 人口位(W123 实测 378 违规中绝大多数,W126 后 206)的合法
     <50 升级全数计违规——授权语义(W119/ADR-0347)落地后,判据应读
     授权依据而非金阈值。合法放行面:① pop_slot([33] 人口位:cap 满∧
     bench 有等待上场的目标件)、② dp(DP 花费授权,平台未破);
-    ③ static_ev(静态 EV 平台账)**不在白名单**——W123 明示该臂
-    花后<50 的帧量级 0-1,保留计违规(保守侧:静态账是估值端,息
-    引擎口径下可疑面不豁免;涌现≥量级再裁决)。无 auth 键/空值 =
-    无授权依据(default 栈旧调用/未过账路径)→ 违规。
+    ③ static_ev(静态 EV 平台账)——W255 前不在白名单(当时该臂花后
+    <50 帧量级 0-1,保守计违规);**W255/ADR-0410 起并入**:boss 窗
+    升级禁令删除后,static_ev 臂成为末窗升级的主授权臂(升级是否做=
+    EV 总账问题,[32] 节点无关定调),继续计违规则系统性误报该合法面。
+    无 auth 键/空值 = 无授权依据(default 栈旧调用/未过账路径)→ 违规
+    ——本守卫的退化检测面(授权观测缺失)不受影响。
 
     近似声明(承旧):①升级前等级用**上一轮账本 level**(轮内升级
     完成会抬高本行 level,prev_level 才是购买时的等级;首轮 prev=3);
@@ -291,15 +294,11 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                 continue
             basis = a.get('auth', '')
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and basis not in ('pop_slot', 'dp'):
-                if basis == 'static_ev':
-                    kind = 'static_ev 估值账放行(息引擎口径下保留可疑)'
-                else:
-                    kind = '无授权依据'
+                    and basis not in ('pop_slot', 'dp', 'static_ev'):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
-                    f" {kind}——ADR-0354 违规)")
+                    f" 无授权依据——ADR-0354 违规)")
         prev_level = (row.get('state') or {}).get('level') or prev_level
     return out
 

@@ -492,16 +492,14 @@ def steady_state_levelup_group(working: GameState, state: GameState,
                for b in (state.bench or [])):
         return []    # bench 无方向件:非 [33] 人口位形态
     # 前置守卫(_compensate_slot 臂① 同款)
-    from sr_od.application.currency_war.decision_v2.discipline import (
-        boss_window_active,
-    )
     from sr_od.application.currency_war.decision_v2.ev import (
         levelup_ev_basis,
     )
-    boss = boss_window_active(state, session, registry)
+    # W255/ADR-0410:旧「boss 轮不发升级组」守卫删——[32] 节点无关,
+    # 升级裁决交 EV 总账(下方 levelup_ev_basis)。
     cap_level_driven = (state.deploy_cap is None
                         or state.deploy_cap <= state.level)
-    if boss or state.level >= registry.level_max or not cap_level_driven:
+    if state.level >= registry.level_max or not cap_level_driven:
         return []
     from sr_od.application.currency_war.cw_economy import xp_click_cost
     from sr_od.application.currency_war.cw_state import (
@@ -564,17 +562,14 @@ def _compensate_slot(working: GameState, state: GameState,
     from sr_od.application.currency_war.decision_v2.candidates import (
         _target_names,
     )
-    from sr_od.application.currency_war.decision_v2.discipline import (
-        boss_window_active,
-    )
     from sr_od.application.currency_war.decision_v2.ev import (
         levelup_ev_basis,
     )
-    boss = boss_window_active(state, session, registry)
+    # W255/ADR-0410:旧「非 boss 轮才发」守卫删——[32] 节点无关,升级
+    # 裁决交 EV 总账(levelup_ev_basis);boss 窗本金边际由 boss_floor 兜。
     cap_level_driven = (state.deploy_cap is None
                         or state.deploy_cap <= state.level)
-    if not boss and state.level < registry.level_max \
-            and cap_level_driven:
+    if state.level < registry.level_max and cap_level_driven:
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         from sr_od.application.currency_war.cw_state import (
             XP_PER_BUY as _XP_PER_BUY,

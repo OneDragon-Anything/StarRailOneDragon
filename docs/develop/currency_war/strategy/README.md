@@ -67,6 +67,7 @@ battle_loop(主循环,屏幕级路由)
 - [01 姿态与经济](01_posture.md)—— DP 求解器、效果台账、息引擎与例外窗口、目标函数
 - [02 阵容选择](02_comp.md)—— COMP_LIBRARY、select_comp/pivot/commit、双轨过渡、审判层、跨局分配
 - [03 战术执行](03_tactics.md)—— PrepDirector 环、动作全集、plan/evaluate/bundle、部署与装备
+- [10 成型停手与 boss 族裁决](10_formed_stop_boss_mech.md)—— formed_stop 目标件白名单语义、boss 轮特殊机制族 a/b/c 裁决表(单一源)
 - [04 节点决策](04_nodes.md)—— 投资/遭遇/补给/巨星/伙伴、难度账本
 - [05 观测与遥测](05_observation.md)—— reader 家族、对账、PerformanceTracker、telemetry schema、日志格式
 - [06 信息模型](06_input_model.md)—— GameState 语义、注册表地图

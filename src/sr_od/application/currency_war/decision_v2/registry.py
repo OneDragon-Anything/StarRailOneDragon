@@ -704,7 +704,8 @@ class DecisionV2Registry:
         'bench_capacity',      # bench 9 槽(含本轮已采纳买)
         'copies_cap',          # 同名星级加权 ≤3 份
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
-        'boss_levelup_ban',    # [32] boss 轮禁升级腾席
+        'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;W255/ADR-0410
+                               # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
@@ -717,7 +718,8 @@ class DecisionV2Registry:
     #: (refresh_game_cap/levelup_reserve_gold 已随 W126/ADR-0349 删除:
     #: refresh_budget 约束整体退场,D 的预算由 V_D 批口径评分+
     #: gold_floor/interest_rule 辖)
-    #: [32] boss 轮判定(node_type_current='boss';P1 r9 兜底同辖)
+    #: boss 轮判定(node_type='boss';P1 r9 兜底同辖)。W255/ADR-0410:
+    #: 消费面只剩 boss 窗地板/覆盖态语境(b 类保留),升级特殊禁令已删。
     boss_round_node_types: frozenset[str] = frozenset({'boss'})
     #: LevelUp 等级上限(封顶 10)
     level_max: int = 10

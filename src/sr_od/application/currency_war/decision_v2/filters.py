@@ -9,11 +9,11 @@ redesign §3/§5.4 覆盖态**严格优先序**:应急(HP 危急)→ 追赶修�
 链选择与谓词映射,不含数值(ADR-0302 暂驻本模块的应急集补充标签/
 危机囤金常量已由合流批 ADR-0303 上移 registry)。
 
-成型停手(ADR-0343;W119/ADR-0347 收编 form_ok)是覆盖态之后的
-**动作级后置步**(非第四覆盖态):formed_stop 判定(P1 ∧ comp 派生
-辖轮 ∧ form_ok)命中时丢弃全部 BuyCard 候选——语义是「不再买牌」
-而非「收窄某域」,按动作类型拦(对标签表漂移稳健);标志落
-session.v3_formed_stop 供遥测/检查器。
+成型停手(ADR-0343;W119/ADR-0347 收编 form_ok;W255/ADR-0410 目标件
+白名单)是覆盖态之后的**动作级后置步**(非第四覆盖态):formed_stop 判定
+(P1 ∧ comp 派生辖轮 ∧ form_ok)命中时丢弃 BuyCard 候选——**但目标件
+白名单例外**([13] 正确语义:停的是过渡件,目标阵容件照买照囤,[21]/
+[22] 成型后的正常行为);标志落 session.v3_formed_stop 供遥测/检查器。
 """
 from __future__ import annotations
 
@@ -27,6 +27,24 @@ from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
+
+
+def _formed_stop_buy_allowed(name: str | None, state: GameState,
+                             session: StrategySession) -> bool:
+    """成型停手态的买侧白名单判据(W255/ADR-0410)。
+
+    [13] 正确语义:成型停的是「过渡件」——目标阵容件照买照囤
+    ([21] final 件买而不上/[22] 有用先囤正是成型后阶段的正常行为)。
+    判据单一源 = ``candidates._target_names``(意向载体 hoard 目标采购集
+    ∪ 体系卡引擎件——[31] 三级羁绊梯队的目标层);白名单外的买(过渡件/
+    散件/填充层)照旧拒。
+    """
+    if not name:
+        return False
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    return name in _target_names(state, session)
 
 
 def is_emergency(state: GameState,
@@ -151,10 +169,12 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     """层2 入口:按覆盖态过滤候选集;返回 (存活候选, 链日志)。
 
     链日志=判读可直接读的过滤记录(哪级命中、每个候选去留)。
-    成型停手(ADR-0343)为**覆盖态之后的动作级后置步**:五项判定
-    (见 formed_stop_active)命中时丢弃全部 BuyCard 候选——含
-    应急态(反因路径正是本纪律对象);标志写 session.v3_formed_stop
-    供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口)。
+    成型停手(ADR-0343;W255/ADR-0410 目标件白名单)为**覆盖态之后的
+    动作级后置步**:五项判定(见 formed_stop_active)命中时丢弃
+    BuyCard 候选——**目标件白名单例外**(_formed_stop_buy_allowed:
+    [13] 停过渡件不停目标件,[21]/[22]);标志写 session.v3_formed_stop
+    供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口);
+    白名单放行的链日志行带 'formed_stop_exempt'=True。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
@@ -165,10 +185,19 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     log: list[dict] = []
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
+        fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
         if ok and formed_stop and isinstance(c.action, BuyCard):
-            ok = False   # [13] 停手:成型后 P1 r7+ 不再买牌(动作级)
+            if not _formed_stop_buy_allowed(c.action.card.name,
+                                            state, session):
+                ok = False   # [13] 停过渡件(白名单外);W255/ADR-0410
+                fs_drop = True
+            # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
         log.append({'tag': c.tag, 'kept': ok, 'level': level,
-                    'formed_stop': formed_stop and isinstance(c.action, BuyCard)})
+                    'formed_stop': fs_drop,
+                    **({'formed_stop_exempt': True}
+                       if (formed_stop and isinstance(c.action, BuyCard)
+                           and not fs_drop and c.tag in allowed
+                           and c.tag not in forbidden) else {})})
         if ok:
             kept.append(c)
     return kept, log

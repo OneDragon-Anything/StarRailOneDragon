@@ -318,11 +318,14 @@ def _check_constraint(name: str, cand: Candidate,
                                 f'同轮已卖 {a.card.name}')
         return None
     if name == 'boss_levelup_ban':
-        # [32] boss 轮禁升级腾席(升级 cap 收益下轮才兑现)
+        # W255/ADR-0410([32] 节点无关定调 2026-08-27):旧「boss 窗禁
+        # 升级」一刀切禁令臂删除——[32] 消费有效性/腾席优先级是全程通用
+        # 纪律,升级是否做 = EV 总账问题(ev.levelup_ev_basis,[12]/[33]
+        # 单一裁决点;[32] 病例注:「真病是升完没有能上场的强单位」,
+        # 人口位臂①已辖)。约束名保留(审计矩阵 ('slot','boss') 格与
+        # 检查器名字空间稳定);本金边际由 boss_floor 地板(覆盖态分派臂,
+        # b 类保留)继续兜住。
         if isinstance(a, LevelUp):
-            if boss_window_active(state, session, registry):
-                return RejectReason('boss_levelup_ban', '', 0,
-                                    'boss 轮禁升级([32])')
             # [12] 追级息引擎门 → EV 总账收编(W119/ADR-0347;A1 镜像
             # 与 E6 latch 一并退场,单一裁决点在 ev.levelup_ev_authorized:
             # [33] 人口位 / DP 花费授权(平台未破)/ 静态 EV 平台账)
