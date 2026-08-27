@@ -130,12 +130,16 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
     if ch.independent:
         tags.append(ch.independent)
     seen = set(tags)
-    for eq in (getattr(bc, 'equips', None) or []):
+    equips = list(getattr(bc, 'equips', None) or [])
+    # 两遍法(P19 幂等性):第一遍收齐全部门卡带授予集 T̄——星徽的「已有不重复」
+    # 以终局成员身份为准,与装备穿戴顺序无关(「卡带X+星徽X」无论先后均计 1);
+    # 第二遍星徽判 x∉seen∪T̄、卡带无条件 +1(可双计,不查 seen)。
+    tape_grants = {b for eq in equips for b in _TAPE_BOND_GRANTS.get(eq, ())}
+    for eq in equips:
         for b in _TAPE_BOND_GRANTS.get(eq, ()):
             tags.append(b)                 # 卡带:无条件 +1(可双计)
-            seen.add(b)                    # 卡带授的即「已有」——后续星徽同羁绊不再重复(组合「卡带X+星徽X」计 1)
         for b in _BADGE_BOND_GRANTS.get(eq, ()):
-            if b not in seen:              # 星徽:额外增加一个羁绊(已有不重复)
-                seen.add(b)
+            if b not in seen and b not in tape_grants:
+                seen.add(b)                # 星徽:额外增加一个羁绊(已有[自报/卡带/先到星徽]不重复)
                 tags.append(b)
     return tuple(tags)
