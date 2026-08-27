@@ -133,6 +133,7 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
     for eq in (getattr(bc, 'equips', None) or []):
         for b in _TAPE_BOND_GRANTS.get(eq, ()):
             tags.append(b)                 # 卡带:无条件 +1(可双计)
+            seen.add(b)                    # 卡带授的即「已有」——后续星徽同羁绊不再重复(组合「卡带X+星徽X」计 1)
         for b in _BADGE_BOND_GRANTS.get(eq, ()):
             if b not in seen:              # 星徽:额外增加一个羁绊(已有不重复)
                 seen.add(b)
