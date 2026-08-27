@@ -124,6 +124,16 @@ _OP_SETTLE_S: float = 2.0
 #: 未走过 op_settle 段)。
 _LAST_SETTLE_WAIT: float | None = None
 
+#: 操作段(op_settle)稳定窗地板:涉动画段(开/关店)在 2s 预估
+#: 等待 + 指纹基线重置后,动画尾帧已被基线机制排除(指纹变化即
+#: 重置重poll),稳定确认窗只需最短档——取三 profile 既有下限
+#: 0.6s(PROFILE_POPUP 同值;实机单局耗时深挖报告
+#: .debug/temp/currency_war/w358_time_depth/REPORT.md「风险声明」
+#: 明示稳定窗下限 0.6s,防特效帧误读的红线地板,不再低)。
+#: 非 settle 段(环入口/兜底门)不吃本地板,维持 profile 原值
+#: 0.8s——入口帧直接喂 heavy 观察,多留 0.2s 抗特效消化。
+_OP_SETTLE_MIN_STABLE_S: float = 0.6
+
 # r324(轮子审查修法2):指纹原语下沉 one_dragon.utils.cv2_utils
 # (fingerprint_in_rects/fingerprint_same,与 is_same_image 并列)——
 # gate 不再私有实现;阈值语义注解见 cv2_utils(局36 diag 实证)。
@@ -220,9 +230,10 @@ def wait_stable_frame(
          OCR poll 量化」变为真实测量);
       2. 操作段(``segment='op_settle'``,买/部署/装备特效后):
          **2s 预估等待作为指纹基线重置点**——先等 2s 再取
-         基线(防特效中间帧当基线),随后指纹快 poll 正常确认
-         min_stable_s 稳定窗(非单校验放行);校验不过(特效
-         意外拖长)→ 循环内回锚定/重设基线(完整门语义)。
+         基线(防特效中间帧当基线),随后指纹快 poll 确认稳定窗
+         (settle 段窗取地板 ``_OP_SETTLE_MIN_STABLE_S``=0.6s,
+         非 settle 段维持 profile 值;非单校验放行);校验不过
+         (特效意外拖长)→ 循环内回锚定/重设基线(完整门语义)。
       回退开关 = ``fast_confirm``(profile 键,显式传参优先;
       False = 每轮 poll 都做全图 OCR 锚判定的旧完整门)。
     """
@@ -240,10 +251,14 @@ def wait_stable_frame(
     #(先等再取基线,防特效中间帧当基线;随后正常快 poll 确认窗)
     global _LAST_SETTLE_WAIT
     _settle_waited = False
+    _min_stable = profile['min_stable_s']
     if segment == 'op_settle':
         _sleep(_OP_SETTLE_S)
         _LAST_SETTLE_WAIT = _OP_SETTLE_S
         _settle_waited = True
+        # 稳定窗分级(地板常量注):settle 段动画尾帧由「指纹变化
+        # 即重置基线重poll」机制排除,确认窗取最短档 0.6s
+        _min_stable = _OP_SETTLE_MIN_STABLE_S
     stable_since = None
     first_fp = None
     _diag = {'screen': 0, 'fp': 0, 'ok': 0, 'fast': 0}
@@ -322,7 +337,7 @@ def wait_stable_frame(
                 continue
         _compared = True
         if stable_since is not None and \
-                _now() - stable_since >= profile['min_stable_s']:
+                _now() - stable_since >= _min_stable:
             log.info(f'[cw][gate] stable frame ({profile["expect_screen"]}, {_now() - t0:.1f}s'
                      f'{", settle" if _settle_waited else ""}'
                      f'{", fast" if _diag["fast"] else ""}'
