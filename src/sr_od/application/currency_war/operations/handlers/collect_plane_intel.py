@@ -64,6 +64,14 @@ _PLANE_CARD_AREAS: tuple[str, ...] = ('按钮-位面卡1', '按钮-位面卡2', 
 #: 详情条节点类型名 area(位面详情屏;boss 定位验证锚)
 _LABEL_AREA: str = '文本-节点类型名'
 
+# ---- 非clean帧等待门(W314)---------------------------------------------
+# 背景:2026-08-27 两触发点同签名(run 22:05:23 P1 收尾 / 22:10:16 P2 转换):
+# 位面转换/加载动画窗内节点条是残影,短窗连读(~2.5s 3 帧)全部非clean → op
+# 失败。治本=「等到 clean 为止 + 宽上限兜底」:非clean 读不再短窗即弃,而是
+# 间隔重读给动画时间,超宽上限才真失败(覆盖最慢加载)。
+_NODE_BAR_READ_INTERVAL_S: float = 2.0   # 两次重读的间隔(给转换/加载动画时间)
+_NODE_BAR_WAIT_CAP_S: float = 90.0       # 非clean 总等待上限,超限才真失败
+
 
 def conclude_plane_boss(label: str | None, sift_name: str | None) -> tuple[str, str | None]:
     """单位面 boss 读取结论(纯函数,W221/ADR-0398 测试锁锚)。
@@ -97,6 +105,7 @@ class CollectPlaneIntel(SrOperation):
         self._plane_bosses: list[str | None] = [None, None, None]   # 位面1..3
         self._cur_plane: int = 0          # 0-based 当前采集位面索引
         self._affixes: list[str] = []     # 词缀横条(位面详情屏,随 boss 同开读取)
+        self._nonclean_wait_start: float | None = None   # 非clean帧等待起点(time.monotonic 时刻;None=未在等)
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -157,9 +166,27 @@ class CollectPlaneIntel(SrOperation):
                   self._cur_plane + 1, name, good)
         return name
 
+    def _nonclean_read_gate(self, reason: str) -> OperationRoundResult:
+        """非clean帧等待门(W314):节点条读不出时不短窗即弃——间隔重读等动画窗,
+        超宽上限(:data:`_NODE_BAR_WAIT_CAP_S`)才真失败。
+
+        clean 判定语义不变(读出即 clean);上限是墙钟计时(覆盖最慢加载),
+        与 round retry 账解耦——因此 ``采集`` 节点的 retry 预算须 ≥ 上限/间隔
+        (node_max_retry_times=60),否则预算先耗尽、上限兜不住。
+        """
+        now = time.monotonic()
+        if self._nonclean_wait_start is None:
+            self._nonclean_wait_start = now
+        if now - self._nonclean_wait_start > _NODE_BAR_WAIT_CAP_S:
+            self._nonclean_wait_start = None
+            return self.round_fail(
+                f'节点条非clean({reason})持续超 {_NODE_BAR_WAIT_CAP_S:.0f}s,放弃采集')
+        time.sleep(_NODE_BAR_READ_INTERVAL_S)
+        return self.round_retry(f'节点条未读出({reason}),间隔重读等动画窗')
+
     # ---- 节点图(round 语义驱动,同 HandleBriefing 形态) -----------------
 
-    @operation_node(name='采集', is_start_node=True, node_max_retry_times=12)
+    @operation_node(name='采集', is_start_node=True, node_max_retry_times=60)
     def collect(self) -> OperationRoundResult:
         """入口核对 + 三位面采集循环(状态在 self;round_wait 自环推进)。
 
@@ -185,7 +212,8 @@ class CollectPlaneIntel(SrOperation):
                 cur = next((s for s in (slots or []) if s.state == 'current'), None) or (
                     slots[0] if slots else None)
                 if cur is None:
-                    return self.round_retry('节点条未读出(非clean帧),重读')
+                    return self._nonclean_read_gate('非clean帧')
+                self._nonclean_wait_start = None   # 读出=clean,重置等待账
                 from sr_od.application.currency_war.cw_obs_core import _area_rect
                 r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
                 ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
@@ -220,7 +248,8 @@ class CollectPlaneIntel(SrOperation):
         screen = self.screenshot()
         boss_pt = self._boss_node_center()
         if boss_pt is None:
-            return self.round_retry('节点条未读出(切卡动画中),重读')
+            return self._nonclean_read_gate('切卡动画中')
+        self._nonclean_wait_start = None   # 读出=clean,重置等待账
         self.ctx.controller.click(boss_pt)
         time.sleep(1.5)
         # ③ 读详情条:类型名标签验「首领」→ 大图标 SIFT → 结论分流(W221/ADR-0398)
