@@ -21,6 +21,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
 )
+from sr_od.application.currency_war.cw_line_switch import node_loss_kind
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
     GameState,
@@ -62,19 +63,48 @@ def _next_battle_loss(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> float:
     """下一战期望损血(粗档查表;registry.dying_band_next_loss 单一源)。
 
-    节点型映射:boss/遭遇→同名档;其余(含缺读)→normal 档——缺读取
-    三档最小值,触发最窄(濒死带收紧支出,假阳性方向的保守侧)。
+    节点型映射单一源=``cw_line_switch.node_loss_kind``(boss/遭遇→同名
+    档,奖励/补给→零损档,其余含缺读→normal 档——normal 为战斗节点
+    频率最高档,触发宽度居中非最窄,方向声明见 registry 字段注释)。
     """
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
-    kind = 'boss' if node == 'boss' else (
-        'encounter' if node in ('encounter', '遭遇') else 'normal')
+    kind = node_loss_kind(node)
     return registry.dying_band_next_loss.get(kind, 0.0)
+
+
+def _deploy_free(state: GameState) -> int:
+    """当前可上阵空位数 = max(0, max_units − 上场占用)(ADR-0392 占用
+    口径,与部署候选判据 deployed_occupied 同源)。"""
+    from sr_od.application.currency_war.cw_state import deployed_occupied
+    return max(0, state.max_units()
+               - deployed_occupied(state.deployed or []))
+
+
+def _refreshable_names(state: GameState, session: StrategySession,
+                       registry: DecisionV2Registry) -> frozenset[str]:
+    """R2 定向刷新存在性判据的名集(评分先验,非授权边界)。
+
+    =目标件名集(``candidates._target_names``:意向载体目标∪体系卡引擎
+    件)∪ 高费强件(费用 ≥ registry.dying_band_high_cost_floor 的注册表
+    角色)。滤网只判「店内有无可买+上的名集件」这一存在性,买谁由 EV
+    层定价——名单从授权边界降为评分先验(对抗审计 A1-β 修法,报告=
+    `.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _target_names,
+    )
+    names = set(_target_names(state, session))
+    names |= {n for n, ch in CHARACTERS.items()
+              if (getattr(ch, 'cost', 0) or 0)
+              >= registry.dying_band_high_cost_floor}
+    return frozenset(names)
 
 
 def dying_band_active(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> bool:
-    """濒死带:应急深带内「再输一场即死」的帧(期望账保守上界,设计=
-    `.debug/temp/currency_war/w353_p2_survival/DESIGN.md` §2 C3/§3 辖域表)。
+    """濒死带:应急深带内「再输一场即死」的帧(纯收窄,只删不增,设计=
+    `.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md` §2)。
 
     四条件缺一不可:
     1. registry.dying_band_account_enabled(默认关=现行为零漂移,A/B 臂);
@@ -84,11 +114,13 @@ def dying_band_active(state: GameState, session: StrategySession,
        内,不新增覆盖态触发线);
     4. hp ≤ 下一战期望损血(粗档查表)——「再输一场即死」帧。
 
-    支出授权的期望账推导(设计 §2 C3):花 g 金换 Δp 胜率占优 ⇔
-    Δp·V_continue > g;V_continue 无真值 → 保守上界=只授权高确信
-    目标件买/定向刷新(见 filter_candidates 濒死段),完整账挂账不接
-    生产臂。辖域 plane≥2(P2 生存批);与 release FLIP 辖区
-    (hp>emergency_hp)零交集——濒死帧恒不在 release 辖区。
+    支出收窄的语义(REDESIGN §2.3 推导链):删除判据 = Δp_board(s) ≤ 0
+    (本轮采纳支出 s 后、下一战开打前可完成的「上场位增加数」为 0)——
+    板面不变则胜率不变,删除集支出满足对任意 V_continue≥0 期望为负,
+    是可证明零期望的符号判定,不是「保守上界」;Δp_board>0 的支出交给
+    既有 EV 层定价。逐动作判定见 filter_candidates 濒死段。辖域
+    plane≥2(P2 生存批);与 release FLIP 辖区(hp>emergency_hp)零
+    交集——濒死帧恒不在 release 辖区。
     """
     if not registry.dying_band_account_enabled:
         return False
@@ -222,12 +254,18 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口);
     白名单放行的链日志行带 'formed_stop_exempt'=True。
 
-    濒死带支出细化(设计 §2 C3,registry.dying_band_account_enabled):
-    濒死帧(dying_band_active)命中时,支出类候选进一步收窄——BuyCard
-    仅目标件名集放行(高确信目标件;单一源=candidates._target_names)、
-    RefreshShop 仅店内有目标件时放行(定向刷新,非盲刷)、LevelUp 滤出
-    (非授权支出);卖(变现)/部署非支出,不辖。链日志行带 'dying_band'
-    原因。默认关=逐位一致(零漂移)。
+    濒死带支出收窄(设计=`.debug/temp/currency_war/w373_c3c4_redesign/
+    REDESIGN.md` §2,registry.dying_band_account_enabled):濒死帧
+    (dying_band_active)命中时按 Δp_board(本轮支出后、下一战开打前
+    的上场位增加数)做符号判定——BuyCard:有空位(free≥1)则买后可部署
+    放行,无空位删(原因 'hoard_buy',本轮不可能上场的纯 hoard 买,含
+    final 目标件「买而不上」——濒死帧来不及按 [21] 兑现,设计内意图);
+    LevelUp:bench 有可上件且空位不足时升完立刻多上 1 件放行,否则删
+    (原因 'levelup_no_deploy'——可部署性谓词,不是动作类型黑名单,
+    ADR-0302/0303 滤死升级反模式的结构性防复发);RefreshShop:店内有
+    可买+上的名集件(目标∪高费强件,名单在此只作评分先验)放行定向
+    刷新,否则删(原因 'blind_refresh');卖(变现)/部署非支出,不辖。
+    链日志行带 'dying_band' 原因。默认关=逐位一致(零漂移)。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
@@ -235,20 +273,21 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
     dying = dying_band_active(state, session, registry)
-    targets = frozenset()
+    refreshable = frozenset()
     if dying:
-        from sr_od.application.currency_war.decision_v2.candidates import (
-            _target_names,
-        )
-        targets = frozenset(_target_names(state, session))
-    shop_has_target = dying and any(
-        c.name in targets for c in (state.shop or []))
+        refreshable = _refreshable_names(state, session, registry)
+    shop_has_play = dying and _deploy_free(state) >= 1 and any(
+        c.name in refreshable for c in (state.shop or []))
+    bench_n = 0
+    if dying:
+        from sr_od.application.currency_war.cw_state import bench_occupied
+        bench_n = bench_occupied(state.bench or [])
     kept: list[Candidate] = []
     log: list[dict] = []
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
-        db_drop = ''   # 本行是否被濒死带收窄拦(设计 §2 C3)
+        db_drop = ''   # 本行是否被濒死带收窄拦(Δp_board 符号判定)
         if ok and formed_stop and isinstance(c.action, BuyCard):
             if not _formed_stop_buy_allowed(c.action.card.name,
                                             state, session):
@@ -257,16 +296,22 @@ def filter_candidates(cands: list[Candidate], state: GameState,
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
         if ok and dying:
             if isinstance(c.action, BuyCard):
-                if c.action.card.name not in targets:
+                # Δp_board = 1 if free≥1 else 0(买后即可部署,部署由
+                # 既有 deploy 候选免费完成)
+                if _deploy_free(state) < 1:
                     ok = False
-                    db_drop = 'nontarget_buy'
+                    db_drop = 'hoard_buy'
             elif isinstance(c.action, RefreshShop):
-                if not shop_has_target:
+                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据)
+                if not shop_has_play:
                     ok = False
-                    db_drop = 'undirected_refresh'
+                    db_drop = 'blind_refresh'
             elif isinstance(c.action, LevelUp):
-                ok = False
-                db_drop = 'levelup_not_authorized'
+                # Δp_board = min(bench_n, free+1) − min(bench_n, free)
+                # = 1 iff bench_n≥1 且 free<bench_n(升完立刻多上 1 件)
+                if not (bench_n >= 1 and _deploy_free(state) < bench_n):
+                    ok = False
+                    db_drop = 'levelup_no_deploy'
         entry = {'tag': c.tag, 'kept': ok, 'level': level,
                  'formed_stop': fs_drop,
                  **({'formed_stop_exempt': True}

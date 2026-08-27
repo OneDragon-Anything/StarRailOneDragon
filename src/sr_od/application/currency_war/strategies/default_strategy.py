@@ -341,11 +341,16 @@ class DefaultCwStrategy(CwStrategy):
                     if not _gate_ok:
                         _do = False
                         _why = _gate_why
-                        log.warning(
-                            '[cw][target] 存活轮数门拦换线 %s → %s:%s'
-                            ' (hp=%d,新线E=%.2f)',
-                            session.target_comp.name, _alt.name,
-                            _gate_why, state.hp, _alt_e)
+                        # 拦截日志按 (当前线,备选线) 线对去重(同对同局
+                        # 只发一次,计数累加)——死锁局每轮拦会刷屏。
+                        _blk = _cw_line_switch.register_gate_block(
+                            session, session.target_comp.name, _alt.name)
+                        if _blk == 1:
+                            log.warning(
+                                '[cw][target] 存活轮数门拦换线 %s → %s:%s'
+                                ' (hp=%d,新线E=%.2f)',
+                                session.target_comp.name, _alt.name,
+                                _gate_why, state.hp, _alt_e)
                 if _do and _alt is not None:
                     log.warning(
                         '[cw][target] E_rounds 换线 %s(E=%.2f,驻留%d轮)'

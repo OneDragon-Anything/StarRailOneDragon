@@ -175,21 +175,88 @@ def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
     return True, 'ok'
 
 
-def rounds_alive(state: GameState,
-                 registry: DecisionV2Registry | None = None) -> int:
-    """存活轮数估计:ceil(hp / E[每轮期望损血])(纯数,设计
-    `.debug/temp/currency_war/w353_p2_survival/DESIGN.md` §2 C4)。
+#: P2 位面节点模板(economy.md §10.2;表缺/位面锚不符时的投影回退):
+#: [战斗, 战斗, 遭遇, 奖励, 遭遇, 奖励, 战斗, boss]——r7 实测表为「?」
+#: 占位,按保守规则转战斗+normal 档(未知多算一的一场损失=存活估计更
+#: 短=门更紧,保守方向显式声明,多局开局帧复核后改)。
+_P2_NODE_TEMPLATE: list[str] = ['battle', 'battle', 'encounter', 'reward',
+                                'encounter', 'reward', 'battle', 'boss']
 
-    E[每轮损血] = registry.line_switch_round_loss 三档(普通/遭遇/boss)
-    等权均值——粗档谱(P2 损血标定,来源见 registry 注释);等权含 boss
-    高损档 → 估计偏小 → 门更紧,方向保守。hp≤0 → 0。
+_ZERO_LOSS_NODE_KINDS: frozenset[str] = frozenset({'reward', 'supply'})
+
+
+def node_loss_kind(node_type: str) -> str:
+    """节点型 → 损血档归一(单一源;filters._next_battle_loss 与 C4 投影
+    共用本映射)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
+    损血 0);其余(普通战斗/精英/缺读/'?' 占位)→ normal 档——未知
+    战斗节点按 normal 档(战斗频率最高档)、未知非战斗节点由调用方
+    先归零损档,两类缺读不共用一个兜底。"""
+    if node_type == 'boss':
+        return 'boss'
+    if node_type in ('encounter', 'encounter_v2', '遭遇'):
+        return 'encounter'
+    if node_type in _ZERO_LOSS_NODE_KINDS:
+        return 'reward'
+    return 'normal'
+
+
+def _remaining_nodes(session: StrategySession,
+                     state: GameState) -> list[str]:
+    """本位面从当前轮起到位面末的节点型序列(C4 投影输入)。
+
+    真值源=``session.plane_node_table``(r306 开局帧实读,每备战帧实时
+    重写为权威;位面锚=``plane_node_table_plane``,ADR-0368);表缺/
+    位面锚不符 → 回退 economy §10.2 位面模板(P2,见
+    _P2_NODE_TEMPLATE 注释)。"""
+    table = getattr(session, 'plane_node_table', None)
+    if table and getattr(session, 'plane_node_table_plane', None) \
+            == state.plane:
+        seq = list(table)
+    else:
+        seq = list(_P2_NODE_TEMPLATE)
+    start = max(0, int(state.round_num) - 1)
+    return seq[start:]
+
+
+def rounds_alive(state: GameState,
+                 session: StrategySession,
+                 registry: DecisionV2Registry | None = None) -> int:
+    """存活轮数:剩余节点序列逐节点投影(设计=
+    `.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md` §3.2;
+    旧 ceil(hp/等权均值) 除数口径已废除——两个期望时钟必须同一把尺,
+    本函数与 E_rounds 同按日历轮计量)。
+
+    语义=「从当前节点起、按日历轮走,到 hp 耗尽为止还能行动的节点数」:
+    战斗节点扣条件损血、奖励/补给零损照走、遭遇节点加回血期望(默认
+    0 下界,registry.encounter_heal_est);死在结算也先行动过这一轮
+    (ra 先 +1 再判死)。hp≤0 → 0。复杂度 O(剩余节点 ≤9)×O(1) 查表。
     """
     reg = registry or DEFAULT_REGISTRY
-    vals = [v for v in reg.line_switch_round_loss.values() if v > 0]
-    if not vals or not state.hp or state.hp <= 0:
+    if not state.hp or state.hp <= 0:
         return 0
-    e_per_round = sum(vals) / len(vals)
-    return int(-(-state.hp // e_per_round))   # ceil
+    # 两态口径(M1b):loss=(1−p_win)·表值;缺省(空 dict 或 rung 缺档)
+    # 按 p_win=0=每战全损 → loss=表值条件常数(M1a)——同一份代码,
+    # 行为由 registry 注入切换(REDESIGN §3.3;设计文「缺省=1=全损」
+    # 指全损语义,落码取 p_win 缺省 0 使退化成立)。rung 单一源=scoring
+    # ._engines_formed(成型度,0-2 钳制;discipline 同法消费)。
+    p_win = 0.0
+    if reg.p_win_p2_by_rung:
+        from sr_od.application.currency_war.decision_v2.scoring import (
+            _engines_formed,
+        )
+        rung = min(2, max(0, _engines_formed(state, reg)))
+        p_win = reg.p_win_p2_by_rung.get(rung, 0.0)
+    h = float(state.hp)
+    ra = 0
+    for raw in _remaining_nodes(session, state):
+        kind = node_loss_kind(raw)
+        h -= (1.0 - p_win) * reg.line_switch_node_loss.get(kind, 0.0)
+        if kind == 'encounter':
+            h += reg.encounter_heal_est   # 注入前恒 0(0 下界声明)
+        ra += 1            # 日历轮 +1(死在结算也先行动过这一轮)
+        if h <= 0:
+            break
+    return ra              # 走完全表仍 h>0 → ra=剩余节点数(跨位面截断)
 
 
 def survival_gate(state: GameState, session: StrategySession,
@@ -198,12 +265,16 @@ def survival_gate(state: GameState, session: StrategySession,
                   ) -> tuple[bool, str]:
     """换线存活轮数门(第三道门;registry.line_switch_survival_gate_enabled)。
 
-    判据:rounds_alive ≥ E_rounds(新线) + 兑现余量(设计 §2 C4:换线
-    价值兑现在新线成型之后;存活轮数不足=新线永远到不了兑现点,换线
-    期望 0<驻留旧线)。与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是
-    第二换线机制;drought bail 旁路不辖(或-并存结构不变)。
+    判据(REDESIGN §3.4):rounds_alive(剩余节点逐节点投影) ≥
+    E_rounds(新线)×(1+δ) + 兑现余量(+boss 附加费,投影路径含
+    boss 节点时)——投影后两边同为日历轮;δ 承载 p̄ 乐观先修偏,margin
+    承载兑现余量与投影近似残差,boss CI 半宽承载借档不确定性
+    (registry.line_switch_boss_ci_halfwidth)。换线价值兑现在新线成型
+    之后;存活轮数不足=新线永远到不了兑现点,换线期望 0<驻留旧线。
+    与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是第二换线机制;
+    drought bail 旁路不辖(或-并存结构不变)。
 
-    辖域 plane≥2(损血谱为 P2 标定,P1 不适用);开关关/辖域外 → 放行
+    辖域 plane≥2(损血表为 P2 标定,P1 不适用);开关关/辖域外 → 放行
     (零漂移)。e_alt=inf 时数学上恒不满足,但该情形在 should_switch_e
     已被 'alt_inf' 拦,此处保守放行(门不重复裁决)。
     """
@@ -212,11 +283,29 @@ def survival_gate(state: GameState, session: StrategySession,
         return True, 'gate_off'
     if state.plane < 2 or not math.isfinite(e_alt):
         return True, 'gate_off'
-    ra = rounds_alive(state, reg)
-    need = e_alt + reg.line_switch_survival_margin
+    ra = rounds_alive(state, session, reg)
+    need = e_alt * (1.0 + reg.line_switch_debias_delta) \
+        + reg.line_switch_survival_margin
+    if any(node_loss_kind(r) == 'boss'
+           for r in _remaining_nodes(session, state)):
+        need += reg.line_switch_boss_ci_halfwidth
     if ra >= need:
         return True, 'ok'
     return False, f'survival({ra:.0f}<{need:.2f})'
+
+
+def register_gate_block(session: StrategySession, cur_name: str,
+                        alt_name: str) -> int:
+    """拦截日志去重记账(REDESIGN §3.7):按 (当前线,备选线) 线对计
+    同局拦截次数,返回累计次数。消费侧约定=次数为 1 时发日志行,>1
+    只累加计数(防死锁局每轮刷屏);计数挂在 session(局终随会话销毁)。"""
+    seen = getattr(session, 'line_switch_block_counts', None)
+    if seen is None:
+        seen = {}
+        session.line_switch_block_counts = seen
+    key = (cur_name, alt_name)
+    seen[key] = seen.get(key, 0) + 1
+    return seen[key]
 
 
 def best_alt_line(state: GameState, session: StrategySession, config,
