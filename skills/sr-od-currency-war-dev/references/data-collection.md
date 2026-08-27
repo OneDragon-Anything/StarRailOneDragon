@@ -54,7 +54,7 @@
 ## 四、派生/人判层
 
 - 同费种类数 `DISTINCT_CARDS_PER_COST` 从 CHARACTERS **派生**(改注册表自动传导)。
-- 合成图谱 `cw_synthesis`:图鉴「合成公式」OCR → **K7 图数学派生**(21 交叉确证+7 自配逻辑确证);孤立节点(如光能电池 0 交叉)标注待人工核实机理,不入图。
+- 合成图谱 `cw_synthesis`:从 `cw_equipment_data.EQUIPMENTS[].recipes`(官方 API compose_list)**import 期派生**(注册表改/重拉自动跟上,无手抄);不直接采集——采集入口是装备注册表生成器 `gen_equip_registry.py`。
 - 节点类型/连胜数的**读取**(非采集):节点行 `cw_node_reader`(HoughCircles+HSV+Hu+OCR);连胜 `parse_streak`(结算屏「连胜×N」前缀=方向,fixture 核实)——这些是观测层不是数据采集,别混。
 
 ## 五、建模增量层(API 给不了的人工属性)
