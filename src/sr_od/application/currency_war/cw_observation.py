@@ -1108,11 +1108,16 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
     # 先验触发保血方向对);全无真值(开局)才兜底 100。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
+    # state.hp_trusted=值可信位(ADR-0282 语义细分):沿用 last_hp_real 的帧
+    # 也是可信值(True),只有兜底 100 帧为 False——FLIP 类谓词据此把
+    # 「本帧未 OCR 到」与「值不可信」区分开(沿用真值可评估,兜底假值仍拒)。
     from sr_od.application.currency_war.cw_reconcile import reconcile_hp
     _hp_opt = read_hp_opt(ctx, screen)
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
     state.hp, state.hp_readable = reconcile_hp(
         _sess_hp, _hp_opt, screen, source='read_game_state')
+    state.hp_trusted = _hp_opt is not None or _had_real
     state.plane, state.round_num = read_phase_round(ctx, screen)
     # r80(审计 P0):boss 轮次语义门 —— 「首领」标签在 boss 前夕也会出现在即将到来的
     # boss 节点下方(2-7 实证),round<8 时必是张冠李戴 → 拒(boss=位面最后节点 ≥9 轮)

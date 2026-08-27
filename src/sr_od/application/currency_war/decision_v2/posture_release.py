@@ -18,8 +18,9 @@
   相位;round 臂「r≥NODES_PER_PLANE−1」实证双失效已废除——过宽(r8 非 boss
   轮套 boss 税语义错误)/全盲(短位面局 r≥8 永不触发),DESIGN §② N1);
 - latch 窗口单位=boss 窗单轮:命中即激活本窗,窗内不回退(防 hp 39↔41
-  抖动姿态振荡);假帧(``state.hp_readable=False``)不评估(既有 discipline
-  同守卫);辖域=P1/P2 未成型期(P3 不辖,DESIGN §附5)。
+  抖动姿态振荡);假帧(100 兜底帧=开局全无真值,hp_readable/hp_trusted
+  皆 False)不评估;shop 开态沿用 last_hp_real 的帧放行(ADR-0428);
+  辖域=P1/P2 未成型期(P3 不辖,DESIGN §附5)。
 
 三方刷金预算合并(DESIGN §②规则4,同一帧三个独立预算来源):
 | 来源 | 语义 | 值 |
@@ -113,8 +114,10 @@ def flip_hit(state: GameState, session: StrategySession,
     """
     if phase_value != 'FORM':
         return False
-    if not state.hp_readable:
-        return False    # 假帧不评估(hp 为沿用值/兜底值,ADR-0282 同守卫)
+    if not (state.hp_readable or state.hp_trusted):
+        return False    # 假帧不评估:仅 100 兜底帧(开局无真值)拒;shop 开态
+                        # 沿用 last_hp_real 的帧 hp 是可信值,放行(ADR-0428;
+                        # 可信位语义=ADR-0282 对账层「沿用真值 vs 兜底假值」)
     if state.plane > 2:
         return False    # 辖域 P1/P2 未成型期(DESIGN §附5)
     floor = registry.interest_floor
