@@ -1324,7 +1324,11 @@ def check_depth_cliff_monotonicity(
     """
     out: list[str] = []
     for nt, buckets in sorted(pool_map.items()):
-        if nt == 'battle':   # rung 键,深度单调语义不辖(ADR-0279)
+        if nt in ('battle', 'encounter'):
+            # rung 键(ADR-0279;battle+encounter v11/ADR-0407)——
+            # 深度单调语义不辖(rung 方向锁在
+            # battle_rung_pool_bucket_lock 真值表;r2 方差未判,
+            # 批⑬盲区声明)。
             continue
         ok = sorted(
             (int(b), v) for b, v in buckets.items() if len(v) >= min_n)
@@ -1401,9 +1405,9 @@ def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
       双主桶存在且 n≥10,均值距真值漂移 ≤3hp;
     - battle 桶键全落 rung 域(0-4)——出现 depth 域键(≥6)= rung
       分桶未生效(快照未重生成/生成器回归);
-    - encounter 未分桶边界声明:encounter 非空时桶键应含 depth 域
-      (≥6)键(批⑬ F1:encounter rung 样本不足暂沿用 depth 分桶,
-      全落 rung 域 = 边界声明被破坏);
+    - encounter rung 化(v11/ADR-0407):encounter 桶键应全落 rung
+      域(0-4)——出现 depth 域键(≥6)= 键迁移未生效(快照未
+      重生成;批⑬ F1 的「暂 depth 分桶」边界声明已被 v11 解禁取代);
     - boss 池域覆盖:boss 池非空时 min ≤ -36(重生成不丢失既有
       极值样本;批⑬ F7 的 -42 是决策帧口径读数,outcomes 差分
       口径下不可达,见 BOSS_POOL_DOMAIN_FLOOR 注)。
@@ -1433,9 +1437,10 @@ def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
                        f'{truth:+.1f} 漂移>{BATTLE_RUNG_DRIFT_MAX}hp'
                        f'(池与真值表失配)')
     enc = pool_map.get('encounter') or {}
-    if enc and all(int(b) <= 4 for b in enc):
-        out.append('encounter 桶键全落 rung 域(≤4)——批⑬ F1 边界'
-                   '声明被破坏(encounter 样本不足暂 depth 分桶)')
+    enc_depth_like = sorted(int(b) for b in enc if int(b) >= 6)
+    if enc_depth_like:
+        out.append(f'encounter 桶键 {enc_depth_like[:5]} 落 depth 域(≥6)'
+                   f'——v11/ADR-0407 rung 分桶未生效(快照未重生成)')
     boss_vals = [d for v in (pool_map.get('boss') or {}).values()
                  for d in v]
     if boss_vals and min(boss_vals) > BOSS_POOL_DOMAIN_FLOOR:

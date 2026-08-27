@@ -86,12 +86,13 @@
 | L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **雏形落地**(ADR-0312:equips 消费链通,sim equip_allocation 回写) |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | win_model 特征、power_table、结算校准层 | 未建(挂「语料积累后」,W49 裁决 4) |
 
-判读边界:Δ池桶键(encounter/boss/reward/supply 深度桶)与池语料
-同口径 = Σboard(L1+L2 全集,ADR-0312 v7);battle rung 输入
-`_recount_board`。**池形状含位面层(ADR-0362 v8)**:`{节点:{位面:
-{桶:[Δ]}}}`,差分归属后行位面;plane≥2 采样不跨位面回退,缺桶走
-位面内兜底/回退层掉血带。历史批次(≤ v7 池指纹)的板深/rung 数字
-与本版本**不可裸串比**(桶语义变,跨版本对照须导出 JSON 快照重放)。
+判读边界:Δ池桶键(boss=净星深 ADR-0404 v10;encounter=rung
+ADR-0407 v11,与 battle 同源 `_settle_rung`;reward/supply 深度桶
+=Σboard,L1+L2 全集口径 ADR-0312)。**池形状含位面层(ADR-0362)**:
+`{节点:{位面:{桶:[Δ]}}}`,差分归属后行位面;plane≥2 采样不跨位面
+回退,缺桶走位面内兜底/回退层掉血带。历史批次(≤ v10 池指纹)的
+板深/rung 数字与本版本**不可裸串比**(桶语义变,跨版本对照须导出
+JSON 快照重放)。
 
 ## P2 段接线(ADR-0362;`simulate_p1(planes=2)`)
 

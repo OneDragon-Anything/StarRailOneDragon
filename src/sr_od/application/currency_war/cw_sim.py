@@ -569,7 +569,7 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
 # boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
 # 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
-_SAMPLER_VERSION: int = 10  # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
+_SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
 # v7(ADR-0312,W50 口径统一):采样键 _deployable_depth 从
 # min(level, len(deployed)) 改 **Σboard(全集口径)**——与池语料
 # (decisions state.board 求和,实机全集口径)同口径;旧键与池语料
@@ -598,12 +598,16 @@ _SAMPLER_VERSION: int = 10  # 桶化/邻桶回退/采样语义变更时 +1(指�
 # encounter/reward/supply 桶键不动(Σboard);池内容变(指纹重算)+
 # W238 常数表重标定(registry handoff_boss_e_damage 键域
 # {9,12,15}→{0})。
+# v11(ADR-0407,W250):encounter 桶键 depth→rung(_settle_rung 同源;
+# 解批⑬ F1 暂缓——扩容后 rung 主桶 n=23/27 达标、梯度显著,而 depth
+# 键下期望伤害真平 p=0.87)。reward/supply depth 键不动;池内容变。
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
 # v3(ADR-0279,批⑬):battle 桶键 depth→rung(成型度一维分桶,
-# 守卫邻接宽随键语义 = rung±1);encounter/boss 维持 depth 分桶
-# (批⑬ F1 encounter rung 桶样本不足,暂不分)。历史报告对旧池
+# 守卫邻接宽随键语义 = rung±1);encounter 维持 depth 分桶
+# (批⑬ F1 encounter rung 桶样本不足,暂不分;v11 已解禁迁 rung)。
+# 历史报告对旧池
 # (v2 指纹)重放同样须用导出 JSON 快照。
 # v4(ADR-0292,批㉗ F3/F4):reward/supply 结算由恒 EARLY_WIN_DELTA
 # 改 Δ池经验分布采样(depth 桶 + 全池兜底);批㉗ F4 的「右胖尾
@@ -671,8 +675,9 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         return out
 
     boards: dict = {}
-    # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1))——decisions
-    # deployed 行 join;encounter/reward/supply 仍用 Σboard(boards)。
+    # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1));v11 起桶键
+    # 判据需 deployed 名单(rung)也辖 encounter——decisions 行 join;
+    # reward/supply 仍用 Σboard(boards)。
     star_depths: dict = {}
     # ADR-0279(批⑬):battle rung 判据需上场名单(希儿系=单卡
     # 依赖)——从 decisions join deployed;join 缺失时希儿系可能
@@ -738,9 +743,17 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                     continue
                 bucket = min(sd // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
             else:
-                # encounter/reward/supply 沿用 depth 分桶(批⑬ F1:
-                # encounter rung 桶全线不足 4/9/2,攒样后下次快照并入)。
-                bucket = min(dep // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+                # v11(ADR-0407,W250):encounter 桶键 depth→rung(与
+                # battle 同源 _engines_count;键查证:dep/sd 键下期望
+                # 伤害真平 p=0.87,rung 键梯度显著)。reward/supply 沿用
+                # depth 分桶。
+                if nt == 'encounter':
+                    bucket = _engines_count(
+                        b.get('board_before') or {},
+                        deployed_names.get(k, frozenset()))
+                else:
+                    bucket = min(dep // _DEPTH_BUCKET_W,
+                                 5) * _DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(
                 plane, {}).setdefault(bucket, []).append(delta)
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
@@ -868,9 +881,15 @@ def live_delta_for(node_type: str, key: int,
       桶不可达时逐级下探更低 rung(信息最接近的可及桶);全不可达
       → 全池合并兜底(rung 信息缺,保经验分布方差;批⑬ F3「池均值
       兜底」形态);池空 → None。
-    - ``encounter``:``key`` = 板深(批⑬ F1 encounter rung 样本不足
-      暂沿用 depth 分桶)。桶宽 ``_DEPTH_BUCKET_W``,缺桶浅侧回退
-      (bucket-W,r343 E:向深回退=偏乐观)。
+    - ``encounter``:``key`` = **成型度 rung**(v11,ADR-0407,W250;
+      与 battle 同源 ``_engines_count``/``_settle_rung`` 单一源。
+      批⑬ F1「rung 样本不足暂 depth 分桶」经扩容+键查证解禁:depth
+      键下期望伤害真平(Σboard<12 vs ≥12 置换检验 p=0.87,Spearman
+      −0.001;净星深键同样无梯度),而 rung 键下梯度单调且显著
+      (r0 n=23 EΔ−24.9 / r1 n=27 −15.6 / r2 n=6 −4.3,CI 不交叠)
+      ——「深板扛遭遇」主通道在 encounter 节点以 rung 维为真载体,
+      板面件数本身不可兑换伤害减免)。分桶/下探路径与 battle 共式
+      (域内缺桶逐级浅侧回退;邻接宽=rung±1)。
     - ``boss``:``key`` = **净星深**(W240/ADR-0404:上场件 Σ(star−1),
       ``deployed_star_depth`` 单一源;旧 Σboard 键与 3合1 升星方向
       冲突——升星使 Σboard −2 落浅桶而浅桶期望伤害更大,sim 判
@@ -892,17 +911,18 @@ def live_delta_for(node_type: str, key: int,
     深邻桶、该节点全池均匀,取**方差最小**者采样(合并天然加权,
     样本多的邻桶主导);候选并列时按 浅邻→深邻→全池 序(确定
     性)。无任何可合并邻桶(极端小池)时退回裸样本——守卫降级
-    采样,不改变「缺桶 → None」的既有两态语义(depth 路;battle
-    路的全池兜底见上)。邻接宽随键语义:battle=rung±1,其余
-    =桶宽 ±_DEPTH_BUCKET_W。
+    采样,不改变「缺桶 → None」的既有两态语义(depth 路;battle/
+    encounter 路的全池兜底见上)。邻接宽随键语义:battle/encounter
+    =rung±1,其余=桶宽 ±_DEPTH_BUCKET_W。
     """
     if pool_map is None:
         pool_map = resolve_pool('auto')[0]
     # ADR-0362:位面层解包({节点:{位面:{桶:[Δ]}}});plane≥2
     # 缺桶不跨位面回退(见 docstring)
     _map = (pool_map.get(node_type) or {}).get(plane) or {}
-    if node_type == 'battle':
-        # ADR-0279:rung 桶(键域 0-4)
+    if node_type in ('battle', 'encounter'):
+        # ADR-0279:rung 桶(键域 0-4);v11 起 encounter 同路
+        # (ADR-0407:与 battle 同键语义/同下探/同守卫邻接宽)。
         src_b = min(max(int(key), 0), 4)
         while src_b not in _map and src_b > 0:
             src_b -= 1
@@ -958,8 +978,8 @@ def boss_delta(dir_round: int, rng: random.Random,
 
 
 def _settle_rung(st: GameState) -> int:
-    """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle
-    Δ池 rung 分桶的采样键**单一源**)。
+    """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle/
+    encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
 
     口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
     输入 = **board 全集口径**(ADR-0312,W50:_recount_board——对齐生产
@@ -1230,9 +1250,11 @@ def _deployable_depth(st: GameState) -> int:
     level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
     r390 的「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
-    **辖域(W240/ADR-0404 后)**:encounter/reward/supply 桶键与观测面
-    (depth_trail/账本);**boss 桶键已改净星深**(deployed_star_depth,
-    修 Σboard 与升星方向冲突)。
+    **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
+    boss 桶键=净星深(W240/ADR-0404,deployed_star_depth);encounter
+    桶键=rung(v11/ADR-0407,_settle_rung 同源;depth 键下期望伤害
+    真平——W248「主通道断裂」的 encounter 维由扩容+键查证裁决:
+    板深维不可兑换,rung 维可辨)。
     """
     return sum((st.board or {}).values())
 
@@ -1913,9 +1935,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ADR-0279(批⑬ F4):battle Δ 采样键=rung(成型度一维
             # 分桶,与 boss_settle_delta 同源 _settle_rung)——depth-
             # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
-            # vs 实机 32% 裂口的最大已定量化分量;encounter 维持 depth
-            # 键(批⑬ F1 encounter 样本不足);boss 键=净星深
-            # (W240/ADR-0404,修升星方向冲突)。
+            # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
+            # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
+            # boss 键=净星深(W240/ADR-0404,修升星方向冲突)。
             _dep = _deployable_depth(st)
             # W193/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
@@ -1941,7 +1963,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         'boss', deployed_star_depth(st), rng,
                         pool_map=pool_map, plane=st.plane)
                 elif nodes[rn - 1] == 'encounter':
-                    _ld = live_delta_for('encounter', _dep, rng,
+                    # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
+                    # _settle_rung——depth 键下期望伤害真平,W250 查证;
+                    # live_delta_for 桶缺逐级下探路径与 battle 共用)。
+                    _ld = live_delta_for('encounter', _settle_rung(st), rng,
                                          pool_map=pool_map, plane=st.plane)
                 elif nodes[rn - 1] in ('reward', 'supply'):
                     # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA

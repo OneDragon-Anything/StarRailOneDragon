@@ -9,9 +9,12 @@ tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 (生产遥测 append 流)。配对口径与 cw_sim._pool_from_replay 同源:
 decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
 桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
-decisions deployed join);encounter/reward/supply=深度桶;**boss=
+decisions deployed join);reward/supply=深度桶;**boss=
 净星深桶(ADR-0404,W240:上场件 Σ(star−1),deployed_star_depth
-同式——修 W238 实证的 Σboard 键升星方向冲突)**。
+同式——修 W238 实证的 Σboard 键升星方向冲突)**;
+**encounter=rung 桶(v11,ADR-0407,W250:键查证后 depth 键下
+期望伤害真平而 rung 键梯度显著,与 battle 同源 _engines_count,
+解批⑬ F1「样本不足暂缓」)**。
 **plane 维(ADR-0362,W157)**:桶键外再加位面层——差分归属
 「后行位面」(P1r9→P2r1 跨位面差分归 plane=2),P1/P2 桶彻底
 分离;修 W156 发现的既有 P1 池 P2 污染(44 条 plane=2 差分混在
@@ -273,8 +276,18 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 if sd is None:
                     continue
                 bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
+            elif nt == 'encounter':
+                # v11(W250/ADR-0407):encounter 桶键 depth→rung
+                # (与 battle 同源 _engines_count)——扩容+键查证实证:
+                # dep/sd 键下期望伤害真平(置换检验 p=0.87/Spearman
+                # ≈0),rung 键下梯度单调且显著(r0 -24.9/r1 -15.6/
+                # r2 -4.3,CI 不交叠);rung 合并稳定(名字集口径,
+                # 3合1 不变号),无 ADR-0404 式方向冲突。
+                bucket = _engines_count_of(
+                    b2.get('board_before') or {},
+                    deployed_names.get(k, frozenset()))
             else:
-                # encounter/reward/supply 沿用 depth 分桶(批⑬ F1)。
+                # reward/supply 沿用 depth 分桶(v11 起 encounter 已迁出)。
                 bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(
                 plane, {}).setdefault(bucket, []).append(delta)
@@ -347,7 +360,12 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '(指纹重算),W238 常数表随批重标定(registry '
                 'handoff_boss_e_damage 键域 {9,12,15}→{0});'
                 'sampler 常量同步 8→10(_SAMPLER_VERSION,META '
-                'sampler_version 对齐 note 链)',
+                'sampler_version 对齐 note 链);'
+                'v11(ADR-0407,W250)encounter 桶键 depth→rung'
+                '(与 battle 同源 _engines_count;批⑬ F1「样本不足暂缓」'
+                '的解禁——扩容后 r0/r1 主桶 n=23/27 达标且梯度单调显著,'
+                'dep/sd 键下期望伤害真平 p=0.87);boss 净星深/reward/'
+                'supply depth 键不动;池内容变(指纹重算)',
     }
     return pool, meta
 
