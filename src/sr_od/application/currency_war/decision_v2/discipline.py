@@ -653,28 +653,67 @@ def plane_last_battle(state: GameState, session: StrategySession) -> bool:
 def _streak_floor(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry,
                   base_floor: int) -> int:
-    """boss_breaker 连胜 EV 地板(v1 r308 移植):连胜 ≥2 + 硬节点 +
-    EV(保连胜奖励 × 剩余节点)> 一次性息损失 → 地板降 5。
+    """boss_breaker 连胜 EV 地板(v1 r308 移植;标定账=ADR-0356 挂账项):
 
-    ⚠️ 口径声明(W137/P10④/ADR-0356,零行为变更的注释升级):
-    本判据的账**未标定**,fire 方向被 P10③ 支持但两侧口径错档——
-    - cost 侧 0.25 是 v1 魔数,非真值(回档口径真值 0-3 金,
-      ``interest_cost(..., recovery_rounds)`` 同源);
-    - reward 侧 (tier−1)×remaining 是「平面全胜」上界(胜率加权期望
-      ≈×0.416,e1 档;boss r9 时 remaining=0 恒不 fire);
-    - 真支柱是**免掉血项**(硬节点败 −17.7~−24.9 HP × 0.5金/HP
-      ≈ 8.8-12.4 金,P10③)——本判据漏计,补上后深花授权带更宽。
-    正确修法=随 W113 §8-2 收编(boss 窗旁路 → SPEND 段节点级授权,
-    V 侧按 [27] 掉血期望+连胜金胜率加权)整体重写,标定挂账
-    ADR-0356;**「5」是授权带宽不是账本输出**,判读勿当已标定值引用。
+    连胜 ≥2 + 硬节点 + 深花收益 V ≥ 息成本 C → 地板在 base_floor 上
+    再降 5。
+
+        V = V_blood + V_streak ≥ C
+
+    - **V_blood(主项)** = (1−p)·D·hp_to_gold:打赢当前硬节点避免一次
+      败局掉血。D=**条件败局伤害**(two_state_model 口径,「打了但输了」
+      的期望,胜率已单列——与 p 相乘不双计,P15 口径命题;误用无条件
+      均值拟合会把胜率算进均值、双计且系统性低估):battle 复用
+      ``vd_p1_loss_*`` 单一源,encounter/boss 见
+      ``streak_floor_loss_damage``;D = 截距+斜率×成型档(封顶 2)。
+    - **V_streak(次项)** = (连胜金档−1)×剩余战斗节点×p:断连胜后每场
+      胜利的金档损失(STREAK_GOLD_TABLE,断后回 1 档;reward/supply
+      节点不吃连胜金,故按 ``battles_left_plane`` 数)。胜率 p 取
+      ``streak_floor_win_rate``(节点类型×成型档注入表)。
+    - **C** = ``ev.interest_cost(gold, gold−5, ...)`` 回档口径:地板
+      授权把金花到 5,息成本按「金 → 5」的真实跨档数 ×
+      interest_recovery_rounds(金 12 → 1 档=3 金;金 ≥20 → 2 档=6 金)。
+
+    量级:V ≈ 4-16 金(血项主导)≥ C ≤3 金在硬节点全域成立——
+    **「5」是授权带宽(V−C 盈余带内偏保守),不是账本输出**;带宽加宽
+    需 sim A/B 另批(与相位阶梯交叉)。boss 位面末 remaining=0 时
+    V_streak=0,fire 由 V_blood 单独支撑(旧账 (tier−1)×remaining
+    在此恒不 fire,正是其口径错档的症状)。
     """
     streak = getattr(session, 'last_streak', 0) or 0
-    remaining = max(0, nodes_of_plane(session) - state.round_num)
-    tier_now = streak_gold(streak) if streak >= 2 else 0
-    ev_reward = (tier_now - 1) * remaining      # 断了回到 1 档(上界口径,见上注)
-    ev_interest = 0.25                           # v1 魔数(未标定,见上注;真值 0-3 金回档口径)
+    if streak < 2:
+        return base_floor
     hard_node = _hard_node(state, session)
-    if streak >= 2 and hard_node and ev_reward > ev_interest:
+    if not hard_node:
+        return base_floor
+    from sr_od.application.currency_war.decision_v2.ev import (
+        battles_left_plane,
+        interest_cost,
+    )
+    from sr_od.application.currency_war.decision_v2.scoring import (
+        _engines_formed,
+    )
+    node = getattr(session, 'node_type_current', None) or state.node_type or ''
+    if node in ('encounter', '遭遇'):
+        kind = 'encounter'
+    elif node in ('boss',):
+        kind = 'boss'
+    else:
+        kind = 'battle'
+    rung = min(2, max(0, _engines_formed(state, registry)))
+    p = registry.streak_floor_win_rate[kind][rung]
+    if kind == 'battle':
+        d = max(0.0, registry.vd_p1_loss_intercept
+                + registry.vd_p1_loss_slope_rung * rung)
+    else:
+        intercept, slope = registry.streak_floor_loss_damage[kind]
+        d = max(0.0, intercept + slope * rung)
+    v_blood = (1.0 - p) * d * registry.hp_to_gold
+    v_streak = (streak_gold(streak) - 1) \
+        * battles_left_plane(state, session, registry) * p
+    c = interest_cost(state.gold, max(0, state.gold - 5), state,
+                      registry.interest_recovery_rounds)
+    if v_blood + v_streak >= c:
         return 5
     return base_floor
 

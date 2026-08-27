@@ -241,6 +241,31 @@ class DecisionV2Registry:
     #: 同上**斜率**(每级成型档;遥测拟合,负号=成型越高败局伤害越低;
     #: rung 域 0-3,越界钳制在消费函数)
     vd_p1_loss_slope_rung: float = -0.37
+    #: 连胜 EV 地板(discipline._streak_floor)的**条件败局伤害**拟合表
+    #: (encounter/boss;battle 复用 vd_p1_loss_* 单一源,不立第二份)。
+    #: 口径=条件败局伤害(two_state_model:「打了但输了」的期望,胜率
+    #: 单列)——与胜率相乘不双计(math_proofs P15 口径命题);误用
+    #: 无条件均值拟合(胜态混在均值里)会系统性低估。来源=W324 冻结
+    #: 语料 417 条拟合产物 two_state_model(.debug/temp/currency_war/
+    #: w324_coarse_battle/fit_results.json);encounter=截距 24.32 +
+    #: 斜率(−4.53)×成型档(斜率 SE 2.41 显著);boss 斜率 CI 含 0 →
+    #: 退常数 26.71(背测 sim −22.61 vs obs −25.82)。
+    streak_floor_loss_damage: dict[str, tuple[float, float]] = field(
+        default_factory=lambda: {
+            'encounter': (24.32, -4.53),
+            'boss': (26.71, 0.0),
+        })
+    #: 连胜 EV 地板胜率表(节点类型×成型档;取**注入后**值 p_injected
+    #: =语料实测+plaza 先验只进 rung≥2、share≤0.25,来源同上
+    #: fit_results.json 的 win_rate_table_injected)。键域 0-2(消费侧
+    #: 成型档封顶 2,与 h3_win_rate 同法);不与 h3_win_rate 合并
+    #: (h3=battle 骨架插值表辖层3,本表=实测注入表辖连胜地板)。
+    streak_floor_win_rate: dict[str, dict[int, float]] = field(
+        default_factory=lambda: {
+            'battle': {0: 0.009, 1: 0.356, 2: 0.315},
+            'encounter': {0: 0.038, 1: 0.026, 2: 0.264},
+            'boss': {0: 0.077, 1: 0.027, 2: 0.187},
+        })
     #: P2 掉血期望(P12 收益侧:[27] B+P 公式的 P2 实测带 15-17 取保守中值 16;
     #: 真值采集点=结算屏 OCR 三项拆解,采前 16 为保守中值)
     vd_p2_loss: float = 16.0
