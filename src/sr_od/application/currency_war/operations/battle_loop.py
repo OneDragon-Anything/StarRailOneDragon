@@ -584,7 +584,7 @@ class CurrencyWarRunLoop(SrOperation):
             if not telemetry_only:
                 self.ctx.cw_match.strategy.on_round_end(
                     GameState(), _session, self._cw_config, _obs)
-                # last_hp_t 同步(r68 review:prep 新鲜度门的写入端;镜像 on_round_end 的
+                # last_hp_t 同步(prep 新鲜度门的写入端;镜像 on_round_end 的
                 # HP_CONFIDENCE_THRESHOLD 门,保证 last_hp 与 last_hp_t 恒同源同轮)。
                 if _obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and _now_t is not None:
                     _session.last_hp_t = _now_t
