@@ -253,7 +253,8 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 }
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
-# 自动写入采到的新词缀/校准)。本文件顶部 import 重导出 → 下游用 cw_comps.AFFIX_EFFECTS 不变。
+# 自动写入采到的新词缀/校准)。本文件不 import 该注册表(W266 勘误:旧注释称「顶部 import 重导出」
+# 与事实不符,mechanics_fit 亦不消费);消费方为 cw_briefing_obs.load_affix_effects_from_file(ast 提取)。
 # comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
