@@ -161,10 +161,12 @@ def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
 def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
     """OCR 补给选项(每列 = 角色卡 + 装备)→ ``[(SupplyOption, 卡身点击点)]``,按 x 左→右。
 
-    布局(实捕 round1-5 补给,视觉大模型 + OCR 核实):N 列(实测 5;docstring 旧「3 选 1」过时),每列 =
-    角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 + 右下「确认」。**无刷新按钮**(decide_supply
-    调用方传 ``refresh_used=True`` 跳过刷新逻辑)。钻识别双通道 ✅(2026-08-17):主 = SIFT
-    (装备 icon 区 y600-760 扫三钻模板,装备图已采集);兜底 = 装备名精确匹配。
+    布局:**列数动态探测**(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类加补给
+    阶段可增列,augment 改写下实测见 3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为
+    特例表述,勿写死),每列 = 角色名(y≈545)+ 装备名(y≈680),点卡身(y≈550)选中 +
+    右下「确认」。**无刷新按钮**(decide_supply 调用方传 ``refresh_used=True`` 跳过刷新逻辑)。
+    钻识别双通道 ✅(2026-08-17):主 = SIFT(装备 icon 区 y600-760 扫三钻模板,装备图已采集);
+    兜底 = 装备名精确匹配。
 
     装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
     (handler 退默认 ``CARD_BODY``)。

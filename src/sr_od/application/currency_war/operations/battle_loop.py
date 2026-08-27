@@ -875,7 +875,8 @@ class CurrencyWarRunLoop(SrOperation):
             HandleDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 
-        # 0e. 选择类事件 overlay(投资策略/环境/补给,3 选 1 + 确认)→ **必须在备战(1)前检测**:
+        # 0e. 选择类事件 overlay(投资策略/环境 3 选 1;补给动态 N 选,通常 4/augment 变
+        #     3-5 + 确认)→ **必须在备战(1)前检测**:
         #     这些 overlay 叠在备战上,「购买经验」会从 overlay 后透出(底部左下未遮)→ 若先检查备战
         #     会误派 BuyShopCards(overlay 遮商店→"找不到商店/收起"失败→死循环)。
         #     2026-08-04 实跑发现:投资策略屏被误派 BuyShopCards(购买经验透出命中),卡死。

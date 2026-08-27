@@ -1,7 +1,10 @@
 
 """货币战争 补给节点 RunNode(从 ``HandleSupply`` 升级为节点生命周期 owner)。
 
-补给阶段 = 3 选 1 装备 + 确认。RunNode 化后:每轮**验证**"还在补给屏?"(关键词在)→ 点卡身 +
+补给阶段 = 动态 N 选 1 装备 + 确认(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类
+加补给阶段可增列,augment 改写下实测 3-5 不等——历史「3 选 1」「实测 5」均为特例表述,
+列数以 read_supply_options 实际识别为准,禁写死)。RunNode 化后:每轮**验证**"还在补给屏?"
+(关键词在)→ 点卡身 +
 确认 → ``round_retry``;overlay 消失(关键词没了)= 节点完成 → ``round_success``;超预算(点不动)
 → FAIL bail(**不无限烧**,旧 HandleSupply 盲单发失败也回 success → flat loop 无限 round_wait 烧预算)。
 
@@ -197,9 +200,14 @@ class RunSupplyNode(RunNode):
                 reason = pick.reason
                 # W306:选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
                 # 是否已用),供 overlay 消失后 battle_loop 合成 supply 行消费。
+                # W306c:附**实际识别到的选项清单**(动态列数,不假定结构)——
+                # 合成行与逐列内容对拍/漏读审计数据源。
                 _opt = opts[pick.idx][0]
                 set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,
-                                     refreshed=_refresh_used)
+                                     refreshed=_refresh_used,
+                                     options=[{'char': o.char, 'equip': o.equip,
+                                               'has_diamond': o.has_diamond}
+                                              for o, _p in opts])
             log.info('[cw-supply] options=%s pick=idx%s %s click@(%d,%d)',
                      [(o.char, o.equip, o.has_diamond) for o, _ in opts], pick.idx, reason, target.x, target.y)
         else:
