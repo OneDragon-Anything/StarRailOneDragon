@@ -1208,9 +1208,12 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
                            gold=state.gold, level=state.level, hp=state.hp,
                            committed=not state.dual_track_phase,
                            strategies=state.active_strategies or None).spend_mode
-    if _spend in ("allin", "level", "release"):
-        # release(W332b):泄息档的钱是找件预算,卖息凑档与之相悖(同 allin/level)
+    if _spend in ("allin", "level"):
         return
+    # (release 档跳卖已删:该档为预留档位、当前无生产者;FLIP 帧「不卖息
+    # 凑档」的活栈实现=decision_v2.candidates._release_sell_gate(判据单一
+    # 源=posture_release.spend_gate_active 读 session.v3_release)。本函数
+    # 不在活决策路径上,留分支只会造死分支。)
     cur = state
     # r9 review#2:keep 集对齐 focus 卖版——transition_chars(打工牌)不卖凑息
     # (两卖函数保护集不一致会互相打架:focus 保的弹性件被 interest 跨档卖掉)

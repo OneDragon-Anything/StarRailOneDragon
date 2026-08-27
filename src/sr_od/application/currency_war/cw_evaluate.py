@@ -324,11 +324,11 @@ def _economy_mode_for(state: GameState) -> str:
         if state.plane >= 2 and state.gold < P2_REBUILD_GOLD_FLOOR:
             return "interest_first"
         return "rush_level"
-    if _spend == "release":
-        # W332b:泄息档中性(花溢余段找件,不强化守息也不追级;档语义
-        # 单一源=decision_v2.posture_release)
-        return "adaptive"
     return "adaptive"   # hold/allin/spend/adaptive → neutral
+    # (spend_mode='release' 档映射已删:该档为预留档位、当前无生产者,
+    # release 帧行为单一源=decision_v2.posture_release 经 session 通道,
+    # 活栈消费门=posture_release.spend_gate_active;本函数不在活决策
+    # 路径上,留映射只会造死分支。)
 
 
 

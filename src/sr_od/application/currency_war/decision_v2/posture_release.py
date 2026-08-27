@@ -42,9 +42,17 @@ slot 守卫与 rush_level 的同轮裁决(DESIGN §②规则1-3):
    不缩水,纯 level_up 帧取 g−50),预算>0 → 姿态强制输出 release。
 
 消费点:``strategy.decide_prep``(每轮入口包装 DP 姿态写 session)→
-``arbiter`` 刷新收尾块(release 义务预算的有界放行);spend_mode 消费侧
+``arbiter`` 刷新收尾块(release 义务预算的有界放行)→ 活栈消费门
+``spend_gate_active``(decision_v2.scoring 息 EV 中性 / candidates 凑息向
+卖候选抑制,判据单一源=本模块读 ``session.v3_release``)。
+``NodeGoal.spend_mode='release'`` 是**预留档位,当前无生产者**——
+``cw_horizon._horizon_node_goal`` 只产 level/adaptive/interest;FLIP 是
+带 latch 的帧级态,不进 horizon 纯函数(否则同轮多次查询随 gold/hp 快照
+翻转,且绕开唯一 latch 所有者造第二判定源)。v1 栈两消费点
 (``cw_evaluate._economy_mode_for``/``cw_plan._maybe_sell_for_interest``)
-对 'release' 档的映射见各处注释。
+不在活决策路径上(活栈 ``DecisionV2Strategy.decide_prep`` 全量覆写
+default 栈),其 release 档映射已删。release 帧行为的单一源=本模块经
+session 通道。
 """
 from __future__ import annotations
 
@@ -210,6 +218,21 @@ def evaluate_release(state: GameState, session: StrategySession,
         session.v3_release_round = key
         return wrap_posture(posture, directive), directive
     return posture, None
+
+
+def spend_gate_active(session: StrategySession,
+                      registry: DecisionV2Registry) -> bool:
+    """release 帧活栈消费门(scoring 息 EV 中性 / 凑息向卖抑制的统一判据)。
+
+    判据单一源 = ``session.v3_release``(evaluate_release 每轮入口写入,
+    与义务预算/latch 同源)——消费面(decision_v2.scoring/candidates)经此
+    读 release 态,不在各自层重算 FLIP(防第二判定源绕开 latch)。
+    ``registry.release_spend_gate_enabled``=False(默认)时恒 False =
+    消费门未接线时的行为逐位一致(A/B 基线臂零漂移);开臂时机=A/B 裁决
+    收口后(registry 字段注释)。
+    """
+    return (registry.release_spend_gate_enabled
+            and getattr(session, 'v3_release', None) is not None)
 
 
 def authorize_release_refresh(session: StrategySession,

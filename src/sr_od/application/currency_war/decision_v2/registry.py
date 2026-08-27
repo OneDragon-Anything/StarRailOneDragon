@@ -794,6 +794,12 @@ class DecisionV2Registry:
     line_switch_debias_delta: float = 0.15
     #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
     line_switch_min_dwell: int = 2
+    #: release 帧活栈消费门(判据单一源=posture_release.spend_gate_active
+    #: 读 session.v3_release;消费面=scoring 息 EV 中性 + candidates 凑息向
+    #: 卖候选抑制)。False=回消费门未接线行为(release 生产链只辖义务预算
+    #: /arbiter 放行,评分与卖候选不感知 release)——A/B 通道,先例同
+    #: evolve_engine_guard_enabled;开臂时机=release 通道 A/B 裁决收口后。
+    release_spend_gate_enabled: bool = False
 
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====

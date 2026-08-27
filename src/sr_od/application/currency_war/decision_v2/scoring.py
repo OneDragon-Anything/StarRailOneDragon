@@ -312,9 +312,21 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # 计罚,合法买入被评负分全弃(smoke 实证);单一源对齐。
     # war 破息窗的 50 平台破碎(50→49)只付真实息损的平滑见
     # score_candidate 的 ADR-0332 息崖平滑段(不动本项绝对值)。
-    interest = (min(registry.interest_cap, (state.gold or 0) // 10)
-                * registry.interest_rounds
-                if (state.gold or 0) >= registry.interest_floor else 0.0)
+    # release 帧泄息义务激活(判据单一源=posture_release.spend_gate_active
+    # 读 session.v3_release)时息 EV 整项计 0:溢余段预算=g−interest_floor
+    # 已裁定必花,「卖出涨息加分/跌破平台扣分」的计值与泄息意图对冲
+    # (凑档卖息的对冲面);base/after 同置 0 → 候选排序中本项静默,
+    # 开关关(基线臂)时零漂移。
+    _rel_gate = False
+    if session is not None and registry.release_spend_gate_enabled:
+        from sr_od.application.currency_war.decision_v2.posture_release import (
+            spend_gate_active,
+        )
+        _rel_gate = spend_gate_active(session, registry)
+    interest = 0.0
+    if not _rel_gate and (state.gold or 0) >= registry.interest_floor:
+        interest = (min(registry.interest_cap, (state.gold or 0) // 10)
+                    * registry.interest_rounds)
     # 目标件持有进度(集合隶属计数:持有域内∈目标集的星级加权
     # 件数/基线,封顶——形态维之一;cap 饱和时目标件的持有期权
     # 在此项显影,未标定)。ADR-0295:天花板折减(target_hold_
@@ -977,8 +989,15 @@ def score_candidate(cand: Candidate, state: GameState,
     # V = val − int_emb)。默认=息差;ADR-0332 平滑生效时改写为
     # 真实档损(平滑后的净嵌入),两处保持同值。
     int_emb = after.get('interest', 0.0) - base.get('interest', 0.0)
+    _rel_gate = False
+    if session is not None and registry.release_spend_gate_enabled:
+        from sr_od.application.currency_war.decision_v2.posture_release import (
+            spend_gate_active,
+        )
+        _rel_gate = spend_gate_active(session, registry)
     if (state.plane == 1 and state.round_num >= 5
             and not is_emergency(state, registry)
+            and not _rel_gate
             and (state.gold or 0) >= registry.interest_floor
             and (after_state.gold or 0) < registry.interest_floor):
         # ADR-0332 息崖平滑(war 破息窗):买入跌破 50 满息平台时,评分
@@ -988,6 +1007,9 @@ def score_candidate(cand: Candidate, state: GameState,
         # 息损修正为**真实档位损失**(跨档数×interest_rounds,[17] 息律),
         # 50→49 只付 -5;emergency 保持 -25([18] 不为苟住破息,ADR-0302
         # 锁);经济态(<50 政策)与 war 窗非破平台带不受影响。
+        # release 帧旁路(_rel_gate):泄息义务=花溢余段跌破平台的**意图
+        # 本体**,息损罚则与义务直接对冲;义务预算的有界性由 arbiter 收尾
+        # 块(authorize_release_refresh 逐笔扣账)自辖,评分侧不重复计罚。
         _gb = state.gold or 0
         _ga = after_state.gold or 0
         _orig_pen = (after.get('interest', 0.0) - base.get('interest', 0.0))

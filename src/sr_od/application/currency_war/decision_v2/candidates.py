@@ -309,6 +309,32 @@ def _sell_blocked(bc: BenchChar, state: GameState,
     return star_weighted_copies(name, state) == 3
 
 
+def _release_sell_gate(tag: str | None, session: StrategySession,
+                       registry: DecisionV2Registry) -> str | None:
+    """release 帧凑息向卖候选抑制(判据单一源=posture_release.
+    spend_gate_active 读 session.v3_release;开关=registry.
+    release_spend_gate_enabled,默认关零漂移)。
+
+    off_target/for_gold 的动机=换金(涨金向),与泄息义务(花钱向)相悖
+    ——FLIP 帧不卖息凑档,与 v1 ``_maybe_sell_for_interest`` 的 release
+    档跳卖语义同构(消费面归位活栈:该 v1 函数不在活决策路径上)。
+    辖区边界(不受本门辖):free_bench 腾位让位是 slot 动机非凑息动机;
+    演进替换事务(CompTransaction.sell)/谷底回滚卖在演进引擎与
+    strategy 发射点,不经本候选生成器;sole_engine_sell_blocked 等
+    体系守卫照常先行。
+    for_gold 与 FLIP 辖区现不相交(前者要求 hp≤emergency_hp,FLIP 显式
+    让位同带),本门对该档是防御性对齐——辖区若调整,防静默对冲。
+    """
+    if tag not in ('off_target', 'for_gold'):
+        return tag
+    from sr_od.application.currency_war.decision_v2.posture_release import (
+        spend_gate_active,
+    )
+    if spend_gate_active(session, registry):
+        return None
+    return tag
+
+
 def _sell_tag(bc: BenchChar, state: GameState,
               session: StrategySession,
               registry: DecisionV2Registry) -> str | None:
@@ -317,6 +343,7 @@ def _sell_tag(bc: BenchChar, state: GameState,
     - off_target:常态非目标死库存(protect=目标集外);
     - for_gold:应急态弱件折现(应急判定=hp≤registry.emergency_hp);
     - free_bench:bench 满时的腾位让位([32]:目标件也降保护集让位)。
+    凑息向档(off_target/for_gold)再经 ``_release_sell_gate`` 抑制。
     """
     if _sell_blocked(bc, state, session):
         return None
@@ -329,17 +356,21 @@ def _sell_tag(bc: BenchChar, state: GameState,
     is_target = name in protect
     emergency = state.hp <= registry.emergency_hp
     bench_full = bench_occupied(state.bench or []) >= registry.bench_capacity
-    for tag in registry.sell_tag_priority:
-        if tag == 'off_target':
+    tag = None
+    for t in registry.sell_tag_priority:
+        if t == 'off_target':
             if not is_target and not emergency:
-                return tag
-        elif tag == 'for_gold':
+                tag = t
+                break
+        elif t == 'for_gold':
             if emergency and not is_target:
-                return tag
-        elif tag == 'free_bench':
+                tag = t
+                break
+        elif t == 'free_bench':
             if bench_full:
-                return tag    # 腾位让位:bench 满时目标件也降保护集
-    return None
+                tag = t    # 腾位让位:bench 满时目标件也降保护集
+                break
+    return _release_sell_gate(tag, session, registry)
 
 
 def generate_candidates(state: GameState, session: StrategySession,
