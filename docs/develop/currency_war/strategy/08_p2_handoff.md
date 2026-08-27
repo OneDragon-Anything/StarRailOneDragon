@@ -17,18 +17,19 @@
 >
 > **Phase 1 已落地(ADR-0400,2026-09-02)**:P1 末窗承接门
 > (formed_stop 承接维 + EV 承接缺口项,判据单一源
-> ``handoff.handoff_gate_gap``;A/B ``simulate_handoff_ab``)。语义
-> as-built 见 strategy/03 成型停手门与「P1 末窗承接门」段;默认关
-> (A/B outcome 面无一致正方向,sim 对 core2 维无因果通道不可仲裁
-> ——通道保留,复验挂账 ADR-0377 form 加星级分量),数字与裁决的
-> 单一源 = ADR-0400。Phase 2-3 仍未实现。
+> ``handoff.handoff_gate_gap``)。语义
+> as-built 见 strategy/03 成型停手门与「P1 末窗承接门」段;验证期
+> 以 flag(默认关)形态经 A/B 裁决(数字单一源 = ADR-0400),后随
+> **ADR-0411 flag 家族清理转正为无条件启用**(四通道终章,单一源
+> = ADR-0411);A/B 批 harness ``simulate_handoff_ab`` 同步删除。
+> Phase 2-3 仍未实现。
 >
 > **Phase 1 hp 维深化已落地(ADR-0403,2026-09-02;设计件 09 第一步)**:
-> 承接门 hp 维 boss 投影(`handoff_boss_project`,与门开关正交默认关;
-> E[boss 伤害|板深档] 常数表进 registry)——修末窗「boss 前 hp 喂
-> boss 后切点」标定口径错位;语义 as-built 见 strategy/03「P1 末窗
-> 承接门」段投影句;标定数字/删失口径/Σboard 升星方向边界与裁决的
-> 单一源 = ADR-0403。
+> 承接门 hp 维 boss 投影(E[boss 伤害|净星深档] 常数表进 registry;
+> 曾为独立 flag 默认关,ADR-0411 起无条件启用)——修末窗「boss 前
+> hp 喂 boss 后切点」标定口径错位;语义 as-built 见 strategy/03
+> 「P1 末窗承接门」段投影句;标定数字/删失口径/Σboard 升星方向边界
+> 与裁决的单一源 = ADR-0403。
 
 ## 1. 问题(为什么需要这个模型)
 
@@ -167,7 +168,7 @@ P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首�
 
 | 体系 | 接口 | 关系 |
 |---|---|---|
-| 意向/锁线(cw_intention) | `update_intention` 位面感知点(cw_intention.py:624-626 出 P1 清过渡对) | **不动状态机**。承接快照只读 `ist.phase/locked_comp/hoard`(§3.2 锁线形态维);Phase 1 不改锁线语义(承接差 ≠ 换线,[23] 锁定不 pivot)。 |
+| 意向/锁线(cw_intention) | `update_intention` 位面感知点(cw_intention 出 P1 清过渡对分支) | **不动状态机**。承接快照只读 `ist.phase/locked_comp/hoard`(§3.2 锁线形态维);Phase 1 不改锁线语义(承接差 ≠ 换线,[23] 锁定不 pivot)。 |
 | 四体系过渡(transition_combos/cw_bridge_pool/cw_line_defs) | `p1_formation_target` 轮窗(cw_line_defs.py:195)、`fallback_engines_count`(phase.py:92) | **同向加强不替代**:成型检查点管「P1 内渐进成型」,承接门管「出口够不够」——出口判据复用同一批单一源计数器(`_engines_count`/`core_trio_count`),不建第二套形态表(防双源)。 |
 | 经济循环总模型(ADR-0346/0347/0349 相位+EV) | `derive_phase`/`dp_posture`/EV 授权通道 | **承接门是 EV 账的一项新增输入**,不是新授权通道——Phase 1b 的「承接缺口项」进 ev 既有授权框架(与 [33] 人口位/DP 花费授权同层并列),授权 trace 入执行 log 同款。 |
 | 相位体系(phase.py) | 派生量模式(每轮现算、写 session、遥测披露) | Phase 0 完全同型(影子→切授权两步走,ADR-0346→0347 的路径复刻)。 |
