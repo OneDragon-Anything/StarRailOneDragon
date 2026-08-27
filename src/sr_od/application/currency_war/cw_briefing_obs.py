@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -177,20 +178,35 @@ _AFFIX_EFFECTS_PATH: Path = Path(__file__).resolve().parent / 'affix_effects_dat
 def load_affix_effects_from_file() -> dict[str, str]:
     """读 ``affix_effects_data.py`` 文件 → ``AFFIX_EFFECTS`` dict(**文件最新**,采集对比用)。
 
-    对比目标 = 文件最新(跨轮 + 本轮内都准,避免重复写);下游 mechanics_fit 用内存 import(本轮启动时旧值,
-    **下轮重新 import 生效**)。用 ``exec`` 解析 py(自己生成的文件,安全)。
-
-    TODO: exec 解析不优雅(真实使用时),后续换 importlib.reload / ast 解析 / 数据文件格式后删除本函数。
+    对比目标 = 文件最新(跨轮 + 本轮内都准,避免重复写);下游用内存 import(本轮启动时旧值,
+    **下轮重新 import 生效**)。解析用 **ast 静态提取**:定位 ``AFFIX_EFFECTS`` 赋值节点后
+    ``ast.literal_eval`` 只取字面量 —— **不执行文件内任何代码**(W266,替代原 exec 方案)。
+    人工手编容错:注释 / 空行 / 引号风格均不受影响;非字面量值或语法损坏 → 同旧 exec
+    异常口径返回 ``{}``。
     """
     if not _AFFIX_EFFECTS_PATH.exists():
         return {}
-    ns: dict = {}
     try:
-        exec(_AFFIX_EFFECTS_PATH.read_text(encoding='utf-8'), ns)   # exec 解析自己生成的注册表文件(安全)
-        result = ns.get('AFFIX_EFFECTS', {})
-        return result if isinstance(result, dict) else {}
-    except Exception:
+        tree = ast.parse(_AFFIX_EFFECTS_PATH.read_text(encoding='utf-8'),
+                         filename=str(_AFFIX_EFFECTS_PATH))
+    except (SyntaxError, ValueError):
         return {}
+    for node in ast.walk(tree):
+        value = None
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.target.id == 'AFFIX_EFFECTS':
+                value = node.value
+        elif isinstance(node, ast.Assign):
+            if any(isinstance(t, ast.Name) and t.id == 'AFFIX_EFFECTS' for t in node.targets):
+                value = node.value
+        if value is None:
+            continue
+        try:
+            result = ast.literal_eval(value)
+        except (ValueError, TypeError):
+            return {}
+        return result if isinstance(result, dict) else {}
+    return {}
 
 
 def save_affix_screenshot(screen: MatLike, name: str) -> str:
