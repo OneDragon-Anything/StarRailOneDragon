@@ -196,6 +196,28 @@ def _ocr_upscaled(ctx: SrContext, screen: MatLike, rect: Rect | None,
     return ctx.ocr_service.get_ocr_result_list(image=up)
 
 
+def _ocr_upscaled_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None,
+                            scale: int = 3) -> list:
+    """裁剪 + 放大 + OTSU 二值化后 OCR(``_ocr_upscaled`` 的对比度增强变体)。
+
+    只作 ``_ocr_upscaled`` 读空后的第二级重试:低对比背景上金色费用数字原生 det 漏检,
+    放大仍漏时 OTSU 全局阈值把数字从蓝底金饰中分离。⚠️ 二值化对彩色小字有信息损失,
+    不可作为第一级(会伤及放大即可读的帧)。
+    """
+    if rect is None:
+        return []
+    if screen is None:
+        return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return []
+    up = cv2.resize(crop, (crop.shape[1] * scale, crop.shape[0] * scale),
+                    interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(up, cv2.COLOR_RGB2GRAY)
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return ctx.ocr_service.get_ocr_result_list(image=cv2.cvtColor(bw, cv2.COLOR_GRAY2RGB))
+
+
 def read_level_raw_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """「文本-等级」区直读等级(**无任何兜底**;None=失读,调用方决定退路)。
 
@@ -484,9 +506,17 @@ def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
 def read_level_up_cost(ctx: SrContext, screen: MatLike) -> int | None:
     """买一次经验的花费(``文本-购买经验金币数``;替代 ``LEVEL_UP_COST_TABLE`` 估,doc 13 §13.2C)。
 
-    OCR ``文本-购买经验金币数`` → int。读不到(shop 态不显 / stylized)→ None(plan 用 ``LEVEL_UP_COST_TABLE`` 兜底)。
+    费用数字与 XP/等级同属备战屏原生分辨率下 paddle det 漏检的小字目标——画面档
+    ``docs/game/screens/currency_war_prep.md``「不可行」结论系放大手法引入前所下。
+    58 张备战 fixture 离线对拍:3x 放大读 55/58 → 加 OTSU 二值化二级重试 57/58;
+    唯一残留帧数字在场但两级均未检出,走 None 兜底。
+    两级管线:``_ocr_upscaled`` 读空 → ``_ocr_upscaled_binarized`` 重试。
+    读不到 → None(plan 用 ``LEVEL_UP_COST_TABLE`` 兜底)。
     """
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-购买经验金币数'))])
+    rect = _area_rect(ctx, '文本-购买经验金币数')
+    v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, rect)])
+    if v is None:
+        v = _first_int([r.data for r in _ocr_upscaled_binarized(ctx, screen, rect)])
     if v is not None and 0 <= v <= 20:
         return v
     return None

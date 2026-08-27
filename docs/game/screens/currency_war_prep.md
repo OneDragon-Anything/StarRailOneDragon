@@ -84,8 +84,9 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)。
 - 生命:`read_hp`(文本-剩余血量,**仅 shop 关闭态可读**;shop 开启态该区空 → 返 100)。
 
-**不可行(paddle OCR det 检测不到)**:
-- `read_level_up_cost` / `read_shop_refresh_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」、刷新「2」),paddle **det 阶段看不见**(聚焦 OCR 按钮区只读到标签文字「购买经验」/「刷新」/「LV.」/「0/6」,漏掉费用数字;VLM 放大确认数字在)。**OCR reader 不可行,非 area 错** → plan 用**静态估**(`LEVEL_UP_COST_TABLE` + refresh 默认 2;固定游戏机制常量,本就该静态);要精确值需 colored-digit CV 模板(低优)。`文本-购买经验金币数` / `文本-刷新金币数` 两 area 实为无效 OCR 目标。
+**需放大管线(原生分辨率 det 漏检)**:
+- `read_level_up_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」),原生直读基本检不到(小字 det 漏检,与等级/XP 小字同根)。**两级管线可读**:3x 放大 → 仍空再 OTSU 二值化重试;58 张备战帧仓离线对拍 3x=55/58、加二值化=57/58(唯一残留帧数字在场但两级均未检出,走 None → plan 用 `LEVEL_UP_COST_TABLE` 兜底)。实帧锁见测试 `test_read_level_up_cost_real_fixture`。
+- `read_shop_refresh_cost`(刷新「2」):同类小字失读,仍走原生直读 + 默认 2(该值恒 2,静态估无损失,未接放大管线)。
 
 **弱**:
 - `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。
