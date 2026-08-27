@@ -147,20 +147,18 @@ class BuyShopCards(SrOperation):
         # 备战锚点「购买经验」= 底部买经验按钮,shop 开/关均可见(本 op 开 shop 后仍点它升等级)。
         if not self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success:
             return self.round_fail('非备战屏(回合事件叠层?),交主循环处理')
-        # 事件 overlay 兜底(2026-08-04):投资策略/环境/补给等 overlay 叠在备战上,「购买经验」会
-        # 透出(底部左下未遮)→ 上面 guard 误放行 → overlay 遮商店 → "找不到商店"死循环。
-        # 主循环已事件前置检测(正常不到这),这是 BuyShopCards 自身的兜底:overlay 在 → fail 交主循环。
-        # 事件 overlay 兜底:有 screen_info 标题区的走区域识别(结构性不误匹配,T#103);
-        # 无区的 overlay(补给/遭遇/选择伙伴/确认选择 —— screen_info 待建 text area)暂留全屏 OCR + 高 lcs。
+        # 事件 overlay 兜底:全走 screen_info 标题 area(位置判,结构性不误匹配,T#103 化债:
+        # 遭遇/伙伴/巨星原为「遭遇其一/选择伙伴/确认选择」全屏 OCR + 高 lcs,已按各自画面档 area 化;
+        # 确认选择 catch-all 由 overlay 标题锚取代 —— 同屏均另有独有标题锚,全屏扫无必要)。
         for _scr, _area, _evt in (
             ('货币战争-投资策略', '标识-请选择投资策略', '投资策略'),
             ('货币战争-投资环境', '标识-投资环境', '投资环境'),
             ('货币战争-补给', '标识-补给阶段', '补给阶段'),   # 2026-08-13:补给建档后从全屏 OCR 移到 area(位置判 [893,120,1027,230])——治备战「返回补给阶段」按钮文本假阳 → 死循环
+            ('货币战争-遭遇节点', '标识-遭遇节点', '遭遇'),   # T#103:原全屏 OCR「遭遇其一」(lcs=0.9 卡标题截断 miss 前科,battle_loop 0c 同源 anchor)
+            ('货币战争-选择伙伴', '标识-选择伙伴', '选择伙伴'),   # T#103:原全屏 OCR「选择伙伴/确认选择」
+            ('货币战争-盛会之星', '标识-盛会之星', '盛会之星'),   # T#103:「确认选择」事件里唯一有画面档的巨星 overlay 改走标题锚(battle_loop 0b 同源)
         ):
             if self.round_by_find_area(screen, _scr, _area).is_success:
-                return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
-        for _evt in ('遭遇其一', '选择伙伴', '确认选择'):  # TODO(T#103) 待建 area
-            if self.round_by_ocr(screen, _evt, lcs_percent=0.8).is_success:
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,

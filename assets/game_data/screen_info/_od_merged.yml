@@ -14,6 +14,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-消耗品
     id_mark: true
@@ -27,6 +28,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -40,6 +42,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -54,6 +57,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -68,6 +72,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -82,6 +87,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -96,6 +102,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -110,6 +117,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -124,6 +132,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_light_cone
@@ -142,6 +151,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-光锥
     id_mark: true
@@ -155,6 +165,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -168,6 +179,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -182,6 +194,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -196,6 +209,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -210,6 +224,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -224,6 +239,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -238,6 +254,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -252,6 +269,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_mission
@@ -270,6 +288,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-任务
     id_mark: true
@@ -283,6 +302,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -296,6 +316,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -310,6 +331,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -324,6 +346,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -338,6 +361,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -352,6 +376,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -366,6 +391,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -380,6 +406,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_other_material
@@ -398,6 +425,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-其他材料
     id_mark: true
@@ -411,6 +439,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -424,6 +453,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -438,6 +468,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -452,6 +483,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -466,6 +498,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -480,6 +513,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -494,6 +528,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -508,6 +543,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_pet
@@ -526,6 +562,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-随宠
     id_mark: true
@@ -539,6 +576,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -552,6 +590,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -566,6 +605,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -580,6 +620,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -594,6 +635,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -608,6 +650,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -622,6 +665,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -636,6 +680,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_relic
@@ -654,6 +699,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-遗器
     id_mark: true
@@ -667,6 +713,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -680,6 +727,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -694,6 +742,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -708,6 +757,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -722,6 +772,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -736,6 +787,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -750,6 +802,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -764,6 +817,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
   - area_name: 按钮-分解
@@ -778,6 +832,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器分解
 - screen_id: bag_relic_salvage
@@ -944,6 +999,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-养成材料
     id_mark: true
@@ -957,6 +1013,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-养成材料
     id_mark: false
@@ -970,6 +1027,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-养成材料
   - area_name: TAB-光锥
@@ -984,6 +1042,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -998,6 +1057,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -1012,6 +1072,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -1026,6 +1087,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -1040,6 +1102,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -1054,6 +1117,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -1068,6 +1132,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_valuable
@@ -1086,6 +1151,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 二级标题-贵重物
     id_mark: true
@@ -1099,6 +1165,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -1112,6 +1179,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -1126,6 +1194,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -1140,6 +1209,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -1154,6 +1224,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -1168,6 +1239,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -1182,6 +1254,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -1196,6 +1269,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: battle
@@ -1295,6 +1369,7 @@
   pc_alt: false
   area_list:
   - area_name: 移动交互-单行
+    id_mark: false
     pc_rect:
     - 908
     - 946
@@ -1305,7 +1380,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 离开按钮
+    id_mark: false
     pc_rect:
     - 1847
     - 44
@@ -1316,7 +1394,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 弹射
+    id_mark: false
     pc_rect:
     - 1125
     - 914
@@ -1327,7 +1408,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: DIALOG_CONFIRM
+    id_mark: false
     pc_rect:
     - 989
     - 644
@@ -1338,7 +1422,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 退出对话框-确认
+    id_mark: false
     pc_rect:
     - 1006
     - 644
@@ -1349,6 +1436,8 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: challenge_mission
   screen_name: 挑战副本
   pc_alt: false
@@ -1388,6 +1477,13 @@
     - 958
     - 1500
     - 1014
+    text: ''
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 次数加-其他
     id_mark: false
     pc_rect:
@@ -1479,7 +1575,7 @@
     - 0
     - 0
     - 0
-    text: null
+    text: ''
     lcs_percent: null
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
@@ -1659,6 +1755,7 @@
   pc_alt: false
   area_list:
   - area_name: 左上角标题
+    id_mark: false
     pc_rect:
     - 98
     - 39
@@ -1669,7 +1766,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 对话框-确认
+    id_mark: false
     pc_rect:
     - 1024
     - 647
@@ -1680,6 +1780,8 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: currency_war_armory_box_dialog
   screen_name: 货币战争-武装箱弹窗
   pc_alt: false
@@ -2699,6 +2801,20 @@
     - 1406
     - 106
     text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-备战阶段
+    id_mark: false
+    pc_rect:
+    - 250
+    - 30
+    - 520
+    - 120
+    text: 备战阶段
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -5702,6 +5818,20 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+  - area_name: 标识-首领
+    id_mark: false
+    pc_rect:
+    - 930
+    - 255
+    - 1050
+    - 312
+    text: 首领
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: currency_war_settlement_fail
   screen_name: 货币战争-结算-失败
   pc_alt: false
@@ -5715,6 +5845,11 @@
     - 410
     text: 挑战进度
     lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 标识-挑战结束
     id_mark: true
     pc_rect:
@@ -5724,6 +5859,11 @@
     - 272
     text: 挑战结束
     lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 标识-节点名
     id_mark: false
     pc_rect:
@@ -5732,6 +5872,12 @@
     - 1055
     - 315
     text: 战斗
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 提示-点击空白加速
     id_mark: false
     pc_rect:
@@ -5740,6 +5886,12 @@
     - 1050
     - 922
     text: 点击空白加速
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 按钮-前往结算
     id_mark: false
     pc_rect:
@@ -5748,6 +5900,12 @@
     - 1040
     - 920
     text: 前往结算
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
 - screen_id: currency_war_shop_refresh_odds
   screen_name: 货币战争-商店刷新概率表
   pc_alt: false
@@ -6276,6 +6434,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 按钮-登出确定
     id_mark: false
@@ -6289,6 +6448,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-账号输入区域
     id_mark: false
@@ -6302,6 +6462,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-密码输入区域
     id_mark: false
@@ -6315,6 +6476,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-同意按钮
     id_mark: false
@@ -6328,6 +6490,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-账号密码
     id_mark: false
@@ -6341,6 +6504,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-账号密码进入游戏
     id_mark: false
@@ -6354,6 +6518,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 文本-开始游戏
     id_mark: false
@@ -6367,6 +6532,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 文本-点击进入
     id_mark: false
@@ -6380,6 +6546,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 文本-同意-旧
     id_mark: false
@@ -6393,6 +6560,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 国服-同意按钮-旧
     id_mark: false
@@ -6406,6 +6574,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 文本-同意-新
     id_mark: false
@@ -6419,6 +6588,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 提示-确认
     id_mark: false
@@ -6432,6 +6602,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 错误提示-重新启动
     id_mark: false
@@ -6445,6 +6616,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
 - screen_id: enter_game_choose_account
   screen_name: 进入游戏-选择账号
@@ -6462,6 +6634,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 按钮-登陆其他账号
     id_mark: true
@@ -6475,6 +6648,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
 - screen_id: enter_game_logout_dialog
   screen_name: 进入游戏-退出登陆
@@ -6492,6 +6666,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 按钮-退出并保留登陆记录
     id_mark: false
@@ -6505,6 +6680,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 按钮-退出
     id_mark: false
@@ -6518,12 +6694,14 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
 - screen_id: fast_recover_dialog
   screen_name: 快速恢复对话框
   pc_alt: false
   area_list:
   - area_name: 快速恢复标题
+    id_mark: false
     pc_rect:
     - 890
     - 250
@@ -6534,7 +6712,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 确认
+    id_mark: false
     pc_rect:
     - 1020
     - 790
@@ -6545,7 +6726,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 取消
+    id_mark: false
     pc_rect:
     - 592
     - 790
@@ -6556,7 +6740,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 暂无可用消耗品
+    id_mark: false
     pc_rect:
     - 1094
     - 554
@@ -6567,7 +6754,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 奇巧零食
+    id_mark: false
     pc_rect:
     - 900
     - 300
@@ -6578,6 +6768,8 @@
     template_sub_dir: consumable
     template_id: quirky_snacks
     template_match_threshold: 0.5
+    color_range: null
+    goto_list: []
 - screen_id: guide
   screen_name: 星际和平指南
   pc_alt: false
@@ -7078,6 +7270,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 按钮-开始追踪
     id_mark: false
@@ -7091,6 +7284,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
 - screen_id: nameless_honor
   screen_name: 无名勋礼
@@ -7640,6 +7834,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
   - area_name: 点击空白区域继续
     id_mark: true
@@ -7653,12 +7848,14 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
     goto_list: []
 - screen_id: ornamenet_extraction
   screen_name: 饰品提取
   pc_alt: false
   area_list:
   - area_name: 左上角标题-饰品提取
+    id_mark: false
     pc_rect:
     - 105
     - 41
@@ -7669,7 +7866,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 左上角标题-存档管理
+    id_mark: false
     pc_rect:
     - 105
     - 63
@@ -7680,7 +7880,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-切换存档入口
+    id_mark: false
     pc_rect:
     - 143
     - 953
@@ -7691,7 +7894,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 档案-1
+    id_mark: false
     pc_rect:
     - 37
     - 185
@@ -7702,7 +7908,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 档案-2
+    id_mark: false
     pc_rect:
     - 37
     - 315
@@ -7713,7 +7922,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 档案-3
+    id_mark: false
     pc_rect:
     - 37
     - 445
@@ -7724,7 +7936,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 档案-4
+    id_mark: false
     pc_rect:
     - 37
     - 575
@@ -7735,7 +7950,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-切换存档确认
+    id_mark: false
     pc_rect:
     - 1546
     - 954
@@ -7746,7 +7964,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-存档使用中
+    id_mark: false
     pc_rect:
     - 1546
     - 954
@@ -7757,7 +7978,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-预设编队
+    id_mark: false
     pc_rect:
     - 365
     - 60
@@ -7768,13 +7992,24 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 区域-预设编队名称
+    id_mark: false
     pc_rect:
     - 30
     - 100
     - 300
     - 1000
+    text: ''
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 按钮-支援
+    id_mark: false
     pc_rect:
     - 672
     - 870
@@ -7785,6 +8020,8 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 支援角色替换图标
     id_mark: false
     pc_rect:
@@ -7792,7 +8029,7 @@
     - 0
     - 0
     - 0
-    text: null
+    text: ''
     lcs_percent: null
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
@@ -7806,7 +8043,15 @@
     - 816
     - 933
     - 816
+    text: ''
+    lcs_percent: null
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: null
+    color_range: null
+    goto_list: []
   - area_name: 按钮-开始挑战
+    id_mark: false
     pc_rect:
     - 1478
     - 963
@@ -7817,6 +8062,8 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: phone_menu
   screen_name: 菜单
   pc_alt: false
@@ -8506,6 +8753,7 @@
   pc_alt: false
   area_list:
   - area_name: 标题-合成
+    id_mark: false
     pc_rect:
     - 100
     - 38
@@ -8516,7 +8764,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 标题-合成分类
+    id_mark: false
     pc_rect:
     - 100
     - 65
@@ -8527,7 +8778,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 分类-消耗品合成
+    id_mark: false
     pc_rect:
     - 780
     - 40
@@ -8538,7 +8792,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: CATEGORY_2_BTN
+    id_mark: false
     pc_rect:
     - 880
     - 40
@@ -8549,7 +8806,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: CATEGORY_3_BTN
+    id_mark: false
     pc_rect:
     - 970
     - 40
@@ -8560,7 +8820,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: CATEGORY_4_BTN
+    id_mark: false
     pc_rect:
     - 1060
     - 40
@@ -8571,7 +8834,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 物品列表
+    id_mark: false
     pc_rect:
     - 74
     - 100
@@ -8582,7 +8848,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 合成所需材料不足
+    id_mark: false
     pc_rect:
     - 1080
     - 849
@@ -8593,7 +8862,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-最大值
+    id_mark: false
     pc_rect:
     - 1445
     - 870
@@ -8604,7 +8876,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-合成
+    id_mark: false
     pc_rect:
     - 1015
     - 963
@@ -8615,7 +8890,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-合成确认
+    id_mark: false
     pc_rect:
     - 1008
     - 672
@@ -8626,7 +8904,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 点击空白处关闭
+    id_mark: false
     pc_rect:
     - 850
     - 680
@@ -8637,11 +8918,14 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: team
   screen_name: 队伍
   pc_alt: false
   area_list:
   - area_name: 左上角标题-队伍
+    id_mark: false
     pc_rect:
     - 99
     - 37
@@ -8652,7 +8936,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: SUPPORT_BTN
+    id_mark: false
     pc_rect:
     - 1740
     - 720
@@ -8663,7 +8950,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-关闭
+    id_mark: false
     pc_rect:
     - 1834
     - 39
@@ -8674,7 +8964,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 角色列表
+    id_mark: false
     pc_rect:
     - 70
     - 160
@@ -8685,7 +8978,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 按钮-入队
+    id_mark: false
     pc_rect:
     - 1560
     - 970
@@ -8696,7 +8992,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: SUPPORT_TITLE
+    id_mark: false
     pc_rect:
     - 99
     - 37
@@ -8707,11 +9006,14 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: treasures_light
   screen_name: 逐光捡金
   pc_alt: false
   area_list:
   - area_name: TL_CATEGORY_FORGOTTEN_HALL
+    id_mark: false
     pc_rect:
     - 280
     - 435
@@ -8722,7 +9024,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: TL_CATEGORY_PURE_FICTION
+    id_mark: false
     pc_rect:
     - 280
     - 570
@@ -8733,7 +9038,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: TL_SCHEDULE_1_TRANSPORT
+    id_mark: false
     pc_rect:
     - 1488
     - 648
@@ -8744,7 +9052,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: TL_SCHEDULE_2_TRANSPORT
+    id_mark: false
     pc_rect:
     - 1488
     - 882
@@ -8755,7 +9066,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: TL_SCHEDULE_1_NAME
+    id_mark: false
     pc_rect:
     - 927
     - 556
@@ -8766,7 +9080,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: TL_SCHEDULE_2_NAME
+    id_mark: false
     pc_rect:
     - 927
     - 786
@@ -8777,7 +9094,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_TITLE
+    id_mark: false
     pc_rect:
     - 102
     - 36
@@ -8788,7 +9108,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_TOTAL_STAR
+    id_mark: false
     pc_rect:
     - 1665
     - 950
@@ -8799,7 +9122,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_START_CHALLENGE
+    id_mark: false
     pc_rect:
     - 1500
     - 960
@@ -8810,7 +9136,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_AFTER_BATTLE_SUCCESS_1
+    id_mark: false
     pc_rect:
     - 820
     - 200
@@ -8821,7 +9150,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_AFTER_BATTLE_SUCCESS_2
+    id_mark: false
     pc_rect:
     - 820
     - 300
@@ -8832,7 +9164,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_AFTER_BATTLE_FAIL
+    id_mark: false
     pc_rect:
     - 785
     - 230
@@ -8843,7 +9178,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_AFTER_BATTLE_BACK_BTN_1
+    id_mark: false
     pc_rect:
     - 630
     - 920
@@ -8854,7 +9192,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: FH_AFTER_BATTLE_BACK_BTN_2
+    id_mark: false
     pc_rect:
     - 790
     - 920
@@ -8865,7 +9206,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_TITLE
+    id_mark: false
     pc_rect:
     - 160
     - 63
@@ -8876,7 +9220,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_NEW_START
+    id_mark: false
     pc_rect:
     - 1316
     - 870
@@ -8887,7 +9234,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_NODE_1
+    id_mark: false
     pc_rect:
     - 1775
     - 717
@@ -8898,7 +9248,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_NODE_2
+    id_mark: false
     pc_rect:
     - 1775
     - 823
@@ -8909,7 +9262,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_OPT_1
+    id_mark: false
     pc_rect:
     - 806
     - 177
@@ -8920,7 +9276,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_OPT_2
+    id_mark: false
     pc_rect:
     - 806
     - 354
@@ -8931,7 +9290,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_OPT_3
+    id_mark: false
     pc_rect:
     - 806
     - 523
@@ -8942,7 +9304,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_CACOPHONY_CONFIRM
+    id_mark: false
     pc_rect:
     - 1515
     - 960
@@ -8953,7 +9318,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_START_CHALLENGE
+    id_mark: false
     pc_rect:
     - 1500
     - 960
@@ -8964,7 +9332,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_AFTER_BATTLE_SUCCESS_1
+    id_mark: false
     pc_rect:
     - 820
     - 200
@@ -8975,7 +9346,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_AFTER_BATTLE_SUCCESS_2
+    id_mark: false
     pc_rect:
     - 820
     - 245
@@ -8986,7 +9360,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_AFTER_BATTLE_FAIL
+    id_mark: false
     pc_rect:
     - 836
     - 312
@@ -8997,7 +9374,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: PF_AFTER_BATTLE_BACK_BTN
+    id_mark: false
     pc_rect:
     - 788
     - 979
@@ -9008,7 +9388,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: 退出对话框确认
+    id_mark: false
     pc_rect:
     - 1006
     - 644
@@ -9019,7 +9402,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: NODE_FIRST_CLICK_EMPTY
+    id_mark: false
     pc_rect:
     - 856
     - 851
@@ -9030,7 +9416,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_TITLE
+    id_mark: false
     pc_rect:
     - 865
     - 81
@@ -9041,7 +9430,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_CONFIRM
+    id_mark: false
     pc_rect:
     - 800
     - 960
@@ -9052,7 +9444,10 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_EMPTY
+    id_mark: false
     pc_rect:
     - 868
     - 930
@@ -9063,3 +9458,5 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
+    color_range: null
+    goto_list: []

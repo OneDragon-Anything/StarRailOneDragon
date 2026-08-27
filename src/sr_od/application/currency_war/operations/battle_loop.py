@@ -526,7 +526,11 @@ class CurrencyWarRunLoop(SrOperation):
                         log.warning('[cw-loop] 结算屏「%s-%s」落后 last-known「%s-%s」= OCR 假阳 → 拒,保 last-known(W239 单调门)',
                                     _scr[0], _scr[1], _plane, _round)
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
-            _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
+            # 「1-9首领」= boss 结算。T#103 area 化(货币战争-结算/标识-首领,positional rect
+            # 基于 ended.webp 实帧建档):普通结算同位是「奖励」(与「首领」无公共子序列,
+            # 不会误命中)。失败页走此函数时该 rect 无「首领」→ miss,语义不变。
+            _is_boss = self.round_by_find_area(
+                screen, '货币战争-结算', '标识-首领').is_success
             # r260/r265(用户两轮指路修正):节点类型的**权威源 = 备战画面节点行**
             # (read_node_sequence,Hu 模板匹配,prep_director 每次备战已读并存
             # session.node_seq)——结算屏 OCR 是二手推断(r260 首版全屏搜'奖励'
@@ -1404,7 +1408,7 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 6. 战斗/过场屏(总伤害/数据统计 在,无其他动作;OCR 常漏「点击空白加速」)→ 点空白加速/推进。
         # 只用战斗独有关键词;不用「羁绊」(大厅"羁绊链路"会误匹配)
-        if (self.round_by_ocr(screen, '总伤害').is_success   # TODO(T#103) 待建 area(此结算帧未见「总伤害」label)
+        if (self.round_by_ocr(screen, '总伤害').is_success   # T#103 缺帧待采:现存归档帧(win/ended/位面过渡/settlement_damage)均未见「总伤害」label,无法离线建档;已有 标识-数据统计 area 兜底该分支
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             return self.round_wait(wait=1.5)

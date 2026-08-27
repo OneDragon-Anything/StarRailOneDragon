@@ -72,12 +72,13 @@ class ExitCurrencyWarMatch(SrOperation):
             return self.round_wait(wait=2)
 
         # 备战/对局中(无放弃提示)→ Esc 弹放弃提示
-        # r317:「备战阶段」裸 OCR 必须收紧 lcs=0.8——find_by_ocr 直接 LCS 匹配
-        # (无 difflib 前置过滤),默认 0.5 时在投资策略屏误命中「返回备战界面」
-        # (LCS「备战」2/4=0.5)→ 每轮 esc(无效)→ round_wait 死循环 141x
-        # (2026-08-25 实录零分支推进的真首卡点,先于 :73/:78)。
+        # r317:「备战阶段」旧裸 OCR 必须收紧 lcs=0.8(find_by_ocr 直接 LCS 匹配
+        # (无 difflib 前置过滤),默认 0.5 时在投资策略屏误命中「返回备战界面」)
+        # T#103 area 化(标识-备战阶段,prep fixture 实帧建档):positional rect
+        # 结构性消灭误配面 —— 投资策略屏该 rect 位置不会出现备战阶段文本,
+        # lcs 收紧的补丁不再必要。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success       # 备战
-                or self.round_by_ocr(screen, '备战阶段', lcs_percent=0.8).is_success   # TODO(T#103) 待建 area
+                or self.round_by_find_area(screen, '货币战争-备战', '标识-备战阶段').is_success   # T#103:原「备战阶段」裸 OCR(lcs=0.8)→ area
                 or self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=2)
