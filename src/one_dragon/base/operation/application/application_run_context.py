@@ -352,17 +352,11 @@ class ApplicationRunContext:
 
         与 ``is_context_stop`` 的区别:后者 STOP 也是 idle 初始态;本闩只在
         「运行中/暂停中被 stop_running 打断」后为 True,直到下一次
-        ``start_running`` 或显式 ``consume_stop_interrupted``。
+        ``start_running``。无显式消费入口——手动外部接管走
+        ``stop_guard.stop_guard_exemption`` 本地豁免(不清闩,ADR-0406;
+        旧 consume_stop_interrupted 因在 run 收口期全局摘守卫已移除)。
         """
         return self._stop_interrupted
-
-    def consume_stop_interrupted(self) -> None:
-        """消费停机中断闩(置回 False)。
-
-        供停机后的显式外部接管入口调用(如 MCP 手动 click_game/key_tap 的
-        残局清理):外部主动发令 = 接管者意图,不再是幽灵执行流,应放行。
-        """
-        self._stop_interrupted = False
 
     def _create_run_result(
         self,

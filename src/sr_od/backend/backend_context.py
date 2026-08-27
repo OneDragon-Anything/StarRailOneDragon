@@ -27,7 +27,10 @@ from typing import TYPE_CHECKING
 
 from one_dragon.base.config.basic_game_config import TypeInputWay
 from one_dragon.base.controller.pc_clipboard import PcClipboard
-from one_dragon.base.controller.stop_guard import StopRunInterrupted
+from one_dragon.base.controller.stop_guard import (
+    StopRunInterrupted,
+    stop_guard_exemption,
+)
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.application import application_const
@@ -901,11 +904,12 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        # 手动入口 = 停机后的显式外部接管,消费停机中断闩(ADR-0396),
-        # 避免上一局被停后守卫拦截残局清理点击。
-        self._ctx.run_context.consume_stop_interrupted()
-        controller.active_window()
-        clicked = controller.click(Point(int(x), int(y)), press_time=press_time, pc_alt=pc_alt)
+        # 手动入口 = 停机后的显式外部接管:本地豁免不清全局停机闩(ADR-0406,
+        # 旧 consume 清闩会在 run 收口期摘守卫放幽灵输入)。豁免按线程隔离,
+        # unwind 中的 run 线程输入仍被守卫拦截。
+        with stop_guard_exemption():
+            controller.active_window()
+            clicked = controller.click(Point(int(x), int(y)), press_time=press_time, pc_alt=pc_alt)
         return {'success': clicked, 'x': int(x), 'y': int(y), 'in_window': clicked, 'pc_alt': pc_alt}
 
     def key_tap(self, key: str, press_time: float = 0.0) -> dict:
@@ -928,13 +932,13 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
-        controller.active_window()
-        if press_time > 0:
-            # 走公开入口 btn_press(带停机守卫与后台模式处理),不直按 btn_controller
-            controller.btn_press(key, press_time=press_time)
-        else:
-            controller.btn_tap(key)
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+            controller.active_window()
+            if press_time > 0:
+                # 走公开入口 btn_press(带停机守卫与后台模式处理),不直按 btn_controller
+                controller.btn_press(key, press_time=press_time)
+            else:
+                controller.btn_tap(key)
         return {'success': True, 'key': key, 'press_time': press_time}
 
     def drag(self, x1: int | float, y1: int | float, x2: int | float, y2: int | float, duration: float = 1.0) -> dict:
@@ -958,9 +962,9 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
-        controller.active_window()
-        controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+            controller.active_window()
+            controller.drag_to(Point(int(x2), int(y2)), start=Point(int(x1), int(y1)), duration=duration)
         return {'success': True, 'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2), 'duration': duration}
 
     def input_text(self, text: str, use_clipboard: bool | None = None) -> dict:
@@ -985,15 +989,15 @@ class SrBackendContext:
         controller = self._ctx.controller
         if controller is None or not controller.is_game_window_ready:
             raise BackendNotReadyError('游戏窗口未就绪')
-        self._ctx.run_context.consume_stop_interrupted()  # 手动接管,消费停机闩(ADR-0396)
-        use_cb = self._resolve_use_clipboard(use_clipboard)
-        controller.active_window()
-        if use_cb:
-            PcClipboard.copy_and_paste(text)
-            method = 'clipboard'
-        else:
-            controller.input_str(text)
-            method = 'keyboard'
+        with stop_guard_exemption():  # 手动接管本地豁免,不清全局停机闩(ADR-0406)
+            use_cb = self._resolve_use_clipboard(use_clipboard)
+            controller.active_window()
+            if use_cb:
+                PcClipboard.copy_and_paste(text)
+                method = 'clipboard'
+            else:
+                controller.input_str(text)
+                method = 'keyboard'
         return {'success': True, 'method': method, 'masked_text': mask_text(text)}
 
     def _resolve_use_clipboard(self, use_clipboard: bool | None) -> bool:
