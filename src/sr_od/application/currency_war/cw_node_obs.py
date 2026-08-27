@@ -101,9 +101,13 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
     return [MegastarOption(idx=i, char_id=name) for i, (_cx, name) in enumerate(cands)]
 
 
-# 补给选项 y 带(实捕 round1-5:角色名 y≈545 / 装备名 y≈680;TODO 多样本核,布局可能随补给类型微变)。
+# 补给选项 y 带。2026-08-26 W261 多样本核对(66 帧存档离线 OCR 对拍)两种布局:
+# ① 单装备行:角色名 cy513-567 / 装备名 cy~648-716;② 双装备行(每列 角色+2 装备):
+# 第一行 y≈648、**第二行 y≈748-749** —— 旧上界 735 使②整行漏读(10 选只读出 4,
+# decide_supply 建模残缺)。上界放宽到 780:实测各帧 750-780 无任何文本中心
+# (最近下方元素「已选择/确认」在 y≥920,余量充足);①布局帧放宽前后结果逐一相同。
 _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
-_SUPPLY_EQUIP_Y: tuple[int, int] = (640, 735)
+_SUPPLY_EQUIP_Y: tuple[int, int] = (640, 780)
 _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 RunSupplyNode.CARD_BODY;点卡身不开对话直接选中)
 _SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
 # 钻装备名集合(文本兜底;主通道 = SIFT——用户 2026-08-17:装备图已采集,SIFT 稳,
