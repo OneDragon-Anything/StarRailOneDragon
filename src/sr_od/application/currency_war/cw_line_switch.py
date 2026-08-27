@@ -1,4 +1,4 @@
-"""换线判据:E_rounds 比较 + θ 滞回 + D_min 驻留(W332b;DESIGN §③)。
+"""换线判据:E_rounds 比较 + θ 滞回 + D_min 驻留(DESIGN §③)。
 
 设计=唯一规格:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md` §③。
 核心公式(候选线 c,候选集=过渡引擎池方向):
