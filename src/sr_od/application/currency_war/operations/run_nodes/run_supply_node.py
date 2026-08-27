@@ -15,7 +15,6 @@ target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡�
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 """
 import time
-from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -28,10 +27,6 @@ from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_telemetry import set_last_supply_pick
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
-
-# W308 停机钩子 sentinel flag 路径(模块常量仅为测试可指 tmp_path,非运行时开关;
-# 钩子整段删除时一并删)
-SUPPLY_STOP_HOOK_FLAG = Path('.debug/temp/currency_war/supply_stop_hook.flag')
 
 
 class RunSupplyNode(RunNode):
@@ -55,52 +50,7 @@ class RunSupplyNode(RunNode):
 
     @operation_node(name='补给节点', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
-        # ===== [停机钩子·临时,W308;观察完成后整段删除:本钩子方法+handle 内调用+flag 写入] =====
-        result = self._supply_stop_hook()
-        if result is not None:
-            return result
-        # ===== [停机钩子·临时,W308 结束] =====
         return self._run_node()
-
-    def _supply_stop_hook(self) -> OperationRoundResult | None:
-        """[停机钩子·临时捕获类(按 od-dev-stop-hooks §2.1),观察完成后删本段。
-
-        W308 目的:补给节点**基础金币奖励真值未知**(选补给后给不给基础金、给多少)
-        → 下次实机遇补给画面即停机保画面,人工经 MCP 观察选中补给前后金币数定谳。
-        触发 = 补给阶段画面锚命中(复用既有 screen_info「货币战争-补给/标识-补给阶段」
-        id_mark 判定,不新造识别);无条件触发,无开关无参数(项目约定)。
-        动作:save_screenshot 存证 + flag 文件(三要素见内容)+ stop_running(代码直调,
-        不经 MCP)+ 返回 round_wait 不做任何 click,画面原样保持供观察。
-        flag 路径收成模块常量仅为测试可指 tmp_path,非运行时开关。
-        """
-        screen = self.screenshot()
-        if not self._in_node(screen):   # 前置门:补给画面锚命中才触发,防过渡帧伪触发
-            return None
-        shot_path = self.save_screenshot(prefix='supply_stop_hook')
-        # 轮次上下文 best-effort(last_state 可能缺,None 不阻塞)
-        _state = None
-        try:
-            _match = getattr(self.ctx, 'cw_match', None)
-            _state = getattr(getattr(_match, 'session', None), 'last_state', None)
-        except Exception:   # noqa: BLE001
-            pass
-        _ctx_txt = (f"plane={getattr(_state, 'plane', '?')} round={getattr(_state, 'round_num', '?')} "
-                    f"gold={getattr(_state, 'gold', '?')}(选前)") if _state is not None else 'last_state 不可得'
-        SUPPLY_STOP_HOOK_FLAG.parent.mkdir(parents=True, exist_ok=True)
-        SUPPLY_STOP_HOOK_FLAG.write_text(
-            'HOOK-STOP(W308 补给停机钩子):识别到补给阶段画面(op 入口、任何 click 前)。\n'
-            f'触发时间: {time.strftime("%Y-%m-%d %H:%M:%S")} {time.tzname}\n'
-            f'轮次上下文: {_ctx_txt} 截图: {shot_path}\n'
-            '处理步骤: run 已 STOP(bot 停了,游戏画面仍在)。人工经 MCP 观察金币数——'
-            '先记录选中前金币,再手动点一张补给卡+确认,再读选中后金币,即可确定基础金奖励真值;\n'
-            '删除条件: 观察完成(基础金有/无与数值已记档)→ 删本 flag 文件 + 整段删除钩子'
-            '(run_supply_node._supply_stop_hook + handle 内调用),重启 MCP server 后恢复实跑。\n',
-            encoding='utf-8')
-        log.info('[cw-hook][supply-stop] 补给画面锚命中 → 停机保画面(W308 观察基础金币;'
-                 '截图 %s flag %s)', shot_path, SUPPLY_STOP_HOOK_FLAG)
-        if self.ctx.run_context is not None:
-            self.ctx.run_context.stop_running()
-        return self.round_wait(status='W308 补给停机钩子触发:已停机保画面,待人工观察基础金币')
 
     def _in_node(self, screen) -> bool:
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
