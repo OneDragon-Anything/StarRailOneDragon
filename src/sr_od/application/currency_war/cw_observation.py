@@ -68,6 +68,7 @@ from sr_od.application.currency_war.cw_obs_core import (
     _first_int,
     _ocr,
     area_center,  # noqa: F401 (re-export:importer 经 cw_observation.area_center 用)
+    is_prep_like_frame,
 )
 from sr_od.application.currency_war.cw_observe import obs_conflict
 from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
@@ -624,8 +625,15 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
     if not m:
         return None, None
     x, y = int(m.group(1)), int(m.group(2))
-    if x > y:                                   # deployed > cap 不可能 → X 是 OCR 噪声(slash→1 等),Y 仍可信
-        return None, y
+    if x > y:
+        # 图标前缀守卫(W287,ADR-0417):「X/Y」左侧人形图标常被 OCR 并进 X 成
+        # 前缀 '1'(空板帧画面 0/3 实读 "10/3";字段先验:X≤Y 恒成立)——去掉
+        # 前缀 '1' 后入域才采;仍域外 = 其他噪声,X 不可信(slash→1 族,旧行为)。
+        _s = str(x)
+        if _s.startswith('1') and int(_s[1:]) <= y:
+            x = int(_s[1:])
+        else:
+            return None, y    # deployed > cap 不可能 → X 是 OCR 噪声,Y 仍可信
     return x, y
 
 
@@ -1064,12 +1072,15 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     else:
         state.streak = read_streak(ctx, screen) or 0
     # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
-    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → **tracked 有身份时以计算为准**,OCR 只做
-    # 可见子集对拍留证):
-    # - computed(tracked 全已知身份)= 全集(每人贡献其全部阵营),不受滚动/遮挡影响 → state.board;
-    # - OCR 可见行 f 若在 computed 中两者应相等(不等 = tracked 漂移或 OCR 误读,留证);
-    #   OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号留证);computed 有而 OCR 不可见
-    #   = 滚动截断(正常,不算错)。
+    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集底座**,不受滚动/遮挡影响;
+    # W287 裁决翻转,ADR-0417):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
+    # 知道);但**可视区徽标行(左栏 OCR)是画面事实 —— 可视行计数与 computed 不等时以徽标为准
+    # 覆写**(W285 抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
+    # (overlay 遮挡/动画过渡,W285 overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
+    # 不裁不覆,保 computed 底座 + 留证(等下一帧备战帧再裁)。
+    # - OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号):备战帧同样采徽标覆入;
+    #   非备战帧留证不覆。
+    # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
     # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
     _match = getattr(ctx, 'cw_match', None)
     _tracked_dep = (_match.session.tracked_deployed
@@ -1079,21 +1090,43 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     state.board_readable = _board_honest   # r319:动画帧(count=1 兜底)显式标注
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
+        _merged = dict(_computed)
+        # W287:仅在真有分歧时才做帧态判定(is_prep_like_frame 走上层屏名单,常态一致零开销)
+        _needs_arbitration = any(_computed.get(_f) != _c for _f, _c in _ocr_board.items())
+        _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
         for _f, _ocr_c in _ocr_board.items():
             _calc_c = _computed.get(_f)
             if _calc_c is None:
-                obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed}, f'OCR有computed无:{_f}',
-                             screen, verdict=('留证-tracked漏阵营角色(OCR可见但计算无;'
-                                              '处理:单次按噪声,频发 >10 行/时→排查 tracked '
-                                              '身份漏认(_reconcile 漂移源)'),
-                             source='computed_vs_ocr')
+                if _prep_like and _board_honest:
+                    obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
+                                 f'OCR有computed无:{_f}',
+                                 screen, verdict=('采新-badge(备战帧徽标=画面事实,tracked漏该阵营;'
+                                                  'W287 裁决翻转:徽标覆入 board;'
+                                                  '频发 >10 行/时→排查 tracked 身份漏认(_reconcile 漂移源)'),
+                                 source='computed_vs_ocr', faction=_f)
+                    _merged[_f] = _ocr_c
+                else:
+                    obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
+                                 f'OCR有computed无:{_f}',
+                                 screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
+                                                  '均不采信(W285 overlay 干扰 2/6 实证防新错);'
+                                                  '保 computed 底座,留等备战帧再裁'),
+                                 source='computed_vs_ocr')
             elif _calc_c != _ocr_c:
-                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                             screen, verdict=('采新-computed(可见行count不等,tracked漂移或OCR误读;'
-                                              '处理:裁决已自动(采 computed);频发 >10 行/时'
-                                              '→排查对账纠漂链'),
-                             source='computed_vs_ocr', faction=_f)
-        state.board = _computed
+                if _prep_like and _board_honest:
+                    obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
+                                 screen, verdict=('采新-badge(备战帧可视行徽标=画面事实,优先于身份'
+                                                  ' computed;W287 裁决翻转(旧采 computed,W285 board '
+                                                  '3/6 采错实证);频发 >10 行/时→排查对账纠漂链'),
+                                 source='computed_vs_ocr', faction=_f)
+                    _merged[_f] = _ocr_c
+                else:
+                    obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
+                                 screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
+                                                  '均不采信(W285 overlay 干扰 2/6 实证防新错);'
+                                                  '保 computed 底座,留等备战帧再裁'),
+                                 source='computed_vs_ocr', faction=_f)
+        state.board = _merged
         # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)
         state.board_next_tier = {}
         for _f, _c in _computed.items():
@@ -1135,30 +1168,43 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         deployed_from_compact,
         iter_occupied_deployed,
     )
+    # W287(治本,ADR-0417):部署对齐/重建目标 = 舞台 paddle「X/Y」的 X
+    # (read_deployed_count)——舞台指示几何上只数已上阵角色,不含底部商店行/备战栏。
+    # 旧目标 ``min(sum(state.board.values()), level)`` 把**羁绊计数**当部署数(多阵营
+    # 角色重复计 + 徽标 OCR 误读放大),再驱动补齐/截断 → 幻影部署(W285 deployed_align
+    # 3/6 误判 + 5aa9ce34 board_ocr=17 严重误计实证;prep_director r3 同判早已把 board
+    # 移出三源对拍,本处是漏改的最后一处)。paddle 读不到 = 本帧无对齐基准 → 跳过对齐
+    # (宁缺勿造:补齐/截断都是用猜的数改写 tracking)。
+    _paddle_n = read_deployed_count(ctx, screen)
     if _tracked_dep:
         import copy
         _occ = list(iter_occupied_deployed(copy.deepcopy(_tracked_dep)))
-        _board_n = min(sum(state.board.values()), state.level)
-        if len(_occ) > _board_n:
-            # 观察冲突审计 #10(2026-08-16):截断=双源分歧(tracked 多计于 board OCR,如 deploy SIFT 漂移)
-            # —— 静默截断毒化部署近似;留证供毒化率统计。
-            obs_conflict('deployed_align', len(_occ), _board_n, screen,
-                         verdict=('截断-tracked多计(board OCR 为准;处理:裁决已自动;'
-                                  '频发 >10 行/时→排查 deploy SIFT 漂移'),
-                         source='tracked_vs_board')
-            _occ = _occ[:_board_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
-        elif len(_occ) < _board_n:
-            obs_conflict('deployed_align', len(_occ), _board_n, screen,
-                         verdict=('补齐-tracked少计(rebuild 无身份;处理:裁决已自动;'
-                                  '频发 >10 行/时→排查 rebuild 身份读取'),
-                         source='tracked_vs_board')
-            _rebuild = list(iter_occupied_deployed(
-                rebuild_deployed_from_board(state.board, state.back_max,
-                                           max_count=state.level)))
-            _occ = _occ + _rebuild[len(_occ):]   # 补无身份(tracked 少计,如 sell 漂移)
+        if _paddle_n is not None:
+            if len(_occ) > _paddle_n:
+                # 观察冲突审计 #10(2026-08-16):截断=双源分歧(tracked 多计于 paddle 实读,
+                # 如 deploy SIFT 漂移)—— 静默截断毒化部署近似;留证供毒化率统计。
+                obs_conflict('deployed_align', len(_occ), _paddle_n, screen,
+                             verdict=('截断-tracked多计(paddle X 为准;处理:裁决已自动;'
+                                      '频发 >10 行/时→排查 deploy SIFT 漂移'),
+                             source='tracked_vs_paddle')
+                _occ = _occ[:_paddle_n]   # 截断(tracked 多计,如 deploy SIFT 漂移)
+            elif len(_occ) < _paddle_n:
+                obs_conflict('deployed_align', len(_occ), _paddle_n, screen,
+                             verdict=('补齐-tracked少计(rebuild 无身份;处理:裁决已自动;'
+                                      '频发 >10 行/时→排查 rebuild 身份读取'),
+                             source='tracked_vs_paddle')
+                _rebuild = list(iter_occupied_deployed(
+                    rebuild_deployed_from_board(state.board, state.back_max,
+                                                max_count=state.level)))
+                _occ = _occ + _rebuild[len(_occ):]   # 补无身份(tracked 少计,如 sell 漂移)
         state.deployed = deployed_from_compact(_occ)
     else:
-        state.deployed = rebuild_deployed_from_board(state.board, state.back_max, max_count=state.level)
+        # W287(ADR-0417):重建上限 = min(level, paddle X)——paddle X 是画面部署数
+        # 事实,空板帧(paddle=0)徽标/商店行误读不再幻影出部署角色(W285 tracking
+        # 空板帧幻影 2 张同根);paddle 读不到退 level 估(旧行为)。
+        _rebuild_cap = state.level if _paddle_n is None else min(state.level, _paddle_n)
+        state.deployed = rebuild_deployed_from_board(state.board, state.back_max,
+                                                     max_count=_rebuild_cap)
     state.shop = read_shop_cards(ctx, screen)
     # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。

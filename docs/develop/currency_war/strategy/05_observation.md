@@ -19,6 +19,8 @@
 
 **读取互斥**:gold 只在 shop 开态、HP 只在关态可读——由 EnsureShopOpen/Closed 动作显式管理,框架校验读取前置态。设计原则:签名 + 失败语义(字段 OCR 失败 → None/上回合值 + confidence=0,不抛错)+ sanity bounds(越界字段本回合作废防级联)。
 
+**部署数与羁绊计数是两个量(ADR-0417)**:board(`_board_pairs`/`board_from_tracked`)是**羁绊计数**(多阵营角色重复计),不是部署角色数;部署数对齐/重建目标 = 舞台 paddle「X/Y」的 X(`read_deployed_count`,几何上不含底部商店行/备战栏;paddle 读不到 → 跳过对齐,宁缺勿造)。board 双源裁决:computed(tracked 身份全集)做底座,可视行徽标(左栏 OCR)在**备战帧**(`is_prep_like_frame`)且徽标解析 honest 时优先覆入(徽标=画面事实);overlay/动画帧徽标与 computed 均不可靠 → 不裁不覆只留证,等备战帧自愈。paddle X 的 OCR 已知形变(人形图标并入 X 成前缀 '1')由图标前缀守卫归一。
+
 **升星预览✦(ADR-0416)**:`read_shop_cards` 每张牌附带 `merge_preview`(`cw_identity_obs.read_merge_preview`)——商店牌 art 顶部✦数 = 已持同名同星副本份数(买第 3 张即 3合1),是 bot tracking merge_progress 的视觉印证(观测冗余信号,`ShopCard` 字段注释载语义)。0 为双义(真无副本 ∨ fail-silent 读不到,模板缺失即恒 0),消费方按「未观测」对待;评分层尚未接此信号(decision_v2 merge_progress 走 bot tracking),sim 不建模。
 
 ## 2. cw_reconcile:对账公共层
