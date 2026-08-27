@@ -987,7 +987,7 @@ class CurrencyWarRunLoop(SrOperation):
                             # 会让后续位面名字左移错位(位面序真值变假)——原样写 3 槽。
                             _names = list(self.ctx.cw_plane_bosses)
                             _sess.briefing_bosses = _names   # 实采真值进 session(消费链:session→state.plane_bosses)
-                            log.info('[cw-loop] 开局 boss 实采完成(位面序保位,徽章态位面=None):%s', _names)
+                            log.info('[cw-loop] 开局 boss 实采完成(位面序保位,None=徽章态位面):%s', _names)
                         # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
                         # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
                         # 空帧清掉)②引用未定义的 _sess(放弃/等待分支都没绑定)。
