@@ -127,4 +127,4 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 
 ## 定时任务与事件自我校准(自主推进元纪律)
 
-定时任务提醒到达 = 按提醒 prompt + 当期 agent 额度执行;worker 汇报到达 = 先过当期任务所属域的 checklist(分诊表路由)再收账(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(AGENTS.local 自主推进纪律登记/定时任务增补·实机监控/哨兵报警消费)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
+定时任务提醒到达 = **待执行的检查指令,不是要回复的消息**——按提醒词执行并产出其要求的结论;子 agent 交付到达 = 先过当期任务所属域的 checklist(分诊表路由)验收,验收毕立刻取下一待办派发(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(纪律登记镜像/实机监控角色/哨兵接入)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
