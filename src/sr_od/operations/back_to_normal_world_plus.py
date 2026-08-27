@@ -198,6 +198,25 @@ class BackToNormalWorldPlus(SrOperation):
             self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-关闭')
             return self.round_retry('无名勋礼', wait=2)
 
+        # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本,W301):游戏级版本公告弹窗,
+        # 待机自动弹出、盖在任意画面上(非任何 app 触发)。实证结构(编排者
+        # 2026-08-27 live 走通 + fixture 已存):两页轮播,第 1 页无任何出口(只有
+        # 右箭头翻页);第 2 页底部中央出「关闭」钮 → 点关闭露出底下原画面。
+        # 实锤后果:无此分支时 CW 独立 app 首跑 52s 失败(兜底空转耗尽)。
+        # 与 W286/W293 同构:标题 id_mark(两页共享)正面识别本屏 → 子态区分 =
+        # 「按钮-关闭」可见与否(第 2 页独有):可见点关闭,否则点右箭头翻页 →
+        # round_retry 逐帧重识别(点击可能不落地,RETRY 计入 node_max_retry_times
+        # 有界 FAIL,拒 WAIT 永动;多跳中间态靠逐帧重识别天然容忍)。项目规则:
+        # 零 ESC 键输入,关闭一律 screen_info area 点击。
+        if self.round_by_find_area(screen, '版本公告轮播', '标识-贪饕侵蚀').is_success:
+            if self.round_by_find_area(screen, '版本公告轮播', '按钮-关闭').is_success:
+                self.round_by_find_and_click_area(screen, '版本公告轮播', '按钮-关闭')
+            else:
+                # 右箭头为纯图形无文字,area 只建 pc_rect(no_method 定位区),
+                # round_by_click_area 直接点 area 中心,不做识别。
+                self.round_by_click_area('版本公告轮播', '按钮-下一页')
+            return self.round_retry('版本公告轮播', wait=1)
+
         # 对话态守卫(2026-08-26 实机事故根修,NPC 对话态下兜底点击会命中对话隐藏按钮):
         # 登录落点等活动摊位 NPC 对话态时,右上角图标全被对话 UI 遮蔽,前面所有分支
         # 都不命中,原兜底直接点「菜单-右上角返回」——该坐标与对话的隐藏按钮重叠,

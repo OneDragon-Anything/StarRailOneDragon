@@ -15,7 +15,7 @@ class EnterCurrencyWar(SrOperation):
     """从大世界进入「货币战争」大厅(入口流程 M1)。
 
     路径:打开指南(星际和平指南)→ 旷宇纷争 TAB → (货币战争分类默认选中)→ 前往参与
-    → 关一次性弹窗(V4.4 赛季扩充说明 / 新内容解禁)→ 货币战争大厅。
+    → 关一次性弹窗(「点击空白处关闭」类 / 版本公告轮播,见 wait_lobby)→ 货币战争大厅。
 
     repo guide_data / screen_info 尚无货币战争,故 TAB 用现有「星际和平指南-TAB-旷宇纷争」area,
     其余用 OCR 点击(非 GuideTransport)。详见 .debug/temp/currency_war/design.md。
@@ -87,12 +87,18 @@ class EnterCurrencyWar(SrOperation):
             self.ctx.controller.click(EnterCurrencyWar.BLANK_CLICK.center)
             return self.round_retry(wait=1)
 
-        # 公告类弹窗(如 V4.4 赛季扩充说明,无「点击空白处关闭」)→ ESC 关
-        if (self.round_by_ocr(screen, '赛季扩充').is_success
-                or self.round_by_ocr(screen, '新内容解禁').is_success
-                or self.round_by_ocr(screen, '扩充内容概览').is_success):
-            self.ctx.controller.esc()
-            return self.round_retry(wait=1)
+        # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本,W301):游戏级公告弹窗可盖在
+        # 入口流程任意画面上(待机自动弹出)。项目新规禁键输入——旧实现对公告类
+        # 弹窗(赛季扩充说明)按 ESC 关闭,已废;改与 BackToNormalWorldPlus 同款
+        # 点击链:标题 id_mark(两页共享)正面识别公告屏 → 第 2 页(「关闭」钮可见)
+        # 点关闭露出底下画面 / 第 1 页点右箭头翻页 → round_retry 逐帧重识别,
+        # 点掉后由上方各分支接管。坐标全走 screen_info area,零键输入。
+        if self.round_by_find_area(screen, '版本公告轮播', '标识-贪饕侵蚀').is_success:
+            if self.round_by_find_area(screen, '版本公告轮播', '按钮-关闭').is_success:
+                self.round_by_find_and_click_area(screen, '版本公告轮播', '按钮-关闭')
+            else:
+                self.round_by_click_area('版本公告轮播', '按钮-下一页')
+            return self.round_retry('版本公告轮播', wait=1)
 
         # 「前往参与」把角色传送到朝露公馆入口附近(大世界旷野),需按 F(交互)进货币战争大厅。
         # 判定:画面有「货币战争」(入口交互提示)且不在指南页(无「前往参与」)→ 按 F。
