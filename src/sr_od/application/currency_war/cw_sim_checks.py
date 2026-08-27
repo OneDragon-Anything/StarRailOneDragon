@@ -4202,9 +4202,12 @@ def check_w300_press_channel_probe() -> dict:
 
     arm_a = replace(DEFAULT_REGISTRY, press_channel_enabled=True,
                     press_copy_unit=0.5)
+    # arm0:显式注入通道关——开臂后 DEFAULT_REGISTRY 默认即通道开,直接拿它当
+    # 「通道关零漂移」基线的前提失效(W374 开臂锁组同步)
+    arm0 = replace(DEFAULT_REGISTRY, press_channel_enabled=False)
     violations: list[str] = []
     # arm0:通道关零漂移(守卫拦)
-    if '刃' in _names(DEFAULT_REGISTRY):
+    if '刃' in _names(arm0):
         violations.append('arm0:通道关时压库副本产出候选(零漂移破)')
     # armA:候选产出(V-B1.5)+标签+评分正分(V-B2)
     if '刃' not in _names(arm_a):
@@ -4228,7 +4231,7 @@ def check_w300_press_channel_probe() -> dict:
                                     star=1, slot=0, position_pref='back',
                                     equips=())]
     st2.shop = [ShopCard(x=1, faction='银河学者', name='黑塔', cost=3)]
-    for reg, label in ((DEFAULT_REGISTRY, 'arm0'), (arm_a, 'armA')):
+    for reg, label in ((arm0, 'arm0'), (arm_a, 'armA')):
         got = {c.action.card.name for c in generate_candidates(st2, sess, reg)
                if isinstance(c.action, BuyCard)}
         if '黑塔' in got:
