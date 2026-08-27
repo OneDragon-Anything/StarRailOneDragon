@@ -498,27 +498,53 @@ def vd_target_core(state: GameState,
     return intention_core(comp)
 
 
+def p1_battle_loss_est(state: GameState, registry: DecisionV2Registry,
+                       rung: int | None = None) -> float:
+    """P1 收益侧单场战斗期望掉血=**条件败局伤害**(ADR-0425,math_proofs
+    P15 检验点②;替换 V_D 收益式骨架值 expected_battle_loss=10 的
+    「未标定」位)。
+
+        loss(r) = max(0, vd_p1_loss_intercept + vd_p1_loss_slope_rung × r)
+
+    出处=遥测拟合(W324 战斗粗模型冻结语料,battle 节点败局伤害线性
+    拟合,battle n=278/73 局聚类稳健;registry 字段注释带产物指针)。
+    **语义必须是条件伤害**:V_D 收益式的该因子与 Δwin_rate 相乘(额外
+    胜场避免的掉血),故取「打了但输了」的条件期望;误用全样本(胜+
+    败)无条件均值拟合则胜率已进均值、再乘 Δwin_rate = 双计(P15 的
+    口径命题)。rung 缺省=state 当前成型档(_engines_formed,0-2),
+    成型跳变账消费时显式传**成型后**档(避免的掉血发生在完成之后);
+    域钳制 0-3(拟合的 rung 域)。
+    """
+    if rung is None:
+        rung = _engines_formed(state, registry)
+    r = min(3, max(0, int(rung)))
+    return max(0.0, registry.vd_p1_loss_intercept
+               + registry.vd_p1_loss_slope_rung * r)
+
+
 def engine_jump_gold(eng_from: int, state: GameState,
-                     registry: DecisionV2Registry) -> float:
+                     registry: DecisionV2Registry,
+                     session: StrategySession | None = None) -> float:
     """单级引擎跳变(e→e+1)的金值(W131/ADR-0352,买侧 V 的量纲基准)。
 
     与 vd_refresh_score 的收益侧**同式同源**(ADR-0349 金口径):
 
         jump(e) = Δrung_value(e→e+1) × R(跨位面剩余节点)
-                  + Δh3_win_rate(e→e+1) × expected_battle_loss
-                    × hp_to_gold × battles_left_est
+                  + Δh3_win_rate(e→e+1) × p1_battle_loss_est(成型后档)
+                    × hp_to_gold × battles_left_plane(state 推导)
 
-    诊断背景(W131):层3 板面分的收益侧视界是 rounds_left_est=5 /
-    battles_left_est=5(骨架初值),而 interest_rule 的 C_interest 视界
-    是 R=跨位面剩余节点(≈20-23)——同一跳变在层3 只显影 ~7-8 金,
-    在 C 的量纲下是 ~28-41 金,**收益/成本两侧视界错档一整个量级**
-    是买侧 EV 门恒拒的主因。本函数把「引擎完成的组合跳变」按 C 的
-    同一视界(R)折金,作为买侧候选的金口径价值锚;e≥2(封顶档)
-    无跳变,返回 0。
+    战斗数与掉血两因子的骨架值治理(ADR-0425,math_proofs P15):战斗
+    数从 plane_node_table 槽序表逐轮推导(P12 的 P2 手法同法;表缺退
+    registry.battles_left_est,故 session=None 时行为=骨架缺省),
+    掉血=条件败局伤害遥测拟合。诊断背景(W131):收益侧原骨架视界
+    battles_left_est=5 与 interest_rule 的 C_interest 视界 R(≈20-23)
+    错档一整个量级是买侧 EV 门恒拒的主因——R 项自 ADR-0352 起按 C 的
+    同一视界折金,战斗项本批跟上;e≥2(封顶档)无跳变,返回 0。
     """
     if eng_from < 0 or eng_from + 1 > 2:
         return 0.0
     from sr_od.application.currency_war.decision_v2.ev import (
+        battles_left_plane,
         cross_plane_remaining_nodes,
     )
     r = cross_plane_remaining_nodes(state)
@@ -526,12 +552,15 @@ def engine_jump_gold(eng_from: int, state: GameState,
              - registry.rung_value.get(eng_from, 0.0))
     dwin = (registry.h3_win_rate.get(eng_from + 1, 0.0)
             - registry.h3_win_rate.get(eng_from, 0.0))
-    return (drung * r + dwin * registry.expected_battle_loss
-            * registry.hp_to_gold * registry.battles_left_est)
+    return (drung * r + dwin * p1_battle_loss_est(state, registry,
+                                                  rung=eng_from + 1)
+            * registry.hp_to_gold
+            * battles_left_plane(state, session, registry))
 
 
 def formation_gold_account(base: GameState, after: GameState,
-                           registry: DecisionV2Registry) -> float:
+                           registry: DecisionV2Registry,
+                           session: StrategySession | None = None) -> float:
     """买候选对阵容完成度的贡献,**按组合跳变计值**(W131/ADR-0352)。
 
     与 ADR-0349 D 侧「核心 2★ 完成按整跳变计值」同思路——买件的
@@ -545,6 +574,9 @@ def formation_gold_account(base: GameState, after: GameState,
       之和=全额跳变,与「余量清零、值转进整数档」的 rung/eng_frac
       互补语义一致,不双计)。
 
+    session 透传 engine_jump_gold(战斗数槽序表推导,ADR-0425;None=
+    骨架缺省兜底)。
+
     消费点:score_candidate 写入 bd['form_gold'],arbiter.interest_rule
     的买侧 V 取 max(层3 分剥离息分量, 本账)(单一 EV 账内取大者,
     不与层3 序分叠加——层3 分继续辖候选排序/正分门)。
@@ -553,12 +585,12 @@ def formation_gold_account(base: GameState, after: GameState,
     e1 = _engines_formed(after, registry)
     gold = 0.0
     for e in range(e0, min(e1, 2)):
-        gold += engine_jump_gold(e, base, registry)
+        gold += engine_jump_gold(e, base, registry, session)
     if e1 == e0 and e1 < 2:
         d_rem = (_engine_frac_remainder(after, registry)
                  - _engine_frac_remainder(base, registry))
         if d_rem > 0:
-            gold += d_rem * engine_jump_gold(e0, base, registry)
+            gold += d_rem * engine_jump_gold(e0, base, registry, session)
     return gold
 
 
@@ -603,7 +635,7 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
     e_cur = _engines_formed(state, registry)
     if e_cur >= 2:
         return None    # 已成型([13] 停手线)→ 找件对象消失
-    benefit = engine_jump_gold(e_cur, state, registry)
+    benefit = engine_jump_gold(e_cur, state, registry, session)
     if benefit <= 0:
         return None
     import math
@@ -648,8 +680,8 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         V_D = 收益 − 成本
         收益 = 2★核心完成的成型跳变金值(F15 战力折算,registry 单一源):
                Δrung_value(e1→e2) × R(跨位面剩余节点)
-               + Δh3_win_rate × expected_battle_loss × hp_to_gold
-                 × battles_left_est
+               + Δh3_win_rate × 条件败局伤害(p1_battle_loss_est 遥测拟合)
+                 × hp_to_gold × 剩余战斗节点(battles_left_plane 槽序表推导)
         成本 = expected_refreshes_for_card(level, cost, star=2, owned=j)
                × 刷价 —— **批口径**(找到 k 张的总期望刷金;
                ``cw_shop_odds`` 现成,禁单次边际口径——P5 已证对
@@ -668,9 +700,9 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     - **P2 段成本/收益口径**(W154/ADR-0361,P11/P12):成本=机会成本
       C_dec(Δinterest×min(R, recovery_rounds_p2)+ρ·s,替换批口径面值;
       [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;收益=存活语境参数
-      (loss_p2/battles_left_p2 state 推导)。P1 core 通道逐位不动(P5⑤
-      退化输出与 P1 骨架参数保留);W170/ADR-0369 为 P1 增 pair 缺件
-      找牌通道(vd_p1_pair_enabled 辖,见 _vd_p1_pair);
+      (loss_p2/battles_left_p2 state 推导)。P1 收益侧同法治理
+      (ADR-0425:战斗数槽序表推导+掉血遥测拟合,P15);W170/
+      ADR-0369 为 P1 增 pair 缺件找牌通道(vd_p1_pair_enabled 辖,见 _vd_p1_pair);
     - 金 50/51 边界的守息纪律不由本函数辖——由 arbiter.interest_rule
       的 C_interest 表达(P5⑤ 已证=定理退化输出,G2:不设常量金门);
     - 峰值以上停留(P5 边界 b):E(L) 已是当前等级真值,升级收益侧的
@@ -745,20 +777,21 @@ def vd_refresh_score(state: GameState, session: StrategySession,
             - registry.h3_win_rate.get(1, 0.0))
     spend = e * (state.shop_refresh_cost or 2)
     if state.plane >= 2 and registry.vd_p2_enabled:
-        # W154/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧;P1 分支不动):
+        # W154/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧);P1 收益侧
+        # 骨架值治理见 ADR-0425:
         #   benefit^P2 = Δrung×R + Δh3_win × loss_p2 × hp_to_gold
-        #                × battles_left_p2(state 推导,非缺省 5)
+        #                × battles_left_plane(state 推导,非缺省 5)
         #   C_dec(g,s) = Δinterest × min(R, recovery_rounds_p2)
         #                + ρ × s        —— 替换批口径面值 spend(P11:
         #   溢余段金堆到死,面值成本高估 ≥20×;[17] 溢余即花)
         # 预算硬界必须在(P11 推论):C_dec→0 后 EV 不再是约束,约束移到
         # 预算层——批口径期望刷金 s ≤ g − boss_floor,防「C=0 无限刷」。
         from sr_od.application.currency_war.decision_v2.ev import (
-            battles_left_p2,
+            battles_left_plane,
         )
         benefit = (drung * r + dwin * registry.vd_p2_loss
                    * registry.hp_to_gold
-                   * battles_left_p2(state, session, registry))
+                   * battles_left_plane(state, session, registry))
         if spend > state.gold - registry.boss_floor:
             return None
         d_int = (min(state.gold // 10, registry.interest_cap)
@@ -767,8 +800,13 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         c_dec = (max(0, d_int) * min(r, registry.vd_p2_recovery_rounds)
                  + registry.vd_p2_liquidity_rho * spend)
         return benefit - c_dec
-    benefit = (drung * r + dwin * registry.expected_battle_loss
-               * registry.hp_to_gold * registry.battles_left_est)
+    from sr_od.application.currency_war.decision_v2.ev import (
+        battles_left_plane,
+    )
+    benefit = (drung * r + dwin * p1_battle_loss_est(state, registry,
+                                                     rung=2)
+               * registry.hp_to_gold
+               * battles_left_plane(state, session, registry))
     p1_core = benefit - spend
     # W170/ADR-0369:roll/stable 窗内 core 与 pair 缺件两本找件总账取大
     # (同一 RefreshShop 动作的两种具名「找什么」,core 语义逐位保留)
@@ -932,7 +970,8 @@ def score_candidate(cand: Candidate, state: GameState,
     # 消费(max 取大,不进层3 序分——序分继续辖排序/正分门)。
     form_gold = 0.0
     if isinstance(cand.action, BuyCard):
-        form_gold = formation_gold_account(state, after_state, registry)
+        form_gold = formation_gold_account(state, after_state, registry,
+                                           session)
     # W119/ADR-0347:bd['int_emb'] = 本候选分数内**实际嵌入的息分量**
     # (EV 授权的 V 剥离单一源——arbiter.interest_rule 消费:
     # V = val − int_emb)。默认=息差;ADR-0332 平滑生效时改写为

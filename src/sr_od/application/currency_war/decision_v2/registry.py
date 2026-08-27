@@ -193,9 +193,12 @@ class DecisionV2Registry:
         default_factory=lambda: {0: 0.139, 1: 0.416, 2: 0.778})
     #: 档值折算的剩余轮数估计(P1 9 节点骨架的中段估值;未标定)
     rounds_left_est: float = 5.0
-    #: 剩余战斗节点估计(同上,未标定)
+    #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table
+    #: 槽序表缺失/裸 session 时退此值;有表时由 ev.battles_left_plane
+    #: 逐轮推导,ADR-0425;层3 score_state 的 power 视界仍用本值)
     battles_left_est: float = 5.0
-    #: 单场战斗典型掉血([27] B+P 合成;P1 battle -7~-13 取中;未标定)
+    #: 单场战斗典型掉血(层3 power 视界骨架值,V_D P1 收益侧已改用
+    #: vd_p1_loss_* 遥测拟合+state 推导,ADR-0425;本值仍辖层3 power)
     expected_battle_loss: float = 10.0
     #: HP→金换算(P3:4.4HP≈2.2金 → 0.5 金/HP)
     hp_to_gold: float = 0.5
@@ -228,6 +231,16 @@ class DecisionV2Registry:
     #: 成本=批口径面值,收益=P1 骨架参数)——A/B 基线臂。P1 分支与开关无关
     #: (逐位不动,P1 sim 零漂移回归门)。
     vd_p2_enabled: bool = True
+    #: P1 收益侧战斗期望掉血=条件败局伤害的线性拟合**截距**(遥测拟合:
+    #: W324 战斗粗模型冻结语料 417 条战斗类差分,battle 节点败局伤害
+    #: =截距+斜率×成型档,battle n=278/73 局聚类稳健、斜率 SE 1.25;
+    #: 产物=fit_results.json 的 two_state_model.battle,W324 归档目录;
+    #: 语义=「打了但输了」的伤害期望,与 V_D 收益式的 Δwin_rate 相配
+    #: ——无条件均值拟合会与胜率差双计,ADR-0425)
+    vd_p1_loss_intercept: float = 11.32
+    #: 同上**斜率**(每级成型档;遥测拟合,负号=成型越高败局伤害越低;
+    #: rung 域 0-3,越界钳制在消费函数)
+    vd_p1_loss_slope_rung: float = -0.37
     #: P2 掉血期望(P12 收益侧:[27] B+P 公式的 P2 实测带 15-17 取保守中值 16;
     #: 真值采集点=结算屏 OCR 三项拆解,采前 16 为保守中值)
     vd_p2_loss: float = 16.0
@@ -714,6 +727,48 @@ class DecisionV2Registry:
     #: 顶分上沿(原分 > 此值不加偏置——防「已正分买入被二次加分」双计,
     #: forming_bias_val_max 同款边界)
     early_pace_val_max: float = 0.5
+
+    # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
+    #: 设计=唯一规格:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md`
+    #: (对抗修订二轮已吸收)。**符号不稳参数一律默认值+标定接口,不拍死**:
+    #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
+    #: 总开关:False=回 W332b 前行为(FLIP 谓词不评估,纯增量设计的 A/B 基线臂;
+    #: DESIGN §②「防间隙:FLIP 为假时维持原姿态,旧行为是退化输出」)。
+    release_enabled: bool = True
+    #: 血量边际价值 k(hp) 报警带值(DESIGN §①:非标定设计参数;动机=语料 66 场
+    #: P1 boss 战战后 hp≤3 占 43.9% → 末窗边际 hp 是生死价,线性折价 0.5 金/hp
+    #: 系统性低估)。k=3 臂的符号结论对 k_hp_calibration_grid 不稳,只作敏感度臂。
+    k_alert: float = 3.0
+    #: k(hp) 线性区值(hp≥40 且末窗投影未命中)
+    k_linear: float = 1.0
+    #: k(hp) sim 标定网格(标定接口,非运行时值;DESIGN §①标定计划)
+    k_hp_calibration_grid: tuple[float, ...] = (1.0, 2.0, 3.0, 5.0)
+    #: FLIP 持续兑现臂的低血上沿(非末窗 hp<此值命中;与 discipline
+    #: BLOOD_MARGIN_LOW_HP=40 同值口径,registry 注入化)
+    blood_margin_low_hp: int = 40
+    #: boss 税 p75 分位锚(DESIGN §②:语料 66 场 P1 boss 战掉血 median=32/
+    #: p75=34/p90=36/max=58/mean=26.7)。末窗投影判据 = hp − 此值 < emergency_hp。
+    #: max=58 肥尾是遗留风险(贴边带当前语料 0 帧);sim 标定时 boss 税以
+    #: 分位锚组进 registry,不做单点(boss_tax_anchor_group)。
+    boss_tax_p75: float = 34.0
+    #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
+    boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
+    #: 边际战力代理 Δhp·普通战(轮内去均值,hp/场;语料 166 局 5→6 人实测;
+    #: 弱信号非单调,只作敏感度臂——DESIGN §①诚实判读)
+    delta_hp_normal: float = 1.96
+    #: 边际战力代理 Δhp·boss 层(裸差分,hp/场;P1 boss 全在 r9 轮次混杂极小,
+    #: 末窗旗杆帧的正确语料层——DESIGN §①)
+    delta_hp_boss: float = 4.30
+    #: 换线判据总开关(False=回 W332b 前行为;E_rounds 主判据 A/B 通道)
+    line_switch_enabled: bool = True
+    #: 切换阈值 θ 轮(滞回余量;只承载去偏后的双向估计噪声,不兼职补偏差
+    #: ——DESIGN §③修订 2)
+    line_switch_theta: float = 1.0
+    #: p̄ 乐观偏差修正 δ(NPC 消耗/争夺上界估计;双线 E_rounds 同乘 (1+δ)
+    #: 先修偏再比较——DESIGN §③修订 1)
+    line_switch_debias_delta: float = 0.15
+    #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
+    line_switch_min_dwell: int = 2
 
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====

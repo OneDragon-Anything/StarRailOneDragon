@@ -96,7 +96,7 @@ def interest_cost(gold: int, cost: int,
     return float(max(0, tiers) * r)
 
 
-#: 非战斗节点 token 集(battles_left_p2 的排除口径;英文=Hu 槽序表词表,
+#: 非战斗节点 token 集(battles_left_plane 的排除口径;英文=Hu 槽序表词表,
 #: 中文=结算屏归一词表,双词表容错)。巨星(megastar)按战斗计(有伤害
 #: 要求的节点,[27] 掉血辖)。
 NON_BATTLE_NODE_TOKENS: frozenset[str] = frozenset({
@@ -104,20 +104,19 @@ NON_BATTLE_NODE_TOKENS: frozenset[str] = frozenset({
 })
 
 
-def battles_left_p2(state: GameState, session: StrategySession,
-                    registry: DecisionV2Registry) -> float:
-    """P2 收益侧的「本位面剩余战斗节点」推导(W154/ADR-0361,P12 检验点③:
-    战斗数用 state 推导,非 registry 缺省 5)。
+def battles_left_plane(state: GameState, session: StrategySession,
+                       registry: DecisionV2Registry) -> float:
+    """本位面剩余战斗节点推导(P1/P2 同法,ADR-0425;W154/ADR-0361 立
+    P2 口径,math_proofs P15 立确定性命题)。
 
-    推导源=``session.plane_node_table``(r306 开局帧槽序表:本位面
-    槽位的节点类型序,prep_director 首帧写、位面内恒定;位面轮数
-    per-plane——P1=9/P2=7,ADR-0366)——从当前轮起数
-    非战斗 token(reward/supply)之外的剩余槽位数(未知 token 按战斗
-    计:每个节点默认是战斗,reward/supply 才是例外;表只辖本位面
-    槽,越界槽不数)。
+    推导源=``session.plane_node_table``(开局帧槽序表:**每位面一张**,
+    prep_director 位面首帧重写、位面内恒定,ADR-0368;P1=9 槽/P2=7 槽,
+    ADR-0366)——从当前轮起数非战斗 token(reward/supply/奖励/补给)
+    之外的剩余槽位数(未知 token 按战斗计:每个节点默认是战斗,
+    reward/supply 才是例外;表只辖本位面槽,越界槽不数)。
 
-    表缺失/越界(裸 session/sim P1 段/开局首帧前)→ 退
-    ``registry.battles_left_est``(P1 骨架缺省,保守侧)。
+    表缺失/越界(裸 session/sim 无表局/开局首帧前)→ 退
+    ``registry.battles_left_est``(骨架缺省,保守侧)。
     """
     from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
     table = getattr(session, 'plane_node_table', None) or []
@@ -130,6 +129,10 @@ def battles_left_p2(state: GameState, session: StrategySession,
             return float(sum(
                 1 for t in remaining if t not in NON_BATTLE_NODE_TOKENS))
     return float(registry.battles_left_est)
+
+
+#: W154/ADR-0361 的 P2 命名消费点别名(P1/P2 同法后保留旧名,ADR-0425)
+battles_left_p2 = battles_left_plane
 
 
 def dp_posture(state: GameState, session: StrategySession):
