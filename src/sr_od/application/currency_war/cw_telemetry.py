@@ -1138,7 +1138,7 @@ def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
 # 设计:数据与判读同源 —— 查询视图(逐轮演进/供给对照/异常标记)读的就是本模块落盘的
 # JSONL,schema 变更查询同步;新复盘问题 = 新视图/参数,不是新脚本(一次性脚本时代终结)。
 # 用法:
-#   uv run python -m sr_od.application.currency_war.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|all]
+#   uv run python -m sr_od.application.currency_war.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|tiers|planexec|hp|economy|exogenous|execevents|invest|conflicts|all]
 
 def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
     """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。
@@ -1598,6 +1598,164 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
     return lines
 
 
+# —— W315(遥测审计 G3):四条旁路 jsonl 流的零查询视图补齐 ——
+# exogenous / exec_events / invest_cards / obs_conflicts 此前只能裸翻文件
+# (审计都得手写 PowerShell Group-Object);「需求已固化的复盘 = 新视图」。
+# 约定与既有视图一致:按 run_id 过滤(obs_conflicts 例外——观察冲突 journal
+# 是跨局采集,行内本就无 run_id 键,见 cw_observe._CONFLICT_JOURNAL)、
+# 最新优先(旁路流是事件流水,倒序看最近发生)、头部带聚合计数。
+
+
+def _filter_latest(rows: list[dict[str, Any]], run_id: str,
+                   key: str = "run_id") -> list[dict[str, Any]]:
+    """按 run_id 过滤 + ts 倒序(最新优先);run_id 空 = 不过滤(全量)。"""
+    out = [r for r in rows if not run_id or r.get(key) == run_id]
+    out.sort(key=lambda r: r.get("ts") or "", reverse=True)
+    return out
+
+
+def query_exogenous(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(W315/G3):外生事件流(exogenous.jsonl)——kind/round/内容摘要。
+
+    头部 = kind 计数(预案 trigger 频率统计的直接读出端);W312 的
+    event_choice 行展开选项面(提供了什么/选了哪个/为什么——G1 闭环)。
+    """
+    rows = _filter_latest(read_jsonl(replay_dir / "exogenous.jsonl"), run_id)
+    kind_count: dict[str, int] = {}
+    lines: list[str] = []
+    for r in rows:
+        kind = r.get("kind") or "?"
+        kind_count[kind] = kind_count.get(kind, 0) + 1
+        snap = r.get("state_snapshot") or {}
+        ctx_s = (f" hp={snap['hp']} g={snap['gold']} lv={snap.get('level')}"
+                 if snap.get("hp") is not None else "")
+        # W312 选项快照展开:每个候选取 difficulty/name 兜底摘要(识别失败
+        # 行 options=[] 时显示 (无识别)——留证据可见,不静默)
+        c_s = ""
+        c = r.get("choice")
+        if isinstance(c, dict):
+            opts = c.get("options") or []
+            brief = "/".join(
+                str(o.get("difficulty") or o.get("name") or o)[:14] if isinstance(o, dict)
+                else str(o)[:14] for o in opts[:5]) or "(无识别)"
+            c_s = (f" 选[{c.get('event')}] n={c.get('n_options')}"
+                   f" pick={c.get('pick_idx')}({brief}) 因={c.get('reason') or '-'}")
+        lines.append(f"  [{kind}] r{r.get('round_num', '?')}{ctx_s}"
+                     f" {r.get('detail') or ''}{c_s}")
+    if not lines:
+        return ["  (无记录)"]
+    lines.insert(0, "  [kind 计数] "
+                + " ".join(f"{k}×{v}" for k, v in sorted(kind_count.items())))
+    return lines
+
+
+def query_exec_events(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(W315/G3):执行事件流(exec_events.jsonl)——能力画像读出端。
+
+    头部 = action_family×event 计数 + fail 率(27 号设计目标的「一句 CLI」:
+    实现缺陷 vs 固有难度分型先看哪个族在哪个画面集中失败);逐行 = 逐事件。
+    """
+    rows = _filter_latest(read_jsonl(replay_dir / "exec_events.jsonl"), run_id)
+    fam_event: dict[tuple[str, str], int] = {}
+    lines: list[str] = []
+    for r in rows:
+        fam = r.get("action_family") or "?"
+        ev = r.get("event") or "?"
+        fam_event[(fam, ev)] = fam_event.get((fam, ev), 0) + 1
+        retry = r.get("retry_count") or 0
+        retry_s = f" retry={retry}" if retry else ""
+        lines.append(f"  [{ev}] r{r.get('round_num', '?')} {fam}"
+                     f"@{r.get('screen') or '?'} {r.get('reason') or '-'}{retry_s}")
+    if not lines:
+        return ["  (无记录)"]
+    total = len(rows)
+    fails = sum(v for (fam, ev), v in fam_event.items() if ev == "fail")
+    summary = " ".join(f"{f}:{e}×{v}"
+                       for (f, e), v in sorted(fam_event.items()))
+    lines.insert(0, f"  [画像] 共{total} fail率={fails / total:.0%} {summary}")
+    return lines
+
+
+def query_invest_cards(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(W315/G3):投资卡候选与选择(invest_cards.jsonl;ADR-0132 采集)。
+
+    同一次出卡按 (kind, ts) 聚成一组(逐卡一行落盘,组=一次选卡画面);
+    ★=chosen(选了哪张一眼可见);头部 = 出卡次数按 kind 计数。
+    """
+    rows = _filter_latest(read_jsonl(replay_dir / "invest_cards.jsonl"), run_id)
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    order: list[tuple[str, str]] = []
+    for r in rows:
+        k = (r.get("kind") or "?", r.get("ts") or "")
+        if k not in groups:
+            order.append(k)
+        groups.setdefault(k, []).append(r)
+    kind_count: dict[str, int] = {}
+    lines: list[str] = []
+    for k in order:
+        cards = groups[k]
+        kind_count[k[0]] = kind_count.get(k[0], 0) + 1
+        lines.append(f"  [{k[0]}] {k[1]} 共{len(cards)}张")
+        for c in sorted(cards, key=lambda x: x.get("idx") or 0):
+            mark = " ★选" if c.get("chosen") else ""
+            text = (c.get("effect_text") or "").replace("\n", " ")[:40]
+            lines.append(f"    #{c.get('idx')} {c.get('name') or '?'}{mark} {text}")
+    if not lines:
+        return ["  (无记录)"]
+    lines.insert(0, "  [出卡次数] "
+                + " ".join(f"{k}×{v}" for k, v in sorted(kind_count.items())))
+    return lines
+
+
+def query_obs_conflicts(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(W315/G3):观察冲突流(obs_conflicts.jsonl;cw_observe journal)。
+
+    ⚠️ 该流跨局采集、行内无 run_id(cw_observe._CONFLICT_JOURNAL 设计如此),
+    ``--run`` 参数对本视图不生效(全量展示)。头部 = 按 field 分组计数 +
+    verdict 首词分布(哪个字段在哪个画面毒化频次最高的离线统计入口;
+    M38 教训的读出端);逐行 = 最新冲突摘要(截断防长 verdict 刷屏)。
+    """
+    # 容错读(不走 read_jsonl):obs_conflicts 是 best-effort 追加的 journal,
+    # 历史上存在中断产生的截断行——坏行跳过不炸整个视图(其余流结构化写,无此问题)
+    raw_rows: list[dict[str, Any]] = []
+    p = replay_dir / "obs_conflicts.jsonl"
+    if p.exists():
+        with p.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    raw_rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    rows = sorted(raw_rows, key=lambda r: r.get("ts") or "", reverse=True)
+    # 无 run_id 键(跨局采集)——--run 对本视图不生效,恒全量展示
+    field_count: dict[str, int] = {}
+    verdict_count: dict[tuple[str, str], int] = {}
+    lines: list[str] = []
+    for r in rows:
+        field = r.get("field") or "?"
+        field_count[field] = field_count.get(field, 0) + 1
+        # verdict 摘要 = 首个分隔符(括号/分号/顿号)前的短语(完整裁决
+        # 语境常带长论据,统计口径取裁决类别词)
+        v_full = r.get("verdict") or "-"
+        v_short = v_full.split("(")[0].split("；")[0].split(";")[0].strip()[:16]
+        verdict_count[(field, v_short)] = verdict_count.get((field, v_short), 0) + 1
+        if len(lines) < 30:   # 明细只展最近 30 条(6 万行级文件,全打=刷屏)
+            old = str(r.get("old"))[:24]
+            new = str(r.get("new"))[:24]
+            lines.append(f"  [{field}] {r.get('ts')} {old}→{new} | {v_short}")
+    if not lines and not field_count:
+        return ["  (无记录)"]
+    head = ["  [field 计数] "
+            + " ".join(f"{k}×{v}" for k, v in sorted(field_count.items(),
+                                                     key=lambda x: -x[1]))]
+    for (f, v), n in sorted(verdict_count.items(), key=lambda x: -x[1])[:12]:
+        head.append(f"  {f}/{v}: {n}")
+    return head + ["  —— 最近明细(≤30)——"] + lines
+
+
 def _cli_main() -> None:
     import argparse
     import sys
@@ -1610,7 +1768,8 @@ def _cli_main() -> None:
     ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
     ap.add_argument('--view', default='rounds',
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
-                             'hp', 'economy', 'all'])
+                             'hp', 'economy', 'exogenous', 'execevents',
+                             'invest', 'conflicts', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
@@ -1681,6 +1840,19 @@ def _cli_main() -> None:
     if args.view in ('economy', 'all'):
         print('[economy]')
         print('\n'.join(query_economy(replay_dir, rid)))
+    # W315(审计 G3)四条旁路流视图
+    if args.view in ('exogenous', 'all'):
+        print('[exogenous]')
+        print('\n'.join(query_exogenous(replay_dir, rid)))
+    if args.view in ('execevents', 'all'):
+        print('[execevents]')
+        print('\n'.join(query_exec_events(replay_dir, rid)))
+    if args.view in ('invest', 'all'):
+        print('[invest]')
+        print('\n'.join(query_invest_cards(replay_dir, rid)))
+    if args.view in ('conflicts', 'all'):
+        print('[conflicts](跨局采集,--run 不生效)')
+        print('\n'.join(query_obs_conflicts(replay_dir, rid)))
 
 
 if __name__ == '__main__':
