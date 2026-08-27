@@ -160,18 +160,24 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
     """P1 末窗承接门缺口(W227/ADR-0400;设计件 08 §4.2 Phase 1 挂载
     点 a/b 的共用判据,单一源)。
 
-    返回承接缺口单位数:0=不辖(开关关/非 P1 末窗/投影档位已达标);
+    返回承接缺口单位数:0=不辖(非 P1 末窗/投影档位已达标);
     >0=投影承接档位距 ``registry.handoff_gate_tier_target`` 的差。
     辖域 = plane==1 且 round_num>=registry.handoff_gate_min_round
     (末窗 r8-r9 boss 窗,设计件 §4.2)——**只辖末窗**是「P1 非末窗
     零漂移门」的结构前提(设计件 §4.1 判据 3),调用方无需重复判窗。
 
+    **ADR-0411 flag 家族清理**:本门与 star 定向授权/定向刷新/boss
+    投影三通道自本批起全部无条件启用——历史 handoff_gate_enabled/
+    handoff_boss_project/handoff_star_directed/handoff_refresh_directed
+    四布尔字段删除,行为常开,量级常量保留 registry 供调优。验证史
+    与转正裁决单一源 = ADR-0411。
+
     投影档位 = ``handoff_snapshot`` 在**当前轮决策入口**现算(纯函数,
     hp/board 取现值 = 「若末窗后带当前资产进 P2」的近端投影;末窗内
     距 P2 出口 ≤2 轮,板面/血量漂移有限,run 28/31 型低血局的主罚维
     hp 在此投影下已可判)。**hp 维 boss 投影(W238/ADR-0403,设计件
-    09 §3.1)**:``registry.handoff_boss_project`` 开时,末窗快照 hp 维
-    由「当前 hp(boss 前)」换「boss 后投影 hp」——修标定口径错位
+    09 §3.1;ADR-0411 起无条件启用)**:末窗快照 hp 维由「当前 hp
+    (boss 前)」换「boss 后投影 hp」——修标定口径错位
     (``HANDOFF_HP_CUTS`` 的标定语料是 P2 进场真值 hp=**boss 结算后**
     (ADR-0399),末窗喂 boss 前 hp = hp 维系统性高估一档);投影公式
     与常数表语义见 ``registry`` W238 块。快照本身不动(Phase 0 语义
@@ -180,71 +186,54 @@ def handoff_gate_gap(state: GameState, session: StrategySession,
     - ``filters.formed_stop_active``(挂载点 a:成型停手承接维——
       缺口>0 不停手继续投资);
     - ``arbiter.interest_rule`` 买侧 EV 账(挂载点 b:承接缺口项,
-      末窗破息投资授权放宽)。
+      末窗破息投资授权放宽);
+    - ``candidates`` 副本候选生成豁免 + ``arbiter`` 非正分门 'copy'
+      标签放行(ADR-0405 C 项定向授权,原 ``star_directed_gap``
+      薄封装——本批起即 gate_gap 本体,薄封装删除);
+    - ``handoff.directed_refresh_budget`` 刷新维授权窗(ADR-0409 M-A)。
 
     观测:``session.v3_handoff_gap``(sim 账本轮行 handoff_gap);投影
-    hp 披露 ``session.v3_handoff_hp_proj``(投影开时写,sim 账本轮行
-    handoff_hp_proj;关时不写=零漂移)。
+    hp 披露 ``session.v3_handoff_hp_proj``(末窗写,sim 账本轮行
+    handoff_hp_proj)。
     """
     reg = registry if registry is not None else _default_registry()
-    if not reg.handoff_gate_enabled:
-        return 0
     if state.plane != 1 or state.round_num < reg.handoff_gate_min_round:
         return 0
     snap = handoff_snapshot(state, session, reg)
-    if reg.handoff_boss_project:
-        snap = dataclasses_replace(
-            snap, hp=boss_projected_hp(state, snap.hp, reg))
-        if session is not None:
-            session.v3_handoff_hp_proj = snap.hp
+    snap = dataclasses_replace(
+        snap, hp=boss_projected_hp(state, snap.hp, reg))
+    if session is not None:
+        session.v3_handoff_hp_proj = snap.hp
     return max(0, reg.handoff_gate_tier_target - handoff_tier(snap))
-
-
-def star_directed_gap(state: GameState, session: StrategySession,
-                      registry: DecisionV2Registry | None = None) -> int:
-    """末窗星级定向授权缺口(W242/ADR-0405,W232 挂账 C 项;设计件 08
-    §4.2 Phase 1b 星级投资方向)。
-
-    返回值语义 = ``handoff_gate_gap``(单一源复用,不建第二套缺口公式)
-    在 ``registry.handoff_star_directed`` 开时的值;flag 关/gate 关/
-    非末窗/投影达标 → 0(=零行为,三 flag 正交的结构前提:本 flag 只在
-    门开路径内被消费,单独开=零行为,与 ``handoff_boss_project`` 同式)。
-
-    消费面(C 项定向授权的两半,ADR-0405 授权点论证):
-
-    - ``candidates`` 生成层:gap>0 时放行同名副本候选生成(r410 守卫 +
-      方向门,= W232 A/B 豁免的 gap 条件化分支——不是授权点:不豁免
-      评分/约束,copies_cap/r408/bench 容量照常辖);
-    - ``arbiter`` 非正分门:gap>0 时放行 'copy' 标签买候选(W231 主因:
-      副本评分零维被结构性拒,到不了 EV 账);**授权值本身零新增**——
-      EV 账由 ``interest_rule`` 的 W227 缺口项
-      (``handoff_ev_gap_bonus``×gap)独担,防双计。
-    """
-    reg = registry if registry is not None else _default_registry()
-    if not reg.handoff_star_directed:
-        return 0
-    return handoff_gate_gap(state, session, reg)
 
 
 def directed_refresh_budget(state: GameState, session: StrategySession,
                             registry: DecisionV2Registry | None = None,
                             ) -> int:
-    """定向 D 牌授权窗预算(M-A,W252/ADR-0409;W249 诊断修法)。
+    """定向 D 牌授权窗预算(M-A,W252/ADR-0409;W249 诊断修法;
+    ADR-0411 起无条件启用)。
 
     病灶(W249 §H3):**策略从不支付搜索成本**——追名 peak 卡死在 2 张
     时(场上已有 2 张同名目标件,距 3合1 只差最后一张),策略的刷新
     预算分配为零(P1 全程均值 0.44 次/局),双核心(core2≥2)全链不可达。
     本函数返回当前轮可用的**有界刷新预算**(次数):0=不授权。
 
-    辖域判据(与 C 项 ``star_directed_gap`` 同族同窗):
-    - ``registry.handoff_refresh_directed`` 开(默认关);
-    - ``handoff_gate_gap > 0`` 承接缺口成立(gap 单一源复用;gate 关时
-      恒 0——本 flag 与 gate/boss 投影三 flag 正交,单独开=零行为,
-      W242 C 项先例);
-    - 存在「追名 peak≥2」的目标件:**锁定采购目标名集**(``_target_names``,
-      candidates 层单一源——含核心与其余锁定线目标件;W252 实测 comp
-      核心名 peak=2 在末窗决策帧近乎不出现[4/210]而目标件集 132/210,
-      「追名」本体=正在收集的锁定线件)中某名的全场在手副本(star 加权,
+    辖域判据(gap 单一源复用 ``handoff_gate_gap``,无条件启用后仅剩两
+    条件):
+    - ``handoff_gate_gap > 0`` 承接缺口成立(gate 关时恒 0 的历史
+      正交结构已随 flag 清理退场);
+    - 存在「追名 peak≥2」的目标件:追名名集(W252 口径 = ``_target_names``
+      锁定采购目标名集,candidates 层单一源;**W263/ADR-0412 扩展**:
+      未锁线(unlocked)/weak/fallback 意向模式下并入**当前活跃过渡
+      组合成员名**(``p1_early_pair`` 派生 top-2 体系对 → ``_pair_members``,
+      cw_intention 单一源)——W260 实证 run40 类「双核心不可达局」的
+      实际收敛方向是过渡组合二星化(三月七差一张),未锁线时目标件
+      本体就是过渡件,只锚锁线采购集会让这类人群零预算;``p1_pair``/
+      ``p1_transition`` 模式 char_targets 已是体系对成员集,并入为幂等
+      超集。**锁线(phase='locked'∧locked_comp)帧不并——行为不变**
+      (W263 生产线复证实测:p1 配方对模式下 run40 r8/r9 的三月七本就
+      在 char_targets 内,budget=2,W260 归因文档的「不在名集」系探针
+      引擎件近似 session 的假象)。某名的全场在手副本(star 加权,
       ``star_weighted_copies``)恰 ≥2 且 <3 ——即该名距 2★ 只差最后
       一张,补跳的期望刷新代价(~6-17 次,E 随费用档)在金余量允许
       的尾部窗口内才开始有意义;peak<2(收集线远未起步,自然进店
@@ -260,21 +249,35 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
     防双计(W232 A/B/W242 C 各辖买牌维,M-A 辖刷新维,互斥边界):买牌
     授权路径(interest_rule 缺口项/copy 标签放行)不动;本函数只在
     arbiter 刷新分支被消费——一个 RefreshShop 候选要么走 V_D 正分/
-    gold_floor 地板(既有路径,预算开/关逐位一致),要么凭本预算在有界
-    额度内放行,同一动作不存在两条授权来源叠加。
+    gold_floor 地板(既有路径),要么凭本预算在有界额度内放行,
+    同一动作不存在两条授权来源叠加。
     """
     reg = registry if registry is not None else _default_registry()
-    if not reg.handoff_refresh_directed:
-        return 0
     from sr_od.application.currency_war.decision_v2.candidates import (
         _target_names,
     )
 
-    # 追名 peak≥2 判据:锁定采购目标名集内某名 star 加权副本 ∈ [2,3)
+    # 追名 peak≥2 判据:追名名集内某名 star 加权副本 ∈ [2,3)
     from sr_od.application.currency_war.decision_v2.discipline import (
         star_weighted_copies,
     )
-    for name in _target_names(state, session):
+    names = _target_names(state, session)
+    ist = getattr(session, 'v3_intention', None)
+    if not (getattr(ist, 'phase', '') == 'locked'
+            and getattr(ist, 'locked_comp', '')):
+        # W263/ADR-0412:未锁线(unlocked)/weak/fallback 模式下,追名
+        # 名集并入当前活跃过渡组合成员(p1_early_pair 现场派生 top-2
+        # 体系对,锁定帧优先用意向字段、空窗现场派生——单一源 cw_intention);
+        # 锁线帧跳过并入(行为不变,W263 语义锁)。p1_early_pair 在
+        # plane≠1 恒空 → 并入为 no-op,本函数仅末窗(plane=1)辖域内被调。
+        from sr_od.application.currency_war.cw_intention import (
+            _pair_members,
+            p1_early_pair,
+        )
+        pair = p1_early_pair(state, ist)
+        if pair:
+            names = names | _pair_members(tuple(pair))
+    for name in names:
         c = star_weighted_copies(name, state)
         if 2 <= c < 3:
             break
