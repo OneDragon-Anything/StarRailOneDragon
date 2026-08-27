@@ -244,6 +244,13 @@ class OutcomeRecord:
     selected_difficulty: str = ""
     # 简报词缀(session.briefing_affixes 快照,W244 affix 分层缺口)。空=未采。
     enemy_affixes: list[str] = field(default_factory=list)
+    # —— W306 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
+    # 确认时的 {char, equip, has_diamond, refreshed, gold}——choices/效果归因数据源
+    # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
+    # refreshed=session._supply_refresh_used 时点值(该次确认前是否已刷新重掷);
+    # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。
+    # dict 键缺失容忍(兜底点卡路径无 options → 只有 gold);None=非补给行/旧记录。
+    supply_pick: dict[str, Any] | None = None
 
 
 @dataclass
@@ -429,7 +436,8 @@ class TelemetryRecorder:
                     comms.append(target_comp)
         self._append("decisions.jsonl", _to_jsonable(trace))
 
-    def record_outcome(self, run_id: str, outcome, source: str = "") -> None:
+    def record_outcome(self, run_id: str, outcome, source: str = "",
+                       supply_pick: dict[str, Any] | None = None) -> None:
         """记一条观测结果(outcomes.jsonl)。outcome: cw_performance.RoundOutcome。
 
         r339:自动附战前板面快照(board_before/bench_count,从
@@ -439,6 +447,8 @@ class TelemetryRecorder:
         侵入。
         source(W28):行来源标记(''/'recovered'/'synthetic_supply',
         见 OutcomeRecord.source 注)。
+        supply_pick(W306):补给选择快照,透传 OutcomeRecord.supply_pick;
+        仅 synthetic_supply 行传入。
         """
         _board, _bench = {}, 0
         _bosses = None
@@ -483,6 +493,7 @@ class TelemetryRecorder:
             source=source,
             boss_names=_bosses, selected_difficulty=_diff,
             enemy_affixes=_affixes,
+            supply_pick=dict(supply_pick) if supply_pick else None,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 
@@ -565,6 +576,31 @@ _CURRENT_DIFFICULTY: str = ""
 # r339:ctx.cw_match 弱引用槽(record_outcome 板深快照源;
 # battle_loop 启动 run 时注册,None=离线/测试容错)
 _CTX_MATCH_REF: list = [None]
+
+# —— W306:补给节点选择暂存槽(生产者=RunSupplyNode 选定/确认时;消费者=
+# battle_loop._record_supply_outcome 合成行落账时一次消费)。
+# 为什么是模块槽而不是 session 字段:StrategySession(cw_strategy.py,归属他批禁触)
+# 无法加正式字段;OperationRoundResult 状态串传 dict 是解析层凑合。单线程 op 链内
+# 生产→消费紧邻(选卡确认 → overlay 消失即合成),无并发风险;消费即清=残留不串轮。
+_LAST_SUPPLY_PICK: dict[str, Any] | None = None
+
+
+def set_last_supply_pick(char: str, equip: str, has_diamond: bool,
+                         refreshed: bool) -> None:
+    """生产者:补给节点本轮选定并确认的选项(char/equip 读自 read_supply_options;
+    refreshed=session._supply_refresh_used 时点值——刷新在确认前一轮发生,
+    True=该选项来自重掷后的牌面)。"""
+    global _LAST_SUPPLY_PICK
+    _LAST_SUPPLY_PICK = {'char': str(char or ''), 'equip': str(equip or ''),
+                         'has_diamond': bool(has_diamond), 'refreshed': bool(refreshed)}
+
+
+def consume_last_supply_pick() -> dict[str, Any] | None:
+    """消费者:取走暂存的选择快照并清槽(一次消费;无暂存 → None)。"""
+    global _LAST_SUPPLY_PICK
+    pick = _LAST_SUPPLY_PICK
+    _LAST_SUPPLY_PICK = None
+    return pick
 
 
 def set_ctx_match(match) -> None:
@@ -735,14 +771,17 @@ def record_decision(state: GameState, target_comp: str,
                                    extra=_extra, gold_point=gold_point)
 
 
-def record_outcome(outcome, source: str = "") -> None:
+def record_outcome(outcome, source: str = "",
+                   supply_pick: dict[str, Any] | None = None) -> None:
     """便捷:用 current_run_id 记一条观测结果。loop 战斗后调。
 
     source(W28):行来源标记(''/'recovered'/'synthetic_supply')。
+    supply_pick(W306):补给选择快照,仅 synthetic_supply 行传入(透传)。
     """
     if not _CURRENT_RUN_ID:
         return
-    get_recorder().record_outcome(_CURRENT_RUN_ID, outcome, source=source)
+    get_recorder().record_outcome(_CURRENT_RUN_ID, outcome, source=source,
+                                  supply_pick=supply_pick)
 
 
 def record_exogenous(round_num: int, kind: str, detail: str = '',

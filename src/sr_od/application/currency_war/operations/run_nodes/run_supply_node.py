@@ -21,6 +21,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_telemetry import set_last_supply_pick
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
 
@@ -73,6 +74,11 @@ class RunSupplyNode(RunNode):
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
+                # W306:选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
+                # 是否已用),供 overlay 消失后 battle_loop 合成 supply 行消费。
+                _opt = opts[pick.idx][0]
+                set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,
+                                     refreshed=_refresh_used)
             log.info('[cw-supply] options=%s pick=idx%s %s click@(%d,%d)',
                      [(o.char, o.equip, o.has_diamond) for o, _ in opts], pick.idx, reason, target.x, target.y)
         else:

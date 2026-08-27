@@ -667,14 +667,20 @@ class CurrencyWarRunLoop(SrOperation):
             _hp = _st.hp if _st is not None else 0
             _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            # W306:消费 run_supply_node 选定时暂存的选择快照,并附完成时点 gold
+            # (gold_readable=False 不写——同 hp 不冒认真值;键缺失容忍=兜底点卡路径)。
+            _pick = cw_telemetry.consume_last_supply_pick() or {}
+            if _st is not None and getattr(_st, 'gold_readable', True):
+                _pick['gold'] = getattr(_st, 'gold', None)
             _obs = RoundOutcome(
                 round_num=_round, plane=_plane, node_type='补给', comp_tag=_comp_tag,
                 hp_after=_hp, hp_confidence=_conf,
                 killed=True,   # 语义=节点通过(非战斗击杀;synthetic 行专用)
             )
-            cw_telemetry.record_outcome(_obs, source='synthetic_supply')
-            log.info('[cw-loop] 补给节点完成 → 合成 outcome 行 P%s-r%s hp=%s(conf=%s)',
-                     _plane, _round, _hp, _conf)
+            cw_telemetry.record_outcome(_obs, source='synthetic_supply',
+                                        supply_pick=_pick or None)
+            log.info('[cw-loop] 补给节点完成 → 合成 outcome 行 P%s-r%s hp=%s(conf=%s pick=%s)',
+                     _plane, _round, _hp, _conf, _pick or '-')
         except Exception as e:  # noqa: BLE001  合成行失败不阻塞对局
             log.warning('[cw-loop] 补给合成 outcome 失败(不阻塞): %s', e)
 
