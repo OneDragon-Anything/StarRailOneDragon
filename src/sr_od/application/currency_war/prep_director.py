@@ -424,7 +424,8 @@ class PrepDirector(SrOperation):
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
         # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
-        #(与 _probe_node_reward 同挂点;原 run() 入口调用已删)。
+        #(原 run() 入口调用已删;曾同挂点的 _probe_node_reward
+        # 采集钩子 W284 判读完成后曾删,W307 按 r314 原样重挂)。
         return self._run_loop(match)
 
     def _try_collapse_open_shop(self) -> bool:
@@ -640,35 +641,33 @@ class PrepDirector(SrOperation):
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
 
-            # r292+P0③(r297):reward 采集钩子挂点(EnsureShopClosed
-            # 执行成功后=店确定关的可靠时点)。**_probe_node_type
-            # 同挂点迁入**(审查 P0③:原挂 run() 入口一次性读,
-            # skip 69%——shop 开态帧读不了节点行,与本钩子
-            # r280-294 四次静默同病根)。
-            # r314(ADR-0213 批次1)+r347(旧路径删除):probe 前置
+            # r292+P0③(r297):EnsureShopClosed 执行成功后=店确定关
+            # 的可靠时点,**_probe_node_type 挂点**(审查 P0③:原挂
+            # run() 入口一次性读,skip 69%——shop 开态帧读不了节点行,
+            # 与已删 reward 钩子 r280-294 四次静默同病根)。
+            # r314(ADR-0213 批次1)+r347(旧路径删除):前置
             # wait_stable_frame 无条件化(原 gate_hook flag 分支删;
-            # 超时=跳过 reward 采集,异常=放行——离线契约)。
+            # 超时=放行——离线契约);2s 预估等待兼作操作段基线重置点
+            # (ADR-0264 终裁加速器②)。
+            # W284:曾同挂点的 _probe_node_reward 采集钩子(临时,
+            # r280 用户交办)判读完成曾删整段——连胜四档表 + 基础奖励
+            # P1r1/r2=3/4 真值已固化(economy.md「基础奖励」行);
+            # W307:基础奖励 1-3~1-8 仍零样本,用户裁决靠实际采集,
+            # 按 r314 原样重挂(采证后整段删除)。
             if 'EnsureShopClosed' in key and progressed:
-                _run_reward_probe = True
                 try:
                     from sr_od.application.currency_war.cw_observation_gate import (
                         PROFILE_CLOSED,
                         wait_stable_frame,
                     )
                     log.info('[cw][gate] path=new(钩子前置)')
-                    # ADR-0264 终裁加速器②:EnsureShopClosed 成功后=
-                    # 操作段——2s 预估等待作基线重置点,再指纹快 poll
-                    # 确认稳定窗。
-                    if wait_stable_frame(
-                            self, profile=PROFILE_CLOSED,
-                            segment='op_settle') is None:
-                        log.info('[cw][gate] 钩子前置超时→跳过 reward 采集')
-                        _run_reward_probe = False
+                    wait_stable_frame(
+                        self, profile=PROFILE_CLOSED,
+                        segment='op_settle')
                 except Exception:   # noqa: BLE001  离线契约:放行
                     pass
                 self._probe_node_type()
-                if _run_reward_probe:
-                    self._probe_node_reward()
+                self._probe_node_reward()  # [采集钩子·临时] W307 重挂(同 r280-r314 原挂点):基础奖励 1-3~1-8 零样本,采完删
 
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(环出口)', wait=3)
@@ -931,26 +930,21 @@ class PrepDirector(SrOperation):
             log.info(f'[cw-director] nodeseq skip: {e}')
 
     def _probe_node_reward(self) -> None:
-        """[采集钩子·临时] 节点奖励明细采集(r280;用户交办,采完删)。
+        """[采集钩子·临时,W307 重挂] 节点奖励明细采集——**整段为恢复性代码,采证后整段删除**。
+
+        历史:r280 首挂 → r287/r292/r297/r302/r300b/r314 多轮修(触发时机/Point/OCR rect/
+        关店等待),W284 用本版采到 7 帧后删;现基础奖励 1-3~1-8 仍零样本,用户裁决靠
+        实际采集补齐,故原样重挂。
 
         用户口述(2026-08-23,最高权威):备战画面商店按钮左侧六边形
         图标+数字 → 点开可见本节点预期金币奖励明细(连胜 0-1→1金,
-        2-4→2金…+ 节点基础奖励)。**先采集一段时间,看基础奖励会
-        不会变,之后再接策略**。
-        2026-08-25 用户口述修正:**P1 基础节点奖励已采清**(economy.md
-        §10:基础恒 5+连胜四档,49 样本),当前缺口=**P2/P3 基础节点
-        奖励** → 钩子限 plane≥2,P1 不再采集。
-        2026-08-26 用户口述再修正(重开 P1):连胜×奖励关口径未决
-        (combat §4 未决口径:旧攻略「不计入」vs 生产折中「不动计数
-        照发金」),需 P1 奖励弹窗的**连胜行读数**做实机裁决
-        (r1/r2 连胜显示值 × 前序节点)——P1 重新纳入采集,采够
-        (连胜口径裁决 + r2「读4孤例」复核)后再收限。
+        2-4→2金…+ 节点基础奖励)。
 
-        实现capture-only(零风险):每节点一次——点六边形(1555,930,
-        实证 2026-08-23)→ 截图存 shots(cw_reward 前缀)→ OCR 全
-        文本记 log → 点空白(960,150)关弹窗。不解析(解析等样本攒
-        够后按真实弹窗结构写);关闭若失败下一轮备战自愈(弹窗点
-        备战标识会消,采集门每节点一次不会刷屏)。
+        实现capture-only(零风险):每节点一次——等备战帧 clean(r314:
+        总窗 4.5s,检测不消耗次数)→ 点六边形(Point(1555,930))→
+        截图存 shots(cw_shot_unique 内容哈希去重,cw_reward 标签)→
+        OCR 弹窗内容区记 log → 点空白(Point(960,150))关弹窗。不解析;
+        关闭若失败下一轮备战自愈。
         """
         import time as _time
 
@@ -963,11 +957,9 @@ class PrepDirector(SrOperation):
             from sr_od.application.currency_war.cw_observation import (
                 read_phase_round,
             )
-            # r294→r299(五次实测收敛):关店动画实测 ~3s;原
-            # 0.8s×3(检测消耗次数)3 连 miss 全耗在动画窗。
-            # 修:等待与检测分离——总窗 4.5s,检测不消耗次数;
-            # clean(备战关态锚「按钮-出战」——shop 开屏无此
-            # area,双态区分)即出。
+            # r294→r299(五次实测收敛):关店动画实测 ~3s;等待与检测分离——
+            # 总窗 4.5s,检测不消耗次数;clean(备战关态锚「按钮-出战」)
+            # 即出。
             _deadline = _time.time() + 4.5
             _clean = False
             _plane = _round = None
@@ -988,30 +980,20 @@ class PrepDirector(SrOperation):
             if _key == cur_key:   # 本节点已采
                 return
             _sess._reward_probed_key = cur_key
-            # 2026-08-26 用户口述:P1 重开(连胜×奖励关口径裁决需 P1 奖励
-            # 弹窗连胜行;r2「读4孤例」复核同批)——原 plane<2 跳过分支
-            # 删除,恢复全位面采集;裁决完成后按新缺口再收限。
-            # r302:controller.click 需 Point 对象(裸 int 在坐标
-            # 转换层炸 'int' has no .x——四代 skip 的共同根因)
             from one_dragon.base.geometry.point import Point
             self.ctx.controller.click(Point(1555, 930))
             _time.sleep(1.0)
             screen1 = self.screenshot()
-            # r300b:cw_shot_unique 签名 (image, label) 位置参——
-            # 首版 prefix= kwarg 在截图行即 TypeError(catch 吞,
-            # 截图/OCR 全没执行)
             from sr_od.application.currency_war.cw_observe import cw_shot_unique
             cw_shot_unique(screen1, 'cw_reward')
-            # r300(实测 'int' object has no attribute 'x'):
-            # OCR 走框架 _ocr 惯例(rect 必传;弹窗内容区实测
-            # x1000-1560,y370-1010)
+            # OCR 弹窗内容区(实测 x1000-1560, y370-1010)
             from one_dragon.base.geometry.rectangle import Rect
             from sr_od.application.currency_war.cw_obs_core import _ocr
             _texts = [r.data for r in _ocr(
                 self.ctx, screen1, Rect(1000, 370, 1560, 1010))]
             log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
                      _plane, _round, _texts[:20])
-            self.ctx.controller.click(Point(960, 150))   # 关弹窗(空白,r302 Point)
+            self.ctx.controller.click(Point(960, 150))   # 关弹窗(空白)
             _time.sleep(0.6)
         except Exception as e:   # noqa: BLE001  采集 best-effort,不阻塞备战
             log.info(f'[cw][reward-probe] skip: {e}')
