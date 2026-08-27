@@ -801,6 +801,47 @@ class DecisionV2Registry:
     #: evolve_engine_guard_enabled;开臂时机=release 通道 A/B 裁决收口后。
     release_spend_gate_enabled: bool = False
 
+    # ===== P2 生存批:濒死带期望账(C3)与换线存活轮数门(C4) =====
+    #: 设计=唯一规格:`.debug/temp/currency_war/w353_p2_survival/DESIGN.md`
+    #: §2 C3/C4、§3 辖域表、§4.3 参数挂账。标定=同目录 w354_calibrate_p2_loss.py
+    #: (冻结语料 w324_coarse_battle/corpus,同 run 相邻行 hp 差分,删失剔除
+    #: hp≤1 与置信<1 帧——删失剔除使数值偏「存活局」方向=低估损血,保守
+    #: 余量由消费侧承担)。
+    #: C3 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。True 时
+    #: 应急深带(hp≤emergency_hp,触发线不动)内「再输一场即死」帧
+    #: (hp≤下一战期望损血,粗档查表)的支出授权细化为期望账的保守
+    #: 上界:只放行高确信目标件买/定向刷新(店有目标件才刷),LevelUp
+    #: 等非授权支出滤出;卖(变现)/部署不辖。V_continue 无真值,完整
+    #: 期望账挂账不接生产臂(DESIGN §4.3);判据强制 state.hp_readable
+    #: 守卫(置信 0 帧 hp 为沿用值,假帧不评估);辖域 plane≥2(P2 生存
+    #: 批);与 release FLIP 辖区(hp>emergency_hp)零交集——濒死帧恒
+    #: 不在 release 辖区,结构互斥。
+    dying_band_account_enabled: bool = False
+    #: C3「下一战期望损血」粗档表(节点型→期望损血;正数)。来源=上述标定
+    #: 脚本 plane=2 桶均值:普通战斗 20.05(n=19)/遭遇 16.67(n=3,样本
+    #: 极小挂账)。boss 桶删失后零样本挂账:沿用 streak_floor_loss_damage
+    #: boss 常数 26.71(P1 语料 two_state_model 拟合,来源见该字段注释)。
+    #: node_type 缺读
+    #: 兜底=normal(三档最小值→触发最窄,假阳性方向保守)。
+    dying_band_next_loss: dict[str, float] = field(default_factory=lambda: {
+        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71})
+    #: C4 存活轮数门总开关:False=现行为逐位一致(零漂移锚;与 drought
+    #: bail 的或-并存结构不变,本门是 E_rounds 主判据的第三道串联门,
+    #: 不造第二换线机制)。True 时 E_rounds 换线裁决通过后加验
+    #: rounds_alive ≥ E_rounds(新线)+兑现余量——存活轮数不足=新线到
+    #: 不了兑现点,换线期望 0<驻留旧线(「转进死线」堵门)。辖域
+    #: plane≥2(E[每轮损血] 谱为 P2 标定);drought bail 旁路不辖
+    #: (或-并存结构不变,弃线不是转进)。
+    line_switch_survival_gate_enabled: bool = False
+    #: C4 兑现余量(轮;新线成型后仍需一轮兑现战斗,取 1=设计内保守下界)
+    line_switch_survival_margin: float = 1.0
+    #: C4「每轮期望损血」三档粗谱(节点型→期望损血;rounds_alive=
+    #: ceil(hp/三档等权均值) 的查表底座)。来源=上述标定脚本 plane=2 桶
+    #: (同 C3);boss 桶同挂账沿 26.71。等权均值≈21.14:含 boss 高损档
+    #: 使 rounds_alive 偏小=门更紧,方向保守(DESIGN §2 C4「门取保守值」)。
+    line_switch_round_loss: dict[str, float] = field(default_factory=lambda: {
+        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71})
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)

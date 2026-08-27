@@ -21,7 +21,12 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
 )
-from sr_od.application.currency_war.cw_state import BuyCard, GameState
+from sr_od.application.currency_war.cw_state import (
+    BuyCard,
+    GameState,
+    LevelUp,
+    RefreshShop,
+)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.registry import (
@@ -51,6 +56,47 @@ def is_emergency(state: GameState,
                  registry: DecisionV2Registry) -> bool:
     """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。"""
     return state.hp <= registry.emergency_hp
+
+
+def _next_battle_loss(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry) -> float:
+    """下一战期望损血(粗档查表;registry.dying_band_next_loss 单一源)。
+
+    节点型映射:boss/遭遇→同名档;其余(含缺读)→normal 档——缺读取
+    三档最小值,触发最窄(濒死带收紧支出,假阳性方向的保守侧)。
+    """
+    node = getattr(session, 'node_type_current', None) or state.node_type or ''
+    kind = 'boss' if node == 'boss' else (
+        'encounter' if node in ('encounter', '遭遇') else 'normal')
+    return registry.dying_band_next_loss.get(kind, 0.0)
+
+
+def dying_band_active(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry) -> bool:
+    """濒死带:应急深带内「再输一场即死」的帧(期望账保守上界,设计=
+    `.debug/temp/currency_war/w353_p2_survival/DESIGN.md` §2 C3/§3 辖域表)。
+
+    四条件缺一不可:
+    1. registry.dying_band_account_enabled(默认关=现行为零漂移,A/B 臂);
+    2. ``state.hp_readable``(置信 0 帧 hp 是沿用值,假帧不评估——与
+       posture_release.flip_hit 同款守卫);
+    3. ``is_emergency``(触发线 emergency_hp 不动,本判据嵌套于应急深带
+       内,不新增覆盖态触发线);
+    4. hp ≤ 下一战期望损血(粗档查表)——「再输一场即死」帧。
+
+    支出授权的期望账推导(设计 §2 C3):花 g 金换 Δp 胜率占优 ⇔
+    Δp·V_continue > g;V_continue 无真值 → 保守上界=只授权高确信
+    目标件买/定向刷新(见 filter_candidates 濒死段),完整账挂账不接
+    生产臂。辖域 plane≥2(P2 生存批);与 release FLIP 辖区
+    (hp>emergency_hp)零交集——濒死帧恒不在 release 辖区。
+    """
+    if not registry.dying_band_account_enabled:
+        return False
+    if state.plane < 2 or not state.hp_readable:
+        return False
+    if not is_emergency(state, registry):
+        return False
+    return state.hp <= _next_battle_loss(state, session, registry)
 
 
 def formed_stop_active(state: GameState, session: StrategySession,
@@ -175,29 +221,61 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     [13] 停过渡件不停目标件,[21]/[22]);标志写 session.v3_formed_stop
     供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口);
     白名单放行的链日志行带 'formed_stop_exempt'=True。
+
+    濒死带支出细化(设计 §2 C3,registry.dying_band_account_enabled):
+    濒死帧(dying_band_active)命中时,支出类候选进一步收窄——BuyCard
+    仅目标件名集放行(高确信目标件;单一源=candidates._target_names)、
+    RefreshShop 仅店内有目标件时放行(定向刷新,非盲刷)、LevelUp 滤出
+    (非授权支出);卖(变现)/部署非支出,不辖。链日志行带 'dying_band'
+    原因。默认关=逐位一致(零漂移)。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
              else 'mode')   # 追赶态已退场(W126/ADR-0349)
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
+    dying = dying_band_active(state, session, registry)
+    targets = frozenset()
+    if dying:
+        from sr_od.application.currency_war.decision_v2.candidates import (
+            _target_names,
+        )
+        targets = frozenset(_target_names(state, session))
+    shop_has_target = dying and any(
+        c.name in targets for c in (state.shop or []))
     kept: list[Candidate] = []
     log: list[dict] = []
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
+        db_drop = ''   # 本行是否被濒死带收窄拦(设计 §2 C3)
         if ok and formed_stop and isinstance(c.action, BuyCard):
             if not _formed_stop_buy_allowed(c.action.card.name,
                                             state, session):
                 ok = False   # [13] 停过渡件(白名单外);W255/ADR-0410
                 fs_drop = True
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
-        log.append({'tag': c.tag, 'kept': ok, 'level': level,
-                    'formed_stop': fs_drop,
-                    **({'formed_stop_exempt': True}
-                       if (formed_stop and isinstance(c.action, BuyCard)
-                           and not fs_drop and c.tag in allowed
-                           and c.tag not in forbidden) else {})})
+        if ok and dying:
+            if isinstance(c.action, BuyCard):
+                if c.action.card.name not in targets:
+                    ok = False
+                    db_drop = 'nontarget_buy'
+            elif isinstance(c.action, RefreshShop):
+                if not shop_has_target:
+                    ok = False
+                    db_drop = 'undirected_refresh'
+            elif isinstance(c.action, LevelUp):
+                ok = False
+                db_drop = 'levelup_not_authorized'
+        entry = {'tag': c.tag, 'kept': ok, 'level': level,
+                 'formed_stop': fs_drop,
+                 **({'formed_stop_exempt': True}
+                    if (formed_stop and isinstance(c.action, BuyCard)
+                        and not fs_drop and c.tag in allowed
+                        and c.tag not in forbidden) else {})}
+        if db_drop:
+            entry['dying_band'] = db_drop
+        log.append(entry)
         if ok:
             kept.append(c)
     return kept, log

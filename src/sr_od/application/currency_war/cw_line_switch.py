@@ -175,6 +175,50 @@ def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
     return True, 'ok'
 
 
+def rounds_alive(state: GameState,
+                 registry: DecisionV2Registry | None = None) -> int:
+    """存活轮数估计:ceil(hp / E[每轮期望损血])(纯数,设计
+    `.debug/temp/currency_war/w353_p2_survival/DESIGN.md` §2 C4)。
+
+    E[每轮损血] = registry.line_switch_round_loss 三档(普通/遭遇/boss)
+    等权均值——粗档谱(P2 损血标定,来源见 registry 注释);等权含 boss
+    高损档 → 估计偏小 → 门更紧,方向保守。hp≤0 → 0。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    vals = [v for v in reg.line_switch_round_loss.values() if v > 0]
+    if not vals or not state.hp or state.hp <= 0:
+        return 0
+    e_per_round = sum(vals) / len(vals)
+    return int(-(-state.hp // e_per_round))   # ceil
+
+
+def survival_gate(state: GameState, session: StrategySession,
+                  e_alt: float,
+                  registry: DecisionV2Registry | None = None
+                  ) -> tuple[bool, str]:
+    """换线存活轮数门(第三道门;registry.line_switch_survival_gate_enabled)。
+
+    判据:rounds_alive ≥ E_rounds(新线) + 兑现余量(设计 §2 C4:换线
+    价值兑现在新线成型之后;存活轮数不足=新线永远到不了兑现点,换线
+    期望 0<驻留旧线)。与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是
+    第二换线机制;drought bail 旁路不辖(或-并存结构不变)。
+
+    辖域 plane≥2(损血谱为 P2 标定,P1 不适用);开关关/辖域外 → 放行
+    (零漂移)。e_alt=inf 时数学上恒不满足,但该情形在 should_switch_e
+    已被 'alt_inf' 拦,此处保守放行(门不重复裁决)。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    if not reg.line_switch_survival_gate_enabled:
+        return True, 'gate_off'
+    if state.plane < 2 or not math.isfinite(e_alt):
+        return True, 'gate_off'
+    ra = rounds_alive(state, reg)
+    need = e_alt + reg.line_switch_survival_margin
+    if ra >= need:
+        return True, 'ok'
+    return False, f'survival({ra:.0f}<{need:.2f})'
+
+
 def best_alt_line(state: GameState, session: StrategySession, config,
                   score_ctx, registry: DecisionV2Registry | None = None
                   ) -> tuple[object, float]:

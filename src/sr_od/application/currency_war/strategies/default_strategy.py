@@ -330,6 +330,22 @@ class DefaultCwStrategy(CwStrategy):
                 _do, _why = _cw_line_switch.should_switch_e(
                     _cur_e, _alt_e,
                     getattr(session, 'line_dwell_rounds', 0), _LS_REG)
+                # P2 生存批存活轮数门(第三道串联门;registry
+                # line_switch_survival_gate_enabled,默认关=零漂移):
+                # rounds_alive ≥ E_rounds(新线)+余量不满足则不换——
+                # 堵「牌没到人先死」的转进死线(判据单一源=cw_line_switch
+                # .survival_gate;drought bail 旁路不辖,或-并存结构不变)。
+                if _do and _alt is not None:
+                    _gate_ok, _gate_why = _cw_line_switch.survival_gate(
+                        state, session, _alt_e, _LS_REG)
+                    if not _gate_ok:
+                        _do = False
+                        _why = _gate_why
+                        log.warning(
+                            '[cw][target] 存活轮数门拦换线 %s → %s:%s'
+                            ' (hp=%d,新线E=%.2f)',
+                            session.target_comp.name, _alt.name,
+                            _gate_why, state.hp, _alt_e)
                 if _do and _alt is not None:
                     log.warning(
                         '[cw][target] E_rounds 换线 %s(E=%.2f,驻留%d轮)'
