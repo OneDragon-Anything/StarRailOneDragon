@@ -71,3 +71,26 @@ v2 栈的换线决策实际位置:`cw_intention.update_intention` 意向状态�
 W376 报告(`.debug/temp/currency_war/w376_c3c4_gate_ab/REPORT.md`)裁决
 ①「C4 在生产策略栈无行为通道 → 接线修复批」;设计=REDESIGN §3.4;
 判据单一源=`cw_line_switch.survival_gate`。
+
+## 增补(2026-08-28):W379 重测诚实结论——v2 栈 0 触发,有效性待真实换线帧
+
+接线事实补录(出处 W376 §0 + `.debug/temp/currency_war/w379_gate_v2_wire/REPORT.md`):
+门原唯一消费点在 default 栈 `default_strategy.update_target` 换线路径;生产栈
+`DecisionV2Strategy` 完整覆写 `update_target` → C4 开关在生产栈无行为通道
+(W376 结构断言:off ≡ C4-only 两臂 300 局逐位相等)。本 ADR 决策即修复:
+门串联进 `cw_intention.update_intention` 替代线锁定处 + registry 透传
+(单帧锁 5 证明门在 weak→异线重锁帧被调且能拦)。
+
+0 触发诚实结论(W379 重测,off vs C4-on,n=300/臂,池指纹
+`7af8197782d42c05`):
+
+- **接线成立**:零漂移锚=off 臂与 W376 off 臂 300 局逐位相等;P17 六项
+  回退守卫两臂 diff=0。
+- **但 v2 sim 下门 0 流量**:300 局 `switch_want=0/block=0`;n=60 诊断
+  (revoke_exit①/②=0、evict=0、weak 态=0)证实 **v2 意向状态机的撤销
+  出口在 sim 中零触发**——v2 按 [23] 教义「终局线由贯穿件锁定,不是
+  pivot」锁定即持有,换线帧结构性缺位,门有消费点、无触发面。
+- **裁决**:C4 生产默认关维持(registry 锁与 W373 零漂移锁全绿);门
+  有效性(sim 口径)待真实换线帧出现才可测。W363 hp=29 死锁族是
+  default 栈现象,v2 栈不适用;若要 v2 具备换线纠错能力,归「v2 撤销
+  出口灵敏度」独立演进(非本 ADR 辖域)。
