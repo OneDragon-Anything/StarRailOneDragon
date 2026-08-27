@@ -296,8 +296,12 @@ def boss_projected_hp(state: GameState, hp_now: int,
     """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数;
     W240/ADR-0404 键改净星深)。
 
-    hp_proj = hp + 2(r8 奖励胜,唯一正项) − E[boss 伤害|净星深档];
-    r9(直面 boss)无 +2。档键 = 净星深桶(min(净星深//3,5)*3,净星深
+    hp_proj = hp + 2(奖励胜,唯一正项,触发轮=``handoff_gate_min_round``;
+    ADR-0418 前移后该常量为 6,故 r6 即触发,r7-r9 不加)
+    − E[boss 伤害|净星深档]。
+    已知偏差(ADR-0418 Consequences 挂账):投影公式仍按 r8 视角标定
+    (hp−34 Q3 口径),r6/r7 提前触发时少算后续节点期望伤害 ⇒ 投影偏乐观,
+    解耦待重跑配对 AB。档键 = 净星深桶(min(净星深//3,5)*3,净星深
     =上场件 Σ(star−1),``cw_sim.deployed_star_depth`` 单一源,与 Δ池
     boss 桶采样键同口径,不建第二套分桶;W240 起替旧 Σboard 桶——
     Σboard 下 3合1 升星使键落浅桶而浅桶期望伤害更大,与 [27] 机制

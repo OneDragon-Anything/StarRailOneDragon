@@ -13,7 +13,8 @@ decisions deployed join);reward/supply=深度桶;**boss=
 净星深桶(ADR-0404,W240:上场件 Σ(star−1),deployed_star_depth
 同式——修 W238 实证的 Σboard 键升星方向冲突)**;
 **encounter=rung 桶(v11,ADR-0407,W250:键查证后 depth 键下
-期望伤害真平而 rung 键梯度显著,与 battle 同源 _engines_count,
+期望伤害真平而 rung 键梯度显著,与 battle 同源 _engines_count
+(单一源=cw_deploy_logic.engines_count,W279 上移;cw_sim 侧为薄委托),
 解批⑬ F1「样本不足暂缓」)**。
 **plane 维(ADR-0362,W157)**:桶键外再加位面层——差分归属
 「后行位面」(P1r9→P2r1 跨位面差分归 plane=2),P1/P2 桶彻底
@@ -106,7 +107,8 @@ def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
 
 
 def _engines_count_of(bf: dict, names: frozenset) -> int:
-    """rung = _engines_count 单一源(cw_sim;ADR-0279)——battle 桶键。"""
+    """rung = _engines_count 单一源(cw_deploy_logic.engines_count,
+    W279 上移——此处经 cw_sim 薄委托消费;ADR-0279)——battle 桶键。"""
     from sr_od.application.currency_war.cw_sim import _engines_count
     return _engines_count(bf, names)
 
