@@ -1,6 +1,8 @@
 import logging
+import time
 from contextlib import suppress
 from dataclasses import dataclass
+from errno import EACCES, EBUSY
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
@@ -8,6 +10,86 @@ from one_dragon.utils import os_utils
 
 LOGGER_NAME = 'OneDragon'
 _HANDLER_OWNER_ATTR = '_one_dragon_logger_owner'
+
+#: 轮转被占用时的重试次数与基础退避秒数(指数退避,上限 0.8s/次)。
+_ROTATE_RETRY_COUNT = 5
+_ROTATE_RETRY_BASE_DELAY = 0.05
+#: 重试全失败的冷却秒数:期间沿用当前文件继续写,不逐条日志反复撞锁。
+#: 下一轮转时点到期后自动重试,占用方(其他进程的轮转窗口通常 <1s)早已释放。
+_ROTATE_DEFER_COOLDOWN_SECONDS = 60.0
+
+
+class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
+    """跨进程安全加固的按时间轮转文件 handler。
+
+    背景(WinError 32 四度实证,W251/W252/W261 批测试随机红):
+    ``TimedRotatingFileHandler.doRollover`` 在 Windows 上用 ``os.rename`` 换名,
+    而 Windows 不允许改名被任何进程打开中的文件 —— 凡是两个进程同时持有同一
+    日志文件的句柄(默认 ``log.txt`` 在每个 import 本模块的进程中都会挂一份),
+    到点轮转时后到的那个进程 rename 必然抛 ``PermissionError(WinError 32)``。
+
+    策略:rename 遇到「文件被占用」类错误(WinError 32/33、errno EACCES/EBUSY)
+    时退避重试;全部失败则**放弃本次轮转**,继续向当前文件追加并推迟到下一个
+    时点再试 —— 日志短暂跨天不切分是可接受的降级,写日志抛异常污染调用方
+    (pytest 随机红)不可接受。其余 OSError 照常上抛。
+    """
+
+    def __init__(
+        self,
+        filename: str,
+        when: str = 'h',
+        interval: int = 1,
+        backupCount: int = 0,
+        encoding: str | None = None,
+        delay: bool = False,
+        utc: bool = False,
+        errors: str | None = None,
+        atTime=None,
+    ) -> None:
+        # 显式声明父类(logging.handlers.TimedRotatingFileHandler)签名并透传:
+        # 基类来自标准库,kwarg 静态审计锁(kwarg_audit.scanner)只能看到同文件
+        # 的 def/class 定义,看不到继承来的 __init__,会把本类的调用点误判为
+        # 「无参类收 kwarg」违规 —— 显式转发让签名静态可见。
+        TimedRotatingFileHandler.__init__(
+            self,
+            filename=filename,
+            when=when,
+            interval=interval,
+            backupCount=backupCount,
+            encoding=encoding,
+            delay=delay,
+            utc=utc,
+            errors=errors,
+            atTime=atTime,
+        )
+
+    def doRollover(self) -> None:
+        # 与基类约定一致:先把当前流关掉(rename 的阻塞来源除本流自身的句柄外,
+        # 还有其他进程持有的打开句柄 —— 自己这份必须先释放才有换名成功的可能)。
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+
+        for attempt in range(_ROTATE_RETRY_COUNT):
+            try:
+                super().doRollover()
+                return
+            except OSError as e:
+                occupied = (
+                    getattr(e, 'winerror', None) in (32, 33)
+                    or e.errno in (EACCES, EBUSY)
+                )
+                if not occupied:
+                    raise
+                if attempt < _ROTATE_RETRY_COUNT - 1:
+                    time.sleep(min(_ROTATE_RETRY_BASE_DELAY * (2 ** attempt), 0.8))
+
+        # 重试全失败:放弃本次轮转(日志短暂跨天不切分是可接受的降级),
+        # 重开当前文件保持可写,并把下一个轮转时点推迟一个冷却期 —— 到期自动
+        # 再试,届时占用方(其他进程的轮转窗口通常 <1s)早已释放。
+        self.stream = self._open()
+        self.rolloverAt = int(time.time()) + int(_ROTATE_DEFER_COOLDOWN_SECONDS)
+        # 静默降级:不向调用方抛错(调用方大多只是想记一行日志)。
 
 
 @dataclass(slots=True)
@@ -195,7 +277,7 @@ def _handler_belongs_to_logger(handler: logging.Handler, logger: logging.Logger)
 
 
 def _build_file_handler(logger: logging.Logger, config: LoggerConfig) -> logging.Handler:
-    handler = TimedRotatingFileHandler(
+    handler = SafeTimedRotatingFileHandler(
         get_log_file_path(config.log_file_path, default_name=config.default_name),
         when='midnight',
         interval=1,
