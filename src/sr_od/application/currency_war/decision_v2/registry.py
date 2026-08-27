@@ -612,7 +612,11 @@ class DecisionV2Registry:
     #: 全通道总闸(False=通道整体不评估,现行为零漂移;True=press 臂
     #: +candidates 守卫豁免臂+§3.3 三相位 [11] 地板前置臂+检查器
     #: C-B/C-C 发射同步开——A/B 捆绑为一臂,双臂同尺,V-B4.2)。
-    press_channel_enabled: bool = False
+    #: C-B/C-C 发射同步开——A/B 捆绑为一臂,双臂同尺,V-B4.2)。
+    #: 默认开(W368 A/B:n=300/臂 R2 成立——seg 真拦 −85.6%、通道开通
+    #: copy_press_channel_closed 41→0、439 轮替代买进、core2≥1 +24.7pp 显著、
+    #: 成型率 +6pp 显著、零回退;star≥2 +3.0pp 不显著如实;对照臂注入 False 保留)。
+    press_channel_enabled: bool = True
     #: band 推导质量线(V-B5.2:0.50 在 P1 开域内被口述锚 [30]「1-2 费带」
     #: 覆盖,仅 lv≥7 中后段生效而彼时带自洽闸已关通道——本参数是中后段
     #: 守卫参数非行为旋钮;敏感性扫描=主批硬前置,发现敏感再立项)。
