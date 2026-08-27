@@ -23,6 +23,10 @@
 
 **升星预览✦(ADR-0416)**:`read_shop_cards` 每张牌附带 `merge_preview`(`cw_identity_obs.read_merge_preview`)——商店牌 art 顶部✦数 = 已持同名同星副本份数(买第 3 张即 3合1),是 bot tracking merge_progress 的视觉印证(观测冗余信号,`ShopCard` 字段注释载语义)。0 为双义(真无副本 ∨ fail-silent 读不到,模板缺失即恒 0),消费方按「未观测」对待;评分层尚未接此信号(decision_v2 merge_progress 走 bot tracking),sim 不建模。
 
+**合成特效帧态门(ADR-0420)**:star 读数(`read_star`)在 3合1 星爆动画/拖拽合成过渡窗内会采到「已合成」的中间帧——旧值才是真值。`cw_identity_obs.is_merge_effect_frame` 是全帧行为判定门(纯 CV、无 ctx 依赖),双签名任一命中即为特效帧:①星爆粒子签名=前排棋盘带(`_MERGE_EFFECT_FRONT_BAND`)内严橙金窗口(复用升星预览✦的 `_PREVIEW_GOLD_LO/_HI`)连通域面积过 `_MERGE_EFFECT_COMP_MIN_AREA` 者计数达 `_MERGE_EFFECT_GOLD_MIN_COMPS`;②满席警告横幅签名=`_BENCH_FULL_BANNER_RECT` 带内红主导(R−max(G,B) 过 `_BANNER_RED_DOM_DIFF`)占比达 `_BANNER_RED_DOM_MIN`(拖拽合成过渡)。挂点在 `cw_reconcile.reconcile_tracking` 的采新确认分支前置——特效帧保旧读数且防抖计数**冻结不推进**(非清零:门后干净回退帧仍可构成新确认);门漏检退化为无门的原防抖行为,判据异常返 False 不拦。
+
+**deploy_cap 域外双帧一致采信(ADR-0420)**:`read_deploy_cap_debounced` 的防抖域(`|cap−level| ≤ `_CAP_DIFF_MAX`,见 `cw_back_layout`)之外不再一律拒绝——域外值重读一帧,两帧一致且落在绝对上界 `DEPLOY_CAP_ABS_MAX`(前台+后台实拍板面上界)之内即采信并 obs_conflict 留证;三类恒拒:**cap<level**、**超绝对上界**、**两帧不一致**(瞬时误读族防线不降级)。域内直采路径不变。
+
 ## 2. cw_reconcile:对账公共层
 
 tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 → L1 全图 OCR 对比 → L2 不一致兜底递进[裁剪再识/点击探查/定向重读] → L3 递进到底仍不一致 = 上游出错信号,保守恢复不硬猜)。环入口对账一步;单笔动作后验证互补回合总账。
