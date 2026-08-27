@@ -197,8 +197,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
         key = (state.plane, state.round_num)
         if session.v3_intention_key != key:
             session.v3_intention_key = key
-            # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值)
-            update_intention(state, ist, session)
+            # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值);
+            # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
+            # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
+            update_intention(state, ist, session, registry=self.registry)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
         session.target_comp = comp
         hoard = hoard_target_set(state, ist)

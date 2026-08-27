@@ -38,7 +38,9 @@ v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     COMP_LIBRARY,
@@ -51,6 +53,11 @@ from sr_od.application.currency_war.cw_comps import (
 )
 from sr_od.application.currency_war.cw_deploy_logic import TRANSITION_TRAITS
 from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
+from sr_od.application.currency_war.cw_line_switch import (
+    e_rounds,
+    register_gate_block,
+    survival_gate,
+)
 from sr_od.application.currency_war.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
 )
@@ -62,6 +69,12 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DecisionV2Registry,
+    )
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 / W10 摆动域)=====
 CORE_MISS_N: int = 6
@@ -612,8 +625,48 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
+def _switch_gate_open(ist: IntentionState, state: GameState,
+                      session: StrategySession | None,
+                      sig: IntentionSignal,
+                      registry: DecisionV2Registry | None) -> bool:
+    """C4 存活轮数门在 v2 换线通道的接线(判据单一源=cw_line_switch
+    .survival_gate;W376 实证 default 栈消费点不在生产 v2 栈后的补线)。
+
+    辖域=撤销出口①/②降级弱意向后、新信号锁**另一条线**(weak_comp≠
+    候选线)——这是 v2 栈语义下的「换线」决策位置;初始锁线(unlocked
+    →lock)、同线重锁(weak_comp==候选线)与 P3 强制锁线(无在先承诺
+    线,兜底语义)均非换线,不辖。门内部自辖 plane≥2 与总开关
+    (line_switch_survival_gate_enabled 关=放行,零漂移);e_alt=候选线
+    E_rounds(cw_line_switch.e_rounds,与 default 栈换线判据同尺);
+    registry 由调用方注入(None=缺省表,与 cw_line_switch 同惯例),
+    DecisionV2Strategy 透传 self.registry 使 A/B 注入臂可达。
+    拦截记账=register_gate_block 线对去重(同对同局只发一次日志,
+    消费侧约定同 default 栈)。
+    """
+    if not (ist.phase == 'weak' and ist.weak_comp
+            and sig.comp_name != ist.weak_comp):
+        return True
+    comp = get_comp(sig.comp_name)
+    if comp is None:
+        return True
+    e_alt = e_rounds(comp, state, registry)
+    ok, why = survival_gate(state, session, e_alt, registry)
+    if ok:
+        return True
+    if session is not None:
+        cnt = register_gate_block(session, ist.weak_comp, sig.comp_name)
+    else:
+        cnt = 1   # 无 session 时无从挂计数,按首拦口径发日志
+    if cnt == 1:
+        log.warning('[cw][d2] 存活轮数门拦换线 %s → %s:%s (hp=%s,新线E=%.2f)',
+                    ist.weak_comp, sig.comp_name, why, state.hp, e_alt)
+    return False
+
+
 def update_intention(state: GameState, ist: IntentionState,
-                     session=None) -> IntentionState:
+                     session: StrategySession | None = None,
+                     registry: DecisionV2Registry | None = None
+                     ) -> IntentionState:
     """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 GameState)。
 
     序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)→
@@ -710,7 +763,13 @@ def update_intention(state: GameState, ist: IntentionState,
             ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
         if best is not None:
-            _lock(ist, state, best)
+            # C4 存活轮数门(换线辖域见 _switch_gate_open;门放行才落锁,
+            # 被拦=保持弱意向待后续信号,状态机单回合最多一次转移语义不变)
+            if _switch_gate_open(ist, state, session, best, registry):
+                _lock(ist, state, best)
+            else:
+                ist.last_event = (f'gate_hold:{ist.weak_comp}'
+                                  f'->{best.comp_name}')
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
         # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)

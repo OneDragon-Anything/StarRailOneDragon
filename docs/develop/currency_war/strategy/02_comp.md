@@ -93,6 +93,8 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 
 分数涌现劣势换线**不在本模块**(终局线由贯穿件锁定,不是 pivot)。**强制锁线**(P3 入口仍无意向):候选按资产厚度(终局件星级当量 + 骨架件折算)择最优锁;全部不可达 → **降格终局**(`demoted_endgame`,「赢不了就少输」),为 absorbing 态(不回弹)。
 
+**换线存活轮数门(C4;ADR-0429)**:撤销后弱意向态的新信号对**另一条线**落锁(v2 语义下的换线)前,串联 `cw_line_switch.survival_gate`(registry `line_switch_survival_gate_enabled`,默认关;判据=剩余节点投影存活轮数 ≥ 新线 E_rounds+余量,辖 plane≥2)——存活不足=新线到不了兑现点,保持弱意向待后续信号(`last_event='gate_hold:…'`,线对拦截计数去重)。初始锁线/同线重锁/P3 强制锁线非换线,不经门。registry 经 `update_target` 透传(A/B 注入臂可达)。
+
 **锁后效果接口**(`hoard_target_set` → `HoardTarget`):输出囤货目标集合 = 角色件(char_targets:意向线采购集,core/shared/替班/羁绊成员)+ 装备件(equip_targets:意向线 equip_assign 派生,剔具名 equip_taboos)+ mode('locked'/'forced'/'weak'/'fallback'/'demoted_endgame',买侧按 mode 区分囤货语义)。生产载体 = decision_v2 的 `update_target` 每轮把它写进 `session.v3_hoard`,是**买侧唯一消费面**——意向模块不产出任何上场/换人动作(意向管方向、演进管换档)。弱意向态撤销后去向 = 只囤跨线骨架件(`CROSS_LINE_SKELETON`,从 W16 过半统计派生,ADR-0312)。
 
 撤销阈值/信号阈等常量(`CORE_MISS_N`/`SKELETON_ASSET_WEIGHT`/`FAMILY_BOND_MIN_COUNT`)属 sim 校准域,值只在代码。
