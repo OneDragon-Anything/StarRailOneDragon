@@ -324,6 +324,10 @@ def _economy_mode_for(state: GameState) -> str:
         if state.plane >= 2 and state.gold < P2_REBUILD_GOLD_FLOOR:
             return "interest_first"
         return "rush_level"
+    if _spend == "release":
+        # W332b:泄息档中性(花溢余段找件,不强化守息也不追级;档语义
+        # 单一源=decision_v2.posture_release)
+        return "adaptive"
     return "adaptive"   # hold/allin/spend/adaptive → neutral
 
 

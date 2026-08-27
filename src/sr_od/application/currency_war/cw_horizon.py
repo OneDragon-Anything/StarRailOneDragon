@@ -650,7 +650,13 @@ def _horizon_node_goal(plane: int, round_num: int, gold: int, level: int, hp: in
         # r87:P1/P2 位面末(r≥8)不再压 rush_level(boss/P3 前人口必追)
         _late_plane = round_num >= NODES_PER_PLANE - 1
         if p.level_up and (committed or _late_plane):
-            return NodeGoal(min(10, level + 1), 'level', 'rush_level')
+            # W332b 生产缺陷修复(DESIGN 实现警告区):level_up 分支不再
+            # 即席返回丢弃同帧 D 预算——refresh_budget 随 NodeGoal 下传,
+            # 消费侧(cw_plan)按三方合并规则执行(合并语义单一源=
+            # decision_v2.posture_release:release 义务下界 vs DP/plan 许可上界)。
+            # W154/ADR-0361「DP 内部两预算」并行先例不得掩盖本合并规则。
+            return NodeGoal(min(10, level + 1), 'level', 'rush_level',
+                            refresh_budget=p.refresh_budget)
         if p.refresh_budget > 0:
             return NodeGoal(level, 'adaptive', 'd_search')
         return NodeGoal(level, 'interest', 'hold')

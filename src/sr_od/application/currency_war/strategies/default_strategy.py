@@ -15,6 +15,7 @@ from typing import Literal
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_comps, cw_events, cw_plan, cw_transition
+from sr_od.application.currency_war import cw_line_switch as _cw_line_switch
 from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -38,6 +39,9 @@ from sr_od.application.currency_war.cw_state import (
     PickEvent,
 )
 from sr_od.application.currency_war.cw_strategy import CwStrategy, StrategySession
+from sr_od.application.currency_war.decision_v2.registry import (
+    DEFAULT_REGISTRY as _LS_REG,  # W332b 换线判据参数(θ/δ/D_min;可注入替身测试)
+)
 from sr_od.application.currency_war.prep_actions import (
     ClickSpheres,
     DeferSpheres,
@@ -302,6 +306,44 @@ class DefaultCwStrategy(CwStrategy):
                     else:
                         log.info('[cw-target] %s 连续 %d 轮无阵营卡 但 invested(form_progress=%.2f≥0.3)→ 保,不 bail(避免 pivot 破坏集中)',
                                  session.target_comp.name, session.target_drought, _fp)
+        # ===== W332b:E_rounds 换线判据(主判据;与 drought bail 或-并存)=====
+        # drought bail(上方)是经验旁路,保留不删——E_rounds=inf 是静态池
+        # 数学,检测不了「理论可达、实测断供」的线,两路任一触发即弃线
+        # (drought_excluded 死线名单语义不变)。判据数学单一源=cw_line_switch
+        # (E_rounds 比较 + θ 滞回 + D_min 驻留;参数 registry 注入)。
+        # 辖域=位面前中段(末窗禁换,设计内辖域声明)。
+        if getattr(_LS_REG, 'line_switch_enabled', False) \
+                and session.target_comp is not None:
+            # 驻留计账(轮键):target 变更即清零,否则 +1(D_min 的计数源)
+            _cur_name = session.target_comp.name
+            if getattr(session, 'line_dwell_name', '') != _cur_name:
+                session.line_dwell_name = _cur_name
+                session.line_dwell_rounds = 0
+            else:
+                session.line_dwell_rounds = \
+                    getattr(session, 'line_dwell_rounds', 0) + 1
+            if _cw_line_switch.switch_allowed(state, session):
+                _alt, _alt_e = _cw_line_switch.best_alt_line(
+                    state, session, config, score_ctx, _LS_REG)
+                _cur_e = _cw_line_switch.e_rounds(
+                    session.target_comp, state, _LS_REG)
+                _do, _why = _cw_line_switch.should_switch_e(
+                    _cur_e, _alt_e,
+                    getattr(session, 'line_dwell_rounds', 0), _LS_REG)
+                if _do and _alt is not None:
+                    log.warning(
+                        '[cw][target] E_rounds 换线 %s(E=%.2f,驻留%d轮)'
+                        '→ %s(E=%.2f;%s)',
+                        session.target_comp.name, _cur_e,
+                        getattr(session, 'line_dwell_rounds', 0),
+                        _alt.name, _alt_e, _why)
+                    session.target_comp = _alt
+                    session.line_dwell_name = _alt.name
+                    session.line_dwell_rounds = 0
+                elif _alt is not None:
+                    log.info('[cw-target] E_rounds 不换 %s(E=%.2f)vs %s'
+                             '(E=%.2f):%s', session.target_comp.name,
+                             _cur_e, _alt.name, _alt_e, _why)
         # ===== ADR-0209(接线 4/6):定型切换 =====
         # 双轨期信号 ready 或过 deadline → target 锁定为信号领先线(定型;此后
         # dual_track_phase=False,攒的钱拉人口+D 核心,装备/星级全投)。

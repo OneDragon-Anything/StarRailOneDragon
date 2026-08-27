@@ -146,6 +146,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
         # W238/ADR-0403:boss 投影 hp 披露(ADR-0411 起投影无条件启用,
         # 末窗 handoff_gate_gap 写;None=非末窗,判读「boss 后投影 hp」面)
         session.v3_handoff_hp_proj = None
+        # W332b:release 泄息指令(每轮 decide_prep 重算)与轮内累计花费
+        session.v3_release = None
+        session.v3_release_round = None
+        session.v3_release_spent = 0
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:
@@ -231,6 +235,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v2_round_p1_early = 0
             # W194/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
             session.v2_round_p2_core = 0
+            # W332b:release 泄息预算的轮内累计花费(预算逐轮清零;boss 窗
+            # 单轮 latch 单位,无跨轮语义)
+            session.v3_release_spent = 0
         # (W119/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
         # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
         # W114/ADR-0346 相位观测 + W119 切授权:每轮决策入口计算一次
@@ -250,6 +257,24 @@ class DecisionV2Strategy(DefaultCwStrategy):
         )
         session.v3_dp_posture = RoundPosture(
             key, dp_posture(state, session))
+        # W332b 未成型期姿态:泄息通道(release)——FLIP 谓词命中/末窗
+        # slot 守卫压 level 时包装 DP 姿态(预算三方合并 + spend_mode 新档,
+        # 单一源=decision_v2.posture_release;下流 scoring/arbiter 读同一
+        # 包装后姿态,义务预算走 session.v3_release)。release_enabled=False
+        # 或谓词未命中 → 逐位原姿态(A/B 基线臂/防间隙零漂移)。
+        from sr_od.application.currency_war.decision_v2.posture_release import (
+            evaluate_release,
+        )
+        _raw_posture = session.v3_dp_posture.posture
+        if _raw_posture is not None:
+            _wrapped, _directive = evaluate_release(
+                state, session, registry, _phase.value, _raw_posture)
+            session.v3_dp_posture = RoundPosture(key, _wrapped)
+        else:
+            _directive = None
+            session.v3_release = None
+        if _directive is None:
+            session.v3_release = None
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
         # W224/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2

@@ -56,6 +56,9 @@ from sr_od.application.currency_war.decision_v2.phase import (
     Phase,
     derive_phase,
 )
+from sr_od.application.currency_war.decision_v2.posture_release import (
+    authorize_release_refresh,
+)
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
@@ -569,7 +572,12 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if cand.tag == 'refresh' and state.plane == 1:
                 _dir_ok = directed_refresh_budget(
                     state, session, registry) > 0
-            if not (_copy_ok or _dir_ok):
+            # W332b release 泄息预算(义务通道):FLIP 命中/末窗 slot 守卫
+            # 帧的负分刷新凭有界预算越过非正分门(预算扣账与放行在收尾块,
+            # 见下;同一刷新只走一条授权来源,M-A 优先)。
+            _rel_ok = (cand.tag == 'refresh'
+                       and getattr(session, 'v3_release', None) is not None)
+            if not (_copy_ok or _dir_ok or _rel_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
@@ -684,6 +692,19 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                         f'{registry.directed_refresh_per_round},'
                         f'局耗{getattr(session, "v3_dir_refresh_used", 0)}'
                         f'/{registry.directed_refresh_game_cap})')
+            # W332b release 义务预算(W332b 设计 §②规则4):FLIP 命中帧
+            # release 是义务(下界),DP/plan 是许可(上界)——负分刷新在
+            # 预算内有界放行(累计刷金 ≤ 预算 ∧ 花后 ≥ boss_floor);
+            # 「通道开+预算内按 EV 排序」的中性行为,不预设花满
+            # (判据单一源=decision_v2.posture_release.authorize_release_
+            # refresh)。与 M-A 互斥:M-A 先判,预算未耗才轮到本臂。
+            if not _ma_ok:
+                _rel_note = authorize_release_refresh(
+                    session, working.gold or 0, cand.action.cost or 2,
+                    registry)
+                if _rel_note:
+                    _ma_ok = True
+                    auth_note['release'] = _rel_note
             if not _ma_ok:
                 reason = RejectReason('refresh', '', 0, '非正分')
         if reason is None:

@@ -580,11 +580,24 @@ def plan(state: GameState, config, faction_priority: list[str],
 
     # —— 贪心:反复选 eval 提升最大的动作序列(含 D 牌蒙特卡洛),直到无正提升 ——
     base_eval = evaluate(cur, config, faction_priority, target)
+    # W332b 三方预算合并(DESIGN §②规则4;合并语义单一源=
+    # decision_v2.posture_release):DP refresh_budget 随 NodeGoal 下传至此,
+    # 与评分层 _refresh_cap 合并——义务未激活帧「许可取交」(min);
+    # None=无 DP 信息(先验 fallback)不参与合并。_refresh_cap 自带的
+    # HP-gate 与档金表仍作刷价合法性校验保留(取交已含其约束)。
+    _ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
+                        level=state.level, hp=state.hp,
+                        committed=not state.dual_track_phase,
+                        strategies=state.active_strategies or None)
+    _ng_budget = _ng.refresh_budget
     for _ in range(15):
         refresh_used = sum(1 for a in actions if isinstance(a, RefreshShop))
+        _cap = _refresh_cap(cur, effective_hp_threshold(cur),
+                            target_comp=target, config=config)
+        if _ng_budget is not None:
+            _cap = min(_cap, _ng_budget)
         step = _best_improving_action(cur, config, faction_priority, base_eval, rng,
-                                      refresh_budget=_refresh_cap(cur, effective_hp_threshold(cur),
-                                                                  target_comp=target, config=config) - refresh_used,
+                                      refresh_budget=_cap - refresh_used,
                                       target_comp=target, rf_used=refresh_used,
                                       stash_comp=stash_comp, framework=framework)
         if not step:
@@ -1195,7 +1208,8 @@ def _maybe_sell_for_interest(state: GameState, actions: list[Action],
                            gold=state.gold, level=state.level, hp=state.hp,
                            committed=not state.dual_track_phase,
                            strategies=state.active_strategies or None).spend_mode
-    if _spend in ("allin", "level"):
+    if _spend in ("allin", "level", "release"):
+        # release(W332b):泄息档的钱是找件预算,卖息凑档与之相悖(同 allin/level)
         return
     cur = state
     # r9 review#2:keep 集对齐 focus 卖版——transition_chars(打工牌)不卖凑息

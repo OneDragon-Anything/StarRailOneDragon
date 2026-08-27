@@ -256,8 +256,15 @@ def _expected_level(round_num: int, plane: int) -> int:
 class NodeGoal:
     """某节点(位面-轮)的节奏目标(阵容无关骨架;comp 只换 level_plan/core_chars 参数;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
-    spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
+    spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位;
+                                # W332b 新增档 release=泄息,见 decision_v2.posture_release)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
+    #: DP 授权的可刷次数上界(W332b 三方预算合并:随 NodeGoal 下传,消费侧与
+    #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
+    #: 模块注释:release 是义务(下界),DP/plan 是许可(上界),义务激活时
+    #: 义务优先,未激活时许可取交)。None=无 DP 信息(先验 fallback;不参与
+    #: 合并,许可侧原值)。
+    refresh_budget: int | None = None
     danger_d: bool = False      # 占位从未被读(见上)
 
 
