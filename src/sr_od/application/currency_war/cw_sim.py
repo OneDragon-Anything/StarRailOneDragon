@@ -33,8 +33,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sr_od.application.currency_war.cw_chars import CHARACTERS
+
+# noqa 别名保留:历史消费点(scoring/_engine_frac_remainder 等)仍从本名 import
 from sr_od.application.currency_war.cw_deploy_logic import (
-    TRANSITION_TRAITS as _TRANSITION_TRAITS,
+    TRANSITION_TRAITS as _TRANSITION_TRAITS,  # noqa: F401
 )
 from sr_od.application.currency_war.cw_investments import (
     aggregate_economy,
@@ -1178,18 +1180,17 @@ def _engines_count(board_factions: dict[str, int],
                    ) -> int:
     """过渡体系达成数(三选几+希儿系;两两组合=过渡成型)。
 
+    W278:本体上移 cw_deploy_logic.engines_count(单一源;
+    cw_sim_checks 经 cw_deploy_logic 消费,不 import 本模块——
+    检查网依赖方向锁);本名保留为薄委托,历史消费点
+    (decision_v2/cw_evolution/cw_delta_pool_gen 等的懒 import)不动。
     r399:希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
-    与三羁绊同级可组合(列车2+希儿系 13 帖/仙舟+希儿系 3/DOT+希儿
-    系 2/量贝同开 6)。
+    与三羁绊同级可组合。
     """
-    n = sum(1 for bond, tier in _TRANSITION_TRAITS
-            if board_factions.get(bond, 0) >= tier)
-    seele = ('希儿' in deployed_names
-             and (board_factions.get('量子同频', 0) >= 2
-                  or board_factions.get('贝洛伯格', 0) >= 2))
-    if seele:
-        n += 1
-    return n
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        engines_count as _impl,
+    )
+    return _impl(board_factions, deployed_names)
 
 
 def _transition_formed(board_factions: dict[str, int],
@@ -2404,8 +2405,18 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       checks: bool = True,
                       planes: int = 1,
                       invest: SimInvestProfile | bool = False,
-                      p2_combat: P2CombatCalib | None = None) -> dict:
+                      p2_combat: P2CombatCalib | None = None,
+                      max_rounds: int | None = None) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
+
+    :param max_rounds: 段级窗口(W278 sim 段级短跑批;None=整局,既有
+        行为**逐位不变**)。设 K 后,各局的**前 K 轮逐轮决策流**
+        (decisions/actions/gold/board/spend,state 快照带当时值)作为
+        ``segment_checks`` 的输入——截断以**账本切片**实现:逐轮执行
+        是因果序的(轮 k 的 state/决策只依赖轮 <k,rng 消耗按轮顺序),
+        前缀行与真跑到第 K 轮停下的决策流完全一致(同 seed 同池下
+        零差异),无需真正中断模拟循环。报告带 ``max_rounds`` 键披露
+        窗口(None=整局)。
 
     :param planes: 透传 ``simulate_p1``(1=P1 段——历史口径逐位不变;
         2=追加 P2 段,报告增 P2 headline 四联,ADR-0362/W157)。
@@ -2700,6 +2711,23 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         for v in rep_checks.values():
             v['seed_base'] = seed_base
         report['checks_violations'] = rep_checks
+    # W278 sim 段级短跑批:段级检查表(默认内嵌,只增报不改行为
+    # ——纯账本消费零 rng,headline/checks_violations 不受影响;
+    # 辖域独立于 checks 开关;max_rounds=None 时窗口=整局,输出与
+    # 整局语义一致)
+    from sr_od.application.currency_war.cw_sim_checks import (
+        run_segment_checks,
+    )
+    _win = max_rounds if (max_rounds is not None and max_rounds > 0) \
+        else None
+    report['max_rounds'] = _win
+    _seg_ledgers = [
+        ([row for row in v.ledger
+          if row.get('round_num', 10 ** 9) <= _win]
+         if _win is not None else list(v.ledger))
+        for v in views]
+    report['segment_checks'] = run_segment_checks(
+        _seg_ledgers, seed_base=seed_base)
     return report
 
 
@@ -2811,172 +2839,10 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
     }
 
 
-def simulate_handoff_ab(n: int = 300, *, pool: str | Path = 'snapshot',
-                        seed_base: int = 0, planes: int = 2,
-                        invest: bool = True) -> dict:
-    """W227/ADR-0400 P1 末窗承接门 A/B + W238/ADR-0403 hp 投影臂(三臂
-    +正交臂;设计件 08 §4.1 判据 3 / 09 §6 第一步口径)。
-
-    四臂同池同 seed 配对、同进程 flag 对照(ADR-0362 §③):
-
-    - **off**(基线)= 双 flag 关(当前默认);
-    - **gate**(headline_on)= ``handoff_gate_enabled`` 开、投影关
-      (W227 原两臂语义,键名保留兼容);
-    - **proj**(headline_proj)= 门开 + ``handoff_boss_project`` 开
-      (boss 后投影 hp 喂档位切点);
-    - **proj_only**(正交性核验,不进 headline)= 仅投影开、门关——
-      投影只在 ``handoff_gate_gap`` 门开路径内被消费,此臂 ledger
-      应与 off 臂**整局逐位一致**(两 flag 正交的结构证据)。
-
-    报告四面:
-
-    - headline:P2 存活族(p2_entered/存活轮/hp0 率/胜率)——验收
-      判据 3 的主指标(hp0 率下降/存活轮上移);
-    - 末窗观测:各行为臂承接门扣住轮数(ledger handoff_gap>0 的轮)、
-      r8 买入分布、进场承接档位分布 + **盲区修复行为差**
-      (``blindspot``:同 seed 同轮 proj 臂 gap≥1 而 gate 臂 gap=0 的
-      轮数/局数——run28/31/33 型「板面达标 hp 临界」局投影门触发而
-      现投影门不触发的行为差证据,设计件 09 §2);
-    - P1 非末窗零漂移门:plane1 round<handoff_gate_min_round 的
-      ledger 行逐 seed 逐位 diff(判据 3 后半;应恒空;gate/proj 两臂)。
-    """
-    import dataclasses
-    import json as _json
-    import logging
-    import statistics
-
-    from sr_od.application.currency_war.decision_v2.registry import (
-        DEFAULT_REGISTRY,
-    )
-    from sr_od.application.currency_war.decision_v2.strategy import (
-        DecisionV2Strategy,
-    )
-    logging.disable(logging.CRITICAL)
-    try:
-        _reg_gate = dataclasses.replace(DEFAULT_REGISTRY,
-                                        handoff_gate_enabled=True)
-        _reg_proj = dataclasses.replace(_reg_gate, handoff_boss_project=True)
-        _reg_proj_only = dataclasses.replace(DEFAULT_REGISTRY,
-                                             handoff_boss_project=True)
-        _strat_gate = DecisionV2Strategy(registry=_reg_gate)
-        _strat_proj = DecisionV2Strategy(registry=_reg_proj)
-        _strat_proj_only = DecisionV2Strategy(registry=_reg_proj_only)
-        res_gate = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                                invest=invest, strategy=_strat_gate)
-                    for i in range(n)]
-        res_off = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                               invest=invest) for i in range(n)]
-        res_proj = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                                invest=invest, strategy=_strat_proj)
-                    for i in range(n)]
-        res_proj_only = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                                     invest=invest,
-                                     strategy=_strat_proj_only)
-                         for i in range(n)]
-    finally:
-        logging.disable(logging.NOTSET)
-
-    def _headline(results: list[SimResult]) -> dict:
-        entered = [r for r in results if r.p2_entered]
-        combat_t = sum(r.p2_combat_total for r in entered)
-        return {
-            'p2_entered_rate': len(entered) / len(results),
-            'avg_p2_rounds': round(statistics.mean(
-                [r.p2_rounds for r in entered]), 2) if entered else None,
-            'p2_win_rate': (round(sum(r.p2_combat_wins for r in entered)
-                                  / combat_t, 4) if combat_t else None),
-            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
-                            / len(entered) if entered else None),
-        }
-
-    def _dump(obj) -> str:
-        return _json.dumps(obj, default=str, ensure_ascii=False)
-
-    # 正交性核验:proj_only(仅投影开)vs off 整局 ledger 逐位一致
-    # (投影的消费点全在 handoff_gate_gap 门开路径内,结构零漂移)
-    proj_only_drift_seeds = [
-        seed_base + i for i, (p, o) in enumerate(
-            zip(res_proj_only, res_off, strict=True))
-        if _dump(p.ledger) != _dump(o.ledger)]
-
-    # P1 非末窗零漂移门(判据 3 后半):逐 seed 比较行为臂 vs 基线臂
-    # plane1 round<handoff_gate_min_round 的账本行(逐位;含 actions/state)
-    _min_r = DEFAULT_REGISTRY.handoff_gate_min_round
-
-    def _pre_final(rows: list[dict]) -> list[dict]:
-        return [row for row in rows
-                if row.get('plane') == 1
-                and (row.get('round_num') or 0) < _min_r]
-
-    drift_gate_seeds: list[int] = []
-    drift_proj_seeds: list[int] = []
-    for i, (g, p, o) in enumerate(
-            zip(res_gate, res_proj, res_off, strict=True)):
-        if _dump(_pre_final(g.ledger)) != _dump(_pre_final(o.ledger)):
-            drift_gate_seeds.append(seed_base + i)
-        if _dump(_pre_final(p.ledger)) != _dump(_pre_final(o.ledger)):
-            drift_proj_seeds.append(seed_base + i)
-
-    # 盲区修复行为差(设计件 09 §2):同 seed 同轮 proj gap≥1 ∧ gate
-    # gap=0 —— hp 临界局投影门触发、现投影门不触发的轮(逐轮配对)
-    blindspot_rounds = 0
-    blindspot_games: set[int] = set()
-    for i, (g, p) in enumerate(zip(res_gate, res_proj, strict=True)):
-        g_gap = {(row.get('plane'), row.get('round_num')):
-                 row.get('handoff_gap') or 0 for row in g.ledger}
-        for row in p.ledger:
-            if ((row.get('handoff_gap') or 0) > 0
-                    and (g_gap.get((row.get('plane'), row.get('round_num')))
-                         or 0) == 0):
-                blindspot_rounds += 1
-                blindspot_games.add(seed_base + i)
-
-    # 末窗观测(行为臂):承接门扣住轮/r8 买数/进场档位分布
-    def _gate_hold_rounds(results: list[SimResult]) -> int:
-        return sum(1 for r in results for row in r.ledger
-                   if (row.get('handoff_gap') or 0) > 0)
-
-    def _r8_avg_buys(results: list[SimResult]) -> float | None:
-        buys = [sum(1 for act in (row.get('actions') or [])
-                    if act.get('__type__') == 'BuyCard')
-                for r in results for row in r.ledger
-                if row.get('plane') == 1 and row.get('round_num') == _min_r]
-        return round(statistics.mean(buys), 2) if buys else None
-
-    def _entry_tiers(results: list[SimResult]) -> dict[str, int]:
-        tiers: dict[str, int] = {}
-        for r in results:
-            if r.p2_entered and r.p2_handoff:
-                t = str(r.p2_handoff.get('tier'))
-                tiers[t] = tiers.get(t, 0) + 1
-        return tiers
-
-    return {
-        'n': n, 'planes': planes, 'invest': invest,
-        'pool_fingerprint': res_gate[0].pool_fingerprint,
-        'headline_off': _headline(res_off),
-        'headline_on': _headline(res_gate),
-        'headline_proj': _headline(res_proj),
-        'gate_hold_rounds_on': _gate_hold_rounds(res_gate),
-        'gate_hold_rounds_proj': _gate_hold_rounds(res_proj),
-        'r8_avg_buys_off': _r8_avg_buys(res_off),
-        'r8_avg_buys_on': _r8_avg_buys(res_gate),
-        'r8_avg_buys_proj': _r8_avg_buys(res_proj),
-        'entry_tier_dist_on': _entry_tiers(res_gate),
-        'entry_tier_dist_proj': _entry_tiers(res_proj),
-        # 盲区修复行为差(设计件 09 §6 第一步验收:投影臂在 hp 临界局
-        # gap≥1 触发、现投影臂不触发的行为差)
-        'blindspot': {'rounds': blindspot_rounds,
-                      'games': len(blindspot_games),
-                      'game_seeds': sorted(blindspot_games)},
-        'proj_only_orthogonality': {'drift_seeds': proj_only_drift_seeds,
-                                    'ok': not proj_only_drift_seeds},
-        'p1_zero_drift': {'min_round': _min_r,
-                          'drift_seeds_gate': drift_gate_seeds,
-                          'drift_seeds_proj': drift_proj_seeds,
-                          'ok': not drift_gate_seeds
-                          and not drift_proj_seeds},
-    }
+# ---- W227/W238 承接门 A/B 批 harness(simulate_handoff_ab)已随
+# ---- ADR-0411 flag 家族清理删除(四臂 off/gate/proj/proj_only 的对照
+# ---- 结构建在已删除的 registry 布尔字段上);验证史数字见 ADR-0400/
+# ---- 0403/0411。承接门行为的单帧回归锁 = test_cw_w227/w238/w242/w252。
 
 
 def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
@@ -3178,6 +3044,9 @@ def _cli_main() -> None:
                     help='auto/snapshot/fallback/JSON 路径')
     ap.add_argument('--expect-fingerprint', default='',
                     help='期望池指纹(不符即拒——历史报告对旧池重放)')
+    ap.add_argument('--max-rounds', type=int, default=None,
+                    help='段级窗口 K(前 K 轮决策流进段级检查表;'
+                         '不传=整局,既有行为不变)')
     args = ap.parse_args()
     pool_arg = args.pool
     if args.cmd == 'replay':
@@ -3204,13 +3073,19 @@ def _cli_main() -> None:
                   f"买={','.join(buys) or '-'}")
     else:
         rep = simulate_p1_batch(args.n, seed_base=args.seed_base,
-                                pool=pool_arg, planes=args.planes)
+                                pool=pool_arg, planes=args.planes,
+                                max_rounds=args.max_rounds)
         for k in ('n', 'hp_ge_60', 'battle_losses_le_2', 'avg_final_hp',
                   'p2_entered_rate', 'avg_p2_rounds', 'p2_win_rate',
                   'p2_hp0_rate', 'avg_p2_refreshes',
                   'pool_fingerprint'):
             print(f'{k}: {rep[k]}')
         print('checks:', rep['checks_violations'])
+        # W278 段级检查表摘要(事件全量在 rep['segment_checks'])
+        print('segment:', {
+            k: v['count'] for k, v in
+            rep.get('segment_checks', {}).items() if k != '_summary'},
+            '| max_rounds:', rep.get('max_rounds'))
 
 
 if __name__ == '__main__':

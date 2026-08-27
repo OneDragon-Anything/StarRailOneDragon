@@ -1213,6 +1213,431 @@ _BATCH_CHECKS = {
 
 
 
+# =====================================================================
+# --- 段级检查表 _SEGMENT_CHECKS(sim 段级短跑批;sim-testing §6 B 类病
+# --- 三缺口之①「过程不可观测」的轮级检验载体) ------------------------
+#
+# 与 _BATCH_CHECKS 平行的第二张表:
+# - 输入 = 单局前 K 轮决策流(cw_sim.simulate_p1_batch 的 max_rounds
+#   窗口切片;不传窗口时即整局逐轮账本,语义同构);
+# - 输出 = **带定位的事件列表**(哪局·哪轮·违反哪条·当时 state 关键
+#   值),不是 _BATCH_CHECKS 的「违规局数+局索引」聚合——段级病的归因
+#   需要轮级现场(seed+指纹可重放,sim-testing §6 回放纪律);
+# - 全部断言**单轮可判**(不跨轮累积状态,除成型判定与连胜重算两类
+#   由既有口径单源供给)——段级截断在第 K 轮切账本后语义不变;
+# - 口述条对齐:user_playstyle.md [6][11][12][13][17][19][22④];
+#   例外条件([6] 店全想要 / [19] 连胜保三态谱 / [11] 同息档零息损 /
+#   [16] 奖励节点买经验)编进断言,一刀切 = 误报泛滥。
+# =====================================================================
+
+def _seg_gold0(row: dict) -> int | None:
+    """决策时点金 = 本轮首牌面波 gold(收入后花销前;与
+    check_levelup_interest_engine_gate 的 gold0 同口径)。"""
+    waves = (row.get('sim') or {}).get('shop_waves') or []
+    if waves and isinstance(waves[0].get('gold'), int):
+        return int(waves[0]['gold'])
+    g = row.get('gold')
+    return int(g) if isinstance(g, int) else None
+
+
+def _seg_spent(row: dict) -> bool:
+    """本轮是否有任何花费动作(买/升级/刷;免费刷 cost=0 不计)。"""
+    s = row.get('sim') or {}
+    sp = s.get('spend') or {}
+    if (sp.get('buys') or {}) or sp.get('levelup', 0) \
+            or sp.get('refresh', 0):
+        return True
+    return any(a.get('__type__') in ('BuyCard', 'LevelUp', 'RefreshShop')
+               for a in row.get('actions') or [])
+
+
+def _seg_engines(row: dict) -> int:
+    """过渡体系达成数(W278 单一源 = cw_deploy_logic.engines_count,
+    即原 cw_sim._engines_count 本体——检查网不 import cw_sim 的架构
+    锁由依赖方向保证)。"""
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        engines_count,
+    )
+    st = row.get('state') or {}
+    bf = st.get('board_factions') or {}
+    dep = frozenset(d.get('char_id', '') for d in (st.get('deployed') or []))
+    return engines_count(bf, dep)
+
+
+def seg_check_gold_identity(rows: list[dict]) -> list[dict]:
+    """金账恒等式(实现层探针,非口述):上轮金+本轮收入−本轮支出=本轮金。
+
+    与 check_ledger_consistency 的差别:那条用行内 ``sim.gold_before``
+    (单行自洽),本条用**链式**上一行末金——跨行的记账断裂(轮间
+    丢一笔/收入重复入账)只有链式才能暴露。违规 = 账本/执行层 bug
+    (非策略病);每个事件带前后金与收支分解供定位。
+    """
+    out: list[dict] = []
+    prev_gold: int | None = None
+    for row in rows:
+        gold = row.get('gold')
+        if not isinstance(gold, int):
+            continue
+        if prev_gold is not None:
+            s = row.get('sim') or {}
+            inc = s.get('income') or {}
+            sp = s.get('spend') or {}
+            expect = (prev_gold + sum(inc.values())
+                      - sum((sp.get('buys') or {}).values())
+                      - sp.get('levelup', 0) - sp.get('refresh', 0)
+                      + sp.get('sell_income', 0))
+            if gold != expect:
+                out.append({
+                    'plane': row.get('plane'),
+                    'round_num': row.get('round_num'),
+                    'detail': f'金不守恒 {gold} != {expect}'
+                              f'(上轮末 {prev_gold}, 收入 {sum(inc.values())}'
+                              f' 支出 {sum((sp.get("buys") or {}).values()) + sp.get("levelup", 0) + sp.get("refresh", 0)}'
+                              f' 卖出回收 {sp.get("sell_income", 0)})',
+                })
+        prev_gold = gold
+    return out
+
+
+def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
+    """[17] 溢余即花(段级单轮版):金>50 且存在高边际价值购买目标却
+    整轮无花费动作。
+
+    「高边际价值」代理口径:**未成型**(过渡体系达成数<2,[13] 成型
+    前战力件/压库件都有边际价值;成型后的攒息是 [13]/ADR-0343 合法面
+    ——与 check_overflow_gold_zero_buy_streak 的豁免边界一致,但那条
+    要连续 ≥2 轮才报,本条单轮即报,诊断灵敏度更高、预期噪声也更高,
+    违规率按「量级说明」读不按达标线读)。
+    豁免:formed_stop 行(策略自认停手攒息)、bench 满守卫拦截轮
+    (想买买不了,``bench_full_skipped_buys``>0 披露在场)。
+    """
+    out: list[dict] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        if row.get('formed_stop'):
+            continue
+        sim = row.get('sim') or {}
+        if (sim.get('bench_full_skipped_buys') or 0) > 0:
+            continue
+        g0 = _seg_gold0(row)
+        if g0 is None or g0 <= 50 or _seg_spent(row):
+            continue
+        engines = _seg_engines(row)
+        if engines >= 2:
+            continue
+        node = sim.get('node') or ''
+        out.append({
+            'plane': 1, 'round_num': row.get('round_num'),
+            'detail': f'金 {g0}>50 整轮零花费未成型(engines={engines})'
+                      f' 节点={node}——[17] 溢余该花',
+            'gold_before': g0, 'engines': engines, 'node': node,
+        })
+    return out
+
+
+# 过渡带成本带口述锚:[30] 过渡阵容羁绊件基本在 1-2 费带。
+_SEG_TRANSITION_COST_MAX: int = 2
+
+
+def _seg_offered_cards(row: dict) -> list[dict]:
+    """本轮出现过的店面板(全部波合并去重,按名;末波为最终可见态)。"""
+    seen: dict[str, dict] = {}
+    for w in (row.get('sim') or {}).get('shop_waves') or []:
+        for c in w.get('cards') or []:
+            seen[c.get('name') or ''] = c
+    return list(seen.values())
+
+
+def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
+    """[11] 无损购买(段级):金<20 的同一息档内,店里有该买的过渡带件
+    却没买(被攒息错误拦截)。
+
+    判据对齐口述精确口径:「购买后仍在同一息档(不跨 10 的倍数)才
+    零息损」——候选卡须满足 ``(g//10)==((g−cost)//10)``;「该买的
+    过渡带件」代理 = 1-2 费且阵营 ∈ 引擎过渡体系(cw_line_defs.
+    ENGINE_FACTIONS 单一源;[30] 过渡羁绊件基本在 1-2 费带)。
+    例外面:成型后停手合法([13]);跨档购买最多损 1 金属 [11]
+    「凑息账」灰区不断言(只锁零息损形态);bench 满 = 想买买不了
+    (``bench_full_skipped_buys``>0 豁免)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.cw_line_defs import (
+        ENGINE_FACTIONS,
+    )
+    out: list[dict] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        if row.get('formed_stop'):
+            continue
+        sim = row.get('sim') or {}
+        if (sim.get('bench_full_skipped_buys') or 0) > 0:
+            continue
+        g0 = _seg_gold0(row)
+        if g0 is None or g0 >= 20 or _seg_spent(row):
+            continue
+        if _seg_engines(row) >= 2:
+            continue
+        for c in _seg_offered_cards(row):
+            cost = c.get('cost') or 0
+            if not (1 <= cost <= _SEG_TRANSITION_COST_MAX):
+                continue
+            if g0 // 10 != (g0 - cost) // 10:
+                continue   # 跨档 → 有息损,[11] 只豁免同档无损购买
+            ch = CHARACTERS.get(c.get('name') or '')
+            bonds = set((ch.factions if ch else ()) or ()) | \
+                set((ch.flows if ch else ()) or ())
+            if not (bonds & set(ENGINE_FACTIONS)):
+                continue
+            out.append({
+                'plane': 1, 'round_num': row.get('round_num'),
+                'detail': f'金 {g0}<20 店有过渡带件 {c.get("name")}'
+                          f'(cost {cost},购后仍同息档)未买——[11] 无损'
+                          f'购买被攒息拦截',
+                'gold_before': g0, 'candidate': c.get('name'),
+                'candidate_cost': cost,
+            })
+            break   # 一轮一条足够定位
+    return out
+
+
+def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
+    """[6]/[19] 破息例外记账(段级):发生破息的那笔购买必须落在例外
+    条件内。
+
+    「破息」= 本轮从时点金 ≥50 跨到末金 <50(破息由本轮花费引发;
+    逐笔粒度账本不携,轮级近似声明)。例外条件(任一成立合法):
+    ① **店全想要**代理 = 本轮买入 ≥2 笔且无一笔 channel=='off'
+    (channel=classify_buy 身份单一源,'off'=线外杂卡);
+    ② **连胜保三态谱**([19]:已连胜值得花保)= 进入轮时重算连胜
+    ≥2(``_combat_streak_by_round`` 单一源;连胜只有战斗类节点累积,
+    重算口径与该 helper 相同);
+    ③ **奖励/补给节点**([16]②:升级零战损、人玩倾向在该节点买经验)
+    —— 破息由 LevelUp 于 reward/supply 轮引发时合法。
+    不满足 = 凭空破息。事件带该轮店面板(最终可见波)与最终选择
+    (买入名单+通道)供归因。
+    """
+    out: list[dict] = []
+    streaks = _combat_streak_by_round(rows)
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        g0 = _seg_gold0(row)
+        gold_end = row.get('gold')
+        if g0 is None or not isinstance(gold_end, int):
+            continue
+        if g0 < 50 or gold_end >= 50 or not _seg_spent(row):
+            continue
+        bought = [{'name': (a.get('card') or {}).get('name'),
+                   'cost': (a.get('card') or {}).get('cost'),
+                   'channel': a.get('channel'),
+                   'reason': a.get('reason')}
+                  for a in row.get('actions') or []
+                  if a.get('__type__') == 'BuyCard']
+        lv = [a for a in row.get('actions') or []
+              if a.get('__type__') == 'LevelUp']
+        node = (row.get('sim') or {}).get('node') or ''
+        exceptions = []
+        if len(bought) >= 2 and all(b.get('channel') != 'off'
+                                    for b in bought):
+            exceptions.append('store_all_wanted')
+        if streaks.get(row.get('round_num'), 0) >= 2:
+            exceptions.append('streak_hold')
+        if lv and node in ('reward', 'supply'):
+            exceptions.append('reward_node_xp')
+        if exceptions:
+            continue
+        last_cards = ((row.get('sim') or {}).get('shop_waves') or [{}])[-1] \
+            .get('cards') or []
+        out.append({
+            'plane': 1, 'round_num': row.get('round_num'),
+            'detail': f'破息 {g0}->{gold_end} 无例外依据(购 {len(bought)} 笔'
+                      f' channels={[b.get("channel") for b in bought]},'
+                      f' 进轮连胜 {streaks.get(row.get("round_num"), 0)},'
+                      f' 节点={node})——[6]/[19]',
+            'gold_before': g0, 'gold_after': gold_end,
+            'buys': bought, 'final_shop_panel': last_cards,
+        })
+    return out
+
+
+def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
+    """[13] 成型停手(段级):过渡阵容已成型后仍买**过渡件**。
+
+    成型判据复用现有单一源(cw_sim._transition_formed 同判据的
+    ``_engines_count≥2``,见 sim-testing §6「判定口径复用现有成型
+    判据,不新造」);**目标阵容件照买照囤是 [13] 明文的正常行为**
+    ([21]/[22]),故只对「过渡填充件」断言——排除目标件的代理口径:
+    卡 ∈ 锁定 target_comp 名册(COMP_LIBRARY core_chars∪factions 内
+    角色)或 ∈ BRIDGE_POOL fixed∪core(框架件)→ 合法囤积;其余
+    engine/pair 身份买入 = 成型后过渡件,违规。
+    数据边界:target 未锁定时的 bridge 白名单兜底;pairs 周边件在
+    两名单之外的极端形态可能误报——事件率仅供诊断。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
+    bridge_names: set[str] = set()
+    for combo in BRIDGE_POOL:
+        bridge_names.update(combo.fixed + combo.core)
+
+    def _is_target_piece(name: str, target_label: str) -> bool:
+        if name in bridge_names:
+            return True
+        # COMP_LIBRARY 是 list[Comp](按 name 定位;非 dict)
+        comp = next((c for c in COMP_LIBRARY
+                     if getattr(c, 'name', '') == (target_label or '')),
+                    None)
+        if comp is None:
+            return False
+        roster = set(getattr(comp, 'core_chars', ()) or ())
+        for fn in getattr(comp, 'factions', ()) or ():
+            roster.update(n for n, c in CHARACTERS.items()
+                          if fn in (c.factions or ()))
+        return name in roster
+
+    out: list[dict] = []
+    formed = False
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        formed = formed or _seg_engines(row) >= 2
+        if not formed:
+            continue
+        # 同名在场豁免:已持有该件再买 = 副本合成路径([4] 核心 2★,
+        # [28] 形态达标的过渡核心升星维),不是新增过渡填充。
+        st_names = {d.get('char_id') for d in
+                    ((row.get('state') or {}).get('deployed') or [])} \
+            | {b.get('char_id') for b in
+               ((row.get('state') or {}).get('bench') or [])}
+        target_label = row.get('target_comp') or ''
+        # v3 过渡配方标签拆解(target_comp 形如 过渡配方·A+B → A/B)
+        labels = target_label.removeprefix('过渡配方·').split('+')
+        for a in row.get('actions') or []:
+            if a.get('__type__') != 'BuyCard':
+                continue
+            name = (a.get('card') or {}).get('name') or ''
+            if a.get('channel') not in ('engine', 'pair'):
+                continue
+            if name in st_names:
+                continue
+            if any(_is_target_piece(name, lb) for lb in labels):
+                continue
+            rn = row.get('round_num')
+            out.append({
+                'plane': 1, 'round_num': rn,
+                'detail': f'成型后仍买过渡件 {name}(channel='
+                          f'{a.get("channel")}, target={target_label})'
+                          f'——[13] 成型停手线',
+                'bought': name, 'channel': a.get('channel'),
+                'target_comp': target_label,
+            })
+    return out
+
+
+_LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev')
+# 同 check_levelup_interest_engine_gate(ADR-0410 static_ev 并入)——
+# 常量此处镜像声明防跨表 import 私名;两侧语义漂移由测试仓双向锁辖。
+
+
+def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
+    """[12]/[33] 升级驱动(段级):无「有框架单位等待上场」依据的升级
+    (凭空追级)。
+
+    授权依据观测(LevelUp.auth_basis,W131/ADR-0410)为准——白名单
+    pop_slot([33] 人口位=有框架单位等待上场)/ dp(DP 授权)/
+    static_ev(EV 平台账)外 = 凭空追级。[12] 主条(连 50 金都没凑到
+    不急升级)落在授权门的金维:与 batch 表 check_levelup_interest_
+    engine_gate 同谓词,差异只在输出粒度(那里=违规局数,这里=逐事件
+    带 state 关键值供段级归因);豁免奖励/补给节点([16]② 买经验合法)。
+    近似声明同 batch 版:升级前等级用上一行 level;时点金=首波 gold。
+    """
+    out: list[dict] = []
+    prev_level = 3
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        waves = (row.get('sim') or {}).get('shop_waves') or []
+        g0 = waves[0].get('gold') if waves else row.get('gold')
+        node = (row.get('sim') or {}).get('node') or ''
+        for a in row.get('actions') or []:
+            if a.get('__type__') != 'LevelUp':
+                continue
+            basis = a.get('auth', '')
+            if node in ('reward', 'supply'):
+                continue   # [16]② 奖励节点买经验合法
+            if prev_level < 5:
+                continue   # 与 batch 版同界:lv≥5 才算追级段
+            if basis in _LEVELUP_AUTH_WHITELIST:
+                continue
+            st = row.get('state') or {}
+            out.append({
+                'plane': 1, 'round_num': row.get('round_num'),
+                'detail': f'LevelUp 时点金 {g0}<50 授权={basis or "(空)"}'
+                          f'(lv{prev_level}, cap={st.get("cap")})'
+                          f'——[12]/[33] 凭空追级',
+                'gold_before': g0, 'auth_basis': basis,
+                'level_before': prev_level, 'cap': st.get('cap'),
+            })
+        prev_level = ((row.get('state') or {}).get('level')
+                      or prev_level)
+    return out
+
+
+#: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
+#: 平行,输出粒度不同——事件带定位,见本节头注释)。
+_SEGMENT_CHECKS = {
+    'seg_gold_identity': seg_check_gold_identity,
+    'seg_overflow_idle_spend': seg_check_overflow_idle_spend,
+    'seg_lossless_buy_missed': seg_check_lossless_buy_missed,
+    'seg_break_interest_exception': seg_check_break_interest_exception,
+    'seg_formed_still_buying_transition': seg_check_formed_still_buying_transition,
+    'seg_unjustified_levelup': seg_check_unjustified_levelup,
+}
+
+#: 事件列表上限(报告侧;全量走 seed 重放可再取,防批报告膨胀)
+_SEGMENT_EVENTS_CAP: int = 20
+
+
+def run_segment_checks(ledgers: list[list[dict]], *,
+                       seed_base: int = 0) -> dict:
+    """段级检查批量入口 → {检查名: {'count','events'},'_summary'}。
+
+    事件字段追加 game_idx/seed/check(same-contract:seed = seed_base+
+    game_idx,cw_sim replay --seed N --pool snapshot 可逐步还原现场)。
+    events 截断至 ``_SEGMENT_EVENTS_CAP``(count 是真值)。
+    """
+    report: dict = {}
+    for name, fn in _SEGMENT_CHECKS.items():
+        events: list[dict] = []
+        for idx, rows in enumerate(ledgers):
+            try:
+                evs = fn(rows) or []
+            except Exception as exc:   # noqa: BLE001  检查器异常不炸批
+                report.setdefault('_errors', {})[name] = repr(exc)
+                continue
+            for ev in evs:
+                ev = dict(ev)
+                ev['game_idx'] = idx
+                ev['seed'] = seed_base + idx
+                ev['check'] = name
+                events.append(ev)
+        report[name] = {
+            'count': len(events),
+            'events': events[:_SEGMENT_EVENTS_CAP],
+            'truncated': len(events) > _SEGMENT_EVENTS_CAP,
+            'seed_base': seed_base,
+        }
+    report['_summary'] = {
+        'total_events': sum(v['count'] for k, v in report.items()
+                            if isinstance(v, dict) and 'count' in v),
+        'rates_note': 'count/n 为诊断用违规率量级,非达标线'
+                      '(段级检查是过程病扫描仪);分母 = 批局数',
+    }
+    return report
+
+
 # --- Δ池标定检查(压测批③ F1 检查项 1/2/3;ADR-0268) ---------------
 # 前两条吃池 dict(simulate_p1_batch 有 resolve_pool 产物;纯 dict
 # 入参,不 import cw_sim);第三条吃两臂账本(A/B 对照调用方使用,

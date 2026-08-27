@@ -89,6 +89,26 @@ GUARD_SYSTEM_TIERS: tuple[tuple[str, int], ...] = (
     TRANSITION_TRAITS + ((SEELE_SYSTEM_KEY, 1),))
 
 
+def engines_count(board_factions: dict[str, int],
+                  deployed_names: frozenset[str] | set[str] = frozenset()
+                  ) -> int:
+    """过渡体系达成数(W278 从 cw_sim._engines_count 上移的**单一源**;
+    cw_sim 侧保留同名薄委托,checks 模块经本模块消费——检查网不
+    import cw_sim 的架构锁由依赖方向保证)。
+
+    四体系:仙舟3/列车2/DOT2(TRANSITION_TRAITS 阈值)+ 希儿系
+    (希儿在场 ∧ 放大器≥2)。两两组合=过渡成型。
+    """
+    n = sum(1 for bond, tier in TRANSITION_TRAITS
+            if board_factions.get(bond, 0) >= tier)
+    seele = ('希儿' in deployed_names
+             and (board_factions.get('量子同频', 0) >= 2
+                  or board_factions.get('贝洛伯格', 0) >= 2))
+    if seele:
+        n += 1
+    return n
+
+
 def is_seele_system_member(char_id: str, bonds: set[str]) -> bool:
     """希儿系贡献件判据(单卡 + 放大器;守卫/保护辖域口径,W192)。
 
