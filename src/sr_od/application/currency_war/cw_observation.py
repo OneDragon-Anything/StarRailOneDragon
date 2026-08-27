@@ -659,20 +659,32 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
 
 
 # cap 真值防抖门(ADR-0286,批㉔ F5 前置):cap 与 level 的合法域 = level ≤ cap ≤ level+2
-# (宝钻可叠加但实机语料未见 >2;cap<level 不可能——唯一合法 diff=−1 形态是诅咒泽尔里奇
+# (宝钻可叠加;cap<level 不可能——唯一合法 diff=−1 形态是诅咒泽尔里奇
 # −1 cap,未见实例,先按域拒)。|cap−level|>2 或 cap<level = paddle 误读族(ADR-0281
 # 15 行 old=5/6→new=3/4 实测),直接进决策 = 把读错抬到决策层 → 重读一帧再核,仍异拒信。
+# W292 修订(ADR-0420):diff>2 **不再是绝对禁区**——W285 #41 实拍帧
+# obs_conflict_deploy_cap_out_of_range__e4972b43(2-2,paddle 12/13 + 经验面板
+# Lv.8/2-72 双读数实锤 + 后台 9 格实画)= diff=5 真实高档,旧域把它拒信 →
+# resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = W285 指认的「6 槽降级
+# 错误兜底」。现:域外值重读一帧,**两帧一致且在绝对板面上界内 → 采信**(瞬时
+# 误读族仍被「重读不等」拦住——12槽误档事故 8a56db39 是单帧读数,无两帧一致
+# 实证);留证不消失(采信也留,判读可见)。cap<level 仍恒拒(物理不可能)。
 DEPLOY_CAP_MAX_DIFF: int = 2
+#: cap 绝对板面上界(实拍上限:前台 4 + 后台 9 = 13,e4972b43;超界即使两帧
+#: 一致也拒——OCR 结构性误读如「8/8→12」级别前缀噪声可能跨帧复现)
+DEPLOY_CAP_ABS_MAX: int = 13
 
 
 def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
                               level: int) -> int | None:
     """cap 真值防抖读(ADR-0286,与 r414 域判定同族):域外值重读一帧,仍域外 → None 拒信。
 
-    域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``(cap<level 不可能、
-    |cap−level|>2 未见于实机语料=误读族)。域外时独立再截一帧重读:
-    重读入域 → 采重读值;仍域外 → obs_conflict 留证 + None(调用方 max_units
-    兜底 level,与「未读到」同态)。截图失败(异常)按重读不可得处理。
+    域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``;域外时独立再截一帧重读:
+    重读入域 → 采重读值;**重读与首读一致且 level ≤ cap ≤ DEPLOY_CAP_ABS_MAX
+    → 采信(域外双帧一致,真实高档 W292/ADR-0420,e4972b43 diff=5 实拍)**
+    + obs_conflict 留证;其余(重读仍域外且不一致/cap<level/超绝对上界)→
+    留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
+    截图失败(异常)按重读不可得处理。
     """
     cap = read_deploy_cap(ctx, screen)
     if cap is None or level <= 0:
@@ -687,10 +699,21 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
         cap2 = None
     if cap2 is not None and level <= cap2 <= level + DEPLOY_CAP_MAX_DIFF:
         return cap2
+    if (cap2 is not None and cap2 == cap
+            and level <= cap2 <= DEPLOY_CAP_ABS_MAX):
+        # 域外双帧一致:真实高档采信(瞬时误读被「两帧一致」概率压住;
+        # 留证让判读侧可见本次采信,复现异常高频则回头收紧)
+        obs_conflict('deploy_cap_domain', cap, cap2, screen,
+                     verdict=('采信-域外双帧一致(真实高档,W292/ADR-0420:'
+                              'e4972b43 实拍 diff=5 真档,旧域拒信致 6 槽'
+                              '降级在 9 格板上跑;本行供判读核对 paddle X/Y'
+                              ' 与经验面板等级;复现高频则回查读链)'),
+                     source='paddle_cap_debounce')
+        return cap2
     obs_conflict('deploy_cap_domain', cap, cap2, screen,
-                 verdict=('拒信-域外(cap<level 不可能/|cap−level|>2 未见于语料;'
-                          '重读一帧仍域外 → None,决策兜底 level;'
-                          '复现 ≥3 次排查 read_deploy_cap/level 读链'),
+                 verdict=('拒信-域外(cap<level 不可能/|cap−level|>2 且重读'
+                          '不一致或超绝对上界 13;重读一帧仍异 → None,决策'
+                          '兜底 level;复现 ≥3 次排查 read_deploy_cap/level 读链'),
                  source='paddle_cap_debounce')
     return None
 

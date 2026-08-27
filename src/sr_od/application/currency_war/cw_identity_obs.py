@@ -288,6 +288,86 @@ def read_merge_preview(crop: MatLike) -> int:
     return count
 
 
+# ===== 合成特效帧态门(W292/ADR-0420,W285 抽样批3)=====
+# 病灶(W285 §三 star 层,抽样 2/2 采新帧全错):read_star 会采在 3合1 合成
+# 星爆动画/拖拽过渡窗内(特效遮挡第 2 星 → 读 1),对账侧「连续 2 次回退才采新」
+# 防抖会被**持续 ≥2 帧的动画窗**骗过(第 2 帧仍在窗内 → 假确认采新 1★ 毒化)。
+# 修法:回退**采新确认前**先过本帧态门——特效帧在场上 = 读数不可信窗,保旧且
+# **不推进**防抖计数(冻结,非清零:动画结束后的干净回退帧仍能确认)。
+# 与既有回退防抖(r34/W292 前是逐角色计数)的关系:防抖管「时间维」(单帧疑云
+# 下帧确认),本门管「帧态维」(本帧物理上不可信)——正交合并,防抖主干不动。
+#
+# 两签名均 4 帧正样本(W285 判读)+ 全部可用负样本标定(RGB 约定,生产
+# read_image 同约定;2026-09-05 离线标定,脚本 .debug/temp/cw_w292_calib5.py):
+#
+# 1. **合成星爆粒子**(正样本 obs_conflict_star__a61848f0:前排带金色四角星
+#    爆点):前排棋盘带内严橙金窗口(复用升星预览✦的 _PREVIEW_GOLD,自发光
+#    V≥248)连通域(≥9px)计数。标定:星爆帧 460px/8 个 ≥9px 域;负样本
+#    4 帧(稳定×2/8 格局/7 格局)gold_px 0-50 但 **≥9px 域全为 0**(卡面
+#    金色装饰被窗口与面积双门滤净)→ 阈 3 = 正样本下限 8 的 0.375×、负样本
+#    上限 0 之上,不贴任何一侧。
+# 2. **「备战席已满」红色警告横幅**(正样本 obs_conflict_star__46d292eb:
+#    拖拽合成过渡帧,拖拽中浮空卡 + 满席红斜纹空槽 + 横幅):横幅带内
+#    R−max(G,B)>40 像素占比。标定:拖拽帧 0.138;其余 6 帧全部 ≤0.013
+#    (红发角色卡不与横幅带重叠)→ 阈 0.06 居中(正 2.3×/负 4.6× 余量)。
+# 边界(如实):两签名各只有 1 个正样本帧,阈值留了倍数余量但属**单正样本
+# 标定**;星爆若发生在后排/拖拽过渡无满席横幅的形态未采到 —— 漏检时既有
+# 防抖仍兜底(门是加强不是替代),误检代价 = 多保旧一帧(自愈)。复现新形态
+# 再扩签名。
+_MERGE_EFFECT_FRONT_BAND: tuple[int, int, int, int] = (400, 420, 1500, 580)
+#: 星爆粒子连通域面积下限(px;负样本卡面金装饰最大域 8px,真爆点 12-133)
+_MERGE_EFFECT_COMP_MIN_AREA: int = 9
+#: ≥9px 粒子域数阈值(星爆帧 8 / 负样本全 0;取 3 居中)
+_MERGE_EFFECT_GOLD_MIN_COMPS: int = 3
+#: 满席警告横幅带(1080p;x1,y1,x2,y2;46d292eb 实测横幅位置)
+_BENCH_FULL_BANNER_RECT: tuple[int, int, int, int] = (470, 515, 1450, 555)
+#: 横幅红主导判定:R − max(G,B) > 本值算红主导像素(横幅深红底+红字实测)
+_BANNER_RED_DOM_DIFF: int = 40
+#: 横幅红主导占比阈值(拖拽帧 0.138 / 负样本 ≤0.013;取 0.06 居中)
+_BANNER_RED_DOM_MIN: float = 0.06
+
+
+def is_merge_effect_frame(screen: MatLike | None) -> bool:
+    """合成特效帧态判定(W292/ADR-0420):当前帧是否处于 3合1 星爆动画/拖拽
+    合成过渡窗内 → True(read_star 读数不可信,消费方保旧)。
+
+    判据 = 两签名任一命中(标定数字与边界见上方常量块注释):
+    ① 前排棋盘带严橙金窗口连通域(≥``_MERGE_EFFECT_COMP_MIN_AREA``)计数
+      ≥ ``_MERGE_EFFECT_GOLD_MIN_COMPS``(星爆粒子);
+    ② 满席警告横幅带红主导占比 ≥ ``_BANNER_RED_DOM_MIN``(拖拽合成过渡)。
+
+    ``screen`` = 全帧 RGB(None → False,离线/读失败不拦);非 1080p 帧越界
+    裁切自动收缩为空 → False。best-effort:任何异常 → False(不拦,防抖
+    主干仍兜底——门失效的代价回到 W292 前行为,不引入新故障面)。
+    """
+    if screen is None:
+        return False
+    try:
+        h, w = screen.shape[:2]
+        # ① 星爆粒子:前排带严橙金连通域计数
+        x1, y1, x2, y2 = _MERGE_EFFECT_FRONT_BAND
+        if y2 <= h and x2 <= w:
+            band = screen[y1:y2, x1:x2]
+            hsv = cv2.cvtColor(band, cv2.COLOR_RGB2HSV)
+            mask = cv2.inRange(hsv, _PREVIEW_GOLD_LO, _PREVIEW_GOLD_HI)
+            nlab, lab = cv2.connectedComponents(mask)
+            big = sum(1 for i in range(1, nlab)
+                      if int((lab == i).sum()) >= _MERGE_EFFECT_COMP_MIN_AREA)
+            if big >= _MERGE_EFFECT_GOLD_MIN_COMPS:
+                return True
+        # ② 满席警告横幅:红主导像素占比
+        bx1, by1, bx2, by2 = _BENCH_FULL_BANNER_RECT
+        if by2 <= h and bx2 <= w:
+            reg = screen[by1:by2, bx1:bx2].astype(np.int32)
+            r, g, b = reg[:, :, 0], reg[:, :, 1], reg[:, :, 2]
+            if float(((r - np.maximum(g, b)) > _BANNER_RED_DOM_DIFF).mean()) \
+                    >= _BANNER_RED_DOM_MIN:
+                return True
+        return False
+    except Exception:   # noqa: BLE001  判据 best-effort;异常=不拦
+        return False
+
+
 def identify_slots(
     screen: MatLike,
     templates: AvatarTemplates,

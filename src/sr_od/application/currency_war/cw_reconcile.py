@@ -127,20 +127,48 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                             _bumped = True
                             break
             else:
-                # 连续第二次:确认真回退(卖后重买/真识别问题)→ 采新写回。
-                log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
-                _conflict('star', _old_s, _s, screen, verdict='采新-回退确认(连续2次)',
-                          source=source, char=_n)
-                # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
-                # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
-                # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
-                # r336(批次4:钩子归位):留证调用从 reconcile 深处
-                # 改**队列记录**——真正落盘由 director 对账位统一
-                # 触发(消费统一观察;r330 帧态门在 _star_stop_hook
-                # 内,双层保护)。reconcile 只登记,不做 IO。
-                if _old_s >= 2:
-                    _reg[_n] = _reg.get(_n, 0) + 1
-                    _pending_evidence.append((_n, _old_s, _s, source))
+                # W292 帧态门(ADR-0420):采新确认前先判合成特效帧——星爆动画/
+                # 拖拽过渡窗可持续 ≥2 帧,「连续 2 次」防抖会被窗内第 2 帧假确认
+                # (W285 star 层抽样 2/2 采新帧全错实证)。特效帧 = 物理不可信窗:
+                # 保旧同首次分支,**防抖计数冻结不推进**(非清零——动画结束后的
+                # 干净回退帧仍走本分支确认;门漏检时退化为 W292 前防抖行为)。
+                _eff = False
+                if screen is not None:
+                    from sr_od.application.currency_war.cw_identity_obs import (
+                        is_merge_effect_frame,
+                    )
+                    _eff = is_merge_effect_frame(screen)
+                if _eff:
+                    log.info(f'[cw][{source}] star 回退帧态门:{_n} {_old_s}★→{_s}★'
+                             f'(合成特效帧,读数不可信)→ 保旧 {_old_s}★,防抖冻结')
+                    _conflict('star', _old_s, _s, screen,
+                              verdict='保旧-合成特效帧态门(采新确认被拦,防抖冻结;'
+                                      'W292/ADR-0420)',
+                              source=source, char=_n)
+                    _bumped = False
+                    for _lst in (bench, deployed):
+                        if not _lst or _bumped:
+                            continue
+                        for _bc in _lst:
+                            if _bc.char_id == _n and _bc.star == _s:
+                                _bc.star = _old_s   # 保旧(特效帧读数不进 tracking)
+                                _bumped = True
+                                break
+                else:
+                    # 连续第二次:确认真回退(卖后重买/真识别问题)→ 采新写回。
+                    log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
+                    _conflict('star', _old_s, _s, screen, verdict='采新-回退确认(连续2次)',
+                              source=source, char=_n)
+                    # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
+                    # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
+                    # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
+                    # r336(批次4:钩子归位):留证调用从 reconcile 深处
+                    # 改**队列记录**——真正落盘由 director 对账位统一
+                    # 触发(消费统一观察;r330 帧态门在 _star_stop_hook
+                    # 内,双层保护)。reconcile 只登记,不做 IO。
+                    if _old_s >= 2:
+                        _reg[_n] = _reg.get(_n, 0) + 1
+                        _pending_evidence.append((_n, _old_s, _s, source))
         elif _n in _pend or _n in _reg:
             _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;r79:pop 防抖——
             # 名字可能只在 _reg 不在 _pend,原 del 抛 KeyError 打断备战环,实锤 丹恒·饮月)
