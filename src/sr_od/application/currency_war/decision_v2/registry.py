@@ -643,6 +643,58 @@ class DecisionV2Registry:
     #: r408 同轮守卫/bench 容量照常辖。默认关论证见 ADR-0405。
     handoff_star_directed: bool = False
 
+    # ===== W252/ADR-0409 M-A 定向 D 牌授权窗(W249 诊断修法)=====
+    #: 总开关(**与 handoff_gate_enabled / handoff_boss_project 三 flag
+    #: 正交**:budget 只在 gate 开路径内被消费,单独开=零行为,W242 C 项
+    #: 先例):True 时 P1 末窗承接缺口 gap>0(handoff.handoff_gate_gap
+    #: 单一源复用)**且**存在追名 peak≥2 的目标件(意向核心名集内某名
+    #: star 加权在手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新
+    #: (RefreshShop)开放有界预算——修 W249 H3 病灶「策略从不支付
+    #: 搜索成本」:追名 peak 卡死在 2 张时补最后一跳的期望刷新代价
+    #: (~6-17 次/颗)恰落入金余量尾部窗口,但策略此前刷新分配为零。
+    #: **只辖刷新维**(防双计,W232 A/B/W242 C 各辖买牌维,互斥边界:
+    #: 同一动作只有一条授权来源——买候选走既有 interest_rule 缺口项/
+    #: copy 放行路径不动;refresh 候选要么走既有 V_D 正分/gold_floor
+    #: 路径(预算开/关逐位一致),要么凭本预算有界放行,无叠加);
+    #: copies_cap/r408/bench 容量等约束链照常辖。默认关论证见 ADR-0409。
+    handoff_refresh_directed: bool = False
+    #: 单合资格轮刷新次数上限(W249 白盒估算初值:每轮 ≤2 次)
+    directed_refresh_per_round: int = 2
+    #: 每局刷新总上限(W249 白盒估算初值:≈覆盖一颗 2★ 的第二跳
+    #: 6-7 次;消耗计数 session.v3_dir_refresh_used,decide_prep 轮首
+    #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
+    #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
+    directed_refresh_game_cap: int = 6
+
+    # ===== W251/ADR-0408 假设 A:r3/r4 投资节奏前置(评分偏置)=====
+    #: 总开关:False=回 W248 后行为(A/B 基线臂;默认关=现行为零漂移,
+    #: ADR-0305 先例)。True 时 P1 r∈[early_pace_min_round,
+    #: early_pace_max_round](缺省 3-4,W248 报告 §四:高损耗局的分化
+    #: 在 r3-r4 已发生,当前策略按息纪律延后投资、r3/r4 常带浅板上阵)
+    #: 的**战力买标签**(=crisis_buy_tags 同集,战力买语义复用不另造
+    #: 标签集)候选,val ≤ early_pace_val_max 的 0/小分买入顶成 +
+    #: early_pace_bias——与 forming_bias(ADR-0332)同构的「成型期权
+    #: 显影」前移版,把破息战力投资的 EV 授权阈值在 r3-r4 放宽一档
+    #: (W248 假设 A:败场数是出口 hp 最强负相关 −0.635,投资前移→
+    #: 更早把金转化为战力→压低 r7/boss 高损耗轮败场数)。
+    #: **防双计**(W232/W238 三件套纪律):本项只顶非正分买进约束链,
+    #: 息账仍由 interest_rule EV 账单一裁决(V 随偏置进入 = 授权放宽
+    #: 是本修法的本体语义,非第二份授权);地板族/copies_cap/bench
+    #: 容量照常辖;forming_bias 不重叠(r3-r4 在其 r≥5 窗外)。
+    #: 默认关论证见 ADR-0408(A/B outcome 裁决)。
+    early_pace_enabled: bool = False
+    #: 窗下界(P1 备战轮;r3 是首个战斗节点前的最后一轮备战)
+    early_pace_min_round: int = 3
+    #: 窗上界(W248 §四干预口径:「r3-r4 备战期放宽破息授权一档」;
+    #: r5 起 supply 回补,由既有息纪律接管)
+    early_pace_max_round: int = 4
+    #: 偏置单位值(顶 0/小分买入;量级=forming_bias 同阶,只改变约束链
+    #: 是否可达,排序面让位天然正分目标件)
+    early_pace_bias: float = 5.0
+    #: 顶分上沿(原分 > 此值不加偏置——防「已正分买入被二次加分」双计,
+    #: forming_bias_val_max 同款边界)
+    early_pace_val_max: float = 0.5
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)

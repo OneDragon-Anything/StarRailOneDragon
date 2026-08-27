@@ -9,7 +9,7 @@
 | 纪律 | AGENTS.local 写入内容(动作完整;指针=细则入口) |
 |---|---|
 | 改策略必读玩法文档 | 修改任何策略前,一定先读玩法文档(口述玩法/设计文档;清单入口=`sr-od-currency-war-dev` skill 的 references/strategy-work.md §3)——没读就改=凭猜 |
-| 模拟常开 | 始终保持有子 agent 在跑模拟测试,找出货币战争策略的问题与优化方向(武器库与排程=`sr-od-currency-war-dev` skill 的 references/sim-testing.md §3+§4;一批交付即补派下一批)——不是等实机结果 |
+| 模拟常开 | 始终保持有子 agent 在跑模拟测试,找出货币战争策略的问题与优化方向(先阅读 `sr-od-currency-war-dev` skill 的 references/sim-testing.md §3 武器库+§4 排程;一批交付即补派下一批)——不必等漫长的实机验证 |
 | 实机运行时先武装哨兵 | 起实机对局前,先把哨兵脚本三件跑起来(脚本=`sr-od-currency-war-dev` skill 的 scripts/ 目录;武装命令口径与重武三步入口=references/runtime-ops.md「哨兵脚本组」节;报警怎么消费=本文件 §3)——不武装=对局卡死/断流没人报,烧几十分钟才发现 |
 
 写入准则:动作判断本身完整写进指令文件,指针只作细则入口——不是拿一句「见某 skill」代替内容。

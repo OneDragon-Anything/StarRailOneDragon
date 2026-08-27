@@ -1012,6 +1012,35 @@ def score_candidate(cand: Candidate, state: GameState,
         # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
         # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
         val += registry.goldrich_buy_bias
+    _early_pace_hit = False   # W251/ADR-0408:触发依据记录(bd['early_pace'])
+    if (registry.early_pace_enabled
+            and cand.tag in registry.crisis_buy_tags
+            and isinstance(cand.action, BuyCard)
+            and state.plane == 1
+            and registry.early_pace_min_round <= state.round_num
+            <= registry.early_pace_max_round
+            and not is_emergency(state, registry)):
+        # W251/ADR-0408 假设 A:r3/r4 投资节奏前置(评分偏置;W248 报告
+        # §四假设 A 的可派修法)。战力买候选的 0/小分顶成正分进约束链,
+        # 破息授权经 interest_rule EV 账随 V 放宽——「更早把金转化为
+        # 战力」的本体语义。防双计与辖域:①原分>上沿不叠(已正分买入
+        # 不二次加分);②emergency([18])覆盖态优先,本项不越权;
+        # ③boss 窗([32])/war 不辖——与 forming_bias 的 r≥5 窗及纪律态
+        # 先行序一致(局部导入防环,同本文件既有 ADR-0332 段先例);
+        # ④息账单一源仍是 interest_rule,本项无独立授权常量;⑤off_lock
+        # 降级在末段收口(见下),锁定线外的散买仍被压制。
+        # bd['early_pace'] 记触发依据(判读/行为面核)。默认关=零漂移。
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            boss_window_active,
+        )
+        from sr_od.application.currency_war.decision_v2.filters import (
+            current_mode,
+        )
+        if (not boss_window_active(state, session, registry)
+                and current_mode(session) != 'war'
+                and val <= registry.early_pace_val_max):
+            val += registry.early_pace_bias
+            _early_pace_hit = True
     # W150/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias/goldrich 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1023,6 +1052,8 @@ def score_candidate(cand: Candidate, state: GameState,
         val -= registry.off_lock_buy_penalty
     out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
               'form_gold': round(form_gold, 3)}
+    if _early_pace_hit:
+        out_bd['early_pace'] = registry.early_pace_bias   # W251/ADR-0408
     if off_lock:
         out_bd['off_lock'] = off_lock
     return val, out_bd

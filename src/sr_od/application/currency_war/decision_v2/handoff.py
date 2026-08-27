@@ -226,6 +226,71 @@ def star_directed_gap(state: GameState, session: StrategySession,
     return handoff_gate_gap(state, session, reg)
 
 
+def directed_refresh_budget(state: GameState, session: StrategySession,
+                            registry: DecisionV2Registry | None = None,
+                            ) -> int:
+    """定向 D 牌授权窗预算(M-A,W252/ADR-0409;W249 诊断修法)。
+
+    病灶(W249 §H3):**策略从不支付搜索成本**——追名 peak 卡死在 2 张
+    时(场上已有 2 张同名目标件,距 3合1 只差最后一张),策略的刷新
+    预算分配为零(P1 全程均值 0.44 次/局),双核心(core2≥2)全链不可达。
+    本函数返回当前轮可用的**有界刷新预算**(次数):0=不授权。
+
+    辖域判据(与 C 项 ``star_directed_gap`` 同族同窗):
+    - ``registry.handoff_refresh_directed`` 开(默认关);
+    - ``handoff_gate_gap > 0`` 承接缺口成立(gap 单一源复用;gate 关时
+      恒 0——本 flag 与 gate/boss 投影三 flag 正交,单独开=零行为,
+      W242 C 项先例);
+    - 存在「追名 peak≥2」的目标件:**意向目标名集**(``_core_names``,
+      candidates 层单一源)中某名的全场在手副本(star 加权,
+      ``star_weighted_copies``)恰 ≥2 且 <3 ——即该名距 2★ 只差最后
+      一张,补跳的期望刷新代价(~6-17 次,E 随费用档)在金余量允许
+      的尾部窗口内才开始有意义;peak<2(收集线远未起步,自然进店
+      即可见即购)或已 3 份(copies_cap 照辖)不授权。
+
+    预算额 = min(registry.directed_refresh_per_round 每轮上限,
+                 registry.directed_refresh_game_cap − 本局已消耗)
+    (两常量 registry 单一源;初值来自 W249 白盒估算:每合资格轮 ≤2 次、
+    每局 ≤6 次 ≈ 覆盖一颗 2★ 的第二跳)。**只产出预算数,不产生任何
+    动作**;消费方是 arbiter 刷新收尾裁决(有界放行),实际金消耗 =
+    放行次数 × 刷价。
+
+    防双计(W232 A/B/W242 C 各辖买牌维,M-A 辖刷新维,互斥边界):买牌
+    授权路径(interest_rule 缺口项/copy 标签放行)不动;本函数只在
+    arbiter 刷新分支被消费——一个 RefreshShop 候选要么走 V_D 正分/
+    gold_floor 地板(既有路径,预算开/关逐位一致),要么凭本预算在有界
+    额度内放行,同一动作不存在两条授权来源叠加。
+    """
+    reg = registry if registry is not None else _default_registry()
+    if not reg.handoff_refresh_directed:
+        return 0
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _core_names,
+    )
+    # 追名 peak≥2 判据:目标集内某名 star 加权副本 ∈ [2,3)(差最后一张)
+    for name in _core_names(session):
+        c = _weighted_copies_of(name, state)
+        if 2 <= c < 3:
+            break
+    else:
+        return 0
+    gap = handoff_gate_gap(state, session, reg)
+    if gap <= 0:
+        return 0
+    used = getattr(session, 'v3_dir_refresh_used', 0)
+    return max(0, min(reg.directed_refresh_per_round,
+                      reg.directed_refresh_game_cap - used))
+
+
+def _weighted_copies_of(name: str, state: GameState) -> int:
+    """单名 star 加权副本数(deployed∪bench;
+    ``cw_sim.star_weighted_copies`` 单一源转发,防第二公式)。"""
+    from sr_od.application.currency_war.cw_sim import (
+        star_weighted_copies,
+    )
+    return star_weighted_copies(name, state)
+
+
 def boss_projected_hp(state: GameState, hp_now: int,
                       registry: DecisionV2Registry) -> int:
     """boss 后投影 hp(W238/ADR-0403,设计件 09 §3.1;纯函数;
