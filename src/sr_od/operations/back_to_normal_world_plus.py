@@ -32,6 +32,17 @@ from sr_od.screen_state import common_screen_state
 NPC_DIALOG_FAREWELL_WORDS: list[str] = ['告别', '离开', '再见']
 NPC_DIALOG_FAREWELL_LCS: float = 0.7
 
+# 先验画面短路表(W286,2026-08-27):已知「非对话态」的全屏 UI 画面锚点(screen_name, area_name)。
+# 缺陷背景:「TalkInteract.INTERACT_RECT 区域有字」被当成「对话态成立」的证据——该区域是
+# 普通画面右侧面板文字的常落区,货币战争-大厅右侧面板(『数据银行』『预期收益』等静态文案)
+# 被误判为未知对话选项 → 点空白推进 → round_retry 耗尽 → op 报错 → 一条龙重启再陷(run 46
+# 卡 8+ 分钟实证实录)。修复:id_mark 精确命中下表任一锚点 = 正面确认当前是已建档全屏 UI,
+# 不可能处于 NPC 对话态 → 直接短路跳过守卫、落回原兜底兜底语义不变。新增全屏 UI 画面建档后
+# 在此追加一行即可(area 用其 id_mark);未建档画面维持原守卫行为(防 W177 类真对话态漏判)。
+KNOWN_NON_DIALOG_MARKS: list[tuple[str, str]] = [
+    ('货币战争-大厅', '标识-创业指南'),
+]
+
 
 class BackToNormalWorldPlus(SrOperation):
 
@@ -181,6 +192,8 @@ class BackToNormalWorldPlus(SrOperation):
         检测与动作坐标全部复用 TalkInteract 的既有已验证常量（交谈交互区 + 空白推进点击点），
         不引入未验证的新坐标。脱困序为逐帧反应式（本方法每轮重跑，无跨轮状态）：
 
+        0. 已知非对话全屏画面（KNOWN_NON_DIALOG_MARKS，id_mark 精确命中）→ 返回 None
+           跳过守卫（防静态面板文字被误判为对话选项，见该表注释）；
         1. 告别类选项可见 → 点它退出对话（对完后续帧由「角色图标」分支接管）；
         2. 有其他选项但无告别词 → 不乱点未知选项（可能接受任务/开商店），点空白推进，
            用 round_retry 计入节点预算，有界退出而非破坏性误点；
@@ -189,6 +202,13 @@ class BackToNormalWorldPlus(SrOperation):
         :param screen: 游戏画面
         :return: 命中对话态时返回对应的 round 结果；否则 None
         """
+        # 先验画面短路:已知全屏 UI 画面(id_mark 精确命中)不可能是对话态,跳过守卫。
+        # 「区域有字」只是弱证据,这里用建档画面的强否定证据短路,防静态面板文字误判。
+        for screen_name, area_name in KNOWN_NON_DIALOG_MARKS:
+            if self.round_by_find_area(screen, screen_name, area_name).is_success:
+                log.info('[对话态守卫] 命中已知非对话画面 %s(%s),跳过守卫', screen_name, area_name)
+                return None
+
         part = cv2_utils.crop_image_only(screen, TalkInteract.INTERACT_RECT)
 
         farewell_map = self.ctx.ocr.match_words(
