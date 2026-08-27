@@ -429,9 +429,13 @@ class PrepDirector(SrOperation):
         return self._run_loop(match)
 
     def _try_collapse_open_shop(self) -> bool:
-        """r346/r347:环入口遇开商店稳定态(战斗胜利后新回合游戏可
-        能自动开)→ 收起返回 True(调用方 round_retry 重进);非开态
-        (真特效/overlay)返回 False(调用方 bail 交外环消化)。
+        """环入口遇开商店稳定态(战斗胜利后新回合游戏可能自动开)→
+        收起返回 True;非开态(真特效/overlay)返回 False。
+
+        两个调用方:① 环入口 gate 前的预收(主路径:开 → 收起后
+        以收紧超时等关店态 stable,直接进本轮,不再 round_retry;
+        见 _run_loop 环入口注释);② gate 超时后的容忍探测(兜底:
+        收起 + round_retry 重进,r346 语义保留)。
 
         HP/gold 读取语义本要求关态(shop.py 同款收起逻辑)。
         离线契约:探测/点击异常 → False(放行,等价旧探针 except
@@ -443,7 +447,7 @@ class PrepDirector(SrOperation):
                     _sc, SHOP_SCREEN_NAME, '按钮-收起',
                     crop_first=False).is_success:
                 return False
-            log.info('[cw][director] 环入口开商店态(合法态非特效)→ 收起重进')
+            log.info('[cw][director] 环入口开商店态(合法态非特效)→ 收起')
             self.round_by_find_and_click_area(
                 _sc, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
             return True
@@ -482,18 +486,43 @@ class PrepDirector(SrOperation):
         _gate_err = False
         try:
             from sr_od.application.currency_war.cw_observation_gate import (
+                GATE_POST_COLLAPSE_TIMEOUT_S,
                 PROFILE_CLOSED,
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(director 环入口)')
+            # 战后首环开店态预收:战斗胜利后新回合游戏常自动开商店,
+            # 此时直接等关店态锚(PROFILE_CLOSED)永不命中,旧路径每轮
+            # 必打满 12s 超时才走「收起重进」(实机单局 16 轮 × ~12s
+            # 纯等;依据实机单局耗时深挖报告
+            # .debug/temp/currency_war/w358_time_depth/REPORT.md
+            # 可压缩清单 #1)。修:入口先探开商店态——开 → 收起后以
+            # 收紧超时(GATE_POST_COLLAPSE_TIMEOUT_S,实测收起后 ~2s
+            # 即关店态 stable)直接等本轮 gate 帧,省掉超时 + 重进往返;
+            # 未开(含特效帧/新位面首环)走原 12s 完整门,行为不变。
             # ADR-0264 终裁:环入口(节点结束段/battle 后新备战相位)
             # 走融合默认路径——锚命中即进指纹快 poll(骨架加速器①,
             # 不做纯信任放行),指纹双轮窗真实测量。
-            _gate_frame = wait_stable_frame(
-                self, profile=PROFILE_CLOSED)
+            if self._try_collapse_open_shop():
+                _gate_frame = wait_stable_frame(
+                    self, profile=PROFILE_CLOSED,
+                    timeout_s=GATE_POST_COLLAPSE_TIMEOUT_S)
+            else:
+                _gate_frame = wait_stable_frame(
+                    self, profile=PROFILE_CLOSED)
         except Exception:   # noqa: BLE001  离线契约:放行(observe 自截图)
             _gate_err = True   # 异常≠超时:超时走容忍探测,异常直接放行
             log.debug('[cw][gate] 环入口 gate 异常(离线契约)→ 放行')
+        if _gate_frame is None and not _gate_err:
+            # 预收后的收紧超时未达成 stable(收起动画偶发拖长)→ 有界
+            # 兜底:落回原 12s 完整门;仍未达成才进下方容忍探测
+            # (收起探针/3-strike bail)——不引入无界等待。
+            try:
+                _gate_frame = wait_stable_frame(
+                    self, profile=PROFILE_CLOSED)
+            except Exception:   # noqa: BLE001  离线契约:放行
+                _gate_err = True
+                log.debug('[cw][gate] 环入口兜底 gate 异常(离线契约)→ 放行')
         if _gate_frame is None and not _gate_err:
             # r346:先探开商店态(合法稳定态,收起重进);非开态才是
             # 真特效/overlay → bail 交外环(3-strike 聚合)。

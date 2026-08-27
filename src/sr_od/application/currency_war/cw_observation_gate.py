@@ -98,6 +98,18 @@ PROFILE_POPUP: dict = {
     'fast_confirm': True,            # ADR-0264 终裁骨架(同 CLOSED 注)
 }
 
+#: 战后收起商店后的关店态 stable 等待超时(prep_director 环入口
+#: 「预收开商店」专用,其余 gate 调用不用)。背景:战斗胜利后新回合
+#: 游戏常自动开商店,环入口若直接等关店态锚会永不命中、打满
+#: PROFILE_CLOSED 的 12s 超时(实机每局 16 轮 × ~12s 纯等;依据
+#: 实机单局耗时深挖报告 .debug/temp/currency_war/w358_time_depth/
+#: REPORT.md「可压缩清单 #1」)。修法=入口先收起再等 stable:实测
+#: 收起后 ~2.0-2.2s 即达成关店态 stable(同报告各间隙「收起→
+#: stable」段),收紧到 4.0s(≈2 倍实测余量,覆盖首轮全图 OCR 锚
+#: poll 抖动);下限 1s(不低于单轮 poll + min_stable_s 成本),
+#: 超时后由调用方落回原 12s 完整门兜底(有界,不引入无界等待)。
+GATE_POST_COLLAPSE_TIMEOUT_S: float = 4.0
+
 #: 帧间隔(方案 v4:0.2-0.3s)
 _POLL_S: float = 0.25
 
