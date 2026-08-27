@@ -10,7 +10,7 @@
   结构),battle/encounter 按 rung 线性均值匹配偏移取整;终态
   ``hp_after = max(1, hp_before − damage)``(吸收态地板);
 - **boss 败局钳制**:按 hp_before 条件化——≤``BOSS_CLAMP_HP_CUT``
-  时以 ``BOSS_CLAMP_P_LOW`` 归 1,>该值不钳(冻结语料 0/36:敌伤
+  时以 ``BOSS_CLAMP_P_LOW`` 归 1,>该值不钳(冻结语料 0/33:敌伤
   上限 ≈36 够不着高 HP)。禁止与 hp_before 无关的独立抽签形态
   (会与地板公式叠加成双重钳制,期望钳制率恒超目标,已在原型
   回测中实证废弃)。
@@ -144,7 +144,7 @@ def sample_battle_delta(node: str, rung: int, hp_before: int,
                             weights=list(raw_hist.values()), k=1)[0])
     if node == 'boss':
         # 钳制按 hp_before 条件化:低 HP 才会被敌伤越过得归吸收态;
-        # 高 HP 行不钳(语料 0/36)。钳制路径不经难度乘子(吸收态
+        # 高 HP 行不钳(语料 0/33)。钳制路径不经难度乘子(吸收态
         # 非伤害档)。
         if hp_before <= BOSS_CLAMP_HP_CUT and rng.random() < BOSS_CLAMP_P_LOW:
             return CLAMP_HP - hp_before
