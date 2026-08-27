@@ -1,6 +1,16 @@
 # 遥测判读方法论(看什么/怎么读/覆盖与缺口)
 
-> SKILL.md §判读 的展开。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。
+> 实机局数据判读的细则。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。验收口径(什么算"打得好")的单一源 = strategy-work §2 + 当期进度树目标行判据;sim 批侧的数据判读见 sim-testing.md。
+
+## 查询工具(遥测 CLI)
+
+```
+uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
+```
+
+- rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买;hp=掉血×板深;economy=金轨迹/滞留;anomalies=异常标记。
+- **生产局秒级自检**:`cw_telemetry checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
+- 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
 
 ## 核心原则(用户定调)
 
@@ -60,6 +70,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 ## 判读流程(局后必做)
 
+0. **先取尺子再看数**:验收口径取当期进度树目标行判据(没写判据=先补写再判读)+ strategy-work §2——**HP 从来不是验收指标,拿 HP 当验收=目标函数错**;
 1. `--recent N` 概览 → 锁定目标局;
 2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);
 3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
@@ -98,4 +109,4 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 ## 反例论据(为什么判读纪律这么严)
 
-历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读三问与跨局对照纪律每条都有对应的实盘反例(存档于 design/decisions/ 与进度树历史)。
+历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读流程与跨局对照纪律每条都有对应的实盘反例(存档于 design/decisions/ 与进度树历史)。

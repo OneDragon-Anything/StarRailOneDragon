@@ -12,13 +12,13 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 当次任务 | 主节(门) | 细则 |
 |---|---|---|
 | 改策略 / 迭代算法 | strategy-work「策略改动 checklist」(判读→文档门→设计→验证阶梯→三同步) | strategy-work |
-| 出策略方案 / 策略分歧裁决 / 疑问该问谁 | §策略工作(统一处理链) | strategy-work |
-| 判读一局 / 跨局对照 | §判读(前置三问硬门) | telemetry-reading |
-| 起局 / 停局 / 监控 / 残局清理 | §实机运维(重启四步/重武三步/早停判据) | runtime-ops |
+| 出策略方案 / 策略分歧裁决 / 疑问该问谁 | strategy-work「疑问/分歧的裁决」(三滤网) | strategy-work |
+| 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据+strategy-work §2) | telemetry-reading |
+| 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「sim 改动 checklist」(池指纹/回放对拍/变异探针) | sim-testing |
-| 阵容知识提炼 / 修订 / 版本重跑 | §阵容知识工程(证据三层) | compo-knowledge |
+| 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
-| 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | §定时任务与事件自我校准(提醒=按 prompt+当期 agent 额度执行)+ §交付验收(7 条逐项核) | autonomous-loop |
+| 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域 checklist 验收 | autonomous-loop |
 | ADR / as-built 维护 | §文档同步(三同步) | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
@@ -28,9 +28,12 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 要什么 | 去哪 |
 |---|---|
-| **策略工作统一说明**(思路/核心骨架/改前必做/验证与单帧锁/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md) |
+| **策略工作统一说明**(思路/核心骨架/改前必做/验证与单帧锁/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
 | **模拟测试说明**(sim 能信什么/武器库/压测官/分诊与回灌) | [references/sim-testing.md](references/sim-testing.md) |
-| **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 的实机运维细节见本 skill「实机运维」节,进度结构见 od-dev-progress-tracking §2.5 |
+| **测试分层**(L1 快速集 `uv run pytest @sr-od-test/cw_quick.txt` ~3min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/` ~5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 各域 checklist 消费;策略验证阶梯单一源 = strategy-work §4 |
+| **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
+| **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
+| **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(口述权威,改策略必读) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md`(分篇入口)+ `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
@@ -44,63 +47,6 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度树,一律不进共享文档。**
 
-## 策略工作(统一入口:改策略/出方案/策略分歧/疑问分流)
-
-策略是 CW 的核心环节。思路/核心骨架(数学期望·50 息律·双层目标·阵容结构判据)/改前必做(文档门·任务→文档路由)/策略特有验证纪律/疑问三滤网(先证后裁)——单一源 = **[references/strategy-work.md](references/strategy-work.md)**。
-
-## 判读(遥测 CLI,数据判读同源)
-
-**判读前置三问(硬门;答出不判读)**:
-1. **该位面的目标是什么?**——验收口径单一源 = strategy-work §2 双层目标体系(P1=[28] 双指标验收;HP 从来不是验收,拿 HP 当验收=目标函数错)。
-2. **这局锁的什么线?**——四体系过渡(transitions 开局分级:拿到逆天投资策略才配锁直通线)or 直通终局线?锁直通却没直通条件=P1 板面零伤害引擎([27] 罚款吃满)。
-3. **板面在不在白名单?**——power_baseline P1 形态表;不在表内的形态(如纯经济凑数位)不是「体系长成了」。
-
-三问口径展开与条目依据 → [references/strategy-work.md](references/strategy-work.md) §2。
-
-策略相关文档基线(改策略前必读面;全目录+阅读顺序) → `docs/game/currency_war/research/README.md`「策略相关文档」节。
-
-```
-uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
-```
-
-- rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买;hp=掉血×板深;economy=金轨迹/滞留;anomalies=异常标记。
-- **生产局秒级自检**:`cw_telemetry checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
-- 每局跑完**必做**局后判读:异常条目当场定位根因(查 log + supply),定位不了不准进下一局——异常跨局存活 = 回归在累积。
-- 结论必须声明数据边界(如「基于进店帧,refresh 波不可见」);**别为复盘写一次性脚本**——新复盘需求 = 新视图/查询参数。
-- 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
-- 旧自主推进代码带 `# 未验证` 注释:进对应画面复审(重点补日志/截图让每步可观测)后删注释才能信——复审是义务不是可跳的。
-- 数据侧纪律(**数据源注释 > 采样凑证**/数据治理五步/阵容三维/复盘观察面全量)→ [references/telemetry-reading.md](references/telemetry-reading.md)(维度清单/视图覆盖矩阵/保真位先行/已知缺口同在此)。
-
-## 交付验收(自主推进收 worker 账时逐项核;方法论五面见 od-dev-agent-autonomous-mode「交付验收清单」节)
-
-- [ ] 测试亲跑:按 worker 声明的层复现(L1/L3 命令见 §验证)——「声称绿」不算
-- [ ] 边界核:`git diff --stat` vs 任务书声明文件集;越界逐个判(并行期禁 add -A)
-- [ ] 数字:CI+点估计+功效齐报(**禁「归零/不劣」措辞**);sim 批必报池指纹(跨日对照核指纹一致,旧锚数据标注不可比)
-- [ ] 断言抽查:报告里的源码行号抽 3-5 个亲核——worker 论断=可推翻假设
-- [ ] 耗时核:量测数字 vs 预期量级差 >3 倍=效率缺陷打回(先定位再交)
-- [ ] 产物亲读:sim 批读 json 原始数据;实机批核 runs.jsonl result 字段
-- [ ] 行为变更批:ADR/正文/注释三同步带了吗(没带=打回或记欠账)
-- [ ] 泛化步:bug 修复类交付,「**同类还有吗**」的排查派了吗——没派=一行记账「为何不派」(金不足/idx/kwarg 四连实证,用户四次替我补此步);检查面已固化的引用即可(如五查)
-
-## 验证(测试分层,各域 checklist 消费)
-
-- L1 快速集 = `uv run pytest @sr-od-test/cw_quick.txt`(~3min,CW 域)/ L2 = L1+受影响域点名 / L3 全量 = `uv run pytest sr-od-test/`(~5min,**仅 commit 前一次**;含根级 test_cw_*.py 旧锁,`sr-od-test/test/` 子目录不算全量)。
-- 策略改动的完整验证阶梯(基线→sim→单帧锁→实机)单一源 = strategy-work §4;sim 改动的验证 = sim-testing「sim 改动 checklist」;**禁止跳到实机试错,禁止 sleep 等实机**——实机运行期间 = 做便宜层的窗口。
-
-## 实机运维
-
-- **单跑道**:MCP 一次一个 run;`run_standalone_app('currency_war')` 启动,`get_run_status` 查进度,`stop_run` 停(原生 MCP 工具经项目级 `.dsh/mcp.servers.yml` 挂载)。
-- **改代码必须重启 MCP server 才生效,且重启杀对局** → 改动攒批、局中不改;对局状态(session)在内存,重启全丢,重启后首局 target 重选是已知断档,判读注意。**重启前四步确认**:① `git status` 干净(或仅剩声明过的挂起件);② 全量 pytest 0 failed;③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按残局清理序回大厅)。
-- **早停判据**(无信息量局,满足任一即 stop_run + 判读 + 修复 + 重启跑新局):① 形态死局(连续多轮板面无引擎件且店里有种子没买);② 验证已得(本轮要验证的行为已观察到,后续无新信息);③ 已知未修问题主导(局是旧代码跑的、修复已 commit 待加载);④ **重大修复待加载=无条件早停重开**(用户定调「对于有重大突破的,早停重开」——重大策略/战力修复 commit 后,在跑的旧代码局素材价值趋零,继续跑=验证延迟)。例外:对照局(AB 对拍)与终验局不适用。
-- **残局清理序**(停局/崩局后回到大厅才能起新局;结算屏残留会让 app 启动死循环):**优先一键 op `ExitCurrencyWarMatch`(operations/entry/,经 `run_operation` 调用,支持全入口态——备战/战斗中含暂停 X/投资策略等 overlay/胜负结算/失败链,放弃+结算 3 页+回大厅一次完成)**;op 不可用时手动 ESC 链兜底:结算屏「继续挑战」→ 等自动战斗打完 → 备战态 ESC → 「放弃并结算」→ 失败页「下一步」×2 → 「返回货币战争」→ `analyze_screen` 确认精准命中**货币战争-大厅**。用 screen_info 的 area 名定位,不背坐标。
-- **监控三层**(自主推进打实机时;武装纪律行见 AGENTS.local,时机细则见 autonomous-loop.md §3):进程内哨兵 flag + 后台哨兵脚本(触发即 exit=推送)+ 定时轮询兜底——哨兵脚本组(cw_sentinel/cw_early_stop/cw_runs_gap)/武装命令口径/重武三步/试用期纪律见 [references/runtime-ops.md](references/runtime-ops.md);**哨兵报警消费协议**(exit=待验证事件,先判相关性再信内容)见 [references/autonomous-loop.md](references/autonomous-loop.md)。
-- CW op 禁无条件 ESC(备战屏 ESC 弹中断挑战);画面疑问走 `analyze_screen` 先行(离线可用,传截图路径)。
-- 判读与建档的运维侧纪律(**布局/坐标建档唯一终审=交互实锤**/**重启接管段遥测降权**/首局判读锚点模板/常置 flag 处置)→ [references/runtime-ops.md](references/runtime-ops.md)。
-
-## 阵容知识工程(提炼/深读/修订/版本重跑)
-
-**证据三层**(核心纪律,缺层即盲区):统计骨架(plaza API 聚类给主流/代表——单靠统计发现不了细节)× 逐篇细节(攻略帖全文精读给运营思路/时序/条件——必须逐个看)× 机制解释(游戏数据本体给「玩法为什么是这样」)——「为什么」成立才收编,机制不成立的高频做法标 [社区] 存疑。结论落点:final_comps 类文档(叙事)+ `cw_comps.py COMP_LIBRARY`(结构化字段)——两者非镜像,互不触发同步义务。用户口述与攻略冲突以口述为准。细则(提炼流程/单套修订/版本重跑/三笔账):[references/compo-knowledge.md](references/compo-knowledge.md)
-
 ## 文档同步(行为变更三同步)
 
 策略行为/权重/算法语义/config·screen_info·GameState 字段/实跑根因任一变更 → commit 前:
@@ -109,22 +55,3 @@ uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [-
 3. 代码注释引 ADR-NN。
 
 游戏知识变更(机制/阵容结论)进 `game/currency_war/research/` 对应篇(带证据分级),不进 develop;**攒 ADR = 漂移**(实跑演进当场记,攒了再补的成本远高于顺手写一条)。
-
-## 防坑清单(高频犯过的)
-
-- **逐局打补丁陷阱**:连续多局每局修一个新卡点 = 发散信号(缺的是成型进度类的控制变量,不是又一个单点修)——连续 3 局以上不同根因时,停下做架构层反思(读 strategy/README 总览 + 三份文档),别修 r(N+1)。
-- **测试锁锁旧行为**:改门/常量前 grep 全部消费点含测试断言——很多「不买/不做」断言是旧路径的副作用,不是真语义;预判行为变化清单,逐项判「意图内还是副作用」。
-- **叙述≠证据**:「轨迹最佳」「修复链收敛」是故事;真证据 = sim 分布变化 + 锁断言 + 判读锚点事前预测事后核对。
-- **生成器分层**:改注册表前查 `tools/cw/` 是否有该文件的生成器(`*_data.py` 数据层勿手编;判断层文件反向标注);改错层 = 被覆盖或双源。
-- **新字段进 GameState 查三消费面**:策略(谁读它)/遥测(视图有没有)/**sim 代理**(sim 建没建)——曾见核心维读 deployed 而 sim 不建模 → 恒折扣 → sim 行为与实机分叉(ADR-0219/0233)。
-- **新读点查写入端**(对称纪律):加任何「读 session/state 某字段」的代码前,grep 该字段的**写入端是否存在**——读不存在的字段 = 永远走兜底路径,与「字段恒空」同病。
-- **局中卡死巡检 = 日志重复度,不是遥测新鲜度**:遥测只在结算落盘,备战卡死时 hp 视图恒旧——巡检必 grep 近 10 分钟日志,同特征行(「备战席已满」/同一警告)≥10 次且无 buy/deploy/出战 推进行 → 按卡死处理(停局+判读),**不得以「推进慢」合理化**。
-- **修消费端前先验生产端点火**(ADR-0239,同型三轮修不好根因):给某字段加 fallback/修读链前,grep 运行期日志确认**生产路径执行过**——生产者不点火,修消费端全是安慰剂。配套:**跨天 append 日志的 grep 必须带日期锚点**(日志时间戳无日期,曾把昨日行当今日证据;用重启点行号/日期事件分隔)。
-- **临时采集钩子会积压**:钩子必须带删留条件;盘点时查 `.debug/temp/currency_war/shots/` 前缀分布——样本攒够就离线判读→进真值→删钩子,别让临时变常置(详 references/data-collection.md)。
-- **改完不验旧锁就提交**:提交前三步 = ①grep 消费点与锁值 ②ruff+直接影响测试 ③耦合模块全量一次通过(子集绿是伪安全)。
-- **实机学费不复盘 = 重交学费**:实机定位的策略行为病只修代码、不回灌 sim 检查项/单帧锁 → 同类病下次仍靠实机暴露(数十分钟/局);感知/运行时 bug 则相反——归 fixture 帧锁/回放对拍/哨兵防线,别为它扩 sim(分诊判据见 sim-testing.md「实机暴露问题的分诊与回灌」)。
-- **动作索引守卫**(五查已塌缩,2026-08-27):新字段带索引/槽位/序号语义 → 按 AGENTS.md「索引/槽位字段定义注释」补齐坐标系+取值时机(防线字段加写入端)再动工;会删元素的容器域加最小反例测试。定义约定正文+双族对照表=cw_state.py Action 节约定块;机器锁=test_cw_idx_contract(deployed 反例/expect 写入端静态锁/sim↔执行对拍)。
-
-## 定时任务与事件自我校准(自主推进元纪律)
-
-定时任务提醒到达 = **待执行的检查指令,不是要回复的消息**——按提醒词执行并产出其要求的结论;子 agent 交付到达 = 先过当期任务所属域的 checklist(分诊表路由)验收,验收毕立刻取下一待办派发(事件驱动模式单一源 = od-dev-agent-autonomous-mode)。CW 专属编排细则(纪律登记镜像/实机监控角色/哨兵接入)→ [references/autonomous-loop.md](references/autonomous-loop.md);战役状态/判据单一源 = 进度树「当前状态」节。
