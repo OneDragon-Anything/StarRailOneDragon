@@ -569,10 +569,23 @@ class DecisionV2Registry:
     #: 扩展);②interest_rule 买侧破息 EV 账加缺口项
     #: (handoff_ev_gap_bonus×缺口)。只辖 P1 末窗(P1 非末窗零漂移
     #: 门的结构前提)。量级常量保留供调优。
-    #: 末窗下界(r8-r9 boss 窗;设计件 §4.2「P1 r8-r9(boss 窗)」)。
-    #: 与 formed_stop_min_round(=7)的差 = r7 成型轮不受承接门辖
-    #: (承接账只算末窗,早停语义不动)
-    handoff_gate_min_round: int = 8
+    #: 末窗下界。原初值 8 口径=W227/ADR-0400「P1 r8-r9(boss 窗)」。
+    #: **W288/ADR-0418 前移 8→6**(W275 三映射兑换:「方向对、量级待
+    #: 实机定标」类常量调整):合资格授权窗加宽到 {r6..r9},承接门家族
+    #: (filters 成型停手承接维/arbiter 缺口项/candidates 副本放行/M-A
+    #: 定向刷新窗)整体提前点火。证据链(W275 四臂配对 AB,n=200,v11
+    #: 冻结池 7af81977 同 seed):core2≥1 进场率 12.17%→18.85%(配对
+    #: 翻转 22:9,二项单侧 p≈0.025;剂量-响应单调 gr7 15:7);进场金
+    #: 均值差 −1.50 CI 含零(金面免费);末 HP/hp0/P2 进场率全无信号。
+    #: 落地前置双核验过(.debug/temp/currency_war/w288_gate_landing):
+    #: ① cw_replay 双臂重放历史局,分歧仅限 P1 r6+(r1-5/P2/P3 零漂移);
+    #: ② 提前窗买质量**反升**:r6/r7 买入的 off 散件率 6.1%→3.6%
+    #: ——不是拿便宜副本填窗。已知耦合(wart,详见 ADR-0418):
+    #: handoff_boss_reward_bonus 触发条件绑定本常量,前移后 +2 在 r6
+    #: 触发,且投影公式(r8 视角标定)在 r6/r7 少算后续节点期望伤害——
+    #: 该畸变端到端存在于测量臂内=被测行为的一部分;解耦需改行为代码
+    #: 并重跑 AB,挂账 ADR-0418。
+    handoff_gate_min_round: int = 6
     #: 承接达标总档位(handoff_tier 下限;ADR-0399 标定结论:总档位
     #: 实际两档,门控语义足够——目标 1=「承接不足判定档」)
     handoff_gate_tier_target: int = 1
@@ -620,8 +633,10 @@ class DecisionV2Registry:
     #: 缺桶 fallback:同上 Q3 口径(单桶语料下与桶 0 同值)
     handoff_boss_e_damage_default: float = 34.0
     #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
-    #: 回复下唯一正项)——只在 round_num==handoff_gate_min_round(r8,
-    #: boss 尚隔一轮)加;r9 直面 boss 不加
+    #: 回复下唯一正项)。触发条件历史绑定 handoff_gate_min_round(值=8
+    #: 时恰为「r8 加、r9 不加」);W288/ADR-0418 该常量前移到 6 后触发
+    #: 点随移至 r6——语义已偏离「r8 奖励」本义(r6/r7 投影少算后续节点
+    #: 期望伤害,偏乐观),解耦挂账 ADR-0418(改行为代码须重跑 AB)
     handoff_boss_reward_bonus: int = 2
 
     # ===== W242/ADR-0405 末窗星级定向授权(W232 挂账 C 项;设计件 08
@@ -660,11 +675,11 @@ class DecisionV2Registry:
     #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
     #: **本常量是非绑定约束(W274/ADR-0413)**:合资格授权窗 = gap>0 ∧
-    #: r>=handoff_gate_min_round(8),P1 共九轮 ⇒ 窗内至多两轮 ×
-    #: per_round 2 = **局执行上限 4 次 < 本值**,math 上不可能触顶;
-    #: 实测(n=100,v11 冻结池)单局授权分布 {0:27,1:6,2:64,3:3},
-    #: max=3,cap 从未 bind——W274 四臂配对 AB(n=200,同池同 seed)
-    #: cap 6/10/14 三臂**逐位一致**(指标与配对差全零)。历史候选档
+    #: r>=handoff_gate_min_round(W288/ADR-0418 前移到 6 ⇒ 窗 {r6..r9}),
+    #: per_round 2 ⇒ 窗内可行上限 8 次曾在本值 6 之上;W275 gr6 臂
+    #: (n=200 同 seed 配对)dir 授权 339 次、cap 开始参与钳制(窗容量
+    #: 8 > cap6),行为面为正(core2≥1 +6.7pt)——cap 是否重新 bind 的
+    #: 定标归后续实机/大批核对,非本批变更理由。历史候选档
     #: 留证:cap10/cap14 曾作为「第二跳吞吐量级」修复候选(W254-R 断点),
     #: 实验证明无效,勿重复试错。「加量」的有效旋钮是
     #: directed_refresh_per_round 与授权窗宽度(gate_min_round 前移),
