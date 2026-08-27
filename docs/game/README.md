@@ -5,7 +5,7 @@
 
 ## 分层:识别模型 vs 知识文档
 
-- **识别模型** `assets/game_data/screen_info/<screen_id>.yml`:bot 识别画面用的 area / 模板 / OCR 配置(机器读)。当前已建 32 画面。
+- **识别模型** `assets/game_data/screen_info/<screen_id>.yml`:bot 识别画面用的 area / 模板 / OCR 配置(机器读)。当前已建 34 画面。
 - **知识文档** `docs/game/screens/`(画面)+ `docs/game/gameplay/`(玩法):画面与玩法的人读 + AI 理解文档(本目录,新建)。
 
 两者必须对齐:doc 的「可交互元素 / 状态流转」要与 screen_info `area_list` + application/operation 代码逐条对齐(screen_info 有、doc 无 = 建档漏,补上)。
@@ -43,8 +43,8 @@
 
 ## 现状(2026-07-29 建档 doc 阶段完成)
 
-- screen_info 32 画面(识别模型)+ ~20 app。
-- **docs/game/ 知识文档:13 画面 doc + 16 玩法 doc,32 screen_info + ~20 app 全覆盖(对话 doc 为 screen_info 缺口补档)**。
+- screen_info 34 画面(识别模型)+ ~20 app。
+- **docs/game/ 知识文档:13 画面 doc + 16 玩法 doc,34 screen_info + ~20 app 全覆盖(对话 doc 为 screen_info 缺口补档)**。
 - **画面 doc**(`screens/`):normal_world(含 basic/battle_fail 子态) / phone_menu / mission / synthesize / team / 角色(character) / store / bag(10 分类总览) / large_map / enter_game(含 choose_account/logout_dialog 子态) / battle / misc_screens(common/catapult/fast_recover_dialog) / 对话(dialog,NPC 选项对话;未在 screen_info)。
 - **玩法 doc**(`gameplay/`):currency_war / sim_uni / trailblaze_power / treasures_lightward / assignments / world_patrol / echo_of_war / ornamenet_extraction / nameless_honor / div_uni / guide / email / support_character / daily_training / relic_salvage / misc_apps(calibrator/large_map_recorder/buy_xianzhou_parcel/memory_crystal_shard/trick_snack)。
 - **待实拍 + 视觉大模型 归档**:登录/战斗过程态/各玩法画面(消耗开拓力或周限 / 遇敌 / 重启,需用户配合切画面);doc 的 source_image 从临时 .debug 截图 → 测试仓 `screens/<screen>/<state>.webp` 归档。
