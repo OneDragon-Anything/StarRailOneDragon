@@ -233,6 +233,17 @@ class OutcomeRecord:
     # 尽力校正,训练侧可剔);'synthetic_supply'=补给节点合成行(无结算屏节点的
     # 遥测补行,hp 用 last_state 快照非屏面真值)。
     source: str = ""
+    # —— W253 boss 身份采集(W244 数据缺口补齐)——
+    # session.briefing_bosses 全量快照(位面序 3 元素;None=该位面徽章态采不到
+    # 身份,**保位勿滤**——滤掉会让后续位面名字左移错位,W221/ADR-0398)。
+    # boss Δ 双峰归因的数据源(W244 结论④:schema 无 boss 身份→不可分层)。
+    # 记录时点快照,行间可能因实采进度而异;旧记录无此字段(读取端 .get 容忍)。
+    boss_names: list[str | None] | None = None
+    # 本局职级(A1..A8;session.selected_difficulty 快照,W244 难度分层缺口)。
+    # ''=未采/旧记录缺字段。
+    selected_difficulty: str = ""
+    # 简报词缀(session.briefing_affixes 快照,W244 affix 分层缺口)。空=未采。
+    enemy_affixes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -430,10 +441,23 @@ class TelemetryRecorder:
         见 OutcomeRecord.source 注)。
         """
         _board, _bench = {}, 0
+        _bosses = None
+        _diff = ''
+        _affixes: list[str] = []
         try:
             _m = _CTX_MATCH_REF[0]
-            _st = getattr(getattr(_m, 'session', None), 'last_state', None) \
-                if _m is not None else None
+            _sess = getattr(_m, 'session', None) if _m is not None else None
+            _st = getattr(_sess, 'last_state', None)
+            if _sess is not None:
+                # W253:boss 身份/难度/词缀快照(与板深快照同源同容错;W244 数据缺口)。
+                # briefing_bosses 元素可为 None(徽章态),保位透传不滤。
+                _bb = getattr(_sess, 'briefing_bosses', None)
+                if isinstance(_bb, (list, tuple)) and len(_bb) > 0:
+                    _bosses = [str(b) if b is not None else None for b in _bb]
+                _diff = str(getattr(_sess, 'selected_difficulty', '') or '')
+                _ax = getattr(_sess, 'briefing_affixes', None)
+                if isinstance(_ax, (list, tuple)):
+                    _affixes = [str(a) for a in _ax]
             if _st is not None:
                 _board = dict(getattr(_st, 'board', None) or {})
                 # ADR-0316:bench 槽位表 len 恒 9,计数=占用数
@@ -457,6 +481,8 @@ class TelemetryRecorder:
             streak=outcome.streak,
             board_before=_board, bench_count=_bench,
             source=source,
+            boss_names=_bosses, selected_difficulty=_diff,
+            enemy_affixes=_affixes,
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 
