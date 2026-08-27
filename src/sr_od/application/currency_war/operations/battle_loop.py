@@ -460,7 +460,7 @@ class CurrencyWarRunLoop(SrOperation):
             pass
         return None
 
-    def _record_round_outcome(self, screen) -> None:
+    def _record_round_outcome(self, screen, telemetry_only: bool = False) -> None:
         """P1.5 观测回路:结算屏(挑战成功 + 小队生命值)→ ``read_round_outcome`` → ``strategy.on_round_end``。
 
         喂本回合战后 hp_after 给 ``PerformanceTracker``(via on_round_end 默认实现 ``performance.record``),
@@ -470,27 +470,61 @@ class CurrencyWarRunLoop(SrOperation):
         「挑战结束」与实屏「挑战成功」不符 → 永不命中 → on_round_end 从不调 → performance/last_hp 全不喂
         (P1.5 观测回路 + prep-hp 真值机制双双静默死;2026-08-07 捕结算屏实锤「挑战成功」修复)。
         失败不阻塞对局(观测为辅)。node_type:结算屏含「首领」(如「1-9首领」)→ boss,否则普通战斗。
-        plane/round 用 last-known(``read_phase_round`` 结算屏不显 plane/round)。
+        plane/round:结算屏自身「X-Y」解析优先(W239,见下);解析不出退 last-known
+        (``read_phase_round`` 结算屏不显 plane/round 的兜底链)。
+
+        W239(telemetry_only=True,失败结算页 1f 专用):**仅遥测零策略面** —— 只写一行
+        outcomes(source='loss_page'),跳过 on_round_end/last_hp/_battle_ts/_last_outcome_t
+        等一切策略/循环状态面(观测链零行为变更口径,同 W222 先例)。背景:失败结算页
+        主通道是分支1f(模板门),而输轮 outcome 写入点挂在分支3b(OCR 文本门)——1f 命中时
+        3b 永不达 → 输轮行只在 1f 模板 miss 的偶然帧落账(W237 实证:P2r1 死亡局 45 例仅
+        3-5 例有该行);W239 在 1f 补 telemetry-only 记录,行才稳定落账。
         """
         if self.ctx.cw_match is None:
             return
-        self._battle_ts = None   # ADR-0250:见结算屏 → 战斗窗口关(watch 恢复)
+        # ADR-0250:见结算屏 → 战斗窗口关(watch 恢复)。telemetry_only 跳过
+        # (1f 路径此前从不清 _battle_ts,保持零行为面)。
+        if not telemetry_only:
+            self._battle_ts = None
         # W28 缺陷①:启动宽限内首见结算屏 = relaunch 残留屏(上一进程留下)——
         # 该行打 recovered 标记 + 按屏面「X-Y」恢复真实轮次(修法 a+b 都做:
         # 轮次可解析则直接校正,不可解析也有标记供训练侧剔除)。
-        _residual = self._mark_relaunch_residual()
-        _source = 'recovered' if _residual else ''
+        # telemetry_only(1f 失败页路径)不判残留:残留判定写 _first_settlement_seen
+        # 循环状态,保持新路径零状态面;残留屏按定义是「胜结算续帧」,killed 门也会拦。
+        _residual = False if telemetry_only else self._mark_relaunch_residual()
+        _source = 'recovered' if _residual else ('loss_page' if telemetry_only else '')
         try:
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)   # last-known(结算屏不显 plane/round)
-            if _residual:
-                _ocr_texts = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
-                    image=screen, rect=None, color_range=None, crop_first=False)]
-                _scr = parse_settlement_round(_ocr_texts)
-                if _scr is not None:
+            _ocr_texts = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
+                image=screen, rect=None, color_range=None, crop_first=False)]
+            # W239(plane 归属修复):结算屏头部自带「X-Y」轮次标识(W28 缺陷①实锤的
+            # token 形态 ['挑战结束','1-6','战斗']),**读时点 = 记录时点,零跨帧状态**
+            # ——比 last-known 缓存强(缓存靠备战帧顶栏 OCR 维护,P1→P2 过场后、
+            # P2r1 结算前若没有任何一帧成功读到「2-1」,缓存停在 (1,9) → 行错归属
+            # P1r9;replay 实证:run_20260825_145641 等两局 P2 战斗行落在 (1,9) 且
+            # node_type=普通战斗[P1r9 恒为 boss,不可能])。此处升级 W28 的残留专用
+            # 校正为全路径:解析出即采纳,但过**单调门**(屏面真值落后 last-known =
+            # OCR 假阳,拒——镜像 read_phase_round 的单调守卫;位面切换 (1,9)→(2,1)
+            # 按位面主序合法前进,不受影响)。残留屏例外:缓存已 reset 兜底值不可信,
+            # 无条件采纳屏面值(原 W28 语义)。
+            _scr = parse_settlement_round(_ocr_texts)
+            if _scr is not None:
+                if _residual:
                     log.warning('[cw][loop] relaunch 残留结算屏:round 按「%s-%s」校正(原兜底 P%s-r%s)',
                                 _scr[0], _scr[1], _plane, _round)
                     _plane, _round = _scr
+                else:
+                    _t_new = (_scr[0] - 1) * 9 + _scr[1]
+                    _t_old = (_plane - 1) * 9 + _round if (_plane and _round) else None
+                    if _t_old is None or _t_new >= _t_old:
+                        if (_scr[0], _scr[1]) != (_plane, _round):
+                            log.info('[cw-loop] plane/round 结算屏真值「%s-%s」覆盖 last-known「%s-%s」(W239)',
+                                     _scr[0], _scr[1], _plane, _round)
+                        _plane, _round = _scr
+                    else:
+                        log.warning('[cw-loop] 结算屏「%s-%s」落后 last-known「%s-%s」= OCR 假阳 → 拒,保 last-known(W239 单调门)',
+                                    _scr[0], _scr[1], _plane, _round)
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             _is_boss = self.round_by_ocr(screen, '首领').is_success   # 「1-9首领」= boss 结算。TODO(T#103) 待 area 化(需 boss 结算帧;词缀在简报不在结算屏,不误匹配)
             # r260/r265(用户两轮指路修正):节点类型的**权威源 = 备战画面节点行**
@@ -508,6 +542,13 @@ class CurrencyWarRunLoop(SrOperation):
                 or '普通战斗')
             _obs = read_round_outcome(self.ctx, screen, plane=_plane, round_num=_round,
                                       comp_tag=_comp_tag, node_type=_node)
+            # telemetry_only 的 killed 门:只落「显式败局」行(killed=False,由屏文本
+            # 判定:挑战失败团灭 / 负进度轮败)。1f 的模板门理论上只挡败局页,但
+            # 位面通关过渡页等同形屏误入时 killed=None/True → 不落行,防伪行进语料。
+            if telemetry_only and _obs.killed is not False:
+                log.info('[cw-loop] loss_page 行不落:killed=%s 非显式败局(位面过渡页误入/OCR 未判)(W239)',
+                         _obs.killed)
+                return
             # killed 文本兜底(2026-08-18 用户语义:「扣血=战斗失败」):输轮结算屏形态 =
             # 「挑战结束+继续挑战」(无「挑战成功」/无带符号进度,文本规则返 None)→ 用
             # **上一轮结算真值 hp** 对比:hp 降 = 输,不降/回升 = 赢(赢轮 +2 长线作战回血
@@ -518,7 +559,7 @@ class CurrencyWarRunLoop(SrOperation):
             # 陈值,隔轮对比误判,只在上轮与本轮节点相邻(t 差 1)才比。_last_outcome_t
             # 与 last_hp 同步更新(高置信轮都记,与 killed 是否被文本判定无关)。
             _now_t = (_plane - 1) * 9 + _round if (_plane and _round) else None
-            if _obs.hp_confidence >= 0.9 and _now_t is not None:
+            if not telemetry_only and _obs.hp_confidence >= 0.9 and _now_t is not None:
                 if _obs.killed is None:
                     _prev_hp = getattr(_session, 'last_hp', None)
                     _prev_t = getattr(self, '_last_outcome_t', None)
@@ -536,29 +577,54 @@ class CurrencyWarRunLoop(SrOperation):
                     _obs.progress_delta = _pg1
                     log.info('[cw-loop] progress 合并(第一页暂存):%s', _pg1)
                 self._settle_page1_progress = None
-            self.ctx.cw_match.strategy.on_round_end(
-                GameState(), _session, self._cw_config, _obs)
-            # last_hp_t 同步(r68 review:prep 新鲜度门的写入端;镜像 on_round_end 的
-            # HP_CONFIDENCE_THRESHOLD 门,保证 last_hp 与 last_hp_t 恒同源同轮)。
-            if _obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and _now_t is not None:
-                _session.last_hp_t = _now_t
+            if not telemetry_only:
+                self.ctx.cw_match.strategy.on_round_end(
+                    GameState(), _session, self._cw_config, _obs)
+                # last_hp_t 同步(r68 review:prep 新鲜度门的写入端;镜像 on_round_end 的
+                # HP_CONFIDENCE_THRESHOLD 门,保证 last_hp 与 last_hp_t 恒同源同轮)。
+                if _obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and _now_t is not None:
+                    _session.last_hp_t = _now_t
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag/damage_dealt(W40:结算屏数据统计面板同帧解析)已在 _obs。
             cw_telemetry.record_outcome(_obs, source=_source)
-            if _obs.hp_confidence >= 0.9:
-                self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
-            # 外生事件(strategy/05 telemetry,预案触发频率语料):战斗节点完成
-            # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
-            # 不存在,AttributeError 被吞致 exogenous 静默死)
-            cw_telemetry.record_exogenous(
-                _round, 'node_enter',
-                detail=f'battle_done:{_obs.node_type}',
-                state=_session.last_state)
-            log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s',
-                     _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type)
+            if not telemetry_only:
+                if _obs.hp_confidence >= 0.9:
+                    self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
+                # 外生事件(strategy/05 telemetry,预案触发频率语料):战斗节点完成
+                # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
+                # 不存在,AttributeError 被吞致 exogenous 静默死)
+                cw_telemetry.record_exogenous(
+                    _round, 'node_enter',
+                    detail=f'battle_done:{_obs.node_type}',
+                    state=_session.last_state)
+            log.info('[cw-loop] on_round_end plane=%s round=%s hp_after=%s conf=%s comp=%s node=%s%s',
+                     _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag, _obs.node_type,
+                     ' [loss_page telemetry-only]' if telemetry_only else '')
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
             log.warning('[cw-loop] on_round_end 失败(不阻塞): %s', e)
+
+    def _record_loss_page(self, screen) -> None:
+        """W239:失败结算页(分支1f)→ telemetry-only 补一行 outcome + 同屏指纹防重。
+
+        根因(W237 发现,45 例 P2r1 死亡局仅 3-5 例有败局行):输轮 outcome 写入点
+        原挂在分支3b 的「前往结算」OCR 文本门(battle_loop loop() 3b 段,2026-08-18 加),
+        但失败结算页的**主通道**是分支1f(模板门:标识-挑战进度+标识-挑战结束,先于 3b
+        判定)——1f 命中即点按钮翻页返回,**从不落 outcome 行**;只有 1f 模板偶然 miss
+        的帧才漏到 3b 落行。故败局行落账与否取决于模板竞争 = 结构性缺口。本方法在 1f
+        翻页前补记(``_record_round_outcome(telemetry_only=True)``,只写 outcomes 行,
+        零策略/循环状态面);**同屏指纹防重**与 3b 共用 ``_last_loss_fp``(1f/3b 谁先见
+        谁记,同屏不重复;败局页停留多轮也只记一次)。
+        """
+        try:
+            _fp = tuple(sorted((r.data, r.y) for r in self.ctx.ocr_service.get_ocr_result_list(
+                image=screen, rect=None, color_range=None, crop_first=False)))
+            if getattr(self, '_last_loss_fp', None) == _fp:
+                return
+            self._last_loss_fp = _fp
+            self._record_round_outcome(screen, telemetry_only=True)
+        except Exception as e:  # noqa: BLE001  补录失败不阻塞对局
+            log.warning('[cw-loop] loss_page 补录失败(不阻塞): %s', e)
 
     def _mark_relaunch_residual(self) -> bool:
         """W28 缺陷①:本帧是否 relaunch 残留结算屏(启动宽限内首见结算)。
@@ -1167,6 +1233,9 @@ class CurrencyWarRunLoop(SrOperation):
             # 假 win 守卫(M70 事故):见过战败结算屏的 run 绝不判 win(即使 last_state.plane
             # 因 OCR 毒化显示 3)。
             self._saw_defeat_settlement = True
+            # W239:败局 outcome 补录(1f 是失败结算页主通道,此前从不落行;见
+            # _record_loss_page 根因注)。翻页前记,同屏指纹防重。
+            self._record_loss_page(screen)
             for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
                 if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
                     self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
