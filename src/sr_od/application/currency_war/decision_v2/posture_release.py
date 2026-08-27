@@ -10,8 +10,9 @@
 辖域与覆盖关系(DESIGN §②):
 - hp ≤ emergency_hp(25)→ 应急态全权接管(清仓/保命优先),release 让位;
   两谓词辖区不相交([25,∞) 归 FLIP 评估,≤25 归应急);
-- FLIP = phase==FORM ∧ g>50 ∧ hp>25 ∧(非末窗: hp<40,持续兑现逻辑
-  ∨ 末窗: 投影命中 hp−boss_tax_p75<25,战后必入应急带的机制理由);
+- FLIP = 可信 hp ∧ P1/P2 ∧ g>50 ∧ hp>25 ∧(末窗: 投影命中
+  hp−boss_tax_p75<25,战后必入应急带的机制理由——保命义务相位无关;
+  ∨ FORM 相位 ∧ 非末窗: hp<40,持续兑现逻辑);
   hp<40 依据分级:社区攻略通行的中盘健康线(非口述标准值;口述 [18] 明确
   hp=报警量不设触发标准值),作用=非末窗臂的持续兑现资格判,调参归 sim 批;
 - 末窗 = boss 破息窗(``discipline.boss_window_active`` 统一口径=boss 首买
@@ -111,9 +112,10 @@ def flip_hit(state: GameState, session: StrategySession,
     phase_value 由调用方传每轮入口派生的相位('FORM'=form_ok False,
     未成型判定口径=决策相机 phase=FORM;handoff.engines<2 是局后口径,
     禁混用)。辖区:[emergency_hp,∞) 归本谓词,≤emergency_hp 归应急。
+    辖域例外:末窗投影臂相位无关——「boss 战后必入应急带」是保命义务,
+    与成型分期无关(实机进店帧实证:phase=SPEND/hp=38/gold>50/boss 窗
+    激活/投影命中,曾被 FORM 相位门挡死致泄息通道结构性静默)。
     """
-    if phase_value != 'FORM':
-        return False
     if not (state.hp_readable or state.hp_trusted):
         return False    # 假帧不评估:仅 100 兜底帧(开局无真值)拒;shop 开态
                         # 沿用 last_hp_real 的帧 hp 是可信值,放行(ADR-0428;
@@ -126,8 +128,11 @@ def flip_hit(state: GameState, session: StrategySession,
     if state.hp <= registry.emergency_hp:
         return False    # 应急辖区,release 让位(双触发防护)
     if boss_first_buy_phase(state, session, registry):
-        # 末窗投影臂:hp − boss_tax_p75 < emergency_hp(防战后坠入应急带)
+        # 末窗投影臂(相位无关):hp − boss_tax_p75 < emergency_hp
+        # (防战后坠入应急带;保命义务与成型相位无关,持续兑现臂才辖 FORM)
         return state.hp - registry.boss_tax_p75 < registry.emergency_hp
+    if phase_value != 'FORM':
+        return False    # 持续兑现臂维持 FORM 辖域(DESIGN §②原文)
     # 持续兑现臂:报警带 hp<blood_margin_low_hp(血边际已低,溢余该花)
     return state.hp < registry.blood_margin_low_hp
 
@@ -156,18 +161,13 @@ def release_directive(state: GameState, session: StrategySession,
         return None
     cost = refresh_cost_of(state)
     overflow = max(0, (state.gold or 0) - registry.interest_floor)
-    if flip_hit(state, session, registry, phase_value):
-        # FLIP 命中帧:release 预算覆盖(义务优先);DP 已有授权时不缩水。
-        # cap 满员时 posture.level_up 保留(追级与泄息同轮并存,同一笔溢余
-        # 预算,DESIGN §②规则2);预算表:rule2 的 level 费用硬界由升级
-        # 授权链(ev.levelup_ev_basis 可负担性)自辖,不在此重复扣。
-        budget_gold = max(overflow, posture.refresh_budget * cost)
-        return ReleaseDirective(budget_gold=budget_gold,
-                                rolls=budget_gold // cost if cost else 0)
-    # 第三路径(DESIGN §②规则1/3):末窗 slot 守卫压 level → 显式注入
-    # 泄息预算,强制输出 release 不落 hold(防泄息通道静默关闭)。
+    # 第三路径(DESIGN §②规则1/3)先于 FLIP 判定:末窗 slot 守卫压 level
+    # → 显式注入泄息预算,强制输出 release 不落 hold(防泄息通道静默关闭)。
     # 辖域=末窗(规则1 原文「末窗评估 deployed<cap 时 rush_level 豁免
-    # 不生效」);非末窗的持续兑现由 FLIP 持续臂承担。
+    # 不生效」);规则1 的理由(新槽位下位面才兑现)与成型相位无关,故
+    # 末窗投影臂相位无关后必须仍先于此处之下的 FLIP 规则2 判定,否则
+    # 已成型末窗帧会被 FLIP 遮蔽、追级人口解锁边际=0 的压制丢失。
+    # 非末窗的持续兑现由 FLIP 持续臂承担。
     if (posture.level_up
             and boss_first_buy_phase(state, session, registry)
             and state.hp_readable
@@ -179,6 +179,15 @@ def release_directive(state: GameState, session: StrategySession,
         return ReleaseDirective(budget_gold=budget_gold,
                                 rolls=budget_gold // cost if cost else 0,
                                 third_path=True)
+    if flip_hit(state, session, registry, phase_value):
+        # FLIP 命中帧:release 预算覆盖(义务优先);DP 已有授权时不缩水。
+        # cap 满员时(slot 守卫 False,不走上段)posture.level_up 保留
+        # (追级与泄息同轮并存,同一笔溢余预算,DESIGN §②规则2);预算表:
+        # rule2 的 level 费用硬界由升级授权链(ev.levelup_ev_basis 可负担性)
+        # 自辖,不在此重复扣。
+        budget_gold = max(overflow, posture.refresh_budget * cost)
+        return ReleaseDirective(budget_gold=budget_gold,
+                                rolls=budget_gold // cost if cost else 0)
     return None
 
 
