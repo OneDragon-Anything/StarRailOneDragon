@@ -1207,11 +1207,32 @@ def _list_runs(replay_dir: Path) -> list[str]:
 
 
 def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
-    """视图:逐轮演进(hp/gold/买/升/D/board;v2 模式/锁线/桥)。"""
+    """视图:逐轮演进(hp/gold/买/升/D/board;v2 模式/锁线/桥)。
+
+    W306 后补给等无决策节点经由 outcomes 的 synthetic 行并入本视图
+    (source 标记可见),判读不再缺「选了什么补给」前后的状态语境。
+    """
     best = _load_decisions_rounds(replay_dir, run_id)
+    # 仅收「无决策行」的键(如 supply 合成行);有决策的轮以 decisions 为准
+    _out_only: dict = {}
+    for o in read_jsonl(replay_dir / "outcomes.jsonl"):
+        if run_id and o.get("run_id") != run_id:
+            continue
+        k = (o.get("plane"), o.get("round_num"))
+        if k not in best and k not in _out_only:
+            _out_only[k] = o
     lines = []
-    for k in sorted(best):
-        d = best[k]
+    for k in sorted(set(best.keys()) | set(_out_only.keys())):
+        d = best.get(k)
+        if d is None:
+            # 无决策节点(如 supply 合成行):展示来源与结算态,判定语义见 source
+            o = _out_only[k]
+            nt = o.get("node_type") or "?"
+            src = o.get("source") or ""
+            bb = " ".join(f"{k2}×{v}" for k2, v in (o.get("board_before") or {}).items()) or "(空)"
+            gold_s = f" g={o['gold']}" if o.get("gold") is not None else ""
+            lines.append(f"  p{k[0]}r{k[1]} [{nt}|{src}]{gold_s} hp={o.get('hp_after')} | {bb}")
+            continue
         st = d.get("state") or {}
         acts = d.get("actions") or []
         buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
@@ -1261,7 +1282,10 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _dep = st.get("deployed") or []
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
-        lines.append(f"  p{k[0]}r{k[1]} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
+        # W306:节点类型直读(单看数字不知道是什么节点——判读第一眼维度)
+        _nt = st.get("node_type") or ""
+        nt_s = f" [{_nt}]" if _nt else ""
+        lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
                       f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}")
     return lines
 
