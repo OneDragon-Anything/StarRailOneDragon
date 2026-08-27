@@ -32,17 +32,6 @@ from sr_od.screen_state import common_screen_state
 NPC_DIALOG_FAREWELL_WORDS: list[str] = ['告别', '离开', '再见']
 NPC_DIALOG_FAREWELL_LCS: float = 0.7
 
-# 先验画面短路表(W286,2026-08-27):已知「非对话态」的全屏 UI 画面锚点(screen_name, area_name)。
-# 缺陷背景:「TalkInteract.INTERACT_RECT 区域有字」被当成「对话态成立」的证据——该区域是
-# 普通画面右侧面板文字的常落区,货币战争-大厅右侧面板(『数据银行』『预期收益』等静态文案)
-# 被误判为未知对话选项 → 点空白推进 → round_retry 耗尽 → op 报错 → 一条龙重启再陷(run 46
-# 卡 8+ 分钟实证实录)。修复:id_mark 精确命中下表任一锚点 = 正面确认当前是已建档全屏 UI,
-# 不可能处于 NPC 对话态 → 直接短路跳过守卫、落回原兜底兜底语义不变。新增全屏 UI 画面建档后
-# 在此追加一行即可(area 用其 id_mark);未建档画面维持原守卫行为(防 W177 类真对话态漏判)。
-KNOWN_NON_DIALOG_MARKS: list[tuple[str, str]] = [
-    ('货币战争-大厅', '标识-创业指南'),
-]
-
 
 class BackToNormalWorldPlus(SrOperation):
 
@@ -166,6 +155,20 @@ class BackToNormalWorldPlus(SrOperation):
         if result.is_success:
             return self.round_wait(result.status, wait=2)
 
+        # 货币战争-大厅(2026-08-27 run 46 事故根修,W286):全屏 UI 叠在大世界场景上,
+        # 前序分支全不命中,守卫的 INTERACT_RECT 恰罩住大厅右面板静态文字(数据银行/
+        # 预期收益等)→ 曾被误判为对话态死循环。id_mark 精确命中即正面识别本画面 →
+        # 点右上角关闭 X 返回大世界(run 46 现场帧实证:大厅右上角有 X 关闭钮,与
+        # 战斗暂停屏 X 同族;入口逆向佐证=大厅由大世界 F 交互进入,关闭即返回)。
+        # 用 round_retry 而非 round_wait:点击可能不落地,WAIT 不消耗 retry 会死循环
+        # (同本节点兜底分支 W0824 判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
+        result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
+        if result.is_success:
+            # 坐标来源:run 46 现场帧 screenshot_20260827_181834 目测(X 图标中心);
+            # screen_info 尚无该按钮 area(yml 只读约定),建档后应迁入 area,勿在此扩点。
+            self.ctx.controller.click(Point(1857, 63))
+            return self.round_retry('货币战争-大厅', wait=2)
+
         # 对话态守卫(2026-08-26 实机事故根修,NPC 对话态下兜底点击会命中对话隐藏按钮):
         # 登录落点等活动摊位 NPC 对话态时,右上角图标全被对话 UI 遮蔽,前面所有分支
         # 都不命中,原兜底直接点「菜单-右上角返回」——该坐标与对话的隐藏按钮重叠,
@@ -192,23 +195,18 @@ class BackToNormalWorldPlus(SrOperation):
         检测与动作坐标全部复用 TalkInteract 的既有已验证常量（交谈交互区 + 空白推进点击点），
         不引入未验证的新坐标。脱困序为逐帧反应式（本方法每轮重跑，无跨轮状态）：
 
-        0. 已知非对话全屏画面（KNOWN_NON_DIALOG_MARKS，id_mark 精确命中）→ 返回 None
-           跳过守卫（防静态面板文字被误判为对话选项，见该表注释）；
-        1. 告别类选项可见 → 点它退出对话（对完后续帧由「角色图标」分支接管）；
-        2. 有其他选项但无告别词 → 不乱点未知选项（可能接受任务/开商店），点空白推进，
-           用 round_retry 计入节点预算，有界退出而非破坏性误点；
-        3. 交互区无任何文字 → 无法确认对话态，返回 None 落回原兜底。
+        1. 告别类选项可见（高阈值 LCS）→ 点它退出对话（对完后续帧由「角色图标」分支接管）；
+        2. 交互区无告别词 → 返回 None 落回原兜底。
+
+        状态门加严(W286,2026-08-27):「交互区有字」是弱证据不再单独构成对话态——
+        该区域是普通画面右侧面板文字的常落区,曾把货币战争-大厅静态面板文字误判成
+        「未知对话选项」→ 点空白推进(选项态下推进无效)→ round_retry 永动(run 46
+        卡 8+ 分钟实证实录)。真对话态下告别词未收录时落到兜底也只是有界失败,
+        不会再提供无推进的重试风暴;词表扩充走守卫采集钩子的样本核对。
 
         :param screen: 游戏画面
-        :return: 命中对话态时返回对应的 round 结果；否则 None
+        :return: 命中告别选项时返回对应的 round 结果；否则 None
         """
-        # 先验画面短路:已知全屏 UI 画面(id_mark 精确命中)不可能是对话态,跳过守卫。
-        # 「区域有字」只是弱证据,这里用建档画面的强否定证据短路,防静态面板文字误判。
-        for screen_name, area_name in KNOWN_NON_DIALOG_MARKS:
-            if self.round_by_find_area(screen, screen_name, area_name).is_success:
-                log.info('[对话态守卫] 命中已知非对话画面 %s(%s),跳过守卫', screen_name, area_name)
-                return None
-
         part = cv2_utils.crop_image_only(screen, TalkInteract.INTERACT_RECT)
 
         farewell_map = self.ctx.ocr.match_words(
@@ -227,16 +225,7 @@ class BackToNormalWorldPlus(SrOperation):
                 if self.ctx.controller.click(press_time=0.1, pc_alt=True):
                     return self.round_wait('对话态-告别', wait=1)
 
-        ocr_map = self.ctx.ocr.run_ocr(part)
-        if len(ocr_map) > 0:
-            # 有选项但没匹配到告别词:不点未知选项(语义不明,可能触发任务/购物),
-            # 点空白推进对话(选项出现前的对话文本阶段可推进),交给下一帧重新判定。
-            log.info('[对话态守卫] 检测到未知对话选项 %s,不乱点,点空白推进', list(ocr_map.keys()))
-            to_click = Point(self.ctx.project_config.screen_standard_width // 2,
-                             self.ctx.project_config.screen_standard_height - 100)
-            self.ctx.controller.click(to_click)
-            return self.round_retry('对话态-未知选项', wait=1)
-
+        # 无告别词:交互区文字不构成对话态证据(W286 根因),返回 None 落回原兜底。
         return None
 
     def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
