@@ -27,6 +27,8 @@ class StartCurrencyWarMatch(SrOperation):
     - 有保存局:开始 → 继续进度 → (位面教程叠层)→ 备战。
     - 无保存局:开始 → 进入标准博弈 → 开始对局(职级难度确认)→ 简报(下一步)
       → 投资环境(3 选 1 + 确认)→ 备战。
+    - 残留大厅:上局结束「回大厅」的死按钮态 → 点「按钮-关闭」退出到朝露公馆
+      世界入口 → F 交互重进新鲜大厅 → 正常开始。
 
     前置:已在货币战争大厅(EnterCurrencyWar 之后)。到达备战后返回 STATUS_AT_PREP。
 
@@ -48,12 +50,19 @@ class StartCurrencyWarMatch(SrOperation):
 
     # 推进步数上限(防死循环)
     MAX_ADVANCE_STEPS: ClassVar[int] = 60
+    # 残留大厅判定所需的连续锚命中轮数(防点开始后的转场动画帧被误判残留态)
+    LOBBY_RESIDUAL_CONFIRM_ROUNDS: ClassVar[int] = 2
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='开始货币战争对局')
         self._advance_steps: int = 0
         # 残留容器弃置去重(同一次入口链只报一次;ADR-0419)
         self._stale_discarded: bool = False
+        # 大厅锚(「标识-创业指南」)连续命中轮数(残留大厅判定计数,执行期现读)
+        self._lobby_anchor_rounds: int = 0
+        # 残留大厅逃逸进度:已点「按钮-关闭」露世界 / 已按 F 重进新鲜大厅
+        self._residual_closed: bool = False
+        self._residual_reentered: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
         """新局确凿信号处弃置上一局残留 match 容器(W289/ADR-0419)。
@@ -91,6 +100,51 @@ class StartCurrencyWarMatch(SrOperation):
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
+
+        # 残留大厅态(2026-08-27 实机事故:上局结束「回大厅」后大厅 UI 层残留,
+        # app 层 _enter_lobby 见大厅锚即跳过 enter op → 死按钮态直达本 op)。
+        # 该态「开始」按钮不响应任何点击(死按钮仍 OCR 可见,故判据用大厅锚
+        # 「标识-创业指南」而非开始按钮文字),右上角「按钮-关闭」才是真退出:
+        # 关闭后露朝露公馆世界入口,F 交互重进的大厅恢复可点。走到本节点仍见
+        # 大厅锚 = 「点开始」未产生画面转移 → 残留态;连续多轮锚命中才判定
+        # (防转场动画帧误判)。若 BackToNormalWorldPlus 已处理残留,本分支不触发。
+        if self.round_by_find_area(
+                screen, StartCurrencyWarMatch.LOBBY_SCREEN, '标识-创业指南',
+                crop_first=False).is_success:
+            self._lobby_anchor_rounds += 1
+            if self._lobby_anchor_rounds < StartCurrencyWarMatch.LOBBY_RESIDUAL_CONFIRM_ROUNDS:
+                return self.round_retry(wait=1)
+            if not self._residual_closed:
+                _log.info('[cw-entry] 大厅残留态(点开始无转移)→ 点「按钮-关闭」退出到世界入口')
+                self._residual_closed = True
+                self.round_by_find_and_click_area(
+                    screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-关闭',
+                    success_wait=2, crop_first=False)
+                return self.round_wait(wait=2)
+            if not self._residual_reentered:
+                # 关闭点击未落地 / 转场未完成(大厅层还在)→ 继续点关闭
+                return self.round_by_find_and_click_area(
+                    screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-关闭',
+                    retry_wait=1, crop_first=False)
+            # 关闭 + F 重进后的大厅 = 新鲜大厅,开始按钮可点 → 重新点开始。
+            # 本节点无 success 出边,必须 round_wait 自环续推(返回 helper 的
+            # round_success 会让 op 在模式选择前假成功结束)。
+            _log.info('[cw-entry] 残留逃逸后重回大厅 → 重新点「按钮-开始货币战争」')
+            self.round_by_find_and_click_area(
+                screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-开始货币战争',
+                success_wait=2, crop_first=False)
+            return self.round_wait(wait=2)
+
+        # 逃逸中途落在大世界朝露公馆入口(关闭后露出的场景):按 F 重进大厅
+        # (与 EnterCurrencyWar.wait_lobby 的 F 分支同手势;带 lcs 0.7 防任务
+        # 追踪文本「请前往…」与「前往参与」的子序列假阳性饿死本分支)。
+        if (self._residual_closed and not self._residual_reentered
+                and self.round_by_ocr(screen, '货币战争', lcs_percent=0.7).is_success
+                and not self.round_by_ocr(screen, '前往参与', lcs_percent=0.7).is_success):
+            _log.info('[cw-entry] 残留逃逸:世界入口(朝露公馆)→ 按 F 重进货币战争大厅')
+            self._residual_reentered = True
+            self.ctx.controller.btn_tap(self.ctx.controller.game_config.key_interact)
+            return self.round_wait(wait=2)
 
         self._advance_steps += 1
         if self._advance_steps > StartCurrencyWarMatch.MAX_ADVANCE_STEPS:
