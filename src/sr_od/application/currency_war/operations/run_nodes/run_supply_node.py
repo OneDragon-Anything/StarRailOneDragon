@@ -21,8 +21,10 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_supply_options
+from sr_od.application.currency_war.cw_observation import read_game_state
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_telemetry import set_last_supply_pick
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
@@ -35,14 +37,30 @@ class RunSupplyNode(RunNode):
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
     (char/equip/has_diamond/refreshed + 实际识别选项清单),供 overlay 消失后
     battle_loop 合成 supply 遥测行消费(W306;synthetic_supply 合成行)。
-    备战状态采集 detour(返回备战→快照→重进)已摘除待后续批:其按钮坐标须待
-    停机钩子冻结画面实测建档后落地(当前实现=坐标靠猜,不准);本节点交付面 =
-    synthetic 行 + 动态列数解析。
+
+    **主流程 = 采集 detour 完整循环(W311 复实现,坐标 2026-08-27 编排者 live 实测)**:
+    识别补给画面(_in_node 前置门)→ 点「返回备战界面」(货币战争-补给/
+    按钮-返回备战界面,实测有效)→ 备战画面等待快照管线采集(1-2 帧;显式
+    phase='supply_detour'+actions=[] 非购买轮语义)→ 点「按钮-返回补给阶段」
+    (货币战争-备战,实测有效)重进 overlay(重试 3 次+OCR 文本兜底枪)→
+    继续原选择流程。补给轮不驻留备战画面,不 detour 则战斗结算后状态是数据
+    真空。实测时序(2026-08-27 冻结画面验证):回备战过渡 ~2.5s、重进过渡
+    ~2s;已选择/剩余次数状态重进后保留(实测确认),故采集先行不丢选择进度。
+    标记**仅在成功重进后**落(_mark_supply_detour):失败下轮重试整个 detour
+    ——宁可见 FAIL bail 不带病把备战屏当补给屏跑(假完成会让外环把采集轮
+    当购买轮消化)。
     """
 
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
     # 刷新按钮(图标式,VLM 判定 + refresh_ui_samples.jsonl 多局稳定坐标;2026-08-17)
     REFRESH_BTN: ClassVar[Point] = Point(974, 854)
+    # detour 实测时序(2026-08-27 编排者 live 冻结画面验证):回备战过渡 ~2.5s、
+    # 重进 overlay 过渡 ~2s;重进重试上限(area 版),area×3 全 miss 再 OCR 文本
+    # 兜一枪(全败=本轮零选择动作交下轮重试整个 detour,标记仅成功后落——
+    # 防带病降级成假完成)
+    TO_PREP_SETTLE_S: ClassVar[float] = 2.5
+    REENTER_SETTLE_S: ClassVar[float] = 2.0
+    REENTER_TRIES: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext):
         RunNode.__init__(self, ctx, op_name='货币战争-补给节点')
@@ -56,14 +74,84 @@ class RunSupplyNode(RunNode):
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
         return self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success
 
+    def _should_supply_detour(self, match) -> bool:
+        """本补给节点还没做过 detour?优先 session 态(跨外环重建存活,
+        同 _supply_refresh_used 惯例),无 match 退实例态。"""
+        if match is not None:
+            return not getattr(match.session, '_supply_detour_done', False)
+        return not getattr(self, '_detour_done', False)
+
+    def _mark_supply_detour(self, match) -> None:
+        if match is not None:
+            match.session._supply_detour_done = True
+        else:
+            self._detour_done = True
+
+    def _supply_detour_collect(self, match) -> bool:
+        """补给备战状态采集 detour(主流程第一步,W311):回备战 → 采集快照 → 重进 overlay。
+
+        标记仅在**成功重进**后落(_mark_supply_detour):失败不落,下轮重试
+        整个 detour——宁可见节点预算烧尽 FAIL bail,不带病把备战屏当补给屏
+        继续跑(假完成会让外环误派购买管线 = 采集轮变购买轮)。
+        """
+        # ① 返回备战界面(area 已建 + 实测有效:currency_war_supply 按钮-返回备战界面,
+        #    2026-08-27 编排者 live 验证 → 备战画面出现;过渡 ~2.5s)
+        rs = self.round_by_find_and_click_area(
+            self.screenshot(), '货币战争-补给', '按钮-返回备战界面', success_wait=1.5)
+        if rs is None or not rs.is_success:
+            log.warning('[cw-supply] detour:「返回备战界面」点击 miss → 放弃本次采集')
+            return False
+        time.sleep(RunSupplyNode.TO_PREP_SETTLE_S)
+        # ② 显式采集性返回快照(标记 phase='supply_detour';actions=[] 非购买轮)
+        try:
+            _snap_screen = self.screenshot()
+            _state = read_game_state(self.ctx, _snap_screen)
+            cw_telemetry.record_decision(
+                _state, target_comp='', candidate_scores={}, eval_breakdown={},
+                actions=[], gold_point=True,
+                extra={'phase': 'supply_detour'})
+            log.info('[cw-supply] detour 备战快照已落盘 p%sr%s hp=%s gold=%s',
+                     getattr(_state, 'plane', '?'), getattr(_state, 'round_num', '?'),
+                     getattr(_state, 'hp', '?'), getattr(_state, 'gold', '?'))
+        except Exception as e:   # noqa: BLE001  观测不阻塞对局
+            log.warning('[cw-supply] detour 快照记录失败(不阻塞): %s', e)
+        # ③ 重进 overlay(实测:已选择/剩余次数状态重进后保留;备战屏「按钮-返回补给
+        #    阶段」area 已建 + 实测有效;过渡 ~2s。area 全 miss 再用全屏 OCR 文本兜
+        #    一枪——lcs_percent=0.8 防与「返回货币战争」误匹配)
+        for i in range(RunSupplyNode.REENTER_TRIES):
+            rr = self.round_by_find_and_click_area(
+                self.screenshot(), '货币战争-备战', '按钮-返回补给阶段',
+                success_wait=1.5)
+            time.sleep(RunSupplyNode.REENTER_SETTLE_S)
+            if rr is not None and rr.is_success and self._in_node(self.screenshot()):
+                log.info('[cw-supply] detour 完成:回到补给界面(第 %d 次尝试)', i + 1)
+                self._mark_supply_detour(match)
+                return True
+            if i == RunSupplyNode.REENTER_TRIES - 1:
+                self.round_by_ocr_and_click(self.screenshot(), '返回补给阶段',
+                                            success_wait=1.5, lcs_percent=0.8)
+                time.sleep(RunSupplyNode.REENTER_SETTLE_S)
+                if self._in_node(self.screenshot()):
+                    log.info('[cw-supply] detour 完成:OCR 文本兜底回到补给界面')
+                    self._mark_supply_detour(match)
+                    return True
+        log.warning('[cw!][cw-supply] detour:area×%d + OCR 兜底均未回到补给界面'
+                    '(下轮重试;若持续=节点预算耗尽 FAIL bail)', RunSupplyNode.REENTER_TRIES)
+        return False
+
 
     def _do_action(self, screen) -> None:
         # T#99 接 decide_supply:OCR 补给选项(每列=角色+装备,动态列数)→ 策略按
         # target_comp.key_equips 契合 + 装备通用价值选(替代盲点 CARD_BODY)。钻识别双通道
         # ✅(SIFT 主+文本兜底,cw_node_obs);刷新按钮 @≈(974,854),无钻+未刷 → 点刷新重掷。
-        # (W306b detour 已摘除:按钮坐标待停机钩子冻结画面实测建档后由后续批实现)
-        opts = read_supply_options(self.ctx, screen)
         match = self.ctx.cw_match
+        # W311 主流程:首次进入先做备战状态采集 detour(detour 后用新帧读选项;
+        # 未成功重进 → 本轮不做任何选择动作,防在备战屏盲点卡身/误触发购买语义)
+        if self._should_supply_detour(match):
+            if not self._supply_detour_collect(match):
+                return
+            screen = self.screenshot()
+        opts = read_supply_options(self.ctx, screen)
         # r2 review#2:实例态在外环每次新建 RunSupplyNode 下失效 → 挂 match.session
         # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
         # False 掩盖接线错误)。无 match 退实例态(测试/离线路径)。
