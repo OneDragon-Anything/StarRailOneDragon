@@ -172,6 +172,32 @@ class BackToNormalWorldPlus(SrOperation):
             self.round_by_find_and_click_area(screen, '货币战争-大厅', '按钮-关闭')
             return self.round_retry('货币战争-大厅', wait=2)
 
+        # 无名勋礼购买推广页 / 等级加速弹窗 / 主面板(W293,2026-08-27):
+        # 版本更新(2026-08-26 周期)后周期内第一次进无名勋礼,先落在整屏「购买推广页」
+        # (用户口述裁决:点「开启无名勋礼」是查看/继续语义,**不会付费**)。实证退出链
+        # (编排者 2026-08-27 live 四步全走通):
+        #   推广页 → 点「开启无名勋礼」→「无名勋礼等级加速」说明弹窗(点弹窗内
+        #   「点击空白处关闭」提示位关闭;点弹窗外无效)→ 无名勋礼主面板 → 点右上角
+        #   「按钮-关闭」→ 菜单页(既有「菜单」分支接管:开拓等级→右上角返回→大世界)。
+        # 与 W286 大厅分支同构:id_mark 精确命中即正面识别 → area 点击 + round_retry
+        # 逐帧重识别(点击可能不落地,WAIT 不消耗 retry 会死循环);中间态(弹窗/主面板)
+        # 靠逐帧重识别天然容忍,无需跨轮状态。项目规则:操作禁用 ESC,关闭一律点
+        # screen_info area。
+        result = self.round_by_find_area(screen, '无名勋礼-购买推广页', '按钮-开启无名勋礼')
+        if result.is_success:
+            self.round_by_find_and_click_area(screen, '无名勋礼-购买推广页', '按钮-开启无名勋礼')
+            return self.round_retry('无名勋礼-购买推广页', wait=2)
+
+        result = self.round_by_find_area(screen, '无名勋礼-等级加速弹窗', '标识-等级加速')
+        if result.is_success:
+            self.round_by_find_and_click_area(screen, '无名勋礼-等级加速弹窗', '按钮-点击空白处关闭')
+            return self.round_retry('无名勋礼-等级加速弹窗', wait=2)
+
+        result = self.round_by_find_area(screen, '无名勋礼', '标识-无名勋礼')
+        if result.is_success:
+            self.round_by_find_and_click_area(screen, '无名勋礼', '按钮-关闭')
+            return self.round_retry('无名勋礼', wait=2)
+
         # 对话态守卫(2026-08-26 实机事故根修,NPC 对话态下兜底点击会命中对话隐藏按钮):
         # 登录落点等活动摊位 NPC 对话态时,右上角图标全被对话 UI 遮蔽,前面所有分支
         # 都不命中,原兜底直接点「菜单-右上角返回」——该坐标与对话的隐藏按钮重叠,
