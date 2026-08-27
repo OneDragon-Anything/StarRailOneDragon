@@ -12,7 +12,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 
 ## 一段概览:一局怎么打(从 research 提炼)
 
-一局 = 3 个位面、每位面多个节点。核心循环:备战阶段商店发 5 张牌 → 花金币买牌 / 刷新 / 买经验升等级(**等级 = 上阵人数上限**)→ 配前台(作战)/ 后台(支援)站位 → 出战自动战斗 → 按节点结果扣血推进。水平的分水岭在**经济**:利息按金币档位(10 的倍数)结算、50 金封顶 5 金/轮([user_playstyle](../currency_war/research/user_playstyle.md) [17]),「守息」与「该花就花」的节奏纪律贯穿全局(同篇);**位面 1 靠过渡阵容**——四种过渡体系两两组合,活到成型即停手攒息([transitions](../currency_war/research/transitions.md) / [transition_combos](../currency_war/research/transition_combos.md));P2/P3 逐步换向**终局阵容**([final_comps](../currency_war/research/final_comps/README.md) 十类)。验收口径不是满血而是「**带经济过位面**」:P1 健康态 = 息基保住 × 形态达标双指标([user_playstyle](../currency_war/research/user_playstyle.md) [28]);血量掉光 = 整局失败(首次归零有保底剩 1hp,见下机制节),第三位面一次遭遇最多扣 70 血(见下机制速查)。
+一局 = 3 个位面、每位面多个节点。核心循环:备战阶段商店发 5 张牌 → 花金币买牌 / 刷新 / 买经验升等级(**等级 = 上阵人数上限**)→ 配前台(作战)/ 后台(支援)站位 → 出战自动战斗 → 按节点结果扣血推进。**位面 1 靠过渡阵容**(四种过渡体系两两组合),P2/P3 逐步换向**终局阵容**。血量掉光 = 整局失败(首次归零有保底剩 1hp,见下机制节),第三位面一次遭遇最多扣 70 血(见下机制速查)。经济与阵容的打法纪律不在本页——单一源在 [currency_war/research](../currency_war/research/README.md)(读法与任务路由见该 README)。
 
 ## 按主题导读(想了解 X → 读哪篇)
 

@@ -66,7 +66,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 4. **economy** 看滞留/收入核对;**supply** 看购买对错;
 5. **anomalies** 逐条定位根因(定位不了不进下一局);
 6. 按当期判读主题,直查 jsonl 补视图外维度(站位=deployed 的 position_pref;经验=xp_progress…);
-7. 结论写进度树,声明数据边界。
+7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度树中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
 
 ## 已知缺口(判读时心里有数)
 
