@@ -117,6 +117,27 @@ def nodes_of_plane(session) -> int:
 # {0:14,1:8,2:3.5,3:1.5}+陡难度曲线下 A8 无解(全路径死 → 值全 0 → DP 退化存息)。
 HP_LOSS_PRIOR: dict[int, float] = {0: 14.0, 1: 7.0, 2: 2.5, 3: 0.8}
 
+# P2 段难度系数(重校值,直接生效——校准非新行为;W371 对抗审计修法 M1a)。
+# 取值 = 6.0:实机存活局事件均值 15.3(W350 REPORT §4,59 事件,三源中位)
+# ÷ 先验锚 2.5 ≈ 6.1;事件级 t95%CI 下界 15.0(标定 n=19,SD 10.38,
+# CI [15.0, 25.1];run 级聚类 CI [15.1, 23.6];标定源=
+# .debug/temp/currency_war/w353_p2_survival/w354_p2_loss_calib.json)→ 6.0。
+# 取 CI 下沿的理由(方向声明):本系数喂确定性 DP 递推(每节点确定减血、
+# 死亡=0),取值越高「模型内必死区」越宽;曾按条件值全量灌入(20.05→k=8.02)
+# 实测复现值函数坍缩(好板满血从 P1 中段全路径死 → V≡0 → 姿态按扫描序
+# 坍缩成最烧钱姿态、息差项从值函数消失)。CI 上沿(25.1 → k≈10.04)留
+# 两态递推改造后再评估(挂账:drop 改 (1−p(b))·L_cond,p(b) 用 W346
+# §3.2 分 rung 胜占比底座,与 two_state_model 同构)。
+# 边界声明:①板强梯度同样未标定( coarse 复算 P2 条件伤按 rung 平坦 ~11,
+# 板强通道在胜率侧不在伤害幅度侧——见上两态化挂账),故 P1 梯度整体外推
+# 已撤销、P2 摊平为常数;②位面内节点梯度与 boss 档未标定;③残余必死区
+# (hp≤15@b=2.0)的全死区平局由扫描序保守化裁决(见 solve 内 P2 升序
+# 扫描);④旧值 1.5+0.05·node 系「P2 弱板掉 19/节点」弱板锚外推,已弃;
+# ⑤P1/P3 分支不受本系数辖(P1 零漂移;P3 不在标定域);⑥双源漂移挂账:
+# cw_first_passage.PLANE_LOSS_SCALE[2]=1.6(保血阈值层,μ=4.0/节点)与
+# 本层口径未统一,另批处理。
+P2_LOSS_SCALE: float = 6.0
+
 
 def difficulty_scale(t: int,
                      pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> float:
@@ -136,7 +157,7 @@ def difficulty_scale(t: int,
     if plane == 0:
         return 0.5 if node < 4 else (0.9 if node < 8 else 1.4)
     if plane == 1:
-        return 1.5 + 0.05 * node
+        return P2_LOSS_SCALE   # 重校值(推导与挂账见常量注释)
     return 1.8 + 0.05 * node
 
 
@@ -451,6 +472,20 @@ def solve(ledger=None,
             for rbi in range(_NRB):
                 _drop[Li, rbi] = _hp_loss(t, int(_L_grid[Li]), RB_STEPS[rbi], pl)
                 _inc[Li, rbi] = _income(t, b_eff(int(_L_grid[Li]), RB_STEPS[rbi]))
+        # 平局扫描序(W371 M1 必修,保守化):P2 槽(plane==1)按花费升序
+        # 扫(strict > 保首=最便宜)——全死区 V≡0 等值时平局裁决为「存息」
+        # 而非旧序的「升级+6刷」(死→烧光病理堵门);P1/P3 槽保持旧降序
+        # 扫描(P1 零漂移的结构保证,平局语义逐位不变)。
+        _offs = plane_offsets(pl)
+        _plane = 0
+        for _i in range(len(_offs) - 1, -1, -1):
+            if t >= _offs[_i]:
+                _plane = _i
+                break
+        if _plane == 1:
+            _lv_order, _roll_order = (0, 1), (0, 2, 4, 6)
+        else:
+            _lv_order, _roll_order = (1, 0), (6, 4, 2, 0)
         _rbi2_map = {rolls: _np.array([
             min(range(_NRB), key=lambda i: abs(RB_STEPS[i] - min(RB_MAX, rb + 0.12 * rolls)))
             for rb in RB_STEPS]) for rolls in (6, 4, 2, 0)}
@@ -460,10 +495,10 @@ def solve(ledger=None,
             _lc = _level_cost(int(_L_grid[Li])) if _L_grid[Li] < LEVEL_MAX else None
             _best_v = _np.full((_NG, _NHP, _NRB), -1e18)
             _best_a = _np.zeros((_NG, _NHP, _NRB), dtype=_np.int64)
-            for lv_up in (1, 0):
+            for lv_up in _lv_order:
                 if lv_up and _lc is None:
                     continue
-                for rolls in (6, 4, 2, 0):
+                for rolls in _roll_order:
                     _spend = (_lc or 0) * lv_up + 2 * rolls
                     _g2 = _g_grid - _spend                       # [NG]
                     _feas = _g2 >= 0
