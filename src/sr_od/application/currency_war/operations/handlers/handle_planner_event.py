@@ -20,6 +20,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -79,6 +80,11 @@ class HandlePlannerEvent(SrOperation):
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
+        # W312(遥测审计 G1):左右卡 OCR 文本+选择落账本(升费机会只有一次,
+        # 选错代价复盘依赖此行;此前只 log)。
+        record_event_choice('planner_event',
+                            [{'text': o.text} for o in options],
+                            pick.idx, pick.reason)
         # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
         # (755,400) 触发详情面板的实证;点卡身上部 y=310)
         self.ctx.controller.mouse_move(target)

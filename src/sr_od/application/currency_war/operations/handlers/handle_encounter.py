@@ -25,6 +25,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_encounter_options
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
     safe_click,
@@ -67,6 +68,12 @@ class HandleEncounter(SrOperation):
                 idx = pick.idx
             reason = pick.reason
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} pick=idx{idx} {reason}')
+        # W312(遥测审计 G1):选项选择落账本(exogenous kind='event_choice')。
+        # 此前只 log——「选了其几/两卡奖励/reason」跨局归因在遥测上断链。
+        record_event_choice('encounter',
+                            [{'difficulty': o.difficulty, 'rewards': o.rewards}
+                             for o in options],
+                            idx, reason)
         # 卡身/选择坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
         card_left = area_center(self.ctx, '遭遇卡-其一', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_LEFT
         card_right = area_center(self.ctx, '遭遇卡-其二', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_RIGHT

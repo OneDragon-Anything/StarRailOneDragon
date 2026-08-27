@@ -32,6 +32,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
 
@@ -75,15 +76,22 @@ class RunMegastarNode(RunNode):
             options = read_megastar_options(self.ctx, screen)
             match = self.ctx.cw_match
             idx = 0
+            reason = 'default(no match/options)'
             if match is not None and options:
                 _state = match.session.last_state or GameState()   # overlay 时用上次备战快照
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
                 if 0 <= pick.idx < len(options):
                     idx = pick.idx
+                reason = pick.reason
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
             else:
                 log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
+            # W312(遥测审计 G1):巨星候选面+选择落账本(此前只有结果回写
+            # session.chosen_megastar,候选与依据只 log)。
+            record_event_choice('megastar',
+                                [{'char_id': o.char_id} for o in options],
+                                idx, reason)
             # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or RunMegastarNode.CANDIDATE_LEFT)
                          if idx == 0 else

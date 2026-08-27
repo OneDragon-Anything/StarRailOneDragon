@@ -18,6 +18,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -59,6 +60,8 @@ class HandleWishTrial(SrOperation):
         # 策略决策(r104):OCR objective → decide_wish_trial → 对应卡
         target = HandleWishTrial.FIRST_CARD
         pick_desc = 'fallback第1张'
+        objs: list[str] | None = None   # W312:策略分支外的兜底路径也留选项面(None=未读到)
+        pick_idx = 0
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
             try:
@@ -69,10 +72,13 @@ class HandleWishTrial(SrOperation):
                     objs, _st, _match.session, getattr(_match, 'config', None))
                 if 0 <= idx < len(self.CARD_XS):
                     target = Point(self.CARD_XS[idx], HandleWishTrial.CARD_Y)
+                    pick_idx = idx
                     pick_desc = f'卡{idx + 1}({objs[idx][:20] or "OCR空"})'
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
                 log.warning('[cw-wish] 策略决策异常(fallback 第1张): %s', e)
         log.info('[cw-wish] 祈愿决策: %s → 点 (%s,%s)', pick_desc, target.x, target.y)
+        # W312(遥测审计 G1):试炼 objective 文本+选择落账本(此前只 log)。
+        record_event_choice('wish_trial', objs, pick_idx, reason=pick_desc)
         # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click,防 before_screenshot 移光标)。
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)

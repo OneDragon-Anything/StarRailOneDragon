@@ -19,6 +19,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -71,6 +72,9 @@ class HandleFortunePicker(SrOperation):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw][fortune] 命运卜者强化:卡=%s → 选卡%d(%s)',
                  [t[:12] for t in texts], best_i + 1, texts[best_i][:20] or 'OCR空')
+        # W312(遥测审计 G1):三选一卡文字+选择落账本(此前只 log)。
+        record_event_choice('fortune_pick', texts, best_i,
+                            reason=f'text_rule(best_score={best_s})')
         # r315(等画面审查 P0②:全无出口验证,失败分支死码):
         # 选卡=safe_click(bug#1 缓解);确认+验关统一走
         # confirm_and_verify(入口关键词=命运卜者;确认落空→

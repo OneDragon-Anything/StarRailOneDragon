@@ -305,11 +305,14 @@ class ExogenousEvent:
     ts: str = ""
     run_id: str = ""
     round_num: int = 0
-    kind: str = ""                  # node_enter/popup/briefing(r378b 收敛:仅这三种有生产者;
-    # condition_trigger/user_action 从 schema 删——测量链 review B1 实锤零
-    # 写入点,声明的 kind 无生产者=消费端等死链(node_type 同型病))
+    kind: str = ""                  # node_enter/popup/briefing/event_choice(r378b 收敛到
+    # 有生产者的值:前三种见 22/31 号预案;event_choice(W312,遥测审计 G1)=
+    # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind,
+    # 结构化载荷在 choice(detail 只放一行人读摘要——审计 G1:这族此前只 log 不落盘)
     detail: str = ""
     state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
+    choice: dict[str, Any] | None = None   # W312(G1):选项选择快照 {event/options/n_options/
+    # pick_idx/reason}。仅 kind='event_choice' 行携带;旧记录与其它 kind 恒 None(缺省兼容)。
 
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -547,11 +550,13 @@ class TelemetryRecorder:
 
     def record_exogenous(self, run_id: str, round_num: int, kind: str,
                          detail: str = "",
-                         state: GameState | None = None) -> None:
+                         state: GameState | None = None,
+                         choice: dict[str, Any] | None = None) -> None:
         """记外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
 
-        kind:node_enter/popup/briefing(r378b 收敛,见 ExogenousRecord);
-        state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义)。
+        kind:node_enter/popup/briefing/event_choice(W312,见 ExogenousEvent);
+        state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义);
+        choice(W312):overlay 选项选择快照,仅 kind='event_choice' 行携带。
         """
         snap: dict[str, Any] = {}
         if state is not None:
@@ -563,7 +568,8 @@ class TelemetryRecorder:
                     'bench_count': bench_occupied(getattr(state, 'bench', []) or [])}   # ADR-0316 占用数(r68 review:旧 tracked_bench 字段 GameState 没有(恒 0))
         rec = ExogenousEvent(ts=datetime.now().isoformat(timespec="seconds"),
                              run_id=run_id, round_num=round_num,
-                             kind=kind, detail=detail, state_snapshot=snap)
+                             kind=kind, detail=detail, state_snapshot=snap,
+                             choice=choice)
         self._append("exogenous.jsonl", _to_jsonable(rec))
 
 
@@ -793,7 +799,8 @@ def record_outcome(outcome, source: str = "",
 
 
 def record_exogenous(round_num: int, kind: str, detail: str = '',
-                     state: GameState | None = None) -> None:
+                     state: GameState | None = None,
+                     choice: dict[str, Any] | None = None) -> None:
     """便捷:用 current_run_id 记一条外生事件(r1 review#3:此前 battle_loop 调用
     模块级函数但只有类方法 → AttributeError 被吞,exogenous.jsonl 生产侧静默死)。
 
@@ -801,7 +808,49 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
     """
     if not _CURRENT_RUN_ID:
         return
-    get_recorder().record_exogenous(_CURRENT_RUN_ID, round_num, kind, detail, state)
+    get_recorder().record_exogenous(_CURRENT_RUN_ID, round_num, kind, detail, state,
+                                    choice=choice)
+
+
+def record_event_choice(event: str, options: list | None, pick_idx: int,
+                        reason: str = '') -> None:
+    """W312(遥测审计 G1):overlay 选项选择族统一落盘(exogenous.jsonl,
+    kind='event_choice',结构化载荷在 ExogenousEvent.choice)。
+
+    七个 handler(遭遇/巨星/伙伴/策划事件/命运卜者/装备选卡/祈愿)在
+    **选项确认时点**各调一行:此前该族只 log.info 不进账本,「当时提供了
+    什么选项、bot 选了哪个、为什么」在遥测上断链(对照:invest 族全量
+    落盘、W306 supply_pick——证明是漏接不是做不了)。
+
+    参数:
+        event: 事件名短码(如 'encounter'/'megastar'),写入 choice['event'];
+        options: 候选清单(可序列化元素——str/dict;调用方按自身读端形态给,
+                 禁自造第二套包装),None/空=识别失败路径也照记(留证据);
+        pick_idx: 实际选择下标(0 基,按调用方 options 序);
+        reason: 策略决策依据原文(decide_*.reason / 文本规则描述)。
+    round_num 从 ctx match 的 last_state 兜底解析(overlay 时 board 不可读,
+    last_state=最近一次备战快照;离线/测试无 match → 0)。run_id 空直接 no-op
+    (与 record_exogenous 同门控)。best-effort:观测失败不阻断业务流。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    round_num = 0
+    try:
+        _m = _CTX_MATCH_REF[0]
+        _st = getattr(getattr(_m, 'session', None), 'last_state', None)
+        if _st is not None:
+            round_num = int(getattr(_st, 'round_num', 0) or 0)
+    except Exception:   # noqa: BLE001  观测 best-effort
+        round_num = 0
+    opts = list(options) if options else []
+    choice = {'event': str(event),
+              'options': opts,
+              'n_options': len(opts),
+              'pick_idx': int(pick_idx),
+              'reason': str(reason or '')}
+    get_recorder().record_exogenous(
+        _CURRENT_RUN_ID, round_num, 'event_choice',
+        detail=f'{event} pick=idx{pick_idx} {reason}', choice=choice)
 
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,

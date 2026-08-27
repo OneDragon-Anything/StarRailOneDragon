@@ -20,6 +20,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_events import PartnerOption
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -134,6 +135,11 @@ class HandleSelectPartner(SrOperation):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
+            # W312(遥测审计 G1):伙伴候选面+选择落账本(此前只有结果回写
+            # session.chosen_partner,候选与依据只 log)。
+            record_event_choice('partner',
+                                [{'char_id': o.char_id} for o in options],
+                                idx, reason)
             # r358d(遥测接线):伙伴选择落 session → read_game_state
             # 回写 state.partner_char(复盘维度;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
