@@ -48,6 +48,7 @@ from sr_od.application.currency_war.cw_state import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
     from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.context.sr_context import SrContext
 
 
 class CwStrategy(ABC):
@@ -359,6 +360,39 @@ class CurrencyWarMatch:
     """
     strategy: CwStrategy
     session: StrategySession
+
+
+def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
+    """上一局残留的 match 容器在**新局开始信号**处丢弃(W289/ADR-0419)。
+
+    背景(W285 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(battle_loop
+    分支 3c),下一局 ``RunLoop.handle_init`` 见 None 新建 session —— 状态天然全新。但
+    **异常路径**(run 被停机/崩溃在上局对局中、进程未重启)残留非 None 的旧容器;此时
+    下一次入口链 ``StartCurrencyWarMatch`` 开的是一局**新对局**,而
+    ``handle_init`` 的续跑判定(``ctx.cw_match is None``)会把旧 session 整体延用:
+    level 单调守卫拿上局 ``last_level_obs=5`` 打新局 plane1 的真读(W285 cap_vs_level
+    抽样 4/4 实证)、tracked 角色/streak/hp 对账锚全部跨局带毒——obs_conflict 三层
+    (level/cap_vs_level/phase_round)329 张的残留源。
+
+    本函数只在「确凿是新一局」的调用点用(难度确认/模式选择/简报三屏只在无保存局的
+    新局路径出现;「继续进度」恢复同一物理局不触发)→ 把容器置 None,随后的
+    handle_init 走新建分支实现**全量重置 by construction**(StrategySession 每字段
+    回默认值,不存在漏清字段面);模块级观测缓存(plane/round last-known-good)由
+    handle_init 既有的 ``reset_phase_round_cache()`` 清。
+
+    Returns: True = 发现已弃置(本局起为全新 session);False = 无残留(幂等直过)。
+    """
+    if getattr(ctx, 'cw_match', None) is None:
+        return False
+    from one_dragon.utils.log_utils import log as _log
+    _log.warning('[cw-entry] 检测到上一局残留 match 容器(%s)→ 弃置,'
+                 '本局 session 全量重建(ADR-0419)', reason)
+    ctx.cw_match = None
+    from sr_od.application.currency_war.cw_observation import (
+        reset_phase_round_cache,
+    )
+    reset_phase_round_cache()
+    return True
 
 
 def gated_hp(current_hp: int, session: StrategySession, now_t: int | None,

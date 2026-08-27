@@ -52,6 +52,22 @@ class StartCurrencyWarMatch(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='开始货币战争对局')
         self._advance_steps: int = 0
+        # 残留容器弃置去重(同一次入口链只报一次;ADR-0419)
+        self._stale_discarded: bool = False
+
+    def _discard_stale_once(self, reason: str) -> None:
+        """新局确凿信号处弃置上一局残留 match 容器(W289/ADR-0419)。
+
+        难度确认/模式选择/简报三屏只在**无保存局的新局路径**出现(有保存局走
+        「继续进度」直达,恢复的是同一物理对局 —— 此时旧容器合法续用,不弃)。
+        见 ``cw_strategy.discard_stale_match_container`` docstring。
+        """
+        if self._stale_discarded:
+            return
+        from sr_od.application.currency_war.cw_strategy import (
+            discard_stale_match_container,
+        )
+        self._stale_discarded = discard_stale_match_container(self.ctx, reason)
 
     def _at_prep(self, screen) -> bool:
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
@@ -95,6 +111,12 @@ class StartCurrencyWarMatch(SrOperation):
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)。
+        # W289/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
+        # 见屏即弃置上一局残留 match 容器。
+        if self.round_by_find_area(
+                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
+                crop_first=False).is_success:
+            self._discard_stale_once('到达难度确认屏=新局开始')
         if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
@@ -119,11 +141,17 @@ class StartCurrencyWarMatch(SrOperation):
                 screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
+        # 模式选择屏可见 = 新局确凿信号(W289/ADR-0419;点击未中也不丢信号)
+        if self.round_by_find_area(
+                screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
+                crop_first=False).is_success:
+            self._discard_stale_once('到达模式选择屏=新局开始')
         # 简报屏 → HandleBriefing 独立 op(识别简报 id_mark + 读词缀/boss + 点下一步进投资环境)。
         # 入口大 op 只调度(一屏一 op);词缀/boss 链路在 HandleBriefing 内。
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
+            self._discard_stale_once('到达简报屏=新局开始')
             _log.info('[cw-entry] 到达简报屏 → HandleBriefing(读词缀/boss + 下一步)')
             HandleBriefing(self.ctx).execute()
             return self.round_wait(wait=2)

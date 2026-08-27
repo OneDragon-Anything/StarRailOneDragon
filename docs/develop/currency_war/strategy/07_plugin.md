@@ -8,7 +8,7 @@
 |---|---|---|
 | `CwStrategy`(ABC) | `cw_strategy` | 大脑接口:**纯逻辑**(只吃 GameState/选项,出 Action/Pick,绝不碰屏幕);钩子 abstract,ABC 自身不含逻辑 |
 | `StrategySession` | `cw_strategy` | 每局状态(target_comp / rng / performance / memory 私有 scratch);框架每局新建、局终销毁 |
-| `CurrencyWarMatch` | `cw_strategy` | strategy+session 轻容器,挂 `ctx.cw_match`(显式声明,局终置 None 防跨局污染) |
+| `CurrencyWarMatch` | `cw_strategy` | strategy+session 轻容器,挂 `ctx.cw_match`(显式声明,局终置 None 防跨局污染;异常停机残留的容器由入口链在新局确凿三屏处经 `discard_stale_match_container` 弃置、session 全量重建,ADR-0419) |
 | `StrategyManager` | `cw_strategy_manager` | 自动发现:BUILTIN(`strategies/`)+ THIRD_PARTY(`plugins/currency_war_strategies/` 子目录);`STRATEGY_ID` 唯一性强校验;对标 app 插件机制(无 factory/config 间接层,`cls()` 即实例化) |
 | `DefaultCwStrategy` | `strategies/default_strategy` | 内置具现 v1(每个钩子委托既有模块函数);自定义两条路:继承 ABC 全自研 / 继承 Default 只覆盖关心的钩子 |
 | `LineStrategy` | `strategies/line_strategy` | **已删(ADR-0336)**:旧生产策略 v2(ADR-0309 载体批停用;删除门槛=sim A/B 验收通过即删,leader 裁定,W66 条件性通过后执行删除;回退路径=git revert 删除 commit) |
