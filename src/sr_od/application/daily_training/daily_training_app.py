@@ -1,12 +1,9 @@
 import time
-from unittest import result
-
-from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_edge import node_from
-from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
-from one_dragon.base.operation.operation_round_result import OperationRoundResult, OperationRoundResultEnum
+from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.daily_training import daily_training_const
 from sr_od.application.sr_application import SrApplication
@@ -25,7 +22,6 @@ class DailyTrainingApp(SrApplication):
         SrApplication.__init__(self, ctx, daily_training_const.APP_ID,
                                op_name=gt('每日实训', 'game'),
                                run_record=ctx.daily_training_run_record)
-        self.failed: bool = False
 
     @operation_node(name='开始前返回', is_start_node=True)
     def back_at_first(self) -> OperationRoundResult:
@@ -96,8 +92,13 @@ class DailyTrainingApp(SrApplication):
         # 点掉奖励弹窗之后复核奖励是否已领完, 不能 round_wait 会死循环
         completed = phone_menu_utils.is_training_reward_completed(self.ctx, self.screenshot())
         if not completed:
-            self.failed = True
-            return self.round_fail('每日实训还未完成')
+            # 良性业务态:奖励领取框里的礼盒模板(带红叹号的「可领」礼盒)对未达标的灰态礼盒
+            # 也会命中(2026-08-27 两次实机实证:当天实训未做时同样点到了礼盒),点击后
+            # 复核 completed=False 最常见的原因就是当天实训还没做完、活跃度奖励本来就不可领。
+            # 现有模板无法区分「未达标不可领」与「可领但点击无效」,而后者无实机实证且
+            # 第二天实训刷新后可自愈重试,故选择以跳过语义收批(成功结束),不再走失败链
+            # 把一条龙整组标失败;状态文本保留「还未完成」字样,便于日志人工复核。
+            return self.round_success('每日实训还未完成,无可领奖励,跳过', wait=1)
         return self.round_success('每日实训已完成')
 
     @node_from(from_name='领取奖励')
@@ -105,10 +106,7 @@ class DailyTrainingApp(SrApplication):
     @operation_node(name='结束后返回')
     def back_at_last(self) -> OperationRoundResult:
         op = BackToNormalWorldPlus(self.ctx)
-        result = self.round_by_op_result(op.execute())
-        if self.failed:
-            result.result = OperationRoundResultEnum.FAIL
-        return result
+        return self.round_by_op_result(op.execute())
 
 
 def __debug():
