@@ -94,6 +94,17 @@ handoff_boss_project(hp 投影)同一通道族,gap 单一源复用。
   **不含** W232 flags(filler_star/pair_copy 全关)——star 臂 13.65%
   是 C 项单独增量(基线 7.41%,+6.3pp),不是与 W232 叠加的联合值;
   叠加联测(三 flag 家族全开)按需另批,C 项交付按边际口径收账。
+- **增量归因核查(W241 巡检 A4 插话回应,2026-09-03)**:①本批四臂
+  无 A-only 臂(W232 flags 全臂关)——A4 担心的 filler_star A-only
+  象限 bond_fallback 泄放路径污染源**结构性不存在**;②C 项增量
+  本就按「star 全开 vs gp」差分计算(插话建议口径一致);③实测
+  bond_fallback 路径活跃度(n=30 逐 reason 计数):全 P1
+  bond_fallback 买入 gp/star 两臂各 2 笔,**零差异**——非活跃;
+  ④末窗增量分解(同 n=30):d2_copy +9(=C 项直接授权面)+
+  d2_line_opportunistic +17(**下游态分歧的二阶效应**——copy 买入
+  改变金/板面,后续目标件买入随之变化,属 C 臂总效应的一部分,
+  非独立泄放通道)。A4 泄放路径本身(filler_star 开臂象限)归
+  W232 家族复验辖,本批不辖。
 - 单帧锁 `test_cw_w242_star_directed`(8 锁):授权点两半
   (生成/非正分门)+ 防双计(ev_auth 与 gate 臂同式 + registry 无
   C 项数值常量)+ 窗口/正交(star_only 恒 0)+ 约束链照辖 +
