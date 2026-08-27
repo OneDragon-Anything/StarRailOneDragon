@@ -15,7 +15,11 @@
   (overlay 消失=完成)+ 预算(点不动 bail,不再无限烧预算)。
 
 TODO(策略):候选按 target_comp 选(decide_megastar 已接,按 buff 契合);强化角色可后续接。
-TODO(task#20):候选/确认坐标进 screen_info。
+坐标(task#103 化债,W265):候选/确认经 ``cw_observation.area_center`` 读 screen_info
+  ``currency_war_megastar``(``候选-左/右`` + ``按钮-确认选择``,W265 新建 area);缺失才用兜底常量。
+  档案帧(sr-od-test/screens/货币战争-盛会之星/未选择.webp)回验:两个候选名行 OCR center
+  落 候选-* rect 内;「确认选择」text center(1491,563) 落 按钮-确认选择 rect 内
+  (标识-盛会之星 conf≈0.999 命中,画面判定精准)。
 """
 import time
 from typing import ClassVar
@@ -26,6 +30,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_megastar_options
+from sr_od.application.currency_war.cw_observation import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
@@ -35,10 +40,13 @@ class RunMegastarNode(RunNode):
     """巨星节点:read 候选 → decide_megastar(select_megastar 按 target.core_chars)→ 点选中候选 + 确认。"""
 
     # 左候选(花火)位 —— 实机 bot 点 (822,333) 已选中花火(金边);名位置 = 卡身选中区。
+    # 常量=screen_info 缺失兜底;首选 area_center('候选-左')。
     CANDIDATE_LEFT: ClassVar[Point] = Point(822, 333)
     # 右候选(星期日)位 —— OCR 名 @x1061 y334(cw_megastar 实测 2026-08-07);同 y。
+    # 常量=兜底;首选 area_center('候选-右')。
     CANDIDATE_RIGHT: ClassVar[Point] = Point(1061, 333)
-    # 「确认选择」钮中心(OCR 确认选择 x1442y548;钮中心 ~1490,560)。
+    # 「确认选择」钮中心(OCR 确认选择 x1442y548;钮中心 ~1490,560)。常量=兜底;
+    # 首选 area_center('按钮-确认选择')。
     CONFIRM: ClassVar[Point] = Point(1490, 560)
 
     def __init__(self, ctx: SrContext):
@@ -76,7 +84,10 @@ class RunMegastarNode(RunNode):
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
             else:
                 log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
-            candidate = RunMegastarNode.CANDIDATE_LEFT if idx == 0 else RunMegastarNode.CANDIDATE_RIGHT
+            # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
+            candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or RunMegastarNode.CANDIDATE_LEFT)
+                         if idx == 0 else
+                         (area_center(self.ctx, '候选-右', '货币战争-盛会之星') or RunMegastarNode.CANDIDATE_RIGHT))
             self.ctx.controller.mouse_move(candidate)
             self.ctx.controller.click(candidate)
             if _match is not None:
@@ -87,11 +98,13 @@ class RunMegastarNode(RunNode):
                     _match.session.chosen_megastar = options[idx].char_id or ''
             time.sleep(0.6)
         # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
-        self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
-        self.ctx.controller.click(RunMegastarNode.CONFIRM)
+        # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。
+        confirm = area_center(self.ctx, '按钮-确认选择', '货币战争-盛会之星') or RunMegastarNode.CONFIRM
+        self.ctx.controller.mouse_move(confirm)
+        self.ctx.controller.click(confirm)
         time.sleep(0.9)
         if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星', '按钮-请选择强化角色', crop_first=False).is_success:
             log.info('[cw-megastar] step2 请选择强化角色 仍在(罕见)→ 再 confirm(安全网)')
-            self.ctx.controller.mouse_move(RunMegastarNode.CONFIRM)
-            self.ctx.controller.click(RunMegastarNode.CONFIRM)
+            self.ctx.controller.mouse_move(confirm)
+            self.ctx.controller.click(confirm)
             time.sleep(0.9)
