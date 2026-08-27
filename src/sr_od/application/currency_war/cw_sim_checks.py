@@ -1336,8 +1336,36 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     return out
 
 
-# 过渡带成本带口述锚:[30] 过渡阵容羁绊件基本在 1-2 费带。
-_SEG_TRANSITION_COST_MAX: int = 2
+def _seg_transition_cost_max() -> int:
+    """过渡带成本带上限(W300/V-A2 单一源化):import 买家侧
+    ``discipline.press_channel_max_band()``(=press_band(max_level),
+    当前推导恒 {1,2})取 max——[30] 过渡阵容羁绊件基本在 1-2 费带的
+    口述锚由 press_band 的 {1,2} 覆盖规则承载,检查器侧不再独立持有
+    数值(消灭两处漂移可能)。"""
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        press_channel_max_band,
+    )
+    return max(press_channel_max_band())
+
+
+def _seg_target_roster(target_label: str) -> set[str]:
+    """锁定目标名册代理(与 seg_check_formed_still_buying_transition
+    的 _is_target_piece 同口径:bridge 框架件 ∪ COMP_LIBRARY 该 comp
+    的 core_chars∪factions 成员;C-A 目标内判定用,§4.2 单一源复用)。"""
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
+    roster: set[str] = set()
+    for combo in BRIDGE_POOL:
+        roster.update(combo.fixed + combo.core)
+    comp = next((c for c in COMP_LIBRARY
+                 if getattr(c, 'name', '') == (target_label or '')), None)
+    if comp is not None:
+        roster.update(getattr(comp, 'core_chars', ()) or ())
+        for fn in getattr(comp, 'factions', ()) or ():
+            roster.update(n for n, c in CHARACTERS.items()
+                          if fn in (c.factions or ()))
+    return roster
 
 
 def _seg_offered_cards(row: dict) -> list[dict]:
@@ -1355,15 +1383,36 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
 
     判据对齐口述精确口径:「购买后仍在同一息档(不跨 10 的倍数)才
     零息损」——候选卡须满足 ``(g//10)==((g−cost)//10)``;「该买的
-    过渡带件」代理 = 1-2 费且阵营 ∈ 引擎过渡体系(cw_line_defs.
+    过渡带件」代理 = 费用 ∈ press_band(level)(W300/V-A2 单一源,
+    [_seg_transition_cost_max])且阵营 ∈ 引擎过渡体系(cw_line_defs.
     ENGINE_FACTIONS 单一源;[30] 过渡羁绊件基本在 1-2 费带)。
     例外面:成型后停手合法([13]);跨档购买最多损 1 金属 [11]
     「凑息账」灰区不断言(只锁零息损形态);bench 满 = 想买买不了
     (``bench_full_skipped_buys``>0 豁免)。
+
+    **副本形态四分类**(W300 design §4.2 + V-B9 双域;is_dup 拆
+    deployed/held 两域——买家守卫 copy_swap_useless 只扫 deployed
+    同名,bench-only 同名未买的原因可能是金/相位/评分,判真拦是
+    归因错误):
+    - C-A 目标内副本未买(is_target ∧ is_dup)→ 真拦(现行语义,
+      [21][22] 目标件照囤);
+    - C-B 压库带副本未买(¬is_target ∧ **is_dup_deployed** ∧ cost∈band
+      ∧ bench 未满)→ 仅 press 通道开(registry.press_channel_enabled)
+      时真拦(转正=买家被授权买);通道关=非违规,转披露事件
+      ``copy_press_channel_closed``(见 seg_copy_press_disclosure);
+    - bench-only 同名(is_dup_held 而非 deployed)→ 披露
+      ``copy_bench_only_skipped``,不进真拦分子(V-B9.3);
+    - C-D 非重复散件未买(¬is_dup_held)→ 真拦(现行语义保持)。
     """
     from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_line_defs import (
         ENGINE_FACTIONS,
+    )
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        press_band,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
     )
     out: list[dict] = []
     for row in rows:
@@ -1379,10 +1428,17 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
             continue
         if _seg_engines(row) >= 2:
             continue
+        st = row.get('state') or {}
+        level = int(st.get('level') or 0)
+        band = press_band(level, None, DEFAULT_REGISTRY)
+        dep_names = {d.get('char_id') for d in (st.get('deployed') or [])}
+        bench_names = {b.get('char_id') for b in (st.get('bench') or [])}
+        bench_full = len(st.get('bench') or []) >= DEFAULT_REGISTRY.bench_capacity
+        roster = _seg_target_roster(row.get('target_comp') or '')
         for c in _seg_offered_cards(row):
             cost = c.get('cost') or 0
-            if not (1 <= cost <= _SEG_TRANSITION_COST_MAX):
-                continue
+            if cost < 1 or cost not in band:
+                continue   # 带外件不在本检查代理辖(V-B9 C-C 走披露)
             if g0 // 10 != (g0 - cost) // 10:
                 continue   # 跨档 → 有息损,[11] 只豁免同档无损购买
             ch = CHARACTERS.get(c.get('name') or '')
@@ -1390,15 +1446,106 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
                 set((ch.flows if ch else ()) or ())
             if not (bonds & set(ENGINE_FACTIONS)):
                 continue
+            name = c.get('name') or ''
+            is_dup_dep = name in dep_names
+            is_dup_held = is_dup_dep or name in bench_names
+            if name in roster and is_dup_held:
+                pass    # C-A:目标内副本未买 → 真拦(下方统一发射)
+            elif is_dup_dep and not bench_full:
+                # C-B(V-B9 deployed 域):通道开=该买真拦;关=披露
+                if DEFAULT_REGISTRY.press_channel_enabled:
+                    out.append({
+                        'plane': 1, 'round_num': row.get('round_num'),
+                        'detail': f'金 {g0}<20 店有压库带副本 {name}'
+                                  f'(cost {cost},deployed 同名,购后仍同息档)'
+                                  f'未买——[11]×W300 press 通道',
+                        'gold_before': g0, 'candidate': name,
+                        'candidate_cost': cost, 'class': 'C-B',
+                    })
+                    break   # 一轮一条足够定位
+                continue    # 通道关:非违规(披露面记数)
+            elif is_dup_held:
+                continue    # bench-only 同名:披露面记数(V-B9.3)
             out.append({
                 'plane': 1, 'round_num': row.get('round_num'),
-                'detail': f'金 {g0}<20 店有过渡带件 {c.get("name")}'
+                'detail': f'金 {g0}<20 店有过渡带件 {name}'
                           f'(cost {cost},购后仍同息档)未买——[11] 无损'
                           f'购买被攒息拦截',
-                'gold_before': g0, 'candidate': c.get('name'),
+                'gold_before': g0, 'candidate': name,
                 'candidate_cost': cost,
+                'class': 'C-A' if (name in roster and is_dup_held) else 'C-D',
             })
             break   # 一轮一条足够定位
+    return out
+
+
+def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
+    """W300/V-B9 副本形态披露键(只计数不判违规;披露键保留纪律=
+    归零可证收口生效,防变异探针盲区,sim-testing §6):
+    - ``copy_press_channel_closed``:deployed 同名压库带副本未买且
+      press 通道关——通道开通后应转 C-B 真拦或归零(买家买了);
+    - ``copy_bench_only_skipped``:bench-only 同名副本未买(非买家
+      守卫辖区,归因域外);
+    - ``copy_out_of_band_skipped``:带外副本未买(〔W300 口述〕
+      「完全没必要买」合法面;检查器不许再当候选发射违规)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.cw_line_defs import (
+        ENGINE_FACTIONS,
+    )
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        press_band,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    out: list[dict] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        if row.get('formed_stop'):
+            continue
+        sim = row.get('sim') or {}
+        if (sim.get('bench_full_skipped_buys') or 0) > 0:
+            continue
+        g0 = _seg_gold0(row)
+        if g0 is None or g0 >= 20 or _seg_spent(row):
+            continue
+        if _seg_engines(row) >= 2:
+            continue
+        st = row.get('state') or {}
+        level = int(st.get('level') or 0)
+        band = press_band(level, None, DEFAULT_REGISTRY)
+        dep_names = {d.get('char_id') for d in (st.get('deployed') or [])}
+        bench_names = {b.get('char_id') for b in (st.get('bench') or [])}
+        for c in _seg_offered_cards(row):
+            name = c.get('name') or ''
+            cost = c.get('cost') or 0
+            ch = CHARACTERS.get(name)
+            bonds = set((ch.factions if ch else ()) or ()) | \
+                set((ch.flows if ch else ()) or ())
+            if not (bonds & set(ENGINE_FACTIONS)):
+                continue
+            if g0 // 10 != (g0 - cost) // 10:
+                continue
+            is_dup_dep = name in dep_names
+            is_dup_held = is_dup_dep or name in bench_names
+            kind = None
+            if is_dup_dep and cost in band:
+                if not DEFAULT_REGISTRY.press_channel_enabled:
+                    kind = 'copy_press_channel_closed'
+            elif is_dup_held:
+                kind = 'copy_bench_only_skipped'
+            elif cost not in band and 1 <= cost <= _seg_transition_cost_max():
+                kind = 'copy_out_of_band_skipped'
+            if kind:
+                out.append({
+                    'plane': 1, 'round_num': row.get('round_num'),
+                    'kind': kind, 'candidate': name,
+                    'candidate_cost': cost, 'gold_before': g0,
+                    'detail': f'披露 {kind}:{name}(cost {cost})',
+                })
+                break   # 一轮一条足够定位
     return out
 
 
@@ -1591,6 +1738,7 @@ _SEGMENT_CHECKS = {
     'seg_gold_identity': seg_check_gold_identity,
     'seg_overflow_idle_spend': seg_check_overflow_idle_spend,
     'seg_lossless_buy_missed': seg_check_lossless_buy_missed,
+    'seg_copy_press_disclosure': seg_copy_press_disclosure,
     'seg_break_interest_exception': seg_check_break_interest_exception,
     'seg_formed_still_buying_transition': seg_check_formed_still_buying_transition,
     'seg_unjustified_levelup': seg_check_unjustified_levelup,
@@ -3864,6 +4012,8 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         # 批㉞(供给 vs 标签审计):直通门标签-候选一致性不变式
         'decision_v2_supply_label_consistency':
             check_decision_v2_supply_label_consistency(),
+        # W300 press 通道探针(压库副本两臂产出 + E05 反例)
+        'w300_press_channel_probe': check_w300_press_channel_probe(),
     }
     if pool_map is not None:
         out['encounter_rung_sample_budget'] = \
@@ -3909,19 +4059,30 @@ def check_decision_v2_supply_label_consistency() -> dict:
     )
 
     def _mk(plane: int, rn: int, level: int, gold: int, bench, shop,
-            line: str | None, bridge: str | None):
+            line: str | None, bridge: str | None, dep=()):
         st = GameState()
         st.plane, st.round_num = plane, rn
         st.level, st.gold, st.hp = level, gold, 80
         st.bench = pad_bench(list(bench))   # ADR-0316 槽位表
         st.shop = list(shop)
+        st.deployed = list(dep)
         sess = StrategySession()
         sess.locked_line = line
         sess.bridge_id = bridge
         return st, sess
 
+    from types import SimpleNamespace as _NS
+
+    def _dep(name: str, faction: str, slot: int = 0):
+        return _NS(char_id=name, faction=faction, star=1, slot=slot,
+                   position_pref='back', equips=())
+
     # 探针态覆盖:无方向种子态(引擎门)/ 锁线态(carry+凑档)/
-    # 副本上限态(copies_cap)/ bench 杂件(卖通道不被误判为买候选)
+    # 副本上限态(copies_cap)/ bench 杂件(卖通道不被误判为买候选)/
+    # 第 4 态(W300 压库副本态,V-B1.3):deployed 已持目标外引擎阵营
+    # 件同名 + 店出同角色 cost=1 副本(plane1/低 level/band 内)。
+    # 通道关(DEFAULT_REGISTRY)下该卡被守卫拦=无候选,一致性不变式
+    # 照辖;通道开的行为面由 check_w300_press_channel_probe 专检。
     probes = [
         _mk(1, 2, 3, 20,
             [BenchChar(slot=0, char_id='青雀', faction='仙舟')],
@@ -3940,6 +4101,11 @@ def check_decision_v2_supply_label_consistency() -> dict:
              BenchChar(slot=2, char_id='青雀', faction='仙舟')],
             [ShopCard(x=1, faction='仙舟', name='青雀', cost=1)],
             'jizi', None),
+        _mk(1, 2, 3, 15,
+            [],
+            [ShopCard(x=1, faction='仙舟', name='青雀', cost=1)],
+            None, None,
+            dep=[_dep('青雀', '仙舟')]),
     ]
     violations: list[str] = []
     for pi, (st, sess) in enumerate(probes):
@@ -3967,6 +4133,110 @@ def check_decision_v2_supply_label_consistency() -> dict:
     return {'violations': len(violations), 'detail': violations,
             'note': '批㉞ 供给 vs 标签一致性:候选存在⟺标签非None且'
                     '未被 copies_cap/copy_swap 豁免;红 = 直通门回归'}
+
+
+def check_w300_press_channel_probe() -> dict:
+    """W300 press 通道探针(design v3 V-B1.3/V-B1.5/V-B2.3/V-B6):
+    压库副本态在两臂下的候选产出不变式 + E05 带外灰出反例。
+
+    - arm0(默认注册表,通道关):压库副本被守卫拦=无候选(零漂移);
+    - armA(press_channel_enabled=True + press_copy_unit>0):同态候选
+      产出(V-B1.5「探针态必须产出候选」=空臂红线)、_buy_tag=
+      'copy_press'(V-B2 新具名标签);评分正分(独立给分域修 W231);
+    - band 外反例(cost=3):两臂都不产出候选(V-B6 撤销插件臂后
+      E05/E07 维持「不买」;防豁免臂过宽回归)。
+    """
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.cw_state import (
+        BuyCard,
+        GameState,
+        ShopCard,
+    )
+    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision_v2.candidates import (
+        _buy_tag,
+        generate_candidates,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.decision_v2.scoring import (
+        score_candidate,
+    )
+
+    st = GameState()
+    st.plane, st.round_num = 1, 2
+    st.level, st.gold, st.hp = 3, 15, 80
+    st.bench = []
+    st.deployed = [SimpleNamespace(char_id='刃', faction='星核猎手', star=1,
+                                   slot=0, position_pref='back', equips=())]
+    st.shop = [ShopCard(x=1, faction='星核猎手', name='刃', cost=1),
+               ShopCard(x=2, faction='银河学者', name='黑塔', cost=3)]
+    sess = StrategySession()
+    # 锁线帧(方向不含仙舟):生产路径形态——'copy'/'pair' 既有豁免
+    # 通道语义先于 press 臂(V-B2.1 放序),只有方向门拦下的目标外
+    # 副本才落 'copy_press';裸 session 冷启动会让 pair_wants 先命中。
+    from sr_od.application.currency_war.cw_intention import (
+        HoardTarget,
+        IntentionState,
+    )
+    ist = IntentionState()
+    ist.phase = 'locked'
+    ist.locked_comp = '姬子列车'
+    sess.v3_intention = ist
+    sess.v3_hoard = HoardTarget(
+        frozenset({'姬子·启行', '三月七', '花火', '瓦尔特'}),
+        frozenset(), 'locked')
+    sess.v3_core_names = {'姬子·启行'}
+    sess.target_comp = SimpleNamespace(factions=('列车同行',),
+                                       core_chars=('姬子·启行',))
+
+    def _names(reg) -> set[str]:
+        return {c.action.card.name for c in generate_candidates(st, sess, reg)
+                if isinstance(c.action, BuyCard)}
+
+    def _tag(reg, card) -> str | None:
+        return _buy_tag(card, st, sess, reg)
+
+    arm_a = replace(DEFAULT_REGISTRY, press_channel_enabled=True,
+                    press_copy_unit=0.5)
+    violations: list[str] = []
+    # arm0:通道关零漂移(守卫拦)
+    if '刃' in _names(DEFAULT_REGISTRY):
+        violations.append('arm0:通道关时压库副本产出候选(零漂移破)')
+    # armA:候选产出(V-B1.5)+标签+评分正分(V-B2)
+    if '刃' not in _names(arm_a):
+        violations.append('armA:探针态未产出压库副本候选(空臂红线)')
+    else:
+        if _tag(arm_a, st.shop[0]) != 'copy_press':
+            violations.append(
+                f"armA:标签={_tag(arm_a, st.shop[0])} ≠ copy_press")
+        cand = next(c for c in generate_candidates(st, sess, arm_a)
+                    if isinstance(c.action, BuyCard)
+                    and c.action.card.name == '刃')
+        val, _bd = score_candidate(cand, st, sess, arm_a)
+        if val <= 0:
+            violations.append(f'armA:copy_press 评分 {val} 非正(W231 病灶未修)')
+    # 反例:cost=3 band 外(E05/E07 灰出,V-B6)两臂都无候选
+    st2 = GameState()
+    st2.plane, st2.round_num = 1, 2
+    st2.level, st2.gold, st2.hp = 3, 15, 80
+    st2.bench = []
+    st2.deployed = [SimpleNamespace(char_id='黑塔', faction='银河学者',
+                                    star=1, slot=0, position_pref='back',
+                                    equips=())]
+    st2.shop = [ShopCard(x=1, faction='银河学者', name='黑塔', cost=3)]
+    for reg, label in ((DEFAULT_REGISTRY, 'arm0'), (arm_a, 'armA')):
+        got = {c.action.card.name for c in generate_candidates(st2, sess, reg)
+               if isinstance(c.action, BuyCard)}
+        if '黑塔' in got:
+            violations.append(f'{label}:band 外副本(cost=3)产出候选'
+                              '(E05 灰出被破)')
+    return {'violations': len(violations), 'detail': violations,
+            'note': 'W300 press 通道探针:压库副本 arm0 关/armA 产出'
+                    '+copy_press 正分;band 外反例两臂皆拒'}
 
 
 # --- 批㊱ 检查项(2026-08-24;供给回声销账审计 / 三臂基线) -------------

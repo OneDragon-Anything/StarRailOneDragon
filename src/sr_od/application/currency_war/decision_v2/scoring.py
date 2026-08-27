@@ -1073,6 +1073,25 @@ def score_candidate(cand: Candidate, state: GameState,
         # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
         # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
         val += registry.goldrich_buy_bias
+    if cand.tag == 'copy_press' and registry.press_copy_unit > 0:
+        # W300/V-B2.2 评分非零路径:press 副本自带**独立给分域**——
+        # 板面差分对副本结构性零分是 W231 病灶(merge_progress/core_star
+        # /targets 全辖目标集名),本偏置让 copy_press 候选过 arbiter
+        # 非正分门;不改 filler_star_unit 默认值,既有 A/B 通道零波及。
+        # 0=关闭(arm0 零漂移)。
+        val += registry.press_copy_unit
+        if registry.press_core_mirror_bonus > 0:
+            # V-B7:E08 core-mirror 相对前置=评分分量(候选同名 ∈ 己方
+            # 上场核心:压库+断对手粮双重红利,〔补②〕)——arbiter 分数
+            # 贪心序为唯一跨候选序,V-A4 COPY_PRIORITY_* 键系废除。
+            from sr_od.application.currency_war.decision_v2.candidates import (  # noqa: E501
+                _core_names,
+            )
+            _nm = getattr(getattr(cand.action, 'card', None), 'name', '')
+            if _nm and _nm in _core_names(session) and any(
+                    getattr(d, 'char_id', '') == _nm
+                    for d in (state.deployed or [])):
+                val += registry.press_core_mirror_bonus
     _early_pace_hit = False   # W251/ADR-0408:触发依据记录(bd['early_pace'])
     if (registry.early_pace_enabled
             and cand.tag in registry.crisis_buy_tags

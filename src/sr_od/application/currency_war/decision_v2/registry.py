@@ -28,8 +28,8 @@ class DecisionV2Registry:
     #: 买候选标签优先序(单卡只取首个命中标签;顺序即裁决,可 A/B)
     buy_tag_priority: tuple[str, ...] = (
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
-        'carry_gate',
+        'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
+        'bond_fallback', 'carry_gate',
     )
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
@@ -111,13 +111,15 @@ class DecisionV2Registry:
     #: 裁决 F6/Q4:人口落后=阵容没上满的表现,由通道 2/4+EV 涌现承接)
     economy_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'carry_gate',
+        'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
+        'carry_gate',
         'bond_fallback', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'refresh', 'deploy',
     })
     war_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
+        'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
+        'bond_fallback',
         'carry_gate', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'deploy',
     })
@@ -128,7 +130,8 @@ class DecisionV2Registry:
     #: 授权仍由 V_D 批口径评分+interest_rule EV 门辖,标签集只管在场)
     war_tags: frozenset[str] = frozenset({
         'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'bond_fallback',
+        'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
+        'bond_fallback',
         'carry_gate', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'deploy', 'refresh',
     })
@@ -590,6 +593,52 @@ class DecisionV2Registry:
     #: (n=10:核心在店 6 轮漏买 5,全部 gold≤12 穷轮)。单轮 1 笔
     #: ([31]② 只买它);零刷新授权(与 W170/W185 刷门管辖不交集)。
     p2_core_firstpiece_enabled: bool = True
+
+    # ===== W300 press 通道:目标外同名副本压库购买(7 参数,V-B3 全量
+    # registry 化;arm0=默认值全关零漂移,armA=注入开启;A/B 结论落地后
+    # 按 ADR-0411 先例逐字段裁决去留)。设计=唯一规格:
+    # .debug/temp/currency_war/w300_dup_ruling/design.md v3 节(V-B0~V-B9)。
+    # A/B 兑换统一裁决表(V-B4;锚定义=design §5.3,冲突处以本表为准):
+    # | R1 | star≥2 升≥MDE ∧ 进场金/出口质量/经济卫生副锚均不劣 → 落码+ADR+三同步 |
+    # | R2 | star≥2 持平(<MDE)∧ seg 真拦残留≤0.15 ∧ 其余锚不劣 → 落码
+    #      (「有效收敛」;P4 张力=收益主体在 sim 不可观测的期权/对手面,
+    #      ADR Considered Options 必含张力节+向用户呈报观测极限) |
+    # | R3 | star≥2 降超噪声带 ∨ seg 真拦残留>0.15 → 不合入,回炉
+    #      (首要嫌疑=插入候选挤占金预算,看进场金分布移位) |
+    # | R4 | star≥2 升 ∧ 经济卫生副锚劣化超噪声带 → 降级调常量
+    #      (press 臂加 after≥息档线同档语义收紧),不硬合入 |
+    # | R5 | armA 触发样本不足(可达性短跑 E02 形态样本<30)→ 不合入,
+    #      通道判「sim 内不可达」,转构造账本锁评估 |
+    #: 全通道总闸(False=通道整体不评估,现行为零漂移;True=press 臂
+    #: +candidates 守卫豁免臂+§3.3 三相位 [11] 地板前置臂+检查器
+    #: C-B/C-C 发射同步开——A/B 捆绑为一臂,双臂同尺,V-B4.2)。
+    press_channel_enabled: bool = False
+    #: band 推导质量线(V-B5.2:0.50 在 P1 开域内被口述锚 [30]「1-2 费带」
+    #: 覆盖,仅 lv≥7 中后段生效而彼时带自洽闸已关通道——本参数是中后段
+    #: 守卫参数非行为旋钮;敏感性扫描=主批硬前置,发现敏感再立项)。
+    press_band_cum_threshold: float = 0.50
+    #: 停机护栏(V-A2 继承):press_channel_open 的开域上界(lv≤此值
+    #: ∧ plane==1)与带自洽闸参照系 press_band(此值)={1,2}。
+    press_channel_max_level: int = 6
+    #: 评分偏置(V-B2.2):tag='copy_press' 候选的板面差分加此值——
+    #: press 通道自带独立给分域,修 W231 副本评分结构性零分;不改
+    #: filler_star_unit 默认值,既有 A/B 通道零波及。armA 初值 0.5,
+    #: 网格 {0.25, 0.5, 1.0}(量级锚=off_target_sell_bias 0.5 /
+    #: crisis_buy_bias 1.0 的「顶零为正」先例);0=关闭。
+    press_copy_unit: float = 0.0
+    #: press 候选逐轮采纳笔数上限(V-B8.1,更严一级;量级=单轮至多
+    #: 一笔压库副本,与 p1_early_round_cap=1 同式轮键计数)。
+    press_copy_round_cap: int = 1
+    #: [11] 同档/1费豁免臂(§3.3 三相位共用前置臂)逐轮放行笔数上限
+    #: (V-B8.1;量级锚=W179 p1_early_round_cap=1 先例,取 2 因该臂辖
+    #: 方向内候选+press 候选两股)。
+    press_exempt_round_cap: int = 2
+    #: E08 评分前置分量(V-B7):copy_press 候选中「同名 ∈ 己方上场核心」
+    #: (压库+断对手粮双重红利,〔补②〕)再加此值——E08 相对前置落为
+    #: 评分分量,arbiter 分数贪心(arbiter.arbitrate 的 sorted key)为
+    #: 唯一跨候选序,V-A4 COPY_PRIORITY_* 整数键系废除不实现。0=关闭。
+    press_core_mirror_bonus: float = 0.0
+
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
     #: A/B 残留通道退场——找件语义由 V_D 批口径承接(核心未齐+概率窗内

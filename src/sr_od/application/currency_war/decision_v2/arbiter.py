@@ -187,6 +187,9 @@ def _check_constraint(name: str, cand: Candidate,
                     f'HOARD 攒息(金{working.gold}-费{cost} 破档;'
                     f'档线{working.gold // 10 * 10})')
         if working.gold - cost < floor:
+            if _press_floor_exempt(cand, working, state, session,
+                                   registry, auth):
+                return None    # W300/§3.3:[11] 同档/1费三相位前置臂
             if _p1_early_buy_exempt(cand, working, state, session,
                                     registry, auth):
                 return None    # W179/ADR-0372:早期买入门放行(同息档)
@@ -421,6 +424,54 @@ def _p1_early_buy_exempt(cand: Candidate, working: GameState,
     return True
 
 
+def _press_floor_exempt(cand: Candidate, working: GameState,
+                        state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry,
+                        auth: dict | None = None) -> bool:
+    """W300/§3.3(V-B8 修订):[11] 同档/1费零息损**三相位共用前置臂**。
+
+    把 HOARD 分支既有的同档/1费放行(FORM 之外的相位地板域)提升到
+    FORM 相位地板段:同息档/1费购买不损息([11] 最高权威口述「档内
+    购买不损息」),任何相位都不该被地板拦——修 W281 主根因(FORM 段
+    <floor 一刀切把 E02 类无损买全拦)。
+
+    显式裁决(V-B8.2):**豁免保零息损(息档线),不保 form_floor
+    本金**——FORM 段允许击穿 20 地板至息档线(form_floor 语义=
+    「EV 收益端估乐观时的本金下限」,让位于 [11] 口述;若加
+    after≥form_floor 条件,金<20 时恒假,W281 主修归零)。风险防线=
+    ①本臂逐轮笔数上限 press_exempt_round_cap ②经济卫生副锚(破息
+    轮次占比)A/B 验收兜底。该裁决进 ADR(W300)Considered Options。
+
+    辖域边界:常态经济态才放行(非应急 [18]/非 boss 窗 [32]/非 war
+    ——纪律态地板优先,本臂不越权);HOARD 段既有 [11] 臂(相位地板
+    域分支)行为不变(V-B8.3),本臂实际辖 FORM 段。总闸=
+    registry.press_channel_enabled(与候选层 press 臂捆绑为一臂,
+    design §5.1/V-B4 双臂同尺;默认关零漂移)。授权依据 trace
+    auth['press_floor_exempt'] 进执行 log。
+    """
+    if not registry.press_channel_enabled:
+        return False
+    if not isinstance(cand.action, BuyCard):
+        return False
+    if is_emergency(state, registry) \
+            or boss_window_active(state, session, registry) \
+            or current_mode(session) != 'economy':
+        return False
+    cost = cand.action.card.cost or 3
+    if cost != 1 and (working.gold - cost) // 10 != (working.gold or 0) // 10:
+        return False    # 跨息档有息损,不走本臂(交既有裁决)
+    if getattr(session, 'v2_round_press_exempt', 0) \
+            >= registry.press_exempt_round_cap:
+        return False    # V-B8.1 逐轮量控:超 cap 豁免失效,回落现行裁决
+    if auth is not None:
+        auth['press_floor_exempt'] = (
+            f'[11] 同档/1费零息损放行(金{working.gold}-费{cost};'
+            f'保息档线不保 form_floor 本金,V-B8.2;轮用'
+            f'{getattr(session, "v2_round_press_exempt", 0)}'
+            f'/{registry.press_exempt_round_cap})')
+    return True
+
+
 def _p2_core_firstpiece_exempt(cand: Candidate, working: GameState,
                                state: GameState,
                                session: StrategySession,
@@ -634,6 +685,14 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if sells_accepted >= registry.sell_top_k:
                 accepted = False
                 verdicts.append(f'sell_top_k:{registry.sell_top_k}')
+        if accepted and cand.tag == 'copy_press':
+            # W300/V-B8.1:press 候选逐轮采纳笔数上限(比豁免臂更严一级;
+            # 默认 cap=1。session.v2_round_press_copy 轮键重置同 p1_early)
+            if getattr(session, 'v2_round_press_copy', 0) \
+                    >= registry.press_copy_round_cap:
+                accepted = False
+                verdicts.append(
+                    f'press_copy_cap:{registry.press_copy_round_cap}')
         row = {
             'tag': cand.tag, 'score': val,
             'desc': _describe(cand, state),
@@ -657,6 +716,15 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if auth_note.get('p2_core'):
                 session.v2_round_p2_core = (
                     getattr(session, 'v2_round_p2_core', 0) + 1)
+            # W300/V-B8:press 通道两臂逐轮笔数(轮键重置见 strategy.
+            # decide_prep;[11] 豁免臂=press_exempt_round_cap,press 候选
+            # 采纳=press_copy_round_cap)
+            if auth_note.get('press_floor_exempt'):
+                session.v2_round_press_exempt = (
+                    getattr(session, 'v2_round_press_exempt', 0) + 1)
+            if cand.tag == 'copy_press':
+                session.v2_round_press_copy = (
+                    getattr(session, 'v2_round_press_copy', 0) + 1)
             # ADR-0328:采纳即登记(r408 同轮簿记在动作采纳处完成——
             # 同趟后续 SELL/BUY 同名候选的守卫立即可见,不再等
             # decide_prep 尾部统一回写)。

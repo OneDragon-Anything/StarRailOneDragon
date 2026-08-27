@@ -12,6 +12,8 @@
   两谓词辖区不相交([25,∞) 归 FLIP 评估,≤25 归应急);
 - FLIP = phase==FORM ∧ g>50 ∧ hp>25 ∧(非末窗: hp<40,持续兑现逻辑
   ∨ 末窗: 投影命中 hp−boss_tax_p75<25,战后必入应急带的机制理由);
+  hp<40 依据分级:社区攻略通行的中盘健康线(非口述标准值;口述 [18] 明确
+  hp=报警量不设触发标准值),作用=非末窗臂的持续兑现资格判,调参归 sim 批;
 - 末窗 = boss 破息窗(``discipline.boss_window_active`` 统一口径=boss 首买
   相位;round 臂「r≥NODES_PER_PLANE−1」实证双失效已废除——过宽(r8 非 boss
   轮套 boss 税语义错误)/全盲(短位面局 r≥8 永不触发),DESIGN §② N1);

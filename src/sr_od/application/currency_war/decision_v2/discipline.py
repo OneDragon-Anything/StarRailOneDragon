@@ -454,6 +454,98 @@ def p1_early_gate_open(state: GameState, session: StrategySession,
     return unheld
 
 
+# ===== W300 press 通道:目标外同名副本压库(单一源;design v3 V-A2/V-B5)=====
+
+
+def observed_probs(state: GameState) -> dict[int, float] | None:
+    """当前概率语境真值(V-B5.3 轮岗盲区:读屏概率条披露域
+    ``state.refresh_probs``,轮岗轮单档翻倍改变「当前要压的档」;
+    None=取不到,调用方退 REFRESH_PROB 基线)。"""
+    probs = getattr(state, 'refresh_probs', None)
+    return dict(probs) if probs else None
+
+
+def press_band_derive(level: int, probs: dict[int, float] | None,
+                      registry: DecisionV2Registry) -> frozenset[int]:
+    """REFRESH_PROB 推导带(P5 概率等级定理:该级概率大→找该带的牌):
+    低费前缀累计概率首次 ≥ press_band_cum_threshold 即截断([30] 成本带
+    聚焦方向=最低费优先)。输入表优先 observed(轮岗真值,V-B5.3),
+    取不到退基线行;空行(该等级无概率数据)→ 空集。"""
+    row = probs or {}
+    if not row:
+        from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
+        row = REFRESH_PROB.get(level) or {}
+    acc = 0.0
+    out: list[int] = []
+    for c in sorted(row):
+        if row[c] <= 0:
+            continue
+        acc += row[c]
+        out.append(c)
+        if acc >= registry.press_band_cum_threshold:
+            break
+    return frozenset(out)
+
+
+def press_band(level: int, probs: dict[int, float] | None = None,
+               registry: DecisionV2Registry | None = None,
+               ) -> frozenset[int]:
+    """press 费用带(V-B5.2 权威序裁决):推导带 ∪ (P1 开域 {1,2})。
+
+    - [30] 口述「P1 过渡期=1-2 费带」为最高权威;REFRESH_PROB 推导是
+      下位证据——开域(lv ≤ press_channel_max_level)内 band 强制并入
+      {1,2},推导孤值被口述锚覆盖(lv4 推导 {1} 不再出现);
+    - 开域判定按 level(plane==1 的位面门在 press_channel_open 与各
+      消费点辖——本函数无 state 入参,纯函数可测);
+    - lv≥7(中后段)纯推导(lv7={1,2,3}),彼时带自洽闸已关通道
+      (press_channel_open),0.50 阈值在此段是守卫参数非行为旋钮。
+    """
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    band = set(press_band_derive(level, probs, reg))
+    if level <= reg.press_channel_max_level:
+        band |= {1, 2}
+    return frozenset(band)
+
+
+def press_channel_max_band(registry: DecisionV2Registry | None = None,
+                           ) -> frozenset[int]:
+    """带自洽闸参照系 = press_band(press_channel_max_level),当前推导
+    下恒 {1,2}(V-A2 停机推演;检查器成本带上限 import 本函数,消灭
+    与 _SEG_TRANSITION_COST_MAX 的两处漂移)。"""
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    return press_band(reg.press_channel_max_level, None, reg)
+
+
+def press_channel_open(state: GameState,
+                       registry: DecisionV2Registry | None = None,
+                       ) -> bool:
+    """press 通道停机条件(V-A2 继承,V-B5 修订覆盖规则;任一失守=
+    整通道关闭,杜绝按错误档位违规购买):
+    ① plane==1(位面 2+ 概率语境整体脱离过渡带);
+    ② 开域 lv ≤ press_channel_max_level;
+    ③ 带自洽闸:press_band(level) ⊆ press_band(max_level)(={1,2})——
+       lv≥7 推导带扩到 {1,2,3} 破闸;轮岗轮 observed 表推出 3 费进带
+       同样破闸(保守关停)。
+    停机是 REFRESH_PROB 的派生输出而非拍脑袋常数,max_level 仅作冗余
+    护栏与①互为双保险。"""
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if getattr(state, 'plane', 1) != 1:
+        return False
+    if state.level > reg.press_channel_max_level:
+        return False
+    return press_band(state.level, observed_probs(state), reg) \
+        <= press_channel_max_band(reg)
+
+
 def copy_swap_useless(card, state: GameState,
                       session: StrategySession) -> bool:
     """r410(ADR-0267 同族):同名跨副本无效换卡守卫(镜像 deploy 侧保留

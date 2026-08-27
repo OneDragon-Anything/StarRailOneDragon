@@ -132,6 +132,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数
         session.v2_round_p1_early = 0    # W179/ADR-0372:早期买入门轮笔数
         session.v2_round_p2_core = 0     # W194/ADR-0378:P2 核心首件门轮笔数
+        session.v2_round_press_exempt = 0   # W300/V-B8:[11] 豁免臂轮笔数
+        session.v2_round_press_copy = 0     # W300/V-B8:press 候选轮笔数
         # W114/ADR-0346 相位观测(自 W119 起被消费)+ W119/ADR-0347
         # DP 姿态轮缓存载体:初始化(每轮 decide_prep 重算)
         session.v3_phase = 'FORM'
@@ -235,6 +237,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v2_round_p1_early = 0
             # W194/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
             session.v2_round_p2_core = 0
+            # W300/V-B8:press 通道两臂单轮笔数([11] 豁免臂/press 候选
+            # 采纳;arbiter 采纳处递增)
+            session.v2_round_press_exempt = 0
+            session.v2_round_press_copy = 0
             # W332b:release 泄息预算的轮内累计花费(预算逐轮清零;boss 窗
             # 单轮 latch 单位,无跨轮语义)
             session.v3_release_spent = 0

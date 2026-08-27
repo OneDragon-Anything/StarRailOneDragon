@@ -51,7 +51,10 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     engine_seed_wants,
     has_same_name_copy,
     in_round_sold,
+    observed_probs,
     pair_wants,
+    press_band,
+    press_channel_open,
     round_sell_blocked,
     seed_age_blocked,
     sole_engine_sell_blocked,
@@ -64,7 +67,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
 #: 买候选标签集 / 卖候选标签集 / 动作类枚举(检查项 coverage 消费)
 BUY_TAGS: frozenset[str] = frozenset({
     'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
-    'plugin', 'pair', 'copy', 'bond_fallback', 'carry_gate',
+    'plugin', 'pair', 'copy', 'copy_press', 'bond_fallback', 'carry_gate',
 })
 SELL_TAGS: frozenset[str] = frozenset({
     'off_target', 'for_gold', 'free_bench',
@@ -108,13 +111,47 @@ _copy_swap_useless = copy_swap_useless   # 检查网/锁测试的模块级别名
 def _copy_swap_blocked(card: ShopCard, state: GameState,
                        session: StrategySession,
                        registry: DecisionV2Registry | None = None) -> bool:
-    """r410 守卫×目标件豁免(ADR-0303/0304:默认关=守卫直通;
-    豁免代码留作 A/B 通道——载体批沿用原裁决,开关语义不变)。"""
+    """r410 守卫×豁免臂合成点(W361 收拢:原 ``generate_candidates``
+    内联五臂块消失,生成层与检查网供给一致性探针(cw_sim_checks)共同
+    调用本函数——双源以内联块消失的方式收敛;臂序=①target 豁免
+    ②filler A 臂 ③末窗 sd_gap C 臂 ④press 豁免臂)。
+
+    - ① target 豁免(ADR-0303/0304:默认关=守卫直通;豁免代码留作
+      A/B 通道——载体批沿用原裁决,开关语义不变);
+    - ② A 臂(W232/ADR-0402 方案A):filler_star 开臂时,已 deployed
+      名的同名副本(升星素材,[15]/[22] 压库语义)不拦——授权只到
+      「已持有名的副本」,不授权为填充件 D 刷(copies_cap/方向门照常辖);
+    - ③ C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):末窗星级
+      定向授权 gap>0(handoff.handoff_gate_gap 单一源)时同域放行;
+    - ④ press 豁免臂(W300 design v3 V-B1/V-B2/V-B3):通道开且该卡是
+      band 内目标外副本(守卫已判 deployed 同名)且 bench 有余槽且非
+      同轮已卖 → 不拦,交 _buy_tag 的 'copy_press' 臂。总闸=
+      registry.press_channel_enabled(默认关零漂移)。
+    """
     if (registry is not None and registry.copy_swap_target_exempt
             and card.name in _target_names(state, session)):
         return False
-    return copy_swap_useless(card, state, session)
-
+    if not copy_swap_useless(card, state, session):
+        return False
+    if registry is None:
+        return True
+    if registry.filler_star_unit > 0 and _has_deployed_copy(card.name, state):
+        return False    # ② A 臂
+    if _has_deployed_copy(card.name, state):
+        from sr_od.application.currency_war.decision_v2.handoff import (
+            handoff_gate_gap,
+        )
+        if handoff_gate_gap(state, session, registry) > 0:
+            return False    # ③ C 臂
+    # ④ press 豁免臂(W300):通道开 ∧ band 内目标外副本 ∧ bench 有余槽
+    #    ∧ 非同轮已卖 → 不拦
+    return not (registry.press_channel_enabled
+                and press_channel_open(state, registry)
+                and not in_round_sold(card.name, state, session)
+                and bench_occupied(state.bench or [])
+                < registry.bench_capacity
+                and (card.cost or 3) in press_band(
+                    state.level, observed_probs(state), registry))
 
 def _owned_factions(state: GameState) -> set[str]:
     """board∪bench 的已有阵营集合(bond_fallback 凑档判据输入)。"""
@@ -272,6 +309,23 @@ def _buy_tag(card: ShopCard, state: GameState,
         return 'pair'
     if not is_target and _plugin_ok(card, state, session):
         return 'plugin'         # class5:插件买来即上(有位才买)
+    # W300 press 臂(V-B2):目标外同名副本费用 ∈ press band 且 bench
+    # 有余槽 → 'copy_press' 新具名标签(放序在 'copy'/'pair' 之后、
+    # bond_fallback 之前——不抢既有豁免通道语义;评分非零路径=
+    # registry.press_copy_unit 独立给分域,V-B2.2;bench 满内联判定=
+    # 〔W300 口述〕E03 门字面)。总闸=registry.press_channel_enabled
+    # (默认关零漂移)。band 输入优先 state 概率条真值(轮岗盲区,
+    # V-B5.3),取不到退 REFRESH_PROB 基线(discipline.press_band)。
+    if (not is_target
+            and registry.press_channel_enabled
+            and press_channel_open(state, registry)
+            and has_same_name_copy(card, state)
+            and not in_round_sold(card.name, state, session)
+            and not bench_full
+            and (card.cost or 3) in press_band(state.level,
+                                               observed_probs(state),
+                                               registry)):
+        return 'copy_press'
     # [31] bond_fallback 门无方向约束(W47 清理:原 `has_direction or
     # no_direction` 恒真死条件——两变量互斥取或=永 True,删除后语义不变;
     # 锁测试见 test_cw_w47_unification 的双向触发用例)
@@ -380,34 +434,17 @@ def generate_candidates(state: GameState, session: StrategySession,
     覆盖面由检查项 decision_v2_candidate_coverage 锁(全部动作类)。
     """
     out: list[Candidate] = []
-    # C 豁免判定(W242/ADR-0405;ADR-0411 起无条件启用):末窗星级定向
-    # 授权 gap(延迟 import 防环,与 arbiter 消费 handoff 同式)
-    from sr_od.application.currency_war.decision_v2.handoff import (
-        handoff_gate_gap,
-    )
-    _sd_gap = handoff_gate_gap(state, session, registry)
     # --- 买(店内每卡)---
     for card in (state.shop or []):
         if not card.name:
             continue    # 未识别卡不买(感知纪律)
         if star_weighted_copies(card.name, state) >= registry.copies_cap:
             continue    # 副本上限(第 4 份纯浪费)
-        if copy_swap_useless(card, state, session) \
-                and not (registry.copy_swap_target_exempt
-                         and card.name in _target_names(state, session)) \
-                and not (registry.filler_star_unit > 0
-                         and _has_deployed_copy(card.name, state)) \
-                and not (_sd_gap > 0
-                         and _has_deployed_copy(card.name, state)):
-            continue    # r410 同名跨副本无效换卡(ADR-0300 镜像;
-            # 目标件豁免开关=ADR-0303/0304 裁决默认关,通道保留);
-            # A 臂豁免(W232/ADR-0402 方案A):filler_star 开臂时,已
-            # deployed 名的同名副本(升星素材,[15]/[22] 压库语义)生成
-            # 候选——授权只到「已持有名的副本」,不授权为填充件 D 刷
-            # (copies_cap/方向门照常辖);
-             # C 臂豁免(W242/ADR-0405 C 项;ADR-0411 起 gap 无条件启用):
-             # 末窗星级定向授权 gap>0 时同域放行(W232 A 豁免的
-             # gap 条件化分支)
+        if _copy_swap_blocked(card, state, session, registry):
+            continue    # r410 同名跨副本无效换卡守卫合成点(W361 收拢:
+            # 原内联五臂块[target 豁免/filler A 臂/sd_gap C 臂]迁入
+            # _copy_swap_blocked——生成层与检查网供给一致性探针共同调用
+            # 同一函数,双源收敛;press 豁免臂同点合成,W300 V-B1)
         tag = _buy_tag(card, state, session, registry)
         if tag is None:
             continue
