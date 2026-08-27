@@ -14,7 +14,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-消耗品
     id_mark: true
@@ -28,7 +27,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -42,7 +40,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -57,7 +54,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -72,7 +68,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -87,7 +82,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -102,7 +96,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -117,7 +110,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -132,7 +124,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_light_cone
@@ -151,7 +142,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-光锥
     id_mark: true
@@ -165,7 +155,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -179,7 +168,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -194,7 +182,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -209,7 +196,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -224,7 +210,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -239,7 +224,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -254,7 +238,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -269,7 +252,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_mission
@@ -288,7 +270,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-任务
     id_mark: true
@@ -302,7 +283,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -316,7 +296,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -331,7 +310,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -346,7 +324,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -361,7 +338,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -376,7 +352,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -391,7 +366,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -406,7 +380,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_other_material
@@ -425,7 +398,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-其他材料
     id_mark: true
@@ -439,7 +411,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -453,7 +424,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -468,7 +438,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -483,7 +452,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -498,7 +466,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -513,7 +480,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -528,7 +494,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -543,7 +508,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_pet
@@ -562,7 +526,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-随宠
     id_mark: true
@@ -576,7 +539,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -590,7 +552,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -605,7 +566,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -620,7 +580,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -635,7 +594,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -650,7 +608,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -665,7 +622,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -680,7 +636,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_relic
@@ -699,7 +654,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-遗器
     id_mark: true
@@ -713,7 +667,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -727,7 +680,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -742,7 +694,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -757,7 +708,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -772,7 +722,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -787,7 +736,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -802,7 +750,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -817,7 +764,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
   - area_name: 按钮-分解
@@ -832,7 +778,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器分解
 - screen_id: bag_relic_salvage
@@ -999,7 +944,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-养成材料
     id_mark: true
@@ -1013,7 +957,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-养成材料
     id_mark: false
@@ -1027,7 +970,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-养成材料
   - area_name: TAB-光锥
@@ -1042,7 +984,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -1057,7 +998,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -1072,7 +1012,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -1087,7 +1026,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -1102,7 +1040,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -1117,7 +1054,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -1132,7 +1068,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: bag_valuable
@@ -1151,7 +1086,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 二级标题-贵重物
     id_mark: true
@@ -1165,7 +1099,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: TAB-光锥
     id_mark: false
@@ -1179,7 +1112,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-光锥
   - area_name: TAB-遗器
@@ -1194,7 +1126,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-遗器
   - area_name: TAB-其他材料
@@ -1209,7 +1140,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-其他材料
   - area_name: TAB-消耗品
@@ -1224,7 +1154,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-消耗品
   - area_name: TAB-任务
@@ -1239,7 +1168,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-任务
   - area_name: TAB-贵重物
@@ -1254,7 +1182,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-贵重物
   - area_name: TAB-随宠
@@ -1269,7 +1196,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list:
     - 背包-随宠
 - screen_id: battle
@@ -1369,7 +1295,6 @@
   pc_alt: false
   area_list:
   - area_name: 移动交互-单行
-    id_mark: false
     pc_rect:
     - 908
     - 946
@@ -1380,10 +1305,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 离开按钮
-    id_mark: false
     pc_rect:
     - 1847
     - 44
@@ -1394,10 +1316,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 弹射
-    id_mark: false
     pc_rect:
     - 1125
     - 914
@@ -1408,10 +1327,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: DIALOG_CONFIRM
-    id_mark: false
     pc_rect:
     - 989
     - 644
@@ -1422,10 +1338,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 退出对话框-确认
-    id_mark: false
     pc_rect:
     - 1006
     - 644
@@ -1436,8 +1349,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
 - screen_id: challenge_mission
   screen_name: 挑战副本
   pc_alt: false
@@ -1477,13 +1388,6 @@
     - 958
     - 1500
     - 1014
-    text: ''
-    lcs_percent: null
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: null
-    color_range: null
-    goto_list: []
   - area_name: 次数加-其他
     id_mark: false
     pc_rect:
@@ -1575,7 +1479,7 @@
     - 0
     - 0
     - 0
-    text: ''
+    text: null
     lcs_percent: null
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
@@ -1755,7 +1659,6 @@
   pc_alt: false
   area_list:
   - area_name: 左上角标题
-    id_mark: false
     pc_rect:
     - 98
     - 39
@@ -1766,16 +1669,136 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 对话框-确认
-    id_mark: false
     pc_rect:
     - 1024
     - 647
     - 1329
     - 698
     text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+- screen_id: currency_war_armory_box_dialog
+  screen_name: 货币战争-武装箱弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-简易武装箱
+    id_mark: true
+    pc_rect:
+    - 830
+    - 150
+    - 1000
+    - 200
+    text: 简易武装箱
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-开箱点击
+    id_mark: false
+    pc_rect:
+    - 770
+    - 150
+    - 855
+    - 200
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1835
+    - 38
+    - 1910
+    - 82
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_battle
+  screen_name: 货币战争-战斗
+  pc_alt: false
+  area_list: []
+- screen_id: currency_war_battle_pause
+  screen_name: 货币战争-战斗暂停
+  app_id: currency_war
+  pc_alt: false
+  area_list:
+  - area_name: 标识-战斗暂停
+    id_mark: false
+    pc_rect:
+    - 92
+    - 26
+    - 196
+    - 74
+    text: 战斗暂停
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-关卡信息
+    id_mark: false
+    pc_rect:
+    - 96
+    - 50
+    - 214
+    - 104
+    text: 关卡信息
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-撤退
+    id_mark: false
+    pc_rect:
+    - 1180
+    - 955
+    - 1265
+    - 1008
+    text: 撤退
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-继续战斗
+    id_mark: false
+    pc_rect:
+    - 1568
+    - 955
+    - 1690
+    - 1008
+    text: 继续战斗
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-重新挑战
+    id_mark: false
+    pc_rect:
+    - 228
+    - 955
+    - 352
+    - 1008
+    text: 重新挑战
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -2360,62 +2383,6 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-  - area_name: 详情-装备名
-    id_mark: false
-    pc_rect:
-    - 1450
-    - 130
-    - 1680
-    - 190
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 详情-装备类型
-    id_mark: false
-    pc_rect:
-    - 1450
-    - 165
-    - 1620
-    - 210
-    text: 简易装备
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备详情-合成公式
-    id_mark: false
-    pc_rect:
-    - 1100
-    - 815
-    - 1245
-    - 850
-    text: 合成公式
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-羁绊累积进度
-    id_mark: false
-    pc_rect:
-    - 251
-    - 141
-    - 645
-    - 489
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-返回补给阶段
     id_mark: false
     pc_rect:
@@ -2738,6 +2705,3561 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+- screen_id: currency_war_battle_prep_equip_detail
+  screen_name: 货币战争-备战-角色详情
+  pc_alt: false
+  area_list:
+  - area_name: 按钮-装备推荐
+    id_mark: true
+    pc_rect:
+    - 1440
+    - 788
+    - 1565
+    - 832
+    text: 装备推荐
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 备战标识-购买经验
+    id_mark: true
+    pc_rect:
+    - 229
+    - 841
+    - 363
+    - 878
+    text: 购买经验
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-详情-角色名
+    id_mark: false
+    pc_rect:
+    - 1470
+    - 380
+    - 1680
+    - 440
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-装备槽
+    id_mark: false
+    pc_rect:
+    - 1400
+    - 712
+    - 1900
+    - 798
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备槽-1
+    id_mark: false
+    pc_rect:
+    - 1608
+    - 755
+    - 1658
+    - 805
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备槽-2
+    id_mark: false
+    pc_rect:
+    - 1677
+    - 755
+    - 1727
+    - 805
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备槽-3
+    id_mark: false
+    pc_rect:
+    - 1749
+    - 755
+    - 1799
+    - 805
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 详情-装备名
+    id_mark: false
+    pc_rect:
+    - 1450
+    - 130
+    - 1680
+    - 190
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 详情-装备类型
+    id_mark: false
+    pc_rect:
+    - 1450
+    - 165
+    - 1620
+    - 210
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备详情-合成公式
+    id_mark: false
+    pc_rect:
+    - 1100
+    - 815
+    - 1245
+    - 850
+    text: 合成公式
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_battle_prep_shop_open
+  screen_name: 货币战争-备战-开商店
+  pc_alt: false
+  area_list:
+  - area_name: 备战标识-购买经验
+    id_mark: true
+    pc_rect:
+    - 229
+    - 841
+    - 363
+    - 878
+    text: 购买经验
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-收起
+    id_mark: true
+    pc_rect:
+    - 1578
+    - 948
+    - 1664
+    - 1002
+    text: 收起
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌-1
+    id_mark: false
+    pc_rect:
+    - 392
+    - 70
+    - 610
+    - 260
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌-2
+    id_mark: false
+    pc_rect:
+    - 645
+    - 70
+    - 863
+    - 260
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌-3
+    id_mark: false
+    pc_rect:
+    - 898
+    - 70
+    - 1116
+    - 260
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌-4
+    id_mark: false
+    pc_rect:
+    - 1151
+    - 70
+    - 1369
+    - 260
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌-5
+    id_mark: false
+    pc_rect:
+    - 1405
+    - 70
+    - 1623
+    - 260
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 商店牌区
+    id_mark: false
+    pc_rect:
+    - 300
+    - 228
+    - 1560
+    - 326
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-刷新
+    id_mark: false
+    pc_rect:
+    - 1560
+    - 451
+    - 1646
+    - 508
+    text: 刷新
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-刷新概率表
+    id_mark: false
+    pc_rect:
+    - 945
+    - 360
+    - 1415
+    - 410
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_battle_prep_skip
+  screen_name: 货币战争-备战-免战
+  pc_alt: false
+  area_list:
+  - area_name: 标识-跳过
+    id_mark: true
+    pc_rect:
+    - 1700
+    - 710
+    - 1900
+    - 775
+    text: 跳过
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-前台区域
+    id_mark: true
+    pc_rect:
+    - 850
+    - 275
+    - 1070
+    - 340
+    text: 前台区域
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_battle_prep_supply_box
+  screen_name: 货币战争-备战-武装箱选择
+  pc_alt: false
+  area_list:
+  - area_name: 标识-武装箱
+    id_mark: true
+    pc_rect:
+    - 940
+    - 25
+    - 1200
+    - 80
+    text: 武装箱
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-请选择
+    id_mark: true
+    pc_rect:
+    - 960
+    - 70
+    - 1180
+    - 115
+    text: 请选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备卡-1
+    id_mark: false
+    pc_rect:
+    - 545
+    - 225
+    - 700
+    - 345
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备卡-2
+    id_mark: false
+    pc_rect:
+    - 825
+    - 225
+    - 980
+    - 345
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备卡-3
+    id_mark: false
+    pc_rect:
+    - 1110
+    - 225
+    - 1265
+    - 345
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 装备卡-4
+    id_mark: false
+    pc_rect:
+    - 1390
+    - 225
+    - 1545
+    - 345
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-卡名行
+    id_mark: false
+    pc_rect:
+    - 545
+    - 255
+    - 1545
+    - 300
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_briefing
+  screen_name: 货币战争-简报
+  pc_alt: false
+  area_list:
+  - area_name: 标识-本场对局首领
+    id_mark: true
+    pc_rect:
+    - 1438
+    - 738
+    - 1595
+    - 777
+    text: 本场对局首领
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-下一步
+    id_mark: false
+    pc_rect:
+    - 1470
+    - 963
+    - 1555
+    - 1005
+    text: 下一步
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-词缀行
+    id_mark: false
+    pc_rect:
+    - 260
+    - 950
+    - 970
+    - 1005
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-首领行
+    id_mark: false
+    pc_rect:
+    - 170
+    - 698
+    - 945
+    - 740
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-敌人难度
+    id_mark: false
+    pc_rect:
+    - 36
+    - 954
+    - 257
+    - 1007
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_challenge_failed
+  screen_name: 货币战争-挑战失败
+  pc_alt: false
+  area_list:
+  - area_name: 标识-挑战失败
+    id_mark: true
+    pc_rect:
+    - 820
+    - 190
+    - 1098
+    - 280
+    text: 挑战失败
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-下一步
+    id_mark: true
+    pc_rect:
+    - 913
+    - 868
+    - 1008
+    - 924
+    text: 下一步
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-小队生命值
+    id_mark: false
+    pc_rect:
+    - 860
+    - 272
+    - 1059
+    - 320
+    text: 小队生命值
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_data_bank
+  screen_name: 货币战争-数据银行
+  app_id: currency_war
+  pc_alt: false
+  area_list:
+  - area_name: 标题-数据银行
+    id_mark: true
+    pc_rect:
+    - 88
+    - 26
+    - 196
+    - 76
+    text: 数据银行
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-角色图鉴
+    id_mark: true
+    pc_rect:
+    - 930
+    - 405
+    - 1060
+    - 458
+    text: 角色图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-羁绊图鉴
+    id_mark: false
+    pc_rect:
+    - 478
+    - 432
+    - 610
+    - 488
+    text: 羁绊图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-装备图鉴
+    id_mark: false
+    pc_rect:
+    - 1388
+    - 435
+    - 1520
+    - 490
+    text: 装备图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-投资环境图鉴
+    id_mark: false
+    pc_rect:
+    - 905
+    - 816
+    - 1085
+    - 868
+    text: 投资环境图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-投资策略图鉴
+    id_mark: false
+    pc_rect:
+    - 450
+    - 873
+    - 630
+    - 925
+    text: 投资策略图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 入口-竞争对手图鉴
+    id_mark: false
+    pc_rect:
+    - 1366
+    - 866
+    - 1545
+    - 918
+    text: 竞争对手图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-图鉴进度带
+    id_mark: false
+    pc_rect:
+    - 440
+    - 450
+    - 1540
+    - 970
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_deploy_not_full
+  screen_name: 货币战争-未达上限警告
+  pc_alt: false
+  area_list:
+  - area_name: 标识-未达上限警告
+    id_mark: true
+    pc_rect:
+    - 725
+    - 490
+    - 1185
+    - 530
+    text: 可出战角色人数未达上限
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 勾选-本局不再提示
+    id_mark: false
+    pc_rect:
+    - 804
+    - 570
+    - 1020
+    - 622
+    text: 本局不再提示
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 1128
+    - 634
+    - 1219
+    - 693
+    text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_difficulty_confirm
+  screen_name: 货币战争-难度确认
+  pc_alt: false
+  area_list:
+  - area_name: 标识-当前职级难度效果
+    id_mark: true
+    pc_rect:
+    - 740
+    - 303
+    - 930
+    - 340
+    text: 当前职级难度效果
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-返回最高职级
+    id_mark: false
+    pc_rect:
+    - 1330
+    - 945
+    - 1454
+    - 985
+    text: 返回最高职级
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-开始对局
+    id_mark: false
+    pc_rect:
+    - 1640
+    - 945
+    - 1742
+    - 985
+    text: 开始对局
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-当前难度职级
+    id_mark: false
+    pc_rect:
+    - 60
+    - 290
+    - 180
+    - 350
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_encounter
+  screen_name: 货币战争-遭遇节点
+  pc_alt: false
+  area_list:
+  - area_name: 标识-遭遇节点
+    id_mark: true
+    pc_rect:
+    - 885
+    - 62
+    - 1035
+    - 115
+    text: 遭遇节点
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 遭遇卡-其一
+    id_mark: false
+    pc_rect:
+    - 445
+    - 340
+    - 800
+    - 720
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 遭遇卡-其二
+    id_mark: false
+    pc_rect:
+    - 1080
+    - 340
+    - 1435
+    - 720
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-选择
+    id_mark: false
+    pc_rect:
+    - 1000
+    - 862
+    - 1115
+    - 908
+    text: 选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-返回备战界面
+    id_mark: false
+    pc_rect:
+    - 1620
+    - 50
+    - 1900
+    - 95
+    text: 返回备战界面
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_enemy_info
+  screen_name: 货币战争-敌人信息浮层
+  pc_alt: false
+  area_list:
+  - area_name: 标识-敌方信息
+    id_mark: true
+    pc_rect:
+    - 90
+    - 40
+    - 215
+    - 90
+    text: 敌方信息
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-敌方波次列表
+    id_mark: false
+    pc_rect:
+    - 25
+    - 120
+    - 420
+    - 700
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-敌人详情卡
+    id_mark: false
+    pc_rect:
+    - 1240
+    - 120
+    - 1560
+    - 420
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-敌人名
+    id_mark: false
+    pc_rect:
+    - 1300
+    - 190
+    - 1490
+    - 245
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-词缀横条
+    id_mark: false
+    pc_rect:
+    - 75
+    - 965
+    - 1010
+    - 1015
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-敌人难度值
+    id_mark: false
+    pc_rect:
+    - 80
+    - 970
+    - 295
+    - 1012
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_code_input
+  screen_name: 货币战争-攻略码输入弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-输入攻略码
+    id_mark: true
+    pc_rect:
+    - 760
+    - 295
+    - 1030
+    - 362
+    text: 输入攻略码
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-请输入攻略码
+    id_mark: true
+    pc_rect:
+    - 365
+    - 400
+    - 635
+    - 460
+    text: 请输入攻略码
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-取消
+    id_mark: false
+    pc_rect:
+    - 690
+    - 705
+    - 810
+    - 750
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 1090
+    - 705
+    - 1240
+    - 750
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_detail
+  screen_name: 货币战争-攻略详情
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-攻略详情
+    id_mark: true
+    pc_rect:
+    - 30
+    - 42
+    - 240
+    - 92
+    text: 攻略详情
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-阵容详情
+    id_mark: true
+    pc_rect:
+    - 850
+    - 210
+    - 1020
+    - 265
+    text: 阵容详情
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-运营思路
+    id_mark: true
+    pc_rect:
+    - 830
+    - 750
+    - 1000
+    - 805
+    text: 运营思路
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-复制攻略码
+    id_mark: false
+    pc_rect:
+    - 40
+    - 952
+    - 240
+    - 996
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-应用攻略
+    id_mark: false
+    pc_rect:
+    - 1660
+    - 952
+    - 1870
+    - 996
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-标题行
+    id_mark: false
+    pc_rect:
+    - 56
+    - 110
+    - 1540
+    - 150
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-查看攻略详情
+    id_mark: false
+    pc_rect:
+    - 1600
+    - 122
+    - 1870
+    - 160
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-阵容详情-前台
+    id_mark: false
+    pc_rect:
+    - 60
+    - 280
+    - 880
+    - 520
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-阵容详情-后台
+    id_mark: false
+    pc_rect:
+    - 60
+    - 525
+    - 880
+    - 760
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-运营思路
+    id_mark: false
+    pc_rect:
+    - 56
+    - 800
+    - 1880
+    - 940
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-热度
+    id_mark: false
+    pc_rect:
+    - 1440
+    - 950
+    - 1600
+    - 996
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-应用状态
+    id_mark: false
+    pc_rect:
+    - 700
+    - 265
+    - 1100
+    - 305
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭面板
+    id_mark: false
+    pc_rect:
+    - 1800
+    - 30
+    - 1885
+    - 62
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_editor
+  screen_name: 货币战争-阵容编辑
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-阵容编辑
+    id_mark: true
+    pc_rect:
+    - 60
+    - 50
+    - 400
+    - 95
+    text: 阵容编辑
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-阶段-前期
+    id_mark: true
+    pc_rect:
+    - 770
+    - 158
+    - 852
+    - 202
+    text: 前期
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-阶段-中期
+    id_mark: true
+    pc_rect:
+    - 1185
+    - 158
+    - 1270
+    - 202
+    text: 中期
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-阶段-最终
+    id_mark: true
+    pc_rect:
+    - 1600
+    - 158
+    - 1682
+    - 202
+    text: 最终
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-tab-角色
+    id_mark: false
+    pc_rect:
+    - 110
+    - 92
+    - 220
+    - 128
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-tab-装备
+    id_mark: false
+    pc_rect:
+    - 380
+    - 92
+    - 500
+    - 128
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-阵容名
+    id_mark: false
+    pc_rect:
+    - 560
+    - 100
+    - 900
+    - 136
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_equip_track
+  screen_name: 货币战争-装备追踪弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-装备追踪
+    id_mark: true
+    pc_rect:
+    - 460
+    - 215
+    - 690
+    - 290
+    text: 装备追踪
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-优选装备
+    id_mark: true
+    pc_rect:
+    - 615
+    - 340
+    - 835
+    - 420
+    text: 优选装备
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1310
+    - 248
+    - 1380
+    - 292
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-追踪-1
+    id_mark: false
+    pc_rect:
+    - 1170
+    - 395
+    - 1330
+    - 435
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-追踪-2
+    id_mark: false
+    pc_rect:
+    - 1170
+    - 515
+    - 1330
+    - 555
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-追踪-3
+    id_mark: false
+    pc_rect:
+    - 1170
+    - 634
+    - 1330
+    - 674
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-追踪-4
+    id_mark: false
+    pc_rect:
+    - 1170
+    - 755
+    - 1330
+    - 795
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_legend
+  screen_name: 货币战争-攻略图例
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-图例
+    id_mark: true
+    pc_rect:
+    - 860
+    - 285
+    - 1030
+    - 355
+    text: 图例
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-核心角色
+    id_mark: true
+    pc_rect:
+    - 735
+    - 550
+    - 885
+    - 605
+    text: 核心角色
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-空白关闭
+    id_mark: false
+    pc_rect:
+    - 700
+    - 960
+    - 1060
+    - 1010
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_list
+  screen_name: 货币战争-攻略列表
+  pc_alt: false
+  area_list:
+  - area_name: 标识-主tab-热门攻略
+    id_mark: true
+    pc_rect:
+    - 660
+    - 100
+    - 825
+    - 148
+    text: 热门攻略
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-主tab-我的阵容
+    id_mark: true
+    pc_rect:
+    - 1015
+    - 100
+    - 1195
+    - 148
+    text: 我的阵容
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-子tab-推荐攻略
+    id_mark: false
+    pc_rect:
+    - 40
+    - 158
+    - 200
+    - 192
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-子tab-热门攻略
+    id_mark: false
+    pc_rect:
+    - 290
+    - 158
+    - 445
+    - 192
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-子tab-收藏
+    id_mark: false
+    pc_rect:
+    - 540
+    - 158
+    - 680
+    - 192
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-图例
+    id_mark: false
+    pc_rect:
+    - 1655
+    - 34
+    - 1790
+    - 66
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-输入攻略码
+    id_mark: false
+    pc_rect:
+    - 1330
+    - 952
+    - 1560
+    - 996
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-前往攻略广场
+    id_mark: false
+    pc_rect:
+    - 1580
+    - 952
+    - 1830
+    - 996
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-列表滚动区
+    id_mark: false
+    pc_rect:
+    - 500
+    - 240
+    - 1450
+    - 900
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-已保存计数
+    id_mark: false
+    pc_rect:
+    - 1690
+    - 128
+    - 1900
+    - 166
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-新建阵容-1
+    id_mark: false
+    pc_rect:
+    - 835
+    - 318
+    - 990
+    - 356
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-新建阵容-2
+    id_mark: false
+    pc_rect:
+    - 835
+    - 546
+    - 990
+    - 584
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-新建阵容-3
+    id_mark: false
+    pc_rect:
+    - 835
+    - 774
+    - 990
+    - 812
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-标题行
+    id_mark: false
+    pc_rect:
+    - 56
+    - 232
+    - 1180
+    - 280
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-版本
+    id_mark: false
+    pc_rect:
+    - 36
+    - 274
+    - 130
+    - 308
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-热度行
+    id_mark: false
+    pc_rect:
+    - 1545
+    - 232
+    - 1900
+    - 270
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-作者
+    id_mark: false
+    pc_rect:
+    - 1540
+    - 300
+    - 1900
+    - 338
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-保存阵容
+    id_mark: false
+    pc_rect:
+    - 1525
+    - 340
+    - 1695
+    - 388
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-应用攻略
+    id_mark: false
+    pc_rect:
+    - 1695
+    - 340
+    - 1870
+    - 388
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡1-卡身
+    id_mark: false
+    pc_rect:
+    - 60
+    - 232
+    - 1520
+    - 453
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-标题行
+    id_mark: false
+    pc_rect:
+    - 56
+    - 461
+    - 1180
+    - 509
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-版本
+    id_mark: false
+    pc_rect:
+    - 36
+    - 503
+    - 130
+    - 537
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-热度行
+    id_mark: false
+    pc_rect:
+    - 1545
+    - 461
+    - 1900
+    - 499
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-作者
+    id_mark: false
+    pc_rect:
+    - 1540
+    - 529
+    - 1900
+    - 567
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-保存阵容
+    id_mark: false
+    pc_rect:
+    - 1525
+    - 569
+    - 1695
+    - 617
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-应用攻略
+    id_mark: false
+    pc_rect:
+    - 1695
+    - 569
+    - 1870
+    - 617
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡2-卡身
+    id_mark: false
+    pc_rect:
+    - 60
+    - 461
+    - 1520
+    - 682
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-标题行
+    id_mark: false
+    pc_rect:
+    - 56
+    - 690
+    - 1180
+    - 738
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-版本
+    id_mark: false
+    pc_rect:
+    - 36
+    - 732
+    - 130
+    - 766
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-热度行
+    id_mark: false
+    pc_rect:
+    - 1545
+    - 690
+    - 1900
+    - 728
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-作者
+    id_mark: false
+    pc_rect:
+    - 1540
+    - 758
+    - 1900
+    - 796
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-保存阵容
+    id_mark: false
+    pc_rect:
+    - 1525
+    - 798
+    - 1695
+    - 846
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-应用攻略
+    id_mark: false
+    pc_rect:
+    - 1695
+    - 798
+    - 1870
+    - 846
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡3-卡身
+    id_mark: false
+    pc_rect:
+    - 60
+    - 690
+    - 1520
+    - 911
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭面板
+    id_mark: false
+    pc_rect:
+    - 1800
+    - 30
+    - 1885
+    - 62
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_guide_save_modal
+  screen_name: 货币战争-保存阵容弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-标题-保存阵容
+    id_mark: false
+    pc_rect:
+    - 266
+    - 156
+    - 566
+    - 226
+    text: 保存阵容
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-保存并收藏
+    id_mark: true
+    pc_rect:
+    - 1380
+    - 825
+    - 1575
+    - 885
+    text: 保存并收藏
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-存为新阵容-1
+    id_mark: false
+    pc_rect:
+    - 820
+    - 378
+    - 970
+    - 420
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-存为新阵容-2
+    id_mark: false
+    pc_rect:
+    - 820
+    - 555
+    - 970
+    - 597
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-存为新阵容-3
+    id_mark: false
+    pc_rect:
+    - 820
+    - 737
+    - 970
+    - 779
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_interrupt_dialog
+  screen_name: 货币战争-中断挑战弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-中断挑战
+    id_mark: true
+    pc_rect:
+    - 700
+    - 385
+    - 1320
+    - 440
+    text: 是否中断挑战并保存当前进度
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-放弃并结算
+    id_mark: true
+    pc_rect:
+    - 680
+    - 710
+    - 860
+    - 775
+    text: 放弃并结算
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-暂时离开
+    id_mark: false
+    pc_rect:
+    - 1105
+    - 710
+    - 1270
+    - 775
+    text: 暂时离开
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1435
+    - 295
+    - 1505
+    - 355
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-小队生命值
+    id_mark: false
+    pc_rect:
+    - 1405
+    - 505
+    - 1520
+    - 568
+    text: '3'
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_invest_env
+  screen_name: 货币战争-投资环境
+  pc_alt: false
+  area_list:
+  - area_name: 标识-投资环境
+    id_mark: true
+    pc_rect:
+    - 890
+    - 78
+    - 1030
+    - 118
+    text: 投资环境
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-卡牌描述行
+    id_mark: false
+    pc_rect:
+    - 200
+    - 420
+    - 1720
+    - 480
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 1010
+    - 960
+    - 1154
+    - 1004
+    text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-刷新
+    id_mark: false
+    pc_rect:
+    - 649
+    - 957
+    - 699
+    - 1007
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_invest_strategy
+  screen_name: 货币战争-投资策略
+  pc_alt: false
+  area_list:
+  - area_name: 标识-请选择投资策略
+    id_mark: true
+    pc_rect:
+    - 855
+    - 78
+    - 1065
+    - 118
+    text: 请选择投资策略
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 906
+    - 960
+    - 1050
+    - 1006
+    text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-卡名行
+    id_mark: false
+    pc_rect:
+    - 200
+    - 455
+    - 1720
+    - 505
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-刷新
+    id_mark: false
+    pc_rect:
+    - 1367
+    - 832
+    - 1426
+    - 875
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_lobby
+  screen_name: 货币战争-大厅
+  pc_alt: false
+  area_list:
+  - area_name: 标识-创业指南
+    id_mark: true
+    pc_rect:
+    - 100
+    - 268
+    - 210
+    - 306
+    text: 创业指南
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-开始货币战争
+    id_mark: false
+    pc_rect:
+    - 1455
+    - 945
+    - 1710
+    - 998
+    text: 开始「货币战争」
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_megastar
+  screen_name: 货币战争-盛会之星
+  pc_alt: false
+  area_list:
+  - area_name: 标识-盛会之星
+    id_mark: true
+    pc_rect:
+    - 982
+    - 47
+    - 1126
+    - 89
+    text: 盛会之星
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-请选择强化角色
+    id_mark: false
+    pc_rect:
+    - 1400
+    - 478
+    - 1582
+    - 565
+    text: 请选择强化角色
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 备战标识-购买经验
+    id_mark: true
+    pc_rect:
+    - 229
+    - 841
+    - 363
+    - 878
+    text: 购买经验
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_mode_select
+  screen_name: 货币战争-模式选择
+  pc_alt: false
+  area_list:
+  - area_name: 按钮-进入标准博弈
+    id_mark: true
+    pc_rect:
+    - 1555
+    - 942
+    - 1750
+    - 980
+    text: 进入标准博弈
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_partner
+  screen_name: 货币战争-选择伙伴
+  pc_alt: false
+  area_list:
+  - area_name: 标识-选择伙伴
+    id_mark: true
+    pc_rect:
+    - 987
+    - 52
+    - 1125
+    - 99
+    text: 选择伙伴
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认选择
+    id_mark: false
+    pc_rect:
+    - 1423
+    - 561
+    - 1587
+    - 616
+    text: 确认选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 备战标识-购买经验
+    id_mark: true
+    pc_rect:
+    - 229
+    - 841
+    - 363
+    - 878
+    text: 购买经验
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_plane_detail
+  screen_name: 货币战争-位面详情
+  pc_alt: false
+  area_list:
+  - area_name: 标识-位面详情标题
+    id_mark: true
+    pc_rect:
+    - 80
+    - 30
+    - 220
+    - 100
+    text: 位面详情
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-词缀横条
+    id_mark: false
+    pc_rect:
+    - 160
+    - 965
+    - 1430
+    - 1015
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-敌人难度值
+    id_mark: false
+    pc_rect:
+    - 508
+    - 974
+    - 713
+    - 1012
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-节点详情条
+    id_mark: false
+    pc_rect:
+    - 140
+    - 700
+    - 1100
+    - 790
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-节点编号
+    id_mark: false
+    pc_rect:
+    - 145
+    - 705
+    - 230
+    - 745
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-节点类型名
+    id_mark: false
+    pc_rect:
+    - 455
+    - 700
+    - 590
+    - 745
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-节点描述
+    id_mark: false
+    pc_rect:
+    - 460
+    - 750
+    - 1100
+    - 785
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-位面卡组
+    id_mark: false
+    pc_rect:
+    - 500
+    - 170
+    - 1450
+    - 370
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭位面详情
+    id_mark: false
+    pc_rect:
+    - 1815
+    - 45
+    - 1885
+    - 105
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-节点条
+    id_mark: false
+    pc_rect:
+    - 385
+    - 514
+    - 1596
+    - 661
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-boss大图标
+    id_mark: false
+    pc_rect:
+    - 220
+    - 767
+    - 325
+    - 874
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-位面卡1
+    id_mark: false
+    pc_rect:
+    - 510
+    - 250
+    - 620
+    - 360
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-位面卡2
+    id_mark: false
+    pc_rect:
+    - 920
+    - 250
+    - 1030
+    - 360
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-位面卡3
+    id_mark: false
+    pc_rect:
+    - 1350
+    - 250
+    - 1460
+    - 360
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_plane_transition
+  screen_name: 货币战争-位面过渡
+  pc_alt: false
+  area_list:
+  - area_name: 提示-点击空白继续
+    id_mark: false
+    pc_rect:
+    - 855
+    - 930
+    - 1065
+    - 990
+    text: 点击空白处继续
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-位面节点2
+    id_mark: true
+    pc_rect:
+    - 905
+    - 348
+    - 995
+    - 402
+    text: 位面
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-位面节点3
+    id_mark: true
+    pc_rect:
+    - 1420
+    - 348
+    - 1505
+    - 402
+    text: 位面
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_rival_gallery_detail
+  screen_name: 货币战争-竞争对手图鉴详情
+  app_id: currency_war
+  pc_alt: false
+  area_list:
+  - area_name: 标题-竞争对手图鉴
+    id_mark: true
+    pc_rect:
+    - 90
+    - 26
+    - 240
+    - 75
+    text: 竞争对手图鉴
+    lcs_percent: 0.8
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-技能
+    id_mark: true
+    pc_rect:
+    - 1675
+    - 110
+    - 1770
+    - 170
+    text: 技能
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-详情
+    id_mark: false
+    pc_rect:
+    - 1350
+    - 110
+    - 1445
+    - 170
+    text: 详情
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 阶段一
+    id_mark: false
+    pc_rect:
+    - 1285
+    - 190
+    - 1390
+    - 240
+    text: 阶段一
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 阶段二
+    id_mark: false
+    pc_rect:
+    - 1495
+    - 190
+    - 1600
+    - 240
+    text: 阶段二
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-boss名
+    id_mark: false
+    pc_rect:
+    - 110
+    - 118
+    - 305
+    - 175
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-boss立绘与等级
+    id_mark: false
+    pc_rect:
+    - 1290
+    - 168
+    - 1760
+    - 240
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-精英敌人
+    id_mark: false
+    pc_rect:
+    - 115
+    - 380
+    - 960
+    - 512
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-普通敌人
+    id_mark: false
+    pc_rect:
+    - 115
+    - 512
+    - 960
+    - 648
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-顶部头像导航条
+    id_mark: false
+    pc_rect:
+    - 380
+    - 40
+    - 1560
+    - 120
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_rival_gallery_list
+  screen_name: 货币战争-竞争对手图鉴列表
+  app_id: currency_war
+  pc_alt: false
+  area_list:
+  - area_name: 标题-竞争对手图鉴
+    id_mark: true
+    pc_rect:
+    - 90
+    - 26
+    - 240
+    - 75
+    text: 竞争对手图鉴
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-凛冬经贸联合体
+    id_mark: true
+    pc_rect:
+    - 110
+    - 675
+    - 330
+    - 735
+    text: 凛冬经贸联合体
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-铁盾安保集团
+    id_mark: false
+    pc_rect:
+    - 390
+    - 675
+    - 580
+    - 735
+    text: 铁盾安保集团
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-深穹智械科技
+    id_mark: false
+    pc_rect:
+    - 655
+    - 675
+    - 845
+    - 735
+    text: 深穹智械科技
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-火线动力机甲
+    id_mark: false
+    pc_rect:
+    - 920
+    - 675
+    - 1110
+    - 735
+    text: 火线动力机甲
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-冷锋兵器工业
+    id_mark: false
+    pc_rect:
+    - 1185
+    - 675
+    - 1380
+    - 735
+    text: 冷锋兵器工业
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-巨鹿生物制药
+    id_mark: false
+    pc_rect:
+    - 1450
+    - 675
+    - 1640
+    - 735
+    text: 巨鹿生物制药
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 页签-造梦兄弟
+    id_mark: false
+    pc_rect:
+    - 1715
+    - 675
+    - 1865
+    - 735
+    text: 造梦兄弟
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 区域-boss卡片带
+    id_mark: false
+    pc_rect:
+    - 90
+    - 200
+    - 1890
+    - 740
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_score_rewards
+  screen_name: 货币战争-积分奖励
+  pc_alt: false
+  area_list:
+  - area_name: 标识-积分奖励
+    id_mark: true
+    pc_rect:
+    - 60
+    - 315
+    - 210
+    - 365
+    text: 积分奖励
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-本期剩余时间
+    id_mark: true
+    pc_rect:
+    - 70
+    - 355
+    - 360
+    - 395
+    text: 本期剩余时间
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-一键领取
+    id_mark: false
+    pc_rect:
+    - 1590
+    - 695
+    - 1740
+    - 760
+    text: 一键领取
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1815
+    - 35
+    - 1900
+    - 95
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_settlement
+  screen_name: 货币战争-结算
+  pc_alt: false
+  area_list:
+  - area_name: 按钮-继续挑战
+    id_mark: true
+    pc_rect:
+    - 898
+    - 866
+    - 1022
+    - 921
+    text: 继续挑战
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-数据统计
+    id_mark: false
+    pc_rect:
+    - 1107
+    - 541
+    - 1232
+    - 597
+    text: 数据统计
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-挑战成功
+    id_mark: false
+    pc_rect:
+    - 820
+    - 184
+    - 1098
+    - 274
+    text: 挑战成功
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-小队生命值
+    id_mark: false
+    pc_rect:
+    - 638
+    - 471
+    - 881
+    - 530
+    text: 小队生命值
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-获得金币总数
+    id_mark: false
+    pc_rect:
+    - 1020
+    - 545
+    - 1090
+    - 585
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-数据统计-伤害
+    id_mark: false
+    pc_rect:
+    - 1130
+    - 580
+    - 1310
+    - 860
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_settlement_fail
+  screen_name: 货币战争-结算-失败
+  pc_alt: false
+  area_list:
+  - area_name: 标识-挑战进度
+    id_mark: true
+    pc_rect:
+    - 860
+    - 362
+    - 1060
+    - 410
+    text: 挑战进度
+    lcs_percent: 0.9
+  - area_name: 标识-挑战结束
+    id_mark: true
+    pc_rect:
+    - 820
+    - 186
+    - 1098
+    - 272
+    text: 挑战结束
+    lcs_percent: 0.9
+  - area_name: 标识-节点名
+    id_mark: false
+    pc_rect:
+    - 860
+    - 258
+    - 1055
+    - 315
+    text: 战斗
+  - area_name: 提示-点击空白加速
+    id_mark: false
+    pc_rect:
+    - 870
+    - 874
+    - 1050
+    - 922
+    text: 点击空白加速
+  - area_name: 按钮-前往结算
+    id_mark: false
+    pc_rect:
+    - 880
+    - 868
+    - 1040
+    - 920
+    text: 前往结算
+- screen_id: currency_war_shop_refresh_odds
+  screen_name: 货币战争-商店刷新概率表
+  pc_alt: false
+  area_list:
+  - area_name: 标识-刷新概率表
+    id_mark: true
+    pc_rect:
+    - 380
+    - 235
+    - 620
+    - 290
+    text: 商店刷新概率
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_star_badge_detail
+  screen_name: 货币战争-星徽详情
+  pc_alt: false
+  area_list:
+  - area_name: 标识-流派星徽
+    id_mark: true
+    pc_rect:
+    - 830
+    - 190
+    - 960
+    - 230
+    text: 流派星徽
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-套组标题
+    id_mark: true
+    pc_rect:
+    - 70
+    - 65
+    - 260
+    - 105
+    text: 星徽套组
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1815
+    - 35
+    - 1900
+    - 95
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_star_tome_popup
+  screen_name: 货币战争-星徽秘典弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-星徽秘典
+    id_mark: true
+    pc_rect:
+    - 1020
+    - 32
+    - 1180
+    - 82
+    text: 星徽秘典
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1835
+    - 35
+    - 1900
+    - 95
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 提示-请选择1个
+    id_mark: false
+    pc_rect:
+    - 1030
+    - 76
+    - 1170
+    - 118
+    text: 请选择1个
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 星徽卡-1
+    id_mark: false
+    pc_rect:
+    - 560
+    - 200
+    - 770
+    - 500
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 星徽卡-2
+    id_mark: false
+    pc_rect:
+    - 850
+    - 200
+    - 1060
+    - 500
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 星徽卡-3
+    id_mark: false
+    pc_rect:
+    - 1140
+    - 200
+    - 1350
+    - 500
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 星徽卡-4
+    id_mark: false
+    pc_rect:
+    - 1430
+    - 200
+    - 1640
+    - 500
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_supply
+  screen_name: 货币战争-补给
+  pc_alt: false
+  area_list:
+  - area_name: 标识-补给阶段
+    id_mark: true
+    pc_rect:
+    - 893
+    - 120
+    - 1027
+    - 230
+    text: 补给阶段
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 1665
+    - 952
+    - 1752
+    - 1008
+    text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-返回备战界面
+    id_mark: false
+    pc_rect:
+    - 1717
+    - 44
+    - 1863
+    - 71
+    text: 返回备战界面
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-已选择
+    id_mark: false
+    pc_rect:
+    - 1642
+    - 912
+    - 1741
+    - 937
+    text: 已选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-剩余次数
+    id_mark: false
+    pc_rect:
+    - 1347
+    - 969
+    - 1484
+    - 997
+    text: 剩余次数
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_toast_no_front
+  screen_name: 货币战争-提示-前台无角色
+  pc_alt: false
+  area_list:
+  - area_name: 标识-无角色提示
+    id_mark: true
+    pc_rect:
+    - 790
+    - 495
+    - 1130
+    - 555
+    text: 前台区域无角色
+    lcs_percent: 0.9
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认
+    id_mark: false
+    pc_rect:
+    - 920
+    - 635
+    - 1035
+    - 705
+    text: 确认
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_wish_trial
+  screen_name: 货币战争-祈愿试炼
+  pc_alt: false
+  area_list:
+  - area_name: 标识-祈愿试炼
+    id_mark: true
+    pc_rect:
+    - 920
+    - 45
+    - 1130
+    - 105
+    text: 祈愿试炼
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认选择
+    id_mark: false
+    pc_rect:
+    - 1380
+    - 605
+    - 1600
+    - 670
+    text: 确认选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 备战标识-购买经验
+    id_mark: true
+    pc_rect:
+    - 229
+    - 841
+    - 363
+    - 878
+    text: 购买经验
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: cw_equip_pick
+  screen_name: 货币战争-选择装备
+  pc_alt: false
+  area_list:
+  - area_name: 标识-选择装备
+    id_mark: true
+    pc_rect:
+    - 1020
+    - 12
+    - 1170
+    - 60
+    text: 选择装备
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-请选择1个装备
+    id_mark: true
+    pc_rect:
+    - 1020
+    - 55
+    - 1180
+    - 95
+    text: 请选择1个
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡-装备1
+    id_mark: false
+    pc_rect:
+    - 640
+    - 200
+    - 920
+    - 350
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡-装备2
+    id_mark: false
+    pc_rect:
+    - 930
+    - 200
+    - 1210
+    - 350
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡-装备3
+    id_mark: false
+    pc_rect:
+    - 1250
+    - 200
+    - 1520
+    - 350
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: cw_fortune_picker
+  screen_name: 货币战争-命运卜者强化
+  pc_alt: false
+  area_list:
+  - area_name: 标识-请选择强化效果
+    id_mark: true
+    pc_rect:
+    - 890
+    - 105
+    - 1210
+    - 155
+    text: 请选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-命运卜者
+    id_mark: true
+    pc_rect:
+    - 930
+    - 40
+    - 1170
+    - 105
+    text: 命运卜者
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-确认选择
+    id_mark: false
+    pc_rect:
+    - 1420
+    - 575
+    - 1560
+    - 625
+    text: 确认选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: cw_hacker_planner
+  screen_name: 货币战争-骇入策划
+  pc_alt: false
+  area_list:
+  - area_name: 标识-请选择一个骇入效果
+    id_mark: true
+    pc_rect:
+    - 880
+    - 105
+    - 1210
+    - 175
+    text: 请选择一个骇入效果
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-我来当策划
+    id_mark: true
+    pc_rect:
+    - 900
+    - 40
+    - 1200
+    - 110
+    text: 我来当策划
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 骇入选项-左卡
+    id_mark: false
+    pc_rect:
+    - 500
+    - 280
+    - 980
+    - 560
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 骇入选项-右卡
+    id_mark: false
+    pc_rect:
+    - 1020
+    - 280
+    - 1500
+    - 560
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-骇入确认
+    id_mark: false
+    pc_rect:
+    - 1420
+    - 575
+    - 1560
+    - 625
+    text: 确认选择
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: enter_game
   screen_name: 进入游戏
   pc_alt: false
@@ -2754,7 +6276,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 按钮-登出确定
     id_mark: false
@@ -2768,7 +6289,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-账号输入区域
     id_mark: false
@@ -2782,7 +6302,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-密码输入区域
     id_mark: false
@@ -2796,7 +6315,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-同意按钮
     id_mark: false
@@ -2810,7 +6328,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-账号密码
     id_mark: false
@@ -2824,7 +6341,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-账号密码进入游戏
     id_mark: false
@@ -2838,7 +6354,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 文本-开始游戏
     id_mark: false
@@ -2852,7 +6367,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 文本-点击进入
     id_mark: false
@@ -2866,7 +6380,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 文本-同意-旧
     id_mark: false
@@ -2880,7 +6393,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 国服-同意按钮-旧
     id_mark: false
@@ -2894,7 +6406,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 文本-同意-新
     id_mark: false
@@ -2908,7 +6419,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 提示-确认
     id_mark: false
@@ -2922,7 +6432,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 错误提示-重新启动
     id_mark: false
@@ -2936,7 +6445,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
 - screen_id: enter_game_choose_account
   screen_name: 进入游戏-选择账号
@@ -2954,7 +6462,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 按钮-登陆其他账号
     id_mark: true
@@ -2968,7 +6475,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
 - screen_id: enter_game_logout_dialog
   screen_name: 进入游戏-退出登陆
@@ -2986,7 +6492,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 按钮-退出并保留登陆记录
     id_mark: false
@@ -3000,7 +6505,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 按钮-退出
     id_mark: false
@@ -3014,14 +6518,12 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
 - screen_id: fast_recover_dialog
   screen_name: 快速恢复对话框
   pc_alt: false
   area_list:
   - area_name: 快速恢复标题
-    id_mark: false
     pc_rect:
     - 890
     - 250
@@ -3032,10 +6534,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 确认
-    id_mark: false
     pc_rect:
     - 1020
     - 790
@@ -3046,10 +6545,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 取消
-    id_mark: false
     pc_rect:
     - 592
     - 790
@@ -3060,10 +6556,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 暂无可用消耗品
-    id_mark: false
     pc_rect:
     - 1094
     - 554
@@ -3074,10 +6567,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 奇巧零食
-    id_mark: false
     pc_rect:
     - 900
     - 300
@@ -3088,8 +6578,6 @@
     template_sub_dir: consumable
     template_id: quirky_snacks
     template_match_threshold: 0.5
-    color_range: null
-    goto_list: []
 - screen_id: guide
   screen_name: 星际和平指南
   pc_alt: false
@@ -3590,7 +7078,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 按钮-开始追踪
     id_mark: false
@@ -3601,6 +7088,177 @@
     - 1006
     text: 开始追踪
     lcs_percent: 0.55
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    goto_list: []
+- screen_id: nameless_honor
+  screen_name: 无名勋礼
+  pc_alt: false
+  area_list:
+  - area_name: 标识-无名勋礼
+    id_mark: true
+    pc_rect:
+    - 60
+    - 10
+    - 340
+    - 105
+    text: 无名勋礼
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-规则说明
+    id_mark: true
+    pc_rect:
+    - 1650
+    - 20
+    - 1830
+    - 100
+    text: 规则说明
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: tab-奖励
+    id_mark: false
+    pc_rect:
+    - 833
+    - 24
+    - 894
+    - 104
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: tab-任务
+    id_mark: false
+    pc_rect:
+    - 919
+    - 24
+    - 980
+    - 104
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: tab-星海珍藏
+    id_mark: false
+    pc_rect:
+    - 1025
+    - 24
+    - 1086
+    - 104
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1810
+    - 15
+    - 1875
+    - 85
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-购买等级
+    id_mark: false
+    pc_rect:
+    - 1630
+    - 205
+    - 1830
+    - 290
+    text: 购买等级
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-奖励-一键领取
+    id_mark: false
+    pc_rect:
+    - 1270
+    - 890
+    - 1530
+    - 950
+    text: 一键领取
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-任务-一键领取
+    id_mark: false
+    pc_rect:
+    - 1520
+    - 890
+    - 1810
+    - 950
+    text: 一键领取
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-奖励-取消
+    id_mark: false
+    pc_rect:
+    - 620
+    - 970
+    - 790
+    - 1010
+    text: 取消
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-点击空白处关闭
+    id_mark: false
+    pc_rect:
+    - 864
+    - 929
+    - 1063
+    - 962
+    text: 点击空白处关闭
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-开启无名勋礼
+    id_mark: false
+    pc_rect:
+    - 1437
+    - 763
+    - 1600
+    - 800
+    text: 开启无名勋礼
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
@@ -3982,7 +7640,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
   - area_name: 点击空白区域继续
     id_mark: true
@@ -3996,14 +7653,12 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
     goto_list: []
 - screen_id: ornamenet_extraction
   screen_name: 饰品提取
   pc_alt: false
   area_list:
   - area_name: 左上角标题-饰品提取
-    id_mark: false
     pc_rect:
     - 105
     - 41
@@ -4014,10 +7669,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 左上角标题-存档管理
-    id_mark: false
     pc_rect:
     - 105
     - 63
@@ -4028,10 +7680,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-切换存档入口
-    id_mark: false
     pc_rect:
     - 143
     - 953
@@ -4042,10 +7691,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 档案-1
-    id_mark: false
     pc_rect:
     - 37
     - 185
@@ -4056,10 +7702,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 档案-2
-    id_mark: false
     pc_rect:
     - 37
     - 315
@@ -4070,10 +7713,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 档案-3
-    id_mark: false
     pc_rect:
     - 37
     - 445
@@ -4084,10 +7724,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 档案-4
-    id_mark: false
     pc_rect:
     - 37
     - 575
@@ -4098,10 +7735,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-切换存档确认
-    id_mark: false
     pc_rect:
     - 1546
     - 954
@@ -4112,10 +7746,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-存档使用中
-    id_mark: false
     pc_rect:
     - 1546
     - 954
@@ -4126,10 +7757,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-预设编队
-    id_mark: false
     pc_rect:
     - 365
     - 60
@@ -4140,24 +7768,13 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 区域-预设编队名称
-    id_mark: false
     pc_rect:
     - 30
     - 100
     - 300
     - 1000
-    text: ''
-    lcs_percent: null
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: null
-    color_range: null
-    goto_list: []
   - area_name: 按钮-支援
-    id_mark: false
     pc_rect:
     - 672
     - 870
@@ -4168,8 +7785,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 支援角色替换图标
     id_mark: false
     pc_rect:
@@ -4177,7 +7792,7 @@
     - 0
     - 0
     - 0
-    text: ''
+    text: null
     lcs_percent: null
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
@@ -4191,15 +7806,7 @@
     - 816
     - 933
     - 816
-    text: ''
-    lcs_percent: null
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: null
-    color_range: null
-    goto_list: []
   - area_name: 按钮-开始挑战
-    id_mark: false
     pc_rect:
     - 1478
     - 963
@@ -4210,8 +7817,6 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
 - screen_id: phone_menu
   screen_name: 菜单
   pc_alt: false
@@ -4901,7 +8506,6 @@
   pc_alt: false
   area_list:
   - area_name: 标题-合成
-    id_mark: false
     pc_rect:
     - 100
     - 38
@@ -4912,10 +8516,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 标题-合成分类
-    id_mark: false
     pc_rect:
     - 100
     - 65
@@ -4926,10 +8527,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 分类-消耗品合成
-    id_mark: false
     pc_rect:
     - 780
     - 40
@@ -4940,10 +8538,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: CATEGORY_2_BTN
-    id_mark: false
     pc_rect:
     - 880
     - 40
@@ -4954,10 +8549,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: CATEGORY_3_BTN
-    id_mark: false
     pc_rect:
     - 970
     - 40
@@ -4968,10 +8560,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: CATEGORY_4_BTN
-    id_mark: false
     pc_rect:
     - 1060
     - 40
@@ -4982,10 +8571,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 物品列表
-    id_mark: false
     pc_rect:
     - 74
     - 100
@@ -4996,10 +8582,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 合成所需材料不足
-    id_mark: false
     pc_rect:
     - 1080
     - 849
@@ -5010,10 +8593,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-最大值
-    id_mark: false
     pc_rect:
     - 1445
     - 870
@@ -5024,10 +8604,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-合成
-    id_mark: false
     pc_rect:
     - 1015
     - 963
@@ -5038,10 +8615,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-合成确认
-    id_mark: false
     pc_rect:
     - 1008
     - 672
@@ -5052,10 +8626,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 点击空白处关闭
-    id_mark: false
     pc_rect:
     - 850
     - 680
@@ -5066,14 +8637,11 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
 - screen_id: team
   screen_name: 队伍
   pc_alt: false
   area_list:
   - area_name: 左上角标题-队伍
-    id_mark: false
     pc_rect:
     - 99
     - 37
@@ -5084,10 +8652,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: SUPPORT_BTN
-    id_mark: false
     pc_rect:
     - 1740
     - 720
@@ -5098,10 +8663,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-关闭
-    id_mark: false
     pc_rect:
     - 1834
     - 39
@@ -5112,10 +8674,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 角色列表
-    id_mark: false
     pc_rect:
     - 70
     - 160
@@ -5126,10 +8685,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 按钮-入队
-    id_mark: false
     pc_rect:
     - 1560
     - 970
@@ -5140,10 +8696,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: SUPPORT_TITLE
-    id_mark: false
     pc_rect:
     - 99
     - 37
@@ -5154,14 +8707,11 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
 - screen_id: treasures_light
   screen_name: 逐光捡金
   pc_alt: false
   area_list:
   - area_name: TL_CATEGORY_FORGOTTEN_HALL
-    id_mark: false
     pc_rect:
     - 280
     - 435
@@ -5172,10 +8722,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: TL_CATEGORY_PURE_FICTION
-    id_mark: false
     pc_rect:
     - 280
     - 570
@@ -5186,10 +8733,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: TL_SCHEDULE_1_TRANSPORT
-    id_mark: false
     pc_rect:
     - 1488
     - 648
@@ -5200,10 +8744,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: TL_SCHEDULE_2_TRANSPORT
-    id_mark: false
     pc_rect:
     - 1488
     - 882
@@ -5214,10 +8755,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: TL_SCHEDULE_1_NAME
-    id_mark: false
     pc_rect:
     - 927
     - 556
@@ -5228,10 +8766,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: TL_SCHEDULE_2_NAME
-    id_mark: false
     pc_rect:
     - 927
     - 786
@@ -5242,10 +8777,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_TITLE
-    id_mark: false
     pc_rect:
     - 102
     - 36
@@ -5256,10 +8788,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_TOTAL_STAR
-    id_mark: false
     pc_rect:
     - 1665
     - 950
@@ -5270,10 +8799,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_START_CHALLENGE
-    id_mark: false
     pc_rect:
     - 1500
     - 960
@@ -5284,10 +8810,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_AFTER_BATTLE_SUCCESS_1
-    id_mark: false
     pc_rect:
     - 820
     - 200
@@ -5298,10 +8821,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_AFTER_BATTLE_SUCCESS_2
-    id_mark: false
     pc_rect:
     - 820
     - 300
@@ -5312,10 +8832,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_AFTER_BATTLE_FAIL
-    id_mark: false
     pc_rect:
     - 785
     - 230
@@ -5326,10 +8843,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_AFTER_BATTLE_BACK_BTN_1
-    id_mark: false
     pc_rect:
     - 630
     - 920
@@ -5340,10 +8854,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: FH_AFTER_BATTLE_BACK_BTN_2
-    id_mark: false
     pc_rect:
     - 790
     - 920
@@ -5354,10 +8865,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_TITLE
-    id_mark: false
     pc_rect:
     - 160
     - 63
@@ -5368,10 +8876,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_NEW_START
-    id_mark: false
     pc_rect:
     - 1316
     - 870
@@ -5382,10 +8887,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_NODE_1
-    id_mark: false
     pc_rect:
     - 1775
     - 717
@@ -5396,10 +8898,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_NODE_2
-    id_mark: false
     pc_rect:
     - 1775
     - 823
@@ -5410,10 +8909,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_OPT_1
-    id_mark: false
     pc_rect:
     - 806
     - 177
@@ -5424,10 +8920,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_OPT_2
-    id_mark: false
     pc_rect:
     - 806
     - 354
@@ -5438,10 +8931,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_OPT_3
-    id_mark: false
     pc_rect:
     - 806
     - 523
@@ -5452,10 +8942,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_CACOPHONY_CONFIRM
-    id_mark: false
     pc_rect:
     - 1515
     - 960
@@ -5466,10 +8953,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_START_CHALLENGE
-    id_mark: false
     pc_rect:
     - 1500
     - 960
@@ -5480,10 +8964,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_AFTER_BATTLE_SUCCESS_1
-    id_mark: false
     pc_rect:
     - 820
     - 200
@@ -5494,10 +8975,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_AFTER_BATTLE_SUCCESS_2
-    id_mark: false
     pc_rect:
     - 820
     - 245
@@ -5508,10 +8986,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_AFTER_BATTLE_FAIL
-    id_mark: false
     pc_rect:
     - 836
     - 312
@@ -5522,10 +8997,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: PF_AFTER_BATTLE_BACK_BTN
-    id_mark: false
     pc_rect:
     - 788
     - 979
@@ -5536,10 +9008,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 退出对话框确认
-    id_mark: false
     pc_rect:
     - 1006
     - 644
@@ -5550,10 +9019,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: NODE_FIRST_CLICK_EMPTY
-    id_mark: false
     pc_rect:
     - 856
     - 851
@@ -5564,10 +9030,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_TITLE
-    id_mark: false
     pc_rect:
     - 865
     - 81
@@ -5578,10 +9041,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_CONFIRM
-    id_mark: false
     pc_rect:
     - 800
     - 960
@@ -5592,10 +9052,7 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: AFTER_BATTLE_QUICK_PASS_EMPTY
-    id_mark: false
     pc_rect:
     - 868
     - 930
@@ -5606,3843 +9063,3 @@
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_invest_env
-  screen_name: 货币战争-投资环境
-  pc_alt: false
-  area_list:
-  - area_name: 标识-投资环境
-    id_mark: true
-    pc_rect:
-    - 890
-    - 78
-    - 1030
-    - 118
-    text: 投资环境
-    lcs_percent: 0.7
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-卡牌描述行
-    id_mark: false
-    pc_rect:
-    - 200
-    - 420
-    - 1720
-    - 480
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 1010
-    - 960
-    - 1154
-    - 1004
-    text: 确认
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-刷新
-    id_mark: false
-    pc_rect:
-    - 649
-    - 957
-    - 699
-    - 1007
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_invest_strategy
-  screen_name: 货币战争-投资策略
-  pc_alt: false
-  area_list:
-  - area_name: 标识-请选择投资策略
-    id_mark: true
-    pc_rect:
-    - 855
-    - 78
-    - 1065
-    - 118
-    text: 请选择投资策略
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 906
-    - 960
-    - 1050
-    - 1006
-    text: 确认
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-卡名行
-    id_mark: false
-    pc_rect:
-    - 200
-    - 455
-    - 1720
-    - 505
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-刷新
-    id_mark: false
-    pc_rect:
-    - 1367
-    - 832
-    - 1426
-    - 875
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_deploy_not_full
-  screen_name: 货币战争-未达上限警告
-  pc_alt: false
-  area_list:
-  - area_name: 标识-未达上限警告
-    id_mark: true
-    pc_rect:
-    - 725
-    - 490
-    - 1185
-    - 530
-    text: 可出战角色人数未达上限
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 勾选-本局不再提示
-    id_mark: false
-    pc_rect:
-    - 804
-    - 570
-    - 1020
-    - 622
-    text: 本局不再提示
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 1128
-    - 634
-    - 1219
-    - 693
-    text: 确认
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_difficulty_confirm
-  screen_name: 货币战争-难度确认
-  pc_alt: false
-  area_list:
-  - area_name: 标识-当前职级难度效果
-    id_mark: true
-    pc_rect:
-    - 740
-    - 303
-    - 930
-    - 340
-    text: 当前职级难度效果
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-返回最高职级
-    id_mark: false
-    pc_rect:
-    - 1330
-    - 945
-    - 1454
-    - 985
-    text: 返回最高职级
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-开始对局
-    id_mark: false
-    pc_rect:
-    - 1640
-    - 945
-    - 1742
-    - 985
-    text: 开始对局
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-当前难度职级
-    id_mark: false
-    pc_rect:
-    - 60
-    - 290
-    - 180
-    - 350
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_lobby
-  screen_name: 货币战争-大厅
-  pc_alt: false
-  area_list:
-  - area_name: 标识-创业指南
-    id_mark: true
-    pc_rect:
-    - 100
-    - 268
-    - 210
-    - 306
-    text: 创业指南
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-开始货币战争
-    id_mark: false
-    pc_rect:
-    - 1455
-    - 945
-    - 1710
-    - 998
-    text: 开始「货币战争」
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_briefing
-  screen_name: 货币战争-简报
-  pc_alt: false
-  area_list:
-  - area_name: 标识-本场对局首领
-    id_mark: true
-    pc_rect:
-    - 1438
-    - 738
-    - 1595
-    - 777
-    text: 本场对局首领
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-下一步
-    id_mark: false
-    pc_rect:
-    - 1470
-    - 963
-    - 1555
-    - 1005
-    text: 下一步
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-词缀行
-    id_mark: false
-    pc_rect:
-    - 260
-    - 950
-    - 970
-    - 1005
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-首领行
-    id_mark: false
-    pc_rect:
-    - 170
-    - 698
-    - 945
-    - 740
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-敌人难度
-    id_mark: false
-    pc_rect:
-    - 36
-    - 954
-    - 257
-    - 1007
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_mode_select
-  screen_name: 货币战争-模式选择
-  pc_alt: false
-  area_list:
-  - area_name: 按钮-进入标准博弈
-    id_mark: true
-    pc_rect:
-    - 1555
-    - 942
-    - 1750
-    - 980
-    text: 进入标准博弈
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_encounter
-  screen_name: 货币战争-遭遇节点
-  pc_alt: false
-  area_list:
-  - area_name: 标识-遭遇节点
-    id_mark: true
-    pc_rect:
-    - 885
-    - 62
-    - 1035
-    - 115
-    text: 遭遇节点
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 遭遇卡-其一
-    id_mark: false
-    pc_rect:
-    - 445
-    - 340
-    - 800
-    - 720
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 遭遇卡-其二
-    id_mark: false
-    pc_rect:
-    - 1080
-    - 340
-    - 1435
-    - 720
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-选择
-    id_mark: false
-    pc_rect:
-    - 1000
-    - 862
-    - 1115
-    - 908
-    text: 选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-返回备战界面
-    id_mark: false
-    pc_rect:
-    - 1620
-    - 50
-    - 1900
-    - 95
-    text: 返回备战界面
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle
-  screen_name: 货币战争-战斗
-  pc_alt: false
-  area_list: []
-- screen_id: currency_war_supply
-  screen_name: 货币战争-补给
-  pc_alt: false
-  area_list:
-  - area_name: 标识-补给阶段
-    id_mark: true
-    pc_rect:
-    - 893
-    - 120
-    - 1027
-    - 230
-    text: 补给阶段
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 1665
-    - 952
-    - 1752
-    - 1008
-    text: 确认
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-返回备战界面
-    id_mark: false
-    pc_rect:
-    - 1717
-    - 44
-    - 1863
-    - 71
-    text: 返回备战界面
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-已选择
-    id_mark: false
-    pc_rect:
-    - 1642
-    - 912
-    - 1741
-    - 937
-    text: 已选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-剩余次数
-    id_mark: false
-    pc_rect:
-    - 1347
-    - 969
-    - 1484
-    - 997
-    text: 剩余次数
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_partner
-  screen_name: 货币战争-选择伙伴
-  pc_alt: false
-  area_list:
-  - area_name: 标识-选择伙伴
-    id_mark: true
-    pc_rect:
-    - 987
-    - 52
-    - 1125
-    - 99
-    text: 选择伙伴
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认选择
-    id_mark: false
-    pc_rect:
-    - 1423
-    - 561
-    - 1587
-    - 616
-    text: 确认选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 备战标识-购买经验
-    id_mark: true
-    pc_rect:
-    - 229
-    - 841
-    - 363
-    - 878
-    text: 购买经验
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_megastar
-  screen_name: 货币战争-盛会之星
-  pc_alt: false
-  area_list:
-  - area_name: 标识-盛会之星
-    id_mark: true
-    pc_rect:
-    - 982
-    - 47
-    - 1126
-    - 89
-    text: 盛会之星
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-请选择强化角色
-    id_mark: false
-    pc_rect:
-    - 1400
-    - 478
-    - 1582
-    - 565
-    text: 请选择强化角色
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 备战标识-购买经验
-    id_mark: true
-    pc_rect:
-    - 229
-    - 841
-    - 363
-    - 878
-    text: 购买经验
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_settlement
-  screen_name: 货币战争-结算
-  pc_alt: false
-  area_list:
-  - area_name: 按钮-继续挑战
-    id_mark: true
-    pc_rect:
-    - 898
-    - 866
-    - 1022
-    - 921
-    text: 继续挑战
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-数据统计
-    id_mark: false
-    pc_rect:
-    - 1107
-    - 541
-    - 1232
-    - 597
-    text: 数据统计
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-挑战成功
-    id_mark: false
-    pc_rect:
-    - 820
-    - 184
-    - 1098
-    - 274
-    text: 挑战成功
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-小队生命值
-    id_mark: false
-    pc_rect:
-    - 638
-    - 471
-    - 881
-    - 530
-    text: 小队生命值
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-获得金币总数
-    id_mark: false
-    pc_rect:
-    - 1020
-    - 545
-    - 1090
-    - 585
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-数据统计-伤害
-    id_mark: false
-    pc_rect:
-    - 1130
-    - 580
-    - 1310
-    - 860
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_wish_trial
-  screen_name: 货币战争-祈愿试炼
-  pc_alt: false
-  area_list:
-  - area_name: 标识-祈愿试炼
-    id_mark: true
-    pc_rect:
-    - 920
-    - 45
-    - 1130
-    - 105
-    text: 祈愿试炼
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认选择
-    id_mark: false
-    pc_rect:
-    - 1380
-    - 605
-    - 1600
-    - 670
-    text: 确认选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 备战标识-购买经验
-    id_mark: true
-    pc_rect:
-    - 229
-    - 841
-    - 363
-    - 878
-    text: 购买经验
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_plane_transition
-  screen_name: 货币战争-位面过渡
-  pc_alt: false
-  area_list:
-  - area_name: 提示-点击空白继续
-    id_mark: false
-    pc_rect:
-    - 855
-    - 930
-    - 1065
-    - 990
-    text: 点击空白处继续
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-位面节点2
-    id_mark: true
-    pc_rect:
-    - 905
-    - 348
-    - 995
-    - 402
-    text: 位面
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-位面节点3
-    id_mark: true
-    pc_rect:
-    - 1420
-    - 348
-    - 1505
-    - 402
-    text: 位面
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_challenge_failed
-  screen_name: 货币战争-挑战失败
-  pc_alt: false
-  area_list:
-  - area_name: 标识-挑战失败
-    id_mark: true
-    pc_rect:
-    - 820
-    - 190
-    - 1098
-    - 280
-    text: 挑战失败
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-下一步
-    id_mark: true
-    pc_rect:
-    - 913
-    - 868
-    - 1008
-    - 924
-    text: 下一步
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-小队生命值
-    id_mark: false
-    pc_rect:
-    - 860
-    - 272
-    - 1059
-    - 320
-    text: 小队生命值
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_shop_refresh_odds
-  screen_name: 货币战争-商店刷新概率表
-  pc_alt: false
-  area_list:
-  - area_name: 标识-刷新概率表
-    id_mark: true
-    pc_rect:
-    - 380
-    - 235
-    - 620
-    - 290
-    text: 商店刷新概率
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle_prep_shop_open
-  screen_name: 货币战争-备战-开商店
-  pc_alt: false
-  area_list:
-  - area_name: 备战标识-购买经验
-    id_mark: true
-    pc_rect:
-    - 229
-    - 841
-    - 363
-    - 878
-    text: 购买经验
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-收起
-    id_mark: true
-    pc_rect:
-    - 1578
-    - 948
-    - 1664
-    - 1002
-    text: 收起
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌-1
-    id_mark: false
-    pc_rect:
-    - 392
-    - 70
-    - 610
-    - 260
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌-2
-    id_mark: false
-    pc_rect:
-    - 645
-    - 70
-    - 863
-    - 260
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌-3
-    id_mark: false
-    pc_rect:
-    - 898
-    - 70
-    - 1116
-    - 260
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌-4
-    id_mark: false
-    pc_rect:
-    - 1151
-    - 70
-    - 1369
-    - 260
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌-5
-    id_mark: false
-    pc_rect:
-    - 1405
-    - 70
-    - 1623
-    - 260
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 商店牌区
-    id_mark: false
-    pc_rect:
-    - 300
-    - 228
-    - 1560
-    - 326
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-刷新
-    id_mark: false
-    pc_rect:
-    - 1560
-    - 451
-    - 1646
-    - 508
-    text: 刷新
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-刷新概率表
-    id_mark: false
-    pc_rect:
-    - 945
-    - 360
-    - 1415
-    - 410
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle_prep_equip_detail
-  screen_name: 货币战争-备战-角色详情
-  pc_alt: false
-  area_list:
-  - area_name: 按钮-装备推荐
-    id_mark: true
-    pc_rect:
-    - 1440
-    - 788
-    - 1565
-    - 832
-    text: 装备推荐
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 备战标识-购买经验
-    id_mark: true
-    pc_rect:
-    - 229
-    - 841
-    - 363
-    - 878
-    text: 购买经验
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-详情-角色名
-    id_mark: false
-    pc_rect:
-    - 1470
-    - 380
-    - 1680
-    - 440
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-装备槽
-    id_mark: false
-    pc_rect:
-    - 1400
-    - 712
-    - 1900
-    - 798
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备槽-1
-    id_mark: false
-    pc_rect:
-    - 1608
-    - 755
-    - 1658
-    - 805
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备槽-2
-    id_mark: false
-    pc_rect:
-    - 1677
-    - 755
-    - 1727
-    - 805
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备槽-3
-    id_mark: false
-    pc_rect:
-    - 1749
-    - 755
-    - 1799
-    - 805
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle_prep_supply_box
-  screen_name: 货币战争-备战-武装箱选择
-  pc_alt: false
-  area_list:
-  - area_name: 标识-武装箱
-    id_mark: true
-    pc_rect:
-    - 940
-    - 25
-    - 1200
-    - 80
-    text: 武装箱
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-请选择
-    id_mark: true
-    pc_rect:
-    - 960
-    - 70
-    - 1180
-    - 115
-    text: 请选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备卡-1
-    id_mark: false
-    pc_rect:
-    - 545
-    - 225
-    - 700
-    - 345
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备卡-2
-    id_mark: false
-    pc_rect:
-    - 825
-    - 225
-    - 980
-    - 345
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备卡-3
-    id_mark: false
-    pc_rect:
-    - 1110
-    - 225
-    - 1265
-    - 345
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 装备卡-4
-    id_mark: false
-    pc_rect:
-    - 1390
-    - 225
-    - 1545
-    - 345
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-卡名行
-    id_mark: false
-    pc_rect:
-    - 545
-    - 255
-    - 1545
-    - 300
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_armory_box_dialog
-  screen_name: 货币战争-武装箱弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-简易武装箱
-    id_mark: true
-    pc_rect:
-    - 830
-    - 150
-    - 1000
-    - 200
-    text: 简易武装箱
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-开箱点击
-    id_mark: false
-    pc_rect:
-    - 770
-    - 150
-    - 855
-    - 200
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1835
-    - 38
-    - 1910
-    - 82
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_list
-  screen_name: 货币战争-攻略列表
-  pc_alt: false
-  area_list:
-  - area_name: 标识-主tab-热门攻略
-    id_mark: true
-    pc_rect:
-    - 660
-    - 100
-    - 825
-    - 148
-    text: 热门攻略
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-主tab-我的阵容
-    id_mark: true
-    pc_rect:
-    - 1015
-    - 100
-    - 1195
-    - 148
-    text: 我的阵容
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-子tab-推荐攻略
-    id_mark: false
-    pc_rect:
-    - 40
-    - 158
-    - 200
-    - 192
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-子tab-热门攻略
-    id_mark: false
-    pc_rect:
-    - 290
-    - 158
-    - 445
-    - 192
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-子tab-收藏
-    id_mark: false
-    pc_rect:
-    - 540
-    - 158
-    - 680
-    - 192
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-图例
-    id_mark: false
-    pc_rect:
-    - 1655
-    - 34
-    - 1790
-    - 66
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-输入攻略码
-    id_mark: false
-    pc_rect:
-    - 1330
-    - 952
-    - 1560
-    - 996
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-前往攻略广场
-    id_mark: false
-    pc_rect:
-    - 1580
-    - 952
-    - 1830
-    - 996
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-列表滚动区
-    id_mark: false
-    pc_rect:
-    - 500
-    - 240
-    - 1450
-    - 900
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-已保存计数
-    id_mark: false
-    pc_rect:
-    - 1690
-    - 128
-    - 1900
-    - 166
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-新建阵容-1
-    id_mark: false
-    pc_rect:
-    - 835
-    - 318
-    - 990
-    - 356
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-新建阵容-2
-    id_mark: false
-    pc_rect:
-    - 835
-    - 546
-    - 990
-    - 584
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-新建阵容-3
-    id_mark: false
-    pc_rect:
-    - 835
-    - 774
-    - 990
-    - 812
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-标题行
-    id_mark: false
-    pc_rect:
-    - 56
-    - 232
-    - 1180
-    - 280
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-版本
-    id_mark: false
-    pc_rect:
-    - 36
-    - 274
-    - 130
-    - 308
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-热度行
-    id_mark: false
-    pc_rect:
-    - 1545
-    - 232
-    - 1900
-    - 270
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-作者
-    id_mark: false
-    pc_rect:
-    - 1540
-    - 300
-    - 1900
-    - 338
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-保存阵容
-    id_mark: false
-    pc_rect:
-    - 1525
-    - 340
-    - 1695
-    - 388
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-应用攻略
-    id_mark: false
-    pc_rect:
-    - 1695
-    - 340
-    - 1870
-    - 388
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡1-卡身
-    id_mark: false
-    pc_rect:
-    - 60
-    - 232
-    - 1520
-    - 453
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-标题行
-    id_mark: false
-    pc_rect:
-    - 56
-    - 461
-    - 1180
-    - 509
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-版本
-    id_mark: false
-    pc_rect:
-    - 36
-    - 503
-    - 130
-    - 537
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-热度行
-    id_mark: false
-    pc_rect:
-    - 1545
-    - 461
-    - 1900
-    - 499
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-作者
-    id_mark: false
-    pc_rect:
-    - 1540
-    - 529
-    - 1900
-    - 567
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-保存阵容
-    id_mark: false
-    pc_rect:
-    - 1525
-    - 569
-    - 1695
-    - 617
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-应用攻略
-    id_mark: false
-    pc_rect:
-    - 1695
-    - 569
-    - 1870
-    - 617
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡2-卡身
-    id_mark: false
-    pc_rect:
-    - 60
-    - 461
-    - 1520
-    - 682
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-标题行
-    id_mark: false
-    pc_rect:
-    - 56
-    - 690
-    - 1180
-    - 738
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-版本
-    id_mark: false
-    pc_rect:
-    - 36
-    - 732
-    - 130
-    - 766
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-热度行
-    id_mark: false
-    pc_rect:
-    - 1545
-    - 690
-    - 1900
-    - 728
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-作者
-    id_mark: false
-    pc_rect:
-    - 1540
-    - 758
-    - 1900
-    - 796
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-保存阵容
-    id_mark: false
-    pc_rect:
-    - 1525
-    - 798
-    - 1695
-    - 846
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-应用攻略
-    id_mark: false
-    pc_rect:
-    - 1695
-    - 798
-    - 1870
-    - 846
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡3-卡身
-    id_mark: false
-    pc_rect:
-    - 60
-    - 690
-    - 1520
-    - 911
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭面板
-    id_mark: false
-    pc_rect:
-    - 1800
-    - 30
-    - 1885
-    - 62
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_detail
-  screen_name: 货币战争-攻略详情
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-攻略详情
-    id_mark: true
-    pc_rect:
-    - 30
-    - 42
-    - 240
-    - 92
-    text: 攻略详情
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-阵容详情
-    id_mark: true
-    pc_rect:
-    - 850
-    - 210
-    - 1020
-    - 265
-    text: 阵容详情
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-运营思路
-    id_mark: true
-    pc_rect:
-    - 830
-    - 750
-    - 1000
-    - 805
-    text: 运营思路
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-复制攻略码
-    id_mark: false
-    pc_rect:
-    - 40
-    - 952
-    - 240
-    - 996
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-应用攻略
-    id_mark: false
-    pc_rect:
-    - 1660
-    - 952
-    - 1870
-    - 996
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-标题行
-    id_mark: false
-    pc_rect:
-    - 56
-    - 110
-    - 1540
-    - 150
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-查看攻略详情
-    id_mark: false
-    pc_rect:
-    - 1600
-    - 122
-    - 1870
-    - 160
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-阵容详情-前台
-    id_mark: false
-    pc_rect:
-    - 60
-    - 280
-    - 880
-    - 520
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-阵容详情-后台
-    id_mark: false
-    pc_rect:
-    - 60
-    - 525
-    - 880
-    - 760
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-运营思路
-    id_mark: false
-    pc_rect:
-    - 56
-    - 800
-    - 1880
-    - 940
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-热度
-    id_mark: false
-    pc_rect:
-    - 1440
-    - 950
-    - 1600
-    - 996
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-应用状态
-    id_mark: false
-    pc_rect:
-    - 700
-    - 265
-    - 1100
-    - 305
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭面板
-    id_mark: false
-    pc_rect:
-    - 1800
-    - 30
-    - 1885
-    - 62
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_editor
-  screen_name: 货币战争-阵容编辑
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-阵容编辑
-    id_mark: true
-    pc_rect:
-    - 60
-    - 50
-    - 400
-    - 95
-    text: 阵容编辑
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-阶段-前期
-    id_mark: true
-    pc_rect:
-    - 770
-    - 158
-    - 852
-    - 202
-    text: 前期
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-阶段-中期
-    id_mark: true
-    pc_rect:
-    - 1185
-    - 158
-    - 1270
-    - 202
-    text: 中期
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-阶段-最终
-    id_mark: true
-    pc_rect:
-    - 1600
-    - 158
-    - 1682
-    - 202
-    text: 最终
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-tab-角色
-    id_mark: false
-    pc_rect:
-    - 110
-    - 92
-    - 220
-    - 128
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-tab-装备
-    id_mark: false
-    pc_rect:
-    - 380
-    - 92
-    - 500
-    - 128
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-阵容名
-    id_mark: false
-    pc_rect:
-    - 560
-    - 100
-    - 900
-    - 136
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_equip_track
-  screen_name: 货币战争-装备追踪弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-装备追踪
-    id_mark: true
-    pc_rect:
-    - 460
-    - 215
-    - 690
-    - 290
-    text: 装备追踪
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-优选装备
-    id_mark: true
-    pc_rect:
-    - 615
-    - 340
-    - 835
-    - 420
-    text: 优选装备
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1310
-    - 248
-    - 1380
-    - 292
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-追踪-1
-    id_mark: false
-    pc_rect:
-    - 1170
-    - 395
-    - 1330
-    - 435
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-追踪-2
-    id_mark: false
-    pc_rect:
-    - 1170
-    - 515
-    - 1330
-    - 555
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-追踪-3
-    id_mark: false
-    pc_rect:
-    - 1170
-    - 634
-    - 1330
-    - 674
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-追踪-4
-    id_mark: false
-    pc_rect:
-    - 1170
-    - 755
-    - 1330
-    - 795
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_legend
-  screen_name: 货币战争-攻略图例
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-图例
-    id_mark: true
-    pc_rect:
-    - 860
-    - 285
-    - 1030
-    - 355
-    text: 图例
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-核心角色
-    id_mark: true
-    pc_rect:
-    - 735
-    - 550
-    - 885
-    - 605
-    text: 核心角色
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-空白关闭
-    id_mark: false
-    pc_rect:
-    - 700
-    - 960
-    - 1060
-    - 1010
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_code_input
-  screen_name: 货币战争-攻略码输入弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-输入攻略码
-    id_mark: true
-    pc_rect:
-    - 760
-    - 295
-    - 1030
-    - 362
-    text: 输入攻略码
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-请输入攻略码
-    id_mark: true
-    pc_rect:
-    - 365
-    - 400
-    - 635
-    - 460
-    text: 请输入攻略码
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-取消
-    id_mark: false
-    pc_rect:
-    - 690
-    - 705
-    - 810
-    - 750
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 1090
-    - 705
-    - 1240
-    - 750
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_guide_save_modal
-  screen_name: 货币战争-保存阵容弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-标题-保存阵容
-    id_mark: false
-    pc_rect:
-    - 266
-    - 156
-    - 566
-    - 226
-    text: 保存阵容
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-保存并收藏
-    id_mark: true
-    pc_rect:
-    - 1380
-    - 825
-    - 1575
-    - 885
-    text: 保存并收藏
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-存为新阵容-1
-    id_mark: false
-    pc_rect:
-    - 820
-    - 378
-    - 970
-    - 420
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-存为新阵容-2
-    id_mark: false
-    pc_rect:
-    - 820
-    - 555
-    - 970
-    - 597
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-存为新阵容-3
-    id_mark: false
-    pc_rect:
-    - 820
-    - 737
-    - 970
-    - 779
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: nameless_honor
-  screen_name: 无名勋礼
-  pc_alt: false
-  area_list:
-  - area_name: 标识-无名勋礼
-    id_mark: true
-    pc_rect:
-    - 60
-    - 10
-    - 340
-    - 105
-    text: 无名勋礼
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-规则说明
-    id_mark: true
-    pc_rect:
-    - 1650
-    - 20
-    - 1830
-    - 100
-    text: 规则说明
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: tab-奖励
-    id_mark: false
-    pc_rect:
-    - 833
-    - 24
-    - 894
-    - 104
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: tab-任务
-    id_mark: false
-    pc_rect:
-    - 919
-    - 24
-    - 980
-    - 104
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: tab-星海珍藏
-    id_mark: false
-    pc_rect:
-    - 1025
-    - 24
-    - 1086
-    - 104
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1810
-    - 15
-    - 1875
-    - 85
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-购买等级
-    id_mark: false
-    pc_rect:
-    - 1630
-    - 205
-    - 1830
-    - 290
-    text: 购买等级
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-奖励-一键领取
-    id_mark: false
-    pc_rect:
-    - 1270
-    - 890
-    - 1530
-    - 950
-    text: 一键领取
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-任务-一键领取
-    id_mark: false
-    pc_rect:
-    - 1520
-    - 890
-    - 1810
-    - 950
-    text: 一键领取
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-奖励-取消
-    id_mark: false
-    pc_rect:
-    - 620
-    - 970
-    - 790
-    - 1010
-    text: 取消
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-点击空白处关闭
-    id_mark: false
-    pc_rect:
-    - 864
-    - 929
-    - 1063
-    - 962
-    text: 点击空白处关闭
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-开启无名勋礼
-    id_mark: false
-    pc_rect:
-    - 1437
-    - 763
-    - 1600
-    - 800
-    text: 开启无名勋礼
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_star_tome_popup
-  screen_name: 货币战争-星徽秘典弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-星徽秘典
-    id_mark: true
-    pc_rect:
-    - 1020
-    - 32
-    - 1180
-    - 82
-    text: 星徽秘典
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1835
-    - 35
-    - 1900
-    - 95
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 提示-请选择1个
-    id_mark: false
-    pc_rect:
-    - 1030
-    - 76
-    - 1170
-    - 118
-    text: 请选择1个
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 星徽卡-1
-    id_mark: false
-    pc_rect:
-    - 560
-    - 200
-    - 770
-    - 500
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 星徽卡-2
-    id_mark: false
-    pc_rect:
-    - 850
-    - 200
-    - 1060
-    - 500
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 星徽卡-3
-    id_mark: false
-    pc_rect:
-    - 1140
-    - 200
-    - 1350
-    - 500
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 星徽卡-4
-    id_mark: false
-    pc_rect:
-    - 1430
-    - 200
-    - 1640
-    - 500
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_settlement_fail
-  screen_name: 货币战争-结算-失败
-  pc_alt: false
-  area_list:
-  - area_name: 标识-挑战进度
-    id_mark: true
-    pc_rect:
-    - 860
-    - 362
-    - 1060
-    - 410
-    text: 挑战进度
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-挑战结束
-    id_mark: true
-    pc_rect:
-    - 820
-    - 186
-    - 1098
-    - 272
-    text: 挑战结束
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-节点名
-    id_mark: false
-    pc_rect:
-    - 860
-    - 258
-    - 1055
-    - 315
-    text: 战斗
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 提示-点击空白加速
-    id_mark: false
-    pc_rect:
-    - 870
-    - 874
-    - 1050
-    - 922
-    text: 点击空白加速
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-前往结算
-    id_mark: false
-    pc_rect:
-    - 880
-    - 868
-    - 1040
-    - 920
-    text: 前往结算
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_toast_no_front
-  screen_name: 货币战争-提示-前台无角色
-  pc_alt: false
-  area_list:
-  - area_name: 标识-无角色提示
-    id_mark: true
-    pc_rect:
-    - 790
-    - 495
-    - 1130
-    - 555
-    text: 前台区域无角色
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认
-    id_mark: false
-    pc_rect:
-    - 920
-    - 635
-    - 1035
-    - 705
-    text: 确认
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_star_badge_detail
-  screen_name: 货币战争-星徽详情
-  pc_alt: false
-  area_list:
-  - area_name: 标识-流派星徽
-    id_mark: true
-    pc_rect:
-    - 830
-    - 190
-    - 960
-    - 230
-    text: 流派星徽
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-套组标题
-    id_mark: true
-    pc_rect:
-    - 70
-    - 65
-    - 260
-    - 105
-    text: 星徽套组
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1815
-    - 35
-    - 1900
-    - 95
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_score_rewards
-  screen_name: 货币战争-积分奖励
-  pc_alt: false
-  area_list:
-  - area_name: 标识-积分奖励
-    id_mark: true
-    pc_rect:
-    - 60
-    - 315
-    - 210
-    - 365
-    text: 积分奖励
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-本期剩余时间
-    id_mark: true
-    pc_rect:
-    - 70
-    - 355
-    - 360
-    - 395
-    text: 本期剩余时间
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-一键领取
-    id_mark: false
-    pc_rect:
-    - 1590
-    - 695
-    - 1740
-    - 760
-    text: 一键领取
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1815
-    - 35
-    - 1900
-    - 95
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_interrupt_dialog
-  screen_name: 货币战争-中断挑战弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 标识-中断挑战
-    id_mark: true
-    pc_rect:
-    - 700
-    - 385
-    - 1320
-    - 440
-    text: 是否中断挑战并保存当前进度
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-放弃并结算
-    id_mark: true
-    pc_rect:
-    - 680
-    - 710
-    - 860
-    - 775
-    text: 放弃并结算
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-暂时离开
-    id_mark: false
-    pc_rect:
-    - 1105
-    - 710
-    - 1270
-    - 775
-    text: 暂时离开
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1435
-    - 295
-    - 1505
-    - 355
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-小队生命值
-    id_mark: false
-    pc_rect:
-    - 1405
-    - 505
-    - 1520
-    - 568
-    text: '3'
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle_prep_skip
-  screen_name: 货币战争-备战-免战
-  pc_alt: false
-  area_list:
-  - area_name: 标识-跳过
-    id_mark: true
-    pc_rect:
-    - 1700
-    - 710
-    - 1900
-    - 775
-    text: 跳过
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-前台区域
-    id_mark: true
-    pc_rect:
-    - 850
-    - 275
-    - 1070
-    - 340
-    text: 前台区域
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: cw_hacker_planner
-  screen_name: 货币战争-骇入策划
-  pc_alt: false
-  area_list:
-  - area_name: 标识-请选择一个骇入效果
-    id_mark: true
-    pc_rect:
-    - 880
-    - 105
-    - 1210
-    - 175
-    text: 请选择一个骇入效果
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-我来当策划
-    id_mark: true
-    pc_rect:
-    - 900
-    - 40
-    - 1200
-    - 110
-    text: 我来当策划
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 骇入选项-左卡
-    id_mark: false
-    pc_rect:
-    - 500
-    - 280
-    - 980
-    - 560
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 骇入选项-右卡
-    id_mark: false
-    pc_rect:
-    - 1020
-    - 280
-    - 1500
-    - 560
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-骇入确认
-    id_mark: false
-    pc_rect:
-    - 1420
-    - 575
-    - 1560
-    - 625
-    text: 确认选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: cw_fortune_picker
-  screen_name: 货币战争-命运卜者强化
-  pc_alt: false
-  area_list:
-  - area_name: 标识-请选择强化效果
-    id_mark: true
-    pc_rect:
-    - 890
-    - 105
-    - 1210
-    - 155
-    text: 请选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-命运卜者
-    id_mark: true
-    pc_rect:
-    - 930
-    - 40
-    - 1170
-    - 105
-    text: 命运卜者
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-确认选择
-    id_mark: false
-    pc_rect:
-    - 1420
-    - 575
-    - 1560
-    - 625
-    text: 确认选择
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: cw_equip_pick
-  screen_name: 货币战争-选择装备
-  pc_alt: false
-  area_list:
-  - area_name: 标识-选择装备
-    id_mark: true
-    pc_rect:
-    - 1020
-    - 12
-    - 1170
-    - 60
-    text: 选择装备
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-请选择1个装备
-    id_mark: true
-    pc_rect:
-    - 1020
-    - 55
-    - 1180
-    - 95
-    text: 请选择1个
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡-装备1
-    id_mark: false
-    pc_rect:
-    - 640
-    - 200
-    - 920
-    - 350
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡-装备2
-    id_mark: false
-    pc_rect:
-    - 930
-    - 200
-    - 1210
-    - 350
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 卡-装备3
-    id_mark: false
-    pc_rect:
-    - 1250
-    - 200
-    - 1520
-    - 350
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_battle_pause
-  screen_name: 货币战争-战斗暂停
-  app_id: currency_war
-  pc_alt: false
-  area_list:
-  - area_name: 标识-战斗暂停
-    id_mark: false
-    pc_rect:
-    - 92
-    - 26
-    - 196
-    - 74
-    text: 战斗暂停
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-关卡信息
-    id_mark: false
-    pc_rect:
-    - 96
-    - 50
-    - 214
-    - 104
-    text: 关卡信息
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-撤退
-    id_mark: false
-    pc_rect:
-    - 1180
-    - 955
-    - 1265
-    - 1008
-    text: 撤退
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-继续战斗
-    id_mark: false
-    pc_rect:
-    - 1568
-    - 955
-    - 1690
-    - 1008
-    text: 继续战斗
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-重新挑战
-    id_mark: false
-    pc_rect:
-    - 228
-    - 955
-    - 352
-    - 1008
-    text: 重新挑战
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_plane_detail
-  screen_name: 货币战争-位面详情
-  pc_alt: false
-  area_list:
-  - area_name: 标识-位面详情标题
-    id_mark: true
-    pc_rect:
-    - 80
-    - 30
-    - 220
-    - 100
-    text: 位面详情
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-词缀横条
-    id_mark: false
-    pc_rect:
-    - 160
-    - 965
-    - 1430
-    - 1015
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-敌人难度值
-    id_mark: false
-    pc_rect:
-    - 508
-    - 974
-    - 713
-    - 1012
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-节点详情条
-    id_mark: false
-    pc_rect:
-    - 140
-    - 700
-    - 1100
-    - 790
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-节点编号
-    id_mark: false
-    pc_rect:
-    - 145
-    - 705
-    - 230
-    - 745
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-节点类型名
-    id_mark: false
-    pc_rect:
-    - 455
-    - 700
-    - 590
-    - 745
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-节点描述
-    id_mark: false
-    pc_rect:
-    - 460
-    - 750
-    - 1100
-    - 785
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-位面卡组
-    id_mark: false
-    pc_rect:
-    - 500
-    - 170
-    - 1450
-    - 370
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭位面详情
-    id_mark: false
-    pc_rect:
-    - 1815
-    - 45
-    - 1885
-    - 105
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-节点条
-    id_mark: false
-    pc_rect:
-    - 385
-    - 514
-    - 1596
-    - 661
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-boss大图标
-    id_mark: false
-    pc_rect:
-    - 220
-    - 767
-    - 325
-    - 874
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-位面卡1
-    id_mark: false
-    pc_rect:
-    - 510
-    - 250
-    - 620
-    - 360
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-位面卡2
-    id_mark: false
-    pc_rect:
-    - 920
-    - 250
-    - 1030
-    - 360
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-位面卡3
-    id_mark: false
-    pc_rect:
-    - 1350
-    - 250
-    - 1460
-    - 360
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_enemy_info
-  screen_name: 货币战争-敌人信息浮层
-  pc_alt: false
-  area_list:
-  - area_name: 标识-敌方信息
-    id_mark: true
-    pc_rect:
-    - 90
-    - 40
-    - 215
-    - 90
-    text: 敌方信息
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-敌方波次列表
-    id_mark: false
-    pc_rect:
-    - 25
-    - 120
-    - 420
-    - 700
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-敌人详情卡
-    id_mark: false
-    pc_rect:
-    - 1240
-    - 120
-    - 1560
-    - 420
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-敌人名
-    id_mark: false
-    pc_rect:
-    - 1300
-    - 190
-    - 1490
-    - 245
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-词缀横条
-    id_mark: false
-    pc_rect:
-    - 75
-    - 965
-    - 1010
-    - 1015
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 文本-敌人难度值
-    id_mark: false
-    pc_rect:
-    - 80
-    - 970
-    - 295
-    - 1012
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_data_bank
-  screen_name: 货币战争-数据银行
-  app_id: currency_war
-  pc_alt: false
-  area_list:
-  - area_name: 标题-数据银行
-    id_mark: true
-    pc_rect:
-    - 88
-    - 26
-    - 196
-    - 76
-    text: 数据银行
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-角色图鉴
-    id_mark: true
-    pc_rect:
-    - 930
-    - 405
-    - 1060
-    - 458
-    text: 角色图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-羁绊图鉴
-    id_mark: false
-    pc_rect:
-    - 478
-    - 432
-    - 610
-    - 488
-    text: 羁绊图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-装备图鉴
-    id_mark: false
-    pc_rect:
-    - 1388
-    - 435
-    - 1520
-    - 490
-    text: 装备图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-投资环境图鉴
-    id_mark: false
-    pc_rect:
-    - 905
-    - 816
-    - 1085
-    - 868
-    text: 投资环境图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-投资策略图鉴
-    id_mark: false
-    pc_rect:
-    - 450
-    - 873
-    - 630
-    - 925
-    text: 投资策略图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 入口-竞争对手图鉴
-    id_mark: false
-    pc_rect:
-    - 1366
-    - 866
-    - 1545
-    - 918
-    text: 竞争对手图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-图鉴进度带
-    id_mark: false
-    pc_rect:
-    - 440
-    - 450
-    - 1540
-    - 970
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_rival_gallery_list
-  screen_name: 货币战争-竞争对手图鉴列表
-  app_id: currency_war
-  pc_alt: false
-  area_list:
-  - area_name: 标题-竞争对手图鉴
-    id_mark: true
-    pc_rect:
-    - 90
-    - 26
-    - 240
-    - 75
-    text: 竞争对手图鉴
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-凛冬经贸联合体
-    id_mark: true
-    pc_rect:
-    - 110
-    - 675
-    - 330
-    - 735
-    text: 凛冬经贸联合体
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-铁盾安保集团
-    id_mark: false
-    pc_rect:
-    - 390
-    - 675
-    - 580
-    - 735
-    text: 铁盾安保集团
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-深穹智械科技
-    id_mark: false
-    pc_rect:
-    - 655
-    - 675
-    - 845
-    - 735
-    text: 深穹智械科技
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-火线动力机甲
-    id_mark: false
-    pc_rect:
-    - 920
-    - 675
-    - 1110
-    - 735
-    text: 火线动力机甲
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-冷锋兵器工业
-    id_mark: false
-    pc_rect:
-    - 1185
-    - 675
-    - 1380
-    - 735
-    text: 冷锋兵器工业
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-巨鹿生物制药
-    id_mark: false
-    pc_rect:
-    - 1450
-    - 675
-    - 1640
-    - 735
-    text: 巨鹿生物制药
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-造梦兄弟
-    id_mark: false
-    pc_rect:
-    - 1715
-    - 675
-    - 1865
-    - 735
-    text: 造梦兄弟
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-boss卡片带
-    id_mark: false
-    pc_rect:
-    - 90
-    - 200
-    - 1890
-    - 740
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_rival_gallery_detail
-  screen_name: 货币战争-竞争对手图鉴详情
-  app_id: currency_war
-  pc_alt: false
-  area_list:
-  - area_name: 标题-竞争对手图鉴
-    id_mark: true
-    pc_rect:
-    - 90
-    - 26
-    - 240
-    - 75
-    text: 竞争对手图鉴
-    lcs_percent: 0.8
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-技能
-    id_mark: true
-    pc_rect:
-    - 1675
-    - 110
-    - 1770
-    - 170
-    text: 技能
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 页签-详情
-    id_mark: false
-    pc_rect:
-    - 1350
-    - 110
-    - 1445
-    - 170
-    text: 详情
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 阶段一
-    id_mark: false
-    pc_rect:
-    - 1285
-    - 190
-    - 1390
-    - 240
-    text: 阶段一
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 阶段二
-    id_mark: false
-    pc_rect:
-    - 1495
-    - 190
-    - 1600
-    - 240
-    text: 阶段二
-    lcs_percent: 0.9
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-boss名
-    id_mark: false
-    pc_rect:
-    - 110
-    - 118
-    - 305
-    - 175
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-boss立绘与等级
-    id_mark: false
-    pc_rect:
-    - 1290
-    - 168
-    - 1760
-    - 240
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-精英敌人
-    id_mark: false
-    pc_rect:
-    - 115
-    - 380
-    - 960
-    - 512
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-普通敌人
-    id_mark: false
-    pc_rect:
-    - 115
-    - 512
-    - 960
-    - 648
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 区域-顶部头像导航条
-    id_mark: false
-    pc_rect:
-    - 380
-    - 40
-    - 1560
-    - 120
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
