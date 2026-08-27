@@ -14,6 +14,7 @@ from one_dragon.base.screen import screen_utils
 from one_dragon.utils import cal_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.sim_universe import sim_uni_collect_hooks  # 临时采集钩子,采证后整段删除(含本行 import)
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations.sim_uni_enter_fight import SimUniEnterFight
 from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
@@ -154,6 +155,8 @@ class MoveToNextLevel(SrOperation):
         else:
             type_list = sim_uni_screen_state.match_next_level_entry(self.ctx, screen)
             if len(type_list) == 0:  # 当前没有入口 随便旋转看看
+                # 采集钩子(临时,采证后整段删除):run48 未找到下一层入口无现场帧,存图取证,bot 不停
+                sim_uni_collect_hooks.collect_next_floor_miss(screen, self.move_times, self.node_retry_times)
                 if self.random_turn:
                     # 因为前面已经转向了入口 所以就算被遮挡 只要稍微转一点应该就能看到了
                     angle = (25 + 10 * self.node_retry_times) * (1 if self.node_retry_times % 2 == 0 else -1)  # 来回转动视角

@@ -12,6 +12,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.sim_universe import sim_uni_collect_hooks  # 临时采集钩子,采证后整段删除(含本行 import)
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations.bless import bless_utils
 from sr_od.application.sim_universe.operations.bless.bless_utils import SimUniBlessPos
@@ -86,6 +87,8 @@ class SimUniChooseBless(SrOperation):
         bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
 
         if len(bless_pos_list) == 0:
+            # 采集钩子(临时,采证后整段删除):run48 三轮空识别无现场帧,存图取证,bot 不停
+            sim_uni_collect_hooks.collect_bless_empty(self.ctx, screen, self.node_retry_times)
             return self.round_retry('未识别到祝福', wait=1)
 
         target_bless_pos: Optional[SimUniBlessPos] = self._get_bless_to_choose(screen, bless_pos_list)
