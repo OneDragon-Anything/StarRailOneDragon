@@ -613,11 +613,18 @@ class DecisionV2Registry:
     #: 偏向「存活 boss 的局」(弱板真值伤害被低估);净星深≥3 的
     #: 深桶零样本——star_depth 条件性在当前语料下不可辨,常数表
     #: 实为无条件期望,语料攒厚后复验。
+    #: boss Δ 全分布双峰(W244,2026-08-27):低伤簇 n=8 均值 13.25(SD 1.04)/
+    #: 高伤簇 n=20 均值 34.10(SD 1.77),中间带 [16,26) 零观测——单值均值
+    #: 27.57 落谷底不近似任何真实伤害。**投影口径取 Q3≈34**(保守:均值使
+    #: hp 临界局 tier 高估一档=重蹈 W234 缺口;低估方向仅更保守可 AB 校正);
+    #: 协变量(Σboard/净星深/日期/comp/streak)无一解释簇归属,嫌疑首因=
+    #: boss 敌型(outcomes 无 boss_name 字段——数据采集欠账,攒齐后按敌型
+    #: 混合重标定)。分布数字与脚本=.debug/temp/currency_war/w244_*
     handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {
-        0: 27.57,
+        0: 34.0,
     })
-    #: 缺桶 fallback(表外净星深档):全池未删失均值(n=28,|−27.57|)
-    handoff_boss_e_damage_default: float = 27.57
+    #: 缺桶 fallback:同上 Q3 口径(单桶语料下与桶 0 同值)
+    handoff_boss_e_damage_default: float = 34.0
     #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
     #: 回复下唯一正项)——只在 round_num==handoff_gate_min_round(r8,
     #: boss 尚隔一轮)加;r9 直面 boss 不加
