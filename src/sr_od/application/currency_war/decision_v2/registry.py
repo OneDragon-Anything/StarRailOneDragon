@@ -847,8 +847,10 @@ class DecisionV2Registry:
     #: 读 session.v3_release;消费面=scoring 息 EV 中性 + candidates 凑息向
     #: 卖候选抑制)。False=回消费门未接线行为(release 生产链只辖义务预算
     #: /arbiter 放行,评分与卖候选不感知 release)——A/B 通道,先例同
-    #: evolve_engine_guard_enabled;开臂时机=release 通道 A/B 裁决收口后。
-    release_spend_gate_enabled: bool = False
+    #: evolve_engine_guard_enabled;开臂依据=W355 开臂 A/B(凑档卖 25→4 笔 −84%、
+    #: 回退守卫全净、触发面一致)+C2 前置(W367 C_dec 门辖)已修;对照臂经
+    #: registry 注入 False 保留。
+    release_spend_gate_enabled: bool = True
 
     # ===== P2 生存批:濒死带期望账(C3)与换线存活轮数门(C4) =====
     #: 设计=唯一规格:`.debug/temp/currency_war/w353_p2_survival/DESIGN.md`
