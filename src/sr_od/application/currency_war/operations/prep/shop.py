@@ -64,6 +64,23 @@ def expected_gold_after_actions(state_gold: int, spend: int,
     return state_gold - spend + sell_income
 
 
+def refresh_effective(before_names: list[str] | tuple[str, ...],
+                      after_names: list[str] | tuple[str, ...]) -> bool | None:
+    """刷新有效性判据(观测自检框架设计 §2.5;纯观测零决策)。
+
+    刷后牌名集合 == 刷前集合 → 刷新未生效(点击落空/费金照扣没刷/动画帧
+    误读)。真刷出全同 5 牌是牌池组合级小概率、连续两次全同更低——「两连全同
+    才确认」的防抖由台账复现计数承载(同特征首见 L1、再现升 L0),本函数只给
+    单波判定。任一侧含未识别槽('')→ 读不可判返 None 不猜(宁缺勿造,与既有
+    unknown miss 语义同);空列表同样视为不可判(牌面整帧失读)。
+    """
+    if (not before_names or not after_names
+            or any(not n for n in before_names)
+            or any(not n for n in after_names)):
+        return None
+    return set(before_names) != set(after_names)
+
+
 def _form_progress(comp, state) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;comp None 时不调)。"""
     from sr_od.application.currency_war.cw_comps import form_progress
@@ -558,6 +575,35 @@ class BuyShopCards(SrOperation):
                         cw_telemetry.record_shop_snapshot(
                             'refresh', _new_shop, state.gold - _refresh_fee,
                             state.plane, state.round_num)
+                        # 刷新有效性对拍(观测自检框架设计 §2.5):r97 刷后重读
+                        # (_new_shop)与刷前牌名集合(state.shop,本波 plan 读)
+                        # 全同 = 刷新未生效(点击落空/费金照扣没刷/动画误读)
+                        # → 落缺陷台账。shop_refresh 是决策关键面,「全同」按
+                        # 硬失败形态传 gap_large;复现防抖在台账层(同特征首见
+                        # L1、两连全同升 L0 初判)。纯记账留证,零决策行为变更
+                        # (刷新照点、买牌照买,停机接线未启)。
+                        if refresh_effective([c.name for c in state.shop],
+                                             [c.name for c in _new_shop]) is False:
+                            _ineff_shot = None
+                            with contextlib.suppress(Exception):   # 截图 best-effort
+                                _ineff_shot = self.save_screenshot(
+                                    prefix='refresh_ineffective')
+                            cw_telemetry.record_defect(
+                                'shop_refresh', 'invariant_break',
+                                expected=('刷后牌面≠刷前:'
+                                          f'{sorted(c.name for c in state.shop)}'),
+                                observed=('刷新后5牌与刷前全同(点击落空/费金照扣未刷/'
+                                          f'动画误读):{sorted(c.name for c in _new_shop)}'),
+                                plane=state.plane, round_num=state.round_num,
+                                verdict='留证-刷新未生效嫌疑(费金照扣牌面未变)',
+                                shot=_ineff_shot,
+                                reader_source='refresh_set_compare',
+                                gap_large=True,
+                                refs=[{'stream': 'decisions',
+                                       'key': (f'plane={state.plane}|round={state.round_num}'
+                                               f'|refresh_wave={total_refresh + 1}')}],
+                                note='观测自检框架设计 §2.5:全同=刷新未生效;'
+                                     '两连全同才确认(台账复现计数)')
                     except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
                         pass
                 elif isinstance(action, SellBench):
