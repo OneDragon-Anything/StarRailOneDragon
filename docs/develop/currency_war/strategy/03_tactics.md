@@ -90,6 +90,8 @@ star≥2 回落;与 merge_progress 互补不双计);生成层 r410 守卫对
 `filler_star_unit`/`pair_copy_direction_exempt`(registry,默认双关=
 现行为零漂移,A/B 臂同开)。
 
+**经济循环总模型:储备制(ADR-0445)**:金账语义从「地板制」(只规定花后下限)扩为「储备制」——`economy_cycle.reserve_cap` 定义储备线 `R* = interest_floor + 窗口(≤3 轮)内排程升级费`(排程判据=DP 姿态 level_up;升级费逐帧现读),`(g−R*)+` 为溢余死钱;义务 `= max(既有臂义务, min(溢余, channel_capacity))`,容量 `C_t = 升级计划费 + 非期权可买账(买入后四体系达成数 +1 的当帧跨档件 ∪ 3合1 合成件;bench 满槽时非合成件不计) + 刷价×min(6, DP 授权刷数)`;消费载体=FLIP 谓词溢余化(ADR-0426 增补 D:辖区=g>R* ∧ C_t>0 ∧ 非应急,血量维度退场、全位面辖、相位无关)经 release 臂预算通道传导,DP 值函数不动(GOLD_MAX 截断盲区挂账);`authorize_release_refresh` 带 g≥0 硬钳制;守卫=流量口径(溢余滞留率/义务帧兑现率),息基守卫只辖 g≤R* 常态帧(义务帧不计入息基分母),出口金降为披露面;`release_enabled`/`release_spend_gate_enabled` 已随增补 D 第 4 态删除(消费门恒接线)。(同批合并落码的配对完成度买牌信号已定谳退回,ADR-0446 rejected:合并 A/B 实测义务帧辖域内零活性,归因=I-1 辖域×P1 溢余稀疏交互。)
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

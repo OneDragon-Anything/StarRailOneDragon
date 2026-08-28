@@ -368,8 +368,8 @@ def _sell_blocked(bc: BenchChar, state: GameState,
 def _release_sell_gate(tag: str | None, session: StrategySession,
                        registry: DecisionV2Registry) -> str | None:
     """release 帧凑息向卖候选抑制(判据单一源=posture_release.
-    spend_gate_active 读 session.v3_release;开关=registry.
-    release_spend_gate_enabled,默认关零漂移)。
+    spend_gate_active 读 session.v3_release;开关已随 ADR-0426 增补 D
+    第 4 态清理,消费门恒接线)。
 
     off_target/for_gold 的动机=换金(涨金向),与泄息义务(花钱向)相悖
     ——FLIP 帧不卖息凑档,与 v1 ``_maybe_sell_for_interest`` 的 release

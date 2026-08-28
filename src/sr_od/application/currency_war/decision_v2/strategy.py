@@ -268,8 +268,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         # W332b 未成型期姿态:泄息通道(release)——FLIP 谓词命中/末窗
         # slot 守卫压 level 时包装 DP 姿态(预算三方合并 + spend_mode 新档,
         # 单一源=decision_v2.posture_release;下流 scoring/arbiter 读同一
-        # 包装后姿态,义务预算走 session.v3_release)。release_enabled=False
-        # 或谓词未命中 → 逐位原姿态(A/B 基线臂/防间隙零漂移)。
+        # 包装后姿态,义务预算走 session.v3_release)。FLIP 谓词未命中
+        # → 逐位原姿态(防间隙零漂移;开关 release_enabled 已随 ADR-0426
+        # 增补 D 第 4 态清理,消费恒接线)。
         from sr_od.application.currency_war.decision_v2.posture_release import (
             evaluate_release,
         )

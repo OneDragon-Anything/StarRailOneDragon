@@ -7,14 +7,13 @@
 参数带内不稳——本模块只实现「通道开+预算内按 EV 排序」的中性行为,
 不预设方向(k(hp)/Δhp/boss 税标定归 sim 批,参数见 registry)。
 
-辖域与覆盖关系(DESIGN §②):
+辖域与覆盖关系(ADR-0426 增补 D 重述:FLIP 谓词已简化为溢余判定):
 - hp ≤ emergency_hp(25)→ 应急态全权接管(清仓/保命优先),release 让位;
-  两谓词辖区不相交([25,∞) 归 FLIP 评估,≤25 归应急);
-- FLIP = 可信 hp ∧ P1/P2 ∧ g>50 ∧ hp>25 ∧(末窗: 投影命中
-  hp−boss 税位面锚<25,战后必入应急带的机制理由——保命义务相位无关;
-  ∨ FORM 相位 ∧ 非末窗: hp<40,持续兑现逻辑);
-  hp<40 依据分级:社区攻略通行的中盘健康线(非口述标准值;口述 [18] 明确
-  hp=报警量不设触发标准值),作用=非末窗臂的持续兑现资格判,调参归 sim 批;
+  两谓词辖区不相交;
+- FLIP = g > R*(经济循环总模型储备线,economy_cycle.reserve_cap)
+  ∧ C_t>0(存在正 EV 转化帧)∧ 非应急;血量维度退场,全位面辖
+  (旧「低血∧高金∧未成型」危局交集与已成型 SPEND 帧的死钱盲区
+  由溢余判定一并闭合);
 - 末窗 = boss 破息窗(``discipline.boss_window_active`` 统一口径=boss 首买
   相位;round 臂「r≥NODES_PER_PLANE−1」实证双失效已废除——过宽(r8 非 boss
   轮套 boss 税语义错误)/全盲(短位面局 r≥8 永不触发),DESIGN §② N1);
@@ -131,42 +130,31 @@ def hp_decision_trusted(state: GameState) -> bool:
 
 def flip_hit(state: GameState, session: StrategySession,
              registry: DecisionV2Registry, phase_value: str) -> bool:
-    """FLIP 谓词(攒息 → 花钱的翻转条件;DESIGN §②)。
+    """FLIP 谓词(攒息 → 花钱的翻转条件;ADR-0426 增补 D 简化)。
 
-    phase_value 由调用方传每轮入口派生的相位('FORM'=form_ok False,
-    未成型判定口径=决策相机 phase=FORM;handoff.engines<2 是局后口径,
-    禁混用)。辖区:[emergency_hp,∞) 归本谓词,≤emergency_hp 归应急。
-    辖域例外:末窗投影臂相位无关——「boss 战后必入应急带」是保命义务,
-    与成型分期无关(实机进店帧实证:phase=SPEND/hp=38/gold>50/boss 窗
-    激活/投影命中,曾被 FORM 相位门挡死致泄息通道结构性静默)。
+    **谓词简化为溢余判定**(经济循环总模型 ADR-0445;设计 W471 §2.3):
+    溢余段弱占优论证(p11)不依赖血量与成型相位——旧「低血∧高金∧未
+    成型」的危局交集谓词(ADR-0426 §7 自认触发面 9%)与已成型 SPEND
+    帧互为死钱盲区,血量维度自此退场;P3 同样有收入/息帽结构,辖域
+    排除无数学理由,一并并入。保留的两个让位:①应急带(≤emergency_hp)
+    全权接管(辖区不相交结构,ADR-0426);②义务需有正 EV 转化帧
+    (C_t>0)——义务不能废 EV 过滤。boss 窗花后 boss_floor 下限在
+    authorize_release_refresh 保留(义务与地板相交时地板赢)。
+
+    phase_value 参数保留(调用方契约不变;新谓词不再消费)。
     """
-    if not hp_decision_trusted(state):
-        return False    # 假帧不评估:仅 100 兜底帧(开局无真值)拒;shop 开态
-                        # 沿用 last_hp_real 的帧 hp 是可信值,放行(ADR-0428;
-                        # 可信位语义=ADR-0282 对账层「沿用真值 vs 兜底假值」;
-                        # 判定单一源=hp_decision_trusted)
-    if state.plane > 2:
-        return False    # 辖域 P1/P2 未成型期(DESIGN §附5)
-    floor = registry.interest_floor
-    if (state.gold or 0) <= floor:
-        return False    # 只消费溢余段(预算恒=g−50,不新增破息例外)
-    if state.hp <= registry.emergency_hp:
-        return False    # 应急辖区,release 让位(双触发防护)
-    if boss_first_buy_phase(state, session, registry):
-        # 末窗投影臂(相位无关):hp − boss 税位面锚 < emergency_hp
-        # (防战后坠入应急带;保命义务与成型相位无关,持续兑现臂才辖 FORM)。
-        # 锚单一源=registry.boss_tax_p75_by_plane(与 filters 投影安全带
-        # 同源同款取数):本函数上方 plane>2 已拒,此处 plane ∈ {1,2},
-        # 两键必有槽位,直接字典访问、无需标量兜底。
-        # 旧标量 boss_tax_p75 自此(ADR-0441 接线)无运行时消费点,
-        # 保留理由与退役结论见 registry 字段注释。
-        return (state.hp
-                - registry.boss_tax_p75_by_plane[state.plane]
-                < registry.emergency_hp)
-    if phase_value != 'FORM':
-        return False    # 持续兑现臂维持 FORM 辖域(DESIGN §②原文)
-    # 持续兑现臂:报警带 hp<blood_margin_low_hp(血边际已低,溢余该花)
-    return state.hp < registry.blood_margin_low_hp
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        channel_capacity,
+        overflow,
+    )
+    from sr_od.application.currency_war.decision_v2.filters import (
+        is_emergency,
+    )
+    if is_emergency(state, registry):
+        return False    # 应急辖区,release 让位(双触发防护,不变)
+    if overflow(state, session, registry) <= 0:
+        return False    # 只辖溢余段 g>R*(息线以内零漂移,I-1 锚)
+    return channel_capacity(state, session, registry) > 0
 
 
 def boss_first_buy_phase(state: GameState, session: StrategySession,
@@ -203,11 +191,18 @@ def release_directive(state: GameState, session: StrategySession,
     """本帧的泄息指令(FLIP 命中 ∨ slot 守卫第三路径;None=维持原姿态)。
 
     纯函数(不写 session;latch 由调用方 ``evaluate_release`` 承担)。
+
+    ADR-0445:溢余基从息线升为储备线 R*(息基守卫收窄 g≤R* 帧);
+    义务预算 = max(既有臂义务(DP 授权), min(溢余, C_t))——
+    义务不缩水既有臂(取 max),容量封顶防把金推进负 EV 件。
     """
-    if not registry.release_enabled:
-        return None
     cost = refresh_cost_of(state)
-    overflow = max(0, (state.gold or 0) - registry.interest_floor)
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        obligation,
+        reserve_cap,
+    )
+    overflow = max(0, (state.gold or 0)
+                   - reserve_cap(state, session, registry))
     # 第三路径(DESIGN §②规则1/3)先于 FLIP 判定:末窗 slot 守卫压 level
     # → 显式注入泄息预算,强制输出 release 不落 hold(防泄息通道静默关闭)。
     # 辖域=末窗(规则1 原文「末窗评估 deployed<cap 时 rush_level 豁免
@@ -245,7 +240,10 @@ def release_directive(state: GameState, session: StrategySession,
                          and phase_value != 'FORM')
         find_ok = (_findable_in_shop(state, session, registry)
                    if directed_only else True)
-        budget_gold = max(overflow, posture.refresh_budget * cost)
+        # 义务 = min(溢余, C_t)(ADR-0445 §1.4);既有臂义务(DP 授权)
+        # 不缩水:预算取 max(义务, DP 预算×刷价)——与三方合并结构一致。
+        budget_gold = max(obligation(state, session, registry, posture),
+                          posture.refresh_budget * cost)
         return ReleaseDirective(budget_gold=budget_gold,
                                 rolls=budget_gold // cost if cost else 0,
                                 directed_only=directed_only,
@@ -284,8 +282,7 @@ def evaluate_release(state: GameState, session: StrategySession,
     key = (state.plane, state.round_num)
     directive = release_directive(state, session, registry, phase_value,
                                   posture)
-    if directive is None and registry.release_enabled \
-            and getattr(session, 'v3_release_round', None) == key:
+    if directive is None and getattr(session, 'v3_release_round', None) == key:
         prev = getattr(session, 'v3_release', None)
         if prev is not None:
             directive = prev    # latch:窗内不回退
@@ -303,12 +300,10 @@ def spend_gate_active(session: StrategySession,
     判据单一源 = ``session.v3_release``(evaluate_release 每轮入口写入,
     与义务预算/latch 同源)——消费面(decision_v2.scoring/candidates)经此
     读 release 态,不在各自层重算 FLIP(防第二判定源绕开 latch)。
-    ``registry.release_spend_gate_enabled``=False(默认)时恒 False =
-    消费门未接线时的行为逐位一致(A/B 基线臂零漂移);开臂时机=A/B 裁决
-    收口后(registry 字段注释)。
+    开关 ``release_spend_gate_enabled`` 已随 ADR-0426 增补 D 第 4 态清理
+    (开臂 A/B 结案,消费门恒接线)。
     """
-    return (registry.release_spend_gate_enabled
-            and getattr(session, 'v3_release', None) is not None)
+    return getattr(session, 'v3_release', None) is not None
 
 
 def authorize_release_refresh(session: StrategySession,
@@ -333,6 +328,10 @@ def authorize_release_refresh(session: StrategySession,
     if spent + cost > directive.budget_gold:
         return ''
     if working_gold - cost < registry.boss_floor:
+        return ''
+    if working_gold - cost < 0:
+        # g≥0 硬钳制(W477 披露的执行层透支修复;ADR-0445):预算/地板
+        # 判据全部失效时的最后防线,金账户不允许负值通过本门。
         return ''
     session.v3_release_spent = spent + cost
     return (f'release 泄息预算放行(累计{spent}+{cost}'

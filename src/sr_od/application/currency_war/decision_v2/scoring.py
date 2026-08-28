@@ -318,7 +318,7 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # (凑档卖息的对冲面);base/after 同置 0 → 候选排序中本项静默,
     # 开关关(基线臂)时零漂移。
     _rel_gate = False
-    if session is not None and registry.release_spend_gate_enabled:
+    if session is not None:
         from sr_od.application.currency_war.decision_v2.posture_release import (
             spend_gate_active,
         )
@@ -814,7 +814,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         # 息账对冲);只拆息损项,流动性成本 ρ·spend 是真实刷金代价保留。
         # 开关关(基线臂)时零漂移。
         _rel_gate = False
-        if session is not None and registry.release_spend_gate_enabled:
+        if session is not None:
             from sr_od.application.currency_war.decision_v2.posture_release import (
                 spend_gate_active,
             )
@@ -1005,7 +1005,7 @@ def score_candidate(cand: Candidate, state: GameState,
     # 真实档损(平滑后的净嵌入),两处保持同值。
     int_emb = after.get('interest', 0.0) - base.get('interest', 0.0)
     _rel_gate = False
-    if session is not None and registry.release_spend_gate_enabled:
+    if session is not None:
         from sr_od.application.currency_war.decision_v2.posture_release import (
             spend_gate_active,
         )

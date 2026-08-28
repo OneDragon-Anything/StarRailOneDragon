@@ -839,9 +839,8 @@ class DecisionV2Registry:
     #: 设计=唯一规格:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md`
     #: (对抗修订二轮已吸收)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
-    #: 总开关:False=回 W332b 前行为(FLIP 谓词不评估,纯增量设计的 A/B 基线臂;
-    #: DESIGN §②「防间隙:FLIP 为假时维持原姿态,旧行为是退化输出」)。
-    release_enabled: bool = True
+    #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
+    #: 循环总模型 ADR-0445 的溢余义务吞并,行为恒接线。)
     #: 血量边际价值 k(hp) 报警带值(DESIGN §①:非标定设计参数;动机=语料 66 场
     #: P1 boss 战战后 hp≤3 占 43.9% → 末窗边际 hp 是生死价,线性折价 0.5 金/hp
     #: 系统性低估)。k=3 臂的符号结论对 k_hp_calibration_grid 不稳,只作敏感度臂。
@@ -893,14 +892,9 @@ class DecisionV2Registry:
     line_switch_debias_delta: float = 0.15
     #: 当前线最短驻留轮 D_min(压振荡频率硬上限至 1/(2·D_min);DESIGN §③修订 3)
     line_switch_min_dwell: int = 2
-    #: release 帧活栈消费门(判据单一源=posture_release.spend_gate_active
-    #: 读 session.v3_release;消费面=scoring 息 EV 中性 + candidates 凑息向
-    #: 卖候选抑制)。False=回消费门未接线行为(release 生产链只辖义务预算
-    #: /arbiter 放行,评分与卖候选不感知 release)——A/B 通道,先例同
-    #: evolve_engine_guard_enabled;开臂依据=W355 开臂 A/B(凑档卖 25→4 笔 −84%、
-    #: 回退守卫全净、触发面一致)+C2 前置(W367 C_dec 门辖)已修;对照臂经
-    #: registry 注入 False 保留。
-    release_spend_gate_enabled: bool = True
+    # (release 帧活栈消费门开关 release_spend_gate_enabled 已随 ADR-0426
+    # 增补 D 第 4 态清理:开臂 A/B 结案,消费门恒接线,判据单一源=
+    # posture_release.spend_gate_active 读 session.v3_release。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
     #: 设计=唯一规格:`.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md`
