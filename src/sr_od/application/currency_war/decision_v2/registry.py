@@ -857,6 +857,11 @@ class DecisionV2Registry:
     #: p75=34/p90=36/max=58/mean=26.7)。末窗投影判据 = hp − 此值 < emergency_hp。
     #: max=58 肥尾是遗留风险(贴边带当前语料 0 帧);sim 标定时 boss 税以
     #: 分位锚组进 registry,不做单点(boss_tax_anchor_group)。
+    #: ADR-0441 接线后运行时消费点(posture_release 末窗投影臂)已改读
+    #: boss_tax_p75_by_plane,本标量无运行时消费者——保留原因=sim 标定
+    #: 接口 boss_tax_anchor_group 的 P75 同源值 + 既有零漂移锁底座
+    #: (test_cw_boss_tax_p75_by_plane)与 P1 语料出处引用锚;退役挂账
+    #: sim 标定批裁定(届时锁与 anchor_group 一并迁 by_plane 单一源)。
     boss_tax_p75: float = 34.0
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
@@ -867,6 +872,9 @@ class DecisionV2Registry:
     #: n=90 均损 −21.63 vs P1 −19.54)已给 P2 真值方向,但 P2 槽位换
     #: 数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口后,与 sim
     #: 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
+    #: ADR-0441:FLIP 末窗投影臂(posture_release)与 C1 投影安全带
+    #: (filters)两消费点均已按位面取数;评估结论=暂不激活(plane 2
+    #: 维持 34),复核触发条件见该 ADR。
     boss_tax_p75_by_plane: dict[int, float] = field(
         default_factory=lambda: {1: 34.0, 2: 34.0})
     #: 边际战力代理 Δhp·普通战(轮内去均值,hp/场;语料 166 局 5→6 人实测;
@@ -1117,35 +1125,22 @@ class DecisionV2Registry:
     #: 候选再过本围栏,删因链日志分列记账)。存在性围栏非全禁散件:店为
     #: 空配方件时散件照旧走原评分链;只重排同一笔预算内「买谁」,不改
     #: 金账/息账(单一源仍在 arbiter)。
-    #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 买牌
-    #: 配方件占比中位 0.4→≥0.6 ∧ 息基保住率不劣于基线臂 2pp;
+    #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 息基
+    #: 保住率不劣于基线臂 2pp(判据只收台账可测项);
     #: 验证不过的出口=删码留 ADR-0432。
     recipe_fence_enabled: bool = False
 
-    #: —— 同名牌集中度约束(配方供给链决策缺口;设计依据=ADR-0437)=====
-    #: 语义(数据依据=配方供给链逐帧分析,决策 why=ADR-0437):配方名
-    #: (cw_line_defs.recipe_char_names 名集单一源)在 board∪bench 已持
-    #: ≥2 张同名 1★(差一张凑 3合1)且本轮 survivors 中存在该名买候选
-    #: 时,删除全部散件(非配方件,scoring._cand_system_bonds 名集单一
-    #: 源)买候选,删因 'dup_concentration_scatter'(filters 层2 第三遍
-    #: 后置步,配方围栏之后)。约束对象=同一笔预算内散买让位(重定向,
-    #: 非新增支出),配方件之间相对序仍归 EV 层;金账/息账单一源不动。
-    #: 与 recipe_fence 正交声明:围栏管「买不买配方」(任一配方件在场
-    #: 即删散,触发面是本条的超集),本条管「差一张时散买让位」(只在
-    #: 集中度条件命中时删);双开零冲突——双开时散件已被围栏先删,本条
-    #: 空转,删因链日志分列(recipe_fence 与 dup_concentration 独立字段)
-    #: 互不污染 A/B 记账。辖域=recipe_fence 同构(P1 ∧ form_ok 为假;
-    #: 成型后由成型停手接手)。兑现链(W376 C3 自查):第三张买入→同名
-    #: 1★ 3 份→_merge_bench 自动合成 2★→deploy 围栏放行上场→form_ok
-    #: 档位;兑现窗=未成型期全程,合成当轮备战即生效、当战可上场,无
-    #: C3 型「省金来不及变现」悬置(且本条不省金,只挪金)。
-    #: 开臂判据挂账(不执行):A/B 主判据=形态达标率 + 2★ 缺口局占比
-    #: (差一张桶:终局最高同名张数=2 的不达标局)。触发面证据=差一张
-    #: 桶占比实机 40/66=60.6%、sim 旧栈 47.5-68%;该桶内第三张 offer
-    #: 被放过 73 次(48%)、29/40 局至少放过一次,且错过 99.5% 非金约束
-    #: ——「第三张来了没买」是可写决策规则钉死的缺口,无零触发面风险。
-    #: 验证不过的出口=删码留 ADR-0437。
-    dup_concentration_enabled: bool = False
+    #: —— 同名牌集中度约束(已定谳清理,删码留档;决策 why=ADR-0437,
+    #: 复测与定谳链=ADR-0438 验证节)=====
+    #: 曾以 dup_concentration_enabled(默认关)落码:配方名(cw_line_defs
+    #: .recipe_char_names 名集单一源)在 board∪bench 已持 ≥2 张同名 1★
+    #: (差一张凑 3合1)且 survivors 存在该名买候选时,删除全部散件买
+    #: 候选(filters 层2 第三遍后置步,配方围栏之后)。定谳依据:开臂
+    #: 前置「散买挤掉第三张」已消失——非正分门 merge 完成豁免
+    #: (registry.merge_completion_exempt,ADR-0438)开臂后第三张副本
+    #: 由豁免通道直接买走(四臂 A/B:offer 买率 53.93%→92.67%),集中度
+    #: 约束双开复测专项指标与单豁免臂逐位同,零独立行为面;谓词与开关
+    #: 删除,ADR-0437 留完整证据链。
 
     #: —— 方向二:成型后过渡件不拆(form_break_sell_blocked)——
     #: 语义:[13] 停手线的卖/下场侧对称口径(ADR-0343 买侧停手 +
