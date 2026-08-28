@@ -628,7 +628,7 @@ BLOOD_MARGIN_LOW_HP: int = 40
 #: 点4 S4「上界 1 轮」——1 个战斗节点自然补强未达标 → 直入②弃息 D)
 BLOOD_GRADIENT_NATURAL_BATTLES: int = 1
 
-#: 25/40 两档并存口径(W52/S2 顺手 docstring;两线不是二选一):
+#: 25/40 两档并存口径(两线不是二选一):
 #: - **25 = 应急清仓线**(``registry.emergency_hp``):hp≤25 触发应急
 #:   覆盖态(rebirth 地板 20,层2 应急过滤,危机囤金态)——低于此线
 #:   已不是「报警」而是「应急」,处置=清仓止损;
@@ -679,9 +679,12 @@ class BloodAlarmTracker:
             return   # 非战斗节点不计入也不重置任何一臂
         loss = max(0, hp_before - hp_after)
         self.recent_losses.append((t, loss))
-        # ①连续失败代理:单场净掉血 ≥10 视为该节点实际打输(r246 口径;
-        # W51 标注:「失败」是代理语义——高难打赢但大掉血场也计入,
-        # 阈值属 sim 校准域,实机语料积累后校准)
+        # ①连续失败代理:单场净掉血 ≥10 = 该场伤害达到条件败局期望量级,
+        # 记为结构性打输。阈值依据=math_proofs P15 条件败局伤害
+        # L_c(rung)=11.32−0.37·rung(registry.vd_p1_loss_* 单一源):
+        # rung 全域 0-8 的代表值——中点 rung4=9.84、代表帧 rung2=10.58,
+        # 取整 10。胜利恒 +2(口述 [27],user_playstyle.md)永不入档;
+        # 敌血近清空的小伤害败局(P 项小,同 [27])视为波动不计数。
         if loss >= 10:
             self.consec_battle_fails += 1
         else:
@@ -694,7 +697,12 @@ class BloodAlarmTracker:
 
     def alarm_active(self) -> bool:
         """三臂并集:①连续 2 场战斗失败;②最近 3 个战斗节点累计 ≥20;
-        ③最近 5 个战斗节点累计 ≥30(阈值=设计推断,sim 校准,W10 摆动域)。"""
+        ③最近 5 个战斗节点累计 ≥30。累计阈值的持久依据=条件败局伤害
+        期望的整数倍(math_proofs P15:L_c(rung)=11.32−0.37·rung,
+        registry.vd_p1_loss_*;代表帧 rung2 → L_c≈10.6):
+        ②20≈2×L_c(21.2)=3 节点窗吞两次满额败局(容 1 个良性节点,
+        急性);③30≈3×L_c(31.7)=5 节点窗三次满额败局(慢性多数败
+        漂移);①连续 2 败与②同账——2×L_c 分摊到相邻两场。"""
         if self.consec_battle_fails >= 2:
             return True
         losses = [loss for _t, loss in self.recent_losses]

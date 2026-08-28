@@ -153,8 +153,13 @@ class DecisionV2Registry:
         'carry_gate', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'deploy', 'refresh',
     })
-    #: 应急 HP 档(触发层2 应急过滤;旧 line_strategy._EMERGENCY_HP
-    #: 镜像,ADR-0336 后独立)
+    #: 应急 HP 档(触发层2 应急过滤)。持久依据=双失缓冲带:应急线须
+    #: 高于「两次条件败局伤害」吸收上界 2×L_c(rung2)≈21.2(math_proofs
+    #: P15:L_c=11.32−0.37·rung,registry.vd_p1_loss_* 单一源),且低于
+    #: 「一次败局后仍不破重生基数」上界 rebirth_floor+L_c≈30.6
+    #: (rebirth_floor=20,口述 [18] 应急保留重生基数);带 (21.2,30.6)
+    #: 内取 5 网格点 25,与报警降档线 40(discipline.BLOOD_MARGIN_LOW_HP)
+    #: 保持处置梯度:40=报警加速、25=应急覆盖态清仓。
     emergency_hp: int = 25
     #: ADR-0302 危机囤金金线(合流批 ADR-0303 上移):应急态金 ≥ 此值
     #: 时进危机囤金态(战力买偏置+搜牌解锁)。依据:批㉝ F3 指纹阈值
