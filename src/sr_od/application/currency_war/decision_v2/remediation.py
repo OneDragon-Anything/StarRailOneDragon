@@ -32,6 +32,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_intention import IntentionState
 from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
+    BENCH_CAPACITY,
     Action,
     BuyCard,
     DeployMove,
@@ -253,7 +254,16 @@ def _compensate_gold(working: GameState, state: GameState,
             return []    # r408:同轮已卖不回买(振荡结构禁止,§1.5-4)
         if rej.cand.tag not in registry.remedy_buy_tags:
             return []    # 不为非目标件变现(§1.3 remedy_buy_tags 辖域)
+        # W544(ADR-0453):满栏合成买 k>1 张一次扣款(无价格优惠,
+        # merge_mechanics §2.5)——缺口按 k×单价算,少卖会凑不足额。
         cost = a.card.cost or 3
+        if bench_occupied(working.bench or []) >= BENCH_CAPACITY:
+            from sr_od.application.currency_war.cw_state import (
+                merge_buy_k,
+            )
+            cost *= max(1, merge_buy_k(a.card.name, a.card.star or 1,
+                                       working.bench, working.deployed,
+                                       working.shop))
         buy = a.card
     elif isinstance(a, RefreshShop):
         # S2 残余(§2):报警升级态 refresh 金拒才补偿(不为常态刷新借钱)

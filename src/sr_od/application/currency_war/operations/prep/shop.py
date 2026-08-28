@@ -35,6 +35,7 @@ from sr_od.application.currency_war.cw_state import (
     SellBench,
     bench_from_compact,
     bench_occupied,
+    merge_buy_k,
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
@@ -598,25 +599,23 @@ class BuyShopCards(SrOperation):
                         _bought_names.append(action.card.name)
                     mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
                     # W536:记录购买意图(身份/星级/张数)。张数:常态=1;
-                    # 备战栏满且可触发合成 → 游戏自动多买
-                    # min(店内同牌张数, 3−已有数 mod 3)(merge_mechanics §2.5,
-                    # 【置信:低】,按说法实现、由对账网实证修正)。
-                    # 金账无折扣:总价 = k×单价(§2.5),执行账仍逐动作记 1×
-                    # 单价,游戏多扣金由既有 W494 单元金对拍暴露。
+                    # 备战栏满且可触发合成 → 游戏自动多买 k 张
+                    # (merge_mechanics §2.5,【置信:低——连升子案】,按
+                    # 说法实现、由对账网实证修正)。k 公式单一源 =
+                    # cw_state.merge_buy_k(与 decision_v2 满栏购买门同一
+                    # 公式,W544/ADR-0453 收敛,禁执行侧重算)。
+                    # 金账无折扣:总价 = k×单价(§2.5)——执行账本笔记
+                    # 1× 单价 + 多买补差 (k−1)×,与游戏一次点击扣全款
+                    # 对齐(gold 差值对拍 ±2 容差内);不满栏 _cnt=1 补差 0。
                     if action.card.name:
-                        _own = sum(1 for b in state.bench if b is not None
-                                   and b.char_id == action.card.name
-                                   and b.star == action.card.star)
-                        _own += sum(1 for d in match.session.tracked_deployed
-                                    if d is not None
-                                    and d.char_id == action.card.name
-                                    and d.star == action.card.star)
-                        _in_shop = sum(1 for c in state.shop
-                                       if c.name == action.card.name
-                                       and c.star == action.card.star)
                         _cnt = 1
                         if bench_occupied(state.bench) >= BENCH_CAPACITY:
-                            _cnt = max(1, min(_in_shop, 3 - _own % 3))
+                            _cnt = max(1, merge_buy_k(
+                                action.card.name, action.card.star or 1,
+                                state.bench,
+                                match.session.tracked_deployed, state.shop))
+                            _spend_executed += (action.card.cost or 0) \
+                                * (_cnt - 1)
                         _buy_purchases.append(BuyPurchase(
                             name=action.card.name, star=action.card.star,
                             count=_cnt, unit_cost=action.card.cost or 0,

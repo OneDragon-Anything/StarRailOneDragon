@@ -1104,8 +1104,30 @@ def carry_gate_actions(state: GameState, session: StrategySession,
         return []
     if in_round_sold(carry, state, session):
         return []
-    if state.gold - carry_card.cost < registry.war_floor:
+    # W544(ADR-0453):满栏合成买优先于腾位——用户权威裁决「备战满时,
+    # 触发合成的购买应该被支持,否则被迫卖有用角色」。核心在店且本次
+    # 购买完成恰好一次合成(k = min(店内张数, 3−已有数 mod 3),判据
+    # 单一源 = cw_state.merge_buy_completes)→ 不卖任何件直接买,金按
+    # k×单价校验 war 地板;不满足合成条件 → 原腾位链逐位不动(零漂移)。
+    _mb_full = bench_occupied(state.bench or []) >= BENCH_CAPACITY
+    _mb_k = 0
+    if _mb_full:
+        from sr_od.application.currency_war.cw_state import (
+            merge_buy_completes,
+            merge_buy_k,
+        )
+        if merge_buy_completes(carry, carry_card.star or 1, state.bench,
+                               state.deployed, state.shop):
+            _mb_k = max(1, merge_buy_k(carry, carry_card.star or 1,
+                                       state.bench, state.deployed,
+                                       state.shop))
+    if state.gold - carry_card.cost * max(1, _mb_k) < registry.war_floor:
         return []
+    if _mb_k >= 1:
+        # 满栏合成买(k≥1,含旧 S3 k=1 特例——原腾位链对可合成买照样
+        # 卖 weakest,即裁决针对的「被迫卖」)→ 不卖直接买。
+        register_round_bought([carry], state, session)   # ADR-0328 同型登记
+        return [BuyCard(carry_card, reason='carry_gate')]
     bench = state.bench or []
     if bench_occupied(bench) < BENCH_CAPACITY:
         return []   # 未满 → 常规买通道可达(ADR-0316:容量=占用数)

@@ -181,7 +181,7 @@ def _check_constraint(name: str, cand: Candidate,
     """
     a = cand.action
     if name == 'gold_floor':
-        cost = _cost_of(cand)
+        cost = _cost_of(cand, working)
         if cost <= 0:
             return None
         floor = _active_floor(state, session, registry)
@@ -264,7 +264,7 @@ def _check_constraint(name: str, cand: Candidate,
         # 总账在 boss_levelup_ban 块的 levelup_ev_authorized(平台账,
         # 含息引擎未立的延迟损,口径不同,双门并设会双重计罚)。
         # war/boss/应急覆盖态交给 gold_floor 的地板,不辖息档(原语义)。
-        cost = _cost_of(cand)
+        cost = _cost_of(cand, working)
         if cost <= 0 or cand.tag in ('levelup',):
             return None
         if current_mode(session) != 'economy':
@@ -334,7 +334,7 @@ def _check_constraint(name: str, cand: Candidate,
         if isinstance(a, BuyCard):
             from sr_od.application.currency_war.cw_state import (
                 bench_occupied,
-                will_merge_on_buy,
+                merge_buy_completes,
             )
             # N1(ADR-0324):容量判据=占用计数——采纳买后 simulate 已把
             # 买入落槽,旧 ``+pending_bench`` 再数一次=双计(恰剩 1 空槽
@@ -343,13 +343,23 @@ def _check_constraint(name: str, cand: Candidate,
             # S3(ADR-0325):**合并买入豁免**——真 merge 候选(同名同 1★
             # 计数==2 且待买 1★)合成净腾 1 槽(净增量 +1−2=−1),满员
             # 也可买;非 merge(含 1× 2★ 加权 2 的误标例)仍按占用拒。
+            # W544(ADR-0453):豁免判据升级为 merge_mechanics §2.5 一般式
+            # (用户权威裁决「备战满时,触发合成的购买应该被支持,否则
+            # 被迫卖有用角色」)——同名同星计数(备战+场上)+本次购买≥3
+            # 即允许,k = min(店内张数, 3−已有数 mod 3) 张一次买入,金按
+            # k×单价校验(gold_floor/interest_rule 经 _cost_of 同源取数);
+            # 不满足合成条件仍拒(ADR-0283 守卫语义保留为兜底)。
             occupied = bench_occupied(working.bench or [])
             if occupied >= registry.bench_capacity \
-                    and not will_merge_on_buy(a.card, working.bench,
-                                              working.deployed):
+                    and not merge_buy_completes(a.card.name,
+                                                a.card.star or 1,
+                                                working.bench,
+                                                working.deployed,
+                                                working.shop):
                 shortfall = occupied - registry.bench_capacity + 1
                 return RejectReason('bench_capacity', 'bench', shortfall,
-                                    'bench 满(需先腾位;[32] 腾席优先用卖)')
+                                    'bench 满(需先腾位;[32] 腾席优先用卖;'
+                                    '合成触发购买豁免见 ADR-0453)')
         return None
     if name == 'copies_cap':
         if isinstance(a, BuyCard) and a.card.name:
@@ -444,9 +454,24 @@ def _check_constraint(name: str, cand: Candidate,
     return None    # 未知约束名:放行(审计表锁名存在)
 
 
-def _cost_of(cand: Candidate) -> int:
+def _cost_of(cand: Candidate, working: GameState | None = None) -> int:
     a = cand.action
     if isinstance(a, BuyCard):
+        # W544(ADR-0453):满栏合成买 k>1 张一次扣款(无价格优惠,
+        # merge_mechanics §2.5)——金地板/息账按 k×单价校验;判据单一源
+        # = cw_state.merge_buy_completes/merge_buy_k(与 bench_capacity
+        # 门同源)。非满栏(working=None 或有余槽)恒 1×(零漂移)。
+        if working is not None:
+            from sr_od.application.currency_war.cw_state import (
+                BENCH_CAPACITY,
+                bench_occupied,
+                merge_buy_k,
+            )
+            if bench_occupied(working.bench or []) >= BENCH_CAPACITY:
+                return max(1, merge_buy_k(a.card.name, a.card.star or 1,
+                                          working.bench, working.deployed,
+                                          working.shop)) \
+                    * (a.card.cost or 3)
         return a.card.cost or 3
     if isinstance(a, LevelUp):
         return a.cost

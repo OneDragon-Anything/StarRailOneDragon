@@ -727,8 +727,9 @@ def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
     bench∪deployed)==2 且待买为 1★**——买后恰达 3 份触发合并。
     显式**不用星级加权**(1 个 2★ 加权 2 但同星计数=1,不合成交
     bench 净 +1;旧 candidates.will_merge 加权判据的误标例)。
-    消费点:candidates.will_merge(生成侧)/arbiter bench_capacity 豁免
-    (仲裁侧)/simulate 满员合并买入(执行侧)——三处共用,防漂移。
+    消费点:candidates.will_merge(生成侧)。W544(ADR-0453)起满栏
+    购买门/执行侧(simulate)改走一般式 merge_buy_completes/merge_buy_k
+    (k 可 >1);本函数保留 = k=1 特例的生成侧标记语义。
     """
     if (card.star or 1) != 1:
         return False
@@ -740,6 +741,57 @@ def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
         if d is not None and d.char_id == card.name and d.star == 1:
             n += 1
     return n == 2
+
+
+def same_star_count(name: str, star: int,
+                    bench: list[BenchChar | None],
+                    deployed: list[BenchChar] | None = None) -> int:
+    """全场域同名同星计数(bench∪deployed;``_merge_bench`` 分组键同口径)。"""
+    n = 0
+    for b in bench or []:
+        if b is not None and b.char_id == name and b.star == star:
+            n += 1
+    for d in deployed or []:
+        if d is not None and d.char_id == name and d.star == star:
+            n += 1
+    return n
+
+
+def merge_buy_k(name: str, star: int,
+                bench: list[BenchChar | None],
+                deployed: list[BenchChar] | None,
+                shop: list[ShopCard] | None = None) -> int:
+    """满栏合成买的一次点击购买张数 k(merge_mechanics.md §2.5 单一源)。
+
+    k = min(店内同名同星张数, 3 − 已有数 mod 3)——上限口径「绝不多买」:
+    只买到触发一次合成所需的量。返回值不含「是否真触发合成」判断
+    (那由 ``merge_buy_completes`` 判);店内外身份计数共用
+    ``same_star_count``/同键过滤,禁消费方各自手搓(双源漂移温床)。
+
+    消费点:candidates/arbiter 满栏购买门(W544)/simulate 满栏多买
+    (执行侧)/shop.py 买入意图记录(执行账 k×单价)。
+    """
+    star_n = star or 1
+    own = same_star_count(name, star_n, bench, deployed) % 3
+    in_shop = sum(1 for c in shop or []
+                  if getattr(c, 'name', '') == name
+                  and (getattr(c, 'star', 1) or 1) == star_n)
+    return min(in_shop, 3 - own)
+
+
+def merge_buy_completes(name: str, star: int,
+                        bench: list[BenchChar | None],
+                        deployed: list[BenchChar] | None,
+                        shop: list[ShopCard] | None = None) -> bool:
+    """本次点击(买 k = ``merge_buy_k`` 张)是否恰好完成一次合成。
+
+    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(W544 允许条件,
+    merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
+    照旧拒买(ADR-0283 守卫语义保留为兜底)。
+    """
+    own = same_star_count(name, star or 1, bench, deployed) % 3
+    k = merge_buy_k(name, star, bench, deployed, shop)
+    return own + k >= 3
 
 
 def sell_refund(star: int, cost: int) -> int:
@@ -1154,22 +1206,42 @@ def simulate(state: GameState, action: Action) -> GameState:
     if isinstance(action, BuyCard):
         # ADR-0316 槽位语义:买入放首个空槽;无空槽=拒(bench_full 语义
         # 不变——金不扣、牌不下架,整动作 no-op)。
-        # S3(ADR-0325):**合并买入**例外——买第 3 份同名 1★ 即合成
-        # (净腾 1 槽:占位 +1 合成清 2),满员时也通:新卡临时挂槽位表
+        # S3(ADR-0325):**合并买入**例外——满员也通,新卡临时挂槽位表
         # 尾部参与 _merge_bench(合成后恒被消费置 None),再截回定长 9。
+        # W544(ADR-0453):满栏判据从「买第 3 份同名 1★(k=1)」升级为
+        # merge_mechanics §2.5 一般式——k = min(店内张数, 3−已有数 mod 3)
+        # 张一次买入(游戏自动多买,无价格优惠:金账按 k×单价记全款),
+        # 判据单一源 = merge_buy_completes(不满足仍拒,ADR-0283 兜底)。
         new_bc = _card_to_bench(action.card)
         placed = bench_place(s.bench, new_bc) is not None
         if not placed:
-            if not will_merge_on_buy(action.card, s.bench, s.deployed):
+            _name = action.card.name
+            _star = action.card.star or 1
+            if not merge_buy_completes(_name, _star, s.bench, s.deployed,
+                                       s.shop):
                 return state.copy()
-            s.bench.append(new_bc)   # 临时尾槽(合成必清;非载体)
-        s.gold -= card_cost(action.card)
-        _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
-        if not placed:
-            s.bench.pop()            # 截回定长 9(尾部恒 None——载体优先
-            # deployed/首份旧卡,新卡恒非载体)
-        # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
-        s.shop = [c for c in s.shop if c.x != action.card.x]
+            _k = merge_buy_k(_name, _star, s.bench, s.deployed, s.shop)
+            s.gold -= card_cost(action.card) * max(1, _k)
+            for _ in range(max(1, _k)):
+                s.bench.append(_card_to_bench(action.card))
+            _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场)
+            # 合成恰耗尽本次 k 张(own+k ≡ 0 mod 3),尾部临时槽恒被清,
+            # 截回定长 9;店侧 k 张同身份牌全部下架(自动多买语义)。
+            del s.bench[BENCH_CAPACITY:]
+            _left = max(1, _k)
+            _kept: list[ShopCard] = []
+            for c in s.shop:
+                if _left > 0 and c.name == _name \
+                        and (c.star or 1) == _star:
+                    _left -= 1
+                    continue
+                _kept.append(c)
+            s.shop = _kept
+        else:
+            s.gold -= card_cost(action.card)
+            _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
+            # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
+            s.shop = [c for c in s.shop if c.x != action.card.x]
     elif isinstance(action, SellBench):
         # ADR-0316:校验槽占用后置 None(索引跨动作组稳定)
         # ADR-0317 代际校验第三块(ADR-0326 §1.7):expect 非空且与槽内名
