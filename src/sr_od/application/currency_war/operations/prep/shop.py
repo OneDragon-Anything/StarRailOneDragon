@@ -740,6 +740,13 @@ class BuyShopCards(SrOperation):
                       + sum(a.cost for a in actions if isinstance(a, LevelUp))
                       + total_refresh * (state.shop_refresh_cost or 2))
             _final_gold = read_gold(self.ctx, self.screenshot())
+            # 金面收口:关店实读金无条件暂存(无论对拍是否冲突)——director
+            # 单元关闭落账时经 record_spend_unit 消费,填 spend_ledger 预留
+            # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
+            # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
+            # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
+            from sr_od.application.currency_war import cw_telemetry as _cw_tel
+            _cw_tel.set_unit_gold_close(_final_gold)
             # W62 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
             # state.gold − 花出 + 卖入(游戏侧卖出入账);旧 _expected = state.gold − _spend
             # 与实读金恒差 income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。

@@ -397,10 +397,43 @@ class SpendUnitRecord:
     gold_before: int | None = None
     gold_before_trusted: bool = False
     # gold_close = 关店实读金,真值唯一来源是 shop.py 关店对拍点 read_gold
-    #(该文件本批禁碰未挂钩,字段 schema 预留恒 None;编排者放行 shop 钩子后填充,
-    # 读端分类器零改动即消费)。
+    #(经 ``set_unit_gold_close`` 暂存、单元关闭落账时消费填充;读失败=None,
+    # 读端分类器记 unknown 不猜)。
     gold_close: int | None = None
     gold_close_trusted: bool = False
+
+
+@dataclass
+class DefectRecord:
+    """统一缺陷台账行(defect_ledger.jsonl;纯观测索引层)。
+
+    把散在三处(obs_conflicts=感知冲突 / exec_events=执行失败 /
+    spend_ledger·gold_detail=真值采集)的缺陷口径归一:每行通过
+    ``evidence.refs`` 指回原流行(单一源,不复制数据)——审计先查台账,
+    下钻再回原流。旧三流是原始证据层,保持原样不扩 schema。
+
+    surface 值域:gold/bench/deployed/level_xp/hp/shop_refresh/phase_round/
+    equip/strategy/confidence/node_seq/streak(未映射的新冲突字段原样落,
+    消费端按字符串聚合,枚举外值不炸)。kind:perception_conflict /
+    exec_fail / invariant_break。severity 为写入端初判,离线可用同一
+    纯函数(judge_severity)按演进后的规则重判,不重写历史。
+    """
+    schema_version: int = SCHEMA_VERSION
+    ts: str = ""
+    run_id: str = ""                                # join key 主键(旧 obs_conflicts 缺,台账补齐)
+    plane: int = 0
+    round_num: int = 0
+    unit_seq: int | None = None                     # 购买单元序(可空;spend 面专用)
+    surface: str = ""                               # 缺陷所在观测面(见类注值域)
+    kind: str = ""                                  # 三类=既有流口径归一
+    expected: str = ""                              # 期望值/不变量描述
+    observed: str = ""                              # 观测值
+    gap: float | None = None                        # 数值化差(可空;文本面用 expected/observed 表达)
+    severity: str = ""                              # L0_andon/L1_alert/L2_record(初判)
+    verdict: str = ""                               # 沿用 obs_conflict verdict 语义(保旧/采新/拒信/待研)
+    evidence: dict[str, Any] = field(default_factory=dict)   # {shot?, refs:[{stream,key}]}
+    reader_source: str = ""                         # 沿用既有 source 词表
+    note: str = ""                                  # 处理提示,一行
 
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -648,6 +681,10 @@ class TelemetryRecorder:
                         action_family=action_family, screen=screen,
                         event=event, reason=reason, retry_count=retry_count)
         self._append("exec_events.jsonl", _to_jsonable(rec))
+        # 统一缺陷台账旁路(纯观测):失败类执行事件同步归一落 defect_ledger
+        #(refs 指回本行;调用方零改动,旁路失败不影响本流落盘)
+        with contextlib.suppress(Exception):
+            bypass_exec_event_to_defect(_to_jsonable(rec))
 
     def record_exogenous(self, run_id: str, round_num: int, kind: str,
                          detail: str = "",
@@ -680,10 +717,11 @@ class TelemetryRecorder:
                           gold_before_trusted: bool = False,
                           gold_close: int | None = None,
                           gold_close_trusted: bool = False) -> None:
-        """记购买单元账框架行(spend_ledger.jsonl;W494,纯观测零行为)。
+        """记购买单元账框架行(spend_ledger.jsonl;纯观测零行为)。
 
         字段语义见 SpendUnitRecord;调用方 = prep_director 的 RunBuyPhase
-        执行边界。gold_close 由 shop.py 关店对拍点填(未挂钩前恒 None)。
+        执行边界。gold_close 来自 shop.py 关店对拍点暂存(模块级便捷入口
+        消费填充;未挂钩的调用路径恒 None,读端记 unknown 不猜)。
         """
         rec = SpendUnitRecord(
             ts=datetime.now().isoformat(timespec="seconds"),
@@ -693,6 +731,33 @@ class TelemetryRecorder:
             detail=(detail or '')[:240],
             gold_before=gold_before, gold_before_trusted=gold_before_trusted,
             gold_close=gold_close, gold_close_trusted=gold_close_trusted)
+        self._append("spend_ledger.jsonl", _to_jsonable(rec))
+
+    def record_defect(self, surface: str, kind: str, expected: str,
+                      observed: str, *, run_id: str = '', plane: int = 0,
+                      round_num: int = 0, unit_seq: int | None = None,
+                      gap: float | None = None, severity: str = '',
+                      verdict: str = '', shot: str | None = None,
+                      refs: list[dict[str, str]] | None = None,
+                      reader_source: str = '', note: str = '') -> None:
+        """记一条缺陷台账(defect_ledger.jsonl;纯观测索引层,字段语义见 DefectRecord)。
+
+        severity 空时保守缺省 L2 留证(正经初判走模块级 record_defect,
+        那里有分级纯函数与复现计数);evidence.refs 由调用方给原流行定位,
+        本方法不复制观测数据。
+        """
+        evidence: dict[str, Any] = {'refs': list(refs or [])}
+        if shot:
+            evidence['shot'] = shot
+        rec = DefectRecord(
+            ts=datetime.now().isoformat(timespec="seconds"),
+            run_id=run_id, plane=plane, round_num=round_num,
+            unit_seq=unit_seq, surface=surface, kind=kind,
+            expected=str(expected), observed=str(observed),
+            gap=gap, severity=severity or SEVERITY_L2_RECORD,
+            verdict=verdict, evidence=evidence,
+            reader_source=reader_source, note=note)
+        self._append("defect_ledger.jsonl", _to_jsonable(rec))
         self._append("spend_ledger.jsonl", _to_jsonable(rec))
 
 
@@ -738,6 +803,35 @@ def consume_last_supply_pick() -> dict[str, Any] | None:
     pick = _LAST_SUPPLY_PICK
     _LAST_SUPPLY_PICK = None
     return pick
+
+
+# —— 金面收口:关店实读金暂存槽 ——
+# 为什么是槽而不是 shop.py 直接调 record_spend_unit:spend_ledger 行的唯一
+# 生产者是 director 的执行边界(行=单元框架事实),shop 只握有关店时点的
+# 真值列;行在 execute 返回后才落,shop 侧无法定向补列,故经暂存槽由既有
+# 落账入口消费(消费即清,残留不串单元)。与 _LAST_SUPPLY_PICK 同模式。
+_PENDING_UNIT_GOLD_CLOSE: dict[str, Any] | None = None
+
+
+def set_unit_gold_close(gold: int | None) -> None:
+    """生产者(shop.py 关店对拍点):无条件暂存关店实读金。
+
+    gold=None(read_gold 失读)也照记——unknown 占比要降到「读失败率」,
+    失读必须以 trusted=False 形态可见,不可静默缺失(否则「对拍通过」与
+    「失读」离线仍不可分)。
+    """
+    global _PENDING_UNIT_GOLD_CLOSE
+    _PENDING_UNIT_GOLD_CLOSE = {'gold': gold, 'trusted': gold is not None}
+
+
+def _consume_unit_gold_close() -> tuple[int | None, bool]:
+    """消费者(模块级 record_spend_unit 落账时):取走暂存并清槽。"""
+    global _PENDING_UNIT_GOLD_CLOSE
+    slot = _PENDING_UNIT_GOLD_CLOSE
+    _PENDING_UNIT_GOLD_CLOSE = None
+    if slot is None:
+        return None, False
+    return slot.get('gold'), bool(slot.get('trusted'))
 
 
 def set_ctx_match(match) -> None:
@@ -1016,18 +1110,21 @@ def record_spend_unit(plane: int, round_num: int, unit_seq: int,
                       boundary: str, progressed: bool, duration_s: float,
                       detail: str = "", gold_before: int | None = None,
                       gold_before_trusted: bool = False) -> None:
-    """便捷:用 current_run_id 记购买单元账框架行(spend_ledger.jsonl;W494)。
+    """便捷:用 current_run_id 记购买单元账框架行(spend_ledger.jsonl)。
 
     生产者 = prep_director 的 RunBuyPhase 执行边界。run_id 空直接 no-op
     (与 record_exogenous 同门控);best-effort 由调用方 try/except 兜底。
-    gold_close 不在本便捷入口(plan 侧 shop 钩子落行时走 recorder 直调)。
+    gold_close 在此消费 shop 关店对拍点的暂存实读金(消费即清;无暂存
+    = 该单元 shop 未挂钩/未走到关店对拍段,恒 None 不猜)。
     """
     if not _CURRENT_RUN_ID:
         return
+    _gc, _gc_trusted = _consume_unit_gold_close()
     get_recorder().record_spend_unit(
         _CURRENT_RUN_ID, plane, round_num, unit_seq, boundary, progressed,
         duration_s, detail=detail, gold_before=gold_before,
-        gold_before_trusted=gold_before_trusted)
+        gold_before_trusted=gold_before_trusted,
+        gold_close=_gc, gold_close_trusted=_gc_trusted)
 
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
@@ -1037,6 +1134,188 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
         return
     get_recorder().record_run_summary(_CURRENT_RUN_ID, result, plane_reached,
                                       rounds_survived, final_hp, notes=notes)
+
+
+# ===== 统一缺陷台账(defect_ledger.jsonl;纯观测索引层,零行为变更)=====
+# 把散在 obs_conflicts(感知冲突)/ exec_events(执行失败)的缺陷口径归一:
+# 旧流是原始证据层保持原样,台账每行经 evidence.refs 指回原流行——审计先查
+# 台账,下钻再回原流。接线方式=在 obs_conflict / record_exec_event 写入点
+# 内部各加一行旁路(调用方零改动);不给 obs_conflicts 补 run_id(写入点
+# 10+ 处,逐处加参数是高风险机械改动),join key 由台账补齐。
+
+#: 分级三档(severity 写入端只给初判;离线可用 judge_severity 按演进后规则
+#: 重判,不重写历史)。判据(观测自检框架设计 §4,三条按序):
+#: ①决策关键面吗 ②gap 大吗 ③复现了吗——L0=①∧②∧③ 且裁决未自动;
+#: L1=①∧② 单次,或中相关面∧②∧③;L2=其余(非关键面/小 gap/裁决已自动)。
+SEVERITY_L0_ANDON: str = 'L0_andon'
+SEVERITY_L1_ALERT: str = 'L1_alert'
+SEVERITY_L2_RECORD: str = 'L2_record'
+
+#: 决策关键面(误读直接改买/升/部署决策的观测面)。
+DECISION_CRITICAL_SURFACES: frozenset[str] = frozenset(
+    {'gold', 'bench', 'deployed', 'level_xp', 'shop_refresh', 'phase_round'})
+#: 中决策相关面(误读改辅助判断:保血阈值/成型判定/对拍解释)。
+MEDIUM_CRITICAL_SURFACES: frozenset[str] = frozenset(
+    {'hp', 'equip', 'strategy', 'node_seq', 'streak'})
+
+#: 金面大 gap 门(金):与 cw_observe.GOLD_DELTA_ALARM_GAP 同源取值
+#:(OCR 单帧噪声 ≤3、审计容差 ±2,>10 = 系统性错位量级)。独立常量避免
+#: 台账层反向依赖观测层。
+DEFECT_GAP_LARGE_GOLD: int = 10
+
+#: obs_conflict field → 台账 surface 映射(枚举=既有冲突点全集;未映射的
+#: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。
+OBS_FIELD_TO_SURFACE: dict[str, str] = {
+    'gold': 'gold', 'gold_delta': 'gold',
+    'hp': 'hp', 'level': 'level_xp',
+    'board': 'deployed', 'deployed_align': 'deployed',
+    'deployed_count_2src': 'deployed', 'deploy_cap_domain': 'deployed',
+    'deploy_cap_vs_level': 'deployed',
+    'streak': 'streak', 'phase_round': 'phase_round', 'bench': 'bench',
+}
+
+#: 裁决已自动的冲突面(对账纠漂/双帧采信/双源留证——冲突被写入端自动消化,
+#: 按分级判据恒 L2,不升级):deployed_align 截断补齐、board 徽标仲裁、
+#: hp 上行留证、streak 双源、cap 域外双帧采信及其同族。
+AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
+    {'deployed_align', 'board', 'hp', 'streak', 'deploy_cap_domain',
+     'deploy_cap_vs_level', 'deployed_count_2src'})
+
+
+def judge_severity(surface: str, *, gap_large: bool, reproduced: bool,
+                   auto_resolved: bool = False) -> str:
+    """分级初判(纯函数,可单测;离线重判即用本函数重放)。
+
+    判据链(三条按序,见 SEVERITY_* 注):裁决已自动 → L2(自动纠漂不算
+    缺陷升级对象);决策关键 ∧ 大 gap ∧ 复现 → L0(安灯;停机接线未启,
+    初判仅落账标记);决策关键 ∧ 大 gap(单次)→ L1;中相关面 ∧ 大 gap ∧
+    复现 → L1;其余 → L2。非数值面的「大 gap」由调用方按硬失败形态判定
+    (如「计划花费>0 金差≈0」「刷新两连全同」),经 gap_large 传入。
+    """
+    if auto_resolved:
+        return SEVERITY_L2_RECORD
+    critical = surface in DECISION_CRITICAL_SURFACES
+    if critical and gap_large:
+        return SEVERITY_L0_ANDON if reproduced else SEVERITY_L1_ALERT
+    if surface in MEDIUM_CRITICAL_SURFACES and gap_large and reproduced:
+        return SEVERITY_L1_ALERT
+    return SEVERITY_L2_RECORD
+
+
+# —— 复现计数(分级判据③;进程内状态,按 run 切换清空)——
+# key=(surface, kind, expected 特征前 80 字符);第 2 次起算复现(§4 判3:
+# 同特征连续 2 次/2 帧,所有 L0 都过防抖,单帧永不直接停机)。
+_defect_seen: dict[tuple[str, str, str], int] = {}
+_defect_seen_run: str = ''
+
+
+def _mark_defect_reproduced(surface: str, kind: str, feature: str,
+                            run_id: str) -> bool:
+    """登记一次缺陷特征并返回「是否复现」(进程内防抖计数,best-effort)。"""
+    global _defect_seen, _defect_seen_run
+    if run_id != _defect_seen_run:
+        _defect_seen = {}
+        _defect_seen_run = run_id
+    key = (surface, kind, feature[:80])
+    n = _defect_seen.get(key, 0)
+    _defect_seen[key] = n + 1
+    return n >= 1
+
+
+def record_defect(surface: str, kind: str, expected: str, observed: str, *,
+                  gap: float | None = None, plane: int = 0, round_num: int = 0,
+                  unit_seq: int | None = None, verdict: str = '',
+                  shot: str | None = None,
+                  refs: list[dict[str, str]] | None = None,
+                  reader_source: str = '', note: str = '',
+                  gap_large: bool = False, auto_resolved: bool = False,
+                  severity: str = '') -> None:
+    """便捷:用 current_run_id 记一条缺陷台账(与 record_spend_unit 同模式)。
+
+    severity 显式传入优先;否则写入端按 judge_severity 初判(带复现计数)。
+    run_id 空 → no-op(与其他便捷入口同门控)。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    sev = severity or judge_severity(
+        surface, gap_large=gap_large, auto_resolved=auto_resolved,
+        reproduced=_mark_defect_reproduced(surface, kind, str(expected),
+                                           _CURRENT_RUN_ID))
+    get_recorder().record_defect(
+        surface, kind, expected, observed, run_id=_CURRENT_RUN_ID,
+        plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
+        severity=sev, verdict=verdict, shot=shot, refs=refs,
+        reader_source=reader_source, note=note)
+
+
+def bypass_obs_conflict_to_defect(rec: dict) -> None:
+    """obs_conflict 写入点旁路:同一冲突归一落 defect_ledger(调用方零改动)。
+
+    rec = obs_conflicts.jsonl 已落盘的原始行(dict)——refs 指回该行
+    (field+ts 定位),本函数只做口径映射(field→surface、old/new→
+    expected/observed、数值对→gap),不复制观测数据。
+    """
+    field = str(rec.get('field') or '')
+    surface = OBS_FIELD_TO_SURFACE.get(field, field)
+    old, new = rec.get('old'), rec.get('new')
+    gap: float | None = None
+    gap_large = False
+    try:
+        gap = float(new) - float(old)
+        if surface == 'gold' and abs(gap) > DEFECT_GAP_LARGE_GOLD:
+            gap_large = True
+    except (TypeError, ValueError):
+        gap = None   # 文本面:gap 不填,差用 expected/observed 表达
+    record_defect(
+        surface, 'perception_conflict',
+        expected=f'{field}: {old}', observed=str(new),
+        gap=gap, plane=int(rec.get('plane') or 0),
+        round_num=int(rec.get('round_num') or 0),
+        verdict=str(rec.get('verdict') or ''), shot=rec.get('shot'),
+        refs=[{'stream': 'obs_conflicts',
+               'key': f"field={field}|ts={rec.get('ts') or ''}"}],
+        reader_source=str(rec.get('source') or ''),
+        gap_large=gap_large,
+        auto_resolved=field in AUTO_RESOLVED_OBS_FIELDS,
+        note='旁路自 obs_conflicts 写入点(原始证据层,refs 可下钻)')
+
+
+def _exec_family_surface(family: str) -> str:
+    """动作族 → 台账 surface(子串匹配族名;未映射原样落,枚举外值不炸)。"""
+    f = (family or '').lower()
+    if 'levelup' in f:
+        return 'level_xp'
+    if 'refresh' in f:
+        return 'shop_refresh'
+    if 'buy' in f or 'sell' in f:
+        return 'bench'
+    if 'deploy' in f:
+        return 'deployed'
+    if 'equip' in f:
+        return 'equip'
+    return family or 'exec'
+
+
+def bypass_exec_event_to_defect(rec: dict) -> None:
+    """record_exec_event 写入点旁路:失败类执行事件归一落 defect_ledger。
+
+    仅 fail/blocked/bail 进台账(执行缺陷);success_uncharged 非缺陷不进。
+    写端 severity 恒初判 L2 留证——执行失败的分级安灯由既有 prep_director
+    判定钩子承载(行为不变),台账先收口证据口径,分级升级属后续期。
+    """
+    if str(rec.get('event') or '') not in ('fail', 'blocked', 'bail'):
+        return
+    family = str(rec.get('action_family') or '')
+    record_defect(
+        _exec_family_surface(family), 'exec_fail',
+        expected=f'{family} 动作生效',
+        observed=f"{rec.get('event')}: {rec.get('reason')}",
+        round_num=int(rec.get('round_num') or 0),
+        refs=[{'stream': 'exec_events',
+               'key': (f"run={rec.get('run_id') or ''}|round={rec.get('round_num') or 0}"
+                       f"|family={family}|ts={rec.get('ts') or ''}")}],
+        note='旁路自 exec_events 写入点(原始证据层,refs 可下钻)',
+        gap_large=False, severity=SEVERITY_L2_RECORD)
 
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
@@ -2085,9 +2364,16 @@ def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
         pr, rnd = int(r.get('plane') or 0), int(r.get('round_num') or 0)
         plan_row = plans.get((pr, rnd))
         conf = _match_conflict(conflicts, pr, rnd, r.get('ts') or '')
+        # 关店实读金取值序:行内 gold_close(shop 关店对拍点无条件落)优先;
+        # 旧行(钩子挂上前)恒 None → 回退冲突行。两者同源同读,回退不是
+        # 第二口径;都缺 → unknown 不猜(读失败也以行内 None+trusted=False
+        # 形态留痕,与「对拍通过」可分)。
+        gold_close = r.get('gold_close')
+        if gold_close is None:
+            gold_close = (conf or {}).get('new')
         cls = classify_spend_unit(
             (plan_row or {}).get('actions') or [],
-            (plan_row or {}).get('gold'), (conf or {}).get('new'),
+            (plan_row or {}).get('gold'), gold_close,
             boundary=str(r.get('boundary') or 'closed'))
         cls['unit'] = r
         cls['plan_gold'] = (plan_row or {}).get('gold')
