@@ -72,6 +72,7 @@ from sr_od.application.currency_war.prep_actions import (
     PrepAction,
     PrepActionExecutor,
     RunBuyPhase,
+    SellBench,
     SellDeployed,
     StartBattle,
     action_key,
@@ -180,6 +181,127 @@ PRECOLLAPSE_RETRY_S: float = 1.0
 #: 多付一个窗的探针成本,不引入无界等待;超过窗仍未开 → 走原
 #: 12s 完整门,行为不变。
 PRECOLLAPSE_RETRIES: int = 3
+
+
+# ===== 拖动期望态对账(期望态层·逻辑版本)=====
+# 架构原则(用户 2026-08-28 裁决):指令发出时用纯函数从动作意图计算
+# 「执行后世界应有的增量」;动作完成后的定型帧实读逐槽对账;不一致落
+# 缺陷台账(复现升 L0,停线由 W515 分级安灯承接),一致不打扰,零决策
+# 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
+# (.debug/temp/currency_war/w505_obs_audit/DESIGN.md)。
+# 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove);
+# RunBuyPhase 内 shop.py 的买牌/SellBench 走 §2.2 既有通道,破警告分支
+# (bench_full)无定型帧不进对账。
+
+#: 台账 surface/kind(缺陷台账复现计数按 (surface, kind, expected) 分档,
+#: 消费端按字符串聚合;勿改已有行口径)。
+_DRAG_DEFECT_SURFACE = 'bench'
+_DRAG_DEFECT_KIND = 'intent_state_mismatch'
+
+
+@dataclass
+class DragExpect:
+    """一次拖动动作的期望态(compute_drag_expect 产出 / compare_drag_expect 消费)。
+
+    [索引定义] from_slot = 备战栏画面物理槽位 1-9(prep_actions 族 B 坐标系);
+    target_slot = 部署排**排内**物理槽位 1-N。取值时机 = 动作发出时快照
+    (源 = 上次 heavy 观察的 SIFT 身份,非执行期现读)。
+    identity/target_identity = SIFT 规范名;identity 空 = 源槽身份未识别。
+    """
+    kind: str                # 'sell'(拖卖出)| 'deploy_move'(拖到部署排)
+    identity: str            # 被拖角色身份(SIFT 名)
+    from_slot: int           # bench 源物理槽位 1-9
+    target_row: str = ''     # deploy_move:'front'/'back'
+    target_slot: int = 0     # deploy_move:目标排内槽位
+    target_kind: str = ''    # deploy_move:'place'(空槽落位)/'swap'(互换)
+    target_identity: str = ''  # 目标槽执行前身份(swap 期望换回本槽用)
+
+
+def compute_drag_expect(action: PrepAction,
+                        bench_chars: list[BenchChar],
+                        deployed_chars: list[BenchChar]) -> DragExpect | None:
+    """动作意图 → 期望态(纯函数;期望态由发指令的同一条代码路径更新,
+    动作语义单一源,防模型与现实分叉——架构原则边界②)。
+
+    无法建真值 → None 不评(对齐「无法建真值不评」基准口径,不猜):
+    - 源槽身份未识别(上次 heavy SIFT 无该槽条目);
+    - deploy_move 目标槽为**同名**占用——拖同名是否触发升星/合并去向
+      游戏侧未核实,语义未定义不发明(报告声明,不建期望)。
+    """
+    if isinstance(action, SellBench):
+        ident = next((bc.char_id for bc in bench_chars
+                      if bc.slot == action.slot and bc.char_id), '')
+        if not ident:
+            return None
+        return DragExpect(kind='sell', identity=ident, from_slot=action.slot)
+    if isinstance(action, DeployMove):
+        ident = next((bc.char_id for bc in bench_chars
+                      if bc.slot == action.from_slot and bc.char_id), '')
+        if not ident:
+            return None
+        tgt = next((dc for dc in deployed_chars
+                    if dc.position_pref == action.to_row
+                    and dc.slot == action.to_slot and dc.char_id), None)
+        if tgt is None:
+            tk, ti = 'place', ''
+        elif tgt.char_id == ident:
+            return None   # 同名占位:游戏语义未核实,不发明期望
+        else:
+            tk, ti = 'swap', tgt.char_id
+        return DragExpect(kind='deploy_move', identity=ident,
+                          from_slot=action.from_slot,
+                          target_row=action.to_row, target_slot=action.to_slot,
+                          target_kind=tk, target_identity=ti)
+    return None
+
+
+def compare_drag_expect(expect: DragExpect,
+                        bench_read: list[BenchChar],
+                        deployed_read: list[BenchChar]) -> list[dict[str, str]]:
+    """期望态 vs 定型帧实读逐槽比对(纯函数)。
+
+    判据(槽位级身份比对):
+    - sell:源槽**不得再出现该身份**(原槽位空/无该身份;SIFT 未识别≠空槽,
+      槽内其他身份不构成本判据的不一致——身份消失即满足任务语义①);
+    - deploy_move/place:源槽无该身份 + 目标槽=该身份(空槽落位);
+    - deploy_move/swap:两槽互换(源槽=原目标身份 + 目标槽=被拖身份)。
+    实读中该槽**无条目**(SIFT 未识别/空读)= 无法建真值 → 跳过不评,
+    不算一致也不算不一致。返回不一致项列表(空列表=全部可比项一致)。
+    """
+    mism: list[dict[str, str]] = []
+
+    def _bench_at(slot: int) -> BenchChar | None:
+        return next((c for c in bench_read if c.slot == slot and c.char_id), None)
+
+    def _dep_at(row: str, slot: int) -> BenchChar | None:
+        return next((c for c in deployed_read
+                     if c.position_pref == row and c.slot == slot and c.char_id), None)
+
+    def _add(domain: str, slot: int, want: str, got: str) -> None:
+        mism.append({'domain': domain, 'slot': str(slot),
+                     'expected': want, 'observed': got})
+
+    if expect.kind == 'sell':
+        src = _bench_at(expect.from_slot)
+        if src is not None and src.char_id == expect.identity:
+            _add('bench', expect.from_slot, f'无 {expect.identity}(已卖出)',
+                 src.char_id)
+        return mism
+    # deploy_move:源槽
+    src = _bench_at(expect.from_slot)
+    if expect.target_kind == 'place':
+        if src is not None and src.char_id == expect.identity:
+            _add('bench', expect.from_slot, f'无 {expect.identity}(已离槽)',
+                 src.char_id)
+    else:   # swap
+        if src is not None and src.char_id != expect.target_identity:
+            _add('bench', expect.from_slot, expect.target_identity, src.char_id)
+    # 目标槽(place 与 swap 同判:应是被拖身份)
+    tgt = _dep_at(expect.target_row, expect.target_slot)
+    if tgt is not None and tgt.char_id != expect.identity:
+        _add(f'deployed.{expect.target_row}', expect.target_slot,
+             expect.identity, tgt.char_id)
+    return mism
 
 
 @dataclass
@@ -467,6 +589,61 @@ class PrepDirector(SrOperation):
             return
         from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
         reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
+
+    def _reconcile_drag_expect(self, expect: DragExpect) -> None:
+        """拖动期望态对账(动作完成后调用;零决策行为变更:不一致仅落台账)。
+
+        读法:复用动作后 heavy 重观察的定型帧(``last_screenshot``,零新增
+        截屏);身份读走 identify_slots 纯读组合(**不经 read_bench_chars**
+        ——后者内置召唤物/书册卡停机钩子,动画帧误触停机即违背本对账零
+        行为约束;先例=观测自检框架 §2.2 身份回读)。deployed 排复用
+        read_deployed_chars(其挂点均为留证级非停机,且后排布局选档单一源)。
+        全部 best-effort:任一环节失败静默跳过(宁缺勿造)。
+        """
+        try:
+            frame = getattr(self, 'last_screenshot', None)
+            if frame is None:
+                return
+            templates = ensure_portrait_templates(self.ctx)
+            if templates is None:
+                return
+            from sr_od.application.currency_war.cw_identity_obs import (
+                _ctx_slots,
+                identify_slots,
+                read_deployed_chars,
+            )
+            bench_read = identify_slots(
+                frame, templates, _ctx_slots(self.ctx, '备战栏', 9), '')
+            deployed_read = read_deployed_chars(self.ctx, frame, templates)
+            mism = compare_drag_expect(expect, bench_read, deployed_read)
+            if not mism:
+                return
+            obs_st = self._cached_state
+            exp_txt = (f'{expect.kind} identity={expect.identity} '
+                       f'from_slot={expect.from_slot}'
+                       + (f' target={expect.target_row}{expect.target_slot}'
+                          f'/{expect.target_kind}' if expect.kind == 'deploy_move' else ''))
+            obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
+                               f"实读[{m['observed']}]" for m in mism)
+            cw_telemetry.record_defect(
+                _DRAG_DEFECT_SURFACE, _DRAG_DEFECT_KIND,
+                expected=exp_txt, observed=obs_txt,
+                plane=int(getattr(obs_st, 'plane', 0) or 0),
+                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                gap_large=True,
+                verdict=('留证-拖动后期望态与定型帧实读不一致(身份未识别槽不评;'
+                         '单次 L1,复现自动升 L0,停线由分级安灯承接;本对账'
+                         '零决策行为,不 return/不重拖)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('kind', expect.kind), ('identity', expect.identity),
+                    ('from_slot', str(expect.from_slot)),
+                    ('target_row', expect.target_row),
+                    ('target_slot', str(expect.target_slot)),
+                    ('target_kind', expect.target_kind))],
+                reader_source='drag_expect_reconcile',
+                note='期望态层:期望=动作意图纯函数,与 W512 paddle 动作级对拍分立(身份级 vs 计数级)')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] drag_expect reconcile skip: {e}')
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)
@@ -778,6 +955,13 @@ class PrepDirector(SrOperation):
             # 不进对拍。
             _dep_delta = 0
             _dep_pre: int | None = None
+            # 期望态层(动作发出点):拖动动作从意图导出期望态增量(纯函数,
+            # 架构原则②——期望态由发指令的同一条代码路径计算)。None=无法
+            # 建真值(源槽身份未识别/同名占位语义未定义)→ 后续不评。
+            _drag_expect = None
+            if isinstance(action, (SellBench, DeployMove)):
+                _drag_expect = compute_drag_expect(
+                    action, obs.bench_chars, obs.deployed_chars)
             if isinstance(action, (DeployMove, SellDeployed)):
                 _dep_delta = 1 if isinstance(action, DeployMove) else -1
                 _dep_frame = getattr(self, 'last_screenshot', None)
@@ -865,6 +1049,13 @@ class PrepDirector(SrOperation):
                             note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
                 except Exception:   # noqa: BLE001  观测 best-effort
                     pass
+            # 期望态层(定型帧对账):动作完成且可建期望 → 在本轮 heavy 重观察
+            # 定型帧上逐槽对账;不一致落缺陷台账(复现升 L0 由安灯承接),
+            # 一致/不可评不打扰。仅 progressed 分支——验证失败=动作未发生,
+            # 期望态不适用(该失败由 fail/恢复链管辖)。
+            if progressed and _drag_expect is not None:
+                self._reconcile_drag_expect(_drag_expect)
+            _drag_expect = None
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
