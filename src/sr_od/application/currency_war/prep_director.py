@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import ClassVar
 
 from cv2.typing import MatLike
@@ -103,6 +104,64 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
         sess.plane_lengths_seen = []
     sess.plane_lengths_seen.append(len(seq))
     return True
+
+
+# [停机钩子·临时采证,W494 spend_ledger 续;安灯式,用户裁决采纳]
+# 触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动)。
+# 生命周期(od-dev-stop-hooks §2.1 临时捕获类):失败模式根因修完并验证后删整段
+# (谓词/写 flag/挂点一并删),不留开关/参数。
+
+#: 哨兵 flag 路径(仓根锚定绝对路径:daemon spawn 的非 CWD 进程里相对路径会落错,
+#: 同 shop_unk 钩子审查#4 教训;测试经 write_exec_fail_flag 参数注入 tmp_path)。
+_EXEC_FAIL_FLAG_RELPATH = Path('.debug') / 'temp' / 'cw_exec_fail_hook.flag'
+
+
+def exec_fail_flag_path() -> Path:
+    """哨兵 flag 绝对路径(锚仓根;prep_director.py parents[4] = 仓库根)。"""
+    return Path(__file__).resolve().parents[4] / _EXEC_FAIL_FLAG_RELPATH
+
+
+def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
+                          boundary: str = 'closed') -> bool:
+    """安灯式停机谓词(纯函数,可单测):mismatch 才停。
+
+    mismatch = 分类器 not_effective(计划花费>0 且金差≈0——动作发出但金没动);
+    partial_mismatch(金动了但对不上账)与 unknown(读数缺失/半单元)不停——
+    前者可能是口径差非执行失败,后者证据不足。判定复用
+    ``cw_telemetry.classify_spend_unit``,不建第二套分类。
+    """
+    from sr_od.application.currency_war.cw_telemetry import classify_spend_unit
+    cls = classify_spend_unit(plan_actions or [], gold_open, gold_close,
+                              boundary=boundary)
+    return cls['verdict'] == 'not_effective'
+
+
+def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
+                         round_num: int, unit_seq: int, plan_summary: str,
+                         gold_open, gold_close) -> str:
+    """写哨兵 flag(纯 IO,可单测;内容锁 od-dev-stop-hooks flag 三要素)。
+
+    三要素:触发定位(HOOK-STOP 标记+钩子位置+触发态+时间)/ 可执行处理步骤 /
+    删除条件(临时捕获类 = 根因修完删整段钩子)。返回写入内容(测试断言用)。
+    """
+    content = (
+        '[HOOK-STOP] 执行失败停机钩子(临时采证,安灯式;prep_director 购买单元记账边界)\n'
+        f'触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动;'
+        f'partial/unknown 不停)。\n'
+        f'定位:run_id={run_id} p{plane}r{round_num} unit_seq={unit_seq} '
+        f'ts={time.strftime("%Y-%m-%d %H:%M:%S")}\n'
+        f'plan 摘要:{plan_summary}\n'
+        f'gold:开={gold_open} 关={gold_close}\n'
+        f'截图:.debug/images/exec_fail_* (前缀含 run_id/轮/unit_seq)\n'
+        f'处理步骤:1. 看截图核购买单元画面;2. 对拍 replay 三流(spend_ledger 单元行/'
+        f'decisions shop plan 行/obs_conflicts gold_delta 行)确认是执行未生效'
+        f'(点击落空/被拦)还是口径失配;3. 修失败模式并验证后,删本 flag + 删整段钩子'
+        f'(prep_director 安灯段)+ 重启载入代码的进程。\n'
+        f'删除条件:临时采证钩子——失败模式根因修完并验证后删整段,不留开关。\n'
+    )
+    flag_path.parent.mkdir(parents=True, exist_ok=True)
+    flag_path.write_text(content, encoding='utf-8')
+    return content
 
 
 #: 环入口预收探针的重试间隔(秒)。时序竞争背景:战斗胜利后新回合
@@ -202,6 +261,7 @@ class PrepDirector(SrOperation):
         # W494 spend_ledger:购买单元记账态(纯观测;unit_seq 本局序,run() 清零)
         self._spend_unit_seq: int = 0
         self._unit_meta: dict | None = None
+        self._exec_fail_hook_fired: bool = False   # 安灯:每局最多停一次
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
@@ -446,6 +506,7 @@ class PrepDirector(SrOperation):
         self._cached_gold_trusted = False
         self._spend_unit_seq = 0   # W494:购买单元序按局重置
         self._unit_meta = None
+        self._exec_fail_hook_fired = False
         # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
         #(原 run() 入口调用已删;曾同挂点的 _probe_node_reward
         # 采集钩子 W284 判读完成后曾删,W307 按 r314 原样重挂)。
@@ -845,6 +906,63 @@ class PrepDirector(SrOperation):
                 gold_before_trusted=meta['gold_trusted'])
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] spend_ledger skip: {e}')
+        # [停机钩子·临时采证,安灯式;见模块头钩子段声明] 判定与记账同点:
+        # 命中 mismatch → 哨兵(截图+flag)→ stop_running → 不再点击保画面。
+        # 每局最多停一次;判定复用分类器,数据源与离线读端同一套
+        #(shop 关店对拍的冲突行在本单元返回前已同步落盘 journal)。
+        if not self._exec_fail_hook_fired:
+            try:
+                self._exec_fail_hook_check(meta, boundary)
+            except Exception as e:  # noqa: BLE001  钩子 best-effort,不阻塞环收口
+                log.debug(f'[cw-director] exec_fail hook skip: {e}')
+
+    def _exec_fail_hook_check(self, meta: dict, boundary: str) -> None:
+        """安灯判定+触发(内部方法;谓词与 flag 写入是模块级纯函数,离线可测)。
+
+        数据源:decisions.jsonl 本轮 shop plan 行(plan/开店金,shop 开态可信)
+        + obs_conflicts.jsonl 本轮 gold_delta 行(关店实读金,mismatch 形态下
+        shop 审计必落行:金没动而计划花费>2 → gap>2)。任一缺失 = 分类器
+        unknown = 不停(不猜)。
+        """
+        run_id = cw_telemetry.current_run_id()
+        if not run_id:
+            return
+        replay_dir = cw_telemetry.get_recorder().replay_dir
+        plan_row = cw_telemetry._shop_plan_rows(
+            replay_dir, run_id).get((meta['plane'], meta['round']))
+        if plan_row is None:
+            return
+        import datetime as _dt
+        conf = cw_telemetry._match_conflict(
+            cw_telemetry._read_conflict_gold_delta(replay_dir),
+            meta['plane'], meta['round'],
+            _dt.datetime.now().isoformat(timespec='seconds'))
+        plan_actions = plan_row.get('actions') or []
+        gold_open = plan_row.get('gold')
+        gold_close = (conf or {}).get('new')
+        if not exec_fail_should_stop(plan_actions, gold_open, gold_close,
+                                     boundary=boundary):
+            return
+        self._exec_fail_hook_fired = True
+        items = cw_telemetry.plan_gold_flow(plan_actions)['items']
+        plan_summary = ';'.join(
+            f"{i['type']}:{i['target']}:{i['cost']}" for i in items) or '(空plan)'
+        shot_prefix = (f'exec_fail_{run_id}_p{meta["plane"]}'
+                       f'r{meta["round"]}u{meta["seq"]}')
+        import contextlib
+        with contextlib.suppress(Exception):   # 截图失败不拦停机(flag 是主哨兵)
+            self.save_screenshot(prefix=shot_prefix)
+        write_exec_fail_flag(exec_fail_flag_path(),
+                             run_id=run_id, plane=meta['plane'],
+                             round_num=meta['round'], unit_seq=meta['seq'],
+                             plan_summary=plan_summary,
+                             gold_open=gold_open, gold_close=gold_close)
+        log.warning('[cw!][director] 安灯:购买单元执行失败(计划花费>0 金差≈0)'
+                    ' p%sr%s u%s → 停机留现场 flag=cw_exec_fail_hook.flag',
+                    meta['plane'], meta['round'], meta['seq'])
+        rc = getattr(self.ctx, 'run_context', None)
+        if rc is not None:
+            rc.stop_running(reason='hook:exec_fail_mismatch')
 
     def _stall_gate(self) -> OperationRoundResult | None:
         """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
