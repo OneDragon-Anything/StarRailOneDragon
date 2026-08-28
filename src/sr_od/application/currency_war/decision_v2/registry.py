@@ -116,15 +116,6 @@ class DecisionV2Registry:
         'bond_fallback', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'refresh', 'deploy',
     })
-    war_tags: frozenset[str] = frozenset({
-        'line_carry', 'line_opportunistic', 'bridge_core',
-        'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
-        'bond_fallback',
-        'carry_gate', 'off_target', 'for_gold', 'free_bench',
-        'levelup', 'deploy',
-    })
-    #: 追赶窗口约束:追赶期禁 for_gold(不折现卖件)+ 禁 refresh
-    #: (升人口窗口的钱不进刷新;redesign「追赶=升人口置顶」)
     #: war 标签集(W126/ADR-0349:refresh 进 war 集——「war 模式滤 refresh」
     #: 废除,D 是一等花钱通道([17]「该D牌D牌」不因 war 覆盖态消失;
     #: 授权仍由 V_D 批口径评分+interest_rule EV 门辖,标签集只管在场)
@@ -610,9 +601,10 @@ class DecisionV2Registry:
     #: ([31]② 只买它);零刷新授权(与 W170/W185 刷门管辖不交集)。
     p2_core_firstpiece_enabled: bool = True
 
-    # ===== W300 press 通道:目标外同名副本压库购买(7 参数,V-B3 全量
+    # ===== W300 press 通道:目标外同名副本压库购买(5 参数,V-B3 全量
     # registry 化;arm0=默认值全关零漂移,armA=注入开启;A/B 结论落地后
-    # 按 ADR-0411 先例逐字段裁决去留)。设计=唯一规格:
+    # 按 ADR-0411 先例逐字段裁决去留;评分偏置两字段已随 ADR-0427 增补节
+    # 定谳清理)。设计=唯一规格:
     # .debug/temp/currency_war/w300_dup_ruling/design.md v3 节(V-B0~V-B9)。
     # A/B 兑换统一裁决表(V-B4;锚定义=design §5.3,冲突处以本表为准):
     # | R1 | star≥2 升≥MDE ∧ 进场金/出口质量/经济卫生副锚均不劣 → 落码+ADR+三同步 |
@@ -628,7 +620,6 @@ class DecisionV2Registry:
     #: 全通道总闸(False=通道整体不评估,现行为零漂移;True=press 臂
     #: +candidates 守卫豁免臂+§3.3 三相位 [11] 地板前置臂+检查器
     #: C-B/C-C 发射同步开——A/B 捆绑为一臂,双臂同尺,V-B4.2)。
-    #: C-B/C-C 发射同步开——A/B 捆绑为一臂,双臂同尺,V-B4.2)。
     #: 默认开(W368 A/B:n=300/臂 R2 成立——seg 真拦 −85.6%、通道开通
     #: copy_press_channel_closed 41→0、439 轮替代买进、core2≥1 +24.7pp 显著、
     #: 成型率 +6pp 显著、零回退;star≥2 +3.0pp 不显著如实;对照臂注入 False 保留)。
@@ -640,12 +631,12 @@ class DecisionV2Registry:
     #: 停机护栏(V-A2 继承):press_channel_open 的开域上界(lv≤此值
     #: ∧ plane==1)与带自洽闸参照系 press_band(此值)={1,2}。
     press_channel_max_level: int = 6
-    #: 评分偏置(V-B2.2):tag='copy_press' 候选的板面差分加此值——
-    #: press 通道自带独立给分域,修 W231 副本评分结构性零分;不改
-    #: filler_star_unit 默认值,既有 A/B 通道零波及。armA 初值 0.5,
-    #: 网格 {0.25, 0.5, 1.0}(量级锚=off_target_sell_bias 0.5 /
-    #: crisis_buy_bias 1.0 的「顶零为正」先例);0=关闭。
-    press_copy_unit: float = 0.0
+    #: (press_copy_unit/press_core_mirror_bonus 评分偏置两字段已随
+    #: ADR-0427 增补节定谳清理:copy_press 评分路由双层悬置(生产默认
+    #: 0.0 从未注入生产行为 ∧ 生成域被上游臂截流至近空),无观测支点。
+    #: 评分臂删除后 copy_press 候选评分只由通用板面维决定,与删除前
+    #: 默认态(press_copy_unit=0.0)逐位一致。通道价值主体(总闸/band/
+    #: 双 cap/[11] 豁免臂)保留,见 ADR-0427 增补节删除清单。)
     #: press 候选逐轮采纳笔数上限(V-B8.1,更严一级;量级=单轮至多
     #: 一笔压库副本,与 p1_early_round_cap=1 同式轮键计数)。
     press_copy_round_cap: int = 1
@@ -653,11 +644,6 @@ class DecisionV2Registry:
     #: (V-B8.1;量级锚=W179 p1_early_round_cap=1 先例,取 2 因该臂辖
     #: 方向内候选+press 候选两股)。
     press_exempt_round_cap: int = 2
-    #: E08 评分前置分量(V-B7):copy_press 候选中「同名 ∈ 己方上场核心」
-    #: (压库+断对手粮双重红利,〔补②〕)再加此值——E08 相对前置落为
-    #: 评分分量,arbiter 分数贪心(arbiter.arbitrate 的 sorted key)为
-    #: 唯一跨候选序,V-A4 COPY_PRIORITY_* 整数键系废除不实现。0=关闭。
-    press_core_mirror_bonus: float = 0.0
 
     #: (form_refresh_ev/form_refresh_max_round/form_refresh_min_gold/
     #: form_refresh_engines_target 已随 W126/ADR-0349 删除:成型找件刷新
@@ -847,6 +833,15 @@ class DecisionV2Registry:
     boss_tax_p75: float = 34.0
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
+    #: boss 税 p75 位面锚(消费点按位面取值;键 = GameState.plane,1/2)。
+    #: plane 1 = 现值原样,与 boss_tax_p75 同源(P1 语料标定),零漂移锚;
+    #: plane 2 槽位已就位但默认仍取现值——sim 侧位面观测
+    #: (cw_coarse_battle 标定 manifest 的 hp_events_by_plane:P2 boss
+    #: n=90 均损 −21.63 vs P1 −19.54)已给 P2 真值方向,但 P2 槽位换
+    #: 数据的扰动未评估。激活挂账:待形态 A/B 开臂判据收口后,与 sim
+    #: 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
+    boss_tax_p75_by_plane: dict[int, float] = field(
+        default_factory=lambda: {1: 34.0, 2: 34.0})
     #: 边际战力代理 Δhp·普通战(轮内去均值,hp/场;语料 166 局 5→6 人实测;
     #: 弱信号非单调,只作敏感度臂——DESIGN §①诚实判读)
     delta_hp_normal: float = 1.96
@@ -953,6 +948,37 @@ class DecisionV2Registry:
     #: 标定产出 |28.24−26.71|(P1 two_state 拟合与借档常数的源距,
     #: w375_dual_source_calib.json boss_bucket_injection),非魔数。
     line_switch_boss_ci_halfwidth: float = 1.53
+
+    # ===== R3 撤销出口①意图证据(治 W386 BP1「门放行噪声换线」;
+    # 设计=唯一规格:`.debug/temp/currency_war/w396_r2r3_design/DESIGN.md`
+    # R3 节;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
+    #: 证据组 A:「核心实际可达但连续 N_req 轮未现」的容忍概率 ε。
+    #: 闭式 N_req(core,level)=⌈ln ε/ln(1−q)⌉,q=1−(1−r)^5,
+    #: r=refresh_prob(level,cost)/DISTINCT_CARDS_PER_COST[cost](再遇
+    #: 窗口既有构件;推导 P(N 轮未现|单轮出现率 q)=(1−q)^N≤ε)。
+    #: ε=5%=「可达却连续缺席」压到二十分之一以下才构成断供证据。
+    #: 实表代入(cw_shop_odds):3 费@lv5 q=0.069→N_req=42,3 费@lv7
+    #: q=0.135→21,1 费@lv5→27——拍死值 CORE_MISS_N=6 的 6 轮缺席在
+    #: q≈0.07 下自然概率≈0.65,纯属噪声,定量坐实 W386 BP1「阈值降
+    #: 到可达值后先到达的是出口本身」。ε 的 sim 扫描 {1%,5%,10%} 挂
+    #: L2 注入臂(出口①触发率 × 误开窗占比权衡,设计 R3.5),5% 为
+    #: 设计默认档。
+    revoke_miss_tolerance_eps: float = 0.05
+    #: 证据组 B:异线资产厚度下限 A_min(浮点;厚度口径=_asset_thickness:
+    #: 终局件星级当量+骨架件×SKELETON_ASSET_WEIGHT)。
+    #: 测量协议(冻结池随机厚度基线曲线 f0(a) 的 5% 点,非拍值):池=
+    #: w250_delta_pool/snapshot_v11,100 局 planes=2,分母=逐策略决策
+    #: 帧(P2+ 段 1341 帧),统计量=「任一异线(除当轮锁定线)厚度 ≥ a」
+    #: 的无条件频率;取最小整数 a 使 f0(a)≤5%。实测:f0(4)=7.68%>5%,
+    #: f0(5)=1.27%≤5% → A_min=5。对照曲线(任一 v2 线含锁定线/全帧
+    #: 口径:f0(4)=3.68%→A_min=4)与逐帧明细见测量产物
+    #: .debug/temp/currency_war/w423_r3_revoke_evidence/
+    #: a_min_measurement.json(主口径取消费面一致的「异线 × P2+ 帧」)。
+    #: **分辨力弱声明(设计 R3.1 预案)**:5% 点落在 ≥4 带=证据在本
+    #: 牌池分辨力弱的形态,设计预案=如实降级回炉(证据组 A 单独撑或
+    #: 换证据形态)——回炉裁决挂 L2 注入臂误开窗占比判据(开窗局新线
+    #: 成型 ≥2/3),数据未出前本值按测量结果服役,不调参硬凑。
+    revoke_evidence_min_thickness: float = 5.0
 
     # ===== C1 溢余必花定向优先级(P1 末窗投影安全带;FLIP 正交补集)=====
     #: 设计=唯一规格:`.debug/temp/currency_war/w382_c1_design/DESIGN.md`
