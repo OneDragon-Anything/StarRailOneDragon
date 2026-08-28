@@ -302,6 +302,44 @@ def recipe_fence_active(state: GameState, session: StrategySession,
     return not form_ok(state, session, registry)
 
 
+def _same_name_1star_copies(name: str, state: GameState) -> int:
+    """board∪bench 域该名同星(1★)同名张数(集中度判据输入)。
+
+    只数 1★:店牌恒 1★,买第三张凑的是同名 1★ 3 份的 3合1(cw_state
+    ._merge_bench 分组键=同名同星);已合成的 2★ 不计数——合成后该名
+    再买属第 4 份,生成层 copies_cap 已拦,不进集中度辖域。
+    """
+    return sum(
+        1 for bc in list(state.deployed or []) + list(state.bench or [])
+        if bc is not None and getattr(bc, 'char_id', '') == name
+        and max(1, int(getattr(bc, 'star', 1) or 1)) == 1)
+
+
+def dup_concentration_active(state: GameState, session: StrategySession,
+                             registry: DecisionV2Registry) -> bool:
+    """同名牌集中度辖域(配方供给链决策缺口;决策 why=ADR-0437)。
+
+    辖域与 recipe_fence 同构、开关独立:
+    1. 开关 ``registry.dup_concentration_enabled``(默认关=零漂移锚;
+       开臂判据挂账见 registry 注释);
+    2. P1(追 2★ 是位面 1 未成型语义);
+    3. ``form_ok`` 为假(decision_v2.phase 单一源)——成型后成型停手
+       接手,本谓词自动退出。
+
+    动作级规则在 ``filter_candidates`` 第三遍后置步(配方围栏之后):
+    survivors 中存在配方名(cw_line_defs.recipe_char_names 名集单一
+    源)已持 ≥2 张同名 1★ 的买候选时,删全部散件买候选,删因
+    'dup_concentration_scatter'。与配方围栏正交声明(围栏触发面是
+    本条的超集,双开零冲突)见 filter_candidates docstring。
+    """
+    if not registry.dup_concentration_enabled:
+        return False
+    if state.plane != 1:
+        return False
+    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    return not form_ok(state, session, registry)
+
+
 def crisis_hoard_active(state: GameState,
                         registry: DecisionV2Registry) -> bool:
     """危机囤金态(ADR-0302):应急态(hp≤emergency_hp)且
@@ -406,6 +444,17 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     默认值独立,互不为开臂前提;删因链日志分列(c1_directed 与
     recipe_fence 独立字段),A/B 分通道记账互不污染。与成型停手零重叠
     (form_ok 真假互斥)。金账/息账单一源不动,只重排同一笔预算内买谁。
+
+    同名牌集中度(配方供给链缺口,registry.dup_concentration_enabled
+    默认关=零漂移;辖域=dup_concentration_active,与围栏同构开关独立;
+    决策 why=ADR-0437):配方围栏之后的**第三遍动作级后置步**——
+    survivors 中存在配方名(cw_line_defs.recipe_char_names 名集单一源)
+    已持 ≥2 张同名 1★(差一张凑 3合1)的买候选时,删全部散件买候选,
+    删因 'dup_concentration_scatter'(链日志行 entry['dup_concentration'])。
+    与围栏正交声明:围栏管「买不买配方」(任一配方件在场即删散,触发
+    面是本条超集),本条管「差一张时散买让位」;双开零冲突,删因链
+    日志分列。约束对象=同一笔预算内散买让位(重定向非新增支出),
+    配方件之间相对序仍归 EV 层单一裁决。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
@@ -415,6 +464,13 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     # 配方围栏帧级预处理(方向一;与成型停手以 form_ok 真假互斥,同帧
     # 至多其一;动作级规则在主循环后的第二遍后置步)
     fence = recipe_fence_active(state, session, registry)
+    dup = dup_concentration_active(state, session, registry)
+    dup_recipe_names: frozenset[str] = frozenset()
+    if dup:
+        from sr_od.application.currency_war.cw_line_defs import (
+            recipe_char_names,
+        )
+        dup_recipe_names = recipe_char_names()
     c1 = c1_directed_active(state, session, registry)
     refreshable = frozenset()
     if c1:
@@ -550,4 +606,29 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                 else:
                     still.append(c2)
             kept = still
+    if dup and kept:
+        # 同名牌集中度第三遍后置步(ADR-0437):survivors 中存在配方名
+        # 已持 ≥2 张同名 1★(差一张凑 3合1)的买候选时,删全部散件
+        # (非配方件)买候选。存在性按 survivors 计(前序已删不计);
+        # 与配方围栏正交:围栏触发面是本条超集,双开时散件已被围栏删,
+        # 本条空转,删因分列互不污染;配方件之间相对序仍归 EV 层。
+        conc = any(
+            isinstance(c2.action, BuyCard)
+            and c2.action.card.name in dup_recipe_names
+            and _same_name_1star_copies(c2.action.card.name, state) >= 2
+            for c2 in kept)
+        if conc:
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                _cand_system_bonds,
+            )
+            still2: list[Candidate] = []
+            for i, c2 in enumerate(kept):
+                if (isinstance(c2.action, BuyCard)
+                        and not _cand_system_bonds(c2)):
+                    entry = log[kept_pos[i]]
+                    entry['kept'] = False
+                    entry['dup_concentration'] = 'dup_concentration_scatter'
+                else:
+                    still2.append(c2)
+            kept = still2
     return kept, log

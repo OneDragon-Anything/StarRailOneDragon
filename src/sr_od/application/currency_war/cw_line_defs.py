@@ -78,6 +78,20 @@ def board_total_faction_count(board: dict[str, int]) -> int:
     return sum(1 for v in board.values() if v > 0)
 
 
+def recipe_char_names() -> frozenset[str]:
+    """配方件角色名集(任一阵营 ∈ RECIPE_FACTIONS 的注册角色)。
+
+    判据口径:任一 faction 命中即入集(含 flows 命中但 factions 首位
+    在外的边界名)——与供给链分析(同名集中度约束的数据依据,详见
+    ADR-0437)的 16 名口径一致:1 费×5、2 费×1、3 费×4、4 费×4、
+    5 费×2。消费方=decision_v2.filters 的同名牌集中度判据。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    return frozenset(
+        n for n, ch in CHARACTERS.items()
+        if set(ch.factions or ()) & RECIPE_FACTIONS)
+
+
 def recipe_kinds_1cost() -> int:
     """1 费配方件的种类数(找件刷概率用;r269b 第三处手搓的收口)。"""
     from sr_od.application.currency_war.cw_chars import CHARACTERS
