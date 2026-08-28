@@ -41,6 +41,7 @@ from typing import ClassVar
 
 from cv2.typing import MatLike
 
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -336,6 +337,10 @@ class BuyPurchase:
     star: int
     count: int
     unit_cost: int
+    #: 买前商店帧中该牌的矩形裁片(numpy .copy(),~125KB/张;整帧被帧缓存
+    #: 复用覆写,必须拷贝;一帧原则:来自读牌时已截的帧,零新增截屏)。
+    #: 对账不一致时落盘 = 「买了什么」的像素级证据(比意图对象硬);平时零磁盘写入。
+    crop: object = None
 
 
 @dataclass
@@ -356,6 +361,9 @@ class BuyExpect:
     summary: str                   # 购买意图摘要(台账 refs 用)
     total_cost: int                # 期望扣金 = Σ(k×单价)(无折扣口径)
     low_confidence: bool = False   # 含满栏自动多买子案(k>1,§2.5 置信低)
+    #: 各次购买的商店牌裁片拷贝 [(角色名, 裁片)];随期望态带到对账点作
+    #: 「买了什么」像素证据,对账完成即释放(置 None),平时零磁盘写入。
+    crops: list | None = None
 
 
 def compute_buy_expect(purchases: list[BuyPurchase],
@@ -405,7 +413,9 @@ def compute_buy_expect(purchases: list[BuyPurchase],
                      summary=summary,
                      total_cost=sum(p.unit_cost * max(1, p.count)
                                     for p in purchases),
-                     low_confidence=low_conf)
+                     low_confidence=low_conf,
+                     crops=[(p.name, p.crop) for p in purchases
+                            if p.crop is not None] or None)
 
 
 def _slot_diff(a: BenchChar | None, b: BenchChar | None) -> bool:
@@ -460,6 +470,47 @@ def compare_buy_expect(expect: BuyExpect,
                  f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
                  f'{got.char_id}/{got.star}星')
     return mism
+
+
+def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
+                       mism: list[dict[str, str]], frame: MatLike | None,
+                       bench_slots: list[tuple[int, Rect]]) -> list[str]:
+    """对账不一致时的现场留证(钩子素材;平时零磁盘写入)。
+
+    落盘两类裁片:①买前商店帧的被买牌裁片(expect.crops——像素级「买了
+    什么」证据,比意图对象硬);②定型帧中不一致备战槽的对应裁片(实读
+    现场证据)。文件名带 file_tag(位面-轮次)与身份,便于与台账行互查。
+    返回落盘路径列表(best-effort:单张失败跳过,不阻塞对账记账)。
+    调用方在对账完成后置 ``expect.crops = None`` 释放内存(裁片是拷贝,
+    不留整帧,~125KB/张)。
+    """
+    from one_dragon.utils import cv2_utils
+    paths: list[str] = []
+    try:
+        base = Path(evidence_dir)
+        base.mkdir(parents=True, exist_ok=True)
+        for name, crop in (expect.crops or []):
+            if crop is None:
+                continue
+            p = base / f'buy_expect_{file_tag}_buy_{name}_{len(paths)}.webp'
+            cv2_utils.save_image(crop, str(p))
+            paths.append(str(p))
+        if frame is not None:
+            for m in mism:
+                if m['domain'] != 'bench':
+                    continue
+                slot = int(m['slot'])
+                rect = next((r for s, r in bench_slots if s == slot), None)
+                if rect is None:
+                    continue
+                crop = frame[rect.y1:rect.y2, rect.x1:rect.x2]
+                p = base / (f'buy_expect_{file_tag}_settle_bench'
+                            f'{slot}_{len(paths)}.webp')
+                cv2_utils.save_image(crop, str(p))
+                paths.append(str(p))
+    except Exception:   # noqa: BLE001  留证 best-effort,不阻塞对账记账
+        pass
+    return paths
 
 
 @dataclass
@@ -835,6 +886,21 @@ class PrepDirector(SrOperation):
                        + ('(低置信:满栏自动多买)' if expect.low_confidence else ''))
             obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
+            # 现场留证(仅不一致时落盘,平时零磁盘写入):买前商店牌裁片
+            # (像素级「买了什么」证据)+ 定型帧不一致备战槽裁片;落在台账
+            # 回放目录(与 defect_ledger 同域)。file_tag=位面-轮次 便于互查。
+            evidence: list[str] = []
+            try:
+                _rec = cw_telemetry.get_recorder()
+                _dir = getattr(_rec, 'replay_dir', None) if _rec else None
+                if _dir:
+                    _tag = (f"p{int(getattr(obs_st, 'plane', 0) or 0)}"
+                            f"-r{int(getattr(obs_st, 'round_num', 0) or 0)}")
+                    evidence = _save_buy_evidence(
+                        str(_dir), _tag, expect, mism, frame,
+                        _ctx_slots(self.ctx, '备战栏', 9))
+            except Exception:   # noqa: BLE001  留证 best-effort
+                evidence = []
             cw_telemetry.record_defect(
                 _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
@@ -849,12 +915,16 @@ class PrepDirector(SrOperation):
                     ('total_cost', str(expect.total_cost)),
                     ('low_confidence', str(expect.low_confidence)),
                     ('changed_bench', ','.join(map(str, expect.changed_bench))),
-                    ('changed_deployed', ','.join(map(str, expect.changed_deployed))))],
+                    ('changed_deployed', ','.join(map(str, expect.changed_deployed))),
+                    ('evidence', ';'.join(evidence)))],
+                shot=evidence[0] if evidence else None,
                 reader_source='buy_expect_reconcile',
                 note='期望态层·买牌:期望=购买意图纯函数(落点规则单一源 '
                      'cw_state._merge_bench),与拖动通道 intent_state_mismatch 分立')
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] buy_expect reconcile skip: {e}')
+        finally:
+            expect.crops = None   # 对账完成即释放裁片拷贝(内存,~125KB/张)
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)

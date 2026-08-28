@@ -11,8 +11,10 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_obs_core import (
+    A_SHOP_CARD_PREFIX,
     HP_MAX,
     SHOP_SCREEN_NAME,
+    _area_rect,
     shop_card_click_points,
 )
 from sr_od.application.currency_war.cw_observation import (
@@ -570,6 +572,21 @@ class BuyShopCards(SrOperation):
                     bought_x.add(action.card.x)
                     pt = (min(click_pts, key=lambda p: abs(p.x - action.card.x))
                           if click_pts else Point(action.card.x, 288))
+                    # W536:买前裁该片矩形拷贝(numpy .copy(),~125KB/张)——
+                    # 「买了什么」的像素级证据,随期望态带到对账点,不一致才
+                    # 落盘(平时零磁盘写入)。一帧原则:来自读牌时已截的帧,
+                    # 零新增截屏;必须 copy——整帧会被帧缓存复用覆写。
+                    _card_crop = None
+                    with contextlib.suppress(Exception):
+                        _frame = self.screenshot()
+                        for _i in range(1, 6):
+                            _r = _area_rect(self.ctx,
+                                            f'{A_SHOP_CARD_PREFIX}{_i}',
+                                            SHOP_SCREEN_NAME)
+                            if _r is not None and _r.x1 <= pt.x <= _r.x2:
+                                _card_crop = _frame[_r.y1:_r.y2,
+                                                    _r.x1:_r.x2].copy()
+                                break
                     self.ctx.controller.click(pt)
                     log.info(f'[cw-shop] Buy click @({pt.x},{pt.y}) '
                              f'{action.card.faction}/{action.card.name}/{action.card.cost}')
@@ -602,7 +619,8 @@ class BuyShopCards(SrOperation):
                             _cnt = max(1, min(_in_shop, 3 - _own % 3))
                         _buy_purchases.append(BuyPurchase(
                             name=action.card.name, star=action.card.star,
-                            count=_cnt, unit_cost=action.card.cost or 0))
+                            count=_cnt, unit_cost=action.card.cost or 0,
+                            crop=_card_crop))
                     else:
                         _buy_unidentified = True
                 elif isinstance(action, LevelUp):
