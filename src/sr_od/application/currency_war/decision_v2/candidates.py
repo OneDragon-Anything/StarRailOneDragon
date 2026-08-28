@@ -312,8 +312,9 @@ def _buy_tag(card: ShopCard, state: GameState,
         return 'plugin'         # class5:插件买来即上(有位才买)
     # W300 press 臂(V-B2):目标外同名副本费用 ∈ press band 且 bench
     # 有余槽 → 'copy_press' 新具名标签(放序在 'copy'/'pair' 之后、
-    # bond_fallback 之前——不抢既有豁免通道语义;评分非零路径=
-    # registry.press_copy_unit 独立给分域,V-B2.2;bench 满内联判定=
+    # bond_fallback 之前——不抢既有豁免通道语义;候选行为面=通道守卫
+    # 放行 + [11] 豁免臂/双 cap,评分偏置路由已随 ADR-0427 增补节
+    # 定谳清理;bench 满内联判定=
     # 〔W300 口述〕E03 门字面)。总闸=registry.press_channel_enabled
     # (默认关零漂移)。band 输入优先 state 概率条真值(轮岗盲区,
     # V-B5.3),取不到退 REFRESH_PROB 基线(discipline.press_band)。

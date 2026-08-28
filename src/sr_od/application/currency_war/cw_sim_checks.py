@@ -4140,9 +4140,10 @@ def check_w300_press_channel_probe() -> dict:
     压库副本态在两臂下的候选产出不变式 + E05 带外灰出反例。
 
     - arm0(默认注册表,通道关):压库副本被守卫拦=无候选(零漂移);
-    - armA(press_channel_enabled=True + press_copy_unit>0):同态候选
-      产出(V-B1.5「探针态必须产出候选」=空臂红线)、_buy_tag=
-      'copy_press'(V-B2 新具名标签);评分正分(独立给分域修 W231);
+    - armA(press_channel_enabled=True):同态候选产出(V-B1.5「探针态
+      必须产出候选」=空臂红线)、_buy_tag='copy_press'(V-B2 新具名
+      标签);评分路由已随 ADR-0427 增补节定谳清理,本探针只锁机制面
+      (标签落点 + 守卫放行),不再断言评分正分;
     - band 外反例(cost=3):两臂都不产出候选(V-B6 撤销插件臂后
       E05/E07 维持「不买」;防豁免臂过宽回归)。
     """
@@ -4161,9 +4162,6 @@ def check_w300_press_channel_probe() -> dict:
     )
     from sr_od.application.currency_war.decision_v2.registry import (
         DEFAULT_REGISTRY,
-    )
-    from sr_od.application.currency_war.decision_v2.scoring import (
-        score_candidate,
     )
 
     st = GameState()
@@ -4200,8 +4198,7 @@ def check_w300_press_channel_probe() -> dict:
     def _tag(reg, card) -> str | None:
         return _buy_tag(card, st, sess, reg)
 
-    arm_a = replace(DEFAULT_REGISTRY, press_channel_enabled=True,
-                    press_copy_unit=0.5)
+    arm_a = replace(DEFAULT_REGISTRY, press_channel_enabled=True)
     # arm0:显式注入通道关——开臂后 DEFAULT_REGISTRY 默认即通道开,直接拿它当
     # 「通道关零漂移」基线的前提失效(W374 开臂锁组同步)
     arm0 = replace(DEFAULT_REGISTRY, press_channel_enabled=False)
@@ -4209,19 +4206,13 @@ def check_w300_press_channel_probe() -> dict:
     # arm0:通道关零漂移(守卫拦)
     if '刃' in _names(arm0):
         violations.append('arm0:通道关时压库副本产出候选(零漂移破)')
-    # armA:候选产出(V-B1.5)+标签+评分正分(V-B2)
+    # armA:候选产出(V-B1.5)+标签(评分路由已删,见函数 docstring)
     if '刃' not in _names(arm_a):
         violations.append('armA:探针态未产出压库副本候选(空臂红线)')
     else:
         if _tag(arm_a, st.shop[0]) != 'copy_press':
             violations.append(
                 f"armA:标签={_tag(arm_a, st.shop[0])} ≠ copy_press")
-        cand = next(c for c in generate_candidates(st, sess, arm_a)
-                    if isinstance(c.action, BuyCard)
-                    and c.action.card.name == '刃')
-        val, _bd = score_candidate(cand, st, sess, arm_a)
-        if val <= 0:
-            violations.append(f'armA:copy_press 评分 {val} 非正(W231 病灶未修)')
     # 反例:cost=3 band 外(E05/E07 灰出,V-B6)两臂都无候选
     st2 = GameState()
     st2.plane, st2.round_num = 1, 2
@@ -4239,7 +4230,7 @@ def check_w300_press_channel_probe() -> dict:
                               '(E05 灰出被破)')
     return {'violations': len(violations), 'detail': violations,
             'note': 'W300 press 通道探针:压库副本 arm0 关/armA 产出'
-                    '+copy_press 正分;band 外反例两臂皆拒'}
+                    '+copy_press 标签;band 外反例两臂皆拒'}
 
 
 # --- 批㊱ 检查项(2026-08-24;供给回声销账审计 / 三臂基线) -------------
