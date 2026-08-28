@@ -69,7 +69,7 @@ pearson r(exit,hp)=**−0.05**(零相关);exit≥50 桶 hp0 率反而最高(0.31
 
 1. P1 r8-r9 的**沉没通道**(刷新/经验)在金 20-30 带应被利息账拒(溢价 0.25-0.5/金 × 沉没额 vs ③的 V 仅在硬节点为正)——现行 gold_floor/interest_rule 覆盖,作 sim 观测点(不设新门);
 2. `discipline._streak_floor` 的 0.25 魔数与平面全胜上界=口径错档(reward 侧平面视界、cost 侧一次性、漏免掉血项),方向仍对(③)——标定挂 ADR-0356,W113 收编(SP 段节点级授权)落地时一并重标;
-3. 出口金遥测补「可回收 1★ 值」口径(判读防「袋穷板富」误读)——挂账,不在本批落码。
+3. 出口金遥测补「可回收 1★ 值」口径——**已落码(读端)**:decisions 行 `handoff.salvageable_1star_value`(`cw_telemetry.salvageable_1star_value`;件集=出口时点 deployed+bench 全部 1★ 件,值=Σ `cw_state.sell_refund(1,cost)`=Σcost,未知身份费用兜 3)。**判读判据(两字段并读)**:出口金(`handoff.gold`)低但 `salvageable_1star_value`+袋子金 ≥ 首窗 15-20 → 经济侧无病(钱在卡上,§④);两者双低且形态不达标 → 过程病(按结论节锚点回查破息点)。边界:仅 production decisions 行携带(sim `p2_handoff` 键集不含,读端容忍缺键)。
 
 ## 关联
 

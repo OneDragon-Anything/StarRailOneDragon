@@ -23,6 +23,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import datetime
@@ -34,7 +35,9 @@ from sr_od.application.currency_war.cw_state import (
     XP_CLICK_COST_FALLBACK,
     Action,
     GameState,
+    _bench_char_cost,
     bench_occupied,
+    sell_refund,
 )
 
 log = log_utils.log
@@ -59,6 +62,33 @@ def _to_jsonable(obj: Any) -> Any:
     if isinstance(obj, Path):
         return str(obj)
     return obj
+
+
+def salvageable_1star_value(state: GameState) -> int:
+    """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
+    件的卖出回金和。
+
+    - 口径出处:P10④「出口『财富』= 袋子金 + 可回收 1★ 值」——
+      ``docs/game/currency_war/research/proofs/p10-exit-gold-floor.md``
+      §④ 与「对实现的检验点」3(判读防「袋穷板富」误读:出口金低但
+      本值高 → 钱在卡上,非经济病;两字段必须并读)。
+    - 计算式:Σ ``cw_state.sell_refund(1, cost)``。1★ 卖出全额退、无
+      手续费(sell_refund 单一源),故值 = Σ cost;费用单一源 =
+      ``cw_state._bench_char_cost``(char_id 未识别 → 3 中费保守估)。
+    - 件集边界:只算 1★(2★+ 是沉没通道——合成已花成本,卖出还有
+      手续费,不构成「活期金」);deployed 与 bench 并集,空槽 None
+      跳过。
+    - 纯函数契约:只读 state、零行为消费(挂载点见
+      ``TelemetryRecorder.record_decision`` 的 handoff 富化处)。
+    """
+    total = 0
+    for d in list(state.deployed or []) + list(state.bench or []):
+        if d is None:
+            continue
+        if int(getattr(d, 'star', 1) or 1) != 1:
+            continue
+        total += sell_refund(1, _bench_char_cost(d))
+    return total
 
 
 def serialize_state(state: GameState) -> dict[str, Any]:
@@ -423,8 +453,19 @@ class TelemetryRecorder:
             _ist = extra.get('v3_intention')
             trace.v3_intention = _ist if isinstance(_ist, dict) else None
             # W224/ADR-0399:P2 承接快照(session.v3_handoff 透传;
-            # 非 dict(None)=未进 P2/缺省,旧 schema 不破坏)
+            # 非 dict(None)=未进 P2/缺省,旧 schema 不破坏)。
+            # P10④ 口径补齐(挂账落码):handoff.gold(出口金)旁补
+            # 「可回收 1★ 值」读端字段——判读防「袋穷板富」误读,两字段
+            # 并读判据见 p10-exit-gold-floor.md §④/检验点3。富化只改本行
+            # 遥测 dict 副本,不动 session.v3_handoff 本体(与 sim
+            # SimResult.p2_handoff 的键集差异 = 本字段,读端容忍缺键)。
+            # 取值时点 = 本 record 调用时点(decide_prep 之后、动作执行前,
+            # deployed/bench 域与 P1 出口同帧;gold 域与 handoff.gold 同轮)。
             _ho = extra.get('handoff')
+            if isinstance(_ho, dict):
+                _ho = dict(_ho)
+                with contextlib.suppress(Exception):   # 观测 best-effort
+                    _ho['salvageable_1star_value'] = salvageable_1star_value(state)
             trace.handoff = _ho if isinstance(_ho, dict) else None
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
