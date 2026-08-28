@@ -80,6 +80,25 @@ def _deploy_free(state: GameState) -> int:
                - deployed_occupied(state.deployed or []))
 
 
+def _deploy_free_after_merge(c: Candidate, state: GameState) -> int:
+    """3合1 买入合成后的可上阵空位(合成豁免完备式的「合成后可上」判据)。
+
+    c.merge=True 的 BuyCard 买入即触发全场域合成(cw_state._merge_bench:
+    分组键=同名同星,合成载体=场上优先;被消份按槽位置 None 腾槽,
+    ADR-0392)。合成腾出的上阵位只来自**场上**(deployed)同名同星份
+    被消:场上份 ≥2 → 载体落场上、消 2 份占 1 份,净腾 1 位;场上份
+    ≤1 → 净腾 0(1 份载体落场上占原位;0 份 2★ 落 bench——板满时
+    无位可上,Δp_board=0,不构成战力增量)。
+    """
+    card = c.action.card
+    star = max(1, int(getattr(card, 'star', 1) or 1))
+    dep_copies = sum(
+        1 for d in (state.deployed or [])
+        if d is not None and (getattr(d, 'char_id', '') or '') == card.name
+        and max(1, int(getattr(d, 'star', 1) or 1)) == star)
+    return _deploy_free(state) + (1 if dep_copies >= 2 else 0)
+
+
 def _refreshable_names(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> frozenset[str]:
     """R2 定向刷新存在性判据的名集(评分先验,非授权边界)。
@@ -300,7 +319,9 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     REDESIGN.md` §2,registry.dying_band_account_enabled):濒死帧
     (dying_band_active)命中时按 Δp_board(本轮支出后、下一战开打前
     的上场位增加数)做符号判定——BuyCard:有空位(free≥1)或 3合1 即时
-    合成(bench 对子买店同名牌升星上场,同 C1 侧判据)放行,其余无空位
+    合成且合成后可上(完备式=c.merge ∧ _deploy_free_after_merge≥1:
+    「会发生合成」不等于「Δp≥1」,板满+合成 2★ 落 bench 无位可上仍删)
+    放行,其余无空位
     买删(原因 'hoard_buy',本轮不可能上场的纯 hoard 买,含
     final 目标件「买而不上」——濒死帧来不及按 [21] 兑现,设计内意图);
     LevelUp:bench 有可上件且空位不足时升完立刻多上 1 件放行,否则删
@@ -314,8 +335,9 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     =零漂移;辖域=c1_directed_active,P1 末窗投影安全带 d≥emergency_hp
     ∧ 溢余段,与 FLIP/濒死带辖区零交集):命中间内对支出候选做与濒死带
     同款 Δp_board 符号判定(溢余段花金成本恒 0,只删对 boss 战胜率
-    零增量的支出)——BuyCard:有空位可上或 3合1 即时合成(合成后上场
-    星级即涨,本窗战力增量)放行,纯 hoard 买删(原因 'c1_hoard_buy');
+    零增量的支出)——BuyCard:有空位可上或 3合1 即时合成且合成后可上
+    (完备式同濒死带侧,合成后可上才豁免)放行,纯 hoard 买删(原因
+    'c1_hoard_buy');
     RefreshShop:店内有可买+上的名集件放行定向刷新,否则删(原因
     'c1_blind_refresh');LevelUp:升完立刻多上 1 件放行,否则删(原因
     'c1_levelup_no_deploy');卖/部署非支出不辖。链日志行带 'c1_directed'
@@ -354,10 +376,14 @@ def filter_candidates(cands: list[Candidate], state: GameState,
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
         if ok and dying:
             if isinstance(c.action, BuyCard):
-                # Δp_board = 1 if free≥1 或 3合1 即时合成 else 0(买后
-                # 即可部署,部署由既有 deploy 候选免费完成;bench 对子
-                # 买店同名牌即时合成 2★ 上场,可部署性同 C1 侧判据)
-                if _deploy_free(state) < 1 and not c.merge:
+                # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
+                # else 0。合成豁免取完备式:「会发生合成」(c.merge)∧
+                # 「合成后可上」(_deploy_free_after_merge≥1)——板满+
+                # 合成 2★ 落 bench 无位可上时 Δp_board=0,不放行(买后
+                # 即可部署,部署由既有 deploy 候选免费完成)
+                if (_deploy_free(state) < 1 and not (
+                        c.merge
+                        and _deploy_free_after_merge(c, state) >= 1)):
                     ok = False
                     db_drop = 'hoard_buy'
             elif isinstance(c.action, RefreshShop):
@@ -375,9 +401,12 @@ def filter_candidates(cands: list[Candidate], state: GameState,
             # C1 定向收窄(与濒死带同款 Δp_board 符号判定,辖域不同):
             # 溢余段花金成本恒 0(P11),只删对 boss 战胜率零增量的支出
             if isinstance(c.action, BuyCard):
-                # Δp_board = 1 if free≥1 或 3合1 即时合成 else 0
-                # (合成候选买入即升星上场,本窗战力增量)
-                if _deploy_free(state) < 1 and not c.merge:
+                # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
+                # else 0(完备式同濒死带侧:板满+合成落 bench 无位可上
+                # 时 Δp_board=0,不放行)
+                if (_deploy_free(state) < 1 and not (
+                        c.merge
+                        and _deploy_free_after_merge(c, state) >= 1)):
                     ok = False
                     c1_drop = 'c1_hoard_buy'
             elif isinstance(c.action, RefreshShop):

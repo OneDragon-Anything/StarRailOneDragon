@@ -32,7 +32,10 @@
 ``budget = max(g−50, DP refresh_budget)``,_refresh_cap 的 HP-gate 让位
 (血量维度已由 FLIP 谓词评估,同一维度只评一次防双主),其档金表仍作刷价
 合法性校验保留。一句话:release 是义务(下界),DP/plan 是许可(上界),
-义务激活时义务优先,未激活时许可取交。
+义务激活时义务优先,未激活时许可取交。成型帧末窗投影臂的义务预算
+消费定向化:预算保留但只许花在找件/升级、禁盲刷(门=
+authorize_release_refresh 按 ReleaseDirective.directed_only/find_ok;
+slot 守卫第三路径注入不辖——定向化会重新造出泄息通道静默面)。
 
 slot 守卫与 rush_level 的同轮裁决(DESIGN §②规则1-3):
 1. slot 守卫先于姿态选择:末窗 ``deployed<cap``(有空位)时追级的人口
@@ -79,11 +82,20 @@ class ReleaseDirective:
     rolls: 预算折刷数(÷刷价,向下取整);
     third_path: True=slot 守卫压 level 的显式注入(DESIGN §②规则3;
     False=FLIP 命中帧,DP 姿态保持原样仅合并预算)。
+    directed_only: True=成型帧末窗投影臂——义务预算消费定向化:只许
+    花在找件(店内存在可找名集件,find_ok=指令创建帧的存在性快照)与
+    升级(走既有升级授权链,不经本预算门),禁盲刷(店内无可找件时
+    authorize_release_refresh 拒;boss 窗 latch 单位=单轮、arbiter 每轮
+    至多一次收尾刷新,快照陈旧面有界)。
+    find_ok: directed_only 帧的找件存在性快照(创建帧店内扫描;非
+    directed_only 帧恒 True=本门不辖)。
     """
 
     budget_gold: int
     rolls: int
     third_path: bool = False
+    directed_only: bool = False
+    find_ok: bool = True
 
 
 def refresh_cost_of(state: GameState) -> int:
@@ -150,6 +162,21 @@ def boss_first_buy_phase(state: GameState, session: StrategySession,
     return boss_window_active(state, session, registry)
 
 
+def _findable_in_shop(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry) -> bool:
+    """找件存在性:店内有可找的名集件(目标∪高费强件)。
+
+    名集单一源=decision_v2.filters._refreshable_names(定向刷新同款
+    名单,只作存在性判与评分先验,买谁由 EV 层定价)。
+    """
+    from sr_od.application.currency_war.decision_v2.filters import (
+        _refreshable_names,
+    )
+    names = _refreshable_names(state, session, registry)
+    return any((getattr(card, 'name', '') or '') in names
+               for card in (state.shop or []))
+
+
 def release_directive(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry, phase_value: str,
                       posture: Posture) -> ReleaseDirective | None:
@@ -185,9 +212,20 @@ def release_directive(state: GameState, session: StrategySession,
         # (追级与泄息同轮并存,同一笔溢余预算,DESIGN §②规则2);预算表:
         # rule2 的 level 费用硬界由升级授权链(ev.levelup_ev_basis 可负担性)
         # 自辖,不在此重复扣。
+        # 成型帧末窗投影臂义务预算消费定向化:成型帧(form_ok=True,
+        # phase≠FORM)的泄息期望收益未论证,预算保留但只许花在找件/升级,
+        # 禁盲刷——盲刷授权在 authorize_release_refresh 按 find_ok 拒。
+        # 第三路径(slot 守卫注入)不辖:其语义=防泄息通道静默关闭,
+        # 定向化会重新造出静默面。
+        directed_only = (boss_first_buy_phase(state, session, registry)
+                         and phase_value != 'FORM')
+        find_ok = (_findable_in_shop(state, session, registry)
+                   if directed_only else True)
         budget_gold = max(overflow, posture.refresh_budget * cost)
         return ReleaseDirective(budget_gold=budget_gold,
-                                rolls=budget_gold // cost if cost else 0)
+                                rolls=budget_gold // cost if cost else 0,
+                                directed_only=directed_only,
+                                find_ok=find_ok)
     return None
 
 
@@ -259,10 +297,14 @@ def authorize_release_refresh(session: StrategySession,
     语义=「通道开+预算内按 EV 排序」的中性行为(DESIGN §⑤):预算是
     义务下界,不强制花满——正分 V_D 刷新走既有路径,本门只放行被
     息纪律门拦住的负分刷新(搜索成本显式裁定,同 W249 病灶修法)。
+    directed_only 帧(成型帧末窗投影臂)消费定向化:find_ok=False
+    (店内无可找件)拒——禁盲刷;找件帧放行,升级不经本门不受辖。
     """
     directive = getattr(session, 'v3_release', None)
     if directive is None or cost <= 0:
         return ''
+    if directive.directed_only and not directive.find_ok:
+        return ''   # 成型帧定向化:店内无可找件,盲刷不构成泄息义务的合规消费
     spent = getattr(session, 'v3_release_spent', 0)
     if spent + cost > directive.budget_gold:
         return ''
