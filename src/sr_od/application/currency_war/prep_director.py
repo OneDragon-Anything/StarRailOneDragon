@@ -67,6 +67,11 @@ from sr_od.application.currency_war.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
 )
+from sr_od.application.currency_war.cw_shop_obs import (
+    RefreshExpect,
+    check_shop_pool,
+    refresh_expect,
+)
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
     XP_TO_NEXT_LEVEL,
@@ -597,6 +602,76 @@ def _xp_compare(ledger: XpLedger, display: tuple[int, int] | None,
     if ledger.xp_next != nxt:
         mism.append({'domain': 'xp', 'slot': 'next',
                      'expected': str(ledger.xp_next), 'observed': str(nxt)})
+    return mism
+
+
+# ===== 商店打开态对账(W564:cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
+
+#: 台账 surface/kind(商店通道;复现计数按 (surface, kind, expected) 分档)。
+_SHOP_DEFECT_SURFACE = 'shop'
+_SHOP_POOL_DEFECT_KIND = 'shop_pool_violation'
+_SHOP_REFRESH_DEFECT_KIND = 'refresh_expect_mismatch'
+
+
+def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
+    """商店帧 state.shop → (参评牌列表, 未识别张数)(纯函数)。
+
+    参评 = 有身份牌 ``(name, cost)``;未识别牌(name 空,SIFT miss 占位,
+    cost=0)不进 check_shop_pool——空名+0 费会成 invalid_cost 假票,且
+    「识别失败」已由 W512 置信通道管辖,此处只计数随 refs 披露。
+    """
+    shop = list(getattr(st, 'shop', None) or [])
+    cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
+    return cards, len(shop) - len(cards)
+
+
+def build_refresh_expect(gold: int | None,
+                         refresh_cost: int | None,
+                         cards_old: list[tuple[str, int]],
+                         plane: int,
+                         round_num: int) -> tuple[RefreshExpect, int, int] | None:
+    """刷新动作发出点 → 期望增量(纯函数;producer 契约,None 口径单一源)。
+
+    None 口径(刷费语义 = ``read_shop_refresh_cost``:None=面板读不到):
+    - ``gold`` / ``refresh_cost`` 任一 None → 返回 None = 不可读跳过对账。
+      **禁 ``or 2`` 式合并**——「读不到」≠免费≠默认 2(带横幅帧真 0 曾被
+      兜底改 2 的错值根因,W559 实证);真 0(免费刷/减免档)原样保 0 进
+      期望(gold_after == gold_before,insufficient=False)。
+    - 核验通过才经 ``cw_shop_obs.refresh_expect`` 构建(其 refresh_cost
+      必填无默认,漏传 TypeError,W556 测试钉住防写死回流)。
+
+    挂账(producer 集成点):期望必须在**刷新波内**构建——波前金与波前
+    面板费都是单元内部现读;prep_director 持有的 RunBuyPhase 前后帧均为
+    关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
+    ``operations/prep/shop.py`` 刷新波现读处(先例 = pending_buy_expect
+    同文件暂存、本环 heavy 帧消费);消费判据 = refresh_reconcile_mismatches
+    (本文件,真值表已锁),落台账 kind=refresh_expect_mismatch。
+    """
+    if gold is None or refresh_cost is None:
+        return None
+    return refresh_expect(gold, cards_old, refresh_cost), plane, round_num
+
+
+def refresh_reconcile_mismatches(expect: RefreshExpect,
+                                 gold_after_obs: int | None,
+                                 cards_named: int) -> list[dict[str, str]]:
+    """刷新期望 vs 实读对账判据(纯函数;W556 口径:只硬验金差+有牌)。
+
+    - 金腿:``gold_after_obs`` None = 失读不评(宁缺勿造);不等 = 一票
+      (期望侧 gold_after 由 build_refresh_expect 保证基于波前现读,
+      真值表含 0 与 None 分道)。
+    - 牌腿:``cards_named`` = 实读有身份牌数;==0 = 刷新未生效形态开票;
+      1-4 张**不判错**——低等级后槽未解锁是常态,槽位解锁规则未建模,
+      「满格」期望无真值,计数由调用方随 refs 披露。
+    """
+    mism: list[dict[str, str]] = []
+    if gold_after_obs is not None and gold_after_obs != expect.gold_after:
+        mism.append({'domain': 'gold', 'slot': '-',
+                     'expected': str(expect.gold_after),
+                     'observed': str(gold_after_obs)})
+    if cards_named <= 0:
+        mism.append({'domain': 'cards', 'slot': '-',
+                     'expected': '>=1', 'observed': '0'})
     return mism
 
 
@@ -1339,6 +1414,55 @@ class PrepDirector(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] faction_display reconcile skip: {e}')
 
+    def _reconcile_shop_pool(self, obs: PrepObservation) -> None:
+        """商店打开 heavy 帧卡池一致性票(cw_shop_obs.check_shop_pool 接线;
+        零决策:违例仅落缺陷台账,不 return/不重读不纠错)。
+
+        帧 = obs.shop_open 且 state.shop 非空(shop 关态 read_shop_cards
+        自带收起锚门返空,天然跳过;state.shop 即 read_game_state 内
+        read_shop_cards 现读链,零新增 SIFT)。pool_state:无池追踪账
+        (cw_state 只有我方 tracked 持有,池内剩余无人建账)→ 传 None =
+        只查 tier 门,池守恒查如实降级(W556 口径),refs 披露。
+        tier_locked = 该费用档在当前等级概率为 0(REFRESH_PROB 单一源)
+        = 牌识别错或等级读错的强证据。节奏 = 与 _reconcile_xp_expect
+        同款 heavy 定型帧消费,全程 best-effort。
+        """
+        try:
+            st = obs.state
+            if st is None or not obs.shop_open:
+                return
+            cards, unnamed = _shop_pool_inputs(st)
+            if not cards:
+                return
+            violations = check_shop_pool(cards, int(st.level or 0), None)
+            if not violations:
+                return
+            obs_txt = ';'.join(f'{v.name}/{v.cost}:{v.kind}({v.detail})'
+                               for v in violations)
+            cw_telemetry.record_defect(
+                _SHOP_DEFECT_SURFACE, _SHOP_POOL_DEFECT_KIND,
+                expected='0 违例(五牌两查)',
+                observed=obs_txt,
+                plane=int(getattr(st, 'plane', 0) or 0),
+                round_num=int(getattr(st, 'round_num', 0) or 0),
+                gap_large=True,
+                verdict=('留证-商店牌卡池一致性违例(tier_locked=该费用档本'
+                         '等级概率为0,牌识别错或等级读错;invalid_cost=费用'
+                         'OCR误读。pool_state 无账本传 None,池守恒查如实'
+                         '降级未做;零决策记账,单次 L1,复现升 L0 由分级'
+                         '安灯承接)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('level', str(int(st.level or 0))),
+                    ('cards', str(len(cards))),
+                    ('unnamed', str(unnamed)),
+                    ('pool_state', 'None(池查降级)'))],
+                reader_source='shop_pool_reconcile',
+                note='期望态层·商店:违例票=cw_shop_obs.check_shop_pool'
+                     ' 纯函数(REFRESH_PROB/POOL_COPIES_PER_CARD 单一源),'
+                     '与买牌/经验/羁绊通道分立')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] shop_pool reconcile skip: {e}')
+
     # ===== 装备期望态对账(W543;纯记账+对账,零决策行为变更)=====
     # 语义单一源 = docs/game/currency_war/research/equipment_mechanics.md §1.1
     # (两件简易必合成无共存 28/28 配方实证 / 角色装备上限 3 件 / 合成落点 =
@@ -1890,6 +2014,10 @@ class PrepDirector(SrOperation):
             # 全集 vs 面板 OCR,mismatch 落缺陷台账(kind=faction_display_mismatch,
             # 零决策不纠漂;内部 best-effort)。
             self._reconcile_faction_display(obs)
+            # 商店打开态对账(W564):同帧消费——商店打开 heavy 帧(腾席链
+            # EnsureShopOpen 后)上五牌卡池一致性票(shop_pool_violation;
+            # 零决策记账,内部 best-effort;关店帧自带锚门空跳)。
+            self._reconcile_shop_pool(obs)
             # 期望态层·装备(W543):卖角色「装备全量回装备区」期望在本轮
             # heavy 定型帧上消费对账(equip/equip_expect_mismatch;零决策
             # 记账:不一致不重拖不改行为;不可评口径已在构建端丢弃)。
