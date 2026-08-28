@@ -17,8 +17,6 @@ redesign §3/§5.4 覆盖态**严格优先序**:应急(HP 危急)→ 追赶修�
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
@@ -34,9 +32,6 @@ from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
 
 
 def _formed_stop_buy_allowed(name: str | None, state: GameState,
@@ -134,14 +129,11 @@ def c1_directed_active(state: GameState, session: StrategySession,
 
     溢余段花金零息损(P11,成本恒 0),定向语义的期望账方向=只保留
     对 boss 战胜率有增量的支出;逐动作判定见 filter_candidates 的 C1 段。
-    判据性质(DESIGN `w397_s5_asset_channel` §3.3):默认配置下为
+    判据性质(``w382_c1_design`` DESIGN §2 同款推导,资产臂通道已定谳
+    清理见 ADR-0444):默认配置下为
     Δp_board 符号谓词(可证明零期望,W373 推导链在本辖域成立;同款判据
     的首用方 C3 濒死带已定谳清理,否决与清理裁决见 ADR-0426 增补节,
-    C1 辖域内推导链独立成立不受其否决波及);
-    资产臂开启(registry.c1_asset_channel_enabled)后判据升格为
-    「Δp_board×13.35 + V_asset > 0」的析取式——删除集降格为「可证明零
-    板面增量 ∧ 低隶属度代理为负」的启发式收窄,W373「可证明零期望」
-    证明对开启态不再适用(引用本 docstring 时须连同本段读)。
+    C1 辖域内推导链独立成立不受其否决波及)。
     破息分支(g≤50 跨档)不在本辖域——概念已定谳否决,永不实现
     (定谳判据与证据链=ADR-0443;registry 留定谳注记)。
     """
@@ -162,58 +154,6 @@ def c1_directed_active(state: GameState, session: StrategySession,
     if (state.gold or 0) <= registry.interest_floor:
         return False    # 只辖溢余段(必花语义的成本恒 0 前提,P11)
     return boss_first_buy_phase(state, session, registry)
-
-
-def _c1_asset_tables(state: GameState, session: StrategySession,
-                     ) -> tuple[dict[str, float], Comp] | None:
-    """C1 资产臂的目标件隶属度表 m(name) 与锁定线 comp(设计=唯一规格:
-    ``.debug/temp/currency_war/w397_s5_asset_channel/DESIGN.md`` §2.2)。
-
-    名集单一源=锁定线 comp 注册表(禁止重抄名单):核=意向核心名集
-    ``candidates._core_names`` 单一源(锁定时由 strategy 写入,缺读退
-    comp.core_chars);共享/替班=``comp.shared_chars`` ∪
-    ``comp.substitute_plan`` 替班者(与 cw_evolution 换线名集同源构造)。
-    取值:核 1.0 / 共享·替班 0.5 / 其余 0(不在表内=0)。
-
-    意向未锁线(comp 不可解析)返回 None——无 T 则 m 无定义,C1 资产臂
-    整体不激活,退回 Δp_board-only 判据(DESIGN §2.2)。换线(意向重锁)
-    瞬间 T 变化,本表每帧由单一源重算,无独立状态。
-    """
-    ist = getattr(session, 'v3_intention', None)
-    if not isinstance(ist, IntentionState) or ist.phase != 'locked':
-        return None
-    from sr_od.application.currency_war.cw_comps import get_comp
-    comp = get_comp(ist.locked_comp)
-    if comp is None:
-        return None
-    from sr_od.application.currency_war.decision_v2.candidates import (
-        _core_names,
-    )
-    cores = _core_names(session) or set(comp.core_chars)
-    subs = {p.get('替班者', '') for p in comp.substitute_plan} - {''}
-    m = dict.fromkeys(cores, 1.0)
-    for n in (set(comp.shared_chars) | subs) - cores:
-        m[n] = 0.5
-    return m, comp
-
-
-def _c1_asset_m_eff(name: str, state: GameState, m: dict[str, float],
-                    comp: Comp) -> float:
-    """目标件隶属度的有效值 m_eff(DESIGN §2.2 防重复囤项)。
-
-    该名已有达标星(≥目标星)在手副本(bench∪deployed)→ 0(后续买
-    零边际);目标星级单一源=comp.level_plan 各站 star_goals 逐名取最大,
-    缺读退 2(成型判定口径——form_ok 谓词族核心上场 2★,decision_v2
-    .phase 单一源语义,不另立档)。"""
-    target = 2
-    for goal in comp.level_plan.values():
-        s = (goal.star_goals or {}).get(name) or 0
-        target = max(target, int(s))
-    for bc in list(state.deployed or []) + list(state.bench or []):
-        if (bc is not None and getattr(bc, 'char_id', '') == name
-                and (getattr(bc, 'star', 1) or 1) >= target):
-            return 0.0
-    return m.get(name, 0.0)
 
 
 def formed_stop_active(state: GameState, session: StrategySession,
@@ -377,23 +317,9 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     'c1_levelup_no_deploy');卖/部署非支出不辖。链日志行带 'c1_directed'
     原因。贡献候选间的相对排序仍由 EV 评分层单一裁决,本通道不改分。
 
-    C1 资产臂(registry.c1_asset_channel_enabled,默认关=零漂移;设计=
-    唯一规格 `.debug/temp/currency_war/w397_s5_asset_channel/DESIGN.md`
-    §2/§3):开启时 C1 放行判据加正交资产臂 V_asset = m × p_slot ×
-    δ_unit × L2 × hp_to_gold(金当量,与 boss 税通道同单位相加;
-    Δp_board∈{0,1} ∧ V_asset≥0 → 析取式「原判据 ∨ 资产臂」)。
-    m=目标件隶属度(核 1.0/共享·替班 0.5/其余 0,锁定线 comp 注册表
-    单一源;满星 m_eff=0 防重复囤),p_slot/δ_unit/L2=registry 待标定量。
-    资产臂激活前提=意向已锁线(comp 可解析)∧ p_slot>0 ∧ δ_unit>0
-    (符号判定,量级不进判据方向);未锁线退回 Δp_board-only 判据。
-    逐动作:BuyCard 加 OR 臂 m_eff≥c1_asset_m_min;RefreshShop 加存在性
-    臂(店内有 m_eff≥m_min 可买件,B7 型「本窗凑不齐、P2 合成」价值);
-    LevelUp 加臂(bench_n≥1 ∧ ∃bench 件 m_eff≥m_min,等级 cap 跨位面
-    继承,B10 bench_n=0 无可兑现资产仍删)。资产臂激活帧的 BuyCard 删因
-    名改 'c1_hoard_buy_junk'(m<m_min 的低隶属度删,与 Δp_board-only
-    的 'c1_hoard_buy' 分通道记账,供 A/B 兑现率闭环);链日志行加
-    'c1_asset_pass'(true/false)与 'c1_asset_m'(候选/店内/备考的
-    m_eff 代表值)。
+    (C1 资产臂/跨位面资产通道 V_asset 已定谳清理,删码留档:
+    开臂前置触发面实测为零——C1 辖域帧上意向从不处于锁线态,m 表结构性
+    无定义,通道构造性恒不激活;决策 why=ADR-0444。)
 
     配方围栏(方向一,registry.recipe_fence_enabled 默认关=零漂移;
     辖域=recipe_fence_active,P1 ∧ form_ok 为假;ADR-0432):成型停手/
@@ -426,30 +352,6 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     if c1:
         from sr_od.application.currency_war.cw_state import bench_occupied
         bench_n = bench_occupied(state.bench or [])
-    # C1 资产臂帧级预处理(每帧一次;m 表与 comp 由锁定线单一源派生,
-    # 激活前提=开关 ∧ 锁线 ∧ 标定量符号为正——溢余段是符号判定)
-    c1_asset = None
-    c1_asset_active = False
-    if c1 and registry.c1_asset_channel_enabled:
-        c1_asset = _c1_asset_tables(state, session)
-        c1_asset_active = (c1_asset is not None
-                           and registry.c1_asset_p_slot > 0
-                           and registry.c1_asset_delta_unit > 0)
-    c1_asset_shop = False
-    c1_asset_bench = False
-    c1_asset_shop_m = 0.0
-    c1_asset_bench_m = 0.0
-    if c1_asset_active:
-        m, comp = c1_asset
-        m_min = registry.c1_asset_m_min
-        shop_ms = [_c1_asset_m_eff(sc.name, state, m, comp)
-                   for sc in (state.shop or []) if sc is not None]
-        c1_asset_shop_m = max(shop_ms) if shop_ms else 0.0
-        c1_asset_shop = c1_asset_shop_m >= m_min
-        bench_ms = [_c1_asset_m_eff(bc.char_id, state, m, comp)
-                    for bc in (state.bench or []) if bc is not None]
-        c1_asset_bench_m = max(bench_ms) if bench_ms else 0.0
-        c1_asset_bench = bench_n >= 1 and c1_asset_bench_m >= m_min
     kept: list[Candidate] = []
     kept_pos: list[int] = []   # [索引定义] kept[i] 的链日志下标(log 容器
     #             0 起;与 kept 同轮同序生成,取值时机=主循环内同步追加)
@@ -458,8 +360,6 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
         c1_drop = ''   # 本行是否被 C1 定向收窄拦(Δp_board 符号判定)
-        asset_m_rep: float | None = None   # 资产臂记账面(未评估=None)
-        asset_pass = False
         if ok and formed_stop and isinstance(c.action, BuyCard):
             if not _formed_stop_buy_allowed(c.action.card.name,
                                             state, session):
@@ -469,43 +369,24 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         if ok and c1:
             # C1 定向收窄(Δp_board 符号判定):
             # 溢余段花金成本恒 0(P11),只删对 boss 战胜率零增量的支出。
-            # 资产臂激活时(V_asset>0)为析取式放行(设计
-            # w397_s5_asset_channel DESIGN §3.1);c1_asset_m 仅为记账。
             if isinstance(c.action, BuyCard):
                 # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
                 # else 0(合成豁免取完备式:板满+合成落 bench 无位可上
-                # 时 Δp_board=0——资产臂开时按 m 计资产价值放行,
-                # 与合成体是否即时可上无关,DESIGN §3.2 B5)
-                if c1_asset_active:
-                    m, comp = c1_asset
-                    asset_m_rep = _c1_asset_m_eff(c.action.card.name, state,
-                                                  m, comp)
-                    asset_pass = asset_m_rep >= registry.c1_asset_m_min
-                if (_deploy_free(state) < 1 and not (
+                # 时 Δp_board=0)
+                if _deploy_free(state) < 1 and not (
                         c.merge
-                        and _deploy_free_after_merge(c, state) >= 1)
-                        and not asset_pass):
+                        and _deploy_free_after_merge(c, state) >= 1):
                     ok = False
-                    c1_drop = ('c1_hoard_buy_junk' if c1_asset_active
-                               else 'c1_hoard_buy')
+                    c1_drop = 'c1_hoard_buy'
             elif isinstance(c.action, RefreshShop):
-                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据);
-                # 资产臂=店内 ∃可买件 m_eff≥m_min(存在性,B7 型本窗
-                # 凑不齐、P2 合成的存在性价值)
-                asset_pass = c1_asset_shop
-                asset_m_rep = c1_asset_shop_m
-                if not shop_has_play and not asset_pass:
+                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据)
+                if not shop_has_play:
                     ok = False
                     c1_drop = 'c1_blind_refresh'
             elif isinstance(c.action, LevelUp):
                 # Δp_board = 1 iff 升完立刻多上 1 件(bench_n≥1 且
-                # free<bench_n);
-                # 资产臂=bench_n≥1 ∧ ∃bench 件 m_eff≥m_min(等级 cap
-                # 跨位面继承;bench_n=0 无可兑现资产仍删,B10)
-                asset_pass = c1_asset_bench
-                asset_m_rep = c1_asset_bench_m
-                if not (bench_n >= 1 and _deploy_free(state) < bench_n) \
-                        and not asset_pass:
+                # free<bench_n)
+                if not (bench_n >= 1 and _deploy_free(state) < bench_n):
                     ok = False
                     c1_drop = 'c1_levelup_no_deploy'
         entry = {'tag': c.tag, 'kept': ok, 'level': level,
@@ -516,11 +397,6 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                         and c.tag not in forbidden) else {})}
         if c1_drop:
             entry['c1_directed'] = c1_drop
-        if c1 and registry.c1_asset_channel_enabled and asset_m_rep is not None:
-            # 资产臂记账面(A/B 分通道兑现账数据源,DESIGN §6):pass 与
-            # m_eff 代表值;未激活(未锁线/符号零)不带本字段=未评估
-            entry['c1_asset_pass'] = asset_pass
-            entry['c1_asset_m'] = asset_m_rep
         log.append(entry)
         if ok:
             kept.append(c)

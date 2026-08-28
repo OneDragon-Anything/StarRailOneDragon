@@ -1072,45 +1072,26 @@ class DecisionV2Registry:
     #: 可证传导链乐观上界(P17 +8 hp 链)k ≤ 0.012/金,全口径不过账
     #: (条件口径差 4.3 倍),期望收益为负或至多在乐观界处打平。
     #: 本开关辖域只含溢余段定向收窄主通道(已落码,默认关零漂移,
-    #: 成本侧账独立成立),其开臂由三臂 A/B「基线 vs C1」对照独立裁决,
-    #: 不因破息否决受波及。
+    #: 成本侧账独立成立),其开臂由两臂 A/B「基线 vs C1 本体」对照独立
+    #: 裁决(判据=出口 hp 与 boss 胜率不降+删因逐笔可复算,事前预写见
+    #: ADR-0443 Decision 3),不因破息否决受波及。
     c1_directed_spend_enabled: bool = False
 
-    # ===== C1 资产臂(跨位面资产通道 V_asset)=====
-    #: 设计=唯一规格:`.debug/temp/currency_war/w397_s5_asset_channel/
-    #: DESIGN.md` §2/§3。语义:C1 现行 Δp_board-only 判据漏跨位面资产
-    #: 通道——P1 末窗满板时买目标件上 bench,本战板面不变(Δp_board=0)
-    #: 但 P2 成型进度 +1(板面/阵容/等级跨位面继承),EV 层会定价为正
-    #: 的候选被滤网先行删除。修法=放行判据改为析取式
-    #: ``Δp_board×13.35 + V_asset > 0``(金当量;13.35=boss 税 mean
-    #: 26.7×hp_to_gold 0.5,Δp_board∈{0,1} ∧ V_asset≥0 退化为 OR 臂),
-    #: ``V_asset = m × p_slot × δ_unit × L2 × hp_to_gold``。辖域只在本
-    #: C1 段,濒死带(C3)段不引入资产臂——濒死帧无「P2 首战」兑现面,
-    #: 引入即破「再输即死」前提下的可证明零期望性质(DESIGN §5)。
-    #: 资产臂公式锁(手算代入)/边界帧锁见
-    #: ``sr-od-test/test/sr_od/app/currency_war/test_cw_c1_directed_spend.py``。
-    #: **开臂 A/B 判据挂账(不执行,DESIGN §6 三级对照)**:主判据=
-    #: P2 首战胜率差 ≥+2pp 且 P2 成型时点中位提前 ≥0.5 轮;守卫=m≥
-    #: m_min 逐笔可复算(链日志 c1_asset_pass/c1_asset_m)/换线率不升/
-    #: 末窗溢余清空率不降;三级对照=基线(无 C1)/C1-off(现行)/
-    #: C1-asset(本臂),隔离 C1 本体与资产臂两级效应。
-    #: 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。
-    c1_asset_channel_enabled: bool = False
-    #: 目标件隶属度阈值 m(DESIGN §2.2:核 1.0/共享·替班 0.5/其余 0;
-    #: m_min=0.5=替班计入,A/B 可分级)。
-    c1_asset_m_min: float = 0.5
-    #: bench 件在 P2 首战前获得可部署空位的概率(待标定,DESIGN §7 缺口①;
-    #: 保守默认 0.5=设计稿指定)。溢余段判据只取符号(>0),量级仅影响
-    #: A/B 效应量预估。
-    c1_asset_p_slot: float = 0.5
-    #: 单件目标件在 P2 上场对场胜率的平均增量(待标定·主缺口,DESIGN
-    #: §7 缺口②;占位值=DESIGN §2.1 复算例)。判据只取符号(>0);
-    #: 量级挂 A/B 分通道兑现账回填(DESIGN §6)。
-    c1_asset_delta_unit: float = 0.03
-    #: E[损血|P2 场败](待标定,DESIGN §7 缺口③;占位值=DESIGN §2.1
-    #: 复算例值,与 boss_tax mean 同构的 P2 口径)。不进符号判定,
-    #: 仅 V_asset 量级账。
-    c1_asset_l2_loss: float = 12.0
+    # ===== C1 资产臂(跨位面资产通道 V_asset)——定谳清理,删码留档 =====
+    #: 曾以 c1_asset_channel_enabled(总开关)+c1_asset_m_min(0.5)/
+    #: p_slot(0.5,待标定)/delta_unit(0.03,待标定·主缺口)/l2_loss
+    #: (12.0,待标定)五字段落码默认关(设计=唯一规格
+    #: ``.debug/temp/currency_war/w397_s5_asset_channel/DESIGN.md``
+    #: §2/§3;行为锁=test_cw_c1_directed_spend 资产臂节)。定谳依据
+    #: (ADR-0444,开关生命周期第 4 态):开臂前置「触发面非零」实测为零
+    #: ——sim 300 局 C1 辖域 445 帧上意向从不处于锁线态(session 无
+    #: v3_intention 或 phase≠locked),m 表结构性无定义,通道构造性恒不
+    #: 激活(三臂冒测逐位相同);p_slot/delta_unit/l2_loss 三个「待标定」
+    #: 量在触发面为零下永无标定数据源(标定数据源=A/B 兑现账回填,通道
+    #: 不点火即无账)。开关、四参与 filters 谓词(_c1_asset_tables/
+    #: _c1_asset_m_eff)一并删除,本注记留档。复活条件=机制/策略演进使
+    #: 「P1 末窗溢余段帧 ∧ 意向已锁线」交集复归非零且触发面测量复归
+    #: 非零,方可重新立项。
 
 
     # ===== 形态达标三方向(设计单一源=.debug/temp/currency_war/
