@@ -45,6 +45,107 @@ _DOT_POOL = tuple(sorted(
 _SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 
+# ── plaza 先验面样本权重口径(W495 逐篇语料接入,单一源)──────────────
+#: 无 use 计数帖的基础权重(=遥测行权重 1,先验面最低话语权)。
+PLAZA_BASE_WEIGHT: float = 1.0
+#: 先验面份额:plaza 全量权重和归一到「等效遥测局数」的倍数。
+#: =1.0 即先验面与遥测集同话语权(Beta 收缩 α=n 的等价量级,
+#: 与 cw_coarse_battle.PLAZA_SHARE_MAX=0.25 的「先验不主导」精神一致
+#: ——粗模型按单元封顶,影子模型按全集配平,都是防 784 篇生存者语料
+#: 淹没带负样本的实机校准锚)。
+PLAZA_PRIOR_FACE_N: float = 1.0
+
+
+def plaza_sample_weight(use: int) -> float:
+    """单篇 plaza 帖 → 原始样本权重(use 计数对数压缩;归一在训练侧做)。
+
+    口径与边界:
+    - ``use>0 → PLAZA_BASE_WEIGHT + ln(1+use)``——头部帖(万人使用)话语权
+      高但被对数压扁:原值 use 可达数千,直接作权重会令先验面权重和
+      超遥测集 4 个数量级,校准锚失效;ln(1+3000)≈8,压缩后头部/尾部
+      权重比 ~8:1,保留「头部帖更可信」的排序而不淹没;
+    - ``use<=0(无计数帖)→ PLAZA_BASE_WEIGHT``——仍是一条赢家结构样本,
+      只取基础话语权。
+    返回的是**原始权重**;训练消费前须经 :func:`plaza_prior_weights`
+    按先验面份额归一,禁直接进 loss(否则份额口径漂移)。
+    """
+    u = max(int(use), 0)
+    if u <= 0:
+        return PLAZA_BASE_WEIGHT
+    import math
+    return PLAZA_BASE_WEIGHT + math.log1p(u)
+
+
+def plaza_post_features(post: Any) -> dict[str, Any]:
+    """单篇 plaza 帖明细(cw_plaza_posts.PlazaPost)→ 胜率模型特征行。
+
+    特征面 = ``ShadowKilledModel.features`` 全量列(deployed 口径对齐:
+    帖的 Final 阶段 units 逐个转 ``{char_id, star, equips}`` 后过
+    ``features_from_deployed``)+ plaza 附加列:
+
+    - ``plaza_use`` / ``plaza_weight_raw``:use 计数与原始权重
+      (:func:`plaza_sample_weight`;归一在训练侧,见上);
+    - ``n_carry``:Final carry 数(帖结构特征,通常 1);
+    - ``n_labels`` / ``n_portals`` / ``n_augs``:节奏标签/门户/投资实选
+      计数(密度代理;词表级 one-hot 留给 Phase B 特征条件化再升)。
+
+    缺字段兜底:equips/traits 等元组缺省为空 → 对应计数自然为 0;
+    注册表外角色名由 ``unknown_char_count`` 披露(不抛、不猜),与实机
+    OCR 识别形变残留同口径。**标签恒为胜**(赢家发帖,生存者偏差——
+    本函数不产标签,训练侧固定 y=1,声明见 cw_plaza_posts docstring)。
+    """
+    eq_map = dict(post.equips)
+    deployed = [
+        {'char_id': name, 'star': star, 'equips': list(eq_map.get(name, []))}
+        for name, star, _cost, _pos, _is_carry in post.units
+    ]
+    base = features_from_deployed(deployed)
+    feats = dict(_engine_columns(base))
+    feats.update({
+        'plaza_use': int(post.use),
+        'plaza_weight_raw': plaza_sample_weight(post.use),
+        'n_carry': len(post.carries),
+        'n_labels': len(post.labels),
+        'n_portals': len(post.portals),
+        'n_augs': len(post.augs),
+    })
+    return feats
+
+
+def _engine_columns(base: dict[str, Any]) -> dict[str, Any]:
+    """基础特征 dict → 追加引擎覆盖度派生列(单一源,features() 共用)。
+
+    engine_trio/dot_pieces/seele 实体出处见模块头「引擎实体单一源」注释。
+    """
+    bow: dict[str, int] = base['bow']
+    th = {int(k): v for k, v in base['tier_hist'].items()}
+    return {
+        **base,
+        'star2_plus': sum(v for k, v in base['star_hist'].items() if int(k) >= 2),
+        'tier_sum': sum(k * v for k, v in th.items()),
+        'n_tier1': th.get(1, 0),
+        'n_tier2': th.get(2, 0),
+        'engine_trio': sum(bow.get(c, 0) for c in _TRIO),
+        'dot_pieces': sum(bow.get(c, 0) for c in _DOT_POOL),
+        'seele': bow.get(_SEELE, 0),
+    }
+
+
+def plaza_prior_weights(feats_rows: list[dict[str, Any]],
+                        n_telemetry: int) -> list[float]:
+    """plaza 特征行集 → 归一后样本权重(先验面份额口径)。
+
+    全集权重线性缩放到 ``PLAZA_PRIOR_FACE_N * n_telemetry``——先验面与
+    遥测集的话语权比固定,内部相对排序(头部帖对数压缩)不变;行内
+    权重和为 0 的退化输入(空集)原样返回空表。
+    """
+    raw = [float(r.get('plaza_weight_raw', PLAZA_BASE_WEIGHT)) for r in feats_rows]
+    total = sum(raw)
+    if total <= 0 or not raw:
+        return raw
+    scale = PLAZA_PRIOR_FACE_N * max(int(n_telemetry), 1) / total
+    return [w * scale for w in raw]
+
 
 @dataclass(frozen=True)
 class WinModelVersion:
@@ -95,19 +196,7 @@ class ShadowKilledModel:
         node_type 不在此(训练表侧 join 的先验,``predict`` 单独收)。
         """
         base = features_from_deployed(deployed)
-        bow: dict[str, int] = base['bow']
-        th = {int(k): v for k, v in base['tier_hist'].items()}
-        base.update({
-            'star2_plus': sum(v for k, v in base['star_hist'].items()
-                              if int(k) >= 2),
-            'tier_sum': sum(k * v for k, v in th.items()),
-            'n_tier1': th.get(1, 0),
-            'n_tier2': th.get(2, 0),
-            'engine_trio': sum(bow.get(c, 0) for c in _TRIO),
-            'dot_pieces': sum(bow.get(c, 0) for c in _DOT_POOL),
-            'seele': bow.get(_SEELE, 0),
-        })
-        return base
+        return _engine_columns(base)
 
     def _vectorize(self, feats: dict[str, Any], node_type: str) -> list[float]:
         """特征 dict + node_type → 模型列序向量(round_num 缺省按 P1 均值 0)。"""

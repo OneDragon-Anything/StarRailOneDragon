@@ -5,12 +5,16 @@
   BASE = https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game
   (必需 header x-rpc-currencywar-tourn: tourn;cursor 分页;Recommend 排序空返回,只支持 Hot)
 
-产出(**同源双产物,双向链接,均勿手编**):
+产出(**同源三产物,双向链接,均勿手编**):
   1. ``src/sr_od/application/currency_war/cw_plaza_comps.py`` —— 代码侧(机器消费):
      ``PLAZA_CARRY_CLUSTERS``(按 carry 聚类 n≥5 的实战统计:羁绊/常驻角色/carry 装备/
      节奏标签/投资策略/环境偏好/3星率/样本量/use 权重)+ ``PLAZA_GLOBAL``(全局 meta:
      羁绊频次/装备频次/合成首选/过渡单位池/星级费用档/label 词表/开拓者形态)。
-  2. ``docs/game/currency_war/data/plaza_meta.md`` —— 人读版(表格,供 COMP_LIBRARY 手判层校准)。
+  2. ``src/sr_od/application/currency_war/cw_plaza_posts.py`` —— 逐篇明细(胜率模型
+      先验面训练样本;每篇=一条赢家发帖样本,样本权重=use 计数对数压缩再归一,见
+      ``cw_win_model.plaza_sample_weight``;**生存者偏差语料,只作先验面/特征域
+      覆盖面,不作无偏胜率训练集**——校准锚=实机遥测负样本)。
+  3. ``docs/game/currency_war/data/plaza_meta.md`` —— 人读版(表格,供 COMP_LIBRARY 手判层校准)。
 
 两层架构(同 gen_plaza_invest.py ADR-0150 模式):本生成器只管 **base 事实层**(784 篇玩家帖
 聚合的客观频次);手判层(strength/form_difficulty/star_goals 曲线取舍)在 ``cw_comps.py``
@@ -43,6 +47,7 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[2]
 DATA_PY = REPO / "src/sr_od/application/currency_war/cw_plaza_comps.py"
+DATA_POSTS_PY = REPO / "src/sr_od/application/currency_war/cw_plaza_posts.py"
 DOC_MD = REPO / "docs/game/currency_war/data/plaza_meta.md"
 CACHE = Path(".debug/temp/currency_war/plaza/lineups_HotHard.jsonl")
 CONFIG_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
@@ -246,6 +251,105 @@ def aggregate(posts: list) -> tuple[list, dict]:
 
 # ===== 渲染 =====
 
+def post_corpus_record(x: dict) -> dict:
+    """单帖 → 逐篇明细 dict(cw_plaza_posts.py 语料;字段语义见该文件 docstring)。"""
+    rec = post_record(x)
+    rec["post_id"] = str(x.get("id") or "")
+    rec["carries"] = tuple(dict.fromkeys(u["name"] for u in rec["units"] if u["is_carry"]))
+    rec["units_t"] = tuple(
+        (u["name"], int(u["star"]), int(u["rarity"] or 0), u["pos"], u["is_carry"])
+        for u in rec["units"])
+    rec["equips_t"] = tuple((k, tuple(v)) for k, v in rec["equips"].items())
+    rec["traits_t"] = tuple(rec["traits"])
+    rec["augs_t"] = tuple(rec["augs"])
+    rec["portals_t"] = tuple(rec["portals"])
+    rec["labels_t"] = tuple(rec["labels"])
+    rec["early_t"] = tuple(rec["early"])
+    return rec
+
+
+def render_posts(version_tag: str, recs: list) -> str:
+    lines = [
+        f"# 警告:本文件由 tools/cw/gen_plaza_comps.py 生成(plaza lineup/index match_hard,{version_tag}),勿手编。",
+        f"# 重跑: {GEN_CMD}",
+        "# 同源产物: cw_plaza_comps.py(聚类聚合)/ docs/game/currency_war/data/plaza_meta.md(人读版,尾部逐篇语料账)。",
+        '"""货币战争 plaza 逐篇发帖明细(高难赢家帖语料,gen_plaza_comps.py 生成)。',
+        "",
+        f"{len(recs)} 篇 V4.4 高难帖逐篇明细(v4.4 + 非KOL沙盒 + 未过期过滤,帖 id 去重)。",
+        "",
+        "**生存者偏差声明**:本语料全部为赢家发帖,只可作胜率模型的先验面/特征域"
+        "覆盖面,不可作无偏胜率训练集——校准锚=自家实机遥测(含负样本)。",
+        "样本权重口径单一源 = ``cw_win_model.plaza_sample_weight``"
+        "(use 计数对数压缩 + 先验面份额归一);特征化单一源 = ``cw_win_model.plaza_post_features``。",
+        '"""',
+        "from __future__ import annotations",
+        "",
+        "from dataclasses import dataclass",
+        "",
+        "",
+        "@dataclass(frozen=True)",
+        "class PlazaPost:",
+        '    """单篇 plaza 高难发帖明细(逐篇胜利样本,胜率模型先验面)。"""',
+        "    post_id: str                        # 官方帖 id(溯源锚,生成器去重保证唯一)",
+        "    use: int                            # 被使用计数(0=官方未展示计数)",
+        "    carries: tuple[str, ...]            # Final 阶段 carry 名(通常 1 个)",
+        "    # (角色名, 星级, 费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择",
+        "    units: tuple[tuple[str, int, int, str, bool], ...]",
+        "    equips: tuple[tuple[str, tuple[str, ...]], ...]   # 角色名 → Final 装备名(仅 Final 阶段)",
+        "    traits: tuple[str, ...]             # Final 激活羁绊(激活层>=2 口径,同聚合)",
+        "    augs: tuple[str, ...]               # 两轮投资策略实选(合并)",
+        "    portals: tuple[str, ...]            # 门户(投资环境)选择",
+        "    labels: tuple[str, ...]             # 节奏标签(5/6/7级搜牌/速升8/9)",
+        "    early: tuple[str, ...]              # Early(位面1)阶段单位名",
+        "    craft_first: str                    # 合成首选(order_compose[0])",
+        "    basic_first: str                    # 基础件首选(order_basic[0])",
+        "",
+        "",
+        "PLAZA_POSTS: tuple[PlazaPost, ...] = (",
+    ]
+    for r in recs:
+        lines.append(
+            f"    PlazaPost(post_id={r['post_id']!r}, use={r['use']}, carries={r['carries']!r},\n"
+            f"        units={r['units_t']!r},\n"
+            f"        equips={r['equips_t']!r},\n"
+            f"        traits={r['traits_t']!r}, augs={r['augs_t']!r},\n"
+            f"        portals={r['portals_t']!r}, labels={r['labels_t']!r}, early={r['early_t']!r},\n"
+            f"        craft_first={r['craft_first']!r}, basic_first={r['basic_first']!r}),"
+        )
+    lines += [
+        ")",
+        "",
+        "",
+        "def post_by_id() -> dict[str, PlazaPost]:",
+        '    """帖 id → 明细。"""',
+        "    return {p.post_id: p for p in PLAZA_POSTS}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def render_corpus_doc(recs: list) -> str:
+    """plaza_meta.md 尾部「逐篇语料账」节(与 cw_plaza_posts.py 同源同批)。"""
+    n = len(recs)
+    n_use = sum(1 for r in recs if r["use"] > 0)
+    return "\n".join([
+        "",
+        "## 逐篇语料账(与 `cw_plaza_posts.py` 同源同批生成)",
+        "",
+        f"- 落库 {n} 篇(帖 id 去重后);有 use 计数 {n_use} 篇"
+        f"(占比 {round(n_use / max(n, 1), 2)});use 合计 {sum(r['use'] for r in recs)}。",
+        "- 特征覆盖:含装备明细"
+        f" {sum(1 for r in recs if r['equips_t'])} 篇;含激活羁绊 {sum(1 for r in recs if r['traits_t'])} 篇;"
+        f"含节奏标签 {sum(1 for r in recs if r['labels_t'])} 篇;含门户 {sum(1 for r in recs if r['portals_t'])} 篇;"
+        f"含 Early 阶段 {sum(1 for r in recs if r['early_t'])} 篇。",
+        "- 生存者偏差:全部为赢家发帖,只作先验面/特征域覆盖面,不作无偏胜率训练集;"
+        "校准锚=实机遥测(含负样本)。",
+        "- 样本权重口径:`use>0 → 基础权重 + ln(1+use)` 后按先验面份额归一"
+        "(单一源 `cw_win_model.plaza_sample_weight`)。",
+        "",
+    ])
+
+
 def _tup(pairs: list) -> str:
     return "(" + ", ".join(f"({k!r}, {v})" for k, v in pairs) + ",)" if pairs else "()"
 
@@ -395,9 +499,21 @@ def main() -> None:
         raise RuntimeError("过滤后为空,检查数据源")
     clusters, glob = aggregate(posts)
     version_tag = f"V{version}"
+    recs = [post_corpus_record(x) for x in posts]
+    # 逐篇明细先按帖 id 去重(缓存文件理论已去重,此处防御聚合/明细双口径漂移)
+    seen_ids: set = set()
+    uniq: list = []
+    for r in recs:
+        if r["post_id"] and r["post_id"] not in seen_ids:
+            seen_ids.add(r["post_id"])
+            uniq.append(r)
+    recs = uniq
     DATA_PY.write_text(render_data(version_tag, clusters, glob), encoding="utf-8")
-    DOC_MD.write_text(render_doc(version_tag, clusters, glob), encoding="utf-8")
+    DATA_POSTS_PY.write_text(render_posts(version_tag, recs), encoding="utf-8")
+    DOC_MD.write_text(render_doc(version_tag, clusters, glob)
+                      + render_corpus_doc(recs), encoding="utf-8")
     print(f"[data] {len(clusters)} 聚类 <- {DATA_PY.relative_to(REPO)}")
+    print(f"[posts] {len(recs)} 篇逐篇明细 <- {DATA_POSTS_PY.relative_to(REPO)}")
     print(f"[doc ] -> {DOC_MD.relative_to(REPO)}")
 
 
