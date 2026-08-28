@@ -275,6 +275,31 @@ def formed_stop_active(state: GameState, session: StrategySession,
     return True
 
 
+def recipe_fence_active(state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry) -> bool:
+    """配方围栏辖域(方向一「购买围栏硬排序」;设计单一源=
+    ``.debug/temp/currency_war/w415_form_design/DESIGN.md`` §1,决策
+    why=ADR-0432;开臂判据挂账见 registry.recipe_fence_enabled 注释)。
+
+    三条件缺一不可:
+    1. 开关 ``registry.recipe_fence_enabled``(默认关=零漂移锚);
+    2. P1(形态达标是 [13]/[28] 的位面 1 语义);
+    3. ``form_ok`` 为假(decision_v2.phase 单一源)——成型后由 ADR-0343
+       成型停手接手,散件自然不买,本围栏自动退出,零重叠(两谓词以
+       form_ok 真假互斥,不存在同帧双辖)。
+
+    动作级规则在 ``filter_candidates``(同轮存在性围栏:存在配方件
+    买候选时删全部散件买候选,删因 'recipe_fence_scatter');与 C1 的
+    正交声明(时窗不相交,C1 先行)见 filter_candidates docstring。
+    """
+    if not registry.recipe_fence_enabled:
+        return False
+    if state.plane != 1:
+        return False
+    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    return not form_ok(state, session, registry)
+
+
 def crisis_hoard_active(state: GameState,
                         registry: DecisionV2Registry) -> bool:
     """危机囤金态(ADR-0302):应急态(hp≤emergency_hp)且
@@ -367,12 +392,27 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     的 'c1_hoard_buy' 分通道记账,供 A/B 兑现率闭环);链日志行加
     'c1_asset_pass'(true/false)与 'c1_asset_m'(候选/店内/备考的
     m_eff 代表值)。
+
+    配方围栏(方向一,registry.recipe_fence_enabled 默认关=零漂移;
+    辖域=recipe_fence_active,P1 ∧ form_ok 为假;ADR-0432):成型停手/
+    C1 之后的**第二遍动作级后置步**——同轮 survivors 中存在配方件
+    (scoring._cand_system_bonds 名集单一源)买候选时,删除全部非配方件
+    (散件)买候选,删因 'recipe_fence_scatter'(链日志行
+    entry['recipe_fence'])。与 C1 正交声明(DESIGN §1.4):时窗不相交
+    ——C1 只辖 P1 末窗溢余段,本围栏辖 P1 全程未成型段;都开时 C1 先行
+    (上级覆盖态语义,主循环内先评),C1 未删的候选再过本围栏;两开关
+    默认值独立,互不为开臂前提;删因链日志分列(c1_directed 与
+    recipe_fence 独立字段),A/B 分通道记账互不污染。与成型停手零重叠
+    (form_ok 真假互斥)。金账/息账单一源不动,只重排同一笔预算内买谁。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
              else 'mode')   # 追赶态已退场(W126/ADR-0349)
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
+    # 配方围栏帧级预处理(方向一;与成型停手以 form_ok 真假互斥,同帧
+    # 至多其一;动作级规则在主循环后的第二遍后置步)
+    fence = recipe_fence_active(state, session, registry)
     c1 = c1_directed_active(state, session, registry)
     refreshable = frozenset()
     if c1:
@@ -409,6 +449,8 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         c1_asset_bench_m = max(bench_ms) if bench_ms else 0.0
         c1_asset_bench = bench_n >= 1 and c1_asset_bench_m >= m_min
     kept: list[Candidate] = []
+    kept_pos: list[int] = []   # [索引定义] kept[i] 的链日志下标(log 容器
+    #             0 起;与 kept 同轮同序生成,取值时机=主循环内同步追加)
     log: list[dict] = []
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
@@ -480,4 +522,30 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         log.append(entry)
         if ok:
             kept.append(c)
+            kept_pos.append(len(log) - 1)
+    if fence and kept:
+        # 配方围栏第二遍后置步(方向一,ADR-0432):同轮存在性围栏——
+        # 过滤链 survivors 中存在配方件买候选(scoring._cand_system_bonds
+        # 名集单一源)时,删除全部非配方件(散件)买候选。存在性按
+        # survivors 计:C1/成型停手已删的候选不计(删无可买=空转面);
+        # 成型停手与本围栏以 form_ok 真假互斥,实际前序只有 C1。
+        # 店为空配方件时散件照旧(空窗期语义 [31]);只重排同一笔预算内
+        # 「买谁」,配方件之间的相对序仍归 EV 层单一裁决。
+        from sr_od.application.currency_war.decision_v2.scoring import (
+            _cand_system_bonds,
+        )
+        has_recipe = any(
+            isinstance(c2.action, BuyCard) and _cand_system_bonds(c2)
+            for c2 in kept)
+        if has_recipe:
+            still: list[Candidate] = []
+            for i, c2 in enumerate(kept):
+                if (isinstance(c2.action, BuyCard)
+                        and not _cand_system_bonds(c2)):
+                    entry = log[kept_pos[i]]
+                    entry['kept'] = False
+                    entry['recipe_fence'] = 'recipe_fence_scatter'
+                else:
+                    still.append(c2)
+            kept = still
     return kept, log

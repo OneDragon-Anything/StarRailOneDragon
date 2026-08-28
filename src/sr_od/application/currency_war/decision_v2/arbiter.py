@@ -32,6 +32,7 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
     boss_window_active,
+    form_break_sell_blocked,
     p1_early_gate_open,
     register_round_bought,
     register_round_sold,
@@ -124,6 +125,36 @@ def _round_state_dims(state: GameState, session: StrategySession,
     return dims
 
 
+def _below_floor_refresh_e2(working: GameState, state: GameState,
+                            session: StrategySession,
+                            registry: DecisionV2Registry) -> bool:
+    """息线以下刷新例外 E2([6] 精确化;方向三,ADR-0434)。
+
+    「店全是想要的」的可算化口径收窄=「店内有配方围栏名集件」——与
+    方向一同一把名集尺(scoring._cand_system_bonds 单一源,禁造第二
+    把),定向刷新语义,上限 1 次/轮(轮内计数 session.v3_bf_refresh_*,
+    消耗登记在 refresh 采纳块,与 dir_refresh 键式同构)。辖域与本例外
+    正交声明:C1 的 _refreshable_names 辖溢余段,本例外辖息线以下。
+    """
+    from sr_od.application.currency_war.decision_v2.scoring import (
+        _cand_system_bonds,
+    )
+    key = (state.plane, state.round_num)
+    if getattr(session, 'v3_bf_refresh_key', None) != key:
+        used = 0
+    else:
+        used = getattr(session, 'v3_bf_refresh_round', 0)
+    if used >= 1:
+        return False
+    for sc in (working.shop or []):
+        if sc is None or not getattr(sc, 'name', ''):
+            continue
+        if _cand_system_bonds(Candidate(action=BuyCard(sc), tag='e2',
+                                        source='e2')):
+            return True
+    return False
+
+
 def _check_constraint(name: str, cand: Candidate,
                       working: GameState, state: GameState,
                       session: StrategySession,
@@ -177,10 +208,32 @@ def _check_constraint(name: str, cand: Candidate,
                 posture = round_posture(state, session)
                 dp_spend = posture is not None and (
                     posture.level_up or posture.refresh_budget > 0)
+                # 息线以下支出门(方向三,ADR-0434):gate 开时刷新的
+                # 息线下授权收窄为三例外白名单——E3 同档(与既有 [11]
+                # 同档臂同式)与 E2(店内有配方围栏名集件,1 次/轮);
+                # dp_spend 不再单独授权息线下刷新([6] 原文不可直算的
+                # 口径收窄 + w43 never_50 病灶,w415 DESIGN §3.2)。
+                # cost==1 的 [11] 净0 特例原样保留(既有语义,不属本门
+                # 新增面);levelup 不经本分支(单一裁决在 ev.levelup_ev_
+                # basis 前置门,gate 开时同款三例外收窄)。
+                _gate_refresh = (registry.below_floor_spend_gate_enabled
+                                 and cand.tag == 'refresh')
                 if cost == 1 \
-                        or (working.gold - cost) // 10 >= working.gold // 10 \
-                        or (dp_spend and cand.tag in ('levelup', 'refresh')):
-                    return None    # [11] 同档/1费;DP 说花→授权放行(§3.2d)
+                        or (working.gold - cost) // 10 >= working.gold // 10:
+                    return None    # [11] 同档/1费(E3 零息损事实的同义臂)
+                if _gate_refresh:
+                    if _below_floor_refresh_e2(working, state, session,
+                                               registry):
+                        if auth is not None:
+                            auth['bf_refresh_e2'] = True   # 授权 trace
+                        return None    # E2 定向刷新放行(1 次/轮)
+                    return RejectReason(
+                        'gold_floor', 'gold', working.gold % 10 + cost,
+                        f'below_floor_spend(金{working.gold}<息线'
+                        f'{registry.interest_floor},刷新无例外)')
+                if dp_spend and cand.tag in ('levelup', 'refresh'):
+                    return None    # DP 说花→授权放行(§3.2d;gate 开时
+                    # 刷新已在上方 E2 分支收窄,本臂只余 levelup 及 gate 关)
                 return RejectReason(
                     'gold_floor', 'gold',
                     working.gold % 10 + cost,
@@ -667,6 +720,21 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                 verdicts.append(
                     f'sell_floor:{_fb.char_id} 在手≤tier 体系件'
                     '(同批前序卖出已计入,ADR-0380)')
+        # 方向二/ADR-0433:成型后拆队卖采纳点复检——候选生成对批前状态
+        # 评估,同批多笔卖出的聚合净效果经对 working(前序采纳后)逐笔
+        # 复检实现(与上一条 sole_engine 复检同构; formed_stop 未激活帧
+        # 自动不辖)
+        if registry.form_break_sell_blocked_enabled \
+                and isinstance(a, SellBench) \
+                and cand.tag in ('off_target', 'for_gold', 'free_bench'):
+            _fbb = (working.bench[a.bench_idx]
+                    if 0 <= a.bench_idx < len(working.bench or [])
+                    else None)
+            if _fbb is not None and form_break_sell_blocked(
+                    _fbb, working, session, registry):
+                verdicts.append(
+                    f'form_break:{_fbb.char_id} 卖后破成型态'
+                    '(同批前序卖出已计入,ADR-0433)')
         auth_note: dict = {}
         for cname in registry.constraints:
             reason = _check_constraint(
@@ -807,6 +875,16 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                     session, 'v3_dir_refresh_round', 0) + 1
                 session.v3_dir_refresh_used = getattr(
                     session, 'v3_dir_refresh_used', 0) + 1
+            # E2 息线下定向刷新轮内消耗计数(方向三/ADR-0434;授权点在
+            # gold_floor HOARD 分支,轮键 v3_bf_refresh_key 惰性重置同
+            # dir_refresh 键式;正分刷新/E3 臂不计入——只辖 E2 授权面)
+            if auth_note.get('bf_refresh_e2'):
+                _bf_key = (state.plane, state.round_num)
+                if getattr(session, 'v3_bf_refresh_key', None) != _bf_key:
+                    session.v3_bf_refresh_key = _bf_key
+                    session.v3_bf_refresh_round = 0
+                session.v3_bf_refresh_round = getattr(
+                    session, 'v3_bf_refresh_round', 0) + 1
             # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数(同轮 re-decide
             # 链可见;scoring 豁免门消费,单节点支出 s≤2金辖)。
             # (ADR-0297 局刷新计数 v2_refresh_used 已随 W126/ADR-0349

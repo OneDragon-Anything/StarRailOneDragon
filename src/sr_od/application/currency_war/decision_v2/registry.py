@@ -1026,6 +1026,66 @@ class DecisionV2Registry:
     c1_asset_l2_loss: float = 12.0
 
 
+    # ===== 形态达标三方向(设计单一源=.debug/temp/currency_war/
+    # w415_form_design/DESIGN.md;决策 why=ADR-0432/0433/0434)=====
+    #: 三开关共同背景:形态达标是双指标(息基×形态)中塌掉的一根——
+    #: before 基线=形态达标率实机 10%/sim 两臂 0%,头号缺项=配方件 2★
+    #: (ADR-0432 判据节)。A/B 统一主判据=形态达标率(口径=配方档≥5
+    #: ∧ 场上一枚配方 2★ ∧ 上场≥5),同池同种子对照先核池指纹。
+
+    #: —— 方向一:购买围栏硬排序(recipe_fence)——
+    #: 语义:未成型期(P1 ∧ form_ok 为假,谓词=filters.recipe_fence_active)
+    #: 同一轮买候选中存在配方件(scoring._cand_system_bonds 名集单一源)
+    #: 时,删除全部非配方件(散件)买候选,删因 'recipe_fence_scatter'
+    #: (filters 层2 第二遍后置步,成型停手/C1 之后——C1 先行;时窗正交
+    #: 声明:C1 只辖 P1 末窗溢余段,本围栏辖 P1 全程未成型段,C1 未删的
+    #: 候选再过本围栏,删因链日志分列记账)。存在性围栏非全禁散件:店为
+    #: 空配方件时散件照旧走原评分链;只重排同一笔预算内「买谁」,不改
+    #: 金账/息账(单一源仍在 arbiter)。
+    #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 买牌
+    #: 配方件占比中位 0.4→≥0.6 ∧ 息基保住率不劣于基线臂 2pp;
+    #: 验证不过的出口=删码留 ADR-0432。
+    recipe_fence_enabled: bool = False
+
+    #: —— 方向二:成型后过渡件不拆(form_break_sell_blocked)——
+    #: 语义:[13] 停手线的卖/下场侧对称口径(ADR-0343 买侧停手 +
+    #: ADR-0363/0373 演进/卖侧引擎守卫同纪律族的辖域缺口,非新守卫族):
+    #: 成型停手激活帧(filters.formed_stop_active 单一源;承接门未达时
+    #: formed_stop 为假,本守卫自动不辖)下,卖出/下场候选的事务净效果
+    #: 使 form_ok(decision_v2.phase 单一源)翻假的,拒。覆盖两型缝隙:
+    #: 配方档 5→4(冗余份=档位构成,ADR-0373「冗余件照旧」不辖的盲区)
+    #: 与上场人数 5→4。挂点面与 ADR-0373 同构:discipline.sell_priority_
+    #: key(carry_gate/两补偿器)+ candidates._sell_tag(三卖 tag 生成
+    #: 过滤)+ arbiter 卖候选采纳点对 working 复检(同批聚合)。卖了不破
+    #: form_ok 的件照旧可卖(腾位/换金通道不堵,[22] 净0 件最先卖的
+    #: 既有弱序保留)。
+    #: 开臂判据挂账(不执行):「中途达过 form_ok 而最终帧不满足」的
+    #: 拆队局 W410 before=实机 9 局/sim 同口径 0;开臂=sim A/B 拆队局
+    #: 0 ∧ benign→mal 不增 ∧ strict_mal 不升(ADR-0373 先例:卖侧守卫
+    #: 曾有 benign→mal 回归);验证不过的出口=删码留 ADR-0433。
+    form_break_sell_blocked_enabled: bool = False
+
+    #: —— 方向三:花的时机判据(below_floor_spend_gate)——
+    #: 语义:金 < interest_floor 时升级/刷新默认拒(删因
+    #: 'below_floor_spend'),仅三条例外放行(白名单非加分):
+    #: E1=[33] 人口位(ev.levelup_ev_basis 臂①原样收编,零改语义)/
+    #: E2=[6] 精确化=店内有配方围栏名集件(与方向一共用 scoring.
+    #: _cand_system_bonds 名集尺,不造第二把)→ 刷新放行,上限 1 次/轮
+    #: (定向刷新语义,session.v3_bf_refresh_* 轮内计数)/ E3=[11] 零息
+    #: 损显式化(⌊gold/10⌋ 不变的花/刷在息账上零成本,放行防误拦)。
+    #: 落点:升级=levelup_ev_basis 前置门(花后 < interest_floor 时仅
+    #: E1/E3 可达——② DP 臂本就要求平台未破不动;③ 静态 EV 账在 boss
+    #: 前冲级语境放行过负期望破息花,W410 实证 r9 破息笔中位 32 金换
+    #: 2 档息损,胜率传导上界 0.12 < 过账所需 0.30);刷新=arbiter
+    #: gold_floor HOARD 分支收窄(interest_rule 在金<50 时让位 gold_floor,
+    #: 该分支才是息线下刷新的实际裁决点);gate 开时 dp_spend 不再单独
+    #: 授权息线下刷新(三例外白名单收窄)。金账单一源不变,本门是授权
+    #: 边界不是新账。
+    #: 开臂判据挂账(不执行):sim 真破息 w42 26.3%/w43 5.5%→0,
+    #: never_50 w43 28.7%→≤基线+2pp,形态达标不降;验证不过的出口=
+    #: 删码留 ADR-0434。
+    below_floor_spend_gate_enabled: bool = False
+
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
     constraints: tuple[str, ...] = (

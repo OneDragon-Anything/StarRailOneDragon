@@ -148,6 +148,54 @@ def sole_engine_sell_blocked(bc, state: GameState,
                             _sell_floor_counts(state, reg))
 
 
+def form_break_sell_blocked(bc, state: GameState,
+                            session: StrategySession,
+                            registry: DecisionV2Registry | None = None,
+                            ) -> bool:
+    """成型后过渡件不拆守卫(方向二;设计单一源=
+    ``.debug/temp/currency_war/w415_form_design/DESIGN.md`` §2,决策
+    why=ADR-0433;开臂判据挂账见 registry.form_break_sell_blocked_enabled
+    注释)。
+
+    [13] 停手线的卖/下场侧对称口径——与 ADR-0343 成型停手(买侧)、
+    ADR-0363/0373(演进/卖侧引擎守卫)是同一纪律族在「成型态」下的
+    缺口径,非新守卫族。覆盖 ADR-0373 的两型缝隙:配方档 5→4(冗余份
+    恰是档位构成,0373「owned>tier 冗余件照旧」放行的盲区)与上场
+    人数 5→4(undeploy/SwapDeploy 换下场无回场窗)。
+
+    判据(缺一不可):
+    1. 开关 ``registry.form_break_sell_blocked_enabled``(默认关);
+    2. ``filters.formed_stop_active``(单一源,P1 ∧ comp 派生辖轮 ∧
+       form_ok ∧ 承接口 gap=0 全部继承——承接口未达时 formed_stop 为
+       假,本守卫自动不辖,「继续投资」语义天然优先,ADR-0400);
+    3. 事务净效果:把 bc 从 bench/deployed 槽位移除后的状态(阵营计数
+       按 ``cw_state`` 重算底座重算,与 sim 卖出执行同口径)使
+       ``phase.form_ok`` 翻假(decision_v2.phase 单一源,禁第二把成型
+       尺;ADR-0426 死分支教训:下游消费必须挂活判定单一源)。
+
+    例外:卖了不破 form_ok 的件(纯冗余、真垫层)照旧可卖——补偿卖序
+    的腾位/换金通道不堵死([22] 净0 件最先卖的既有弱序保留)。
+    """
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if not reg.form_break_sell_blocked_enabled:
+        return False
+    from sr_od.application.currency_war.decision_v2.filters import (
+        formed_stop_active,
+    )
+    if not formed_stop_active(state, session, reg):
+        return False
+    from sr_od.application.currency_war.cw_state import _recount_board
+    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    s2 = state.copy()
+    s2.bench = [None if b is bc else b for b in (state.bench or [])]
+    s2.deployed = [None if d is bc else d for d in (state.deployed or [])]
+    s2.board = _recount_board(s2.deployed)
+    return not form_ok(s2, session, reg)
+
+
 def sole_engine_sell_floor_plan(bcs: list,
                                 state: GameState,
                                 registry: DecisionV2Registry | None = None,
@@ -1042,6 +1090,8 @@ def sell_priority_key(bc, state: GameState,
         return None
     if sole_engine_sell_blocked(bc, state, reg):
         return None    # W184/ADR-0373:唯一体系引擎件不进任何卖件通道
+    if form_break_sell_blocked(bc, state, session, reg):
+        return None    # 方向二/ADR-0433:成型后拆队卖(净效果破 form_ok)
     if star_weighted_copies(name, state) >= 2:
         return None    # 3合1 进行中素材/完整份不卖(AD9-2-3)
     ch = CHARACTERS.get(name)

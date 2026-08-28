@@ -49,6 +49,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     copy_swap_useless,
     engine_char_names,
     engine_seed_wants,
+    form_break_sell_blocked,
     has_same_name_copy,
     in_round_sold,
     observed_probs,
@@ -405,6 +406,8 @@ def _sell_tag(bc: BenchChar, state: GameState,
         return None
     if sole_engine_sell_blocked(bc, state, registry):
         return None   # W184/ADR-0373:唯一体系引擎件不生成卖候选
+    if form_break_sell_blocked(bc, state, session, registry):
+        return None   # 方向二/ADR-0433:成型后拆队卖不生成候选
     protect = _target_names(state, session)
     name = bc.char_id or ''
     is_target = name in protect

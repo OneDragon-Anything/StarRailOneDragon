@@ -51,6 +51,8 @@
 
 **濒死带支出收窄(C3)**:已定谳清理(概念否决=W376 开臂 A/B + W388 分通道补账,清理裁决与删除清单、复活条件见 ADR-0426 增补 B 节及 2026-08-28 增补节)。其 Δp_board 符号判定/合成豁免完备式/刷新存在性名集结构由 C1 溢余必花定向收窄与 FLIP 义务预算消费定向化(ADR-0430)承接。
 
+**形态达标三方向(ADR-0432/0433/0434;三开关默认关=零漂移锚,开臂判据挂账在 registry 字段注释)**:①**购买围栏硬排序**(ADR-0432)——未成型期(`filters.recipe_fence_active`:P1 ∧ form_ok 假 ∧ `recipe_fence_enabled`)同轮买候选 survivors 中存在配方件(`scoring._cand_system_bonds` 名集单一源)时删全部散件买候选(删因 `recipe_fence_scatter`,成型停手/C1 之后第二遍后置步;C1 时窗正交、C1 先行;存在性围栏非全禁散件);②**成型后过渡件不拆**(ADR-0433)——成型停手激活帧下,卖/下场候选的事务净效果使 form_ok 翻假的拒(谓词 `discipline.form_break_sell_blocked`,挂点=统一卖件弱序+三卖 tag 生成过滤+arbiter 采纳点复检,与 ADR-0373 同构;不破 form_ok 的件照旧可卖);③**息线以下支出门**(ADR-0434)——金<`interest_floor` 时升级/刷新默认拒(删因 `below_floor_spend`),例外白名单三条例:E1 人口位(`ev.levelup_ev_basis` 臂①原样)/E2 店内配方围栏名集件刷新 1 次/轮(与①共用名集尺)/E3 零息损同档;落点=升级前置门(臂①后②前)+gold_floor HOARD 分支收窄(gate 开时 dp_spend 不再单独授权息线下刷新)。
+
 **decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed
 配方亲和过滤**(开关 `engine_affinity_enabled` 在 registry;判据
 `_engine_seed_affinity` 在 candidates)——板面已有过渡体系未成型时,新体系
