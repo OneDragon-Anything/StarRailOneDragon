@@ -105,6 +105,15 @@ HP_UPPER_BOUND: int = 100
 
 INTEREST_CAP: int = 5
 
+# sim 执行层等级上限(本执行层有效满级):取值 = simulate_p1 轮末升级
+# 循环的既有上界(此前为字面 9),守卫与轮末循环共用本常量防两处漂移。
+# 边界:策略/生产侧等级封顶语义是 decision_v2.registry.level_max=10 与
+# cw_state「封顶 10 级」,XP 表也含 9→10 档;但本执行层历史基线(商店
+# 概率表、既有批次与池指纹)均在 9 级封顶语义下产出,故执行层满级判据
+# 以 9 为准,不随策略侧 level_max 放宽——放宽属行为变更,须与商店概率
+# 表一并重校准。
+LEVEL_CAP: int = 9
+
 # 装备供给结构校准(供给重校准批;数据源 = 实机 [cw!][grant] 快照 57 局
 # 逐轮差分画像,分析脚本与校准目标表见 .debug 产物 w477_supply_recalib/):
 # 实机装备类发放 = 基础件 86% / 进阶 14%(工具冶金炉/拆装扳手为跨局
@@ -1587,6 +1596,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
             _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
             _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
+            # 满级 LevelUp 拒付计数(执行层 cap 守卫披露;>0 = 决策层在
+            # 满级态仍发升级,策略侧判读输入)
+            _lv_cap_rejects = 0
             # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
             # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
             # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
@@ -1768,6 +1780,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                     - deployed_occupied(st.deployed)) // 2
                         progressed = True
                     elif isinstance(a, LevelUp):
+                        # 满级 cap 守卫:实机满级时「购买经验」按钮禁用
+                        # (点击无效不扣金),执行层必须同态——满级 LevelUp
+                        # 拒付(不扣金/不进 XP),账本记 LevelUpRejected 行
+                        # (不占 LevelUp 类型行:flat4 台账锁判据 =
+                        # spend.levelup == 4 × LevelUp 行数,拒付行混入会
+                        # 误报),计数进 sim.level_cap_rejects 披露。
+                        if st.level >= LEVEL_CAP:
+                            _lv_cap_rejects += 1
+                            _acts.append({'__type__': 'LevelUpRejected',
+                                          'reason': 'level_cap',
+                                          'level': st.level})
+                            continue
                         st.gold -= 4
                         _spend['levelup'] += 4
                         # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
@@ -1891,7 +1915,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             break
                 if not progressed:
                     break
-            while st.level < 9 and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999):
+            while (st.level < LEVEL_CAP
+                   and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999)):
                 xp -= XP_TO_NEXT_LEVEL[st.level]
                 st.level += 1
             # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
@@ -2427,6 +2452,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
                     # 店外;真策略批次应恒 0,检查项归 0 锁)
                     'phantom_rebuys': _phantom_rebuys,
+                    # 满级 LevelUp 拒付次数(执行层 cap 守卫;>0 = 决策层
+                    # 满级后仍发升级——防线拦金,策略病由本计数暴露)
+                    'level_cap_rejects': _lv_cap_rejects,
                     # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
                     # (买后部署语义下应恒 0;检查项 deploy_after_buy_
                     # semantics / ledger_deploy_lag_disclosure 的数据源)
@@ -2784,6 +2812,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ADR-0284(批㉒ F1/F5):幻影再买提案与池 take 地板命中
         # (真策略批次双 0;>0 = 槽消费回归/池守恒破)
         'phantom_rebuys': sum(r.phantom_rebuys for r in results),
+        # 满级 LevelUp 拒付总次数(执行层 cap 守卫全批披露)
+        'level_cap_rejects': sum(
+            (row.get('sim') or {}).get('level_cap_rejects', 0)
+            for r in results for row in r.ledger),
         # ADR-0294 件2:supply 带钻选中总数(占位实体披露;带钻
         # 是词缀元数据不进 owned 池,此计数是它唯一的 sim 痕迹)
         'phantom_supply_picks': sum(
