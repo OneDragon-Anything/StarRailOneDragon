@@ -62,7 +62,12 @@ PROFILE_CLOSED: dict = {
                                     # ADR-0264 终裁:fast_confirm 下确认
                                     # 轮免 OCR(纯 CV ~50ms/轮),预算
                                     # 只覆盖首锚轮更绰绰有余
-    'min_stable_s': 0.8,
+    # 稳定窗 0.6s=三 profile 统一下限(弹窗态既有同值):稳定的
+    # 真守门是「指纹变化即重置重 poll」机制,0.6s 首尾一致窗
+    # (2-3 个 poll)足以拒绝动画中间帧;单局 gate stable 调用
+    # 30-84 次(耗时审计报告 .debug/temp/currency_war/
+    # w417_duration_audit/REPORT.md「需验证」表),每处省 0.2s。
+    'min_stable_s': 0.6,
     'fast_confirm': True,           # ADR-0264 终裁骨架:锚命中后稳定
                                     # 确认轮跳过全图 OCR 只比指纹;
                                     # 置 False 关回旧行为(A/B 回退)
@@ -78,7 +83,7 @@ PROFILE_OPEN: dict = {
         Rect(300, 228, 1560, 326),    # 商店牌行
     ),
     'timeout_s': 12.0,               # r344:同 PROFILE_CLOSED 成本口径
-    'min_stable_s': 0.8,
+    'min_stable_s': 0.6,             # 与关态统一 0.6s 下限(见关态注)
     'fast_confirm': True,            # ADR-0264 终裁骨架(同 CLOSED 注)
 }
 
@@ -116,22 +121,28 @@ _POLL_S: float = 0.25
 #: 操作段(op_settle)预估等待(ADR-0264 终裁加速器②;用户口述
 #: 定调 2026-08-24:「备战期间的特效/overlay(买角色/部署特效)
 #: 是短暂的,预估 2 秒等待就好了」)。语义=**指纹基线重置点**:
-#: 特效后先等 2s 再取指纹基线(防特效中间帧当基线),随后指纹
+#: 特效后先等一段再取指纹基线(防特效中间帧当基线),随后指纹
 #: 快 poll 正常确认稳定窗。
-_OP_SETTLE_S: float = 2.0
+#: 1.5s 的边界依据:买牌特效实测 0.5-1s(单局耗时审计报告
+#: .debug/temp/currency_war/w417_duration_audit/REPORT.md
+#: 「需验证」表),取实测上限 + 0.5s 余量;低估不致误读——
+#: 基线取在特效中间帧时,下一 poll 指纹变化即重置重 poll,
+#: 仅多付一次 poll 成本,正确性由指纹机制保证。
+_OP_SETTLE_S: float = 1.5
 
 #: 最近一次 op_settle 预估等待的时长(测试内省 seam;None=本进程
 #: 未走过 op_settle 段)。
 _LAST_SETTLE_WAIT: float | None = None
 
-#: 操作段(op_settle)稳定窗地板:涉动画段(开/关店)在 2s 预估
+#: 操作段(op_settle)稳定窗地板:涉动画段(开/关店)在预估等待
 #: 等待 + 指纹基线重置后,动画尾帧已被基线机制排除(指纹变化即
 #: 重置重poll),稳定确认窗只需最短档——取三 profile 既有下限
 #: 0.6s(PROFILE_POPUP 同值;实机单局耗时深挖报告
 #: .debug/temp/currency_war/w358_time_depth/REPORT.md「风险声明」
 #: 明示稳定窗下限 0.6s,防特效帧误读的红线地板,不再低)。
-#: 非 settle 段(环入口/兜底门)不吃本地板,维持 profile 原值
-#: 0.8s——入口帧直接喂 heavy 观察,多留 0.2s 抗特效消化。
+#: 三 profile 原值 0.8s 已统一降到该地板(见 PROFILE_CLOSED 注)
+#: ——入口帧同样由指纹变化重置机制守门,不需要额外 0.2s 抗特效
+#: 消化。
 _OP_SETTLE_MIN_STABLE_S: float = 0.6
 
 # r324(轮子审查修法2):指纹原语下沉 one_dragon.utils.cv2_utils
@@ -229,10 +240,11 @@ def wait_stable_frame(
          基线,后续确认轮全部纯 CV(min_stable_s 从「被 ~5s
          OCR poll 量化」变为真实测量);
       2. 操作段(``segment='op_settle'``,买/部署/装备特效后):
-         **2s 预估等待作为指纹基线重置点**——先等 2s 再取
+         **预估等待(``_OP_SETTLE_S``)作为指纹基线重置点**——
+         先等再取
          基线(防特效中间帧当基线),随后指纹快 poll 确认稳定窗
          (settle 段窗取地板 ``_OP_SETTLE_MIN_STABLE_S``=0.6s,
-         非 settle 段维持 profile 值;非单校验放行);校验不过
+         三 profile 原值已统一该地板;非单校验放行);校验不过
          (特效意外拖长)→ 循环内回锚定/重设基线(完整门语义)。
       回退开关 = ``fast_confirm``(profile 键,显式传参优先;
       False = 每轮 poll 都做全图 OCR 锚判定的旧完整门)。
@@ -247,7 +259,7 @@ def wait_stable_frame(
     import contextlib
     with contextlib.suppress(Exception):   # 离线无控制器
         op.park_cursor()
-    # ADR-0264 终裁加速器②:操作段 2s 预估等待 = 指纹基线重置点
+    # ADR-0264 终裁加速器②:操作段预估等待(_OP_SETTLE_S)= 指纹基线重置点
     #(先等再取基线,防特效中间帧当基线;随后正常快 poll 确认窗)
     global _LAST_SETTLE_WAIT
     _settle_waited = False

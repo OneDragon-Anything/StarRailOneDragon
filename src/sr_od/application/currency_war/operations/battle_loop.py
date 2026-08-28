@@ -1314,7 +1314,12 @@ class CurrencyWarRunLoop(SrOperation):
             if getattr(self, '_last_settle_fp', None) != _fp:
                 self._rounds_done += 1
                 self._last_settle_fp = _fp
-            time.sleep(1.0)
+            # 0.5s(原 1.0s 核减):此 sleep 只为点击前取到渲染完成的
+            # 新帧——按钮位置静态,点击未生效有 settle_stay 计数 +
+            # 长按兜底重试链,短 sleep 只多走一轮 loop(耗时审计
+            # 报告 .debug/temp/currency_war/w417_duration_audit/
+            # REPORT.md「需验证」:每轮结算段固定链)。
+            time.sleep(0.5)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
                 # 普通 click **不响应**(40min 空转同帧),长按 0.5s @ 底部中央才推进(手动实锤;
@@ -1362,7 +1367,11 @@ class CurrencyWarRunLoop(SrOperation):
                 # 光标 parking(审计 R6):点击点正落在「下一页」文本框内,多页结算每页按钮同带
                 # → 光标压当页按钮文字 → OCR miss → unknown streak 停机。点完 park。
                 self.park_cursor(after_wait=0.1)
-                return self.round_wait(wait=2)
+                # wait=1(原 2 核减,耗时审计报告 .debug/temp/currency_war/
+                # w417_duration_audit/REPORT.md「需验证」):结算各页为静态
+                # 全屏,SETTLEMENT_NEXT 同位连点幂等(重复点同页无害),页未
+                # 翻过时下一轮 loop 重识别重点即可;战败链每局 4-6 页。
+                return self.round_wait(wait=1)
 
         # 3c. 回到大厅(对局结束)→ loop 完成,避免在 lobby 无动作无限 retry。
         # 用「创业指南」(大厅左菜单独有、无特殊括号,OCR 稳)而非「开始「货币战争」」(括号 gt 不稳)

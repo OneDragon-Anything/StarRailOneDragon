@@ -38,6 +38,14 @@ from sr_od.operations.sr_operation import SrOperation
 
 # ===== 动作全集(§13.1)=====
 
+#: 点击后 overlay 弹出/关闭的事件驱动轮询预算(替代旧固定
+#: sleep 1.5s 后单次验证——overlay 通常更快就位,命中即返回;
+#: 慢时仍受上界,失败语义与旧固定等待一致。依据:单局耗时
+#: 审计报告 .debug/temp/currency_war/w417_duration_audit/
+#: REPORT.md「需验证·出战链」)。取旧固定值 1.5s + 一个轮询
+#: 间隔 0.3s,保证最坏情形覆盖面不缩水。
+_OVERLAY_POLL_TIMEOUT_S: float = 1.8
+
 
 class PrepAction:
     """备战决策环动作标记基类(策略 → 框架的单步意图载体)。"""
@@ -394,6 +402,19 @@ class PrepActionExecutor:
         log.info(f'[cw][sphere] {detail}')
         return verified > 0, detail
 
+    def _poll_transition(self, check, timeout_s: float,
+                         interval_s: float = 0.3) -> bool:
+        """点击后过渡的事件驱动等待:每 interval_s 轮询 check,
+        命中即返回 True;预算内未命中返回 False(失败语义与旧
+        「固定 sleep 后单次验证」一致,只是把死等换成轮询)。"""
+        deadline = time.monotonic() + timeout_s
+        while True:
+            if check():
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(interval_s)
+
     def _open_box(self, action: OpenBox) -> tuple[bool, str]:
         """开箱:点箱槽「开启」→ 验武装箱 overlay 弹出(标识-请选择)。"""
         screen = self._op.screenshot()
@@ -410,9 +431,11 @@ class PrepActionExecutor:
         open_point = Point(center.x, center.y + PrepActionExecutor.BOX_OPEN_DY)
         self._ctx.controller.mouse_move(open_point)   # bug#1 缓解
         self._ctx.controller.click(open_point)
-        time.sleep(1.5)
-        overlay = self._op.screenshot()
-        if not self._op.round_by_find_area(overlay, PrepActionExecutor.BOX_SCREEN, '标识-请选择').is_success:
+        if not self._poll_transition(
+                lambda: self._op.round_by_find_area(
+                    self._op.screenshot(),
+                    PrepActionExecutor.BOX_SCREEN, '标识-请选择').is_success,
+                _OVERLAY_POLL_TIMEOUT_S):
             return False, f'武装箱 overlay 未弹(槽{slot} 点击落空?)'
         log.info(f'[cw][box] 开箱槽{slot} → overlay 弹出 ✓')
         return True, f'开箱槽{slot}'
@@ -439,10 +462,11 @@ class PrepActionExecutor:
         self._ctx.controller.click(center)        # 第一次:选中
         time.sleep(1.0)
         self._ctx.controller.click(center)        # 第二次:开启
-        time.sleep(1.5)
-        overlay = self._op.screenshot()
-        if not self._op.round_by_find_area(
-                overlay, '货币战争-星徽秘典弹窗', '标识-星徽秘典').is_success:
+        if not self._poll_transition(
+                lambda: self._op.round_by_find_area(
+                    self._op.screenshot(),
+                    '货币战争-星徽秘典弹窗', '标识-星徽秘典').is_success,
+                _OVERLAY_POLL_TIMEOUT_S):
             return False, f'星徽四选一未弹(槽{slot} 点两次落空?)'
         log.info(f'[cw][tome] 开典籍槽{slot} → 星徽四选一弹出 ✓(选卡交 loop 0i)')
         return True, f'开典籍槽{slot}'
@@ -470,8 +494,10 @@ class PrepActionExecutor:
         card_point = Point(choose_x, PrepActionExecutor.CARD_Y)
         self._ctx.controller.mouse_move(card_point)   # bug#1 缓解
         self._ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        time.sleep(1.5)
-        if self._op.round_by_ocr(self._op.screenshot(), '武装箱', lcs_percent=0.5).is_success:
+        if not self._poll_transition(
+                lambda: not self._op.round_by_ocr(
+                    self._op.screenshot(), '武装箱', lcs_percent=0.5).is_success,
+                _OVERLAY_POLL_TIMEOUT_S):
             return False, f'选卡 {chosen} 后 overlay 仍在'
         log.info(f'[cw][box] 选卡 {chosen} → overlay 关 ✓')
         return True, f'选卡 {chosen}'
