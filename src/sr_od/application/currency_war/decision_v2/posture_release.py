@@ -11,7 +11,7 @@
 - hp ≤ emergency_hp(25)→ 应急态全权接管(清仓/保命优先),release 让位;
   两谓词辖区不相交([25,∞) 归 FLIP 评估,≤25 归应急);
 - FLIP = 可信 hp ∧ P1/P2 ∧ g>50 ∧ hp>25 ∧(末窗: 投影命中
-  hp−boss_tax_p75<25,战后必入应急带的机制理由——保命义务相位无关;
+  hp−boss 税位面锚<25,战后必入应急带的机制理由——保命义务相位无关;
   ∨ FORM 相位 ∧ 非末窗: hp<40,持续兑现逻辑);
   hp<40 依据分级:社区攻略通行的中盘健康线(非口述标准值;口述 [18] 明确
   hp=报警量不设触发标准值),作用=非末窗臂的持续兑现资格判,调参归 sim 批;
@@ -153,9 +153,16 @@ def flip_hit(state: GameState, session: StrategySession,
     if state.hp <= registry.emergency_hp:
         return False    # 应急辖区,release 让位(双触发防护)
     if boss_first_buy_phase(state, session, registry):
-        # 末窗投影臂(相位无关):hp − boss_tax_p75 < emergency_hp
-        # (防战后坠入应急带;保命义务与成型相位无关,持续兑现臂才辖 FORM)
-        return state.hp - registry.boss_tax_p75 < registry.emergency_hp
+        # 末窗投影臂(相位无关):hp − boss 税位面锚 < emergency_hp
+        # (防战后坠入应急带;保命义务与成型相位无关,持续兑现臂才辖 FORM)。
+        # 锚单一源=registry.boss_tax_p75_by_plane(与 filters 投影安全带
+        # 同源同款取数):本函数上方 plane>2 已拒,此处 plane ∈ {1,2},
+        # 两键必有槽位,直接字典访问、无需标量兜底。
+        # 旧标量 boss_tax_p75 自此(ADR-0441 接线)无运行时消费点,
+        # 保留理由与退役结论见 registry 字段注释。
+        return (state.hp
+                - registry.boss_tax_p75_by_plane[state.plane]
+                < registry.emergency_hp)
     if phase_value != 'FORM':
         return False    # 持续兑现臂维持 FORM 辖域(DESIGN §②原文)
     # 持续兑现臂:报警带 hp<blood_margin_low_hp(血边际已低,溢余该花)
