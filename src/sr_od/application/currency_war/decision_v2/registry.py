@@ -892,16 +892,26 @@ class DecisionV2Registry:
     #: FLIP 辖区(hp>emergency_hp)零交集——濒死帧恒不在 release 辖区,
     #: 结构互斥。
     dying_band_account_enabled: bool = False
-    #: C3「下一战期望损血」粗档表(节点型→期望损血;正数)。默认值=旧删失
-    #: 删失口径三档(结构性低估挂账);重标定双源数值(无条件 normal
-    #: 10.16/encounter 12.00/boss 15.50,条件败面 12.77/13.33/15.50,
-    #: CI 见 w375_dual_source_calib.json)待消费口径定稿后覆写。
-    #: node_type 缺读兜底=normal(战斗节点频率最高档,2/5 槽;触发宽度居中——
-    #: 三档中 encounter 16.67 最小、boss 26.71 最大,normal 兜底既非最紧也非最松;
-    #: 濒死带缺读帧向「多拦」方向偏差约 (20.05−16.67)/16.67 ≈ +20% 触发面,属
-    #: 收窄方向的温和假阳性,容忍并在此声明,不做双档兜底)。
-    dying_band_next_loss: dict[str, float] = field(default_factory=lambda: {
-        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71})
+    #: P2 节点损血单一表(C3 濒死带「下一战期望损血」粗档与 C4 存活轮数
+    #: 投影共用;节点型→期望损血,正数)。单一源不变量:两消费点
+    #: (filters._next_battle_loss 桶位查表 / cw_line_switch.rounds_alive
+    #: 逐节点投影)读同一份表,消费语义各自投影、数值源唯一——重标定
+    #: 覆写只改此处。标定=同目录 w375_calibrate_dual_source.py(死亡真源
+    #: =runs.jsonl,hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、
+    #: 不按置信度过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反
+    #: 保守,已废;产物=w375_dual_source_calib.json,双源互校:帧级合并
+    #: 均值 10.79 ∈ run 级聚类 bootstrap CI [6.7,10.97])。
+    #: 默认值=旧删失口径三档(结构性低估挂账;暂抄现行=零漂移);重标定
+    #: 无条件期望(normal 10.16/encounter 12.00/boss 15.50,条件败面
+    #: 12.77/13.33/15.50,CI 见 w375_dual_source_calib.json)待消费口径
+    #: 定稿后覆写。node_type 缺读兜底=normal(战斗节点频率最高档,2/5 槽;
+    #: 触发宽度居中——三档中 encounter 16.67 最小、boss 26.71 最大,normal
+    #: 兜底既非最紧也非最松;濒死带缺读帧向「多拦」方向偏差约
+    #: (20.05−16.67)/16.67 ≈ +20% 触发面,属收窄方向的温和假阳性,容忍
+    #: 并在此声明,不做双档兜底)。reward 零损档承接奖励+补给零损日历轮
+    #: (C3 侧查表命中 0.0、C4 投影零损照走,与缺读 .get 0.0 兜底同值)。
+    p2_node_loss_table: dict[str, float] = field(default_factory=lambda: {
+        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71, 'reward': 0.0})
     #: C3 R2 定向刷新存在性判据的「高费强件」费用下界(买侧不辖名单,
     #: 只辖刷新存在性名集;来源=对抗审计 A1-β 反例画像「4 费通用强件是
     #: 最高 Δp/g 选项」(报告=`.debug/temp/currency_war/w363_c3c4_attack/
@@ -920,16 +930,6 @@ class DecisionV2Registry:
     #: 兼承载投影的近似残差(逐节点确定性投影 vs 真分布 E[min(t:ΣL>hp)]
     #: 的 Jensen 乐观差,REDESIGN §3.5 偏差表首行)。
     line_switch_survival_margin: float = 1.0
-    #: C4 节点损血表(节点型→每节点期望损血;rounds_alive=剩余节点序列
-    #: 逐节点投影的查表底座,REDESIGN §3.2;等权除数口径已废除——节点
-    #: 频次结构由运行时 session.plane_node_table 实时供给,不再折进均值)。
-    #: 键域=节点型归一档(normal/encounter/boss/reward;reward 桶承接
-    #: 奖励+补给零损日历轮)。默认表值暂抄现行三档(默认关=零漂移;
-    #: M1a 常数口径=p_win_p2_by_rung 空 dict 时 loss=表值原样,M1b 两态
-    #: 口径=(1−p_rung)·表值,同一份代码由注入切换);重标定无条件期望
-    #: (10.16/12.00/15.50,见 w375_dual_source_calib.json)随 M1 定稿覆写。
-    line_switch_node_loss: dict[str, float] = field(default_factory=lambda: {
-        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71, 'reward': 0.0})
     #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗胜率;缺省
     #: 空 dict(或 rung 缺档)=消费侧缺省 p_win=0=每战全损,loss=表值
     #: 条件常数,两态退化为 M1a)。占位,值=sim 分 rung 胜占比(W346 报告

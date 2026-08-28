@@ -250,7 +250,7 @@ def rounds_alive(state: GameState,
     ra = 0
     for raw in _remaining_nodes(session, state):
         kind = node_loss_kind(raw)
-        h -= (1.0 - p_win) * reg.line_switch_node_loss.get(kind, 0.0)
+        h -= (1.0 - p_win) * reg.p2_node_loss_table.get(kind, 0.0)
         if kind == 'encounter':
             h += reg.encounter_heal_est   # 注入前恒 0(0 下界声明)
         ra += 1            # 日历轮 +1(死在结算也先行动过这一轮)

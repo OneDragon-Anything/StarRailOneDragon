@@ -61,7 +61,8 @@ def is_emergency(state: GameState,
 
 def _next_battle_loss(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry) -> float:
-    """下一战期望损血(粗档查表;registry.dying_band_next_loss 单一源)。
+    """下一战期望损血(粗档查表;registry.p2_node_loss_table 单一源,
+    与 C4 投影 cw_line_switch.rounds_alive 共表——重标定覆写只改表)。
 
     节点型映射单一源=``cw_line_switch.node_loss_kind``(boss/遭遇→同名
     档,奖励/补给→零损档,其余含缺读→normal 档——normal 为战斗节点
@@ -69,7 +70,7 @@ def _next_battle_loss(state: GameState, session: StrategySession,
     """
     node = getattr(session, 'node_type_current', None) or state.node_type or ''
     kind = node_loss_kind(node)
-    return registry.dying_band_next_loss.get(kind, 0.0)
+    return registry.p2_node_loss_table.get(kind, 0.0)
 
 
 def _deploy_free(state: GameState) -> int:
