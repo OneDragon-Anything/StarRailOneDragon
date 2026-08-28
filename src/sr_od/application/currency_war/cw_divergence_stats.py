@@ -3,12 +3,20 @@
 12 号触发门 = 候选分歧度 × 不可逆度 × 注意力预算;其中「候选分歧」的数据源
 = candidate_scores top-2 分差(r6 补齐)+ 影子 DP 姿态 vs 生产姿态差(本模块)。
 问询卡/热键应答/GUI 挂实机批;本模块先积累**分歧频率分布**(下局起有语料)。
+
+W446:读端迁移到规范 loader(``cw_replay_reader``)——裸 dict 换类型化
+``DecisionTrace``,dp_posture 读取统一走 ``posture_tag``(dict/str/载体帧
+长串归一,见该模块 docstring 的实测证据);统计口径不变。
 """
 from __future__ import annotations
 
-import json
 from collections import Counter
 from pathlib import Path
+
+from sr_od.application.currency_war.cw_replay_reader import (
+    load_decisions,
+    posture_tag,
+)
 
 DEFAULT_REPLAY = Path('.debug/temp/currency_war/replay')
 
@@ -26,31 +34,22 @@ def divergence_stats(replay_dir: Path | str = DEFAULT_REPLAY,
     total = close = with_cand = with_dp = 0
     modes: Counter[str] = Counter()
     per_run: dict[str, list[int]] = {}
-    for line in p.open(encoding='utf-8'):
-        try:
-            d = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if run_id is not None and d.get('run_id') != run_id:
-            continue
+    for d in load_decisions(p, run_id=run_id):
         total += 1
-        scores = d.get('candidate_scores') or {}
+        scores = d.candidate_scores or {}
         if len(scores) >= 2:
             with_cand += 1
             srt = sorted(scores.values(), reverse=True)
             if srt[0] - srt[1] < 0.10:
                 close += 1
-                per_run.setdefault(d.get('run_id', '?'), []).append(d.get('round_num', 0))
-        # dp_posture 遥测契约=str tag 名,且仅 decision_v2 决策帧带姿态
-        # 语义(载体帧 strategy_id='' 的该字段是 str(dict) 形态,非 tag;
-        # 历史帧另有 dict 形态如 {'spend_mode': ...},按形态分流取键)
-        dp = d.get('dp_posture')
-        if dp and d.get('strategy_id') == 'decision_v2':
+                per_run.setdefault(d.run_id or '?', []).append(d.round_num)
+        # dp_posture 读取统一走 posture_tag(仅决策帧返回 tag;载体帧
+        # strategy_id='' 与 str(dict) 长串形态均被归一为 None)。
+        # 姿态语义仅 decision_v2 决策帧带,口径同迁移前。
+        tag = posture_tag(d)
+        if tag and d.strategy_id == 'decision_v2':
             with_dp += 1
-            if isinstance(dp, str):
-                modes[dp] += 1
-            else:
-                modes[str(dp.get('spend_mode', '?'))] += 1
+            modes[tag] += 1
     return {'runs': len(per_run) or (1 if total else 0),
             'decisions_total': total, 'with_candidates': with_cand,
             'close_calls': close, 'with_dp_posture': with_dp,
