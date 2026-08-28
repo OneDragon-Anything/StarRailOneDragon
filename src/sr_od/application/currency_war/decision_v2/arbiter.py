@@ -660,6 +660,17 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                     handoff_gate_gap,
                 )
                 _copy_ok = handoff_gate_gap(state, session, registry) > 0
+            # merge 完成豁免(ADR-0438;开关 registry.merge_completion_exempt
+            # 默认关=零漂移锚):merge=True 的**买候选**(第三张副本买入即
+            # 合成 2★)无条件于末窗 gap 放行——完成价值在星级阶梯
+            #(e0/e1/e2 胜率)不在板面差分,评分维对它构造性零增量
+            #(merge_progress 只计第 2 份),非正分拒是评分零维测量伪影;
+            # 与上面 C 豁免同为「完成素材放行」语义对称。豁免≠必买:
+            # 约束链(金地板/copies_cap/bench 容量/息账)照常辖。仅辖
+            # BuyCard(synthesize 候选 merge=True 不辖,防语义外溢)。
+            _merge_ok = (registry.merge_completion_exempt
+                         and cand.merge
+                         and isinstance(cand.action, BuyCard))
             # M-A 定向 D 牌授权窗(W252/ADR-0409,W249 诊断修法;
             # ADR-0411 起无条件启用):负分刷新在「授权窗开」时放行进入
             # 收尾裁决(实际放行与预算消耗在收尾块,见下)——W249 H3 病灶
@@ -681,7 +692,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 见下;同一刷新只走一条授权来源,M-A 优先)。
             _rel_ok = (cand.tag == 'refresh'
                        and getattr(session, 'v3_release', None) is not None)
-            if not (_copy_ok or _dir_ok or _rel_ok):
+            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',

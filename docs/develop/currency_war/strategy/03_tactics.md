@@ -55,6 +55,8 @@
 
 **同名牌集中度约束(ADR-0437;开关 `dup_concentration_enabled` 默认关=零漂移锚,开臂判据挂账在 registry 字段注释)**:配方名(`cw_line_defs.recipe_char_names` 名集单一源,16 名)在 board∪bench 已持 ≥2 张同名 1★(差一张凑 3合1;已合成的 2★ 不计,copies_cap 拦第 4 份)且本轮 survivors 存在该名买候选时,删全部散件买候选(删因 `dup_concentration_scatter`;谓词 `filters.dup_concentration_active`=P1 ∧ form_ok 假,与围栏辖域同构开关独立;`filter_candidates` 第三遍后置步、配方围栏之后)。与配方围栏正交——围栏管「买不买配方」,触发面是本条的超集,双开时本条空转、删因链日志分列(`recipe_fence`/`dup_concentration` 独立字段);约束对象=同一笔预算内散买让位(重定向非新增支出,金账/息账单一源不动),配方件之间相对序仍归 EV 层;兑现链=3合1 合成→2★ 上场→form_ok 档位,当轮备战即生效。
 
+**非正分门 merge 完成豁免(ADR-0438;开关 `merge_completion_exempt` 默认开=W436 A/B 兑现后开臂)**:arbiter 非正分门对 `merge=True` 的 **BuyCard** 候选(第三张副本买入即合成 2★)放行进入约束链——与末窗星级定向授权的 'copy' 豁免(ADR-0405 C 项)同为「完成素材放行」语义,但**无条件于末窗 gap**(完成价值全程存在,非定向授权):评分维(`merge_progress` 只计第 2 份)对第三张构造性零增量,非正分拒是评分零维测量伪影;豁免≠必买,金地板/copies_cap/bench 容量/息账照常辖;synthesize 候选(`merge=True` 但非 BuyCard)不辖。生成层 r410 守卫侧的同名副本通道=`copy_swap_target_exempt` 开关(同批开臂翻默认开;两开关分辖仲裁门与生成守卫两个截流点,独立 A/B 臂)。A/B 数字(off/ex/ex_swap/ex_dup 四臂 n=300 同 seed,池指纹 7af8197782d42c05,off 与 W429 off 七率逐位零漂移):第三张 offer 买率 53.93%→83.52%(ex)→92.67%(ex_swap,+9.15pp CI [2.31,15.76] 显著)、形态达标率 31.00%→44.33%→47.33%(均显著优于 off)、core2≥1 进场率 49.33%→70.67%;守卫全净(真破息/hp0/P2 首胜/bench 满帧/出口金全不显著,2★ 停 bench 帧占比 4.16%→4.50% 无溢出);差一张桶 81.86%→75.00-77.42% 方向对不显著;dup_concentration 协变量(W429 复测义务):候选可买新前提下删笔 92 笔仍零增量(专项指标与 ex 臂逐位同)——集中度约束在生成通道打通后仍无独立行为面,维持默认关(W429 处置第 2 条复测义务已履约)。
+
 **decision_v2 体系集中度(ADR-0333;板面散面收敛)**:候选层加**engine_seed
 配方亲和过滤**(开关 `engine_affinity_enabled` 在 registry;判据
 `_engine_seed_affinity` 在 candidates)——板面已有过渡体系未成型时,新体系
