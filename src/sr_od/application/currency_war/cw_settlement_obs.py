@@ -270,13 +270,16 @@ def parse_settlement_gold_detail(items: list) -> dict[str, int | None]:
                      and getattr(it, 'y', 0) >= _anchor.y), None)
         if _lab is None:
             continue
-        # ①同 token 粘连(基础奖励5=金额直连,可消费;「连胜×N」的 N 是
-        # 连胜计数不是金额——败轮金就显示在「连胜×0」行、金额在同行右侧
-        # 金额位(结算屏实拍直读实证),×计数粘连必须落到 ② 取右列,否则
-        # 会把计数 0 记成 0 金,污染残差归因)
-        _count_glued = re.search(re.escape(label) + r'\s*[×xX*]\s*\d{1,2}',
-                                 getattr(_lab, 'data', '') or '')
-        if not _count_glued:
+        # ①同 token 粘连分层:基础奖励5=金额直连可消费;「连胜×N」的 N 是
+        # 连胜计数、金额在同行右侧金额位(败轮实证:×0 行付 1)——×粘连
+        # 先记计数再落 ② 取右列;② 空且计数在场则回退用计数(胜局粘连行
+        # 无右列金额的历史行为兼容)
+        _count: int | None = None
+        _count_m = re.search(re.escape(label) + r'\s*[×xX*]\s*(\d{1,2})',
+                             getattr(_lab, 'data', '') or '')
+        if _count_m:
+            _count = int(_count_m.group(1))
+        else:
             m = re.search(re.escape(label) + r'\s*(\d{1,2})',
                           getattr(_lab, 'data', '') or '')
             if m:
@@ -296,6 +299,8 @@ def parse_settlement_gold_detail(items: list) -> dict[str, int | None]:
                 _cands.append((_cx - _lcx, int(t)))
         if _cands:
             out[key] = min(_cands)[1]
+        elif _count is not None:
+            out[key] = _count
     return out
 
 
@@ -313,9 +318,6 @@ def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list,
             return   # 结算停留期同帧重复读:只落一行
         _gold_last_row_key = _key
         _detail = parse_settlement_gold_detail(items)
-        if (_detail['base'], _detail['streak'], _detail['interest']) == (None, None, None):
-            return   # 三分量全空=本轮 parse 空转(每结算曾成对落噪声行),
-            #          零信息不落盘;真值缺失与「读到 0」语义本就分开
         from sr_od.application.currency_war import cw_telemetry
         try:
             _run_id = cw_telemetry.current_run_id() or '-'
