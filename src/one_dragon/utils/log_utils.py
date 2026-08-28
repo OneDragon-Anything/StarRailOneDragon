@@ -1,6 +1,8 @@
 import logging
 import os
+import threading
 import time
+import weakref
 from contextlib import suppress
 from dataclasses import dataclass
 from errno import EACCES, EBUSY
@@ -19,6 +21,39 @@ _ROTATE_RETRY_BASE_DELAY = 0.05
 #: 下一轮转时点到期后自动重试,占用方(其他进程的轮转窗口通常 <1s)早已释放。
 _ROTATE_DEFER_COOLDOWN_SECONDS = 60.0
 
+#: 同路径互斥锁表:同进程内指向同一日志文件的多个 handler 共用一把锁,
+#: 串行化 doRollover —— 没有它,A 刚完成换名、B 仍按旧文件对象重开/降级,
+#: 会出现两个活跃写句柄(与跨进程双写同症状)。
+_PATH_LOCKS: dict[str, threading.RLock] = {}
+_PATH_LOCKS_GUARD = threading.Lock()
+#: 同路径活跃 handler 登记表(弱引用,close 时注销):换名成功后据此定位
+#: 同路径的其他 handler 并强制关闭其存活流 —— 旧流若继续写,写入的是
+#: 已改名的归档文件,单文件离线取证会读出「延迟重放流混入实时流」的
+#: 错乱时间线。跨进程对端的句柄在本进程内关不掉,由占用退避+推迟降级兜底,
+#: 本表只管进程内可达的部分。
+_PATH_HANDLERS: dict[str, weakref.WeakSet] = {}
+
+
+def _norm_path_key(filename: str) -> str:
+    """把日志文件路径归一成登记表/锁表的键(Windows 大小写不敏感)。"""
+    return os.path.normcase(os.path.abspath(filename))
+
+
+def _get_path_lock(path_key: str) -> threading.RLock:
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(path_key)
+        if lock is None:
+            lock = threading.RLock()
+            _PATH_LOCKS[path_key] = lock
+        return lock
+
+
+def _path_handlers(path_key: str) -> list['SafeTimedRotatingFileHandler']:
+    """登记在册的同路径 handler 快照(含任意调用者自身;死引用自动剔除)。"""
+    with _PATH_LOCKS_GUARD:
+        handlers = _PATH_HANDLERS.get(path_key)
+        return [h for h in tuple(handlers) if h is not None] if handlers else []
+
 
 class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
     """跨进程安全加固的按时间轮转文件 handler。
@@ -34,13 +69,17 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
     时点再试 —— 日志短暂跨天不切分是可接受的降级,写日志抛异常污染调用方
     (pytest 随机红)不可接受。其余 OSError 照常上抛。
 
-    另两处同族守卫(跨零点错乱时间线的实证根因是标准库 doRollover 失败时
+    另三处同族守卫(跨零点错乱时间线的实证根因是标准库 doRollover 失败时
     ``rolloverAt`` 不推进 → 每条日志重试换名、重试窗口内换名偶发成功会把
     别的写入流甩进已改名的归档文件,出现"延迟重放流混入实时流"):
     ① 换名已成功但随后的旧归档清理被占用 → 视作轮转完成,只推进时点,
        绝不重试(对已不存在的源文件再 rename 会抛 FileNotFoundError 逃逸);
     ② 全败降级重开流时,只在无流时补开 —— 并发 emit 的 shouldRollover
-       可能在本方法关闭流之后已重开流,直接赋值会丢弃活句柄造成同进程双写。
+       可能在本方法关闭流之后已重开流,直接赋值会丢弃活句柄造成同进程双写;
+    ③ 同进程内指向同一文件的所有 handler 经同路径锁串行化轮转,换名成功
+       (含被他人换名、源文件消失的视作完成分支)后,强制其他 handler 的
+       存活流关闭置空 —— 旧流继续写会落进已改名的归档文件,是重放流混入
+       的换名成功侧根因;置空后对端按路径重开,自然落到换名后的新文件。
     """
 
     def __init__(
@@ -71,8 +110,28 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
             errors=errors,
             atTime=atTime,
         )
+        # baseFilename 已由 FileHandler.__init__ 归一为绝对路径,这里再 normcase
+        # 统一 Windows 大小写,保证同文件的两个 handler 命中同一把锁/同一登记表。
+        with _PATH_LOCKS_GUARD:
+            _PATH_HANDLERS.setdefault(
+                _norm_path_key(self.baseFilename), weakref.WeakSet()
+            ).add(self)
+
+    def close(self) -> None:
+        # 先注销再走标准关闭:登记表是弱引用,不留悬挂条目,也不阻止 GC。
+        with _PATH_LOCKS_GUARD:
+            handlers = _PATH_HANDLERS.get(_norm_path_key(self.baseFilename))
+            if handlers is not None:
+                handlers.discard(self)
+        super().close()
 
     def doRollover(self) -> None:
+        # 同路径互斥:同文件的其他 handler 的轮转与本方法串行,防止交叠期
+        # 「A 换名 / B 降级重开」产生第二个活跃写句柄。
+        with _get_path_lock(_norm_path_key(self.baseFilename)):
+            self._do_rollover_locked()
+
+    def _do_rollover_locked(self) -> None:
         # 与基类约定一致:先把当前流关掉(rename 的阻塞来源除本流自身的句柄外,
         # 还有其他进程持有的打开句柄 —— 自己这份必须先释放才有换名成功的可能)。
         if self.stream:
@@ -82,6 +141,9 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
         for attempt in range(_ROTATE_RETRY_COUNT):
             try:
                 super().doRollover()
+                # 换名成功:同路径其他 handler 的存活流必须置换,否则继续
+                # 写进的是已改名的归档文件(重放流侧根因)。
+                self._close_sibling_streams()
                 return
             except OSError as e:
                 occupied = (
@@ -91,12 +153,13 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
                 if not occupied:
                     raise
                 if not os.path.exists(self.baseFilename):
-                    # 换名本体已成功(源文件不在了),失败发生在其后的旧归档
-                    # 清理(getFilesToDelete 的 os.remove 撞外部查看器句柄)。
-                    # 视作轮转完成:只推进轮转时点,流交给 FileHandler.emit 的
-                    # 惰性重开(delay=True 时保持 None);不重试 —— 此时重试会对
-                    # 不存在的源文件 rename,抛 FileNotFoundError 直接逃逸。
+                    # 源文件不在:可能本 handler 换名成功但旧归档清理被占用,
+                    # 也可能是同路径另一 handler(或其他进程)已抢先换名。
+                    # 两种情况都视作轮转完成:文件已按日期归档,流交惰性
+                    # 重开落到新文件;不重试 —— 对不存在的源文件 rename 会
+                    # 抛 FileNotFoundError 逃逸。
                     self.rolloverAt = self.computeRollover(int(time.time()))
+                    self._close_sibling_streams()
                     return
                 if attempt < _ROTATE_RETRY_COUNT - 1:
                     time.sleep(min(_ROTATE_RETRY_BASE_DELAY * (2 ** attempt), 0.8))
@@ -111,6 +174,33 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
             self.stream = self._open()
         self.rolloverAt = int(time.time()) + int(_ROTATE_DEFER_COOLDOWN_SECONDS)
         # 静默降级:不向调用方抛错(调用方大多只是想记一行日志)。
+
+    def _close_sibling_streams(self) -> None:
+        """换名成功后强制同路径其他 handler 关闭存活流(置换为按路径重开)。
+
+        换名窗口内旧流仍存活时,它后续写入的是已改名的归档文件 —— 实时行
+        落进归档,离线读出双流错乱时间线。置空流后,对端下一次 emit 经
+        shouldRollover/惰性重开按路径打开,自然落到换名后的新文件。
+
+        拿不到对端 handler 锁时跳过而非等待:对端 emit 的加锁序是
+        「handler 锁 → 本方法所在的路径锁」,这里若阻塞等同一把 handler 锁
+        会与之构成环(死锁)。跳过是安全的:对端当次写完即释放锁,后续
+        任何一次轮转仍会置换其流;跨进程对端本就不可达,由占用退避兜底。
+        """
+        for sibling in _path_handlers(_norm_path_key(self.baseFilename)):
+            if sibling is self or sibling.stream is None:
+                continue
+            # Handler.acquire() 不支持非阻塞,直接用底层 RLock 非阻塞获取。
+            if not sibling.lock.acquire(blocking=False):
+                continue
+            try:
+                if sibling.stream is not None:
+                    with suppress(Exception):
+                        sibling.stream.flush()
+                        sibling.stream.close()
+                    sibling.stream = None
+            finally:
+                sibling.lock.release()
 
 
 @dataclass(slots=True)
