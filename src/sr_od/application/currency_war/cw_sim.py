@@ -1287,6 +1287,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 planes: int = 1,
                 invest: SimInvestProfile | bool = False,
                 p2_combat: P2CombatCalib | None = None,
+                synthesis_chain: bool = False,
+                equip_wear_effect: float = 0.0,
+                wear_basic: bool = False,
                 _p2_entry: P2ReplayEntry | None = None) -> SimResult:
     """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
     追加 P2 段——W157/ADR-0362 案 a 最小可用)。
@@ -1338,6 +1341,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'P3 语料零样本未实现——案 c 缓,W156 裁决)')
     pool_map, pool_fp, pool_src = resolve_pool(pool)
     rng = random.Random(seed)
+    # 装备面执行链参数(默认全关 = 既有行为逐位零漂移):
+    # _synth_on = 合成执行 hook(组件凑齐需求线配方即装备栏内合成);
+    # _wear_eff = 已穿进阶成品对败局伤害的折减系数/件(校准假设层,
+    # 量级无实机定量锚点,由 A/B 灵敏度带呈报,见结算段注释)。
+    _synth_on = bool(synthesis_chain)
+    _wear_eff = max(0.0, float(equip_wear_effect))
+    # C 臂旁路:P1 允许基础件入穿戴池(用户裁定:基础件穿着可逆=卖角色
+    # 取回,不构成锁死;是否 P1 穿简易=编排者裁决「测而不辩」)。
+    _wear_basic = bool(wear_basic)
     cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
     # ADR-0272:池构造后硬断言无费用截断(不变式;检查函数单一源
     # 在 cw_sim_checks——纯 dict 入参,不构成 import 环)
@@ -2042,6 +2054,28 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 消解(胖尾为跨 run 配对伪影,池真值恒 +2,实测触界率 0),
             # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
             # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
+            # 装备效果通道(校准假设层):sim 已知缺口「装备效果未建模」
+            # (ADR-0394 后果节声明的边界)的显式参数化——败局伤害按
+            # 已穿进阶成品件数线性折减。仅 battle/encounter(boss 败局
+            # 钳制语义冻结,不折减);0=关闭(逐位零漂移)。量级无实机
+            # 定量锚点(W465 装备流分析:P1 白板八战 -62 为裸装口径,
+            # 无「穿装对照」数据),总折减 60% 硬顶——A/B 消费时按
+            # 灵敏度带呈报效应量,不作为已标定值。
+            if _wear_eff > 0 and delta < 0 \
+                    and nodes[rn - 1] in ('battle', 'encounter'):
+                from sr_od.application.currency_war.cw_synthesis import (
+                    RESERVED_COMPONENTS as _RC,
+                )
+                _worn_units = 0.0
+                for _d in (st.deployed or []):
+                    for _e in (getattr(_d, 'equips', ()) or ()):
+                        # 进阶成品全权 1.0;基础件半权 0.5(用户裁定
+                        # 「简易件效果通常不大」;穿着可逆=卖角色取回,
+                        # C 臂 wear_basic 的预注册效应口径)
+                        _worn_units += 0.5 if _e in _RC else 1.0
+                if _worn_units > 0:
+                    delta = max(delta, round(
+                        delta * (1.0 - min(0.6, _wear_eff * _worn_units))))
             st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
             # ADR-0351 计数口径(奖励/补给轮不计连胜数;实机奖励轮结算后
             # streak 恒 0):战斗类节点(battle/encounter/boss)胜后计数
@@ -2138,6 +2172,46 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 st.equips.append(_opts[_pick.idx].equip)
                 if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
+            # 合成执行链 hook(默认关,synthesis_chain=True 点火):
+            # **方向确定性门(用户裁决:组件留给目标阵容,乱合成=后期缺
+            # 关键装备)——意向已锁线(phase=='locked'∧locked_comp,与
+            # _target_comp_label 消费判据同款)才允许合成**;P1 FORM 期
+            # target_comp 易变,对着它合成=压注未定方向。门内再过隶属度
+            # (plan_syntheses:目标件 1.0/共享件 0.5,默认阈值 1.0 只合
+            # 目标件)。持有组件凑齐配方 → 装备栏内合成(耗金口径:文档
+            # 与注册表无耗金记载,按免费建模,声明见 plan_syntheses)。
+            # 产物是进阶成品、不在 cw_synthesis.RESERVED_COMPONENTS——
+            # 自然进入下方 equip_allocation 的可穿池,与 ADR-0265 组件
+            # 保留池不对撞(本门是叠加在保留池之上的兑现门,不放松保留
+            # 条件);时机 = 每备战期分配前,最小改动不重构分配器。
+            _synth_events: list[str] = []
+            _ist = getattr(sess, 'v3_intention', None)
+            _line_locked = (getattr(_ist, 'phase', '') == 'locked'
+                            and getattr(_ist, 'locked_comp', ''))
+            if _synth_on and _line_locked and st.equips:
+                from sr_od.application.currency_war.cw_synthesis import (
+                    plan_syntheses,
+                )
+                _tgt = getattr(sess, 'target_comp', None)
+                _keys = list(getattr(_tgt, 'key_equips', ()) or ()) \
+                    if _tgt is not None else []
+                # P2 锁线回收:合成门需要的组件若正被穿着,先取回再合成
+                # (用户裁定:基础件穿着可逆=卖角色取回;sim 语义与卖出
+                # 回收 equips.extend 同向,这里是「扳手/卖出」的等价代理)
+                from sr_od.application.currency_war.cw_synthesis import (
+                    component_demand as _cd,
+                )
+                _need_comps = set(_cd(_keys))
+                for _d in iter_occupied_deployed(st.deployed):
+                    for _e in list(getattr(_d, 'equips', ()) or ()):
+                        if _e in _need_comps:
+                            _d.equips.remove(_e)
+                            st.equips.append(_e)
+                for _adv, _comps in plan_syntheses(_keys, st.equips):
+                    for _c in _comps:
+                        st.equips.remove(_c)
+                    st.equips.append(_adv)
+                    _synth_events.append(_adv)
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
@@ -2157,7 +2231,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                               ] = list(getattr(d, 'equips', ()) or ())
                 _equipped_now = equip_allocation(
                     sess.target_comp, st.deployed, list(st.equips),
-                    occupied=_occupied, plane=st.plane)
+                    occupied=_occupied, plane=st.plane,
+                    allow_basic_wear=_wear_basic)
                 for _who, _what in _equipped_now:
                     if _what in st.equips:
                         st.equips.remove(_what)
@@ -2238,6 +2313,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,
+                    # 合成执行链事件(本轮装备栏内合成的成品名;默认关恒空)
+                    'syntheses': _synth_events,
                     # W193/ADR-0377:参数化胜率披露(校准层结算行;
                     # None=非校准路径[P1 段/uncalibrated 臂/reward 类])
                     'p2_win_p': _p2_wp,
@@ -2459,7 +2536,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       planes: int = 1,
                       invest: SimInvestProfile | bool = False,
                       p2_combat: P2CombatCalib | None = None,
-                      max_rounds: int | None = None) -> dict:
+                      max_rounds: int | None = None,
+                      synthesis_chain: bool = False,
+                      equip_wear_effect: float = 0.0,
+                      wear_basic: bool = False) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
     :param max_rounds: 段级窗口(W278 sim 段级短跑批;None=整局,既有
@@ -2490,7 +2570,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
                            pool=pool, planes=planes, invest=invest,
-                           p2_combat=p2_combat)
+                           p2_combat=p2_combat,
+                           synthesis_chain=synthesis_chain,
+                           equip_wear_effect=equip_wear_effect,
+                           wear_basic=wear_basic)
                for i in range(n)]
     # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
     # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;

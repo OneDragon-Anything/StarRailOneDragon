@@ -150,6 +150,106 @@ def component_demand(key_equips: list[str]) -> dict[str, int]:
     return demand
 
 
+# 合成隶属度门槛(用户裁决:组件留给目标阵容,乱合成=后期缺关键装备):
+# 成品对需求线的隶属度 ≥ 本阈值才允许执行合成。目标件(∈ key_equips)=1.0;
+# 共享件(自身不在 key,但组件与需求向量相交)=0.5;无关 =0。默认 1.0 =
+# **只合目标件**——共享件在对局换线时正是「乱合成」的死库存来源,取
+# 保守侧;调低 = 显式放宽(需有方向置信依据,不是默认)。
+SYNTHESIS_MEMBERSHIP_THRESHOLD: float = 1.0
+
+
+def synthesis_membership(advance: str, key_equips: list[str]) -> float:
+    """成品 advance 对需求线 key_equips 的隶属度(目标件 1.0/共享件 0.5)。
+
+    - 目标件:advance 在 key_equips(计重复的多份同件仍 1.0);
+    - 共享件:advance 不在 key,但其配方组件与需求向量(``component_demand``)
+      相交——合成它不直接兑现需求线,但组件在需求线上,换线时残值更高;
+    - 其余 =0(组件都不在需求线上,合成它=纯压注未定方向)。
+    key_equips 为空(无方向)→ 恒 0:无方向即无合成。
+    """
+    if not key_equips:
+        return 0.0
+    if advance in set(key_equips):
+        return 1.0
+    cross = cross_components(advance)
+    comps: tuple[str, ...]
+    if cross is not None:
+        comps = cross
+    else:
+        base = self_base(advance)
+        if base is None:
+            return 0.0
+        comps = (base, base)
+    demand = set(component_demand(key_equips))
+    return 0.5 if any(c in demand for c in comps) else 0.0
+
+
+def plan_syntheses(
+        key_equips: list[str], owned: list[str],
+        membership_floor: float = SYNTHESIS_MEMBERSHIP_THRESHOLD,
+        candidates: list[str] | None = None,
+) -> list[tuple[str, tuple[str, ...]]]:
+    """合成执行清单:「持有组件凑齐配方且成品属当前目标需求线」→ 合成。
+
+    补合成执行链(W465 装备流分析定案的系统缺口:系统只囤组件从不执行
+    合成,ADR-0265 保留池的设计前提「组件留作合成」永不兑现 → P1 出口
+    裸装)。规则(口述 [29] 与 ADR-0265 语义不受影响——合成产物是进阶
+    成品,不是组件,不在 RESERVED_COMPONENTS,自然进入可穿池):
+
+    - 需求 = ``key_equips``(计重复,当前目标 comp 需求线);不为目标
+      需求线的成品不合成(不为过渡特意合成,combo_methodology 合成装备节);
+    - 需求先被 owned 中已持有的同名进阶 1:1 抵扣(持有成品不再需要组件,
+      与 ``hoard_gaps`` 同口径);
+    - 剩余需求逐个检查组件库存(交叉 = 两件不同基础件;自配 = 同件 ×2),
+      凑齐即消耗组件、产出成品;消费在返回值中显式列出,由调用方记账
+      (本函数不 mutate 输入——``owned`` 列表只读消费)。
+
+    耗金口径:文档与注册表均无合成耗金记载(gameplay.md「2 件简易装备
+    可合成为 1 件进阶装备」无金币字样;装备栏内合成为拖拽操作)——按
+    **免费**建模;若实测确认耗金,经济侧在本函数的调用方补记账,不改本
+    函数签名。
+
+    方向确定性门(用户裁决,叠加在 ADR-0265 保留池之上的兑现门,不放松
+    保留条件):需求线 = key_equips 本身即「方向已定」的载体——调用方
+    必须在**意向已锁线**(或等价高置信状态)后才调用本函数;P1 FORM 期
+    target_comp 易变,对着它合成=压注未定方向。候选成品逐个过隶属度门
+    (``synthesis_membership`` ≥ ``membership_floor``,默认只合目标件);
+    ``candidates`` 非空时在 key_equips 之外扩扫候选(共享件等,受同一
+    隶属度门约束)——**不存在「凡配方凑齐即合」的无方向路径**。
+
+    返回 ``[(成品名, (消耗组件...)), ...]``;无可执行合成 → 空列表。
+    """
+    from collections import Counter
+    if not key_equips or not owned:
+        return []
+    stock = Counter(owned)
+    actions: list[tuple[str, tuple[str, ...]]] = []
+    # 候选按出现次数聚合(key 计重复,扩扫候选同判);逐成品过隶属度门
+    for adv, need in Counter([*key_equips, *(candidates or [])]).items():
+        if synthesis_membership(adv, key_equips) < membership_floor:
+            continue
+        cross = cross_components(adv)
+        if cross is not None:
+            comps: tuple[str, ...] = cross
+        else:
+            base = self_base(adv)
+            if base is None:
+                continue    # 无常规配方件(白昼/特权类)不产生可规划需求
+            comps = (base, base)
+        # 已持有同名成品先抵扣,剩余份数才合成;组件可用性按去重计数判
+        # (自配 comps=(b,b) 需要库存 2 件,不能按「出现即有」)
+        remain = need - stock.get(adv, 0)
+        for _ in range(max(0, remain)):
+            if any(stock.get(c, 0) < list(comps).count(c)
+                   for c in set(comps)):
+                break
+            for c in comps:
+                stock[c] -= 1
+            stock[adv] += 1
+            actions.append((adv, comps))
+    return actions
+
+
 def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
     """**回收合格**基础件集(P14 定理 3 准入的生产化)。
 
