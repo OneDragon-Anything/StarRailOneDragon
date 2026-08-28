@@ -3,15 +3,18 @@
 简报屏(对局开始前预览):3 位面 boss + 敌人词缀 + 本场对局首领。本 op 职责:
 ① 识别简报屏(id_mark ``标识-本场对局首领``,简报独有 is_precise);
 ② 读敌人词缀(``read_affixes``,本局真值)→ 存 ctx 中转(待 loop 建 cw_match 时
-   copy 到 session);读 3 boss 名(``read_bosses``)→ 存 ctx **候选集**
-   (ADR-0397:简报三卡排列≠位面序,读数不可按序当 plane_bosses 用——真值走
-   ``CollectPlaneIntel`` 位面详情实采,由 battle_loop 备战稳定帧统一触发);
+   copy 到 session);读 3 boss 名(``read_bosses``)→ 经 ``clean_boss_names_by_lcs``
+   清洗归一 → 存 ctx(**位面序真值**,用户 2026-08-28 裁决:简报三卡排列 = 位面序,
+   ADR-0397 原结论已勘误;由 battle_loop 建 match 时 copy 进 ``session.briefing_bosses``
+   供 boss_fit 按位面消费);
 ③ 点「下一步」进投资环境。
 
 词缀链路(下游):``ctx.cw_briefing_affixes`` → ``session.briefing_affixes``
 → ``state.enemy_affixes`` → ``mechanics_fit``(详 ``cw_observation.read_affixes``)。
-boss 候选集不进 session(无消费方;遥测/对账用)。简报在 loop 前(``cw_match=None``),
-故词缀先临时中转 ctx,由 ``battle_loop.__init__`` 取走。
+boss 链路(下游):``ctx.cw_briefing_bosses`` → ``session.briefing_bosses`` →
+``state.plane_bosses`` → ``boss_fit``(battle_loop ``__init__`` copy;接管场景内存丢失
+时由 ``CollectPlaneIntel`` 重采 + 对账,ADR-0397 勘误节)。简报在 loop 前
+(``cw_match=None``),故两读数先临时中转 ctx,由 ``battle_loop.__init__`` 取用。
 
 入口大 op(``StartCurrencyWarMatch.advance_to_prep``)只做调度:循环检测当前屏 → 调对应独立 op
 (本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
@@ -65,7 +68,7 @@ class HandleBriefing(SrOperation):
             return self.round_fail('非简报屏')
 
         # ② 读敌人词缀(名+center,A8 最高 4)+ 3 位面 boss 名 → ctx 中转(下游 mechanics_fit/boss_fit 输入)。
-        # 幂等:retry 重跑同屏值不变,已存不重读(避免重复 log)。
+        # 词缀幂等:retry 重跑同屏值不变,已存不重读(避免重复采效果点击)。
         if not self.ctx.cw_briefing_affixes:
             _affixes_pos = read_affixes_with_pos(self.ctx, screen)
             if _affixes_pos:
@@ -78,19 +81,22 @@ class HandleBriefing(SrOperation):
                     # write_affix_effects 内部 log 明细(D-81 守卫:garbage「下一步」拒 / existing divergent
                     # 不覆盖静态数据 / new key 加);返回是否实际写入。
                     write_affix_effects(_updates)
-        if not self.ctx.cw_briefing_bosses:
-            # 候选集(ADR-0397):画面 x 序、无位面序语义——不作为 plane_bosses
-            # 真值进 session(08-26 佩佩局实证位面 2/3 错序);真值走 CollectPlaneIntel
-            # 实采。读存仅遥测/对账用(0a0b 遥测 detail 引用同槽)。
-            _bosses = read_bosses(self.ctx, screen)
-            if _bosses:
-                self.ctx.cw_briefing_bosses = _bosses
-                _log.info('简报首领候选集读得(x 序,无位面序,不进 session): %s', _bosses)
-            else:
-                # W222:空读也要可见——此前空读无日志,「read_bosses 恒空」
-                # vs「幂等跳过」无法区分;每简报一次(节点一次成功,无重试刷屏)。
-                _log.info('简报首领候选集未读到(read_bosses 空:区域-首领行 OCR '
-                          '无 4-8 字中文名;W219 对比锚需走简报屏 OCR 兜底)')
+        # 位面序真值:每次进简报屏都重读覆写(不做「已存跳过」幂等守卫——守卫会把
+        # 上一局残留当本局真值;retry 重跑同屏重读成本 = 一次区域 OCR,可接受)。
+        # 读得 → LCS 清洗归一(简报卡名常为简称,归一到 boss_fit 消费端规范名)→ 存 ctx。
+        # 读空 → 显式清 None(同样防跨局残留被 loop __init__ copy 成假真值)。
+        from sr_od.application.currency_war.cw_briefing_obs import (
+            clean_boss_names_by_lcs,
+        )
+        _bosses = read_bosses(self.ctx, screen)
+        self.ctx.cw_briefing_bosses = clean_boss_names_by_lcs(_bosses) if _bosses else None
+        if _bosses:
+            _log.info('简报首领读得(位面序,LCS 清洗后): %s', self.ctx.cw_briefing_bosses)
+        else:
+            # W222:空读也要可见——此前空读无日志,「read_bosses 恒空」
+            # vs「幂等跳过」无法区分;每简报一次(节点一次成功,无重试刷屏)。
+            _log.info('简报首领未读到(read_bosses 空:区域-首领行 OCR '
+                      '无 4-8 字中文名;W219 对比锚需走简报屏 OCR 兜底)')
         # 读敌人难度数值(简报「标识-敌人难度」→ ctx.cw_enemy_difficulty 中转 → session → state;3.5.2 接线)
         if self.ctx.cw_enemy_difficulty is None:
             from sr_od.application.currency_war.cw_briefing_obs import (
@@ -101,7 +107,7 @@ class HandleBriefing(SrOperation):
                 self.ctx.cw_enemy_difficulty = _diff
                 _log.info('简报敌人难度读得: %s', _diff)
 
-        # 遥测存证(W518):开局简报三读数(词缀/boss 候选集/难度)此前只进
+        # 遥测存证(W518):开局简报三读数(词缀/首领/难度)此前只进
         # 日志不进遥测——run_20260828_191254 的 exogenous.jsonl 0 条 briefing,
         # 证据链上「简报画面当时显示了什么」是空白(数据无功能消费方,纯存证)。
         # 口径对齐 battle_loop 位面简报分支先例(同 kind='briefing'、同 detail
@@ -146,7 +152,7 @@ class HandleBriefing(SrOperation):
             _shot = self.screenshot()
             _effect = read_affix_effect(self.ctx, _shot, name)
             if not _effect:
-                _log.info('[cw-briefing] 词缀 %s 效果未采到(tooltip 未弹/OCR 失败)', name)
+                _log.info('[cw-briefing] 词缀 %s 效果未采到(OCR 失败)', name)
                 continue
             if _effect == _registered.get(name, ''):
                 continue  # 注册表有且采到一致 → 跳过(已准,不用对账)

@@ -220,12 +220,14 @@ class CurrencyWarRunLoop(SrOperation):
             if self.ctx.cw_enemy_difficulty is not None:
                 _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
                 self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
-            # 简报 boss 不再 copy 进 session(ADR-0397):简报三卡排列≠位面序
-            # (08-26 佩佩局实证:读数 [巨鹿,造梦互动,深穹智械] vs 位面详情亲证
-            # [巨鹿,增熵,绘师]),按序消费 = 位面 2/3 的 boss_fit 从第一天打错
-            # boss。session.briefing_bosses 唯一写入端 = 备战稳定帧 CollectPlaneIntel
-            # 实采(见 loop 备战分支实采块,开局局/接管局统一触发);ctx.cw_briefing_bosses
-            # 降级为候选集(画面 x 序,无位面序语义,仅供遥测/对账)。
+            # 简报 boss(StartCurrencyWarMatch/HandleBriefing 读存 ctx.cw_briefing_bosses,
+            # 读侧已经 LCS 清洗归一到规范名)→ copy 到 session(位面序真值,boss_fit 输入)。
+            # 用户 2026-08-28 裁决:简报三卡排列 = 位面序(ADR-0397「排列≠位面序」系
+            # 单条日志孤证误判,已勘误——见该 ADR 文内勘误节),恢复既有 copy 消费链。
+            # 不取走清空:ctx 槽保留作 CollectPlaneIntel 完成后的对账源;跨局残留由
+            # HandleBriefing 每局重读覆写/读空清 None 兜住(见 handle_briefing 读块注释)。
+            if self.ctx.cw_briefing_bosses:
+                _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
         else:
             # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
             # start_run,统一在两支各自 new/延用后注册)
@@ -312,9 +314,7 @@ class CurrencyWarRunLoop(SrOperation):
                 f'处理流程:\n'
                 f'1. 看关键词/截图:疑似事件 overlay(未建档 handler)→ 按\n'
                 f'   od-dev-screen-onboarding 建档 + battle_loop 0x 分支加 handler;\n'
-                f'2. 疑似操作循环失败(点了没反应)→ od-dev-debug-automation 定位\n'
-                f'   (grep 该时刻日志,看哪个 node 在 retry);\n'
-                f'3. 处理完删本 flag。bot 未停机(可能只是慢),处理完可继续跑。\n'
+                f'2. 处理完删本 flag。bot 未停机(可能只是慢),处理完可继续跑。\n'
                 f'shot={_shot}', encoding='utf-8')
             log.warning('[cw!][watch] 停滞哨兵:同屏 %s 次(≈%s iter)关键词=%s '
                         'shot=%s —— 疑似未处理 overlay/操作循环,详见 stall_watch.flag',
@@ -806,13 +806,16 @@ class CurrencyWarRunLoop(SrOperation):
         #       过渡到简报的半开帧反复 round_wait。修:0x 头部 find_area 优先
         #       命中即点按钮 area(单次区域查询,绕开全屏 OCR 依赖),并采简报
         #       读数(词缀/难度 → ctx 真值槽,与 StartCurrencyWarMatch 同槽;
-        #       boss → ctx 候选集,ADR-0397——无位面序语义,不进 session)。
+        #       boss → ctx 位面序真值槽,ADR-0397 勘误——经 LCS 清洗,由
+        #       __init__ copy 进 session)。
         if self.round_by_find_area(screen, '货币战争-简报', '标识-本场对局首领', crop_first=False).is_success:
             # 简报读数采集:词缀/难度是本局真值(→ ctx,下游 mechanics_fit/
-            # 难度);boss 是候选集(ADR-0397:画面 x 序 ≠ 位面序,仅供遥测,
-            # 不作 plane_bosses 真值——真值走 CollectPlaneIntel 实采)。
+            # 难度);boss 是位面序真值(ADR-0397 勘误节,用户 2026-08-28 裁决;
+            # 读侧统一走 clean_boss_names_by_lcs 清洗——P2/P3 简报在 loop 内,
+            # 就地清洗保证 0a0b 覆写槽位与开局读侧同口径)。
             try:
                 from sr_od.application.currency_war.cw_briefing_obs import (
+                    clean_boss_names_by_lcs,
                     read_affixes,
                     read_bosses,
                 )
@@ -821,7 +824,7 @@ class CurrencyWarRunLoop(SrOperation):
                     self.ctx.cw_briefing_affixes = _aff
                 _bs = read_bosses(self.ctx, screen)
                 if _bs:
-                    self.ctx.cw_briefing_bosses = _bs
+                    self.ctx.cw_briefing_bosses = clean_boss_names_by_lcs(_bs)
             except Exception:   # noqa: BLE001  采集 best-effort
                 pass
             _nx = self.round_by_find_and_click_area(
@@ -1045,14 +1048,14 @@ class CurrencyWarRunLoop(SrOperation):
                 log.warning('[cw!][loop] 返回按钮=上游选择屏处理失败症状(策略屏点歪),第%d次',
                             self._cw_back_btn_count)
                 return self.round_wait(wait=2)
-            # 开局 boss 实采(boss 采集主通道,ADR-0397):新 match 且
-            # session.briefing_bosses 空 = 本局尚无位面序真值。覆盖两种局:
-            # ①接管局(bot 没走过简报链,1-1 手开局最典型);②开局局——简报
-            # 读数已降级候选集不再写 session(简报三卡排列≠位面序,按序消费
-            # 位面 2/3 错 boss,08-26 佩佩局实证)。每局必采(~17s,三卡三点):
-            # 简报读数永远无法验真(简报卡无位面标注,连「读数矛盾才采」的
-            # 触发条件都构造不出)→ 条件采不成立,17s 换位面 2/3 boss_fit
-            # 正确。在**首个稳定备战帧**执行(画面保证在备战;首版挂 iter==1
+            # 开局 boss 实采(接管场景重采,ADR-0397 勘误节):触发 = 新 match 且
+            # session.briefing_bosses 空 = 本局尚无位面序真值。开局局简报读得时
+            # __init__ 已把简报真值 copy 进 session(简报排列=位面序,用户
+            # 2026-08-28 裁决),不再触发本块——简报即真值,零额外采集;本块覆盖
+            # ①接管局(bot 没走过简报链,1-1 手开局/MCP 重启丢内存最典型)
+            # ②开局局简报读空的兜底(读数失败仍需真值,位面 2/3 boss_fit 不至于全中性)。
+            # 每次必采(~17s,三卡三点);失败不阻塞对局(boss 缺省=中性 0.5,与
+            # 无数据同形)。在**首个稳定备战帧**执行(画面保证在备战;首版挂 iter==1
             # 起跑遇战斗结算则 op 入口失败且不重来,22:03 实跑漏采实证)。
             # CollectPlaneIntel 位面情报采集(三 boss 大图标 SIFT,逐位面
             # 真值;佩佩局 3/3 实证)+ 词缀随采(位面详情横条;词缀只在
@@ -1097,6 +1100,15 @@ class CurrencyWarRunLoop(SrOperation):
                             _names = list(self.ctx.cw_plane_bosses)
                             _sess.briefing_bosses = _names   # 实采真值进 session(消费链:session→state.plane_bosses)
                             log.info('[cw-loop] 开局 boss 实采完成(位面序保位,None=徽章态位面):%s', _names)
+                            # 对账网:实采真值 vs 简报读数(LCS 清洗后)逐位面比对,
+                            # 落 exogenous 行 + 不一致进 defect 台账(零决策行为,
+                            # 门控 config.briefing_reconcile;ADR-0397 勘误节)。
+                            from sr_od.application.currency_war.cw_briefing_obs import (
+                                reconcile_briefing_vs_plane_intel,
+                            )
+                            reconcile_briefing_vs_plane_intel(
+                                getattr(self.ctx, 'cw_briefing_bosses', None), _names,
+                                enabled=self._cw_config.briefing_reconcile)
                         # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
                         # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
                         # 空帧清掉)②引用未定义的 _sess(放弃/等待分支都没绑定)。

@@ -18,10 +18,11 @@ session → 返回」,供 `run_operation` 单独调起,不等 battle_loop 的备
 briefing_affixes 仅空时写)+ 消费后清 ctx 中转池(防跨局判空泄漏,与
 battle_loop 实采块同款收尾)。
 
-写入端语义说明(ADR-0414):session.briefing_bosses 的真值源仍是
-CollectPlaneIntel 唯一一条(ADR-0397 反对的「第二写入端」= 简报读数这类
-语义不同的数据源;本 op 与 battle_loop 内联块是**同一产物的两个触发时机**,
-保位/仅空写词缀/清池口径逐条一致,由静态锁双面钉死防漂移)。
+写入端语义说明(ADR-0397 勘误节):session.briefing_bosses 的合法写入端两条,
+语义同源(都是位面序真值)——①简报读数经 LCS 清洗后由 battle_loop ``__init__`` copy
+(用户 2026-08-28 裁决:简报排列=位面序);②本 op / battle_loop 内联块的
+CollectPlaneIntel 实采(**接管场景内存丢失重采**通道),保位/仅空写词缀/清池口径
+逐条一致,由静态锁双面钉死防漂移;实采完成后与简报读数逐位面对账存证。
 
 节点图(两节点,@node_from 显式边——首跑教训见 collect_plane_intel.py 关闭节点):
 - ``补采``(start):入口门 → 跳过门 → 委派 CollectPlaneIntel。
@@ -33,6 +34,7 @@ CollectPlaneIntel 唯一一条(ADR-0397 反对的「第二写入端」= 简报�
 坐标全走 screen_info area;fixture 验证用 sr-od-test/screens 存档帧离线跑,
 不触实机。
 """
+import contextlib
 import logging
 from typing import ClassVar
 
@@ -143,6 +145,19 @@ class TakeoverCollectPlaneIntel(SrOperation):
         sess.briefing_bosses = names
         if affixes and not getattr(sess, 'briefing_affixes', None):
             sess.briefing_affixes = list(affixes)
+
+        # 对账网:实采真值 vs 简报读数逐位面 LCS 比对存证(零决策行为;
+        # 门控 config.briefing_reconcile,与 battle_loop 内联块同口径)。
+        with contextlib.suppress(Exception):   # 对账 best-effort
+            from sr_od.application.currency_war.currency_war_config import (
+                CurrencyWarConfig,
+            )
+            from sr_od.application.currency_war.cw_briefing_obs import (
+                reconcile_briefing_vs_plane_intel,
+            )
+            _gate = CurrencyWarConfig(self.ctx.current_instance_idx).briefing_reconcile
+            reconcile_briefing_vs_plane_intel(
+                getattr(self.ctx, 'cw_briefing_bosses', None), names, enabled=_gate)
 
         # 取走即清(防跨局残留被下局 `not getattr(ctx,...)` 判空误消费)
         self.ctx.cw_plane_bosses = None

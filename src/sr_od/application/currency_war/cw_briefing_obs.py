@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import json
 import re
 from pathlib import Path
@@ -108,17 +109,17 @@ def read_briefing_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | Non
 
 
 def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
-    """简报首领行 → 3 个 boss 名**候选集**(画面 x 序;ADR-0397 降级,勿按序当 plane_bosses 用)。
+    """简报首领行 → 3 个 boss 名(画面 x 序 = 位面序真值;读侧经 :func:`clean_boss_names_by_lcs` 清洗)。
 
     3 个位面是货币战争的玩法结构(每局 3 位面 × 每位面 1 boss),**所有难度(A5/A8/A850)都 3 个,
     不随难度变**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
-    (滤数字/符号/短噪声/「阵营」2 字 label)。**⚠️ 卡片排列 ≠ 位面序**(2026-08-26 佩佩局
-    实证:简报读 [巨鹿,造梦互动,深穹智械] vs 位面详情逐位面亲证 [巨鹿,增熵,绘师];位面 1
-    恰好两序一致,位面 2/3 从第一天就错)——本返回值只作**名字候选集**(哪些 boss 在场,
-    遥测/对账),**禁止 `plane_bosses[plane-1]` 按序消费**;位面序真值唯一来源 =
-    ``CollectPlaneIntel`` 位面详情逐位面实采(接管局接线同款,battle_loop 备战稳定帧触发)。
+    (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序**(用户 2026-08-28 裁决:
+    ADR-0397 的「排列≠位面序」结论系单条日志孤证误判,予以勘误——简报读数经 LCS 清洗后
+    按序写 ``session.briefing_bosses`` 作 ``plane_bosses`` 真值,消费链 boss_fit;勘误详见
+    ADR-0397 文内勘误节)。``CollectPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
+    (对局中内存丢失时补采)+ 对账真值源(ADR-0397 勘误节)。
 
     读不到 / area 缺 → []。
 
@@ -136,6 +137,106 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
         if 4 <= len(name) <= 8 and re.search(r'[一-鿿]', name) and not re.search(r'\d', name):
             bosses.append(name)
     return bosses
+
+
+#: boss 名 LCS 清洗参考表:取 boss_fit 消费端已有的规范 boss 名注册表
+#: (``cw_enemy_data.BOSS_MECHANICS`` 的 20 个规范公司名 key——``state.plane_bosses``
+#: 的下游消费者 ``boss_fit``/``cw_enemy_data.boss_tags`` 都按这套名字匹配)。
+#: 简报卡 boss 名可能是简称(如「造梦互动」vs 规范「造梦互动娱乐」)或 OCR 形变,
+#: LCS 相似匹配把读数归一到规范名;归一失败原样透传(防误配守卫,不硬猜)。
+_LCS_CLEAN_THRESHOLD: float = 0.5   # LCS 占规范名长度比例下限(项目 OCR 名匹配通用档,见 AGENTS「OCR 文本匹配与修复」)
+
+
+def clean_boss_names_by_lcs(names: list[str]) -> list[str]:
+    """简报 boss 读数逐个经 LCS 相似匹配归一到规范公司名(顺序原样保留 = 位面序)。
+
+    参考表 = ``cw_enemy_data.BOSS_MECHANICS`` key(见 :data:`_LCS_CLEAN_THRESHOLD` 上方说明)。
+    防误配守卫:LCS 占规范名长度比例 < 0.5 → 不归一,OCR 原名透传并留日志
+    (错归一比不归一危害大——按序真值直接进 boss_fit 评分)。输入已是规范名 → LCS=1.0 原样返回。
+    """
+    from one_dragon.utils.str_utils import find_best_match_by_lcs
+    from sr_od.application.currency_war.cw_enemy_data import BOSS_MECHANICS
+    refs: list[str] = list(BOSS_MECHANICS.keys())
+    out: list[str] = []
+    for name in names:
+        idx = find_best_match_by_lcs(name, refs, lcs_percent_threshold=_LCS_CLEAN_THRESHOLD)
+        if idx is None:
+            _log.warning('[cw!][briefing] boss 读数「%s」LCS 归一未过阈值 %.2f,原名透传',
+                         name, _LCS_CLEAN_THRESHOLD)
+            out.append(name)
+        else:
+            out.append(refs[idx])
+    return out
+
+
+def briefing_reconcile_pairs(briefing: list[str] | None,
+                             truth: list[str | None]) -> list[dict]:
+    """逐位面对账配对(纯函数可单测):简报读数(LCS 清洗后)vs 位面详情实采真值。
+
+    返回每位面一条 ``{plane, briefing, truth, match}``;``match=None`` = 不可判
+    (任一侧 None——实采徽章态 / 简报未读得),``True/False`` = LCS 比对一致/不一致
+    (两侧都过 :func:`clean_boss_names_by_lcs` 归一后再比,吸收简称/形变差)。
+    """
+    from one_dragon.utils.str_utils import (
+        find_best_match_by_lcs,
+        longest_common_subsequence_length,
+    )
+    from sr_od.application.currency_war.cw_enemy_data import BOSS_MECHANICS
+    refs: list[str] = list(BOSS_MECHANICS.keys())
+    # 逐位面清洗;位面空读(None)原位保留不送清洗(空值不参与 LCS)
+    _brief_raw = list(briefing) if briefing else []
+    _clean_iter = iter(clean_boss_names_by_lcs([b for b in _brief_raw if b]))
+    brief = [next(_clean_iter) if i < len(_brief_raw) and _brief_raw[i] else None
+             for i in range(3)]
+    pairs: list[dict] = []
+    for i in range(3):
+        b = brief[i] if i < len(brief) else None
+        t = truth[i] if truth and i < len(truth) else None
+        if b is None or t is None:
+            match = None
+        else:
+            tc = find_best_match_by_lcs(t, refs, lcs_percent_threshold=_LCS_CLEAN_THRESHOLD)
+            t_canon = refs[tc] if tc is not None else t
+            # 双侧归一后比对:一致 = LCS 占短名长度 ≥ 阈值(同一名的两种读法)
+            lcs = longest_common_subsequence_length(b, t_canon)
+            match = lcs / min(len(b), len(t_canon)) >= _LCS_CLEAN_THRESHOLD
+        pairs.append({'plane': i + 1, 'briefing': b, 'truth': t, 'match': match})
+    return pairs
+
+
+def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
+                                      truth: list[str | None],
+                                      round_num: int = 0,
+                                      enabled: bool = True) -> None:
+    """简报读数 vs 位面详情实采真值的对账存证(CollectPlaneIntel 采集完成后调,零决策行为)。
+
+    每位面配对(:func:`briefing_reconcile_pairs`)落 exogenous 行(kind=``briefing_reconcile``,
+    口径对齐 briefing 存证先例:round 0 / detail f-string / best-effort);不一致位面进
+    defect 台账(L2 留证,不动行为)。门控 = config 布尔(验证期默认开)。
+    """
+    if not enabled:
+        return
+    with contextlib.suppress(Exception):   # 对账 best-effort,不阻断采集主流程
+        from sr_od.application.currency_war import cw_telemetry
+        pairs = briefing_reconcile_pairs(briefing, truth)
+        cw_telemetry.record_exogenous(
+            round_num, 'briefing_reconcile',
+            detail=';'.join(
+                f"p{p['plane']}:briefing={p['briefing']},truth={p['truth']},match={p['match']}"
+                for p in pairs))
+        for p in pairs:
+            if p['match'] is False:
+                cw_telemetry.record_defect(
+                    'briefing', 'briefing_reconcile',
+                    expected=f"简报位面{p['plane']}读数={p['briefing']}",
+                    observed=f"位面详情实采={p['truth']}(LCS 比对不一致)",
+                    plane=int(p['plane']),
+                    verdict='留证-简报读数与实采真值不一致(逐位面 LCS 对账)',
+                    reader_source='briefing_vs_plane_intel',
+                    severity=cw_telemetry.SEVERITY_L2_RECORD,
+                    note='ADR-0397 勘误节:简报排列=位面序(用户裁决);不一致=OCR/采集噪声信号')
+                _log.warning('[cw!][briefing] 对账不一致:位面%d 简报=%r 实采=%r(台账 L2 留证)',
+                             p['plane'], p['briefing'], p['truth'])
 
 
 def read_affix_effect(ctx: SrContext, screen: MatLike, affix_name: str) -> str:
@@ -223,9 +324,8 @@ def save_affix_screenshot(screen: MatLike, name: str) -> str:
 def _is_garbage_affix(name: str, effect: str) -> bool:
     """OCR 采的词缀效果是否明显 garbage(拒写 ground truth)。
 
-    简报 tooltip 未弹时(``_collect_affix_effects`` 的 click 没落到词缀 / 动画未完),
-    ``read_affix_effect`` 读下行文本(下一词缀行 / 「下一步」按钮)当效果 → garbage。
-    判据:**真效果文案绝不会只含 / 含「下一步」**(「下一步」= 简报按钮文字)。空效果同理(未采到)。
+    OCR 采「效果」时可能混入同屏非效果文本(如简报「下一步」按钮文字)。判据:
+    **真效果文案绝不会只含 / 含「下一步」**(「下一步」= 简报按钮文字)。空效果同理。
     """
     if '下一步' in name or '下一步' in effect:
         return True
@@ -264,7 +364,7 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
             continue
         accepted[name] = effect
     if rejected_garbage:
-        _log.warning('[cw!][briefing] 词缀效果 garbage 拒写(OCR 含「下一步」/空,tooltip 疑未弹): %s',
+        _log.warning('[cw!][briefing] 词缀效果 garbage 拒写(OCR 含「下一步」/空): %s',
                      rejected_garbage)
     if divergent:
         _log.warning('[cw!][briefing] 词缀效果 divergent 不覆盖(静态数据,现有值更可信;截图待 review): %s',

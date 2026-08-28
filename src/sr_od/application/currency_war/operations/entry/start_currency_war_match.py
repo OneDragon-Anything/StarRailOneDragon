@@ -160,8 +160,6 @@ class StartCurrencyWarMatch(SrOperation):
         # 切到玩家最高职级(本号 = A8 财富造物主,即目标最高难度),再"开始对局"。
         # (2026-08-03 入口画面建档发现:此前 op 直接点"开始对局" → 一直打 A5 而非目标的最高难度。)
         # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
-        # 全屏 ocr 有 LCS 误匹配:「开始对局」与简报 boss 词缀「开局不利」共享「开局」(2/4=0.5=默认阈值)
-        # → 简报屏误触发开始对局分支点错(行为测试暴露)。area.rect 限定位置根治。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)。

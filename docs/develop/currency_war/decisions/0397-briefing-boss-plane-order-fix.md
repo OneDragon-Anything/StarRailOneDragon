@@ -1,6 +1,24 @@
 # 0397 开局局简报 boss 位面错序修复:boss 采集主通道切 CollectPlaneIntel(W219)
 
-- 状态: accepted
+> **勘误(2026-08-28,本 ADR 核心结论已被推翻,现行为以本节为准)**
+>
+> - **裁决来源**:用户 2026-08-28 口述(项目最高权威):「当时日志看错了,默认顺序
+>   是对的」——**简报三卡排列 = 位面序**,原「排列≠位面序」结论作废。
+> - **原结论为何错**:原实证仅 12:12 一条简报读数 vs 位面详情读数的对照日志
+>   (单条孤证);新证据 run_20260828_191254 的 exogenous 流 briefing 行**整体缺失**
+>   ——当时的对照日志通道本身不可靠(简报读数行未落盘),孤证不成立。
+> - **现行为**:简报读数经 ``cw_briefing_obs.clean_boss_names_by_lcs`` 清洗(参考表 =
+>   ``cw_enemy_data.BOSS_MECHANICS`` 规范 boss 名)后,按序写
+>   ``session.briefing_bosses``(battle_loop ``__init__`` copy,消费链
+>   ``state.plane_bosses`` → boss_fit 恢复);跨局残留由 HandleBriefing 每局重读覆写兜住。
+> - **CollectPlaneIntel / TakeoverCollectPlaneIntel 保留**,理由改写为**接管场景内存
+>   丢失重采**(对局中 MCP 重启 / bot 未走过简报链时补真值)+ **对账真值源**
+>   (采集完成后与简报读数逐位面 LCS 对账存证,kind='briefing_reconcile';原「简报
+>   读数错位」依据作废)。实采写入端与简报 copy 并存,语义同源(都是位面序)。
+> - 相关测试锁(test_cw_w219_boss_collect_channel.py)按新设计改写;cw_strategy.py
+>   L352-353 一行旧 docstring 留后续清理批(并行批在飞避撞)。
+
+- 状态: accepted(核心结论已勘误,见上)
 - 日期: 2026-08-27
 - 关联: CollectPlaneIntel op(08-26 佩佩局实证链产品化)、ADR-0388(停机刹车,无直接关联,
   时序同批)

@@ -77,6 +77,10 @@ class CurrencyWarConfig(YamlConfig):
         # app._run_loop 透传给 CurrencyWarRunLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
+        # 简报 vs 实采对账开关(CollectPlaneIntel 采集完成后,逐位面 LCS 比对存证,
+        # 不一致进 defect 台账;零决策行为)。默认开 = 验证期积累「简报 vs 真值」
+        # 配对证据;稳态后可 yml 关掉。消费端 = battle_loop 实采块 + takeover 写回。
+        self.briefing_reconcile: bool = self.get('briefing_reconcile', True)
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
         # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,
         # get() 不再读)。
@@ -99,6 +103,7 @@ class CurrencyWarConfig(YamlConfig):
             # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉
             # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
             'max_rounds': self.max_rounds,
+            'briefing_reconcile': self.briefing_reconcile,
             # r347:gate_* flags 已删(无条件化),save 不再写。
         }
         YamlConfig.save(self)
