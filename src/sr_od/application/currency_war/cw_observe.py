@@ -92,6 +92,13 @@ _CONFLICT_SHOT_THROTTLE_S: float = 300.0
 _conflict_shot_ts: dict[tuple[str, str], float] = {}
 
 
+#: gold_delta 分级告警门(|gap|>10 → warning 级告警行,局中可被哨兵/监控 grep;
+#: ≤10 维持留证不告警)。门取 10 的依据:OCR 单帧噪声实测 ≤3(见 obs_conflicts
+#: 历史行小 gap 段),常规收支误记 ±2 内被审计容差吸收;>10 已是「账面与实读
+#: 系统性错位」量级(息线/花金义务判定整体失真),必须当下可见。
+GOLD_DELTA_ALARM_GAP: int = 10
+
+
 def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                  verdict: str = '', **ctx) -> None:
     """观察冲突 hook:追加 JSONL 证据行 + 去重截图。best-effort,失败不抛不阻塞。
@@ -124,5 +131,22 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             f.write(_json.dumps(rec, ensure_ascii=False) + '\n')
         cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
                verdict=verdict, shot=shot)
+        # gold_delta 分级消费(W489 审计建议,用户裁决落地):|gap|>10 升级为
+        # warning 告警行(检索锚 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
+        # 即接;≤10 维持留证)。账面期望 vs 实读的大额错位意味着金模型已系统性
+        # 漂移,等局后统计才发现会喂错整局的息线/花金判断。
+        if field == 'gold_delta':
+            try:
+                _gap = abs(int(new) - int(old))
+            except (TypeError, ValueError):
+                _gap = None
+            if _gap is not None and _gap > GOLD_DELTA_ALARM_GAP:
+                _log.warning('[cw!][alarm][gold_delta] gap=%s old=%s new=%s '
+                             'verdict=%s %s', _gap, old, new, verdict, ctx)
+        # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
+        #(本流=原始证据层保持原样,台账行经 refs 指回本行,不复制数据;
+        # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响本流落盘。
+        from sr_od.application.currency_war import cw_telemetry
+        cw_telemetry.bypass_obs_conflict_to_defect(rec)
     except Exception:  # noqa: BLE001  hook best-effort
         pass

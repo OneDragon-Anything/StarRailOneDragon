@@ -27,6 +27,7 @@ v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
 from __future__ import annotations
 
 import re
+import time
 
 import cv2
 from cv2.typing import MatLike
@@ -125,9 +126,69 @@ def read_gold(ctx: SrContext, screen: MatLike) -> int:
     gold 数字小 + stylized,paddle native det 几乎总漏(读 0/空,实锤见 process_log)→
     裁 area 后 **放大 3x** 再 OCR(破小目标 det 天花板)。area 已收紧到只含 gold 数字
     (排除隔壁 G0/0 货币;2026-08-07 实测 [1610,890,1690,945] 放大后稳读 3/2)。
+    读值走 ``read_gold_settled`` 稳定门(见其 docstring:读金瞬间数字在动的场景,
+    单帧读会拿到入账前旧值)。
+    """
+    v = read_gold_settled(ctx, screen)
+    return 0 if v is None else v
+
+
+#: 金稳定门补采帧数上限(首帧之外最多再采 3 帧,间隔见下;最坏 ~1.5s,
+#: 只在「帧间读数不一致」时花满,静止屏首两帧一致即返,零额外成本)。
+GOLD_SETTLE_MAX_POLLS: int = 3
+#: 金稳定门补采间隔(秒)。局收入入账计数器从起跳到停约 1s 量级
+#: (run_20260828_074721 P3 r1 开店连读 73→75 实测计数器在动),0.5s
+#: 步长下 3 帧覆盖 ~1.5s,足够越过入账窗;再长会拖慢每个 read_game_state。
+GOLD_SETTLE_INTERVAL_S: float = 0.5
+
+
+def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
+    """带稳定门的金读数(读不到/越界 → None,契约同 ``read_gold_opt``)。
+
+    根因(实机 12 局 20 条 gold_delta 冲突对拍,W489 审计感知面):局收入在
+    轮/位面切换后**入账计数器仍在跳**(实锤 run_20260828_074721 P3 r1:开店
+    连读 73→75,同一读点数字在动;下轮开店读 90 = 本轮关店读 79 + 常规收入
+    11,反推关店实读正确、开店读系统性偏低 = 读在入账前/入账中)→ 单帧读
+    把「未入账旧值」当真值喂给 plan,息线/花金义务整体错位(大额漂 16-40 金)。
+
+    修法(读链根因环,不做「读数再猜」):同读点补采新帧重读,两帧一致才采信;
+    不一致(计数器在跳)→ 取**末帧**(新帧更接近当下;入账计数器单调向上,末帧
+    ≥ 首帧即入账后真值)+ ``obs_conflict('gold', ...)` 留证 + warning(不静默:
+    采了哪个值、为何采,判读侧可见)。补采走 ``ctx.controller.screenshot()``
+    (同 ``read_deploy_cap_debounced`` 先例);控制器不可得(离线/单测)退单帧读,
+    行为与修前完全一致。
     """
     v = read_gold_opt(ctx, screen)
-    return 0 if v is None else v
+    if v is None:
+        return None
+    controller = getattr(ctx, 'controller', None)
+    if controller is None or not hasattr(controller, 'screenshot'):
+        return v   # 离线/单测:无真控制器,单帧读即全部能力
+    last = v
+    final = v
+    disagreed = False
+    for _ in range(GOLD_SETTLE_MAX_POLLS):
+        try:
+            time.sleep(GOLD_SETTLE_INTERVAL_S)
+            nxt = read_gold_opt(ctx, controller.screenshot())
+        except Exception:   # noqa: BLE001  补采帧不可得 → 保留已读值
+            break
+        if nxt is None:
+            break
+        final = nxt
+        if nxt == last:
+            break
+        last = nxt
+        disagreed = True
+    if not disagreed:
+        return final
+    obs_conflict('gold', v, final, screen,
+                 verdict=('采新-多帧稳定门(读金期间数字在动:局收入入账计数器/'
+                          '动画,单帧读会拿入账前旧值;取末帧=入账后真值;'
+                          '复现高频回查收入入账时序)'),
+                 source='gold_settle_gate')
+    log.warning('[cw!] gold 稳定门:首帧=%s 末帧=%s(帧间在动,采末帧)', v, final)
+    return final
 
 
 def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | None:
@@ -1101,7 +1162,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     deploy 走 DeployBench)。
     """
     state = GameState()
-    _gold_opt = read_gold_opt(ctx, screen)
+    # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
+    # 入账前旧值 = W489 感知面「开局金系统性偏低」根因环;gold_readable 语义
+    # 不变(None=读不到)。
+    _gold_opt = read_gold_settled(ctx, screen)
     state.gold = 0 if _gold_opt is None else _gold_opt
     state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
