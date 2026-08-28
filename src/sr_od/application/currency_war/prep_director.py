@@ -104,6 +104,23 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     return True
 
 
+#: 环入口预收探针的重试间隔(秒)。时序竞争背景:战斗胜利后新回合
+#: 游戏自动开商店的时刻**晚于**环入口预收探针——首探探不到
+#: 「按钮-收起」→ 落进 PROFILE_CLOSED 完整门,商店开后关态锚永不
+#: 命中,打满 12s 超时才由容忍探针收起+round_retry 重进(实机每局
+#: 9-25 次,依据单局耗时深挖报告
+#: .debug/temp/currency_war/w417_duration_audit/REPORT.md「确定可压」
+#: 第 1 条)。修法=探针前置重试:窗内对开态持续检测(同一探测原语,
+#: 不新增判据),探到即走既有「收起→收紧超时 gate」路径。
+PRECOLLAPSE_RETRY_S: float = 1.0
+
+#: 预收探针重试次数上限(窗 ≈ 次数×间隔+探针自身成本,~4.5s 档)。
+#: 上限的意义:从不自动开商店的轮次(新位面首环/无自动开店)最多
+#: 多付一个窗的探针成本,不引入无界等待;超过窗仍未开 → 走原
+#: 12s 完整门,行为不变。
+PRECOLLAPSE_RETRIES: int = 3
+
+
 @dataclass
 class PrepObservation:
     """备战决策环统一观察(§3;决策单一输入,组合现成 reader 不新写识别)。
@@ -434,8 +451,10 @@ class PrepDirector(SrOperation):
 
         两个调用方:① 环入口 gate 前的预收(主路径:开 → 收起后
         以收紧超时等关店态 stable,直接进本轮,不再 round_retry;
-        见 _run_loop 环入口注释);② gate 超时后的容忍探测(兜底:
-        收起 + round_retry 重进,r346 语义保留)。
+        见 _run_loop 环入口注释;首探 miss 后环入口会在有限窗内
+        重试本探针,覆盖「自动开商店晚于首探」的时序竞争);② gate
+        超时后的容忍探测(兜底:收起 + round_retry 重进,r346 语义
+        保留)。
 
         HP/gold 读取语义本要求关态(shop.py 同款收起逻辑)。
         离线契约:探测/点击异常 → False(放行,等价旧探针 except
@@ -503,7 +522,23 @@ class PrepDirector(SrOperation):
             # ADR-0264 终裁:环入口(节点结束段/battle 后新备战相位)
             # 走融合默认路径——锚命中即进指纹快 poll(骨架加速器①,
             # 不做纯信任放行),指纹双轮窗真实测量。
-            if self._try_collapse_open_shop():
+            # 未开(含特效帧/新位面首环)走原 12s 完整门,行为不变。
+            # 时序竞争修复(预收探针重试):自动开商店可能发生在首探
+            # **之后**(探不到「按钮-收起」≠ 本轮不会开)——首探 miss
+            # 不立即进完整门,先在有限窗内按 PRECOLLAPSE_RETRY_S 间隔
+            # 重试同一探针(同原语,不新增判据);任一次探到开 → 走
+            # 上方收紧超时路径,省掉 12s 死等+重进往返(实机每局
+            # 9-25 次,依据 .debug/temp/currency_war/w417_duration_audit/
+            # REPORT.md「确定可压」第 1 条);窗内未开 → 原完整门,
+            # 行为不变(重试上限防无界等待)。
+            _collapsed = self._try_collapse_open_shop()
+            if not _collapsed:
+                for _ in range(PRECOLLAPSE_RETRIES):
+                    time.sleep(PRECOLLAPSE_RETRY_S)
+                    if self._try_collapse_open_shop():
+                        _collapsed = True
+                        break
+            if _collapsed:
                 _gate_frame = wait_stable_frame(
                     self, profile=PROFILE_CLOSED,
                     timeout_s=GATE_POST_COLLAPSE_TIMEOUT_S)
