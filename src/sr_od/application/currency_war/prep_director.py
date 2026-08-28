@@ -34,6 +34,7 @@ battle_prep._verify_recognition 钩子的继任宿主。
 from __future__ import annotations
 
 import time
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -59,9 +60,15 @@ from sr_od.application.currency_war.cw_observation import (
     read_deployed_count,
 )
 from sr_od.application.currency_war.cw_state import (
+    BENCH_CAPACITY,
     BenchChar,
     GameState,
     bench_from_compact,
+    bench_place,
+    deployed_slot_no,
+)
+from sr_od.application.currency_war.cw_state import (
+    _merge_bench as cw_merge_bench,  # 合成落点模型单一源(场上吸收/备战最左/连锁)
 )
 from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
@@ -189,8 +196,11 @@ PRECOLLAPSE_RETRIES: int = 3
 # 缺陷台账(复现升 L0,停线由 W515 分级安灯承接),一致不打扰,零决策
 # 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
 # (.debug/temp/currency_war/w505_obs_audit/DESIGN.md)。
-# 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove);
-# RunBuyPhase 内 shop.py 的买牌/SellBench 走 §2.2 既有通道,破警告分支
+# 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove)。
+# 买牌期望态走独立通道:购买意图在 shop.py 买入点记录(compute_buy_expect,
+# 落点规则单一源 = cw_state._merge_bench),由本环在 RunBuyPhase 后的 heavy
+# 定型帧上消费对账(_reconcile_buy_expect,台账 kind=buy_expect_mismatch);
+# RunBuyPhase 内 shop.py 的 SellBench 仍走 §2.2 既有通道,破警告分支
 # (bench_full)无定型帧不进对账。
 
 #: 台账 surface/kind(缺陷台账复现计数按 (surface, kind, expected) 分档,
@@ -225,8 +235,9 @@ def compute_drag_expect(action: PrepAction,
 
     无法建真值 → None 不评(对齐「无法建真值不评」基准口径,不猜):
     - 源槽身份未识别(上次 heavy SIFT 无该槽条目);
-    - deploy_move 目标槽为**同名**占用——拖同名是否触发升星/合并去向
-      游戏侧未核实,语义未定义不发明(报告声明,不建期望)。
+    - deploy_move 目标槽为**同名**占用——merge_mechanics.md §3 恒成立约束
+      「场上同名同星 ≤1」+ 部署链 5.1.7 不变量「同角色在场只 1」下该动作
+      不可达(游戏拒绝),期望态不定义(原「语义未核实」口径按该档收口)。
     """
     if isinstance(action, SellBench):
         ident = next((bc.char_id for bc in bench_chars
@@ -301,6 +312,153 @@ def compare_drag_expect(expect: DragExpect,
     if tgt is not None and tgt.char_id != expect.identity:
         _add(f'deployed.{expect.target_row}', expect.target_slot,
              expect.identity, tgt.char_id)
+    return mism
+
+
+# ===== 买牌期望态(merge_mechanics.md §1/§2/§2.5 落点规则的期望态层)=====
+
+#: 台账 surface/kind(买牌通道;surface 与拖动通道同域——都是备战板面身份账,
+#: 复现计数按 (surface, kind, expected) 分档,kind 区分通道)。
+_BUY_DEFECT_KIND = 'buy_expect_mismatch'
+
+
+@dataclass
+class BuyPurchase:
+    """一次 RunBuyPhase 单元内记录的单条购买意图(shop.py 买入点写入)。
+
+    [定义注释] name/star = 商店牌 OCR 身份与星级(ShopCard 真值源);
+    count = 该牌本单元购入张数 k——常态=1;备战栏满且可触发合成时 =
+    游戏自动多买 min(店内同牌张数, 3−已有数 mod 3)(merge_mechanics §2.5,
+    【置信:低】,由对账网实证修正);unit_cost = 单体招募费(无折扣:
+    总价 = k×unit_cost,§2.5 无价格优惠)。
+    """
+    name: str
+    star: int
+    count: int
+    unit_cost: int
+
+
+@dataclass
+class BuyExpect:
+    """一次 RunBuyPhase 购买单元的期望态(compute_buy_expect 产出 /
+    compare_buy_expect 消费)。
+
+    [索引定义] bench_after = 期望备战栏槽位表(下标 0-8 = 物理槽位 1-9,
+    None=空槽);deployed_after = 期望上阵槽位表(下标 0-3=前排排内槽 1-4、
+    4-9=后排排内槽 1-6,ADR-0392 槽位语义)。changed_* = 相对购买前快照
+    发生变化的槽位集(对账只评增量槽位,存量漂移归 reconcile_tracking)。
+    取值时机 = 购买意图记录期快照(shop.py 买入点),写入端 = shop.buy。
+    """
+    bench_after: list[BenchChar | None]
+    deployed_after: list[BenchChar | None]
+    changed_bench: list[int]       # 1-based 物理槽位
+    changed_deployed: list[int]    # deployed 槽位下标 0-9
+    summary: str                   # 购买意图摘要(台账 refs 用)
+    total_cost: int                # 期望扣金 = Σ(k×单价)(无折扣口径)
+    low_confidence: bool = False   # 含满栏自动多买子案(k>1,§2.5 置信低)
+
+
+def compute_buy_expect(purchases: list[BuyPurchase],
+                       bench: list[BenchChar | None],
+                       deployed: list[BenchChar | None]) -> BuyExpect | None:
+    """购买意图序列 → 买后期望态(纯函数;merge_mechanics.md 规则映射):
+
+    - 买牌落点(§1):默认 = 备战栏首个空槽(bench_place);触发 3 合 1 时
+      落点优先级(场上吸收 > 备战最左)= ``cw_state._merge_bench`` 载体
+      选择单一源,连锁合成(§2)= 其不动点循环;
+    - 满栏自动多买(§2.5):k>1 时逐张入表(满栏暂溢出表尾),合并腾槽后
+      仍有无处安放散牌 → 保留溢出表(对账只评 1-9 槽,散牌槽自然跳过,
+      不一致=证据落台账,不改语义——文档声明由对账实证修正);
+    - 无价格优惠(§2.5):total_cost = Σ(k×unit_cost) 记全款。
+
+    无法建真值 → None 不评:任一意图身份未识别(OCR 空名——期望缺该牌
+    增量必成片假不一致,宁缺勿造)。
+    """
+    if any(not p.name for p in purchases):
+        return None
+    bench_t: list[BenchChar | None] = [None] * BENCH_CAPACITY
+    for bc in bench:
+        if bc is not None:
+            bench_place(bench_t, deepcopy(bc))
+    dep_t: list[BenchChar | None] = list(deployed) if deployed else []
+    dep_t = [deepcopy(c) for c in dep_t]
+    low_conf = False
+    for p in purchases:
+        for _ in range(max(1, p.count)):
+            if p.count > 1:
+                low_conf = True
+            bc = BenchChar(slot=0, char_id=p.name, star=p.star,
+                           position_pref='back')
+            if bench_place(bench_t, bc) is None:
+                bench_t.append(bc)   # 满栏暂溢出(§2.5 例外购买)
+    cw_merge_bench(bench_t, dep_t)
+    changed_b = [i + 1 for i in range(BENCH_CAPACITY)
+                 if _slot_diff(bench_t[i] if i < len(bench_t) else None,
+                               bench[i] if i < len(bench) else None)]
+    changed_d = [i for i in range(len(dep_t))
+                 if _slot_diff(dep_t[i],
+                               deployed[i] if i < len(deployed) else None)]
+    summary = ';'.join(f'{p.name}/{p.star}星×{p.count}@{p.unit_cost}'
+                       for p in purchases)
+    return BuyExpect(bench_after=bench_t, deployed_after=dep_t,
+                     changed_bench=changed_b, changed_deployed=changed_d,
+                     summary=summary,
+                     total_cost=sum(p.unit_cost * max(1, p.count)
+                                    for p in purchases),
+                     low_confidence=low_conf)
+
+
+def _slot_diff(a: BenchChar | None, b: BenchChar | None) -> bool:
+    """槽位级 (身份, 星级) 差异判据(compute_buy_expect 增量集用)。"""
+    ka = (getattr(a, 'char_id', '') or '', getattr(a, 'star', 1) or 1) \
+        if a is not None else None
+    kb = (getattr(b, 'char_id', '') or '', getattr(b, 'star', 1) or 1) \
+        if b is not None else None
+    return ka != kb
+
+
+def compare_buy_expect(expect: BuyExpect,
+                       bench_read: list[BenchChar],
+                       deployed_read: list[BenchChar]) -> list[dict[str, str]]:
+    """买牌期望态 vs 定型帧实读逐槽比对(纯函数;仅评增量槽位)。
+
+    判据(槽位级身份+星级比对,W530 同款宁缺勿造):实读中该槽无条目
+    (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
+    期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
+    返回不一致项列表(空列表=全部可比项一致)。
+    """
+    mism: list[dict[str, str]] = []
+
+    def _add(domain: str, slot: int | str, want: str, got: str) -> None:
+        mism.append({'domain': domain, 'slot': str(slot),
+                     'expected': want, 'observed': got})
+
+    for slot in expect.changed_bench:
+        exp = expect.bench_after[slot - 1]
+        got = next((c for c in bench_read
+                    if c.slot == slot and c.char_id), None)
+        if got is None:
+            continue   # 实读无条目:不评
+        want_id = exp.char_id if exp is not None else ''
+        if got.char_id != want_id or _slot_diff(exp, got):
+            _add('bench', slot,
+                 f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
+                 f'{got.char_id}/{got.star}星')
+    for idx in expect.changed_deployed:
+        exp = expect.deployed_after[idx] if idx < len(expect.deployed_after) \
+            else None
+        row = 'front' if idx < 4 else 'back'
+        slot_no = deployed_slot_no(idx)
+        got = next((c for c in deployed_read
+                    if c.position_pref == row and c.slot == slot_no
+                    and c.char_id), None)
+        if got is None:
+            continue
+        want_id = exp.char_id if exp is not None else ''
+        if got.char_id != want_id or _slot_diff(exp, got):
+            _add(f'deployed.{row}', slot_no,
+                 f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
+                 f'{got.char_id}/{got.star}星')
     return mism
 
 
@@ -644,6 +802,59 @@ class PrepDirector(SrOperation):
                 note='期望态层:期望=动作意图纯函数,与 W512 paddle 动作级对拍分立(身份级 vs 计数级)')
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] drag_expect reconcile skip: {e}')
+
+    def _reconcile_buy_expect(self, expect: BuyExpect) -> None:
+        """买牌期望态对账(RunBuyPhase 完成后调用;零决策行为变更:不一致仅落台账)。
+
+        读法与 _reconcile_drag_expect 同款:复用 heavy 定型帧(last_screenshot,
+        零新增截屏)+ identify_slots/read_deployed_chars 纯读组合(不经
+        read_bench_chars 停机钩子)。全部 best-effort:任一环节失败静默跳过
+        (宁缺勿造)。低置信子案(满栏自动多买)不一致照常落账——对账不一致
+        =证据,如实落台账不改语义(merge_mechanics §2.5 声明由对账实证修正)。
+        """
+        try:
+            frame = getattr(self, 'last_screenshot', None)
+            if frame is None:
+                return
+            templates = ensure_portrait_templates(self.ctx)
+            if templates is None:
+                return
+            from sr_od.application.currency_war.cw_identity_obs import (
+                _ctx_slots,
+                identify_slots,
+                read_deployed_chars,
+            )
+            bench_read = identify_slots(
+                frame, templates, _ctx_slots(self.ctx, '备战栏', 9), '')
+            deployed_read = read_deployed_chars(self.ctx, frame, templates)
+            mism = compare_buy_expect(expect, bench_read, deployed_read)
+            if not mism:
+                return
+            obs_st = self._cached_state
+            exp_txt = (f'buy {expect.summary} 总价{expect.total_cost}'
+                       + ('(低置信:满栏自动多买)' if expect.low_confidence else ''))
+            obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
+                               f"实读[{m['observed']}]" for m in mism)
+            cw_telemetry.record_defect(
+                _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
+                expected=exp_txt, observed=obs_txt,
+                plane=int(getattr(obs_st, 'plane', 0) or 0),
+                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                gap_large=True,
+                verdict=('留证-买牌后期望态与定型帧实读不一致(仅评增量槽;'
+                         '身份未识别槽不评;单次 L1,复现自动升 L0,停线由'
+                         '分级安灯承接;本对账零决策行为,不 return/不重买)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('summary', expect.summary),
+                    ('total_cost', str(expect.total_cost)),
+                    ('low_confidence', str(expect.low_confidence)),
+                    ('changed_bench', ','.join(map(str, expect.changed_bench))),
+                    ('changed_deployed', ','.join(map(str, expect.changed_deployed))))],
+                reader_source='buy_expect_reconcile',
+                note='期望态层·买牌:期望=购买意图纯函数(落点规则单一源 '
+                     'cw_state._merge_bench),与拖动通道 intent_state_mismatch 分立')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] buy_expect reconcile skip: {e}')
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)
@@ -1056,6 +1267,15 @@ class PrepDirector(SrOperation):
             if progressed and _drag_expect is not None:
                 self._reconcile_drag_expect(_drag_expect)
             _drag_expect = None
+            # 期望态层·买牌(W536):RunBuyPhase 单元的购买期望由 shop.py 买入
+            # 点暂存 session.pending_buy_expect(compute_buy_expect);此处在本轮
+            # heavy 定型帧上消费对账(bench/buy_expect_mismatch)。零决策记账:
+            # 不一致不重买不改行为;执行失败(未购买单元)期望作废只清不评。
+            _pending_buy = getattr(session, 'pending_buy_expect', None)
+            if _pending_buy is not None:
+                session.pending_buy_expect = None
+                if progressed:
+                    self._reconcile_buy_expect(_pending_buy)
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 

@@ -24,6 +24,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_shop_cards,
 )
 from sr_od.application.currency_war.cw_state import (
+    BENCH_CAPACITY,
     BenchChar,
     BuyCard,
     DeployMove,
@@ -381,6 +382,18 @@ class BuyShopCards(SrOperation):
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
         # _after_shot(同为 shop-OPEN)做 pixel-diff,差值才只反映 buy 带来的 bench 占位变化。旧代码用
         _buy_baseline = self.screenshot()
+        # W536(merge_mechanics §4 消费点):买牌期望态基座。期望 = 购买意图
+        # 经落点规则的纯函数(compute_buy_expect;合成落点单一源 =
+        # cw_state._merge_bench),由 PrepDirector 主环在 RunBuyPhase 后的
+        # heavy 定型帧上对账(零决策记账)。本单元含卖出/未识别牌 → 期望
+        # 不建(宁缺勿造:卖出使追踪基线与纯意图模型错位;缺身份必成片
+        # 假不一致),这些动作仍走既有对账通道。
+        from sr_od.application.currency_war.prep_director import BuyPurchase
+        _buy_purchases: list[BuyPurchase] = []
+        _buy_has_sell = False
+        _buy_unidentified = False
+        _buy_pre_bench = deepcopy(match.session.tracked_bench_chars)
+        _buy_pre_deployed = deepcopy(match.session.tracked_deployed)
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
             time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
             # 光标 parking(审计 P0,2026-08-16):上轮 BuyCard/LevelUp/Refresh 点击后光标停在按钮上
@@ -567,6 +580,31 @@ class BuyShopCards(SrOperation):
                         match.session.tracked_bench.append(action.card.name)
                         _bought_names.append(action.card.name)
                     mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
+                    # W536:记录购买意图(身份/星级/张数)。张数:常态=1;
+                    # 备战栏满且可触发合成 → 游戏自动多买
+                    # min(店内同牌张数, 3−已有数 mod 3)(merge_mechanics §2.5,
+                    # 【置信:低】,按说法实现、由对账网实证修正)。
+                    # 金账无折扣:总价 = k×单价(§2.5),执行账仍逐动作记 1×
+                    # 单价,游戏多扣金由既有 W494 单元金对拍暴露。
+                    if action.card.name:
+                        _own = sum(1 for b in state.bench if b is not None
+                                   and b.char_id == action.card.name
+                                   and b.star == action.card.star)
+                        _own += sum(1 for d in match.session.tracked_deployed
+                                    if d is not None
+                                    and d.char_id == action.card.name
+                                    and d.star == action.card.star)
+                        _in_shop = sum(1 for c in state.shop
+                                       if c.name == action.card.name
+                                       and c.star == action.card.star)
+                        _cnt = 1
+                        if bench_occupied(state.bench) >= BENCH_CAPACITY:
+                            _cnt = max(1, min(_in_shop, 3 - _own % 3))
+                        _buy_purchases.append(BuyPurchase(
+                            name=action.card.name, star=action.card.star,
+                            count=_cnt, unit_cost=action.card.cost or 0))
+                    else:
+                        _buy_unidentified = True
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
                     log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')
@@ -713,6 +751,7 @@ class BuyShopCards(SrOperation):
                         )
                         register_round_sold([_expected], state, match.session)
                         total_sell += 1
+                        _buy_has_sell = True   # W536:含卖出 → 本单元期望态不建
                         total_sell_income += action.income or 0
                         # 实收回金落盘(exogenous
                         # kind='sell_income',消费=economy 视图卖回格)。
@@ -909,6 +948,20 @@ class BuyShopCards(SrOperation):
                 match.strategy.update_target(_post, match.session, config)
         except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
             log.debug('[cw] 买后重估失败(不阻塞): %s', e)
+        # W536:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
+        # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
+        # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
+        # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
+        if match is not None and _buy_purchases \
+                and not _buy_has_sell and not _buy_unidentified:
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.prep_director import (
+                    compute_buy_expect,
+                )
+                _buy_expect = compute_buy_expect(
+                    _buy_purchases, _buy_pre_bench, _buy_pre_deployed)
+                if _buy_expect is not None:
+                    match.session.pending_buy_expect = _buy_expect
         # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
         # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
         # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照
