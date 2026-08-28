@@ -375,6 +375,7 @@ def identify_slots(
     row: str,
     min_inliers: int = 10,
     live_only: bool = False,
+    center_gate: bool = False,
 ) -> list[BenchChar]:
     """纯 CV:按槽位裁切 → SIFT 识别 → BenchChar 列表(离线可测,无 ctx 依赖)。
 
@@ -390,8 +391,21 @@ def identify_slots(
         纯现场主档)才是同域信号**(真窗口实测强命中,空槽 0 假阳)。True 时:
         命中主档且该角色存在现场变体 → 拒(漏读走「未知」对账可见,好过跨域
         弱命中毒板面);命中变体键或纯现场主档角色(佩佩/狸猫对)→ 收。
+        例外(ADR-0452):主档内点 ≥ :data:`_LIVE_ONLY_PLAZA_STRONG` 时收 ——
+        跨域弱命中带实测上限 29(33 帧板面基准,空槽全库最高内点),强主档
+        (如开拓者·欢愉 73 内点)远超弱带,按「有变体即拒」误杀。
         ⚠️ 变体必须真窗口采(旧错位残片变体会在正位帧上输给 plaza 主档 →
         live_only 假阴丢读,2026-08-26 万敌@s2 实证后已全量重采)。
+    :param center_gate: 部署排专用(ADR-0452,**位置感知识别**)。角色卡宽
+        (~170px) > 槽窗宽(~142px),槽裁片必然渗入邻卡边缘;同名邻窗双命中
+        由既有幽灵去重吸收,**异名**渗漏(邻卡残条命中邻卡同款饰品)会以弱
+        内点压过本窗真身。True 时改走中心归属门:每槽在**横向扩展窗**
+        (:data:`_DEPLOYED_EXPAND_PAD`)内取全库假设列表
+        (:func:`identify_hypotheses`),homography 投影模板中心落在**本槽核**
+        (原 rect)内才认领,再过同一套阈值/歧义语义
+        (:func:`currency_war_char_id._resolve_best`)—— 渗漏假设的中心在邻槽,
+        几何直接出局,与内点数无关。 False(默认)= 旧逐槽裁片路径
+        (备战栏/商店卡窗与卡同宽无渗漏,保持不变)。
     :return: 命中角色的 BenchChar 列表(空槽 / 低内点 / 歧义 / 非 roster → 跳过,不进列表)。
 
     每槽:裁 ``screen[y1:y2, x1:x2]`` → ``identify_character``(SIFT 对脸库)→ ``resolve_char_name``
@@ -410,16 +424,21 @@ def identify_slots(
     if live_only:
         _has_variant = {k.split('#')[0] for k in templates if '#' in k}
     for slot_idx, rect in slots:
-        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-        avatar_id, inliers = identify_character(
-            crop, templates, min_inliers=min_inliers, return_key=live_only)
+        if center_gate:
+            crop, avatar_id, inliers = _identify_center_gated(
+                screen, rect, templates, min_inliers, live_only, _has_variant)
+        else:
+            crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+            avatar_id, inliers = identify_character(
+                crop, templates, min_inliers=min_inliers, return_key=live_only)
+            if avatar_id is not None and live_only:
+                # 主档命中但该角色有现场变体(变体没赢)→ 跨域弱命中拒(见 live_only 参数说明)
+                if '#' not in avatar_id and avatar_id in _has_variant:
+                    avatar_id = None
+                else:
+                    avatar_id = avatar_id.split('#')[0]
         if avatar_id is None:
             continue
-        if live_only:
-            # 主档命中但该角色有现场变体(变体没赢)→ 跨域弱命中拒(见 live_only 参数说明)
-            if '#' not in avatar_id and avatar_id in _has_variant:
-                continue
-            avatar_id = avatar_id.split('#')[0]
         name = resolve_char_name(avatar_id)
         if name is None:
             continue
@@ -474,6 +493,67 @@ _DEPLOYED_MIN_INLIERS: int = 15
 #: 对账可见)< 跨域弱命中毒化代价。**变体必须真窗口采**(居中勘误前错位
 #: 残片变体致 live_only 假阴,万敌@s2 丢读实证;已全量重采)。
 _DEPLOYED_LIVE_ONLY: bool = True
+
+#: 部署排中心归属门开关(ADR-0452;前置 = 卡宽>槽窗的渗漏几何事实,见
+#: identify_slots center_gate 参数说明)。生产部署排恒开;备战栏/商店走旧路径。
+_DEPLOYED_CENTER_GATE: bool = True
+
+#: 中心归属门的横向扩展量(px)。卡宽~170 − 槽窗宽~142 ≈ 28px 渗漏 → 35 覆盖
+#: 整卡渗漏带并留余量;过大把隔壁邻卡整卡拉进窗徒增假设数,不改判别。
+_DEPLOYED_EXPAND_PAD: int = 35
+
+#: live_only 强主档例外门槛(内点)。跨域弱命中带实测上限 29(33 帧板面基准,
+#: 空槽全库最高内点;ADR-0452),真命中中位数 ~45 → 40 居中:高于弱带上限
+#: 11px,低于中位数;真命中 30-39 的变体角色仍被拒(漏读方向,对账可见)。
+_LIVE_ONLY_PLAZA_STRONG: int = 40
+
+
+def _identify_center_gated(
+    screen: MatLike,
+    rect: Rect,
+    templates: AvatarTemplates,
+    min_inliers: int,
+    live_only: bool,
+    has_variant: set[str] | None,
+) -> tuple[MatLike, str | None, int]:
+    """部署排单槽中心归属识别(ADR-0452):扩展窗全库假设 → 槽核内认领 → 统一决策。
+
+    ① 横向扩展窗(``_DEPLOYED_EXPAND_PAD``,y 不扩 —— 渗漏只在 x 向;上下邻带
+       是 HUD/场景,拉入徒增噪声);② :func:`identify_hypotheses` 全库假设;
+    ③ 双重位置门(ADR-0452):homography 投影模板中心 x 落在本槽核(原 rect)
+       内**且**裁决计**核内内点**(证据落点须在本槽)—— 邻卡渗漏假设的中心在
+       邻槽核,几何出局;跨域噪声假设中心可能贴核边缘蹭进(佩佩局空槽
+       忘归人 21 内点案),其证据大多在核外,核内计数不过阈值;
+    ④ 认领后的假设表走 :func:`currency_war_char_id._resolve_best`(阈值/歧义比/
+       色相仲裁与旧路径同一语义;色相仲裁喂**原槽窗**裁片 —— 扩展窗含邻卡
+       会带偏同型异色对的色相符号,狸猫对实测翻案);
+    ⑤ live_only 强主档例外(≥``_LIVE_ONLY_PLAZA_STRONG``)。
+
+    :return: ``(crop, 模板键 or None, 内点)``;crop = **原槽窗**裁片
+        (star 读取等后续消费与旧路径同几何,不吃扩展窗);内点 = 胜出假设核内数。
+    """
+    from sr_od.application.currency_war.currency_war_char_id import (
+        _resolve_best,
+        identify_hypotheses,
+    )
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    pad = _DEPLOYED_EXPAND_PAD
+    ex1 = max(0, rect.x1 - pad)
+    ex2 = min(int(screen.shape[1]), rect.x2 + pad)
+    exp = screen[rect.y1:rect.y2, ex1:ex2]
+    hyps = identify_hypotheses(
+        exp, templates,
+        core_range=(rect.x1 - ex1, rect.x2 - ex1))
+    # 中心归属:投影中心(扩展窗坐标)→ 全图 x ∈ 本槽核才认领;计分=核内内点
+    owned = [(cid, inl_core) for cid, _inl, cx, inl_core in hyps
+             if rect.x1 <= ex1 + cx <= rect.x2]
+    key, inliers = _resolve_best(owned, crop, min_inliers, 1.5, True)
+    if key is not None and live_only:
+        if '#' not in key and has_variant and key in has_variant \
+                and inliers < _LIVE_ONLY_PLAZA_STRONG:
+            return crop, None, inliers
+        key = key.split('#')[0]
+    return crop, key, inliers
 
 
 def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]]:
@@ -566,10 +646,12 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
         pass
     front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4), 'front',
                            min_inliers=_DEPLOYED_MIN_INLIERS,
-                           live_only=_DEPLOYED_LIVE_ONLY)
+                           live_only=_DEPLOYED_LIVE_ONLY,
+                           center_gate=_DEPLOYED_CENTER_GATE)
     back = identify_slots(screen, templates, back_slots, 'back',
                           min_inliers=_DEPLOYED_MIN_INLIERS,
-                          live_only=_DEPLOYED_LIVE_ONLY)
+                          live_only=_DEPLOYED_LIVE_ONLY,
+                          center_gate=_DEPLOYED_CENTER_GATE)
     # 系统单位恒最右布局自检(ADR-0281 件3):便宜的常设布局判别器,best-effort
     check_system_unit_layout(screen, back, back_slots, templates,
                              source='read_deployed_chars')

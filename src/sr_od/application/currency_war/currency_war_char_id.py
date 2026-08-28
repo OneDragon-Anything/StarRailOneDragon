@@ -56,6 +56,13 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
 
     若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
     (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
+
+    **变体模板逐文件掩码**(2026-08-28,ADR-0452):变体 ``raw_<域>.png`` 优先读同目录
+    ``mask_<域>.png``(如 ``raw_board.png`` ↔ ``mask_board.png``),缺失再退 ``mask.png``
+    (形状须与该文件一致,不一致按无掩码)。根因:``mask.png`` 尺寸只配主档 ``raw.png``,
+    变体形状必然失配 → 变体曾整体无掩码入库,卡框/角标等**跨卡恒定的 UI 铬特征**进描述子,
+    在任意同域裁片上互撞(那刻夏被 艾丝妲 board 变体的卡框内点 13 抬成歧义假拒,实测)。
+    ``银枝/mask_plaza.png`` 是该约定的既有资产(此前加载器从未读过)。
     """
     templates: AvatarTemplates = {}
     for child in sorted(avatar_dir.iterdir()):
@@ -69,7 +76,10 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
             if img is None:
                 continue
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            mask_file = child / 'mask.png'
+            mask_file = (child / 'mask.png' if raw.stem == 'raw'
+                         else child / f'mask_{raw.stem.removeprefix("raw_")}.png')
+            if not mask_file.is_file():
+                mask_file = child / 'mask.png'   # 变体无专属掩码 → 退主档掩码(形状仍须匹配)
             mask = None
             if mask_file.is_file():
                 m = cv2.imdecode(np.fromfile(str(mask_file), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
@@ -95,16 +105,26 @@ def _ratio_good(tdesc, sdesc, knn: float = 0.75) -> list:
     return good
 
 
-def _ransac_inliers(skp, tkp, good: list) -> int:
-    """good 匹配的 RANSAC 内点数(mask None → good 数,同旧语义)。"""
+def _ransac_homography(skp, tkp, good: list) -> tuple[int, MatLike | None, list[int]]:
+    """good 匹配的 RANSAC:返 (内点数, homography, 内点在 good 中的下标表)。
+
+    内点数语义与旧 ``_ransac_inliers`` 一致(mask None → good 数,下标=全量)。
+    下标表供 ``identify_hypotheses`` 做核内内点计数(ADR-0452)。
+    """
     if len(good) < 4:
-        return len(good)
+        return len(good), None, list(range(len(good)))
     tp = np.float32([tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
     sp = np.float32([skp[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
-    _, mask = cv2.findHomography(tp, sp, cv2.RANSAC, 5.0)
+    h_mat, mask = cv2.findHomography(tp, sp, cv2.RANSAC, 5.0)
     if mask is None:
-        return len(good)
-    return int((mask.ravel() == 1).sum())
+        return len(good), h_mat, list(range(len(good)))
+    idxs = [i for i, v in enumerate(mask.ravel()) if v == 1]
+    return len(idxs), h_mat, idxs
+
+
+def _ransac_inliers(skp, tkp, good: list) -> int:
+    """good 匹配的 RANSAC 内点数(mask None → good 数,同旧语义)。"""
+    return _ransac_homography(skp, tkp, good)[0]
 
 
 def ransac_locate_x(tkp, skp, good: list, tmpl_gray: MatLike, x_off: int = 0) -> float | None:
@@ -127,6 +147,68 @@ def ransac_locate_x(tkp, skp, good: list, tmpl_gray: MatLike, x_off: int = 0) ->
     if abs(p[2]) < 1e-6:
         return None
     return float(p[0] / p[2]) + x_off
+
+
+def identify_hypotheses(slot_img: MatLike, templates: AvatarTemplates,
+                        min_good: int = 4,
+                        core_range: tuple[float, float] | None = None,
+                        ) -> list[tuple[str, int, float, int]]:
+    """全库匹配假设列表 ``[(模板键, 内点, 投影模板中心 x, 核内内点)]``(无决策,全扫描)。
+
+    与 ``identify_character`` 的区别:不设 min_inliers/歧义比、不做两阶段剪枝 ——
+    返回每个 good≥``min_good`` 模板的完整假设,供调用方做**位置感知裁决**
+    (部署排中心归属门,ADR-0452:邻卡渗漏假设的中心落在槽核外,凭内点数
+    无法与真身区分、凭几何一眼可判)。全扫描(无剪枝)是位置裁决的前提:
+    被剪枝者可能是「渗漏高内点」假设,剪掉就丢失了它的几何证据。
+    耗时:每模板一次 RANSAC(≤83 次/槽),部署排逐槽调用可接受。
+
+    :param slot_img: 裁片(RGB,同 identify_character 约定)。
+    :param core_range: 裁片坐标系 ``(x1, x2)``,**核内内点** = 场景点 x 落在该区间
+        的 RANSAC 内点数(证据落点计数)。渗漏/跨域噪声假设的特征:中心可能
+        蹭进核(如噪声中心贴核边缘),但**证据质量**大多落在核外 —— 裁决计
+        核内内点,双保险(ADR-0452 佩佩局空槽 忘归人 21 内点案)。
+    :return: 按内点降序;homography 奇异/模板退化者不进列表。
+    """
+    gray = cv2.cvtColor(slot_img, cv2.COLOR_RGB2GRAY)
+    skp, sdesc = _SIFT.detectAndCompute(gray, None)
+    if sdesc is None or len(skp) < 4:
+        return []
+    out: list[tuple[str, int, float, int]] = []
+    for cid, (tg, tkp, tdesc) in templates.items():
+        if tdesc is None or len(tkp) < 4:
+            continue
+        good = _ratio_good(tdesc, sdesc)
+        if len(good) < min_good:
+            continue
+        inl, h_mat, inl_idxs = _ransac_homography(skp, tkp, good)
+        if h_mat is None:
+            continue
+        # 退化 homography 守卫(ADR-0452):RANSAC 可能把一片模板点映射到
+        # 单个场景点(实测:佩佩局空槽 忘归人 21 内点中 19 点塌缩到同一
+        # 场景坐标)—— 此时内点数与投影中心都是伪值。内点场景坐标去重后
+        # 不足 ``_HYP_MIN_UNIQUE_INLIERS`` 个 → 无几何证据,丢弃。
+        scene_pts = {(round(float(skp[good[i].trainIdx].pt[0])),
+                      round(float(skp[good[i].trainIdx].pt[1])))
+                     for i in inl_idxs}
+        if len(scene_pts) < _HYP_MIN_UNIQUE_INLIERS:
+            continue
+        p = h_mat @ np.array([tg.shape[1] / 2.0, tg.shape[0] / 2.0, 1.0])
+        if abs(p[2]) < 1e-6:
+            continue
+        if core_range is not None:
+            inl_core = sum(1 for i in inl_idxs
+                           if core_range[0] <= skp[good[i].trainIdx].pt[0] <= core_range[1])
+        else:
+            inl_core = inl
+        out.append((cid, inl, float(p[0] / p[2]), inl_core))
+    out.sort(key=lambda t: -t[1])
+    return out
+
+
+#: 假设退化守卫:内点场景坐标去重下限(见 identify_hypotheses 内注释)。
+#: 真假设的内点散布在整卡(几十个不同点);8 = 远低于真假设、高于塌缩型
+#: 伪假设(实测伪假设 3 个唯一点)的保守值。
+_HYP_MIN_UNIQUE_INLIERS: int = 8
 
 
 def _inliers(skp, sdesc, tkp, tdesc, knn: float = 0.75) -> int:
@@ -203,7 +285,24 @@ def identify_character(
         scores.append((cid, inl))
         if inl > best:
             best = inl
+    return _resolve_best(scores, slot_img, min_inliers, ambiguity_ratio, return_key)
+
+
+def _resolve_best(scores: list[tuple[str, int]], slot_img: MatLike,
+                  min_inliers: int, ambiguity_ratio: float,
+                  return_key: bool) -> tuple[str | None, int]:
+    """分数表 → 决策(阈值/歧义比/色相仲裁),identify_character 的决策尾段。
+
+    从 identify_character 抽出共用:部署排中心归属门(ADR-0452)先按几何筛候选,
+    再用**同一套**阈值/歧义语义定夺 —— 两路径决策语义单一源。
+
+    :param scores: ``[(模板键, 分数)]``(内部降序排序,调用方无需预排)。
+    :param slot_img: 裁片(RGB;色相仲裁用)。
+    :return: ``(模板键 or None, best 分数)``;None = 未知 / 歧义 / 低于阈值。
+    """
     scores.sort(key=lambda t: -t[1])
+    if not scores:
+        return None, 0
     best_id, best = scores[0]
     second_id, second = (scores[1] if len(scores) > 1 else ('', 0))
     if best < min_inliers:
