@@ -38,7 +38,7 @@ import time
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
@@ -100,6 +100,9 @@ from sr_od.application.currency_war.prep_actions import (
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.cw_equipment import EquipCell
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
@@ -636,6 +639,154 @@ class PrepObservation:
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
 
 
+# ===== 装备期望态(装备拖拽语义的期望态层;语义单一源 =
+# docs/game/currency_war/research/equipment_mechanics.md §1.1)=====
+
+#: 台账 surface/kind(equip=中决策相关面,见 cw_telemetry.MEDIUM_CRITICAL_
+#: SURFACES;复现计数按 (surface, kind, expected) 分档,勿改已有行口径)。
+_EQUIP_DEFECT_SURFACE = 'equip'
+_EQUIP_DEFECT_KIND = 'equip_expect_mismatch'
+
+
+@dataclass
+class EquipDragIntent:
+    """一次装备区拖拽的意图载体(compute_equip_drag_expect 输入)。
+
+    [定义注释] source_name = 被拖装备(装备区 owned 件,模板规范名;
+    sell_char 语义下不适用,恒空);target_name = cell_synth:栏内拖放
+    目标简易名 / wear_synth:目标角色已穿简易名(其余类空);
+    equipped_names = sell_char:被卖角色已穿装备全量(动作发出帧
+    read_equipped_below 快照;精度未验证,空读/失读按不评口径不进期望)。
+    取值时机 = 动作发出时快照;写入端 = 动作发出点。
+    """
+    kind: str                  # 'cell_synth'|'wear'|'wear_synth'|'unequip'|'sell_char'
+    source_name: str
+    target_name: str = ''
+    equipped_names: tuple[str, ...] = ()
+
+
+@dataclass
+class EquipExpect:
+    """一次装备拖拽的期望态(compute_equip_drag_expect 产出 /
+    compare_equip_expect 消费)。
+
+    [定义注释] owned_before = 意图记录帧装备区占用计数快照(名字→格数;
+    只算非遮挡占用格——遮挡格进快照会污染 after 对账基准);deltas =
+    期望增量(名字→±n,装备区网格口径,不堆叠语义每格一件);product =
+    合成产物名(台账 refs 用,非合成类空)。
+    """
+    kind: str
+    summary: str
+    deltas: dict[str, int]
+    owned_before: dict[str, int]
+    product: str = ''
+
+
+def _synth_pair(a: str, b: str) -> str | None:
+    """两件装备的合成产物(合成规则单一源 = cw_synthesis:交叉
+    ``synthesize_target`` / 自配 ``self_advance``;非两基础件可合对 → None)。"""
+    from sr_od.application.currency_war.cw_synthesis import (
+        self_advance,
+        synthesize_target,
+    )
+    if a == b:
+        return self_advance(a)
+    return synthesize_target(a, b)
+
+
+def compute_equip_drag_expect(intent: EquipDragIntent,
+                              owned_before: dict[str, int]) -> EquipExpect | None:
+    """拖拽意图 → 装备区期望增量(纯函数;equipment_mechanics.md §1.1 映射):
+
+    - cell_synth(栏内简易A→简易B):两件简易必合成(§1.1 28/28 配方
+      实证),A/B 消耗、产物落 B 位(位置语义「合成落点」的栏内对应;
+      网格对账按计数,产物占哪格不评);配对不可合(非法对/非简易/
+      未知名)→ None 不评;
+    - wear(简易→角色未穿简易):穿戴即离栏,网格 −1(角色侧本批不评
+      —— read_equipped_below 精度未验证,按不评口径);
+    - wear_synth(简易→角色已穿简易):两简易不能共存必合成(§1.1),
+      产物落角色最左简易槽;拖入件离栏(网格 −1),已穿件在角色侧消耗、
+      产物上角色(角色侧不评)。配对不可合 → None 不评;
+    - unequip(卸下):回栏,网格 +1;
+    - sell_char(卖角色):已穿装备全量回装备区(§1.1),网格逐件 +1;
+      equipped_names 空(未穿/穿戴读失读)= 无可评增量 → None 不评。
+
+    不堆叠语义(§1.1):装备区每格一件,计数=格数;row1 材料堆叠件
+    (扳手等,非合成图谱)不进本批期望。source_name 空(sell_char 除外)
+    → None。
+    """
+    src = intent.source_name
+    if intent.kind != 'sell_char' and not src:
+        return None
+    deltas: dict[str, int] = {}
+    product = ''
+
+    def _dec(name: str) -> None:
+        deltas[name] = deltas.get(name, 0) - 1
+
+    if intent.kind == 'cell_synth':
+        tgt = intent.target_name
+        adv = _synth_pair(src, tgt) if tgt else None
+        if adv is None:
+            return None
+        _dec(src)
+        _dec(tgt)
+        deltas[adv] = deltas.get(adv, 0) + 1
+        product = adv
+    elif intent.kind == 'wear':
+        _dec(src)
+    elif intent.kind == 'wear_synth':
+        adv = (_synth_pair(src, intent.target_name)
+               if intent.target_name else None)
+        if adv is None:
+            return None
+        _dec(src)   # 已穿件在角色侧消耗,产物上角色(网格只减拖入件)
+        product = adv
+    elif intent.kind == 'unequip':
+        deltas[src] = deltas.get(src, 0) + 1
+    elif intent.kind == 'sell_char':
+        for n in intent.equipped_names:
+            deltas[n] = deltas.get(n, 0) + 1
+        if not deltas:
+            return None
+    else:
+        return None
+    summary = (f'{intent.kind} {src}'
+               + (f'→{intent.target_name}' if intent.target_name else '')
+               + (f' 产物{product}' if product else '')
+               + (f' 回栏×{len(intent.equipped_names)}'
+                  if intent.kind == 'sell_char' else ''))
+    return EquipExpect(kind=intent.kind, summary=summary, deltas=deltas,
+                       owned_before=dict(owned_before), product=product)
+
+
+def compare_equip_expect(expect: EquipExpect,
+                         cells: list[EquipCell]) -> list[dict[str, str]]:
+    """期望态 vs 装备区逐格实读比对(纯函数;cells = read_equip_grid 结果)。
+
+    判据:deltas 涉及的每个名字,期望格数 = owned_before + delta,
+    实读格数 = 非遮挡占用格计数;不等 = 不一致。遮挡格(详情面板盖住)
+    实读 name=None——存在遮挡格时该名字可能正躺在遮挡格里,计数不可信
+    → 整体跳过不评(不算一致也不算不一致,宁缺勿造)。实读中 deltas
+    未涉及的名字 = 存量漂移(归 reconcile_tracking 既有通道),不进本对账。
+    返回不一致项列表(空列表=全部可比项一致或整体不评)。
+    """
+    if any(c.occluded for c in cells):
+        return []   # 遮挡格三态如实跳过(不评不算错)
+    observed: dict[str, int] = {}
+    for c in cells:
+        if c.name is not None:
+            observed[c.name] = observed.get(c.name, 0) + 1
+    mism: list[dict[str, str]] = []
+    for name, d in expect.deltas.items():
+        want = expect.owned_before.get(name, 0) + d
+        got = observed.get(name, 0)
+        if want != got:
+            mism.append({'domain': 'equip_grid', 'slot': name,
+                         'expected': f'{want}格', 'observed': f'{got}格'})
+    return mism
+
+
 #: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:r80 审计 c)实锤
 #: PrepDirector 每备战环重建(battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
 #: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
@@ -1010,7 +1161,7 @@ class PrepDirector(SrOperation):
         finally:
             expect.crops = None   # 对账完成即释放裁片拷贝(内存,~125KB/张)
 
-    # ===== 经验期望态账本(W552;纯记账+对账,零决策行为变更)=====
+# ===== 经验期望态账本(W552;纯记账+对账,零决策行为变更)=====
 
     def _xp_ledger(self) -> XpLedger | None:
         """会话级账本取存(动态属性挂 StrategySession——pending_buy_expect
@@ -1187,6 +1338,118 @@ class PrepDirector(SrOperation):
                       f'{result.mismatch_count} mismatch → {n} 行台账')
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] faction_display reconcile skip: {e}')
+
+    # ===== 装备期望态对账(W543;纯记账+对账,零决策行为变更)=====
+    # 语义单一源 = docs/game/currency_war/research/equipment_mechanics.md §1.1
+    # (两件简易必合成无共存 28/28 配方实证 / 角色装备上限 3 件 / 合成落点 =
+    # 角色最左简易槽 / 装备不堆叠每格一件 / 卖角色=装备全量回装备区;
+    # 唯一件=待确认项,本批不建模)。合成规则单一源 = cw_synthesis
+    # (synthesize_target/self_advance,图谱派生自注册表,勿自造第二套)。
+    # 架构与买牌(W536)/拖动(W530)/经验(W552)通道同构:动作意图 →
+    # 期望增量(纯函数)→ heavy 定型帧实读(read_equip_grid 逐格三态)比对
+    # → 不一致落缺陷台账;一致/不可评不打扰。遮挡格按三态如实跳过
+    # (不评不算错);穿戴侧(read_equipped_below)精度未验证,按不评口径
+    # (失读/空读一律不建期望,宁缺勿造)。
+
+    def _equip_expect_for_sell(self, action: SellDeployed) -> EquipExpect | None:
+        """卖上阵角色 → 「装备全量回装备区」期望(equipment_mechanics §1.1)。
+
+        已穿装备读 = read_equipped_below(below-avatar TM;精度未验证——
+        按不评口径:空读/失读/坐标缺失一律 None 不评,不发明期望);
+        装备区 before 快照 = 同帧 read_equip_grid 非遮挡占用计数(遮挡格
+        进快照会污染 after 对账基准 → 有遮挡即不评)。全程 best-effort。
+        """
+        try:
+            frame = getattr(self, 'last_screenshot', None)
+            if frame is None:
+                return None
+            from sr_od.application.currency_war.cw_back_layout import (
+                select_back_layout,
+            )
+            from sr_od.application.currency_war.cw_equipment import (
+                ensure_equip_sift_templates,
+                ensure_equip_tm_templates,
+                read_equip_grid,
+                read_equipped_below,
+            )
+            grays = ensure_equip_tm_templates(self.ctx)
+            templates = ensure_equip_sift_templates(self.ctx)
+            if grays is None or templates is None:
+                return None
+            if action.row == 'front':
+                prefix, n = '前排', 4
+            else:
+                n, prefix = select_back_layout(self.ctx, frame)
+            from sr_od.application.currency_war.cw_identity_obs import (
+                _ctx_slots,
+                avatar_to_below,
+            )
+            rect = next((r for i, r in _ctx_slots(self.ctx, prefix, n)
+                         if i == action.slot), None)
+            if rect is None:
+                return None
+            equipped = read_equipped_below(
+                frame, grays, [(action.slot, avatar_to_below(rect))]
+            ).get(action.slot, [])
+            if not equipped:
+                return None   # 未穿/穿戴读失读:无可评增量,不评
+            cells = read_equip_grid(frame, templates)
+            if any(c.occluded for c in cells):
+                return None   # before 快照被遮挡污染 → 不评
+            before: dict[str, int] = {}
+            for c in cells:
+                if c.name is not None:
+                    before[c.name] = before.get(c.name, 0) + 1
+            return compute_equip_drag_expect(
+                EquipDragIntent(kind='sell_char', source_name='',
+                                equipped_names=tuple(sorted(equipped))), before)
+        except Exception:   # noqa: BLE001  期望构建 best-effort,不阻塞环
+            return None
+
+    def _reconcile_equip_expect(self, expect: EquipExpect) -> None:
+        """装备期望态对账(heavy 定型帧消费;零决策:不一致仅落缺陷台账,
+        不 return/不重拖)。读法 = read_equip_grid 纯读逐格分类(三态),
+        复用本轮 heavy 定型帧(last_screenshot,零新增截屏)。全程 best-effort。
+        """
+        try:
+            frame = getattr(self, 'last_screenshot', None)
+            if frame is None:
+                return
+            from sr_od.application.currency_war.cw_equipment import (
+                ensure_equip_sift_templates,
+                read_equip_grid,
+            )
+            templates = ensure_equip_sift_templates(self.ctx)
+            if templates is None:
+                return
+            cells = read_equip_grid(frame, templates)
+            mism = compare_equip_expect(expect, cells)
+            if not mism:
+                return
+            obs_st = self._cached_state
+            obs_txt = ';'.join(f"{m['slot']} 期望[{m['expected']}] "
+                               f"实读[{m['observed']}]" for m in mism)
+            cw_telemetry.record_defect(
+                _EQUIP_DEFECT_SURFACE, _EQUIP_DEFECT_KIND,
+                expected=f'equip {expect.summary}',
+                observed=obs_txt,
+                plane=int(getattr(obs_st, 'plane', 0) or 0),
+                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                gap_large=True,
+                verdict=('留证-装备拖拽期望态与装备区实读不一致(遮挡格不评;'
+                         '穿戴读精度未验证按不评口径;equip=中决策相关面,'
+                         '单次 L2 初判,复现升 L1;本对账零决策行为,'
+                         '不 return/不重拖)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('kind', expect.kind), ('summary', expect.summary),
+                    ('product', expect.product),
+                    ('deltas', ';'.join(f'{k}:{v:+d}'
+                                        for k, v in expect.deltas.items())))],
+                reader_source='equip_expect_reconcile',
+                note='期望态层·装备:期望=拖拽意图纯函数(equipment_mechanics '
+                     '§1.1;合成单一源 cw_synthesis),与买牌/拖动/经验通道分立')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] equip_expect reconcile skip: {e}')
 
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)
@@ -1505,6 +1768,12 @@ class PrepDirector(SrOperation):
             if isinstance(action, (SellBench, DeployMove)):
                 _drag_expect = compute_drag_expect(
                     action, obs.bench_chars, obs.deployed_chars)
+            # 期望态层·装备(W543):卖上阵角色 = 已穿装备全量回装备区
+            # (equipment_mechanics §1.1),期望在动作发出点从穿戴快照导出
+            # (纯函数;失读/空读不评)。None=无法建真值 → 后续不评。
+            _equip_expect = None
+            if isinstance(action, SellDeployed):
+                _equip_expect = self._equip_expect_for_sell(action)
             if isinstance(action, (DeployMove, SellDeployed)):
                 _dep_delta = 1 if isinstance(action, DeployMove) else -1
                 _dep_frame = getattr(self, 'last_screenshot', None)
@@ -1621,6 +1890,12 @@ class PrepDirector(SrOperation):
             # 全集 vs 面板 OCR,mismatch 落缺陷台账(kind=faction_display_mismatch,
             # 零决策不纠漂;内部 best-effort)。
             self._reconcile_faction_display(obs)
+            # 期望态层·装备(W543):卖角色「装备全量回装备区」期望在本轮
+            # heavy 定型帧上消费对账(equip/equip_expect_mismatch;零决策
+            # 记账:不一致不重拖不改行为;不可评口径已在构建端丢弃)。
+            if progressed and _equip_expect is not None:
+                self._reconcile_equip_expect(_equip_expect)
+            _equip_expect = None
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
