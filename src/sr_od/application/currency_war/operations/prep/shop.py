@@ -303,6 +303,15 @@ class BuyShopCards(SrOperation):
         total_buy = total_level = total_refresh = 0
         # W62 件2(ADR-0329):卖通道执行计数(income 遥测 + gold 对拍纳入卖入)
         total_sell = total_sell_income = total_sell_skip = total_sell_fail = 0
+        # 关店对拍账基座:执行侧逐动作累计花金(买价+升级费+当次刷新费)。
+        # 刷新费必须在点击时按「当次刷价」累计进本单元总账 —— 不能用
+        # total_refresh(跨波计数)× 末波刷价 事后乘:关店对拍的期望若基于
+        # 末波重读金,前面各波的刷新费已在其中净扣过,再按总波数扣一遍 =
+        # 跨波重复扣,多波刷新时对拍期望含刷新费×(波数−1)的常量偏差。
+        _spend_executed = 0
+        # 对拍基线 = 开店首读金:首波循环顶读、任何动作执行前快照(含假 0
+        # 救援后的值)。末波重读值已净含各波花销,当基线会与全程动作账双重相减。
+        gold_open: int | None = None
         # 两阶段 plan(r6 F8):simulate(RefreshShop) 不换牌 → plan 在 RefreshShop 之后的 BuyCard
         # 是旧 shop 的失效决策。故每轮:plan → 执行至**首个 RefreshShop(含)** → 若刷新了则重 OCR + 重 plan。
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
@@ -346,6 +355,9 @@ class BuyShopCards(SrOperation):
                              None, verdict=('采新-救援成功(首读假0,stylized漏)' if _gold_rescued is not None
                                             else '确认真0(4帧连读0)'),
                              source='shop_rescue')
+            # 开店首读金快照(仅首波;救援后取值——救援值比假 0 更接近真值)
+            if gold_open is None:
+                gold_open = state.gold
             # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
             if match.session.tracked_bench_chars:
                 # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
@@ -486,6 +498,7 @@ class BuyShopCards(SrOperation):
                              f'{action.card.faction}/{action.card.name}/{action.card.cost}')
                     time.sleep(0.4)
                     total_buy += 1
+                    _spend_executed += action.card.cost
                     if action.card.name:
                         match.session.tracked_bench.append(action.card.name)
                         _bought_names.append(action.card.name)
@@ -495,6 +508,7 @@ class BuyShopCards(SrOperation):
                     log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')
                     time.sleep(0.6)   # 升级动画/扣金
                     total_level += 1
+                    _spend_executed += action.cost
                 elif isinstance(action, RefreshShop):
                     if total_refresh >= BuyShopCards.MAX_REFRESH:
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
@@ -532,6 +546,9 @@ class BuyShopCards(SrOperation):
                             _base = _fp
                     if not _stable:
                         _t3.sleep(0.5)   # 超时回退(≈旧 1.0s 总量)
+                    # 当次刷价在点击波现读(升级后刷价可能变,不能末波代扣)
+                    _refresh_fee = state.shop_refresh_cost or 2
+                    _spend_executed += _refresh_fee
                     total_refresh += 1
                     did_refresh = True
                     # r97 供给快照(refresh 波):刷出来的新牌面落盘(局18 教训:只记进店帧
@@ -539,7 +556,7 @@ class BuyShopCards(SrOperation):
                     try:
                         _new_shop = read_shop_cards(self.ctx, self.screenshot())
                         cw_telemetry.record_shop_snapshot(
-                            'refresh', _new_shop, state.gold - 2 * total_refresh,
+                            'refresh', _new_shop, state.gold - _refresh_fee,
                             state.plane, state.round_num)
                     except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
                         pass
@@ -731,14 +748,16 @@ class BuyShopCards(SrOperation):
                 match.strategy.update_target(_post, match.session, config)
         except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
             log.debug('[cw] 买后重估失败(不阻塞): %s', e)
-        # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(cost 由注册表/reader 估)vs
-        # 关店后实际读数 —— expected = 开店金 − Σ买价 − 升级费 − 刷新费(read_gold stylized 间歇漏,
-        # 但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有毒(stylized 漏读 / cost 错 /
-        # 未观收入),留证统计毒化率;机制核对器(r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
+        # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
+        # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
+        # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照
+        # 而非末波重读值(后者已净含各波花销,再减全程账 = 跨波重复扣,多波
+        # 刷新场景期望恒偏低,量级=前面各波刷新费合计)。(read_gold stylized
+        # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
+        # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
+        # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
         if total_buy or total_level or total_refresh or total_sell:
-            _spend = (sum(a.card.cost for a in actions if isinstance(a, BuyCard) and a.card.x in bought_x)
-                      + sum(a.cost for a in actions if isinstance(a, LevelUp))
-                      + total_refresh * (state.shop_refresh_cost or 2))
+            _spend = _spend_executed
             _final_gold = read_gold(self.ctx, self.screenshot())
             # 金面收口:关店实读金无条件暂存(无论对拍是否冲突)——director
             # 单元关闭落账时经 record_spend_unit 消费,填 spend_ledger 预留
@@ -748,10 +767,11 @@ class BuyShopCards(SrOperation):
             from sr_od.application.currency_war import cw_telemetry as _cw_tel
             _cw_tel.set_unit_gold_close(_final_gold)
             # W62 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
-            # state.gold − 花出 + 卖入(游戏侧卖出入账);旧 _expected = state.gold − _spend
-            # 与实读金恒差 income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
+            # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
+            # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
             _expected = expected_gold_after_actions(
-                state.gold, _spend, total_sell_income)
+                gold_open if gold_open is not None else state.gold,
+                _spend, total_sell_income)
             if _final_gold is not None and abs(_final_gold - _expected) > 2:
                 from sr_od.application.currency_war.cw_observe import (
                     obs_conflict as _oc,
