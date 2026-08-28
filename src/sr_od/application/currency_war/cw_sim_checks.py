@@ -17,7 +17,7 @@
 29 已有 + 清偿批 48 新实现 + 46 归档,归档死因清单见 ADR-0289):
 - 逐局违规锁(进 _BATCH_CHECKS,sim 批次自动扫):ledger_
   consistency / coldstart_direction / deploy_fills_cap /
-  equip_worn_in_battle / no_component_equipped_p1 /
+  equip_worn_in_battle /
   levelup_interest_engine_gate / no_same_round_buy_sell /
   bench_full_deadlock_probe /
   shop_slot_consumption / deploy_after_buy_semantics /
@@ -219,9 +219,10 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
     r388 修的是反向「开局乱穿」,本检查防「hold 太宽不穿」的
     过矫回归)。开局 r1-r2(r388 hold 语义)不报。
 
-    边界:deployed 空(没人可穿)不报;**合成保留组件(ADR-0265
-    RESERVED_COMPONENTS)不计入「owned 非空」**——组件 P1 留
-    owned 待合成是修复语义本身,owned 全组件时 equipped 空合法;
+    边界:deployed 空(没人可穿)不报;**基础件(RESERVED_
+    COMPONENTS)不计入「owned 非空」**——基础件可合法留 owned(锁线
+    合成备料/囤积 ADR-0391/配对守卫拦下的危险配对件;P1 穿着已合法化,
+    ADR-0265 增补),owned 全基础件且守卫拦下时 equipped 空合法;
     其余工具类(不可穿)的判定交由 equip_allocation 语义(不可穿
     件不会进 equipped,也不会被移出 owned——按 owned 余量判,工具
     留 owned 是合法)。
@@ -300,36 +301,6 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
                     f" 无授权依据——ADR-0354 违规)")
         prev_level = (row.get('state') or {}).get('level') or prev_level
-    return out
-
-
-def check_no_component_equipped_p1(rows: list[dict]) -> list[str]:
-    """压测经济批 [29] 指纹(装备组件保留;ADR-0265;r405)。
-
-    指纹:P1 任意轮 equipped 含合成保留组件(cw_synthesis.
-    RESERVED_COMPONENTS = 7 件标准基础件 ∪ 光能电池)——
-    过渡期把组件穿给过渡角色 = 锁死合成路线 + 浪费转移成本
-    (口述 [29],局70 实机 + sim 16/60 局同构实证,sim/实机
-    同一 equip_allocation 纯函数)。
-
-    0 容忍:key_equips 豁免在 equip_allocation 内部(comp 显式
-    声明的关键装备意图;COMP_LIBRARY 实查零重叠),违规即
-    过滤失效/回归。P1 窗口(plane==1 全轮,不只 supply 轮——
-    组件可跨轮滞留 equipped)。
-    """
-    from sr_od.application.currency_war.cw_synthesis import (
-        RESERVED_COMPONENTS,
-    )
-    out: list[str] = []
-    for row in rows:
-        if row.get('plane') != 1:
-            continue
-        for eq in (row.get('state') or {}).get('equipped') or []:
-            if eq.get('equip') in RESERVED_COMPONENTS:
-                out.append(
-                    f"p1r{row.get('round_num')} 合成组件被穿着:"
-                    f" {eq.get('equip')} → {eq.get('char')}"
-                    f"(ADR-0265 组件保留违规)")
     return out
 
 
@@ -671,7 +642,7 @@ def check_phantom_equip_no_wear(rows: list[dict]) -> list[str]:
     占位)以真装备身份进穿着 = 装备分配层吃到伪实体。注册表 =
     cw_equipment_data.EQUIPMENT_ROSTER(生成器产物,单一源);
     合成保留组件(RESERVED_COMPONENTS)本身是注册表内真件,
-    穿着是否合法由 no_component_equipped_p1 另辖。
+    P1 穿着已合法化(ADR-0265 增补:穿戴可逆,简易件默认穿)。
     """
     from sr_od.application.currency_war.cw_equipment_data import (
         EQUIPMENT_ROSTER,
@@ -1004,8 +975,9 @@ def check_equip_supply_wear_closure(rows: list[dict]) -> list[str]:
     """批㉜ 检查项(供给面-穿戴面耦合锁):非保留件获取后必须上过身。
 
     判据:本局经供给获取(owned∪equipped 首现口径)的装备名,凡不在
-    cw_synthesis.RESERVED_COMPONENTS(P1 合成保留件,ADR-0265 有意
-    不穿)者,局内必须至少上身一次——前提是本局有过部署(board 非空
+    cw_synthesis.RESERVED_COMPONENTS(基础件可合法留 owned——锁线合成
+    备料/囤积原则 ADR-0391/配对守卫拦下的危险配对件)者,局内必须至少
+    上身一次——前提是本局有过部署(board 非空
     的轮行存在)。违规 = 价值面(decide_supply 给分选入)与穿戴面
     (equip_allocation 放置)脱钩:装备被高分选中却永远躺在 owned
     (批㉜ 锚 n=100 基线:非保留件获取/上身 1:1,0 违规;蓄能帆
@@ -1176,7 +1148,6 @@ _BATCH_CHECKS = {
     'coldstart_direction': check_coldstart_seed_squander,
     'deploy_fills_cap': check_deploy_fills_cap,
     'equip_worn_in_battle': check_equip_worn_in_battle,
-    'no_component_equipped_p1': check_no_component_equipped_p1,
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
     'bench_full_deadlock_probe': check_bench_full_deadlock_probe,

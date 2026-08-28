@@ -1545,10 +1545,8 @@ EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49
 
 
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
-                      occupied: dict[tuple[str, int], list[str]] | None = None,
-                      plane: int = 1,
-                      allow_basic_wear: bool = False,
-                      ) -> list[tuple[str, str]]:
+                     occupied: dict[tuple[str, int], list[str]] | None = None,
+                     ) -> list[tuple[str, str]]:
     """(角色名, 装备名) 分配序列 —— carry 先拿 key_equips(按序),其余 core 次之,剩余兜底前排。
 
     M7 方法论(plaza 648 篇 51% 谈装备):「保证三月有一鞋一风扇,花火和杨叔的回能,姬子的双风暴」
@@ -1562,14 +1560,17 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
     纯函数(可离线测);EquipAll 消费(ADR-0154)。
 
-    ADR-0265(用户口述 [29],压测 [29] 16/60 局实证):plane==1 时
-    **合成保留组件**(cw_synthesis.RESERVED_COMPONENTS = 7 件标准基础件 ∪ 光能电池)
-    不入穿戴池——组件留在 owned 待合成,过渡穿着=锁死合成路线+浪费转移成本。
-    **豁免边界**:组件恰是该阵容 key_equips 时放行(key_equips 是 comp 显式声明的
-    关键装备意图,角色特定价值 > 合成保留;COMP_LIBRARY 42 处 key_equips 实查无
-    一处包含 RESERVED_COMPONENTS 内名字——豁免是防御性判据,当前零命中,
-    未来 comp 若显式要求组件(如「合成前过渡穿着」打法)不需改本函数)。
-    plane≥2 无此过滤(P2/P3 过渡期结束,合成窗口关闭,组件穿着不再锁路线)。
+    ADR-0265 增补(穿戴可逆裁决):原「P1 合成保留组件不入穿戴池」过滤
+    **已删除**。原过滤的前提是「过渡穿着锁死合成路线 + 浪费转移成本」;
+    用户裁决「卖角色全额返还装备」确立**穿戴是可逆操作**——穿着既不锁死
+    合成路线(组件可取回)也不构成资源损耗(转移成本仅为操作摩擦),过滤
+    的存在理由消失,属保守惯性放宽。组件保护改由两条真实依据的防线承担:
+    ①合成锁线门(方向确定性才合成,反「压注未定方向」——不可逆的金/
+    组件消耗只在锁线后发生);②下方防误合成配对守卫(真实不可逆依据:
+    非预期合成不可逆消耗两件组件,无确认无回退)。
+    **简易件默认穿**(编排者裁决:「简易件效果不大,穿不穿随策略定」→
+    采纳默认穿):组件与进阶成品同池参与分配,期望收益由磨损标定仪持续
+    测量(ADR-0391 设计件:借实机/sim 对照测简易件穿戴的真实期望收益)。
 
     ADR-0391(P14 期望模型接入,口述「穿着即合成/囤积/回收线」):两条新纪律——
     1. **防误合成配对守卫**(全 plane):同一角色身上不得出现互为配方的两件
@@ -1578,27 +1579,14 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
        (回收线 2合1 的有意触发)。口述依据:穿着触发自动合成无确认,「会被
        角色身上的残留件带偏,可能合出非预期产物」——非预期合成不可逆地
        消耗两件组件。
-    2. **死库存回收去向**(plane≥2 生效;P1 基础件本就全保留):回收合格
-       基础件(P14 定理 3:不是任何目标进阶的组件)优先发非 core 工具人、
-       每人至多 2 件(有意触发 2合1,产物=无用进阶,等冶金炉 3 件同刷);
-       发不完留在 owned 囤着(口述囤积原则「没什么用就先不装备囤着」)。
-       死库存不穿 core——穿着合成产物落在 core 身上=后续转移摩擦。
+    2. **死库存回收去向**(全 plane 生效):回收合格基础件(P14 定理 3:
+       不是任何目标进阶的组件)优先发非 core 工具人、每人至多 2 件(有意
+       触发 2合1,产物=无用进阶,等冶金炉 3 件同刷);发不完留在 owned
+       囤着(口述囤积原则「没什么用就先不装备囤着」)。死库存不穿 core
+       ——穿着合成产物落在 core 身上=后续转移摩擦。
     """
-    # ADR-0265:P1 组件保留过滤(key_equips 豁免;comp=None 时无豁免信息,
-    # 组件一律保留——v2 未锁线期本就不该散穿)。
-    # allow_basic_wear 旁路(默认关=生产语义逐位不变):用户裁定基础件
-    # 穿着可逆(卖角色取回装备)不构成锁死,是否 P1 穿简易件=编排者裁决
-    # ——sim C 臂(wear_basic)经本参数开启,不放松 ADR-0265 本身。
-    if plane == 1 and not allow_basic_wear:
-        from sr_od.application.currency_war.cw_synthesis import (
-            RESERVED_COMPONENTS,
-        )
-        _key_set = set(comp.key_equips) if comp is not None else set()
-        pool = [e for e in owned
-                if e not in RESERVED_COMPONENTS or e in _key_set]
-    else:
-        pool = list(owned)
     occ = occupied or {}
+    pool = list(owned)
     by_name: dict[str, list] = {}
     for d in deployed:
         n = getattr(d, 'char_id', None)

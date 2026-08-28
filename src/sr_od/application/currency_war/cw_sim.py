@@ -1304,7 +1304,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 p2_combat: P2CombatCalib | None = None,
                 synthesis_chain: bool = False,
                 equip_wear_effect: float = 0.0,
-                wear_basic: bool = False,
                 _p2_entry: P2ReplayEntry | None = None) -> SimResult:
     """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
     追加 P2 段——W157/ADR-0362 案 a 最小可用)。
@@ -1362,9 +1361,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 量级无实机定量锚点,由 A/B 灵敏度带呈报,见结算段注释)。
     _synth_on = bool(synthesis_chain)
     _wear_eff = max(0.0, float(equip_wear_effect))
-    # C 臂旁路:P1 允许基础件入穿戴池(用户裁定:基础件穿着可逆=卖角色
-    # 取回,不构成锁死;是否 P1 穿简易=编排者裁决「测而不辩」)。
-    _wear_basic = bool(wear_basic)
     cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
     # ADR-0272:池构造后硬断言无费用截断(不变式;检查函数单一源
     # 在 cw_sim_checks——纯 dict 入参,不构成 import 环)
@@ -2088,8 +2084,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 for _d in (st.deployed or []):
                     for _e in (getattr(_d, 'equips', ()) or ()):
                         # 进阶成品全权 1.0;基础件半权 0.5(用户裁定
-                        # 「简易件效果通常不大」;穿着可逆=卖角色取回,
-                        # C 臂 wear_basic 的预注册效应口径)
+                        # 「简易件效果通常不大」;穿戴可逆=卖角色取回)
                         _worn_units += 0.5 if _e in _RC else 1.0
                 if _worn_units > 0:
                     delta = max(delta, round(
@@ -2263,11 +2258,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
                 )
-                # W212/ADR-0393:补齐 equip_allocation 生产调用形态——
-                # ① plane 从 st.plane 现读(生产 EquipAll 从 last_state 读,
-                # 见 equip_all M7 调用点;旧 sim 漏传 = 恒按默认 plane=1,
-                # ADR-0391 死库存回收去向(P2/P3 生效)与 P2 组件放行在
-                # sim 从未点火);② occupied = 画面已穿(生产 occupied_m7
+                # W212/ADR-0393:equip_allocation 生产调用形态——
+                # ① occupied = 画面已穿(生产 occupied_m7
                 # 同语义;旧 sim 恒 None → 配对守卫看不见历史已穿,只看得
                 # 见本趟内部分配,跨轮守卫形同虚设)。BenchChar.equips
                 # (r393 写回)即跨轮已穿真值。
@@ -2278,20 +2270,28 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                               ] = list(getattr(d, 'equips', ()) or ())
                 _equipped_now = equip_allocation(
                     sess.target_comp, st.deployed, list(st.equips),
-                    occupied=_occupied, plane=st.plane,
-                    allow_basic_wear=_wear_basic)
+                    occupied=_occupied)
+                # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
+                # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
+                # tracked_deployed[].equips 同语义)。写回按**多重集差**:
+                # 本趟新增 = 本趟分配 − 轮前已穿(防跨轮对同一人重复记同一
+                # 件);同名多件各自记数(基础件发放均匀,同名复制常见——
+                # 旧「not in」防重守卫把同趟第二件静默丢弃 = 装备凭空消失)。
+                _adds: dict[str, list[str]] = {}
                 for _who, _what in _equipped_now:
                     if _what in st.equips:
                         st.equips.remove(_what)
-                    # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
-                    # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
-                    # tracked_deployed[].equips 同语义);防重守卫(跨轮对同一
-                    # 人重复分配同一件不双记)。
-                    for d in iter_occupied_deployed(st.deployed):
-                        if d.char_id == _who:
-                            if _what not in d.equips:
-                                d.equips.append(_what)
-                            break
+                    _adds.setdefault(_who, []).append(_what)
+                for d in iter_occupied_deployed(st.deployed):
+                    _want = _adds.pop(d.char_id, None)
+                    if not _want:
+                        continue
+                    _pre = list(d.equips)
+                    for _w in _want:
+                        if _w in _pre:
+                            _pre.remove(_w)   # 轮前已穿,不双记
+                        else:
+                            d.equips.append(_w)
             from sr_od.application.currency_war.cw_line_defs import (
                 core_count_for,
             )
@@ -2332,7 +2332,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           # 紧缩数组消费,零迁移;占用数=len)
                           'bench': [{'char_id': b.char_id,
                                      'faction': b.faction,
-                                     'slot': b.slot}
+                                     'slot': b.slot,
+                                     # 装备随人入账本(与 deployed
+                                     # equips 同语义)——换下场角色可带装,
+                                     # 缺此键会让保有量口径漏计 bench 侧
+                                     'equips': list(getattr(b, 'equips', ()) or ())}
                                     for b in iter_occupied(st.bench)],
                           # r391(执行层代理配套):deployed/cap 入账本
                           # ——「开局 deploy<cap」检查项的数据源
@@ -2585,8 +2589,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       p2_combat: P2CombatCalib | None = None,
                       max_rounds: int | None = None,
                       synthesis_chain: bool = False,
-                      equip_wear_effect: float = 0.0,
-                      wear_basic: bool = False) -> dict:
+                      equip_wear_effect: float = 0.0) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
     :param max_rounds: 段级窗口(W278 sim 段级短跑批;None=整局,既有
@@ -2619,8 +2622,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                            pool=pool, planes=planes, invest=invest,
                            p2_combat=p2_combat,
                            synthesis_chain=synthesis_chain,
-                           equip_wear_effect=equip_wear_effect,
-                           wear_basic=wear_basic)
+                           equip_wear_effect=equip_wear_effect)
                for i in range(n)]
     # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
     # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;
