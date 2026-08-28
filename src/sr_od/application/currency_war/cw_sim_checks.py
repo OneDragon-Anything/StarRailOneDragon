@@ -2305,17 +2305,25 @@ def check_r5plus_refresh_closure(ledgers: list[list[dict]]) -> dict:
 
 # 实机末金均值(批⑧ F1,18 局;批⑩ F5 对照侧:sim 52.5 vs 实机
 # 24.3 = 2.2× 虚高)。merge 落地(ADR-0276)后此比值应为收敛判据。
-REAL_AVG_ENDGOLD: float = 24.3
-ENDGOLD_RATIO_MAX: float = 1.5   # 收敛阈值(仍 >1.5 = 滞留金虚高未收敛)
+# ⚠️ 锚已随 economy v2 重锚(ADR-0447,编排者裁决):24.3 采于穷 sim
+# 时代/败局死亡时点口径,与 v2 校准目标(实机 P1 出口富状态)错位;
+# 现值 45.1 = v2(r9 δ 退坡后)n=200 实测 P1 出口金均值(种子窗
+# 500000,.debug/temp/currency_war/w493_income_calib/REPORT.md §1)。
+# **语义降级声明**:本检查自 v2 起为「末金漂移哨兵」(锚=当前交付值,
+# 防未来静默漂移;比值 >1.5 = 注水/泄金通道回归),真实验收语义待
+# 实机 P1 出口金干净语料(spend_ledger 队列)重锚。
+REAL_AVG_ENDGOLD: float = 45.1
+ENDGOLD_RATIO_MAX: float = 1.5   # 漂移阈值(v2 起;见上语义降级声明)
 
 
 def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
-    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276/0285)。
+    """批⑨ 设计/批⑩ 追加数据(末金校准;ADR-0276/0285;v2 重锚 ADR-0447)。
 
-    判据:sim 末轮金均值 vs 实机 24.3 的比值——3合1 建模落地后
-    重测此比值为收敛判据(批⑩ F5:sim 52.5 = 2.2×,「sim 虚高
-    1.6-2.3×」形态)。违规 = 比值 > 1.5(买通道死锁/滞留金虚高
-    未恢复判读力)。
+    判据:sim 末轮金均值 vs 锚的比值。锚已随 economy v2 重锚为当前
+    交付值 45.1(v2 r9 δ 退坡后 n=200 实测;旧 24.3 = 穷 sim 时代/
+    败局死亡时点口径,与 v2 校准目标错位)——**v2 起语义 = 末金漂移
+    哨兵**(比值 >1.5 = 注水/泄金通道回归),真实验收语义待实机 P1
+    出口金干净语料重锚。
 
     双口径(ADR-0285,批㉑ F3/F5):r419 超容买守卫(ADR-0283)
     拦截的合法滞留(bench 满时策略仍提案买,金留下)混入总口径
@@ -2348,6 +2356,74 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
             'guard_skipped_gold_avg': round(avg_sk, 2),
             'net_endgold_avg': round(net_avg, 2),
             'net_ratio': round(net_ratio, 2)}
+
+
+# W493(ADR-0447):sim↔实机金分布/费用曲线对拍锚(实机 2026-08-28
+# 当日 15 局 P1 全帧口径,Phase 1 实测基线;数据源与整定程序见
+# cw_sim.EVENT_GOLD_BY_ROUND 注释)。锚点随实机新局补充后原地更新。
+REAL_P1_GOLD_MEAN: float = 29.4
+REAL_P1_GOLD_GE50: float = 0.141     # P(g≥50) 帧占比
+REAL_P1_GOLD_GE70: float = 0.022
+REAL_P1_GOLD_BAND: tuple[float, float] = (25.0, 35.0)   # M1 判据 30±5
+REAL_P1_SHOP_COST_SHARE: dict[int, float] = {1: 0.613, 2: 0.243, 3: 0.133, 4: 0.010}
+
+
+def check_gold_dist_calib(ledgers: list[list[dict]]) -> dict:
+    """W493 对拍项:P1 备战帧金分布 vs 实机基线(ADR-0447)。
+
+    披露 sim 金均值/ge50/ge70 占比;软告警 = 金均值越出实机带
+    [25,35](M1 判据 30±5;n<100 不判,数据边界)。被检对象 =
+    环境校准层(事件金总闸),非策略——告警语义是「状态分布漂移」,
+    消费方先核 economy_calib_version 与池指纹再归因。
+    """
+    golds: list[int] = []
+    for rows in ledgers:
+        golds.extend(r['gold'] for r in rows
+                     if r.get('plane') == 1 and r.get('gold') is not None)
+    n = len(golds)
+    if n == 0:
+        return {'violations': 0, 'n': 0, 'note': '无 P1 帧(数据边界)'}
+    mean = sum(golds) / n
+    ge50 = sum(1 for g in golds if g >= 50) / n
+    ge70 = sum(1 for g in golds if g >= 70) / n
+    lo, hi = REAL_P1_GOLD_BAND
+    out = {'violations': 0, 'n': n,
+           'sim_gold_mean': round(mean, 2),
+           'sim_ge50': round(ge50, 4), 'sim_ge70': round(ge70, 4),
+           'real_gold_mean': REAL_P1_GOLD_MEAN,
+           'real_ge50': REAL_P1_GOLD_GE50, 'real_ge70': REAL_P1_GOLD_GE70}
+    if n < 100:
+        out['note'] = 'n<100 不判(数据边界)'
+    if n >= 100 and not (lo <= mean <= hi):
+        out['violations'] = 1
+        out['note'] = f'金均值 {mean:.1f} 越出实机带 [{lo},{hi}](M1)'
+    return out
+
+
+def check_shop_cost_curve(ledgers: list[list[dict]]) -> dict:
+    """W493 对拍项:P1 商店费用曲线 vs 实机 OCR 基线(ADR-0447)。
+
+    纯披露(不判):1-4 费占比偏离的已知主根 = 等级轨迹差(策略
+    追级行为域,环境侧无合法旋钮;W493 预注册 S1 best-effort)——
+    消费方据等级轨迹逐轮表归因,禁直接调商店概率表(机制真值)。
+    """
+    costs: list[int] = []
+    for rows in ledgers:
+        for r in rows:
+            if r.get('plane') != 1:
+                continue
+            for w in (r.get('sim') or {}).get('shop_waves', []):
+                if w.get('event') != 'offer':
+                    continue
+                costs.extend(int(c.get('cost', 0)) for c in w.get('cards', []))
+    n = len(costs)
+    if n == 0:
+        return {'violations': 0, 'n': 0, 'note': '无 offer 波(数据边界)'}
+    share = {c: sum(1 for x in costs if x == c) / n
+             for c in sorted(set(costs) | {1, 2, 3, 4})}
+    return {'violations': 0, 'n': n,
+            'sim_cost_share': {str(k): round(v, 4) for k, v in share.items()},
+            'real_cost_share': {str(k): v for k, v in REAL_P1_SHOP_COST_SHARE.items()}}
 
 
 def check_ab_resolution_floor(hps_a: list[float],

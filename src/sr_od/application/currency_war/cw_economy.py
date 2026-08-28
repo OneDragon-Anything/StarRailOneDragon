@@ -72,7 +72,10 @@ REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 #: 那是粗模型战斗引擎校准的版本,收入口径在 cw_economy/cw_sim 收入段,另一子系统)。
 #: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚,与
 #: 既有粗模型版本披露同机制)。
-ECONOMY_CALIB_VERSION: int = 1
+ECONOMY_CALIB_VERSION: int = 2
+#: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸),
+#: 数值见 cw_sim.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
+#: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。

@@ -120,18 +120,34 @@ EQUIP_GRANT_BONUS_P: float = 0.30      # 每供给节点追加 1 件的概率
 EQUIP_GRANT_BONUS_ADV_SHARE: float = 0.35   # 追加件中进阶占比
 
 
-# r360(v7 分轮次裁决):实机对账残差=奖励球/节点事件金未建模,
-# 随轮次增长(r1→r2 中位 +1 … r8→r9 中位 +9)。校准层注入
-# (ADR-0233):按轮次经验分布采样,让 sim 金压力对齐实机
-# (策略的攒息/破息行为分布依赖真实金流)。
+# 事件金 = 金流状态分布校准总闸(ADR-0233 建通道;ADR-0447 重整定)。
+# 语义(why):sim 策略=产线策略且有意不模拟执行缺口(完美执行是终态),
+# 而实机金状态分布含决策/执行缺口造成的富状态——本表按实机逐轮备战
+# 帧金轨迹(2026-08-28 当日 15 局,W493 预注册)做反馈整定,使 sim 状态
+# 分布对齐实机,「金高位前提」的策略检查在 sim 里真实激活。整定程序:
+# δ(t) += 0.7·(实机帧金均值 − sim 帧金均值),3 轮收敛(残差全 |≤5| 金/轮),
+# 台账 = .debug/temp/currency_war/w493_income_calib/calib_loop_log.json(gitignored)。
+# 边界(W503 对抗审计修补 E/B,ADR-0447):
+# - **靶标注**:靶 = 带执行缺陷的 2026-08-28 败局为主轨迹(12/15 死亡,
+#   幸存者偏差自认)——禁止被引用为长期经济真值;
+# - **r9 退坡**:r9 δ=32.0 为「非策略病分量」,闭环原始收敛值 46.36 中
+#   ≥14 金是 r9 levelup 泄金(已定位策略末段病)的补偿——按设计「r9
+#   残差只披露不强修」退坡,r9 单轮缺口(约 +10)披露不收敛;策略面
+#   修复 r9 泄金后**不得**以此表回填;
+# - **重整定触发器**:spend_ledger 干净局攒到 2~3 局、或执行缺陷清零
+#   里程碑达成 → 重采实机基线(≥15 局),若逐轮金均值漂移 >5 金/轮 →
+#   δ 重整定 + ECONOMY_CALIB_VERSION 3;
+# - spend_ledger/执行面修复落地后本表须重整定(届时注入量应显
+#   著回落);±2 抖动机制不变;v1 值(1/5.5/2/2/2/2/4/9/4)见
+#   ADR-0447,与 ECONOMY_CALIB_VERSION=2 配对,旧批次不可比。
 EVENT_GOLD_BY_ROUND: dict[int, tuple[float, ...]] = {
-    1: (1,), 2: (5.5,), 3: (2,), 4: (2,), 5: (2,),
-    6: (2,), 7: (4,), 8: (9,),
+    1: (0.0,), 2: (6.41,), 3: (13.95,), 4: (14.47,), 5: (23.11,),
+    6: (19.41,), 7: (21.15,), 8: (35.05,), 9: (32.0,),
 }
 
 
 def _event_gold(round_num: int, rng: random.Random) -> int:
-    """奖励球/节点事件金(校准层;v7 各轮中位,±2 抖动)。"""
+    """奖励球/节点事件金(校准总闸;ADR-0447 整定值,±2 抖动)。"""
     base = EVENT_GOLD_BY_ROUND.get(round_num, (4,))[0]
     return max(0, int(base + rng.uniform(-2, 2)))
 
@@ -2053,11 +2069,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _ld = None
                     if _ld is not None:
                         delta = _ld
-                    elif _node == 'boss':
-                        # ADR-0277(批⑪ F1/F2 同根):boss Δ池桶不可达的回退路径
-                        # 加胜分支——胜率=f(成型度),成型→少掉血→胜 boss 的
-                        # 价值链接通(hp 类指标恢复判读力)。
-                        delta = boss_settle_delta(st, res.dir_round, rng)
+                    elif _node in ('battle', 'encounter', 'boss'):
+                        # W493 D1(ADR-0447):delta 对照臂桶缺回退由 W31 无
+                        # 成型度阶梯(node_win_p/battle_delta)改接粗模型
+                        # 注入胜率——零新数值(纯复用 cw_coarse_battle 已
+                        # 验收表与 plaza 收缩),对照臂与主路径同交付口径。
+                        # ADR-0277 教训边界:胜率只来自 _WIN_TABLE 遥测
+                        # p_data + plaza Beta 收缩(份额硬顶 25%,零样本
+                        # 单元原样返回),不引入设计拍值。默认 coarse 主
+                        # 路径不经本分支(P1 默认批逐位零漂移,B1 锁)。
+                        # 旧 boss_settle_delta/battle_delta 保留为
+                        # ADR-0308 最终兜底语义(本路径不再消费;测试/
+                        # 单元引用不受影响)。
+                        delta = _cb.sample_battle_delta(
+                            _node, _settle_rung(st), st.hp, rng,
+                            difficulty=getattr(st, 'enemy_difficulty', None),
+                            plane=st.plane)
                     else:
                         delta = node_delta(_node, rn, res.dir_round, rng,
                                            plane=st.plane)
@@ -2862,6 +2889,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['r5plus_refresh_closure'] = \
             check_r5plus_refresh_closure(_ledgers)
         rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
+        # W493(ADR-0447):金分布/费用曲线对拍进标准报告——金均值越出
+        # 实机带软告警(校准总闸漂移),费用曲线纯披露(等级轨迹差已知根)
+        from sr_od.application.currency_war.cw_sim_checks import (
+            check_gold_dist_calib,
+            check_shop_cost_curve,
+        )
+        rep_checks['gold_dist_calib'] = check_gold_dist_calib(_ledgers)
+        rep_checks['shop_cost_curve'] = check_shop_cost_curve(_ledgers)
         rep_checks['anchor_registry_n300'] = \
             check_anchor_registry_n300(report)
         # ADR-0294 件3(ADR-0289 接线欠账):批级聚合入口并入——
