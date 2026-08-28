@@ -2638,6 +2638,25 @@ class _Plane1View:
         self.final_hp = r.final_hp
 
 
+def _cap_rejects_by_plane(results: list) -> dict[int, int]:
+    """满级 LevelUp 拒付按 plane 分解(键=plane,值=拒付次数)。
+
+    为什么:lv≥9 态在实机只见 plane 2/3(实机 P1 等级上限 7),拒付
+    总量把「P1 等级虚高噪声」与「P2/P3 真实语义分歧」混在一起,无法
+    为 LEVEL_CAP 放开批提供干净读数。逐轮账本行自带 plane 字段,聚合
+    端按行分组即可,逐轮执行路径零改动(纯披露面)。键缺省=该 plane
+    无拒付(不补 0,保持稀疏)。
+    """
+    by_plane: dict[int, int] = {}
+    for r in results:
+        for row in r.ledger:
+            n = (row.get('sim') or {}).get('level_cap_rejects', 0)
+            if n:
+                p = int(row.get('plane') or 1)
+                by_plane[p] = by_plane.get(p, 0) + n
+    return dict(sorted(by_plane.items()))
+
+
 def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       seed_base: int = 0,
                       pool: str | Path = 'auto',
@@ -2820,6 +2839,9 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'level_cap_rejects': sum(
             (row.get('sim') or {}).get('level_cap_rejects', 0)
             for r in results for row in r.ledger),
+        # 满级拒付按 plane 分解(口径见 _cap_rejects_by_plane);总量键
+        # 保留=旧消费者(测试锁/判读脚本)兼容,两者和恒等。
+        'level_cap_rejects_by_plane': _cap_rejects_by_plane(results),
         # ADR-0294 件2:supply 带钻选中总数(占位实体披露;带钻
         # 是词缀元数据不进 owned 池,此计数是它唯一的 sim 痕迹)
         'phantom_supply_picks': sum(
