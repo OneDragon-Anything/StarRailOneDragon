@@ -48,6 +48,8 @@ class HandleInvestEnv(SrOperation):
     NAME_CY_HI: ClassVar[int] = 410
     # 非卡名(同 y 行可能误入或已知 UI 文本)
     _EXCLUDE: ClassVar[set[str]] = {'投资环境', '攻略', '确认', '角色', '装备', '剩余次数：1'}
+    # 变异窗宽限(秒):覆盖确认动画 + 节点行刷新重试窗;超时后三票校验恢复落账。
+    ENV_GRACE_S: ClassVar[float] = 45.0
     # 确认按钮:screen_info「按钮-确认」center(task#20);常量=兜底。
     CONFIRM: ClassVar[Point] = Point(1082, 982)   # 兜底;首选 area_center('按钮-确认')
 
@@ -187,8 +189,60 @@ class HandleInvestEnv(SrOperation):
         safe_click(self, target, tag='cw-env')
         time.sleep(0.7)
 
+        # 台账:确认前开「投资环境变异窗」豁免——环境选择是位面节点序列唯一
+        # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致
+        # 是合法变异,三票校验不得落缺陷台账。重读成功后关窗(置 0)。
+        try:
+            from sr_od.application.currency_war.cw_state import get_node_ledger
+            _ledger = get_node_ledger(getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
+            if _ledger is not None:
+                _ledger.env_grace_until = time.monotonic() + HandleInvestEnv.ENV_GRACE_S
+        except Exception:   # noqa: BLE001  观测面 best-effort
+            pass
+
         # 确认 + 验关(投资环境 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」)。确认 center 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', HandleInvestEnv.SCREEN_NAME) or HandleInvestEnv.CONFIRM
-        return confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资环境',
-                                  tag='cw-env')
+        _result = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资环境',
+                                     tag='cw-env')
+        # 台账写点②:环境选择完成(overlay 真关)→ 重读备战节点行刷新权威表
+        # (环境可能增删/改节点,表必须反映变异后序列)。失败不重试阻塞——
+        # prep_director 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新。
+        if _result.is_success:
+            self._refresh_node_ledger()
+        return _result
+
+    def _refresh_node_ledger(self) -> None:
+        """台账写点②:重读备战节点行 → 按位合并进 session 权威表 + 关变异窗。
+
+        读不到 clean 帧(转场动画)→ 1.5s 后重试一次,仍 miss 则保留窗口
+        由下个写入端兜(不阻塞对局;合并语义 = None 位保旧,见 ledger_update_plane)。
+        """
+        from sr_od.application.currency_war.cw_observation import (
+            read_node_sequence,
+            read_phase_round,
+        )
+        from sr_od.application.currency_war.cw_state import (
+            get_node_ledger,
+            ledger_update_plane,
+        )
+        _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+        _ledger = get_node_ledger(_sess)
+        if _sess is None or _ledger is None:
+            return
+        for _attempt in (1, 2):
+            time.sleep(1.5 if _attempt == 1 else 0.0)
+            screen = self.screenshot()
+            slots = read_node_sequence(self.ctx, screen)
+            if slots is None:
+                continue
+            _plane, _round = read_phase_round(self.ctx, screen)
+            if not _plane:
+                break
+            _seq = [getattr(s, 'node_type', None) for s in slots]
+            _changed = ledger_update_plane(_sess, int(_plane), _seq, 'prep_row')
+            _ledger.env_grace_until = 0.0   # 表已刷新,关变异窗
+            log.info('[cw-env] 台账重读刷新 p%d(轮%s)%s:%s',
+                     _plane, _round, '(有变更)' if _changed else '(无变更)', _seq)
+            return
+        log.info('[cw-env] 台账重读 miss(非 clean 帧),变异窗保留等下个写入端')

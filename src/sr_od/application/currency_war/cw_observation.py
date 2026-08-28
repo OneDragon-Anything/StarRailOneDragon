@@ -80,6 +80,8 @@ from sr_od.application.currency_war.cw_state import (
     XP_TO_NEXT_LEVEL,
     GameState,
     ShopCard,
+    get_node_ledger,
+    ledger_node_type,
     rebuild_deployed_from_board,
 )
 from sr_od.context.sr_context import SrContext
@@ -433,17 +435,15 @@ _BOSS_TEMPLATES: dict | None = None
 _MIN_CLEAN_CIRCLES: int = 6
 
 
-def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
-    """备战顶部「节点行」→ 节点槽列表(``cw_node_reader.NodeSlot``);每次备战调(invest-env 增/改节点 → 重识别)。
+def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tuple[int, int, int, int]]:
+    """节点行 CV 核心(HoughCircles + 三态 + Hu + boss SIFT)+ 行矩形。
 
-    组装纯 CV 核心(``cw_node_reader.classify_node_row``):HoughCircles 动态定圆 + HSV 三态(已过/当前/未来)+
-    未来 Hu 矩匹配 4 模板;**当前节点**类型用 OCR 标签(``read_node_type``,只有当前节点有文字标签)覆盖。
-    **首领** = 位面最后节点(按位置判,不在节点行模板内;调用方按 round 推断)。未来圆 Hu 距离 >
-    ``cw_node_reader.HU_DIST_UNRECOGNIZED`` → 未识别(扑满/新类型,调用方可触发采集)。
-
-    ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关 → 直传 classify。
-    返回 None:模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:shop 开 / 过渡 / overlay
-    遮挡 → 坏帧 Hu 畸变不可信)。调用方遇 None 跳过,等下个 clean 备战帧重读。详 ``cw_node_reader`` docstring。
+    返回 ``(slots, (x0, y0, x1, y1))``:slots 为**行裁图坐标**的 NodeSlot 列表
+    (``cw_node_reader.classify_node_row`` 产物);行矩形 = 行区域的全屏坐标
+    (screen_info「区域-节点条」或常量兜底)。三票校验的动态 ROI 从该几何
+    推导,不写死坐标(投资环境会增删节点改变节点行,固定坐标无意义)。
+    None = 模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:
+    shop 开 / 过渡 / overlay 遮挡 → 坏帧数据不可信)。
     """
     global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
     from pathlib import Path
@@ -458,7 +458,7 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
         _d = Path(__file__).resolve().parents[4] / 'assets' / 'game_data' / 'cw_node_types'
         _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
     if not _NODE_TYPE_TEMPLATES:
-        return None
+        return None, (0, 0, 0, 0)
     if _BOSS_TEMPLATES is None:
         _bd = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
@@ -471,7 +471,26 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     _slots = classify_node_row(screen[_y0:_y1, _x0:_x1], _NODE_TYPE_TEMPLATES,
                                boss_templates=_BOSS_TEMPLATES or None)
     if len(_slots) < _MIN_CLEAN_CIRCLES:
-        return None  # 非 clean 备战帧(shop 开 / 过渡 / overlay 遮挡 → 圆数少);数据不可信,跳过等下轮重读
+        return None, (_x0, _y0, _x1, _y1)   # 非 clean 备战帧(shop 开 / 过渡 / overlay 遮挡 → 圆数少);数据不可信,跳过等下轮重读
+    return _slots, (_x0, _y0, _x1, _y1)
+
+
+def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
+    """备战顶部「节点行」→ 节点槽列表(``cw_node_reader.NodeSlot``);每次备战调(invest-env 增/改节点 → 重识别)。
+
+    组装纯 CV 核心(``_classify_node_row`` → ``cw_node_reader.classify_node_row``):
+    HoughCircles 动态定圆 + HSV 三态(已过/当前/未来)+ 未来 Hu 矩匹配 4 模板;
+    **当前节点**类型用 OCR 标签(``read_node_type``,只有当前节点有文字标签)覆盖。
+    **首领** = 位面最后节点(按位置判,不在节点行模板内;调用方按 round 推断)。未来圆 Hu 距离 >
+    ``cw_node_reader.HU_DIST_UNRECOGNIZED`` → 未识别(扑满/新类型,调用方可触发采集)。
+
+    ⚠️ screen 为框架 RGB;S/V/Hu 对 RGB/BGR 无关 → 直传 classify。
+    返回 None:模板未加载 / 非 clean 备战帧(圆数 < ``_MIN_CLEAN_CIRCLES``:shop 开 / 过渡 / overlay
+    遮挡 → 坏帧 Hu 畸变不可信)。调用方遇 None 跳过,等下个 clean 备战帧重读。详 ``cw_node_reader`` docstring。
+    """
+    _slots, (_x0, _y0, _x1, _y1) = _classify_node_row(ctx, screen)
+    if _slots is None:
+        return None
     # r80(审计 P0-1):OCR 标签**带位置**锚定校验 —— 「首领」等标签会出现在即将到来的
     # 节点下方(2-7 实证 x1341 vs 当前槽 cx≈900)→ 标签 x 与当前槽 cx 对拍,错位不覆盖。
     _t, _lx = _node_type_label(ctx, screen)
@@ -481,13 +500,169 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
             pass   # 无当前锚(罕见)→ 不覆盖
         elif gate_node_type(_t, None, label_x=_lx,
                             current_cx=_cur_slot.cx + _x0) is None:
-            from one_dragon.utils.log_utils import log as _log
-            _log.info('[cw!][nodeseq] 标签x错位不覆盖:type=%s 标签x=%d vs 当前槽cx=%d'
+            log.info('[cw!][nodeseq] 标签x错位不覆盖:type=%s 标签x=%d vs 当前槽cx=%d'
                       '(标签属即将到来的节点,如 boss 前夕「首领」)', _t, _lx or -1,
                       _cur_slot.cx + _x0)
         else:
             _cur_slot.node_type = _t
     return _slots
+
+
+#: 三票·票A 动态 ROI 半径:当前槽圆心 ±60px 小窗(标签在圆下方行带内,
+#: 60px 覆盖圆 + 标签且远小于全行 → 邻槽标签不入窗)。
+_VOTE_ROI_HALF: int = 60
+
+
+def _node_label_in_roi(ctx: SrContext, screen: MatLike,
+                       cx: int, cy: int) -> str | None:
+    """三票·票A:当前槽圆心 ±``_VOTE_ROI_HALF`` 小窗 OCR → 节点类型 token | None。
+
+    ROI 从检测圆几何推导(cx/cy = 检测圆心 + 行偏移),不写死坐标
+    (投资环境会改变节点行布局)。窗口内命中多个关键词时取第一个
+    (60px 窗内正常只容一个标签;真混入按噪声,靠多数票纪律兜)。
+    """
+    results = _ocr(ctx, screen, Rect(cx - _VOTE_ROI_HALF, cy - _VOTE_ROI_HALF,
+                                     cx + _VOTE_ROI_HALF, cy + _VOTE_ROI_HALF))
+    for r in results:
+        for kw, nt in _NODE_TYPE_KEYWORDS.items():
+            if kw in r.data:
+                return nt
+    return None
+
+
+def node_vote_verdict(table_type: str, votes: dict[str, str | None]) -> str:
+    """三票裁决(纯函数可测):'ok' = 无反对;'noise' = 单票异议(不落账);
+    'defect' = ≥2 非弃权票一致反对表值(落缺陷台账)。
+
+    噪声纪律:单票反对(如高亮 Hu 对渲染态敏感、ROI OCR 漏读邻字)不落账,
+    防逐帧台账刷屏;≥2 张**独立通道**票一致才构成识别错误候选。
+    """
+    cast = [v for v in votes.values() if v is not None]
+    against = [v for v in cast if v != table_type]
+    with_t = [v for v in cast if v == table_type]
+    if len(against) >= 2 and len(against) >= len(with_t):
+        return 'defect'
+    if against:
+        return 'noise'
+    return 'ok'
+
+
+def resolve_node_type_with_ledger(session: object, plane: int | None,
+                                  round_num: int | None,
+                                  obs_type: str | None) -> str | None:
+    """节点类型消费仲裁(纯函数可测):**查表优先**,表缺退逐帧观测。
+
+    表值(台账,权威)与 obs_type(逐帧标签 OCR,已过 boss 轮次门等语义门)
+    同词汇表,值语义零变更 —— 同值不同源,只换信源优先级。表缺/该位次
+    未识别(None)→ 退 obs_type(旧行为)。
+    """
+    ledger_t = ledger_node_type(session, plane, round_num)
+    return ledger_t if ledger_t is not None else obs_type
+
+
+def verify_node_type_votes(ctx: SrContext, screen: MatLike,
+                           plane: int | None, round_num: int | None) -> None:
+    """当前节点类型三票校验(**纯记账,零行为**)。
+
+    查表值(session 台账,权威)vs 三张独立票:
+    - 票A 动态 ROI 文本 OCR:当前槽圆心 ±60px 小窗(``_node_label_in_roi``);
+    - 票B 序列位置推断:已过槽数 p → 表序列第 p 位(应 = 查表值);
+      未来图标 Hu 类型对表不符位数一并记进 observed(佐证);
+    - 票C 当前槽高亮态图标 Hu 对模板(``cw_node_reader.current_slot_hu_type``)。
+
+    ≥2 张非弃权票一致反对表值 → 落缺陷台账(``cw_telemetry.record_defect``,
+    中相关面;复现升 L0 由既有安灯通道承接)。**投资环境变异窗豁免**
+    (``ledger.env_grace_until``):窗内节点行合法变异中,不一致是预期而非
+    识别错误,不落。同一 (plane, round) 只落一行(逐帧校验每帧跑,去重防刷屏)。
+    任何前置不满足(无表值 / 非 clean 帧 / 无当前槽)→ 静默跳过。
+    """
+    _match = getattr(ctx, 'cw_match', None)
+    _sess = getattr(_match, 'session', None)
+    if _sess is None:
+        return
+    ledger = get_node_ledger(_sess)
+    if ledger is None:
+        return
+    table_t = ledger_node_type(_sess, plane, round_num)
+    if table_t is None:
+        return   # 无表值可校(表缺/该位次未识别)
+    if time.monotonic() < ledger.env_grace_until:
+        return   # 投资环境变异窗:合法变异中,豁免
+    slots, (rx0, ry0, rx1, ry1) = _classify_node_row(ctx, screen)
+    if not slots:
+        return   # 非 clean 帧(shop 开/过渡),票全弃权
+    cur = next((s for s in slots if s.state == 'current'), None)
+    if cur is None:
+        return
+    seq = ledger.seq_by_plane.get(int(plane or 0)) or []
+    # 票A:动态 ROI OCR(当前槽圆心 ±60px,几何来自检测圆 + 行偏移)
+    vote_a = _node_label_in_roi(ctx, screen, cur.cx + rx0, cur.cy + ry0)
+    # 票B:位置推断(已过槽数 p → 表第 p 位应 = 查表值)+ 未来图标 Hu 对表佐证:
+    # 第 j 个 upcoming 槽对应表位 past_n+1+j(节点行左→右递进既有先验)。
+    past_n = sum(1 for s in slots if s.state == 'past')
+    vote_b = seq[past_n] if 0 <= past_n < len(seq) else None
+    _upcoming = sorted((s for s in slots if s.state == 'upcoming'), key=lambda s: s.idx)
+    _future_bad = sum(
+        1 for j, s in enumerate(_upcoming)
+        if s.node_type is not None
+        and past_n + 1 + j < len(seq)
+        and seq[past_n + 1 + j] is not None
+        and seq[past_n + 1 + j] != s.node_type)
+    # 票C:当前槽高亮态图标 Hu 对模板(行裁图同源,几何来自检测行)
+    from sr_od.application.currency_war.cw_node_reader import current_slot_hu_type
+    vote_c, hu_dist = current_slot_hu_type(
+        screen[ry0:ry1, rx0:rx1], cur, _NODE_TYPE_TEMPLATES or {})
+    votes = {'roi_ocr': vote_a, 'position': vote_b, 'cur_hu': vote_c}
+    _verdict = node_vote_verdict(table_t, votes)
+    _key = f'{plane}:{round_num}'
+    if _verdict == 'defect' and _key not in ledger.defect_seen:
+        ledger.defect_seen.add(_key)
+        log.warning('[cw!][node_votes] 查表=%s vs 三票=%s(past=%d hu_dist=%.2f 未来对表不符=%d)'
+                    ' → 落缺陷台账(识别错误候选,复现升 L0)', table_t, votes,
+                    past_n, hu_dist, _future_bad)
+        try:
+            from sr_od.application.currency_war import cw_telemetry
+            cw_telemetry.record_defect(
+                'node_type', 'perception_conflict',
+                expected=f'台账序列[{int(round_num) - 1}]={table_t}(source='
+                         f'{ledger.seq_source.get(int(plane or 0))})',
+                observed=f'三票={votes}(past_n={past_n}, 高亮Hu距={hu_dist:.2f},'
+                         f' 未来图标对表不符位={_future_bad})',
+                plane=int(plane or 0), round_num=int(round_num or 0),
+                verdict=('留证-≥2 独立票一致反对权威表值(投资环境窗外)=识别错误候选;'
+                         '复现升 L0 由安灯通道承接'),
+                reader_source='node_ledger_three_vote',
+                gap_large=False,
+                refs=[{'stream': 'decisions', 'key': f'plane={plane}|round={round_num}'}],
+                note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点),'
+                     '逐帧三票降为校验;boss 轮次门等语义门不变')
+        except Exception:   # noqa: BLE001  观测 best-effort,不阻塞对局
+            pass
+    elif _verdict == 'noise':
+        log.info('[cw][node_votes] 单票异议不落账(噪声纪律):表=%s 票=%s past=%d',
+                 table_t, votes, past_n)
+
+
+def read_plane_detail_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
+    """位面详情底部明文「敌人难度 N」→ N | None(**只存参考**)。
+
+    生产难度主源 = 备战旗牌两级管线(``read_enemy_difficulty``,ADR-0449)
+    不变;本读法服务位面详情采集时的参考值落账(离线对拍/缺口排查)。
+    明文正读(非艺术字)→ 全屏 OCR 按「敌人难度」前缀正则提取,不依赖
+    固定坐标(位面详情布局随内容变,正则锚文本比锚坐标稳)。
+    """
+    try:
+        results = ctx.ocr_service.get_ocr_result_list(
+            image=screen, rect=None, color_range=None, crop_first=False)
+    except Exception:   # noqa: BLE001  best-effort 参考值
+        return None
+    for r in results:
+        m = re.search(r'敌人难度\s*(\d+)', r.data or '')
+        if m:
+            v = int(m.group(1))
+            if 1 <= v <= 999:
+                return v
+    return None
 
 
 def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
@@ -1422,9 +1597,18 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
                         and getattr(_sess_hp, 'last_hp_real_node', None) == _node_t)
     state.hp_trusted = (state.hp_readable and _hp_opt is not None) \
         or _same_node_stale
-    # r80(审计 P0):boss 轮次语义门 —— 「首领」标签在 boss 前夕也会出现在即将到来的
-    # boss 节点下方(2-7 实证),round<8 时必是张冠李戴 → 拒(boss=位面最后节点 ≥9 轮)
-    state.node_type = gate_node_type(read_node_type(ctx, screen), state.round_num)
+    # 节点类型台账制消费:查表优先(session 权威表,写入端 = 位面详情采集 +
+    # 投资环境后重读;权威依据 = 用户口述「位面内节点类型与数量只有投资环境
+    # 选择能改变」)。表缺/该位次未识别 → 退逐帧标签 OCR(旧链,boss 轮次门
+    # 等语义门不变);表值与逐帧读**同词汇表**,值语义零变更。
+    # 三票校验(纯记账):表可查时逐帧识别降级为校验票,≥2 独立票一致反对
+    # 表值才落缺陷台账(投资环境变异窗豁免),不改行为。
+    _ledger_session = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    _obs_t = gate_node_type(read_node_type(ctx, screen), state.round_num)
+    _ledger_t = ledger_node_type(_ledger_session, state.plane, state.round_num)
+    state.node_type = _ledger_t if _ledger_t is not None else _obs_t
+    if _ledger_t is not None:
+        verify_node_type_votes(ctx, screen, state.plane, state.round_num)
     # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
     # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
     # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),

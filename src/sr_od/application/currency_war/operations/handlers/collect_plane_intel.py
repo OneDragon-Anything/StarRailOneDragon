@@ -141,6 +141,10 @@ class CollectPlaneIntel(SrOperation):
         self._prep_node_types: list[str | None] | None = None
         self._prep_plane: int = 0                 # 备战帧所在位面(1-based;0=未知)
         self._prep_cross_done: bool = False       # 互证一次即止(op 短生命周期,防重跑重复落行)
+        # 位面节点序列台账写点①的采集面(权威依据=用户口述:位面内节点类型
+        # 与数量只有投资环境选择能改变 → 进位面时读一次建档,此后查表):
+        # 逐位面详情条序列(键=位面号 1-based;值=槽类型序,下标 i = 第 i+1 轮)。
+        self._detail_seqs: dict[int, list[str | None]] = {}
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -258,6 +262,18 @@ class CollectPlaneIntel(SrOperation):
                         _pp = read_phase_round(self.ctx, screen)
                         if _pp and _pp[0]:
                             self._prep_plane = int(_pp[0])
+                    # 台账写点①·备战行源(两源之一):备战节点行先按位合并进表
+                    # (详情条源稍后整面覆盖;合并语义=None 位保旧,见 ledger_update_plane)。
+                    with contextlib.suppress(Exception):
+                        from sr_od.application.currency_war.cw_state import (
+                            ledger_update_plane,
+                        )
+                        _sess = getattr(getattr(self.ctx, 'cw_match', None),
+                                        'session', None)
+                        if _sess is not None and self._prep_plane:
+                            ledger_update_plane(_sess, self._prep_plane,
+                                                list(self._prep_node_types),
+                                                'prep_row')
                 # 点**任意节点图标**都开位面详情(建档实锤;入口不依赖 current
                 # 锚——22:09 实跑 1-7 帧当前槽 V 未过亮门无锚,首版依赖 current
                 # retry 耗尽失败)。优先 current,无则首个检出圆。
@@ -305,6 +321,29 @@ class CollectPlaneIntel(SrOperation):
         # 节点序列互证(观测自检框架设计 §1 行11/§5-B5):同帧详情条与备战帧
         # 序列对拍(同位面才比,见 _cross_check_node_seq);纯记账,无行为分支。
         self._cross_check_node_seq(_detail_slots)
+        # 台账写点①·详情条源(两源之二):该位面全节点预览序列随采随存
+        # (关闭节点统一落账并回填 boss 位)。
+        if _detail_slots:
+            self._detail_seqs[self._cur_plane + 1] = [
+                getattr(s, 'node_type', None) for s in _detail_slots]
+            # 敌人难度参考值(位面详情底部明文):随选中位面变,逐位面读;
+            # **只存参考**,生产难度主源 = 备战旗牌两级管线(ADR-0449)不变。
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.cw_observation import (
+                    read_plane_detail_difficulty,
+                )
+                from sr_od.application.currency_war.cw_state import (
+                    get_node_ledger,
+                )
+                _sess = getattr(getattr(self.ctx, 'cw_match', None),
+                                'session', None)
+                _ledger = get_node_ledger(_sess)
+                if _ledger is not None:
+                    _dv = read_plane_detail_difficulty(self.ctx, screen)
+                    if _dv is not None:
+                        _ledger.difficulty_ref[self._cur_plane + 1] = _dv
+                        _log.info('[cw-plane-intel] 位面%d 敌人难度参考=%d',
+                                  self._cur_plane + 1, _dv)
         boss_pt = self._boss_node_center(_detail_slots)
         if boss_pt is None:
             return self._nonclean_read_gate('切卡动画中')
@@ -396,6 +435,26 @@ class CollectPlaneIntel(SrOperation):
         # 已离开位面详情 → 写中转(消费接线批挂账)
         self.ctx.cw_plane_bosses = list(self._plane_bosses)   # type: ignore[attr-defined]
         self.ctx.cw_plane_affixes = list(self._affixes)   # type: ignore[attr-defined]
+        # 台账写点①落账(session 权威表;详情条源为主——该位面全节点彩色预览,
+        # boss 位按「首领=位面最后节点」位置先验回填,回填依据 = 本 op 详情条
+        # 「首领节点」标签验证语义;备战行源已在入口合并,此处再并一次兜全)。
+        with contextlib.suppress(Exception):
+            from sr_od.application.currency_war.cw_state import (
+                fill_boss_by_position,
+                ledger_update_plane,
+            )
+            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+            if _sess is not None:
+                for _p, _seq in sorted(self._detail_seqs.items()):
+                    _changed = ledger_update_plane(
+                        _sess, _p, fill_boss_by_position(_seq), 'plane_detail')
+                    _log.info('[cw-plane-intel] 台账落账 p%d(%s)%s:%s',
+                              _p, 'plane_detail',
+                              '(有变更)' if _changed else '(无变更)',
+                              fill_boss_by_position(_seq))
+                if self._prep_node_types and self._prep_plane:
+                    ledger_update_plane(_sess, self._prep_plane,
+                                        list(self._prep_node_types), 'prep_row')
         _log.info('[cw-plane-intel] 采集完成 plane_bosses=%s affixes=%s(ctx 中转)',
                   self._plane_bosses, self._affixes)
         return self.round_success(f'位面情报采集:boss={self._plane_bosses} 词缀={self._affixes}')

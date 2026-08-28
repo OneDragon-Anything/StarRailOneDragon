@@ -1435,3 +1435,127 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                 _bench_clear_by_identity(bench, c)
                 _apply_row_to_char(c, f.row)
                 deployed_place(deployed, c)   # ADR-0392:按排路由落槽
+
+# ===== 位面节点序列台账(session 级权威表) ================================
+# 权威依据(用户口述,最高权威):位面内节点类型与数量**只有投资环境选择能改变**
+# (变异位唯一)→ 同一位面内节点序列是常量,可以「进位面时读一次建档 + 投资环境
+# 选完后重读刷新」,此后每帧备战画面**查表**得当前节点类型,逐帧识别降级为校验。
+# 旧逐帧识别的三类噪声(标签出现在即将到来节点下方 / 高亮态 Hu 不匹配 / 商店
+# 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
+
+
+@dataclass
+class PlaneNodeLedger:
+    """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
+
+    宿主:``ctx.cw_match.session``(经 :func:`get_node_ledger` 惰性挂载;
+    session 随每局新建 → 台账生命周期 = 一局,无跨局污染)。
+    """
+
+    #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
+    #: 的类型 token(battle/supply/encounter/reward/boss,与
+    #: ``cw_node_reader.NodeSlot.node_type`` / ``GameState.node_type`` 同词汇表;
+    #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
+    #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
+    #: ``seq[round_num - 1]``。
+    #: 写入端:①位面详情采集(CollectPlaneIntel,进位面时的两源互证产物);
+    #: ②投资环境选择完成后重读备战节点行(HandleInvestEnv,变异窗后的权威刷新)。
+    seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
+
+    #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
+    #: 判读侧区分表值的采集通道用(位面详情=彩色渲染态全量,备战行=含 past 遮挡)。
+    seq_source: dict[int, str] = field(default_factory=dict)
+
+    #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
+    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
+    difficulty_ref: dict[int, int] = field(default_factory=dict)
+
+    #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
+    #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
+    #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
+    #: 写入端:HandleInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
+    env_grace_until: float = 0.0
+
+    #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。
+    defect_seen: set[str] = field(default_factory=set)
+
+
+#: 台账在 session 上的挂载属性名(下划线前缀 = 非数据类契约,仅经函数存取)
+_LEDGER_ATTR: str = '_cw_plane_node_ledger'
+
+
+def get_node_ledger(session: object) -> PlaneNodeLedger | None:
+    """取 session 上的台账,无则惰性建(None session → None,调用方跳过)。
+
+    不放 StrategySession 字段声明(该类属策略域,本批不动)→ 动态挂载;
+    session 每局新建,属性随实例消亡 = 天然 session 级。
+    """
+    if session is None:
+        return None
+    ledger = getattr(session, _LEDGER_ATTR, None)
+    if ledger is None:
+        ledger = PlaneNodeLedger()
+        setattr(session, _LEDGER_ATTR, ledger)
+    return ledger
+
+
+def ledger_node_type(session: object, plane: int | None,
+                     round_num: int | None) -> str | None:
+    """查表:当前位面第 ``round_num`` 轮的节点类型(1-based round → 0-based 下标)。
+
+    表缺 / 位面轮越界 / 该位次未识别(None)→ None(调用方退逐帧识别链,
+    **不猜**)。boss 位在序列里存 'boss' token(写入端按「首领=位面最后节点」
+    位置先验回填,与既有 boss 语义门同源)。
+    """
+    ledger = getattr(session, _LEDGER_ATTR, None)
+    if ledger is None or not plane or not round_num:
+        return None
+    seq = ledger.seq_by_plane.get(int(plane))
+    if not seq:
+        return None
+    idx = int(round_num) - 1
+    if not 0 <= idx < len(seq):
+        return None
+    return seq[idx]
+
+
+def ledger_update_plane(session: object, plane: int, seq: list[str | None],
+                        source: str) -> bool:
+    """按位合并写入一位面的序列(**同位次新非 None 覆盖,None 保旧**)。
+
+    合并而非覆盖的原因:备战行/详情条的 past 与 boss 位识别恒 None(Hu 不对
+    当前/过去/头像生效)→ 整表覆盖会把已识别位洗成 None;逐位合并让多位面
+    多时点的读数渐进拼出全序列(投资环境变异位由最新的非 None 读数天然覆盖)。
+    序列变长(如环境加节点)时右侧扩展。返回是否有实际变化(判读用)。
+    """
+    ledger = get_node_ledger(session)
+    if ledger is None or not plane or not seq:
+        return False
+    old = ledger.seq_by_plane.get(int(plane)) or []
+    n = max(len(old), len(seq))
+    merged: list[str | None] = []
+    changed = False
+    for i in range(n):
+        new_v = seq[i] if i < len(seq) else None
+        old_v = old[i] if i < len(old) else None
+        v = new_v if new_v is not None else old_v
+        merged.append(v)
+        if v != old_v:
+            changed = True
+    ledger.seq_by_plane[int(plane)] = merged
+    if changed or ledger.seq_source.get(int(plane)) != source:
+        ledger.seq_source[int(plane)] = source
+    return changed
+
+
+def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
+    """序列副本的最右 None 位回填 'boss'(位置先验:首领 = 位面最后节点)。
+
+    只在 boss 位经详情条「首领节点」标签验证过的写入端调用(CollectPlaneIntel);
+    备战行重读等未经标签验证的写入端不回填(boss 位在备战行为 past 态,
+    回填无依据)。原序列不动,返回副本。
+    """
+    out = list(seq)
+    if out and out[-1] is None:
+        out[-1] = 'boss'
+    return out

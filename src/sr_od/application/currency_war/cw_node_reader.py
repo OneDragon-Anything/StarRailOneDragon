@@ -268,3 +268,33 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
                 _b.boss = _hit[0]
                 _b.node_type = None   # Hu 符号类型对头像圆无意义,覆盖(见 docstring)
     return slots
+
+
+#: 高亮 Hu 票的「有效命中」阈值:当前槽图标带彩色描边 + 高亮底,Hu 对模板的
+#: 距离分布比未来槽(纯符号图标)更散 → 用更宽的门。取值依据:同模板自比
+#: ≈0(尺度差异留量),已知类型未来槽最近距离实测 ≤1.83(supply)、当前槽
+#: 高亮态样本(1-1 fixture current=battle)实测 <4;4 以下认有效,以上 None。
+CUR_HU_DIST_HIT: float = 4.0
+
+
+def current_slot_hu_type(row_rgb: np.ndarray, slot: NodeSlot,
+                         templates: dict[str, list[HuLike]]) -> tuple[str | None, float]:
+    """三票校验·票C:当前槽**高亮态图标** Hu 矩对 4 模板 → (类型, 最近距离)。
+
+    旧 classify 只对 upcoming 槽跑 Hu(当前槽高亮态 Hu 恒不匹配的结论是
+    **TM 时代**的;Hu 对高亮二值轮廓有效,1-1 fixture current 槽实锺可分)
+    → 校验票单独重算当前槽 Hu,不依赖/不影响 classify 的 upcoming 赋值。
+    距离 > ``CUR_HU_DIST_HIT`` → (None, dist)(无有效接近,票弃权)。
+    纯 CV(无框架依赖);输入 RGB(框架截图通道,同 classify)。
+    """
+    gray = cv2.cvtColor(row_rgb, cv2.COLOR_RGB2GRAY)
+    x0, x1 = max(0, slot.cx - _SAMPLE_R), slot.cx + _SAMPLE_R
+    y0, y1 = max(0, slot.cy - _SAMPLE_R), slot.cy + _SAMPLE_R
+    if not templates or (y1 - y0) < _SAMPLE_R or (x1 - x0) < _SAMPLE_R:
+        return None, float('inf')
+    h = _hu_moments(gray[y0:y1, x0:x1])
+    dist, best = min((_hu_distance(h, hu), t)
+                     for t, hus in templates.items() for hu in hus)
+    if dist > CUR_HU_DIST_HIT:
+        return None, dist
+    return best, dist
