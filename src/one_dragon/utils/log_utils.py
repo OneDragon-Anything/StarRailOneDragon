@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import threading
 import time
 import weakref
@@ -65,9 +66,10 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
     到点轮转时后到的那个进程 rename 必然抛 ``PermissionError(WinError 32)``。
 
     策略:rename 遇到「文件被占用」类错误(WinError 32/33、errno EACCES/EBUSY)
-    时退避重试;全部失败则**放弃本次轮转**,继续向当前文件追加并推迟到下一个
-    时点再试 —— 日志短暂跨天不切分是可接受的降级,写日志抛异常污染调用方
-    (pytest 随机红)不可接受。其余 OSError 照常上抛。
+    时退避重试;仍失败则退化为 copytruncate 兜底(见 rotate),仅当连兜底都无法
+    完成时才放弃本次轮转、继续向当前文件追加并推迟到下一个时点再试 —— 日志短暂
+    跨天不切分是可接受的降级,写日志抛异常污染调用方(pytest 随机红)不可接受。
+    其余 OSError 照常上抛。
 
     另三处同族守卫(跨零点错乱时间线的实证根因是标准库 doRollover 失败时
     ``rolloverAt`` 不推进 → 每条日志重试换名、重试窗口内换名偶发成功会把
@@ -174,6 +176,42 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
             self.stream = self._open()
         self.rolloverAt = int(time.time()) + int(_ROTATE_DEFER_COOLDOWN_SECONDS)
         # 静默降级:不向调用方抛错(调用方大多只是想记一行日志)。
+
+    def rotate(self, source: str, dest: str) -> None:
+        """占用兜底的轮转落点:rename 被外部句柄挡住时退化为 copytruncate。
+
+        标准库 doRollover 的换名收口就是 ``self.rotate(source, dest)``,覆盖它
+        即覆盖了全部 rename 失败路径(WinError 32 丢失现场的精确栈帧)。
+        copytruncate(复制内容到归档名 + 截断源文件)不要求独占:Windows 的
+        rename 需要目标无任何打开句柄,但读写打开(CRT 默认共享读+写)互不
+        阻塞 —— 持有者是读句柄(尾随观察/日志查看器)时本路径必然成功。
+        兜底自身失败(归档名不可写/源不可截断)时异常上抛,由调用方的重试
+        +推迟降级接管,数据仍不丢。
+        """
+        try:
+            os.rename(source, dest)
+        except OSError as e:
+            occupied = (
+                getattr(e, 'winerror', None) in (32, 33)
+                or e.errno in (EACCES, EBUSY)
+            )
+            if not occupied:
+                raise
+            self._rotate_by_copytruncate(source, dest)
+
+    def _rotate_by_copytruncate(self, source: str, dest: str) -> None:
+        """copytruncate 兜底:内容归档到 dest,源文件截断为空继续写。
+
+        竞态限界(经典 copytruncate):复制与截断之间其他进程并发追加的行会被
+        截掉,代价上限是该窗口内几行 —— 显式优于旧「推迟降级」的整日不轮转
+        (轮转缺位会让归档错期,跨天判读误归属)。截断用 append 模式打开后
+        truncate(0):持有 O_APPEND 写句柄的写入方下次写自动落到新 EOF(截断后
+        的 0 偏移),不会在文件里留下稀疏空洞;本 handler 自身的流已由
+        doRollover 入口关闭。
+        """
+        shutil.copyfile(source, dest)
+        with open(source, 'ab') as f:
+            f.truncate(0)
 
     def _close_sibling_streams(self) -> None:
         """换名成功后强制同路径其他 handler 关闭存活流(置换为按路径重开)。
