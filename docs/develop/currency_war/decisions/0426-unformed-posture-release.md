@@ -112,6 +112,26 @@ shop 开态血量区被 UI 遮挡 → OCR 恒空 → `reconcile_hp` 返回「沿
 - **修复前**:3 例实机观察局(run `20260828_031008` / `20260828_040618` / `20260828_060339`)r9 同形态(未成型或刚成型 + boss 末窗 + 溢余金 + 投影命中)均不触发——三例同根因链(前 2 例断点一、第 3 例暴露断点二)。
 - **修复后**:释放通道首启从观察局⑦起;有效性判据 = shop 帧遥测影子行 tag 出现 `'release'`(release tag)+ **泄息去向分项账**(预算金逐笔去向:刷新/追级/结余,W385 A5 要求的账式口径)。
 
+## 增补(2026-08-28):C3 濒死带定谳清理(删码留档;W388 分通道补账后裁决)
+
+以上增补 B 节裁决「概念无效,不开臂、默认关维持」后,W388 分通道补账(`.debug/temp/currency_war/w388_crisis_channels/REPORT.md`,三分通道全负:帧级配对存活差恰 0.0000/金去向非囤积/混杂归因不成立)补齐了门所需的最后证据——开臂前置已永不满足 ∧ 概念已定谳 → 按策略开关生命周期第 4 态执行定谳清理(评估=`.debug/temp/currency_war/w407_c3_cleanup_eval/REPORT.md`)。本节只记清理决策与范围,不重复否决论证。
+
+### 删除清单
+
+- **生产面**(`decision_v2/filters.py` + `registry.py`):`dying_band_account_enabled`(+注释块)/`dying_band_active`/`_next_battle_loss`/`filter_candidates` 濒死段(BuyCard 'hoard_buy'/RefreshShop 'blind_refresh'/LevelUp 'levelup_no_deploy' 三删因)/`dying or c1` 条件改纯 `c1`/链日志 `dying_band` 字段。
+- **改名**:`dying_band_high_cost_floor` → `directed_refresh_high_cost_floor`(消费点 `filters._refreshable_names` 同步;取值与消费语义不变,消 C3 幽灵命名)。
+- **测试面**:`test_cw_p2_survival_band.py` C3 段 8 锁+夹具;`test_cw_w373_c3c4_redesign.py` C3-L1~L6 与 `_next_battle_loss` 导入及阈值/桶位断言;`test_cw_adr0293_calibration.py` 默认关断言改 `not hasattr`、字段账注释收敛、registry hash 锁同步。
+- **新增锁**:定谳卫生锁(已删符号 `not hasattr` + 共享面健在:损血表仍被 C4 投影消费、`_deploy_free(_after_merge)`/`_refreshable_names`/`hp_decision_trusted` 仍供 C1)。
+
+### 共享面边界声明(删而不伤)
+
+`p2_node_loss_table`/`node_loss_kind`(归 C4 投影,消费面双降单后表述随批改写)、`_deploy_free(_after_merge)`/`_refreshable_names`/`hp_decision_trusted`(归 C1 判据与 FLIP 守卫)全部保留;C3 专属结构(触发谓词嵌套应急带+损血查表包装)不含 C1 缺失的任何结构,可复用残余(Δp_board 符号谓词/合成豁免完备式/刷新名集)已由 C1 段经共享 helper 承载。
+
+### 行为不变量与复活条件
+
+- **零漂移不变量**:被删开关默认恒 False,删除=恒 False 分支移除——C1/FLIP/C4 默认行为逐位一致(全量 CW 测试回归验证,registry hash 锁同步)。
+- **复活条件(显式)**:仅当游戏机制使「濒死帧支出可跨多轮备战变现」(如多轮备战窗/出战前可多动一轮)时概念才可复活;届时从本 ADR 增补 B + W373 REDESIGN + git 历史重建,不复用删除前代码。
+
 ## Consequences
 
 - **正面**:溢余金死资本(P11)有了结构性出口;凑档卖 −84% 且残留全在豁免面;V_D 成本侧口径对齐;触发面逐帧可解释。

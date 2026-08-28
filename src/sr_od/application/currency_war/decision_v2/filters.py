@@ -23,7 +23,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
 )
-from sr_od.application.currency_war.cw_line_switch import node_loss_kind
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
     GameState,
@@ -64,20 +63,6 @@ def is_emergency(state: GameState,
     return state.hp <= registry.emergency_hp
 
 
-def _next_battle_loss(state: GameState, session: StrategySession,
-                      registry: DecisionV2Registry) -> float:
-    """下一战期望损血(粗档查表;registry.p2_node_loss_table 单一源,
-    与 C4 投影 cw_line_switch.rounds_alive 共表——重标定覆写只改表)。
-
-    节点型映射单一源=``cw_line_switch.node_loss_kind``(boss/遭遇→同名
-    档,奖励/补给→零损档,其余含缺读→normal 档——normal 为战斗节点
-    频率最高档,触发宽度居中非最窄,方向声明见 registry 字段注释)。
-    """
-    node = getattr(session, 'node_type_current', None) or state.node_type or ''
-    kind = node_loss_kind(node)
-    return registry.p2_node_loss_table.get(kind, 0.0)
-
-
 def _deploy_free(state: GameState) -> int:
     """当前可上阵空位数 = max(0, max_units − 上场占用)(ADR-0392 占用
     口径,与部署候选判据 deployed_occupied 同源)。"""
@@ -107,13 +92,13 @@ def _deploy_free_after_merge(c: Candidate, state: GameState) -> int:
 
 def _refreshable_names(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> frozenset[str]:
-    """R2 定向刷新存在性判据的名集(评分先验,非授权边界)。
+    """C1 定向刷新存在性判据的名集(评分先验,非授权边界)。
 
     =目标件名集(``candidates._target_names``:意向载体目标∪体系卡引擎
-    件)∪ 高费强件(费用 ≥ registry.dying_band_high_cost_floor 的注册表
-    角色)。滤网只判「店内有无可买+上的名集件」这一存在性,买谁由 EV
-    层定价——名单从授权边界降为评分先验(对抗审计 A1-β 修法,报告=
-    `.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)。
+    件)∪ 高费强件(费用 ≥ registry.directed_refresh_high_cost_floor 的
+    注册表角色)。滤网只判「店内有无可买+上的名集件」这一存在性,买谁
+    由 EV 层定价——名单从授权边界降为评分先验(对抗审计 A1-β 修法,
+    报告=`.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)。
     """
     from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.candidates import (
@@ -122,42 +107,8 @@ def _refreshable_names(state: GameState, session: StrategySession,
     names = set(_target_names(state, session))
     names |= {n for n, ch in CHARACTERS.items()
               if (getattr(ch, 'cost', 0) or 0)
-              >= registry.dying_band_high_cost_floor}
+              >= registry.directed_refresh_high_cost_floor}
     return frozenset(names)
-
-
-def dying_band_active(state: GameState, session: StrategySession,
-                      registry: DecisionV2Registry) -> bool:
-    """濒死带:应急深带内「再输一场即死」的帧(纯收窄,只删不增,设计=
-    `.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md` §2)。
-
-    四条件缺一不可:
-    1. registry.dying_band_account_enabled(默认关=现行为零漂移,A/B 臂);
-    2. hp 决策可信位(posture_release.hp_decision_trusted 单一源:与
-       flip_hit 同款守卫——100 兜底帧不评估,shop 开态沿用真值帧
-       放行,ADR-0428);
-    3. ``is_emergency``(触发线 emergency_hp 不动,本判据嵌套于应急深带
-       内,不新增覆盖态触发线);
-    4. hp ≤ 下一战期望损血(粗档查表)——「再输一场即死」帧。
-
-    支出收窄的语义(REDESIGN §2.3 推导链):删除判据 = Δp_board(s) ≤ 0
-    (本轮采纳支出 s 后、下一战开打前可完成的「上场位增加数」为 0)——
-    板面不变则胜率不变,删除集支出满足对任意 V_continue≥0 期望为负,
-    是可证明零期望的符号判定,不是「保守上界」;Δp_board>0 的支出交给
-    既有 EV 层定价。逐动作判定见 filter_candidates 濒死段。辖域
-    plane≥2(P2 生存批);与 release FLIP 辖区(hp>emergency_hp)零
-    交集——濒死帧恒不在 release 辖区。
-    """
-    if not registry.dying_band_account_enabled:
-        return False
-    from sr_od.application.currency_war.decision_v2.posture_release import (
-        hp_decision_trusted,
-    )
-    if state.plane < 2 or not hp_decision_trusted(state):
-        return False
-    if not is_emergency(state, registry):
-        return False
-    return state.hp <= _next_battle_loss(state, session, registry)
 
 
 def c1_directed_active(state: GameState, session: StrategySession,
@@ -183,8 +134,10 @@ def c1_directed_active(state: GameState, session: StrategySession,
 
     溢余段花金零息损(P11,成本恒 0),定向语义的期望账方向=只保留
     对 boss 战胜率有增量的支出;逐动作判定见 filter_candidates 的 C1 段。
-    判据性质(DESIGN `w397_s5_asset_channel` §3.3):默认配置下为与濒死带
-    同款 Δp_board 符号谓词(可证明零期望,W373 推导链在本辖域成立);
+    判据性质(DESIGN `w397_s5_asset_channel` §3.3):默认配置下为
+    Δp_board 符号谓词(可证明零期望,W373 推导链在本辖域成立;同款判据
+    的首用方 C3 濒死带已定谳清理,否决与清理裁决见 ADR-0426 增补节,
+    C1 辖域内推导链独立成立不受其否决波及);
     资产臂开启(registry.c1_asset_channel_enabled)后判据升格为
     「Δp_board×13.35 + V_asset > 0」的析取式——删除集降格为「可证明零
     板面增量 ∧ 低隶属度代理为负」的启发式收窄,W373「可证明零期望」
@@ -384,29 +337,14 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口);
     白名单放行的链日志行带 'formed_stop_exempt'=True。
 
-    濒死带支出收窄(设计=`.debug/temp/currency_war/w373_c3c4_redesign/
-    REDESIGN.md` §2,registry.dying_band_account_enabled):濒死帧
-    (dying_band_active)命中时按 Δp_board(本轮支出后、下一战开打前
-    的上场位增加数)做符号判定——BuyCard:有空位(free≥1)或 3合1 即时
-    合成且合成后可上(完备式=c.merge ∧ _deploy_free_after_merge≥1:
-    「会发生合成」不等于「Δp≥1」,板满+合成 2★ 落 bench 无位可上仍删)
-    放行,其余无空位
-    买删(原因 'hoard_buy',本轮不可能上场的纯 hoard 买,含
-    final 目标件「买而不上」——濒死帧来不及按 [21] 兑现,设计内意图);
-    LevelUp:bench 有可上件且空位不足时升完立刻多上 1 件放行,否则删
-    (原因 'levelup_no_deploy'——可部署性谓词,不是动作类型黑名单,
-    ADR-0302/0303 滤死升级反模式的结构性防复发);RefreshShop:店内有
-    可买+上的名集件(目标∪高费强件,名单在此只作评分先验)放行定向
-    刷新,否则删(原因 'blind_refresh');卖(变现)/部署非支出,不辖。
-    链日志行带 'dying_band' 原因。默认关=逐位一致(零漂移)。
-
     C1 溢余必花定向收窄(registry.c1_directed_spend_enabled,默认关
     =零漂移;辖域=c1_directed_active,P1 末窗投影安全带 d≥emergency_hp
-    ∧ 溢余段,与 FLIP/濒死带辖区零交集):命中间内对支出候选做与濒死带
-    同款 Δp_board 符号判定(溢余段花金成本恒 0,只删对 boss 战胜率
-    零增量的支出)——BuyCard:有空位可上或 3合1 即时合成且合成后可上
-    (完备式同濒死带侧,合成后可上才豁免)放行,纯 hoard 买删(原因
-    'c1_hoard_buy');
+    ∧ 溢余段,与 FLIP 辖区零交集):命中间内对支出候选做 Δp_board 符号
+    判定(本轮支出后、下一战开打前的上场位增加数;溢余段花金成本恒 0,
+    只删对 boss 战胜率零增量的支出)——BuyCard:有空位可上或 3合1 即时
+    合成且合成后可上(完备式=c.merge ∧ _deploy_free_after_merge≥1:
+    「会发生合成」不等于「Δp≥1」,板满+合成 2★ 落 bench 无位可上仍删)
+    放行,纯 hoard 买删(原因 'c1_hoard_buy');
     RefreshShop:店内有可买+上的名集件放行定向刷新,否则删(原因
     'c1_blind_refresh');LevelUp:升完立刻多上 1 件放行,否则删(原因
     'c1_levelup_no_deploy');卖/部署非支出不辖。链日志行带 'c1_directed'
@@ -428,24 +366,22 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     名改 'c1_hoard_buy_junk'(m<m_min 的低隶属度删,与 Δp_board-only
     的 'c1_hoard_buy' 分通道记账,供 A/B 兑现率闭环);链日志行加
     'c1_asset_pass'(true/false)与 'c1_asset_m'(候选/店内/备考的
-    m_eff 代表值)。濒死带段不引入资产臂(濒死帧无 P2 兑现面,DESIGN §5)。
+    m_eff 代表值)。
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
              else 'mode')   # 追赶态已退场(W126/ADR-0349)
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
-    dying = dying_band_active(state, session, registry)
     c1 = c1_directed_active(state, session, registry)
     refreshable = frozenset()
-    if dying or c1:
-        # 濒死带/C1 两辖区的定向刷新存在性名集(同款判据复用;两辖区按
-        # hp 结构互斥——濒死帧 hp≤25 恒不在 C1 辖区 hp≥59,不会同帧双评估)
+    if c1:
+        # C1 辖区的定向刷新存在性名集(存在性判据的评分先验)
         refreshable = _refreshable_names(state, session, registry)
-    shop_has_play = (dying or c1) and _deploy_free(state) >= 1 and any(
+    shop_has_play = c1 and _deploy_free(state) >= 1 and any(
         c.name in refreshable for c in (state.shop or []))
     bench_n = 0
-    if dying or c1:
+    if c1:
         from sr_od.application.currency_war.cw_state import bench_occupied
         bench_n = bench_occupied(state.bench or [])
     # C1 资产臂帧级预处理(每帧一次;m 表与 comp 由锁定线单一源派生,
@@ -477,8 +413,7 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
-        db_drop = ''   # 本行是否被濒死带收窄拦(Δp_board 符号判定)
-        c1_drop = ''   # 本行是否被 C1 定向收窄拦(同款符号判定)
+        c1_drop = ''   # 本行是否被 C1 定向收窄拦(Δp_board 符号判定)
         asset_m_rep: float | None = None   # 资产臂记账面(未评估=None)
         asset_pass = False
         if ok and formed_stop and isinstance(c.action, BuyCard):
@@ -487,37 +422,14 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                 ok = False   # [13] 停过渡件(白名单外);W255/ADR-0410
                 fs_drop = True
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
-        if ok and dying:
-            if isinstance(c.action, BuyCard):
-                # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
-                # else 0。合成豁免取完备式:「会发生合成」(c.merge)∧
-                # 「合成后可上」(_deploy_free_after_merge≥1)——板满+
-                # 合成 2★ 落 bench 无位可上时 Δp_board=0,不放行(买后
-                # 即可部署,部署由既有 deploy 候选免费完成)
-                if (_deploy_free(state) < 1 and not (
-                        c.merge
-                        and _deploy_free_after_merge(c, state) >= 1)):
-                    ok = False
-                    db_drop = 'hoard_buy'
-            elif isinstance(c.action, RefreshShop):
-                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据)
-                if not shop_has_play:
-                    ok = False
-                    db_drop = 'blind_refresh'
-            elif isinstance(c.action, LevelUp):
-                # Δp_board = min(bench_n, free+1) − min(bench_n, free)
-                # = 1 iff bench_n≥1 且 free<bench_n(升完立刻多上 1 件)
-                if not (bench_n >= 1 and _deploy_free(state) < bench_n):
-                    ok = False
-                    db_drop = 'levelup_no_deploy'
         if ok and c1:
-            # C1 定向收窄(与濒死带同款 Δp_board 符号判定,辖域不同):
+            # C1 定向收窄(Δp_board 符号判定):
             # 溢余段花金成本恒 0(P11),只删对 boss 战胜率零增量的支出。
             # 资产臂激活时(V_asset>0)为析取式放行(设计
             # w397_s5_asset_channel DESIGN §3.1);c1_asset_m 仅为记账。
             if isinstance(c.action, BuyCard):
                 # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
-                # else 0(完备式同濒死带侧:板满+合成落 bench 无位可上
+                # else 0(合成豁免取完备式:板满+合成落 bench 无位可上
                 # 时 Δp_board=0——资产臂开时按 m 计资产价值放行,
                 # 与合成体是否即时可上无关,DESIGN §3.2 B5)
                 if c1_asset_active:
@@ -542,7 +454,8 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                     ok = False
                     c1_drop = 'c1_blind_refresh'
             elif isinstance(c.action, LevelUp):
-                # Δp_board = 1 iff 升完立刻多上 1 件(同濒死带公式);
+                # Δp_board = 1 iff 升完立刻多上 1 件(bench_n≥1 且
+                # free<bench_n);
                 # 资产臂=bench_n≥1 ∧ ∃bench 件 m_eff≥m_min(等级 cap
                 # 跨位面继承;bench_n=0 无可兑现资产仍删,B10)
                 asset_pass = c1_asset_bench
@@ -557,8 +470,6 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                     if (formed_stop and isinstance(c.action, BuyCard)
                         and not fs_drop and c.tag in allowed
                         and c.tag not in forbidden) else {})}
-        if db_drop:
-            entry['dying_band'] = db_drop
         if c1_drop:
             entry['c1_directed'] = c1_drop
         if c1 and registry.c1_asset_channel_enabled and asset_m_rep is not None:

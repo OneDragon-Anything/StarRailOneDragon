@@ -186,8 +186,8 @@ _ZERO_LOSS_NODE_KINDS: frozenset[str] = frozenset({'reward', 'supply'})
 
 
 def node_loss_kind(node_type: str) -> str:
-    """节点型 → 损血档归一(单一源;filters._next_battle_loss 与 C4 投影
-    共用本映射)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
+    """节点型 → 损血档归一(单一源;C4 rounds_alive 投影唯一消费,
+    registry.p2_node_loss_table 同表分档)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
     损血 0);其余(普通战斗/精英/缺读/'?' 占位)→ normal 档——未知
     战斗节点按 normal 档(战斗频率最高档)、未知非战斗节点由调用方
     先归零损档,两类缺读不共用一个兜底。"""
@@ -234,17 +234,20 @@ def rounds_alive(state: GameState,
     reg = registry or DEFAULT_REGISTRY
     if not state.hp or state.hp <= 0:
         return 0
-    # 两态口径(M1b):loss=(1−p_win)·表值;缺省(空 dict 或 rung 缺档)
-    # 按 p_win=0=每战全损 → loss=表值条件常数(M1a)——同一份代码,
-    # 行为由 registry 注入切换(REDESIGN §3.3;设计文「缺省=1=全损」
-    # 指全损语义,落码取 p_win 缺省 0 使退化成立)。rung 单一源=scoring
-    # ._engines_formed(成型度,0-2 钳制;discipline 同法消费)。
+    # 两态口径(M1b,开关=registry.rounds_two_state_enabled,默认关=
+    # 零漂移锚):loss=(1−p_win)·表值;开关关或 rung 缺档按 p_win=0=
+    # 每战全损 → loss=表值条件常数(M1a)——同一份代码,行为由开关+
+    # 注入切换(REDESIGN §3.3)。rung 取样坐标=cw_sim._settle_rung
+    #(与 p_win 表的 W346 Δ池采样键同源,ADR-0279 单一源;deployed
+    # 全集+星徽,0-2 钳制)——不用 scoring._engines_formed(混合域
+    # 加权含 bench 折减项,坐标错位=p_win 偏乐观=门偏松,见
+    # registry.p_win_p2_by_rung 注释)。板面过换线延续(引擎四体系
+    # 跨线共享),当前板 rung 即新线起始 rung 下界;投影期内 rung
+    # 演化(成型升档/卖件回落)未建模,静态取样偏差已声明。
     p_win = 0.0
-    if reg.p_win_p2_by_rung:
-        from sr_od.application.currency_war.decision_v2.scoring import (
-            _engines_formed,
-        )
-        rung = min(2, max(0, _engines_formed(state, reg)))
+    if reg.rounds_two_state_enabled and reg.p_win_p2_by_rung:
+        from sr_od.application.currency_war.cw_sim import _settle_rung
+        rung = min(2, max(0, _settle_rung(state)))
         p_win = reg.p_win_p2_by_rung.get(rung, 0.0)
     h = float(state.hp)
     ra = 0

@@ -872,52 +872,36 @@ class DecisionV2Registry:
     #: registry 注入 False 保留。
     release_spend_gate_enabled: bool = True
 
-    # ===== P2 生存批:濒死带支出收窄(C3)与换线存活轮数门(C4) =====
+    # ===== P2 生存批:换线存活轮数门(C4) =====
     #: 设计=唯一规格:`.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md`
-    #: §2(C3 Δp_board 代理)/§3(C4 剩余节点序列逐节点投影)/§4(双源标定)。
+    #: §3(C4 剩余节点序列逐节点投影)/§4(双源标定)。
     #: 标定=同目录 w375_calibrate_dual_source.py(死亡真源=runs.jsonl,
     #: hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、不按置信度
     #: 过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反保守,已废;
     #: 产物=w375_dual_source_calib.json,双源互校:帧级合并均值 10.79 ∈
     #: run 级聚类 bootstrap CI [6.7,10.97])。
-    #: C3 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。True 时
-    #: 应急深带(hp≤emergency_hp,触发线不动)内「再输一场即死」帧
-    #: (hp≤下一战期望损血,粗档查表)做**支出收窄**:删除下一战部署
-    #: 增量为零(Δp_board=0)的支出——bench 满且无空位的纯 hoard 买/
-    #: 升完仍无件可上的 LevelUp/店无可上件的盲刷;可上件买/可引爆
-    #: bench 的 LevelUp/定向刷新放行(数值比较交给既有 EV 层,滤网只
-    #: 做可证明零期望的符号判定,REDESIGN §2.3 推导链);卖(变现)/
-    #: 部署非支出不辖。判据强制 state.hp_readable 守卫(置信 0 帧 hp
-    #: 为沿用值,假帧不评估);辖域 plane≥2(P2 生存批);与 release
-    #: FLIP 辖区(hp>emergency_hp)零交集——濒死帧恒不在 release 辖区,
-    #: 结构互斥。
-    dying_band_account_enabled: bool = False
-    #: P2 节点损血单一表(C3 濒死带「下一战期望损血」粗档与 C4 存活轮数
-    #: 投影共用;节点型→期望损血,正数)。单一源不变量:两消费点
-    #: (filters._next_battle_loss 桶位查表 / cw_line_switch.rounds_alive
-    #: 逐节点投影)读同一份表,消费语义各自投影、数值源唯一——重标定
-    #: 覆写只改此处。标定=同目录 w375_calibrate_dual_source.py(死亡真源
-    #: =runs.jsonl,hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、
-    #: 不按置信度过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反
-    #: 保守,已废;产物=w375_dual_source_calib.json,双源互校:帧级合并
-    #: 均值 10.79 ∈ run 级聚类 bootstrap CI [6.7,10.97])。
+    #: P2 节点损血单一表(C4 存活轮数投影用;节点型→期望损血,正数)。
+    #: 重标定覆写只改此处(标定叙述见上段段头,不重复)。原批与 C3
+    #: 濒死带查表共表;C3 已定谳清理(否决与清理裁决见 ADR-0426 增补
+    #: 节),现单消费点=cw_line_switch.rounds_alive 逐节点投影。
     #: 默认值=旧删失口径三档(结构性低估挂账;暂抄现行=零漂移);重标定
     #: 无条件期望(normal 10.16/encounter 12.00/boss 15.50,条件败面
     #: 12.77/13.33/15.50,CI 见 w375_dual_source_calib.json)待消费口径
     #: 定稿后覆写。node_type 缺读兜底=normal(战斗节点频率最高档,2/5 槽;
-    #: 触发宽度居中——三档中 encounter 16.67 最小、boss 26.71 最大,normal
-    #: 兜底既非最紧也非最松;濒死带缺读帧向「多拦」方向偏差约
-    #: (20.05−16.67)/16.67 ≈ +20% 触发面,属收窄方向的温和假阳性,容忍
-    #: 并在此声明,不做双档兜底)。reward 零损档承接奖励+补给零损日历轮
-    #: (C3 侧查表命中 0.0、C4 投影零损照走,与缺读 .get 0.0 兜底同值)。
+    #: 触发宽度居中——三档中 encounter 16.67 最小、boss 26.71 最大,
+    #: normal 兜底既非最紧也非最松)。reward 零损档承接奖励+补给零损
+    #: 日历轮(C4 投影零损照走)。
     p2_node_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 20.05, 'encounter': 16.67, 'boss': 26.71, 'reward': 0.0})
-    #: C3 R2 定向刷新存在性判据的「高费强件」费用下界(买侧不辖名单,
-    #: 只辖刷新存在性名集;来源=对抗审计 A1-β 反例画像「4 费通用强件是
-    #: 最高 Δp/g 选项」(报告=`.debug/temp/currency_war/w363_c3c4_attack/
-    #: ATTACK.md`)+ sim 分 rung 胜占比 0.34→0.65 单调
-    #: (W346 报告 §3.2 实证底座)=高费高星战力优势)。
-    dying_band_high_cost_floor: int = 4
+    #: C1 定向刷新存在性名集的「高费强件」费用下界(买侧不辖名单,
+    #: 只辖刷新存在性名集;消费点=filters._refreshable_names)。来源=
+    #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(报告=
+    #: `.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)+ sim 分
+    #: rung 胜占比 0.34→0.65 单调(W346 报告 §3.2 实证底座)=高费高星
+    #: 战力优势。原批名 dying_band_high_cost_floor(C3 濒死带首用),
+    #: C3 已定谳清理(ADR-0426 增补节)后随批改中性名,取值与消费
+    #: 语义不变。
+    directed_refresh_high_cost_floor: int = 4
     #: C4 存活轮数门总开关:False=现行为逐位一致(零漂移锚;与 drought
     #: bail 的或-并存结构不变,本门是 E_rounds 主判据的第三道串联门,
     #: 不造第二换线机制)。True 时 E_rounds 换线裁决通过后加验
@@ -926,15 +910,39 @@ class DecisionV2Registry:
     #: 旧线(「转进死线」堵门)。辖域 plane≥2(损血表为 P2 标定);
     #: drought bail 旁路不辖(或-并存结构不变,弃线不是转进)。
     line_switch_survival_gate_enabled: bool = False
+    #: C4 两态口径总开关(rounds_alive 逐节点投影的 p_win 通道):
+    #: False=现行为逐位一致(零漂移锚)——p_win_p2_by_rung 即使已注入
+    #: 也不消费,投影按损血表条件常数走(M1a);True 时两态口径生效
+    #: (M1b:loss=(1−p_win)·表值,rung 取样坐标见 p_win_p2_by_rung
+    #: 注释)。与 line_switch_survival_gate_enabled 正交:后者辖门
+    #(是否验存活轮数),本开关辖投影口径(怎么算存活轮数)。
+    #: **开臂 A/B 判据挂账(不执行)**:按 W371 M4 口径——姿态面为主
+    #(P2 生存/濒死带时长/换线拦截率过程指标),n=300/臂(合计 600)
+    #: 之前不允许率差当主判据;姿态面过才翻 True。
+    rounds_two_state_enabled: bool = False
     #: C4 兑现余量(轮;新线成型后仍需一轮兑现战斗,取 1=设计内保守下界)。
     #: 兼承载投影的近似残差(逐节点确定性投影 vs 真分布 E[min(t:ΣL>hp)]
     #: 的 Jensen 乐观差,REDESIGN §3.5 偏差表首行)。
     line_switch_survival_margin: float = 1.0
-    #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗胜率;缺省
-    #: 空 dict(或 rung 缺档)=消费侧缺省 p_win=0=每战全损,loss=表值
-    #: 条件常数,两态退化为 M1a)。占位,值=sim 分 rung 胜占比(W346 报告
-    #: §3.2;或 P2 损血重校批的 P2 胜率表)注入后生效。
-    p_win_p2_by_rung: dict[int, float] = field(default_factory=dict)
+    #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗条件胜率;
+    #: 消费侧缺档=p_win=0=每战全损,loss=表值条件常数,两态退化 M1a;
+    #: 消费开关=rounds_two_state_enabled,默认关=零漂移)。
+    #: 值出处=W346 门验证批分 rung 胜占比实测
+    #(.debug/temp/currency_war/w346_gate_validation/w346_dmg_delta.json,
+    #: 战斗 d>0 样本占比):k0=15/936=0.016,k1=879/2129=0.413,
+    #: k2+k3 钳制并入=864/1316=0.657(生产 rung 0-2 钳制,k3 桶折叠)。
+    #: 口径勘误:W393/W412 引文称「coarse 臂 0.34→0.65 单调」,原始
+    #: 数据核对 coarse 臂实为 0.8%/35.6%/31.9%(非单调、无 0.65),
+    #: 单调序列只在 Δ池臂——两态模型前提「p 对成型度单调不减」
+    #(REDESIGN §5 条 1)辖下取 Δ池档,本注释为准。
+    #: rung 取样坐标单一源=cw_sim._settle_rung(与表坐标同源,ADR-0279
+    #: 采样键;board 全集+星徽,deployed 域,0-4 钳到 0-2)——不用
+    #: scoring._engines_formed(混合域加权,bench×0.35 推高 rung,
+    #: 坐标错位=p_win 偏乐观=损血低估=门偏松)。
+    #: 证据等级=sim 档(单档 n≈900-2100,无实机 P2 分 rung 样本;
+    #: 方向声明=低档 p_win 低估损血高估、存活轮数偏短、门偏紧)。
+    p_win_p2_by_rung: dict[int, float] = field(default_factory=lambda: {
+        0: 0.016, 1: 0.413, 2: 0.657})
     #: C4 遭遇节点回血期望(hp;投影对每 encounter 节点加回)。默认 0=
     #: 0 下界(回血量未标定,禁拍死值;P2 生存实探局 hp=1 后有回血后继
     #: 观测实证(W350 REPORT §1),取 0=低估存活=门偏紧的保守方向);
