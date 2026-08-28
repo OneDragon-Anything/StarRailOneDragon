@@ -117,6 +117,18 @@ def slot_guard_blocks_level(state: GameState) -> bool:
             and bench_occupied(state.bench or []) > 0)
 
 
+def hp_decision_trusted(state: GameState) -> bool:
+    """hp 决策可信位(单一源):``state.hp_readable or state.hp_trusted``。
+
+    同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
+    语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
+    收紧口径)——100 兜底帧(开局全无真值,两位皆 False)不评估,
+    shop 开态沿用 last_hp_real 的帧(hp_readable=False ∧ hp_trusted=True)
+    放行。新增 hp 守卫消费点一律走本 helper。
+    """
+    return state.hp_readable or state.hp_trusted
+
+
 def flip_hit(state: GameState, session: StrategySession,
              registry: DecisionV2Registry, phase_value: str) -> bool:
     """FLIP 谓词(攒息 → 花钱的翻转条件;DESIGN §②)。
@@ -128,10 +140,11 @@ def flip_hit(state: GameState, session: StrategySession,
     与成型分期无关(实机进店帧实证:phase=SPEND/hp=38/gold>50/boss 窗
     激活/投影命中,曾被 FORM 相位门挡死致泄息通道结构性静默)。
     """
-    if not (state.hp_readable or state.hp_trusted):
+    if not hp_decision_trusted(state):
         return False    # 假帧不评估:仅 100 兜底帧(开局无真值)拒;shop 开态
                         # 沿用 last_hp_real 的帧 hp 是可信值,放行(ADR-0428;
-                        # 可信位语义=ADR-0282 对账层「沿用真值 vs 兜底假值」)
+                        # 可信位语义=ADR-0282 对账层「沿用真值 vs 兜底假值」;
+                        # 判定单一源=hp_decision_trusted)
     if state.plane > 2:
         return False    # 辖域 P1/P2 未成型期(DESIGN §附5)
     floor = registry.interest_floor
@@ -195,9 +208,13 @@ def release_directive(state: GameState, session: StrategySession,
     # 末窗投影臂相位无关后必须仍先于此处之下的 FLIP 规则2 判定,否则
     # 已成型末窗帧会被 FLIP 遮蔽、追级人口解锁边际=0 的压制丢失。
     # 非末窗的持续兑现由 FLIP 持续臂承担。
+    # hp 守卫走可信位 helper(与 FLIP 门同源):实机 shop 帧 readable 恒
+    # False,hp 是沿用真值(trusted=True)时第三路径 slot 压制必须照常
+    # 生效——严格 hp_readable 曾使第三路径在实机主消费面结构性失效;
+    # 100 兜底帧(两位皆 False)仍拒,兜底语义不变(ADR-0428)。
     if (posture.level_up
             and boss_first_buy_phase(state, session, registry)
-            and state.hp_readable
+            and hp_decision_trusted(state)
             and state.plane <= 2
             and state.hp > registry.emergency_hp
             and overflow > 0
