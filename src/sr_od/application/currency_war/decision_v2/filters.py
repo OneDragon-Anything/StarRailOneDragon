@@ -142,8 +142,8 @@ def c1_directed_active(state: GameState, session: StrategySession,
     「Δp_board×13.35 + V_asset > 0」的析取式——删除集降格为「可证明零
     板面增量 ∧ 低隶属度代理为负」的启发式收窄,W373「可证明零期望」
     证明对开启态不再适用(引用本 docstring 时须连同本段读)。
-    破息分支(g≤50 跨档)不在本辖域——过账判据存档于 registry 注释,
-    待 E[R̄] 标定后评估。
+    破息分支(g≤50 跨档)不在本辖域——概念已定谳否决,永不实现
+    (定谳判据与证据链=ADR-0443;registry 留定谳注记)。
     """
     if not registry.c1_directed_spend_enabled:
         return False
