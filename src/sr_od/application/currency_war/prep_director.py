@@ -33,6 +33,7 @@ battle_prep._verify_recognition 钩子的继任宿主。
 """
 from __future__ import annotations
 
+import re
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -62,11 +63,14 @@ from sr_od.application.currency_war.cw_observation import (
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
+    XP_TO_NEXT_LEVEL,
     BenchChar,
     GameState,
     bench_from_compact,
     bench_place,
     deployed_slot_no,
+    xp_apply_clicks,
+    xp_clicks_to_level,
 )
 from sr_od.application.currency_war.cw_state import (
     _merge_bench as cw_merge_bench,  # 合成落点模型单一源(场上吸收/备战最左/连锁)
@@ -76,6 +80,7 @@ from sr_od.application.currency_war.prep_actions import (
     ClickSpheres,
     DeferSpheres,
     DeployMove,
+    LevelUp,
     OpenTome,
     PrepAction,
     PrepActionExecutor,
@@ -513,6 +518,79 @@ def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
     return paths
 
 
+# ===== 经验期望态账本(W552:XP/等级期望态对账;架构同 W536 买牌/W530 拖动)=====
+
+#: 台账 surface/kind(经验通道;复现计数按 (surface, kind, expected) 分档)。
+_XP_DEFECT_SURFACE = 'xp'
+_XP_DEFECT_KIND = 'xp_expect_mismatch'
+
+#: RunBuyPhase 执行返回 detail 中「升级次数」的解析形态。来源链:shop.py
+#: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_level = 执行侧实际单击数)
+#: → prep_actions._run_composite 透传为 director 的 execute detail。
+_XP_BUY_CLICKS_PAT = re.compile(r'升(\d+)次')
+
+
+@dataclass
+class XpLedger:
+    """计算侧经验账本(会话级;锚点 + 意图推进 + 逐段对账,零决策记账)。
+
+    [字段定义] level/xp_cur/xp_next = 计算侧期望的 (等级, 当前级已攒经验,
+    当前级门槛)——坐标系 = 游戏 XP 条整局语义(门槛表 = XP_TO_NEXT_LEVEL
+    单一源);取值时机 = 锚点帧读数或购买意图经 xp_apply_clicks 纯推算,
+    **非执行期现读**;写入端 = PrepDirector._xp_* 三方法(单写者)。
+    anchored = 对局首帧锚定是否完成(锚定前不对账——纯推算的起点必须是
+    真实读数,否则整段账失真)。
+    round_key = 本对账段 (plane, round_num)——**轮界即重锚点**:轮间存在
+    未建模外生经验流(局⑳+1 replay 实测轮间 +2、位面过渡更大,来源未定),
+    吸收进锚点不进对账,累计披露于 exogenous_xp(把未知变实测,不硬编码)。
+    pending_clicks = 锚点后本段累计购买经验击数(>0 才对账;对账一次即清)。
+    events_txt = 本段事件摘要(台账 refs 用)。
+    exogenous_xp = 轮界重锚吸收的外生经验累计(纯观测披露,不参与对账)。
+    """
+    level: int = 0
+    xp_cur: int = 0
+    xp_next: int = 0
+    anchored: bool = False
+    round_key: tuple[int, int] | None = None
+    pending_clicks: int = 0
+    events_txt: str = ''
+    exogenous_xp: int = 0
+
+
+def _xp_parse_buy_clicks(detail: str) -> int:
+    """RunBuyPhase 执行 detail → 购买经验单击数;解析不出 → 0(宁缺勿造:
+    该单元不进经验账,不做猜测推进)。"""
+    m = _XP_BUY_CLICKS_PAT.search(detail or '')
+    return int(m.group(1)) if m else 0
+
+
+def _xp_compare(ledger: XpLedger, display: tuple[int, int] | None,
+                level_obs: int) -> list[dict[str, str]]:
+    """计算侧期望 vs 备战稳定帧显示读数(纯函数;XP/等级双源对账判据)。
+
+    - display = read_xp_progress 显示读数 (cur, next);None = 无法建真值
+      → 不评(宁缺勿造);
+    - level_obs = 显示等级(read_game_state 三源解析值);≤0 = 失读不评;
+    - 等级判据:计算 level vs 显示 level——等级是 deploy cap 的输入,
+      双源一致 = cap 可信(交叉验证);xp 判据:cur / next 逐项。
+    返回不一致项列表(空列表 = 全部可比项一致)。
+    """
+    mism: list[dict[str, str]] = []
+    if display is None or level_obs <= 0:
+        return mism
+    if ledger.level != level_obs:
+        mism.append({'domain': 'level', 'slot': '-',
+                     'expected': str(ledger.level), 'observed': str(level_obs)})
+    cur, nxt = display
+    if ledger.xp_cur != cur:
+        mism.append({'domain': 'xp', 'slot': 'cur',
+                     'expected': str(ledger.xp_cur), 'observed': str(cur)})
+    if ledger.xp_next != nxt:
+        mism.append({'domain': 'xp', 'slot': 'next',
+                     'expected': str(ledger.xp_next), 'observed': str(nxt)})
+    return mism
+
+
 @dataclass
 class PrepObservation:
     """备战决策环统一观察(§3;决策单一输入,组合现成 reader 不新写识别)。
@@ -926,6 +1004,120 @@ class PrepDirector(SrOperation):
         finally:
             expect.crops = None   # 对账完成即释放裁片拷贝(内存,~125KB/张)
 
+    # ===== 经验期望态账本(W552;纯记账+对账,零决策行为变更)=====
+
+    def _xp_ledger(self) -> XpLedger | None:
+        """会话级账本取存(动态属性挂 StrategySession——pending_buy_expect
+        同款先例;session 每局新建 → 账本天然局级生命周期,跨局零残留)。"""
+        session = self._session()
+        if session is None:
+            return None
+        led = getattr(session, 'xp_expect_ledger', None)
+        if led is None:
+            led = XpLedger()
+            session.xp_expect_ledger = led
+        return led
+
+    def _xp_apply_levelup(self) -> None:
+        """直接 LevelUp 动作通道推进账本(腾席链「循环点至 level+1、首次
+        OCR 验证成功即停」;仅 progressed 调用 = 升级已验证达成,实际击数
+        = xp_clicks_to_level 最小击数,无超额点击)。未锚定 → 丢弃(对局
+        首帧锚定前的意图不推算,由锚点吸收)。"""
+        led = self._xp_ledger()
+        if led is None or not led.anchored:
+            return
+        clicks = xp_clicks_to_level(led.level, led.xp_cur)
+        if clicks <= 0:
+            return
+        led.level, led.xp_cur = xp_apply_clicks(led.level, led.xp_cur, clicks)
+        led.xp_next = XP_TO_NEXT_LEVEL.get(led.level, led.xp_cur)
+        led.pending_clicks += clicks
+        led.events_txt += f'+LevelUp×{clicks}(至{led.level}级)'
+
+    def _xp_apply_buy_clicks(self, detail: str) -> None:
+        """RunBuyPhase 通道推进账本:执行 detail 解析升级次数(执行侧实况
+        计数,shop.py total_level 口径;调用方仅 progressed 分支——单元
+        失败=未购买不推算)。已知盲区:shop._handle_bench_full 席满急救的
+        盲击购买经验不经单元摘要 → 不在账,该形态的不一致是本对账的预期
+        留证对象(verdict 注明,不改语义)。未锚定 → 丢弃(同上)。"""
+        led = self._xp_ledger()
+        if led is None or not led.anchored:
+            return
+        clicks = _xp_parse_buy_clicks(detail)
+        if clicks <= 0:
+            return
+        led.level, led.xp_cur = xp_apply_clicks(led.level, led.xp_cur, clicks)
+        led.xp_next = XP_TO_NEXT_LEVEL.get(led.level, led.xp_cur)
+        led.pending_clicks += clicks
+        led.events_txt += f'+buy×{clicks}击'
+
+    def _reconcile_xp_expect(self, obs: PrepObservation) -> None:
+        """备战稳定帧经验对账(heavy 帧消费;零决策:不一致仅落缺陷台账,
+        不 return/不重买)。段语义见 XpLedger:轮界重锚(外生经验吸收并
+        披露)/锚定前不对账/同段有未对账购买意图才评;display 或 level
+        失读 → 保 pending 不评下帧重试(宁缺勿造)。全程 best-effort。"""
+        try:
+            led = self._xp_ledger()
+            st = obs.state
+            if led is None or st is None:
+                return
+            display = getattr(st, 'xp_progress', None)
+            level_obs = int(getattr(st, 'level', 0) or 0)
+            key = (int(getattr(st, 'plane', 0) or 0),
+                   int(getattr(st, 'round_num', 0) or 0))
+            if not led.anchored:
+                if display is not None and level_obs > 0:
+                    led.level, led.xp_cur = level_obs, display[0]
+                    led.xp_next = display[1]
+                    led.anchored = True
+                    led.round_key = key
+                    led.pending_clicks = 0
+                    led.events_txt = ''
+                return
+            if led.round_key != key:
+                # 轮界重锚:外生经验流(轮奖励/位面过渡,未建模)吸收进锚点;
+                # 同级同门槛帧才把差值记入 exogenous_xp(异级差值不可分,不记)。
+                if display is not None and level_obs > 0:
+                    if led.level == level_obs and display[1] == led.xp_next:
+                        led.exogenous_xp += max(0, display[0] - led.xp_cur)
+                    led.level, led.xp_cur = level_obs, display[0]
+                    led.xp_next = display[1]
+                    led.round_key = key
+                    led.pending_clicks = 0
+                    led.events_txt = ''
+                return
+            if led.pending_clicks <= 0:
+                return
+            mism = _xp_compare(led, display, level_obs)
+            clicks = led.pending_clicks
+            events = led.events_txt
+            led.pending_clicks = 0
+            led.events_txt = ''
+            if not mism:
+                return
+            obs_txt = ';'.join(f"{m['domain']}/{m['slot']} "
+                               f"期望[{m['expected']}] 实读[{m['observed']}]"
+                               for m in mism)
+            cw_telemetry.record_defect(
+                _XP_DEFECT_SURFACE, _XP_DEFECT_KIND,
+                expected=(f'lv{led.level} xp {led.xp_cur}/{led.xp_next}'
+                          f'(账本;events={events or "本段"})'),
+                observed=(f'lv{level_obs} xp '
+                          + (f'{display[0]}/{display[1]}' if display else '失读')
+                          + (f';{obs_txt}' if obs_txt else '')),
+                plane=key[0], round_num=key[1],
+                gap_large=True,
+                verdict=('留证-买经验后期望账本与显示读数不一致(零决策记账;'
+                         '已知盲区=shop 席满急救盲击购买经验不经账,该形态为'
+                         '预期留证;单次 L1,复现升 L0 由分级安灯承接)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('pending_clicks', str(clicks)), ('events', events))],
+                reader_source='xp_expect_reconcile',
+                note='期望态层·经验:期望=锚点读数+购买意图纯函数推进'
+                     '(XP_TO_NEXT_LEVEL 结转),与买牌/拖动通道分立')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] xp_expect reconcile skip: {e}')
+
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)
         return match.session if (match is not None and match.session is not None) else None
@@ -1263,6 +1455,12 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 执行异常 {key}: {e} → 本环 fail')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
+            # 期望态层·经验(W552):购买经验意图 → 账本推进(零决策记账;
+            # 仅 progressed 分支——执行失败=未购买,期望不适用)。
+            if progressed and isinstance(action, LevelUp):
+                self._xp_apply_levelup()
+            elif progressed and isinstance(action, RunBuyPhase):
+                self._xp_apply_buy_clicks(detail)
 
             # r292+P0③(r297):EnsureShopClosed 执行成功后=店确定关
             # 的可靠时点,**_probe_node_type 挂点**(审查 P0③:原挂
@@ -1346,6 +1544,9 @@ class PrepDirector(SrOperation):
                 session.pending_buy_expect = None
                 if progressed:
                     self._reconcile_buy_expect(_pending_buy)
+            # 期望态层·经验(W552):同帧对账(锚定/轮界重锚/段内对账;
+            # 内部 best-effort,异常不阻塞环)。
+            self._reconcile_xp_expect(obs)
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 

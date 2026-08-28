@@ -42,6 +42,49 @@ XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
 
+
+def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
+                    xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
+    """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
+
+    语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
+    溢出结转(与 cw_state LevelUp 动作应用 / sim 轮末升级清零结转同规则)。
+    封顶 10 级 = 生产 live 语义(10 级后购买经验无效;sim 侧 LEVEL_CAP=9
+    是已知建模分歧,勿混用)。
+
+    [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
+    xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
+    写入端 = PrepDirector XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
+    """
+    if clicks <= 0 or level >= 10:
+        return level, xp_cur   # 封顶/零意图:购买经验无效,零推进(live 语义)
+    cur = xp_cur + clicks * xp_per_buy
+    while level < 10:
+        need = XP_TO_NEXT_LEVEL.get(level, 4)
+        if cur < need:
+            break
+        cur -= need
+        level += 1
+    return level, cur
+
+
+def xp_clicks_to_level(level: int, xp_cur: int,
+                       xp_per_buy: int = XP_PER_BUY) -> int:
+    """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。
+
+    = ceil((need − cur) / xp_per_buy);cur 已达门槛 → 1(再点一次即升)。
+    消费端 = PrepDirector 直接 LevelUp 动作(腾席链「循环点至 level+1、
+    首次验证成功即停」通道):progressed=True 时实际击数 = 本值。
+    已升满 10 级 → 0(点击无效,调用方零推进)。
+    """
+    if level >= 10:
+        return 0
+    need = XP_TO_NEXT_LEVEL.get(level, 4)
+    gap = need - xp_cur
+    if gap <= 0:
+        return 1
+    return (gap + xp_per_buy - 1) // xp_per_buy
+
 # 保血阈值(策略校准参数,ADR-0203/0204 从 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
 # **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
 HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;= cw_evaluate.HP_DANGER 同值,语义「安全地板」)
