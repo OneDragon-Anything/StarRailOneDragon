@@ -1547,6 +1547,7 @@ EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                       occupied: dict[tuple[str, int], list[str]] | None = None,
                       plane: int = 1,
+                      allow_basic_wear: bool = False,
                       ) -> list[tuple[str, str]]:
     """(角色名, 装备名) 分配序列 —— carry 先拿 key_equips(按序),其余 core 次之,剩余兜底前排。
 
@@ -1584,8 +1585,11 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
        死库存不穿 core——穿着合成产物落在 core 身上=后续转移摩擦。
     """
     # ADR-0265:P1 组件保留过滤(key_equips 豁免;comp=None 时无豁免信息,
-    # 组件一律保留——v2 未锁线期本就不该散穿)
-    if plane == 1:
+    # 组件一律保留——v2 未锁线期本就不该散穿)。
+    # allow_basic_wear 旁路(默认关=生产语义逐位不变):用户裁定基础件
+    # 穿着可逆(卖角色取回装备)不构成锁死,是否 P1 穿简易件=编排者裁决
+    # ——sim C 臂(wear_basic)经本参数开启,不放松 ADR-0265 本身。
+    if plane == 1 and not allow_basic_wear:
         from sr_od.application.currency_war.cw_synthesis import (
             RESERVED_COMPONENTS,
         )
