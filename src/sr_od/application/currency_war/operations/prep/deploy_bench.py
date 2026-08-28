@@ -288,26 +288,17 @@ class DeployBench(SrOperation):
             # 腾位给 bench target(_deploy_deterministic 填)。自收敛(板全 target → _has_offtarget=False 停)。
             # 守卫(D-3):bench 有 target 才卖(有更好的要换上);无 target 留 off-target bodies(> 空板)。
             _bench_chars = read_bench_chars(self.ctx, self.last_screenshot, templates)
-            # ADR-0442 换装层:收敛载体在场时,focus_names/core 成员视同
-            # target(触发起腾席通道;core_names 恒不卖保护在卖出判据内)
-            _focus = (getattr(_match.session, 'transition_focus', None)
-                      if _match is not None and _match.session is not None
-                      else None)
 
             def _is_tgt_char(name: str) -> bool:
                 if name in _target_cores:
                     return True   # core_char 辅助(阵营∉comp)也是 target(勿卖/优先上)
-                if _focus is not None and (name in _focus.focus_names
-                                           or name in _focus.core_names):
-                    return True   # ADR-0442:收敛名集成员(焦点 2★ 触发跨档交换)
                 _c = get_char(name) if name else None
                 return _c is not None and bool((set(_c.factions) | set(_c.flows)) & _target_factions)
 
             _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
             if _bench_tgt_n > 0:
                 _n = self._sell_offtarget_deployed(front, back, _target_factions, templates,
-                                                   max_sell=_bench_tgt_n, target_cores=_target_cores,
-                                                   focus=_focus)
+                                                   max_sell=_bench_tgt_n, target_cores=_target_cores)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -519,14 +510,6 @@ class DeployBench(SrOperation):
                          if (f == _fw or f == '通用') and t != 'drop'}
         else:
             _fw_carry = set()
-        # ADR-0442 换装层摆板优先级(收敛载体在场时;载体 None=原行为):
-        # 配对体系 P* 阵营并进 deploy target 集(收敛体系板 > 其他羁绊板 >
-        # 散件,[31]③);focus_names 成员视同框架 carry(成型门核心 2★ 即上)。
-        _focus = (getattr(_sess, 'transition_focus', None)
-                  if _sess is not None else None)
-        if _focus is not None:
-            _tgt = _tgt | set(_focus.factions)
-            _fw_carry = _fw_carry | set(_focus.focus_names)
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
         # + 用户 live 观察 bug4「未考虑上限」)。CV 实测 deployed 优于 state.deployed_count(board 重建可能虚高)。
@@ -868,8 +851,7 @@ class DeployBench(SrOperation):
 
     def _sell_offtarget_deployed(self, front: list[Point], back: list[Point],
                                  target_factions: set[str], templates: AvatarTemplates | None,
-                                 max_sell: int = 99, target_cores: set[str] | None = None,
-                                 focus=None) -> int:
+                                 max_sell: int = 99, target_cores: set[str] | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -877,38 +859,12 @@ class DeployBench(SrOperation):
         target 数,保证每个卖出被一个 target 补上,板大小稳定;防 bench target 少却卖光 off-target → 板缩 HP 崩)。
         ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
         首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
-
-        ADR-0442 换装层(focus 非 None 时):候选按 ``cw_transition.focus_sell_rank``
-        卖序执行(零羁绊 1★ 散件最先 → 非收敛 1★ → …,与决策侧留牌层同一函数,
-        禁双源);core_names/focus_names 恒不卖(C5-2);2★ 让位仅限「零羁绊
-        2★ 且 bench 有焦点 2★ 待上且 e<2」(C4-2 两条让位规则的保守可执行子集
-        ——同名 2★ 焦点件让位被同名在场禁双结构排除,分支 a 无执行面);
-        focus=None 时保持原候选序(零漂移)。
         """
         deployed = exclude_system_units(
             read_deployed_chars(self.ctx, self.last_screenshot, templates)
         ) if templates else []
         _sell = Point(70, 846)
         sold = 0
-        # ADR-0442:2★ 让位的 e<2 辖域判据(引擎跨档交换只在体系未封顶时合法)
-        _bench_focus_2star = 0
-        _engines_lt2 = False
-        if focus is not None:
-            from sr_od.application.currency_war.cw_deploy_logic import (
-                engines_count as _ec,
-            )
-            _sess0 = (self.ctx.cw_match.session
-                      if self.ctx.cw_match is not None else None)
-            _st0 = getattr(_sess0, 'last_state', None)
-            _board0 = getattr(_st0, 'board', None) or {}
-            _dep0 = getattr(_st0, 'deployed', None) or []
-            _engines_lt2 = _ec(_board0, {getattr(d, 'char_id', '') or ''
-                                         for d in _dep0}) < 2
-            _bench0 = getattr(_st0, 'bench', None) or []
-            _bench_focus_2star = sum(
-                1 for b in _bench0
-                if b is not None and getattr(b, 'star', 1) >= 2
-                and getattr(b, 'char_id', '') in focus.focus_names)
         _cands: list[tuple[tuple, object, set[str]]] = []
         for d in deployed:
             if sold >= max_sell:
@@ -925,27 +881,8 @@ class DeployBench(SrOperation):
                              f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
                 continue
-            # ADR-0442:收敛名集/核心恒不卖(C5-2;与决策侧留牌层同判据)
             _rank: tuple = (1, 0 if getattr(d, 'star', 1) <= 1 else 1)
-            if focus is not None:
-                from sr_od.application.currency_war.cw_transition import (
-                    focus_sell_rank,
-                )
-                if (d.char_id in focus.core_names
-                        or d.char_id in focus.focus_names):
-                    log.info(f'[cw-deploy] 焦点保护(ADR-0442):{d.char_id}'
-                             ' 是收敛名集/核心 → 不卖')
-                    continue
-                _rank = focus_sell_rank(d.char_id,
-                                        max(1, int(getattr(d, 'star', 1) or 1)),
-                                        focus) or _rank
-                if getattr(d, 'star', 1) >= 2:
-                    if not (_engines_lt2 and _bench_focus_2star > 0
-                            and _rank[0] == 0):
-                        continue    # 2★ 让位仅限零羁绊×焦点2★待上×e<2(C4-2)
             _cands.append((_rank, d, bonds))
-        if focus is not None and len(_cands) > 1:
-            _cands.sort(key=lambda t: t[0])   # 卖序:零羁绊1★ 先于非收敛 1★ …
         for _rank, d, bonds in _cands:
             if sold >= max_sell:
                 break

@@ -2,7 +2,7 @@
 
 ## 状态
 
-accepted-with-switch(开关生命周期第 1 态:落码默认关,零漂移锚已验;开臂 A/B 判据预注册挂账,归下一批执行)
+rejected(定谳删除;**范围=收敛载体 + 三层贯彻**;框架启动基建(pick_framework_startup + framework_startup_v2_enabled 默认关 + liveness 遥测契约)保留休眠,复活时复用。决策 why 见 Decision 5 成本裁决段)
 
 ## Context
 
@@ -19,6 +19,7 @@ run_20260828_123935(P2r1 场上 5×2★ 散布 7 阵营零协同,`state.focus_fa
    - 留牌层:bench 卖序键 `cw_transition.focus_sell_rank`(散件 > 非收敛囤件 > drop > partial > carry,core_names 恒不可卖;素材保护由既有加权副本 ≥2 禁卖覆盖),决策侧在 `discipline.sell_priority_key`(键首插 focus 段)与 `candidates._sell_tag`(focus 名从凑息向卖档保护)消费。**执行点声明**:bench 卖出动作由 decide_prep 的动作列表(SellBench 候选)驱动、`operations/prep/shop.py` 仅执行(冻结禁碰,本批未改)——卖序在 decision_v2 侧生效,无 shop.py 集成缺口;`focus_sell_rank` 同时导出给执行层 deploy 腾席共用(单一源)。
    - 换装层:`operations/prep/deploy_bench.py`(非冻结)——摆板优先级:P* 阵营并进 deploy target 集、focus_names 成员视同框架 carry;腾席(`_sell_offtarget_deployed`)按 `focus_sell_rank` 卖序执行、焦点名恒不卖、2★ 让位仅限「零羁绊 2★ × bench 有焦点 2★ 待上 × e<2」(C4-2 两分支的可执行子集:同名 2★ 焦点件让位被同名在场禁双结构排除,无执行面)。
 4. **零漂移锚**:双开关全关=决策序列与现状逐位一致(sim 同 seed 对拍 n=20 seed_base=0 pool snapshot 指纹 6400d5d8edeaf68d,动作序列 hash 改前改后逐位相同);收敛开关开而启动开关关=三层惰性(声明性依赖锁,测试覆盖)。
+5. **删除裁决(定谳,W474 审计终裁;范围=收敛载体+三层贯彻)**:全机制 A/B 判据(Decision 2)未过,触发第 4 态「删码留本 ADR」。证据链与措辞口径(**成本裁决,非概念证伪**):①W461——收敛载体在决策序列中被孤写(载体写入后下游无消费到达动作层,台账 `.debug/temp/currency_war/w461_fw_ab/`);②W469——全机制 A/B(n=300 seed 0-299 同池,台账 `.debug/temp/currency_war/w469_convergence_ab/`):活性臂达标(管线活着),主判据方向 5/6 为正、出口血量点估计 +1.44,但 n300 统计功效仅 37.7%,效应真值未被排除——「功效不足以定谳功效,成本不足以继续持有」;守卫出口金负项为干预的机械后果(买先验改向买了更贵的件),与出口血量相关 corr=+0.07,非独立否决项;③W470——0.5·overlap 项(定型信号 × P* 重叠)无现成输入源(commit_signals 定型线 leader 在 decision_v2 无可消费的同语义载体;该批未落档,结论按本节记录为准)——是「新建累积器未评估」,非「不可实现」。**删除范围与保留面**:删=cw_transition 收敛载体节(compute_transition_focus/TransitionFocus/focus_membership/focus_sell_rank 及映射表)、registry transition_focus_enabled/transition_focus_buy_prior 两字段、decision_v2 四处消费块(scoring/discipline/candidates/strategy 载体块)、deploy_bench 换装层集成段、测试 test_cw_transition_focus;**保留(休眠)**=pick_framework_startup + framework_startup_v2_enabled(默认关)+ cw_sim_checks liveness 契约 + test_cw_fw_startup——invariant:该基建是 transition_framework 在 decision_v2 路径的唯一定期写入者(拔除=6 个消费者读孤儿字段),且是复活路径的种子;保留面另有 telemetry `sess_framework` 字段(判读侧历史台账兼容,恒写默认值)、shop.py(冻结)、旧栈 pick_framework/commit_signals 语义、P20 证明单篇。**复活条件(操作化)**:①新建跨轮终局线信号累积器(设计件,补 0.5·overlap 项的合法输入);②预注册 n≥451(80% 功效 @ 效应 +2.0)重跑全机制 A/B。零行为证明:删除后默认配置 sim n=300(seed 0-299 同池)与 W457 基线归一化哈希逐位一致(证据 `.debug/temp/currency_war/w472_chain_delete/`;保留项全在开关关路径)。
 
 ## Considered Options
 

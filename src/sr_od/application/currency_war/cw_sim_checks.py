@@ -3925,6 +3925,11 @@ def check_transition_framework_liveness(
     state 顶层字段);sim 账本行无 sess_framework 字段 → 合格帧 0,
     自动档只披露(不误报)。生产巡检/契约测试显式传 decisions 行 +
     armed=True 执法。
+
+    生命周期注(收敛载体定谳删除批,ADR-0442):收敛载体+三层贯彻已删,
+    本契约随框架启动基建(pick_framework_startup +
+    framework_startup_v2_enabled 默认关)保留休眠——开臂后的静默死亡
+    防线,复活路径复用。
     """
     from types import SimpleNamespace
 
@@ -4132,7 +4137,8 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'decision_v2_telemetry_contract':
             check_decision_v2_telemetry_contract(),
         # 过渡框架管线遥测契约(自动档:sim 账本无 sess_framework → 只披露;
-        # armed 执法走显式 decisions 行喂入,见该函数 docstring)
+        # armed 执法走显式 decisions 行喂入,见该函数 docstring;
+        # 收敛载体已删,本契约随框架启动基建保留休眠,ADR-0442)
         'transition_framework_liveness':
             check_transition_framework_liveness(
                 [row for rows in ledgers for row in rows]),

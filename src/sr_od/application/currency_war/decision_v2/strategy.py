@@ -152,8 +152,6 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_release = None
         session.v3_release_round = None
         session.v3_release_spent = 0
-        session.transition_focus = None   # ADR-0442:收敛载体跨局清零
-        session.transition_focus_prev = None   # 跨轮滞回槽一并清零
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:
@@ -300,17 +298,10 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v3_handoff_plane = state.plane
             session.v3_handoff = handoff_snapshot(state, session, registry)
         # 过渡框架启动重接线(开关=registry.framework_startup_v2_enabled,
-        # 默认关=不触碰字段,决策序列零漂移)。旧栈双轨分支随载体切换
-        # 孤儿化,本字段在 decision_v2 载体上恒空(P1 出口帧全空,根因=
-        # 载体死代码,启动时序定位报告见 w455_fw_startup);此处按纯持
-        # 有权 ≥2 主门重新接活,
-        # 决策函数单一源=cw_transition.pick_framework_startup(禁复制)。
-        # 调用时点=decide_prep(state 就绪处):实机 shop.py 在商店开门后
-        # 读帧再调本方法、sim 每轮先发牌再调——两载体 shop 都真实可见,
-        # 旧调用点「关门帧 shop 恒空」的时序病在本点不存在。锁定线或
-        # 进 P2(in_early_phase 为假)即清空,与旧栈「定型后清框架」语义
-        # 对齐;禁碰 operations/prep/shop.py(保留件冻结),其消费面读
-        # session 自然复活。
+        # 默认关=不触碰字段,决策序列零漂移)。启动判据与调用时点语义见
+        # cw_transition.pick_framework_startup docstring 与 registry 字段注释
+        # (收敛载体已定谳删除,本块是 transition_framework 在 dv 路径的
+        # 唯一定期写入者,按 ADR-0442 裁决保留休眠)。
         if registry.framework_startup_v2_enabled:
             from sr_od.application.currency_war.cw_transition import (
                 in_early_phase,
@@ -350,40 +341,6 @@ class DecisionV2Strategy(DefaultCwStrategy):
             else:
                 session.transition_framework = ''
                 session.framework_clear_ban = ''
-        # 过渡收敛目标载体(ADR-0442;开关=registry.transition_focus_enabled
-        # 默认关=不触碰字段,决策序列零漂移)。载体在框架写入点之后计算:
-        # F 取 session.transition_framework(依赖 framework_startup_v2_
-        # enabled——启动开关关时 F 恒空,本载体恒 None 三层全部惰性);
-        # 计算规则单一源=cw_transition.compute_transition_focus(禁复制)。
-        # **清除条件=断供(框架空/进 P2/锁线/开关关),不是轮边界**:
-        # 上一轮载体存 session.transition_focus_prev(跨轮槽)喂给滞回
-        # (C1-5,P* 换需挑战者领先 ≥1)——若每轮预清,current 恒 None,
-        # 滞回死接线,P* 随 owned/shop 波动逐轮翻转;
-        # compute 对断供自返 None,prev 随本槽赋值自然清。
-        _focus_prev = getattr(session, 'transition_focus_prev', None)
-        session.transition_focus = None
-        if registry.transition_focus_enabled:
-            if not registry.framework_startup_v2_enabled:
-                _focus_prev = None   # 依赖开关未开:三层惰性(两槽都清)
-            else:
-                from sr_od.application.currency_war.cw_transition import (
-                    compute_transition_focus,
-                )
-                _fw = getattr(session, 'transition_framework', '') or ''
-                if _fw:
-                    from sr_od.application.currency_war.cw_comps import (
-                        get_comp,
-                    )
-                    _lead = getattr(session, 'commit_signals', None)
-                    _lead = _lead.leader() if _lead is not None else None
-                    session.transition_focus = compute_transition_focus(
-                        bench=state.bench, deployed=state.deployed,
-                        shop=state.shop,
-                        active_env=getattr(session, 'active_env', '') or '',
-                        leader_comp=get_comp(_lead[0]) if _lead else None,
-                        framework=_fw,
-                        current=_focus_prev)
-        session.transition_focus_prev = session.transition_focus
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:
