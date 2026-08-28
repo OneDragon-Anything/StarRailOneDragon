@@ -86,11 +86,11 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 **需放大管线(原生分辨率 det 漏检)**:
 - `read_level_up_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」),原生直读基本检不到(小字 det 漏检,与等级/XP 小字同根)。**两级管线可读**:3x 放大 → 仍空再 OTSU 二值化重试;58 张备战帧仓离线对拍 3x=55/58、加二值化=57/58(唯一残留帧数字在场但两级均未检出,走 None → plan 用 `LEVEL_UP_COST_TABLE` 兜底)。实帧锁见测试 `test_read_level_up_cost_real_fixture`。
-- `read_shop_refresh_cost`(刷新「2」):同类小字失读,仍走原生直读 + 默认 2(该值恒 2,静态估无损失,未接放大管线)。
+- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策见 ADR-0455)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。
 
 **弱**:
 - `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。
-- `read_streak`(文本-连胜数):实图全 None(数字未显或 area 待核)。
+- `read_streak`(文本-连胜数):已接 3x 放大管线(直读在渲染变异帧漏检;正负语义待核,magnitude)。
 
 **视觉身份层(SIFT/TM,`cw_identity_obs`)**:
 - bench/deployed 角色身份(`read_bench_chars` / `read_deployed_chars`):裁 screen_info 槽位(前排/后排/备战栏)→ SIFT 对 `character_avatar` 脸近景库 → 规范名。脸近景库对备战半身立绘强命中;与 bot 跟踪(buy/deploy 推演)互补,作离线重建 / 漂移恢复旁路(不进 read_game_state)。

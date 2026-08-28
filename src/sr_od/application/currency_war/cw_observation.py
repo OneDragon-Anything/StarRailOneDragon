@@ -810,17 +810,45 @@ def read_level_up_cost(ctx: SrContext, screen: MatLike) -> int | None:
     return None
 
 
-def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int:
-    """刷新商店一次的花费(``文本-刷新金币数``;默认 2,投资策略可减免;未读到保 2)。"""
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-刷新金币数'))])
+def _parse_coin_fee_digit(texts: list[str]) -> int | None:
+    """刷价 rect 文本 → int(字段先验:rect 内恒为 金币图标+一位费用数字)。
+
+    金币图标被 OCR 系统性并入前缀(实测 'GO'/'G0'/'G2',G=图标):先归一大写、
+    把残留的字母 O 映射成 0(图标旁数字 0 的形变),再取首个整数。
+    无数字(两级管线全空)→ None。
+    """
+    for t in texts:
+        m = re.search(r'\d+', (t or '').upper().replace('O', '0'))
+        if m:
+            return int(m.group())
+    return None
+
+
+def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int | None:
+    """刷新商店一次的花费(``文本-刷新金币数``;投资策略可减免,**可为 0**)。
+
+    放大两级管线(与 ``read_level_up_cost`` 同形):原生直读是该 rect 的
+    历史残留——同屏小字(金币/等级/费用)均已放大读,本字段曾用 native OCR
+    +「读不到兜底 2」,带横幅变体帧实证把真 0 静默改成 2(错值喂决策)。
+    两级读空 → **None=读不到**,由消费方走 ``or 2`` 兜底(与决策层默认一致),
+    「读不到」与「真 0」不再混写。守卫 0..10(免费刷/减免档内)。
+    """
+    rect = _area_rect(ctx, '文本-刷新金币数')
+    v = _parse_coin_fee_digit([r.data for r in _ocr_upscaled(ctx, screen, rect)])
+    if v is None:
+        v = _parse_coin_fee_digit([r.data for r in _ocr_upscaled_binarized(ctx, screen, rect)])
     if v is not None and 0 <= v <= 10:
         return v
-    return 2
+    return None
 
 
 def read_streak(ctx: SrContext, screen: MatLike) -> int | None:
-    """连胜/连败数(``文本-连胜数``;**正负语义待核**(正=连胜?),现读 magnitude;None=未读到)。"""
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-连胜数'))])
+    """连胜/连败数(``文本-连胜数``;**正负语义待核**(正=连胜?),现读 magnitude;None=未读到)。
+
+    放大读(与同屏小字字段同管线;native 直读在渲染变异帧失读实证:rect 内
+    数字清晰但 det 漏检,3x 放大可读)。
+    """
+    v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, _area_rect(ctx, '文本-连胜数'))])
     if v is not None and 0 <= v <= 20:      # magnitude(符号待核);连胜/连败一般 ≤20
         return v
     return None
@@ -1657,6 +1685,8 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.enemy_difficulty = _ed_session
         state.enemy_difficulty_live = False
     state.level_up_cost = read_level_up_cost(ctx, screen)
+    # 刷新费 None=读不到(放大两级管线读空),消费方统一 ``or 2`` 兜底——
+    # 「读不到」不再混写成默认 2(带横幅帧真 0 被兜底改 2 的错值根除)。
     state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
     # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。

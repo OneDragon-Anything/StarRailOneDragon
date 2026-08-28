@@ -1,11 +1,21 @@
 ---
 screen_name: 货币战争-备战-角色详情
 appears_in: [currency_war]
-last_updated: 2026-08-13
+last_updated: 2026-08-29
 source_image: screens/货币战争-备战-角色详情/信息tab.webp
 ---
 
 # 货币战争-备战-角色详情(点角色弹的详情面板)
+
+> ⚠️ **三形态拆档(2026-08-29)**:本画面原把三种 overlay 捏在一档,唯一形态锚
+> 「装备推荐」只属**大面板**形态 → 另两形态帧判不出本画面、被帧态门放行为备战帧
+> (门漏,决策见 ADR-0454)。现拆为三档:
+> - 本档 = 角色详情**大面板**(锚 装备推荐+购买经验,不变);
+> - `currency_war_battle_prep_equip_float.yml` = **货币战争-备战-装备详情浮窗**
+>   (点右侧装备弹的装备+可合成列表小浮窗,锚 标识-可合成列表);
+> - `currency_war_battle_prep_char_tooltip.yml` = **货币战争-备战-角色信息提示**
+>   (悬停角色的信息 tooltip,锚 标识-携带装备)。
+> 装备详情浮窗/角色信息提示的真值帧已从 `screens/货币战争-备战/` 迁各自 screen 目录。
 
 ## 何时出现 + 状态流转
 
@@ -51,5 +61,12 @@ source_image: screens/货币战争-备战-角色详情/信息tab.webp
 - **id_mark(2026-08-13 定型)**:角色详情 = 「装备推荐」+「购买经验」(组合);**备战 id_mark 含「出战」**(角色详情右侧面板盖住出战 → 角色详情态备战缺出战 → 不 is_precise → 不撞车)。同 partner 模式(备战加个被子态盖的元素),只是这里被盖的是「出战」(右侧)非「前台区域」(中心)。
 - **screen_info**:`currency_war_battle_prep_equip_detail.yml`(screen_id 历史名,实为角色详情)—— `按钮-装备推荐` + `备战标识-购买经验`(组合 id_mark)。screen_name = 货币战争-备战-角色详情。
 - **子态**:装备推荐 tab(点装备推荐)、装备详情(点角色装备)。本屏 fixture 含 信息tab / char_detail_equipped / equip_detail_stepbystep(=装备推荐/装备详情子态)。
-- **独立「装备详情」(备战右侧装备)**:与本角色详情不同(装备-only),待建档。
-- fixture 已归档 `sr-od-test/screens/货币战争-备战-角色详情/`(信息tab / char_detail_equipped / equip_detail_stepbystep,2026-08-13)。
+- **独立「装备详情」(备战右侧装备)**:装备+可合成列表小浮窗,已拆独立档
+  `currency_war_battle_prep_equip_float.yml`(画面名 货币战争-备战-装备详情浮窗,
+  真值帧 equip_detail_roller / equip_detail_synth_target)。
+- **角色信息提示 tooltip**(悬停角色弹的 头像+阵营+描述+携带装备 小面板):独立档
+  `currency_war_battle_prep_char_tooltip.yml`(画面名 货币战争-备战-角色信息提示,
+  真值帧 char_detail)。
+- fixture 已归档 `sr-od-test/screens/货币战争-备战-角色详情/`(信息tab / char_detail_equipped / equip_detail_stepbystep / 装备详情子态,2026-08-13;门回归锁 test_cw_w559_overlay_gates)。
+- 待采集(挂账):「装备推荐」按钮在**未持装备角色**上的大面板渲染是否与在库 4 帧一致,
+  无真值帧,遇实机时补。

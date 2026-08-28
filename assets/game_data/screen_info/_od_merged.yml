@@ -9747,3 +9747,39 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+- screen_id: currency_war_battle_prep_equip_float
+  screen_name: 货币战争-备战-装备详情浮窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-可合成列表
+    id_mark: true
+    pc_rect:
+    - 1480
+    - 290
+    - 1765
+    - 365
+    text: 可合成列表
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_battle_prep_char_tooltip
+  screen_name: 货币战争-备战-角色信息提示
+  pc_alt: false
+  area_list:
+  - area_name: 标识-携带装备
+    id_mark: true
+    pc_rect:
+    - 1395
+    - 615
+    - 1700
+    - 700
+    text: 携带装备
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
