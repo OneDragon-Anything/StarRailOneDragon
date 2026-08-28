@@ -792,31 +792,193 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     return 1, 1
 
 
-def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, int | None]:
+#: 连通域字形几何阈值(1080p「区域-部署数」裁片,58 帧 fixture 连通域亲测,
+#: 产物 ``.debug/temp/currency_war/w529_xy_reader_impl/``):
+#: 数字与斜杠字形连通域全高 h≥45;人形图标两块(头 h≈19 + 身 h≈39)恒低于线,
+#: 据此剔图标 —— 实验证明图标/数字起点逐帧漂移,固定偏移蒙版不可用([0:55] 条带
+#: 在 0/3 帧切掉 '0' 左缘),形状过滤是唯一可靠面。
+_PADDLE_GLYPH_MIN_H: int = 45
+#: 斜杠判别:细长斜笔画连通域面积 < 450,数字(含 '1')实心面积 ≥550
+#: (斜杠实测 356-370,'1' 实测 ~550,'7' ~640,'8' ~1060)。
+_PADDLE_SLASH_MAX_AREA: int = 450
+
+
+def _paddle_glyph_strip(crop: MatLike) -> list[tuple[int, int, int, int]]:
+    """「X/Y」裁片二值化 → 连通域字形清单(剔图标/噪声)。
+
+    返回按 x 排序的 ``[(x, w, h, area), ...]``(裁片内坐标,数字+斜杠字形)。
+    OTSU 极性取「白像素少数派」为前景(数字浅色平底,占比恒小);h<``_PADDLE_GLYPH_MIN_H``
+    的连通域(图标头/身、overlay 小字、噪点)剔除。
+    """
+    gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if bw.mean() > 127:                     # 前景恒为少数派(字形面积 << 底)
+        bw = 255 - bw
+    n, _, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
+    glyphs = []
+    for i in range(1, n):
+        x, y, w, h, area = (int(v) for v in stats[i])
+        if area < 30 or h < _PADDLE_GLYPH_MIN_H:
+            continue
+        glyphs.append((x, w, h, area))
+    glyphs.sort()
+    return glyphs
+
+
+def _paddle_binary_stripped(crop: MatLike) -> MatLike:
+    """「X/Y」裁片 → OTSU 二值化 + 图标/噪声抹白(黑字白底,二级重 OCR 用)。
+
+    与 ``_paddle_glyph_strip`` 同一套几何阈值;抹白对象 = h<``_PADDLE_GLYPH_MIN_H``
+    或面积 <30 的连通域(人形图标头/身、overlay 小字、噪点),数字/斜杠字形保留。
+    """
+    gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if bw.mean() > 127:                         # 前景恒为少数派
+        bw = 255 - bw
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
+    for i in range(1, n):
+        x, _, _, h, area = (int(v) for v in stats[i])
+        if area < 30 or h < _PADDLE_GLYPH_MIN_H:
+            bw[labels == i] = 255
+    return bw
+
+
+def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int | None,
+                           level: int | None,
+                           text_has_slash: bool = False) -> tuple[int | None, int | None,
+                                                                  list[tuple[int, int, bool]]]:
+    """位置感知解析核心(纯逻辑,可构造测试)。
+
+    ``text_digits``:OCR 框文本里的数字串(斜杠可能被读成数字,图标可能贡献前缀数字);
+    ``glyph_digit_n``:连通域数字字形个数(几何真值,图标已剔除);
+    ``slash_idx``:数字字形序列中斜杠的下标(None=斜杠字形未识别,走候选拆分);
+    ``text_has_slash``:OCR 文本里是否出现 '/'(斜杠读对时才为 True);
+    ``level``:当前等级(提供时约束 y≥level)。
+
+    返回 ``(x, y, candidates)``。对齐候选(出处=58 帧逐框 OCR + 二值化抹图标重 OCR
+    实测,见 ``_read_deploy_paddle``):
+    - **直接对齐**:文本数字数 == 字形数 → 按「斜杠前=x、后=y」切(direct=True);
+    - **去首对齐**:文本多 1 个数字 = 左侧图标被 rec 读成 '1' 并进数字
+      (W287/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
+      (抹图标后仍现 '16/7'=6/7 实证,非图标独有)→ 去首个再切;
+    - **去斜杠位对齐**:文本无 '/' 且多 1 个数字 = 斜杠被读成数字
+      ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切。
+    全部候选过 ``_validate_paddle_xy`` 约束验证;裁决:有 direct 候选取 direct
+    (唯一),否则候选唯一才采,多候选歧义 → (None, None, 候选清单) 交调用方留证。
+    """
+    x_n: int | None = None if slash_idx is None else slash_idx
+    y_n: int | None = None if x_n is None else glyph_digit_n - x_n
+    cands: list[tuple[int, int, bool]] = []
+
+    def _try(drop_idx: int | None, direct: bool) -> None:
+        """按「去掉文本数字串中 drop_idx 处字符(None=不去) + 斜杠位切分」生成并验证候选。"""
+        if x_n is None or y_n is None or y_n <= 0:
+            return
+        seg = text_digits if drop_idx is None else \
+            text_digits[:drop_idx] + text_digits[drop_idx + 1:]
+        if len(seg) != x_n + y_n or len(seg[:x_n]) == 0:
+            return
+        x, y = int(seg[:x_n]), int(seg[x_n:])
+        if _validate_paddle_xy(x, y, level):
+            if (x, y, direct) not in cands:
+                cands.append((x, y, direct))
+
+    if slash_idx is not None:
+        _try(None, True)                        # 直接对齐
+        _try(0, False)                          # 去首(图标/幻影前缀)
+        if not text_has_slash:
+            _try(slash_idx, False)              # 去斜杠位(斜杠被读成数字)
+    else:
+        # 斜杠字形未识别:按数字字形拆分点枚举(约束唯一才采)
+        for cut in range(1, glyph_digit_n):
+            x_s, y_s = text_digits[:cut], text_digits[cut:]
+            if len(y_s) == glyph_digit_n - cut and x_s:
+                x, y = int(x_s), int(y_s)
+                if _validate_paddle_xy(x, y, level):
+                    cands.append((x, y, False))
+
+    directs = [c for c in cands if c[2]]
+    if len(directs) == 1:
+        return directs[0][0], directs[0][1], cands
+    distinct = {(c[0], c[1]) for c in cands}
+    if len(distinct) == 1:
+        x, y = distinct.pop()
+        return x, y, cands
+    return None, None, cands
+
+
+def _validate_paddle_xy(x: int, y: int, level: int | None) -> bool:
+    """「X/Y」语义约束验证器(玩法先验,用户口述权威):x≤y;1≤y≤13(前台 4+后台 9);
+    y≥level(cap=level+宝钻,宝钻只增不减;level 未提供时跳过该条)。
+    """
+    return 0 <= x <= y and 1 <= y <= 13 and (level is None or y >= level)
+
+
+def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None,
+                             screen: MatLike | None) -> tuple[int | None, int | None]:
+    """单次 OCR 结果 → 位置感知解析(与 ``_read_deploy_paddle`` 守卫分层:本函数只管解析)。
+
+    流程:连通域字形(剔图标)→ 斜杠=细长字形 → OCR 文本数字串对齐字形 → 约束验证。
+    全部失败 → (None, None);唯一候选歧义/约束拒绝时 obs_conflict 留证(证据行节流由
+    obs_conflict 自带)。``screen`` 供留证截图(None=纯解析,不留证)。
+    """
+    glyphs = _paddle_glyph_strip(crop)
+    if not glyphs:
+        return None, None
+    blob = ''.join(r.data for r in ocr_results)
+    text_digits = re.sub(r'\D', '', blob)
+    if not text_digits:
+        return None, None
+    slash_idx: int | None = None
+    digit_n = 0
+    for _, _, _h, area in glyphs:           # glyphs 已按 x 排序
+        if area < _PADDLE_SLASH_MAX_AREA:
+            if slash_idx is None:
+                slash_idx = digit_n         # 只认首个细长字形为斜杠
+        else:
+            digit_n += 1
+    x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, level,
+                                         text_has_slash='/' in blob)
+    if x is not None:
+        return x, y
+    if screen is not None:
+        obs_conflict('deploy_paddle', None, {'text': blob, 'candidates': cands},
+                     screen, verdict=('拒-位置感知解析约束不过(斜杠丢失/图标混入后'
+                                      '候选歧义或语义域外;详见 candidates)'),
+                     source='paddle_positional')
+    return None, None
+
+
+def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
+                        level: int | None = None) -> tuple[int | None, int | None]:
     """舞台上方中央「X/Y」指示 → (X 已部署角色数, Y deploy cap);读不到 → (None, None)。
 
-    **原生 OCR,不放大**(D-53):字体够大,放大反致 paddle det 把 "X/Y" 拆成两框(读成 "5")。
-    关键是 **screen_info ``区域-部署数`` pc_rect 给足 padding** —— paddle det 需文字周围有背景才把
-    "X/Y" 当**一个整体 box** 出;pc_rect 太紧(旧 [790,185,1060,240] 终点 y240 切在文字 y244 之上 +
-    无 padding)→ det 拆 / 丢斜杠(读成 "15/"/"16")→ 全 None。padding 给足(D-53 改 [820,210,1060,280])
-    → 原生即稳读 "5/5"(5 fixture 全中)。
+    **两级管线 + 位置感知解析**(ADR-0450;替换旧「整串拼接 + 正则」解析层;旧层死穴:
+    "/" 被 OCR 读成数字时拼接串成纯数字正则全崩,及左侧人形图标被并入致 X 虚高
+    如 "0/3"→"10/3")。守卫层(前缀剥离/域守卫/``read_deploy_cap_debounced``)
+    全保留,作为解析之上的第二层继续生效。
 
-    **整串识别 + 提取**(用户 D-53 指点):OCR 整个 region → join 成一串 → 正则提取 X/Y,不拆开识。
-    **斜杠特殊处理**(用户 D-53):``/`` 常被识成 ``1``/``l``/``I``/``i``/``|`` → 把「数字间的非数字单字符」
-    normalize 成 ``/`` 再正则(``re.sub(r'(?<=\\d)\\D(?=\\d)', '/', blob)``);slash→``1`` 致 X 虚高由 X>Y guard 兜。
+    1. 原生 OCR 裁片(不放大,D-53 同旧)→ ``_parse_paddle_positional``:连通域
+       字形按位置使用 —— h≥``_PADDLE_GLYPH_MIN_H`` 留数字/斜杠字形(剔逐帧漂移的
+       人形图标),细长字形判斜杠,OCR 文本数字串按「斜杠前后」对齐,
+       ``_validate_paddle_xy`` 语义约束(x≤y、y≤13、y≥level)终审;
+    2. 一级无数字框/解析失败 → ``_paddle_glyph_strip`` 二值化抹图标后重 OCR 再解析
+       (与 ``read_enemy_difficulty`` 两级形状一致;实拍斜杠变异 '717'=7/7、
+       图标前缀 '10/3'=0/3 一级即可解,二级防原生 det 整体漏检)。
 
-    **cap = level + 宝钻数**(D-53 实测核正):无加成时 deploy cap = 团队等级(5 fixture 跨 lv3/4/5/7 核:
-    5/5@lv5、4/4@lv4、3/4@lv4、0/3@lv3、6/7@lv7,Y 恒=level)。财富宝钻 +1 团队槽且
-    **可叠加**——官方效果原文「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」
-    (cw_equipment_data)= 按拥有计数非按穿戴(局38 r2 实证 cap5/lv3=两宝钻,2026-08-22)。
+    **cap = level + 宝钻数**(D-53 实测核正):无加成时 deploy cap = 团队等级
+    (5 fixture 跨 lv3/4/5/7 核:Y 恒=level)。财富宝钻 +1 团队槽且**可叠加**——
+    官方效果原文「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」
+    (cw_equipment_data)= 按拥有计数非按穿戴(局38 r2 实证 cap5/lv3=两宝钻)。
     ⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废;旧「+1 封顶」
     假设同废(叠加无上界,消费端域检查见 prep_director 审计#15 已反转)。
 
-    X(deployed)sanity:deployed 不可能 > cap;X>cap 时(如 a8_start "10/3",真值 0/3,slash 噪声致 X 虚高)
-    X 不可信 → 返 (None, Y)(deployed 未知走 fallback,但 cap Y 仍准)。
+    零重帧原则:解析失败只返 (None, None) 并留证,不在解析层重截帧;
+    重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读须跨帧才能识别,
+    同帧源不可替代)。
 
-    保留裁剪读(2026-08-24 crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题——
-    全图 OCR 把 "X/Y" 与周边文字并框/漏斜杠;裁切(padding 给足)是 D-53 实证的稳读前提。
+    保留裁剪读(2026-08-24 crop-first 审计):X/Y 指示同 ``_board_pairs`` 的全屏密度问题;
+    裁切(padding 给足)是稳读前提。
     """
     rect = _area_rect(ctx, '区域-部署数')
     if rect is None:
@@ -824,22 +986,16 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike) -> tuple[int | None, in
     crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
     if crop.size == 0:
         return None, None
-    blob = ''.join(r.data for r in ctx.ocr_service.get_ocr_result_list(image=crop))
-    norm = re.sub(r'(?<=\d)\D(?=\d)', '/', blob)      # 数字间非数字单字符 → /(slash 误识兜底,用户 D-53)
-    m = re.search(r'(\d+)\s*/\s*(\d+)', norm)
-    if not m:
-        return None, None
-    x, y = int(m.group(1)), int(m.group(2))
-    if x > y:
-        # 图标前缀守卫(W287,ADR-0417):「X/Y」左侧人形图标常被 OCR 并进 X 成
-        # 前缀 '1'(空板帧画面 0/3 实读 "10/3";字段先验:X≤Y 恒成立)——去掉
-        # 前缀 '1' 后入域才采;仍域外 = 其他噪声,X 不可信(slash→1 族,旧行为)。
-        _s = str(x)
-        if _s.startswith('1') and int(_s[1:]) <= y:
-            x = int(_s[1:])
-        else:
-            return None, y    # deployed > cap 不可能 → X 是 OCR 噪声,Y 仍可信
-    return x, y
+    results = ctx.ocr_service.get_ocr_result_list(image=crop)
+    x, y = _parse_paddle_positional(crop, results, level, screen)
+    if x is not None:
+        return x, y
+    # 一级解析失败(原生 det 漏检/斜杠读成数字后候选歧义)→ 二值化抹图标后重 OCR:
+    # 图标移除后 rec 对「斜杠 + 数字」还原率显著提升(58 帧实测 '717'→'7/7'),同帧
+    # 源内重试,不重截帧。
+    results2 = ctx.ocr_service.get_ocr_result_list(
+        image=cv2.cvtColor(_paddle_binary_stripped(crop), cv2.COLOR_GRAY2RGB))
+    return _parse_paddle_positional(crop, results2, level, screen)
 
 
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
@@ -851,7 +1007,8 @@ def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     return _read_deploy_paddle(ctx, screen)[0]
 
 
-def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
+def read_deploy_cap(ctx: SrContext, screen: MatLike,
+                    level: int | None = None) -> int | None:
     """舞台上方中央「X/Y」指示 → Y(deploy cap 真值);读不到 → None(调用方退 level 估)。
 
     实机 **cap=level+宝钻数**(D-53 实测核正:无加成时 5 fixture 跨 lv3/4/5/7,Y 恒=level)。
@@ -859,8 +1016,9 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike) -> int | None:
     详见 ``_read_deploy_paddle`` docstring)。
     DeployBench 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
     旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。reader 实现细节/根因见 ``_read_deploy_paddle``。
+    ``level`` 提供时参与解析层约束验证(y≥level,cap 只增不减),不改变返回契约。
     """
-    return _read_deploy_paddle(ctx, screen)[1]
+    return _read_deploy_paddle(ctx, screen, level)[1]
 
 
 # cap 真值防抖门(ADR-0286,批㉔ F5 前置):cap 与 level 的合法域 = level ≤ cap ≤ level+2
@@ -891,7 +1049,7 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
     留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
     截图失败(异常)按重读不可得处理。
     """
-    cap = read_deploy_cap(ctx, screen)
+    cap = read_deploy_cap(ctx, screen, level)
     if cap is None or level <= 0:
         return cap
     if level <= cap <= level + DEPLOY_CAP_MAX_DIFF:
