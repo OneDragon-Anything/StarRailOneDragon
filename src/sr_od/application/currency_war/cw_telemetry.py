@@ -372,6 +372,37 @@ class ExogenousEvent:
     # 旧记录与其它 kind 恒 None(缺省兼容)。
 
 
+@dataclass
+class SpendUnitRecord:
+    """购买单元账框架行(spend_ledger.jsonl;W494,纯观测)。
+
+    一次 RunBuyPhase(开店→买牌/升级/刷新→关店)= 一个购买单元;本行只记
+    director 执行边界的**单元框架事实**(边界/耗时/执行结果),plan 动作清单
+    与金真值不在此复制——它们已在 decisions.jsonl(shop plan 行)与
+    obs_conflicts.jsonl(gold_delta 冲突行),读端 query_spend_ledger join 三流
+    成账(单一源,不建第二套金读数)。
+    """
+    schema_version: int = SCHEMA_VERSION
+    ts: str = ""
+    run_id: str = ""
+    plane: int = 0
+    round_num: int = 0
+    unit_seq: int = 0               # 本局单元序(1 起;director run() 重入清零)
+    boundary: str = "closed"        # closed=执行返回 / failed=执行返回但未进展 / aborted=执行抛异常
+    progressed: bool = False        # executor.execute 的进展判定
+    duration_s: float = 0.0         # execute 耗时(秒)
+    detail: str = ""                # execute detail(截断;执行失败原因的下钻入口)
+    # gold_before = 单元开时点 director 观察 gold。F2:director 时点店关,gold
+    # 恒不可信——诚实记录不冒充真值,只作辅助对拍;trusted 恒 False 是常态而非异常。
+    gold_before: int | None = None
+    gold_before_trusted: bool = False
+    # gold_close = 关店实读金,真值唯一来源是 shop.py 关店对拍点 read_gold
+    #(该文件本批禁碰未挂钩,字段 schema 预留恒 None;编排者放行 shop 钩子后填充,
+    # 读端分类器零改动即消费)。
+    gold_close: int | None = None
+    gold_close_trusted: bool = False
+
+
 # ===== TelemetryRecorder(写 JSONL;门控)=====
 
 class TelemetryRecorder:
@@ -641,6 +672,28 @@ class TelemetryRecorder:
                              kind=kind, detail=detail, state_snapshot=snap,
                              choice=choice)
         self._append("exogenous.jsonl", _to_jsonable(rec))
+
+    def record_spend_unit(self, run_id: str, plane: int, round_num: int,
+                          unit_seq: int, boundary: str, progressed: bool,
+                          duration_s: float, detail: str = "",
+                          gold_before: int | None = None,
+                          gold_before_trusted: bool = False,
+                          gold_close: int | None = None,
+                          gold_close_trusted: bool = False) -> None:
+        """记购买单元账框架行(spend_ledger.jsonl;W494,纯观测零行为)。
+
+        字段语义见 SpendUnitRecord;调用方 = prep_director 的 RunBuyPhase
+        执行边界。gold_close 由 shop.py 关店对拍点填(未挂钩前恒 None)。
+        """
+        rec = SpendUnitRecord(
+            ts=datetime.now().isoformat(timespec="seconds"),
+            run_id=run_id, plane=plane, round_num=round_num,
+            unit_seq=unit_seq, boundary=boundary, progressed=progressed,
+            duration_s=round(float(duration_s), 2),
+            detail=(detail or '')[:240],
+            gold_before=gold_before, gold_before_trusted=gold_before_trusted,
+            gold_close=gold_close, gold_close_trusted=gold_close_trusted)
+        self._append("spend_ledger.jsonl", _to_jsonable(rec))
 
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
@@ -957,6 +1010,24 @@ def record_sell_income(state: GameState, slot: int, char_id: str,
         state=state,
         choice={'slot': int(slot), 'char': str(char_id or ''),
                 'gold_delta': delta})
+
+
+def record_spend_unit(plane: int, round_num: int, unit_seq: int,
+                      boundary: str, progressed: bool, duration_s: float,
+                      detail: str = "", gold_before: int | None = None,
+                      gold_before_trusted: bool = False) -> None:
+    """便捷:用 current_run_id 记购买单元账框架行(spend_ledger.jsonl;W494)。
+
+    生产者 = prep_director 的 RunBuyPhase 执行边界。run_id 空直接 no-op
+    (与 record_exogenous 同门控);best-effort 由调用方 try/except 兜底。
+    gold_close 不在本便捷入口(plan 侧 shop 钩子落行时走 recorder 直调)。
+    """
+    if not _CURRENT_RUN_ID:
+        return
+    get_recorder().record_spend_unit(
+        _CURRENT_RUN_ID, plane, round_num, unit_seq, boundary, progressed,
+        duration_s, detail=detail, gold_before=gold_before,
+        gold_before_trusted=gold_before_trusted)
 
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
@@ -1811,6 +1882,282 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
     return lines
 
 
+# —— W494 执行层 spend_ledger:购买单元「计划金流 vs 实际金流」记账 ——
+# 背景(根缺出处:.debug/temp/currency_war/w489_sim_real_gap/REPORT.md §1.3):
+# 高金购买单元无法区分「策略裁掉不买」vs「动作发出但没生效」——缺单元级
+# 完整账。本段三件:纯函数 plan_gold_flow(逐项期望金差)/ classify_spend_unit
+# (三态判定)/ query_spend_ledger(读端视图)。写端 = prep_director 的
+# RunBuyPhase 执行边界(record_spend_unit),只记单元框架;plan 与金真值
+# join 自 decisions.jsonl(shop plan 行)与 obs_conflicts.jsonl(gold_delta
+# 冲突行)——复用既有链,不建第二套金读数。
+
+#: 单元关店实读金的冲突行 join 窗(秒):obs_conflicts 是跨局 journal、
+#: 行内无 run_id,同 (plane, round) 跨局复现——按 ts 邻近消歧。
+_SPEND_CONFLICT_TS_WINDOW_S: int = 600
+
+#: 大额失配清单门槛(金):W489 感知面大额漂移 16-40 金量级,>10 报清单。
+_SPEND_LARGE_GAP: int = 10
+
+
+def plan_gold_flow(plan_actions: list[dict[str, Any]],
+                   refresh_cost: int = 2) -> dict[str, Any]:
+    """plan 序列化动作清单 → 逐项期望金流(纯函数,可单测)。
+
+    输入 = decisions.jsonl 行的 ``actions``(serialize_action 产物,``__type__``
+    判型)。计费口径与 shop.py spend_audit 对齐:BuyCard 取原始 ``card.cost``
+    (不做 card_cost 3 兜底——审计可比性优先);RefreshShop cost=0 退
+    ``refresh_cost`` 参数(= 审计的 ``state.shop_refresh_cost or 2``);
+    SellBench/SellDeployed 收入取 ``income``(None 记 0 并标 income_unknown)。
+
+    **口径边界**:plan 是全量清单,执行侧会在首个 RefreshShop 截断 prefix 且
+    跳过 Sell/Deploy 类——期望按全量算,与执行实况的偏差本身是账要暴露的
+    对象(has_refresh 标志辅助判读截断型失配)。
+    """
+    items: list[dict[str, Any]] = []
+    spend = 0
+    income = 0
+    has_refresh = False
+    income_unknown = False
+    for a in plan_actions or []:
+        if not isinstance(a, dict):
+            continue
+        t = a.get('__type__') or ''
+        if t == 'BuyCard':
+            card = a.get('card') or {}
+            cost = int(card.get('cost') or 0)
+            spend += cost
+            items.append({'type': t, 'target': str(card.get('name') or f"x{card.get('x')}"),
+                          'cost': cost, 'direction': 'spend'})
+        elif t == 'LevelUp':
+            cost = int(a.get('cost') or 0)
+            spend += cost
+            items.append({'type': t, 'target': 'level_up', 'cost': cost, 'direction': 'spend'})
+        elif t == 'RefreshShop':
+            cost = int(a.get('cost') or 0) or int(refresh_cost)
+            spend += cost
+            has_refresh = True
+            items.append({'type': t, 'target': 'refresh', 'cost': cost, 'direction': 'spend'})
+        elif t in ('SellBench', 'SellDeployed'):
+            inc = a.get('income')
+            if inc is None:
+                income_unknown = True
+                inc = 0
+            income += int(inc)
+            items.append({'type': t, 'target': str(a.get('bench_idx', a.get('deployed_idx', '?'))),
+                          'cost': int(inc), 'direction': 'income'})
+    return {'planned_spend': spend, 'planned_income': income,
+            'net': income - spend, 'has_refresh': has_refresh,
+            'income_unknown': income_unknown, 'items': items}
+
+
+def classify_spend_unit(plan_actions: list[dict[str, Any]],
+                        gold_open: int | None, gold_close: int | None,
+                        *, refresh_cost: int = 2, tolerance: int = 2,
+                        boundary: str = 'closed') -> dict[str, Any]:
+    """购买单元三态判定(纯函数,可单测;W494 设计 §3)。
+
+    verdict 域:effective(生效)/ not_effective(执行未生效)/
+    partial_mismatch(金动了但对不上账)/ unplanned_spend(计划外花销)/
+    no_spend_quiet(未计划且金未动)/ unknown(读数缺失或非完整单元——
+    **记 unknown 不猜**:无 gold_delta 冲突行 ≠ 对拍通过,read_gold 失败
+    同样不写行,离线不可分,宁缺勿错)。
+    tolerance 与 shop.py spend_audit ±2 同源;boundary != 'closed'(半单元/
+    中断单元)不判——执行链不完整,任何判定都是猜。
+    """
+    flow = plan_gold_flow(plan_actions, refresh_cost)
+    out: dict[str, Any] = {
+        'verdict': 'unknown', 'reason': '',
+        'planned_spend': flow['planned_spend'],
+        'planned_income': flow['planned_income'],
+        'expected_net': flow['net'], 'actual_delta': None, 'gap': None,
+        'boundary': boundary, 'has_refresh': flow['has_refresh'],
+        'income_unknown': flow['income_unknown'], 'items': flow['items'],
+    }
+    if boundary != 'closed':
+        out['reason'] = f'boundary={boundary}(非完整单元不判)'
+        return out
+    if gold_open is None or gold_close is None:
+        out['reason'] = 'gold_reading_missing(开/关店金读数缺失)'
+        return out
+    actual = int(gold_close) - int(gold_open)
+    gap = actual - flow['net']
+    out['actual_delta'] = actual
+    out['gap'] = gap
+    if flow['planned_spend'] > 0:
+        if abs(gap) <= tolerance:
+            out['verdict'] = 'effective'
+        elif abs(actual) <= tolerance:
+            out['verdict'] = 'not_effective'
+        else:
+            out['verdict'] = 'partial_mismatch'
+    else:
+        if actual <= -tolerance:
+            out['verdict'] = 'unplanned_spend'
+        else:
+            out['verdict'] = 'no_spend_quiet'
+    return out
+
+
+def _read_conflict_gold_delta(replay_dir: Path) -> list[dict[str, Any]]:
+    """obs_conflicts.jsonl 的 gold_delta/shop_spend_audit 行(容错读;坏行跳过)。"""
+    rows: list[dict[str, Any]] = []
+    p = replay_dir / 'obs_conflicts.jsonl'
+    if not p.exists():
+        return rows
+    with p.open('r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if (r.get('field') == 'gold_delta'
+                    and r.get('source') == 'shop_spend_audit'):
+                rows.append(r)
+    return rows
+
+
+def _match_conflict(conflicts: list[dict[str, Any]], plane: int, round_num: int,
+                    ts: str) -> dict[str, Any] | None:
+    """按 (plane, round) + ts 邻近窗匹配关店实读金冲突行(就近取;纯函数)。"""
+    try:
+        from datetime import datetime as _dt
+        t0 = _dt.fromisoformat(ts) if ts else None
+    except ValueError:
+        t0 = None
+    best = None
+    best_dt = None
+    for r in conflicts:
+        if (r.get('plane'), r.get('round_num')) != (plane, round_num):
+            continue
+        if t0 is None:
+            best = r
+            break
+        try:
+            from datetime import datetime as _dt2
+            d = abs((_dt2.fromisoformat(r.get('ts') or '') - t0).total_seconds())
+        except (ValueError, TypeError):
+            continue
+        if d <= _SPEND_CONFLICT_TS_WINDOW_S and (best_dt is None or d < best_dt):
+            best, best_dt = r, d
+    return best
+
+
+def _shop_plan_rows(replay_dir: Path, run_id: str) -> dict[tuple[int, int], dict[str, Any]]:
+    """decisions.jsonl 的 shop plan 行(同轮取最后;纯读)。
+
+    判别式:shop.py plan 行的 eval_breakdown 无 'prep_step' 键,prep_director
+    步进行带 'prep_step'(现成判别式,零 schema 改动)。
+    """
+    plans: dict[tuple[int, int], dict[str, Any]] = {}
+    p = replay_dir / 'decisions.jsonl'
+    if not p.exists():
+        return plans
+    for d in read_jsonl(p):
+        if run_id and d.get('run_id') != run_id:
+            continue
+        eb = d.get('eval_breakdown') or {}
+        if isinstance(eb, dict) and 'prep_step' in eb:
+            continue
+        if not d.get('actions'):
+            continue
+        plans[(int(d.get('plane') or 0), int(d.get('round_num') or 0))] = d
+    return plans
+
+
+def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
+    """视图(W494):购买单元金账——三态计数 + 大额失配清单。
+
+    join 三流:spend_ledger.jsonl(单元框架,run_id 过滤)× decisions.jsonl
+    shop plan 行(plan/开店金)× obs_conflicts.jsonl gold_delta(关店实读金,
+    ts 邻近窗消歧)。ledger 缺行(历史局/未挂钩期)按 plan 行逐轮重建伪单元
+    (boundary 标 unknown)——W489 式审计可直接消费存量 replay。读数缺失
+    行记 unknown 不猜(设计 §3)。
+    """
+    ledger = [r for r in read_jsonl(replay_dir / 'spend_ledger.jsonl')
+              if not run_id or r.get('run_id') == run_id]
+    plans = _shop_plan_rows(replay_dir, run_id)
+    conflicts = _read_conflict_gold_delta(replay_dir)
+    units: list[dict[str, Any]] = []
+    for r in sorted(ledger, key=lambda x: x.get('ts') or ''):
+        pr, rnd = int(r.get('plane') or 0), int(r.get('round_num') or 0)
+        plan_row = plans.get((pr, rnd))
+        conf = _match_conflict(conflicts, pr, rnd, r.get('ts') or '')
+        cls = classify_spend_unit(
+            (plan_row or {}).get('actions') or [],
+            (plan_row or {}).get('gold'), (conf or {}).get('new'),
+            boundary=str(r.get('boundary') or 'closed'))
+        cls['unit'] = r
+        cls['plan_gold'] = (plan_row or {}).get('gold')
+        cls['plan_gold_readable'] = (plan_row or {}).get('gold_readable')
+        cls['conflict_expected'] = (conf or {}).get('old')
+        units.append(cls)
+    if not ledger:
+        # 历史局回退:无 ledger 行,按 shop plan 行逐轮重建伪单元
+        #(boundary=unknown——无执行边界事实,判定恒 unknown,只呈现金流面)。
+        for (pr, rnd), plan_row in sorted(plans.items()):
+            conf = _match_conflict(conflicts, pr, rnd, plan_row.get('ts') or '')
+            cls = classify_spend_unit(
+                plan_row.get('actions') or [], plan_row.get('gold'),
+                (conf or {}).get('new'), boundary='unknown')
+            cls['unit'] = {'ts': plan_row.get('ts'), 'plane': pr, 'round_num': rnd,
+                           'unit_seq': 0, 'boundary': 'unknown', 'detail': '(伪单元:无ledger行)'}
+            cls['plan_gold'] = plan_row.get('gold')
+            cls['plan_gold_readable'] = plan_row.get('gold_readable')
+            cls['conflict_expected'] = (conf or {}).get('old')
+            units.append(cls)
+    if not units:
+        return ['  (无购买单元记录——本局无 shop plan 行且无 spend_ledger 行)']
+    verdict_count: dict[str, int] = {}
+    lines: list[str] = []
+    large: list[str] = []
+    for c in units:
+        v = c['verdict']
+        verdict_count[v] = verdict_count.get(v, 0) + 1
+        u = c['unit']
+        gold_s = f"开金={c['plan_gold'] if c['plan_gold'] is not None else '?'}"
+        if c['actual_delta'] is not None:
+            flow_s = f" Δ={c['actual_delta']}(期望{c['expected_net']},差{c['gap']})"
+        elif c['conflict_expected'] is not None:
+            flow_s = f" 冲突行:期望{c['conflict_expected']} 实读见conflicts"
+        else:
+            flow_s = ' 关店金无读数'
+        unit_tag = f"u{u.get('unit_seq') or '?'}"
+        gold_s = f"开金={c['plan_gold'] if c['plan_gold'] is not None else '?'}"
+        lines.append(
+            f"  {unit_tag} p{u.get('plane')}r{u.get('round_num')} [{v}] "
+            f"花费={c['planned_spend']} 收入={c['planned_income']} {gold_s}{flow_s}"
+            f"{'(伪单元)' if u.get('boundary') == 'unknown' and u.get('detail') else ''}"
+            f"{'(刷新截断面)' if c['has_refresh'] else ''}")
+        if c['gap'] is not None and abs(c['gap']) > _SPEND_LARGE_GAP:
+            large.append(f"  p{u.get('plane')}r{u.get('round_num')} {unit_tag} [{v}] "
+                         f"差={c['gap']}(花费{c['planned_spend']})")
+        elif c['conflict_expected'] is not None and c['plan_gold'] is not None:
+            # 判定 unknown(读数缺一)但冲突行在:冲突行自身 gap = 实读 − 审计期望,
+            # 是独立的失配证据,直接呈现(不与 plan 口径混算)。
+            try:
+                conf_gap = None
+                conf = _match_conflict(conflicts, int(u.get('plane') or 0),
+                                       int(u.get('round_num') or 0), u.get('ts') or '')
+                if conf is not None and isinstance(conf.get('new'), (int, float)) \
+                        and isinstance(conf.get('old'), (int, float)):
+                    conf_gap = int(conf['new']) - int(conf['old'])
+            except (ValueError, TypeError):
+                conf_gap = None
+            if conf_gap is not None and abs(conf_gap) > _SPEND_LARGE_GAP:
+                large.append(f"  p{u.get('plane')}r{u.get('round_num')} {unit_tag} [{v}] "
+                             f"冲突行差={conf_gap}(审计期望{c['conflict_expected']})")
+    total = len(units)
+    head = [f"  [三态计数] 共{total} " +
+            " ".join(f"{k}×{v}" for k, v in sorted(verdict_count.items()))]
+    if large:
+        head.append(f"  —— 大额失配(|差|>{_SPEND_LARGE_GAP}){len(large)} 条 ——")
+        head.extend(large)
+    return head + lines
+
+
 # —— W315(遥测审计 G3):四条旁路 jsonl 流的零查询视图补齐 ——
 # exogenous / exec_events / invest_cards / obs_conflicts 此前只能裸翻文件
 # (审计都得手写 PowerShell Group-Object);「需求已固化的复盘 = 新视图」。
@@ -1982,7 +2329,7 @@ def _cli_main() -> None:
     ap.add_argument('--view', default='rounds',
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
                              'hp', 'economy', 'exogenous', 'execevents',
-                             'invest', 'conflicts', 'all'])
+                             'invest', 'conflicts', 'spend', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
@@ -2066,6 +2413,9 @@ def _cli_main() -> None:
     if args.view in ('conflicts', 'all'):
         print('[conflicts](跨局采集,--run 不生效)')
         print('\n'.join(query_obs_conflicts(replay_dir, rid)))
+    if args.view in ('spend', 'all'):
+        print('[spend](购买单元金账:三态计数+大额失配;obs_conflicts 跨局采集,冲突行按 ts 邻近窗消歧)')
+        print('\n'.join(query_spend_ledger(replay_dir, rid)))
 
 
 if __name__ == '__main__':

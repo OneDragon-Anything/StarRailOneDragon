@@ -70,6 +70,7 @@ from sr_od.application.currency_war.prep_actions import (
     OpenTome,
     PrepAction,
     PrepActionExecutor,
+    RunBuyPhase,
     StartBattle,
     action_key,
     row_area_centers,
@@ -198,6 +199,9 @@ class PrepDirector(SrOperation):
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
         self._cached_gold_trusted: bool = False
+        # W494 spend_ledger:购买单元记账态(纯观测;unit_seq 本局序,run() 清零)
+        self._spend_unit_seq: int = 0
+        self._unit_meta: dict | None = None
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
@@ -440,6 +444,8 @@ class PrepDirector(SrOperation):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
+        self._spend_unit_seq = 0   # W494:购买单元序按局重置
+        self._unit_meta = None
         # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
         #(原 run() 入口调用已删;曾同挂点的 _probe_node_reward
         # 采集钩子 W284 判读完成后曾删,W307 按 r314 原样重挂)。
@@ -698,9 +704,20 @@ class PrepDirector(SrOperation):
                 continue
 
             # —— 执行(验证失败路径:计 fail;异常自然上抛 = 本环 fail)——
+            # W494:RunBuyPhase = 一个购买单元(开店→买/升/刷→关店),执行边界
+            # 记账(纯观测);失败/异常同样关单元,判定门在读端(boundary)。
+            _unit_open = isinstance(action, RunBuyPhase)
+            if _unit_open:
+                self._spend_unit_open(obs)
             try:
                 progressed, detail = self._executor.execute(action)
+                if _unit_open:
+                    self._spend_unit_close(progressed=progressed, detail=detail,
+                                           boundary='closed' if progressed else 'failed')
             except Exception as e:  # noqa: BLE001
+                if _unit_open:
+                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
+                                           boundary='aborted')
                 log.warning(f'[cw!][director] 执行异常 {key}: {e} → 本环 fail')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
@@ -781,6 +798,53 @@ class PrepDirector(SrOperation):
                 retry_count=self._fail_counts.get(key, 0))
         except Exception:   # noqa: BLE001  观测 best-effort
             pass
+
+    # ===== 购买单元记账(W494 spend_ledger;纯观测,零行为变更)=====
+
+    def _spend_unit_open(self, obs: PrepObservation) -> None:
+        """开购买单元(RunBuyPhase 执行前):记时点与单元开时点 gold 观测。
+
+        F2 语义:本时点商店关,gold 恒不可信——诚实记录不冒充真值,只作
+        辅助对拍。plane/round 取 session.last_state(与 exec_events 同
+        join 口径)。纯内存写,失败不影响环。
+        """
+        st = obs.state
+        sess = self._session()
+        ls = getattr(sess, 'last_state', None) if sess is not None else None
+        self._spend_unit_seq += 1
+        self._unit_meta = {
+            'seq': self._spend_unit_seq,
+            't0': time.monotonic(),
+            'gold': getattr(st, 'gold', None) if st is not None else None,
+            'gold_trusted': bool(obs.state_gold_trusted),
+            'plane': int(getattr(ls, 'plane', 0) or 0),
+            'round': int(getattr(ls, 'round_num', 0) or 0),
+        }
+
+    def _spend_unit_close(self, progressed: bool, detail: str = '',
+                          boundary: str = 'closed') -> None:
+        """关购买单元:框架事实落 spend_ledger.jsonl(best-effort)。
+
+        boundary:closed=执行返回且进展 / failed=执行返回但未进展 /
+        aborted=执行抛异常。plan 与金真值不在此复制——读端 join
+        decisions/obs_conflicts(cw_telemetry.query_spend_ledger)。
+        """
+        meta = self._unit_meta
+        self._unit_meta = None
+        if meta is None:
+            return
+        try:
+            from sr_od.application.currency_war.cw_telemetry import record_spend_unit
+            record_spend_unit(
+                plane=meta['plane'], round_num=meta['round'],
+                unit_seq=meta['seq'], boundary=boundary,
+                progressed=progressed,
+                duration_s=time.monotonic() - meta['t0'],
+                detail=detail or '',
+                gold_before=meta['gold'],
+                gold_before_trusted=meta['gold_trusted'])
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] spend_ledger skip: {e}')
 
     def _stall_gate(self) -> OperationRoundResult | None:
         """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
