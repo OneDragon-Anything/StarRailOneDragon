@@ -19,10 +19,14 @@
 机制依据:
 - 概率表/池副本单一源 = ``cw_shop_odds``(REFRESH_PROB / POOL_COPIES_PER_CARD);
 - 合成语义 = ``docs/game/currency_war/research/merge_mechanics.md`` §2.7;
-- 刷新语义(口述权威):刷新 = 旧五张全部回池再重抽五张。**待证伪假设**
-  (代码层已参数化隔离,真值帧可改):同一次刷新的五格视为不放回抽牌
-  (同名不重复出现);新旧五张可同名(旧牌先回池)。若实机帧证伪
-  (同帧同名)→ 改 :func:`refresh_expect` 内 new_slots 语义即可,入参不变。
+- 刷新语义(口述权威·倾向口径):刷新 = 旧五张全部回池,**新五格按当前
+  等级 SHOP_ODDS 概率独立抽取(同名牌可能重复)**。早期「五张全异」
+  假设作废(用户无法证明按概率说,但取其为倾向口径)——故本函数是
+  *期望增量*而非逐张断言:**单次刷新的对账范围只硬验三面**——
+  ①金 −刷新费;②五格有牌(格数 = SHOP_SLOTS);③池守恒统计面
+  (旧五张回池账 pool_returned,新五张可见计数与之合并后对总账),
+  不逐张断言全异。刷新费**不写死**:W554 实机发现费用疑似 f(当前金币)
+  而非常数 2 → refresh_cost 必填,由调用方从面板现读传入。
 """
 from __future__ import annotations
 
@@ -133,6 +137,11 @@ def compare_merge_preview(our_merge_flags: dict[int, bool],
                           preview_detected: dict[int, bool] | None) -> MergePreviewCompareResult:
     """合成预览交叉验证(merge_mechanics.md §2.7「对账信号候选」落地)。
 
+    ⚠️ **识别端挂账**(用户裁决,2026-09 口述):预览星会闪烁变化(动画),
+    单帧识别难度高——待下次实机采集更多帧后再评估识别可行性;在此之前
+    preview_detected 恒 None,本函数保持**休眠登记形态**(真值表即规格
+    文档),不激活识别。
+
     **单向验证**(用户裁决):合成以我方计算为主源,游戏金色星标 UI 只作
     票——我方 True 而识别 False = 我方合成计算嫌疑(our_suspect);
     识别 True 而我方 False = 我方漏算,单向框架内不判罚,仅 game_extra
@@ -189,12 +198,14 @@ class RefreshExpect:
 
 def refresh_expect(gold: int,
                    cards_old: list[tuple[str, int]],
-                   refresh_cost: int = 2) -> RefreshExpect:
-    """刷新动作期望增量(纯函数;规则见模块头「待证伪假设」)。
+                   refresh_cost: int) -> RefreshExpect:
+    """刷新动作期望增量(纯函数;规则见模块头「刷新语义」)。
 
-    语义(merge 口述权威同源):刷新 = 旧五张全部回池 + 重抽
-    ``SHOP_SLOTS`` 张;金 −refresh_cost。cards_old 空表合法(开局首刷
-    前无旧牌,回池账为空)。
+    语义:刷新 = 旧五张全部回池 + 新五格按当前等级概率独立抽取
+    (同牌可重复,不逐张断言);金 −refresh_cost。refresh_cost **必填**
+    ——W554 实机发现费用疑似 f(当前金币)而非常数,调用方须从商店面板
+    现读传入,本函数不写死任何默认值。cards_old 空表合法(开局首刷前
+    无旧牌,回池账为空)。
     """
     returned: dict[str, int] = {}
     for name, _c in cards_old:
