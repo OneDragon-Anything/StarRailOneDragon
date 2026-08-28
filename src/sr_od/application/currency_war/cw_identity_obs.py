@@ -942,9 +942,12 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
 _SUPPLY_BOX_TM_THR: float = 0.6
 _supply_box_gray: MatLike | None = None
 _supply_box_loaded: bool = False
-# 秘密典籍(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」给的道具,红金典籍 icon+
-# 「开启」,占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(loop 0i 接管)。
-# 分离度实测:典籍 vs 补给箱互 TM 0.481(阈值 0.6 下互不误认);同读法同槽位模型。
+# 秘密典籍(2026-08-16 M45 建档,用户指导):投资策略「秘密典籍」给的道具,
+# 占备战席 1 槽(类补给箱);点两次(选中→开启)→ 星徽四选一(loop 0i 接管)。
+# 实机渲染 = 金色票券卡(票面星纹 + 底部「开启」钮),模板即自该实机真值帧
+# (sr-od-test/screens/货币战争-备战/shop_closed_lowhp.webp slot7)内窗裁剪;
+# 模板必须小于全部槽裁片(最小 111x131),否则 shape 守卫会跳过该槽(判盲)。
+# 互斥判定:典籍命中需典籍分 > 箱分(同槽双模板对拍,防箱被认成典籍)。
 _tome_gray: MatLike | None = None
 _tome_loaded: bool = False
 # 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
@@ -955,6 +958,23 @@ _tome_loaded: bool = False
 _bookcard_gray: MatLike | None = None
 _bookcard_loaded: bool = False
 _BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 典籍 0.505 分离充足
+
+# shape 守卫观测器:槽裁片小于模板尺寸时 matchTemplate 无法进行,守卫跳过该槽。
+# 历史:113x134 整槽尺寸模板在 111x131 的小槽上被守卫静默跳过 = 该槽对此物品判盲
+# (证据链与修复=模板收进槽内,见 assets/template/currency_war/supply/ 模板尺寸约定)。
+# 这里只做记数+日志(可见性),不改跳过语义——静默跳过曾让漏检无从排查。
+_shape_guard_skip_count: int = 0
+
+
+def _note_shape_skip(where: str, idx: int, crop_h: int, crop_w: int,
+                     tm_h: int, tm_w: int) -> None:
+    """记一次 shape 守卫跳过(debug 日志;判盲可见,不影响任何判定结果)。"""
+    global _shape_guard_skip_count
+    _shape_guard_skip_count += 1
+    from one_dragon.utils import log_utils
+    log_utils.log.debug(
+        f'[cw!][{where}] 槽{idx} 裁片{crop_h}x{crop_w}小于模板{tm_h}x{tm_w},'
+        f'跳过匹配(累计{_shape_guard_skip_count}次;模板尺寸应小于全部槽裁片)')
 
 
 def _get_tome_gray() -> MatLike | None:
@@ -972,7 +992,11 @@ def _get_tome_gray() -> MatLike | None:
 
 
 def _get_bookcard_gray() -> MatLike | None:
-    """加载书册卡模板灰度图(r100k;``assets/template/currency_war/supply/书册卡_未知.png``)。"""
+    """加载书册卡模板灰度图(r100k;``assets/template/currency_war/supply/书册卡_未知.png``)。
+
+    模板 = 建档帧 slot1 真值裁片的中心内窗(97x118,< 全部槽裁片,防 shape 守卫判盲;
+    渲染同源)。无实机重放帧,阈值 0.75 的自身命中维持建档时实测(0.975+)背书。
+    """
     global _bookcard_gray, _bookcard_loaded
     if not _bookcard_loaded:
         _bookcard_loaded = True
@@ -995,6 +1019,8 @@ def find_bookcards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple
     for idx, rect in slots:
         crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
         if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+            _note_shape_skip('find_bookcards', idx, crop.shape[0], crop.shape[1],
+                             tm.shape[0], tm.shape[1])
             continue
         r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
         if cv2.minMaxLoc(r)[1] >= _BOOKCARD_TM_THR:
@@ -1048,6 +1074,8 @@ def find_supply_boxes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tu
         best = 0.0
         for tm in tms:
             if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+                _note_shape_skip('find_supply_boxes', idx, crop.shape[0], crop.shape[1],
+                                 tm.shape[0], tm.shape[1])
                 continue
             r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
             _, mx, _, _ = cv2.minMaxLoc(r)
@@ -1080,6 +1108,8 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
     for idx, rect in slots:
         crop = gray[rect.y1:rect.y2, rect.x1:rect.x2]
         if crop.shape[0] < tm.shape[0] or crop.shape[1] < tm.shape[1]:
+            _note_shape_skip('find_tomes', idx, crop.shape[0], crop.shape[1],
+                             tm.shape[0], tm.shape[1])
             continue
         r = cv2.matchTemplate(crop, tm, cv2.TM_CCOEFF_NORMED)
         tome_score = cv2.minMaxLoc(r)[1]
