@@ -105,6 +105,21 @@ HP_UPPER_BOUND: int = 100
 
 INTEREST_CAP: int = 5
 
+# 装备供给结构校准(供给重校准批;数据源 = 实机 [cw!][grant] 快照 57 局
+# 逐轮差分画像,分析脚本与校准目标表见 .debug 产物 w477_supply_recalib/):
+# 实机装备类发放 = 基础件 86% / 进阶 14%(工具冶金炉/拆装扳手为跨局
+# 持存物品,非穿戴件,不建模),P1 均 4.7 件、分布在 ~3.8 个发放轮;
+# 供给节点 3 选 1 近全基础件,进阶来自奖励/投资/遭遇等多通道。
+# 旧池(_EQUIP_VALUE 键 10 名、成品为主、基础件仅 2 名)与实机结构性
+# 相反 → 合成链触发面不可达(见 decisions/ 对应 ADR)。新结构:
+# 供给节点 3 选项采自基础件 8 名均匀池(decide_supply 决策语义不变),
+# 追加件以固定概率代理多通道合计(含进阶)。结构变更是有意的行为
+# 变更——新旧池不可比,指纹追加 +eqg<版本> 位,旧基线全部作废。
+EQUIP_GRANT_CALIB_VERSION: int = 1
+EQUIP_GRANT_BONUS_P: float = 0.30      # 每供给节点追加 1 件的概率
+EQUIP_GRANT_BONUS_ADV_SHARE: float = 0.35   # 追加件中进阶占比
+
+
 # r360(v7 分轮次裁决):实机对账残差=奖励球/节点事件金未建模,
 # 随轮次增长(r1→r2 中位 +1 … r8→r9 中位 +9)。校准层注入
 # (ADR-0233):按轮次经验分布采样,让 sim 金压力对齐实机
@@ -1405,6 +1420,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         if _inv.profile.active_env:
             sess.active_env = _inv.profile.active_env
             st.active_env = _inv.profile.active_env
+    # 供给重校准:装备发放结构版本并入指纹(+eqgN 位)——发放结构是
+    # 行为语义的一部分,新旧结构不可比,跨版本对照必须显式失败。
+    pool_fp = f'{pool_fp}+eqg{EQUIP_GRANT_CALIB_VERSION}'
     res = SimResult(seed=seed, pool_fingerprint=pool_fp,
                     pool_source=pool_src)
     if _inv is not None:
@@ -2117,16 +2135,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
             # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
             # EquipAll 同源)分配给 deployed → 账本 equipped 字段。
-            # 装备获取采样:通用装备池按 _EQUIP_VALUE 键(注册表过滤,
-            # ADR-0294 件2,见下);带钻概率 15%(实机简报词缀影响的
-            # 粗估,校准点)。r388 类 bug(开局乱穿)从此 sim 可见。
+            # 装备获取采样(供给重校准后):池结构见 EQUIP_GRANT_CALIB_VERSION
+            # 模块常量注;带钻概率 15%(实机简报词缀影响的粗估,校准点)。
+            # r388 类 bug(开局乱穿)从此 sim 可见。
             # ADR-0294 件2(ADR-0289 §5 裁决,红项 174/300):采样池
             # 只进注册表认识的装备名(EQUIPMENT_ROSTER 单一源)——
             # '未知装备' 与价值表旧名(注册表外)不进 owned 池;带钻
             # 是词缀元数据,不再以 '钻石' 占位实体进池(占位实体只进
             # 披露计数 res.phantom_supply_picks,不进池)。
+            # 供给重校准:发放通道 = supply + reward 两类节点(实机发放
+            # 时点画像:~3.8 个发放轮/局,sim 供给节点仅 ~1 个/局——单靠
+            # 它永远凑不出实机件数;奖励节点同为零战力节点,承载通道
+            # 语义等价)。结构与常量见 EQUIP_GRANT_CALIB_VERSION 注。
             _equipped_now: list[tuple[str, str]] = []
-            if nodes[rn - 1] == 'supply':
+            if nodes[rn - 1] in ('supply', 'reward'):
                 from sr_od.application.currency_war.cw_equipment_data import (
                     EQUIPMENT_ROSTER,
                 )
@@ -2138,15 +2160,23 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     decide_supply,
                 )
                 _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
+                # 供给重校准:3 选项池 = 基础件 8 名均匀(实机供给节点
+                # 近全基础件,见 EQUIP_GRANT_CALIB_VERSION 注);进阶名
+                # 只走下方追加件通道。decide_supply 决策语义零改动。
+                from sr_od.application.currency_war.cw_synthesis import (
+                    RESERVED_COMPONENTS as _BASICS,
+                )
+                _basic_names = [n for n in _BASICS if n in EQUIPMENT_ROSTER]
+                _adv_names = [n for n in _pool_names if n not in _BASICS]
 
                 def _sample_supply_opts(
-                        _names: list[str]) -> list[SupplyOption]:
+                        _basic: list[str]) -> list[SupplyOption]:
                     # 发放采样(3 列;带钻 15% 粗估校准点)——两步各自
                     # 调用一次,消耗局内 rng 流(W212 批 monkeypatch 臂
                     # 用独立 rng 是补丁层限制,原生实现必须走局内 rng
                     # 才与实机发放分布一致)
                     return [SupplyOption(
-                        idx=_oi, char='', equip=rng.choice(_names),
+                        idx=_oi, char='', equip=rng.choice(_basic),
                         has_diamond=rng.random() < 0.15)
                         for _oi in range(3)]
 
@@ -2161,16 +2191,33 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 重掷 3 列再选;refresh_used=True 时 decide_supply
                 # 走 key_equips 契合(+10)+ 通用价值评分。补给刷新
                 # 免费(「剩余次数:1」,run_supply_node:50)——不耗金。
-                _opts = _sample_supply_opts(_pool_names)
-                _pick = decide_supply(_opts, st, sess.target_comp, None,
-                                      refresh_used=sess._supply_refresh_used)
-                if _pick.refresh and not sess._supply_refresh_used:
-                    sess._supply_refresh_used = True
-                    _opts = _sample_supply_opts(_pool_names)
+                _is_supply = nodes[rn - 1] == 'supply'
+                if _is_supply:
+                    # 补给节点:真两步 decide_supply(语义零改动,见下)
+                    _opts = _sample_supply_opts(_basic_names)
                     _pick = decide_supply(_opts, st, sess.target_comp, None,
-                                          refresh_used=True)
-                st.equips.append(_opts[_pick.idx].equip)
-                if _pick.idx < len(_opts) and _opts[_pick.idx].has_diamond:
+                                          refresh_used=sess._supply_refresh_used)
+                    if _pick.refresh and not sess._supply_refresh_used:
+                        sess._supply_refresh_used = True
+                        _opts = _sample_supply_opts(_basic_names)
+                        _pick = decide_supply(_opts, st, sess.target_comp, None,
+                                              refresh_used=True)
+                    st.equips.append(_opts[_pick.idx].equip)
+                else:
+                    # 奖励节点:非选择型发放,直接 1 件基础件(均匀)
+                    st.equips.append(rng.choice(_basic_names))
+                # 追加件(多通道聚合代理):实机装备来自奖励/补给/投资
+                # 环境/遭遇后多通道,sim 只有上述两类节点承载 →
+                # 以固定概率补 1 件(基础为主、含少量进阶,
+                # 常量见 EQUIP_GRANT_BONUS_P 注),非决策件(均匀采样,
+                # 无带钻语义——钻只属补给节点选项)。
+                if rng.random() < EQUIP_GRANT_BONUS_P:
+                    if rng.random() < EQUIP_GRANT_BONUS_ADV_SHARE:
+                        st.equips.append(rng.choice(_adv_names))
+                    else:
+                        st.equips.append(rng.choice(_basic_names))
+                if _is_supply and _pick.idx < len(_opts) \
+                        and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
             # 合成执行链 hook(默认关,synthesis_chain=True 点火):
             # **方向确定性门(用户裁决:组件留给目标阵容,乱合成=后期缺
