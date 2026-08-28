@@ -37,8 +37,8 @@ W489 证实 sim 生成不出实机高金状态(P1 金均值 13.3 vs 29.4,g≥70 
 2. **watch 观察项(不阻塞)**:deploy_fills_cap 2/200、deploy_after_buy_semantics 1/200 低频边际暴露——经济轨迹位移偶发触发机械不变式,接受为观察项,随批披露跟踪;连续多批同向放大再立案。
 3. **~180/局(r9 退坡后 ~166/局)注入 = 执行缺口直接量化**:确认触发条款——缺陷清零/spend_ledger 干净局到位后重整定升 economy v3,注入量应显著回落。
 4. **装备供给量锁重推导(W503 补充:因果链完整版)**:事件金 v2 对供给节奏**零机制通路**——发放轮(supply/reward 节点)由节点序列采样与发放规则决定,均不读金,v1/v2 实测发放轮同值 4.05/局(n=20)→ 供给量期望 E[发放件] = 4.05×(1+EQUIP_GRANT_BONUS_P=0.30) ≈ **5.3 件/局**,对实机画像 4.7 件/3.8 轮偏差 +12%(±20% 带内)→ **供给量仍匹配实机画像,校准不需要修**;出口保有(下游观测量)左移 = 策略 churn 随环境变富而增(2 件尾 1%→10%,n=50),非供给错。锁形态:供给量期望断言(直接锁画像)+ 保有分布粗界(防归零/虚高)+ 移动靶边界(实机画像测于旧码旧局,清零后随触发条款重采)。
-5. **勘误**:初版 REPORT 曾把该锁红归为「W491 既有(HEAD 复现)」——编排者 stash 对照实测推翻:红来自 v2 × W497 在飞策略改动交互,非既有;本节为更正记录。
+5. **勘误(两轮)**:初版 REPORT 曾把该锁红归为「W491 既有(HEAD 复现)」——编排者 stash 三 src 对照实测推翻:**摘出本批 src = 4 passed,带上 = 1 failed,红由 economy v2 引入**(非 W491 既有;亦非 v2×W497 交互——W497 dirt 在 stash 两臂同样在场,不是变量)。机理 = 旧逐局下界「保有 ≥3」被 v2 保有端 churn 左移击穿(发放量画像不变);本节为更正记录。
 
 ## 判据与验证
 
-判据=PRE_REGISTRATION.md(M1/M2/S1/B1-B4/变异探针/版本纪律,先于代码写定);验证=REPORT.md 全项 + 新锁 5(test_cw_w493_income_calib)+ w440 版本锁改 v2 + 全量 3020P/0 新增失败(equip_grant 1F 为 W491 在飞侧既有,HEAD 复现)+ruff;产物 `.debug/temp/currency_war/w493_income_calib/`(整定台账 calib_loop_log.json、b1/b2b3/mutation/对拍 JSON 可复算)。
+判据=PRE_REGISTRATION.md(M1/M2/S1/B1-B4/变异探针/版本纪律,先于代码写定);验证=REPORT.md 终版 + 新锁 5(test_cw_w493_income_calib)+ w440 版本锁改 v2 + equip 锁按 v2 重推导(编排者 stash 实测定位:摘出本批三 src = 4 passed,带上 = 1 failed,**红由 economy v2 引入**——旧逐局下界被保有端 churn 左移击穿,发放量画像不变;重推导后全量门 3025P/0F)+ruff;产物 `.debug/temp/currency_war/w493_income_calib/`(整定台账 calib_loop_log.json、b1/b2b3/mutation/per_round/对拍 JSON 可复算)。
