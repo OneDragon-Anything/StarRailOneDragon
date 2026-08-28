@@ -77,6 +77,8 @@ from sr_od.application.currency_war.cw_state import (
     deployed_place,
     iter_occupied,
     iter_occupied_deployed,
+    merge_buy_completes,
+    merge_buy_k,
     sell_refund,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -1594,8 +1596,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
             _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
             _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
-            _bench_full_skips = 0   # ADR-0283:本轮超容被守卫跳过的买(账本 sim 披露)
-            _bench_full_skip_gold = 0   # ADR-0285:守卫拦截买折算金(净滞留口径)
+            _bench_full_skips = 0   # ADR-0283 守卫:本轮满栏**非合成**拒买数(合成买已执行,不计入——W566 语义收窄)
+            _bench_full_skip_gold = 0   # ADR-0285:非合成拒买折算金(净滞留口径)
             _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
             # 满级 LevelUp 拒付计数(执行层 cap 守卫披露;>0 = 决策层在
             # 满级态仍发升级,策略侧判读输入)
@@ -1711,18 +1713,87 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         progressed = True
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
-                        # ADR-0283(批⑰ F6):生产 bench 满 = 硬模态拒买
-                        # (ADR-0136;cw_identity_obs「备战席已满」球点不动),
-                        # sim 旧无守卫 → 单轮 4-8 连买把 bench 顶到 11-17
-                        # (批⑰ 3/300 局)——满仓局的买门/腾位门读的是生产
-                        # 不可能出现的状态。守卫:合并域(bench+deployed,
-                        # _merge_bench 全场域)中 bench 槽为约束——deployed
-                        # 不占备战槽,故判据 = 占用数 ≥ BENCH_CAPACITY(9,
-                        # ADR-0316 槽位表);超容买跳过(金/牌池均不消费)+
-                        # 计数披露。
+                        # ADR-0283(批⑰ F6)满栏守卫 + sim 解冻(ADR-0453
+                        # 影响节兑现):满栏不再一律拒——与生产 simulate
+                        # (cw_state.simulate BuyCard 满栏分支,W544)同源:
+                        # merge_buy_completes 判「本次点击完成一次合成」
+                        # → 执行满栏合成买(k = merge_buy_k 张一次买入,
+                        # 金 k×单价全款,店 k 张同身份牌下架,合成链
+                        # _merge_bench 照走;merge_mechanics.md §2.5
+                        # 自动多买)。不满足合成仍拒(ADR-0283 兜底语义
+                        # 保留);bench_full_skipped_* 计数语义收窄为
+                        # 「非合成拒买」——合成买已执行,计入 skipped
+                        # 会让拦截指标说谎。
                         if bench_occupied(st.bench) >= BENCH_CAPACITY:
-                            _bench_full_skips += 1
-                            _bench_full_skip_gold += a.card.cost
+                            _mb_star = a.card.star or 1
+                            if not merge_buy_completes(
+                                    a.card.name, _mb_star, st.bench,
+                                    st.deployed, st.shop):
+                                _bench_full_skips += 1
+                                _bench_full_skip_gold += a.card.cost
+                                continue
+                            _mb_k = max(1, merge_buy_k(
+                                a.card.name, _mb_star, st.bench,
+                                st.deployed, st.shop))
+                            st.gold -= a.card.cost * _mb_k
+                            _ch = a.reason or 'unknown'
+                            _spend['buys'][_ch] = \
+                                _spend['buys'].get(_ch, 0) \
+                                + a.card.cost * _mb_k
+                            for _ in range(_mb_k):
+                                cards_pool.take(a.card.name)
+                            # 店 k 张同身份牌下架(生产语义:槽买后消失,
+                            # ADR-0284;不清槽会让 merge_buy_k 的 in_shop
+                            # 计数虚高 → 同槽幻影再买)
+                            _mb_left = _mb_k
+                            _mb_kept: list[ShopCard] = []
+                            for _c in st.shop:
+                                if _mb_left > 0 and _c.name == a.card.name \
+                                        and (_c.star or 1) == _mb_star:
+                                    _mb_left -= 1
+                                    continue
+                                _mb_kept.append(_c)
+                            st.shop = _mb_kept
+                            # 序列化形状对齐生产 serialize_action(card 嵌套;
+                            # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
+                            # reason=**通道**(创建点语义);channel=**身份**
+                            # (classify_buy);count=自动多买张数(判读 k>1
+                            # 生效面的纯增列,既有消费方不读该键)。
+                            from sr_od.application.currency_war.cw_line_defs import (
+                                classify_buy as _cb,
+                            )
+                            _acts.append({'__type__': 'BuyCard',
+                                          'card': {'x': a.card.x,
+                                                   'faction': a.card.faction,
+                                                   'name': a.card.name,
+                                                   'cost': a.card.cost},
+                                          'reason': _ch,
+                                          'channel': _cb(a.card, st),
+                                          'count': _mb_k})
+                            # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
+                            # (k 张自动多买仍是一次点击,不加倍)
+                            xp += XP_PER_BUY
+                            st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                            _pre_units = (bench_occupied(st.bench)
+                                          + deployed_occupied(st.deployed))
+                            # 执行序与生产同源(cw_state.simulate 满栏分支):
+                            # k 张临时挂 bench 尾参与全场 _merge_bench;
+                            # own+k ≡ 0 (mod 3) → 合成恰耗尽本次 k 张,
+                            # 截回定长 9。已知边:own=0 且 k=3 非链式时合成
+                            # 载体落尾槽、截断即丢——生产 simulate 同序同语义
+                            # (§2.5 满栏合成落点置信低),实机对账实证后两处同改。
+                            for _ in range(_mb_k):
+                                st.bench.append(BenchChar(
+                                    slot=0, char_id=a.card.name,
+                                    faction=a.card.faction, star=_mb_star))
+                            _merge_bench(st.bench, st.deployed)
+                            del st.bench[BENCH_CAPACITY:]
+                            # 合并次数按单位消减推算(每次合并净减 2 个单位;
+                            # 消费 3 产 1,链式多级同式)
+                            _merges += (_pre_units + _mb_k
+                                        - bench_occupied(st.bench)
+                                        - deployed_occupied(st.deployed)) // 2
+                            progressed = True
                             continue
                         # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
                         # ——买走即下架(生产语义:槽买后消失)。旧 sim
@@ -2456,10 +2527,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'segments': _segs_used,
                     # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
                     'merges': _merges,
-                    # ADR-0283(批⑰ F6):本轮 bench 满被守卫跳过的买次数
-                    # (0=常态;>0 = 决策层在非法状态上想买,判读买门时须知)
+                    # ADR-0283(批⑰ F6)+ W566 语义收窄:本轮满栏**非合成**
+                    # 被拒的买次数(合成买已按 merge_buy_completes 执行,
+                    # 不计入;0=常态;>0 = 决策层在满栏态想买不合成牌,
+                    # 判读买门时须知)
                     'bench_full_skipped_buys': _bench_full_skips,
-                    # ADR-0285(批㉑ F3/F5):守卫拦截买折算金(净滞留口径
+                    # ADR-0285(批㉑ F3/F5):非合成拒买折算金(净滞留口径
                     # = 末金 − 本值;判读区分「策略滞留」vs「守卫拦截」)
                     'bench_full_skipped_gold': _bench_full_skip_gold,
                     # ADR-0284(批㉒ F1):本轮幻影再买提案数(已消费槽/
@@ -2845,8 +2918,9 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
              if b is not None]), 2)
             if any(_first_engines_round(v, 2) is not None
                    for v in views) else None),
-        # ADR-0283(批⑰ F6):全批 bench 满守卫跳过的买总次数(超容买
-        # 披露;0=守卫未介入,>0 = 满仓态买门判读须对照此计数)
+        # ADR-0283(批⑰ F6)+ W566 语义收窄:全批满栏**非合成**拒买
+        # 总次数(合成买已执行不计入;0=守卫兜底未介入,>0 = 满仓态
+        # 买门判读须对照此计数)
         'bench_full_skipped_buys': sum(
             (row.get('sim') or {}).get('bench_full_skipped_buys', 0)
             for r in results for row in r.ledger),

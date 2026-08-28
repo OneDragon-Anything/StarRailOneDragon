@@ -518,12 +518,15 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
 
 
 def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
-    """自由批(bench 满不买;0 容忍;ADR-0283 守卫的账本锁)。
+    """自由批(bench 满不买非合成牌;0 容忍;ADR-0283 守卫的账本锁)。
 
-    判据(设计表原文):bench≥上限 时不再输出 BuyCard——现状
+    判据(设计表原文):bench≥上限 时不再输出非合成 BuyCard——现状
     (设计时)655 次;上限真值已核(BENCH_CAPACITY=9,cw_state
     design doc 实测)→ 锁 0。ADR-0283 超容买守卫落地后 BuyCard
-    动作只在该轮容量允许时出现。
+    动作只在该轮容量允许时出现。ADR-0453/W566 语义收窄:满栏
+    **合成买**(merge_buy_completes)已合法执行、照常入账本——本
+    检查的容量近似(下方公式含 2×merges)自动豁免其席位消耗,无
+    需改判据;bench_full_skipped_buys 只计非合成拒买。
 
     容量口径(近似声明):期初 bench = 上一轮末 bench;本轮可买
     上限 = 9 − 期初 + 本轮卖出数 + 2×本轮 merges(3合1 每次腾

@@ -65,3 +65,22 @@ ADR-0283 时代确立「bench 满 = 硬模态拒买」,决策层满栏购买判�
   (并行批在飞面),sim 内满栏 BuyCard 仍不执行——sim↔生产在满栏合成
   买帧存在已知执行层滞后,升级 cw_sim 执行守卫的批次须与本 ADR 对齐
   (届时 `bench_full_skipped_buys` 披露键语义同步收窄为「非合成拒买」)。
+
+## 补记: sim 执行守卫解冻(2026-08-29,W566)
+
+上节挂账已兑现,决策无改动、仅执行面补齐:
+
+- `cw_sim.py` 满栏守卫从「一律拒」升级为「触发合成则执行」——判据
+  单一源同本 ADR(`merge_buy_completes`/`merge_buy_k`),执行序与
+  `cw_state.simulate` 满栏分支逐位同源:k 张临时挂 bench 尾参与全场
+  `_merge_bench`、金 k×单价全款、店 k 张同身份牌下架、牌池 take k 次;
+  XP 按 ADR-0129 单击模型 +XP_PER_BUY 一次(k 张多买仍是一次点击);
+  账本 BuyCard 增列 `count`(自动多买张数,判读 k>1 生效面);
+- **已知边(生产 sim 同序同语义)**:own=0 且 k=3 非链式时合成载体落
+  bench 尾槽、截回定长 9 即丢——merge_mechanics §2.5 满栏合成落点
+  置信低,两处同序保留,实机对账实证后同改;
+- `bench_full_skipped_buys`/`bench_full_skipped_gold` 计数语义收窄为
+  **非合成拒买**(合成买已执行,计入会让拦截指标说谎);
+- 验证:零漂移门(无满栏触发面局逐 seed diff={})+ A/B n=100/臂
+  (同 seed 配对,PYTHONHASHSEED=0)+ 全量 sim 测试
+  (`test_cw_w566_sim_guard_mergebuy` 3 锁;ADR-0283 旧锁语义仍真保留)。
