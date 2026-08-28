@@ -1047,6 +1047,23 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             continue
         avatar_id, _inliers = (identify_character(crop, templates)
                                if templates is not None else (None, 0))
+        # W512(观测自检设计 §2.10/§5-B6 识别置信度遥测):非空槽(亮度≥60,
+        # 已过空槽门)SIFT 仍 miss → 「读空」事件带内点数落台账 confidence 面。
+        # 零即时告警(纯留证,恒 L2),离线统计「哪个 reader 在哪个画面退化」
+        # ——读空率环比翻倍是系统性识别退化的最早信号。写点锚定在既有 miss
+        # 事件上(非轮询);写失败不阻断牌面读取。
+        if avatar_id is None and templates is not None:
+            try:
+                from sr_od.application.currency_war.cw_telemetry import record_defect
+                record_defect(
+                    'confidence', 'perception_conflict',
+                    expected=f'商店牌{i} SIFT 识别出身份',
+                    observed=f'miss(inliers={_inliers})',
+                    reader_source='read_shop_cards',
+                    confidence=float(_inliers),
+                    note='读空事件(置信度分布监控源;非即时告警)')
+            except Exception:   # noqa: BLE001  遥测 best-effort
+                pass
         name = resolve_char_name(avatar_id) if avatar_id else ''
         ch = get_char(name) if name else None
         cards.append(ShopCard(
@@ -1338,6 +1355,29 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
+        # W512(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
+        # handle_invest_strategy 落卡时暂存的「声明选中名」在此消费——写链
+        # 已先于暂存发生(handler 先 append session 再 record_invest_cards),
+        # 故本时点声明名应已在持卡列表;不在 = 写链断或选择落空 → 台账留证
+        #(中相关面,默认 L2;离线按复现分级)。消费即清,不串轮;无暂存
+        #(非投资轮)零开销。handler/策略决策零改动(纯旁路)。
+        try:
+            from sr_od.application.currency_war.cw_telemetry import (
+                consume_pending_strategy_pick,
+                record_defect,
+            )
+            _pick = consume_pending_strategy_pick()
+            if _pick and _pick not in state.active_strategies:
+                record_defect(
+                    'strategy', 'invariant_break',
+                    expected=f"选中的策略 {_pick!r} 进入 active_strategies",
+                    observed=f"active_strategies={state.active_strategies}",
+                    plane=int(getattr(state, 'plane', 0) or 0),
+                    round_num=int(getattr(state, 'round_num', 0) or 0),
+                    reader_source='invest_pick_vs_session',
+                    note='投资选择事件 vs 持卡终态不一致(写链断/选择落空)')
+        except Exception:   # noqa: BLE001  观测 best-effort
+            pass
         # r358d(遥测全面性审计接线,ADR-0229 缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/

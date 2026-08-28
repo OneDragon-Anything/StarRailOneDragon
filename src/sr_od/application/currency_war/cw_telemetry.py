@@ -434,6 +434,12 @@ class DefectRecord:
     evidence: dict[str, Any] = field(default_factory=dict)   # {shot?, refs:[{stream,key}]}
     reader_source: str = ""                         # 沿用既有 source 词表
     note: str = ""                                  # 处理提示,一行
+    # W512(观测自检设计 §2.10/§5-B6):识别置信度快照,末尾追加可选字段
+    #(旧记录缺省 None 兼容)。语义 = 缺陷发生时点的 reader 分数(SIFT 内点数
+    # 等数值面;读空=0),不设即时告警,离线做分布监控——某 reader 读空率
+    # 环比翻倍是系统性退化的最早信号(W501 金读数窄区裁切类缺陷先于大额漂移
+    # 在分布上暴露)。None = 该缺陷面无置信度语义。
+    confidence: float | None = None
 
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -739,12 +745,14 @@ class TelemetryRecorder:
                       gap: float | None = None, severity: str = '',
                       verdict: str = '', shot: str | None = None,
                       refs: list[dict[str, str]] | None = None,
-                      reader_source: str = '', note: str = '') -> None:
+                      reader_source: str = '', note: str = '',
+                      confidence: float | None = None) -> None:
         """记一条缺陷台账(defect_ledger.jsonl;纯观测索引层,字段语义见 DefectRecord)。
 
         severity 空时保守缺省 L2 留证(正经初判走模块级 record_defect,
         那里有分级纯函数与复现计数);evidence.refs 由调用方给原流行定位,
-        本方法不复制观测数据。
+        本方法不复制观测数据。confidence(可空):识别置信度快照,语义见
+        DefectRecord.confidence。
         """
         evidence: dict[str, Any] = {'refs': list(refs or [])}
         if shot:
@@ -756,9 +764,12 @@ class TelemetryRecorder:
             expected=str(expected), observed=str(observed),
             gap=gap, severity=severity or SEVERITY_L2_RECORD,
             verdict=verdict, evidence=evidence,
-            reader_source=reader_source, note=note)
+            reader_source=reader_source, note=note,
+            confidence=confidence)
         self._append("defect_ledger.jsonl", _to_jsonable(rec))
-        self._append("spend_ledger.jsonl", _to_jsonable(rec))
+        # 只写 defect_ledger 一条流:台账是「归一索引层」,spend_ledger 是
+        # 「原始证据层」(单元框架事实,消费端 query_spend_ledger 按
+        # SpendUnitRecord 字段解析)——缺陷行混入会被当伪单元误读。
 
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
@@ -1229,11 +1240,11 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
                   refs: list[dict[str, str]] | None = None,
                   reader_source: str = '', note: str = '',
                   gap_large: bool = False, auto_resolved: bool = False,
-                  severity: str = '') -> None:
+                  severity: str = '', confidence: float | None = None) -> None:
     """便捷:用 current_run_id 记一条缺陷台账(与 record_spend_unit 同模式)。
 
     severity 显式传入优先;否则写入端按 judge_severity 初判(带复现计数)。
-    run_id 空 → no-op(与其他便捷入口同门控)。
+    run_id 空 → no-op(与其他便捷入口同门控)。confidence 透传(§2.10)。
     """
     if not _CURRENT_RUN_ID:
         return
@@ -1245,7 +1256,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         surface, kind, expected, observed, run_id=_CURRENT_RUN_ID,
         plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
-        reader_source=reader_source, note=note)
+        reader_source=reader_source, note=note, confidence=confidence)
 
 
 def bypass_obs_conflict_to_defect(rec: dict) -> None:
@@ -1266,6 +1277,13 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
             gap_large = True
     except (TypeError, ValueError):
         gap = None   # 文本面:gap 不填,差用 expected/observed 表达
+    # W512(§2.10):原流行 ctx 里带数值 confidence 时透传进台账
+    #(缺省/非数值 → None,该缺陷面无置信度语义)
+    conf: float | None
+    try:
+        conf = float(rec['confidence']) if 'confidence' in rec else None
+    except (TypeError, ValueError):
+        conf = None
     record_defect(
         surface, 'perception_conflict',
         expected=f'{field}: {old}', observed=str(new),
@@ -1277,6 +1295,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         reader_source=str(rec.get('source') or ''),
         gap_large=gap_large,
         auto_resolved=field in AUTO_RESOLVED_OBS_FIELDS,
+        confidence=conf,
         note='旁路自 obs_conflicts 写入点(原始证据层,refs 可下钻)')
 
 
@@ -1506,12 +1525,37 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
     """
     if not _CURRENT_RUN_ID:
         return
+    # W512(观测自检设计 §2.9/§5-B6 策略激活态对拍,生产侧):strategy 类
+    # 投资卡落盘时暂存「声明选中」的名字,由下一次备战观察构建 state 时消费
+    #(cw_observation),对拍 session.active_strategies——选了 X 而持卡里没有
+    # X = 写链断或选择落空(原审计缺口:策略误选/漏选无法发现)。槽模式与
+    # _LAST_SUPPLY_PICK / _PENDING_UNIT_GOLD_CLOSE 同族:生产→消费紧邻、
+    # 消费即清,不新开轮询。
+    if kind == 'strategy':
+        _chosen = next((c.get('name') for c in cards
+                        if isinstance(c, dict) and c.get('chosen')), None)
+        if _chosen and _chosen != '?':
+            global _PENDING_STRATEGY_PICK
+            _PENDING_STRATEGY_PICK = str(_chosen)
     rec = get_recorder()
     ts = datetime.now().isoformat(timespec="seconds")
     for c in cards:
         rec._append("invest_cards.jsonl", {
             "schema_version": 1, "ts": ts, "run_id": _CURRENT_RUN_ID, "kind": kind, **c,
         })
+
+
+# —— W512:策略激活对拍暂存槽(生产者=record_invest_cards('strategy');
+# 消费者=cw_observation 构建 state 读 session.active_strategies 处;消费即清)——
+_PENDING_STRATEGY_PICK: str | None = None
+
+
+def consume_pending_strategy_pick() -> str | None:
+    """消费者:取走暂存的「声明选中策略名」并清槽(无暂存 → None)。"""
+    global _PENDING_STRATEGY_PICK
+    pick = _PENDING_STRATEGY_PICK
+    _PENDING_STRATEGY_PICK = None
+    return pick
 
 
 

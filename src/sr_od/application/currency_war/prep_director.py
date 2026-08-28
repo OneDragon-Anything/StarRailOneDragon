@@ -72,6 +72,7 @@ from sr_od.application.currency_war.prep_actions import (
     PrepAction,
     PrepActionExecutor,
     RunBuyPhase,
+    SellDeployed,
     StartBattle,
     action_key,
     row_area_centers,
@@ -770,6 +771,21 @@ class PrepDirector(SrOperation):
             _unit_open = isinstance(action, RunBuyPhase)
             if _unit_open:
                 self._spend_unit_open(obs)
+            # W512(观测自检设计 §2.3/§5-B5 动作级板面对拍,前读):部署/卖出
+            # 执行前读一帧 paddle X(read_deployed_count 区域 OCR,毫秒级;部署
+            # 动作本身秒级,占比可忽略)。后读复用下方 heavy 重观察帧,零新增
+            # 截图。仅 DeployMove(期望 +1)/ SellDeployed(期望 −1);其余动作
+            # 不进对拍。
+            _dep_delta = 0
+            _dep_pre: int | None = None
+            if isinstance(action, (DeployMove, SellDeployed)):
+                _dep_delta = 1 if isinstance(action, DeployMove) else -1
+                _dep_frame = getattr(self, 'last_screenshot', None)
+                if _dep_frame is not None:
+                    try:
+                        _dep_pre = read_deployed_count(self.ctx, _dep_frame)
+                    except Exception:   # noqa: BLE001  观测 best-effort
+                        _dep_pre = None
             try:
                 progressed, detail = self._executor.execute(action)
                 if _unit_open:
@@ -826,6 +842,29 @@ class PrepDirector(SrOperation):
                     return bail
             # 再观察:执行过的游戏动作一律 heavy(结构变化,review H-1);控制流走 light(上方)
             obs = self._observe(heavy=True)
+            # W512(观测自检设计 §2.3/§5-B5 动作级板面对拍,后读):heavy 重观察帧
+            # 上再读 paddle X,执行成功时期望 = 前读 ±1;不等 = 部署/卖出未生效
+            #(点击落空/对账链双源都错)。纯留证零决策行为——与 deployed_align 的
+            # 区别:那是跟踪表 vs paddle 的自动纠漂(裁决已自动恒 L2),本对拍是
+            # 「动作声称的改变是否真发生」,不可自动纠,分级走 judge_severity
+            #(关键面+计数差≥1,复现自动升 L0 初判;停机接线未启,仅落账标记)。
+            # 任一端失读(None)= 无对拍基准,宁缺勿造跳过(paddle 既有语义)。
+            if _dep_pre is not None:
+                try:
+                    _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
+                    if _dep_post is not None and _dep_post - _dep_pre != _dep_delta:
+                        _gap = _dep_post - _dep_pre
+                        cw_telemetry.record_defect(
+                            'deployed', 'invariant_break',
+                            expected=f'{key} 执行后 paddle={_dep_pre + _dep_delta}',
+                            observed=f'paddle={_dep_post}',
+                            plane=int(getattr(obs.state, 'plane', 0) or 0),
+                            round_num=int(getattr(obs.state, 'round_num', 0) or 0),
+                            gap=float(_gap), gap_large=True,
+                            reader_source='paddle_action_audit',
+                            note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
+                except Exception:   # noqa: BLE001  观测 best-effort
+                    pass
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
