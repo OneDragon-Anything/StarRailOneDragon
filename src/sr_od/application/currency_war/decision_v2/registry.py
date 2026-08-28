@@ -103,9 +103,11 @@ class DecisionV2Registry:
     remedy_alarm_refresh: bool = True
 
     # ===== S5 统一卖件弱序(W52/ADR-0327)=====
-    #: [22]③ 再遇窗口表(费级→再遇期望轮数):1费 11(7-15 中值)/
-    #: 5费 120(60-180 中值,7-8 级窗口);2-4费线性内插。首版三档
-    #: 近似,sim 校准域(ADR-0327)——消费方 sell_priority_key。
+    #: [22]③ 再遇窗口表(费级→再遇期望轮数)。实测锚两个:1费 11
+    #: (7-15 中值)/ 5费 120(60-180 中值,7-8 级窗口);2-4费为锚点
+    #: 间的**拟合经验值**——5费锚跨度 60-180 使中段既无实测也无可信
+    #: 参数化形式(非线性),标定接口=sim 校准域(ADR-0327)。消费方
+    #: sell_priority_key。
     remeet_window_rounds: dict[int, int] = field(default_factory=lambda: {
         1: 11, 2: 25, 3: 40, 4: 60, 5: 120})
     #: W4 去向表派生的费级终局贯穿率(E→F 留存;ADR-0327):
@@ -260,7 +262,7 @@ class DecisionV2Registry:
     #: P1 收益侧战斗期望掉血=条件败局伤害的线性拟合**截距**(遥测拟合:
     #: W324 战斗粗模型冻结语料 417 条战斗类差分,battle 节点败局伤害
     #: =截距+斜率×成型档,battle n=278/73 局聚类稳健、斜率 SE 1.25;
-    #: 产物=fit_results.json 的 two_state_model.battle,W324 归档目录;
+    #: 拟合产物随粗模型语料归档(复现锚=ADR-0424);
     #: 语义=「打了但输了」的伤害期望,与 V_D 收益式的 Δwin_rate 相配
     #: ——无条件均值拟合会与胜率差双计,ADR-0425)
     vd_p1_loss_intercept: float = 11.32
@@ -272,8 +274,8 @@ class DecisionV2Registry:
     #: 口径=条件败局伤害(two_state_model:「打了但输了」的期望,胜率
     #: 单列)——与胜率相乘不双计(math_proofs P15 口径命题);误用
     #: 无条件均值拟合(胜态混在均值里)会系统性低估。来源=W324 冻结
-    #: 语料 417 条拟合产物 two_state_model(.debug/temp/currency_war/
-    #: w324_coarse_battle/fit_results.json);encounter=截距 24.32 +
+    #: 语料 417 条拟合产物 two_state_model(粗模型定稿、语料快照复现
+    #: 锚与对抗审计记录=ADR-0424);encounter=截距 24.32 +
     #: 斜率(−4.53)×成型档(斜率 SE 2.41 显著);boss 斜率 CI 含 0 →
     #: 退常数 26.71(背测 sim −22.61 vs obs −25.82)。
     streak_floor_loss_damage: dict[str, tuple[float, float]] = field(
@@ -283,7 +285,7 @@ class DecisionV2Registry:
         })
     #: 连胜 EV 地板胜率表(节点类型×成型档;取**注入后**值 p_injected
     #: =语料实测+plaza 先验只进 rung≥2、share≤0.25,来源同上
-    #: fit_results.json 的 win_rate_table_injected)。键域 0-2(消费侧
+    #: 粗模型拟合产物的 win_rate_table_injected)。键域 0-2(消费侧
     #: 成型档封顶 2,与 h3_win_rate 同法);不与 h3_win_rate 合并
     #: (h3=battle 骨架插值表辖层3,本表=实测注入表辖连胜地板)。
     streak_floor_win_rate: dict[str, dict[int, float]] = field(
@@ -294,8 +296,8 @@ class DecisionV2Registry:
         })
     #: P2 掉血期望(P12 收益侧,**条件败局伤害**口径——与 Δwin_rate 相乘
     #: 不双计,P15 口径命题;=「打了但输了」的期望)。标定=P2 损血谱粗档
-    #: (.debug/temp/currency_war/w353_p2_survival/w354_p2_loss_calib.json,
-    #: 冻结语料 w324 同 run 相邻行 hp 差分):普通战斗桶 20.05(n=19;
+    #: (冻结语料同 run 相邻行 hp 差分;标定叙述与精度声明=ADR-0426
+    #: 增补 A):普通战斗桶 20.05(n=19;
     #: 桶内零损行=0,实测口径核验=条件伤害)。置信声明(W371 审计 M3):
     #: SD 10.38,事件级 t95% CI [15.0, 25.1],run 级聚类 bootstrap CI
     #: [15.1, 23.6](19 事件来自 13 run)——区间半宽 ±25%,取 20.05 与
@@ -386,8 +388,9 @@ class DecisionV2Registry:
     #: 同名 1★ 计期权分。硬边界:只辖已持有名的第 2 份(压库语义,
     #: 不授权为填充件 D 牌刷新);copies_cap 沿用(仲裁层守卫);
     #: 只辖已 deployed 名(纯 bench 囤件不折,ADR-0295 同式边界)。
-    #: **默认 0=关闭**(=现行为零漂移,同 goldrich_buy_bias 的
-    #: A/B 通道保留模式,ADR-0305 先例);三臂 A/B 见 W232 报告。
+    #: **默认 0=关闭**(=现行为零漂移;「默认关+A/B 臂」准入先例=
+    #: ADR-0305,注:goldrich 本体后已定谳否决待清,见其字段注记);
+    #: 三臂 A/B 见 ADR-0402 验证节。
     filler_star_unit: float = 0.0
     #: 方案B(W232/ADR-0402):同名副本豁免 pair_wants 方向门。副本是
     #: 升星素材(filler_star/merge_progress 期权通道)而非新方向投资,
@@ -418,23 +421,30 @@ class DecisionV2Registry:
     #: levelup_reserve_gold 已随 W126/ADR-0349 删除:刷新×追级并存仲裁
     #: 的评分折扣与约束侧 A/B 通道整体退场——并存由 V_D(概率窗二分:
     #: goal=level_up 时 D 让位)与升级总账自然裁决,不再需要外加折扣)
-    # ===== ADR-0305 件3:金充裕买偏置(批㉞④ 评分域杠杆) =====
+    # ===== ADR-0305 件3:金充裕买偏置(概念定谳否决,第 4 态待清)=====
     #: 金充裕段(≥goldrich_min_gold)的 0 分板面差分买候选顶成正分
-    #: 的偏置。诊断(20 局 probe,seed 520-539):金 28-41 段 110 轮,
-    #: 店有引擎 54 轮中 9 轮零采纳,主导拒因=「非正分」(0 分板面
-    #: 差分 27 次,bond_fallback 32/bridge_core 15/pair 11/engine_seed
-    #: 5 张卡评 0)——金充裕时板面差分 0 的成型/凑对件被一刀切拒,
-    #: 金滞留无变现通道。**三窗 A/B 否决默认开**(0.5 臂 gap
-    #: −1.80/+0.03/+2.47 无一致方向,SD 带 12-16 内):成型加速
-    #: 确认(battles_before_e2 3.17→2.38)但 hp 不跟——rung2 保护弱
-    #: (池 rung2 桶胜率 44.4%),与件2 结论同根。**默认 0=关闭,
-    #: 通道保留**(A/B 可开,同 form_refresh_ev 模式)。
+    #: 的偏置。病灶真实(20 局 probe:金 28-41 段 110 轮中 9 轮店有
+    #: 引擎却零采纳,主导拒因=「非正分」0 分板面差分),但加性偏置
+    #: 修法被 A/B 定谳否决:三窗 gap −1.80/+0.03/+2.47 无一致方向
+    #: (成型加速可见 battles_before_e2 3.17→2.38,hp 不跟,rung2 保护
+    #: 弱;ADR-0305),同族 early_pace(ADR-0408)复证同构结论
+    #: 「成型加速可见,hp 不跟」。后续修法=配方围栏硬排序(ADR-0432,
+    #: 偏序关系不标定量级,已落码默认关挂开臂判据)。
+    #: **与经济循环总模型(ADR-0445)的辖域边界**:本偏置辖金 28-50
+    #: 储备段——息线以内持有弱占优,溢余义务只在 g>R* 激活,总模型
+    #: **不吞并**本通道辖域;清理依据=其自身 A/B 否决(开关生命周期
+    #: 第 4 态),非义务覆盖。
+    #: **待清声明**:三字段(bias/min_gold/tags)唯一消费点=decision_v2
+    #: /scoring.py 评分偏置段,删除须注册表与消费块同批(消费点文件
+    #: 在飞占用,本批只落定谳注记);删除批前默认 0.0=恒不生效,行为
+    #: 零漂移。复活条件:储备段出现「0 分成型件被结构性拒」的新病灶
+    #: 实证且修法经偏序/期望账论证(不复活加性偏置形态)。
     goldrich_buy_bias: float = 0.0
     #: 偏置生效的金下沿(观察段下沿 28;花 1-4 金在此段内不破
-    #: 30/40 息档的段内花费)
+    #: 30/40 息档的段内花费;随主字段同批清理)
     goldrich_min_gold: int = 28
     #: 偏置辖的买标签(经济类 bond_fallback 不辖:凑数散件金充裕
-    #: 也不值得占 bench;辖成型/核心/凑对/副本四类)
+    #: 也不值得占 bench;辖成型/核心/凑对/副本四类;随主字段同批清理)
     goldrich_buy_tags: frozenset[str] = frozenset({
         'engine_seed', 'pair', 'copy', 'bridge_core',
     })
@@ -636,9 +646,8 @@ class DecisionV2Registry:
     # ===== W300 press 通道:目标外同名副本压库购买(5 参数,V-B3 全量
     # registry 化;arm0=默认值全关零漂移,armA=注入开启;A/B 结论落地后
     # 按 ADR-0411 先例逐字段裁决去留;评分偏置两字段已随 ADR-0427 增补节
-    # 定谳清理)。设计=唯一规格:
-    # .debug/temp/currency_war/w300_dup_ruling/design.md v3 节(V-B0~V-B9)。
-    # A/B 兑换统一裁决表(V-B4;锚定义=design §5.3,冲突处以本表为准):
+    # 定谳清理)。设计规格与 A/B 兑现裁决=ADR-0427(v3 规格节与其谱系
+    # 记录见该 ADR;A/B 兑换统一裁决表(V-B4;锚定义=规格 §5.3,冲突处以本表为准):
     # | R1 | star≥2 升≥MDE ∧ 进场金/出口质量/经济卫生副锚均不劣 → 落码+ADR+三同步 |
     # | R2 | star≥2 持平(<MDE)∧ seg 真拦残留≤0.15 ∧ 其余锚不劣 → 落码
     #      (「有效收敛」;P4 张力=收益主体在 sim 不可观测的期权/对手面,
@@ -702,7 +711,7 @@ class DecisionV2Registry:
     #: 冻结池 7af81977 同 seed):core2≥1 进场率 12.17%→18.85%(配对
     #: 翻转 22:9,二项单侧 p≈0.025;剂量-响应单调 gr7 15:7);进场金
     #: 均值差 −1.50 CI 含零(金面免费);末 HP/hp0/P2 进场率全无信号。
-    #: 落地前置双核验过(.debug/temp/currency_war/w288_gate_landing):
+    #: 落地前置双核验过(记录=ADR-0418):
     #: ① cw_replay 双臂重放历史局,分歧仅限 P1 r6+(r1-5/P2/P3 零漂移);
     #: ② 提前窗买质量**反升**:r6/r7 买入的 off 散件率 6.1%→3.6%
     #: ——不是拿便宜副本填窗。已知耦合(wart,详见 ADR-0418):
@@ -740,8 +749,7 @@ class DecisionV2Registry:
     #: P1 boss 语料净星深全落桶 0**(旧 Σboard 桶 9/12/15 的条件性
     #: 系键口径伪影:升星减件使强板落浅桶、浅桶均值被强板样本抬升
     #: ——方向冲突的语料侧成因,ADR-0404)。
-    #: 标定脚本与逐行口径=.debug/temp/w240_calibrate_boss_star.py
-    #: (W238 旧标定见 ADR-0403)。**已知边界**:删失剔除使留存样本
+    #: 标定口径与档键迁移裁决=ADR-0403/ADR-0404。**已知边界**:删失剔除使留存样本
     #: 偏向「存活 boss 的局」(弱板真值伤害被低估);净星深≥3 的
     #: 深桶零样本——star_depth 条件性在当前语料下不可辨,常数表
     #: 实为无条件期望,语料攒厚后复验。
@@ -751,7 +759,9 @@ class DecisionV2Registry:
     #: hp 临界局 tier 高估一档=重蹈 W234 缺口;低估方向仅更保守可 AB 校正);
     #: 协变量(Σboard/净星深/日期/comp/streak)无一解释簇归属,嫌疑首因=
     #: boss 敌型(outcomes 无 boss_name 字段——数据采集欠账,攒齐后按敌型
-    #: 混合重标定)。分布数字与脚本=.debug/temp/currency_war/w244_*
+    #: 混合重标定)。分布数字以本注释为单一源(2026-08-27 boss 伤害
+    #: 分布重标定,离线标定产物随对局遥测语料归档);投影口径取 Q3 的
+    #: 前移耦合挂账=ADR-0418。
     handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {
         0: 34.0,
     })
@@ -841,8 +851,7 @@ class DecisionV2Registry:
     early_pace_val_max: float = 0.5
 
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
-    #: 设计=唯一规格:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md`
-    #: (对抗修订二轮已吸收)。**符号不稳参数一律默认值+标定接口,不拍死**:
+    #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
     #: 循环总模型 ADR-0445 的溢余义务吞并,行为恒接线。)
@@ -902,12 +911,12 @@ class DecisionV2Registry:
     # posture_release.spend_gate_active 读 session.v3_release。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
-    #: 设计=唯一规格:`.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md`
-    #: §3(C4 剩余节点序列逐节点投影)/§4(双源标定)。
-    #: 标定=同目录 w375_calibrate_dual_source.py(死亡真源=runs.jsonl,
+    #: 设计决策=ADR-0426 增补 B(C3/C4 重设计裁决)+ADR-0429(C4 接线):
+    #: C4 剩余节点序列逐节点投影/双源标定。
+    #: 标定=双源重标定(死亡真源=实机对局台账 runs.jsonl,
     #: hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、不按置信度
     #: 过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反保守,已废;
-    #: 产物=w375_dual_source_calib.json,双源互校:帧级合并均值 10.79 ∈
+    #: 产物为双源标定台账(记录=ADR-0440 三表对齐节),双源互校:帧级合并均值 10.79 ∈
     #: run 级聚类 bootstrap CI [6.7,10.97])。
     #: P2 节点损血表(节点型→**无条件期望损血**,正数)。
     #: ⚠️ 消费面声明:本表**不进任何行为公式**(两态决策层与阈值层 μ
@@ -920,7 +929,7 @@ class DecisionV2Registry:
     #: vs W346 sim Δ池)与坐标(kind 桶 vs rung)均不同,详 ADR-0440
     #: 三表对齐节。
     #: 覆写=W375 双源重标定的无条件期望三档(normal 10.16/encounter
-    #: 12.00/boss 15.50,CI 见 w375_dual_source_calib.json;原「旧删失
+    #: 12.00/boss 15.50,CI 记录=ADR-0440 三表对齐节;原「旧删失
     #: 口径条件常数暂抄」20.05/16.67/26.71 随两态消费口径定稿退役,
     #: 见 ADR-0440)。node_type 缺读兜底=normal(战斗节点频率最高档,
     #: 2/5 槽;触发宽度居中——三档中 encounter 最小、boss 最大,normal
@@ -933,8 +942,7 @@ class DecisionV2Registry:
     #: 损血幅度唯一源,消费点=cw_line_switch.rounds_alive 逐节点投影
     #: 与 cw_horizon DP P2 递推——E[损血|板强]=(1−p_win(rung))·本表)。
     #: 值=W375 双源重标定条件败面(normal 12.77/encounter 13.33/boss
-    #: 15.50,标定叙述见 p2_node_loss_table 段头与 w375_dual_source_calib
-    #: .json);reward 零损档同上表(奖励/补给零损照走)。
+    #: 15.50,标定叙述见 p2_node_loss_table 段头与 ADR-0440):reward 零损档同上表(奖励/补给零损照走)。
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
     #: P2 损血标定家族版本披露锚(第三维,独立于 cw_coarse_battle.
@@ -946,8 +954,8 @@ class DecisionV2Registry:
     p2_loss_calib_version: int = 1
     #: C1 定向刷新存在性名集的「高费强件」费用下界(买侧不辖名单,
     #: 只辖刷新存在性名集;消费点=filters._refreshable_names)。来源=
-    #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(报告=
-    #: `.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)+ sim 分
+    #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(记录=
+    #: ADR-0426 挂账 2)+ sim 分
     #: rung 胜占比 0.34→0.65 单调(W346 报告 §3.2 实证底座)=高费高星
     #: 战力优势。原批名 dying_band_high_cost_floor(C3 濒死带首用),
     #: C3 已定谳清理(ADR-0426 增补节)后随批改中性名,取值与消费
@@ -978,8 +986,7 @@ class DecisionV2Registry:
     #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗条件胜率;
     #: 消费侧缺档=p_win=0=每战全损,loss=表值条件常数,两态退化 M1a;
     #: 消费开关=rounds_two_state_enabled,默认关=零漂移)。
-    #: 值出处=W346 门验证批分 rung 胜占比实测
-    #(.debug/temp/currency_war/w346_gate_validation/w346_dmg_delta.json,
+    #: 值出处=W346 门验证批分 rung 胜占比实测(冻结池 Δ池臂,
     #: 战斗 d>0 样本占比):k0=15/936=0.016,k1=879/2129=0.413,
     #: k2+k3 钳制并入=864/1316=0.657(生产 rung 0-2 钳制,k3 桶折叠)。
     #: 口径勘误:W393/W412 引文称「coarse 臂 0.34→0.65 单调」,原始
@@ -1002,12 +1009,11 @@ class DecisionV2Registry:
     #: C4 boss 档不确定性附加费(轮;投影路径含 boss 节点时 need 加此
     #: 半宽——借档的不确定性由被比较量显式承担,REDESIGN §4.3)。值=
     #: 标定产出 |28.24−26.71|(P1 two_state 拟合与借档常数的源距,
-    #: w375_dual_source_calib.json boss_bucket_injection),非魔数。
+    #: 双源标定台账 boss_bucket_injection,记录=ADR-0440),非魔数。
     line_switch_boss_ci_halfwidth: float = 1.53
 
     # ===== R3 撤销出口①意图证据(治 W386 BP1「门放行噪声换线」;
-    # 设计=唯一规格:`.debug/temp/currency_war/w396_r2r3_design/DESIGN.md`
-    # R3 节;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
+    # 设计决策=ADR-0436;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
     #: 证据组 A:「核心实际可达但连续 N_req 轮未现」的容忍概率 ε。
     #: 闭式 N_req(core,level)=⌈ln ε/ln(1−q)⌉,q=1−(1−r)^5,
     #: r=refresh_prob(level,cost)/DISTINCT_CARDS_PER_COST[cost](再遇
@@ -1027,9 +1033,8 @@ class DecisionV2Registry:
     #: 帧(P2+ 段 1341 帧),统计量=「任一异线(除当轮锁定线)厚度 ≥ a」
     #: 的无条件频率;取最小整数 a 使 f0(a)≤5%。实测:f0(4)=7.68%>5%,
     #: f0(5)=1.27%≤5% → A_min=5。对照曲线(任一 v2 线含锁定线/全帧
-    #: 口径:f0(4)=3.68%→A_min=4)与逐帧明细见测量产物
-    #: .debug/temp/currency_war/w423_r3_revoke_evidence/
-    #: a_min_measurement.json(主口径取消费面一致的「异线 × P2+ 帧」)。
+    #: 口径:f0(4)=3.68%→A_min=4)与逐帧明细的测量记录=ADR-0436
+    #: (主口径取消费面一致的「异线 × P2+ 帧」)。
     #: **分辨力弱声明(设计 R3.1 预案)**:5% 点落在 ≥4 带=证据在本
     #: 牌池分辨力弱的形态,设计预案=如实降级回炉(证据组 A 单独撑或
     #: 换证据形态)——回炉裁决挂 L2 注入臂误开窗占比判据(开窗局新线
@@ -1037,8 +1042,7 @@ class DecisionV2Registry:
     revoke_evidence_min_thickness: float = 5.0
 
     # ===== C1 溢余必花定向优先级(P1 末窗投影安全带;FLIP 正交补集)=====
-    #: 设计=唯一规格:`.debug/temp/currency_war/w382_c1_design/DESIGN.md`
-    #: §2(期望账)/§3(路线 B 辖域裁决)。辖域裁决=与 FLIP 末窗投影臂
+    #: 设计决策=ADR-0443(期望账 §谱系与破息分支否决记录)。辖域裁决=与 FLIP 末窗投影臂
     #: (ADR-0426)同锚两分支的**正交补集**:末窗帧按投影残差
     #: d = hp − boss_tax_p75 一刀切,d < emergency_hp 归 FLIP 泄息义务
     #: (既有,不动),d ≥ emergency_hp 归本通道评估——辖域互斥由谓词
@@ -1079,9 +1083,7 @@ class DecisionV2Registry:
     # ===== C1 资产臂(跨位面资产通道 V_asset)——定谳清理,删码留档 =====
     #: 曾以 c1_asset_channel_enabled(总开关)+c1_asset_m_min(0.5)/
     #: p_slot(0.5,待标定)/delta_unit(0.03,待标定·主缺口)/l2_loss
-    #: (12.0,待标定)五字段落码默认关(设计=唯一规格
-    #: ``.debug/temp/currency_war/w397_s5_asset_channel/DESIGN.md``
-    #: §2/§3;行为锁=test_cw_c1_directed_spend 资产臂节)。定谳依据
+    #: (12.0,待标定)五字段落码默认关(设计决策与定谳链=ADR-0444;行为锁=test_cw_c1_directed_spend 资产臂节)。定谳依据
     #: (ADR-0444,开关生命周期第 4 态):开臂前置「触发面非零」实测为零
     #: ——sim 300 局 C1 辖域 445 帧上意向从不处于锁线态(session 无
     #: v3_intention 或 phase≠locked),m 表结构性无定义,通道构造性恒不
@@ -1093,8 +1095,7 @@ class DecisionV2Registry:
     #: 非零,方可重新立项。
 
 
-    # ===== 形态达标三方向(设计单一源=.debug/temp/currency_war/
-    # w415_form_design/DESIGN.md;决策 why=ADR-0432/0433/0434)=====
+    # ===== 形态达标三方向(设计决策=ADR-0432/0433/0434)=====
     #: 三开关共同背景:形态达标是双指标(息基×形态)中塌掉的一根——
     #: before 基线=形态达标率实机 10%/sim 两臂 0%,头号缺项=配方件 2★
     #: (ADR-0432 判据节)。A/B 统一主判据=形态达标率(口径=配方档≥5
