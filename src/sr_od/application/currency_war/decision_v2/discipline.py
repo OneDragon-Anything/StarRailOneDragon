@@ -802,6 +802,62 @@ def plane_last_battle(state: GameState, session: StrategySession) -> bool:
     return node in ('boss',) and state.round_num >= nodes_of_plane(session)
 
 
+# ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b;ADR-0448)=====
+
+
+def p2_levelup_stop_hp(registry: DecisionV2Registry) -> int:
+    """P2 停升级线(设计件 12 §6 参数表 P2_LEVELUP_STOP_L_C)
+    = ceil(blood_budget_stop_d × vd_p2_loss)。d=1、vd_p2_loss=20.05
+    → 21 血。L_c 口径=registry.vd_p2_loss(P12 收益侧条件败局伤害);
+    W375 双源重标定后的条件败面档(p2_cond_loss_table normal=12.77)
+    与本线的口径取舍 = 设计件 12 §5.4-1 标定核对项——重推裁决前本线
+    以设计定稿的 vd_p2_loss 为单一源,禁散写第二份数值。"""
+    import math
+    return math.ceil(registry.blood_budget_stop_d * registry.vd_p2_loss)
+
+
+def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
+    """P1 停追级线(设计件 12 §6 参数表 P1_LEVELUP_STOP_L_C)
+    = ceil(d × L_c),L_c = vd_p1_loss_intercept + vd_p1_loss_slope_rung
+    × p1_levelup_stop_rung(d=1、rung2 代表帧 ≈10.58 → 11 血)。
+    完备性条款(设计件 12 §2.3):线很深、预期触发少——堵死「1 血局
+    仍升级」的角案,主杠杆在 P1-a/P1-c(未在本批辖域)。"""
+    import math
+    l_c = max(0.0, registry.vd_p1_loss_intercept
+              + registry.vd_p1_loss_slope_rung * registry.p1_levelup_stop_rung)
+    return math.ceil(registry.blood_budget_stop_d * l_c)
+
+
+def blood_budget_levelup_blocked(state: GameState, session: StrategySession,
+                                 registry: DecisionV2Registry) -> bool:
+    """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
+
+    P21 已证:存活到账判据 h > d·L_c 在 h ≤ d·L_c 域内恒假 → 升级收益
+    恒 0、EV=−C−I 严格为负,且敏感网格 (p,Δp,d,c) 全负域——结论与
+    β 标定无关。备战帧 hp ≤ 停升级线(P1/P2 各自线)时拒绝购买经验。
+
+    接缝语义(设计件 12 §5.2/§5.3,实现形态裁决):
+    - **授权通道前置拒付过滤**,与息线门是独立谓词取 AND(血线胜)——
+      不是第五种覆盖态,discipline 覆盖序不动,emergency 态内同样生效
+      (应急梯度给「怎么花」,停手给「不许为未来花」);
+    - 唯一豁免 = ``plane_last_battle`` ALL IN 清零窗(位面末最后一战
+      是损失最小的花光时机,[18];停手让位)。
+    消费点:arbiter 约束 'blood_budget_stop'(候选通道)/remediation
+    稳态多击组与 deploy_cap 补偿臂①(授权通道旁路——两臂的升级收益
+    同在 ≥1 战之后才兑现,同辖;拒付计数=session.v3_blood_budget_
+    rejects,披露模式对齐 sim 执行层 level_cap_rejects)。
+    """
+    if not registry.blood_budget_stop_enabled:
+        return False
+    if plane_last_battle(state, session):
+        return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
+    if state.plane == 2:
+        return state.hp <= p2_levelup_stop_hp(registry)
+    if state.plane == 1:
+        return state.hp <= p1_levelup_stop_hp(registry)
+    return False
+
+
 def _streak_floor(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry,
                   base_floor: int) -> int:

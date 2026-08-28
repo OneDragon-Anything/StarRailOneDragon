@@ -1703,6 +1703,67 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
     return out
 
 
+# 血预算停手线镜像(设计件 12 §6;ADR-0448):本文件「纯函数,不
+# import cw_sim/决策栈」纪律下的镜像声明(先例=_LEVELUP_AUTH_WHITELIST);
+# 单一源=decision_v2.discipline.p1/p2_levelup_stop_hp(由 registry
+# vd_* 常量推导),漂移由测试仓双向锁辖。
+_P2_LEVELUP_STOP_HP: int = 21   # ceil(1×registry.vd_p2_loss=20.05)
+_P1_LEVELUP_STOP_HP: int = 11   # ceil(1×(11.32−0.37×2)=10.58)
+# 位面节点数镜像(plane_last_battle 的轮维;P1=NODES_PER_PLANE=9,
+# P2=cw_sim.P2_ROUNDS=7——ALL IN 帧=node='boss' ∧ 轮≥节点数)
+_ALLIN_MIN_ROUND: dict[int, int] = {1: 9, 2: 7}
+
+
+def _blood_budget_levelup_events(rows: list[dict], plane: int,
+                                 stop_hp: int) -> list[dict]:
+    """血预算停手·停升级线段级检查公共实现(设计件 12 §3.1/§2.3-P1-b;
+    ADR-0448):备战帧 hp ≤ 停升级线时出现 LevelUp = 追级泵未停转,
+    违规。豁免=ALL IN 帧(node='boss' ∧ 轮≥位面节点数;位面末最后一战
+    是损失最小的花光时机,[18] 停手让位)。
+
+    hp 口径:决策帧 hp = **上一行**的 hp(账本行 hp 是本轮回后结算值,
+    决策发生在本轮回战斗之前;局首帧=开局满血,恒不触线)——逐行滚动
+    prev_hp 取上一行,跨位面连续(P2 首帧决策 hp=P1 末行 hp,与生产
+    进场继承同真值)。"""
+    out: list[dict] = []
+    prev_hp: int | None = None
+    for row in rows:
+        hp_decision = prev_hp
+        prev_hp = row.get('hp') if row.get('hp') is not None else prev_hp
+        if (row.get('plane') or 1) != plane:
+            continue
+        hp = hp_decision
+        if hp is None or hp > stop_hp:
+            continue
+        node = (row.get('sim') or {}).get('node') or ''
+        rn = int(row.get('round_num') or 0)
+        if node == 'boss' and rn >= _ALLIN_MIN_ROUND.get(plane, 9):
+            continue    # ALL IN 窗豁免(反例锁=测试仓构造帧)
+        lv = sum(1 for a in row.get('actions') or []
+                 if a.get('__type__') == 'LevelUp')
+        if lv:
+            out.append({
+                'plane': plane, 'round_num': rn,
+                'detail': f'备战帧hp{hp}≤停升级线{stop_hp} 仍升级×{lv}'
+                          f'(追级泵未停转)——血预算停手(ADR-0448)',
+                'hp': hp, 'stop_hp': stop_hp, 'levelups': lv,
+            })
+    return out
+
+
+def seg_check_p2_blood_budget_levelup(rows: list[dict]) -> list[dict]:
+    """血预算停手·P2 停升级线(段级):plane=2 ∧ hp≤21(非 ALL IN 帧)
+    的 LevelUp 事件(设计件 12 §3.1;ADR-0448;⑳+1 局病灶
+    「血线 16/1 追级泵 6/12 次」的 sim 回灌面)。"""
+    return _blood_budget_levelup_events(rows, 2, _P2_LEVELUP_STOP_HP)
+
+
+def seg_check_p1_blood_budget_levelup(rows: list[dict]) -> list[dict]:
+    """血预算停手·P1 停追级线(段级):plane=1 ∧ hp≤11(非 ALL IN 帧)
+    的 LevelUp 事件(设计件 12 §2.3-P1-b 完备性条款;ADR-0448)。"""
+    return _blood_budget_levelup_events(rows, 1, _P1_LEVELUP_STOP_HP)
+
+
 #: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
 #: 平行,输出粒度不同——事件带定位,见本节头注释)。
 _SEGMENT_CHECKS = {
@@ -1713,6 +1774,8 @@ _SEGMENT_CHECKS = {
     'seg_break_interest_exception': seg_check_break_interest_exception,
     'seg_formed_still_buying_transition': seg_check_formed_still_buying_transition,
     'seg_unjustified_levelup': seg_check_unjustified_levelup,
+    'seg_p2_blood_budget_levelup': seg_check_p2_blood_budget_levelup,
+    'seg_p1_blood_budget_levelup': seg_check_p1_blood_budget_levelup,
 }
 
 #: 事件列表上限(报告侧;全量走 seed 重放可再取,防批报告膨胀)

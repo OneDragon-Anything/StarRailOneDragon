@@ -170,6 +170,22 @@ class DecisionV2Registry:
     #: (catchup_min_level/pop_baseline 已随 W126/ADR-0349 删除:追赶态退场,
     #: 通道 2 人口位([33])+通道 4 概率等级窗([3])+EV 总账涌现承接)
 
+    # ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b;ADR-0448)=====
+    #: 总开关:True=停升级门恒接线(P21 数学定谳:hp ≤ d·L_c 域内升级
+    #: EV=−C−I 严格为负,与 β 标定无关——不是「待验证」的悬置开关);
+    #: False=A/B 对照臂/回退锚(sim 配对经 registry 注入实现,与
+    #: vd_p2_enabled 同型:布尔两态=「血预算约束在场/退场」)。
+    blood_budget_stop_enabled: bool = True
+    #: P21 判据「存活到账 h > d·L_c」的到账延迟 d(战斗场次)。d=1=
+    #: 升级→人口生效→下一场战斗的最短诚实延迟(P21 证 d=0 亦负,
+    #: 取 1 更保守;设计件 12 §3.1 推导链步 3)。
+    blood_budget_stop_d: int = 1
+    #: P1 停追级线的 L_c 取样成型档:L_c(rung)=vd_p1_loss_intercept+
+    #: vd_p1_loss_slope_rung×rung,rung=2 为代表帧(≈10.58)→
+    #: 线=ceil(d×L_c)=11(设计件 12 §6 参数表 P1_LEVELUP_STOP_L_C
+    #: 的取样坐标;拟合单一源=vd_p1_loss_*,不另立数值)。
+    p1_levelup_stop_rung: int = 2
+
     # ===== 成型停手纪律([13] 停手线;ADR-0343;W119/ADR-0347 收编)=====
     #: 总开关(False=旧行为,成型后照买;A/B 通道)
     formed_stop_enabled: bool = True
@@ -1129,6 +1145,8 @@ class DecisionV2Registry:
         'bench_capacity',      # bench 9 槽(含本轮已采纳买)
         'copies_cap',          # 同名星级加权 ≤3 份
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
+        'blood_budget_stop',   # 血预算停手·停升级门(设计件 12;ADR-0448
+                               # ——授权通道前置拒付,与息线门独立谓词 AND)
         'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;W255/ADR-0410
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
@@ -1165,9 +1183,11 @@ class DecisionV2Registry:
             ('bench', 'boss'): ('bench_capacity',),
             ('bench', 'emergency'): ('bench_capacity',),
             ('bench', 'mode'): ('bench_capacity',),
-            ('slot', 'boss'): ('boss_levelup_ban',),
-            ('slot', 'emergency'): ('bench_capacity',),
-            ('slot', 'mode'): ('deploy_cap',),
+            # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
+            # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
+            ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),
+            ('slot', 'emergency'): ('blood_budget_stop', 'bench_capacity'),
+            ('slot', 'mode'): ('blood_budget_stop', 'deploy_cap'),
             ('round_mutex', 'boss'): ('same_round_mutex',),
             ('round_mutex', 'emergency'): ('same_round_mutex',),
             ('round_mutex', 'mode'): ('same_round_mutex',),

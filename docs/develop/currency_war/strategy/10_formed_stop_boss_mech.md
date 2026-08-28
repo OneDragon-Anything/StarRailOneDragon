@@ -1,8 +1,8 @@
-# 10 成型停手目标件白名单 + boss 轮特殊机制族裁决(W255;ADR-0410)
+# 10 成型停手目标件白名单 + boss 轮特殊机制族裁决 + 血预算停手(W523;ADR-0410/0448)
 
 > 本篇 = as-built 语义:①成型停手([13])的「停」辖什么、放行什么(目标件
-> 白名单);②决策栈内 boss 轮特殊机制族的节点无关化裁决结果。数值一律指
-> registry 常量名,不写值。
+> 白名单);②决策栈内 boss 轮特殊机制族的节点无关化裁决结果;③血预算
+> 停手·停升级线(设计件 12 落地面)。数值一律指 registry 常量名,不写值。
 
 ## 1. 成型停手语义([13] 正确口径)
 
@@ -68,7 +68,28 @@
   以主客观测面批量前后对照(主客观测=成型停手轮目标件购买恢复数 +
   boss 轮 LevelUp 从 0→出现)代替。
 
-## 3. 波及面(as-built 引用)
+## 3. 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b;ADR-0448)
+
+血预算作为第二约束进决策层的先行两条(与息线门**独立谓词取 AND**,血线
+胜;**不是第五种覆盖态**——discipline 覆盖序不动,emergency 态内同样生效):
+
+- **辖域与线值**:P1/P2 备战帧 hp ≤ 各自停升级线(discipline.
+  `p1_levelup_stop_hp`/`p2_levelup_stop_hp`,由 `blood_budget_stop_d` ×
+  vd_p1_loss_*/vd_p2_loss 推导,取样档 `p1_levelup_stop_rung`)时拒绝
+  购买经验(P21 判据 h > d·L_c 恒假域,EV=−C−I 严格为负且与 β 标定
+  无关)。唯一豁免 = `plane_last_battle` ALL IN 清零窗([18] 停手让位)。
+- **接线三面**(授权通道全覆盖):arbiter 约束 `'blood_budget_stop'`
+  (候选单一收口,与升级 EV 总账门并设)/ remediation 稳态多击组整组
+  拒发 / deploy_cap 补偿臂①跳过落换位(其升级受益在下轮,属未来收益
+  非当轮转化)。
+- **披露**:拒付计数 `session.v3_blood_budget_rejects` → sim 账本
+  `sim.blood_budget_levelup_rejects` + 批聚合(>0=语义生效面,非达标线);
+  段级检查 `seg_p2/p1_blood_budget_levelup`(备战帧 hp=上一行结算 hp
+  口径)。
+- 开关 `blood_budget_stop_enabled` 默认开(P21 定谳恒接线),False=A/B
+  对照臂注入面。P1-a/P1-c/停刷新数值不在辖域(设计 §4.2 后续波次)。
+
+## 4. 波及面(as-built 引用)
 
 - 承接门 W227(filters.formed_stop_active 内 handoff_gate_gap 消费)不
   变;白名单只改动作级后置步内的 BuyCard 拦截面。

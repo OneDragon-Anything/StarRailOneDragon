@@ -323,6 +323,9 @@ class StrategySession:
     v3_prev_hp: int | None = None        # 掉血三臂的上一节点 HP(结算真值链)
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
+    # 血预算停手·停升级拒付计数(设计件 12/ADR-0448):决策层拒付披露
+    # (arbiter 约束/remediation 两臂写入;局首 on_match_start 清零)
+    v3_blood_budget_rejects: int = 0
     # W224/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。

@@ -31,6 +31,7 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
+    blood_budget_levelup_blocked,
     boss_window_active,
     form_break_sell_blocked,
     p1_early_gate_open,
@@ -375,6 +376,28 @@ def _check_constraint(name: str, cand: Candidate,
         if isinstance(a, BuyCard) and a.card.name in sold:
             return RejectReason('same_round_mutex', '', 0,
                                 f'同轮已卖 {a.card.name}')
+        return None
+    if name == 'blood_budget_stop':
+        # 血预算停手·停升级门(设计件 12 §3.1/§2.3-P1-b;ADR-0448):
+        # 候选通道的授权前置拒付——hp ≤ 停升级线(P1/P2 各自线)时
+        # 拒绝购买经验,唯一豁免=plane_last_battle ALL IN 窗(谓词内)。
+        # 与息线门独立谓词取 AND(血线胜;金侧放行不等于这笔花有正
+        # 期望),不是第五种覆盖态:emergency 态内同样生效。拒付行
+        # (计数/原因)落披露,模式对齐执行层 level_cap_rejects。
+        if isinstance(a, LevelUp) and blood_budget_levelup_blocked(
+                state, session, registry):
+            from sr_od.application.currency_war.decision_v2.discipline import (
+                p1_levelup_stop_hp,
+                p2_levelup_stop_hp,
+            )
+            _line = (p2_levelup_stop_hp(registry) if state.plane == 2
+                     else p1_levelup_stop_hp(registry))
+            session.v3_blood_budget_rejects = getattr(
+                session, 'v3_blood_budget_rejects', 0) + 1
+            return RejectReason(
+                'blood_budget_stop', '', 0,
+                f'血预算停手拒(plane{state.plane} hp{state.hp}'
+                f'≤停升级线{_line};P21 h>d·L_c 恒假域,ADR-0448)')
         return None
     if name == 'boss_levelup_ban':
         # W255/ADR-0410([32] 节点无关定调 2026-08-27):旧「boss 窗禁

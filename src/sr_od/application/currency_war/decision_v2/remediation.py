@@ -479,6 +479,19 @@ def steady_state_levelup_group(working: GameState, state: GameState,
         return []
     if state.plane < 2:
         return []    # 辖域 P2+(W194 裁决:P1 回归辙回,见 docstring)
+    # 血预算停手·停升级门(设计件 12 §3.1;ADR-0448):稳态多击组是
+    # 「为未来人口买经验」的追级形态(hp 危机下金兑现不到一场活),
+    # hp ≤ 停升级线时整组拒发(ALL IN 窗豁免在谓词内)。拒付计数进
+    # session 披露(单位=拒付事件,1 组计 1)。
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        blood_budget_levelup_blocked,
+    )
+    if blood_budget_levelup_blocked(state, session, registry):
+        session.v3_blood_budget_rejects = getattr(
+            session, 'v3_blood_budget_rejects', 0) + 1
+        log.info('[cw][d2][steady-lv] r%d 稳态组血预算停手拒(hp%d)',
+                 state.round_num, state.hp)
+        return []
     # 稳态判据(进轮快照,与 ev.levelup_ev_basis 臂① 的 state 读点同源)
     from sr_od.application.currency_war.cw_state import bench_occupied
     if deployed_occupied(state.deployed or []) < state.max_units():   # ADR-0392
@@ -562,14 +575,29 @@ def _compensate_slot(working: GameState, state: GameState,
     from sr_od.application.currency_war.decision_v2.candidates import (
         _target_names,
     )
+
+    # W255/ADR-0410:旧「非 boss 轮才发」守卫删——[32] 节点无关,升级
+    # 裁决交 EV 总账(levelup_ev_basis);boss 窗本金边际由 boss_floor 兜。
+    # 血预算停手·停升级门(设计件 12 §3.1/§2.3-P1-b;ADR-0448):补偿臂①
+    # 的升级收益解的是**下轮**部署(cap+n 击后才 +1,本函数注释原文),
+    # 属「≥1 战后兑现」的未来收益支出——停升级线内跳过①落②换位
+    # (SwapDeploy 不花金,不在停手辖域;ALL IN 窗豁免在谓词内)。
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        blood_budget_levelup_blocked,
+    )
     from sr_od.application.currency_war.decision_v2.ev import (
         levelup_ev_basis,
     )
-    # W255/ADR-0410:旧「非 boss 轮才发」守卫删——[32] 节点无关,升级
-    # 裁决交 EV 总账(levelup_ev_basis);boss 窗本金边际由 boss_floor 兜。
+    _blood_stop = blood_budget_levelup_blocked(state, session, registry)
+    if _blood_stop:
+        session.v3_blood_budget_rejects = getattr(
+            session, 'v3_blood_budget_rejects', 0) + 1
+        log.info('[cw][d2][remedy] r%d 补偿臂①血预算停手拒(hp%d)'
+                 '→落换位', state.round_num, state.hp)
     cap_level_driven = (state.deploy_cap is None
                         or state.deploy_cap <= state.level)
-    if state.level < registry.level_max and cap_level_driven:
+    if (state.level < registry.level_max and cap_level_driven
+            and not _blood_stop):
         from sr_od.application.currency_war.cw_economy import xp_click_cost
         from sr_od.application.currency_war.cw_state import (
             XP_PER_BUY as _XP_PER_BUY,

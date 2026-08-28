@@ -127,6 +127,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v2_steady_lv_used = False  # W194/ADR-0378:稳态多击组跨局清零
         session.v3_steady_lv_abandoned = 0  # 稳态组事务性放弃计数(判读)
         session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
+        # 血预算停手·停升级拒付计数(设计件 12;ADR-0448):决策层拒付
+        # 披露(判读「停手线拦了多少次追级」;sim 逐轮差分进账本)
+        session.v3_blood_budget_rejects = 0
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
         session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数
