@@ -159,9 +159,13 @@ def form_break_sell_blocked(bc, state: GameState,
 
     [13] 停手线的卖/下场侧对称口径——与 ADR-0343 成型停手(买侧)、
     ADR-0363/0373(演进/卖侧引擎守卫)是同一纪律族在「成型态」下的
-    缺口径,非新守卫族。覆盖 ADR-0373 的两型缝隙:配方档 5→4(冗余份
-    恰是档位构成,0373「owned>tier 冗余件照旧」放行的盲区)与上场
-    人数 5→4(undeploy/SwapDeploy 换下场无回场窗)。
+    缺口径,非新守卫族。辖域=卖/下场候选的 SellBench 通道(挂点全在
+    卖候选生成/采纳路径),覆盖 ADR-0373 的两型缝隙:配方档 5→4(冗余
+    份恰是档位构成,0373「owned>tier 冗余件照旧」放行的盲区)与上场
+    人数 5→4(经 SellBench 下场无回场窗)。remediation.SwapDeploy 换
+    下场臂不辖:其换位可改变羁绊构成使 form_ok 翻假而不被拦(当前靠
+    「换位不减员、上场人数缝隙不触发」缓解,配方档 5→4 缝隙经它仍可
+    达);SwapDeploy 接入本守卫须补挂点,开臂前裁决。
 
     判据(缺一不可):
     1. 开关 ``registry.form_break_sell_blocked_enabled``(默认关);

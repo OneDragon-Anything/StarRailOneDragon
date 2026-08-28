@@ -227,7 +227,7 @@ HP_REAL_JUMP_CONFLICT: int = 30
 
 def _battle_fact_between(session, node_t: int,
                          node_lo: int | None) -> tuple[str, str | None]:
-    """查「上一真值帧 → 本帧」窗内最新已观测战斗事实(ADR-0430)。
+    """查「上一真值帧 → 本帧」窗内最新已观测战斗事实(ADR-0431)。
 
     事实源 = ``session.performance.history``(RoundOutcome 行,结算屏观测
     回路写入)。返回 (fact, node_type):fact ∈ 'win'(killed=True,v5 权威
@@ -264,7 +264,7 @@ def _battle_fact_between(session, node_t: int,
 
 def _reject_down(session, old: int, new_hp: int, node_t: int, screen,
                  source: str) -> tuple[int, bool]:
-    """下行拒信 + 复现确认通道状态机一步(ADR-0430;返回沿用 (o, False))。
+    """下行拒信 + 复现确认通道状态机一步(ADR-0431;返回沿用 (o, False))。
 
     - 首拒/换候选/超窗 → 建或重置 suspect(count=0,计**拒信后**的复现
       真值帧数),留证;
@@ -296,7 +296,7 @@ def _reject_down(session, old: int, new_hp: int, node_t: int, screen,
     if rep == 0 or (rep + 1) % 5 == 0:
         _conflict('hp', old, new_hp, screen,
                   verdict=('拒信-下行疑OCR读低(无合法战斗事实背书该幅度下行;'
-                           'ADR-0430:沿用旧值+复现确认通道,2 真值帧低位一致'
+                           'ADR-0431:沿用旧值+复现确认通道,2 真值帧低位一致'
                            '才采新;处理:频发→查血量区遮挡形态)'),
                   source=source, node_t=node_t, direction='down',
                   suspect_count=rep)
@@ -320,7 +320,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
       真值帧(非 None)才写回 last_hp_real(=「session 更新只在关态真值帧」,
       shop 开态读不到自然不写);新读非 None 且同域大幅上行(HP 只降不升)
       → obs_conflict 留证;真值帧下行须过「幅度 × 战斗事实」联合守卫
-      (ADR-0430:win/零损帧下行一律拒信,loss 帧按损血谱 p100 分档采信,
+      (ADR-0431:win/零损帧下行一律拒信,loss 帧按损血谱 p100 分档采信,
       无战斗事实帧拒信+复现确认通道 ≤2 节点自愈)。
     - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
       安全(低血先验触发保血方向对);全无真值(开局)才兜底 100。
@@ -340,7 +340,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(last_hp_real, False);
         全无真值(开局)=(100, False) 健康先验兜底;被下行守卫拒信的帧
-        =(旧值, False)(SUSPECT 态,ADR-0430)。
+        =(旧值, False)(SUSPECT 态,ADR-0431)。
     """
     if new_hp is None:
         old = getattr(session, 'last_hp_real', None) if session is not None else None
@@ -355,7 +355,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
                   verdict=('留证-同域大幅上行(HP只降不升,疑OCR误读/特殊回复;'
                            '处理:采新现读真值帧;频发→查血量区遮挡/误读)'),
                   source=source, node_t=node_t)
-    # —— 下行守卫(ADR-0430:幅度 × 战斗事实联合判据)——
+    # —— 下行守卫(ADR-0431:幅度 × 战斗事实联合判据)——
     # HP 的合法下行只有「帧间发生了败战且幅度在损血谱内」一种物理来源;
     # 误读读低不属于任何合法类。node_t=None(离线/旧调用方)守卫不介入,
     # 既有行为逐位零漂移;上行/持平帧不经本分支。

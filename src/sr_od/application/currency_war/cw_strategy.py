@@ -181,12 +181,12 @@ class StrategySession:
     # 读不到=保旧沿用此值,**不是兜底 100**)。与 last_hp(结算屏真值,gated_hp
     # 新鲜度门消费)分工:本字段是备战现读域的对账锚。开局首真值帧前为 None。
     last_hp_real: int | None = None
-    # last_hp_real 写入时的全局节点号((plane-1)*9+round,ADR-0430):
+    # last_hp_real 写入时的全局节点号((plane-1)*9+round,ADR-0431):
     # hp_trusted 帧龄门的坐标系锚——与当前节点号相等=同节点内沿用
     # (帧间无战斗,值必然未变 → 可信);跨节点=期间可能发生未观测战斗
     # → 沿用值降不可信。None=旧真值无节点锚(帧龄门按不可信保守处理)。
     last_hp_real_node: int | None = None
-    # hp 下行拒信复现确认通道状态(ADR-0430):{'value': 拒信读数,
+    # hp 下行拒信复现确认通道状态(ADR-0431):{'value': 拒信读数,
     # 'node': 首拒帧节点号, 'count': 连续复现真值帧数}。守卫拒信一次
     # 下行读数时建/刷新;误读确认(读数回旧值)或真掉血确认(连续
     # HP_SUSPECT_CONFIRM_FRAMES 帧低位)即清除。None=无活跃 suspect。

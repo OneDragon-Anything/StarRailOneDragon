@@ -1111,9 +1111,12 @@ class DecisionV2Registry:
     #: form_ok 的件照旧可卖(腾位/换金通道不堵,[22] 净0 件最先卖的
     #: 既有弱序保留)。
     #: 开臂判据挂账(不执行):「中途达过 form_ok 而最终帧不满足」的
-    #: 拆队局 W410 before=实机 9 局/sim 同口径 0;开臂=sim A/B 拆队局
-    #: 0 ∧ benign→mal 不增 ∧ strict_mal 不升(ADR-0373 先例:卖侧守卫
-    #: 曾有 benign→mal 回归);验证不过的出口=删码留 ADR-0433。
+    #: 拆队局改前实机 9 局/sim 同口径 0——sim A/B 已证触发面为零(sim 与
+    #: off 逐位一致:闸全在卖候选采纳,无「中途达 form_ok 后拆队」路径),
+    #: sim 判据结构性永不满足,有效性归实机判读。开臂判据=实机成型局
+    #: 拆队笔数 before-after(改后应为 0)∧ 拆队后 benign→mal 不增 ∧
+    #: strict_mal 不升(ADR-0373 先例:卖侧守卫曾有 benign→mal 回归);
+    #: 验证不过的出口=删码留 ADR-0433。
     form_break_sell_blocked_enabled: bool = False
 
     #: —— 方向三:花的时机判据(below_floor_spend_gate)——
@@ -1132,9 +1135,11 @@ class DecisionV2Registry:
     #: 该分支才是息线下刷新的实际裁决点);gate 开时 dp_spend 不再单独
     #: 授权息线下刷新(三例外白名单收窄)。金账单一源不变,本门是授权
     #: 边界不是新账。
-    #: 开臂判据挂账(不执行):sim 真破息 w42 26.3%/w43 5.5%→0,
-    #: never_50 w43 28.7%→≤基线+2pp,形态达标不降;验证不过的出口=
-    #: 删码留 ADR-0434。
+    #: 开臂判据挂账(不执行):改前 sim 真破息率 w42 26.3%/w43 5.5%,sim A/B
+    #: 已证触发面为零(sim 与 off 逐位一致——被 never_50 高占比低金语境
+    #: 架空,sim 判据结构性永不满足),有效性归实机判读。开臂判据=实机
+    #: r9 破息升级笔息损分账 before-after(改后破息笔归零)∧ never_50
+    #: ≤基线+2pp ∧ 形态达标不降;验证不过的出口=删码留 ADR-0434。
     below_floor_spend_gate_enabled: bool = False
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
@@ -1193,7 +1198,7 @@ class DecisionV2Registry:
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
 
 
-# ===== hp 对账层下行守卫标定常量(ADR-0430;消费方 cw_reconcile.reconcile_hp)=====
+# ===== hp 对账层下行守卫标定常量(ADR-0431;消费方 cw_reconcile.reconcile_hp)=====
 # 值单一源在注册表(项目惯例:数值不散落);cw_reconcile 属观察对账层,
 # 只读本模块常量,不进决策评分面。
 #: 单战损血谱 p100 上界,按节点型分档——loss 帧下行采信的幅度上界。

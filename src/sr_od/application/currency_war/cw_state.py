@@ -104,7 +104,7 @@ class GameState:
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
     hp: int = 100          # 小队生命值(锁血决策用;读不到时=沿用 last_hp_real / 开局兜底 100,ADR-0282)
     hp_readable: bool = True   # hp 是否真读到(False=读不到,ADR-0282:hp 此时为沿用值/兜底值;遥测保真,决策不用)
-    # hp 值可信位(ADR-0282 对账层语义细分;ADR-0430 帧龄门收紧):True=hp
+    # hp 值可信位(ADR-0282 对账层语义细分;ADR-0431 帧龄门收紧):True=hp
     # 是可信值(真读且过下行守卫的帧,或**同节点内**沿用了 session.last_hp_real
     # 真值的帧——shop 开态帧间无战斗,值必然未变);False=跨节点沿用帧
     # (期间可能发生未观测战斗)/被下行守卫拒信帧(SUSPECT 态)/「开局全无

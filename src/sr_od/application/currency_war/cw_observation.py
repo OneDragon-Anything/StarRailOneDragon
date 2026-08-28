@@ -1108,10 +1108,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
     # 先验触发保血方向对);全无真值(开局)才兜底 100。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
-    # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0430 帧龄门收紧,
+    # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0431 帧龄门收紧,
     # 派生式见下方帧龄门注释)——FLIP 类谓词据此把「本帧未 OCR 到」与
     # 「值不可信」区分开(消费口径 hp_readable or hp_trusted 零改)。
-    # ADR-0430:位面/轮次提前读 —— node_t=(plane-1)*9+round 是下行守卫
+    # ADR-0431:位面/轮次提前读 —— node_t=(plane-1)*9+round 是下行守卫
     # 帧间事实窗锚与 hp_trusted 帧龄门锚(读取器相互独立,仅次序调整,
     # 语义零漂移)。
     state.plane, state.round_num = read_phase_round(ctx, screen)
@@ -1124,7 +1124,7 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
     state.hp, state.hp_readable = reconcile_hp(
         _sess_hp, _hp_opt, screen, source='read_game_state', node_t=_node_t)
-    # ADR-0430 帧龄门:同节点内沿用才可信(shop 开态帧间无战斗,值必然
+    # ADR-0431 帧龄门:同节点内沿用才可信(shop 开态帧间无战斗,值必然
     # 未变);跨节点沿用帧与被下行守卫拒信帧(SUSPECT)降 False;真读且
     # 过守卫的帧可信;兜底 100 帧恒 False(ADR-0428 不变)。
     _same_node_stale = (_had_real
