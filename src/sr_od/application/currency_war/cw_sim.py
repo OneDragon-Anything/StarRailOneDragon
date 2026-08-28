@@ -105,13 +105,14 @@ HP_UPPER_BOUND: int = 100
 
 INTEREST_CAP: int = 5
 
-# sim 执行层等级上限(本执行层有效满级):取值 = simulate_p1 轮末升级
-# 循环的既有上界(此前为字面 9),守卫与轮末循环共用本常量防两处漂移。
-# 边界:策略/生产侧等级封顶语义是 decision_v2.registry.level_max=10 与
-# cw_state「封顶 10 级」,XP 表也含 9→10 档;但本执行层历史基线(商店
-# 概率表、既有批次与池指纹)均在 9 级封顶语义下产出,故执行层满级判据
-# 以 9 为准,不随策略侧 level_max 放宽——放宽属行为变更,须与商店概率
-# 表一并重校准。
+# sim 执行层付费升级上界,守卫与轮末升级循环共用本常量防两处漂移。
+# 注意:这不是游戏真实满级——真实满级 = 10(decision_v2.registry
+# .level_max、cw_shop_odds.REFRESH_PROB 已含 lv10 行、实机 replay 可达
+# lv10),实机 lv10 才禁用购买经验,lv9 是正常付费升级档。本层仍取 9
+# 的理由:sim P1 追级轨迹高于实机(实机 P1 上限 7),先开 10 是把失真
+# 转移而非消除,且既有批次与池指纹在 9 级语义下产出。放开到 10 属行为
+# 变更,前置 = P1 追级虚高治理(见 decisions/ ADR-0447 修补 E)+
+# planes=2 池指纹重锚。
 LEVEL_CAP: int = 9
 
 # 装备供给结构校准(供给重校准批;数据源 = 实机 [cw!][grant] 快照 57 局
@@ -1780,12 +1781,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                     - deployed_occupied(st.deployed)) // 2
                         progressed = True
                     elif isinstance(a, LevelUp):
-                        # 满级 cap 守卫:实机满级时「购买经验」按钮禁用
-                        # (点击无效不扣金),执行层必须同态——满级 LevelUp
-                        # 拒付(不扣金/不进 XP),账本记 LevelUpRejected 行
+                        # cap 守卫:level >= LEVEL_CAP 时 LevelUp 拒付
+                        # (不扣金/不进 XP),账本记 LevelUpRejected 行
                         # (不占 LevelUp 类型行:flat4 台账锁判据 =
                         # spend.levelup == 4 × LevelUp 行数,拒付行混入会
                         # 误报),计数进 sim.level_cap_rejects 披露。
+                        # 已知语义分歧:实机 lv10 才禁用购买经验,lv9 是
+                        # 正常付费档,本守卫在 lv9 拒付与实机方向相反;
+                        # 不静默,靠 level_cap_rejects 披露,放开归
+                        # LEVEL_CAP 注释所载行为变更批。
                         if st.level >= LEVEL_CAP:
                             _lv_cap_rejects += 1
                             _acts.append({'__type__': 'LevelUpRejected',
