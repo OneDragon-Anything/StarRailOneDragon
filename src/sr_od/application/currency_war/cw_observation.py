@@ -141,6 +141,22 @@ GOLD_SETTLE_MAX_POLLS: int = 3
 #: 步长下 3 帧覆盖 ~1.5s,足够越过入账窗;再长会拖慢每个 read_game_state。
 GOLD_SETTLE_INTERVAL_S: float = 0.5
 
+#: 难度旗牌徽记带上沿(裁片内 y,1080p 像素):「文本-难度」旗牌上半是徽记图案、
+#: 下半是数字。像素亲测(58 帧 fixture 裁片,2026-08-28):徽记占 y 0..45、
+#: 数字带 y>=55,取 48 留双向安全距。``_ocr_difficulty_binarized`` 据此抹带。
+_DIFFICULTY_EMBLEM_BAND_Y: int = 48
+
+#: 难度合理带下限(根除单帧噪声:OTSU 纹理噪声/徽记残影可读出 0/1 类一位数)。
+#: 推导:难度恒为两至三位数;观测最小真值 39(低职级局 fixture 实读);
+#: 压低类词缀叠加最坏情形(难度修改器 -4 + 简单模式 -3 + 退化 -5)自 base
+#: ~40 最低探到 ~30 一带,20 留足裕量仍远高于一位数噪声。
+_DIFFICULTY_MIN: int = 20
+#: 难度合理带上限:沿用简报解析 ``parse_enemy_difficulty`` 的越界线 300
+#: (>300 视为读坏)。**刻意不取 200**:敌方溢出 bug 阈值 200(cw_difficulty_account
+#: OVERFLOW_THRESHOLD,V4.4 实测 211)是合法游戏态,200 封顶会恰在难度账本
+#: 最需要读数的溢出区致盲。
+_DIFFICULTY_MAX: int = 300
+
 
 def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     """带稳定门的金读数(读不到/越界 → None,契约同 ``read_gold_opt``)。
@@ -552,14 +568,50 @@ def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
     return None
 
 
-def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
-    """当前敌人难度(左上角 ``文本-难度``;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
+def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None,
+                              scale: int = 4) -> list:
+    """难度旗牌专用预处理 OCR:裁剪 → 放大 → OTSU → 反转 → 徽记 y 分带剔除。
 
-    OCR ``文本-难度`` → int。⚠️ 难度数字 **stylized,OCR 常空** → None(可靠读需 vision / digit-CV,
-    后续;现 area + scaffold 就位,OCR 能读到即生效)。读不到 / 越界 → None。
+    为什么整链不可省(2026-08-28 58 帧 fixture 离线对拍,产物
+    ``.debug/temp/currency_war/w526_difficulty_reader/``):
+    - 白色艺术字数字 + 深色纹理旗底 + 顶部徽记贴边,原生直读 0/58;
+    - OTSU 把数字从纹理旗底分离;反转成黑字白底(paddle 对白底黑字稳);
+    - 徽记在同区域上半(裁片 y<48,像素亲测:徽记占 y 0..45、数字带 y>=55),
+      不剔除会被 OCR 混入图形噪声;按 y 分带即可,无需连通域。
     """
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-难度'))])
-    if v is not None and 0 <= v <= 300:
+    if rect is None:
+        return []
+    if screen is None:
+        # 测试注入态(mock ocr_service,screen 不承载像素;仓内既有约定)→ 不裁剪直接透传
+        return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
+    crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+    if crop.size == 0:
+        return []
+    up = cv2.resize(crop, (crop.shape[1] * scale, crop.shape[0] * scale),
+                    interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(up, cv2.COLOR_RGB2GRAY)
+    _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    inv = 255 - bw
+    inv[:_DIFFICULTY_EMBLEM_BAND_Y * scale, :] = 255   # 徽记带抹白(黑字白底)
+    return ctx.ocr_service.get_ocr_result_list(image=cv2.cvtColor(inv, cv2.COLOR_GRAY2RGB))
+
+
+def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
+    """当前敌人难度(左上角 ``文本-难度`` 旗牌;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
+
+    难度数字是白色艺术字 + 深色纹理旗底,原生直读必失(58 帧对拍 0/58,全是 0/1 类
+    垃圾或空)→ 走旗牌专用两级管线(与 ``read_level_up_cost`` 两级形状一致,便于维护;
+    本场景二级二值化为主、一级放大为辅):
+    1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 有旗牌帧全读对);
+    2. 读空 → ``_ocr_upscaled``(4x 放大,保底防 OTSU 在异常背景下反转失效)。
+    合理带守卫 ``_DIFFICULTY_MIN.._DIFFICULTY_MAX`` 外 → None:根除单帧噪声读数
+    (推导见常量注释)。无旗牌帧(补给节点等)区域空白 → 两级皆空 → None(正确语义)。
+    """
+    rect = _area_rect(ctx, '文本-难度')
+    v = _first_int([r.data for r in _ocr_difficulty_binarized(ctx, screen, rect)])
+    if v is None:
+        v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, rect, scale=4)])
+    if v is not None and _DIFFICULTY_MIN <= v <= _DIFFICULTY_MAX:
         return v
     return None
 
