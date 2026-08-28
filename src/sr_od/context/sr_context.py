@@ -215,8 +215,9 @@ class SrContext(OneDragonContext):
         # 简报词缀(对局开始 debuff/boss词缀,StartCurrencyWarMatch 读 → loop 建 cw_match 时 copy 到 session.briefing_affixes)
         # 临时中转:简报在 StartCurrencyWarMatch(loop 前,cw_match=None),词缀先存此,loop __init__ 取走。
         self.cw_briefing_affixes: list[str] | None = None
-        # 简报 boss 候选集(read_bosses 画面 x 序,无位面序语义;ADR-0397)——仅供遥测/对账,
-        # 不 copy 进 session(boss 位面序真值走 CollectPlaneIntel 实采,loop 备战稳定帧)
+        # 简报 boss 读数(read_bosses 画面序;ADR-0397 勘误(W522):画面序=位面序,
+        # LCS 清洗后经 loop copy 进 session.briefing_bosses)——兼作遥测/对账存证
+        # (W518 briefing 行+W522 对账网真值源)
         self.cw_briefing_bosses: list[str] | None = None
         # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
         # copy 到 session.selected_difficulty → default_strategy 填 state → effective_hp_threshold D-32;3.5.1)
