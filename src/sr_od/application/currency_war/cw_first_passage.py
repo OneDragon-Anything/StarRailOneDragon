@@ -27,25 +27,54 @@ from sr_od.application.currency_war.cw_horizon import (
     HP_LOSS_PRIOR as HP_LOSS_MU,  # noqa: F401
 )
 
-# (P1 标定基线;位面难度经 PLANE_LOSS_SCALE 进模型;重尾一击型 boss 掉血 v1 用实测桶替换)
+# (P1 标定基线;P2+ 位面维经 registry.p2_cond_loss_table 标定进模型,
+# 见 _loss_dist 边界声明;重尾一击型 boss 掉血 v1 用实测桶替换)
 CV_PRIOR: float = 0.5   # 组内变异系数先验(K0 实测 0.4-0.62 的收缩中值)
-
-# 位面难度乘数(v1,18 号 V2 位面条件化;ADR-0176):
-# 锚 = 0174 实测 P2-1 弱板掉 19/节点 vs P1 ~10(≈1.9×)+ cw_horizon.difficulty_scale
-# P2 段 1.5-1.95 / P3 段 1.8-2.2 的收缩中值。P2 略低于实测上限(混合板强)。
-PLANE_LOSS_SCALE: dict[int, float] = {1: 1.0, 2: 1.6, 3: 1.9}
 
 # 三区边界先验(K2 涌现对拍锚:DEAD_HP=20 三门 / HP<40 分档 / 满息 50)
 ZONE_CRITICAL_HP: int = 40     # 二区下界(ADR-0141/0143 分档;对拍锚)
 ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;对拍锚)
 
 
+def _p2_lcond_mix() -> float:
+    """P2+ 非 boss 战斗槽条件败面档(单节点;两态决策层同款混合单一源:
+    registry.p2_cond_loss_table × line_switch._P2_NODE_TEMPLATE 战斗构成)。"""
+    from sr_od.application.currency_war.cw_line_switch import (
+        _P2_NODE_TEMPLATE,
+        node_loss_kind,
+    )
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    tbl = DEFAULT_REGISTRY.p2_cond_loss_table
+    kinds = [node_loss_kind(nt) for nt in _P2_NODE_TEMPLATE]
+    battle = [k for k in kinds if k != 'reward']
+    return sum(tbl.get(k, 0.0) for k in battle) / len(battle)
+
+
 def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     """单节点掉血分布(板强档 × 位面 → [(掉血量, 概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
 
-    μ = HP_LOSS_MU(P1 基线)× PLANE_LOSS_SCALE(位面难度;v1 先验,实测桶替换后同结构)。
+    μ 标定源合一(ADR-0440,W370 §5-④ 双源退役):P1 = HP_LOSS_MU 现档
+    (P1 零漂移,不走 P2 标定);P2+ = 两态同构 μ(tier)=(1−p(rung(tier)))
+    ·L_cond_mix —— 胜率=registry.p_win_p2_by_rung(rung 坐标=board_tier
+    0-3 钳 0-2,与 p_win 表 k3 折叠同口径),条件败面=registry.
+    p2_cond_loss_table 按位面模板战斗构成混合;P3 不在标定域,别名 P2
+    (沿用位面维别名先例)。旧 PLANE_LOSS_SCALE={1:1.0,2:1.6,3:1.9}
+    (v1 先验,0174 弱板锚)退役,退役锁=not hasattr。
+
+    边界声明(与 cw_horizon DP 层的口径关系,「5× 差=语义差为主」判读
+    的落点):本层是分布模型 estimand(每节点无条件期望掉血 ± CV 抖动,
+    喂首达生存卷积),DP 层是确定性期望递推——两者共用同一标定(胜率表
+    +条件败面档)但函数不同,数值对齐 ≠ 函数同一;本层不再持有独立位面
+    乘数自由度,位面维全部来自 registry 标定(版本锚=registry.
+    p2_loss_calib_version)。
     """
-    mu = HP_LOSS_MU.get(min(3, max(0, board_tier)), 14.0) * PLANE_LOSS_SCALE.get(min(3, max(1, plane)), 1.0)
+    if plane <= 1:
+        mu = HP_LOSS_MU.get(min(3, max(0, board_tier)), 14.0)
+    else:
+        from sr_od.application.currency_war.cw_horizon import p_win_p2
+        mu = (1.0 - p_win_p2(min(2, max(0, int(board_tier))))) * _p2_lcond_mix()
     sigma = mu * CV_PRIOR
     lo = max(0.0, mu - sigma)
     mid = mu

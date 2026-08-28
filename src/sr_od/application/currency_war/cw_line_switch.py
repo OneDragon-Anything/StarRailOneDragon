@@ -187,7 +187,7 @@ _ZERO_LOSS_NODE_KINDS: frozenset[str] = frozenset({'reward', 'supply'})
 
 def node_loss_kind(node_type: str) -> str:
     """节点型 → 损血档归一(单一源;C4 rounds_alive 投影唯一消费,
-    registry.p2_node_loss_table 同表分档)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
+    registry.p2_cond_loss_table 同表分档)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
     损血 0);其余(普通战斗/精英/缺读/'?' 占位)→ normal 档——未知
     战斗节点按 normal 档(战斗频率最高档)、未知非战斗节点由调用方
     先归零损档,两类缺读不共用一个兜底。"""
@@ -235,9 +235,12 @@ def rounds_alive(state: GameState,
     if not state.hp or state.hp <= 0:
         return 0
     # 两态口径(M1b,开关=registry.rounds_two_state_enabled,默认关=
-    # 零漂移锚):loss=(1−p_win)·表值;开关关或 rung 缺档按 p_win=0=
-    # 每战全损 → loss=表值条件常数(M1a)——同一份代码,行为由开关+
-    # 注入切换(REDESIGN §3.3)。rung 取样坐标=cw_sim._settle_rung
+    # 零漂移锚):loss=(1−p_win)·条件败面档;开关关或 rung 缺档按
+    # p_win=0=每战全损 → loss=条件败面档常数(M1a)——同一份代码,
+    # 行为由开关+注入切换(REDESIGN §3.3;幅度源=registry.
+    # p2_cond_loss_table,与 cw_horizon DP 两态递推同一标定源,口径
+    # 定稿见 ADR-0440;无条件期望表 p2_node_loss_table 是另一 estimand,
+    # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_sim._settle_rung
     #(与 p_win 表的 W346 Δ池采样键同源,ADR-0279 单一源;deployed
     # 全集+星徽,0-2 钳制)——不用 scoring._engines_formed(混合域
     # 加权含 bench 折减项,坐标错位=p_win 偏乐观=门偏松,见
@@ -253,7 +256,7 @@ def rounds_alive(state: GameState,
     ra = 0
     for raw in _remaining_nodes(session, state):
         kind = node_loss_kind(raw)
-        h -= (1.0 - p_win) * reg.p2_node_loss_table.get(kind, 0.0)
+        h -= (1.0 - p_win) * reg.p2_cond_loss_table.get(kind, 0.0)
         if kind == 'encounter':
             h += reg.encounter_heal_est   # 注入前恒 0(0 下界声明)
         ra += 1            # 日历轮 +1(死在结算也先行动过这一轮)

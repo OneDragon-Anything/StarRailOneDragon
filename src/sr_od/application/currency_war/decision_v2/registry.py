@@ -902,19 +902,41 @@ class DecisionV2Registry:
     #: 过滤——旧删失口径「置信<1 剔除」系统性剔死亡局帧=反保守,已废;
     #: 产物=w375_dual_source_calib.json,双源互校:帧级合并均值 10.79 ∈
     #: run 级聚类 bootstrap CI [6.7,10.97])。
-    #: P2 节点损血单一表(C4 存活轮数投影用;节点型→期望损血,正数)。
-    #: 重标定覆写只改此处(标定叙述见上段段头,不重复)。原批与 C3
-    #: 濒死带查表共表;C3 已定谳清理(否决与清理裁决见 ADR-0426 增补
-    #: 节),现单消费点=cw_line_switch.rounds_alive 逐节点投影。
-    #: 默认值=旧删失口径三档(结构性低估挂账;暂抄现行=零漂移);重标定
-    #: 无条件期望(normal 10.16/encounter 12.00/boss 15.50,条件败面
-    #: 12.77/13.33/15.50,CI 见 w375_dual_source_calib.json)待消费口径
-    #: 定稿后覆写。node_type 缺读兜底=normal(战斗节点频率最高档,2/5 槽;
-    #: 触发宽度居中——三档中 encounter 16.67 最小、boss 26.71 最大,
-    #: normal 兜底既非最紧也非最松)。reward 零损档承接奖励+补给零损
-    #: 日历轮(C4 投影零损照走)。
+    #: P2 节点损血表(节点型→**无条件期望损血**,正数)。
+    #: ⚠️ 消费面声明:本表**不进任何行为公式**(两态决策层与阈值层 μ
+    #: 一律吃 p2_cond_loss_table,见该字段)——本表语义=W375 无条件期望
+    #: 的**标定自洽锚**:与条件败面表的比值隐含各节点型桶的板强混合
+    #: 平均存活率(1−无条件/条件:normal 0.204/encounter 0.100/boss
+    #: 0.000,对齐锁钉死)。这是 kind 坐标上的桶均值,不是 rung 阶梯,
+    #: 与 p_win_p2_by_rung 的 rung 坐标不同——「同 rung 恒等式无条件=
+    #: (1−p)·条件」在两表间不成立也不应成立:样本窗(W375 实机深层局
+    #: vs W346 sim Δ池)与坐标(kind 桶 vs rung)均不同,详 ADR-0440
+    #: 三表对齐节。
+    #: 覆写=W375 双源重标定的无条件期望三档(normal 10.16/encounter
+    #: 12.00/boss 15.50,CI 见 w375_dual_source_calib.json;原「旧删失
+    #: 口径条件常数暂抄」20.05/16.67/26.71 随两态消费口径定稿退役,
+    #: 见 ADR-0440)。node_type 缺读兜底=normal(战斗节点频率最高档,
+    #: 2/5 槽;触发宽度居中——三档中 encounter 最小、boss 最大,normal
+    #: 兜底既非最紧也非最松)。reward 零损档承接奖励+补给零损日历轮。
+    #: 边界声明:本表与 p2_cond_loss_table 是同一 W375 标定的两个
+    #: estimand(无条件期望 vs 条件败面),按消费语义分表,非双源漂移。
     p2_node_loss_table: dict[str, float] = field(default_factory=lambda: {
-        'normal': 20.05, 'encounter': 16.67, 'boss': 26.71, 'reward': 0.0})
+        'normal': 10.16, 'encounter': 12.00, 'boss': 15.50, 'reward': 0.0})
+    #: P2 条件败面损血档(输了战斗这一条件下的期望伤害;两态决策层
+    #: 损血幅度唯一源,消费点=cw_line_switch.rounds_alive 逐节点投影
+    #: 与 cw_horizon DP P2 递推——E[损血|板强]=(1−p_win(rung))·本表)。
+    #: 值=W375 双源重标定条件败面(normal 12.77/encounter 13.33/boss
+    #: 15.50,标定叙述见 p2_node_loss_table 段头与 w375_dual_source_calib
+    #: .json);reward 零损档同上表(奖励/补给零损照走)。
+    p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
+        'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
+    #: P2 损血标定家族版本披露锚(第三维,独立于 cw_coarse_battle.
+    #: COARSE_CALIB_VERSION 与 cw_economy 收入口径版本):任一 P2 损血
+    #: 标定值/消费口径变动(p2_node_loss_table / p2_cond_loss_table /
+    #: p_win_p2_by_rung / 两态递推形态)必须递增并随批重锁。sim 台账
+    #: manifest 不承载本版本(cw_sim 禁触批,披露面=registry+锁,边界
+    #: 如实声明)。v1=W375 覆写+两态递推定稿(ADR-0440)。
+    p2_loss_calib_version: int = 1
     #: C1 定向刷新存在性名集的「高费强件」费用下界(买侧不辖名单,
     #: 只辖刷新存在性名集;消费点=filters._refreshable_names)。来源=
     #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(报告=

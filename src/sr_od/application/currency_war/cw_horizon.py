@@ -117,31 +117,73 @@ def nodes_of_plane(session) -> int:
 # {0:14,1:8,2:3.5,3:1.5}+陡难度曲线下 A8 无解(全路径死 → 值全 0 → DP 退化存息)。
 HP_LOSS_PRIOR: dict[int, float] = {0: 14.0, 1: 7.0, 2: 2.5, 3: 0.8}
 
-# P2 段难度系数(重校值,直接生效——校准非新行为;W371 对抗审计修法 M1a)。
-# 取值 = 6.0:实机存活局事件均值 15.3(W350 REPORT §4,59 事件,三源中位)
-# ÷ 先验锚 2.5 ≈ 6.1;事件级 t95%CI 下界 15.0(标定 n=19,SD 10.38,
-# CI [15.0, 25.1];run 级聚类 CI [15.1, 23.6];标定源=
-# .debug/temp/currency_war/w353_p2_survival/w354_p2_loss_calib.json)→ 6.0。
-# 取 CI 下沿的理由(方向声明):本系数喂确定性 DP 递推(每节点确定减血、
-# 死亡=0),取值越高「模型内必死区」越宽;曾按条件值全量灌入(20.05→k=8.02)
-# 实测复现值函数坍缩(好板满血从 P1 中段全路径死 → V≡0 → 姿态按扫描序
-# 坍缩成最烧钱姿态、息差项从值函数消失)。CI 上沿(25.1 → k≈10.04)留
-# 两态递推改造后再评估(挂账:drop 改 (1−p(b))·L_cond,p(b) 用 W346
-# §3.2 分 rung 胜占比底座,与 two_state_model 同构)。
-# 边界声明:①板强梯度同样未标定( coarse 复算 P2 条件伤按 rung 平坦 ~11,
-# 板强通道在胜率侧不在伤害幅度侧——见上两态化挂账),故 P1 梯度整体外推
-# 已撤销、P2 摊平为常数;②位面内节点梯度与 boss 档未标定;③残余必死区
-# (hp≤15@b=2.0)的全死区平局由扫描序保守化裁决(见 solve 内 P2 升序
-# 扫描);④旧值 1.5+0.05·node 系「P2 弱板掉 19/节点」弱板锚外推,已弃;
-# ⑤P1/P3 分支不受本系数辖(P1 零漂移;P3 不在标定域);⑥双源漂移挂账:
-# cw_first_passage.PLANE_LOSS_SCALE[2]=1.6(保血阈值层,μ=4.0/节点)与
-# 本层口径未统一,另批处理。
-P2_LOSS_SCALE: float = 6.0
+# P2 两态损血(条件胜率通道;W370 §5 欠账①④治本,标定与消费口径
+# 定稿见 ADR-0440,标定源=W375 双源重标定 w375_dual_source_calib.json,
+# 数值单一源=decision_v2.registry.p2_cond_loss_table / p_win_p2_by_rung):
+# DP P2 递推不再用确定性折中损血,改两态形态 drop(b)=(1−p(rung(b)))·
+# L_cond(kind)——板强通道全部走胜率侧(P2 实测:条件败面伤害
+# 按 rung 平坦,幅度不随板强分化),胜率进期望、条件败面管幅度。
+# 挂账退役:旧 P2_LOSS_SCALE=6.0 确定性折中(CI 下界压必死区)及其
+# 「两态化后再评估 CI 上沿」挂账随本改造一并退役(值函数坍缩病理的
+# 根因=确定性递推吃条件伤害,两态化后不再存在)。
+# 边界声明:
+# ① p(rung) 取 registry.p_win_p2_by_rung(与 rounds_alive 两态投影同一
+#   标定源,sim Δ池档,证据等级声明见该字段注释);DP 板强 b 是
+#   连续坐标,对引擎 rung 离散坐标(0-2)取锚点 b∈{0,1,2} 分段线性
+#   插值,b>2 钳 rung2(与表 k3 折叠同口径)——b 落在档界附近时与
+#   _settle_rung 离散取样可差一档,期望差 ≤(p2−p0)·L_cond≈3,近似
+#   已声明(sim 分档精度内不再细分)。
+# ② 节点型:DP 无节点型自由度,boss 端槽单独用 boss 档,其余战斗槽
+#   按 line_switch._P2_NODE_TEMPLATE 战斗构成混 normal+encounter 条件
+#   档;encounter 回血未建模(encounter_heal_est=0 同口径)。
+# ③ P1/P3 分支不受本通道辖(P1 零漂移;P3 不在标定域,走原难度曲线
+#   外推,同 difficulty_scale 辖域声明)。
+# ④ 本通道只改 DP 世界模型;阈值层(cw_first_passage)同一标定源同批
+#   合一(ADR-0440),两处 estimand(确定性期望 vs 分布模型)各自声明。
+
+
+def p_win_p2(b: float) -> float:
+    """板强 b → P2 战斗条件胜率(registry.p_win_p2_by_rung 分段线性;
+    两态 DP 递推与阈值层共用的板强→胜率映射单一源)。"""
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    tbl = DEFAULT_REGISTRY.p_win_p2_by_rung
+    x = min(2.0, max(0.0, float(b)))
+    i = int(x)
+    frac = x - i
+    lo = tbl.get(i, 0.0)
+    hi = tbl.get(min(2, i + 1), lo)
+    return lo + (hi - lo) * frac
+
+
+def _p2_drop(b: float, is_boss: bool) -> float:
+    """P2 单战斗节点两态期望损血 =(1−p(b))·L_cond(kind)。"""
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    tbl = DEFAULT_REGISTRY.p2_cond_loss_table
+    if is_boss:
+        l_cond = tbl.get('boss', 0.0)
+    else:
+        # 非 boss 战斗槽:normal+encounter 按位面模板战斗构成混合(boss
+        # 档不进混合——boss 端槽已单独取 boss 档,防 boss 权重双计;
+        # 单一源=_P2_NODE_TEMPLATE+node_loss_kind,防另造构成比)。
+        from sr_od.application.currency_war.cw_line_switch import (
+            _P2_NODE_TEMPLATE,
+            node_loss_kind,
+        )
+        kinds = [node_loss_kind(nt) for nt in _P2_NODE_TEMPLATE]
+        battle = [k for k in kinds if k not in ('reward', 'boss')]
+        l_cond = sum(tbl.get(k, 0.0) for k in battle) / len(battle)
+    return (1.0 - p_win_p2(b)) * l_cond
 
 
 def difficulty_scale(t: int,
                      pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> float:
-    """位面难度曲线(A8:敌人难度随位面/节点走高;M29-M39 实测 P2 是墙)。
+    """位面难度曲线,辖域 P1/P3(A8:敌人难度随位面/节点走高;M29-M39 实测
+    P2 是墙)。P2 槽不入本函数——P2 损血走两态递推(_hp_loss P2 分支,
+    见模块 P2 两态损血段),误用即 raise(防静默吃 P3 曲线)。
 
     pl=位面日程(ADR-0368):槽 t 按日程偏移归属位面,node=位面内下标;
     t 超出日程尾按末位面吸收(查询端 clamp 前的防御)。默认日程 ≡ 旧
@@ -153,11 +195,13 @@ def difficulty_scale(t: int,
         if t >= offs[i]:
             plane = i
             break
+    if plane == 1:
+        raise ValueError(
+            f'P2 槽 t={t} 不走 difficulty_scale(P2 损血=两态递推,'
+            '见 cw_horizon P2 两态损血段)')
     node = t - offs[plane]
     if plane == 0:
         return 0.5 if node < 4 else (0.9 if node < 8 else 1.4)
-    if plane == 1:
-        return P2_LOSS_SCALE   # 重校值(推导与挂账见常量注释)
     return 1.8 + 0.05 * node
 
 
@@ -384,11 +428,24 @@ class HorizonSolution:
                             self._value_cache[(t, g, L, h, rbi)] = float(val[i])
 
 
+def _plane_of_slot(t: int, pl: tuple[int, ...]) -> int:
+    """槽号 → 位面下标 0 基(末位面吸收;与 difficulty_scale 同法)。"""
+    offs = plane_offsets(pl)
+    for i in range(len(offs) - 1, -1, -1):
+        if t >= offs[i]:
+            return i
+    return 0
+
+
 def _hp_loss(t: int, level: int, rb: float,
              pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> float:
-    """掉血 = 先验在 b_eff 上**线性插值**(非整数桶):板强每 +0.1 都有平滑边际 —— 整数桶会把
-    b2.2 与 b2.6 判同档,升级失去全部边际收益,V1.1 实测 P1 末停 lv5 不追(band 违例根因)。"""
+    """每战斗节点期望损血:P1/P3 = 先验在 b_eff 上线性插值 × 位面难度
+    (板强每 +0.1 都有平滑边际——整数桶会把 b2.2 与 b2.6 判同档,升级失去
+    全部边际收益,V1.1 实测 P1 末停 lv5 不追 band 违例根因);P2 = 两态
+    递推(见模块 P2 两态损血段;标定源与消费口径=ADR-0440)。"""
     b = b_eff(level, rb)
+    if _plane_of_slot(t, pl) == 1:
+        return _p2_drop(b, t in plane_end_slots(pl))
     lo = min(3, max(0, int(b)))
     frac = b - lo
     hi = min(3, lo + 1)

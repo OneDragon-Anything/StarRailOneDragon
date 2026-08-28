@@ -8,7 +8,7 @@
 
 - **状态空间与递推**:维度与常量(`NODES_PER_PLANE`/`GOLD_MAX`/`LEVEL_MIN·MAX`/`HP_BUCKET`/`RB_STEPS`)见模块头部;金步长为 1(日程 +1/+2 金不得被量化蒸发,ADR-0202);掉血模型 = 板强线性插值 × 难度缩放的**期望近似**(难度缩放按位面分支,见下);终值含存活奖励 + 金/级/血残值(无血残值会系统性欠升级,V1.1 教训)。
 - **位面日程(ADR-0368)**:槽序不按 27 槽均匀 9 切片——`solve(ledger, pl)` 按位面日程排槽:boss 奖金落日程位面末槽、总程=日程求和;真值源 `schedule_of(session)` 读 `session.plane_lengths_seen`(prep_director 每位面首帧随开局槽序表记录,未揭晓位面回退 9 先验,P3 进表即自适应);查询映射单一源 `HorizonSolution.slot_of(plane, round)`;解缓存 memo 键=(台账指纹, 日程)。默认日程 ≡ 旧均匀切片(P1 零漂移的结构保证);v1 栈纯函数消费端(`get_node_goal`/遥测影子查询)与 `cw_first_passage` hp 地板仍用先验日程(遗留记档,ADR-0368)。
-- **难度缩放与平局裁决(P2 重校口径;why → ADR-0426 增补节)**:难度缩放按位面分支——P1 分段常数、P2 为常数 `P2_LOSS_SCALE`(板强梯度与位面内节点梯度未标定,P2 掉血按常数摊平;P1/P3 分支不受辖)、P3 线性。`solve` 的平局扫描序:P2 槽按花费**升序**扫(严格大于保首 = 等值时取最便宜姿态——全死区值函数恒 0 的平局裁决为「存息」),P1/P3 槽保持降序(旧行为)。DP 层难度常数与保血阈值层(`cw_first_passage.PLANE_LOSS_SCALE`)是**两套独立常数,口径未统一**(结构边界)。
+- **难度缩放与 P2 两态损血(ADR-0440)**:难度缩放按位面分支辖 P1/P3——P1 分段常数、P3 线性;P2 槽不走难度缩放,损血改**两态递推** `drop=(1−p(rung(b)))·L_cond(kind)`——胜率 = registry `p_win_p2_by_rung`(b∈{0,1,2} 锚分段线性,b>2 钳 rung2),条件败面 = registry `p2_cond_loss_table`(boss 端槽 boss 档,其余战斗槽 normal+encounter 模板混合);标定源 = W375 双源重标定(版本披露锚 = registry `p2_loss_calib_version`);板强梯度在胜率侧不在伤害幅度侧(W371 实证)。`solve` 的平局扫描序:P2 槽按花费**升序**扫(严格大于保首 = 等值时取最便宜姿态——全死区值函数恒 0 的平局裁决为「存息」),P1/P3 槽保持降序(旧行为)。DP 层与保血阈值层(`cw_first_passage`)共用同一标定(同一胜率表+条件败面档);阈值层是分布模型 estimand、DP 层是确定性期望递推,函数不同、标定同源(边界声明见 `cw_first_passage._loss_dist`)。
 - **姿态空间**:8 个「升?× D0/D2/D4/D6」组合,动作码 int8;`posture()` / `value_at()` 为唯一生产查询口(值/动作表是紧凑数组,`policy`/`value` property 仅为旧测试兼容的惰性物化)。
 - **消费端**:`cw_economy`(spend_mode 档位)、`cw_comps`(node goals)、`cw_evaluate`、`cw_plan`、`cw_state`、`cw_telemetry`(影子记录)。
 - **效果感知注入**:持有效果改变世界规则时(息 cap / 单击价 / 连胜乘子 / 节点日程)按台账指纹重解(ADR-0202);纯时点金不改变指纹不重解。生产当前查「无效果」基线解,效果解切流由发布层控制。
@@ -40,7 +40,7 @@
 
 ## 6. cw_first_passage:目标函数层
 
-全栈优化目标的单一源:**首达生存概率**(P(reach plane_k) / P(win))+ 风险姿态三区律——替代各处各自为政的「均值计价」(诊断与设计 → ADR-0161)。`cw_state` 消费;P(win) 供给跨局分配层。
+全栈优化目标的单一源:**首达生存概率**(P(reach plane_k) / P(win))+ 风险姿态三区律——替代各处各自为政的「均值计价」(诊断与设计 → ADR-0161)。`cw_state` 消费;P(win) 供给跨局分配层。掉血分布 μ 的位面维:P1 = `cw_horizon.HP_LOSS_PRIOR` 现档(P1 不走 P2 标定);P2+ = 两态同构 `(1−p(rung(tier)))·L_cond_mix`(registry `p_win_p2_by_rung` + `p2_cond_loss_table`,P3 别名 P2);无本地位面乘数自由度(W443 双源合一,ADR-0440)。`effective_hp_threshold` P2+ 阈值 = base × `plane_hp_ratio`,五处策略消费点(economy 止损/evaluate 保血/comps 与 default_strategy 保命转型 0.75×/plan 刷新帽)全部经该单口消费。
 
 ## 7. cw_progress_curves:期望进度线
 
