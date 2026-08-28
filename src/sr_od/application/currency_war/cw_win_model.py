@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -147,6 +148,80 @@ def plaza_prior_weights(feats_rows: list[dict[str, Any]],
     return [w * scale for w in raw]
 
 
+#: 概率再校准(Platt scaling)的 clip 下/上界:logit 变换前夹住概率,
+#: 防 p=0/1 的 ±inf(遥测锚里均衡 LR 输出极端值的行会被 clip 而非爆掉)。
+_PLATT_PROB_EPS: float = 1e-6
+
+
+@dataclass(frozen=True)
+class PlattCalibrator:
+    """Platt 概率再校准层:``p → sigmoid(a·logit(p) + b)``。
+
+    设计(为什么是 Platt 而非温度缩放):W495 影子对拍实测的失真形态是
+    「排序能力好、概率整体下压、高分段欠冲且对先验面份额不敏感」——
+    偏移主导 + 尺度分量并存,单参数温度缩放(1/T)表达不了纯偏移;
+    Platt 双参数严格包含温度缩放为特例(a=1/T, b=0),故选 Platt。
+
+    拟合纪律(硬边界):参数只允许由 ``fit_platt_scaling`` 在**带负样本的
+    遥测锚**上拟合;plaza 先验面是恒胜标签的生存者语料,禁参与拟合
+    (否则校准学到的只是先验面的分布,不是实机校准)。
+
+    默认参数 ``a=1, b=0`` = 恒等映射,``apply`` 对任意 p 逐位不变——
+    校准层关闭态的零漂移锚。
+    """
+
+    a: float = 1.0
+    b: float = 0.0
+
+    def apply(self, prob: float) -> float:
+        """单点概率过校准;输入越界或非有限时原样返回(不做静默修正)。"""
+        p = float(prob)
+        if not (0.0 <= p <= 1.0) or not math.isfinite(p):
+            return p
+        if self.a == 1.0 and self.b == 0.0:
+            return p  # 恒等短路:数值与语义双零漂移
+        z = math.log(p / (1.0 - p)) if 0.0 < p < 1.0 else (
+            -742.0 if p == 0.0 else 742.0)  # float64 logit 极限,防 overflow
+        return 1.0 / (1.0 + math.exp(-max(min(self.a * z + self.b, 742.0),
+                                          -742.0)))
+
+
+def fit_platt_scaling(y_true: list[int], probs: list[float]) -> PlattCalibrator:
+    """在遥测锚上拟合 Platt 校准参数(纯函数:只读入参,零 IO,零随机)。
+
+    模型:一维 logistic 回归 ``P(y=1) = σ(a·logit(p) + b)``,拟合器 =
+    sklearn LogisticRegression(近无正则 C=1e6,lbfgs 确定性求解,
+    不传 random_state——同入参必同参,可锁)。输入要求:
+    - ``y_true`` 含 0/1 两类且与 ``probs`` 等长、非空(单类/退化输入无法
+      定偏移与尺度,原样返回恒等 = 校准层自动降级关闭,不抛);
+    - ``probs`` 越界/非有限行直接剔除后再拟合(与 ``apply`` 的防御同口径)。
+
+    返回的校准器默认可直接过 ``PlattCalibrator.apply``;调用方负责保证
+    probs 来自**带负样本的遥测锚**(survivorship 面禁入,见类 docstring)。
+    """
+    # strict=True:锚行数不齐是调用方错误,宁可炸不可静默截断负样本
+    pairs = [(float(p), int(y)) for p, y in zip(probs, y_true, strict=True)
+             if 0.0 <= float(p) <= 1.0 and math.isfinite(float(p))
+             and int(y) in (0, 1)]
+    if not pairs:
+        return PlattCalibrator()
+    ys = [y for _, y in pairs]
+    if len(set(ys)) < 2:
+        return PlattCalibrator()
+    z = []
+    for p, _ in pairs:
+        pc = min(max(p, _PLATT_PROB_EPS), 1.0 - _PLATT_PROB_EPS)
+        z.append(math.log(pc / (1.0 - pc)))
+    # 重依赖懒加载(与 predict 的 joblib 同纪律):本模块被影子面外的
+    # 代码 import,不在模块顶挂 numpy/sklearn。
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    lr = LogisticRegression(penalty='l2', C=1e6, max_iter=2000, tol=1e-8,
+                            solver='lbfgs')
+    lr.fit(np.array(z).reshape(-1, 1), np.array(ys))
+    return PlattCalibrator(a=float(lr.coef_[0][0]), b=float(lr.intercept_[0]))
+
+
 @dataclass(frozen=True)
 class WinModelVersion:
     """C7 版本指纹(接口形状冻结;标签源可替换位=label_source)。"""
@@ -207,12 +282,18 @@ class ShadowKilledModel:
             row[f'nt_{nt}'] = 1 if node_type == nt else 0
         return [float(row.get(c, 0)) for c in self._cols]
 
-    def predict(self, feats: dict[str, Any], node_type: str) -> dict[str, Any] | None:
+    def predict(self, feats: dict[str, Any], node_type: str,
+                calibrator: PlattCalibrator | None = None) -> dict[str, Any] | None:
         """影子预测:**不生效,只记录**——返回预测并落 shadow_log。
 
         本方法不被 sim 结算分派器调用(C7 验收边界④:win_model 上线前
         仅作离线分析件);返回 ``{'killed': bool, 'killed_prob': float}``
         供漂移监控对拍,无模型时返回 None。
+
+        ``calibrator``:可选 Platt 校准层(:func:`fit_platt_scaling` 的产物,
+        只许遥测锚拟合);默认 None = 不校准,与未引入校准层前的行为
+        逐一相同(概率/阈值/日志全零漂移)。传入恒等参数
+        ``PlattCalibrator()`` 同样零漂移。
         """
         if not self.available:
             return None
@@ -223,6 +304,8 @@ class ShadowKilledModel:
             self._cols = meta['feature_cols']
         prob = float(self._model.predict_proba(
             [self._vectorize(feats, node_type)])[0][1])
+        if calibrator is not None:
+            prob = calibrator.apply(prob)
         out = {'killed': prob >= 0.5, 'killed_prob': prob,
                'model_id': self.version.model_id, 'node_type': node_type}
         _MODEL_DIR.mkdir(parents=True, exist_ok=True)
