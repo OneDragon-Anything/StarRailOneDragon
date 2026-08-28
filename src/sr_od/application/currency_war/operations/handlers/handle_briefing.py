@@ -16,6 +16,7 @@ boss 候选集不进 session(无消费方;遥测/对账用)。简报在 loop 前
 入口大 op(``StartCurrencyWarMatch.advance_to_prep``)只做调度:循环检测当前屏 → 调对应独立 op
 (本 op / ``HandleInvestEnv`` 等),兼容新局/恢复局画面顺序不固定。
 """
+import contextlib
 import time
 from typing import ClassVar
 
@@ -29,6 +30,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # 裸模块 logger 的 INFO 无处落地 → 「简报首领候选集读得」等行从未可见,
 # 判读无法区分「read_bosses 恒空」vs「幂等跳过」。改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
+from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.cw_observation import (
     load_affix_effects_from_file,
     read_affix_effect,
@@ -98,6 +100,19 @@ class HandleBriefing(SrOperation):
             if _diff is not None:
                 self.ctx.cw_enemy_difficulty = _diff
                 _log.info('简报敌人难度读得: %s', _diff)
+
+        # 遥测存证(W518):开局简报三读数(词缀/boss 候选集/难度)此前只进
+        # 日志不进遥测——run_20260828_191254 的 exogenous.jsonl 0 条 briefing,
+        # 证据链上「简报画面当时显示了什么」是空白(数据无功能消费方,纯存证)。
+        # 口径对齐 battle_loop 位面简报分支先例(同 kind='briefing'、同 detail
+        # 风格;轮次 0 = 简报在 loop 前)。已读过/读空不拦——照抄当前 ctx 槽值,
+        # 读空即 None 一并存证。
+        with contextlib.suppress(Exception):   # 遥测 best-effort
+            cw_telemetry.record_exogenous(
+                0, 'briefing',
+                detail=f'affixes={self.ctx.cw_briefing_affixes}'
+                       f' bosses={self.ctx.cw_briefing_bosses}'
+                       f' difficulty={self.ctx.cw_enemy_difficulty}')
 
         # ③ 点「下一步」离开简报(下一画面由上层 advance 调度;新局经位面过场叠层到投资环境)。
         _click = self.round_by_find_and_click_area(
