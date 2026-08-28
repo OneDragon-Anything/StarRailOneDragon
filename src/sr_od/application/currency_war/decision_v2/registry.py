@@ -981,6 +981,42 @@ class DecisionV2Registry:
     #: 离线标定到位后按上式重裁,公式与代入验证见规格 §2.3。
     c1_directed_spend_enabled: bool = False
 
+    # ===== C1 资产臂(跨位面资产通道 V_asset)=====
+    #: 设计=唯一规格:`.debug/temp/currency_war/w397_s5_asset_channel/
+    #: DESIGN.md` §2/§3。语义:C1 现行 Δp_board-only 判据漏跨位面资产
+    #: 通道——P1 末窗满板时买目标件上 bench,本战板面不变(Δp_board=0)
+    #: 但 P2 成型进度 +1(板面/阵容/等级跨位面继承),EV 层会定价为正
+    #: 的候选被滤网先行删除。修法=放行判据改为析取式
+    #: ``Δp_board×13.35 + V_asset > 0``(金当量;13.35=boss 税 mean
+    #: 26.7×hp_to_gold 0.5,Δp_board∈{0,1} ∧ V_asset≥0 退化为 OR 臂),
+    #: ``V_asset = m × p_slot × δ_unit × L2 × hp_to_gold``。辖域只在本
+    #: C1 段,濒死带(C3)段不引入资产臂——濒死帧无「P2 首战」兑现面,
+    #: 引入即破「再输即死」前提下的可证明零期望性质(DESIGN §5)。
+    #: 资产臂公式锁(手算代入)/边界帧锁见
+    #: ``sr-od-test/test/sr_od/app/currency_war/test_cw_c1_directed_spend.py``。
+    #: **开臂 A/B 判据挂账(不执行,DESIGN §6 三级对照)**:主判据=
+    #: P2 首战胜率差 ≥+2pp 且 P2 成型时点中位提前 ≥0.5 轮;守卫=m≥
+    #: m_min 逐笔可复算(链日志 c1_asset_pass/c1_asset_m)/换线率不升/
+    #: 末窗溢余清空率不降;三级对照=基线(无 C1)/C1-off(现行)/
+    #: C1-asset(本臂),隔离 C1 本体与资产臂两级效应。
+    #: 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。
+    c1_asset_channel_enabled: bool = False
+    #: 目标件隶属度阈值 m(DESIGN §2.2:核 1.0/共享·替班 0.5/其余 0;
+    #: m_min=0.5=替班计入,A/B 可分级)。
+    c1_asset_m_min: float = 0.5
+    #: bench 件在 P2 首战前获得可部署空位的概率(待标定,DESIGN §7 缺口①;
+    #: 保守默认 0.5=设计稿指定)。溢余段判据只取符号(>0),量级仅影响
+    #: A/B 效应量预估。
+    c1_asset_p_slot: float = 0.5
+    #: 单件目标件在 P2 上场对场胜率的平均增量(待标定·主缺口,DESIGN
+    #: §7 缺口②;占位值=DESIGN §2.1 复算例)。判据只取符号(>0);
+    #: 量级挂 A/B 分通道兑现账回填(DESIGN §6)。
+    c1_asset_delta_unit: float = 0.03
+    #: E[损血|P2 场败](待标定,DESIGN §7 缺口③;占位值=DESIGN §2.1
+    #: 复算例值,与 boss_tax mean 同构的 P2 口径)。不进符号判定,
+    #: 仅 V_asset 量级账。
+    c1_asset_l2_loss: float = 12.0
+
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -1036,6 +1072,30 @@ class DecisionV2Registry:
     #: 审计表两维的显式枚举(新增动作类型/资源维时审计表强制过检)
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
+
+
+# ===== hp 对账层下行守卫标定常量(ADR-0430;消费方 cw_reconcile.reconcile_hp)=====
+# 值单一源在注册表(项目惯例:数值不散落);cw_reconcile 属观察对账层,
+# 只读本模块常量,不进决策评分面。
+#: 单战损血谱 p100 上界,按节点型分档——loss 帧下行采信的幅度上界。
+#: 标定来源 = 损血表 p100(887 行遥测语料,只采 hp_confidence≥1 且按
+#: (run,位面,round) 去重后的分位:普通战斗 23 / 遭遇 42 / boss 39);
+#: 取 p100 不取 p99 的论证见标定报告(p99-p100 差 ≤7%,p100 顶级行
+#: 逐条交叉核验非误读,压阈值只引入真掉血误杀)。精英/巨星等未标定
+#: 节点型不入表 → 下行走复现确认通道,不拍值。
+HP_LOSS_CAP_P100_BY_NODE: dict[str, int] = {
+    '普通战斗': 23, '遭遇': 42, 'boss': 39,
+}
+#: 零损节点型(无战斗损血机制事实):这些节点的结算不产生合法损血,
+#: 真值帧下行必为误读 → 一律拒信。
+HP_ZERO_LOSS_NODE_TYPES: frozenset[str] = frozenset({'奖励', '补给'})
+#: 下行拒信复现确认帧数:拒信后连续 N 个真值帧读数仍与拒信值一致
+#: → 确认真掉血,采新出窗。2 = 最小独立复现数(1 帧可能是同一遮挡
+#: 形态的系统性误读;实机遮挡是 shop 开态特有,结算/备战帧不复现)。
+HP_SUSPECT_CONFIRM_FRAMES: int = 2
+#: 毒化窗长上界(节点数):每节点至少一个真值帧(shop 开态才是 None),
+#: 窗长 ≤ 1 节点 + 确认期;超窗 suspect 过期,下次下行重新走首拒帧。
+HP_SUSPECT_WINDOW_NODES: int = 2
 
 
 #: 默认注册表(ADR-0293 标定后;A/B 时构造改动副本注入
