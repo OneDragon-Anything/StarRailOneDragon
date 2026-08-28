@@ -53,3 +53,19 @@ v2 曾把「插件 2 星」实现为末位买臂,v3 撤销:① 其前提需全�
 - **双 cap 残留 14 例 = 设计内声明**:开臂后 seg 真拦残留 14/300(0.0467,≤0.15 验收线)属 cap 量控与误报残基(engine_affinity_off 类)的设计内余量,不是缺陷;披露键(`copy_out_of_band_skipped`/`copy_bench_only_skipped`)归零/低量维持可证收口。
 - **与 ADR-0426 的互补关系**:本通道治「凑档」的买侧(压库带副本从「无效换卡」转放行),ADR-0426 的 release 门治其卖侧(FLIP 帧不卖息凑档);两侧共用「不新增破息例外」纪律——本通道消费的是 [11] 无损购买面与逐轮 cap 量控,不触息律公式(与 ADR-0426 Decision 2 同一语义:破息只经显式裁决的例外列举)。
 - **挂账**:E08「core 同名副本但 ∉ band」的防御性红利豁免维持不能(sim 无对手模型,永久以口述原文为准);`press_band_cum_threshold` 敏感性扫描降级为守卫验证,敏感再立项。
+
+## 增补(2026-09-06):copy_press 评分子路由定谳清理(删码留档;策略开关生命周期第 4 态)
+
+Consequences 第 1 条的悬置声明(「路由去留留待未来单独裁决」)经审计裁决为**定谳清理**:评分路由在现行标签裁决序下没有属于它的行为面——0 买入 = 「生产默认 `press_copy_unit=0.0` 构造性恒零(死于 arbiter 非正分门)」∧「生成域被上游臂(engine_seed/plugin/copy/pair)截流至近空(W368 显式注入 0.5/0.5 后 600 局仍 0 买入,注入也救不回)」的叠加,不是「标定值没调好」。保留挂起不可选(自然观测支点不存在,开臂判据挂账写不出来=生命周期门定义的已判决未执行悬案禁形态);定向验证价值被双重封顶(行为增量已被守卫放行 + [11] 豁免臂兑现,残余域副本无独立收益机制,3合1 已被 copy/pair 通道覆盖)。审计证据链(悬置实证、生成截流逐臂覆盖面、三选一评估)见 `.debug/temp/currency_war/w419_copypress_audit/REPORT.md`。清理批执行时的一处口径修正:审计的「默认态构造性恒零」在探针帧不严格成立——copy_press 候选的板面差分含 depth 维正分量(bench 余槽代理),默认态并非逐帧非正分;但该正分不改变定谳结论(600 局 0 买入由生成截流主导,偏置无独立行为兑现),删除的零漂移不变量照常成立。
+
+### 删除清单
+
+- **生产面**:`scoring.py` copy_press 评分臂(`press_copy_unit` 加分 + core-mirror bonus 分量)与 `registry.py` 两字段(`press_copy_unit`/`press_core_mirror_bonus` + 注释块);`cw_sim_checks.check_w300_press_channel_probe` 的评分正分断言段(机制面探针——候选产出/标签落点/band 外灰出——保留)。
+- **保留不动(通道价值主体,W368 实证收益承载)**:`press_channel_enabled` 总闸、`_copy_swap_blocked` ④ press 豁免臂、arbiter [11] 同档/1费豁免臂、双 cap(`press_copy_round_cap`/`press_exempt_round_cap`)、`copy_press` 标签生成臂(`candidates._buy_tag` press 臂)、检查器 C-B/C-C 披露面。
+- **测试面**:`test_cw_w361_press_channel.py` 评分路由锁(独立给分域/E08 分量/默认值断言中两字段)改写为清理卫生锁(两字段 `not hasattr` + 通道主体健在 + 删除后与默认态行为一致);cap 量控锁改用 `filler_star_unit` 注入过非正分门(不依赖已删路由);`test_cw_adr0293_calibration.py` registry hash 锁同步。
+- **附带卫生债(随批清理)**:`registry.py` 曾存在两个 `war_tags` 字段定义(frozen dataclass 内重复声明,后者静默生效),保留语义正确份(含 refresh,W126/ADR-0349 裁决),删除旧窄份。
+
+### 行为不变量与复活条件
+
+- **零漂移不变量**:被删偏置生产默认恒 0.0,删除=恒 0 分支移除——默认行为逐位一致(全集回归验证,hash 锁同步)。删除后 copy_press 候选照常生成,评分只由通用板面维决定,与删除前默认态一致。
+- **复活条件(显式)**:仅当未来标签裁决序重构使「非体系 ∧ 非插件 ∧ 非成对 ∧ deployed 同名 ∧ 1-2 费」残余域变宽(上游臂变动有实证)时才可重新立项;届时从本 ADR 正文 + 增补节 + git 历史重建,不复用删除前代码。另:与 W416 配方围栏(ADR-0432)的「开臂态单向压制」交互面随本路由删除而消失,围栏开臂批无需再为本路由做共存分析。

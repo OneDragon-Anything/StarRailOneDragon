@@ -88,7 +88,7 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 
 **锁线/撤销状态机**(`IntentionState`:unlocked / locked / weak,`update_intention` 每回合驱动;一回合最多一次转移——撤销后当轮不重锁,防弱意向态不可观测):锁定后撤销**只有两个出口(析取)**:
 
-1. **出口① miss-N**:意向核心连续 `CORE_MISS_N` 轮不可得 → 降级弱意向。计数带**窗口冻结语义**(`LineTrack`):分母只计刷新窗已开的轮(窗口未开时「买不到」是结构性的,不是不可达证据,计 `frozen_rounds` 不计 `miss_count`);冻结累计超位面剩余节点 → 该线**逐出**候选集(`evicted`,移出后不再产信号),意向回无信号态且当轮不触发③;
+1. **出口① 断供证据(三条件合取,ADR-0436)**:开窗须同时满足——① 意向核心连续 miss ≥ max(`CORE_MISS_N`, `N_req`) 轮不可得,N_req 由容忍概率 ε(`revoke_miss_tolerance_eps`)从再遇窗口期望闭式推导(`core_miss_n_required` = ⌈ln ε/ln(1−q)⌉,随核心费用/当前等级自适应;拍死值 `CORE_MISS_N` 保留为上限保险);② 存在异线 comp 核心可达(与出口②同一把可达对照尺);③ 该异线资产厚度 ≥ A_min(`revoke_evidence_min_thickness`,冻结池随机厚度基线曲线 5% 点测量值)——「另一条线正在实际生长」是换线意图与断供噪声的区分变量。计数带**窗口冻结语义**(`LineTrack`):分母只计刷新窗已开的轮(窗口未开时「买不到」是结构性的,不是不可达证据,计 `frozen_rounds` 不计 `miss_count`);冻结累计超位面剩余节点 → 该线**逐出**候选集(`evicted`,移出后不再产信号),意向回无信号态且当轮不触发③。开窗帧携带证据快照(`IntentionState.revoke_evidence`:miss_count/n_req/q/异线名/e_alt/厚度/A_min,落遥测;误开窗判据与回炉口径见 ADR-0436);
 2. **出口② 高层替代**:更高层级信号(层级低于锁定层)且过**可达性对照**(再遇窗口期望轮数 `encounter_window_rounds` ≤ 全局剩余节点数)——层级高 ≠ 必换。
 
 分数涌现劣势换线**不在本模块**(终局线由贯穿件锁定,不是 pivot)。**强制锁线**(P3 入口仍无意向):候选按资产厚度(终局件星级当量 + 骨架件折算)择最优锁;全部不可达 → **降格终局**(`demoted_endgame`,「赢不了就少输」),为 absorbing 态(不回弹)。
@@ -97,6 +97,6 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 
 **锁后效果接口**(`hoard_target_set` → `HoardTarget`):输出囤货目标集合 = 角色件(char_targets:意向线采购集,core/shared/替班/羁绊成员)+ 装备件(equip_targets:意向线 equip_assign 派生,剔具名 equip_taboos)+ mode('locked'/'forced'/'weak'/'fallback'/'demoted_endgame',买侧按 mode 区分囤货语义)。生产载体 = decision_v2 的 `update_target` 每轮把它写进 `session.v3_hoard`,是**买侧唯一消费面**——意向模块不产出任何上场/换人动作(意向管方向、演进管换档)。弱意向态撤销后去向 = 只囤跨线骨架件(`CROSS_LINE_SKELETON`,从 W16 过半统计派生,ADR-0312)。
 
-撤销阈值/信号阈等常量(`CORE_MISS_N`/`SKELETON_ASSET_WEIGHT`/`FAMILY_BOND_MIN_COUNT`)属 sim 校准域,值只在代码。
+撤销阈值/信号阈等常量(`CORE_MISS_N`/`revoke_miss_tolerance_eps`/`revoke_evidence_min_thickness`/`SKELETON_ASSET_WEIGHT`/`FAMILY_BOND_MIN_COUNT`)属 sim 校准域,值只在代码(N_req 推导式与 A_min 测量协议见 registry 注释与 ADR-0436)。
 
 **配方对只读派生口 `p1_early_pair`**(ADR-0372,P1 早期新件买入门的读口):与 `_derive_p1_pair` 同口径(支持度 top-2),但**未锁形态期同样派生**(无锁门槛)——锁定帧优先用意向字段(transition_pair/p1_pair),未锁/空窗现场派生,P1 外恒空;只读不落字段,不改变 `p1_pair`/`transition_pair` 的锁定产物契约。

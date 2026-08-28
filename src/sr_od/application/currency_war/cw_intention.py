@@ -9,7 +9,9 @@
 - [21] final 件「买而不上」→ 本模块锁线后**只改囤货方向**(输出「囤货目标集合」
   供买侧消费),不改板上、不产出任何上场/换人动作;
 - [23] 终局线由贯穿件锁定,不是 pivot → 锁定后撤销**只有两个出口**(析取):
-  ①意向核心 N 轮不可得(只计刷新窗已开的轮,窗口冻结语义);②更高层级替代
+  ①意向核心断供证据(三条件合取:miss ≥ max(CORE_MISS_N, N_req 闭式)
+  ∧ 存在异线核心可达 ∧ 异线资产厚度 ≥ A_min——统计证据+替代资产证据,
+  只计刷新窗已开的轮,窗口冻结语义);②更高层级替代
   信号且过可达性对照。分数涌现换线不进本模块。
 - [23]/[21] 的 P1 时序面(ADR-0341):贯穿件 P1 可买可囤([21] bench 等窗口),
   但**终局专属线(锁线方向不含过渡引擎)在 P1 的③/④锁线证据被资格门拦下**——
@@ -37,6 +39,7 @@ v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -68,6 +71,9 @@ from sr_od.application.currency_war.cw_shop_odds import (
 from sr_od.application.currency_war.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
+)
+from sr_od.application.currency_war.decision_v2.registry import (
+    DEFAULT_REGISTRY,
 )
 
 if TYPE_CHECKING:
@@ -192,6 +198,15 @@ class IntentionState:
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
+    revoke_evidence: dict[str, object] = field(default_factory=dict)
+    """撤销出口①开窗的证据字段快照(实机判读锚点,设计 R3.5「无证据
+    字段的开窗=守卫失效」;serialize_intention 全量序列化自动携带)。
+
+    - 写入端 = update_intention 撤销出口①开窗分支(唯一写入点,每次
+      开窗整体覆写);keys:kind/miss_count/n_req/q/eps/alt_comp/e_alt/
+      asset_thickness/a_min(语义见该分支注释)。
+    - 清空时机 = _lock(重锁即证据消费完毕)与冻结驱逐/降格(转移
+      不经撤销,证据随之失效)。空 dict = 本局尚无撤销开窗。"""
 
 
 @dataclass(frozen=True)
@@ -592,6 +607,67 @@ def _asset_thickness(comp: Comp, state: GameState) -> float:
     return float(final_pieces) + skeleton_pieces * SKELETON_ASSET_WEIGHT
 
 
+def _core_miss_q(core: str, level: int) -> float:
+    """核心单轮「至少一张出现」概率 q=1−(1−r)^5(5 格商店;与
+    encounter_window_rounds 同一静态近似,r=p/v 忽略 depletion)。
+
+    窗口未开(refresh_prob=0)或角色未识别 → 0.0(调用方按上限保险
+    接管,不进闭式)。"""
+    ch = CHARACTERS.get(core)
+    if ch is None:
+        return 0.0
+    p = refresh_prob(level, ch.cost)
+    if p <= 0:
+        return 0.0
+    r = p / DISTINCT_CARDS_PER_COST.get(ch.cost, 13)
+    return 1.0 - (1.0 - r) ** 5
+
+
+def core_miss_n_required(core: str, level: int, eps: float) -> int:
+    """证据组 A 的断供轮数闭式:N_req = ⌈ln ε / ln(1−q)⌉。
+
+    推导:P(N 轮未现 | 单轮出现率 q) = (1−q)^N ≤ ε——「核心实际可达
+    却连续 N_req 轮缺席」的概率压到 ε 以下,缺席才从噪声升级为断供
+    证据(设计=`.debug/temp/currency_war/w396_r2r3_design/DESIGN.md`
+    R3.1;治 W386 BP1「拍死计数把正常噪声送进撤销」)。ε 取
+    registry.revoke_miss_tolerance_eps(默认 5%)。实表代入
+    (cw_shop_odds):3 费@lv5 q=0.069→N_req=42,3 费@lv7 q=0.135→21,
+    1 费@lv5→27——拍死值 CORE_MISS_N=6 的缺席在 q≈0.07 下自然概率
+    ≈0.65,纯属噪声,定量坐实「6 是多容易误触发」。
+
+    q=0(窗口关/未识别)→ 返回 CORE_MISS_N:闭式无定义,退上限保险
+    (该情形走冻结语义,本值不实际辖判)。"""
+    q = _core_miss_q(core, level)
+    if q <= 0.0 or q >= 1.0:
+        return CORE_MISS_N
+    return max(1, math.ceil(math.log(eps) / math.log(1.0 - q)))
+
+
+def _revoke_alt_evidence(state: GameState, visible: set[str],
+                         locked_comp: str, evicted: set[str],
+                         a_min: float) -> tuple[str, float] | None:
+    """证据组 B:I_evidence = ∃ 异线 comp:``_core_reachable`` ∧
+    ``_asset_thickness`` ≥ A_min(意图证据本体——「有没有另一条线正在
+    实际生长」,区别于噪声与断供共有的「本线缺了多久」;设计 R3.1)。
+
+    - ``_core_reachable`` 复用出口②的可达对照,不造第二把尺;
+    - 排除当前锁定线(「异线」字面)与 evicted 冻结超限线(已证明
+      不可续的线不是「生长中的替代资产」);
+    - 多条满足取厚度最大者(证据强度排序;选线权仍在信号分层,
+      证据只回答「可不可以撤」,不回答「撤向哪」)。
+    返回 (comp 名, 厚度) 或 None。"""
+    best: tuple[str, float] | None = None
+    for c in _v2_comps():
+        if c.name == locked_comp or c.name in evicted:
+            continue
+        if not _core_reachable(c, state, visible):
+            continue
+        thk = _asset_thickness(c, state)
+        if thk >= a_min and (best is None or thk > best[1]):
+            best = (c.name, thk)
+    return best
+
+
 def _best_signal(signals: list[IntentionSignal]) -> IntentionSignal | None:
     """分层取最优:layer 升序 → weight 降序 → 库序(stable)。"""
     if not signals:
@@ -622,6 +698,7 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.lock_round = state.round_num
     ist.forced = forced
     ist.weak_comp = ''
+    ist.revoke_evidence = {}   # 重锁=证据消费完毕(字段契约见 IntentionState)
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
@@ -700,6 +777,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 ist.locked_comp = ''
                 ist.lock_layer = 0
                 ist.transition_pair = ()   # 锁撤销 → 副方向随之退场(W166)
+                ist.revoke_evidence = {}   # 驱逐不经撤销,证据随之失效
                 ist.last_event = f'evict:frozen:{track.frozen_rounds}'
                 sigs = [s for s in sigs if s.layer != 3]   # 不触发③
         else:
@@ -708,15 +786,59 @@ def update_intention(state: GameState, ist: IntentionState,
                 track.miss_count = 0
             else:
                 track.miss_count += 1
-                if track.miss_count >= CORE_MISS_N:
-                    # 撤销出口①:核心 N 轮不可得(只计开窗轮)→ 降级弱意向
-                    ist.phase = 'weak'
-                    ist.weak_comp = ist.locked_comp
-                    ist.locked_comp = ''
-                    ist.lock_layer = 0
-                    ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
-                    ist.last_event = f'revoke:miss{track.miss_count}'
-                    revoked = True
+                # 撤销出口①(三条件合取,缺一不开窗;设计 R3.1):
+                #   ① miss ≥ max(CORE_MISS_N, N_req)——N_req 由 ε 容忍
+                #     概率闭式推导(证据组 A),CORE_MISS_N 保留为上限保险
+                #     (防牌池数据异常使 N_req 过小);仅达拍死计数不再
+                #     开窗(W386 BP1:门放行噪声换线的病灶在此收窄)。
+                #   ② 证据组 B:存在异线 comp 核心可达 ∧ 资产厚度 ≥ A_min
+                #     (registry.revoke_evidence_min_thickness,冻结池
+                #     随机厚度基线 f0 曲线 5% 点测量值,见其注释)。
+                # 误开窗操作定义(开窗局到局末未发生「新线落锁且新线
+                # 最终成型(form_score 达标)」=纯扰动)与 A/B 判据
+                # (注入臂 n=300/臂、池指纹锚,生产阈值零动):
+                #   a) evidence 臂触发率 >0 且逐例带证据字段(off 臂 ≈0
+                #      与 W379 实测一致;off 臂逐位=零漂移锚);
+                #   b) 开窗局中新线成型局 ≥2/3,低于此=证据组 B 分辨力
+                #      不足,回炉 A_min/ε;
+                #   c) 开窗局 P2 存活轮数分布不后移(C3 无效判据口径)→
+                #      出口在 sim 牌池概念无效,如实记「结构件」,不硬开臂。
+                reg = registry or DEFAULT_REGISTRY
+                n_req = core_miss_n_required(
+                    core, state.level, reg.revoke_miss_tolerance_eps)
+                if track.miss_count >= max(CORE_MISS_N, n_req):
+                    ev = _revoke_alt_evidence(
+                        state, visible, ist.locked_comp, ist.evicted,
+                        reg.revoke_evidence_min_thickness)
+                    if ev is not None:
+                        # 撤销出口①:断供证据 + 替代资产证据齐备 → 降级弱意向
+                        alt_name, thk = ev
+                        q = _core_miss_q(core, state.level)
+                        alt_comp = get_comp(alt_name)
+                        e_alt = (e_rounds(alt_comp, state, reg)
+                                 if alt_comp is not None else math.inf)
+                        ist.phase = 'weak'
+                        ist.weak_comp = ist.locked_comp
+                        ist.locked_comp = ''
+                        ist.lock_layer = 0
+                        ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
+                        ist.revoke_evidence = {
+                            'kind': 'miss',
+                            'miss_count': track.miss_count,
+                            'n_req': n_req,
+                            'q': round(q, 4),
+                            'eps': reg.revoke_miss_tolerance_eps,
+                            'alt_comp': alt_name,
+                            'e_alt': (round(e_alt, 3)
+                                      if math.isfinite(e_alt) else None),
+                            'asset_thickness': round(thk, 2),
+                            'a_min': reg.revoke_evidence_min_thickness,
+                        }
+                        ist.last_event = (
+                            f'revoke:miss{track.miss_count}'
+                            f'(n_req={n_req},q={q:.3f},alt={alt_name}'
+                            f',thk={thk:.1f})')
+                        revoked = True
         if ist.phase == 'locked':
             # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换)
             for s in sigs:
@@ -729,6 +851,7 @@ def update_intention(state: GameState, ist: IntentionState,
                     ist.locked_comp = ''
                     ist.lock_layer = 0
                     ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
+                    ist.revoke_evidence = {}   # 出口②非证据组 A/B 通道(字段契约)
                     ist.last_event = f'revoke:higher:{s.comp_name}(L{s.layer})'
                     revoked = True
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
@@ -791,6 +914,7 @@ def update_intention(state: GameState, ist: IntentionState,
             ist.demoted_endgame = True
             ist.phase = 'unlocked'
             ist.locked_comp = ''
+            ist.revoke_evidence = {}   # 降格不经撤销,证据随之失效
             ist.last_event = 'demote:endgame'
     return ist
 
