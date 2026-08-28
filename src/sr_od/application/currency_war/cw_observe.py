@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 from pathlib import Path
 
@@ -150,3 +151,79 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         cw_telemetry.bypass_obs_conflict_to_defect(rec)
     except Exception:  # noqa: BLE001  hook best-effort
         pass
+
+
+# ===== W515 分级安灯 L0 自动停线·游戏侧执行器 =====
+# 判定与闩锁在 cw_telemetry(纯逻辑,不碰游戏);三要素的「截图 + flag +
+# stop_running」需要 ctx/controller,归本模块(可观测框架,exec 失败安灯
+# 先例 = prep_director._exec_fail_hook_check 同款顺序)。
+
+def find_running_ctx():
+    """进程内定位 SrContext(安灯停线专用)。
+
+    为什么用 gc 扫描:安灯判定在 cw_telemetry 模块级旁路里发生,调用栈
+    (obs_conflict / shop 记账)各层签名都不带 ctx,而 ctx 登记点全在
+    本批禁触文件(battle_loop/prep_director);服务进程内 SrContext 恒
+    单实例(server.py / GUI 各只建一个),扫描定位无歧义。成本:仅 L0
+    停线时刻每局至多一次,百毫秒级,不进常规路径。根治(框架级 ctx
+    注册表)归后续基建批。
+    """
+    import gc
+
+    from sr_od.context.sr_context import SrContext
+    for obj in gc.get_objects():
+        if isinstance(obj, SrContext):
+            return obj
+    return None
+
+
+def _save_andon_frame(ctx, payload: dict) -> str:
+    """停机时刻另存一张现场帧(与 exec 失败安灯同风格:save_debug_image
+    带 prefix 落 .debug/images/;独立截图不污染 op 循环的帧缓存)。"""
+    from one_dragon.utils import debug_utils
+    if ctx.controller is None or not ctx.controller.is_game_window_ready:
+        return ''
+    _ts, img = ctx.controller.screenshot(independent=True)
+    if img is None:
+        return ''
+    return debug_utils.save_debug_image(
+        img, prefix=(f"l0_andon_{payload.get('run_id')}"
+                     f"_p{payload.get('plane')}r{payload.get('round_num')}_stop"))
+
+
+def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
+    """L0 安灯三要素执行(cw_telemetry 缺省 handler;返回 True=已停)。
+
+    时序:现场帧 → flag → stop_running(证据先落盘再停,与 exec 安灯一致;
+    stop 是设位信号,当前 in-flight 动作步走完后由 op 轮回顶检测退出)。
+    ctx=None 时进程内定位(find_running_ctx);找不到 ctx → False 不停
+    (fail-safe:无停线通道时绝不动台账以外的任何状态)。
+    """
+    try:
+        if ctx is None:
+            ctx = find_running_ctx()
+        if ctx is None:
+            return False
+        stop_shot = ''
+        with contextlib.suppress(Exception):   # 截图失败不拦停机(flag 是主哨兵,同 exec 安灯)
+            stop_shot = _save_andon_frame(ctx, payload)
+        from sr_od.application.currency_war import cw_telemetry
+        cw_telemetry.write_l0_andon_flag(
+            cw_telemetry.l0_andon_flag_path(),
+            run_id=str(payload.get('run_id') or ''),
+            surface=str(payload.get('surface') or ''),
+            kind=str(payload.get('kind') or ''),
+            expected=str(payload.get('expected') or ''),
+            observed=str(payload.get('observed') or ''),
+            plane=int(payload.get('plane') or 0),
+            round_num=int(payload.get('round_num') or 0),
+            refs=payload.get('refs') or [],
+            defect_shot=payload.get('shot'),
+            stop_shot=stop_shot)
+        rc = getattr(ctx, 'run_context', None)
+        if rc is None:
+            return False
+        rc.stop_running(reason='hook:cw_l0_andon')
+        return True
+    except Exception:  # noqa: BLE001  安灯失败不阻断业务流
+        return False

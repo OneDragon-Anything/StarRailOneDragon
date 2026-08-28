@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
@@ -1257,6 +1258,106 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
         reader_source=reader_source, note=note, confidence=confidence)
+    # W515 分级安灯 L0 自动停线(用户裁决「确认缺陷即停实机」;先例=
+    # prep_director 执行失败安灯钩子)。只认显式判级 == L0_andon(零误停
+    # 偏置:judge_severity 已辖 auto_resolved→L2,不在此双保险改语义);
+    # 台账行已在上一行落盘,停线不改变缺陷记录的数据形状(旧消费者不破)。
+    if sev == SEVERITY_L0_ANDON:
+        with contextlib.suppress(Exception):   # 安灯失败不阻断业务流
+            _fire_l0_andon({
+                'run_id': _CURRENT_RUN_ID, 'surface': surface, 'kind': kind,
+                'expected': str(expected), 'observed': str(observed),
+                'gap': gap, 'plane': plane, 'round_num': round_num,
+                'verdict': verdict, 'shot': shot,
+                'refs': [dict(r) for r in (refs or [])],
+            })
+
+
+# ===== W515 分级安灯 L0 自动停线(观测缺陷面;纯判定在本模块,游戏侧
+# 三要素执行在 cw_observe.stop_for_l0_andon——本模块「纯逻辑不碰游戏」
+# 的分层边界,与 prep_director 执行失败安灯「判定与执行同文件」不同)=====
+
+#: L0 安灯哨兵 flag 相对路径(锚仓根;.debug/ 不入 git;与 exec_fail
+#: 钩子 flag 分文件,值班者按文件名即知是观测面停线还是执行失败停线)。
+_L0_ANDON_FLAG_RELPATH: str = '.debug/temp/currency_war/l0_andon_hook.flag'
+
+#: 安灯执行器槽(注入式;签名 ``fn(payload: dict) -> bool``,True=已停)。
+#: None(生产缺省)→ 惰性调 cw_observe.stop_for_l0_andon(游戏侧定位 ctx
+#: 执行三要素);测试注入假执行器(tmp_path 断言,不触真机)。
+_L0_ANDON_HANDLER: Callable[[dict], bool] | None = None
+
+#: 局级闩锁(首见 L0 即停一次,后续 L0 只补台账不再停)。键=run_id:
+#: run_id 由模块级 start_run 每局重新生成(进程内「局」粒度的天然键),
+#: 与复现计数的 _defect_seen_run 同款切换语义——跨局自动重置,无需手动清。
+_L0_ANDON_FIRED_RUNS: set[str] = set()
+
+
+def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
+    """注入/清除安灯执行器(测试或上层定制用;None=回缺省游戏侧执行器)。"""
+    global _L0_ANDON_HANDLER
+    _L0_ANDON_HANDLER = fn
+
+
+def l0_andon_flag_path() -> Path:
+    """安灯哨兵 flag 绝对路径(锚仓根;本文件 parents[4] = 仓库根)。"""
+    return Path(__file__).resolve().parents[4] / _L0_ANDON_FLAG_RELPATH
+
+
+def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
+                        kind: str, expected: str, observed: str,
+                        plane: int = 0, round_num: int = 0,
+                        refs: list[dict[str, str]] | None = None,
+                        defect_shot: str | None = None,
+                        stop_shot: str = '') -> str:
+    """写安灯哨兵 flag(纯 IO 可单测;三要素规范同 prep_director 执行失败
+    安灯 flag——HOOK-STOP 特征行 + 发生了什么 + 处理步骤 + 删除条件,
+    值班者不看代码即知发生了什么)。返回写入内容(测试断言用)。
+    """
+    refs_txt = ';'.join(f"{r.get('stream')}:{r.get('key')}" for r in (refs or [])) or '(无)'
+    shots_txt = ' | '.join(s for s in (defect_shot or '', stop_shot) if s) or '(截图失败,以台账为准)'
+    content = (
+        '[HOOK-STOP] L0 分级安灯停线(观测缺陷面;常驻,cw_telemetry.record_defect 判级点)\n'
+        '发生了什么:观测缺陷初判达 L0(决策关键面 ∧ 大 gap ∧ 复现 ∧ 裁决未自动)——\n'
+        '  同一缺陷特征本局已第二次以上再现,继续跑会把系统性误观测喂进买/升/部署决策,\n'
+        '  按用户裁决「确认缺陷即停实机」停机保现场。\n'
+        f'定位:run_id={run_id} surface={surface} kind={kind} '
+        f'p{plane}r{round_num} ts={datetime.now().isoformat(timespec="seconds")}\n'
+        f'期望:{expected}\n'
+        f'观测:{observed}\n'
+        f'缺陷台账:replay/defect_ledger.jsonl 同 run_id 行(refs={refs_txt})\n'
+        f'截图:{shots_txt}\n'
+        '处理步骤:1. 看现场截图确认画面与缺陷面;2. 按 refs 下钻原流行\n'
+        '  (obs_conflicts/decisions/exec_events 等)判 reader 误读还是观测真漂移;\n'
+        '  3. 修复后重启载入代码的进程,删除本 flag 再续跑。\n'
+        '删除条件:安灯钩子本体是常驻行为(用户裁决),不随单次处理删除;\n'
+        '  本 flag 处理完即删,防误判为未处理的新停线。\n'
+    )
+    flag_path.parent.mkdir(parents=True, exist_ok=True)
+    flag_path.write_text(content, encoding='utf-8')
+    return content
+
+
+def _fire_l0_andon(payload: dict[str, Any]) -> bool:
+    """安灯触发(局级闩锁;返回是否真的执行了停线)。
+
+    闩锁在调用执行器**之前**落位:执行器异常也保证每局至多尝试一次,
+    语义 = 「首见 L0 即停,后续 L0 只补台账」。
+    """
+    rid = str(payload.get('run_id') or '')
+    if not rid or rid in _L0_ANDON_FIRED_RUNS:
+        return False
+    _L0_ANDON_FIRED_RUNS.add(rid)
+    handler = _L0_ANDON_HANDLER
+    if handler is None:
+        from sr_od.application.currency_war.cw_observe import stop_for_l0_andon
+        handler = stop_for_l0_andon
+    stopped = bool(handler(payload))
+    log.warning('[cw!][andon] L0 缺陷安灯 surface=%s kind=%s p%sr%s run=%s → %s',
+                payload.get('surface'), payload.get('kind'),
+                payload.get('plane'), payload.get('round_num'), rid,
+                '已停线(flag=l0_andon_hook.flag)' if stopped
+                else '停线未执行(游戏侧不可达,台账已留证)')
+    return stopped
 
 
 def bypass_obs_conflict_to_defect(rec: dict) -> None:
