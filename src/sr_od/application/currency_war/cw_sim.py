@@ -3109,6 +3109,23 @@ _NT_TO_PROD = {'battle': '普通战斗', 'encounter': '遭遇',
                'reward': '奖励', 'boss': '首领', 'supply': '补给'}
 
 
+def cw_dev_dir(*parts: str) -> Path:
+    """cw_dev 归档单一源根:``<仓根>/.debug/temp/currency_war/cw_dev/``。
+
+    历史:批量 runner 模板曾把台账/基线散写到仓库根 ``cw_dev/`` 当
+    暂存位(相对仓根拼接),每批跑完都得手工迁 ``baselines/`` 且
+    git status 再生未跟踪目录——写端统一 import 本函数取路径,
+    禁再拼仓库根相对路径。基根与 ``SIM_RUNS_DIR`` 同源
+    (``_AUTO_REPLAY_DIR.parent``,仓根锚定),且**动态读模块全局**:
+    测试注入临时基根(monkeypatch ``cw_sim._AUTO_REPLAY_DIR``)后
+    落 ``<tmp>/cw_dev/``,不会写真实 .debug。目录不在此预建——
+    落盘方(write_batch_ledger / 调用方)按需 ``mkdir(parents=True)``。
+    显式路径仍可覆盖:调用方自建目录直传 ``write_batch_ledger`` 不受本函数辖。
+    """
+    root = _AUTO_REPLAY_DIR.parent / 'cw_dev'
+    return root.joinpath(*parts) if parts else root
+
+
 def _default_sim_runs_dir(pool_fp: str, n: int, seed_base: int) -> Path:
     import time
     stamp = time.strftime('%Y%m%d_%H%M%S') + f'{time.monotonic_ns() % 1000:03d}'
