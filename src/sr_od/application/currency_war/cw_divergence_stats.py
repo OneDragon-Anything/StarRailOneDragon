@@ -41,10 +41,16 @@ def divergence_stats(replay_dir: Path | str = DEFAULT_REPLAY,
             if srt[0] - srt[1] < 0.10:
                 close += 1
                 per_run.setdefault(d.get('run_id', '?'), []).append(d.get('round_num', 0))
-        dp = d.get('dp_posture') or {}
-        if dp:
+        # dp_posture 遥测契约=str tag 名,且仅 decision_v2 决策帧带姿态
+        # 语义(载体帧 strategy_id='' 的该字段是 str(dict) 形态,非 tag;
+        # 历史帧另有 dict 形态如 {'spend_mode': ...},按形态分流取键)
+        dp = d.get('dp_posture')
+        if dp and d.get('strategy_id') == 'decision_v2':
             with_dp += 1
-            modes[dp.get('spend_mode', '?')] += 1
+            if isinstance(dp, str):
+                modes[dp] += 1
+            else:
+                modes[str(dp.get('spend_mode', '?'))] += 1
     return {'runs': len(per_run) or (1 if total else 0),
             'decisions_total': total, 'with_candidates': with_cand,
             'close_calls': close, 'with_dp_posture': with_dp,
