@@ -1337,6 +1337,27 @@ def _list_runs(replay_dir: Path) -> list[str]:
     return ids
 
 
+def _release_frame_counts(replay_dir: Path, run_id: str) -> dict:
+    """逐 (plane,round) 统计 release 姿态帧数(姿态触发判读的逐帧分布源)。
+
+    契约:dp_posture 恒为 str(判定口径 dp=='release' 的 str 相等),且必须滤
+    strategy_id=='decision_v2'——载体帧(strategy_id='')该字段是 str(dict) 形态,
+    字符串比较天然不命中,但仍显式滤掉防未来契约漂移。_load_decisions_rounds
+    每键只留 actions 最多的一条,统计不了逐帧分布,故独立全帧扫描。
+    """
+    counts: dict = {}
+    for d in read_jsonl(replay_dir / "decisions.jsonl"):
+        if run_id and d.get("run_id") != run_id:
+            continue
+        if (d.get("strategy_id") or "") != "decision_v2":
+            continue
+        _dp = d.get("dp_posture")
+        if isinstance(_dp, str) and _dp == "release":
+            k = (d.get("plane"), d.get("round_num"))
+            counts[k] = counts.get(k, 0) + 1
+    return counts
+
+
 def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
     """视图:逐轮演进(hp/gold/买/升/D/board;v2 模式/锁线/桥)。
 
@@ -1344,6 +1365,8 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
     (source 标记可见),判读不再缺「选了什么补给」前后的状态语境。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
+    # release 姿态逐帧分布(姿态触发判读;键坐标系与 best 相同)
+    _rel = _release_frame_counts(replay_dir, run_id)
     # 仅收「无决策行」的键(如 supply 合成行);有决策的轮以 decisions 为准
     _out_only: dict = {}
     # W306 显示闭环:全部 outcomes 建 map —— 决策行的 source 也要能打
@@ -1399,8 +1422,18 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
                 + (f"/{_fsc:.2f}" if isinstance(_fsc, (int, float)) else "")
                 ) if _ph else ""
         # W119/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
+        # dp 显示规整:只有 decision_v2 决策帧显示 tag 本身(判定口径
+        # dp=='release' 消费的就是这个 str);载体帧(strategy_id='')是
+        # str(dict) 形态、08-26 前历史帧是 dict 形态——一律 dp=? 紧凑占位,
+        # 不倾倒原始串污染判读视图(实证:载体帧曾打出整段 spend_mode 长串)。
         _dpp = d.get("dp_posture") or ""
-        dpp_s = f" dp={_dpp}" if _dpp else ""
+        _sid = d.get("strategy_id") or ""
+        if _sid == "decision_v2" and isinstance(_dpp, str) and _dpp:
+            dpp_s = f" dp={_dpp}"
+        elif _dpp:
+            dpp_s = " dp=?"
+        else:
+            dpp_s = ""
         # ADR-0348 ↺:扑满节点识别标记
         if d.get("piggy_reward"):
             dpp_s += " P=扑满"
@@ -1424,8 +1457,27 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _src = (_out_by_k.get(k) or {}).get("source") or ""
         _tag = "|".join(x for x in (_src, _nt) if x)
         nt_s = f" [{_tag}]" if _tag else ""
-        lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={d.get('hp')} g={d.get('gold')} lv={st.get('level')}"
-                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}")
+        # hp 可信位显影:hp_readable 在帧顶层,state.hp_trusted 在 state
+        # 子字典(GameState.hp_trusted,cw_observation 写入快照;顶层没有该键,
+        # 直读顶层恒 None)。任一不可信 → hp 后缀 `?`(W318 economy 视图惯例),
+        # 防「100 兜底值被判读为满血」(实证:run_20260828_103147 p2r4 帧
+        # hp=4→100×5→4 且 hp_readable 恒 False)。sim 账本行 hp 是模拟真值
+        # 且不带可信位字段,豁免不标。
+        if d.get("sim") is None:
+            _hpr = d.get("hp_readable")
+            _hpt = st.get("hp_trusted")
+            if _hpr is False or _hpt is not True:
+                _hp_show = f"{d.get('hp')}?"
+            else:
+                _hp_show = f"{d.get('hp')}"
+        else:
+            _hp_show = f"{d.get('hp')}"
+        # release 帧数列:逐帧 dp 标签分布(单帧/末帧判读已两次产生
+        # 伪影);0 帧省略,统计口径见 _release_frame_counts
+        _rln = _rel.get(k) or 0
+        rl_s = f" rl={_rln}" if _rln else ""
+        lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={_hp_show} g={d.get('gold')} lv={st.get('level')}"
+                      f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}{rl_s}")
     return lines
 
 
