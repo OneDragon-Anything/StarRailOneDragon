@@ -297,6 +297,57 @@ class DecisionV2Strategy(DefaultCwStrategy):
             )
             session.v3_handoff_plane = state.plane
             session.v3_handoff = handoff_snapshot(state, session, registry)
+        # 过渡框架启动重接线(开关=registry.framework_startup_v2_enabled,
+        # 默认关=不触碰字段,决策序列零漂移)。旧栈双轨分支随载体切换
+        # 孤儿化,本字段在 decision_v2 载体上恒空(P1 出口帧全空,根因=
+        # 载体死代码,启动时序定位报告见 w455_fw_startup);此处按纯持
+        # 有权 ≥2 主门重新接活,
+        # 决策函数单一源=cw_transition.pick_framework_startup(禁复制)。
+        # 调用时点=decide_prep(state 就绪处):实机 shop.py 在商店开门后
+        # 读帧再调本方法、sim 每轮先发牌再调——两载体 shop 都真实可见,
+        # 旧调用点「关门帧 shop 恒空」的时序病在本点不存在。锁定线或
+        # 进 P2(in_early_phase 为假)即清空,与旧栈「定型后清框架」语义
+        # 对齐;禁碰 operations/prep/shop.py(保留件冻结),其消费面读
+        # session 自然复活。
+        if registry.framework_startup_v2_enabled:
+            from sr_od.application.currency_war.cw_transition import (
+                in_early_phase,
+                pick_framework_startup,
+            )
+            _committed = bool(getattr(
+                getattr(session, 'v3_intention', None), 'locked_comp', ''))
+            if in_early_phase(state.plane, _committed):
+                # 持有输入优先 session tracking(bot 执行记录单一真源;
+                # fresh read 识别噪声不影响框架稳定性),空则退 state 槽位。
+                _fw_bench = list(getattr(session, 'tracked_bench_chars',
+                                         None) or [])
+                if not _fw_bench:
+                    _fw_bench = state.bench
+                _fw_deployed = [d for d in
+                                (getattr(session, 'tracked_deployed',
+                                         None) or [])
+                                if d is not None]
+                if not _fw_deployed:
+                    _fw_deployed = [d for d in (state.deployed or [])
+                                    if d is not None]
+                _mute_until = getattr(session, 'portal_bias_mute', 0) or 0
+                _portal = (getattr(session, 'active_env', '') or '').strip()
+                if state.round_num <= _mute_until:
+                    _portal = ''   # 清框架压制窗内不给 portal(防立即选回)
+                _ban = (getattr(session, 'framework_clear_ban', '')
+                        if state.round_num <= _mute_until else '')
+                _picked = pick_framework_startup(
+                    _fw_bench, _fw_deployed, state.shop,
+                    current=getattr(session, 'transition_framework', ''),
+                    portal=_portal)
+                if _picked and _ban and _picked == _ban:
+                    _picked = ''   # 断供框架不复活(禁令窗语义与旧栈一致)
+                session.transition_framework = _picked
+                if not _ban and _picked:
+                    session.framework_clear_ban = ''
+            else:
+                session.transition_framework = ''
+                session.framework_clear_ban = ''
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

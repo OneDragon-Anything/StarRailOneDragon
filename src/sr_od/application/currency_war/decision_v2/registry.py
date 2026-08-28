@@ -1186,6 +1186,27 @@ class DecisionV2Registry:
     #: ≤基线+2pp ∧ 形态达标不降;验证不过的出口=删码留 ADR-0434。
     below_floor_spend_gate_enabled: bool = False
 
+    # ===== 过渡框架启动重接线(开关生命周期第 1 态:落码默认关)=====
+    #: 语义:True 时 DecisionV2Strategy.decide_prep 在 state 就绪处调用
+    #: ``cw_transition.pick_framework_startup``(单一源,禁复制第二份逻辑)
+    #: 刷新 ``session.transition_framework``——decision_v2 载体切换后旧栈
+    #: 双轨分支整段孤儿化、该字段恒空(P1 出口帧 107/107 全空,根因分析=
+    #: ``.debug/temp/currency_war/w455_fw_startup/W455_REPORT.md`` §3 裁决
+    #: ④载体死代码为主因)。启动判据=纯持有权 ≥2 为主门(持有 1+开门店
+    #: 同框架 ≥2 为加速项;decide 帧 shop 真实可见)。消费面(生产 shop/
+    #: deploy_bench 围栏与 focus_factions、sim deploy)读同一 session 字段,
+    #: 接上即活。False=不触碰该字段——**零漂移锚**:决策序列与现状逐位
+    #: 一致(同 seed sim 对拍;关态下 P1 框架恒空=现状)。
+    #: **开臂 A/B 判据挂账(不执行;开关生命周期第 2 态)**:off 臂=sim
+    #: 基线批(产物 `.debug/temp/currency_war/w457_sim_p1_baseline/`,
+    #: n=300 seed 0 池指纹 6400d5d8edeaf68d;关键基线值:出口血量中位 30/
+    #: 2★ 占比中位 0.1429/息基达标率 8%/P2 胜率 0.2218)。判据=出口血量/
+    #: 2★ 占比/框架非空轮次占比三指标显著改善 ∧ 守卫(金账出口金、息账
+    #: interest_ok_rate)不劣;判据不过 → 第 4 态定谳清理(删码留 ADR),
+    #: 禁无限挂起默认关。遥测契约防线=``cw_sim_checks
+    #: .check_transition_framework_liveness``(载体再切换静默死亡被测试抓)。
+    framework_startup_v2_enabled: bool = False
+
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
     constraints: tuple[str, ...] = (

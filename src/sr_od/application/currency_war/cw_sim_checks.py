@@ -3898,6 +3898,95 @@ def check_decision_v2_telemetry_contract() -> dict:
                     '待策略域裁决是否记未采纳行'}
 
 
+def check_transition_framework_liveness(
+        rows: list[dict], *, armed: bool | None = None,
+        min_consistency: float = 0.95) -> dict:
+    """过渡框架管线遥测契约锁(防「载体再切换→静默死亡」复发)。
+
+    背景:decision_v2 载体切换后旧栈双轨分支整段孤儿化,transition_
+    framework 在生产遥测中 107/107 出口帧全空,靠事后基线才被发现
+    (根因=.debug/temp/currency_war/w455_fw_startup/W455_REPORT.md §3)。
+    本契约把「管线活着」固化为可测判据:
+
+    - **框架刷新调用 > 0**:P1 帧(带完整 state 快照:sim/实机 decide 帧
+      shop 均真实可见)中至少一帧选定非空框架;
+    - **重放一致率 ≥ min_consistency**:对每个合格 P1 帧用帧内 state
+      数据(bench/deployed 整权 + shop 半权 + sess_active_env portal)
+      重放 ``pick_framework_startup``(与生产接线同一函数,单一源),
+      current=该帧 recorded 值,结果必须与 recorded 逐帧一致——接线死亡
+      (recorded 恒空而重放可选定)或语义漂移都会跌破一致率。
+
+    armed 语义(防「合法默认关」误报):None=自动——任一帧 recorded 非空
+    即视为管线在役,严格执法;全空则视为关态(零漂移锚的正常表现),
+    只披露不判。显式传 True = 开臂后强制执法(全空 + 重放可选定 = 违规,
+    即静默死亡指纹)。
+
+    数据面:吃 decisions.jsonl 行(DecisionTrace dict,含 sess_framework/
+    state 顶层字段);sim 账本行无 sess_framework 字段 → 合格帧 0,
+    自动档只披露(不误报)。生产巡检/契约测试显式传 decisions 行 +
+    armed=True 执法。
+    """
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.cw_transition import (
+        pick_framework_startup,
+    )
+
+    def _ns(items, key: str):
+        return [SimpleNamespace(**{key: (it.get(key, '') or '')})
+                for it in (items or []) if isinstance(it, dict)]
+
+    eligible = 0
+    consistent = 0
+    refresh_rows = 0
+    detail: list[str] = []
+    for row in rows:
+        if row.get('plane') != 1 or 'sess_framework' not in row:
+            continue
+        st = row.get('state') or {}
+        if not all(k in st for k in ('bench', 'deployed', 'shop')):
+            continue
+        eligible += 1
+        recorded = row.get('sess_framework', '') or ''
+        if recorded:
+            refresh_rows += 1   # 接线产出非空选定(「刷新调用」的观测面)
+        replay = pick_framework_startup(
+            _ns(st.get('bench'), 'char_id'),
+            _ns(st.get('deployed'), 'char_id'),
+            _ns(st.get('shop'), 'name'),
+            current=recorded,
+            portal=(row.get('sess_active_env', '') or '').strip())
+        if replay == recorded:
+            consistent += 1
+        elif len(detail) < 5:
+            detail.append(
+                f"plane{row.get('plane')}r{row.get('round_num')}: "
+                f"recorded={recorded!r} replay={replay!r}")
+    if armed is None:
+        armed = any((row.get('sess_framework', '') or '')
+                    for row in rows if 'sess_framework' in row)
+    violations: list[str] = []
+    if armed:
+        if eligible == 0 or refresh_rows == 0:
+            violations.append(
+                f'框架刷新调用=0(合格帧 {eligible},选定帧 {refresh_rows})'
+                '——管线死亡指纹')
+        rate = consistent / eligible if eligible else 0.0
+        if eligible and rate < min_consistency:
+            violations.append(
+                f'重放一致率 {rate:.3f} < {min_consistency}'
+                f'(一致 {consistent}/{eligible})')
+    else:
+        rate = consistent / eligible if eligible else None
+    return {'violations': len(violations), 'detail': violations
+            + (detail if armed else detail[:3]),
+            'eligible_rows': eligible, 'consistent': consistent,
+            'rate': round(rate, 4) if rate is not None else None,
+            'refresh_rows': refresh_rows, 'armed': armed,
+            'note': ('sim 账本无 sess_framework 字段时合格帧=0,自动档只披露;'
+                     '契约执法=decisions 流 + armed=True')}
+
+
 def check_decision_v2_remedy_loop(ledgers: list[list[dict]]) -> dict:
     """W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3 报警(设计容量不足
     信号)。
@@ -4042,6 +4131,11 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         # 批㉝(首超审计):可解释性遥测契约 + 危机囤金哨兵
         'decision_v2_telemetry_contract':
             check_decision_v2_telemetry_contract(),
+        # 过渡框架管线遥测契约(自动档:sim 账本无 sess_framework → 只披露;
+        # armed 执法走显式 decisions 行喂入,见该函数 docstring)
+        'transition_framework_liveness':
+            check_transition_framework_liveness(
+                [row for rows in ledgers for row in rows]),
         'decision_v2_crisis_gold_hoard':
             check_decision_v2_crisis_gold_hoard(ledgers),
         # W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3(容量不足信号)

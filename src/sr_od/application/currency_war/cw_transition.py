@@ -76,6 +76,30 @@ def in_early_phase(plane: int, committed: bool) -> bool:
     return plane == 1 and not committed
 
 
+def _framework_counts(bench, deployed,
+                      shop=None) -> tuple[dict[str, int], dict[str, float]]:
+    """框架件计数单一源:持有权(整权)+ 合并权(持有 + shop 半权)。
+
+    输入约定:bench/deployed 元素带 ``char_id``(None 槽跳过),shop 元素带
+    ``name``。owned = deployed+bench 整权计数(只认 bot 真持有);counts =
+    owned + 商店在售 0.5/张(在售 = 即可得)。pick_framework 与
+    pick_framework_startup 共用,禁在调用侧复算第二份。
+    """
+    counts: dict[str, float] = dict.fromkeys(FRAMEWORKS, 0)
+    owned: dict[str, int] = dict.fromkeys(FRAMEWORKS, 0)
+    for bc in (*deployed, *(b for b in bench if b is not None)):
+        ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
+        if ent and ent[0] in counts:
+            counts[ent[0]] += 1
+            owned[ent[0]] += 1
+    if shop:
+        for c in shop:
+            ent = TRANSITION_PACK.get(getattr(c, 'name', ''))
+            if ent and ent[0] in counts:
+                counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权(启动期也计入)
+    return owned, counts
+
+
 def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = '') -> str:
     """r70 过渡框架选定(买/上/卖三侧单一源):按当前持有(board+bench,可选 shop)的
     框架件计数取领先框架;平局/全零 → ''(未定,消费方按散件口径)。
@@ -115,29 +139,12 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
     (vs B 纯降门 10.5%)。启动门同步 2→1.5(预囤在位后 1.5 = 持有1+在售1,
     足够信号;纯 shop 1.0 仍不够格防噪声)。
     """
-    counts = dict.fromkeys(FRAMEWORKS, 0)
+    owned, counts = _framework_counts(bench, deployed, shop)
     if portal:
         for fw in counts:
             if fw in portal:
                 counts[fw] += 3   # 环境先验等效权(约 3 张框架件;可被实际来牌翻越)
                 break
-    for bc in (*deployed, *(b for b in bench if b is not None)):
-        ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
-        if ent and ent[0] in counts:
-            counts[ent[0]] += 1
-    # r107 审计A:持有权单独存一份——「保持/翻转」判定只认持有(整权),
-    # 防 shop 半权蒸发导致现任框架闪烁回退 ''(买→不上→被当散牌卖的 r70
-    # 历史病回归)。启动判定仍用合并权。
-    owned = dict.fromkeys(FRAMEWORKS, 0)
-    for bc in (*deployed, *(b for b in bench if b is not None)):
-        ent = TRANSITION_PACK.get(getattr(bc, 'char_id', ''))
-        if ent and ent[0] in owned:
-            owned[ent[0]] += 1
-    if shop:
-        for c in shop:
-            ent = TRANSITION_PACK.get(getattr(c, 'name', ''))
-            if ent and ent[0] in counts:
-                counts[ent[0]] += 0.5   # 商店在售 = 即可得,半权(启动期也计入,r105)
     fw = max(counts, key=lambda k: counts[k])
     # r102 审计③:平局按 dict 序偏仙舟(FRAMEWORKS 首位)——主流先验(32% vs 29%),
     # 有意为之:同计数时选数据上更主流的框架。
@@ -156,6 +163,42 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
             return current   # 现任持有未被挑战者持有领先 → 保持
         if owned[current] >= 1 and _challenger_owned < owned[current] + 1:
             return current   # 挑战者持有未领先 ≥1 → 保持(r72 滞后原语义,持有权版)
+    return fw
+
+
+def pick_framework_startup(bench, deployed, shop=None, current: str = '',
+                           portal: str = '') -> str:
+    """过渡框架启动判定(decision_v2 载体 decide_prep 调用;与 pick_framework
+    同模块单一源,差异只在启动门判据)。
+
+    **启动门 = 纯持有权 ≥2 为主门**(启动时序定谳判据):pick_framework 的
+    合并权 1.5 门隐含「调用点读到商店开门后的帧」——旧唯一调用点在开门前
+    读 state,shop 恒空,合并权系统性退化为纯持有(门从未按设计语义运转,
+    根因分析见 `.debug/temp/currency_war/w455_fw_startup/W455_REPORT.md` §2-3)。
+    本函数的调用点在 decide 帧(商店已开,sim 与实机同点),shop 真实可见
+    → shop 半权收窄为加速项:**持有 1 张 + 在售同框架 ≥2 张(半权合计
+    ≥1.0,即合并权 2.0)也可启动**;纯在售(持有 0)永不启动。
+
+    其余语义与 pick_framework 一致:r72 滞后(翻转需挑战者持有权领先现任
+    ≥1)/r107 审计A(保持判定只认持有权,防半权蒸发闪烁)/portal 环境偏置
+    (+3 等效权,可被真件翻越)/平局按 FRAMEWORKS 序偏仙舟(主流先验)。
+    """
+    owned, counts = _framework_counts(bench, deployed, shop)
+    if portal:
+        for fw in counts:
+            if fw in portal:
+                counts[fw] += 3   # 环境先验等效权(与 pick_framework 同参)
+                break
+    fw = max(counts, key=lambda k: counts[k])
+    started = owned[fw] >= 2 or (owned[fw] == 1
+                                 and counts[fw] - owned[fw] >= 1.0)
+    if not started:
+        if current and current in owned and owned[current] >= 1:
+            return current   # 现任手里有真件,保持(防闪烁回退 '';r107 审计A 同型)
+        return ''
+    if current and current in owned and current in counts:
+        if owned[current] >= 1 and owned[fw] < owned[current] + 1:
+            return current   # 挑战者持有权未领先现任 ≥1 → 保持(滞后)
     return fw
 
 
