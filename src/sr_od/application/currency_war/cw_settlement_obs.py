@@ -270,12 +270,18 @@ def parse_settlement_gold_detail(items: list) -> dict[str, int | None]:
                      and getattr(it, 'y', 0) >= _anchor.y), None)
         if _lab is None:
             continue
-        # ①同 token 粘连(连胜×N / 基础奖励5)
-        m = re.search(re.escape(label) + r'\s*[×xX*]?\s*(\d{1,2})',
-                      getattr(_lab, 'data', '') or '')
-        if m:
-            out[key] = int(m.group(1))
-            continue
+        # ①同 token 粘连(基础奖励5=金额直连,可消费;「连胜×N」的 N 是
+        # 连胜计数不是金额——败轮金就显示在「连胜×0」行、金额在同行右侧
+        # 金额位(结算屏实拍直读实证),×计数粘连必须落到 ② 取右列,否则
+        # 会把计数 0 记成 0 金,污染残差归因)
+        _count_glued = re.search(re.escape(label) + r'\s*[×xX*]\s*\d{1,2}',
+                                 getattr(_lab, 'data', '') or '')
+        if not _count_glued:
+            m = re.search(re.escape(label) + r'\s*(\d{1,2})',
+                          getattr(_lab, 'data', '') or '')
+            if m:
+                out[key] = int(m.group(1))
+                continue
         # ②同行右侧最近纯数字 token
         _lcy = _lab.y + (getattr(_lab, 'height', 0) or 0) / 2
         _lcx = _lab.x + (getattr(_lab, 'width', 0) or 0) / 2
