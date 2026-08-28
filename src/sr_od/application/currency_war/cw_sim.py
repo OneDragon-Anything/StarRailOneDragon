@@ -89,9 +89,13 @@ from sr_od.application.currency_war.cw_telemetry import serialize_intention
 START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
 
-# 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源)
+# 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源;
+# ADR-0439 收入口径修正:败轮节点金 + 奖励轮 base/streak 成对查表)
 from sr_od.application.currency_war.cw_economy import (  # noqa: E402,F401
     BASE_INCOME,
+    ECONOMY_CALIB_VERSION,
+    LOSS_GOLD_BY_NODE,
+    REWARD_BASE_GOLD_BY_ROUND,
     streak_gold,
 )
 
@@ -1407,6 +1411,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。案 b 臂(W193)段表
     # 只含 P2 段(直接从真值进场态起跑)。
     _ts = 0   # 单调轮序号(跨位面累计;P1 段恒 == rn)
+    # ADR-0439:上一轮节点与败胜态(败轮金路径——收入在下一轮开头入账,
+    # 败轮结算金按**败掉那轮**的节点类型取 LOSS_GOLD_BY_NODE;跨位面
+    # P1 末 boss 败 → P2 r1 收入同规则)。奖励/补给轮无结算,不清败态
+    # 也不改 streak(与结算段口径一致)。
+    _prev_node: str | None = None
+    _prev_combat_lost = False
     if _p2_entry is not None:
         _segments: list[tuple[int, int, list[str]]] = [
             (2, P2_ROUNDS, list(P2_NODE_SEQUENCE))]
@@ -1468,13 +1478,30 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _icap = INTEREST_CAP
             if _agg_inv is not None and _agg_inv.interest_cap_override is not None:
                 _icap = _agg_inv.interest_cap_override
-            _inc = {'base': BASE_INCOME,
+            _node = nodes[rn - 1]
+            # ADR-0439 收入口径(实机 gold 差分实证,108 局/767 轮):
+            # - 败轮金:连胜结算 streak==0 且上一轮是败掉的战斗类节点 →
+            #   发 LOSS_GOLD_BY_NODE[prev_node](普通 2/遭遇 4/boss 4),
+            #   替换旧 streak_gold(0)=1(弹窗口径,与实发不符);
+            # - 奖励轮:streak 分量照发 streak_gold(streak)(含 counter0=1;
+            #   ADR-0351「奖励轮不发金」半句被全量数据推翻)+ base 查表
+            #   REWARD_BASE_GOLD_BY_ROUND——**成对改**:旧 BASE_INCOME=5
+            #   恰好盖住这 1 金,单改 streak 会变多发(净差≈0);
+            # - 补给轮不动(仍零 streak + base+利息;实发零发放的证据
+            #   样本不足,条件升级挂账 ADR-0439)。
+            if _node == 'supply':
+                _streak_amt = 0
+            elif _node == 'reward':
+                _streak_amt = streak_gold(streak)
+            elif streak == 0 and _prev_combat_lost \
+                    and _prev_node in LOSS_GOLD_BY_NODE:
+                _streak_amt = LOSS_GOLD_BY_NODE[_prev_node]
+            else:
+                _streak_amt = streak_gold(streak)
+            _inc = {'base': (REWARD_BASE_GOLD_BY_ROUND.get(rn, BASE_INCOME)
+                             if _node == 'reward' else BASE_INCOME),
                     'interest': min(_icap, st.gold // 10),
-                    # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点不发
-                    # 连胜金——run13 r2 奖励结算屏=基础5+连胜×0(无 streak 分量);
-                    # 战斗轮 counter0 照发 table[0]=1(run15 r3=5+3+1)。
-                    'streak': 0 if nodes[rn - 1] in ('reward', 'supply')
-                    else streak_gold(streak),   # 单一源 cw_economy(r305)
+                    'streak': _streak_amt,
                     'event': _inc_event}
             if _agg_inv is not None and _agg_inv.gold_per_node:
                 _inc['invest'] = _agg_inv.gold_per_node
@@ -2016,12 +2043,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 钳制维持(防御性不变式);实机满血样本核真后更新本常量
             # (检查项 hp_upper_bound_truth 锁 hp>100 恒 0)。
             st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
-            # W129(ADR-0351;实机裁决 2026-08-26):奖励/补给节点既不计连胜数
-            # 也不发连胜金——run13 r1/r2 奖励全过后计数仍 0(r2 结算屏连胜×0),
-            # run15 r3 战斗轮按 counter0 结算。战斗类节点(battle/encounter/
-            # boss)胜后计数+发金语义不变(delta>0 计连胜)。
+            # ADR-0351 计数口径(奖励/补给轮不计连胜数;实机奖励轮结算后
+            # streak 恒 0):战斗类节点(battle/encounter/boss)胜后计数
+            # (delta>0)否则归零;奖励/补给轮不动 streak。发金半句已按
+            # ADR-0439 修正(奖励轮照发表,见收入段)。
             if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
                 streak = streak + 1 if delta > 0 else 0
+            # ADR-0439:败轮金路径的上一轮状态(败态判据与结算段一致
+            # = delta<=0;奖励/补给轮不覆盖——败态跨奖励轮保留,
+            # 但奖励轮收入分支不消费败态,仅下一战斗轮消费)
+            _prev_node = nodes[rn - 1]
+            _prev_combat_lost = (nodes[rn - 1] in ('battle', 'encounter', 'boss')
+                                 and delta <= 0)
             # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
             # = 结算「连胜×N」写 session(default_strategy.on_settlement),
             # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
@@ -3034,6 +3067,10 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
         # 防「结构改了、披露没跟上」的混池污染(cw_coarse_battle 单一源)
         'coarse_calib_version': (
             _cb.COARSE_CALIB_VERSION if results else None),
+        # 收入口径版本(ADR-0439;独立于粗模型战斗引擎版本——收入口径
+        # 在 cw_economy/cw_sim 收入段,另一子系统,版本号不共占)
+        'economy_calib_version': (
+            ECONOMY_CALIB_VERSION if results else None),
     }, ensure_ascii=False), encoding='utf-8')
     # 保留清理(旧批次滚动删除;只清 sim_ 前缀批——用户显式传的
     # 非 sim 目录不动,审查#5)

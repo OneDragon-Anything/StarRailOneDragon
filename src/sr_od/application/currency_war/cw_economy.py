@@ -55,6 +55,25 @@ def streak_gold(streak: int) -> int:
 #: 「基础奖励」行;守卫测试 sr-od-test test_cw_r305_reward_data)——5 是统一近似值,奖励采集成表后替换为查表。
 BASE_INCOME: int = 5
 
+#: 败轮收入(节点级固定金;实机 gold 差分实证 2026-08-28,108 局/767 轮:
+#: 普通败轮残差众数 2(24/39)、遭遇 4(18/24)、boss 4(8/22,散布大置信中);
+#: 见 docs/develop/currency_war/decisions/0439-sim-economy-income-caliber.md)。
+#: 独立常量、**不动 STREAK_GOLD_TABLE**:表是胜轮弹窗真值(streak≥1 域,
+#: ADR-0262 锁零触碰);败轮弹窗预期 1 与实发不符,走本表分支。
+LOSS_GOLD_BY_NODE: dict[str, int] = {'battle': 2, 'encounter': 4, 'boss': 4}
+
+#: 奖励节点基础收入查表(P1 实测:1-1=3 / 1-2=4,弹窗 VLM 判读 85/85 零散布;
+#: 其余轮与全部非奖励节点仍 BASE_INCOME 统一近似)。**与奖励轮 streak 分量成对**:
+#: BASE_INCOME=5 恰好盖住奖励轮照发的连胜金 table[0]=1——单独改 streak 不改本表
+#: 会让奖励轮多发 1(ADR-0439 成对约束)。
+REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
+
+#: sim 收入口径版本(独立披露,不占 cw_coarse_battle.COARSE_CALIB_VERSION——
+#: 那是粗模型战斗引擎校准的版本,收入口径在 cw_economy/cw_sim 收入段,另一子系统)。
+#: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚,与
+#: 既有粗模型版本披露同机制)。
+ECONOMY_CALIB_VERSION: int = 1
+
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
 # 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。
 # streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):

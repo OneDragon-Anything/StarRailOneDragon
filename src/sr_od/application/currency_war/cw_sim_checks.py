@@ -3089,49 +3089,87 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
 
 
 def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
-    """W129 streak_combat_only_income(连胜金仅战斗轮口径;已裁决,断言化)。
+    """连胜金收入口径断言(ADR-0439 收入口径修正后的精确重算锁)。
 
-    口径裁决(2026-08-26,run13/run15 实机;ADR-0351):奖励/补给节点
-    既不计连胜数也不发连胜金(结算屏无 streak 分量);战斗/遭遇/boss
-    轮胜后计数+发金不变(counter0 照发 table[0]=1,run15 r3=5+3+1)。
-    sim 发金已按此口径修正(cw_sim 收入段)→ 本检查从「双口径并列
-    披露」收紧为断言:**奖励/补给轮 income.streak != 0 即违规**;
-    combat-only 重算和并列保留为披露面(对拍 sim 计数侧与重放口径
-    的残差,>0=奖励轮计数侧回归)。
+    口径(cw_sim 收入段镜像;实机 gold 差分实证 108 局/767 轮):
+    - 补给轮 ``income.streak`` 必须为 0(实发口径未钉死,仍按 ADR-0351
+      零发放建模——补给多发残差 = base+利息照发,见 ``supply_rows``/
+      ``supply_issued_extra`` 披露面挂账,待直读样本转正后修正);
+    - 奖励轮 streak 分量照发 ``streak_gold(进轮连胜)``(含 counter0=1;
+      ADR-0351「奖励轮不发金」半句被全量数据推翻),base 须与
+      REWARD_BASE_GOLD_BY_ROUND 成对(cw_sim 收入段已成对,本检查
+      锁 streak 侧);
+    - 战斗轮 streak==0 且上一轮为败掉的战斗类节点 → 须发
+      ``LOSS_GOLD_BY_NODE[上一轮节点]``(败轮金路径精确重算,
+      ``loss_gold_rows`` 披露命中数);其余发 ``streak_gold(进轮连胜)``。
 
-    W133 缺键守卫:账本行 schema 演化(如 node→node_type)时裸
-    `.get()` 静默读 None → 奖励轮永远走不进断言分支 → violations
-    恒 0、全量仍绿(断言永久失明)。生产账本(cw_sim L1570 起)
-    每行必带 sim.node 与 sim.income.streak → 缺任一键 = 数据异常,
-    计入 violations 并经 missing_key_rows 披露,不静默绿(锁:
-    test_cw_sim_checks_streak_income)。
+    任一行 ``income.streak != 精确重算`` 即违规(双向:少发/多发都报)。
+
+    缺键守卫:账本行 schema 演化(如 node→node_type)时裸
+    `.get()` 静默读 None → 断言永久失明、全量仍绿。生产账本
+    (cw_sim 收入段)每行必带 sim.node 与 sim.income.streak →
+    缺任一键 = 数据异常,计入 violations 并经 missing_key_rows
+    披露,不静默绿(锁:test_cw_sim_checks_streak_income)。
     """
-    from sr_od.application.currency_war.cw_economy import streak_gold
-    violations = ledger_sum = combat_sum = 0
-    missing_key_rows = 0
+    from sr_od.application.currency_war.cw_economy import (
+        LOSS_GOLD_BY_NODE,
+        streak_gold,
+    )
+    violations = ledger_sum = recompute_sum = 0
+    missing_key_rows = loss_gold_rows = supply_rows = 0
+    supply_issued_extra = 0
     for rows in ledgers:
-        streaks = _combat_streak_by_round(rows)
+        # 进轮连胜重放:win 判据 **delta>0**,镜像 cw_sim 结算段——不用
+        # _combat_streak_by_round(其 delta>=0 口径为决策侧重放近似,
+        # delta==0 战斗轮两者分叉;本检查是精确重算,须与生产逐位一致)
+        enter_streaks: dict[int, int] = {}
+        _st = 0
+        for _row in rows:
+            enter_streaks[_row.get('round_num') or 0] = _st
+            _s = _row.get('sim') or {}
+            if _s.get('node') in ('battle', 'encounter', 'boss'):
+                _st = _st + 1 if (_s.get('delta') or 0) > 0 else 0
+        _prev: tuple[int, str, int] | None = None   # (rn, node, delta)
         for row in rows:
             sim = row.get('sim')
             inc = sim.get('income') if isinstance(sim, dict) else None
             if (not isinstance(sim, dict) or 'node' not in sim
                     or not isinstance(inc, dict) or 'streak' not in inc):
                 missing_key_rows += 1   # schema 异常:计入违规,不静默跳过
+                _prev = None
                 continue
             node = sim['node']
             inc_streak = inc['streak'] or 0
             ledger_sum += inc_streak
-            if node in ('reward', 'supply'):
-                if inc_streak != 0:
-                    violations += 1
-                continue   # 战斗口径连胜金不含奖励/补给轮(裁决口径)
-            combat_sum += streak_gold(
-                streaks.get(row.get('round_num') or 0, 0))
+            rn = row.get('round_num') or 0
+            enter_streak = enter_streaks.get(rn, 0)
+            # 精确重算(镜像 cw_sim 收入段分支;败态判据 delta<=0 与
+            # sim 结算段 win=delta>0 一致)
+            if node == 'supply':
+                expect = 0
+                supply_rows += 1
+                supply_issued_extra += ((inc.get('base') or 0)
+                                        + (inc.get('interest') or 0))
+            elif node == 'reward':
+                expect = streak_gold(enter_streak)
+            elif (enter_streak == 0 and _prev is not None
+                    and _prev[1] in LOSS_GOLD_BY_NODE and _prev[2] <= 0):
+                expect = LOSS_GOLD_BY_NODE[_prev[1]]
+                loss_gold_rows += 1
+            else:
+                expect = streak_gold(enter_streak)
+            if inc_streak != expect:
+                violations += 1
+            recompute_sum += expect
+            _prev = (rn, node, sim.get('delta') or 0)
     return {'violations': violations + missing_key_rows,
             'ledger_streak_income': ledger_sum,
-            'combat_only_streak_income': combat_sum,
-            'delta': combat_sum - ledger_sum,
-            'missing_key_rows': missing_key_rows}
+            'combat_only_streak_income': recompute_sum,
+            'delta': recompute_sum - ledger_sum,
+            'missing_key_rows': missing_key_rows,
+            'loss_gold_rows': loss_gold_rows,
+            'supply_rows': supply_rows,
+            'supply_issued_extra': supply_issued_extra}
 
 
 def check_shop_distinct_names_invariant(ledgers: list[list[dict]]) -> dict:
