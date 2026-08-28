@@ -313,6 +313,9 @@ def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list,
             return   # 结算停留期同帧重复读:只落一行
         _gold_last_row_key = _key
         _detail = parse_settlement_gold_detail(items)
+        if (_detail['base'], _detail['streak'], _detail['interest']) == (None, None, None):
+            return   # 三分量全空=本轮 parse 空转(每结算曾成对落噪声行),
+            #          零信息不落盘;真值缺失与「读到 0」语义本就分开
         from sr_od.application.currency_war import cw_telemetry
         try:
             _run_id = cw_telemetry.current_run_id() or '-'
