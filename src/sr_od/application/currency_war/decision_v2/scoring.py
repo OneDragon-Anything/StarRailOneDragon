@@ -235,67 +235,6 @@ def _merge_progress_count(state: GameState, session: StrategySession,
     return n
 
 
-def _filler_star_progress_count(state: GameState, session: StrategySession,
-                                registry: DecisionV2Registry) -> float:
-    """填充件升星期权项(W232/ADR-0402 方案A)。
-
-    merge_progress/core_star 只辖目标集(意向目标∪引擎件)——目标集外
-    的**降级梯队填充件**([31] 填充不变量下 bond_fallback/pair 通道买
-    入、板上多数的件)第 2 份 1★ 买入在所有评分维零 delta,被仲裁层
-    「非正分」结构性拒(W231 诊断:478 张已持有名机会仅 17.6% 成交,
-    进场 star≥2 仅 7.7%)。本项把「已 deployed 填充件的第 2 份同名
-    1★」计为期权分(3合1 素材进度;[15]/[22] 压库语义)。
-
-    硬边界(ADR-0402,防违反 [31] 反散件):
-    - 目标集判据=∉_target_names(与 merge_progress 互补不双计;
-      tset 空时本项关闭——无方向期没有「填充件」语义,与
-      merge_progress 的空集守卫对称);
-    - 只辖**已 deployed** 名的副本(纯 bench 囤件不折,ADR-0295
-      同式域边界——bench 上的孤立囤件不给期权,防散件囤积);
-    - 每名只计第 2 份(份数 1→2 = 1 进度);第 3 份 merge 成 2★ 后
-      本项对该名回落 0(填充名 2★ 不另计价——core_star 仍只辖目标集,
-      填充 2★ 的战力显影走阵营计数 star 加权,不双计);
-    - 不授权 D 刷(本项只是评分显影,refresh 候选走 V_D 金口径总账,
-      与本项无关);copies_cap 沿用(仲裁层 copies>=cap 守卫拦截)。
-    """
-    from sr_od.application.currency_war.decision_v2.candidates import (
-        _target_names,
-    )
-    tset = _target_names(state, session)
-    if not tset:
-        return 0.0
-    dep_c: dict[str, int] = {}
-    ben_c: dict[str, int] = {}
-    star2: set[str] = set()
-    for d in (state.deployed or []):
-        if d is None:
-            continue
-        name = getattr(d, 'char_id', '') or ''
-        if not name or name in tset:
-            continue    # 目标集内归 merge_progress/core_star 辖
-        star = getattr(d, 'star', 1) or 1
-        if star >= 2:
-            star2.add(name)
-        else:
-            dep_c[name] = dep_c.get(name, 0) + 1
-    for b in (state.bench or []):
-        if b is None:
-            continue
-        name = getattr(b, 'char_id', '') or ''
-        if not name or name in tset:
-            continue
-        star = getattr(b, 'star', 1) or 1
-        if star >= 2:
-            star2.add(name)
-        else:
-            ben_c[name] = ben_c.get(name, 0) + 1
-    n = 0.0
-    for name in dep_c:   # 只辖已 deployed 名(bench-only 囤件不计)
-        if name in star2:
-            continue     # 已 2★:进度回落(填充 2★ 不另计价)
-        if dep_c.get(name, 0) + ben_c.get(name, 0) >= 2:
-            n += 1.0
-    return n
 
 
 def score_state(state: GameState, registry: DecisionV2Registry,
@@ -358,11 +297,6 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # ——core_star 的 star≥2 门之前的爬坡段;0=关闭(A/B 基线臂)
     merge_progress = (_merge_progress_count(state, session, registry)
                       * registry.merge_progress_unit)
-    # 填充件升星期权(W232/ADR-0402 方案A):已 deployed 填充件(目标
-    # 集外)第 2 份 1★ 的期权显影——merge_progress 的目标集外补全;
-    # 0=关闭(=现行为零漂移,A/B 基线臂)
-    filler_star = (_filler_star_progress_count(state, session, registry)
-                   * registry.filler_star_unit)
     # 追级 EV(ADR-0290 层2 查表项):小数等级 = level + xp 进度比
     # (单击经验不整级,按进度分数计值——整级制下单击恒 0 分被
     # 「非正分」拒,升级通道死,cap 恒 5 → 一切买入板面价值归零)
@@ -377,8 +311,7 @@ def score_state(state: GameState, registry: DecisionV2Registry,
             'targets': round(targets, 3),
             'eng_frac': round(eng_frac, 3),
             'core_star': round(core_star, 3),
-            'merge_progress': round(merge_progress, 3),
-            'filler_star': round(filler_star, 3)}
+            'merge_progress': round(merge_progress, 3)}
 
 
 def _deployable_depth(state: GameState) -> int:
@@ -1080,49 +1013,17 @@ def score_candidate(cand: Candidate, state: GameState,
         # 息崖([18])与深负分不被翻越),量级=引擎完成期权(win 跳升×剩余
         # 战斗),registry 注入可 A/B;成型后(引擎≥2)偏置关闭 → 停手攒息。
         val += registry.forming_bias
-    if (cand.tag in registry.goldrich_buy_tags
-            and val == 0.0
-            and (state.gold or 0) >= registry.goldrich_min_gold):
-        # ADR-0305 件3:金充裕买偏置(常态域;crisis 偏置的邻域
-        # 对偶)——金充裕段 0 分板面差分的成型/凑对/核心件顶成正
-        # 分,金滞留换成型素材。同 crisis 语义只顶 0 分(val==0
-        # 守卫:负息崖差分不翻越);0=关闭(bias 常量,registry)。
-        val += registry.goldrich_buy_bias
     # copy_press 评分路由已随 ADR-0427 增补节定谳清理(策略开关生命周期
     # 第 4 态;悬置实证与删除清单=该增补节):copy_press 候选不再有
     # 独立给分偏置,评分只由通用板面维决定——标签生成与通道守卫/
     # [11] 豁免臂/双 cap(实证收益承载)不动。
-    _early_pace_hit = False   # W251/ADR-0408:触发依据记录(bd['early_pace'])
-    if (registry.early_pace_enabled
-            and cand.tag in registry.crisis_buy_tags
-            and isinstance(cand.action, BuyCard)
-            and state.plane == 1
-            and registry.early_pace_min_round <= state.round_num
-            <= registry.early_pace_max_round
-            and not is_emergency(state, registry)):
-        # W251/ADR-0408 假设 A:r3/r4 投资节奏前置(评分偏置;W248 报告
-        # §四假设 A 的可派修法)。战力买候选的 0/小分顶成正分进约束链,
-        # 破息授权经 interest_rule EV 账随 V 放宽——「更早把金转化为
-        # 战力」的本体语义。防双计与辖域:①原分>上沿不叠(已正分买入
-        # 不二次加分);②emergency([18])覆盖态优先,本项不越权;
-        # ③boss 窗([32])/war 不辖——与 forming_bias 的 r≥5 窗及纪律态
-        # 先行序一致(局部导入防环,同本文件既有 ADR-0332 段先例);
-        # ④息账单一源仍是 interest_rule,本项无独立授权常量;⑤off_lock
-        # 降级在末段收口(见下),锁定线外的散买仍被压制。
-        # bd['early_pace'] 记触发依据(判读/行为面核)。默认关=零漂移。
-        from sr_od.application.currency_war.decision_v2.discipline import (
-            boss_window_active,
-        )
-        from sr_od.application.currency_war.decision_v2.filters import (
-            current_mode,
-        )
-        if (not boss_window_active(state, session, registry)
-                and current_mode(session) != 'war'
-                and val <= registry.early_pace_val_max):
-            val += registry.early_pace_bias
-            _early_pace_hit = True
+    # 定谳清理(策略开关生命周期第 4 态):goldrich_buy_bias(ADR-0305
+    # 件3,三窗否决+ADR-0408 同构复证)、early_pace 五字段偏置(ADR-0408,
+    # 三窗无一致正方向)、filler_star 期权分与方向门豁免(ADR-0402,
+    # W504 开臂 A/B wash)的评分消费块均已删除,删除清单与证据链见各
+    # ADR 定谳/清理节。
     # W150/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
-    # forming_bias/goldrich 等偏置先行计入,本约束最后收口,防
+    # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
     off_lock = _off_lock_demotion(cand, state, session, registry)
     if off_lock == 'final_fence':
@@ -1132,8 +1033,6 @@ def score_candidate(cand: Candidate, state: GameState,
         val -= registry.off_lock_buy_penalty
     out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
               'form_gold': round(form_gold, 3)}
-    if _early_pace_hit:
-        out_bd['early_pace'] = registry.early_pace_bias   # W251/ADR-0408
     if off_lock:
         out_bd['off_lock'] = off_lock
     return val, out_bd

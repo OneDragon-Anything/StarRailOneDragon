@@ -379,32 +379,10 @@ class DecisionV2Registry:
     #: 同式)。初值=core_star_unit 同量级(同一 2★ 目的地的期权),
     #: 未网格标定,sim A/B 方向见 deep_read/W96_报告.md;0=关闭。
     merge_progress_unit: float = 3.0
-    #: 填充件升星期权项单位值(W232/ADR-0402 方案A,[15]/[22] 压库
-    #: 副本素材 × [27] 中期投资持续变现)。merge_progress/core_star
-    #: 只辖目标集内名字——降级梯队填充件(bond_fallback/pair 通道
-    #: 买入、板上多数)的第 2 份买入全评分维零 delta 被「非正分」
-    #: 结构性拒(W231 诊断 §②-1:478 机会八成漏买、进场 star≥2 仅
-    #: 7.7%)。本项对**已 deployed** 填充件(目标集外名字)的第 2 份
-    #: 同名 1★ 计期权分。硬边界:只辖已持有名的第 2 份(压库语义,
-    #: 不授权为填充件 D 牌刷新);copies_cap 沿用(仲裁层守卫);
-    #: 只辖已 deployed 名(纯 bench 囤件不折,ADR-0295 同式边界)。
-    #: **默认 0=关闭**(=现行为零漂移;「默认关+A/B 臂」准入先例=
-    #: ADR-0305,注:goldrich 本体后已定谳否决待清,见其字段注记);
-    #: 三臂 A/B 见 ADR-0402 验证节。
-    filler_star_unit: float = 0.0
-    #: 方案B(W232/ADR-0402):同名副本豁免 pair_wants 方向门。副本是
-    #: 升星素材(filler_star/merge_progress 期权通道)而非新方向投资,
-    #: 方向门拦它=语义错位(W231 §②-3:45 张/100 局同名机会被方向门拦)。
-    #: 判定位置=candidates._buy_tag 方向门(pair_wants)之前、r408 同轮
-    #: 已卖守卫之后(与冷启动例外 r383b 同型,提为全轮域)。**与 A 同臂
-    #: 开**:单独开 B 时解锁的副本买入在评分层仍零 delta(unit=0 时仅
-    #: 偶发 depth 分),零漂移门要求默认关=现行为逐位一致——两开关
-    #: 默认同为关,A/B 臂(u0.5/u1.0)同时开。
-    pair_copy_direction_exempt: bool = False
-    #: off_target 卖出评分偏置(弱件换金:持有域溢出件(cap 外 bench
-    #: 囤件)的卖分本为 0,被「非正分」拒——偏置让纯占位件可换金
-    #: 供刷新/买入;ADR-0291 遗留项,ADR-0293 标定;0.5 与 1.0
-    #: 双窗逐位同分(任何正值同等翻转 0 分卖)
+    #: (filler_star_unit/pair_copy_direction_exempt 已随 ADR-0402 定谳
+    #: 清理删除:W504 开臂 A/B 主判据双 wash,删除清单与证据链见该 ADR
+    #: 定谳节;副本评分/放行现由 merge_completion_exempt(ADR-0438)与
+    #: 末窗承接门 gap 豁免(ADR-0405)承载)
     off_target_sell_bias: float = 0.5
     #: ADR-0302 危机战力买偏置(合流批 ADR-0303 上移;量级=
     #: off_target_sell_bias 量级的买侧对偶;只把 0 分板面差分顶成
@@ -421,33 +399,14 @@ class DecisionV2Registry:
     #: levelup_reserve_gold 已随 W126/ADR-0349 删除:刷新×追级并存仲裁
     #: 的评分折扣与约束侧 A/B 通道整体退场——并存由 V_D(概率窗二分:
     #: goal=level_up 时 D 让位)与升级总账自然裁决,不再需要外加折扣)
-    # ===== ADR-0305 件3:金充裕买偏置(概念定谳否决,第 4 态待清)=====
-    #: 金充裕段(≥goldrich_min_gold)的 0 分板面差分买候选顶成正分
-    #: 的偏置。病灶真实(20 局 probe:金 28-41 段 110 轮中 9 轮店有
-    #: 引擎却零采纳,主导拒因=「非正分」0 分板面差分),但加性偏置
-    #: 修法被 A/B 定谳否决:三窗 gap −1.80/+0.03/+2.47 无一致方向
-    #: (成型加速可见 battles_before_e2 3.17→2.38,hp 不跟,rung2 保护
-    #: 弱;ADR-0305),同族 early_pace(ADR-0408)复证同构结论
-    #: 「成型加速可见,hp 不跟」。后续修法=配方围栏硬排序(ADR-0432,
-    #: 偏序关系不标定量级,已落码默认关挂开臂判据)。
-    #: **与经济循环总模型(ADR-0445)的辖域边界**:本偏置辖金 28-50
-    #: 储备段——息线以内持有弱占优,溢余义务只在 g>R* 激活,总模型
-    #: **不吞并**本通道辖域;清理依据=其自身 A/B 否决(开关生命周期
-    #: 第 4 态),非义务覆盖。
-    #: **待清声明**:三字段(bias/min_gold/tags)唯一消费点=decision_v2
-    #: /scoring.py 评分偏置段,删除须注册表与消费块同批(消费点文件
-    #: 在飞占用,本批只落定谳注记);删除批前默认 0.0=恒不生效,行为
-    #: 零漂移。复活条件:储备段出现「0 分成型件被结构性拒」的新病灶
-    #: 实证且修法经偏序/期望账论证(不复活加性偏置形态)。
-    goldrich_buy_bias: float = 0.0
-    #: 偏置生效的金下沿(观察段下沿 28;花 1-4 金在此段内不破
-    #: 30/40 息档的段内花费;随主字段同批清理)
-    goldrich_min_gold: int = 28
-    #: 偏置辖的买标签(经济类 bond_fallback 不辖:凑数散件金充裕
-    #: 也不值得占 bench;辖成型/核心/凑对/副本四类;随主字段同批清理)
-    goldrich_buy_tags: frozenset[str] = frozenset({
-        'engine_seed', 'pair', 'copy', 'bridge_core',
-    })
+    #: (goldrich_buy_bias/goldrich_min_gold/goldrich_buy_tags 已随
+    #: ADR-0305 增补清理节删除:三窗 A/B 无一致方向 + ADR-0408 同构
+    #: 复证「成型加速可见,hp 不跟」。与经济循环总模型(ADR-0445)的
+    #: 辖域边界随之失效——本偏置原辖金 28-50 储备段,总模型溢余义务
+    #: 只在 g>R* 激活,二者不重叠;删除依据=其自身 A/B 否决(开关
+    #: 生命周期第 4 态),非义务覆盖。复活条件:储备段出现「0 分成型
+    #: 件被结构性拒」的新病灶实证且修法经偏序/期望账论证,不复活
+    #: 加性偏置形态。)
     # ===== ADR-0332 成型补充偏置(d2 评分批;P1 boss 转化) =====
     #: 成型补充偏置:未成型(引擎<2)+ 引擎件候选在破息窗(r≥5 P1,非应急)
     #: 的 0/小负分买入顶成正分的偏置。依据=[13] 成型即停手(未成型=继续买
@@ -821,34 +780,8 @@ class DecisionV2Registry:
     #: 非 game_cap(见 ADR-0413 Considered Options)。
     directed_refresh_game_cap: int = 6
 
-    # ===== W251/ADR-0408 假设 A:r3/r4 投资节奏前置(评分偏置)=====
-    #: 总开关:False=回 W248 后行为(A/B 基线臂;默认关=现行为零漂移,
-    #: ADR-0305 先例)。True 时 P1 r∈[early_pace_min_round,
-    #: early_pace_max_round](缺省 3-4,W248 报告 §四:高损耗局的分化
-    #: 在 r3-r4 已发生,当前策略按息纪律延后投资、r3/r4 常带浅板上阵)
-    #: 的**战力买标签**(=crisis_buy_tags 同集,战力买语义复用不另造
-    #: 标签集)候选,val ≤ early_pace_val_max 的 0/小分买入顶成 +
-    #: early_pace_bias——与 forming_bias(ADR-0332)同构的「成型期权
-    #: 显影」前移版,把破息战力投资的 EV 授权阈值在 r3-r4 放宽一档
-    #: (W248 假设 A:败场数是出口 hp 最强负相关 −0.635,投资前移→
-    #: 更早把金转化为战力→压低 r7/boss 高损耗轮败场数)。
-    #: **防双计**(W232/W238 三件套纪律):本项只顶非正分买进约束链,
-    #: 息账仍由 interest_rule EV 账单一裁决(V 随偏置进入 = 授权放宽
-    #: 是本修法的本体语义,非第二份授权);地板族/copies_cap/bench
-    #: 容量照常辖;forming_bias 不重叠(r3-r4 在其 r≥5 窗外)。
-    #: 默认关论证见 ADR-0408(A/B outcome 裁决)。
-    early_pace_enabled: bool = False
-    #: 窗下界(P1 备战轮;r3 是首个战斗节点前的最后一轮备战)
-    early_pace_min_round: int = 3
-    #: 窗上界(W248 §四干预口径:「r3-r4 备战期放宽破息授权一档」;
-    #: r5 起 supply 回补,由既有息纪律接管)
-    early_pace_max_round: int = 4
-    #: 偏置单位值(顶 0/小分买入;量级=forming_bias 同阶,只改变约束链
-    #: 是否可达,排序面让位天然正分目标件)
-    early_pace_bias: float = 5.0
-    #: 顶分上沿(原分 > 此值不加偏置——防「已正分买入被二次加分」双计,
-    #: forming_bias_val_max 同款边界)
-    early_pace_val_max: float = 0.5
+    # ===== (early_pace 五字段已随 ADR-0408 增补清理节删除:三窗 A/B
+    # ===== outcome 无一致正方向、机理核 rung 路径不动,见该 ADR。)=====
 
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:

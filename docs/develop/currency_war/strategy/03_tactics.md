@@ -38,7 +38,7 @@
 
 **decision_v2 纪律族:掉血报警梯度**(strategy_v4 点4/点12;ADR-0313):`BloodAlarmTracker` 三臂(连续战斗失败 / 最近 3·5 个**战斗节点**累计掉血)激活时按处置梯度行动——①自然补强窗(窗上界 `BLOOD_GRADIENT_NATURAL_BATTLES` 个战斗节点,`mode='economy'` 不弃息)→ 窗耗尽或血边际低于 `BLOOD_MARGIN_LOW_HP` → ②弃息 D 保血(war+硬节点放行 refresh)。三臂窗口单位=战斗节点计数器(非战斗节点不计入不重置),跨位面全臂重置。**报警不是 ALL IN 的触发**;位面末最后一战(`plane_last_battle`)的 ALL IN 授权在报警态下同样开通(授权来自位面末,非报警)——`allin` 是唯一清零地板的路径。「来牌顺不顺」([19]③)未消费(定性变量,声明欠账挂实机语料)。
 
-**decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(评分侧无成型停手语义;显式停手门见 ADR-0343);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。**r3/r4 投资节奏前置偏置(W251/ADR-0408;W248 假设 A)**:flag `early_pace_enabled`(默认关=零漂移)开时,P1 r∈[`early_pace_min_round`,`early_pace_max_round`] 的战力买标签(`crisis_buy_tags` 同集)候选 val≤`early_pace_val_max` 加 `early_pace_bias`——把「到不了约束链」的非正分战力买顶进 EV 账(息账单一源仍是 interest_rule,无第二份授权常量,正分不叠加,bd['early_pace'] 记触发依据);与 forming_bias(r≥5 窗)/纪律态(emergency/boss 窗/war 不越权)无重叠。
+**decision_v2 评分活性(ADR-0332;P1 boss 转化)**:评分的「停手」=仲裁器对买候选的 0/负分拒绝(评分侧无成型停手语义;显式停手门见 ADR-0343);P1 破息窗(r≥5)的评分活性两修——①**息崖平滑**:买入跌破 50 满息平台只付真实档位息损(非全平台消失),消除与 boss_breaker 地板(10)授权的双重计罚;emergency([18] 不为苟住破息)与经济态([17] 平台)的 -25 语义不变;②**成型补充偏置**:未成型(引擎<2)时引擎件候选的 0/小负买入顶正(常量 `forming_bias`/`forming_bias_val_max` 在 registry)——成型后偏置关闭=停手攒息([13])。(原 r3/r4 投资节奏前置偏置已定谳清理,证据链见 ADR-0408 增补清理节。)
 
 **decision_v2 经济授权(ADR-0347;经济循环总模型步②「切授权」)**:常态经济行为由**相位**(FORM/HOARD/SPEND 派生量,W114 步①上线)驱动——form_ok 判据分两支:意向锁定=三件套(见成型停手门段);**意向未锁兜底局=结构判据**(ADR-0353:r≥`phase_fallback_min_round` ∧ 有效体系数≥`phase_fallback_min_engines`,有效体系数=四过渡体系达成数 `_engines_count`(deployed 口径)+`hp_charge_stack` 型全局累积角色豁免(上场 2★ 计 1,W127 字段消费)——语义=「板面真收敛到 ≥2 过渡体系」即 transition_combos「两两组合=过渡成型」;`form_score` 为纯遥测观测不进判据);地板族=FORM→`form_floor`(保险丝,Q1 四档 sim 对照待标定)/HOARD=SPEND→`interest_floor`(覆盖态优先序不变:应急/boss 窗/war 先于相位);跨档消费走 **EV 授权**(`interest_rule`:V=层3分剥离息分量,**买候选取 max(层3分剥离息分量, 组合跳变金账 `bd['form_gold']`,ADR-0352)**——引擎整数档跳变按全额跳变金、未跨档按进度增量×下一级跳变金(与 V_D 收益侧同式同源,C 同视界 R);C=跨档数×跨位面剩余节点,**买侧用回档折中口径 min(R, `interest_recovery_rounds`)**(一次性买按 P6 回档账辖;刷新保持平面 R 上界=P5⑤ 退化输出,升级平台账口径不动);[11] 同档/1费/满息结余特例保留);**P1 早期新件买入门(ADR-0372)**:FORM 相位地板拒绝前的买候选放行例外——轮级窗 `discipline.p1_early_gate_open`(P1 ∧ 派生配方对 `cw_intention.p1_early_pair`,**未锁形态期同样派生** ∧ 未持有 distinct 对成员 ≥ `p1_early_min_missing` ∧ bench 余槽 ≥1)∧ 逐笔「买入后同息档」([11] 逐字口径,跨档仍走 EV 授权)∧ 单轮 ≤`p1_early_round_cap` 笔 ∧ 同名/刷新不辖(`registry.p1_early_gate_enabled` 开关,auth `p1_early` trace);**P2 核心件首件同息档门(ADR-0378)**:P2 段意向核心**首件**(working 现持无同名)的同档自然店买入放行例外——判据与 P1 门同构(买入后同息档 [11] 口径+单轮 1 笔 [31]②+常态经济态,跨档仍走既有通道),对象语义从配方对换成意向核心(`candidates._core_names` 单一源;`registry.p2_core_firstpiece_enabled` 开关,auth `p2_core` trace;零刷新授权);应急/boss/war 纪律态地板不受其影响;升级走 **EV 总账**(`ev.levelup_ev_authorized`:[33] 人口位 / DP 花费授权(平台未破)/ 静态平台账——[12] 息引擎门与 E6 latch 收编退场;**[33] 稳态多击组(ADR-0378)**:P2+(plane≥2)稳态帧——cap 满 ∧ bench 有方向件(`_target_names`)——arbiter 末段主动发 `[LevelUp]*clicks_to_next_level` 整组(构造=`remediation.steady_state_levelup_group`,授权=EV 总账按 n×总价;逐动作资源约束事务性重验、每轮至多一组、组插在首个 RefreshShop 之前;`registry.levelup_multihit_enabled` 开关)——多击授权不依赖轮内 deploy_cap 拒绝(W185 Catch-22 根治;P1 的多击仍由 deploy_cap 补偿臂覆盖,全位面泛化因 P1 回归辙回));**DP 接线**=v2 栈首次真实消费 `cw_horizon` 解(轮缓存 `session.v3_dp_posture`,遥测 dp_posture 字段);boss 窗统一节点图口径(`boss_window_active`,轮数只作 node_type 缺读兜底);「经济过热」类环境的 reward 节点按**低危战斗**处理(扑满守卫,ADR-0348:战斗向刷新理由开放+地板不降——扑满不掉血,目标=伤害阵容拿奖励)。
 
@@ -79,16 +79,7 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 `buy_lock_constraint_enabled`(A/B 通道)。语义=约束「方向」:锁定后买侧
 材料供给不再喂换档挤出(W147:挤出执行侧的保留序/deploy 围栏是另一批)。
 
-**decision_v2 产星通道(ADR-0402;W231 诊断 A+B)**:填充件升星期权的
-评分显影+同名副本的方向门豁免——`score_state` 分项 `filler_star` = 已
-deployed 填充件(目标集外名字)的第 2 份同名 1★ 期权分(每名一次进度,
-star≥2 回落;与 merge_progress 互补不双计);生成层 r410 守卫对
-「已 deployed 名的同名副本」在开臂时豁免;`_buy_tag` 在方向阵营门之前
-放行同名副本(副本=升星素材非新方向投资,r383b 全轮域推广;A5 阵营
-上限/copies_cap/r408 同轮已卖守卫照常辖)。硬边界=[31] 反散件(只辖
-已持有名第 2 份、不授权为填充件 D 刷;bench-only 囤件不折)。开关
-`filler_star_unit`/`pair_copy_direction_exempt`(registry,默认双关=
-现行为零漂移,A/B 臂同开)。
+**decision_v2 产星通道(ADR-0402)**:已定谳清理(删码留档)——填充件升星期权评分项(`filler_star`)与同名副本方向门豁免双臂经 W504 开臂 A/B 主判据双 wash,registry 两开关、评分项、r410 守卫 A 臂豁免与方向门豁免分支已删;副本买入的放行现由 merge 完成豁免(ADR-0438)与末窗承接门 gap 条件化豁免(ADR-0405)承载,证据链见 ADR-0402 定谳节。
 
 **经济循环总模型:储备制(ADR-0445)**:金账语义从「地板制」(只规定花后下限)扩为「储备制」——`economy_cycle.reserve_cap` 定义储备线 `R* = interest_floor + 窗口(≤3 轮)内排程升级费`(排程判据=DP 姿态 level_up;升级费逐帧现读),`(g−R*)+` 为溢余死钱;义务 `= max(既有臂义务, min(溢余, channel_capacity))`,容量 `C_t = 升级计划费 + 非期权可买账(买入后四体系达成数 +1 的当帧跨档件 ∪ 3合1 合成件;bench 满槽时非合成件不计) + 刷价×min(6, DP 授权刷数)`;消费载体=FLIP 谓词溢余化(ADR-0426 增补 D:辖区=g>R* ∧ C_t>0 ∧ 非应急,血量维度退场、全位面辖、相位无关)经 release 臂预算通道传导,DP 值函数不动(GOLD_MAX 截断盲区挂账);`authorize_release_refresh` 带 g≥0 硬钳制;守卫=流量口径(溢余滞留率/义务帧兑现率),息基守卫只辖 g≤R* 常态帧(义务帧不计入息基分母),出口金降为披露面;`release_enabled`/`release_spend_gate_enabled` 已随增补 D 第 4 态删除(消费门恒接线)。(同批合并落码的配对完成度买牌信号已定谳退回,ADR-0446 rejected:合并 A/B 实测义务帧辖域内零活性,归因=I-1 辖域×P1 溢余稀疏交互。)
 

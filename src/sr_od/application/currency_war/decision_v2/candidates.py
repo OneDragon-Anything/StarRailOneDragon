@@ -119,15 +119,14 @@ def _copy_swap_blocked(card: ShopCard, state: GameState,
 
     - ① target 豁免(ADR-0303/0304:默认关=守卫直通;豁免代码留作
       A/B 通道——载体批沿用原裁决,开关语义不变);
-    - ② A 臂(W232/ADR-0402 方案A):filler_star 开臂时,已 deployed
-      名的同名副本(升星素材,[15]/[22] 压库语义)不拦——授权只到
-      「已持有名的副本」,不授权为填充件 D 刷(copies_cap/方向门照常辖);
-    - ③ C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):末窗星级
+    - ② C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):末窗星级
       定向授权 gap>0(handoff.handoff_gate_gap 单一源)时同域放行;
-    - ④ press 豁免臂(W300 design v3 V-B1/V-B2/V-B3):通道开且该卡是
+    - ③ press 豁免臂(W300 design v3 V-B1/V-B2/V-B3):通道开且该卡是
       band 内目标外副本(守卫已判 deployed 同名)且 bench 有余槽且非
       同轮已卖 → 不拦,交 _buy_tag 的 'copy_press' 臂。总闸=
       registry.press_channel_enabled(默认关零漂移)。
+    (原 ② A 臂=filler_star 开臂对已 deployed 名豁免,已随 ADR-0402
+    定谳清理删除。)
     """
     if (registry is not None and registry.copy_swap_target_exempt
             and card.name in _target_names(state, session)):
@@ -136,15 +135,13 @@ def _copy_swap_blocked(card: ShopCard, state: GameState,
         return False
     if registry is None:
         return True
-    if registry.filler_star_unit > 0 and _has_deployed_copy(card.name, state):
-        return False    # ② A 臂
     if _has_deployed_copy(card.name, state):
         from sr_od.application.currency_war.decision_v2.handoff import (
             handoff_gate_gap,
         )
         if handoff_gate_gap(state, session, registry) > 0:
-            return False    # ③ C 臂
-    # ④ press 豁免臂(W300):通道开 ∧ band 内目标外副本 ∧ bench 有余槽
+            return False    # ② C 臂
+    # ③ press 豁免臂(W300):通道开 ∧ band 内目标外副本 ∧ bench 有余槽
     #    ∧ 非同轮已卖 → 不拦
     return not (registry.press_channel_enabled
                 and press_channel_open(state, registry)
@@ -206,9 +203,8 @@ def _core_names(session: StrategySession) -> set[str]:
 
 
 def _has_deployed_copy(name: str, state: GameState) -> bool:
-    """deployed 域是否已有同名件(W232/ADR-0402 方案A 的 r410 豁免判据;
-    与 discipline.has_same_name_copy 的区别=只看 deployed——filler_star
-    期权项只辖已上场名的副本,bench-only 囤件不给生成豁免)。"""
+    """deployed 域是否已有同名件(C 臂 gap 豁免判据;
+    与 discipline.has_same_name_copy 的区别=只看 deployed)。"""
     return any(getattr(d, 'char_id', '') == name
                for d in (state.deployed or []))
 
@@ -287,19 +283,16 @@ def _buy_tag(card: ShopCard, state: GameState,
             return None    # ADR-0333:板面已有未成型体系时,新体系引擎件
             # 不生成(散买断)——空窗/成型可开新,深化件放行([20]/[31])
         return 'engine_seed'    # 点3:引擎件见即买(C2 名单)
-    # 方案B(W232/ADR-0402):同名副本豁免方向门——判定提到 pair_wants
-    # 方向门之前(r408 同轮已卖守卫在 discipline 层前置;冷启动例外
-    # r383b 的全轮域推广)。开关=registry.pair_copy_direction_exempt,
-    # 与 filler_star_unit 同臂开(默认关=现行为零漂移)。
-    # C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):末窗星级定向
-    # 授权 gap>0(handoff.handoff_gate_gap 单一源)时同域豁免——gap
-    # 条件化分支。
+    # C 臂(W242/ADR-0405 C 项;ADR-0411 起无条件启用):同名副本豁免
+    # 方向门——判定提到 pair_wants 方向门之前(r408 同轮已卖守卫在
+    # discipline 层前置;冷启动例外 r383b 的全轮域推广),末窗星级
+    # 定向授权 gap>0(handoff.handoff_gate_gap 单一源)时同域豁免。
+    # (原 filler_star 开臂的无条件豁免已随 ADR-0402 定谳清理删除。)
     from sr_od.application.currency_war.decision_v2.handoff import (
         handoff_gate_gap,
     )
     if (not is_target
-            and (registry.pair_copy_direction_exempt
-                 or handoff_gate_gap(state, session, registry) > 0)
+            and handoff_gate_gap(state, session, registry) > 0
             and has_same_name_copy(card, state)
             and not in_round_sold(card.name, state, session)):
         return 'copy'
