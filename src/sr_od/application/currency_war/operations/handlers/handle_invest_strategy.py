@@ -67,10 +67,10 @@ class HandleInvestStrategy(SrOperation):
     def _try_click_refresh(self) -> bool:
         """动态定位刷新圆钮(文本锚定;2026-08-16 CV 实测修正,替 yml 固定坐标 VLM 猜测值)。
 
-        OCR「刷新次数N」文本(钩子已记坐标 self._refresh_text_pt)→ 按钮 = 文本左偏 88px;
+        OCR「刷新次数N」文本(已记坐标 self._refresh_text_pt)→ 按钮 = 文本左偏 88px;
         无文本锚 → False(不点)。⚠️ 未做 HoughCircles 圆复核(review:三帧实测偏移恒定,
-        复核留待多样性本不足时再上;停机钩子兜误点)。点击点距「确认」按钮 ~20px,偏移错时
-        停机钩子接(no-op 验证不过 → 存证停机)。
+        复核留待多样性本不足时再上)。偏移错时刷新验证失败 → 静默选旧三张照常选
+        (ADR-0146 失败安全设计;该态=需重新 CV 实测锚定的版本变更信号)。
         """
         _pt = getattr(self, '_refresh_text_pt', None)
         if _pt is None:
@@ -133,11 +133,9 @@ class HandleInvestStrategy(SrOperation):
         else:
             pick = None
         # ADR-0146(缺口1):decide 建议刷新(PickEvent.refresh = 三张最优 < 50)且 OCR 到次数>0
-        # → 点「按钮-刷新」(screen_info area;VLM 候选坐标,click 实锤待 M21 首触)→ 重读重选(一次性)。
-        # [停机钩子·临时,用户 2026-08-16 指示] 刷新验证不通过(候选没变 **且** 次数没减)→ 停机存证:
-        # 按钮坐标是 VLM 候选未实锤(采集显示「刷新次数N」文本有两种 x 位置,按钮可能随屏形态漂移),
-        # 与其静默 fallback 选旧三张(永远不知道刷新没生效),不如停机把真实交互采下来修准。
-        # 建档坐标实锤后删本钩子(留正常刷新流)。
+        # → 点刷新圆钮(_try_click_refresh 文本锚定)→ 重读重选(一次性)。
+        # 原停机钩子已删(按钮坐标已由 CV 实测文本锚定实锤,挂入至删除零触发;
+        # 生命周期定谳:W437 投资钩子审计报告 .debug/temp/currency_war/w437_invest_hooks_audit/)。
         if (pick is not None and getattr(pick, 'refresh', False)
                 and self._refresh_count > 0
                 and self._try_click_refresh()):
@@ -151,8 +149,8 @@ class HandleInvestStrategy(SrOperation):
                 else:
                     pick = decide_event(names, config, GameState())
             else:
-                # 验证失败:候选没变 —— 再查次数是否减(次数减=刷新生效但新三张碰巧同名?罕见;
-                # 次数没减=点击没生效,按钮坐标错)。存证停机。
+                # 验证失败但次数减了 = 刷新生效但新三张碰巧同名(罕见);只 log 不停
+                # (原停机钩子已删,定谳见 handle_invest_env 同位注释)。
                 import re as _re2
                 _cnt2 = None
                 for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
@@ -161,30 +159,6 @@ class HandleInvestStrategy(SrOperation):
                     if _mm2 and _m.max is not None:
                         _cnt2 = int(_mm2.group(1))
                         break
-                if _cnt2 is not None and _cnt2 >= self._refresh_count:
-                    # 次数读到了且没减 = 真没生效 → 停机存证(_cnt2 None = OCR miss,不判假阳停机;review ④)
-                    _shot = self.save_screenshot(prefix='cw_strat_refresh_fail')
-                    from pathlib import Path as _P
-                    _fp = _P('.debug/temp/currency_war/refresh_click_fail.flag')
-                    _fp.parent.mkdir(parents=True, exist_ok=True)
-                    # hook审计 S7(r351):flag 补三要素(同 handle_invest_env S6)
-                    import time as _t2
-                    _fp.write_text(
-                        f'[HOOK-STOP] strategy 刷新点击未生效停机钩子(临时):handle_invest_strategy\n'
-                        f'触发:点了「按钮-刷新」后候选不变且剩余次数未减({self._refresh_count}->{_cnt2})'
-                        f'→ 点击没落到真按钮(yml 坐标是 VLM 猜测未实锤)。\n'
-                        f'处理步骤:1. 看 shot={_shot},离线(VLM/对拍 refresh_ui_samples.jsonl\n'
-                        f'   次数文本坐标)定位真实刷新按钮坐标;\n'
-                        f'   2. upsert_screen_area 更新「货币战争-投资策略/按钮-刷新」;\n'
-                        f'   3. 删本 flag + 重启 MCP server,重跑验证(次数应 -1)。\n'
-                        f'删除条件:按钮坐标实锤后删本停机段(handle_invest_strategy 搜\n'
-                        f'   「refresh_click_fail」),保留正常刷新流。\n'
-                        f'ts={_t2.strftime("%m-%d %H:%M:%S")}\n',
-                        encoding='utf-8')
-                    log.warning('[cw!] [strat] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s',
-                                _shot)
-                    self.ctx.run_context.stop_running(reason='hook:strat_refresh_click_fail')
-                    return self.round_fail(status='刷新点击未生效,停机存证')
                 log.info('[cw-strat] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x, choose_y = opts[pick.option_idx]

@@ -131,9 +131,8 @@ class HandleInvestEnv(SrOperation):
         else:
             pick = None
         # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性)。
-        # [停机钩子·临时,用户 2026-08-16 指示] 刷新验证不通过(候选没变且次数没减)→ 停机存证:
-        # env 刷新按钮是**图标**(全屏 OCR 无「刷新」文字,yml 坐标是 VLM 猜测未实锤)——
-        # 与其静默 fallback(永远不知道刷新没生效),停机把真实按钮交互采下来。实锤后删钩子。
+        # 原停机钩子已删(按钮坐标已由 CV 实测文本锚定实锤,挂入至删除零触发;
+        # 生命周期定谳:W437 投资钩子审计报告 .debug/temp/currency_war/w437_invest_hooks_audit/)。
         if (pick is not None and getattr(pick, 'refresh', False)
                 and self._refresh_count > 0
                 and self._try_click_refresh()):
@@ -156,33 +155,6 @@ class HandleInvestEnv(SrOperation):
                     if _mm2 and _m.max is not None:
                         _cnt2 = int(_mm2.group(1))
                         break
-                if _cnt2 is not None and _cnt2 >= self._refresh_count:
-                    # 次数读到了且没减 = 真没生效(None = OCR miss 不判假阳;review ④)
-                    # r315(审查附带 bug):正则字符类是两个 ASCII
-                    # 冒号(视觉像全角)——漏匹配全角冒号 → env 屏
-                    # _cnt2 恒 None → 停机守卫对 env 静默失效
-                    _shot = self.save_screenshot(prefix='cw_env_refresh_fail')
-                    import time as _t2
-                    from pathlib import Path as _P2
-                    _fp = _P2('.debug/temp/currency_war/refresh_click_fail.flag')
-                    _fp.parent.mkdir(parents=True, exist_ok=True)
-                    # hook审计 S6(r351):flag 补三要素——原裸数据行让接管者
-                    # 不知道谁停的/怎么处理/删钩子条件
-                    _fp.write_text(
-                        f'[HOOK-STOP] env 刷新点击未生效停机钩子(临时):handle_invest_env\n'
-                        f'触发:点了「按钮-刷新」后候选不变且剩余次数未减({self._refresh_count}->{_cnt2})'
-                        f'→ 点击没落到真按钮(yml 坐标是 VLM 猜测未实锤)。\n'
-                        f'处理步骤:1. 看 shot={_shot},离线(VLM/对拍 refresh_ui_samples.jsonl\n'
-                        f'   次数文本坐标)定位真实刷新按钮坐标;\n'
-                        f'   2. upsert_screen_area 更新「货币战争-投资环境/按钮-刷新」;\n'
-                        f'   3. 删本 flag + 重启 MCP server,重跑验证(次数应 -1)。\n'
-                        f'删除条件:按钮坐标实锤(刷新点击可验证生效)后,删本停机段\n'
-                        f'   (handle_invest_env 搜「refresh_click_fail」),保留正常刷新流。\n'
-                        f'ts={_t2.strftime("%m-%d %H:%M:%S")}\n',
-                        encoding='utf-8')
-                    log.warning('[cw!] [env] 刷新点击未生效(候选不变+次数未减)→ 停机存证待修准 shot=%s', _shot)
-                    self.ctx.run_context.stop_running(reason='hook:env_refresh_click_fail')
-                    return self.round_fail(status='env 刷新点击未生效,停机存证')
                 log.info('[cw-env] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x = opts[pick.option_idx]

@@ -27,6 +27,7 @@ Accepted(2026-08-15;按钮坐标 click 实锤待 M21 首触)
 1. `PickEvent.refresh: bool = False`(纯建议位);decide_event:三张最优 < `EVENT_REFRESH_SCORE_FLOOR`(50,≈评估分中位;白名单 78+/comp-hit 65+ 天然不触发)→ refresh=True,reason 加 "|suggest-refresh"。
 2. 两屏建「按钮-刷新」area(纯坐标无 text;VLM 候选,M21 首触实锤后如有偏差即修)。
 3. 两 handler 刷新流:pick.refresh 且 OCR 次数 > 0 → 点按钮 → 1.5s → 重读 options;卡名变化 = 刷新成功 → 重 decide(一次性);无变化 = 点空 → 照常选(现状行为)。钩子采集的次数存 `self._refresh_count` 供刷新流读(钩子与刷新流共生,实锤后钩子删、次数读取留)。
+4. 清理指针(2026-08-28):按钮坐标已由 CV 实测文本锚定实锤(「次数」文本左偏 -100/-88px,不再依赖「按钮-刷新」area)→ 两 handler 停机钩子与两 yml「按钮-刷新」area 已删(挂入至删除零触发;定谳见 W437 投资钩子审计),次数读取与文本锚保留为正常刷新流。
 
 ## 后续
 
