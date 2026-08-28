@@ -1058,7 +1058,9 @@ def sell_priority_key(bc, state: GameState,
                       ) -> tuple | None:
     """统一卖件弱序键(升序=最先卖;None=不可卖,调用方跳过)。
 
-    键结构(逐位比较;前段=既有豁免/守卫的复合,后段=点5 期望损失键):
+    键结构(逐位比较;前段=ADR-0442 focus 卖序段(收敛载体在场时,
+    (focus档, 1★优先)——0 散件>1 非收敛囤件>2 drop>3 partial>4 carry;
+    focus=None 时为空段)=既有豁免/守卫的复合,后段=点5 期望损失键):
       (in_protect,          # 保护集外最先进(保护集成员垫底)
        redundancy,          # 0=冗余最弱(超上限/absent_mergeable,
                             #   carry_gate ④ 同档),1=常态
@@ -1084,6 +1086,24 @@ def sell_priority_key(bc, state: GameState,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
     name = getattr(bc, 'char_id', '') or ''
+    # ADR-0442 留牌层卖序段(开关=registry.transition_focus_enabled
+    # 默认关零漂移;键单一源=cw_transition.focus_sell_rank,执行层
+    # deploy 腾席共用同一函数防双源)。收敛载体在场时:core_names 返回
+    # None(永不主动卖,C5-2);其余件在键首插 focus 档段(0 零羁绊
+    # 散件 > 1 非收敛囤件 > 2 收敛 drop > 3 partial > 4 carry),既有
+    # 键段降为段内次序。
+    _focus_seg: tuple = ()
+    if reg.transition_focus_enabled:
+        _focus = getattr(session, 'transition_focus', None)
+        if _focus is not None:
+            from sr_od.application.currency_war.cw_transition import (
+                focus_sell_rank,
+            )
+            _rank = focus_sell_rank(
+                name, max(1, int(getattr(bc, 'star', 1) or 1)), _focus)
+            if _rank is None:
+                return None    # core_names 永不主动卖
+            _focus_seg = _rank
     if not name:
         return None    # 未识别(空名)
     if name not in CHARACTERS:
@@ -1097,7 +1117,8 @@ def sell_priority_key(bc, state: GameState,
     if form_break_sell_blocked(bc, state, session, reg):
         return None    # 方向二/ADR-0433:成型后拆队卖(净效果破 form_ok)
     if star_weighted_copies(name, state) >= 2:
-        return None    # 3合1 进行中素材/完整份不卖(AD9-2-3)
+        return None    # 3合1 进行中素材/完整份不卖(AD9-2-3;兼 ADR-0442
+        # 素材保护:focus 名已持 2 份的第 3 份素材位不入卖序,C3-2)
     ch = CHARACTERS.get(name)
     cost = ch.cost if ch is not None and ch.cost else 3
     star = max(1, int(getattr(bc, 'star', 1) or 1))
@@ -1109,7 +1130,7 @@ def sell_priority_key(bc, state: GameState,
     redundancy = 0 if (cp > 3 or absent_mergeable) else 1
     loss = _sell_expected_loss(cost, reg)
     net0 = 0 if star == 1 else 1
-    return (in_protect, redundancy, loss, net0, cost, star)
+    return _focus_seg + (in_protect, redundancy, loss, net0, cost, star)
 
 
 def sell_score_weight(cost: int,

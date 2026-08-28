@@ -411,6 +411,23 @@ def _sell_tag(bc: BenchChar, state: GameState,
         return None   # 方向二/ADR-0433:成型后拆队卖不生成候选
     protect = _target_names(state, session)
     name = bc.char_id or ''
+    # ADR-0442 留牌层(开关=registry.transition_focus_enabled 默认关
+    # 零漂移):收敛载体在场时——core_names 永不主动卖(即使 bench 满
+    # 腾位也不让,核心三件套/希儿是成型门);focus_names(策展 carry/
+    # partial)从 off_target/for_gold 凑息向卖档保护(只留 free_bench
+    # bench 满腾位通道,再经 focus_sell_rank 排到卖序末段)。
+    if registry.transition_focus_enabled:
+        from sr_od.application.currency_war.cw_transition import (
+            focus_sell_rank,
+        )
+        _focus = getattr(session, 'transition_focus', None)
+        if _focus is not None:
+            _star = max(1, int(getattr(bc, 'star', 1) or 1))
+            _rank = focus_sell_rank(name, _star, _focus)
+            if _rank is None:
+                return None     # core_names 永不主动卖(C5-2)
+            if _rank[0] >= 3:
+                protect = protect | _focus.focus_names
     is_target = name in protect
     emergency = state.hp <= registry.emergency_hp
     bench_full = bench_occupied(state.bench or []) >= registry.bench_capacity

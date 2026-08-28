@@ -1121,6 +1121,23 @@ def score_candidate(cand: Candidate, state: GameState,
                 and val <= registry.early_pace_val_max):
             val += registry.early_pace_bias
             _early_pace_hit = True
+    # ADR-0442 买牌层隶属度先验(开关=registry.transition_focus_enabled
+    # 默认关零漂移;载体=None 时 m 恒 0)。m∈{1.0,0.5,0} × 单位值加进
+    # 层3分:1.0=focus_names(含核心)/0.5=阵营命中 focus 域(r137 兜底
+    # 口径)/0.0=散件现状分不变——降权不归零,不设硬删(ADR-0437 定谳);
+    # 「差一张」第三张的买放行走 ADR-0438 merge 豁免既有通道,零新增。
+    # 刷新/升级不打折不加分(C2-3:概率级择取归 P5,收敛层不越权)。
+    _focus_m = 0.0
+    if (registry.transition_focus_enabled
+            and isinstance(cand.action, BuyCard)):
+        from sr_od.application.currency_war.cw_transition import (
+            focus_membership,
+        )
+        _focus_m = focus_membership(
+            getattr(getattr(cand.action, 'card', None), 'name', '') or '',
+            getattr(session, 'transition_focus', None))
+        if _focus_m > 0:
+            val += registry.transition_focus_buy_prior * _focus_m
     # W150/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias/goldrich 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1134,6 +1151,8 @@ def score_candidate(cand: Candidate, state: GameState,
               'form_gold': round(form_gold, 3)}
     if _early_pace_hit:
         out_bd['early_pace'] = registry.early_pace_bias   # W251/ADR-0408
+    if _focus_m > 0:
+        out_bd['focus_m'] = _focus_m   # ADR-0442:隶属度先验触发依据
     if off_lock:
         out_bd['off_lock'] = off_lock
     return val, out_bd

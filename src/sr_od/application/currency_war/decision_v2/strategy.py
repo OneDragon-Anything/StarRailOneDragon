@@ -152,6 +152,8 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_release = None
         session.v3_release_round = None
         session.v3_release_spent = 0
+        session.transition_focus = None   # ADR-0442:收敛载体跨局清零
+        session.transition_focus_prev = None   # 跨轮滞回槽一并清零
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs) -> None:
@@ -348,6 +350,40 @@ class DecisionV2Strategy(DefaultCwStrategy):
             else:
                 session.transition_framework = ''
                 session.framework_clear_ban = ''
+        # 过渡收敛目标载体(ADR-0442;开关=registry.transition_focus_enabled
+        # 默认关=不触碰字段,决策序列零漂移)。载体在框架写入点之后计算:
+        # F 取 session.transition_framework(依赖 framework_startup_v2_
+        # enabled——启动开关关时 F 恒空,本载体恒 None 三层全部惰性);
+        # 计算规则单一源=cw_transition.compute_transition_focus(禁复制)。
+        # **清除条件=断供(框架空/进 P2/锁线/开关关),不是轮边界**:
+        # 上一轮载体存 session.transition_focus_prev(跨轮槽)喂给滞回
+        # (C1-5,P* 换需挑战者领先 ≥1)——若每轮预清,current 恒 None,
+        # 滞回死接线,P* 随 owned/shop 波动逐轮翻转;
+        # compute 对断供自返 None,prev 随本槽赋值自然清。
+        _focus_prev = getattr(session, 'transition_focus_prev', None)
+        session.transition_focus = None
+        if registry.transition_focus_enabled:
+            if not registry.framework_startup_v2_enabled:
+                _focus_prev = None   # 依赖开关未开:三层惰性(两槽都清)
+            else:
+                from sr_od.application.currency_war.cw_transition import (
+                    compute_transition_focus,
+                )
+                _fw = getattr(session, 'transition_framework', '') or ''
+                if _fw:
+                    from sr_od.application.currency_war.cw_comps import (
+                        get_comp,
+                    )
+                    _lead = getattr(session, 'commit_signals', None)
+                    _lead = _lead.leader() if _lead is not None else None
+                    session.transition_focus = compute_transition_focus(
+                        bench=state.bench, deployed=state.deployed,
+                        shop=state.shop,
+                        active_env=getattr(session, 'active_env', '') or '',
+                        leader_comp=get_comp(_lead[0]) if _lead else None,
+                        framework=_fw,
+                        current=_focus_prev)
+        session.transition_focus_prev = session.transition_focus
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

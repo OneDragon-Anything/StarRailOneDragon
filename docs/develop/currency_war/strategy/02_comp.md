@@ -26,6 +26,8 @@
 
 P1 同时持有**过渡框架包**与**最终线框架包**两条轨(ADR-0209):P1 半成型最终线打不过成型过渡包是七连败根因。`CommitSignals`(7 信号源)驱动何时收敛到最终线;P2-3 deadline 兜底;五人口早期结构。`cw_plan` 与 `default_strategy` 消费。
 
+**过渡收敛目标载体**(`session.transition_focus`,ADR-0442):框架名之外补「配对体系 P* + 可计算名集」,由 `cw_transition.compute_transition_focus` 在 decide_prep 框架写入点之后计算(F 依赖 `framework_startup_v2_enabled` 启动开关,断供即清);P* = 四体系键上 owned+店半权+环境偏置+定型信号重叠的 argmax(平局取人员要求更松者,希儿系需在手,P* 换需挑战者领先 ≥1)。名集向三层贯彻(全部排序/评分级,零硬删,辖域开关 `transition_focus_enabled` 默认关):买牌评分隶属度先验(scoring)/bench 卖序 `focus_sell_rank`(散件>非收敛囤件>drop>partial>carry,core 永不卖)/deploy 摆板与腾席序(P* 阵营并入 target 域,2★ 让位限零羁绊×焦点 2★ 待上×e<2)。方向背书 = math_proofs P20。
+
 ## 5. cw_line_tribunal:战略假设审判层
 
 战略层假设(commit/pivot/drought 等)的**去留门**:每条战略线按证据(时间线掉队对照 `cw_progress_curves` 健康线/连败/成型度)判继续、降权或退出;`cw_evaluate` 消费(诊断与五族门设计 → ADR-0171)。

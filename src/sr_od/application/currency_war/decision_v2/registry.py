@@ -1192,6 +1192,37 @@ class DecisionV2Registry:
     #: .check_transition_framework_liveness``(载体再切换静默死亡被测试抓)。
     framework_startup_v2_enabled: bool = False
 
+    # ===== 过渡收敛三层贯彻(开关生命周期第 1 态:落码默认关;ADR-0442)=====
+    #: 语义:True 且 framework_startup_v2_enabled=True 时,decide_prep 在
+    #: 过渡框架写入点之后计算收敛载体 ``session.transition_focus``
+    #: =(F, P*, focus_names, core_names)(计算规则单一源 =
+    #: ``cw_transition.compute_transition_focus``,F 沿用既有
+    #: framework 字段),并向三层贯彻:①买牌层=score_candidate 加隶属度
+    #: 先验(本开关 + transition_focus_buy_prior;降权不归零,「差一张」
+    #: 第三张走 ADR-0438 merge 豁免既有通道零新增);②留牌层=bench 卖序
+    #: (散件>非收敛囤件>drop>partial>carry,core_names 永不主动卖;
+    #: 卖序键单一源=cw_transition.focus_sell_rank,决策侧在
+    #: discipline.sell_priority_key/candidates._sell_tag 消费);③换装层=
+    #: deploy 替换序(deploy_bench 摆板优先级+腾席卖序,e<2 辖域)。
+    #: **依赖声明**:本开关开启但 framework_startup_v2_enabled=False 时
+    #: 三层全部惰性(F 恒空 → 载体恒 None,行为与全关逐位一致)——收敛
+    #: 载体依赖启动开关先开。
+    #: **零漂移锚**:本开关 False(默认)时决策序列与现状逐位一致
+    #: (sim 同 seed 对拍;已验证 n=20 seed_base=0 pool snapshot
+    #: 指纹 6400d5d8edeaf68d 动作序列 hash 逐位一致)。
+    #: **开臂 A/B 判据挂账(不执行,开关生命周期第 2 态;全机制 A/B 归
+    #: 下一批)**:①框架非空轮次占比(liveness 重放法测,sim 行无
+    #: sess_framework 字段);②买向迁移(focus_names 成员买入占比);
+    #: ③e0→1 激活率↑(W454 口径);④出口血量/2★ 占比↑;守卫=金账
+    #: (出口金)与息账(interest_ok_rate)不劣。判据不过 → 第 4 态
+    #: 定谳清理(删码留 ADR-0442),禁无限挂起默认关。
+    transition_focus_enabled: bool = False
+    #: 买牌层隶属度先验单位值(设计 §4.1;m∈{1.0,0.5,0} × 本值加进
+    #: 买候选层3分;符号设计非标定值——量级挂账 G2,sim A/B 网格标定;
+    #: 量级锚=forming_bias 同阶「只改同轮排序,不翻越息账/地板门」;
+    #: 0=先验项归零=回退通道)。
+    transition_focus_buy_prior: float = 5.0
+
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
     constraints: tuple[str, ...] = (
