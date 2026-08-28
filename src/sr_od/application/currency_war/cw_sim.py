@@ -1967,9 +1967,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 if (_cb.BATTLE_ENGINE_MODE == 'coarse'
                         and _node in ('battle', 'encounter', 'boss')):
+                    # 位面维透传(P1 先行):P1 层现值/P2 别名,取表见
+                    # cw_coarse_battle 模块头;默认 plane=1 = 旧调用零漂移。
                     delta = _cb.sample_battle_delta(
                         _node, _settle_rung(st), st.hp, rng,
-                        difficulty=getattr(st, 'enemy_difficulty', None))
+                        difficulty=getattr(st, 'enemy_difficulty', None),
+                        plane=st.plane)
                 else:
                     if _node == 'battle':
                         _ld = live_delta_for('battle', _settle_rung(st), rng,
@@ -2960,6 +2963,8 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
       生成器侧另有源目录断言,双保险)。
     """
     import json as _json
+
+    from sr_od.application.currency_war import cw_coarse_battle as _cb
     out_dir = Path(out_dir)
     _prod = _AUTO_REPLAY_DIR.resolve()
     if out_dir.resolve() == _prod or _prod in out_dir.resolve().parents:
@@ -3025,6 +3030,10 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
             results[0].pool_fingerprint if results else ''),
         'rounds_rows': sum(len(r.ledger) for r in results),
         'ledger_semantics': 'core_routed',
+        # 粗模型校准结构版本(局终指纹核对锚):跨批次对比先核本值,
+        # 防「结构改了、披露没跟上」的混池污染(cw_coarse_battle 单一源)
+        'coarse_calib_version': (
+            _cb.COARSE_CALIB_VERSION if results else None),
     }, ensure_ascii=False), encoding='utf-8')
     # 保留清理(旧批次滚动删除;只清 sim_ 前缀批——用户显式传的
     # 非 sim 目录不动,审查#5)
