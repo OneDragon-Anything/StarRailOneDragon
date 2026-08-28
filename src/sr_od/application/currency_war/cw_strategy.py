@@ -326,6 +326,10 @@ class StrategySession:
     # 血预算停手·停升级拒付计数(设计件 12/ADR-0448):决策层拒付披露
     # (arbiter 约束/remediation 两臂写入;局首 on_match_start 清零)
     v3_blood_budget_rejects: int = 0
+    # 血预算停手·搜索型刷新停付拒付计数(设计件 12 §2.3-P1-c/§3.2/
+    # ADR-0451):refresh 收尾授权前置拒付披露(arbiter 写入;
+    # 局首 on_match_start 清零;模式对齐上行停升级拒付计数)
+    v3_blood_budget_refresh_rejects: int = 0
     # W224/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。

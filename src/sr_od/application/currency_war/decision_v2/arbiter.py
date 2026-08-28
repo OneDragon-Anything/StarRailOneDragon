@@ -308,11 +308,17 @@ def _check_constraint(name: str, cand: Candidate,
             # 承接位)。非末窗 gap=0 零漂移;只辖买侧(板面投资)——
             # 刷新的搜寻消耗口径不动(ADR-0352 D 平面 R 上界纪律),
             # 升级平台账在 levelup_ev_basis,不在此双计。
+            from sr_od.application.currency_war.decision_v2.discipline import (
+                p1_directed_downgrade_active,
+            )
             from sr_od.application.currency_war.decision_v2.handoff import (
                 handoff_gate_gap,
             )
             _gap = handoff_gate_gap(state, session, registry)
-            if _gap > 0:
+            # 血预算停手·P1-a 末窗支出降格(设计件 12 §5.3;ADR-0451):
+            # 缺口项是承接门定向投资授权的破息放宽面,血预算不足帧
+            # 同步降格(战力投资的息豁免授权停;血线胜,与息线门 AND)。
+            if _gap > 0 and not p1_directed_downgrade_active(state, registry):
                 v += registry.handoff_ev_gap_bonus * _gap
                 if auth is not None:
                     auth['handoff_gap'] = _gap   # 授权依据 trace(判读)
@@ -679,10 +685,18 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 其它零分候选);非末窗 gap=0 零行为。
             _copy_ok = False
             if cand.tag == 'copy':
+                from sr_od.application.currency_war.decision_v2.discipline import (  # noqa: E501
+                    p1_directed_downgrade_active,
+                )
                 from sr_od.application.currency_war.decision_v2.handoff import (  # noqa: E501
                     handoff_gate_gap,
                 )
-                _copy_ok = handoff_gate_gap(state, session, registry) > 0
+                # 血预算停手·P1-a 末窗支出降格(设计件 12 §5.3;ADR-0451):
+                # 末窗血预算不足帧承接授权不豁免——降格面=授权豁免通道,
+                # 正分 copy 候选不经此豁免门,不受影响。
+                _copy_ok = (handoff_gate_gap(state, session, registry) > 0
+                            and not p1_directed_downgrade_active(
+                                state, registry))
             # merge 完成豁免(ADR-0438;开关 registry.merge_completion_exempt
             # 默认关=零漂移锚):merge=True 的**买候选**(第三张副本买入即
             # 合成 2★)无条件于末窗 gap 放行——完成价值在星级阶梯
@@ -838,6 +852,22 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         cand, val, bd = refresh_cand
         reason = None
         auth_note: dict = {}
+        # 血预算停手·搜索型刷新停付(设计件 12 §2.3-P1-c/§3.2;ADR-0451):
+        # 刷新收尾的授权前置拒付——血预算不足帧(急救型豁免/ALL IN 豁免
+        # 在谓词内)所有刷新授权面(V_D 正分搜索/M-A 定向/release 泄息)
+        # 一律停付:血线胜(seam §5.2 独立谓词 AND),M-A 预算不消耗。
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            blood_budget_refresh_blocked,
+        )
+        if blood_budget_refresh_blocked(state, session, registry):
+            session.v3_blood_budget_refresh_rejects = getattr(
+                session, 'v3_blood_budget_refresh_rejects', 0) + 1
+            reason = RejectReason(
+                'blood_budget_refresh_stop', '', 0,
+                f'血预算停手·搜索型刷新停拒(plane{state.plane} '
+                f'r{state.round_num} hp{state.hp}'
+                f'<{registry.p1_exit_blood_target} 末窗;[31]④/W516,'
+                'ADR-0451)')
         # M-A 预算消耗裁决(W252/ADR-0409):非正分刷新能到这里说明已在
         # 非正分门凭预算豁免越过——收尾逐笔扣预算并**取代两道息纪律门**
         # (gold_floor 的 HOARD 攒息拒 / interest_rule 的 EV≤0 拒):
@@ -847,7 +877,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         # boss_floor,P1 出口金生存边际)兜底。其余约束对 refresh 无涉;
         # 正分刷新(V_D)不进本分支,既有路径逐位不动。
         _ma_ok = False
-        if val <= 0:
+        if reason is None and val <= 0:
             _b = directed_refresh_budget(state, session, registry) \
                 if state.plane == 1 else 0
             if _b > 0:

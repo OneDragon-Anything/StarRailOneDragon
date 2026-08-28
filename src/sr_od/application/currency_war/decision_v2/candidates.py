@@ -136,11 +136,16 @@ def _copy_swap_blocked(card: ShopCard, state: GameState,
     if registry is None:
         return True
     if _has_deployed_copy(card.name, state):
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            p1_directed_downgrade_active,
+        )
         from sr_od.application.currency_war.decision_v2.handoff import (
             handoff_gate_gap,
         )
-        if handoff_gate_gap(state, session, registry) > 0:
-            return False    # ② C 臂
+        if (handoff_gate_gap(state, session, registry) > 0
+                and not p1_directed_downgrade_active(state, registry)):
+            return False    # ② C 臂(血预算停手·P1-a 降格:末窗血预算
+            # 不足帧承接授权不豁免副本换卡——设计件 12 §5.3,ADR-0451)
     # ③ press 豁免臂(W300):通道开 ∧ band 内目标外副本 ∧ bench 有余槽
     #    ∧ 非同轮已卖 → 不拦
     return not (registry.press_channel_enabled
@@ -288,11 +293,15 @@ def _buy_tag(card: ShopCard, state: GameState,
     # discipline 层前置;冷启动例外 r383b 的全轮域推广),末窗星级
     # 定向授权 gap>0(handoff.handoff_gate_gap 单一源)时同域豁免。
     # (原 filler_star 开臂的无条件豁免已随 ADR-0402 定谳清理删除。)
+    from sr_od.application.currency_war.decision_v2.discipline import (
+        p1_directed_downgrade_active,
+    )
     from sr_od.application.currency_war.decision_v2.handoff import (
         handoff_gate_gap,
     )
     if (not is_target
             and handoff_gate_gap(state, session, registry) > 0
+            and not p1_directed_downgrade_active(state, registry)
             and has_same_name_copy(card, state)
             and not in_round_sold(card.name, state, session)):
         return 'copy'

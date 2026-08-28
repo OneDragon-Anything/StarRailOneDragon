@@ -130,6 +130,9 @@ class DecisionV2Strategy(DefaultCwStrategy):
         # 血预算停手·停升级拒付计数(设计件 12;ADR-0448):决策层拒付
         # 披露(判读「停手线拦了多少次追级」;sim 逐轮差分进账本)
         session.v3_blood_budget_rejects = 0
+        # 血预算停手·搜索型刷新停付拒付计数(设计件 12 §2.3-P1-c/§3.2;
+        # ADR-0449):refresh 收尾拒付披露,sim 逐轮差分同式
+        session.v3_blood_budget_refresh_rejects = 0
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
         session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数

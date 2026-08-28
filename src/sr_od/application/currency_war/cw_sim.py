@@ -1626,6 +1626,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 差分进账本 sim.blood_budget_levelup_rejects(与
             # remedy_abandoned 同式的轮级差分披露)
             _bb_rejects_before = getattr(sess, 'v3_blood_budget_rejects', 0)
+            # 血预算停手·搜索型刷新停付拒付计数轮前快照(设计件 12
+            # §2.3-P1-c/§3.2/ADR-0451):决策段后差分进账本
+            # sim.blood_budget_refresh_rejects(同式轮级差分披露)
+            _bb_refresh_rejects_before = getattr(
+                sess, 'v3_blood_budget_refresh_rejects', 0)
             # W114/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
             # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
             _round_phase: str = ''
@@ -2469,6 +2474,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'blood_budget_levelup_rejects': max(
                         0, getattr(sess, 'v3_blood_budget_rejects', 0)
                         - _bb_rejects_before),
+                    # 血预算停手·搜索型刷新停付拒付次数(决策层;设计件
+                    # 12 §2.3-P1-c/§3.2/ADR-0451):血预算不足帧被门拦下
+                    # 的刷新事件数(>0 = 本语义在该轮生效;急救型/ALL IN
+                    # 豁免帧不计)
+                    'blood_budget_refresh_rejects': max(
+                        0, getattr(sess, 'v3_blood_budget_refresh_rejects', 0)
+                        - _bb_refresh_rejects_before),
                     # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
                     # (买后部署语义下应恒 0;检查项 deploy_after_buy_
                     # semantics / ledger_deploy_lag_disclosure 的数据源)
@@ -2853,6 +2865,11 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ——语义生效面披露:0=停手线全批未触发,P1 早中期恒 0)
         'blood_budget_levelup_rejects': sum(
             (row.get('sim') or {}).get('blood_budget_levelup_rejects', 0)
+            for r in results for row in r.ledger),
+        # 血预算停手·搜索型刷新停付拒付总次数(决策层门;设计件 12
+        # §2.3-P1-c/§3.2/ADR-0451——语义生效面披露:0=停手面全批未触发)
+        'blood_budget_refresh_rejects': sum(
+            (row.get('sim') or {}).get('blood_budget_refresh_rejects', 0)
             for r in results for row in r.ledger),
         # 满级拒付按 plane 分解(口径见 _cap_rejects_by_plane);总量键
         # 保留=旧消费者(测试锁/判读脚本)兼容,两者和恒等。

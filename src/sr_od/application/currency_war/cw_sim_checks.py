@@ -1709,6 +1709,12 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
 # vd_* 常量推导),漂移由测试仓双向锁辖。
 _P2_LEVELUP_STOP_HP: int = 21   # ceil(1×registry.vd_p2_loss=20.05)
 _P1_LEVELUP_STOP_HP: int = 11   # ceil(1×(11.32−0.37×2)=10.58)
+# 血预算停手·第二波镜像(设计件 12 §6;ADR-0451):P1_EXIT_BLOOD_TARGET
+# (期望预算线,W524 审计后语义)+ 末窗起点 handoff_gate_min_round +
+# 应急带下限 emergency_hp(急救型豁免面;检查域=两者开区间)
+_P1_EXIT_BLOOD_TARGET: int = 60
+_P1_HANDOFF_GATE_MIN_ROUND: int = 6
+_P1_EMERGENCY_HP: int = 25
 # 位面节点数镜像(plane_last_battle 的轮维;P1=NODES_PER_PLANE=9,
 # P2=cw_sim.P2_ROUNDS=7——ALL IN 帧=node='boss' ∧ 轮≥节点数)
 _ALLIN_MIN_ROUND: dict[int, int] = {1: 9, 2: 7}
@@ -1764,6 +1770,43 @@ def seg_check_p1_blood_budget_levelup(rows: list[dict]) -> list[dict]:
     return _blood_budget_levelup_events(rows, 1, _P1_LEVELUP_STOP_HP)
 
 
+def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
+    """血预算停手·末窗搜索型刷新停付(段级;设计件 12 §2.3-P1-c/§3.2;
+    ADR-0451):P1 末窗(轮≥handoff_gate_min_round)∧ 血预算不足带
+    (emergency_hp < 决策帧 hp < P1_EXIT_BLOOD_TARGET——应急带内刷新=
+    急救型豁免面,ALL IN 窗让位)出现 RefreshShop = 搜索型停付未生效,
+    违规。hp 口径同停升级检查(决策帧=上一行结算 hp)。"""
+    out: list[dict] = []
+    prev_hp: int | None = None
+    for row in rows:
+        hp_decision = prev_hp
+        prev_hp = row.get('hp') if row.get('hp') is not None else prev_hp
+        if (row.get('plane') or 1) != 1:
+            continue
+        hp = hp_decision
+        if hp is None or hp >= _P1_EXIT_BLOOD_TARGET \
+                or hp <= _P1_EMERGENCY_HP:
+            continue
+        rn = int(row.get('round_num') or 0)
+        if rn < _P1_HANDOFF_GATE_MIN_ROUND:
+            continue
+        node = (row.get('sim') or {}).get('node') or ''
+        if node == 'boss' and rn >= _ALLIN_MIN_ROUND.get(1, 9):
+            continue    # ALL IN 窗豁免([18] 停手让位)
+        rf = sum(1 for a in row.get('actions') or []
+                 if a.get('__type__') == 'RefreshShop')
+        if rf:
+            out.append({
+                'plane': 1, 'round_num': rn,
+                'detail': f'末窗备战帧hp{hp}<{_P1_EXIT_BLOOD_TARGET} '
+                          f'仍刷新×{rf}(搜索型停付未生效;急救带'
+                          f'hp≤{_P1_EMERGENCY_HP}豁免)——血预算停手'
+                          '(ADR-0451)',
+                'hp': hp, 'refreshes': rf,
+            })
+    return out
+
+
 #: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
 #: 平行,输出粒度不同——事件带定位,见本节头注释)。
 _SEGMENT_CHECKS = {
@@ -1776,6 +1819,7 @@ _SEGMENT_CHECKS = {
     'seg_unjustified_levelup': seg_check_unjustified_levelup,
     'seg_p2_blood_budget_levelup': seg_check_p2_blood_budget_levelup,
     'seg_p1_blood_budget_levelup': seg_check_p1_blood_budget_levelup,
+    'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
 }
 
 #: 事件列表上限(报告侧;全量走 seed 重放可再取,防批报告膨胀)

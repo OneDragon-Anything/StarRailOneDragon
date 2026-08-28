@@ -87,7 +87,42 @@
   段级检查 `seg_p2/p1_blood_budget_levelup`(备战帧 hp=上一行结算 hp
   口径)。
 - 开关 `blood_budget_stop_enabled` 默认开(P21 定谳恒接线),False=A/B
-  对照臂注入面。P1-a/P1-c/停刷新数值不在辖域(设计 §4.2 后续波次)。
+  对照臂注入面。
+
+### 3.1 血预算停手·第二波:末窗支出降格 + 搜索型刷新停付(ADR-0451)
+
+先行清单收尾两条(β 无关部分;证据 = W516 HG5/IF30 排除证据 +
+[31]④ 刷新金合法用途硬约束):
+
+- **触发面**(共用):P1 末窗(r ≥ `handoff_gate_min_round`)∧
+  hp < `p1_exit_blood_target`(discipline.`p1_exit_blood_short`,纯辖域
+  谓词不带开关)。hp 线语义 = 期望预算线(充分不必要、非存活保证,
+  W524 审计),触发动作是授权结构降格,不是保血承诺。
+- **P1-a 末窗支出降格**(开关 `p1_exit_downgrade_enabled`,默认开):
+  承接门定向投资授权的**授权豁免通道**停——定向 'copy' 生成臂/副本
+  换卡 C 臂/非正分门 'copy' 豁免/承接缺口破息 EV 加成四面在血预算
+  不足帧全部失效(承接授权不豁免停手);减损型动作族(bond_fallback
+  同息档羁绊档/pair/plugin 上场即转化/deploy)不在辖域,动作族复用
+  11 号件 blood_protect 梯度既有语义,不新增动作。
+- **P1-c/停刷新结构**(开关 `blood_budget_refresh_stop_enabled`,
+  默认开):refresh 收尾的授权前置拒付(`discipline.blood_budget_
+  refresh_blocked`)——血预算不足帧所有刷新授权面(V_D 正分搜索/
+  M-A 定向/release 泄息)停付,M-A 预算不消耗。分型:**急救型保留**
+  = 应急带(hp≤`emergency_hp`)内刷新授权(搜牌补板当轮转化,
+  [31]④ 归类,「血线内当轮转化豁免」由此承载);**数值停刷新线
+  不落**(收益项 Δp×β 不可算,挂 β 开臂判据,设计件 12 §4.1),
+  P2 辖域标定前为空——只落结构不落数值。锁线判定不动,只挡
+  搜索型支出。
+- **接缝**:与息线门独立谓词 AND(血线胜——泄息刷新在血预算不足帧
+  同停);非第五覆盖态,emergency 态内降格同样生效;`plane_last_battle`
+  ALL IN 窗两门同款让位;11 号件应急梯度不动(预算线触发早、动作是
+  授权降格;tier0 触发晚、动作是应急梯度,两线不互代)。
+- **披露**:拒付计数 `session.v3_blood_budget_refresh_rejects` → sim
+  账本 `sim.blood_budget_refresh_rejects` 逐轮差分 + 批聚合;段级检查
+  `seg_p1_blood_budget_refresh`(末窗血预算不足带、应急带与 ALL IN
+  帧外出现 RefreshShop = 违规;hp 口径 = 上一行结算);cw_sim_checks
+  镜像常量(`_P1_EXIT_BLOOD_TARGET`/`_P1_HANDOFF_GATE_MIN_ROUND`/
+  `_P1_EMERGENCY_HP`)测试仓双向锁。
 
 ## 4. 波及面(as-built 引用)
 

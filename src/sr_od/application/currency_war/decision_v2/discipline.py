@@ -858,6 +858,71 @@ def blood_budget_levelup_blocked(state: GameState, session: StrategySession,
     return False
 
 
+# ===== 血预算停手·第二波:末窗支出降格/搜索型刷新停付 =====
+# (设计件 12 §2.3-P1-a/P1-c、§3.2;ADR-0451)
+
+
+def p1_exit_blood_short(state: GameState,
+                        registry: DecisionV2Registry) -> bool:
+    """P1 末窗血预算不足谓词(设计件 12 §2.2/§6;ADR-0451):
+    P1 末窗(r≥handoff_gate_min_round,承接门语境单一源)∧
+    hp < p1_exit_blood_target。
+
+    hp 线语义=期望预算线(p1_exit_blood_target 注释;W524 审计后:
+    充分不必要、非存活保证)。纯辖域谓词不带开关——开关语义在
+    p1_directed_downgrade_active(P1-a)/blood_budget_refresh_blocked
+    (P1-c)各自出入口,A/B 双臂可独立注入。依据=W516 排除证据
+    (HG5/IF30):β 弱通道下「多买战力件」换回的胜率不足以对冲
+    15-25 血/败;减损路径(bench 囤件变现上场、[11] 同息档羁绊档
+    填充)无 β 依赖。
+    """
+    return (state.plane == 1
+            and state.round_num >= registry.handoff_gate_min_round
+            and state.hp < registry.p1_exit_blood_target)
+
+
+def p1_directed_downgrade_active(state: GameState,
+                                 registry: DecisionV2Registry) -> bool:
+    """P1-a 末窗支出降格触发面(设计件 12 §2.3-P1-a;ADR-0451):
+    承接门定向投资授权在血预算不足局的支出结构降格:战力投资 →
+    减损保血。降格只停**授权豁免通道**(定向星级 copy 臂/破息缺口项/
+    定向刷新预算),减损型动作族(bond_fallback/pair/plugin/deploy)
+    不在辖域——动作族复用 11 号件 blood_protect 梯度既有语义,不新增
+    动作。
+    """
+    return (registry.p1_exit_downgrade_enabled
+            and p1_exit_blood_short(state, registry))
+
+
+def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
+                                 registry: DecisionV2Registry) -> bool:
+    """血预算停手·搜索型刷新停付(结构语义;设计件 12 §2.3-P1-c/§3.2;
+    ADR-0451)。刷新分型:搜索型(为找件/挑线付刷新费)停付 vs 急救型
+    保留。急救型豁免=应急带内刷新(应急带 hp≤emergency_hp 的刷新授权
+    语义=搜牌补板当轮转化变现,[31]④ 合法用途归类;血线内的当轮转化
+    豁免由此承载);唯一窗口豁免=``plane_last_battle`` ALL IN(同
+    blood_budget_levelup_blocked,停手让位,[18])。
+
+    接缝语义:与息线门独立谓词取 AND(血线胜——release 泄息刷新在
+    血预算不足帧同样停,M-A 定向刷新预算不消耗);非第五种覆盖态。
+
+    **数值停刷新线不在本谓词**:收益项=Δp×β 不可算,挂 β 开臂判据
+    (设计件 12 §3.2/§4.1),标定前只落结构不落数值。P2 辖域在标定前
+    为空:P2 血危机带(应急带)已在急救豁免面,非应急 P2 帧的血预算
+    判据无数值——P1 辖域=末窗血预算不足([31]④ 硬约束归位,血预算
+    不足局不为找件付刷新费;锁线判定本身不动,只挡搜索型支出)。
+    消费点:arbiter refresh 收尾裁决(拒付计数=session.v3_blood_budget_
+    refresh_rejects,披露模式对齐 blood_budget_levelup_rejects)。
+    """
+    if not registry.blood_budget_refresh_stop_enabled:
+        return False
+    if plane_last_battle(state, session):
+        return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
+    if state.hp <= registry.emergency_hp:
+        return False    # 急救型保留(应急带=搜牌补板当轮转化豁免面)
+    return p1_exit_blood_short(state, registry)
+
+
 def _streak_floor(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry,
                   base_floor: int) -> int:
