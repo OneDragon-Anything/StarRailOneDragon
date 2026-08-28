@@ -48,6 +48,11 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_cv import slot_occupied
+from sr_od.application.currency_war.cw_faction_obs import (
+    compare_factions,
+    read_displayed_factions,
+    report_faction_reconcile,
+)
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     read_reward_spheres,
@@ -58,6 +63,7 @@ from sr_od.application.currency_war.cw_identity_obs import (
 )
 from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.cw_observation import (
+    board_from_tracked,
     read_deploy_cap,
     read_deployed_count,
 )
@@ -1118,6 +1124,70 @@ class PrepDirector(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] xp_expect reconcile skip: {e}')
 
+    def _reconcile_faction_display(self, obs: PrepObservation) -> None:
+        """备战稳定帧羁绊显示对账(cw_faction_obs 接线;零决策:不一致仅落
+        缺陷台账,不纠漂不重读——羁绊状态以计算侧为主源,显示只作对账票)。
+
+        computed 侧 = ``board_from_tracked``(session tracked_deployed,全集
+        主源;None=含未知身份算不出 → 宁缺勿造跳过);显示侧 = 左侧羁绊面板
+        OCR(cw_faction_obs.read_displayed_factions,只读可视条目)。截断/
+        OCR 失读/残名按 cw_faction_obs 口径不评不判错,仅计数随 refs 披露;
+        ``computed_missing`` 形态(compare 第四态)同为留证不判错,
+        report_faction_reconcile 只转发 mismatch 行。节奏 = 与
+        _reconcile_xp_expect 同款 heavy 定型帧消费,全程 best-effort。
+        """
+        try:
+            session = self._session()
+            if session is None:
+                return
+            computed = board_from_tracked(
+                list(getattr(session, 'tracked_deployed', None) or []))
+            if computed is None:
+                return
+            frame = getattr(self, 'last_screenshot', None)
+            if frame is None:
+                return
+            reading = read_displayed_factions(self.ctx, frame)
+            result = compare_factions(computed, reading.entries,
+                                      reading.unreadable)
+            st = obs.state
+            plane = int(getattr(st, 'plane', 0) or 0)
+            round_num = int(getattr(st, 'round_num', 0) or 0)
+            if result.mismatch_count <= 0:
+                # 不一致为零也留一条 debug(含不评口径计数),频率统计靠台账
+                # 数据说话,不在此落账
+                log.debug(f'[cw][director] faction_display reconcile: '
+                          f'ok({len(result.rows)}行) '
+                          f'ocr_skip={len(result.ocr_skipped)} '
+                          f'trunc_suspect={len(result.truncation_suspects)} '
+                          f'computed_missing='
+                          f'{sum(1 for r in result.rows if r.verdict == "computed_missing")}')
+                return
+            refs = [
+                {'field': 'ocr_skipped', 'value': ','.join(result.ocr_skipped)},
+                {'field': 'unmatched', 'value': ','.join(reading.unmatched)},
+                {'field': 'truncated', 'value': str(reading.truncated)},
+                {'field': 'truncation_suspects',
+                 'value': ','.join(result.truncation_suspects)},
+                {'field': 'computed_missing',
+                 'value': ','.join(r.faction for r in result.rows
+                                   if r.verdict == 'computed_missing')},
+            ]
+            n = report_faction_reconcile(
+                result, plane=plane, round_num=round_num,
+                gap_large=True,
+                verdict=('留证-羁绊面板显示计数与计算侧不一致(计算侧= tracked '
+                         '全集主源,显示只作对账票;零决策记账不纠漂。已知不评:'
+                         '面板底部截断/OCR 失读/残名/computed_missing 均只计数'
+                         '不判错;单次 L1,复现升 L0 由分级安灯承接)'),
+                refs=refs,
+                reader_source='faction_display_reconcile',
+            )
+            log.debug(f'[cw-director] faction_display reconcile: '
+                      f'{result.mismatch_count} mismatch → {n} 行台账')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] faction_display reconcile skip: {e}')
+
     def _session(self):
         match = getattr(self.ctx, 'cw_match', None)
         return match.session if (match is not None and match.session is not None) else None
@@ -1547,6 +1617,10 @@ class PrepDirector(SrOperation):
             # 期望态层·经验(W552):同帧对账(锚定/轮界重锚/段内对账;
             # 内部 best-effort,异常不阻塞环)。
             self._reconcile_xp_expect(obs)
+            # 羁绊显示对账(cw_faction_obs 接线):同帧消费——computed=tracked
+            # 全集 vs 面板 OCR,mismatch 落缺陷台账(kind=faction_display_mismatch,
+            # 零决策不纠漂;内部 best-effort)。
+            self._reconcile_faction_display(obs)
             if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
