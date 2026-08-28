@@ -19,7 +19,7 @@
 - `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
 - `references/strategy-work.md`:策略工作统一说明(策略改动 checklist、思路/核心骨架/改前必做/策略验证纪律与单帧锁出口/疑问三滤网)。
-- `references/autonomous-loop.md`:CW 编排资产(定时任务提醒网角色与提示词模板/实机监控自执行模板/策略修改审查/哨兵报警消费;定时任务消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode,设计见 ADR-0022)。
+- `references/autonomous-loop.md`:CW 编排资产(定时任务提醒网角色与提示词模板/实机监控自执行模板/实机复盘与策略审查/哨兵报警消费;定时任务消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode,设计见 ADR-0022)。
 - `design/`:本文件 + 决策存档。
 
 ## 与其它约定层的分工
