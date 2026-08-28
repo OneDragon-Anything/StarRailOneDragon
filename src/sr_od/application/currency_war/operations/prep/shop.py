@@ -17,6 +17,7 @@ from sr_od.application.currency_war.cw_obs_core import (
 )
 from sr_od.application.currency_war.cw_observation import (
     area_center,
+    ensure_portrait_templates,
     new_bench_slots,
     read_game_state,
     read_gold,
@@ -79,6 +80,51 @@ def refresh_effective(before_names: list[str] | tuple[str, ...],
             or any(not n for n in after_names)):
         return None
     return set(before_names) != set(after_names)
+
+
+def bench_buy_occupancy_ok(bought_count: int, new_slot_count: int) -> bool | None:
+    """买牌占位判据(观测自检框架设计 §2.2;纯观测零决策)。
+
+    本单元执行了 ≥1 次 BuyCard → ``new_bench_slots``(pixel-diff,身份无关)
+    应有 ≥1 新占槽;0 新槽 = 「占位不出现」——设计点名的唯一硬失败形态
+    (点击落空/动画帧误判),按 gap_large 落台账。未买牌 → None 不判。
+    """
+    if bought_count <= 0:
+        return None
+    return new_slot_count > 0
+
+
+def bench_buy_count_ok(bought_count: int, new_slot_count: int,
+                       sold_count: int) -> bool | None:
+    """买牌落位计数总账(观测自检框架设计 §2.2;纯观测零决策)。
+
+    期望:新占槽数累计 = 本单元 BuyCard 数 − 中途卖出数(设计原文口径)。
+    已知留证级误报源(设计 §2.2「单槽误判被总账对冲」的延伸):pixel-diff
+    只认「槽变了」不认方向——本单元卖出/3合1 合并引起的槽变化也会计入
+    新槽,故计数不符只留证(gap_large=False),由单元总账语义对冲,不作
+    硬失败。未买牌 → None 不判。
+    """
+    if bought_count <= 0:
+        return None
+    return new_slot_count == bought_count - sold_count
+
+
+def bench_buy_identity_missing(bought_names: list[str],
+                               readback_names: list[str]) -> list[str] | None:
+    """买牌身份回读对拍(观测自检框架设计 §2.2;纯留证,非失败判据)。
+
+    返回回读身份中未出现的买牌名(留证清单)。设计明示「身份留证不算失败,
+    占位不出现才算失败」——占位由 :func:`bench_buy_occupancy_ok` 另判。
+    匹配口径:两侧均为注册表规范名(买牌名 = shop OCR 名经 ``get_char``
+    校验链;回读名 = SIFT 经 ``resolve_char_name`` 规范),全等即匹配——
+    设计写的 LCS 名匹配针对 OCR 形变场景,此对拍两侧已规范化的名字无形变
+    输入,不需要容差层。回读为空 = SIFT 整帧失读/模板未加载 → None 不猜
+    (宁缺勿造,与既有 unknown miss 语义同)。
+    """
+    if not bought_names or not readback_names:
+        return None
+    _have = set(readback_names)
+    return [n for n in bought_names if n and n not in _have]
 
 
 def _form_progress(comp, state) -> float:
@@ -177,6 +223,7 @@ class BuyShopCards(SrOperation):
         ):
             if self.round_by_find_area(screen, _scr, _area).is_success:
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
+
 
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
@@ -763,6 +810,74 @@ class BuyShopCards(SrOperation):
                     match.bench_slot_map = {}
                 match.bench_slot_map.update(_slot_map)   # 合并(跨回合累积),非覆盖
                 log.info(f'[cw-shop] char→slot(pixel-diff,合并):{_slot_map} → 全 map={match.bench_slot_map}')
+            # 买牌落位对拍(观测自检框架设计 §2.2;纯记账零决策):像素差已给
+            # 落位事实(上方 new_bench_slots),此处按设计判据分级留证——
+            # 占位不出现(买≥1 张而新槽=0)是设计点名的硬失败形态(gap_large);
+            # 计数总账与身份回读是留证级(设计明示「身份留证不算失败」;计数
+            # 受卖出/合并引起的槽变化干扰,见 bench_buy_count_ok 注)。失败路径
+            # 无 return/retry/屏蔽,买牌照常收工。
+            with contextlib.suppress(Exception):
+                _occ = bench_buy_occupancy_ok(len(_bought_names), len(_new_slots))
+                _bench_refs = [{'stream': 'decisions',
+                                'key': (f'plane={state.plane}|round={state.round_num}'
+                                        f'|bought={len(_bought_names)}')}]
+                if _occ is False:
+                    _occ_shot = None
+                    with contextlib.suppress(Exception):   # 截图 best-effort
+                        _occ_shot = self.save_screenshot(prefix='bench_buy_no_slot')
+                    cw_telemetry.record_defect(
+                        'bench', 'invariant_break',
+                        expected=(f'买{len(_bought_names)}张 → new_bench_slots '
+                                  '≥1 新占槽'),
+                        observed=('pixel-diff 新占槽=0(占位不出现:点击落空/'
+                                  '动画帧误判基线帧)'),
+                        plane=state.plane, round_num=state.round_num,
+                        verdict='留证-买牌占位未出现(设计§2.2 硬失败形态;'
+                                '复现升级由台账复现计数承载)',
+                        shot=_occ_shot,
+                        reader_source='bench_buy_pixel_diff',
+                        gap_large=True, refs=_bench_refs,
+                        note='观测自检框架设计 §2.2:占位不出现才算失败')
+                _cnt = bench_buy_count_ok(len(_bought_names), len(_new_slots),
+                                          total_sell)
+                if _occ is not False and _cnt is False:
+                    cw_telemetry.record_defect(
+                        'bench', 'invariant_break',
+                        expected=(f'新占槽={len(_bought_names)} − 中途卖出'
+                                  f'{total_sell} = {len(_bought_names) - total_sell}'),
+                        observed=f'pixel-diff 新占槽={len(_new_slots)}',
+                        plane=state.plane, round_num=state.round_num,
+                        verdict=('留证-落位计数不符(pixel-diff 不分方向,卖出/'
+                                 '合并槽变化计入,单元总账留证)'),
+                        reader_source='bench_buy_pixel_diff',
+                        gap_large=False, refs=_bench_refs,
+                        note='观测自检框架设计 §2.2:新槽数累计=买牌数−中途卖出数')
+                # 身份回读(留证级):SIFT 纯读走 identify_slots(无 ctx 依赖的
+                # 纯 CV),**不经 read_bench_chars**——后者内置召唤物/书册卡停机
+                # 钩子,买后动画帧误触停机即违背本对拍零行为约束。复用既有
+                # _after_shot 帧 + ensure_portrait_templates 缓存,零新增读屏。
+                _templates = ensure_portrait_templates(self.ctx)
+                if _templates is not None:
+                    from sr_od.application.currency_war.cw_identity_obs import (
+                        _ctx_slots,
+                        identify_slots,
+                    )
+                    _rb = identify_slots(_after_shot, _templates,
+                                         _ctx_slots(self.ctx, '备战栏', 9), '')
+                    _missing = bench_buy_identity_missing(
+                        _bought_names, [c.char_id for c in _rb])
+                    if _missing:
+                        cw_telemetry.record_defect(
+                            'bench', 'perception_conflict',
+                            expected=f'回读身份含买牌名:{sorted(_bought_names)}',
+                            observed=(f'回读={sorted(c.char_id for c in _rb)};'
+                                      f'未出现:{sorted(_missing)}'),
+                            plane=state.plane, round_num=state.round_num,
+                            verdict=('留证-身份回读未含买牌名(容未识别;'
+                                     '占位已另判,不构成失败)'),
+                            reader_source='bench_buy_sift_readback',
+                            gap_large=False, refs=_bench_refs,
+                            note='观测自检框架设计 §2.2:身份留证不算失败')
 
         # 关商店(「收起」)
         time.sleep(0.4)

@@ -521,10 +521,42 @@ class CurrencyWarRunLoop(SrOperation):
                         if (_scr[0], _scr[1]) != (_plane, _round):
                             log.info('[cw-loop] plane/round 结算屏真值「%s-%s」覆盖 last-known「%s-%s」(W239)',
                                      _scr[0], _scr[1], _plane, _round)
+                            # 同轮双读对拍(观测自检框架设计 §2.7):结算屏头部
+                            # 「X-Y」vs 备战 phase_round 缓存,不等 → 留证。裁决
+                            # 已自动(采新),按分级标准恒 L2;残留屏(relaunch
+                            # 首帧)豁免——那是设计点名的已知误报源。
+                            cw_telemetry.record_defect(
+                                'phase_round', 'perception_conflict',
+                                expected=f'备战缓存 {_plane}-{_round}',
+                                observed=f'结算屏 {_scr[0]}-{_scr[1]}',
+                                plane=_plane, round_num=_round,
+                                verdict='留证-结算屏真值覆盖 last-known(缓存靠备战帧'
+                                        '顶栏维护,位面过场后可能停旧值)',
+                                reader_source='settlement_vs_prep_round',
+                                gap_large=False, auto_resolved=True,
+                                refs=[{'stream': 'outcomes',
+                                       'key': f'plane={_plane}|round={_round}'}],
+                                note='观测自检框架设计 §2.7:同轮双读不等留证;'
+                                     '残留屏豁免')
                         _plane, _round = _scr
                     else:
                         log.warning('[cw-loop] 结算屏「%s-%s」落后 last-known「%s-%s」= OCR 假阳 → 拒,保 last-known(W239 单调门)',
                                     _scr[0], _scr[1], _plane, _round)
+                        # 同轮双读对拍的拒信侧(观测自检框架设计 §2.7):裁决
+                        # 已自动(单调门拒),恒 L2 留证。
+                        cw_telemetry.record_defect(
+                            'phase_round', 'perception_conflict',
+                            expected=f'备战缓存 {_plane}-{_round}',
+                            observed=(f'结算屏 {_scr[0]}-{_scr[1]}(落后 last-known'
+                                      '=OCR 假阳,单调门拒)'),
+                            plane=_plane, round_num=_round,
+                            verdict='留证-结算屏读数落后 last-known 判 OCR 假阳拒',
+                            reader_source='settlement_vs_prep_round',
+                            gap_large=False, auto_resolved=True,
+                            refs=[{'stream': 'outcomes',
+                                   'key': f'plane={_plane}|round={_round}'}],
+                            note='观测自检框架设计 §2.7:同轮双读不等留证;'
+                                 '残留屏豁免')
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             # 「1-9首领」= boss 结算。结算标识 area 化(货币战争-结算/标识-首领,positional rect
             # 基于 ended.webp 实帧建档):普通结算同位是「奖励」(与「首领」无公共子序列,

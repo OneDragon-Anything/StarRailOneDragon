@@ -41,6 +41,7 @@
 id_mark/两个节点条);boss 节点圆由 ``read_plane_detail_nodes`` 动态定位
 (节点数随位面/投资策略变:位面1=9,位面2/3=7,不硬编码)。
 """
+import contextlib
 import logging
 import time
 from typing import ClassVar
@@ -94,6 +95,35 @@ def conclude_plane_boss(label: str | None, sift_name: str | None) -> tuple[str, 
     return 'record', sift_name
 
 
+def node_seq_cross_mismatch(prep_seq: list[str | None],
+                            detail_seq: list[str | None]) -> list[int] | None:
+    """备战帧 vs 位面详情帧节点序列互证(观测自检框架设计 §1 矩阵行11/§5-B5;
+    纯函数可单测)。
+
+    判据(设计原文唯一给到的口径):两读法(read_node_sequence 备战条 /
+    read_plane_detail_nodes 详情条,同 CV 核心)对**同一位面**的序列做对拍,
+    常态化留证。两读法均已识别的位次类型不一致 → 不一致位次清单(留证);
+    任一序列空(非 clean 帧/模板未加载)→ None 不可判不猜;无同识别位 →
+    None(无可比位);全可比位一致 → [](对拍通过,不落任何行)。
+
+    边界:两序列长度可不同(备战行含 invest-env 增槽、详情带按位面 9/7 圆),
+    只在双方类型均非 None 的位次上对拍、长度差不判(设计未定义长度判据);
+    boss 槽两读法均置 None(头像态 Hu 对头像圆无意义,见 cw_node_reader)
+    → 自然落入「未识别跳过」,不产生伪不一致。
+    """
+    if not prep_seq or not detail_seq:
+        return None
+    mism: list[int] = []
+    compared = False
+    for i, (a, b) in enumerate(zip(prep_seq, detail_seq, strict=False)):
+        if a is None or b is None:
+            continue
+        compared = True
+        if a != b:
+            mism.append(i)
+    return mism if compared else None
+
+
 class CollectPlaneIntel(SrOperation):
     """位面详情:一次采集位面情报(三 boss 大图标 SIFT + 词缀横条 + 节点带;
     接管局补采主通道,亦开局校准通用)。"""
@@ -106,6 +136,11 @@ class CollectPlaneIntel(SrOperation):
         self._cur_plane: int = 0          # 0-based 当前采集位面索引
         self._affixes: list[str] = []     # 词缀横条(位面详情屏,随 boss 同开读取)
         self._nonclean_wait_start: float | None = None   # 非clean帧等待起点(time.monotonic 时刻;None=未在等)
+        # 节点序列互证输入(观测自检框架设计 §1 行11/§5-B5):备战帧的节点类型
+        # 序列与所在位面(入口过备战屏时快照);None=未取得(非 clean 帧)不互证。
+        self._prep_node_types: list[str | None] | None = None
+        self._prep_plane: int = 0                 # 备战帧所在位面(1-based;0=未知)
+        self._prep_cross_done: bool = False       # 互证一次即止(op 短生命周期,防重跑重复落行)
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -117,17 +152,20 @@ class CollectPlaneIntel(SrOperation):
             return None
         return Point((r.x1 + r.x2) // 2, (r.y1 + r.y2) // 2)
 
-    def _boss_node_center(self) -> Point | None:
+    def _boss_node_center(self, slots: list | None = None) -> Point | None:
         """当前位面节点条的最右(boss)节点圆心(read_plane_detail_nodes 动态定位)。
 
         位置先验(最右=首领):run 30 反例帧反而证实——点最右圆详情条显
         「1-9 首领节点」(徽章态身份缺失但**位置仍是首领**,ADR-0398);
         点击后再由详情条标签验证(conclude_plane_boss),先验失效走 retry 兜底。
+        ``slots`` 可传调用方已读的详情条槽列表(采集循环同帧复用,免双读);
+        None 时就地读。
         """
         from sr_od.application.currency_war.cw_observation import (
             read_plane_detail_nodes,
         )
-        slots = read_plane_detail_nodes(self.ctx, self.last_screenshot)
+        if slots is None:
+            slots = read_plane_detail_nodes(self.ctx, self.last_screenshot)
         if not slots:
             return None
         s = slots[-1]
@@ -206,6 +244,20 @@ class CollectPlaneIntel(SrOperation):
                     read_node_sequence,
                 )
                 slots = read_node_sequence(self.ctx, screen)
+                # 互证输入快照(观测自检框架设计 §1 行11):备战帧的节点类型
+                # 序列 + 所在位面(read_phase_round 顶栏 OCR);非 clean 帧
+                # (slots None)不快照,等下个 clean 备战帧。
+                if slots:
+                    # getattr 槽位结构演进兜底(测试桩/旧槽对象可无 node_type 字段)
+                    self._prep_node_types = [getattr(s, 'node_type', None)
+                                             for s in slots]
+                    from sr_od.application.currency_war.cw_observation import (
+                        read_phase_round,
+                    )
+                    with contextlib.suppress(Exception):
+                        _pp = read_phase_round(self.ctx, screen)
+                        if _pp and _pp[0]:
+                            self._prep_plane = int(_pp[0])
                 # 点**任意节点图标**都开位面详情(建档实锤;入口不依赖 current
                 # 锚——22:09 实跑 1-7 帧当前槽 V 未过亮门无锚,首版依赖 current
                 # retry 耗尽失败)。优先 current,无则首个检出圆。
@@ -246,7 +298,14 @@ class CollectPlaneIntel(SrOperation):
         time.sleep(1.5)
         # ② 点该位面 boss 节点(动态定位;节点带随选中位面变)
         screen = self.screenshot()
-        boss_pt = self._boss_node_center()
+        from sr_od.application.currency_war.cw_observation import (
+            read_plane_detail_nodes,
+        )
+        _detail_slots = read_plane_detail_nodes(self.ctx, screen)
+        # 节点序列互证(观测自检框架设计 §1 行11/§5-B5):同帧详情条与备战帧
+        # 序列对拍(同位面才比,见 _cross_check_node_seq);纯记账,无行为分支。
+        self._cross_check_node_seq(_detail_slots)
+        boss_pt = self._boss_node_center(_detail_slots)
         if boss_pt is None:
             return self._nonclean_read_gate('切卡动画中')
         self._nonclean_wait_start = None   # 读出=clean,重置等待账
@@ -278,6 +337,45 @@ class CollectPlaneIntel(SrOperation):
         _log.info('[cw-plane-intel] 采集进度:%s', self._plane_bosses)
         self._cur_plane += 1
         return self.round_wait(f'位面{self._cur_plane}完成,下一位面')
+
+    def _cross_check_node_seq(self, detail_slots) -> None:
+        """备战帧与位面详情帧同位面节点序列互证(观测自检框架设计 §1 行11/
+        §5-B5「备战/位面详情节点序列互证」;纯记账零决策)。
+
+        仅当:①详情条已读出;②详情位面 = 备战帧所在位面(跨位面无对应序列,
+        设计未定义,不发明);③本次 op 尚未对拍过。不一致 → 台账留证一次
+        (node_seq 属中相关面,单次 L2 留证;无 retry/无行为分支)。
+        """
+        if (self._prep_cross_done or not self._prep_node_types
+                or not detail_slots or self._prep_plane != self._cur_plane + 1):
+            return
+        self._prep_cross_done = True
+        from sr_od.application.currency_war import cw_telemetry
+        _prep = [getattr(s, 'node_type', None) for s in self._prep_node_types]
+        _det = [getattr(s, 'node_type', None) for s in detail_slots]
+        mism = node_seq_cross_mismatch(_prep, _det)
+        if not mism:
+            _log.info('[cw-plane-intel] 节点序列互证通过(位面%d,%d 可比位)',
+                      self._prep_plane,
+                      sum(1 for a, b in zip(_prep, _det, strict=False)
+                          if a is not None and b is not None))
+            return
+        with contextlib.suppress(Exception):
+            cw_telemetry.record_defect(
+                'node_seq', 'perception_conflict',
+                expected=f'备战帧序列:{_prep}',
+                observed=f'位面详情帧序列:{_det}(不一致位次(0基):{mism})',
+                plane=self._prep_plane,
+                verdict=('留证-同位面节点序列同位类型不一致(同 CV 核心跨输入域'
+                         '互证:备战彩色/详情彩带读法域不同)'),
+                reader_source='prep_vs_plane_detail_seq',
+                gap_large=False,
+                refs=[{'stream': 'decisions',
+                       'key': f'plane={self._prep_plane}'}],
+                note='观测自检框架设计 §1 行11:备战帧与位面详情帧序列对拍;'
+                     'boss 槽/未识别位自然跳过不判')
+        _log.info('[cw-plane-intel] 节点序列互证不一致(位面%d)位次%s → 台账留证',
+                  self._prep_plane, mism)
 
     @node_from(from_name='采集')   # 首跑教训:无显式边时「采集」success 被当 op 终点,关闭节点漏跑(画面留在位面详情)
     @operation_node(name='关闭并回写', node_max_retry_times=6)
