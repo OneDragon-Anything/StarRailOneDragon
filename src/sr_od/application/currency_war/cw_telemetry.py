@@ -111,6 +111,21 @@ def serialize_action(action: Action) -> dict[str, Any]:
     return d
 
 
+def p1_pair_label(ist: Any) -> str:
+    """P1 配方对 → 遥测标签串('A+B' 体系键串;空窗/无意向 = '')。
+
+    - 来源 = ``cw_intention.IntentionState``:配方锁局取 ``p1_pair``
+      (锁定产物),①资格锁局取 ``transition_pair``(受保护副方向,
+      与 scoring._vd_p1_pair 同式优先序);两字段同口径派生、同帧至多
+      一侧非空,故按 p1_pair 优先取其一。
+    - 体系键域/二元组语义见 cw_intention.IntentionState.p1_pair 注释;
+      tuple/None/非 dataclass 输入一律安全退化空串(纯观测不阻塞环)。
+    """
+    pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
+        or tuple(getattr(ist, 'transition_pair', ()) or ())
+    return '+'.join(str(k) for k in pair)
+
+
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
     """v3 意向状态(IntentionState)→ JSON-safe dict(W146)。
 
@@ -234,6 +249,13 @@ class DecisionTrace:
     # decide_prep 入口算一次的七维向量+派生档位,decision_v2.handoff.
     # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
     handoff: dict[str, Any] | None = None
+    # —— P1 配方对平铺观测(cw_intention 配方锁产物;判读上游)——
+    # 取值 = 本 record 调用时点的 session.v3_intention 配方对(非空
+    # IntentionState.p1_pair,次选 transition_pair),体系键以 '+' 连接
+    # (同 cw_intention last_event 'p1_pair:' 标签风格);''=未锁/空窗/
+    # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
+    # 嵌套 v3_intention 即可读锁定产物。可选,旧记录缺省 '' 不破坏 schema。
+    sess_p1_pair: str = ""
 
 
 @dataclass
@@ -467,6 +489,8 @@ class TelemetryRecorder:
                 with contextlib.suppress(Exception):   # 观测 best-effort
                     _ho['salvageable_1star_value'] = salvageable_1star_value(state)
             trace.handoff = _ho if isinstance(_ho, dict) else None
+            # P1 配方对平铺观测(空 extra 时字段保持默认空串)
+            trace.sess_p1_pair = str(extra.get('sess_p1_pair', ''))
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改

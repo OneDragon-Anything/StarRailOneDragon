@@ -1095,25 +1095,29 @@ class PrepDirector(SrOperation):
         """F8:obs+action 序列落 telemetry(P1 仅落盘;replay 评分后置)。"""
         try:
             st = obs.state
+            _sess = self._session()
             if st is not None:
                 st = st.copy()
                 # W222 遥测缺口①同源(shop record 点已补,本处是步进行):
                 # obs.state 是 OCR 现读态(equips 恒空),从 session owned 快照
                 # 补拷。copy 后再写——cw_comps 装备权重读 state.equips,
                 # 原地写会污染 director 后续决策输入(观测链修复禁越界)。
-                _sess = self._session()
                 st.equips = list(getattr(_sess, 'last_owned_equips', []) or []) \
                     if _sess is not None else []
             cw_telemetry.record_decision(
                 st if st is not None else GameState(),
-                target_comp=(self._session().target_comp.name
-                             if self._session() is not None and self._session().target_comp else ''),
+                target_comp=(_sess.target_comp.name
+                             if _sess is not None and _sess.target_comp else ''),
                 candidate_scores={},
                 eval_breakdown={'prep_step': float(self._steps)},
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
                 gold_point=False,   # r68 review:步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
                 extra={'formed_stop': bool(getattr(
-                    self._session(), 'v3_formed_stop', False))},  # ADR-0343 豁免联动
+                    _sess, 'v3_formed_stop', False)),  # ADR-0343 豁免联动
+                    # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的
+                    # 上游量;锁定产物/副方向取序见 p1_pair_label)
+                    'sess_p1_pair': cw_telemetry.p1_pair_label(
+                        getattr(_sess, 'v3_intention', None))},
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
             log.debug(f'[cw-director] telemetry skip: {e}')
