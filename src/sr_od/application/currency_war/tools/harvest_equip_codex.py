@@ -44,13 +44,13 @@ Session 0 的 Bash 跑报「游戏窗口未就绪」(session 隔离,见 memory s
 from __future__ import annotations
 
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils import cv2_utils
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.operations.sr_operation import SrOperation
 
@@ -105,7 +105,12 @@ class HarvestEquipCodex(SrOperation):
         if self.tab_x > 0:
             ctrl.click(Point(self.tab_x, 170), press_time=0.1, pc_alt=False)
             time.sleep(1.2)
-        repo = Path(__file__).resolve().parents[3]
+        # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位。
+        # 修正声明(显式行为变化):本文件在包内 tools/ 子包,旧的文件相对层级硬锚
+        # 实指 src/sr_od 而非仓库根,模板与截图曾被误写进 src/sr_od/assets/ 与
+        # src/sr_od/.debug/——误写产物已迁移回仓根对应位置(迁移证据见
+        # .debug/temp/currency_war/w680_exec_0a/REPORT.md)。
+        repo = get_project_root()
         # 统一模板目录(2026-08-16 用户规范 assets/template/currency_war/<类型>/;2026-08-18
         # 修:旧 'assets/template/cw_equip' 是规范外路径 → 归一 equip_legacy(手采图鉴
         # icon 与 plaza 官方库互补,同库去重)。
