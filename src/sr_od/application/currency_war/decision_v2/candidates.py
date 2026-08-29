@@ -69,6 +69,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
 BUY_TAGS: frozenset[str] = frozenset({
     'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
     'plugin', 'pair', 'copy', 'copy_press', 'bond_fallback', 'carry_gate',
+    'o1_bench_fill',
 })
 SELL_TAGS: frozenset[str] = frozenset({
     'off_target', 'for_gold', 'free_bench',
@@ -339,6 +340,24 @@ def _buy_tag(card: ShopCard, state: GameState,
             and card.faction in _owned_factions(state)):
         return 'bond_fallback'
     if not is_target:
+        # W611 O1 备战空位填补(ADR-0463;[31] 限域取代):g≥R* ∧ 备战
+        # 有空位 ∧ 非应急 → 散件末位可买(用户 directive:无目标也填满
+        # 备战;数学=溢余段买 1★ 退全款+息帽截断,弱占优参数无关,
+        # w611_econ_cycle/DESIGN.md §1.3)。质量序位置=bond_fallback
+        # (凑羁绊填充)之后——散件末位,填充件已在上分支命中。
+        # 其余域(g≤R* 凑息期/bench 满/应急)[31] 原样:纯散件不生成。
+        # 逐笔金可行性(g_after≥R*,不吃排程升级储蓄)在 arbiter.gold_floor
+        # 的 o1 地板加深处辖,生成层不重复判。
+        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+            overflow as _o1_overflow,
+        )
+        from sr_od.application.currency_war.decision_v2.filters import (
+            is_emergency as _o1_emergency,
+        )
+        if (not _o1_emergency(state, registry)
+                and not bench_full
+                and _o1_overflow(state, session, registry) > 0):
+            return 'o1_bench_fill'
         return None    # 纯散件不生成([31] 反散件原则)
     # 目标类标签裁决:核心(carry)> 其余目标件(新载体=
     # line_opportunistic 意向件;旧载体垫片=bridge_core 桥核心件)

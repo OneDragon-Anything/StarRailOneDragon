@@ -884,6 +884,15 @@ def score_candidate(cand: Candidate, state: GameState,
     (vd_refresh_score,W126/ADR-0349)。
     """
     base = score_state(state, registry, session)
+    if cand.tag == 'o1_bench_fill':
+        # W611 O1 备战空位填补(ADR-0463):板面差分对该通道构造性零维
+        # (bench 囤件不进形态维)→ 评 0 中性,放行语义由义务证明背书
+        # (溢余段买 1★ 退全款+息帽截断:已实现成本 0、收益 ≥0,弱占优
+        # 参数无关,w611_econ_cycle/DESIGN.md §1.3)——arbiter 非正分门
+        # 凭义务豁免越过(copy 零维豁免同判例),金可行性(g_after≥R*)
+        # 由 gold_floor 的 o1 地板加深处辖。int_emb=0(无息分量可剥离)。
+        return 0.0, {'base': base, 'after': None, 'o1_bench_fill': True,
+                     'int_emb': 0.0}
     if cand.tag == 'refresh':
         # W126/ADR-0349 V_D 批口径(P5 检验点①):refresh 附庸闸
         # (refresh_max_round 轮界/refresh_min_gold 金门/refresh_ev 常量

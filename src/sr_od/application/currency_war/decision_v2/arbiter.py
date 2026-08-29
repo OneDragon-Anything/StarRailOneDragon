@@ -185,6 +185,14 @@ def _check_constraint(name: str, cand: Candidate,
         if cost <= 0:
             return None
         floor = _active_floor(state, session, registry)
+        if cand.tag == 'o1_bench_fill':
+            # W611 O1 备战空位填补(ADR-0463):逐笔花后金 ≥R*——只花
+            # 溢余段,不吃排程升级储蓄(DESIGN §1.2 量上限的逐笔口径;
+            # R*≥息线≥各相位地板,取 max 只在排程帧收紧,常态零漂移)。
+            from sr_od.application.currency_war.decision_v2.economy_cycle import (
+                reserve_cap as _o1_reserve_cap,
+            )
+            floor = max(floor, _o1_reserve_cap(state, session, registry))
         if cand.tag == 'levelup':
             # W126/ADR-0349:升级的金门槛整体让位 boss_levelup_ban 块的
             # ev.levelup_ev_authorized 单一裁决——可负担性(after≥0 入口门)
@@ -754,7 +762,13 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 见下;同一刷新只走一条授权来源,M-A 优先)。
             _rel_ok = (cand.tag == 'refresh'
                        and getattr(session, 'v3_release', None) is not None)
-            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok):
+            # W611 O1 备战空位填补(ADR-0463):义务通道候选评 0 中性
+            # (scoring 单一源,证明背书=溢余段买 1★ 弱占优参数无关)——
+            # 凭义务语义越过非正分门(copy 零维豁免同判例);豁免≠必买:
+            # 约束链照常辖,金可行性(g_after≥R*)在 gold_floor 的 o1
+            # 地板加深处辖。
+            _o1_ok = cand.tag == 'o1_bench_fill'
+            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
