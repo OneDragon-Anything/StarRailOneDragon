@@ -954,12 +954,33 @@ class DecisionV2Registry:
     #: +兑现余量——存活轮数不足=新线到不了兑现点,换线期望 0<驻留
     #: 旧线(「转进死线」堵门)。辖域 plane≥2(损血表为 P2 标定);
     #: drought bail 旁路不辖(或-并存结构不变,弃线不是转进)。
-    #: **开臂判据挂账(生命周期补全,退役批(ADR-0466/0467/0469);此前无独立判据=非法悬置)**:
-    #: 与 rounds_two_state_enabled 同锚同批 A/B——同一换线裁决面,本门辖
-    #: 「是否验存活轮数」、two-state 辖「怎么算存活轮数」(正交双开关)。
-    #: 判据 = E_rounds 换线局濒死带时长与换线拦截率不劣 ∧ 「转进死线」局
-    #: 归零(判据单一源=cw_line_switch.survival_gate);可验时点 = sim A/B 批
-    #: sim A/B 批(n=300/臂,夜跑可达)。禁无限挂起:不过 → 删码留 ADR。
+    #: **开臂判据挂账(锐化终版,W665 DESIGN v2 §4;退役批(ADR-0466/0467/0469) 初版挂账)**:
+    #: 与 rounds_two_state_enabled 正交——本门辖「是否验存活轮数」、
+    #: two-state 辖「怎么算存活轮数」(单变量归因,禁 2×2 耦合臂)。
+    #: 主判 = W643 定钉谓词「r6–r8 换线且 ≤3 轮回锁原线」占比 on 相对
+    #: off 降 ≥1/3 且 p<0.05(三窗联合 630000–630199/900000–900099/0–29,
+    #: 窗敏感,单窗不判定)。机制判 = **反事实拦截精度 ≥2/3**:off 臂对
+    #: 每次换线事件记反事实判定位 P(f)=[R(f)<E(alt,f)(1+δ)+m](账本行
+    #: line_gate_cf_blocked;判据单一源=cw_line_switch.gate_counterfactual,
+    #: on 臂即门判定不重复算、检查器禁复算判据式),精度 = P(f)=True 的
+    #: 换线中「≤3 轮回锁原线 ∨ 新线未成型」占比——低于 2/3 = 门在该
+    #: 参数域系统性拦错,回炉 δ/m 而非开臂。「换线拦截率>0」降格为冒烟
+    #: 项(仅验接线正确性);「濒死带时长不劣」保留(方向独立)。A/B 另
+    #: 带中盘分桶机制检查(target_comp 变更率按 r≤4/r5-r9 分桶,
+    #: cw_sim_checks.check_line_switch_midgame_bucket,判前 off 臂定钉
+    #: 基线)与 G4 饿死守卫锚(cw_sim_checks.check_line_gate_starvation_
+    #: anchor:gate_hold 连续 ≥3 帧局占比零容忍)。排期 = W638 修复 A/B
+    #: 批(三窗合计 330/臂 ≥ n≥300/臂口径)。
+    #: **W683→v3 改道终态**:v2 §3-3 的 N=2 计数回锁被推翻(周期-3
+    #: 极限环 + G4 锚自盲)已废弃,饿死纠错改门感知滞回闩(§3-3 R-A:
+    #: 首次拦截置闩+一次性回锁恢复原锁层+闩内存续抑制出口①②;机制
+    #: 载体=cw_intention 门闩分支 + session.v3_line_gate_latch)。门辖域
+    #: 收窄 **plane==2**(R-G/FM-12:P2 损血表不辖 P3;P3 扩辖待
+    #: p3_cond_loss_table 标定);survival_gate 对 E=inf 改拦 'alt_inf'
+    #(R-E/FM-13:拦截归属唯一化,「上游已拦」假前提勘误)。G4 三判据
+    #: 与中盘分桶两桶语义见 cw_sim_checks 两锚函数。禁无限挂起:不过 →
+    #: 删码留 ADR(生命周期第 4 态);开臂翻默认时必须重推「断言
+    #: gate_off 放行」的既有锁组语义(生命周期第 3 态义务)。
     line_switch_survival_gate_enabled: bool = False
     #: C4 两态口径总开关(rounds_alive 逐节点投影的 p_win 通道):
     #: False=现行为逐位一致(零漂移锚)——p_win_p2_by_rung 即使已注入

@@ -345,6 +345,24 @@ class StrategySession:
     # discipline.terminal_release_bit(单一址),检查器禁复算 S0。
     v3_terminal_release: bool = False
     v3_terminal_release_plane: int | None = None
+    # 换线存活门决策位(W665 DESIGN v2 §3-2/R3;帧级:坐标系=本轮意向
+    # 驱动帧,update_intention 每帧入口清零、cw_intention._switch_gate_open
+    # 评估点写入;本轮未做换线辖域评估的帧=False。消费=sim 账本行/
+    # 生产 decisions 行透传,检查器只做位一致性核验、禁复算门判据式):
+    # - v3_line_gate_blocked = 拦截位(门拦=True;仅门开时有「拦」语义)
+    # - v3_line_gate_cf_blocked = 反事实判定位 P(f)=[R<need](off 臂=
+    #   gate_counterfactual 反事实记账;on 臂=门判定本身,不重复算)
+    v3_line_gate_blocked: bool = False
+    v3_line_gate_cf_blocked: bool = False
+    # 换线门滞回闩(W665 DESIGN v3 §3-3 R-A;门感知滞回,取代已被 W683
+    # 推翻并废弃的 N=2 计数回锁):本位面首次门拦截置闩 → 闩置位帧一次性
+    # 回锁原线(恢复 prev_lock_layer)→ 闩存续期(同位面)抑制撤销出口①②
+    #(locked=吸收态,砍断周期环驱动源)。坐标系=位面内闩(与
+    # v3_terminal_release 同型):置位时记 v3_line_gate_latch_plane,
+    # update_intention 入口检测位面切换清零,并同步清 tracks miss_count
+    # 与 ist.prev_lock_layer(陈旧断供证据不跨位面)。
+    v3_line_gate_latch: bool = False
+    v3_line_gate_latch_plane: int | None = None
     # `w224_handoff/`/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。
