@@ -1713,6 +1713,48 @@ class PrepDirector(SrOperation):
         # 采集钩子 W284 判读完成后曾删,W307 按 r314 原样重挂)。
         return self._run_loop(match)
 
+    def _clear_entry_overlays(self) -> None:
+        """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):
+        环入口先逐屏探可一键关闭的 overlay(注册表 = ``cw_observation_gate.
+        ENTRY_OVERLAY_CLOSE``,锚判定走现有 screen 体系),命中即点其关闭按钮,
+        拿干净备战画面再进 gate/全量识别——识别与 overlay 状态交织是死读与
+        冲突噪声的共同根。只收「无决策语义的弹窗/面板」;投资环境/策略等
+        交互 overlay 有专属 handler,关闭即丢决策内容,不进注册表、仍走既有
+        event_overlay bail → 外环消化路径。fail-open:截图/识别/点击任一异常
+        静默返回(=现行为,gate 的帧态门继续兜底)。"""
+        from one_dragon.base.screen import screen_utils
+        from sr_od.application.currency_war.cw_observation_gate import (
+            ENTRY_OVERLAY_CLEAR_ROUNDS,
+            ENTRY_OVERLAY_CLOSE,
+            ENTRY_OVERLAY_SETTLE_S,
+        )
+        for _ in range(ENTRY_OVERLAY_CLEAR_ROUNDS):
+            try:
+                frame = self.screenshot()
+            except Exception:   # noqa: BLE001  离线契约
+                return
+            _hit = None
+            for _name in ENTRY_OVERLAY_CLOSE:
+                try:
+                    if screen_utils.get_match_screen_name(
+                            ctx=self.ctx, screen=frame,
+                            screen_name_list=[_name],
+                            crop_first=False) is not None:
+                        _hit = _name
+                        break
+                except Exception:   # noqa: BLE001  离线契约
+                    return
+            if _hit is None:
+                return
+            _area = ENTRY_OVERLAY_CLOSE[_hit]
+            log.info(f'[cw][director] P0 清场:{_hit} 在场 → 点 {_area}')
+            try:
+                self.round_by_find_and_click_area(
+                    frame, _hit, _area, success_wait=0.5)
+            except Exception:   # noqa: BLE001  离线契约
+                return
+            time.sleep(ENTRY_OVERLAY_SETTLE_S)
+
     def _try_collapse_open_shop(self) -> bool:
         """环入口遇开商店稳定态(战斗胜利后新回合游戏可能自动开)→
         收起返回 True;非开态(真特效/overlay)返回 False。
@@ -1771,6 +1813,10 @@ class PrepDirector(SrOperation):
         # 真特效/overlay 才 bail 3-strike)。
         _gate_frame = None
         _gate_err = False
+        # P0 清场前置段(ADR-0462「先清场、再识别、后动作」):先把可一键
+        # 关闭的 overlay/弹窗清掉,再等关店态 stable 做全量识别——清场失败
+        # 不阻塞(后续 gate/容忍探测/bail 链照旧兜底)。
+        self._clear_entry_overlays()
         try:
             from sr_od.application.currency_war.cw_observation_gate import (
                 GATE_POST_COLLAPSE_TIMEOUT_S,

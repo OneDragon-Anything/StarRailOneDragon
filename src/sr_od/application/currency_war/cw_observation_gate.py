@@ -118,6 +118,55 @@ GATE_POST_COLLAPSE_TIMEOUT_S: float = 4.0
 #: 帧间隔(方案 v4:0.2-0.3s)
 _POLL_S: float = 0.25
 
+# ===== 规范入口序列:阶段键 + 每阶段字段规格(ADR-0462)=====
+# 「先清场、再识别、后动作」:P0 清场期零业务识别 → P1 干净备战期全量基线 →
+# P2 动作期(开店/overlay)只读该动作决策所需。字段规格 = read_game_state 的
+# 逐字段 gate 单一源;键域与 Snapshot SubstateClassification.name 对齐(W583
+# 快照契约;阶段1 子态注册表落地时随注册表收拢,纯搬家)。
+
+#: P1 干净备战期(gate PROFILE_CLOSED stable 帧):全量识别基线,含 hp 真读
+#: 主路径(shop 关帧血量区可见)。shop_cards/refresh_probs 属开店面板,必空不读。
+PHASE_PREP_CLEAN: str = 'prep_clean'
+#: P2a 开店动作期(gate PROFILE_OPEN):仅买牌决策所需;hp/node_type 结构必空
+#: (6fc1fd4c 先例 + shop.py session 拷贝),cap/deployed/难度/连胜以 P1 基线为准。
+PHASE_PREP_SHOP_OPEN: str = 'prep_shop_open'
+#: 战斗/过渡帧:仅位面轮次(恢复对局检测消费面只有 plane/round)。
+PHASE_BATTLE_OR_TRANSIT: str = 'battle_or_transit'
+
+#: 每阶段可读字段集(read_game_state 逐段 gate;phase=None=全量=现行为)。
+#: 字段键与 read_game_state 内各识别段一一对应;hp 段特殊:在集内=真读
+#: (read_hp_opt),不在=对账沿用(reconcile,零 OCR)。
+PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
+    PHASE_PREP_CLEAN: frozenset({
+        'gold', 'phase_round', 'hp', 'node_type', 'xp', 'level',
+        'deploy_cap', 'deployed_count', 'enemy_difficulty',
+        'level_up_cost', 'streak', 'board', 'bench_full',
+    }),
+    PHASE_PREP_SHOP_OPEN: frozenset({
+        'gold', 'phase_round', 'xp', 'level', 'level_up_cost',
+        'board', 'shop_cards', 'refresh_probs', 'bench_full',
+    }),
+    PHASE_BATTLE_OR_TRANSIT: frozenset({'phase_round'}),
+}
+
+#: P0 清场段:环入口可一键关闭的 overlay 注册表(画面名 → 关闭按钮 area 名;
+#: area 全部已建档于 assets/game_data/screen_info,锚判定走现有 screen 体系)。
+#: 只收「无决策语义的弹窗/面板」;投资环境/投资策略/选择伙伴/盛会之星/祈愿试炼
+#: 等交互 overlay 有专属 handler 消化(关闭即丢决策内容),不进本表,仍走既有
+#: event_overlay bail → 外环 handler 路径。
+ENTRY_OVERLAY_CLOSE: dict[str, str] = {
+    '货币战争-武装箱弹窗': '按钮-关闭',
+    '货币战争-补给': '按钮-返回备战界面',
+    '货币战争-遭遇节点': '按钮-返回备战界面',
+    '货币战争-积分奖励': '按钮-关闭',
+    '货币战争-星徽秘典弹窗': '按钮-关闭',
+    '货币战争-中断挑战弹窗': '按钮-关闭',
+}
+#: 清场轮数上限(每轮:逐屏锚探 → 命中点关闭 → settle;无命中即出)。
+ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
+#: 点关闭后的画面过渡等待(秒)。
+ENTRY_OVERLAY_SETTLE_S: float = 1.0
+
 #: 操作段(op_settle)预估等待(ADR-0264 终裁加速器②;用户口述
 #: 定调 2026-08-24:「备战期间的特效/overlay(买角色/部署特效)
 #: 是短暂的,预估 2 秒等待就好了」)。语义=**指纹基线重置点**:

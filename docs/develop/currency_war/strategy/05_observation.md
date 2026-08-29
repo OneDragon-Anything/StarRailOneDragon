@@ -27,6 +27,8 @@
 
 **deploy_cap 域外双帧一致采信(ADR-0420)**:`read_deploy_cap_debounced` 的防抖域(`|cap−level| ≤ `_CAP_DIFF_MAX`,见 `cw_back_layout`)之外不再一律拒绝——域外值重读一帧,两帧一致且落在绝对上界 `DEPLOY_CAP_ABS_MAX`(前台+后台实拍板面上界)之内即采信并 obs_conflict 留证;三类恒拒:**cap<level**、**超绝对上界**、**两帧不一致**(瞬时误读族防线不降级)。域内直采路径不变。
 
+**规范入口序列与逐阶段字段规格(ADR-0462)**:观测按「先清场(P0 零业务识别,环入口 `_clear_entry_overlays` 点关闭注册表 `ENTRY_OVERLAY_CLOSE` 中无决策语义的 overlay)→ 干净备战期(`prep_clean`,全量基线,hp 真读主路径)→ 动作期(`prep_shop_open` 仅买牌决策所需;overlay 帧只读该 overlay 决策内容)」组织;逐字段 gate 单一源 = `cw_observation_gate.PHASE_FIELD_SPEC`(`read_game_state` 的 `phase` 参数;None=全量=无阶段语义;未注册阶段 fail-open 全量+告警)。hp 读取门唯一来源 = spec('hp' ∈ spec 才 OCR,否则 reconcile 沿用,ADR-0282 语义不变);paddle cap/count 在 gate 路径合并单读(`resolve_paddle_pair`,防抖核 `_debounce_cap` 单一源)。冲突证据行带 `obs_phase` 阶段键——判读按阶段分类:清场期/overlay 期来源的冲突行应 ≈0(这些阶段不跑备战识别链),>0 即有调用点在错误阶段跑全量识别。
+
 ## 2. cw_reconcile:对账公共层
 
 tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 → L1 全图 OCR 对比 → L2 不一致兜底递进[裁剪再识/点击探查/定向重读] → L3 递进到底仍不一致 = 上游出错信号,保守恢复不硬猜)。环入口对账一步;单笔动作后验证互补回合总账。

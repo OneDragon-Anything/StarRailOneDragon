@@ -79,6 +79,26 @@ def cw_shot_unique(image: MatLike, label: str) -> str | None:
         return None
 
 
+# 观测阶段上下文(ADR-0462 规范入口序列「先清场、再识别、后动作」):read_game_state
+# 按调用点传入的阶段键(prep_clean/prep_shop_open/battle_or_transit)置位,obs_conflict
+# 落证据行时带上(键 obs_phase)——噪声判定位的数据面:规范落地后 P0 清场期/overlay 期
+# 来源的冲突行应 ≈0(这些阶段整条备战识别链不跑,物理上无冲突可留证)。
+# best-effort:异常路径漏复位只影响后续冲突行的阶段标注,不影响行为;read_game_state
+# 每次入口重新置位自愈。
+_OBS_PHASE: str | None = None
+
+
+def set_obs_phase(phase: str | None) -> None:
+    """置/清当前观测阶段键(见 _OBS_PHASE 注)。"""
+    global _OBS_PHASE
+    _OBS_PHASE = phase
+
+
+def current_obs_phase() -> str | None:
+    """读当前观测阶段键(None=未置位/全量路径)。"""
+    return _OBS_PHASE
+
+
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
@@ -125,6 +145,8 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                 shot = cw_shot_unique(screen, f'obs_conflict_{field}')
         rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
                'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
+        if _OBS_PHASE:
+            rec['obs_phase'] = _OBS_PHASE   # ADR-0462 噪声判定位:冲突行按阶段分类
         # W603:补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
         # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
         from sr_od.application.currency_war import cw_telemetry as _cw_tel

@@ -26,6 +26,10 @@ from sr_od.application.currency_war.cw_observation import (
     read_gold_opt,
     read_shop_cards,
 )
+from sr_od.application.currency_war.cw_observation_gate import (
+    PHASE_PREP_CLEAN,
+    PHASE_PREP_SHOP_OPEN,
+)
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
@@ -386,7 +390,8 @@ class BuyShopCards(SrOperation):
         elif match is not None and match.session.last_hp is not None:
             log.info('[cw] hp 结算值陈久跳过覆盖(last_hp=%s t=%s, now t=%s)→ 用 prep 现读 %s(防冻结毒化)',
                      match.session.last_hp, _hp_t, _now_t, hp_value)
-        _tgt_state = read_game_state(self.ctx, self.screenshot())
+        _tgt_state = read_game_state(self.ctx, self.screenshot(),
+                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
         _apply_hp(_tgt_state, hp_value, _hp_readable, _hp_trusted)
         if match is None:
             # 防御:无对局态(独立 run_operation 调本 op)→ 临时 default match,不挂 ctx(局外不复用)
@@ -438,7 +443,8 @@ class BuyShopCards(SrOperation):
             # 光标 parking(审计 P0,2026-08-16):上轮 BuyCard/LevelUp/Refresh 点击后光标停在按钮上
             # (购买经验距等级区 18px/牌位=识别区本身)→ 污染本帧 read_game_state;park 后再读。
             self.park_cursor(after_wait=0.1)
-            state = read_game_state(self.ctx, self.screenshot())
+            state = read_game_state(self.ctx, self.screenshot(),
+                                    phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
             _apply_hp(state, hp_value, _hp_readable, _hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖(值+位同写,W580)
             # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None(plan 路径 1700/1706 None 实证,
             # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
@@ -1108,7 +1114,8 @@ class BuyShopCards(SrOperation):
         # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
         try:
             if match is not None and (total_buy or total_level or total_refresh):
-                _post = read_game_state(self.ctx, self.screenshot())
+                _post = read_game_state(self.ctx, self.screenshot(),
+                                        phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
                 _apply_hp(_post, hp_value, _hp_readable, _hp_trusted)
                 if match.session.last_node_type:
                     _post.node_type = match.session.last_node_type

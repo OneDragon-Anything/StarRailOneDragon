@@ -1254,18 +1254,11 @@ DEPLOY_CAP_MAX_DIFF: int = 2
 DEPLOY_CAP_ABS_MAX: int = 13
 
 
-def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
-                              level: int) -> int | None:
-    """cap 真值防抖读(ADR-0286,与 r414 域判定同族):域外值重读一帧,仍域外 → None 拒信。
-
-    域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``;域外时独立再截一帧重读:
-    重读入域 → 采重读值;**重读与首读一致且 level ≤ cap ≤ DEPLOY_CAP_ABS_MAX
-    → 采信(域外双帧一致,真实高档 W292/ADR-0420,e4972b43 diff=5 实拍)**
-    + obs_conflict 留证;其余(重读仍域外且不一致/cap<level/超绝对上界)→
-    留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
-    截图失败(异常)按重读不可得处理。
-    """
-    cap = read_deploy_cap(ctx, screen, level)
+def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
+                  level: int) -> int | None:
+    """cap 真值防抖门核(ADR-0286/ADR-0420;首读值已得时复用,避免重跑整条
+    paddle 管线——``read_deploy_cap_debounced`` 与 ``resolve_paddle_pair``
+    共用本核,防抖语义单一源)。域/守卫/留证语义与原实现逐行一致。"""
     if cap is None or level <= 0:
         return cap
     if level <= cap <= level + DEPLOY_CAP_MAX_DIFF:
@@ -1295,6 +1288,35 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
                           '兜底 level;复现 ≥3 次排查 read_deploy_cap/level 读链'),
                  source='paddle_cap_debounce')
     return None
+
+
+def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
+                              level: int) -> int | None:
+    """cap 真值防抖读(ADR-0286,与 r414 域判定同族):域外值重读一帧,仍域外 → None 拒信。
+
+    域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``;域外时独立再截一帧重读:
+    重读入域 → 采重读值;**重读与首读一致且 level ≤ cap ≤ DEPLOY_CAP_ABS_MAX
+    → 采信(域外双帧一致,真实高档 W292/ADR-0420,e4972b43 diff=5 实拍)**
+    + obs_conflict 留证;其余(重读仍域外且不一致/cap<level/超绝对上界)→
+    留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
+    截图失败(异常)按重读不可得处理。防抖核=``_debounce_cap``(单一源)。
+    """
+    cap = read_deploy_cap(ctx, screen, level)
+    return _debounce_cap(ctx, screen, cap, level)
+
+
+def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
+                        level: int) -> tuple[int | None, int | None]:
+    """「X/Y」指示**单读** → (deployed_count X, deploy_cap Y)。
+
+    背景(ADR-0462):read_game_state 现行链对同一指示跑两条完整 paddle
+    管线(read_deploy_cap_debounced + read_deployed_count),fixture 实测
+    42-182ms×2/帧;本函数一次解析产出两值,cap 过同一防抖核
+    (``_debounce_cap``),语义与逐个读等价(仅省一次重复识别)。
+    阶段 gate 路径用本函数;phase=None 全量路径保持两读不变(零行为变更基线)。
+    """
+    x, cap = _read_deploy_paddle(ctx, screen, level)
+    return x, _debounce_cap(ctx, screen, cap, level)
 
 
 def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> tuple[dict[str, tuple[int, int]], bool]:
@@ -1596,19 +1618,42 @@ _LV_LOG_FMT: dict[str, str] = {
 }
 
 
-def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
-    """一战前备战屏(商店已开)→ GameState(喂 plan)。
+def read_game_state(ctx: SrContext, screen: MatLike,
+                    phase: str | None = None) -> GameState:
+    """备战屏截图 → GameState(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
+
+    :param phase: 规范入口序列阶段键(ADR-0462:先清场、再识别、后动作)——
+      ``prep_clean``=P1 干净备战期全量基线(含 hp 真读主路径);``prep_shop_open``
+      =P2a 开店动作期(仅买牌决策所需);``battle_or_transit``=战斗/过渡帧(仅
+      位面轮次)。**None = 全量路径 = 现行为逐行不变**(存量调用点/测试零波及);
+      未注册阶段名 → warning + 全量(fail-open:未知态不猜,回退现行为)。
 
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
     hp 读不到 → ``reconcile_hp`` 对账(ADR-0282:沿用 session.last_hp_real,开局无真值才
     兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
+    from sr_od.application.currency_war import cw_observe as _obs_mod
+    from sr_od.application.currency_war.cw_observation_gate import (
+        PHASE_FIELD_SPEC,
+    )
+    _spec = PHASE_FIELD_SPEC.get(phase) if phase is not None else None
+    if phase is not None and _spec is None:
+        # fail-open:未知阶段名不猜 → 全量 + 告警(拼错阶段名立即暴露,不静默)
+        log.warning('[cw!] read_game_state 未注册阶段 %r → 全量读取(fail-open)', phase)
+        _spec = None
+
+    def _w(key: str) -> bool:
+        """本阶段是否读该字段(None 阶段=全量恒 True)。"""
+        return _spec is None or key in _spec
+
+    if phase is not None:
+        _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
     state = GameState()
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
     # 入账前旧值 = W489 感知面「开局金系统性偏低」根因环;gold_readable 语义
     # 不变(None=读不到)。
-    _gold_opt = read_gold_settled(ctx, screen)
+    _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     state.gold = 0 if _gold_opt is None else _gold_opt
     state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
@@ -1621,18 +1666,20 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # ADR-0431:位面/轮次提前读 —— node_t=(plane-1)*9+round 是下行守卫
     # 帧间事实窗锚与 hp_trusted 帧龄门锚(读取器相互独立,仅次序调整,
     # 语义零漂移)。
-    state.plane, state.round_num = read_phase_round(ctx, screen)
+    state.plane, state.round_num = (
+        read_phase_round(ctx, screen) if _w('phase_round')
+        else (state.plane, state.round_num))
     _node_t = ((state.plane - 1) * 9 + state.round_num
                if state.plane is not None and state.round_num is not None
                else None)
     from sr_od.application.currency_war.cw_reconcile import reconcile_hp
-    # 本读取器的画面语境=商店开态备战屏(docstring):hp 区被商店面板遮挡,
-    # OCR 必然 miss——含 W580b 放大回退在内是每帧必付的死读(实测回退两次
-    # 小图 OCR 亦近百毫秒,商店轮每局多次调用)。按「每画面只读该画面有的
-    # 字段」跳过 hp OCR,_hp_opt=None 走 reconcile 沿用(session.last_hp_real
-    # 语义不变,帧龄门 _same_node_stale 照常);hp 真读路径=shop.py 关帧的
-    # read_hp_opt(面板已关,hp 可见,小数值放大回退在那里才有意义)。
-    _hp_opt = None
+    # hp 跳过/真读的唯一门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR;ADR-0462,
+    # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
+    # 可见——spec 无 'hp' 的阶段(prep_shop_open 开店面板遮挡/battle_or_transit
+    # 非备战)OCR 必然 miss,是每帧必付的死读;_hp_opt=None 走 reconcile 沿用
+    # (session.last_hp_real 语义不变,帧龄门 _same_node_stale 照常)。
+    # prep_clean(关店备战帧)= 真读主路径,两级放大回退在该阶段才有意义。
+    _hp_opt = read_hp_opt(ctx, screen) if (_spec is not None and 'hp' in _spec) else None
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
     state.hp, state.hp_readable = reconcile_hp(
@@ -1651,59 +1698,77 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # 三票校验(纯记账):表可查时逐帧识别降级为校验票,≥2 独立票一致反对
     # 表值才落缺陷台账(投资环境变异窗豁免),不改行为。
     _ledger_session = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    _obs_t = gate_node_type(read_node_type(ctx, screen), state.round_num)
-    _ledger_t = ledger_node_type(_ledger_session, state.plane, state.round_num)
-    state.node_type = _ledger_t if _ledger_t is not None else _obs_t
-    if _ledger_t is not None:
-        verify_node_type_votes(ctx, screen, state.plane, state.round_num)
-    # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
-    # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
-    # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
-    # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
-    state.xp_progress = read_xp_progress(ctx, screen)
-    _lv_raw = read_level_raw_opt(ctx, screen)
-    _xp_lv = _level_from_xp(state.xp_progress)
-    _match = getattr(ctx, 'cw_match', None)
-    _last_lv = 0
-    if _match is not None and _match.session is not None:
-        _last_lv = getattr(_match.session, 'last_level_obs', 0)
-    state.level, _lv_events, _lv_authoritative = _resolve_level(
-        _lv_raw, _expected_level(state.plane, state.round_num), _xp_lv, _last_lv)
-    for _kind, _old, _new, _verdict, _src in _lv_events:
-        _fmt = _LV_LOG_FMT.get(_kind)
-        if _fmt is not None:
-            _msg = _fmt.format(o=_old, n=_new)
-            if _kind in ('xp_override', 'xp_down', 'jump'):
-                log.warning(_msg)
+    # spec 无 node_type 的阶段(prep_shop_open 节点行被遮恒 None——shop.py
+    # session 拷贝是唯一真源;battle_or_transit 无消费)跳过标签 OCR 与三票。
+    if _w('node_type'):
+        _obs_t = gate_node_type(read_node_type(ctx, screen), state.round_num)
+        _ledger_t = ledger_node_type(_ledger_session, state.plane, state.round_num)
+        state.node_type = _ledger_t if _ledger_t is not None else _obs_t
+        if _ledger_t is not None:
+            verify_node_type_votes(ctx, screen, state.plane, state.round_num)
+    state.xp_progress = read_xp_progress(ctx, screen) if _w('xp') else None
+    if _w('level'):
+        # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
+        # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
+        # (XP 采新 5 → 单调守卫用毒化 last 6 打回,live 10:47-10:48 三连发实证),
+        # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
+        _lv_raw = read_level_raw_opt(ctx, screen)
+        _xp_lv = _level_from_xp(state.xp_progress)
+        _match = getattr(ctx, 'cw_match', None)
+        _last_lv = 0
+        if _match is not None and _match.session is not None:
+            _last_lv = getattr(_match.session, 'last_level_obs', 0)
+        state.level, _lv_events, _lv_authoritative = _resolve_level(
+            _lv_raw, _expected_level(state.plane, state.round_num), _xp_lv, _last_lv)
+        for _kind, _old, _new, _verdict, _src in _lv_events:
+            _fmt = _LV_LOG_FMT.get(_kind)
+            if _fmt is not None:
+                _msg = _fmt.format(o=_old, n=_new)
+                if _kind in ('xp_override', 'xp_down', 'jump'):
+                    log.warning(_msg)
+                else:
+                    log.info(_msg)
             else:
-                log.info(_msg)
-        else:
-            log.warning(f'[cw!] level {_kind}:{_old}->{_new}')
-        obs_conflict('level', _old, _new, screen, verdict=_verdict, source=_src,
-                     plane=state.plane, round_num=state.round_num)
-    # 毒化防线(2026-08-18):纯启发式兜底值(OCR 与 XP 双失读)不写回 last_level_obs
-    # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
-    if _match is not None and _match.session is not None and _lv_authoritative:
-        _match.session.last_level_obs = state.level
+                log.warning(f'[cw!] level {_kind}:{_old}->{_new}')
+            obs_conflict('level', _old, _new, screen, verdict=_verdict, source=_src,
+                         plane=state.plane, round_num=state.round_num)
+        # 毒化防线(2026-08-18):纯启发式兜底值(OCR 与 XP 双失读)不写回 last_level_obs
+        # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
+        if _match is not None and _match.session is not None and _lv_authoritative:
+            _match.session.last_level_obs = state.level
     # ADR-0286(批㉔ F1):cap 真值接线——防抖后写入 state.deploy_cap
     # (决策层 max_units() 优先读真值、level 兜底;读不到/域外拒信 → None
     # 保持兜底语义,与旧恒 level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
-    state.deploy_cap = read_deploy_cap_debounced(ctx, screen, state.level)
+    # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair,
+    # ADR-0462);phase=None 全量路径保持两读不变(零行为变更基线)。
+    _paddle_x = None
+    if _spec is None:
+        state.deploy_cap = read_deploy_cap_debounced(ctx, screen, state.level)
+    elif 'deploy_cap' in _spec or 'deployed_count' in _spec:
+        _paddle_x, state.deploy_cap = resolve_paddle_pair(ctx, screen, state.level)
     # enemy_difficulty(批㉖ F1 裁决·读链翻转):逐帧真读(备战「文本-难度」
     # OCR)优先——session 值来自开局简报(数值≈108 恒定),旧链「session 优先」
     # 把逐帧真读结构性压死(92.7% 覆盖恒 108,难度爬升真值从未落盘)。
     # 翻转后:真读命中 → 用真值+live=True;真读 None(stylized OCR 常空,
     # 已知)→ 回退 session 恒值,live=False;双源皆无 → None。
     # 判读纪律:live=False 帧的值是简报恒值,别当「难度 vs 轮次」曲线样本。
+    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)跳过
+    # 两级管线,直接 session 值 + live=False(与「真读 None 回退」同语义)。
+    _match = getattr(ctx, 'cw_match', None)
     _ed_session = getattr(getattr(_match, 'session', None), 'enemy_difficulty', None) if _match is not None else None
-    _ed_live = read_enemy_difficulty(ctx, screen)
-    if _ed_live is not None:
-        state.enemy_difficulty = _ed_live
-        state.enemy_difficulty_live = True
+    if _w('enemy_difficulty'):
+        _ed_live = read_enemy_difficulty(ctx, screen)
+        if _ed_live is not None:
+            state.enemy_difficulty = _ed_live
+            state.enemy_difficulty_live = True
+        else:
+            state.enemy_difficulty = _ed_session
+            state.enemy_difficulty_live = False
     else:
         state.enemy_difficulty = _ed_session
         state.enemy_difficulty_live = False
-    state.level_up_cost = read_level_up_cost(ctx, screen)
+    if _w('level_up_cost'):
+        state.level_up_cost = read_level_up_cost(ctx, screen)
     # 刷新实付金 = 基价常量(ADR-0456):「文本-刷新金币数」rect 读到的是
     # 面板徽标(=min(gold//10,5) 利息数值)非刷价,OCR 退出主链(决策热路径
     # 净少一次 OCR);state.shop_refresh_cost 恒 REFRESH_COST_BASE,消费点
@@ -1715,18 +1780,21 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # —— |结算|≠备战 且 非结算重置边缘(胜→连胜≥1/败→连败≤-1 或 0)→ 一方误读,留证统计毒化率
     # (read_streak magnitude OCR 间歇误读的量化数据,此前无通道)。
     _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    # spec 无 streak 的阶段(prep_shop_open:连胜整轮不变,session 结算真值为准,
+    # 省每帧 ~85ms 纯对拍读;battle 帧无消费)只取 session 值不做备战对拍读。
     if _sess is not None:
         state.streak = _sess.last_streak
-        _prep_streak = read_streak(ctx, screen)
-        if (_prep_streak is not None and _sess.last_streak != 0
-                and abs(_sess.last_streak) != _prep_streak):
-            obs_conflict('streak', _sess.last_streak, _prep_streak, screen,
-                         verdict=('留证-双源不等(结算带符号 vs 备战magnitude,一方误读;'
-                                  '处理:单次按噪声忽略,同局 JSONL 频发 >10 行/时'
-                                  '→ 排查 read_streak 与结算 streak reader'),
-                         source='settlement_vs_prep', plane=state.plane, round_num=state.round_num)
+        if _w('streak'):
+            _prep_streak = read_streak(ctx, screen)
+            if (_prep_streak is not None and _sess.last_streak != 0
+                    and abs(_sess.last_streak) != _prep_streak):
+                obs_conflict('streak', _sess.last_streak, _prep_streak, screen,
+                             verdict=('留证-双源不等(结算带符号 vs 备战magnitude,一方误读;'
+                                      '处理:单次按噪声忽略,同局 JSONL 频发 >10 行/时'
+                                      '→ 排查 read_streak 与结算 streak reader'),
+                             source='settlement_vs_prep', plane=state.plane, round_num=state.round_num)
     else:
-        state.streak = read_streak(ctx, screen) or 0
+        state.streak = (read_streak(ctx, screen) or 0) if _w('streak') else 0
     # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
     # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集底座**,不受滚动/遮挡影响;
     # W287 裁决翻转,ADR-0417):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
@@ -1742,7 +1810,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     _tracked_dep = (_match.session.tracked_deployed
                     if (_match is not None and _match.session is not None) else None)
     _computed = board_from_tracked(_tracked_dep)
-    _bp, _board_honest = _board_pairs(ctx, screen, state.level)
+    # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
+    # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。
+    _bp, _board_honest = (
+        _board_pairs(ctx, screen, state.level) if _w('board') else ({}, False))
     state.board_readable = _board_honest   # r319:动画帧(count=1 兜底)显式标注
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
@@ -1854,7 +1925,10 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
     # 3/6 误判 + 5aa9ce34 board_ocr=17 严重误计实证;prep_director r3 同判早已把 board
     # 移出三源对拍,本处是漏改的最后一处)。paddle 读不到 = 本帧无对齐基准 → 跳过对齐
     # (宁缺勿造:补齐/截断都是用猜的数改写 tracking)。
-    _paddle_n = read_deployed_count(ctx, screen)
+    # 阶段 gate 路径:deployed_count 已随 cap 合并单读(见上方 resolve_paddle_pair);
+    # spec 无 deployed_count 的阶段(prep_shop_open 部署不发生,关店后 DeployBench
+    # 另读;battle 帧无消费)_paddle_n=None → 对齐跳过/重建退 level 估,同「读不到」语义。
+    _paddle_n = _paddle_x if _spec is not None else read_deployed_count(ctx, screen)
     if _tracked_dep:
         import copy
         _occ = list(iter_occupied_deployed(copy.deepcopy(_tracked_dep)))
@@ -1884,11 +1958,17 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         _rebuild_cap = state.level if _paddle_n is None else min(state.level, _paddle_n)
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max,
                                                      max_count=_rebuild_cap)
-    state.shop = read_shop_cards(ctx, screen)
+    # shop_cards:spec 无的阶段(prep_clean 面板未开,收起锚门本就返空 = 「没牌」
+    # 观测真值;battle 帧同)直接置空列表,连锚判定都省(ADR-0462)。
+    state.shop = read_shop_cards(ctx, screen) if _w('shop_cards') else []
     # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
-    state.refresh_probs = read_refresh_probs(ctx, screen)
-    state.bench_full_flag = read_bench_full(ctx, screen)
+    # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
+    state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
+    state.bench_full_flag = read_bench_full(ctx, screen) if _w('bench_full') else None
+    if phase is not None:
+        from sr_od.application.currency_war.cw_observe import set_obs_phase
+        set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
     # [停机钩子·已删(2026-08-17 M72 采全)] star≥3 停机采集:19 位 fixture 已采全
     # (star3_slots/),read_star 全位置断言 3 测试过(test_star3_positions)。⚠️ 教训存档:
     # ①「停 bot 保画面」在备战不成立——备战有倒计时,到期自动出战推进(bot 停游戏不停),
