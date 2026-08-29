@@ -8,7 +8,7 @@
 - **铁律**:所有影响玩法的游戏数据/描述/效果一律存盘作参考,标来源(content_id/URL+版本)——策略代码以这些为地基,别引用了不落盘。
 - **遇不懂的游戏知识先搜再写**:机制/数值/规则/上限不懂就先查米游社/wiki/图鉴核实 → 补进玩法 doc,别凭猜硬写——猜的机制进代码 = 假信号地基。
 - **两层架构**:数据层(`*_data.py`/生成器产出,勿手编)+ 判断层(人维护,cw_factions 类别/cw_comps 评级等)——生成器写目标有白名单守卫,改注册表前先查 `tools/cw/` 是否有该文件的生成器。
-- **版本更新**:重跑生成器看内建 diff(角色/投资/羁绊/装备/聚类/战力表全家,见 tools/cw/ 各脚本)→ diff 驱动复核。
+- **版本更新**:重跑生成器看内建 diff(角色/投资/羁绊/装备/聚类全家,见 tools/cw/ 各脚本)→ diff 驱动复核。
 
 ## 一、plaza 官方 API 直采(免登录公开接口)
 
@@ -16,12 +16,11 @@
 
 | 域 | 生成器(tools/cw/) | 产出 | 采集要点 |
 |---|---|---|---|
-| 角色 | `gen_plaza_chars.py` | `cw_chars_data.PLAZA_ROLES` + 每角色 md | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
+| 角色 | `gen_plaza_chars.py` | stdout 对拍 diff(对拍器,不一致非零退出,无落盘产物) | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(334+83) | 数字 id 稳定主键;效果官方全文去富文本 |
-| 羁绊 | `gen_factions.py` | `cw_factions_data`(tiers+roles) | 两跳:lineup/index 按羁绊筛采 trait_detail(采集器在 .debug,版本更新重跑)+ config 属性映射;effect_rich 自渲染(未知 property type 警告不静默) |
+| 羁绊 | `gen_factions.py` | stdout 对拍 diff(对拍器,替代已删的 cw_factions_data 平行数据层) | 两跳:lineup/index 按羁绊筛采 trait_detail(采集器在 .debug,版本更新重跑)+ config 属性映射;effect_rich 自渲染(未知 property type 警告不静默) |
 | 装备 | `gen_equip_registry.py` | `cw_equipment_data` | 优先级分层:骨架=plaza>图鉴>md 兜底;effect=图鉴 OCR>plaza 校正;recipes=plaza compose_list+图鉴 icon 反查交叉 |
 | 实战阵容 | `gen_plaza_comps.py` | `cw_plaza_comps`+plaza_meta | lineup/index match_hard,过滤版本/KOL 沙盒/过期 → is_carry 聚类 |
-| 战力表 | `gen_power_table.py` | `cw_power_table_data` | 同阵容源派生(形态×位面→篇数) |
 
 ## 二、游戏内图鉴实采(权威,需实机)
 

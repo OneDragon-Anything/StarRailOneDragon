@@ -5,11 +5,11 @@
 ## 查询工具(遥测 CLI)
 
 ```
-uv run python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
+uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
 ```
 
 - rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买;hp=掉血×板深;economy=金轨迹/滞留;anomalies=异常标记。
-- **生产局秒级自检**:`cw_telemetry checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
+- **生产局秒级自检**:`telemetry.cli checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
 - 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
 
 ## 核心原则(用户定调)
