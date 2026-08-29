@@ -32,5 +32,5 @@ ADR-0445 落码后仍有两洞,五局实机(⑳+2/局20/21/22/23)无人读取其
 
 - 行为变化面:溢余∧备战空帧义务开工(此前恒 0);溢余∧无容量帧标签从 interest 改 release(行为近似零变:spend_gate 接线+零预算授权恒拒);g≤R* 帧逐位零漂移(结构性,义务/准入门都不辖)。
 - 遥测:decisions 行新增 `sess_reserve_cap`/`sess_reserve_overflow`/`sess_release_budget`/`sess_release_reason`(''/'flip'/'third_path'/'reserve_admission';recorder 汇点接出,W603 同款);sim 账本行新增同语义四字段。
-- 锁面:新增 test_cw_w611_reserve_admission.py(8 锁);test_cw_economy_cycle.py 期权件锁按新辖域重推。
-- 已知缺口(如实挂账):①散件买入放行面(candidates/scoring,[31] 限域)待 W607 二波落地后接线——本批先通容量/姿态/预算链;②registry 息帽与策略级 override 的分离面;③金上限=100 属口述待注册表核(判据只依赖息帽 50,不受影响)。
+- 锁面:新增 test_cw_w611_reserve_admission.py(8 锁);test_cw_economy_cycle.py 期权件锁按新辖域重推;test_cw_w611_o1_fill_buy.py(8 锁,散件放行面)。
+- 已知缺口(如实挂账):①registry 息帽与策略级 override 的分离面;②金上限=100 属口述待注册表核(判据只依赖息帽 50,不受影响)。(散件买入放行面已随 W607 二波落库后接线:BuyCard 标签 'o1_bench_fill'——生成于 g≥R*∧备战空∧非应急帧、[31] 其余域原样;评 0 中性凭义务证明背书,arbiter 非正分门豁免+gold_floor 的 o1 地板加深 g_after≥R*。)
