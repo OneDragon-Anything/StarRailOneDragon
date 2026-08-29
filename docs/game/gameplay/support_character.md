@@ -24,14 +24,12 @@ involves_screens: [菜单]
 - 有红点(`STATUS_WITH_ALERT`)→ `_click_character`(点角色领奖励)。
 - 无红点(`STATUS_NO_ALERT`)→ `back_at_last`(返回,无奖励可领)。
 
-## 画面(phone_menu 省略号子菜单)
+## 画面
 
-无独立 screen —— 漫游签证 UI 在 phone_menu 省略号(更多)展开的子菜单:
-- 省略号入口(`ui_ellipsis` template,`phone_menu_utils.get_phone_menu_ellipsis_pos`)。
-- 漫游签证项(`get_phone_menu_ellipsis_item_pos('漫游签证')`,OCR 匹配项名)。
-- 角色卡片 / 红点(alert 检测 `ui_alert` template)。
-- **漫游签证面板**(进入后):角色展示 tab —— 个人资料(昵称 / UID / 开拓等级 / 生日)+ **支援角色**栏(3 个借出角色,如飞霄 / 遐蝶 / 黄泉,等级 80)+ 战绩 / 收集展示 tab + 漫游动态。bot 的 `_click_character` 点 `Point(1862,358)` 领支援奖励。
-- **fixture**:`screens/漫游签证/角色展示.webp`(角色展示 tab,支援角色 飞霄 / 遐蝶 / 黄泉,无红点态)。
+2026-08-29 起有独立 screen 档(见 [screens/漫游签证](../screens/漫游签证.md) 与 [screens/菜单-更多](../screens/菜单-更多.md));此前挂在 phone_menu 省略号子菜单。要点:
+- 路由:`菜单 --⋯--> 菜单-更多 --漫游签证--> 漫游签证`(goto_screen 实测通)。
+- 识别锚:左上「漫游签证」标题;领奖位已建 area `按钮-支援奖励领取位`(原硬编码 Point(1862,358),代码未迁移)。
+- 可领判据:支援角色卡右上角标数字 / 菜单侧红点。
 
 ## 备注 / 待查
 
