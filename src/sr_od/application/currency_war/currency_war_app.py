@@ -76,6 +76,10 @@ class CurrencyWarApp(SrApplication):
         from sr_od.application.currency_war.kernel.cw_observe import stop_for_l0_andon
         from sr_od.application.currency_war.telemetry import cw_telemetry
         cw_telemetry.set_l0_andon_handler(stop_for_l0_andon)
+        # 分包期 4 出口钩子武装(幂等):kernel/obs/decision 三桶的 telemetry
+        # 上行出口(落账/安灯/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
+        # 转发,缺省关;生产在此与安灯执行器同点接通。
+        cw_telemetry.install_exit_hooks()
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,
             op_name=gt('货币战争', 'game'),

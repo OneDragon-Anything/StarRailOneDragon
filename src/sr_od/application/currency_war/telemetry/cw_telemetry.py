@@ -42,6 +42,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
     bench_occupied,
     sell_refund,
 )
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+    SEVERITY_L0_ANDON,
+    SEVERITY_L1_ALERT,
+    SEVERITY_L2_RECORD,
+)
 
 log = log_utils.log
 
@@ -1304,9 +1309,8 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
 #: 重判,不重写历史)。判据(观测自检框架设计 §4,三条按序):
 #: ①决策关键面吗 ②gap 大吗 ③复现了吗——L0=①∧②∧③ 且裁决未自动;
 #: L1=①∧② 单次,或中相关面∧②∧③;L2=其余(非关键面/小 gap/裁决已自动)。
-SEVERITY_L0_ANDON: str = 'L0_andon'
-SEVERITY_L1_ALERT: str = 'L1_alert'
-SEVERITY_L2_RECORD: str = 'L2_record'
+# 分级常量单一源自分包期 4 起在 kernel/cw_telemetry_exit(obs 显式判级调用点
+# 与本模块判级同取一源;telemetry→kernel 上行合法向,见顶部 import)。
 
 #: 决策关键面(误读直接改买/升/部署决策的观测面)。
 DECISION_CRITICAL_SURFACES: frozenset[str] = frozenset(
@@ -1445,6 +1449,32 @@ def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
     None=关闭停线通道(缺省;台账与判级不受影响)。"""
     global _L0_ANDON_HANDLER
     _L0_ANDON_HANDLER = fn
+
+
+def install_exit_hooks() -> None:
+    """分包期 4 出口钩子注入(生产武装点=CurrencyWarApp.__init__,与
+    ``set_l0_andon_handler`` 同点;幂等):把本模块真实现写进
+    kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/decision 三桶的
+    telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。"""
+    from sr_od.application.currency_war.kernel import cw_telemetry_exit
+
+    cw_telemetry_exit.install_exit_hooks(
+        run_id_provider=current_run_id,
+        record_defect=record_defect,
+        record_exogenous=record_exogenous,
+        bypass_obs_conflict_to_defect=bypass_obs_conflict_to_defect,
+        record_exec_event=_exit_record_exec_event,
+        l0_andon_flag_path=l0_andon_flag_path,
+        write_l0_andon_flag=write_l0_andon_flag)
+
+
+def _exit_record_exec_event(run_id: str, round_num: int, action_family: str,
+                            screen: str, event: str, reason: str = '',
+                            retry_count: int = 0) -> None:
+    """出口钩子实现:影子执行事件 → 模块级 recorder(签名对齐 recorder 方法)。"""
+    get_recorder().record_exec_event(
+        run_id=run_id, round_num=round_num, action_family=action_family,
+        screen=screen, event=event, reason=reason, retry_count=retry_count)
 
 
 def l0_andon_flag_path() -> Path:
