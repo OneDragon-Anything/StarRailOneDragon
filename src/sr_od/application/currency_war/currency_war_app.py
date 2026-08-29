@@ -80,6 +80,11 @@ class CurrencyWarApp(SrApplication):
         # 上行出口(落账/安灯/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
         # 转发,缺省关;生产在此与安灯执行器同点接通。
         cw_telemetry.install_exit_hooks()
+        # 分包期 5 obs 读口注入(幂等):decision 桶禁直依 obs,新局弃置残留
+        # 容器时的 obs last-known-good 缓存清理经 decision_assembly 装配点接通
+        # (缺省关=跳过缓存清理;session 全量重建承担状态隔离)。
+        from sr_od.application.currency_war.decision_assembly import install_obs_ports
+        install_obs_ports()
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,
             op_name=gt('货币战争', 'game'),

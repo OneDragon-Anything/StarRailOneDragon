@@ -43,6 +43,22 @@ from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
+# ------------------------------------------------------- obs 读口注入(期5 ⑦)
+
+def install_obs_ports() -> None:
+    """装配点接通 decision 桶的 obs 读口(生产武装点 = CurrencyWarApp.__init__)。
+
+    分包依赖矩阵禁 decision→obs 直依:决策核只持注入槽
+    (``cw_strategy._RESET_PHASE_ROUND_CACHE``),本函数从 obs 桶取实现注入。
+    未接通(缺省关)= 新局弃置残留容器时跳过 obs 模块级缓存清理——
+    session 全量重建承担状态隔离,仅 last-known-good 观测缓存延用旧值。
+    """
+    from sr_od.application.currency_war.cw_strategy import set_obs_reset_hook
+    from sr_od.application.currency_war.obs.cw_observation import (
+        reset_phase_round_cache,
+    )
+    set_obs_reset_hook(reset_phase_round_cache)
+
 
 def _registry_of(strategy: Any):
     """策略携带的注册表(DecisionV2Strategy 有 .registry;default 栈退缺省表)。"""

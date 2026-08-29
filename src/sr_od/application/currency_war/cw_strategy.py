@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -44,8 +45,13 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
     from sr_od.context.sr_context import SrContext
+
+# 注解中的 ``CurrencyWarConfig`` 刻意不 import 真类型:config 属 app 桶,本模块
+# 归 decision 桶,分包依赖矩阵禁 decision→app;config 实例由调用方按参注入,
+# 下面绑定只是注解名的文档性占位(字符串;「刻意字符串注解」先例 = 期 0b
+# kernel/cw_strategy_session 的 SrContext 处理)。
+CurrencyWarConfig = 'CurrencyWarConfig'
 
 
 class CwStrategy(ABC):
@@ -163,6 +169,19 @@ class CurrencyWarMatch:
     session: StrategySession
 
 
+#: obs 读口注入槽(缺省关):清 obs 模块级 last-known-good 缓存的回调。
+#: 分包依赖矩阵禁 decision→obs 直依,生产装配点 = app/decision_assembly
+#: ``install_obs_ports()``(CurrencyWarApp.__init__ 接通);未注入 = 跳过
+#: 缓存清理(容器弃置语义不受影响,session 全量重建承担状态隔离)。
+_RESET_PHASE_ROUND_CACHE: Callable[[], None] | None = None
+
+
+def set_obs_reset_hook(reset_phase_round_cache: Callable[[], None]) -> None:
+    """装配点注入 obs 缓存清理回调(幂等,可重复调用覆盖)。"""
+    global _RESET_PHASE_ROUND_CACHE
+    _RESET_PHASE_ROUND_CACHE = reset_phase_round_cache
+
+
 def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计 w289(git 历史)/ADR-0419)。
 
@@ -189,10 +208,8 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     _log.warning('[cw-entry] 检测到上一局残留 match 容器(%s)→ 弃置,'
                  '本局 session 全量重建(ADR-0419)', reason)
     ctx.cw_match = None
-    from sr_od.application.currency_war.obs.cw_observation import (
-        reset_phase_round_cache,
-    )
-    reset_phase_round_cache()
+    if _RESET_PHASE_ROUND_CACHE is not None:
+        _RESET_PHASE_ROUND_CACHE()
     return True
 
 
