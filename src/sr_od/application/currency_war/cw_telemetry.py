@@ -1085,7 +1085,7 @@ def check_strategy_live_streak(all_rows: list[dict],
     if worst >= streak_threshold:
         dead_n = sum(1 for k in rounds if k[0] == 1 and not rounds[k])
         return [f'P1 策略失活连续 {worst} 轮(共 {dead_n} 轮无 '
-                f'strategy_id 决策行——迁移审计 w98(git 历史) 恢复兜底局形态,ADR-0342)']
+                f'strategy_id 决策行——W98 恢复兜底局形态,ADR-0342)']
     return []
 
 
