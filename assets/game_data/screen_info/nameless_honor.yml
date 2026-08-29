@@ -145,10 +145,10 @@ area_list:
 - area_name: 按钮-点击空白处关闭
   id_mark: false
   pc_rect:
-  - 864
-  - 929
-  - 1063
-  - 962
+  - 850
+  - 680
+  - 1062
+  - 965
   text: 点击空白处关闭
   lcs_percent: 0.5
   template_sub_dir: ''
