@@ -9,7 +9,7 @@ from typing import Any
 from sr_od.application.currency_war.kernel.cw_state import (
     XP_CLICK_COST_FALLBACK,
 )
-from sr_od.application.currency_war.telemetry.state import get_recorder
+from sr_od.application.currency_war.telemetry import state as _telstate
 
 # ===== 迁移审计 w103(git 历史) 件1/件2(ADR-0342):策略失活检测 =====
 # 病灶实录(迁移审计 w98(git 历史) 两局 run_20260825_003757/011957):崩溃恢复局 decisions
@@ -27,7 +27,7 @@ def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
     decisions.jsonl 按 mtime 缓存(每个写入窗口只全文扫一次;跨 run 追加
     文件随局数线性增长,逐 round 查询不该每次全扫)。
     """
-    path = get_recorder().replay_dir / 'decisions.jsonl'
+    path = _telstate.get_recorder().replay_dir / 'decisions.jsonl'
     try:
         mtime = path.stat().st_mtime
     except OSError:

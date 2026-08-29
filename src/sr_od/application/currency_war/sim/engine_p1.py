@@ -536,7 +536,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # ADR-0272:池构造后硬断言无费用截断(不变式;检查函数单一源
     # 在 cw_sim_checks——纯 dict 入参,不构成 import 环)
 
-    from sr_od.application.currency_war.sim.checks.ledger import check_sim_pool_no_cost_truncation as _chk_pool
+    from sr_od.application.currency_war.sim.checks.ledger import (
+        check_sim_pool_no_cost_truncation as _chk_pool,
+    )
     if _chk_pool(cards_pool.copies)['violations']:
         raise RuntimeError(
             'sim 牌池被费用截断(4/5 费角色缺失)——ADR-0272 禁止;'

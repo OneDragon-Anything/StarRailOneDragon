@@ -43,7 +43,6 @@ from sr_od.application.currency_war.telemetry.state import (
     _buffer_briefing_row,
     _consume_unit_exec_facts,
     _consume_unit_gold_close,
-    get_recorder,
 )
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
@@ -457,7 +456,7 @@ def record_decision(state: GameState, target_comp: str,
         pass
     if extra:
         _extra.update(extra)   # 调用方显式字段(sess_* 快照)合并在自动字段上
-    get_recorder().record_decision(_telstate._CURRENT_RUN_ID, _telstate._CURRENT_DIFFICULTY, state,
+    _telstate.get_recorder().record_decision(_telstate._CURRENT_RUN_ID, _telstate._CURRENT_DIFFICULTY, state,
                                    target_comp, candidate_scores, eval_breakdown, actions,
                                    extra=_extra, gold_point=gold_point)
 
@@ -472,7 +471,7 @@ def record_outcome(outcome, source: str = "",
     """
     if not _telstate._CURRENT_RUN_ID:
         return
-    get_recorder().record_outcome(_telstate._CURRENT_RUN_ID, outcome, source=source,
+    _telstate.get_recorder().record_outcome(_telstate._CURRENT_RUN_ID, outcome, source=source,
                                   supply_pick=supply_pick)
 
 
@@ -497,7 +496,7 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
         return
     if not _telstate._CURRENT_RUN_ID:
         return
-    get_recorder().record_exogenous(_telstate._CURRENT_RUN_ID, round_num, kind, detail, state,
+    _telstate.get_recorder().record_exogenous(_telstate._CURRENT_RUN_ID, round_num, kind, detail, state,
                                     choice=choice)
 
 
@@ -538,7 +537,7 @@ def record_event_choice(event: str, options: list | None, pick_idx: int,
               'n_options': len(opts),
               'pick_idx': int(pick_idx),
               'reason': str(reason or '')}
-    get_recorder().record_exogenous(
+    _telstate.get_recorder().record_exogenous(
         _telstate._CURRENT_RUN_ID, round_num, 'event_choice',
         detail=f'{event} pick=idx{pick_idx} {reason}', choice=choice)
 
@@ -571,7 +570,7 @@ def record_sell_income(state: GameState, slot: int, char_id: str,
     delta = ((gold_after - gold_before)
              if (gold_before is not None and gold_after is not None) else None)
     round_num = int(getattr(state, 'round_num', 0) or 0)
-    get_recorder().record_exogenous(
+    _telstate.get_recorder().record_exogenous(
         _telstate._CURRENT_RUN_ID, round_num, 'sell_income',
         detail=(f'sell slot={slot} {char_id or "?"} '
                 f'+{delta if delta is not None else "?"}金'),
@@ -596,7 +595,7 @@ def record_spend_unit(plane: int, round_num: int, unit_seq: int,
         return
     _gc, _gc_trusted = _consume_unit_gold_close()
     _exec = _consume_unit_exec_facts()
-    get_recorder().record_spend_unit(
+    _telstate.get_recorder().record_spend_unit(
         _telstate._CURRENT_RUN_ID, plane, round_num, unit_seq, boundary, progressed,
         duration_s, detail=detail, gold_before=gold_before,
         gold_before_trusted=gold_before_trusted,
@@ -627,7 +626,7 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
                         if isinstance(c, dict) and c.get('chosen')), None)
         if _chosen and _chosen != '?':
             stage_pending_strategy_pick(str(_chosen))
-    rec = get_recorder()
+    rec = _telstate.get_recorder()
     ts = datetime.now().isoformat(timespec="seconds")
     for c in cards:
         rec._append("invest_cards.jsonl", {
@@ -651,7 +650,7 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
     """
     if not _telstate._CURRENT_RUN_ID:
         return
-    rec = get_recorder()
+    rec = _telstate.get_recorder()
     rec._append("shop_snapshots.jsonl", {
         "schema_version": 1,
         "ts": datetime.now().isoformat(timespec="seconds"),

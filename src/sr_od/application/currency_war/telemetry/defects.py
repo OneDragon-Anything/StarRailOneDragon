@@ -16,7 +16,6 @@ from sr_od.application.currency_war.telemetry import state as _telstate
 from sr_od.application.currency_war.telemetry.state import (
     _mark_defect_reproduced,
     current_run_id,
-    get_recorder,
     log,
 )
 
@@ -111,7 +110,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         surface, gap_large=gap_large, auto_resolved=auto_resolved,
         reproduced=_mark_defect_reproduced(surface, kind, str(expected),
                                            _telstate._CURRENT_RUN_ID))
-    get_recorder().record_defect(
+    _telstate.get_recorder().record_defect(
         surface, kind, expected, observed, run_id=_telstate._CURRENT_RUN_ID,
         plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
@@ -167,7 +166,7 @@ def _exit_record_exec_event(run_id: str, round_num: int, action_family: str,
                             screen: str, event: str, reason: str = '',
                             retry_count: int = 0) -> None:
     """出口钩子实现:影子执行事件 → 模块级 recorder(签名对齐 recorder 方法)。"""
-    get_recorder().record_exec_event(
+    _telstate.get_recorder().record_exec_event(
         run_id=run_id, round_num=round_num, action_family=action_family,
         screen=screen, event=event, reason=reason, retry_count=retry_count)
 

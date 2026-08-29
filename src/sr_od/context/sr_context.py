@@ -63,7 +63,7 @@ from sr_od.screen_state.yolo_screen_detector import YoloScreenDetector
 from sr_od.sr_map.sr_map_data import SrMapData
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+    from sr_od.application.currency_war.decision.cw_strategy import CurrencyWarMatch
 
 
 class TeamInfo:
