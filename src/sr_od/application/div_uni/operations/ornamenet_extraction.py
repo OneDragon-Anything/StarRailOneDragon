@@ -216,7 +216,7 @@ class ChallengeOrnamentExtraction(SrOperation):
 
     @node_from(from_name='等待副本加载')
     @node_from(from_name='处理战斗结果', status='再来一次按钮')
-    @operation_node(name='等待战斗结果', node_max_retry_times=5)
+    @operation_node(name='等待战斗结果')
     def wait_battle_result(self) -> OperationRoundResult:
         """
         等待战斗结果。
