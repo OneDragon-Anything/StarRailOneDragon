@@ -372,8 +372,10 @@ def supply_proposals(state: GameState, session: StrategySession,
       的 bench 等待件上场」的跨档账整账(无等待件 → 无提案:升完
       没有能上场的强单位是 [32] 病例注,不供给空账)。
     - 买卡臂:_salvage_ok 完备式过滤;merge 候选 bench_slots=0。
-    - 刷新臂:停付豁免域(应急带/ALL IN/搜索停付)直通不进
-      Π_refresh(§3 与 ADR-0470 停付语义自洽);估计器见上。
+    - 刷新臂:停付域直通不进 Π_refresh——单一址 = discipline.
+      blood_budget_refresh_blocked(其 False 域恰 = v6 §3 三个直通域
+      ALL IN/应急带/终止豁免;W733 修复①,与管线/段级检查同谓词);
+      估计器见上。
     - Π_comp:前置边闭合(buy 目标件 + levelup 原子合并)。
     """
     return _supply_impl(state, session, registry, domain)
@@ -390,7 +392,6 @@ def _supply_impl(state: GameState, session: StrategySession,
     )
     from sr_od.application.currency_war.decision.decision_v2.filters import (
         _deploy_free,
-        is_emergency,
     )
     from sr_od.application.currency_war.kernel.cw_state import bench_occupied
     w = _w_per_battle(state, session)
@@ -399,12 +400,14 @@ def _supply_impl(state: GameState, session: StrategySession,
     m_eff = (min(horizon, float(_deploy_free_battles(state, session,
                                                      registry)))
              if domain is AllocDomain.DEATH else horizon)
-    # 刷新臂停付豁免域:应急带/ALL IN(discipline 谓词族单一源)直通
+    # 刷新臂停付豁免域单一址(W733 修复①):discipline.
+    # blood_budget_refresh_blocked 与管线刷新收尾/段级检查同谓词——
+    # 其 False 域恰 = v6 §3 的三个直通域(ALL IN/应急带/终止豁免),
+    # True 域 = 血预算停付(641025 r8/641056 r7 绕过形态的回归闸)。
     from sr_od.application.currency_war.decision.decision_v2.discipline import (
-        plane_last_battle,
+        blood_budget_refresh_blocked,
     )
-    refresh_exempt = is_emergency(state, registry) \
-        or plane_last_battle(state, session)
+    refresh_exempt = blood_budget_refresh_blocked(state, session, registry)
 
     cands = generate_candidates(state, session, registry)
     props: list[AllocProposal] = []
