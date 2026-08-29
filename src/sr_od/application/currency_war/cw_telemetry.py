@@ -402,6 +402,12 @@ class SpendUnitRecord:
     # 读端分类器记 unknown 不猜)。
     gold_close: int | None = None
     gold_close_trusted: bool = False
+    # 执行侧「计划≠尝试」可见化(W577,ADR-0456):生产者 = shop.py 执行循环
+    #(经 set_unit_truncation 暂存、单元关闭落账时消费填充;未挂钩路径恒缺省)。
+    plan_truncated: bool = False     # True=plan 里有动作未尝试(硬墙跳过/至首个 RefreshShop 截断丢弃)——口径差非执行失败
+    refresh_skipped: str | None = None  # 刷新被跳过的原因:'max_cap'=MAX_REFRESH 硬墙;None=未跳过
+    refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
+    refresh_board_changed: bool | None = None  # 刷新点击后牌面是否已变(两帧一致门+牌名集对拍);None=未尝试/不可判
 
 
 @dataclass
@@ -723,12 +729,17 @@ class TelemetryRecorder:
                           gold_before: int | None = None,
                           gold_before_trusted: bool = False,
                           gold_close: int | None = None,
-                          gold_close_trusted: bool = False) -> None:
+                          gold_close_trusted: bool = False,
+                          plan_truncated: bool = False,
+                          refresh_skipped: str | None = None,
+                          refresh_attempted: bool = False,
+                          refresh_board_changed: bool | None = None) -> None:
         """记购买单元账框架行(spend_ledger.jsonl;纯观测零行为)。
 
         字段语义见 SpendUnitRecord;调用方 = prep_director 的 RunBuyPhase
         执行边界。gold_close 来自 shop.py 关店对拍点暂存(模块级便捷入口
         消费填充;未挂钩的调用路径恒 None,读端记 unknown 不猜)。
+        plan_truncated/refresh_* 来自 shop.py 执行循环暂存(同槽模式)。
         """
         rec = SpendUnitRecord(
             ts=datetime.now().isoformat(timespec="seconds"),
@@ -737,7 +748,10 @@ class TelemetryRecorder:
             duration_s=round(float(duration_s), 2),
             detail=(detail or '')[:240],
             gold_before=gold_before, gold_before_trusted=gold_before_trusted,
-            gold_close=gold_close, gold_close_trusted=gold_close_trusted)
+            gold_close=gold_close, gold_close_trusted=gold_close_trusted,
+            plan_truncated=plan_truncated, refresh_skipped=refresh_skipped,
+            refresh_attempted=refresh_attempted,
+            refresh_board_changed=refresh_board_changed)
         self._append("spend_ledger.jsonl", _to_jsonable(rec))
 
     def record_defect(self, surface: str, kind: str, expected: str,
@@ -844,6 +858,40 @@ def _consume_unit_gold_close() -> tuple[int | None, bool]:
     if slot is None:
         return None, False
     return slot.get('gold'), bool(slot.get('trusted'))
+
+
+# —— 执行侧「计划≠尝试」可见化暂存槽(W577,ADR-0456)——
+# 与 _PENDING_UNIT_GOLD_CLOSE 同模式同理由:shop.py 执行循环握有「计划了但
+# 未尝试/刷新点击后牌面变没变」的执行事实,spend_ledger 行由 director 边界
+# 落账,经本槽由既有落账入口消费(消费即清,残留不串单元)。
+_PENDING_UNIT_EXEC: dict[str, Any] | None = None
+
+
+def set_unit_exec_facts(*, plan_truncated: bool = False,
+                        refresh_skipped: str | None = None,
+                        refresh_attempted: bool = False,
+                        refresh_board_changed: bool | None = None) -> None:
+    """生产者(shop.py 执行循环):暂存本单元「计划≠尝试」执行事实。
+
+    plan_truncated=True = plan 含未尝试动作(硬墙跳过/至首个 RefreshShop
+    截断丢弃);refresh_attempted/board_changed 供分类器三分「点击落空 vs
+    免费生效」。只在有事实可报时调用(全缺省不必调)。
+    """
+    global _PENDING_UNIT_EXEC
+    _PENDING_UNIT_EXEC = {
+        'plan_truncated': bool(plan_truncated),
+        'refresh_skipped': refresh_skipped,
+        'refresh_attempted': bool(refresh_attempted),
+        'refresh_board_changed': refresh_board_changed,
+    }
+
+
+def _consume_unit_exec_facts() -> dict[str, Any]:
+    """消费者(模块级 record_spend_unit 落账时):取走暂存并清槽;无暂存=缺省。"""
+    global _PENDING_UNIT_EXEC
+    slot = _PENDING_UNIT_EXEC
+    _PENDING_UNIT_EXEC = None
+    return slot or {}
 
 
 def set_ctx_match(match) -> None:
@@ -1132,11 +1180,16 @@ def record_spend_unit(plane: int, round_num: int, unit_seq: int,
     if not _CURRENT_RUN_ID:
         return
     _gc, _gc_trusted = _consume_unit_gold_close()
+    _exec = _consume_unit_exec_facts()
     get_recorder().record_spend_unit(
         _CURRENT_RUN_ID, plane, round_num, unit_seq, boundary, progressed,
         duration_s, detail=detail, gold_before=gold_before,
         gold_before_trusted=gold_before_trusted,
-        gold_close=_gc, gold_close_trusted=_gc_trusted)
+        gold_close=_gc, gold_close_trusted=_gc_trusted,
+        plan_truncated=bool(_exec.get('plan_truncated')),
+        refresh_skipped=_exec.get('refresh_skipped'),
+        refresh_attempted=bool(_exec.get('refresh_attempted')),
+        refresh_board_changed=_exec.get('refresh_board_changed'))
 
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
@@ -2379,16 +2432,25 @@ def plan_gold_flow(plan_actions: list[dict[str, Any]],
 def classify_spend_unit(plan_actions: list[dict[str, Any]],
                         gold_open: int | None, gold_close: int | None,
                         *, refresh_cost: int = 2, tolerance: int = 2,
-                        boundary: str = 'closed') -> dict[str, Any]:
-    """购买单元三态判定(纯函数,可单测;W494 设计 §3)。
+                        boundary: str = 'closed',
+                        executed: dict[str, Any] | None = None) -> dict[str, Any]:
+    """购买单元三态判定(纯函数,可单测;W494 设计 §3;W577 扩「计划≠尝试」分流)。
 
     verdict 域:effective(生效)/ not_effective(执行未生效)/
     partial_mismatch(金动了但对不上账)/ unplanned_spend(计划外花销)/
-    no_spend_quiet(未计划且金未动)/ unknown(读数缺失或非完整单元——
-    **记 unknown 不猜**:无 gold_delta 冲突行 ≠ 对拍通过,read_gold 失败
-    同样不写行,离线不可分,宁缺勿错)。
+    no_spend_quiet(未计划且金未动)/ plan_truncated(plan 有动作未尝试——
+    执行侧硬墙跳过/至首个 RefreshShop 截断,口径差非执行失败,W577)/
+    free_refresh_proc(刷新已尝试+牌面已变+金差≈0 = 免费刷新生效,W577)/
+    unknown(读数缺失或非完整单元——**记 unknown 不猜**:无 gold_delta
+    冲突行 ≠ 对拍通过,read_gold 失败同样不写行,离线不可分,宁缺勿错)。
     tolerance 与 shop.py spend_audit ±2 同源;boundary != 'closed'(半单元/
     中断单元)不判——执行链不完整,任何判定都是猜。
+
+    executed(W577,可选)= 执行侧可见化事实(SpendUnitRecord 同名字段;
+    None=旧数据/未挂钩,判定退回 W494 原语义)。判定序(ADR-0456):
+    ①plan_truncated → plan_truncated(**不停**——口径差,留台账);
+    ②金差≈0 ∧ 计划花费>0 ∧ 已尝试 → not_effective(**停**——真点击落空);
+    ③金差≈0 ∧ 刷新已尝试 ∧ 牌面已变 → free_refresh_proc(**不停**+采证)。
     """
     flow = plan_gold_flow(plan_actions, refresh_cost)
     out: dict[str, Any] = {
@@ -2398,6 +2460,9 @@ def classify_spend_unit(plan_actions: list[dict[str, Any]],
         'expected_net': flow['net'], 'actual_delta': None, 'gap': None,
         'boundary': boundary, 'has_refresh': flow['has_refresh'],
         'income_unknown': flow['income_unknown'], 'items': flow['items'],
+        'plan_truncated': bool((executed or {}).get('plan_truncated')),
+        'refresh_attempted': bool((executed or {}).get('refresh_attempted')),
+        'refresh_board_changed': (executed or {}).get('refresh_board_changed'),
     }
     if boundary != 'closed':
         out['reason'] = f'boundary={boundary}(非完整单元不判)'
@@ -2409,11 +2474,20 @@ def classify_spend_unit(plan_actions: list[dict[str, Any]],
     gap = actual - flow['net']
     out['actual_delta'] = actual
     out['gap'] = gap
+    if out['plan_truncated']:
+        out['verdict'] = 'plan_truncated'
+        out['reason'] = '计划动作未全尝试(执行侧硬墙/截断跳过)——口径差非执行失败,不停'
+        return out
     if flow['planned_spend'] > 0:
         if abs(gap) <= tolerance:
             out['verdict'] = 'effective'
         elif abs(actual) <= tolerance:
-            out['verdict'] = 'not_effective'
+            if out['refresh_attempted'] \
+                    and out['refresh_board_changed'] is True:
+                out['verdict'] = 'free_refresh_proc'
+                out['reason'] = '刷新已尝试+牌面已变+金差≈0 = 免费刷新生效(采证),不停'
+            else:
+                out['verdict'] = 'not_effective'
         else:
             out['verdict'] = 'partial_mismatch'
     else:
@@ -2471,6 +2545,28 @@ def _match_conflict(conflicts: list[dict[str, Any]], plane: int, round_num: int,
     return best
 
 
+def _spend_unit_row(replay_dir: Path, run_id: str, plane: int,
+                    round_num: int, unit_seq: int) -> dict[str, Any] | None:
+    """spend_ledger 本单元最新行(按 run/plane/round/unit_seq 定位;纯读)。
+
+    消费方 = prep_director 安灯钩子(_exec_fail_hook_check):读执行侧
+    「计划≠尝试」事实字段(plan_truncated/refresh_*)作分类器 executed 输入。
+    行缺失(历史局/未挂钩)→ None,分类器退回 W494 原语义不停。
+    """
+    found: dict[str, Any] | None = None
+    p = replay_dir / 'spend_ledger.jsonl'
+    if not p.exists():
+        return None
+    for r in read_jsonl(p):
+        if (r.get('run_id') != run_id
+                or (int(r.get('plane') or 0), int(r.get('round_num') or 0))
+                != (plane, round_num)
+                or int(r.get('unit_seq') or 0) != unit_seq):
+            continue
+        found = r
+    return found
+
+
 def _shop_plan_rows(replay_dir: Path, run_id: str) -> dict[tuple[int, int], dict[str, Any]]:
     """decisions.jsonl 的 shop plan 行(同轮取最后;纯读)。
 
@@ -2521,7 +2617,10 @@ def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
         cls = classify_spend_unit(
             (plan_row or {}).get('actions') or [],
             (plan_row or {}).get('gold'), gold_close,
-            boundary=str(r.get('boundary') or 'closed'))
+            boundary=str(r.get('boundary') or 'closed'),
+            executed={'plan_truncated': r.get('plan_truncated'),
+                      'refresh_attempted': r.get('refresh_attempted'),
+                      'refresh_board_changed': r.get('refresh_board_changed')})
         cls['unit'] = r
         cls['plan_gold'] = (plan_row or {}).get('gold')
         cls['plan_gold_readable'] = (plan_row or {}).get('gold_readable')

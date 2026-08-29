@@ -77,6 +77,7 @@ from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
     read_round_outcome,
 )
 from sr_od.application.currency_war.cw_state import (
+    REFRESH_COST_BASE,
     XP_TO_NEXT_LEVEL,
     GameState,
     ShopCard,
@@ -825,13 +826,14 @@ def _parse_coin_fee_digit(texts: list[str]) -> int | None:
 
 
 def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int | None:
-    """刷新商店一次的花费(``文本-刷新金币数``;投资策略可减免,**可为 0**)。
+    """商店面板「↻ N」徽标读数(``文本-刷新金币数`` rect)——**非刷价,仅旁证**。
 
-    放大两级管线(与 ``read_level_up_cost`` 同形):原生直读是该 rect 的
-    历史残留——同屏小字(金币/等级/费用)均已放大读,本字段曾用 native OCR
-    +「读不到兜底 2」,带横幅变体帧实证把真 0 静默改成 2(错值喂决策)。
-    两级读空 → **None=读不到**,由消费方走 ``or 2`` 兜底(与决策层默认一致),
-    「读不到」与「真 0」不再混写。守卫 0..10(免费刷/减免档内)。
+    W577 定谳(ADR-0456):rect 内容 = 商店折叠面板徽标,数值 = min(gold//10,5)
+    (= 利息公式),与实付刷新费无关——多局干净对账实付恒 2(基价
+    ``cw_state.REFRESH_COST_BASE``)而徽标随金位变。本函数保留作旁证/测试用,
+    已退出 ``read_game_state`` 主链(决策热路径少一次 OCR)。
+
+    实现维持 W559 后的放大两级管线与 0..10 守卫;两级读空 → None。
     """
     rect = _area_rect(ctx, '文本-刷新金币数')
     v = _parse_coin_fee_digit([r.data for r in _ocr_upscaled(ctx, screen, rect)])
@@ -1685,9 +1687,11 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
         state.enemy_difficulty = _ed_session
         state.enemy_difficulty_live = False
     state.level_up_cost = read_level_up_cost(ctx, screen)
-    # 刷新费 None=读不到(放大两级管线读空),消费方统一 ``or 2`` 兜底——
-    # 「读不到」不再混写成默认 2(带横幅帧真 0 被兜底改 2 的错值根除)。
-    state.shop_refresh_cost = read_shop_refresh_cost(ctx, screen)
+    # 刷新实付金 = 基价常量(ADR-0456):「文本-刷新金币数」rect 读到的是
+    # 面板徽标(=min(gold//10,5) 利息数值)非刷价,OCR 退出主链(决策热路径
+    # 净少一次 OCR);state.shop_refresh_cost 恒 REFRESH_COST_BASE,消费点
+    # ``or 2`` 语义不变。旁证读数走 read_shop_refresh_cost(独立调用)。
+    state.shop_refresh_cost = REFRESH_COST_BASE
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
     # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。
     # 双源留证(观察冲突审计 #8 P2,2026-08-17):结算真值(带符号)与备战 magnitude 独立可对拍

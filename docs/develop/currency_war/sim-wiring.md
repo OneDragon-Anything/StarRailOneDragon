@@ -33,7 +33,7 @@
 | deployed | select_deployments 围栏输出,跨轮累积(ADR-0271) | bot 跟踪已上阵 | 已接 | — |
 | board | deployed 羁绊全集聚合(ADR-0312:主阵营单标签口径已废;per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,L1+L2 含星徽装备贡献;DeployMove 增量、动作 v2 全量重算) | OCR 左面板阵营计数 / board_from_tracked 计算(同口径) | 已接(ADR-0312 全集口径) | — |
 | equips | supply 3选1 采样(池=注册表过滤后的装备名,ADR-0294 件2)+equip_allocation(r393)+分配结果回写 BenchChar.equips(ADR-0312,星徽羁绊贡献进 board);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR;tracked_deployed[].equips(deploy_bench 读回) | 已接(代理) | — |
-| shop_refresh_cost | 恒默认 2(读 `st.shop_refresh_cost or 2`);注入局免费刷额度内刷价 0(W162/ADR-0364,`free_refresh_per_node`) | OCR 刷新金币数 | 已接(P1 无投资减免域内 2=真值;注入局额度内 0=cw_economy._refresh_cost 同语义) | P3 |
+| shop_refresh_cost | 恒基价 2(读 `st.shop_refresh_cost or 2`);注入局免费刷额度内刷价 0(W162/ADR-0364,`free_refresh_per_node`) | 基价常量 `REFRESH_COST_BASE`(ADR-0456:实付恒 2,旧「OCR 刷新金币数」rect 实为面板徽标=利息数值,已退役出决策链) | 已接(P1 无投资减免域内 2=真值;注入局额度内 0=cw_economy._refresh_cost 同语义) | P3 |
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
 | bench_full_flag | 恒 None → `bench_is_full()` 走 BENCH_CAPACITY=9 计数兜底 | OCR「备战席已满」警告 | 已接(兜底口径=生产 OCR 缺失路径同源;ADR-0271 后计数为真备战数) | — |

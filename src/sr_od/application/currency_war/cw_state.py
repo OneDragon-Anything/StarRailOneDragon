@@ -42,6 +42,15 @@ XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
 
+# 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局 decisions.jsonl
+# 相邻决策行金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
+# 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
+# 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
+# (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——
+# 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
+# 消费点沿用 ``or 2`` 兜底语义:字段恒为基价,兜底分支不再触发,零行为波及。
+REFRESH_COST_BASE: int = 2
+
 
 def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
                     xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
@@ -141,7 +150,7 @@ class GameState:
     # cw_observation.read_deploy_cap_debounced(cap<level 或 |cap-level|>2 重读一帧,仍异拒)。
     deploy_cap: int | None = None
     level_up_cost: int | None = None      # 买一次经验的花费(文本-购买经验金币数;None=未读到,用 XP_CLICK_COST_FALLBACK 兜底)
-    shop_refresh_cost: int = 2            # 刷新一次花费(文本-刷新金币数;默认 2,投资策略可减免;未读到保 2)
+    shop_refresh_cost: int = REFRESH_COST_BASE  # 刷新实付金 = 基价 2(REFRESH_COST_BASE 建模常量,注释见其声明)。不再由 OCR 填充——「文本-刷新金币数」rect 读的是面板徽标(=min(gold//10,5) 利息数值)非刷价(ADR-0456);字段保留为消费点契约(全 ``or 2``,值恒基价零波及)
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)

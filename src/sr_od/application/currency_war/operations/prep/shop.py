@@ -28,6 +28,7 @@ from sr_od.application.currency_war.cw_observation import (
 )
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
+    REFRESH_COST_BASE,
     BenchChar,
     BuyCard,
     DeployMove,
@@ -370,6 +371,13 @@ class BuyShopCards(SrOperation):
         match.strategy.update_target(_tgt_state, match.session, config)
 
         total_buy = total_level = total_refresh = 0
+        # W577(ADR-0456)「计划≠尝试」执行事实:plan 里被硬墙跳过/截断丢弃的
+        # 动作不再静默——单元落账时经 set_unit_exec_facts 进 spend_ledger,
+        # 安灯分类器据此把「计划了但没点」分流为 plan_truncated(不停)。
+        _plan_truncated = False
+        _refresh_skipped: str | None = None
+        _refresh_attempted = False
+        _refresh_board_changed: bool | None = None
         # W62 件2(ADR-0329):卖通道执行计数(income 遥测 + gold 对拍纳入卖入)
         total_sell = total_sell_income = total_sell_skip = total_sell_fail = 0
         # 关店对拍账基座:执行侧逐动作累计花金(买价+升级费+当次刷新费)。
@@ -564,6 +572,10 @@ class BuyShopCards(SrOperation):
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)
             prefix = actions if refresh_idx is None else actions[:refresh_idx + 1]
+            if refresh_idx is not None and refresh_idx + 1 < len(actions):
+                # W577:截断丢弃的尾部动作(下波会重 plan,但本 plan 行已按
+                # 全量记账)对分类器是「计划≠尝试」,可见化不停(ADR-0456)
+                _plan_truncated = True
             bought_x: set[int] = set()
             did_refresh = False
             for action in prefix:
@@ -631,14 +643,19 @@ class BuyShopCards(SrOperation):
                     _spend_executed += action.cost
                 elif isinstance(action, RefreshShop):
                     if total_refresh >= BuyShopCards.MAX_REFRESH:
+                        # W577:硬墙跳过=计划了但未尝试,可见化(局22 误停根因:
+                        # 此前静默 continue 被分类器当「点击落空」误判 not_effective)
+                        _plan_truncated = True
+                        _refresh_skipped = 'max_cap'
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
+                    _refresh_attempted = True
                     # 刷新期望对账 producer(契约单一源=prep_director.
                     # build_refresh_expect docstring;唯一合法评估窗=本波内
                     # ——director 只持关店帧,无「刷新后开店帧」;先例=下方
                     # pending_buy_expect 同型惰性 import)。
-                    # 期望三输入点击前现读;None=不可读跳过(禁 or-2——下方
-                    # _refresh_fee 的 or-2 只归花销账,不进期望);构建失败
-                    # 静默跳过,不阻塞买牌。
+                    # 期望三输入点击前现读;刷价 = 基价常量(ADR-0456:徽标
+                    # 读数非刷价,期望=实付基价 2,refresh_expect_mismatch
+                    # 缺陷类随之归零);构建失败静默跳过,不阻塞买牌。
                     _refresh_expect = None
                     _reconcile = None
                     try:
@@ -648,7 +665,7 @@ class BuyShopCards(SrOperation):
                         )
                         _pre_gold = read_gold_opt(self.ctx, self.screenshot())
                         _refresh_expect = build_refresh_expect(
-                            _pre_gold, state.shop_refresh_cost,
+                            _pre_gold, REFRESH_COST_BASE,
                             [(c.name, c.star) for c in state.shop],
                             state.plane, state.round_num)
                         _reconcile = refresh_reconcile_mismatches
@@ -689,7 +706,9 @@ class BuyShopCards(SrOperation):
                             _base = _fp
                     if not _stable:
                         _t3.sleep(0.5)   # 超时回退(≈旧 1.0s 总量)
-                    # 当次刷价在点击波现读(升级后刷价可能变,不能末波代扣)
+                    # 当次刷价进花销账 = 基价常量(ADR-0456:实付恒基价,
+                    # 不随波变;``or 2`` 兜底在字段恒基价后不再触发,保留
+                    # 消费点契约不动)
                     _refresh_fee = state.shop_refresh_cost or 2
                     _spend_executed += _refresh_fee
                     total_refresh += 1
@@ -708,8 +727,14 @@ class BuyShopCards(SrOperation):
                         # 硬失败形态传 gap_large;复现防抖在台账层(同特征首见
                         # L1、两连全同升 L0 初判)。纯记账留证,零决策行为变更
                         # (刷新照点、买牌照买,停机接线未启)。
-                        if refresh_effective([c.name for c in state.shop],
-                                             [c.name for c in _new_shop]) is False:
+                        # W577:牌面变没变同时是「计划≠尝试」三分的观测面。
+                        # refresh_effective 三值:False=全同(未变)/True=已变/
+                        # None=不可判(不可判不可当已变——会把真落空洗成免费,
+                        # 安灯失去停线面),原样透传给分类器。
+                        _refresh_board_changed = refresh_effective(
+                            [c.name for c in state.shop],
+                            [c.name for c in _new_shop])
+                        if _refresh_board_changed is False:
                             _ineff_shot = None
                             with contextlib.suppress(Exception):   # 截图 best-effort
                                 _ineff_shot = self.save_screenshot(
@@ -737,6 +762,43 @@ class BuyShopCards(SrOperation):
                         # 本段异常由外层 except 兜住,不阻塞买牌。
                         if _refresh_expect is not None and _reconcile is not None:
                             _gold_after = read_gold_opt(self.ctx, self.screenshot())
+                            # W577 免费刷新事后正证据通道(ADR-0456,永久保留——
+                            # 这是修正后的判定语义的一部分,非采证钩子):刷新已
+                            # 点击 ∧ 牌面已变 ∧ 点后金=点前金 → 免费刷新 proc 真实
+                            # 发生(覆盖棱/策略/未知一切免费来源),截图+flag 留证
+                            # (**不停机**——免费不是失败;与 W542 商店入口停机钩子
+                            # 证据互补:通道证 proc 发生+频率,钩子证入口形态)。
+                            if (_refresh_board_changed is True
+                                    and _pre_gold is not None
+                                    and _gold_after is not None
+                                    and _gold_after == _pre_gold):
+                                with contextlib.suppress(Exception):
+                                    _free_shot = self.save_screenshot(
+                                        prefix='free_refresh_proc')
+                                    # 局部 import(hunk 隔离:datetime/Path
+                                    # 顶层 import 属 W542 采证钩子 hunks,本段
+                                    # 不得依赖它们)
+                                    from datetime import datetime as _free_dt
+                                    from pathlib import Path as _free_path
+                                    _flag_p = _free_path(__file__).resolve().parents[5] \
+                                        / '.debug' / 'temp' / 'cw_free_refresh_proc.flag'
+                                    _flag_p.parent.mkdir(parents=True, exist_ok=True)
+                                    _flag_p.write_text(
+                                        'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
+                                        f'run={cw_telemetry.current_run_id()} '
+                                        f'plane={state.plane} round={state.round_num} '
+                                        f'wave={total_refresh} ts={_free_dt.now().isoformat(timespec="seconds")}\n'
+                                        f'前后牌面: {sorted(c.name for c in state.shop)} -> '
+                                        f'{sorted(c.name for c in _new_shop)}\n'
+                                        f'gold: 前={_pre_gold} 后={_gold_after}(未扣=免费)\n'
+                                        f'截图: {_free_shot}\n'
+                                        '处理: 汇总频率判免费来源(棱 45%/策略类/未知),'
+                                        '确认后删本 flag;通道本身保留(对账防线)。\n',
+                                        encoding='utf-8')
+                                    log.warning(
+                                        '[cw!][shop] 免费刷新 proc:牌面已变 金未扣'
+                                        '(前=%s 后=%s)→ 留证不停 flag=cw_free_refresh_proc.flag',
+                                        _pre_gold, _gold_after)
                             _cards_named = sum(1 for c in _new_shop if c.name)
                             for _m in _reconcile(_refresh_expect[0], _gold_after,
                                                  _cards_named):
@@ -1055,6 +1117,17 @@ class BuyShopCards(SrOperation):
                     verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
                     source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
                     spend=_spend)
+        # W577:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
+        # record_spend_unit 消费进 spend_ledger;与 set_unit_gold_close 同槽
+        # 模式)。全缺省不调(免残留噪声);best-effort 不阻塞收工。
+        if _plan_truncated or _refresh_attempted \
+                or _refresh_skipped is not None:
+            with contextlib.suppress(Exception):
+                cw_telemetry.set_unit_exec_facts(
+                    plan_truncated=_plan_truncated,
+                    refresh_skipped=_refresh_skipped,
+                    refresh_attempted=_refresh_attempted,
+                    refresh_board_changed=_refresh_board_changed)
         return self.round_success(
             f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
             f'卖{total_sell}张(+{total_sell_income}金,守卫拦{total_sell_skip}) '

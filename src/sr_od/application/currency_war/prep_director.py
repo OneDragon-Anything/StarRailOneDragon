@@ -151,17 +151,21 @@ def exec_fail_flag_path() -> Path:
 
 
 def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
-                          boundary: str = 'closed') -> bool:
+                          boundary: str = 'closed',
+                          executed: dict | None = None) -> bool:
     """安灯式停机谓词(纯函数,可单测):mismatch 才停。
 
-    mismatch = 分类器 not_effective(计划花费>0 且金差≈0——动作发出但金没动);
-    partial_mismatch(金动了但对不上账)与 unknown(读数缺失/半单元)不停——
-    前者可能是口径差非执行失败,后者证据不足。判定复用
+    mismatch = 分类器 not_effective(计划花费>0 且金差≈0 且**已尝试**——
+    真点击落空);partial_mismatch(金动了但对不上账)与 unknown(读数缺失/
+    半单元)不停——前者可能是口径差非执行失败,后者证据不足。W577(ADR-0456)
+    扩两豁免态:**plan_truncated**(plan 有动作未尝试——硬墙跳过/截断,口径差)
+    与 **free_refresh_proc**(刷新已尝试+牌面已变+金差≈0,免费生效)——verdict
+    域变宽,本谓词仍只对 not_effective 停,自动豁免两新态。判定复用
     ``cw_telemetry.classify_spend_unit``,不建第二套分类。
     """
     from sr_od.application.currency_war.cw_telemetry import classify_spend_unit
     cls = classify_spend_unit(plan_actions or [], gold_open, gold_close,
-                              boundary=boundary)
+                              boundary=boundary, executed=executed)
     return cls['verdict'] == 'not_effective'
 
 
@@ -632,13 +636,12 @@ def build_refresh_expect(gold: int | None,
                          round_num: int) -> tuple[RefreshExpect, int, int] | None:
     """刷新动作发出点 → 期望增量(纯函数;producer 契约,None 口径单一源)。
 
-    None 口径(刷费语义 = ``read_shop_refresh_cost``:None=面板读不到):
-    - ``gold`` / ``refresh_cost`` 任一 None → 返回 None = 不可读跳过对账。
-      **禁 ``or 2`` 式合并**——「读不到」≠免费≠默认 2(带横幅帧真 0 曾被
-      兜底改 2 的错值根因,W559 实证);真 0(免费刷/减免档)原样保 0 进
-      期望(gold_after == gold_before,insufficient=False)。
-    - 核验通过才经 ``cw_shop_obs.refresh_expect`` 构建(其 refresh_cost
-      必填无默认,漏传 TypeError,W556 测试钉住防写死回流)。
+    刷价输入契约(W577,ADR-0456):调用方传 ``cw_state.REFRESH_COST_BASE``
+    基价常量——实付恒基价 2,「文本-刷新金币数」rect 是面板徽标(利息数值)
+    非刷价,期望=实付,refresh_expect_mismatch 缺陷类随之归零。签名保留
+    ``refresh_cost: int | None``:None 仍返回 None 跳过对账(gold 失读同理),
+    供测试与未来免费 proc 建模(届时按「基价−免费抵扣」在此处计)传参;
+    **禁把面板徽标读数当刷价传入**。
 
     挂账(producer 集成点):期望必须在**刷新波内**构建——波前金与波前
     面板费都是单元内部现读;prep_director 持有的 RunBuyPhase 前后帧均为
@@ -2138,8 +2141,21 @@ class PrepDirector(SrOperation):
         plan_actions = plan_row.get('actions') or []
         gold_open = plan_row.get('gold')
         gold_close = (conf or {}).get('new')
+        # W577(ADR-0456):数据源补 spend_ledger 单元行的执行侧「计划≠尝试」
+        # 字段(与 plan 行/gold_delta 行同一 replay join 面)——硬墙跳过/
+        # 截断的单元分流 plan_truncated 豁免(局22 误停根因),不再被当
+        # 「点击落空」误停。行缺失 → executed=None,退回 W494 原语义。
+        unit_row = cw_telemetry._spend_unit_row(
+            replay_dir, run_id, meta['plane'], meta['round'], meta['seq'])
+        executed = None
+        if unit_row is not None:
+            executed = {
+                'plan_truncated': unit_row.get('plan_truncated'),
+                'refresh_attempted': unit_row.get('refresh_attempted'),
+                'refresh_board_changed': unit_row.get('refresh_board_changed'),
+            }
         if not exec_fail_should_stop(plan_actions, gold_open, gold_close,
-                                     boundary=boundary):
+                                     boundary=boundary, executed=executed):
             return
         self._exec_fail_hook_fired = True
         items = cw_telemetry.plan_gold_flow(plan_actions)['items']
