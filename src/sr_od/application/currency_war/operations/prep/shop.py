@@ -23,6 +23,7 @@ from sr_od.application.currency_war.cw_observation import (
     new_bench_slots,
     read_game_state,
     read_gold,
+    read_gold_opt,
     read_shop_cards,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -631,6 +632,29 @@ class BuyShopCards(SrOperation):
                 elif isinstance(action, RefreshShop):
                     if total_refresh >= BuyShopCards.MAX_REFRESH:
                         continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
+                    # 刷新期望对账 producer(契约单一源=prep_director.
+                    # build_refresh_expect docstring;唯一合法评估窗=本波内
+                    # ——director 只持关店帧,无「刷新后开店帧」;先例=下方
+                    # pending_buy_expect 同型惰性 import)。
+                    # 期望三输入点击前现读;None=不可读跳过(禁 or-2——下方
+                    # _refresh_fee 的 or-2 只归花销账,不进期望);构建失败
+                    # 静默跳过,不阻塞买牌。
+                    _refresh_expect = None
+                    _reconcile = None
+                    try:
+                        from sr_od.application.currency_war.prep_director import (
+                            build_refresh_expect,
+                            refresh_reconcile_mismatches,
+                        )
+                        _pre_gold = read_gold_opt(self.ctx, self.screenshot())
+                        _refresh_expect = build_refresh_expect(
+                            _pre_gold, state.shop_refresh_cost,
+                            [(c.name, c.star) for c in state.shop],
+                            state.plane, state.round_num)
+                        _reconcile = refresh_reconcile_mismatches
+                    except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
+                        _refresh_expect = None
+                        _reconcile = None
                     self.ctx.controller.click(refresh_btn)
                     log.info(f'[cw-shop] Refresh click @({refresh_btn.x},{refresh_btn.y})')
                     # r325(P1⑤ 等画面审查):刷新后固定 sleep(1.0)
@@ -706,6 +730,26 @@ class BuyShopCards(SrOperation):
                                                f'|refresh_wave={total_refresh + 1}')}],
                                 note='观测自检框架设计 §2.5:全同=刷新未生效;'
                                      '两连全同才确认(台账复现计数)')
+                        # 刷新期望 vs 实读对账(零决策记账)。
+                        # 金腿=点后现读 vs 期望 gold_after(失读不评);牌腿=
+                        # 有身份牌数>0(槽位解锁未建模,1-4 张不判错)。判据=
+                        # refresh_reconcile_mismatches(真值表已锁);
+                        # 本段异常由外层 except 兜住,不阻塞买牌。
+                        if _refresh_expect is not None and _reconcile is not None:
+                            _gold_after = read_gold_opt(self.ctx, self.screenshot())
+                            _cards_named = sum(1 for c in _new_shop if c.name)
+                            for _m in _reconcile(_refresh_expect[0], _gold_after,
+                                                 _cards_named):
+                                cw_telemetry.record_defect(
+                                    'shop', 'refresh_expect_mismatch',
+                                    expected=(f'{_m["domain"]}/{_m["slot"]}: '
+                                              f'{_m["expected"]}'),
+                                    observed=_m['observed'],
+                                    plane=state.plane, round_num=state.round_num,
+                                    verdict='留证-刷新期望不符(零决策)',
+                                    reader_source='refresh_expect_reconcile',
+                                    note='期望三输入波前现读,None 跳过;'
+                                         '判据真值表已锁')
                     except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
                         pass
                 elif isinstance(action, SellBench):
