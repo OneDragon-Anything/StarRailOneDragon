@@ -118,6 +118,11 @@ def record_exec_event(run_id: str, round_num: int, action_family: str,
        reason=reason, retry_count=retry_count)
 
 
+def andon_exit_installed() -> bool:
+    """安灯出口是否已注入(未注入=停线三要素不落 flag 仅停线;缺省关纪律)。"""
+    return _write_l0_andon_flag is not None
+
+
 def l0_andon_flag_path() -> Path:
     """安灯哨兵 flag 路径出口(未注入时由调用方跳过 flag 落盘)。"""
     fn = _l0_andon_flag_path
