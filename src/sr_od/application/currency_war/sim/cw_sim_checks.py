@@ -115,12 +115,17 @@ def check_ledger_consistency(rows: list[dict]) -> list[str]:
 def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
     """局62 指纹(r387 回灌断言;ADR-0249 执行层代理)。
 
-    指纹:开局轮后(plane1 r2-r4,首两轮系统卡未定排除)deployed
+    指纹:开局轮后(plane1 r2-r9,首轮系统卡未定排除)deployed
     数 < cap 且 bench 有可上件(≥1 张)——r387 修前形态(配方
     围栏无条件拦散牌,cap=3 只上 1 人空槽白丢血)。r390 执行层
     代理落地后 sim 内可达(deployed=真实围栏输出);变异探针
     实证:关 cap_roomy 守卫 → loss≤2 0.017→0.117 涌现
     (本检查=该差异的常态化拦截)。
+
+    窗口口径:原 r2-r4 是 ADR-0253 时代的窗口先验,W716 F1 实证
+    欠载形态系统性发生在 r4-r8(合成/换阵密集期;W714 三例全在
+    旧窗外)→ 扩到 P1 全段 r2-r9。判据本身零改(增长豁免/可上货
+    口径/连续 2 轮门照旧)。
 
     边界:bench 空(没牌可上)不报;**差 1 以内的贴 cap 不报**
     (配方围栏+cap 紧张是合法形态——r387 修的是「富余仍拦」);
@@ -142,7 +147,7 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
         if row.get('plane') != 1:
             continue
         rn = row.get('round_num') or 0
-        if not (2 <= rn <= 4):
+        if not (2 <= rn <= 9):
             continue
         st = row.get('state') or {}
         deployed = st.get('deployed')
