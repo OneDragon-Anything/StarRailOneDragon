@@ -36,11 +36,11 @@ import math
 
 from sr_od.application.currency_war.cw_comps import Comp
 from sr_od.application.currency_war.cw_state import GameState
-from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 
 def char_has_tag(ch, tag: str) -> bool:
@@ -249,7 +249,7 @@ def rounds_alive(state: GameState,
     # 演化(成型升档/卖件回落)未建模,静态取样偏差已声明。
     p_win = 0.0
     if reg.rounds_two_state_enabled and reg.p_win_p2_by_rung:
-        from sr_od.application.currency_war.cw_sim import _settle_rung
+        from sr_od.application.currency_war.kernel.cw_battle_calib import _settle_rung
         rung = min(2, max(0, _settle_rung(state)))
         p_win = reg.p_win_p2_by_rung.get(rung, 0.0)
     h = float(state.hp)

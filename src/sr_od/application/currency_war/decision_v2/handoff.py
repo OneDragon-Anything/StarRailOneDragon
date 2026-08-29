@@ -123,11 +123,11 @@ def handoff_snapshot(state: GameState,
     deployed 域同「P1 出口」;gold 已含 P2 r1 轮收入(生产/sim 同构,
     亦与离线标定语料同口径——标定读的 decisions 行即此时点)。
     """
-    from sr_od.application.currency_war.cw_sim import (
+    from sr_od.application.currency_war.decision_v2.phase import form_score
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
         _board_factions_of,
         _engines_count,
     )
-    from sr_od.application.currency_war.decision_v2.phase import form_score
 
     deployed = [d for d in (state.deployed or []) if d is not None]
     fac = _board_factions_of(deployed)
@@ -310,8 +310,10 @@ def boss_projected_hp(state: GameState, hp_now: int,
     W238/W240 块与 ADR-0403/0404。钳制 [0, 100](与 sim hp 结算钳制
     同界,HP_UPPER_BOUND 语义)。
     """
-    from sr_od.application.currency_war.cw_sim import (
-        _DEPTH_BUCKET_W,
+    from sr_od.application.currency_war.data.cw_battle_tables import (
+        DEPTH_BUCKET_W as _DEPTH_BUCKET_W,
+    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
         deployed_star_depth,
     )
     depth = deployed_star_depth(state)

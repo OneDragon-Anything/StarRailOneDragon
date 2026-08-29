@@ -34,11 +34,6 @@ from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.cw_chars import CHARACTERS
-
-# noqa 别名保留:历史消费点(scoring/_engine_frac_remainder 等)仍从本名 import
-from sr_od.application.currency_war.cw_deploy_logic import (
-    TRANSITION_TRAITS as _TRANSITION_TRAITS,  # noqa: F401
-)
 from sr_od.application.currency_war.cw_investments import (
     STRATEGY_EFFECTS,
     EconomyEffect,
@@ -49,8 +44,6 @@ from sr_od.application.currency_war.cw_investments import (
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
-    ROTATION_CHANCE,
-    rotation_probs,
 )
 from sr_od.application.currency_war.cw_sim_invest import (
     InvestInjectionState,
@@ -90,12 +83,37 @@ from sr_od.application.currency_war.cw_state import (
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.cw_telemetry import serialize_intention
+from sr_od.application.currency_war.data.cw_battle_tables import (
+    BUCKET_MIN_N,
+    DEPTH_BUCKET_W,
+    P2_COMBAT_DEFAULT,
+    P2CombatCalib,
+)
 
 # 血预算停手·终止分支账本决策位(设计 W659 v2 §5.1 R4;ADR-0469)——
 # 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
 # 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
 from sr_od.application.currency_war.decision_v2.discipline import (  # noqa: E402
     terminal_release_bit,
+)
+from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _battles_before_engines,
+    _board_counts_of,
+    _board_factions_of,
+    _deployable_depth,
+    _direction_established,
+    _engines_count,
+    _first_engines_round,
+    _first_tier_round,
+    _first_trio_round,
+    _roll_rotation,
+    _settle_rung,
+    _star_depth_from_rows,
+    _target_comp_label,
+    deployed_star_depth,
+    node_delta,
+    p2_combat_delta,
+    sample_node_sequence,
 )
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
@@ -194,11 +212,6 @@ def _event_gold(round_num: int, rng: random.Random) -> int:
     return max(0, int(base + rng.uniform(-2, 2)))
 
 # 战斗结算幅度层(25 局 HP 轨迹校准;胜负面自 ADR-0308 起由
-# 迁移审计 w31(git 历史) 节点×轮次胜率阶梯掷,幅度常量沿用本组)
-EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
-WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 战斗胜时的轮结算
-LOSS_BASE: float = 7.0              # r3 基础损
-LOSS_PER_ROUND: float = 4.0         # 每多一轮加重(r7≈-23 对齐观测)
 # r259 二次校准(139 轮干净差分):lv7 后段观测中位 -23(无方向)/
 # -31(锁线晚的弱队),原 3.5 系数低估后段流血 → 提到 4.0。
 # 方向分桶样本小(4-10)且与「发牌差的队锁线晚」混杂;ADR-0308 起
@@ -219,52 +232,7 @@ NODE_TYPE_POOL: tuple[str, ...] = (
     'encounter', 'encounter',                 # 遭遇(~22%)
     'reward', 'reward', 'supply',             # 奖励/补给零战力(~33%)
 )
-# 遭遇结算强度 = boss 档 × 1.15(用户口述:遭遇三四可比 boss 难;
-# 遭遇一/二较温和 → 取均值系数,模拟无法读档位时的近似)
-ENCOUNTER_MULT: float = 1.15
-BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
-    # (方向建立轮上限, boss 基础损, 抖动幅度)
-    (2, 14.0, 8.0),
-    (4, 22.0, 8.0),
-    (6, 30.0, 8.0),
-    (99, 36.0, 10.0),
-)
 
-# ===== 迁移审计 w31(git 历史) 实测节点×轮次胜率阶梯(回退层胜负面单一源;ADR-0308) =====
-# 来源:replay outcomes 语料 plane=1 & killed 非空 & board_before 非空
-# = n=192(killed True 104 / False 88),按 (node_type, round) 统计的
-# killed 胜率——迁移审计 w31(git 历史) 报告(`.debug/temp/currency_war/cw_dev/deep_read/
-# W31_报告.md` §2)。替换旧拍脑袋胜负面:
-#   battle  方向二元门控(方向已立→胜)——胜率从未按节点实测;
-#   encounter 结构性恒败(p=0);
-#   boss    rung 表 (0, 0, 0.25) + rung2 桶外推(ADR-0306,跨节点
-#           外推边界已声明)。
-# 逐轮实测:奖励轮 r1/r2/r8 全胜;battle r3 0.30 / r4 0.29;
-# encounter r7 0.04;boss r9 0.05。未观测的 (node, round) 组合按
-# 节点类型边际值兜底(``NODE_WIN_P_BY_TYPE``)。
-# ⚠️ 数据边界(ADR-0308):语料全部来自旧策略(line_strategy)病局
-# ——「六局同型败的镜像」(进度树 迁移审计 w30(git 历史)/迁移审计 w31(git 历史) 收账判读),阶梯是旧
-# 策略在各种板面下的**边际**胜率,不含成型度条件性(rung 维被
-# 压平);decision_v2 新策略语料攒够后**应重标本表**(届时遥测
-# board_before 补记角色名+星级,迁移审计 w31(git 历史) §6.1,条件性才可标定)。
-NODE_WIN_P_LADDER: dict[tuple[str, int], float] = {
-    ('battle', 3): 0.30,
-    ('battle', 4): 0.29,
-    ('encounter', 7): 0.04,
-    ('boss', 9): 0.05,
-}
-NODE_WIN_P_BY_TYPE: dict[str, float] = {
-    'reward': 1.0,    # 零战力节点,实测 100% 胜
-    'supply': 1.0,
-    'battle': 0.29,
-    'encounter': 0.04,
-    'boss': 0.05,
-}
-# 胜时小额(与 reward/supply 的 EARLY_WIN_DELTA 同档;「大胜」
-# 形态待样本后校准幅度——迁移审计 w31(git 历史) 语料只有 killed 二值,无胜幅度分层)。
-# ⚠️ P1 初始 HP=80 非 100(simulate_p1 `st.hp = 80`;批⑪ 自纠记档
-# ——按 100 锚算 boss 损失会出伪影)。
-BOSS_WIN_DELTA: int = 2
 
 # ===== P2 段校准层(`w157_p2/`/ADR-0362;语料边界=`w151_p2/` 四局解剖+16 局
 # replay plane=2 行 44 条,行为分布验证口径非 hp 点值校准) =====
@@ -281,185 +249,21 @@ P2_NODE_SEQUENCE: tuple[str, ...] = (
     'battle', 'battle', 'supply', 'battle',
     'encounter', 'reward', 'boss',
 )
-# P2 战斗回退档:胜率 0.11(`w151_p2/`:P2+ 战斗 1 胜 8 败)/败掉血带
-# 15-17(`w151_p2/`:每败 -15~-17,B≈10+未达标罚 P;结算屏三项拆解
-# P2r1 实证 +2/-10/-15,economy.md §10.2)。Δ池 plane=2 桶可及
-# 时经验分布优先;缺桶走本带(ADR-0362)。
-P2_BATTLE_WIN_P: float = 0.11
-P2_LOSS_BAND: tuple[int, int] = (15, 17)
-
-# ===== P2 战斗存活层参数化校准族(`w193_p2sim/`/ADR-0377,迁移审计 w186(git 历史) 设计 Phase 1) =====
-# 结构:win_p = clip(p0 + β·form − γ·drift(round)),form=板面质量键
-# (engines 数[deployed 口径,_settle_rung 同源]+level 折算+星级深度折算);
-# 负=分段掉血带内均匀。**校准层(非真战斗机制)**,诚实边界:
-# - 21 run 语料只够钉边界不够点估计 β——p0/β/γ 取保守值 + 敏感性带
-#   扫描为裁决口径(修法在带端点一致翻正才裁「分布级」);
-# - Δ池 plane=2 条件化(键 form×round,每桶 n≥5)留 Phase 3 自动让位
-#   (语料阈值触发,非日历);
-# - 四常数族单一注入点=P2CombatCalib(A/B 与敏感性扫描同通道)。
-# 掉血分段带校准来源(`w193_p2sim/calibrate_truth.py` 复跑,真值=
-# 生产 replay plane=2 未删失差分;hp_after==1 为败北地板删失样本弃):
-# - battle_r1 (14,28):进场首战(跨位面差分,n=6 未删失;迁移审计 w186(git 历史) 设计文本
-#   的「r1-r2 带 −4~−16」系 r2-vs-r1 相邻差分口径,不含 r1 自身——
-#   本批实测 r1 明显更重,分立成段,偏差记 ADR-0377);
-# - battle_early (4,16):r2-r3(设计口径带;本批未删失样本 15/15 落内);
-# - battle_late (15,25):r4+(设计口径带;本批未删失 19-21 落内);
-# - encounter (9,18) / boss (21,26):设计口径带(boss 样本均地板删失,
-#   取原始差分下界语义=真损 ≥ 带端)。
-# 胜率:p0=0.11(`w151_p2/`/语料边际 5/37=0.135 的保守下沿);β 方向由胜例
-# board 强制为正、量级未定(胜例 form 1.25-2.25 vs 全体均值 ≈1.4,
-# 几乎无区分度)→ 保守 0.04,敏感性主扫参;γ 弱(轮梯度未识别)→ 0.02。
-# 星级分量(`w230_star_form/`/ADR-0401,ADR-0377 form 扩展):star_depth=上场件
-# Σ(star−1)(全量口径,同 ADR-0399 HandoffSnapshot star_sum−deployed_n,
-# 纯 state 可算、生产/sim/离线回放三面同式);真值分帧校准
-# (w230_star_form/calibrate_star.py,44 combat 帧/6 胜):
-# engines=1 桶内 sd=0 → 0/8 胜,sd∈{1,2} → 3/15(0.20)——方向为正
-# (胜例集中于 sd 1-2);sd≥3 零胜但 n≤4 不可辨 → 量级未定,保守
-# form_star_weight=0.5(一颗 2★ 折半台引擎)+ 敏感性扫描端点 0/0.25/1.0;
-# 动机 = `w226_handoff_sim/`/`w227_handoff_gate/` 实证 sim 缺星级因果通道(board_tier core2 维打不
-# 出去、承接门主投资方向不可仲裁)。
 
 
-@dataclass(frozen=True)
-class P2CombatCalib:
-    """P2 段战斗存活层参数族(`w193_p2sim/`/ADR-0377;单一注入点,A/B 同通道)。
-
-    ``calibrated=False`` = 逐位回 `w157_p2/`/ADR-0362 行为(Δ池 plane=2 桶
-    优先 + ``P2_BATTLE_WIN_P`` 恒值回退档)——A/B 回退对照臂。
-    """
-
-    #: 总开关:True=参数化校准层辖 plane≥2 战斗类结算(绕过 Δ池
-    #: plane=2 合并采样——该路径被防饥饿守卫抹平条件性,ADR-0362
-    #: 已判「假条件化」;Phase 3 桶键 form×round 到量后让位池采样)
-    calibrated: bool = True
-    #: 基础胜率(语料边际保守下沿)
-    p0: float = 0.11
-    #: form(板面质量键)系数:每单位 form 的胜率增量(敏感性主扫参)
-    beta: float = 0.04
-    #: 轮次漂移系数:敌人强度随轮增长(每轮 γ)
-    gamma: float = 0.02
-    #: 胜率钳制带
-    win_p_clip: tuple[float, float] = (0.0, 0.5)
-    #: form 键的 level 折算权重(form = engines + w·(level−6);
-    #: engines=deployed 口径 _settle_rung 同源,0-4)
-    form_level_weight: float = 0.25
-    #: form 键的星级深度折算权重(`w230_star_form/`/ADR-0401:star_depth=上场件
-    #: Σ(star−1) 全量口径,同 ADR-0399 HandoffSnapshot;core2/board_tier
-    #: 的星级维胜率因果通道)。保守 0.5,敏感性端点 0/0.25/1.0。
-    form_star_weight: float = 0.5
-    #: level 折算基准(P2 常见进场 level 6)
-    form_level_base: int = 6
-    #: 事件金双臂(迁移审计 w186(git 历史) §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
-    #: 'zero'=P2 段事件金归零;敏感性双臂,rng 流两臂同耗保配对)
-    event_gold: str = 'p1'
-    #: 分段掉血带(败场;带内均匀采样)
-    band_battle_r1: tuple[int, int] = (14, 28)
-    band_battle_early: tuple[int, int] = (4, 16)
-    band_battle_late: tuple[int, int] = (15, 25)
-    band_encounter: tuple[int, int] = (9, 18)
-    band_boss: tuple[int, int] = (21, 26)
-    #: 胜场结算值(语料胜例 Δ=+2)
-    win_delta: int = 2
 
 
-#: 默认参数族(模块单一实例;敏感性/A/B 经 simulate_p1 的 p2_combat 注入)
-P2_COMBAT_DEFAULT = P2CombatCalib()
 
 
-def deployed_star_depth(st: GameState) -> int:
-    """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
-    HandoffSnapshot star_sum−deployed_n;纯 state 可算、生产/sim/
-    离线回放三面同式)。
-
-    消费点:p2_form_key 星级分量(`w230_star_form/`/ADR-0401)与 **Δ池 boss 桶键**
-    (迁移审计 w240(git 历史)/ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
-    浅桶的方向冲突;净星深下 1★→2★ 合并键 +1 永不落浅桶,买 bench
-    副本不扰动)。已知边界:2★→3★ 合并键 −1(3 副本 Σ(star−1)=3 →
-    载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
-    语料攒厚后复核。
-    """
-    return sum(
-        int(getattr(d, 'star', 1) or 1) - 1
-        for d in (st.deployed or []) if d is not None)
 
 
-def _star_depth_from_rows(rows) -> int:
-    """净星深(replay 行口径):decisions ``state.deployed`` 条目
-    (dict 形态)Σ(star−1)——与 :func:`deployed_star_depth` 同式,
-    池语料侧(_pool_from_replay/cw_delta_pool_gen)共用,防双源。"""
-    return sum(int(x.get('star') or 1) - 1
-               for x in (rows or []) if isinstance(x, dict))
 
 
-def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
-    """form=板面质量键(`w193_p2sim/`/ADR-0377:engines+level 折算;
-    `w230_star_form/`/ADR-0401 扩展:+星级深度折算)。
-
-    engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
-    `w182_p2/` 实测 deployed 口径与掉血对应最干净、板深无区分度。
-    star_depth = ``deployed_star_depth`` 单一源(core2 维/board_tier
-    的星级分量因果通道,`w226_handoff_sim/` §⑥/`w227_handoff_gate/` 挂账的 sim 建模缺口)。
-    """
-    star_depth = deployed_star_depth(st)
-    return (float(_settle_rung(st)) + calib.form_level_weight * (
-        st.level - calib.form_level_base)
-        + calib.form_star_weight * star_depth)
 
 
-def p2_win_p(st: GameState, node: str, round_num: int,
-             calib: P2CombatCalib) -> float:
-    """参数化胜率:clip(p0 + β·form − γ·drift(round))。
-
-    drift = max(0, round−1)(r1 无漂移;敌人强度逐轮增长的最小参数化)。
-    """
-    lo, hi = calib.win_p_clip
-    form = p2_form_key(st, calib)
-    drift = max(0, round_num - 1)
-    return min(hi, max(lo, calib.p0 + calib.beta * form
-                       - calib.gamma * drift))
 
 
-def p2_loss_band(node: str, round_num: int,
-                 calib: P2CombatCalib) -> tuple[int, int]:
-    """分段掉血带路由(battle 按 r1/r2-r3/r4+ 分段;encounter/boss 独立)。"""
-    if node == 'battle':
-        if round_num == 1:
-            return calib.band_battle_r1
-        if round_num <= 3:
-            return calib.band_battle_early
-        return calib.band_battle_late
-    if node == 'encounter':
-        return calib.band_encounter
-    return calib.band_boss
 
-
-def p2_combat_delta(st: GameState, node: str, round_num: int,
-                    rng: random.Random,
-                    calib: P2CombatCalib) -> tuple[int, float]:
-    """P2 战斗类节点参数化结算(胜→win_delta/负→分段带内均匀)。
-
-    返回 (delta, win_p)——win_p 随账本披露(检查器带锚/敏感性判读消费)。
-    """
-    wp = p2_win_p(st, node, round_num, calib)
-    if rng.random() < wp:
-        return calib.win_delta, wp
-    lo, hi = p2_loss_band(node, round_num, calib)
-    return -rng.randint(lo, hi), wp
-
-
-def node_win_p(node_type: str, round_num: int = 0) -> float:
-    """节点胜率单一取值口(ADR-0308;回退层胜负面)。
-
-    (node, round) 实测组合优先(``NODE_WIN_P_LADDER``),缺组合退
-    节点类型边际(``NODE_WIN_P_BY_TYPE``)。语料边界见常量注释:
-    旧策略病局镜像、无成型度条件性——新策略语料攒够后重标。
-    """
-    if node_type in ('reward', 'supply'):
-        return NODE_WIN_P_BY_TYPE[node_type]
-    v = NODE_WIN_P_LADDER.get((node_type, round_num))
-    if v is None:
-        v = NODE_WIN_P_BY_TYPE.get(node_type, 0.0)
-    return v
 
 
 @dataclass
@@ -614,23 +418,6 @@ class _Pool:
         self.copies[name] = min(base, self.copies.get(name, 0) + 1)
 
 
-def battle_delta(round_num: int, dir_round: int,
-                 rng: random.Random) -> int:
-    """普通战斗 HP 变化(校准层回退;ADR-0308)。
-
-    胜负面 = 迁移审计 w31(git 历史) 实测阶梯 ``node_win_p('battle', round_num)``
-    (n=192;旧方向二元门控「已立→胜」废弃——胜率从未按节点实测,
-    语料实测方向已立后战斗胜率仍 ~0.29);胜 → ``WIN_DELTAS``,
-    负 → 旧损益幅度层(LOSS_BASE/LOSS_PER_ROUND,25 局轨迹校准,
-    保留)。``dir_round`` 保留签名兼容,不再参与胜负判定。
-    """
-    if round_num <= 2:
-        return EARLY_WIN_DELTA
-    if rng.random() < node_win_p('battle', round_num):
-        return rng.choice(WIN_DELTAS)
-    loss = LOSS_BASE + LOSS_PER_ROUND * (round_num - 3) \
-        + rng.uniform(-3, 4)
-    return int(-loss)
 
 
 # r343 实机分布(31 局 outcomes 全量差分,645 轮):
@@ -650,7 +437,6 @@ def battle_delta(round_num: int, dir_round: int,
 # 漂移:缺 持续伤害/贝洛伯格(r373 给 dot_belog 桥补了生产
 # deploy 身份,sim 代理没跟 → 该桥局板深低估,ADR-0219 病),
 # 多 银河学者(不在任何桥 engine_bonds)。
-_DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 
 # --- Δ 池三态解析(⓪ 快照化;对抗审查一轮#1/二轮#1/#5 定谳) -----
 # 校准数据可复现性纪律:
@@ -697,7 +483,7 @@ _SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指�
 # v11(ADR-0407,`w250_delta_pool/`):encounter 桶键 depth→rung(_settle_rung 同源;
 # 解批⑬ F1 暂缓——扩容后 rung 主桶 n=23/27 达标、梯度显著,而 depth
 # 键下期望伤害真平 p=0.87)。reward/supply depth 键不动;池内容变。
-# v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
+# v2(ADR-0268):加防饥饿守卫——n<BUCKET_MIN_N 的桶降级采样
 # (邻桶合并/全池均匀取方差最小),不再裸采样。v1→v2 变更采样
 # 语义,历史报告对旧池(v1 指纹)重放须用导出 JSON 快照。
 # v3(ADR-0279,批⑬):battle 桶键 depth→rung(成型度一维分桶,
@@ -714,8 +500,6 @@ _SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指�
 # rung2 桶实测外推(boss_win_p,快照 META 单一源);快照 META 新增
 # 胜判定权威口径(killed)逐桶统计与桶贫困披露。池内容不变但校准
 # 语义变 → 旧锚全作废重记(ADR-0306 回归验证节)。
-_BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
-# 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
 # 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录;
 # 真源 = one_dragon.utils.get_project_root,期 0a 统一批)
 _AUTO_REPLAY_DIR = get_project_root() / '.debug' \
@@ -742,7 +526,7 @@ def pool_fingerprint(pool: dict) -> str:
          for n, planes in sorted(pool.items())},
         ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(
-        f'v{_SAMPLER_VERSION}|w{_DEPTH_BUCKET_W}|{canon}'.encode()).hexdigest()[:16]
+        f'v{_SAMPLER_VERSION}|w{DEPTH_BUCKET_W}|{canon}'.encode()).hexdigest()[:16]
 
 
 def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
@@ -838,7 +622,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 # =战力↑」相反(迁移审计 w238(git 历史) 实证);净星深下 1★→2★ 合并键 +1。
                 if sd is None:
                     continue
-                bucket = min(sd // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
+                bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
             else:
                 # v11(ADR-0407,`w250_delta_pool/`):encounter 桶键 depth→rung(与
                 # battle 同源 _engines_count;键查证:dep/sd 键下期望
@@ -849,8 +633,8 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                         b.get('board_before') or {},
                         deployed_names.get(k, frozenset()))
                 else:
-                    bucket = min(dep // _DEPTH_BUCKET_W,
-                                 5) * _DEPTH_BUCKET_W
+                    bucket = min(dep // DEPTH_BUCKET_W,
+                                 5) * DEPTH_BUCKET_W
             pool.setdefault(nt, {}).setdefault(
                 plane, {}).setdefault(bucket, []).append(delta)
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
@@ -1001,7 +785,7 @@ def live_delta_for(node_type: str, key: int,
     ⓪ 起 pool_map 显式注入(resolve_pool 产物;None=auto 解析,
     缺源 raise 不静默)。
 
-    **防饥饿守卫(ADR-0268,批③ F1)**:命中的桶 n<_BUCKET_MIN_N
+    **防饥饿守卫(ADR-0268,批③ F1)**:命中的桶 n<BUCKET_MIN_N
     时不裸采样——n=1 的桶(如 battle 桶 6 恒 -11)等于把该深度
     锁死在唯一样本上,任何把板深推过桶边界的策略臂都被系统性
     伪惩罚(深度 6 悬崖)。降级策略:候选 = 本桶∪浅邻桶、本桶∪
@@ -1010,7 +794,7 @@ def live_delta_for(node_type: str, key: int,
     性)。无任何可合并邻桶(极端小池)时退回裸样本——守卫降级
     采样,不改变「缺桶 → None」的既有两态语义(depth 路;battle/
     encounter 路的全池兜底见上)。邻接宽随键语义:battle/encounter
-    =rung±1,其余=桶宽 ±_DEPTH_BUCKET_W。
+    =rung±1,其余=桶宽 ±DEPTH_BUCKET_W。
     """
     if pool_map is None:
         pool_map = resolve_pool('auto')[0]
@@ -1031,8 +815,8 @@ def live_delta_for(node_type: str, key: int,
             return None
         width = 1
     else:
-        bucket = min(key // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
-        src_b = bucket if _map.get(bucket) else bucket - _DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
+        bucket = min(key // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
+        src_b = bucket if _map.get(bucket) else bucket - DEPTH_BUCKET_W   # 缺桶浅侧回退(r343 E)
         samples = _map.get(src_b)
         if not samples and node_type in ('reward', 'supply'):
             # ADR-0292:reward/supply 全池兜底(缺桶不退常数,
@@ -1040,8 +824,8 @@ def live_delta_for(node_type: str, key: int,
             samples = [d for v in _map.values() for d in v]
         if not samples:
             return None
-        width = _DEPTH_BUCKET_W
-    if len(samples) >= _BUCKET_MIN_N:
+        width = DEPTH_BUCKET_W
+    if len(samples) >= BUCKET_MIN_N:
         return rng.choice(samples)
     cands: list[list[int]] = []
     for nb in (src_b - width, src_b + width):
@@ -1062,196 +846,26 @@ def live_delta_for(node_type: str, key: int,
     return rng.choice(best)
 
 
-def boss_delta(dir_round: int, rng: random.Random,
-               multiplier: float = 1.0) -> int:
-    """P1 boss(r9)HP 变化(校准层;按方向建立早晚分档)。
-
-    multiplier>1 用于遭遇轮(用户口述:遭遇三四可比 boss 难)。"""
-    for cap, base, jitter in BOSS_BY_DIR_ROUND:
-        if dir_round <= cap:
-            return int(-(base * multiplier
-                         + rng.uniform(0, jitter)))
-    return int(-(36.0 * multiplier + rng.uniform(0, 10.0)))
 
 
-def _settle_rung(st: GameState) -> int:
-    """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle/
-    encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
-
-    口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
-    输入 = **board 全集口径**(ADR-0312,迁移审计 w50(git 历史):_recount_board——对齐生产
-    outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
-    缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
-    """
-    from sr_od.application.currency_war.cw_state import _recount_board
-    _bf = _recount_board(st.deployed)
-    _names = frozenset(d.char_id for d in (st.deployed or [])
-                       if getattr(d, 'char_id', ''))
-    return _engines_count(_bf, _names)
 
 
-def boss_settle_delta(st: GameState, dir_round: int,
-                      rng: random.Random) -> int:
-    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=迁移审计 w31(git 历史) 阶梯)。
-
-    胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
-    n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
-    旧 rung 条件胜率(ADR-0277/0306 的 0/0/0.25 + rung2 外推)已被
-    迁移审计 w31(git 历史) 实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
-    条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
-    仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
-    Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
-    """
-    if rng.random() < node_win_p('boss', st.round_num):
-        return BOSS_WIN_DELTA
-    return boss_delta(dir_round, rng)
 
 
-def sample_node_sequence(rng: random.Random) -> list[str]:
-    """P1 节点序列(r306b 实证统计:25 开局帧众数表)。
-
-    典型表(每帧读全,用户指路):reward/reward/battle/battle/
-    supply/battle/encounter/reward/boss——slot1/2/4/7 全帧
-    一致(25/25);**slot3/5/6 是变异位**(24/25、23/25、24/25
-    主型,余为策略效果改节点:战斗→遭遇/补给)。
-    用户定调:位面节点基本固定,特殊策略才改;实机以实时
-    识别为权威,本表用于模拟骨架/策略预知(如 r7 遭遇→
-    r6 备战破息)。"""
-    seq = ['reward', 'reward', 'battle', 'battle', 'supply']
-    # slot5(r6):battle 主(23/25),策略效果位
-    seq.append(rng.choices(('battle', 'encounter'), (0.92, 0.08))[0])
-    # slot6(r7):encounter 主(24/25)
-    seq.append(rng.choices(('encounter', 'supply'), (0.96, 0.04))[0])
-    seq.append('reward')
-    seq.append('boss')
-    return seq
 
 
-def node_delta(node: str, round_num: int, dir_round: int,
-               rng: random.Random, *, plane: int = 1) -> int:
-    """按节点类型的 HP 变化(r260 分层;ADR-0292 起 reward/supply 的
-    **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
-    节点回退档胜负面 = 迁移审计 w31(git 历史) 实测阶梯 ``node_win_p``):
-    reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
-    池真值同分布);
-    battle → 阶梯掷胜(迁移审计 w31(git 历史):n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
-    encounter → 阶梯掷胜(0.04),胜 +2/负 boss 档 × ENCOUNTER_MULT
-    (档位不可观,均值近似);
-    boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。
-
-    plane≥2(ADR-0362,`w157_p2/`):battle 回退档换 **P2 掉血带**——
-    胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料 `w151_p2/`,
-    P1 阶梯的 r3/r4 战斗胜率与幅度带都不辖 P2);encounter/boss
-    沿用 P1 档+标注(P2 语料 3/2 行不足,池可及时优先池采样)。"""
-    if node in ('reward', 'supply'):
-        return EARLY_WIN_DELTA
-    if node == 'encounter':
-        if rng.random() < node_win_p('encounter', round_num):
-            return EARLY_WIN_DELTA
-        return boss_delta(dir_round, rng, multiplier=ENCOUNTER_MULT)
-    if node == 'boss':
-        if rng.random() < node_win_p('boss', round_num):
-            return BOSS_WIN_DELTA
-        return boss_delta(dir_round, rng)
-    if plane >= 2:
-        # ADR-0362:P2 battle 回退档(掉血带 15-17,`w151_p2/`)
-        if rng.random() < P2_BATTLE_WIN_P:
-            return rng.choice(WIN_DELTAS)
-        return -rng.randint(P2_LOSS_BAND[0], P2_LOSS_BAND[1])
-    return battle_delta(round_num, dir_round, rng)
 
 
-def _direction_established(session: StrategySession) -> bool:
-    """方向判据 = 策略自身认领(意向锁定),与遥测 target 字段一致。
-
-    ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
-    ``session.v3_intention`` 意向分层锁定(旧臂 line_v2 的
-    locked_line/bridge_id 读取随 ADR-0336 删除)。
-    `w145_recipe_lock/`/ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
-    终局 comp 锁与配方对锁任一成立即方向已立(纯遥测口径)。
-    """
-    ist = getattr(session, 'v3_intention', None)
-    if ist is None:
-        return False
-    if getattr(ist, 'phase', '') == 'locked' and getattr(ist, 'locked_comp', ''):
-        return True
-    return bool(getattr(ist, 'p1_pair', ()))
 
 
-def _target_comp_label(session: StrategySession) -> str:
-    """账本 ``target_comp`` 字段(迁移审计 w43(git 历史) leader 裁决 3):v3 意向。
-
-    decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
-    ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
-    字段回退随 ADR-0336 删除)。`w145_recipe_lock/`/ADR-0357:P1 配方锁局无 comp 锁,
-    标签=``过渡配方·A+B``(体系对;遥测可读性,不进任何决策)。
-    """
-    ist = getattr(session, 'v3_intention', None)
-    if ist is not None:
-        locked = getattr(ist, 'locked_comp', '') or ''
-        if locked:
-            return locked
-        pair = getattr(ist, 'p1_pair', ()) or ()
-        if pair:
-            return '过渡配方·' + '+'.join(pair)
-    return ''
 
 
-def _board_factions_of(deployed) -> dict[str, int]:
-    """r394:上场角色的阵营计数(生产 board 口径,flows 并计)。
-
-    「过渡阵容凑到没有」的判据输入:recipe_tier(配方档位)/
-    三人组在场上——此前 sim 账本 board 恒空,成型质量不可观测。
-    """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
-    out: dict[str, int] = {}
-    for d in (deployed or []):
-        if d is None:   # ADR-0392 槽位表空槽
-            continue
-        cid = getattr(d, 'char_id', '') or ''
-        ch = _CH.get(cid)
-        if ch is None:
-            continue
-        for f in (ch.factions or ()) + (ch.flows or ()):
-            out[f] = out.get(f, 0) + 1
-    return out
 
 
-def _board_counts_of(deployed) -> dict[str, int]:
-    """board 全集计数(ADR-0312,迁移审计 w50(git 历史) 口径统一)。
-
-    **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
-    旧「主阵营逐件累加」口径已废:state.board 消费方(recipe 门/
-    在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
-    星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
-    分叉(迁移审计 w49(git 历史) Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
-    空板同形)。"""
-    from sr_od.application.currency_war.cw_state import _recount_board
-    return _recount_board(deployed)
 
 
-def _first_tier_round(res, tier: int) -> int | None:
-    """r394:配方档位首达轮(ledger 的 board_factions 逐轮查
-    recipe_tier≥tier 的最小轮;查不到=None)。"""
-    from sr_od.application.currency_war.cw_line_defs import recipe_tier
-    for row in res.ledger:
-        bf = (row.get('state') or {}).get('board_factions') or {}
-        if bf and recipe_tier(bf) >= tier:
-            return row.get('round_num')
-    return None
 
 
-def _first_trio_round(res, target: int) -> int | None:
-    """r394:核心三人组上场首达轮(deployed∩_CORE_TRIO 计数
-    ≥target 的最小轮;查不到=None)。"""
-    from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
-    for row in res.ledger:
-        dep = (row.get('state') or {}).get('deployed') or []
-        cnt = sum(1 for d in dep
-                  if d.get('char_id') in _CORE_TRIO)
-        if cnt >= target:
-            return row.get('round_num')
-    return None
 
 
 # r397/r399(用户定调重写 transition_combos.md;废除 r148/r149 大/中
@@ -1270,102 +884,16 @@ def _first_trio_round(res, target: int) -> int | None:
 # 消费本名的 scoring._engine_frac_remainder 等 import 路径不变。
 
 
-def _engines_count(board_factions: dict[str, int],
-                   deployed_names: frozenset[str] | set[str] = frozenset()
-                   ) -> int:
-    """过渡体系达成数(三选几+希儿系;两两组合=过渡成型)。
-
-    迁移审计 w278(git 历史):本体上移 cw_deploy_logic.engines_count(单一源;
-    cw_sim_checks 经 cw_deploy_logic 消费,不 import 本模块——
-    检查网依赖方向锁);本名保留为薄委托,历史消费点
-    (decision_v2/cw_evolution/cw_delta_pool_gen 等的懒 import)不动。
-    r399:希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
-    与三羁绊同级可组合。
-    """
-    from sr_od.application.currency_war.cw_deploy_logic import (
-        engines_count as _impl,
-    )
-    return _impl(board_factions, deployed_names)
 
 
-def _transition_formed(board_factions: dict[str, int],
-                       deployed_names: frozenset[str] | set[str] = frozenset()
-                       ) -> bool:
-    """过渡阵容成型判据(transition_combos.md 2026-08-23 定稿):
-
-    四种体系(仙舟3/列车2/DOT2/希儿系)**两两组合**=成型
-    (三选二 140/328 帖;希儿系×三过渡 18 帖);
-    单个体系点火不等于成型(门槛低的体系如 DOT2 可单独当起点)。
-    """
-    return _engines_count(board_factions, deployed_names) >= 2
 
 
-def _first_engines_round(res, target: int) -> int | None:
-    """r399:过渡体系达成数首达 target 的最小轮。
-
-    判据走 _engines_count(四体系:仙舟3/列车2/DOT2/希儿系各算一个;
-    希儿系需 deployed 含希儿——ledger 的 state.deployed 提供名单);
-    target=2=过渡成型(两两组合),target=1=单体系点火
-    (门槛低的体系如 DOT2 可单独当起点)。
-    """
-    for row in res.ledger:
-        st = row.get('state') or {}
-        bf = st.get('board_factions') or {}
-        dep = frozenset(d.get('char_id', '')
-                        for d in (st.get('deployed') or []))
-        if bf and _engines_count(bf, dep) >= target:
-            return row.get('round_num')
-    return None
 
 
-def _battles_before_engines(res, target: int = 2) -> int | None:
-    """ADR-0305 件2(口径修正):首达 target 引擎数前经历的战斗结算数。
-
-    背景:0304 附带观察「v1 到达 rung2 的战斗轮次 30 vs v2 10」的
-    口径未在代码定义(一次性诊断数字),0305 复测(20 局配对,seed
-    500-519)两臂几乎相等(53 vs 50)——该数字不可再引用。本函数
-    把口径钉死:**hp_events 中 round < _first_engines_round(target)
-    的战斗类节点(battle/encounter/boss)计数**;未达 target 返 None
-    (与 _first_engines_round 同 None 语义,均值只对达成局算)。
-    """
-    e2 = _first_engines_round(res, target)
-    if e2 is None:
-        return None
-    return sum(1 for rn, nt, _, _ in res.hp_events
-               if rn < e2 and nt in ('battle', 'encounter', 'boss'))
 
 
-def _deployable_depth(st: GameState) -> int:
-    """板深 = **Σboard(全集口径)**(ADR-0312,迁移审计 w50(git 历史) 桶键统一)。
-
-    池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
-    角色每人贡献 ≥2)——sim 采样键旧用 ``min(level, len(deployed))``
-    与池语料不同口径:同一局面在池里落深桶、sim 查询落浅桶,采样系统性
-    偏向低桶/miss(迁移审计 w49(git 历史) Q4「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
-    键/depth_trail/账本 depth 的单一源,与池语料同口径(Σboard,不加
-    level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
-    r390 的「读 deployed 不数 bench」语义由 board=_recount_board
-    (deployed 派生)间接保留。
-    **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
-    boss 桶键=净星深(迁移审计 w240(git 历史)/ADR-0404,deployed_star_depth);encounter
-    桶键=rung(v11/ADR-0407,_settle_rung 同源;depth 键下期望伤害
-    真平——`w248_p1_hpair/`「主通道断裂」的 encounter 维由扩容+键查证裁决:
-    板深维不可兑换,rung 维可辨)。
-    """
-    return sum((st.board or {}).values())
 
 
-def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
-    """本备战期轮岗事件(ADR-0286/批㉓ F4):概率 ROTATION_CHANCE 掷中 →
-    随机一档(基线 0<p<0.5 才可能被翻倍)×2 → 完整概率表;
-    未掷中/该等级无可翻倍档 → None(基线表,生产「未读到概率条」同态)。"""
-    if rng.random() >= ROTATION_CHANCE:
-        return None
-    base = REFRESH_PROB.get(level, {})
-    tiers = [c for c, p in base.items() if 0 < p < 0.5]
-    if not tiers:
-        return None
-    return rotation_probs(level, rng.choice(tiers))
 
 
 def sim_decision_registry():

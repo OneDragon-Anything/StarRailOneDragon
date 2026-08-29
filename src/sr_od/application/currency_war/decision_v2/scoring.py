@@ -70,7 +70,7 @@ def board_rung_x(state: GameState,
     希儿 deployed 在场——bench 希儿不算引擎,deployed 主导语义);
     配方档小数 =recipe_tier/RECIPE_BASE × 系数(未标定)。
     """
-    from sr_od.application.currency_war.cw_sim import _engines_count
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
     fac, main, dep_names = _held_form_weights(state, registry)
     engines = _engines_count(fac, dep_names)
     frac = min(recipe_tier(main) / RECIPE_BASE, 1.0)
@@ -147,8 +147,10 @@ def _engine_frac_remainder(state: GameState,
     rung 互补不双计。希儿系是 deployed 二元判定,无小数进度,
     不参与本项。
     """
-    from sr_od.application.currency_war.cw_sim import (
-        _TRANSITION_TRAITS,
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS as _TRANSITION_TRAITS,
+    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
         _engines_count,
     )
     fac, _main, dep = _held_form_weights(state, registry)
@@ -337,13 +339,13 @@ def _deploy_pipeline(state: GameState,
     只服务评分(改 deployed/board 维),不产生动作。
     """
     from sr_od.application.currency_war import cw_deploy_logic as dl
-    from sr_od.application.currency_war.cw_sim import _board_counts_of
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_counts_of
     for _ in range(3):
         deployed_cids = {d.char_id for d in (state.deployed or [])
                          if getattr(d, 'char_id', '')}
-        from sr_od.application.currency_war.cw_sim import (
-            _board_factions_of,
-        )
+        from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _board_factions_of,
+)
         tc = getattr(session, 'target_comp', None)
         up_idx, _ = dl.select_deployments(
             [b for b in (state.bench or []) if b is not None],
@@ -774,7 +776,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
 def _engines_formed(state: GameState,
                     registry: DecisionV2Registry) -> int:
     """整数引擎数(混合域权重口径;与 board_rung_x 同源)。"""
-    from sr_od.application.currency_war.cw_sim import _engines_count
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
     fac, _main, dep = _held_form_weights(state, registry)
     return _engines_count(fac, dep)
 
@@ -864,7 +866,9 @@ def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
     ch = _CH.get(name)
     if ch is None:
         return frozenset()
-    from sr_od.application.currency_war.cw_sim import _TRANSITION_TRAITS
+    from sr_od.application.currency_war.cw_deploy_logic import (
+        TRANSITION_TRAITS as _TRANSITION_TRAITS,
+    )
     eng_bonds = {b for b, _t in _TRANSITION_TRAITS}
     return frozenset((set(ch.factions or ()) | set(ch.flows or ()))
                      & eng_bonds)

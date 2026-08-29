@@ -562,7 +562,7 @@ def _deploy_candidates(state: GameState, session: StrategySession,
     target_cores = frozenset(getattr(tc, 'core_chars', None) or ())
     deployed_cids = {d.char_id for d in iter_occupied_deployed(state.deployed or [])
                      if getattr(d, 'char_id', '')}
-    from sr_od.application.currency_war.cw_sim import _board_factions_of
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
     up_idx, _held = dl.select_deployments(
         [b for b in (state.bench or []) if b is not None],
         deployed_cids=deployed_cids,

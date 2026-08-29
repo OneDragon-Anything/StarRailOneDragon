@@ -257,7 +257,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
         IntentionState,
         locked_buy_scope,
     )
-    from sr_od.application.currency_war.cw_sim import _board_factions_of
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
     ist = getattr(session, 'v3_intention', None)
     lock_scope = (locked_buy_scope(ist)
                   if isinstance(ist, IntentionState) else None)
@@ -333,7 +333,7 @@ def _engine_completion_tx(state: GameState,
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
-    from sr_od.application.currency_war.cw_sim import _board_factions_of
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
     pair = _pair_systems(session)
     if not pair:
         return None
@@ -502,10 +502,10 @@ def _completion_freeze_exempt(state: GameState, post,
                               pair: dict[str, int]) -> bool:
     """末窗冻结豁免复核:补完事务净效果 = pair 体系 on-board 计数逐体系
     不减 ∧ 总引擎数不减(构造器结构保证的事后复核,ADR-0363 件2 同向)。"""
-    from sr_od.application.currency_war.cw_sim import (
-        _board_factions_of,
-        _engines_count,
-    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _board_factions_of,
+    _engines_count,
+)
     pre_bf = _board_factions_of(state.deployed)
     post_bf = _board_factions_of(post.deployed)
     for sys_key in pair:
@@ -635,10 +635,10 @@ def _lost_engine_systems(state: GameState,
     (留场件 + 新上场件)。board 口径 = ``cw_sim._board_factions_of``
     (生产 board 口径,flows 并计;与 W158 strict 度量同源)。
     """
-    from sr_od.application.currency_war.cw_sim import (
-        _board_factions_of,
-        _engines_count,
-    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _board_factions_of,
+    _engines_count,
+)
     pre_bf = _board_factions_of(state.deployed)
     pre_names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
     if _engines_count(pre_bf, pre_names) < 2:

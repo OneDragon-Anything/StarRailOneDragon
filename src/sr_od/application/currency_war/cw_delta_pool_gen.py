@@ -121,14 +121,16 @@ def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
 def _engines_count_of(bf: dict, names: frozenset) -> int:
     """rung = _engines_count 单一源(cw_deploy_logic.engines_count,
     W279 上移——此处经 cw_sim 薄委托消费;ADR-0279)——battle 桶键。"""
-    from sr_od.application.currency_war.cw_sim import _engines_count
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
     return _engines_count(bf, names)
 
 
 def _star_depth_of(rows) -> int:
     """净星深 = cw_sim._star_depth_from_rows 单一源(W240/ADR-0404
     boss 桶键;防池侧/sim 侧双公式漂移)。"""
-    from sr_od.application.currency_war.cw_sim import _star_depth_from_rows
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+        _star_depth_from_rows,
+    )
     return _star_depth_from_rows(rows)
 
 
@@ -412,9 +414,9 @@ def regenerate_snapshot(src_dir: Path | None = None,
         raise RuntimeError(f'池为空: {src} 无可配对样本(decisions 板深 × outcomes 差分)')
 
     from sr_od.application.currency_war.cw_sim import (
-        _SAMPLER_VERSION,
-        pool_fingerprint,
-    )
+    _SAMPLER_VERSION,
+    pool_fingerprint,
+)
     meta['sampler_version'] = _SAMPLER_VERSION
     fp = pool_fingerprint(pool)
     meta['fingerprint'] = fp

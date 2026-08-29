@@ -74,10 +74,10 @@ def form_score(state: GameState,
         RECIPE_BASE,
         recipe_tier,
     )
-    from sr_od.application.currency_war.cw_sim import (
-        _board_factions_of,
-        _engines_count,
-    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _board_factions_of,
+    _engines_count,
+)
     deployed = state.deployed or []
     fac = _board_factions_of(deployed)
     dep_names = frozenset(
@@ -101,10 +101,10 @@ def fallback_engines_count(state: GameState) -> int:
     豁免门槛与 form_ok 三件套路径的裁决同向(保守)。
     """
     from sr_od.application.currency_war.cw_comps import hp_charge_stack_chars
-    from sr_od.application.currency_war.cw_sim import (
-        _board_factions_of,
-        _engines_count,
-    )
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+    _board_factions_of,
+    _engines_count,
+)
     deployed = [d for d in (state.deployed or []) if d is not None]
     fac = _board_factions_of(deployed)
     dep_names = frozenset(

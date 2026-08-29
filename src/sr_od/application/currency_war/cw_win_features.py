@@ -20,7 +20,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from sr_od.application.currency_war.cw_factions import FACTIONS
-from sr_od.application.currency_war.cw_sim import _board_factions_of
+from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
 
 
 def _tier_of(faction: str, count: int) -> int:
