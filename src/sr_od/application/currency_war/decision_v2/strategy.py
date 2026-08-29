@@ -89,6 +89,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     MatchOutcome,
     PickEvent,
+    RefreshShop,
     SellDeployed,
     simulate,
 )
@@ -448,6 +449,34 @@ class DecisionV2Strategy(CwStrategy):
         result = arbitrate(scored, exec_state, session, reg_view,
                            disc_view=disc)                    # 层4
         actions.extend(result.actions)
+        # v6 死亡窗支出分配器(W684 v6 设计落码,决策 why 见 ADR-0474):
+        # 管线动作落地后的执行域上,若本帧管线未支出(坐息/攥金帧)且
+        # 落入分配器辖域(停手窗∨死亡域,辖域谓词现值直用),剩余支出
+        # 由分配器按 P_t=⟨Π_t,R_t,O,D⟩ 出清;管线已支出帧分配器不接管
+        # (同帧双花结构性排除)。记账扩展=分配器帧位(各渠道获配金,
+        # v6 §6)每帧披露写 session.v3_alloc_frame。
+        from sr_od.application.currency_war.decision_v2.allocator import (
+            allocator_run,
+        )
+        from sr_od.application.currency_war.decision_v2.discipline import (
+            register_round_bought,
+        )
+        _pipeline_spent = any(isinstance(a, (BuyCard, LevelUp, RefreshShop))
+                              for a in result.actions)
+        _alloc_base = exec_state
+        if result.actions:
+            _wk = exec_state.copy()
+            for _a in result.actions:
+                _wk = simulate(_wk, _a)
+            _alloc_base = _wk
+        _alloc = allocator_run(_alloc_base, session, registry,
+                               pipeline_spent=_pipeline_spent)
+        session.v3_alloc_frame = _alloc.frame
+        if _alloc.active and _alloc.actions:
+            actions.extend(_alloc.actions)
+            for _a in _alloc.actions:
+                if isinstance(_a, BuyCard) and _a.card.name:
+                    register_round_bought([_a.card.name], state, session)
         # 执行 log → session.last_candidate_scores(遥测判读可直接读)
         session.last_candidate_scores = {
             f"r{state.round_num}:{r['tag']}:{r['desc']}": r['score']
