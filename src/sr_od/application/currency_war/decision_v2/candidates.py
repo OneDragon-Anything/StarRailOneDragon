@@ -57,8 +57,10 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     press_band,
     press_channel_open,
     round_sell_blocked,
-    seed_age_blocked,
     sole_engine_sell_blocked,
+)
+from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+    seed_age_blocked,
     star_weighted_copies,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (

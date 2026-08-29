@@ -197,7 +197,7 @@ def _sell_floor_filter(working: GameState, state: GameState,
     """
     if not entries or not registry.sell_floor_exec_guard_enabled:
         return entries
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         sole_engine_sell_floor_plan,
     )
     bcs = [state.bench[i] for _k, i, _r in entries]

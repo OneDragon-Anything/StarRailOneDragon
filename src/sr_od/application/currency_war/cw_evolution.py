@@ -1028,7 +1028,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     # 名单相应收紧;undeploy/保留序语义不变。批量口径 = 事务内多笔
     # 同序扣减(discipline.sole_engine_sell_floor_plan 单一源)。
     if sell_floor and sold:
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             sole_engine_sell_floor_plan,
         )
         _plan = sole_engine_sell_floor_plan(sold, state)
@@ -1280,7 +1280,7 @@ def _fresh_seed(d, state: GameState, session) -> bool:
     (seed_age_blocked 同判据;session 缺省/无记录=False)。"""
     if session is None:
         return False
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         seed_age_blocked,
     )
     try:
