@@ -9270,12 +9270,12 @@
     color_range: null
     goto_list: []
   - area_name: FH_TITLE
-    id_mark: false
+    id_mark: true
     pc_rect:
-    - 102
-    - 36
-    - 185
-    - 63
+    - 85
+    - 25
+    - 215
+    - 78
     text: 忘却之庭
     lcs_percent: 0.5
     template_sub_dir: ''
