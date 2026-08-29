@@ -1906,6 +1906,14 @@ class PrepDirector(SrOperation):
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
+        # W606:DirectorV2 开关分支(registry 载体,默认关 = 本行恒 False、
+        # 旧环逐位不动)。共享前置(gate/bench-full 破警告/gated_hp/
+        # update_target)全在本分支之前,新旧环共用零重写。
+        from sr_od.application.currency_war.decision_v2.adapter import (
+            director_v2_enabled,
+        )
+        if director_v2_enabled(match.strategy):
+            return self._run_prep_loop_v2(match, session, config)
         while True:
             # ⚖️ W209j 刹车语义(run 27 停机事故第三层实证,ADR-0388):停机标志
             # 设置后本循环曾继续发 StartBattle——14:09:08 Deploy 钩子 stop_running
@@ -1934,6 +1942,15 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
                 return self.round_fail(status='策略输出非 PrepAction(F3)')
             self._record_step(obs, action)
+            # W606 影子比对(协议门1;开关默认关):旧环当权后同帧影子
+            # 决策逐位对照。全隔离——影子路径任何异常只计数留证,绝不
+            # 影响本步动作与现役决策(adapter.shadow_compare_step 承诺)。
+            from sr_od.application.currency_war.decision_v2.adapter import (
+                shadow_compare_enabled,
+                shadow_compare_step,
+            )
+            if shadow_compare_enabled(match.strategy):
+                shadow_compare_step(self, match, obs, session, config, action)
 
             # —— 控制流(不走 execute 验证链,§4.2b)——
             if isinstance(action, DeferSpheres):
@@ -2390,6 +2407,121 @@ class PrepDirector(SrOperation):
         if progressed:
             return self.round_success(f'强制出战({why})', wait=3)
         return self.round_fail(status=f'强制出战失败({why}): {detail}')
+
+    # ===== DirectorV2 接线(W606 阶段2批③;设计单一源 =
+    # .debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md §5/§6)=====
+
+    def _run_prep_loop_v2(self, match, session, config) -> OperationRoundResult:
+        """DirectorV2 备战循环(开关开才达此;端口全部复用现役件)。
+
+        端口映射:decide/execute = adapter.DecideAdapter(现役决策核 +
+        现役执行器 F3 验证链);observe = 本类 _observe → snapshot_from_obs;
+        recover = try_recovery(旧环恢复原语,返回「关过已知弹层」bool);
+        force_battle/is_stopped/stop_with_evidence 见内联。出口 → 轮次
+        语义映射见 ``_v2_outcome_to_round``。
+        """
+        from sr_od.application.currency_war.decision_v2.adapter import (
+            DecideAdapter,
+            snapshot_from_obs,
+        )
+        from sr_od.application.currency_war.decision_v2.director_v2 import (
+            DirectorV2,
+            _DirectorPorts,
+        )
+        from sr_od.application.currency_war.prep_actions import StartBattle
+
+        adapter = DecideAdapter(match.strategy, config, self._executor)
+        forced_ok = {'ok': False}   # force_battle 端口结果(出口映射消费)
+
+        def _observe_port(heavy: bool):
+            return snapshot_from_obs(self._observe(heavy), session)
+
+        def _recover_port() -> bool:
+            _prim, closed_known = try_recovery(self, self.ctx)
+            return closed_known
+
+        def _force_battle_port(_why: str) -> bool:
+            if self._executor is None:
+                return False
+            try:
+                progressed, _d = self._executor.execute(StartBattle())
+            except Exception as e:   # noqa: BLE001  对齐 _force_battle 不裸传
+                log.warning(f'[cw!][director-v2] 强制出战异常({_why}): {e}')
+                return False
+            forced_ok['ok'] = progressed
+            return progressed
+
+        def _is_stopped() -> bool:
+            # W209j 刹车精确判据(旧环同款;现读不缓存)
+            rc = getattr(self.ctx, 'run_context', None)
+            return rc is not None and getattr(rc, 'last_run_result', None) is not None
+
+        def _stop_with_evidence(reason: str) -> None:
+            # 停机留证钩子(方案 D,与 _bail ping-pong 同款三要素)
+            import contextlib
+            with contextlib.suppress(Exception):
+                self.save_screenshot(prefix='v2_evidence_stop')
+            with contextlib.suppress(Exception):
+                from pathlib import Path as _P
+                _P('.debug/temp/currency_war/v2_evidence_stop_hook.flag').write_text(
+                    f'[HOOK-STOP] DirectorV2 留证停机\n触发: {reason}\n'
+                    f'处理:看 .debug/images/v2_evidence_stop_* 截图建档/排查;'
+                    f'处理完删本 flag + 重启对局。\n',
+                    encoding='utf-8')
+            rc = getattr(self.ctx, 'run_context', None)
+            if rc is not None:
+                with contextlib.suppress(Exception):
+                    rc.stop_running(reason='hook:v2_evidence_stop')
+
+        def _record_defect(kind: str, detail: str) -> None:
+            log.warning(f'[cw!][director-v2] 缺陷 {kind}: {detail}')
+            try:
+                from sr_od.application.currency_war import cw_telemetry
+                rid = cw_telemetry.current_run_id() or '-'
+                cw_telemetry.get_recorder().record_exec_event(
+                    run_id=rid, round_num=0, action_family='DirectorV2',
+                    screen='battle_prep', event=f'defect_{kind}',
+                    reason=detail[:200])
+            except Exception:   # noqa: BLE001  遥测 best-effort
+                pass
+
+        ports = _DirectorPorts(
+            decide=adapter.decide,
+            observe=_observe_port,
+            execute=adapter.execute,
+            recover=_recover_port,
+            force_battle=_force_battle_port,
+            is_stopped=_is_stopped,
+            stop_with_evidence=_stop_with_evidence,
+            record_defect=_record_defect,
+        )
+        outcome = DirectorV2(ports).run(session)
+        return self._v2_outcome_to_round(outcome, forced_ok['ok'])
+
+    def _v2_outcome_to_round(self, outcome, forced_ok: bool) -> OperationRoundResult:
+        """LoopOutcome → SrOperation 轮次语义(设计 §6 映射表;现役行为锚见行内)。"""
+        from sr_od.application.currency_war.decision_v2.director_v2 import (
+            LoopOutcomeKind,
+        )
+        kind = outcome.kind
+        reason = outcome.reason
+        if kind is LoopOutcomeKind.BATTLE:
+            return self.round_success('出战(环出口)', wait=3)
+        if kind is LoopOutcomeKind.BATTLE_FORCED:
+            if forced_ok:
+                return self.round_success(f'强制出战({reason})', wait=3)
+            return self.round_fail(status=f'强制出战失败({reason})')
+        if kind is LoopOutcomeKind.BAIL:
+            # bail 计数已由引擎 _bail 完成(局级只增不清,ping-pong 在引擎)
+            return self.round_success(f'BailToOuter({reason})', wait=1)
+        if kind is LoopOutcomeKind.PINGPONG_STOP:
+            # 留证已由 stop_with_evidence 端口完成
+            return self.round_fail(status=reason or 'ping-pong 停机')
+        if kind is LoopOutcomeKind.BRAKE_STOPPED:
+            return self.round_fail(status='已停止[hook]')
+        if kind is LoopOutcomeKind.EVIDENCE_STOP:
+            return self.round_fail(status=reason or '留证停机')
+        return self.round_fail(status=reason or 'v2 环失败')
 
     def _probe_node_type(self) -> None:
         """[观测] 备战入场读节点行序列(read_node_sequence)→ log。

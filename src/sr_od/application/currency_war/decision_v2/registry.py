@@ -1157,6 +1157,21 @@ class DecisionV2Registry:
     #: ADR-0442 删除裁决段。
     framework_startup_v2_enabled: bool = False
 
+    # ===== DirectorV2 备战循环开关(新旧环 A/B;W606 阶段2批③)=====
+    #: True = prep_director 环入口走 DirectorV2 循环(快照契约 + 适配器,
+    #: decision_v2/adapter.py);False = 现役环逐位不动(零漂移锚)。
+    #: **默认关的合法性**(策略开关生命周期门):唯一合法理由 = 行为输入
+    #: 未就绪——实机同 obs 同策略影子对拍数据(协议 = 设计文档 §7,门1
+    #: n≥100 步逐位分歧=0 + 门2 逆真值 fixture 全绿)尚未采集。开臂判据
+    #: 挂账(不执行):双门全绿 ∧ 测试全量绿 → 单独 commit + ADR 翻默认;
+    #: 判据满足前禁翻(悬置默认关禁止,判据到期须裁决走完闭环)。
+    director_v2_prep_enabled: bool = False
+    #: 影子比对开关(与开臂开关独立;旧环恒当权,新环只观察不执行):
+    #: True 时旧环每步 decide 后同帧跑适配器影子决策并逐位对照(异常全
+    #: 隔离计数留证,零当权风险——见 adapter.shadow_compare_step)。采集
+    #: 完成即回 False;本开关不改变任何游戏动作。
+    director_v2_shadow_compare: bool = False
+
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
     constraints: tuple[str, ...] = (
@@ -1188,6 +1203,39 @@ class DecisionV2Registry:
     level_max: int = 10
     #: bench 槽容量(游戏常数 9)
     bench_capacity: int = 9
+
+    # ===== W607 词缀消费面三开关(H1 锁线环境判据 / H2② 生锈穿戴豁免 / H3 opening hold 收窄)=====
+    # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
+    # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释。
+    # 三开关默认关=零漂移锚;开臂走 sim A/B(臂=构造改动副本注入,先例同 line_switch 家族)。
+    #: H1:累积型线(hp_charge_stack)锁线环境判据——True 时强环境机制集不命中
+    #: (STRONG_ENV_MECHS 交集空)的累积型线信号被缓锁(不进当轮锁线候选,词缀
+    #: 空帧=信息缺失不拦,ADR-0107 动态剔除同款)。开臂判据挂账:sim A/B 双臂
+    #: n≥100(出口=选线分布:万敌线仅现于强环境局+环境缺失局锁线帧数=0);
+    #: 简报归属滞后修复已落地(ADR-0460 缓冲补写,词缀可信位半边已满足)。
+    line_env_gate_enabled: bool = False
+    #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
+    #: 误判的观察期)。简报词缀在位面切换即读得(battle_loop 位面简报分支),
+    #: 无窗口误判实证,默认 1=判据全程在辖;如实机判读发现位面首帧词缀滞后,
+    #: 经判读锚点标定后上调(标定通道,非拍死值)。
+    line_env_lock_min_round: int = 1
+    #: H2②:库藏生锈在场(cw_comps.RUST_AFFIX_NAME ∈ enemy_affixes)时豁免
+    #: opening/过渡 hold——每件 owned 滞留=敌 +3%伤/-4%减伤(competitors.md:45),
+    #: 滞留的边际代价随件数单调上升,压倒「攒给成型核心」的机会成本。开臂判据
+    #: 挂账:sim A/B(出口=带词条局 owned 滞留件数+穿戴率,anomalies 锚
+    #: 「滞留≥3 件跨 2 轮」=0)。
+    rust_wear_release_enabled: bool = False
+    #: H3:opening hold(P1 r≤2)收窄——True 时仅「当前节点非战斗类」才 hold
+    #: (node_type ∈ opening_hold_battle_nodes → 不 hold;r2 战斗节点白板挨打
+    #: 病灶,局22 实证)。node_type 缺失(None)维持现状 hold(保守降级:观察
+    #: 缺失不改变既有行为,宁缺勿错)。开臂判据挂账:sim A/B(出口=有战斗
+    #: 节点 r2 局的 worn>0 帧占比)。
+    opening_hold_battle_gate_enabled: bool = False
+    #: H3 战斗类节点型名单(词汇表单一源=GameState.node_type 顶部标签 OCR:
+    #: boss/补给/遭遇/巨星/投资/战斗/精英/奖励)。巨星/投资等未知是否战斗
+    #: →不入集=维持 hold(保守侧,不猜)。
+    opening_hold_battle_nodes: frozenset[str] = frozenset(
+        {'战斗', 'boss', '遭遇', '精英'})
 
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
