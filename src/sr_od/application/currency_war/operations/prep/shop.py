@@ -2,6 +2,8 @@
 import contextlib
 import time
 from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -10,6 +12,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_investments import (
+    STRATEGY_ECONOMY,
+    normalize_invest_name,
+)
 from sr_od.application.currency_war.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     HP_MAX,
@@ -255,6 +261,34 @@ class BuyShopCards(SrOperation):
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
 
+        # 临时捕获钩子(免费刷新实机机制采证,确认建档后删整段):激活免费刷新类投资策略
+        # ∧ 商店画面已开 → 停机留画面。用户口述:实机免费刷新可能是商店界面的独立按钮
+        # (非当前建模的「点刷新花 0 金」)——动作链可能错位,停机实测建档。触发定位/
+        # 处理步骤/删除条件见 flag 文件(.debug/temp/cw_free_refresh_hook.flag)。
+        _active_strategies = list(getattr(
+            getattr(self.ctx.cw_match, 'session', None), 'active_strategies', None) or [])
+        _free_envs = [
+            _name for _name in _active_strategies
+            if (_eff := STRATEGY_ECONOMY.get(normalize_invest_name(_name))) is not None
+            and (_eff.free_refresh_per_node > 0 or _eff.free_refresh_burst > 0)
+        ]
+        if _free_envs and self.round_by_find_area(
+                screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
+            self.save_screenshot(prefix='free_refresh_hook')
+            _flag = Path('.debug/temp/cw_free_refresh_hook.flag')
+            _flag.parent.mkdir(parents=True, exist_ok=True)
+            _flag.write_text(
+                'HOOK-STOP: 免费刷新实机机制采证钩子(临时捕获)\n'
+                f'触发: 激活策略 {_free_envs} ∧ 商店画面已开\n'
+                '处理步骤: analyze_screen 分析商店画面——找免费刷新入口真实形态'
+                '(是否独立按钮/位置/OCR 名/剩余次数文案),建档 screen_info,'
+                '核对 shop.py 刷新动作链是否点得到它;\n'
+                '删除条件: 建档确认后删本钩子整段+删本 flag+重启 MCP server\n'
+                f'时间: {datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
+            self.ctx.run_context.stop_running()
+            return self.round_wait(
+                status=f'钩子停机:免费刷新环境({_free_envs})+商店开,留画面采证')
+
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
@@ -394,11 +428,12 @@ class BuyShopCards(SrOperation):
                                      phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
         _apply_hp(_tgt_state, hp_value, _hp_readable, _hp_trusted)
         if match is None:
-            # 防御:无对局态(独立 run_operation 调本 op)→ 临时 default match,不挂 ctx(局外不复用)
-            from sr_od.application.currency_war.strategies.default_strategy import (
-                DefaultCwStrategy,
+            # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
+            # (default 栈退役后,防御具现改用唯一策略载体 decision_v2)
+            from sr_od.application.currency_war.decision_v2.strategy import (
+                DecisionV2Strategy,
             )
-            _def = DefaultCwStrategy()
+            _def = DecisionV2Strategy()
             match = CurrencyWarMatch(_def, _def.create_session(config))
         match.strategy.update_target(_tgt_state, match.session, config)
 
@@ -572,7 +607,7 @@ class BuyShopCards(SrOperation):
                 # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
                 # v2_* 恒空串/None,字段保留作历史 schema 兼容;
                 # decision_v2 的模式/意向走 v3_* 字段)
-                'strategy_id': getattr(config, 'strategy_id', 'default'),
+                'strategy_id': getattr(config, 'strategy_id', 'decision_v2'),
                 'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
                 'v2_locked_line': _sess.locked_line or '',
                 'v2_bridge': _sess.bridge_id or '',

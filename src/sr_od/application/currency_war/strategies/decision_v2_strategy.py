@@ -1,8 +1,8 @@
 """货币战争 · 决策框架 v2 注册桥(DecisionV2Live;ADR-0290 渐进迁移)。
 
 本包(``strategies/``)是 **生产注册面**——``SrContext.currency_war_strategy_plugin_dirs``
-只扫描本目录(BUILTIN 源),不在此处的策略对 ``StrategyManager`` 不可见,
-配置 ``strategy_id`` 命不中会静默回退 ``DefaultCwStrategy``。
+只扫描本目录(BUILTIN 源),不在此处的策略对 ``StrategyManager`` 不可见;
+策略 id 构造期即校验,未注册 id 显式报错(无静默回退)。
 
 ``DecisionV2Strategy`` 的实现体在框架实现包
 ``sr_od.application.currency_war.decision_v2.strategy``(四层:候选生成→

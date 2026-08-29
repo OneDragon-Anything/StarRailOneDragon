@@ -1,8 +1,9 @@
 """决策框架 v2 策略具现(ADR-0290/0291/0306 载体批;DecisionV2Strategy)。
 
 **载体批(W35)重建**:不继承旧 ``LineStrategy``(ADR-0336 已删)——独立
-``CwStrategy`` 实现(继承 ``DefaultCwStrategy`` 只复用**执行性钩子**:
-球/箱/遭遇/补给/巨星/伙伴/prep 步级;战略与备战决策全部自持)。
+``CwStrategy`` 全具现(执行性钩子:球/箱/遭遇/补给/巨星/伙伴/prep 步级,
+自 ``DefaultCwStrategy`` 本体删除批平移自持,判据/表库仍消费
+``cw_plan/cw_economy/cw_recipe/cw_comps`` 共享函数;战略与备战决策自持)。
 层1 换源(裁决终版第三选项):
 
 - 信号/锁线 → ``cw_intention``(意向分层状态机;strategy_v4 点0);
@@ -24,8 +25,23 @@
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_comps, cw_events, cw_plan
 from sr_od.application.currency_war.cw_comps import get_comp
+from sr_od.application.currency_war.cw_events import (
+    EncounterOption,
+    EncounterPick,
+    MegastarOption,
+    MegastarPick,
+    PartnerOption,
+    PartnerPick,
+    PlannerOption,
+    PlannerPick,
+    SupplyOption,
+    SupplyPick,
+)
 from sr_od.application.currency_war.cw_evolution import (
     EvolutionState,
     evolution_step,
@@ -37,15 +53,21 @@ from sr_od.application.currency_war.cw_intention import (
     pair_target_comp,
     update_intention,
 )
+from sr_od.application.currency_war.cw_performance import (
+    HP_CONFIDENCE_THRESHOLD,
+    RoundOutcome,
+)
 from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
     CompTransaction,
     GameState,
+    MatchOutcome,
+    PickEvent,
     SellDeployed,
     simulate,
 )
-from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.cw_strategy import CwStrategy, StrategySession
 from sr_od.application.currency_war.decision_v2.arbiter import arbitrate
 from sr_od.application.currency_war.decision_v2.candidates import (
     generate_candidates,
@@ -69,8 +91,21 @@ from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.decision_v2.scoring import score_all
-from sr_od.application.currency_war.strategies.default_strategy import (
-    DefaultCwStrategy,
+from sr_od.application.currency_war.prep_actions import (
+    ClickSpheres,
+    DeferSpheres,
+    DeployMove,
+    EnsureShopClosed,
+    EnsureShopOpen,
+    LevelUp,
+    OpenBox,
+    OpenTome,
+    PickBoxCard,
+    RunBuyPhase,
+    RunDeploy,
+    RunEquip,
+    SellBench,
+    StartBattle,
 )
 
 #: 谷底回滚线(点6:转型中遭遇单场掉血 >15 → 回滚一件最弱替换位;
@@ -78,7 +113,7 @@ from sr_od.application.currency_war.strategies.default_strategy import (
 VALLEY_ROLLBACK_LOSS: int = 15
 
 
-class DecisionV2Strategy(DefaultCwStrategy):
+class DecisionV2Strategy(CwStrategy):
     """决策框架 v2 唯一策略载体(意向分层×体系卡×演进×纪律族)。
 
     语义骨架(诚实声明,承 ADR-0291):评分表部分标定(ADR-0293/0295/
@@ -109,7 +144,7 @@ class DecisionV2Strategy(DefaultCwStrategy):
         旧局轮键会让新局 (1,1) 撞键被段级守卫误吞(首轮意向不驱动)、
         旧局终值 HP 会污染三臂首 record 的 hp_before。
         """
-        super().on_match_start(state, session, config)
+        # (基类 on_match_start 原为 P1 no-op;default 本体删除批后无基类体可调)
         session.v3_intention = IntentionState()
         session.v3_evolution = EvolutionState()
         session.v3_alarm = BloodAlarmTracker()
@@ -161,9 +196,15 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_release_spent = 0
 
     def on_round_end(self, state: GameState, session: StrategySession,
-                     config, obs) -> None:
-        """感知质量门(继承 default 实证链)+掉血三臂喂入+谷底回滚判。"""
-        super().on_round_end(state, session, config, obs)
+                     config, obs: RoundOutcome) -> None:
+        """感知质量门(观测段自 default 本体删除批平移自持,逐字)+
+        掉血三臂喂入+谷底回滚判。"""
+        session.performance.record(obs)
+        # 结算「连胜×N」前缀=方向 → session.last_streak(给下回合 economy C 杠杆:连胜保连胜/连败 fold)。
+        session.last_streak = obs.streak
+        # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(HP 结算→下回合 prep 不变)。保血/maybe_pivot 信号地基。
+        if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
+            session.last_hp = obs.hp_after
         tracker = session.v3_alarm
         if tracker is None:
             tracker = session.v3_alarm = BloodAlarmTracker()
@@ -187,6 +228,14 @@ class DecisionV2Strategy(DefaultCwStrategy):
                     log.info('[cw][d2] 谷底回滚登记(单场 -%d > %d)',
                              hp_before - hp_after, VALLEY_ROLLBACK_LOSS)
         session.v3_prev_hp = hp_after if hp_after else hp_before
+
+    def create_session(self, config) -> StrategySession:
+        """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。"""
+        return StrategySession()
+
+    def on_match_end(self, session: StrategySession, config, outcome: MatchOutcome) -> None:
+        """P1 no-op(outcome 字段全默认,真实结算屏 OCR 属 P1.5)。"""
+        pass
 
     # ===== 战略层:意向分层(点0)=====
 
@@ -280,7 +329,7 @@ class DecisionV2Strategy(DefaultCwStrategy):
             build_round_posture,
             reward_node_is_battle,
         )
-        _raw_posture = build_round_posture(state, session)
+        _raw_posture = build_round_posture(state, session, registry)
         # W332b 未成型期姿态:泄息通道(release)——FLIP 谓词命中/末窗
         # slot 守卫压 level 时包装姿态(预算三方合并 + spend_mode 新档,
         # 单一源=decision_v2.posture_release;下流 scoring/arbiter 读同一
@@ -462,6 +511,532 @@ class DecisionV2Strategy(DefaultCwStrategy):
                  '; '.join(r['desc'] for r in result.log
                            if r['accepted']) or '无')
         return actions
+
+    def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
+                      state: GameState, session: StrategySession, config) -> PickEvent:
+        """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
+        ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
+        ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
+        comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
+        行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
+        概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。
+        ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
+        affinity 表把所选卡映射到 comp 分贡献)。"""
+        _tgt = session.target_comp
+        pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
+        # 信号喂入:所选卡对各线的 affinity → comp 分贡献
+        try:
+            from sr_od.application.currency_war.cw_comps import augment_affinity
+            src = 'invest_strategy' if kind == 'strategy' else 'invest_env'
+            scores: dict[str, float] = {}
+            for opt in options:
+                aff = augment_affinity(opt)
+                for comp_name, v in aff.items():
+                    scores[comp_name] = max(scores.get(comp_name, 0.0), v)
+            if scores:
+                session.commit_signals.add(src, scores)
+        except Exception:   # noqa: BLE001  信号喂入 best-effort
+            pass
+        return pick
+
+    def decide_supply(self, options: list[SupplyOption], state: GameState,
+                      session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
+        """补给选装备/出钻。⚠️ OCR 未就绪(P1 钩子 + 默认委托,handler 不 rewire,随阶段5)。"""
+        return cw_events.decide_supply(options, state, session.target_comp, config, refresh_used)
+
+    def decide_encounter(self, options: list[EncounterOption], state: GameState,
+                         session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
+        """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
+        return cw_events.decide_encounter(options, state, session.target_comp, config, refresh_used)
+
+    def decide_megastar(self, options: list[MegastarOption], state: GameState,
+                        session: StrategySession, config) -> MegastarPick:
+        """巨星选候选:委托 ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
+        ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。"""
+        available = [o.char_id for o in options if o.char_id]
+        chosen_name = cw_comps.select_megastar(state, session.target_comp, available)
+        if chosen_name:
+            for o in options:
+                if o.char_id == chosen_name:
+                    return MegastarPick(idx=o.idx, reason=f"select_megastar 命中 {chosen_name}")
+        return MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
+
+    def decide_partner(self, options: list[PartnerOption], state: GameState,
+                       session: StrategySession, config) -> PartnerPick:
+        """选择伙伴:优先 ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
+        ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
+        wants: list[str] = list(getattr(config, 'character_build_around', []) or [])
+        if session.target_comp is not None:
+            wants += list(session.target_comp.core_chars)
+        for o in options:
+            if o.char_id and o.char_id in wants:
+                return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
+        return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
+
+    def decide_planner(self, options: list[PlannerOption], state: GameState,
+                       session: StrategySession, config) -> PlannerPick:
+        """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
+
+        升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
+        session.target_comp 决定银狼线加成。"""
+        return cw_events.decide_planner(options, state, session.target_comp)
+
+    def decide_star_tome(self, options: list[str], state: GameState,
+                         session: StrategySession, config) -> int:
+        """星徽秘典四选一(r104 接入策略模块;原 loop 内联 board 匹配迁此)。
+
+        打分:①target_comp.all_factions 命中(终局线需要的阵营星徽 = +40);
+        ②board 已有该阵营(板上已有=边际价值高,board 计数 ×8);
+        ③当前配方框架阵营命中(双轨期过渡配方需要,+15)。无命中 fallback idx=0。
+        返回 options 索引。"""
+        if not options:
+            return 0
+        fw = getattr(session, 'transition_framework', '')
+        _fw_facs: set[str] = set()
+        if fw:
+            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        _tgt_facs: set[str] = set()
+        if session.target_comp is not None:
+            _tgt_facs = set(session.target_comp.all_factions or [])
+        best_i, best_s = 0, -1.0
+        for i, name in enumerate(options):
+            s = 0.0
+            from one_dragon.utils import str_utils
+            from sr_od.application.currency_war.decision_v2.scoring import PICK_BIAS
+            if name in _tgt_facs:
+                s += PICK_BIAS.tome_target_faction
+            hit = next((b for b, n in (state.board or {}).items()
+                        if n > 0 and str_utils.find_by_lcs(b, name, percent=0.8)), None)
+            if hit is not None:
+                s += PICK_BIAS.tome_board_hit * (state.board or {})[hit]
+            if name in _fw_facs:
+                s += PICK_BIAS.tome_framework_faction
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
+
+    def decide_wish_trial(self, options: list[str], state: GameState,
+                          session: StrategySession, config) -> int:
+        """祈愿试炼选卡(r104 接入策略模块;原固定第1张)。
+
+        options = 各卡 objective 文字(OCR)。打分:①金币类(直接经济,阵容无关
+        稳妥)+25;②target/框架阵营相关词命中 +20;③「刷新/购买」类操作向
+        (与 DP 攒息协同)+10;无信息 fallback idx=0。返回索引。"""
+        if not options:
+            return 0
+        _tgt_facs: set[str] = set()
+        if session.target_comp is not None:
+            _tgt_facs = set(session.target_comp.all_factions or [])
+        fw = getattr(session, 'transition_framework', '')
+        _fw_facs: set[str] = set()
+        if fw:
+            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        best_i, best_s = 0, -1.0
+        for i, obj in enumerate(options):
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                PICK_BIAS as _PB,
+            )
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                effect_pick_bias,
+            )
+            s = effect_pick_bias(session, obj)
+            if '金币' in obj:
+                s += _PB.wish_gold
+            if any(f in obj for f in (_tgt_facs | _fw_facs)):
+                s += _PB.wish_faction
+            if '刷新' in obj or '购买' in obj:
+                s += _PB.wish_operation
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
+
+    def decide_box_card(self, names: list[str], state: GameState,
+                        session: StrategySession, config) -> int:
+        """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块;原 pick_box_card 内联迁此)。
+
+        打分:①target.key_equips 命中 +100(成型加速压倒一切);
+        ②合成材料通用性(_material_value 配方数;生命之花 7/轮滑鞋 6/光能电池 6);
+        ③target.key_equips 的合成材料(两跳:该材料能合出 key_equip)命中 +30。
+        无信息 fallback idx=0。返回索引(调用方点卡)。"""
+        if not names:
+            return 0
+        from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
+            _material_value,
+        )
+        _key: set[str] = set()
+        if session.target_comp is not None:
+            _key = set(session.target_comp.key_equips or [])
+        # key_equip 的合成材料(两跳)
+        _key_mats: set[str] = set()
+        if _key:
+            try:
+                # r130 修正:注册表字段是 **recipes**(cw_equipment_data._eq
+                # recipes=(('量产型装甲','幸运星'),))——旧代码读 .materials
+                # (不存在的属性)→ exception 被 swallow → 材料分静默失效,
+                # 幸运星/量产型装甲从拿不到 key_equip 材料加分(局33b 箱仅开
+                # 2 次的获取侧根因之一)。recipes 是「配方元组的元组」
+                # (每条=(材料a,材料b)),逐条展开。
+                from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS
+                for ke in _key:
+                    eq = EQUIPMENTS.get(ke)
+                    for recipe in getattr(eq, 'recipes', ()) or ():
+                        for m in recipe:
+                            if m:
+                                _key_mats.add(m)
+            except Exception:   # noqa: BLE001  材料表缺失不加分
+                pass
+        best_i, best_s = 0, -1.0
+        for i, n in enumerate(names):
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                PICK_BIAS as _PB,
+            )
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                effect_pick_bias,
+            )
+            s = effect_pick_bias(session, n)
+            if n in _key:
+                s += _PB.box_key_equip
+            if n in _key_mats:
+                s += _PB.box_key_material
+            s += float(_material_value(n))
+            if s > best_s:
+                best_i, best_s = i, s
+        return best_i
+    # ===== 备战决策环步级决策(strategy/03(原 doc 15§5.1-5.3) 参考实现;P1)=====
+
+    def decide_prep_action(self, obs, session: StrategySession, config):
+        """备战决策环步级决策 = strategy/03(原 doc 15§5.1-5.3) 参考实现(奖励收取 → 腾席链 → 主流程)。
+
+        规则序(每步全量重判,先命中先出):
+        1. 武装箱 overlay 开 → PickBoxCard(执行器默认选卡,v7 M-3;OpenBox 两步链第二步);
+        2. 有箱 → OpenBox(箱白占席,先开=腾席+得装备;两步非一步,F1/L-5);
+        3. 有球且有空席 → ClickSpheres(k=min(free, n);掉箱由规则 1/2 下步统筹);
+        4. 有球无空席且 defer<2 → 腾席链一步(deploy 空位 > 卖杂件 > 升级 > 卖最弱 > DeferSpheres;
+           ADR-0274 口述[32]:卖件优先于升级,boss 轮禁升级);
+        5. 球箱皆无 或 defer≥2 → 主流程(买→部署→装备→出战,Run* 组合;P1 过渡)。
+
+        obs P1 恒空字段(overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
+        gold 仅 shop_open 且 obs.state fresh 时可信(关态读空,§5.2b M2)。
+        """
+        step = self._decide_prep_action_impl(obs, session, config)
+        # r412(ADR-0274):息引擎 latch 采样(后置,ADR-0266 同款语义)——本笔
+        # 决策读「此前」是否曾达满息,决策后置位(首达当轮自家不解锁);
+        # default 栈此前无采样端 → 腾席链 b 的引擎门只剩花完≥50 单臂。
+        try:
+            if (getattr(obs, 'state_gold_trusted', False) and obs.state is not None
+                    and obs.state.gold >= 50):
+                session.v2_ever_full_interest = True
+        except Exception:   # noqa: BLE001  采样 best-effort
+            pass
+        return step
+
+    def _decide_prep_action_impl(self, obs, session: StrategySession, config):
+        """decide_prep_action 的实现体(入口 docstring 见上层;拆分只为 latch 后置采样)。"""
+        if obs.box_overlay_open:
+            return PickBoxCard(card_idx=None)   # 执行器默认选卡(P1 住执行器;P5 上移策略)
+        # r11 review P0:defer 门(对照收球规则 4)——OpenTome 失败反复重试时(执行器连败置
+        # defer),无门活锁:M55 P2 全部 365 条决策全是 OpenTome 重试,71→84 金全程闲置、板面
+        # 冻结硬吃两仗。典籍疑似误检/开不动 → 放弃走主流程;下轮环入口 defer 清零重判自愈。
+        if getattr(obs, 'tomes', None) and session.defer_count < 2:
+            return OpenTome()                   # 开典籍即腾席+触发星徽四选一(2026-08-16;选卡 loop 0i)
+        if obs.boxes:
+            return OpenBox()                     # 开箱即腾席 + 得装备
+        if obs.spheres and obs.free_bench_slots > 0:
+            # live 2026-08-14(1-2 实锤):商店开态奖励面板 [1257,140,1662,493] 与「刷新概率表」
+            # 按钮 [945,360,1415,410] 重叠(x1257-1415∩y360-410)——HoughCircles 把按钮图形误检成
+            # 假球,点击即开概率表弹窗(遮挡 → bail → 乒乓)。商店开 → 先关店,清洁面板上再收球。
+            if obs.shop_open:
+                return EnsureShopClosed()
+            # live 2026-08-15(M12 1-9 实锤):owned 装备栏溢出到奖励区 → 道具图标被误检成假球,
+            # 点击无效 → 验证失败循环 → bail×3 停机。defer 门扩到收球:反复失败(框架置 defer)后
+            # 放弃收球走主流程;下轮环入口 defer 清零重判(真球可再收,自愈)。
+            if session.defer_count >= 2:
+                log.info('[cw][prep] 球疑假检(owned 溢出,点击反复失败)→ defer 跳过收球,走主流程')
+                return self._main_flow_step(obs, session, config)
+            return ClickSpheres(max_k=min(obs.free_bench_slots, len(obs.spheres)))
+        if obs.spheres and obs.free_bench_slots <= 0 and session.defer_count < 2:
+            return self._free_bench_step(obs, session, config)
+        return self._main_flow_step(obs, session, config)
+
+    @staticmethod
+    def _is_boss_round(st: GameState) -> bool:
+        """boss 轮判定(位面末节点;ADR-0274 口述[32])。
+
+        判定源同 update_target 的 `_boss_window` 前两支:node_type=='boss'
+        (权威源=备战节点行 read_node_sequence)或 round_num≥9 先验(supply
+        节点例外——r9 补给不是 boss)。位面切换首战(plane≥2 r1)不含:那是
+        pivot 冻结窗语义,不是「位面末节点」。
+        """
+        nt = st.node_type or ''
+        return nt == 'boss' or (st.round_num >= 9 and nt != 'supply')
+
+    @staticmethod
+    def _cap_shortfall(st: GameState, target) -> int:
+        """真缺人口缺口(ADR-0274 口述[32]「cap-deployed≥1 才可能考虑升级」):
+        想上场(``_should_deploy`` 同链 a 判据)而 cap 装不下的 bench 件数——
+        现有空位可吸纳的先扣,剩余即被 cap 卡住的真实缺口。缺口 0(板没满 /
+        空位够装)→ 升级不产生可兑现的人口收益,不升。
+        """
+        cap = min(10, st.level or 1)
+        dep = sum(1 for d in (st.deployed or []) if getattr(d, 'char_id', ''))
+        vacancy = max(0, cap - dep)
+        worth = [bc for bc in (st.bench or []) if bc is not None
+                 if bc.char_id and cw_plan._should_deploy(bc, st, target)]
+        return max(0, len(worth) - vacancy)
+
+    @staticmethod
+    def _levelup_engine_ok(st: GameState, session: StrategySession) -> bool:
+        """息引擎门(ADR-0266 同款,ADR-0274 堵腾席链 b 这第三条升级通道):
+        lv<5 豁免(过渡成型基线,r263);否则 = 本局曾达满息 latch
+        (``v2_ever_full_interest``;default 栈采样端 r412 补)∨ 升级总成本
+        花完后金仍 ≥50(``_INTEREST_FLOOR`` 满息结余)。"""
+        if st.level < 5:
+            return True
+        if getattr(session, 'v2_ever_full_interest', False):
+            return True
+        from sr_od.application.currency_war.cw_economy import clicks_to_next_level
+        total = clicks_to_next_level(st) * cw_plan.xp_click_cost(st)
+        return st.gold - total >= 50
+
+    @staticmethod
+    def _bench_junk_idx(st: GameState, character_priority: list[str],
+                        target) -> int | None:
+        """bench 杂件下标(off-target 且最低价值;腾席链 a2,ADR-0274)。
+
+        判据 = ``_card_supports_target`` False(off-target;deploy 卖
+        off-target 腾位的同一判源)+ 3合1 重复件保护(同 ``_weakest_bench_idx``)
+        + ``_bench_sell_value`` 最低价值排序。无可卖杂件 → None(升级前置
+        「杂件卖无可卖」即 a2 返 None)。
+        """
+        from collections import Counter
+        if not st.bench:
+            return None
+        counts = Counter((bc.char_id, bc.star) for bc in st.bench
+                       if bc is not None and bc.char_id)
+        close = cw_plan._close_factions(st)
+        best_i, best_v = None, None
+        for i, bc in enumerate(st.bench):
+            if bc is None or not bc.char_id or counts[(bc.char_id, bc.star)] >= 2:
+                continue
+            if cw_plan._card_supports_target(bc.char_id, bc.faction, st, target):
+                continue
+            v = cw_plan._bench_sell_value(bc, character_priority, close, target)
+            if best_v is None or v < best_v:
+                best_i, best_v = i, v
+        return best_i
+
+    def _free_bench_step(self, obs, session: StrategySession, config):
+        """腾席链一步(§5.2;优先级是默认策略的选择,非框架强制;继承者可只覆盖本方法)。
+
+        r100 审计必修①:target 改走 decision_target 单一入口——双轨期腾席链的上/卖
+        判据同 plan 路径(配方驱动),消除双路径语义分叉(旧:步级读终局 target →
+        r≥8 终局件上场 + 腾席链 c 无框架 keep 集可卖掉配方 carry)。
+        """
+        st = self._pseudo_state(obs, session)
+        from sr_od.application.currency_war.cw_recipe import decision_target
+        target = decision_target(session, st)
+        # ⚖️ r94:同名在场守卫收口 cw_plan.deploy_legal(全局不变量单一源;5.1.7)。
+        # 第14局 r9 实证:藿藿已在场,腾席链a把 bench 藿藿拖向空位 5 次全被游戏拒
+        # → director 屏蔽 → 爻光滞留 bench 到局末。_should_deploy 顶部同守卫,
+        # 此处显式跳过是为了「失败记忆」计数不污染(被拦的不再进候选循环)。
+        _dep_names = cw_plan.deployed_name_set(st)
+        # a. deploy 空位(零成本最优):bench 有过 _should_deploy 的角色 → DeployMove
+        if obs.deploy_vacancy > 0:
+            for bc in list(obs.bench_chars):
+                if not cw_plan.deploy_legal(bc, _dep_names):
+                    continue   # 同名已在场(游戏拒),留 bench 待 3合1 合并
+                # r93 失败记忆:同角色拖拽已被游戏拒过 → 跳过(重试同目标=白烧环步,
+                # 藿藿 5 连败实证;下一候选继续)。备战后对账刷新会自然重置状态。
+                if session.deploy_fail_counts.get(bc.char_id, 0) >= 1:
+                    continue
+                if cw_plan._should_deploy(bc, st, target):
+                    row, ok = cw_plan._pick_deploy_row(st, bc, target)
+                    if not ok:
+                        continue
+                    occupied = obs.front_occupied if row == 'front' else obs.back_occupied
+                    size = obs.front_size if row == 'front' else obs.back_size
+                    empty = next((n for n in range(1, size + 1) if n not in occupied), None)
+                    if empty is not None:
+                        log.info(f'[cw][prep] 腾席链a:deploy空位 → 槽{bc.slot}({bc.char_id})'
+                                 f' → {row}{empty}')
+                        return DeployMove(from_slot=bc.slot, to_row=row, to_slot=empty)
+        # a2. 卖杂件(ADR-0274,口述[32]「腾席需求优先用卖件解决」):bench 满
+        # 先卖 off-target 杂件,再考虑升级。判据复用 deploy/_concentration 的
+        # ``_card_supports_target``(off-target 判定单一源);价值排序复用
+        # ``_bench_sell_value``(最低价值先卖);3合1 重复件保护同链 c。
+        # target=None(reactive 早段)跳过——无 off-target 语义,防全卖。
+        if target is not None:
+            _j = self._bench_junk_idx(st, config.character_priority, target)
+            if _j is not None and _j < len(st.bench):
+                bc = st.bench[_j]
+                log.info(f'[cw][prep] 腾席链a2:卖杂件 槽{bc.slot}({bc.char_id})'
+                         '(ADR-0274 卖件优先于升级)')
+                return SellBench(slot=bc.slot)
+        # b. 升级扩容(cap+1 → 回 a):**三前置**(ADR-0274,口述[32],局72 r9
+        # 腾席链连升 5→6→7 进 boss 剩 4 金实证):①boss 轮(位面末节点)一律
+        # 禁升级腾席(升级的 cap 收益下轮才兑现,boss 当轮不上场);②真缺人口
+        # (cap 缺口≥1——现有空位可吸纳的应上场件扣完后仍有富余,「cap-deployed
+        # ≥1」即不缺);③息引擎门(ADR-0266 同款,堵这条第三升级通道的漏网)。
+        # 前置不过直接落链 c(卖件/Defer),不再为 gold 真值空等(等待只为升级,
+        # 不升就不必开店)。gold 需可信(framework F2 state_gold_trusted,MED-1 接线;
+        # shop 开态 + fresh state 才信 —— 关态读空/缓存过期都会误判无金 → 链 c 误卖)
+        # r364(局47 死循环修:50min 卡「警告→M-6→链b 要真值→EnsureShopOpen
+        # →警告」40 次):**进展保证**——EnsureShopOpen 成功 ≠ 下一轮
+        # state_gold_trusted 就 True(obs 快照刷新时机在环外),前提永不
+        # 满足 = 无进展环。修:同环第 2 次进链 b 仍无真值 → 不再等,
+        # 直接试 LevelUp(state.level_up_cost OCR 真值优先,缺省 4;
+        # 金不够 gate 拒 → 自然落链 c,比死等好)。计数在环入口清
+        # (director 环=同轮;跨轮重置)。
+        if (st.level < 10 and not self._is_boss_round(st)
+                and self._cap_shortfall(st, target) >= 1):
+            _lk = getattr(session, 'free_bench_gold_wait', 0)
+            if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
+                session.free_bench_gold_wait = 0
+                fresh = self._fresh_state(obs, session)
+                if (cw_plan.level_up_gate(fresh, target)
+                        and self._levelup_engine_ok(fresh, session)):
+                    log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
+                    return LevelUp()
+            else:
+                _lk2 = getattr(session, 'free_bench_gold_wait', 0) + 1
+                session.free_bench_gold_wait = _lk2
+                if _lk2 <= 1:
+                    log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
+                    return EnsureShopOpen()
+                # r366b(review A3 修,补齐注释宣称的中间态):第 2 次仍无
+                # 真值 = 无进展环 → **先用 stale gold 试算 level_up_gate**
+                # (level_up_cost 缺省 4;金够就升——升级破满席是最优解,
+                # 卡 50min 代价 >> 一次可能失败的 LevelUp);gate 拒才落
+                # 链 c 卖牌。零下行:LevelUp 失败被框架 fail 链兜住。
+                _stale = self._pseudo_state(obs, session)
+                _stale.level_up_cost = getattr(_stale, 'level_up_cost', None) or 4
+                if (cw_plan.level_up_gate(_stale, target)
+                        and self._levelup_engine_ok(_stale, session)):
+                    log.info('[cw][prep] 腾席链b:等待 %d 次无真值 → stale gold=%s 试升级'
+                             '(cap+1 破满席;失败自然落链 c)',
+                             _lk2, _stale.gold)
+                    return LevelUp()
+                log.info('[cw][prep] 腾席链b:gold 真值等待 %d 次无进展且 stale 试算不过 → 落链 c(局47 死循环修)',
+                         _lk2)
+        # c. 卖最弱(_weakest_bench_idx 含 3合1 重复件保护;全保护 → None)
+        # r364 兜底:全保护(None)且 b 等待超限 → **强制卖 bench 首
+        # 个非在场件**(保护是优化不是死锁理由;卡 50min 实证全保护
+        # 也是死循环形态之一)。正常路径(未超限)不受影响。
+        idx = cw_plan._weakest_bench_idx(st, config.character_priority, target)
+        if idx is not None and idx < len(st.bench):
+            bc = st.bench[idx]
+            log.info(f'[cw][prep] 腾席链c:卖最弱 槽{bc.slot}({bc.char_id})')
+            return SellBench(slot=bc.slot)
+        if getattr(session, 'free_bench_gold_wait', 0) > 1:
+            _dep_all = cw_plan.deployed_name_set(st)
+            for bc in st.bench:
+                if bc is not None and bc.char_id and bc.char_id not in _dep_all:
+                    log.info(f'[cw][prep] 腾席链c(r364 强制):全保护死锁 → 卖 槽{bc.slot}'
+                             f'({bc.char_id})')
+                    return SellBench(slot=bc.slot)
+        # d. 全是有用角色 → 留置(DeferSpheres;框架计 defer_count,门=2)
+        log.info('[cw][prep] 腾席链d:无可卖/不可升 → DeferSpheres(球留置)')
+        return DeferSpheres()
+
+    def _main_flow_step(self, obs, session: StrategySession, config):
+        """主流程推进(§5.3;Run* 组合 P1 过渡,阶段位 prep_phase 由 Director 环入口清零)。
+
+        阶段位在**出动作时**前移(策略看不到执行结果;失败由框架 fail/屏蔽/恢复链兜住,
+        失败动作不无限重提案)。M-6 门:进 RunBuyPhase 前保证 free>0,否则跳过买牌直奔部署
+        (防 shop.py 内 _handle_bench_full 位置式卖,strategy/03(原 doc 15§8) P1 残留风险)。
+        """
+        if session.prep_phase <= 0:
+            session.prep_phase = 1
+            if obs.free_bench_slots <= 0:
+                # M-6 门:free=0 跳过买牌(防 shop.py 内 _handle_bench_full 位置式卖)。
+                # M24 卡死修(2026-08-16):满席且**无球**时旧逻辑直奔 RunDeploy → deploy-swap 卖
+                # 拖拽失败(bug#1 变体)→ 警告不消 → 死循环;金不够升级时链 b 也不通。修:满席
+                # 一律先过腾席链 a/b/c(deploy 空位/升级扩容/卖最弱 —— _weakest_bench_idx 是保护式
+                # 卖,非位置式卖,与 M-6 门防的不冲突);链 d(DeferSpheres)不入 —— 无球时 defer 无意义,
+                # 落回部署段保持原行为。
+                log.info('[cw][prep] M-6 门:free=0 → 腾席链 a/b/c 破满席(买牌跳过)')
+                step = self._free_bench_step(obs, session, config)
+                if not isinstance(step, DeferSpheres):
+                    return step
+                return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
+            return RunBuyPhase()
+        if session.prep_phase == 1:
+            session.prep_phase = 2
+            return RunDeploy()
+        if session.prep_phase == 2:
+            session.prep_phase = 3
+            return RunEquip()
+        # ⚖️ r23(强度表消费,p1-1 掉 25.5 实证):空板/严重缺员出战守卫——54 局 5 次空板出战
+        # (lv4,dep=0),p1-1/p1-7 高强度节点掉 24-29 血。deployed 有 tracking(bench/deployed chars)
+        # 且板上 0 人 → 不出战,回部署段(RunDeploy 会拖 bench 上场);bench 也空(真无牌)才放行
+        # (开局首轮无牌是正常态,游戏会给保底板?不——p1-1 开局必能买到牌,空板=部署失败,重试)。
+        _dep_n = len(obs.deployed_chars or [])
+        _bench_n = len(obs.bench_chars or [])
+        if _dep_n == 0 and _bench_n > 0 and session.prep_phase_retry < 2:
+            session.prep_phase_retry += 1
+            session.prep_phase = 1   # 回部署段重试(bench 有人没上去)
+            log.info('[cw][prep] 空板出战守卫:板上 0 人 bench %d 人 → 回部署段(p1-1 类节点掉 24+ 血)',
+                     _bench_n)
+            return RunDeploy()
+        return StartBattle()
+
+    def _pseudo_state(self, obs, session: StrategySession) -> GameState:
+        """从 session tracking 组装决策用 GameState(环内轻量,SIFT 重读只在环入口)。"""
+        st = GameState()
+        st.board = {}
+        for bc in session.tracked_deployed:
+            if bc is None:   # ADR-0392 槽位表空槽
+                continue
+            if bc.faction and bc.faction != '?':
+                st.board[bc.faction] = st.board.get(bc.faction, 0) + 1
+        st.bench = list(session.tracked_bench_chars)
+        st.deployed = list(session.tracked_deployed)
+        st.level = session.last_level_obs or (
+            session.last_state.level if session.last_state is not None else 1)
+        if obs is not None and getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
+            st.gold = obs.state.gold   # 仅 F2 可信标记时采用(gold 关态读空,MED-1)
+            st.plane = obs.state.plane
+            st.round_num = obs.state.round_num
+        elif session.last_state is not None:
+            st.plane = session.last_state.plane
+            st.round_num = session.last_state.round_num
+        # r69 review:hp 过新鲜度门(陈旧 last_hp 不进 pseudo state;门单源 cw_strategy.gated_hp,
+        # 现读基准 = last_state.hp 框架末次读值,None 时 100 默认)。
+        from sr_od.application.currency_war.cw_strategy import gated_hp
+        _t = (st.plane - 1) * 9 + st.round_num if (st.plane and st.round_num) else None
+        _cur_hp = session.last_state.hp if session.last_state is not None else 100
+        st.hp = gated_hp(_cur_hp, session, _t)
+        # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
+        # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)
+        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。批 2 起 committed 语义
+        # = cw_intention 权威派生(读端 committed_from 单点换源,P1 同
+        # commit 面),此处传 state 供 plane 判定。
+        from sr_od.application.currency_war.decision_v2.prep_brain import (
+            committed_from,
+        )
+        st.dual_track_phase = not committed_from(session, st)
+        # W148(ADR-0358,W92 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
+        # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
+        # 面特征可见;空快照=默认 [] 语义不变)。
+        st.equips = list(session.last_owned_equips)
+        # r412(ADR-0274):node_type 补拷——腾席链 b 的 boss 轮禁升判定需要;
+        # 权威源 = 备战节点行(prep_director 存 session.node_type_current),
+        # 退化 last_state.node_type。
+        st.node_type = (getattr(session, 'node_type_current', None)
+                        or (session.last_state.node_type if session.last_state is not None else '')
+                        or '')
+        return st
+
+    def _fresh_state(self, obs, session: StrategySession) -> GameState:
+        """shop 开态 fresh state(obs.state)+ bench tracking seed(gold 可信,腾席链 b 用)。"""
+        st = obs.state if obs.state is not None else GameState()
+        fresh = st.copy()
+        if session.tracked_bench_chars:
+            fresh.bench = list(session.tracked_bench_chars)
+        return fresh
+
 
     # ===== 内部 =====
 

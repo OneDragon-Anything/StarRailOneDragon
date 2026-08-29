@@ -188,11 +188,13 @@ def main() -> None:
         strat = DecisionV2Strategy()
         sess = strat.create_session(_Cfg())
     else:
-        from sr_od.application.currency_war.strategies.default_strategy import (
-            DefaultCwStrategy,
-        )
-        strat = DefaultCwStrategy()
-        sess = strat.create_session(_Cfg())
+        # default 栈本体已退役:旧语料(default 栈时代 decisions.jsonl)回放
+        # 只走冻结快照 worktree(回退参照=批 3 tag 的干净 worktree),主仓
+        # 不再提供 default 臂——惰性 import 回退已删,防「首次使用才炸」。
+        raise SystemExit(
+            f"strategy='{strategy}' 不受支持:default 栈已退役。"
+            "旧 default 语料回放请用冻结快照 worktree(批 3 tag 干净检出)"
+            "执行本脚本;decision_v2 语料回放用 --strategy decision_v2")
 
     rep = DEFAULT_REPLAY_DIR
     # 每个 (plane,round) 取 actions 最多的一条(= plan 真值帧)
@@ -223,12 +225,6 @@ def main() -> None:
         d = best[k]
         snap = d.get('state') or {}
         st = _rebuild_state(snap)
-        if strategy == 'default':
-            # target 用当时值(不重算战略层)
-            from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
-            tgt = next((c for c in COMP_LIBRARY
-                        if c.name == d.get('target_comp')), None)
-            sess.target_comp = tgt
         _restore_session(strat, d, sess)
         low_conf = (d.get('hp_readable') is False
                     or snap.get('gold_readable') is False)

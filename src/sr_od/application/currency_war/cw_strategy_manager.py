@@ -5,7 +5,7 @@
 即可实例化)。复用 ``one_dragon.utils.plugin_module_loader``。
 
 两个来源(同 app 插件):
-- ``BUILTIN``:``src/sr_od/application/currency_war/strategies/``(内置策略,如 ``default_strategy.py``)。
+- ``BUILTIN``:``src/sr_od/application/currency_war/strategies/``(内置策略,如 ``decision_v2_strategy.py`` 注册桥)。
 - ``THIRD_PARTY``:项目根 ``plugins/currency_war_strategies/<子目录>/``(参赛者放这;**不能直接放根**,
   须在子目录里 —— 同 app 插件规则)。
 
@@ -234,12 +234,17 @@ class StrategyManager:
         return self._classes.get(strategy_id)
 
     def instantiate(self, strategy_id: str) -> CwStrategy:
-        """按 id 实例化策略(``cls()`` 无参)。找不到 → 回退 ``DefaultCwStrategy``(§11.5)。"""
+        """按 id 实例化策略(``cls()`` 无参)。未注册 id → 显式报错(禁静默回退)。
+
+        旧「回退 DefaultCwStrategy」分支已随 default 本体退役删除:静默回退会
+        把配置拼错降级成「跑另一个栈」,值域错必须前置暴露(合法值域唯一 =
+        ``decision_v2``,config 构造期同校验)。
+        """
         cls = self.get_strategy_class(strategy_id)
         if cls is None:
-            log.warning(f"[cw-strategy] 未找到策略 '{strategy_id}',回退 DefaultCwStrategy")
-            from sr_od.application.currency_war.strategies.default_strategy import (
-                DefaultCwStrategy,
-            )
-            return DefaultCwStrategy()
+            raise ValueError(
+                f"未注册的货币战争策略 strategy_id='{strategy_id}'"
+                f"(合法值=decision_v2;已注册:"
+                f"{sorted(self._classes)};存量 yml 里的 'default' 已随"
+                f"default 栈退役,请改为 decision_v2)")
         return cls()
