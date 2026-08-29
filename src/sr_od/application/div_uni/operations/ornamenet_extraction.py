@@ -1,16 +1,18 @@
-from typing import Optional, Callable
+from collections.abc import Callable
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.matcher.match_result import MatchResultList
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils import str_utils, cv2_utils
+from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.div_uni.operations.choose_oe_file import ChooseOeFile
 from sr_od.application.div_uni.operations.choose_oe_support import ChooseOeSupport
-from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import SimUniMoveToEnemyByMiniMap
+from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import (
+    SimUniMoveToEnemyByMiniMap,
+)
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
@@ -25,7 +27,7 @@ class ChallengeOrnamentExtraction(SrOperation):
 
     def __init__(self, ctx: SrContext, mission: GuideMission, run_times: int,
                  diff: int, file_num: int, team_name: str, support_character: str,
-                 get_reward_callback: Optional[Callable[[int], None]] = None):
+                 get_reward_callback: Callable[[int], None] | None = None):
         SrOperation.__init__(self, ctx, op_name=gt('饰品提取', 'game'))
 
         self.mission: GuideMission = mission
@@ -52,7 +54,7 @@ class ChallengeOrnamentExtraction(SrOperation):
         self.get_reward_callback: Callable[[int], None] = get_reward_callback
         """挑战成功后 获取奖励的回调"""
 
-    def handle_init(self) -> Optional[OperationRoundResult]:
+    def handle_init(self) -> OperationRoundResult | None:
         """
         执行前的初始化 由子类实现
         注意初始化要全面 方便一个指令重复使用
@@ -260,6 +262,20 @@ class ChallengeOrnamentExtraction(SrOperation):
         :return:
         """
         screen = self.last_screenshot
+
+        # 饰品提取战败结算 = 「大世界-战斗失败」屏:没有 再来一次/退出关卡 按钮,
+        # 唯一交互是「点击空白区域继续」→ 回模式首页(无直接重开入口)。
+        # 处理:点空白后按已退出路由交 wait_back;等不到大世界则 FAIL,
+        # 由外层开拓力计划的重试语义整体重进(传送→存档→弹窗确认链路已自动化)。
+        if self.round_by_find_area(screen, '大世界-战斗失败', '标题-战斗失败').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '大世界-战斗失败', '点击空白区域继续',
+                success_wait=2, retry_wait=1,
+            )
+            if result.is_success:
+                return self.round_success('退出关卡按钮')
+            return result
+
         if self.battle_fail_times >= 5 or self.battle_success_times + self.choose_times > self.run_times:  # 失败过多或者再来一次就会超出指定次数 退出
             area_name = '退出关卡按钮'
         else:  # 还需要继续挑战
