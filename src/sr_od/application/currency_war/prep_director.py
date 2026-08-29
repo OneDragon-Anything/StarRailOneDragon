@@ -1979,7 +1979,7 @@ class PrepDirector(SrOperation):
             # W606 影子比对(协议门1;开关默认关):旧环当权后同帧影子
             # 决策逐位对照。全隔离——影子路径任何异常只计数留证,绝不
             # 影响本步动作与现役决策(adapter.shadow_compare_step 承诺)。
-            from sr_od.application.currency_war.decision_v2.adapter import (
+            from sr_od.application.currency_war.decision_assembly import (
                 shadow_compare_enabled,
                 shadow_compare_step,
             )
@@ -2462,7 +2462,7 @@ class PrepDirector(SrOperation):
         对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
         消费,含 W536 买牌期望上报通道转正(蓝图 §7 批 1 行)。
         """
-        from sr_od.application.currency_war.decision_v2.adapter import (
+        from sr_od.application.currency_war.decision_assembly import (
             DecideAdapter,
             snapshot_from_obs,
         )
