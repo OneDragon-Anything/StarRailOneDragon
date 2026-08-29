@@ -1938,9 +1938,10 @@ class PrepDirector(SrOperation):
             # (ADR-0264 终裁加速器②)。
             # W284:曾同挂点的 _probe_node_reward 采集钩子(临时,
             # r280 用户交办)判读完成曾删整段——连胜四档表 + 基础奖励
-            # P1r1/r2=3/4 真值已固化(economy.md「基础奖励」行);
-            # W307:基础奖励 1-3~1-8 仍零样本,用户裁决靠实际采集,
-            # 按 r314 原样重挂(采证后整段删除)。
+            # 真值已固化(economy.md「基础奖励」行);W307 重挂采集
+            # 1-3~1-8,经取证定谳挂点失活(关店已入 RunBuyPhase 内部,
+            # EnsureShopClosed 路径零执行)且 1-6=5 封顶点已采,销案
+            # 删整段(取证报告=.debug/temp/currency_war/w587_cw_reward_verdict/REPORT.md)。
             if 'EnsureShopClosed' in key and progressed:
                 try:
                     from sr_od.application.currency_war.cw_observation_gate import (
@@ -1954,7 +1955,6 @@ class PrepDirector(SrOperation):
                 except Exception:   # noqa: BLE001  离线契约:放行
                     pass
                 self._probe_node_type()
-                self._probe_node_reward()  # [采集钩子·临时] W307 重挂(同 r280-r314 原挂点):基础奖励 1-3~1-8 零样本,采完删
 
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(环出口)', wait=3)
@@ -2388,75 +2388,6 @@ class PrepDirector(SrOperation):
                 pass
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-director] nodeseq skip: {e}')
-
-    def _probe_node_reward(self) -> None:
-        """[采集钩子·临时,W307 重挂] 节点奖励明细采集——**整段为恢复性代码,采证后整段删除**。
-
-        历史:r280 首挂 → r287/r292/r297/r302/r300b/r314 多轮修(触发时机/Point/OCR rect/
-        关店等待),W284 用本版采到 7 帧后删;现基础奖励 1-3~1-8 仍零样本,用户裁决靠
-        实际采集补齐,故原样重挂。
-
-        用户口述(2026-08-23,最高权威):备战画面商店按钮左侧六边形
-        图标+数字 → 点开可见本节点预期金币奖励明细(连胜 0-1→1金,
-        2-4→2金…+ 节点基础奖励)。
-
-        实现capture-only(零风险):每节点一次——等备战帧 clean(r314:
-        总窗 4.5s,检测不消耗次数)→ 点六边形(Point(1555,930))→
-        截图存 shots(cw_shot_unique 内容哈希去重,cw_reward 标签)→
-        OCR 弹窗内容区记 log → 点空白(Point(960,150))关弹窗。不解析;
-        关闭若失败下一轮备战自愈。
-        """
-        import time as _time
-
-        try:
-            _match = self.ctx.cw_match
-            if _match is None:
-                return
-            _sess = _match.session
-            _key = getattr(_sess, '_reward_probed_key', None)
-            from sr_od.application.currency_war.cw_observation import (
-                read_phase_round,
-            )
-            # r294→r299(五次实测收敛):关店动画实测 ~3s;等待与检测分离——
-            # 总窗 4.5s,检测不消耗次数;clean(备战关态锚「按钮-出战」)
-            # 即出。
-            _deadline = _time.time() + 4.5
-            _clean = False
-            _plane = _round = None
-            while _time.time() < _deadline:
-                screen0 = self.screenshot()
-                if self.round_by_find_area(
-                        screen0, '货币战争-备战',
-                        '按钮-出战').is_success:
-                    _plane, _round = read_phase_round(self.ctx, screen0)
-                    _clean = True
-                    break
-                _time.sleep(0.6)
-            if not _clean:
-                log.info('[cw][reward-probe] 备战帧未稳定(关店动画/'
-                         '特效),本步跳过下轮再试')
-                return
-            cur_key = f'{_plane}:{_round}'
-            if _key == cur_key:   # 本节点已采
-                return
-            _sess._reward_probed_key = cur_key
-            from one_dragon.base.geometry.point import Point
-            self.ctx.controller.click(Point(1555, 930))
-            _time.sleep(1.0)
-            screen1 = self.screenshot()
-            from sr_od.application.currency_war.cw_observe import cw_shot_unique
-            cw_shot_unique(screen1, 'cw_reward')
-            # OCR 弹窗内容区(实测 x1000-1560, y370-1010)
-            from one_dragon.base.geometry.rectangle import Rect
-            from sr_od.application.currency_war.cw_obs_core import _ocr
-            _texts = [r.data for r in _ocr(
-                self.ctx, screen1, Rect(1000, 370, 1560, 1010))]
-            log.info('[cw][reward-probe] plane=%s round=%s texts=%s',
-                     _plane, _round, _texts[:20])
-            self.ctx.controller.click(Point(960, 150))   # 关弹窗(空白)
-            _time.sleep(0.6)
-        except Exception as e:   # noqa: BLE001  采集 best-effort,不阻塞备战
-            log.info(f'[cw][reward-probe] skip: {e}')
 
     def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
         """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
