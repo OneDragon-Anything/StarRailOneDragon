@@ -31,6 +31,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from sr_od.application.currency_war.cw_effect_inventory import (
+    BattlefieldEffect,
+    DurationKind,
+    DutyFlags,
+    EffectKind,
+    EffectSpec,
+    TriggerKind,
+    UnitBuffRef,
+)
 from sr_od.application.currency_war.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
@@ -239,6 +248,124 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
 }
 
 
+# ===== curated overlay:策略效果规格 EffectSpec(W612 骨架批;手维护,键=注册表规范名)=====
+# 机制 = cw_effect_inventory.py(EffectSpec/ActiveEffectInventory);本 overlay 只放**数据**,
+# 与 STRATEGY_ECONOMY 同键空间同孤儿校验(见 _validate_strategy_effects),防两套 overlay 漂移。
+# 首批 9 条语义全引 cw_invest_data 官方原文;二义条目 pending=True + notes 保守支,不拍死——
+# 定谳后回填 verdict(单一语义以实采为准,W610-P1 §1.4.1/§1.5)。
+# 边界:只产策略源;环境('portal')/词缀('affix')双源注册是 W607 辖域,此处不建其条目。
+STRATEGY_EFFECTS: dict[str, EffectSpec] = {
+    # 淘金客:官方「你每次消耗金币刷新商店,都会获得2经验值」;免费刷不产 XP(「消耗金币」
+    # 文本充分;实采复核挂 W610-P1 §1.5-2)。姿态谓词/LevelUp 抑制是 W610 P1-1 辖域,本批不接。
+    '淘金客': EffectSpec(
+        id='301601', name='淘金客', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
+        payload=STRATEGY_ECONOMY['淘金客'], duties=DutyFlags(respond=True),
+        notes='每次付费刷新+2XP;查询键 xp_per_refresh'),
+    # 固定理财:官方「现在以及每个位面开始时,获得4经验值和2次免费刷新」。
+    # 待采:开头「现在」段与「每个位面开始」段是否同一 trigger 双发(overlay STRATEGY_ECONOMY
+    # 注释已标注位面开始部分拆分);保守支=按 PLANE_START 单触发建模。
+    '固定理财': EffectSpec(
+        id='201801', name='固定理财', trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.PERMANENT, category=EffectKind.STATE,
+        payload=STRATEGY_ECONOMY['固定理财'], duties=DutyFlags(track=True, respond=True),
+        pending=True,
+        notes='待采:即时段与位面段是否双发;保守支=PLANE_START 单触发'),
+    # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
+    # 四歧义见 W610-P1 §1.4.1-②(改道是否吞策略给的 XP/转换同事件性/上限/版本变体);
+    # 定谳前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定谳后补 payload。
+    '经验就是财富': EffectSpec(
+        id='103601', name='经验就是财富', trigger=TriggerKind.CONDITIONAL,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['经验就是财富'], duties=DutyFlags(respond=True),
+        pending=True,
+        notes='待采(W610-P1 §1.4.1 四歧义);保守支=改道吞非购买 XP'),
+    # 商业间谍:官方「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个角色」。
+    # 战场段(升级偷牌)入 spec;降价段在 STRATEGY_ECONOMY(xp_buy_cost_discount)。
+    '商业间谍': EffectSpec(
+        id='300201', name='商业间谍', trigger=TriggerKind.LEVEL_UP,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(steal_on_level_up=3),
+        duties=DutyFlags(predict=True, respond=True),
+        notes='LevelUp 后商店必刷新+偷最贵 3 张;shop 读牌/买牌对账须预知'),
+    # 双手狸开键盘!(游戏内单位名 Gemi狸;注册表官方卡名见 204101):
+    # 官方「进入新节点时,它会免费刷新商店2次,自动购买你场上拥有的角色」。
+    '双手狸开键盘！': EffectSpec(
+        id='204101', name='双手狸开键盘！', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(free_refresh_on_node_enter=2, auto_buy_owned=True),
+        duties=DutyFlags(track=True, predict=True),
+        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(W610-P1 §1.5-6 挂时序实采)'),
+    # 采购专员·金/彩:官方「每7/5次刷新,商店会刷出5张费用相同的角色,费用为你备战席
+    # 最左侧角色的费用」。刷新计数器走 inventory counters[CounterKey.REFRESH]。
+    '采购专员·金': EffectSpec(
+        id='201201', name='采购专员·金', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(counter_every=7, shop_rewrite=True),
+        duties=DutyFlags(track=True, predict=True, respond=True),
+        notes='备战席最左语义与被动收入同抢(交互仲裁挂设计,本批不建模)'),
+    '采购专员·彩': EffectSpec(
+        id='303101', name='采购专员·彩', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(counter_every=5, shop_rewrite=True),
+        duties=DutyFlags(track=True, predict=True, respond=True),
+        notes='同采购专员·金,门槛 5'),
+    # 全员晋升(板面重写族代表):官方「场上的所有角色会永久升级成比自身高1费的随机角色
+    # (最大5费)。获得2个【拆装扳手】」。
+    '全员晋升': EffectSpec(
+        id='102701', name='全员晋升', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(board_rewrite='upgrade_all_cost+1'),
+        duties=DutyFlags(predict=True),
+        notes='board/target 全量失效→update_target 强制重派生是后续批辖域'),
+    # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
+    # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
+    # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(W610-P1 §1.2-B/D
+    # 归类同族:全员晋升/人力重组/现金为王=即时全场板面重写/出售)。
+    '人力重组': EffectSpec(
+        id='102801', name='人力重组', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(board_rewrite='sell_all'),
+        duties=DutyFlags(predict=True),
+        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=W610-P1 M8,本批不接'),
+    # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
+    # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态是 W610 P2-1 辖域。
+    '躺平': EffectSpec(
+        id='102001', name='躺平', trigger=TriggerKind.CONDITIONAL,
+        duration=DurationKind.N_NODES, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['躺平'], duties=DutyFlags(track=True, respond=True),
+        duration_nodes=3,
+        notes='禁买+禁刷 3 节点后 +20 金'),
+}
+
+
+def _validate_strategy_effects() -> None:
+    """STRATEGY_EFFECTS 构建校验(import 即炸,防版本更新静默失联):
+
+    ① 孤儿键:name 必须在 base 注册表;② id 双匹配:spec.id 必须等于 plaza id
+    (改名且 id 仍在的漂移也炸);③ payload↔category 一致性。
+    """
+    for spec in STRATEGY_EFFECTS.values():
+        base = INVESTMENT_STRATEGIES.get(spec.name)
+        if base is None:
+            raise ValueError(f"STRATEGY_EFFECTS 孤儿键(base 无此卡):{spec.name!r}")
+        if base.source != f"plaza:{spec.id}":
+            raise ValueError(
+                f"STRATEGY_EFFECTS id 漂移:{spec.name!r} spec.id={spec.id} base={base.source}")
+        if spec.category in (EffectKind.ECONOMY, EffectKind.STATE):
+            ok = isinstance(spec.payload, EconomyEffect)
+        elif spec.category == EffectKind.BATTLEFIELD:
+            ok = isinstance(spec.payload, BattlefieldEffect)
+        else:
+            ok = isinstance(spec.payload, UnitBuffRef)
+        if not ok:
+            raise ValueError(
+                f"STRATEGY_EFFECTS payload↔category 不一致:{spec.name!r} "
+                f"category={spec.category} payload={type(spec.payload).__name__}")
+        if spec.pending and not spec.notes:
+            raise ValueError(f"STRATEGY_EFFECTS pending 条目必须写保守支 notes:{spec.name!r}")
+
+
 # ===== curated overlay:环境分类 + 阵营绑定(手维护)=====
 ENV_CATEGORY: dict[str, str] = {
     '追击概念股': '概念股', '击破概念股': '概念股', '群攻概念股': '概念股',
@@ -336,6 +463,7 @@ def _build_envs() -> dict[str, InvestmentEnv]:
 
 INVESTMENT_STRATEGIES: dict[str, InvestmentStrategy] = _build_strategies()
 INVESTMENT_ENVS: dict[str, InvestmentEnv] = _build_envs()
+_validate_strategy_effects()
 
 
 # ===== 派生:ENV_FACTION_MAP(投资环境 → 加成阵营;从 INVESTMENT_ENVS 派生,单一真相源)=====

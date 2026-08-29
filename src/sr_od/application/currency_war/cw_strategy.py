@@ -23,6 +23,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
+from sr_od.application.currency_war.cw_effect_inventory import ActiveEffectInventory
 from sr_od.application.currency_war.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -249,6 +250,12 @@ class StrategySession:
     # 拷贝到 state 供 _refresh_cap 等消费 —— 原接线只加 GameState 字段而 handler 写 session,
     # 停机隔离期从未 live 跑过,首跑暴露 AttributeError)。
     active_strategies: list[str] = field(default_factory=list)
+    # 在场效果清单(W612 骨架批):spec 注册表在 cw_investments.STRATEGY_EFFECTS,
+    # 机制 = cw_effect_inventory.ActiveEffectInventory(纯数据+读端)。写端现状仅
+    # 升级挂点(prep_actions._level_up);选卡/进节点/结算挂点接线归后续批。
+    # 本批零决策消费——任何决策路径不读本字段(W612 交付门)。
+    effect_inventory: ActiveEffectInventory = field(
+        default_factory=lambda: ActiveEffectInventory())
     # owned 穿戴池快照(W148,ADR-0358,W92 修法 A):EquipAll 每轮 read_equips 后写
     # (仅穿戴类,工具类过滤同 equip_all._TOOL_CATEGORIES);_pseudo_state 拷入决策
     # state.equips → decisions 遥测可见。修「持有面有读点、无写链、决策/遥测全盲」

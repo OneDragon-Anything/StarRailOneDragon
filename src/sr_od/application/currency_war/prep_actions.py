@@ -667,6 +667,22 @@ class PrepActionExecutor:
             if lv is not None and before < lv <= before + 2:
                 if session is not None:
                     session.last_level_obs = lv
+                    # W612 挂点A(升级事件;四挂点中唯一无现成事件行者,裁决见
+                    # .debug/temp/currency_war/w612_effect_inventory/HOOKS.md):
+                    # 升级发生的集中执行点 = 效果最密集单点(商业间谍升级段/
+                    # 固定理财位面段/成长基金到级全在升级邻域),inventory 标记 +
+                    # record_exogenous 'level_up' 事件行一次接全。观测 best-effort,
+                    # 零决策语义(失败不阻塞,与本文件其余观测回路同纪律)。
+                    try:
+                        session.effect_inventory.on_level_up()
+                        from sr_od.application.currency_war import cw_telemetry
+                        _st = session.last_state
+                        if _st is not None and _st.round_num:
+                            cw_telemetry.record_exogenous(
+                                _st.round_num, 'level_up',
+                                detail=f'level {before}->{lv}', state=_st)
+                    except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
+                        log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
                 log.info(f'[cw][levelup] level {before}→{lv} ✓')
                 return True, f'level {before}→{lv}'
         return False, f'点{PrepActionExecutor.LEVEL_MAX_CLICKS}次经验 level 未变({before})'
