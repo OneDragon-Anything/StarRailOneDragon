@@ -910,6 +910,123 @@ def sim_decision_registry():
     return dataclasses.replace(DEFAULT_REGISTRY, level_max=LEVEL_CAP)
 
 
+def _residual_fill_deploy(
+    st: GameState,
+    sess: object,
+    dep_fac: dict[str, int],
+    target_factions: frozenset[str],
+    target_cores: frozenset[str],
+    fw_carry: frozenset[str],
+    locked_factions: frozenset[str],
+) -> tuple[int, int, int]:
+    """skip_fence 轮轮末残余补部署(W716 F1 修复设计 §三;命题 P-F1)。
+
+    为什么:围栏互斥(裁决1「显式>围栏,同轮互斥」)原实现是**轮级禁运**
+    ——演进事务密集轮每轮必有 applied CompTransaction,换阵撤回/3合1 吞
+    副本造成的板面空槽连续过夜,欠载打仗掉血(F1 病理;样本 640247
+    r5-r7 缩退 6→3→2)。修法 = 把互斥辖域从「轮级」收窄到「通道级」:
+    skip 轮轮末对「围栏认可 ∖ 显式保留集」执行 bench→空槽补部署。
+
+    - 零支出零破息约束:上场动作仅 bench→空槽(pop-append),不买、不卖、
+      不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
+      +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
+      docs/game/currency_war/research/proofs/p24-residual-fill-dominance.md)。
+    - 显式保留集(消解互斥的本意 = 防「同一部署通道双写」):显式通道
+      **刻意**留在 bench 的件,两类:
+      ① 3合1 素材副本——同名同星副本全场计数 ≥2(合并进行中;与
+      cw_plan 卖保护/checks「第二张同名留 bench 是合法囤积」同口径);
+      ② final 买而不上件——session 持有名单(v3_hoard)在 locked/forced
+      模式的 char_targets([21] 窗口语义:羁绊组齐才替换上场;P1 过渡
+      模式(p1_pair/p1_transition/weak/fallback)的囤货集是买侧方向,
+      不构成部署保留——否则 F1 修复面被囤货全集吞掉)。
+    - 补部署候选 = select_deployments(非保留 bench,行动后 deployed/board/
+      cap,目标集同围栏主趟)的 up 集;与主趟同一纯函数(单一源)。
+    - 统一 lag 口径:补部署后再重放围栏(输入剔除保留集——保留件是
+      「刻意不上」不是 lag),残余可上件数即 deploy_lag_units,消除
+      skip 轮 lag 恒 0 的检查器失明面(设计 §四-2)。
+
+    返回 (residual_deployed 补上场件数, residual_held 被保留集扣下的
+    up 候选件数, deploy_lag_units 补部署后残余可上件数)。
+    """
+    from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
+
+    # —— 保留集:① 3合1 素材(同名同星全场 ≥2)+ ② locked 持有名单 ——
+    _hold_names: frozenset[str] = frozenset()
+    _hoard = getattr(sess, 'v3_hoard', None)
+    if _hoard is not None \
+            and getattr(_hoard, 'mode', '') in ('locked', 'forced'):
+        _hold_names = frozenset(
+            getattr(_hoard, 'char_targets', ()) or ())
+    _copy_counts: dict[tuple[str, int], int] = {}
+    for _d in iter_occupied_deployed(st.deployed):
+        if _d.char_id:
+            _k = (_d.char_id, int(getattr(_d, 'star', 1) or 1))
+            _copy_counts[_k] = _copy_counts.get(_k, 0) + 1
+    _occ = [(i, bc) for i, bc in enumerate(st.bench) if bc is not None]
+    for _, bc in _occ:
+        if bc.char_id:
+            _k = (bc.char_id, int(getattr(bc, 'star', 1) or 1))
+            _copy_counts[_k] = _copy_counts.get(_k, 0) + 1
+
+    def _reserved(bc: BenchChar) -> bool:
+        if not bc.char_id:
+            return False   # 未识别:围栏照旧上,保留集不管
+        if bc.char_id in _hold_names:
+            return True
+        return _copy_counts.get(
+            (bc.char_id, int(getattr(bc, 'star', 1) or 1)), 0) >= 2
+
+    _keep = [(i, bc) for i, bc in _occ if not _reserved(bc)]
+    # residual_held = 被保留集扣下的件数(保留件不进围栏输入,故不能
+    # 取 select_deployments 的 held 桶——那是围栏自身拦截,非保留集扣除)
+    _res_held = len(_occ) - len(_keep)
+    _res_up = 0
+    if _keep:
+        _up_idx, _ = _dl.select_deployments(
+            [bc for _, bc in _keep],
+            deployed_cids={d.char_id
+                           for d in iter_occupied_deployed(st.deployed)
+                           if d.char_id},
+            deployed_fac=dict(dep_fac),
+            board=dict(st.board),
+            cap=st.max_units(),
+            target_factions=target_factions,
+            target_cores=target_cores,
+            fw_carry=fw_carry,
+            locked_factions=locked_factions,
+        )
+        # up_idx 是紧缩占用序(keep 表)→ 回映射槽位下标(ADR-0316 同式)
+        for _j in _up_idx:
+            if _j < len(_keep):
+                _slot, bc = _keep[_j]
+                if st.bench[_slot] is not None:
+                    deployed_place(st.deployed, bc)
+                    st.bench[_slot] = None
+                    _res_up += 1
+        if _res_up:
+            st.board = _board_counts_of(st.deployed)
+    # 统一 lag:补部署后残余(剔除保留集——刻意不上 ≠ 围栏认可未上)
+    _lag_keep = [bc for i, bc in _occ
+                 if st.bench[i] is not None and not _reserved(bc)]
+    _lag = 0
+    if _lag_keep:
+        _lag_idx, _ = _dl.select_deployments(
+            _lag_keep,
+            deployed_cids={d.char_id
+                           for d in iter_occupied_deployed(st.deployed)
+                           if d.char_id},
+            deployed_fac=_board_factions_of(st.deployed),
+            board=dict(st.board),
+            cap=st.max_units(),
+            target_factions=target_factions,
+            target_cores=target_cores,
+            fw_carry=fw_carry,
+            locked_factions=locked_factions,
+        )
+        _lag = len(_lag_idx)
+    return _res_up, _res_held, _lag
+
+
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
                 pool: str | Path = 'auto',
@@ -1683,12 +1800,26 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
             # check_skip_fence_pairing 同轮配对锁;迁移审计 w65(git 历史)/ADR-0323:被拒事务
             # 不置位 → 不跳围栏 → 板面欠载不再被事务风暴封死)。
+            # W716 F1 修复(设计 §三):skip 轮不再整轮禁运——互斥辖域从
+            # 「轮级」收窄为「通道级+保留集」,轮末对「围栏认可 ∖ 显式保留集」
+            # 执行零支出残余补部署(P-F1:补部署严格支配禁运);skip_fence
+            # 行保留(配对锁不破),reason 扩展 residual_fill 标记。
             _deploy_lag_units = 0
+            _res_up = 0
+            _res_held = 0
             if _explicit_deploy_seen:
-                _acts.append({'__type__': 'skip_fence',
-                              'reason': 'explicit_action_v2'})
+                _res_up, _res_held, _deploy_lag_units = \
+                    _residual_fill_deploy(
+                        st, sess, _dep_fac, _tf, _tc, _fw, _lf)
+                _acts.append({
+                    '__type__': 'skip_fence',
+                    'reason': ('explicit_action_v2+residual_fill'
+                               if _res_up else 'explicit_action_v2'),
+                    'residual_deployed': _res_up,
+                    'residual_held': _res_held,
+                })
                 res.fence_skips += 1
-                # board 已由 cw_state.simulate 的 _recount_board 维护一致
+                # board 已由 cw_state.simulate/_residual_fill_deploy 维护一致
             else:
                 # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
                 # 返回 up_idx 是占用序下标,下方回映射槽位下标)
@@ -2261,6 +2392,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 未上;检查项 deploy_after_buy_semantics /
                     # ledger_deploy_lag_disclosure 的数据源)
                     'deploy_lag_units': _deploy_lag_units,
+                    # W716 F1 修复:skip 轮残余补部署披露(上几件/保留集扣
+                    # 几件;非 skip 轮恒 0——补部署只在 skip 分支)
+                    'residual_deployed': _res_up,
+                    'residual_held': _res_held,
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                     # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
                     'fence_skipped': _explicit_deploy_seen,
