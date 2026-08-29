@@ -23,10 +23,6 @@ from sr_od.application.currency_war.cw_performance import PerformanceTracker
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
     from sr_od.application.currency_war.cw_state import BenchChar, GameState
-    from sr_od.application.currency_war.prep_director import (
-        BuyExpect,
-        XpLedger,
-    )
 
 @dataclass
 class StrategySession:
@@ -279,10 +275,10 @@ class StrategySession:
     # 跨单元不残留。None = 无挂起期望。此前为动态属性(单元收尾暂存、
     # getattr 消费,`w536_merge_expect/` 受文件面限制未落声明),升正式字段后 asdict/telemetry
     # 可见且读写两端免 getattr 兜底(r3 review④ 同判例)。
-    pending_buy_expect: BuyExpect | None = None
+    pending_buy_expect: 'BuyExpect | None' = None   # 注解字符串(app 桶 prep_director 类型,kernel 零 app import)
     # 经验期望账本(prep_director.XpLedger;纯记账+对账,零决策)。此前为动态
     # setattr 属性(_xp_ledger 惰性建),升正式字段后 asdict/遥测可见且读写两端
     # 免 getattr 兜底(pending_buy_expect 同判例)。坐标系/取值时机/写入端 =
     # XpLedger 字段定义注释(prep_director);None = 本局未锚定(账本未建)。
-    xp_expect_ledger: XpLedger | None = None
+    xp_expect_ledger: 'XpLedger | None' = None       # 同上
 

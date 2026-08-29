@@ -33,7 +33,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
 
