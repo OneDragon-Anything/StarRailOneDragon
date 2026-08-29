@@ -18,15 +18,25 @@ class WaitBattleResult(SrOperation):
     def wait(self) -> OperationRoundResult:
         screen = self.screenshot()
 
+        # 等待战斗期间弹出的提示类弹窗(如饰品提取首次进入的「当前不存在任何
+        # 存档,是否直接开始战斗?」)会盖住战斗画面 → 本节点只认三种状态会
+        # 干等至超时。弹窗语义=确认继续战斗,点确认后重新进入状态判定。
+        if self.round_by_find_area(screen, '挑战副本', '提示弹框-标题').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '挑战副本', '提示弹框-确认',
+                success_wait=2, retry_wait=1,
+            )
+            if result.is_success:
+                return self.round_wait(wait=1)
+            return result
+
         state = battle_screen_state.get_tp_battle_screen_state(
             self.ctx, screen,
             battle_success=True,
             battle_fail=True,
             in_world=True
         )
-        if state == battle_screen_state.ScreenState.BATTLE_FAIL.value:
-            return self.round_success(state)
-        elif state == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
+        if state == battle_screen_state.ScreenState.BATTLE_FAIL.value or state == battle_screen_state.ScreenState.BATTLE_SUCCESS.value:
             return self.round_success(state)
         elif state == common_screen_state.ScreenState.NORMAL_IN_WORLD.value:
             if self.try_attack:
