@@ -41,7 +41,7 @@ from sr_od.application.currency_war.obs.cw_briefing_obs import (
     save_affix_screenshot,
     write_affix_effects,
 )
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 

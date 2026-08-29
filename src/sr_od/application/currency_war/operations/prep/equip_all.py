@@ -346,7 +346,7 @@ class EquipAll(SrOperation):
                           and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
         if not wearable_owned:
             return
-        from sr_od.application.currency_war.telemetry import cw_telemetry
+        from sr_od.application.currency_war.telemetry import defects as cw_telemetry
         _match = getattr(self.ctx, 'cw_match', None)
         st = getattr(getattr(_match, 'session', None), 'last_state', None)
         if st is None or int(getattr(st, 'round_num', 0) or 0) < 3:

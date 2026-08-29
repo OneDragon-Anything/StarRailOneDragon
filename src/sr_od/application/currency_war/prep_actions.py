@@ -569,8 +569,10 @@ class PrepActionExecutor:
                     try:
                         session.effect_inventory.on_level_up()
                         from sr_od.application.currency_war.telemetry import (
-                            cw_telemetry,
+                            recorder as cw_telemetry,
                         )
+
+
                         _st = session.last_state
                         if _st is not None and _st.round_num:
                             cw_telemetry.record_exogenous(

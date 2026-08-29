@@ -16,6 +16,7 @@ from sr_od.application.currency_war.operations.entry.enter_currency_war import (
 from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
     StartCurrencyWarMatch,
 )
+from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
 
@@ -74,12 +75,11 @@ class CurrencyWarApp(SrApplication):
         # 接通——缺省惰性接真实现会让测试进程漏桩时被 gc 扫描命中 session 级
         # test_context 写停机位(w505 全集假红实证,见 cw_telemetry 槽注释)。
         from sr_od.application.currency_war.kernel.cw_observe import stop_for_l0_andon
-        from sr_od.application.currency_war.telemetry import cw_telemetry
-        cw_telemetry.set_l0_andon_handler(stop_for_l0_andon)
+        state.set_l0_andon_handler(stop_for_l0_andon)
         # 分包期 4 出口钩子武装(幂等):kernel/obs/decision 三桶的 telemetry
         # 上行出口(落账/安灯/run_id 归属键)经 kernel/cw_telemetry_exit 钩子位
         # 转发,缺省关;生产在此与安灯执行器同点接通。
-        cw_telemetry.install_exit_hooks()
+        defects.install_exit_hooks()
         # 分包期 5 obs 读口注入(幂等):decision/kernel 桶禁直依 obs,新局弃置
         # 残留容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
         # (kernel/cw_reconcile)经 decision_assembly 装配点接通

@@ -29,7 +29,7 @@ from sr_od.application.currency_war.operations.handlers._overlay_confirm import 
     confirm_and_verify,
     safe_click,
 )
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import recorder, schema
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -174,12 +174,12 @@ class HandleInvestEnv(SrOperation):
         _items = [(t, m.max.center.x, m.max.center.y)
                   for t, m in (self._ocr_map or {}).items() if m.max is not None]
         _anchors = [(i, x) for i, (_n, x) in enumerate(opts)]
-        _buckets = cw_telemetry.bucket_card_texts(_anchors, _items,
+        _buckets = schema.bucket_card_texts(_anchors, _items,
                                                   HandleInvestEnv.NAME_CY_HI, 900)
         _cards = [{"idx": i, "name": n, "x": x,
                    "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
                   for i, (n, x) in enumerate(opts)]
-        cw_telemetry.record_invest_cards("env", _cards)
+        recorder.record_invest_cards("env", _cards)
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

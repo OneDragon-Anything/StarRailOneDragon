@@ -34,10 +34,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
-from sr_od.application.currency_war.telemetry.cw_telemetry import (
-    DecisionTrace,
-    OutcomeRecord,
-)
+from sr_od.application.currency_war.telemetry.schema import DecisionTrace, OutcomeRecord
 
 _T = TypeVar('_T')
 

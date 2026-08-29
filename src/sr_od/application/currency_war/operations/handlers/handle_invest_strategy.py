@@ -32,7 +32,7 @@ from sr_od.application.currency_war.operations.handlers._overlay_confirm import 
     confirm_and_verify,
     safe_click,
 )
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import recorder, schema
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -179,12 +179,12 @@ class HandleInvestStrategy(SrOperation):
         _items = [(t, m.max.center.x, m.max.center.y)
                   for t, m in (self._ocr_map or {}).items() if m.max is not None]
         _anchors = [(i, x) for i, (_n, x, _y) in enumerate(opts)]
-        _buckets = cw_telemetry.bucket_card_texts(_anchors, _items,
+        _buckets = schema.bucket_card_texts(_anchors, _items,
                                                   HandleInvestStrategy.NAME_CY_HI, 835)
         _cards = [{"idx": i, "name": n, "x": x,
                    "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
                   for i, (n, x, _y) in enumerate(opts)]
-        cw_telemetry.record_invest_cards("strategy", _cards)
+        recorder.record_invest_cards("strategy", _cards)
         for _c in _cards:
             if _c["name"] not in ('?',) and get_strategy(_c["name"]) is None:
                 log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口,效果原文已采集): {_c["name"]!r}')

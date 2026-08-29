@@ -33,7 +33,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
-from sr_od.application.currency_war.telemetry.cw_telemetry import record_event_choice
+from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 

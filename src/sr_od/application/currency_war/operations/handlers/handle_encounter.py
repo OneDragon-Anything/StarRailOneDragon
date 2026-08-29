@@ -29,7 +29,7 @@ from sr_od.application.currency_war.operations.handlers._overlay_confirm import 
     confirm_and_verify,
     safe_click,
 )
-from sr_od.application.currency_war.telemetry.cw_telemetry import record_event_choice
+from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 

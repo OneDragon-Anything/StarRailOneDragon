@@ -48,7 +48,7 @@ from sr_od.application.currency_war.obs.cw_observation_gate import (
     PHASE_PREP_SHOP_OPEN,
 )
 from sr_od.application.currency_war.prep_actions import sell_point
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -512,7 +512,7 @@ class BuyShopCards(SrOperation):
             except Exception:
                 import traceback
 
-                from sr_od.application.currency_war.telemetry.cw_telemetry import (
+                from sr_od.application.currency_war.telemetry.recorder import (
                     record_decision as _rd_err,
                 )
                 _tb = traceback.format_exc()
@@ -541,7 +541,7 @@ class BuyShopCards(SrOperation):
             log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                      f'plan={[self._fmt_action(a) for a in actions]}')
             # r97 供给快照(进店首见):全波牌面真值源之一 —— 只记 decisions 会丢 refresh 波
-            cw_telemetry.record_shop_snapshot('offer', state.shop, state.gold,
+            recorder.record_shop_snapshot('offer', state.shop, state.gold,
                                               state.plane, state.round_num)
             _cand = dict(getattr(match.session, 'last_candidate_scores', {}) or {})
             if getattr(match.session, 'last_candidate_scores_round', None) != state.round_num:
@@ -617,7 +617,7 @@ class BuyShopCards(SrOperation):
             # cw_comps 装备动态权重读 state.equips,提前拷=改决策行为
             # (观测链修复禁越界;本行之后 plan 已定,执行走点击不读 state)。
             state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])
-            cw_telemetry.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
+            recorder.record_decision(state, target_name, _cand, _eb, actions, extra=_extra)
 
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)
@@ -781,7 +781,7 @@ class BuyShopCards(SrOperation):
                     # → 「配方件来没来」复盘断章取义,健康线被误判断供弃线)。
                     try:
                         _new_shop = read_shop_cards(self.ctx, self.screenshot())
-                        cw_telemetry.record_shop_snapshot(
+                        recorder.record_shop_snapshot(
                             'refresh', _new_shop, state.gold - _refresh_fee,
                             state.plane, state.round_num)
                         # 刷新有效性对拍(观测自检框架设计 §2.5):r97 刷后重读
@@ -805,7 +805,7 @@ class BuyShopCards(SrOperation):
                             with contextlib.suppress(Exception):   # 截图 best-effort
                                 _ineff_shot = self.save_screenshot(
                                     prefix='refresh_ineffective')
-                            cw_telemetry.record_defect(
+                            defects.record_defect(
                                 'shop_refresh', 'invariant_break',
                                 expected=('刷后牌面≠刷前:'
                                           f'{sorted(_pre_shop_names or [])}'),
@@ -848,7 +848,7 @@ class BuyShopCards(SrOperation):
                                     _flag_p.parent.mkdir(parents=True, exist_ok=True)
                                     _flag_p.write_text(
                                         'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
-                                        f'run={cw_telemetry.current_run_id()} '
+                                        f'run={state.current_run_id()} '
                                         f'plane={state.plane} round={state.round_num} '
                                         f'wave={total_refresh} ts={_free_dt.now().isoformat(timespec="seconds")}\n'
                                         f'前后牌面: {sorted(_pre_shop_names or [])} -> '
@@ -865,7 +865,7 @@ class BuyShopCards(SrOperation):
                             _cards_named = sum(1 for c in _new_shop if c.name)
                             for _m in _reconcile(_refresh_expect[0], _gold_after,
                                                  _cards_named):
-                                cw_telemetry.record_defect(
+                                defects.record_defect(
                                     'shop', 'refresh_expect_mismatch',
                                     expected=(f'{_m["domain"]}/{_m["slot"]}: '
                                               f'{_m["expected"]}'),
@@ -946,7 +946,7 @@ class BuyShopCards(SrOperation):
                         try:
                             time.sleep(0.5)   # 卖出入账动画(与买卖 sleep 同量级)
                             _gold_after = read_gold(self.ctx, self.screenshot())
-                            cw_telemetry.record_sell_income(
+                            recorder.record_sell_income(
                                 state, action.bench_idx, _expected or '',
                                 _gold_before, _gold_after)
                         except Exception:   # noqa: BLE001  观测 best-effort
@@ -1049,7 +1049,7 @@ class BuyShopCards(SrOperation):
                     _occ_shot = None
                     with contextlib.suppress(Exception):   # 截图 best-effort
                         _occ_shot = self.save_screenshot(prefix='bench_buy_no_slot')
-                    cw_telemetry.record_defect(
+                    defects.record_defect(
                         'bench', 'invariant_break',
                         expected=(f'买{len(_bought_names)}张 → new_bench_slots '
                                   '≥1 新占槽'),
@@ -1065,7 +1065,7 @@ class BuyShopCards(SrOperation):
                 _cnt = bench_buy_count_ok(len(_bought_names), len(_new_slots),
                                           total_sell)
                 if _occ is not False and _cnt is False:
-                    cw_telemetry.record_defect(
+                    defects.record_defect(
                         'bench', 'invariant_break',
                         expected=(f'新占槽={len(_bought_names)} − 中途卖出'
                                   f'{total_sell} = {len(_bought_names) - total_sell}'),
@@ -1091,7 +1091,7 @@ class BuyShopCards(SrOperation):
                     _missing = bench_buy_identity_missing(
                         _bought_names, [c.char_id for c in _rb])
                     if _missing:
-                        cw_telemetry.record_defect(
+                        defects.record_defect(
                             'bench', 'perception_conflict',
                             expected=f'回读身份含买牌名:{sorted(_bought_names)}',
                             observed=(f'回读={sorted(c.char_id for c in _rb)};'
@@ -1164,7 +1164,7 @@ class BuyShopCards(SrOperation):
             # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
             # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
             # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
-            from sr_od.application.currency_war.telemetry import cw_telemetry as _cw_tel
+            from sr_od.application.currency_war.telemetry import state as _cw_tel
             _cw_tel.set_unit_gold_close(_final_gold)
             # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
             # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
@@ -1186,7 +1186,7 @@ class BuyShopCards(SrOperation):
         if _plan_truncated or _refresh_attempted \
                 or _refresh_skipped is not None:
             with contextlib.suppress(Exception):
-                cw_telemetry.set_unit_exec_facts(
+                state.set_unit_exec_facts(
                     plan_truncated=_plan_truncated,
                     refresh_skipped=_refresh_skipped,
                     refresh_attempted=_refresh_attempted,

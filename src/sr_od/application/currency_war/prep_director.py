@@ -108,7 +108,13 @@ from sr_od.application.currency_war.prep_actions import (
     row_area_centers,
     try_recovery,
 )
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import (
+    defects,
+    query,
+    recorder,
+    schema,
+    state,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -169,9 +175,8 @@ def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
     域变宽,本谓词仍只对 not_effective 停,自动豁免两新态。判定复用
     ``cw_telemetry.classify_spend_unit``,不建第二套分类。
     """
-    from sr_od.application.currency_war.telemetry.cw_telemetry import (
-        classify_spend_unit,
-    )
+
+    from sr_od.application.currency_war.telemetry.query import classify_spend_unit
     cls = classify_spend_unit(plan_actions or [], gold_open, gold_close,
                               boundary=boundary, executed=executed)
     return cls['verdict'] == 'not_effective'
@@ -1153,7 +1158,7 @@ class PrepDirector(SrOperation):
                           f'/{expect.target_kind}' if expect.kind == 'deploy_move' else ''))
             obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _DRAG_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
                 plane=int(getattr(obs_st, 'plane', 0) or 0),
@@ -1210,7 +1215,7 @@ class PrepDirector(SrOperation):
             # 回放目录(与 defect_ledger 同域)。file_tag=位面-轮次 便于互查。
             evidence: list[str] = []
             try:
-                _rec = cw_telemetry.get_recorder()
+                _rec = state.get_recorder()
                 _dir = getattr(_rec, 'replay_dir', None) if _rec else None
                 if _dir:
                     _tag = (f"p{int(getattr(obs_st, 'plane', 0) or 0)}"
@@ -1220,7 +1225,7 @@ class PrepDirector(SrOperation):
                         _ctx_slots(self.ctx, '备战栏', 9))
             except Exception:   # noqa: BLE001  留证 best-effort
                 evidence = []
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
                 plane=int(getattr(obs_st, 'plane', 0) or 0),
@@ -1339,7 +1344,7 @@ class PrepDirector(SrOperation):
             obs_txt = ';'.join(f"{m['domain']}/{m['slot']} "
                                f"期望[{m['expected']}] 实读[{m['observed']}]"
                                for m in mism)
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _XP_DEFECT_SURFACE, _XP_DEFECT_KIND,
                 expected=(f'lv{led.level} xp {led.xp_cur}/{led.xp_next}'
                           f'(账本;events={events or "本段"})'),
@@ -1448,7 +1453,7 @@ class PrepDirector(SrOperation):
                 return
             obs_txt = ';'.join(f'{v.name}/{v.cost}:{v.kind}({v.detail})'
                                for v in violations)
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _SHOP_DEFECT_SURFACE, _SHOP_POOL_DEFECT_KIND,
                 expected='0 违例(五牌两查)',
                 observed=obs_txt,
@@ -1501,7 +1506,7 @@ class PrepDirector(SrOperation):
             obs_txt = ';'.join(
                 f'slot{r.slot}:{r.verdict}(our={r.our} det={r.detected})'
                 for r in mism)
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _SHOP_DEFECT_SURFACE, _SHOP_MERGE_DEFECT_KIND,
                 expected='0 mismatch(合成预览=我方同名同星持有>0 vs 识别✦>0)',
                 observed=obs_txt,
@@ -1619,7 +1624,7 @@ class PrepDirector(SrOperation):
             obs_st = self._cached_state
             obs_txt = ';'.join(f"{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
-            cw_telemetry.record_defect(
+            defects.record_defect(
                 _EQUIP_DEFECT_SURFACE, _EQUIP_DEFECT_KIND,
                 expected=f'equip {expect.summary}',
                 observed=obs_txt,
@@ -1890,15 +1895,14 @@ class PrepDirector(SrOperation):
             # r1 review#4:曾传 type() 造假对象(非 dataclass)→ serialize_action TypeError 被吞
             # → 破墙遥测从未落盘。改 exec_events 通道(本就为执行事件设计)。
             try:
-                from sr_od.application.currency_war.telemetry import cw_telemetry
 
                 if obs.state is not None:
-                    _bf_rid = cw_telemetry.current_run_id() or '-'
+                    _bf_rid = state.current_run_id() or '-'
                     if _bf_rid == '-' and self.ctx.cw_match is not None:
                         _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'   # 与 _record_exec_obs 兜底一致
                     # r98 类型 gate 抓真 bug:record_exec_event 是 TelemetryRecorder 类方法,
                     # 模块级直调 = AttributeError(此前被 except 吞 → 破墙遥测从未落盘)。
-                    cw_telemetry.get_recorder().record_exec_event(
+                    state.get_recorder().record_exec_event(
                         run_id=_bf_rid,
                         round_num=obs.state.round_num,
                         action_family=f'BenchFull_{type(action).__name__}',
@@ -2124,7 +2128,7 @@ class PrepDirector(SrOperation):
                     _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
                     if _dep_post is not None and _dep_post - _dep_pre != _dep_delta:
                         _gap = _dep_post - _dep_pre
-                        cw_telemetry.record_defect(
+                        defects.record_defect(
                             'deployed', 'invariant_break',
                             expected=f'{key} 执行后 paddle={_dep_pre + _dep_delta}',
                             observed=f'paddle={_dep_post}',
@@ -2185,7 +2189,8 @@ class PrepDirector(SrOperation):
         last_state.round_num 才是 join key)。best-effort。
         """
         try:
-            from sr_od.application.currency_war.telemetry.cw_telemetry import (
+
+            from sr_od.application.currency_war.telemetry.state import (
                 current_run_id,
                 get_recorder,
             )
@@ -2242,7 +2247,8 @@ class PrepDirector(SrOperation):
         if meta is None:
             return
         try:
-            from sr_od.application.currency_war.telemetry.cw_telemetry import (
+
+            from sr_od.application.currency_war.telemetry.recorder import (
                 record_spend_unit,
             )
             record_spend_unit(
@@ -2273,17 +2279,17 @@ class PrepDirector(SrOperation):
         shop 审计必落行:金没动而计划花费>2 → gap>2)。任一缺失 = 分类器
         unknown = 不停(不猜)。
         """
-        run_id = cw_telemetry.current_run_id()
+        run_id = state.current_run_id()
         if not run_id:
             return
-        replay_dir = cw_telemetry.get_recorder().replay_dir
-        plan_row = cw_telemetry._shop_plan_rows(
+        replay_dir = state.get_recorder().replay_dir
+        plan_row = query._shop_plan_rows(
             replay_dir, run_id).get((meta['plane'], meta['round']))
         if plan_row is None:
             return
         import datetime as _dt
-        conf = cw_telemetry._match_conflict(
-            cw_telemetry._read_conflict_gold_delta(replay_dir),
+        conf = query._match_conflict(
+            query._read_conflict_gold_delta(replay_dir),
             meta['plane'], meta['round'],
             _dt.datetime.now().isoformat(timespec='seconds'))
         plan_actions = plan_row.get('actions') or []
@@ -2293,7 +2299,7 @@ class PrepDirector(SrOperation):
         # 字段(与 plan 行/gold_delta 行同一 replay join 面)——硬墙跳过/
         # 截断的单元分流 plan_truncated 豁免(局22 误停根因),不再被当
         # 「点击落空」误停。行缺失 → executed=None,退回 W494 原语义。
-        unit_row = cw_telemetry._spend_unit_row(
+        unit_row = query._spend_unit_row(
             replay_dir, run_id, meta['plane'], meta['round'], meta['seq'])
         executed = None
         if unit_row is not None:
@@ -2306,7 +2312,7 @@ class PrepDirector(SrOperation):
                                      boundary=boundary, executed=executed):
             return
         self._exec_fail_hook_fired = True
-        items = cw_telemetry.plan_gold_flow(plan_actions)['items']
+        items = query.plan_gold_flow(plan_actions)['items']
         plan_summary = ';'.join(
             f"{i['type']}:{i['target']}:{i['cost']}" for i in items) or '(空plan)'
         shot_prefix = (f'exec_fail_{run_id}_p{meta["plane"]}'
@@ -2603,9 +2609,8 @@ class PrepDirector(SrOperation):
         def _record_defect(kind: str, detail: str) -> None:
             log.warning(f'[cw!][director-v2] 缺陷 {kind}: {detail}')
             try:
-                from sr_od.application.currency_war.telemetry import cw_telemetry
-                rid = cw_telemetry.current_run_id() or '-'
-                cw_telemetry.get_recorder().record_exec_event(
+                rid = state.current_run_id() or '-'
+                state.get_recorder().record_exec_event(
                     run_id=rid, round_num=0, action_family='DirectorV2',
                     screen='battle_prep', event=f'defect_{kind}',
                     reason=detail[:200])
@@ -2648,7 +2653,7 @@ class PrepDirector(SrOperation):
                 _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
                 if _dep_post is not None and _dep_post - acct['dep_pre'] != acct['dep_delta']:
                     _gap = _dep_post - acct['dep_pre']
-                    cw_telemetry.record_defect(
+                    defects.record_defect(
                         'deployed', 'invariant_break',
                         expected=f'{key} 执行后 paddle={acct["dep_pre"] + acct["dep_delta"]}',
                         observed=f'paddle={_dep_post}',
@@ -2846,7 +2851,7 @@ class PrepDirector(SrOperation):
                 # 原地写会污染 director 后续决策输入(观测链修复禁越界)。
                 st.equips = list(getattr(_sess, 'last_owned_equips', []) or []) \
                     if _sess is not None else []
-            cw_telemetry.record_decision(
+            recorder.record_decision(
                 st if st is not None else GameState(),
                 target_comp=(_sess.target_comp.name
                              if _sess is not None and _sess.target_comp else ''),
@@ -2858,7 +2863,7 @@ class PrepDirector(SrOperation):
                     _sess, 'v3_formed_stop', False)),  # ADR-0343 豁免联动
                     # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的
                     # 上游量;锁定产物/副方向取序见 p1_pair_label)
-                    'sess_p1_pair': cw_telemetry.p1_pair_label(
+                    'sess_p1_pair': schema.p1_pair_label(
                         getattr(_sess, 'v3_intention', None))},
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环

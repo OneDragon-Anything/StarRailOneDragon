@@ -64,7 +64,7 @@ from sr_od.application.currency_war.operations.run_nodes.run_supply_node import 
     RunSupplyNode,
 )
 from sr_od.application.currency_war.prep_director import PrepDirector
-from sr_od.application.currency_war.telemetry import cw_telemetry
+from sr_od.application.currency_war.telemetry import defects, query, recorder, state
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -154,7 +154,7 @@ class CurrencyWarRunLoop(SrOperation):
         # difficulty:ctx.cw_selected_difficulty(StartCurrencyWarMatch 难度确认屏读存;此时**尚未**被
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
-        cw_telemetry.start_run(difficulty=_diff_for_telemetry)
+        state.start_run(difficulty=_diff_for_telemetry)
         # R4-1(迁移审计 w52(git 历史) §3.1):recovered 三字段(_run_start_ts/_first_settlement_seen/
         # _is_new_match)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
@@ -208,7 +208,7 @@ class CurrencyWarRunLoop(SrOperation):
             # r339b:板深快照注册移**match new 后**(review 预核 A:
             # 原在 start_run 处注册时 cw_match 恒 None——新局
             # 首战快照死)。续跑局在 else 支支注册。
-            cw_telemetry.set_ctx_match(self.ctx.cw_match)
+            state.set_ctx_match(self.ctx.cw_match)
             # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
             if self.ctx.cw_briefing_affixes:
                 _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
@@ -233,7 +233,7 @@ class CurrencyWarRunLoop(SrOperation):
         else:
             # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
             # start_run,统一在两支各自 new/延用后注册)
-            cw_telemetry.set_ctx_match(self.ctx.cw_match)
+            state.set_ctx_match(self.ctx.cw_match)
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _snap(self, tag: str) -> None:
@@ -413,7 +413,7 @@ class CurrencyWarRunLoop(SrOperation):
         try:
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
             _final_hp = self._last_true_hp(_st.hp)
-            cw_telemetry.record_run_summary(
+            state.record_run_summary(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane,
                 rounds_survived=_st.round_num,
@@ -527,7 +527,7 @@ class CurrencyWarRunLoop(SrOperation):
                             # 「X-Y」vs 备战 phase_round 缓存,不等 → 留证。裁决
                             # 已自动(采新),按分级标准恒 L2;残留屏(relaunch
                             # 首帧)豁免——那是设计点名的已知误报源。
-                            cw_telemetry.record_defect(
+                            defects.record_defect(
                                 'phase_round', 'perception_conflict',
                                 expected=f'备战缓存 {_plane}-{_round}',
                                 observed=f'结算屏 {_scr[0]}-{_scr[1]}',
@@ -546,7 +546,7 @@ class CurrencyWarRunLoop(SrOperation):
                                     _scr[0], _scr[1], _plane, _round)
                         # 同轮双读对拍的拒信侧(观测自检框架设计 §2.7):裁决
                         # 已自动(单调门拒),恒 L2 留证。
-                        cw_telemetry.record_defect(
+                        defects.record_defect(
                             'phase_round', 'perception_conflict',
                             expected=f'备战缓存 {_plane}-{_round}',
                             observed=(f'结算屏 {_scr[0]}-{_scr[1]}(落后 last-known'
@@ -625,14 +625,14 @@ class CurrencyWarRunLoop(SrOperation):
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
             # node_type/comp_tag/damage_dealt(迁移审计 w40(git 历史):结算屏数据统计面板同帧解析)已在 _obs。
-            cw_telemetry.record_outcome(_obs, source=_source)
+            recorder.record_outcome(_obs, source=_source)
             if not telemetry_only:
                 if _obs.hp_confidence >= 0.9:
                     self._last_outcome_hp = _obs.hp_after   # summary final_hp 真值源(r3 修)
                 # 外生事件(strategy/05 telemetry,预案触发频率语料):战斗节点完成
                 # (r1 review#3:模块级便捷函数,run_id 自动取——此前传 run_id 首参打签名
                 # 不存在,AttributeError 被吞致 exogenous 静默死)
-                cw_telemetry.record_exogenous(
+                recorder.record_exogenous(
                     _round, 'node_enter',
                     detail=f'battle_done:{_obs.node_type}',
                     state=_session.last_state)
@@ -703,7 +703,7 @@ class CurrencyWarRunLoop(SrOperation):
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             # 消费 run_supply_node 选定时暂存的选择快照,并附完成时点 gold
             # (gold_readable=False 不写——同 hp 不冒认真值;键缺失容忍=兜底点卡路径)。
-            _pick = cw_telemetry.consume_last_supply_pick() or {}
+            _pick = state.consume_last_supply_pick() or {}
             if _st is not None and getattr(_st, 'gold_readable', True):
                 _pick['gold'] = getattr(_st, 'gold', None)
             _obs = RoundOutcome(
@@ -711,7 +711,7 @@ class CurrencyWarRunLoop(SrOperation):
                 hp_after=_hp, hp_confidence=_conf,
                 killed=True,   # 语义=节点通过(非战斗击杀;synthetic 行专用)
             )
-            cw_telemetry.record_outcome(_obs, source='synthetic_supply',
+            recorder.record_outcome(_obs, source='synthetic_supply',
                                         supply_pick=_pick or None)
             log.info('[cw-loop] 补给节点完成 → 合成 outcome 行 P%s-r%s hp=%s(conf=%s pick=%s)',
                      _plane, _round, _hp, _conf, _pick or '-')
@@ -766,7 +766,7 @@ class CurrencyWarRunLoop(SrOperation):
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 import contextlib
                 with contextlib.suppress(Exception):   # 遥测 best-effort
-                    cw_telemetry.record_exogenous(_st0.round_num, 'resumed_match',
+                    recorder.record_exogenous(_st0.round_num, 'resumed_match',
                                                   detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
                                                   state=_st0)
             # 接管局补采(boss+词缀)迁至**首个稳定备战帧**(备战稳定门后,
@@ -839,7 +839,7 @@ class CurrencyWarRunLoop(SrOperation):
                 # schema 声明的 kind 此前零写入(死链同构),简报词缀是
                 # 22 号预案频率统计的输入。
                 with contextlib.suppress(Exception):   # 遥测 best-effort
-                    cw_telemetry.record_exogenous(
+                    recorder.record_exogenous(
                         0, 'briefing',
                         detail=f'affixes={getattr(self.ctx, "cw_briefing_affixes", None)}'
                                f' bosses={getattr(self.ctx, "cw_briefing_bosses", None)}')
@@ -1151,17 +1151,17 @@ class CurrencyWarRunLoop(SrOperation):
             # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:策略死了,
             # 继续跑=零信息量局。结算点=备战入口查**上一轮**(本轮决策尚未发生,
             # 查本轮恒空会误杀);telemetry 关闭时本检查让位(无数据=无判据)。
-            if cw_telemetry.get_recorder().enabled:
+            if state.get_recorder().enabled:
                 _dk = read_phase_round(self.ctx, screen)
                 if _dk and _dk[0]:
                     _key = (int(_dk[0]), int(_dk[1]))
                     if _key != self._cw_dead_prev_key:
                         _dead_key = self._cw_dead_prev_key
-                        _live = cw_telemetry.strategy_round_live(
-                            cw_telemetry.current_run_id() or '', _dead_key) \
+                        _live = query.strategy_round_live(
+                            state.current_run_id() or '', _dead_key) \
                             if _dead_key is not None else True
                         self._cw_strategy_dead_streak = (
-                            cw_telemetry.dead_streak_transition(
+                            query.dead_streak_transition(
                                 _dead_key, _key,
                                 self._cw_strategy_dead_streak, _live))
                         if _dead_key is not None and not _live:
@@ -1206,7 +1206,7 @@ class CurrencyWarRunLoop(SrOperation):
                         self._cw_locked_round = _pr[1]
                         import contextlib
                         with contextlib.suppress(Exception):   # 遥测 best-effort
-                            cw_telemetry.record_exogenous(
+                            recorder.record_exogenous(
                                 _pr[1], 'locked_resume',
                                 detail=f'P{_pr[0]}-r{_pr[1]} shop-probe-zero')
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
@@ -1225,8 +1225,8 @@ class CurrencyWarRunLoop(SrOperation):
                     self._battle_ts = time.monotonic()   # ADR-0250:战斗窗口开
                     import contextlib
                     with contextlib.suppress(Exception):   # 遥测 best-effort
-                        cw_telemetry.get_recorder().record_exec_event(
-                            run_id=cw_telemetry.current_run_id() or '-',
+                        state.get_recorder().record_exec_event(
+                            run_id=state.current_run_id() or '-',
                             round_num=self._cw_locked_round,
                             action_family='LockedResume_StartBattle',
                             screen='battle_prep', event='start_battle',
@@ -1360,7 +1360,7 @@ class CurrencyWarRunLoop(SrOperation):
             # 误触弹窗是外生事件高频源(bug#2 ESC 三次实锤),22 号
             # 预案的「弹窗干扰频率」此前零数据。
             with contextlib.suppress(Exception):   # 遥测 best-effort
-                cw_telemetry.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
+                recorder.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
             _btn = self.round_by_find_and_click_area(
                 screen, '货币战争-中断挑战弹窗', '按钮-关闭')
             if _btn.is_success:
@@ -1500,7 +1500,7 @@ class CurrencyWarRunLoop(SrOperation):
                 # ⚠️ final_hp 语义修正(2026-08-17 r3 live):死局回大厅后 last_state.hp
                 # 是结算屏后读不到的 100 兜底(hp_readable=False)——summary 曾记 100 而
                 # 实际 1。改用 outcomes 侧最后真值(recorder 内存轨迹,conf=1.0 的末条)。
-                cw_telemetry.record_run_summary(
+                state.record_run_summary(
                     result='win' if _outcome.won else 'loss',
                     plane_reached=_outcome.final_plane,
                     rounds_survived=_outcome.final_round,
