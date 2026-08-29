@@ -114,12 +114,19 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
     session.tracked_bench_chars / tracked_deployed = bot 执行记录计数器族
     (session 保留清单,非派生值;识别噪声滞回锚)。语义同老栈方向计算
     输入;决策板面输入仍走 snap 新鲜读(批 1 行为等价前提)。
+    元素经 ``cw_state.snapshot_copy`` 浅拷贝(W639 C 落码):TurnState 帧
+    与 session.tracked_* 断开对象别名——session 侧就地写端(shop 星级/
+    装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
     """
+    from sr_od.application.currency_war.cw_state import snapshot_copy
     tracked_bench = getattr(session, 'tracked_bench_chars', None)
-    bench = tuple(tracked_bench) if tracked_bench else tuple(snapshot.bench)
+    bench = (tuple(None if b is None else snapshot_copy(b)
+                   for b in tracked_bench)
+             if tracked_bench else tuple(snapshot.bench))
     tracked_dep = getattr(session, 'tracked_deployed', None)
     if tracked_dep:
-        deployed = tuple(d for d in tracked_dep if d is not None)
+        deployed = tuple(snapshot_copy(d) for d in tracked_dep
+                         if d is not None)
     else:
         deployed = tuple(d for d in snapshot.deployed if d is not None)
     return bench, deployed
@@ -179,11 +186,13 @@ def _budget(state: Any, session: StrategySession,
     )
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(
+        # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
+        # 禁混用 session.v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
         reserve_cap=reserve_cap(state, session, registry),
         obligation=obligation(state, session, registry),
-        schedule=schedule_upgrade(state, session),
-        ev_auth=refresh_ev_budget(state, session),
+        schedule=schedule_upgrade(state, session, registry),
+        ev_auth=refresh_ev_budget(state, session, registry),
     )
 
 

@@ -187,6 +187,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     全部按实机观测原样携带(None 合法)。bench 取紧缩型(仅已识别件,元素
     BenchChar.slot 1-based 保持)。
     """
+    from sr_od.application.currency_war.cw_state import snapshot_copy
     from sr_od.application.currency_war.decision_v2.contracts import (
         SNAPSHOT_SCHEMA_VERSION,
         RewardSphere,
@@ -214,8 +215,10 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         level=(st.level if st is not None else None),
         xp_progress=(st.xp_progress if st is not None else None),
         level_up_cost=(st.level_up_cost if st is not None else None),
-        bench=tuple(obs.bench_chars),
-        deployed=tuple(obs.deployed_chars),
+        bench=tuple(None if b is None else snapshot_copy(b)
+                    for b in obs.bench_chars),
+        deployed=tuple(None if d is None else snapshot_copy(d)
+                       for d in obs.deployed_chars),
         board=(MappingProxyType(dict(st.board))
                if (st is not None and st.board_readable) else None),
         deploy_cap=(st.deploy_cap if st is not None else None),

@@ -127,7 +127,21 @@ class BenchChar:
     faction: str = "?"   # 阵营
     star: int = 1        # 星级
     position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    equips: list[str] = field(default_factory=list)
+    # Sequence(批 3 W639:TurnState 快照拷贝侧固化为 tuple;session/state
+    # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
+    # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
+    equips: list[str] | tuple[str, ...] = field(default_factory=list)
+
+
+def snapshot_copy(bc: BenchChar) -> BenchChar:
+    """TurnState 快照语义的元素拷贝(W639 C 落码):浅拷贝 + equips 固化
+    为 tuple——视图/快照帧与 session.tracked_*(就地写端=shop.py
+    mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
+    对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
+    成本已量化(W639):每次 decide_prep ~19 元素 ×6 字段 <20µs,
+    占帧预算 <0.1%。隔离锁=test_cw_w633_migration_b3。"""
+    from dataclasses import replace
+    return replace(bc, equips=tuple(bc.equips or ()))
 
 
 @dataclass
