@@ -241,6 +241,67 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
                 sibling.lock.release()
 
 
+#: stdout 兜底日志的尺寸轮转阈值(字节,20MB)与保留归档份数。
+#: 背景见 rotate_large_stdout_log:server 的 stdout 日志(uvicorn 协议行/MCP SDK
+#: 请求行)增长可达 ~0.7MB/分钟,只靠重启时清一次不够,启动方每次 spawn 前都查。
+STDOUT_LOG_ROTATE_BYTES = 20 * 1024 * 1024
+STDOUT_LOG_BACKUP_COUNT = 3
+
+
+def rotate_large_stdout_log(
+    log_path: str | Path,
+    max_bytes: int = STDOUT_LOG_ROTATE_BYTES,
+    backup_count: int = STDOUT_LOG_BACKUP_COUNT,
+) -> bool:
+    """对「多写端 append 共享」的 stdout 兜底日志做 copytruncate 尺寸轮转。
+
+    使用场景:被 launcher 重定向 stdout 的子进程日志(如 MCP server 的
+    main_server.log)。这类文件同时被多个进程持有打开句柄(子进程继承的
+    stdout fd / GUI 日志页尾读 / 哨兵 tail),Windows rename 语义要求
+    无任何打开句柄,直接换名必然 PermissionError——旧实现静默吞掉后
+    轮转缺位、文件无限增长。copytruncate(复制归档 + 截断源文件)用
+    CRT 默认共享模式读写打开,不要求独占,任何持有者都不阻塞。
+
+    竞态限界(经典 copytruncate):复制与截断窗口内其他进程并发追加的行
+    会被截掉,代价上限是该窗口几行;截断用 append 模式打开后 truncate(0),
+    各写端(O_APPEND 语义)的下一次写自动落到新 EOF,不产生稀疏空洞。
+
+    Args:
+        log_path: 日志文件路径;不存在或未超阈值时不做任何事。
+        max_bytes: 触发轮转的尺寸阈值(字节)。
+        backup_count: 保留归档份数(编号 .1 最新 → .N 最旧,超出删除)。
+
+    Returns:
+        True=执行了轮转;False=未达阈值跳过。轮转自身失败不抛出:
+        向日志文件本体追加一行 ERROR 标记后返回 False,保证「轮转缺位
+        可观测」且绝不阻塞调用方(调用方处于启动子进程的关键路径上)。
+    """
+    path = Path(log_path)
+    try:
+        if not path.is_file() or path.stat().st_size <= max_bytes:
+            return False
+        # 旧归档无人持有打开句柄,按编号顺移(与 RotatingFileHandler 同约定)
+        for i in range(backup_count - 1, 0, -1):
+            src = path.with_name(path.name + f'.{i}')
+            if not src.exists():
+                continue
+            dst = path.with_name(path.name + f'.{i + 1}')
+            if dst.exists():
+                dst.unlink()
+            src.replace(dst)
+        archive = path.with_name(path.name + '.1')
+        shutil.copyfile(path, archive)
+        with open(path, 'ab') as f:
+            f.truncate(0)
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write(f'[log_utils] stdout 日志已轮转(>{max_bytes // (1024 * 1024)}MB → {archive.name})\n')
+        return True
+    except OSError as e:
+        with suppress(Exception), open(path, 'a', encoding='utf-8') as f:
+            f.write(f'[log_utils] stdout 日志轮转失败(保持 append): {e}\n')
+        return False
+
+
 @dataclass(slots=True)
 class LoggerConfig:
     level: int = logging.INFO

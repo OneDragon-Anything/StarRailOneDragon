@@ -144,20 +144,19 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
             spawn_env['PYTHONPATH'] = str(PROJECT_ROOT / 'src')
             # r95 审计必修:旧 mode='w' 每次重启**销毁上一 run 的 op 级证据**(异常栈/买牌
             # 记录)——run16「40s 无 plan 记录」模式因 12:28 重启 log 被截断而不可诊断。
-            # 改 append + 尺寸轮转(>20MB 转 .1 保留一份),诊断链保住。
-            _need_rotate = False
-            try:
-                if log_path.is_file() and log_path.stat().st_size > 20 * 1024 * 1024:
-                    _rolled = log_path.with_suffix('.log.1')
-                    if _rolled.exists():
-                        _rolled.unlink()
-                    log_path.replace(_rolled)
-                    _need_rotate = True
-            except OSError:
-                pass
-            if _need_rotate:
-                from one_dragon.utils.log_utils import log as _dlog
-                _dlog.info('主 server 日志已轮转(>20MB → .log.1)')
+            # 改 append + 尺寸轮转(>20MB),诊断链保住。
+            # W604:轮转从 rename(log_path.replace)改 copytruncate 共享 helper——
+            # rename 要求无任何打开句柄,旧 server 的继承 stdout fd / GUI 尾读 /
+            # 哨兵 tail 任一存在即 PermissionError,且旧代码 except 静默吞掉 →
+            # 轮转缺位不可观测。helper 失败时向文件本体落标记,不再静默。
+            # daemon 自身由 `uv run python sr_od_daemon.py` 拉起,src 不在 sys.path
+            # (它只为 server 子进程注入 PYTHONPATH)——本进程内导入前显式补上。
+            import sys as _sys
+            _src = str(PROJECT_ROOT / 'src')
+            if _src not in _sys.path:
+                _sys.path.insert(0, _src)
+            from one_dragon.utils.log_utils import rotate_large_stdout_log
+            rotate_large_stdout_log(log_path)
             # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
             with open(log_path, 'a', encoding='utf-8') as log_file:
                 process = subprocess.Popen(

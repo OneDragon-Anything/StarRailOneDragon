@@ -189,6 +189,10 @@ def _start_server(port: int) -> str:
     # append 对齐 daemon 的 r95 审计修(截断销毁上一 run 的 op 级证据不可诊断);
     # 职责划分(2026-08-24)后此文件只承接 stdout 兜底(uvicorn/print/traceback),
     # server 框架日志在 .log/mcp_server.log,截断危害已消但 append 仍更稳。
+    # W604:GUI 启动路径此前不轮转(GUI 拉起的 server 日志无限增长);
+    # copytruncate helper(与 daemon 同一单一源)不要求独占句柄,尾读/tail 不被踢。
+    from one_dragon.utils.log_utils import rotate_large_stdout_log
+    rotate_large_stdout_log(log_path)
     with open(log_path, 'a', encoding='utf-8') as log_file:
         process = subprocess.Popen(
             cmd,
