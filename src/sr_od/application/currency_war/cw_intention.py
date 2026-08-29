@@ -80,7 +80,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
@@ -964,7 +964,14 @@ def update_intention(state: GameState, ist: IntentionState,
             # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
             track.frozen_rounds += 1
             # ADR-0366:冻结超限对照量按本位面真值(session 透传,P2=7)
-            if track.frozen_rounds > plane_remaining_nodes(state, session):
+            # D3 修正(W696 审计):驱逐纳入闩辖——驱逐产生设计外转移
+            # locked→unlocked→同帧可无门落新线,破坏闩「转移冻结」吸收
+            # 态(DESIGN v3 §3-3)。裁决=闩存续期驱逐**挂起**(非触发闩
+            # 语义合法转移):frozen_rounds 继续累计,位面切换清闩后恢复
+            # 既有驱逐路径(下一位面首帧即按累计值正常处置,不跨位面失察)。
+            if latch_active:
+                pass
+            elif track.frozen_rounds > plane_remaining_nodes(state, session):
                 ist.evicted.add(ist.locked_comp)
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''
