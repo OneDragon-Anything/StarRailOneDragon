@@ -33,7 +33,10 @@ from typing import Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
 from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
-from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
+from sr_od.application.currency_war.kernel.cw_observe import (
+    DEFAULT_REPLAY_DIR,
+    stage_pending_strategy_pick,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     XP_CLICK_COST_FALLBACK,
     Action,
@@ -1808,15 +1811,13 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
     # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6 策略激活态对拍,生产侧):strategy 类
     # 投资卡落盘时暂存「声明选中」的名字,由下一次备战观察构建 state 时消费
     #(cw_observation),对拍 session.active_strategies——选了 X 而持卡里没有
-    # X = 写链断或选择落空(原审计缺口:策略误选/漏选无法发现)。槽模式与
-    # _LAST_SUPPLY_PICK / _PENDING_UNIT_GOLD_CLOSE 同族:生产→消费紧邻、
-    # 消费即清,不新开轮询。
+    # X = 写链断或选择落空(原审计缺口:策略误选/漏选无法发现)。槽本体自分包期 4
+    # 迁 kernel/cw_observe(obs 消费零直依 telemetry;生产→消费紧邻、消费即清)。
     if kind == 'strategy':
         _chosen = next((c.get('name') for c in cards
                         if isinstance(c, dict) and c.get('chosen')), None)
         if _chosen and _chosen != '?':
-            global _PENDING_STRATEGY_PICK
-            _PENDING_STRATEGY_PICK = str(_chosen)
+            stage_pending_strategy_pick(str(_chosen))
     rec = get_recorder()
     ts = datetime.now().isoformat(timespec="seconds")
     for c in cards:
@@ -1825,17 +1826,8 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
         })
 
 
-# —— `w512_obs_surfaces/`:策略激活对拍暂存槽(生产者=record_invest_cards('strategy');
-# 消费者=cw_observation 构建 state 读 session.active_strategies 处;消费即清)——
-_PENDING_STRATEGY_PICK: str | None = None
-
-
-def consume_pending_strategy_pick() -> str | None:
-    """消费者:取走暂存的「声明选中策略名」并清槽(无暂存 → None)。"""
-    global _PENDING_STRATEGY_PICK
-    pick = _PENDING_STRATEGY_PICK
-    _PENDING_STRATEGY_PICK = None
-    return pick
+# —— `w512_obs_surfaces/`:策略激活对拍暂存槽已迁 kernel/cw_observe(分包期 4,
+# 消费者 obs 零直依 telemetry;生产者经 stage_pending_strategy_pick 写入)——
 
 
 

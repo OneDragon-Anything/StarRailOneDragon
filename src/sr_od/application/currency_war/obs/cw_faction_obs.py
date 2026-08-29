@@ -312,10 +312,11 @@ def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     已接线:生产调用方 = prep_director 羁绊对账段(与 ``compare_factions``
     串同一链路;行为锁见测试仓 faction_reconcile/faction_wire 两锁文件)。
     函数本身保持纯转发:
-    逐 mismatch 调 ``cw_telemetry.record_defect``(其内部 run_id 门控/
-    分级/安灯语义单一源在那边),返回落账行数。
+    逐 mismatch 调 ``record_defect``(kernel/cw_telemetry_exit 出口钩子位,
+    分包期 4 起零直依 telemetry;run_id 门控/分级/安灯语义单一源在 telemetry),
+    返回落账行数。
     """
-    from sr_od.application.currency_war.telemetry.cw_telemetry import record_defect
+    from sr_od.application.currency_war.kernel.cw_telemetry_exit import record_defect
     n = 0
     for r in result.rows:
         if r.verdict != 'mismatch':

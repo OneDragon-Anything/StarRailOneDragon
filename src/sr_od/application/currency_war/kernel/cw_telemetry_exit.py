@@ -82,11 +82,12 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
     fn = _record_defect
     if fn is None:
         return
-    fn(surface, kind, expected, observed, gap=gap, plane=plane,
-       round_num=round_num, unit_seq=unit_seq, verdict=verdict, shot=shot,
-       refs=refs, reader_source=reader_source, note=note,
-       gap_large=gap_large, auto_resolved=auto_resolved, severity=severity,
-       confidence=confidence)
+    # 逐参关键字转发:保持调用形状与直依形态一致(测试桩按 kwargs 断言字段)
+    fn(surface=surface, kind=kind, expected=expected, observed=observed,
+       gap=gap, plane=plane, round_num=round_num, unit_seq=unit_seq,
+       verdict=verdict, shot=shot, refs=refs, reader_source=reader_source,
+       note=note, gap_large=gap_large, auto_resolved=auto_resolved,
+       severity=severity, confidence=confidence)
 
 
 def record_exogenous(round_num: int, kind: str, detail: str = '',

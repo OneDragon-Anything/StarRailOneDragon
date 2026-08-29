@@ -606,8 +606,11 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                     ' → 落缺陷台账(识别错误候选,复现升 L0)', table_t, votes,
                     past_n, hu_dist, _future_bad)
         try:
-            from sr_od.application.currency_war.telemetry import cw_telemetry
-            cw_telemetry.record_defect(
+            # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
+            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                record_defect,
+            )
+            record_defect(
                 'node_type', 'perception_conflict',
                 expected=f'台账序列[{int(round_num) - 1}]={table_t}(source='
                          f'{ledger.seq_source.get(int(plane or 0))})',
@@ -1455,7 +1458,8 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
         # 事件上(非轮询);写失败不阻断牌面读取。
         if avatar_id is None and templates is not None:
             try:
-                from sr_od.application.currency_war.telemetry.cw_telemetry import (
+                # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
+                from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
                     record_defect,
                 )
                 record_defect(
@@ -1833,8 +1837,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         #(中相关面,默认 L2;离线按复现分级)。消费即清,不串轮;无暂存
         #(非投资轮)零开销。handler/策略决策零改动(纯旁路)。
         try:
-            from sr_od.application.currency_war.telemetry.cw_telemetry import (
+            # 分包期 4:策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
+            # 出口钩子位(零直依 telemetry)
+            from sr_od.application.currency_war.kernel.cw_observe import (
                 consume_pending_strategy_pick,
+            )
+            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
                 record_defect,
             )
             _pick = consume_pending_strategy_pick()

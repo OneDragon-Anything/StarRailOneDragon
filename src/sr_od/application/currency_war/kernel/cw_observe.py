@@ -266,3 +266,24 @@ def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
         return True
     except Exception:  # noqa: BLE001  安灯失败不阻断业务流
         return False
+
+
+# ===== 策略激活对拍暂存槽(分包期 4 自 telemetry/cw_telemetry.py 迁入本模块:
+# 生产者=telemetry.record_invest_cards('strategy')(telemetry→kernel 合法向),
+# 消费者=obs.cw_observation 构建 state 读 session.active_strategies 处
+# (obs→kernel 合法向)——槽模式与 _OBS_PHASE 同族:生产→消费紧邻、消费即清)=====
+_PENDING_STRATEGY_PICK: str | None = None
+
+
+def stage_pending_strategy_pick(name: str) -> None:
+    """生产者:暂存「声明选中策略名」(识别失败/非策略类不暂存,写入端判)。"""
+    global _PENDING_STRATEGY_PICK
+    _PENDING_STRATEGY_PICK = name
+
+
+def consume_pending_strategy_pick() -> str | None:
+    """消费者:取走暂存的声明选中策略名并清槽(无暂存 → None)。"""
+    global _PENDING_STRATEGY_PICK
+    pick = _PENDING_STRATEGY_PICK
+    _PENDING_STRATEGY_PICK = None
+    return pick

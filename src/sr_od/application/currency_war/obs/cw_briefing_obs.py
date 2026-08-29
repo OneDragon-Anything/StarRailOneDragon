@@ -222,23 +222,28 @@ def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
     if not enabled:
         return
     with contextlib.suppress(Exception):   # 对账 best-effort,不阻断采集主流程
-        from sr_od.application.currency_war.telemetry import cw_telemetry
+        # 分包期 4:落账/外生事件经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
+        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+            SEVERITY_L2_RECORD,
+            record_defect,
+            record_exogenous,
+        )
         pairs = briefing_reconcile_pairs(briefing, truth)
-        cw_telemetry.record_exogenous(
+        record_exogenous(
             round_num, 'briefing_reconcile',
             detail=';'.join(
                 f"p{p['plane']}:briefing={p['briefing']},truth={p['truth']},match={p['match']}"
                 for p in pairs))
         for p in pairs:
             if p['match'] is False:
-                cw_telemetry.record_defect(
+                record_defect(
                     'briefing', 'briefing_reconcile',
                     expected=f"简报位面{p['plane']}读数={p['briefing']}",
                     observed=f"位面详情实采={p['truth']}(LCS 比对不一致)",
                     plane=int(p['plane']),
                     verdict='留证-简报读数与实采真值不一致(逐位面 LCS 对账)',
                     reader_source='briefing_vs_plane_intel',
-                    severity=cw_telemetry.SEVERITY_L2_RECORD,
+                    severity=SEVERITY_L2_RECORD,
                     note='ADR-0397 勘误节:简报排列=位面序(用户裁决);不一致=OCR/采集噪声信号')
                 _log.warning('[cw!][briefing] 对账不一致:位面%d 简报=%r 实采=%r(台账 L2 留证)',
                              p['plane'], p['briefing'], p['truth'])
