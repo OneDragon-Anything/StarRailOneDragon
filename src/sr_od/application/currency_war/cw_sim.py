@@ -32,6 +32,7 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 
 # noqa 别名保留:历史消费点(scoring/_engine_frac_remainder 等)仍从本名 import
@@ -715,8 +716,9 @@ _SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指�
 # 语义变 → 旧锚全作废重记(ADR-0306 回归验证节)。
 _BUCKET_MIN_N: int = 5   # 防饥饿守卫门槛(批③ F1:battle 桶6 n=1
 # 恒 -11,把跨深度 6 边界的策略臂系统性伪惩罚;建议值同报告)
-# 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录)
-_AUTO_REPLAY_DIR = Path(__file__).resolve().parents[4] / '.debug' \
+# 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录;
+# 真源 = one_dragon.utils.get_project_root,期 0a 统一批)
+_AUTO_REPLAY_DIR = get_project_root() / '.debug' \
     / 'temp' / 'currency_war' / 'replay'
 
 

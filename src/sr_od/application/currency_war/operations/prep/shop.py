@@ -7,6 +7,7 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
@@ -830,8 +831,7 @@ class BuyShopCards(SrOperation):
                                         prefix='free_refresh_proc')
                                     # 局部 import:仅本证据段使用,不占模块级命名面
                                     from datetime import datetime as _free_dt
-                                    from pathlib import Path as _free_path
-                                    _flag_p = _free_path(__file__).resolve().parents[5] \
+                                    _flag_p = get_project_root() \
                                         / '.debug' / 'temp' / 'cw_free_refresh_proc.flag'
                                     _flag_p.parent.mkdir(parents=True, exist_ok=True)
                                     _flag_p.write_text(
@@ -984,10 +984,9 @@ class BuyShopCards(SrOperation):
                 # 代价已知会(阻断实跑),用户明示接受。
                 _shot = self.save_screenshot(prefix=f'shop_unk_slot{_unk[0]}')
                 from datetime import datetime as _dt
-                from pathlib import Path as _P
                 # 绝对路径锚仓根(审查#4:相对路径在 daemon spawn 的
                 # 非 CWD 进程里落错地方,AI 巡检靠 flag 发现停机会失明)
-                _fp = _P(__file__).resolve().parents[5] / '.debug' / 'temp' \
+                _fp = get_project_root() / '.debug' / 'temp' \
                     / 'currency_war' / 'shop_unk.flag'
                 _fp.parent.mkdir(parents=True, exist_ok=True)
                 _fp.write_text(
