@@ -1478,7 +1478,7 @@
     - 1500
     - 1014
     text: ''
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null
@@ -1576,7 +1576,7 @@
     - 0
     - 0
     text: ''
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
     template_match_threshold: 0.7
@@ -5928,7 +5928,7 @@
     - 1055
     - 315
     text: 战斗
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null
@@ -5942,7 +5942,7 @@
     - 1050
     - 922
     text: 点击空白加速
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null
@@ -5956,7 +5956,7 @@
     - 1040
     - 920
     text: 前往结算
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null
@@ -8130,7 +8130,7 @@
     - 300
     - 1000
     text: ''
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null
@@ -8158,7 +8158,7 @@
     - 0
     - 0
     text: ''
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: challenge_mission
     template_id: duplicate_character_replaced
     template_match_threshold: 0.7
@@ -8172,7 +8172,7 @@
     - 933
     - 816
     text: ''
-    lcs_percent: null
+    lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: null

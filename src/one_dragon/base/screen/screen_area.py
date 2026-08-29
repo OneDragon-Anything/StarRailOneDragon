@@ -24,7 +24,9 @@ class ScreenArea:
         self.area_name: str = area_name or ''
         self.pc_rect: Rect = pc_rect if pc_rect is not None else Rect(0, 0, 0, 0)
         self.text: str = text or ''
-        self.lcs_percent: float = lcs_percent
+        # yml 手编遗留的显式 null 会绕过默认值(仅缺参时生效)直传 None,
+        # 运行时 find_by_lcs 用它乘 len(source) 即 TypeError —— 在此归一。
+        self.lcs_percent: float = 0.5 if lcs_percent is None else lcs_percent
         self.template_id: str = template_id or ''
         self.template_sub_dir: str = template_sub_dir or ''
         self.template_match_threshold: float = template_match_threshold

@@ -137,7 +137,7 @@ area_list:
   - 0
   - 0
   text: null
-  lcs_percent: null
+  lcs_percent: 0.5
   template_sub_dir: challenge_mission
   template_id: duplicate_character_replaced
   template_match_threshold: 0.7
