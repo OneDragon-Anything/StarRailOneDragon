@@ -102,20 +102,26 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
 
 def _budget(state: Any, session: StrategySession,
             registry: DecisionV2Registry) -> BudgetView:
-    """预算投影:economy_cycle + posture_release 现役件(权威不迁移)。"""
+    """预算投影:economy_cycle + posture_release 现役件(权威不迁移)。
+
+    DP 姿态本帧只解一次、四路消费方(排程判据/R*/义务/刷新授权)共用
+    ——W620 效率基准热点修:逐段各自现查曾致同帧 4-5 次冗余求解。
+    """
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         obligation,
         refresh_ev_budget,
         reserve_cap,
         schedule_upgrade,
     )
+    from sr_od.application.currency_war.decision_v2.ev import round_posture
+    posture = round_posture(state, session)   # 帧内单一求解(接缝函数复用)
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(
         interest_floor=floor,
-        reserve_cap=reserve_cap(state, session, registry),
-        obligation=obligation(state, session, registry),
-        schedule=schedule_upgrade(state, session),
-        ev_auth=refresh_ev_budget(state, session),
+        reserve_cap=reserve_cap(state, session, registry, posture),
+        obligation=obligation(state, session, registry, posture),
+        schedule=schedule_upgrade(state, session, posture),
+        ev_auth=refresh_ev_budget(state, session, posture),
     )
 
 
@@ -124,6 +130,8 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     """装配点:Snapshot + session → TurnState(方向/预算投影一次算完)。
 
     幂等:同输入重入返回等值 TurnState(投影重算,不落任何状态)。
+    批 1 现状:投影已装配、未消费(决策路径仍走老决策核;消费接线归
+    批 2)——投影现值仅作装配点数据流与遥测面。
     """
     from sr_od.application.currency_war.decision_v2.adapter import decision_state
 

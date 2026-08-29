@@ -48,30 +48,38 @@ RESERVE_WINDOW_ROUNDS: int = 3
 REFRESH_ROLL_CAP: int = 6
 
 
-def _upgrade_scheduled(state: GameState, session: StrategySession) -> bool:
+def _upgrade_scheduled(state: GameState, session: StrategySession,
+                       posture=None) -> bool:
     """排程升级判据(DP 姿态 level_up 单一源;None=DP 不可达,保守 False)。"""
-    return schedule_upgrade(state, session)
+    return schedule_upgrade(state, session, posture)
 
 
-def schedule_upgrade(state: GameState, session: StrategySession) -> bool:
+def schedule_upgrade(state: GameState, session: StrategySession,
+                     posture=None) -> bool:
     """排程升级判据(蓝图 §3.4 R4 可替换接缝;公开纯函数)。
 
     消费方接口形状 = 布尔判据;现役实现 = DP 姿态 level_up 单一源,
     未来换排程查表时只改本函数体,消费方不变。
+    ``posture``:调用方已解的 DP 姿态(同帧多消费方共用一次求解,
+    W620 效率基准热点修;None 时内部现查)。
     """
     from sr_od.application.currency_war.decision_v2.ev import round_posture
-    posture = round_posture(state, session)
+    if posture is None:
+        posture = round_posture(state, session)
     return posture is not None and bool(getattr(posture, 'level_up', False))
 
 
-def refresh_ev_budget(state: GameState, session: StrategySession) -> int:
+def refresh_ev_budget(state: GameState, session: StrategySession,
+                      posture=None) -> int:
     """刷新 EV 授权刷数(蓝图 §3.4 R4 可替换接缝;公开纯函数)。
 
     现役实现 = DP 姿态 refresh_budget 单一源;DP 不可达/无授权 → 0
     (保守侧:容量缩、义务缩)。未来换单步 EV 计算时只改本函数体。
+    ``posture``:同 schedule_upgrade(共用一次求解)。
     """
     from sr_od.application.currency_war.decision_v2.ev import round_posture
-    posture = round_posture(state, session)
+    if posture is None:
+        posture = round_posture(state, session)
     if posture is None:
         return 0
     return int(getattr(posture, 'refresh_budget', 0) or 0)
@@ -99,12 +107,13 @@ def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
 
 
 def reserve_cap(state: GameState, session: StrategySession,
-                registry: DecisionV2Registry) -> int:
+                registry: DecisionV2Registry, posture=None) -> int:
     r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
 
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
     排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;W481
     A-4:误估最坏=一个升级费量级 ≤50 金,双向有界)。
+    ``posture``:调用方已解的 DP 姿态(同帧多消费方共用一次求解)。
 
     守息线取 `interest_cap × 10`(息帽同源派生,W611 §2.2 恒等式):
     基参数下 5×10=50==interest_floor,行为零漂移;写法保证「守息线
@@ -116,15 +125,16 @@ def reserve_cap(state: GameState, session: StrategySession,
     h = min(RESERVE_WINDOW_ROUNDS,
             _rounds_to_plane_end(state, session))
     floor = registry.interest_cap * 10
-    if h <= 0 or not _upgrade_scheduled(state, session):
+    if h <= 0 or not _upgrade_scheduled(state, session, posture):
         return floor
     return floor + upgrade_plan_fee(state)
 
 
 def overflow(state: GameState, session: StrategySession,
-             registry: DecisionV2Registry) -> int:
+             registry: DecisionV2Registry, posture=None) -> int:
     """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。"""
-    return max(0, (state.gold or 0) - reserve_cap(state, session, registry))
+    return max(0, (state.gold or 0) - reserve_cap(state, session, registry,
+                                                  posture))
 
 
 def _crosses_engine_tier(state: GameState, name: str) -> bool:
@@ -246,8 +256,10 @@ def channel_capacity(state: GameState, session: StrategySession,
 
 def obligation(state: GameState, session: StrategySession,
                registry: DecisionV2Registry, posture=None) -> int:
-    """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。"""
-    r = overflow(state, session, registry)
+    """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。
+
+    ``posture``:调用方已解的 DP 姿态(同帧多消费方共用一次求解)。"""
+    r = overflow(state, session, registry, posture)
     if r <= 0:
         return 0
     return min(r, channel_capacity(state, session, registry, posture))
