@@ -18,6 +18,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_intention import committed_from
 from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.decision_v2.contracts import (
     Bail,
@@ -82,28 +83,6 @@ def hoard_consumer_domain(direction: DirectionView,
         return direction.hoard
     return full_domain
 
-
-def committed_from(session: StrategySession,
-                   state: Any = None) -> bool:
-    """R1(蓝图 §4.3)+ 批 2 接管:committed(已定型/非双轨期)唯一合法读端。
-
-    批 2 起语义换源(方向层接管,**与消费端换源同一 commit 面**):
-    内部委托 ``cw_intention.committed_authority`` 权威谓词(plane≥2 ∨
-    ist.phase=='locked' ∨ ist.p1_pair 非空;缺供给帧 = 保守侧 False,
-    禁缺省 True——供给点清单 D2)。旧 CommitSignals.ready 判定随老栈
-    strategy 层退役(批 4);本读端换源瞬间,既有消费点(adapter 回填/
-    prep_director 拷回/shop 循环态/deploy_bench/_pseudo_state)自动随
-    单点换源——首写端语义切换无第二 commit 面(P1)。
-
-    grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
-    变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧。
-    """
-    from sr_od.application.currency_war.cw_intention import committed_authority
-    if state is not None:
-        return committed_authority(state, session)
-    # 无现读 state 的调用面:plane 取 session.last_state(框架末次读值);
-    # 也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
-    return committed_authority(getattr(session, 'last_state', None), session)
 
 
 def _tracking_view(session: StrategySession, snapshot: Snapshot,

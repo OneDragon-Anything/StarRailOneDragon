@@ -80,9 +80,11 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
+    )
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
     )
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 / W10 摆动域)=====
@@ -1255,6 +1257,27 @@ def committed_authority(state: GameState | None,
     if getattr(ist, 'phase', '') == 'locked':
         return True
     return bool(getattr(ist, 'p1_pair', ()) or ())
+
+
+def committed_from(session: StrategySession,
+                   state: GameState | None = None) -> bool:
+    """committed(已定型/非双轨期)唯一合法读端(R1,蓝图 §4.3;分包期
+    0b 单元4 自 decision_v2.prep_brain 单符号下沉 kernel——cw_recipe
+    决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
+    本模块 ``committed_authority``,kernel 内自洽)。
+
+    - 有现读 state → 直取权威派生;
+    - 无现读 state 的调用面:plane 取 session.last_state(框架末次读值);
+      也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
+
+    grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
+    变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧
+    (穿透锁=test_cw_w620_migration_b1/test_cw_w653_c7_zero_drift)。
+    decision_v2.prep_brain 本名保留 import 重定向,消费方调用零改。
+    """
+    if state is not None:
+        return committed_authority(state, session)
+    return committed_authority(getattr(session, 'last_state', None), session)
 
 
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:

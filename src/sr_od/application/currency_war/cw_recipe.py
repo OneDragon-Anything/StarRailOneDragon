@@ -100,7 +100,7 @@ def decision_target(session, state: GameState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (`w646_plan_c_attack/` 攻击面 3 实证)。
     """
-    from sr_od.application.currency_war.decision_v2.prep_brain import (
+    from sr_od.application.currency_war.cw_intention import (
         committed_from,
     )
     if not committed_from(session, state):
