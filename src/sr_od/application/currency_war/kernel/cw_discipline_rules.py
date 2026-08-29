@@ -20,7 +20,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy_session import (
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
 
