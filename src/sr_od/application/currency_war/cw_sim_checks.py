@@ -68,6 +68,10 @@
 - 批39(r9 boss 语料判读口径):boss_hp_floor_censoring(boss 行
   hp 地板删失披露 + killed 采集断裂/败局 hp 未降跳变红——
   hp_after==1 的败局掉血是下界非真值,伤害口径必须剔删失行)。
+- W580c(W605;hp 可信位防线 checks 层显形面):seg_untrusted_hp_
+  levelup(段级;不可信 hp 帧发 LevelUp = 违规——与 decision_v2
+  消费门 blood_budget_levelup_blocked 两层分工:门在 decision 层
+  拒付,本检查在 checks 层显形;sim 恒真读恒零命中,详见段级表)。
 """
 from __future__ import annotations
 
@@ -1810,6 +1814,60 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
     return out
 
 
+def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
+    """不可信 hp 帧发 LevelUp = 违规(段级;W580 DESIGN 测试计划组5)。
+
+    判据:决策帧 hp 不可信(非(hp_readable or hp_trusted),即两位
+    皆 False——不可信谓词镜像消费门单一源 decision_v2.posture_release
+    .hp_decision_trusted;(False, True) 同节点沿用帧/(True, False)
+    真读帧是消费门放行面(DESIGN 组3 锁),检查器同面放行不虚报)
+    时出现 LevelUp 决策。与 decision_v2 消费门(discipline.blood_budget_
+    levelup_blocked,W580a)两层分工:消费门在 decision 层**拒付**
+    (不可信帧 fail-closed),本检查在 checks 层**显形**——若账本/
+    回放里不可信帧仍出现 LevelUp(门旁路、账本错位、或未来合成器/
+    策略变化引入不可信帧),检查器即刻命中,不依赖门被触发。
+
+    可信位读取口径:hp_readable = 行顶层键(生产 decisions 帧同构;
+    cw_telemetry 显影同位)、hp_trusted = state 子字典键(GameState
+    快照位)。**键缺省 = 可信**——sim 账本恒真读不携带两键 → 恒零
+    命中(纯防线验证面;旧批账本同样兼容)。
+
+    ALL IN 帧豁免(node='boss' ∧ 轮≥位面节点数,_ALLIN_MIN_ROUND
+    镜像):消费门语义「豁免优先于守卫——末战花光是时机不是血线
+    判断」的检查侧同构,不因证据缺失收紧豁免面。
+    """
+    out: list[dict] = []
+    for row in rows:
+        readable = row.get('hp_readable')
+        trusted = (row.get('state') or {}).get('hp_trusted')
+        # 缺省位 = 可信(sim 恒真读零命中);谓词镜像 hp_decision_trusted
+        # = readable or trusted——仅两位皆 False 才不可信
+        if readable is not False or trusted is not False:
+            continue
+        plane = row.get('plane') or 1
+        rn = int(row.get('round_num') or 0)
+        node = (row.get('sim') or {}).get('node') or ''
+        if node == 'boss' and rn >= _ALLIN_MIN_ROUND.get(plane, 9):
+            continue    # ALL IN 窗豁免(消费门语义镜像)
+        lv = sum(1 for a in row.get('actions') or []
+                 if a.get('__type__') == 'LevelUp')
+        if not lv:
+            continue
+        bits = []
+        if readable is False:
+            bits.append('hp_readable=False')
+        if trusted is False:
+            bits.append('hp_trusted=False')
+        out.append({
+            'plane': plane, 'round_num': rn,
+            'detail': f'不可信 hp 帧({" & ".join(bits)})'
+                      f' LevelUp×{lv}(hp={row.get("hp")})'
+                      '——不可信帧违规(W580 消费门镜像)',
+            'hp': row.get('hp'), 'levelups': lv, 'bits': bits,
+        })
+    return out
+
+
 #: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
 #: 平行,输出粒度不同——事件带定位,见本节头注释)。
 _SEGMENT_CHECKS = {
@@ -1823,6 +1881,7 @@ _SEGMENT_CHECKS = {
     'seg_p2_blood_budget_levelup': seg_check_p2_blood_budget_levelup,
     'seg_p1_blood_budget_levelup': seg_check_p1_blood_budget_levelup,
     'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
+    'seg_untrusted_hp_levelup': seg_check_untrusted_hp_levelup,
 }
 
 #: 事件列表上限(报告侧;全量走 seed 重放可再取,防批报告膨胀)
