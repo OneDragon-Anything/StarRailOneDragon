@@ -344,6 +344,61 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
                     'action': None, 'error': str(e)}
 
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出画面名"))
+    def list_screen_names() -> dict:
+        """列出全部画面名(只读)。观察类,无需游戏在线。
+
+        screen_name 是 screen_info 的匹配键(中文,须完全一致)—— goto_list
+        填写、goto_screen 目标选择、get_screen_detail 入参都从这里查。
+
+        Returns:
+            dict: ``{success, count, screen_names(排序全量), error}``。
+        """
+        try:
+            return backend.list_screen_names()
+        except Exception as e:  # noqa: BLE001 工具层统一兜底
+            return {'success': False, 'count': 0, 'screen_names': [], 'error': str(e)}
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取画面档全集"))
+    def get_screen_detail(
+        screen_name: Annotated[str, Field(description="画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
+    ) -> dict:
+        """读取单个画面档全集:全部 area(含 goto_list)+ 路由可达邻居(只读)。观察类。
+
+        analyze_screen 只回当前帧命中;本方法回建档全集 —— 核对 screen_info、
+        查「从这里能 goto 到哪」(goto_neighbors)、建档补漏用。无需游戏在线。
+
+        Returns:
+            dict: ``{success, screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[], error}``。
+        """
+        try:
+            return backend.get_screen_detail(screen_name)
+        except Exception as e:  # noqa: BLE001 工具层统一兜底
+            return {'success': False, 'screen_name': screen_name, 'screen_id': None,
+                    'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
+                    'error': str(e)}
+
+    @mcp.tool(annotations=ToolAnnotations(title="按路由导航画面"))  # 操作类:实际点击游戏
+    def goto_screen(
+        target_screen_name: Annotated[str, Field(description="目标画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
+        max_steps: Annotated[int, Field(description="最多点击次数,防路由成环", ge=1, le=30)] = 10,
+    ) -> dict:
+        """沿建档 goto_list 路由导航到目标画面。操作类(实际点击游戏)。
+
+        复用 op 层 round_by_goto_screen 的同一套路由图:识别当前画面 → 查
+        Floyd 路由 → 逐边点击对应 area。报「无路径」= 两画面间 goto 边未建档
+        (补 area 的 goto_list,别硬试坐标)。不可逆/消耗类画面(战斗确认/抽卡/
+        删除)由建档 goto_list 是否含其边决定 —— 建档时别把危险出口接进路由。
+
+        Returns:
+            dict: ``{success, current_screen, target_screen, steps[每步 画面--area-->画面], error}``。
+        """
+        try:
+            return backend.goto_screen(target_screen_name, max_steps)
+        except Exception as e:  # noqa: BLE001 工具层统一兜底
+            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
+                    'steps': [], 'error': str(e)}
+
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
     def close_game() -> str:
         """关闭游戏(发关闭窗口信号,秒级)。操作类。

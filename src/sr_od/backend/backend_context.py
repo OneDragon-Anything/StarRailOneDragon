@@ -38,10 +38,12 @@ from one_dragon.base.operation.application.application_run_context import (
     RunFinishReason,
 )
 from one_dragon.base.operation.operation_base import OperationResult
+from one_dragon.base.screen import screen_utils
 from one_dragon.base.screen.screen_area import ScreenArea
 from one_dragon.base.screen.screen_info import ScreenInfo
 from one_dragon.base.screen.screen_match import find_screen_matches
-from one_dragon.utils import cv2_utils, debug_utils, os_utils
+from one_dragon.utils import cv2_utils, debug_utils, os_utils, str_utils
+from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log, mask_text
 from sr_od.backend.schemas import (
     AnalyzeScreenResult,
@@ -780,6 +782,14 @@ class SrBackendContext:
             if template_id and self._ctx.template_loader.load_template(template_sub_dir, template_id) is None:
                 return _area_result(False, screen_name, area_name, None,
                                     error=f'模板不存在: {template_sub_dir}/{template_id}')
+            # goto_list 是画面路由图的边(填错要到运行时 round_by_goto_screen 才 log.error),
+            # 建档时就在这里拦下,并列出既有画面名供修正。
+            known_screen_names = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
+            bad_goto = [g for g in (goto_list or []) if g not in known_screen_names]
+            if bad_goto:
+                sample = '、'.join(sorted(known_screen_names)[:10])
+                return _area_result(False, screen_name, area_name, None,
+                                    error=f'goto_list 目标画面不存在: {bad_goto}(画面名须与 screen_info 的 screen_name 完全一致;示例: {sample} …可用 list_screen_names 工具查全量)')
             area = ScreenArea(
                 area_name=area_name,
                 pc_rect=Rect(int(pc_rect[0]), int(pc_rect[1]), int(pc_rect[2]), int(pc_rect[3])),
@@ -856,6 +866,159 @@ class SrBackendContext:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'screen_id': screen_id, 'screen_name': screen_name,
                     'action': None, 'error': str(e)}
+
+    def list_screen_names(self) -> dict:
+        """列出全部画面名(只读,无副作用)。
+
+        供 goto_list 填写与 goto_screen 目标选择时查全量;screen_name 是
+        screen_info 的匹配键(中文),须完全一致。
+
+        Returns:
+            ``{success, count, screen_names(排序后全量), error}``。
+        """
+        try:
+            names = sorted(s.screen_name for s in self._ctx.screen_loader.screen_info_list)
+            return {'success': True, 'count': len(names), 'screen_names': names, 'error': None}
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return {'success': False, 'count': 0, 'screen_names': [], 'error': str(e)}
+
+    def get_screen_detail(self, screen_name: str) -> dict:
+        """读取单个画面档全集(只读):全部 area 含 goto_list,加路由图可达邻居。
+
+        analyze_screen 只回当前帧命中;本方法回建档全集 —— agent 建档/核对
+        screen_info 与查「从这里能 goto 到哪」用。
+
+        Args:
+            screen_name: 目标画面名(与 screen_info 的 screen_name 完全一致)。
+
+        Returns:
+            ``{success, screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[], error}``;
+            areas 元素含 area_name/id_mark/pc_rect/text/lcs_percent/template_id/
+            template_sub_dir/template_match_threshold/goto_list。
+        """
+        try:
+            screen_info = self._ctx.screen_loader.get_screen(screen_name)  # 未找到 raise
+            areas = [
+                {
+                    'area_name': a.area_name,
+                    'id_mark': a.id_mark,
+                    'pc_rect': [a.rect.x1, a.rect.y1, a.rect.x2, a.rect.y2],
+                    'text': a.text,
+                    'lcs_percent': a.lcs_percent,
+                    'template_id': a.template_id,
+                    'template_sub_dir': a.template_sub_dir,
+                    'template_match_threshold': a.template_match_threshold,
+                    'goto_list': list(a.goto_list),
+                }
+                for a in screen_info.area_list
+            ]
+            route_map = self._ctx.screen_loader.screen_route_map.get(screen_name, {})
+            neighbors = sorted(
+                to for to, route in route_map.items()
+                if to != screen_name and route is not None and route.can_go
+            )
+            return {
+                'success': True, 'screen_name': screen_name,
+                'screen_id': screen_info.screen_id, 'pc_alt': screen_info.pc_alt,
+                'area_count': len(areas), 'areas': areas,
+                'goto_neighbors': neighbors, 'error': None,
+            }
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return {'success': False, 'screen_name': screen_name, 'screen_id': None,
+                    'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
+                    'error': str(e)}
+
+    def _find_area_click_point(self, screen: 'MatLike', screen_info: ScreenInfo,
+                               area: ScreenArea) -> Point | None:
+        """在截图内定位 area 的可点击点;找不到返 None。
+
+        与 screen_utils.find_and_click_area 同匹配逻辑,差异:pc_alt 取
+        ``area.pc_alt or screen_info.pc_alt`` —— 锁光标画面(如大世界)的
+        area 通常不单设 pc_alt,只按 area 判会落空。
+        纯定位区(无 text 无 template)直接回 area.center。
+        """
+        if area.is_text_area:
+            ocr_result_list = self._ctx.ocr_service.get_ocr_result_list(
+                image=screen, rect=area.rect, color_range=area.color_range)
+            for ocr_result in ocr_result_list:
+                if str_utils.find_by_lcs(gt(area.text, 'game'), ocr_result.data,
+                                         percent=area.lcs_percent):
+                    return ocr_result.center
+            return None
+        if area.is_template_area:
+            mrl = self._ctx.tm.crop_and_match_template(
+                screen, area.rect, area.template_sub_dir, area.template_id,
+                threshold=area.template_match_threshold)
+            if mrl.max is None:
+                return None
+            return mrl.max.center + area.rect.left_top
+        return area.center
+
+    def goto_screen(self, target_screen_name: str, max_steps: int = 10) -> dict:
+        """沿建档 goto_list 路由导航到目标画面。操作类(会实际点击游戏)。
+
+        复用 op 层 round_by_goto_screen 的同一套路由图(screen_loaderFloyd
+        预计算),供 MCP agent 手工导航用,不再逐步 click_game 造轮子。
+        边界:路由取决于画面档 goto_list 的完整度 —— 报「无路径」= 两画面间
+        的跳转边未建档,补 area 的 goto_list 而非硬试坐标。每步点击后等
+        1.5s 转场再识别(同 op 层 success_wait 口径)。
+
+        Args:
+            target_screen_name: 目标画面名(与 screen_info 的 screen_name 一致)。
+            max_steps: 最多点击次数(防路由环/坏边打转)。
+
+        Returns:
+            ``{success, current_screen, target_screen, steps[每步 <画面>--<area>--><画面>], error}``。
+        """
+        self._ensure_ready()
+        if self._ctx.controller is None or not self._ctx.controller.is_game_window_ready:
+            raise BackendNotReadyError('游戏窗口未就绪')
+        known = {s.screen_name for s in self._ctx.screen_loader.screen_info_list}
+        if target_screen_name not in known:
+            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
+                    'steps': [], 'error': f'目标画面不存在: {target_screen_name}(用 list_screen_names 查全量)'}
+        steps: list[str] = []
+        current: str | None = None
+        try:
+            for _ in range(max(1, max_steps)):
+                # 对齐 analyze:controller.get_screenshot 返 ndarray;
+                # controller.screenshot() 返 (image, 时间) 元组,不能直接喂识别。
+                image = self._ctx.controller.get_screenshot(independent=False)
+                if image is None:
+                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                            'steps': steps, 'error': '截图失败'}
+                current = screen_utils.get_match_screen_name(self._ctx, image)
+                if current is None:
+                    return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
+                            'steps': steps, 'error': '当前画面无法识别(过渡帧或未建档),稍后重试或先 analyze_screen 判现状'}
+                self._ctx.screen_loader.update_current_screen_name(current)
+                if current == target_screen_name:
+                    return {'success': True, 'current_screen': current, 'target_screen': target_screen_name,
+                            'steps': steps, 'error': None}
+                route = self._ctx.screen_loader.get_screen_route(current, target_screen_name)
+                if route is None or not route.can_go or not route.node_list:
+                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                            'steps': steps,
+                            'error': f'路由图中无 {current} -> {target_screen_name} 的路径(画面档 goto_list 未建档)'}
+                node = route.node_list[0]
+                screen_info = self._ctx.screen_loader.get_screen(current)
+                area = self._ctx.screen_loader.get_area(current, node.from_area)
+                to_click = self._find_area_click_point(image, screen_info, area)
+                if to_click is None:
+                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                            'steps': steps,
+                            'error': f'画面 {current} 与建档不符:area {node.from_area} 未命中(画面可能已流转,重试或 analyze_screen 核对)'}
+                if not self._ctx.controller.click(to_click, pc_alt=area.pc_alt or screen_info.pc_alt):
+                    return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                            'steps': steps, 'error': f'点击 {current}/{node.from_area} 失败'}
+                steps.append(f'{current} --{node.from_area}--> {node.to_screen}')
+                self._ctx.screen_loader.update_current_screen_name(node.to_screen)
+                time.sleep(1.5)  # 等转场动画,下一轮截图再识别(同 op 层 success_wait 口径)
+            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                    'steps': steps, 'error': f'超过 max_steps={max_steps} 步未到达 {target_screen_name}(路由可能成环)'}
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                    'steps': steps, 'error': str(e)}
 
     def _safe_area_count(self, screen_name: str) -> int | None:
         """异常路径下尽量取 area 数(取不到返 None,不再抛)。"""
