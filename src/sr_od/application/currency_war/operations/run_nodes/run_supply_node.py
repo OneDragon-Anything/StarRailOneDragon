@@ -105,7 +105,8 @@ class RunSupplyNode(RunNode):
         # ② 显式采集性返回快照(标记 phase='supply_detour';actions=[] 非购买轮)
         try:
             _snap_screen = self.screenshot()
-            _state = read_game_state(self.ctx, _snap_screen)
+            # ADR-0462:已点「返回备战界面」+ settle = 干净备战帧 → P1 全量基线读
+            _state = read_game_state(self.ctx, _snap_screen, phase='prep_clean')
             cw_telemetry.record_decision(
                 _state, target_comp='', candidate_scores={}, eval_breakdown={},
                 actions=[], gold_point=True,

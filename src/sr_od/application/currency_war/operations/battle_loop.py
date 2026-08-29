@@ -753,7 +753,9 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
         if self._iter == 1 and self._is_new_match:
-            _st0 = read_game_state(self.ctx, screen)
+            # ADR-0462:消费面只有 plane/round(恢复对局检测/on_match_start 归属标记)
+            # → battle/过渡帧最小读(仅位面轮次,其余字段该帧无备战可读)。
+            _st0 = read_game_state(self.ctx, screen, phase='battle_or_transit')
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
             if _st0.round_num > 1 or _st0.plane > 1:
