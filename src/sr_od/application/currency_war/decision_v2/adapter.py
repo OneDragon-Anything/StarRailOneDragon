@@ -156,8 +156,10 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.deploy_cap = snapshot.deploy_cap
     st.front_max = snapshot.front_size
     st.back_max = snapshot.back_size
-    # R1(蓝图 §4.3):committed 唯一合法读端(prep_brain.committed_from);
-    # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填。
+    # R1(蓝图 §4.3)+ 批 2 接管:committed 唯一合法读端
+    # (prep_brain.committed_from,内部 = cw_intention 权威派生);
+    # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填
+    # (值源 = 方向层权威,P1 同 commit 面)。
     from sr_od.application.currency_war.decision_v2.prep_brain import committed_from
     st.dual_track_phase = not committed_from(session)
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])

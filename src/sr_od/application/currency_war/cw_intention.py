@@ -354,7 +354,7 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
     词缀→机制归一走 ``AFFIX_MECHANIC_MAP`` 单一源(未知词缀原样透传,与
     ScoreContext.mechanics 同构);未入映射的词缀(如 灼热轰炸)按不命中
     处理(宁缺勿错,见 STRONG_ENV_MECHS 注释)。消费方=update_intention
-    的锁线信号过滤(开关=registry.line_env_gate_enabled),已锁线不辖
+    的锁线信号过滤(行为无条件化,W628 开关清偿),已锁线不辖
     (环境缺失只「不主动选」,不没收已锁线——accumulator_family §3 同义)。
     """
     comp = get_comp(comp_name)
@@ -977,14 +977,15 @@ def update_intention(state: GameState, ist: IntentionState,
                 if pair else 'lock_pair:wait'
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
-        # W607 H1 锁线环境判据(开关=registry.line_env_gate_enabled,默认关
-        # =零漂移):累积型线强环境不命中(False)的信号本轮不锁(缓锁——
-        # 「无环境不选」只辖**主动选线**,已锁线与判据不辖(None)/信息缺失
-        # 帧不拦;观察期=line_env_lock_min_round)。已锁分支(上方 locked)
-        # 有意不过此滤:环境缺失不没收已锁线(accumulator_family §3 同义)。
+        # W607 H1 锁线环境判据(行为无条件化;W628 三开关清偿——原
+        # registry.line_env_gate_enabled 开关已删,四步清偿证据归
+        # w628_migration_b2/STATUS):累积型线强环境不命中(False)的信号
+        # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
+        # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
+        # 已锁分支(上方 locked)有意不过此滤:环境缺失不没收已锁线
+        # (accumulator_family §3 同义)。
         _reg_env = registry or DEFAULT_REGISTRY
-        if _reg_env.line_env_gate_enabled \
-                and state.round_num >= _reg_env.line_env_lock_min_round:
+        if state.round_num >= _reg_env.line_env_lock_min_round:
             _n0 = len(sigs)
             sigs = [s for s in sigs
                     if _line_env_qualified(state, s.comp_name) is not False]
@@ -1104,6 +1105,36 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'fallback')
     chars, equips = _line_hoard(comp)
     return HoardTarget(frozenset(chars), frozenset(equips), 'fallback')
+
+
+def committed_authority(state: GameState | None,
+                        session: StrategySession | None) -> bool:
+    """committed(已定型/非双轨期)权威判定(方向层批 2 接管;单一派生源)。
+
+    - **权威序**(任一成立即 True):
+      ① ``state.plane >= 2``——P2 起恒定型(语义边界同旧 update_target:
+         定型边界=进位面 2,严于文档口径 P2-3);
+      ② ``session.v3_intention.phase == 'locked'``——意向状态机已锁线;
+      ③ ``ist.p1_pair`` 非空——P1 配方锁已立(W145/ADR-0357 产物形态)。
+    - **缺供给帧 = 保守侧 False**(=双轨=攒息):ist 不可得/字段缺失时
+      **禁止**缺省 True——True=已定型=激进侧,攒息门/双轨买门全开
+      (供给点清单 D2:拔掉供给探针下必须落保守侧,变异锁钉住)。
+    - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
+      .committed_from``(唯一读端,内部委托本函数)取值;
+      state/session 侧双轨字段降级为兼容残留(读点归零,
+      grep 守卫锁),写端退役随老栈(strategy 层)批 4。
+
+    与旧语义(CommitSignals.ready 合取)的分歧属方向层接管预期区,
+    逐帧对拍产物归 w628_migration_b2 对照报告。
+    """
+    if state is not None and getattr(state, 'plane', 1) >= 2:
+        return True
+    ist = getattr(session, 'v3_intention', None) if session is not None else None
+    if ist is None:
+        return False
+    if getattr(ist, 'phase', '') == 'locked':
+        return True
+    return bool(getattr(ist, 'p1_pair', ()) or ())
 
 
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:

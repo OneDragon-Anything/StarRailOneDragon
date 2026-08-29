@@ -747,8 +747,9 @@ class DisciplineView:
         if self.allin:
             # [18] 位面末最后一战 ALL IN:地板全清零(唯一路径;hp 报警
             # 不是 ALL IN 的触发——报警态下此窗开通是位面末授权,
-            # 非「报警触发」)
-            reg = replace(reg, interest_floor=0, war_floor=0,
+            # 非「报警触发」)。息线清零走 override 通道(D3 双源清偿:
+            # interest_floor 字段已删,标定单一源 = interest_cap × 10 派生)
+            reg = replace(reg, interest_floor_override=0, war_floor=0,
                           rebirth_floor=0, boss_floor=0)
         elif self.war_floor_override is not None:
             reg = replace(reg, war_floor=self.war_floor_override)

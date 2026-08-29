@@ -16,6 +16,8 @@ score 返回 (value, breakdown)——每轮候选×分数表判读可直接读�
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sr_od.application.currency_war.cw_line_defs import (
     RECIPE_BASE,
     recipe_tier,
@@ -263,7 +265,7 @@ def score_state(state: GameState, registry: DecisionV2Registry,
         )
         _rel_gate = spend_gate_active(session, registry)
     interest = 0.0
-    if not _rel_gate and (state.gold or 0) >= registry.interest_floor:
+    if not _rel_gate and (state.gold or 0) >= registry.interest_floor():
         interest = (min(registry.interest_cap, (state.gold or 0) // 10)
                     * registry.interest_rounds)
     # 目标件持有进度(集合隶属计数:持有域内∈目标集的星级加权
@@ -607,7 +609,7 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
         if math.isinf(e1) or e1 <= 0:
             continue
         # [3] 单次预算前提:一次刷 + 买入后仍 ≥ 满息地板
-        if (state.gold or 0) < registry.interest_floor + refresh_cost \
+        if (state.gold or 0) < registry.interest_floor() + refresh_cost \
                 + ch.cost:
             continue
         val = benefit - e1 * refresh_cost
@@ -955,8 +957,8 @@ def score_candidate(cand: Candidate, state: GameState,
     if (state.plane == 1 and state.round_num >= 5
             and not is_emergency(state, registry)
             and not _rel_gate
-            and (state.gold or 0) >= registry.interest_floor
-            and (after_state.gold or 0) < registry.interest_floor):
+            and (state.gold or 0) >= registry.interest_floor()
+            and (after_state.gold or 0) < registry.interest_floor()):
         # ADR-0332 息崖平滑(war 破息窗):买入跌破 50 满息平台时,评分
         # 原扣全平台消失(-25),而同一窗口纪律侧(boss_breaker r≥5 P1,
         # floor 10 / 保血弃息)授权破 50 花费——双重计罚让 gold 50-53
@@ -1057,3 +1059,53 @@ def score_all(cands: list[Candidate], state: GameState,
         v, bd = score_candidate(c, state, session, registry)
         out.append((c, round(v, 4), bd))
     return out
+
+
+# ===== R5 数据平表 + EffectSpec 打分偏置通道(W628 批 2 效果层归位)=====
+# 蓝图 §4.2-R5:拍值打分钩子(box_card/star_tome/wish_trial,原 default_
+# strategy 内联魔数)降为「名字→标定权重」数据平表;本表 = 唯一标定源,
+# 钩子消费面读表取值(数值原样迁移,行为零漂移;战场族条目推迟挂账)。
+@dataclass(frozen=True)
+class PickBiasTable:
+    """单帧单发采购拍值平表(R5;数值出处 = 原 default_strategy 钩子内联值)。"""
+    # 星徽秘典四选一(decide_star_tome)
+    tome_target_faction: float = 40.0     # 终局线需要的阵营星徽
+    tome_board_hit: float = 8.0           # 板上已有该阵营(每件;边际高)
+    tome_framework_faction: float = 15.0  # 过渡配方框架阵营(双轨期)
+    # 祈愿试炼选卡(decide_wish_trial)
+    wish_gold: float = 25.0               # 金币类(直接经济,阵容无关)
+    wish_faction: float = 20.0            # target/框架阵营相关词
+    wish_operation: float = 10.0          # 刷新/购买操作向(与 DP 攒息协同)
+    # 武装箱四选一(decide_box_card)
+    box_key_equip: float = 100.0          # target.key_equips 命中(成型加速)
+    box_key_material: float = 30.0        # key_equip 合成材料(两跳)
+    # 材料通用性 _material_value 表维持其模块单一源(生命周期/配方数)不变
+
+
+PICK_BIAS = PickBiasTable()
+
+
+def effect_pick_bias(session: StrategySession, option_name: str) -> float:
+    """EffectSpec → 拍值偏置通道(批 2 消费接入;R5 消费面)。
+
+    - 输入 = session.effect_inventory 在场效果条目;按条目 spec 的
+      ``notes`` 声明偏置选项名(平表外挂,数值随实采/sim 标定批填,
+      **缺省 0 = 无偏置**,不猜值——strategy-work「决策规则数学先行」门);
+    - 战场族(BATTLEFIELD category)推迟:战场改写类偏置语义待执行预判批
+      (W610 P2-2)定义,本通道暂只认 ECONOMY/STATE 族;
+    - pending=True 条目不参与(二义未定谳,消费端走保守支,cw_effect_
+      inventory 契约)。
+    """
+    del option_name   # 通道预留:选项名级偏置随标定批启用(当前 spec 级=0)
+    inv = getattr(session, 'effect_inventory', None)
+    if inv is None:
+        return 0.0
+    bias = 0.0
+    for entry in getattr(inv, 'entries', ()):
+        spec = getattr(entry, 'spec', None)
+        if spec is None or getattr(spec, 'pending', False):
+            continue
+        if getattr(spec, 'category', None) is not None:
+            if getattr(spec.category, 'value', '') not in ('economy', 'state'):
+                continue   # 战场族推迟(设计挂账,不猜语义)
+    return bias

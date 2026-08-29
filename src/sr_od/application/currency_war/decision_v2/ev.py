@@ -333,20 +333,20 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     # 0.12 < 过账所需 0.30)。前置门位置=臂①之后②之前:E1 优先级最高,
     # 例外是白名单不是加分。
     if registry.below_floor_spend_gate_enabled \
-            and after < registry.interest_floor \
+            and after < registry.interest_floor() \
             and (working_gold - cost) // 10 < working_gold // 10:
         return ''    # below_floor_spend:息线以下破档升级无例外
     # ② DP 花费授权(平台未破)
     posture = round_posture(state, session)
     if posture is not None and getattr(posture, 'level_up', False) \
-            and after >= registry.interest_floor:
+            and after >= registry.interest_floor():
         return 'dp'
     # ③ 静态 EV 账(V−C≥0;V 含省刷金项,W126/P5 检验点②)
     v = val - int_emb + levelup_refresh_saving(state, session, registry)
     loss_now = _interest_at(working_gold, registry) \
         - _interest_at(after, registry)
     platform = (registry.interest_cap - _interest_at(after, registry)) \
-        if after < registry.interest_floor else 0
+        if after < registry.interest_floor() else 0
     c = (max(0, loss_now) + platform) * cross_plane_remaining_nodes(state)
     return 'static_ev' if v - c >= 0 else ''
 

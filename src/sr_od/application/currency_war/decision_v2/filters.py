@@ -151,7 +151,7 @@ def c1_directed_active(state: GameState, session: StrategySession,
             - registry.boss_tax_p75_by_plane[state.plane]) \
             < registry.emergency_hp:
         return False    # d<25 投影必入应急带:FLIP 末窗投影臂辖区,C1 让位
-    if (state.gold or 0) <= registry.interest_floor:
+    if (state.gold or 0) <= registry.interest_floor():
         return False    # 只辖溢余段(必花语义的成本恒 0 前提,P11)
     return boss_first_buy_phase(state, session, registry)
 

@@ -403,8 +403,19 @@ class EquipAll(SrOperation):
             from sr_od.application.currency_war.cw_state import GameState
             _st = (_match.session.last_state if _match is not None else None) or GameState()
             _form = form_progress(_tgt_comp, _st)
-        _dual = bool(getattr(_match.session, 'last_state', None) is not None
-                     and _match.session.last_state.dual_track_phase) if _match is not None else False
+        # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
+        # committed 读端唯一化(decision_v2.prep_brain.committed_from,
+        # 内部 = cw_intention 权威派生);本处旧形为 last_state 通道裸直读
+        # 双轨字段(在「session 读点」守卫措辞之外,W623 D3 活证据),随本批
+        # 并入守卫辖域(state 通道 grep 锁,test_cw_w620/w628)。
+        from sr_od.application.currency_war.decision_v2.prep_brain import (
+            committed_from as _committed_from,
+        )
+        _dual = (not _committed_from(_match.session,
+                                     _match.session.last_state)
+                 if (_match is not None
+                     and getattr(_match.session, 'last_state', None)
+                     is not None) else True)   # 缺供给 = 双轨保守侧(D2)
         # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
         # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
         # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);

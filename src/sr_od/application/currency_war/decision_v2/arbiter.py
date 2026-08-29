@@ -112,7 +112,7 @@ def _active_floor(state: GameState, session: StrategySession,
         return registry.war_floor
     if derive_phase(state, session, registry) is Phase.FORM:
         return registry.form_floor
-    return registry.interest_floor
+    return registry.interest_floor()
 
 
 def _round_state_dims(state: GameState, session: StrategySession,
@@ -210,8 +210,8 @@ def _check_constraint(name: str, cand: Candidate,
             #   (此处硬拒会架空总账——EV>0 的破息买是本批的合法放行面);
             # - HOARD(金 <50):[11] 无损购买例外(同档/1费)放行,
             #   跨档拒(攒息——三通道默认关,例外=[11]/[33]/DP 花费授权)。
-            if working.gold >= registry.interest_floor:
-                if working.gold - cost < registry.interest_floor:
+            if working.gold >= registry.interest_floor():
+                if working.gold - cost < registry.interest_floor():
                     return None    # 交 interest_rule EV 裁决
             else:
                 posture = round_posture(state, session)
@@ -239,7 +239,7 @@ def _check_constraint(name: str, cand: Candidate,
                     return RejectReason(
                         'gold_floor', 'gold', working.gold % 10 + cost,
                         f'below_floor_spend(金{working.gold}<息线'
-                        f'{registry.interest_floor},刷新无例外)')
+                        f'{registry.interest_floor()},刷新无例外)')
                 if dp_spend and cand.tag in ('levelup', 'refresh'):
                     return None    # DP 说花→授权放行(§3.2d;gate 开时
                     # 刷新已在上方 E2 分支收窄,本臂只余 levelup 及 gate 关)
@@ -283,10 +283,10 @@ def _check_constraint(name: str, cand: Candidate,
             return None
         # 金<50 时辖权让位 gold_floor 的相位地板(HOARD 摊档/FORM 保险丝)
         # ——此处只辖「从 ≥50 跌破 50」的降息档(原辖域保留)
-        if working.gold < registry.interest_floor:
+        if working.gold < registry.interest_floor():
             return None
         after = working.gold - cost
-        if after >= registry.interest_floor:
+        if after >= registry.interest_floor():
             return None
         if cost == 1:
             return None    # [11] 1 费净0(1★卖出全额退)

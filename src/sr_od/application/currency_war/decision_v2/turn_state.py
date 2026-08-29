@@ -48,6 +48,11 @@ class DirectionView:
     locked: bool = False
     p1_pair: tuple[str, ...] = ()
     hoard: frozenset[str] = frozenset()
+    hoard_readable: bool = True
+    """D1 可信位(供给点清单 D1):False = 本帧 hoard 投影失败——空集不再
+    兼任「真无囤货目标」与「不可得」双义,消费侧经
+    ``prep_brain.hoard_consumer_domain`` 对不可得帧走保守域(整库)而非
+    空集放行。变异探针(投影抛错)下买侧行为 ≠ 空集放行(单帧锁钉)。"""
     gates: Mapping[str, bool] = field(default_factory=lambda: MappingProxyType({}))
     fallback_comp: str = ''
     committed: bool = True

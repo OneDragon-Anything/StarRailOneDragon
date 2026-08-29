@@ -133,7 +133,7 @@ def e_rounds(comp: Comp, state: GameState,
     if p <= 0:
         return math.inf
     cost = state.shop_refresh_cost or 2
-    affordable = max(0, ((state.gold or 0) - reg.interest_floor) // cost)
+    affordable = max(0, ((state.gold or 0) - reg.interest_floor()) // cost)
     bench_free = max(0, BENCH_CAPACITY - bench_occupied(state.bench or []))
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p

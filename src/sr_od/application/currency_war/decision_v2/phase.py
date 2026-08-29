@@ -180,6 +180,6 @@ def derive_phase(state: GameState, session: StrategySession,
     """
     if not form_ok(state, session, registry):
         return Phase.FORM
-    if (state.gold or 0) >= registry.interest_floor:
+    if (state.gold or 0) >= registry.interest_floor():
         return Phase.SPEND
     return Phase.HOARD

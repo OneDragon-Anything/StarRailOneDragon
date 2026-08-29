@@ -1181,10 +1181,16 @@ class DecisionV2Registry:
         'deploy_cap',          # 上阵数 ≤ max_units
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
-    interest_floor: int = 50      # [17] 满息地板(常态/追赶)
+    #: interest_floor 字段已删(D3 双源清偿,W628):息线单一源 =
+    #: ``interest_floor()`` 派生(interest_cap × 10,ADR-0463 恒等式),
+    #: 纪律视图的 ALL IN 清零改走 ``interest_floor_override`` 注入通道。
     war_floor: int = 30           # 战力模式地板(计划内补强非 panic)
     rebirth_floor: int = 20       # [18] 应急保留重生基数
     boss_floor: int = 10          # r278 boss 破息地板
+    #: 息线覆盖通道(纪律视图专用,非标定旋钮):None=用派生息线;
+    #: ALL IN 窗 = 0(唯一清零路径,discipline 裁决视图注入)。
+    #: A/B 常量注入面只留 interest_cap 一个旋钮(D3 验收判据)。
+    interest_floor_override: int | None = None
     #: (levelup_interest_engine_gate 已随 W119 删除:[12] 门收编 EV 总账
     #:  ——ev.levelup_ev_authorized 单一裁决,ADR-0347;A1/A2 镜像清)
     #: (refresh_game_cap/levelup_reserve_gold 已随 W126/ADR-0349 删除:
@@ -1198,16 +1204,14 @@ class DecisionV2Registry:
     #: bench 槽容量(游戏常数 9)
     bench_capacity: int = 9
 
-    # ===== W607 词缀消费面三开关(H1 锁线环境判据 / H2② 生锈穿戴豁免 / H3 opening hold 收窄)=====
+    # ===== W607 词缀消费面三开关(W628 清偿)=====
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
     # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释。
-    # 三开关默认关=零漂移锚;开臂走 sim A/B(臂=构造改动副本注入,先例同 line_switch 家族)。
-    #: H1:累积型线(hp_charge_stack)锁线环境判据——True 时强环境机制集不命中
-    #: (STRONG_ENV_MECHS 交集空)的累积型线信号被缓锁(不进当轮锁线候选,词缀
-    #: 空帧=信息缺失不拦,ADR-0107 动态剔除同款)。开臂判据挂账:sim A/B 双臂
-    #: n≥100(出口=选线分布:万敌线仅现于强环境局+环境缺失局锁线帧数=0);
-    #: 简报归属滞后修复已落地(ADR-0460 缓冲补写,词缀可信位半边已满足)。
-    line_env_gate_enabled: bool = False
+    # 清偿记录(H1 已物理删字段;H2②/H3 行为无条件化、字段物理删除随批 3
+    # ——读端在 operations/prep/equip_all.py,该文件批 3 在飞故本批禁碰,
+    # 显式战术权衡,证据归 w628_migration_b2/STATUS):
+    #: (H1 line_env_gate_enabled 已删:行为无条件化,cw_intention 锁线信号
+    #: 过滤恒在;sim A/B 与单帧锁证据见 w607_affix_consumption/AB_REPORT.md)
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
     #: 误判的观察期)。简报词缀在位面切换即读得(battle_loop 位面简报分支),
     #: 无窗口误判实证,默认 1=判据全程在辖;如实机判读发现位面首帧词缀滞后,
@@ -1215,16 +1219,15 @@ class DecisionV2Registry:
     line_env_lock_min_round: int = 1
     #: H2②:库藏生锈在场(cw_comps.RUST_AFFIX_NAME ∈ enemy_affixes)时豁免
     #: opening/过渡 hold——每件 owned 滞留=敌 +3%伤/-4%减伤(competitors.md:45),
-    #: 滞留的边际代价随件数单调上升,压倒「攒给成型核心」的机会成本。开臂判据
-    #: 挂账:sim A/B(出口=带词条局 owned 滞留件数+穿戴率,anomalies 锚
-    #: 「滞留≥3 件跨 2 轮」=0)。
-    rust_wear_release_enabled: bool = False
-    #: H3:opening hold(P1 r≤2)收窄——True 时仅「当前节点非战斗类」才 hold
+    #: 滞留的边际代价随件数单调上升,压倒「攒给成型核心」的机会成本。
+    #: 行为无条件化(恒 True);单帧锁已闭环、实机锚点预注册
+    #: (w607_affix_consumption/AB_REPORT.md 开臂建议节)。
+    rust_wear_release_enabled: bool = True
+    #: H3:opening hold(P1 r≤2)收窄——仅「当前节点非战斗类」才 hold
     #: (node_type ∈ opening_hold_battle_nodes → 不 hold;r2 战斗节点白板挨打
     #: 病灶,局22 实证)。node_type 缺失(None)维持现状 hold(保守降级:观察
-    #: 缺失不改变既有行为,宁缺勿错)。开臂判据挂账:sim A/B(出口=有战斗
-    #: 节点 r2 局的 worn>0 帧占比)。
-    opening_hold_battle_gate_enabled: bool = False
+    #: 缺失不改变既有行为,宁缺勿错)。行为无条件化(恒 True),依据同上。
+    opening_hold_battle_gate_enabled: bool = True
     #: H3 战斗类节点型名单(词汇表单一源=GameState.node_type 顶部标签 OCR:
     #: boss/补给/遭遇/巨星/投资/战斗/精英/奖励)。巨星/投资等未知是否战斗
     #: →不入集=维持 hold(保守侧,不猜)。
@@ -1269,6 +1272,21 @@ class DecisionV2Registry:
     #: 审计表两维的显式枚举(新增动作类型/资源维时审计表强制过检)
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
+
+    def interest_floor(self) -> int:
+        """息线单一源(D3 双源清偿,W628):派生 = interest_cap × 10。
+
+        - 恒等式出处 = ADR-0463/W611 §2.2(满息平台 = 封顶档 × 10 金);
+          原独立字段 ``interest_floor``(=50)与派生式并存构成双源,标定
+          批动 interest_cap 时两源分歧——本方法收编为唯一取值口;
+        - 覆盖通道 = ``interest_floor_override``(仅纪律视图 ALL IN 清零,
+          非标定旋钮);
+        - 消费守卫:除本方法与本类定义处外 ``interest_floor`` 读点 = 0
+          (grep 锁 test_cw_w628_migration_b2)。
+        """
+        if self.interest_floor_override is not None:
+            return self.interest_floor_override
+        return self.interest_cap * 10
 
 
 # ===== hp 对账层下行守卫标定常量(ADR-0431;消费方 cw_reconcile.reconcile_hp)=====

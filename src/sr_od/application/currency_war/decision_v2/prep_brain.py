@@ -4,11 +4,13 @@
 方向/预算投影一次装配)→ ``decide()``(方向→预算→选择)。纪律(蓝图 §2):
 投影幂等重算、单一写端(assemble 装配点)、派生值一律不落 session。
 
-**批 1(接线批)行为语义 = 与旧环等价**(蓝图 §7 批 1 行):``_select()``
-仍复用现役决策核(既有 candidates/scoring 经 ``decide_prep_action``),
-本批只接线骨架与数据流;决策器接管与四层折叠归批 2(届时 _select 内联
-为私有函数,消费点改显式参数)。方向权威 = cw_intention 只读快照;
-预算权威 = economy_cycle + posture_release 现役件。
+**批 2(方向层接管)语义变化**(蓝图 §7 批 2 行 + R1 §4.3):
+``committed`` 权威 = cw_intention 派生(``committed_from`` 单点换源,
+消费端同 commit 面);意向状态机驱动点显式化(``drive_intention``,
+P7:每 game-round 恰一次,锚定决策环入口,段级重入守卫幂等)。
+``_select()`` 仍复用现役决策核(四层折叠与 step 级接管归批 3/4);
+方向权威 = cw_intention 只读快照;预算权威 = economy_cycle +
+posture_release 现役件。
 """
 from __future__ import annotations
 
@@ -36,15 +38,71 @@ if TYPE_CHECKING:
     )
 
 
-def committed_from(session: StrategySession) -> bool:
-    """R1(蓝图 §4.3):``session.dual_track_phase`` 的唯一合法读端。
+def drive_intention(state: Any, session: StrategySession,
+                    registry: DecisionV2Registry | None = None) -> None:
+    """意向状态机驱动点(P7 契约,批 2 方向层接管):每 game-round 恰一次。
 
-    返回 committed(已定型;= 非双轨期)。批 1 写端仍是老栈 update_target
-    (批 2 随其退役,committed 改装配点从定型信号幂等派生);消费面经本
-    读端取值,grep 守卫锁「session.dual_track_phase 直读点归零(本函数
-    之外)」——禁 getattr 缺省兜底散落(缺省 False = 恒已定型 = 激进化)。
+    - 锚定 = 决策环入口(prep_director 环入口 update_target 之前调用);
+      驱动键 = (plane, round_num),段级重入守卫 = session.v3_intention_key
+      (与 decision_v2 栈的 update_target 驱动共享同一键面——双驱动并存
+      天然幂等,同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);
+    - ist 归属(session 保留清单裁决,P4):``v3_intention`` 是跨轮状态机
+      计数器族(miss_count/frozen_rounds/evicted/tracks),显式归 session
+      保留清单;局级重置由「每局新建 StrategySession」保证,跨局零残留
+      (行为锁 test_cw_w628);
+    - registry 显式参数(P6):撤销阈值/门判据注入面直达状态机,禁在
+      折叠后静默落缺省表——缺省 None 只用于无注入臂的缺省栈。
     """
-    return not bool(getattr(session, 'dual_track_phase', False))
+    from sr_od.application.currency_war.cw_intention import (
+        IntentionState,
+        update_intention,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        ist = IntentionState()
+        session.v3_intention = ist
+    key = (getattr(state, 'plane', 1), getattr(state, 'round_num', 1))
+    if getattr(session, 'v3_intention_key', None) == key:
+        return   # 同轮已驱动:幂等出口(重入只保派生视图刷新,不计数)
+    session.v3_intention_key = key
+    update_intention(state, ist, session, registry=registry)
+
+
+def hoard_consumer_domain(direction: DirectionView,
+                          full_domain: frozenset[str]) -> frozenset[str]:
+    """hoard 买侧消费域(D1 语义):不可得帧走保守域,禁静默空集放行。
+
+    - ``direction.hoard_readable`` True → hoard 目标集(可能为空 = 真无
+      囤货目标,语义成立);
+    - False(投影失败帧)→ ``full_domain``(调用侧给保守域,如整库可买
+      面)——「投影失败」与「真无目标」不再折叠为同一空集表示。
+    """
+    if direction.hoard_readable:
+        return direction.hoard
+    return full_domain
+
+
+def committed_from(session: StrategySession,
+                   state: Any = None) -> bool:
+    """R1(蓝图 §4.3)+ 批 2 接管:committed(已定型/非双轨期)唯一合法读端。
+
+    批 2 起语义换源(方向层接管,**与消费端换源同一 commit 面**):
+    内部委托 ``cw_intention.committed_authority`` 权威谓词(plane≥2 ∨
+    ist.phase=='locked' ∨ ist.p1_pair 非空;缺供给帧 = 保守侧 False,
+    禁缺省 True——供给点清单 D2)。旧 CommitSignals.ready 判定随老栈
+    strategy 层退役(批 4);本读端换源瞬间,既有消费点(adapter 回填/
+    prep_director 拷回/shop 循环态/deploy_bench/_pseudo_state)自动随
+    单点换源——首写端语义切换无第二 commit 面(P1)。
+
+    grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
+    变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧。
+    """
+    from sr_od.application.currency_war.cw_intention import committed_authority
+    if state is not None:
+        return committed_authority(state, session)
+    # 无现读 state 的调用面:plane 取 session.last_state(框架末次读值);
+    # 也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
+    return committed_authority(getattr(session, 'last_state', None), session)
 
 
 def _tracking_view(session: StrategySession, snapshot: Snapshot,
@@ -75,16 +133,23 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
     ist = getattr(session, 'v3_intention', None)
     locked = ist is not None and getattr(ist, 'phase', '') == 'locked'
     hoard: frozenset[str] = frozenset()
+    hoard_readable = True   # D1:可信位——失败帧 False,消费侧走保守域
     if ist is not None:
         try:
             ht = hoard_target_set(state, ist)
             hoard = frozenset(ht.char_targets) | frozenset(ht.equip_targets)
-        except Exception:   # noqa: BLE001  投影只读:失败退空集(不阻塞决策)
-            log.warning('[cw][prep_brain] hoard 投影失败(退空集)', exc_info=True)
+        except Exception:   # noqa: BLE001  投影失败显式暴露(D1):不再静默退空集
+            hoard_readable = False
+            log.warning('[cw][prep_brain] hoard 投影失败(hoard_readable=False,'
+                        '消费侧走保守域)', exc_info=True)
+    # W629-R2 镜像雷修复:三门快照改**直读旗标**(禁 getattr 缺省)——
+    # F5 flag 随批 3 清偿删除时,本镜像点必须同 commit 面删除;若漏删,
+    # 直读即 AttributeError 显式炸出(旧 getattr(...,False) 缺省 = 三门
+    # 全关静默坍缩,变异锁 test_cw_w628 钉住快照 == 旗标真值)。
     gates = {
-        name: bool(getattr(cw_intention, name, False))
-        for name in ('P1_FINAL_LINE_GATE', 'P1_RECIPE_LOCK',
-                     'P1_LOCK_TRANSITION_PAIR')
+        'P1_FINAL_LINE_GATE': bool(cw_intention.P1_FINAL_LINE_GATE),
+        'P1_RECIPE_LOCK': bool(cw_intention.P1_RECIPE_LOCK),
+        'P1_LOCK_TRANSITION_PAIR': bool(cw_intention.P1_LOCK_TRANSITION_PAIR),
     }
     bench_view, deployed_view = _tracking_view(session, snapshot)
     return DirectionView(
@@ -92,9 +157,10 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
         locked=locked,
         p1_pair=tuple(getattr(ist, 'p1_pair', ()) or ()) if ist is not None else (),
         hoard=hoard,
+        hoard_readable=hoard_readable,
         gates=gates,
         fallback_comp=cw_intention.FALLBACK_COMP_NAME,
-        committed=committed_from(session),
+        committed=committed_from(session, state),
         bench_view=bench_view,
         deployed_view=deployed_view,
     )

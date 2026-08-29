@@ -196,10 +196,10 @@ class StrategySession:
     # r70 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target
     # (cw_transition.pick_framework 按 board+bench+shop 持有选定;update_target 每轮刷新)。
     transition_framework: str = ''
-    # r73 review RC3:双轨期标志**单一源在 session**(state.dual_track_phase 是每循环
-    # 新建对象的默认 False,写在那里的值活不过一次 read_game_state —— ADR-0209 双轨
-    # 买门/stash 放行/DP 攒息压制因此在实跑买牌路径从未执行)。update_target 写此,
-    # shop 循环态/Director/plan 消费方每轮从此拷贝回 state(消费接口不变)。
+    # 批 2 方向层接管(W628):committed 权威 = cw_intention.committed_authority
+    # 派生(读端 = decision_v2.prep_brain.committed_from);本字段降级为
+    # 兼容残留——读点已归零(grep 守卫锁),写端(老栈 update_target/
+    # shop 循环态/回放恢复)随老栈退役批 4 清除。
     dual_track_phase: bool = False
     # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,plan 路径
     # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
