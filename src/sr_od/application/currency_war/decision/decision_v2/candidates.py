@@ -67,15 +67,6 @@ from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 
     will_merge_on_buy,
 )
 
-#: 买候选标签集 / 卖候选标签集 / 动作类枚举(检查项 coverage 消费)
-BUY_TAGS: frozenset[str] = frozenset({
-    'line_carry', 'line_opportunistic', 'bridge_core', 'engine_seed',
-    'plugin', 'pair', 'copy', 'copy_press', 'bond_fallback', 'carry_gate',
-    'o1_bench_fill',
-})
-SELL_TAGS: frozenset[str] = frozenset({
-    'off_target', 'for_gold', 'free_bench',
-})
 #: 全部合法动作类(候选生成覆盖面检查的基准;ADR-0290 层1 枚举义务)
 ACTION_CLASSES: frozenset[str] = frozenset({
     'buy', 'sell', 'levelup', 'refresh', 'deploy', 'synthesize',
