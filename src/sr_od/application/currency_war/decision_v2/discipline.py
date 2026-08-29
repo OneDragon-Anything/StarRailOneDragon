@@ -911,7 +911,7 @@ def p1_directed_downgrade_active(state: GameState,
     不在辖域——动作族复用 11 号件 blood_protect 梯度既有语义,不新增
     动作。
 
-    终止短路(P1「止损转支出」;设计 W659 v2 §3.3;ADR-0469):
+    终止短路(P1「止损转支出」;ADR-0470 §3-3;ADR-0469):
     ``terminal_release`` 为真的帧降格不辖——降格的隐含前提是「血预算
     还值得保」(W516 排除证据的适用域),死亡域内保血价值被金零值
     引理压没,减损型填充在 hp≤10 战力面上正是「低效消费」的构成;
@@ -923,7 +923,7 @@ def p1_directed_downgrade_active(state: GameState,
         return False
     if not p1_exit_blood_short(state, registry):
         return False
-    # 终止分支短路:死亡域保血零价值,降格让位(设计 W659 v2 §3.3)
+    # 终止分支短路:死亡域保血零价值,降格让位(ADR-0470 §3-3)
     return not terminal_release(state, session, registry)
 
 
@@ -947,7 +947,7 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     消费点:arbiter refresh 收尾裁决(拒付计数=session.v3_blood_budget_
     refresh_rejects,披露模式对齐 blood_budget_levelup_rejects)。
 
-    终止豁免(P1「止损转支出」;设计 W659 v2 §3.1;ADR-0469):ALL IN
+    终止豁免(P1「止损转支出」;ADR-0470 §3-1;ADR-0469):ALL IN
     豁免之后、应急豁免之前,``terminal_release`` 帧 ∧ 当轮转化双门开
     (``terminal_round_conversion_open``)→ 不停付——死亡域刷新的真实
     成本(刷价 2 金+息损)被金零值压到可忽略,收益端任何 Δp>0 占优
@@ -1087,7 +1087,7 @@ def terminal_release_bit(session: StrategySession | None,
 
 def terminal_round_conversion_open(state: GameState,
                                    registry: DecisionV2Registry) -> bool:
-    """终止豁免的当轮转化双门(设计 W659 v2 §3.1/R2;ADR-0469):
+    """终止豁免的当轮转化双门(ADR-0470 §3-1/R2;ADR-0469):
     刷新换来的战力件必须能**当轮上场兑现**(死前兑现确定性最高的
     deploy 空位帧),板满帧买入只能落 bench(sim 口径权重 0.35、兑现
     延到次战之后)——不进释放辖域,维持停付。
