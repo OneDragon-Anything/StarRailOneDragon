@@ -6,8 +6,7 @@
 **为什么建模**(用户 2026-08-03):核心实体(角色/阵营/策略/环境/装备)应是**正规 model 类 + 注册表**
 (可查询、可校验、有类型关系),而非字符串散落各处。本模块是角色域:
 - ``Character``:单角色(费用/站位/类型/阵营/流派/独立羁绊)。
-- ``CHARACTERS``:全量注册表(V4.4 75 名,含停云),**角色规范名单一真相源**;费用/站位/trait 已按攻略广场官方接口(plaza config,2026-08-15)全面对齐。
-- ``cw_chars_data.PLAZA_ROLES``:plaza 原始条目数据(75 条,含 id/技能名/is_hide/is_expert;同名多档各一条),由 ``tools/cw/gen_plaza_chars.py`` 生成——**手写注册表与官方接口的对拍基线**(版本更新重跑生成后 diff 本表)。
+- ``CHARACTERS``:全量注册表(V4.4 75 名,含停云),**角色规范名单一真相源**;费用/站位/trait 已按攻略广场官方接口(plaza config,2026-08-15)全面对齐;对拍 = 重跑 ``tools/cw/gen_plaza_chars.py``(对拍器,stdout 报 cost/position/traits 逐条 diff,不一致非零退出;plaza 数据层 cw_chars_data.py 已删,注册表即单一源)。
 - ``CHARACTER_ROSTER``:规范名集合(从 CHARACTERS 派生,供 core_chars 校验)。
 - 查询:``chars_by_cost`` / ``chars_by_faction`` / ``char_position_pref``。
 

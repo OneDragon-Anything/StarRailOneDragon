@@ -1,17 +1,22 @@
-"""货币战争 · 羁绊(traits)数据生成器(官方 traits.json → 注册表数据层)。
+"""货币战争 · 羁绊(traits)对拍器(官方 traits.json vs cw_factions/cw_chars 注册表)。
 
 数据源:.debug/temp/currency_war/plaza/trait_detail.json(子代理采集,lineup/index 按羁绊筛,
 V4.4 过滤;采集器 .debug/temp/cw_trait_probe_14*.py 版本更新重跑)
 + plaza config_v*.json 的 role_property_list(property type → 中文名映射表)。
 
-产出:
-  1. src/sr_od/application/currency_war/cw_factions_data.py —— TRAIT_TIERS(官方 tiers:
-     name → 激活阈值序列)+ TRAIT_ROLES(官方成员名单)。
-  2. **stdout 效果对拍输出**(不写文件):逐羁绊渲染 effect_rich 全文,供版本更新时人工
+产出(只输出 stdout,**不再写任何 src 文件**):
+  1. **tiers 对拍**:traits.json 的激活阈值逐键比 `cw_factions.FACTIONS[name].tiers`
+     (键空间 33↔33,含命运圣杯);不一致打印 diff 并**非零退出**。
+  2. **成员对拍**:官方成员名单逐键比 `chars_by_faction(name)` 集合(成员关系单一源 =
+     CHARACTERS 自报 factions/flows;命运圣杯官方未提供 roles,以 FACTIONS 为准跳过);
+     不一致打印 diff 并**非零退出**。
+  3. **stdout 效果对拍输出**:逐羁绊渲染 effect_rich 全文,供版本更新时人工
      对拍 `cw_factions.FACTIONS` 的 desc(效果全文单一源在注册表 desc 字段)。
-     ⚖️ 原「docs/game/currency_war/data/traits/ 每羁绊一档」文档层已删(2026-08-18
-     数据单一源收敛:注册表 desc 即全文,不再维护平行文档);生成器不再写该目录,
-     防重跑复活已删文档层。
+
+⚖️ 原「src/cw_factions_data.py 数据模块(TRAIT_TIERS/TRAIT_ROLES)」与
+「docs/game/currency_war/data/traits/ 每羁绊一档文档层」均已删(数据单一源收敛:
+tiers/成员/效果全文只在 cw_factions + cw_chars 注册表);本脚本由生成器改为纯对拍器,
+重跑不复活任何平行数据层。
 
 效果文本渲染(官方纯文本 effect 字段对 display=all 属性同样丢词,不可直接用,须从
 effect_rich 自行渲染):
@@ -20,9 +25,9 @@ effect_rich 自行渲染):
   - <color=...>...</color>         → 删除(纯高亮,无语义)。
 未知 property type / 空 name:保留原标签并打印警告(提醒补档),不静默吞。
 
-分工(同角色域):**数据层生成,判断层手维护** —— cw_factions.FACTIONS 的
-category(combat/economy/support)与 note(策略注记)是人判,不在生成范围;
-生成器产 TRAIT_* 数据模块供 FACTIONS 对拍校验(tiers 漂移检测)。
+分工(同角色域):**判断层手维护,官方数据走本对拍器** —— cw_factions.FACTIONS 的
+category/note/desc/tiers 与 cw_chars 的成员关系是人判+单一源;版本更新重跑本脚本,
+官方 traits.json 与注册表漂移即非零退出(替代已删的 cw_factions_data 平行数据层)。
 
 用法: uv run python tools/cw/gen_factions.py
 """
@@ -36,27 +41,21 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "src"))  # 对拍 import sr_od 注册表
 PLAZA_DIR = REPO / ".debug/temp/currency_war/plaza"
 SRC_JSON = PLAZA_DIR / "trait_detail.json"
-DATA_PY = REPO / "src/sr_od/application/currency_war/cw_factions_data.py"
-# r156 写目标白名单守卫:生成器**只允许**写以下路径(数据层);
-# 判断层(cw_factions.py 等)永不在此列——若有人改动 DATA_PY
-# 指向判断层文件,此处断言拦截(防误覆盖人工维护的注册表)。
-WRITABLE_TARGETS = (DATA_PY,)
-
-
-def _assert_writable_targets() -> None:
-    for t in WRITABLE_TARGETS:
-        if 'cw_factions.py' in t.name or (
-                t.suffix == '.py' and not t.name.endswith('_data.py')):
-            raise RuntimeError(
-                f'生成器写目标非法: {t}(判断层/非 _data.py 数据层文件;'
-                f'本生成器只写 {WRITABLE_TARGETS})')
-
-
-_assert_writable_targets()
 
 ISOLATED = {"师徒"}  # 旧赛季遗留(V4.4 无持有者),不生成
+
+# 成员对拍已知例外(官方 roles 含、注册表不含),值 = 裁决理由(注册表为单一源):
+#  - 布洛妮娅 ∈ 官方「贝洛伯格」:来自隐藏变体条目 11011;注册表按可见条目 11012
+#    (燃血+大守护者,去贝洛伯格,2026-08-15 plaza 对齐裁决,见 cw_chars.py 行内注)。
+#  - 开拓者·记忆 ∈ 官方「欢愉」:来自隐藏共享壳条目 8007;注册表按记忆页(列车同行+能量,
+#    无欢愉,同 2026-08-15 裁决)。
+MEMBER_EXCEPTIONS: dict[tuple[str, str], str] = {
+    ("贝洛伯格", "布洛妮娅"): "官方含隐藏变体 11011,注册表按可见条目 11012",
+    ("欢愉", "开拓者·记忆"): "官方含隐藏共享壳 8007,注册表按记忆页无欢愉",
+}
 
 PROP_TAG_RE = re.compile(r"<property\s+type=(\S+?)(?:\s+display=(\S+?))?>")
 COLOR_TAG_RE = re.compile(r"</?color(?:=[^>]*)?>")
@@ -119,40 +118,66 @@ def main() -> None:
 
     warns: list[str] = []
 
-    # ---- 1) 数据模块 ----
-    lines = [
-        "# 警告:本文件由 tools/cw/gen_factions.py 生成(traits.json V" + version + "),勿手编;版本更新重跑。",
-        "# 重跑: uv run python tools/cw/gen_factions.py",
-        '"""羁绊官方数据(V' + version + "):tiers(激活阈值)/roles(成员)。",
-        "",
-        "来源:lineup/index 按羁绊筛采集(V4.4 过滤);采集器与过程见 .debug 工作区。",
-        "分工:数据层(本模块)生成;category/note/desc 等人判层在 cw_factions.FACTIONS 手维护",
-        "(效果全文单一源 = FACTIONS desc 字段;对拍渲染:重跑生成器看 stdout)。",
-        '"""',
-        "from __future__ import annotations",
-        "",
-        "",
-        "# {羁绊名: 激活阈值序列(第 N 层需几人)}",
-        "TRAIT_TIERS: dict[str, tuple[int, ...]] = {",
-    ]
-    for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
-        lt = tuple(int(lr["layer"]) for lr in (t.get("layers") or []))
-        lines.append(f"    {t['name']!r}: {lt!r},")
-    lines += [
-        "}",
-        "",
-        "",
-        "# {羁绊名: 官方成员名单(规范名;含隐藏条目变体去重后)}",
-        "TRAIT_ROLES: dict[str, tuple[str, ...]] = {",
-    ]
-    for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
-        roles = sorted(set(t.get("roles") or []))
-        lines.append(f"    {t['name']!r}: {tuple(roles)!r},")
-    lines += ["}", "", ""]
-    DATA_PY.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[data] -> {DATA_PY}")
+    # ---- 1) tiers 对拍:官方 traits.json vs cw_factions.FACTIONS(单一源)----
+    from sr_od.application.currency_war.cw_factions import FACTIONS
 
-    # ---- 2) 效果对拍输出(stdout,不写文件) ----
+    print("\n[tiers] 官方激活阈值 vs FACTIONS[name].tiers(逐键):")
+    tier_diffs: list[str] = []
+    official_names = {t["name"] for t in traits}
+    for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
+        name = t["name"]
+        lt = tuple(int(lr["layer"]) for lr in (t.get("layers") or []))
+        fa = FACTIONS.get(name)
+        if fa is None:
+            tier_diffs.append(f"{name}: 官方 tiers={lt},FACTIONS 无此羁绊(新羁绊?需同步注册表)")
+        elif fa.tiers != lt:
+            tier_diffs.append(f"{name}: 官方 tiers={lt} vs FACTIONS={fa.tiers}")
+    for name in sorted(set(FACTIONS) - official_names):
+        tier_diffs.append(f"{name}: FACTIONS 有此羁绊(tiers={FACTIONS[name].tiers}),官方 traits.json 无")
+    if tier_diffs:
+        for d in tier_diffs:
+            print(f"  ✗ {d}")
+    else:
+        print(f"  ✓ 一致({len(official_names)} 键逐键全等)")
+
+    # ---- 2) 成员对拍:官方 roles vs chars_by_faction 派生(成员单一源 = CHARACTERS)----
+    from sr_od.application.currency_war.cw_chars import chars_by_faction
+
+    print("\n[roles] 官方成员名单 vs chars_by_faction(name) 集合(逐键):")
+    role_diffs: list[str] = []
+    n_roles = 0
+    for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
+        name = t["name"]
+        official = set(t.get("roles") or [])
+        if not official:
+            # 官方未提供该羁绊的成员名单(如命运圣杯):以 FACTIONS/CHARACTERS 为准,跳过
+            print(f"  - {name}: 官方无 roles,以注册表为准({', '.join(c.name for c in chars_by_faction(name)) or '空'})")
+            continue
+        n_roles += 1
+        # 派生集合 = 阵营/流派成员(chars_by_faction)+ 独立羁绊成员(Character.independent,
+        # 独立羁绊不在 factions/flows 里,chars_by_faction 覆盖不到)
+        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        derived = {c.name for c in chars_by_faction(name)}
+        derived |= {c.name for c in CHARACTERS.values() if c.independent == name}
+        extra = official - derived
+        missing = derived - official
+        for m in sorted(extra):
+            if (name, m) in MEMBER_EXCEPTIONS:
+                print(f"  - {name} ⊃ {m}: 例外放行({MEMBER_EXCEPTIONS[(name, m)]})")
+            else:
+                role_diffs.append(f"{name}: 官方成员 {m} 不在注册表派生集合")
+        for m in sorted(missing):
+            if (name, m) in MEMBER_EXCEPTIONS:
+                print(f"  - {name} ⊅ {m}: 例外放行({MEMBER_EXCEPTIONS[(name, m)]})")
+            else:
+                role_diffs.append(f"{name}: 注册表派生成员 {m} 不在官方名单")
+    if role_diffs:
+        for d in role_diffs:
+            print(f"  ✗ {d}")
+    else:
+        print(f"  ✓ 一致({n_roles} 个有官方名单的羁绊,成员集合全等,含 {len(MEMBER_EXCEPTIONS)} 条已裁决例外)")
+
+    # ---- 3) 效果对拍输出(stdout,不写文件) ----
     # 版本更新时人工对拍 cw_factions.FACTIONS 的 desc 是否需同步(单一源在注册表)。
     print("\n[effects] 逐羁绊效果全文(对拍 FACTIONS.desc 用):")
     for t in sorted(traits, key=lambda x: (x.get("trait_type") or 0, x["name"])):
@@ -165,6 +190,12 @@ def main() -> None:
             print(f"  - {w}")
     else:
         print("[warn] 无渲染警告,全部 property tag 已解析")
+
+    if tier_diffs or role_diffs:
+        total = len(tier_diffs) + len(role_diffs)
+        print(f"\n[result] 对拍不一致 {total} 条(tiers {len(tier_diffs)} + 成员 {len(role_diffs)}),注册表需同步")
+        raise SystemExit(1)
+    print("\n[result] tiers 与成员对拍全部一致")
 
 
 if __name__ == "__main__":

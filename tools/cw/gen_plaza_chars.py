@@ -4,14 +4,18 @@
   GET https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg
   (必需 header x-rpc-currencywar-tourn: tourn)
 
-产出:
+产出(只写 assets/docs 产物,**不再写任何 src 文件**):
   1. docs/game/currency_war/data/characters/<名>.md — 每角色一档(技能星级效果全文/trait 官方描述);
-  2. src/sr_od/application/currency_war/cw_chars_data.py — PLAZA_ROLES 纯数据模块(供代码消费)。
+  2. 官方立绘/装备模板库(assets/template/currency_war/portrait_plaza、equip_plaza);
+  3. **对拍报告(stdout)**:plaza 条目 vs `cw_chars.CHARACTERS` 注册表逐条比 cost/position/traits,
+     不一致打印 diff 并**非零退出**。曾持久生成的 `cw_chars_data.py`(PLAZA_ROLES 数据层)
+     已删——注册表是单一源,版本更新对拍靠本脚本重跑,不靠平行数据模块。
 
 特殊规则(脚本内建,重跑不丢):
   - 规范名:plaza 名 U+2022(•)统一为·;开拓者双形态按 id 映射(8009=欢愉 Back/8007=记忆 Front);
-  - 同名多档(银狼LV.999 3/4/5费)→ 文档单档列全部;数据模块每 plaza_id 一条;
-  - is_hide 条目照录,标注隐藏。
+  - 同名多档(银狼LV.999 3/4/5费)→ 文档单档列全部;
+  - is_hide 条目照录,标注隐藏;模板/文档段照常处理隐藏条目,对拍段按预期例外放行(见
+    ``CHECK_EXCEPTIONS``)。
 
 用法(项目根,一个命令全完成):
   uv run python tools/cw/gen_plaza_chars.py
@@ -29,7 +33,6 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))  # 供 gen_templates import sr_od 注册表
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
-DATA_PY = REPO / "src/sr_od/application/currency_war/cw_chars_data.py"
 TPL_DIR = REPO / "assets/template/currency_war/portrait_plaza"  # 官方立绘模板库(替代手采库)
 EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
 
@@ -41,6 +44,21 @@ HEADERS = {
 }
 
 TRAILBLAZER_NAME = {"8009": "开拓者·欢愉", "8007": "开拓者·记忆"}
+
+# 对拍段已知例外(plaza 条目 → 差异面),值 = 裁决理由(注册表为单一源,plaza 侧不采纳):
+#  - 布洛妮娅 11011:隐藏变体(贝洛伯格+大守护者),注册表按可见条目 11012(燃血+大守护者,
+#    2026-08-15 plaza 对齐裁决,见 cw_chars.py 注册表行内注)。
+#  - 银狼LV.999 15062/15063:升星高费档(4/5费),注册表只建起始费档(3费,用户 2026-08-28 口述:
+#    开局商店仅刷 3 费档),多档建模待策略层需要时扩。
+CHECK_EXCEPTIONS: dict[str, str] = {
+    "8007": "隐藏共享壳含欢愉,注册表按记忆页(列车同行+能量,2026-08-15 裁决)",
+    "11011": "隐藏变体,注册表按可见条目 11012",
+    "15062": "升星高费档,注册表只建起始费档 15061",
+    "15063": "升星高费档,注册表只建起始费档 15061",
+}
+
+# plaza 站位 → 注册表站位(CHARACTERS.position 词汇:front/back/flex)。
+POSITION_MAP = {"Front": "front", "Back": "back", "Common": "flex"}
 
 # 费用档底色(BGR,imdecode 采样空间;烘焙合成用,与现库已烘底色逐像素一致)。
 # 来源:2026-08-17 冻结自旧手采库 character_cw_portrait 角块中位数(原 gen_templates 运行时采样;
@@ -110,7 +128,6 @@ def gen_docs(roles: list, version: str) -> int:
             "position: {}".format(entries[0]["front_back_type"]),
             f"version: {version}",
             "generated_by: tools/cw/gen_plaza_chars.py",
-            "related_code: src/sr_od/application/currency_war/cw_chars_data.py",
             "---",
             "",
             f"# {cname}",
@@ -129,62 +146,37 @@ def gen_docs(roles: list, version: str) -> int:
     return len(by_name)
 
 
-def gen_data_py(roles: list, version: str) -> None:
-    """产物2:cw_chars_data.py 纯数据模块(重跑覆盖,勿手编)。"""
-    rows = []
+def check_vs_registry(roles: list) -> list[str]:
+    """对拍:plaza 条目 vs cw_chars.CHARACTERS(单一源),逐条比 cost/position/traits。
+
+    返回差异行(空 = 一致)。已知例外见 ``CHECK_EXCEPTIONS``(裁决过的差异,不算漂移)。
+    """
+    from sr_od.application.currency_war.cw_chars import CHARACTERS
+
+    diffs: list[str] = []
     for e in sorted(roles, key=lambda x: int(x["id"])):
-        cname = canon(e["name"], e["id"])
-        traits = tuple(t["name"] for t in (e.get("trait_details") or []))
-        skills = tuple(s["name"] for s in (e.get("skills") or []))
-        # 官方职能标签(skills[].category_tags 并集,保序去重):输出/辅助/治疗/护盾
-        tags: list[str] = []
-        for s in e.get("skills") or []:
-            for t in s.get("category_tags") or []:
-                if t not in tags:
-                    tags.append(t)
-        rows.append(
-            f"    PlazaRole(id={e['id']!r}, name={cname!r}, cost={int(e['rarity'])}, "
-            f"position={e['front_back_type']!r}, traits={traits!r}, skills={skills!r}, "
-            f"tags={tuple(tags)!r}, is_hide={e['is_hide']}, is_expert={e['is_expert']}),"
-        )
-    head = [
-        f"# 警告:本文件由 tools/cw/gen_plaza_chars.py 生成(plaza config V{version}),勿手编;版本更新重跑生成。",
-        "# 重跑: uv run python tools/cw/gen_plaza_chars.py",
-        "# 同源产物(人读文档层,技能/星级效果全文): docs/game/currency_war/data/characters/<角色名>.md",
-        "# 数据粒度 = plaza 条目(同名多档各一条:银狼LV.999 三费档/布洛妮娅变体/开拓者双形态等);",
-        "# 规范名:• 已统一为·;开拓者已按 id 映射(8009=开拓者·欢愉/8007=开拓者·记忆)。",
-        f'"""plaza 官方接口角色数据(V{version},gen_plaza_chars.py 生成)。"""',
-        "from __future__ import annotations",
-        "",
-        "from dataclasses import dataclass",
-        "",
-        "",
-        "@dataclass(frozen=True)",
-        "class PlazaRole:",
-        '    """单 plaza 条目(id/cost/position/traits/技能名)。"""',
-        "    id: str",
-        "    name: str",
-        "    cost: int",
-        "    position: str          # Front/Back/Common",
-        "    traits: tuple[str, ...]",
-        "    skills: tuple[str, ...]",
-        "    tags: tuple[str, ...]   # 官方职能标签(category_tags 并集):输出/辅助/治疗/护盾",
-        "    is_hide: bool",
-        "    is_expert: bool",
-        "",
-        "",
-        "PLAZA_ROLES: tuple[PlazaRole, ...] = (",
-    ]
-    tail = [
-        ")",
-        "",
-        "",
-        "def by_plaza_id() -> dict[str, PlazaRole]:",
-        '    """id → 条目(含隐藏/变体)。"""',
-        "    return {r.id: r for r in PLAZA_ROLES}",
-        "",
-    ]
-    DATA_PY.write_text("\n".join(head + rows + tail), encoding="utf-8")
+        rid = e["id"]
+        if rid in CHECK_EXCEPTIONS:
+            print(f"[check] {rid} {canon(e['name'], rid)}: 例外放行({CHECK_EXCEPTIONS[rid]})")
+            continue
+        cname = canon(e["name"], rid)
+        ch = CHARACTERS.get(cname)
+        if ch is None:
+            diffs.append(f"{rid} {cname}: 注册表无此名(新角色?需同步 cw_chars.CHARACTERS)")
+            continue
+        p_cost = int(e["rarity"])
+        if ch.cost != p_cost:
+            diffs.append(f"{rid} {cname}: cost plaza={p_cost} vs 注册表={ch.cost}")
+        p_pos = POSITION_MAP.get(e["front_back_type"], e["front_back_type"])
+        if ch.position != p_pos:
+            diffs.append(f"{rid} {cname}: position plaza={p_pos} vs 注册表={ch.position}")
+        p_traits = {t["name"] for t in (e.get("trait_details") or [])}
+        r_traits = set(ch.factions) | set(ch.flows) | ({ch.independent} if ch.independent else set())
+        if p_traits != r_traits:
+            diffs.append(
+                f"{rid} {cname}: traits plaza={sorted(p_traits)} vs 注册表={sorted(r_traits)}"
+                f"(多官方:{sorted(p_traits - r_traits)} / 缺官方:{sorted(r_traits - p_traits)})")
+    return diffs
 
 
 def gen_templates(roles: list) -> None:
@@ -329,12 +321,18 @@ def main() -> None:
     roles = cfg["role_list"]
     n = gen_docs(roles, version)
     print(f"[docs] {n} 角色 -> {DOC_DIR}")
-    gen_data_py(roles, version)
-    print(f"[data] -> {DATA_PY}")
     gen_templates(roles)
     print(f"[tpl] -> {TPL_DIR}")
     gen_equip_templates(cfg)
     print(f"[eqtpl] -> {EQUIP_TPL_DIR}")
+    print(f"\n[check] plaza 条目 vs cw_chars.CHARACTERS(V{version}):")
+    diffs = check_vs_registry(roles)
+    if diffs:
+        print(f"[check] 不一致 {len(diffs)} 条(版本更新后注册表需同步):")
+        for d in diffs:
+            print(f"  - {d}")
+        raise SystemExit(1)
+    print(f"[check] 一致({len(roles)} 条 plaza 条目全部对上,含 {len(CHECK_EXCEPTIONS)} 条已裁决例外)")
 
 
 if __name__ == "__main__":
