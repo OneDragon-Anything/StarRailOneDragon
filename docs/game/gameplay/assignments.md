@@ -26,12 +26,10 @@ involves_screens: [菜单]
 
 ## 画面
 
-委托画面是 **phone_menu 的委托子态**(`phone_menu.yml` area,见 [phone_menu](../screens/phone_menu.md)):
-- `委托-任务列表`(委托项列表)。
-- `委托-领取奖励`(领取按钮,text "领取奖励")。
-- `委托-委托派遣中`(派遣中状态,text "委托派遣中")。
-- `委托-点击空白处关闭`(关闭弹窗)。
-- 无独立 `assignments` screen —— 委托 UI 在 phone_menu 委托弹窗态。
+2026-08-29 起有独立 screen 档(见 [screens/委托](../screens/委托.md));此前挂在 phone_menu 委托子态。要点:
+- 识别锚:左上「委托」标题;「领取奖励」亮/灰=可领判据;三个材料分类 tab(选中白底)。
+- 历史 area `菜单/委托-*` 仍被 `AssignmentsApp` 使用,未迁移。
+- 交互实锤:tab 切换、领取奖励→获得物品弹窗;变更委托(派遣编辑)bot 不覆盖,出口未探。
 
 ## 备注 / 待查
 
