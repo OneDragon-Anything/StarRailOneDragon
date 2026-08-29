@@ -22,15 +22,16 @@
   皆 False)不评估;shop 开态沿用 last_hp_real 的帧放行(ADR-0428);
   辖域=P1/P2 未成型期(P3 不辖,DESIGN §附5)。
 
-三方刷金预算合并(DESIGN §②规则4,同一帧三个独立预算来源):
+三方刷金预算合并(DESIGN §②规则4,同一帧三个独立预算来源;批 3
+预算收权后来源=确定性预算核,词汇表 v2 见 decision_v2.posture):
 | 来源 | 语义 | 值 |
-| release 溢余预算 | 必须花的下界(地板) | g−50(折刷数÷刷价) |
-| DP refresh_budget | DP 授权可刷上界(动作码 1/2/3=2/4/6 刷) | ``_ROLLS_OF_ACTION`` |
+| release 溢余预算 | 必须花的下界(地板) | g−R*(折刷数÷刷价) |
+| 排程预算 refresh_ev_budget | 预算核授权可刷上界(连续刷数,值域 [0,6]) | economy_cycle.refresh_ev_budget |
 | plan 层 _refresh_cap | 评分层可刷上界(自带 HP-gate 与档金表) | cw_evaluate._refresh_cap |
 合并规则:FLIP 未命中帧维持现状(许可取交);FLIP 命中帧 release 预算覆盖
-``budget = max(g−50, DP refresh_budget)``,_refresh_cap 的 HP-gate 让位
+``budget = max(义务, 预算×刷价)``,_refresh_cap 的 HP-gate 让位
 (血量维度已由 FLIP 谓词评估,同一维度只评一次防双主),其档金表仍作刷价
-合法性校验保留。一句话:release 是义务(下界),DP/plan 是许可(上界),
+合法性校验保留。一句话:release 是义务(下界),预算核/plan 是许可(上界),
 义务激活时义务优先,未激活时许可取交。成型帧末窗投影臂的义务预算
 消费定向化:预算保留但只许花在找件/升级、禁盲刷(门=
 authorize_release_refresh 按 ReleaseDirective.directed_only/find_ok;
@@ -42,31 +43,30 @@ slot 守卫与 rush_level 的同轮裁决(DESIGN §②规则1-3):
    (run48 r9 deployed 5/6 即此帧);
 2. cap 满员 ∧ bench 有可上阵件:追级与泄息同轮并存,同一笔溢余预算
    (Posture 保留 level_up=True,refresh_budget 取合并值);
-3. 第三路径显式注入:DP 姿态可为纯 level_up(refresh_budget=0)——slot
+3. 第三路径显式注入:排程帧可为纯 level_up(refresh_budget=0)——slot
    守卫压 level 后若落默认顺序判会掉 hold(泄息通道静默关闭),故显式注入
-   ``release_budget = max(g−50, DP refresh_budget×刷价)``(DP 已有授权时
-   不缩水,纯 level_up 帧取 g−50),预算>0 → 姿态强制输出 release。
+   ``release_budget = max(溢余, 排程预算×刷价)``(已有授权时不
+   缩水,纯 level_up 帧取溢余),预算>0 → 姿态强制输出 release。
 
-消费点:``strategy.decide_prep``(每轮入口包装 DP 姿态写 session)→
+消费点:``strategy.decide_prep``(每轮入口装配预算核姿态并包装写 session)→
 ``arbiter`` 刷新收尾块(release 义务预算的有界放行)→ 活栈消费门
 ``spend_gate_active``(decision_v2.scoring 息 EV 中性 / candidates 凑息向
 卖候选抑制,判据单一源=本模块读 ``session.v3_release``)。
-``NodeGoal.spend_mode='release'`` 是**预留档位,当前无生产者**——
-``cw_horizon._horizon_node_goal`` 只产 level/adaptive/interest;FLIP 是
-带 latch 的帧级态,不进 horizon 纯函数(否则同轮多次查询随 gold/hp 快照
+``NodeGoal.spend_mode='release'`` 不经 v1 投影(帧级态,单一源=本模块经
+session 通道;预算核投影只产 level/adaptive/interest);FLIP 是
+带 latch 的帧级态,不进投影纯函数(否则同轮多次查询随 gold/hp 快照
 翻转,且绕开唯一 latch 所有者造第二判定源)。v1 栈两消费点
 (``cw_evaluate._economy_mode_for``/``cw_plan._maybe_sell_for_interest``)
 不在活决策路径上(活栈 ``DecisionV2Strategy.decide_prep`` 全量覆写
-default 栈),其 release 档映射已删。release 帧行为的单一源=本模块经
-session 通道。
+default 栈),其 release 档映射已删。
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_horizon import Posture
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision_v2.posture import Posture
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
@@ -244,9 +244,13 @@ def release_directive(state: GameState, session: StrategySession,
                          and phase_value != 'FORM')
         find_ok = (_findable_in_shop(state, session, registry)
                    if directed_only else True)
-        # 义务 = min(溢余, C_t)(ADR-0445 §1.4);既有臂义务(DP 授权)
-        # 不缩水:预算取 max(义务, DP 预算×刷价)——与三方合并结构一致。
-        budget_gold = max(obligation(state, session, registry, posture),
+        # 义务 = min(溢余, C_t)(ADR-0445 §1.4);既有臂义务(排程授权)
+        # 不缩水:预算取 max(义务, 排程预算×刷价)——与三方合并结构一致
+        # (批 3 预算收权:posture 字段=确定性预算核产出。血预算带的
+        # 停付防线在 arbiter 拒付层 blood_budget_refresh_blocked,不在
+        # 本合并——W635 F1 收口:合并层不做血预算特判,docstring 虚标
+        # 已随 economy_cycle.refresh_ev_budget 同批修正)。
+        budget_gold = max(obligation(state, session, registry),
                           posture.refresh_budget * cost)
         return ReleaseDirective(budget_gold=budget_gold,
                                 rolls=budget_gold // cost if cost else 0,
@@ -254,16 +258,18 @@ def release_directive(state: GameState, session: StrategySession,
                                 find_ok=find_ok,
                                 reason='flip')
     # —— 存息准入门(W611 退出链 E1;设计 §2.1 两案对比选甲)——
-    # g>R* 帧存息姿态非法:义务未满足禁止入存息。只辖 DP 解出存息的帧
-    # (level_up/D 预算全空——有行动授权的姿态不经本门);应急帧让位
-    # (保血域,辖区不相交);产出**零预算** release 指令:标签诚实
-    # (tag='release',局23 型「interest 标签死守」帧消失)+ spend_gate
-    # 接线(息 EV 中性/凑息向卖抑制),消费授权仍由 flip 义务预算承担
-    # ——预算=0 时 authorize_release_refresh 恒拒 = 容量不足帧的合法
-    # 结转(量=溢余,经遥测 sess_reserve_overflow 披露,评估罚项面)。
+    # 批 3 预算收权(W623 D2):辖域从「DP 解出存息的帧(level_up/D 预算
+    # 全空)」显式改**机制口径**——查表预算在一切溢余帧天然 >0,旧姿态
+    # 短路会让本门结构性失活。E1 原文即机制定义:g>R* → 存息非法、转
+    # 义务清单判定;未被 flip 覆盖(到达此处 = C_t=0,义务无合规消费
+    # 对象)的溢余帧产**零预算** release 指令:标签诚实(局23 型
+    # 「interest 标签死守」帧消失)+ spend_gate 接线,消费授权仍由
+    # flip 义务预算承担——预算=0 时 authorize_release_refresh 恒拒 =
+    # 容量不足帧的合法结转(量=溢余,经遥测 sess_reserve_overflow 披露)。
     # E2(备战空∧g>R*)不单设:该帧 C_t>0(bench_fill_account)→ flip
-    # 在上分支已产出正预算指令。DP 罚项案(ADR-0445 拒绝的选项②)是
-    # 本门的退化路径:若校正覆盖不到的路径仍现姿态-义务脱钩,另批升级。
+    # 在上分支已产出正预算指令。应急帧让位(保血域,辖区不相交)。
+    # DP 罚项案(ADR-0445 拒绝的选项②)是本门的退化路径:若校正覆盖
+    # 不到的路径仍现姿态-义务脱钩,另批升级。
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         overflow as _overflow,
     )
@@ -272,8 +278,6 @@ def release_directive(state: GameState, session: StrategySession,
     )
     if is_emergency(state, registry):
         return None    # 应急辖区,release 让位(与 flip 同一让位结构)
-    if posture.level_up or (posture.refresh_budget or 0) > 0:
-        return None    # DP 已选行动姿态,非存息,不辖
     if _overflow(state, session, registry) <= 0:
         return None    # g≤R*:存息有 0.1/轮 真实收益,息线以内零漂移(I-1 锚)
     return ReleaseDirective(budget_gold=0, rolls=0,

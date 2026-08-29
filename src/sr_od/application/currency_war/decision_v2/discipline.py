@@ -46,11 +46,11 @@ from dataclasses import dataclass, field, replace
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_economy import streak_gold
-from sr_od.application.currency_war.cw_horizon import nodes_of_plane
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
     intention_core,
 )
+from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
     BuyCard,

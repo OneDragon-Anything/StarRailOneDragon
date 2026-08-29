@@ -1396,7 +1396,7 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏 easy **且** early_power 高,
     避免选易成型但早期弱的 comp。先验待实玩校准(多局验证)。
     """
-    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
     early = (state.round_num + (state.plane - 1) * NODES_PER_PLANE) <= 3 or state.gold < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
     if not early:
         return 1.0
@@ -1838,7 +1838,7 @@ def target_committed(target: Comp, state: GameState) -> bool:
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
     fp = form_progress(target, state)
-    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
     return (fp >= COMMIT_FRAC
             or ((state.plane - 1) * NODES_PER_PLANE + state.round_num >= COMMIT_ROUND and fp > 0))
 
@@ -2067,7 +2067,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     if target is not None and target.typical_form_round > 0:
         # 64-A1 修(×6→9 单一源):旧 remaining=18-elapsed 在 P3 r2 起归 0 →
         # 未成型 target 反复触发信号 2 pivot easy comp(真实还剩 7-9 节点)
-        from sr_od.application.currency_war.cw_horizon import (
+        from sr_od.application.currency_war.cw_plane_table import (
             NODES_PER_PLANE,
             TOTAL_NODES,
         )

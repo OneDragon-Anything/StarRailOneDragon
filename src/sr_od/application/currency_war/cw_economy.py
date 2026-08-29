@@ -50,7 +50,7 @@ def streak_gold(streak: int) -> int:
     return STREAK_GOLD_TABLE[idx]
 
 
-#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型与 cw_horizon DP 日程收入均从此 import,防双源漂移)。
+#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费;原 cw_horizon DP 日程收入消费随 DP 退役,防双源漂移条款保留)。
 #: 边界:基础奖励实际随节点变(VLM 判读 1-1=3/1-2=4,见 docs/game/currency_war/research/economy.md
 #: 「基础奖励」行;守卫测试 sr-od-test test_cw_r305_reward_data)——5 是统一近似值,奖励采集成表后替换为查表。
 BASE_INCOME: int = 5
@@ -281,9 +281,9 @@ class NodeGoal:
     """某节点(位面-轮)的节奏目标(阵容无关骨架;comp 只换 level_plan/core_chars 参数;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
-                                # 'release' 为预留档位:当前无生产者(生产点 _horizon_node_goal
-                                # 只产 level/adaptive/interest),release 帧行为单一源=
-                                # decision_v2.posture_release 经 session 通道,不走本档
+                                # 'release' 不经本投影(帧级态):生产单一源=
+                                # decision_v2.posture_release 经 session 通道;
+                                # 本函数只产 level/adaptive/interest(批 3)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
     #: DP 授权的可刷次数上界(W332b 三方预算合并:随 NodeGoal 下传,消费侧与
     #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
@@ -308,15 +308,19 @@ def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
-    """查 (plane, round) → NodeGoal(**DP 姿态,ADR-0155 切流 0208;r69 表已删**)。
+    """查 (plane, round) → NodeGoal(批 3 预算收权:确定性预算核单一供给)。
 
-    姿态查 ``cw_horizon`` 解(满息/追级/D 预算从剩余日程 DP 涌现)。传参不全(迁移漏点)
-    /DP 异常/t 越界 → fallback = ``_expected_level`` 平滑先验 + adaptive(V4.4 干净先验;
-    旧 0126 区间表已删,见模块注释)。**DP 异常不再静默**:``_horizon_node_goal`` 记
-    [cw!] 结构化日志(可 grep),fallback 照走(对局不停,但有证据)。
-    ADR-0209(接线 2/6):committed=False(双轨期)→ DP 升级姿态被压(P1 攒息过渡)。
-    strategies(intake #6,2026-08-18):持有投资策略名 → DP 按台账突变重解(息帽/免费刷/
-    日程收入;空 → base 解)——「采购专员持有与否姿态无差」的 effect-blind 修复。
+    姿态从预算收权核涌现(原 cw_horizon DP 解供给已退役,BLUEPRINT §3
+    裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
+    >0 → adaptive/d_search;两者皆无 → interest/hold。供给在任意帧恒有
+    定义(W623 D0:None 级联面消灭),仅传参不全(迁移漏点)时退
+    ``_expected_level`` 平滑先验 + adaptive(记 [cw-seam] debug 证据)。
+
+    三档 spend_mode 与决策核同源:level/adaptive/interest 的判据单一址
+    = decision_v2.economy_cycle 两接缝(schedule_upgrade/refresh_ev_budget,
+    R4)——本函数是其标量投影(原 DP 接缝形状,消费方 cw_evaluate/cw_plan
+    接口零改动);'release' 档不经本函数(帧级态,单一源=
+    decision_v2.posture_release 经 session 通道)。
     """
     _partial = (gold, level, hp)
     if any(v is not None for v in _partial) and None in _partial:
@@ -324,15 +328,27 @@ def get_node_goal(plane: int, round_num: int, *,
                   ('g' if gold is not None else '-') + ('l' if level is not None else '-')
                   + ('h' if hp is not None else '-'))
     if None not in (gold, level, hp):
-        from sr_od.application.currency_war.cw_horizon import _horizon_node_goal
-        _goal = _horizon_node_goal(plane, round_num, gold, level, hp, committed=committed,
-                                   strategies=strategies)   # type: ignore[arg-type]
-        if _goal is not None:
-            # 67-P1a(切流验证依赖):DP 姿态来源可见——无此行无法证明 DP 在跑(65 轮实锤)
-            log.info('[cw][goal] p%sr%s source=dp lv=%s spend=%s focus=%s',
-                     plane, round_num, _goal.target_level, _goal.spend_mode,
-                     _goal.action_focus)
-            return _goal
+        from sr_od.application.currency_war.cw_state import GameState as _GS
+        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+            refresh_ev_budget,
+            schedule_upgrade,
+        )
+        # 标量投影帧:用入参重建最小决策帧(供给核只读经济/板面字段;
+        # v1 栈调用面无现成 GameState——旧 DP 接缝同样只收标量)。
+        # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
+        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(W635 F6b 纠偏:
+        # 原注释「投影帧不储蓄」与实现不符;方向保守无害)。
+        _st = _GS(gold=gold, level=level, plane=plane, round_num=round_num,
+                  hp=hp)
+        _st.active_strategies = list(strategies or [])
+        _rolls = min(6, refresh_ev_budget(_st, None))
+        if schedule_upgrade(_st, None):
+            return NodeGoal(min(10, level + 1), 'level', 'rush_level',
+                            refresh_budget=_rolls)
+        if _rolls > 0:
+            return NodeGoal(level, 'adaptive', 'd_search',
+                            refresh_budget=_rolls)
+        return NodeGoal(level, 'interest', 'hold')
     return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
 
 

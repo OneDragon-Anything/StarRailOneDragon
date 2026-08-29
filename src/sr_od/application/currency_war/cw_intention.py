@@ -24,7 +24,7 @@ v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 
 **P1 过渡配方锁(W145/ADR-0357)**:位面 1 的锁定产物=过渡配方体系对
 (transition_combos 两两组合;[20] 过渡是配方不是散买),终局 comp 锁定
-只保留①类资格通道,P2+ 照旧锁 comp。详见 ``P1_RECIPE_LOCK`` 注释。
+只保留①类资格通道,P2+ 照旧锁 comp。(配方锁行为无条件,F5 清偿见本文件 ADR-0357 落点注释)。
 
 模块构成:
 - ``detect_signals(state)``:信号分层判定(①策略驱动/②类专属羁绊/③核心卡/
@@ -57,12 +57,12 @@ from sr_od.application.currency_war.cw_comps import (
     get_comp,
 )
 from sr_od.application.currency_war.cw_deploy_logic import TRANSITION_TRAITS
-from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
 from sr_od.application.currency_war.cw_line_switch import (
     e_rounds,
     register_gate_block,
     survival_gate,
 )
+from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE, TOTAL_NODES
 from sr_od.application.currency_war.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
 )
@@ -180,8 +180,8 @@ class IntentionState:
     transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(W166/ADR-0367)
     """**①资格锁定局的过渡对保护副方向(ADR-0367;约束基准契约)**:
 
-    - 非空 ⟺ plane==1 ∧ phase=='locked' ∧ P1_RECIPE_LOCK 开(此时 P1 的
-      comp 锁只可能来自①资格通道)∧ P1_LOCK_TRANSITION_PAIR 开;
+    - 非空 ⟺ plane==1 ∧ phase=='locked'(此时 P1 的 comp 锁只可能来自
+      ①资格通道;配方锁行为无条件,F5 清偿);
       其余(P2+/配方锁局/weak/降格/空窗)恒空。
     - 派生口径与 ``p1_pair`` 同源(``_derive_p1_pair``,四体系支持度
       top-2,随资产重派生)——两字段是同一口径在不同锁定帧的实例;
@@ -198,6 +198,17 @@ class IntentionState:
     weak_comp: str = ''                # 降级来源线(遥测;弱意向不指向具体线)
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
+    pair_evicted: set[str] = field(default_factory=set)
+    """R3 断供驱逐(配方对域):断供超限移出候选的**体系键**集(批 3;
+    蓝图 §4.3-R3 冻结驱逐语义从 LineTrack 推广到配方对)。与 ``evicted``
+    分域:本集辖体系键(TRANSITION_TRAITS ∪ SEELE_SYSTEM),不与
+    comp 套名混淆;驱逐后 pair 重派生时排除(消费面 = ``_derive_p1_pair``
+    /``p1_early_pair`` 的 exclude 参数)。局级重置随 ist 族(每局新建
+    StrategySession,跨局零残留)。"""
+    pair_drought: dict[str, int] = field(default_factory=dict)
+    """R3 断供驱逐的体系级断供计数器(体系键 → 连续无新件可见轮数;
+    计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
+    出现即清零)。"""
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
@@ -274,7 +285,7 @@ def plane_remaining_nodes(state: GameState, session=None) -> int:
     旧按全局 9 计使 P2 冻结超限对照量虚高 2 轮)。session 缺省 None →
     回退 P1 先验(裸调用/旧签名兼容)。
     """
-    from sr_od.application.currency_war.cw_horizon import nodes_of_plane
+    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
     n = nodes_of_plane(session) if session is not None else NODES_PER_PLANE
     r = min(max(1, state.round_num), n)
     return n - r + 1
@@ -372,11 +383,11 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
     return bool(mech & need)
 
 
-# ===== P1 锁线资格门(W101/ADR-0341;sim A/B 通道)=====
-P1_FINAL_LINE_GATE: bool = True
-"""P1 终局专属线锁线证据门(ADR-0341)。False=关闭(sim A/B 基线臂)。
-诊断来源:W97 §5 P0-1——万敌单C 被③锁 30.5%(61/200),hp 19.7 vs DOT 类
-过渡线 28.5-30.7(差 9-11);三线合计 36.5% 局,反事实 +~3.3 hp。"""
+# ===== P1 锁线资格门(W101/ADR-0341)=====
+# F5 清偿(批 3,蓝图 §6):原模块级 flag P1_FINAL_LINE_GATE/P1_RECIPE_LOCK/
+# P1_LOCK_TRANSITION_PAIR 删除,行为无条件化——三门的 sim A/B 已终裁
+# (0341/0357/0367),开臂前置因冻结令消失=第 4 态清理;A/B 基线臂改由
+# git 冻结快照构造(flag=False 回退通道随之消失,回退=git revert)。
 
 _ENGINE_BOND_KEYS: frozenset[str] = frozenset(b for b, _t in TRANSITION_TRAITS)
 """三羁绊体系键(仙舟/列车同行/持续伤害;派生自 cw_deploy_logic.TRANSITION_TRAITS
@@ -415,22 +426,12 @@ def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
     [21] 上场窗口(姬子=7级/万敌=1-9 变阵点)与 1-8 换血点都在 P1 之后,
     终局线在 P2 起锁是 [23] 全文语义。
     """
-    if not P1_FINAL_LINE_GATE or state.plane != 1:
+    if state.plane != 1:
         return False
     if _p1_transition_eligible(comp):
         return False
     return not _direct_line_qualified(state, comp.name)
 
-
-# ===== P1 过渡配方锁(W145/ADR-0357;sim A/B 通道)=====
-P1_RECIPE_LOCK: bool = True
-"""P1 意向锁定产物=过渡配方体系对(ADR-0357)。False=关闭(sim A/B
-基线臂,回 W143 前行为:P1 ②③④可锁终局 comp)。
-
-诊断来源:W143 §3.3——56/100 锁 DOT 系 comp(仅覆盖 DOT2 单引擎,
-第二体系件对锁定策略是「非目标件」),engines2 成率 10-19%;绯英⑤兜底
-方向零引擎覆盖成率 5%;vs 希儿量子 33%。P1 锁终局 comp 与 [20]
-「过渡是配方不是散买」系统性错配。"""
 
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_sim._engines_count
 #: 的希儿系哨兵同口径)。
@@ -446,19 +447,11 @@ P1_PAIR_LOCK_MIN_SUPPORT: float = 0.5
 囤货方向落四体系全集(p1_transition)。"""
 
 
-# ===== ①锁局过渡对保护副方向(W166/ADR-0367;sim A/B 通道)=====
-P1_LOCK_TRANSITION_PAIR: bool = True
-"""①资格锁定局(P1 锁终局 comp)的过渡对保护副方向开关(ADR-0367)。
-False=关闭(sim A/B 基线臂,回 W164 前行为:①锁局无副方向字段,
-scope/guard/成型验收均仅辖 comp 线)。
-
-诊断来源:W164 §1.3——inject on 口径 strict_mal 0.20 vs off 0.05 的
-差值 15 局全部来自①资格通道:注入信号 r1 锁终局 comp,其采购集把囤货
-方向从过渡引擎引开(engines2_by_r6 0.27→0.15)+ evolve 按 comp 线换档
-拆过渡体系(S2 挤出 19/20 mal 局)=W145 主灶(ADR-0357)在①通道的残留。
-flag 放模块级(仿 P1_RECIPE_LOCK 先例)而非 decision_v2 registry:三个
-落点中 guard 消费方(cw_evolution)不读 registry,模块 flag 单点辖全部
-(消费面经 ``transition_pair`` 字段空集自动回退)。"""
+# ===== ①锁局过渡对保护副方向(W166/ADR-0367)=====
+# 诊断来源:W164 §1.3——inject on 口径 strict_mal 0.20 vs off 0.05 的
+# 差值 15 局全部来自①资格通道:注入信号 r1 锁终局 comp,其采购集把囤货
+# 方向从过渡引擎引开(engines2_by_r6 0.27→0.15)+ evolve 按 comp 线换档
+# 拆过渡体系(S2 挤出 19/20 mal 局)=W145 主灶(ADR-0357)在①通道的残留。
 
 
 def _owned_chars(state: GameState) -> set[str]:
@@ -499,18 +492,60 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
     return sup
 
 
-def _derive_p1_pair(state: GameState) -> tuple[str, ...]:
+def _derive_p1_pair(state: GameState,
+                    exclude: frozenset[str] = frozenset()) -> tuple[str, ...]:
     """P1 配方对派生:支持度 top-2(平手按激活占比序),规整为
     ``_P1_PAIR_PREF`` 序的二元组;最高支持度未达门槛 → ()(空窗不锁)。
 
+    ``exclude``:R3 断供驱逐的体系键集(移出候选后重派生;蓝图 §4.3-R3)。
     体系对随资产**重派生**([20]「变体按来牌选」——支持度只增,变更
     是来牌选型不是 pivot;[23] 冻结语义辖终局线,不辖 P1 配方)。
     """
     sup = _p1_system_support(state)
-    ranked = sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
-    if sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
+    ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
+              if k not in exclude]
+    if not ranked or sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
         return ()
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
+#: R3 断供驱逐阈值(轮;保守先验 ≥5,同老栈 DROUGHT_BAIL 同族先验;
+#: 探针批标定挂账=说服包 R3 断供探针)。语义:某体系成员连续 N 轮
+#: 不在可见面(在店∪到手)→ 该体系移出 pair 候选、pair 重派生。
+PAIR_DROUGHT_EVICT_ROUNDS: int = 5
+
+
+def _update_pair_drought(state: GameState, ist: IntentionState,
+                         visible: set[str]) -> None:
+    """R3 断供驱逐计数器(每 game-round 恰一次,由 update_intention 驱动)。
+
+    辖域 = P1 ∧ 有 pair 方向(p1_pair ∪ transition_pair);对 pair 内每
+    体系:成员集(``_pair_members``)与**在店新件**(shop——「补不进的
+    新件」量的是供给渠道,到手资产不救供给,蓝图 §4.3-R3 原文语义)
+    无交集 → 连续断供 +1,有交集清零;断供 ≥
+    ``PAIR_DROUGHT_EVICT_ROUNDS`` → 体系入 ``pair_evicted``、计数清零、
+    pair 下轮派生自然排除(重派生消费面在 update_intention 的两个
+    pair 派生支)。
+    """
+    if state.plane != 1:
+        return
+    systems = set(ist.p1_pair) | set(ist.transition_pair)
+    if not systems:
+        return
+    shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
+    for sys in systems:
+        if sys in ist.pair_evicted:
+            continue
+        members = _pair_members((sys,))
+        if members & shop_names:
+            ist.pair_drought[sys] = 0
+            continue
+        n = ist.pair_drought.get(sys, 0) + 1
+        ist.pair_drought[sys] = n
+        if n >= PAIR_DROUGHT_EVICT_ROUNDS:
+            ist.pair_evicted.add(sys)
+            ist.pair_drought[sys] = 0
+            ist.last_event = f'evict:pair_drought:{sys}:{n}'
 
 
 def p1_early_pair(state: GameState,
@@ -538,7 +573,9 @@ def p1_early_pair(state: GameState,
         if pp:
             return pp
     sup = _p1_system_support(state)
-    ranked = sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
+    exclude = frozenset(getattr(ist, 'pair_evicted', ()) or ()) if ist is not None else frozenset()
+    ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
+              if k not in exclude]
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
 
 
@@ -798,8 +835,8 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     # W166/ADR-0367:①锁局(P1∧配方锁开)同时派生过渡对副方向
     # (与 p1_pair 同口径;P2+ 强制锁线/旧通道 P1 锁均不辖)。
     ist.transition_pair = (
-        _derive_p1_pair(state)
-        if (state.plane == 1 and P1_RECIPE_LOCK and P1_LOCK_TRANSITION_PAIR)
+        _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
+        if state.plane == 1
         else ()
     )
     ist.lock_layer = sig.layer if not forced else 1   # 强制锁线视作最高层(不可被出口②撤)
@@ -864,6 +901,9 @@ def update_intention(state: GameState, ist: IntentionState,
         # 出 P1:过渡对副方向退场(W166;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
     visible = _visible_chars(state)
+    # R3 断供驱逐(批 3):每 game-round 恰一次的体系级断供计数
+    # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
+    _update_pair_drought(state, ist, visible)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
@@ -965,12 +1005,11 @@ def update_intention(state: GameState, ist: IntentionState,
                     revoked = True
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
 
-    if ist.phase == 'locked' and state.plane == 1 \
-            and P1_RECIPE_LOCK and P1_LOCK_TRANSITION_PAIR:
+    if ist.phase == 'locked' and state.plane == 1:
         # W166/ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
         # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
         # 终局线,不辖过渡副方向)。配方锁局(phase='unlocked')不进本支。
-        pair = _derive_p1_pair(state)
+        pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
         if pair != ist.transition_pair:
             ist.transition_pair = pair
             ist.last_event = ('lock_pair:' + '+'.join(pair)) \
@@ -996,10 +1035,10 @@ def update_intention(state: GameState, ist: IntentionState,
         # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
         # 只保留①类资格通道(直通终局线资格,ADR-0338/0341 语义零改动)。
         # 方向产物=按手上资产派生的体系对(transition_combos 两两组合)。
-        if state.plane == 1 and P1_RECIPE_LOCK:
+        if state.plane == 1:
             sigs = [s for s in sigs
                     if _direct_line_qualified(state, s.comp_name)]
-            pair = _derive_p1_pair(state)
+            pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
             if pair != ist.p1_pair:
                 ist.p1_pair = pair
                 ist.last_event = ('p1_pair:' + '+'.join(pair)) \
@@ -1090,7 +1129,7 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
             chars, equips = _line_hoard(comp)
             return HoardTarget(frozenset(chars), frozenset(equips),
                                'forced' if ist.forced else 'locked')
-    if state.plane == 1 and P1_RECIPE_LOCK:
+    if state.plane == 1:
         # P1 配方方向(ADR-0357):体系对成员集;空窗=四体系全集。
         # 过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
         # key_equips 判定)——equip_targets 恒空。

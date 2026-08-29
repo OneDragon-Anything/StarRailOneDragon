@@ -499,6 +499,26 @@ def normalize_invest_name(name: str) -> str:
     return name
 
 
+def refresh_invest_active(state) -> bool:
+    """淘金客族刷新经济投资姿态谓词(单一址;W610 spec 姿态面)。
+
+    判据:任一持有投资策略的可数值化经济效果带刷新增益通道
+    (免费刷新/每刷经验——淘金客/加油站/搜打撤族,与 operations.
+    prep.shop 免费刷新采证钩子同族判据)。消费面(批 3 预算收权):
+    ① ``economy_cycle.schedule_upgrade``——升级通道退役(W621 实证:
+    LevelUp 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
+    ② ``ev.levelup_ev_basis``——升级授权链同步关闭(含人口位臂,
+    与 W621 sim 注入臂的「LevelUp 全抑制」同口径;等级回落预期带
+    见 w630_batch3_ab_protocol §4 出口 9)。
+    """
+    for name in (getattr(state, 'active_strategies', None) or ()):
+        eff = STRATEGY_ECONOMY.get(normalize_invest_name(name))
+        if eff is not None and (eff.free_refresh_per_node > 0
+                                or eff.xp_per_refresh > 0):
+            return True
+    return False
+
+
 def env_faction(env_name: str) -> str:
     """投资环境加成的阵营(概念股/邀请的 faction;无则 "")。"""
     e = INVESTMENT_ENVS.get(normalize_invest_name(env_name))

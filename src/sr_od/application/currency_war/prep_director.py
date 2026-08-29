@@ -117,7 +117,7 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
 
     旧 write-once 守卫(``not plane_node_table``)使 P1 的 9 槽表整局滞留:
     生产进 P2 后 7 槽真值永不落盘 → nodes_of_plane / battles_left_p2 /
-    DP 位面日程(cw_horizon.schedule_of)在生产 P2 全部读陈旧 P1 表恒 9
+    位面日程真值(cw_plane_table.schedule_of;原 DP 期生产 P2 读陈旧 P1 表恒 9 的已知问题随 DP 退役
     (连表缺回退告警都不发——表「在」但是错的)。修:按
     ``plane_node_table_plane`` 锚定,位面变更即重写(位面内恒定语义不变,
     同位面多次 probe 不覆写);同时 append ``plane_lengths_seen``

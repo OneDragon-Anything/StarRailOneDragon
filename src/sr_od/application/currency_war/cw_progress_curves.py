@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.cw_plaza_comps import PLAZA_CARRY_CLUSTERS
 
-NODES_TOTAL: int = 27   # 3 位面 × 9 节点(与 cw_horizon 同源)
+NODES_TOTAL: int = 27   # 3 位面 × 9 节点(与 cw_plane_table.NODES_PER_PLANE 同源)
 
 # 节奏档 → 检查点(节点, 期望等级)锚(从 plaza labels 语义:v0 手标锚点,
 # J1 阴性组回放校准后由数据替换 —— 预注册纪律:锚错先改锚不改机制)

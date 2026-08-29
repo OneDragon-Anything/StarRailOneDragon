@@ -14,6 +14,7 @@ posture_release 现役件。
 """
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
@@ -142,15 +143,10 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
             hoard_readable = False
             log.warning('[cw][prep_brain] hoard 投影失败(hoard_readable=False,'
                         '消费侧走保守域)', exc_info=True)
-    # W629-R2 镜像雷修复:三门快照改**直读旗标**(禁 getattr 缺省)——
-    # F5 flag 随批 3 清偿删除时,本镜像点必须同 commit 面删除;若漏删,
-    # 直读即 AttributeError 显式炸出(旧 getattr(...,False) 缺省 = 三门
-    # 全关静默坍缩,变异锁 test_cw_w628 钉住快照 == 旗标真值)。
-    gates = {
-        'P1_FINAL_LINE_GATE': bool(cw_intention.P1_FINAL_LINE_GATE),
-        'P1_RECIPE_LOCK': bool(cw_intention.P1_RECIPE_LOCK),
-        'P1_LOCK_TRANSITION_PAIR': bool(cw_intention.P1_LOCK_TRANSITION_PAIR),
-    }
+    # F5 清偿(批 3,蓝图 §6):三门模块级 flag 删除、行为无条件化,
+    # 旗标快照无生产面——``gates`` 字段保留=契约形状稳定,恒空映射
+    # (W629-R2 镜像雷随旗标面一起退役)。
+    gates = MappingProxyType({})
     bench_view, deployed_view = _tracking_view(session, snapshot)
     return DirectionView(
         intent=(getattr(ist, 'locked_comp', '') or '') if ist is not None else '',
@@ -168,10 +164,12 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
 
 def _budget(state: Any, session: StrategySession,
             registry: DecisionV2Registry) -> BudgetView:
-    """预算投影:economy_cycle + posture_release 现役件(权威不迁移)。
+    """预算投影(批 3 预算收权):W611 义务模型为核 + 确定性费用查表两接缝。
 
-    DP 姿态本帧只解一次、四路消费方(排程判据/R*/义务/刷新授权)共用
-    ——W620 效率基准热点修:逐段各自现查曾致同帧 4-5 次冗余求解。
+    预算权威 = economy_cycle(schedule_upgrade/refresh_ev_budget 确定性
+    核 + R*/义务链);DP 姿态供给已退役(原「帧内单一求解、四路共用」
+    的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
+    效率复核判据:decide 热点回落)。
     """
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         obligation,
@@ -179,15 +177,13 @@ def _budget(state: Any, session: StrategySession,
         reserve_cap,
         schedule_upgrade,
     )
-    from sr_od.application.currency_war.decision_v2.ev import round_posture
-    posture = round_posture(state, session)   # 帧内单一求解(接缝函数复用)
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(
         interest_floor=floor,
-        reserve_cap=reserve_cap(state, session, registry, posture),
-        obligation=obligation(state, session, registry, posture),
-        schedule=schedule_upgrade(state, session, posture),
-        ev_auth=refresh_ev_budget(state, session, posture),
+        reserve_cap=reserve_cap(state, session, registry),
+        obligation=obligation(state, session, registry),
+        schedule=schedule_upgrade(state, session),
+        ev_auth=refresh_ev_budget(state, session),
     )
 
 

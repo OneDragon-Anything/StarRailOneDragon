@@ -668,26 +668,21 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     # - P1 core 通道:goal 说 level_up(窗外)→ core 让位(「没到就少刷新、
     #   多买经验」);W170/ADR-0369 起 level_plan 窗**只辖 core 通道**,
     #   pair 缺件通道(_vd_p1_pair)自带独立窗(缺件∧[3] 单次预算前提);
-    # - P2(plane≥2 且 vd_p2_enabled):窗二分改**消费 DP refresh_budget
-    #   授权**——DP 姿态说「升级+D」时升级与 D 是**并行授权**(DP 日程表
-    #   已把 level_cost+2×rolls 算进同一笔预算),level_plan 互斥把 D 预算
+    # - P2(plane≥2 且 vd_p2_enabled):窗二分消费刷新预算——升级与 D 是
+    #   并行授权(储备线已把 level_cost 算进 R*),level_plan 互斥把 D 预算
     #   整个吞掉 = 评分层让一拍变让整个位面(W152 断点②:13/14 帧打空)。
-    #   refresh_budget>0 → 窗开;=0(纯存/纯升)→ 让位;DP 查询异常
-    #   (None)→ 保守回退 P1 的 level_plan 门(对局不停)。
+    #   批 3 预算收权(W623 D2):判据显式改**预算函数口径**——
+    #   refresh_ev_budget>0 → 窗开;=0(储备段/应急停手=合法 0 帧)→ 让位。
     from sr_od.application.currency_war.cw_economy import (
         _resolve_level_goal,
     )
     goal = _resolve_level_goal(
         state, getattr(session, 'target_comp', None))
     if state.plane >= 2 and registry.vd_p2_enabled:
-        from sr_od.application.currency_war.decision_v2.ev import (
-            round_posture,
+        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+            refresh_ev_budget,
         )
-        posture = round_posture(state, session)
-        if posture is not None:
-            if getattr(posture, 'refresh_budget', 0) <= 0:
-                return None
-        elif goal is not None and goal.action == 'level_up':
+        if refresh_ev_budget(state, session) <= 0:
             return None
     elif goal is not None and goal.action == 'level_up':
         # W170/ADR-0369:level_plan 窗只辖 core 通道(core 让位给升,
@@ -837,7 +832,7 @@ def _off_lock_demotion(cand: Candidate, state: GameState,
         return ''
     if cand.tag == 'line_opportunistic' \
             and registry.off_lock_final_fence_enabled:
-        from sr_od.application.currency_war.cw_horizon import (
+        from sr_od.application.currency_war.cw_plane_table import (
             nodes_of_plane,
         )
         from sr_od.application.currency_war.decision_v2.discipline import (

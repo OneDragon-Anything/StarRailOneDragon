@@ -145,9 +145,9 @@ def switch_allowed(state: GameState, session: StrategySession) -> bool:
 
     末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
     = 丢弃已成形板面战力追 0-progress 新线,且 D_min=2 驻留在末窗等价于
-    禁换;真值源=``cw_horizon.nodes_of_plane``(位面轮数,ADR-0366)。
+    禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数,ADR-0366)。
     """
-    from sr_od.application.currency_war.cw_horizon import nodes_of_plane
+    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
     return state.round_num <= nodes_of_plane(session) - 3
 
 
@@ -238,7 +238,7 @@ def rounds_alive(state: GameState,
     # 零漂移锚):loss=(1−p_win)·条件败面档;开关关或 rung 缺档按
     # p_win=0=每战全损 → loss=条件败面档常数(M1a)——同一份代码,
     # 行为由开关+注入切换(REDESIGN §3.3;幅度源=registry.
-    # p2_cond_loss_table,与 cw_horizon DP 两态递推同一标定源,口径
+    # p2_cond_loss_table,与两态胜率映射(cw_plane_table.p_win_p2)/阈值层同一 registry 标定源,口径
     # 定稿见 ADR-0440;无条件期望表 p2_node_loss_table 是另一 estimand,
     # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_sim._settle_rung
     #(与 p_win 表的 W346 Δ池采样键同源,ADR-0279 单一源;deployed

@@ -1220,7 +1220,10 @@ def effective_hp_threshold(state: GameState) -> int:
         board_tier_of,
         plane_hp_ratio,
     )
-    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE, TOTAL_NODES
+    from sr_od.application.currency_war.cw_plane_table import (
+        NODES_PER_PLANE,
+        TOTAL_NODES,
+    )
 
     diff = (getattr(state, "selected_difficulty", "") or "").strip()
     base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))

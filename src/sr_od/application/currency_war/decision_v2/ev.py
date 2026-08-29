@@ -5,9 +5,8 @@
 
 本模块是步② 的**授权核算单一源**:
 - ``interest_cost``:买/刷新的息机会成本(C_interest,W113 §3.2(b));
-- ``dp_posture``:DP 日程表(cw_horizon)姿态查询——v2 栈**首次真实消费**
-  DP 解(W115 审计 ③:此前 v2 仅用几何常量,零 DP 消费;解级缓存=
-  cw_horizon._solved 的台账指纹 memo,重复查询零成本);
+- ``round_posture``/``build_round_posture``:轮姿态生产者(批 3 预算
+  收权后 = 确定性预算核的载体装配;原 DP 姿态查询随 cw_horizon 退役);
 - ``levelup_ev_authorized``:升级通道 EV 总账([12] 息引擎门的收编,
   A1/A2 镜像与 E6 latch 退场后的唯一裁决点);
 - ``reward_node_is_battle``:扑满守卫(ADR-0348)——「经济过热」类环境下
@@ -21,7 +20,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_intention import (
     total_remaining_nodes,
 )
@@ -30,6 +28,7 @@ from sr_od.application.currency_war.cw_state import (
     deployed_occupied,  # ADR-0392 helper 导入
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision_v2.posture import Posture
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
@@ -37,10 +36,12 @@ from sr_od.application.currency_war.decision_v2.registry import (
 
 @dataclass
 class RoundPosture:
-    """轮内 DP 姿态缓存载体(decide_prep 每轮写 session.v3_dp_posture)。
+    """轮姿态轮缓存载体(decide_prep 每轮写 session.v3_dp_posture)。
 
     round_key=(plane, round_num)——轮键不匹配即失效(策略主循环
     每轮决策入口重算;sim 一轮多决策段共享同轮首查询)。
+    posture 字段现 = 确定性预算核产出(批 3 预算收权;字段名 dp_posture
+    为历史沿用的 session 槽位名)。
     """
 
     round_key: tuple[int, int]
@@ -64,8 +65,8 @@ def interest_cost(gold: int, cost: int,
                   recovery_rounds: float | None = None) -> float:
     """C_interest(W113 §3.2(b)):跨过的 10 金档数 × R(跨位面口径)。
 
-    结算息按**花后金**计(结算序:先结算息再进收入,cw_horizon DP 的
-    ``interest(g2)`` 同口径)——tiers_crossed = 花前档 − 花后档。
+    结算息按**花后金**计(结算序:先结算息再进收入,与息闭式
+    ``cw_plane_table.interest`` 同口径)——tiers_crossed = 花前档 − 花后档。
 
     **口径声明(W113 §3.2(b)⟲R2/F05,W126 落码)**:本式默认是**平面 R
     上界口径**——假设跨档后金停在低档直到位面末,每轮损满息差。
@@ -118,7 +119,7 @@ def battles_left_plane(state: GameState, session: StrategySession,
     表缺失/越界(裸 session/sim 无表局/开局首帧前)→ 退
     ``registry.battles_left_est``(骨架缺省,保守侧)。
     """
-    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
     table = getattr(session, 'plane_node_table', None) or []
     r = state.round_num
     if table:
@@ -135,42 +136,50 @@ def battles_left_plane(state: GameState, session: StrategySession,
 battles_left_p2 = battles_left_plane
 
 
-def dp_posture(state: GameState, session: StrategySession):
-    """DP 日程表姿态查询(W113 §8-6 净新增接线;ADR-0347)。
+def build_round_posture(state: GameState, session: StrategySession) -> Posture:
+    """轮姿态生产者(批 3 预算收权;确定性预算核单一址)。
 
-    真实调 ``cw_horizon`` 解(经生产路径 ``_solved``——持投资策略时
-    台账注入,指纹 memo 进程内零成本;首解 ~0.3s 一局至多数个指纹)。
-    返回 ``Posture``(save/level_up/refresh_budget);查询异常返回 None
-    (调用方保守回退,对局不停——与 ``_horizon_node_goal`` 同款纪律:
-    记 [cw!] 可 grep 证据)。
-
-    ADR-0368(W169):槽序映射改 ``sol.slot_of(plane, round)``——按本局
-    已揭晓位面日程排槽(P2 查询期=(9,7,9):boss 奖金落真实末轮/幻影尾
-    两槽消除/P3 前移)。session 表缺(裸 session/sim P1 段)→ 先验日程
-    ≡ 旧 ``t=(p-1)*9+r-1`` 逐位一致。
+    level_up = economy_cycle.schedule_upgrade(查表核,含预告态);
+    refresh_budget = economy_cycle.refresh_ev_budget(预算式,合法 0 帧
+    契约见该函数)。三路消费方(排程/R*/arbiter 授权/scoring 窗)共调
+    同两接缝(R4 单一址),本函数只负责把两个标量装进轮姿态载体 +
+    打遥测标签(词汇表 v2 判前锁,见 decision_v2.posture.Posture)。
+    原 ``dp_posture``(cw_horizon._solved 姿态查询)随 DP 退役删除;
+    「查询不可达 → None → 各消费点保守回退」的级联面随之消灭(W623
+    D0:确定性核在任意帧恒有定义,无 None 形状)。
     """
-    try:
-        from sr_od.application.currency_war.cw_horizon import _solved
-        sol = _solved(list(state.active_strategies or ()), session)
-        t = sol.slot_of(state.plane, state.round_num)
-        return sol.posture(t, state.gold, state.level, state.hp, 0.0)
-    except Exception as e:   # noqa: BLE001
-        log.warning('[cw!][d2][ev] DP 姿态查询异常(p%sr%s gold%s lv%s '
-                    'hp%s):%s → 调用方保守回退',
-                    state.plane, state.round_num, state.gold,
-                    state.level, state.hp, e)
-        return None
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        refresh_ev_budget,
+        schedule_upgrade,
+    )
+    level_up = schedule_upgrade(state, session)
+    rolls = refresh_ev_budget(state, session)
+    if level_up:
+        tag = '升级' + (f'+D{rolls}' if rolls else '')
+    elif rolls:
+        tag = f'+D{rolls}'
+    else:
+        tag = '存息'
+    return Posture(save=(not level_up and rolls == 0), level_up=level_up,
+                   refresh_budget=rolls, v=0.0, tag=tag)
 
 
-def round_posture(state: GameState, session: StrategySession):
-    """轮内缓存版 dp_posture(decide_prep 每轮算一次写 session;仲裁层
-    各 gate 读同一姿态——一轮内多个 gate 消费同一 DP 解,既省查询也
-    保证同轮口径一致)。轮键不匹配(裸 session/测试直调)时现算不缓存。"""
+def round_posture(state: GameState, session: StrategySession) -> Posture:
+    """轮内缓存版姿态(decide_prep 每轮算一次写 session;仲裁层各 gate
+    读同一姿态——一轮内多个 gate 消费同一次预算核算,既省重算也保证
+    同轮口径一致)。确定性核恒有定义,本函数不再返回 None。
+
+    辖域声明(W635 F6c):缓存命中 = decide_prep 写入的 **release 包装后**
+    姿态;缓存 miss(测试/回放直调)现算返回**未包装**的裸预算核姿态
+    ——release 包装(latch/预算合并)唯一所有者 = 生产主链每轮入口的
+    ``posture_release.evaluate_release``,本函数不做二级包装(防第二
+    latch 判定源)。消费方若在主链之外需要包装语义,显式调 evaluate_release。
+    """
     cached = getattr(session, 'v3_dp_posture', None)
     if isinstance(cached, RoundPosture) and cached.round_key \
             == (state.plane, state.round_num):
         return cached.posture
-    return dp_posture(state, session)
+    return build_round_posture(state, session)
 
 
 def _interest_at(gold: int, registry: DecisionV2Registry) -> int:
@@ -314,6 +323,15 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     after = working_gold - cost
     if after < 0:
         return ''        # 可负担性入口门(W126;gold_floor 已让位本函数)
+    # 淘金客姿态:升级通道退役(W621 实证 LevelUp 退役是刷驱姿态主驱动;
+    # 谓词单一址 = cw_investments.refresh_invest_active,与排程核同址)。
+    # 全臂关闭(含①人口位),与 W621 sim 注入臂「LevelUp 全抑制」同口径;
+    # 等级回落为预期方向(w630 协议出口 9 预期带 7.0-8.6)。
+    from sr_od.application.currency_war.cw_investments import (
+        refresh_invest_active,
+    )
+    if refresh_invest_active(state):
+        return ''
     # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源;
     # W121 G1:cap 满 ∧ bench 有目标件——W113 §3.3 原文「deployed<cap 且
     # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
@@ -336,9 +354,12 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
             and after < registry.interest_floor() \
             and (working_gold - cost) // 10 < working_gold // 10:
         return ''    # below_floor_spend:息线以下破档升级无例外
-    # ② DP 花费授权(平台未破)
-    posture = round_posture(state, session)
-    if posture is not None and getattr(posture, 'level_up', False) \
+    # ② 排程花费授权(平台未破;批 3 预算收权:确定性查表核单一址,
+    # 排程=预告态,可负担性由上方入口门+本行平台判据收口)
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        schedule_upgrade,
+    )
+    if schedule_upgrade(state, session) \
             and after >= registry.interest_floor():
         return 'dp'
     # ③ 静态 EV 账(V−C≥0;V 含省刷金项,W126/P5 检验点②)

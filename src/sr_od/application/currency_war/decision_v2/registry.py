@@ -909,7 +909,7 @@ class DecisionV2Registry:
         'normal': 10.16, 'encounter': 12.00, 'boss': 15.50, 'reward': 0.0})
     #: P2 条件败面损血档(输了战斗这一条件下的期望伤害;两态决策层
     #: 损血幅度唯一源,消费点=cw_line_switch.rounds_alive 逐节点投影
-    #: 与 cw_horizon DP P2 递推——E[损血|板强]=(1−p_win(rung))·本表)。
+    #: 与两态胜率映射(cw_plane_table.p_win_p2)——E[损血|板强]=(1−p_win(rung))·本表)。
     #: 值=W375 双源重标定条件败面(normal 12.77/encounter 13.33/boss
     #: 15.50,标定叙述见 p2_node_loss_table 段头与 ADR-0440):reward 零损档同上表(奖励/补给零损照走)。
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {

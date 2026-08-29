@@ -226,7 +226,7 @@ class StrategySession:
     # 真值表永不落盘(P1 陈旧表整局滞留,nodes_of_plane/日程在生产 P2 恒 9)。
     plane_node_table_plane: int | None = None
     # ADR-0368(W169):本局已揭晓的位面轮数序列(随 plane_node_table 每位面
-    # 首帧 append;P1=9/P2=7/P3 进表即自适应)——cw_horizon.schedule_of 的
+    # 首帧 append;P1=9/P2=7/P3 进表即自适应)——cw_plane_table.schedule_of 的
     # 真值源(DP 位面日程);跨位面仍可知历史位面真值(P3 期知 P2=7)。
     plane_lengths_seen: list[int] | None = None
     # r363(审计 P0-2):左移推断的轮次锚——同轮多次 probe 不重做

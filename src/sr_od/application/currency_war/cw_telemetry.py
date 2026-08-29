@@ -1108,28 +1108,17 @@ def record_decision(state: GameState, target_comp: str,
         return
     _extra: dict[str, Any] = {}
     try:
-        from sr_od.application.currency_war.cw_effect_ledger import (
-            build_ledger,
-            effects_from_strategies,
-        )
-        from sr_od.application.currency_war.cw_horizon import (
-            _horizon_node_goal,
-            ledger_fingerprint,
-        )
-        ng = _horizon_node_goal(state.plane, state.round_num, state.gold,
-                                state.level, state.hp,
-                                strategies=list(getattr(state, 'active_strategies', []) or []) or None)
-        if ng is not None:
-            _extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
-                                    'target_level': getattr(ng, 'target_level', None)}
+        # 批 3 预算收权:影子姿态改确定性预算核投影(get_node_goal 三档
+        # spend_mode 单一供给);台账指纹随 DP 世界模型退役删除(原指纹
+        # = DP 求解 memo 键,查表核无求解面,无指纹语义)。
+        from sr_od.application.currency_war.cw_economy import get_node_goal
+        ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
+                           level=state.level, hp=state.hp,
+                           strategies=list(getattr(state, 'active_strategies', []) or []) or None)
+        _extra['dp_posture'] = {'spend_mode': getattr(ng, 'spend_mode', ''),
+                                'target_level': getattr(ng, 'target_level', None)}
         strategies = list(getattr(state, 'active_strategies', []) or [])
         _extra['active_strategies'] = strategies
-        _extra['ledger_fingerprint'] = ledger_fingerprint(
-            build_ledger(effects_from_strategies(strategies)))
-        # 67-P1c(接线哨兵):指纹恒 'base' = ledger 重载接线仍断;修复后不同持卡
-        # 组合应产生不同指纹(55-A1 对拍数据源)
-        log.debug('[cw][ledger] fp=%s strategies=%s',
-                  _extra['ledger_fingerprint'], strategies)
     except Exception:   # noqa: BLE001  观测 best-effort
         pass
     if extra:

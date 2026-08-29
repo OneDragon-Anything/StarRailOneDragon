@@ -31,13 +31,13 @@ from sr_od.application.currency_war.cw_evolution import (
     evolution_step,
     rollback_weakest,
 )
-from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
     hoard_target_set,
     pair_target_comp,
     update_intention,
 )
+from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
     CompTransaction,
@@ -270,33 +270,27 @@ class DecisionV2Strategy(DefaultCwStrategy):
         session.v3_phase = _phase.value
         session.v3_form_ok = form_ok(state, session, registry)
         session.v3_form_score = form_score(state, registry)
-        # W119/ADR-0347 DP 接线(W113 §8-6 净新增):每轮入口查询一次
-        # DP 姿态写 session——仲裁层授权/地板对齐消费(ev.round_posture
-        # 同轮读缓存),遥测行带 dp_posture(授权依据 trace)
+        # W119/ADR-0347 接线(批 3 预算收权):每轮入口核算一次轮姿态写
+        # session——仲裁层授权/地板对齐消费(ev.round_posture 同轮读缓存),
+        # 遥测行带 dp_posture(标签 trace)。生产者 = 确定性预算核
+        # (build_round_posture:schedule/refresh_ev_budget 两接缝,R4
+        # 单一址);release 包装(FLIP/存息准入门)紧随其后。
         from sr_od.application.currency_war.decision_v2.ev import (
             RoundPosture,
-            dp_posture,
+            build_round_posture,
             reward_node_is_battle,
         )
-        session.v3_dp_posture = RoundPosture(
-            key, dp_posture(state, session))
+        _raw_posture = build_round_posture(state, session)
         # W332b 未成型期姿态:泄息通道(release)——FLIP 谓词命中/末窗
-        # slot 守卫压 level 时包装 DP 姿态(预算三方合并 + spend_mode 新档,
+        # slot 守卫压 level 时包装姿态(预算三方合并 + spend_mode 新档,
         # 单一源=decision_v2.posture_release;下流 scoring/arbiter 读同一
-        # 包装后姿态,义务预算走 session.v3_release)。FLIP 谓词未命中
-        # → 逐位原姿态(防间隙零漂移;开关 release_enabled 已随 ADR-0426
-        # 增补 D 第 4 态清理,消费恒接线)。
+        # 包装后姿态,义务预算走 session.v3_release)。
         from sr_od.application.currency_war.decision_v2.posture_release import (
             evaluate_release,
         )
-        _raw_posture = session.v3_dp_posture.posture
-        if _raw_posture is not None:
-            _wrapped, _directive = evaluate_release(
-                state, session, registry, _phase.value, _raw_posture)
-            session.v3_dp_posture = RoundPosture(key, _wrapped)
-        else:
-            _directive = None
-            session.v3_release = None
+        _wrapped, _directive = evaluate_release(
+            state, session, registry, _phase.value, _raw_posture)
+        session.v3_dp_posture = RoundPosture(key, _wrapped)
         if _directive is None:
             session.v3_release = None
         # W611 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」

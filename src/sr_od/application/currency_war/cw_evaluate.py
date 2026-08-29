@@ -516,12 +516,12 @@ OPTIONALITY_PER_CHAR: float = 1.0    # 每个属 ≥2 comp 的 bench 角色加�
 
 
 def _elapsed_rounds(state: GameState) -> int:
-    """总回合数(全局节点序;每位面 9 节点,horizon 单一源)。α(t) 用。
+    """总回合数(全局节点序;每位面 9 节点,cw_plane_table 单一源)。α(t) 用。
 
     60-A1 修(×6→单一源):游戏真相 9 节点/位面,旧 ×6 使 α(t) 在位面 2 达满值
     晚 ~3 轮(optionality 偏高/target-progress 罚偏弱)。
     """
-    from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
+    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
     return state.round_num + (state.plane - 1) * NODES_PER_PLANE
 
 

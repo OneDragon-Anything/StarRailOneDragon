@@ -214,6 +214,11 @@ def _check_constraint(name: str, cand: Candidate,
                 if working.gold - cost < registry.interest_floor():
                     return None    # 交 interest_rule EV 裁决
             else:
+                # 批 3 预算收权(W623 D2):「>0 即行动授权」改预算函数口径
+                # ——息线以下帧 refresh_ev_budget 恒 0(合法 0 帧契约:g<R*
+                # 是储备段),故息线下刷新授权只剩 [11]/E2/E3 白名单
+                # (R1 规则:囤息域内无 EV 授权;原 DP 姿态 dp_spend 臂随
+                # DP 退役,锁面重推出处=W615 §2-R1)。
                 posture = round_posture(state, session)
                 dp_spend = posture is not None and (
                     posture.level_up or posture.refresh_budget > 0)

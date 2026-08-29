@@ -32,8 +32,9 @@ class DirectionView:
     - ``locked``:意向状态机是否已锁(phase=='locked')。
     - ``hoard``:囤货目标集合(hoard_target_set 输出的角色+装备件名并集;
       买侧唯一消费面)。空集=未锁/兜底空窗。
-    - ``gates``:资格门快照(键=cw_intention 资格门旗标名,值=旗标现值;
-      只读映射)。快照语义:装配帧的门状态,不在帧间存活。
+    - ``gates``:资格门快照(只读映射;F5 模块级旗标随批 3 清偿后无
+      旗标面,恒空——字段保留为契约形状)。快照语义:装配帧的门状态,
+      不在帧间存活。
     - ``fallback_comp``:⑤无信号兜底线(单一源=cw_intention.FALLBACK_COMP_NAME)。
     - ``committed``:R1 显式化(蓝图 §4.3)——P1 攒息语义(True=已定型/
       非双轨期)。装配点单一写端;唯一合法 session 读端 =

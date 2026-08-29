@@ -1361,7 +1361,7 @@ def evolution_step(state: GameState, session=None,
     # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 W165 #3 定案)
     final_window = False
     if final_freeze:
-        from sr_od.application.currency_war.cw_horizon import nodes_of_plane
+        from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
         final_window = state.round_num >= nodes_of_plane(session) - 1
 
     def _try(opt: UpgradeOption) -> list[Action]:
