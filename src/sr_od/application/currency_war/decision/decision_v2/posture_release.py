@@ -286,6 +286,72 @@ def release_directive(state: GameState, session: StrategySession,
                             reason='reserve_admission')
 
 
+def channel_rank_scope(state: GameState, session: StrategySession) -> bool:
+    """通道边际排序辖域(提案 A;ADR-0476;W720 修订要点①)。
+
+    辖域谓词按 ADR-0445 **现 flip 语义**(纯溢余判定)重述——旧 spec 的
+    「低血∧高金」复合谓词已废:辖域 = flip 义务帧(判据单一址=
+    ``session.v3_release.reason=='flip'``,与义务预算/latch 同源,不在
+    本层重算 flip)∧ 包装后 ``posture.level_up``(升级 ∧ 刷新并存帧;
+    wrap_posture 对 flip 帧保留 level_up)∧ cap 满员(``deployed==max``,
+    第三路径辖区 deployed<cap 的帧人口解锁边际本窗=0,由 slot 守卫
+    显式注入自辖,排序不得覆写)。非辖域帧行为零漂移。
+    """
+    directive = getattr(session, 'v3_release', None)
+    if directive is None or directive.reason != 'flip' or directive.third_path:
+        return False
+    wrapped = getattr(getattr(session, 'v3_dp_posture', None),
+                      'posture', None)
+    if wrapped is None or not wrapped.level_up:
+        return False
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+    )
+    return deployed_occupied(state.deployed or []) >= state.max_units()
+
+
+def rank_refresh_vs_upgrade(state: GameState, session: StrategySession,
+                            registry: DecisionV2Registry) -> str:
+    """同帧「升级 ∧ 辖域内刷新」并存的优先裁决(提案 A 两通道最小版;
+    ADR-0476;提案面原文 .debug/temp/currency_war/w645_proposal_v2/
+    SPECS.md 提案 A-v2,W720 修订后实施)。
+
+    返回 ``'upgrade_first' | 'refresh_first'``;辖域=``channel_rank_scope``
+    (flip 溢余义务帧 ∧ 升级并存 ∧ cap 满员),调用方(arbiter 升级门)
+    先判辖域再调本函数。人口位臂(pop_slot,[33] 当轮兑现)恒升级优先,
+    排序不覆写——该臂排除在消费点之外。
+
+    边际口径(两侧均既有单一址函数输出,零新自由参数;W720 修订要点②:
+    刷新边际与分配器 Π_refresh 估计器同源互指,禁第二概率口径):
+    - 升级通道:`levelup_refresh_saving / upgrade_plan_fee`(省刷金÷升级
+      费;saving 内部消费 ``cw_shop_odds.expected_refreshes_for_card``,
+      批口径随目标张数放大,P5 检验点②);
+    - 刷新通道:spec 原文「expected_refreshes_for_card 的逐刷递减金值
+      序列 ÷ 刷价」——剩余期望搜索成本序列 E·c,(E−1)·c,… 逐刷递减
+      步长=刷价,故每刷价的边际金值恒为 1 当量(一次「少刷」),归一
+      化后刷新边际=1。裁决归约为升级边际与 1 的比较:
+      ``saving ≥ fee → 'upgrade_first'(现行固定序,零漂移);
+      saving < fee → 'refresh_first'``。
+    两世界定价(W720 修订要点① 的防偏置条款):upgrade_first 世界的
+    刷新边际按升后级(E(L+1)≤E(L),每刷更值)——该世界严格不劣于
+    refresh_first 世界,除非升级的搜索侧账为负(saving<fee,典型=峰值级
+    ΔE≤0 → saving=0):此时「买/升级恒先于刷新」的隐式固定序把刷新面
+    饿死(SPECS §3 反方向错序),裁决翻 refresh_first,升级授权重估
+    留待下帧。买牌第三通道不入最小版(评分侧量纲残余错配风险,spec §1)。
+    """
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
+        levelup_refresh_saving,
+    )
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        upgrade_plan_fee,
+    )
+    fee = upgrade_plan_fee(state)
+    if fee <= 0:
+        return 'upgrade_first'    # 费用缺读退化:维持现行固定序
+    saving = levelup_refresh_saving(state, session, registry)
+    return 'upgrade_first' if saving >= fee else 'refresh_first'
+
+
 def wrap_posture(posture: Posture, directive: ReleaseDirective) -> Posture:
     """DP 姿态 → release 姿态(spend_mode 状态机新档 'release' 的载体)。
 
