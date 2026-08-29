@@ -30,7 +30,7 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS
+from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
 # 「光能电池系」视图的分组成员名。仅用于把全量配方切成两组常量(兼容旧 API 命名),
 # 不参与任何判定逻辑;若未来新增强基础件系,应改为通用分组而非继续加名字。

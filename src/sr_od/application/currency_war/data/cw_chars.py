@@ -59,7 +59,7 @@ def trailblazer_form(name: str, row: str) -> str:
         if base in name:
             if row in forms:
                 return forms[row]
-            from sr_od.application.currency_war.cw_chars import CHARACTERS as _C
+            from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _C
             cur = _C.get(name)
             if cur is not None and cur.position_pref() == row:
                 return name   # 已是目标排形态

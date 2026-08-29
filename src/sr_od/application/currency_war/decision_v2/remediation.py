@@ -29,7 +29,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_intention import IntentionState
 from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     BENCH_CAPACITY,
@@ -47,6 +46,7 @@ from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     sell_refund,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
     _char_bonds,

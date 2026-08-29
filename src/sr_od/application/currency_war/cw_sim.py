@@ -33,17 +33,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_investments import (
     STRATEGY_EFFECTS,
     EconomyEffect,
     aggregate_economy,
     economy_effect_of,
     normalize_invest_name,
-)
-from sr_od.application.currency_war.cw_shop_odds import (
-    POOL_COPIES_PER_CARD,
-    REFRESH_PROB,
 )
 from sr_od.application.currency_war.cw_sim_invest import (
     InvestInjectionState,
@@ -88,6 +83,11 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
     DEPTH_BUCKET_W,
     P2_COMBAT_DEFAULT,
     P2CombatCalib,
+)
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    POOL_COPIES_PER_CARD,
+    REFRESH_PROB,
 )
 
 # 血预算停手·终止分支账本决策位(设计 W659 v2 §5.1 R4;ADR-0469)——
@@ -685,10 +685,10 @@ def resolve_pool(pool: str | Path = 'auto', *,
     if pool == 'fallback':
         out = ({}, pool_fingerprint({}), 'fallback')
     elif pool == 'snapshot':
-        from sr_od.application.currency_war.cw_delta_pool_data import (
+        from sr_od.application.currency_war.data.cw_delta_pool_data import (
             META as _META,
         )
-        from sr_od.application.currency_war.cw_delta_pool_data import (
+        from sr_od.application.currency_war.data.cw_delta_pool_data import (
             SNAPSHOT as _SNAP_RAW,
         )
         _SNAP = _normalize_pool(_SNAP_RAW)
@@ -1887,7 +1887,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 灵敏度带呈报效应量,不作为已标定值。
             if _wear_eff > 0 and delta < 0 \
                     and nodes[rn - 1] in ('battle', 'encounter'):
-                from sr_od.application.currency_war.cw_synthesis import (
+                from sr_od.application.currency_war.data.cw_synthesis import (
                     RESERVED_COMPONENTS as _RC,
                 )
                 _worn_units = 0.0
@@ -1954,9 +1954,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 语义等价)。结构与常量见 EQUIP_GRANT_CALIB_VERSION 注。
             _equipped_now: list[tuple[str, str]] = []
             if nodes[rn - 1] in ('supply', 'reward'):
-                from sr_od.application.currency_war.cw_equipment_data import (
-                    EQUIPMENT_ROSTER,
-                )
                 from sr_od.application.currency_war.cw_events import (
                     _EQUIP_VALUE as _EV,
                 )
@@ -1964,11 +1961,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     SupplyOption,
                     decide_supply,
                 )
+                from sr_od.application.currency_war.data.cw_equipment_data import (
+                    EQUIPMENT_ROSTER,
+                )
                 _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
                 # 供给重校准:3 选项池 = 基础件 8 名均匀(实机供给节点
                 # 近全基础件,见 EQUIP_GRANT_CALIB_VERSION 注);进阶名
                 # 只走下方追加件通道。decide_supply 决策语义零改动。
-                from sr_od.application.currency_war.cw_synthesis import (
+                from sr_od.application.currency_war.data.cw_synthesis import (
                     RESERVED_COMPONENTS as _BASICS,
                 )
                 _basic_names = [n for n in _BASICS if n in EQUIPMENT_ROSTER]
@@ -2044,7 +2044,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _line_locked = (getattr(_ist, 'phase', '') == 'locked'
                             and getattr(_ist, 'locked_comp', ''))
             if _synth_on and _line_locked and st.equips:
-                from sr_od.application.currency_war.cw_synthesis import (
+                from sr_od.application.currency_war.data.cw_synthesis import (
                     plan_syntheses,
                 )
                 _tgt = getattr(sess, 'target_comp', None)
@@ -2053,7 +2053,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # P2 锁线回收:合成门需要的组件若正被穿着,先取回再合成
                 # (用户裁定:基础件穿着可逆=卖角色取回;sim 语义与卖出
                 # 回收 equips.extend 同向,这里是「扳手/卖出」的等价代理)
-                from sr_od.application.currency_war.cw_synthesis import (
+                from sr_od.application.currency_war.data.cw_synthesis import (
                     component_demand as _cd,
                 )
                 _need_comps = set(_cd(_keys))
@@ -2745,7 +2745,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 贫困桶计违规(可见性优先)
         _meta = None
         if pool == 'snapshot':
-            from sr_od.application.currency_war.cw_delta_pool_data import (
+            from sr_od.application.currency_war.data.cw_delta_pool_data import (
                 META as _META_SNAP,
             )
             _meta = _META_SNAP

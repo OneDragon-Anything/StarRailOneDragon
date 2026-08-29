@@ -55,8 +55,8 @@ def p_bar_faction(tag: str, level: int) -> float:
     多标签联合分布按标签独立取(DESIGN §附5 诚实列表:联合概率高估,
     设计内承认的近似)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.cw_shop_odds import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_shop_odds import (
         DISTINCT_CARDS_PER_COST,
         POOL_COPIES_PER_CARD,
         REFRESH_PROB,

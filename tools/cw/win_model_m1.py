@@ -44,12 +44,12 @@ from sklearn.preprocessing import StandardScaler
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'src'))
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS  # noqa: E402
 from sr_od.application.currency_war.cw_line_defs import ENGINE_FACTIONS  # noqa: E402
 from sr_od.application.currency_war.cw_sim import _engines_count  # noqa: E402
 from sr_od.application.currency_war.cw_win_features import (  # noqa: E402
     features_from_deployed,
 )
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E402
 
 REPLAY = REPO / '.debug/temp/currency_war/replay'
 BATTLE_NODE_TYPES = ('普通战斗', '遭遇', 'boss')

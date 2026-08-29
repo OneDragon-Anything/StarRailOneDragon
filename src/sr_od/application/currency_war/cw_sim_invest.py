@@ -76,7 +76,7 @@ def _plaza_freq(counter_field: str,
     (全局经验分布,不做条件化——plaza 聚类按终局 carry 分桶,注入
     反向作用于选线,条件化会制造循环因果)。
     """
-    from sr_od.application.currency_war.cw_plaza_comps import (
+    from sr_od.application.currency_war.data.cw_plaza_comps import (
         PLAZA_CARRY_CLUSTERS,
     )
     agg: dict[str, int] = {}
@@ -97,7 +97,7 @@ def _freq(counter_field: str, is_known) -> tuple[tuple[str, int], ...]:
     """频次表惰性构建 + 缓存(导入期零开销;丢名字计数披露)。"""
     ck = counter_field
     if ck not in _FREQ_CACHE:
-        from sr_od.application.currency_war.cw_plaza_comps import (
+        from sr_od.application.currency_war.data.cw_plaza_comps import (
             PLAZA_CARRY_CLUSTERS,
         )
         dropped: dict[str, int] = {}

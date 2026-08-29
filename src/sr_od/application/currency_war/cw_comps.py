@@ -34,8 +34,8 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
-from sr_od.application.currency_war.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.cw_state import GameState, effective_hp_threshold
+from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_performance import PerformanceTracker
@@ -426,8 +426,8 @@ def skeleton_factions() -> set[str]:
     羁绊最低激活档 ≤3 人 **且** ≤2 费成员 ≥2 个(便宜+快激活+有人可买)。从 FACTIONS/CHARACTERS
     注册表派生(单一真相源,版本更新自动传导);评估层(cw_evaluate.TRANSITION_FACTIONS)消费。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
     cheap: dict[str, int] = {}
     for _name, ch in CHARACTERS.items():
@@ -1199,7 +1199,7 @@ def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
     """
     if not bosses:
         return None
-    from sr_od.application.currency_war.cw_enemy_data import (
+    from sr_od.application.currency_war.data.cw_enemy_data import (
         matchup,
         normalize_boss_name,
     )
@@ -1569,7 +1569,7 @@ def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
     (分配空归因)共用本函数,保证「分配语义」与「分配空诊断」永不漂移。
     ``worn_basics`` = char 名 → 已穿基础件名单(画面已穿 + 本趟已分配)。
     """
-    from sr_od.application.currency_war.cw_synthesis import synthesize_target
+    from sr_od.application.currency_war.data.cw_synthesis import synthesize_target
     for b2 in worn_basics.get(char, ()):
         y = synthesize_target(basic, b2)
         if y is None:
@@ -1601,7 +1601,7 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     pool = list(owned)
     if not pool:
         return 'pool_empty'
-    from sr_od.application.currency_war.cw_synthesis import (
+    from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
         recycle_qualified,
     )
@@ -1691,7 +1691,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
 
     # ===== ADR-0391:防误合成守卫 + 回收去向(P14 定理 3/4)=====
-    from sr_od.application.currency_war.cw_synthesis import (
+    from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
         recycle_qualified,
     )

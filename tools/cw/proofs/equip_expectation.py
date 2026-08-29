@@ -45,10 +45,13 @@ while not (ROOT / 'pyproject.toml').exists():
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT / 'src'))
 
-from sr_od.application.currency_war.cw_comps import COMP_LIBRARY  # noqa: E402
-from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS  # noqa: E402
 from sr_od.application.currency_war.cw_horizon import TOTAL_NODES  # noqa: E402
-from sr_od.application.currency_war.cw_synthesis import (  # noqa: E402
+
+from sr_od.application.currency_war.cw_comps import COMP_LIBRARY  # noqa: E402
+from sr_od.application.currency_war.data.cw_equipment_data import (  # noqa: E402
+    EQUIPMENTS,
+)
+from sr_od.application.currency_war.data.cw_synthesis import (  # noqa: E402
     SYNTHESIS_BASES,
     cross_components,
     self_base,

@@ -37,10 +37,10 @@ from sr_od.application.currency_war.currency_war_char_id import (
     identify_character,
     load_avatar_templates,
 )
-from sr_od.application.currency_war.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.cw_equipment import read_equipped_below
 from sr_od.application.currency_war.cw_obs_core import _area_rect
 from sr_od.application.currency_war.cw_state import BenchChar
+from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
 
@@ -444,7 +444,7 @@ def identify_slots(
             continue
         # 开拓者形态按排归一(用户 2026-08-16):前台=记忆/后台=欢愉;立绘库两形态覆盖不均时
         # SIFT 可能按旧立绘判成另一形态 —— 已上阵排是权威(row 即真实排),归一消歧。
-        from sr_od.application.currency_war.cw_chars import (
+        from sr_od.application.currency_war.data.cw_chars import (
             is_trailblazer,
             trailblazer_form,
         )

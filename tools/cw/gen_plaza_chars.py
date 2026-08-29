@@ -151,7 +151,7 @@ def check_vs_registry(roles: list) -> list[str]:
 
     返回差异行(空 = 一致)。已知例外见 ``CHECK_EXCEPTIONS``(裁决过的差异,不算漂移)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
     diffs: list[str] = []
     for e in sorted(roles, key=lambda x: int(x["id"])):
@@ -191,7 +191,7 @@ def gen_templates(roles: list) -> None:
     import cv2
     import numpy as np
 
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
     TPL_DIR.mkdir(parents=True, exist_ok=True)
     n = 0

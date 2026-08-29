@@ -32,13 +32,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.cw_board_by_row import board_by_row
-from sr_od.application.currency_war.cw_chars import CHARACTERS
-from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
 from sr_od.application.currency_war.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 # ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
 _XIANZHOU_TIER: int = FACTIONS['仙舟'].tiers[0]              # 3(仙舟≥3 激活)

@@ -89,7 +89,7 @@ def _held_form_weights(state: GameState,
     ._board_factions_of / _board_counts_of 同构(此处加权复刻而非
     复用——cw_sim 计数函数按件数 +1,不支持分数权重)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     fac: dict[str, float] = {}
     main: dict[str, float] = {}
     dep_names: set[str] = set()
@@ -403,11 +403,11 @@ def _shop_has_engine_card(state: GameState) -> bool:
     (``system_judge_factions``/``engine_char_names``,与诊断口径同源
     靠 import 不靠手抄——第五张体系卡加入自动传导)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
     from sr_od.application.currency_war.cw_system_cards import (
         engine_char_names,
         system_judge_factions,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     _eng_facs = system_judge_factions()
     _eng_names = engine_char_names()
     for c in (state.shop or []):
@@ -589,8 +589,8 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
         return None
     import math
 
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
-    from sr_od.application.currency_war.cw_shop_odds import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_shop_odds import (
         DISTINCT_CARDS_PER_COST,
         POOL_COPIES_PER_CARD,
         expected_refreshes,
@@ -700,11 +700,11 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         # 通道仍可评估(`w170_p1_vd/`/ADR-0369:never-2 局的主形态=core copies0)
         return _vd_p1_pair(state, session, registry)
     j = len(copies)   # 全 1★ 的基础副本数(2★ 已在上面短路)
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     ch = _CH.get(core)
     if ch is None or not ch.cost:
         return None
-    from sr_od.application.currency_war.cw_shop_odds import (
+    from sr_od.application.currency_war.data.cw_shop_odds import (
         expected_refreshes_for_card,
     )
     e = expected_refreshes_for_card(
@@ -862,7 +862,7 @@ def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
     name = getattr(a.card, 'name', '') or ''
     if name == '希儿':
         return frozenset({'希儿系'})
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     ch = _CH.get(name)
     if ch is None:
         return frozenset()
@@ -988,7 +988,7 @@ def score_candidate(cand: Candidate, state: GameState,
                    if 0 <= cand.action.bench_idx < len(state.bench or [])
                    else None)
             if _bc is not None:
-                from sr_od.application.currency_war.cw_chars import (
+                from sr_od.application.currency_war.data.cw_chars import (
                     CHARACTERS as _CH,
                 )
                 _c = _CH.get(getattr(_bc, 'char_id', '') or '')

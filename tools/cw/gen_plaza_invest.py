@@ -6,7 +6,7 @@
   取 ``fight_augment_list``(投资策略)/``portal_list``(投资环境)。
 
 产出(**同源双产物,双向链接,均勿手编**):
-  1. ``src/sr_od/application/currency_war/cw_invest_data.py`` —— 代码侧(机器消费):
+  1. ``src/sr_od/application/currency_war/data/cw_invest_data.py`` —— 代码侧(机器消费):
      ``PLAZA_AUGMENTS`` / ``PLAZA_PORTALS``,数字 id 为稳定主键;name 经 canon 归一为
      注册表键(OCR 友好形);effect 为官方效果全文(去富文本标签,保换行)。
   2. ``docs/game/currency_war/data/invest_cards.md`` —— 人读版(翻阅/攻略引用):
@@ -42,7 +42,7 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
-DATA_PY = REPO / "src/sr_od/application/currency_war/cw_invest_data.py"
+DATA_PY = REPO / "src/sr_od/application/currency_war/data/cw_invest_data.py"
 DOC_MD = REPO / "docs/game/currency_war/data/invest_cards.md"
 GEN_CMD = "uv run python tools/cw/gen_plaza_invest.py"
 CACHE_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
@@ -158,7 +158,7 @@ def render(version: str, augments: list[dict], portals: list[dict]) -> str:
 def diff_report(augments: list[dict], portals: list[dict]) -> None:
     """对比旧 data 文件(by id),打印 新增/移除/改名/品质变/效果变。"""
     try:
-        from sr_od.application.currency_war.cw_invest_data import (
+        from sr_od.application.currency_war.data.cw_invest_data import (
             PLAZA_AUGMENTS,
             PLAZA_PORTALS,
         )
@@ -210,7 +210,7 @@ def render_doc(version: str, augments: list[dict], portals: list[dict]) -> str:
         f"# 货币战争 投资策略 / 投资环境(人读版,V{version})",
         "",
         f"> **由 `tools/cw/gen_plaza_invest.py` 生成,勿手编**(plaza 官方 API,重跑:`{GEN_CMD}`)。",
-        "> 代码侧(机器消费,含 canon 键/effect 全文):`src/sr_od/application/currency_war/cw_invest_data.py`",
+        "> 代码侧(机器消费,含 canon 键/effect 全文):`src/sr_od/application/currency_war/data/cw_invest_data.py`",
         "> —— 两个文件**同源生成、双向链接**,以 plaza id 为锚;人工建模增量(economy/评估分)在 `cw_investments.py`。",
         "",
     ]

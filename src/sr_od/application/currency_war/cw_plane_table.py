@@ -149,7 +149,7 @@ def peak_refresh_level(cost: int) -> int:
     R4 排程判据②的查表分量)。并列取高档([7] 口述「允许高一档」:
     峰值平手时高一级的相邻档概率差可忽略,而提前一级到位=多一轮
     峰值窗口)。cost 越界(非 1-5)→ 夹到边界档。"""
-    from sr_od.application.currency_war.cw_shop_odds import refresh_prob
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
     c = min(5, max(1, int(cost)))
     best_l, best_p = 1, -1.0
     for lv in range(1, 10):

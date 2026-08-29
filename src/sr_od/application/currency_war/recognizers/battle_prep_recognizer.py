@@ -36,7 +36,6 @@ from sr_od.application.currency_war.cw_equipment import (
     ensure_equip_tm_templates,
     read_equips,
 )
-from sr_od.application.currency_war.cw_equipment_data import get_equip
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     read_bench_chars,
@@ -61,6 +60,7 @@ from sr_od.application.currency_war.cw_observation import (
     read_streak,
 )
 from sr_od.application.currency_war.cw_state import BenchChar
+from sr_od.application.currency_war.data.cw_equipment_data import get_equip
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike

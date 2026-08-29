@@ -216,11 +216,11 @@ def levelup_refresh_saving(state: GameState, session: StrategySession,
     if not copies or max(getattr(d, 'star', 1) or 1
                          for d in copies) >= 2:
         return 0.0
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     ch = _CH.get(core)
     if ch is None or not ch.cost:
         return 0.0
-    from sr_od.application.currency_war.cw_shop_odds import (
+    from sr_od.application.currency_war.data.cw_shop_odds import (
         expected_refreshes_for_card,
     )
     j = len(copies)
@@ -362,7 +362,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
 #: 名单从 ``cw_invest_data.PLAZA_PORTALS`` 按效果文本派生(单一源,
 #: 版本重跑自动跟上;断言锁见 test_cw_w119)。
 def _overheated_env_names() -> frozenset[str]:
-    from sr_od.application.currency_war.cw_invest_data import PLAZA_PORTALS
+    from sr_od.application.currency_war.data.cw_invest_data import PLAZA_PORTALS
     return frozenset(
         p.name for p in PLAZA_PORTALS
         if '奖励节点替换' in (p.effect or ''))

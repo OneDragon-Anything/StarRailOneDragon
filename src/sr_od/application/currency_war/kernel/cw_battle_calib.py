@@ -23,11 +23,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_shop_odds import (
-    REFRESH_PROB,
-    ROTATION_CHANCE,
-    rotation_probs,
-)
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BOSS_BY_DIR_ROUND,
     BOSS_WIN_DELTA,
@@ -41,6 +36,11 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
     P2_LOSS_BAND,
     WIN_DELTAS,
     P2CombatCalib,
+)
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    REFRESH_PROB,
+    ROTATION_CHANCE,
+    rotation_probs,
 )
 
 if TYPE_CHECKING:
@@ -305,7 +305,7 @@ def _board_factions_of(deployed) -> dict[str, int]:
     「过渡阵容凑到没有」的判据输入:recipe_tier(配方档位)/
     三人组在场上——此前 sim 账本 board 恒空,成型质量不可观测。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     out: dict[str, int] = {}
     for d in (deployed or []):
         if d is None:   # ADR-0392 槽位表空槽

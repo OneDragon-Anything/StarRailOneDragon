@@ -35,13 +35,6 @@ from sr_od.application.currency_war.cw_evaluate import (
     _should_save_for_interest,
     evaluate,
 )
-from sr_od.application.currency_war.cw_factions import (
-    FACTIONS,
-    INTEREST_THRESHOLD,
-)
-from sr_od.application.currency_war.cw_shop_odds import (
-    REFRESH_PROB,
-)
 from sr_od.application.currency_war.cw_state import (
     BENCH_CAPACITY,
     Action,
@@ -60,6 +53,13 @@ from sr_od.application.currency_war.cw_state import (
     iter_occupied_deployed,  # ADR-0392 helper 导入
     sell_refund,
     simulate,
+)
+from sr_od.application.currency_war.data.cw_factions import (
+    FACTIONS,
+    INTEREST_THRESHOLD,
+)
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    REFRESH_PROB,
 )
 
 if TYPE_CHECKING:
@@ -229,7 +229,7 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
     if name in GENERIC_FILLERS:
         return state.deployed_count() < state.max_units()
     from sr_od.application.currency_war.cw_economy import _char_synergies
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
     syn = _char_synergies(name)
     if faction and faction != '?':
         syn = syn | {faction}
@@ -295,7 +295,7 @@ def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
     单卡永不触发③——r90 审计 A.a 记录,接受该简化)。
     """
     from sr_od.application.currency_war.cw_economy import _char_synergies
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
     syn = _char_synergies(bc.char_id) if bc.char_id else set()
     if bc.faction and bc.faction != '?':
         syn = syn | {bc.faction}
@@ -705,7 +705,7 @@ def _hunt_tier_set(state: GameState, comps: tuple) -> set[int]:
     返回费级集;供牌池压缩买判定(同费非目标卡保息买入,降分母提命中率;
     压缩语义见同文档 S1 牌库操纵)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     tiers: set[int] = set()
 
     def _equiv_copies(name: str) -> int:
@@ -1057,7 +1057,7 @@ def _best_improving_action(
                                      (_syn(c.name) | ({c.faction} if c.faction and c.faction != '?' else set())))]
         if _sk_candidates:
             # 评审Y1③:排序 key 补「立即可激活档」优先(买后即达 min_tier 的骨架对 > 纯枢纽单买)
-            from sr_od.application.currency_war.cw_factions import FACTIONS as _FAC
+            from sr_od.application.currency_war.data.cw_factions import FACTIONS as _FAC
             def _activates_now(c) -> int:
                 from sr_od.application.currency_war.cw_economy import (
                     _char_synergies as _syn2,

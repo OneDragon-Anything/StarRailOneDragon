@@ -20,7 +20,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
 # 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2(strategy/)。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」+ 修 §2 内部矛盾,
@@ -917,8 +917,8 @@ def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
     同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。
     """
     bc.position_pref = to_row
-    from sr_od.application.currency_war.cw_chars import get_char as _get_char
-    from sr_od.application.currency_war.cw_chars import (
+    from sr_od.application.currency_war.data.cw_chars import get_char as _get_char
+    from sr_od.application.currency_war.data.cw_chars import (
         is_trailblazer,
         trailblazer_form,
     )
@@ -949,7 +949,7 @@ def board_unique_key(bc: BenchChar) -> str | None:
     cid = getattr(bc, 'char_id', '') or ''
     if not cid:
         return None
-    from sr_od.application.currency_war.cw_chars import is_trailblazer
+    from sr_od.application.currency_war.data.cw_chars import is_trailblazer
     return '__trailblazer__' if is_trailblazer(cid) else cid
 
 

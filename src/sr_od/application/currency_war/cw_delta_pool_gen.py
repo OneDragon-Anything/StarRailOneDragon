@@ -21,7 +21,7 @@ decisions deployed join);reward/supply=深度桶;**boss=
 分离;修 W156 发现的既有 P1 池 P2 污染(44 条 plane=2 差分混在
 无位面维的池里,含 16 条跨位面差分)。
 
-产出:src/sr_od/application/currency_war/cw_delta_pool_data.py ——
+产出:src/sr_od/application/currency_war/data/cw_delta_pool_data.py ——
 SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 主仓提交(先例:REFRESH_PROB 实测概率表在 cw_shop_odds);CI 与
 跨机可复现基准靠它(裸 .debug 池随实机追加漂移,不可作基准)。
@@ -47,7 +47,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 REPO = get_project_root()
 REPLAY_DIR = REPO / '.debug/temp/currency_war/replay'
 SIM_RUNS_DIR = REPO / '.debug/temp/currency_war/sim_runs'
-DATA_PY = REPO / 'src/sr_od/application/currency_war/cw_delta_pool_data.py'
+DATA_PY = REPO / 'src/sr_od/application/currency_war/data/cw_delta_pool_data.py'
 
 # 写目标白名单守卫(同 gen_factions 范式):本生成器只允许写
 # _data.py 数据层文件;判断层/策略文件永不在此列。

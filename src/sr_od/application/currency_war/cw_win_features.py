@@ -19,7 +19,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
-from sr_od.application.currency_war.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
 
 
@@ -79,7 +79,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     equip_count = 0
     total_cost = 0
     unknown_char_count = 0
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
     for d in deployed or []:
         cid = (d.get('char_id') or '').strip()

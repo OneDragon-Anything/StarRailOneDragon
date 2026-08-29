@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )

@@ -17,13 +17,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_state import (
     BuyCard,
     GameState,
     card_cost,
     simulate,
 )
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp

@@ -27,7 +27,6 @@ from sr_od.application.currency_war.currency_war_char_id import (
     load_avatar_templates,
 )
 from sr_od.application.currency_war.currency_war_cv import slot_occupied
-from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
@@ -42,6 +41,7 @@ from sr_od.application.currency_war.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
 from sr_od.application.currency_war.cw_observation import read_deploy_cap_debounced
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -81,7 +81,7 @@ def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
     _deployed_fac 统一为全羁绊口径);``deployed_fac`` = 当前
     板面阵营计数;档表单一源 FACTIONS.tiers。
     """
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
     for _f in bonds:
         _now = (deployed_fac.get(_f, 0) or 0) + 1
         if _now in (FACTIONS.get(_f).tiers if FACTIONS.get(_f) else ()):
@@ -593,7 +593,7 @@ class DeployBench(SrOperation):
             # 的补档键按 factions+flows 全羁绊判档,而此处只累 factions
             # → 流派补档件(击破2→3)在生产永不优先,锁测试锁了个
             # 生产走不到的路径。同口径修复(板面 OCR 含流派行)。
-            from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
+            from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
             for _dc in _deployed_cids:
                 _dch = _CH.get(_dc)
                 if _dch:

@@ -2407,7 +2407,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
 def query_tiers(replay_dir: Path, run_id: str) -> list[str]:
     """视图:羁绊激活档逐轮 + 角色构成(星级) + 装备分配(r358 三维同屏;
     配方成型判读的硬指标;恒 0 = 配方没真正上场)。"""
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
     best = _load_decisions_rounds(replay_dir, run_id)
     lines: list[str] = []
     prev_tgt = None

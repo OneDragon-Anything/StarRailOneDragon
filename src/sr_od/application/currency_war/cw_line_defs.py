@@ -86,7 +86,7 @@ def recipe_char_names() -> frozenset[str]:
     ADR-0437)的 16 名口径一致:1 费×5、2 费×1、3 费×4、4 费×4、
     5 费×2。消费方=decision_v2.filters 的同名牌集中度判据。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     return frozenset(
         n for n, ch in CHARACTERS.items()
         if set(ch.factions or ()) & RECIPE_FACTIONS)
@@ -94,7 +94,7 @@ def recipe_char_names() -> frozenset[str]:
 
 def recipe_kinds_1cost() -> int:
     """1 费配方件的种类数(找件刷概率用;r269b 第三处手搓的收口)。"""
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     return sum(1 for n, ch in CHARACTERS.items()
                if ch.cost == 1 and (ch.factions or [''])[0]
                in RECIPE_FACTIONS)
@@ -114,7 +114,7 @@ def classify_buy(card, state) -> str:
     锁线形态键的 'line' 判定属 _line_wants 形态逻辑,不在此
     复制(单一源防漂移:allow 键集派生只在 _line_wants)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(card.name)
     card_bonds = (set(ch.factions) | set(ch.flows)) if ch \
         else {card.faction}

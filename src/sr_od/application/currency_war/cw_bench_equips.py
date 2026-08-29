@@ -60,7 +60,7 @@ def wear_synthesis_equivalent(ledger: list[str], visible: list[str]) -> bool:
     """
     if not ledger or not visible:
         return False
-    from sr_od.application.currency_war import cw_synthesis as _syn
+    from sr_od.application.currency_war.data import cw_synthesis as _syn
 
     def _reach(cur: Counter) -> bool:
         if cur == Counter(visible):

@@ -24,8 +24,6 @@ drag 验证留在 op)。
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS
-from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
@@ -33,6 +31,8 @@ from sr_od.application.currency_war.cw_line_defs import (
 )
 from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 
 def _bonds_of(bc: BenchChar) -> set[str]:
@@ -54,7 +54,7 @@ def cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
 
 def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
     """r361 补档键:上阵后任一阵营恰达激活档 → 1,否则 0。"""
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
     for _f in bonds:
         _now = (deployed_fac.get(_f, 0) or 0) + 1
         if _now in (FACTIONS.get(_f).tiers if FACTIONS.get(_f) else ()):

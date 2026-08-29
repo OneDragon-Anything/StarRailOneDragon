@@ -24,12 +24,12 @@ from __future__ import annotations
 
 import re
 
-from sr_od.application.currency_war.cw_chars import (
+from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
     is_trailblazer,
     trailblazer_form,
 )
-from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS
+from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
 # 星徽:「装备者加入【X】羁绊。」(装备注册表 22 张星徽 desc 统一句式,
 # cw_equipment_data.py:102-123;数据层 plaza API 溯源)

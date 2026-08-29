@@ -235,7 +235,7 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
     近似:owned>0 且 equipped=0 且 deployed>0 连续 2 战斗轮 → 报
     (工具误报由 owned 名单含工具的概率压低,后续可精化)。
     """
-    from sr_od.application.currency_war.cw_synthesis import (
+    from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
     )
     out: list[str] = []
@@ -373,7 +373,7 @@ def check_sim_pool_no_cost_truncation(copies: dict[str, int]) -> dict:
     raise);batch 报告 `checks_violations` 同步披露。纯 dict 入参,
     不 import cw_sim。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     missing = [cost for cost in (4, 5) if not any(
         CHARACTERS[n].cost == cost for n in copies)]
     return {'violations': len(missing), 'missing_costs': missing}
@@ -653,7 +653,7 @@ def check_phantom_equip_no_wear(rows: list[dict]) -> list[str]:
     合成保留组件(RESERVED_COMPONENTS)本身是注册表内真件,
     P1 穿着已合法化(ADR-0265 增补:穿戴可逆,简易件默认穿)。
     """
-    from sr_od.application.currency_war.cw_equipment_data import (
+    from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
     out: list[str] = []
@@ -940,7 +940,7 @@ def check_supply_pool_roster_purity(rows: list[dict]) -> list[str]:
     违规 = 采样池过滤被绕过/回退(phantom_equip 通道回归),或
     账本写入端混入未建模名(0 容忍)。
     """
-    from sr_od.application.currency_war.cw_equipment_data import (
+    from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
     out: list[str] = []
@@ -974,10 +974,10 @@ def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
     (语料核证为表残留:超级电池=超充站 buff 词/能量饮料=零出现/
     翁瓦克=局外遗器名误收;翁瓦克 4 分转投蓄能帆),本检查现应恒绿。
     """
-    from sr_od.application.currency_war.cw_equipment_data import (
+    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
+    from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
-    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
     stale = sorted(n for n in _EQUIP_VALUE if n not in EQUIPMENT_ROSTER)
     if not stale:
         return []
@@ -998,7 +998,7 @@ def check_equip_supply_wear_closure(rows: list[dict]) -> list[str]:
     (批㉜ 锚 n=100 基线:非保留件获取/上身 1:1,0 违规;蓄能帆
     入池 12 局 12 上身)。
     """
-    from sr_od.application.currency_war.cw_synthesis import (
+    from sr_od.application.currency_war.data.cw_synthesis import (
         RESERVED_COMPONENTS,
     )
     acquired: set[str] = set()
@@ -1039,10 +1039,10 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
     from collections import Counter
 
     from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
-    from sr_od.application.currency_war.cw_equipment_data import (
+    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
+    from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
-    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
     kc: Counter[str] = Counter()
     for c in COMP_LIBRARY:
         for k in c.key_equips:
@@ -1398,9 +1398,9 @@ def _seg_target_roster(target_label: str) -> set[str]:
     """锁定目标名册代理(与 seg_check_formed_still_buying_transition
     的 _is_target_piece 同口径:bridge 框架件 ∪ COMP_LIBRARY 该 comp
     的 core_chars∪factions 成员;C-A 目标内判定用,§4.2 单一源复用)。"""
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
     from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     roster: set[str] = set()
     for combo in BRIDGE_POOL:
         roster.update(combo.fixed + combo.core)
@@ -1450,10 +1450,10 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
       ``copy_bench_only_skipped``,不进真拦分子(V-B9.3);
     - C-D 非重复散件未买(¬is_dup_held)→ 真拦(现行语义保持)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_line_defs import (
         ENGINE_FACTIONS,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
     )
@@ -1535,10 +1535,10 @@ def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
     - ``copy_out_of_band_skipped``:带外副本未买(〔`w300_dup_ruling/` 口述〕
       「完全没必要买」合法面;检查器不许再当候选发射违规)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_line_defs import (
         ENGINE_FACTIONS,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
     )
@@ -1688,9 +1688,9 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
     数据边界:target 未锁定时的 bridge 白名单兜底;pairs 周边件在
     两名单之外的极端形态可能误报——事件率仅供诊断。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
     from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     bridge_names: set[str] = set()
     for combo in BRIDGE_POOL:
         bridge_names.update(combo.fixed + combo.core)
@@ -2115,7 +2115,7 @@ def check_pool_freshness(replay_dir=None, *,
         return {'violations': 0, 'lag': None,
                 'skipped': 'Δ池已冻结(退役第一步):战斗类节点已切'
                            '粗参数两态模型,快照停更为预期'}
-    from sr_od.application.currency_war import cw_delta_pool_data as _dpd
+    from sr_od.application.currency_war.data import cw_delta_pool_data as _dpd
     if replay_dir is None:
         from sr_od.application.currency_war.cw_delta_pool_gen import (
             REPLAY_DIR as _rd,
@@ -3411,7 +3411,7 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
     """
     from collections import Counter
 
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     obs = Counter()
     cost_mix = Counter()
     draws = 0
@@ -3776,7 +3776,7 @@ def check_shop_cost_conformance(ledgers: list[list[dict]]) -> dict:
     解析自纠)——zero-supply 判据用 p≥0.05 且该级抽牌 ≥200 的
     强条件压制两类噪声;违反 = 池截断回归(ADR-0272)。
     """
-    from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
+    from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
     by_level: dict[int, dict[int, int]] = {}
     for rows in ledgers:
         for row in rows:

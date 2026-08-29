@@ -27,13 +27,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     COMP_LIBRARY,
     Comp,
     get_comp,
 )
-from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_plugins import (
     PLUGIN_LIBRARY,
     plugin_disabled,
@@ -55,6 +53,8 @@ from sr_od.application.currency_war.cw_system_cards import (
     card_engine_complete,
     card_pieces,
 )
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 # 体系卡 →(判据阵营, 目标档);W47 统一化:card→faction 映射改从
 # ``SystemCard.judge_factions`` 字段派生(第三处重复消除;原先本表/

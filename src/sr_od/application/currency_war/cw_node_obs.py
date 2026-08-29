@@ -171,7 +171,7 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
     装备行定义列(每装备名 = 1 选项),角色按最近 x 配对(``get_char`` roster 校验,滤噪)。读不到 → []
     (handler 退默认 ``CARD_BODY``)。
     """
-    from sr_od.application.currency_war.cw_chars import get_char
+    from sr_od.application.currency_war.data.cw_chars import get_char
     ocr_map = ctx.ocr_service.get_ocr_result_map(
         image=screen, rect=None, color_range=None, crop_first=False,
     )

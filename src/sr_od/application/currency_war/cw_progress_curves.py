@@ -11,7 +11,7 @@ v0 语义:进度 = 板面成型度代理(等级轨迹归一)。节奏 label(5/6/
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_plaza_comps import PLAZA_CARRY_CLUSTERS
+from sr_od.application.currency_war.data.cw_plaza_comps import PLAZA_CARRY_CLUSTERS
 
 NODES_TOTAL: int = 27   # 3 位面 × 9 节点(与 cw_plane_table.NODES_PER_PLANE 同源)
 

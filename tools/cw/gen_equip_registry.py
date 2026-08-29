@@ -351,7 +351,7 @@ def main() -> None:
               .replace("__ENTRIES__", "\n".join(eq_lines))
               .replace("__TOTAL__", str(total))
               .replace("__COUNTS__", count_summary))
-    out_path = REPO / "src/sr_od/application/currency_war/cw_equipment_data.py"  # P0-1:只写数据;SIFT 在 cw_equipment.py(手维护,不被覆盖)
+    out_path = REPO / "src/sr_od/application/currency_war/data/cw_equipment_data.py"  # P0-1:只写数据;SIFT 在 cw_equipment.py(手维护,不被覆盖)
     out_path.write_text(module, encoding="utf-8")
     print(f"写全量注册表 → {out_path}({total} 件)")
 

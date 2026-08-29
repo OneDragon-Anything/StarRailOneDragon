@@ -119,7 +119,7 @@ def main() -> None:
     warns: list[str] = []
 
     # ---- 1) tiers 对拍:官方 traits.json vs cw_factions.FACTIONS(单一源)----
-    from sr_od.application.currency_war.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
     print("\n[tiers] 官方激活阈值 vs FACTIONS[name].tiers(逐键):")
     tier_diffs: list[str] = []
@@ -141,7 +141,7 @@ def main() -> None:
         print(f"  ✓ 一致({len(official_names)} 键逐键全等)")
 
     # ---- 2) 成员对拍:官方 roles vs chars_by_faction 派生(成员单一源 = CHARACTERS)----
-    from sr_od.application.currency_war.cw_chars import chars_by_faction
+    from sr_od.application.currency_war.data.cw_chars import chars_by_faction
 
     print("\n[roles] 官方成员名单 vs chars_by_faction(name) 集合(逐键):")
     role_diffs: list[str] = []
@@ -156,7 +156,7 @@ def main() -> None:
         n_roles += 1
         # 派生集合 = 阵营/流派成员(chars_by_faction)+ 独立羁绊成员(Character.independent,
         # 独立羁绊不在 factions/flows 里,chars_by_faction 覆盖不到)
-        from sr_od.application.currency_war.cw_chars import CHARACTERS
+        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
         derived = {c.name for c in chars_by_faction(name)}
         derived |= {c.name for c in CHARACTERS.values() if c.independent == name}
         extra = official - derived

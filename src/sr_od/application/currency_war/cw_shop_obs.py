@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_shop_odds import (
+from sr_od.application.currency_war.data.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     SHOP_SLOTS,
     refresh_prob,

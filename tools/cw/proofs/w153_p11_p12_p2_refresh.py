@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..',
                                 '..', 'src'))
 
 from sr_od.application.currency_war.cw_horizon import interest  # noqa: E402
-from sr_od.application.currency_war.cw_shop_odds import (  # noqa: E402
+
+from sr_od.application.currency_war.data.cw_shop_odds import (  # noqa: E402
     expected_refreshes_for_card,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (  # noqa: E402

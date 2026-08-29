@@ -3,11 +3,13 @@
 # 只读真实表(REFRESH_PROB/升级成本/收入三件套),零随机纯表值,可重跑复核。
 # 运行: $env:PYTHONPATH="src"; uv run python tools/cw/proofs/w120_p5_refresh_levelup.py
 # 产出对应证明单篇的数字表;游戏版本改概率/成本表后重跑本脚本即可复核命题是否仍成立。
-from math import comb
 
-from sr_od.application.currency_war.cw_shop_odds import (
-    REFRESH_PROB, DISTINCT_CARDS_PER_COST, POOL_COPIES_PER_CARD,
-    _refresh_dist, expected_refreshes, refresh_prob,
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    DISTINCT_CARDS_PER_COST,
+    POOL_COPIES_PER_CARD,
+    _refresh_dist,
+    expected_refreshes,
+    refresh_prob,
 )
 
 SHOP_SLOTS = 5
@@ -28,7 +30,6 @@ def p_at_least_one(level: int, cost: int, j: int = 0) -> float:
 
 
 def upgrade_clicks(lv_from: int, lv_to: int) -> int:
-    import math
     n = 0
     for lv in range(lv_from, lv_to):
         xp = XP_TO_NEXT.get(lv)

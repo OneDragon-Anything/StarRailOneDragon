@@ -44,7 +44,6 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_economy import streak_gold
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
@@ -66,6 +65,7 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 # W47 统一化:engine_char_names 函数本体上移至 cw_system_cards(注册表旁),
 # 本模块 import 复用——消费点(candidates/engine_seed_wants/carry 保护集)零变化。
 from sr_od.application.currency_war.cw_system_cards import engine_char_names
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
 # hp 决策可信位单一源(ADR-0428 收口;posture_release 对本模块的引用
 # 全在函数体内延迟 import,模块级无环)。
@@ -236,10 +236,10 @@ def engine_seed_wants(card, state: GameState,
     if card.name in engine_char_names():
         return True    # ① C2 引擎件名单
     # ② 过渡体系阵营(v1 门语义)
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(card.name)
     card_bonds = (set(ch.factions) | set(ch.flows)) if ch \
         else {card.faction}
@@ -400,7 +400,7 @@ def press_band_derive(level: int, probs: dict[int, float] | None,
     取不到退基线行;空行(该等级无概率数据)→ 空集。"""
     row = probs or {}
     if not row:
-        from sr_od.application.currency_war.cw_shop_odds import REFRESH_PROB
+        from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
         row = REFRESH_PROB.get(level) or {}
     acc = 0.0
     out: list[int] = []

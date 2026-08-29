@@ -3,7 +3,7 @@
 > **性质**:装备子系统的机制事实与使用策略。**证据三级**:【代码实锤】=注册表/消费代码可定位(权威源顺序:注册表 `cw_equipment_data.py`/`cw_synthesis.py` 为已定事实层 > 攻略 `sources/` > 口述补充);【口述·权威】=用户口述(玩法判断类最高权威);【攻略佐证】=`sources/` 存档或 plaza API 文本;【推断】=由已有事实推得、未实测。
 > 创建:2026-08-26(run 26 崩坏局后装备层盲区大发现,用户开始系统口述装备玩法)。2026-08-27(W270)按注册表逐条补码源出处。
 > 版本基准:**V4.4**(4.5 更新无相关修复条目)。
-> 数据单一源:效果文本与数值 = `src/sr_od/application/currency_war/cw_equipment_data.py`(生成文件,勿手改;重跑 `tools/cw/gen_equip_registry.py`);合成图谱 = `cw_synthesis.py`(import 期从注册表 `recipes` 字段派生)。本文只记机制结论与「凭什么信」,不复写数值。
+> 数据单一源:效果文本与数值 = `src/sr_od/application/currency_war/data/cw_equipment_data.py`(生成文件,勿手改;重跑 `tools/cw/gen_equip_registry.py`);合成图谱 = `cw_synthesis.py`(import 期从注册表 `recipes` 字段派生)。本文只记机制结论与「凭什么信」,不复写数值。
 
 ## 机制事实
 

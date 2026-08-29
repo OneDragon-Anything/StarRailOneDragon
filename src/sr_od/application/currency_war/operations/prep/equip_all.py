@@ -542,7 +542,7 @@ class EquipAll(SrOperation):
                     # 判读锚点(P14 检验点 2):「缺什么囤什么」——目标 K 的
                     # 组件需求 − 当前库存正差,判读/值守按此报装备面。
                     if _tgt_comp is not None and _tgt_comp.key_equips:
-                        from sr_od.application.currency_war.cw_synthesis import (
+                        from sr_od.application.currency_war.data.cw_synthesis import (
                             hoard_gaps,
                         )
                         gaps = hoard_gaps(list(_tgt_comp.key_equips),

@@ -45,8 +45,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_economy import reserve_cap
+from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -63,11 +63,11 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     ∩ TRANSITION_TRAITS(与 scoring._cand_system_bonds 同口径)。
     A-1 刀法:仅此判定为真的件计入容量,未跨档期权件(q<1,`w469_convergence_ab/`
     已实测死法)不计。"""
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_deploy_logic import (
         TRANSITION_TRAITS,
         engines_count,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(name)
     if ch is None:
         return False

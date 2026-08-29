@@ -34,8 +34,6 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import get_char
-from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
@@ -69,6 +67,8 @@ from sr_od.application.currency_war.cw_state import (
     ledger_node_type,
     rebuild_deployed_from_board,
 )
+from sr_od.application.currency_war.data.cw_chars import get_char
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.context.sr_context import SrContext
 
 
@@ -206,7 +206,7 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
     rect = _area_rect(ctx, '按钮-刷新概率表', SHOP_SCREEN_NAME)   # 概率条在开商店子态屏
     if rect is None:
         return None
-    from sr_od.application.currency_war.cw_shop_odds import parse_prob_bar
+    from sr_od.application.currency_war.data.cw_shop_odds import parse_prob_bar
     # 全图 OCR + rect 过滤(2026-08-24 crop-first 审计转换;fixture shop_open.webp 对拍
     # 与裁剪读逐字等价)。read_game_state 链同帧多 reader 共享一次全图识别(帧级缓存)。
     texts = [r.data for r in _ocr(ctx, screen, rect)]
@@ -1395,7 +1395,7 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         cid = getattr(bc, 'char_id', '') or ''
         if not cid or cid == '?':
             return None
-        from sr_od.application.currency_war.cw_chars import (
+        from sr_od.application.currency_war.data.cw_chars import (
             is_trailblazer,
             trailblazer_form,
         )

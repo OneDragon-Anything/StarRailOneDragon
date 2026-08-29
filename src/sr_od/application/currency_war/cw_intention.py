@@ -44,7 +44,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     AFFIX_MECHANIC_MAP,
     COMP_LIBRARY,
@@ -67,13 +66,14 @@ from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE, TOTAL
 from sr_od.application.currency_war.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
 )
-from sr_od.application.currency_war.cw_shop_odds import (
-    DISTINCT_CARDS_PER_COST,
-    refresh_prob,
-)
 from sr_od.application.currency_war.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
+)
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    DISTINCT_CARDS_PER_COST,
+    refresh_prob,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,

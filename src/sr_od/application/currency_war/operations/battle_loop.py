@@ -1599,8 +1599,10 @@ def _get_or_init_allocator(ctx: SrContext):
     if _ALLOCATOR is not None:
         return _ALLOCATOR
     try:
-        from sr_od.application.currency_war.cw_plaza_comps import PLAZA_CARRY_CLUSTERS
         from sr_od.application.currency_war.cw_run_allocator import ThompsonAllocator
+        from sr_od.application.currency_war.data.cw_plaza_comps import (
+            PLAZA_CARRY_CLUSTERS,
+        )
         total = sum(max(c.n_posts, 0) for c in PLAZA_CARRY_CLUSTERS) or 1
         share = {c.carry: c.n_posts / total for c in PLAZA_CARRY_CLUSTERS if c.n_posts >= 15}
         _ALLOCATOR = ThompsonAllocator.from_plaza(share)

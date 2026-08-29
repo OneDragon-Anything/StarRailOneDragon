@@ -634,7 +634,9 @@ class DecisionV2Strategy(CwStrategy):
                 # 幸运星/量产型装甲从拿不到 key_equip 材料加分(局33b 箱仅开
                 # 2 次的获取侧根因之一)。recipes 是「配方元组的元组」
                 # (每条=(材料a,材料b)),逐条展开。
-                from sr_od.application.currency_war.cw_equipment_data import EQUIPMENTS
+                from sr_od.application.currency_war.data.cw_equipment_data import (
+                    EQUIPMENTS,
+                )
                 for ke in _key:
                     eq = EQUIPMENTS.get(ke)
                     for recipe in getattr(eq, 'recipes', ()) or ():

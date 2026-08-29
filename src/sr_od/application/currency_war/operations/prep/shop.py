@@ -172,7 +172,7 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
     官方立绘库,D-8/D-10/D-12 验证)—— deploy op 后用 SIFT 真实身份纠 tracking 漂(deploy_bench
     ``_reconcile_tracking``,D-12);buy 期 bench 仍用 OCR 名跟踪(buy 改变 bench,SIFT 单帧跟不上)。
     """
-    from sr_od.application.currency_war.cw_chars import get_char
+    from sr_od.application.currency_war.data.cw_chars import get_char
     out: list[BenchChar] = []
     for i, n in enumerate(names):
         if not n:

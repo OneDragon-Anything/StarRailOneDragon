@@ -39,7 +39,7 @@ class FactionInfo:
         成员关系是**派生**的(角色自报 factions/flows),不在 FactionInfo 重复硬编码 ——
         改 CHARACTERS 自动传导,单一真相源(工程化原则)。
         """
-        from sr_od.application.currency_war.cw_chars import chars_by_faction
+        from sr_od.application.currency_war.data.cw_chars import chars_by_faction
         return [c.name for c in chars_by_faction(self.cn, include_flows=include_flows)]
 
 

@@ -98,7 +98,7 @@ def _refreshable_names(state: GameState, session: StrategySession,
     由 EV 层定价——名单从授权边界降为评分先验(对抗审计 A1-β 修法,
     报告=`.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)。
     """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.candidates import (
         _target_names,
     )

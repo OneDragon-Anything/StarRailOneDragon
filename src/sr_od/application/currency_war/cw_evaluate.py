@@ -27,15 +27,15 @@ from sr_od.application.currency_war.cw_economy import (
     get_node_goal,
     roll_affordable,
 )
-from sr_od.application.currency_war.cw_factions import (
-    FACTIONS,
-    INTEREST_THRESHOLD,
-)
 from sr_od.application.currency_war.cw_state import (
     GameState,
     bench_occupied,
     effective_hp_threshold,
     iter_occupied_deployed,  # ADR-0392 helper 导入
+)
+from sr_od.application.currency_war.data.cw_factions import (
+    FACTIONS,
+    INTEREST_THRESHOLD,
 )
 
 log = log_utils.log

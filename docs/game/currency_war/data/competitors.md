@@ -10,7 +10,7 @@
 > - V4.2 词缀一览交叉:[article/75627078](https://www.miyoushe.com/sr/article/75627078)。
 >
 > **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;按**机制分类**便于 comp 克制/受利判断(mechanics_fit 双向)。
-> **词缀效果原文的单一源 = `src/sr_od/application/currency_war/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖;机制克/利映射在 `cw_comps.MECHANIC_COUNTERS`)——本文是机制分类/克制启示的叙事层,数值以注册表为准。
+> **词缀效果原文的单一源 = `src/sr_od/application/currency_war/data/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖;机制克/利映射在 `cw_comps.MECHANIC_COUNTERS`)——本文是机制分类/克制启示的叙事层,数值以注册表为准。
 > 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 `cw_investments.py::INVESTMENT_ENVS` 敌后破坏)。
 
 ---

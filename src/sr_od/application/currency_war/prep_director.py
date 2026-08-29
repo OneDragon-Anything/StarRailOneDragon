@@ -797,7 +797,7 @@ class EquipExpect:
 def _synth_pair(a: str, b: str) -> str | None:
     """两件装备的合成产物(合成规则单一源 = cw_synthesis:交叉
     ``synthesize_target`` / 自配 ``self_advance``;非两基础件可合对 → None)。"""
-    from sr_od.application.currency_war.cw_synthesis import (
+    from sr_od.application.currency_war.data.cw_synthesis import (
         self_advance,
         synthesize_target,
     )

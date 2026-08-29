@@ -283,7 +283,7 @@ def transition_score(char_id: str, faction: str, framework: str = '') -> float:
 
 def _char_has_faction(char_id: str, fw_facs) -> bool:
     """角色注册表阵营/流派与框架阵营有交集(r137 阵营兜底;纯查表)。"""
-    from sr_od.application.currency_war.cw_chars import get_char
+    from sr_od.application.currency_war.data.cw_chars import get_char
     c = get_char(char_id) if char_id else None
     if c is None:
         return False

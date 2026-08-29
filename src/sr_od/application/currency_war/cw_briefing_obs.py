@@ -156,7 +156,7 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str]:
     (错归一比不归一危害大——按序真值直接进 boss_fit 评分)。输入已是规范名 → LCS=1.0 原样返回。
     """
     from one_dragon.utils.str_utils import find_best_match_by_lcs
-    from sr_od.application.currency_war.cw_enemy_data import BOSS_MECHANICS
+    from sr_od.application.currency_war.data.cw_enemy_data import BOSS_MECHANICS
     refs: list[str] = list(BOSS_MECHANICS.keys())
     out: list[str] = []
     for name in names:
@@ -182,7 +182,7 @@ def briefing_reconcile_pairs(briefing: list[str] | None,
         find_best_match_by_lcs,
         longest_common_subsequence_length,
     )
-    from sr_od.application.currency_war.cw_enemy_data import BOSS_MECHANICS
+    from sr_od.application.currency_war.data.cw_enemy_data import BOSS_MECHANICS
     refs: list[str] = list(BOSS_MECHANICS.keys())
     # 逐位面清洗;位面空读(None)原位保留不送清洗(空值不参与 LCS)
     _brief_raw = list(briefing) if briefing else []

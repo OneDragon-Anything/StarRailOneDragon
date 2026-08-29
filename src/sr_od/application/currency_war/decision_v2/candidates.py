@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_economy import xp_click_cost
 from sr_od.application.currency_war.cw_plugins import (
     PLUGIN_LIBRARY,
@@ -45,6 +44,7 @@ from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     will_merge_on_buy,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.decision_v2.discipline import (
     copy_swap_useless,
     engine_char_names,
@@ -258,7 +258,7 @@ def _engine_seed_affinity(card: ShopCard, state: GameState,
     tiers = dict(TRANSITION_TRAITS)
     board = state.board or {}
     # 该卡所属体系(TRANSITION_TRAITS 键;希儿系不辖)
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(card.name)
     if ch is None:
         return True   # 未识别卡不辖(engine_seed_wants 已挡注册表外)

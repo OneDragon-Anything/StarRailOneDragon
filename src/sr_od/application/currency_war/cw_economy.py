@@ -8,12 +8,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
     LevelGoal,
-)
-from sr_od.application.currency_war.cw_factions import (
-    INTEREST_THRESHOLD,
 )
 from sr_od.application.currency_war.cw_investments import (
     EconomyEffect,
@@ -26,6 +22,10 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     effective_hp_threshold,
 )
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import (
+    INTEREST_THRESHOLD,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
@@ -33,7 +33,9 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_comps import Comp
-    from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
+    )
 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
 
@@ -430,7 +432,7 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
     # k=1「D 到下一张核心」:roll 分支实际行为 = 刷→见核心→买(增量凑件),非从 0 凑 2星
     # (2星 3 张期望 22 刷/44 金,门会永不放行)。expected_refreshes_for_card 的
     # target_star 只映射 2星/3星 → 直调底层 expected_refreshes(k=1)。
-    from sr_od.application.currency_war.cw_shop_odds import (
+    from sr_od.application.currency_war.data.cw_shop_odds import (
         DISTINCT_CARDS_PER_COST,
         POOL_COPIES_PER_CARD,
         expected_refreshes,
@@ -583,10 +585,10 @@ def _vd_core_of(session: StrategySession) -> str:
 def _target_peak_level(state: GameState, session: StrategySession) -> int:
     """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 兜底 comp
     核心 → 缺省 3 费;核心解析单一源 = _vd_core_of 与其兜底扩展)。"""
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_plane_table import (
         peak_refresh_level,
     )
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     core = _schedule_target_core(session)
     ch = CHARACTERS.get(core) if core else None
     cost = ch.cost if ch is not None and ch.cost else 3

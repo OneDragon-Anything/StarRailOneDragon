@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.cw_chars import CHARACTERS, chars_by_cost
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS, chars_by_cost
 
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 

@@ -6,11 +6,11 @@
   (必需 header x-rpc-currencywar-tourn: tourn;cursor 分页;Recommend 排序空返回,只支持 Hot)
 
 产出(**同源三产物,双向链接,均勿手编**):
-  1. ``src/sr_od/application/currency_war/cw_plaza_comps.py`` —— 代码侧(机器消费):
+  1. ``src/sr_od/application/currency_war/data/cw_plaza_comps.py`` —— 代码侧(机器消费):
      ``PLAZA_CARRY_CLUSTERS``(按 carry 聚类 n≥5 的实战统计:羁绊/常驻角色/carry 装备/
      节奏标签/投资策略/环境偏好/3星率/样本量/use 权重)+ ``PLAZA_GLOBAL``(全局 meta:
      羁绊频次/装备频次/合成首选/过渡单位池/星级费用档/label 词表/开拓者形态)。
-  2. ``src/sr_od/application/currency_war/cw_plaza_posts.py`` —— 逐篇明细(胜率模型
+  2. ``src/sr_od/application/currency_war/data/cw_plaza_posts.py`` —— 逐篇明细(胜率模型
       先验面训练样本;每篇=一条赢家发帖样本,样本权重=use 计数对数压缩再归一,见
       ``cw_win_model.plaza_sample_weight``;**生存者偏差语料,只作先验面/特征域
       覆盖面,不作无偏胜率训练集**——校准锚=实机遥测负样本)。
@@ -46,8 +46,8 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 REPO = Path(__file__).resolve().parents[2]
-DATA_PY = REPO / "src/sr_od/application/currency_war/cw_plaza_comps.py"
-DATA_POSTS_PY = REPO / "src/sr_od/application/currency_war/cw_plaza_posts.py"
+DATA_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_comps.py"
+DATA_POSTS_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_posts.py"
 DOC_MD = REPO / "docs/game/currency_war/data/plaza_meta.md"
 CACHE = Path(".debug/temp/currency_war/plaza/lineups_HotHard.jsonl")
 CONFIG_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
@@ -430,13 +430,13 @@ def render_doc(version_tag: str, clusters: list, glob: dict) -> str:
         "---",
         f"version: {version_tag}",
         "generated_by: tools/cw/gen_plaza_comps.py",
-        "related_code: src/sr_od/application/currency_war/cw_plaza_comps.py",
+        "related_code: src/sr_od/application/currency_war/data/cw_plaza_comps.py",
         "---",
         "",
         "# 货币战争 plaza 实战 meta(人读版)",
         "",
         f"> **由 `tools/cw/gen_plaza_comps.py` 生成,勿手编**(plaza lineup/index match_hard 高难帖,重跑:`{GEN_CMD}`)。",
-        "> 代码侧(机器消费):`src/sr_od/application/currency_war/cw_plaza_comps.py` —— 同源生成、双向链接。",
+        "> 代码侧(机器消费):`src/sr_od/application/currency_war/data/cw_plaza_comps.py` —— 同源生成、双向链接。",
         "> 用途:`cw_comps.py COMP_LIBRARY` 手判层(strength/form_difficulty/level_plan)的校准对拍源。",
         "",
         f"{glob['n_posts']} 篇 V4.4 高难玩家帖(过滤 v4.4 + 非KOL沙盒 + 未过期),{glob['n_clusters']} 个 carry 聚类(n≥{MIN_CLUSTER_N})。",

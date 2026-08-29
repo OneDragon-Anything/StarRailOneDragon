@@ -40,7 +40,7 @@ from sr_od.application.currency_war.cw_effect_inventory import (
     TriggerKind,
     UnitBuffRef,
 )
-from sr_od.application.currency_war.cw_invest_data import (
+from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
 )
