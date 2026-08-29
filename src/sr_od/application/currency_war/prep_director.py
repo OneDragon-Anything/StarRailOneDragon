@@ -70,6 +70,7 @@ from sr_od.application.currency_war.cw_observation import (
 from sr_od.application.currency_war.cw_shop_obs import (
     RefreshExpect,
     check_shop_pool,
+    compare_merge_preview,
     refresh_expect,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -80,6 +81,7 @@ from sr_od.application.currency_war.cw_state import (
     bench_from_compact,
     bench_place,
     deployed_slot_no,
+    same_star_count,
     xp_apply_clicks,
     xp_clicks_to_level,
 )
@@ -615,6 +617,7 @@ def _xp_compare(ledger: XpLedger, display: tuple[int, int] | None,
 _SHOP_DEFECT_SURFACE = 'shop'
 _SHOP_POOL_DEFECT_KIND = 'shop_pool_violation'
 _SHOP_REFRESH_DEFECT_KIND = 'refresh_expect_mismatch'
+_SHOP_MERGE_DEFECT_KIND = 'merge_preview_mismatch'
 
 
 def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
@@ -627,6 +630,36 @@ def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
     shop = list(getattr(st, 'shop', None) or [])
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
     return cards, len(shop) - len(cards)
+
+
+def _merge_preview_inputs(st: GameState) -> tuple[dict[int, bool], dict[int, bool], int]:
+    """商店帧 state → (我方合成旗, 识别读数旗, 未识别张数)(纯函数;
+    compare_merge_preview 接线的入参折算单一源)。
+
+    槽位键 = state.shop 列表下标(商店五格物理槽位,0 基左→右;同
+    read_shop_cards 顺序,即 cw_shop_obs.compare_merge_preview 的槽位坐标系)。
+    - our:``cw_state.same_star_count`` 全场域同名同星持有 >0(合成预览语义
+      单一源 = merge_mechanics.md §2.7:✦ 数 = 已持同名同星副本份数;商店牌
+      恒 1★,star 兜 1)。bench/deployed 取 state(由 session tracked 播种,
+      与卡池票同帧一致)。
+    - det:该牌 merge_preview > 0(W600 激活评估定的语义映射;0 是「无副本 ∨
+      读不到」双义,映射为 False,our_suspect 祇当对账率归因,不逐票判死)。
+    - 未识别牌(name 空,SIFT miss)两侧都算不出 → 不进 compare,只计数
+      (同 _shop_pool_inputs 口径:识别失败归 W512 置信通道,此处不评)。
+    """
+    our: dict[int, bool] = {}
+    det: dict[int, bool] = {}
+    unnamed = 0
+    bench = list(getattr(st, 'bench', None) or [])
+    deployed = list(getattr(st, 'deployed', None) or [])
+    for i, c in enumerate(list(getattr(st, 'shop', None) or [])):
+        if not getattr(c, 'name', ''):
+            unnamed += 1
+            continue
+        our[i] = same_star_count(c.name, getattr(c, 'star', 1) or 1,
+                                 bench, deployed) > 0
+        det[i] = int(getattr(c, 'merge_preview', 0) or 0) > 0
+    return our, det, unnamed
 
 
 def build_refresh_expect(gold: int | None,
@@ -1466,6 +1499,63 @@ class PrepDirector(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] shop_pool reconcile skip: {e}')
 
+    def _reconcile_merge_preview(self, obs: PrepObservation) -> None:
+        """商店打开 heavy 帧合成预览交叉验证(cw_shop_obs.compare_merge_preview
+        接线,与 _reconcile_shop_pool 同族同帧;零决策:mismatch 仅落缺陷台账,
+        不 return/不重读不纠错)。
+
+        帧 = obs.shop_open 且 state.shop 非空(与卡池票同门)。our =
+        ``_merge_preview_inputs`` 按同名同星持有折算;det = 商店快照逐牌
+        merge_preview>0(reader = cw_identity_obs.read_merge_preview,已
+        在产线;激活依据 = W600 批B 评估:136 组同刻重复读数 0 分歧/15
+        非零事件 8 例精确相符)。our_suspect/game_extra 均开票留证——
+        our_suspect = 我方合成计算嫌疑(单向罚则唯一对象),game_extra =
+        我方漏算(不判罚只计数);our_suspect 祇当「持有 ≥1 副本但同刻
+        重复读数恒 0」的系统性形态才是暗相漏检证据(回退采帧解锁条件见
+        W600 报告),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
+        """
+        try:
+            st = obs.state
+            if st is None or not obs.shop_open:
+                return
+            our, det, unnamed = _merge_preview_inputs(st)
+            if not our:
+                return
+            result = compare_merge_preview(our, det)
+            mism = [r for r in result.rows if r.verdict != 'match']
+            if not mism:
+                return
+            obs_txt = ';'.join(
+                f'slot{r.slot}:{r.verdict}(our={r.our} det={r.detected})'
+                for r in mism)
+            cw_telemetry.record_defect(
+                _SHOP_DEFECT_SURFACE, _SHOP_MERGE_DEFECT_KIND,
+                expected='0 mismatch(合成预览=我方同名同星持有>0 vs 识别✦>0)',
+                observed=obs_txt,
+                plane=int(getattr(st, 'plane', 0) or 0),
+                round_num=int(getattr(st, 'round_num', 0) or 0),
+                gap_large=True,
+                verdict=('留证-商店牌合成预览对账不一致(our_suspect=我方算'
+                         '有副本而识别无✦=合成计算嫌疑或识别暗相漏检,双义'
+                         '不逐票判死;game_extra=识别有✦而我方无账=漏算'
+                         '留证不判罚。merge_preview 读 0 双义=真无副本∨'
+                         'fail-silent 读不到;零决策记账,单次 L1,复现升'
+                         'L0 由分级安灯承接)'),
+                refs=[{'field': k, 'value': v} for k, v in (
+                    ('slots', str(len(our))),
+                    ('unnamed', str(unnamed)),
+                    ('our_suspect', ','.join(str(r.slot) for r in mism
+                                             if r.verdict == 'our_suspect')),
+                    ('game_extra', ','.join(str(r.slot) for r in mism
+                                            if r.verdict == 'game_extra')),
+                    ('reader', 'shop.merge_preview(已产线)'))],
+                reader_source='merge_preview_reconcile',
+                note='期望态层·商店:对账票=cw_shop_obs.compare_merge_preview'
+                     ' 纯函数(单向验证,合成主源=我方计算),与卡池票同帧'
+                     '分立')
+        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
+            log.debug(f'[cw-director] merge_preview reconcile skip: {e}')
+
     # ===== 装备期望态对账(W543;纯记账+对账,零决策行为变更)=====
     # 语义单一源 = docs/game/currency_war/research/equipment_mechanics.md §1.1
     # (两件简易必合成无共存 28/28 配方实证 / 角色装备上限 3 件 / 合成落点 =
@@ -2022,6 +2112,10 @@ class PrepDirector(SrOperation):
             # EnsureShopOpen 后)上五牌卡池一致性票(shop_pool_violation;
             # 零决策记账,内部 best-effort;关店帧自带锚门空跳)。
             self._reconcile_shop_pool(obs)
+            # 合成预览对账(W601 激活,W600 批B 评估裁定):同帧消费——
+            # compare_merge_preview 接线(merge_preview_mismatch;零决策
+            # 记账,内部 best-effort;关店帧/无持有帧自带空跳)。
+            self._reconcile_merge_preview(obs)
             # 期望态层·装备(W543):卖角色「装备全量回装备区」期望在本轮
             # heavy 定型帧上消费对账(equip/equip_expect_mismatch;零决策
             # 记账:不一致不重拖不改行为;不可评口径已在构建端丢弃)。

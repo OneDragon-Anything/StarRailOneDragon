@@ -11,8 +11,11 @@
    违反 = 识别错或数据缺口,返回违例清单**不判哪边错**(记账留证)。
 2. :func:`compare_merge_preview` —— 合成预览交叉验证(merge_mechanics.md
    §2.7:合成预览 = 我方可算,游戏 UI 只作对账信号)。**单向验证**:
-   我方算 True 而游戏识别无星 = 我方合成计算嫌疑;识别端用户裁决不建
-   (preview_detected 入参恒 None 亦可跑 = 登记形态)。
+   我方算 True 而游戏识别无星 = 我方合成计算嫌疑。识别端
+   ``cw_identity_obs.read_merge_preview`` 已在产线运行(商店快照
+   merge_preview 字段),消费点 = ``prep_director`` 商店对账段
+   (``_reconcile_merge_preview``);``preview_detected=None`` 仍合法
+   (登记/测试形态,全行 pending)。
 3. :func:`refresh_expect` —— 刷新动作的期望增量(金 −refresh_cost、
    旧五张回池、新五张重抽),供刷新后对账。
 
@@ -137,21 +140,27 @@ def compare_merge_preview(our_merge_flags: dict[int, bool],
                           preview_detected: dict[int, bool] | None) -> MergePreviewCompareResult:
     """合成预览交叉验证(merge_mechanics.md §2.7「对账信号候选」落地)。
 
-    ⚠️ **识别端挂账**(用户裁决,2026-09 口述):预览星会闪烁变化(动画),
-    单帧识别难度高——待下次实机采集更多帧后再评估识别可行性;在此之前
-    preview_detected 恒 None,本函数保持**休眠登记形态**(真值表即规格
-    文档),不激活识别。
+    **已接线**(激活依据 = W600 批B 数据充分性评估,
+    ``.debug/temp/currency_war/w600_batch_b_assessment/REPORT.md``:reader
+    ``cw_identity_obs.read_merge_preview`` 产线 136 组同刻重复读数 0 分歧、
+    15 非零事件 8 例与持有台账精确相符,原「多帧闪烁采样」合格线作废)。
+    消费点 = ``prep_director._reconcile_merge_preview``(商店打开 heavy 帧):
+    our_merge_flags 由 tracked 持有按 ``cw_state.same_star_count`` 折算
+    (>0 = True),preview_detected 由商店快照逐牌 ``merge_preview > 0``
+    映射;mismatch 落缺陷台账 kind=merge_preview_mismatch(零决策)。
 
     **单向验证**(用户裁决):合成以我方计算为主源,游戏金色星标 UI 只作
     票——我方 True 而识别 False = 我方合成计算嫌疑(our_suspect);
     识别 True 而我方 False = 我方漏算,单向框架内不判罚,仅 game_extra
     计数留证(同 cw_faction_obs computed_missing 的第四态口径)。
-    preview_detected None(识别端未建,现状恒此形态)= 全行 pending,
-    函数照常返回完整行集 = 登记形态可跑。
+    preview_detected=None 仍合法(登记/测试形态)= 全行 pending,
+    函数照常返回完整行集。
 
     槽位键集 = both 侧键的并集;两侧同键布尔相等 = match。
-    接线点留指针:消费方应在 prep_director 买牌决策帧调用(与在飞批冲突,
-    本批不接);识别端若立项,preview_detected 由商店帧星标识别填充。
+    已知边界:✦ 为闪烁动画,识别暗相可能单帧漏检(merge_preview 读 0 是
+    「无副本 ∨ 读不到」双义)→ our_suspect 票按对账率归因,系统性
+    「持有 ≥1 副本但同刻重复读数恒 0」才是暗相漏检证据(届时回退采帧,
+    见 W600 报告解锁条件)。
     """
     slots = sorted(set(our_merge_flags) | set(preview_detected or {}))
     res = MergePreviewCompareResult()
