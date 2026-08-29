@@ -143,7 +143,7 @@ class HarvestInvestCodex(SrOperation):
         ② 效果文本 LCS 相似度 ≥0.5(名字拿效果二次验证;相似非包含,容忍措辞差)。
         守卫不过 → 保留 raw(codex-new 路径,人工核)。
         """
-        from sr_od.application.currency_war.cw_investments import (
+        from sr_od.application.currency_war.kernel.cw_investments import (
             INVESTMENT_ENVS,
             INVESTMENT_STRATEGIES,
         )

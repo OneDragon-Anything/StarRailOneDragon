@@ -164,7 +164,7 @@ def cross_line_skeleton() -> tuple[str, ...]:
 
     派生结果与原手写 10 名快照一致(cw_intention 测试锁;不等 = 数据错)。
     """
-    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     carries = {c.plaza_carry for c in COMP_LIBRARY if getattr(c, 'plaza_carry', '')}
     out: set[str] = set()
     for name, fams in W16_MAJORITY_LINES.items():

@@ -21,10 +21,6 @@ from sr_od.application.currency_war.cw_observation import (
     read_phase_round,
     reset_phase_round_cache,
 )
-from sr_od.application.currency_war.cw_performance import (
-    HP_CONFIDENCE_THRESHOLD,
-    RoundOutcome,
-)
 from sr_od.application.currency_war.cw_resume_lock import (
     locked_after_start_battle,
     probe_resolve,
@@ -34,9 +30,13 @@ from sr_od.application.currency_war.cw_settlement_obs import (
     parse_settlement_round,
     read_round_outcome,
 )
-from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
+from sr_od.application.currency_war.kernel.cw_performance import (
+    HP_CONFIDENCE_THRESHOLD,
+    RoundOutcome,
+)
+from sr_od.application.currency_war.kernel.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
     HandleArmoryBoxDialog,
 )
@@ -355,7 +355,7 @@ class CurrencyWarRunLoop(SrOperation):
             pick_x = 660   # fallback 卡1
             pick_name = '(fallback卡1)'
             if cards and _match is not None:
-                from sr_od.application.currency_war.cw_state import GameState
+                from sr_od.application.currency_war.kernel.cw_state import GameState
                 _st = _match.session.last_state or GameState()
                 _cfg = getattr(_match, 'config', None)
                 idx = _match.strategy.decide_star_tome(
@@ -1274,7 +1274,9 @@ class CurrencyWarRunLoop(SrOperation):
                 _ctx_slots,
                 find_trial_reveal_cards,
             )
-            from sr_od.application.currency_war.cw_obs_core import is_prep_like_frame
+            from sr_od.application.currency_war.kernel.cw_obs_core import (
+                is_prep_like_frame,
+            )
             for _reveal_i in range(3):
                 _cards = find_trial_reveal_cards(screen, _ctx_slots(self.ctx, '备战栏', 9))
                 if not _cards or not is_prep_like_frame(self.ctx, screen):
@@ -1532,7 +1534,7 @@ class CurrencyWarRunLoop(SrOperation):
             # → 恒 no-op(62 局零累积实证)。comp→carry 归一映射(comp.plaza_carry)。
             arm_id = ''
             if comp_name:
-                from sr_od.application.currency_war.cw_comps import get_comp
+                from sr_od.application.currency_war.kernel.cw_comps import get_comp
                 _c = get_comp(comp_name)
                 arm_id = getattr(_c, 'plaza_carry', '') or ''
             if not arm_id or arm_id not in self._allocator.arms:
@@ -1599,9 +1601,11 @@ def _get_or_init_allocator(ctx: SrContext):
     if _ALLOCATOR is not None:
         return _ALLOCATOR
     try:
-        from sr_od.application.currency_war.cw_run_allocator import ThompsonAllocator
         from sr_od.application.currency_war.data.cw_plaza_comps import (
             PLAZA_CARRY_CLUSTERS,
+        )
+        from sr_od.application.currency_war.kernel.cw_run_allocator import (
+            ThompsonAllocator,
         )
         total = sum(max(c.n_posts, 0) for c in PLAZA_CARRY_CLUSTERS) or 1
         share = {c.carry: c.n_posts / total for c in PLAZA_CARRY_CLUSTERS if c.n_posts >= 15}

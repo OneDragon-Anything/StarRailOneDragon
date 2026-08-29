@@ -44,12 +44,6 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_row_equipped,
     read_supply_boxes,
 )
-from sr_od.application.currency_war.cw_obs_core import (
-    A_PHASE,
-    SCREEN_NAME,
-    _area_rect,
-    _ocr,
-)
 from sr_od.application.currency_war.cw_observation import (
     read_board,
     read_deploy_cap,
@@ -59,8 +53,14 @@ from sr_od.application.currency_war.cw_observation import (
     read_level,
     read_streak,
 )
-from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.data.cw_equipment_data import get_equip
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    A_PHASE,
+    SCREEN_NAME,
+    _area_rect,
+    _ocr,
+)
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike

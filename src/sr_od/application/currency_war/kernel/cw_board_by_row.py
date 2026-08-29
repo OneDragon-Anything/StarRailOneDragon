@@ -24,12 +24,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
     is_trailblazer,
     trailblazer_form,
 )
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 
 def _trait_tags(bc: BenchChar) -> tuple[str, ...]:

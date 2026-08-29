@@ -33,15 +33,15 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from sr_od.application.currency_war.cw_intention import (
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
     intention_core,
 )
-from sr_od.application.currency_war.cw_state import GameState
-from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 
 class Phase(StrEnum):
@@ -70,14 +70,14 @@ def form_score(state: GameState,
     计入)的差异是**刻意的**:form_score 是纯观测口径(不进评分/决策,
     无双源互斥风险);bench 囤件不计入——「上场了才算战力」。
     """
-    from sr_od.application.currency_war.cw_line_defs import (
+    from sr_od.application.currency_war.kernel.cw_battle_calib import (
+        _board_factions_of,
+        _engines_count,
+    )
+    from sr_od.application.currency_war.kernel.cw_line_defs import (
         RECIPE_BASE,
         recipe_tier,
     )
-    from sr_od.application.currency_war.kernel.cw_battle_calib import (
-    _board_factions_of,
-    _engines_count,
-)
     deployed = state.deployed or []
     fac = _board_factions_of(deployed)
     dep_names = frozenset(
@@ -100,11 +100,11 @@ def fallback_engines_count(state: GameState) -> int:
     判据基准 = transition_combos 定稿「两两组合=过渡成型」;「核心 2★」
     豁免门槛与 form_ok 三件套路径的裁决同向(保守)。
     """
-    from sr_od.application.currency_war.cw_comps import hp_charge_stack_chars
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
-    _board_factions_of,
-    _engines_count,
-)
+        _board_factions_of,
+        _engines_count,
+    )
+    from sr_od.application.currency_war.kernel.cw_comps import hp_charge_stack_chars
     deployed = [d for d in (state.deployed or []) if d is not None]
     fac = _board_factions_of(deployed)
     dep_names = frozenset(
@@ -142,7 +142,7 @@ def form_ok(state: GameState, session: StrategySession,
             return False
         return fallback_engines_count(state) \
             >= registry.phase_fallback_min_engines
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)
     if comp is None or not comp.form_tiers:
         return False   # 线不可解析/无羁绊线:保守不辖(同 formed_stop)

@@ -31,7 +31,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from sr_od.application.currency_war.cw_effect_inventory import (
+from sr_od.application.currency_war.data.cw_invest_data import (
+    PLAZA_AUGMENTS,
+    PLAZA_PORTALS,
+)
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BattlefieldEffect,
     DurationKind,
     DutyFlags,
@@ -39,10 +43,6 @@ from sr_od.application.currency_war.cw_effect_inventory import (
     EffectSpec,
     TriggerKind,
     UnitBuffRef,
-)
-from sr_od.application.currency_war.data.cw_invest_data import (
-    PLAZA_AUGMENTS,
-    PLAZA_PORTALS,
 )
 
 

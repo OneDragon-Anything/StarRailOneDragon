@@ -25,10 +25,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_char_id import load_avatar_templates
-from sr_od.application.currency_war.cw_comps import (
-    equip_alloc_empty_reason,
-    equip_allocation,
-)
 from sr_od.application.currency_war.cw_equipment import (
     EQUIPMENTS,
     load_equip_templates,
@@ -40,7 +36,11 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_deployed_chars,
     read_row_equipped,
 )
-from sr_od.application.currency_war.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_comps import (
+    equip_alloc_empty_reason,
+    equip_allocation,
+)
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -125,7 +125,7 @@ def _transition_hold_active(tgt_comp, form: float, dual: bool, opening_round: bo
     """
     if opening_round:
         return True
-    from sr_od.application.currency_war.cw_comps import COMMIT_FRAC
+    from sr_od.application.currency_war.kernel.cw_comps import COMMIT_FRAC
     return tgt_comp is not None and 0.0 < form < COMMIT_FRAC and not dual
 
 
@@ -397,10 +397,10 @@ class EquipAll(SrOperation):
         # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
         _form = 0.0
         if _tgt_comp is not None and deployed:
-            from sr_od.application.currency_war.cw_comps import (
+            from sr_od.application.currency_war.kernel.cw_comps import (
                 form_progress,
             )
-            from sr_od.application.currency_war.cw_state import GameState
+            from sr_od.application.currency_war.kernel.cw_state import GameState
             _st = (_match.session.last_state if _match is not None else None) or GameState()
             _form = form_progress(_tgt_comp, _st)
         # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
@@ -431,10 +431,10 @@ class EquipAll(SrOperation):
         # W607 H3/H2②(ADR-0461):hold 收窄+生锈豁免,开关走策略 registry
         # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
         # =全关,零漂移)。
-        from sr_od.application.currency_war.cw_state import ledger_node_type
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
+        from sr_od.application.currency_war.kernel.cw_state import ledger_node_type
         _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
                    or DEFAULT_REGISTRY)
         _node_type = (getattr(_st_hold, 'node_type', None)

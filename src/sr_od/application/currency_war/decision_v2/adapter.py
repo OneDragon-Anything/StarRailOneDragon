@@ -37,13 +37,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_state import BENCH_CAPACITY, GameState
 from sr_od.application.currency_war.decision_v2.contracts import (
     AtomOp,
     Decision,
     Snapshot,
 )
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
+from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY, GameState
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -187,7 +187,6 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     全部按实机观测原样携带(None 合法)。bench 取紧缩型(仅已识别件,元素
     BenchChar.slot 1-based 保持)。
     """
-    from sr_od.application.currency_war.cw_state import snapshot_copy
     from sr_od.application.currency_war.decision_v2.contracts import (
         SNAPSHOT_SCHEMA_VERSION,
         RewardSphere,
@@ -195,6 +194,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         SupplyBox,
         Tome,
     )
+    from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
     st = obs.state
     last = getattr(session, 'last_state', None)
     return Snapshot(

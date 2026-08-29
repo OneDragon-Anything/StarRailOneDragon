@@ -74,7 +74,7 @@ class CurrencyWarApp(SrApplication):
         # 接通——缺省惰性接真实现会让测试进程漏桩时被 gc 扫描命中 session 级
         # test_context 写停机位(w505 全集假红实证,见 cw_telemetry 槽注释)。
         from sr_od.application.currency_war import cw_telemetry
-        from sr_od.application.currency_war.cw_observe import stop_for_l0_andon
+        from sr_od.application.currency_war.kernel.cw_observe import stop_for_l0_andon
         cw_telemetry.set_l0_andon_handler(stop_for_l0_andon)
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,

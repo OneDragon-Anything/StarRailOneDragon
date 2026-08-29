@@ -157,7 +157,7 @@ def effects_from_strategies(strategy_names: list[str]) -> list[AggregateEffect]:
     只路由**台账可表达**的字段;行为条件流(存款回报/招财狗/星星相印)、期权类
     (期货系,33 号合同台)、难度类(36 号账本)各自归位,不进本台账。
     """
-    from sr_od.application.currency_war.cw_investments import get_strategy
+    from sr_od.application.currency_war.kernel.cw_investments import get_strategy
     out: list[AggregateEffect] = []
     for name in strategy_names:
         s = get_strategy(name)
@@ -204,7 +204,7 @@ def conditional_effects_at(state) -> list[AggregateEffect]:
 
     调用时机:等级变化或建 session 时。DP 消费:mutations.xp_click_delta 注入。
     """
-    from sr_od.application.currency_war.cw_investments import get_strategy
+    from sr_od.application.currency_war.kernel.cw_investments import get_strategy
     out: list[AggregateEffect] = []
     level = getattr(state, 'level', 0) or 0
     for name in getattr(state, 'active_strategies', None) or []:
@@ -222,7 +222,7 @@ def gold_at_level_effect(target_level: int,
                          strategy_names: list[str]) -> list[AggregateEffect]:
     """成长基金:到达 9 级给 40 金——等级触发日程(DP 等级路径联解时注入:
     预计到达 9 级的节点偏移处一次性 +40;节点偏移由调用方按 level_plan 换算)。"""
-    from sr_od.application.currency_war.cw_investments import get_strategy
+    from sr_od.application.currency_war.kernel.cw_investments import get_strategy
     out: list[AggregateEffect] = []
     for name in strategy_names:
         s = get_strategy(name)

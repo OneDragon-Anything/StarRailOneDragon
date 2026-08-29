@@ -7,7 +7,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.handlers.handle_reward_sphere import (
     CollectRewardSpheres,
 )

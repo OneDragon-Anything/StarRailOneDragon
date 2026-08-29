@@ -581,7 +581,7 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     收集语境不计);XP_PER_BUY=4 同步自 cw_state(镜像纪律)。
     r408 修后振荡应归 0 → 本检查恒绿;涌现即买卖互踩回归。
     """
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         XP_TO_NEXT_LEVEL,
     )
     out: list[str] = []
@@ -974,10 +974,10 @@ def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
     (语料核证为表残留:超级电池=超充站 buff 词/能量饮料=零出现/
     翁瓦克=局外遗器名误收;翁瓦克 4 分转投蓄能帆),本检查现应恒绿。
     """
-    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
+    from sr_od.application.currency_war.kernel.cw_events import _EQUIP_VALUE
     stale = sorted(n for n in _EQUIP_VALUE if n not in EQUIPMENT_ROSTER)
     if not stale:
         return []
@@ -1038,11 +1038,11 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
     """
     from collections import Counter
 
-    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
-    from sr_od.application.currency_war.cw_events import _EQUIP_VALUE
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_events import _EQUIP_VALUE
     kc: Counter[str] = Counter()
     for c in COMP_LIBRARY:
         for k in c.key_equips:
@@ -1070,7 +1070,7 @@ def _board_agg_of_deployed_row(row: dict) -> dict[str, int]:
     口径单一源模块)。值漂移由双向锁暴露,同 HP_UPPER_BOUND 镜像纪律。"""
     from types import SimpleNamespace
 
-    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
+    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     agg: dict[str, int] = {}
     for d in (row.get('state') or {}).get('deployed') or []:
         ns = SimpleNamespace(
@@ -1172,7 +1172,7 @@ def check_refresh_roll_cap_frame(ledgers: list[list[dict]]) -> dict:
     对 session 局级累计计数器取差值)= M-A 定向车道执行数,先扣除;
     历史批次无此键按 0 扣。
     """
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         REFRESH_ROLL_CAP,
     )
     over_frames = 0
@@ -1301,7 +1301,7 @@ def _seg_engines(row: dict) -> int:
     """过渡体系达成数(迁移审计 w278(git 历史) 单一源 = cw_deploy_logic.engines_count,
     即原 cw_sim._engines_count 本体——检查网不 import cw_sim 的架构
     锁由依赖方向保证)。"""
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         engines_count,
     )
     st = row.get('state') or {}
@@ -1398,9 +1398,9 @@ def _seg_target_roster(target_label: str) -> set[str]:
     """锁定目标名册代理(与 seg_check_formed_still_buying_transition
     的 _is_target_piece 同口径:bridge 框架件 ∪ COMP_LIBRARY 该 comp
     的 core_chars∪factions 成员;C-A 目标内判定用,§4.2 单一源复用)。"""
-    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
-    from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_line_defs import BRIDGE_POOL
     roster: set[str] = set()
     for combo in BRIDGE_POOL:
         roster.update(combo.fixed + combo.core)
@@ -1450,12 +1450,12 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
       ``copy_bench_only_skipped``,不进真拦分子(V-B9.3);
     - C-D 非重复散件未买(¬is_dup_held)→ 真拦(现行语义保持)。
     """
-    from sr_od.application.currency_war.cw_line_defs import (
-        ENGINE_FACTIONS,
-    )
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
+    )
+    from sr_od.application.currency_war.kernel.cw_line_defs import (
+        ENGINE_FACTIONS,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
@@ -1535,12 +1535,12 @@ def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
     - ``copy_out_of_band_skipped``:带外副本未买(〔`w300_dup_ruling/` 口述〕
       「完全没必要买」合法面;检查器不许再当候选发射违规)。
     """
-    from sr_od.application.currency_war.cw_line_defs import (
-        ENGINE_FACTIONS,
-    )
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
+    )
+    from sr_od.application.currency_war.kernel.cw_line_defs import (
+        ENGINE_FACTIONS,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
@@ -1688,9 +1688,9 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
     数据边界:target 未锁定时的 bridge 白名单兜底;pairs 周边件在
     两名单之外的极端形态可能误报——事件率仅供诊断。
     """
-    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
-    from sr_od.application.currency_war.cw_line_defs import BRIDGE_POOL
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_line_defs import BRIDGE_POOL
     bridge_names: set[str] = set()
     for combo in BRIDGE_POOL:
         bridge_names.update(combo.fixed + combo.core)
@@ -1930,7 +1930,7 @@ def seg_terminal_release_ledger(rows: list[dict]) -> list[dict]:
        理由(门与位脱钩的显形;双门关的拒付帧是合法辖内拒付,不出
        事件)。双门复算只用行内槽位真值(非 S0),与 R4 禁令不冲突。
     """
-    from sr_od.application.currency_war.cw_state import BENCH_CAPACITY
+    from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
     out: list[dict] = []
     for row in rows:
         if (row.get('plane') or 1) != 1 or not row.get('terminal_release'):
@@ -2110,7 +2110,7 @@ def check_pool_freshness(replay_dir=None, *,
     # 池冻结(退役第一步):战斗类节点已切粗参数两态模型
     # (cw_coarse_battle),再生管线停更是**有意停机**而非断裂——
     # 新鲜度滞后不再构成违规,检查跳过(delta 模式对照臂恢复辖)。
-    from sr_od.application.currency_war import cw_coarse_battle as _cb
+    from sr_od.application.currency_war.kernel import cw_coarse_battle as _cb
     if _cb.BATTLE_ENGINE_MODE == 'coarse':
         return {'violations': 0, 'lag': None,
                 'skipped': 'Δ池已冻结(退役第一步):战斗类节点已切'
@@ -3473,7 +3473,7 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
     缺任一键 = 数据异常,计入 violations 并经 missing_key_rows
     披露,不静默绿(锁:test_cw_sim_checks_streak_income)。
     """
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         LOSS_GOLD_BY_NODE,
         streak_gold,
     )
@@ -4088,11 +4088,6 @@ def check_decision_v2_candidate_coverage(
        的全批已执行动作类必须含 BuyCard/LevelUp(每批必然态,缺 =
        死路形态);deploy/refresh/合成可策略性零采纳 → 披露不辖。
     """
-    from sr_od.application.currency_war.cw_state import (
-        BenchChar,
-        GameState,
-        ShopCard,
-    )
     from sr_od.application.currency_war.cw_strategy import StrategySession
     from sr_od.application.currency_war.decision_v2.candidates import (
         ACTION_CLASSES,
@@ -4100,6 +4095,11 @@ def check_decision_v2_candidate_coverage(
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BenchChar,
+        GameState,
+        ShopCard,
     )
     violations: list[str] = []
     seen_classes: set[str] = set()
@@ -4127,7 +4127,7 @@ def check_decision_v2_candidate_coverage(
     # ADR-0336:旧载体探针形态(locked_line='jizi' 走线库派生)已随
     # line_strategy 删除失效——改用 v3_hoard 意向载体(生产真实形态):
     # hoard char_targets 含店卡 → buy 类候选生成。
-    from sr_od.application.currency_war.cw_intention import HoardTarget
+    from sr_od.application.currency_war.kernel.cw_intention import HoardTarget
     sess.v3_intention = None
     sess.v3_hoard = HoardTarget(
         frozenset({'丹恒·饮月', '三月七'}), frozenset(), 'locked')
@@ -4214,14 +4214,14 @@ def check_decision_v2_telemetry_contract() -> dict:
     """
     import re
 
-    from sr_od.application.currency_war.cw_state import (
-        BenchChar,
-        GameState,
-        ShopCard,
-    )
     from sr_od.application.currency_war.cw_strategy import StrategySession
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BenchChar,
+        GameState,
+        ShopCard,
     )
     # 探针:中局常态(金足/店有目标件/bench 有杂件)——必有采纳
     s = GameState()
@@ -4443,13 +4443,6 @@ def check_decision_v2_supply_label_consistency() -> dict:
     变异自检:测试仓锁测试 monkeypatch _buy_tag 关标签 → 必须涌现
     违规(去门变异必红)。
     """
-    from sr_od.application.currency_war.cw_state import (
-        BenchChar,
-        BuyCard,
-        GameState,
-        ShopCard,
-        pad_bench,
-    )
     from sr_od.application.currency_war.cw_strategy import StrategySession
     from sr_od.application.currency_war.decision_v2 import candidates as _c
     from sr_od.application.currency_war.decision_v2.candidates import (
@@ -4457,6 +4450,13 @@ def check_decision_v2_supply_label_consistency() -> dict:
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BenchChar,
+        BuyCard,
+        GameState,
+        ShopCard,
+        pad_bench,
     )
 
     def _mk(plane: int, rn: int, level: int, gold: int, bench, shop,
@@ -4551,11 +4551,6 @@ def check_w300_press_channel_probe() -> dict:
     from dataclasses import replace
     from types import SimpleNamespace
 
-    from sr_od.application.currency_war.cw_state import (
-        BuyCard,
-        GameState,
-        ShopCard,
-    )
     from sr_od.application.currency_war.cw_strategy import StrategySession
     from sr_od.application.currency_war.decision_v2.candidates import (
         _buy_tag,
@@ -4563,6 +4558,11 @@ def check_w300_press_channel_probe() -> dict:
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BuyCard,
+        GameState,
+        ShopCard,
     )
 
     st = GameState()
@@ -4577,7 +4577,7 @@ def check_w300_press_channel_probe() -> dict:
     # 锁线帧(方向不含仙舟):生产路径形态——'copy'/'pair' 既有豁免
     # 通道语义先于 press 臂(V-B2.1 放序),只有方向门拦下的目标外
     # 副本才落 'copy_press';裸 session 冷启动会让 pair_wants 先命中。
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         HoardTarget,
         IntentionState,
     )

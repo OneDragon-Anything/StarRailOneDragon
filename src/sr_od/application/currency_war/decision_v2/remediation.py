@@ -29,8 +29,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_intention import IntentionState
-from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision_v2.discipline import (
+    _char_bonds,
+    _line_protect_set,
+    engine_char_names,
+    register_round_sold,
+    seed_age_blocked,
+    sell_priority_key,
+    star_weighted_copies,
+)
+from sr_od.application.currency_war.kernel.cw_intention import IntentionState
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 导入
     BENCH_CAPACITY,
     Action,
     BuyCard,
@@ -44,21 +59,6 @@ from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     deployed_occupied,
     iter_deployed_slots,
     sell_refund,
-)
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.decision_v2.discipline import (
-    _char_bonds,
-    _line_protect_set,
-    engine_char_names,
-    register_round_sold,
-    seed_age_blocked,
-    sell_priority_key,
-    star_weighted_copies,
-)
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DecisionV2Registry,
 )
 
 # 补偿路由键 → 处理序(金是另两维共同上游;每轮只处理首个可补偿维)
@@ -258,7 +258,7 @@ def _compensate_gold(working: GameState, state: GameState,
         # merge_mechanics §2.5)——缺口按 k×单价算,少卖会凑不足额。
         cost = a.card.cost or 3
         if bench_occupied(working.bench or []) >= BENCH_CAPACITY:
-            from sr_od.application.currency_war.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_state import (
                 merge_buy_k,
             )
             cost *= max(1, merge_buy_k(a.card.name, a.card.star or 1,
@@ -289,7 +289,7 @@ def _compensate_gold(working: GameState, state: GameState,
     ist = getattr(session, 'v3_intention', None)
     comp = None
     if isinstance(ist, IntentionState) and ist.phase == 'locked':
-        from sr_od.application.currency_war.cw_comps import get_comp
+        from sr_od.application.currency_war.kernel.cw_comps import get_comp
         comp = get_comp(ist.locked_comp)
     protect = _line_protect_set(comp) if comp is not None \
         else set(engine_char_names())
@@ -392,7 +392,7 @@ def _compensate_bench(working: GameState, state: GameState,
     ist = getattr(session, 'v3_intention', None)
     comp = None
     if isinstance(ist, IntentionState) and ist.phase == 'locked':
-        from sr_od.application.currency_war.cw_comps import get_comp
+        from sr_od.application.currency_war.kernel.cw_comps import get_comp
         comp = get_comp(ist.locked_comp)
     protect = _line_protect_set(comp) if comp is not None \
         else set(engine_char_names())
@@ -503,7 +503,7 @@ def steady_state_levelup_group(working: GameState, state: GameState,
                  state.round_num, state.hp)
         return []
     # 稳态判据(进轮快照,与 ev.levelup_ev_basis 臂① 的 state 读点同源)
-    from sr_od.application.currency_war.cw_state import bench_occupied
+    from sr_od.application.currency_war.kernel.cw_state import bench_occupied
     if deployed_occupied(state.deployed or []) < state.max_units():   # ADR-0392
         return []    # cap 未满:方向件直接上场即可([32](b) 升级纯浪费)
     if bench_occupied(state.bench or []) == 0:
@@ -524,11 +524,11 @@ def steady_state_levelup_group(working: GameState, state: GameState,
                         or state.deploy_cap <= state.level)
     if state.level >= registry.level_max or not cap_level_driven:
         return []
-    from sr_od.application.currency_war.cw_economy import xp_click_cost
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_economy import xp_click_cost
+    from sr_od.application.currency_war.kernel.cw_state import (
         XP_PER_BUY as _XP_PER_BUY,
     )
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         XP_TO_NEXT_LEVEL as _XP_TO_NEXT_LEVEL,
     )
     cost = xp_click_cost(state)
@@ -608,11 +608,11 @@ def _compensate_slot(working: GameState, state: GameState,
                         or state.deploy_cap <= state.level)
     if (state.level < registry.level_max and cap_level_driven
             and not _blood_stop):
-        from sr_od.application.currency_war.cw_economy import xp_click_cost
-        from sr_od.application.currency_war.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_economy import xp_click_cost
+        from sr_od.application.currency_war.kernel.cw_state import (
             XP_PER_BUY as _XP_PER_BUY,
         )
-        from sr_od.application.currency_war.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_state import (
             XP_TO_NEXT_LEVEL as _XP_TO_NEXT_LEVEL,
         )
         cost = xp_click_cost(state)
@@ -665,7 +665,7 @@ def _compensate_slot(working: GameState, state: GameState,
         return []
     # 同名唯一性守卫(W43 裁决 1):上场者与场上其余单位同名 → 换不上,
     # 放弃(swapped 后 duplicate_on_board 会整动作拒)
-    from sr_od.application.currency_war.cw_state import board_unique_key
+    from sr_od.application.currency_war.kernel.cw_state import board_unique_key
     _k = board_unique_key(in_char)
     if _k is not None and any(
             board_unique_key(d) == _k

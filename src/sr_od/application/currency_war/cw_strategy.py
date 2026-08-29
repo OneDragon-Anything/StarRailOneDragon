@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from sr_od.application.currency_war.cw_events import (
+from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
     MegastarOption,
@@ -32,10 +32,10 @@ from sr_od.application.currency_war.cw_events import (
     SupplyOption,
     SupplyPick,
 )
-from sr_od.application.currency_war.cw_performance import (
+from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     Action,
     GameState,
     MatchOutcome,

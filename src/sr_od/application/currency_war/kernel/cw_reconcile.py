@@ -201,7 +201,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     if deployed is not None:
         # ADR-0392:tracked_deployed 是槽位表——_merge_equips 出紧缩占用序,
         # 写回前经 deployed_from_compact 转槽位表(单一源适配)。
-        from sr_od.application.currency_war.cw_state import deployed_from_compact
+        from sr_od.application.currency_war.kernel.cw_state import deployed_from_compact
         session.tracked_deployed = deployed_from_compact(
             _merge_equips(session.tracked_deployed, deployed))
     if drifted:
@@ -388,7 +388,7 @@ def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
               **ctx) -> None:
     """obs_conflict 封装(best-effort,导入失败/异常不阻塞)。**ctx 透传(如 char=)。"""
     try:
-        from sr_od.application.currency_war.cw_observe import obs_conflict
+        from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
         obs_conflict(field, old, new, screen, verdict=verdict, source=source, **ctx)
     except Exception:  # noqa: BLE001  留证 best-effort
         pass
@@ -415,7 +415,7 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
         # 常发,留证只是噪声)。screen=None(测试/无帧上下文)
         # 不拦——留证本身是离线安全操作。
         if screen is not None:
-            from sr_od.application.currency_war.cw_obs_core import (
+            from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
             )
         if screen is not None and ctx is not None \

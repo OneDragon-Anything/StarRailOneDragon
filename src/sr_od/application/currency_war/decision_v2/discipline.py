@@ -44,27 +44,7 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_economy import streak_gold
-from sr_od.application.currency_war.cw_intention import (
-    IntentionState,
-    intention_core,
-)
-from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
-from sr_od.application.currency_war.cw_state import (
-    BENCH_CAPACITY,
-    BuyCard,
-    GameState,
-    SellBench,
-    bench_occupied,
-    iter_occupied_deployed,
-    sell_refund,
-)
 from sr_od.application.currency_war.cw_strategy import StrategySession
-
-# ===== 体系卡引擎件(铁三角+希儿;C2 单一源 import 不复制)=====
-# W47 统一化:engine_char_names 函数本体上移至 cw_system_cards(注册表旁),
-# 本模块 import 复用——消费点(candidates/engine_seed_wants/carry 保护集)零变化。
-from sr_od.application.currency_war.cw_system_cards import engine_char_names
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
 # hp 决策可信位单一源(ADR-0428 收口;posture_release 对本模块的引用
@@ -78,9 +58,29 @@ from sr_od.application.currency_war.kernel.cw_discipline_rules import (
     seed_age_blocked,
     star_weighted_copies,
 )
+from sr_od.application.currency_war.kernel.cw_economy import streak_gold
+from sr_od.application.currency_war.kernel.cw_intention import (
+    IntentionState,
+    intention_core,
+)
+from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import (
+    BENCH_CAPACITY,
+    BuyCard,
+    GameState,
+    SellBench,
+    bench_occupied,
+    iter_occupied_deployed,
+    sell_refund,
+)
+
+# ===== 体系卡引擎件(铁三角+希儿;C2 单一源 import 不复制)=====
+# W47 统一化:engine_char_names 函数本体上移至 cw_system_cards(注册表旁),
+# 本模块 import 复用——消费点(candidates/engine_seed_wants/carry 保护集)零变化。
+from sr_od.application.currency_war.kernel.cw_system_cards import engine_char_names
 
 # ===== 纯谓词族(v1 移植;不依赖线库/桥池,ADR-0336 后无旧件) =====
 
@@ -194,8 +194,8 @@ def form_break_sell_blocked(bc, state: GameState,
     )
     if not formed_stop_active(state, session, reg):
         return False
-    from sr_od.application.currency_war.cw_state import _recount_board
     from sr_od.application.currency_war.decision_v2.phase import form_ok
+    from sr_od.application.currency_war.kernel.cw_state import _recount_board
     s2 = state.copy()
     s2.bench = [None if b is bc else b for b in (state.bench or [])]
     s2.deployed = [None if d is bc else d for d in (state.deployed or [])]
@@ -236,10 +236,10 @@ def engine_seed_wants(card, state: GameState,
     if card.name in engine_char_names():
         return True    # ① C2 引擎件名单
     # ② 过渡体系阵营(v1 门语义)
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(card.name)
     card_bonds = (set(ch.factions) | set(ch.flows)) if ch \
         else {card.faction}
@@ -273,7 +273,7 @@ def _direction_factions(session: StrategySession) -> set[str] | None:
     ist = getattr(session, 'v3_intention', None)
     if ist is not None and isinstance(ist, IntentionState) \
             and ist.phase == 'locked' and ist.locked_comp:
-        from sr_od.application.currency_war.cw_comps import get_comp
+        from sr_od.application.currency_war.kernel.cw_comps import get_comp
         comp = get_comp(ist.locked_comp)
         if comp is not None:
             allow = set(comp.form_tiers) | set(comp.sub_tiers)
@@ -289,7 +289,7 @@ def _direction_factions(session: StrategySession) -> set[str] | None:
                     else:
                         allow.add(sys)
             return allow
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
     return {f for f, _t in TRANSITION_TRAITS}
@@ -334,7 +334,7 @@ def pair_wants(card, state: GameState,
             return True
         if allow is not None and card.faction in allow:
             return True
-        from sr_od.application.currency_war.cw_line_defs import classify_buy
+        from sr_od.application.currency_war.kernel.cw_line_defs import classify_buy
         return classify_buy(card, state) in ('bridge_seed', 'engine')
     if card.faction not in owned_factions and len(owned_factions) >= 3:
         return False    # A5:阵营上限
@@ -362,7 +362,7 @@ def p1_early_gate_open(state: GameState, session: StrategySession,
     """
     if state.plane != 1 or not registry.p1_early_gate_enabled:
         return None
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         _pair_members,
         p1_early_pair,
     )
@@ -863,7 +863,6 @@ def terminal_survival_upper_bound(state: GameState, session: StrategySession,
       「死亡不可避免」判据自然不成立的语义承载(设计 §2.3 行进带
       上沿用例)。
     """
-    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
     from sr_od.application.currency_war.decision_v2.ev import (
         NON_BATTLE_NODE_TOKENS,
         battles_left_plane,
@@ -871,6 +870,7 @@ def terminal_survival_upper_bound(state: GameState, session: StrategySession,
     from sr_od.application.currency_war.decision_v2.scoring import (
         _engines_formed,
     )
+    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     rung = min(2, max(0, _engines_formed(state, registry)))
     table = getattr(session, 'plane_node_table', None) or []
     kinds: list[str] | None = None
@@ -967,7 +967,7 @@ def terminal_round_conversion_open(state: GameState,
     是合成载体不视作垫底);替换动作走既有 deploy/fill 语义,零新
     动作族。卖件腾槽路径首批不放(装备/合成素材损失 sim 不可见,
     FM-10)——本门不含卖侧,板满且全员 ≥2★ 的帧维持停付。"""
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         bench_occupied,
         deployed_occupied,
     )
@@ -1140,7 +1140,7 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     ist = getattr(session, 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked':
         return []
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)
     if comp is None:
         return []
@@ -1169,7 +1169,7 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     _mb_full = bench_occupied(state.bench or []) >= BENCH_CAPACITY
     _mb_k = 0
     if _mb_full:
-        from sr_od.application.currency_war.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_state import (
             merge_buy_completes,
             merge_buy_k,
         )

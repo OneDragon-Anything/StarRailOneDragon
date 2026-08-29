@@ -17,16 +17,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     GameState,
     card_cost,
     simulate,
 )
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # 交互项权重(plaza 锚定先验,校准点;防 optimizer's curse:只对 target/skeleton 阵营生效)
 BREAK_W: float = 6.0        # 阵营计数跨过一个激活档(tier)的联合 bonus
@@ -56,7 +56,7 @@ def _owned_name_counts(state: GameState) -> dict[str, int]:
 
 def _interaction_bonus(buys: list, state: GameState, target_comp: Comp | None) -> float:
     """束的交互项:断点跳变 + 同名升星链。只对 target/骨架阵营计分(防凑错组合)。"""
-    from sr_od.application.currency_war.cw_comps import skeleton_factions
+    from sr_od.application.currency_war.kernel.cw_comps import skeleton_factions
     bonus = 0.0
     focus = set(target_comp.factions) if target_comp is not None else set()
     focus |= skeleton_factions()

@@ -21,13 +21,13 @@ import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.cw_observe import cw_log, cw_shot
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENT_ROSTER,
     EQUIPMENTS,
     Equipment,
     get_equip,
 )
+from sr_od.application.currency_war.kernel.cw_observe import cw_log, cw_shot
 
 if TYPE_CHECKING:
     from one_dragon.base.geometry.rectangle import Rect

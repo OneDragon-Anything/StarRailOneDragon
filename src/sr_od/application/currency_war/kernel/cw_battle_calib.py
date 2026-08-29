@@ -44,7 +44,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -185,7 +185,7 @@ def _settle_rung(st: GameState) -> int:
     outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
-    from sr_od.application.currency_war.cw_state import _recount_board
+    from sr_od.application.currency_war.kernel.cw_state import _recount_board
     _bf = _recount_board(st.deployed)
     _names = frozenset(d.char_id for d in (st.deployed or [])
                        if getattr(d, 'char_id', ''))
@@ -328,14 +328,14 @@ def _board_counts_of(deployed) -> dict[str, int]:
     星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
     分叉(迁移审计 w49(git 历史) Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
-    from sr_od.application.currency_war.cw_state import _recount_board
+    from sr_od.application.currency_war.kernel.cw_state import _recount_board
     return _recount_board(deployed)
 
 
 def _first_tier_round(res, tier: int) -> int | None:
     """r394:配方档位首达轮(ledger 的 board_factions 逐轮查
     recipe_tier≥tier 的最小轮;查不到=None)。"""
-    from sr_od.application.currency_war.cw_line_defs import recipe_tier
+    from sr_od.application.currency_war.kernel.cw_line_defs import recipe_tier
     for row in res.ledger:
         bf = (row.get('state') or {}).get('board_factions') or {}
         if bf and recipe_tier(bf) >= tier:
@@ -346,7 +346,7 @@ def _first_tier_round(res, tier: int) -> int | None:
 def _first_trio_round(res, target: int) -> int | None:
     """r394:核心三人组上场首达轮(deployed∩_CORE_TRIO 计数
     ≥target 的最小轮;查不到=None)。"""
-    from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
+    from sr_od.application.currency_war.kernel.cw_line_defs import _CORE_TRIO
     for row in res.ledger:
         dep = (row.get('state') or {}).get('deployed') or []
         cnt = sum(1 for d in dep
@@ -368,7 +368,7 @@ def _engines_count(board_factions: dict[str, int],
     r399:希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
     与三羁绊同级可组合。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         engines_count as _impl,
     )
     return _impl(board_factions, deployed_names)

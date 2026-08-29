@@ -29,7 +29,7 @@ while not (ROOT / 'pyproject.toml').exists():
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT / 'src'))
 
-from sr_od.application.currency_war.cw_economy import (  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     STREAK_GOLD_TABLE,
     streak_gold,
 )
@@ -41,7 +41,8 @@ from sr_od.application.currency_war.cw_horizon import (  # noqa: E402
     NODES_PER_PLANE,
     TOTAL_NODES,
 )
-from sr_od.application.currency_war.cw_state import (  # noqa: E402
+
+from sr_od.application.currency_war.kernel.cw_state import (  # noqa: E402
     XP_CLICK_COST_FALLBACK,
     XP_TO_NEXT_LEVEL,
     sell_refund,

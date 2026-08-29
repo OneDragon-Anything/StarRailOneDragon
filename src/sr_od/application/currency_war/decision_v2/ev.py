@@ -20,18 +20,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_economy import _vd_core_of
-from sr_od.application.currency_war.cw_intention import (
-    total_remaining_nodes,
-)
-from sr_od.application.currency_war.cw_state import (
-    GameState,
-    deployed_occupied,  # ADR-0392 helper 导入
-)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.posture import Posture
+from sr_od.application.currency_war.kernel.cw_economy import _vd_core_of
+from sr_od.application.currency_war.kernel.cw_intention import (
+    total_remaining_nodes,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    GameState,
+    deployed_occupied,  # ADR-0392 helper 导入
 )
 
 
@@ -120,7 +120,7 @@ def battles_left_plane(state: GameState, session: StrategySession,
     表缺失/越界(裸 session/sim 无表局/开局首帧前)→ 退
     ``registry.battles_left_est``(骨架缺省,保守侧)。
     """
-    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
+    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     table = getattr(session, 'plane_node_table', None) or []
     r = state.round_num
     if table:
@@ -151,7 +151,7 @@ def build_round_posture(state: GameState, session: StrategySession,
     查询)随 DP 退役删除;「查询不可达 → None → 各消费点保守回退」的
     级联面随之消灭(`w623_batch3_pre-mortem/` D0:确定性核在任意帧恒有定义,无 None 形状)。
     """
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         refresh_ev_budget,
         schedule_upgrade,
     )
@@ -312,7 +312,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     # 谓词单一址 = cw_investments.refresh_invest_active,与排程核同址)。
     # 全臂关闭(含①人口位),与 `w621_sim_explore/` sim 注入臂「LevelUp 全抑制」同口径;
     # 等级回落为预期方向(w630 协议出口 9 预期带 7.0-8.6)。
-    from sr_od.application.currency_war.cw_investments import (
+    from sr_od.application.currency_war.kernel.cw_investments import (
         refresh_invest_active,
     )
     if refresh_invest_active(state):
@@ -320,7 +320,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     # ① [33] 人口位(目标件集由调用方传,candidates._target_names 单一源;
     # 迁移审计 w121(git 历史) G1:cap 满 ∧ bench 有目标件——迁移审计 w113(git 历史) §3.3 原文「deployed<cap 且
     # bench 有可上件」把判据写反(有余量=直接上场即可,升级纯浪费[32](b))
-    from sr_od.application.currency_war.cw_state import bench_occupied
+    from sr_od.application.currency_war.kernel.cw_state import bench_occupied
     if deployed_occupied(state.deployed or []) >= state.max_units():   # ADR-0392
         bench = state.bench or []
         if bench_occupied(bench) > 0 and any(
@@ -341,7 +341,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
         return ''    # below_floor_spend:息线以下破档升级无例外
     # ② 排程花费授权(平台未破;预算收权批(ADR-0465):确定性查表核单一址,
     # 排程=预告态,可负担性由上方入口门+本行平台判据收口)
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         schedule_upgrade,
     )
     if schedule_upgrade(state, session) \

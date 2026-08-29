@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.kernel.cw_comps import (
     ScoreContext,
     clamp,
     equip_fit,
@@ -22,13 +22,13 @@ from sr_od.application.currency_war.cw_comps import (
     mechanics_fit,
     weighted_mean,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 
 # ===== RoundOutcome(双侧观测;r6 F1/F3/F4)=====

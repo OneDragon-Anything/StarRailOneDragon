@@ -38,9 +38,9 @@ from sr_od.application.currency_war.currency_war_char_id import (
     load_avatar_templates,
 )
 from sr_od.application.currency_war.cw_equipment import read_equipped_below
-from sr_od.application.currency_war.cw_obs_core import _area_rect
-from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
 
@@ -620,7 +620,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     try:
         from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
         if _lay['n_raw'] not in _LAYOUT_PREFIX:
-            from sr_od.application.currency_war.cw_obs_core import (
+            from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
             )
             if not is_prep_like_frame(ctx, screen):
@@ -628,7 +628,9 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
                 _log0.info('[cw-hook][layout] 后排 %s 格无档但帧非备战态'
                            '→ 跳过(过渡帧防误触)', _lay['n_raw'])
             else:
-                from sr_od.application.currency_war.cw_observe import obs_conflict
+                from sr_od.application.currency_war.kernel.cw_observe import (
+                    obs_conflict,
+                )
                 obs_conflict(
                     'back_layout_unarchived_grid', _lay['n_raw'], _lay['cv_n'], screen,
                     verdict=('留证采集-后排档未建档(W209i 降级不停机:实时制'
@@ -739,7 +741,9 @@ def check_system_unit_layout(
                 if now - _sysunit_conflict_ts.get(source, -1e9) < 300.0:
                     return
                 _sysunit_conflict_ts[source] = now
-                from sr_od.application.currency_war.cw_observe import obs_conflict
+                from sr_od.application.currency_war.kernel.cw_observe import (
+                    obs_conflict,
+                )
                 obs_conflict(
                     'layout_mismatch_by_system_unit', exp, round(x, 1), screen,
                     verdict=(f'留证-系统单位({cid})实测 x={x:.0f} 与所选档右格中心 '
@@ -773,8 +777,8 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     # ⚠️ 防抖(r17-r31 教训):同内容哈希只停一次(cw_shot_unique 返 None = 已采过 → 不再停),
     # 防同一单位整局反复停机;哨兵文件自描述。
     try:
-        from sr_od.application.currency_war.cw_obs_core import _ocr
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        from sr_od.application.currency_war.kernel.cw_obs_core import _ocr
+        from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
         # r82 守卫修正:「按钮-装备推荐」area 在「货币战争-备战-角色详情」子屏,
         # _area_rect 默认查备战屏恒 None → 旧守卫形同虚设(r82 实锤:停机帧上面板
         # 开着仍停机)。枚举两屏查,任一命中即面板开 → 本帧不判。
@@ -821,14 +825,14 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 from pathlib import Path as _P2
                 _fp2 = _P2('.debug/temp/currency_war/bookcard_confirm_hook.flag')
                 if not _fp2.exists():
-                    from sr_od.application.currency_war.cw_obs_core import (
+                    from sr_od.application.currency_war.kernel.cw_obs_core import (
                         is_prep_like_frame,
                     )
                     if is_prep_like_frame(ctx, screen):
                         # ADR-0263 Revision 第三段:金币说明 overlay(C 类无档案,
                         # 进不了两段式的 UPPER_SCREENS)以锚 OCR 判定补充排除
                         # —— 停机后的「点开启」动作在 overlay 下会落空。
-                        from sr_od.application.currency_war.cw_obs_core import (
+                        from sr_od.application.currency_war.kernel.cw_obs_core import (
                             gold_info_overlay_open,
                         )
                         _bc_rect = next((r for i, r in _bench_slots9
@@ -882,7 +886,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
                 # r330 帧态门(同 layout/bookcard:停机只在备战类
                 # 精准帧;过渡帧跳过防误采)
-                from sr_od.application.currency_war.cw_obs_core import (
+                from sr_od.application.currency_war.kernel.cw_obs_core import (
                     is_prep_like_frame,
                 )
                 if not is_prep_like_frame(ctx, screen):
@@ -898,7 +902,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 # (局69 实证)。锚命中 → 本帧跳过识别判定(不 flag 不停机),
                 # 等下一帧 overlay 关了再判。其余 overlay(阿哈大悦等全屏类)
                 # 由两段式第一段天然覆盖:全屏 UI 盖 id_mark → 备战屏不命中。
-                from sr_od.application.currency_war.cw_obs_core import (
+                from sr_od.application.currency_war.kernel.cw_obs_core import (
                     gold_info_overlay_open,
                 )
                 if gold_info_overlay_open(ctx, screen):

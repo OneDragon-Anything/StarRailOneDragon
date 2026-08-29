@@ -40,7 +40,9 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_merge_preview,
     resolve_char_name,
 )
-from sr_od.application.currency_war.cw_obs_core import (
+from sr_od.application.currency_war.data.cw_chars import get_char
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_BOARD,
     A_GOLD,
     A_PHASE,
@@ -57,8 +59,8 @@ from sr_od.application.currency_war.cw_obs_core import (
     _ocr,
     is_prep_like_frame,
 )
-from sr_od.application.currency_war.cw_observe import obs_conflict
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
+from sr_od.application.currency_war.kernel.cw_state import (
     REFRESH_COST_BASE,
     XP_TO_NEXT_LEVEL,
     GameState,
@@ -67,8 +69,6 @@ from sr_od.application.currency_war.cw_state import (
     ledger_node_type,
     rebuild_deployed_from_board,
 )
-from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.context.sr_context import SrContext
 
 
@@ -81,7 +81,7 @@ def _expected_level(plane: int, round_num: int) -> int:
     ⚠️ r90 审计必修:此副本曾与 economy 侧漂移(改刻度忘了这里)——统一 import 单一源,
     本函数只做参数序转接(消费方按 (plane, round) 调)。
     """
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         _expected_level as _econ_expected_level,
     )
     return _econ_expected_level(round_num, plane)
@@ -202,7 +202,10 @@ def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | No
     直接印在商店面板上,OCR 即真值,无需建模哪个档被随机翻倍、也覆盖其他概率类
     环境。消费方:plan._sample_cost(D 牌蒙特卡洛)/ refresh 价值评估。
     """
-    from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME, _area_rect
+    from sr_od.application.currency_war.kernel.cw_obs_core import (
+        SHOP_SCREEN_NAME,
+        _area_rect,
+    )
     rect = _area_rect(ctx, '按钮-刷新概率表', SHOP_SCREEN_NAME)   # 概率条在开商店子态屏
     if rect is None:
         return None
@@ -351,7 +354,7 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
         return v
     xp = read_xp_progress(ctx, screen)
     if xp is not None:
-        from sr_od.application.currency_war.cw_state import XP_TO_NEXT_LEVEL
+        from sr_od.application.currency_war.kernel.cw_state import XP_TO_NEXT_LEVEL
         for lv, need in XP_TO_NEXT_LEVEL.items():
             if need == xp[1]:
                 return lv
@@ -1377,13 +1380,13 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
     """
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         iter_occupied_deployed,
     )
     _occ = list(iter_occupied_deployed(tracked or []))   # ADR-0392 槽位表滤 None
     if not _occ:
         return None
-    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
+    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
     for bc in _occ:
         tags = unit_bond_tags(bc)
@@ -1615,10 +1618,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
-    from sr_od.application.currency_war import cw_observe as _obs_mod
     from sr_od.application.currency_war.cw_observation_gate import (
         PHASE_FIELD_SPEC,
     )
+    from sr_od.application.currency_war.kernel import cw_observe as _obs_mod
     _spec = PHASE_FIELD_SPEC.get(phase) if phase is not None else None
     if phase is not None and _spec is None:
         # fail-open:未知阶段名不猜 → 全量 + 告警(拼错阶段名立即暴露,不静默)
@@ -1654,7 +1657,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _node_t = ((state.plane - 1) * 9 + state.round_num
                if state.plane is not None and state.round_num is not None
                else None)
-    from sr_od.application.currency_war.cw_reconcile import reconcile_hp
+    from sr_od.application.currency_war.kernel.cw_reconcile import reconcile_hp
     # hp 跳过/真读的唯一门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR;ADR-0462,
     # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
     # 可见——spec 无 'hp' 的阶段(prep_shop_open 开店面板遮挡/battle_or_transit
@@ -1896,7 +1899,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             state.partner_char = _pt
     # ADR-0392:deployed 是槽位表(定长 10 含 None)——对账/截断/补齐一律
     # 走占用序(紧缩视图),再转回槽位表;len() 恒 10 不可作计数。
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         deployed_from_compact,
         iter_occupied_deployed,
     )
@@ -1949,7 +1952,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
     state.bench_full_flag = read_bench_full(ctx, screen) if _w('bench_full') else None
     if phase is not None:
-        from sr_od.application.currency_war.cw_observe import set_obs_phase
+        from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
     # [停机钩子·已删(2026-08-17 M72 采全)] star≥3 停机采集:19 位 fixture 已采全
     # (star3_slots/),read_star 全位置断言 3 测试过(test_star3_positions)。⚠️ 教训存档:

@@ -25,14 +25,14 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
 )
-from sr_od.application.currency_war.cw_obs_core import (
+from sr_od.application.currency_war.cw_observation import read_gold
+from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     SHOP_SCREEN_NAME,
     _area_rect,
     _ocr,
     area_center,
 )
-from sr_od.application.currency_war.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -511,7 +511,7 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is not None:
             try:
-                from sr_od.application.currency_war.cw_state import GameState
+                from sr_od.application.currency_war.kernel.cw_state import GameState
                 _st = match.session.last_state or GameState()
                 idx = match.strategy.decide_box_card(
                     [n for n, _ in names], _st, match.session,
@@ -599,7 +599,7 @@ class PrepActionExecutor:
             return
         # ADR-0392:tracked_deployed 槽位表(置 None 不移位);(row, slot)
         # 物理 1-based → 槽位下标(front: slot-1 / back: 4+slot-1)
-        from sr_od.application.currency_war.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_state import (
             DEPLOYED_FRONT_CAPACITY,
             pad_deployed,
         )
@@ -624,7 +624,7 @@ class PrepActionExecutor:
             if bc is not None and bc.slot != from_slot]
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
-        from sr_od.application.currency_war.cw_state import deployed_place
+        from sr_od.application.currency_war.kernel.cw_state import deployed_place
         for bc in moved:
             bc.position_pref = to_row
             deployed_place(match.session.tracked_deployed, bc)

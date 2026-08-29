@@ -7,17 +7,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from one_dragon.utils import log_utils  # 67-P1b tribunal 判决日志
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.data.cw_factions import (
+    FACTIONS,
+    INTEREST_THRESHOLD,
+)
+from sr_od.application.currency_war.kernel.cw_comps import (
     COMMIT_FRAC,
     char_routes,
     clamp,
     escort_for,
     form_progress,
 )
-from sr_od.application.currency_war.cw_deploy_logic import (
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     TRANSITION_TRAITS as _TRANSITION_TRAITS,
 )
-from sr_od.application.currency_war.cw_economy import (
+from sr_od.application.currency_war.kernel.cw_economy import (
     HP_DISTRESS_FRAC,
     P2_REBUILD_GOLD_FLOOR,
     WIN_STREAK_BREAK_INTEREST,
@@ -27,21 +31,17 @@ from sr_od.application.currency_war.cw_economy import (
     get_node_goal,
     roll_affordable,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     bench_occupied,
     effective_hp_threshold,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
-from sr_od.application.currency_war.data.cw_factions import (
-    FACTIONS,
-    INTEREST_THRESHOLD,
-)
 
 log = log_utils.log
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # —— eval 权重 ——
 # 以下为 **V4.4 research meta 先验,冻结**(版本更新才改,不进用户调参面;review r5/r6 权重纪律)。
@@ -341,7 +341,7 @@ def _stash_form_progress(target_comp: Comp, state: GameState) -> float:
     ≤50 攒息,兴趣引擎是全程经济基线,见 user_playstyle [17]/[2])。
     本函数把 bench 囤件计入阵营进度(囤着的 target 件是成型资产,不是未开始)。
     """
-    from sr_od.application.currency_war.cw_comps import clamp
+    from sr_od.application.currency_war.kernel.cw_comps import clamp
     if not target_comp.form_tiers:
         return 0.0
     bench_f: dict[str, int] = {}
@@ -521,7 +521,7 @@ def _elapsed_rounds(state: GameState) -> int:
     60-A1 修(×6→单一源):游戏真相 9 节点/位面,旧 ×6 使 α(t) 在位面 2 达满值
     晚 ~3 轮(optionality 偏高/target-progress 罚偏弱)。
     """
-    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
+    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     return state.round_num + (state.plane - 1) * NODES_PER_PLANE
 
 

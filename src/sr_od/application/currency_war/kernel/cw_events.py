@@ -7,14 +7,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.kernel.cw_comps import (
     AFFIX_MECHANIC_MAP,
     MECHANIC_COUNTERS,
     augment_affinity,
     form_progress,
     mechanics_fit,
 )
-from sr_od.application.currency_war.cw_investments import (
+from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
     ENV_SURVIVAL_BONUS,
     EQUIP_FLOW_PICKS,
@@ -26,13 +26,13 @@ from sr_od.application.currency_war.cw_investments import (
     pick_value_of,
     strategy_bindings,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     PickEvent,
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # 注册表名列表缓存(ADR-0141 _option_rarity LCS 兜底用;模块级避免每选项重建)
 INVESTMENT_STRATEGIES_KEYS: list[str] = list(INVESTMENT_STRATEGIES)
@@ -302,7 +302,7 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
 
     # 评分:词缀契合(利 comp 加分)+ 难度档定价(P9 接 36 号账本:场合三态替代固定 ±0.3)
     def _score(o: EncounterOption, m: float) -> float:
-        from sr_od.application.currency_war.cw_survey19_hooks import (
+        from sr_od.application.currency_war.kernel.cw_survey19_hooks import (
             encounter_tier_score,
         )
         s = m

@@ -25,7 +25,11 @@ from one_dragon.utils.file_utils import get_project_root
 # logger(框架日志走命名 logger 'OneDragon',propagate=False 不经 root),
 # 本模块 warning/info(garbage 拒写/divergent 不覆盖/注册表新增)从未落地。
 from one_dragon.utils.log_utils import log as _log
-from sr_od.application.currency_war.cw_obs_core import BRIEFING_SCREEN, _area_rect, _ocr
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    BRIEFING_SCREEN,
+    _area_rect,
+    _ocr,
+)
 from sr_od.context.sr_context import SrContext
 
 

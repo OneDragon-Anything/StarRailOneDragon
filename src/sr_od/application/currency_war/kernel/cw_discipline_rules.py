@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy_session import (
@@ -84,7 +84,7 @@ def _sell_floor_counts(state: GameState,
       '_seele_core_copies'(希儿副本数)/'_seele_amp:{阵营}'(放大阵营
       在手件数)——希儿系核心条件辖(W192/ADR-0375 判据)。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SEELE_AMP_FACTIONS,
         TRANSITION_TRAITS,
     )

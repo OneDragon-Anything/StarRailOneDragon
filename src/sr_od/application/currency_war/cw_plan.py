@@ -8,7 +8,21 @@ import random
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.cw_evaluate import (
+    _card_hits_target,
+    _close_factions,
+    _refresh_cap,
+    _should_save_for_interest,
+    evaluate,
+)
+from sr_od.application.currency_war.data.cw_factions import (
+    FACTIONS,
+    INTEREST_THRESHOLD,
+)
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    REFRESH_PROB,
+)
+from sr_od.application.currency_war.kernel.cw_comps import (
     COMMIT_FRAC,
     EARLY_CORE_POOL,
     TEMPO_POOL,
@@ -18,7 +32,7 @@ from sr_od.application.currency_war.cw_comps import (
     skeleton_factions,
     target_committed,
 )
-from sr_od.application.currency_war.cw_economy import (
+from sr_od.application.currency_war.kernel.cw_economy import (
     SHOP_REFRESH_COST,
     _refresh_cost,
     _want_level_up,
@@ -28,14 +42,7 @@ from sr_od.application.currency_war.cw_economy import (
     roll_affordable,
     xp_click_cost,
 )
-from sr_od.application.currency_war.cw_evaluate import (
-    _card_hits_target,
-    _close_factions,
-    _refresh_cap,
-    _should_save_for_interest,
-    evaluate,
-)
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     Action,
     BenchChar,
@@ -54,16 +61,9 @@ from sr_od.application.currency_war.cw_state import (
     sell_refund,
     simulate,
 )
-from sr_od.application.currency_war.data.cw_factions import (
-    FACTIONS,
-    INTEREST_THRESHOLD,
-)
-from sr_od.application.currency_war.data.cw_shop_odds import (
-    REFRESH_PROB,
-)
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 REFRESH_SAMPLES: int = 8     # 蒙特卡洛 D 牌采样数(越大越准越慢)
 
@@ -176,7 +176,7 @@ def _card_supports_target(name: str, faction: str, state, target) -> bool:
         return True
     if name in EARLY_CORE_POOL:
         return True
-    from sr_od.application.currency_war.cw_economy import _char_synergies
+    from sr_od.application.currency_war.kernel.cw_economy import _char_synergies
     syn = _char_synergies(name)
     if faction and faction != '?':
         syn = syn | {faction}
@@ -228,8 +228,8 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
         return True
     if name in GENERIC_FILLERS:
         return state.deployed_count() < state.max_units()
-    from sr_od.application.currency_war.cw_economy import _char_synergies
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.kernel.cw_economy import _char_synergies
     syn = _char_synergies(name)
     if faction and faction != '?':
         syn = syn | {faction}
@@ -249,7 +249,7 @@ def _skeleton_buy_ok(name: str, faction: str, state: GameState,
                    - {getattr(_bc, 'faction', '')}):
             counts[_f] = counts.get(_f, 0) + 1
     # r95 配方自举豁免:当先框架的目标阵营(已有 ≥1 即在配方向上)→ 放行
-    from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+    from sr_od.application.currency_war.kernel.cw_transition import FRAMEWORK_FACTIONS
     _fw_fac = set(FRAMEWORK_FACTIONS.get(framework, ()) or ()) if framework else set()
     for f in syn:
         if f in _fw_fac and counts.get(f, 0) >= 1:
@@ -294,8 +294,8 @@ def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
     2/3 张同阵营齐档后整组上场」的组合窗口不在此判(靠窗口①定型/②位面末兜底,
     单卡永不触发③——r90 审计 A.a 记录,接受该简化)。
     """
-    from sr_od.application.currency_war.cw_economy import _char_synergies
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.kernel.cw_economy import _char_synergies
     syn = _char_synergies(bc.char_id) if bc.char_id else set()
     if bc.faction and bc.faction != '?':
         syn = syn | {bc.faction}
@@ -367,8 +367,12 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
         # r107 审计C:白名单从 FRAMEWORKS 单一源派生(r102 加量子时此处硬编码
         # 遗漏 → 希儿/缇宝/符玄双轨期囤 bench 不上场,量子同频 trait 型连
         # 底部兜底都接不住)。
-        from sr_od.application.currency_war.cw_transition import FRAMEWORKS as _FWS
-        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK as _TP
+        from sr_od.application.currency_war.kernel.cw_transition import (
+            FRAMEWORKS as _FWS,
+        )
+        from sr_od.application.currency_war.kernel.cw_transition import (
+            TRANSITION_PACK as _TP,
+        )
         _e = _TP.get(bc.char_id)
         if _e is not None and (_e[0] in _FWS or _e[0] == '通用') and _e[1] != 'drop':
             return True
@@ -637,12 +641,12 @@ def _sell_offline_for_focus(state: GameState, actions: list,
     """
     if target is None or bench_occupied(state.bench) == 0:
         return
-    from sr_od.application.currency_war.cw_state import simulate as _sim
+    from sr_od.application.currency_war.kernel.cw_state import simulate as _sim
     sold = 0
     _transition_chars = set(getattr(target, 'transition_chars', ()) or ())   # r9 review#1:角色级(transition_factions_hint 不存在,曾恒空→卖掉打工牌)
     # r70 框架保护集(keep = 当先框架的 carry/partial + 通用件;framework 来自 session,
     # 与买侧/deploy 侧同源)。''=未定框架 → 仅散件 drop 无保护。
-    from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+    from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
     _fw_keep = ({n for n, (f, t) in TRANSITION_PACK.items()
                  if (f == framework or f == '通用') and t != 'drop'} if framework else set())
     for bc in list(state.bench):
@@ -825,7 +829,7 @@ def _best_improving_action(
     # 循环内终局件加补偿分,与框架分同量级竞争(修「框架件恒压死终局件」)。
     _stash_gate = _dual and (stash_comp is not None or target_comp is not None)
     if _dual:
-        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+        from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
         # 常数削减(r51 用户效率提醒):双轨放行面预计算——stash/target 的
         # core+faction 名集一次建好,循环内纯 set 查(免逐卡×逐 comp 的
         # _card_hits_target 函数调用)
@@ -961,7 +965,9 @@ def _best_improving_action(
         # 持有最多者启动——MC 2000 局:预囤把启动率 0.5%→99.9% @r1.4);
         # 散件(ent=None)恒 0 分不抢预算。
         if _dual:
-            from sr_od.application.currency_war.cw_transition import transition_score
+            from sr_od.application.currency_war.kernel.cw_transition import (
+                transition_score,
+            )
             _ts = transition_score(card.name, card.faction, framework)
             if _ts > 0:
                 delta += 0.8 * _ts
@@ -1049,7 +1055,7 @@ def _best_improving_action(
         if len(_distinct_factions(state)) >= DEPLOY_FACTION_CAP:
             # spread 守卫:只留「深化已有阵营」候选(新阵营 = 第 N+1 个 spread)
             _counts = _bench_faction_counts(state)
-            from sr_od.application.currency_war.cw_economy import (
+            from sr_od.application.currency_war.kernel.cw_economy import (
                 _char_synergies as _syn,
             )
             _sk_candidates = [c for c in _sk_candidates
@@ -1059,7 +1065,7 @@ def _best_improving_action(
             # 评审Y1③:排序 key 补「立即可激活档」优先(买后即达 min_tier 的骨架对 > 纯枢纽单买)
             from sr_od.application.currency_war.data.cw_factions import FACTIONS as _FAC
             def _activates_now(c) -> int:
-                from sr_od.application.currency_war.cw_economy import (
+                from sr_od.application.currency_war.kernel.cw_economy import (
                     _char_synergies as _syn2,
                 )
                 _s = _syn2(c.name) | ({c.faction} if c.faction and c.faction != '?' else set())
@@ -1128,7 +1134,7 @@ def _best_improving_action(
             _sim = state
             for _a in best:
                 _sim = simulate(_sim, _a)
-            from sr_od.application.currency_war.cw_transition import (
+            from sr_od.application.currency_war.kernel.cw_transition import (
                 TRANSITION_PACK as _TP2,
             )
             def _hoard_rank(_card) -> int:

@@ -246,7 +246,7 @@ def note_channel_conflict(screen, formula_n: int, cv_n: int,
         if now - _channel_conflict_ts.get(source, -1e9) < 300.0:
             return
         _channel_conflict_ts[source] = now
-        from sr_od.application.currency_war.cw_observe import obs_conflict
+        from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
         obs_conflict(
             'back_layout_channel_conflict', formula_n, cv_n, screen,
             verdict=('采 CV 实测值(画面事实>推导,ADR-0385 双通道对账);'
@@ -355,7 +355,9 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
                          '疑特效/粒子瞬态,W209h)→ 退公式值 %s',
                          cv_n, cv_readings, formula_n)
                 try:
-                    from sr_od.application.currency_war.cw_observe import obs_conflict
+                    from sr_od.application.currency_war.kernel.cw_observe import (
+                        obs_conflict,
+                    )
                     obs_conflict(
                         'back_layout_cv_transient', cv_n, formula_n, screen,
                         verdict=('瞬态自愈-退公式值(W209h 防抖重读;'

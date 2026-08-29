@@ -16,9 +16,9 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_comps import Comp
-from sr_od.application.currency_war.cw_state import GameState
-from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+from sr_od.application.currency_war.kernel.cw_comps import Comp
+from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
@@ -100,7 +100,7 @@ def decision_target(session, state: GameState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (`w646_plan_c_attack/` 攻击面 3 实证)。
     """
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from,
     )
     if not committed_from(session, state):

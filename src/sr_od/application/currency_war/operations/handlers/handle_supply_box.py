@@ -45,7 +45,7 @@ def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
     match = getattr(ctx, 'cw_match', None)
     if match is not None:
         try:
-            from sr_od.application.currency_war.cw_state import GameState
+            from sr_od.application.currency_war.kernel.cw_state import GameState
             _st = match.session.last_state or GameState()
             idx = match.strategy.decide_box_card(
                 names, _st, match.session, getattr(match, 'config', None))
@@ -94,7 +94,7 @@ class HandleSupplyBox(SrOperation):
 
         # OCR 4 卡名(区域-卡名行)→ 选卡 → 点卡
         overlay = self.screenshot()
-        from sr_od.application.currency_war.cw_obs_core import _area_rect, _ocr
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
         rect = _area_rect(self.ctx, '区域-卡名行', HandleSupplyBox.BOX_SCREEN)
         names: list[tuple[str, int]] = []
         if rect is not None:

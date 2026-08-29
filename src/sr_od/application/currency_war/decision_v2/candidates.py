@@ -22,27 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_economy import xp_click_cost
-from sr_od.application.currency_war.cw_plugins import (
-    PLUGIN_LIBRARY,
-    plugin_disabled,
-)
-from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
-    Action,
-    BenchChar,
-    BuyCard,
-    DeployMove,
-    GameState,
-    LevelUp,
-    RefreshShop,
-    SellBench,
-    ShopCard,
-    bench_occupied,
-    deployed_occupied,
-    iter_occupied_deployed,
-    sell_refund,
-    will_merge_on_buy,
-)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.decision_v2.discipline import (
@@ -63,8 +42,29 @@ from sr_od.application.currency_war.kernel.cw_discipline_rules import (
     seed_age_blocked,
     star_weighted_copies,
 )
+from sr_od.application.currency_war.kernel.cw_economy import xp_click_cost
+from sr_od.application.currency_war.kernel.cw_plugins import (
+    PLUGIN_LIBRARY,
+    plugin_disabled,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 导入
+    Action,
+    BenchChar,
+    BuyCard,
+    DeployMove,
+    GameState,
+    LevelUp,
+    RefreshShop,
+    SellBench,
+    ShopCard,
+    bench_occupied,
+    deployed_occupied,
+    iter_occupied_deployed,
+    sell_refund,
+    will_merge_on_buy,
 )
 
 #: 买候选标签集 / 卖候选标签集 / 动作类枚举(检查项 coverage 消费)
@@ -177,7 +177,7 @@ def _intention_family(session: StrategySession) -> str:
     locked = getattr(ist, 'locked_comp', '')
     if not locked:
         return ''
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(locked)
     return comp.family if comp is not None else ''
 
@@ -252,7 +252,7 @@ def _engine_seed_affinity(card: ShopCard, state: GameState,
     """
     if not registry.engine_affinity_enabled:
         return True    # A/B 通道:关闭=回 W70 行为(全引擎件见即买)
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
     tiers = dict(TRANSITION_TRAITS)
@@ -556,7 +556,7 @@ def _synthesize_candidates(state: GameState) -> list[Candidate]:
 def _deploy_candidates(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> list[Candidate]:
     """部署候选:围栏序 top-K(与生产 DeployBench/sim 部署块同一源)。"""
-    from sr_od.application.currency_war import cw_deploy_logic as dl
+    from sr_od.application.currency_war.kernel import cw_deploy_logic as dl
     tc = getattr(session, 'target_comp', None)
     target_factions = frozenset(getattr(tc, 'factions', None) or ())
     target_cores = frozenset(getattr(tc, 'core_chars', None) or ())

@@ -27,16 +27,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     Comp,
     get_comp,
 )
-from sr_od.application.currency_war.cw_plugins import (
+from sr_od.application.currency_war.kernel.cw_plugins import (
     PLUGIN_LIBRARY,
     plugin_disabled,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     Action,
     BenchChar,
@@ -48,13 +50,11 @@ from sr_od.application.currency_war.cw_state import (
     iter_occupied_deployed,
     simulate,
 )
-from sr_od.application.currency_war.cw_system_cards import (
+from sr_od.application.currency_war.kernel.cw_system_cards import (
     SYSTEM_CARDS,
     card_engine_complete,
     card_pieces,
 )
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 
 # 体系卡 →(判据阵营, 目标档);W47 统一化:card→faction 映射改从
 # ``SystemCard.judge_factions`` 字段派生(第三处重复消除;原先本表/
@@ -203,10 +203,10 @@ _GRADE_PERSIST_ROUNDS: int = 4
 def _pair_systems(session) -> dict[str, int]:
     """意向帧的体系对键→档(p1_pair ∪ transition_pair;tier 单一源
     TRANSITION_TRAITS;希儿系哨兵键档=1,单卡判据——希儿本人上场即成)。"""
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
-    from sr_od.application.currency_war.cw_intention import IntentionState
+    from sr_od.application.currency_war.kernel.cw_intention import IntentionState
     ist = getattr(session, 'v3_intention', None)
     if not isinstance(ist, IntentionState):
         return {}
@@ -249,15 +249,15 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
       (W192 核心条件辖)/未识别件同样恒不可动(原保护语义保留)。
     非引擎非锁定散件本就是常规候选(非保护),不入本表。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
         is_seele_system_member,
     )
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         locked_buy_scope,
     )
-    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
     ist = getattr(session, 'v3_intention', None)
     lock_scope = (locked_buy_scope(ist)
                   if isinstance(ist, IntentionState) else None)
@@ -330,10 +330,10 @@ def _engine_completion_tx(state: GameState,
     或未成型引擎件 = pair/成型引擎贡献件不下场 → 净效果 pair
     on-board 计数与引擎数不减。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
-    from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
     pair = _pair_systems(session)
     if not pair:
         return None
@@ -530,7 +530,7 @@ def _off_lock_opt(opt: UpgradeOption, session) -> bool:
     目标件划进 old_line 整档解除(216 轮次,仙舟3 占 138)。无锁定帧
     (空窗/weak/降格终局)恒 False([31]① 空窗期不存在 off-lock)。
     """
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         locked_faction_scope,
     )
@@ -569,7 +569,7 @@ def _locked_protected_names(old_line: list[BenchChar],
       恒在场,条件辖覆盖之。
     """
     out: set[str] = set()
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         locked_buy_scope,
     )
@@ -579,7 +579,7 @@ def _locked_protected_names(old_line: list[BenchChar],
         if scope is not None:
             out |= {d.char_id for d in old_line
                     if d is not None and d.char_id in scope}
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
         is_seele_system_member,
     )
@@ -611,7 +611,7 @@ def _engine_systems_formed(board_factions: dict[str, int],
     计数接口答不了,这里键级展开、计数口径仍单一源在 cw_sim
     (tier 阈值经 TRANSITION_TRAITS 同源派生)。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
     out: set[str] = set()
@@ -1361,7 +1361,7 @@ def evolution_step(state: GameState, session=None,
     # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 W165 #3 定案)
     final_window = False
     if final_freeze:
-        from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
+        from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
         final_window = state.round_num >= nodes_of_plane(session) - 1
 
     def _try(opt: UpgradeOption) -> list[Action]:
@@ -1561,12 +1561,12 @@ def rollback_weakest(state: GameState,
 
 def _swap_action(d_idx: int, b_idx: int, *,
                  expect_deployed: str = '', expect_bench: str = '') -> Action:
-    from sr_od.application.currency_war.cw_state import SwapDeploy
+    from sr_od.application.currency_war.kernel.cw_state import SwapDeploy
     return SwapDeploy(d_idx, b_idx, reason='valley_rollback',
                       expect_deployed=expect_deployed,
                       expect_bench=expect_bench)
 
 
 def _sell_action(d_idx: int, *, expect: str = '') -> Action:
-    from sr_od.application.currency_war.cw_state import SellDeployed
+    from sr_od.application.currency_war.kernel.cw_state import SellDeployed
     return SellDeployed(d_idx, reason='valley_rollback', expect=expect)

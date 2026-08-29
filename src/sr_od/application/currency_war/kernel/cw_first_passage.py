@@ -24,7 +24,7 @@ from __future__ import annotations
 # (迁移批 3(ADR-0465) 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
 # 本模块引用之并在此定义分布语义(CV/位面乘数)。
 # 旧 HP_LOSS_MU 本地副本(与基准表同值异名)删除,防双源漂移。
-from sr_od.application.currency_war.cw_plane_table import (
+from sr_od.application.currency_war.kernel.cw_plane_table import (
     HP_LOSS_MU,  # noqa: F401
 )
 
@@ -40,7 +40,7 @@ ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;对拍锚)
 def _p2_lcond_mix() -> float:
     """P2+ 非 boss 战斗槽条件败面档(单节点;两态决策层同款混合单一源:
     registry.p2_cond_loss_table × line_switch._P2_NODE_TEMPLATE 战斗构成)。"""
-    from sr_od.application.currency_war.cw_line_switch import (
+    from sr_od.application.currency_war.kernel.cw_line_switch import (
         _P2_NODE_TEMPLATE,
         node_loss_kind,
     )
@@ -74,7 +74,7 @@ def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     if plane <= 1:
         mu = HP_LOSS_MU.get(min(3, max(0, board_tier)), 14.0)
     else:
-        from sr_od.application.currency_war.cw_plane_table import p_win_p2
+        from sr_od.application.currency_war.kernel.cw_plane_table import p_win_p2
         mu = (1.0 - p_win_p2(min(2, max(0, int(board_tier))))) * _p2_lcond_mix()
     sigma = mu * CV_PRIOR
     lo = max(0.0, mu - sigma)

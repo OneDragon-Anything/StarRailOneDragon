@@ -44,7 +44,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    DISTINCT_CARDS_PER_COST,
+    refresh_prob,
+)
+from sr_od.application.currency_war.kernel.cw_comps import (
     AFFIX_MECHANIC_MAP,
     COMP_LIBRARY,
     STRONG_ENV_MECHS,
@@ -55,28 +60,26 @@ from sr_od.application.currency_war.cw_comps import (
     derive_key_equips,
     get_comp,
 )
-from sr_od.application.currency_war.cw_deploy_logic import TRANSITION_TRAITS
-from sr_od.application.currency_war.cw_line_switch import (
+from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
+from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
     gate_counterfactual,
     register_gate_block,
     survival_gate,
 )
-from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE, TOTAL_NODES
-from sr_od.application.currency_war.cw_plugins import (
+from sr_od.application.currency_war.kernel.cw_plane_table import (
+    NODES_PER_PLANE,
+    TOTAL_NODES,
+)
+from sr_od.application.currency_war.kernel.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
-)
-from sr_od.application.currency_war.cw_state import (
-    GameState,
-    iter_occupied_deployed,  # ADR-0392 helper 导入
-)
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_shop_odds import (
-    DISTINCT_CARDS_PER_COST,
-    refresh_prob,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    GameState,
+    iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
 if TYPE_CHECKING:
@@ -293,7 +296,7 @@ def plane_remaining_nodes(state: GameState, session=None) -> int:
     旧按全局 9 计使 P2 冻结超限对照量虚高 2 轮)。session 缺省 None →
     回退 P1 先验(裸调用/旧签名兼容)。
     """
-    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
+    from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     n = nodes_of_plane(session) if session is not None else NODES_PER_PLANE
     r = min(max(1, state.round_num), n)
     return n - r + 1
@@ -648,7 +651,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     """
     if not pair:
         return None
-    from sr_od.application.currency_war.cw_bridge_pool import BRIDGE_POOL
+    from sr_od.application.currency_war.kernel.cw_bridge_pool import BRIDGE_POOL
 
     bonds = _pair_bond_keys(pair)
     tiers: dict[str, int] = {}
@@ -663,7 +666,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
             for bond, tier in combo.engine_bonds.items():
                 tiers.setdefault(bond, tier)
         if SEELE_SYSTEM in pair:
-            from sr_od.application.currency_war.cw_recipe import recipe_comp
+            from sr_od.application.currency_war.kernel.cw_recipe import recipe_comp
             _q = recipe_comp('量子')
             if _q is not None:
                 tiers.update(_q.form_tiers)

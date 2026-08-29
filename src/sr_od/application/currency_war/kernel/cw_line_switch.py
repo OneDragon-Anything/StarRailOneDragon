@@ -34,12 +34,12 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.cw_comps import Comp
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 
@@ -121,7 +121,7 @@ def e_rounds(comp: Comp, state: GameState,
     dist = line_distance(comp, state)
     if dist <= 0:
         return 0.0
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         BENCH_CAPACITY,
         bench_occupied,
     )
@@ -147,7 +147,7 @@ def switch_allowed(state: GameState, session: StrategySession) -> bool:
     = 丢弃已成形板面战力追 0-progress 新线,且 D_min=2 驻留在末窗等价于
     禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数,ADR-0366)。
     """
-    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
+    from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     return state.round_num <= nodes_of_plane(session) - 3
 
 
@@ -376,7 +376,7 @@ def best_alt_line(state: GameState, session: StrategySession, config,
     drought_excluded 死线(drought 名单语义保留)与供给为 0 的线(选线
     供给门同口径)。registry 注入(e_rounds 的金/刷价参数)。
     """
-    from sr_od.application.currency_war.cw_comps import (
+    from sr_od.application.currency_war.kernel.cw_comps import (
         select_comp_scored,
         shop_supply,
     )

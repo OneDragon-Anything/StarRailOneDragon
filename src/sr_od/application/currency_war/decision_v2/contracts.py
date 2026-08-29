@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
-from sr_od.application.currency_war.cw_state import BenchChar, ShopCard
+from sr_od.application.currency_war.kernel.cw_state import BenchChar, ShopCard
 
 #: 快照 Schema 版本(字段只增不改删,废弃字段走两版过渡;不匹配显式报错,
 #: 替代静默回退——接口版本化决策,设计审计报告 §三.8)。

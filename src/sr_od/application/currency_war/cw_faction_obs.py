@@ -33,8 +33,8 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import str_utils
-from sr_od.application.currency_war.cw_obs_core import A_BOARD, SCREEN_NAME
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_obs_core import A_BOARD, SCREEN_NAME
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext

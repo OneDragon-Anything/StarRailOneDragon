@@ -22,11 +22,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.cw_line_defs import _CORE_TRIO
-from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
 from sr_od.application.currency_war.cw_win_features import features_from_deployed
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_line_defs import _CORE_TRIO
+from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 #: 模型产物目录(W30 训练输出;gitignored,模型走运行时资产惯例不进 git)。
 _MODEL_DIR = Path('.debug/temp/currency_war/cw_dev/win_model_v0')

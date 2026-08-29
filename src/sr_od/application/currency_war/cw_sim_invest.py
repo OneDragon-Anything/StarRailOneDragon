@@ -113,13 +113,13 @@ def _freq(counter_field: str, is_known) -> tuple[tuple[str, int], ...]:
 
 def strategy_freq_table() -> tuple[tuple[str, int], ...]:
     """投资策略实选频次表(plaza 聚合,注册表内;判读/测试用)。"""
-    from sr_od.application.currency_war.cw_investments import get_strategy
+    from sr_od.application.currency_war.kernel.cw_investments import get_strategy
     return _freq('augs', lambda n: get_strategy(n) is not None)
 
 
 def env_freq_table() -> tuple[tuple[str, int], ...]:
     """投资环境偏好频次表(plaza 聚合,注册表内;判读/测试用)。"""
-    from sr_od.application.currency_war.cw_investments import get_env
+    from sr_od.application.currency_war.kernel.cw_investments import get_env
     return _freq('portals', lambda n: get_env(n) is not None)
 
 

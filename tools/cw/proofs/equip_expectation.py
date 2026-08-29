@@ -47,7 +47,6 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 from sr_od.application.currency_war.cw_horizon import TOTAL_NODES  # noqa: E402
 
-from sr_od.application.currency_war.cw_comps import COMP_LIBRARY  # noqa: E402
 from sr_od.application.currency_war.data.cw_equipment_data import (  # noqa: E402
     EQUIPMENTS,
 )
@@ -56,6 +55,7 @@ from sr_od.application.currency_war.data.cw_synthesis import (  # noqa: E402
     cross_components,
     self_base,
 )
+from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY  # noqa: E402
 
 # ===== 参数(显式不确定项;默认=主表口径,敏感性另跑) =====
 ADV_POOL_SIZE: int = 36                    # 进阶池件数(K8 闭合全量)

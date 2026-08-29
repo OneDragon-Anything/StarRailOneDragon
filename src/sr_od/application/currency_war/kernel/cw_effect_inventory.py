@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范允许);运行时 payload 按对象持有,
     # 类型一致性校验在 cw_investments 构建层(那里有真类)做 isinstance。
-    from sr_od.application.currency_war.cw_investments import EconomyEffect
+    from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
 
 
 class TriggerKind(StrEnum):

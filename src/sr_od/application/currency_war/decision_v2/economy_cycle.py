@@ -45,11 +45,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_economy import reserve_cap
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_economy import reserve_cap
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -63,11 +63,11 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     ∩ TRANSITION_TRAITS(与 scoring._cand_system_bonds 同口径)。
     A-1 刀法:仅此判定为真的件计入容量,未跨档期权件(q<1,`w469_convergence_ab/`
     已实测死法)不计。"""
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
         engines_count,
     )
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(name)
     if ch is None:
         return False
@@ -94,7 +94,7 @@ def _scan_shop_buy_accounts(state: GameState,
       先扣跨档件已占数,满槽后不再扩账);升序返回(容量口径取最便宜
       k 件=保守侧,买入质量序在 candidates/scoring 放行面)。
     """
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         bench_occupied,
         will_merge_on_buy,
     )
@@ -156,7 +156,7 @@ def channel_capacity(state: GameState, session: StrategySession,
     自 kernel 侧 cw_economy(局部别名绑定):monkeypatch 桩点重钉至
     cw_economy 符号后经属性访问动态解析,拦截语义不变。
     """
-    from sr_od.application.currency_war import cw_economy as _ke
+    from sr_od.application.currency_war.kernel import cw_economy as _ke
     total = 0
     if _ke.schedule_upgrade(state, session):
         total += _ke.upgrade_plan_fee(state)

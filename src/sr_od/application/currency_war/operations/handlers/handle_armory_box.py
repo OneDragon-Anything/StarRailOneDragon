@@ -16,7 +16,7 @@ from typing import ClassVar
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.operations.sr_operation import SrOperation
 
 

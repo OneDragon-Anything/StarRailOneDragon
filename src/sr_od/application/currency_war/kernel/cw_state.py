@@ -893,7 +893,7 @@ def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
     未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
     单标签(空/'?' 不计,生产 OCR 空板同形)。值漂移由 checks 的
     board↔deployed 一致性锁双向暴露。"""
-    from sr_od.application.currency_war.cw_bond_equips import unit_bond_tags
+    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
     for d in (deployed or []):
         if d is None:   # ADR-0392 槽位表空槽
@@ -1230,11 +1230,11 @@ def effective_hp_threshold(state: GameState) -> int:
     变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
     精确零漂移(M57 验证行为保持)。
     """
-    from sr_od.application.currency_war.cw_first_passage import (
+    from sr_od.application.currency_war.kernel.cw_first_passage import (
         board_tier_of,
         plane_hp_ratio,
     )
-    from sr_od.application.currency_war.cw_plane_table import (
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
         NODES_PER_PLANE,
         TOTAL_NODES,
     )
@@ -1261,7 +1261,7 @@ def simulate(state: GameState, action: Action) -> GameState:
     SwapDeploy/CompTransaction)执行前后跑账本快照比对——mismatch 记
     action_log(``EquipsLedger`` 条目,checks/遥测可见),不静默(cw_bench_equips 单一源)。
     """
-    from sr_od.application.currency_war.cw_bench_equips import (
+    from sr_od.application.currency_war.kernel.cw_bench_equips import (
         ledger_mismatch,
         state_equips_multiset,
     )
@@ -1369,7 +1369,7 @@ def simulate(state: GameState, action: Action) -> GameState:
                 # 全量重算会抹掉 OCR 提供的计数;增量 += 与旧 DeployMove
                 # 语义同形,口径升级 = 单位标签从主阵营单标签换 unit_bond_tags
                 # 全集(星徽/卡带贡献在内)。
-                from sr_od.application.currency_war.cw_bond_equips import (
+                from sr_od.application.currency_war.kernel.cw_bond_equips import (
                     unit_bond_tags,
                 )
                 _tags = unit_bond_tags(bc)

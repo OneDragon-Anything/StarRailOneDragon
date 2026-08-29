@@ -8,31 +8,31 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_comps import (
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import (
+    INTEREST_THRESHOLD,
+)
+from sr_od.application.currency_war.kernel.cw_comps import (
     LevelGoal,
 )
-from sr_od.application.currency_war.cw_investments import (
+from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     aggregate_economy,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DEFAULT_REGISTRY,
+    DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
     XP_CLICK_COST_FALLBACK,
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
     GameState,
     effective_hp_threshold,
 )
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_factions import (
-    INTEREST_THRESHOLD,
-)
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DEFAULT_REGISTRY,
-    DecisionV2Registry,
-)
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -344,7 +344,7 @@ def get_node_goal(plane: int, round_num: int, *,
                   ('g' if gold is not None else '-') + ('l' if level is not None else '-')
                   + ('h' if hp is not None else '-'))
     if None not in (gold, level, hp):
-        from sr_od.application.currency_war.cw_state import GameState as _GS
+        from sr_od.application.currency_war.kernel.cw_state import GameState as _GS
         # 标量投影帧:用入参重建最小决策帧(供给核只读经济/板面字段;
         # v1 栈调用面无现成 GameState——旧 DP 接缝同样只收标量)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
@@ -448,7 +448,7 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
     _econ = getattr(state, 'active_strategies', None) or []
     _free_per_node = 0
     for _s in _econ:
-        from sr_od.application.currency_war.cw_investments import get_strategy
+        from sr_od.application.currency_war.kernel.cw_investments import get_strategy
         _se = get_strategy(_s)
         if _se is not None and _se.economy is not None:
             _free_per_node += _se.economy.free_refresh_per_node
@@ -542,12 +542,12 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     兜底链保证 L_target 恒可解(D1:target 级判定迟疑帧返回 False 是
     塌缩循环的入口,禁)。
     """
-    from sr_od.application.currency_war.cw_investments import (
+    from sr_od.application.currency_war.kernel.cw_investments import (
         refresh_invest_active,
     )
     if refresh_invest_active(state):
         return False    # 淘金客姿态:升级通道退役(`w621_sim_explore/`;谓词单一址)
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
     reg = registry or _registry_of(session)
@@ -567,7 +567,7 @@ def _vd_core_of(session: StrategySession) -> str:
     自 decision_v2.ev 下沉(期 0b 单元2,schedule_upgrade 的目标核心解析链
     依赖;本模块零 decision 依赖,decision_v2.ev 改 import 重定向)——
     ev 不 import decision_v2 包内模块的判据复刻惯例随单一源归位终结)"""
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         intention_core,
     )
@@ -575,7 +575,7 @@ def _vd_core_of(session: StrategySession) -> str:
     if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
             or not ist.locked_comp:
         return ''
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)
     if comp is None:
         return ''
@@ -585,10 +585,10 @@ def _vd_core_of(session: StrategySession) -> str:
 def _target_peak_level(state: GameState, session: StrategySession) -> int:
     """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 兜底 comp
     核心 → 缺省 3 费;核心解析单一源 = _vd_core_of 与其兜底扩展)。"""
-    from sr_od.application.currency_war.cw_plane_table import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
         peak_refresh_level,
     )
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     core = _schedule_target_core(session)
     ch = CHARACTERS.get(core) if core else None
     cost = ch.cost if ch is not None and ch.cost else 3
@@ -599,16 +599,16 @@ def _schedule_target_core(session: StrategySession) -> str:
     """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧落意向
     ⑤兜底 comp 的核心——方向层 FALLBACK_COMP_NAME 单一源;再缺='' →
     调用方缺省 3 费档,供给不断)。"""
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         FALLBACK_COMP_NAME,
     )
     core = _vd_core_of(session)
     if core:
         return core
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     fb = get_comp(FALLBACK_COMP_NAME)
     if fb is not None:
-        from sr_od.application.currency_war.cw_intention import intention_core
+        from sr_od.application.currency_war.kernel.cw_intention import intention_core
         return intention_core(fb)
     return ''
 
@@ -649,8 +649,8 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
 
 def upgrade_plan_fee(state: GameState) -> int:
     """下一级升级总费(逐帧现读:OCR 单击价优先,缺省 flat 常量)。"""
-    from sr_od.application.currency_war.cw_plane_table import clicks_to_level
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_plane_table import clicks_to_level
+    from sr_od.application.currency_war.kernel.cw_state import (
         XP_CLICK_COST_FALLBACK,
     )
     click = state.level_up_cost or XP_CLICK_COST_FALLBACK
@@ -661,7 +661,7 @@ def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
     """到本位面末节点(= boss 节点)的剩余轮数(含当前轮;缺读兜底 0
     =不储蓄,保守侧:R* 退化为息线,义务面变宽但方向安全)。
     nodes_of_plane 自带缺表回退(先验 9+一次性告警),此处不再兜层。"""
-    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
+    from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     total = nodes_of_plane(session)
     return max(0, total - state.round_num)
 

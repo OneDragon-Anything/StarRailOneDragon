@@ -64,12 +64,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.posture import Posture
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 
 @dataclass(frozen=True)
@@ -111,7 +111,7 @@ def slot_guard_blocks_level(state: GameState) -> bool:
     语义=追级的人口解锁边际本窗为 0(新槽位下位面才兑现;[32](b)
     「空位再升纯浪费」同判据族)——此时 rush_level 不生效。
     """
-    from sr_od.application.currency_war.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_state import (
         bench_occupied,
         deployed_occupied,
     )
@@ -200,11 +200,11 @@ def release_directive(state: GameState, session: StrategySession,
     义务不缩水既有臂(取 max),容量封顶防把金推进负 EV 件。
     """
     cost = refresh_cost_of(state)
-    from sr_od.application.currency_war.cw_economy import (
-        reserve_cap,
-    )
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         obligation,
+    )
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        reserve_cap,
     )
     overflow = max(0, (state.gold or 0)
                    - reserve_cap(state, session, registry))

@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from sr_od.application.currency_war.cw_obs_core import _area_rect, _ocr
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike

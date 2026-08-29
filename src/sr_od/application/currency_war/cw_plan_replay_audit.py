@@ -16,7 +16,7 @@ DEFAULT_REPLAY = Path('.debug/temp/currency_war/replay')
 
 def _state_from_snapshot(snap: dict):
     """decision 的 state 快照 → 近似 GameState(bench/board 用快照粗粒度)。"""
-    from sr_od.application.currency_war.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_state import GameState
     st = GameState()
     for k in ('gold', 'level', 'hp', 'plane', 'round_num'):
         v = snap.get(k)
@@ -29,7 +29,7 @@ def _state_from_snapshot(snap: dict):
         st.board = dict(board)
     # r26 v1:bench/deployed 完整快照(空 bench 假设曾致「live 不升 vs 复现升」假差异
     # ——局9 r7 真相是 bench 9/9 满,live 选卖牌腾位是合理行为)
-    from sr_od.application.currency_war.cw_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar
     for field_name in ('bench', 'deployed'):
         rows = snap.get(field_name)
         if isinstance(rows, list):
@@ -58,8 +58,8 @@ def replay_plan_diff(replay_dir: Path | str = DEFAULT_REPLAY,
     需要 config 可构造(离线默认实例);comp 按名取,取不到跳过该点。
     """
     from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-    from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
     from sr_od.application.currency_war.cw_plan import plan as plan_fn
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
 
     cfg = CurrencyWarConfig(1)
     target = None

@@ -61,7 +61,7 @@ class HandlePlannerEvent(SrOperation):
             if not (self.CARD_TEXT_Y_LO <= cy <= self.CARD_TEXT_Y_HI):
                 continue
             (left_text if cx < 960 else right_text).append(text)
-        from sr_od.application.currency_war.cw_events import (
+        from sr_od.application.currency_war.kernel.cw_events import (
             PlannerOption,
             decide_planner,
         )
@@ -74,7 +74,7 @@ class HandlePlannerEvent(SrOperation):
         if _match is not None:
             _tgt = _match.session.target_comp
             _st = _match.session.last_state
-        from sr_od.application.currency_war.cw_state import GameState
+        from sr_od.application.currency_war.kernel.cw_state import GameState
         pick = decide_planner(options, _st or GameState(), _tgt)
         target = self.CARD_LEFT if pick.idx == 0 else self.CARD_RIGHT
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',

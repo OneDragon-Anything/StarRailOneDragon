@@ -24,15 +24,15 @@ drag 验证留在 op)。
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_line_defs import (
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
     RECIPE_FACTIONS,
 )
-from sr_od.application.currency_war.cw_state import BenchChar
-from sr_od.application.currency_war.cw_system_cards import SYSTEM_CARDS
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 
 def _bonds_of(bc: BenchChar) -> set[str]:

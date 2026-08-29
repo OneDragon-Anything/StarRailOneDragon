@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from sr_od.application.currency_war.cw_state import BenchChar, GameState
+from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
 
 
 class EquipsInconsistencyError(RuntimeError):

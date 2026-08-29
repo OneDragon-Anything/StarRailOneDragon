@@ -60,7 +60,7 @@ class DifficultyAccount:
         挂 decide_encounter 消费批);difficulty_per_streak 走 streak 动态项。
         品质通胀(API 无数值)不建。
         """
-        from sr_od.application.currency_war.cw_investments import get_strategy
+        from sr_od.application.currency_war.kernel.cw_investments import get_strategy
         acc = cls(base=base, streak=streak)
         for name in strategy_names:
             s = get_strategy(name)

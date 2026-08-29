@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     XP_CLICK_COST_FALLBACK,
     Action,
     GameState,
@@ -1123,7 +1123,7 @@ def record_decision(state: GameState, target_comp: str,
         # 预算收权批(ADR-0465):影子姿态改确定性预算核投影(get_node_goal 三档
         # spend_mode 单一供给);台账指纹随 DP 世界模型退役删除(原指纹
         # = DP 求解 memo 键,查表核无求解面,无指纹语义)。
-        from sr_od.application.currency_war.cw_economy import get_node_goal
+        from sr_od.application.currency_war.kernel.cw_economy import get_node_goal
         ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
                            level=state.level, hp=state.hp,
                            strategies=list(getattr(state, 'active_strategies', []) or []) or None)
@@ -2220,7 +2220,7 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
         _out_by_k[(o.get("plane"), o.get("round_num"))] = o
     # 配方框架(cw_transition;import 失败退空 = 全牌不标)
     try:
-        from sr_od.application.currency_war.cw_transition import TRANSITION_PACK
+        from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
         recipe_names = set(TRANSITION_PACK.keys())
     except Exception:   # noqa: BLE001
         recipe_names = set()
@@ -2854,7 +2854,7 @@ def derive_xp_per_click(replay_dir: Path | str = DEFAULT_REPLAY_DIR,
     返回 ``{'rate': int|None, 'matched': n, 'total': m, 'anomalies': [...],
     'samples': [...]}``;rate=None = 推导不出(如实缺口,不猜)。
     """
-    from sr_od.application.currency_war.cw_state import xp_apply_clicks
+    from sr_od.application.currency_war.kernel.cw_state import xp_apply_clicks
     rows = [r for r in read_jsonl(Path(replay_dir) / 'decisions.jsonl')
             if not run_id or r.get('run_id') == run_id]
     rows.sort(key=lambda r: r.get('ts') or '')

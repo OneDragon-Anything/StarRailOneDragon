@@ -34,11 +34,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from dataclasses import replace as dataclasses_replace
 
-from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 
 @dataclass
@@ -270,7 +270,7 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
         # 体系对,锁定帧优先用意向字段、空窗现场派生——单一源 cw_intention);
         # 锁线帧跳过并入(行为不变,W263 语义锁)。p1_early_pair 在
         # plane≠1 恒空 → 并入为 no-op,本函数仅末窗(plane=1)辖域内被调。
-        from sr_od.application.currency_war.cw_intention import (
+        from sr_od.application.currency_war.kernel.cw_intention import (
             _pair_members,
             p1_early_pair,
         )

@@ -1,7 +1,7 @@
 # 警告:本文件由 tools/cw/gen_plaza_comps.py 生成(plaza lineup/index match_hard,V4.4),勿手编。
 # 重跑: uv run python tools/cw/gen_plaza_comps.py
 # 同源产物(人读版,COMP_LIBRARY 手判层校准用): docs/game/currency_war/data/plaza_meta.md
-# 手判层(勿混): src/sr_od/application/currency_war/cw_comps.py COMP_LIBRARY(strength/form_difficulty/level_plan)。
+# 手判层(勿混): src/sr_od/application/currency_war/kernel/cw_comps.py COMP_LIBRARY(strength/form_difficulty/level_plan)。
 """货币战争 plaza 实战 comp 统计(高难玩家帖聚合,gen_plaza_comps.py 生成)。
 
 784 篇 V4.4 高难帖(v4.4 + 非KOL沙盒 + 未过期过滤),按 Final 阶段 carry 聚类 29 个(n≥5)。

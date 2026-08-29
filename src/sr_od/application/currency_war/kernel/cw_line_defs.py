@@ -13,7 +13,7 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_bridge_pool import (
+from sr_od.application.currency_war.kernel.cw_bridge_pool import (
     BRIDGE_POOL,
 )
 
@@ -46,7 +46,7 @@ def board_system_tiers(board: dict[str, int]) -> dict[str, int]:
     deployed 单卡二元判定,不进档位计数——与 cw_sim._engines_count
     的计数语义对齐)。非体系键不进结果。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
     )
     return {bond: board.get(bond, 0) for bond, _tier in TRANSITION_TRAITS}
@@ -154,7 +154,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     line_id = target[3:] if target.startswith('v2:') else target   # 'v2:' 是 3 字符(off-by-one 曾致 izi_train 查空)
     # 桥池(P1+P2;直接属性访问——审查#3:getattr 链会在改名时
     # 静默错路由,AttributeError 即暴露)
-    from sr_od.application.currency_war.cw_bridge_pool import (
+    from sr_od.application.currency_war.kernel.cw_bridge_pool import (
         BRIDGE_POOL,
         BRIDGE_POOL_P2,
     )

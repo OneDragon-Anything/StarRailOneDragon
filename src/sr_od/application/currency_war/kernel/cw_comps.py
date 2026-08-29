@@ -33,12 +33,15 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_investments import INVESTMENT_ENVS
-from sr_od.application.currency_war.cw_state import GameState, effective_hp_threshold
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
+from sr_od.application.currency_war.kernel.cw_investments import INVESTMENT_ENVS
+from sr_od.application.currency_war.kernel.cw_state import (
+    GameState,
+    effective_hp_threshold,
+)
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_performance import PerformanceTracker
+    from sr_od.application.currency_war.kernel.cw_performance import PerformanceTracker
 
 
 def clamp(x: float, lo: float, hi: float) -> float:
@@ -358,13 +361,17 @@ def augment_affinity(name: str) -> dict[str, float]:
     不直接 ``AUGMENT_COMP_AFFINITY.get(name)``(归一单一源 = cw_investments.normalize_invest_name,
     AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)。
     """
-    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        normalize_invest_name,
+    )
     return AUGMENT_COMP_AFFINITY.get(normalize_invest_name(name), {})
 
 
 def augment_env_affinity(name: str) -> dict[str, float]:
     """ENV_COMP_AFFINITY 规范化查询(OCR 环境名先归一;同 augment_affinity)。"""
-    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        normalize_invest_name,
+    )
     return ENV_COMP_AFFINITY.get(normalize_invest_name(name), {})
 
 
@@ -1229,7 +1236,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
     与 env_fit 的分工:env = 开局定向(选环境时 comp 未定);本函数 = **局中机会**(策略到手后
     重评 comp,把「牌找阵容」反转成「阵容追牌」)。
     """
-    from sr_od.application.currency_war.cw_investments import (
+    from sr_od.application.currency_war.kernel.cw_investments import (
         get_strategy,
         strategy_bindings,
     )
@@ -1265,7 +1272,9 @@ def env_fit(comp: Comp, env: str) -> float | None:
     """
     if not env:
         return None
-    from sr_od.application.currency_war.cw_investments import normalize_invest_name
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        normalize_invest_name,
+    )
     env = normalize_invest_name(env)   # OCR 间隔号形变归一(如 •→·),run_20260826_004527 同型
     # P1-2: T0 env 近乎硬绑某 comp
     if env in ENV_COMP_AFFINITY:
@@ -1396,7 +1405,7 @@ def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
     加 early_power 维度(列车同行 A850 挂机=高 / DOT队=低)→ 早期偏 easy **且** early_power 高,
     避免选易成型但早期弱的 comp。先验待实玩校准(多局验证)。
     """
-    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
+    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     early = (state.round_num + (state.plane - 1) * NODES_PER_PLANE) <= 3 or state.gold < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
     if not early:
         return 1.0
@@ -1485,7 +1494,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
     # ADR-0135:持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
     # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
     _granted: dict[str, int] = {}
-    from sr_od.application.currency_war.cw_investments import (
+    from sr_od.application.currency_war.kernel.cw_investments import (
         get_strategy,
         strategy_bindings,
     )
@@ -1838,7 +1847,7 @@ def target_committed(target: Comp, state: GameState) -> bool:
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
     fp = form_progress(target, state)
-    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
+    from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     return (fp >= COMMIT_FRAC
             or ((state.plane - 1) * NODES_PER_PLANE + state.round_num >= COMMIT_ROUND and fp > 0))
 
@@ -2069,7 +2078,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     if target is not None and target.typical_form_round > 0:
         # 64-A1 修(×6→9 单一源):旧 remaining=18-elapsed 在 P3 r2 起归 0 →
         # 未成型 target 反复触发信号 2 pivot easy comp(真实还剩 7-9 节点)
-        from sr_od.application.currency_war.cw_plane_table import (
+        from sr_od.application.currency_war.kernel.cw_plane_table import (
             NODES_PER_PLANE,
             TOTAL_NODES,
         )

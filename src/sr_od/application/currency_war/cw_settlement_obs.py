@@ -16,7 +16,7 @@ from cv2.typing import MatLike
 
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_obs_core import HP_MAX, HP_MIN
+from sr_od.application.currency_war.kernel.cw_obs_core import HP_MAX, HP_MIN
 from sr_od.context.sr_context import SrContext
 
 
@@ -323,7 +323,7 @@ def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list,
             _run_id = cw_telemetry.current_run_id() or '-'
         except Exception:   # noqa: BLE001  run id 拿不到不阻塞落行
             _run_id = '-'
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
         _shot = cw_shot_unique(screen, 'cw_settle') if screen is not None else None
         import datetime
         import json as _json
@@ -352,7 +352,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     ✅ 已接线(2026-08-07 起):battle_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
     strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
     """
-    from sr_od.application.currency_war.cw_performance import RoundOutcome
+    from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
     _items = ctx.ocr_service.get_ocr_result_list(
         image=screen, rect=None, crop_first=False)
     ocr_texts = [r.data for r in _items]

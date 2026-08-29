@@ -23,7 +23,7 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
+from sr_od.application.currency_war.kernel.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
 # ===== 日程/经济先验(原 DP 模块常量平移,消费面逐位一致) =====
 NODES_PER_PLANE: int = 9

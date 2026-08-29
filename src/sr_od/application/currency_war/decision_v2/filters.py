@@ -18,19 +18,19 @@ redesign §3/§5.4 覆盖态**严格优先序**:应急(HP 危急)→ 追赶修�
 from __future__ import annotations
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_intention import (
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     GameState,
     LevelUp,
     RefreshShop,
-)
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DecisionV2Registry,
 )
 
 
@@ -57,14 +57,14 @@ def is_emergency(state: GameState,
     """应急触发(单一源重定向,分包期 0b 单元2):本体下沉 kernel 桶
     cw_economy.is_emergency(refresh_ev_budget 合法 0 帧契约同源消费);
     本名保留为委托,消费方调用零改。"""
-    from sr_od.application.currency_war.cw_economy import is_emergency
+    from sr_od.application.currency_war.kernel.cw_economy import is_emergency
     return is_emergency(state, registry)
 
 
 def _deploy_free(state: GameState) -> int:
     """当前可上阵空位数 = max(0, max_units − 上场占用)(ADR-0392 占用
     口径,与部署候选判据 deployed_occupied 同源)。"""
-    from sr_od.application.currency_war.cw_state import deployed_occupied
+    from sr_od.application.currency_war.kernel.cw_state import deployed_occupied
     return max(0, state.max_units()
                - deployed_occupied(state.deployed or []))
 
@@ -191,7 +191,7 @@ def formed_stop_active(state: GameState, session: StrategySession,
     min_round = registry.formed_stop_min_round
     ist = getattr(session, 'v3_intention', None)
     if isinstance(ist, IntentionState) and ist.phase == 'locked':
-        from sr_od.application.currency_war.cw_comps import get_comp
+        from sr_od.application.currency_war.kernel.cw_comps import get_comp
         comp = get_comp(ist.locked_comp)
         if comp is not None and comp.typical_form_round:
             min_round = max(comp.typical_form_round,
@@ -353,7 +353,7 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         c.name in refreshable for c in (state.shop or []))
     bench_n = 0
     if c1:
-        from sr_od.application.currency_war.cw_state import bench_occupied
+        from sr_od.application.currency_war.kernel.cw_state import bench_occupied
         bench_n = bench_occupied(state.bench or [])
     kept: list[Candidate] = []
     kept_pos: list[int] = []   # [索引定义] kept[i] 的链日志下标(log 容器

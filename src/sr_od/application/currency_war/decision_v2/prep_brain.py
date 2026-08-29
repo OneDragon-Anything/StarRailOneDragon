@@ -18,8 +18,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_intention import committed_from
-from sr_od.application.currency_war.cw_state import BenchChar
 from sr_od.application.currency_war.decision_v2.contracts import (
     Bail,
     Decision,
@@ -31,7 +29,9 @@ from sr_od.application.currency_war.decision_v2.turn_state import (
     DirectionView,
     TurnState,
 )
+from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -55,7 +55,7 @@ def drive_intention(state: Any, session: StrategySession,
     - registry 显式参数(P6):撤销阈值/门判据注入面直达状态机,禁在
       折叠后静默落缺省表——缺省 None 只用于无注入臂的缺省栈。
     """
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         update_intention,
     )
@@ -97,7 +97,7 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
     与 session.tracked_* 断开对象别名——session 侧就地写端(shop 星级/
     装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
     """
-    from sr_od.application.currency_war.cw_state import snapshot_copy
+    from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
     tracked_bench = getattr(session, 'tracked_bench_chars', None)
     bench = (tuple(None if b is None else snapshot_copy(b)
                    for b in tracked_bench)
@@ -114,8 +114,8 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
 def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
                ) -> DirectionView:
     """方向投影:cw_intention 只读快照(权威不迁移,只投影)。"""
-    from sr_od.application.currency_war import cw_intention
-    from sr_od.application.currency_war.cw_intention import hoard_target_set
+    from sr_od.application.currency_war.kernel import cw_intention
+    from sr_od.application.currency_war.kernel.cw_intention import hoard_target_set
 
     ist = getattr(session, 'v3_intention', None)
     locked = ist is not None and getattr(ist, 'phase', '') == 'locked'
@@ -157,13 +157,13 @@ def _budget(state: Any, session: StrategySession,
     的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
     效率复核判据:decide 热点回落)。
     """
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        obligation,
+    )
+    from sr_od.application.currency_war.kernel.cw_economy import (
         refresh_ev_budget,
         reserve_cap,
         schedule_upgrade,
-    )
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
-        obligation,
     )
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(

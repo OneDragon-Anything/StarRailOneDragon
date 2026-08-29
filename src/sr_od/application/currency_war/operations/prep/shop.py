@@ -11,14 +11,6 @@ from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_obs_core import (
-    A_SHOP_CARD_PREFIX,
-    HP_MAX,
-    SHOP_SCREEN_NAME,
-    _area_rect,
-    area_center,
-    shop_card_click_points,
-)
 from sr_od.application.currency_war.cw_observation import (
     ensure_portrait_templates,
     new_bench_slots,
@@ -31,7 +23,16 @@ from sr_od.application.currency_war.cw_observation_gate import (
     PHASE_PREP_CLEAN,
     PHASE_PREP_SHOP_OPEN,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    A_SHOP_CARD_PREFIX,
+    HP_MAX,
+    SHOP_SCREEN_NAME,
+    _area_rect,
+    area_center,
+    shop_card_click_points,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
     BenchChar,
@@ -46,7 +47,6 @@ from sr_od.application.currency_war.cw_state import (
     merge_buy_k,
     mutate_bench_deployed,
 )
-from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.prep_actions import sell_point
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -160,7 +160,7 @@ def bench_buy_identity_missing(bought_names: list[str],
 
 def _form_progress(comp, state) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;comp None 时不调)。"""
-    from sr_od.application.currency_war.cw_comps import form_progress
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
     return form_progress(comp, state)
 
 
@@ -382,7 +382,9 @@ class BuyShopCards(SrOperation):
             # 裁决仍采新(结算屏是权威源,契约本身允许 prep 读噪声)。
             if (hp_value is not None and hp_value != match.session.last_hp
                     and hp_value < HP_MAX):
-                from sr_od.application.currency_war.cw_observe import obs_conflict
+                from sr_od.application.currency_war.kernel.cw_observe import (
+                    obs_conflict,
+                )
                 obs_conflict('hp', match.session.last_hp, hp_value, None,
                              verdict='采新-结算真值覆盖(prep读≠结算,留证测毒化率)',
                              source='prep_read_hp_vs_settlement')
@@ -478,7 +480,9 @@ class BuyShopCards(SrOperation):
                         state.gold = gv
                         _gold_rescued = gv
                         break
-                from sr_od.application.currency_war.cw_observe import obs_conflict
+                from sr_od.application.currency_war.kernel.cw_observe import (
+                    obs_conflict,
+                )
                 obs_conflict('gold', 0, _gold_rescued if _gold_rescued is not None else 0,
                              None, verdict=('采新-救援成功(首读假0,stylized漏)' if _gold_rescued is not None
                                             else '确认真0(4帧连读0)'),
@@ -1168,7 +1172,7 @@ class BuyShopCards(SrOperation):
                 gold_open if gold_open is not None else state.gold,
                 _spend, total_sell_income)
             if _final_gold is not None and abs(_final_gold - _expected) > 2:
-                from sr_od.application.currency_war.cw_observe import (
+                from sr_od.application.currency_war.kernel.cw_observe import (
                     obs_conflict as _oc,
                 )
                 _oc('gold_delta', _expected, _final_gold, None,

@@ -66,7 +66,7 @@ class HandleWishTrial(SrOperation):
         if _match is not None:
             try:
                 objs = self._read_objectives(screen)
-                from sr_od.application.currency_war.cw_state import GameState
+                from sr_od.application.currency_war.kernel.cw_state import GameState
                 _st = _match.session.last_state or GameState()
                 idx = _match.strategy.decide_wish_trial(
                     objs, _st, _match.session, getattr(_match, 'config', None))

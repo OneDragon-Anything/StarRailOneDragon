@@ -9,7 +9,7 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.cw_difficulty_account import marginal_value
+from sr_od.application.currency_war.kernel.cw_difficulty_account import marginal_value
 
 
 def encounter_tier_score(d_now: float, tier_delta: int, gap: float,

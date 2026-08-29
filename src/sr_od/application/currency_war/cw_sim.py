@@ -33,48 +33,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.cw_investments import (
-    STRATEGY_EFFECTS,
-    EconomyEffect,
-    aggregate_economy,
-    economy_effect_of,
-    normalize_invest_name,
-)
 from sr_od.application.currency_war.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
     sample_invest_profile,
-)
-from sr_od.application.currency_war.cw_state import (
-    BENCH_CAPACITY,
-    XP_PER_BUY,
-    XP_TO_NEXT_LEVEL,
-    BenchChar,
-    BuyCard,
-    CompTransaction,
-    GameState,
-    LevelUp,
-    RefreshShop,
-    SellBench,
-    SellDeployed,
-    ShopCard,
-    SwapDeploy,
-    _bench_char_cost,
-    _merge_bench,
-    bench_clear,
-    bench_occupied,
-    bench_place,
-    deployed_from_compact,
-    deployed_occupied,
-    deployed_place,
-    iter_occupied,
-    iter_occupied_deployed,
-    merge_buy_completes,
-    merge_buy_k,
-    sell_refund,
-)
-from sr_od.application.currency_war.cw_state import (
-    simulate as _simulate_state,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.cw_telemetry import serialize_intention
@@ -115,6 +77,44 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     p2_combat_delta,
     sample_node_sequence,
 )
+from sr_od.application.currency_war.kernel.cw_investments import (
+    STRATEGY_EFFECTS,
+    EconomyEffect,
+    aggregate_economy,
+    economy_effect_of,
+    normalize_invest_name,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    BENCH_CAPACITY,
+    XP_PER_BUY,
+    XP_TO_NEXT_LEVEL,
+    BenchChar,
+    BuyCard,
+    CompTransaction,
+    GameState,
+    LevelUp,
+    RefreshShop,
+    SellBench,
+    SellDeployed,
+    ShopCard,
+    SwapDeploy,
+    _bench_char_cost,
+    _merge_bench,
+    bench_clear,
+    bench_occupied,
+    bench_place,
+    deployed_from_compact,
+    deployed_occupied,
+    deployed_place,
+    iter_occupied,
+    iter_occupied_deployed,
+    merge_buy_completes,
+    merge_buy_k,
+    sell_refund,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    simulate as _simulate_state,
+)
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
@@ -141,7 +141,7 @@ def _overlay_xp_per_refresh(strategy_names: list[str]) -> int:
 
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源;
 # ADR-0439 收入口径修正:败轮节点金 + 奖励轮 base/streak 成对查表)
-from sr_od.application.currency_war.cw_economy import (  # noqa: E402,F401
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402,F401
     BASE_INCOME,
     ECONOMY_CALIB_VERSION,
     LOSS_GOLD_BY_NODE,
@@ -1104,7 +1104,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _seen is None:
                 _seen = []
                 sess.plane_lengths_seen = _seen
-            from sr_od.application.currency_war.cw_plane_table import (
+            from sr_od.application.currency_war.kernel.cw_plane_table import (
                 NODES_PER_PLANE as _NPP,
             )
             while len(_seen) < _seg_plane - 1:
@@ -1397,7 +1397,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # reason=**通道**(创建点语义);channel=**身份**
                             # (classify_buy);count=自动多买张数(判读 k>1
                             # 生效面的纯增列,既有消费方不读该键)。
-                            from sr_od.application.currency_war.cw_line_defs import (
+                            from sr_od.application.currency_war.kernel.cw_line_defs import (
                                 classify_buy as _cb,
                             )
                             _acts.append({'__type__': 'BuyCard',
@@ -1468,7 +1468,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
                         # reason=**通道**(创建点语义);channel=**身份**
                         # (classify_buy——通道经济分析别混桶,审查#7)
-                        from sr_od.application.currency_war.cw_line_defs import (
+                        from sr_od.application.currency_war.kernel.cw_line_defs import (
                             classify_buy as _cb,
                         )
                         _acts.append({'__type__': 'BuyCard',
@@ -1649,7 +1649,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
             # session **买后**现读(生产:买牌段 update_target 已刷新,
             # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
-            from sr_od.application.currency_war import cw_deploy_logic as _dl
+            from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
             _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
             # `w155_evolve_lock/`/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
             _lf = frozenset()
@@ -1661,13 +1661,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _fw_name = getattr(sess, 'transition_framework', '') or ''
                 _fw = frozenset()
                 if _fw_name:
-                    from sr_od.application.currency_war.cw_transition import (
+                    from sr_od.application.currency_war.kernel.cw_transition import (
                         TRANSITION_PACK,
                     )
                     _fw = frozenset(
                         n for n, (f, t) in TRANSITION_PACK.items()
                         if (f == _fw_name or f == '通用') and t != 'drop')
-                from sr_od.application.currency_war.cw_intention import (
+                from sr_od.application.currency_war.kernel.cw_intention import (
                     locked_faction_scope as _lfs,
                 )
                 _lf = _lfs(getattr(sess, 'v3_intention', None)) or frozenset()
@@ -1814,7 +1814,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 模式保留原 Δ池路径作对照臂(粗模型转正前的三率对拍
                 # 验证批消费)。reward/supply 两模式下均仍走 Δ池。
                 _node = nodes[rn - 1]
-                from sr_od.application.currency_war import (
+                from sr_od.application.currency_war.kernel import (
                     cw_coarse_battle as _cb,
                 )
                 if (_cb.BATTLE_ENGINE_MODE == 'coarse'
@@ -1954,15 +1954,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 语义等价)。结构与常量见 EQUIP_GRANT_CALIB_VERSION 注。
             _equipped_now: list[tuple[str, str]] = []
             if nodes[rn - 1] in ('supply', 'reward'):
-                from sr_od.application.currency_war.cw_events import (
-                    _EQUIP_VALUE as _EV,
-                )
-                from sr_od.application.currency_war.cw_events import (
-                    SupplyOption,
-                    decide_supply,
-                )
                 from sr_od.application.currency_war.data.cw_equipment_data import (
                     EQUIPMENT_ROSTER,
+                )
+                from sr_od.application.currency_war.kernel.cw_events import (
+                    _EQUIP_VALUE as _EV,
+                )
+                from sr_od.application.currency_war.kernel.cw_events import (
+                    SupplyOption,
+                    decide_supply,
                 )
                 _pool_names = [n for n in _EV if n in EQUIPMENT_ROSTER]
                 # 供给重校准:3 选项池 = 基础件 8 名均匀(实机供给节点
@@ -2069,7 +2069,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _synth_events.append(_adv)
                     _equip_syntheses += 1   # `w614_sim_fidelity/` G1 合成落账
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
-                from sr_od.application.currency_war.cw_comps import (
+                from sr_od.application.currency_war.kernel.cw_comps import (
                     equip_allocation,
                 )
                 # `w212_sim_equip/`/ADR-0393:equip_allocation 生产调用形态——
@@ -2107,7 +2107,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _pre.remove(_w)   # 轮前已穿,不双记
                         else:
                             d.equips.append(_w)
-            from sr_od.application.currency_war.cw_line_defs import (
+            from sr_od.application.currency_war.kernel.cw_line_defs import (
                 core_count_for,
             )
             res.ledger.append({
@@ -2446,7 +2446,7 @@ def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
     """
     sess = StrategySession()
     if entry.locked_comp:
-        from sr_od.application.currency_war.cw_comps import COMP_LIBRARY
+        from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
         if entry.locked_comp in COMP_LIBRARY:
             sess.target_comp = COMP_LIBRARY[entry.locked_comp]
     return simulate_p1(seed, use_refresh=use_refresh, pool=pool,
@@ -3081,7 +3081,7 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
     """
     import json as _json
 
-    from sr_od.application.currency_war import cw_coarse_battle as _cb
+    from sr_od.application.currency_war.kernel import cw_coarse_battle as _cb
     out_dir = Path(out_dir)
     _prod = _AUTO_REPLAY_DIR.resolve()
     if out_dir.resolve() == _prod or _prod in out_dir.resolve().parents:
@@ -3261,15 +3261,15 @@ def synthesize_snapshot(st: GameState,
     import copy
     from types import MappingProxyType
 
-    from sr_od.application.currency_war.cw_state import (
-        BENCH_CAPACITY,
-        DEPLOYED_FRONT_CAPACITY,
-        deployed_occupied,
-    )
     from sr_od.application.currency_war.decision_v2.contracts import (
         SNAPSHOT_SCHEMA_VERSION,
         Snapshot,
         SubstateClassification,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BENCH_CAPACITY,
+        DEPLOYED_FRONT_CAPACITY,
+        deployed_occupied,
     )
 
     bench = tuple(copy.deepcopy(b) for b in st.bench)

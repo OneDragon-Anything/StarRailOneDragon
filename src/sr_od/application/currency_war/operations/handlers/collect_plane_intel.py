@@ -150,7 +150,7 @@ class CollectPlaneIntel(SrOperation):
 
     def _area_center(self, area_name: str, screen_name: str = _PD_SCREEN) -> Point | None:
         """screen_info area → 中心点(坐标单一源;无 area → None)。"""
-        from sr_od.application.currency_war.cw_obs_core import _area_rect
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
         r = _area_rect(self.ctx, area_name, screen_name)
         if r is None:
             return None
@@ -173,7 +173,7 @@ class CollectPlaneIntel(SrOperation):
         if not slots:
             return None
         s = slots[-1]
-        from sr_od.application.currency_war.cw_obs_core import _area_rect
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
         r = _area_rect(self.ctx, '区域-节点条', _PD_SCREEN)
         ox, oy = (r.x1, r.y1) if r is not None else (385, 514)
         return Point(s.cx + ox, s.cy + oy)
@@ -187,7 +187,7 @@ class CollectPlaneIntel(SrOperation):
         import cv2 as _cv2
 
         from sr_od.application.currency_war.cw_node_reader import match_boss_sift
-        from sr_od.application.currency_war.cw_obs_core import _area_rect
+        from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
         r = _area_rect(self.ctx, '区域-boss大图标', _PD_SCREEN)
         if r is None:
             return None
@@ -281,7 +281,7 @@ class CollectPlaneIntel(SrOperation):
                     # 台账写点①·备战行源(两源之一):备战节点行先按位合并进表
                     # (详情条源稍后整面覆盖;合并语义=None 位保旧,见 ledger_update_plane)。
                     with contextlib.suppress(Exception):
-                        from sr_od.application.currency_war.cw_state import (
+                        from sr_od.application.currency_war.kernel.cw_state import (
                             ledger_update_plane,
                         )
                         _sess = getattr(getattr(self.ctx, 'cw_match', None),
@@ -298,7 +298,7 @@ class CollectPlaneIntel(SrOperation):
                 if cur is None:
                     return self._nonclean_read_gate('非clean帧')
                 self._nonclean_wait_start = None   # 读出=clean,重置等待账
-                from sr_od.application.currency_war.cw_obs_core import _area_rect
+                from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
                 r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
                 ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
                 self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
@@ -349,7 +349,7 @@ class CollectPlaneIntel(SrOperation):
                 from sr_od.application.currency_war.cw_observation import (
                     read_plane_detail_difficulty,
                 )
-                from sr_od.application.currency_war.cw_state import (
+                from sr_od.application.currency_war.kernel.cw_state import (
                     get_node_ledger,
                 )
                 _sess = getattr(getattr(self.ctx, 'cw_match', None),
@@ -456,7 +456,7 @@ class CollectPlaneIntel(SrOperation):
         # boss 位按「首领=位面最后节点」位置先验回填,回填依据 = 本 op 详情条
         # 「首领节点」标签验证语义;备战行源已在入口合并,此处再并一次兜全)。
         with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_state import (
                 fill_boss_by_position,
                 ledger_update_plane,
             )

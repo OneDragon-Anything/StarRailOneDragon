@@ -33,7 +33,8 @@ from __future__ import annotations
 import json
 import sys
 
-from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
+from sr_od.application.currency_war.cw_telemetry import DEFAULT_REPLAY_DIR
+from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 导入
     BenchChar,
     GameState,
     ShopCard,
@@ -41,7 +42,6 @@ from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     deployed_from_compact,
     iter_occupied_deployed,
 )
-from sr_od.application.currency_war.cw_telemetry import DEFAULT_REPLAY_DIR
 
 
 class _Cfg:
@@ -151,7 +151,7 @@ def _restore_session(strat, d: dict, sess):
         sess.active_env = str(d['sess_active_env'])
     _cs = d.get('sess_commit_scores') or {}
     if _cs:
-        from sr_od.application.currency_war.cw_transition import CommitSignals
+        from sr_od.application.currency_war.kernel.cw_transition import CommitSignals
         if not isinstance(sess.commit_signals, CommitSignals):
             sess.commit_signals = CommitSignals()
         sess.commit_signals.scores = {k: float(v) for k, v in _cs.items()}

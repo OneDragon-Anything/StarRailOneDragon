@@ -15,14 +15,14 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.cw_effect_inventory import (
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
 )
-from sr_od.application.currency_war.cw_performance import PerformanceTracker
+from sr_od.application.currency_war.kernel.cw_performance import PerformanceTracker
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_comps import Comp
-    from sr_od.application.currency_war.cw_state import BenchChar, GameState
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
 
 @dataclass
 class StrategySession:

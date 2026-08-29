@@ -28,45 +28,7 @@ from __future__ import annotations
 from typing import Literal
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_comps, cw_events, cw_plan
-from sr_od.application.currency_war.cw_comps import get_comp
-from sr_od.application.currency_war.cw_events import (
-    EncounterOption,
-    EncounterPick,
-    MegastarOption,
-    MegastarPick,
-    PartnerOption,
-    PartnerPick,
-    PlannerOption,
-    PlannerPick,
-    SupplyOption,
-    SupplyPick,
-)
-from sr_od.application.currency_war.cw_evolution import (
-    EvolutionState,
-    evolution_step,
-    rollback_weakest,
-)
-from sr_od.application.currency_war.cw_intention import (
-    IntentionState,
-    hoard_target_set,
-    pair_target_comp,
-    update_intention,
-)
-from sr_od.application.currency_war.cw_performance import (
-    HP_CONFIDENCE_THRESHOLD,
-    RoundOutcome,
-)
-from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
-from sr_od.application.currency_war.cw_state import (
-    BuyCard,
-    CompTransaction,
-    GameState,
-    MatchOutcome,
-    PickEvent,
-    SellDeployed,
-    simulate,
-)
+from sr_od.application.currency_war import cw_plan
 from sr_od.application.currency_war.cw_strategy import CwStrategy, StrategySession
 from sr_od.application.currency_war.decision_v2.arbiter import arbitrate
 from sr_od.application.currency_war.decision_v2.candidates import (
@@ -87,9 +49,48 @@ from sr_od.application.currency_war.decision_v2.phase import (
     form_score,
 )
 from sr_od.application.currency_war.decision_v2.scoring import score_all
+from sr_od.application.currency_war.kernel import cw_comps, cw_events
+from sr_od.application.currency_war.kernel.cw_comps import get_comp
+from sr_od.application.currency_war.kernel.cw_events import (
+    EncounterOption,
+    EncounterPick,
+    MegastarOption,
+    MegastarPick,
+    PartnerOption,
+    PartnerPick,
+    PlannerOption,
+    PlannerPick,
+    SupplyOption,
+    SupplyPick,
+)
+from sr_od.application.currency_war.kernel.cw_evolution import (
+    EvolutionState,
+    evolution_step,
+    rollback_weakest,
+)
+from sr_od.application.currency_war.kernel.cw_intention import (
+    IntentionState,
+    hoard_target_set,
+    pair_target_comp,
+    update_intention,
+)
+from sr_od.application.currency_war.kernel.cw_performance import (
+    HP_CONFIDENCE_THRESHOLD,
+    RoundOutcome,
+)
+from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    BuyCard,
+    CompTransaction,
+    GameState,
+    MatchOutcome,
+    PickEvent,
+    SellDeployed,
+    simulate,
 )
 from sr_od.application.currency_war.prep_actions import (
     ClickSpheres,
@@ -345,7 +346,7 @@ class DecisionV2Strategy(CwStrategy):
         # `w611_econ_cycle/` 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」
         # 与 ADR-0445 实机验证队列 §2.3 的数据源)。遥测经 recorder 汇点
         # 统一接出(`w603_telemetry_wiring/` 同款通道,shop.py extra 通道不触)。
-        from sr_od.application.currency_war.cw_economy import (
+        from sr_od.application.currency_war.kernel.cw_economy import (
             reserve_cap as _reserve_cap,
         )
         _rcap = _reserve_cap(state, session, registry)
@@ -482,7 +483,7 @@ class DecisionV2Strategy(CwStrategy):
         pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
         # 信号喂入:所选卡对各线的 affinity → comp 分贡献
         try:
-            from sr_od.application.currency_war.cw_comps import augment_affinity
+            from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
             src = 'invest_strategy' if kind == 'strategy' else 'invest_env'
             scores: dict[str, float] = {}
             for opt in options:
@@ -550,7 +551,9 @@ class DecisionV2Strategy(CwStrategy):
         fw = getattr(session, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
-            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            from sr_od.application.currency_war.kernel.cw_transition import (
+                FRAMEWORK_FACTIONS,
+            )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         _tgt_facs: set[str] = set()
         if session.target_comp is not None:
@@ -587,7 +590,9 @@ class DecisionV2Strategy(CwStrategy):
         fw = getattr(session, 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
-            from sr_od.application.currency_war.cw_transition import FRAMEWORK_FACTIONS
+            from sr_od.application.currency_war.kernel.cw_transition import (
+                FRAMEWORK_FACTIONS,
+            )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         best_i, best_s = 0, -1.0
         for i, obj in enumerate(options):
@@ -754,7 +759,9 @@ class DecisionV2Strategy(CwStrategy):
             return True
         if getattr(session, 'v2_ever_full_interest', False):
             return True
-        from sr_od.application.currency_war.cw_economy import clicks_to_next_level
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            clicks_to_next_level,
+        )
         total = clicks_to_next_level(st) * cw_plan.xp_click_cost(st)
         return st.gold - total >= 50
 
@@ -793,7 +800,7 @@ class DecisionV2Strategy(CwStrategy):
         r≥8 终局件上场 + 腾席链 c 无框架 keep 集可卖掉配方 carry)。
         """
         st = self._pseudo_state(obs, session)
-        from sr_od.application.currency_war.cw_recipe import decision_target
+        from sr_od.application.currency_war.kernel.cw_recipe import decision_target
         target = decision_target(session, st)
         # ⚖️ r94:同名在场守卫收口 cw_plan.deploy_legal(全局不变量单一源;5.1.7)。
         # 第14局 r9 实证:藿藿已在场,腾席链a把 bench 藿藿拖向空位 5 次全被游戏拒
@@ -1047,7 +1054,7 @@ class DecisionV2Strategy(CwStrategy):
         if not isinstance(session.v3_intention, IntentionState):
             session.v3_intention = IntentionState()
         if session.v3_evolution is None:
-            from sr_od.application.currency_war.cw_evolution import (
+            from sr_od.application.currency_war.kernel.cw_evolution import (
                 EvolutionState,
             )
             session.v3_evolution = EvolutionState()

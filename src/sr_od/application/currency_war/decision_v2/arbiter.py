@@ -17,17 +17,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_state import (
-    Action,
-    BuyCard,
-    DeployMove,
-    GameState,
-    LevelUp,
-    RefreshShop,
-    SellBench,
-    deployed_occupied,  # ADR-0392 helper 导入
-    simulate,
-)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.decision_v2.discipline import (
@@ -68,6 +57,17 @@ from sr_od.application.currency_war.decision_v2.remediation import (
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    Action,
+    BuyCard,
+    DeployMove,
+    GameState,
+    LevelUp,
+    RefreshShop,
+    SellBench,
+    deployed_occupied,  # ADR-0392 helper 导入
+    simulate,
 )
 
 if TYPE_CHECKING:
@@ -189,7 +189,7 @@ def _check_constraint(name: str, cand: Candidate,
             # W611 O1 备战空位填补(ADR-0463):逐笔花后金 ≥R*——只花
             # 溢余段,不吃排程升级储蓄(DESIGN §1.2 量上限的逐笔口径;
             # R*≥息线≥各相位地板,取 max 只在排程帧收紧,常态零漂移)。
-            from sr_od.application.currency_war.cw_economy import (
+            from sr_od.application.currency_war.kernel.cw_economy import (
                 reserve_cap as _o1_reserve_cap,
             )
             floor = max(floor, _o1_reserve_cap(state, session, registry))
@@ -346,7 +346,7 @@ def _check_constraint(name: str, cand: Candidate,
                             f'{working.gold}→{after})')
     if name == 'bench_capacity':
         if isinstance(a, BuyCard):
-            from sr_od.application.currency_war.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_state import (
                 bench_occupied,
                 merge_buy_completes,
             )
@@ -476,7 +476,7 @@ def _cost_of(cand: Candidate, working: GameState | None = None) -> int:
         # = cw_state.merge_buy_completes/merge_buy_k(与 bench_capacity
         # 门同源)。非满栏(working=None 或有余槽)恒 1×(零漂移)。
         if working is not None:
-            from sr_od.application.currency_war.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_state import (
                 BENCH_CAPACITY,
                 bench_occupied,
                 merge_buy_k,

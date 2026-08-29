@@ -31,17 +31,17 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
 )
-from sr_od.application.currency_war.cw_line_defs import (
-    ENGINE_FACTIONS as _ENGINE_FENCE,
-)
-from sr_od.application.currency_war.cw_line_defs import (
-    RECIPE_BASE as _RECIPE_BASE,
-)
-from sr_od.application.currency_war.cw_line_defs import (
-    RECIPE_FACTIONS as _RECIPE,
-)
 from sr_od.application.currency_war.cw_observation import read_deploy_cap_debounced
 from sr_od.application.currency_war.data.cw_chars import get_char
+from sr_od.application.currency_war.kernel.cw_line_defs import (
+    ENGINE_FACTIONS as _ENGINE_FENCE,
+)
+from sr_od.application.currency_war.kernel.cw_line_defs import (
+    RECIPE_BASE as _RECIPE_BASE,
+)
+from sr_od.application.currency_war.kernel.cw_line_defs import (
+    RECIPE_FACTIONS as _RECIPE,
+)
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -109,7 +109,7 @@ def _deployment_order(tgt_idx: list[int], rest: list[int],
     ``deployed_fac`` = 起始板面阵营计数(全羁绊口径,静态——排序只做
     一次,与纯函数一致;r288 门的动态仲裁在 drag 循环内另行维护)。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         ignition_gain as _ign,
     )
     _ENGINE = {'仙舟', '列车同行', '持续伤害'}
@@ -263,9 +263,11 @@ class DeployBench(SrOperation):
         # 人口硬扛)。修:双轨期走 decision_target 单一入口(=配方伪 comp),
         # 框架件成为部署一等公民——与买/卖两侧 r72「三侧单一源」对齐(deploy
         # 侧此前是缺口)。
-        from sr_od.application.currency_war.cw_recipe import decision_target as _dt_fn
         from sr_od.application.currency_war.decision_v2.prep_brain import (
             committed_from,
+        )
+        from sr_od.application.currency_war.kernel.cw_recipe import (
+            decision_target as _dt_fn,
         )
         _tgt_comp = None
         if _match is not None and _match.session is not None:
@@ -428,14 +430,14 @@ class DeployBench(SrOperation):
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
-        from sr_od.application.currency_war.cw_bench_equips import (
-            EQUIPS_CONSISTENCY_ERRORS,
-            assert_equips_consistency,
-        )
         from sr_od.application.currency_war.cw_equipment import (
             ensure_equip_tm_templates,
         )
         from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
+        from sr_od.application.currency_war.kernel.cw_bench_equips import (
+            EQUIPS_CONSISTENCY_ERRORS,
+            assert_equips_consistency,
+        )
         equip_grays = ensure_equip_tm_templates(self.ctx)
         if equip_grays is None:
             return
@@ -503,7 +505,7 @@ class DeployBench(SrOperation):
         # 集合退化为原 target-only 行为。
         _fw = getattr(_sess, 'transition_framework', '') if _sess is not None else ''
         if _fw:
-            from sr_od.application.currency_war.cw_transition import (
+            from sr_od.application.currency_war.kernel.cw_transition import (
                 FRAMEWORK_FACTIONS,
                 TRANSITION_PACK,
             )
@@ -657,7 +659,7 @@ class DeployBench(SrOperation):
         # 配方围栏摁 bench(与 cw_deploy_logic.select_deployments 同语义;
         # 无锁定帧/读失败 → 空集=回旧行为)。
         try:
-            from sr_od.application.currency_war.cw_intention import (
+            from sr_od.application.currency_war.kernel.cw_intention import (
                 locked_faction_scope as _lfs,
             )
             _locked_fac = _lfs(getattr(_sess, 'v3_intention', None)) \
@@ -730,7 +732,7 @@ class DeployBench(SrOperation):
                 # ADR-0261 裁决修订3(单一源):门的 2/3 档数值从
                 # TRANSITION_TRAITS 派生(与 cw_deploy_logic.select_
                 # deployments 的 r288 门同源)——旧硬编码 2/3 是历史双源。
-                from sr_od.application.currency_war.cw_deploy_logic import (
+                from sr_od.application.currency_war.kernel.cw_deploy_logic import (
                     TRANSITION_TRAITS as _TT,
                 )
                 _tier_of = dict(_TT)
@@ -940,6 +942,8 @@ class DeployBench(SrOperation):
         scr = self.screenshot()   # fresh post-deploy
         real_bench = read_bench_chars(self.ctx, scr, templates)
         real_deployed = read_deployed_chars(self.ctx, scr, templates)
-        from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
+        from sr_od.application.currency_war.kernel.cw_reconcile import (
+            reconcile_tracking,
+        )
         reconcile_tracking(_match.session, real_bench, real_deployed, scr,
                            source='deploy_bench', ctx=self.ctx)

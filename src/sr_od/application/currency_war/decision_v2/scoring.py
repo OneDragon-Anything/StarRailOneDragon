@@ -18,11 +18,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_line_defs import (
+from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision_v2.filters import (
+    crisis_hoard_active,
+    is_emergency,
+)
+from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_BASE,
     recipe_tier,
 )
-from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DecisionV2Registry,
+)
+from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 导入
     BuyCard,
     GameState,
     SellBench,
@@ -30,15 +39,6 @@ from sr_od.application.currency_war.cw_state import (  # ADR-0392 helper 导入
     deployed_occupied,
     deployed_place,
     simulate,
-)
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.decision_v2.filters import (
-    crisis_hoard_active,
-    is_emergency,
-)
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DecisionV2Registry,
 )
 
 
@@ -147,11 +147,11 @@ def _engine_frac_remainder(state: GameState,
     rung 互补不双计。希儿系是 deployed 二元判定,无小数进度,
     不参与本项。
     """
-    from sr_od.application.currency_war.cw_deploy_logic import (
-        TRANSITION_TRAITS as _TRANSITION_TRAITS,
-    )
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
         _engines_count,
+    )
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        TRANSITION_TRAITS as _TRANSITION_TRAITS,
     )
     fac, _main, dep = _held_form_weights(state, registry)
     engines = _engines_count(fac, dep)
@@ -338,7 +338,7 @@ def _deploy_pipeline(state: GameState,
     与生产 DeployBench/sim 部署块同一源(select_deployments);
     只服务评分(改 deployed/board 维),不产生动作。
     """
-    from sr_od.application.currency_war import cw_deploy_logic as dl
+    from sr_od.application.currency_war.kernel import cw_deploy_logic as dl
     from sr_od.application.currency_war.kernel.cw_battle_calib import _board_counts_of
     for _ in range(3):
         deployed_cids = {d.char_id for d in (state.deployed or [])
@@ -403,11 +403,11 @@ def _shop_has_engine_card(state: GameState) -> bool:
     (``system_judge_factions``/``engine_char_names``,与诊断口径同源
     靠 import 不靠手抄——第五张体系卡加入自动传导)。
     """
-    from sr_od.application.currency_war.cw_system_cards import (
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.kernel.cw_system_cards import (
         engine_char_names,
         system_judge_factions,
     )
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     _eng_facs = system_judge_factions()
     _eng_names = engine_char_names()
     for c in (state.shop or []):
@@ -432,7 +432,7 @@ def vd_target_core(state: GameState,
     未锁线/核心不可解析 → ''(D 通道关闭——V_D 需要具名目标,
     兜底局无概率表语境)。
     """
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         intention_core,
     )
@@ -440,7 +440,7 @@ def vd_target_core(state: GameState,
     if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
             or not ist.locked_comp:
         return ''
-    from sr_od.application.currency_war.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(ist.locked_comp)
     if comp is None:
         return ''
@@ -564,7 +564,7 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
     """
     if state.plane != 1 or not registry.vd_p1_pair_enabled:
         return None
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         _pair_members,
     )
@@ -675,13 +675,13 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     #   整个吞掉 = 评分层让一拍变让整个位面(`w152_p2d/` 断点②:13/14 帧打空)。
     #   预算收权批(ADR-0465)(`w623_batch3_pre-mortem/` D2):判据显式改**预算函数口径**——
     #   refresh_ev_budget>0 → 窗开;=0(储备段/应急停手=合法 0 帧)→ 让位。
-    from sr_od.application.currency_war.cw_economy import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         _resolve_level_goal,
     )
     goal = _resolve_level_goal(
         state, getattr(session, 'target_comp', None))
     if state.plane >= 2 and registry.vd_p2_enabled:
-        from sr_od.application.currency_war.cw_economy import (
+        from sr_od.application.currency_war.kernel.cw_economy import (
             refresh_ev_budget,
         )
         if refresh_ev_budget(state, session, registry) <= 0:
@@ -819,7 +819,7 @@ def _off_lock_demotion(cand: Candidate, state: GameState,
         return ''
     if is_emergency(state, registry):
         return ''
-    from sr_od.application.currency_war.cw_intention import (
+    from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         locked_buy_scope,
     )
@@ -834,11 +834,11 @@ def _off_lock_demotion(cand: Candidate, state: GameState,
         return ''
     if cand.tag == 'line_opportunistic' \
             and registry.off_lock_final_fence_enabled:
-        from sr_od.application.currency_war.cw_plane_table import (
-            nodes_of_plane,
-        )
         from sr_od.application.currency_war.decision_v2.discipline import (
             boss_window_active,
+        )
+        from sr_od.application.currency_war.kernel.cw_plane_table import (
+            nodes_of_plane,
         )
         # ADR-0366:位面末轮门按本位面真值(P2=7→r7 即末轮;旧按 9 计
         # P2 的 final_fence 永不触发,与 ADR-0359 的「位面末」语义不符)
@@ -866,7 +866,7 @@ def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
     ch = _CH.get(name)
     if ch is None:
         return frozenset()
-    from sr_od.application.currency_war.cw_deploy_logic import (
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS as _TRANSITION_TRAITS,
     )
     eng_bonds = {b for b, _t in _TRANSITION_TRAITS}

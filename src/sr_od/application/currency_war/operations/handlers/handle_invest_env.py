@@ -22,10 +22,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_events import decide_event
-from sr_od.application.currency_war.cw_investments import is_known_env
-from sr_od.application.currency_war.cw_obs_core import area_center
-from sr_od.application.currency_war.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_events import decide_event
+from sr_od.application.currency_war.kernel.cw_investments import is_known_env
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
+from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
     safe_click,
@@ -193,7 +193,7 @@ class HandleInvestEnv(SrOperation):
         # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致
         # 是合法变异,三票校验不得落缺陷台账。重读成功后关窗(置 0)。
         try:
-            from sr_od.application.currency_war.cw_state import get_node_ledger
+            from sr_od.application.currency_war.kernel.cw_state import get_node_ledger
             _ledger = get_node_ledger(getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
             if _ledger is not None:
                 _ledger.env_grace_until = time.monotonic() + HandleInvestEnv.ENV_GRACE_S
@@ -222,7 +222,7 @@ class HandleInvestEnv(SrOperation):
             read_node_sequence,
             read_phase_round,
         )
-        from sr_od.application.currency_war.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_state import (
             get_node_ledger,
             ledger_update_plane,
         )

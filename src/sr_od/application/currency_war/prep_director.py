@@ -62,7 +62,6 @@ from sr_od.application.currency_war.cw_identity_obs import (
 from sr_od.application.currency_war.cw_identity_obs import (
     read_tomes as cw_identity_obs_read_tomes,
 )
-from sr_od.application.currency_war.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.cw_observation import (
     board_from_tracked,
     read_deploy_cap,
@@ -74,7 +73,8 @@ from sr_od.application.currency_war.cw_shop_obs import (
     compare_merge_preview,
     refresh_expect,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     XP_TO_NEXT_LEVEL,
     BenchChar,
@@ -86,7 +86,7 @@ from sr_od.application.currency_war.cw_state import (
     xp_apply_clicks,
     xp_clicks_to_level,
 )
-from sr_od.application.currency_war.cw_state import (
+from sr_od.application.currency_war.kernel.cw_state import (
     _merge_bench as cw_merge_bench,  # 合成落点模型单一源(场上吸收/备战最左/连锁)
 )
 from sr_od.application.currency_war.prep_actions import (
@@ -1067,7 +1067,9 @@ class PrepDirector(SrOperation):
             # - cap < level → 不可能(读错/毒化)→ 留证(三源网 M38 天敌);
             # - cap ≥ level → 合法(cap>level=宝钻叠加,debug 记宝钻数)。
             if cap is not None and cap < st.level:
-                from sr_od.application.currency_war.cw_observe import obs_conflict
+                from sr_od.application.currency_war.kernel.cw_observe import (
+                    obs_conflict,
+                )
                 # hook审计 L9(r351):verdict 补处理步骤——r350b 只补了
                 # unverified 分支,这半还是裸的(deploy_cap 案例同款)
                 obs_conflict('deploy_cap_vs_level', st.level, cap, screen,
@@ -1104,7 +1106,9 @@ class PrepDirector(SrOperation):
             if dep_n is not None:
                 _spread = abs(dep_n - _cv_occ)
                 if _spread > 1:
-                    from sr_od.application.currency_war.cw_observe import obs_conflict
+                    from sr_od.application.currency_war.kernel.cw_observe import (
+                        obs_conflict,
+                    )
                     # hook审计 L8(r351):verdict 补处理步骤(原只列根因无指引)
                     obs_conflict('deployed_count_2src',
                                  {'paddle_x': dep_n, 'cv_occupied': _cv_occ},
@@ -1143,7 +1147,9 @@ class PrepDirector(SrOperation):
         session = self._session()
         if session is None:
             return
-        from sr_od.application.currency_war.cw_reconcile import reconcile_tracking
+        from sr_od.application.currency_war.kernel.cw_reconcile import (
+            reconcile_tracking,
+        )
         reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
 
     def _reconcile_drag_expect(self, expect: DragExpect) -> None:
@@ -2836,7 +2842,7 @@ class PrepDirector(SrOperation):
         """
         import time as _time
 
-        from sr_od.application.currency_war.cw_observe import cw_shot_unique
+        from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
         icon_r = 24   # 采集分析窗(略 > 分类窗 _SAMPLE_R=18,多上下文)
         x0, y0, x1, y1 = node_row_rect
         row = screen[y0:y1, x0:x1]
