@@ -24,7 +24,7 @@ from one_dragon.utils import os_utils
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
-# 同 operation_registry 的两个扫描根:recognizer 既可随 app 代码放(currency_war/recognizers/),
+# 同 operation_registry 的两个扫描根:recognizer 既可随 app 代码放(currency_war/obs/recognizers/),
 # 也可在通用 operation 包下(如登录/菜单等非 app 画面的 recognizer)。两边都扫,自动发现。
 _SCAN_ROOTS: list[str] = ['sr_od.operations', 'sr_od.application']
 _CACHE: RecognizerScanResult | None = None

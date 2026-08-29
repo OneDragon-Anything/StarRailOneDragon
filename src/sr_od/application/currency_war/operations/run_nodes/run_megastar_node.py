@@ -29,10 +29,10 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
 

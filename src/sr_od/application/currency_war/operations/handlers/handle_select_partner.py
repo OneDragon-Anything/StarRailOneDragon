@@ -76,7 +76,7 @@ class HandleSelectPartner(SrOperation):
         """
         try:
             from one_dragon.utils import os_utils
-            from sr_od.application.currency_war.currency_war_char_id import (
+            from sr_od.application.currency_war.obs.currency_war_char_id import (
                 identify_character,
                 load_avatar_templates,
             )

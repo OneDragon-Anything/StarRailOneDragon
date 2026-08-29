@@ -25,12 +25,12 @@ if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
 
-from sr_od.application.currency_war.cw_identity_obs import (
+from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     read_bench_chars,
     read_deployed_chars,
 )
-from sr_od.application.currency_war.cw_observation import (
+from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
     read_node_sequence,
     read_shop_cards,

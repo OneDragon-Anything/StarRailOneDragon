@@ -134,7 +134,7 @@ def _sift_detect_diamonds(ctx: SrContext, screen: MatLike,
     """
     if not columns:
         return set()
-    from sr_od.application.currency_war.cw_equipment import (
+    from sr_od.application.currency_war.obs.cw_equipment import (
         ensure_equip_sift_templates,
         read_equips,
     )

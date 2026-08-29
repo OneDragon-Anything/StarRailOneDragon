@@ -23,10 +23,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_node_obs import read_supply_options
-from sr_od.application.currency_war.cw_observation import read_game_state
 from sr_od.application.currency_war.cw_telemetry import set_last_supply_pick
 from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
+from sr_od.application.currency_war.obs.cw_observation import read_game_state
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.context.sr_context import SrContext
 

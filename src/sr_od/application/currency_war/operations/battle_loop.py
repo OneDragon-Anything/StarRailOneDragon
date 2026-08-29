@@ -15,21 +15,6 @@ from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_observation import (
-    read_game_state,
-    read_node_sequence,
-    read_phase_round,
-    reset_phase_round_cache,
-)
-from sr_od.application.currency_war.cw_resume_lock import (
-    locked_after_start_battle,
-    probe_resolve,
-    resume_candidate,
-)
-from sr_od.application.currency_war.cw_settlement_obs import (
-    parse_settlement_round,
-    read_round_outcome,
-)
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
 from sr_od.application.currency_war.kernel.cw_performance import (
@@ -37,6 +22,21 @@ from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
 )
 from sr_od.application.currency_war.kernel.cw_state import GameState, MatchOutcome
+from sr_od.application.currency_war.obs.cw_observation import (
+    read_game_state,
+    read_node_sequence,
+    read_phase_round,
+    reset_phase_round_cache,
+)
+from sr_od.application.currency_war.obs.cw_resume_lock import (
+    locked_after_start_battle,
+    probe_resolve,
+    resume_candidate,
+)
+from sr_od.application.currency_war.obs.cw_settlement_obs import (
+    parse_settlement_round,
+    read_round_outcome,
+)
 from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
     HandleArmoryBoxDialog,
 )
@@ -818,7 +818,7 @@ class CurrencyWarRunLoop(SrOperation):
             # 读侧统一走 clean_boss_names_by_lcs 清洗——P2/P3 简报在 loop 内,
             # 就地清洗保证 0a0b 覆写槽位与开局读侧同口径)。
             try:
-                from sr_od.application.currency_war.cw_briefing_obs import (
+                from sr_od.application.currency_war.obs.cw_briefing_obs import (
                     clean_boss_names_by_lcs,
                     read_affixes,
                     read_bosses,
@@ -1127,7 +1127,7 @@ class CurrencyWarRunLoop(SrOperation):
                             # 对账网:实采真值 vs 简报读数(LCS 清洗后)逐位面比对,
                             # 落 exogenous 行 + 不一致进 defect 台账(零决策行为,
                             # 门控 config.briefing_reconcile;ADR-0397 勘误节)。
-                            from sr_od.application.currency_war.cw_briefing_obs import (
+                            from sr_od.application.currency_war.obs.cw_briefing_obs import (
                                 reconcile_briefing_vs_plane_intel,
                             )
                             reconcile_briefing_vs_plane_intel(
@@ -1270,12 +1270,12 @@ class CurrencyWarRunLoop(SrOperation):
             # 不进 director 动作全集;备战环派发前直接清掉(揭示后 director heavy
             # 观察读到的已是揭示后的真实板面,不毒化对账)。上界 3 轮防识别抖动
             # 死循环;揭示后卡片消失 → 自然防重入。
-            from sr_od.application.currency_war.cw_identity_obs import (
-                _ctx_slots,
-                find_trial_reveal_cards,
-            )
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
+            )
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
+                _ctx_slots,
+                find_trial_reveal_cards,
             )
             for _reveal_i in range(3):
                 _cards = find_trial_reveal_cards(screen, _ctx_slots(self.ctx, '备战栏', 9))
@@ -1377,7 +1377,7 @@ class CurrencyWarRunLoop(SrOperation):
             try:
                 _texts1 = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                     image=screen, rect=None, crop_first=False)]
-                from sr_od.application.currency_war.cw_settlement_obs import (
+                from sr_od.application.currency_war.obs.cw_settlement_obs import (
                     parse_settlement_progress,
                 )
                 _pg1 = parse_settlement_progress(_texts1)

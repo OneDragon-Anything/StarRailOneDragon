@@ -13,7 +13,7 @@ import time
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_identity_obs import (
+from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
 )

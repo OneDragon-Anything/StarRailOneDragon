@@ -218,13 +218,13 @@ class HandleInvestEnv(SrOperation):
         读不到 clean 帧(转场动画)→ 1.5s 后重试一次,仍 miss 则保留窗口
         由下个写入端兜(不阻塞对局;合并语义 = None 位保旧,见 ledger_update_plane)。
         """
-        from sr_od.application.currency_war.cw_observation import (
-            read_node_sequence,
-            read_phase_round,
-        )
         from sr_od.application.currency_war.kernel.cw_state import (
             get_node_ledger,
             ledger_update_plane,
+        )
+        from sr_od.application.currency_war.obs.cw_observation import (
+            read_node_sequence,
+            read_phase_round,
         )
         _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
         _ledger = get_node_ledger(_sess)

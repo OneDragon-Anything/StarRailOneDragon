@@ -142,7 +142,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                 # 干净回退帧仍走本分支确认;门漏检时退化为 W292 前防抖行为)。
                 _eff = False
                 if screen is not None:
-                    from sr_od.application.currency_war.cw_identity_obs import (
+                    from sr_od.application.currency_war.obs.cw_identity_obs import (
                         is_merge_effect_frame,
                     )
                     _eff = is_merge_effect_frame(screen)

@@ -79,7 +79,7 @@ class FooRecognizer(ScreenRecognizer):
 - **不复用带「业务语义」进程级可变状态的 reader**:如货币战争 `cw_observation.read_phase_round` 成功时写模块全局 `_last_phase_round`（last-known-good 兜底）,并发 analyze 会和 operation 竞争污染兜底值。要 phase 就**自写纯解析**（只 OCR + 正则,不缓存）,别直接复用这类 reader。
 - **透明缓存类共享状态可放心复用**:如 `ocr_service._cache`,其并发异常已被内部兜住（`_clean_expired_cache` 吞 `ValueError`）,属透明缓存,不在上条禁止之列。
 
-参考实现（都在 `currency_war/recognizers/`，不同纯读策略）：
+参考实现（都在 `currency_war/obs/recognizers/`，不同纯读策略）：
 
 - `battle_prep_recognizer.py`（备战）：复用纯 reader `read_gold`/`read_hp`/`read_board` + 自写 `_read_phase_round_pure`（避免复用写全局的 `read_phase_round`）。
 - `briefing_recognizer.py`（简报）：复用纯 reader `read_affixes`/`read_bosses`，纯 OCR + 正则，不写 session。

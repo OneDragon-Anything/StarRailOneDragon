@@ -22,16 +22,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_char_id import (
-    AvatarTemplates,
-    load_avatar_templates,
-)
-from sr_od.application.currency_war.currency_war_cv import slot_occupied
-from sr_od.application.currency_war.cw_identity_obs import (
-    read_bench_chars,
-    read_deployed_chars,
-)
-from sr_od.application.currency_war.cw_observation import read_deploy_cap_debounced
 from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS as _ENGINE_FENCE,
@@ -42,6 +32,16 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
+from sr_od.application.currency_war.obs.currency_war_char_id import (
+    AvatarTemplates,
+    load_avatar_templates,
+)
+from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
+from sr_od.application.currency_war.obs.cw_identity_obs import (
+    read_bench_chars,
+    read_deployed_chars,
+)
+from sr_od.application.currency_war.obs.cw_observation import read_deploy_cap_debounced
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -217,7 +217,7 @@ class DeployBench(SrOperation):
         (ADR-0281)归因错误已废——run 26(lv8 无召唤物局)按 8 格坐标拖
         不存在的 7/8 号格 + 幻影空位把部署卡死在 bench = 崩坏根因①。
         """
-        from sr_od.application.currency_war.cw_back_layout import (
+        from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout,
         )
         _n, _pfx = select_back_layout(self.ctx, self.last_screenshot,
@@ -430,14 +430,14 @@ class DeployBench(SrOperation):
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
-        from sr_od.application.currency_war.cw_equipment import (
-            ensure_equip_tm_templates,
-        )
-        from sr_od.application.currency_war.cw_identity_obs import read_row_equipped
         from sr_od.application.currency_war.kernel.cw_bench_equips import (
             EQUIPS_CONSISTENCY_ERRORS,
             assert_equips_consistency,
         )
+        from sr_od.application.currency_war.obs.cw_equipment import (
+            ensure_equip_tm_templates,
+        )
+        from sr_od.application.currency_war.obs.cw_identity_obs import read_row_equipped
         equip_grays = ensure_equip_tm_templates(self.ctx)
         if equip_grays is None:
             return
@@ -447,7 +447,7 @@ class DeployBench(SrOperation):
         # 选档——真 8 格局(召唤物)漏读扩展带 7/8 且槽位错位一格(c.slot 来自
         # 8 档编号 vs 「后排」rect = 8 档 2-7 位)→ equips 挂错人。改同源
         # select_back_layout(双通道,ADR-0385)。
-        from sr_od.application.currency_war.cw_back_layout import (
+        from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
         _bk_n, _bk_pfx = _sel_bl(self.ctx, scr, level=self._session_level())
@@ -537,7 +537,7 @@ class DeployBench(SrOperation):
         # W209/ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
         # fresh 帧按 **cap 差公式** 重建 back 布局(select_back_layout 单一入口,
         # cap 复用上面现读值——口述「后台格数=6+(cap−level)」)。
-        from sr_od.application.currency_war.cw_back_layout import (
+        from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
         _n2, _pfx2 = _sel_bl(self.ctx, scr, level=self._session_level(), cap=_cap)

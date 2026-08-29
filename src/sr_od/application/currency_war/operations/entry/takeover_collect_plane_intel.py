@@ -152,7 +152,7 @@ class TakeoverCollectPlaneIntel(SrOperation):
             from sr_od.application.currency_war.currency_war_config import (
                 CurrencyWarConfig,
             )
-            from sr_od.application.currency_war.cw_briefing_obs import (
+            from sr_od.application.currency_war.obs.cw_briefing_obs import (
                 reconcile_briefing_vs_plane_intel,
             )
             _gate = CurrencyWarConfig(self.ctx.current_instance_idx).briefing_reconcile

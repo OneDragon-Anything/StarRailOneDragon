@@ -66,7 +66,7 @@ def confirm_and_verify(
     # ADR-0264 方案 B:overlay 关闭后的首帧(= 验关帧)预置为关态
     # 稳定基线——外层回备战分支的 gate 跳过「从零等 2 轮」;gate 仍
     # 须过一次「锚命中+指纹一致」确认(不裸跳)。best-effort。
-    from sr_od.application.currency_war.cw_observation_gate import (
+    from sr_od.application.currency_war.obs.cw_observation_gate import (
         PROFILE_CLOSED,
         preset_stable_baseline,
     )

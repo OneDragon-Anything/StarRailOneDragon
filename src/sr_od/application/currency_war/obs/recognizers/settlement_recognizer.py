@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from sr_od.application.currency_war.cw_settlement_obs import parse_settlement_hp
+from sr_od.application.currency_war.obs.cw_settlement_obs import parse_settlement_hp
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike

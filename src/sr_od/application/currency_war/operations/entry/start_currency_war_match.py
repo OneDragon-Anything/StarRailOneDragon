@@ -172,7 +172,7 @@ class StartCurrencyWarMatch(SrOperation):
         if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
-            from sr_od.application.currency_war.cw_observation import (
+            from sr_od.application.currency_war.obs.cw_observation import (
                 read_selected_difficulty,
             )
             _diff = read_selected_difficulty(self.ctx, screen)

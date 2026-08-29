@@ -24,23 +24,25 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_char_id import load_avatar_templates
-from sr_od.application.currency_war.cw_equipment import (
-    EQUIPMENTS,
-    load_equip_templates,
-    load_equip_tm_grays,
-    read_equips,
-)
-from sr_od.application.currency_war.cw_identity_obs import (
-    _ctx_slots,
-    read_deployed_chars,
-    read_row_equipped,
-)
 from sr_od.application.currency_war.kernel.cw_comps import (
     equip_alloc_empty_reason,
     equip_allocation,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.obs.currency_war_char_id import (
+    load_avatar_templates,
+)
+from sr_od.application.currency_war.obs.cw_equipment import (
+    EQUIPMENTS,
+    load_equip_templates,
+    load_equip_tm_grays,
+    read_equips,
+)
+from sr_od.application.currency_war.obs.cw_identity_obs import (
+    _ctx_slots,
+    read_deployed_chars,
+    read_row_equipped,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -459,7 +461,7 @@ class EquipAll(SrOperation):
             # W209g 断点③:后排装备读槽随布局选档(旧硬编码 10 与布局档自相
             # 矛盾——deploy 拖 8 格坐标、装备读固定槽;select_back_layout
             # 双通道单一源,ADR-0385/0387)。
-            from sr_od.application.currency_war.cw_back_layout import (
+            from sr_od.application.currency_war.obs.cw_back_layout import (
                 select_back_layout as _sel_bl,
             )
             _bk_n, _bk_pfx = _sel_bl(self.ctx, screen)

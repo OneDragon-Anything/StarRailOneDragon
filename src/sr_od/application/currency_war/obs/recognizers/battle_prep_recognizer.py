@@ -31,12 +31,12 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from sr_od.application.currency_war.cw_equipment import (
+from sr_od.application.currency_war.obs.cw_equipment import (
     ensure_equip_sift_templates,
     ensure_equip_tm_templates,
     read_equips,
 )
-from sr_od.application.currency_war.cw_identity_obs import (
+from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     read_bench_chars,
     read_deployed_chars,
@@ -44,7 +44,7 @@ from sr_od.application.currency_war.cw_identity_obs import (
     read_row_equipped,
     read_supply_boxes,
 )
-from sr_od.application.currency_war.cw_observation import (
+from sr_od.application.currency_war.obs.cw_observation import (
     read_board,
     read_deploy_cap,
     read_deployed_count,
@@ -170,7 +170,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
         # 后排装备槽按 cap 差公式选档(W209/ADR-0385 口述「后台格数=6+(cap−level)」;
         # 旧 level 驱动已废)。7 格档未建档保守 8 格超集(select_back_layout 内辖留证)。
-        from sr_od.application.currency_war.cw_back_layout import (
+        from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
         _back_n, _back_pfx = _sel_bl(ctx, image, level=level0)

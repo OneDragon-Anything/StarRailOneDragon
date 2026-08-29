@@ -34,7 +34,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # 判读无法区分「read_bosses 恒空」vs「幂等跳过」。改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war import cw_telemetry
-from sr_od.application.currency_war.cw_briefing_obs import (
+from sr_od.application.currency_war.obs.cw_briefing_obs import (
     load_affix_effects_from_file,
     read_affix_effect,
     read_affixes_with_pos,
@@ -85,7 +85,7 @@ class HandleBriefing(SrOperation):
         # 上一局残留当本局真值;retry 重跑同屏重读成本 = 一次区域 OCR,可接受)。
         # 读得 → LCS 清洗归一(简报卡名常为简称,归一到 boss_fit 消费端规范名)→ 存 ctx。
         # 读空 → 显式清 None(同样防跨局残留被 loop __init__ copy 成假真值)。
-        from sr_od.application.currency_war.cw_briefing_obs import (
+        from sr_od.application.currency_war.obs.cw_briefing_obs import (
             clean_boss_names_by_lcs,
         )
         _bosses = read_bosses(self.ctx, screen)
@@ -99,7 +99,7 @@ class HandleBriefing(SrOperation):
                       '无 4-8 字中文名;W219 对比锚需走简报屏 OCR 兜底)')
         # 读敌人难度数值(简报「标识-敌人难度」→ ctx.cw_enemy_difficulty 中转 → session → state;3.5.2 接线)
         if self.ctx.cw_enemy_difficulty is None:
-            from sr_od.application.currency_war.cw_briefing_obs import (
+            from sr_od.application.currency_war.obs.cw_briefing_obs import (
                 read_briefing_enemy_difficulty,
             )
             _diff = read_briefing_enemy_difficulty(self.ctx, screen)

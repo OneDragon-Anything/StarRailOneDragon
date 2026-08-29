@@ -312,14 +312,14 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     """
     try:
         if level is None or level <= 0:
-            from sr_od.application.currency_war.cw_identity_obs import _session_level
+            from sr_od.application.currency_war.obs.cw_identity_obs import _session_level
             level = _session_level(ctx)
         if cap is None:
             # W218(ADR-0395):cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改
             # diff → 公式通道选错档(格数类高危点);改走 read_deploy_cap_debounced
             # (ADR-0286 域防抖:域外重读一帧,仍域外 → None → 下方 diff=0 退 6 格
             # 基线,失败安全侧;level 未知时域不可判,退原直读语义)。
-            from sr_od.application.currency_war.cw_observation import (
+            from sr_od.application.currency_war.obs.cw_observation import (
                 read_deploy_cap_debounced,
             )
             cap = read_deploy_cap_debounced(ctx, screen, level)
@@ -386,7 +386,7 @@ def back_row_slot_rects_ctx(ctx, prefix: str) -> list[tuple[int, Rect]]:
     前缀来自 :func:`select_back_layout`(ADR-0385 双通道选档);空档 → [](调用方
     退 :func:`fallback_back_slots` 基线)。**别在 6 槽坐标上外插**。
     """
-    from sr_od.application.currency_war.cw_identity_obs import _area_rect
+    from sr_od.application.currency_war.obs.cw_identity_obs import _area_rect
     out: list[tuple[int, Rect]] = []
     i = 1
     while True:

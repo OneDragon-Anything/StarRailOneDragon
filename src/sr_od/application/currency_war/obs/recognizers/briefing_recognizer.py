@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from sr_od.application.currency_war.cw_briefing_obs import read_affixes, read_bosses
+from sr_od.application.currency_war.obs.cw_briefing_obs import read_affixes, read_bosses
 from sr_od.application.currency_war.kernel.cw_obs_core import BRIEFING_SCREEN
 
 if TYPE_CHECKING:

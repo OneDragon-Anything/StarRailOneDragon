@@ -34,7 +34,7 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_identity_obs import (
+from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
     read_merge_preview,
@@ -446,7 +446,7 @@ def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tu
     """
     global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
 
-    from sr_od.application.currency_war.cw_node_reader import (
+    from sr_od.application.currency_war.obs.cw_node_reader import (
         NODE_ROW_RECT,
         classify_node_row,
         load_boss_templates,
@@ -594,7 +594,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
         and seq[past_n + 1 + j] is not None
         and seq[past_n + 1 + j] != s.node_type)
     # 票C:当前槽高亮态图标 Hu 对模板(行裁图同源,几何来自检测行)
-    from sr_od.application.currency_war.cw_node_reader import current_slot_hu_type
+    from sr_od.application.currency_war.obs.cw_node_reader import current_slot_hu_type
     vote_c, hu_dist = current_slot_hu_type(
         screen[ry0:ry1, rx0:rx1], cur, _NODE_TYPE_TEMPLATES or {})
     votes = {'roi_ocr': vote_a, 'position': vote_b, 'cur_hu': vote_c}
@@ -664,16 +664,16 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
     - clean 门同 ``_MIN_CLEAN_CIRCLES``。
     返回 None:模板未加载 / 非该画面 / 圆数不足(坏帧)。
     """
-    from sr_od.application.currency_war.cw_node_reader import classify_node_row
+    from sr_od.application.currency_war.obs.cw_node_reader import classify_node_row
     global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
     if _NODE_TYPE_TEMPLATES is None:
-        from sr_od.application.currency_war.cw_node_reader import (
+        from sr_od.application.currency_war.obs.cw_node_reader import (
             load_node_type_templates,
         )
         _d = get_project_root() / 'assets' / 'game_data' / 'cw_node_types'
         _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
     if _BOSS_TEMPLATES is None:
-        from sr_od.application.currency_war.cw_node_reader import (
+        from sr_od.application.currency_war.obs.cw_node_reader import (
             load_boss_templates,
         )
         _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
@@ -1586,7 +1586,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     deploy 走 DeployBench)。
     """
-    from sr_od.application.currency_war.cw_observation_gate import (
+    from sr_od.application.currency_war.obs.cw_observation_gate import (
         PHASE_FIELD_SPEC,
     )
     from sr_od.application.currency_war.kernel import cw_observe as _obs_mod

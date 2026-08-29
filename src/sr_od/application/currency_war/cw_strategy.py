@@ -189,7 +189,7 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     _log.warning('[cw-entry] 检测到上一局残留 match 容器(%s)→ 弃置,'
                  '本局 session 全量重建(ADR-0419)', reason)
     ctx.cw_match = None
-    from sr_od.application.currency_war.cw_observation import (
+    from sr_od.application.currency_war.obs.cw_observation import (
         reset_phase_round_cache,
     )
     reset_phase_round_cache()

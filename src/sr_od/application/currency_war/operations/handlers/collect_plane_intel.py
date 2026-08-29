@@ -165,7 +165,7 @@ class CollectPlaneIntel(SrOperation):
         ``slots`` 可传调用方已读的详情条槽列表(采集循环同帧复用,免双读);
         None 时就地读。
         """
-        from sr_od.application.currency_war.cw_observation import (
+        from sr_od.application.currency_war.obs.cw_observation import (
             read_plane_detail_nodes,
         )
         if slots is None:
@@ -186,12 +186,12 @@ class CollectPlaneIntel(SrOperation):
         """
         import cv2 as _cv2
 
-        from sr_od.application.currency_war.cw_node_reader import match_boss_sift
         from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+        from sr_od.application.currency_war.obs.cw_node_reader import match_boss_sift
         r = _area_rect(self.ctx, '区域-boss大图标', _PD_SCREEN)
         if r is None:
             return None
-        from sr_od.application.currency_war import cw_observation as _cwo
+        from sr_od.application.currency_war.obs import cw_observation as _cwo
         if not _cwo._BOSS_TEMPLATES:
             _cwo.read_plane_detail_nodes(self.ctx, self.last_screenshot)   # 懒加载预热
             if not _cwo._BOSS_TEMPLATES:
@@ -260,7 +260,7 @@ class CollectPlaneIntel(SrOperation):
         if not _in_pd:
             if self.round_by_find_area(screen, _PREP_SCREEN, '备战标识-购买经验',
                                        crop_first=False).is_success:
-                from sr_od.application.currency_war.cw_observation import (
+                from sr_od.application.currency_war.obs.cw_observation import (
                     read_node_sequence,
                 )
                 slots = read_node_sequence(self.ctx, screen)
@@ -271,7 +271,7 @@ class CollectPlaneIntel(SrOperation):
                     # getattr 槽位结构演进兜底(测试桩/旧槽对象可无 node_type 字段)
                     self._prep_node_types = [getattr(s, 'node_type', None)
                                              for s in slots]
-                    from sr_od.application.currency_war.cw_observation import (
+                    from sr_od.application.currency_war.obs.cw_observation import (
                         read_phase_round,
                     )
                     with contextlib.suppress(Exception):
@@ -310,7 +310,7 @@ class CollectPlaneIntel(SrOperation):
         # 词缀横条(位面详情屏底部):首位面采集时同帧读一次(词缀不随位面
         # 卡切换变;备战画面无此条,词缀只在简报/位面详情/敌人信息浮层)。
         if not self._affixes and self._cur_plane == 0:
-            from sr_od.application.currency_war.cw_briefing_obs import (
+            from sr_od.application.currency_war.obs.cw_briefing_obs import (
                 read_detail_affixes,
             )
             self._affixes = read_detail_affixes(self.ctx, screen)
@@ -331,7 +331,7 @@ class CollectPlaneIntel(SrOperation):
         time.sleep(1.5)
         # ② 点该位面 boss 节点(动态定位;节点带随选中位面变)
         screen = self.screenshot()
-        from sr_od.application.currency_war.cw_observation import (
+        from sr_od.application.currency_war.obs.cw_observation import (
             read_plane_detail_nodes,
         )
         _detail_slots = read_plane_detail_nodes(self.ctx, screen)
@@ -346,11 +346,11 @@ class CollectPlaneIntel(SrOperation):
             # 敌人难度参考值(位面详情底部明文):随选中位面变,逐位面读;
             # **只存参考**,生产难度主源 = 备战旗牌两级管线(ADR-0449)不变。
             with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.cw_observation import (
-                    read_plane_detail_difficulty,
-                )
                 from sr_od.application.currency_war.kernel.cw_state import (
                     get_node_ledger,
+                )
+                from sr_od.application.currency_war.obs.cw_observation import (
+                    read_plane_detail_difficulty,
                 )
                 _sess = getattr(getattr(self.ctx, 'cw_match', None),
                                 'session', None)
@@ -369,7 +369,7 @@ class CollectPlaneIntel(SrOperation):
         time.sleep(1.5)
         # ③ 读详情条:类型名标签验「首领」→ 大图标 SIFT → 结论分流(ADR-0398)
         self.screenshot()
-        from sr_od.application.currency_war.cw_observation import (
+        from sr_od.application.currency_war.obs.cw_observation import (
             read_detail_node_type_label,
         )
         label = read_detail_node_type_label(self.ctx, self.last_screenshot)

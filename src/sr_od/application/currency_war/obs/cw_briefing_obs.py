@@ -277,8 +277,9 @@ def read_affix_effect(ctx: SrContext, screen: MatLike, affix_name: str) -> str:
 # 运行时 write_affix_effects 自动写入);tooltip 截图存 affix_shots/(对账用)。
 _CW_DEBUG_DIR: Path = get_project_root() / '.debug' / 'temp' / 'currency_war'
 _AFFIX_SHOTS_DIR: Path = _CW_DEBUG_DIR / 'affix_shots'   # 词缀效果 tooltip 截图(对账用)
-# 词缀效果注册表 py 文件(与本文件同目录 currency_war 包;运行时 write_affix_effects 写入)
-_AFFIX_EFFECTS_PATH: Path = Path(__file__).resolve().parent / 'affix_effects_data.py'
+# 词缀效果注册表 py 文件(data/ 桶;本文件在 obs/ 子包,parents[1] = currency_war 包根;
+# 运行时 write_affix_effects 写入)
+_AFFIX_EFFECTS_PATH: Path = Path(__file__).resolve().parents[1] / 'data' / 'affix_effects_data.py'
 
 
 def load_affix_effects_from_file() -> dict[str, str]:

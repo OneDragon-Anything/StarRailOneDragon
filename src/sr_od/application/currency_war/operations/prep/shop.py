@@ -11,18 +11,6 @@ from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_observation import (
-    ensure_portrait_templates,
-    new_bench_slots,
-    read_game_state,
-    read_gold,
-    read_gold_opt,
-    read_shop_cards,
-)
-from sr_od.application.currency_war.cw_observation_gate import (
-    PHASE_PREP_CLEAN,
-    PHASE_PREP_SHOP_OPEN,
-)
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -46,6 +34,18 @@ from sr_od.application.currency_war.kernel.cw_state import (
     bench_occupied,
     merge_buy_k,
     mutate_bench_deployed,
+)
+from sr_od.application.currency_war.obs.cw_observation import (
+    ensure_portrait_templates,
+    new_bench_slots,
+    read_game_state,
+    read_gold,
+    read_gold_opt,
+    read_shop_cards,
+)
+from sr_od.application.currency_war.obs.cw_observation_gate import (
+    PHASE_PREP_CLEAN,
+    PHASE_PREP_SHOP_OPEN,
 )
 from sr_od.application.currency_war.prep_actions import sell_point
 from sr_od.context.sr_context import SrContext
@@ -267,7 +267,7 @@ class BuyShopCards(SrOperation):
             # 对拍验证过新路径)。r346(review M1):接收 gate
             # 稳定帧而非布尔后重截(丢弃帧=OCR 缓存作废+HP 读
             # 在未验证帧)。
-            from sr_od.application.currency_war.cw_observation_gate import (
+            from sr_od.application.currency_war.obs.cw_observation_gate import (
                 PROFILE_CLOSED,
                 wait_stable_frame,
             )
@@ -292,7 +292,7 @@ class BuyShopCards(SrOperation):
         # 真读或新鲜结算真值,否则不覆盖、保留对账层值+位(fail-closed)。
         # 旧「>=HP_MAX 重读 2 次」保留(None≠100 分流后,
         # 该循环只处理真满血误读,语义更纯)。
-        from sr_od.application.currency_war.cw_observation import (
+        from sr_od.application.currency_war.obs.cw_observation import (
             read_hp_opt,
             read_phase_round,
         )
@@ -337,7 +337,7 @@ class BuyShopCards(SrOperation):
             # r312(ADR-0213 批次1;开向站)+r347(旧路径删除):
             # 旧 sleep(0.5) 后即读=半开帧(开店动画 ~3s,终验 P1②);
             # gate 无条件化,异常=放行(离线契约)。
-            from sr_od.application.currency_war.cw_observation_gate import (
+            from sr_od.application.currency_war.obs.cw_observation_gate import (
                 PROFILE_OPEN,
                 wait_stable_frame,
             )
@@ -370,8 +370,8 @@ class BuyShopCards(SrOperation):
         # ⚖️ r68 review 新鲜度门(单源 helper cw_strategy.gated_hp;director 环入口同门):
         # 结算 hp 只在「紧邻上一节点」才可覆盖 —— 低 conf 结算轮 last_hp 残留陈值,无条件覆盖 =
         # 陈 hp 冻结毒化每回合 prep(保血/转型永不触发,P1 boss 赢→P2 秒死 ×3 的观测链根因)。
-        from sr_od.application.currency_war.cw_observation import read_phase_round
         from sr_od.application.currency_war.cw_strategy import gated_hp
+        from sr_od.application.currency_war.obs.cw_observation import read_phase_round
         _pr = read_phase_round(self.ctx, screen)
         _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
         _hp_t = getattr(match.session, 'last_hp_t', None) if match is not None else None
@@ -1081,7 +1081,7 @@ class BuyShopCards(SrOperation):
                 # _after_shot 帧 + ensure_portrait_templates 缓存,零新增读屏。
                 _templates = ensure_portrait_templates(self.ctx)
                 if _templates is not None:
-                    from sr_od.application.currency_war.cw_identity_obs import (
+                    from sr_od.application.currency_war.obs.cw_identity_obs import (
                         _ctx_slots,
                         identify_slots,
                     )
@@ -1110,7 +1110,7 @@ class BuyShopCards(SrOperation):
         # 重估)+read_gold(L484 差值对拍),而关店动画 ~3s(r299
         # 实测)→ 重估与对拍读在半开帧(与局31 买前同构)。
         # gate 无条件化(异常=放行,离线契约)。
-        from sr_od.application.currency_war.cw_observation_gate import (
+        from sr_od.application.currency_war.obs.cw_observation_gate import (
             PROFILE_CLOSED,
             wait_stable_frame,
         )

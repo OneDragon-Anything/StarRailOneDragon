@@ -48,31 +48,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
-from sr_od.application.currency_war.currency_war_cv import slot_occupied
-from sr_od.application.currency_war.cw_faction_obs import (
-    compare_factions,
-    read_displayed_factions,
-    report_faction_reconcile,
-)
-from sr_od.application.currency_war.cw_identity_obs import (
-    ensure_portrait_templates,
-    read_reward_spheres,
-    read_supply_boxes,
-)
-from sr_od.application.currency_war.cw_identity_obs import (
-    read_tomes as cw_identity_obs_read_tomes,
-)
-from sr_od.application.currency_war.cw_observation import (
-    board_from_tracked,
-    read_deploy_cap,
-    read_deployed_count,
-)
-from sr_od.application.currency_war.cw_shop_obs import (
-    RefreshExpect,
-    check_shop_pool,
-    compare_merge_preview,
-    refresh_expect,
-)
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
@@ -88,6 +63,31 @@ from sr_od.application.currency_war.kernel.cw_state import (
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     _merge_bench as cw_merge_bench,  # 合成落点模型单一源(场上吸收/备战最左/连锁)
+)
+from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
+from sr_od.application.currency_war.obs.cw_faction_obs import (
+    compare_factions,
+    read_displayed_factions,
+    report_faction_reconcile,
+)
+from sr_od.application.currency_war.obs.cw_identity_obs import (
+    ensure_portrait_templates,
+    read_reward_spheres,
+    read_supply_boxes,
+)
+from sr_od.application.currency_war.obs.cw_identity_obs import (
+    read_tomes as cw_identity_obs_read_tomes,
+)
+from sr_od.application.currency_war.obs.cw_observation import (
+    board_from_tracked,
+    read_deploy_cap,
+    read_deployed_count,
+)
+from sr_od.application.currency_war.obs.cw_shop_obs import (
+    RefreshExpect,
+    check_shop_pool,
+    compare_merge_preview,
+    refresh_expect,
 )
 from sr_od.application.currency_war.prep_actions import (
     BailToOuter,
@@ -110,7 +110,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_equipment import EquipCell
+    from sr_od.application.currency_war.obs.cw_equipment import EquipCell
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
@@ -1005,7 +1005,7 @@ class PrepDirector(SrOperation):
             # 可重定位读取(身份/gold==0 重读/substate)进组装层
             # 单一源;director 保留副作用编排(session 写/审计/
             # 缓存——单写者原则,批次3 全收敛)。
-            from sr_od.application.currency_war.cw_observe_full import (
+            from sr_od.application.currency_war.obs.cw_observe_full import (
                 observe_full,
             )
             _of = observe_full(self.ctx, screen, tier='heavy',
@@ -1169,7 +1169,7 @@ class PrepDirector(SrOperation):
             templates = ensure_portrait_templates(self.ctx)
             if templates is None:
                 return
-            from sr_od.application.currency_war.cw_identity_obs import (
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
                 _ctx_slots,
                 identify_slots,
                 read_deployed_chars,
@@ -1223,7 +1223,7 @@ class PrepDirector(SrOperation):
             templates = ensure_portrait_templates(self.ctx)
             if templates is None:
                 return
-            from sr_od.application.currency_war.cw_identity_obs import (
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
                 _ctx_slots,
                 identify_slots,
                 read_deployed_chars,
@@ -1587,10 +1587,10 @@ class PrepDirector(SrOperation):
             frame = getattr(self, 'last_screenshot', None)
             if frame is None:
                 return None
-            from sr_od.application.currency_war.cw_back_layout import (
+            from sr_od.application.currency_war.obs.cw_back_layout import (
                 select_back_layout,
             )
-            from sr_od.application.currency_war.cw_equipment import (
+            from sr_od.application.currency_war.obs.cw_equipment import (
                 ensure_equip_sift_templates,
                 ensure_equip_tm_templates,
                 read_equip_grid,
@@ -1604,7 +1604,7 @@ class PrepDirector(SrOperation):
                 prefix, n = '前排', 4
             else:
                 n, prefix = select_back_layout(self.ctx, frame)
-            from sr_od.application.currency_war.cw_identity_obs import (
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
                 _ctx_slots,
                 avatar_to_below,
             )
@@ -1639,7 +1639,7 @@ class PrepDirector(SrOperation):
             frame = getattr(self, 'last_screenshot', None)
             if frame is None:
                 return
-            from sr_od.application.currency_war.cw_equipment import (
+            from sr_od.application.currency_war.obs.cw_equipment import (
                 ensure_equip_sift_templates,
                 read_equip_grid,
             )
@@ -1730,7 +1730,7 @@ class PrepDirector(SrOperation):
         event_overlay bail → 外环消化路径。fail-open:截图/识别/点击任一异常
         静默返回(=现行为,gate 的帧态门继续兜底)。"""
         from one_dragon.base.screen import screen_utils
-        from sr_od.application.currency_war.cw_observation_gate import (
+        from sr_od.application.currency_war.obs.cw_observation_gate import (
             ENTRY_OVERLAY_CLEAR_ROUNDS,
             ENTRY_OVERLAY_CLOSE,
             ENTRY_OVERLAY_SETTLE_S,
@@ -1825,7 +1825,7 @@ class PrepDirector(SrOperation):
         # 不阻塞(后续 gate/容忍探测/bail 链照旧兜底)。
         self._clear_entry_overlays()
         try:
-            from sr_od.application.currency_war.cw_observation_gate import (
+            from sr_od.application.currency_war.obs.cw_observation_gate import (
                 GATE_POST_COLLAPSE_TIMEOUT_S,
                 PROFILE_CLOSED,
                 wait_stable_frame,
@@ -1898,7 +1898,7 @@ class PrepDirector(SrOperation):
         # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
         # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
         # 警告解除后才继续常规决策。每次环入口重判(警告可反复出现)。
-        from sr_od.application.currency_war.cw_observation import read_bench_full
+        from sr_od.application.currency_war.obs.cw_observation import read_bench_full
         _scr_full = getattr(self, 'last_screenshot', None)
         _bench_full_now = (_scr_full is not None
                            and read_bench_full(self.ctx, _scr_full))
@@ -2119,7 +2119,7 @@ class PrepDirector(SrOperation):
             # 删整段(取证报告=.debug/temp/currency_war/w587_cw_reward_verdict/REPORT.md)。
             if 'EnsureShopClosed' in key and progressed:
                 try:
-                    from sr_od.application.currency_war.cw_observation_gate import (
+                    from sr_od.application.currency_war.obs.cw_observation_gate import (
                         PROFILE_CLOSED,
                         wait_stable_frame,
                     )
@@ -2494,7 +2494,6 @@ class PrepDirector(SrOperation):
         对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
         消费,含 W536 买牌期望上报通道转正(蓝图 §7 批 1 行)。
         """
-        from sr_od.application.currency_war.cw_observation import read_deployed_count
         from sr_od.application.currency_war.decision_v2.adapter import (
             DecideAdapter,
             snapshot_from_obs,
@@ -2502,6 +2501,9 @@ class PrepDirector(SrOperation):
         from sr_od.application.currency_war.decision_v2.director_v2 import (
             DirectorV2,
             _DirectorPorts,
+        )
+        from sr_od.application.currency_war.obs.cw_observation import (
+            read_deployed_count,
         )
         from sr_od.application.currency_war.prep_actions import (
             DeployMove,
@@ -2582,7 +2584,7 @@ class PrepDirector(SrOperation):
             #(节点行探针挂点;前置 wait_stable_frame 无条件化,离线契约放行)
             if 'EnsureShopClosed' in key and progressed:
                 try:
-                    from sr_od.application.currency_war.cw_observation_gate import (
+                    from sr_od.application.currency_war.obs.cw_observation_gate import (
                         PROFILE_CLOSED,
                         wait_stable_frame,
                     )
@@ -2666,7 +2668,9 @@ class PrepDirector(SrOperation):
         """
         import contextlib
 
-        from sr_od.application.currency_war.cw_observation import read_deployed_count
+        from sr_od.application.currency_war.obs.cw_observation import (
+            read_deployed_count,
+        )
 
         key = acct.get('key')
         progressed = bool(acct.get('progressed'))
@@ -2748,11 +2752,13 @@ class PrepDirector(SrOperation):
         修阈值/过滤属 reader 校准待办(与扑满无关:扑满=奖励图标已实证,M45 current:reward
         直接命中)。真新类型出现时本钩子仍是唯一自动捕获渠道,保留。"""
         try:
-            from sr_od.application.currency_war.cw_node_reader import (
+            from sr_od.application.currency_war.obs.cw_node_reader import (
                 HU_DIST_UNRECOGNIZED,
                 NODE_ROW_RECT,
             )
-            from sr_od.application.currency_war.cw_observation import read_node_sequence
+            from sr_od.application.currency_war.obs.cw_observation import (
+                read_node_sequence,
+            )
             screen = self.screenshot()
             slots = read_node_sequence(self.ctx, screen)
             if not slots:

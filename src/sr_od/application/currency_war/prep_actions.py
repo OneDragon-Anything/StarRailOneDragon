@@ -21,11 +21,6 @@ from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_identity_obs import (
-    read_reward_spheres,
-    read_supply_boxes,
-)
-from sr_od.application.currency_war.cw_observation import read_gold
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     SHOP_SCREEN_NAME,
@@ -33,6 +28,11 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _ocr,
     area_center,
 )
+from sr_od.application.currency_war.obs.cw_identity_obs import (
+    read_reward_spheres,
+    read_supply_boxes,
+)
+from sr_od.application.currency_war.obs.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -177,7 +177,7 @@ def _read_level_raw(ctx: SrContext, screen) -> int | None:
     read_level 的兜底曲线适合决策估值,不适合完成验证(期望值>实际时假成功)。漏读返 None,
     调用方决定基线退路。放大读与读链单一源 = ``cw_observation.read_level_raw_opt``。
     """
-    from sr_od.application.currency_war.cw_observation import read_level_raw_opt
+    from sr_od.application.currency_war.obs.cw_observation import read_level_raw_opt
 
     return read_level_raw_opt(ctx, screen)
 
@@ -446,7 +446,7 @@ class PrepActionExecutor:
         点两次间隔 ~1s(第一次选中边框高亮,第二次弹窗);弹窗后 loop 0i 接管选卡
         (本动作不选 —— 选卡是策略决策,板上阵营匹配在 0i handler)。
         """
-        from sr_od.application.currency_war.cw_identity_obs import read_tomes
+        from sr_od.application.currency_war.obs.cw_identity_obs import read_tomes
         screen = self._op.screenshot()
         tomes = read_tomes(self._ctx, screen)
         if not tomes:
@@ -706,7 +706,7 @@ class PrepActionExecutor:
                 return False, '找不到按钮-商店'
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            from sr_od.application.currency_war.cw_observation_gate import (
+            from sr_od.application.currency_war.obs.cw_observation_gate import (
                 PROFILE_OPEN,
                 wait_stable_frame,
             )
@@ -726,7 +726,7 @@ class PrepActionExecutor:
         self._op.round_by_find_and_click_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
         self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3:验证「收起消失」前 park
-        from sr_od.application.currency_war.cw_observation_gate import (
+        from sr_od.application.currency_war.obs.cw_observation_gate import (
             PROFILE_CLOSED,
             wait_stable_frame,
         )

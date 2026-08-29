@@ -32,12 +32,12 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.currency_war_char_id import (
+from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
     load_avatar_templates,
 )
-from sr_od.application.currency_war.cw_equipment import read_equipped_below
+from sr_od.application.currency_war.obs.cw_equipment import read_equipped_below
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.kernel.cw_state import BenchChar
@@ -532,7 +532,7 @@ def _identify_center_gated(
     :return: ``(crop, 模板键 or None, 内点)``;crop = **原槽窗**裁片
         (star 读取等后续消费与旧路径同几何,不吃扩展窗);内点 = 胜出假设核内数。
     """
-    from sr_od.application.currency_war.currency_war_char_id import (
+    from sr_od.application.currency_war.obs.currency_war_char_id import (
         _resolve_best,
         identify_hypotheses,
     )
@@ -594,7 +594,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
     """
-    from sr_od.application.currency_war.cw_back_layout import (
+    from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
         fallback_back_slots,
         resolve_back_slots,
@@ -618,7 +618,7 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     # 帧态门 + obs_conflict 自带 300s 节流;升级路径 = 框架原生 PAUSE
     # (方案 C,未暴露;真需要现场采集时人工经 MCP 驱动)。
     try:
-        from sr_od.application.currency_war.cw_back_layout import _LAYOUT_PREFIX
+        from sr_od.application.currency_war.obs.cw_back_layout import _LAYOUT_PREFIX
         if _lay['n_raw'] not in _LAYOUT_PREFIX:
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
@@ -676,7 +676,7 @@ def _sift_locate_x(band: MatLike, templates: AvatarTemplates, char_id: str,
     同 ``identify_character`` 的 SIFT 机制,但用 homography 投影模板中心(部分
     可见也能定位,优于 TM——TM 要求模板 ≤ band 且狸猫兄弟灰度互撞)。定位失败 → None。
     """
-    from sr_od.application.currency_war.currency_war_char_id import (
+    from sr_od.application.currency_war.obs.currency_war_char_id import (
         _SIFT,
         _ratio_good,
         ransac_locate_x,
@@ -881,7 +881,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         for _slot, _rect in _bench_slots9:
             if _slot in _named or _slot in _obj_slots:
                 continue
-            from sr_od.application.currency_war.currency_war_cv import slot_occupied
+            from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
             if slot_occupied(screen, _rect.x1 + (_rect.x2 - _rect.x1) // 2,
                              _rect.y1 + (_rect.y2 - _rect.y1) // 2):
                 # r330 帧态门(同 layout/bookcard:停机只在备战类

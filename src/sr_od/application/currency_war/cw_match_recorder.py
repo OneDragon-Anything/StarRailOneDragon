@@ -29,14 +29,14 @@ from pathlib import Path
 
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.currency_war_char_id import (
+from sr_od.application.currency_war.obs.currency_war_char_id import (
     load_avatar_templates,
 )
-from sr_od.application.currency_war.cw_identity_obs import (
+from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_bench_chars,
     read_deployed_chars,
 )
-from sr_od.application.currency_war.cw_observation import (
+from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
     read_phase_round,
 )
