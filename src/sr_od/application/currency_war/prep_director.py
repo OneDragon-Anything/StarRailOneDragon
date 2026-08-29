@@ -2002,10 +2002,11 @@ class PrepDirector(SrOperation):
                 self._reconcile_drag_expect(_drag_expect)
             _drag_expect = None
             # 期望态层·买牌(W536):RunBuyPhase 单元的购买期望由 shop.py 买入
-            # 点暂存 session.pending_buy_expect(compute_buy_expect);此处在本轮
-            # heavy 定型帧上消费对账(bench/buy_expect_mismatch)。零决策记账:
-            # 不一致不重买不改行为;执行失败(未购买单元)期望作废只清不评。
-            _pending_buy = getattr(session, 'pending_buy_expect', None)
+            # 点写入 session.pending_buy_expect(StrategySession 正式字段,
+            # 见 cw_strategy 字段定义);此处在本轮 heavy 定型帧上消费对账
+            # (bench/buy_expect_mismatch)。零决策记账:不一致不重买不改
+            # 行为;执行失败(未购买单元)期望作废只清不评。
+            _pending_buy = session.pending_buy_expect
             if _pending_buy is not None:
                 session.pending_buy_expect = None
                 if progressed:

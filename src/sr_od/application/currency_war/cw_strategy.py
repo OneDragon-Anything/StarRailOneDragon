@@ -48,6 +48,7 @@ from sr_od.application.currency_war.cw_state import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
     from sr_od.application.currency_war.cw_comps import Comp
+    from sr_od.application.currency_war.prep_director import BuyExpect
     from sr_od.context.sr_context import SrContext
 
 
@@ -367,6 +368,15 @@ class StrategySession:
     tracked_bench: list[str] = field(default_factory=list)
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)
+    # 买牌单元期望态(prep_director.BuyExpect;W536 引入)。坐标系 = 哪次购买:
+    # 一次 RunBuyPhase 单元的购买意图经 compute_buy_expect 建的「单元执行后
+    # 应然态」(bench/deployed 槽位表)。取值时机 = 购买意图落账——shop.py
+    # 单元收尾(含卖出/未识别牌则不建,保持 None)写入;消费 = PrepDirector
+    # 主环下一轮 heavy 定型帧对账(buy_expect_mismatch)后立即清回 None,
+    # 跨单元不残留。None = 无挂起期望。此前为动态属性(单元收尾暂存、
+    # getattr 消费,W536 受文件面限制未落声明),升正式字段后 asdict/telemetry
+    # 可见且读写两端免 getattr 兜底(r3 review④ 同判例)。
+    pending_buy_expect: BuyExpect | None = None
 
 
 @dataclass
