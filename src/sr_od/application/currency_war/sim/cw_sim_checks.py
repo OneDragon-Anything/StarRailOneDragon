@@ -77,6 +77,13 @@ from __future__ import annotations
 
 import math
 
+from sr_od.application.currency_war.data.cw_battle_tables import (
+    BUCKET_MIN_N as _POOL_BUCKET_MIN_N,
+)
+from sr_od.application.currency_war.data.cw_battle_tables import (
+    DEPTH_BUCKET_W as _POOL_DEPTH_BUCKET_W,
+)
+
 
 def check_ledger_consistency(rows: list[dict]) -> list[str]:
     """账本内部一致性(锁账本本身没写坏;generic,sim 批量内嵌)。
@@ -2076,8 +2083,8 @@ def run_segment_checks(ledgers: list[list[dict]], *,
 # 前两条吃池 dict(simulate_p1_batch 有 resolve_pool 产物;纯 dict
 # 入参,不 import cw_sim);第三条吃两臂账本(A/B 对照调用方使用,
 # 不进 _BATCH_CHECKS——单臂批次无对照对象)。
-_POOL_BUCKET_MIN_N = 5       # 同 cw_sim._BUCKET_MIN_N(值同步维护)
-_POOL_DEPTH_BUCKET_W = 3     # 同 cw_sim._DEPTH_BUCKET_W(值同步维护)
+# (池标定常数单一源=数据表 BUCKET_MIN_N/DEPTH_BUCKET_W;分包期 3 起改 import,
+# 原「值同步维护」双源注释废除——期 0b 收拢 data 桶后此处残留别名已完成对齐)
 
 # 迁移审计 w109(git 历史)(ADR-0344):池新鲜度滞后红线——runs.jsonl 里晚于池内最新 run
 # 的行数 ≥ 此值 = 再生管线断。2 = 1 局容忍(再生挂局终后、下一局
@@ -2117,7 +2124,7 @@ def check_pool_freshness(replay_dir=None, *,
                            '粗参数两态模型,快照停更为预期'}
     from sr_od.application.currency_war.data import cw_delta_pool_data as _dpd
     if replay_dir is None:
-        from sr_od.application.currency_war.cw_delta_pool_gen import (
+        from sr_od.application.currency_war.sim.cw_delta_pool_gen import (
             REPLAY_DIR as _rd,
         )
         replay_dir = _rd

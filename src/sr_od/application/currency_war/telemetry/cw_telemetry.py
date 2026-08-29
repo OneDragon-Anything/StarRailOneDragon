@@ -1703,7 +1703,7 @@ def _regenerate_delta_pool_after_run() -> None:
     异常**(遥测基建故障不许影响对局本体)。
     """
     try:
-        from sr_od.application.currency_war.cw_delta_pool_gen import (
+        from sr_od.application.currency_war.sim.cw_delta_pool_gen import (
             regenerate_snapshot,
         )
         fp = regenerate_snapshot(quiet=True)
@@ -1712,7 +1712,7 @@ def _regenerate_delta_pool_after_run() -> None:
         return
     log.info('[cw][pool-pipeline] 局终自动再生 Δ池快照: %s', fp)
     try:
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_pool_freshness,
         )
         verdict = check_pool_freshness()
@@ -1914,7 +1914,7 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     - ADR-0273:头部附 ``summary_write_path_coverage``(runs.jsonl 断流守卫,
       与逐局检查正交——它是「分母完整性」,先于一切逐局判读)。
     """
-    from sr_od.application.currency_war.cw_sim_checks import (
+    from sr_od.application.currency_war.sim.cw_sim_checks import (
         check_coldstart_seed_squander,
     )
     lines: list[str] = list(check_summary_write_path_coverage(replay_dir))
@@ -2954,7 +2954,7 @@ def _cli_main() -> None:
     if args.sim_batch:
         # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构
         # ({decisions,outcomes,shop_snapshots}.jsonl),视图零分叉
-        from sr_od.application.currency_war.cw_sim import SIM_RUNS_DIR
+        from sr_od.application.currency_war.sim.cw_sim import SIM_RUNS_DIR
         if args.sim_batch == 'latest':
             batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
                              if p.is_dir())

@@ -18,7 +18,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'src'))
 
-from sr_od.application.currency_war.cw_delta_pool_gen import (  # noqa: E402
+from sr_od.application.currency_war.sim.cw_delta_pool_gen import (  # noqa: E402
     regenerate_snapshot,
 )
 

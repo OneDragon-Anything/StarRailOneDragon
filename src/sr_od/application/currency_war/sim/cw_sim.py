@@ -18,7 +18,7 @@
 用途:策略改动先过本模拟(A/B 对照),再上实机验证(40min/局)。
 典型用法::
 
-    from sr_od.application.currency_war.cw_sim import simulate_p1
+    from sr_od.application.currency_war.sim.cw_sim import simulate_p1
 
     res = simulate_p1(seed=42, use_refresh=False)   # A/B 对照
     report = simulate_p1_batch(n=500)               # 批量统计
@@ -33,11 +33,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.cw_sim_invest import (
-    InvestInjectionState,
-    SimInvestProfile,
-    sample_invest_profile,
-)
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BUCKET_MIN_N,
@@ -114,6 +109,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     simulate as _simulate_state,
+)
+from sr_od.application.currency_war.sim.cw_sim_invest import (
+    InvestInjectionState,
+    SimInvestProfile,
+    sample_invest_profile,
 )
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
@@ -978,7 +978,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     cards_pool = _Pool(rng)   # 命名避参数遮蔽(审查 minor:pool 参数)
     # ADR-0272:池构造后硬断言无费用截断(不变式;检查函数单一源
     # 在 cw_sim_checks——纯 dict 入参,不构成 import 环)
-    from sr_od.application.currency_war.cw_sim_checks import (
+    from sr_od.application.currency_war.sim.cw_sim_checks import (
         check_sim_pool_no_cost_truncation as _chk_pool,
     )
     if _chk_pool(cards_pool.copies)['violations']:
@@ -2710,7 +2710,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         report['ledger_dir'] = str(write_batch_ledger(
             results, out, pool_fp=report['pool_fingerprint']))
     if checks:
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_battle_rung_pool_bucket_lock,
             check_delta_pool_bucket_coverage,
             check_delta_pool_bucket_min_n,
@@ -2753,12 +2753,12 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # replay 落后 ≥2 局 = 再生管线断(池停 12h 零报警事故的
         # 常设防线);fallback 无池语义不辖;无本机 replay(CI)跳过。
         if pool in ('snapshot', 'auto'):
-            from sr_od.application.currency_war.cw_sim_checks import (
+            from sr_od.application.currency_war.sim.cw_sim_checks import (
                 check_pool_freshness,
             )
             rep_checks['pool_freshness'] = check_pool_freshness()
         # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_sim_pool_no_cost_truncation as _chk_pool,
         )
         rep_checks['sim_pool_no_cost_truncation'] = \
@@ -2767,7 +2767,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 校准/成型-hp 耦合哨兵/升级 binding/末段刷新闭合/末金校准/
         # 锚登记制;吃全批账本(跨局聚合,不进 _BATCH_CHECKS 的逐局循环)
         # ADR-0362:辖 P1 段账本(views;planes=1 时 ≡ 全量零漂移)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_anchor_registry_n300,
             check_boss_win_calibration,
             check_formation_hp_coupling_sentinel,
@@ -2786,7 +2786,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
         # `w493_income_calib/`(ADR-0447):金分布/费用曲线对拍进标准报告——金均值越出
         # 实机带软告警(校准总闸漂移),费用曲线纯披露(等级轨迹差已知根)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_gold_dist_calib,
             check_shop_cost_curve,
         )
@@ -2797,14 +2797,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ADR-0294 件3(ADR-0289 接线欠账):批级聚合入口并入——
         # 清偿批的批级披露/哨兵/条件型检查一次跑全(逐局锁已由
         # run_checks_on_ledgers 自动扫;worker X 合流后本欠账清偿)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             run_batch_level_checks,
         )
         rep_checks.update(run_batch_level_checks(
             _ledgers, report=report, pool_map=_pm))
         # ADR-0362(`w157_p2/`):P2 段检查器最小集——金轨迹非负 + 段形状
         # (辖 planes>=2 批次的 P2 段行;P1 批无 plane=2 行恒绿)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_p2_gold_nonneg,
             check_p2_segment_shape,
         )
@@ -2813,7 +2813,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['p2_segment_shape'] = check_p2_segment_shape(_ledgers_p2)
         # `w193_p2sim/`/ADR-0377:P2 战斗存活层检查器(掉血带覆盖锚 + 胜率带锚;
         # 辖 calibrated 批——uncalibrated 批恒绿跳过,legacy 档不辖)
-        from sr_od.application.currency_war.cw_sim_checks import (
+        from sr_od.application.currency_war.sim.cw_sim_checks import (
             check_p2_loss_band_anchor,
             check_p2_win_rate_band,
         )
@@ -2830,7 +2830,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     # ——纯账本消费零 rng,headline/checks_violations 不受影响;
     # 辖域独立于 checks 开关;max_rounds=None 时窗口=整局,输出与
     # 整局语义一致)
-    from sr_od.application.currency_war.cw_sim_checks import (
+    from sr_od.application.currency_war.sim.cw_sim_checks import (
         run_segment_checks,
     )
     _win = max_rounds if (max_rounds is not None and max_rounds > 0) \
@@ -2856,7 +2856,7 @@ def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
     配对差 sd 现算,勿写死 1.93)。默认 A=刷新开/B=刷新关,同
     seed 配对。
     """
-    from sr_od.application.currency_war.cw_sim_checks import (
+    from sr_od.application.currency_war.sim.cw_sim_checks import (
         check_ab_resolution_floor,
     )
     res_a = [simulate_p1(seed_base + i, use_refresh=True, pool=pool)
@@ -3148,7 +3148,7 @@ def _cli_main() -> None:
     """④ seed 重放入口(可复现 bug 报告:seed+池指纹 → 逐轮决策)。
 
     用法:
-        uv run python -m sr_od.application.currency_war.cw_sim \\
+        uv run python -m sr_od.application.currency_war.sim.cw_sim \\
             replay --seed 42 --pool snapshot
     checks 报的 games 索引 → seed = seed_base + idx,同参数重放。
     池指纹不符(历史 bug 对新池)→ 提示换池版本,不硬跑(⓪ 纪律)。

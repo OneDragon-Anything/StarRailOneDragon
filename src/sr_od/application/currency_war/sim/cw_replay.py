@@ -8,7 +8,7 @@
 数据源:replay/decisions.jsonl 的 state 字段(每备战轮的 GameState 快照)。
 
 用法:
-  uv run python -m sr_od.application.currency_war.cw_replay \
+  uv run python -m sr_od.application.currency_war.sim.cw_replay \
       [--run ID] [--rounds N] [--diff] [--strategy decision_v2|default]
   --diff:与当时实跑 actions 对比(改动效果 = 与基线的分歧行)
   --strategy decision_v2(默认,现行生产 v2)/ default(内置 v1 打法)
