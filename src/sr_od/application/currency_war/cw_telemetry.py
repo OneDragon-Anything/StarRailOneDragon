@@ -1886,23 +1886,6 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
     })
 
 
-def record_shop_snapshot_raw(event: str, shop: list, gold: int,
-                             plane: int = 0, round_num: int = 0) -> None:
-    """shop 已是序列化 dict 列表时的 record_shop_snapshot 变体。"""
-    if not _CURRENT_RUN_ID:
-        return
-    rec = get_recorder()
-    rec._append("shop_snapshots.jsonl", {
-        "schema_version": 1,
-        "ts": datetime.now().isoformat(timespec="seconds"),
-        "run_id": _CURRENT_RUN_ID,
-        "plane": plane, "round_num": round_num,
-        "event": event, "gold": gold,
-        "shop": list(shop),
-    })
-
-
-
 # ===== 复盘读取(给人肉眼复盘 / 未来 ML)=====
 
 def read_jsonl(path: Path | str) -> list[dict[str, Any]]:
