@@ -1236,6 +1236,18 @@ class DecisionV2Registry:
     #: →不入集=维持 hold(保守侧,不猜)。
     opening_hold_battle_nodes: frozenset[str] = frozenset(
         {'战斗', 'boss', '遭遇', '精英'})
+    #: H2① 数据层(ADR-0461 增补节):库藏生锈每件滞留的敌方增益份额与
+    #: 计件上限,语义出处=competitors.md:45(敌伤 +3%/敌减伤 −4%,最多
+    #: 10 件,2026-08-28 游戏内实采)。**只承载账面单一源,无行为分支**——
+    #: 第二波数学裁决(证明锁 test_cw_w607_h2o_verdict):每件滞留金当量
+    #: = 本份额 × expected_battle_loss × battles_left_est × hp_to_gold
+    #: = 0.75(保守=只建模敌伤面,−4% 减伤面不映射=不猜),封顶 7.5
+    #: < 补给 key_fit 边际 10、< 策划面装备类与升费/弱化的分差 19 →
+    #: 现有动作空间无翻转点,H2① 行为分支不合入(无效→不合入,
+    #: strategy-work §4 兑换纪律)。重评触发器=该证明锁翻红,或 W612
+    #: 效果清单批落地装备处置/inventory 动作面(届时扣减消费点挂其接口)。
+    rust_hoard_damage_share: float = 0.03
+    rust_hoard_penalty_cap: int = 10
 
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
