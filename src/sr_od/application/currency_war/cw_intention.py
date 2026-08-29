@@ -75,13 +75,13 @@ from sr_od.application.currency_war.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
 )
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
 

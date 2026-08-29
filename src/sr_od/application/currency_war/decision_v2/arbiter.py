@@ -61,7 +61,7 @@ from sr_od.application.currency_war.decision_v2.phase import (
 from sr_od.application.currency_war.decision_v2.posture_release import (
     authorize_release_refresh,
 )
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.decision_v2.remediation import (

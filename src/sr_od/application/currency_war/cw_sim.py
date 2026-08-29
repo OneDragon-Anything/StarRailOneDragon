@@ -138,7 +138,7 @@ HP_UPPER_BOUND: int = 100
 INTEREST_CAP: int = 5
 
 # sim 执行层付费升级上界,守卫与轮末升级循环共用本常量防两处漂移。
-# 注意:这不是游戏真实满级——真实满级 = 10(decision_v2.registry
+# 注意:这不是游戏真实满级——真实满级 = 10(kernel.cw_registry
 # .level_max、cw_shop_odds.REFRESH_PROB 已含 lv10 行、实机 replay 可达
 # lv10),实机 lv10 才禁用购买经验,lv9 是正常付费升级档。本层仍取 9
 # 的理由:sim P1 追级轨迹高于实机(实机 P1 上限 7),先开 10 是把失真
@@ -1382,7 +1382,7 @@ def sim_decision_registry():
     """
     import dataclasses
 
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     return dataclasses.replace(DEFAULT_REGISTRY, level_max=LEVEL_CAP)

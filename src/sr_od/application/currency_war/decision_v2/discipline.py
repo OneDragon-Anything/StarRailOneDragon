@@ -72,7 +72,7 @@ from sr_od.application.currency_war.cw_system_cards import engine_char_names
 from sr_od.application.currency_war.decision_v2.posture_release import (
     hp_decision_trusted,
 )
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 
@@ -139,7 +139,7 @@ def sole_engine_sell_blocked(bc, state: GameState,
     W179 后行为)+ registry.guard_seele_scope_enabled(W192 辖域
     补全开关,关=逐位回 W188 后行为=三羁绊辖域)。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -186,7 +186,7 @@ def form_break_sell_blocked(bc, state: GameState,
     例外:卖了不破 form_ok 的件(纯冗余、真垫层)照旧可卖——补偿卖序
     的腾位/换金通道不堵死([22] 净0 件最先卖的既有弱序保留)。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -224,7 +224,7 @@ def sole_engine_sell_floor_plan(bcs: list,
     件1,事务内多笔同序扣减)/ remediation 两补偿器卖件组发射前过滤
     (ADR-0384 ``_sell_floor_filter``,对 working 逐笔扣减)。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -558,7 +558,7 @@ def press_band(level: int, probs: dict[int, float] | None = None,
     - lv≥7(中后段)纯推导(lv7={1,2,3}),彼时带自洽闸已关通道
       (press_channel_open),0.50 阈值在此段是守卫参数非行为旋钮。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -573,7 +573,7 @@ def press_channel_max_band(registry: DecisionV2Registry | None = None,
     """带自洽闸参照系 = press_band(press_channel_max_level),当前推导
     下恒 {1,2}(V-A2 停机推演;检查器成本带上限 import 本函数,消灭
     与 _SEG_TRANSITION_COST_MAX 的两处漂移)。"""
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -592,7 +592,7 @@ def press_channel_open(state: GameState,
        同样破闸(保守关停)。
     停机是 REFRESH_PROB 的派生输出而非拍脑袋常数,max_level 仅作冗余
     护栏与①互为双保险。"""
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
@@ -1418,7 +1418,7 @@ def sell_priority_key(bc, state: GameState,
     ``registry`` 可选(期望损失表;缺省用模块默认注册表——A/B 注入
     时调用方显式传)。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY

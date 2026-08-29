@@ -61,7 +61,7 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     sole_engine_sell_blocked,
     star_weighted_copies,
 )
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 

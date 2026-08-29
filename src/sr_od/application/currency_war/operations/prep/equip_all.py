@@ -432,7 +432,7 @@ class EquipAll(SrOperation):
         # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
         # =全关,零漂移)。
         from sr_od.application.currency_war.cw_state import ledger_node_type
-        from sr_od.application.currency_war.decision_v2.registry import (
+        from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
         _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)

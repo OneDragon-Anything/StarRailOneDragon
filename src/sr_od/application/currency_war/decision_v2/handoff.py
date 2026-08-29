@@ -36,7 +36,7 @@ from dataclasses import replace as dataclasses_replace
 
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 
@@ -325,7 +325,7 @@ def boss_projected_hp(state: GameState, hp_now: int,
 
 def _default_registry() -> DecisionV2Registry:
     """延迟 import(与 phase.py 同式,防 import 环)。"""
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     return DEFAULT_REGISTRY

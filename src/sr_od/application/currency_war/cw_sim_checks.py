@@ -1197,14 +1197,14 @@ def check_refresh_roll_cap_frame(ledgers: list[list[dict]]) -> dict:
 def check_directed_refresh_game_cap(rows: list[dict]) -> list[str]:
     """定向刷新局帽:M-A 定向车道全局执行数 > directed_refresh_game_cap。
 
-    语义依据(单一源 = decision_v2.registry 的
+    语义依据(单一源 = kernel.cw_registry 的
     ``directed_refresh_game_cap``):M-A 末窗定向刷新授权的局级代价
     上界(ADR-0409 预算式 min(per_round, 局帽−已耗),授权点在
     arbiter 刷新收尾;结构上限推导:合资格轮 ≤2 × per_round 2 <
     帽,超越 = 授权链失效)。数据源 = 轮行 sim.dir_refreshes
     (cw_sim 轮末差值归因,见 check_refresh_roll_cap_frame 车道口径)。
     """
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     cap = DEFAULT_REGISTRY.directed_refresh_game_cap
@@ -1457,7 +1457,7 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     out: list[dict] = []
@@ -1542,7 +1542,7 @@ def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
     from sr_od.application.currency_war.decision_v2.discipline import (
         press_band,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     out: list[dict] = []
@@ -4098,7 +4098,7 @@ def check_decision_v2_candidate_coverage(
         ACTION_CLASSES,
         generate_candidates,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     violations: list[str] = []
@@ -4179,7 +4179,7 @@ def check_decision_v2_candidate_coverage(
 def check_decision_v2_arbiter_matrix() -> dict:
     """ADR-0291:仲裁器完备性审计表无空格(资源维×回合态维)。
 
-    判据(ADR-0290 对抗修订④):``decision_v2.registry`` 的审计矩阵
+    判据(ADR-0290 对抗修订④):``kernel.cw_registry`` 的审计矩阵
     每格=约束名(存在于 constraints 清单)或显式 ``('none', 原因)``
     声明;空格/未知约束名=违规。新增动作类型或资源维时本检查强制
     过检(通道制漏门病 r408/[32] 全是事后补的根治)。
@@ -4187,7 +4187,7 @@ def check_decision_v2_arbiter_matrix() -> dict:
     from sr_od.application.currency_war.decision_v2.arbiter import (
         build_audit_report,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     rep = build_audit_report(DEFAULT_REGISTRY)
@@ -4455,7 +4455,7 @@ def check_decision_v2_supply_label_consistency() -> dict:
     from sr_od.application.currency_war.decision_v2.candidates import (
         generate_candidates,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
 
@@ -4561,7 +4561,7 @@ def check_w300_press_channel_probe() -> dict:
         _buy_tag,
         generate_candidates,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
 

@@ -110,7 +110,7 @@ HP_LOSS_MU: dict[int, float] = {0: 14.0, 1: 7.0, 2: 2.5, 3: 0.8}
 def p_win_p2(b: float) -> float:
     """板强 b → P2 战斗条件胜率(registry.p_win_p2_by_rung 分段线性;
     两态投影与阈值层共用的板强→胜率映射单一源)。"""
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     tbl = DEFAULT_REGISTRY.p_win_p2_by_rung

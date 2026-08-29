@@ -44,7 +44,7 @@ def _p2_lcond_mix() -> float:
         _P2_NODE_TEMPLATE,
         node_loss_kind,
     )
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     tbl = DEFAULT_REGISTRY.p2_cond_loss_table

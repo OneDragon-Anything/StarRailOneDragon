@@ -41,7 +41,7 @@ from sr_od.application.currency_war.cw_horizon import (  # noqa: E402
     TOTAL_NODES,
     interest,
 )
-from sr_od.application.currency_war.decision_v2.registry import (  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_registry import (  # noqa: E402
     DecisionV2Registry,
 )
 

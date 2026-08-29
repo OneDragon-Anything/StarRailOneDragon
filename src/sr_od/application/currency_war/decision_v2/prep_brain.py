@@ -25,7 +25,7 @@ from sr_od.application.currency_war.decision_v2.contracts import (
     Defer,
     Snapshot,
 )
-from sr_od.application.currency_war.decision_v2.registry import DEFAULT_REGISTRY
+from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.decision_v2.turn_state import (
     BudgetView,
     DirectionView,
@@ -34,7 +34,7 @@ from sr_od.application.currency_war.decision_v2.turn_state import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2.registry import (
+    from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
 

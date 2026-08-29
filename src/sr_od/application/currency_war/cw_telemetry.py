@@ -639,7 +639,7 @@ class TelemetryRecorder:
             from sr_od.application.currency_war.decision_v2.discipline import (
                 p1_directed_downgrade_active,
             )
-            from sr_od.application.currency_war.decision_v2.registry import (
+            from sr_od.application.currency_war.kernel.cw_registry import (
                 DEFAULT_REGISTRY,
             )
             trace.p1_downgrade_active = bool(

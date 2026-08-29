@@ -9,7 +9,7 @@ from __future__ import annotations
 from one_dragon.utils.log_utils import log
 
 # 下行守卫标定常量(值单一源 = 注册表;cw_reconcile 只消费)
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     HP_LOSS_CAP_P100_BY_NODE,
     HP_SUSPECT_CONFIRM_FRAMES,
     HP_SUSPECT_WINDOW_NODES,

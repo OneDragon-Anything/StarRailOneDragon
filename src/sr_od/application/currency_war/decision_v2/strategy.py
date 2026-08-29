@@ -86,7 +86,7 @@ from sr_od.application.currency_war.decision_v2.phase import (
     form_ok,
     form_score,
 )
-from sr_od.application.currency_war.decision_v2.registry import (
+from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
