@@ -52,7 +52,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 
 def _crosses_engine_tier(state: GameState, name: str) -> bool:

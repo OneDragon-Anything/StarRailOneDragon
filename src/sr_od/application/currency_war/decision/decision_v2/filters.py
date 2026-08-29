@@ -18,8 +18,8 @@ redesign §3/§5.4 覆盖态**严格优先序**:应急(HP 危急)→ 追赶修�
 from __future__ import annotations
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.candidates import Candidate
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
 )
@@ -46,7 +46,7 @@ def _formed_stop_buy_allowed(name: str | None, state: GameState,
     """
     if not name:
         return False
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
     return name in _target_names(state, session)
@@ -99,7 +99,7 @@ def _refreshable_names(state: GameState, session: StrategySession,
     报告=`.debug/temp/currency_war/w363_c3c4_attack/ATTACK.md`)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
     names = set(_target_names(state, session))
@@ -142,7 +142,7 @@ def c1_directed_active(state: GameState, session: StrategySession,
     """
     if not registry.c1_directed_spend_enabled:
         return False
-    from sr_od.application.currency_war.decision_v2.posture_release import (
+    from sr_od.application.currency_war.decision.decision_v2.posture_release import (
         boss_first_buy_phase,
         hp_decision_trusted,
     )
@@ -201,12 +201,12 @@ def formed_stop_active(state: GameState, session: StrategySession,
     # W227/ADR-0400 承接维:缺口在 form_ok 之前算(观测字段无论成型
     # 与否都写——sim 账本 handoff_gap 的数据源);非末窗恒 0,
     # P1 非末窗零漂移(ADR-0411 起承接门无条件启用)。
-    from sr_od.application.currency_war.decision_v2.handoff import (
+    from sr_od.application.currency_war.decision.decision_v2.handoff import (
         handoff_gate_gap,
     )
     gap = handoff_gate_gap(state, session, registry)
     session.v3_handoff_gap = gap
-    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    from sr_od.application.currency_war.decision.decision_v2.phase import form_ok
     if not form_ok(state, session, registry):
         return False
     if gap > 0:
@@ -241,7 +241,7 @@ def recipe_fence_active(state: GameState, session: StrategySession,
         return False
     if state.plane != 1:
         return False
-    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    from sr_od.application.currency_war.decision.decision_v2.phase import form_ok
     return not form_ok(state, session, registry)
 
 
@@ -412,7 +412,7 @@ def filter_candidates(cands: list[Candidate], state: GameState,
         # 成型停手与本围栏以 form_ok 真假互斥,实际前序只有 C1。
         # 店为空配方件时散件照旧(空窗期语义 [31]);只重排同一笔预算内
         # 「买谁」,配方件之间的相对序仍归 EV 层单一裁决。
-        from sr_od.application.currency_war.decision_v2.scoring import (
+        from sr_od.application.currency_war.decision.decision_v2.scoring import (
             _cand_system_bonds,
         )
         has_recipe = any(

@@ -22,7 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.decision_v2.contracts import (
+from sr_od.application.currency_war.decision.decision_v2.contracts import (
     AtomOp,
     Bail,
     Decision,
@@ -32,7 +32,7 @@ from sr_od.application.currency_war.decision_v2.contracts import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 
 class LoopOutcomeKind(enum.Enum):

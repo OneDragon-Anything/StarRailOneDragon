@@ -14,8 +14,8 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
-from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
+from sr_od.application.currency_war.decision.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.decision.cw_strategy_manager import StrategyManager
 from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
     RoundOutcome,

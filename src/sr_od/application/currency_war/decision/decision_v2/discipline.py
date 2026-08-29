@@ -44,12 +44,12 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 # hp 决策可信位单一源(ADR-0428 收口;posture_release 对本模块的引用
 # 全在函数体内延迟 import,模块级无环)。
-from sr_od.application.currency_war.decision_v2.posture_release import (
+from sr_od.application.currency_war.decision.decision_v2.posture_release import (
     hp_decision_trusted,
 )
 from sr_od.application.currency_war.kernel.cw_discipline_rules import (
@@ -189,12 +189,12 @@ def form_break_sell_blocked(bc, state: GameState,
     reg = registry if registry is not None else DEFAULT_REGISTRY
     if not reg.form_break_sell_blocked_enabled:
         return False
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         formed_stop_active,
     )
     if not formed_stop_active(state, session, reg):
         return False
-    from sr_od.application.currency_war.decision_v2.phase import form_ok
+    from sr_od.application.currency_war.decision.decision_v2.phase import form_ok
     from sr_od.application.currency_war.kernel.cw_state import _recount_board
     s2 = state.copy()
     s2.bench = [None if b is bc else b for b in (state.bench or [])]
@@ -863,11 +863,11 @@ def terminal_survival_upper_bound(state: GameState, session: StrategySession,
       「死亡不可避免」判据自然不成立的语义承载(设计 §2.3 行进带
       上沿用例)。
     """
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         NON_BATTLE_NODE_TOKENS,
         battles_left_plane,
     )
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _engines_formed,
     )
     from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
@@ -1016,11 +1016,11 @@ def _streak_floor(state: GameState, session: StrategySession,
     hard_node = _hard_node(state, session)
     if not hard_node:
         return base_floor
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
         interest_cost,
     )
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _engines_formed,
     )
     node = getattr(session, 'node_type_current', None) or state.node_type or ''

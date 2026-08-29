@@ -29,26 +29,29 @@ from typing import Literal
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_plan
-from sr_od.application.currency_war.cw_strategy import CwStrategy, StrategySession
-from sr_od.application.currency_war.decision_v2.arbiter import arbitrate
-from sr_od.application.currency_war.decision_v2.candidates import (
+from sr_od.application.currency_war.decision.cw_strategy import (
+    CwStrategy,
+    StrategySession,
+)
+from sr_od.application.currency_war.decision.decision_v2.arbiter import arbitrate
+from sr_od.application.currency_war.decision.decision_v2.candidates import (
     generate_candidates,
 )
-from sr_od.application.currency_war.decision_v2.discipline import (
+from sr_od.application.currency_war.decision.decision_v2.discipline import (
     BloodAlarmTracker,
     assess_discipline,
     carry_gate_actions,
     register_round_sold,
 )
-from sr_od.application.currency_war.decision_v2.filters import (
+from sr_od.application.currency_war.decision.decision_v2.filters import (
     filter_candidates,
 )
-from sr_od.application.currency_war.decision_v2.phase import (
+from sr_od.application.currency_war.decision.decision_v2.phase import (
     derive_phase,
     form_ok,
     form_score,
 )
-from sr_od.application.currency_war.decision_v2.scoring import score_all
+from sr_od.application.currency_war.decision.decision_v2.scoring import score_all
 from sr_od.application.currency_war.kernel import cw_comps, cw_events
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_events import (
@@ -326,7 +329,7 @@ class DecisionV2Strategy(CwStrategy):
         # 遥测行带 dp_posture(标签 trace)。生产者 = 确定性预算核
         # (build_round_posture:schedule/refresh_ev_budget 两接缝,R4
         # 单一址);release 包装(FLIP/存息准入门)紧随其后。
-        from sr_od.application.currency_war.decision_v2.ev import (
+        from sr_od.application.currency_war.decision.decision_v2.ev import (
             RoundPosture,
             build_round_posture,
             reward_node_is_battle,
@@ -336,7 +339,7 @@ class DecisionV2Strategy(CwStrategy):
         # slot 守卫压 level 时包装姿态(预算三方合并 + spend_mode 新档,
         # 单一源=decision_v2.posture_release;下流 scoring/arbiter 读同一
         # 包装后姿态,义务预算走 session.v3_release)。
-        from sr_od.application.currency_war.decision_v2.posture_release import (
+        from sr_od.application.currency_war.decision.decision_v2.posture_release import (
             evaluate_release,
         )
         _wrapped, _directive = evaluate_release(
@@ -366,7 +369,7 @@ class DecisionV2Strategy(CwStrategy):
         # 的承接态;sim/生产同点(sim 侧 SimResult.p2_handoff 由此采样)。
         if state.plane >= 2 and getattr(session, 'v3_handoff_plane', None) \
                 != state.plane:
-            from sr_od.application.currency_war.decision_v2.handoff import (
+            from sr_od.application.currency_war.decision.decision_v2.handoff import (
                 handoff_snapshot,
             )
             session.v3_handoff_plane = state.plane
@@ -455,10 +458,10 @@ class DecisionV2Strategy(CwStrategy):
         # 由分配器按 P_t=⟨Π_t,R_t,O,D⟩ 出清;管线已支出帧分配器不接管
         # (同帧双花结构性排除)。记账扩展=分配器帧位(各渠道获配金,
         # v6 §6)每帧披露写 session.v3_alloc_frame。
-        from sr_od.application.currency_war.decision_v2.allocator import (
+        from sr_od.application.currency_war.decision.decision_v2.allocator import (
             allocator_run,
         )
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             register_round_bought,
         )
         _pipeline_spent = any(isinstance(a, (BuyCard, LevelUp, RefreshShop))
@@ -591,7 +594,9 @@ class DecisionV2Strategy(CwStrategy):
         for i, name in enumerate(options):
             s = 0.0
             from one_dragon.utils import str_utils
-            from sr_od.application.currency_war.decision_v2.scoring import PICK_BIAS
+            from sr_od.application.currency_war.decision.decision_v2.scoring import (
+                PICK_BIAS,
+            )
             if name in _tgt_facs:
                 s += PICK_BIAS.tome_target_faction
             hit = next((b for b, n in (state.board or {}).items()
@@ -625,10 +630,10 @@ class DecisionV2Strategy(CwStrategy):
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         best_i, best_s = 0, -1.0
         for i, obj in enumerate(options):
-            from sr_od.application.currency_war.decision_v2.scoring import (
+            from sr_od.application.currency_war.decision.decision_v2.scoring import (
                 PICK_BIAS as _PB,
             )
-            from sr_od.application.currency_war.decision_v2.scoring import (
+            from sr_od.application.currency_war.decision.decision_v2.scoring import (
                 effect_pick_bias,
             )
             s = effect_pick_bias(session, obj)
@@ -681,10 +686,10 @@ class DecisionV2Strategy(CwStrategy):
                 pass
         best_i, best_s = 0, -1.0
         for i, n in enumerate(names):
-            from sr_od.application.currency_war.decision_v2.scoring import (
+            from sr_od.application.currency_war.decision.decision_v2.scoring import (
                 PICK_BIAS as _PB,
             )
-            from sr_od.application.currency_war.decision_v2.scoring import (
+            from sr_od.application.currency_war.decision.decision_v2.scoring import (
                 effect_pick_bias,
             )
             s = effect_pick_bias(session, n)
@@ -888,7 +893,7 @@ class DecisionV2Strategy(CwStrategy):
             # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):升级门 committed 从 committed_from
             # 权威派生显式传入——fresh 帧不再依赖装配边界回填双轨标志
             # (漏回填=恒按已定型激进化放升级的病理修复;方向=门收紧)。
-            from sr_od.application.currency_war.decision_v2.prep_brain import (
+            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
                 committed_from,
             )
             _lk = getattr(session, 'free_bench_gold_wait', 0)
@@ -1006,7 +1011,7 @@ class DecisionV2Strategy(CwStrategy):
             st.round_num = session.last_state.round_num
         # r69 review:hp 过新鲜度门(陈旧 last_hp 不进 pseudo state;门单源 cw_strategy.gated_hp,
         # 现读基准 = last_state.hp 框架末次读值,None 时 100 默认)。
-        from sr_od.application.currency_war.cw_strategy import gated_hp
+        from sr_od.application.currency_war.decision.cw_strategy import gated_hp
         _t = (st.plane - 1) * 9 + st.round_num if (st.plane and st.round_num) else None
         _cur_hp = session.last_state.hp if session.last_state is not None else 100
         st.hp = gated_hp(_cur_hp, session, _t)
@@ -1015,7 +1020,7 @@ class DecisionV2Strategy(CwStrategy):
         # 空转——r≥8 终局件提前上场+配方 carry 可被卖。迁移迁移批 2(方向层接管)(方向层接管) 起 committed 语义
         # = cw_intention 权威派生(读端 committed_from 单点换源,P1 同
         # commit 面),此处传 state 供 plane 判定。
-        from sr_od.application.currency_war.decision_v2.prep_brain import (
+        from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
             committed_from,
         )
         st.dual_track_phase = not committed_from(session, st)

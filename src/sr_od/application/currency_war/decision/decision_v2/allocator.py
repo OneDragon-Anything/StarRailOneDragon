@@ -51,7 +51,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -155,10 +155,10 @@ def alloc_domain(state: GameState, session: StrategySession,
     回现状,行为有界;稳态断言锁核验,断言实测违约才按预注册条件
     升级机制,本层不预置防振荡结构。
     """
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         terminal_release,
     )
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         formed_stop_active,
     )
     if terminal_release(state, session, registry):
@@ -188,7 +188,7 @@ def _l_c(state: GameState, registry: DecisionV2Registry) -> float:
     (vd_p1_loss_* 拟合单一源);P2 = registry.vd_p2_loss。P23 符号表
     口径「1 hp≈1 金」在代码中经 registry.hp_to_gold 折算(单一源
     0.5;P23 证明内取 1 是 hp_to_gold=1 的特例,落码用注册表值)。"""
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         p1_battle_loss_est,
     )
     if state.plane >= 2:
@@ -205,7 +205,7 @@ def _m_horizon(state: GameState, session: StrategySession,
     兜底同源)。位面总数 3 的既有用法 = cw_intention P3 强制锁线
     (state.plane >= 3);P23 符号表 m∈[5,19] 的跨位面持久语义由此
     承载。零新常数:battles_left_est 是唯一引入的估计符号。"""
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
     )
     rest = battles_left_plane(state, session, registry)
@@ -214,7 +214,7 @@ def _m_horizon(state: GameState, session: StrategySession,
 
 
 def _engines_now(state: GameState, registry: DecisionV2Registry) -> int:
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _engines_formed,
     )
     return _engines_formed(state, registry)
@@ -228,7 +228,7 @@ def _win_eq(state: GameState, registry: DecisionV2Registry) -> float:
     e = _engines_formed(整数档单一源),frac = _engine_frac_remainder
     (小数进度单一源,formation_gold_account 同源消费)。零新常数:
     只消费注册表成型档表与进度函数。"""
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _engine_frac_remainder,
     )
     hr = registry.h3_win_rate
@@ -243,7 +243,7 @@ def _apply_with_pipeline(state: GameState, actions: tuple[Action, ...],
                          session: StrategySession) -> GameState:
     """提案 apply(轻量):simulate + 部署管线(与 scoring.apply_for_score
     同一显影链——「买入→上场」的板面价值经管线可见,单一源复用)。"""
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _deploy_pipeline,
     )
     from sr_od.application.currency_war.kernel.cw_state import simulate
@@ -280,7 +280,7 @@ def _salvage_ok(cand, state: GameState, registry: DecisionV2Registry,
     攻击 5.1 的救回算子)。**已知不完备声明(§4-P4,诚实不假装)**:
     救回后 Π_buy 仍限于「当视界内有上场路径」的命中面,非同名件围栏
     面不供给——外生约束,完备性声明带在报告与稳态锁,不在本层假装。"""
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         _deploy_free,
         _deploy_free_after_merge,
     )
@@ -301,7 +301,7 @@ def _comp_feasible(card_name: str, state: GameState,
 
     语义 = 「先买等待件、再升级放人口」的复合:单看买(缺 deploy 位)
     或单看升(bench 无受益件)都不成立,合并后账不可拆选(§4-P2)。"""
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         _deploy_free,
     )
     from sr_od.application.currency_war.kernel.cw_state import bench_occupied
@@ -326,10 +326,10 @@ def _refresh_dpeff_estimate(state: GameState, session: StrategySession,
     标定挂账(刷新估计器锁 test_cw_w715 锁可手算性,不锁精度)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         _deploy_free,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
@@ -382,13 +382,13 @@ def supply_proposals(state: GameState, session: StrategySession,
 def _supply_impl(state: GameState, session: StrategySession,
                  registry: DecisionV2Registry,
                  domain: AllocDomain) -> list[AllocProposal]:
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         generate_candidates,
     )
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         blood_budget_levelup_blocked,
     )
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         _deploy_free,
         is_emergency,
     )
@@ -400,7 +400,7 @@ def _supply_impl(state: GameState, session: StrategySession,
                                                      registry)))
              if domain is AllocDomain.DEATH else horizon)
     # 刷新臂停付豁免域:应急带/ALL IN(discipline 谓词族单一源)直通
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         plane_last_battle,
     )
     refresh_exempt = is_emergency(state, registry) \
@@ -440,10 +440,10 @@ def _supply_impl(state: GameState, session: StrategySession,
         # ev.levelup_ev_basis(pop_slot/dp/static_ev 三臂,与 arbiter
         # 升级门/段级检查白名单同谓词);白名单拒('')的帧分配器不出
         # 升级提案——「豁免后重估」豁免的是濒死止损,不越过白名单。
-        from sr_od.application.currency_war.decision_v2.candidates import (
+        from sr_od.application.currency_war.decision.decision_v2.candidates import (
             _target_names,
         )
-        from sr_od.application.currency_war.decision_v2.ev import (
+        from sr_od.application.currency_war.decision.decision_v2.ev import (
             levelup_ev_basis,
         )
         _lu_cost = int(lu_cand.action.cost)
@@ -495,7 +495,7 @@ def _deploy_free_battles(state: GameState, session: StrategySession,
                          registry: DecisionV2Registry) -> float:
     """死亡域截断上限的既名直读(ev.battles_left_plane;P23.3
     m_eff = min(兑现长, battles_left_plane))。"""
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
     )
     return battles_left_plane(state, session, registry)
@@ -512,14 +512,14 @@ def _opportunity_cost(state: GameState, session: StrategySession,
     - 死亡域:S0 × (c + I)(存活加权成本,P23.4(ii) 参数集内替换;
       S0 = terminal_survival_upper_bound 既有单一源,必然死亡极限
       S0→0 时退化为 P23.3 第二账式)。"""
-    from sr_od.application.currency_war.decision_v2.ev import interest_cost
+    from sr_od.application.currency_war.decision.decision_v2.ev import interest_cost
     recovery = registry.interest_recovery_rounds \
         if p.kind in ('buy', 'comp') else None
     i = interest_cost(state.gold or 0, p.cost, state,
                       recovery_rounds=recovery)
     if domain is AllocDomain.STOP_WINDOW:
         return float(p.cost) + i
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         terminal_survival_upper_bound,
     )
     s0 = terminal_survival_upper_bound(state, session, registry)
@@ -535,7 +535,7 @@ def _feasible(subset: list[AllocProposal], gold_budget: int,
     if sum(p.bench_slots for p in subset) > bench_free:
         return False
     if any(p.kind == 'buy' for p in subset):
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             star_weighted_copies,
         )
         per_name: dict[str, int] = {}

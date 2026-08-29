@@ -22,9 +22,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.decision_v2.discipline import (
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.discipline import (
     copy_swap_useless,
     engine_char_names,
     engine_seed_wants,
@@ -139,10 +139,10 @@ def _copy_swap_blocked(card: ShopCard, state: GameState,
     if registry is None:
         return True
     if _has_deployed_copy(card.name, state):
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             p1_directed_downgrade_active,
         )
-        from sr_od.application.currency_war.decision_v2.handoff import (
+        from sr_od.application.currency_war.decision.decision_v2.handoff import (
             handoff_gate_gap,
         )
         if (handoff_gate_gap(state, session, registry) > 0
@@ -297,10 +297,10 @@ def _buy_tag(card: ShopCard, state: GameState,
     # discipline 层前置;冷启动例外 r383b 的全轮域推广),末窗星级
     # 定向授权 gap>0(handoff.handoff_gate_gap 单一源)时同域豁免。
     # (原 filler_star 开臂的无条件豁免已随 ADR-0402 定谳清理删除。)
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         p1_directed_downgrade_active,
     )
-    from sr_od.application.currency_war.decision_v2.handoff import (
+    from sr_od.application.currency_war.decision.decision_v2.handoff import (
         handoff_gate_gap,
     )
     if (not is_target
@@ -352,10 +352,10 @@ def _buy_tag(card: ShopCard, state: GameState,
         # 其余域(g≤R* 凑息期/bench 满/应急)[31] 原样:纯散件不生成。
         # 逐笔金可行性(g_after≥R*,不吃排程升级储蓄)在 arbiter.gold_floor
         # 的 o1 地板加深处辖,生成层不重复判。
-        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
             overflow as _o1_overflow,
         )
-        from sr_od.application.currency_war.decision_v2.filters import (
+        from sr_od.application.currency_war.decision.decision_v2.filters import (
             is_emergency as _o1_emergency,
         )
         if (not _o1_emergency(state, registry)
@@ -408,7 +408,7 @@ def _release_sell_gate(tag: str | None, session: StrategySession,
     """
     if tag not in ('off_target', 'for_gold'):
         return tag
-    from sr_od.application.currency_war.decision_v2.posture_release import (
+    from sr_od.application.currency_war.decision.decision_v2.posture_release import (
         spend_gate_active,
     )
     if spend_gate_active(session, registry):

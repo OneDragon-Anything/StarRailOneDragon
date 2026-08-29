@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
     intention_core,

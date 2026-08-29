@@ -568,7 +568,7 @@ class TelemetryRecorder:
                 trace.sess_blood_budget_refresh_rejects = int(
                     getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
                 # 血预算停手·终止分支决策位(R4 记账;ADR-0469)
-                from sr_od.application.currency_war.decision_v2.discipline import (
+                from sr_od.application.currency_war.decision.decision_v2.discipline import (
                     terminal_release_bit,  # 延迟 import 防 模块环
                 )
                 trace.sess_terminal_release = terminal_release_bit(
@@ -590,7 +590,7 @@ class TelemetryRecorder:
         with contextlib.suppress(Exception):
             # 延迟 import:discipline 是 decision_v2 域,模块级引入会造成
             # import 环(telemetry 被 ops/策略两面引用);调用点 import 无环。
-            from sr_od.application.currency_war.decision_v2.discipline import (
+            from sr_od.application.currency_war.decision.decision_v2.discipline import (
                 p1_directed_downgrade_active,
             )
             from sr_od.application.currency_war.kernel.cw_registry import (

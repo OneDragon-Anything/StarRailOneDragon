@@ -73,7 +73,7 @@ class StartCurrencyWarMatch(SrOperation):
         """
         if self._stale_discarded:
             return
-        from sr_od.application.currency_war.cw_strategy import (
+        from sr_od.application.currency_war.decision.cw_strategy import (
             discard_stale_match_container,
         )
         self._stale_discarded = discard_stale_match_container(self.ctx, reason)

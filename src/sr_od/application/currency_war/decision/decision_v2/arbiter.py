@@ -17,9 +17,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.decision_v2.discipline import (
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision.decision_v2.discipline import (
     blood_budget_levelup_blocked,
     boss_window_active,
     form_break_sell_blocked,
@@ -28,29 +28,29 @@ from sr_od.application.currency_war.decision_v2.discipline import (
     register_round_sold,
     sole_engine_sell_blocked,
 )
-from sr_od.application.currency_war.decision_v2.ev import (
+from sr_od.application.currency_war.decision.decision_v2.ev import (
     interest_cost,
     levelup_ev_basis,
     round_posture,
 )
-from sr_od.application.currency_war.decision_v2.filters import (
+from sr_od.application.currency_war.decision.decision_v2.filters import (
     current_mode,
     is_emergency,
 )
 
 # W252/ADR-0409:M-A 收尾裁决消费(延迟 import 防环不必要——handoff
 # 不回 import arbiter;直连单一源)
-from sr_od.application.currency_war.decision_v2.handoff import (
+from sr_od.application.currency_war.decision.decision_v2.handoff import (
     directed_refresh_budget,
 )
-from sr_od.application.currency_war.decision_v2.phase import (
+from sr_od.application.currency_war.decision.decision_v2.phase import (
     Phase,
     derive_phase,
 )
-from sr_od.application.currency_war.decision_v2.posture_release import (
+from sr_od.application.currency_war.decision.decision_v2.posture_release import (
     authorize_release_refresh,
 )
-from sr_od.application.currency_war.decision_v2.remediation import (
+from sr_od.application.currency_war.decision.decision_v2.remediation import (
     Rejection,
     RejectReason,
     remediation_pass,
@@ -71,7 +71,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         DisciplineView,
     )
 
@@ -137,7 +137,7 @@ def _below_floor_refresh_e2(working: GameState, state: GameState,
     消耗登记在 refresh 采纳块,与 dir_refresh 键式同构)。辖域与本例外
     正交声明:C1 的 _refreshable_names 辖溢余段,本例外辖息线以下。
     """
-    from sr_od.application.currency_war.decision_v2.scoring import (
+    from sr_od.application.currency_war.decision.decision_v2.scoring import (
         _cand_system_bonds,
     )
     key = (state.plane, state.round_num)
@@ -321,10 +321,10 @@ def _check_constraint(name: str, cand: Candidate,
             # 承接位)。非末窗 gap=0 零漂移;只辖买侧(板面投资)——
             # 刷新的搜寻消耗口径不动(ADR-0352 D 平面 R 上界纪律),
             # 升级平台账在 levelup_ev_basis,不在此双计。
-            from sr_od.application.currency_war.decision_v2.discipline import (
+            from sr_od.application.currency_war.decision.decision_v2.discipline import (
                 p1_directed_downgrade_active,
             )
-            from sr_od.application.currency_war.decision_v2.handoff import (
+            from sr_od.application.currency_war.decision.decision_v2.handoff import (
                 handoff_gate_gap,
             )
             _gap = handoff_gate_gap(state, session, registry)
@@ -416,7 +416,7 @@ def _check_constraint(name: str, cand: Candidate,
         # (计数/原因)落披露,模式对齐执行层 level_cap_rejects。
         if isinstance(a, LevelUp) and blood_budget_levelup_blocked(
                 state, session, registry):
-            from sr_od.application.currency_war.decision_v2.discipline import (
+            from sr_od.application.currency_war.decision.decision_v2.discipline import (
                 p1_levelup_stop_hp,
                 p2_levelup_stop_hp,
             )
@@ -442,7 +442,7 @@ def _check_constraint(name: str, cand: Candidate,
             # 与 E6 latch 一并退场,单一裁决点在 ev.levelup_ev_authorized:
             # [33] 人口位 / DP 花费授权(平台未破)/ 静态 EV 平台账)
             cost = _cost_of(cand)
-            from sr_od.application.currency_war.decision_v2.candidates import (
+            from sr_od.application.currency_war.decision.decision_v2.candidates import (
                 _target_names,
             )
             _basis = levelup_ev_basis(
@@ -629,7 +629,7 @@ def _p2_core_firstpiece_exempt(cand: Candidate, working: GameState,
             or boss_window_active(state, session, registry) \
             or current_mode(session) != 'economy':
         return False
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _core_names,
     )
     _name = cand.action.card.name
@@ -695,7 +695,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     内部调 assess_discipline 自取——数据通路单一,ADR-0326 方案 B)。
     """
     if disc_view is None:
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             assess_discipline,
         )
         disc_view = assess_discipline(state, session, registry)
@@ -724,10 +724,10 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 其它零分候选);非末窗 gap=0 零行为。
             _copy_ok = False
             if cand.tag == 'copy':
-                from sr_od.application.currency_war.decision_v2.discipline import (  # noqa: E501
+                from sr_od.application.currency_war.decision.decision_v2.discipline import (  # noqa: E501
                     p1_directed_downgrade_active,
                 )
-                from sr_od.application.currency_war.decision_v2.handoff import (  # noqa: E501
+                from sr_od.application.currency_war.decision.decision_v2.handoff import (  # noqa: E501
                     handoff_gate_gap,
                 )
                 # 血预算停手·P1-a 末窗支出降格(设计件 12 §5.3;ADR-0451):
@@ -901,7 +901,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         # 刷新收尾的授权前置拒付——血预算不足帧(急救型豁免/ALL IN 豁免
         # 在谓词内)所有刷新授权面(V_D 正分搜索/M-A 定向/release 泄息)
         # 一律停付:血线胜(seam §5.2 独立谓词 AND),M-A 预算不消耗。
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             blood_budget_refresh_blocked,
         )
         if blood_budget_refresh_blocked(state, session, registry):
@@ -950,7 +950,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                 # 逐帧重算)。essential 显式传 False;上方 M-A 定向授权
                 # 分支 essential=True 不截断、不经本门(末窗无下轮重摇,
                 # 截断=定向搜索永久丢失)。
-                from sr_od.application.currency_war.decision_v2.economy_cycle import (
+                from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
                     tier_truncated_spend,
                 )
                 _cost = cand.action.cost or 2
@@ -1041,7 +1041,7 @@ def _steady_levelup_pass(working: GameState, state: GameState,
     """
     if getattr(session, 'v2_steady_lv_used', False):
         return working
-    from sr_od.application.currency_war.decision_v2.remediation import (
+    from sr_od.application.currency_war.decision.decision_v2.remediation import (
         steady_state_levelup_group,
     )
     acts = steady_state_levelup_group(working, state, session, registry)

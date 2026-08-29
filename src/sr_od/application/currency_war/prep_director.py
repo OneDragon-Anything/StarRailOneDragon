@@ -1010,7 +1010,7 @@ class PrepDirector(SrOperation):
                 # 门拒绝陈值。
                 _st_t = ((st.plane - 1) * 9 + st.round_num) \
                     if (st.plane and st.round_num) else None
-                from sr_od.application.currency_war.cw_strategy import (
+                from sr_od.application.currency_war.decision.cw_strategy import (
                     gated_hp as _gh,
                 )
                 st.hp = _gh(st.hp, session, _st_t,
@@ -1914,8 +1914,8 @@ class PrepDirector(SrOperation):
         # 10s 后 shop 侧真 hp 又触发信号3保命反向换线(r68 实证:hp=100 转红A → hp=26 转DOT队,
         # 同节点两次方向相反 pivot = comp churn 主燃料)。
         if obs.state is not None:
-            from sr_od.application.currency_war.cw_strategy import gated_hp
-            from sr_od.application.currency_war.decision_v2.prep_brain import (
+            from sr_od.application.currency_war.decision.cw_strategy import gated_hp
+            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
                 committed_from,
                 drive_intention,
             )
@@ -2462,13 +2462,13 @@ class PrepDirector(SrOperation):
         对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
         消费,含 W536 买牌期望上报通道转正(蓝图 §7 批 1 行)。
         """
+        from sr_od.application.currency_war.decision.decision_v2.director_v2 import (
+            DirectorV2,
+            _DirectorPorts,
+        )
         from sr_od.application.currency_war.decision_assembly import (
             DecideAdapter,
             snapshot_from_obs,
-        )
-        from sr_od.application.currency_war.decision_v2.director_v2 import (
-            DirectorV2,
-            _DirectorPorts,
         )
         from sr_od.application.currency_war.kernel.cw_prep_actions import (
             DeployMove,
@@ -2686,7 +2686,7 @@ class PrepDirector(SrOperation):
 
     def _v2_outcome_to_round(self, outcome, forced_ok: bool) -> OperationRoundResult:
         """LoopOutcome → SrOperation 轮次语义(设计 §6 映射表;现役行为锚见行内)。"""
-        from sr_od.application.currency_war.decision_v2.director_v2 import (
+        from sr_od.application.currency_war.decision.decision_v2.director_v2 import (
             LoopOutcomeKind,
         )
         kind = outcome.kind

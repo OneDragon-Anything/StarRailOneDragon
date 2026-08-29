@@ -18,11 +18,11 @@ import copy
 from typing import Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.decision_v2.adapter import (
+from sr_od.application.currency_war.decision.decision_v2.adapter import (
     PREP_SUBSTATE_NAME,
     action_to_atomop,
 )
-from sr_od.application.currency_war.decision_v2.contracts import (
+from sr_od.application.currency_war.decision.decision_v2.contracts import (
     SNAPSHOT_SCHEMA_VERSION,
     AtomOp,
     Decision,
@@ -53,7 +53,7 @@ def install_obs_ports() -> None:
     未接通(缺省关)= 新局弃置残留容器时跳过 obs 模块级缓存清理——
     session 全量重建承担状态隔离,仅 last-known-good 观测缓存延用旧值。
     """
-    from sr_od.application.currency_war.cw_strategy import set_obs_reset_hook
+    from sr_od.application.currency_war.decision.cw_strategy import set_obs_reset_hook
     from sr_od.application.currency_war.obs.cw_observation import (
         reset_phase_round_cache,
     )
@@ -153,7 +153,7 @@ class DecideAdapter:
 
     def decide(self, snapshot: Snapshot,
                session: StrategySession) -> Decision:
-        from sr_od.application.currency_war.decision_v2 import prep_brain
+        from sr_od.application.currency_war.decision.decision_v2 import prep_brain
         if not snapshot.classification.confident:
             raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
         # 迁移迁移批 1(守卫分区) 装配点管线:TurnState 一次装配(方向/预算投影)+ _select

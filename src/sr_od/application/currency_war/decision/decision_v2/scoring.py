@@ -18,9 +18,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.decision_v2.filters import (
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision.decision_v2.filters import (
     crisis_hoard_active,
     is_emergency,
 )
@@ -171,7 +171,7 @@ def _core_star_count(state: GameState, session: StrategySession,
     /凑合副本 ≈0 分(第六局 run_20260825_115418:r1 三月七 2★ 达成、
     r6 换阵卖出、boss 板全 1★,-32 伤害罚款残留)。
     """
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
     tset = _target_names(state, session)
@@ -202,7 +202,7 @@ def _merge_progress_count(state: GameState, session: StrategySession,
     core_star(star≥2 门)/rung(整数档)全维度零 delta → 仲裁层
     「非正分」拒 → 金 59→90 溢出趴三轮([17] >50 每一分都该花)。
     """
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
     tset = _target_names(state, session)
@@ -262,7 +262,7 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # 开关关(基线臂)时零漂移。
     _rel_gate = False
     if session is not None:
-        from sr_od.application.currency_war.decision_v2.posture_release import (
+        from sr_od.application.currency_war.decision.decision_v2.posture_release import (
             spend_gate_active,
         )
         _rel_gate = spend_gate_active(session, registry)
@@ -276,7 +276,7 @@ def score_state(state: GameState, registry: DecisionV2Registry,
     # cap_frac)——持有进度顶格不再=满形态(残差根因的配套修)
     targets = 0.0
     if session is not None:
-        from sr_od.application.currency_war.decision_v2.candidates import (
+        from sr_od.application.currency_war.decision.decision_v2.candidates import (
             _target_names,
         )
         tset = _target_names(state, session)
@@ -492,7 +492,7 @@ def engine_jump_gold(eng_from: int, state: GameState,
     """
     if eng_from < 0 or eng_from + 1 > 2:
         return 0.0
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
         cross_plane_remaining_nodes,
     )
@@ -712,7 +712,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     if math.isinf(e) or e <= 0:
         return None    # 该等级刷不到此费(p=0)→ D 无对象
     # 收益侧:F15 成型跳变金值(registry 常量单一源,零新魔数)
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         cross_plane_remaining_nodes,
     )
     r = cross_plane_remaining_nodes(state)
@@ -731,7 +731,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         #   溢余段金堆到死,面值成本高估 ≥20×;[17] 溢余即花)
         # 预算硬界必须在(P11 推论):C_dec→0 后 EV 不再是约束,约束移到
         # 预算层——批口径期望刷金 s ≤ g − boss_floor,防「C=0 无限刷」。
-        from sr_od.application.currency_war.decision_v2.ev import (
+        from sr_od.application.currency_war.decision.decision_v2.ev import (
             battles_left_plane,
         )
         benefit = (drung * r + dwin * registry.vd_p2_loss
@@ -747,7 +747,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         # 开关关(基线臂)时零漂移。
         _rel_gate = False
         if session is not None:
-            from sr_od.application.currency_war.decision_v2.posture_release import (
+            from sr_od.application.currency_war.decision.decision_v2.posture_release import (
                 spend_gate_active,
             )
             _rel_gate = spend_gate_active(session, registry)
@@ -759,7 +759,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         c_dec = (max(0, d_int) * min(r, registry.vd_p2_recovery_rounds)
                  + registry.vd_p2_liquidity_rho * spend)
         return benefit - c_dec
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
     )
     benefit = (drung * r + dwin * p1_battle_loss_est(state, registry,
@@ -834,7 +834,7 @@ def _off_lock_demotion(cand: Candidate, state: GameState,
         return ''
     if cand.tag == 'line_opportunistic' \
             and registry.off_lock_final_fence_enabled:
-        from sr_od.application.currency_war.decision_v2.discipline import (
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
             boss_window_active,
         )
         from sr_od.application.currency_war.kernel.cw_plane_table import (
@@ -910,7 +910,7 @@ def score_candidate(cand: Candidate, state: GameState,
         # piggy_refresh_ev 独立小额账;受 P8 上限辖:s≤0.277R(采前
         # R=6-9 → s≤2金)→ 豁免限 piggy_refresh_round_cap 次/节点,
         # 超出按无证拒(V_D 不足以放行时回负分)。
-        from sr_od.application.currency_war.decision_v2.ev import (
+        from sr_od.application.currency_war.decision.decision_v2.ev import (
             reward_node_is_battle,
         )
         vd = vd_refresh_score(state, session, registry)
@@ -949,7 +949,7 @@ def score_candidate(cand: Candidate, state: GameState,
     int_emb = after.get('interest', 0.0) - base.get('interest', 0.0)
     _rel_gate = False
     if session is not None:
-        from sr_od.application.currency_war.decision_v2.posture_release import (
+        from sr_od.application.currency_war.decision.decision_v2.posture_release import (
             spend_gate_active,
         )
         _rel_gate = spend_gate_active(session, registry)
@@ -993,7 +993,7 @@ def score_candidate(cand: Candidate, state: GameState,
                 )
                 _c = _CH.get(getattr(_bc, 'char_id', '') or '')
                 if _c is not None and _c.cost:
-                    from sr_od.application.currency_war.decision_v2.discipline import (
+                    from sr_od.application.currency_war.decision.decision_v2.discipline import (
                         sell_score_weight,
                     )
                     w = sell_score_weight(_c.cost, registry)

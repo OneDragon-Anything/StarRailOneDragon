@@ -1400,7 +1400,7 @@ def _seg_transition_cost_max() -> int:
     当前推导恒 {1,2})取 max——[30] 过渡阵容羁绊件基本在 1-2 费带的
     口述锚由 press_band 的 {1,2} 覆盖规则承载,检查器侧不再独立持有
     数值(消灭两处漂移可能)。"""
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         press_channel_max_band,
     )
     return max(press_channel_max_band())
@@ -1463,7 +1463,7 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
     - C-D 非重复散件未买(¬is_dup_held)→ 真拦(现行语义保持)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         press_band,
     )
     from sr_od.application.currency_war.kernel.cw_line_defs import (
@@ -1548,7 +1548,7 @@ def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
       「完全没必要买」合法面;检查器不许再当候选发射违规)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         press_band,
     )
     from sr_od.application.currency_war.kernel.cw_line_defs import (
@@ -4100,8 +4100,8 @@ def check_decision_v2_candidate_coverage(
        的全批已执行动作类必须含 BuyCard/LevelUp(每批必然态,缺 =
        死路形态);deploy/refresh/合成可策略性零采纳 → 披露不辖。
     """
-    from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         ACTION_CLASSES,
         generate_candidates,
     )
@@ -4196,7 +4196,7 @@ def check_decision_v2_arbiter_matrix() -> dict:
     声明;空格/未知约束名=违规。新增动作类型或资源维时本检查强制
     过检(通道制漏门病 r408/[32] 全是事后补的根治)。
     """
-    from sr_od.application.currency_war.decision_v2.arbiter import (
+    from sr_od.application.currency_war.decision.decision_v2.arbiter import (
         build_audit_report,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
@@ -4226,8 +4226,8 @@ def check_decision_v2_telemetry_contract() -> dict:
     """
     import re
 
-    from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2.strategy import (
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.decision_v2.strategy import (
         DecisionV2Strategy,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
@@ -4455,9 +4455,9 @@ def check_decision_v2_supply_label_consistency() -> dict:
     变异自检:测试仓锁测试 monkeypatch _buy_tag 关标签 → 必须涌现
     违规(去门变异必红)。
     """
-    from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2 import candidates as _c
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.decision_v2 import candidates as _c
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         generate_candidates,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
@@ -4563,8 +4563,8 @@ def check_w300_press_channel_probe() -> dict:
     from dataclasses import replace
     from types import SimpleNamespace
 
-    from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _buy_tag,
         generate_candidates,
     )

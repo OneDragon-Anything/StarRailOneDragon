@@ -10,7 +10,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.decision.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -371,7 +371,7 @@ class BuyShopCards(SrOperation):
         # ⚖️ r68 review 新鲜度门(单源 helper cw_strategy.gated_hp;director 环入口同门):
         # 结算 hp 只在「紧邻上一节点」才可覆盖 —— 低 conf 结算轮 last_hp 残留陈值,无条件覆盖 =
         # 陈 hp 冻结毒化每回合 prep(保血/转型永不触发,P1 boss 赢→P2 秒死 ×3 的观测链根因)。
-        from sr_od.application.currency_war.cw_strategy import gated_hp
+        from sr_od.application.currency_war.decision.cw_strategy import gated_hp
         from sr_od.application.currency_war.obs.cw_observation import read_phase_round
         _pr = read_phase_round(self.ctx, screen)
         _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
@@ -400,7 +400,7 @@ class BuyShopCards(SrOperation):
         if match is None:
             # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
             # (default 栈退役后,防御具现改用唯一策略载体 decision_v2)
-            from sr_od.application.currency_war.decision_v2.strategy import (
+            from sr_od.application.currency_war.decision.decision_v2.strategy import (
                 DecisionV2Strategy,
             )
             _def = DecisionV2Strategy()
@@ -461,7 +461,7 @@ class BuyShopCards(SrOperation):
             # (遥测指纹:每轮首条 True、循环内全 False)。修:dual 态单一源挂 session
             # (cw_strategy),循环态每轮拷贝(仿 hp/node_type 同法);读端 =
             # R1 唯一合法读端 committed_from(蓝图 §4.3,禁 session 直读散落)。
-            from sr_od.application.currency_war.decision_v2.prep_brain import (
+            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
                 committed_from,
             )
             state.dual_track_phase = not committed_from(match.session)
@@ -932,7 +932,7 @@ class BuyShopCards(SrOperation):
                         # 决策层已在动作采纳处登记(arbiter/carry_gate/补偿器),此处
                         # 执行侧幂等加固——执行成功是卖出事实的权威(register_round_sold
                         # 带轮键自校验,跨轮误写防御)。
-                        from sr_od.application.currency_war.decision_v2.discipline import (
+                        from sr_od.application.currency_war.decision.decision_v2.discipline import (
                             register_round_sold,
                         )
                         register_round_sold([_expected], state, match.session)

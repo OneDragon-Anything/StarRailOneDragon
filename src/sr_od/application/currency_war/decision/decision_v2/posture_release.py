@@ -64,8 +64,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.posture import Posture
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.posture import Posture
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -146,11 +146,11 @@ def flip_hit(state: GameState, session: StrategySession,
 
     phase_value 参数保留(调用方契约不变;新谓词不再消费)。
     """
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         channel_capacity,
         overflow,
     )
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         is_emergency,
     )
     if is_emergency(state, registry):
@@ -167,7 +167,7 @@ def boss_first_buy_phase(state: GameState, session: StrategySession,
     复用既有统一口径(节点图 node_type∈boss_round_node_types 为主,
     r≥9 轮数仅作 node_type 缺读兜底)——不另造第二 boss 窗判据。
     """
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         boss_window_active,
     )
     return boss_window_active(state, session, registry)
@@ -180,7 +180,7 @@ def _findable_in_shop(state: GameState, session: StrategySession,
     名集单一源=decision_v2.filters._refreshable_names(定向刷新同款
     名单,只作存在性判与评分先验,买谁由 EV 层定价)。
     """
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         _refreshable_names,
     )
     names = _refreshable_names(state, session, registry)
@@ -200,7 +200,7 @@ def release_directive(state: GameState, session: StrategySession,
     义务不缩水既有臂(取 max),容量封顶防把金推进负 EV 件。
     """
     cost = refresh_cost_of(state)
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         obligation,
     )
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -272,10 +272,10 @@ def release_directive(state: GameState, session: StrategySession,
     # 在上分支已产出正预算指令。应急帧让位(保血域,辖区不相交)。
     # DP 罚项案(ADR-0445 拒绝的选项②)是本门的退化路径:若校正覆盖
     # 不到的路径仍现姿态-义务脱钩,另批升级。
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         overflow as _overflow,
     )
-    from sr_od.application.currency_war.decision_v2.filters import (
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
         is_emergency,
     )
     if is_emergency(state, registry):
@@ -367,7 +367,7 @@ def authorize_release_refresh(session: StrategySession,
     # 溢余支出(负分搜索刷新,essential=False)——花后不跨息档才放行,
     # 残差不足一刷的余量结转下轮(义务逐帧重算,零成本)。essential=True
     # 车道(M-A 定向授权/正账买牌)不经本门,截断辖域天然不含。
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         tier_truncated_spend,
     )
     if tier_truncated_spend(working_gold, cost, essential=False) < cost:

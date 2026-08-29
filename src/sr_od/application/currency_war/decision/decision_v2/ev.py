@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision_v2.posture import Posture
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.posture import Posture
 from sr_od.application.currency_war.kernel.cw_economy import _vd_core_of
 from sr_od.application.currency_war.kernel.cw_intention import (
     total_remaining_nodes,

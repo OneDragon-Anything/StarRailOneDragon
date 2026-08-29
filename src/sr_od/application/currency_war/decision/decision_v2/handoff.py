@@ -34,7 +34,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from dataclasses import replace as dataclasses_replace
 
-from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -123,7 +123,7 @@ def handoff_snapshot(state: GameState,
     deployed 域同「P1 出口」;gold 已含 P2 r1 轮收入(生产/sim 同构,
     亦与离线标定语料同口径——标定读的 decisions 行即此时点)。
     """
-    from sr_od.application.currency_war.decision_v2.phase import form_score
+    from sr_od.application.currency_war.decision.decision_v2.phase import form_score
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
         _board_factions_of,
         _engines_count,
@@ -253,12 +253,12 @@ def directed_refresh_budget(state: GameState, session: StrategySession,
     同一动作不存在两条授权来源叠加。
     """
     reg = registry if registry is not None else _default_registry()
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
 
     # 追名 peak≥2 判据:追名名集内某名 star 加权副本 ∈ [2,3)
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         star_weighted_copies,
     )
     names = _target_names(state, session)

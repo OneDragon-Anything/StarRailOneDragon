@@ -5,7 +5,7 @@
 策略 id 构造期即校验,未注册 id 显式报错(无静默回退)。
 
 ``DecisionV2Strategy`` 的实现体在框架实现包
-``sr_od.application.currency_war.decision_v2.strategy``(四层:候选生成→
+``sr_od.application.currency_war.decision.decision_v2.strategy``(四层:候选生成→
 硬过滤→板面评分→预算仲裁),不在扫描面内——本文件是**桥**:定义一个
 零逻辑复制的壳子类把它接入注册面(ADR-0290 渐进迁移的开关注入位:
 观察局/灰度走本桥,框架演进仍在 decision_v2 单一源)。
@@ -18,7 +18,7 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.decision_v2.strategy import (
+from sr_od.application.currency_war.decision.decision_v2.strategy import (
     DecisionV2Strategy,
 )
 

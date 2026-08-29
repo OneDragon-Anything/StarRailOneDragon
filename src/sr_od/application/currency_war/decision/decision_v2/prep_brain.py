@@ -18,13 +18,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.decision_v2.contracts import (
+from sr_od.application.currency_war.decision.decision_v2.contracts import (
     Bail,
     Decision,
     Defer,
     Snapshot,
 )
-from sr_od.application.currency_war.decision_v2.turn_state import (
+from sr_od.application.currency_war.decision.decision_v2.turn_state import (
     BudgetView,
     DirectionView,
     TurnState,
@@ -34,7 +34,7 @@ from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
@@ -157,7 +157,7 @@ def _budget(state: Any, session: StrategySession,
     的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
     效率复核判据:decide 热点回落)。
     """
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         obligation,
     )
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -185,7 +185,9 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     批 1 现状:投影已装配、未消费(决策路径仍走老决策核;消费接线归
     批 2)——投影现值仅作装配点数据流与遥测面。
     """
-    from sr_od.application.currency_war.decision_v2.adapter import decision_state
+    from sr_od.application.currency_war.decision.decision_v2.adapter import (
+        decision_state,
+    )
 
     reg = registry or DEFAULT_REGISTRY
     state = decision_state(snapshot, session)
@@ -203,7 +205,9 @@ def _select(turn: TurnState, strategy: Any, session: StrategySession,
     输入视图经 adapter.snapshot_to_obs 重建(与旧环同一条 obs 通道,
     行为等价由构造保证;单帧等价锁钉住该性质)。
     """
-    from sr_od.application.currency_war.decision_v2.adapter import snapshot_to_obs
+    from sr_od.application.currency_war.decision.decision_v2.adapter import (
+        snapshot_to_obs,
+    )
     return strategy.decide_prep_action(
         snapshot_to_obs(turn.snap, session), session, config)
 
@@ -220,7 +224,9 @@ def decide(turn: TurnState, strategy: Any, session: StrategySession,
     非法 = 拒绝执行 + 计 stall,不进失败/恢复链);非法 → 返回空 ops 决策
     (执行环空批语义 = 计 stall + 轻观察,与旧环拒绝路径同型)。
     """
-    from sr_od.application.currency_war.decision_v2.adapter import action_to_atomop
+    from sr_od.application.currency_war.decision.decision_v2.adapter import (
+        action_to_atomop,
+    )
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         BailToOuter,
         DeferSpheres,

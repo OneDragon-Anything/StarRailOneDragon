@@ -22,7 +22,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
-from sr_od.application.currency_war.decision_v2.contracts import Snapshot
+from sr_od.application.currency_war.decision.decision_v2.contracts import Snapshot
 from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 

@@ -33,7 +33,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
-from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BUCKET_MIN_N,
     DEPTH_BUCKET_W,
@@ -45,11 +44,12 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
     REFRESH_PROB,
 )
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 # 血预算停手·终止分支账本决策位(设计 W659 v2 §5.1 R4;ADR-0469)——
 # 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
 # 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
-from sr_od.application.currency_war.decision_v2.discipline import (  # noqa: E402
+from sr_od.application.currency_war.decision.decision_v2.discipline import (  # noqa: E402
     terminal_release_bit,
 )
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
@@ -1086,7 +1086,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         构造——跳过 P1 段与开局 bench 采样,直接从真值进场态跑 P2 段。
         共享本函数的 P2 段循环体 = 单一源,迁移审计 w186(git 历史) 设计 §4 的消复制形态)。
     """
-    from sr_od.application.currency_war.decision_v2.strategy import (
+    from sr_od.application.currency_war.decision.decision_v2.strategy import (
         DecisionV2Strategy,
     )
     if planes not in (1, 2):
@@ -3040,7 +3040,7 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
     import logging
     import statistics
 
-    from sr_od.application.currency_war.decision_v2.strategy import (
+    from sr_od.application.currency_war.decision.decision_v2.strategy import (
         DecisionV2Strategy,
     )
     logging.disable(logging.CRITICAL)   # 批量跑静音(决策日志逐段刷屏)
@@ -3381,7 +3381,7 @@ def synthesize_snapshot(st: GameState,
     import copy
     from types import MappingProxyType
 
-    from sr_od.application.currency_war.decision_v2.contracts import (
+    from sr_od.application.currency_war.decision.decision_v2.contracts import (
         SNAPSHOT_SCHEMA_VERSION,
         Snapshot,
         SubstateClassification,

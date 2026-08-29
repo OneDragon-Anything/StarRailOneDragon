@@ -182,7 +182,7 @@ def main() -> None:
             i += 1
 
     if strategy == 'decision_v2':
-        from sr_od.application.currency_war.decision_v2.strategy import (
+        from sr_od.application.currency_war.decision.decision_v2.strategy import (
             DecisionV2Strategy,
         )
         strat = DecisionV2Strategy()

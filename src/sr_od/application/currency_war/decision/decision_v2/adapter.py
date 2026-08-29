@@ -25,7 +25,7 @@ import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.decision_v2.contracts import (
+from sr_od.application.currency_war.decision.decision_v2.contracts import (
     AtomOp,
     Snapshot,
 )
@@ -36,7 +36,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY, GameState
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 #: 决策子态名(适配器只服务备战决策环;分类可信度由框架门在环顶拦截,
 #: 进本模块的快照恒 confident——``DecideAdapter.decide`` 断言此前提)。
@@ -120,7 +120,7 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     与现役 ``_pseudo_state`` 的关键差异 = `w598_contracts_adversarial/` 映射义务清单四字段显式注入;
     其中 ``active_strategies`` 注入修复现役伪态漏拷裂缝(见模块 docstring)。
     """
-    from sr_od.application.currency_war.cw_strategy import gated_hp
+    from sr_od.application.currency_war.decision.cw_strategy import gated_hp
 
     st = snapshot_to_obs(snapshot, session).state
     st.board = dict(snapshot.board) if snapshot.board is not None else {}
@@ -134,7 +134,9 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     # (prep_brain.committed_from,内部 = cw_intention 权威派生);
     # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填
     # (值源 = 方向层权威,P1 同 commit 面)。
-    from sr_od.application.currency_war.decision_v2.prep_brain import committed_from
+    from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+        committed_from,
+    )
     st.dual_track_phase = not committed_from(session)
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])

@@ -29,10 +29,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.decision_v2.candidates import Candidate
-from sr_od.application.currency_war.decision_v2.discipline import (
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+from sr_od.application.currency_war.decision.decision_v2.candidates import Candidate
+from sr_od.application.currency_war.decision.decision_v2.discipline import (
     _char_bonds,
     _line_protect_set,
     engine_char_names,
@@ -493,7 +493,7 @@ def steady_state_levelup_group(working: GameState, state: GameState,
     # 「为未来人口买经验」的追级形态(hp 危机下金兑现不到一场活),
     # hp ≤ 停升级线时整组拒发(ALL IN 窗豁免在谓词内)。拒付计数进
     # session 披露(单位=拒付事件,1 组计 1)。
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         blood_budget_levelup_blocked,
     )
     if blood_budget_levelup_blocked(state, session, registry):
@@ -508,14 +508,14 @@ def steady_state_levelup_group(working: GameState, state: GameState,
         return []    # cap 未满:方向件直接上场即可([32](b) 升级纯浪费)
     if bench_occupied(state.bench or []) == 0:
         return []
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
     if not any(b is not None and b.char_id in _target_names(state, session)
                for b in (state.bench or [])):
         return []    # bench 无方向件:非 [33] 人口位形态
     # 前置守卫(_compensate_slot 臂① 同款)
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         levelup_ev_basis,
     )
     # W255/ADR-0410:旧「boss 轮不发升级组」守卫删——[32] 节点无关,
@@ -582,7 +582,7 @@ def _compensate_slot(working: GameState, state: GameState,
     if in_char is None:
         return []
     # ① LevelUp 臂(优先:升级不损件;H2 n 次点击整组)
-    from sr_od.application.currency_war.decision_v2.candidates import (
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
         _target_names,
     )
 
@@ -592,10 +592,10 @@ def _compensate_slot(working: GameState, state: GameState,
     # 的升级收益解的是**下轮**部署(cap+n 击后才 +1,本函数注释原文),
     # 属「≥1 战后兑现」的未来收益支出——停升级线内跳过①落②换位
     # (SwapDeploy 不花金,不在停手辖域;ALL IN 窗豁免在谓词内)。
-    from sr_od.application.currency_war.decision_v2.discipline import (
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
         blood_budget_levelup_blocked,
     )
-    from sr_od.application.currency_war.decision_v2.ev import (
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
         levelup_ev_basis,
     )
     _blood_stop = blood_budget_levelup_blocked(state, session, registry)

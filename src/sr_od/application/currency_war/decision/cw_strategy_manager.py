@@ -32,7 +32,7 @@ from one_dragon.utils.plugin_module_loader import (
     import_module_from_file,
     resolve_module_name,
 )
-from sr_od.application.currency_war.cw_strategy import CwStrategy
+from sr_od.application.currency_war.decision.cw_strategy import CwStrategy
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
