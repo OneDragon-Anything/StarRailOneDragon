@@ -1037,8 +1037,12 @@ class DefaultCwStrategy(CwStrategy):
         # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
         # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)
         # 空转——r≥8 终局件提前上场+配方 carry 可被卖。单一源在 session
-        # (r73 RC3),此处与 shop 循环态同款拷贝。
-        st.dual_track_phase = bool(getattr(session, 'dual_track_phase', False))
+        # (r73 RC3),此处与 shop 循环态同款拷贝;读端 = R1 唯一合法读端
+        # committed_from(蓝图 §4.3)。
+        from sr_od.application.currency_war.decision_v2.prep_brain import (
+            committed_from,
+        )
+        st.dual_track_phase = not committed_from(session)
         # W148(ADR-0358,W92 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
         # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
         # 面特征可见;空快照=默认 [] 语义不变)。

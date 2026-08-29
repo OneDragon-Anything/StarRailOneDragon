@@ -1157,19 +1157,13 @@ class DecisionV2Registry:
     #: ADR-0442 删除裁决段。
     framework_startup_v2_enabled: bool = False
 
-    # ===== DirectorV2 备战循环开关(新旧环 A/B;W606 阶段2批③)=====
-    #: True = prep_director 环入口走 DirectorV2 循环(快照契约 + 适配器,
-    #: decision_v2/adapter.py);False = 现役环逐位不动(零漂移锚)。
-    #: **默认关的合法性**(策略开关生命周期门):唯一合法理由 = 行为输入
-    #: 未就绪——实机同 obs 同策略影子对拍数据(协议 = 设计文档 §7,门1
-    #: n≥100 步逐位分歧=0 + 门2 逆真值 fixture 全绿)尚未采集。开臂判据
-    #: 挂账(不执行):双门全绿 ∧ 测试全量绿 → 单独 commit + ADR 翻默认;
-    #: 判据满足前禁翻(悬置默认关禁止,判据到期须裁决走完闭环)。
-    director_v2_prep_enabled: bool = False
-    #: 影子比对开关(与开臂开关独立;旧环恒当权,新环只观察不执行):
+    # ===== DirectorV2 备战循环(W606 阶段2批③落件;W620 批1升正)=====
+    #: W620 批 1(蓝图 §7 批 1 行):DirectorV2 接线升正,新环 = 唯一生产
+    #: 路径——无开关 directive(蓝图 §8),``director_v2_prep_enabled`` 随
+    #: 接线完成删除(存在理由消失);回退 = git revert。
+    #: 影子比对开关(纯诊断工具,sim/离线对拍用;不改任何游戏动作):
     #: True 时旧环每步 decide 后同帧跑适配器影子决策并逐位对照(异常全
-    #: 隔离计数留证,零当权风险——见 adapter.shadow_compare_step)。采集
-    #: 完成即回 False;本开关不改变任何游戏动作。
+    #: 隔离计数留证)。采集完成即回 False;旧环随批 3 退役时生产分支一并删。
     director_v2_shadow_compare: bool = False
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====

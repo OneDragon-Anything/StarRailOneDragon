@@ -50,9 +50,31 @@ REFRESH_ROLL_CAP: int = 6
 
 def _upgrade_scheduled(state: GameState, session: StrategySession) -> bool:
     """排程升级判据(DP 姿态 level_up 单一源;None=DP 不可达,保守 False)。"""
+    return schedule_upgrade(state, session)
+
+
+def schedule_upgrade(state: GameState, session: StrategySession) -> bool:
+    """排程升级判据(蓝图 §3.4 R4 可替换接缝;公开纯函数)。
+
+    消费方接口形状 = 布尔判据;现役实现 = DP 姿态 level_up 单一源,
+    未来换排程查表时只改本函数体,消费方不变。
+    """
     from sr_od.application.currency_war.decision_v2.ev import round_posture
     posture = round_posture(state, session)
     return posture is not None and bool(getattr(posture, 'level_up', False))
+
+
+def refresh_ev_budget(state: GameState, session: StrategySession) -> int:
+    """刷新 EV 授权刷数(蓝图 §3.4 R4 可替换接缝;公开纯函数)。
+
+    现役实现 = DP 姿态 refresh_budget 单一源;DP 不可达/无授权 → 0
+    (保守侧:容量缩、义务缩)。未来换单步 EV 计算时只改本函数体。
+    """
+    from sr_od.application.currency_war.decision_v2.ev import round_posture
+    posture = round_posture(state, session)
+    if posture is None:
+        return 0
+    return int(getattr(posture, 'refresh_budget', 0) or 0)
 
 
 def upgrade_plan_fee(state: GameState) -> int:

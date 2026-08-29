@@ -1942,9 +1942,13 @@ class PrepDirector(SrOperation):
         # 同节点两次方向相反 pivot = comp churn 主燃料)。
         if obs.state is not None:
             from sr_od.application.currency_war.cw_strategy import gated_hp
+            from sr_od.application.currency_war.decision_v2.prep_brain import (
+                committed_from,
+            )
             _os = obs.state
-            # r73 RC3:dual 态从 session 拷回(单一源;read 新对象默认 False 会冲掉双轨门)
-            _os.dual_track_phase = getattr(session, 'dual_track_phase', False)
+            # r73 RC3:dual 态拷回(读端 = R1 唯一合法读端 committed_from;
+            # 单一源在 session,read 新对象默认 False 会冲掉双轨门)
+            _os.dual_track_phase = not committed_from(session)
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
             _os.hp = gated_hp(_os.hp, session, _os_t,
                               current_readable=bool(getattr(_os, 'hp_readable', True)))
@@ -1952,14 +1956,14 @@ class PrepDirector(SrOperation):
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
-        # W606:DirectorV2 开关分支(registry 载体,默认关 = 本行恒 False、
-        # 旧环逐位不动)。共享前置(gate/bench-full 破警告/gated_hp/
-        # update_target)全在本分支之前,新旧环共用零重写。
-        from sr_od.application.currency_war.decision_v2.adapter import (
-            director_v2_enabled,
-        )
-        if director_v2_enabled(match.strategy):
-            return self._run_prep_loop_v2(match, session, config)
+        # W620 批 1(蓝图 §7 批 1 行):DirectorV2 接线升正——新环 = 唯一
+        # 生产路径(无开关 directive,`director_v2_prep_enabled` 已删;回退
+        # = git revert)。共享前置(gate/bench-full 破警告/gated_hp/
+        # update_target)全在此前,新旧环共用零重写。
+        return self._run_prep_loop_v2(match, session, config)
+
+        # ---- 旧环主体(生产不再可达;保留至批 3 退役,蓝图 §5 批 1 行
+        # 「旧 prep_director 并行一窗口后退役」。期间仅离线/影子对照复用)----
         while True:
             # ⚖️ W209j 刹车语义(run 27 停机事故第三层实证,ADR-0388):停机标志
             # 设置后本循环曾继续发 StartBattle——14:09:08 Deploy 钩子 stop_running
@@ -2458,14 +2462,21 @@ class PrepDirector(SrOperation):
     # .debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md §5/§6)=====
 
     def _run_prep_loop_v2(self, match, session, config) -> OperationRoundResult:
-        """DirectorV2 备战循环(开关开才达此;端口全部复用现役件)。
+        """DirectorV2 备战循环(W620 批 1 起 = 唯一生产路径;端口全部复用现役件)。
 
-        端口映射:decide/execute = adapter.DecideAdapter(现役决策核 +
-        现役执行器 F3 验证链);observe = 本类 _observe → snapshot_from_obs;
-        recover = try_recovery(旧环恢复原语,返回「关过已知弹层」bool);
-        force_battle/is_stopped/stop_with_evidence 见内联。出口 → 轮次
-        语义映射见 ``_v2_outcome_to_round``。
+        端口映射:decide/execute = adapter.DecideAdapter(经 prep_brain
+        装配点管线,现役决策核 + 现役执行器 F3 验证链);observe = 本类
+        _observe → snapshot_from_obs;recover = try_recovery(旧环恢复原语,
+        返回「关过已知弹层」bool);force_battle/is_stopped/stop_with_evidence
+        见内联。出口 → 轮次语义映射见 ``_v2_outcome_to_round``。
+
+        动作级记账通道(旧环逐位对齐,零决策):期望态构建/前读在 execute
+        端口,同帧对账族在 heavy 观察端口——旧环在循环体里逐帧消费的
+        记账面(paddle 审计/买牌·拖动·装备·经验·羁绊·商店池·合成预览
+        对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
+        消费,含 W536 买牌期望上报通道转正(蓝图 §7 批 1 行)。
         """
+        from sr_od.application.currency_war.cw_observation import read_deployed_count
         from sr_od.application.currency_war.decision_v2.adapter import (
             DecideAdapter,
             snapshot_from_obs,
@@ -2474,13 +2485,95 @@ class PrepDirector(SrOperation):
             DirectorV2,
             _DirectorPorts,
         )
-        from sr_od.application.currency_war.prep_actions import StartBattle
+        from sr_od.application.currency_war.prep_actions import (
+            DeployMove,
+            LevelUp,
+            RunBuyPhase,
+            SellBench,
+            SellDeployed,
+            StartBattle,
+        )
 
         adapter = DecideAdapter(match.strategy, config, self._executor)
         forced_ok = {'ok': False}   # force_battle 端口结果(出口映射消费)
+        # 动作级记账状态(端口间传递;生命周期 = 单步,每次 execute 重置)
+        acct: dict = {'last_obs': None, 'key': None, 'progressed': False,
+                      'drag_expect': None, 'equip_expect': None,
+                      'dep_delta': 0, 'dep_pre': None, 'unit_open': False}
 
         def _observe_port(heavy: bool):
-            return snapshot_from_obs(self._observe(heavy), session)
+            obs = self._observe(heavy)
+            acct['last_obs'] = obs
+            if heavy:
+                # heavy 定型帧上的同帧对账族(旧环同款时点:动作完成后
+                # heavy 重观察帧;零决策记账,异常不阻塞环)
+                self._v2_post_frame_accounting(obs, acct, session)
+            return snapshot_from_obs(obs, session)
+
+        def _decide_port(snapshot, session_):
+            decision = adapter.decide(snapshot, session_)
+            # F8 步进遥测(旧环 _record_step 同款;obs = 最近观察帧)
+            if acct['last_obs'] is not None and adapter.last_action is not None:
+                self._record_step(acct['last_obs'], adapter.last_action)
+            return decision
+
+        def _execute_port(op) -> tuple[bool, str]:
+            action = adapter.bound_action(op.op_key)
+            if action is None:
+                return False, f'v2适配器:op_key 无绑定 {op.op_key}'
+            obs = acct['last_obs']
+            key = op.op_key
+            acct.update(key=key, progressed=False, drag_expect=None,
+                        equip_expect=None, dep_delta=0, dep_pre=None,
+                        unit_open=False)
+            # 期望态构建 + 前读(旧环动作发出点同款;None=无法建真值不评)
+            if isinstance(action, (SellBench, DeployMove)) and obs is not None:
+                acct['drag_expect'] = compute_drag_expect(
+                    action, obs.bench_chars, obs.deployed_chars)
+            if isinstance(action, SellDeployed):
+                acct['equip_expect'] = self._equip_expect_for_sell(action)
+            if isinstance(action, (DeployMove, SellDeployed)):
+                acct['dep_delta'] = 1 if isinstance(action, DeployMove) else -1
+                _dep_frame = getattr(self, 'last_screenshot', None)
+                if _dep_frame is not None:
+                    try:
+                        acct['dep_pre'] = read_deployed_count(self.ctx, _dep_frame)
+                    except Exception:   # noqa: BLE001  观测 best-effort
+                        acct['dep_pre'] = None
+            acct['unit_open'] = isinstance(action, RunBuyPhase)
+            if acct['unit_open'] and obs is not None:
+                self._spend_unit_open(obs)
+            try:
+                progressed, detail = adapter.execute(op)
+            except Exception as e:
+                if acct['unit_open']:
+                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
+                                           boundary='aborted')
+                raise
+            if acct['unit_open']:
+                self._spend_unit_close(progressed=progressed, detail=detail,
+                                       boundary='closed' if progressed else 'failed')
+            acct['progressed'] = progressed
+            log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
+            # 期望态层·经验(W552;仅 progressed 分支,旧环同款)
+            if progressed and isinstance(action, LevelUp):
+                self._xp_apply_levelup()
+            elif progressed and isinstance(action, RunBuyPhase):
+                self._xp_apply_buy_clicks(detail)
+            # r292+P0③:EnsureShopClosed 执行成功后 = 店确定关的可靠时点
+            #(节点行探针挂点;前置 wait_stable_frame 无条件化,离线契约放行)
+            if 'EnsureShopClosed' in key and progressed:
+                try:
+                    from sr_od.application.currency_war.cw_observation_gate import (
+                        PROFILE_CLOSED,
+                        wait_stable_frame,
+                    )
+                    wait_stable_frame(self, profile=PROFILE_CLOSED,
+                                      segment='op_settle')
+                except Exception:   # noqa: BLE001  离线契约:放行
+                    pass
+                self._probe_node_type()
+            return progressed, detail
 
         def _recover_port() -> bool:
             _prim, closed_known = try_recovery(self, self.ctx)
@@ -2532,9 +2625,9 @@ class PrepDirector(SrOperation):
                 pass
 
         ports = _DirectorPorts(
-            decide=adapter.decide,
+            decide=_decide_port,
             observe=_observe_port,
-            execute=adapter.execute,
+            execute=_execute_port,
             recover=_recover_port,
             force_battle=_force_battle_port,
             is_stopped=_is_stopped,
@@ -2543,6 +2636,63 @@ class PrepDirector(SrOperation):
         )
         outcome = DirectorV2(ports).run(session)
         return self._v2_outcome_to_round(outcome, forced_ok['ok'])
+
+    def _v2_post_frame_accounting(self, obs, acct: dict,
+                                  session) -> None:
+        """新环 heavy 定型帧上的动作级对账族(旧环同帧消费逐位对齐;零决策)。
+
+        输入 = 本帧 obs + acct(最近一步动作记账状态);每通道内部
+        best-effort,异常不阻塞环。覆盖:paddle 审计 / 拖动期望 / 买牌
+        期望(W536 上报通道转正,蓝图 §7 批 1 行)/ 经验 / 羁绊显示 /
+        商店池 / 合成预览 / 卖角色装备期望。
+        """
+        import contextlib
+
+        from sr_od.application.currency_war.cw_observation import read_deployed_count
+
+        key = acct.get('key')
+        progressed = bool(acct.get('progressed'))
+        # W512 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
+        if acct.get('dep_pre') is not None:
+            with contextlib.suppress(Exception):
+                _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
+                if _dep_post is not None and _dep_post - acct['dep_pre'] != acct['dep_delta']:
+                    _gap = _dep_post - acct['dep_pre']
+                    cw_telemetry.record_defect(
+                        'deployed', 'invariant_break',
+                        expected=f'{key} 执行后 paddle={acct["dep_pre"] + acct["dep_delta"]}',
+                        observed=f'paddle={_dep_post}',
+                        plane=int(getattr(obs.state, 'plane', 0) or 0),
+                        round_num=int(getattr(obs.state, 'round_num', 0) or 0),
+                        gap=float(_gap), gap_large=True,
+                        reader_source='paddle_action_audit',
+                        note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
+        # 期望态对账(仅 progressed 分支——验证失败 = 动作未发生,期望不适用)
+        with contextlib.suppress(Exception):
+            if progressed and acct.get('drag_expect') is not None:
+                self._reconcile_drag_expect(acct['drag_expect'])
+        # 期望态层·买牌(W536 上报通道转正):RunBuyPhase 单元购买期望由
+        # shop.py 买入点写入 session.pending_buy_expect;本帧消费对账。
+        with contextlib.suppress(Exception):
+            _pending_buy = session.pending_buy_expect
+            if _pending_buy is not None:
+                session.pending_buy_expect = None
+                if progressed:
+                    self._reconcile_buy_expect(_pending_buy)
+        with contextlib.suppress(Exception):
+            self._reconcile_xp_expect(obs)
+        with contextlib.suppress(Exception):
+            self._reconcile_faction_display(obs)
+        with contextlib.suppress(Exception):
+            self._reconcile_shop_pool(obs)
+        with contextlib.suppress(Exception):
+            self._reconcile_merge_preview(obs)
+        with contextlib.suppress(Exception):
+            if progressed and acct.get('equip_expect') is not None:
+                self._reconcile_equip_expect(acct['equip_expect'])
+        acct.update(key=None, progressed=False, drag_expect=None,
+                    equip_expect=None, dep_delta=0, dep_pre=None,
+                    unit_open=False)
 
     def _v2_outcome_to_round(self, outcome, forced_ok: bool) -> OperationRoundResult:
         """LoopOutcome → SrOperation 轮次语义(设计 §6 映射表;现役行为锚见行内)。"""

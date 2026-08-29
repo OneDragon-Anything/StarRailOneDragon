@@ -18,8 +18,12 @@ GameState)→ PrepAction → AtomOp/Decision 契约。**策略核零改**——
   无参数字段:op_key 携参数指纹(幂等/屏蔽键粒度 = 动作类型+参数,与现役
   ``action_key`` 同粒度思想),PrepAction 全参数经 ``DecideAdapter`` 的
   绑定表回放给现役执行器。
-- ``director_v2_enabled`` / ``shadow_compare_enabled`` —— registry 开关
-  读取(默认关;合法期与开臂判据见 registry 字段注释)。
+- ``shadow_compare_enabled`` —— 影子比对开关(纯诊断工具,生产分支随
+  旧环批 3 退役;见 registry 字段注释)。
+
+W620 批 1(蓝图 §7 批 1 行):DirectorV2 升正为唯一生产路径(无开关,
+``director_v2_prep_enabled`` 已删);decide 通道经 ``prep_brain`` 装配点
+(TurnState 一次装配 + _select 复用现役决策核,行为与旧环等价)。
 
 本模块零 SrOperation 依赖、零识别调用;PrepObservation/PrepAction 经
 延迟 import 防 prep_director ↔ adapter 循环。
@@ -36,9 +40,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_state import BENCH_CAPACITY, GameState
 from sr_od.application.currency_war.decision_v2.contracts import (
     AtomOp,
-    Bail,
     Decision,
-    Defer,
     Snapshot,
 )
 from sr_od.application.currency_war.decision_v2.registry import DEFAULT_REGISTRY
@@ -60,13 +62,8 @@ def _registry_of(strategy: Any):
     return getattr(strategy, 'registry', None) or DEFAULT_REGISTRY
 
 
-def director_v2_enabled(strategy: Any) -> bool:
-    """DirectorV2 备战循环开关(默认关;生命周期注释 = registry 字段)。"""
-    return bool(getattr(_registry_of(strategy), 'director_v2_prep_enabled', False))
-
-
 def shadow_compare_enabled(strategy: Any) -> bool:
-    """影子比对开关(独立于开臂开关;旧环恒当权,见 registry 字段注释)。"""
+    """影子比对开关(纯诊断工具,sim/离线对拍用;不改任何游戏动作)。"""
     return bool(getattr(_registry_of(strategy), 'director_v2_shadow_compare', False))
 
 
@@ -159,7 +156,10 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.deploy_cap = snapshot.deploy_cap
     st.front_max = snapshot.front_size
     st.back_max = snapshot.back_size
-    st.dual_track_phase = bool(getattr(session, 'dual_track_phase', False))
+    # R1(蓝图 §4.3):committed 唯一合法读端(prep_brain.committed_from);
+    # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填。
+    from sr_od.application.currency_war.decision_v2.prep_brain import committed_from
+    st.dual_track_phase = not committed_from(session)
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])
     last = getattr(session, 'last_state', None)
@@ -308,24 +308,30 @@ class DecideAdapter:
         self._config = config
         self._executor = executor
         self._binding: dict[str, PrepAction] = {}
+        self.last_action: PrepAction | None = None   # 最近一步底层动作(遥测/记账消费)
+
+    def bound_action(self, op_key: str) -> PrepAction | None:
+        """op_key → 绑定的 PrepAction(执行侧记账/回放消费;查无 = None)。"""
+        return self._binding.get(op_key)
 
     def decide(self, snapshot: Snapshot,
                session: StrategySession) -> Decision:
-        from sr_od.application.currency_war.prep_actions import (
-            BailToOuter,
-            DeferSpheres,
-        )
+        from sr_od.application.currency_war.decision_v2 import prep_brain
         if not snapshot.classification.confident:
             raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
-        obs = snapshot_to_obs(snapshot, session)
-        action = self._strategy.decide_prep_action(obs, session, self._config)
-        if isinstance(action, DeferSpheres):
-            return Decision(control=Defer('球留置'))
-        if isinstance(action, BailToOuter):
-            return Decision(control=Bail(action.reason or '未注明'))
-        op = action_to_atomop(action)
-        self._binding[op.op_key] = action
-        return Decision(ops=(op,))
+        # 批 1 装配点管线:TurnState 一次装配(方向/预算投影)+ _select
+        # 复用现役决策核(行为与旧环等价;折叠归批 2)。F3 参数校验经
+        # prep_brain validator 钩子(非法 → 空批 stall,旧环拒绝路径同型)。
+        turn = prep_brain.assemble(
+            snapshot, session, registry=_registry_of(self._strategy))
+        decision, action = prep_brain.decide(
+            turn, self._strategy, session, self._config,
+            validator=(getattr(self._executor, 'validate', None)
+                       if self._executor is not None else None))
+        self.last_action = action
+        if decision.ops:
+            self._binding[decision.ops[0].op_key] = action
+        return decision
 
     def execute(self, op: AtomOp) -> tuple[bool, str]:
         """绑定回放执行(op_key → PrepAction → 现役执行器)。"""

@@ -12,8 +12,8 @@ ping-pong 停机/W209j 停机刹车),母本 = ``prep_director.py`` 现役六件�
 规则中立:框架只消费 ``AtomOp.op_key``(幂等/屏蔽键)与 ``domain``
 (同域批校验),不解释 op 语义;op 枚举与 prep_actions 动作族对账归批③。
 
-本模块与现役循环并行、未接线(无消费点),默认零行为影响;接线与
-配置开关归批③。
+本模块为 prep_director 备战环的执行引擎(W620 批 1 起 = 唯一生产路径,
+接线点 = prep_director._run_prep_loop_v2;端口全部复用现役件)。
 """
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ class DirectorV2:
                 return LoopOutcome(LoopOutcomeKind.BRAKE_STOPPED, '停机标志已设')
             self._steps += 1
             if self._steps > self.MAX_STEPS:
-                self._p.force_battle()
+                self._p.force_battle('步数预算耗尽')
                 return LoopOutcome(LoopOutcomeKind.BATTLE_FORCED, '步数预算耗尽')
 
             # —— schema_version 执行点(唯一指定写入点,契约
@@ -194,8 +194,9 @@ class DirectorV2:
             for i, op in enumerate(decision.ops):
                 key = op.op_key
                 # 屏蔽命中:拒绝执行 + 计 stall(确定性重提案防线;屏蔽集生命周期
-                # = 本环。现役 StartBattle 豁免属动作类型知识,新契约无出战类 op,
-                # 豁免条目挂批③对账——见 ADR-0458「批③挂账」)。
+                # = 本环。现役 StartBattle 豁免的等价性:start_battle 被屏蔽 →
+                # 拒绝+stall → STALL_LIMIT 且恢复试尽 → F5 强制出战,两环终局
+                # 同为强制出战,差异仅中间重试次数——DIRECTOR_ADAPTER_DESIGN §4.2)。
                 if key in self._blocked:
                     self._stall += 1
                     gate = self._stall_gate()
@@ -215,6 +216,12 @@ class DirectorV2:
                     # 零进展链断点:stall 清零 + per-key 连败清零(权威表件 2/3)
                     self._stall = 0
                     self._fail_counts.pop(key, None)
+                    # 出战域 op 落地 = 环正常出口(BATTLE;W620 批 1 接线补:
+                    # 旧环 StartBattle 落地即退环,新环按契约 domain 判——
+                    # 引擎不解释动作类型,只认 domain。StartBattle 屏蔽豁免
+                    # 的等价性论证见 DIRECTOR_ADAPTER_DESIGN §4.2)。
+                    if op.domain == 'battle':
+                        return LoopOutcome(LoopOutcomeKind.BATTLE, '出战 op 落地')
                 else:
                     result = self._on_fail(op, session)
                     if result is not None:
@@ -238,7 +245,7 @@ class DirectorV2:
         """环级强制出战门:stall≥STALL_LIMIT 且恢复已试尽 → F5(MED-3:所有计
         stall 路径统一过本门,防屏蔽后确定性重提案空转到步数预算才兜住)。"""
         if self._stall >= self.STALL_LIMIT and self._recovery_tried:
-            self._p.force_battle()
+            self._p.force_battle('stall+恢复试尽')
             return LoopOutcome(LoopOutcomeKind.BATTLE_FORCED, 'stall+恢复试尽')
         return None
 

@@ -454,8 +454,12 @@ class BuyShopCards(SrOperation):
             # _tgt_state(每轮首对象),循环内 read_game_state 新建 state 默认 False →
             # ADR-0209 双轨买门/stash 放行/DP 攒息压制在实跑买牌路径**从未执行**
             # (遥测指纹:每轮首条 True、循环内全 False)。修:dual 态单一源挂 session
-            # (cw_strategy),循环态每轮从 session 拷贝(仿 hp/node_type 同法)。
-            state.dual_track_phase = getattr(match.session, 'dual_track_phase', False)
+            # (cw_strategy),循环态每轮拷贝(仿 hp/node_type 同法);读端 =
+            # R1 唯一合法读端 committed_from(蓝图 §4.3,禁 session 直读散落)。
+            from sr_od.application.currency_war.decision_v2.prep_brain import (
+                committed_from,
+            )
+            state.dual_track_phase = not committed_from(match.session)
             if getattr(match.session, 'transition_framework', ''):
                 state.focus_factions = getattr(match.session, 'focus_factions', set())
             # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏(同帧读 3/0/空;实锤 click-test
@@ -543,7 +547,7 @@ class BuyShopCards(SrOperation):
             _sess = match.session
             _extra = {
                 'sess_framework': getattr(_sess, 'transition_framework', '') or '',
-                'sess_dual_track': bool(getattr(_sess, 'dual_track_phase', False)),
+                'sess_dual_track': not committed_from(_sess),   # R1 唯一读端
                 'sess_drought': getattr(_sess, 'target_drought', None),
                 'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
                 'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),

@@ -264,9 +264,13 @@ class DeployBench(SrOperation):
         # 框架件成为部署一等公民——与买/卖两侧 r72「三侧单一源」对齐(deploy
         # 侧此前是缺口)。
         from sr_od.application.currency_war.cw_recipe import decision_target as _dt_fn
+        from sr_od.application.currency_war.decision_v2.prep_brain import (
+            committed_from,
+        )
         _tgt_comp = None
         if _match is not None and _match.session is not None:
-            _st_dual = getattr(_match.session, 'dual_track_phase', False)
+            # R1(蓝图 §4.3):session 双轨态读端 = committed_from 唯一读口
+            _st_dual = not committed_from(_match.session)
             if _st_dual:
                 _pseudo = _match.session.last_state
                 _tgt_comp = _dt_fn(_match.session, _pseudo) if _pseudo is not None else None
