@@ -884,7 +884,7 @@ def _switch_gate_open(ist: IntentionState, state: GameState,
     e_alt = e_rounds(comp, state, registry)
     reg = registry or DEFAULT_REGISTRY
     ok, why = survival_gate(state, session, e_alt, registry)
-    # 决策位记账(W665 DESIGN v2 §3-2/R3,W659 决策位纪律平移):拦截位
+    # 决策位记账(设计件 w665_p2p3_linegate/DESIGN.md §3-2/R3,决策位纪律平移(ADR-0470 同款)):拦截位
     # 与反事实判定位写 session(帧级;update_intention 每帧入口清零),
     # 检查器只做位一致性核验、禁复算判据式。on 臂=门判定本身即该位,
     # 不重复算(守卫独立性);off 臂=gate_counterfactual 反事实记账。
@@ -920,12 +920,12 @@ def update_intention(state: GameState, ist: IntentionState,
         # 出 P1:过渡对副方向退场(W166;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
     visible = _visible_chars(state)
-    # 换线门决策位逐帧清零(W665 DESIGN v2 §3-2;帧级坐标系:本轮无
+    # 换线门决策位逐帧清零(设计件 w665_p2p3_linegate/DESIGN.md §3-2;帧级坐标系:本轮无
     # 换线辖域评估 → 位=False,防上帧位残留污染账本行)
     if session is not None:
         session.v3_line_gate_blocked = False
         session.v3_line_gate_cf_blocked = False
-    # 门闩位面切换清零(W665 DESIGN v3 §3-3 末条):闩=位面内滞回,
+    # 门闩位面切换清零(设计件 w665_p2p3_linegate/DESIGN.md §3-3 末条):闩=位面内滞回,
     # 出位面即清;同步清各线 miss_count(陈旧断供证据不跨位面驱动出口①)
     # 与 prev_lock_layer(暂存已消费,不跨位面残留)。
     if session is not None and getattr(session, 'v3_line_gate_latch', False) \
@@ -936,7 +936,7 @@ def update_intention(state: GameState, ist: IntentionState,
         for t in ist.tracks.values():
             t.miss_count = 0
         ist.prev_lock_layer = 0
-    # R3 断供驱逐(批 3):每 game-round 恰一次的体系级断供计数
+    # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
@@ -945,7 +945,7 @@ def update_intention(state: GameState, ist: IntentionState,
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
 
     if ist.phase == 'locked':
-        # 门闩存续期(W665 DESIGN v3 §3-3 R-A):同位面闩置位后撤销出口
+        # 门闩存续期(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-A):同位面闩置位后撤销出口
         # ①②抑制——「锁线保生存」吸收态,miss 照涨但无消费(砍断周期环
         # 驱动源,§3-4 轨迹证明闩后零转移)。窗口冻结驱逐(evict)非出口
         # ①②,保留自身语义(刷新窗冻结超限属候选集卫生,非换线裁决)。
@@ -1064,7 +1064,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 if pair else 'lock_pair:wait'
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
-        # W607 H1 锁线环境判据(行为无条件化;W628 三开关清偿——原
+        # H1 锁线环境判据(行为无条件化;三开关清偿——原
         # registry.line_env_gate_enabled 开关已删,四步清偿证据归
         # w628_migration_b2/STATUS):累积型线强环境不命中(False)的信号
         # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
@@ -1104,11 +1104,11 @@ def update_intention(state: GameState, ist: IntentionState,
             else:
                 ist.last_event = (f'gate_hold:{ist.weak_comp}'
                                   f'->{best.comp_name}')
-                # 门感知滞回闩(W665 DESIGN v3 §3-3 R-A,取代被 W683 推翻
+                # 门感知滞回闩(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-A,取代被再攻击推翻(见设计件 v3 修订块)
                 # 的 N=2 计数回锁):本位面首次门拦截置闩 + 闩置位帧一次性
                 # 回锁原线。为什么是闩不是计数:单调性——R<E(alt)+m 首次
                 # 成立后位面内近似单调(§3-3),「后续帧不该再换线」与门
-                # 判据一致;计数回锁缺单调性,周期-3 环是结构必然(W683)。
+                # 判据一致;计数回锁缺单调性,周期-3 环是结构必然(设计件 v3 修订块引攻击证据)。
                 # 回锁经 _switch_gate_open 同线豁免语义(状态机内单址);
                 # 恢复 prev_lock_layer(FM-11 消解,回锁信号 layer=1 不许
                 # 收窄出口②撤销面)。原线 E=inf 子情形:闩仍置位、状态停
@@ -1222,7 +1222,7 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
 
 def committed_authority(state: GameState | None,
                         session: StrategySession | None) -> bool:
-    """committed(已定型/非双轨期)权威判定(方向层批 2 接管;单一派生源)。
+    """committed(已定型/非双轨期)权威判定(方向层接管(git 历史);单一派生源)。
 
     - **权威序**(任一成立即 True):
       ① ``state.plane >= 2``——P2 起恒定型(语义边界同旧 update_target:
@@ -1235,7 +1235,7 @@ def committed_authority(state: GameState | None,
     - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
       .committed_from``(唯一读端,内部委托本函数)取值;
       state/session 侧双轨字段降级为兼容残留(读点归零,
-      grep 守卫锁),写端退役随老栈(strategy 层)批 4。
+      grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
 
     与旧语义(CommitSignals.ready 合取)的分歧属方向层接管预期区,
     逐帧对拍产物归 w628_migration_b2 对照报告。
