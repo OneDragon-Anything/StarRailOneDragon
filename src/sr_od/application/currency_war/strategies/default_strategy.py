@@ -131,9 +131,11 @@ class DefaultCwStrategy(CwStrategy):
                           session.target_comp is not None and _lead_comp is not None
                           and session.target_comp.name == _lead_comp.name))))
         state.dual_track_phase = not _committed   # 消费方(plan/prefilter)经 state 读
-        # r73 RC3:双源写 session(单一源;shop 循环态/Director 每轮拷回,防 read_game_state
-        # 新建对象默认 False 冲掉 —— 断裂指纹:遥测每轮首条 True、循环内全 False)。
-        session.dual_track_phase = state.dual_track_phase
+        # 批 2 方向层接管(P1 同 commit 面):session 侧双轨字段写端
+        # 已删——committed_from 换源 cw_intention 权威派生后 session 字段
+        # 读点归零(grep 守卫锁),state 字段读点 = 本栈内部消费面
+        # (update_target 自身分支 + 经 boundary 拷贝的 plan 路径),
+        # 本栈整体退役随批 4。
         # r70 过渡框架选定(买/上/卖三侧单一源):双轨期每轮按持有刷新;定型后清空
         # (三侧消费见 cw_transition.pick_framework docstring)。
         # r100e portal 偏置:开局环境(概念股/邀请,特型=过渡与终局重叠的成因)
@@ -642,14 +644,15 @@ class DefaultCwStrategy(CwStrategy):
         for i, name in enumerate(options):
             s = 0.0
             from one_dragon.utils import str_utils
+            from sr_od.application.currency_war.decision_v2.scoring import PICK_BIAS
             if name in _tgt_facs:
-                s += 40.0
+                s += PICK_BIAS.tome_target_faction
             hit = next((b for b, n in (state.board or {}).items()
                         if n > 0 and str_utils.find_by_lcs(b, name, percent=0.8)), None)
             if hit is not None:
-                s += 8.0 * (state.board or {})[hit]
+                s += PICK_BIAS.tome_board_hit * (state.board or {})[hit]
             if name in _fw_facs:
-                s += 15.0
+                s += PICK_BIAS.tome_framework_faction
             if s > best_s:
                 best_i, best_s = i, s
         return best_i
@@ -673,13 +676,19 @@ class DefaultCwStrategy(CwStrategy):
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         best_i, best_s = 0, -1.0
         for i, obj in enumerate(options):
-            s = 0.0
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                PICK_BIAS as _PB,
+            )
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                effect_pick_bias,
+            )
+            s = effect_pick_bias(session, obj)
             if '金币' in obj:
-                s += 25.0
+                s += _PB.wish_gold
             if any(f in obj for f in (_tgt_facs | _fw_facs)):
-                s += 20.0
+                s += _PB.wish_faction
             if '刷新' in obj or '购买' in obj:
-                s += 10.0
+                s += _PB.wish_operation
             if s > best_s:
                 best_i, best_s = i, s
         return best_i
@@ -721,11 +730,17 @@ class DefaultCwStrategy(CwStrategy):
                 pass
         best_i, best_s = 0, -1.0
         for i, n in enumerate(names):
-            s = 0.0
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                PICK_BIAS as _PB,
+            )
+            from sr_od.application.currency_war.decision_v2.scoring import (
+                effect_pick_bias,
+            )
+            s = effect_pick_bias(session, n)
             if n in _key:
-                s += 100.0
+                s += _PB.box_key_equip
             if n in _key_mats:
-                s += 30.0
+                s += _PB.box_key_material
             s += float(_material_value(n))
             if s > best_s:
                 best_i, best_s = i, s
@@ -1036,13 +1051,13 @@ class DefaultCwStrategy(CwStrategy):
         st.hp = gated_hp(_cur_hp, session, _t)
         # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
         # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)
-        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。单一源在 session
-        # (r73 RC3),此处与 shop 循环态同款拷贝;读端 = R1 唯一合法读端
-        # committed_from(蓝图 §4.3)。
+        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。批 2 起 committed 语义
+        # = cw_intention 权威派生(读端 committed_from 单点换源,P1 同
+        # commit 面),此处传 state 供 plane 判定。
         from sr_od.application.currency_war.decision_v2.prep_brain import (
             committed_from,
         )
-        st.dual_track_phase = not committed_from(session)
+        st.dual_track_phase = not committed_from(session, st)
         # W148(ADR-0358,W92 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
         # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
         # 面特征可见;空快照=默认 [] 语义不变)。

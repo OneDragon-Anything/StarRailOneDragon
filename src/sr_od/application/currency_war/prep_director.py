@@ -1944,11 +1944,22 @@ class PrepDirector(SrOperation):
             from sr_od.application.currency_war.cw_strategy import gated_hp
             from sr_od.application.currency_war.decision_v2.prep_brain import (
                 committed_from,
+                drive_intention,
             )
             _os = obs.state
+            # 批 2 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰
+            # 一次,锚定 = 环入口(update_target 之前);段级重入守卫 =
+            # v3_intention_key(与 decision_v2 栈共享键面,双驱动幂等)。
+            # registry 缺省 = DEFAULT_REGISTRY(缺省栈无注入臂;A/B 注入
+            # 经策略构造 registry 透传,P6 契约)。
+            try:
+                drive_intention(_os, session)
+            except Exception as e:  # noqa: BLE001  方向驱动失败不阻塞步级决策
+                log.warning(f'[cw!][director] 意向驱动异常(沿用旧方向): {e}')
             # r73 RC3:dual 态拷回(读端 = R1 唯一合法读端 committed_from;
-            # 单一源在 session,read 新对象默认 False 会冲掉双轨门)
-            _os.dual_track_phase = not committed_from(session)
+            # 批 2 起读端内部 = cw_intention 权威派生,消费端同 commit 面
+            # 换源,session 侧双轨字段已无读点)
+            _os.dual_track_phase = not committed_from(session, _os)
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
             _os.hp = gated_hp(_os.hp, session, _os_t,
                               current_readable=bool(getattr(_os, 'hp_readable', True)))
