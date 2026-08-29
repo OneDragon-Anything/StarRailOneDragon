@@ -257,6 +257,25 @@ class DecisionTrace:
     # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
     # 嵌套 v3_intention 即可读锁定产物。可选,旧记录缺省 '' 不破坏 schema。
     sess_p1_pair: str = ""
+    # —— W603 披露键序列化(血预算停手计数/末窗降格触发面/经验账本)——
+    # 三个 session 披露键此前「有写点、无遥测落盘」(decisions.jsonl 全文检索
+    # 零命中,判读盲区)。接出点=recorder 统一自 _CTX_MATCH_REF 的 session 取
+    # (shop.py 的 extra 通道不动;record_outcome 板深快照同款模块槽先例)。
+    # None/缺省 = 无 match 注册(离线/测试)或取值失败,旧 schema 不破坏。
+    # 血预算停手·停升级拒付计数(session.v3_blood_budget_rejects 透传;
+    # 写入端=arbiter/remediation 拒付面,局首清零)。
+    sess_blood_budget_rejects: int | None = None
+    # 血预算停手·搜索型刷新停付拒付计数(session.v3_blood_budget_refresh_rejects
+    # 透传;写入端=arbiter refresh 收尾,局首清零)。
+    sess_blood_budget_refresh_rejects: int | None = None
+    # P1-a 末窗支出降格触发面:纯谓词无 session 写点,取值=本 record 调用时点
+    # 按 state + DEFAULT_REGISTRY 现算(生产 DecisionV2Strategy() 缺省即
+    # DEFAULT_REGISTRY;sim A/B 注入臂行不带此语义保证,判读按 strategy_id
+    # 分栈)。None=现算失败/依赖缺失。
+    p1_downgrade_active: bool | None = None
+    # 经验期望账本快照(session.xp_expect_ledger=prep_director.XpLedger 正式
+    # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
+    xp_expect_ledger: dict[str, Any] | None = None
 
 
 @dataclass
@@ -568,6 +587,31 @@ class TelemetryRecorder:
             trace.handoff = _ho if isinstance(_ho, dict) else None
             # P1 配方对平铺观测(空 extra 时字段保持默认空串)
             trace.sess_p1_pair = str(extra.get('sess_p1_pair', ''))
+        # W603 披露键统一接出(session 自取,extra 通道外的固定尾巴;
+        # 缺 match 注册=离线/测试,字段保持 None 缺省)。
+        _m = _CTX_MATCH_REF[0]
+        _sess = getattr(_m, 'session', None) if _m is not None else None
+        if _sess is not None:
+            with contextlib.suppress(Exception):   # 观测 best-effort
+                trace.sess_blood_budget_rejects = int(
+                    getattr(_sess, 'v3_blood_budget_rejects', 0) or 0)
+                trace.sess_blood_budget_refresh_rejects = int(
+                    getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
+            _led = getattr(_sess, 'xp_expect_ledger', None)
+            if _led is not None and is_dataclass(_led):
+                with contextlib.suppress(Exception):
+                    trace.xp_expect_ledger = _to_jsonable(asdict(_led))
+        with contextlib.suppress(Exception):
+            # 延迟 import:discipline 是 decision_v2 域,模块级引入会造成
+            # import 环(telemetry 被 ops/策略两面引用);调用点 import 无环。
+            from sr_od.application.currency_war.decision_v2.discipline import (
+                p1_directed_downgrade_active,
+            )
+            from sr_od.application.currency_war.decision_v2.registry import (
+                DEFAULT_REGISTRY,
+            )
+            trace.p1_downgrade_active = bool(
+                p1_directed_downgrade_active(state, DEFAULT_REGISTRY))
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改
@@ -913,14 +957,18 @@ def start_run(difficulty: str = "") -> str:
     ADR-0273:开局先补上一局(们)缺的 summary 行 —— FAIL/崩溃/重启杀局路径
     不走 3c/stop 收口,此处在下一局起点从 outcomes/decisions 重算兜底(幂等)。
     """
-    global _CURRENT_RUN_ID, _CURRENT_DIFFICULTY
+    global _CURRENT_RUN_ID, _CURRENT_DIFFICULTY, _RUN_CLOSED
     try:
         recover_dangling_run_summaries()
     except Exception as e:   # noqa: BLE001  兜底 best-effort,不阻塞开局
         log.warning('[cw][telemetry] summary 兜底回填失败(不阻塞开局): %s', e)
     _CURRENT_RUN_ID = datetime.now().strftime('run_%Y%m%d_%H%M%S')
     _CURRENT_DIFFICULTY = difficulty
+    _RUN_CLOSED = False
     get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
+    # W603:局前缓冲的简报行归属本局,新 run_id 就位后补写
+    with contextlib.suppress(Exception):
+        _flush_pending_briefing_rows()
     # 构建指纹随局落日志(W596/W593 方案①):局后判读把本局行为对到
     # 「哪个构建的进程」,消灭「整局构建性归零」这类跨局方差(局22 实证)。
     try:
@@ -1090,11 +1138,72 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
     模块级函数但只有类方法 → AttributeError 被吞,exogenous.jsonl 生产侧静默死)。
 
     注意签名与类方法不同(无 run_id 首参——模块级自动取 current_run_id)。
+
+    W603 简报归属:简报屏在 loop ``__init__``(start_run)**之前**读,此刻
+    _CURRENT_RUN_ID 为空(进程首局→行被丢)或指向上局(→行带旧 run_id,ts 却
+    落在下局窗口,判读归属滞后)。修法=写入时点带正确归属:live run 存在照写;
+    否则 kind='briefing' 行暂存模块槽,start_run 建新 run_id 后以新 id 补写
+    (ts 保留采集时点)。其余 kind 维持原 no-op 门(局外事件族不归属下一局,
+    防行为面外溢)。
     """
+    if kind == 'briefing' and (not _CURRENT_RUN_ID or _RUN_CLOSED):
+        _buffer_briefing_row(round_num, detail, state)
+        return
     if not _CURRENT_RUN_ID:
         return
     get_recorder().record_exogenous(_CURRENT_RUN_ID, round_num, kind, detail, state,
                                     choice=choice)
+
+
+# ===== W603 简报行 run_id 归属(局间缓冲)=====
+# 生命周期:简报读取(局前)→ start_run 补写;进程终止未遇 start_run = 缓冲丢弃
+# (best-effort,与原「行被丢/带错 id」相比只改善不劣化)。上限 16 行 = 简报
+# retry 重跑上限(节点 max_retry_times=10)的宽裕倍数,防异常路径无限积压。
+_PENDING_BRIEFING_ROWS: list[dict[str, Any]] = []
+_PENDING_BRIEFING_MAX: int = 16
+#: run 关闭位:局终 summary 落盘后,直到下一局 start_run 前,_CURRENT_RUN_ID
+#: 指向已收口的局 —— 此窗口内的 briefing 行归属下一局(经缓冲)。
+_RUN_CLOSED: bool = False
+
+
+def _buffer_briefing_row(round_num: int, detail: str,
+                         state: GameState | None) -> None:
+    """暂存局前简报行(ts 即刻取,state 快照即刻算;best-effort 不抛)。"""
+    global _PENDING_BRIEFING_ROWS
+    try:
+        snap: dict[str, Any] = {}
+        if state is not None:
+            snap = {'hp': getattr(state, 'hp', None),
+                    'gold': getattr(state, 'gold', None),
+                    'level': getattr(state, 'level', None),
+                    'plane': getattr(state, 'plane', None),
+                    'round_num': getattr(state, 'round_num', None),
+                    'bench_count': bench_occupied(
+                        getattr(state, 'bench', []) or [])}
+        _PENDING_BRIEFING_ROWS.append({
+            'ts': datetime.now().isoformat(timespec="seconds"),
+            'round_num': round_num, 'detail': detail, 'state_snapshot': snap,
+        })
+        if len(_PENDING_BRIEFING_ROWS) > _PENDING_BRIEFING_MAX:
+            _PENDING_BRIEFING_ROWS = _PENDING_BRIEFING_ROWS[-_PENDING_BRIEFING_MAX:]
+    except Exception:  # noqa: BLE001  缓冲 best-effort
+        pass
+
+
+def _flush_pending_briefing_rows() -> None:
+    """start_run 建新 run_id 后补写缓冲简报行(归属=新局;按暂存序)。"""
+    if not _PENDING_BRIEFING_ROWS:
+        return
+    pend = list(_PENDING_BRIEFING_ROWS)
+    _PENDING_BRIEFING_ROWS.clear()
+    for r in pend:
+        with contextlib.suppress(Exception):   # 补写 best-effort
+            get_recorder()._append("exogenous.jsonl", _to_jsonable(
+                ExogenousEvent(ts=r['ts'], run_id=_CURRENT_RUN_ID,
+                               round_num=r['round_num'], kind='briefing',
+                               detail=r['detail'],
+                               state_snapshot=r['state_snapshot'],
+                               choice=None)))
 
 
 def record_event_choice(event: str, options: list | None, pick_idx: int,
@@ -1202,19 +1311,26 @@ def record_spend_unit(plane: int, round_num: int, unit_seq: int,
 
 def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
                        final_hp: int, notes: str = "") -> None:
-    """便捷:用 current_run_id 记局终 summary。loop 局终调。"""
+    """便捷:用 current_run_id 记局终 summary。loop 局终调。
+
+    W603:落盘后置 run 关闭位 —— 此后到下一局 start_run 前的 briefing 行
+    归属下一局(缓冲补写),不再挂在已收口的旧 run_id 上。
+    """
+    global _RUN_CLOSED
     if not _CURRENT_RUN_ID:
         return
     get_recorder().record_run_summary(_CURRENT_RUN_ID, result, plane_reached,
                                       rounds_survived, final_hp, notes=notes)
+    _RUN_CLOSED = True
 
 
 # ===== 统一缺陷台账(defect_ledger.jsonl;纯观测索引层,零行为变更)=====
 # 把散在 obs_conflicts(感知冲突)/ exec_events(执行失败)的缺陷口径归一:
 # 旧流是原始证据层保持原样,台账每行经 evidence.refs 指回原流行——审计先查
 # 台账,下钻再回原流。接线方式=在 obs_conflict / record_exec_event 写入点
-# 内部各加一行旁路(调用方零改动);不给 obs_conflicts 补 run_id(写入点
-# 10+ 处,逐处加参数是高风险机械改动),join key 由台账补齐。
+# 内部各加一行旁路(调用方零改动)。obs_conflicts 行内 run_id(W603 起)由
+# 唯一汇点 obs_conflict() 内部自取 current_run_id 补齐——历史行无此键
+# (读取端按「有键才过滤」容忍),join key 台账仍并行补齐。
 
 #: 分级三档(severity 写入端只给初判;离线可用 judge_severity 按演进后规则
 #: 重判,不重写历史)。判据(观测自检框架设计 §4,三条按序):
@@ -2874,10 +2990,11 @@ def query_invest_cards(replay_dir: Path, run_id: str) -> list[str]:
 def query_obs_conflicts(replay_dir: Path, run_id: str) -> list[str]:
     """视图(W315/G3):观察冲突流(obs_conflicts.jsonl;cw_observe journal)。
 
-    ⚠️ 该流跨局采集、行内无 run_id(cw_observe._CONFLICT_JOURNAL 设计如此),
-    ``--run`` 参数对本视图不生效(全量展示)。头部 = 按 field 分组计数 +
-    verdict 首词分布(哪个字段在哪个画面毒化频次最高的离线统计入口;
-    M38 教训的读出端);逐行 = 最新冲突摘要(截断防长 verdict 刷屏)。
+    W603 起新行带 run_id(唯一汇点 obs_conflict() 补齐):``--run`` 给定时
+    按 run_id 过滤(历史行无此键→不命中,用空 run_id 全量看);空=全量展示。
+    头部 = 按 field 分组计数 + verdict 首词分布(哪个字段在哪个画面毒化频次
+    最高的离线统计入口;M38 教训的读出端);逐行 = 最新冲突摘要(截断防长
+    verdict 刷屏)。
     """
     # 容错读(不走 read_jsonl):obs_conflicts 是 best-effort 追加的 journal,
     # 历史上存在中断产生的截断行——坏行跳过不炸整个视图(其余流结构化写,无此问题)
@@ -2894,7 +3011,10 @@ def query_obs_conflicts(replay_dir: Path, run_id: str) -> list[str]:
                 except json.JSONDecodeError:
                     continue
     rows = sorted(raw_rows, key=lambda r: r.get("ts") or "", reverse=True)
-    # 无 run_id 键(跨局采集)——--run 对本视图不生效,恒全量展示
+    # W603 起新行带 run_id 键——给了 run_id 才过滤(历史行无键不命中);
+    # 空 = 全量展示
+    if run_id:
+        rows = [r for r in rows if r.get("run_id") == run_id]
     field_count: dict[str, int] = {}
     verdict_count: dict[tuple[str, str], int] = {}
     lines: list[str] = []

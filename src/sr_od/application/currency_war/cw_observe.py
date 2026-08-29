@@ -125,6 +125,12 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                 shot = cw_shot_unique(screen, f'obs_conflict_{field}')
         rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
                'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
+        # W603:补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
+        # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
+        from sr_od.application.currency_war import cw_telemetry as _cw_tel
+        _rid = _cw_tel.current_run_id()
+        if _rid:
+            rec['run_id'] = _rid
         if shot:
             rec['shot'] = shot
         _CONFLICT_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
