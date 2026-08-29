@@ -347,14 +347,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         report['ledger_dir'] = str(write_batch_ledger(
             results, out, pool_fp=report['pool_fingerprint']))
     if checks:
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_battle_rung_pool_bucket_lock,
-            check_delta_pool_bucket_coverage,
-            check_delta_pool_bucket_min_n,
-            check_depth_cliff_monotonicity,
-            check_reward_delta_pool_bucket_lock,
-            run_checks_on_ledgers,
-        )
+
+        from sr_od.application.currency_war.sim.checks.pool import check_battle_rung_pool_bucket_lock, check_delta_pool_bucket_coverage, check_delta_pool_bucket_min_n, check_depth_cliff_monotonicity, check_reward_delta_pool_bucket_lock
+
+        from sr_od.application.currency_war.sim.checks.runner import run_checks_on_ledgers
         rep_checks = run_checks_on_ledgers(
             [v.ledger for v in views])
         # ADR-0268:池级检查(桶饥饿/深崖单调)——批③ F1 的常态
@@ -390,28 +386,22 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # replay 落后 ≥2 局 = 再生管线断(池停 12h 零报警事故的
         # 常设防线);fallback 无池语义不辖;无本机 replay(CI)跳过。
         if pool in ('snapshot', 'auto'):
-            from sr_od.application.currency_war.sim.cw_sim_checks import (
-                check_pool_freshness,
-            )
+
+            from sr_od.application.currency_war.sim.checks.pool import check_pool_freshness
             rep_checks['pool_freshness'] = check_pool_freshness()
         # ADR-0272:池构造无费用截断(单局已硬断言;批级披露)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_sim_pool_no_cost_truncation as _chk_pool,
-        )
+
+        from sr_od.application.currency_war.sim.checks.ledger import check_sim_pool_no_cost_truncation as _chk_pool
         rep_checks['sim_pool_no_cost_truncation'] = \
             _chk_pool(_Pool(random.Random(0)).copies)
         # 批⑩/批⑪ 检查项(ADR-0276/0277):批级聚合检查——boss 胜率
         # 校准/成型-hp 耦合哨兵/升级 binding/末段刷新闭合/末金校准/
         # 锚登记制;吃全批账本(跨局聚合,不进 _BATCH_CHECKS 的逐局循环)
         # ADR-0362:辖 P1 段账本(views;planes=1 时 ≡ 全量零漂移)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_anchor_registry_n300,
-            check_boss_win_calibration,
-            check_formation_hp_coupling_sentinel,
-            check_levelup_binding,
-            check_r5plus_refresh_closure,
-            check_sim_endgold_calib,
-        )
+
+        from sr_od.application.currency_war.sim.checks.calib import check_anchor_registry_n300, check_sim_endgold_calib
+
+        from sr_od.application.currency_war.sim.checks.pool import check_boss_win_calibration, check_formation_hp_coupling_sentinel, check_levelup_binding, check_r5plus_refresh_closure
         _ledgers = [v.ledger for v in views]
         rep_checks['boss_win_calibration'] = \
             check_boss_win_calibration(_ledgers)
@@ -423,10 +413,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
         # `w493_income_calib/`(ADR-0447):金分布/费用曲线对拍进标准报告——金均值越出
         # 实机带软告警(校准总闸漂移),费用曲线纯披露(等级轨迹差已知根)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_gold_dist_calib,
-            check_shop_cost_curve,
-        )
+
+        from sr_od.application.currency_war.sim.checks.calib import check_gold_dist_calib, check_shop_cost_curve
         rep_checks['gold_dist_calib'] = check_gold_dist_calib(_ledgers)
         rep_checks['shop_cost_curve'] = check_shop_cost_curve(_ledgers)
         rep_checks['anchor_registry_n300'] = \
@@ -434,26 +422,21 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ADR-0294 件3(ADR-0289 接线欠账):批级聚合入口并入——
         # 清偿批的批级披露/哨兵/条件型检查一次跑全(逐局锁已由
         # run_checks_on_ledgers 自动扫;worker X 合流后本欠账清偿)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            run_batch_level_checks,
-        )
+
+        from sr_od.application.currency_war.sim.checks.runner import run_batch_level_checks
         rep_checks.update(run_batch_level_checks(
             _ledgers, report=report, pool_map=_pm))
         # ADR-0362(`w157_p2/`):P2 段检查器最小集——金轨迹非负 + 段形状
         # (辖 planes>=2 批次的 P2 段行;P1 批无 plane=2 行恒绿)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_p2_gold_nonneg,
-            check_p2_segment_shape,
-        )
+
+        from sr_od.application.currency_war.sim.checks.calib import check_p2_gold_nonneg, check_p2_segment_shape
         _ledgers_p2 = [r.ledger for r in results]
         rep_checks['p2_gold_nonneg'] = check_p2_gold_nonneg(_ledgers_p2)
         rep_checks['p2_segment_shape'] = check_p2_segment_shape(_ledgers_p2)
         # `w193_p2sim/`/ADR-0377:P2 战斗存活层检查器(掉血带覆盖锚 + 胜率带锚;
         # 辖 calibrated 批——uncalibrated 批恒绿跳过,legacy 档不辖)
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_p2_loss_band_anchor,
-            check_p2_win_rate_band,
-        )
+
+        from sr_od.application.currency_war.sim.checks.calib import check_p2_loss_band_anchor, check_p2_win_rate_band
         rep_checks['p2_loss_band_anchor'] = check_p2_loss_band_anchor(
             _ledgers_p2, report=report)
         rep_checks['p2_win_rate_band'] = check_p2_win_rate_band(
@@ -467,9 +450,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     # ——纯账本消费零 rng,headline/checks_violations 不受影响;
     # 辖域独立于 checks 开关;max_rounds=None 时窗口=整局,输出与
     # 整局语义一致)
-    from sr_od.application.currency_war.sim.cw_sim_checks import (
-        run_segment_checks,
-    )
+
+    from sr_od.application.currency_war.sim.checks.segments import run_segment_checks
     _win = max_rounds if (max_rounds is not None and max_rounds > 0) \
         else None
     report['max_rounds'] = _win
@@ -494,9 +476,8 @@ def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
     配对差 sd 现算,勿写死 1.93)。默认 A=刷新开/B=刷新关,同
     seed 配对。
     """
-    from sr_od.application.currency_war.sim.cw_sim_checks import (
-        check_ab_resolution_floor,
-    )
+
+    from sr_od.application.currency_war.sim.checks.calib import check_ab_resolution_floor
     res_a = [simulate_p1(seed_base + i, use_refresh=True, pool=pool)
              for i in range(n)]
     res_b = [simulate_p1(seed_base + i, use_refresh=False, pool=pool)

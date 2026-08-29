@@ -147,9 +147,8 @@ def _regenerate_delta_pool_after_run() -> None:
         return
     log.info('[cw][pool-pipeline] 局终自动再生 Δ池快照: %s', fp)
     try:
-        from sr_od.application.currency_war.sim.cw_sim_checks import (
-            check_pool_freshness,
-        )
+
+        from sr_od.application.currency_war.sim.checks.pool import check_pool_freshness
         verdict = check_pool_freshness()
         if verdict.get('violations'):
             # 再生刚成功却仍滞后 = 新局语料没进池(如 outcomes 缺行)
@@ -205,9 +204,8 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     - ADR-0273:头部附 ``summary_write_path_coverage``(runs.jsonl 断流守卫,
       与逐局检查正交——它是「分母完整性」,先于一切逐局判读)。
     """
-    from sr_od.application.currency_war.sim.cw_sim_checks import (
-        check_coldstart_seed_squander,
-    )
+
+    from sr_od.application.currency_war.sim.checks.ledger import check_coldstart_seed_squander
     lines: list[str] = list(check_summary_write_path_coverage(replay_dir))
     # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈
     # [line_v2/decision_v2] 合法词)
