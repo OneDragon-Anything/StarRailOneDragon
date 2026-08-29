@@ -712,11 +712,11 @@ class DeployBench(SrOperation):
                              f' placed={placed} → 剩余 bench 角色留 bench(不白拖)')
                     _cap_stopped = True
                     break
-            # ⚖️ 同名在场禁双(5.1.7,全局不变量;语义单一源 cw_plan.deploy_legal)。
+            # ⚖️ 同名在场禁双(5.1.7,全局不变量;语义单一源 kernel.cw_deploy_seat.deploy_legal)。
             # 执行层直查 char_id 集合(此处在 SIFT 读身份后的确定性部署,不走 _should_deploy)。
             _cid = _bench_cid.get(bi)
             if _cid and _cid in _deployed_cids:
-                log.info(f'[cw-deploy] 去重(5.1.7,不变量 cw_plan.deploy_legal 同源):'
+                log.info(f'[cw-deploy] 去重(5.1.7,不变量 cw_deploy_seat.deploy_legal 同源):'
                          f'bench槽{bi+1}({_cid}) 已 deployed,跳过')
                 _skipped += 1
                 continue

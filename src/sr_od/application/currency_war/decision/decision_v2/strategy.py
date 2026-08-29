@@ -3,7 +3,7 @@
 **载体批(迁移审计 w35(git 历史))重建**:不继承旧 ``LineStrategy``(ADR-0336 已删)——独立
 ``CwStrategy`` 全具现(执行性钩子:球/箱/遭遇/补给/巨星/伙伴/prep 步级,
 自 ``DefaultCwStrategy`` 本体删除批平移自持,判据/表库仍消费
-``cw_plan/cw_economy/cw_recipe/cw_comps`` 共享函数;战略与备战决策自持)。
+``kernel``(cw_deploy_seat/cw_economy/cw_recipe/cw_comps)单一源;战略与备战决策自持)。
 层1 换源(裁决终版第三选项):
 
 - 信号/锁线 → ``cw_intention``(意向分层状态机;strategy_v4 点0);
@@ -53,6 +53,18 @@ from sr_od.application.currency_war.decision.decision_v2.phase import (
 from sr_od.application.currency_war.decision.decision_v2.scoring import score_all
 from sr_od.application.currency_war.kernel import cw_comps, cw_events
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
+from sr_od.application.currency_war.kernel.cw_deploy_seat import (
+    _bench_sell_value,
+    _card_supports_target,
+    _close_factions,
+    _pick_deploy_row,
+    _should_deploy,
+    _weakest_bench_idx,
+    deploy_legal,
+    deployed_name_set,
+    level_up_gate,
+)
+from sr_od.application.currency_war.kernel.cw_economy import xp_click_cost
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -111,7 +123,6 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellDeployed,
     simulate,
 )
-from sr_od.application.currency_war.strategy_v1 import cw_plan
 
 #: 谷底回滚线(点6:转型中遭遇单场掉血 >15 → 回滚一件最弱替换位;
 #: 与点4 报警线 20/30 分层并存——15 管转型期单场,20/30 管全局累计)
@@ -780,7 +791,7 @@ class DecisionV2Strategy(CwStrategy):
         dep = sum(1 for d in (st.deployed or []) if getattr(d, 'char_id', ''))
         vacancy = max(0, cap - dep)
         worth = [bc for bc in (st.bench or []) if bc is not None
-                 if bc.char_id and cw_plan._should_deploy(bc, st, target)]
+                 if bc.char_id and _should_deploy(bc, st, target)]
         return max(0, len(worth) - vacancy)
 
     @staticmethod
@@ -796,7 +807,7 @@ class DecisionV2Strategy(CwStrategy):
         from sr_od.application.currency_war.kernel.cw_economy import (
             clicks_to_next_level,
         )
-        total = clicks_to_next_level(st) * cw_plan.xp_click_cost(st)
+        total = clicks_to_next_level(st) * xp_click_cost(st)
         return st.gold - total >= 50
 
     @staticmethod
@@ -814,14 +825,14 @@ class DecisionV2Strategy(CwStrategy):
             return None
         counts = Counter((bc.char_id, bc.star) for bc in st.bench
                        if bc is not None and bc.char_id)
-        close = cw_plan._close_factions(st)
+        close = _close_factions(st)
         best_i, best_v = None, None
         for i, bc in enumerate(st.bench):
             if bc is None or not bc.char_id or counts[(bc.char_id, bc.star)] >= 2:
                 continue
-            if cw_plan._card_supports_target(bc.char_id, bc.faction, st, target):
+            if _card_supports_target(bc.char_id, bc.faction, st, target):
                 continue
-            v = cw_plan._bench_sell_value(bc, character_priority, close, target)
+            v = _bench_sell_value(bc, character_priority, close, target)
             if best_v is None or v < best_v:
                 best_i, best_v = i, v
         return best_i
@@ -836,22 +847,22 @@ class DecisionV2Strategy(CwStrategy):
         st = self._pseudo_state(obs, session)
         from sr_od.application.currency_war.kernel.cw_recipe import decision_target
         target = decision_target(session, st)
-        # ⚖️ r94:同名在场守卫收口 cw_plan.deploy_legal(全局不变量单一源;5.1.7)。
+        # ⚖️ r94:同名在场守卫收口 kernel.cw_deploy_seat.deploy_legal(全局不变量单一源;5.1.7)。
         # 第14局 r9 实证:藿藿已在场,腾席链a把 bench 藿藿拖向空位 5 次全被游戏拒
         # → director 屏蔽 → 爻光滞留 bench 到局末。_should_deploy 顶部同守卫,
         # 此处显式跳过是为了「失败记忆」计数不污染(被拦的不再进候选循环)。
-        _dep_names = cw_plan.deployed_name_set(st)
+        _dep_names = deployed_name_set(st)
         # a. deploy 空位(零成本最优):bench 有过 _should_deploy 的角色 → DeployMove
         if obs.deploy_vacancy > 0:
             for bc in list(obs.bench_chars):
-                if not cw_plan.deploy_legal(bc, _dep_names):
+                if not deploy_legal(bc, _dep_names):
                     continue   # 同名已在场(游戏拒),留 bench 待 3合1 合并
                 # r93 失败记忆:同角色拖拽已被游戏拒过 → 跳过(重试同目标=白烧环步,
                 # 藿藿 5 连败实证;下一候选继续)。备战后对账刷新会自然重置状态。
                 if session.deploy_fail_counts.get(bc.char_id, 0) >= 1:
                     continue
-                if cw_plan._should_deploy(bc, st, target):
-                    row, ok = cw_plan._pick_deploy_row(st, bc, target)
+                if _should_deploy(bc, st, target):
+                    row, ok = _pick_deploy_row(st, bc, target)
                     if not ok:
                         continue
                     occupied = obs.front_occupied if row == 'front' else obs.back_occupied
@@ -900,7 +911,7 @@ class DecisionV2Strategy(CwStrategy):
             if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
                 session.free_bench_gold_wait = 0
                 fresh = self._fresh_state(obs, session)
-                if (cw_plan.level_up_gate(
+                if (level_up_gate(
                         fresh, target, committed=committed_from(session, fresh))
                         and self._levelup_engine_ok(fresh, session)):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
@@ -918,7 +929,7 @@ class DecisionV2Strategy(CwStrategy):
                 # 链 c 卖牌。零下行:LevelUp 失败被框架 fail 链兜住。
                 _stale = self._pseudo_state(obs, session)
                 _stale.level_up_cost = getattr(_stale, 'level_up_cost', None) or 4
-                if (cw_plan.level_up_gate(
+                if (level_up_gate(
                         _stale, target, committed=committed_from(session, _stale))
                         and self._levelup_engine_ok(_stale, session)):
                     log.info('[cw][prep] 腾席链b:等待 %d 次无真值 → stale gold=%s 试升级'
@@ -931,13 +942,13 @@ class DecisionV2Strategy(CwStrategy):
         # r364 兜底:全保护(None)且 b 等待超限 → **强制卖 bench 首
         # 个非在场件**(保护是优化不是死锁理由;卡 50min 实证全保护
         # 也是死循环形态之一)。正常路径(未超限)不受影响。
-        idx = cw_plan._weakest_bench_idx(st, config.character_priority, target)
+        idx = _weakest_bench_idx(st, config.character_priority, target)
         if idx is not None and idx < len(st.bench):
             bc = st.bench[idx]
             log.info(f'[cw][prep] 腾席链c:卖最弱 槽{bc.slot}({bc.char_id})')
             return SellBench(slot=bc.slot)
         if getattr(session, 'free_bench_gold_wait', 0) > 1:
-            _dep_all = cw_plan.deployed_name_set(st)
+            _dep_all = deployed_name_set(st)
             for bc in st.bench:
                 if bc is not None and bc.char_id and bc.char_id not in _dep_all:
                     log.info(f'[cw][prep] 腾席链c(r364 强制):全保护死锁 → 卖 槽{bc.slot}'
