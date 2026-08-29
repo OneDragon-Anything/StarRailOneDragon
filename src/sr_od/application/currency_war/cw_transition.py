@@ -15,7 +15,7 @@
 - 过渡框架 = 仙舟 32% + 列车 29%(主流仅两种;DOT 为挂件形态 28%)
 
 **模型**:``TRANSITION_PACK`` = Early 高频纯过渡+贯穿牌的目标集合;
-``in_early_phase`` 判 Early(plane1 + 未 commit 最终线);
+Early 期判定(plane1 + 未定型)由消费方内联声明(框架启动变体已退役,ADR-0469)。
 plan 的买牌/上阵在 Early 期以过渡包为 target(过渡包羁绊低费快成型),
 P1 末/P2 起切最终 comp(select_comp 照常,积累的贯穿牌无缝继承)。
 """
@@ -69,11 +69,6 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     # 量子键的贝洛伯格保留——那是希儿线主流构成(希儿系判据内)。
 }
 FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
-
-
-def in_early_phase(plane: int, committed: bool) -> bool:
-    """Early 期判定:plane1 且最终线未 commit(form < COMMIT_FRAC 由调用方判)。"""
-    return plane == 1 and not committed
 
 
 def _framework_counts(bench, deployed,
@@ -162,48 +157,6 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
             return current   # 现任持有未被挑战者持有领先 → 保持
         if owned[current] >= 1 and _challenger_owned < owned[current] + 1:
             return current   # 挑战者持有未领先 ≥1 → 保持(r72 滞后原语义,持有权版)
-    return fw
-
-
-def pick_framework_startup(bench, deployed, shop=None, current: str = '',
-                           portal: str = '') -> str:
-    """过渡框架启动判定(decision_v2 载体 decide_prep 调用;与 pick_framework
-    同模块单一源,差异只在启动门判据)。
-
-    **启动门 = 纯持有权 ≥2 为主门**(启动时序定谳判据):pick_framework 的
-    合并权 1.5 门隐含「调用点读到商店开门后的帧」——旧唯一调用点在开门前
-    读 state,shop 恒空,合并权系统性退化为纯持有(门从未按设计语义运转,
-    根因分析见 `.debug/temp/currency_war/w455_fw_startup/W455_REPORT.md` §2-3)。
-    本函数的调用点在 decide 帧(商店已开,sim 与实机同点),shop 真实可见
-    → shop 半权收窄为加速项:**持有 1 张 + 在售同框架 ≥2 张(半权合计
-    ≥1.0,即合并权 2.0)也可启动**;纯在售(持有 0)永不启动。
-
-    其余语义与 pick_framework 一致:r72 滞后(翻转需挑战者持有权领先现任
-    ≥1)/r107 审计A(保持判定只认持有权,防半权蒸发闪烁)/portal 环境偏置
-    (+3 等效权,可被真件翻越)/平局按 FRAMEWORKS 序偏仙舟(主流先验)。
-
-    生命周期注(收敛载体定谳删除批,ADR-0442):收敛载体+三层贯彻已删,
-    本函数与 ``registry.framework_startup_v2_enabled``(默认关)按裁决保留
-    休眠——它是 transition_framework 在 decision_v2 路径的唯一定期写入者
-    (拔除=6 个消费者读孤儿字段),也是复活路径的种子基建;复活条件见
-    ADR-0442 删除裁决段。
-    """
-    owned, counts = _framework_counts(bench, deployed, shop)
-    if portal:
-        for fw in counts:
-            if fw in portal:
-                counts[fw] += 3   # 环境先验等效权(与 pick_framework 同参)
-                break
-    fw = max(counts, key=lambda k: counts[k])
-    started = owned[fw] >= 2 or (owned[fw] == 1
-                                 and counts[fw] - owned[fw] >= 1.0)
-    if not started:
-        if current and current in owned and owned[current] >= 1:
-            return current   # 现任手里有真件,保持(防闪烁回退 '';r107 审计A 同型)
-        return ''
-    if current and current in owned and current in counts:
-        if owned[current] >= 1 and owned[fw] < owned[current] + 1:
-            return current   # 挑战者持有权未领先现任 ≥1 → 保持(滞后)
     return fw
 
 

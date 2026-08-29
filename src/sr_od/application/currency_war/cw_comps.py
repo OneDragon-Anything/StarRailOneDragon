@@ -1846,7 +1846,9 @@ def target_committed(target: Comp, state: GameState) -> bool:
 # r7 pivot 冷却(治过度换线;两局败因诊断:4 线/3 线换线漂移,P1 后段板面永远半成型):
 # 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
 # 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
-# 冷却状态挂 StrategySession.pivot_cooldown_until(default_strategy 调用侧维护)。
+# 冷却状态宿主 StrategySession.pivot_cooldown_until 已随 default 栈退役删除
+# (唯一写端=default update_target);maybe_pivot 挂账层的冷却守卫随之惰性化
+# (session 冷却字段不再存在,守卫恒不触发)。
 # r87 H2 修正(审计 cc119c14,第4局实锤):**保命 pivot 也设冷却(1 轮/次,弱于信号1/2 的
 # 3 轮)** —— 旧「信号3全豁免」致 r7-r9 三轮 4 次 pivot(10 秒内两次翻转),
 # 「信号3→转线→板面清零→更弱→又信号3」自激,板面 14 阵营各×1 永不成型。

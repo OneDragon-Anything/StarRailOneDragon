@@ -584,7 +584,6 @@ class BuyShopCards(SrOperation):
                 'sess_framework': getattr(_sess, 'transition_framework', '') or '',
                 'sess_dual_track': not committed_from(_sess),   # R1 唯一读端
                 'sess_drought': getattr(_sess, 'target_drought', None),
-                'sess_pivot_cooldown': getattr(_sess, 'pivot_cooldown_until', None),
                 'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
                 # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)

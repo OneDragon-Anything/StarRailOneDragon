@@ -273,8 +273,9 @@ class StrategySession:
     # 回写 state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
     chosen_megastar: str = ''
     chosen_partner: str = ''
-    pivot_cooldown_until: int = 0                      # r7 pivot 冷却(转线后 N 轮封信号 1/2;保命豁免在调用侧)
-    drought_excluded: list[str] = field(default_factory=list)   # r20 极端 drought 弃线名单(r7 review:单槽会被第二条死线覆盖→振荡;死线不复活,局级=session 新建)
+    # (r7 pivot 冷却宿主字段 pivot_cooldown_until 与 r20 drought 弃线名单
+    #  drought_excluded 已随 default 栈退役删除(唯一写端=default update_target);
+    #  消费侧 getattr 带兜底,maybe_pivot 挂账层/cw_line_switch 残余读点惰性化)
     commit_signals: object = None   # ADR-0209 CommitSignals(定型信号累积器;惰性建——default_factory 会引环形导入,update_target 首调时建)
     stash_comp: object = None       # ADR-0209 双轨期信号领先线 comp(囤牌方向;update_target 每回合刷新)
     commit_flip_pending: bool = False   # ADR-0209 定型边沿(卖散上限放宽;decide_prep 一次性消费)

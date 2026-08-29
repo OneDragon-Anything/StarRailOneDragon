@@ -937,6 +937,12 @@ class DecisionV2Registry:
     #: +兑现余量——存活轮数不足=新线到不了兑现点,换线期望 0<驻留
     #: 旧线(「转进死线」堵门)。辖域 plane≥2(损血表为 P2 标定);
     #: drought bail 旁路不辖(或-并存结构不变,弃线不是转进)。
+    #: **开臂判据挂账(生命周期补全,批 4;此前无独立判据=非法悬置)**:
+    #: 与 rounds_two_state_enabled 同锚同批 A/B——同一换线裁决面,本门辖
+    #: 「是否验存活轮数」、two-state 辖「怎么算存活轮数」(正交双开关)。
+    #: 判据 = E_rounds 换线局濒死带时长与换线拦截率不劣 ∧ 「转进死线」局
+    #: 归零(判据单一源=cw_line_switch.survival_gate);可验时点 = 批 5
+    #: sim A/B 批(n=300/臂,夜跑可达)。禁无限挂起:不过 → 删码留 ADR。
     line_switch_survival_gate_enabled: bool = False
     #: C4 两态口径总开关(rounds_alive 逐节点投影的 p_win 通道):
     #: False=现行为逐位一致(零漂移锚)——p_win_p2_by_rung 即使已注入
@@ -947,6 +953,9 @@ class DecisionV2Registry:
     #: **开臂 A/B 判据挂账(不执行)**:按 W371 M4 口径——姿态面为主
     #(P2 生存/濒死带时长/换线拦截率过程指标),n=300/臂(合计 600)
     #: 之前不允许率差当主判据;姿态面过才翻 True。
+    #: **验证排期挂账(批 4 补 deadline)**:排进批 5 sim A/B 批,与
+    #: line_switch_survival_gate_enabled 同臂组(2×2 正交或分臂,由批 5
+    #: 任务书定);姿态面不过 → 删码留 ADR。
     rounds_two_state_enabled: bool = False
     #: C4 兑现余量(轮;新线成型后仍需一轮兑现战斗,取 1=设计内保守下界)。
     #: 兼承载投影的近似残差(逐节点确定性投影 vs 真分布 E[min(t:ΣL>hp)]
@@ -1047,6 +1056,8 @@ class DecisionV2Registry:
     #: 成本侧账独立成立),其开臂由两臂 A/B「基线 vs C1 本体」对照独立
     #: 裁决(判据=出口 hp 与 boss 胜率不降+删因逐笔可复算,事前预写见
     #: ADR-0443 Decision 3),不因破息否决受波及。
+    #: **验证排期挂账(批 4 补 deadline)**:排进批 5 sim A/B 批;
+    #: 不过 → 删码留 ADR-0443。
     c1_directed_spend_enabled: bool = False
 
     # ===== C1 资产臂(跨位面资产通道 V_asset)——定谳清理,删码留档 =====
@@ -1082,6 +1093,9 @@ class DecisionV2Registry:
     #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 息基
     #: 保住率不劣于基线臂 2pp(判据只收台账可测项);
     #: 验证不过的出口=删码留 ADR-0432。
+    #: **验证排期挂账(批 4 补 deadline)**:排进批 5 sim A/B 批,且为本组
+    #: **第一个跑**的开关(形态达标率是当期头号缺项,sim 0%/实机 10%);
+    #: 不过 → 删码留 ADR-0432。
     recipe_fence_enabled: bool = False
 
     #: —— 同名牌集中度约束(已定谳清理,删码留档;决策 why=ADR-0437,
@@ -1115,6 +1129,9 @@ class DecisionV2Registry:
     #: 拆队笔数 before-after(改后应为 0)∧ 拆队后 benign→mal 不增 ∧
     #: strict_mal 不升(ADR-0373 先例:卖侧守卫曾有 benign→mal 回归);
     #: 验证不过的出口=删码留 ADR-0433。
+    #: **验证排期挂账(批 4 补 deadline)**:可验时点=实机回归战役
+    #(蓝图 §8,前置=批 5 说服包通过);实机判读量(拆队笔数/形态迁移
+    #: 分账)入 §8 武装序判读清单,防「开臂时无人记得量什么」。
     form_break_sell_blocked_enabled: bool = False
 
     #: —— 方向三:花的时机判据(below_floor_spend_gate)——
@@ -1138,24 +1155,10 @@ class DecisionV2Registry:
     #: 架空,sim 判据结构性永不满足),有效性归实机判读。开臂判据=实机
     #: r9 破息升级笔息损分账 before-after(改后破息笔归零)∧ never_50
     #: ≤基线+2pp ∧ 形态达标不降;验证不过的出口=删码留 ADR-0434。
+    #: **验证排期挂账(批 4 补 deadline)**:可验时点=实机回归战役
+    #(蓝图 §8,前置=批 5 说服包通过);判读量(r9 破息分账,改前基线
+    #: w42 26.3%/w43 5.5%)入 §8 武装序判读清单。
     below_floor_spend_gate_enabled: bool = False
-
-    # ===== 过渡框架启动重接线(开关生命周期第 1 态:落码默认关)=====
-    #: 语义:True 时 DecisionV2Strategy.decide_prep 在 state 就绪处调用
-    #: ``cw_transition.pick_framework_startup``(单一源,禁复制第二份逻辑)
-    #: 刷新 ``session.transition_framework``。启动判据=纯持有权 ≥2 为主门
-    #: (持有 1+开门店同框架 ≥2 为加速项;decide 帧 shop 真实可见)。
-    #: 消费面(生产 shop/deploy_bench 围栏与 focus_factions、sim deploy)
-    #: 读同一 session 字段,接上即活。False=不触碰该字段——**零漂移锚**:
-    #: 决策序列与现状逐位一致(同 seed sim 对拍;关态下 dv 路径 P1 框架
-    #: 恒空=W453 时代现状)。遥测契约防线=``cw_sim_checks
-    #: .check_transition_framework_liveness``(载体再切换静默死亡被测试抓)。
-    #: 生命周期注(收敛载体定谳删除批,ADR-0442):收敛载体+三层贯彻已删,
-    #: 本开关按裁决保留休眠——它是 transition_framework 在 dv 路径的唯一
-    #: 定期写入者(拔除=6 个消费者读孤儿字段),也是复活路径的种子基建;
-    #: 复活条件(新建跨轮终局线信号累积器 + 预注册 n≥451 重跑 A/B)见
-    #: ADR-0442 删除裁决段。
-    framework_startup_v2_enabled: bool = False
 
     # ===== DirectorV2 备战循环(W606 阶段2批③落件;W620 批1升正)=====
     #: W620 批 1(蓝图 §7 批 1 行):DirectorV2 接线升正,新环 = 唯一生产

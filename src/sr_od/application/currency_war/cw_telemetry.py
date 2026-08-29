@@ -207,7 +207,8 @@ class DecisionTrace:
     sess_framework: str = ""                      # transition_framework(配方路线)
     sess_dual_track: bool | None = None           # 双轨期(定型与否)
     sess_drought: int | None = None               # target_drought(断供计数)
-    sess_pivot_cooldown: int | None = None        # pivot_cooldown_until
+    # (sess_pivot_cooldown 已随 pivot 冷却宿主字段退役删除;旧语料该键经
+    #  extra.get 读缺省 None,schema 兼容)
     sess_commit_scores: dict[str, float] = field(default_factory=dict)  # CommitSignals 累积分
     sess_active_env: str = ""                     # 已选投资环境(portal 偏置源)
     # —— 策略 v2(LineStrategy)字段(r226;redesign §6 遥测扩展:
@@ -561,7 +562,6 @@ class TelemetryRecorder:
             trace.sess_framework = str(extra.get('sess_framework', ''))
             trace.sess_dual_track = extra.get('sess_dual_track')
             trace.sess_drought = extra.get('sess_drought')
-            trace.sess_pivot_cooldown = extra.get('sess_pivot_cooldown')
             trace.sess_commit_scores = dict(extra.get('sess_commit_scores', {}))
             trace.sess_active_env = str(extra.get('sess_active_env', ''))
             trace.strategy_id = str(extra.get('strategy_id', ''))
