@@ -545,19 +545,6 @@ def node_vote_verdict(table_type: str, votes: dict[str, str | None]) -> str:
     return 'ok'
 
 
-def resolve_node_type_with_ledger(session: object, plane: int | None,
-                                  round_num: int | None,
-                                  obs_type: str | None) -> str | None:
-    """节点类型消费仲裁(纯函数可测):**查表优先**,表缺退逐帧观测。
-
-    表值(台账,权威)与 obs_type(逐帧标签 OCR,已过 boss 轮次门等语义门)
-    同词汇表,值语义零变更 —— 同值不同源,只换信源优先级。表缺/该位次
-    未识别(None)→ 退 obs_type(旧行为)。
-    """
-    ledger_t = ledger_node_type(session, plane, round_num)
-    return ledger_t if ledger_t is not None else obs_type
-
-
 def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                            plane: int | None, round_num: int | None) -> None:
     """当前节点类型三票校验(**纯记账,零行为**)。
@@ -871,25 +858,6 @@ def parse_damage_value(s: str) -> int | None:
         return int(round(float(s) * mult))
     except ValueError:
         return None
-
-
-def read_total_damage(ctx: SrContext, screen: MatLike, rect: tuple[int, int, int, int]) -> int | None:
-    """战斗实时屏右侧「伤害」列各角色明细 → 求和(总伤害)。
-
-    ⚠️ **fragile 时机**:战斗中读(敌方/我方行动中,伤害实时增)→ 读的是当时累计,非最终。诊断用
-    (stage7 输出诊断;hp_trend 已隐含输出主路径 ``is_run_dead``)。**战斗实时屏未建档**(``screens=[]``,
-    ``rect`` 调用方传固定坐标临时;TODO 战斗屏建档后改 area)。3.5.4 reader 就位,接线(战斗时机 + 建档)待 stage7。
-    无单独总伤害字段 → 角色明细求和(2026-08-12 视觉大模型确认)。
-    保留裁剪读(2026-08-24 crop-first 审计):伤害列密集数字行,裁切隔离 det 更稳;rect 为
-    调用方临时坐标(非 screen_info area),≥70% 过滤契约无 fixture 可对拍;诊断用非主路径。
-    """
-    x1, y1, x2, y2 = rect
-    crop = screen[y1:y2, x1:x2]
-    if crop.size == 0:
-        return None
-    ocr = ctx.ocr_service.get_ocr_result_list(image=crop)
-    vals = [v for v in (parse_damage_value(r.data) for r in ocr) if v is not None]
-    return sum(vals) if vals else None
 
 
 # 难度确认屏 reader(开局读本局职级;非备战屏,放本模块集中 OCR readers)
