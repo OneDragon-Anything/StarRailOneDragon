@@ -20,15 +20,11 @@ class WaitBattleResult(SrOperation):
 
         # 等待战斗期间弹出的提示类弹窗(如饰品提取首次进入的「当前不存在任何
         # 存档,是否直接开始战斗?」)会盖住战斗画面 → 本节点只认三种状态会
-        # 干等至超时。弹窗语义=确认继续战斗,点确认后重新进入状态判定。
+        # 干等至超时。弹窗语义=确认继续战斗:直接点确认,下轮重判(关闭动画
+        # 期间确认按钮会消失,不能用「点到了确认」当成功判据——实证误判 FAIL)。
         if self.round_by_find_area(screen, '挑战副本', '提示弹框-标题').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, '挑战副本', '提示弹框-确认',
-                success_wait=2, retry_wait=1,
-            )
-            if result.is_success:
-                return self.round_wait(wait=1)
-            return result
+            self.round_by_click_area('挑战副本', '提示弹框-确认')
+            return self.round_wait(wait=1)
 
         state = battle_screen_state.get_tp_battle_screen_state(
             self.ctx, screen,
