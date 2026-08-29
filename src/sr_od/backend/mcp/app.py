@@ -197,32 +197,32 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="分析游戏画面"))
     def analyze_screen(
         screenshot: Annotated[str | None, Field(description="截图来源:None=实时截当前画面(需游戏在线);传路径=读该图(无需游戏在线);纯名字=读 .debug/images/<名字>.png")] = None,
-        save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供 vision 复用;离线模式忽略")] = False,
+        save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
+        include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
     ) -> AnalyzeScreenResult:
-        """分析画面(截图 + OCR + 画面匹配),返回结构化结果。观察类,不改游戏状态。
+        """识别层的客观回读:画面身份判定 + area 命中坐标 + 结构化数据。观察类,不改游戏状态。
+
+        **定位分工(当前模型有原生视觉,本工具不再是「眼睛」)**:
+        - 「看懂画面」(布局 / 图标语义 / 状态 / 未建档元素)→ 用你自己的视觉
+          (``read_image`` 截图文件;实时分析加 ``save_image=True`` 拿路径直接看)。
+        - 本工具管「**对账**」:①画面身份判定(对建档 screen_info 的确定性
+          ``is_precise`` 匹配,bot 运行时同源);②精确坐标与置信度(area 命中
+          rect,定坐标/验坐标的 ground truth);③结构化领域数据(extras);
+          ④零图像 token 的廉价轮询。视觉判读与本研究打架 = 建档漂移信号。
+        - 典型连招:新画面先视觉看懂 → 建档 → 用本工具对账;已知画面轮询
+          状态只调本工具(不带 save_image)。
 
         **默认用法:不带参数直接调用** —— 自动截当前游戏画面并分析(需游戏在线),
         **不要先调 capture_game_screen 再把路径传进来**(多一次往返,且两次截图间画面可能已变)。
-        还需要把截图喂视觉大模型时加 ``save_image=True``,结果里的 ``screenshot_path`` 直接可用,
-        同样不必先 capture。
-
-        **非视觉大模型(VLM)**:本 tool 的「分析」= OCR + 传统 OpenCV 模板/颜色匹配,
-        按已建档 screen_info 做客观命中,**没有视觉理解能力**(看不见图标语义 / 布局 /
-        状态 / 未建档元素)。要「看懂画面」用视觉大模型(zai ``analyze_image`` 等)或
-        视觉子 agent;``save_image=True`` 回传的 ``screenshot_path`` 可直接喂视觉工具。
 
         传 screenshot 仅用于**离线**场景(分析已存的历史截图,无需游戏在线):绝对路径
         按路径读 / 纯名字到 ``.debug/images/<名字>.png`` 读;**不回写**识别状态。
         用于离线校验/反哺 screen_info。
 
-        save_image=True(**仅实时模式**)→ 把截图落盘并把路径放进 ``screenshot_path``
-        返回,供 vision 复用(省掉另调 capture_game_screen)。离线模式忽略。
-
         Returns:
             ``AnalyzeScreenResult``:顶层字段 ``success`` / ``ocr_texts`` / ``screens`` /
             ``error`` / ``screenshot_path`` / ``vision_hint`` / ``extras`` / ``extras_doc``。
-            决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选);
-            需要散落文本(未归类到任何 area 的 OCR 文本)再看 ``ocr_texts``。
+            决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选)。
 
             ⚠️ **两套坐标系,别混用**:
             - ``pc_rect``(unmatched_areas 里)与点击坐标 = **1080p 游戏空间**,
@@ -231,7 +231,9 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
               (随窗口实际分辨率变),只用于定位/参考,不直接喂 click_game。
 
             嵌套结构:
-            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (截图像素坐标)。
+            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (截图像素坐标);
+              **默认空列表**,``include_ocr=True`` 才返回全量散落 OCR(未归类到任何
+              area 的文本;读屏幕零散文字/校对文字区时开)。
             - ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
               ``unmatched_areas`` 仅精准命中时填充,``reason`` 取值 ``no_method``(纯定位区,
               无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
@@ -240,8 +242,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
               width, height(截图像素), text(仅文本区,实际命中文本), confidence(文本=OCR
               score / 模板=匹配度)}``。
 
-            ``vision_hint``(success 时):本结果仅含 OCR + 模板匹配的部分识别,不等同完整
-            视觉理解;需要全面判断画面时配合视觉工具 / 多模态再看(能力边界提醒,非错误)。
+            ``vision_hint``(success 时):本结果与视觉判读的分工提醒(本工具=识别对账;
+            理解画面/未建档元素用视觉),非错误。
 
             ``extras``(精准命中时):若该画面注册了额外识别器(recognizer),带该画面的结构化
             领域事实(画面特定结构,如货币战争备战画面的前后台 / 备战席角色 + 金币 / 阶段);
@@ -252,7 +254,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             无注册识别器 / 未声明时为 None。
         """
         try:
-            return backend.analyze(screenshot, save_image)
+            return backend.analyze(screenshot, save_image, include_ocr)
         except Exception as e:  # noqa: BLE001 工具层统一兜底，避免异常透传到 MCP 框架
             return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
 

@@ -66,8 +66,10 @@ if TYPE_CHECKING:
 # 提醒调用方(智能体)需要全面判断画面时,补一步视觉工具 / 多模态再看。
 # 见 docs/develop/sr_od/backend/design-principles.md P6/P13。
 _VISION_HINT = (
-    '本结果仅包含 OCR 识别的文字与模板匹配的命中项,是画面的部分识别结果,'
-    '不等同于对画面的完整视觉理解。需要全面判断画面时,请用视觉工具或多模态大模型再看一遍该画面。'
+    '本工具=识别层对账(画面身份判定/area 命中坐标/结构化数据),与视觉判读互补:'
+    '理解画面布局、图标语义、状态或未建档元素 → 用视觉模型直接看截图'
+    '(save_image=True 回传 screenshot_path);本结果与视觉判读不一致时,'
+    '优先怀疑建档漂移(area 坐标/文本过期),回验 screen_info。'
 )
 
 
@@ -657,8 +659,9 @@ class SrBackendContext:
             resolved = debug_utils.get_debug_image_path(screenshot)
         return cv2_utils.read_image(resolved), resolved
 
-    def analyze(self, screenshot: str | None = None, save_image: bool = False) -> AnalyzeScreenResult:
-        """分析画面:截图 + 全图 OCR + 画面匹配(精准/模糊)。
+    def analyze(self, screenshot: str | None = None, save_image: bool = False,
+                include_ocr: bool = False) -> AnalyzeScreenResult:
+        """识别层客观回读:截图 + 画面匹配(精准/模糊)+ area 命中。
 
         screenshot 省略 → 截当前游戏画面(需游戏窗口就绪);精准命中回写
         ``ctx.screen_loader.update_current_screen_name``,为下次 BFS 提供起点。
@@ -668,17 +671,23 @@ class SrBackendContext:
 
         save_image=True(**仅实时模式生效**)→ 把截到的内存图落盘到
         ``.debug/sr_od_mcp/screenshot/``,路径写入 ``screenshot_path`` 返回,
-        供调用方喂给 vision 复用(省掉第二次截图)。离线模式忽略(调用方本就有路径)。
+        供调用方视觉判读复用(省掉第二次截图)。离线模式忽略(调用方本就有路径)。
+
+        include_ocr=False(默认)→ ``ocr_texts`` 恒为空列表:全量散落 OCR 是
+        无视觉时代的「替眼睛」输出,当前定位(对账:画面身份/坐标/结构化数据)
+        下默认是噪音;读屏幕零散文字时由调用方显式开启。
 
         Args:
             screenshot: 截图绝对路径,或 ``.debug/images`` 下的图名(不带后缀);
                 None 表示实时截当前画面。
             save_image: 实时模式下是否把截图落盘并回传路径(默认 False)。
+            include_ocr: 是否返回全量散落 OCR 文本(默认 False)。
 
         Returns:
-            分析结果:成功标志、OCR 文本列表、画面匹配列表、错误描述、
+            分析结果:成功标志、OCR 文本列表(include_ocr=False 时为空)、
+            画面匹配列表、错误描述、
             screenshot_path(本次新存的截图路径,实时+save_image=True 时有值)、
-            vision_hint(成功时填的能力边界提示,失败时 None)。
+            vision_hint(成功时填的分工提示,失败时 None)。
         """
         self._ensure_ready()
         should_save: bool = save_image and screenshot is None
@@ -704,11 +713,15 @@ class SrBackendContext:
             # crop_first=False:与下方 find_screen_matches 内 find_area_with_detail(color_range=None)复用
             # 同一份全图 OCR 缓存(cache key 含 crop_first;True/False 不复用会触发两次全图 OCR)。
             # rect=None 时 crop_first 不影响 OCR 结果(都全图),只改 cache key。
-            ocr_result_list = self._ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
-            ocr_texts = [
-                OcrText(text=r.data, x=int(r.x), y=int(r.y), width=int(r.w), height=int(r.h))
-                for r in ocr_result_list
-            ]
+            # 注意:全图 OCR 总是要跑(find_screen_matches 的文字 area 匹配依赖它),
+            # include_ocr 只控制是否把散落文本回传给调用方。
+            ocr_texts: list[OcrText] = []
+            if include_ocr:
+                ocr_result_list = self._ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
+                ocr_texts = [
+                    OcrText(text=r.data, x=int(r.x), y=int(r.y), width=int(r.w), height=int(r.h))
+                    for r in ocr_result_list
+                ]
             screens = find_screen_matches(self._ctx, image)
             if write_back and screens and screens[0].is_precise:
                 self._ctx.screen_loader.update_current_screen_name(screens[0].screen_name)
