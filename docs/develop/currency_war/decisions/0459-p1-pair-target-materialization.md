@@ -1,4 +1,4 @@
-# ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)· P1 配方锁帧 target 载体物化(pair_target_comp)
+# ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)
 
 - **Status**: accepted(2026-08-30,实机阶梯兑换=sim A/B 平局[结构不可测]+局22 实机锚 M1/M3 过·M2 方向成立·S 过,REAL_MACHINE_LADDER.md 预注册判定)
 ## Context
