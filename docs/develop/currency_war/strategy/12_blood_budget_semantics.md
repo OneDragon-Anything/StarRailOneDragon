@@ -331,3 +331,27 @@ W516 结论②的「P2 花金义务」(死时攥 119 金=机制性断供)是本�
    优先级逐条裁决(§5)。
 5. ☑ 文档纪律:设计件豁免声明;黑话三词定义于卷首;数值集中 §6 参数表
    带来源;as-built 禁项(进度/变更史/状态位)未犯。
+
+## 9. 终止分支语义:P1 止损转支出(决策 why=ADR-0470)
+
+血预算停付族(§2.3-P1-a/P1-b/P1-c)的辖域边界补丁:死亡已不可避免
+(守钱世界存活概率上界 S0 ≤ `terminal_survival_eps`)的帧内,金留到死
+=零价值,停付防线让位给「当轮转化」支出。
+
+- **判据面**:`decision_v2.discipline.terminal_release`——plane==1 硬门
+  ∧ `hp_decision_trusted` fail-closed ∧ 非位面末 ALL IN ∧ S0≤ε;S0=
+  Π 单发穿透场条件胜率(L_i/p_i 单一源=vd_p1_loss_*/
+  streak_floor_loss_damage/streak_floor_win_rate);位面内触发闩(session
+  载体,首触发后恒释放,防 S0 邻域抖动半释放)。
+- **释放范围**:搜索型刷新停付(`blood_budget_refresh_blocked`,须过
+  当轮转化双门:bench 空槽 ∧(deploy 空位 ∨ 存在 1★ 板面垫底件)——
+  板满帧不进释放辖域)与末窗支出降格(`p1_directed_downgrade_active`
+  终止短路);**停升级门不豁免**(P21 数学与金零价值无关;P21 全负
+  结论的适用边界与越界翻正点见 ADR-0470 §2)。
+- **记账面**:闩位经 `terminal_release_bit` 单一址进 sim 账本行
+  `terminal_release` 位与遥测 `sess_terminal_release`;检查器只验位与
+  刷新行为一致(`seg_p1_blood_budget_refresh` 吃位豁免、
+  `seg_terminal_release_ledger` 验位-行为矛盾),**不复算 S0**——S0
+  公式正确性由测试仓闭式对拍单帧锁承载。
+- **首批边界**:卖件腾槽路径与 P2 扩辖不放(独立批);预算层零改动。
+  ε 档与 p_i 表的重标定挂账见 ADR-0470 §2。
