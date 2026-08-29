@@ -1161,7 +1161,7 @@ def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
 def check_refresh_roll_cap_frame(ledgers: list[list[dict]]) -> dict:
     """刷新预算帽披露(批级):普通车道轮级刷新数 vs REFRESH_ROLL_CAP。
 
-    语义依据(单一源 = decision_v2.economy_cycle.REFRESH_ROLL_CAP,
+    语义依据(单一源 = cw_economy.REFRESH_ROLL_CAP(kernel 桶,期 0b 下沉),
     refresh_ev_budget 预算式的授权刷数上界 min(帽,溢余/刷价))。
     **披露型,批级聚合入口消费,不作逐局归零锁**:决策语义是逐段
     重决策(刷后见新店再裁),每段各自重读预算,轮级累计刷新数自然
@@ -1172,7 +1172,7 @@ def check_refresh_roll_cap_frame(ledgers: list[list[dict]]) -> dict:
     对 session 局级累计计数器取差值)= M-A 定向车道执行数,先扣除;
     历史批次无此键按 0 扣。
     """
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.cw_economy import (
         REFRESH_ROLL_CAP,
     )
     over_frames = 0
@@ -5289,13 +5289,22 @@ def check_line_gate_starvation_anchor(ledgers_on: list[list[dict]],
                     f'on 局{j}:relock {relocks} 次(>1,G4 判据 1——闩'
                     f'被实现成计数回锁,结构性违规)')
             if latch_idx is not None:
+                # D2 修正(W696 审计):统计窗口收窄到闩位面段(plane==2)
+                # ——P2→P3 后的合法转移(P3 强制锁接管等)不计入判据 3。
+                latch_plane = rows[latch_idx].get('plane')
                 prev_tc = None
                 transferred = False
                 for r in rows[latch_idx + 1:]:
+                    if latch_plane is not None \
+                            and r.get('plane') not in (None, latch_plane):
+                        break   # 出闩位面:窗口收窄,其后转移不辖
                     ist = r.get('v3_intention') or {}
                     ev = str(ist.get('last_event', '') or '')
                     tc = r.get('target_comp') or ''
-                    if ev.startswith(('revoke:', 'gate_hold:')) \
+                    # D1 修正(W696 审计):gate_hold 不入转移谓词——原线
+                    # E=inf 停 weak 是设计明文合法终态(DESIGN v3 §3-4),
+                    # 逐帧 gate_hold 复现行非转移,不得计违规。
+                    if ev.startswith('revoke:') \
                             or (prev_tc is not None and tc != prev_tc):
                         transferred = True
                     prev_tc = tc

@@ -30,219 +30,29 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)(ADR-0445)。
 - **息基守卫收窄**:息线以内的常态帧(g≤R*)行为零漂移(义务只在
   溢余段激活;I-1 锚)。
 
+分包期 0b(§3.3-①a/①b):两接缝(schedule_upgrade/refresh_ev_budget)
+与其依赖族(reserve_cap/upgrade_plan_fee/_registry_of/is_emergency/
+_vd_core_of/REFRESH_ROLL_CAP/储备窗口常数)下沉 kernel 桶 cw_economy(物理居包根,期 1 归位)
+(原 kernel→decision 断环边:cw_economy.get_node_goal 标量投影体内懒
+import 决策包)。本模块只余容量/义务核算层;接缝符号在函数内懒 import
+自 cw_economy——monkeypatch 桩点重钉至 cw_economy 符号后,属性动态
+解析保证拦截语义不变。
+
 P2 刷新容量 12 < 收入 13-19 的扩容评估 = 披露面(判读层义务帧兑现率
 分布),本模块不改刷新帽(设计 §4 风险声明③)。
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sr_od.application.currency_war.cw_state import GameState
-from sr_od.application.currency_war.cw_strategy import StrategySession
+from sr_od.application.currency_war.cw_economy import reserve_cap
 from sr_od.application.currency_war.kernel.cw_registry import (
-    DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
 
-#: 储备窗口上界(轮;设计 §1.3:h = min(到下一 boss 节点轮数, 3)——
-#: 更远的排程升级应即时执行而非长期储蓄,结构界非拍值)。
-RESERVE_WINDOW_ROUNDS: int = 3
-
-#: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷
-#: 同源(git prior art),不另造第二把尺)。
-REFRESH_ROLL_CAP: int = 6
-
-
-def _upgrade_scheduled(state: GameState, session: StrategySession) -> bool:
-    """排程升级判据(兼容旧名;单一实现=``schedule_upgrade``)。"""
-    return schedule_upgrade(state, session)
-
-
-def _registry_of(session: StrategySession) -> DecisionV2Registry:
-    """接缝函数的注册表解析(A/B 注入面:session.v3_registry 显式注入
-    优先,缺省落 DEFAULT_REGISTRY——缺省栈无注入臂,P6 契约同 prep_brain
-    装配签名)。"""
-    reg = getattr(session, 'v3_registry', None)
-    return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
-
-
-def _interest_floor_of(session: StrategySession,
-                       registry: DecisionV2Registry | None = None) -> int:
-    """息线(守息线,interest_cap×10 同源派生,`w611_econ_cycle/` §2.2 恒等式;
-    接缝函数族共用的单一取址)。"""
-    return (registry or _registry_of(session)).interest_cap * 10
-
-
-def schedule_upgrade(state: GameState, session: StrategySession,
-                     registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
-
-    ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
-    必须传**同一个** registry 实例——prep_brain._budget 单源装配);
-    缺省落 _registry_of(session) → DEFAULT_REGISTRY。
-    规则集 = `w615_rules_advocacy/` §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
-    (`w623_batch3_pre-mortem/` D1):排程只回答「要不要开始攒」,不以当帧可负担为前置——
-    付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
-    排程判据若收窄成「付得起才排」会造成 R* 塌缩 → 义务花光 → 更排不上
-    的自我强化升级迟到循环(DP 无此失败模式:其 level_up 判定不依赖当帧
-    是否看得见目标)。
-
-    触发(任一,判据单一址=R4:本函数被 R* 储蓄分量(reserve_cap)、
-    arbiter 金地板授权、EV 升级授权 ② 臂三处共调):
-    ① 人口位([33]):cap 满 ∧ bench 有成型件(2★)等上场——升级后能
-       立即部署,当轮兑现战力,为最高义务;
-    ② 概率级([3]/[7]):目标核心概率峰值级 > 当前级 ∧ 息引擎已立
-       (g ≥ 息线,[12] 息引擎前置)。
-    禁升条件([12]/[32]):息引擎未立不追级(② 的前置即此);空升级
-    不升(① 触发本身即「有件可上」,无空升级面;② 是概率抬档语义,
-    不涉部署)。
-    **规则文本偏差披露(`w635_batch3_attack/` F2)**:`w615_rules_advocacy/` §2-R4 规则 2 原文有第三合取
-    「花完升级费后 g′ ≥ interest_floor」,与其 §1.3 伪码矛盾(伪码无此
-    项);本实现**取伪码侧**(预告态,不设该合取——保留它会让
-    g∈[息线, 息线+费) 帧不排程,恰造 D1 塌缩循环)。可负担性/平台未破
-    由执行层收口:ev.levelup_ev_basis 可负担性入口门 + ② 臂花后 ≥息线。
-
-    目标级解析:意向锁定核心 → 兜底 comp 核心 → 缺省 3 费档(meta
-    「7 级搜牌」主流带);费用档 → 峰值级查表
-    (``cw_plane_table.peak_refresh_level``)。comp 空帧不缺供给——
-    兜底链保证 L_target 恒可解(D1:target 级判定迟疑帧返回 False 是
-    塌缩循环的入口,禁)。
-    """
-    from sr_od.application.currency_war.cw_investments import (
-        refresh_invest_active,
-    )
-    if refresh_invest_active(state):
-        return False    # 淘金客姿态:升级通道退役(`w621_sim_explore/`;谓词单一址)
-    from sr_od.application.currency_war.cw_state import (
-        deployed_occupied,
-    )
-    reg = registry or _registry_of(session)
-    # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a))
-    if deployed_occupied(state.deployed or []) >= state.max_units() \
-            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
-                    for b in (state.bench or [])):
-        return True
-    # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上
-    if (state.gold or 0) < reg.interest_cap * 10:
-        return False
-    return _target_peak_level(state, session) > (state.level or 1)
-
-
-def _target_peak_level(state: GameState, session: StrategySession) -> int:
-    """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 兜底 comp
-    核心 → 缺省 3 费;核心解析单一源 = ev._vd_core_of 与其兜底扩展)。"""
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.cw_plane_table import (
-        peak_refresh_level,
-    )
-    core = _schedule_target_core(session)
-    ch = CHARACTERS.get(core) if core else None
-    cost = ch.cost if ch is not None and ch.cost else 3
-    return peak_refresh_level(cost)
-
-
-def _schedule_target_core(session: StrategySession) -> str:
-    """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧落意向
-    ⑤兜底 comp 的核心——方向层 FALLBACK_COMP_NAME 单一源;再缺='' →
-    调用方缺省 3 费档,供给不断)。"""
-    from sr_od.application.currency_war.cw_intention import (
-        FALLBACK_COMP_NAME,
-    )
-    from sr_od.application.currency_war.decision_v2.ev import _vd_core_of
-    core = _vd_core_of(session)
-    if core:
-        return core
-    from sr_od.application.currency_war.cw_comps import get_comp
-    fb = get_comp(FALLBACK_COMP_NAME)
-    if fb is not None:
-        from sr_od.application.currency_war.cw_intention import intention_core
-        return intention_core(fb)
-    return ''
-
-
-def refresh_ev_budget(state: GameState, session: StrategySession,
-                      registry: DecisionV2Registry | None = None) -> int:
-    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
-
-    ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
-    _registry_of(session) → DEFAULT_REGISTRY。
-    预算 = min(6, ⌊(g − R*)/刷价⌋)——只花溢余(`w615_rules_advocacy/` §2-R3 预算式:
-    刷新后仍守储备线;6 刷帽单一源 = REFRESH_ROLL_CAP,原 DP 求解面
-    _ACTION_ROLLS 的 DP 上限同源,不另造第二把尺)。
-
-    合法 0 帧契约(`w623_batch3_pre-mortem/` D2,判前锁;**辖域=应急带**,`w635_batch3_attack/` F1 收口):
-    - 应急帧(``filters.is_emergency`` 单一源,hp≤emergency_hp)→ 0:
-      应激通道根本不产指令(release 让位结构,合并无从放大);
-    - g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
-      流过 scoring P2 窗判据(``refresh_budget<=0 → 让位``)与存息
-      准入门,「>0 即行动授权」的语义在预算函数口径下成立。
-    **血预算带(应急线以上,ADR-0448/0451)不在本函数辖域**:预算字段
-    依公式照发,停手由 arbiter 拒付层兜底(discipline.
-    blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
-    搜索型刷新停付)——防线在拒付层不在预算层;原「血预算帧→0」为
-    虚标契约,已随 `w635_batch3_attack/` F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
-    定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
-    1 次/轮),与本预算不相交、不合并——披露面,非 0 帧契约的一部分。
-    """
-    from sr_od.application.currency_war.decision_v2.filters import (
-        is_emergency,
-    )
-    reg = registry or _registry_of(session)
-    if is_emergency(state, reg):
-        return 0
-    over = (state.gold or 0) - reserve_cap(state, session, reg)
-    if over <= 0:
-        return 0
-    cost = state.shop_refresh_cost or 2
-    return min(REFRESH_ROLL_CAP, over // cost)
-
-
-def upgrade_plan_fee(state: GameState) -> int:
-    """下一级升级总费(逐帧现读:OCR 单击价优先,缺省 flat 常量)。"""
-    from sr_od.application.currency_war.cw_plane_table import clicks_to_level
-    from sr_od.application.currency_war.cw_state import (
-        XP_CLICK_COST_FALLBACK,
-    )
-    click = state.level_up_cost or XP_CLICK_COST_FALLBACK
-    return clicks_to_level(state.level) * click
-
-
-def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
-    """到本位面末节点(= boss 节点)的剩余轮数(含当前轮;缺读兜底 0
-    =不储蓄,保守侧:R* 退化为息线,义务面变宽但方向安全)。
-    nodes_of_plane 自带缺表回退(先验 9+一次性告警),此处不再兜层。"""
-    from sr_od.application.currency_war.cw_plane_table import nodes_of_plane
-    total = nodes_of_plane(session)
-    return max(0, total - state.round_num)
-
-
-def reserve_cap(state: GameState, session: StrategySession,
-                registry: DecisionV2Registry) -> int:
-    r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
-
-    窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
-    排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;W481
-    A-4:误估最坏=一个升级费量级 ≤50 金,双向有界)。
-    排程判据单一址 = ``schedule_upgrade``(确定性查表核,批 3 预算
-    收权;与 arbiter 授权/EV 授权 ② 臂共调同一函数,R4)。
-
-    守息线取 `interest_cap × 10`(息帽同源派生,W611 §2.2 恒等式):
-    基参数下 5×10=50==interest_floor,行为零漂移;写法保证「守息线
-    ≤ 封顶线」结构性成立——两者同源,不可能出现守息线高于持有增益
-    归零点(息帽截断点)的态。策略级息帽 override(interest_cap_override)
-    走 ledger/DP 通道,registry 息帽与之分离时以封顶线为准(设计 §2.2
-    规则原文);分离面=已知缺口,如实挂账。
-    """
-    h = min(RESERVE_WINDOW_ROUNDS,
-            _rounds_to_plane_end(state, session))
-    floor = registry.interest_cap * 10
-    if h <= 0 or not schedule_upgrade(state, session):
-        return floor
-    return floor + upgrade_plan_fee(state)
-
-
-def overflow(state: GameState, session: StrategySession,
-             registry: DecisionV2Registry) -> int:
-    """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。"""
-    return max(0, (state.gold or 0) - reserve_cap(state, session, registry))
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.cw_strategy import StrategySession
 
 
 def _crosses_engine_tier(state: GameState, name: str) -> bool:
@@ -341,17 +151,29 @@ def channel_capacity(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
-    刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,迁移迁移批 3(ADR-0465)(ADR-0465) 预算
-    收权;合法 0 帧契约见该函数 docstring)。
+    刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,预算收权
+    批 ADR-0465;合法 0 帧契约见该函数 docstring)。接缝符号懒 import
+    自 kernel 侧 cw_economy(局部别名绑定):monkeypatch 桩点重钉至
+    cw_economy 符号后经属性访问动态解析,拦截语义不变。
     """
+    from sr_od.application.currency_war import cw_economy as _ke
     total = 0
-    if schedule_upgrade(state, session):
-        total += upgrade_plan_fee(state)
+    if _ke.schedule_upgrade(state, session):
+        total += _ke.upgrade_plan_fee(state)
     total += sum(_countable_buy_costs(state, session, registry))
     total += bench_fill_account(state, registry)
-    rolls = refresh_ev_budget(state, session)
+    rolls = _ke.refresh_ev_budget(state, session)
     total += (state.shop_refresh_cost or 2) * rolls
     return total
+
+
+def overflow(state: GameState, session: StrategySession,
+             registry: DecisionV2Registry) -> int:
+    """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
+
+    R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
+    函数,无桩点契约;A/B 注入经 registry 参数显式传递)。"""
+    return max(0, (state.gold or 0) - reserve_cap(state, session, registry))
 
 
 def obligation(state: GameState, session: StrategySession,

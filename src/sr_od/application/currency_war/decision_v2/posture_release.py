@@ -200,9 +200,11 @@ def release_directive(state: GameState, session: StrategySession,
     义务不缩水既有臂(取 max),容量封顶防把金推进负 EV 件。
     """
     cost = refresh_cost_of(state)
+    from sr_od.application.currency_war.cw_economy import (
+        reserve_cap,
+    )
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         obligation,
-        reserve_cap,
     )
     overflow = max(0, (state.gold or 0)
                    - reserve_cap(state, session, registry))

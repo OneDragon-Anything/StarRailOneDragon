@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sr_od.application.currency_war.cw_economy import _vd_core_of
 from sr_od.application.currency_war.cw_intention import (
     total_remaining_nodes,
 )
@@ -150,7 +151,7 @@ def build_round_posture(state: GameState, session: StrategySession,
     查询)随 DP 退役删除;「查询不可达 → None → 各消费点保守回退」的
     级联面随之消灭(`w623_batch3_pre-mortem/` D0:确定性核在任意帧恒有定义,无 None 形状)。
     """
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.cw_economy import (
         refresh_ev_budget,
         schedule_upgrade,
     )
@@ -228,24 +229,6 @@ def levelup_refresh_saving(state: GameState, session: StrategySession,
     e_next = expected_refreshes_for_card(
         state.level + 1, ch.cost, target_star=2, owned=j)
     return max(0.0, e_now - e_next) * (state.shop_refresh_cost or 2)
-
-
-def _vd_core_of(session: StrategySession) -> str:
-    """V_D/V_level 共用的目标核心解析(scoring.vd_target_core 同源;
-    ev 不 import decision_v2 包内模块——本地复刻判据,两处保持同值)。"""
-    from sr_od.application.currency_war.cw_intention import (
-        IntentionState,
-        intention_core,
-    )
-    ist = getattr(session, 'v3_intention', None)
-    if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
-            or not ist.locked_comp:
-        return ''
-    from sr_od.application.currency_war.cw_comps import get_comp
-    comp = get_comp(ist.locked_comp)
-    if comp is None:
-        return ''
-    return intention_core(comp)
 
 
 def _vd_core_copies(state: GameState, core: str) -> list:
@@ -358,7 +341,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
         return ''    # below_floor_spend:息线以下破档升级无例外
     # ② 排程花费授权(平台未破;预算收权批(ADR-0465):确定性查表核单一址,
     # 排程=预告态,可负担性由上方入口门+本行平台判据收口)
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+    from sr_od.application.currency_war.cw_economy import (
         schedule_upgrade,
     )
     if schedule_upgrade(state, session) \

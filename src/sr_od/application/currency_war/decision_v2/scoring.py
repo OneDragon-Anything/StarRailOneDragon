@@ -679,7 +679,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     goal = _resolve_level_goal(
         state, getattr(session, 'target_comp', None))
     if state.plane >= 2 and registry.vd_p2_enabled:
-        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        from sr_od.application.currency_war.cw_economy import (
             refresh_ev_budget,
         )
         if refresh_ev_budget(state, session, registry) <= 0:

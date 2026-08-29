@@ -25,12 +25,12 @@ from sr_od.application.currency_war.decision_v2.contracts import (
     Defer,
     Snapshot,
 )
-from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.decision_v2.turn_state import (
     BudgetView,
     DirectionView,
     TurnState,
 )
+from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
@@ -178,11 +178,13 @@ def _budget(state: Any, session: StrategySession,
     的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
     效率复核判据:decide 热点回落)。
     """
-    from sr_od.application.currency_war.decision_v2.economy_cycle import (
-        obligation,
+    from sr_od.application.currency_war.cw_economy import (
         refresh_ev_budget,
         reserve_cap,
         schedule_upgrade,
+    )
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        obligation,
     )
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(

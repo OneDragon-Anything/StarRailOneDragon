@@ -54,8 +54,11 @@ def _formed_stop_buy_allowed(name: str | None, state: GameState,
 
 def is_emergency(state: GameState,
                  registry: DecisionV2Registry) -> bool:
-    """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。"""
-    return state.hp <= registry.emergency_hp
+    """应急触发(单一源重定向,分包期 0b 单元2):本体下沉 kernel 桶
+    cw_economy.is_emergency(refresh_ev_budget 合法 0 帧契约同源消费);
+    本名保留为委托,消费方调用零改。"""
+    from sr_od.application.currency_war.cw_economy import is_emergency
+    return is_emergency(state, registry)
 
 
 def _deploy_free(state: GameState) -> int:

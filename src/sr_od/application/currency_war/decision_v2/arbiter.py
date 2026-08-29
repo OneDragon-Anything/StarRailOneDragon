@@ -61,13 +61,13 @@ from sr_od.application.currency_war.decision_v2.phase import (
 from sr_od.application.currency_war.decision_v2.posture_release import (
     authorize_release_refresh,
 )
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DecisionV2Registry,
-)
 from sr_od.application.currency_war.decision_v2.remediation import (
     Rejection,
     RejectReason,
     remediation_pass,
+)
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DecisionV2Registry,
 )
 
 if TYPE_CHECKING:
@@ -189,7 +189,7 @@ def _check_constraint(name: str, cand: Candidate,
             # W611 O1 备战空位填补(ADR-0463):逐笔花后金 ≥R*——只花
             # 溢余段,不吃排程升级储蓄(DESIGN §1.2 量上限的逐笔口径;
             # R*≥息线≥各相位地板,取 max 只在排程帧收紧,常态零漂移)。
-            from sr_od.application.currency_war.decision_v2.economy_cycle import (
+            from sr_od.application.currency_war.cw_economy import (
                 reserve_cap as _o1_reserve_cap,
             )
             floor = max(floor, _o1_reserve_cap(state, session, registry))

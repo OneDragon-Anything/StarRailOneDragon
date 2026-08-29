@@ -86,11 +86,11 @@ from sr_od.application.currency_war.decision_v2.phase import (
     form_ok,
     form_score,
 )
+from sr_od.application.currency_war.decision_v2.scoring import score_all
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.decision_v2.scoring import score_all
 from sr_od.application.currency_war.prep_actions import (
     ClickSpheres,
     DeferSpheres,
@@ -345,7 +345,7 @@ class DecisionV2Strategy(CwStrategy):
         # `w611_econ_cycle/` 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」
         # 与 ADR-0445 实机验证队列 §2.3 的数据源)。遥测经 recorder 汇点
         # 统一接出(`w603_telemetry_wiring/` 同款通道,shop.py extra 通道不触)。
-        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        from sr_od.application.currency_war.cw_economy import (
             reserve_cap as _reserve_cap,
         )
         _rcap = _reserve_cap(state, session, registry)
