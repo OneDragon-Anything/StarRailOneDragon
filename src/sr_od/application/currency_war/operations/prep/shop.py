@@ -32,6 +32,7 @@ from sr_od.application.currency_war.cw_state import (
     BenchChar,
     BuyCard,
     DeployMove,
+    GameState,
     LevelUp,
     RefreshShop,
     SellBench,
@@ -44,6 +45,25 @@ from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.prep_actions import sell_point
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+
+def _apply_hp(state: GameState, hp_value: int | None,
+              readable: bool, trusted: bool) -> None:
+    """hp 值+保真位同写(单一写点;覆盖丢位根治)。
+
+    旧覆盖点只写 ``state.hp`` 不动 ``hp_readable/hp_trusted``,shop 开帧
+    read_game_state 产出的 (False, False) 两位与覆盖进来的值分家 → 产出
+    值位自洽的「带毒假值」形态。同写后位语义恒与值来源一致:真读覆盖
+    → (v, True, True);结算真值覆盖(fresh 门过)→ (v, False, True);
+    ``hp_value=None``(无真读且无新鲜结算真值)→ **不覆盖**,保留
+    read_game_state 对账层产物(位面正确标注,血线消费门按 fail-closed
+    拒收)。消费口径单一源=decision_v2.posture_release.hp_decision_trusted。
+    """
+    if hp_value is None:
+        return
+    state.hp = hp_value
+    state.hp_readable = readable
+    state.hp_trusted = trusted
 
 
 def sell_guard_ok(expected: str | None, live: str | None) -> bool:
@@ -261,8 +281,10 @@ class BuyShopCards(SrOperation):
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
         # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
-        # 冻结毒化」从 miss 路径回流,与下方 L249 段同判据);
-        # 无新鲜结算值→100 兜底+log。
+        # 冻结毒化」从 miss 路径回流,与下方 L249 段同判据)。
+        # W580:无新鲜结算真值→**不产值**(hp_value=None)——旧裸 100
+        # 兜底只允许喂「重读确认循环」与日志;喂决策 state 的值必须来自
+        # 真读或新鲜结算真值,否则不覆盖、保留对账层值+位(fail-closed)。
         # 旧「>=HP_MAX 重读 2 次」保留(None≠100 分流后,
         # 该循环只处理真满血误读,语义更纯)。
         from sr_od.application.currency_war.cw_observation import (
@@ -271,22 +293,26 @@ class BuyShopCards(SrOperation):
         )
         match = self.ctx.cw_match   # r317:提前(None 兜底链要用)
         _hp_raw = read_hp_opt(self.ctx, screen)
+        _hp_readable = _hp_raw is not None
+        _hp_trusted = _hp_readable   # 真读帧两位皆 True(对齐 read_game_state 真读口径)
         if _hp_raw is None:
             _pr = read_phase_round(self.ctx, screen)
             _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
             _hp_t = getattr(match.session, 'last_hp_t', None) if match is not None else None
             _fresh = (_now_t is not None and _hp_t is not None
                       and _now_t - _hp_t == 1)
-            _hp_raw = (match.session.last_hp
-                       if (match is not None and _fresh
-                           and getattr(match.session, 'last_hp', None)
-                           is not None) else 100)
-            log.info('[cw][shop] HP 区 miss→%s(fresh=%s 结算真值/兜底)',
+            if (match is not None and _fresh
+                    and getattr(match.session, 'last_hp', None) is not None):
+                _hp_raw = match.session.last_hp
+                _hp_trusted = True   # 结算真值:trusted 位=True;非本帧真读,readable 位保持 False
+            else:
+                _hp_raw = None
+            log.info('[cw][shop] HP 区 miss→%s(fresh=%s 结算真值/不覆盖)',
                      _hp_raw, _fresh)
         hp_value = _hp_raw
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
-        # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ 维持 100 兜底。
-        if hp_value >= HP_MAX:
+        # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ hp_value=None 不覆盖。
+        if hp_value is not None and hp_value >= HP_MAX:
             for _ in range(2):
                 time.sleep(0.4)
                 _v = read_hp_opt(self.ctx, self.screenshot())
@@ -349,7 +375,8 @@ class BuyShopCards(SrOperation):
             # 观察冲突审计 #7(2026-08-16):「结算→下回合 prep 不变」是本文件自述契约 → prep 读与
             # 结算真值不等 = 双源分歧事件,留证(兼测 prep read_hp 毒化率与结算屏误读,双向有用);
             # 裁决仍采新(结算屏是权威源,契约本身允许 prep 读噪声)。
-            if hp_value != match.session.last_hp and hp_value < HP_MAX:
+            if (hp_value is not None and hp_value != match.session.last_hp
+                    and hp_value < HP_MAX):
                 from sr_od.application.currency_war.cw_observe import obs_conflict
                 obs_conflict('hp', match.session.last_hp, hp_value, None,
                              verdict='采新-结算真值覆盖(prep读≠结算,留证测毒化率)',
@@ -360,7 +387,7 @@ class BuyShopCards(SrOperation):
             log.info('[cw] hp 结算值陈久跳过覆盖(last_hp=%s t=%s, now t=%s)→ 用 prep 现读 %s(防冻结毒化)',
                      match.session.last_hp, _hp_t, _now_t, hp_value)
         _tgt_state = read_game_state(self.ctx, self.screenshot())
-        _tgt_state.hp = hp_value
+        _apply_hp(_tgt_state, hp_value, _hp_readable, _hp_trusted)
         if match is None:
             # 防御:无对局态(独立 run_operation 调本 op)→ 临时 default match,不挂 ctx(局外不复用)
             from sr_od.application.currency_war.strategies.default_strategy import (
@@ -412,7 +439,7 @@ class BuyShopCards(SrOperation):
             # (购买经验距等级区 18px/牌位=识别区本身)→ 污染本帧 read_game_state;park 后再读。
             self.park_cursor(after_wait=0.1)
             state = read_game_state(self.ctx, self.screenshot())
-            state.hp = hp_value   # shop 开帧 hp 区空(read_game_state 给 100)→ 用 shop 关闭帧真值覆盖
+            _apply_hp(state, hp_value, _hp_readable, _hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖(值+位同写,W580)
             # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None(plan 路径 1700/1706 None 实证,
             # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
             if match is not None and match.session.last_node_type:
@@ -1065,7 +1092,7 @@ class BuyShopCards(SrOperation):
         try:
             if match is not None and (total_buy or total_level or total_refresh):
                 _post = read_game_state(self.ctx, self.screenshot())
-                _post.hp = hp_value
+                _apply_hp(_post, hp_value, _hp_readable, _hp_trusted)
                 if match.session.last_node_type:
                     _post.node_type = match.session.last_node_type
                 match.strategy.update_target(_post, match.session, config)

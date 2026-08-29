@@ -66,6 +66,12 @@ from sr_od.application.currency_war.cw_strategy import StrategySession
 # W47 统一化:engine_char_names 函数本体上移至 cw_system_cards(注册表旁),
 # 本模块 import 复用——消费点(candidates/engine_seed_wants/carry 保护集)零变化。
 from sr_od.application.currency_war.cw_system_cards import engine_char_names
+
+# hp 决策可信位单一源(ADR-0428 收口;posture_release 对本模块的引用
+# 全在函数体内延迟 import,模块级无环)。
+from sr_od.application.currency_war.decision_v2.posture_release import (
+    hp_decision_trusted,
+)
 from sr_od.application.currency_war.decision_v2.registry import (
     DecisionV2Registry,
 )
@@ -846,11 +852,23 @@ def blood_budget_levelup_blocked(state: GameState, session: StrategySession,
     稳态多击组与 deploy_cap 补偿臂①(授权通道旁路——两臂的升级收益
     同在 ≥1 战之后才兑现,同辖;拒付计数=session.v3_blood_budget_
     rejects,披露模式对齐 sim 执行层 level_cap_rejects)。
+
+    消费层可信位门(ADR-0448 血线谓词唯一收口,W580):
+    ``hp_decision_trusted`` 不过的帧((hp_readable, hp_trusted)=(False,
+    False):开局兜底 100 帧/shop 覆盖丢位帧)fail-closed 按血线内处理
+    (拒付升级)——线内升级 EV=−C−I 严格负(本函数数学),证据缺失时
+    禁令保持有效与误放的非对称代价(误放=血线内追级,误拦=少升一级)
+    同型于 ADR-0428 兜底假值帧拒语义。不降姿态/不维持上次决策:谓词
+    逐帧无状态且被三面共享,引入跨帧记忆=新状态机不成比例;只封
+    LevelUp 通道,买牌/刷新各有其门。置于 ALL IN 豁免之后:豁免语义
+    =「末战花光是时机不是血线判断」,在不可信帧上仍生效。
     """
     if not registry.blood_budget_stop_enabled:
         return False
     if plane_last_battle(state, session):
         return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
+    if not hp_decision_trusted(state):
+        return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
     if state.plane == 2:
         return state.hp <= p2_levelup_stop_hp(registry)
     if state.plane == 1:

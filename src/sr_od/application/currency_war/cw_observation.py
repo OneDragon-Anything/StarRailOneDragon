@@ -235,10 +235,21 @@ def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
     遥测用(insights 2026-08-15「hp=100 默认值毒化遥测」):read_hp 的 100 默认是决策层
     安全设计(不触发保血),但遥测记录里「真 100」与「读不到兜底 100」不可区分 → 复盘误判
     (M19 曾误读「P1 零损」)。遥测/复盘侧用本函数区分。
+
+    miss → 小目标两级放大回退(3x CUBIC 起步,与金/等级/XP 读链同款
+    ``_ocr_upscaled``;读空再 ``_ocr_upscaled_binarized`` 第二级):hp 是
+    最后一个未接放大手法的文本 reader,低血小数值(≤16,窄字形首数字 1)
+    原生分辨率 det 漏检——局21 P2 r4 画面实显 16、全图 rect 内零检测框,
+    裁片 3x 放大即恢复(离线对拍)。常路径(全图命中)零新增开销。
     """
-    v = _first_int([r.data for r in _ocr(ctx, screen, _area_rect(ctx, '文本-剩余血量'))])
+    rect = _area_rect(ctx, '文本-剩余血量')
+    v = _first_int([r.data for r in _ocr(ctx, screen, rect)])
     if v is None or not (HP_MIN <= v <= HP_MAX):
-        return None
+        v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, rect)])
+        if v is None or not (HP_MIN <= v <= HP_MAX):
+            v = _first_int([r.data for r in _ocr_upscaled_binarized(ctx, screen, rect)])
+            if v is None or not (HP_MIN <= v <= HP_MAX):
+                return None
     return v
 
 
