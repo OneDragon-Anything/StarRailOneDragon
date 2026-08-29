@@ -1282,8 +1282,11 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 _L0_ANDON_FLAG_RELPATH: str = '.debug/temp/currency_war/l0_andon_hook.flag'
 
 #: 安灯执行器槽(注入式;签名 ``fn(payload: dict) -> bool``,True=已停)。
-#: None(生产缺省)→ 惰性调 cw_observe.stop_for_l0_andon(游戏侧定位 ctx
-#: 执行三要素);测试注入假执行器(tmp_path 断言,不触真机)。
+#: None(缺省)= **不停线**,只记台账+日志——副作用缺省关、显式接通:
+#: 生产武装点 = ``CurrencyWarApp.__init__`` 调 ``set_l0_andon_handler``。
+#: 禁止改回「缺省惰性调 cw_observe.stop_for_l0_andon」:惰性路径会用 gc
+#: 扫描全进程定位 ctx,测试进程里命中 session 级 test_context → 写停机位
+#: +真实 flag,污染整个测试会话(全集假红实证;测试漏桩即漏副作用)。
 _L0_ANDON_HANDLER: Callable[[dict], bool] | None = None
 
 #: 局级闩锁(首见 L0 即停一次,后续 L0 只补台账不再停)。键=run_id:
@@ -1293,7 +1296,8 @@ _L0_ANDON_FIRED_RUNS: set[str] = set()
 
 
 def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
-    """注入/清除安灯执行器(测试或上层定制用;None=回缺省游戏侧执行器)。"""
+    """注入/清除安灯执行器。生产武装点=CurrencyWarApp.__init__(幂等);
+    None=关闭停线通道(缺省;台账与判级不受影响)。"""
     global _L0_ANDON_HANDLER
     _L0_ANDON_HANDLER = fn
 
@@ -1348,15 +1352,13 @@ def _fire_l0_andon(payload: dict[str, Any]) -> bool:
         return False
     _L0_ANDON_FIRED_RUNS.add(rid)
     handler = _L0_ANDON_HANDLER
-    if handler is None:
-        from sr_od.application.currency_war.cw_observe import stop_for_l0_andon
-        handler = stop_for_l0_andon
-    stopped = bool(handler(payload))
+    stopped = bool(handler(payload)) if handler is not None else False
     log.warning('[cw!][andon] L0 缺陷安灯 surface=%s kind=%s p%sr%s run=%s → %s',
                 payload.get('surface'), payload.get('kind'),
                 payload.get('plane'), payload.get('round_num'), rid,
                 '已停线(flag=l0_andon_hook.flag)' if stopped
-                else '停线未执行(游戏侧不可达,台账已留证)')
+                else ('停线未执行(游戏侧不可达,台账已留证)' if handler is not None
+                      else '停线通道未注册(缺省关,仅台账)——生产武装点=CurrencyWarApp.__init__'))
     return stopped
 
 
