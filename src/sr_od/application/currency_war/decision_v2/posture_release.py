@@ -95,6 +95,9 @@ class ReleaseDirective:
     third_path: bool = False
     directed_only: bool = False
     find_ok: bool = True
+    #: 义务来源(W611 判读面:''=W332b 旧臂未标注;'flip'=FLIP 义务;
+    #: 'third_path'=slot 守卫注入;'reserve_admission'=存息准入门)。
+    reason: str = ''
 
 
 def refresh_cost_of(state: GameState) -> int:
@@ -224,7 +227,8 @@ def release_directive(state: GameState, session: StrategySession,
         budget_gold = max(overflow, posture.refresh_budget * cost)
         return ReleaseDirective(budget_gold=budget_gold,
                                 rolls=budget_gold // cost if cost else 0,
-                                third_path=True)
+                                third_path=True,
+                                reason='third_path')
     if flip_hit(state, session, registry, phase_value):
         # FLIP 命中帧:release 预算覆盖(义务优先);DP 已有授权时不缩水。
         # cap 满员时(slot 守卫 False,不走上段)posture.level_up 保留
@@ -247,8 +251,33 @@ def release_directive(state: GameState, session: StrategySession,
         return ReleaseDirective(budget_gold=budget_gold,
                                 rolls=budget_gold // cost if cost else 0,
                                 directed_only=directed_only,
-                                find_ok=find_ok)
-    return None
+                                find_ok=find_ok,
+                                reason='flip')
+    # —— 存息准入门(W611 退出链 E1;设计 §2.1 两案对比选甲)——
+    # g>R* 帧存息姿态非法:义务未满足禁止入存息。只辖 DP 解出存息的帧
+    # (level_up/D 预算全空——有行动授权的姿态不经本门);应急帧让位
+    # (保血域,辖区不相交);产出**零预算** release 指令:标签诚实
+    # (tag='release',局23 型「interest 标签死守」帧消失)+ spend_gate
+    # 接线(息 EV 中性/凑息向卖抑制),消费授权仍由 flip 义务预算承担
+    # ——预算=0 时 authorize_release_refresh 恒拒 = 容量不足帧的合法
+    # 结转(量=溢余,经遥测 sess_reserve_overflow 披露,评估罚项面)。
+    # E2(备战空∧g>R*)不单设:该帧 C_t>0(bench_fill_account)→ flip
+    # 在上分支已产出正预算指令。DP 罚项案(ADR-0445 拒绝的选项②)是
+    # 本门的退化路径:若校正覆盖不到的路径仍现姿态-义务脱钩,另批升级。
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        overflow as _overflow,
+    )
+    from sr_od.application.currency_war.decision_v2.filters import (
+        is_emergency,
+    )
+    if is_emergency(state, registry):
+        return None    # 应急辖区,release 让位(与 flip 同一让位结构)
+    if posture.level_up or (posture.refresh_budget or 0) > 0:
+        return None    # DP 已选行动姿态,非存息,不辖
+    if _overflow(state, session, registry) <= 0:
+        return None    # g≤R*:存息有 0.1/轮 真实收益,息线以内零漂移(I-1 锚)
+    return ReleaseDirective(budget_gold=0, rolls=0,
+                            reason='reserve_admission')
 
 
 def wrap_posture(posture: Posture, directive: ReleaseDirective) -> Posture:

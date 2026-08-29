@@ -83,12 +83,20 @@ def reserve_cap(state: GameState, session: StrategySession,
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
     排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;W481
     A-4:误估最坏=一个升级费量级 ≤50 金,双向有界)。
+
+    守息线取 `interest_cap × 10`(息帽同源派生,W611 §2.2 恒等式):
+    基参数下 5×10=50==interest_floor,行为零漂移;写法保证「守息线
+    ≤ 封顶线」结构性成立——两者同源,不可能出现守息线高于持有增益
+    归零点(息帽截断点)的态。策略级息帽 override(interest_cap_override)
+    走 ledger/DP 通道,registry 息帽与之分离时以封顶线为准(设计 §2.2
+    规则原文);分离面=已知缺口,如实挂账。
     """
     h = min(RESERVE_WINDOW_ROUNDS,
             _rounds_to_plane_end(state, session))
+    floor = registry.interest_cap * 10
     if h <= 0 or not _upgrade_scheduled(state, session):
-        return registry.interest_floor
-    return registry.interest_floor + upgrade_plan_fee(state)
+        return floor
+    return floor + upgrade_plan_fee(state)
 
 
 def overflow(state: GameState, session: StrategySession,
@@ -125,6 +133,44 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     return after > before
 
 
+def _scan_shop_buy_accounts(state: GameState,
+                            registry: DecisionV2Registry,
+                            ) -> tuple[list[int], list[int]]:
+    """店内件两路账单单次扫描(防双计;调用方按需取路)。
+
+    - countable:非期权正账件费用(A-1 刀法:当帧跨档 ∪ 3合1 合成,
+      合成件不占槽);
+    - fill:O1 备战空位填补件费用(其余件;A-2 同一槽位账——槽位
+      先扣跨档件已占数,满槽后不再扩账);升序返回(容量口径取最便宜
+      k 件=保守侧,买入质量序在 candidates/scoring 放行面)。
+    """
+    from sr_od.application.currency_war.cw_state import (
+        bench_occupied,
+        will_merge_on_buy,
+    )
+    costs: list[int] = []
+    fill: list[int] = []
+    bench_free = max(0, registry.bench_capacity
+                     - bench_occupied(state.bench or []))
+    for sc in (state.shop or []):
+        name = getattr(sc, 'name', '') or ''
+        if not name:
+            continue
+        merge = will_merge_on_buy(sc, state.bench, state.deployed)
+        if merge:
+            costs.append(sc.cost or 3)   # 合成件不占槽
+            continue
+        if bench_free <= 0:
+            continue    # A-1/A-2:未跨档期权件与满槽帧均不扩账
+        bench_free -= 1
+        if _crosses_engine_tier(state, name):
+            costs.append(sc.cost or 3)
+        else:
+            fill.append(sc.cost or 3)
+    fill.sort()
+    return costs, fill
+
+
 def _countable_buy_costs(state: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> list[int]:
     """店内「非期权」正账件费用表(A-1 刀法)。
@@ -134,26 +180,21 @@ def _countable_buy_costs(state: GameState, session: StrategySession | None,
     (ADR-0446)退回后,跨档判定改本结构性口径——语义与 S1/S2 的
     「当帧跨档」同一集合(信号判定的核心即此跨档事实)。
     """
-    from sr_od.application.currency_war.cw_state import (
-        bench_occupied,
-        will_merge_on_buy,
-    )
-    costs: list[int] = []
-    bench_free = max(0, registry.bench_capacity
-                     - bench_occupied(state.bench or []))
-    for sc in (state.shop or []):
-        name = getattr(sc, 'name', '') or ''
-        if not name:
-            continue
-        merge = will_merge_on_buy(sc, state.bench, state.deployed)
-        if not merge and not _crosses_engine_tier(state, name):
-            continue    # A-1:未跨档期权件不计入容量
-        if not merge and bench_free <= 0:
-            continue    # A-2:bench 槽机会成本(满槽不再扩容)
-        if not merge:
-            bench_free -= 1
-        costs.append(sc.cost or 3)
-    return costs
+    return _scan_shop_buy_accounts(state, registry)[0]
+
+
+def bench_fill_account(state: GameState, registry: DecisionV2Registry) -> int:
+    """O1 备战空位填补通道的容量分量(W611 设计 §1.2/§1.3)。
+
+    溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
+    空槽」件的费用和计入 C_t——义务在「无目标帧」的容量不再结构性为
+    0(局20/局23 支出冻结的根:comp 空→正 EV 帧空→C_t=0→义务恒 0)。
+    数学依据=设计 §1.3:溢余段买 1★ 退全款+利息不减(息帽截断),
+    已实现成本 0、收益≥0(压库+bench 期权),弱占优、参数无关。
+    买入放行面([31] 限域质量序)在 candidates/scoring,随 W607 二波
+    后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
+    """
+    return sum(_scan_shop_buy_accounts(state, registry)[1])
 
 
 def channel_capacity(state: GameState, session: StrategySession,
@@ -173,6 +214,7 @@ def channel_capacity(state: GameState, session: StrategySession,
     if posture is not None and getattr(posture, 'level_up', False):
         total += upgrade_plan_fee(state)
     total += sum(_countable_buy_costs(state, session, registry))
+    total += bench_fill_account(state, registry)
     if posture is not None:
         rolls = min(REFRESH_ROLL_CAP,
                     int(getattr(posture, 'refresh_budget', 0) or 0))

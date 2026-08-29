@@ -276,6 +276,17 @@ class DecisionTrace:
     # 经验期望账本快照(session.xp_expect_ledger=prep_director.XpLedger 正式
     # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
     xp_expect_ledger: dict[str, Any] | None = None
+    # —— W611 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
+    # 「死时带金/闲置金」判读的帧级数据源;接出点同 W603 汇点)——
+    # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。
+    # 储备线 R*(=息线+窗口排程升级费;session.v3_reserve_cap 透传)。
+    sess_reserve_cap: int | None = None
+    # 溢余 (g−R*)+(义务压力原料;闲置金判据=本字段的帧均值)。
+    sess_reserve_overflow: int | None = None
+    # 当轮 release 义务预算(金;0=无 release 帧或零预算结转帧)。
+    sess_release_budget: int | None = None
+    # 义务来源(''/'flip'/'third_path'/'reserve_admission';判读兑现率分域)。
+    sess_release_reason: str | None = None
 
 
 @dataclass
@@ -378,7 +389,7 @@ class ExogenousEvent:
     ts: str = ""
     run_id: str = ""
     round_num: int = 0
-    kind: str = ""                  # node_enter/popup/briefing/event_choice(r378b 收敛到
+    kind: str = ""                  # node_enter/popup/briefing/event_choice/level_up(r378b 收敛到
     # 有生产者的值:前三种见 22/31 号预案;event_choice(W312,遥测审计 G1)=
     # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind;
     # sell_income(W323,遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
@@ -597,6 +608,16 @@ class TelemetryRecorder:
                     getattr(_sess, 'v3_blood_budget_rejects', 0) or 0)
                 trace.sess_blood_budget_refresh_rejects = int(
                     getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
+                # W611 储备/义务披露(v3_* 为 decide_prep 每轮写;default
+                # 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
+                def _w611_int(attr: str) -> int | None:
+                    _v = getattr(_sess, attr, None)
+                    return None if _v is None else int(_v)
+                trace.sess_reserve_cap = _w611_int('v3_reserve_cap')
+                trace.sess_reserve_overflow = _w611_int('v3_reserve_overflow')
+                trace.sess_release_budget = _w611_int('v3_release_budget')
+                _rs = getattr(_sess, 'v3_release_reason', None)
+                trace.sess_release_reason = None if _rs is None else str(_rs)
             _led = getattr(_sess, 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):
                 with contextlib.suppress(Exception):
@@ -749,7 +770,7 @@ class TelemetryRecorder:
                          choice: dict[str, Any] | None = None) -> None:
         """记外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
 
-        kind:node_enter/popup/briefing/event_choice(W312,见 ExogenousEvent);
+        kind:node_enter/popup/briefing/event_choice/level_up(W312,见 ExogenousEvent);
         state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义);
         choice(W312):overlay 选项选择快照,仅 kind='event_choice' 行携带。
         """

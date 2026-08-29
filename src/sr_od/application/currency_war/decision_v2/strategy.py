@@ -299,6 +299,19 @@ class DecisionV2Strategy(DefaultCwStrategy):
             session.v3_release = None
         if _directive is None:
             session.v3_release = None
+        # W611 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」
+        # 与 ADR-0445 实机验证队列 §2.3 的数据源)。遥测经 recorder 汇点
+        # 统一接出(W603 同款通道,shop.py extra 通道不触)。
+        from sr_od.application.currency_war.decision_v2.economy_cycle import (
+            reserve_cap as _reserve_cap,
+        )
+        _rcap = _reserve_cap(state, session, registry)
+        session.v3_reserve_cap = _rcap
+        session.v3_reserve_overflow = max(0, (state.gold or 0) - _rcap)
+        session.v3_release_budget = int(
+            getattr(_directive, 'budget_gold', 0) or 0)
+        session.v3_release_reason = str(
+            getattr(_directive, 'reason', '') or '')
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
         # W224/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
