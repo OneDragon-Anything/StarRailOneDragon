@@ -1626,7 +1626,13 @@ def read_game_state(ctx: SrContext, screen: MatLike) -> GameState:
                if state.plane is not None and state.round_num is not None
                else None)
     from sr_od.application.currency_war.cw_reconcile import reconcile_hp
-    _hp_opt = read_hp_opt(ctx, screen)
+    # 本读取器的画面语境=商店开态备战屏(docstring):hp 区被商店面板遮挡,
+    # OCR 必然 miss——含 W580b 放大回退在内是每帧必付的死读(实测回退两次
+    # 小图 OCR 亦近百毫秒,商店轮每局多次调用)。按「每画面只读该画面有的
+    # 字段」跳过 hp OCR,_hp_opt=None 走 reconcile 沿用(session.last_hp_real
+    # 语义不变,帧龄门 _same_node_stale 照常);hp 真读路径=shop.py 关帧的
+    # read_hp_opt(面板已关,hp 可见,小数值放大回退在那里才有意义)。
+    _hp_opt = None
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
     state.hp, state.hp_readable = reconcile_hp(
