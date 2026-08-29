@@ -85,6 +85,8 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 
 **经济循环总模型:O1 备战空位填补通道+存息姿态准入门(ADR-0463)**:ADR-0445 的通道/姿态层扩展,治「无目标帧义务结构性为 0」(comp 空 → 正 EV 帧空 → C_t=0 → 义务恒 0 → DP 解出存息姿态后义务机制不开工;局20/W586 B2/局23 三次同根)。三件:①容量扩 O1 分量——`bench_fill_account`:溢余帧备战有空位时,店内非跨档非合成件按费用升序取「剩余空槽」件计入 C_t(与跨档件共享同一份槽位账,单次扫描防双计;A-1/A-2 满槽帧原样);②存息准入门——`release_directive` 末段:g>R* ∧ DP 存息姿态(level_up/D 预算全空)∧ 非应急 → 零预算 release 指令(姿态 tag='release' 标签诚实,预算 0=容量不足的合法结转,`authorize_release_refresh` 恒拒);机制=「义务(下界)优先于 DP 许可(上界)」合并规则从预算域推广到姿态域,DP 罚项案(ADR-0445 选项②)留退化路径;③守息线≡封顶线恒等式——reserve_cap 息线分量取 `interest_cap×10`(息帽同源派生,基参数 5×10=50 零漂移)。义务清单优先序语义:O1 备战填补 > O2 目标件即买 > O3 排程升级 > O4 刷新消费(刷新规则本体=W610 spec 单一源;共享溢余预算不双计),清单空才允许存息。遥测:decisions 行 `sess_reserve_cap`/`sess_reserve_overflow`/`sess_release_budget`/`sess_release_reason`(recorder 汇点接出),sim 账本行同语义四字段;ADR-0445 实机验证队列(死时带金/闲置金对基线)消费制度化=局后判读固定第 5 问,回退触发=连续 3 局死时带金>基线带上沿 → 重跑 w482 同协议 sim 判据。
 
+**溢余消费的息档边界截断+结转(ADR-0468)**:非必要溢余支出(常态刷新逐笔、release 义务预算内的负分搜索刷新)经 `economy_cycle.tier_truncated_spend(gold, want, essential)` 截断在档内余量(`gold % 10`)内——花后不跨息档则息损 0(息损=轮初/轮末金量纯函数,路径无关,排序重排零值);余量结转下轮(义务逐帧重算,零成本)。消费点两处:arbiter 刷新收尾 release 义务预算分支(逐笔先过截断门,残差不足一刷即不放行)+ `authorize_release_refresh` 预算检查后的同式截断门(纵深防御)。essential=True 两枝不截断(消费点显式传参):正账件(不可拆,截断=弃购)与 M-A 定向刷新车道(末窗无下轮重摇,截断=定向搜索永久丢失)。量级按严口径 1 金/档报 1-2 金/局,主判降级方向披露。
+
 ## 4. cw_evaluate:局面评估
 
 阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。

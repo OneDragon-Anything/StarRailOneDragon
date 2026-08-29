@@ -344,8 +344,9 @@ def authorize_release_refresh(session: StrategySession,
                               registry: DecisionV2Registry) -> str:
     """release 义务预算的刷新放行裁决(arbiter 刷新收尾块消费)。
 
-    返回授权说明串(空串=不放行)。有界放行:累计刷金 ≤ 预算 ∧ 花后金
-    ≥ boss_floor(P1 出口金生存边际,与 M-A 定向刷新同款兜底)。
+    返回授权说明串(空串=不放行)。有界放行:累计刷金 ≤ 预算 ∧ 花后
+    不跨息档(economy_cycle.tier_truncated_spend 截断门,W645 提案 E)
+    ∧ 花后金 ≥ boss_floor(P1 出口金生存边际,与 M-A 定向刷新同款兜底)。
     语义=「通道开+预算内按 EV 排序」的中性行为(DESIGN §⑤):预算是
     义务下界,不强制花满——正分 V_D 刷新走既有路径,本门只放行被
     息纪律门拦住的负分刷新(搜索成本显式裁定,同 W249 病灶修法)。
@@ -359,6 +360,15 @@ def authorize_release_refresh(session: StrategySession,
         return ''   # 成型帧定向化:店内无可找件,盲刷不构成泄息义务的合规消费
     spent = getattr(session, 'v3_release_spent', 0)
     if spent + cost > directive.budget_gold:
+        return ''
+    # 息档边界截断门(W645 提案 E-v2 消费点 2):本门放行的都是非必要
+    # 溢余支出(负分搜索刷新,essential=False)——花后不跨息档才放行,
+    # 残差不足一刷的余量结转下轮(义务逐帧重算,零成本)。essential=True
+    # 车道(M-A 定向授权/正账买牌)不经本门,截断辖域天然不含。
+    from sr_od.application.currency_war.decision_v2.economy_cycle import (
+        tier_truncated_spend,
+    )
+    if tier_truncated_spend(working_gold, cost, essential=False) < cost:
         return ''
     if working_gold - cost < registry.boss_floor:
         return ''

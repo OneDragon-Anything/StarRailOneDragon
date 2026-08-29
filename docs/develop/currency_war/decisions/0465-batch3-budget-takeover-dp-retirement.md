@@ -18,6 +18,7 @@ accepted(2026-09-03;W633)
 6. **R3 断供驱逐推广(蓝图 §4.3-R3)**:冻结驱逐语义从 LineTrack 推广到配方对——pair 体系成员**在店新件**连续断供 ≥5 轮(保守阈值,DROUGHT_BAIL 同族先验,探针批标定)→ 体系入 `pair_evicted`、pair 重派生排除;W578 代理门锁:驱逐后 `pair_target_comp` 物化非空(target 链不因驱逐全盲)。
 7. **F5 清偿(蓝图 §6)**:三模块级旗标(P1_FINAL_LINE_GATE/P1_RECIPE_LOCK/P1_LOCK_TRANSITION_PAIR)删除、行为无条件化(三门 sim A/B 已终裁 0341/0357/0367);`DirectionView.gates` 字段保留恒空(契约形状);A/B 基线臂自批 3 起只走 git 冻结快照。
 8. **标签词汇表 v2(D4)**:`升级`/`升级+D<刷数>`/`+D<刷数>`/`存息`(经 release 包装恒 `release`),生产者=`build_round_posture` 单点;离散动作码(+D2/4/6)假设退役,连续刷数为查表预算值域形状;批 3 前回放语料的姿态标签仅供参考、不进批 3 后对拍基线。
+9. **注入面单源(W636 A)**:schedule_upgrade/refresh_ev_budget/build_round_posture 增 `registry` 显式参数(缺省落 _registry_of(session)→DEFAULT),prep_brain._budget/scoring/strategy 生产链传同一实例——BudgetView 装配禁混双源;注入一致性锁钉住(注入非默认 registry 三函数行为同变)。现双臂同 DEFAULT_REGISTRY,已跑 sim 数据未被污染,只修地基不返工数据。**TurnState 快照语义落码(W636 C → W639 升级)**:真实别名写者实证(shop.py mutate_bench_deployed 元素级星级/装备就地写、deploy_bench 装备覆盖,均 session 侧活对象)→ _tracking_view 与 adapter 快照装配对 BenchChar 做 `cw_state.snapshot_copy` 浅拷贝+equips 固化 tuple(成本 <20µs/帧,<0.1% 帧预算),「快照不在帧间存活」由机制保证非消费纪律;BenchChar.equips 注解放宽 Sequence(写端仅 session/state 活对象);隔离锁双向钉住。
 
 ## Considered Options
 

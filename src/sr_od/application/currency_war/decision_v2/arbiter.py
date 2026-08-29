@@ -943,12 +943,29 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # (判据单一源=decision_v2.posture_release.authorize_release_
             # refresh)。与 M-A 互斥:M-A 先判,预算未耗才轮到本臂。
             if not _ma_ok:
-                _rel_note = authorize_release_refresh(
-                    session, working.gold or 0, cand.action.cost or 2,
-                    registry)
-                if _rel_note:
-                    _ma_ok = True
-                    auth_note['release'] = _rel_note
+                # 息档边界截断(W645 提案 E-v2 消费点 1):release 义务
+                # 预算分支是非必要溢余支出,逐笔先过截断门——溢余残差
+                # (gold % 10)不足一刷时本笔不放行,余量结转下轮(义务
+                # 逐帧重算)。essential 显式传 False;上方 M-A 定向授权
+                # 分支 essential=True 不截断、不经本门(末窗无下轮重摇,
+                # 截断=定向搜索永久丢失)。
+                from sr_od.application.currency_war.decision_v2.economy_cycle import (
+                    tier_truncated_spend,
+                )
+                _cost = cand.action.cost or 2
+                if tier_truncated_spend(working.gold or 0, _cost,
+                                        essential=False) < _cost:
+                    reason = RejectReason(
+                        'refresh', '', 0,
+                        '息档边界截断:溢余残差不足一刷,'
+                        '余量结转下轮(W645 提案 E)')
+                else:
+                    _rel_note = authorize_release_refresh(
+                        session, working.gold or 0,
+                        cand.action.cost or 2, registry)
+                    if _rel_note:
+                        _ma_ok = True
+                        auth_note['release'] = _rel_note
             if not _ma_ok:
                 reason = RejectReason('refresh', '', 0, '非正分')
         if reason is None:
