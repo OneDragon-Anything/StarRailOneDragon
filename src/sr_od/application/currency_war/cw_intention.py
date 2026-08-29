@@ -59,6 +59,7 @@ from sr_od.application.currency_war.cw_comps import (
 from sr_od.application.currency_war.cw_deploy_logic import TRANSITION_TRAITS
 from sr_od.application.currency_war.cw_line_switch import (
     e_rounds,
+    gate_counterfactual,
     register_gate_block,
     survival_gate,
 )
@@ -175,6 +176,11 @@ class IntentionState:
       的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp。
     """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
+    prev_lock_layer: int = 0
+    """被撤线的原锁层暂存(W665 DESIGN v3 §3-3 R-C/FM-11):撤销出口①/②
+    降级 weak 时写入被撤的 lock_layer;门闩一次性回锁时恢复到 lock_layer,
+    使出口②撤销面不被回锁信号( layer=1 )收窄。生命周期=回锁消费后保留
+    至位面切换(闩清零时一并清零,陈旧值不跨位面);0=无暂存。"""
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
     transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(W166/ADR-0367)
@@ -876,7 +882,17 @@ def _switch_gate_open(ist: IntentionState, state: GameState,
     if comp is None:
         return True
     e_alt = e_rounds(comp, state, registry)
+    reg = registry or DEFAULT_REGISTRY
     ok, why = survival_gate(state, session, e_alt, registry)
+    # 决策位记账(W665 DESIGN v2 §3-2/R3,W659 决策位纪律平移):拦截位
+    # 与反事实判定位写 session(帧级;update_intention 每帧入口清零),
+    # 检查器只做位一致性核验、禁复算判据式。on 臂=门判定本身即该位,
+    # 不重复算(守卫独立性);off 臂=gate_counterfactual 反事实记账。
+    if session is not None:
+        session.v3_line_gate_blocked = not ok
+        session.v3_line_gate_cf_blocked = (
+            (not ok) if reg.line_switch_survival_gate_enabled
+            else gate_counterfactual(state, session, e_alt, reg))
     if ok:
         return True
     if session is not None:
@@ -904,6 +920,22 @@ def update_intention(state: GameState, ist: IntentionState,
         # 出 P1:过渡对副方向退场(W166;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
     visible = _visible_chars(state)
+    # 换线门决策位逐帧清零(W665 DESIGN v2 §3-2;帧级坐标系:本轮无
+    # 换线辖域评估 → 位=False,防上帧位残留污染账本行)
+    if session is not None:
+        session.v3_line_gate_blocked = False
+        session.v3_line_gate_cf_blocked = False
+    # 门闩位面切换清零(W665 DESIGN v3 §3-3 末条):闩=位面内滞回,
+    # 出位面即清;同步清各线 miss_count(陈旧断供证据不跨位面驱动出口①)
+    # 与 prev_lock_layer(暂存已消费,不跨位面残留)。
+    if session is not None and getattr(session, 'v3_line_gate_latch', False) \
+            and getattr(session, 'v3_line_gate_latch_plane', None) \
+            != state.plane:
+        session.v3_line_gate_latch = False
+        session.v3_line_gate_latch_plane = None
+        for t in ist.tracks.values():
+            t.miss_count = 0
+        ist.prev_lock_layer = 0
     # R3 断供驱逐(批 3):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
@@ -913,6 +945,15 @@ def update_intention(state: GameState, ist: IntentionState,
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
 
     if ist.phase == 'locked':
+        # 门闩存续期(W665 DESIGN v3 §3-3 R-A):同位面闩置位后撤销出口
+        # ①②抑制——「锁线保生存」吸收态,miss 照涨但无消费(砍断周期环
+        # 驱动源,§3-4 轨迹证明闩后零转移)。窗口冻结驱逐(evict)非出口
+        # ①②,保留自身语义(刷新窗冻结超限属候选集卫生,非换线裁决)。
+        latch_active = (
+            session is not None
+            and getattr(session, 'v3_line_gate_latch', False)
+            and getattr(session, 'v3_line_gate_latch_plane', None)
+            == state.plane)
         comp = get_comp(ist.locked_comp)
         core = intention_core(comp) if comp else ''
         track = _track(ist, ist.locked_comp)
@@ -958,7 +999,8 @@ def update_intention(state: GameState, ist: IntentionState,
                 reg = registry or DEFAULT_REGISTRY
                 n_req = core_miss_n_required(
                     core, state.level, reg.revoke_miss_tolerance_eps)
-                if track.miss_count >= max(CORE_MISS_N, n_req):
+                if not latch_active and \
+                        track.miss_count >= max(CORE_MISS_N, n_req):
                     ev = _revoke_alt_evidence(
                         state, visible, ist.locked_comp, ist.evicted,
                         reg.revoke_evidence_min_thickness)
@@ -969,6 +1011,7 @@ def update_intention(state: GameState, ist: IntentionState,
                         alt_comp = get_comp(alt_name)
                         e_alt = (e_rounds(alt_comp, state, reg)
                                  if alt_comp is not None else math.inf)
+                        ist.prev_lock_layer = ist.lock_layer   # v3 R-C:原锁层暂存(闩回锁恢复)
                         ist.phase = 'weak'
                         ist.weak_comp = ist.locked_comp
                         ist.locked_comp = ''
@@ -991,13 +1034,15 @@ def update_intention(state: GameState, ist: IntentionState,
                             f'(n_req={n_req},q={q:.3f},alt={alt_name}'
                             f',thk={thk:.1f})')
                         revoked = True
-        if ist.phase == 'locked':
-            # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换)
+        if ist.phase == 'locked' and not latch_active:
+            # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换;
+            # 门闩存续期抑制,v3 §3-3)
             for s in sigs:
                 if s.comp_name == ist.locked_comp or s.layer >= ist.lock_layer:
                     continue
                 new_comp = get_comp(s.comp_name)
                 if new_comp and _core_reachable(new_comp, state, visible):
+                    ist.prev_lock_layer = ist.lock_layer   # v3 R-C:原锁层暂存
                     ist.phase = 'weak'
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
@@ -1059,6 +1104,32 @@ def update_intention(state: GameState, ist: IntentionState,
             else:
                 ist.last_event = (f'gate_hold:{ist.weak_comp}'
                                   f'->{best.comp_name}')
+                # 门感知滞回闩(W665 DESIGN v3 §3-3 R-A,取代被 W683 推翻
+                # 的 N=2 计数回锁):本位面首次门拦截置闩 + 闩置位帧一次性
+                # 回锁原线。为什么是闩不是计数:单调性——R<E(alt)+m 首次
+                # 成立后位面内近似单调(§3-3),「后续帧不该再换线」与门
+                # 判据一致;计数回锁缺单调性,周期-3 环是结构必然(W683)。
+                # 回锁经 _switch_gate_open 同线豁免语义(状态机内单址);
+                # 恢复 prev_lock_layer(FM-11 消解,回锁信号 layer=1 不许
+                # 收窄出口②撤销面)。原线 E=inf 子情形:闩仍置位、状态停
+                # weak——静态不可达原线的跨线骨架囤货/demoted/P3 兜底是
+                # 合法终态(§3-4,行为锁钉住)。闩存续期出口①②抑制(上方
+                # locked 分支),位面切换清零(入口段)。
+                if session is not None and not (
+                        session.v3_line_gate_latch
+                        and session.v3_line_gate_latch_plane == state.plane):
+                    session.v3_line_gate_latch = True
+                    session.v3_line_gate_latch_plane = state.plane
+                    wcomp = get_comp(ist.weak_comp) \
+                        if ist.phase == 'weak' else None
+                    if ist.phase == 'weak' and wcomp is not None \
+                            and math.isfinite(e_rounds(wcomp, state, registry)):
+                        relock_name = ist.weak_comp   # _lock 会清 weak_comp,先取
+                        _lock(ist, state, IntentionSignal(
+                            1, 'gate_relock', relock_name,
+                            '门闩一次性回锁原线(锁线保生存)', 1.0))
+                        ist.lock_layer = ist.prev_lock_layer or 1   # FM-11
+                        ist.last_event = f'gate_relock:{relock_name}'
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
         # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)

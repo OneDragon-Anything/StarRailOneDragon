@@ -2592,6 +2592,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ledger 消费(禁复算 S0);决策发生在本轮回战斗前,位是
                 # 闩(单调),轮 r 位=真 ⟺ 自本轮回决策起停付已让位
                 'terminal_release': terminal_release_bit(sess, st.plane),
+                # 换线存活门决策位(W665 DESIGN v2 §3-2/R3;帧级=本轮
+                # 最后一次意向驱动帧,update_intention 入口清零、
+                # _switch_gate_open 评估点写入):line_gate_blocked=拦截位
+                #(on 臂门判定);line_gate_cf_blocked=反事实判定位
+                # P(f)=[R<need](off 臂反事实记账/on 臂同门判定)。消费=
+                # A/B 批器算反事实拦截精度与 cw_sim_checks 位一致性核验
+                #——检查器禁复算门判据式(W659 攻击 6 纪律)
+                'line_gate_blocked': bool(getattr(
+                    sess, 'v3_line_gate_blocked', False)),
+                'line_gate_cf_blocked': bool(getattr(
+                    sess, 'v3_line_gate_cf_blocked', False)),
                 # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
                 # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
                 'handoff_gap': _round_handoff_gap,

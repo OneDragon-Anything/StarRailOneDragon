@@ -265,36 +265,89 @@ def rounds_alive(state: GameState,
     return ra              # 走完全表仍 h>0 → ra=剩余节点数(跨位面截断)
 
 
+def gate_need(state: GameState, session: StrategySession,
+              e_alt: float,
+              registry: DecisionV2Registry | None = None) -> float:
+    """门阈值 need = e_alt×(1+δ) + 兑现余量(+boss CI 半宽,投影路径
+    含 boss 节点时)。survival_gate 与反事实判定位(gate_counterfactual)
+    的单一公式源——拆出防「门判定式与反事实记账式」双写漂移
+    (W665 DESIGN v2 §2.1/R3:两处必须同一把尺,检查器禁第三处复算)。"""
+    reg = registry or DEFAULT_REGISTRY
+    need = e_alt * (1.0 + reg.line_switch_debias_delta) \
+        + reg.line_switch_survival_margin
+    if any(node_loss_kind(r) == 'boss'
+           for r in _remaining_nodes(session, state)):
+        need += reg.line_switch_boss_ci_halfwidth
+    return need
+
+
+def gate_counterfactual(state: GameState, session: StrategySession,
+                        e_alt: float,
+                        registry: DecisionV2Registry | None = None
+                        ) -> bool:
+    """反事实判定位 P(f) = [rounds_alive(state) < gate_need(state, e_alt)]
+    (W665 DESIGN v2 R3:开臂机制判「反事实拦截精度」的记账真值源)。
+
+    - off 臂(门关):对每次换线事件由 cw_intention._switch_gate_open
+      计算并写 session 决策位落账本行;
+    - on 臂(门开):**禁再调本函数**——该位即门判定本身
+      (_switch_gate_open 直接取 survival_gate 结果,不重复算,守
+      W659 攻击 6「检查器/记账双源失明」独立性纪律);
+    - 消费面 = A/B 批器读账本行算拦截精度,**检查器禁复算本式**
+      (cw_sim_checks 只做位一致性核验)。
+
+    规格缺口标注(W683 攻击 3 核实 off 臂可执行,三处定义当前按合理
+    选择落码、待 v3 确认):
+    - 判定时点 = 换线事件帧的当帧评估(_switch_gate_open 评估点,每个
+      换线辖域帧各记一位,账本行取本轮最后一次评估);
+    - 窗口锚 = R/need 全取**当帧** state(含当帧 gold/bench_free 瞬态
+      口径,与 FM-10 敏感带声明一致;近帧中位去敏属重标定挂账);
+    - 估计量 = rounds_alive(M1a 下界投影)+ gate_need 同式,与 on 臂
+      门判定严格同尺。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    if state.plane != 2:
+        return False
+    if not math.isfinite(e_alt):
+        # E=inf = 新线永不完成,门不等式右端 inf,R≥inf 恒假 → 拦是判据
+        # 式的直接读出(v3 R-E:拦截归属唯一化到本门;旧「上游已拦」
+        # 声明经 W683 核实为假——v2 通道不调 should_switch_e)
+        return True
+    return rounds_alive(state, session, reg) \
+        < gate_need(state, session, e_alt, reg)
+
+
 def survival_gate(state: GameState, session: StrategySession,
                   e_alt: float,
                   registry: DecisionV2Registry | None = None
                   ) -> tuple[bool, str]:
     """换线存活轮数门(第三道门;registry.line_switch_survival_gate_enabled)。
 
-    判据(REDESIGN §3.4):rounds_alive(剩余节点逐节点投影) ≥
-    E_rounds(新线)×(1+δ) + 兑现余量(+boss 附加费,投影路径含
-    boss 节点时)——投影后两边同为日历轮;δ 承载 p̄ 乐观先修偏,margin
-    承载兑现余量与投影近似残差,boss CI 半宽承载借档不确定性
-    (registry.line_switch_boss_ci_halfwidth)。换线价值兑现在新线成型
-    之后;存活轮数不足=新线永远到不了兑现点,换线期望 0<驻留旧线。
-    与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是第二换线机制;
-    drought bail 旁路不辖(或-并存结构不变)。
+    判据(REDESIGN §3.4;W665 DESIGN v2 §2.2 定性=方向性启发+fail-safe
+    偏紧,非 EV 必要性证明):rounds_alive(剩余节点逐节点投影) ≥
+    gate_need(E_rounds(新线))——投影后两边同为日历轮;δ 承载 p̄ 乐观
+    先修偏,margin 承载兑现余量与投影近似残差,boss CI 半宽承载借档
+    不确定性(registry.line_switch_boss_ci_halfwidth)。换线价值兑现在
+    新线成型之后;存活轮数不足=新线永远到不了兑现点,换线期望 0<
+    驻留旧线。与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是第二
+    换线机制;drought bail 旁路不辖(或-并存结构不变)。
 
-    辖域 plane≥2(损血表为 P2 标定,P1 不适用);开关关/辖域外 → 放行
-    (零漂移)。e_alt=inf 时数学上恒不满足,但该情形在 should_switch_e
-    已被 'alt_inf' 拦,此处保守放行(门不重复裁决)。
+    辖域 plane==2(v3 R-G 收窄:损血表为 P2 标定,P1 不适用;P3 帧消费
+    P2 表 → R 高估门偏松 FM-12,P3 扩辖待 p3_cond_loss_table 标定);
+    开关关/辖域外 → 放行(零漂移)。e_alt=inf(v3 R-E 勘误,原「上游
+    should_switch_e 已拦」声明经 W683 核实为假——v2 通道不调该函数):
+    新线永不完成,门不等式右端 inf → **拦**('alt_inf'),拦截归属
+    唯一化到本门,p̄=0 线由信号胜出不再落锁。
     """
     reg = registry or DEFAULT_REGISTRY
     if not reg.line_switch_survival_gate_enabled:
         return True, 'gate_off'
-    if state.plane < 2 or not math.isfinite(e_alt):
+    if state.plane != 2:
         return True, 'gate_off'
+    if not math.isfinite(e_alt):
+        return False, 'alt_inf'
     ra = rounds_alive(state, session, reg)
-    need = e_alt * (1.0 + reg.line_switch_debias_delta) \
-        + reg.line_switch_survival_margin
-    if any(node_loss_kind(r) == 'boss'
-           for r in _remaining_nodes(session, state)):
-        need += reg.line_switch_boss_ci_halfwidth
+    need = gate_need(state, session, e_alt, reg)
     if ra >= need:
         return True, 'ok'
     return False, f'survival({ra:.0f}<{need:.2f})'

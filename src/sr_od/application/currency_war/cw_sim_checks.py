@@ -75,6 +75,8 @@
 """
 from __future__ import annotations
 
+import math
+
 
 def check_ledger_consistency(rows: list[dict]) -> list[str]:
     """账本内部一致性(锁账本本身没写坏;generic,sim 批量内嵌)。
@@ -5174,16 +5176,24 @@ def check_line_gate_decision_bits(rows: list[dict]) -> list[str]:
 
 def check_line_switch_midgame_bucket(ledgers_off: list[list[dict]],
                                      ledgers_on: list[list[dict]]) -> dict:
-    """门开区(中盘)振荡分桶机制检查(W665 DESIGN v2 §5.1-G2 R4/攻击 3):
-    target_comp 变更率按位面内轮段分桶(r≤4 / r5-r9),off vs on 对照。
+    """门开区(中盘)振荡分桶机制检查(W665 DESIGN v3 §5.1-G2 R-D 逐桶
+    声明方向;取代 v2 的同判据分桶版——W683 实锤 r5-r9「不劣」与主判
+    方向矛盾 + off 病灶基线抬高通过线):target_comp 变更率按位面内轮
+    段分桶,两桶语义不同:
 
-    机制检查项,与主判分开报告、不设通过线:判前由 off 臂定钉基线,
-    通过判定归 A/B 报告消费方。W643 谓词只测 r6-r8,本检查兼任门开区
-    振荡与中盘翻转带(W670 攻击 2「未观测、成本未测量」)的唯一测量面。
+    - **r≤4 桶 = 双侧「不劣」守卫**(门开区无溢出):健康参考带 =
+      off 臂该桶率 ±95% CI(Wilson,判前由 off 臂定钉)——on 臂该桶
+      率落在带外(过高=门溢出拦中盘正常换轨;过低=门开区行为异常
+      收缩)即 violations;
+    - **r5-r9 桶 = 纯机制披露,期望方向「下降(治疗效应)」**:该桶与
+      主判窗 r6-r8 重叠,禁「不劣」字样,只报告不判定,与主判合并解读。
+
     变更判定 = 同局相邻账本行 target_comp 标签不同(ts 升序);桶按行
-    round_num(位面内轮次,跨位面行按各自 round 归桶);ts 缺行不插值。
+    round_num(位面内轮次);ts 缺行不插值。本检查兼任门开区振荡与
+    §1.2 中盘翻转带的唯一测量面。检查器禁复算门判据式(只读位/事件)。
     """
-    def _bucket_rates(ledgers: list[list[dict]]) -> dict:
+
+    def _bucket_counts(ledgers: list[list[dict]]) -> dict:
         ev = {'r_le4': 0, 'r5_r9': 0}
         rows = {'r_le4': 0, 'r5_r9': 0}
         for led in ledgers:
@@ -5199,60 +5209,127 @@ def check_line_switch_midgame_bucket(ledgers_off: list[list[dict]],
                     'rate': round(ev[b] / rows[b], 4) if rows[b] else None}
                 for b in ev}
 
+    def _wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+        """Wilson 95% 比例区间(n=0 → (0,1) 全带宽)。"""
+        if n <= 0:
+            return 0.0, 1.0
+        p = k / n
+        denom = 1 + z * z / n
+        center = (p + z * z / (2 * n)) / denom
+        half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+        return center - half, center + half
+
+    off = _bucket_counts(ledgers_off)
+    on = _bucket_counts(ledgers_on)
+    violations: list[str] = []
+    ok4 = off['r_le4']
+    lo, hi = _wilson(ok4['events'], ok4['rows'])
+    on4 = on['r_le4']
+    if on4['rate'] is not None and not (lo <= on4['rate'] <= hi):
+        violations.append(
+            f"r≤4 桶 on 率 {on4['rate']} 落在 off 参考带 "
+            f"[{round(lo, 4)}, {round(hi, 4)}] 之外(双侧不劣守卫:"
+            f"门开区振荡溢出或异常收缩,G2)")
     return {
-        'off': _bucket_rates(ledgers_off),
-        'on': _bucket_rates(ledgers_on),
-        'note': '中盘分桶机制检查(W665 DESIGN v2 R4):target_comp 变更率'
-                '按 r≤4/r5-r9 分桶,off vs off 定钉基线后 on 对照;与主判'
-                '分开报告,本函数不设通过线',
+        'off': off,
+        'on': on,
+        'r_le4_band': {'lo': round(lo, 4), 'hi': round(hi, 4)},
+        'violations': violations,
+        'note': '中盘分桶(W665 DESIGN v3 R-D):r≤4=双侧不劣守卫'
+                '(off ±95% Wilson 参考带);r5-r9=纯披露,期望方向下降'
+                '(治疗效应),禁「不劣」解读,与主判合并解读',
     }
 
 
-def check_line_gate_starvation_anchor(ledgers: list[list[dict]]) -> dict:
-    """G4 纠错通道饿死守卫锚(W665 DESIGN v2 §5.1-G4/FM-9,攻击 4):
-    on 臂逐局扫 gate_hold **连续 ≥3 帧**的局(判前 off 臂无此事件,任何
-    非零 = 饿死失败模式显形 → 进 violations);局末 weak 态占比与 N=2
-    回锁触发率披露(回锁触发率 >0 且集中于持续异线信号局 = 纠错通道
-    活着的证据;局末 weak = phase=='weak' 且未降格,占比 on vs off 对照
-    不升)。账本行读 line_gate_blocked 位与 v3_intention.last_event/
-    phase,不复算门判据式。
+def check_line_gate_starvation_anchor(ledgers_on: list[list[dict]],
+                                      ledgers_off: list[list[dict]] | None = None
+                                      ) -> dict:
+    """G4 锁线保生存兑现性守卫锚(W665 DESIGN v3 §5.1-G4 R-B 三判据;
+    取代 v2 的「gate_hold 连续 ≥3 帧」锚——该锚在 N=2 回锁下按构造封
+    盲,W683 必改 2;v3 闩机制下对环病灶直接可见):
+
+    1. **relock 次数/局 ≤1**(闩一次性回锁的实现性;>1 = 闩被实现成
+       计数回锁,结构性违规);
+    2. **局末 `phase=='weak'` ∧ 非降格的局占比 on ≤ off**(FM-9 死锁
+       面守卫;ledgers_off 提供时判定,否则仅披露);
+    3. **闩置位局中「闩后出现 target_comp 变更或出口①②事件」的局占比
+       = 0**(对周期-3 循环病灶直接可见:环只要存在即非零;闩置位帧 =
+       首个 line_gate_blocked/gate_hold/gate_relock 行)。
+
+    账本行读 line_gate_blocked 位与 v3_intention.last_event/phase 及
+    target_comp,不复算门判据式。
     """
-    hold_runs = 0
-    relock_runs = 0
-    end_weak_runs = 0
     violations: list[str] = []
-    for j, led in enumerate(ledgers):
-        streak = 0
-        max_streak = 0
-        relocked = False
-        for r in sorted(led, key=lambda x: x.get('ts', 0)):
-            ist = r.get('v3_intention') or {}
-            ev = str(ist.get('last_event', '') or '')
-            if ev.startswith('gate_hold:') or bool(
-                    r.get('line_gate_blocked', False)):
-                streak += 1
-            else:
-                streak = 0
-            if ev.startswith('gate_relock:'):
-                relocked = True
-            max_streak = max(max_streak, streak)
-        if max_streak >= 3:
-            hold_runs += 1
+
+    def _arm(ledgers: list[list[dict]]) -> dict:
+        relock_over = 0
+        latch_then_transfer = 0
+        end_weak_runs = 0
+        for j, led in enumerate(ledgers):
+            rows = sorted(led, key=lambda x: x.get('ts', 0))
+            relocks = 0
+            prev_ev = ''
+            latch_idx = None
+            for i, r in enumerate(rows):
+                ist = r.get('v3_intention') or {}
+                ev = str(ist.get('last_event', '') or '')
+                # relock 计数按**事件转移**(账本行逐帧序列化当前 ist,
+                # last_event 在后续帧持续复现,直接数行会重复计数)
+                if ev.startswith('gate_relock:') and ev != prev_ev:
+                    relocks += 1
+                blocked = bool(r.get('line_gate_blocked', False))
+                if latch_idx is None and (
+                        blocked or ev.startswith('gate_hold:')
+                        or ev.startswith('gate_relock:')):
+                    latch_idx = i
+                prev_ev = ev
+            if relocks > 1:
+                relock_over += 1
+                violations.append(
+                    f'on 局{j}:relock {relocks} 次(>1,G4 判据 1——闩'
+                    f'被实现成计数回锁,结构性违规)')
+            if latch_idx is not None:
+                prev_tc = None
+                transferred = False
+                for r in rows[latch_idx + 1:]:
+                    ist = r.get('v3_intention') or {}
+                    ev = str(ist.get('last_event', '') or '')
+                    tc = r.get('target_comp') or ''
+                    if ev.startswith(('revoke:', 'gate_hold:')) \
+                            or (prev_tc is not None and tc != prev_tc):
+                        transferred = True
+                    prev_tc = tc
+                if transferred:
+                    latch_then_transfer += 1
+                    violations.append(
+                        f'on 局{j}:闩置位后出现转移/出口①②事件'
+                        f'(G4 判据 3:闩后应全 locked 吸收,零转移'
+                        f'——周期环病灶显形)')
+            last_ist = (rows[-1].get('v3_intention') or {}) if rows else {}
+            if str(last_ist.get('phase', '') or '') == 'weak':
+                end_weak_runs += 1
+        n = len(ledgers)
+        return {'runs': n,
+                'relock_gt1_runs': relock_over,
+                'latch_then_transfer_runs': latch_then_transfer,
+                'end_weak_rate': round(end_weak_runs / n, 4) if n else None}
+
+    on_rep = _arm(ledgers_on)
+    if ledgers_off is not None:
+        off_rep = _arm(ledgers_off)
+        if on_rep['end_weak_rate'] is not None \
+                and off_rep['end_weak_rate'] is not None \
+                and on_rep['end_weak_rate'] > off_rep['end_weak_rate']:
             violations.append(
-                f'局{j}:gate_hold 连续 {max_streak} 帧(≥3,G4 零容忍'
-                f'——FM-9 饿死显形:纠错通道不可达,永久弱意向)')
-        relock_runs += int(relocked)
-        last_ist = (led[-1].get('v3_intention') or {}) if led else {}
-        if str(last_ist.get('phase', '') or '') == 'weak':
-            end_weak_runs += 1
-    n = len(ledgers)
+                f"局末 weak∧非降格占比 on {on_rep['end_weak_rate']} > "
+                f"off {off_rep['end_weak_rate']}(G4 判据 2:FM-9 死锁面)")
+    else:
+        off_rep = None
     return {
-        'runs': n,
-        'hold_ge3_runs': hold_runs,
+        'on': on_rep,
+        'off': off_rep,
         'violations': violations,
-        'relock_runs': relock_runs,
-        'end_weak_rate': round(end_weak_runs / n, 4) if n else None,
-        'note': 'G4 饿死守卫锚(W665 DESIGN v2 R2):hold≥3 帧局零容忍;'
-                'end_weak_rate 须 on vs off 对照不升;relock_runs>0 = 回锁'
-                '修法触发(纠错通道活着),触发面逐局归持续异线信号局核',
+        'note': 'G4 三判据(W665 DESIGN v3 R-B):relock ≤1/局;局末 '
+                'weak∧非降格占比 on ≤ off;闩后转移局占比 = 0。判前定钉,'
+                '判据 2 需双臂(ledgers_off 缺省时仅披露)',
     }
