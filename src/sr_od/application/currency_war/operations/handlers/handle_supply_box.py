@@ -20,18 +20,10 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_prep_expect import material_value
 from sr_od.application.currency_war.obs.cw_identity_obs import read_supply_boxes
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
-
-
-def _material_value(name: str) -> int:
-    """合成材料通用性(v1 静态表:进阶配方引用数;数据源 docs/game/currency_war/data/equipment.md 合成公式)。"""
-    table = {
-        '生命之花': 7, '轮滑鞋': 6, '光能电池': 6, '以太钻头': 5, '折叠小刀': 5,
-        '量产型装甲': 5, '和平手枪': 4, '幸运星': 3,
-    }
-    return table.get(name, 0)
 
 
 def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
@@ -59,7 +51,7 @@ def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
         for n in names:
             if n in key_equips:
                 return n
-    return max(names, key=_material_value, default=None)
+    return max(names, key=material_value, default=None)
 
 
 class HandleSupplyBox(SrOperation):

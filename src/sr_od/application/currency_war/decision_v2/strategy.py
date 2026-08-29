@@ -652,8 +652,8 @@ class DecisionV2Strategy(CwStrategy):
         无信息 fallback idx=0。返回索引(调用方点卡)。"""
         if not names:
             return 0
-        from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
-            _material_value,
+        from sr_od.application.currency_war.kernel.cw_prep_expect import (
+            material_value as _material_value,
         )
         _key: set[str] = set()
         if session.target_comp is not None:
