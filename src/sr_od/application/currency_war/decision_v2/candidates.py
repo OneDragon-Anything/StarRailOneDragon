@@ -144,7 +144,8 @@ def _copy_swap_blocked(card: ShopCard, state: GameState,
             handoff_gate_gap,
         )
         if (handoff_gate_gap(state, session, registry) > 0
-                and not p1_directed_downgrade_active(state, registry)):
+                and not p1_directed_downgrade_active(state, registry,
+                                                     session=session)):
             return False    # ② C 臂(血预算停手·P1-a 降格:末窗血预算
             # 不足帧承接授权不豁免副本换卡——设计件 12 §5.3,ADR-0451)
     # ③ press 豁免臂(W300):通道开 ∧ band 内目标外副本 ∧ bench 有余槽
@@ -302,7 +303,8 @@ def _buy_tag(card: ShopCard, state: GameState,
     )
     if (not is_target
             and handoff_gate_gap(state, session, registry) > 0
-            and not p1_directed_downgrade_active(state, registry)
+            and not p1_directed_downgrade_active(state, registry,
+                                                 session=session)
             and has_same_name_copy(card, state)
             and not in_round_sold(card.name, state, session)):
         return 'copy'

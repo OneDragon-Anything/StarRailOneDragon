@@ -339,6 +339,12 @@ class StrategySession:
     # ADR-0451):refresh 收尾授权前置拒付披露(arbiter 写入;
     # 局首 on_match_start 清零;模式对齐上行停升级拒付计数)
     v3_blood_budget_refresh_rejects: int = 0
+    # 血预算停手·终止分支位面内触发闩(设计 W659 v2 §2.3 R7;ADR-0469):
+    # 本位面首次 S0≤ε 触发后恒释放(防 S0 邻域抖动半释放);位面切换由
+    # v3_terminal_release_plane 键控清零。账本决策位(R4)消费面=
+    # discipline.terminal_release_bit(单一址),检查器禁复算 S0。
+    v3_terminal_release: bool = False
+    v3_terminal_release_plane: int | None = None
     # `w224_handoff/`/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。

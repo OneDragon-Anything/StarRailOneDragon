@@ -90,6 +90,13 @@ from sr_od.application.currency_war.cw_state import (
 from sr_od.application.currency_war.cw_strategy import StrategySession
 from sr_od.application.currency_war.cw_telemetry import serialize_intention
 
+# 血预算停手·终止分支账本决策位(设计 W659 v2 §5.1 R4;ADR-0469)——
+# 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
+# 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
+from sr_od.application.currency_war.decision_v2.discipline import (  # noqa: E402
+    terminal_release_bit,
+)
+
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
@@ -2162,6 +2169,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
                 # 返回 up_idx 是占用序下标,下方回映射槽位下标)
                 _occ_idx = [i for i, b in enumerate(st.bench) if b is not None]
+                # W652 §5 处置①(重放语境冻结):真趟**行动前**快照。
+                # 重放趟改用与真趟完全相同的围栏输入判定——残余语义 =
+                # 「行动语境下仍有围栏认可件未上」。此前重放吃真趟部署
+                # 后的 board/bench/deployed,围栏「成对」判据(board∪bench
+                # 计数)被本轮自身部署翻转,把行动语境下合法 held 的件
+                # 过判为可上(W652 两帧取证:seed 630027/630035 r6 lag=2,
+                # 复算含 locked_factions 亦不变)。真趟输入不变。
+                _snap_dep_fac = dict(_dep_fac)
+                _snap_board = dict(st.board)
                 _up_idx, _held_idx = _dl.select_deployments(
                     [b for b in st.bench if b is not None],
                     deployed_cids=_dep_cids,
@@ -2182,21 +2198,28 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             deployed_place(st.deployed, bc)   # ADR-0392 槽位落位
                             st.bench[_occ_idx[_i]] = None
                 st.board = _board_counts_of(st.deployed)
-                # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):部署后
-                # 重放围栏,残留可上件数入账本(deploy_lag_units)——部署时序
-                # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出;
-                # 买后部署语义下应恒 0(>0 = 本轮末仍有围栏认可的可上件)。
+                # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):重放
+                # 围栏,残留可上件数入账本(deploy_lag_units)——部署时序
+                # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出。
+                # 语境冻结(W652 §5 处置①):残余 bench(真趟部署后剩余)
+                # 的「成对/点火」判据配**行动前**快照 board/deployed_fac
+                # (_snap_*);占位与 cap 用部署后真实 deployed_cids/cap
+                # (vacancy 不虚增——真趟已上场件真实占位)。残余语义 =
+                # 「行动语境下仍有围栏认可件未上」:不再因本轮自身部署
+                # 改变 board 阵营计数而翻转围栏「成对」判据产生口径过判
+                # (W652 两帧取证:seed 630027/630035 r6 lag=2,冻结后判 0)。
                 _lag_idx, _ = _dl.select_deployments(
                     [b for b in st.bench if b is not None],
                     deployed_cids={d.char_id
                                    for d in iter_occupied_deployed(st.deployed)
                                    if d.char_id},
-                    deployed_fac=_board_factions_of(st.deployed),
-                    board=dict(st.board),
+                    deployed_fac=dict(_snap_dep_fac),
+                    board=dict(_snap_board),
                     cap=st.max_units(),
                     target_factions=_tf,
                     target_cores=_tc,
                     fw_carry=_fw,
+                    locked_factions=_lf,
                 )
                 _deploy_lag_units = len(_lag_idx)
             # `w614_sim_fidelity/` G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
@@ -2563,6 +2586,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold': st.gold, 'hp': st.hp,
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
+                # 血预算停手·终止分支决策位(设计 W659 v2 §5.1 R4;ADR-0469):
+                # 谓词闩位经 discipline.terminal_release_bit 单一址记账,
+                # 检查器 seg_p1_blood_budget_refresh/seg_terminal_release_
+                # ledger 消费(禁复算 S0);决策发生在本轮回战斗前,位是
+                # 闩(单调),轮 r 位=真 ⟺ 自本轮回决策起停付已让位
+                'terminal_release': terminal_release_bit(sess, st.plane),
                 # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
                 # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
                 'handoff_gap': _round_handoff_gap,
@@ -2692,9 +2721,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'blood_budget_refresh_rejects': max(
                         0, getattr(sess, 'v3_blood_budget_refresh_rejects', 0)
                         - _bb_refresh_rejects_before),
-                    # ADR-0287(批㉘ F1):本轮末重放围栏的残留可上件数
-                    # (买后部署语义下应恒 0;检查项 deploy_after_buy_
-                    # semantics / ledger_deploy_lag_disclosure 的数据源)
+                    # ADR-0287(批㉘ F1)+W652 §5 处置①:重放围栏(部署前
+                    # 快照语境冻结)的残留可上件数(行动语境下围栏认可件
+                    # 未上;检查项 deploy_after_buy_semantics /
+                    # ledger_deploy_lag_disclosure 的数据源)
                     'deploy_lag_units': _deploy_lag_units,
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                     # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)

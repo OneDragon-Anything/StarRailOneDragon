@@ -823,13 +823,14 @@ def check_phantom_rebuy_disclosure(rows: list[dict]) -> list[str]:
 
 
 def check_deploy_after_buy_semantics(rows: list[dict]) -> list[str]:
-    """批㉘ F1(ADR-0287):部署时序归 0 锁(买后部署语义)。
+    """批㉘ F1(ADR-0287)·重放语境冻结(W652 §5 处置①):漏上归 0 锁。
 
-    判据:每轮账本 sim.deploy_lag_units(轮末重放围栏的残留可上
-    件数)应恒 0——部署块已移到买/升级之后(生产序对齐),轮末
-    围栏无件可上才是语义正确。>0 = 部署时序回归轮首序(重构再犯)
-    或围栏漏上(批㉘ F1 观测口径的常态化拦截;基线 n=300 观测臂
-    33.0% 轮存在「当轮可上未上」,修复后应归 0)。
+    判据:每轮账本 sim.deploy_lag_units > 0 = 违规。残余语义(冻结后)
+    = 「**行动语境**下仍有围栏认可件未上」——重放趟吃真部署趟行动前
+    的 board/deployed/bench 快照,与真趟同输入同源围栏,不再因本轮
+    自身部署翻转围栏「成对」判据而产生口径过判(W652 取证:seed
+    630027/630035 r6 的 lag=2 帧在冻结后判 0)。>0 = 部署时序回归轮首
+    序(重构再犯)或围栏在行动语境下漏上可上件。
     """
     out: list[str] = []
     for row in rows:
@@ -1859,10 +1860,16 @@ def seg_check_p1_blood_budget_levelup(rows: list[dict]) -> list[dict]:
 
 def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
     """血预算停手·末窗搜索型刷新停付(段级;设计件 12 §2.3-P1-c/§3.2;
-    ADR-0451):P1 末窗(轮≥handoff_gate_min_round)∧ 血预算不足带
-    (emergency_hp < 决策帧 hp < P1_EXIT_BLOOD_TARGET——应急带内刷新=
-    急救型豁免面,ALL IN 窗让位)出现 RefreshShop = 搜索型停付未生效,
-    违规。hp 口径同停升级检查(决策帧=上一行结算 hp)。"""
+    ADR-0451;终止豁免改账本位判据=W659 v2 §5.1 R4;ADR-0469):P1 末窗
+    (轮≥handoff_gate_min_round)∧ 血预算不足带(emergency_hp < 决策帧
+    hp < P1_EXIT_BLOOD_TARGET——应急带内刷新=急救型豁免面,ALL IN 窗
+    让位)出现 RefreshShop ∧ 账本终止位非真 = 搜索型停付未生效,违规。
+
+    **账本位口径(禁同式复算 S0)**:行键 ``terminal_release``=
+    discipline.terminal_release_bit 单一址记账(谓词闩,决策发生在
+    本轮回战斗前)——位真=终止豁免辖内(刷新行为合法,含当轮转化
+    双门放行面);位假=停付应生效。键缺省(旧批账本)=False,行为
+    与停付语义兼容。hp 口径同停升级检查(决策帧=上一行结算 hp)。"""
     out: list[dict] = []
     prev_hp: int | None = None
     for row in rows:
@@ -1882,14 +1889,65 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
             continue    # ALL IN 窗豁免([18] 停手让位)
         rf = sum(1 for a in row.get('actions') or []
                  if a.get('__type__') == 'RefreshShop')
-        if rf:
+        if not rf:
+            continue
+        if row.get('terminal_release'):
+            continue    # 终止豁免辖内(账本位;ADR-0469)
+        out.append({
+            'plane': 1, 'round_num': rn,
+            'detail': f'末窗备战帧hp{hp}<{_P1_EXIT_BLOOD_TARGET} '
+                      f'仍刷新×{rf}(搜索型停付未生效;急救带'
+                      f'hp≤{_P1_EMERGENCY_HP}豁免;终止位=假)——血预算停手'
+                      '(ADR-0451/ADR-0469)',
+            'hp': hp, 'refreshes': rf, 'terminal_release': False,
+        })
+    return out
+
+
+def seg_terminal_release_ledger(rows: list[dict]) -> list[dict]:
+    """终止分支决策位一致性检查(段级;设计 W659 v2 §5.1 R4;ADR-0469)。
+
+    与消费门两层分工(先例=seg_check_untrusted_hp_levelup「检查显形、
+    门拒付」):门在 decision 层放行/拒付,本检查在 checks 层验「账本
+    终止位与刷新行为一致」。**禁复算 S0**(守卫与被测同源 → S0 实现
+    有缺陷时检查器在同批误放帧同样豁免 → A/B 段级守卫对最危险失败
+    模式完全失明);S0 公式正确性由测试仓单帧锁(闭式对拍)在 L1 层
+    承载。两条:
+
+    ① 非终止位帧出现搜索型刷新 → 违规(=seg_p1_blood_budget_refresh
+       的辖域,不重复报;本检查只辖②)。
+    ② 终止位帧刷新拒付与账本位矛盾:行位=真 ∧
+       sim.blood_budget_refresh_rejects>0 ∧ 当轮转化双门按行内
+       state 快照可开(bench 空槽 ∧(deploy 空位 ∨ 存在 1★ 板面件))
+       → 账本错位违规——位说已释放、门却拒付,且资源门不构成拒付
+       理由(门与位脱钩的显形;双门关的拒付帧是合法辖内拒付,不出
+       事件)。双门复算只用行内槽位真值(非 S0),与 R4 禁令不冲突。
+    """
+    from sr_od.application.currency_war.cw_state import BENCH_CAPACITY
+    out: list[dict] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1 or not row.get('terminal_release'):
+            continue
+        rejects = int((row.get('sim') or {})
+                      .get('blood_budget_refresh_rejects', 0) or 0)
+        if rejects <= 0:
+            continue
+        st = row.get('state') or {}
+        bench_n = len(st.get('bench') or [])     # 占用序紧缩数组(非空槽)
+        dep = st.get('deployed') or []
+        cap = int(st.get('cap') or 0)
+        bench_ok = bench_n < BENCH_CAPACITY
+        conv_open = bench_ok and (len(dep) < cap
+                                  or any(int(d.get('star', 1) or 1) == 1
+                                         for d in dep))
+        if conv_open:
             out.append({
-                'plane': 1, 'round_num': rn,
-                'detail': f'末窗备战帧hp{hp}<{_P1_EXIT_BLOOD_TARGET} '
-                          f'仍刷新×{rf}(搜索型停付未生效;急救带'
-                          f'hp≤{_P1_EMERGENCY_HP}豁免)——血预算停手'
-                          '(ADR-0451)',
-                'hp': hp, 'refreshes': rf,
+                'plane': 1, 'round_num': int(row.get('round_num') or 0),
+                'detail': f'终止位=真帧刷新拒付×{rejects} 且当轮转化双门'
+                          '按行内快照可开——账本位与刷新门矛盾(账本错位;'
+                          'ADR-0469 R4 一致性检查)',
+                'rejects': rejects, 'bench': bench_n, 'cap': cap,
+                'deployed': len(dep),
             })
     return out
 
@@ -1962,6 +2020,7 @@ _SEGMENT_CHECKS = {
     'seg_p1_blood_budget_levelup': seg_check_p1_blood_budget_levelup,
     'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
     'seg_untrusted_hp_levelup': seg_check_untrusted_hp_levelup,
+    'seg_terminal_release_ledger': seg_terminal_release_ledger,
 }
 
 #: 事件列表上限(报告侧;全量走 seed 重放可再取,防批报告膨胀)

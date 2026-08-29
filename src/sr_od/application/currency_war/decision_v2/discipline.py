@@ -901,16 +901,30 @@ def p1_exit_blood_short(state: GameState,
 
 
 def p1_directed_downgrade_active(state: GameState,
-                                 registry: DecisionV2Registry) -> bool:
+                                 registry: DecisionV2Registry,
+                                 session: StrategySession | None = None,
+                                 ) -> bool:
     """P1-a 末窗支出降格触发面(设计件 12 §2.3-P1-a;ADR-0451):
     承接门定向投资授权在血预算不足局的支出结构降格:战力投资 →
     减损保血。降格只停**授权豁免通道**(定向星级 copy 臂/破息缺口项/
     定向刷新预算),减损型动作族(bond_fallback/pair/plugin/deploy)
     不在辖域——动作族复用 11 号件 blood_protect 梯度既有语义,不新增
     动作。
+
+    终止短路(P1「止损转支出」;设计 W659 v2 §3.3;ADR-0469):
+    ``terminal_release`` 为真的帧降格不辖——降格的隐含前提是「血预算
+    还值得保」(W516 排除证据的适用域),死亡域内保血价值被金零值
+    引理压没,减损型填充在 hp≤10 战力面上正是「低效消费」的构成;
+    短路后恢复定向战力买授权(W242/ADR-0405 通道,动作族零新增)。
+    ``session`` 可选(记位面内触发闩的载体;None=裸评估,只算当帧
+    S0 不置闩——遥测观测面用法)。
     """
-    return (registry.p1_exit_downgrade_enabled
-            and p1_exit_blood_short(state, registry))
+    if not registry.p1_exit_downgrade_enabled:
+        return False
+    if not p1_exit_blood_short(state, registry):
+        return False
+    # 终止分支短路:死亡域保血零价值,降格让位(设计 W659 v2 §3.3)
+    return not terminal_release(state, session, registry)
 
 
 def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
@@ -932,14 +946,169 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     不足局不为找件付刷新费;锁线判定本身不动,只挡搜索型支出)。
     消费点:arbiter refresh 收尾裁决(拒付计数=session.v3_blood_budget_
     refresh_rejects,披露模式对齐 blood_budget_levelup_rejects)。
+
+    终止豁免(P1「止损转支出」;设计 W659 v2 §3.1;ADR-0469):ALL IN
+    豁免之后、应急豁免之前,``terminal_release`` 帧 ∧ 当轮转化双门开
+    (``terminal_round_conversion_open``)→ 不停付——死亡域刷新的真实
+    成本(刷价 2 金+息损)被金零值压到可忽略,收益端任何 Δp>0 占优
+    (EV 对比式);板满帧双门关维持停付(战力兑现延到次战之后,防
+    无效购买形态)。**停升级门不在终止豁免辖内**(P21 数学:濒死升级
+    EV=−C−I 严格为负,与金是否零价值无关;适用边界见设计 v2 R5)。
     """
     if not registry.blood_budget_refresh_stop_enabled:
         return False
     if plane_last_battle(state, session):
         return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
+    if terminal_release(state, session, registry) \
+            and terminal_round_conversion_open(state, registry):
+        return False    # 终止豁免(v2 §3.1;当轮转化双门,板满帧不辖)
     if state.hp <= registry.emergency_hp:
         return False    # 急救型保留(应急带=搜牌补板当轮转化豁免面)
     return p1_exit_blood_short(state, registry)
+
+
+# ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2;ADR-0469)=====
+# 机制:低血攥金等死域(守钱世界存活概率上界 S0≤ε)内,金留到死=零
+# 价值,停付防线让位给「当轮转化」支出路径。判据只用当前板面静态
+# 标定量(S0/rung/剩余节点表),不含「转支出后」假设——非循环;
+# S0 忽略非穿透场累计失血 → 是真存活概率的**上界**,用上界做触发
+# → 只有连上界都 ≤ε 才放行 → 误放方向被压住(fail-safe)。
+
+
+def terminal_survival_upper_bound(state: GameState, session: StrategySession,
+                                  registry: DecisionV2Registry) -> float:
+    """守钱世界存活概率上界 S0=Π_{i∈K} p_i(设计 W659 v2 §2.1;ADR-0469)。
+
+    - K = 单发穿透链:L_i ≥ hp 的剩余场(L_i=第 i 场条件败面伤害,
+      一败即死 → 守钱世界必须全胜)。L_i/p_i 全走既有标定单一源:
+      battle L=vd_p1_loss_intercept+vd_p1_loss_slope_rung×rung;
+      encounter/boss L=streak_floor_loss_damage;battle/encounter/boss
+      p=streak_floor_win_rate(P1 注入表;h3_win_rate 骨架插值表禁作
+      第二源,双源互斥条款)。
+    - rung 坐标 = 连胜地板同源口径(deployed 域,0-2 钳制,
+      scoring._engines_formed;防 bench×0.35 偏乐观)。
+    - 剩余节点表 = session.plane_node_table 本位面槽(表缺失退
+      battles_left_est,全部按 battle 档——L 最小 → K 最小 → S0
+      更高 → 触发更难,保守侧)。非战斗节点(reward/supply)不入列。
+    - K=∅(没有任何「一败即死」的场)→ S0=1(空链恒真)→ 不触发:
+      「死亡不可避免」判据自然不成立的语义承载(设计 §2.3 行进带
+      上沿用例)。
+    """
+    from sr_od.application.currency_war.cw_plane_table import NODES_PER_PLANE
+    from sr_od.application.currency_war.decision_v2.ev import (
+        NON_BATTLE_NODE_TOKENS,
+        battles_left_plane,
+    )
+    from sr_od.application.currency_war.decision_v2.scoring import (
+        _engines_formed,
+    )
+    rung = min(2, max(0, _engines_formed(state, registry)))
+    table = getattr(session, 'plane_node_table', None) or []
+    kinds: list[str] | None = None
+    if table:
+        r = state.round_num
+        remaining = [str(t) for t in
+                     table[max(0, r - 1):min(len(table), NODES_PER_PLANE)]]
+        kinds = ['encounter' if t in ('encounter', '遭遇')
+                 else 'boss' if t == 'boss'
+                 else 'battle'
+                 for t in remaining if t not in NON_BATTLE_NODE_TOKENS]
+    if kinds is None:
+        kinds = ['battle'] * int(battles_left_plane(state, session, registry))
+    s0 = 1.0
+    for kind in kinds:
+        if kind == 'battle':
+            d = max(0.0, registry.vd_p1_loss_intercept
+                    + registry.vd_p1_loss_slope_rung * rung)
+        else:
+            intercept, slope = registry.streak_floor_loss_damage[kind]
+            d = max(0.0, intercept + slope * rung)
+        if d < state.hp:
+            continue    # 非穿透场不入 K(累计失血约束不计 → 上界口径)
+        s0 *= registry.streak_floor_win_rate[kind][rung]
+    return s0
+
+
+def terminal_release(state: GameState, session: StrategySession | None,
+                     registry: DecisionV2Registry) -> bool:
+    """P1 终止分支谓词(设计 W659 v2 §0/§2;ADR-0469):守钱世界存活
+    概率上界 S0≤``registry.terminal_survival_eps`` 时停付防线让位。
+
+    判据链(缺一不可):
+    1. 开关 ``terminal_release_enabled``;
+    2. **``state.plane == 1`` 硬门**(设计 v2 R6 一行必改)——首批辖域
+       P1 only:P2 帧 hp≤21 早期帧 S0 极小,无硬门会持续算 True 形成
+       不消费 P2 参数的第二判定源;两个被释放谓词经 p1_exit_blood_
+       short 本就 plane==1,硬门使谓词自身辖域一致;
+    3. 位面内触发闩(R7,FM-8 对冲):本位面首次触发后恒释放(session
+       载体 ``v3_terminal_release``,位面切换由 ``v3_terminal_release_
+       plane`` 键控清零)——释放后买件推高 rung 使 S0 回升越 ε 的邻域
+       抖动不回退;金零值引理单调性:hp 只降不升,不存在「触发后又该
+       守钱」的反悔世界;
+    4. 非位面末 ALL IN 窗(既有豁免已让位,分支不重复辖,账本位同口径);
+    5. ``hp_decision_trusted`` fail-closed(不可信 hp 帧不判,误放代价
+       > 误拦,与血线谓词同取向);
+    6. S0 ≤ ε(ε 推导与重标定挂账见 registry 注释)。
+
+    session=None(裸评估):只算当帧判据不置闩——纯函数可测/观测面。
+    """
+    if not registry.terminal_release_enabled:
+        return False
+    if state.plane != 1:
+        return False    # R6 硬门:首批 P1 only
+    if session is not None \
+            and getattr(session, 'v3_terminal_release', False) \
+            and getattr(session, 'v3_terminal_release_plane', None) \
+            == state.plane:
+        return True     # 位面内触发闩(R7):邻域抖动不回退
+    if plane_last_battle(state, session):
+        return False    # ALL IN 窗既有豁免已让位,分支不重复辖
+    if not hp_decision_trusted(state):
+        return False    # 不可信 hp 帧 fail-closed:停付照旧
+    if terminal_survival_upper_bound(state, session, registry) \
+            > registry.terminal_survival_eps:
+        return False
+    if session is not None:
+        session.v3_terminal_release = True
+        session.v3_terminal_release_plane = state.plane
+    return True
+
+
+def terminal_release_bit(session: StrategySession | None,
+                         plane: int) -> bool:
+    """账本决策位(R4 记账面):闩位对指定位面的有效值(单一址=谓词
+    本身的闩,无双源)。cw_sim 账本行/cw_telemetry 披露统一走本位——
+    检查器只验位与行为一致,**禁同式复算 S0**(设计 v2 R4)。"""
+    if session is None:
+        return False
+    return bool(getattr(session, 'v3_terminal_release', False)) \
+        and getattr(session, 'v3_terminal_release_plane', None) == plane
+
+
+def terminal_round_conversion_open(state: GameState,
+                                   registry: DecisionV2Registry) -> bool:
+    """终止豁免的当轮转化双门(设计 W659 v2 §3.1/R2;ADR-0469):
+    刷新换来的战力件必须能**当轮上场兑现**(死前兑现确定性最高的
+    deploy 空位帧),板满帧买入只能落 bench(sim 口径权重 0.35、兑现
+    延到次战之后)——不进释放辖域,维持停付。
+
+    双门(v2 R2 资源判据纠错:真约束是 deploy 槽非 bench 槽):
+    **bench 空槽 ∧(deploy 空位 ∨ 存在可被替换的板面垫底件)**。
+    垫底件判据=deployed 存在 1★ 件(星级=静态可读的强度序;2★/3★
+    是合成载体不视作垫底);替换动作走既有 deploy/fill 语义,零新
+    动作族。卖件腾槽路径首批不放(装备/合成素材损失 sim 不可见,
+    FM-10)——本门不含卖侧,板满且全员 ≥2★ 的帧维持停付。"""
+    from sr_od.application.currency_war.cw_state import (
+        bench_occupied,
+        deployed_occupied,
+    )
+    if bench_occupied(state.bench or []) >= registry.bench_capacity:
+        return False    # bench 无空槽:买不进,无从转化
+    if deployed_occupied(state.deployed or []) < state.max_units():
+        return True     # deploy 空位:当轮上场直接兑现
+    return any((getattr(d, 'star', 1) or 1) == 1
+               for d in (state.deployed or [])
+               if getattr(d, 'char_id', ''))   # 存在可替换的 1★ 垫底件
 
 
 def _streak_floor(state: GameState, session: StrategySession,

@@ -206,6 +206,23 @@ class DecisionV2Registry:
     #: 判据(设计件 12 §4.1),标定前只落结构不落数值)。
     blood_budget_refresh_stop_enabled: bool = True
 
+    # ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2 §0/§2;ADR-0469)=====
+    #: 总开关:True=数学定谳恒接线口径(金零值引理+EV 对比式:守钱世界
+    #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
+    #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照臂/回退锚,
+    #: 与 blood_budget_stop_enabled 同型两态注入面)。
+    terminal_release_enabled: bool = True
+    #: 守钱世界存活概率上界释放阈 ε(S0=Π 单发穿透场条件胜率 ≤ ε →
+    #: 终止分支触发)。默认 0.03 = 设计 W659 v2 §2.2 EV 对比式反解的
+    #: 最悲观角 ε*=ΔS·V_live/(g+ΔG)≈0.02×300/212≈0.0283 的诚实带
+    #: 下沿档(诚实带 [0.03,0.10],超保底部分≈0.36 金当量/帧,显式
+    #: 接受)。**重标定挂账(§2.4)**:p_i 源 streak_floor_win_rate 为
+    #: sim 档证据;Δp(piece)(停手窗买 1★ 件次战胜负面差分 n≥30)与
+    #: ε*(g) 随金自适应均未标定——落地后 ε 全带重推(ADR-0377 敏感
+    #: 性口径)。首批辖域 P1 only(谓词内 state.plane==1 硬门);
+    #: P2 扩辖独立批,不消费 p2_cond_loss_table/p_win_p2_by_rung。
+    terminal_survival_eps: float = 0.03
+
     # ===== 成型停手纪律([13] 停手线;ADR-0343;迁移审计 w119(git 历史)/ADR-0347 收编)=====
     #: 总开关(False=旧行为,成型后照买;A/B 通道)
     formed_stop_enabled: bool = True

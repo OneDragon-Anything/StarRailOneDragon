@@ -331,7 +331,8 @@ def _check_constraint(name: str, cand: Candidate,
             # 血预算停手·P1-a 末窗支出降格(设计件 12 §5.3;ADR-0451):
             # 缺口项是承接门定向投资授权的破息放宽面,血预算不足帧
             # 同步降格(战力投资的息豁免授权停;血线胜,与息线门 AND)。
-            if _gap > 0 and not p1_directed_downgrade_active(state, registry):
+            if _gap > 0 and not p1_directed_downgrade_active(
+                    state, registry, session=session):
                 v += registry.handoff_ev_gap_bonus * _gap
                 if auth is not None:
                     auth['handoff_gap'] = _gap   # 授权依据 trace(判读)
@@ -734,7 +735,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                 # 正分 copy 候选不经此豁免门,不受影响。
                 _copy_ok = (handoff_gate_gap(state, session, registry) > 0
                             and not p1_directed_downgrade_active(
-                                state, registry))
+                                state, registry, session=session))
             # merge 完成豁免(ADR-0438;开关 registry.merge_completion_exempt
             # 默认关=零漂移锚):merge=True 的**买候选**(第三张副本买入即
             # 合成 2★)无条件于末窗 gap 放行——完成价值在星级阶梯
