@@ -913,7 +913,6 @@ def sim_decision_registry():
 def _residual_fill_deploy(
     st: GameState,
     sess: object,
-    dep_fac: dict[str, int],
     target_factions: frozenset[str],
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
@@ -981,13 +980,17 @@ def _residual_fill_deploy(
     # 取 select_deployments 的 held 桶——那是围栏自身拦截,非保留集扣除)
     _res_held = len(_occ) - len(_keep)
     _res_up = 0
-    if _keep:
+    # 不动点循环:每次上场改变 board/dep_fac 阵营计数后,「成对/点火」
+    # 判据可能使此前 held 的件转为可上(生产 op 侧 = drag 循环逐件动态
+    # 仲裁同语义)——单趟会把「先上激活成对」的件错留 bench(640442 r7
+    # 取证:单趟 up=2/lag=2,循环后归零)。
+    while _keep:
         _up_idx, _ = _dl.select_deployments(
             [bc for _, bc in _keep],
             deployed_cids={d.char_id
                            for d in iter_occupied_deployed(st.deployed)
                            if d.char_id},
-            deployed_fac=dict(dep_fac),
+            deployed_fac=_board_factions_of(st.deployed),
             board=dict(st.board),
             cap=st.max_units(),
             target_factions=target_factions,
@@ -995,7 +998,10 @@ def _residual_fill_deploy(
             fw_carry=fw_carry,
             locked_factions=locked_factions,
         )
+        if not _up_idx:
+            break
         # up_idx 是紧缩占用序(keep 表)→ 回映射槽位下标(ADR-0316 同式)
+        _placed_any = False
         for _j in _up_idx:
             if _j < len(_keep):
                 _slot, bc = _keep[_j]
@@ -1003,8 +1009,11 @@ def _residual_fill_deploy(
                     deployed_place(st.deployed, bc)
                     st.bench[_slot] = None
                     _res_up += 1
-        if _res_up:
-            st.board = _board_counts_of(st.deployed)
+                    _placed_any = True
+        if not _placed_any:
+            break
+        st.board = _board_counts_of(st.deployed)
+        _keep = [(i, bc) for i, bc in _keep if st.bench[i] is not None]
     # 统一 lag:补部署后残余(剔除保留集——刻意不上 ≠ 围栏认可未上)
     _lag_keep = [bc for i, bc in _occ
                  if st.bench[i] is not None and not _reserved(bc)]
@@ -1809,8 +1818,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _res_held = 0
             if _explicit_deploy_seen:
                 _res_up, _res_held, _deploy_lag_units = \
-                    _residual_fill_deploy(
-                        st, sess, _dep_fac, _tf, _tc, _fw, _lf)
+                    _residual_fill_deploy(st, sess, _tf, _tc, _fw, _lf)
                 _acts.append({
                     '__type__': 'skip_fence',
                     'reason': ('explicit_action_v2+residual_fill'
