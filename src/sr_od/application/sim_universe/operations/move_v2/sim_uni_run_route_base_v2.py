@@ -1,16 +1,25 @@
 import time
+from typing import ClassVar
 
 from cv2.typing import MatLike
-from typing import ClassVar, Optional
 
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_interact_by_detect import SimUniMoveToInteractByDetect
-from sr_od.application.sim_universe.operations.move_v2.sim_uni_move_to_next_level_v3 import MoveToNextLevelV3
-from sr_od.application.sim_universe.operations.sim_uni_enter_fight import SimUniEnterFight
-from sr_od.application.sim_universe.sim_uni_data import SimUniLevelType, SimUniLevelTypeEnum
+from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_interact_by_detect import (
+    SimUniMoveToInteractByDetect,
+)
+from sr_od.application.sim_universe.operations.move_v2.sim_uni_move_to_next_level_v3 import (
+    MoveToNextLevelV3,
+)
+from sr_od.application.sim_universe.operations.sim_uni_enter_fight import (
+    SimUniEnterFight,
+)
+from sr_od.application.sim_universe.sim_uni_data import (
+    SimUniLevelType,
+    SimUniLevelTypeEnum,
+)
 from sr_od.config import game_const
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -63,7 +72,7 @@ class SimUniRunRouteBaseV2(SrOperation):
         mm = mini_map_utils.cut_mini_map(screen, self.ctx.game_config.mini_map_pos)
         self.previous_angle = mini_map_utils.analyse_angle(mm)
 
-    def _turn_to_previous_angle(self, screen: Optional[MatLike] = None) -> OperationRoundResult:
+    def _turn_to_previous_angle(self, screen: MatLike | None = None) -> OperationRoundResult:
         """
         战斗后的处理 先转到原来的朝向 再取找下一个目标
         :return:
@@ -144,6 +153,14 @@ class SimUniRunRouteBaseV2(SrOperation):
         当前画面识别不到任何内容时候 转动一下
         :return:
         """
+        # 「识别不到内容」的一个常见原因是 获得奇物/祝福提示 等「点击空白处关闭」
+        # 弹窗还盖着画面(事件/战斗结算后弹出),检测器看不见目标、楼层标题 OCR
+        # 也在暗罩下失效 → 11 次后楼层校验 FAIL(2026-08-30 实证:事件→获得奇物
+        # 弹窗未关,休整层 route 整体失败)。弹窗是蜂巢流程合法中间态,先点掉再转。
+        if self.round_by_find_area(self.last_screenshot, '模拟宇宙', '点击空白处关闭').is_success:
+            self.round_by_click_area('模拟宇宙', '点击空白处关闭')
+            return self.round_wait(wait=1)
+
         self.nothing_times += 1
         log.debug('无内容次数 %d', self.nothing_times)
 
@@ -227,9 +244,7 @@ class SimUniRunRouteBaseV2(SrOperation):
         mid_x = self.ctx.project_config.screen_standard_width // 2
         if min_x >= mid_x:  # 都在右边
             to_right = True
-        elif max_x <= mid_x:  # 都在左边
-            to_right = False
-        elif mid_x - min_x >= max_x - mid_x:  # 左边偏移更多
+        elif max_x <= mid_x or mid_x - min_x >= max_x - mid_x:  # 都在左边
             to_right = False
         else:  # 右边偏移更多
             to_right = True
