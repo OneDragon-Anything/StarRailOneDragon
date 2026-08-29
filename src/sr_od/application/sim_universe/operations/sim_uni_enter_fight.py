@@ -1,7 +1,7 @@
 import time
+from typing import ClassVar
 
 from cv2.typing import MatLike
-from typing import ClassVar, Optional, List
 
 from one_dragon.base.operation.operation_base import OperationResult
 from one_dragon.base.operation.operation_node import operation_node
@@ -9,15 +9,25 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import SimUniChooseBless
-from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import SimUniChooseCurio
-from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
+from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import (
+    SimUniChooseBless,
+)
+from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import (
+    SimUniChooseCurio,
+)
+from sr_od.application.sim_universe.sim_uni_challenge_config import (
+    SimUniChallengeConfig,
+)
 from sr_od.config import game_const
-from sr_od.config.game_const import STANDARD_CENTER_POS, OPPOSITE_DIRECTION
+from sr_od.config.game_const import OPPOSITE_DIRECTION, STANDARD_CENTER_POS
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
-from sr_od.operations.technique import UseTechnique, UseTechniqueResult, FastRecover
-from sr_od.screen_state import common_screen_state, battle_screen_state, fast_recover_screen_state
+from sr_od.operations.technique import FastRecover, UseTechnique, UseTechniqueResult
+from sr_od.screen_state import (
+    battle_screen_state,
+    common_screen_state,
+    fast_recover_screen_state,
+)
 
 
 class SimUniEnterFight(SrOperation):
@@ -32,24 +42,24 @@ class SimUniEnterFight(SrOperation):
     STATUS_ATTACK_FAIL: ClassVar[str] = '攻击失败'
 
     def __init__(self, ctx: SrContext,
-                 config: Optional[SimUniChallengeConfig] = None,
+                 config: SimUniChallengeConfig | None = None,
                  disposable: bool = False,
                  no_attack: bool = False,
-                 first_state: Optional[str] = None):
+                 first_state: str | None = None):
         """
         模拟宇宙中 主动进入战斗
         根据小地图的红圈 判断是否被敌人锁定
         """
         super().__init__(ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('进入战斗')))
 
-        self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config  # 挑战配置
+        self.config: SimUniChallengeConfig | None = ctx.sim_uni_challenge_config if config is None else config  # 挑战配置
         self.disposable: bool = disposable  # 攻击可破坏物
         self.no_attack: bool = no_attack  # 不主动攻击
         self.technique_fight: bool = False if self.config is None else self.config.technique_fight  # 是否使用秘技开怪
         self.technique_only: bool = False if self.config is None else self.config.technique_only  # 是否仅用秘技开怪
-        self.first_state: Optional[str] = first_state  # 初始画面状态 传入后会跳过第一次画面状态判断
+        self.first_state: str | None = first_state  # 初始画面状态 传入后会跳过第一次画面状态判断
 
-    def handle_init(self) -> Optional[OperationRoundResult]:
+    def handle_init(self) -> OperationRoundResult | None:
         """
         执行前的初始化 由子类实现
         注意初始化要全面 方便一个指令重复使用
@@ -65,7 +75,7 @@ class SimUniEnterFight(SrOperation):
         self.last_not_in_world_time: float = now  # 上次在战斗的时间
         self.attack_times: int = 0  # 攻击次数
         self.last_attack_direction: str = 's'  # 上一次攻击方向
-        self.attack_direction_history: List[str] = []  # 攻击方向的历史记录
+        self.attack_direction_history: list[str] = []  # 攻击方向的历史记录
         self.with_battle: bool = False  # 是否有进入战斗
 
         self.first_screen_check: bool = True  # 是否第一次检查画面状态
@@ -82,6 +92,19 @@ class SimUniEnterFight(SrOperation):
     @operation_node(name='进入战斗', is_start_node=True)
     def enter_fight(self) -> OperationRoundResult:
         screen = self.last_screenshot
+
+        # 差分宇宙系入口(饰品提取等)首次开战会弹「当前不存在任何存档,是否直接
+        # 开始战斗?」确认框,画面压暗后既不像大世界也不像战斗,落进未知态就会
+        # 无限等待。本 op 语义就是开战,提示类弹窗一律点确认继续
+        # (先例:ChallengeOrnamentExtraction.wait_mission_loaded 编队空缺弹窗同语义)。
+        if self.round_by_find_area(screen, '挑战副本', '提示弹框-标题').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '挑战副本', '提示弹框-确认',
+                success_wait=1.5, retry_wait=1,
+            )
+            if result.is_success:
+                return self.round_wait(wait=1)
+            return result
 
         self.last_state = self.current_state
 
@@ -131,7 +154,7 @@ class SimUniEnterFight(SrOperation):
 
         log.debug(f'更新不在大世界的时间 {self.last_not_in_world_time:.4f}')
 
-    def _in_battle(self) -> Optional[OperationRoundResult]:
+    def _in_battle(self) -> OperationRoundResult | None:
         """
         战斗
         :return:
@@ -140,7 +163,7 @@ class SimUniEnterFight(SrOperation):
         self.ctx.technique_used = False
         return self.round_wait(wait=1)
 
-    def _choose_bless(self) -> Optional[OperationRoundResult]:
+    def _choose_bless(self) -> OperationRoundResult | None:
         """
         选择祝福
         :return:
@@ -157,7 +180,7 @@ class SimUniEnterFight(SrOperation):
         else:
             return self.round_retry(op_result.status, wait=1)
 
-    def _choose_curio(self) -> Optional[OperationRoundResult]:
+    def _choose_curio(self) -> OperationRoundResult | None:
         """
         选择奇物
         :return:
