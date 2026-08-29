@@ -457,7 +457,7 @@ def record_decision(state: GameState, target_comp: str,
         pass
     if extra:
         _extra.update(extra)   # 调用方显式字段(sess_* 快照)合并在自动字段上
-    get_recorder().record_decision(_telstate._CURREN_telstate._CURRENT_DIFFICULTYDIFFICULTY, state,
+    get_recorder().record_decision(_telstate._CURRENT_RUN_ID, _telstate._CURRENT_DIFFICULTY, state,
                                    target_comp, candidate_scores, eval_breakdown, actions,
                                    extra=_extra, gold_point=gold_point)
 
@@ -662,4 +662,6 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
                   for k in ('name', 'faction', 'cost', 'star', 'merge_preview')}
                  for c in shop],
     })
+
+
 

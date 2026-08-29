@@ -437,7 +437,8 @@ class BuyShopCards(SrOperation):
         # heavy 定型帧上对账(零决策记账)。本单元含卖出/未识别牌 → 期望
         # 不建(宁缺勿造:卖出使追踪基线与纯意图模型错位;缺身份必成片
         # 假不一致),这些动作仍走既有对账通道。
-        from sr_od.application.currency_war.prep_director import BuyPurchase
+
+        from sr_od.application.currency_war.kernel.cw_prep_expect import BuyPurchase
         _buy_purchases: list[BuyPurchase] = []
         _buy_has_sell = False
         _buy_unidentified = False
@@ -710,10 +711,11 @@ class BuyShopCards(SrOperation):
                     _reconcile = None
                     _pre_shop_names: list[str] | None = None
                     try:
-                        from sr_od.application.currency_war.prep_director import (
-                            build_refresh_expect,
-                            refresh_reconcile_mismatches,
-                        )
+
+
+
+
+                        from sr_od.application.currency_war.prep_director import build_refresh_expect, refresh_reconcile_mismatches
                         # `w592_free_refresh_fix/`(ADR-0456 勘误):点击前一帧现读金 + 牌名集。
                         # 刷前名集不得用 state.shop——那是本波 plan 期读数,
                         # 波内买卡不从 state.shop 摘已买牌,而游戏画面买后
@@ -1141,7 +1143,8 @@ class BuyShopCards(SrOperation):
         if match is not None and _buy_purchases \
                 and not _buy_has_sell and not _buy_unidentified:
             with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.prep_director import (
+
+                from sr_od.application.currency_war.kernel.cw_prep_expect import (
                     compute_buy_expect,
                 )
                 _buy_expect = compute_buy_expect(

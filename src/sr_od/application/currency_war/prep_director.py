@@ -1,42 +1,13 @@
-# review 修订(review round-1,2026-08-14):H-1 观察分层(执行过的游戏动作一律 heavy 重读,
-# light 仅控制流;light 沿用上次 heavy 缓存)/H-2 恢复-屏蔽-bail 分型语义/M-2 模板路径复用
-# ensure_portrait_templates/M-3 gold 可信标记/L-1 对账漂移 [cw!]+截图/L-4 强制出战异常兜底。
+"""备战执行器 PrepDirector(自 prep_director 拆出期望/运行态段后的本体,分包期6)。
 
-"""货币战争 备战决策环(PrepDirector)—— 两层环之内环(框架层;strategy/03(原 doc 15))。
-
-**框架不含任何玩法判断**:何时收球/卖谁/何时出战 = 策略(CwStrategy.decide_prep_action);
-本模块只保证八项框架不变式(F1-F8,strategy/03(原 doc 15§5.0)):
-- F1 单步契约: 每步 = observe → decide_prep_action → execute(带验证) → 再 observe
-- F2 观察真实: obs 只由现成 reader 产出;gold 可信度由框架显式标记
-  (state_gold_trusted:仅 shop 开态重读的 state 才 True,关态读空不可信)
-- F3 动作合法域: 策略输出须在动作全集内(白名单);框架校验参数后执行
-- F4 验证与防护: 每动作完成验证;fail 计数/恢复原语/屏蔽/预算强制出战(§7)
-- F5 出口兜底: 策略不出战且 stall/预算耗尽 → 框架强制出战
-- F6 无状态策略: 环不污染策略实例;跨步意图走 StrategySession
-- F7 可换策略: strategy 由配置选(11 号);换策略只换决策
-- F8 可回放: obs+action 序列落 telemetry(P1 仅落盘)
-
-**观察分层(P1 实现,review H-1 定稿)**:执行过的游戏动作(含组合)**一律 heavy 重读**
-(买/卖/部署/装备/开箱/点球/升级/商店开关都改变结构 —— 单步决策环几乎每步都是结构变化);
-light 观察(仅控制流 DeferSpheres / 拒绝步后)**沿用上次 heavy 的 state/bench_chars/
-deployed_chars/deploy_vacancy 缓存**(不重 SIFT/OCR,只刷新轻字段)。性能(每步 heavy
-~2-3s)live 校准后再分层细化。
-
-**防死循环三层(§7 + review H-2 修订)**:同动作验证连败 2 → 恢复原语(一次/动作实例)→
-恢复后仍连败 2(恢复无效)→ **分型**:恢复时关过已知弹层 → BailToOuter(环让位交外环,
-弹层分支/停机钩子接手);恢复时只是兜底点空白(无已知弹层 = 状态/识别类失败)→ 本环
-屏蔽该动作实例(策略须换路;StartBattle 豁免)。stall≥5 且恢复已试 → 强制出战(F5)。
-
-挂载:battle_loop 备战分支 → PrepDirector(替换 BattlePrepCycle 固定序列;P1)。
-环入口对账(SIFT 重读 vs tracking)是 deploy_bench._reconcile_tracking /
-battle_prep._verify_recognition 钩子的继任宿主。
+期望态计算与对账纯函数已迁 kernel/cw_prep_expect(共享给 decision);
+exec_fail 停机旗标族迁 run_state;本文件保留画面执行/对账接线/商店
+obs 依赖面(refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 """
+
 from __future__ import annotations
 
-import re
 import time
-from copy import deepcopy
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -45,7 +16,6 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
@@ -63,20 +33,35 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     StartBattle,
     action_key,
 )
+from sr_od.application.currency_war.kernel.cw_prep_expect import (
+    _BUY_DEFECT_KIND,
+    _DRAG_DEFECT_KIND,
+    _DRAG_DEFECT_SURFACE,
+    _EQUIP_DEFECT_KIND,
+    _EQUIP_DEFECT_SURFACE,
+    _XP_DEFECT_KIND,
+    _XP_DEFECT_SURFACE,
+    BuyExpect,
+    DragExpect,
+    EquipDragIntent,
+    EquipExpect,
+    XpLedger,
+    _xp_compare,
+    _xp_parse_buy_clicks,
+    compare_buy_expect,
+    compare_drag_expect,
+    compare_equip_expect,
+    compute_drag_expect,
+    compute_equip_drag_expect,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
-    BENCH_CAPACITY,
     XP_TO_NEXT_LEVEL,
     BenchChar,
     GameState,
     bench_from_compact,
-    bench_place,
-    deployed_slot_no,
     same_star_count,
     xp_apply_clicks,
     xp_clicks_to_level,
-)
-from sr_od.application.currency_war.kernel.cw_state import (
-    _merge_bench as cw_merge_bench,  # 合成落点模型单一源(场上吸收/备战最左/连锁)
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.obs.cw_faction_obs import (
@@ -108,6 +93,11 @@ from sr_od.application.currency_war.prep_actions import (
     row_area_centers,
     try_recovery,
 )
+from sr_od.application.currency_war.run_state import (
+    exec_fail_flag_path,
+    exec_fail_should_stop,
+    write_exec_fail_flag,
+)
 from sr_od.application.currency_war.telemetry import (
     defects,
     query,
@@ -119,7 +109,8 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.obs.cw_equipment import EquipCell
+    pass
+
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
@@ -147,68 +138,6 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     return True
 
 
-# [停机钩子·临时采证,W494 spend_ledger 续;安灯式,用户裁决采纳]
-# 触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动)。
-# 生命周期(od-dev-stop-hooks §2.1 临时捕获类):失败模式根因修完并验证后删整段
-# (谓词/写 flag/挂点一并删),不留开关/参数。
-
-#: 哨兵 flag 路径(仓根锚定绝对路径:daemon spawn 的非 CWD 进程里相对路径会落错,
-#: 同 shop_unk 钩子审查#4 教训;测试经 write_exec_fail_flag 参数注入 tmp_path)。
-_EXEC_FAIL_FLAG_RELPATH = Path('.debug') / 'temp' / 'cw_exec_fail_hook.flag'
-
-
-def exec_fail_flag_path() -> Path:
-    """哨兵 flag 绝对路径(锚仓根,经 one_dragon.utils.file_utils.get_project_root 定位)。"""
-    return get_project_root() / _EXEC_FAIL_FLAG_RELPATH
-
-
-def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
-                          boundary: str = 'closed',
-                          executed: dict | None = None) -> bool:
-    """安灯式停机谓词(纯函数,可单测):mismatch 才停。
-
-    mismatch = 分类器 not_effective(计划花费>0 且金差≈0 且**已尝试**——
-    真点击落空);partial_mismatch(金动了但对不上账)与 unknown(读数缺失/
-    半单元)不停——前者可能是口径差非执行失败,后者证据不足。W577(ADR-0456)
-    扩两豁免态:**plan_truncated**(plan 有动作未尝试——硬墙跳过/截断,口径差)
-    与 **free_refresh_proc**(刷新已尝试+牌面已变+金差≈0,免费生效)——verdict
-    域变宽,本谓词仍只对 not_effective 停,自动豁免两新态。判定复用
-    ``cw_telemetry.classify_spend_unit``,不建第二套分类。
-    """
-
-    from sr_od.application.currency_war.telemetry.query import classify_spend_unit
-    cls = classify_spend_unit(plan_actions or [], gold_open, gold_close,
-                              boundary=boundary, executed=executed)
-    return cls['verdict'] == 'not_effective'
-
-
-def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
-                         round_num: int, unit_seq: int, plan_summary: str,
-                         gold_open, gold_close) -> str:
-    """写哨兵 flag(纯 IO,可单测;内容锁 od-dev-stop-hooks flag 三要素)。
-
-    三要素:触发定位(HOOK-STOP 标记+钩子位置+触发态+时间)/ 可执行处理步骤 /
-    删除条件(临时捕获类 = 根因修完删整段钩子)。返回写入内容(测试断言用)。
-    """
-    content = (
-        '[HOOK-STOP] 执行失败停机钩子(临时采证,安灯式;prep_director 购买单元记账边界)\n'
-        f'触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动;'
-        f'partial/unknown 不停)。\n'
-        f'定位:run_id={run_id} p{plane}r{round_num} unit_seq={unit_seq} '
-        f'ts={time.strftime("%Y-%m-%d %H:%M:%S")}\n'
-        f'plan 摘要:{plan_summary}\n'
-        f'gold:开={gold_open} 关={gold_close}\n'
-        f'截图:.debug/images/exec_fail_* (前缀含 run_id/轮/unit_seq)\n'
-        f'处理步骤:1. 看截图核购买单元画面;2. 对拍 replay 三流(spend_ledger 单元行/'
-        f'decisions shop plan 行/obs_conflicts gold_delta 行)确认是执行未生效'
-        f'(点击落空/被拦)还是口径失配;3. 修失败模式并验证后,删本 flag + 删整段钩子'
-        f'(prep_director 安灯段)+ 重启载入代码的进程。\n'
-        f'删除条件:临时采证钩子——失败模式根因修完并验证后删整段,不留开关。\n'
-    )
-    flag_path.parent.mkdir(parents=True, exist_ok=True)
-    flag_path.write_text(content, encoding='utf-8')
-    return content
-
 
 #: 环入口预收探针的重试间隔(秒)。时序竞争背景:战斗胜利后新回合
 #: 游戏自动开商店的时刻**晚于**环入口预收探针——首探探不到
@@ -220,292 +149,13 @@ def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
 #: 不新增判据),探到即走既有「收起→收紧超时 gate」路径。
 PRECOLLAPSE_RETRY_S: float = 1.0
 
+
 #: 预收探针重试次数上限(窗 ≈ 次数×间隔+探针自身成本,~4.5s 档)。
 #: 上限的意义:从不自动开商店的轮次(新位面首环/无自动开店)最多
 #: 多付一个窗的探针成本,不引入无界等待;超过窗仍未开 → 走原
 #: 12s 完整门,行为不变。
 PRECOLLAPSE_RETRIES: int = 3
 
-
-# ===== 拖动期望态对账(期望态层·逻辑版本)=====
-# 架构原则(用户 2026-08-28 裁决):指令发出时用纯函数从动作意图计算
-# 「执行后世界应有的增量」;动作完成后的定型帧实读逐槽对账;不一致落
-# 缺陷台账(复现升 L0,停线由 W515 分级安灯承接),一致不打扰,零决策
-# 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
-# (.debug/temp/currency_war/w505_obs_audit/DESIGN.md)。
-# 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove)。
-# 买牌期望态走独立通道:购买意图在 shop.py 买入点记录(compute_buy_expect,
-# 落点规则单一源 = cw_state._merge_bench),由本环在 RunBuyPhase 后的 heavy
-# 定型帧上消费对账(_reconcile_buy_expect,台账 kind=buy_expect_mismatch);
-# RunBuyPhase 内 shop.py 的 SellBench 仍走 §2.2 既有通道,破警告分支
-# (bench_full)无定型帧不进对账。
-
-#: 台账 surface/kind(缺陷台账复现计数按 (surface, kind, expected) 分档,
-#: 消费端按字符串聚合;勿改已有行口径)。
-_DRAG_DEFECT_SURFACE = 'bench'
-_DRAG_DEFECT_KIND = 'intent_state_mismatch'
-
-
-@dataclass
-class DragExpect:
-    """一次拖动动作的期望态(compute_drag_expect 产出 / compare_drag_expect 消费)。
-
-    [索引定义] from_slot = 备战栏画面物理槽位 1-9(prep_actions 族 B 坐标系);
-    target_slot = 部署排**排内**物理槽位 1-N。取值时机 = 动作发出时快照
-    (源 = 上次 heavy 观察的 SIFT 身份,非执行期现读)。
-    identity/target_identity = SIFT 规范名;identity 空 = 源槽身份未识别。
-    """
-    kind: str                # 'sell'(拖卖出)| 'deploy_move'(拖到部署排)
-    identity: str            # 被拖角色身份(SIFT 名)
-    from_slot: int           # bench 源物理槽位 1-9
-    target_row: str = ''     # deploy_move:'front'/'back'
-    target_slot: int = 0     # deploy_move:目标排内槽位
-    target_kind: str = ''    # deploy_move:'place'(空槽落位)/'swap'(互换)
-    target_identity: str = ''  # 目标槽执行前身份(swap 期望换回本槽用)
-
-
-def compute_drag_expect(action: PrepAction,
-                        bench_chars: list[BenchChar],
-                        deployed_chars: list[BenchChar]) -> DragExpect | None:
-    """动作意图 → 期望态(纯函数;期望态由发指令的同一条代码路径更新,
-    动作语义单一源,防模型与现实分叉——架构原则边界②)。
-
-    无法建真值 → None 不评(对齐「无法建真值不评」基准口径,不猜):
-    - 源槽身份未识别(上次 heavy SIFT 无该槽条目);
-    - deploy_move 目标槽为**同名**占用——merge_mechanics.md §3 恒成立约束
-      「场上同名同星 ≤1」+ 部署链 5.1.7 不变量「同角色在场只 1」下该动作
-      不可达(游戏拒绝),期望态不定义(原「语义未核实」口径按该档收口)。
-    """
-    if isinstance(action, SellBench):
-        ident = next((bc.char_id for bc in bench_chars
-                      if bc.slot == action.slot and bc.char_id), '')
-        if not ident:
-            return None
-        return DragExpect(kind='sell', identity=ident, from_slot=action.slot)
-    if isinstance(action, DeployMove):
-        ident = next((bc.char_id for bc in bench_chars
-                      if bc.slot == action.from_slot and bc.char_id), '')
-        if not ident:
-            return None
-        tgt = next((dc for dc in deployed_chars
-                    if dc.position_pref == action.to_row
-                    and dc.slot == action.to_slot and dc.char_id), None)
-        if tgt is None:
-            tk, ti = 'place', ''
-        elif tgt.char_id == ident:
-            return None   # 同名占位:游戏语义未核实,不发明期望
-        else:
-            tk, ti = 'swap', tgt.char_id
-        return DragExpect(kind='deploy_move', identity=ident,
-                          from_slot=action.from_slot,
-                          target_row=action.to_row, target_slot=action.to_slot,
-                          target_kind=tk, target_identity=ti)
-    return None
-
-
-def compare_drag_expect(expect: DragExpect,
-                        bench_read: list[BenchChar],
-                        deployed_read: list[BenchChar]) -> list[dict[str, str]]:
-    """期望态 vs 定型帧实读逐槽比对(纯函数)。
-
-    判据(槽位级身份比对):
-    - sell:源槽**不得再出现该身份**(原槽位空/无该身份;SIFT 未识别≠空槽,
-      槽内其他身份不构成本判据的不一致——身份消失即满足任务语义①);
-    - deploy_move/place:源槽无该身份 + 目标槽=该身份(空槽落位);
-    - deploy_move/swap:两槽互换(源槽=原目标身份 + 目标槽=被拖身份)。
-    实读中该槽**无条目**(SIFT 未识别/空读)= 无法建真值 → 跳过不评,
-    不算一致也不算不一致。返回不一致项列表(空列表=全部可比项一致)。
-    """
-    mism: list[dict[str, str]] = []
-
-    def _bench_at(slot: int) -> BenchChar | None:
-        return next((c for c in bench_read if c.slot == slot and c.char_id), None)
-
-    def _dep_at(row: str, slot: int) -> BenchChar | None:
-        return next((c for c in deployed_read
-                     if c.position_pref == row and c.slot == slot and c.char_id), None)
-
-    def _add(domain: str, slot: int, want: str, got: str) -> None:
-        mism.append({'domain': domain, 'slot': str(slot),
-                     'expected': want, 'observed': got})
-
-    if expect.kind == 'sell':
-        src = _bench_at(expect.from_slot)
-        if src is not None and src.char_id == expect.identity:
-            _add('bench', expect.from_slot, f'无 {expect.identity}(已卖出)',
-                 src.char_id)
-        return mism
-    # deploy_move:源槽
-    src = _bench_at(expect.from_slot)
-    if expect.target_kind == 'place':
-        if src is not None and src.char_id == expect.identity:
-            _add('bench', expect.from_slot, f'无 {expect.identity}(已离槽)',
-                 src.char_id)
-    else:   # swap
-        if src is not None and src.char_id != expect.target_identity:
-            _add('bench', expect.from_slot, expect.target_identity, src.char_id)
-    # 目标槽(place 与 swap 同判:应是被拖身份)
-    tgt = _dep_at(expect.target_row, expect.target_slot)
-    if tgt is not None and tgt.char_id != expect.identity:
-        _add(f'deployed.{expect.target_row}', expect.target_slot,
-             expect.identity, tgt.char_id)
-    return mism
-
-
-# ===== 买牌期望态(merge_mechanics.md §1/§2/§2.5 落点规则的期望态层)=====
-
-#: 台账 surface/kind(买牌通道;surface 与拖动通道同域——都是备战板面身份账,
-#: 复现计数按 (surface, kind, expected) 分档,kind 区分通道)。
-_BUY_DEFECT_KIND = 'buy_expect_mismatch'
-
-
-@dataclass
-class BuyPurchase:
-    """一次 RunBuyPhase 单元内记录的单条购买意图(shop.py 买入点写入)。
-
-    [定义注释] name/star = 商店牌 OCR 身份与星级(ShopCard 真值源);
-    count = 该牌本单元购入张数 k——常态=1;备战栏满且可触发合成时 =
-    游戏自动多买 min(店内同牌张数, 3−已有数 mod 3)(merge_mechanics §2.5,
-    【置信:低】,由对账网实证修正);unit_cost = 单体招募费(无折扣:
-    总价 = k×unit_cost,§2.5 无价格优惠)。
-    """
-    name: str
-    star: int
-    count: int
-    unit_cost: int
-    #: 买前商店帧中该牌的矩形裁片(numpy .copy(),~125KB/张;整帧被帧缓存
-    #: 复用覆写,必须拷贝;一帧原则:来自读牌时已截的帧,零新增截屏)。
-    #: 对账不一致时落盘 = 「买了什么」的像素级证据(比意图对象硬);平时零磁盘写入。
-    crop: object = None
-
-
-@dataclass
-class BuyExpect:
-    """一次 RunBuyPhase 购买单元的期望态(compute_buy_expect 产出 /
-    compare_buy_expect 消费)。
-
-    [索引定义] bench_after = 期望备战栏槽位表(下标 0-8 = 物理槽位 1-9,
-    None=空槽);deployed_after = 期望上阵槽位表(下标 0-3=前排排内槽 1-4、
-    4-9=后排排内槽 1-6,ADR-0392 槽位语义)。changed_* = 相对购买前快照
-    发生变化的槽位集(对账只评增量槽位,存量漂移归 reconcile_tracking)。
-    取值时机 = 购买意图记录期快照(shop.py 买入点),写入端 = shop.buy。
-    """
-    bench_after: list[BenchChar | None]
-    deployed_after: list[BenchChar | None]
-    changed_bench: list[int]       # 1-based 物理槽位
-    changed_deployed: list[int]    # deployed 槽位下标 0-9
-    summary: str                   # 购买意图摘要(台账 refs 用)
-    total_cost: int                # 期望扣金 = Σ(k×单价)(无折扣口径)
-    low_confidence: bool = False   # 含满栏自动多买子案(k>1,§2.5 置信低)
-    #: 各次购买的商店牌裁片拷贝 [(角色名, 裁片)];随期望态带到对账点作
-    #: 「买了什么」像素证据,对账完成即释放(置 None),平时零磁盘写入。
-    crops: list | None = None
-
-
-def compute_buy_expect(purchases: list[BuyPurchase],
-                       bench: list[BenchChar | None],
-                       deployed: list[BenchChar | None]) -> BuyExpect | None:
-    """购买意图序列 → 买后期望态(纯函数;merge_mechanics.md 规则映射):
-
-    - 买牌落点(§1):默认 = 备战栏首个空槽(bench_place);触发 3 合 1 时
-      落点优先级(场上吸收 > 备战最左)= ``cw_state._merge_bench`` 载体
-      选择单一源,连锁合成(§2)= 其不动点循环;
-    - 满栏自动多买(§2.5):k>1 时逐张入表(满栏暂溢出表尾),合并腾槽后
-      仍有无处安放散牌 → 保留溢出表(对账只评 1-9 槽,散牌槽自然跳过,
-      不一致=证据落台账,不改语义——文档声明由对账实证修正);
-    - 无价格优惠(§2.5):total_cost = Σ(k×unit_cost) 记全款。
-
-    无法建真值 → None 不评:任一意图身份未识别(OCR 空名——期望缺该牌
-    增量必成片假不一致,宁缺勿造)。
-    """
-    if any(not p.name for p in purchases):
-        return None
-    bench_t: list[BenchChar | None] = [None] * BENCH_CAPACITY
-    for bc in bench:
-        if bc is not None:
-            bench_place(bench_t, deepcopy(bc))
-    dep_t: list[BenchChar | None] = list(deployed) if deployed else []
-    dep_t = [deepcopy(c) for c in dep_t]
-    low_conf = False
-    for p in purchases:
-        for _ in range(max(1, p.count)):
-            if p.count > 1:
-                low_conf = True
-            bc = BenchChar(slot=0, char_id=p.name, star=p.star,
-                           position_pref='back')
-            if bench_place(bench_t, bc) is None:
-                bench_t.append(bc)   # 满栏暂溢出(§2.5 例外购买)
-    cw_merge_bench(bench_t, dep_t)
-    changed_b = [i + 1 for i in range(BENCH_CAPACITY)
-                 if _slot_diff(bench_t[i] if i < len(bench_t) else None,
-                               bench[i] if i < len(bench) else None)]
-    changed_d = [i for i in range(len(dep_t))
-                 if _slot_diff(dep_t[i],
-                               deployed[i] if i < len(deployed) else None)]
-    summary = ';'.join(f'{p.name}/{p.star}星×{p.count}@{p.unit_cost}'
-                       for p in purchases)
-    return BuyExpect(bench_after=bench_t, deployed_after=dep_t,
-                     changed_bench=changed_b, changed_deployed=changed_d,
-                     summary=summary,
-                     total_cost=sum(p.unit_cost * max(1, p.count)
-                                    for p in purchases),
-                     low_confidence=low_conf,
-                     crops=[(p.name, p.crop) for p in purchases
-                            if p.crop is not None] or None)
-
-
-def _slot_diff(a: BenchChar | None, b: BenchChar | None) -> bool:
-    """槽位级 (身份, 星级) 差异判据(compute_buy_expect 增量集用)。"""
-    ka = (getattr(a, 'char_id', '') or '', getattr(a, 'star', 1) or 1) \
-        if a is not None else None
-    kb = (getattr(b, 'char_id', '') or '', getattr(b, 'star', 1) or 1) \
-        if b is not None else None
-    return ka != kb
-
-
-def compare_buy_expect(expect: BuyExpect,
-                       bench_read: list[BenchChar],
-                       deployed_read: list[BenchChar]) -> list[dict[str, str]]:
-    """买牌期望态 vs 定型帧实读逐槽比对(纯函数;仅评增量槽位)。
-
-    判据(槽位级身份+星级比对,W530 同款宁缺勿造):实读中该槽无条目
-    (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
-    期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
-    返回不一致项列表(空列表=全部可比项一致)。
-    """
-    mism: list[dict[str, str]] = []
-
-    def _add(domain: str, slot: int | str, want: str, got: str) -> None:
-        mism.append({'domain': domain, 'slot': str(slot),
-                     'expected': want, 'observed': got})
-
-    for slot in expect.changed_bench:
-        exp = expect.bench_after[slot - 1]
-        got = next((c for c in bench_read
-                    if c.slot == slot and c.char_id), None)
-        if got is None:
-            continue   # 实读无条目:不评
-        want_id = exp.char_id if exp is not None else ''
-        if got.char_id != want_id or _slot_diff(exp, got):
-            _add('bench', slot,
-                 f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
-                 f'{got.char_id}/{got.star}星')
-    for idx in expect.changed_deployed:
-        exp = expect.deployed_after[idx] if idx < len(expect.deployed_after) \
-            else None
-        row = 'front' if idx < 4 else 'back'
-        slot_no = deployed_slot_no(idx)
-        got = next((c for c in deployed_read
-                    if c.position_pref == row and c.slot == slot_no
-                    and c.char_id), None)
-        if got is None:
-            continue
-        want_id = exp.char_id if exp is not None else ''
-        if got.char_id != want_id or _slot_diff(exp, got):
-            _add(f'deployed.{row}', slot_no,
-                 f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
-                 f'{got.char_id}/{got.star}星')
-    return mism
 
 
 def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
@@ -549,86 +199,18 @@ def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
     return paths
 
 
-# ===== 经验期望态账本(W552:XP/等级期望态对账;架构同 W536 买牌/W530 拖动)=====
-
-#: 台账 surface/kind(经验通道;复现计数按 (surface, kind, expected) 分档)。
-_XP_DEFECT_SURFACE = 'xp'
-_XP_DEFECT_KIND = 'xp_expect_mismatch'
-
-#: RunBuyPhase 执行返回 detail 中「升级次数」的解析形态。来源链:shop.py
-#: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_level = 执行侧实际单击数)
-#: → prep_actions._run_composite 透传为 director 的 execute detail。
-_XP_BUY_CLICKS_PAT = re.compile(r'升(\d+)次')
-
-
-@dataclass
-class XpLedger:
-    """计算侧经验账本(会话级;锚点 + 意图推进 + 逐段对账,零决策记账)。
-
-    [字段定义] level/xp_cur/xp_next = 计算侧期望的 (等级, 当前级已攒经验,
-    当前级门槛)——坐标系 = 游戏 XP 条整局语义(门槛表 = XP_TO_NEXT_LEVEL
-    单一源);取值时机 = 锚点帧读数或购买意图经 xp_apply_clicks 纯推算,
-    **非执行期现读**;写入端 = PrepDirector._xp_* 三方法(单写者)。
-    anchored = 对局首帧锚定是否完成(锚定前不对账——纯推算的起点必须是
-    真实读数,否则整段账失真)。
-    round_key = 本对账段 (plane, round_num)——**轮界即重锚点**:轮间存在
-    未建模外生经验流(局⑳+1 replay 实测轮间 +2、位面过渡更大,来源未定),
-    吸收进锚点不进对账,累计披露于 exogenous_xp(把未知变实测,不硬编码)。
-    pending_clicks = 锚点后本段累计购买经验击数(>0 才对账;对账一次即清)。
-    events_txt = 本段事件摘要(台账 refs 用)。
-    exogenous_xp = 轮界重锚吸收的外生经验累计(纯观测披露,不参与对账)。
-    """
-    level: int = 0
-    xp_cur: int = 0
-    xp_next: int = 0
-    anchored: bool = False
-    round_key: tuple[int, int] | None = None
-    pending_clicks: int = 0
-    events_txt: str = ''
-    exogenous_xp: int = 0
-
-
-def _xp_parse_buy_clicks(detail: str) -> int:
-    """RunBuyPhase 执行 detail → 购买经验单击数;解析不出 → 0(宁缺勿造:
-    该单元不进经验账,不做猜测推进)。"""
-    m = _XP_BUY_CLICKS_PAT.search(detail or '')
-    return int(m.group(1)) if m else 0
-
-
-def _xp_compare(ledger: XpLedger, display: tuple[int, int] | None,
-                level_obs: int) -> list[dict[str, str]]:
-    """计算侧期望 vs 备战稳定帧显示读数(纯函数;XP/等级双源对账判据)。
-
-    - display = read_xp_progress 显示读数 (cur, next);None = 无法建真值
-      → 不评(宁缺勿造);
-    - level_obs = 显示等级(read_game_state 三源解析值);≤0 = 失读不评;
-    - 等级判据:计算 level vs 显示 level——等级是 deploy cap 的输入,
-      双源一致 = cap 可信(交叉验证);xp 判据:cur / next 逐项。
-    返回不一致项列表(空列表 = 全部可比项一致)。
-    """
-    mism: list[dict[str, str]] = []
-    if display is None or level_obs <= 0:
-        return mism
-    if ledger.level != level_obs:
-        mism.append({'domain': 'level', 'slot': '-',
-                     'expected': str(ledger.level), 'observed': str(level_obs)})
-    cur, nxt = display
-    if ledger.xp_cur != cur:
-        mism.append({'domain': 'xp', 'slot': 'cur',
-                     'expected': str(ledger.xp_cur), 'observed': str(cur)})
-    if ledger.xp_next != nxt:
-        mism.append({'domain': 'xp', 'slot': 'next',
-                     'expected': str(ledger.xp_next), 'observed': str(nxt)})
-    return mism
-
 
 # ===== 商店打开态对账(W564:cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
 
 #: 台账 surface/kind(商店通道;复现计数按 (surface, kind, expected) 分档)。
 _SHOP_DEFECT_SURFACE = 'shop'
+
 _SHOP_POOL_DEFECT_KIND = 'shop_pool_violation'
+
 _SHOP_REFRESH_DEFECT_KIND = 'refresh_expect_mismatch'
+
 _SHOP_MERGE_DEFECT_KIND = 'merge_preview_mismatch'
+
 
 
 def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
@@ -641,6 +223,7 @@ def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
     shop = list(getattr(st, 'shop', None) or [])
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
     return cards, len(shop) - len(cards)
+
 
 
 def _merge_preview_inputs(st: GameState) -> tuple[dict[int, bool], dict[int, bool], int]:
@@ -673,6 +256,7 @@ def _merge_preview_inputs(st: GameState) -> tuple[dict[int, bool], dict[int, boo
     return our, det, unnamed
 
 
+
 def build_refresh_expect(gold: int | None,
                          refresh_cost: int | None,
                          cards_old: list[tuple[str, int]],
@@ -699,6 +283,7 @@ def build_refresh_expect(gold: int | None,
     return refresh_expect(gold, cards_old, refresh_cost), plane, round_num
 
 
+
 def refresh_reconcile_mismatches(expect: RefreshExpect,
                                  gold_after_obs: int | None,
                                  cards_named: int) -> list[dict[str, str]]:
@@ -722,158 +307,12 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
     return mism
 
 
-# ===== 装备期望态(装备拖拽语义的期望态层;语义单一源 =
-# docs/game/currency_war/research/equipment_mechanics.md §1.1)=====
-
-#: 台账 surface/kind(equip=中决策相关面,见 cw_telemetry.MEDIUM_CRITICAL_
-#: SURFACES;复现计数按 (surface, kind, expected) 分档,勿改已有行口径)。
-_EQUIP_DEFECT_SURFACE = 'equip'
-_EQUIP_DEFECT_KIND = 'equip_expect_mismatch'
-
-
-@dataclass
-class EquipDragIntent:
-    """一次装备区拖拽的意图载体(compute_equip_drag_expect 输入)。
-
-    [定义注释] source_name = 被拖装备(装备区 owned 件,模板规范名;
-    sell_char 语义下不适用,恒空);target_name = cell_synth:栏内拖放
-    目标简易名 / wear_synth:目标角色已穿简易名(其余类空);
-    equipped_names = sell_char:被卖角色已穿装备全量(动作发出帧
-    read_equipped_below 快照;精度未验证,空读/失读按不评口径不进期望)。
-    取值时机 = 动作发出时快照;写入端 = 动作发出点。
-    """
-    kind: str                  # 'cell_synth'|'wear'|'wear_synth'|'unequip'|'sell_char'
-    source_name: str
-    target_name: str = ''
-    equipped_names: tuple[str, ...] = ()
-
-
-@dataclass
-class EquipExpect:
-    """一次装备拖拽的期望态(compute_equip_drag_expect 产出 /
-    compare_equip_expect 消费)。
-
-    [定义注释] owned_before = 意图记录帧装备区占用计数快照(名字→格数;
-    只算非遮挡占用格——遮挡格进快照会污染 after 对账基准);deltas =
-    期望增量(名字→±n,装备区网格口径,不堆叠语义每格一件);product =
-    合成产物名(台账 refs 用,非合成类空)。
-    """
-    kind: str
-    summary: str
-    deltas: dict[str, int]
-    owned_before: dict[str, int]
-    product: str = ''
-
-
-def _synth_pair(a: str, b: str) -> str | None:
-    """两件装备的合成产物(合成规则单一源 = cw_synthesis:交叉
-    ``synthesize_target`` / 自配 ``self_advance``;非两基础件可合对 → None)。"""
-    from sr_od.application.currency_war.data.cw_synthesis import (
-        self_advance,
-        synthesize_target,
-    )
-    if a == b:
-        return self_advance(a)
-    return synthesize_target(a, b)
-
-
-def compute_equip_drag_expect(intent: EquipDragIntent,
-                              owned_before: dict[str, int]) -> EquipExpect | None:
-    """拖拽意图 → 装备区期望增量(纯函数;equipment_mechanics.md §1.1 映射):
-
-    - cell_synth(栏内简易A→简易B):两件简易必合成(§1.1 28/28 配方
-      实证),A/B 消耗、产物落 B 位(位置语义「合成落点」的栏内对应;
-      网格对账按计数,产物占哪格不评);配对不可合(非法对/非简易/
-      未知名)→ None 不评;
-    - wear(简易→角色未穿简易):穿戴即离栏,网格 −1(角色侧本批不评
-      —— read_equipped_below 精度未验证,按不评口径);
-    - wear_synth(简易→角色已穿简易):两简易不能共存必合成(§1.1),
-      产物落角色最左简易槽;拖入件离栏(网格 −1),已穿件在角色侧消耗、
-      产物上角色(角色侧不评)。配对不可合 → None 不评;
-    - unequip(卸下):回栏,网格 +1;
-    - sell_char(卖角色):已穿装备全量回装备区(§1.1),网格逐件 +1;
-      equipped_names 空(未穿/穿戴读失读)= 无可评增量 → None 不评。
-
-    不堆叠语义(§1.1):装备区每格一件,计数=格数;row1 材料堆叠件
-    (扳手等,非合成图谱)不进本批期望。source_name 空(sell_char 除外)
-    → None。
-    """
-    src = intent.source_name
-    if intent.kind != 'sell_char' and not src:
-        return None
-    deltas: dict[str, int] = {}
-    product = ''
-
-    def _dec(name: str) -> None:
-        deltas[name] = deltas.get(name, 0) - 1
-
-    if intent.kind == 'cell_synth':
-        tgt = intent.target_name
-        adv = _synth_pair(src, tgt) if tgt else None
-        if adv is None:
-            return None
-        _dec(src)
-        _dec(tgt)
-        deltas[adv] = deltas.get(adv, 0) + 1
-        product = adv
-    elif intent.kind == 'wear':
-        _dec(src)
-    elif intent.kind == 'wear_synth':
-        adv = (_synth_pair(src, intent.target_name)
-               if intent.target_name else None)
-        if adv is None:
-            return None
-        _dec(src)   # 已穿件在角色侧消耗,产物上角色(网格只减拖入件)
-        product = adv
-    elif intent.kind == 'unequip':
-        deltas[src] = deltas.get(src, 0) + 1
-    elif intent.kind == 'sell_char':
-        for n in intent.equipped_names:
-            deltas[n] = deltas.get(n, 0) + 1
-        if not deltas:
-            return None
-    else:
-        return None
-    summary = (f'{intent.kind} {src}'
-               + (f'→{intent.target_name}' if intent.target_name else '')
-               + (f' 产物{product}' if product else '')
-               + (f' 回栏×{len(intent.equipped_names)}'
-                  if intent.kind == 'sell_char' else ''))
-    return EquipExpect(kind=intent.kind, summary=summary, deltas=deltas,
-                       owned_before=dict(owned_before), product=product)
-
-
-def compare_equip_expect(expect: EquipExpect,
-                         cells: list[EquipCell]) -> list[dict[str, str]]:
-    """期望态 vs 装备区逐格实读比对(纯函数;cells = read_equip_grid 结果)。
-
-    判据:deltas 涉及的每个名字,期望格数 = owned_before + delta,
-    实读格数 = 非遮挡占用格计数;不等 = 不一致。遮挡格(详情面板盖住)
-    实读 name=None——存在遮挡格时该名字可能正躺在遮挡格里,计数不可信
-    → 整体跳过不评(不算一致也不算不一致,宁缺勿造)。实读中 deltas
-    未涉及的名字 = 存量漂移(归 reconcile_tracking 既有通道),不进本对账。
-    返回不一致项列表(空列表=全部可比项一致或整体不评)。
-    """
-    if any(c.occluded for c in cells):
-        return []   # 遮挡格三态如实跳过(不评不算错)
-    observed: dict[str, int] = {}
-    for c in cells:
-        if c.name is not None:
-            observed[c.name] = observed.get(c.name, 0) + 1
-    mism: list[dict[str, str]] = []
-    for name, d in expect.deltas.items():
-        want = expect.owned_before.get(name, 0) + d
-        got = observed.get(name, 0)
-        if want != got:
-            mism.append({'domain': 'equip_grid', 'slot': name,
-                         'expected': f'{want}格', 'observed': f'{got}格'})
-    return mism
-
 
 #: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:r80 审计 c)实锤
 #: PrepDirector 每备战环重建(battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
 #: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
 _NODE_ICON_SHOT_TS: dict[int, float] = {}
+
 
 
 class PrepDirector(SrOperation):
@@ -2868,3 +2307,4 @@ class PrepDirector(SrOperation):
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
             log.debug(f'[cw-director] telemetry skip: {e}')
+
