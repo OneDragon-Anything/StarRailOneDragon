@@ -1,6 +1,6 @@
 # 02 阵容选择(战略层)
 
-> 「这局打什么阵容、何时定型/转型、跨局怎么分配」的语义。本篇:`cw_comps`(COMP_LIBRARY + select_comp/pivot)/ `cw_transition`(双轨过渡)/ `cw_line_tribunal`(审判层)/ `cw_run_allocator`(跨局分配)/ `cw_evolution`(阵容演进引擎,§10)/ `cw_intention`(终局意向分层,§11)。玩法证据 → [game/research/plaza_methodology](../../../game/currency_war/research/plaza_methodology.md)(M1-M16);单套打法叙事(入场/退场/counter)→ [game/research/final_comps](../../../game/currency_war/research/final_comps/README.md)(终局阵容十类深读,单套 comp 知识单一源)。
+> 「这局打什么阵容、何时定型/转型、跨局怎么分配」的语义。本篇:`cw_comps`(COMP_LIBRARY + select_comp/pivot)/ `cw_transition`(双轨过渡)/ `cw_run_allocator`(跨局分配)/ `cw_evolution`(阵容演进引擎,§10)/ `cw_intention`(终局意向分层,§11)。玩法证据 → [game/research/plaza_methodology](../../../game/currency_war/research/plaza_methodology.md)(M1-M16);单套打法叙事(入场/退场/counter)→ [game/research/final_comps](../../../game/currency_war/research/final_comps/README.md)(终局阵容十类深读,单套 comp 知识单一源)。
 
 ## 1. COMP_LIBRARY:阵容注册表(数据模型)
 
@@ -24,11 +24,11 @@
 
 ## 4. cw_transition:双轨过渡(P1 过渡包模型)
 
-P1 同时持有**过渡框架包**与**最终线框架包**两条轨(ADR-0209):P1 半成型最终线打不过成型过渡包是七连败根因。`CommitSignals`(7 信号源)驱动何时收敛到最终线;P2-3 deadline 兜底;五人口早期结构。`cw_plan` 与 `default_strategy` 消费。
+P1 同时持有**过渡框架包**与**最终线框架包**两条轨(ADR-0209):P1 半成型最终线打不过成型过渡包是七连败根因。`CommitSignals`(7 信号源)驱动何时收敛到最终线;P2-3 deadline 兜底;五人口早期结构。decision_v2 买层消费(买层唯一入口,ADR-0477)。
 
-## 5. cw_line_tribunal:战略假设审判层
+## 5. 战略假设审判层(旧 cw_line_tribunal 已退役)
 
-战略层假设(commit/pivot/drought 等)的**去留门**:每条战略线按证据(时间线掉队对照 `cw_progress_curves` 健康线/连败/成型度)判继续、降权或退出;`cw_evaluate` 消费(诊断与五族门设计 → ADR-0171)。
+v0 形态已随 strategy_v1 退役(ADR-0477);决策 why 见 ADR-0171。现役换线/降格语义单一源 = `cw_intention`(§11)与 `cw_line_switch`。
 
 ## 6. cw_run_allocator:跨局分配层
 

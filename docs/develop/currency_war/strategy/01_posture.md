@@ -1,6 +1,6 @@
 # 01 姿态与经济(跨期决策)
 
-> 「钱该花还是攒、什么时候升、什么时候刷」由**确定性预算核**统一回答(义务模型 + 排程查表 + 预算式刷新;原 DP 求解器已退出生产路径,历史:静态 NodeGoal 表 → DP 切流 ADR-0208 → 预算收权,ADR-0465;等级节奏权威 = 用户口述,ADR-0126/0128)。本篇:`cw_plane_table` / `decision_v2.economy_cycle` / `cw_effect_ledger` / `cw_economy` / `cw_first_passage` / `cw_progress_curves` 的语义。
+> 「钱该花还是攒、什么时候升、什么时候刷」由**确定性预算核**统一回答(义务模型 + 排程查表 + 预算式刷新;原 DP 求解器已退出生产路径,历史:静态 NodeGoal 表 → DP 切流 ADR-0208 → 预算收权,ADR-0465;等级节奏权威 = 用户口述,ADR-0126/0128)。本篇:`cw_plane_table` / `decision_v2.economy_cycle` / `cw_effect_ledger` / `cw_economy` / `cw_first_passage` 的语义。
 
 ## 1. 预算收权核:三个标量的确定性供给(ADR-0465)
 
@@ -13,7 +13,7 @@
 - **R\*(储备线)与义务**(ADR-0445/ADR-0463,原样):`R* = 息线(interest_cap×10) + 窗口 h=min(3, 位面末前轮数) 内排程升级费`;溢余 `(g−R*)+` 经义务 `min(溢余, C_t)` 进 release 预算;存息准入门(E1)辖「溢余且未被 flip 覆盖」的帧(预算函数口径,W611 退出链),零预算 release 指令 = 容量不足的合法结转。
 - **标定表/真值归属**(`cw_plane_table`,原 `cw_horizon` 的非 DP 面):位面轮数真值 `nodes_of_plane`(P1=9/P2=7/P3 进表自适应,ADR-0366)、日程几何(`schedule_of`/`plane_offsets`/`plane_end_slots`)、升级费用次数(`clicks_to_level`)、息闭式(`interest`)、损血先验表(`HP_LOSS_MU`,ADR-0183 单一源)、P2 两态胜率映射(`p_win_p2`)。DP 世界模型(难度曲线/损血递推/平局扫描序)随模块退役,git 历史为 prior art。
 - **通道边际排序**(ADR-0476,W645 提案 A):flip 义务帧 ∧ 升级并存 ∧ cap 满员(`posture_release.channel_rank_scope` 辖域单一址)时,升级 vs 刷新的先后由 `posture_release.rank_refresh_vs_upgrade` 显式裁决——升级边际 = `ev.levelup_refresh_saving / cw_economy.upgrade_plan_fee`(省刷金÷升级费),刷新边际按「expected_refreshes_for_card 逐刷递减金值序列÷刷价」归一为每刷价 1 当量;`saving ≥ fee → upgrade_first`(现行固定序零漂移),`< → refresh_first`(消费点 = arbiter 升级门,refresh_first 帧降级 dp/static_ev 授权臂,升级授权重估留待下帧;人口位臂 pop_slot 恒升级优先不覆写)。概率单一址 = cw_shop_odds,与分配器 Π_refresh 估计器同源互指。定向刷新车道的塌缩带停付(`kernel.cw_economy._omega_collapse_zeroed` 判据,ADR-0475)在 arbiter M-A 分支接线,判据单一址同主预算。
-- **消费端**:`cw_economy`(spend_mode 档位经 `get_node_goal` 标量投影,唯一档位源)、`cw_comps`、`cw_evaluate`、`cw_plan`、`cw_state`、`cw_telemetry`(影子记录)、`decision_v2`(arbiter/scoring/posture_release/ev)。
+- **消费端**:`cw_economy`(spend_mode 档位经 `get_node_goal` 标量投影,唯一档位源)、`cw_comps`、`cw_state`、`telemetry`(影子记录)、`decision_v2`(arbiter/scoring/posture_release/ev)。
 - **维护红线**:排程/预算判据改动必须走 sim A/B(w630 协议式:升级时机分布为硬守卫);三处共调单一址禁第二实现。
 
 ## 2. cw_effect_ledger:既持效果台账
@@ -29,7 +29,7 @@
 基线是用户口述的人玩节奏(权威,[game/research/user_playstyle](../../../game/currency_war/research/user_playstyle.md)):
 
 - **50 金息引擎**:利息(息律常量 `INTEREST_THRESHOLD`/`GOLD_CAP_INTEREST`,用户口述「每 10 金 1 息、50 封顶」)是默认态;前期 snowball 到 50,中期维持吃息升人口,后期血危花光。
-- **无损购买窗口**:金低于无损窗口上限(`cw_plan.NO_LOSS_GOLD_CEILING`;1 息档内)买过渡件不损息还压缩牌库——攒息不拦无损买。
+- **无损购买窗口**:金低于无损窗口上限(1 息档内)买过渡件不损息还压缩牌库——攒息不拦无损买。
 - **连胜破息门**:连胜 ≥ `WIN_STREAK_BREAK_INTEREST` 时破息提质量维持连胜(断连胜亏 > 利息亏,ADR-0117);货币战争**无连败补偿,只计连胜**(ADR-0128)。
 - **奖励节点守卫**:必胜节点(无战斗/连胜白拿)刷牌的战斗向理由全关(`_refresh_cap` 收紧)。
 - **血量换经济边界**:血危时经济让位保血,但保留重生基数(旧 `line_strategy._REBIRTH_FLOOR`,ADR-0336 后常量随删;decision_v2 的 emergency 地板语义见 [0313](../decisions/0313-blood-alarm-semantics-final.md))。
@@ -40,7 +40,7 @@
 
 ## 6. cw_first_passage:目标函数层
 
-全栈优化目标的单一源:**首达生存概率**(P(reach plane_k) / P(win))+ 风险姿态三区律——替代各处各自为政的「均值计价」(诊断与设计 → ADR-0161)。`cw_state` 消费;P(win) 供给跨局分配层。掉血分布 μ 的位面维:P1 = `cw_plane_table.HP_LOSS_MU` 现档(P1 不走 P2 标定);P2+ = 两态同构 `(1−p(rung(tier)))·L_cond_mix`(registry `p_win_p2_by_rung` + `p2_cond_loss_table`,P3 别名 P2);无本地位面乘数自由度(W443 双源合一,ADR-0440)。`effective_hp_threshold` P2+ 阈值 = base × `plane_hp_ratio`,五处策略消费点(economy 止损/evaluate 保血/comps 与 default_strategy 保命转型 0.75×/plan 刷新帽)全部经该单口消费。
+全栈优化目标的单一源:**首达生存概率**(P(reach plane_k) / P(win))+ 风险姿态三区律——替代各处各自为政的「均值计价」(诊断与设计 → ADR-0161)。`cw_state` 消费;P(win) 供给跨局分配层。掉血分布 μ 的位面维:P1 = `cw_plane_table.HP_LOSS_MU` 现档(P1 不走 P2 标定);P2+ = 两态同构 `(1−p(rung(tier)))·L_cond_mix`(registry `p_win_p2_by_rung` + `p2_cond_loss_table`,P3 别名 P2);无本地位面乘数自由度(W443 双源合一,ADR-0440)。`effective_hp_threshold` P2+ 阈值 = base × `plane_hp_ratio`,策略消费点(economy 止损/comps 保命转型 0.75× 等)全部经该单口消费。
 
 ## 7. cw_progress_curves:期望进度线
 

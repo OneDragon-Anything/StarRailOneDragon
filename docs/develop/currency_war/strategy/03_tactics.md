@@ -1,6 +1,6 @@
 # 03 战术执行(备战层)
 
-> 备战画面内「下一步做什么」的执行架构:观察驱动单步决策环(PrepDirector,ADR-0123)+ 战术规划(plan/evaluate/bundle)。框架与策略分离:环是框架(不含玩法判断),「下一步做什么」全部是策略(CwStrategy 钩子,07)。
+> 备战画面内「下一步做什么」的执行架构:观察驱动单步决策环(PrepDirector,ADR-0123)+ 战术规划(decision_v2 备战四层)。框架与策略分离:环是框架(不含玩法判断),「下一步做什么」全部是策略(CwStrategy 钩子,07)。
 
 ## 1. prep_director:备战决策环(框架)
 
@@ -22,11 +22,11 @@
 | 控制流 | DeferSpheres(球留置,环级计数)/ BailToOuter |
 | 组合(过渡) | RunBuyPhase(BuyShopCards)/ RunDeploy(DeployBench)/ RunEquip(EquipAll) |
 
-**注意分层**:买牌内的刷新(RefreshShop)与买入(BuyCard)是 `cw_state` 的 **sim/决策层 Action**(plan 产出、`cw_plan`/`cw_sim` 消费),由 RunBuyPhase(BuyShopCards op)在执行层落地,不是 prep_actions 类;穿戴/合成同理——装备执行走 RunEquip(EquipAll op,§6),合成决策在 `cw_synthesis`(op 层暂无独立动作)。
+**注意分层**:买牌内的刷新(RefreshShop)与买入(BuyCard)是 `cw_state` 的 **sim/决策层 Action**(决策层产出、`decision_v2`/`sim` 消费),由 RunBuyPhase(BuyShopCards op)在执行层落地,不是 prep_actions 类;穿戴/合成同理——装备执行走 RunEquip(EquipAll op,§6),合成决策在 `cw_synthesis`(op 层暂无独立动作)。
 
 组合动作保留四项板上行为(DeployBench 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。**deploy 围栏**(配方饥饿期非过渡件留 bench)= `_DEPLOY_FENCE` = RECIPE∪ENGINE 桥派生单一源(ADR-0226)。⚠️ 已知漂移(ADR-0261):op 侧 `_deploy_deterministic` 与 `cw_deploy_logic.select_deployments` 纯函数非同源——op 无 ignition 排序首键、且多 r288 配方底线门(列车≥2 且仙舟<3 拦列车件;纯函数无此门=sim 盲区),引擎件存量躺 bench 的生产机制在此,修复待裁决。
 
-## 3. cw_plan:备战动作规划
+## 3. 备战动作规划(decision_v2;旧 cw_plan 已退役)
 
 **硬门贪心**(bench-full / gold≥0 / `LEVEL_MAX` 门内,选 eval-delta 最大的动作序列)+ **蒙特卡洛 D 牌**(`_refresh_expected_delta`:扣刷新金采样 shop 取最优买+deploy 均值 − base;采样 = 先按等级采费用(`REFRESH_PROB`)再按角色均匀采)+ **D 牌动态上限**(`_refresh_cap`,**定义在 cw_evaluate**、cw_plan 消费:常规基线,关键回合——P3/搜核心/HP 危险急救——放宽;奖励节点收紧;拿刷新减费策略再提)+ **level_plan 硬 gate**(level_up + afford 直接执行,非纯贪心 delta;破息窗提案走 **LevelUp 总成本门**——clicks×单击价升不完不提案,ADR-0223)+ **腾席链**(deploy 空位 > 卖杂件(off-target,ADR-0274) > 升级扩容(boss 轮禁 + 真缺人口前置 + 息引擎前置,ADR-0274) > 卖最弱保 3合1 件 > Defer)+ **两阶段 refresh**(刷新后 shop 未知,重 OCR 再 plan)。boss 关前不攒息 + 刷牌放宽(ADR-0128)。XP 单击价 = flat-4(`XP_CLICK_COST_FALLBACK`,OCR 通道 stylized 不可检,ADR-0275)。
 
@@ -87,13 +87,13 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 
 **溢余消费的息档边界截断+结转(ADR-0468)**:非必要溢余支出(常态刷新逐笔、release 义务预算内的负分搜索刷新)经 `economy_cycle.tier_truncated_spend(gold, want, essential)` 截断在档内余量(`gold % 10`)内——花后不跨息档则息损 0(息损=轮初/轮末金量纯函数,路径无关,排序重排零值);余量结转下轮(义务逐帧重算,零成本)。消费点两处:arbiter 刷新收尾 release 义务预算分支(逐笔先过截断门,残差不足一刷即不放行)+ `authorize_release_refresh` 预算检查后的同式截断门(纵深防御)。essential=True 两枝不截断(消费点显式传参):正账件(不可拆,截断=弃购)与 M-A 定向刷新车道(末窗无下轮重摇,截断=定向搜索永久丢失)。量级按严口径 1 金/档报 1-2 金/局,主判降级方向披露。
 
-## 4. cw_evaluate:局面评估
+## 4. 局面评估(旧 cw_evaluate 已退役)
 
-阶段键控加权(`_phase_weights`:HP 危险→保血 / P3→锁血 / 健康→平衡)+ `target_progress`(距 form_tiers 剩余进度,不与 synergy/char_quality 三重计分)+ optionality α(t) 承诺-期权混合 + `transition_tempo`(过渡期节奏项,ADR-0140)+ streak 项(只计连胜)。消费 DP 姿态(`cw_horizon`)、审判层(`cw_line_tribunal`)、期望进度线(`cw_progress_curves`)、经济层(`cw_economy`)。
+旧 v1 评估栈(阶段键控加权/target_progress/optionality α(t)/transition_tempo/streak 项)已随 strategy_v1 退役(ADR-0477);现役评分 = decision_v2 层3(scoring,见 ADR-0332/0347)。腾席与部署判据单一源 = `kernel/cw_deploy_seat`。
 
-## 5. cw_bundle:回合内联合行动束
+## 5. 回合内联合行动束(旧 cw_bundle 已退役)
 
-历史头号杀手的另一面:单动作贪心在「买 A 卖 B 升级」联合更优时逐项看不见。bundle 把**回合内联合行动束**作为优化单元整体估值(ADR-0156);`cw_plan` 消费。
+影子接缝形态已随 strategy_v1 退役(ADR-0477);决策 why 见 ADR-0156,现役买候选估值 = decision_v2 四层。
 
 ## 6. 装备执行(EquipAll)
 
@@ -105,5 +105,5 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 
 ## 7. 边界
 
-- plan 是纯函数(可离线测/可对拍,`cw_plan_replay_audit`);执行器负责坐标与验证。
+- 备战决策(decision_v2)是纯函数链(可离线测/sim 对拍);执行器负责坐标与验证。历史 decisions.jsonl 审计通道 = telemetry recorder(cw_match_recorder),不依赖已退役的 v1 plan 对拍器。
 - 战斗过程不可介入(AV 限时自动打),战术全部发生在备战期。

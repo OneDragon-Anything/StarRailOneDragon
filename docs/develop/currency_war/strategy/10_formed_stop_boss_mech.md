@@ -51,7 +51,7 @@
 | 5 | `registry.plane_last_battle`(=位面末最后一战)ALL IN 授权(discipline.allin) | 全局窗口谓词 | **b 保留** | 不动;ALL IN 是 [18] 口径原文点位面末时机,[32] 不推翻 | [18][28] 直引 |
 | 6 | cw_observation boss 轮次门(gate_node_type `_BOSS_MIN_ROUND`) | 观测防误读 | **b 保留** | 观测层,非策略;防止把即将到来的 boss 标签张冠李戴 | 观测正确性,与 [32] 无涉 |
 | 7 | scoring/sim 内 boss 窗预算硬界 `g − boss_floor`(V_D P2 分支)、scoring `_off_lock_demotion` 的 `final_fence`(末轮∧boss 窗拦非目标 opportunistic,W143/ADR-0359) | 各评分域引用 | **b 保留** | 消费 #2 同常量/末轮围栏(run17 直证 r9 四张零目标件买入;[31]④ 目标件+填充不辖)——依据独立于 [32] 消费有效性 | run17 直证/[18] |
-| 8 | default 栈(direct 流)`cw_plan` 腾席链「升级扩容 boss 轮禁」(ADR-0274)与 `update_target` `_boss_window` pivot 冻结(r70/r73RC1) | 冻结栈语义 | **b 保留不改码** | default 栈为非决策主路(v2 四层为准);pivot 冻结属换线纪律([23] 锁线+两局撕囤实证),不是消费有效性节点化。若后续泛化到 v2,v2 侧对应物(scoing final_fence/evolve_final_freeze)已按同语义在位 | 本表 #4 |
+| 8 | default 栈(direct 流)`cw_plan` 腾席链「升级扩容 boss 轮禁」(ADR-0274)与 `update_target` `_boss_window` pivot 冻结(r70/r73RC1) | 冻结栈语义 | default 栈本体已随退役批删除;腾席链升级门判据现址 = `kernel/cw_deploy_seat.level_up_gate`(ADR-0477),boss 轮禁与 pivot 冻结语义由 decision_v2 对应物承载(见本表 #4) | pivot 冻结属换线纪律([23] 锁线+两局撕囤实证),不是消费有效性节点化 | 本表 #4 |
 
 小结:**#1 是唯一 c 类**(删禁令臂,EV 总账接管);其余全部 b 类(有据
 保留,依据非 [32];无 a 类泛化件——[32] 本身已是全程通用的纪律文本,

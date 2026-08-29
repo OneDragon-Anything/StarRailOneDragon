@@ -55,8 +55,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - `cw_replay`:决策回放 harness(对历史局 GameState 快照重放 decide_prep,`--diff` 与当时实跑 actions 对比;支持 line/default 双策略,ADR-0231);
 - `cw_weight_search`:CEM 权重搜索(防退化三件套);
 - `cw_divergence_stats`:影子 DP 姿态 vs 生产姿态分歧频率(人机问询触发门数据源);
-- `cw_plan_replay_audit`:离线重放 plan() 比对 live 决策(对拍器);
-- `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。
+- `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。历史局审计通道 = decisions.jsonl(写路径在 telemetry recorder;live vs 旧 v1 plan 的对拍器已随 strategy_v1 退役,ADR-0477)。
 
 ## 6. 日志格式标准(可检索;单一源)
 
