@@ -16,6 +16,18 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     HP_ZERO_LOSS_NODE_TYPES,
 )
 
+# 合成特效帧态门注入槽(分包依赖矩阵禁 kernel→obs 直依):kernel 只持槽位,
+# 实现由 app 装配点(decision_assembly.install_obs_ports)从 obs 桶注入。
+# 缺省关(None)= 门放行,回退直接走「连续 2 次确认采新」——与门函数自身
+# 「screen=None → False 不拦」的 best-effort 语义同向,不引入新故障面。
+_IS_MERGE_EFFECT_FRAME = None
+
+
+def set_merge_effect_gate(fn) -> None:
+    """注入合成特效帧态门实现(obs 桶 ``is_merge_effect_frame``;生产武装点接通)。"""
+    global _IS_MERGE_EFFECT_FRAME
+    _IS_MERGE_EFFECT_FRAME = fn
+
 
 def _merge_equips(old_list, new_list) -> list:
     """对账合并语义(W209g 断点①修法,ADR-0387 追加):char_id 续接保留 equips。
@@ -67,6 +79,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         screen: 冲突帧(传则 obs_conflict 存去重截图)
         source: 证据行来源标记(deploy_bench/director)
         ctx: SrContext(传则 star 回退停机走 run_context.stop_running;None = 离线/测试只留证)
+        合成特效帧态门(采新确认前判别):实现经模块级 ``set_merge_effect_gate`` 注入
+        (分包矩阵禁 kernel→obs 直依);缺省关 = 门放行,走既有连续 2 次确认主干。
 
     Returns:
         是否发生了写回(False = 守卫拦截保旧)
@@ -141,11 +155,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                 # 保旧同首次分支,**防抖计数冻结不推进**(非清零——动画结束后的
                 # 干净回退帧仍走本分支确认;门漏检时退化为 W292 前防抖行为)。
                 _eff = False
-                if screen is not None:
-                    from sr_od.application.currency_war.obs.cw_identity_obs import (
-                        is_merge_effect_frame,
-                    )
-                    _eff = is_merge_effect_frame(screen)
+                if screen is not None and _IS_MERGE_EFFECT_FRAME is not None:
+                    _eff = _IS_MERGE_EFFECT_FRAME(screen)
                 if _eff:
                     log.info(f'[cw][{source}] star 回退帧态门:{_n} {_old_s}★→{_s}★'
                              f'(合成特效帧,读数不可信)→ 保旧 {_old_s}★,防抖冻结')

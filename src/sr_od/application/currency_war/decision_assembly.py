@@ -52,12 +52,20 @@ def install_obs_ports() -> None:
     (``cw_strategy._RESET_PHASE_ROUND_CACHE``),本函数从 obs 桶取实现注入。
     未接通(缺省关)= 新局弃置残留容器时跳过 obs 模块级缓存清理——
     session 全量重建承担状态隔离,仅 last-known-good 观测缓存延用旧值。
+
+    同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
+    kernel→obs 直依;缺省关 = 门放行走既有连续 2 次确认防抖主干)。
     """
     from sr_od.application.currency_war.decision.cw_strategy import set_obs_reset_hook
+    from sr_od.application.currency_war.kernel.cw_reconcile import set_merge_effect_gate
+    from sr_od.application.currency_war.obs.cw_identity_obs import (
+        is_merge_effect_frame,
+    )
     from sr_od.application.currency_war.obs.cw_observation import (
         reset_phase_round_cache,
     )
     set_obs_reset_hook(reset_phase_round_cache)
+    set_merge_effect_gate(is_merge_effect_frame)
 
 
 def _registry_of(strategy: Any):
