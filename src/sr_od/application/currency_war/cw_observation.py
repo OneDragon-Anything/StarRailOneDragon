@@ -2,8 +2,7 @@
 
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
-共享 helper/常量在 ``cw_obs_core``;本模块 **re-export** 简报/结算的公开函数,故
-``from cw_observation import read_affixes / parse_settlement_hp / ...`` 向后兼容(2026-08-06 拆分,)。
+共享 helper/常量在 ``cw_obs_core``(消费方一律直连 owner 模块 import,本模块不再 re-export)。
 
 备战字段采集按 doc 06(``strategy/06_input_model.md``)逐簇推进(board tier 已接,余待采:
 active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻塞于 vision/SIFT 库)。
@@ -34,17 +33,6 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
-
-# re-export 简报 + 结算 reads(向后兼容:from cw_observation import read_affixes/parse_settlement_hp 等仍可用)
-from sr_od.application.currency_war.cw_briefing_obs import (  # noqa: F401
-    load_affix_effects_from_file,
-    read_affix_effect,
-    read_affixes,
-    read_affixes_with_pos,
-    read_bosses,
-    save_affix_screenshot,
-    write_affix_effects,
-)
 from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_factions import FACTIONS
 from sr_od.application.currency_war.cw_identity_obs import (
@@ -68,14 +56,9 @@ from sr_od.application.currency_war.cw_obs_core import (
     _area_rect,
     _first_int,
     _ocr,
-    area_center,  # noqa: F401 (re-export:importer 经 cw_observation.area_center 用)
     is_prep_like_frame,
 )
 from sr_od.application.currency_war.cw_observe import obs_conflict
-from sr_od.application.currency_war.cw_settlement_obs import (  # noqa: F401
-    parse_settlement_hp,
-    read_round_outcome,
-)
 from sr_od.application.currency_war.cw_state import (
     REFRESH_COST_BASE,
     XP_TO_NEXT_LEVEL,
@@ -164,7 +147,7 @@ _DIFFICULTY_MAX: int = 300
 def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
     """带稳定门的金读数(读不到/越界 → None,契约同 ``read_gold_opt``)。
 
-    根因(实机 12 局 20 条 gold_delta 冲突对拍,W489 审计感知面):局收入在
+    根因(实机 12 局 20 条 gold_delta 冲突对拍,`w489_sim_real_gap/` 审计感知面):局收入在
     轮/位面切换后**入账计数器仍在跳**(实锤 run_20260828_074721 P3 r1:开店
     连读 73→75,同一读点数字在动;下轮开店读 90 = 本轮关店读 79 + 常规收入
     11,反推关店实读正确、开店读系统性偏低 = 读在入账前/入账中)→ 单帧读
@@ -723,7 +706,7 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
 def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     """位面详情屏 详情条「文本-节点类型名」OCR → 类型名(如 首领节点/奖励节点)| None。
 
-    boss 定位验证锚(W221/ADR-0398):boss 节点有**两种渲染态**——头像态
+    boss 定位验证锚(迁移审计 w221(git 历史)/ADR-0398):boss 节点有**两种渲染态**——头像态
     (run29 型,大图标 SIFT 可认)与徽章态(run30 型:最右节点=通用金色徽章、
     详情条=「首领节点」+通用描述,本屏无身份信息)。类型名稳定可 OCR
     (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证 +
@@ -839,12 +822,12 @@ def _parse_coin_fee_digit(texts: list[str]) -> int | None:
 def read_shop_refresh_cost(ctx: SrContext, screen: MatLike) -> int | None:
     """商店面板「↻ N」徽标读数(``文本-刷新金币数`` rect)——**非刷价,仅旁证**。
 
-    W577 定谳(ADR-0456):rect 内容 = 商店折叠面板徽标,数值 = min(gold//10,5)
+    `w577_refresh_fee_and_andon/` 定谳(ADR-0456):rect 内容 = 商店折叠面板徽标,数值 = min(gold//10,5)
     (= 利息公式),与实付刷新费无关——多局干净对账实付恒 2(基价
     ``cw_state.REFRESH_COST_BASE``)而徽标随金位变。本函数保留作旁证/测试用,
     已退出 ``read_game_state`` 主链(决策热路径少一次 OCR)。
 
-    实现维持 W559 后的放大两级管线与 0..10 守卫;两级读空 → None。
+    实现维持 `w559_p0p1_fix/` 后的放大两级管线与 0..10 守卫;两级读空 → None。
     """
     rect = _area_rect(ctx, '文本-刷新金币数')
     v = _parse_coin_fee_digit([r.data for r in _ocr_upscaled(ctx, screen, rect)])
@@ -1075,7 +1058,7 @@ def _resolve_paddle_digits(text_digits: str, glyph_digit_n: int, slash_idx: int 
     实测,见 ``_read_deploy_paddle``):
     - **直接对齐**:文本数字数 == 字形数 → 按「斜杠前=x、后=y」切(direct=True);
     - **去首对齐**:文本多 1 个数字 = 左侧图标被 rec 读成 '1' 并进数字
-      (W287/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
+      (迁移审计 w287(git 历史)/a8 实证 '10/3'=0/3)或空心字形(0/6/8)被 rec 加幻影前缀 '1'
       (抹图标后仍现 '16/7'=6/7 实证,非图标独有)→ 去首个再切;
     - **去斜杠位对齐**:文本无 '/' 且多 1 个数字 = 斜杠被读成数字
       ('717'=7/7 实证)→ 去掉斜杠位置上的那个数字再切。
@@ -1237,14 +1220,14 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike,
     return _read_deploy_paddle(ctx, screen, level)[1]
 
 
-# cap 真值防抖门(ADR-0286,批㉔ F5 前置):cap 与 level 的合法域 = level ≤ cap ≤ level+2
+# cap 真值防抖门(ADR-0286,迁移审计批 F5 前置):cap 与 level 的合法域 = level ≤ cap ≤ level+2
 # (宝钻可叠加;cap<level 不可能——唯一合法 diff=−1 形态是诅咒泽尔里奇
 # −1 cap,未见实例,先按域拒)。|cap−level|>2 或 cap<level = paddle 误读族(ADR-0281
 # 15 行 old=5/6→new=3/4 实测),直接进决策 = 把读错抬到决策层 → 重读一帧再核,仍异拒信。
-# W292 修订(ADR-0420):diff>2 **不再是绝对禁区**——W285 #41 实拍帧
+# 迁移审计 w292(git 历史) 修订(ADR-0420):diff>2 **不再是绝对禁区**——迁移审计 w285(git 历史) #41 实拍帧
 # obs_conflict_deploy_cap_out_of_range__e4972b43(2-2,paddle 12/13 + 经验面板
 # Lv.8/2-72 双读数实锤 + 后台 9 格实画)= diff=5 真实高档,旧域把它拒信 →
-# resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = W285 指认的「6 槽降级
+# resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = 迁移审计 w285(git 历史) 指认的「6 槽降级
 # 错误兜底」。现:域外值重读一帧,**两帧一致且在绝对板面上界内 → 采信**(瞬时
 # 误读族仍被「重读不等」拦住——12槽误档事故 8a56db39 是单帧读数,无两帧一致
 # 实证);留证不消失(采信也留,判读可见)。cap<level 仍恒拒(物理不可能)。
@@ -1276,7 +1259,7 @@ def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
         # 域外双帧一致:真实高档采信(瞬时误读被「两帧一致」概率压住;
         # 留证让判读侧可见本次采信,复现异常高频则回头收紧)
         obs_conflict('deploy_cap_domain', cap, cap2, screen,
-                     verdict=('采信-域外双帧一致(真实高档,W292/ADR-0420:'
+                     verdict=('采信-域外双帧一致(真实高档,迁移审计 w292(git 历史)/ADR-0420:'
                               'e4972b43 实拍 diff=5 真档,旧域拒信致 6 槽'
                               '降级在 9 格板上跑;本行供判读核对 paddle X/Y'
                               ' 与经验面板等级;复现高频则回查读链)'),
@@ -1296,7 +1279,7 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
 
     域 = ``level ≤ cap ≤ level + DEPLOY_CAP_MAX_DIFF``;域外时独立再截一帧重读:
     重读入域 → 采重读值;**重读与首读一致且 level ≤ cap ≤ DEPLOY_CAP_ABS_MAX
-    → 采信(域外双帧一致,真实高档 W292/ADR-0420,e4972b43 diff=5 实拍)**
+    → 采信(域外双帧一致,真实高档 迁移审计 w292(git 历史)/ADR-0420,e4972b43 diff=5 实拍)**
     + obs_conflict 留证;其余(重读仍域外且不一致/cap<level/超绝对上界)→
     留证 + None(调用方 max_units 兜底 level,与「未读到」同态)。
     截图失败(异常)按重读不可得处理。防抖核=``_debounce_cap``(单一源)。
@@ -1381,11 +1364,11 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
     (``cw_chars.CHARACTERS``)已有全量阵营数据 → 每个已上场已知身份角色贡献其全部阵营,
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
-    口径(ADR-0312,W50):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
+    口径(ADR-0312,迁移审计 w50(git 历史)):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
     ——L1 全集(factions+flows+independent,开拓者按排归一)**+ L2 星徽装备
     羁绊贡献**(``tracked_deployed[].equips``,deploy_bench 读回在案):
     星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
-    该羁绊行 +1,是面板真值的一部分(W49 §2:此前缺维度 → computed_vs_ocr
+    该羁绊行 +1,是面板真值的一部分(迁移审计 w49(git 历史) §2:此前缺维度 → computed_vs_ocr
     常态化误报 + 星徽局档位系统性低估)。
 
     Returns:
@@ -1495,7 +1478,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             continue
         avatar_id, _inliers = (identify_character(crop, templates)
                                if templates is not None else (None, 0))
-        # W512(观测自检设计 §2.10/§5-B6 识别置信度遥测):非空槽(亮度≥60,
+        # `w512_obs_surfaces/`(观测自检设计 §2.10/§5-B6 识别置信度遥测):非空槽(亮度≥60,
         # 已过空槽门)SIFT 仍 miss → 「读空」事件带内点数落台账 confidence 面。
         # 零即时告警(纯留证,恒 L2),离线统计「哪个 reader 在哪个画面退化」
         # ——读空率环比翻倍是系统性识别退化的最早信号。写点锚定在既有 miss
@@ -1522,7 +1505,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
             name=name,
             cost=(ch.cost if ch is not None else 0),
             star=1,
-            # 升星预览✦(W104/W282,ADR-0416):与 SIFT 同 crop 只多一次顶部带 mask+TM,零额外裁切
+            # 升星预览✦(迁移审计 w104(git 历史)/迁移审计 w282(git 历史),ADR-0416):与 SIFT 同 crop 只多一次顶部带 mask+TM,零额外裁切
             merge_preview=read_merge_preview(crop),
         ))
     # ~~shop_unknown_card 采集钩子已删(2026-08-17 归因闭环)~~:38 张存档样本离线对拍全识别
@@ -1651,7 +1634,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
     state = GameState()
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
-    # 入账前旧值 = W489 感知面「开局金系统性偏低」根因环;gold_readable 语义
+    # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;gold_readable 语义
     # 不变(None=读不到)。
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     state.gold = 0 if _gold_opt is None else _gold_opt
@@ -1736,7 +1719,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # —— live 实证:兜底 6 被写入后,XP 反推 5 被单调守卫打回(乒乓),且下一帧继续毒化。
         if _match is not None and _match.session is not None and _lv_authoritative:
             _match.session.last_level_obs = state.level
-    # ADR-0286(批㉔ F1):cap 真值接线——防抖后写入 state.deploy_cap
+    # ADR-0286(迁移审计批 F1):cap 真值接线——防抖后写入 state.deploy_cap
     # (决策层 max_units() 优先读真值、level 兜底;读不到/域外拒信 → None
     # 保持兜底语义,与旧恒 level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
     # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair,
@@ -1746,7 +1729,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         state.deploy_cap = read_deploy_cap_debounced(ctx, screen, state.level)
     elif 'deploy_cap' in _spec or 'deployed_count' in _spec:
         _paddle_x, state.deploy_cap = resolve_paddle_pair(ctx, screen, state.level)
-    # enemy_difficulty(批㉖ F1 裁决·读链翻转):逐帧真读(备战「文本-难度」
+    # enemy_difficulty(迁移审计批 F1 裁决·读链翻转):逐帧真读(备战「文本-难度」
     # OCR)优先——session 值来自开局简报(数值≈108 恒定),旧链「session 优先」
     # 把逐帧真读结构性压死(92.7% 覆盖恒 108,难度爬升真值从未落盘)。
     # 翻转后:真读命中 → 用真值+live=True;真读 None(stylized OCR 常空,
@@ -1797,10 +1780,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         state.streak = (read_streak(ctx, screen) or 0) if _w('streak') else 0
     # board 双源(用户 2026-08-16 定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
     # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集底座**,不受滚动/遮挡影响;
-    # W287 裁决翻转,ADR-0417):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
+    # 迁移审计 w287(git 历史) 裁决翻转,ADR-0417):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
     # 知道);但**可视区徽标行(左栏 OCR)是画面事实 —— 可视行计数与 computed 不等时以徽标为准
-    # 覆写**(W285 抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
-    # (overlay 遮挡/动画过渡,W285 overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
+    # 覆写**(迁移审计 w285(git 历史) 抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
+    # (overlay 遮挡/动画过渡,迁移审计 w285(git 历史) overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
     # 不裁不覆,保 computed 底座 + 留证(等下一帧备战帧再裁)。
     # - OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号):备战帧同样采徽标覆入;
     #   非备战帧留证不覆。
@@ -1818,7 +1801,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
         _merged = dict(_computed)
-        # W287:仅在真有分歧时才做帧态判定(is_prep_like_frame 走上层屏名单,常态一致零开销)
+        # 迁移审计 w287(git 历史):仅在真有分歧时才做帧态判定(is_prep_like_frame 走上层屏名单,常态一致零开销)
         _needs_arbitration = any(_computed.get(_f) != _c for _f, _c in _ocr_board.items())
         _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
         for _f, _ocr_c in _ocr_board.items():
@@ -1871,7 +1854,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
-        # W512(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
+        # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
         # handle_invest_strategy 落卡时暂存的「声明选中名」在此消费——写链
         # 已先于暂存发生(handler 先 append session 再 record_invest_cards),
         # 故本时点声明名应已在持卡列表;不在 = 写链断或选择落空 → 台账留证
@@ -1918,10 +1901,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         deployed_from_compact,
         iter_occupied_deployed,
     )
-    # W287(治本,ADR-0417):部署对齐/重建目标 = 舞台 paddle「X/Y」的 X
+    # 迁移审计 w287(git 历史)(治本,ADR-0417):部署对齐/重建目标 = 舞台 paddle「X/Y」的 X
     # (read_deployed_count)——舞台指示几何上只数已上阵角色,不含底部商店行/备战栏。
     # 旧目标 ``min(sum(state.board.values()), level)`` 把**羁绊计数**当部署数(多阵营
-    # 角色重复计 + 徽标 OCR 误读放大),再驱动补齐/截断 → 幻影部署(W285 deployed_align
+    # 角色重复计 + 徽标 OCR 误读放大),再驱动补齐/截断 → 幻影部署(迁移审计 w285(git 历史) deployed_align
     # 3/6 误判 + 5aa9ce34 board_ocr=17 严重误计实证;prep_director r3 同判早已把 board
     # 移出三源对拍,本处是漏改的最后一处)。paddle 读不到 = 本帧无对齐基准 → 跳过对齐
     # (宁缺勿造:补齐/截断都是用猜的数改写 tracking)。
@@ -1952,8 +1935,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 _occ = _occ + _rebuild[len(_occ):]   # 补无身份(tracked 少计,如 sell 漂移)
         state.deployed = deployed_from_compact(_occ)
     else:
-        # W287(ADR-0417):重建上限 = min(level, paddle X)——paddle X 是画面部署数
-        # 事实,空板帧(paddle=0)徽标/商店行误读不再幻影出部署角色(W285 tracking
+        # 迁移审计 w287(git 历史)(ADR-0417):重建上限 = min(level, paddle X)——paddle X 是画面部署数
+        # 事实,空板帧(paddle=0)徽标/商店行误读不再幻影出部署角色(迁移审计 w285(git 历史) tracking
         # 空板帧幻影 2 张同根);paddle 读不到退 level 估(旧行为)。
         _rebuild_cap = state.level if _paddle_n is None else min(state.level, _paddle_n)
         state.deployed = rebuild_deployed_from_board(state.board, state.back_max,

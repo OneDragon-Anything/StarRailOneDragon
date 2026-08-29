@@ -196,10 +196,10 @@ class StrategySession:
     # r70 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target
     # (cw_transition.pick_framework 按 board+bench+shop 持有选定;update_target 每轮刷新)。
     transition_framework: str = ''
-    # 批 2 方向层接管(W628):committed 权威 = cw_intention.committed_authority
+    # 迁移迁移批 2(方向层接管)(方向层接管) 方向层接管(`w628_migration_b2/`):committed 权威 = cw_intention.committed_authority
     # 派生(读端 = decision_v2.prep_brain.committed_from);本字段降级为
     # 兼容残留——读点已归零(grep 守卫锁),写端(老栈 update_target/
-    # shop 循环态/回放恢复)随老栈退役批 4 清除。
+    # shop 循环态/回放恢复)随老栈退役退役批(ADR-0466/0467/0469) 清除。
     dual_track_phase: bool = False
     # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,plan 路径
     # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
@@ -221,11 +221,11 @@ class StrategySession:
     # 在 prep_director._probe_node_type 首帧(此前 r362 修复无写
     # 入者,审计实锤死读)。
     plane_node_table: list[str] | None = None
-    # ADR-0368(W169):plane_node_table 是哪位面的表(每位面首帧重写时更新;
+    # ADR-0368(迁移审计 w169(git 历史)):plane_node_table 是哪位面的表(每位面首帧重写时更新;
     # 同位面内不覆写)。None=尚未写过。修生产 write-once 守卫使 P2 的 7 槽
     # 真值表永不落盘(P1 陈旧表整局滞留,nodes_of_plane/日程在生产 P2 恒 9)。
     plane_node_table_plane: int | None = None
-    # ADR-0368(W169):本局已揭晓的位面轮数序列(随 plane_node_table 每位面
+    # ADR-0368(迁移审计 w169(git 历史)):本局已揭晓的位面轮数序列(随 plane_node_table 每位面
     # 首帧 append;P1=9/P2=7/P3 进表即自适应)——cw_plane_table.schedule_of 的
     # 真值源(DP 位面日程);跨位面仍可知历史位面真值(P3 期知 P2=7)。
     plane_lengths_seen: list[int] | None = None
@@ -250,16 +250,16 @@ class StrategySession:
     # 拷贝到 state 供 _refresh_cap 等消费 —— 原接线只加 GameState 字段而 handler 写 session,
     # 停机隔离期从未 live 跑过,首跑暴露 AttributeError)。
     active_strategies: list[str] = field(default_factory=list)
-    # 在场效果清单(W612 骨架批):spec 注册表在 cw_investments.STRATEGY_EFFECTS,
+    # 在场效果清单(`w612_effect_inventory/` 骨架批):spec 注册表在 cw_investments.STRATEGY_EFFECTS,
     # 机制 = cw_effect_inventory.ActiveEffectInventory(纯数据+读端)。写端现状仅
     # 升级挂点(prep_actions._level_up);选卡/进节点/结算挂点接线归后续批。
-    # 本批零决策消费——任何决策路径不读本字段(W612 交付门)。
+    # 本批零决策消费——任何决策路径不读本字段(`w612_effect_inventory/` 交付门)。
     effect_inventory: ActiveEffectInventory = field(
         default_factory=lambda: ActiveEffectInventory())
-    # owned 穿戴池快照(W148,ADR-0358,W92 修法 A):EquipAll 每轮 read_equips 后写
+    # owned 穿戴池快照(迁移审计 w148(git 历史),ADR-0358,迁移审计 w92(git 历史) 修法 A):EquipAll 每轮 read_equips 后写
     # (仅穿戴类,工具类过滤同 equip_all._TOOL_CATEGORIES);_pseudo_state 拷入决策
     # state.equips → decisions 遥测可见。修「持有面有读点、无写链、决策/遥测全盲」
-    # (W92 实证:3,061 条 decisions 里 state.equips 0 条非空)。
+    # (迁移审计 w92(git 历史) 实证:3,061 条 decisions 里 state.equips 0 条非空)。
     last_owned_equips: list[str] = field(default_factory=list)
     # —— 备战决策环(PrepDirector,doc 15 / ADR-0123)计数宿主 ——
     # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
@@ -292,14 +292,14 @@ class StrategySession:
     # v2_prev_hp 是 v1 遗留字段,decision_v2 不写(恒 None/空),保留
     # 仅作遥测 schema 与历史回放兼容;v2_round_*/v2_seed_bought/
     # v2_remedy_used 被 decision_v2 消费(保留);v2_ever_full_interest
-    # 自 W119(ADR-0347,E6 latch 退场)起仅 default 栈消费(v2 走
+    # 自 迁移审计 w119(git 历史)(ADR-0347,E6 latch 退场)起仅 default 栈消费(v2 走
     # ev.levelup_ev_authorized 总账)。
     v2_state: tuple | None = None
     # cw_phase_machine 状态元组(None=未初始化;v1 遗留,ADR-0336)
     locked_line: str | None = None                     # 锁定线 id(None=未锁;v1 遗留)
     bridge_id: str | None = None                       # 当前桥线 id(None=无;v1 遗留)
     # r406(ADR-0266,压测经济批 [12]/①残差):本局**曾达满息**(时点金≥50)
-    # 标志。W119/ADR-0347 起 decision_v2 不再消费(E6 latch 随 [12] 门
+    # 标志。迁移审计 w119(git 历史)/ADR-0347 起 decision_v2 不再消费(E6 latch 随 [12] 门
     # 收编 EV 总账退场);default 栈仍读写(冻结)——字段保留。
     v2_ever_full_interest: bool = False
     # r246:普通战斗败检测的上一轮 HP(v1 遗留,ADR-0336 后无人写)
@@ -320,7 +320,7 @@ class StrategySession:
     # resold);旧 session 反序列化缺字段 → 空 dict 保守(只失去豁免)。
     v2_seed_bought: dict[str, tuple[tuple[int, int], int]] = \
         field(default_factory=dict)
-    # —— 决策框架 v2 载体批(W35,ADR-0309)扩展态:意向分层/演进/纪律 ——
+    # —— 决策框架 v2 载体批(迁移审计 w35(git 历史),ADR-0309)扩展态:意向分层/演进/纪律 ——
     # (新载体 decision_v2 的跨步状态;None=未初始化——旧策略局全空可区分)
     v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
     v3_evolution: object = None      # cw_evolution.EvolutionState(中断恢复/谷底回滚)
@@ -339,7 +339,7 @@ class StrategySession:
     # ADR-0451):refresh 收尾授权前置拒付披露(arbiter 写入;
     # 局首 on_match_start 清零;模式对齐上行停升级拒付计数)
     v3_blood_budget_refresh_rejects: int = 0
-    # W224/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
+    # `w224_handoff/`/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。
     v3_handoff: object = None
@@ -366,9 +366,9 @@ class StrategySession:
     # 敌人难度数值(简报「敌人难度N」读 → ctx.cw_enemy_difficulty → loop copy;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
     # 位面序 boss 真值(3 位面 boss 名;写入端 = battle_loop 首个稳定备战帧 copy 自
-    # 简报 LCS 清洗读数(W522,ADR-0397 勘误:简报排列=位面序)+ CollectPlaneIntel
+    # 简报 LCS 清洗读数(`w522_briefing_rulings/`,ADR-0397 勘误:简报排列=位面序)+ CollectPlaneIntel
     # 实采(接管场景重采/对账真值源);boss_fit 输入。
-    # 元素可为 None = 该位面徽章态采不到身份(W221/ADR-0398)——**保位勿滤**,
+    # 元素可为 None = 该位面徽章态采不到身份(迁移审计 w221(git 历史)/ADR-0398)——**保位勿滤**,
     # 滤掉会让后续位面名字左移错位)
     briefing_bosses: list[str | None] = field(default_factory=list)
     active_env: str = ""
@@ -376,13 +376,13 @@ class StrategySession:
     tracked_bench: list[str] = field(default_factory=list)
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)
-    # 买牌单元期望态(prep_director.BuyExpect;W536 引入)。坐标系 = 哪次购买:
+    # 买牌单元期望态(prep_director.BuyExpect;`w536_merge_expect/` 引入)。坐标系 = 哪次购买:
     # 一次 RunBuyPhase 单元的购买意图经 compute_buy_expect 建的「单元执行后
     # 应然态」(bench/deployed 槽位表)。取值时机 = 购买意图落账——shop.py
     # 单元收尾(含卖出/未识别牌则不建,保持 None)写入;消费 = PrepDirector
     # 主环下一轮 heavy 定型帧对账(buy_expect_mismatch)后立即清回 None,
     # 跨单元不残留。None = 无挂起期望。此前为动态属性(单元收尾暂存、
-    # getattr 消费,W536 受文件面限制未落声明),升正式字段后 asdict/telemetry
+    # getattr 消费,`w536_merge_expect/` 受文件面限制未落声明),升正式字段后 asdict/telemetry
     # 可见且读写两端免 getattr 兜底(r3 review④ 同判例)。
     pending_buy_expect: BuyExpect | None = None
     # 经验期望账本(prep_director.XpLedger;纯记账+对账,零决策)。此前为动态
@@ -404,14 +404,14 @@ class CurrencyWarMatch:
 
 
 def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
-    """上一局残留的 match 容器在**新局开始信号**处丢弃(W289/ADR-0419)。
+    """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计 w289(git 历史)/ADR-0419)。
 
-    背景(W285 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(battle_loop
+    背景(迁移审计 w285(git 历史) 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(battle_loop
     分支 3c),下一局 ``RunLoop.handle_init`` 见 None 新建 session —— 状态天然全新。但
     **异常路径**(run 被停机/崩溃在上局对局中、进程未重启)残留非 None 的旧容器;此时
     下一次入口链 ``StartCurrencyWarMatch`` 开的是一局**新对局**,而
     ``handle_init`` 的续跑判定(``ctx.cw_match is None``)会把旧 session 整体延用:
-    level 单调守卫拿上局 ``last_level_obs=5`` 打新局 plane1 的真读(W285 cap_vs_level
+    level 单调守卫拿上局 ``last_level_obs=5`` 打新局 plane1 的真读(迁移审计 w285(git 历史) cap_vs_level
     抽样 4/4 实证)、tracked 角色/streak/hp 对账锚全部跨局带毒——obs_conflict 三层
     (level/cap_vs_level/phase_round)329 张的残留源。
 

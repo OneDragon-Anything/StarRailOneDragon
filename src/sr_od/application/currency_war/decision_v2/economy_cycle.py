@@ -66,20 +66,20 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
 
 def _interest_floor_of(session: StrategySession,
                        registry: DecisionV2Registry | None = None) -> int:
-    """息线(守息线,interest_cap×10 同源派生,W611 §2.2 恒等式;
+    """息线(守息线,interest_cap×10 同源派生,`w611_econ_cycle/` §2.2 恒等式;
     接缝函数族共用的单一取址)。"""
     return (registry or _registry_of(session)).interest_cap * 10
 
 
 def schedule_upgrade(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,批 3 预算收权)。
+    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
     必须传**同一个** registry 实例——prep_brain._budget 单源装配);
     缺省落 _registry_of(session) → DEFAULT_REGISTRY。
-    规则集 = W615 §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
-    (W623 D1):排程只回答「要不要开始攒」,不以当帧可负担为前置——
+    规则集 = `w615_rules_advocacy/` §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
+    (`w623_batch3_pre-mortem/` D1):排程只回答「要不要开始攒」,不以当帧可负担为前置——
     付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
     排程判据若收窄成「付得起才排」会造成 R* 塌缩 → 义务花光 → 更排不上
     的自我强化升级迟到循环(DP 无此失败模式:其 level_up 判定不依赖当帧
@@ -94,7 +94,7 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     禁升条件([12]/[32]):息引擎未立不追级(② 的前置即此);空升级
     不升(① 触发本身即「有件可上」,无空升级面;② 是概率抬档语义,
     不涉部署)。
-    **规则文本偏差披露(W635 F2)**:W615 §2-R4 规则 2 原文有第三合取
+    **规则文本偏差披露(`w635_batch3_attack/` F2)**:`w615_rules_advocacy/` §2-R4 规则 2 原文有第三合取
     「花完升级费后 g′ ≥ interest_floor」,与其 §1.3 伪码矛盾(伪码无此
     项);本实现**取伪码侧**(预告态,不设该合取——保留它会让
     g∈[息线, 息线+费) 帧不排程,恰造 D1 塌缩循环)。可负担性/平台未破
@@ -110,7 +110,7 @@ def schedule_upgrade(state: GameState, session: StrategySession,
         refresh_invest_active,
     )
     if refresh_invest_active(state):
-        return False    # 淘金客姿态:升级通道退役(W621;谓词单一址)
+        return False    # 淘金客姿态:升级通道退役(`w621_sim_explore/`;谓词单一址)
     from sr_od.application.currency_war.cw_state import (
         deployed_occupied,
     )
@@ -160,15 +160,15 @@ def _schedule_target_core(session: StrategySession) -> str:
 
 def refresh_ev_budget(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry | None = None) -> int:
-    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,批 3 预算收权)。
+    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
 
     ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
     _registry_of(session) → DEFAULT_REGISTRY。
-    预算 = min(6, ⌊(g − R*)/刷价⌋)——只花溢余(W615 §2-R3 预算式:
+    预算 = min(6, ⌊(g − R*)/刷价⌋)——只花溢余(`w615_rules_advocacy/` §2-R3 预算式:
     刷新后仍守储备线;6 刷帽单一源 = REFRESH_ROLL_CAP,原 DP 求解面
     _ACTION_ROLLS 的 DP 上限同源,不另造第二把尺)。
 
-    合法 0 帧契约(W623 D2,判前锁;**辖域=应急带**,W635 F1 收口):
+    合法 0 帧契约(`w623_batch3_pre-mortem/` D2,判前锁;**辖域=应急带**,`w635_batch3_attack/` F1 收口):
     - 应急帧(``filters.is_emergency`` 单一源,hp≤emergency_hp)→ 0:
       应激通道根本不产指令(release 让位结构,合并无从放大);
     - g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
@@ -178,7 +178,7 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     依公式照发,停手由 arbiter 拒付层兜底(discipline.
     blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
     搜索型刷新停付)——防线在拒付层不在预算层;原「血预算帧→0」为
-    虚标契约,已随 W635 F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
+    虚标契约,已随 `w635_batch3_attack/` F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
     1 次/轮),与本预算不相交、不合并——披露面,非 0 帧契约的一部分。
     """
@@ -251,7 +251,7 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     判据单一源=cw_deploy_logic.engines_count(与 deploy/形态维同一把
     尺);板面羁绊计数取 state.board,候选贡献经 CHARACTERS 阵营/流派
     ∩ TRANSITION_TRAITS(与 scoring._cand_system_bonds 同口径)。
-    A-1 刀法:仅此判定为真的件计入容量,未跨档期权件(q<1,W469
+    A-1 刀法:仅此判定为真的件计入容量,未跨档期权件(q<1,`w469_convergence_ab/`
     已实测死法)不计。"""
     from sr_od.application.currency_war.cw_chars import CHARACTERS
     from sr_od.application.currency_war.cw_deploy_logic import (
@@ -324,14 +324,14 @@ def _countable_buy_costs(state: GameState, session: StrategySession | None,
 
 
 def bench_fill_account(state: GameState, registry: DecisionV2Registry) -> int:
-    """O1 备战空位填补通道的容量分量(W611 设计 §1.2/§1.3)。
+    """O1 备战空位填补通道的容量分量(`w611_econ_cycle/` 设计 §1.2/§1.3)。
 
     溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
     空槽」件的费用和计入 C_t——义务在「无目标帧」的容量不再结构性为
     0(局20/局23 支出冻结的根:comp 空→正 EV 帧空→C_t=0→义务恒 0)。
     数学依据=设计 §1.3:溢余段买 1★ 退全款+利息不减(息帽截断),
     已实现成本 0、收益≥0(压库+bench 期权),弱占优、参数无关。
-    买入放行面([31] 限域质量序)在 candidates/scoring,随 W607 二波
+    买入放行面([31] 限域质量序)在 candidates/scoring,随 `w607_affix_consumption/` 二波
     后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
     """
     return sum(_scan_shop_buy_accounts(state, registry)[1])
@@ -341,7 +341,7 @@ def channel_capacity(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
-    刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,批 3 预算
+    刷新分量取 ``refresh_ev_budget`` 预算式(查表核单一址,迁移迁移批 3(ADR-0465)(ADR-0465) 预算
     收权;合法 0 帧契约见该函数 docstring)。
     """
     total = 0
@@ -364,7 +364,7 @@ def obligation(state: GameState, session: StrategySession,
 
 
 def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
-    """溢余消费的息档边界截断(纯金额;W645 提案 E-v2)。
+    """溢余消费的息档边界截断(纯金额;`w645_proposal_v2/` 提案 E-v2)。
 
     利息 = gold//10 cap 5,按节点结算,当轮息损 = interest(轮初金) −
     interest(轮末金),首末金量的纯函数、路径无关 → 花后不跨 10 的倍数

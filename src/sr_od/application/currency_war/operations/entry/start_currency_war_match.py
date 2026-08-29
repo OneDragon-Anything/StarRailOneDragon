@@ -7,7 +7,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 
-# W222 遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
+# 迁移审计 w222(git 历史) 遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.operations.handlers.handle_briefing import (
@@ -65,7 +65,7 @@ class StartCurrencyWarMatch(SrOperation):
         self._residual_reentered: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
-        """新局确凿信号处弃置上一局残留 match 容器(W289/ADR-0419)。
+        """新局确凿信号处弃置上一局残留 match 容器(迁移审计 w289(git 历史)/ADR-0419)。
 
         难度确认/模式选择/简报三屏只在**无保存局的新局路径**出现(有保存局走
         「继续进度」直达,恢复的是同一物理对局 —— 此时旧容器合法续用,不弃)。
@@ -163,7 +163,7 @@ class StartCurrencyWarMatch(SrOperation):
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)。
-        # W289/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
+        # 迁移审计 w289(git 历史)/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
@@ -193,7 +193,7 @@ class StartCurrencyWarMatch(SrOperation):
                 screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
-        # 模式选择屏可见 = 新局确凿信号(W289/ADR-0419;点击未中也不丢信号)
+        # 模式选择屏可见 = 新局确凿信号(迁移审计 w289(git 历史)/ADR-0419;点击未中也不丢信号)
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 crop_first=False).is_success:

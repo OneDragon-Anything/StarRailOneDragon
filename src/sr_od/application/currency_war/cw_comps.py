@@ -107,7 +107,7 @@ class Comp:
     # (保命转型按位面过滤——P2 危血时转 P2 乏力 comp = 转完更死,M55 实证)。
     weak_planes: tuple[int, ...] = ()
 
-    # ===== v2 字段扩(W25,C4 契约 + 契约包六矛盾·leader 裁决;2026-08-25)=====
+    # ===== v2 字段扩(迁移审计 w25(git 历史),C4 契约 + 契约包六矛盾·leader 裁决;2026-08-25)=====
     # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(禁忌/铁三角/替班不卖)
     # 逐条对 comp_definitions_v2.md / comp_elements_and_plugins.md 原文,不自创。
     form_tiers_max: dict[str, int] = field(default_factory=dict)
@@ -140,12 +140,12 @@ class Comp:
     equip_synergy: dict[str, str] = field(default_factory=dict)
     """件间关系(铁三角:少一件链断)——描述性元数据,判断层手编。"""
     bond_signal: str | None = None
-    """②类专属羁绊信号名(cw_intention detect_signals 层②消费;W47 统一化:
+    """②类专属羁绊信号名(cw_intention detect_signals 层②消费;迁移审计 w47(git 历史) 统一化:
     原 ``cw_intention.FAMILY_BOND_SIGNALS`` 手编 crosswalk 迁移进各条,
     判断层手编数据化)。值 = 该家族的「专属羁绊」规范名;**按设计无②信号
     的家族(希儿量子:量子/贝是放大器;白厄反甲:独立羁绊绑死单卡)= None**。"""
     global_accumulators: dict[str, str] = field(default_factory=dict)
-    """全局累积型角色标注(W127 阵容知识批;user_playstyle[21] 定谒例外)。
+    """全局累积型角色标注(迁移审计 w127(git 历史) 阵容知识批;user_playstyle[21] 定谒例外)。
     键 = 角色规范名(⊆ core_chars ∪ shared_chars),值 = 累积类型:
     - 'hp_charge_stack':场上事件(受击)驱动的全局叠层(万敌:受伤充能+
       生命上限永久提高)——适用「有空位就上」部署例外(环境条件满足时);
@@ -191,7 +191,7 @@ def derive_key_equips(comp: Comp) -> list[str]:
 @dataclass
 class ScoreContext:
     """select_comp / comp_score 的每回合上下文(避免长参数列表)。"""
-    bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=徽章态缺失位,W221)
+    bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=徽章态缺失位,迁移审计 w221(git 历史))
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
     env: str = ""                                                # 已选投资环境名(env_fit)
     held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(ADR-0135 held_strategy_fit;机会型 pivot)
@@ -253,12 +253,12 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 }
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
-# 自动写入采到的新词缀/校准)。本文件不 import 该注册表(W266 勘误:旧注释称「顶部 import 重导出」
+# 自动写入采到的新词缀/校准)。本文件不 import 该注册表(迁移审计 w266(git 历史) 勘误:旧注释称「顶部 import 重导出」
 # 与事实不符,mechanics_fit 亦不消费);消费方为 cw_briefing_obs.load_affix_effects_from_file(ast 提取)。
 # comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
-# 累积型角色强环境机制 tag 集(W607 H1 锁线环境判据的数据层):
+# 累积型角色强环境机制 tag 集(`w607_affix_consumption/` H1 锁线环境判据的数据层):
 # 「全局累积型阵容需特定环境才强,无环境不选」(user_playstyle [21] 例外条款);
 # 万敌强环境 = 敌方多动/反伤类(docs/game/currency_war/research/final_comps/
 # accumulator_family.md §3 表,证据高;§4.2 前提②「词缀 ∈ 该成员强环境集」
@@ -269,7 +269,7 @@ STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
     'hp_charge_stack': frozenset({'反伤', '多段惩罚'}),
 }
 
-# 库藏生锈词缀名(W607 H2 消费钩子的词条识别名):备战席每 1 件未穿装备 →
+# 库藏生锈词缀名(`w607_affix_consumption/` H2 消费钩子的词条识别名):备战席每 1 件未穿装备 →
 # 敌方造成伤害 +3%、受到伤害 -4%,最多计 10 件
 # (docs/game/currency_war/data/competitors.md:45,2026-08-28 游戏内实采)。
 RUST_AFFIX_NAME: str = '库藏生锈'
@@ -441,7 +441,7 @@ def skeleton_factions() -> set[str]:
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
 # (旧 comp_library.md doc 已删 2026-08-18,本注册表单一源。)form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
 
-# v2 家族键(comp_definitions_v2:9 家族 14 套;W25 归并标注用)——长尾套 family='legacy' 保活(C5 兼容不删)。
+# v2 家族键(comp_definitions_v2:9 家族 14 套;迁移审计 w25(git 历史) 归并标注用)——长尾套 family='legacy' 保活(C5 兼容不删)。
 V2_FAMILIES: tuple[str, ...] = (
     "万敌燃血", "希儿量子", "DOT卡芙卡", "姬子列车", "黄泉减益",
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
@@ -461,20 +461,20 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
         key_equips=["火力风暴潮", "高周波电锯", "自适应外骨骼", "冷笑话引擎"],
-        # ↑ W55(R2 §1 姬子条):「以牙还牙甲」→「自适应外骨骼」——旧值重排把甲错给三月七,
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 姬子条):「以牙还牙甲」→「自适应外骨骼」——旧值重排把甲错给三月七,
         #   v2 教义 A 流铁三角=三月七 自适应外骨骼(吸仇恨刚需)/姬子 以牙还牙甲×2-3;
         #   恒等约束(多重集不变)下以 A 流首选件(外骨骼)替换 B 流错位件。B 流拆分批放开恒等时
         #   姬子侧补 以牙还牙甲×2。
         countered_by_bosses=[], mechanic_attributes=["治疗护盾"],
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         typical_form_round=5,
-        # ===== v2(W25,C4):姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
+        # ===== v2(迁移审计 w25(git 历史),C4):姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
         family="姬子列车", branch_key="A/B 未拆(词条前置分岔;拆分留后续批)",
         bond_signal="列车同行",   # ②类信号:四人 100% 固定
         form_tiers_max={"列车同行": 4},
         sub_tiers={"护盾": 2, "减益": 2},   # A 流护盾2(50% 盾循环必然)/B 流减益2(58%)——分支依赖,拆分批归位
         equip_assign={"姬子·启行": ["火力风暴潮", "高周波电锯"], "三月七": ["自适应外骨骼"], "花火": ["冷笑话引擎"]},
-        # ↑ W55(R2 §1):三月七=自适应外骨骼(v2 教义 A 流,吸仇恨刚需;旧值「以牙还牙甲」是旧平铺
+        # ↑ 迁移审计 w55(git 历史)(R2 §1):三月七=自适应外骨骼(v2 教义 A 流,吸仇恨刚需;旧值「以牙还牙甲」是旧平铺
         #   重排残留——甲属姬子A流×2-3)。B 流完整配装留 A/B 拆分批落位
         equip_synergy={"铁三角": "自适应外骨骼吸仇恨→以牙还牙甲反伤→皮靴加速,少一件链断(教义:comp_elements 三·3)"},
         # 吸仇恨件互斥:不要杰帕德(分受击概率,攻略 #48)→ 已入 PLUGIN_DISABLE_MATRIX(cw_plugins.py),此处不重复(防双源)
@@ -509,13 +509,13 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
         key_equips=["火力风暴潮", "动能激发剑", "动能激发剑", "碎星斩舰刀"],   # 评审🟡4:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
-        # ↑ W55(R2 §1 红A条):「高周波电锯」→「动能激发剑」(第二把)——v2 教义 Archer=**战技点件**
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 红A条):「高周波电锯」→「动能激发剑」(第二把)——v2 教义 Archer=**战技点件**
         #   (动能激发剑:回合开始+消耗各回 1 战技点,战技点燃料层主C 的本命件);
         #   电锯是旧平铺残件、v2 专属装备此前一件未进。闪闪侧(反重力皮靴)在双王条目同步修
         mechanic_attributes=["高倍率单核"],   # 榜样激励克高倍率单核(test_mechanics_fit_honga)
         shared_chars=["远坂凛", "瓦尔特"], transition_chars=["符玄", "知更鸟", "花火"],
         typical_form_round=6,
-        # ===== v2(W25):圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====
+        # ===== v2(迁移审计 w25(git 历史)):圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====
         family="圣杯双C", branch_key="A Archer 战技点线(~34%)", branch_of="双王圣杯",
         bond_signal="命运圣杯",   # ②类信号:2 档开任务=燃料线入口
         special_systems={"grail_quest": {"产出": "Archer(圣杯任务链产出,非商店购买)", "触发": "圣杯 2 档开任务", "接棒": "任务完成即接棒 Saber"}},
@@ -523,7 +523,7 @@ COMP_LIBRARY: list[Comp] = [
             {"替班者": "Saber", "顶位": "Archer 主C(前中期)", "身份": "Saber 打到 Archer 到手;Archer 不来则 Saber 一直 C(任务系统照吃)", "分岔点": "Archer 任务完成"},
         ],
         equip_assign={"Archer": ["火力风暴潮", "动能激发剑"], "远坂凛": ["动能激发剑"], "Saber": ["碎星斩舰刀"]},   # Saber 键经 substitute_plan 容纳(替班者)
-        # ↑ W55(R2 §1):Archer 首选换 动能激发剑(v2:Archer=战技点件;旧「高周波电锯」为旧平铺残件),
+        # ↑ 迁移审计 w55(git 历史)(R2 §1):Archer 首选换 动能激发剑(v2:Archer=战技点件;旧「高周波电锯」为旧平铺残件),
         #   旧 Archer 位电锯让渡给 动能激发剑(远坂凛同持第二把,战技点燃料层教义)
         level_plan={  # 5费 Archer 是唯一高费门槛:前期低费过渡保血 → 升 8-9 找 Archer(2星即战力,0.18 三星率);评审🟡6:远坂凛 1费
             4: LevelGoal("roll", target_cost=1, target_chars=["远坂凛"]),
@@ -558,7 +558,7 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
         form_tiers={"欢愉": 4, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
-        # ↑ W55(R2 §1 区间收口):欢愉下限 3→4——v2 教义「欢愉 4-6 档(≤4 档即主流)」,旧 3 是
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 区间收口):欢愉下限 3→4——v2 教义「欢愉 4-6 档(≤4 档即主流)」,旧 3 是
         #   plaza 校准残留(v2 前 form_tiers 值);上限侧 form_tiers_max=6 不变,区间=4-6 对齐 v2
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
@@ -566,8 +566,8 @@ COMP_LIBRARY: list[Comp] = [
         mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "火花"],
         char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
         transition_chars=["花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
-        # v2 迁移(W25):银狼LV.999 由 transition(卖)改 substitute_plan(不卖,转档)——C4 替班语义
-        # ===== v2(W25):欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
+        # v2 迁移(迁移审计 w25(git 历史)):银狼LV.999 由 transition(卖)改 substitute_plan(不卖,转档)——C4 替班语义
+        # ===== v2(迁移审计 w25(git 历史)):欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族", branch_key="绯英档(资源锚 6 级;无信号默认落点)", branch_of="狼尊欢愉",
         bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
         form_tiers_max={"欢愉": 6},   # v2:欢愉 4-6 档(≤4 档即主流)
@@ -593,8 +593,8 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权", "战场进化手册"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
         countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
         mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
-        transition_chars=["刃", "符玄"], typical_form_round=6,   # v2 迁移(W25):希儿是 core 非打工,移出 transition
-        # ===== v2(W25):希儿量子家族(五线最收敛,无流派)=====
+        transition_chars=["刃", "符玄"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):希儿是 core 非打工,移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):希儿量子家族(五线最收敛,无流派)=====
         family="希儿量子", branch_key="无流派(五线最收敛)",
         form_tiers_max={"贝洛伯格": 4},   # v2:贝洛伯格 2-4(双修不分离)
         free_slots=[{"row": "back", "tags": ["量子同频", "贝洛伯格"], "说明": "量子槽:缇宝/符玄/花火凑到哪个算哪个"}],
@@ -613,7 +613,7 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="黄泉减益", factions=["巡海游侠", "减益"], core_chars=["黄泉", "不死途", "乱破", "千冶·刃", "瓦尔特"],
         form_tiers={"巡海游侠": 4, "减益": 4}, strength="A", form_difficulty="medium", early_power="低",
-        # ↑ W55(R2 §1 区间收口):巡海游侠下限 3→4——v2 教义「巡海 4(后排星级 1/3/6/12 倍放大)」,
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 区间收口):巡海游侠下限 3→4——v2 教义「巡海 4(后排星级 1/3/6/12 倍放大)」,
         #   旧 3 是 plaza 校准残留;form_tiers_max=4 不变,区间收敛为单点 4 对齐 v2
         # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
         # ADR-0152(plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
@@ -624,7 +624,7 @@ COMP_LIBRARY: list[Comp] = [
         countered_by_bosses=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
         mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
-        # ===== v2(W25):黄泉减益家族(无流派;第四件=装备池)=====
+        # ===== v2(迁移审计 w25(git 历史)):黄泉减益家族(无流派;第四件=装备池)=====
         family="黄泉减益", branch_key="无流派(第四件=装备池)",
         bond_signal="减益",   # ②类信号:4-6 档主体,到前 DOT 班底共享牌桌
         form_tiers_max={"巡海游侠": 4, "减益": 6},   # v2:减益 4-6 档/巡海 4
@@ -690,17 +690,17 @@ COMP_LIBRARY: list[Comp] = [
         # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
-        # ↑ W55(R2 §1 闪闪条):「高周波电锯」→「反重力皮靴」——v2 教义 闪闪=**反重力皮靴**(41%,
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 闪闪条):「高周波电锯」→「反重力皮靴」——v2 教义 闪闪=**反重力皮靴**(41%,
         #   锁轴速度载体;comp_definitions_v2 圣杯A);电锯是旧平铺残件
         mechanic_attributes=["连携高频开大"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
-        transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(W25):远坂凛是 core(1 星即够),移出 transition
-        # ===== v2(W25):圣杯双C家族·B Saber 能量线(~25%)=====
+        transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(迁移审计 w25(git 历史)):远坂凛是 core(1 星即够),移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):圣杯双C家族·B Saber 能量线(~25%)=====
         family="圣杯双C", branch_key="B Saber 能量线(~25%;能量 5 为硬约束——口述「哪怕下远坂凛都不能拆能量」)", branch_of="命运圣杯红A",
         bond_signal="命运圣杯",   # ②类信号:2 档开任务=燃料线入口
         special_systems={"grail_quest": {"产出": "Archer 接棒(非商店购买)", "触发": "圣杯 2 档开任务", "备注": "本线即替班形态常态化:Saber 从 P2 打到 Archer 到手;Archer 不来则 Saber 一直 C"}},
         equip_assign={"Saber": ["火力风暴潮", "永动机", "冷笑话引擎"], "吉尔伽美什": ["反重力皮靴"]},
         # ↑ v2 教义:Saber=充能件(永动机/冷笑话引擎/电光履,主C 满能自拉条伪永动)
-        # W55(R2 §1):吉尔伽美什(闪闪)高周波电锯→反重力皮靴(v2 教义 闪闪=反重力皮靴 41%,锁轴速度载体)
+        # 迁移审计 w55(git 历史)(R2 §1):吉尔伽美什(闪闪)高周波电锯→反重力皮靴(v2 教义 闪闪=反重力皮靴 41%,锁轴速度载体)
         flex_factions=["列车同行", "战技点", "治疗", "盛会之星"],
         plaza_carry="Saber",
         level_plan={
@@ -751,8 +751,8 @@ COMP_LIBRARY: list[Comp] = [
         # 记忆主必拿(「记忆主一定要拿,后台花火防战技点不足」);后期可上花火补战技点。
         key_equips=["高周波电锯", "永动机", "蓄能帆", "电光履"],
         mechanic_attributes=["追击"], shared_chars=["黑塔", "缇宝", "翡翠"],
-        transition_chars=["艾丝妲", "丹恒·腾荒"], typical_form_round=6,   # v2 迁移(W25):黑塔(小黑塔)是 core/替班C,移出 transition
-        # ===== v2(W25):大黑塔群攻家族(档位=连续深度谱,非流派)=====
+        transition_chars=["艾丝妲", "丹恒·腾荒"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):黑塔(小黑塔)是 core/替班C,移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):大黑塔群攻家族(档位=连续深度谱,非流派)=====
         family="大黑塔群攻", branch_key="档位=连续深度谱(群攻3+学者2 众数 29% → 完全体群攻5+学者4 仅 19%,低档通关是常态)",
         bond_signal="银河学者",   # ②类信号:星级总量成长
         form_tiers_max={"群攻": 5, "银河学者": 4},
@@ -806,11 +806,11 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
         countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
         mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
-        transition_chars=["符玄"], typical_form_round=7,   # v2 迁移(W25):白厄 core/三月七 P2 直留终局,均移出 transition
-        # ===== v2(W25):白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
+        transition_chars=["符玄"], typical_form_round=7,   # v2 迁移(迁移审计 w25(git 历史)):白厄 core/三月七 P2 直留终局,均移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
         family="白厄反甲", branch_key="A/B 未拆(副羁绊层分岔:A 巡海 64%/B 列车护盾 29%;B 实为白厄借列车骨架)",
         sub_tiers={"护盾": 2},   # B 流副档(多数停护盾 2);A 流前排法则=标签数量×星级优先
-        # ↑ W55(R2 §1 白厄条 补欠账注释):v2 A 巡海流(~64%)核心副羁绊=「巡海 3+」——A/B 未拆下
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 白厄条 补欠账注释):v2 A 巡海流(~64%)核心副羁绊=「巡海 3+」——A/B 未拆下
         #   sub_tiers 只收了 B 流 {护盾2},巡海 3 属 A 流、现仅在 flex_factions(板面不罚但完成度不数);
         #   A/B 拆分批落位时补 sub_tiers={"护盾": 2, "巡海游侠": 3}(分支依赖,同姬子 sub_tiers 口径)
         equip_assign={"白厄": ["以牙还牙甲", "以牙还牙甲·特权", "热血沸腾拳"], "三月七": ["高周波电锯"]},
@@ -839,10 +839,10 @@ COMP_LIBRARY: list[Comp] = [
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # ADR-0152 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
         key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层"],
-        # ↑ W55(R2 §1 狼尊条):「高周波电锯」→「反重力皮靴」(第二双)——v2 教义 银狼=风暴潮+
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 狼尊条):「高周波电锯」→「反重力皮靴」(第二双)——v2 教义 银狼=风暴潮+
         #   **速度件**(升费链要行动),电锯非速度件(旧值重排残留);爻光本就是皮靴(攻略:爻光双鞋)
-        shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"], typical_form_round=5,   # v2 迁移(W25):爻光是 core,移出 transition
-        # ===== v2(W25):欢愉族家族·银狼档(资源锚 9 级;与绯英档互含单向:银狼局含绯英 76%)=====
+        shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"], typical_form_round=5,   # v2 迁移(迁移审计 w25(git 历史)):爻光是 core,移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):欢愉族家族·银狼档(资源锚 9 级;与绯英档互含单向:银狼局含绯英 76%)=====
         family="欢愉族", branch_key="银狼档(资源锚 9 级;分流判据=升费资源是否到位)", branch_of="绯英欢愉",
         bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
         form_tiers_max={"欢愉": 7},   # v2:欢愉 5-7 档(阿哈装备栏全解锁=指数点)
@@ -852,14 +852,14 @@ COMP_LIBRARY: list[Comp] = [
             "cost_escalation": {"角色": "银狼LV.999", "起始": "低费(升费链)", "目标费": 5, "备注": "养成路线是阵容定义的一部分,非静态名单"},
         },
         equip_assign={"银狼LV.999": ["火力风暴潮", "反重力皮靴"], "爻光": ["反重力皮靴"], "开拓者·欢愉": ["光速螺旋桨"]},
-        # ↑ W55(R2 §1):银狼LV.999 首选 高周波电锯→反重力皮靴(v2:银狼=风暴潮+速度件,升费链要
+        # ↑ 迁移审计 w55(git 历史)(R2 §1):银狼LV.999 首选 高周波电锯→反重力皮靴(v2:银狼=风暴潮+速度件,升费链要
         #   行动;电锯非速度件=旧值重排残留)。全队永动机群(阿哈装备栏全开后装备=输出)恒等约束下未单列,拆分批放开
         substitute_plan=[
             {"替班者": "绯英", "顶位": "银狼LV.999 主C(银狼 9 级到前)", "身份": "绯英当主 C 直至银狼 9 级到手;到后不卖,降副C沉淀(数据常态 76%)", "分岔点": "银狼 LV.999 到手→家族内转档"},
         ],
         flex_factions=["星间旅人", "战技点", "列车同行"],
         plaza_carry="银狼LV.999",
-        # W127 全局累积型标注:银狼=升费链(cost_escalation)——累积持久(费用档不清零)
+        # 迁移审计 w127(git 历史) 全局累积型标注:银狼=升费链(cost_escalation)——累积持久(费用档不清零)
         # 但由购买/D 驱动非上场时间,**不适用「有空位就上」部署例外**;仅作类型区分。
         global_accumulators={"银狼LV.999": "cost_escalation"},
         level_plan={  # 评审🟡6:银狼LV.999 3费(升费到5,标3=起始找牌档)
@@ -916,23 +916,23 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="万敌单C", factions=["夜之半神", "燃血"], core_chars=["万敌", "千冶·刃", "长夜月", "刻律德菈", "缇宝"],
         form_tiers={"夜之半神": 2, "燃血": 4}, strength="A", form_difficulty="medium", early_power="中",
-        # ↑ W55(R2 §1 区间收口):燃血下限 2→4——v2 教义「燃血 4-6 档」,旧 2 是 ADR-0152 plaza
+        # ↑ 迁移审计 w55(git 历史)(R2 §1 区间收口):燃血下限 2→4——v2 教义「燃血 4-6 档」,旧 2 是 ADR-0152 plaza
         #   「夜2+燃2」实证值(v2 文档未同步);form_tiers_max=6 不变,区间=4-6 对齐 v2。
-        #   ⚠️ 行为面:form_progress 成型判定从 燃血2 抬到 4(意图内,见 W55 报告波及面节)
+        #   ⚠️ 行为面:form_progress 成型判定从 燃血2 抬到 4(意图内,见 迁移审计 w55(git 历史) 报告波及面节)
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         # ↺ ADR-0152(plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
         # 场最高;5级搜牌 26/40(1费 carry 5 级 D 标准节奏)。**form_tiers 校准(评审🔴4)**:旧 夜4+燃4
         # 仅 15% 帖达标 —— 榜首帖实跑 夜2+燃2(「7人成型」= 万敌+6弹性辅助;另一帖明言「夜神燃血也不
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
-        # [W55 修正:燃血下限已随 v2 教义回升 2→4(见 form_tiers 行注释);夜之半神保 2 不变]
+        # [迁移审计 w55(git 历史) 修正:燃血下限已随 v2 教义回升 2→4(见 form_tiers 行注释);夜之半神保 2 不变]
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
         char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
         key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
-        shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # v2 迁移(W25):长夜月是 core(夜半记录),移出 transition
+        shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # v2 迁移(迁移审计 w25(git 历史)):长夜月是 core(夜半记录),移出 transition
         typical_form_round=5,
-        # ===== v2(W25):万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====
+        # ===== v2(迁移审计 w25(git 历史)):万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====
         family="万敌燃血", branch_key="无流派(装备收敛)",
         bond_signal="夜之半神",   # ②类信号:夜半 2(96% 必配,主档)
         form_tiers_max={"燃血": 6},   # v2:燃血 4-6 档;夜之半神 2(96% 必配)=form_tiers 下限口径不变
@@ -945,7 +945,7 @@ COMP_LIBRARY: list[Comp] = [
         # 无替班:v2 明言万敌 1 费开局即在(56% 局 P1 板上),无空窗;P2 加深档数
         flex_factions=["群攻", "量子同频", "战技点", "治疗", "命运圣杯", "减益"],
         plaza_carry="万敌",
-        # W127 全局累积型标注:万敌=受击驱动全局叠层(受伤充能+生命上限永久提高,
+        # 迁移审计 w127(git 历史) 全局累积型标注:万敌=受击驱动全局叠层(受伤充能+生命上限永久提高,
         # 用户定谒 [21] 例外)——环境满足(敌方多动/反伤类词条)时适用「有空位就上」。
         global_accumulators={"万敌": "hp_charge_stack"},
         level_plan={  # 1费 carry:5 级 D 干 3星(0.93 全场最高);boss 前成型即停
@@ -970,8 +970,8 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["火力风暴潮", "反重力皮靴", "蓄能帆", "光速螺旋桨"],
         mechanic_attributes=["DoT"],
         shared_chars=["桑博", "千冶·刃", "黑天鹅"],
-        transition_chars=["桑博", "艾丝妲"], typical_form_round=4,   # v2 迁移(W25):卡芙卡是 core,移出 transition
-        # ===== v2(W25):DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分批落位)=====
+        transition_chars=["桑博", "艾丝妲"], typical_form_round=4,   # v2 迁移(迁移审计 w25(git 历史)):卡芙卡是 core,移出 transition
+        # ===== v2(迁移审计 w25(git 历史)):DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分批落位)=====
         family="DOT卡芙卡", branch_key="A 引爆流(~47%;分岔变量=carry×装备×副羁绊)",
         bond_signal="持续伤害",   # ②类信号:开局即战力,前期=终局同体一路加深
         form_tiers_max={"持续伤害": 6},   # v2:DOT 6 档(A 流一路加深 2→4→6)
@@ -1023,9 +1023,9 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"持续伤害": 4, "贝洛伯格": 2}, strength="B", form_difficulty="easy", early_power="中",
         key_equips=["火力风暴潮", "火力风暴潮", "冷笑话引擎"],   # 桑博装备越早越好;卡芙卡过渡给随便骰子
         mechanic_attributes=["DoT"],
-        shared_chars=["卡芙卡", "海瑟音", "千冶·刃"], transition_chars=["卡芙卡", "艾丝妲"],   # v2 迁移(W25):桑博是 core,移出 transition
+        shared_chars=["卡芙卡", "海瑟音", "千冶·刃"], transition_chars=["卡芙卡", "艾丝妲"],   # v2 迁移(迁移审计 w25(git 历史)):桑博是 core,移出 transition
         typical_form_round=5,
-        # ===== v2(W25):DOT卡芙卡家族·桑博专家变体(v2 明言:策略入口变体,不独立成套)=====
+        # ===== v2(迁移审计 w25(git 历史)):DOT卡芙卡家族·桑博专家变体(v2 明言:策略入口变体,不独立成套)=====
         family="DOT卡芙卡", branch_key="桑博专家变体(开局信号=「特邀专家:桑博」portal,C 槽换桑博+靴流;策略入口变体非兄弟分支,不设 branch_of)",
         bond_signal="持续伤害",   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"桑博": ["火力风暴潮", "火力风暴潮"], "卡芙卡": ["冷笑话引擎"]},
@@ -1052,7 +1052,7 @@ def get_comp(name: str) -> Comp | None:
 
 
 def hp_charge_stack_chars() -> frozenset[str]:
-    """``hp_charge_stack`` 型全局累积角色名全集(W127 标注派生,单一源)。
+    """``hp_charge_stack`` 型全局累积角色名全集(迁移审计 w127(git 历史) 标注派生,单一源)。
 
     消费点 = decision_v2.phase 兜底门豁免(ADR-0353):该型角色(万敌:受伤
     充能+生命上限永久提高)的累积由**场上事件**驱动,上场即真实累积战力,
@@ -1203,7 +1203,7 @@ def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
         matchup,
         normalize_boss_name,
     )
-    # None 项 = 该位面徽章态采不到身份(W221/ADR-0398,保位列表)→ 跳过;
+    # None 项 = 该位面徽章态采不到身份(迁移审计 w221(git 历史)/ADR-0398,保位列表)→ 跳过;
     # 全 None(无任何身份信息)→ 与空表同形返 None(动态权重剔除)。
     canon = [normalize_boss_name(b) for b in bosses if b]
     if not canon:
@@ -1583,7 +1583,7 @@ def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
 def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str],
                              occupied: dict[tuple[str, int], list[str]] | None = None,
                              ) -> str:
-    """``equip_allocation`` 返回空时的结构化归因(纯函数,零行为变更;W596/W593 方案③)。
+    """``equip_allocation`` 返回空时的结构化归因(纯函数,零行为变更;`w596_equip_guards/`/`w593_equip_wear/` 方案③)。
 
     返回值域:
     - ``pool_empty``:owned 穿戴池空(调用方无货可分);

@@ -54,7 +54,7 @@
   (贫困披露↔池内容双向结构对拍)/ boss_rung_corpus_sample_gate(boss
   rung 语料样本门);随批加固 ab_verdict_claim 词表反转(默认辖)
   + paired_prefork_wave_identity 扩全波。(boss_win_p_cache_
-  freshness 随 ADR-0308 废除——rung 外推机制已被 W31 节点胜率
+  freshness 随 ADR-0308 废除——rung 外推机制已被 迁移审计 w31(git 历史) 节点胜率
   阶梯替换,无进程内缓存可查。)
 - 批37(难度读链翻转判读鲁棒性,commit 09cf8296):
   difficulty_curve_live_contamination(逐帧真读/简报兜底值混入
@@ -68,7 +68,7 @@
 - 批39(r9 boss 语料判读口径):boss_hp_floor_censoring(boss 行
   hp 地板删失披露 + killed 采集断裂/败局 hp 未降跳变红——
   hp_after==1 的败局掉血是下界非真值,伤害口径必须剔删失行)。
-- W580c(W605;hp 可信位防线 checks 层显形面):seg_untrusted_hp_
+- W580c(`w605_sim_checks/`;hp 可信位防线 checks 层显形面):seg_untrusted_hp_
   levelup(段级;不可信 hp 帧发 LevelUp = 违规——与 decision_v2
   消费门 blood_budget_levelup_blocked 两层分工:门在 decision 层
   拒付,本检查在 checks 层显形;sim 恒真读恒零命中,详见段级表)。
@@ -159,7 +159,7 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
 
 
 def _normalize_buy_reason(reason: str) -> str:
-    """买入 reason 归一化(W43 leader 裁决 4)。
+    """买入 reason 归一化(迁移审计 w43(git 历史) leader 裁决 4)。
 
     decision_v2 栈的账本 reason 带 ``d2_`` 前缀(可再带 ``_merge`` 尾,
     ``arbiter._materialize``)——检查器豁免边/计数用裸 reason 精确匹配时,
@@ -200,7 +200,7 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
             if a.get('__type__') != 'BuyCard':
                 continue
             reason = a.get('reason') or 'unknown'
-            # d2_ 前缀归一化(原 2026-08-24 leader 核实;W48 裁决 4 起
+            # d2_ 前缀归一化(原 2026-08-24 leader 核实;迁移审计 w48(git 历史) 裁决 4 起
             # 单一源到 _normalize_buy_reason)
             reason = _normalize_buy_reason(reason)
             if reason not in ('pair', 'off'):
@@ -259,8 +259,8 @@ def check_equip_worn_in_battle(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
-    """升级授权依据判据(W131 重定义,W123 §5.2;ADR-0354;旧 ADR-0266/r406 指纹;
-    W255/ADR-0410 static_ev 并入合法面)。
+    """升级授权依据判据(`w131_a2n_arm/` 重定义,`w123_b_arm/` §5.2;ADR-0354;旧 ADR-0266/r406 指纹;
+    迁移审计 w255(git 历史)/ADR-0410 static_ev 并入合法面)。
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
@@ -268,13 +268,13 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
     时写入,单一源=``ev.levelup_ev_basis``)。
 
-    重定义动机(W123 §3.3/§5.2):旧判据「金<50 且未曾满息即违规」把
-    [33] 人口位(W123 实测 378 违规中绝大多数,W126 后 206)的合法
-    <50 升级全数计违规——授权语义(W119/ADR-0347)落地后,判据应读
+    重定义动机(`w123_b_arm/` §3.3/§5.2):旧判据「金<50 且未曾满息即违规」把
+    [33] 人口位(`w123_b_arm/` 实测 378 违规中绝大多数,`w126_b_arm/` 后 206)的合法
+    <50 升级全数计违规——授权语义(迁移审计 w119(git 历史)/ADR-0347)落地后,判据应读
     授权依据而非金阈值。合法放行面:① pop_slot([33] 人口位:cap 满∧
     bench 有等待上场的目标件)、② dp(DP 花费授权,平台未破);
-    ③ static_ev(静态 EV 平台账)——W255 前不在白名单(当时该臂花后
-    <50 帧量级 0-1,保守计违规);**W255/ADR-0410 起并入**:boss 窗
+    ③ static_ev(静态 EV 平台账)——迁移审计 w255(git 历史) 前不在白名单(当时该臂花后
+    <50 帧量级 0-1,保守计违规);**迁移审计 w255(git 历史)/ADR-0410 起并入**:boss 窗
     升级禁令删除后,static_ev 臂成为末窗升级的主授权臂(升级是否做=
     EV 总账问题,[32] 节点无关定调),继续计违规则系统性误报该合法面。
     无 auth 键/空值 = 无授权依据(default 栈旧调用/未过账路径)→ 违规
@@ -448,7 +448,7 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
     3合1 素材收集语境,其冗余让位不报(合成消化时序内卖出合法);
     单张买入即跨轮卖回(振荡主通道)仍 0 容忍。
 
-    W88(ADR-0339 件3):真根因=carry_gate 死锁豁免(discipline
+    迁移审计 w88(git 历史)(ADR-0339 件3):真根因=carry_gate 死锁豁免(discipline
     ``_seed_cands`` 兜底)在唯可卖=新鲜种子时卖种子买 carry——
     已裁决移除(窗口内种子赢过腾位,carry 延后有界);本检查器
     语义不变,0 容忍恢复成立(seed16 姬子·启行 r4 买 r6 卖 r7 再
@@ -481,13 +481,13 @@ def check_engine_seed_not_resold(rows: list[dict]) -> list[str]:
 
 
 def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
-    """W96 溢出金断买(W93 根因回灌;[17] >50 溢余该花;违规型)。
+    """迁移审计 w96(git 历史) 溢出金断买(迁移审计 w93(git 历史) 根因回灌;[17] >50 溢余该花;违规型)。
 
     判据:位面1 内连续 ≥2 个决策轮金 >50 且零买入(BuyCard)——
     金趴在 50 上方不动 = [17]「>50 的每一分都该花」被违反。升级
     (LevelUp)也算花金,有升级的轮不计数(金在滴漏不算冻结);
     [32] boss 轮 LevelUp 禁令辖内的轮照常计数(boss 轮该花在买牌/
-    装备上,断买仍违规)。W93 病例:run_20260825_130151 r7-r9 金
+    装备上,断买仍违规)。迁移审计 w93(git 历史) 病例:run_20260825_130151 r7-r9 金
     59→90 溢出,目标件第 2 份生成层(r410 守卫)+评分层(份数零
     显影)双盲区,三连零买只靠升级滴漏。
     豁免(ADR-0343):行带 formed_stop=True 的轮**重置 streak**——
@@ -527,7 +527,7 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
     判据(设计表原文):bench≥上限 时不再输出非合成 BuyCard——现状
     (设计时)655 次;上限真值已核(BENCH_CAPACITY=9,cw_state
     design doc 实测)→ 锁 0。ADR-0283 超容买守卫落地后 BuyCard
-    动作只在该轮容量允许时出现。ADR-0453/W566 语义收窄:满栏
+    动作只在该轮容量允许时出现。ADR-0453/`w566_sim_guard/` 语义收窄:满栏
     **合成买**(merge_buy_completes)已合法执行、照常入账本——本
     检查的容量近似(下方公式含 2×merges)自动豁免其席位消耗,无
     需改判据;bench_full_skipped_buys 只计非合成拒买。
@@ -536,7 +536,7 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
     上限 = 9 − 期初 + 本轮卖出数 + 2×本轮 merges(3合1 每次腾
     2 席;守卫在执行层逐笔判,账本只能轮末重放近似)+ 本轮 bench
     腾位数(DeployMove 上阵 + applied CompTransaction 的
-    bench_delta 披露[执行点真值,W101 涌现修正]:过渡型板面轮内
+    bench_delta 披露[执行点真值,迁移审计 w101(git 历史) 涌现修正]:过渡型板面轮内
     重排变多,缺该项会把合法买误报超容——seeds 18/22 实证,r8
     九买伴随 8 笔事务,执行层守卫 cw_sim r419 逐笔判活状态无回归)。
     SwapDeploy 净零/SellDeployed 不动 bench/shop 源填位不占
@@ -554,7 +554,7 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
         for a in acts:
             if a.get('__type__') == 'CompTransaction' \
                     and a.get('result') == 'applied':
-                # W101:applied 事务的 bench 净腾位(执行点真值
+                # 迁移审计 w101(git 历史):applied 事务的 bench 净腾位(执行点真值
                 # bench_delta;账本不展开事务明细,重放只能吃该披露)
                 deploys += int(a.get('bench_delta', 0) or 0)
         merges = (row.get('sim') or {}).get('merges') or 0
@@ -882,7 +882,7 @@ def check_hp_upper_bound_truth(rows: list[dict]) -> list[str]:
 
 
 def check_hp1_dead_end_candidate(rows: list[dict]) -> list[str]:
-    """W120 P9(死局锚;run 监控侧标记):HP=1 ⟺ 0hp 保底已耗尽 ⟹
+    """迁移审计 w120(git 历史) P9(死局锚;run 监控侧标记):HP=1 ⟺ 0hp 保底已耗尽 ⟹
     下一败局即终局——**候选下界标记,非违规、非触发线**(violations
     恒 0;hp1_rounds 披露供早停判读:HP=1 局的继续局期望 = P(全胜)×
     通关价值 − 时间成本,板面/日程联合判在 cw_first_passage,本检查
@@ -1055,7 +1055,7 @@ _EXPLICIT_V2_ACTIONS = ('SellDeployed', 'SwapDeploy', 'CompTransaction')
 def _board_agg_of_deployed_row(row: dict) -> dict[str, int]:
     """账本行的 deployed 羁绊全集聚合(动作 v2 一致性检查的本地口径)。
 
-    ADR-0312(W50):口径与 ``cw_state._recount_board`` 同形 = **全集 +
+    ADR-0312(迁移审计 w50(git 历史)):口径与 ``cw_state._recount_board`` 同形 = **全集 +
     星徽装备贡献**——per-unit 标签经 ``cw_bond_equips.unit_bond_tags``
     (与 cw_state/cw_observation 三侧同一函数,非镜像复制;检查模块
     不 import cw_sim/cw_state 的依赖方向纪律不变,消费的是更底层的
@@ -1123,7 +1123,7 @@ def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
     - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
       CompTransaction)→ 该轮 actions 必须恰有一条 skip_fence 且
       reason 非空(缺 = 围栏静默跳过或叠加,双违规;多 = 误记);
-    - **rejected** 显式动作**不**占显式通道(W65/ADR-0323:被拒不消耗
+    - **rejected** 显式动作**不**占显式通道(迁移审计 w65(git 历史)/ADR-0323:被拒不消耗
       围栏,同轮围栏照跑)→ 不要求配对;被拒轮若仍记 skip_fence = 误记;
     - skip_fence 存在但轮内无 applied 显式动作 = 误记(围栏没跳却记账)。
     """
@@ -1150,34 +1150,37 @@ def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
     return out
 
 
-def check_refresh_roll_cap_frame(rows: list[dict]) -> dict:
-    """刷新预算帽(段帧):普通车道轮级刷新数 vs REFRESH_ROLL_CAP。
+def check_refresh_roll_cap_frame(ledgers: list[list[dict]]) -> dict:
+    """刷新预算帽披露(批级):普通车道轮级刷新数 vs REFRESH_ROLL_CAP。
 
     语义依据(单一源 = decision_v2.economy_cycle.REFRESH_ROLL_CAP,
-    refresh_ev_budget 预算式的轮级授权刷数上界 min(帽,溢余/刷价))。
-    **披露型,不作归零锁**:决策语义是逐段重决策(刷后见新店再裁),
-    每段各自重读预算,轮级累计刷新数自然可越帽——账本轮行无法重构
-    段界,「单决策帧越帽」与自然多段行为在账本上同构,故本项只出
-    计数披露供决策层收权批判读;真正的硬不变式在定向车道局帽
-    (directed_refresh_game_cap_lock)。车道口径:轮行 sim.dir_
-    refreshes(cw_sim 轮末对 session 局级累计计数器取差值)= M-A
-    定向车道执行数,先扣除;历史批次无此键按 0 扣。
+    refresh_ev_budget 预算式的授权刷数上界 min(帽,溢余/刷价))。
+    **披露型,批级聚合入口消费,不作逐局归零锁**:决策语义是逐段
+    重决策(刷后见新店再裁),每段各自重读预算,轮级累计刷新数自然
+    可越帽——账本轮行无法重构段界,「单决策帧越帽」与自然多段行为
+    在账本上同构,故本项只出计数披露供决策层收权批判读;真正的硬
+    不变式在定向车道局帽(directed_refresh_game_cap_lock,在
+    _BATCH_CHECKS)。车道口径:轮行 sim.dir_refreshes(cw_sim 轮末
+    对 session 局级累计计数器取差值)= M-A 定向车道执行数,先扣除;
+    历史批次无此键按 0 扣。
     """
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         REFRESH_ROLL_CAP,
     )
     over_frames = 0
     max_ordinary = 0
-    for row in rows:
-        acts = row.get('actions') or []
-        total = sum(1 for a in acts if a.get('__type__') == 'RefreshShop')
-        if total <= 0:
-            continue
-        directed = int((row.get('sim') or {}).get('dir_refreshes') or 0)
-        ordinary = max(0, total - directed)
-        max_ordinary = max(max_ordinary, ordinary)
-        if ordinary > REFRESH_ROLL_CAP:
-            over_frames += 1
+    for rows in ledgers:
+        for row in rows:
+            acts = row.get('actions') or []
+            total = sum(1 for a in acts
+                        if a.get('__type__') == 'RefreshShop')
+            if total <= 0:
+                continue
+            directed = int((row.get('sim') or {}).get('dir_refreshes') or 0)
+            ordinary = max(0, total - directed)
+            max_ordinary = max(max_ordinary, ordinary)
+            if ordinary > REFRESH_ROLL_CAP:
+                over_frames += 1
     return {'violations': 0, 'frames_over_cap': over_frames,
             'max_ordinary_per_round': max_ordinary,
             'cap_const': REFRESH_ROLL_CAP}
@@ -1218,7 +1221,7 @@ _BATCH_CHECKS = {
     'deploy_after_buy_semantics': check_deploy_after_buy_semantics,
     'ledger_deploy_lag_disclosure': check_ledger_deploy_lag_disclosure,
     'hp_upper_bound_truth': check_hp_upper_bound_truth,
-    # W120 P9:HP=1 死局/早停候选标记(披露型,violations 恒 0)
+    # 迁移审计 w120(git 历史) P9:HP=1 死局/早停候选标记(披露型,violations 恒 0)
     'hp1_dead_end_candidate': check_hp1_dead_end_candidate,
     # --- ADR-0289 检查项清偿批(逐局违规锁) ---
     'gold_nonneg': check_gold_nonneg_invariant,
@@ -1242,7 +1245,6 @@ _BATCH_CHECKS = {
     'comp_tx_atomicity': check_comp_tx_atomicity,
     'skip_fence_pairing': check_skip_fence_pairing,
     # --- 刷新预算帽族(刷帽检查;两口径各自的常量单一源见各 docstring) ---
-    'refresh_roll_cap_frame': check_refresh_roll_cap_frame,
     'directed_refresh_game_cap_lock': check_directed_refresh_game_cap,
 }
 
@@ -1288,7 +1290,7 @@ def _seg_spent(row: dict) -> bool:
 
 
 def _seg_engines(row: dict) -> int:
-    """过渡体系达成数(W278 单一源 = cw_deploy_logic.engines_count,
+    """过渡体系达成数(迁移审计 w278(git 历史) 单一源 = cw_deploy_logic.engines_count,
     即原 cw_sim._engines_count 本体——检查网不 import cw_sim 的架构
     锁由依赖方向保证)。"""
     from sr_od.application.currency_war.cw_deploy_logic import (
@@ -1373,7 +1375,7 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
 
 
 def _seg_transition_cost_max() -> int:
-    """过渡带成本带上限(W300/V-A2 单一源化):import 买家侧
+    """过渡带成本带上限(`w300_dup_ruling/`/V-A2 单一源化):import 买家侧
     ``discipline.press_channel_max_band()``(=press_band(max_level),
     当前推导恒 {1,2})取 max——[30] 过渡阵容羁绊件基本在 1-2 费带的
     口述锚由 press_band 的 {1,2} 覆盖规则承载,检查器侧不再独立持有
@@ -1419,14 +1421,14 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
 
     判据对齐口述精确口径:「购买后仍在同一息档(不跨 10 的倍数)才
     零息损」——候选卡须满足 ``(g//10)==((g−cost)//10)``;「该买的
-    过渡带件」代理 = 费用 ∈ press_band(level)(W300/V-A2 单一源,
+    过渡带件」代理 = 费用 ∈ press_band(level)(`w300_dup_ruling/`/V-A2 单一源,
     [_seg_transition_cost_max])且阵营 ∈ 引擎过渡体系(cw_line_defs.
     ENGINE_FACTIONS 单一源;[30] 过渡羁绊件基本在 1-2 费带)。
     例外面:成型后停手合法([13]);跨档购买最多损 1 金属 [11]
     「凑息账」灰区不断言(只锁零息损形态);bench 满 = 想买买不了
     (``bench_full_skipped_buys``>0 豁免)。
 
-    **副本形态四分类**(W300 design §4.2 + V-B9 双域;is_dup 拆
+    **副本形态四分类**(`w300_dup_ruling/` design §4.2 + V-B9 双域;is_dup 拆
     deployed/held 两域——买家守卫 copy_swap_useless 只扫 deployed
     同名,bench-only 同名未买的原因可能是金/相位/评分,判真拦是
     归因错误):
@@ -1494,7 +1496,7 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
                         'plane': 1, 'round_num': row.get('round_num'),
                         'detail': f'金 {g0}<20 店有压库带副本 {name}'
                                   f'(cost {cost},deployed 同名,购后仍同息档)'
-                                  f'未买——[11]×W300 press 通道',
+                                  f'未买——[11]×`w300_dup_ruling/` press 通道',
                         'gold_before': g0, 'candidate': name,
                         'candidate_cost': cost, 'class': 'C-B',
                     })
@@ -1516,13 +1518,13 @@ def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
 
 
 def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
-    """W300/V-B9 副本形态披露键(只计数不判违规;披露键保留纪律=
+    """`w300_dup_ruling/`/V-B9 副本形态披露键(只计数不判违规;披露键保留纪律=
     归零可证收口生效,防变异探针盲区,sim-testing §6):
     - ``copy_press_channel_closed``:deployed 同名压库带副本未买且
       press 通道关——通道开通后应转 C-B 真拦或归零(买家买了);
     - ``copy_bench_only_skipped``:bench-only 同名副本未买(非买家
       守卫辖区,归因域外);
-    - ``copy_out_of_band_skipped``:带外副本未买(〔W300 口述〕
+    - ``copy_out_of_band_skipped``:带外副本未买(〔`w300_dup_ruling/` 口述〕
       「完全没必要买」合法面;检查器不许再当候选发射违规)。
     """
     from sr_od.application.currency_war.cw_chars import CHARACTERS
@@ -1607,7 +1609,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     (ADR-0409)/W332b 义务预算——按预算显式裁定搜索成本,破息
     是授权语义内的代价。
     ④⑤同时把升级/刷新/买件花费分解(spend_breakdown)写进事件,
-    归因不需人工分账(W649 B2)。
+    归因不需人工分账(`w649_mutation/` B2)。
     仍不满足 = 买件引发的凭空破息(真破息候选,行为判读输入)。
     事件带该轮店面板(最终可见波)与最终选择(买入名单+通道)供归因。
     """
@@ -1657,7 +1659,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
                       f' 进轮连胜 {streaks.get(row.get("round_num"), 0)},'
                       f' 节点={node})——[6]/[19]',
             'gold_before': g0, 'gold_after': gold_end,
-            # 花费分解(升级/刷新/买件按通道;W649 B2:归因不看人工)
+            # 花费分解(升级/刷新/买件按通道;`w649_mutation/` B2:归因不看人工)
             'spend_breakdown': {'levelup': spend_lv, 'refresh': spend_rf,
                                 'buys': dict(_spend.get('buys') or {})},
             'buys': bought, 'final_shop_panel': last_cards,
@@ -1748,7 +1750,7 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
     """[12]/[33] 升级驱动(段级):无「有框架单位等待上场」依据的升级
     (凭空追级)。
 
-    授权依据观测(LevelUp.auth_basis,W131/ADR-0410)为准——白名单
+    授权依据观测(LevelUp.auth_basis,`w131_a2n_arm/`/ADR-0410)为准——白名单
     pop_slot([33] 人口位=有框架单位等待上场)/ dp(DP 授权)/
     static_ev(EV 平台账)外 = 凭空追级。[12] 主条(连 50 金都没凑到
     不急升级)落在授权门的金维:与 batch 表 check_levelup_interest_
@@ -1795,7 +1797,7 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
 _P2_LEVELUP_STOP_HP: int = 21   # ceil(1×registry.vd_p2_loss=20.05)
 _P1_LEVELUP_STOP_HP: int = 11   # ceil(1×(11.32−0.37×2)=10.58)
 # 血预算停手·第二波镜像(设计件 12 §6;ADR-0451):P1_EXIT_BLOOD_TARGET
-# (期望预算线,W524 审计后语义)+ 末窗起点 handoff_gate_min_round +
+# (期望预算线,`w524_audit_60line/` 审计后语义)+ 末窗起点 handoff_gate_min_round +
 # 应急带下限 emergency_hp(急救型豁免面;检查域=两者开区间)
 _P1_EXIT_BLOOD_TARGET: int = 60
 _P1_HANDOFF_GATE_MIN_ROUND: int = 6
@@ -1893,7 +1895,7 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
 
 
 def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
-    """不可信 hp 帧发 LevelUp = 违规(段级;W580 DESIGN 测试计划组5)。
+    """不可信 hp 帧发 LevelUp = 违规(段级;`w580_hp_trust_defense/` DESIGN 测试计划组5)。
 
     判据:决策帧 hp 不可信(非(hp_readable or hp_trusted),即两位
     皆 False——不可信谓词镜像消费门单一源 decision_v2.posture_release
@@ -1940,7 +1942,7 @@ def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
             'plane': plane, 'round_num': rn,
             'detail': f'不可信 hp 帧({" & ".join(bits)})'
                       f' LevelUp×{lv}(hp={row.get("hp")})'
-                      '——不可信帧违规(W580 消费门镜像)',
+                      '——不可信帧违规(`w580_hp_trust_defense/` 消费门镜像)',
             'hp': row.get('hp'), 'levelups': lv, 'bits': bits,
         })
     return out
@@ -2011,7 +2013,7 @@ def run_segment_checks(ledgers: list[list[dict]], *,
 _POOL_BUCKET_MIN_N = 5       # 同 cw_sim._BUCKET_MIN_N(值同步维护)
 _POOL_DEPTH_BUCKET_W = 3     # 同 cw_sim._DEPTH_BUCKET_W(值同步维护)
 
-# W109(ADR-0344):池新鲜度滞后红线——runs.jsonl 里晚于池内最新 run
+# 迁移审计 w109(git 历史)(ADR-0344):池新鲜度滞后红线——runs.jsonl 里晚于池内最新 run
 # 的行数 ≥ 此值 = 再生管线断。2 = 1 局容忍(再生挂局终后、下一局
 # 未结束前 lag=1 是管线健康瞬态)+1 局缓冲;>2 只能是钩子/手工链
 # 断了(2026-08-25 事故:池停 41 局 12 小时零报警)。
@@ -2020,7 +2022,7 @@ POOL_FRESHNESS_LAG_LIMIT = 2
 
 def check_pool_freshness(replay_dir=None, *,
                          lag_limit: int = POOL_FRESHNESS_LAG_LIMIT) -> dict:
-    """W109(ADR-0344):Δ池快照新鲜度——再生管线断裂的常设报警。
+    """迁移审计 w109(git 历史)(ADR-0344):Δ池快照新鲜度——再生管线断裂的常设报警。
 
     判据:快照 ``META.runs`` 覆盖的最新 run_id,距本机生产
     ``runs.jsonl`` 的最新 run_id 落后 ≥lag_limit 局 → 违规(管线断)。
@@ -2311,7 +2313,7 @@ REWARD_POOL_MAX_ABS: int = 20
 
 
 def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
-    """批㉗ 检查项 reward_delta_pool_bucket_lock(ADR-0292;W111 判据修正
+    """批㉗ 检查项 reward_delta_pool_bucket_lock(ADR-0292;迁移审计 w111(git 历史) 判据修正
     见 ADR-0345)。
 
     判据(规格原文「分布入池且均值≈语料真值」):
@@ -2321,8 +2323,8 @@ def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
     - reward 跨 run 配对伪影哨兵:max |Δ| ≤ 20 且无负值——批㉗ F4 的
       +27~+61/−2 形态若在重生成后涌现,先查生成器 run 分组/语料
       接管段,不当作真值入锚;
-    - supply **无真值锚**(W111/ADR-0345):批㉗ 落地时语料 supply 零
-      样本,「非空时同判 reward」是外推假设;W109 再生后语料首现
+    - supply **无真值锚**(迁移审计 w111(git 历史)/ADR-0345):批㉗ 落地时语料 supply 零
+      样本,「非空时同判 reward」是外推假设;迁移审计 w109(git 历史) 再生后语料首现
       supply 真实样本(同 run 差分 Δ=0,n=1)——数据证伪 +2.0 锚。
       supply 只辖伪影哨兵(|Δ|>20 的跨 run 量大跳变,符号不敏感:
       无真值锚时负值不能直接判伪影),样本量入 stats 披露不设门
@@ -2424,7 +2426,7 @@ def _rung_of_row(row: dict) -> int:
     return n
 
 
-#: boss 恒败回归判定的 n 地板(ADR-0308):W31 阶梯 boss 胜率
+#: boss 恒败回归判定的 n 地板(ADR-0308):迁移审计 w31(git 历史) 阶梯 boss 胜率
 #: ~0.05,小于此轮数的 0 胜是抽样噪声(0.95^n),不判回归。
 _BOSS_WIN_MIN_ROUNDS: int = 100
 
@@ -2435,11 +2437,11 @@ def check_boss_win_calibration(ledgers: list[list[dict]]) -> dict:
     - 胜 = boss 轮 sim.delta ≥ 0(outcomes.killed 同极性);
     - 违规 ①:boss 轮 ≥ ``_BOSS_WIN_MIN_ROUNDS`` 且 0 胜(结构性
       恒败回归——胜分支失效)。n 地板 = ADR-0308 修订:回退层
-      胜负面换 W31 阶梯后 boss 实测胜率仅 ~0.05,小批(如 smoke
+      胜负面换 迁移审计 w31(git 历史) 阶梯后 boss 实测胜率仅 ~0.05,小批(如 smoke
       n=25)全负是**抽样噪声不是回归**(0.95^25≈28%)——原「存在
       即判」判据在该量级下恒假红;n≥100 时 0 胜概率 <1%,恢复
       判定力;
-    - 旧违规 ②(胜率随深度单调)已删(ADR-0308):W31 阶梯的
+    - 旧违规 ②(胜率随深度单调)已删(ADR-0308):迁移审计 w31(git 历史) 阶梯的
       胜负面与深度/成型度**无条件性**(语料是旧策略病局镜像,
       条件性未标定);池侧 boss 深度桶也无单调先验——保留该
       判据 = 把已废弃的 ADR-0277 设计(胜率=f(成型度))当真值
@@ -2472,7 +2474,7 @@ def check_formation_hp_coupling_sentinel(ledgers: list[list[dict]]) -> dict:
     (成型局不比未达局活得久 = 价值链仍断)。
     小批护栏(ADR-0286):任一侧 <20 局 = 均值噪声主导,只披露不
     判定(CI smoke n=25 曾以 formed_n=2 的 −0.35 假红;ADR-0312
-    W50 v7 采样键换 Σboard 后 13/12 侧再假红 −4.11,同批 n=300
+    迁移审计 w50(git 历史) v7 采样键换 Σboard 后 13/12 侧再假红 −4.11,同批 n=300
     真判 diff +5.39 绿——护栏从 <5 提到 <20,对齐判据原意
     「真批次 n≥300 两侧几十局起」,判定力不减)。
     """
@@ -2605,7 +2607,7 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
             'net_ratio': round(net_ratio, 2)}
 
 
-# W493(ADR-0447):sim↔实机金分布/费用曲线对拍锚(实机 2026-08-28
+# `w493_income_calib/`(ADR-0447):sim↔实机金分布/费用曲线对拍锚(实机 2026-08-28
 # 当日 15 局 P1 全帧口径,Phase 1 实测基线;数据源与整定程序见
 # cw_sim.EVENT_GOLD_BY_ROUND 注释)。锚点随实机新局补充后原地更新。
 REAL_P1_GOLD_MEAN: float = 29.4
@@ -2616,7 +2618,7 @@ REAL_P1_SHOP_COST_SHARE: dict[int, float] = {1: 0.613, 2: 0.243, 3: 0.133, 4: 0.
 
 
 def check_gold_dist_calib(ledgers: list[list[dict]]) -> dict:
-    """W493 对拍项:P1 备战帧金分布 vs 实机基线(ADR-0447)。
+    """`w493_income_calib/` 对拍项:P1 备战帧金分布 vs 实机基线(ADR-0447)。
 
     披露 sim 金均值/ge50/ge70 占比;软告警 = 金均值越出实机带
     [25,35](M1 判据 30±5;n<100 不判,数据边界)。被检对象 =
@@ -2648,10 +2650,10 @@ def check_gold_dist_calib(ledgers: list[list[dict]]) -> dict:
 
 
 def check_shop_cost_curve(ledgers: list[list[dict]]) -> dict:
-    """W493 对拍项:P1 商店费用曲线 vs 实机 OCR 基线(ADR-0447)。
+    """`w493_income_calib/` 对拍项:P1 商店费用曲线 vs 实机 OCR 基线(ADR-0447)。
 
     纯披露(不判):1-4 费占比偏离的已知主根 = 等级轨迹差(策略
-    追级行为域,环境侧无合法旋钮;W493 预注册 S1 best-effort)——
+    追级行为域,环境侧无合法旋钮;`w493_income_calib/` 预注册 S1 best-effort)——
     消费方据等级轨迹逐轮表归因,禁直接调商店概率表(机制真值)。
     """
     costs: list[int] = []
@@ -2771,48 +2773,48 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # _SAMPLER_VERSION 4→5 + boss 胜分支 rung≥3 胜率改 rung2 桶实测外推
 # (0.25→0.667)——**校准修正非策略变化**,hp_ge_60 0.127→0.137 上移
 # 属预期;历史报告对旧池重放须用 v4 指纹导出 JSON 快照。
-# 旧锚(886f8a39,ADR-0306 批)已失效:ADR-0308(W37,W31 节点×
+# 旧锚(886f8a39,ADR-0306 批)已失效:ADR-0308(迁移审计 w37(git 历史),迁移审计 w31(git 历史) 节点×
 # 轮次胜率阶梯进回退层)_SAMPLER_VERSION 5→6——回退层胜负面换
 # 实测边际(旧策略病局语料):hp 类指标**下移属预期**(boss 回退
 # 胜率 rung2 0.25/rung≥3 0.667 → 0.05;battle 回退 ~0.29;此前
 # rung 外推本身是跨节点拍脑袋外推,高估);策略侧指标零漂移
 # (engines2/recipe5/refreshes 逐位持平 = 只有结算校准变了,
 # 决策行为面没动)。
-# 旧锚(fd48f135,ADR-0308 批)已失效:ADR-0312(W50 口径统一)
+# 旧锚(fd48f135,ADR-0308 批)已失效:ADR-0312(迁移审计 w50(git 历史) 口径统一)
 # _SAMPLER_VERSION 6→7——sim 侧 board 全集口径(_recount_board)+采样键
 # Σboard(池语料同口径,旧 min(level,len(deployed)) 与池语料不同口径,
-# 采样系统性偏浅,W49 Q4)。**校准口径修正非策略变化**:hp 类下移属
+# 采样系统性偏浅,迁移审计 w49(git 历史) Q4)。**校准口径修正非策略变化**:hp 类下移属
 # 预期(同局面落更深的 encounter/boss 桶 → 更真实的战损);策略侧
 # 基本零漂移(engines2/recipe5 与 v6 锚逐位持平);哨兵大样本仍绿
 # (n=300 diff +5.39 vs v6 批 +5.33)。遗留:n=300 涌现边缘违规
 # engine_seed_not_resold(1/300,g188)/carry_on_shelf_responded
 # (2/300,g243/296)——行为面随口径变化的涌现信号,待 leader 对拍
-# 裁决(W50 报告 §遗留)。
-# 旧锚(46066bbe,ADR-0334 W73 批)已失效:其后三批有口径/行为影响的
-# 改动叠加——W126 切调度(ADR-0349,V_D 批口径化等决策面改动=策略
-# 变化)+ W129 连胜金口径(ADR-0351,奖励节点不计连胜/counter0 发 1 金
-# =校准口径变化,金轨迹系统性 −4~−6 金/局)+ W132 form_ok 兜底门
+# 裁决(迁移审计 w50(git 历史) 报告 §遗留)。
+# 旧锚(46066bbe,ADR-0334 迁移审计 w73(git 历史) 批)已失效:其后三批有口径/行为影响的
+# 改动叠加——`w126_b_arm/` 切调度(ADR-0349,V_D 批口径化等决策面改动=策略
+# 变化)+ `w129_smoke/` 连胜金口径(ADR-0351,奖励节点不计连胜/counter0 发 1 金
+# =校准口径变化,金轨迹系统性 −4~−6 金/局)+ `w132_b_arm/` form_ok 兜底门
 # 结构判据(ADR-0353,有效体系数≥2 替代连续分门=策略变化)。混合
 # 漂移:engines2/recipe5/refreshes 下移属策略变化预期,hp 类下移属
 # 连胜金口径(经济变弱→板面更浅→战损更深)与兜底门收严的合成;
-# 分批归因细表见 ADR-0355。W129 报告已记档「跨日对照不可比,后续
+# 分批归因细表见 ADR-0355。`w129_smoke/` 报告已记档「跨日对照不可比,后续
 # sim 批需重建基线」——本锚即该重建。
-# 新锚池口径(ADR-0355/W140):池=w118 导出快照(pool_snapshot.json
-# 指纹 bab146c68c5df11a,resolve_pool Path 模式),与 W126/W131/W132/
-# W135 各 A/B 臂同源——跨批 A/B 对照可比性优先。**注意:主仓提交
+# 新锚池口径(ADR-0355/迁移审计 w140(git 历史)):池=w118 导出快照(pool_snapshot.json
+# 指纹 bab146c68c5df11a,resolve_pool Path 模式),与 `w126_b_arm/`/`w131_a2n_arm/`/`w132_b_arm/`/
+# `w135_crosscheck/` 各 A/B 臂同源——跨批 A/B 对照可比性优先。**注意:主仓提交
 # 快照(cw_delta_pool_data)指纹随局终自动再生管线(ADR-0344)持续
 # 前移(HEAD=4d28822c,工作树在飞=ddfea057),与本锚指纹不同——
 # 用 snapshot 池跑的 n=60 快验 pool_fp_match=False 属预期,drift 才
 # 是对照主体;跨池对照一律走 Path 重放本锚池。
-# 旧锚(bab146c6,ADR-0355/W140)已失效:ADR-0362(W157,P2 段扩展)
+# 旧锚(bab146c6,ADR-0355/迁移审计 w140(git 历史))已失效:ADR-0362(`w157_p2/`,P2 段扩展)
 # Δ池 plane 维键化——_SAMPLER_VERSION 7→8,指纹随重算;键化顺手清除
-# 既有 P1 池 P2 污染(44 条 plane=2 差分混入含 16 条跨位面差分,W156
+# 既有 P1 池 P2 污染(44 条 plane=2 差分混入含 16 条跨位面差分,迁移审计 w156(git 历史)
 # 勘察 §5.1),P1 桶语料变化(battle rung1 混入差分清除→均值 -3.98/
 # win_killed 0.65,旧池 -5.86/0.50)。**P2 段扩展换锚**:新锚=主仓
-# 提交快照 v8(0bf6c0d6),与 W157 simulate_p2_ab 同池;P1 侧 drift
-# 相对 W140 锚 = 池口径修正(污染清除)+语料前移(至 08-26)合成,
-# 非策略变化(W157 决策代码零改动,杠杆全在 harness 层,W156 结论)。
-# ⚠️ 池出处勘误(W165 巡检 #2):「主仓提交快照」措辞失实——git 内无此池
+# 提交快照 v8(0bf6c0d6),与 `w157_p2/` simulate_p2_ab 同池;P1 侧 drift
+# 相对 迁移审计 w140(git 历史) 锚 = 池口径修正(污染清除)+语料前移(至 08-26)合成,
+# 非策略变化(`w157_p2/` 决策代码零改动,杠杆全在 harness 层,迁移审计 w156(git 历史) 结论)。
+# ⚠️ 池出处勘误(迁移审计 w165(git 历史) 巡检 #2):「主仓提交快照」措辞失实——git 内无此池
 # JSON(Δ池快照 .gitignore);真身=本地导出件
 # .debug/temp/currency_war/w157_p2/pool_v8_plane_keyed.json(meta 指纹
 # 0bf6c0d695f5052c 亲核)。跨池重放以该导出件为准;登记即导出纪律见
@@ -2822,7 +2824,7 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # cliff_monotonicity(池语料贫困,META 披露)。
 ANCHOR_REGISTRY_N300: dict = {
     'pool_fingerprint_prefix': '0bf6c0d6',
-    'recorded': '2026-08-28(W157/ADR-0362:Δ池 plane 维键化后重建'
+    'recorded': '2026-08-28(`w157_p2/`/ADR-0362:Δ池 plane 维键化后重建'
                 '——sampler v8,池=主仓提交快照 0bf6c0d695f5052c,'
                 'n=300,seed 0-299,planes=1)',
     'metrics': {
@@ -2834,25 +2836,25 @@ ANCHOR_REGISTRY_N300: dict = {
         'recipe5_by_r6': 0.57,        # 旧 0.48(同上)
         'avg_refreshes': 0.0,         # 旧 1.23(⚠️ 现策略 P1 段在 sim
                                       # 语料下 V_D 批口径化后零刷新——
-                                      # W157 抽核 5+20 seed 改前后一致
+                                      # `w157_p2/` 抽核 5+20 seed 改前后一致
                                       # (同 0),非池效应;锚如实记)
     },
 }
 
-# W162/ADR-0364:**策略环境注入换锚**——invest-on 口径并行锚。off 口径
+# `w162_inject/`/ADR-0364:**策略环境注入换锚**——invest-on 口径并行锚。off 口径
 # 锚(上表)不变(默认关 = 主路径口径);本表 = simulate_p1_batch(
 # invest=True) 的 n=300 基线(注入激活①资格通道 → P1 锁定分布/
-# 刷新分布结构性改变,W161 缺口闭合;含 D 的 P1 侧 sim 结论自此以
-# 本口径为基准)。⚠️ 池指纹 1762b1cf 与 W157 锚 0bf6c0d6 不同——快照
+# 刷新分布结构性改变,`w161_refresh/` 缺口闭合;含 D 的 P1 侧 sim 结论自此以
+# 本口径为基准)。⚠️ 池指纹 1762b1cf 与 `w157_p2/` 锚 0bf6c0d6 不同——快照
 # 池随局终自动再生管线(ADR-0344)前移 + 并行批在飞,跨日对照不可比;
-# on/off drift 表以**同池同 seed 配对**为准(W162 报告 §drift):
+# on/off drift 表以**同池同 seed 配对**为准(`w162_inject/` 报告 §drift):
 # engines2 0.213→0.170 / recipe5 0.573→0.473 / avg_hp 24.4→21.8 /
 # avg_refreshes 0.0→0.553(①通道点火直证)/ invest_p1_lock_rate 0.51。
 # 成型类指标下移 = 锁定分布变化的预期方向(P1 锁终局 comp 把囤货
-# 方向从过渡引擎上引开,W159/W161 同结论域),非回归。
+# 方向从过渡引擎上引开,迁移审计 w159(git 历史)/`w161_refresh/` 同结论域),非回归。
 ANCHOR_REGISTRY_N300_INVEST: dict = {
     'pool_fingerprint_prefix': '1762b1cf',
-    'recorded': '2026-08-29(W162/ADR-0364:策略环境注入换锚——'
+    'recorded': '2026-08-29(`w162_inject/`/ADR-0364:策略环境注入换锚——'
                 'invest=True 口径首记,n=300,seed 0-299,planes=1,'
                 '池=主仓提交快照 1762b1cf9fb44cd7)',
     'metrics': {
@@ -2871,13 +2873,13 @@ ANCHOR_REGISTRY_N300_INVEST: dict = {
 }
 
 
-# --- ADR-0362(W157)P2 段检查器最小集 ---------------------------------
+# --- ADR-0362(`w157_p2/`)P2 段检查器最小集 ---------------------------------
 # P2 段(planes>=2 批)的最低防线:金轨迹非负 + 段形状。P2 语料
 # 边界(44 行/16 局)支撑行为分布验证,不支撑更多口径校准——检查
-# 面到此为止,后续语料攒厚再扩(W156 §2 分层结论)。
+# 面到此为止,后续语料攒厚再扩(迁移审计 w156(git 历史) §2 分层结论)。
 
 def check_p2_gold_nonneg(ledgers: list[list[dict]]) -> dict:
-    """P2 段金轨迹非负(ADR-0362,W157)。
+    """P2 段金轨迹非负(ADR-0362,`w157_p2/`)。
 
     判据:plane=2 账本行的 gold < 0 = 违规——sim 经济层守卫
     (地板/可负担性)在 P2 段照常辖,负金=结算/买扣款层回归。
@@ -2899,7 +2901,7 @@ def check_p2_gold_nonneg(ledgers: list[list[dict]]) -> dict:
 
 
 def check_p2_segment_shape(ledgers: list[list[dict]]) -> dict:
-    """P2 段账本形状(ADR-0362,W157):ts 单调跨位面、plane 字段
+    """P2 段账本形状(ADR-0362,`w157_p2/`):ts 单调跨位面、plane 字段
     真值、round_num 域 1-P2_ROUNDS。
 
     判据:①全账本 ts 严格递增(P2 段续 P1 段单调,write_batch_ledger
@@ -2924,7 +2926,7 @@ def check_p2_segment_shape(ledgers: list[list[dict]]) -> dict:
     return {'violations': len(out), 'detail': out[:6]}
 
 
-# --- W193/ADR-0377:P2 战斗存活层检查器(参数化校准族带锚) ------------
+# --- `w193_p2sim/`/ADR-0377:P2 战斗存活层检查器(参数化校准族带锚) ------------
 # 辖 calibrated 批(report['p2_combat_calibrated']=True);uncalibrated
 # 批(legacy 回退档/Δ池路径)不辖——恒绿跳过(legacy 档的池采样值
 # 天然不在参数化带内,辖了=常红假检查)。
@@ -2948,7 +2950,7 @@ def _p2_band_of(node: str, round_num: int, bands: dict) -> tuple[int, int]:
 
 def check_p2_loss_band_anchor(ledgers: list[list[dict]],
                               report: dict | None = None) -> dict:
-    """P2 掉血带覆盖锚(W193/ADR-0377)。
+    """P2 掉血带覆盖锚(`w193_p2sim/`/ADR-0377)。
 
     判据:calibrated 批的 plane=2 战斗类行(plane=2 ∧ node∈
     battle/encounter/boss ∧ sim.p2_win_p 非 None)结算值必须落在
@@ -2988,7 +2990,7 @@ def check_p2_loss_band_anchor(ledgers: list[list[dict]],
 
 def check_p2_win_rate_band(ledgers: list[list[dict]],
                            report: dict | None = None) -> dict:
-    """P2 胜率带锚(W193/ADR-0377)。
+    """P2 胜率带锚(`w193_p2sim/`/ADR-0377)。
 
     判据:calibrated 批的 P2 战斗类胜率聚合必须落在语料带
     [0, 0.35](语料边际 0-0.15 + β 上沿 headroom;>0.35=胜率模型
@@ -3576,7 +3578,7 @@ def check_briefing_pipeline_liveness(ledgers: list[list[dict]]) -> dict:
 
 
 def check_deploy_cap_reader_noise(ledgers: list[list[dict]]) -> dict:
-    """批㉔ deploy_cap_reader_noise(cap<level 冲突族;条件披露)。
+    """迁移审计批 deploy_cap_reader_noise(cap<level 冲突族;条件披露)。
 
     判据(设计表原文):cap<level 冲突族治理:diff≥2 判读错
     (diff=1 留「诅咒」空档)、复现阈值实化;读链守卫(与 level
@@ -4130,7 +4132,7 @@ def check_decision_v2_arbiter_matrix() -> dict:
 
 
 def check_decision_v2_telemetry_contract() -> dict:
-    """批㉝(decision_v2 首超审计·题②):可解释性遥测契约锁。
+    """迁移审计批(可解释性遥测)(decision_v2 首超审计·题②):可解释性遥测契约锁。
 
     判据:``DecisionV2Strategy.decide_prep`` 执行后,
     ``session.last_candidate_scores`` 必须满足——
@@ -4139,7 +4141,7 @@ def check_decision_v2_telemetry_contract() -> dict:
        的地基,键崩坏=判读端整字段不可读);
     ③ 分值为数值;
     ④ 有采纳动作时至少 1 个键(采纳必须留痕)。
-    披露(非违规):键数与分值多样性——批㉝ 实测均分仅 ~1.1 键/
+    披露(非违规):键数与分值多样性——迁移审计批(可解释性遥测) 实测均分仅 ~1.1 键/
     ~1.0 个不同分值(只记 accepted,看不到落选替代方案的分),
     「每轮候选×分数」的可解释性承诺只兑现一半,登记待策略域
     裁决(是否把 result.log 未采纳行也写入遥测)。
@@ -4193,7 +4195,7 @@ def check_decision_v2_telemetry_contract() -> dict:
 
 
 def check_decision_v2_remedy_loop(ledgers: list[list[dict]]) -> dict:
-    """W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3 报警(设计容量不足
+    """迁移审计 w52(git 历史)(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3 报警(设计容量不足
     信号)。
 
     判据(仅 d2_ 前缀批次辖):某局存在**连续 ≥3 轮** sim.
@@ -4238,11 +4240,11 @@ def check_decision_v2_remedy_loop(ledgers: list[list[dict]]) -> dict:
 
 
 def check_decision_v2_crisis_gold_hoard(ledgers: list[list[dict]]) -> dict:
-    """批㉝(题①解剖·危机局指纹):危机态囤金零买入哨兵(披露级)。
+    """迁移审计批(可解释性遥测)(题①解剖·危机局指纹):危机态囤金零买入哨兵(披露级)。
 
     判据(仅 d2_ 前缀批次辖):某局存在轮 r∈[5,8] hp≤25(危机态),
     且从该轮起 ≥2 个后续轮 gold≥40 且这些轮零 BuyCard → 违规
-    (息引擎门/满息地板把危机局锁进「囤金不补板」形态;批㉝
+    (息引擎门/满息地板把危机局锁进「囤金不补板」形态;迁移审计批(可解释性遥测)
     seeds 0-99 实测 20 危机局中 1 例完整形态 s1:hp17 金85 r5+
     零买只升)。披露级非 0 容忍:危机局买入大多仍有响应(18/20),
     本哨兵防的是「金在手板濒死却零买」这一最重形态的回归扩大。
@@ -4306,6 +4308,7 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             check_formation_gradient_sentinel(ledgers),
         'streak_break_interest_fires':
             check_streak_break_interest_fires(ledgers),
+        'refresh_roll_cap_frame': check_refresh_roll_cap_frame(ledgers),
         'mc_faction_calib': check_mc_faction_calib(ledgers),
         'streak_combat_only_income':
             check_streak_combat_only_income(ledgers),
@@ -4333,18 +4336,18 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             check_decision_v2_candidate_coverage(ledgers),
         'decision_v2_arbiter_matrix':
             check_decision_v2_arbiter_matrix(),
-        # 批㉝(首超审计):可解释性遥测契约 + 危机囤金哨兵
+        # 迁移审计批(可解释性遥测)(首超审计):可解释性遥测契约 + 危机囤金哨兵
         'decision_v2_telemetry_contract':
             check_decision_v2_telemetry_contract(),
         'decision_v2_crisis_gold_hoard':
             check_decision_v2_crisis_gold_hoard(ledgers),
-        # W52(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3(容量不足信号)
+        # 迁移审计 w52(git 历史)(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3(容量不足信号)
         'decision_v2_remedy_loop':
             check_decision_v2_remedy_loop(ledgers),
-        # 批㉞(供给 vs 标签审计):直通门标签-候选一致性不变式
+        # 迁移审计批(供给-标签一致性)(供给 vs 标签审计):直通门标签-候选一致性不变式
         'decision_v2_supply_label_consistency':
             check_decision_v2_supply_label_consistency(),
-        # W300 press 通道探针(压库副本两臂产出 + E05 反例)
+        # `w300_dup_ruling/` press 通道探针(压库副本两臂产出 + E05 反例)
         'w300_press_channel_probe': check_w300_press_channel_probe(),
     }
     if pool_map is not None:
@@ -4358,10 +4361,10 @@ def run_batch_level_checks(ledgers: list[list[dict]],
     return out
 
 
-# --- 批㉞(供给 vs 标签审计):直通门标签-候选一致性 --------------------
+# --- 迁移审计批(供给-标签一致性)(供给 vs 标签审计):直通门标签-候选一致性 --------------------
 
 def check_decision_v2_supply_label_consistency() -> dict:
-    """批㉞:engine_seed/pair/copy 全直通后,标签裁决与候选生成必须
+    """迁移审计批(供给-标签一致性):engine_seed/pair/copy 全直通后,标签裁决与候选生成必须
     双向一致(0 容忍结构不变式)。
 
     背景:攻坚批「店里没有类 17 轮升并列第一(供给面约束)」论断的
@@ -4411,7 +4414,7 @@ def check_decision_v2_supply_label_consistency() -> dict:
 
     # 探针态覆盖:无方向种子态(引擎门)/ 锁线态(carry+凑档)/
     # 副本上限态(copies_cap)/ bench 杂件(卖通道不被误判为买候选)/
-    # 第 4 态(W300 压库副本态,V-B1.3):deployed 已持目标外引擎阵营
+    # 第 4 态(`w300_dup_ruling/` 压库副本态,V-B1.3):deployed 已持目标外引擎阵营
     # 件同名 + 店出同角色 cost=1 副本(plane1/低 level/band 内)。
     # 通道关(DEFAULT_REGISTRY)下该卡被守卫拦=无候选,一致性不变式
     # 照辖;通道开的行为面由 check_w300_press_channel_probe 专检。
@@ -4468,7 +4471,7 @@ def check_decision_v2_supply_label_consistency() -> dict:
 
 
 def check_w300_press_channel_probe() -> dict:
-    """W300 press 通道探针(design v3 V-B1.3/V-B1.5/V-B2.3/V-B6):
+    """`w300_dup_ruling/` press 通道探针(design v3 V-B1.3/V-B1.5/V-B2.3/V-B6):
     压库副本态在两臂下的候选产出不变式 + E05 带外灰出反例。
 
     - arm0(默认注册表,通道关):压库副本被守卫拦=无候选(零漂移);
@@ -4532,7 +4535,7 @@ def check_w300_press_channel_probe() -> dict:
 
     arm_a = replace(DEFAULT_REGISTRY, press_channel_enabled=True)
     # arm0:显式注入通道关——开臂后 DEFAULT_REGISTRY 默认即通道开,直接拿它当
-    # 「通道关零漂移」基线的前提失效(W374 开臂锁组同步)
+    # 「通道关零漂移」基线的前提失效(迁移审计 w374(git 历史) 开臂锁组同步)
     arm0 = replace(DEFAULT_REGISTRY, press_channel_enabled=False)
     violations: list[str] = []
     # arm0:通道关零漂移(守卫拦)
@@ -4693,7 +4696,7 @@ def check_delta_pool_poverty_selfconsistency(pool_map: dict,
     if not any((pool_map or {}).values()):
         return {'violations': 0, 'note': '池空(fallback/历史快照)不辖'}
     violations: list[str] = []
-    # ADR-0362(W157):``p2:`` 前缀条目 = plane≥2 桶贫困披露
+    # ADR-0362(`w157_p2/`):``p2:`` 前缀条目 = plane≥2 桶贫困披露
     # (生成器单列,判据只辖 plane=1)——跳过双向对拍,仅计入解析
     # 可见性(P2 桶 n<5 全贫困是语料边界,不是披露断裂)。
     disclosed: set[tuple[str, int, str, int]] = set()   # (nt, 桶, kind, n)
@@ -4755,7 +4758,7 @@ def check_delta_pool_poverty_selfconsistency(pool_map: dict,
 
 
 #: (批㊲ boss_win_p_cache_freshness 已随 ADR-0308 废除:rung 外推
-#: 机制被 W31 节点胜率阶梯替换,无进程内缓存可查。)
+#: 机制被 迁移审计 w31(git 历史) 节点胜率阶梯替换,无进程内缓存可查。)
 
 
 def check_boss_rung_corpus_sample_gate(
@@ -4825,7 +4828,7 @@ def check_boss_rung_corpus_sample_gate(
 def check_difficulty_curve_live_contamination(rows: list[dict]) -> dict:
     """批37 检查项:难度曲线 live 帧污染守卫(判读面;语料级显式调)。
 
-    背景(批㉖ F1 读链翻转,commit 09cf8296):``enemy_difficulty``
+    背景(迁移审计批 F1 读链翻转,commit 09cf8296):``enemy_difficulty``
     旧链 = session 简报恒值(实测 108)压死逐帧真读,35 局 1785 帧
     零爬升样本;翻转后真读优先 + ``enemy_difficulty_live`` 保真位。
     批37 语料实证(首真值局 run_20260824_100252,36 帧):live 真值

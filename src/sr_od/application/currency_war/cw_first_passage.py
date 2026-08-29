@@ -21,7 +21,7 @@ K1-K3 判据随后。
 from __future__ import annotations
 
 # ⚖️ 单一源(49 号 J0 子承普查命中 → ADR-0183 统一):掉血先验基准表持有者 = cw_plane_table
-# (批 3 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
+# (迁移批 3(ADR-0465) 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
 # 本模块引用之并在此定义分布语义(CV/位面乘数)。
 # 旧 HP_LOSS_MU 本地副本(与基准表同值异名)删除,防双源漂移。
 from sr_od.application.currency_war.cw_plane_table import (
@@ -56,7 +56,7 @@ def _p2_lcond_mix() -> float:
 def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     """单节点掉血分布(板强档 × 位面 → [(掉血量, 概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
 
-    μ 标定源合一(ADR-0440,W370 §5-④ 双源退役):P1 = HP_LOSS_MU 现档
+    μ 标定源合一(ADR-0440,`w370_p2_recalib/` §5-④ 双源退役):P1 = HP_LOSS_MU 现档
     (P1 零漂移,不走 P2 标定);P2+ = 两态同构 μ(tier)=(1−p(rung(tier)))
     ·L_cond_mix —— 胜率=registry.p_win_p2_by_rung(rung 坐标=board_tier
     0-3 钳 0-2,与 p_win 表 k3 折叠同口径),条件败面=registry.

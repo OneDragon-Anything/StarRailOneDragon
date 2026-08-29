@@ -160,7 +160,7 @@ def _engine_frac_remainder(state: GameState,
 
 def _core_star_count(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> float:
-    """核心升星持有量(W88/ADR-0339,[13] 三件套第三件的评分显影)。
+    """核心升星持有量(迁移审计 w88(git 历史)/ADR-0339,[13] 三件套第三件的评分显影)。
 
     持有域内 star≥2 且∈目标集(意向目标∪引擎件——引擎件任何模式下
     都是方向件)的件数;deployed 全额、bench ×registry.bench_form_weight
@@ -189,13 +189,13 @@ def _core_star_count(state: GameState, session: StrategySession,
 
 def _merge_progress_count(state: GameState, session: StrategySession,
                           registry: DecisionV2Registry) -> float:
-    """3合1 中间进度项(W96/ADR-0340,[13] 副本凑合 × [17] 溢余该花)。
+    """3合1 中间进度项(迁移审计 w96(git 历史)/ADR-0340,[13] 副本凑合 × [17] 溢余该花)。
 
     目标集内、尚无 star≥2 持有的名字,其 1★ 副本份数的中间进度:
     每名只计第 2 份(份数 1→2 = 1 进度;第 3 份 merge 成 2★ 后由
     core_star 承接,star≥2 持有则本项对该名让位,两侧不双计)。
     域权重 ADR-0295 同式:该名有 deployed 副本 ×1.0,纯 bench 副本
-    ×bench_form_weight 折减。修的是 W93 断买根因①:目标件第 2 份
+    ×bench_form_weight 折减。修的是 迁移审计 w93(git 历史) 断买根因①:目标件第 2 份
     (1★)买入在 targets(集合隶属封顶)/eng_frac(只辖三过渡体系)/
     core_star(star≥2 门)/rung(整数档)全维度零 delta → 仲裁层
     「非正分」拒 → 金 59→90 溢出趴三轮([17] >50 每一分都该花)。
@@ -397,7 +397,7 @@ _PIPELINE_TAGS = frozenset({
 def _shop_has_engine_card(state: GameState) -> bool:
     """店内是否有引擎件(过渡体系阵营/希儿;ADR-0301 找件判据)。
 
-    W47 统一化:阵营/引擎名改读 ``cw_system_cards`` 派生 helper
+    迁移审计 w47(git 历史) 统一化:阵营/引擎名改读 ``cw_system_cards`` 派生 helper
     (``system_judge_factions``/``engine_char_names``,与诊断口径同源
     靠 import 不靠手抄——第五张体系卡加入自动传导)。
     """
@@ -453,7 +453,7 @@ def p1_battle_loss_est(state: GameState, registry: DecisionV2Registry,
 
         loss(r) = max(0, vd_p1_loss_intercept + vd_p1_loss_slope_rung × r)
 
-    出处=遥测拟合(W324 战斗粗模型冻结语料,battle 节点败局伤害线性
+    出处=遥测拟合(`w324_coarse_battle/` 战斗粗模型冻结语料,battle 节点败局伤害线性
     拟合,battle n=278/73 局聚类稳健;registry 字段注释带产物指针)。
     **语义必须是条件伤害**:V_D 收益式的该因子与 Δwin_rate 相乘(额外
     胜场避免的掉血),故取「打了但输了」的条件期望;误用全样本(胜+
@@ -472,7 +472,7 @@ def p1_battle_loss_est(state: GameState, registry: DecisionV2Registry,
 def engine_jump_gold(eng_from: int, state: GameState,
                      registry: DecisionV2Registry,
                      session: StrategySession | None = None) -> float:
-    """单级引擎跳变(e→e+1)的金值(W131/ADR-0352,买侧 V 的量纲基准)。
+    """单级引擎跳变(e→e+1)的金值(`w131_a2n_arm/`/ADR-0352,买侧 V 的量纲基准)。
 
     与 vd_refresh_score 的收益侧**同式同源**(ADR-0349 金口径):
 
@@ -483,7 +483,7 @@ def engine_jump_gold(eng_from: int, state: GameState,
     战斗数与掉血两因子的骨架值治理(ADR-0425,math_proofs P15):战斗
     数从 plane_node_table 槽序表逐轮推导(P12 的 P2 手法同法;表缺退
     registry.battles_left_est,故 session=None 时行为=骨架缺省),
-    掉血=条件败局伤害遥测拟合。诊断背景(W131):收益侧原骨架视界
+    掉血=条件败局伤害遥测拟合。诊断背景(`w131_a2n_arm/`):收益侧原骨架视界
     battles_left_est=5 与 interest_rule 的 C_interest 视界 R(≈20-23)
     错档一整个量级是买侧 EV 门恒拒的主因——R 项自 ADR-0352 起按 C 的
     同一视界折金,战斗项本批跟上;e≥2(封顶档)无跳变,返回 0。
@@ -508,7 +508,7 @@ def engine_jump_gold(eng_from: int, state: GameState,
 def formation_gold_account(base: GameState, after: GameState,
                            registry: DecisionV2Registry,
                            session: StrategySession | None = None) -> float:
-    """买候选对阵容完成度的贡献,**按组合跳变计值**(W131/ADR-0352)。
+    """买候选对阵容完成度的贡献,**按组合跳变计值**(`w131_a2n_arm/`/ADR-0352)。
 
     与 ADR-0349 D 侧「核心 2★ 完成按整跳变计值」同思路——买件的
     完成度贡献不是单件散分(层3 的 targets/eng_frac 族,O(1-3) 的
@@ -543,7 +543,7 @@ def formation_gold_account(base: GameState, after: GameState,
 
 def _vd_p1_pair(state: GameState, session: StrategySession,
                 registry: DecisionV2Registry) -> float | None:
-    """P1 体系对缺件找牌账(W170/ADR-0369,候选 b;P2 分支不辖)。
+    """P1 体系对缺件找牌账(`w170_p1_vd/`/ADR-0369,候选 b;P2 分支不辖)。
 
     授权语义(每次放行答得出「找什么」=具名缺件,[31] 刷新金只用于找
     目标件——锁定帧体系对成员即二级目标件,ADR-0367):
@@ -620,9 +620,9 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
 
 def vd_refresh_score(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> float | None:
-    """V_D 批口径评分(W126/ADR-0349,经济循环总模型步③;P5 主定理)。
+    """V_D 批口径评分(`w126_b_arm/`/ADR-0349,经济循环总模型步③;P5 主定理)。
 
-    **金口径总账**(W113 §3.2(c)⟲R2 / P5 检验点①):
+    **金口径总账**(迁移审计 w113(git 历史) §3.2(c)⟲R2 / P5 检验点①):
 
         V_D = 收益 − 成本
         收益 = 2★核心完成的成型跳变金值(F15 战力折算,registry 单一源):
@@ -638,18 +638,18 @@ def vd_refresh_score(state: GameState, session: StrategySession,
     - 收益按「核心 2★ 完成」计值(成型三件套第三件收口,整跳变的
       兑现绑定件);j 张已持时成本侧自动放大(E 随剩余张数增长),
       远未齐时 V_D 自然为负(攒自然刷新,不硬 D)——P5 边界语义;
-    - **目标等级窗二分**([3]/W113 §3.3 冲突消解):level_plan 目标说
+    - **目标等级窗二分**([3]/迁移审计 w113(git 历史) §3.3 冲突消解):level_plan 目标说
       ``level_up``(窗外)→ 返回 None(D 让位给升,「没到就少刷新、
       多买经验」);``roll``/``stable``(窗内/峰值停留)→ V_D 生效
       (判据=``_resolve_level_goal`` 单一源,comp 自带 level_plan 优先);
-      **P2 修订(W154/ADR-0361)**:窗二分改消费 DP ``refresh_budget``
+      **P2 修订(`w154_p2d/`/ADR-0361)**:窗二分改消费 DP ``refresh_budget``
       授权(升级与 D 并行;DP 异常保守回退 level_plan 门);
-    - **P2 段成本/收益口径**(W154/ADR-0361,P11/P12):成本=机会成本
+    - **P2 段成本/收益口径**(`w154_p2d/`/ADR-0361,P11/P12):成本=机会成本
       C_dec(Δinterest×min(R, recovery_rounds_p2)+ρ·s,替换批口径面值;
       [17] 溢余即花)+ 预算硬界 s≤g−boss_floor;release 门辖帧息损项计 0
       (单一源=posture_release.spend_gate_active,同 score_state 息 EV 项);收益=存活语境参数
       (loss_p2/battles_left_p2 state 推导)。P1 收益侧同法治理
-      (ADR-0425:战斗数槽序表推导+掉血遥测拟合,P15);W170/
+      (ADR-0425:战斗数槽序表推导+掉血遥测拟合,P15);`w170_p1_vd/`/
       ADR-0369 为 P1 增 pair 缺件找牌通道(vd_p1_pair_enabled 辖,见 _vd_p1_pair);
     - 金 50/51 边界的守息纪律不由本函数辖——由 arbiter.interest_rule
       的 C_interest 表达(P5⑤ 已证=定理退化输出,G2:不设常量金门);
@@ -660,18 +660,18 @@ def vd_refresh_score(state: GameState, session: StrategySession,
 
     core = vd_target_core(state, session)
     if not core:
-        # W170/ADR-0369:core 无对象(未锁 comp/配方锁局 p1_pair 帧)时
+        # `w170_p1_vd/`/ADR-0369:core 无对象(未锁 comp/配方锁局 p1_pair 帧)时
         # pair 缺件通道仍可评估(配方锁局的 p1_pair 帧本就无 locked_comp;
         # P2/未锁无对帧由 _vd_p1_pair 自身辖域回 None)
         return _vd_p1_pair(state, session, registry)
-    # 概率窗二分([3]/W113 §3.3;W154/ADR-0361 P2 修订):
+    # 概率窗二分([3]/迁移审计 w113(git 历史) §3.3;`w154_p2d/`/ADR-0361 P2 修订):
     # - P1 core 通道:goal 说 level_up(窗外)→ core 让位(「没到就少刷新、
-    #   多买经验」);W170/ADR-0369 起 level_plan 窗**只辖 core 通道**,
+    #   多买经验」);`w170_p1_vd/`/ADR-0369 起 level_plan 窗**只辖 core 通道**,
     #   pair 缺件通道(_vd_p1_pair)自带独立窗(缺件∧[3] 单次预算前提);
     # - P2(plane≥2 且 vd_p2_enabled):窗二分消费刷新预算——升级与 D 是
     #   并行授权(储备线已把 level_cost 算进 R*),level_plan 互斥把 D 预算
-    #   整个吞掉 = 评分层让一拍变让整个位面(W152 断点②:13/14 帧打空)。
-    #   批 3 预算收权(W623 D2):判据显式改**预算函数口径**——
+    #   整个吞掉 = 评分层让一拍变让整个位面(`w152_p2d/` 断点②:13/14 帧打空)。
+    #   预算收权批(ADR-0465)(`w623_batch3_pre-mortem/` D2):判据显式改**预算函数口径**——
     #   refresh_ev_budget>0 → 窗开;=0(储备段/应急停手=合法 0 帧)→ 让位。
     from sr_od.application.currency_war.cw_economy import (
         _resolve_level_goal,
@@ -685,7 +685,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         if refresh_ev_budget(state, session, registry) <= 0:
             return None
     elif goal is not None and goal.action == 'level_up':
-        # W170/ADR-0369:level_plan 窗只辖 core 通道(core 让位给升,
+        # `w170_p1_vd/`/ADR-0369:level_plan 窗只辖 core 通道(core 让位给升,
         # 「没到就少刷新、多买经验」);pair 缺件通道走自己的窗(缺件∧
         # [3] 单次预算前提,见 _vd_p1_pair)——P2 分支(上方)不受此辖
         return _vd_p1_pair(state, session, registry)
@@ -695,7 +695,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
               if getattr(d, 'char_id', '') == core]
     if not copies or max(getattr(d, 'star', 1) or 1 for d in copies) >= 2:
         # core 副本 0(从未入手)/已 2★ → core 找件对象消失;pair 缺件
-        # 通道仍可评估(W170/ADR-0369:never-2 局的主形态=core copies0)
+        # 通道仍可评估(`w170_p1_vd/`/ADR-0369:never-2 局的主形态=core copies0)
         return _vd_p1_pair(state, session, registry)
     j = len(copies)   # 全 1★ 的基础副本数(2★ 已在上面短路)
     from sr_od.application.currency_war.cw_chars import CHARACTERS as _CH
@@ -720,7 +720,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
             - registry.h3_win_rate.get(1, 0.0))
     spend = e * (state.shop_refresh_cost or 2)
     if state.plane >= 2 and registry.vd_p2_enabled:
-        # W154/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧);P1 收益侧
+        # `w154_p2d/`/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧);P1 收益侧
         # 骨架值治理见 ADR-0425:
         #   benefit^P2 = Δrung×R + Δh3_win × loss_p2 × hp_to_gold
         #                × battles_left_plane(state 推导,非缺省 5)
@@ -765,7 +765,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
                * registry.hp_to_gold
                * battles_left_plane(state, session, registry))
     p1_core = benefit - spend
-    # W170/ADR-0369:roll/stable 窗内 core 与 pair 缺件两本找件总账取大
+    # `w170_p1_vd/`/ADR-0369:roll/stable 窗内 core 与 pair 缺件两本找件总账取大
     # (同一 RefreshShop 动作的两种具名「找什么」,core 语义逐位保留)
     pair_v = _vd_p1_pair(state, session, registry)
     return p1_core if pair_v is None else max(p1_core, pair_v)
@@ -793,22 +793,22 @@ def _cand_is_engine_piece(cand: Candidate) -> bool:
 def _off_lock_demotion(cand: Candidate, state: GameState,
                        session: StrategySession,
                        registry: DecisionV2Registry) -> str:
-    """W150/ADR-0359 买侧通道锁定目标约束的降级裁决。
+    """`w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束的降级裁决。
 
     锁定帧(``cw_intention.locked_buy_scope`` 非 None)时,
     ``registry.off_lock_buy_tags`` 辖的买候选中「目标件 ∉ 锁定目标
-    体系集」者降级——约束是**方向**不是绞索(W147 基调:优先级/围栏
+    体系集」者降级——约束是**方向**不是绞索(`w147_evolve/` 基调:优先级/围栏
     式非禁换):
 
     - ``'demote'``:层3 评分减 off_lock_buy_penalty(降级非禁绝,
       板面差分显著为正仍可过;[31]④ 填充不变量——填充件可回收,
       通道保持可买,只让位目标件);
     - ``'final_fence'``:位面末轮 boss 窗的 line_opportunistic 非目标
-      件直接拒(W143 strict 型联判的末轮面;目标件+填充不辖);
+      件直接拒(`w143_formation/` strict 型联判的末轮面;目标件+填充不辖);
     - ``''``:无锁定帧/目标件在域/非辖标签/应急态([18] hp 报警时
       战力优先方向次要)→ 不降级。
 
-    A/B 通道:``registry.buy_lock_constraint_enabled`` False=回 W145
+    A/B 通道:``registry.buy_lock_constraint_enabled`` False=回 `w145_recipe_lock/`
     后行为(恒 '')。
     """
     if not registry.buy_lock_constraint_enabled:
@@ -878,11 +878,11 @@ def score_candidate(cand: Candidate, state: GameState,
 
     禁止单卡边际拆分——差值全部来自板面形态维(档位/战力/息)与
     即时金流(卖出回金);refresh 候选走 V_D 批口径金账
-    (vd_refresh_score,W126/ADR-0349)。
+    (vd_refresh_score,`w126_b_arm/`/ADR-0349)。
     """
     base = score_state(state, registry, session)
     if cand.tag == 'o1_bench_fill':
-        # W611 O1 备战空位填补(ADR-0463):板面差分对该通道构造性零维
+        # `w611_econ_cycle/` O1 备战空位填补(ADR-0463):板面差分对该通道构造性零维
         # (bench 囤件不进形态维)→ 评 0 中性,放行语义由义务证明背书
         # (溢余段买 1★ 退全款+息帽截断:已实现成本 0、收益 ≥0,弱占优
         # 参数无关,w611_econ_cycle/DESIGN.md §1.3)——arbiter 非正分门
@@ -891,16 +891,16 @@ def score_candidate(cand: Candidate, state: GameState,
         return 0.0, {'base': base, 'after': None, 'o1_bench_fill': True,
                      'int_emb': 0.0}
     if cand.tag == 'refresh':
-        # W126/ADR-0349 V_D 批口径(P5 检验点①):refresh 附庸闸
+        # `w126_b_arm/`/ADR-0349 V_D 批口径(P5 检验点①):refresh 附庸闸
         # (refresh_max_round 轮界/refresh_min_gold 金门/refresh_ev 常量
         # /饥饿折扣/危机 max 分支/成型找件通道)整体退场——D 候选
         # 评分=vd_refresh_score 的金口径总账(收益=核心 2★ 完成的
         # 成型跳变金值,成本=expected_refreshes×刷价批口径)。
-        # W119/ADR-0347:bd['int_emb']=0(刷新分内无息分量——EV 授权
+        # 迁移审计 w119(git 历史)/ADR-0347:bd['int_emb']=0(刷新分内无息分量——EV 授权
         # 剥离用,arbiter.interest_rule 消费;金 50/51 拒 D 是 C_interest
         # 在 50 档边界的自然输出,P5⑤,不设常量金门(G2))。
-        # ADR-0348 扑满低危战斗(口述定谒 2026-08-26)×W120 P8 上限
-        # (W122 F-01):过热局 reward 节点按「奖励型战斗」处理——轻投入
+        # ADR-0348 扑满低危战斗(口述定谒 2026-08-26)×迁移审计 w120(git 历史) P8 上限
+        # (迁移审计 w122(git 历史) F-01):过热局 reward 节点按「奖励型战斗」处理——轻投入
         # 凑羁绊刷伤害拿奖励,**禁深花保血**。凑羁绊 D 不是 V_D 的
         # 核心找件语境(找件=核心概率表,凑羁绊=店内羁绊件),走
         # piggy_refresh_ev 独立小额账;受 P8 上限辖:s≤0.277R(采前
@@ -931,14 +931,14 @@ def score_candidate(cand: Candidate, state: GameState,
         return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
     after = score_state(after_state, registry, session)
     val = sum(after.values()) - sum(base.values())
-    # W131/ADR-0352 买侧组合跳变金账:买候选对完成度的贡献按组合跳变
+    # `w131_a2n_arm/`/ADR-0352 买侧组合跳变金账:买候选对完成度的贡献按组合跳变
     # 计值(与 V_D 收益侧同式同源,R 视界),供 interest_rule 的买侧 V
     # 消费(max 取大,不进层3 序分——序分继续辖排序/正分门)。
     form_gold = 0.0
     if isinstance(cand.action, BuyCard):
         form_gold = formation_gold_account(state, after_state, registry,
                                            session)
-    # W119/ADR-0347:bd['int_emb'] = 本候选分数内**实际嵌入的息分量**
+    # 迁移审计 w119(git 历史)/ADR-0347:bd['int_emb'] = 本候选分数内**实际嵌入的息分量**
     # (EV 授权的 V 剥离单一源——arbiter.interest_rule 消费:
     # V = val − int_emb)。默认=息差;ADR-0332 平滑生效时改写为
     # 真实档损(平滑后的净嵌入),两处保持同值。
@@ -997,7 +997,7 @@ def score_candidate(cand: Candidate, state: GameState,
     if (cand.tag in registry.crisis_buy_tags
             and crisis_hoard_active(state, registry)):
         # ADR-0302 危机囤金修复(应急段):危机态(hp≤25 且金≥40,
-        # 批㉝ F3 指纹)战力买候选板面差分恒 0.00 被仲裁器「非正分」
+        # 迁移审计批(可解释性遥测) F3 指纹)战力买候选板面差分恒 0.00 被仲裁器「非正分」
         # 拒 → 金囤 85+ 板濒死零动作。偏置只顶 0 分差分为正——
         # 金 52→49 的息崖(-25)不被翻越,危机花费止于满息平台
         # ([17]「>50 该买就买」+[18]「不为苟住破息」)。常量在
@@ -1010,7 +1010,7 @@ def score_candidate(cand: Candidate, state: GameState,
             and _cand_is_engine_piece(cand)
             and -registry.interest_rounds <= val
             <= registry.forming_bias_val_max):
-        # ADR-0332 成型补充偏置(成型度权重;W64 Ring3 同族评分活性修):
+        # ADR-0332 成型补充偏置(成型度权重;迁移审计 w64(git 历史) Ring3 同族评分活性修):
         # P1 破息窗 + 板面未成型(引擎<2,[13] 成型即停手的前提不满足=应
         # 继续买配方件)时,引擎件买入的「成型期权」显影——cap 饱和/冗余
         # 档位下买入不改评分维(base==after)被「非正分」拒(ADR-0301
@@ -1026,9 +1026,9 @@ def score_candidate(cand: Candidate, state: GameState,
     # 定谳清理(策略开关生命周期第 4 态):goldrich_buy_bias(ADR-0305
     # 件3,三窗否决+ADR-0408 同构复证)、early_pace 五字段偏置(ADR-0408,
     # 三窗无一致正方向)、filler_star 期权分与方向门豁免(ADR-0402,
-    # W504 开臂 A/B wash)的评分消费块均已删除,删除清单与证据链见各
+    # `w504_filler_star_adr0402/` 开臂 A/B wash)的评分消费块均已删除,删除清单与证据链见各
     # ADR 定谳/清理节。
-    # W150/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
+    # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
     off_lock = _off_lock_demotion(cand, state, session, registry)
@@ -1056,7 +1056,7 @@ def score_all(cands: list[Candidate], state: GameState,
     return out
 
 
-# ===== R5 数据平表 + EffectSpec 打分偏置通道(W628 批 2 效果层归位)=====
+# ===== R5 数据平表 + EffectSpec 打分偏置通道(`w628_migration_b2/` 迁移迁移批 2(方向层接管)(方向层接管) 效果层归位)=====
 # 蓝图 §4.2-R5:拍值打分钩子(box_card/star_tome/wish_trial,原 default_
 # strategy 内联魔数)降为「名字→标定权重」数据平表;本表 = 唯一标定源,
 # 钩子消费面读表取值(数值原样迁移,行为零漂移;战场族条目推迟挂账)。
@@ -1081,13 +1081,13 @@ PICK_BIAS = PickBiasTable()
 
 
 def effect_pick_bias(session: StrategySession, option_name: str) -> float:
-    """EffectSpec → 拍值偏置通道(批 2 消费接入;R5 消费面)。
+    """EffectSpec → 拍值偏置通道(迁移迁移批 2(方向层接管)(方向层接管) 消费接入;R5 消费面)。
 
     - 输入 = session.effect_inventory 在场效果条目;按条目 spec 的
       ``notes`` 声明偏置选项名(平表外挂,数值随实采/sim 标定批填,
       **缺省 0 = 无偏置**,不猜值——strategy-work「决策规则数学先行」门);
     - 战场族(BATTLEFIELD category)推迟:战场改写类偏置语义待执行预判批
-      (W610 P2-2)定义,本通道暂只认 ECONOMY/STATE 族;
+      (`w610_gold_digger_spec/` P2-2)定义,本通道暂只认 ECONOMY/STATE 族;
     - pending=True 条目不参与(二义未定谳,消费端走保守支,cw_effect_
       inventory 契约)。
     """

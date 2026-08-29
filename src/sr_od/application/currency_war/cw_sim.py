@@ -11,7 +11,7 @@
   开局 bench 构成(4 张,65% 1费/35% 2费——遥测校准);
   每轮收入(基础 5 + 息 + 连胜奖);
   战斗结算:Δ池优先(实机经验分布采样);池不可达时的回退层
-  胜负面 = **W31 实测节点×轮次胜率阶梯**(n=192 replay 语料,
+  胜负面 = **迁移审计 w31(git 历史) 实测节点×轮次胜率阶梯**(n=192 replay 语料,
   ``NODE_WIN_P_LADDER`` 单一源,ADR-0308),损益幅度沿用旧
   方向二元模型的幅度层(25 局 HP 轨迹校准)。
 
@@ -157,11 +157,11 @@ EQUIP_GRANT_BONUS_ADV_SHARE: float = 0.35   # 追加件中进阶占比
 # 事件金 = 金流状态分布校准总闸(ADR-0233 建通道;ADR-0447 重整定)。
 # 语义(why):sim 策略=产线策略且有意不模拟执行缺口(完美执行是终态),
 # 而实机金状态分布含决策/执行缺口造成的富状态——本表按实机逐轮备战
-# 帧金轨迹(2026-08-28 当日 15 局,W493 预注册)做反馈整定,使 sim 状态
+# 帧金轨迹(2026-08-28 当日 15 局,`w493_income_calib/` 预注册)做反馈整定,使 sim 状态
 # 分布对齐实机,「金高位前提」的策略检查在 sim 里真实激活。整定程序:
 # δ(t) += 0.7·(实机帧金均值 − sim 帧金均值),3 轮收敛(残差全 |≤5| 金/轮),
 # 台账 = .debug/temp/currency_war/w493_income_calib/calib_loop_log.json(gitignored)。
-# 边界(W503 对抗审计修补 E/B,ADR-0447):
+# 边界(`w503_attack_valve/` 对抗审计修补 E/B,ADR-0447):
 # - **靶标注**:靶 = 带执行缺陷的 2026-08-28 败局为主轨迹(12/15 死亡,
 #   幸存者偏差自认)——禁止被引用为长期经济真值;
 # - **r9 退坡**:r9 δ=32.0 为「非策略病分量」,闭环原始收敛值 46.36 中
@@ -186,7 +186,7 @@ def _event_gold(round_num: int, rng: random.Random) -> int:
     return max(0, int(base + rng.uniform(-2, 2)))
 
 # 战斗结算幅度层(25 局 HP 轨迹校准;胜负面自 ADR-0308 起由
-# W31 节点×轮次胜率阶梯掷,幅度常量沿用本组)
+# 迁移审计 w31(git 历史) 节点×轮次胜率阶梯掷,幅度常量沿用本组)
 EARLY_WIN_DELTA: int = 2            # r1-r2 弱敌小胜
 WIN_DELTAS: tuple[int, ...] = (2, 2, 0, -4)   # 战斗胜时的轮结算
 LOSS_BASE: float = 7.0              # r3 基础损
@@ -222,10 +222,10 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
     (99, 36.0, 10.0),
 )
 
-# ===== W31 实测节点×轮次胜率阶梯(回退层胜负面单一源;ADR-0308) =====
+# ===== 迁移审计 w31(git 历史) 实测节点×轮次胜率阶梯(回退层胜负面单一源;ADR-0308) =====
 # 来源:replay outcomes 语料 plane=1 & killed 非空 & board_before 非空
 # = n=192(killed True 104 / False 88),按 (node_type, round) 统计的
-# killed 胜率——W31 报告(`.debug/temp/currency_war/cw_dev/deep_read/
+# killed 胜率——迁移审计 w31(git 历史) 报告(`.debug/temp/currency_war/cw_dev/deep_read/
 # W31_报告.md` §2)。替换旧拍脑袋胜负面:
 #   battle  方向二元门控(方向已立→胜)——胜率从未按节点实测;
 #   encounter 结构性恒败(p=0);
@@ -235,10 +235,10 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
 # encounter r7 0.04;boss r9 0.05。未观测的 (node, round) 组合按
 # 节点类型边际值兜底(``NODE_WIN_P_BY_TYPE``)。
 # ⚠️ 数据边界(ADR-0308):语料全部来自旧策略(line_strategy)病局
-# ——「六局同型败的镜像」(进度树 W30/W31 收账判读),阶梯是旧
+# ——「六局同型败的镜像」(进度树 迁移审计 w30(git 历史)/迁移审计 w31(git 历史) 收账判读),阶梯是旧
 # 策略在各种板面下的**边际**胜率,不含成型度条件性(rung 维被
 # 压平);decision_v2 新策略语料攒够后**应重标本表**(届时遥测
-# board_before 补记角色名+星级,W31 §6.1,条件性才可标定)。
+# board_before 补记角色名+星级,迁移审计 w31(git 历史) §6.1,条件性才可标定)。
 NODE_WIN_P_LADDER: dict[tuple[str, int], float] = {
     ('battle', 3): 0.30,
     ('battle', 4): 0.29,
@@ -253,14 +253,14 @@ NODE_WIN_P_BY_TYPE: dict[str, float] = {
     'boss': 0.05,
 }
 # 胜时小额(与 reward/supply 的 EARLY_WIN_DELTA 同档;「大胜」
-# 形态待样本后校准幅度——W31 语料只有 killed 二值,无胜幅度分层)。
+# 形态待样本后校准幅度——迁移审计 w31(git 历史) 语料只有 killed 二值,无胜幅度分层)。
 # ⚠️ P1 初始 HP=80 非 100(simulate_p1 `st.hp = 80`;批⑪ 自纠记档
 # ——按 100 锚算 boss 损失会出伪影)。
 BOSS_WIN_DELTA: int = 2
 
-# ===== P2 段校准层(W157/ADR-0362;语料边界=W151 四局解剖+16 局
+# ===== P2 段校准层(`w157_p2/`/ADR-0362;语料边界=`w151_p2/` 四局解剖+16 局
 # replay plane=2 行 44 条,行为分布验证口径非 hp 点值校准) =====
-# P2 位面段轮数(boss@r7;W156 §2:16 局 outcomes 拼版,r1-r7 全在)。
+# P2 位面段轮数(boss@r7;迁移审计 w156(git 历史) §2:16 局 outcomes 拼版,r1-r7 全在)。
 P2_ROUNDS: int = 7
 # P2 节点序列(观测拼版,逐槽一致无变异观测):
 # r1 battle(16/16)/r2 battle(10/10 到达局)/r3 supply(5/5)/
@@ -273,14 +273,14 @@ P2_NODE_SEQUENCE: tuple[str, ...] = (
     'battle', 'battle', 'supply', 'battle',
     'encounter', 'reward', 'boss',
 )
-# P2 战斗回退档:胜率 0.11(W151:P2+ 战斗 1 胜 8 败)/败掉血带
-# 15-17(W151:每败 -15~-17,B≈10+未达标罚 P;结算屏三项拆解
+# P2 战斗回退档:胜率 0.11(`w151_p2/`:P2+ 战斗 1 胜 8 败)/败掉血带
+# 15-17(`w151_p2/`:每败 -15~-17,B≈10+未达标罚 P;结算屏三项拆解
 # P2r1 实证 +2/-10/-15,economy.md §10.2)。Δ池 plane=2 桶可及
 # 时经验分布优先;缺桶走本带(ADR-0362)。
 P2_BATTLE_WIN_P: float = 0.11
 P2_LOSS_BAND: tuple[int, int] = (15, 17)
 
-# ===== P2 战斗存活层参数化校准族(W193/ADR-0377,W186 设计 Phase 1) =====
+# ===== P2 战斗存活层参数化校准族(`w193_p2sim/`/ADR-0377,迁移审计 w186(git 历史) 设计 Phase 1) =====
 # 结构:win_p = clip(p0 + β·form − γ·drift(round)),form=板面质量键
 # (engines 数[deployed 口径,_settle_rung 同源]+level 折算+星级深度折算);
 # 负=分段掉血带内均匀。**校准层(非真战斗机制)**,诚实边界:
@@ -291,32 +291,32 @@ P2_LOSS_BAND: tuple[int, int] = (15, 17)
 # - 四常数族单一注入点=P2CombatCalib(A/B 与敏感性扫描同通道)。
 # 掉血分段带校准来源(`w193_p2sim/calibrate_truth.py` 复跑,真值=
 # 生产 replay plane=2 未删失差分;hp_after==1 为败北地板删失样本弃):
-# - battle_r1 (14,28):进场首战(跨位面差分,n=6 未删失;W186 设计文本
+# - battle_r1 (14,28):进场首战(跨位面差分,n=6 未删失;迁移审计 w186(git 历史) 设计文本
 #   的「r1-r2 带 −4~−16」系 r2-vs-r1 相邻差分口径,不含 r1 自身——
 #   本批实测 r1 明显更重,分立成段,偏差记 ADR-0377);
 # - battle_early (4,16):r2-r3(设计口径带;本批未删失样本 15/15 落内);
 # - battle_late (15,25):r4+(设计口径带;本批未删失 19-21 落内);
 # - encounter (9,18) / boss (21,26):设计口径带(boss 样本均地板删失,
 #   取原始差分下界语义=真损 ≥ 带端)。
-# 胜率:p0=0.11(W151/语料边际 5/37=0.135 的保守下沿);β 方向由胜例
+# 胜率:p0=0.11(`w151_p2/`/语料边际 5/37=0.135 的保守下沿);β 方向由胜例
 # board 强制为正、量级未定(胜例 form 1.25-2.25 vs 全体均值 ≈1.4,
 # 几乎无区分度)→ 保守 0.04,敏感性主扫参;γ 弱(轮梯度未识别)→ 0.02。
-# 星级分量(W230/ADR-0401,ADR-0377 form 扩展):star_depth=上场件
+# 星级分量(`w230_star_form/`/ADR-0401,ADR-0377 form 扩展):star_depth=上场件
 # Σ(star−1)(全量口径,同 ADR-0399 HandoffSnapshot star_sum−deployed_n,
 # 纯 state 可算、生产/sim/离线回放三面同式);真值分帧校准
 # (w230_star_form/calibrate_star.py,44 combat 帧/6 胜):
 # engines=1 桶内 sd=0 → 0/8 胜,sd∈{1,2} → 3/15(0.20)——方向为正
 # (胜例集中于 sd 1-2);sd≥3 零胜但 n≤4 不可辨 → 量级未定,保守
 # form_star_weight=0.5(一颗 2★ 折半台引擎)+ 敏感性扫描端点 0/0.25/1.0;
-# 动机 = W226/W227 实证 sim 缺星级因果通道(board_tier core2 维打不
+# 动机 = `w226_handoff_sim/`/`w227_handoff_gate/` 实证 sim 缺星级因果通道(board_tier core2 维打不
 # 出去、承接门主投资方向不可仲裁)。
 
 
 @dataclass(frozen=True)
 class P2CombatCalib:
-    """P2 段战斗存活层参数族(W193/ADR-0377;单一注入点,A/B 同通道)。
+    """P2 段战斗存活层参数族(`w193_p2sim/`/ADR-0377;单一注入点,A/B 同通道)。
 
-    ``calibrated=False`` = 逐位回 W157/ADR-0362 行为(Δ池 plane=2 桶
+    ``calibrated=False`` = 逐位回 `w157_p2/`/ADR-0362 行为(Δ池 plane=2 桶
     优先 + ``P2_BATTLE_WIN_P`` 恒值回退档)——A/B 回退对照臂。
     """
 
@@ -335,13 +335,13 @@ class P2CombatCalib:
     #: form 键的 level 折算权重(form = engines + w·(level−6);
     #: engines=deployed 口径 _settle_rung 同源,0-4)
     form_level_weight: float = 0.25
-    #: form 键的星级深度折算权重(W230/ADR-0401:star_depth=上场件
+    #: form 键的星级深度折算权重(`w230_star_form/`/ADR-0401:star_depth=上场件
     #: Σ(star−1) 全量口径,同 ADR-0399 HandoffSnapshot;core2/board_tier
     #: 的星级维胜率因果通道)。保守 0.5,敏感性端点 0/0.25/1.0。
     form_star_weight: float = 0.5
     #: level 折算基准(P2 常见进场 level 6)
     form_level_base: int = 6
-    #: 事件金双臂(W186 §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
+    #: 事件金双臂(迁移审计 w186(git 历史) §3:K3 零样本——'p1'=复用 P1 表[打标未校准],
     #: 'zero'=P2 段事件金归零;敏感性双臂,rng 流两臂同耗保配对)
     event_gold: str = 'p1'
     #: 分段掉血带(败场;带内均匀采样)
@@ -363,8 +363,8 @@ def deployed_star_depth(st: GameState) -> int:
     HandoffSnapshot star_sum−deployed_n;纯 state 可算、生产/sim/
     离线回放三面同式)。
 
-    消费点:p2_form_key 星级分量(W230/ADR-0401)与 **Δ池 boss 桶键**
-    (W240/ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
+    消费点:p2_form_key 星级分量(`w230_star_form/`/ADR-0401)与 **Δ池 boss 桶键**
+    (迁移审计 w240(git 历史)/ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
     浅桶的方向冲突;净星深下 1★→2★ 合并键 +1 永不落浅桶,买 bench
     副本不扰动)。已知边界:2★→3★ 合并键 −1(3 副本 Σ(star−1)=3 →
     载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
@@ -384,13 +384,13 @@ def _star_depth_from_rows(rows) -> int:
 
 
 def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
-    """form=板面质量键(W193/ADR-0377:engines+level 折算;
-    W230/ADR-0401 扩展:+星级深度折算)。
+    """form=板面质量键(`w193_p2sim/`/ADR-0377:engines+level 折算;
+    `w230_star_form/`/ADR-0401 扩展:+星级深度折算)。
 
     engines = ``_settle_rung`` 同源(deployed 口径四体系达成数,0-4);
-    W182 实测 deployed 口径与掉血对应最干净、板深无区分度。
+    `w182_p2/` 实测 deployed 口径与掉血对应最干净、板深无区分度。
     star_depth = ``deployed_star_depth`` 单一源(core2 维/board_tier
-    的星级分量因果通道,W226 §⑥/W227 挂账的 sim 建模缺口)。
+    的星级分量因果通道,`w226_handoff_sim/` §⑥/`w227_handoff_gate/` 挂账的 sim 建模缺口)。
     """
     star_depth = deployed_star_depth(st)
     return (float(_settle_rung(st)) + calib.form_level_weight * (
@@ -488,22 +488,22 @@ class SimResult:
     # (占位实体披露计数——'钻石' 不再以真装备身份进 owned 池,
     # 只在此计数披露,phantom_equip_no_wear 回归 0 容忍)
     phantom_supply_picks: int = 0
-    # W213/ADR-0394:P1 出口 key_equips 命中度量(命中数 / 需求总数;
+    # `w213_sim_supply/`/ADR-0394:P1 出口 key_equips 命中度量(命中数 / 需求总数;
     # 口径 = P1 段末 worn(deployed.equips)+ owned(st.equips)合并
     # 对当时 target_comp.key_equips(计重复)的满足量;target 未锁
-    # 定或 key 为空的局 total=0,聚合端按 total>0 局求均值——W212
+    # 定或 key 为空的局 total=0,聚合端按 total>0 局求均值——`w212_sim_equip/`
     # 批 A 同口径(key_last=最后一次分配时的 key 表))
     p1_key_hit_hits: int = 0
     p1_key_hit_total: int = 0
-    # ===== W614 迁移批 0:sim 保真三补的记账出口(纯观测,零漂移)=====
-    # 装备事件落账(计数级;实机出口对应物 = W607 判读量「滞留件数」与
+    # ===== `w614_sim_fidelity/` 迁移批 0:sim 保真三补的记账出口(纯观测,零漂移)=====
+    # 装备事件落账(计数级;实机出口对应物 = `w607_affix_consumption/` 判读量「滞留件数」与
     # 库藏生锈词条暴露面,词条语义单一源 cw_comps.RUST_AFFIX_NAME):
     equip_grants: int = 0        # 发放件数(supply 选择/reward 直发/追加件)
     equip_wears: int = 0         # 穿戴件数(分配器从 owned 池移穿上板的件)
     equip_syntheses: int = 0     # 装备栏内合成成品件数(合成链 hook 点火时)
     p1_unworn_exit: int = 0      # P1 段末未穿滞留件数(len(owned 池))
     p1_rust_units_peak: int = 0  # P1 段内生锈暴露峰值 min(10, 未穿件数)
-    # 上阵代理记账(实机出口对应物 = W608 重裁 M2「配方件躺 bench 轮数/局」
+    # 上阵代理记账(实机出口对应物 = `w608_ladder_adversarial/` 重裁 M2「配方件躺 bench 轮数/局」
     # 与成型质量粗代理;代理语义=配方隶属按意向 target 的 core/faction 集)
     p1_bench_recipe_piece_rounds: int = 0   # P1 各轮「bench 上配方隶属件数」累计
     p1_deployed_power_avg: float = 0.0      # P1 各轮上阵战力贡献代理均值
@@ -517,37 +517,37 @@ class SimResult:
     # 动作 v2:围栏跳过轮数(显式动作发出轮 select_deployments 自动
     # 部署让位——裁决1「显式>围栏,同轮互斥」;账本同步记 skip_fence 行)
     fence_skips: int = 0
-    # ===== P2 段观测(ADR-0362,W157;planes>=2 时填,默认 0/False)=====
+    # ===== P2 段观测(ADR-0362,`w157_p2/`;planes>=2 时填,默认 0/False)=====
     p2_entered: bool = False        # 活过 P1 进场 P2(P1 段死=False)
     p2_rounds: int = 0              # P2 段已结算轮数(0-7)
     p2_combat_total: int = 0        # P2 段战斗类节点结算数
     p2_combat_wins: int = 0         # 其中 delta>=0 的胜场数
     p2_hp0: bool = False            # 死在 P2 段(终局 hp<=0)
     p2_refreshes: int = 0           # P2 段 RefreshShop 次数(D 次数)
-    # ===== P2 校准层与判读观测(W193/ADR-0377;planes>=2 时填)=====
+    # ===== P2 校准层与判读观测(`w193_p2sim/`/ADR-0377;planes>=2 时填)=====
     p2_combat_calibrated: bool = False   # 本局 P2 结算走参数化校准层?
     p2_gold_carried: int | None = None   # 金带走量(死在 P2 段时的末金;
-                                          # 活过 P2=None——W183 D1 判据族)
+                                          # 活过 P2=None——`w183_carry/` D1 判据族)
     p2_buys_by_cost: dict[str, int] = field(default_factory=dict)
                                         # P2 段买笔数按价格带 {'1-2','3','4-5'}
-                                        # (W183 价格带判读口径)
+                                        # (`w183_carry/` 价格带判读口径)
     p2_switch_events: list[tuple[int, str, str]] = field(default_factory=list)
                                         # 意向切换事件 (轮,前 target,后 target)
-                                        # (W182「切换后采购执行密度」数据源)
+                                        # (`w182_p2/`「切换后采购执行密度」数据源)
     p2_lv6_round: int | None = None  # P2 段内首次 level>=6 的轮(None=未达)
-    p2_lv7_round: int | None = None  # P2 段内首次 level>=7 的轮(W183:
+    p2_lv7_round: int | None = None  # P2 段内首次 level>=7 的轮(`w183_carry/`:
                                      # run15 恒 lv6 卡死形态的可观测指标)
-    # W224/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot.
+    # `w224_handoff/`/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot.
     # as_dict;进场继承完成后位面首帧采样——生产同点=session.v3_handoff,
     # 决策代码挂载零复制单一源)。None=未进 P2/策略桩未算。纯观测零漂移
     # (不耗 rng,planes=1 路径不触及)。
     p2_handoff: dict | None = None
-    # ===== 投资注入观测(W162/ADR-0364;invest 注入时填,默认空/0)=====
+    # ===== 投资注入观测(`w162_inject/`/ADR-0364;invest 注入时填,默认空/0)=====
     invest_env: str = ''            # 本局注入的投资环境名(空 = 无)
     invest_strategies: tuple[str, ...] = ()   # 本局实际注入持有的策略名序
     p1_locked_rounds: int = 0       # P1 段意向 phase=='locked' 的轮数
                                       # (①资格通道激活直证——无注入语料下
-                                      # 恒 0,W161 缺口闭合前后对照键)
+                                      # 恒 0,`w161_refresh/` 缺口闭合前后对照键)
 
 
 class _Pool:
@@ -610,7 +610,7 @@ def battle_delta(round_num: int, dir_round: int,
                  rng: random.Random) -> int:
     """普通战斗 HP 变化(校准层回退;ADR-0308)。
 
-    胜负面 = W31 实测阶梯 ``node_win_p('battle', round_num)``
+    胜负面 = 迁移审计 w31(git 历史) 实测阶梯 ``node_win_p('battle', round_num)``
     (n=192;旧方向二元门控「已立→胜」废弃——胜率从未按节点实测,
     语料实测方向已立后战斗胜率仍 ~0.29);胜 → ``WIN_DELTAS``,
     负 → 旧损益幅度层(LOSS_BASE/LOSS_PER_ROUND,25 局轨迹校准,
@@ -653,40 +653,40 @@ _DEPTH_BUCKET_W: int = 3   # 板深分桶宽
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
 # - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
-# v6(ADR-0308,W37):回退层胜负面换 W31 实测节点×轮次胜率阶梯
+# v6(ADR-0308,迁移审计 w37(git 历史)):回退层胜负面换 迁移审计 w31(git 历史) 实测节点×轮次胜率阶梯
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
 # boss rung 表+rung2 外推全部废弃(幅度层保留)。池内容不变但结算
 # 语义变 → 快照 META 指纹与锚重记(ADR-0308 回归验证节)。
 _SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指纹输入)
-# v7(ADR-0312,W50 口径统一):采样键 _deployable_depth 从
+# v7(ADR-0312,迁移审计 w50(git 历史) 口径统一):采样键 _deployable_depth 从
 # min(level, len(deployed)) 改 **Σboard(全集口径)**——与池语料
 # (decisions state.board 求和,实机全集口径)同口径;旧键与池语料
-# 不同口径,同一局面两侧落不同桶,采样系统性偏浅(W49 Q4)。同时
+# 不同口径,同一局面两侧落不同桶,采样系统性偏浅(迁移审计 w49(git 历史) Q4)。同时
 # state.board 本身换全集口径(_recount_board)——池内容不变但 sim
 # 侧查询/结算键变 → 快照 META 指纹重算 + ANCHOR_REGISTRY_N300 锚
 # 重记(ADR-0308 同款流程)。
-# v8(ADR-0362,W157 P2 段扩展):Δ池 **plane 维键化**——SNAPSHOT
+# v8(ADR-0362,`w157_p2/` P2 段扩展):Δ池 **plane 维键化**——SNAPSHOT
 # 形状 {节点:{位面:{桶:[Δ]}}},差分归属后行位面(P1r9→P2r1 跨
 # 位面差分归 plane=2);顺手清除既有 P1 池 P2 污染(44 条 plane=2
-# 差分混入无位面维的池,含 16 条跨位面差分,W156 勘察 §5.1)。
+# 差分混入无位面维的池,含 16 条跨位面差分,迁移审计 w156(git 历史) 勘察 §5.1)。
 # P1 桶语料随污染清除小幅变化 → 指纹重算 + ANCHOR_REGISTRY_N300
 # 锚重记(P2 段扩展换锚,P1 侧 drift 如实记档);live_delta_for
 # 增 plane 参(plane≥2 不跨位面回退——位面难度语义不同,缺桶走
-# 位面内兜底/回退层 P2 掉血带 15-17)。⚠️ 版本号勘误(W240):本条在
-# 快照 note 链里记作 v9(生成器 note 链自 W109 批起与 _SAMPLER_VERSION
+# 位面内兜底/回退层 P2 掉血带 15-17)。⚠️ 版本号勘误(迁移审计 w240(git 历史)):本条在
+# 快照 note 链里记作 v9(生成器 note 链自 迁移审计 w109(git 历史) 批起与 _SAMPLER_VERSION
 # 错位 +1);快照 note 链自 v10 起与本常量对齐。
-# v10(ADR-0404,W240):**boss 桶键 Σboard→净星深**(上场件
+# v10(ADR-0404,迁移审计 w240(git 历史)):**boss 桶键 Σboard→净星深**(上场件
 # Σ(star−1),与 ADR-0399 HandoffSnapshot star_sum−deployed_n /
 # p2_form_key star_depth 同源口径;单一源=_boss_star_depth)。修
-# W238 实证的方向冲突(3合1 消耗场上副本 → Σboard −2/次 → 键落浅桶,
+# 迁移审计 w238(git 历史) 实证的方向冲突(3合1 消耗场上副本 → Σboard −2/次 → 键落浅桶,
 # 而浅桶期望伤害更大 → sim 判「升星→boss 伤害↑」与 [27] 机制相反):
 # 净星深下 1★→2★ 合并键 +1 永不落浅桶;重生成后 P1 boss 语料
 # (49 行)全落桶 0——旧 Σboard 桶 9/12/15 的「条件性」系键口径伪影,
 # 真值≈无条件期望 27.57(≈旧全池 fallback 27.33,交叉自洽)。
 # encounter/reward/supply 桶键不动(Σboard);池内容变(指纹重算)+
-# W238 常数表重标定(registry handoff_boss_e_damage 键域
+# 迁移审计 w238(git 历史) 常数表重标定(registry handoff_boss_e_damage 键域
 # {9,12,15}→{0})。
-# v11(ADR-0407,W250):encounter 桶键 depth→rung(_settle_rung 同源;
+# v11(ADR-0407,`w250_delta_pool/`):encounter 桶键 depth→rung(_settle_rung 同源;
 # 解批⑬ F1 暂缓——扩容后 rung 主桶 n=23/27 达标、梯度显著,而 depth
 # 键下期望伤害真平 p=0.87)。reward/supply depth 键不动;池内容变。
 # v2(ADR-0268):加防饥饿守卫——n<_BUCKET_MIN_N 的桶降级采样
@@ -725,7 +725,7 @@ def pool_fingerprint(pool: dict) -> str:
     """
     import hashlib
     import json as _json
-    # ADR-0362(W157):canon 多一层位面({节点:{位面:{桶:Δ}}})——
+    # ADR-0362(`w157_p2/`):canon 多一层位面({节点:{位面:{桶:Δ}}})——
     # plane 维是池内容的一部分(位面分离语义),入指纹。
     canon = _json.dumps(
         {n: {str(p): {str(b): sorted(v) for b, v in sorted(buckets.items())}
@@ -742,7 +742,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     配对口径(r340 起):decisions 每轮取末行板深(Σboard),
     outcomes 同 run 按 (plane, round) 排序后相邻轮 hp 差分。
     半写行跳过并计数(生产 append 进行中尾行可能撕裂)。
-    ADR-0362(W157):差分归属**后行位面**——{节点:{位面:{桶:[Δ]}}}
+    ADR-0362(`w157_p2/`):差分归属**后行位面**——{节点:{位面:{桶:[Δ]}}}
     (与 cw_delta_pool_gen.build_pool 同口径;P1/P2 分桶)。
     """
     import json as _json
@@ -763,7 +763,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         return out
 
     boards: dict = {}
-    # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1));v11 起桶键
+    # 迁移审计 w240(git 历史)/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1));v11 起桶键
     # 判据需 deployed 名单(rung)也辖 encounter——decisions 行 join;
     # reward/supply 仍用 Σboard(boards)。
     star_depths: dict = {}
@@ -803,7 +803,7 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 # 指纹相等性无法用作收敛判据)。
                 unlabeled_dropped += 1
                 continue
-            # ADR-0362(W157):差分归属后行位面(P1r9→P2r1 归 plane=2)
+            # ADR-0362(`w157_p2/`):差分归属后行位面(P1r9→P2r1 归 plane=2)
             plane = int(b.get('plane') or 1)
             k = (run, b.get('plane'), b.get('round_num'))
             dep = boards.get(k)
@@ -823,15 +823,15 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                     b.get('board_before') or {},
                     deployed_names.get(k, frozenset()))
             elif nt == 'boss':
-                # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
+                # 迁移审计 w240(git 历史)/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
                 # deployed_star_depth 同式)——Σboard 键下 3合1 升星
                 # 使键 −2/次落浅桶而浅桶期望伤害更大,与 [27]「星级↑
-                # =战力↑」相反(W238 实证);净星深下 1★→2★ 合并键 +1。
+                # =战力↑」相反(迁移审计 w238(git 历史) 实证);净星深下 1★→2★ 合并键 +1。
                 if sd is None:
                     continue
                 bucket = min(sd // _DEPTH_BUCKET_W, 5) * _DEPTH_BUCKET_W
             else:
-                # v11(ADR-0407,W250):encounter 桶键 depth→rung(与
+                # v11(ADR-0407,`w250_delta_pool/`):encounter 桶键 depth→rung(与
                 # battle 同源 _engines_count;键查证:dep/sd 键下期望
                 # 伤害真平 p=0.87,rung 键梯度显著)。reward/supply 沿用
                 # depth 分桶。
@@ -860,7 +860,7 @@ def _normalize_pool(raw: dict) -> dict:
 
 
 def plane_view(pool_map: dict, plane: int = 1) -> dict:
-    """取池的**单位面视图**({节点:{桶:[Δ]}};ADR-0362,W157)。
+    """取池的**单位面视图**({节点:{桶:[Δ]}};ADR-0362,`w157_p2/`)。
 
     P1 锚定的池级检查(min_n/深崖/rung 锁/reward 锁/coverage)判据
     全是 P1 语料口径——消费位面化池时先取本视图,检查代码零改动;
@@ -954,13 +954,13 @@ def live_delta_for(node_type: str, key: int,
                    plane: int = 1) -> int | None:
     """按节点类型 + 分桶键取实机经验 Δ;无匹配桶 → None(调用方走旧模型)。
 
-    **位面维(ADR-0362,W157)**:``plane`` 选池的位面层;plane≥2
+    **位面维(ADR-0362,`w157_p2/`)**:``plane`` 选池的位面层;plane≥2
     **不跨位面回退**——位面难度语义不同(P2 掉血带 15-17 vs P1
     battle -7~-13),跨位面借样本=口径混桶;该位面桶缺 → 位面内
     兜底链(下探/全池合并)→ 仍空 → None(调用方走 P2 回退层
     掉血带,见 ``node_delta`` 的 plane 分支)。P2 语料 44 行,
     条件化分桶不做(每桶 n<5,防饥饿守卫辖)——实际采样≈位面内
-    全池合并的经验分布(W156 §2 分层结论)。
+    全池合并的经验分布(迁移审计 w156(git 历史) §2 分层结论)。
 
     **桶键语义按节点分流(ADR-0279,批⑬)**:
 
@@ -969,7 +969,7 @@ def live_delta_for(node_type: str, key: int,
       桶不可达时逐级下探更低 rung(信息最接近的可及桶);全不可达
       → 全池合并兜底(rung 信息缺,保经验分布方差;批⑬ F3「池均值
       兜底」形态);池空 → None。
-    - ``encounter``:``key`` = **成型度 rung**(v11,ADR-0407,W250;
+    - ``encounter``:``key`` = **成型度 rung**(v11,ADR-0407,`w250_delta_pool/`;
       与 battle 同源 ``_engines_count``/``_settle_rung`` 单一源。
       批⑬ F1「rung 样本不足暂 depth 分桶」经扩容+键查证解禁:depth
       键下期望伤害真平(Σboard<12 vs ≥12 置换检验 p=0.87,Spearman
@@ -978,7 +978,7 @@ def live_delta_for(node_type: str, key: int,
       ——「深板扛遭遇」主通道在 encounter 节点以 rung 维为真载体,
       板面件数本身不可兑换伤害减免)。分桶/下探路径与 battle 共式
       (域内缺桶逐级浅侧回退;邻接宽=rung±1)。
-    - ``boss``:``key`` = **净星深**(W240/ADR-0404:上场件 Σ(star−1),
+    - ``boss``:``key`` = **净星深**(迁移审计 w240(git 历史)/ADR-0404:上场件 Σ(star−1),
       ``deployed_star_depth`` 单一源;旧 Σboard 键与 3合1 升星方向
       冲突——升星使 Σboard −2 落浅桶而浅桶期望伤害更大,sim 判
       「升星→boss 伤害↑」与 [27] 机制相反)。分桶/缺桶浅侧回退
@@ -1070,7 +1070,7 @@ def _settle_rung(st: GameState) -> int:
     encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
 
     口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
-    输入 = **board 全集口径**(ADR-0312,W50:_recount_board——对齐生产
+    输入 = **board 全集口径**(ADR-0312,迁移审计 w50(git 历史):_recount_board——对齐生产
     outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
@@ -1083,12 +1083,12 @@ def _settle_rung(st: GameState) -> int:
 
 def boss_settle_delta(st: GameState, dir_round: int,
                       rng: random.Random) -> int:
-    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=W31 阶梯)。
+    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=迁移审计 w31(git 历史) 阶梯)。
 
     胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
     n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
     旧 rung 条件胜率(ADR-0277/0306 的 0/0/0.25 + rung2 外推)已被
-    W31 实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
+    迁移审计 w31(git 历史) 实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
     条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
     仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
     Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
@@ -1122,16 +1122,16 @@ def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random, *, plane: int = 1) -> int:
     """按节点类型的 HP 变化(r260 分层;ADR-0292 起 reward/supply 的
     **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
-    节点回退档胜负面 = W31 实测阶梯 ``node_win_p``):
+    节点回退档胜负面 = 迁移审计 w31(git 历史) 实测阶梯 ``node_win_p``):
     reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
     池真值同分布);
-    battle → 阶梯掷胜(W31:n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
+    battle → 阶梯掷胜(迁移审计 w31(git 历史):n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
     encounter → 阶梯掷胜(0.04),胜 +2/负 boss 档 × ENCOUNTER_MULT
     (档位不可观,均值近似);
     boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。
 
-    plane≥2(ADR-0362,W157):battle 回退档换 **P2 掉血带**——
-    胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料 W151,
+    plane≥2(ADR-0362,`w157_p2/`):battle 回退档换 **P2 掉血带**——
+    胜率 P2_BATTLE_WIN_P(0.11)/负 -15~-17 均匀带(语料 `w151_p2/`,
     P1 阶梯的 r3/r4 战斗胜率与幅度带都不辖 P2);encounter/boss
     沿用 P1 档+标注(P2 语料 3/2 行不足,池可及时优先池采样)。"""
     if node in ('reward', 'supply'):
@@ -1145,7 +1145,7 @@ def node_delta(node: str, round_num: int, dir_round: int,
             return BOSS_WIN_DELTA
         return boss_delta(dir_round, rng)
     if plane >= 2:
-        # ADR-0362:P2 battle 回退档(掉血带 15-17,W151)
+        # ADR-0362:P2 battle 回退档(掉血带 15-17,`w151_p2/`)
         if rng.random() < P2_BATTLE_WIN_P:
             return rng.choice(WIN_DELTAS)
         return -rng.randint(P2_LOSS_BAND[0], P2_LOSS_BAND[1])
@@ -1158,7 +1158,7 @@ def _direction_established(session: StrategySession) -> bool:
     ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
     ``session.v3_intention`` 意向分层锁定(旧臂 line_v2 的
     locked_line/bridge_id 读取随 ADR-0336 删除)。
-    W145/ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
+    `w145_recipe_lock/`/ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
     终局 comp 锁与配方对锁任一成立即方向已立(纯遥测口径)。
     """
     ist = getattr(session, 'v3_intention', None)
@@ -1170,11 +1170,11 @@ def _direction_established(session: StrategySession) -> bool:
 
 
 def _target_comp_label(session: StrategySession) -> str:
-    """账本 ``target_comp`` 字段(W43 leader 裁决 3):v3 意向。
+    """账本 ``target_comp`` 字段(迁移审计 w43(git 历史) leader 裁决 3):v3 意向。
 
     decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
     ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
-    字段回退随 ADR-0336 删除)。W145/ADR-0357:P1 配方锁局无 comp 锁,
+    字段回退随 ADR-0336 删除)。`w145_recipe_lock/`/ADR-0357:P1 配方锁局无 comp 锁,
     标签=``过渡配方·A+B``(体系对;遥测可读性,不进任何决策)。
     """
     ist = getattr(session, 'v3_intention', None)
@@ -1209,13 +1209,13 @@ def _board_factions_of(deployed) -> dict[str, int]:
 
 
 def _board_counts_of(deployed) -> dict[str, int]:
-    """board 全集计数(ADR-0312,W50 口径统一)。
+    """board 全集计数(ADR-0312,迁移审计 w50(git 历史) 口径统一)。
 
     **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
     旧「主阵营逐件累加」口径已废:state.board 消费方(recipe 门/
     在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
     星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
-    分叉(W49 Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
+    分叉(迁移审计 w49(git 历史) Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
     from sr_od.application.currency_war.cw_state import _recount_board
     return _recount_board(deployed)
@@ -1255,7 +1255,7 @@ def _first_trio_round(res, target: int) -> int | None:
 # 无希儿时不能独立当过渡(第四体系,单卡依赖)。
 # 通用羁绊(战技点/护盾/学者/减益…)不是过渡主体——四种都不含的
 # 49 帖全是直通线。
-# W47 统一化:``_TRANSITION_TRAITS`` 改 alias import 自模块头
+# 迁移审计 w47(git 历史) 统一化:``_TRANSITION_TRAITS`` 改 alias import 自模块头
 # (``cw_deploy_logic.TRANSITION_TRAITS``,其本体已从 SYSTEM_CARDS 派生,
 # 单一源;原先两模块各写一份同值常量对、注释互指——漂移窗口=任一侧单改)。
 # 消费本名的 scoring._engine_frac_remainder 等 import 路径不变。
@@ -1266,7 +1266,7 @@ def _engines_count(board_factions: dict[str, int],
                    ) -> int:
     """过渡体系达成数(三选几+希儿系;两两组合=过渡成型)。
 
-    W278:本体上移 cw_deploy_logic.engines_count(单一源;
+    迁移审计 w278(git 历史):本体上移 cw_deploy_logic.engines_count(单一源;
     cw_sim_checks 经 cw_deploy_logic 消费,不 import 本模块——
     检查网依赖方向锁);本名保留为薄委托,历史消费点
     (decision_v2/cw_evolution/cw_delta_pool_gen 等的懒 import)不动。
@@ -1327,20 +1327,20 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
 
 
 def _deployable_depth(st: GameState) -> int:
-    """板深 = **Σboard(全集口径)**(ADR-0312,W50 桶键统一)。
+    """板深 = **Σboard(全集口径)**(ADR-0312,迁移审计 w50(git 历史) 桶键统一)。
 
     池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
     角色每人贡献 ≥2)——sim 采样键旧用 ``min(level, len(deployed))``
     与池语料不同口径:同一局面在池里落深桶、sim 查询落浅桶,采样系统性
-    偏向低桶/miss(W49 Q4「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
+    偏向低桶/miss(迁移审计 w49(git 历史) Q4「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
     键/depth_trail/账本 depth 的单一源,与池语料同口径(Σboard,不加
     level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
     r390 的「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
     **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
-    boss 桶键=净星深(W240/ADR-0404,deployed_star_depth);encounter
+    boss 桶键=净星深(迁移审计 w240(git 历史)/ADR-0404,deployed_star_depth);encounter
     桶键=rung(v11/ADR-0407,_settle_rung 同源;depth 键下期望伤害
-    真平——W248「主通道断裂」的 encounter 维由扩容+键查证裁决:
+    真平——`w248_p1_hpair/`「主通道断裂」的 encounter 维由扩容+键查证裁决:
     板深维不可兑换,rung 维可辨)。
     """
     return sum((st.board or {}).values())
@@ -1391,7 +1391,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 equip_wear_effect: float = 0.0,
                 _p2_entry: P2ReplayEntry | None = None) -> SimResult:
     """单局位面段模拟(决策跑真策略代码;P1 段为主,``planes>=2``
-    追加 P2 段——W157/ADR-0362 案 a 最小可用)。
+    追加 P2 段——`w157_p2/`/ADR-0362 案 a 最小可用)。
 
     :param seed: 随机种子(同 seed 同局,可复现——**须同池指纹**,
         见 ``pool``;SimResult.pool_fingerprint 记录本局所用池)
@@ -1409,25 +1409,25 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         'snapshot'(主仓提交快照,CI/跨机基准)/'fallback'(显式
         退旧模型,结果打标)/Path(JSON 快照,历史重放)。
         A/B 对照同进程同池即可;**跨日基线对照须核指纹一致**。
-    :param diamond_cap_prob: 财富宝钻获取通道(ADR-0286/批㉔ F4):每备战期
+    :param diamond_cap_prob: 财富宝钻获取通道(ADR-0286/迁移审计批 F4):每备战期
         以此概率获得 1 颗财富宝钻(cap = level + 宝钻数,可叠加)。**注入频率
         待实机语料统计,默认 0 = 通道建好但不注入**(baseline 与旧树可配对)。
     :param config: 策略配置桩(默认 None)。decision_v2 栈不读 config
         (唯一策略载体;default 栈已退役,off 臂=冻结快照 worktree)。
-    :param invest: 投资策略/环境注入(W162/ADR-0364;默认 False =
+    :param invest: 投资策略/环境注入(`w162_inject/`/ADR-0364;默认 False =
         不注入,**主路径逐位零漂移**)。True = 按 seed 确定性采样
         (plaza 实选频次表,见 cw_sim_invest);传 ``SimInvestProfile``
         = 固定剧本(测试/A-B 配对臂)。注入写 session+state 的
         active_strategies/active_env(实机 handler 语义),经济聚合
         (economy_effect_of 链的已建模子集)在 sim 收入/刷价层生效,
         意向层①资格通道(ADR-0338)因此可点火。
-    :param p2_combat: P2 战斗存活层参数族(W193/ADR-0377;None=模块
+    :param p2_combat: P2 战斗存活层参数族(`w193_p2sim/`/ADR-0377;None=模块
         默认 ``P2_COMBAT_DEFAULT``)。``calibrated=False`` 臂逐位回
-        W157/ADR-0362 行为(Δ池 plane=2 优先 + 恒值回退档)——A/B
+        `w157_p2/`/ADR-0362 行为(Δ池 plane=2 优先 + 恒值回退档)——A/B
         与回退对照臂;planes=1 路径不消费本参数(零漂移)。
     :param _p2_entry: 案 b 臂进场态注入(内部参数;``simulate_p2_replay_entry``
         构造——跳过 P1 段与开局 bench 采样,直接从真值进场态跑 P2 段。
-        共享本函数的 P2 段循环体 = 单一源,W186 设计 §4 的消复制形态)。
+        共享本函数的 P2 段循环体 = 单一源,迁移审计 w186(git 历史) 设计 §4 的消复制形态)。
     """
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
@@ -1459,7 +1459,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # registry):满级帧决策层不再发起升级,执行层拒付层保留作防线。
     strat = strategy or DecisionV2Strategy(registry=sim_decision_registry())
     if _p2_entry is not None:
-        # W193/ADR-0377 案 b 臂:P1 段与开局 bench 采样跳过,直接从
+        # `w193_p2sim/`/ADR-0377 案 b 臂:P1 段与开局 bench 采样跳过,直接从
         # 真值进场态起跑(rng 不耗 nodes/bench 采样——进场态是外生
         # 真值,重放可复现性 = seed + 进场态 + 池指纹)。下方**共享**
         # 位面段循环体(单一源;与 simulate_p1 主入口零复制)。
@@ -1489,7 +1489,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         sess = session or StrategySession()
         sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
         streak = 0
-    # W162/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
+    # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
     _inv: InvestInjectionState | None = None
@@ -1515,9 +1515,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。案 b 臂=进场真值直带。
     st.xp_progress = (_p2_entry.xp_progress if _p2_entry is not None
                       else (0, XP_TO_NEXT_LEVEL.get(st.level, 4)))
-    # ADR-0286(批㉔ F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
+    # ADR-0286(迁移审计批 F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
     _diamonds = 0
-    # W614 保真三补的局级计数器(纯观测,不进 rng 流;默认路径全 0):
+    # `w614_sim_fidelity/` 保真三补的局级计数器(纯观测,不进 rng 流;默认路径全 0):
     _equip_grants = 0    # 装备发放件数
     _equip_wears = 0     # 装备穿戴件数(owned→已穿)
     _equip_syntheses = 0  # 装备栏内合成成品件数(合成链 hook 点火时)
@@ -1526,9 +1526,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     _bench_recipe_rounds_p1 = 0   # P1 配方件躺 bench 轮数累计(件×轮)
     _dep_power_sum_p1 = 0.0       # P1 上阵战力贡献代理累加
     _dep_power_rounds_p1 = 0      # P1 计均值用的轮数
-    # ADR-0362(W157):位面段迭代——P1 段(9 轮)后按 ``planes``
+    # ADR-0362(`w157_p2/`):位面段迭代——P1 段(9 轮)后按 ``planes``
     # 追加 P2 段(7 轮)。planes=1 时段表只含 P1 段,循环体逐位
-    # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。案 b 臂(W193)段表
+    # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。案 b 臂(`w193_p2sim/`)段表
     # 只含 P2 段(直接从真值进场态起跑)。
     _ts = 0   # 单调轮序号(跨位面累计;P1 段恒 == rn)
     # ADR-0439:上一轮节点与败胜态(败轮金路径——收入在下一轮开头入账,
@@ -1544,14 +1544,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         _segments = [(1, 9, nodes)]
         if planes >= 2:
             _segments.append((2, P2_ROUNDS, list(P2_NODE_SEQUENCE)))
-    # W193/ADR-0377:P2 战斗存活层参数族(单一注入点;None=模块默认)
+    # `w193_p2sim/`/ADR-0377:P2 战斗存活层参数族(单一注入点;None=模块默认)
     _p2c = p2_combat if p2_combat is not None else P2_COMBAT_DEFAULT
     for _seg_plane, _seg_rounds, nodes in _segments:
         if _seg_plane >= 2:
             # 进场继承块(ADR-0362):P1 末态 hp/gold/board/bench/
             # deployed/equips/意向**原样带过**——HP 跨位面继承是
             # 用户纠错真值(2026-08-23,economy.md §10.2);金/board/
-            # equips 跨位面无重置证据,按全继承+标注假设(W156 表
+            # equips 跨位面无重置证据,按全继承+标注假设(迁移审计 w156(git 历史) 表
             # #4)。决策代码 plane-aware:p1_pair 进 P2 由意向层
             # 自动清(cw_intention,ADR-0357),策略层零改动。
             st.plane = _seg_plane
@@ -1559,7 +1559,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 生产语义对齐:开局帧槽序表写 session(prep_director
             # 首帧写;battles_left_p2 消费,ADR-0361)
             sess.plane_node_table = list(nodes)
-            # ADR-0368(W169):位面日程真值序列(生产=prep_director 每位面
+            # ADR-0368(迁移审计 w169(git 历史)):位面日程真值序列(生产=prep_director 每位面
             # 首帧 append;sim P1 段不写表 → 进场补记 P1 真值 9,保
             # seen 序=位面序;cw_plane_table.schedule_of 消费)
             sess.plane_node_table_plane = _seg_plane
@@ -1585,11 +1585,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
             _gold_before = st.gold
             _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
-            # W193/ADR-0377:事件金双臂(K3 零样本敏感性)——'zero' 臂
+            # `w193_p2sim/`/ADR-0377:事件金双臂(K3 零样本敏感性)——'zero' 臂
             # P2 段事件金归零;rng 照耗(双臂同 seed 配对可比)。
             if st.plane >= 2 and _p2c.event_gold == 'zero':
                 _inc_event = 0
-            # W162/ADR-0364:注入策略的经济聚合(economy_effect_of 链已建模
+            # `w162_inject/`/ADR-0364:注入策略的经济聚合(economy_effect_of 链已建模
             # 子集)——息帽覆写 + 每节点给金。无 active_strategies 时表达式
             # 与旧逐位相同(零漂移);'invest' 键只在有持卡时才加(账本行
             # 形状对默认路径不变)。
@@ -1626,7 +1626,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _agg_inv is not None and _agg_inv.gold_per_node:
                 _inc['invest'] = _agg_inv.gold_per_node
             st.gold += sum(_inc.values())
-            # W162/ADR-0364:本轮策略选卡注入(overlay 在备战期出现 → 收入
+            # `w162_inject/`/ADR-0364:本轮策略选卡注入(overlay 在备战期出现 → 收入
             # 结算后、决策前;实机写点 = handle_invest_strategy 的 session
             # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
             # 免费刷额度在选卡后按当前持卡聚合重算(当轮选的卡当轮生效)。
@@ -1648,7 +1648,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
             # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
             st.refresh_probs = _roll_rotation(rng, st.level)
-            # ADR-0286(批㉔ F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
+            # ADR-0286(迁移审计批 F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
             if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
                 _diamonds += 1
             # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
@@ -1662,8 +1662,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
             _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
             _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
-            _refresh_xp_round = 0   # W614 G3:本轮付费刷新产经验(账本披露)
-            _bench_full_skips = 0   # ADR-0283 守卫:本轮满栏**非合成**拒买数(合成买已执行,不计入——W566 语义收窄)
+            _refresh_xp_round = 0   # `w614_sim_fidelity/` G3:本轮付费刷新产经验(账本披露)
+            _bench_full_skips = 0   # ADR-0283 守卫:本轮满栏**非合成**拒买数(合成买已执行,不计入——`w566_sim_guard/` 语义收窄)
             _bench_full_skip_gold = 0   # ADR-0285:非合成拒买折算金(净滞留口径)
             _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
             # 满级 LevelUp 拒付计数(执行层 cap 守卫披露;>0 = 决策层在
@@ -1677,7 +1677,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
             # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
             # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
-            # W65/ADR-0323:被拒事务不置位,围栏照跑)
+            # 迁移审计 w65(git 历史)/ADR-0323:被拒事务不置位,围栏照跑)
             _explicit_deploy_seen = False
             _acts: list[dict] = []
             _segs_used = 0
@@ -1687,12 +1687,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
             # 语义正确辖域)
             _round_formed_stop = False
-            # W227/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
+            # `w227_handoff_gate/`/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
             # formed_stop 承接维/EV 缺口项的判读数据面)
             _round_handoff_gap = 0
-            # W238/ADR-0403:boss 投影 hp 披露(None=投影关/非末窗)
+            # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 披露(None=投影关/非末窗)
             _round_handoff_hp_proj = None
-            # W52(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
+            # 迁移审计 w52(git 历史)(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
             # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
             # 的「连续放弃轮」数据源)
             _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
@@ -1705,7 +1705,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # sim.blood_budget_refresh_rejects(同式轮级差分披露)
             _bb_refresh_rejects_before = getattr(
                 sess, 'v3_blood_budget_refresh_rejects', 0)
-            # W114/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
+            # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
             # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
             _round_phase: str = ''
             _round_form_ok: bool = False
@@ -1739,16 +1739,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_formed_stop = _round_formed_stop or bool(
                     getattr(sess, 'v3_formed_stop', False))
                 if not _phase_snap:
-                    _phase_snap = True   # 轮入口首段快照(W114 影子)
+                    _phase_snap = True   # 轮入口首段快照(迁移审计 w114(git 历史) 影子)
                     _round_phase = str(getattr(sess, 'v3_phase', '') or '')
                     _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
                     _round_form_score = round(float(
                         getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
-                    # W119/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
+                    # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
                     _round_dp_posture = str(getattr(getattr(
                         getattr(sess, 'v3_dp_posture', None),
                         'posture', None), 'tag', '') or '')
-                    # W611 储备/义务披露(轮入口快照;与生产 decisions 行
+                    # `w611_econ_cycle/` 储备/义务披露(轮入口快照;与生产 decisions 行
                     # sess_* 同语义,义务帧兑现率/闲置金判读的 sim 侧源)
                     _round_reserve_cap = int(
                         getattr(sess, 'v3_reserve_cap', 0) or 0)
@@ -1761,11 +1761,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
                     _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
                                                 False))
-                    # W227/ADR-0400:承接门缺口(filters.formed_stop_
+                    # `w227_handoff_gate/`/ADR-0400:承接门缺口(filters.formed_stop_
                     # active 写;轮入口快照,判读「门扣住哪些轮」)
                     _round_handoff_gap = int(
                         getattr(sess, 'v3_handoff_gap', 0) or 0)
-                    # W238/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
+                    # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
                 if not use_refresh:
@@ -1781,7 +1781,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if st.plane >= 2:
                             res.p2_refreshes += 1   # ADR-0362:P2 段 D 次数
                         _cost_r = (st.shop_refresh_cost or 2)
-                        # W162/ADR-0364:策略免费刷额度(如 加油站 每节点
+                        # `w162_inject/`/ADR-0364:策略免费刷额度(如 加油站 每节点
                         # 1 次;cw_economy._refresh_cost 同语义)——额度内
                         # 刷价 0。无持卡/无额度时与旧逐位相同。
                         if _free_r and _free_used < _free_r:
@@ -1816,7 +1816,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if isinstance(a, BuyCard):
                         # ADR-0283(批⑰ F6)满栏守卫 + sim 解冻(ADR-0453
                         # 影响节兑现):满栏不再一律拒——与生产 simulate
-                        # (cw_state.simulate BuyCard 满栏分支,W544)同源:
+                        # (cw_state.simulate BuyCard 满栏分支,`w544_fullbench_mergebuy/`)同源:
                         # merge_buy_completes 判「本次点击完成一次合成」
                         # → 执行满栏合成买(k = merge_buy_k 张一次买入,
                         # 金 k×单价全款,店 k 张同身份牌下架,合成链
@@ -2013,10 +2013,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 动作 v2(契约包 C1,步2):显式部署通道执行——
                         # 转移语义在 cw_state.simulate 单一源(全量校验+原子
                         # 应用),此处转录账本 + 池守恒/经济记账同步。
-                        # W65 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
+                        # 迁移审计 w65(git 历史) 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
                         # 下方 applied 分支置位——**只有真执行(未被拒)的显式
                         # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
-                        # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;W64
+                        # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;迁移审计 w64(git 历史)
                         # Ring5:被拒事务也 skip_fence,90 次/11 局)。
                         # 预状态引用快照(池 ret / 经济记账用;simulate 会
                         # deepcopy,引用不跨界)
@@ -2046,7 +2046,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _applied = _log.get('result') == 'applied'
                         _tx_income = int(_log.get('income', 0) or 0)
                         _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
-                        # W101:applied 事务的 bench 净腾位数(执行点真值;账本
+                        # 迁移审计 w101(git 历史):applied 事务的 bench 净腾位数(执行点真值;账本
                         # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
                         # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
                         _tx_bench_delta = (
@@ -2060,7 +2060,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _tx_income = sell_refund(
                                 _sold.star, _bench_char_cost(_sold))
                         if _applied:
-                            # W65 修法3(ADR-0323):显式动作**真执行**才置位
+                            # 迁移审计 w65(git 历史) 修法3(ADR-0323):显式动作**真执行**才置位
                             # (被拒不跳围栏,见上方分支注释)
                             _explicit_deploy_seen = True
                             st = _new   # 整体替换(事务原子;simulate 单一源)
@@ -2092,7 +2092,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _entry['fill_cost'] = _tx_fill_cost
                         _acts.append(_entry)
                         if _applied and _shop_fill_cards:
-                            # W43 leader 裁决 2(phantom_rebuys 根治):事务
+                            # 迁移审计 w43(git 历史) leader 裁决 2(phantom_rebuys 根治):事务
                             # fill 已消费店槽——同批后续 BuyCard 是对陈旧
                             # state.shop 的提案,作废并立即重决策(同
                             # RefreshShop 的 break-redecide 语义),不套用
@@ -2114,7 +2114,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
             from sr_od.application.currency_war import cw_deploy_logic as _dl
             _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
-            # W155/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
+            # `w155_evolve_lock/`/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
             _lf = frozenset()
             try:
                 _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
@@ -2150,7 +2150,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
             # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
             # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
-            # check_skip_fence_pairing 同轮配对锁;W65/ADR-0323:被拒事务
+            # check_skip_fence_pairing 同轮配对锁;迁移审计 w65(git 历史)/ADR-0323:被拒事务
             # 不置位 → 不跳围栏 → 板面欠载不再被事务风暴封死)。
             _deploy_lag_units = 0
             if _explicit_deploy_seen:
@@ -2199,11 +2199,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     fw_carry=_fw,
                 )
                 _deploy_lag_units = len(_lag_idx)
-            # W614 G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
+            # `w614_sim_fidelity/` G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
             # - bench_recipe_pieces:bench 上配方隶属件数(char∈target core
             #   或 faction∈target factions;目标集=部署块同源 session 现读,
             #   未锁定时空集→恒 0)——逐轮落账本,局级累计=「配方件躺 bench
-            #   轮数」(实机出口 W608 M2 的 sim 对应物);
+            #   轮数」(实机出口 `w608_ladder_adversarial/` M2 的 sim 对应物);
             # - deployed_power:上阵战力贡献代理 = Σ(star + core∈target 计 1)
             #   ——星级加权 + 核心标记,记账级代理(非物理仿真),供成型质量
             #   粗比较;与 Δ池结算键(_settle_rung)口径无关。
@@ -2221,8 +2221,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _rust_peak = max(_rust_peak, min(10, len(st.equips)))
             if res.dir_round == 99 and _direction_established(sess):
                 res.dir_round = rn
-            # W162/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
-            # 注入前语料下 P1 恒 unlocked/p1_pair,此键恒 0[W161])
+            # `w162_inject/`/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
+            # 注入前语料下 P1 恒 unlocked/p1_pair,此键恒 0[`w161_refresh/`])
             if (_seg_plane == 1
                     and getattr(sess, 'v3_intention', None) is not None
                     and getattr(sess.v3_intention, 'phase', '') == 'locked'):
@@ -2239,12 +2239,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # only 池对 d9 成型局高估战损 ~6.4hp/场,是 sim hp_ge_60
             # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
-            # boss 键=净星深(W240/ADR-0404,修升星方向冲突)。
+            # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
             _dep = _deployable_depth(st)
-            # W193/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
+            # `w193_p2sim/`/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
             # 判「假条件化」;Phase 3 桶键 form×round 到量[n≥5]后让位
-            # 池采样)。calibrated=False = 逐位回 W157 路径(池优先 +
+            # 池采样)。calibrated=False = 逐位回 `w157_p2/` 路径(池优先 +
             # node_delta 回退档)。planes=1 恒不进本分支(P1 零漂移)。
             _p2_wp: float | None = None
             if (st.plane >= 2 and _p2c.calibrated
@@ -2277,14 +2277,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _ld = live_delta_for('battle', _settle_rung(st), rng,
                                              pool_map=pool_map, plane=st.plane)
                     elif _node == 'boss':
-                        # W240/ADR-0404:boss 采样键=净星深(修 Σboard 升星
+                        # 迁移审计 w240(git 历史)/ADR-0404:boss 采样键=净星深(修 Σboard 升星
                         # 方向冲突,见 live_delta_for docstring)。
                         _ld = live_delta_for(
                             'boss', deployed_star_depth(st), rng,
                             pool_map=pool_map, plane=st.plane)
                     elif _node == 'encounter':
                         # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
-                        # _settle_rung——depth 键下期望伤害真平,W250 查证;
+                        # _settle_rung——depth 键下期望伤害真平,`w250_delta_pool/` 查证;
                         # live_delta_for 桶缺逐级下探路径与 battle 共用)。
                         _ld = live_delta_for('encounter', _settle_rung(st), rng,
                                              pool_map=pool_map, plane=st.plane)
@@ -2300,7 +2300,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if _ld is not None:
                         delta = _ld
                     elif _node in ('battle', 'encounter', 'boss'):
-                        # W493 D1(ADR-0447):delta 对照臂桶缺回退由 W31 无
+                        # `w493_income_calib/` D1(ADR-0447):delta 对照臂桶缺回退由 迁移审计 w31(git 历史) 无
                         # 成型度阶梯(node_win_p/battle_delta)改接粗模型
                         # 注入胜率——零新数值(纯复用 cw_coarse_battle 已
                         # 验收表与 plaza 收缩),对照臂与主路径同交付口径。
@@ -2329,7 +2329,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # (ADR-0394 后果节声明的边界)的显式参数化——败局伤害按
             # 已穿进阶成品件数线性折减。仅 battle/encounter(boss 败局
             # 钳制语义冻结,不折减);0=关闭(逐位零漂移)。量级无实机
-            # 定量锚点(W465 装备流分析:P1 白板八战 -62 为裸装口径,
+            # 定量锚点(`w465_equip_flow/` 装备流分析:P1 白板八战 -62 为裸装口径,
             # 无「穿装对照」数据),总折减 60% 硬顶——A/B 消费时按
             # 灵敏度带呈报效应量,不作为已标定值。
             if _wear_eff > 0 and delta < 0 \
@@ -2424,7 +2424,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 def _sample_supply_opts(
                         _basic: list[str]) -> list[SupplyOption]:
                     # 发放采样(3 列;带钻 15% 粗估校准点)——两步各自
-                    # 调用一次,消耗局内 rng 流(W212 批 monkeypatch 臂
+                    # 调用一次,消耗局内 rng 流(`w212_sim_equip/` 批 monkeypatch 臂
                     # 用独立 rng 是补丁层限制,原生实现必须走局内 rng
                     # 才与实机发放分布一致)
                     return [SupplyOption(
@@ -2432,7 +2432,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         has_diamond=rng.random() < 0.15)
                         for _oi in range(3)]
 
-                # W213/ADR-0394:生产 RunSupplyNode 是真两步——
+                # `w213_sim_supply/`/ADR-0394:生产 RunSupplyNode 是真两步——
                 # 第一步 decide_supply(refresh_used=session 标志):
                 # 带钻→直接选;全无钻且本局未刷过→返回 refresh=True
                 # (sim 旧形态漏掉这一步的分支:恒把 refresh 标志丢弃、
@@ -2455,11 +2455,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _pick = decide_supply(_opts, st, sess.target_comp, None,
                                               refresh_used=True)
                     st.equips.append(_opts[_pick.idx].equip)
-                    _equip_grants += 1   # W614 G1 发放落账
+                    _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
                 else:
                     # 奖励节点:非选择型发放,直接 1 件基础件(均匀)
                     st.equips.append(rng.choice(_basic_names))
-                    _equip_grants += 1   # W614 G1 发放落账
+                    _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
                 # 追加件(多通道聚合代理):实机装备来自奖励/补给/投资
                 # 环境/遭遇后多通道,sim 只有上述两类节点承载 →
                 # 以固定概率补 1 件(基础为主、含少量进阶,
@@ -2470,7 +2470,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.equips.append(rng.choice(_adv_names))
                     else:
                         st.equips.append(rng.choice(_basic_names))
-                    _equip_grants += 1   # W614 G1 追加件落账
+                    _equip_grants += 1   # `w614_sim_fidelity/` G1 追加件落账
                 if _is_supply and _pick.idx < len(_opts) \
                         and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
@@ -2514,12 +2514,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.equips.remove(_c)
                     st.equips.append(_adv)
                     _synth_events.append(_adv)
-                    _equip_syntheses += 1   # W614 G1 合成落账
+                    _equip_syntheses += 1   # `w614_sim_fidelity/` G1 合成落账
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
                 )
-                # W212/ADR-0393:equip_allocation 生产调用形态——
+                # `w212_sim_equip/`/ADR-0393:equip_allocation 生产调用形态——
                 # ① occupied = 画面已穿(生产 occupied_m7
                 # 同语义;旧 sim 恒 None → 配对守卫看不见历史已穿,只看得
                 # 见本趟内部分配,跨轮守卫形同虚设)。BenchChar.equips
@@ -2532,7 +2532,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _equipped_now = equip_allocation(
                     sess.target_comp, st.deployed, list(st.equips),
                     occupied=_occupied)
-                # ADR-0312(W50 L2 雏形):分配结果同步写回 BenchChar.equips
+                # ADR-0312(迁移审计 w50(git 历史) L2 雏形):分配结果同步写回 BenchChar.equips
                 # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
                 # tracked_deployed[].equips 同语义)。写回按**多重集差**:
                 # 本趟新增 = 本趟分配 − 轮前已穿(防跨轮对同一人重复记同一
@@ -2542,7 +2542,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 for _who, _what in _equipped_now:
                     if _what in st.equips:
                         st.equips.remove(_what)
-                        _equip_wears += 1   # W614 G1 穿戴落账(owned→已穿)
+                        _equip_wears += 1   # `w614_sim_fidelity/` G1 穿戴落账(owned→已穿)
                     _adds.setdefault(_who, []).append(_what)
                 for d in iter_occupied_deployed(st.deployed):
                     _want = _adds.pop(d.char_id, None)
@@ -2563,24 +2563,24 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold': st.gold, 'hp': st.hp,
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
-                # W227/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
+                # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
                 # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
                 'handoff_gap': _round_handoff_gap,
-                # W238/ADR-0403:boss 投影 hp(None=投影关/非末窗;判读
+                # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp(None=投影关/非末窗;判读
                 # 「boss 后投影 hp」面,与 handoff_gap 同点快照)
                 'handoff_hp_proj': _round_handoff_hp_proj,
-                # W114/ADR-0346 相位影子观测(轮入口快照;零消费)
+                # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(轮入口快照;零消费)
                 'phase': _round_phase,
                 'form_ok': _round_form_ok,
                 'form_score': _round_form_score,
                 'dp_posture': _round_dp_posture,
-                # W611 储备/义务披露(轮入口快照;生产 decisions 行 sess_* 同语义)
+                # `w611_econ_cycle/` 储备/义务披露(轮入口快照;生产 decisions 行 sess_* 同语义)
                 'reserve_cap': _round_reserve_cap,
                 'reserve_overflow': _round_reserve_overflow,
                 'release_budget': _round_release_budget,
                 'release_reason': _round_release_reason,
                 'piggy_reward': _round_piggy,
-                # W146 v3 意向状态(与生产 decisions 行同构;sim 分析批
+                # 迁移审计 w146(git 历史) v3 意向状态(与生产 decisions 行同构;sim 分析批
                 # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
                 # 才能区分 unlocked/weak/locked)
                 'v3_intention': serialize_intention(
@@ -2613,9 +2613,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           'deployed': [{'char_id': d.char_id,
                                         'faction': d.faction,
                                         'slot': d.slot,
-                                        'star': int(getattr(d, 'star', 1) or 1),   # W88/ADR-0339:星级入账本(2★ 达成率度量)
+                                        'star': int(getattr(d, 'star', 1) or 1),   # 迁移审计 w88(git 历史)/ADR-0339:星级入账本(2★ 达成率度量)
                                          'position_pref': d.position_pref,
-                                        # ADR-0312(W50):装备随人进账本——
+                                        # ADR-0312(迁移审计 w50(git 历史)):装备随人进账本——
                                         # 检查镜像(_board_agg_of_deployed_
                                         # row)复算星徽羁绊贡献需要它
                                         'equips': list(getattr(d, 'equips', ())
@@ -2633,7 +2633,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'node': nodes[rn - 1], 'delta': delta,
                     # 合成执行链事件(本轮装备栏内合成的成品名;默认关恒空)
                     'syntheses': _synth_events,
-                    # W193/ADR-0377:参数化胜率披露(校准层结算行;
+                    # `w193_p2sim/`/ADR-0377:参数化胜率披露(校准层结算行;
                     # None=非校准路径[P1 段/uncalibrated 臂/reward 类])
                     'p2_win_p': _p2_wp,
                     'gold_before': _gold_before,
@@ -2658,7 +2658,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'segments': _segs_used,
                     # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
                     'merges': _merges,
-                    # ADR-0283(批⑰ F6)+ W566 语义收窄:本轮满栏**非合成**
+                    # ADR-0283(批⑰ F6)+ `w566_sim_guard/` 语义收窄:本轮满栏**非合成**
                     # 被拒的买次数(合成买已按 merge_buy_completes 执行,
                     # 不计入;0=常态;>0 = 决策层在满栏态想买不合成牌,
                     # 判读买门时须知)
@@ -2699,13 +2699,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                     # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
                     'fence_skipped': _explicit_deploy_seen,
-                    # W52(ADR-0326):本轮补偿趟是否放弃(0/1;连续放弃轮
+                    # 迁移审计 w52(git 历史)(ADR-0326):本轮补偿趟是否放弃(0/1;连续放弃轮
                     # ≥3 由检查项 decision_v2_remedy_loop 报警——设计容量
                     # 不足信号)
                     'remedy_abandoned': 1 if getattr(
                         sess, 'v3_remedy_abandoned', 0)
                         > _remedy_abandons_before else 0,
-                    # ===== W614 保真三补:记账出口(纯观测)=====
+                    # ===== `w614_sim_fidelity/` 保真三补:记账出口(纯观测)=====
                     # 未穿滞留件数/生锈暴露(词条语义 cw_comps.RUST_AFFIX_NAME:
                     # 每件未穿装备敌伤+3%,最多 10 件;「生锈泄洪」=穿戴/合成
                     # 使 rust_units 下降的轮,配 sim.refresh_xp 旁的计数读)
@@ -2724,11 +2724,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             })
             if st.hp <= 0:
                 break
-        # W213/ADR-0394:P1 段出口 key_equips 命中度量段末快照
+        # `w213_sim_supply/`/ADR-0394:P1 段出口 key_equips 命中度量段末快照
         # (无论 P1 段是打满还是中途死亡都记;口径见 SimResult
         # 字段注释)。段内变量 _seg_plane 在此可见(for 循环变量)。
         if _seg_plane == 1:
-            # W614 G1:P1 出口滞留件数(段末 owned 池快照;实机出口
+            # `w614_sim_fidelity/` G1:P1 出口滞留件数(段末 owned 池快照;实机出口
             # 「滞留件数」的 sim 对应物,段内死亡也记)
             res.p1_unworn_exit = len(st.equips)
             res.p1_rust_units_peak = _rust_peak
@@ -2743,7 +2743,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _need: dict[str, int] = {}
             for _k in _keys:
                 _need[_k] = _need.get(_k, 0) + 1
-            # 口径与 W212 批 A 一致:命中 = Σ min(需求份数, 持有份数)
+            # 口径与 `w212_sim_equip/` 批 A 一致:命中 = Σ min(需求份数, 持有份数)
             # / 需求总份数(key 表可含重复份数)
             res.p1_key_hit_total = sum(_need.values())
             res.p1_key_hit_hits = sum(
@@ -2754,7 +2754,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res.p2_hp0 = res.p2_entered and st.hp <= 0
     res.final_hp = st.hp
     res.level = st.level
-    # W614 保真三补:局级记账出口汇总(纯观测)
+    # `w614_sim_fidelity/` 保真三补:局级记账出口汇总(纯观测)
     res.equip_grants = _equip_grants
     res.equip_wears = _equip_wears
     res.equip_syntheses = _equip_syntheses
@@ -2763,18 +2763,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res.p1_deployed_power_avg = (
         round(_dep_power_sum_p1 / _dep_power_rounds_p1, 2)
         if _dep_power_rounds_p1 else 0.0)
-    # W193/ADR-0377:P2 判读同构观测(headline/账本扩展)——由账本
+    # `w193_p2sim/`/ADR-0377:P2 判读同构观测(headline/账本扩展)——由账本
     # plane=2 行派生(金带走量/carry 笔数价格带/意向切换/lv 到达轮)。
     if res.p2_entered:
         res.p2_combat_calibrated = _p2c.calibrated
-        # W224/ADR-0399:承接快照披露(策略 decide_prep 位面首帧块写
+        # `w224_handoff/`/ADR-0399:承接快照披露(策略 decide_prep 位面首帧块写
         # session.v3_handoff——案 b 臂同样经首轮 decide_prep 采样)。
         _h = getattr(sess, 'v3_handoff', None)
         res.p2_handoff = _h.as_dict() if _h is not None else None
         _p2_rows = [row for row in res.ledger
                     if (row.get('plane') or 1) == 2]
         if res.p2_hp0:
-            # 金带走量:死在 P2 段时的末金(活过 P2=None——W183 D1)
+            # 金带走量:死在 P2 段时的末金(活过 P2=None——`w183_carry/` D1)
             _g = _p2_rows[-1].get('gold') if _p2_rows else None
             res.p2_gold_carried = _g if isinstance(_g, int) else None
         _buys: dict[str, int] = {'1-2': 0, '3': 0, '4-5': 0}
@@ -2808,20 +2808,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         for row in res.ledger)
     res.pool_floor_hits = cards_pool.floor_hits
     if _inv is not None:
-        # W162/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
+        # `w162_inject/`/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
         res.invest_strategies = tuple(sess.active_strategies)
     return res
 
 
 @dataclass
 class P2ReplayEntry:
-    """案 b 臂真值进场态(W193/ADR-0377;``simulate_p2_replay_entry``
+    """案 b 臂真值进场态(`w193_p2sim/`/ADR-0377;``simulate_p2_replay_entry``
     的输入)。
 
     字段来源 = 生产 replay decisions 的 plane=2 首行 state(锚脚本
     构造);bench/deployed 为 dict 列表(char_id/faction/star/
     position_pref/equips),与生产遥测同构。有限牌池消费态不可观
-    (W186 表 #4 K4)→ 满池假设 + 标注。
+    (迁移审计 w186(git 历史) 表 #4 K4)→ 满池假设 + 标注。
     """
 
     hp: int
@@ -2864,13 +2864,13 @@ def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
                              pool: str | Path = 'snapshot',
                              p2_combat: P2CombatCalib | None = None,
                              use_refresh: bool = True) -> SimResult:
-    """案 b 交叉校验臂(W193/ADR-0377;W186 设计 §4/§3 锚 R1)。
+    """案 b 交叉校验臂(`w193_p2sim/`/ADR-0377;迁移审计 w186(git 历史) 设计 §4/§3 锚 R1)。
 
     从真值 P2 进场态(hp/gold/board/bench/deployed/level/意向)直接
     跑 P2 段——**共享 ``simulate_p1`` 的 P2 段循环体**(经 ``_p2_entry``
     注入跳过 P1 段,单一源零复制)。锚 R1 对拍口径:存活轮分布/战斗
     胜率/逐轮掉血带覆盖/金轨迹符号,统计量落实测带内即过(**带内**
-    不是「贴近」——贴脸=过拟合警报,W186 §6);真值 run 是旧策略
+    不是「贴近」——贴脸=过拟合警报,迁移审计 w186(git 历史) §6);真值 run 是旧策略
     病局,sim 跑当前策略,决策层差异 expected,锚只锁结算与经济层。
     """
     sess = StrategySession()
@@ -2884,7 +2884,7 @@ def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
 
 
 class _Plane1View:
-    """P1 段辖域切片(ADR-0362,W157):planes>=2 批次的 P1 锚定指标
+    """P1 段辖域切片(ADR-0362,`w157_p2/`):planes>=2 批次的 P1 锚定指标
     只消费 plane=1 行;planes=1 时视图 ≡ 原结果(零漂移)。
 
     hp_events 的 P1 行 ts∈1-9、P2 行 ts≥10(P2_NODE_SEQUENCE 首轮
@@ -2931,7 +2931,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       equip_wear_effect: float = 0.0) -> dict:
     """批量模拟 + 统计(HP≥60 概率/方向建立分布/平均末 HP)。
 
-    :param max_rounds: 段级窗口(W278 sim 段级短跑批;None=整局,既有
+    :param max_rounds: 段级窗口(迁移审计 w278(git 历史) sim 段级短跑批;None=整局,既有
         行为**逐位不变**)。设 K 后,各局的**前 K 轮逐轮决策流**
         (decisions/actions/gold/board/spend,state 快照带当时值)作为
         ``segment_checks`` 的输入——截断以**账本切片**实现:逐轮执行
@@ -2941,8 +2941,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         窗口(None=整局)。
 
     :param planes: 透传 ``simulate_p1``(1=P1 段——历史口径逐位不变;
-        2=追加 P2 段,报告增 P2 headline 四联,ADR-0362/W157)。
-    :param invest: 透传 ``simulate_p1``(W162/ADR-0364;注入批报告增
+        2=追加 P2 段,报告增 P2 headline 四联,ADR-0362/`w157_p2/`)。
+    :param invest: 透传 ``simulate_p1``(`w162_inject/`/ADR-0364;注入批报告增
         invest headline 三联:环境注入率/持卡均值/P1 锁定轮——含 D 的
         P1 侧结论自此批起以注入口径为基准)。
 
@@ -2963,7 +2963,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                            synthesis_chain=synthesis_chain,
                            equip_wear_effect=equip_wear_effect)
                for i in range(n)]
-    # ADR-0362(W157):P1 过程指标的辖域切片——planes>=2 时账本含
+    # ADR-0362(`w157_p2/`):P1 过程指标的辖域切片——planes>=2 时账本含
     # P2 段行,P1 锚定指标(成型/败场/引擎)只算 plane=1 行;
     # planes=1 时视图 ≡ 原结果(零漂移)。
     views = [_Plane1View(r) for r in results]
@@ -2989,10 +2989,10 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
             [d for d in (r.dir_round for r in results) if d < 99])
             if any(r.dir_round < 99 for r in results) else float('nan')),
         'avg_refreshes': sum(r.refreshes for r in results) / n,
-        # ===== P2 headline 四联(ADR-0362,W157;planes>=2 有意义)=====
+        # ===== P2 headline 四联(ADR-0362,`w157_p2/`;planes>=2 有意义)=====
         # 存活轮/P2 胜率/hp0 率/D 次数——P2 修法(ADR-0361 V_D)
         # 的行为分布验证场;比率分母=进场 P2 的局(P1 段死局不计,
-        # 与实机「活过 P1 才有 P2」幸存口径一致,W156 §3 风险声明)。
+        # 与实机「活过 P1 才有 P2」幸存口径一致,迁移审计 w156(git 历史) §3 风险声明)。
         'p2_entered_rate': len(_entered) / n,
         'avg_p2_rounds': (round(statistics.mean(
             [r.p2_rounds for r in _entered]), 2)
@@ -3006,8 +3006,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'avg_p2_refreshes': (round(statistics.mean(
             [r.p2_refreshes for r in _entered]), 2)
             if _entered else None),
-        # ===== P2 校准层与判读观测 headline(W193/ADR-0377;判读同构
-        # 口径对齐 W182/W183:金带走量/carry 笔数价格带/意向切换/lv 到达)=====
+        # ===== P2 校准层与判读观测 headline(`w193_p2sim/`/ADR-0377;判读同构
+        # 口径对齐 `w182_p2/`/`w183_carry/`:金带走量/carry 笔数价格带/意向切换/lv 到达)=====
         'p2_combat_calibrated': bool(
             _entered and _entered[0].p2_combat_calibrated),
         'avg_p2_gold_carried': (round(statistics.mean(
@@ -3030,7 +3030,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         'p2_lv7_reach_rate': (sum(1 for r in _entered
                                   if r.p2_lv7_round is not None)
                               / len(_entered) if _entered else None),
-        # W193/ADR-0377:校准层上下文(检查器带锚消费;bands=本批实参)
+        # `w193_p2sim/`/ADR-0377:校准层上下文(检查器带锚消费;bands=本批实参)
         'p2_calib': {
             'win_delta': (p2_combat or P2_COMBAT_DEFAULT).win_delta,
             'bands': {
@@ -3045,9 +3045,9 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                 'boss': list((p2_combat or P2_COMBAT_DEFAULT).band_boss),
             },
         },
-        # ===== invest headline 三联(W162/ADR-0364;invest 注入时有意义)=====
+        # ===== invest headline 三联(`w162_inject/`/ADR-0364;invest 注入时有意义)=====
         # 环境注入率/P1 持卡均值/P1 锁定轮分布(①资格通道激活直证:
-        # 无注入语料下 invest_p1_lock_rate 恒 0——W161 缺口闭合对照键)
+        # 无注入语料下 invest_p1_lock_rate 恒 0——`w161_refresh/` 缺口闭合对照键)
         'invest_env_rate': (sum(1 for r in results if r.invest_env) / n
                             if invest else None),
         'avg_invest_strategies': (round(statistics.mean(
@@ -3084,7 +3084,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
              if b is not None]), 2)
             if any(_first_engines_round(v, 2) is not None
                    for v in views) else None),
-        # ADR-0283(批⑰ F6)+ W566 语义收窄:全批满栏**非合成**拒买
+        # ADR-0283(批⑰ F6)+ `w566_sim_guard/` 语义收窄:全批满栏**非合成**拒买
         # 总次数(合成买已执行不计入;0=守卫兜底未介入,>0 = 满仓态
         # 买门判读须对照此计数)
         'bench_full_skipped_buys': sum(
@@ -3118,7 +3118,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 是词缀元数据不进 owned 池,此计数是它唯一的 sim 痕迹)
         'phantom_supply_picks': sum(
             r.phantom_supply_picks for r in results),
-        # W213/ADR-0394:P1 出口 key_equips 命中率(有 key 需求局
+        # `w213_sim_supply/`/ADR-0394:P1 出口 key_equips 命中率(有 key 需求局
         # 的均值;两步语义修复后应显著高于旧「恒 idx0」形态的基线)
         'p1_key_hit_rate': (round(statistics.mean(
             [r.p1_key_hit_hits / r.p1_key_hit_total
@@ -3184,7 +3184,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # 语料真值(含跨 run 配对伪影哨兵)
         rep_checks['reward_delta_pool_bucket_lock'] = \
             check_reward_delta_pool_bucket_lock(_pm)
-        # W109(ADR-0344):池新鲜度——snapshot/auto 池与本机生产
+        # 迁移审计 w109(git 历史)(ADR-0344):池新鲜度——snapshot/auto 池与本机生产
         # replay 落后 ≥2 局 = 再生管线断(池停 12h 零报警事故的
         # 常设防线);fallback 无池语义不辖;无本机 replay(CI)跳过。
         if pool in ('snapshot', 'auto'):
@@ -3219,7 +3219,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         rep_checks['r5plus_refresh_closure'] = \
             check_r5plus_refresh_closure(_ledgers)
         rep_checks['sim_endgold_calib'] = check_sim_endgold_calib(_ledgers)
-        # W493(ADR-0447):金分布/费用曲线对拍进标准报告——金均值越出
+        # `w493_income_calib/`(ADR-0447):金分布/费用曲线对拍进标准报告——金均值越出
         # 实机带软告警(校准总闸漂移),费用曲线纯披露(等级轨迹差已知根)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_gold_dist_calib,
@@ -3237,7 +3237,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         )
         rep_checks.update(run_batch_level_checks(
             _ledgers, report=report, pool_map=_pm))
-        # ADR-0362(W157):P2 段检查器最小集——金轨迹非负 + 段形状
+        # ADR-0362(`w157_p2/`):P2 段检查器最小集——金轨迹非负 + 段形状
         # (辖 planes>=2 批次的 P2 段行;P1 批无 plane=2 行恒绿)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_p2_gold_nonneg,
@@ -3246,7 +3246,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         _ledgers_p2 = [r.ledger for r in results]
         rep_checks['p2_gold_nonneg'] = check_p2_gold_nonneg(_ledgers_p2)
         rep_checks['p2_segment_shape'] = check_p2_segment_shape(_ledgers_p2)
-        # W193/ADR-0377:P2 战斗存活层检查器(掉血带覆盖锚 + 胜率带锚;
+        # `w193_p2sim/`/ADR-0377:P2 战斗存活层检查器(掉血带覆盖锚 + 胜率带锚;
         # 辖 calibrated 批——uncalibrated 批恒绿跳过,legacy 档不辖)
         from sr_od.application.currency_war.cw_sim_checks import (
             check_p2_loss_band_anchor,
@@ -3261,7 +3261,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         for v in rep_checks.values():
             v['seed_base'] = seed_base
         report['checks_violations'] = rep_checks
-    # W278 sim 段级短跑批:段级检查表(默认内嵌,只增报不改行为
+    # 迁移审计 w278(git 历史) sim 段级短跑批:段级检查表(默认内嵌,只增报不改行为
     # ——纯账本消费零 rng,headline/checks_violations 不受影响;
     # 辖域独立于 checks 开关;max_rounds=None 时窗口=整局,输出与
     # 整局语义一致)
@@ -3315,16 +3315,16 @@ def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
 def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
                    seed_base: int = 0,
                    planes: int = 2) -> dict:
-    """P2 段 vd_p2_enabled A/B 对照(W157/ADR-0362;ADR-0361 预留通道)。
+    """P2 段 vd_p2_enabled A/B 对照(`w157_p2/`/ADR-0362;ADR-0361 预留通道)。
 
-    A 臂=vd_p2_enabled 开(W154 口径:DP 窗授权+机会成本 C_dec+
-    存活收益口径)/B 臂=关(W153 前行为:P2 窗二分断死);同池同
+    A 臂=vd_p2_enabled 开(`w154_p2d/` 口径:DP 窗授权+机会成本 C_dec+
+    存活收益口径)/B 臂=关(迁移审计 w153(git 历史) 前行为:P2 窗二分断死);同池同
     seed 配对,planes=2(进场继承 + P2 七轮段)。**同进程 flag
-    对照**(W154 记档:并行期唯一安全 sim A/B 法——跨时点对照会被
+    对照**(`w154_p2d/` 记档:并行期唯一安全 sim A/B 法——跨时点对照会被
     在飞批/池重生成污染)。
 
     headline 四联(存活轮/胜率/hp0 率/D 次数)+ D 方向对拍:
-    预期 **D 次数 on>off**(W154 四局回放 6/14 帧翻正在分布面的
+    预期 **D 次数 on>off**(`w154_p2d/` 四局回放 6/14 帧翻正在分布面的
     体现——翻正帧=「差一张」找件通道打开);hp 类观测项如实报
     (P2 回退层掉血带口径,hp0 率是观测不是验收)。
     """
@@ -3371,7 +3371,7 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
         'pool_fingerprint': res_a[0].pool_fingerprint,
         'headline_on': _headline(res_a),
         'headline_off': _headline(res_b),
-        # D 次数对拍(配对计数;on>off 的局数 = W154 翻正预测的
+        # D 次数对拍(配对计数;on>off 的局数 = `w154_p2d/` 翻正预测的
         # 分布面证据;方向计数不含平局)
         'refresh_direction': {
             'on_gt_off': sum(
@@ -3388,7 +3388,7 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
     }
 
 
-# ---- W227/W238 承接门 A/B 批 harness(simulate_handoff_ab)已随
+# ---- `w227_handoff_gate/`/迁移审计 w238(git 历史) 承接门 A/B 批 harness(simulate_handoff_ab)已随
 # ---- ADR-0411 flag 家族清理删除(四臂 off/gate/proj/proj_only 的对照
 # ---- 结构建在已删除的 registry 布尔字段上);验证史数字见 ADR-0400/
 # ---- 0403/0411。承接门行为的单帧回归锁 = test_cw_w227/w238/w242/w252。
@@ -3402,20 +3402,20 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
                             form_level_weights: tuple[float, ...] = (0.25,),
                             form_star_weights: tuple[float, ...] = (0.5,),
                             ) -> dict:
-    """β/γ/事件金/form 权重敏感性扫描(W193/ADR-0377;**裁决口径**)。
+    """β/γ/事件金/form 权重敏感性扫描(`w193_p2sim/`/ADR-0377;**裁决口径**)。
 
-    语料不足以点估计 β(W186 §3)——P2 修法的 sim 分布结论必须呈报
+    语料不足以点估计 β(迁移审计 w186(git 历史) §3)——P2 修法的 sim 分布结论必须呈报
     本扫描:**修法在某(β,γ)网格点翻正、在带端点(β=0 / β=0.15 /
     γ=0 / γ=0.10 / 事件金双臂)一致翻正才裁「分布级」**;单点翻正
     = 不可裁。headline:存活轮/胜率/hp0 率/金带走量(判读同构)。
 
-    ``form_level_weights``(W199/W196 发现③):β 扫描只缩放整条
+    ``form_level_weights``(`w199_anchor/`/迁移审计 w196(git 历史) 发现③):β 扫描只缩放整条
     form(engines + w·(lv−6) 同乘 β),分辨不了 engines:lv 构成比
     ——lv 投资型修法(金流改道升级)的存活收益显影取决于 lv 项
     真实权重,故 w 入网格(端点 0=lv 零贡献 / 高档 0.5/1.0);
     默认 (0.25,) = P2_COMBAT_DEFAULT 单值,行为向后兼容。
-    ``form_star_weights``(W230/ADR-0401,同型):星级投资型修法
-    (承接门/W227)的存活收益显显取决于 star_depth 项真实权重
+    ``form_star_weights``(`w230_star_form/`/ADR-0401,同型):星级投资型修法
+    (承接门/`w227_handoff_gate/`)的存活收益显显取决于 star_depth 项真实权重
     (真值分帧只定向不定量)——端点 0(星级零贡献=旧 form 形态)/
     0.25 / 1.0;默认 (0.5,) = 单值。
     """
@@ -3657,7 +3657,7 @@ def _cli_main() -> None:
                   'pool_fingerprint'):
             print(f'{k}: {rep[k]}')
         print('checks:', rep['checks_violations'])
-        # W278 段级检查表摘要(事件全量在 rep['segment_checks'])
+        # 迁移审计 w278(git 历史) 段级检查表摘要(事件全量在 rep['segment_checks'])
         print('segment:', {
             k: v['count'] for k, v in
             rep.get('segment_checks', {}).items() if k != '_summary'},
@@ -3666,7 +3666,7 @@ def _cli_main() -> None:
 
 def synthesize_snapshot(st: GameState,
                         substate_name: str = 'prep_shop'):
-    """GameState → Snapshot 同型合成器(sim 侧一次成本;W583 阶段2批①)。
+    """GameState → Snapshot 同型合成器(sim 侧一次成本;`w583_stage2_contracts/` 阶段2批①)。
 
     快照 Schema 定稿的第一个消费者:本函数即「GameState→Snapshot 逐字段
     映射表」的代码化,映射式与 SCHEMA_DRAFT.md §四「来源」列一一对应;

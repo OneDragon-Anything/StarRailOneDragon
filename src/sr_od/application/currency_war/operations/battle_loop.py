@@ -6,7 +6,7 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 
-# W75(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
+# 迁移审计 w75(git 历史)(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
 from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
@@ -19,7 +19,6 @@ from sr_od.application.currency_war.cw_observation import (
     read_game_state,
     read_node_sequence,
     read_phase_round,
-    read_round_outcome,
     reset_phase_round_cache,
 )
 from sr_od.application.currency_war.cw_performance import (
@@ -31,7 +30,10 @@ from sr_od.application.currency_war.cw_resume_lock import (
     probe_resolve,
     resume_candidate,
 )
-from sr_od.application.currency_war.cw_settlement_obs import parse_settlement_round
+from sr_od.application.currency_war.cw_settlement_obs import (
+    parse_settlement_round,
+    read_round_outcome,
+)
 from sr_od.application.currency_war.cw_state import GameState, MatchOutcome
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
@@ -95,10 +97,10 @@ class CurrencyWarRunLoop(SrOperation):
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
-    #: W28 缺陷①(relaunch 残留结算屏):run 启动后此宽限内**首见**结算屏 =
+    #: 迁移审计 w28(git 历史) 缺陷①(relaunch 残留结算屏):run 启动后此宽限内**首见**结算屏 =
     #: 上一进程留下的残留屏(新 match 从进入到首个真结算要过简报+策略+备战,
     #: 分钟级;残留屏在首帧即命中,实测 <2s)。该行 outcome 打 source='recovered'
-    #: 并按屏面「X-Y」解析真实轮次,防 r6/r7 结算被错记成 r1(W23 两例实锤)。
+    #: 并按屏面「X-Y」解析真实轮次,防 r6/r7 结算被错记成 r1(迁移审计 w23(git 历史) 两例实锤)。
     RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
@@ -123,7 +125,7 @@ class CurrencyWarRunLoop(SrOperation):
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
-        # W75(ADR-0335):runs summary 收口——中止/卡死/停机局不走 3c 回大厅
+        # 迁移审计 w75(git 历史)(ADR-0335):runs summary 收口——中止/卡死/停机局不走 3c 回大厅
         # → record_run_summary 永不调(近 6 局无 runs 行实锤,r363 在 loop 顶
         # 的 stop 检查因 execute() 先查 stop 几乎永不触发,四局 [RUNS-GAP]
         # 哨兵连报)。机制:正常终局(3c)写 summary 后置本标记;``after_operation_done``
@@ -153,7 +155,7 @@ class CurrencyWarRunLoop(SrOperation):
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         cw_telemetry.start_run(difficulty=_diff_for_telemetry)
-        # R4-1(W52 §3.1):recovered 三字段(_run_start_ts/_first_settlement_seen/
+        # R4-1(迁移审计 w52(git 历史) §3.1):recovered 三字段(_run_start_ts/_first_settlement_seen/
         # _is_new_match)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,
         # __init__ 不随 execute 重入重跑(原写在 __init__ → 重入不重置,R4 审查
@@ -168,7 +170,7 @@ class CurrencyWarRunLoop(SrOperation):
     def handle_init(self) -> None:
         """run 级状态初始化(框架钩子:每次 execute() 开头由
         ``_init_before_execute`` 调用;见类注 R4-1 迁移说明)。"""
-        # W28 缺陷①:run 启动时刻 + 首见结算屏标记(relaunch 残留结算判据,
+        # 迁移审计 w28(git 历史) 缺陷①:run 启动时刻 + 首见结算屏标记(relaunch 残留结算判据,
         # 见 RELAUNCH_SETTLE_GRACE_S 注)。
         self._run_start_ts: float = time.monotonic()
         self._first_settlement_seen: bool = False
@@ -181,7 +183,7 @@ class CurrencyWarRunLoop(SrOperation):
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
         # 停 app / 手停 / 重启 server 后 cw_match 清(None)→ 下次 run 重新 new(新局)。
         self._is_new_match: bool = self.ctx.cw_match is None
-        # W62 件1(ADR-0329):恢复局(locked-resume)检测状态。
+        # 迁移审计 w62(git 历史) 件1(ADR-0329):恢复局(locked-resume)检测状态。
         # 候选 = 新 match(无本局记录),首个备战相位 round>1 时探针裁决;续跑恒 False。
         self._cw_resume_candidate: bool = self._is_new_match
         self._cw_locked_resume: bool = False   # 锁定确认(探针零响应)→ 直接出战
@@ -192,7 +194,7 @@ class CurrencyWarRunLoop(SrOperation):
         self._cw_takeover_tries: int = 0
         # 「返回投资策略选择」按钮出现计数(症状报警用:出现=上游策略屏处理失败)
         self._cw_back_btn_count: int = 0
-        # W103 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
+        # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
         self._cw_strategy_dead_streak: int = 0
         self._cw_dead_prev_key: tuple[int, int] | None = None
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -367,7 +369,7 @@ class CurrencyWarRunLoop(SrOperation):
             log.warning('[cw-loop] 星徽秘典选卡异常(不阻塞): %s', e)
             self.ctx.controller.click(Point(660, 300))
 
-        # (44 号战斗帧观测钩子已删,W106 裁决:观测使命由结算遥测覆盖,产物
+        # (44 号战斗帧观测钩子已删,迁移审计 w106(git 历史) 裁决:观测使命由结算遥测覆盖,产物
         #  battle_frames/ 10778 文件 24.39GB 零消费者;删钩子纪律=使命完成删整段)
 
     def _last_true_hp(self, fallback_hp: int) -> int:
@@ -380,7 +382,7 @@ class CurrencyWarRunLoop(SrOperation):
         return hp if hp is not None else fallback_hp
 
     def after_operation_done(self, result: '_OperationResult') -> None:
-        """局终 runs summary 收口(W75/ADR-0335;治本 r363 死码)。
+        """局终 runs summary 收口(迁移审计 w75(git 历史)/ADR-0335;治本 r363 死码)。
 
         r363 把 stop 兜底放在 loop() 顶 —— 但 ``operation.execute()`` 每轮前
         (operation.py:408)先查 ``is_context_stop``,stop 到达后 ``loop()`` 不再被调,
@@ -486,7 +488,7 @@ class CurrencyWarRunLoop(SrOperation):
         # (1f 路径此前从不清 _battle_ts,保持零行为面)。
         if not telemetry_only:
             self._battle_ts = None
-        # W28 缺陷①:启动宽限内首见结算屏 = relaunch 残留屏(上一进程留下)——
+        # 迁移审计 w28(git 历史) 缺陷①:启动宽限内首见结算屏 = relaunch 残留屏(上一进程留下)——
         # 该行打 recovered 标记 + 按屏面「X-Y」恢复真实轮次(修法 a+b 都做:
         # 轮次可解析则直接校正,不可解析也有标记供训练侧剔除)。
         # telemetry_only(1f 失败页路径)不判残留:残留判定写 _first_settlement_seen
@@ -622,7 +624,7 @@ class CurrencyWarRunLoop(SrOperation):
                     _session.last_hp_t = _now_t
             # 遥测写端(review 半接线修复,2026-08-16):outcomes.jsonl 生产侧此前无写入方
             # (读端 join_decisions_outcomes 一直在等,两文件从未对上)。hp_after/hp_confidence/
-            # node_type/comp_tag/damage_dealt(W40:结算屏数据统计面板同帧解析)已在 _obs。
+            # node_type/comp_tag/damage_dealt(迁移审计 w40(git 历史):结算屏数据统计面板同帧解析)已在 _obs。
             cw_telemetry.record_outcome(_obs, source=_source)
             if not telemetry_only:
                 if _obs.hp_confidence >= 0.9:
@@ -663,12 +665,12 @@ class CurrencyWarRunLoop(SrOperation):
             log.warning('[cw-loop] loss_page 补录失败(不阻塞): %s', e)
 
     def _mark_relaunch_residual(self) -> bool:
-        """W28 缺陷①:本帧是否 relaunch 残留结算屏(启动宽限内首见结算)。
+        """迁移审计 w28(git 历史) 缺陷①:本帧是否 relaunch 残留结算屏(启动宽限内首见结算)。
 
         判据(三条件同时):新 match(cw_match 是本次 run 新建,relaunch 后 server
         重启必为 True)+ 本 run 首见结算屏 + 距 start_run < RELAUNCH_SETTLE_GRACE_S。
         新对局从进入到首个真结算需过简报/策略/备战(分钟级),宽限内首见只能是
-        上一进程残留(W23 两例 ts 距启动 <2s 实锤)。**只标记不改行为**;调用后
+        上一进程残留(迁移审计 w23(git 历史) 两例 ts 距启动 <2s 实锤)。**只标记不改行为**;调用后
         置 _first_settlement_seen(每 run 至多判一次)。
         """
         _res = (not self._first_settlement_seen and self._is_new_match
@@ -678,9 +680,9 @@ class CurrencyWarRunLoop(SrOperation):
         return _res
 
     def _record_supply_outcome(self, screen) -> None:
-        """W28 缺陷②:补给节点完成 → 合成一行 outcome(node_type='补给')。
+        """迁移审计 w28(git 历史) 缺陷②:补给节点完成 → 合成一行 outcome(node_type='补给')。
 
-        补给是唯一无结算屏的节点(W23 定因:r5 34/34 全缺)——节点完成绕过
+        补给是唯一无结算屏的节点(迁移审计 w23(git 历史) 定因:r5 34/34 全缺)——节点完成绕过
         分支3 的结算写入点 → hp_after/金币/装备选择在 outcomes 零行。本方法在
         RunSupplyNode 成功完成点补一行:**复用 cw_telemetry.record_outcome 单一
         写入入口**,带 source='synthetic_supply'(镜像 ADR-0273 行来源标记)防与
@@ -721,7 +723,7 @@ class CurrencyWarRunLoop(SrOperation):
         self._iter += 1
         if self._iter > CurrencyWarRunLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
-        # W75(ADR-0335):stop 路径 runs summary 收口已从 loop 顶迁到
+        # 迁移审计 w75(git 历史)(ADR-0335):stop 路径 runs summary 收口已从 loop 顶迁到
         # ``after_operation_done`` —— r363 在 loop() 顶检查 is_context_stop,
         # 但 operation.execute() 每轮前(operation.py:408)先查 stop,stop 到达后
         # loop() 不再被调 → 原检查几乎永不触发(MCP stop 四局 [RUNS-GAP] 实锤)。
@@ -759,7 +761,7 @@ class CurrencyWarRunLoop(SrOperation):
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
             if _st0.round_num > 1 or _st0.plane > 1:
-                # A18(hook审计批4):数据归属标记,只标不改行为 → [cw] 非 [cw!]
+                # A18(hook审计退役批(ADR-0466/0467/0469)):数据归属标记,只标不改行为 → [cw] 非 [cw!]
                 log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 import contextlib
@@ -953,7 +955,7 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
             _rs = RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
-            # W28 缺陷②:补给节点完成 → 合成 outcome 行(无结算屏节点的遥测补行;
+            # 迁移审计 w28(git 历史) 缺陷②:补给节点完成 → 合成 outcome 行(无结算屏节点的遥测补行;
             # 仅成功时记,失败重试由下轮 0e 再入,不重复写)。
             if _rs is not None and getattr(_rs, 'success', False):
                 self._record_supply_outcome(screen)
@@ -1143,8 +1145,8 @@ class CurrencyWarRunLoop(SrOperation):
                         self.ctx.cw_plane_bosses = None
                         self.ctx.cw_plane_affixes = None
                         screen = self.screenshot()   # op 已关详情回备战;刷新本帧再走备战逻辑
-            # W103 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
-            # strategy_id 的决策行(决策层整轮未参与;W98 两局实录:57/61 行恒空、
+            # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
+            # strategy_id 的决策行(决策层整轮未参与;迁移审计 w98(git 历史) 两局实录:57/61 行恒空、
             # P1 全程 0 买、金囤 91/100,兜底打满 40min 垃圾局)→ 停局重启加载
             # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:策略死了,
             # 继续跑=零信息量局。结算点=备战入口查**上一轮**(本轮决策尚未发生,
@@ -1176,7 +1178,7 @@ class CurrencyWarRunLoop(SrOperation):
                                 reason='cw:strategy_dead_early_stop')
                             return self.round_wait(
                                 wait=1.0, status='策略失活早停(ADR-0342)')
-            # W62 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
+            # 迁移审计 w62(git 历史) 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
             # =商店按钮零响应);锁定态跳过全部备战交互直接出战(复用 StartBattle
@@ -1263,7 +1265,7 @@ class CurrencyWarRunLoop(SrOperation):
             # 消除的是「静默」(无日志)而非「重试」;warning 进
             # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
             # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
-            # W595 试用角色揭示卡清场:发光金卡点开即**免费**得 2★ 试用角色(原地变
+            # `w595_trial_reveal_card/` 试用角色揭示卡清场:发光金卡点开即**免费**得 2★ 试用角色(原地变
             # 普通角色卡,后续 SIFT 自然识别)。无代价、无分支选择 → 非策略决策,
             # 不进 director 动作全集;备战环派发前直接清掉(揭示后 director heavy
             # 观察读到的已是揭示后的真实板面,不毒化对账)。上界 3 轮防识别抖动
@@ -1284,7 +1286,7 @@ class CurrencyWarRunLoop(SrOperation):
                 time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
                 screen = self.screenshot()
             _ok = PrepDirector(self.ctx).execute()
-            if not _ok or not _ok.success:   # W68:OperationResult 无 __bool__,
+            if not _ok or not _ok.success:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,
                 # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码
                 # (验证局 206 次崩溃-重派无限循环实录);success 才是判据。
                 self._director_fail_streak = getattr(

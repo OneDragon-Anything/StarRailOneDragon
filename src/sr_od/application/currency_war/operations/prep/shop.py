@@ -2,8 +2,6 @@
 import contextlib
 import time
 from copy import deepcopy
-from datetime import datetime
-from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -12,19 +10,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.cw_investments import (
-    STRATEGY_ECONOMY,
-    normalize_invest_name,
-)
 from sr_od.application.currency_war.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     HP_MAX,
     SHOP_SCREEN_NAME,
     _area_rect,
+    area_center,
     shop_card_click_points,
 )
 from sr_od.application.currency_war.cw_observation import (
-    area_center,
     ensure_portrait_templates,
     new_bench_slots,
     read_game_state,
@@ -77,21 +71,21 @@ def _apply_hp(state: GameState, hp_value: int | None,
 
 
 def sell_guard_ok(expected: str | None, live: str | None) -> bool:
-    """卖前对拍守卫(W62 件2 设计章2.5 轻守卫;ADR-0329)。
+    """卖前对拍守卫(迁移审计 w62(git 历史) 件2 设计章2.5 轻守卫;ADR-0329)。
 
     生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
     ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
     (3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal,与 cw_state 拒绝
     语义同词)。两表同源于循环顶(``state.bench = bench_from_compact(tracked)``),
     mid-loop 漂移必被抓。残余风险(不防「tracked 名字本身错」)= buy-OCR 误读,
-    属既有跟踪保真度问题(W57 F6),不在本批根治。
+    属既有跟踪保真度问题(迁移审计 w57(git 历史) F6),不在本批根治。
     """
     return bool(expected) and live is not None and live == expected
 
 
 def expected_gold_after_actions(state_gold: int, spend: int,
                                 sell_income: int) -> int:
-    """买后预期金(W62 件2 设计章2.7 必改项;ADR-0329):开店金 − 花出 + 卖入。
+    """买后预期金(迁移审计 w62(git 历史) 件2 设计章2.7 必改项;ADR-0329):开店金 − 花出 + 卖入。
 
     gold 差值对拍口径:卖出接线后,卖轮实际金 = state.gold − spend + sell_income
     (游戏侧卖出入账),与旧 ``_expected = state.gold - _spend`` 恒差 income →
@@ -205,8 +199,8 @@ class BuyShopCards(SrOperation):
       避开 plan 的 bench_idx→物理槽映射复杂度)。
     - **D牌两阶段(r6 F8)**:plan emit RefreshShop 后,simulate 不换牌 → 其后的 BuyCard 是旧 shop
       失效决策。故每轮执行**至首个 RefreshShop(含)**,刷新后重 OCR shop + 重 plan(MAX_REFRESH 硬墙)。
-    - **SellBench(W62 件2/ADR-0329 起执行)**:v1 曾跳过(v1 不读 bench 身份;「备战席已满」由
-      ``_handle_bench_full`` 位置式覆盖)——W51 槽位语义合流后 bench_idx=槽位下标(ADR-0316),
+    - **SellBench(迁移审计 w62(git 历史) 件2/ADR-0329 起执行)**:v1 曾跳过(v1 不读 bench 身份;「备战席已满」由
+      ``_handle_bench_full`` 位置式覆盖)——迁移审计 w51(git 历史) 槽位语义合流后 bench_idx=槽位下标(ADR-0316),
       d2 卖通道(liquidity/carry_gate/arbiter)发射的 ``SellBench(bench_idx)`` 在此分支执行:
       防误卖轻守卫(生成期快照 vs 执行期实况名对拍)→ 拖 备战栏-(idx+1) → 出售区(单一源)
       → 置 None 不紧缩(tracking 同步)→ 卖出件入同轮已卖集(r408 对称臂执行域加固)。
@@ -221,7 +215,7 @@ class BuyShopCards(SrOperation):
     REFRESH_FALLBACK: ClassVar[Point] = Point(1592, 472)   # 「刷新」按钮兜底(screen_info 按钮-刷新)
     # D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
     MAX_REFRESH: ClassVar[int] = 4
-    # W62 件1(ADR-0329)加强通道开关(默认关):同进程续跑盲区(主判据 _is_new_match
+    # 迁移审计 w62(git 历史) 件1(ADR-0329)加强通道开关(默认关):同进程续跑盲区(主判据 _is_new_match
     # 只覆盖进程外恢复;run A 锁定态被停 → run B 续跑时 _is_new_match=False 不检测)
     # 的可选补强 —— 开商店失败分型(点「按钮-商店」后验「按钮-收起」连续 2 次零响应
     # → 判锁定恢复局 → 直接出战,与主通道共用 StartBattle 分支)。保守版默认关,
@@ -261,34 +255,6 @@ class BuyShopCards(SrOperation):
                 return self.round_fail(f'备战被事件 overlay({_evt})叠,交主循环处理')
 
 
-        # 临时捕获钩子(免费刷新实机机制采证,确认建档后删整段):激活免费刷新类投资策略
-        # ∧ 商店画面已开 → 停机留画面。用户口述:实机免费刷新可能是商店界面的独立按钮
-        # (非当前建模的「点刷新花 0 金」)——动作链可能错位,停机实测建档。触发定位/
-        # 处理步骤/删除条件见 flag 文件(.debug/temp/cw_free_refresh_hook.flag)。
-        _active_strategies = list(getattr(
-            getattr(self.ctx.cw_match, 'session', None), 'active_strategies', None) or [])
-        _free_envs = [
-            _name for _name in _active_strategies
-            if (_eff := STRATEGY_ECONOMY.get(normalize_invest_name(_name))) is not None
-            and (_eff.free_refresh_per_node > 0 or _eff.free_refresh_burst > 0)
-        ]
-        if _free_envs and self.round_by_find_area(
-                screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-            self.save_screenshot(prefix='free_refresh_hook')
-            _flag = Path('.debug/temp/cw_free_refresh_hook.flag')
-            _flag.parent.mkdir(parents=True, exist_ok=True)
-            _flag.write_text(
-                'HOOK-STOP: 免费刷新实机机制采证钩子(临时捕获)\n'
-                f'触发: 激活策略 {_free_envs} ∧ 商店画面已开\n'
-                '处理步骤: analyze_screen 分析商店画面——找免费刷新入口真实形态'
-                '(是否独立按钮/位置/OCR 名/剩余次数文案),建档 screen_info,'
-                '核对 shop.py 刷新动作链是否点得到它;\n'
-                '删除条件: 建档确认后删本钩子整段+删本 flag+重启 MCP server\n'
-                f'时间: {datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
-            self.ctx.run_context.stop_running()
-            return self.round_wait(
-                status=f'钩子停机:免费刷新环境({_free_envs})+商店开,留画面采证')
-
         # HP 只在 shop **关闭**时显示在右上角(shop 开启时该位置被遮/空 → read_hp 返 100,
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
@@ -320,7 +286,7 @@ class BuyShopCards(SrOperation):
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
         # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
         # 冻结毒化」从 miss 路径回流,与下方 L249 段同判据)。
-        # W580:无新鲜结算真值→**不产值**(hp_value=None)——旧裸 100
+        # `w580_hp_trust_defense/`:无新鲜结算真值→**不产值**(hp_value=None)——旧裸 100
         # 兜底只允许喂「重读确认循环」与日志;喂决策 state 的值必须来自
         # 真读或新鲜结算真值,否则不覆盖、保留对账层值+位(fail-closed)。
         # 旧「>=HP_MAX 重读 2 次」保留(None≠100 分流后,
@@ -361,7 +327,7 @@ class BuyShopCards(SrOperation):
         # 开商店(gold/shop/board 须 shop 开才显示;HP 此时被遮但上面已读过)
         if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
             if not self.round_by_find_and_click_area(self.screenshot(), '货币战争-备战', '按钮-商店', success_wait=1.5).is_success:
-                # W62 件1 加强通道(默认关):按钮点击即失败(找不到/未落地)→ 零响应计数
+                # 迁移审计 w62(git 历史) 件1 加强通道(默认关):按钮点击即失败(找不到/未落地)→ 零响应计数
                 if BuyShopCards.LOCKED_RESUME_ENHANCED:
                     _r_enh = self._locked_resume_enhanced()
                     if _r_enh is not None:
@@ -379,7 +345,7 @@ class BuyShopCards(SrOperation):
             with contextlib.suppress(Exception):   # 离线契约:放行
                 wait_stable_frame(self, profile=PROFILE_OPEN,
                                   segment='op_settle')
-            # W62 件1 加强通道(默认关):点后验「按钮-收起」——零响应连续 2 次 → 判锁定
+            # 迁移审计 w62(git 历史) 件1 加强通道(默认关):点后验「按钮-收起」——零响应连续 2 次 → 判锁定
             if BuyShopCards.LOCKED_RESUME_ENHANCED:
                 _opened_now = self.round_by_find_area(
                     self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起',
@@ -438,14 +404,14 @@ class BuyShopCards(SrOperation):
         match.strategy.update_target(_tgt_state, match.session, config)
 
         total_buy = total_level = total_refresh = 0
-        # W577(ADR-0456)「计划≠尝试」执行事实:plan 里被硬墙跳过/截断丢弃的
+        # `w577_refresh_fee_and_andon/`(ADR-0456)「计划≠尝试」执行事实:plan 里被硬墙跳过/截断丢弃的
         # 动作不再静默——单元落账时经 set_unit_exec_facts 进 spend_ledger,
         # 安灯分类器据此把「计划了但没点」分流为 plan_truncated(不停)。
         _plan_truncated = False
         _refresh_skipped: str | None = None
         _refresh_attempted = False
         _refresh_board_changed: bool | None = None
-        # W62 件2(ADR-0329):卖通道执行计数(income 遥测 + gold 对拍纳入卖入)
+        # 迁移审计 w62(git 历史) 件2(ADR-0329):卖通道执行计数(income 遥测 + gold 对拍纳入卖入)
         total_sell = total_sell_income = total_sell_skip = total_sell_fail = 0
         # 关店对拍账基座:执行侧逐动作累计花金(买价+升级费+当次刷新费)。
         # 刷新费必须在点击时按「当次刷价」累计进本单元总账 —— 不能用
@@ -461,7 +427,7 @@ class BuyShopCards(SrOperation):
         # 硬墙 MAX_REFRESH 防死循环(plan _refresh_cap 是单次软上限,每轮 plan 重置)。
         # _after_shot(同为 shop-OPEN)做 pixel-diff,差值才只反映 buy 带来的 bench 占位变化。旧代码用
         _buy_baseline = self.screenshot()
-        # W536(merge_mechanics §4 消费点):买牌期望态基座。期望 = 购买意图
+        # `w536_merge_expect/`(merge_mechanics §4 消费点):买牌期望态基座。期望 = 购买意图
         # 经落点规则的纯函数(compute_buy_expect;合成落点单一源 =
         # cw_state._merge_bench),由 PrepDirector 主环在 RunBuyPhase 后的
         # heavy 定型帧上对账(零决策记账)。本单元含卖出/未识别牌 → 期望
@@ -480,7 +446,7 @@ class BuyShopCards(SrOperation):
             self.park_cursor(after_wait=0.1)
             state = read_game_state(self.ctx, self.screenshot(),
                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
-            _apply_hp(state, hp_value, _hp_readable, _hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖(值+位同写,W580)
+            _apply_hp(state, hp_value, _hp_readable, _hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖(值+位同写,`w580_hp_trust_defense/`)
             # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None(plan 路径 1700/1706 None 实证,
             # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
             if match is not None and match.session.last_node_type:
@@ -588,12 +554,12 @@ class BuyShopCards(SrOperation):
                 'sess_active_env': getattr(_sess, 'active_env', '') or '',
                 # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)
                 'formed_stop': bool(getattr(_sess, 'v3_formed_stop', False)),
-                # W114/ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口
+                # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口
                 # 算,session 写,此处只透传给遥测 rounds 行)
                 'phase': getattr(_sess, 'v3_phase', '') or '',
                 'form_ok': bool(getattr(_sess, 'v3_form_ok', False)),
                 'form_score': round(float(getattr(_sess, 'v3_form_score', 0.0) or 0.0), 3),
-                # W119/ADR-0347 授权依据 trace:当轮 DP 日程表姿态
+                # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:当轮 DP 日程表姿态
                 # (ev.RoundPosture.posture.tag;""=查询失败/default 栈)
                 'dp_posture': str(getattr(getattr(
                     getattr(_sess, 'v3_dp_posture', None),
@@ -618,18 +584,18 @@ class BuyShopCards(SrOperation):
                 # 兼容历史回放)
                 'sess_v2_state': list(_sess.v2_state)
                 if getattr(_sess, 'v2_state', None) else None,
-                # W146 v3 意向状态落遥测(ADR-0336 后 v2_locked_line
+                # 迁移审计 w146(git 历史) v3 意向状态落遥测(ADR-0336 后 v2_locked_line
                 # 恒空,锁定时点/目标只有这里可读;None=无意向状态机)
                 'v3_intention': cw_telemetry.serialize_intention(
                     getattr(_sess, 'v3_intention', None)),
-                # W224/ADR-0399:P2 承接快照(纯观测;plane>=2 位面首帧
+                # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测;plane>=2 位面首帧
                 # decide_prep 写 session.v3_handoff,此处透传——仅 P2
                 # 首轮行非空,与 sim SimResult.p2_handoff 同源同构)
                 'handoff': (getattr(_sess, 'v3_handoff', None).as_dict()
                             if getattr(_sess, 'v3_handoff', None)
                             is not None else None),
             }
-            # W222 遥测缺口①(W220 判读实锤:两局 decisions.state.equips 恒空):
+            # 迁移审计 w222(git 历史) 遥测缺口①(迁移审计 w220(git 历史) 判读实锤:两局 decisions.state.equips 恒空):
             # owned 穿戴池的唯一 session 写端在 equip_all,读端拷贝只接在
             # _pseudo_state(策略层决策内部 state)——record 用的
             # 本 state 是 OCR 现读对象,equip reader 不填 state.equips →
@@ -644,7 +610,7 @@ class BuyShopCards(SrOperation):
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)
             prefix = actions if refresh_idx is None else actions[:refresh_idx + 1]
             if refresh_idx is not None and refresh_idx + 1 < len(actions):
-                # W577:截断丢弃的尾部动作(下波会重 plan,但本 plan 行已按
+                # `w577_refresh_fee_and_andon/`:截断丢弃的尾部动作(下波会重 plan,但本 plan 行已按
                 # 全量记账)对分类器是「计划≠尝试」,可见化不停(ADR-0456)
                 _plan_truncated = True
             bought_x: set[int] = set()
@@ -657,7 +623,7 @@ class BuyShopCards(SrOperation):
                     bought_x.add(action.card.x)
                     pt = (min(click_pts, key=lambda p: abs(p.x - action.card.x))
                           if click_pts else Point(action.card.x, 288))
-                    # W536:买前裁该片矩形拷贝(numpy .copy(),~125KB/张)——
+                    # `w536_merge_expect/`:买前裁该片矩形拷贝(numpy .copy(),~125KB/张)——
                     # 「买了什么」的像素级证据,随期望态带到对账点,不一致才
                     # 落盘(平时零磁盘写入)。一帧原则:来自读牌时已截的帧,
                     # 零新增截屏;必须 copy——整帧会被帧缓存复用覆写。
@@ -682,12 +648,12 @@ class BuyShopCards(SrOperation):
                         match.session.tracked_bench.append(action.card.name)
                         _bought_names.append(action.card.name)
                     mutate_bench_deployed(match.session.tracked_bench_chars, match.session.tracked_deployed, action)
-                    # W536:记录购买意图(身份/星级/张数)。张数:常态=1;
+                    # `w536_merge_expect/`:记录购买意图(身份/星级/张数)。张数:常态=1;
                     # 备战栏满且可触发合成 → 游戏自动多买 k 张
                     # (merge_mechanics §2.5,【置信:低——连升子案】,按
                     # 说法实现、由对账网实证修正)。k 公式单一源 =
                     # cw_state.merge_buy_k(与 decision_v2 满栏购买门同一
-                    # 公式,W544/ADR-0453 收敛,禁执行侧重算)。
+                    # 公式,`w544_fullbench_mergebuy/`/ADR-0453 收敛,禁执行侧重算)。
                     # 金账无折扣:总价 = k×单价(§2.5)——执行账本笔记
                     # 1× 单价 + 多买补差 (k−1)×,与游戏一次点击扣全款
                     # 对齐(gold 差值对拍 ±2 容差内);不满栏 _cnt=1 补差 0。
@@ -714,7 +680,7 @@ class BuyShopCards(SrOperation):
                     _spend_executed += action.cost
                 elif isinstance(action, RefreshShop):
                     if total_refresh >= BuyShopCards.MAX_REFRESH:
-                        # W577:硬墙跳过=计划了但未尝试,可见化(局22 误停根因:
+                        # `w577_refresh_fee_and_andon/`:硬墙跳过=计划了但未尝试,可见化(局22 误停根因:
                         # 此前静默 continue 被分类器当「点击落空」误判 not_effective)
                         _plan_truncated = True
                         _refresh_skipped = 'max_cap'
@@ -735,7 +701,7 @@ class BuyShopCards(SrOperation):
                             build_refresh_expect,
                             refresh_reconcile_mismatches,
                         )
-                        # W592(ADR-0456 勘误):点击前一帧现读金 + 牌名集。
+                        # `w592_free_refresh_fix/`(ADR-0456 勘误):点击前一帧现读金 + 牌名集。
                         # 刷前名集不得用 state.shop——那是本波 plan 期读数,
                         # 波内买卡不从 state.shop 摘已买牌,而游戏画面买后
                         # 即离场;买+刷新波里「plan 读 vs 点击后实读」集合
@@ -808,13 +774,13 @@ class BuyShopCards(SrOperation):
                         # 刷新有效性对拍(观测自检框架设计 §2.5):r97 刷后重读
                         # (_new_shop)与刷前牌名集合全同 = 刷新未生效(点击落空/
                         # 费金照扣没刷/动画帧误读)→ 落缺陷台账。刷前名集 =
-                        # 点击前现读(_pre_shop_names,W592 勘误:原 state.shop
+                        # 点击前现读(_pre_shop_names,`w592_free_refresh_fix/` 勘误:原 state.shop
                         # plan 读会把买+刷新波的真落空洗成免费生效)。
                         # shop_refresh 是决策关键面,「全同」按
                         # 硬失败形态传 gap_large;复现防抖在台账层(同特征首见
                         # L1、两连全同升 L0 初判)。纯记账留证,零决策行为变更
                         # (刷新照点、买牌照买,停机接线未启)。
-                        # W577:牌面变没变同时是「计划≠尝试」三分的观测面。
+                        # `w577_refresh_fee_and_andon/`:牌面变没变同时是「计划≠尝试」三分的观测面。
                         # refresh_effective 三值:False=全同(未变)/True=已变/
                         # None=不可判(不可判不可当已变——会把真落空洗成免费,
                         # 安灯失去停线面),原样透传给分类器。
@@ -849,13 +815,12 @@ class BuyShopCards(SrOperation):
                         # 本段异常由外层 except 兜住,不阻塞买牌。
                         if _refresh_expect is not None and _reconcile is not None:
                             _gold_after = read_gold_opt(self.ctx, self.screenshot())
-                            # W577 免费刷新事后正证据通道(ADR-0456,永久保留——
+                            # `w577_refresh_fee_and_andon/` 免费刷新事后正证据通道(ADR-0456,永久保留——
                             # 这是修正后的判定语义的一部分,非采证钩子):刷新已
-                            # 点击 ∧ 牌面已变(相对点击前现读,W592 勘误)∧
+                            # 点击 ∧ 牌面已变(相对点击前现读,`w592_free_refresh_fix/` 勘误)∧
                             # 点后金=点前金 → 免费刷新 proc 真实
                             # 发生(覆盖棱/策略/未知一切免费来源),截图+flag 留证
-                            # (**不停机**——免费不是失败;与 W542 商店入口停机钩子
-                            # 证据互补:通道证 proc 发生+频率,钩子证入口形态)。
+                            # (**不停机**——免费不是失败)。
                             if (_refresh_board_changed is True
                                     and _pre_gold is not None
                                     and _gold_after is not None
@@ -863,9 +828,7 @@ class BuyShopCards(SrOperation):
                                 with contextlib.suppress(Exception):
                                     _free_shot = self.save_screenshot(
                                         prefix='free_refresh_proc')
-                                    # 局部 import(hunk 隔离:datetime/Path
-                                    # 顶层 import 属 W542 采证钩子 hunks,本段
-                                    # 不得依赖它们)
+                                    # 局部 import:仅本证据段使用,不占模块级命名面
                                     from datetime import datetime as _free_dt
                                     from pathlib import Path as _free_path
                                     _flag_p = _free_path(__file__).resolve().parents[5] \
@@ -903,7 +866,7 @@ class BuyShopCards(SrOperation):
                     except Exception:   # noqa: BLE001  快照 best-effort 不阻塞买牌
                         pass
                 elif isinstance(action, SellBench):
-                    # W62 件2(ADR-0329):d2 卖通道生产接线(design 章2.3)。
+                    # 迁移审计 w62(git 历史) 件2(ADR-0329):d2 卖通道生产接线(design 章2.3)。
                     # bench_idx = 槽位下标 0-8(ADR-0316),生成期索引 = 执行期索引;
                     # 执行置 None 不紧缩(mutate_bench_deployed),多笔任意发射序零漂移。
                     # ── 防误卖轻守卫(design 章2.5):生成期快照 state.bench(循环顶真值)
@@ -962,7 +925,7 @@ class BuyShopCards(SrOperation):
                         )
                         register_round_sold([_expected], state, match.session)
                         total_sell += 1
-                        _buy_has_sell = True   # W536:含卖出 → 本单元期望态不建
+                        _buy_has_sell = True   # `w536_merge_expect/`:含卖出 → 本单元期望态不建
                         total_sell_income += action.income or 0
                         # 实收回金落盘(exogenous
                         # kind='sell_income',消费=economy 视图卖回格)。
@@ -1160,7 +1123,7 @@ class BuyShopCards(SrOperation):
                 match.strategy.update_target(_post, match.session, config)
         except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
             log.debug('[cw] 买后重估失败(不阻塞): %s', e)
-        # W536:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
+        # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
         # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
         # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
         # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
@@ -1192,7 +1155,7 @@ class BuyShopCards(SrOperation):
             # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
             from sr_od.application.currency_war import cw_telemetry as _cw_tel
             _cw_tel.set_unit_gold_close(_final_gold)
-            # W62 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
+            # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
             # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
             # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
             _expected = expected_gold_after_actions(
@@ -1206,7 +1169,7 @@ class BuyShopCards(SrOperation):
                     verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
                     source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
                     spend=_spend)
-        # W577:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
+        # `w577_refresh_fee_and_andon/`:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
         # record_spend_unit 消费进 spend_ledger;与 set_unit_gold_close 同槽
         # 模式)。全缺省不调(免残留噪声);best-effort 不阻塞收工。
         if _plan_truncated or _refresh_attempted \
@@ -1238,7 +1201,7 @@ class BuyShopCards(SrOperation):
         return type(a).__name__
 
     def _locked_resume_enhanced(self) -> OperationRoundResult | None:
-        """W62 件1 加强通道(ADR-0329,``LOCKED_RESUME_ENHANCED`` 默认关)。
+        """迁移审计 w62(git 历史) 件1 加强通道(ADR-0329,``LOCKED_RESUME_ENHANCED`` 默认关)。
 
         同进程续跑盲区(主判据 ``_is_new_match`` 只覆盖进程外恢复;run A 在锁定态
         被停 → run B 续跑时不检测)的可选补强:开商店失败分型——点「按钮-商店」后
@@ -1286,7 +1249,7 @@ class BuyShopCards(SrOperation):
             if not self.round_by_ocr(fresh, '备战席已满').is_success:
                 break
             bench_x = 438 + sell_i * 125  # bench-1..5 中心(横间距 ~125;溢出时多卖)
-            # W62 件2(ADR-0329):出售区落点单一源(screen_info「区域-出售区」,兜底常量)
+            # 迁移审计 w62(git 历史) 件2(ADR-0329):出售区落点单一源(screen_info「区域-出售区」,兜底常量)
             self.ctx.controller.drag_to(end=sell_point(self.ctx),
                                         start=Point(bench_x, 912), duration=0.8)
             time.sleep(1)

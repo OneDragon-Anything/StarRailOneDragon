@@ -1,6 +1,6 @@
 """决策框架 v2 策略具现(ADR-0290/0291/0306 载体批;DecisionV2Strategy)。
 
-**载体批(W35)重建**:不继承旧 ``LineStrategy``(ADR-0336 已删)——独立
+**载体批(迁移审计 w35(git 历史))重建**:不继承旧 ``LineStrategy``(ADR-0336 已删)——独立
 ``CwStrategy`` 全具现(执行性钩子:球/箱/遭遇/补给/巨星/伙伴/prep 步级,
 自 ``DefaultCwStrategy`` 本体删除批平移自持,判据/表库仍消费
 ``cw_plan/cw_economy/cw_recipe/cw_comps`` 共享函数;战略与备战决策自持)。
@@ -13,7 +13,7 @@
 - 目标件 → ``hoard_target_set``+COMP_LIBRARY v2(定义节 class1-5);
 - 插件消费 → ``PLUGIN_LIBRARY``(candidates 层1);
 - 纪律族(应急/boss_breaker/carry_gate/保血通道;追赶态已随
-  W126/ADR-0349 退场)→
+  `w126_b_arm/`/ADR-0349 退场)→
   ``decision_v2.discipline``(移植+语义重接;点4/点7/点12)。
 
 备战计划仍走四层:层1 候选生成 → 层2 硬过滤 → 层3 板面评分 → 层4
@@ -139,7 +139,7 @@ class DecisionV2Strategy(CwStrategy):
                        config) -> None:
         """扩展态初始化(意向/演进/报警;v2 同轮簿记一并清零)。
 
-        W51:补清 ``v3_intention_key``/``v3_prev_hp``/``v3_last_
+        迁移审计 w51(git 历史):补清 ``v3_intention_key``/``v3_prev_hp``/``v3_last_
         intention_event``——session 跨局复用(续跑/replay 路径)时,
         旧局轮键会让新局 (1,1) 撞键被段级守卫误吞(首轮意向不驱动)、
         旧局终值 HP 会污染三臂首 record 的 hp_before。
@@ -159,8 +159,8 @@ class DecisionV2Strategy(CwStrategy):
         session.v2_round_key = None
         session.v2_round_bought = set()
         session.v2_round_sold = set()
-        session.v2_remedy_used = False   # W52(ADR-0326):补偿轮键跨局清零
-        session.v2_steady_lv_used = False  # W194/ADR-0378:稳态多击组跨局清零
+        session.v2_remedy_used = False   # 迁移审计 w52(git 历史)(ADR-0326):补偿轮键跨局清零
+        session.v2_steady_lv_used = False  # `w194_p2line/`/ADR-0378:稳态多击组跨局清零
         session.v3_steady_lv_abandoned = 0  # 稳态组事务性放弃计数(判读)
         session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
         # 血预算停手·停升级拒付计数(设计件 12;ADR-0448):决策层拒付
@@ -171,23 +171,23 @@ class DecisionV2Strategy(CwStrategy):
         session.v3_blood_budget_refresh_rejects = 0
         session.v2_seed_bought = {}
         session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
-        session.v2_round_refreshes = 0   # W122 F-01/P8:扑满刷新豁免轮计数
-        session.v2_round_p1_early = 0    # W179/ADR-0372:早期买入门轮笔数
-        session.v2_round_p2_core = 0     # W194/ADR-0378:P2 核心首件门轮笔数
-        session.v2_round_press_exempt = 0   # W300/V-B8:[11] 豁免臂轮笔数
-        session.v2_round_press_copy = 0     # W300/V-B8:press 候选轮笔数
-        # W114/ADR-0346 相位观测(自 W119 起被消费)+ W119/ADR-0347
+        session.v2_round_refreshes = 0   # 迁移审计 w122(git 历史) F-01/P8:扑满刷新豁免轮计数
+        session.v2_round_p1_early = 0    # `w179_gate/`/ADR-0372:早期买入门轮笔数
+        session.v2_round_p2_core = 0     # `w194_p2line/`/ADR-0378:P2 核心首件门轮笔数
+        session.v2_round_press_exempt = 0   # `w300_dup_ruling/`/V-B8:[11] 豁免臂轮笔数
+        session.v2_round_press_copy = 0     # `w300_dup_ruling/`/V-B8:press 候选轮笔数
+        # 迁移审计 w114(git 历史)/ADR-0346 相位观测(自 迁移审计 w119(git 历史) 起被消费)+ 迁移审计 w119(git 历史)/ADR-0347
         # DP 姿态轮缓存载体:初始化(每轮 decide_prep 重算)
         session.v3_phase = 'FORM'
         session.v3_form_ok = False
         session.v3_form_score = 0.0
         session.v3_dp_posture = None
-        # W224/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
+        # `w224_handoff/`/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
         session.v3_handoff = None
         session.v3_handoff_plane = None
-        # W227/ADR-0400:P1 末窗承接门缺口(filters 每段写;跨局清零)
+        # `w227_handoff_gate/`/ADR-0400:P1 末窗承接门缺口(filters 每段写;跨局清零)
         session.v3_handoff_gap = 0
-        # W238/ADR-0403:boss 投影 hp 披露(ADR-0411 起投影无条件启用,
+        # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 披露(ADR-0411 起投影无条件启用,
         # 末窗 handoff_gate_gap 写;None=非末窗,判读「boss 后投影 hp」面)
         session.v3_handoff_hp_proj = None
         # W332b:release 泄息指令(每轮 decide_prep 重算)与轮内累计花费
@@ -258,7 +258,7 @@ class DecisionV2Strategy(CwStrategy):
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             update_intention(state, ist, session, registry=self.registry)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
-        # W578:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
+        # `w578_target_comp_wire/`:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
         # session.target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
         # 既有 target 消费者全盲(实机断链:引擎件躺 bench、散脸占板)。
         # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
@@ -289,37 +289,37 @@ class DecisionV2Strategy(CwStrategy):
             session.v2_round_key = key
             session.v2_round_bought = set()
             session.v2_round_sold = set()
-            # W52(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
+            # 迁移审计 w52(git 历史)(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
             # (防环 §1.5-1);随同轮簿记一并清零。
             session.v2_remedy_used = False
-            # W194/ADR-0378:稳态多击组轮键重置(每轮至多一组,
+            # `w194_p2line/`/ADR-0378:稳态多击组轮键重置(每轮至多一组,
             # 刷后 re-decide 段链不连发)
             session.v2_steady_lv_used = False
-            # W122 F-01/W120 P8:扑满节点刷新豁免的轮计数器(轮键重置;
+            # 迁移审计 w122(git 历史) F-01/迁移审计 w120(git 历史) P8:扑满节点刷新豁免的轮计数器(轮键重置;
             # arbiter 刷新采纳处递增,scoring 豁免门消费)
             session.v2_round_refreshes = 0
-            # W179/ADR-0372:早期买入门单轮笔数(轮键重置;arbiter
+            # `w179_gate/`/ADR-0372:早期买入门单轮笔数(轮键重置;arbiter
             # gold_floor 放行采纳处递增)
             session.v2_round_p1_early = 0
-            # W194/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
+            # `w194_p2line/`/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
             session.v2_round_p2_core = 0
-            # W300/V-B8:press 通道两臂单轮笔数([11] 豁免臂/press 候选
+            # `w300_dup_ruling/`/V-B8:press 通道两臂单轮笔数([11] 豁免臂/press 候选
             # 采纳;arbiter 采纳处递增)
             session.v2_round_press_exempt = 0
             session.v2_round_press_copy = 0
             # W332b:release 泄息预算的轮内累计花费(预算逐轮清零;boss 窗
             # 单轮 latch 单位,无跨轮语义)
             session.v3_release_spent = 0
-        # (W119/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
+        # (迁移审计 w119(git 历史)/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
         # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
-        # W114/ADR-0346 相位观测 + W119 切授权:每轮决策入口计算一次
+        # 迁移审计 w114(git 历史)/ADR-0346 相位观测 + 迁移审计 w119(git 历史) 切授权:每轮决策入口计算一次
         # 相位+form_ok+form_score 写 session 供遥测;**自本批起被消费**
         # (arbiter._active_floor 相位地板/filters.formed_stop)。
         _phase = derive_phase(state, session, registry)
         session.v3_phase = _phase.value
         session.v3_form_ok = form_ok(state, session, registry)
         session.v3_form_score = form_score(state, registry)
-        # W119/ADR-0347 接线(批 3 预算收权):每轮入口核算一次轮姿态写
+        # 迁移审计 w119(git 历史)/ADR-0347 接线(预算收权批(ADR-0465)):每轮入口核算一次轮姿态写
         # session——仲裁层授权/地板对齐消费(ev.round_posture 同轮读缓存),
         # 遥测行带 dp_posture(标签 trace)。生产者 = 确定性预算核
         # (build_round_posture:schedule/refresh_ev_budget 两接缝,R4
@@ -342,9 +342,9 @@ class DecisionV2Strategy(CwStrategy):
         session.v3_dp_posture = RoundPosture(key, _wrapped)
         if _directive is None:
             session.v3_release = None
-        # W611 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」
+        # `w611_econ_cycle/` 储备/义务披露字段(每轮入口写,幂等;判读「义务帧兑现率」
         # 与 ADR-0445 实机验证队列 §2.3 的数据源)。遥测经 recorder 汇点
-        # 统一接出(W603 同款通道,shop.py extra 通道不触)。
+        # 统一接出(`w603_telemetry_wiring/` 同款通道,shop.py extra 通道不触)。
         from sr_od.application.currency_war.decision_v2.economy_cycle import (
             reserve_cap as _reserve_cap,
         )
@@ -357,7 +357,7 @@ class DecisionV2Strategy(CwStrategy):
             getattr(_directive, 'reason', '') or '')
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
-        # W224/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
+        # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
         # Phase 0)——plane>=2 本位面首帧算一次写 session.v3_handoff
         # (派生量模式,同 v3_phase;session 丢→下轮入口现算,天然免疫)。
         # 挂载在相位派生同址、任何 P2 决策/动作之前 = 「进场继承完成后」
@@ -380,31 +380,31 @@ class DecisionV2Strategy(CwStrategy):
             session.v3_pending_rollback = None
         # ② 演进引擎进决策循环(点6 统一入口;显式 CompTransaction)
         if session.v3_evolution is not None:
-            # W155/ADR-0360 件1:锁定帧 off-lock 演进提案降级分从 registry
-            # 注入(总开关关/0 = 回 W150 后行为)
+            # `w155_evolve_lock/`/ADR-0360 件1:锁定帧 off-lock 演进提案降级分从 registry
+            # 注入(总开关关/0 = 回 `w150_buy_lock/` 后行为)
             ev_acts = evolution_step(
                 state, session, session.v3_evolution,
                 off_lock_penalty=(
                     registry.evolve_off_lock_penalty
                     if registry.evolve_lock_constraint_enabled else 0.0),
-                # W160/ADR-0363:S1 型修法两件(引擎下界守卫/末轮演进
-                # 冻结)从 registry 注入(A/B 通道,关=回 W155 后行为)
+                # 迁移审计 w160(git 历史)/ADR-0363:S1 型修法两件(引擎下界守卫/末轮演进
+                # 冻结)从 registry 注入(A/B 通道,关=回 `w155_evolve_lock/` 后行为)
                 engine_guard=registry.evolve_engine_guard_enabled,
                 final_freeze=registry.evolve_final_freeze_enabled,
-                # W174/ADR-0371:引擎补完守卫(own-gap 修法,A/B 通道,
-                # 关=回 W170 后行为)
+                # `w174_deploy/`/ADR-0371:引擎补完守卫(own-gap 修法,A/B 通道,
+                # 关=回 `w170_p1_vd/` 后行为)
                 engine_completion=registry.evolve_engine_completion_enabled,
-                # W201/ADR-0381:补完缺口 owned 口径 distinct(A/B 通道,
-                # 关=回 W174 后全羁绊逐件计数)
+                # `w201_strand/`/ADR-0381:补完缺口 owned 口径 distinct(A/B 通道,
+                # 关=回 `w174_deploy/` 后全羁绊逐件计数)
                 complete_distinct=registry.engine_complete_distinct_owned,
-                # W192/ADR-0375:希儿系贡献件并入守卫/保护集辖域
-                # (A/B 通道,关=回 W188 后行为)
+                # `w192_seelex/`/ADR-0375:希儿系贡献件并入守卫/保护集辖域
+                # (A/B 通道,关=回 `w188_threestack/` 后行为)
                 seele_scope=registry.guard_seele_scope_enabled,
-                # W197/ADR-0380:溢出卖出下界守卫(execute_replacement
-                # 溢出卖出对 TT 体系件改留场;A/B 通道,关=回 W195 后
+                # `w197_comptx/`/ADR-0380:溢出卖出下界守卫(execute_replacement
+                # 溢出卖出对 TT 体系件改留场;A/B 通道,关=回 `w195_intent/` 后
                 # 行为——arbiter 采纳点复检同 flag,见 arbiter.py)
                 sell_floor=registry.sell_floor_exec_guard_enabled,
-                # W202/ADR-0382:补完保护集分级(undeploy 候选枯竭且
+                # `w202_grade/`/ADR-0382:补完保护集分级(undeploy 候选枯竭且
                 # 缺口持续 ≥2 轮时降级换血;A/B 通道,关=回 0371/0381
                 # 后「不硬拆」语义)
                 grade_down=registry.engine_complete_grade_down)
@@ -428,7 +428,7 @@ class DecisionV2Strategy(CwStrategy):
         # ADR-0328 执行域对齐:arbitrate 的 state 参数 = **前置已采纳动作
         # simulate 后**的执行域(演进 COMP/谷底回滚/carry_gate),非决策
         # 入口原始态——arbitrate 内 working 从执行域初始化,index_drift/
-        # same_round_mutex 基于「真实执行序」的槽位内容校验(W66 seed
+        # same_round_mutex 基于「真实执行序」的槽位内容校验(迁移审计 w66(git 历史) seed
         # 0/6/14 实证:前置 COMP 改变槽位后,SellBench(idx) 决策域与
         # 执行域错位 → 实卖错件[刚买的同名卡] → 账本「BUY X → SELL X」
         # 假象违规,no_same 96/400 的主要来源)。候选生成/过滤/评分仍用
@@ -442,7 +442,7 @@ class DecisionV2Strategy(CwStrategy):
         cands = generate_candidates(state, session, registry)          # 层1
         kept, _flog = filter_candidates(cands, state, session, reg_view)  # 层2
         scored = score_all(kept, state, session, registry)             # 层3
-        # (W52/ADR-0326:旧 ⑤b liquidity_actions 已删——金不足变现收编
+        # (迁移审计 w52(git 历史)/ADR-0326:旧 ⑤b liquidity_actions 已删——金不足变现收编
         # 进层4 末段补偿趟 _compensate_gold,触发源=实际拒绝事件)
         result = arbitrate(scored, exec_state, session, reg_view,
                            disc_view=disc)                    # 层4
@@ -847,7 +847,7 @@ class DecisionV2Strategy(CwStrategy):
         # (director 环=同轮;跨轮重置)。
         if (st.level < 10 and not self._is_boss_round(st)
                 and self._cap_shortfall(st, target) >= 1):
-            # 批 4 C5 换源(蓝图 §4.3-R1):升级门 committed 从 committed_from
+            # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):升级门 committed 从 committed_from
             # 权威派生显式传入——fresh 帧不再依赖装配边界回填双轨标志
             # (漏回填=恒按已定型激进化放升级的病理修复;方向=门收紧)。
             from sr_od.application.currency_war.decision_v2.prep_brain import (
@@ -974,14 +974,14 @@ class DecisionV2Strategy(CwStrategy):
         st.hp = gated_hp(_cur_hp, session, _t)
         # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
         # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)
-        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。批 2 起 committed 语义
+        # 空转——r≥8 终局件提前上场+配方 carry 可被卖。迁移迁移批 2(方向层接管)(方向层接管) 起 committed 语义
         # = cw_intention 权威派生(读端 committed_from 单点换源,P1 同
         # commit 面),此处传 state 供 plane 判定。
         from sr_od.application.currency_war.decision_v2.prep_brain import (
             committed_from,
         )
         st.dual_track_phase = not committed_from(session, st)
-        # W148(ADR-0358,W92 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
+        # 迁移审计 w148(git 历史)(ADR-0358,迁移审计 w92(git 历史) 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
         # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
         # 面特征可见;空快照=默认 [] 语义不变)。
         st.equips = list(session.last_owned_equips)

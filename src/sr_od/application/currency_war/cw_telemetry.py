@@ -128,25 +128,25 @@ def p1_pair_label(ist: Any) -> str:
 
 
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
-    """v3 意向状态(IntentionState)→ JSON-safe dict(W146)。
+    """v3 意向状态(IntentionState)→ JSON-safe dict(迁移审计 w146(git 历史))。
 
     ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
-    全量落遥测(W145 锁定目标改过渡配方的实机验证依赖它)。
+    全量落遥测(`w145_recipe_lock/` 锁定目标改过渡配方的实机验证依赖它)。
 
     - ``None`` = session 无意向状态机(default 栈/未初始化)——与
       「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
       不用猜;
     - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
-      嵌套 LineTrack 同构)——IntentionState 字段演进(如 W145 调整
+      嵌套 LineTrack 同构)——IntentionState 字段演进(如 `w145_recipe_lock/` 调整
       锁定语义)时自动跟上,不改本函数。
 
-    **可变容器深拷贝(W194/ADR-0378)**:dict/list 字段值经
+    **可变容器深拷贝(`w194_p2line/`/ADR-0378)**:dict/list 字段值经
     ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
     ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
     落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
-    早期行**(sim P2 段改写同局 P1 行的 tracks,W193 对比门曾排除
+    早期行**(sim P2 段改写同局 P1 行的 tracks,`w193_p2sim/` 对比门曾排除
     该字段)。tuple/str 不可变,原样保留(类型不漂移)。
 
     只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
@@ -161,7 +161,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
         elif is_dataclass(v):
             out[f.name] = _to_jsonable(v)
         elif isinstance(v, (dict, list)):
-            # W194/ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # `w194_p2line/`/ADR-0378:可变容器深拷贝落账(活引用污染防线,
             # 见 docstring);tuple 不可变不辖(类型不漂移)
             out[f.name] = _to_jsonable(v)
         else:
@@ -221,7 +221,7 @@ class DecisionTrace:
     # 全量)——重放 decide_prep 分支忠实还原的缺失件。可选,旧记录
     # 缺省 None;list 形态 = v2_state 元组逐位。
     sess_v2_state: list | None = None
-    # —— W114/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
+    # —— 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
     # phase(FORM/HOARD/SPEND 派生相位)/form_ok(三件套谓词,裁决后
     # 无等级项)/form_score(上场阵容 rung 副指标,∈[0,1])。可选,
     # 旧记录缺省不破坏 schema。
@@ -231,9 +231,9 @@ class DecisionTrace:
     # ADR-0343 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
     # DecisionTrace 字段:shop/prep_director 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
-    # (W114 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
+    # (迁移审计 w114(git 历史) 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
     formed_stop: bool = False
-    # —— W119/ADR-0347 授权依据 trace(经济循环总模型步②「切授权」):
+    # —— 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace(经济循环总模型步②「切授权」):
     # dp_posture=当轮 DP 日程表姿态 tag(存息/升级/D 预算;""=查询
     # 失败/default 栈)。EV 放行值在 decisions 行 log 的 ev_auth 键
     # (arbiter 执行 log)。可选,旧记录缺省不破坏 schema。
@@ -241,13 +241,13 @@ class DecisionTrace:
     # ADR-0348 ↺:扑满节点识别(过热局 reward 帧;②b 观测/实机建档
     # 数据面——识别≠深花授权)。可选,旧记录缺省 False。
     piggy_reward: bool = False
-    # —— W146 v3 意向状态(cw_intention.IntentionState 全量序列化;
+    # —— 迁移审计 w146(git 历史) v3 意向状态(cw_intention.IntentionState 全量序列化;
     # ADR-0336 后 v2_locked_line/v2_mode 恒空,锁定真值在此)——
     # None=无意向状态机(default 栈);dict 且 phase='unlocked'=有意向
     # 未锁;phase='locked' 时 locked_comp=锁定目标(COMP_LIBRARY 套名)。
     # 可选,旧记录缺省 None 不破坏 schema。
     v3_intention: dict[str, Any] | None = None
-    # —— W224/ADR-0399 P2 承接快照(纯观测;plane>=2 本位面首帧
+    # —— `w224_handoff/`/ADR-0399 P2 承接快照(纯观测;plane>=2 本位面首帧
     # decide_prep 入口算一次的七维向量+派生档位,decision_v2.handoff.
     # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
     handoff: dict[str, Any] | None = None
@@ -258,7 +258,7 @@ class DecisionTrace:
     # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
     # 嵌套 v3_intention 即可读锁定产物。可选,旧记录缺省 '' 不破坏 schema。
     sess_p1_pair: str = ""
-    # —— W603 披露键序列化(血预算停手计数/末窗降格触发面/经验账本)——
+    # —— `w603_telemetry_wiring/` 披露键序列化(血预算停手计数/末窗降格触发面/经验账本)——
     # 三个 session 披露键此前「有写点、无遥测落盘」(decisions.jsonl 全文检索
     # 零命中,判读盲区)。接出点=recorder 统一自 _CTX_MATCH_REF 的 session 取
     # (shop.py 的 extra 通道不动;record_outcome 板深快照同款模块槽先例)。
@@ -277,8 +277,8 @@ class DecisionTrace:
     # 经验期望账本快照(session.xp_expect_ledger=prep_director.XpLedger 正式
     # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
     xp_expect_ledger: dict[str, Any] | None = None
-    # —— W611 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
-    # 「死时带金/闲置金」判读的帧级数据源;接出点同 W603 汇点)——
+    # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
+    # 「死时带金/闲置金」判读的帧级数据源;接出点同 `w603_telemetry_wiring/` 汇点)——
     # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。
     # 储备线 R*(=息线+窗口排程升级费;session.v3_reserve_cap 透传)。
     sess_reserve_cap: int | None = None
@@ -313,23 +313,23 @@ class OutcomeRecord:
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。
     board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
     bench_count: int = 0               # 战前 bench 数(板深第二维)
-    # —— W28(行来源标记,镜像 RunSummary.source/ADR-0273 惯例):''=结算屏真值行;
+    # —— 迁移审计 w28(git 历史)(行来源标记,镜像 RunSummary.source/ADR-0273 惯例):''=结算屏真值行;
     # 'recovered'=relaunch 残留结算屏(启动宽限内首见,round_num 已按屏面「X-Y」
     # 尽力校正,训练侧可剔);'synthetic_supply'=补给节点合成行(无结算屏节点的
     # 遥测补行,hp 用 last_state 快照非屏面真值)。
     source: str = ""
-    # —— W253 boss 身份采集(W244 数据缺口补齐)——
+    # —— 迁移审计 w253(git 历史) boss 身份采集(迁移审计 w244(git 历史) 数据缺口补齐)——
     # session.briefing_bosses 全量快照(位面序 3 元素;None=该位面徽章态采不到
-    # 身份,**保位勿滤**——滤掉会让后续位面名字左移错位,W221/ADR-0398)。
-    # boss Δ 双峰归因的数据源(W244 结论④:schema 无 boss 身份→不可分层)。
+    # 身份,**保位勿滤**——滤掉会让后续位面名字左移错位,迁移审计 w221(git 历史)/ADR-0398)。
+    # boss Δ 双峰归因的数据源(迁移审计 w244(git 历史) 结论④:schema 无 boss 身份→不可分层)。
     # 记录时点快照,行间可能因实采进度而异;旧记录无此字段(读取端 .get 容忍)。
     boss_names: list[str | None] | None = None
-    # 本局职级(A1..A8;session.selected_difficulty 快照,W244 难度分层缺口)。
+    # 本局职级(A1..A8;session.selected_difficulty 快照,迁移审计 w244(git 历史) 难度分层缺口)。
     # ''=未采/旧记录缺字段。
     selected_difficulty: str = ""
-    # 简报词缀(session.briefing_affixes 快照,W244 affix 分层缺口)。空=未采。
+    # 简报词缀(session.briefing_affixes 快照,迁移审计 w244(git 历史) affix 分层缺口)。空=未采。
     enemy_affixes: list[str] = field(default_factory=list)
-    # —— W306 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
+    # —— 迁移审计 w306(git 历史) 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
     # 确认时的 {char, equip, has_diamond, refreshed, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
     # refreshed=session._supply_refresh_used 时点值(该次确认前是否已刷新重掷);
@@ -347,7 +347,7 @@ class RunSummary:
     ts: str = ""
     run_id: str = ""
     difficulty: str = ""
-    result: str = ""                # "win" / "loss" / "abandoned" / "stopped"(W75:停止路径,ADR-0335)
+    result: str = ""                # "win" / "loss" / "abandoned" / "stopped"(迁移审计 w75(git 历史):停止路径,ADR-0335)
     plane_reached: int = 0          # 到达的最高位面
     rounds_survived: int = 0
     final_hp: int = 0
@@ -391,22 +391,22 @@ class ExogenousEvent:
     run_id: str = ""
     round_num: int = 0
     kind: str = ""                  # node_enter/popup/briefing/event_choice/level_up(r378b 收敛到
-    # 有生产者的值:前三种见 22/31 号预案;event_choice(W312,遥测审计 G1)=
+    # 有生产者的值:前三种见 22/31 号预案;event_choice(迁移审计 w312(git 历史),遥测审计 G1)=
     # overlay 选项选择族(遭遇/巨星/伙伴/策划/命运卜者/装备选卡/祈愿)统一 kind;
-    # sell_income(W323,遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
+    # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
     # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
     # (detail 只放一行人读摘要)
     detail: str = ""
     state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
-    choice: dict[str, Any] | None = None   # 结构化载荷(W312 event_choice:{event/options/
-    # n_options/pick_idx/reason};W323 sell_income:{slot/char/gold_delta})。
+    choice: dict[str, Any] | None = None   # 结构化载荷(迁移审计 w312(git 历史) event_choice:{event/options/
+    # n_options/pick_idx/reason};迁移审计 w323(git 历史) sell_income:{slot/char/gold_delta})。
     # 旧记录与其它 kind 恒 None(缺省兼容)。
 
 
 @dataclass
 class SpendUnitRecord:
-    """购买单元账框架行(spend_ledger.jsonl;W494,纯观测)。
+    """购买单元账框架行(spend_ledger.jsonl;`w494_spend_ledger/`,纯观测)。
 
     一次 RunBuyPhase(开店→买牌/升级/刷新→关店)= 一个购买单元;本行只记
     director 执行边界的**单元框架事实**(边界/耗时/执行结果),plan 动作清单
@@ -433,7 +433,7 @@ class SpendUnitRecord:
     # 读端分类器记 unknown 不猜)。
     gold_close: int | None = None
     gold_close_trusted: bool = False
-    # 执行侧「计划≠尝试」可见化(W577,ADR-0456):生产者 = shop.py 执行循环
+    # 执行侧「计划≠尝试」可见化(`w577_refresh_fee_and_andon/`,ADR-0456):生产者 = shop.py 执行循环
     #(经 set_unit_truncation 暂存、单元关闭落账时消费填充;未挂钩路径恒缺省)。
     plan_truncated: bool = False     # True=plan 里有动作未尝试(硬墙跳过/至首个 RefreshShop 截断丢弃)——口径差非执行失败
     refresh_skipped: str | None = None  # 刷新被跳过的原因:'max_cap'=MAX_REFRESH 硬墙;None=未跳过
@@ -472,10 +472,10 @@ class DefectRecord:
     evidence: dict[str, Any] = field(default_factory=dict)   # {shot?, refs:[{stream,key}]}
     reader_source: str = ""                         # 沿用既有 source 词表
     note: str = ""                                  # 处理提示,一行
-    # W512(观测自检设计 §2.10/§5-B6):识别置信度快照,末尾追加可选字段
+    # `w512_obs_surfaces/`(观测自检设计 §2.10/§5-B6):识别置信度快照,末尾追加可选字段
     #(旧记录缺省 None 兼容)。语义 = 缺陷发生时点的 reader 分数(SIFT 内点数
     # 等数值面;读空=0),不设即时告警,离线做分布监控——某 reader 读空率
-    # 环比翻倍是系统性退化的最早信号(W501 金读数窄区裁切类缺陷先于大额漂移
+    # 环比翻倍是系统性退化的最早信号(`w501_gold_read_fix/` 金读数窄区裁切类缺陷先于大额漂移
     # 在分布上暴露)。None = 该缺陷面无置信度语义。
     confidence: float | None = None
 
@@ -550,7 +550,7 @@ class TelemetryRecorder:
         )
         if extra:
             trace.active_strategies = list(extra.get('active_strategies', []))
-            # dp_posture 双契约容错(r620 自动附 dict / W119 shop.py 附 str;
+            # dp_posture 双契约容错(r620 自动附 dict / 迁移审计 w119(git 历史) shop.py 附 str;
             # 2026-08-26 run13 实机:dict(str) 对 str 炸 ValueError——统一收窄到
             # str 契约,dict 值序列化兜底;326 行的 str 赋值是权威契约)
             _dpp_raw = extra.get('dp_posture', '')
@@ -570,18 +570,18 @@ class TelemetryRecorder:
             trace.v2_bridge = str(extra.get('v2_bridge', ''))
             _v2s = extra.get('sess_v2_state')
             trace.sess_v2_state = list(_v2s) if _v2s else None
-            # W114/ADR-0346 相位影子观测 + ADR-0343 formed_stop 缺口补挂
-            # + W119/ADR-0347 授权依据 trace(dp_posture)
+            # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测 + ADR-0343 formed_stop 缺口补挂
+            # + 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace(dp_posture)
             trace.phase = str(extra.get('phase', ''))
             trace.form_ok = bool(extra.get('form_ok', False))
             trace.form_score = float(extra.get('form_score', 0.0))
             trace.formed_stop = bool(extra.get('formed_stop', False))
             trace.dp_posture = str(extra.get('dp_posture', ''))
             trace.piggy_reward = bool(extra.get('piggy_reward', False))
-            # W146 v3 意向状态(serialize_intention 产物直传)
+            # 迁移审计 w146(git 历史) v3 意向状态(serialize_intention 产物直传)
             _ist = extra.get('v3_intention')
             trace.v3_intention = _ist if isinstance(_ist, dict) else None
-            # W224/ADR-0399:P2 承接快照(session.v3_handoff 透传;
+            # `w224_handoff/`/ADR-0399:P2 承接快照(session.v3_handoff 透传;
             # 非 dict(None)=未进 P2/缺省,旧 schema 不破坏)。
             # P10④ 口径补齐(挂账落码):handoff.gold(出口金)旁补
             # 「可回收 1★ 值」读端字段——判读防「袋穷板富」误读,两字段
@@ -598,7 +598,7 @@ class TelemetryRecorder:
             trace.handoff = _ho if isinstance(_ho, dict) else None
             # P1 配方对平铺观测(空 extra 时字段保持默认空串)
             trace.sess_p1_pair = str(extra.get('sess_p1_pair', ''))
-        # W603 披露键统一接出(session 自取,extra 通道外的固定尾巴;
+        # `w603_telemetry_wiring/` 披露键统一接出(session 自取,extra 通道外的固定尾巴;
         # 缺 match 注册=离线/测试,字段保持 None 缺省)。
         _m = _CTX_MATCH_REF[0]
         _sess = getattr(_m, 'session', None) if _m is not None else None
@@ -608,7 +608,7 @@ class TelemetryRecorder:
                     getattr(_sess, 'v3_blood_budget_rejects', 0) or 0)
                 trace.sess_blood_budget_refresh_rejects = int(
                     getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
-                # W611 储备/义务披露(v3_* 为 decide_prep 每轮写;default
+                # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep 每轮写;default
                 # 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
                 def _w611_int(attr: str) -> int | None:
                     _v = getattr(_sess, attr, None)
@@ -662,9 +662,9 @@ class TelemetryRecorder:
         校准数据源;miss 容错,缺省空)。ctx match 经
         set_ctx_match 注册(启动时),record 端无 ctx 参数
         侵入。
-        source(W28):行来源标记(''/'recovered'/'synthetic_supply',
+        source(迁移审计 w28(git 历史)):行来源标记(''/'recovered'/'synthetic_supply',
         见 OutcomeRecord.source 注)。
-        supply_pick(W306):补给选择快照,透传 OutcomeRecord.supply_pick;
+        supply_pick(迁移审计 w306(git 历史)):补给选择快照,透传 OutcomeRecord.supply_pick;
         仅 synthetic_supply 行传入。
         """
         _board, _bench = {}, 0
@@ -676,7 +676,7 @@ class TelemetryRecorder:
             _sess = getattr(_m, 'session', None) if _m is not None else None
             _st = getattr(_sess, 'last_state', None)
             if _sess is not None:
-                # W253:boss 身份/难度/词缀快照(与板深快照同源同容错;W244 数据缺口)。
+                # 迁移审计 w253(git 历史):boss 身份/难度/词缀快照(与板深快照同源同容错;迁移审计 w244(git 历史) 数据缺口)。
                 # briefing_bosses 元素可为 None(徽章态),保位透传不滤。
                 _bb = getattr(_sess, 'briefing_bosses', None)
                 if isinstance(_bb, (list, tuple)) and len(_bb) > 0:
@@ -742,7 +742,7 @@ class TelemetryRecorder:
         self._gold_trajectory.pop(run_id, None)
         self._comms.pop(run_id, None)
         self._difficulty.pop(run_id, None)
-        # W109(ADR-0344):局终→Δ池快照自动再生(runs.jsonl 每新增
+        # 迁移审计 w109(git 历史)(ADR-0344):局终→Δ池快照自动再生(runs.jsonl 每新增
         # 一行即触发;管线断 12 小时零报警事故的治本)。best-effort。
         _regenerate_delta_pool_after_run()
 
@@ -770,9 +770,9 @@ class TelemetryRecorder:
                          choice: dict[str, Any] | None = None) -> None:
         """记外生事件(exogenous.jsonl;22 号预案触发频率 + 31 号 journal 外生族)。
 
-        kind:node_enter/popup/briefing/event_choice/level_up(W312,见 ExogenousEvent);
+        kind:node_enter/popup/briefing/event_choice/level_up(迁移审计 w312(git 历史),见 ExogenousEvent);
         state 给定时记关键字段快照(hp/gold/bench 数——预案 trigger 语义);
-        choice(W312):overlay 选项选择快照,仅 kind='event_choice' 行携带。
+        choice(迁移审计 w312(git 历史)):overlay 选项选择快照,仅 kind='event_choice' 行携带。
         """
         snap: dict[str, Any] = {}
         if state is not None:
@@ -864,7 +864,7 @@ _CURRENT_DIFFICULTY: str = ""
 # battle_loop 启动 run 时注册,None=离线/测试容错)
 _CTX_MATCH_REF: list = [None]
 
-# —— W306:补给节点选择暂存槽(生产者=RunSupplyNode 选定/确认时;消费者=
+# —— 迁移审计 w306(git 历史):补给节点选择暂存槽(生产者=RunSupplyNode 选定/确认时;消费者=
 # battle_loop._record_supply_outcome 合成行落账时一次消费)。
 # 为什么是模块槽而不是 session 字段:StrategySession(cw_strategy.py,归属他批禁触)
 # 无法加正式字段;OperationRoundResult 状态串传 dict 是解析层凑合。单线程 op 链内
@@ -925,7 +925,7 @@ def _consume_unit_gold_close() -> tuple[int | None, bool]:
     return slot.get('gold'), bool(slot.get('trusted'))
 
 
-# —— 执行侧「计划≠尝试」可见化暂存槽(W577,ADR-0456)——
+# —— 执行侧「计划≠尝试」可见化暂存槽(`w577_refresh_fee_and_andon/`,ADR-0456)——
 # 与 _PENDING_UNIT_GOLD_CLOSE 同模式同理由:shop.py 执行循环握有「计划了但
 # 未尝试/刷新点击后牌面变没变」的执行事实,spend_ledger 行由 director 边界
 # 落账,经本槽由既有落账入口消费(消费即清,残留不串单元)。
@@ -987,10 +987,10 @@ def start_run(difficulty: str = "") -> str:
     _CURRENT_DIFFICULTY = difficulty
     _RUN_CLOSED = False
     get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
-    # W603:局前缓冲的简报行归属本局,新 run_id 就位后补写
+    # `w603_telemetry_wiring/`:局前缓冲的简报行归属本局,新 run_id 就位后补写
     with contextlib.suppress(Exception):
         _flush_pending_briefing_rows()
-    # 构建指纹随局落日志(W596/W593 方案①):局后判读把本局行为对到
+    # 构建指纹随局落日志(`w596_equip_guards/`/`w593_equip_wear/` 方案①):局后判读把本局行为对到
     # 「哪个构建的进程」,消灭「整局构建性归零」这类跨局方差(局22 实证)。
     try:
         from sr_od.backend.build_info import get_build_fingerprint
@@ -1005,8 +1005,8 @@ def current_run_id() -> str:
     return _CURRENT_RUN_ID
 
 
-# ===== W103 件1/件2(ADR-0342):策略失活检测 =====
-# 病灶实录(W98 两局 run_20260825_003757/011957):崩溃恢复局 decisions
+# ===== 迁移审计 w103(git 历史) 件1/件2(ADR-0342):策略失活检测 =====
+# 病灶实录(迁移审计 w98(git 历史) 两局 run_20260825_003757/011957):崩溃恢复局 decisions
 # 全行 strategy_id='' 且零策略动作族(BuyCard/SellBench/CompTransaction/
 # LevelUp 除 op 层兜底外),观测层活着(EnsureShopClosed 行照写)、店里
 # 明明读到目标件——决策层整局未点火,兜底打满 40min 产出 0 买垃圾局。
@@ -1039,14 +1039,14 @@ def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
 
 
 def strategy_round_live(run_id: str, key: tuple[int, int]) -> bool:
-    """(plane, round) 是否有带 strategy_id 的决策行(W103 件1 查询端)。"""
+    """(plane, round) 是否有带 strategy_id 的决策行(迁移审计 w103(git 历史) 件1 查询端)。"""
     return key in _strategy_live_rounds(run_id)
 
 
 def dead_streak_transition(prev_key: tuple[int, int] | None,
                            key: tuple[int, int],
                            streak: int, live: bool) -> int:
-    """策略失活连击状态机(W103 件1;纯函数,battle_loop 消费)。
+    """策略失活连击状态机(迁移审计 w103(git 历史) 件1;纯函数,battle_loop 消费)。
 
     语义:进入新 round key 时对**上一轮** prev_key 的 live 结果结算——
     本轮的决策行还没写(检查点在备战入口,决策发生在本相位内),查本轮
@@ -1060,11 +1060,11 @@ def dead_streak_transition(prev_key: tuple[int, int] | None,
 
 def check_strategy_live_streak(all_rows: list[dict],
                                streak_threshold: int = 3) -> list[str]:
-    """生产检查项(W103 件2;run_checks_on_replay 消费):策略失活局/失活段。
+    """生产检查项(迁移审计 w103(git 历史) 件2;run_checks_on_replay 消费):策略失活局/失活段。
 
     判据:该 run 的 (plane, round) 全集中,「无任何带 strategy_id 决策行」
-    的连续轮数 ≥ streak_threshold → 违规。W98 两局实录=整局恒空(全程
-    57/61 轮),streak=轮数 → 必报;阈值取 3(整局空与 W98 形态远超;
+    的连续轮数 ≥ streak_threshold → 违规。迁移审计 w98(git 历史) 两局实录=整局恒空(全程
+    57/61 轮),streak=轮数 → 必报;阈值取 3(整局空与 迁移审计 w98(git 历史) 形态远超;
     <3 的孤立空轮多为暂态/接管帧,不报警——非 sim 检查,生产局判栈用,
     与 sim 检查网(cw_sim_checks)分栈:sim 批 strategy 恒在,跑了也是
     恒绿,不进 _BATCH_CHECKS)。
@@ -1085,7 +1085,7 @@ def check_strategy_live_streak(all_rows: list[dict],
     if worst >= streak_threshold:
         dead_n = sum(1 for k in rounds if k[0] == 1 and not rounds[k])
         return [f'P1 策略失活连续 {worst} 轮(共 {dead_n} 轮无 '
-                f'strategy_id 决策行——W98 恢复兜底局形态,ADR-0342)']
+                f'strategy_id 决策行——迁移审计 w98(git 历史) 恢复兜底局形态,ADR-0342)']
     return []
 
 
@@ -1108,7 +1108,7 @@ def record_decision(state: GameState, target_comp: str,
         return
     _extra: dict[str, Any] = {}
     try:
-        # 批 3 预算收权:影子姿态改确定性预算核投影(get_node_goal 三档
+        # 预算收权批(ADR-0465):影子姿态改确定性预算核投影(get_node_goal 三档
         # spend_mode 单一供给);台账指纹随 DP 世界模型退役删除(原指纹
         # = DP 求解 memo 键,查表核无求解面,无指纹语义)。
         from sr_od.application.currency_war.cw_economy import get_node_goal
@@ -1132,8 +1132,8 @@ def record_outcome(outcome, source: str = "",
                    supply_pick: dict[str, Any] | None = None) -> None:
     """便捷:用 current_run_id 记一条观测结果。loop 战斗后调。
 
-    source(W28):行来源标记(''/'recovered'/'synthetic_supply')。
-    supply_pick(W306):补给选择快照,仅 synthetic_supply 行传入(透传)。
+    source(迁移审计 w28(git 历史)):行来源标记(''/'recovered'/'synthetic_supply')。
+    supply_pick(迁移审计 w306(git 历史)):补给选择快照,仅 synthetic_supply 行传入(透传)。
     """
     if not _CURRENT_RUN_ID:
         return
@@ -1149,7 +1149,7 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
 
     注意签名与类方法不同(无 run_id 首参——模块级自动取 current_run_id)。
 
-    W603 简报归属:简报屏在 loop ``__init__``(start_run)**之前**读,此刻
+    `w603_telemetry_wiring/` 简报归属:简报屏在 loop ``__init__``(start_run)**之前**读,此刻
     _CURRENT_RUN_ID 为空(进程首局→行被丢)或指向上局(→行带旧 run_id,ts 却
     落在下局窗口,判读归属滞后)。修法=写入时点带正确归属:live run 存在照写;
     否则 kind='briefing' 行暂存模块槽,start_run 建新 run_id 后以新 id 补写
@@ -1165,7 +1165,7 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
                                     choice=choice)
 
 
-# ===== W603 简报行 run_id 归属(局间缓冲)=====
+# ===== `w603_telemetry_wiring/` 简报行 run_id 归属(局间缓冲)=====
 # 生命周期:简报读取(局前)→ start_run 补写;进程终止未遇 start_run = 缓冲丢弃
 # (best-effort,与原「行被丢/带错 id」相比只改善不劣化)。上限 16 行 = 简报
 # retry 重跑上限(节点 max_retry_times=10)的宽裕倍数,防异常路径无限积压。
@@ -1218,13 +1218,13 @@ def _flush_pending_briefing_rows() -> None:
 
 def record_event_choice(event: str, options: list | None, pick_idx: int,
                         reason: str = '') -> None:
-    """W312(遥测审计 G1):overlay 选项选择族统一落盘(exogenous.jsonl,
+    """迁移审计 w312(git 历史)(遥测审计 G1):overlay 选项选择族统一落盘(exogenous.jsonl,
     kind='event_choice',结构化载荷在 ExogenousEvent.choice)。
 
     七个 handler(遭遇/巨星/伙伴/策划事件/命运卜者/装备选卡/祈愿)在
     **选项确认时点**各调一行:此前该族只 log.info 不进账本,「当时提供了
     什么选项、bot 选了哪个、为什么」在遥测上断链(对照:invest 族全量
-    落盘、W306 supply_pick——证明是漏接不是做不了)。
+    落盘、迁移审计 w306(git 历史) supply_pick——证明是漏接不是做不了)。
 
     参数:
         event: 事件名短码(如 'encounter'/'megastar'),写入 choice['event'];
@@ -1259,7 +1259,7 @@ def record_event_choice(event: str, options: list | None, pick_idx: int,
 
 def record_sell_income(state: GameState, slot: int, char_id: str,
                        gold_before: int | None, gold_after: int | None) -> None:
-    """W323(遥测审计 G2):卖牌执行点实收回金落盘(exogenous.jsonl,
+    """迁移审计 w323(git 历史)(遥测审计 G2):卖牌执行点实收回金落盘(exogenous.jsonl,
     kind='sell_income')。
 
     生产者 = shop.py SellBench 执行分支(拖拽卖出成功后):gold_before 取
@@ -1323,7 +1323,7 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
                        final_hp: int, notes: str = "") -> None:
     """便捷:用 current_run_id 记局终 summary。loop 局终调。
 
-    W603:落盘后置 run 关闭位 —— 此后到下一局 start_run 前的 briefing 行
+    `w603_telemetry_wiring/`:落盘后置 run 关闭位 —— 此后到下一局 start_run 前的 briefing 行
     归属下一局(缓冲补写),不再挂在已收口的旧 run_id 上。
     """
     global _RUN_CLOSED
@@ -1338,7 +1338,7 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
 # 把散在 obs_conflicts(感知冲突)/ exec_events(执行失败)的缺陷口径归一:
 # 旧流是原始证据层保持原样,台账每行经 evidence.refs 指回原流行——审计先查
 # 台账,下钻再回原流。接线方式=在 obs_conflict / record_exec_event 写入点
-# 内部各加一行旁路(调用方零改动)。obs_conflicts 行内 run_id(W603 起)由
+# 内部各加一行旁路(调用方零改动)。obs_conflicts 行内 run_id(`w603_telemetry_wiring/` 起)由
 # 唯一汇点 obs_conflict() 内部自取 current_run_id 补齐——历史行无此键
 # (读取端按「有键才过滤」容忍),join key 台账仍并行补齐。
 
@@ -1445,7 +1445,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         plane=plane, round_num=round_num, unit_seq=unit_seq, gap=gap,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
         reader_source=reader_source, note=note, confidence=confidence)
-    # W515 分级安灯 L0 自动停线(用户裁决「确认缺陷即停实机」;先例=
+    # `w515_l0_andon/` 分级安灯 L0 自动停线(用户裁决「确认缺陷即停实机」;先例=
     # prep_director 执行失败安灯钩子)。只认显式判级 == L0_andon(零误停
     # 偏置:judge_severity 已辖 auto_resolved→L2,不在此双保险改语义);
     # 台账行已在上一行落盘,停线不改变缺陷记录的数据形状(旧消费者不破)。
@@ -1460,7 +1460,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
             })
 
 
-# ===== W515 分级安灯 L0 自动停线(观测缺陷面;纯判定在本模块,游戏侧
+# ===== `w515_l0_andon/` 分级安灯 L0 自动停线(观测缺陷面;纯判定在本模块,游戏侧
 # 三要素执行在 cw_observe.stop_for_l0_andon——本模块「纯逻辑不碰游戏」
 # 的分层边界,与 prep_director 执行失败安灯「判定与执行同文件」不同)=====
 
@@ -1567,7 +1567,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
             gap_large = True
     except (TypeError, ValueError):
         gap = None   # 文本面:gap 不填,差用 expected/observed 表达
-    # W512(§2.10):原流行 ctx 里带数值 confidence 时透传进台账
+    # `w512_obs_surfaces/`(§2.10):原流行 ctx 里带数值 confidence 时透传进台账
     #(缺省/非数值 → None,该缺陷面无置信度语义)
     conf: float | None
     try:
@@ -1628,7 +1628,7 @@ def bypass_exec_event_to_defect(rec: dict) -> None:
 
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
-# 写端三路径:① 3c 回大厅(正常终局 win/loss);② W75 after_operation_done
+# 写端三路径:① 3c 回大厅(正常终局 win/loss);② 迁移审计 w75(git 历史) after_operation_done
 # 收口(停止/超时/异常退出 result='stopped'/'abandoned',battle_loop.py 类注);
 # ③ 本兜底(进程崩溃/重启杀局,start_run 每局起点补 source='recovered')。
 # r363 曾在 loop() 顶查 is_context_stop —— 但 operation.execute() 每轮前
@@ -1724,14 +1724,14 @@ def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list
     if recovered:
         log.info('[cw][telemetry] summary 兜底回填 %d 局(ADR-0273):%s',
                  len(recovered), ','.join(recovered))
-        # W109(ADR-0344):兜底行也是 runs.jsonl 新增——同样触发池再生
+        # 迁移审计 w109(git 历史)(ADR-0344):兜底行也是 runs.jsonl 新增——同样触发池再生
         # (崩溃恢复局的语料此刻才齐,不等到下一局正常局终)。
         _regenerate_delta_pool_after_run()
     return recovered
 
 
 def _regenerate_delta_pool_after_run() -> None:
-    """W109(ADR-0344):局终→Δ池快照自动再生 + 新鲜度自检。
+    """迁移审计 w109(git 历史)(ADR-0344):局终→Δ池快照自动再生 + 新鲜度自检。
 
     事故背景:2026-08-25 查实池快照停在凌晨(41 局),当天 4 局未入
     池——sim encounter/boss 零胜例把 P1 后段钉死全败,管线断 12
@@ -1815,7 +1815,7 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
     """
     if not _CURRENT_RUN_ID:
         return
-    # W512(观测自检设计 §2.9/§5-B6 策略激活态对拍,生产侧):strategy 类
+    # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6 策略激活态对拍,生产侧):strategy 类
     # 投资卡落盘时暂存「声明选中」的名字,由下一次备战观察构建 state 时消费
     #(cw_observation),对拍 session.active_strategies——选了 X 而持卡里没有
     # X = 写链断或选择落空(原审计缺口:策略误选/漏选无法发现)。槽模式与
@@ -1835,7 +1835,7 @@ def record_invest_cards(kind: str, cards: list[dict[str, Any]]) -> None:
         })
 
 
-# —— W512:策略激活对拍暂存槽(生产者=record_invest_cards('strategy');
+# —— `w512_obs_surfaces/`:策略激活对拍暂存槽(生产者=record_invest_cards('strategy');
 # 消费者=cw_observation 构建 state 读 session.active_strategies 处;消费即清)——
 _PENDING_STRATEGY_PICK: str | None = None
 
@@ -1990,7 +1990,7 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
                                  (d.get('ts') or '')))
         all_rows = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
                     if d.get('run_id') == rid]
-        # W103 件2(ADR-0342):策略失活检查先行(不依赖判栈——失活局
+        # 迁移审计 w103(git 历史) 件2(ADR-0342):策略失活检查先行(不依赖判栈——失活局
         # 恰恰 strategy_id='' 无法判栈,不能被栈跳过逻辑连坐)。
         _dead = check_strategy_live_streak(all_rows)
         if _dead:
@@ -2069,7 +2069,7 @@ def _release_frame_counts(replay_dir: Path, run_id: str) -> dict:
 def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
     """视图:逐轮演进(hp/gold/买/升/D/board;v2 模式/锁线/桥)。
 
-    W306 后补给等无决策节点经由 outcomes 的 synthetic 行并入本视图
+    迁移审计 w306(git 历史) 后补给等无决策节点经由 outcomes 的 synthetic 行并入本视图
     (source 标记可见),判读不再缺「选了什么补给」前后的状态语境。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
@@ -2077,7 +2077,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
     _rel = _release_frame_counts(replay_dir, run_id)
     # 仅收「无决策行」的键(如 supply 合成行);有决策的轮以 decisions 为准
     _out_only: dict = {}
-    # W306 显示闭环:全部 outcomes 建 map —— 决策行的 source 也要能打
+    # 迁移审计 w306(git 历史) 显示闭环:全部 outcomes 建 map —— 决策行的 source 也要能打
     # (source 在 outcomes 行,decisions 行没有;合成补给行等无决策轮才有非空 source)
     _out_by_k: dict = {}
     for o in read_jsonl(replay_dir / "outcomes.jsonl"):
@@ -2115,21 +2115,21 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         lock = d.get("v2_locked_line") or ""
         bridge = d.get("v2_bridge") or ""
         v2_s = f" v2=[{v2}|{lock or '-'}|{bridge or '-'}]" if (v2 or lock or bridge) else ""
-        # W146 v3 意向状态直读(锁定时点/锁定目标;None/default 局省略)
+        # 迁移审计 w146(git 历史) v3 意向状态直读(锁定时点/锁定目标;None/default 局省略)
         _ist = d.get('v3_intention')
         ist_s = ''
         if isinstance(_ist, dict):
             ist_s = (f" ist=[{_ist.get('phase', '')}"
                      f"|{_ist.get('locked_comp', '') or '-'}]"
                      + ('/降格' if _ist.get('demoted_endgame') else ''))
-        # W114/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空)
+        # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空)
         _ph = d.get("phase") or ""
         _fok = d.get("form_ok")
         _fsc = d.get("form_score")
         ph_s = (f" ph={_ph}" + ("/ok" if _fok else "")
                 + (f"/{_fsc:.2f}" if isinstance(_fsc, (int, float)) else "")
                 ) if _ph else ""
-        # W119/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
+        # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
         # dp 显示规整:只有 decision_v2 决策帧显示 tag 本身(判定口径
         # dp=='release' 消费的就是这个 str);载体帧(strategy_id='')是
         # str(dict) 形态、08-26 前历史帧是 dict 形态——一律 dp=? 紧凑占位,
@@ -2147,7 +2147,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
             dpp_s += " P=扑满"
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
-        # ⚠️ 判读语义(W229 分型,勿再误判为「前排未满编」缺陷):
+        # ⚠️ 判读语义(迁移审计 w229(git 历史) 分型,勿再误判为「前排未满编」缺陷):
         # - 前后分拆按 position_pref(角色命途定位)计数,deploy 按它路由落排
         #   (ADR-0392 deployed_place);「前排固定 4」是槽位可用性不是放置目标;
         # - 「满编」判据 = deployed 总数 = cap(=level),**不是前排占满 4**;
@@ -2158,7 +2158,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         _dep = st.get("deployed") or []
         _front = sum(1 for c in _dep if c.get("position_pref") == "front")
         pos_s = f" 位={_front}前/{len(_dep) - _front}后" if _dep else ""
-        # W306:节点类型 + 行来源直读(单看数字不知道是什么节点/这行哪来的
+        # 迁移审计 w306(git 历史):节点类型 + 行来源直读(单看数字不知道是什么节点/这行哪来的
         # ——node_type 取 state(战斗后观测),source 取 outcomes 同键行
         # (''=结算真值行,'synthetic_supply'/'recovered' 特例),合成显示 [src|nt])
         _nt = st.get("node_type") or ""
@@ -2167,7 +2167,7 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         nt_s = f" [{_tag}]" if _tag else ""
         # hp 可信位显影:hp_readable 在帧顶层,state.hp_trusted 在 state
         # 子字典(GameState.hp_trusted,cw_observation 写入快照;顶层没有该键,
-        # 直读顶层恒 None)。任一不可信 → hp 后缀 `?`(W318 economy 视图惯例),
+        # 直读顶层恒 None)。任一不可信 → hp 后缀 `?`(迁移审计 w318(git 历史) economy 视图惯例),
         # 防「100 兜底值被判读为满血」(实证:run_20260828_103147 p2r4 帧
         # hp=4→100×5→4 且 hp_readable 恒 False)。sim 账本行 hp 是模拟真值
         # 且不带可信位字段,豁免不标。
@@ -2197,7 +2197,7 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
             continue
         snaps.setdefault((s.get("plane"), s.get("round_num")), []).append(s)
     best = _load_decisions_rounds(replay_dir, run_id)
-    # W306 显示闭环:同键 outcome 的 node_type/source 打进每轮头行
+    # 迁移审计 w306(git 历史) 显示闭环:同键 outcome 的 node_type/source 打进每轮头行
     # (synthetic 补给行无 decisions,靠 outcomes 兜出节点语境)
     _out_by_k: dict = {}
     for o in read_jsonl(replay_dir / "outcomes.jsonl"):
@@ -2245,8 +2245,8 @@ ABN_DROP: int = 25     # 单轮掉血 ≥ 此 = 战力断层
 def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
     """视图:异常标记(钱变不成板/战力断层/plan_error)。
 
-    W317(G4 读端欠账):各条目补所在轮 node_type;断层条目另补
-    enemy_affixes(W244 词缀分层)——断层归因第二分法(敌方强度
+    迁移审计 w317(git 历史)(G4 读端欠账):各条目补所在轮 node_type;断层条目另补
+    enemy_affixes(迁移审计 w244(git 历史) 词缀分层)——断层归因第二分法(敌方强度
     异常)不用再开新窗口直查 jsonl。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
@@ -2256,7 +2256,7 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
         acts = d.get("actions") or []
         buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
         lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
-        # W317:节点类型进标签(与 rounds 视图 [tag] 风格一致)
+        # 迁移审计 w317(git 历史):节点类型进标签(与 rounds 视图 [tag] 风格一致)
         _nt = (d.get("state") or {}).get("node_type") or ""
         _tag = f"[{_nt}] " if _nt else ""
         if (d.get("gold") or 0) >= ABN_GOLD and buys == 0 and lvs == 0:
@@ -2269,7 +2269,7 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
             continue
         hp = o.get("hp_after")
         if prev_hp is not None and hp is not None and prev_hp - hp >= ABN_DROP:
-            # W317:断层行带节点类型与词缀(非空才显示;词缀=开局简报
+            # 迁移审计 w317(git 历史):断层行带节点类型与词缀(非空才显示;词缀=开局简报
             # 位面级快照,语义见 OutcomeRecord.enemy_affixes)
             _nt = o.get("node_type") or ""
             _tag = f"[{_nt}] " if _nt else ""
@@ -2287,8 +2287,8 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
 
     与 sim hp_events 同构(对拍 sim 校准模型的直接读出端);
     board_before/bench_count 为 r339 起记录(旧数据缺省显示 -)。
-    W317(G4 读端欠账):行尾补 killed(1=击杀/0=未杀/?=旧数据或
-    未采到)与 boss_names(W244 boss 分层,非空才显示)——「这轮输
+    迁移审计 w317(git 历史)(G4 读端欠账):行尾补 killed(1=击杀/0=未杀/?=旧数据或
+    未采到)与 boss_names(迁移审计 w244(git 历史) boss 分层,非空才显示)——「这轮输
     给谁」的断层归因不再需要另开窗口直查 jsonl。
     """
     lines = []
@@ -2309,7 +2309,7 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
             f"{_sim.get('depth', '-')}*" if _sim else '-')
         bench = o.get("bench_count")
         delta_s = f'{-delta:+d}' if delta is not None else '-'
-        # W317:胜负(killed,None=未知)与 boss 身份(非空才显示;
+        # 迁移审计 w317(git 历史):胜负(killed,None=未知)与 boss 身份(非空才显示;
         # None 元素=该位面徽章态采不到,保位过滤语义见 OutcomeRecord)
         _killed = o.get("killed")
         k_s = '1' if _killed else ('0' if _killed is False else '?')
@@ -2334,13 +2334,13 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
     时按 XP_CLICK_COST_FALLBACK 兜底常量计入并在 `lv=` 后标 `?`
     (成本项可能有偏,判读可辨)。升级成本与 gold 并列显示——
     「这轮升得起吗」直接对照,不再需要另开窗口查 decisions.state。
-    卖回格(W323,遥测审计 G2):优先聚合 exogenous kind='sell_income'
+    卖回格(迁移审计 w323(git 历史),遥测审计 G2):优先聚合 exogenous kind='sell_income'
     行的实收 gold_delta(shop.py 执行点落盘);该轮有行但 delta=None
     (OCR miss)计 0 并标 `?`;无行(旧数据/sim 局)回退 decisions
     actions 的 SellBench.income 口径(与 sim 账本一致,不回归)。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
-    # W323:执行点实收卖回聚合(键 = (plane, round),与 decisions 主键同坐标系)
+    # 迁移审计 w323(git 历史):执行点实收卖回聚合(键 = (plane, round),与 decisions 主键同坐标系)
     sell_obs: dict[tuple, int] = {}
     sell_obs_unknown: set[tuple] = set()
     for r in read_jsonl(replay_dir / "exogenous.jsonl"):
@@ -2370,7 +2370,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
             if isinstance(a, dict) and a.get("__type__") == "LevelUp")
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
-        # 卖牌回金(W323 前口径⑤:漏计——含卖轮的 income 系统性偏负)。
+        # 卖牌回金(迁移审计 w323(git 历史) 前口径⑤:漏计——含卖轮的 income 系统性偏负)。
         # 优先级:执行点实收(exogenous)> actions 计划值(sim 行;生产行
         # serialize_action 的 SellBench 不带 income,恒 0 不干扰)。
         sell_act = sum((a.get("income") or 0) for a in acts
@@ -2495,7 +2495,7 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
     return lines
 
 
-# —— W494 执行层 spend_ledger:购买单元「计划金流 vs 实际金流」记账 ——
+# —— `w494_spend_ledger/` 执行层 spend_ledger:购买单元「计划金流 vs 实际金流」记账 ——
 # 背景(根缺出处:.debug/temp/currency_war/w489_sim_real_gap/REPORT.md §1.3):
 # 高金购买单元无法区分「策略裁掉不买」vs「动作发出但没生效」——缺单元级
 # 完整账。本段三件:纯函数 plan_gold_flow(逐项期望金差)/ classify_spend_unit
@@ -2508,7 +2508,7 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
 #: 行内无 run_id,同 (plane, round) 跨局复现——按 ts 邻近消歧。
 _SPEND_CONFLICT_TS_WINDOW_S: int = 600
 
-#: 大额失配清单门槛(金):W489 感知面大额漂移 16-40 金量级,>10 报清单。
+#: 大额失配清单门槛(金):`w489_sim_real_gap/` 感知面大额漂移 16-40 金量级,>10 报清单。
 _SPEND_LARGE_GAP: int = 10
 
 
@@ -2568,20 +2568,20 @@ def classify_spend_unit(plan_actions: list[dict[str, Any]],
                         *, refresh_cost: int = 2, tolerance: int = 2,
                         boundary: str = 'closed',
                         executed: dict[str, Any] | None = None) -> dict[str, Any]:
-    """购买单元三态判定(纯函数,可单测;W494 设计 §3;W577 扩「计划≠尝试」分流)。
+    """购买单元三态判定(纯函数,可单测;`w494_spend_ledger/` 设计 §3;`w577_refresh_fee_and_andon/` 扩「计划≠尝试」分流)。
 
     verdict 域:effective(生效)/ not_effective(执行未生效)/
     partial_mismatch(金动了但对不上账)/ unplanned_spend(计划外花销)/
     no_spend_quiet(未计划且金未动)/ plan_truncated(plan 有动作未尝试——
-    执行侧硬墙跳过/至首个 RefreshShop 截断,口径差非执行失败,W577)/
-    free_refresh_proc(刷新已尝试+牌面已变+金差≈0 = 免费刷新生效,W577)/
+    执行侧硬墙跳过/至首个 RefreshShop 截断,口径差非执行失败,`w577_refresh_fee_and_andon/`)/
+    free_refresh_proc(刷新已尝试+牌面已变+金差≈0 = 免费刷新生效,`w577_refresh_fee_and_andon/`)/
     unknown(读数缺失或非完整单元——**记 unknown 不猜**:无 gold_delta
     冲突行 ≠ 对拍通过,read_gold 失败同样不写行,离线不可分,宁缺勿错)。
     tolerance 与 shop.py spend_audit ±2 同源;boundary != 'closed'(半单元/
     中断单元)不判——执行链不完整,任何判定都是猜。
 
-    executed(W577,可选)= 执行侧可见化事实(SpendUnitRecord 同名字段;
-    None=旧数据/未挂钩,判定退回 W494 原语义)。判定序(ADR-0456):
+    executed(`w577_refresh_fee_and_andon/`,可选)= 执行侧可见化事实(SpendUnitRecord 同名字段;
+    None=旧数据/未挂钩,判定退回 `w494_spend_ledger/` 原语义)。判定序(ADR-0456):
     ①plan_truncated → plan_truncated(**不停**——口径差,留台账);
     ②金差≈0 ∧ 计划花费>0 ∧ 已尝试 → not_effective(**停**——真点击落空);
     ③金差≈0 ∧ 刷新已尝试 ∧ 牌面已变 → free_refresh_proc(**不停**+采证)。
@@ -2685,7 +2685,7 @@ def _spend_unit_row(replay_dir: Path, run_id: str, plane: int,
 
     消费方 = prep_director 安灯钩子(_exec_fail_hook_check):读执行侧
     「计划≠尝试」事实字段(plan_truncated/refresh_*)作分类器 executed 输入。
-    行缺失(历史局/未挂钩)→ None,分类器退回 W494 原语义不停。
+    行缺失(历史局/未挂钩)→ None,分类器退回 `w494_spend_ledger/` 原语义不停。
     """
     found: dict[str, Any] | None = None
     p = replay_dir / 'spend_ledger.jsonl'
@@ -2724,12 +2724,12 @@ def _shop_plan_rows(replay_dir: Path, run_id: str) -> dict[tuple[int, int], dict
 
 
 def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(W494):购买单元金账——三态计数 + 大额失配清单。
+    """视图(`w494_spend_ledger/`):购买单元金账——三态计数 + 大额失配清单。
 
     join 三流:spend_ledger.jsonl(单元框架,run_id 过滤)× decisions.jsonl
     shop plan 行(plan/开店金)× obs_conflicts.jsonl gold_delta(关店实读金,
     ts 邻近窗消歧)。ledger 缺行(历史局/未挂钩期)按 plan 行逐轮重建伪单元
-    (boundary 标 unknown)——W489 式审计可直接消费存量 replay。读数缺失
+    (boundary 标 unknown)——`w489_sim_real_gap/` 式审计可直接消费存量 replay。读数缺失
     行记 unknown 不猜(设计 §3)。
     """
     ledger = [r for r in read_jsonl(replay_dir / 'spend_ledger.jsonl')
@@ -2827,7 +2827,7 @@ def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
 def derive_xp_per_click(replay_dir: Path | str = DEFAULT_REPLAY_DIR,
                         run_id: str | None = None,
                         max_rate: int = 8) -> dict[str, Any]:
-    """decisions.jsonl 遥测 → 购买经验单击 XP 增量实证推导(离线纯读;W552)。
+    """decisions.jsonl 遥测 → 购买经验单击 XP 增量实证推导(离线纯读;`w552_xp_reconcile/`)。
 
     数据源 = decisions 行的 ``state.xp_progress``(显示读数)+ ``actions``
     中 LevelUp 条数(执行侧单击语义:shop 通道一次点击 = 1 条 LevelUp)。
@@ -2888,7 +2888,7 @@ def derive_xp_per_click(replay_dir: Path | str = DEFAULT_REPLAY_DIR,
             'samples': samples}
 
 
-# —— W315(遥测审计 G3):四条旁路 jsonl 流的零查询视图补齐 ——
+# —— 迁移审计 w315(git 历史)(遥测审计 G3):四条旁路 jsonl 流的零查询视图补齐 ——
 # exogenous / exec_events / invest_cards / obs_conflicts 此前只能裸翻文件
 # (审计都得手写 PowerShell Group-Object);「需求已固化的复盘 = 新视图」。
 # 约定与既有视图一致:按 run_id 过滤(obs_conflicts 例外——观察冲突 journal
@@ -2905,9 +2905,9 @@ def _filter_latest(rows: list[dict[str, Any]], run_id: str,
 
 
 def query_exogenous(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(W315/G3):外生事件流(exogenous.jsonl)——kind/round/内容摘要。
+    """视图(迁移审计 w315(git 历史)/G3):外生事件流(exogenous.jsonl)——kind/round/内容摘要。
 
-    头部 = kind 计数(预案 trigger 频率统计的直接读出端);W312 的
+    头部 = kind 计数(预案 trigger 频率统计的直接读出端);迁移审计 w312(git 历史) 的
     event_choice 行展开选项面(提供了什么/选了哪个/为什么——G1 闭环)。
     """
     rows = _filter_latest(read_jsonl(replay_dir / "exogenous.jsonl"), run_id)
@@ -2919,7 +2919,7 @@ def query_exogenous(replay_dir: Path, run_id: str) -> list[str]:
         snap = r.get("state_snapshot") or {}
         ctx_s = (f" hp={snap['hp']} g={snap['gold']} lv={snap.get('level')}"
                  if snap.get("hp") is not None else "")
-        # W312 选项快照展开:每个候选取 difficulty/name 兜底摘要(识别失败
+        # 迁移审计 w312(git 历史) 选项快照展开:每个候选取 difficulty/name 兜底摘要(识别失败
         # 行 options=[] 时显示 (无识别)——留证据可见,不静默)
         c_s = ""
         c = r.get("choice")
@@ -2940,7 +2940,7 @@ def query_exogenous(replay_dir: Path, run_id: str) -> list[str]:
 
 
 def query_exec_events(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(W315/G3):执行事件流(exec_events.jsonl)——能力画像读出端。
+    """视图(迁移审计 w315(git 历史)/G3):执行事件流(exec_events.jsonl)——能力画像读出端。
 
     头部 = action_family×event 计数 + fail 率(27 号设计目标的「一句 CLI」:
     实现缺陷 vs 固有难度分型先看哪个族在哪个画面集中失败);逐行 = 逐事件。
@@ -2967,7 +2967,7 @@ def query_exec_events(replay_dir: Path, run_id: str) -> list[str]:
 
 
 def query_invest_cards(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(W315/G3):投资卡候选与选择(invest_cards.jsonl;ADR-0132 采集)。
+    """视图(迁移审计 w315(git 历史)/G3):投资卡候选与选择(invest_cards.jsonl;ADR-0132 采集)。
 
     同一次出卡按 (kind, ts) 聚成一组(逐卡一行落盘,组=一次选卡画面);
     ★=chosen(选了哪张一眼可见);头部 = 出卡次数按 kind 计数。
@@ -2998,9 +2998,9 @@ def query_invest_cards(replay_dir: Path, run_id: str) -> list[str]:
 
 
 def query_obs_conflicts(replay_dir: Path, run_id: str) -> list[str]:
-    """视图(W315/G3):观察冲突流(obs_conflicts.jsonl;cw_observe journal)。
+    """视图(迁移审计 w315(git 历史)/G3):观察冲突流(obs_conflicts.jsonl;cw_observe journal)。
 
-    W603 起新行带 run_id(唯一汇点 obs_conflict() 补齐):``--run`` 给定时
+    `w603_telemetry_wiring/` 起新行带 run_id(唯一汇点 obs_conflict() 补齐):``--run`` 给定时
     按 run_id 过滤(历史行无此键→不命中,用空 run_id 全量看);空=全量展示。
     头部 = 按 field 分组计数 + verdict 首词分布(哪个字段在哪个画面毒化频次
     最高的离线统计入口;M38 教训的读出端);逐行 = 最新冲突摘要(截断防长
@@ -3021,7 +3021,7 @@ def query_obs_conflicts(replay_dir: Path, run_id: str) -> list[str]:
                 except json.JSONDecodeError:
                     continue
     rows = sorted(raw_rows, key=lambda r: r.get("ts") or "", reverse=True)
-    # W603 起新行带 run_id 键——给了 run_id 才过滤(历史行无键不命中);
+    # `w603_telemetry_wiring/` 起新行带 run_id 键——给了 run_id 才过滤(历史行无键不命中);
     # 空 = 全量展示
     if run_id:
         rows = [r for r in rows if r.get("run_id") == run_id]
@@ -3134,7 +3134,7 @@ def _cli_main() -> None:
     if args.view in ('economy', 'all'):
         print('[economy]')
         print('\n'.join(query_economy(replay_dir, rid)))
-    # W315(审计 G3)四条旁路流视图
+    # 迁移审计 w315(git 历史)(审计 G3)四条旁路流视图
     if args.view in ('exogenous', 'all'):
         print('[exogenous]')
         print('\n'.join(query_exogenous(replay_dir, rid)))

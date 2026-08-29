@@ -157,7 +157,7 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
     """
     if state.level >= 10:
         return False
-    # 批 4 C5 换源(蓝图 §4.3-R1):committed 显式传参——None=挂账层旧口径
+    # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):committed 显式传参——None=挂账层旧口径
     # (读 GameState 双轨标志,cw_plan.plan 内部消费面暂留,删除点=买层接管批);
     # step 级调用方(level_up_gate 经 cw_plan.level_up_gate 透传)从
     # prep_brain.committed_from 取权威值传入,堵「装配边界漏回填双轨标志 →
@@ -291,7 +291,7 @@ class NodeGoal:
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
                                 # 'release' 不经本投影(帧级态):生产单一源=
                                 # decision_v2.posture_release 经 session 通道;
-                                # 本函数只产 level/adaptive/interest(批 3)
+                                # 本函数只产 level/adaptive/interest(迁移迁移批 3(ADR-0465)(ADR-0465))
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
     #: DP 授权的可刷次数上界(W332b 三方预算合并:随 NodeGoal 下传,消费侧与
     #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
@@ -316,12 +316,12 @@ def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
-    """查 (plane, round) → NodeGoal(批 3 预算收权:确定性预算核单一供给)。
+    """查 (plane, round) → NodeGoal(预算收权批(ADR-0465):确定性预算核单一供给)。
 
     姿态从预算收权核涌现(原 DP 解供给已退役,BLUEPRINT §3
     裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
     >0 → adaptive/d_search;两者皆无 → interest/hold。供给在任意帧恒有
-    定义(W623 D0:None 级联面消灭),仅传参不全(迁移漏点)时退
+    定义(`w623_batch3_pre-mortem/` D0:None 级联面消灭),仅传参不全(迁移漏点)时退
     ``_expected_level`` 平滑先验 + adaptive(记 [cw-seam] debug 证据)。
 
     三档 spend_mode 与决策核同源:level/adaptive/interest 的判据单一址
@@ -344,7 +344,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影帧:用入参重建最小决策帧(供给核只读经济/板面字段;
         # v1 栈调用面无现成 GameState——旧 DP 接缝同样只收标量)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
-        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(W635 F6b 纠偏:
+        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(`w635_batch3_attack/` F6b 纠偏:
         # 原注释「投影帧不储蓄」与实现不符;方向保守无害)。
         _st = _GS(gold=gold, level=level, plane=plane, round_num=round_num,
                   hp=hp)

@@ -1,4 +1,4 @@
-"""决策适配器(W606 阶段2批③;设计单一源 =
+"""决策适配器(`w606_stage2_batch3/` 阶段2批③;设计单一源 =
 ``.debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md``)。
 
 薄适配层:快照 → 现役 ``decide_prep_action`` 的输入视图(obs-like + 决策
@@ -19,9 +19,9 @@ GameState)→ PrepAction → AtomOp/Decision 契约。**策略核零改**——
   ``action_key`` 同粒度思想),PrepAction 全参数经 ``DecideAdapter`` 的
   绑定表回放给现役执行器。
 - ``shadow_compare_enabled`` —— 影子比对开关(纯诊断工具,生产分支随
-  旧环批 3 退役;见 registry 字段注释)。
+  旧环迁移迁移批 3(ADR-0465)(ADR-0465) 退役;见 registry 字段注释)。
 
-W620 批 1(蓝图 §7 批 1 行):DirectorV2 升正为唯一生产路径(无开关,
+`w620_migration_b1/` 迁移迁移批 1(守卫分区)(守卫分区)(蓝图 §7 迁移迁移批 1(守卫分区)(守卫分区) 行):DirectorV2 升正为唯一生产路径(无开关,
 ``director_v2_prep_enabled`` 已删);decide 通道经 ``prep_brain`` 装配点
 (TurnState 一次装配 + _select 复用现役决策核,行为与旧环等价)。
 
@@ -143,7 +143,7 @@ def _anchor_state(snapshot: Snapshot, session: StrategySession) -> GameState:
 def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     """Snapshot + session → 策略内部链消费的 GameState(设计 §3.2 逐字段表)。
 
-    与现役 ``_pseudo_state`` 的关键差异 = W598 映射义务清单四字段显式注入;
+    与现役 ``_pseudo_state`` 的关键差异 = `w598_contracts_adversarial/` 映射义务清单四字段显式注入;
     其中 ``active_strategies`` 注入修复现役伪态漏拷裂缝(见模块 docstring)。
     """
     from sr_od.application.currency_war.cw_strategy import gated_hp
@@ -156,7 +156,7 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.deploy_cap = snapshot.deploy_cap
     st.front_max = snapshot.front_size
     st.back_max = snapshot.back_size
-    # R1(蓝图 §4.3)+ 批 2 接管:committed 唯一合法读端
+    # R1(蓝图 §4.3)+ 迁移迁移批 2(方向层接管)(方向层接管) 接管:committed 唯一合法读端
     # (prep_brain.committed_from,内部 = cw_intention 权威派生);
     # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填
     # (值源 = 方向层权威,P1 同 commit 面)。
@@ -324,8 +324,8 @@ class DecideAdapter:
         from sr_od.application.currency_war.decision_v2 import prep_brain
         if not snapshot.classification.confident:
             raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
-        # 批 1 装配点管线:TurnState 一次装配(方向/预算投影)+ _select
-        # 复用现役决策核(行为与旧环等价;折叠归批 2)。F3 参数校验经
+        # 迁移迁移批 1(守卫分区)(守卫分区) 装配点管线:TurnState 一次装配(方向/预算投影)+ _select
+        # 复用现役决策核(行为与旧环等价;折叠归迁移迁移批 2(方向层接管)(方向层接管))。F3 参数校验经
         # prep_brain validator 钩子(非法 → 空批 stall,旧环拒绝路径同型)。
         turn = prep_brain.assemble(
             snapshot, session, registry=_registry_of(self._strategy))
