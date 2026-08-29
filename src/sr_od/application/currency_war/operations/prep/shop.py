@@ -1,6 +1,7 @@
 
 import contextlib
 import time
+from collections.abc import Callable
 from copy import deepcopy
 from typing import ClassVar
 
@@ -114,12 +115,43 @@ def refresh_effective(before_names: list[str] | tuple[str, ...],
     return set(before_names) != set(after_names)
 
 
+# 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。
+# 取值 ≈ 一次买牌动画时长(实机停线现场为飞行中帧,数秒内收敛),0.8-1.2s 区间。
+BENCH_BUY_SETTLE_RETRY_DELAY_S: float = 1.0
+
+
+def bench_buy_slots_settle_retry(
+    bought_count: int,
+    first_slots: list[int],
+    resample: Callable[[], list[int]],
+    delay_s: float = BENCH_BUY_SETTLE_RETRY_DELAY_S,
+) -> tuple[list[int], bool]:
+    """买牌后新占槽 pixel-diff 观测的动画收敛重采(观测时序修复,零行为外溢)。
+
+    买牌有卡牌飞行动画:对比帧早于动画收敛采样会误判「新占槽=0」
+    (实机 run_20260830_071711 P1r3 L0 安灯停线实证:停线截图卡牌飞行中,
+    数分钟后板凳实际 1→2 占用、gold 22→21——买真实执行,纯观测时序误报)。
+    修法:买 ≥1 张且首采无新槽 → 延迟 delay_s 后经 resample 重采一次,
+    仍无才把空结果交上游破缺判定(:func:`bench_buy_occupancy_ok`)。
+    边界:未买牌或首采已有新槽 → 原样返回不 sleep 不重采;全程只读屏
+    (resample 由调用方提供,本函数不点击、不碰决策/买牌执行)。
+
+    返回 (最终新占槽列表, 是否发生过重采)。
+    """
+    if bought_count <= 0 or first_slots:
+        return first_slots, False
+    time.sleep(delay_s)
+    return resample(), True
+
+
 def bench_buy_occupancy_ok(bought_count: int, new_slot_count: int) -> bool | None:
     """买牌占位判据(观测自检框架设计 §2.2;纯观测零决策)。
 
     本单元执行了 ≥1 次 BuyCard → ``new_bench_slots``(pixel-diff,身份无关)
     应有 ≥1 新占槽;0 新槽 = 「占位不出现」——设计点名的唯一硬失败形态
     (点击落空/动画帧误判),按 gap_large 落台账。未买牌 → None 不判。
+    首采 0 新槽先经 :func:`bench_buy_slots_settle_retry` 重采(动画收敛),
+    仍 0 才判 False——本函数语义不变,收敛处理在采样侧。
     """
     if bought_count <= 0:
         return None
@@ -1035,6 +1067,12 @@ class BuyShopCards(SrOperation):
         if _bought_names:
             _after_shot = self.screenshot()
             _new_slots = new_bench_slots(self.ctx, _buy_baseline, _after_shot)
+            # 买牌动画(卡牌飞行)未收敛时首采会误判「新占槽=0」(L0 安灯误报
+            # 实证)→ 延迟重采一次,仍无才交下方破缺判定。只动观测时序。
+            _new_slots, _ = bench_buy_slots_settle_retry(
+                len(_bought_names), _new_slots,
+                lambda: new_bench_slots(self.ctx, _buy_baseline,
+                                        self.screenshot()))
             if _new_slots and match is not None:
                 _slot_map = dict(zip(_bought_names, _new_slots, strict=False))
                 if not hasattr(match, 'bench_slot_map') or match.bench_slot_map is None:
