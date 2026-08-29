@@ -15,7 +15,7 @@
   (overlay 消失=完成)+ 预算(点不动 bail,不再无限烧预算)。
 
 TODO(策略):候选按 target_comp 选(decide_megastar 已接,按 buff 契合);强化角色可后续接。
-坐标(task#103 化债,W265):候选/确认经 ``cw_observation.area_center`` 读 screen_info
+坐标(task#103 化债,W265):候选/确认经 ``cw_obs_core.area_center`` 读 screen_info
   ``currency_war_megastar``(``候选-左/右`` + ``按钮-确认选择``,W265 新建 area);缺失才用兜底常量。
   档案帧(sr-od-test/screens/货币战争-盛会之星/未选择.webp)回验:两个候选名行 OCR center
   落 候选-* rect 内;「确认选择」text center(1491,563) 落 按钮-确认选择 rect 内
@@ -30,7 +30,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_megastar_options
-from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_obs_core import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode

@@ -14,7 +14,7 @@ center)、描述下(y≈520+)、「刷新次数1」底(y≈841)、「确认」�
 读 → 空 board stub。
 
 CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``):``区域-卡牌描述行``
-+ ``按钮-确认``,task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,缺失才用兜底常量。
++ ``按钮-确认``,task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 """
 import time
 from typing import ClassVar
@@ -27,7 +27,7 @@ from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_events import decide_event
 from sr_od.application.currency_war.cw_investments import get_strategy
-from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_obs_core import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,

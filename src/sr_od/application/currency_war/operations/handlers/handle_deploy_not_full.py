@@ -4,7 +4,7 @@
 勾「本局不再提示」+ 确认,解除 bench-full 警告阻塞出战。
 
 勾选/确认坐标进 screen_info(``currency_war_deploy_not_full``):``勾选-本局不再提示`` +
-``按钮-确认``,task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,缺失才用兜底常量。
+``按钮-确认``,task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,缺失才用兜底常量。
 """
 import time
 from typing import ClassVar
@@ -12,7 +12,7 @@ from typing import ClassVar
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,
     safe_click,

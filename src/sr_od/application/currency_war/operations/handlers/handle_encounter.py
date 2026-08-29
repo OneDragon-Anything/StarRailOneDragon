@@ -8,7 +8,7 @@
 ✅ Stage C2 已接(L55):调 ``decide_encounter``(已实现,按 comp 成型度选:未成型→低难保生存 /
   成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。原「待实现/默认选左」
   过期已撤回。⚠️ affix 避开分支 N/A(选项 UI 不显词缀,战后才显)。
-坐标(screen_info 化债):卡身/选择经 ``cw_observation.area_center`` 读 screen_info
+坐标(screen_info 化债):卡身/选择经 ``cw_obs_core.area_center`` 读 screen_info
   ``currency_war_encounter``(``遭遇卡-其一/其二`` + ``按钮-选择``);缺失才用兜底常量。
   档案帧回验:sr-od-test/screens/货币战争-遭遇节点/default.webp 上 标识-遭遇节点 /
   按钮-选择 均 conf≈0.999 命中。卡身 rect center 未单独实锤(历史实测点 (665,500)/(1288,550)
@@ -23,7 +23,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_node_obs import read_encounter_options
-from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_obs_core import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.cw_telemetry import record_event_choice
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (

@@ -632,6 +632,9 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       ⚠️ 已知双源分歧:列车同行档桥池=2(train_dot)、cw_recipe
       _RECIPES=4(框架单独成型档,语义不同层)——本函数取桥池;
       分歧裁决与合流判据见 ADR(W578)。
+      注:桥线平局偏好语义(原 cw_bridge_pool.pick_bridge 的 r253
+      P1 tie-break 偏 xianzhou_dot)已随选桥函数退役,若 v2 需要
+      同等平滑性偏好需另行设计。
     - level_plan 不设:升级账退默认(升级通道的息引擎前置是独立
       杠杆,不搭本批车)。
     """

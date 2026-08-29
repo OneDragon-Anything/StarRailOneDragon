@@ -367,20 +367,26 @@ def _validate_strategy_effects() -> None:
 
 
 # ===== curated overlay:环境分类 + 阵营绑定(手维护)=====
-ENV_CATEGORY: dict[str, str] = {
-    '追击概念股': '概念股', '击破概念股': '概念股', '群攻概念股': '概念股',
-    '能量概念股': '概念股', '燃血概念股': '概念股', '减益概念股': '概念股',
-    '战技点概念股': '概念股', '仙舟概念股': '概念股', '贝洛伯格概念股': '概念股',
-    '狼狩概念股': '概念股', '星间旅人概念股': '概念股', '银河学者概念股': '概念股',
-    '列车同行概念股': '概念股', '昼之半神概念股': '概念股', '夜之半神概念股': '概念股',
-    '仙舟邀请': '邀请', '贝洛伯格邀请': '邀请', '狼狩邀请': '邀请', '盛会之星邀请': '邀请',
-    '星间旅人邀请': '邀请', '银河学者邀请': '邀请', '列车同行邀请': '邀请',
-    '昼之半神邀请': '邀请', '夜之半神邀请': '邀请', '追击邀请': '邀请', '击破邀请': '邀请',
-    '群攻邀请': '邀请', '能量邀请': '邀请', '燃血邀请': '邀请', '减益邀请': '邀请',
-    '持续伤害邀请': '邀请', '量子同频邀请': '邀请', '战技点邀请': '邀请', '欢愉邀请': '邀请',
-    '命运圣杯邀请': '邀请',
-    '星核猎手契约': '契约', '战技点契约': '契约', '公司契约': '契约', '持续伤害契约': '契约',
-    '量子同频契约': '契约', '欢愉契约': '契约', '命运圣杯契约': '契约',
+# 表值大多可由名字派生:类别 = 名字的类别后缀(概念股/邀请/契约)本身;阵营 = 名字去类别后缀。
+# 真正的手维护信息只有例外条与不可派生名单;派生结果在构建期与逐位对拍基准比对
+# (旧平铺表快照对拍绿证见 .debug/temp/currency_war/w660_hygiene_exec,派生化零行为变化)。
+_ENV_SUFFIX_DERIVED_NAMES: tuple[str, ...] = (
+    # 概念股 15
+    '追击概念股', '击破概念股', '群攻概念股', '能量概念股', '燃血概念股', '减益概念股',
+    '战技点概念股', '仙舟概念股', '贝洛伯格概念股', '狼狩概念股', '星间旅人概念股',
+    '银河学者概念股', '列车同行概念股', '昼之半神概念股', '夜之半神概念股',
+    # 邀请 20
+    '仙舟邀请', '贝洛伯格邀请', '狼狩邀请', '盛会之星邀请', '星间旅人邀请', '银河学者邀请',
+    '列车同行邀请', '昼之半神邀请', '夜之半神邀请', '追击邀请', '击破邀请', '群攻邀请',
+    '能量邀请', '燃血邀请', '减益邀请', '持续伤害邀请', '量子同频邀请', '战技点邀请',
+    '欢愉邀请', '命运圣杯邀请',
+    # 契约 7(阵营绑定 = 获赠该阵营角色,ADR-0151 补)
+    '星核猎手契约', '战技点契约', '公司契约', '持续伤害契约', '量子同频契约', '欢愉契约',
+    '命运圣杯契约',
+)
+
+# 不可派生环境的手写例外(带溯源;类别值不属三类后缀)
+_ENV_CATEGORY_EXCEPTIONS: dict[str, str] = {
     '黄金时代': '时代', '白银时代': '时代', '彩虹时代': '时代',
     '头彩': '时代', '尾彩': '时代', '银·金·彩': '时代',
     '经济过热': '经济', '经济严重过热': '经济', '增发货币': '经济', '过剩经费': '经济',
@@ -395,28 +401,31 @@ ENV_CATEGORY: dict[str, str] = {
     '特邀专家:桑博': '专家', '命运礼物': '专家', '英雄登场': '专家',
 }
 
-ENV_FACTION: dict[str, str] = {
-    '追击概念股': '追击', '击破概念股': '击破', '群攻概念股': '群攻', '能量概念股': '能量',
-    '燃血概念股': '燃血', '减益概念股': '减益', '战技点概念股': '战技点', '仙舟概念股': '仙舟',
-    '贝洛伯格概念股': '贝洛伯格', '狼狩概念股': '狼狩', '星间旅人概念股': '星间旅人',
-    '银河学者概念股': '银河学者', '列车同行概念股': '列车同行', '昼之半神概念股': '昼之半神',
-    '夜之半神概念股': '夜之半神',
-    '仙舟邀请': '仙舟', '贝洛伯格邀请': '贝洛伯格', '狼狩邀请': '狼狩', '盛会之星邀请': '盛会之星',
-    '星间旅人邀请': '星间旅人', '银河学者邀请': '银河学者', '列车同行邀请': '列车同行',
-    '昼之半神邀请': '昼之半神', '夜之半神邀请': '夜之半神', '追击邀请': '追击', '击破邀请': '击破',
-    '群攻邀请': '群攻', '能量邀请': '能量', '燃血邀请': '燃血', '减益邀请': '减益',
-    '持续伤害邀请': '持续伤害', '量子同频邀请': '量子同频', '战技点邀请': '战技点',
-    '欢愉邀请': '欢愉', '命运圣杯邀请': '命运圣杯',
-    '命运圣杯契约': '命运圣杯',
-    # —— 契约类阵营绑定(ADR-0151 补:效果=获赠该阵营角色,原 overlay 漏)——
-    '量子同频契约': '量子同频',   # 花火/缇宝升星→符玄/希儿
-    '公司契约': '公司',           # 翡翠/砂金/托帕
-    '持续伤害契约': '持续伤害',   # 椒丘/卡芙卡/黑天鹅
-    '战技点契约': '战技点',       # 丹恒·饮月/花火/火花
-    '星核猎手契约': '星核猎手',   # 卡芙卡/刃/银狼/流萤
-    '欢愉契约': '欢愉',           # 银狼LV.999/火花/开拓者·欢愉
-    '特邀专家:加拉赫': '击破',   # 加拉赫=击破角色(plaza traits 盛会之星/击破/治疗)+击破档位给钻头(用户确认)
+# 阵营绑定例外:名字推不出阵营(带用户确认注)
+_ENV_FACTION_EXCEPTIONS: dict[str, str] = {
+    '特邀专家:加拉赫': '击破',  # 加拉赫=击破角色(plaza traits 盛会之星/击破/治疗)+击破档位给钻头(用户确认)
 }
+
+
+def _derive_env_tables() -> tuple[dict[str, str], dict[str, str]]:
+    """由 _ENV_SUFFIX_DERIVED_NAMES + 例外表构建 ENV_CATEGORY/ENV_FACTION。
+
+    名字既不在三类后缀派生范围又无例外条 → KeyError(import 即炸,
+    防新增环境登记时静默漏建)。"""
+    cat: dict[str, str] = dict(_ENV_CATEGORY_EXCEPTIONS)
+    fac: dict[str, str] = dict(_ENV_FACTION_EXCEPTIONS)
+    for n in _ENV_SUFFIX_DERIVED_NAMES:
+        for suf in ('概念股', '邀请', '契约'):
+            if n.endswith(suf) and len(n) > len(suf):
+                cat[n] = suf
+                fac[n] = n[:-len(suf)]
+                break
+        else:
+            raise KeyError(f'环境名字不可派生且无例外条目:{n!r}')
+    return cat, fac
+
+
+ENV_CATEGORY, ENV_FACTION = _derive_env_tables()
 
 
 # ===== 补遗:plaza 不收的条目(手维护)=====
@@ -600,30 +609,9 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
 # 文本扫描的两类噪声就此清除:战术义眼(泛用回能,误绑"能量")/生命之花祝福(泛用治疗强度,误绑"治疗")。
 # 消费:decide_event comp 匹配分 + cw_comps.held_strategy_fit(持卡影响 pivot)。
 # 维护:版本更新重跑 gen_plaza_invest.py → diff 报告对「效果变」条目提示 → 回本表重审对应键。
-STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
-    # —— 星徽套组(棱彩):阵营星徽 + 阵营 key 角色 ——
-    '列车同行星徽套组': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
-    '银河学者星徽套组': (frozenset({'银河学者'}), frozenset({'艾丝妲'})),
-    '贝洛伯格星徽套组': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
-    '星间旅人星徽套组': (frozenset({'星间旅人'}), frozenset({'银枝'})),
-    '仙舟星徽套组': (frozenset({'仙舟'}), frozenset({'藿藿'})),
-    '狼狩星徽套组': (frozenset({'狼狩'}), frozenset({'椒丘'})),
-    '盛会之星星徽套组': (frozenset({'盛会之星'}), frozenset({'花火'})),
-    '昼之半神星徽套组': (frozenset({'昼之半神'}), frozenset({'风堇'})),
-    '夜之半神星徽套组': (frozenset({'夜之半神'}), frozenset({'万敌'})),
-    '追击星徽套组': (frozenset({'追击'}), frozenset({'飞霄'})),
-    '追击星徽套组(二)': (frozenset({'追击'}), frozenset({'飞霄'})),
-    '击破星徽套组': (frozenset({'击破'}), frozenset({'阮·梅'})),
-    '群攻星徽套组': (frozenset({'群攻'}), frozenset({'翡翠'})),
-    '能量星徽套组': (frozenset({'能量'}), frozenset({'星期日'})),
-    '治疗星徽套组': (frozenset({'治疗'}), frozenset({'风堇'})),
-    '燃血星徽套组': (frozenset({'燃血'}), frozenset({'万敌'})),
-    '减益星徽套组': (frozenset({'减益'}), frozenset({'黄泉'})),
-    '持续伤害星徽套组': (frozenset({'持续伤害'}), frozenset({'卡芙卡'})),
-    '量子同频星徽套组': (frozenset({'量子同频'}), frozenset({'希儿'})),
-    '护盾星徽套组': (frozenset({'护盾'}), frozenset({'砂金'})),
-    '战技点星徽套组': (frozenset({'战技点'}), frozenset({'丹恒·饮月'})),
+_STRATEGY_BINDINGS_EXPLICIT: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     # —— 星徽单件(金):阵营星徽 + 阵营 key 角色 ——
+    # (星徽套组(棱彩)条目已派生化:由本段单件 + 名字规则派生,见 _derive_megastar_set_bindings)
     '列车同行星徽': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
     '银河学者星徽': (frozenset({'银河学者'}), frozenset({'艾丝妲'})),
     '贝洛伯格星徽': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
@@ -693,6 +681,36 @@ STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     '摸个鱼吧I': (frozenset(), frozenset({'青雀'})),
     '摸个鱼吧II': (frozenset(), frozenset({'青雀'})),
     '摸个鱼吧III': (frozenset(), frozenset({'青雀'})),
+}
+
+
+def _derive_megastar_set_bindings(explicit: dict[str, tuple[frozenset[str], frozenset[str]]]
+                                  ) -> dict[str, tuple[frozenset[str], frozenset[str]]]:
+    """星徽套组条目由星徽单件条目 + 名字规则派生(构建期,零手维护):
+    'X星徽套组'/'X星徽套组(二)' → explicit['X星徽'](逐位共享同一绑定元组)。
+
+    套组卡名单取自注册表(键以'星徽套组'结尾者);对应单件未建模 →
+    ValueError(import 即炸,防新套组卡静默无绑定)。派生结果与改前
+    手写套组表逐位对拍绿证见 .debug/temp/currency_war/w660_hygiene_exec。
+    """
+    out: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
+    for name in INVESTMENT_STRATEGIES:
+        if name.endswith('星徽套组(二)'):
+            single = name[:-len('星徽套组(二)')] + '星徽'
+        elif name.endswith('星徽套组'):
+            single = name[:-len('星徽套组')] + '星徽'
+        else:
+            continue
+        bind = explicit.get(single)
+        if bind is None:
+            raise ValueError(f"星徽套组无对应单件建模:{name!r}(缺 {single!r})")
+        out[name] = bind
+    return out
+
+
+STRATEGY_BINDINGS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
+    **_derive_megastar_set_bindings(_STRATEGY_BINDINGS_EXPLICIT),
+    **_STRATEGY_BINDINGS_EXPLICIT,
 }
 _BINDINGS_ORPHANS: list[str] = [n for n in STRATEGY_BINDINGS if n not in INVESTMENT_STRATEGIES]
 if _BINDINGS_ORPHANS:

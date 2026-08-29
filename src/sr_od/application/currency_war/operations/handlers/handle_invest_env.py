@@ -10,7 +10,7 @@ OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打
 board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策略不依赖 board)。
 
 卡底 Y + 确认坐标进 screen_info(``currency_war_invest_env``):``区域-卡牌描述行``(给 Y)
-+ ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_observation.area_center`` 读,
++ ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,
 缺失才用兜底常量。
 """
 import time
@@ -24,7 +24,7 @@ from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_events import decide_event
 from sr_od.application.currency_war.cw_investments import is_known_env
-from sr_od.application.currency_war.cw_observation import area_center
+from sr_od.application.currency_war.cw_obs_core import area_center
 from sr_od.application.currency_war.cw_state import GameState
 from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
     confirm_and_verify,

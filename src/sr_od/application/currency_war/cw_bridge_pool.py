@@ -1,12 +1,13 @@
-"""货币战争 · 桥线池(Phase A Day 4;redesign §4.2 r207 版)。
+"""货币战争 · 桥线池——纯数据表(消费 = cw_intention / cw_line_defs)。
 
-**判断层,手维护**(数据候选来自战力表 P1/P2 榜+transition_combos
+**手维护调研数据**(数据候选来自战力表 P1/P2 榜+transition_combos
 调研的 fixed/core 三档;本文件把调研结论结构化)。
+选桥函数簇(score_bridge/pick_bridge,r207 重合度评分 + r253 平局
+偏好)已退役——其决策路径由 cw_intention/line_defs 的 form_tiers
+机制取代(ADR-0336 删旧 line_strategy 后无生产消费,仅测试消费)。
 
 设计要点(redesign §4.2):
   - 桥线=线库的短线子集(无终局形态,只有位面内配方);
-  - 按手牌/商店组件重合度选桥(不是泛买保值件);
-  - 桥线桶由战力表数据派生(版本自适应);
   - r203 融合:[20] 过渡是配方不是散买 / r139c 三档角色构成。
 
 字段语义:
@@ -94,84 +95,8 @@ BRIDGE_POOL_P2: list[BridgeCombo] = [
 #: 从战力表自动派生——redesign §4.2 的「数据派生」指 P1/P2 榜
 #: 数据决定**哪些组合够格入池**(81/41/31 篇的门槛),入池后
 #: 的角色构成是调研产物。
-#: 版本漂移防护(⑧-5 修正):**尚未接线**——旧 line_strategy 不对
-#: bridge 调 check(ADR-0336 已删);接线排在 Phase B(桥成立性验证);
-#: 在此之前本注释如实声明「无运行时守卫」。
 
 #: 构造期一致性断言:combo.phase 必须与所在池一致(S3)
 for _pool, _ph in ((BRIDGE_POOL, 'P1'), (BRIDGE_POOL_P2, 'P2')):
     for _c in _pool:
         assert _c.phase == _ph, f'{_c.bridge_id} phase 与所在池不符'
-
-
-def _char_bond_hits(name: str, bonds: dict[str, int]) -> int:
-    """角色对目标羁绊的贡献数(纯查询,不含持有判定——调用方管)。
-
-    ⚠️ 开拓者两形态按当前排归一(cw_chars 约定);owned 是名字
-    集合的接口下无法表达形态,含开拓者时此函数按注册表默认
-    形态计(消费方如需精确,传归一后的羁绊计数进来)。
-    """
-    from sr_od.application.currency_war.cw_chars import CHARACTERS
-    ch = CHARACTERS.get(name)
-    if ch is None:
-        return 0
-    hits = 0
-    all_bonds = list(ch.factions) + list(ch.flows)
-    if ch.independent:
-        all_bonds.append(ch.independent)
-    for b in bonds:
-        if b in all_bonds:
-            hits += 1
-    return hits
-
-
-def score_bridge(combo: BridgeCombo, owned: set[str]) -> float:
-    """桥线与当前手牌的重合度评分(r207:选重合度最高)。
-
-    计分口径(双重加分是有意的:配方件+凑羁绊各记一次——
-    同一角色最多 +4;调权重时注意此口径):
-      fixed 缺一=0(判据级);core 每命中 +2;flex 命中 +1;
-      羁绊贡献每点 +1(按羁绊名命中数,不按档人数——
-      档人数维度由引擎凑档进度另行判断,见 pick_bridge)。
-    """
-    for fx in combo.fixed:
-        if fx not in owned:
-            return 0.0
-    s = 0.0
-    s += 2.0 * sum(1 for c in combo.core if c in owned)
-    s += 1.0 * sum(1 for c in combo.flex if c in owned)
-    for name in owned:
-        s += _char_bond_hits(name, combo.engine_bonds)
-    return s
-
-
-_POOL_BY_PHASE: dict[str, list[BridgeCombo]] = {
-    'P1': BRIDGE_POOL,
-    'P2': BRIDGE_POOL_P2,
-}
-
-
-def pick_bridge(owned: set[str],
-                phase: str = 'P1') -> BridgeCombo | None:
-    """按重合度选桥(未锁线时的购买方向;r207 混合边界表)。
-
-    phase 仅接受 P1/P2(显式映射,拼写错误即 KeyError——
-    防静默落到错池);池内 combo.phase 已在构造期与所在
-    池一致性校验(见模块尾部断言)。
-    r253(第八局复盘):P1 平局 tie-break 偏好 xianzhou_dot
-    ——它同时供 P1 的 DOT 引擎与 P2 列车桥的仙舟件
-    (藿藿/爻光/饮月都是 P2 方向的铺垫),P1→P2 平滑性
-    最优;第八局实证:散 DOT 板 P1 零败但进 P2 拆向
-    列车4+护盾3 转型成本高(四连败根因之一)。
-    分差 >0.5 时正常选高分(偏好只在真平局生效)。"""
-    pool = _POOL_BY_PHASE[phase]
-    best, best_s = None, 0.0
-    for c in pool:
-        s = score_bridge(c, owned)
-        if s > best_s:
-            best, best_s = c, s
-        elif (phase == 'P1' and best is not None
-              and abs(s - best_s) <= 0.5
-              and c.bridge_id == 'xianzhou_dot'):
-            best = c   # r253 平局偏好(P1→P2 平滑)
-    return best

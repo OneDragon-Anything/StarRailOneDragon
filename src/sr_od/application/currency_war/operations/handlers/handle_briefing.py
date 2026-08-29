@@ -10,7 +10,7 @@
 ③ 点「下一步」进投资环境。
 
 词缀链路(下游):``ctx.cw_briefing_affixes`` → ``session.briefing_affixes``
-→ ``state.enemy_affixes`` → ``mechanics_fit``(详 ``cw_observation.read_affixes``)。
+→ ``state.enemy_affixes`` → ``mechanics_fit``(详 ``cw_briefing_obs.read_affixes``)。
 boss 链路(下游):``ctx.cw_briefing_bosses`` → ``session.briefing_bosses`` →
 ``state.plane_bosses`` → ``boss_fit``(battle_loop ``__init__`` copy;接管场景内存丢失
 时由 ``CollectPlaneIntel`` 重采 + 对账,ADR-0397 勘误节)。简报在 loop 前
@@ -34,7 +34,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # 判读无法区分「read_bosses 恒空」vs「幂等跳过」。改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war import cw_telemetry
-from sr_od.application.currency_war.cw_observation import (
+from sr_od.application.currency_war.cw_briefing_obs import (
     load_affix_effects_from_file,
     read_affix_effect,
     read_affixes_with_pos,
