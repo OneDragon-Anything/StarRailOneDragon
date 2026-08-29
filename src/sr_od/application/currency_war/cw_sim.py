@@ -39,8 +39,11 @@ from sr_od.application.currency_war.cw_deploy_logic import (
     TRANSITION_TRAITS as _TRANSITION_TRAITS,  # noqa: F401
 )
 from sr_od.application.currency_war.cw_investments import (
+    STRATEGY_EFFECTS,
+    EconomyEffect,
     aggregate_economy,
     economy_effect_of,
+    normalize_invest_name,
 )
 from sr_od.application.currency_war.cw_shop_odds import (
     POOL_COPIES_PER_CARD,
@@ -90,6 +93,25 @@ from sr_od.application.currency_war.cw_telemetry import serialize_intention
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
 START_BENCH_COST_WEIGHTS: tuple[tuple[int, float], ...] = ((1, .65), (2, .35))
+
+
+def _overlay_xp_per_refresh(strategy_names: list[str]) -> int:
+    """付费刷新产经验数值(单一源 = ``cw_investments.STRATEGY_EFFECTS`` overlay)。
+
+    - 逐持卡名(先 normalize_invest_name 归一 OCR 分隔符形变)查 overlay 的
+      EffectSpec,payload 为 EconomyEffect 时累加 xp_per_refresh;未入 overlay
+      的卡不供值 —— overlay 是该查询键的唯一供数面,overlay 值变更 sim 跟随。
+    - pending 条目(verdict=None)保守支:其 payload 数值本身即按保守支建模
+      (现均无 xp_per_refresh,与旧 STRATEGY_ECONOMY 聚合路径同值);verdict
+      定谳若引入新语义(如 经验就是财富 改道),须回本查询点同步。
+    """
+    total = 0
+    for n in strategy_names:
+        spec = STRATEGY_EFFECTS.get(normalize_invest_name(n))
+        if spec is None or not isinstance(spec.payload, EconomyEffect):
+            continue
+        total += spec.payload.xp_per_refresh
+    return total
 
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源;
 # ADR-0439 收入口径修正:败轮节点金 + 奖励轮 base/streak 成对查表)
@@ -1742,17 +1764,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _free_used += 1
                         st.gold -= _cost_r
                         _spend['refresh'] += _cost_r
-                        # W614 G3:xp_per_refresh 合成器接入——付费刷新产
-                        # 经验(淘金客 +2,官方原文「每次消耗金币刷新商店都会
-                        # 获得 2 经验值」,cw_invest_data.py 注册行;免费刷
-                        # 额度内 cost=0 不计)。数值源=投资注册表聚合
-                        # (cw_investments.STRATEGY_ECONOMY/EffectSpec 查询键
-                        # xp_per_refresh);升维路径:W612 效果清单 overlay
-                        # 交付后改由其 overlay 供值,本接入点不动。
+                        # xp_per_refresh 数值接入:付费刷新产经验(淘金客 +2,
+                        # 官方原文「每次消耗金币刷新商店都会获得 2 经验值」;
+                        # 免费刷额度内 cost=0 不计)。数值源单一面 =
+                        # cw_investments.STRATEGY_EFFECTS overlay(_overlay_xp_per_refresh
+                        # 逐持卡查 spec payload,overlay 值变更 sim 跟随;
+                        # pending 条目 payload 即保守支)。
                         # 零漂移:无持卡时表达式恒 0,无 xp/行为变化。
-                        _xpr = (aggregate_economy(
-                            st.active_strategies).xp_per_refresh
-                            if st.active_strategies else 0)
+                        _xpr = (_overlay_xp_per_refresh(st.active_strategies)
+                                if st.active_strategies else 0)
                         if _cost_r > 0 and _xpr > 0:
                             xp += _xpr
                             _refresh_xp_total += _xpr
