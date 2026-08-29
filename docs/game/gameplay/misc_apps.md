@@ -51,7 +51,7 @@ source: `application/` 各 app 代码(calibrator / large_map_recorder / buy_xian
 
 | app(op_name) | 路由 | 流程概要 |
 |---|---|---|
-| **buy_xianzhou_parcel**(仙舟过期邮包) | `buy_xianzhou_parcel.yml` | 传送 仙舟「罗浮」·流云渡·1层·积玉坊 → NPC **茂贞** → 对话「我想买个过期邮包试试手气」→ 购 **逾期未取的贵重邮包**(`xianzhou_parcel`,allow_fail)→ 回大世界 |
+| **buy_xianzhou_parcel**(仙舟过期邮包) | `buy_xianzhou_parcel.yml` | 传送 仙舟「罗浮」·流云渡·1层·积玉坊 → NPC **茂贞** → 对话「我想买个过期邮包试试手气」→ 购 **逾期未取的贵重邮包**(`xianzhou_parcel`,allow_fail)→ 回大世界。机制/分支详见 [buy_xianzhou_parcel](buy_xianzhou_parcel.md) |
 | **memory_crystal_shard**(领取记忆残晶) | `memory_crystal_shard.yml` | 传送 翁法罗斯·「永恒圣城」奥赫玛·1层·**流憩大厅** → 走到 **追忆残像** → interact「开启追忆残像」→ click(960,980)领取 ×2 → 回大世界(**纯领取,无购买**) |
 | **trick_snack**(奇巧零食) | `buy_trick_snack_route_yll6_xzq.yml` | 路线1:传送 雅利洛-VI·行政区·1层·中央广场 → NPC **罗纳德** → 购 **气态流体** + **种子**(allow_fail) |
 | | `buy_trick_snack_route_xzlf_xchzs.yml` | 路线2:传送 仙舟「罗浮」·星槎海中枢·0层·宣夜大道 → NPC **货全** → 购 **气态流体** + **种子**(allow_fail) |
