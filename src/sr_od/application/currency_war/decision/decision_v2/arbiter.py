@@ -49,6 +49,8 @@ from sr_od.application.currency_war.decision.decision_v2.phase import (
 )
 from sr_od.application.currency_war.decision.decision_v2.posture_release import (
     authorize_release_refresh,
+    channel_rank_scope,
+    rank_refresh_vs_upgrade,
 )
 from sr_od.application.currency_war.decision.decision_v2.remediation import (
     Rejection,
@@ -454,6 +456,23 @@ def _check_constraint(name: str, cand: Candidate,
                 return RejectReason(
                     'boss_levelup_ban', '', 0,
                     '息引擎总账拒([12] EV 化:平台账不过/无人口位/金不足)')
+            # 通道边际排序消费点(W645 提案 A-v2;ADR-0476;W720 修订后
+            # 实施):flip 溢余义务帧 ∧ 升级并存 ∧ cap 满员(辖域单一址=
+            # posture_release.channel_rank_scope)且排序裁 refresh_first
+            # (升级省刷金 saving<升级费,典型=峰值级 ΔE≤0)→ 升级降级
+            # 拒,刷新先吃溢余残差,升级授权重估留待下帧——「买/升级恒
+            # 先于刷新」的隐式固定序自此收回显式单一址。upgrade_first 帧
+            # /非辖域帧零漂移;人口位臂(pop_slot,[33] 当轮兑现)排序不
+            # 覆写,故仅辖 ②/③ 授权臂。辖域谓词按 ADR-0445 现 flip 语义
+            # (纯溢余判定,session.v3_release 单一址),血量维度不入谓词。
+            if _basis in ('dp', 'static_ev') \
+                    and channel_rank_scope(state, session):
+                if rank_refresh_vs_upgrade(state, session, registry) \
+                        == 'refresh_first':
+                    return RejectReason(
+                        'boss_levelup_ban', '', 0,
+                        '通道边际排序:刷新先(提案 A/ADR-0476;'
+                        '升级省刷金<升级费,升级授权重估留待下帧)')
             # 授权依据观测(ADR-0354):放行臂名记进动作对象(sim 账本
             # auth 键→检查器 levelup_interest_engine_gate;记录非指令,
             # 行为零改动)。拒绝路径不写(未过账=无授权,检查器侧可见)。
@@ -925,7 +944,21 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         if reason is None and val <= 0:
             _b = directed_refresh_budget(state, session, registry) \
                 if state.plane == 1 else 0
-            if _b > 0:
+            # ADR-0475 挂账补线(W721 并入本批;判据单一址=kernel
+            # .cw_economy._omega_collapse_zeroed,含空帧豁免):塌缩带
+            # 归零帧(锁定核解析 ∧ 当前级对该目标费档的命中概率相对
+            # 峰值级比值 < omega_collapse_ratio 判据)定向刷新车道同判据
+            # 停付——当前级对该费档无望,定向搜索量不烧。概率单一址=
+            # cw_shop_odds 牌池概率符号(与分配器 Π_refresh 估计器/主
+            # 预算归零腿同源,零新口径);非塌缩帧/兜底链空帧车道零漂移。
+            from sr_od.application.currency_war.kernel.cw_economy import (
+                _omega_collapse_zeroed,
+                _target_core_cost,
+            )
+            _collapse = _omega_collapse_zeroed(
+                state, session, registry, _target_core_cost(session)[1]) \
+                if _b > 0 else False
+            if _b > 0 and not _collapse:
                 _used_r = getattr(session, 'v3_dir_refresh_round', 0)
                 _cost = cand.action.cost or 2
                 if _used_r < min(registry.directed_refresh_per_round, _b) \
