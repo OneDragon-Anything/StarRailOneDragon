@@ -435,26 +435,41 @@ def _supply_impl(state: GameState, session: StrategySession,
     # bench 有件 ∧ deploy 无空位);P21 硬停域不生成
     if lu_cand is not None and not blood_budget_levelup_blocked(
             state, session, registry):
+        # W718 修复(辖域冲突裁决落码):Π_up 继承上游 [12]/[33] 授权
+        # 白名单——供给层过滤,非出清层特判。升级授权单一源 =
+        # ev.levelup_ev_basis(pop_slot/dp/static_ev 三臂,与 arbiter
+        # 升级门/段级检查白名单同谓词);白名单拒('')的帧分配器不出
+        # 升级提案——「豁免后重估」豁免的是濒死止损,不越过白名单。
+        from sr_od.application.currency_war.decision_v2.candidates import (
+            _target_names,
+        )
+        from sr_od.application.currency_war.decision_v2.ev import (
+            levelup_ev_basis,
+        )
+        _lu_cost = int(lu_cand.action.cost)
+        _lu_basis = levelup_ev_basis(
+            state, session, registry, state.gold or 0, _lu_cost,
+            _target_names(state, session))
+        if _lu_basis:
+            lu_cand.action.auth_basis = _lu_basis   # 观测字段(检查器对账)
         from sr_od.application.currency_war.kernel.cw_state import (
             deployed_occupied,
         )
         has_waiter = (bench_occupied(state.bench or []) > 0
                       and deployed_occupied(state.deployed or [])
                       >= state.max_units())
-        if has_waiter:
+        if _lu_basis and has_waiter:
             after = _apply_with_pipeline(state, (lu_cand.action,), session)
             props.append(AllocProposal(
                 kind='levelup', dpeff=_dpeff_from_states(
                     state, after, registry, w, l_c),
-                m_eff=m_eff, cost=int(lu_cand.action.cost),
+                m_eff=m_eff, cost=_lu_cost,
                 actions=(lu_cand.action,), name='levelup', bench_slots=0))
-        # Π_comp:店内目标件 × 升级的前置边闭合(生成期合并,§2.1)
-        if not has_waiter and _deploy_free(state) < 1 \
+        # Π_comp:店内目标件 × 升级的前置边闭合(生成期合并,§2.1;
+        # 复合含升级,同受白名单门辖)
+        if _lu_basis and not has_waiter and _deploy_free(state) < 1 \
                 and bench_occupied(state.bench or []) \
                 < registry.bench_capacity:
-            from sr_od.application.currency_war.decision_v2.candidates import (
-                _target_names,
-            )
             tset = _target_names(state, session)
             for c in cands:
                 a = c.action
@@ -565,7 +580,12 @@ def allocate(proposals: list[AllocProposal], gold_budget: int,
         if sv > best_v + 1e-9:
             best_v = sv
             best = subset
-    if refresh and refresh[0].v > best_v + 1e-9:
+    if refresh and refresh[0].v > best_v + 1e-9 \
+            and _feasible([refresh[0]], gold_budget, bench_free, registry,
+                          state):
+        # W718 修复:刷新臂同受 R_t 预算约束(budget=0 帧禁出手——
+        # 此前只比 V 值绕过 _feasible,实锤 640564 把金花成负数;
+        # cost ≤ E_t ≤ gold 保证花后金 ≥ reserve ≥ 0)。
         return [refresh[0]]
     return best
 
