@@ -495,7 +495,7 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None,
     ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
     (PrepDirector: EnsureShopOpen 后重读;strategy/03(原 doc 15§5.2b) M2)。
 
-    committed 显式传参(批 4 C5 换源,ADR-0456 后设计件;蓝图 §4.3-R1):
+    committed 显式传参(退役批(ADR-0466/0467/0469) C5 换源,ADR-0456 后设计件;蓝图 §4.3-R1):
     None=挂账层旧口径(读 GameState 双轨标志);step 级调用方(dv 腾席链 b)
     从 prep_brain.committed_from 取权威值传入——fresh 帧装配边界不再靠
     双轨标志回填,堵「漏回填=恒按已定型激进化放升级」病理。

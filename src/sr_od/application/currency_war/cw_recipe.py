@@ -93,12 +93,12 @@ def decision_target(session, state: GameState) -> Comp | None:
     量子板面→希儿量子 final 转变成本≈0(板面即雏形),env/augment 的量子向加分
     (量子契约/量子星徽/贝概念股)同时抬高配方选择与终局选择。
 
-    批 4 换源:双轨期判定从 GameState 双轨标志直读改为
+    退役批(ADR-0466/0467/0469) 换源:双轨期判定从 GameState 双轨标志直读改为
     ``committed_from`` 权威派生(与 adapter/prep_director/deploy_bench 同一
     读端)——消除「装配边界漏回填时缺省 False=恒按定型」的静默
     劣化面。零漂移依据:decision_v2 生产路径 ``transition_framework`` 恒 ''
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
-    (W646 攻击面 3 实证)。
+    (`w646_plan_c_attack/` 攻击面 3 实证)。
     """
     from sr_od.application.currency_war.decision_v2.prep_brain import (
         committed_from,

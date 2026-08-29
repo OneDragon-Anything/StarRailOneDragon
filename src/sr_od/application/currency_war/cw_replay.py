@@ -189,7 +189,7 @@ def main() -> None:
         sess = strat.create_session(_Cfg())
     else:
         # default 栈本体已退役:旧语料(default 栈时代 decisions.jsonl)回放
-        # 只走冻结快照 worktree(回退参照=批 3 tag 的干净 worktree),主仓
+        # 只走冻结快照 worktree(回退参照=迁移批 3(ADR-0465) tag 的干净 worktree),主仓
         # 不再提供 default 臂——惰性 import 回退已删,防「首次使用才炸」。
         raise SystemExit(
             f"strategy='{strategy}' 不受支持:default 栈已退役。"
