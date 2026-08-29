@@ -1,5 +1,5 @@
+
 from cv2.typing import MatLike
-from typing import Tuple
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -56,7 +56,7 @@ class GuideCheckPower(SrOperation):
         :param screen: 屏幕截图
         :return:
         """
-        area1 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-完整体力')
+        area1 = self.ctx.screen_loader.get_area('指南-生存索引', '生存索引-完整体力')
         ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area1.rect)
         if len(ocr_result_list) > 0:
             found_300 = False
@@ -75,12 +75,12 @@ class GuideCheckPower(SrOperation):
 
             power = str_utils.get_positive_digits(power_str, err=None)
         else:
-            area1 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-体力')
+            area1 = self.ctx.screen_loader.get_area('指南-生存索引', '生存索引-体力')
             part = cv2_utils.crop_image_only(screen, area1.rect)
             ocr_result = self.ctx.ocr.run_ocr_single_line(part)
             power = str_utils.get_positive_digits(ocr_result, err=None)
 
-        area2 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-完整沉浸器数量')
+        area2 = self.ctx.screen_loader.get_area('指南-生存索引', '生存索引-完整沉浸器数量')
         ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area2.rect)
         if len(ocr_result_list) > 0:
             found_12 = False
@@ -98,7 +98,7 @@ class GuideCheckPower(SrOperation):
                 qty_str = qty_str[:-1]
             qty = str_utils.get_positive_digits(qty_str, err=None)
         else:
-            area2 = self.ctx.screen_loader.get_area('星际和平指南', '生存索引-沉浸器数量')
+            area2 = self.ctx.screen_loader.get_area('指南-生存索引', '生存索引-沉浸器数量')
             part = cv2_utils.crop_image_only(screen, area2.rect)
             ocr_result = self.ctx.ocr.run_ocr_single_line(part)
             qty = str_utils.get_positive_digits(ocr_result, err=None)
