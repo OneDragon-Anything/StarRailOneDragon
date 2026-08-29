@@ -825,6 +825,11 @@ def check_phantom_rebuy_disclosure(rows: list[dict]) -> list[str]:
 def check_deploy_after_buy_semantics(rows: list[dict]) -> list[str]:
     """批㉘ F1(ADR-0287)·重放语境冻结(W652 §5 处置①):漏上归 0 锁。
 
+    判据边界(W678 围栏残留调查销案):满板(cap 满)下围栏 hold 目标件是
+    设计行为——同名去重/r288 列车让位/cap 硬约束三条路径均有设计出处
+    (cw_deploy_logic.select_deployments 终段循环),「围栏 hold」本身
+    不计为漏上,本检查只盯「围栏认可却未执行」。
+
     判据:每轮账本 sim.deploy_lag_units > 0 = 违规。残余语义(冻结后)
     = 「**行动语境**下仍有围栏认可件未上」——重放趟吃真部署趟行动前
     的 board/deployed/bench 快照,与真趟同输入同源围栏,不再因本轮
@@ -5131,4 +5136,123 @@ def check_boss_hp_floor_censoring(rows: list[dict]) -> dict:
         'note': 'boss 行 hp 地板删失守卫(批39/40/41);红 = killed 采集断裂'
                 '/败局 hp 未降/hp_after 缺失;'
                 'censor_note 非空 = 伤害口径须剔删失行(含 hp_after==0 团灭行)',
+    }
+
+# ===== 换线存活门:决策位一致性核验 + A/B 机制检查(W665 DESIGN v2) =====
+
+def check_line_gate_decision_bits(rows: list[dict]) -> list[str]:
+    """换线存活门账本位一致性核验(W665 DESIGN v2 §6-4;W659 决策位纪律
+    平移):只核「位 ↔ 行为」「位 ↔ 位」的蕴涵关系,**禁复算门判据式**
+    ——本函数不调 rounds_alive/e_rounds/survival_gate/gate_counterfactual,
+    判据式单一源在 cw_line_switch,第三处复算 = W659 攻击 6 同源失明。
+
+    两条违规各一(§6-4 两条构造反例锁各钉一条):
+    - 行为↔拦截位:last_event 为 gate_hold(门拦保持弱意向)但拦截位
+      False = 账本漏记(位与行为矛盾);
+    - 拦截位↔反事实位:拦截位 True 但反事实位 False = 位间矛盾
+      (门拦 ⟺ R<need,反事实位就是该式的记账,on/off 两臂都蕴涵)。
+    输入 = sim 账本行(decisions 行同构:line_gate_blocked/
+    line_gate_cf_blocked 位 + v3_intention.last_event);行缺位键按
+    False 读(旧 schema 兼容,不红)。
+    """
+    violations: list[str] = []
+    for i, r in enumerate(rows):
+        blocked = bool(r.get('line_gate_blocked', False))
+        cf = bool(r.get('line_gate_cf_blocked', False))
+        ist = r.get('v3_intention') or {}
+        ev = str(ist.get('last_event', '') or '')
+        if ev.startswith('gate_hold:') and not blocked:
+            violations.append(
+                f'行{i}(ts={r.get("ts")}):gate_hold 行为但拦截位 False'
+                f'(账本漏记——位与换线行为矛盾)')
+        if blocked and not cf:
+            violations.append(
+                f'行{i}(ts={r.get("ts")}):拦截位 True 但反事实位 False'
+                f'(位间矛盾——拦截位蕴涵反事实位)')
+    return violations
+
+
+def check_line_switch_midgame_bucket(ledgers_off: list[list[dict]],
+                                     ledgers_on: list[list[dict]]) -> dict:
+    """门开区(中盘)振荡分桶机制检查(W665 DESIGN v2 §5.1-G2 R4/攻击 3):
+    target_comp 变更率按位面内轮段分桶(r≤4 / r5-r9),off vs on 对照。
+
+    机制检查项,与主判分开报告、不设通过线:判前由 off 臂定钉基线,
+    通过判定归 A/B 报告消费方。W643 谓词只测 r6-r8,本检查兼任门开区
+    振荡与中盘翻转带(W670 攻击 2「未观测、成本未测量」)的唯一测量面。
+    变更判定 = 同局相邻账本行 target_comp 标签不同(ts 升序);桶按行
+    round_num(位面内轮次,跨位面行按各自 round 归桶);ts 缺行不插值。
+    """
+    def _bucket_rates(ledgers: list[list[dict]]) -> dict:
+        ev = {'r_le4': 0, 'r5_r9': 0}
+        rows = {'r_le4': 0, 'r5_r9': 0}
+        for led in ledgers:
+            prev = None
+            for r in sorted(led, key=lambda x: x.get('ts', 0)):
+                b = 'r_le4' if int(r.get('round_num', 0) or 0) <= 4 else 'r5_r9'
+                rows[b] += 1
+                tc = r.get('target_comp') or ''
+                if prev is not None and tc != prev:
+                    ev[b] += 1
+                prev = tc
+        return {b: {'events': ev[b], 'rows': rows[b],
+                    'rate': round(ev[b] / rows[b], 4) if rows[b] else None}
+                for b in ev}
+
+    return {
+        'off': _bucket_rates(ledgers_off),
+        'on': _bucket_rates(ledgers_on),
+        'note': '中盘分桶机制检查(W665 DESIGN v2 R4):target_comp 变更率'
+                '按 r≤4/r5-r9 分桶,off vs off 定钉基线后 on 对照;与主判'
+                '分开报告,本函数不设通过线',
+    }
+
+
+def check_line_gate_starvation_anchor(ledgers: list[list[dict]]) -> dict:
+    """G4 纠错通道饿死守卫锚(W665 DESIGN v2 §5.1-G4/FM-9,攻击 4):
+    on 臂逐局扫 gate_hold **连续 ≥3 帧**的局(判前 off 臂无此事件,任何
+    非零 = 饿死失败模式显形 → 进 violations);局末 weak 态占比与 N=2
+    回锁触发率披露(回锁触发率 >0 且集中于持续异线信号局 = 纠错通道
+    活着的证据;局末 weak = phase=='weak' 且未降格,占比 on vs off 对照
+    不升)。账本行读 line_gate_blocked 位与 v3_intention.last_event/
+    phase,不复算门判据式。
+    """
+    hold_runs = 0
+    relock_runs = 0
+    end_weak_runs = 0
+    violations: list[str] = []
+    for j, led in enumerate(ledgers):
+        streak = 0
+        max_streak = 0
+        relocked = False
+        for r in sorted(led, key=lambda x: x.get('ts', 0)):
+            ist = r.get('v3_intention') or {}
+            ev = str(ist.get('last_event', '') or '')
+            if ev.startswith('gate_hold:') or bool(
+                    r.get('line_gate_blocked', False)):
+                streak += 1
+            else:
+                streak = 0
+            if ev.startswith('gate_relock:'):
+                relocked = True
+            max_streak = max(max_streak, streak)
+        if max_streak >= 3:
+            hold_runs += 1
+            violations.append(
+                f'局{j}:gate_hold 连续 {max_streak} 帧(≥3,G4 零容忍'
+                f'——FM-9 饿死显形:纠错通道不可达,永久弱意向)')
+        relock_runs += int(relocked)
+        last_ist = (led[-1].get('v3_intention') or {}) if led else {}
+        if str(last_ist.get('phase', '') or '') == 'weak':
+            end_weak_runs += 1
+    n = len(ledgers)
+    return {
+        'runs': n,
+        'hold_ge3_runs': hold_runs,
+        'violations': violations,
+        'relock_runs': relock_runs,
+        'end_weak_rate': round(end_weak_runs / n, 4) if n else None,
+        'note': 'G4 饿死守卫锚(W665 DESIGN v2 R2):hold≥3 帧局零容忍;'
+                'end_weak_rate 须 on vs off 对照不升;relock_runs>0 = 回锁'
+                '修法触发(纠错通道活着),触发面逐局归持续异线信号局核',
     }
