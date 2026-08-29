@@ -211,6 +211,26 @@ class DecisionV2Registry:
     #: 判据(设计件 12 §4.1),标定前只落结构不落数值)。
     blood_budget_refresh_stop_enabled: bool = True
 
+    # ===== 概率校准的刷新预算(提案面=.debug/temp/currency_war/
+    # ===== w645_proposal_v2/SPECS.md 提案 B-v2;决策 why=ADR-0475)=====
+    #: 塌缩带归零线 ω:refresh_prob(当前级,目标费)/refresh_prob(峰值级,
+    #: 目标费) < ω → 该帧刷新预算归零(refresh_ev_budget 合法 0 帧第三类)。
+    #: 比值由 cw_shop_odds.REFRESH_PROB 表逐帧导出(概率单一址,与分配器
+    #: Π_refresh 估计器同源互指,禁第二概率口径)。ω 是标定字段:初值 0.1
+    #: 占位=「当前级单刷命中率不足峰值级十分之一」;标定网格 {0.05,0.1,0.2},
+    #: 多臂同过判前锁死取最小者(最保守归零线,出处=SPECS B-v2 §3;
+    #: 首批双臂验证记录=ADR-0475)。归零的账=塌缩带留金弱占优纯烧
+    #(留金保留全部未来期权,烧金灭失),不需要息成本参与。
+    omega_collapse_ratio: float = 0.1
+    #: 有望帧帽真分位 q:帽 = ⌈−ln(1−q)·E_find⌉,E_find =
+    #: cw_shop_odds.expected_refreshes_for_card(level, 目标费,
+    #: target_star=2, owned=j)(有限池精确期望,单一址同上)。q 为真分位
+    #: 语义,−ln(1−q) 是其闭式精确乘数(q=0.8→1.61,q=0.9→2.30;推导:
+    #: 每刷命中率近恒定时 P(T≤kE)≈1−e^{−k}),非新常数。网格 {0.8,0.9},
+    #: 初值 0.8=保守档;帽在 E_find 的 3 张目标牌放大量级下结构性不绑定
+    #(全部 (level,费档) 组合帽值 ≥ 39 > 6 刷帽),消费以归零腿为主。
+    refresh_find_quantile: float = 0.8
+
     # ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2 §0/§2;ADR-0469)=====
     #: 总开关:True=数学定谳恒接线口径(金零值引理+EV 对比式:守钱世界
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径

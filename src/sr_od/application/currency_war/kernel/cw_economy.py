@@ -613,29 +613,117 @@ def _schedule_target_core(session: StrategySession) -> str:
     return ''
 
 
+def _target_core_cost(session: StrategySession) -> tuple[str, int]:
+    """排程目标核心 → (核心名, 费用档)(与 _target_peak_level 的解析链
+    同源拆值,供概率校准分量消费;核心解析单一源=_schedule_target_core)。"""
+    core = _schedule_target_core(session)
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    ch = CHARACTERS.get(core) if core else None
+    cost = ch.cost if ch is not None and ch.cost else 3
+    return core, cost
+
+
+def _owned_core_copies(state: GameState, core: str) -> int:
+    """目标核心已持有基础副本数 j(3合1 折算:star s → 3^(s-1);
+    bench∪deployed 逐件计)。E_find 的 owned 修正输入
+    (cw_shop_odds.acquirability_factor 同口径);身份未识别的槽不计
+    ——保守方向=低估持有 → E_find 偏大 → 帽偏松(不缩供给侧)。"""
+    n = 0
+    for bc in (*state.bench, *state.deployed):
+        if bc is not None and bc.char_id == core:
+            n += 3 ** ((bc.star or 1) - 1)
+    return n
+
+
+def _omega_collapse_zeroed(state: GameState, session: StrategySession,
+                           registry: DecisionV2Registry,
+                           target_cost: int) -> bool:
+    """塌缩带判据(概率校准刷新预算的归零腿;ADR-0475)。
+
+    refresh_prob(state.level, target_cost) / refresh_prob(峰值级,
+    target_cost) < registry.omega_collapse_ratio → 当前级对该目标费档
+    无望,预算归零(合法 0 帧第三类)。
+    - **空帧豁免**:非锁定核帧(意向走兜底链)恒 False——兜底 3 费不是
+      真目标,对假目标算塌缩比会缩假目标供给、又可能误杀真目标(别的
+      费档)搜索量,D1「空帧不缩供给」契约优先;锁定/兜底区分单一址
+      = _vd_core_of(锁定核解析,空串=兜底链帧)。
+    - **分母非零注记**:峰值级是该费档 refresh_prob 的 argmax
+      (cw_plane_table.peak_refresh_level 查表口径),结构性 >0;仍显式
+      守卫——分母 ≤0 时判据恒 False(不归零),防消费点换表后静默除零。
+    概率源单一址=cw_shop_odds.refresh_prob(与分配器 Π_refresh 估计器
+    同源互指,禁第二概率口径)。
+    """
+    if not _vd_core_of(session):
+        return False
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+    peak = _target_peak_level(state, session)
+    denom = refresh_prob(peak, target_cost)
+    if denom <= 0:
+        return False
+    return refresh_prob(state.level or 1, target_cost) / denom \
+        < registry.omega_collapse_ratio
+
+
+def _find_budget_cap(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry, target_cost: int,
+                     core: str) -> int:
+    """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽腿;ADR-0475)。
+
+    E_find = expected_refreshes_for_card(level, target_cost,
+    target_star=2, owned=j)——首次集齐目标牌所需刷数的有限池精确期望;
+    q=registry.refresh_find_quantile 为真分位,−ln(1−q) 是其闭式乘数
+    (推导与标定挂账见 registry 字段注释)。E_find=inf(P(0)≈1)时帽不辖
+    (交金量式与 6 刷帽裁决);概率源单一址=cw_shop_odds
+    (expected_refreshes_for_card 内部消费同表),禁第二概率口径。"""
+    import math
+
+    from sr_od.application.currency_war.data.cw_shop_odds import (
+        expected_refreshes_for_card,
+    )
+    j = _owned_core_copies(state, core)
+    e = expected_refreshes_for_card(state.level or 1, target_cost,
+                                    target_star=2, owned=j)
+    if e == float('inf'):
+        return REFRESH_ROLL_CAP
+    return math.ceil(-math.log(1.0 - registry.refresh_find_quantile) * e)
+
+
 def refresh_ev_budget(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry | None = None) -> int:
-    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
+    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465);
+    概率校准分量=ADR-0475)。
 
     ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
     _registry_of(session) → DEFAULT_REGISTRY。
-    预算 = min(6, ⌊(g − R*)/刷价⌋)——只花溢余(`w615_rules_advocacy/` §2-R3 预算式:
-    刷新后仍守储备线;6 刷帽单一源 = REFRESH_ROLL_CAP,原 DP 求解面
-    _ACTION_ROLLS 的 DP 上限同源,不另造第二把尺)。
+    预算 = min(6, ⌊(g − R*)/刷价⌋, ⌈−ln(1−q)·E_find⌉)——只花溢余
+    (`w615_rules_advocacy/` §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
+    = REFRESH_ROLL_CAP)∧ 有望帧帽按目标可寻性收紧。概率校准两腿
+    (ADR-0475,提案面见 .debug/temp/currency_war/w645_proposal_v2/
+    SPECS.md 提案 B-v2):塌缩带归零(纯金量式与目标可寻性无关的病灶修法;
+    归零的账=塌缩带留金弱占优纯烧)+ 有望帧分位帽;**求值次序=先归零
+    后帽**(ρ 归零与 min 帽取交即 0,数值良定);概率单一址=cw_shop_odds
+    (与分配器 Π_refresh 估计器同源互指,禁第二概率口径)。
 
-    合法 0 帧契约(`w623_batch3_pre-mortem/` D2,判前锁;**辖域=应急带**,`w635_batch3_attack/` F1 收口):
-    - 应急帧(``is_emergency`` 单一源,hp≤emergency_hp)→ 0:
+    合法 0 帧契约(`w623_batch3_pre-mortem/` D2,判前锁;**辖域=应急带**,
+    `w635_batch3_attack/` F1 收口;第三类=ADR-0475 扩类):
+    - ① 应急帧(``is_emergency`` 单一源,hp≤emergency_hp)→ 0:
       应激通道根本不产指令(release 让位结构,合并无从放大);
-    - g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
+    - ② g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
       流过 scoring P2 窗判据(``refresh_budget<=0 → 让位``)与存息
-      准入门,「>0 即行动授权」的语义在预算函数口径下成立。
+      准入门,「>0 即行动授权」的语义在预算函数口径下成立;
+    - ③ 塌缩带归零帧(锁定核解析帧 ∧ ``omega_collapse_ratio`` 判据为真;
+      **例外注记:兜底链空帧归零判据恒 False,不属第三类**——D1「空帧
+      不缩供给」契约优先)。
     **血预算带(应急线以上,ADR-0448/0451)不在本函数辖域**:预算字段
     依公式照发,停手由 arbiter 拒付层兜底(discipline.
     blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
     搜索型刷新停付)——防线在拒付层不在预算层;原「血预算帧→0」为
     虚标契约,已随 `w635_batch3_attack/` F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
-    1 次/轮),与本预算不相交、不合并——披露面,非 0 帧契约的一部分。
+    1 次/轮),与本预算不相交、不合并;按 ADR-0475 该车道对塌缩判据
+    **同判据辖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点挂账:
+    decision_v2 属分包期 5 在飞面本批禁触,接线留分包期收口后补
+    (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
     if is_emergency(state, reg):
@@ -644,7 +732,11 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     if over <= 0:
         return 0
     cost = state.shop_refresh_cost or 2
-    return min(REFRESH_ROLL_CAP, over // cost)
+    core, target_cost = _target_core_cost(session)
+    if _omega_collapse_zeroed(state, session, reg, target_cost):
+        return 0
+    return min(min(REFRESH_ROLL_CAP, over // cost),
+               _find_budget_cap(state, session, reg, target_cost, core))
 
 
 def upgrade_plan_fee(state: GameState) -> int:
