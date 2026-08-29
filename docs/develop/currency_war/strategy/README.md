@@ -42,7 +42,7 @@ battle_loop(主循环,屏幕级路由)
 |---|---|---|---|
 | 信息模型 | `cw_state` | GameState/Action/MatchOutcome 等核心类型;sell_refund;hp 阈值派生 | [06](06_input_model.md) |
 | 注册表 | `cw_chars`/`cw_factions`/`cw_equipment`/`cw_invest_data`+`cw_investments`/`cw_comps`/`cw_shop_odds`/`cw_synthesis`/`cw_enemy_data`/`affix_effects_data` | 游戏数据单一源(名称/效果/关系/概率);`cw_plaza_comps` 为生成产物 | [06](06_input_model.md) |
-| 战力表(策略v2) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层,生成勿手编) | 形态×位面→验证篇数(敢用白名单);三级回退+分层保守系数;策略 v2 Phase A | [02](02_comp.md) · [数据 meta](../power_table_meta.md) |
+| 战力表(策略v2,**已删**) | `cw_power_table`(判断层)+`cw_power_table_data`(数据层) | 战力表系零消费退役删除(生成器 `gen_power_table.py` 一并删;人读快照 `power_table_meta.md` 一并退役,出处走 git 历史) | [0472](../decisions/0472-governance-retirement-and-facade-consolidation.md) |
 | 桥线池(策略v2) | `cw_bridge_pool` | 未锁线时的购买方向(手牌重合度选桥;fixed/core/flex 三档;W126/ADR-0350 删已封存 hunt3/dot_belog 两桥,存活三桥全四体系);`ENGINE_FACTIONS` 从桥池 engine_bonds 派生(单一源,={仙舟,持续伤害,列车同行}) | [02](02_comp.md) · [0350](../decisions/0350-retire-sealed-factions-scoring.md) |
 | 过渡配方/检查点 | `cw_line_defs` | RECIPE_FACTIONS/RECIPE_BASE/ENGINE_FACTIONS 常量单一源 + `p1_formation_target` P1 成型检查点(轮窗常量 `_*_FORMATION_*` 见 cw_line_defs,ADR-0225/0241) | [02](02_comp.md) |
 | 过渡配方一等公民模型(策略v2) | `cw_recipe` | P1 双轨期决策中心:配方伪 comp(RecipeComp)令 plan/deploy 评分自动转向配方完成度;「配方完成度即 P1 胜利条件」(user_playstyle [20]-[23]/[26];ADR-0225/0243) | [02](02_comp.md) |

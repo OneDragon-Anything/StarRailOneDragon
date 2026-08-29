@@ -32,8 +32,8 @@
 | [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
 | [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准对拍源) | 29 聚类 | 🟢 官方 API |
 
-> 战力表数据(power_table_meta,`tools/cw/gen_power_table.py` 生成)是**策略系统校准数据**,
-> 归 [develop/currency_war/power_table_meta.md](../../../develop/currency_war/power_table_meta.md)。
+> 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费退役删除(ADR-0472);
+> 退役前的人读快照 `docs/develop/currency_war/power_table_meta.md` 亦已退役,出处走 git 历史。
 
 ---
 

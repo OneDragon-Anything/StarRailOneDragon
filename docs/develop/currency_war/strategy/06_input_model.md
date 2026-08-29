@@ -28,8 +28,8 @@
 
 | 注册表 | 内容 | 来源/生成 |
 |---|---|---|
-| `cw_chars.CHARACTERS` | 角色全量(费用/阵营/站位/类型) | plaza API 生成器(`tools/cw/gen_plaza_chars.py`) |
-| `cw_factions.FACTIONS` | 羁绊(类别/tiers/效果) | 数据层 `cw_factions_data` 由生成器产出(`tools/cw/gen_factions.py`,traits.json V4.4,勿手编);判断层 `cw_factions` 手维护 |
+| `cw_chars.CHARACTERS` | 角色全量(费用/阵营/站位/类型) | plaza API 对拍器(`tools/cw/gen_plaza_chars.py`,stdout 逐条 diff 对拍注册表,无落盘数据层) |
+| `cw_factions.FACTIONS` | 羁绊(类别/tiers/效果) | 对拍器 `tools/cw/gen_factions.py`(traits.json 对拍 tiers+成员,不一致非零退出;平行数据层 cw_factions_data 已删);判断层 `cw_factions` 手维护 |
 | `cw_equipment.EQUIPMENTS` + `cw_synthesis` | 装备全量 + 合成图谱 | 米游社;API `equipment_list.compose_list` 为合成权威源候选 |
 | `cw_invest_data` + `cw_investments` | 投资策略/环境全量(base)+ overlay(economy/评估分/分类) | plaza API 生成器(`gen_plaza_invest.py`,内建 diff) |
 | `cw_comps.COMP_LIBRARY`(+`cw_plaza_comps`) | 阵容库 | plaza lineup 生成(勿手编) |

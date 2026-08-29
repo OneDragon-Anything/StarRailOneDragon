@@ -30,7 +30,7 @@
 
 ## 2. 全量扫描结果(cw_chars 75 名 + final_comps 十类机制叙述过筛)
 
-扫描方法:`cw_chars.py` 全角色 + `cw_chars_data.PLAZA_ROLES` 技能名过一遍 → 对 final_comps
+扫描方法:`cw_chars.py` 全角色注册表(名称/技能名过一遍) → 对 final_comps
 各篇「机制原文」节里含「永久/叠加/成长/累积/升费」语义的条目逐一过判据。
 
 ### 2.1 确认成员(场上驱动型)
