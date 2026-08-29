@@ -36,7 +36,7 @@ from __future__ import annotations
 import re
 import time
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -48,6 +48,21 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    BailToOuter,
+    ClickSpheres,
+    DeferSpheres,
+    DeployMove,
+    LevelUp,
+    OpenTome,
+    PrepAction,
+    PrepObservation,
+    RunBuyPhase,
+    SellBench,
+    SellDeployed,
+    StartBattle,
+    action_key,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     XP_TO_NEXT_LEVEL,
@@ -89,19 +104,7 @@ from sr_od.application.currency_war.obs.cw_shop_obs import (
     refresh_expect,
 )
 from sr_od.application.currency_war.prep_actions import (
-    BailToOuter,
-    ClickSpheres,
-    DeferSpheres,
-    DeployMove,
-    LevelUp,
-    OpenTome,
-    PrepAction,
     PrepActionExecutor,
-    RunBuyPhase,
-    SellBench,
-    SellDeployed,
-    StartBattle,
-    action_key,
     row_area_centers,
     try_recovery,
 )
@@ -712,45 +715,6 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
         mism.append({'domain': 'cards', 'slot': '-',
                      'expected': '>=1', 'observed': '0'})
     return mism
-
-
-@dataclass
-class PrepObservation:
-    """备战决策环统一观察(§3;决策单一输入,组合现成 reader 不新写识别)。
-
-    P1 恒空字段(§13.4,策略不得依赖):overlay_state / overlay_options / shop_cards /
-    owned_equips(P4 工具域接线)。
-
-    分层语义:state/bench_chars/deployed_chars/deploy_vacancy 只在 heavy
-    观察刷新(环入口 + 每个执行过的游戏动作后);light 步沿用上次 heavy 值(可能 stale,
-    单线程内 stale 窗口 = 无动作步,安全)。轻字段(spheres/boxes/占用/shop_open/overlay)
-    每步现读。
-    """
-    state: GameState | None = None        # heavy 重读;gold 仅 shop_open 时可信(F2)
-    state_gold_trusted: bool = False      # F2:state.gold 是否可信(= heavy 时 shop 开)
-    # r333(批次3):子态可读性(observe_full 产出;heavy 刷新/
-    # light 沿用)——node_seq/shop_cards 本帧是否可读(按子态
-    # 尽力读,跨步拼装全面性;方案 v5 A5)。
-    substate: dict = field(default_factory=dict)
-    bench_chars: list[BenchChar] = field(default_factory=list)   # heavy: SIFT 身份
-    deployed_chars: list[BenchChar] = field(default_factory=list)
-    spheres: list = field(default_factory=list)       # read_reward_spheres [(color, Point, r)]
-    boxes: list = field(default_factory=list)         # read_supply_boxes [(slot, Point)]
-    tomes: list = field(default_factory=list)         # read_tomes [(slot, Point)] 秘密典籍(2026-08-16)
-    free_bench_slots: int = 0           # 9 − 占用(角色+箱都占席;CV 每步现读)
-    deploy_vacancy: int = 0             # deploy_cap − deployed_count(heavy 刷新)
-    shop_open: bool = False             # 锚点「按钮-收起」可见(每步现读)
-    box_overlay_open: bool = False      # 武装箱 overlay(标识-请选择;每步现读)
-    front_occupied: set = field(default_factory=set)  # 前排占用物理槽位号(每步现读)
-    back_occupied: set = field(default_factory=set)
-    front_size: int = 4
-    back_size: int = 6
-    overlay_state: str | None = None    # P5
-    # 事件 overlay 检测(P1-4 过渡:盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即 BailToOuter
-    # 交外环分支 handler;live 2026-08-15 实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
-    event_overlay: str | None = None
-    overlay_options: list | None = None # P5
-    shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
 
 
 # ===== 装备期望态(装备拖拽语义的期望态层;语义单一源 =
@@ -2506,16 +2470,16 @@ class PrepDirector(SrOperation):
             DirectorV2,
             _DirectorPorts,
         )
-        from sr_od.application.currency_war.obs.cw_observation import (
-            read_deployed_count,
-        )
-        from sr_od.application.currency_war.prep_actions import (
+        from sr_od.application.currency_war.kernel.cw_prep_actions import (
             DeployMove,
             LevelUp,
             RunBuyPhase,
             SellBench,
             SellDeployed,
             StartBattle,
+        )
+        from sr_od.application.currency_war.obs.cw_observation import (
+            read_deployed_count,
         )
 
         adapter = DecideAdapter(match.strategy, config, self._executor)

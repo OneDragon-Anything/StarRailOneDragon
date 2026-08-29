@@ -1229,9 +1229,11 @@ class BuyShopCards(SrOperation):
         if self._shop_open_fail_count < 2:
             # 第 1 次零响应:与探针同款先 retry 再验一次(2 次才实锤,防动画慢误判)
             return self.round_retry('开商店零响应(1/2,加强通道计数)', wait=1)
+        from sr_od.application.currency_war.kernel.cw_prep_actions import (
+            StartBattle,
+        )
         from sr_od.application.currency_war.prep_actions import (
             PrepActionExecutor,
-            StartBattle,
         )
         progressed, detail = PrepActionExecutor(self, self.ctx).execute(StartBattle())
         if progressed:

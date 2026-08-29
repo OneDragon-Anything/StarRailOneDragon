@@ -221,7 +221,10 @@ def decide(turn: TurnState, strategy: Any, session: StrategySession,
     (执行环空批语义 = 计 stall + 轻观察,与旧环拒绝路径同型)。
     """
     from sr_od.application.currency_war.decision_v2.adapter import action_to_atomop
-    from sr_od.application.currency_war.prep_actions import BailToOuter, DeferSpheres
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        BailToOuter,
+        DeferSpheres,
+    )
 
     action = _select(turn, strategy, session, config)
     if validator is not None:

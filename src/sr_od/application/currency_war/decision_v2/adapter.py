@@ -49,7 +49,7 @@ from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY, GameS
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.cw_strategy import StrategySession
-    from sr_od.application.currency_war.prep_actions import PrepAction
+    from sr_od.application.currency_war.kernel.cw_prep_actions import PrepAction
     from sr_od.application.currency_war.prep_director import PrepObservation
 
 #: 决策子态名(适配器只服务备战决策环;分类可信度由框架门在环顶拦截,
@@ -367,7 +367,7 @@ def shadow_compare_step(director: Any, match: Any, obs: PrepObservation,
     ③零执行——影子只产出决策做逐位对照,不落地任何游戏动作。
     比对粒度 = AtomOp/控制流标记(类型+op_key 指纹),同帧两次纯函数 decide。
     """
-    from sr_od.application.currency_war.prep_actions import (
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
         BailToOuter,
         DeferSpheres,
     )

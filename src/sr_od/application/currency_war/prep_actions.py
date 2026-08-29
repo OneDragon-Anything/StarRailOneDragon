@@ -16,7 +16,6 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -28,6 +27,26 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _ocr,
     area_center,
 )
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    PREP_ACTION_TYPES,
+    BailToOuter,
+    ClickSpheres,
+    DeferSpheres,
+    DeployMove,
+    EnsureShopClosed,
+    EnsureShopOpen,
+    LevelUp,
+    OpenBox,
+    OpenTome,
+    PickBoxCard,
+    PrepAction,
+    RunBuyPhase,
+    RunDeploy,
+    RunEquip,
+    SellBench,
+    SellDeployed,
+    StartBattle,
+)
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
@@ -36,8 +55,6 @@ from sr_od.application.currency_war.obs.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-# ===== 动作全集(§13.1)=====
-
 #: 点击后 overlay 弹出/关闭的事件驱动轮询预算(替代旧固定
 #: sleep 1.5s 后单次验证——overlay 通常更快就位,命中即返回;
 #: 慢时仍受上界,失败语义与旧固定等待一致。依据:单局耗时
@@ -45,130 +62,6 @@ from sr_od.operations.sr_operation import SrOperation
 #: REPORT.md「需验证·出战链」)。取旧固定值 1.5s + 一个轮询
 #: 间隔 0.3s,保证最坏情形覆盖面不缩水。
 _OVERLAY_POLL_TIMEOUT_S: float = 1.8
-
-
-class PrepAction:
-    """备战决策环动作标记基类(策略 → 框架的单步意图载体)。"""
-
-
-@dataclass
-class DeferSpheres(PrepAction):
-    """控制流:奖励球留置(本环不再尝试;不计 stall,计步数;§4.2b)。"""
-
-
-@dataclass
-class BailToOuter(PrepAction):
-    """控制流:中止本环交外环(弹层/事件;框架信号不走验证链;§4.2b)。"""
-    reason: str = ""
-
-
-@dataclass
-class ClickSpheres(PrepAction):
-    """点奖励球(带上界批,大球优先,内验早停;掉箱即停回环交规则统筹)。"""
-    max_k: int = 1
-
-
-@dataclass
-class OpenBox(PrepAction):
-    """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
-    slot: int | None = None
-
-
-@dataclass
-class OpenTome(PrepAction):
-    """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
-
-    2026-08-16 M45 建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
-    选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
-    """
-    slot: int | None = None
-
-
-@dataclass
-class PickBoxCard(PrepAction):
-    """武装箱 4 选 1 点卡。card_idx=None → 执行器内嵌默认选卡(v7 M-3:P1 住执行器,P5 上移策略)。"""
-    card_idx: int | None = None
-
-
-@dataclass
-class SellBench(PrepAction):
-    """卖备战席角色(slot=物理槽位 1-9;身份感知「卖谁」由策略层保证)。"""
-    slot: int
-
-
-@dataclass
-class SellDeployed(PrepAction):
-    """卖已上阵角色(row=front/back + 物理槽位)。"""
-    row: str
-    slot: int
-
-
-@dataclass
-class DeployMove(PrepAction):
-    """bench → 上阵单步拖拽(腾席链专用,P1;组合部署走 RunDeploy 保四项板上行为)。"""
-    from_slot: int
-    to_row: str            # "front" / "back"
-    to_slot: int
-
-
-@dataclass
-class LevelUp(PrepAction):
-    """买经验升等级(点「购买经验」循环至 level+1;cap+1 = 腾席链 b 步)。"""
-
-
-@dataclass
-class EnsureShopOpen(PrepAction):
-    """开商店(gold 只在开态可读;§3 读取前置管理)。"""
-
-
-@dataclass
-class EnsureShopClosed(PrepAction):
-    """关商店(HP 只在关态可读)。"""
-
-
-@dataclass
-class StartBattle(PrepAction):
-    """出战(环出口;含未达上限确认;验证=备战标识消失)。StartBattle 豁免屏蔽(§7)。"""
-
-
-@dataclass
-class RunBuyPhase(PrepAction):
-    """组合(P1 过渡):整段买牌 = BuyShopCards(P2 溶解为原子)。"""
-
-
-@dataclass
-class RunDeploy(PrepAction):
-    """组合(P1 过渡):整体部署 = DeployBench(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
-    四项板上行为,P3 原子化时上移策略)。"""
-
-
-@dataclass
-class RunEquip(PrepAction):
-    """组合(P1 过渡):全员装备 = EquipAll(P3 溶解为 WearEquip)。"""
-
-
-# 动作全集白名单(F3 membership 校验,review M-4;新动作加入全集时同步此处)
-PREP_ACTION_TYPES: tuple = (
-    DeferSpheres, BailToOuter, ClickSpheres, OpenBox, OpenTome, PickBoxCard,
-    SellBench, SellDeployed, DeployMove, LevelUp,
-    EnsureShopOpen, EnsureShopClosed, StartBattle,
-    RunBuyPhase, RunDeploy, RunEquip,
-)
-# ⚠️ r15 review P0:OpenTome 曾遗漏于此(fc888bc1 加动作时漏登记)——validate 拒「未知动作
-# 类型」→ OpenTome 从未真正执行(M55 414 次全是 F3 拒绝非执行失败)。教训:**新增 PrepAction
-# 必须同步登记本白名单**(F3 校验是最后防线,登记是入口门)。
-
-
-def action_key(action: PrepAction) -> str:
-    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数,§13.2;SellBench(3) 与 SellBench(5) 各自计数)。"""
-    import dataclasses
-
-    if dataclasses.is_dataclass(action):
-        params = dict(vars(action))
-        if not params:
-            return type(action).__name__   # 无字段 dataclass(StartBattle 等)→ 裸名
-        return f'{type(action).__name__}({params})'
-    return type(action).__name__
 
 
 def _read_level_raw(ctx: SrContext, screen) -> int | None:

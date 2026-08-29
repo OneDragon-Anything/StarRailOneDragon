@@ -1212,9 +1212,11 @@ class CurrencyWarRunLoop(SrOperation):
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
                                     '零响应)→ 直接出战', _pr[0], _pr[1])
             if self._cw_locked_resume:
+                from sr_od.application.currency_war.kernel.cw_prep_actions import (
+                    StartBattle,
+                )
                 from sr_od.application.currency_war.prep_actions import (
                     PrepActionExecutor,
-                    StartBattle,
                 )
                 progressed, detail = PrepActionExecutor(
                     self, self.ctx).execute(StartBattle())
