@@ -473,6 +473,21 @@ class SimResult:
     # 批 A 同口径(key_last=最后一次分配时的 key 表))
     p1_key_hit_hits: int = 0
     p1_key_hit_total: int = 0
+    # ===== W614 迁移批 0:sim 保真三补的记账出口(纯观测,零漂移)=====
+    # 装备事件落账(计数级;实机出口对应物 = W607 判读量「滞留件数」与
+    # 库藏生锈词条暴露面,词条语义单一源 cw_comps.RUST_AFFIX_NAME):
+    equip_grants: int = 0        # 发放件数(supply 选择/reward 直发/追加件)
+    equip_wears: int = 0         # 穿戴件数(分配器从 owned 池移穿上板的件)
+    equip_syntheses: int = 0     # 装备栏内合成成品件数(合成链 hook 点火时)
+    p1_unworn_exit: int = 0      # P1 段末未穿滞留件数(len(owned 池))
+    p1_rust_units_peak: int = 0  # P1 段内生锈暴露峰值 min(10, 未穿件数)
+    # 上阵代理记账(实机出口对应物 = W608 重裁 M2「配方件躺 bench 轮数/局」
+    # 与成型质量粗代理;代理语义=配方隶属按意向 target 的 core/faction 集)
+    p1_bench_recipe_piece_rounds: int = 0   # P1 各轮「bench 上配方隶属件数」累计
+    p1_deployed_power_avg: float = 0.0      # P1 各轮上阵战力贡献代理均值
+                                            # (Σ(star + core∈target 计 1);口径见账本 sim.deployed_power)
+    # 付费刷新产经验(xp_per_refresh,如淘金客;免费刷不计)局级累计
+    refresh_xp_total: int = 0
     # 动作 v2(契约包 C1,步2):显式部署动作(SellDeployed/SwapDeploy/
     # CompTransaction)被整体拒绝的次数(原子性拒绝披露;真策略当前
     # 不发显式动作 → 恒 0,演进引擎 C3 接入后 >0 即决策侧提案越界信号)
@@ -1460,6 +1475,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                       else (0, XP_TO_NEXT_LEVEL.get(st.level, 4)))
     # ADR-0286(批㉔ F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
     _diamonds = 0
+    # W614 保真三补的局级计数器(纯观测,不进 rng 流;默认路径全 0):
+    _equip_grants = 0    # 装备发放件数
+    _equip_wears = 0     # 装备穿戴件数(owned→已穿)
+    _equip_syntheses = 0  # 装备栏内合成成品件数(合成链 hook 点火时)
+    _refresh_xp_total = 0  # 付费刷新产经验累计(xp_per_refresh)
+    _rust_peak = 0       # 生锈暴露峰值 min(10, 未穿件数;P1 段)
+    _bench_recipe_rounds_p1 = 0   # P1 配方件躺 bench 轮数累计(件×轮)
+    _dep_power_sum_p1 = 0.0       # P1 上阵战力贡献代理累加
+    _dep_power_rounds_p1 = 0      # P1 计均值用的轮数
     # ADR-0362(W157):位面段迭代——P1 段(9 轮)后按 ``planes``
     # 追加 P2 段(7 轮)。planes=1 时段表只含 P1 段,循环体逐位
     # 同旧(RNG 消耗序不变 = P1 零漂移回归门)。案 b 臂(W193)段表
@@ -1596,6 +1620,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
             _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
             _merges = 0   # ADR-0276:本轮 3合1 合并次数(账本 sim.merges)
+            _refresh_xp_round = 0   # W614 G3:本轮付费刷新产经验(账本披露)
             _bench_full_skips = 0   # ADR-0283 守卫:本轮满栏**非合成**拒买数(合成买已执行,不计入——W566 语义收窄)
             _bench_full_skip_gold = 0   # ADR-0285:非合成拒买折算金(净滞留口径)
             _phantom_rebuys = 0   # ADR-0284:已消费槽/店外买提案数(应恒 0)
@@ -1639,6 +1664,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_form_ok: bool = False
             _round_form_score: float = 0.0
             _round_dp_posture: str = ''
+            _round_reserve_cap = 0
+            _round_reserve_overflow = 0
+            _round_release_budget = 0
+            _round_release_reason = ''
             _phase_snap = False
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
@@ -1672,6 +1701,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _round_dp_posture = str(getattr(getattr(
                         getattr(sess, 'v3_dp_posture', None),
                         'posture', None), 'tag', '') or '')
+                    # W611 储备/义务披露(轮入口快照;与生产 decisions 行
+                    # sess_* 同语义,义务帧兑现率/闲置金判读的 sim 侧源)
+                    _round_reserve_cap = int(
+                        getattr(sess, 'v3_reserve_cap', 0) or 0)
+                    _round_reserve_overflow = int(
+                        getattr(sess, 'v3_reserve_overflow', 0) or 0)
+                    _round_release_budget = int(
+                        getattr(sess, 'v3_release_budget', 0) or 0)
+                    _round_release_reason = str(
+                        getattr(sess, 'v3_release_reason', '') or '')
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
                     _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
                                                 False))
@@ -1703,6 +1742,23 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _free_used += 1
                         st.gold -= _cost_r
                         _spend['refresh'] += _cost_r
+                        # W614 G3:xp_per_refresh 合成器接入——付费刷新产
+                        # 经验(淘金客 +2,官方原文「每次消耗金币刷新商店都会
+                        # 获得 2 经验值」,cw_invest_data.py 注册行;免费刷
+                        # 额度内 cost=0 不计)。数值源=投资注册表聚合
+                        # (cw_investments.STRATEGY_ECONOMY/EffectSpec 查询键
+                        # xp_per_refresh);升维路径:W612 效果清单 overlay
+                        # 交付后改由其 overlay 供值,本接入点不动。
+                        # 零漂移:无持卡时表达式恒 0,无 xp/行为变化。
+                        _xpr = (aggregate_economy(
+                            st.active_strategies).xp_per_refresh
+                            if st.active_strategies else 0)
+                        if _cost_r > 0 and _xpr > 0:
+                            xp += _xpr
+                            _refresh_xp_total += _xpr
+                            _refresh_xp_round += _xpr
+                            st.xp_progress = (
+                                xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
                         st.shop = cards_pool.draw_shop(st.level,
                                                        probs=st.refresh_probs)
@@ -2098,6 +2154,26 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     fw_carry=_fw,
                 )
                 _deploy_lag_units = len(_lag_idx)
+            # W614 G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
+            # - bench_recipe_pieces:bench 上配方隶属件数(char∈target core
+            #   或 faction∈target factions;目标集=部署块同源 session 现读,
+            #   未锁定时空集→恒 0)——逐轮落账本,局级累计=「配方件躺 bench
+            #   轮数」(实机出口 W608 M2 的 sim 对应物);
+            # - deployed_power:上阵战力贡献代理 = Σ(star + core∈target 计 1)
+            #   ——星级加权 + 核心标记,记账级代理(非物理仿真),供成型质量
+            #   粗比较;与 Δ池结算键(_settle_rung)口径无关。
+            _bench_recipe = sum(
+                1 for b in iter_occupied(st.bench)
+                if b.char_id in _tc or b.faction in _tf)
+            _dep_power = sum(
+                (int(getattr(d, 'star', 1) or 1)
+                 + (1 if getattr(d, 'char_id', '') in _tc else 0))
+                for d in iter_occupied_deployed(st.deployed))
+            if _seg_plane == 1:
+                _bench_recipe_rounds_p1 += _bench_recipe
+                _dep_power_sum_p1 += _dep_power
+                _dep_power_rounds_p1 += 1
+                _rust_peak = max(_rust_peak, min(10, len(st.equips)))
             if res.dir_round == 99 and _direction_established(sess):
                 res.dir_round = rn
             # W162/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
@@ -2334,9 +2410,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _pick = decide_supply(_opts, st, sess.target_comp, None,
                                               refresh_used=True)
                     st.equips.append(_opts[_pick.idx].equip)
+                    _equip_grants += 1   # W614 G1 发放落账
                 else:
                     # 奖励节点:非选择型发放,直接 1 件基础件(均匀)
                     st.equips.append(rng.choice(_basic_names))
+                    _equip_grants += 1   # W614 G1 发放落账
                 # 追加件(多通道聚合代理):实机装备来自奖励/补给/投资
                 # 环境/遭遇后多通道,sim 只有上述两类节点承载 →
                 # 以固定概率补 1 件(基础为主、含少量进阶,
@@ -2347,6 +2425,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.equips.append(rng.choice(_adv_names))
                     else:
                         st.equips.append(rng.choice(_basic_names))
+                    _equip_grants += 1   # W614 G1 追加件落账
                 if _is_supply and _pick.idx < len(_opts) \
                         and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
@@ -2390,6 +2469,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.equips.remove(_c)
                     st.equips.append(_adv)
                     _synth_events.append(_adv)
+                    _equip_syntheses += 1   # W614 G1 合成落账
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.cw_comps import (
                     equip_allocation,
@@ -2417,6 +2497,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 for _who, _what in _equipped_now:
                     if _what in st.equips:
                         st.equips.remove(_what)
+                        _equip_wears += 1   # W614 G1 穿戴落账(owned→已穿)
                     _adds.setdefault(_who, []).append(_what)
                 for d in iter_occupied_deployed(st.deployed):
                     _want = _adds.pop(d.char_id, None)
@@ -2448,6 +2529,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'form_ok': _round_form_ok,
                 'form_score': _round_form_score,
                 'dp_posture': _round_dp_posture,
+                # W611 储备/义务披露(轮入口快照;生产 decisions 行 sess_* 同语义)
+                'reserve_cap': _round_reserve_cap,
+                'reserve_overflow': _round_reserve_overflow,
+                'release_budget': _round_release_budget,
+                'release_reason': _round_release_reason,
                 'piggy_reward': _round_piggy,
                 # W146 v3 意向状态(与生产 decisions 行同构;sim 分析批
                 # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
@@ -2567,6 +2653,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'remedy_abandoned': 1 if getattr(
                         sess, 'v3_remedy_abandoned', 0)
                         > _remedy_abandons_before else 0,
+                    # ===== W614 保真三补:记账出口(纯观测)=====
+                    # 未穿滞留件数/生锈暴露(词条语义 cw_comps.RUST_AFFIX_NAME:
+                    # 每件未穿装备敌伤+3%,最多 10 件;「生锈泄洪」=穿戴/合成
+                    # 使 rust_units 下降的轮,配 sim.refresh_xp 旁的计数读)
+                    'unworn_equips': len(st.equips),
+                    'rust_units': min(10, len(st.equips)),
+                    'worn_equips_total': sum(
+                        len(getattr(u, 'equips', ()) or ())
+                        for u in (*iter_occupied_deployed(st.deployed),
+                                  *iter_occupied(st.bench))),
+                    # 付费刷新产经验(xp_per_refresh;免费刷不计)
+                    'refresh_xp': _refresh_xp_round,
+                    # 上阵代理(G2):配方件躺 bench 数 / 上阵战力贡献
+                    'bench_recipe_pieces': _bench_recipe,
+                    'deployed_power': _dep_power,
                 },
             })
             if st.hp <= 0:
@@ -2575,6 +2676,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # (无论 P1 段是打满还是中途死亡都记;口径见 SimResult
         # 字段注释)。段内变量 _seg_plane 在此可见(for 循环变量)。
         if _seg_plane == 1:
+            # W614 G1:P1 出口滞留件数(段末 owned 池快照;实机出口
+            # 「滞留件数」的 sim 对应物,段内死亡也记)
+            res.p1_unworn_exit = len(st.equips)
+            res.p1_rust_units_peak = _rust_peak
             _tc = getattr(sess, 'target_comp', None)
             _keys = (list(getattr(_tc, 'key_equips', ()) or ())
                      if _tc is not None else [])
@@ -2597,6 +2702,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     res.p2_hp0 = res.p2_entered and st.hp <= 0
     res.final_hp = st.hp
     res.level = st.level
+    # W614 保真三补:局级记账出口汇总(纯观测)
+    res.equip_grants = _equip_grants
+    res.equip_wears = _equip_wears
+    res.equip_syntheses = _equip_syntheses
+    res.refresh_xp_total = _refresh_xp_total
+    res.p1_bench_recipe_piece_rounds = _bench_recipe_rounds_p1
+    res.p1_deployed_power_avg = (
+        round(_dep_power_sum_p1 / _dep_power_rounds_p1, 2)
+        if _dep_power_rounds_p1 else 0.0)
     # W193/ADR-0377:P2 判读同构观测(headline/账本扩展)——由账本
     # plane=2 行派生(金带走量/carry 笔数价格带/意向切换/lv 到达轮)。
     if res.p2_entered:
