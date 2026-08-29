@@ -37,6 +37,8 @@ import cv2
 import numpy as np
 from cv2.typing import MatLike
 
+from one_dragon.utils.file_utils import get_project_root
+
 # SIFT 检测器(与 one_dragon.utils.cv2_utils.feature_detector 同源)
 _SIFT = cv2.SIFT_create()  # type: ignore[attr-defined]  # cv2 stubs 不含 SIFT(实际存在,opencv-python>=4.4 内置)
 _MATCHER = cv2.BFMatcher()
@@ -343,7 +345,7 @@ if __name__ == '__main__':
     """离线自测:对备战截图的填充槽(bench-1/2/5)识别,验证模块。"""
     import sys
 
-    repo = Path(__file__).resolve().parents[4]  # src/sr_od/application/currency_war -> repo
+    repo = get_project_root()  # src/sr_od/application/currency_war -> repo
     screen_path = sys.argv[1] if len(sys.argv) > 1 else str(
         repo / '.debug' / 'sr_od_mcp' / 'screenshot' / 'screenshot_20260802_121926_271794.png'
     )

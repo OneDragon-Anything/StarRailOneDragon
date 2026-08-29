@@ -11,13 +11,13 @@ from __future__ import annotations
 import contextlib
 import json
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from one_dragon.utils.str_utils import find_best_match_by_lcs
 from sr_od.operations.sr_operation import SrOperation
@@ -30,7 +30,7 @@ NAME_REGION = (740, 100, 1900, 900)         # 右侧详情 OCR 区(名+效果)
 GRID_NAME_REGION = (40, 200, 700, 900)      # 左侧网格名带(推行 Y)
 SCROLL_FROM = Point(500, 800)               # 小滚 ~1 行(collect_portraits 实测拖距 280px)
 SCROLL_TO = Point(500, 520)
-OUT_DIR = Path(__file__).resolve().parents[6] / '.debug/temp/currency_war'
+OUT_DIR = get_project_root() / '.debug/temp/currency_war'
 
 
 class HarvestInvestCodex(SrOperation):

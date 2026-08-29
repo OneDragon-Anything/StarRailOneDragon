@@ -14,7 +14,6 @@ read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = scre
 **前置**:已在「货币战争-备战」,角色详情面板关(出售 不可见 —— 角色详情面板遮 col2;装备详情面板不遮 icon D-37)。
 """
 import time
-from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -23,6 +22,7 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_char_id import load_avatar_templates
 from sr_od.application.currency_war.cw_comps import (
@@ -196,7 +196,7 @@ class EquipAll(SrOperation):
         cached = getattr(self.ctx, 'cw_equip_templates', None)
         if cached is not None:
             return cached
-        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        base = get_project_root() / 'assets/template'
         equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方+手工补充)
         if not equip_dir.is_dir():
             equip_dir = base / 'currency_war' / 'equip_legacy'
@@ -217,7 +217,7 @@ class EquipAll(SrOperation):
         cached = getattr(self.ctx, 'cw_equip_tm_grays', None)
         if cached is not None:
             return cached
-        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        base = get_project_root() / 'assets/template'
         equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 _get_templates)
         if not equip_dir.is_dir():
             equip_dir = base / 'currency_war' / 'equip_legacy'
@@ -257,7 +257,7 @@ class EquipAll(SrOperation):
         cached = getattr(self.ctx, 'cw_portrait_templates', None)
         if cached is not None:
             return cached
-        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        base = get_project_root() / 'assets/template'
         portrait_dir = base / 'currency_war' / 'portrait_plaza'
         if not portrait_dir.is_dir():
             return None

@@ -11,10 +11,10 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from cv2.typing import MatLike
 
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_obs_core import HP_MAX, HP_MIN
 from sr_od.context.sr_context import SrContext
@@ -238,7 +238,7 @@ def parse_settlement_damage(items: list) -> int | None:
 # read_round_outcome 内 collect 调用行(全局搜 collect_gold_detail_hook 定位),不留
 # 开关/flag/参数(与 r63 streak_gold 钩子同删法,见下方原删除点注释)。
 #: 旁路台账(jsonl,逐轮一行;与 replay/outcomes.jsonl 按 (run_id, plane, round_num) 对拍)
-_GOLD_DETAIL_JOURNAL = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'replay' / 'gold_detail.jsonl'
+_GOLD_DETAIL_JOURNAL = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'replay' / 'gold_detail.jsonl'
 #: 结算停留防重:分支3 在结算屏停留期每轮循环都调 read_round_outcome,同帧只落一行
 _gold_last_row_key: tuple | None = None
 

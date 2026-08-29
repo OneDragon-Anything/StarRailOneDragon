@@ -19,6 +19,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.cv2_utils import save_image
+from one_dragon.utils.file_utils import get_project_root
 
 # W222 遥测缺口②同源:旧 ``logging.getLogger(__name__)`` 是无 handler 裸
 # logger(框架日志走命名 logger 'OneDragon',propagate=False 不经 root),
@@ -270,7 +271,7 @@ def read_affix_effect(ctx: SrContext, screen: MatLike, affix_name: str) -> str:
 
 # 词缀效果采集落盘(.debug/ 不入 git)。注册表 AFFIX_EFFECTS 在 affix_effects_data.py(单独文件,
 # 运行时 write_affix_effects 自动写入);tooltip 截图存 affix_shots/(对账用)。
-_CW_DEBUG_DIR: Path = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war'
+_CW_DEBUG_DIR: Path = get_project_root() / '.debug' / 'temp' / 'currency_war'
 _AFFIX_SHOTS_DIR: Path = _CW_DEBUG_DIR / 'affix_shots'   # 词缀效果 tooltip 截图(对账用)
 # 词缀效果注册表 py 文件(与本文件同目录 currency_war 包;运行时 write_affix_effects 写入)
 _AFFIX_EFFECTS_PATH: Path = Path(__file__).resolve().parent / 'affix_effects_data.py'

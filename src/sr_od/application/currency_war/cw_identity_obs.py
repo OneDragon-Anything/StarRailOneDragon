@@ -24,7 +24,6 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -32,6 +31,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
@@ -83,7 +83,7 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     """
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
-        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        base = get_project_root() / 'assets' / 'template'
         portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删 2026-08-17)
         if not portrait_dir.is_dir():
             return None
@@ -117,7 +117,7 @@ def _load_star_tmpl() -> MatLike | None:
     global _STAR_TMPL_CACHE
     if _STAR_TMPL_CACHE is None:
         # 模板统一目录(2026-08-16 用户规范:assets/template/currency_war/<类型>/;star 金星模板在 star/)
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'star' / 'star_gold_tmpl.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'star' / 'star_gold_tmpl.png'
         if p.exists():
             _STAR_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
     return _STAR_TMPL_CACHE
@@ -233,7 +233,7 @@ def _load_preview_sparkle_tmpl() -> MatLike | None:
     """
     global _PREVIEW_TMPL_CACHE
     if _PREVIEW_TMPL_CACHE is None:
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'star' / 'shop_preview_sparkle_tmpl.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'star' / 'shop_preview_sparkle_tmpl.png'
         if p.exists():
             _PREVIEW_TMPL_CACHE = cv2.imread(str(p), cv2.IMREAD_GRAYSCALE)
     return _PREVIEW_TMPL_CACHE
@@ -989,7 +989,7 @@ def _get_tome_gray() -> MatLike | None:
     global _tome_gray, _tome_loaded
     if not _tome_loaded:
         _tome_loaded = True
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '秘密典籍.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '秘密典籍.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _tome_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _tome_gray
@@ -1004,7 +1004,7 @@ def _get_bookcard_gray() -> MatLike | None:
     global _bookcard_gray, _bookcard_loaded
     if not _bookcard_loaded:
         _bookcard_loaded = True
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '书册卡_未知.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '书册卡_未知.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _bookcard_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _bookcard_gray
@@ -1037,7 +1037,7 @@ def _get_supply_box_gray() -> MatLike | None:
     global _supply_box_gray, _supply_box_loaded
     if not _supply_box_loaded:
         _supply_box_loaded = True
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '补给箱.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '补给箱.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _supply_box_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _supply_box_gray
@@ -1054,7 +1054,7 @@ def _get_crate_gray() -> MatLike | None:
     global _crate_gray, _crate_loaded
     if not _crate_loaded:
         _crate_loaded = True
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '简易武装箱.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '简易武装箱.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _crate_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _crate_gray
@@ -1170,7 +1170,7 @@ def _get_trial_reveal_gray() -> MatLike | None:
     global _trial_reveal_gray, _trial_reveal_loaded
     if not _trial_reveal_loaded:
         _trial_reveal_loaded = True
-        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '试用角色揭示卡.png'
+        p = get_project_root() / 'assets' / 'template' / 'currency_war' / 'supply' / '试用角色揭示卡.png'
         img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
         _trial_reveal_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
     return _trial_reveal_gray

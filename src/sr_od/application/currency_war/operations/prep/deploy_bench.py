@@ -15,12 +15,12 @@
 ``_row_centers`` 自动跟上(读全,不硬编码)。
 """
 import time
-from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_char_id import (
     AvatarTemplates,
@@ -843,7 +843,7 @@ class DeployBench(SrOperation):
         cached = getattr(self.ctx, 'cw_portrait_templates', None)
         if cached is not None:
             return cached
-        base = Path(__file__).resolve().parents[6] / 'assets/template'
+        base = get_project_root() / 'assets/template'
         portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza 烘焙;唯一库,旧手采库已删 2026-08-17)
         if not portrait_dir.is_dir():
             log.warning(f'[cw-deploy] 立绘库目录不存在 {portrait_dir},退非身份 deploy')

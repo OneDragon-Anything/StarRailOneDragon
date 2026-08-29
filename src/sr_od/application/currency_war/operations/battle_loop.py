@@ -1,6 +1,5 @@
 import random
 import time
-from pathlib import Path
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -12,6 +11,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
@@ -306,7 +306,7 @@ class CurrencyWarRunLoop(SrOperation):
             self._stall_flag_written = False   # 画面动了 → 哨兵可再次触发(新一轮停滞)
         if self._stall_count >= CurrencyWarRunLoop.STALL_N and not self._stall_flag_written:
             _shot = self.save_screenshot(prefix='cw_stall')
-            _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
+            _sentinel = (get_project_root() / '.debug' / 'temp'
                          / 'currency_war' / 'stall_watch.flag')
             _sentinel.parent.mkdir(parents=True, exist_ok=True)
             _sentinel.write_text(
@@ -1563,7 +1563,7 @@ class CurrencyWarRunLoop(SrOperation):
         if self._unknown_streak >= CurrencyWarRunLoop.UNKNOWN_STOP_THRESHOLD:
             try:
                 _shot = self.save_screenshot(prefix='cw_unknown')
-                _sentinel = (Path(__file__).resolve().parents[5] / '.debug' / 'temp'
+                _sentinel = (get_project_root() / '.debug' / 'temp'
                              / 'currency_war' / 'unknown_state.flag')
                 _sentinel.parent.mkdir(parents=True, exist_ok=True)
                 _sentinel.write_text(

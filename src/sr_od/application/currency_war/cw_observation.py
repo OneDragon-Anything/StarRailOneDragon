@@ -32,6 +32,7 @@ import cv2
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import get_char
 from sr_od.application.currency_war.cw_factions import FACTIONS
@@ -441,7 +442,6 @@ def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tu
     shop 开 / 过渡 / overlay 遮挡 → 坏帧数据不可信)。
     """
     global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
-    from pathlib import Path
 
     from sr_od.application.currency_war.cw_node_reader import (
         NODE_ROW_RECT,
@@ -450,12 +450,12 @@ def _classify_node_row(ctx: SrContext, screen: MatLike) -> tuple[list | None, tu
         load_node_type_templates,
     )
     if _NODE_TYPE_TEMPLATES is None:
-        _d = Path(__file__).resolve().parents[4] / 'assets' / 'game_data' / 'cw_node_types'
+        _d = get_project_root() / 'assets' / 'game_data' / 'cw_node_types'
         _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
     if not _NODE_TYPE_TEMPLATES:
         return None, (0, 0, 0, 0)
     if _BOSS_TEMPLATES is None:
-        _bd = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
     # 节点行区域单一源 = screen_info「区域-节点条」(2026-08-26 boss 识别批:
     # yml 扩到含 boss 圆 ~x1354;常量仅兜底,漂移以 yml 为准)
@@ -676,18 +676,17 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
     """
     from sr_od.application.currency_war.cw_node_reader import classify_node_row
     global _NODE_TYPE_TEMPLATES, _BOSS_TEMPLATES
-    from pathlib import Path as _Path
     if _NODE_TYPE_TEMPLATES is None:
         from sr_od.application.currency_war.cw_node_reader import (
             load_node_type_templates,
         )
-        _d = _Path(__file__).resolve().parents[4] / 'assets' / 'game_data' / 'cw_node_types'
+        _d = get_project_root() / 'assets' / 'game_data' / 'cw_node_types'
         _NODE_TYPE_TEMPLATES = load_node_type_templates(_d) or {}
     if _BOSS_TEMPLATES is None:
         from sr_od.application.currency_war.cw_node_reader import (
             load_boss_templates,
         )
-        _bd = _Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
+        _bd = get_project_root() / 'assets' / 'template' / 'currency_war' / 'boss_avatar'
         _BOSS_TEMPLATES = load_boss_templates(_bd) if _bd.is_dir() else {}
     if not _NODE_TYPE_TEMPLATES:
         return None

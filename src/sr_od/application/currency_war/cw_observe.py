@@ -14,15 +14,15 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-from pathlib import Path
 
 from cv2.typing import MatLike
 
 from one_dragon.utils import cv2_utils, log_utils
+from one_dragon.utils.file_utils import get_project_root
 
 _log = log_utils.log
-# cw_observe.py 在 src/sr_od/application/currency_war/,parents[4]=REPO
-_SHOT_DIR = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'shots'
+# 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
+_SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
 
 def cw_log(
@@ -102,7 +102,7 @@ def current_obs_phase() -> str | None:
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
-_CONFLICT_JOURNAL = Path(__file__).resolve().parents[4] / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
+_CONFLICT_JOURNAL = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
 
 #: 冲突截图节流窗(秒;2026-08-18 治理):同 (field, verdict) 在窗内只存一张截图。
 #: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board

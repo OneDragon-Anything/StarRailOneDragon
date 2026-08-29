@@ -1,5 +1,23 @@
 import zipfile
+from functools import cache
 from pathlib import Path
+
+
+@cache
+def get_project_root() -> Path:
+    """定位仓库根目录（src/ 的上级）。
+
+    为什么集中在这里：包内各模块原先各自用 ``Path(__file__).parents[N]``
+    硬编码目录深度，文件挪层（如分包重构移动目录）时会静默指错路径；
+    统一走本函数后，深度计算只在本文件维护一处。
+    锚定方式 = 本文件自身向上找最近的 ``src`` 目录再取上级，
+    对 ``src/one_dragon`` 与 ``src/sr_od`` 等任意顶层包的调用方一致成立；
+    结果与调用方文件位置无关，故进程内缓存安全。
+    """
+    src_dir = find_src_dir(Path(__file__).resolve())
+    if src_dir is None:
+        raise RuntimeError(f'无法从 {__file__} 定位 src 目录,仓库布局异常')
+    return src_dir.parent
 
 
 def find_src_dir(file_path: Path | str) -> Path | None:

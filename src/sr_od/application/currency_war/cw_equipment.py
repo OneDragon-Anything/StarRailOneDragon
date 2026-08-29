@@ -20,6 +20,7 @@ import cv2
 import numpy as np
 from cv2.typing import MatLike
 
+from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.cw_equipment_data import (
     EQUIPMENT_ROSTER,
     EQUIPMENTS,
@@ -663,7 +664,7 @@ def ensure_equip_tm_templates(ctx: SrContext) -> dict[str, MatLike] | None:
     """
     grays = getattr(ctx, 'cw_equip_tm_grays', None)
     if grays is None:
-        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        base = get_project_root() / 'assets' / 'template'
         equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方 + 手工补充;生成器 gen_plaza_chars.py 产物)
         if not equip_dir.is_dir():
             equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库
@@ -683,7 +684,7 @@ def ensure_equip_sift_templates(ctx: SrContext) -> dict[str, tuple[MatLike, tupl
     """
     templates = getattr(ctx, 'cw_equip_sift_templates', None)
     if templates is None:
-        base = Path(__file__).resolve().parents[4] / 'assets' / 'template'
+        base = get_project_root() / 'assets' / 'template'
         equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 ensure_equip_tm_templates)
         if not equip_dir.is_dir():
             equip_dir = base / 'currency_war' / 'equip_legacy'   # 回退:旧手工库

@@ -39,10 +39,12 @@ import json
 import sys
 from pathlib import Path
 
+from one_dragon.utils.file_utils import get_project_root
+
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[attr-defined]
 
-REPO = Path(__file__).resolve().parents[4]
+REPO = get_project_root()
 REPLAY_DIR = REPO / '.debug/temp/currency_war/replay'
 SIM_RUNS_DIR = REPO / '.debug/temp/currency_war/sim_runs'
 DATA_PY = REPO / 'src/sr_od/application/currency_war/cw_delta_pool_data.py'

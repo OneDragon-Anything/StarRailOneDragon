@@ -45,6 +45,7 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_cv import slot_occupied
@@ -148,8 +149,8 @@ _EXEC_FAIL_FLAG_RELPATH = Path('.debug') / 'temp' / 'cw_exec_fail_hook.flag'
 
 
 def exec_fail_flag_path() -> Path:
-    """哨兵 flag 绝对路径(锚仓根;prep_director.py parents[4] = 仓库根)。"""
-    return Path(__file__).resolve().parents[4] / _EXEC_FAIL_FLAG_RELPATH
+    """哨兵 flag 绝对路径(锚仓根,经 one_dragon.utils.file_utils.get_project_root 定位)。"""
+    return get_project_root() / _EXEC_FAIL_FLAG_RELPATH
 
 
 def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
