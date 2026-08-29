@@ -541,7 +541,7 @@ class DecisionV2Registry:
     # ===== 迁移审计 w160(git 历史)/ADR-0363 S1 型成型后引擎丢失修法(两件独立 A/B 通道)=====
     #: 件1·引擎下界守卫:False=回 `w155_evolve_lock/` 后行为(A/B 基线臂)。True 时
     #: execute_replacement 生成事务时,若事务净效果使过渡引擎数
-    #: (cw_sim._engines_count 口径)从 ≥2 跌破 2,被拆引擎体系的
+    #: (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2,被拆引擎体系的
     #: deployed 贡献件获得新线同级**留场资格**(不划进 old_line 下场)
     #: ——语义「换血可以,拆引擎不行」(ADR-0360 件3 只保「不卖」
     #: 不保「在场」,末轮无回场窗 → 永久丢失;迁移审计 w159(git 历史) §2:S1 局全部
@@ -1036,7 +1036,7 @@ class DecisionV2Registry:
     #: 数据核对 coarse 臂实为 0.8%/35.6%/31.9%(非单调、无 0.65),
     #: 单调序列只在 Δ池臂——两态模型前提「p 对成型度单调不减」
     #(REDESIGN §5 条 1)辖下取 Δ池档,本注释为准。
-    #: rung 取样坐标单一源=cw_sim._settle_rung(与表坐标同源,ADR-0279
+    #: rung 取样坐标单一源=cw_battle_calib._settle_rung(与表坐标同源,ADR-0279
     #: 采样键;board 全集+星徽,deployed 域,0-4 钳到 0-2)——不用
     #: scoring._engines_formed(混合域加权,bench×0.35 推高 rung,
     #: 坐标错位=p_win 偏乐观=损血低估=门偏松)。

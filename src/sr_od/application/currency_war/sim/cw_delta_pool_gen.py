@@ -6,7 +6,7 @@ tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 「生成器是池的唯一入口」防线随核心走。
 
 数据源:.debug/temp/currency_war/replay/{decisions,outcomes}.jsonl
-(生产遥测 append 流)。配对口径与 cw_sim._pool_from_replay 同源:
+(生产遥测 append 流)。配对口径与 pool._pool_from_replay 同源:
 decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
 桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
 decisions deployed join);reward/supply=深度桶;**boss=
@@ -63,7 +63,7 @@ class DeltaPoolFrozen(RuntimeError):
     """Δ池快照再生已被冻结标志拦下(退役第一步,见模块内标志注)。"""
 
 
-# 节点类型归一(与 cw_sim._pool_from_replay 同表)
+# 节点类型归一(与 pool._pool_from_replay 同表)
 NT_MAP = {'普通战斗': 'battle', '遭遇': 'encounter', '奖励': 'reward',
           '首领': 'boss', '补给': 'supply'}
 DEPTH_BUCKET_W = 3   # 与 cw_sim._DEPTH_BUCKET_W 同值(指纹输入)
@@ -71,7 +71,7 @@ DEPTH_BUCKET_W = 3   # 与 cw_sim._DEPTH_BUCKET_W 同值(指纹输入)
 # —— 各桶 n≥10 或进 bucket_poverty 显式披露;n<10 的桶真值方向
 # 不可靠,消费方(胜率外推/方向判断)须声明边界。
 BUCKET_COVERAGE_MIN_N = 10
-# ADR-0306:battle rung 键域(0-4,与 cw_sim.live_delta_for 同域);
+# ADR-0306:battle rung 键域(0-4,与 pool.live_delta_for 同域);
 # 域内缺失的 rung 桶也进贫困披露(「缺」≠「空桶可忽略」)。
 BATTLE_RUNG_DOMAIN = range(0, 5)
 
@@ -126,7 +126,7 @@ def _engines_count_of(bf: dict, names: frozenset) -> int:
 
 
 def _star_depth_of(rows) -> int:
-    """净星深 = cw_sim._star_depth_from_rows 单一源(W240/ADR-0404
+    """净星深 = cw_battle_calib._star_depth_from_rows 单一源(W240/ADR-0404
     boss 桶键;防池侧/sim 侧双公式漂移)。"""
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
         _star_depth_from_rows,
@@ -286,7 +286,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                         b2.get('killed'))
             elif nt == 'boss':
                 # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
-                # cw_sim.deployed_star_depth 同式)——Σboard 键下
+                # cw_battle_calib.deployed_star_depth 同式)——Σboard 键下
                 # 3合1 升星使键 −2/次落浅桶而浅桶期望伤害更大,与
                 # [27]「星级↑=战力↑」相反(W238 实证)。
                 if sd is None:
@@ -364,7 +364,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 'P1 桶语料随污染清除小幅变化(指纹重算,锚重记;'
                 'P2 桶 n<5 全贫困,条件化分桶不做,采样走位面内'
                 '全池合并兜底/回退层掉血带);'
-                '⚠️ 版本号勘误(W240):上条 v9 在 cw_sim._SAMPLER_VERSION'
+                '⚠️ 版本号勘误(W240):上条 v9 在 pool._SAMPLER_VERSION'
                 ' 里=8(生成器 note 链自 W109 批起与采样器常量错位+1),'
                 '自 v10 起两链对齐;'
                 'v10(ADR-0404,W240)boss 桶键 Σboard→净星深(上场件'
@@ -413,10 +413,11 @@ def regenerate_snapshot(src_dir: Path | None = None,
     if not pool:
         raise RuntimeError(f'池为空: {src} 无可配对样本(decisions 板深 × outcomes 差分)')
 
-    from sr_od.application.currency_war.sim.cw_sim import (
-    _SAMPLER_VERSION,
-    pool_fingerprint,
-)
+
+        from sr_od.application.currency_war.sim.pool import (
+            _SAMPLER_VERSION,
+            pool_fingerprint,
+        )
     meta['sampler_version'] = _SAMPLER_VERSION
     fp = pool_fingerprint(pool)
     meta['fingerprint'] = fp
@@ -428,7 +429,7 @@ def regenerate_snapshot(src_dir: Path | None = None,
         '(CLI 壳 tools/cw/gen_delta_pool_snapshot.py;实机局终自动再生 ADR-0344)。',
         '重跑: uv run python tools/cw/gen_delta_pool_snapshot.py',
         '手改会被下次生成覆盖,且指纹校验(resolve_pool)会拒绝失配数据。',
-        '消费方:cw_sim.resolve_pool(\'snapshot\')(CI/跨机可复现基准);',
+        '消费方:pool.resolve_pool(\'snapshot\')(CI/跨机可复现基准);',
         '判断层勿直接 import 本模块。',
         '',
         'W109 形态注:META/SNAPSHOT 以 JSON 串存储+导入时 loads——',

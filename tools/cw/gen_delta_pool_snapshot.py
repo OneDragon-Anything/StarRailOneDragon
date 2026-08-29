@@ -29,7 +29,7 @@ def main() -> None:
     ap.add_argument('--runs', default='',
                     help='逗号分隔 run_id 白名单(默认全部)')
     ap.add_argument('--export-json', default='',
-                    help='另存 JSON 快照(cw_sim.resolve_pool(Path) 重放用)')
+                    help='另存 JSON 快照(pool.resolve_pool(Path) 重放用)')
     args = ap.parse_args()
     runs_filter = {r.strip() for r in args.runs.split(',') if r.strip()} or None
     regenerate_snapshot(runs_filter=runs_filter,

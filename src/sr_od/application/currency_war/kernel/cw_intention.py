@@ -174,7 +174,7 @@ class IntentionState:
       空元组=空窗期(未锁);P2+ 恒空(P2+ 锁定目标=``locked_comp``)。
     - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
       (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
-      (与 ``cw_sim._engines_count`` 同口径)。
+      (与 ``cw_battle_calib._engines_count`` 同口径)。
     - 遥测:``serialize_intention(分包期 3 自 telemetry 下沉)`` 字段全量序列化自动
       携带(不隐式——单帧锁断言 p1_pair 落 decisions 行,见 W145 测试)。
     - **后续「通道约束批」(W143 补充判读:决策通道两面孔按锁定目标约束/
@@ -445,7 +445,7 @@ def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
     return not _direct_line_qualified(state, comp.name)
 
 
-#: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_sim._engines_count
+#: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
 #: 的希儿系哨兵同口径)。
 SEELE_SYSTEM: str = '希儿系'
 
@@ -475,7 +475,7 @@ def _owned_chars(state: GameState) -> set[str]:
 
 def _p1_system_support(state: GameState) -> dict[str, float]:
     """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
-    与 ``cw_sim._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
+    与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
     三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
     单一源);希儿系 = 希儿在手 0.6 基础分(3费单卡即战力)+ 量2/贝2

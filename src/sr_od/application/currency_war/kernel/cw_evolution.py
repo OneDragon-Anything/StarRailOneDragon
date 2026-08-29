@@ -606,7 +606,7 @@ def _engine_systems_formed(board_factions: dict[str, int],
                            deployed_names: set[str]) -> set[str]:
     """已成型引擎体系键集(TRANSITION_TRAITS 三羁绊 + 希儿系哨兵键)。
 
-    与 ``cw_sim._engines_count`` 同口径的**键级**版本(W158 度量的
+    与 ``cw_battle_calib._engines_count`` 同口径的**键级**版本(W158 度量的
     engines_count 即其计数)——守卫需要知道「拆的是哪个体系」,
     计数接口答不了,这里键级展开、计数口径仍单一源在 cw_sim
     (tier 阈值经 TRANSITION_TRAITS 同源派生)。
@@ -632,7 +632,7 @@ def _lost_engine_systems(state: GameState,
     仅当事务前引擎数 ≥2 且事务后投影 <2 时非空(engines<2 的局不辖
     ——那是成型问题不是丢失问题;≥2→≥2 的良性换血同样不辖,W158 §4:
     围栏不能压死良性轮换)。post_deployed = 事务后仍在场的名单投影
-    (留场件 + 新上场件)。board 口径 = ``cw_sim._board_factions_of``
+    (留场件 + 新上场件)。board 口径 = ``cw_battle_calib._board_factions_of``
     (生产 board 口径,flows 并计;与 W158 strict 度量同源)。
     """
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
@@ -956,7 +956,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     old_line = [d for d in iter_occupied_deployed(state.deployed)
                if not _is_new_line(d)]
     # W160/ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
-    # (cw_sim._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
+    # (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
     # deployed 贡献件获得新线同级**留场资格**(不划 old_line 下场),
     # 换血可以,拆引擎不行。护的是在场引擎贡献([31] top4 是胜率
     # 保证),不是库存(库存保护=ADR-0360 件3 的保留序,两者互补);

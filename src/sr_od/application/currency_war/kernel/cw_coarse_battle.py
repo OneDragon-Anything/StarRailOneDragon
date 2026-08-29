@@ -146,7 +146,7 @@ def _boss_clamp_params(plane: int) -> tuple[float, float]:
 
 
 # 校准结构版本(DESIGN §验证):P1 数值不变的纯结构位面化即置 2;
-# 进 sim 台账 manifest(cw_sim.write_batch_ledger)披露,回归批脚本
+# 进 sim 台账 manifest(runner.write_batch_ledger)披露,回归批脚本
 # 头部按本常量断言,防跨版本对比污染。数值重校准(任一 P1 层真值
 # 变动)必须再递增。
 COARSE_CALIB_VERSION: int = 2
@@ -190,7 +190,7 @@ def sample_battle_delta(node: str, rung: int, hp_before: int,
     """战斗类节点单次结算:返回 hp_after − hp_before(两态采样)。
 
     :param node: 'battle' | 'encounter' | 'boss'(reward/supply 不辖)
-    :param rung: 结算时点成型度(单一源 = cw_sim._settle_rung)
+    :param rung: 结算时点成型度(单一源 = cw_battle_calib._settle_rung)
     :param hp_before: 结算前 HP(钳制/地板的条件量)
     :param difficulty: 敌方难度数值(乘子默认关闭,见模块头;None=未读)
     :param plane: 位面段(默认 1 = 旧调用零漂移;P2 段结算点透传

@@ -4,7 +4,7 @@
 规则同源(一个函数):
 
 - 实机计算路径:``cw_observation.board_from_tracked``(面板真值对齐);
-- sim/状态派生路径:``cw_state._recount_board``(= ``cw_sim._board_counts_of``,
+- sim/状态派生路径:``cw_state._recount_board``(= ``cw_battle_calib._board_counts_of``,
   DeployMove/事务/围栏后的 board 维护);
 - 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
 

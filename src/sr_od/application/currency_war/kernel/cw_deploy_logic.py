@@ -92,7 +92,7 @@ GUARD_SYSTEM_TIERS: tuple[tuple[str, int], ...] = (
 def engines_count(board_factions: dict[str, int],
                   deployed_names: frozenset[str] | set[str] = frozenset()
                   ) -> int:
-    """过渡体系达成数(W278 从 cw_sim._engines_count 上移的**单一源**;
+    """过渡体系达成数(W278 从 cw_battle_calib._engines_count 上移的**单一源**;
     cw_sim 侧保留同名薄委托,checks 模块经本模块消费——检查网不
     import cw_sim 的架构锁由依赖方向保证)。
 

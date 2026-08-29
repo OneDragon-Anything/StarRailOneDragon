@@ -887,10 +887,10 @@ def check_hp_upper_bound_truth(rows: list[dict]) -> list[str]:
     证据(语料 max 88 / sim max 92 均未触界,非 cap 证明)——暂
     cap 100;批㉗ reward 胖尾修复(+20~39 回血)落地后 hp 可破百,
     该修复与本哨兵联动(缺任一,hp_ge_60 换方向虚高)。实机满血
-    样本核真后更新 cw_sim.HP_UPPER_BOUND 与本检查的同步镜像
+    样本核真后更新 engine_p1.HP_UPPER_BOUND 与本检查的同步镜像
     (检查模块不 import cw_sim,依赖方向纪律;值漂移由双向锁暴露)。
     """
-    cap = 100   # 同步自 cw_sim.HP_UPPER_BOUND(单一源在 sim;镜像纪律)
+    cap = 100   # 同步自 engine_p1.HP_UPPER_BOUND(单一源在 sim;镜像纪律)
     out: list[str] = []
     for row in rows:
         hp = row.get('hp')
@@ -1276,7 +1276,7 @@ _BATCH_CHECKS = {
 # --- 三缺口之①「过程不可观测」的轮级检验载体) ------------------------
 #
 # 与 _BATCH_CHECKS 平行的第二张表:
-# - 输入 = 单局前 K 轮决策流(cw_sim.simulate_p1_batch 的 max_rounds
+# - 输入 = 单局前 K 轮决策流(runner.simulate_p1_batch 的 max_rounds
 #   窗口切片;不传窗口时即整局逐轮账本,语义同构);
 # - 输出 = **带定位的事件列表**(哪局·哪轮·违反哪条·当时 state 关键
 #   值),不是 _BATCH_CHECKS 的「违规局数+局索引」聚合——段级病的归因
@@ -1311,7 +1311,7 @@ def _seg_spent(row: dict) -> bool:
 
 def _seg_engines(row: dict) -> int:
     """过渡体系达成数(迁移审计 w278(git 历史) 单一源 = cw_deploy_logic.engines_count,
-    即原 cw_sim._engines_count 本体——检查网不 import cw_sim 的架构
+    即原 cw_battle_calib._engines_count 本体——检查网不 import cw_sim 的架构
     锁由依赖方向保证)。"""
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         engines_count,
@@ -1690,7 +1690,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
 def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
     """[13] 成型停手(段级):过渡阵容已成型后仍买**过渡件**。
 
-    成型判据复用现有单一源(cw_sim._transition_formed 同判据的
+    成型判据复用现有单一源(cw_battle_calib._transition_formed 同判据的
     ``_engines_count≥2``,见 sim-testing §6「判定口径复用现有成型
     判据,不新造」);**目标阵容件照买照囤是 [13] 明文的正常行为**
     ([21]/[22]),故只对「过渡填充件」断言——排除目标件的代理口径:
@@ -1823,7 +1823,7 @@ _P1_EXIT_BLOOD_TARGET: int = 60
 _P1_HANDOFF_GATE_MIN_ROUND: int = 6
 _P1_EMERGENCY_HP: int = 25
 # 位面节点数镜像(plane_last_battle 的轮维;P1=NODES_PER_PLANE=9,
-# P2=cw_sim.P2_ROUNDS=7——ALL IN 帧=node='boss' ∧ 轮≥节点数)
+# P2=engine_p1.P2_ROUNDS=7——ALL IN 帧=node='boss' ∧ 轮≥节点数)
 _ALLIN_MIN_ROUND: dict[int, int] = {1: 9, 2: 7}
 
 
@@ -2483,7 +2483,7 @@ def check_engine_seed_sell_exemption(rows: list[dict]) -> list[str]:
     return out
 
 
-# 四体系口径(同步自 cw_sim._engines_count/_TRANSITION_TRAITS——检查
+# 四体系口径(同步自 cw_battle_calib._engines_count/_TRANSITION_TRAITS——检查
 # 模块不 import cw_sim,依赖方向纪律;值漂移由双向锁暴露)
 _ENGINES_TRAITS_SYNC: tuple[tuple[str, int], ...] = (
     ('持续伤害', 2), ('列车同行', 2), ('仙舟', 3),
@@ -2687,7 +2687,7 @@ def check_sim_endgold_calib(ledgers: list[list[dict]]) -> dict:
 
 # `w493_income_calib/`(ADR-0447):sim↔实机金分布/费用曲线对拍锚(实机 2026-08-28
 # 当日 15 局 P1 全帧口径,Phase 1 实测基线;数据源与整定程序见
-# cw_sim.EVENT_GOLD_BY_ROUND 注释)。锚点随实机新局补充后原地更新。
+# engine_p1.EVENT_GOLD_BY_ROUND 注释)。锚点随实机新局补充后原地更新。
 REAL_P1_GOLD_MEAN: float = 29.4
 REAL_P1_GOLD_GE50: float = 0.141     # P(g≥50) 帧占比
 REAL_P1_GOLD_GE70: float = 0.022
@@ -3010,7 +3010,7 @@ def check_p2_segment_shape(ledgers: list[list[dict]]) -> dict:
 # 天然不在参数化带内,辖了=常红假检查)。
 
 def _p2_band_of(node: str, round_num: int, bands: dict) -> tuple[int, int]:
-    """掉血带路由(与 cw_sim.p2_loss_band 同式;bands 来自批报告
+    """掉血带路由(与 cw_battle_calib.p2_loss_band 同式;bands 来自批报告
     ``p2_calib.bands``——检查消费本批实参,非模块默认)。"""
     if node == 'battle':
         if round_num == 1:
@@ -3139,7 +3139,7 @@ def run_checks_on_ledgers(ledgers: list[list[dict]]) -> dict[str, dict]:
 # =====================================================================
 # --- ADR-0289 检查项清偿批:批级聚合 / 条件披露 / 语料级 / 锚登记 ---
 # 批级入口 = run_batch_level_checks(ledgers, report, pool_map);
-# cw_sim.simulate_p1_batch 的接线随 worker X 合流后并入(冲突隔离:
+# runner.simulate_p1_batch 的接线随 worker X 合流后并入(冲突隔离:
 # 本批不碰 cw_sim.py)。全部为披露型/哨兵型(violations 语义见
 # 各 docstring),新发现红条目按 ADR-0289「新发现待裁」清单流转。
 # =====================================================================

@@ -43,7 +43,7 @@ def board_system_tiers(board: dict[str, int]) -> dict[str, int]:
     """板面各过渡体系档位计数(board 键口径,deployed 聚合)。
 
     体系键 = 过渡四体系的羁绊键(仙舟/列车同行/持续伤害;希儿系是
-    deployed 单卡二元判定,不进档位计数——与 cw_sim._engines_count
+    deployed 单卡二元判定,不进档位计数——与 cw_battle_calib._engines_count
     的计数语义对齐)。非体系键不进结果。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (

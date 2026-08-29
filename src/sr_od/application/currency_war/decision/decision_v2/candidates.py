@@ -238,7 +238,7 @@ def _engine_seed_affinity(card: ShopCard, state: GameState,
       engine_seed 跨体系见即买,sim 实证 21% 买入=新体系+已有未成型);
     - 板面已有体系全部成型(引擎≥2)→ 放行(两两组合可开新体系)。
 
-    与 cw_sim._engines_count 的体系判定同源(TRANSITION_TRAITS 键,
+    与 cw_battle_calib._engines_count 的体系判定同源(TRANSITION_TRAITS 键,
     希儿系=deployed 二元判定不进档位计数,本过滤只辖三羁绊)。
     """
     if not registry.engine_affinity_enabled:

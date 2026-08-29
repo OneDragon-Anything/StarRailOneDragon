@@ -84,7 +84,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
                       substate_name: str = PREP_SUBSTATE_NAME) -> Snapshot:
     """实机观察视图 → Snapshot(observe 端口;None 语义 = 契约「读不到≠真值」)。
 
-    与 sim 合成器(cw_sim.synthesize_snapshot)共享字段映射语义但**不合并
+    与 sim 合成器(runner.synthesize_snapshot)共享字段映射语义但**不合并
     实现**:sim 侧恒真位(confident/gold_trusted/shop_open/board…)在本函数
     全部按实机观测原样携带(None 合法)。bench 取紧缩型(仅已识别件,元素
     BenchChar.slot 1-based 保持)。

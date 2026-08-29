@@ -2976,7 +2976,7 @@ def _cli_main() -> None:
     if args.sim_batch:
         # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构
         # ({decisions,outcomes,shop_snapshots}.jsonl),视图零分叉
-        from sr_od.application.currency_war.sim.cw_sim import SIM_RUNS_DIR
+        from sr_od.application.currency_war.sim.runner import SIM_RUNS_DIR
         if args.sim_batch == 'latest':
             batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
                              if p.is_dir())

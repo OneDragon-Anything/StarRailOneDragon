@@ -12,7 +12,7 @@ P1→P2 切换时点(plane>=2 本位面首轮 decide_prep 入口)对带入 P2 �
 但快照口径先不辖,后续批再上):
 
 - 血量 ``hp``(出口 hp;run 28 型判别维);
-- 板面形态 ``engines``(deployed 体系数,``cw_sim._engines_count``
+- 板面形态 ``engines``(deployed 体系数,``cw_battle_calib._engines_count``
   单一源)/``form_score``(与 phase.form_score 同口径;run 26 型主判别维);
 - 星级深度 ``core2_count``(上场 star>=2 计数)/``star_sum``(上场星级和
   ——run 26 全 1★ = 此维归零实证)。**口径收窄声明**:设计稿原文是
@@ -302,7 +302,7 @@ def boss_projected_hp(state: GameState, hp_now: int,
     已知偏差(ADR-0418 Consequences 挂账):投影公式仍按 r8 视角标定
     (hp−34 Q3 口径),r6/r7 提前触发时少算后续节点期望伤害 ⇒ 投影偏乐观,
     解耦待重跑配对 AB。档键 = 净星深桶(min(净星深//3,5)*3,净星深
-    =上场件 Σ(star−1),``cw_sim.deployed_star_depth`` 单一源,与 Δ池
+    =上场件 Σ(star−1),``cw_battle_calib.deployed_star_depth`` 单一源,与 Δ池
     boss 桶采样键同口径,不建第二套分桶;W240 起替旧 Σboard 桶——
     Σboard 下 3合1 升星使键落浅桶而浅桶期望伤害更大,与 [27] 机制
     相反);缺桶走 ``handoff_boss_e_damage_default``(全池未删失均值)。

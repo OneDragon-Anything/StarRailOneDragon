@@ -561,14 +561,14 @@ def optionality_score(state: GameState) -> float:
 # W126/ADR-0350 四体系修正:旧「五家人上人」(仙舟/狼狩/dot/列车/贝洛伯格,
 # V4.0 过渡口径)已随 2026-08-24 四体系封闭裁定封存——狼狩/贝洛伯格从
 # 独立伤害源奖励中摘除;贝洛伯格是希儿系放大器,只在希儿系判据内保留
-# 贝计数(``_seele_system_activated``,与 cw_sim._engines_count 同源),
+# 贝计数(``_seele_system_activated``,与 cw_battle_calib._engines_count 同源),
 # 不得作独立伤害源计分。主集从 TRANSITION_TRAITS(四体系三羁绊单一源,
 # cw_deploy_logic 派生自 SYSTEM_CARDS)取 + 治疗手工补(角色效果驱动:
 # 藿藿/娜塔莎奶,派生判据筛不到);持续伤害随 TRAITS 自带。
 TRANSITION_FACTIONS: set[str] = {b for b, _t in _TRANSITION_TRAITS} | {'治疗'}
 
 #: 希儿系激活的判据阵营(贝洛伯格在此保留计数——希儿系放大器,
-#: 非独立伤害源;与 cw_sim._engines_count 的 seele 分支同式)
+#: 非独立伤害源;与 cw_battle_calib._engines_count 的 seele 分支同式)
 _SEELE_JUDGE_FACTIONS: tuple[str, ...] = ('量子同频', '贝洛伯格')
 
 TRANSITION_TEMPO_BONUS: float = 3.0   # 每凑出(激活档)的过渡羁绊的早期保血分(占位,阶段 6 校准)
@@ -590,7 +590,7 @@ def _tier_activated(faction: str, count: int) -> bool:
 def _seele_system_activated(state: GameState) -> bool:
     """希儿系激活判据(W126/ADR-0350):希儿在场(deployed)且
     量子同频/贝洛伯格任一 ≥2——贝洛伯格是希儿系放大器,**只在希儿系
-    判据内保留贝计数,不得作独立伤害源**(与 cw_sim._engines_count
+    判据内保留贝计数,不得作独立伤害源**(与 cw_battle_calib._engines_count
     的 seele 分支同式;r399 口径)。"""
     if not any(getattr(d, 'char_id', '') == '希儿'
                for d in state.deployed):

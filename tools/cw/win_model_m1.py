@@ -48,7 +48,8 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E40
 from sr_od.application.currency_war.kernel.cw_line_defs import (  # noqa: E402
     ENGINE_FACTIONS,
 )
-from sr_od.application.currency_war.sim.cw_sim import _engines_count  # noqa: E402
+
+from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
 from sr_od.application.currency_war.telemetry.cw_win_features import (  # noqa: E402
     features_from_deployed,
 )

@@ -81,7 +81,7 @@ REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 #: 既有粗模型版本披露同机制)。
 ECONOMY_CALIB_VERSION: int = 2
 #: v2(ADR-0447):事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸),
-#: 数值见 cw_sim.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
+#: 数值见 engine_p1.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
 #: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
 # (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot

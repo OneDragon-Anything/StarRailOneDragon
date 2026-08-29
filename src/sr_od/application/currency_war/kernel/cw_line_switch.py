@@ -240,7 +240,7 @@ def rounds_alive(state: GameState,
     # 行为由开关+注入切换(REDESIGN §3.3;幅度源=registry.
     # p2_cond_loss_table,与两态胜率映射(cw_plane_table.p_win_p2)/阈值层同一 registry 标定源,口径
     # 定稿见 ADR-0440;无条件期望表 p2_node_loss_table 是另一 estimand,
-    # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_sim._settle_rung
+    # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_battle_calib._settle_rung
     #(与 p_win 表的 W346 Δ池采样键同源,ADR-0279 单一源;deployed
     # 全集+星徽,0-2 钳制)——不用 scoring._engines_formed(混合域
     # 加权含 bench 折减项,坐标错位=p_win 偏乐观=门偏松,见

@@ -57,7 +57,7 @@ def form_score(state: GameState,
     """战力连续量副指标(归一化 [0,1];设计稿 §3.1「板面 rung 副指标」)。
 
     口径 = **按上场阵容**(deployed only,与 form_ok 的「上场完整性」
-    裁决同向):过渡体系达成数(``cw_sim._engines_count`` 单一源,deployed
+    裁决同向):过渡体系达成数(``cw_battle_calib._engines_count`` 单一源,deployed
     阵营计数)+ 配方档小数(与 ``scoring.board_rung_x`` 同式的
     ``rung_frac_per_recipe_tier × recipe_tier/RECIPE_BASE``),封顶 2 档后
     除以 2 归一。

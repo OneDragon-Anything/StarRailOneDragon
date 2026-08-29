@@ -66,7 +66,7 @@ def board_rung_x(state: GameState,
     (bench 囤种子件撑满代理 → 一切买入 0.00 分,seed 900032 实证)。
     折减后 bench 件仍是形态期权(买入经部署管线上板即全额显影),
     但囤 bench 不再封顶 rung。体系判定与 sim/判读同源
-    (cw_sim._engines_count:仙舟3/列车2/DOT2/希儿系;希儿系要求
+    (cw_battle_calib._engines_count:仙舟3/列车2/DOT2/希儿系;希儿系要求
     希儿 deployed 在场——bench 希儿不算引擎,deployed 主导语义);
     配方档小数 =recipe_tier/RECIPE_BASE × 系数(未标定)。
     """
@@ -784,7 +784,7 @@ def _engines_formed(state: GameState,
 def _cand_is_engine_piece(cand: Candidate) -> bool:
     """候选是否为过渡体系引擎件(factions∪flows∩TRANSITION_TRAITS 或 希儿)。
 
-    与 cw_sim._engines_count 的体系判定同源(四体系成员;引擎判定单源
+    与 cw_battle_calib._engines_count 的体系判定同源(四体系成员;引擎判定单源
     在 cw_deploy_logic.TRANSITION_TRAITS);希儿系=单卡判定——买入囤
     bench 是成型路径(部署后才成引擎,[13] 成型进度),与计数语义
     (deployed 在场才算引擎)互补不冲突。
@@ -852,7 +852,7 @@ def _cand_system_bonds(cand: Candidate) -> frozenset[str]:
     """候选卡所属的过渡体系键集(TRANSITION_TRAITS 键;希儿系单列)。
 
     ``_cand_is_engine_piece`` 的键来源:TRANSITION_TRAITS (bond, tier)
-    解包(与 cw_sim._engines_count 体系判定同源);希儿系以 '希儿系'
+    解包(与 cw_battle_calib._engines_count 体系判定同源);希儿系以 '希儿系'
     哨兵键返回(单卡二元判定,不进三羁绊的档位计数口径)。
     返回空集 = 非配方件。
     """
