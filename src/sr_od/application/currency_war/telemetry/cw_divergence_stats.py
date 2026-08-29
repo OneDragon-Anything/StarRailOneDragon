@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from sr_od.application.currency_war.cw_replay_reader import (
+from sr_od.application.currency_war.telemetry.cw_replay_reader import (
     load_decisions,
     posture_tag,
 )

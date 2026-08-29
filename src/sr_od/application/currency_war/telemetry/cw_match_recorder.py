@@ -15,8 +15,8 @@
 - 帧文件与 JSONL 同目录(``.debug/temp/currency_war/recording/<session>/``)。
 
 用法(项目根,PYTHONPATH=src):
-    uv run python -m sr_od.application.currency_war.cw_match_recorder   # 实时采集(Ctrl+C/STOP 停)
-    uv run python -m sr_od.application.currency_war.cw_match_recorder --replay <dir>  # 离线重放提取
+    uv run python -m sr_od.application.currency_war.telemetry.cw_match_recorder   # 实时采集(Ctrl+C/STOP 停)
+    uv run python -m sr_od.application.currency_war.telemetry.cw_match_recorder --replay <dir>  # 离线重放提取
 """
 from __future__ import annotations
 

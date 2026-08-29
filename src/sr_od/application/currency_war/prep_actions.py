@@ -675,7 +675,9 @@ class PrepActionExecutor:
                     # 零决策语义(失败不阻塞,与本文件其余观测回路同纪律)。
                     try:
                         session.effect_inventory.on_level_up()
-                        from sr_od.application.currency_war import cw_telemetry
+                        from sr_od.application.currency_war.telemetry import (
+                            cw_telemetry,
+                        )
                         _st = session.last_state
                         if _st is not None and _st.round_num:
                             cw_telemetry.record_exogenous(

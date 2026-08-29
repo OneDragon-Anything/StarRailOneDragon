@@ -20,7 +20,6 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
@@ -30,6 +29,7 @@ from sr_od.application.currency_war.operations.handlers._overlay_confirm import 
     confirm_and_verify,
     safe_click,
 )
+from sr_od.application.currency_war.telemetry import cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 

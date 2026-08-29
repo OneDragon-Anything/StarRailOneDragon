@@ -315,7 +315,7 @@ def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     逐 mismatch 调 ``cw_telemetry.record_defect``(其内部 run_id 门控/
     分级/安灯语义单一源在那边),返回落账行数。
     """
-    from sr_od.application.currency_war.cw_telemetry import record_defect
+    from sr_od.application.currency_war.telemetry.cw_telemetry import record_defect
     n = 0
     for r in result.rows:
         if r.verdict != 'mismatch':

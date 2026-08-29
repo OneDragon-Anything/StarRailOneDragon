@@ -411,7 +411,7 @@ def shadow_compare_step(director: Any, match: Any, obs: PrepObservation,
 def _shadow_telemetry(director: Any, event: str, detail: str) -> None:
     """影子事件落遥测 exec_event(best-effort,失败静默)。"""
     try:
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         rid = cw_telemetry.current_run_id() or '-'
         cw_telemetry.get_recorder().record_exec_event(
             run_id=rid, round_num=0, action_family='V2Shadow', screen='battle_prep',
@@ -431,7 +431,7 @@ def _shadow_record(director: Any, record: dict[str, Any],
     os.makedirs(out_dir, exist_ok=True)
     rid = 'local'
     try:
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         rid = cw_telemetry.current_run_id() or 'local'
     except Exception:   # noqa: BLE001
         pass

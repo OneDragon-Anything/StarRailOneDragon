@@ -39,7 +39,6 @@ from sr_od.application.currency_war.cw_sim_invest import (
     sample_invest_profile,
 )
 from sr_od.application.currency_war.cw_strategy import StrategySession
-from sr_od.application.currency_war.cw_telemetry import serialize_intention
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BUCKET_MIN_N,
     DEPTH_BUCKET_W,
@@ -115,6 +114,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_state import (
     simulate as _simulate_state,
 )
+from sr_od.application.currency_war.telemetry.cw_telemetry import serialize_intention
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4

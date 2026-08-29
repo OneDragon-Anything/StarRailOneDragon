@@ -297,7 +297,7 @@ def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list,
             return   # 结算停留期同帧重复读:只落一行
         _gold_last_row_key = _key
         _detail = parse_settlement_gold_detail(items)
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         try:
             _run_id = cw_telemetry.current_run_id() or '-'
         except Exception:   # noqa: BLE001  run id 拿不到不阻塞落行

@@ -45,12 +45,12 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'src'))
 
 from sr_od.application.currency_war.cw_sim import _engines_count  # noqa: E402
-from sr_od.application.currency_war.cw_win_features import (  # noqa: E402
-    features_from_deployed,
-)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E402
 from sr_od.application.currency_war.kernel.cw_line_defs import (  # noqa: E402
     ENGINE_FACTIONS,
+)
+from sr_od.application.currency_war.telemetry.cw_win_features import (  # noqa: E402
+    features_from_deployed,
 )
 
 REPLAY = REPO / '.debug/temp/currency_war/replay'

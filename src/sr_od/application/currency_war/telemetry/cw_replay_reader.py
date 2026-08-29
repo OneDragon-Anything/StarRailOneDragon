@@ -33,7 +33,7 @@ from dataclasses import fields as dc_fields
 from pathlib import Path
 from typing import Any, TypeVar
 
-from sr_od.application.currency_war.cw_telemetry import (
+from sr_od.application.currency_war.telemetry.cw_telemetry import (
     DEFAULT_REPLAY_DIR,
     DecisionTrace,
     OutcomeRecord,

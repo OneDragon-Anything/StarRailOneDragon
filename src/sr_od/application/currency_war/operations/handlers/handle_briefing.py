@@ -33,7 +33,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # 裸模块 logger 的 INFO 无处落地 → 「简报首领候选集读得」等行从未可见,
 # 判读无法区分「read_bosses 恒空」vs「幂等跳过」。改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
-from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.obs.cw_briefing_obs import (
     load_affix_effects_from_file,
     read_affix_effect,
@@ -42,6 +41,7 @@ from sr_od.application.currency_war.obs.cw_briefing_obs import (
     save_affix_screenshot,
     write_affix_effects,
 )
+from sr_od.application.currency_war.telemetry import cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 

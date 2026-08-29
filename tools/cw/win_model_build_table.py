@@ -16,7 +16,9 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from sr_od.application.currency_war.cw_win_features import features_from_deployed
+from sr_od.application.currency_war.telemetry.cw_win_features import (
+    features_from_deployed,
+)
 
 REPLAY_DIR = Path('.debug/temp/currency_war/replay')
 OUT_PATH = Path('.debug/temp/currency_war/cw_dev/win_model_design/train_table.jsonl')

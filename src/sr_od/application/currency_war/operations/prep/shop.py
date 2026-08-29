@@ -9,7 +9,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -48,6 +47,7 @@ from sr_od.application.currency_war.obs.cw_observation_gate import (
     PHASE_PREP_SHOP_OPEN,
 )
 from sr_od.application.currency_war.prep_actions import sell_point
+from sr_od.application.currency_war.telemetry import cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -511,7 +511,7 @@ class BuyShopCards(SrOperation):
             except Exception:
                 import traceback
 
-                from sr_od.application.currency_war.cw_telemetry import (
+                from sr_od.application.currency_war.telemetry.cw_telemetry import (
                     record_decision as _rd_err,
                 )
                 _tb = traceback.format_exc()
@@ -1163,7 +1163,7 @@ class BuyShopCards(SrOperation):
             # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
             # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
             # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
-            from sr_od.application.currency_war import cw_telemetry as _cw_tel
+            from sr_od.application.currency_war.telemetry import cw_telemetry as _cw_tel
             _cw_tel.set_unit_gold_close(_final_gold)
             # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
             # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差

@@ -222,7 +222,7 @@ def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
     if not enabled:
         return
     with contextlib.suppress(Exception):   # 对账 best-effort,不阻断采集主流程
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         pairs = briefing_reconcile_pairs(briefing, truth)
         cw_telemetry.record_exogenous(
             round_num, 'briefing_reconcile',

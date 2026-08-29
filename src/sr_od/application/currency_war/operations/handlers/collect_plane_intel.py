@@ -406,7 +406,7 @@ class CollectPlaneIntel(SrOperation):
                 or not detail_slots or self._prep_plane != self._cur_plane + 1):
             return
         self._prep_cross_done = True
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         _prep = [getattr(s, 'node_type', None) for s in self._prep_node_types]
         _det = [getattr(s, 'node_type', None) for s in detail_slots]
         mism = node_seq_cross_mismatch(_prep, _det)

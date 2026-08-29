@@ -1925,7 +1925,7 @@ def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
 # 设计:数据与判读同源 —— 查询视图(逐轮演进/供给对照/异常标记)读的就是本模块落盘的
 # JSONL,schema 变更查询同步;新复盘问题 = 新视图/参数,不是新脚本(一次性脚本时代终结)。
 # 用法:
-#   uv run python -m sr_od.application.currency_war.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|tiers|planexec|hp|economy|exogenous|execevents|invest|conflicts|all]
+#   uv run python -m sr_od.application.currency_war.telemetry.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|tiers|planexec|hp|economy|exogenous|execevents|invest|conflicts|all]
 
 def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
     """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。

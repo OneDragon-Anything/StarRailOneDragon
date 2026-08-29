@@ -13,7 +13,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
 from sr_od.application.currency_war.cw_strategy_manager import StrategyManager
@@ -65,6 +64,7 @@ from sr_od.application.currency_war.operations.run_nodes.run_supply_node import 
     RunSupplyNode,
 )
 from sr_od.application.currency_war.prep_director import PrepDirector
+from sr_od.application.currency_war.telemetry import cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 

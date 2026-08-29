@@ -149,7 +149,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             rec['obs_phase'] = _OBS_PHASE   # ADR-0462 噪声判定位:冲突行按阶段分类
         # W603:补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
         # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
-        from sr_od.application.currency_war import cw_telemetry as _cw_tel
+        from sr_od.application.currency_war.telemetry import cw_telemetry as _cw_tel
         _rid = _cw_tel.current_run_id()
         if _rid:
             rec['run_id'] = _rid
@@ -175,7 +175,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
         #(本流=原始证据层保持原样,台账行经 refs 指回本行,不复制数据;
         # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响本流落盘。
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         cw_telemetry.bypass_obs_conflict_to_defect(rec)
     except Exception:  # noqa: BLE001  hook best-effort
         pass
@@ -235,7 +235,7 @@ def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
         stop_shot = ''
         with contextlib.suppress(Exception):   # 截图失败不拦停机(flag 是主哨兵,同 exec 安灯)
             stop_shot = _save_andon_frame(ctx, payload)
-        from sr_od.application.currency_war import cw_telemetry
+        from sr_od.application.currency_war.telemetry import cw_telemetry
         cw_telemetry.write_l0_andon_flag(
             cw_telemetry.l0_andon_flag_path(),
             run_id=str(payload.get('run_id') or ''),

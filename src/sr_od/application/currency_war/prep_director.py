@@ -47,7 +47,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_telemetry
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
@@ -106,6 +105,7 @@ from sr_od.application.currency_war.prep_actions import (
     row_area_centers,
     try_recovery,
 )
+from sr_od.application.currency_war.telemetry import cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -166,7 +166,9 @@ def exec_fail_should_stop(plan_actions: list | None, gold_open, gold_close, *,
     域变宽,本谓词仍只对 not_effective 停,自动豁免两新态。判定复用
     ``cw_telemetry.classify_spend_unit``,不建第二套分类。
     """
-    from sr_od.application.currency_war.cw_telemetry import classify_spend_unit
+    from sr_od.application.currency_war.telemetry.cw_telemetry import (
+        classify_spend_unit,
+    )
     cls = classify_spend_unit(plan_actions or [], gold_open, gold_close,
                               boundary=boundary, executed=executed)
     return cls['verdict'] == 'not_effective'
@@ -1924,7 +1926,7 @@ class PrepDirector(SrOperation):
             # r1 review#4:曾传 type() 造假对象(非 dataclass)→ serialize_action TypeError 被吞
             # → 破墙遥测从未落盘。改 exec_events 通道(本就为执行事件设计)。
             try:
-                from sr_od.application.currency_war import cw_telemetry
+                from sr_od.application.currency_war.telemetry import cw_telemetry
 
                 if obs.state is not None:
                     _bf_rid = cw_telemetry.current_run_id() or '-'
@@ -2219,7 +2221,7 @@ class PrepDirector(SrOperation):
         last_state.round_num 才是 join key)。best-effort。
         """
         try:
-            from sr_od.application.currency_war.cw_telemetry import (
+            from sr_od.application.currency_war.telemetry.cw_telemetry import (
                 current_run_id,
                 get_recorder,
             )
@@ -2276,7 +2278,9 @@ class PrepDirector(SrOperation):
         if meta is None:
             return
         try:
-            from sr_od.application.currency_war.cw_telemetry import record_spend_unit
+            from sr_od.application.currency_war.telemetry.cw_telemetry import (
+                record_spend_unit,
+            )
             record_spend_unit(
                 plane=meta['plane'], round_num=meta['round'],
                 unit_seq=meta['seq'], boundary=boundary,
@@ -2635,7 +2639,7 @@ class PrepDirector(SrOperation):
         def _record_defect(kind: str, detail: str) -> None:
             log.warning(f'[cw!][director-v2] 缺陷 {kind}: {detail}')
             try:
-                from sr_od.application.currency_war import cw_telemetry
+                from sr_od.application.currency_war.telemetry import cw_telemetry
                 rid = cw_telemetry.current_run_id() or '-'
                 cw_telemetry.get_recorder().record_exec_event(
                     run_id=rid, round_num=0, action_family='DirectorV2',
