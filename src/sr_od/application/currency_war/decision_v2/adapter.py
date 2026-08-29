@@ -30,6 +30,7 @@ GameState)→ PrepAction → AtomOp/Decision 契约。**策略核零改**——
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import dataclasses
 from dataclasses import dataclass
@@ -42,6 +43,7 @@ from sr_od.application.currency_war.decision_v2.contracts import (
     Decision,
     Snapshot,
 )
+from sr_od.application.currency_war.kernel import cw_telemetry_exit
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY, GameState
 
@@ -403,21 +405,19 @@ def shadow_compare_step(director: Any, match: Any, obs: PrepObservation,
         SHADOW_STATS['error'] += 1
         log.warning(f'[cw][v2-shadow] 影子路径异常(已隔离,计数留证): {e}')
         _shadow_telemetry(director, 'v2_shadow_error', str(e))
-        import contextlib
         with contextlib.suppress(Exception):
             _shadow_record(director, {'error': str(e)}, out_dir)
 
 
 def _shadow_telemetry(director: Any, event: str, detail: str) -> None:
-    """影子事件落遥测 exec_event(best-effort,失败静默)。"""
-    try:
-        from sr_od.application.currency_war.telemetry import cw_telemetry
-        rid = cw_telemetry.current_run_id() or '-'
-        cw_telemetry.get_recorder().record_exec_event(
-            run_id=rid, round_num=0, action_family='V2Shadow', screen='battle_prep',
+    """影子事件落遥测 exec_event(best-effort,失败静默)。
+    分包期 4:落账/run_id 归属键经 kernel/cw_telemetry_exit 出口钩子位
+    (缺省关=不落行;生产武装点=CurrencyWarApp.__init__)。"""
+    with contextlib.suppress(Exception):   # 影子隔离:遥测失败绝不影响现役决策
+        cw_telemetry_exit.record_exec_event(
+            run_id=cw_telemetry_exit.current_run_id() or '-',
+            round_num=0, action_family='V2Shadow', screen='battle_prep',
             event=event, reason=detail[:200])
-    except Exception:   # noqa: BLE001
-        pass
 
 
 def _shadow_record(director: Any, record: dict[str, Any],
@@ -430,11 +430,9 @@ def _shadow_record(director: Any, record: dict[str, Any],
                                'w606_stage2_batch3')
     os.makedirs(out_dir, exist_ok=True)
     rid = 'local'
-    try:
-        from sr_od.application.currency_war.telemetry import cw_telemetry
-        rid = cw_telemetry.current_run_id() or 'local'
-    except Exception:   # noqa: BLE001
-        pass
+    with contextlib.suppress(Exception):
+        # 分包期 4:run_id 归属键经 kernel/cw_telemetry_exit 出口钩子位
+        rid = cw_telemetry_exit.current_run_id() or 'local'
     record['ts_step'] = SHADOW_STATS['steps']
     record['stats'] = dict(SHADOW_STATS)
     path = os.path.join(out_dir, f'compare_{rid}.jsonl')
