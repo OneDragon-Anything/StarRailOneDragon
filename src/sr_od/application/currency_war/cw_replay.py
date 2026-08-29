@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import sys
 
+from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
 from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 导入
     BenchChar,
     GameState,
@@ -41,7 +42,6 @@ from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 
     deployed_from_compact,
     iter_occupied_deployed,
 )
-from sr_od.application.currency_war.telemetry.cw_telemetry import DEFAULT_REPLAY_DIR
 
 
 class _Cfg:

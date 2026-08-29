@@ -26,12 +26,14 @@ from __future__ import annotations
 import contextlib
 import json
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
+from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
+from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
 from sr_od.application.currency_war.kernel.cw_state import (
     XP_CLICK_COST_FALLBACK,
     Action,
@@ -43,27 +45,13 @@ from sr_od.application.currency_war.kernel.cw_state import (
 
 log = log_utils.log
 
-# 默认 replay 目录(项目根 .debug/temp/currency_war/replay/;不入 git)
-DEFAULT_REPLAY_DIR: Path = Path(".debug/temp/currency_war/replay")
+# 默认 replay 目录单一源已下沉 kernel/cw_observe(分包期 3:sim 桶消费它而
+# sim 禁依 telemetry;本模块经上行 import 取用)。replay 序列化符号
+# (_to_jsonable/serialize_intention)同理下沉 kernel/cw_intention。
 SCHEMA_VERSION: int = 1   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号)
 
 
 # ===== 序列化(dataclass → JSON-safe dict)=====
-
-def _to_jsonable(obj: Any) -> Any:
-    """dataclass / 基础类型 → JSON 可序列化(递归)。"""
-    if is_dataclass(obj) and not isinstance(obj, type):
-        return {k: _to_jsonable(v) for k, v in asdict(obj).items()}
-    if isinstance(obj, dict):
-        return {str(k): _to_jsonable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_to_jsonable(x) for x in obj]
-    if isinstance(obj, set):
-        return sorted(_to_jsonable(x) for x in obj)
-    if isinstance(obj, Path):
-        return str(obj)
-    return obj
-
 
 def salvageable_1star_value(state: GameState) -> int:
     """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
@@ -125,48 +113,6 @@ def p1_pair_label(ist: Any) -> str:
     pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
         or tuple(getattr(ist, 'transition_pair', ()) or ())
     return '+'.join(str(k) for k in pair)
-
-
-def serialize_intention(ist: Any) -> dict[str, Any] | None:
-    """v3 意向状态(IntentionState)→ JSON-safe dict(迁移审计 w146(git 历史))。
-
-    ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
-    只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
-    「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
-    全量落遥测(`w145_recipe_lock/` 锁定目标改过渡配方的实机验证依赖它)。
-
-    - ``None`` = session 无意向状态机(default 栈/未初始化)——与
-      「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
-      不用猜;
-    - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
-      嵌套 LineTrack 同构)——IntentionState 字段演进(如 `w145_recipe_lock/` 调整
-      锁定语义)时自动跟上,不改本函数。
-
-    **可变容器深拷贝(`w194_p2line/`/ADR-0378)**:dict/list 字段值经
-    ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
-    ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
-    落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
-    早期行**(sim P2 段改写同局 P1 行的 tracks,`w193_p2sim/` 对比门曾排除
-    该字段)。tuple/str 不可变,原样保留(类型不漂移)。
-
-    只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
-    """
-    if not is_dataclass(ist):
-        return None
-    out: dict[str, Any] = {}
-    for f in fields(ist):
-        v = getattr(ist, f.name)
-        if isinstance(v, set):
-            out[f.name] = sorted(v)
-        elif is_dataclass(v):
-            out[f.name] = _to_jsonable(v)
-        elif isinstance(v, (dict, list)):
-            # `w194_p2line/`/ADR-0378:可变容器深拷贝落账(活引用污染防线,
-            # 见 docstring);tuple 不可变不辖(类型不漂移)
-            out[f.name] = _to_jsonable(v)
-        else:
-            out[f.name] = v
-    return out
 
 
 def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:

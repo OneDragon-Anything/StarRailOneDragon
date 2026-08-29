@@ -11,6 +11,7 @@ from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_strategy import CurrencyWarMatch
+from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     HP_MAX,
@@ -591,7 +592,7 @@ class BuyShopCards(SrOperation):
                 if getattr(_sess, 'v2_state', None) else None,
                 # 迁移审计 w146(git 历史) v3 意向状态落遥测(ADR-0336 后 v2_locked_line
                 # 恒空,锁定时点/目标只有这里可读;None=无意向状态机)
-                'v3_intention': cw_telemetry.serialize_intention(
+                'v3_intention': serialize_intention(
                     getattr(_sess, 'v3_intention', None)),
                 # 换线存活门决策位(sim 账本行同构;W665 DESIGN v2 §3-2/R3:
                 # 帧级位=本轮意向驱动帧,update_intention 入口清零;off 臂

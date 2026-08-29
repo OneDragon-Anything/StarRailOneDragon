@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+from pathlib import Path
 
 from cv2.typing import MatLike
 
@@ -23,6 +24,11 @@ from one_dragon.utils.file_utils import get_project_root
 _log = log_utils.log
 # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
+
+# 默认 replay 账本目录(分包期 3 自 telemetry/cw_telemetry.py 下沉本模块:
+# sim 桶消费它而 sim 禁依 telemetry,观测基础设施归 kernel——telemetry/sim
+# 均可合法上行 import)。值保持原样(相对 Path,cwd 即仓根的运行口径不变)。
+DEFAULT_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
 
 
 def cw_log(

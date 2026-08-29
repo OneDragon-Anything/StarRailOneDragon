@@ -40,8 +40,9 @@ v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -174,7 +175,7 @@ class IntentionState:
     - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
       (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
       (与 ``cw_sim._engines_count`` 同口径)。
-    - 遥测:``cw_telemetry.serialize_intention`` 字段全量序列化自动
+    - 遥测:``serialize_intention(分包期 3 自 telemetry 下沉)`` 字段全量序列化自动
       携带(不隐式——单帧锁断言 p1_pair 落 decisions 行,见 W145 测试)。
     - **后续「通道约束批」(W143 补充判读:决策通道两面孔按锁定目标约束/
       末轮禁用)以本字段为约束基准**——opportunistic/bond_fallback 通道
@@ -203,7 +204,7 @@ class IntentionState:
       ``locked_buy_scope``/``locked_faction_scope``(∪ 同式扩展,买侧
       免 demote/fence + evolve 保护基准扩辖)+ ``_direction_factions``
       (pair 通道放行)+ ``form_ok``(成型停手加体系对判据)。
-    - 遥测:``cw_telemetry.serialize_intention`` 字段全量序列化自动携带。
+    - 遥测:``serialize_intention(分包期 3 自 telemetry 下沉)`` 字段全量序列化自动携带。
     """
     forced: bool = False               # 强制锁线产生(P3 入口)
     weak_comp: str = ''                # 降级来源线(遥测;弱意向不指向具体线)
@@ -1354,3 +1355,64 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
         if comp is not None:
             keys |= set(comp.form_tiers) | set(comp.sub_tiers)
     return frozenset(keys) if keys else None
+
+
+# ===== 遥测序列化下沉(分包期 3:serialize_intention 自 telemetry/cw_telemetry.py
+# 下沉本模块——sim 桶消费它而 sim 禁依 telemetry(分包目标矩阵),序列化的是本模块
+# 的 IntentionState,随符号归位);cw_telemetry 反向 import 本节符号(telemetry→kernel 合法向)。
+
+def _to_jsonable(obj: Any) -> Any:
+    """dataclass / 基础类型 → JSON 可序列化(递归)。"""
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return {k: _to_jsonable(v) for k, v in asdict(obj).items()}
+    if isinstance(obj, dict):
+        return {str(k): _to_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_jsonable(x) for x in obj]
+    if isinstance(obj, set):
+        return sorted(_to_jsonable(x) for x in obj)
+    if isinstance(obj, Path):
+        return str(obj)
+    return obj
+
+
+def serialize_intention(ist: Any) -> dict[str, Any] | None:
+    """v3 意向状态(IntentionState)→ JSON-safe dict(迁移审计 w146(git 历史))。
+
+    ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
+    只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
+    「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
+    全量落遥测(`w145_recipe_lock/` 锁定目标改过渡配方的实机验证依赖它)。
+
+    - ``None`` = session 无意向状态机(default 栈/未初始化)——与
+      「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
+      不用猜;
+    - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
+      嵌套 LineTrack 同构)——IntentionState 字段演进(如 `w145_recipe_lock/` 调整
+      锁定语义)时自动跟上,不改本函数。
+
+    **可变容器深拷贝(`w194_p2line/`/ADR-0378)**:dict/list 字段值经
+    ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
+    ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
+    落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
+    早期行**(sim P2 段改写同局 P1 行的 tracks,`w193_p2sim/` 对比门曾排除
+    该字段)。tuple/str 不可变,原样保留(类型不漂移)。
+
+    只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
+    """
+    if not is_dataclass(ist):
+        return None
+    out: dict[str, Any] = {}
+    for f in fields(ist):
+        v = getattr(ist, f.name)
+        if isinstance(v, set):
+            out[f.name] = sorted(v)
+        elif is_dataclass(v):
+            out[f.name] = _to_jsonable(v)
+        elif isinstance(v, (dict, list)):
+            # `w194_p2line/`/ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # 见 docstring);tuple 不可变不辖(类型不漂移)
+            out[f.name] = _to_jsonable(v)
+        else:
+            out[f.name] = v
+    return out

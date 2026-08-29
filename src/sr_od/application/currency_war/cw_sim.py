@@ -76,6 +76,7 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     p2_combat_delta,
     sample_node_sequence,
 )
+from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     EconomyEffect,
@@ -114,7 +115,6 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_state import (
     simulate as _simulate_state,
 )
-from sr_od.application.currency_war.telemetry.cw_telemetry import serialize_intention
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
