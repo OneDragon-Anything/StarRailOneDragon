@@ -882,6 +882,26 @@ class CurrencyWarRunLoop(SrOperation):
                 return self.round_wait(wait=2)
             return self.round_retry(wait=2)
 
+        # 0a4. 位面详情 overlay(主循环兜底):情报采集 op 失败退出残留/开局自动
+        #      弹出等一切来源 → 点 X 验标题消失。此前不在 0 系名单:2026-08-30
+        #      残局恢复局实证,采集失败滞留详情屏 → 主循环连 15 轮未识别自停
+        #      (ADR-0269「新增画面忘进名单」结构性缺口再现)。采集子 op 运行中
+        #      不经此路(子 op 自带详情识别与关闭);恢复局商店探针/出战等
+        #      in-match 分支全部位于本分支之后,overlay 不再污染其判读。
+        if self.round_by_find_area(screen, '货币战争-位面详情', '标识-位面详情标题',
+                                   crop_first=False).is_success:
+            _pd_close = self.round_by_find_and_click_area(
+                screen, '货币战争-位面详情', '按钮-关闭位面详情', success_wait=1.5)
+            if not _pd_close.is_success:
+                return self.round_retry('位面详情关闭键未命中,等重试')
+            if self.round_by_find_area(self.screenshot(), '货币战争-位面详情',
+                                       '标识-位面详情标题',
+                                       crop_first=False).is_success:
+                return self.round_retry('位面详情点X未关,等重试')
+            self._clear_bail_count('事件overlay:plane_detail')
+            log.info('[cw-loop] 位面详情 overlay 已关(主循环兜底)')
+            return self.round_wait(wait=1.0)
+
         # 0b. 巨星强化(盛会之星选择 overlay)→ RunMegastarNode(选候选 + 确认,详见 op)。
         #     用 screen_info 标题 area(标识-盛会之星)位置区分。原用全屏「确认选择」(lcs 0.7 防「请选择投资策略」
         #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar

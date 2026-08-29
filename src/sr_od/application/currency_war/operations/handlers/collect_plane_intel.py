@@ -221,10 +221,26 @@ class CollectPlaneIntel(SrOperation):
             self._nonclean_wait_start = now
         if now - self._nonclean_wait_start > _NODE_BAR_WAIT_CAP_S:
             self._nonclean_wait_start = None
+            self._best_effort_close_detail()
             return self.round_fail(
                 f'节点条非clean({reason})持续超 {_NODE_BAR_WAIT_CAP_S:.0f}s,放弃采集')
         time.sleep(_NODE_BAR_READ_INTERVAL_S)
         return self.round_retry(f'节点条未读出({reason}),间隔重读等动画窗')
+
+    def _best_effort_close_detail(self) -> None:
+        """失败退出前尽力关位面详情(op 出口契约=回备战屏):单击关闭键、不验
+        转移、失败不抛——关不掉由主循环位面详情 overlay 分支兜底。残留教训
+        (2026-08-30 判读):非clean 超限放弃采集时详情屏滞留画面,主循环当时
+        无对应分支 → 未识别兜底自停,对局中断。
+        """
+        with contextlib.suppress(Exception):
+            screen = self.screenshot()
+            if self.round_by_find_area(screen, _PD_SCREEN, '标识-位面详情标题',
+                                       crop_first=False).is_success:
+                x = self._area_center('按钮-关闭位面详情')
+                if x is not None:
+                    self.ctx.controller.click(x)
+                    time.sleep(1.5)
 
     # ---- 节点图(round 语义驱动,同 HandleBriefing 形态) -----------------
 
@@ -309,6 +325,7 @@ class CollectPlaneIntel(SrOperation):
         # ① 点位面卡(选中当前采集位面)
         card = self._area_center(_PLANE_CARD_AREAS[self._cur_plane])
         if card is None:
+            self._best_effort_close_detail()
             return self.round_fail(f'位面卡 area 缺失:{_PLANE_CARD_AREAS[self._cur_plane]}')
         self.ctx.controller.click(card)
         time.sleep(1.5)
