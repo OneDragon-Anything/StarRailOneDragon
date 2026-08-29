@@ -1261,6 +1261,26 @@ class CurrencyWarRunLoop(SrOperation):
             # 消除的是「静默」(无日志)而非「重试」;warning 进
             # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
             # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
+            # W595 试用角色揭示卡清场:发光金卡点开即**免费**得 2★ 试用角色(原地变
+            # 普通角色卡,后续 SIFT 自然识别)。无代价、无分支选择 → 非策略决策,
+            # 不进 director 动作全集;备战环派发前直接清掉(揭示后 director heavy
+            # 观察读到的已是揭示后的真实板面,不毒化对账)。上界 3 轮防识别抖动
+            # 死循环;揭示后卡片消失 → 自然防重入。
+            from sr_od.application.currency_war.cw_identity_obs import (
+                _ctx_slots,
+                find_trial_reveal_cards,
+            )
+            from sr_od.application.currency_war.cw_obs_core import is_prep_like_frame
+            for _reveal_i in range(3):
+                _cards = find_trial_reveal_cards(screen, _ctx_slots(self.ctx, '备战栏', 9))
+                if not _cards or not is_prep_like_frame(self.ctx, screen):
+                    break
+                _slot, _center = _cards[0]
+                self.ctx.controller.mouse_move(_center)   # bug#1 缓解(同出战/点球口径)
+                self.ctx.controller.click(_center)
+                log.info('[cw-loop] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
+                time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
+                screen = self.screenshot()
             _ok = PrepDirector(self.ctx).execute()
             if not _ok or not _ok.success:   # W68:OperationResult 无 __bool__,
                 # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码

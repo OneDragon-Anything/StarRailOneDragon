@@ -796,6 +796,10 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_bookcards(screen, _bench_slots9)}   # r100k 书册卡
+        # 试用角色揭示卡(summon 钩子首捕建档):发光金卡点开即免费得 2★ 试用角色,
+        # 揭示动作由备战环派发前统一做(battle_loop 备战分支接线)→ 本钩子视其为
+        # 已知物品,不再落 unknown 停机(否则免费增益反成停机源)。
+        _obj_slots |= {i for i, _p in find_trial_reveal_cards(screen, _bench_slots9)}
         # r100k 书册卡确认钩子(临时,确认后删):模板认出它了,但开启后是什么未知
         # (名字带「未知」占位)。下次备战遇到 → 停机,AI 点「开启」看内容 → 改名
         # + 若有奖励弹窗接线 handler → 删本段。每局只停一次(flag 挡重复)。
@@ -1134,6 +1138,82 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
 def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
     """备战栏秘密典籍(``备战栏-1..9``)→ ``[(slot_idx, center)]``(点两次开启 → 星徽四选一)。"""
     return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
+
+
+# ===== 试用角色揭示卡(备战栏槽位;summon 停机钩子首捕建档)=====
+# 机制(2026-08-30 局22 2-4 实机确认):备战栏偶现**发光金色神秘卡**(非角色立绘,
+# 金光粒子特效)。点击即揭示为**试用角色 2★ 卡**(无任何代价,揭示后原地变普通角色卡,
+# 详情带「试用」徽标)。证据帧:.debug/temp/currency_war/shots/summon_unknown__9ab94f70.png
+# (slot3 发光卡)+ 揭示后帧(.debug/sr_od_mcp/screenshot/screenshot_20260829_120411_171833.png)。
+# 识别 = **双通道 OR**(单正样本帧标定,两通道各留倍数余量;发光动画会变,双通道互补):
+# ① 灰度 TM:模板 = 揭示前帧 slot3 内窗 91x114(< 全槽 111x134 防 shape 守卫判盲)。
+#    标定(47 张备战 fixture 全部 slot3 负样本):自身 1.0 / 生产加载路径自命中 0.958 /
+#    负样本 max 0.254 → 阈 0.5 居中。
+# ② 亮金发光签名:槽内 HSV 亮橙金窗口(V≥200 自发光带)像素占比。正样本 0.441 /
+#    负样本 max 0.076 → 阈 0.25(正 0.57×、负 3.3× 余量)。TM 兜「光弱但卡面在」,
+#    发光签名兜「粒子闪烁致 TM 掉分」——双通道都单正样本标定,漏检时 summon 兜底
+#    钩子仍会停机(安全网在,不静默)。
+_TRIAL_REVEAL_TM_THR: float = 0.5
+_TRIAL_GLOW_LO: tuple[int, int, int] = (15, 80, 200)
+_TRIAL_GLOW_HI: tuple[int, int, int] = (35, 255, 255)
+_TRIAL_GLOW_RATIO_THR: float = 0.25
+_trial_reveal_gray: MatLike | None = None
+_trial_reveal_loaded: bool = False
+
+
+def _get_trial_reveal_gray() -> MatLike | None:
+    """加载试用角色揭示卡模板灰度图(``assets/template/currency_war/supply/试用角色揭示卡.png``)。
+
+    模板 = 建档帧 slot3 真值裁片内窗(91x114,< 全部槽裁片,防 shape 守卫判盲);
+    单正样本帧标定,阈值数字见常量块注释。
+    """
+    global _trial_reveal_gray, _trial_reveal_loaded
+    if not _trial_reveal_loaded:
+        _trial_reveal_loaded = True
+        p = Path(__file__).resolve().parents[4] / 'assets' / 'template' / 'currency_war' / 'supply' / '试用角色揭示卡.png'
+        img = cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR) if p.is_file() else None
+        _trial_reveal_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img is not None else None
+    return _trial_reveal_gray
+
+
+def find_trial_reveal_cards(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int, Point]]:
+    """纯 CV 核心:槽位内检测试用角色揭示卡(双通道 OR)→ ``[(slot_idx, 槽 center)]``。
+
+    点该中心即揭示(免费得 2★ 试用角色,原地变普通角色卡 → 自然被 SIFT 识别,
+    无需后续处理;揭示动作由备战环派发前统一做,见 battle_loop 备战分支接线)。
+    可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
+    """
+    tm = _get_trial_reveal_gray()
+    hsv = cv2.cvtColor(screen, cv2.COLOR_RGB2HSV)
+    glow_mask = cv2.inRange(hsv, _TRIAL_GLOW_LO, _TRIAL_GLOW_HI)
+    out: list[tuple[int, Point]] = []
+    for idx, rect in slots:
+        hit = False
+        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+        # 裁片可能为空(rect 越出小尺寸测试帧):cvtColor 对空阵抛错,守卫跳过
+        if crop.size == 0:
+            continue
+        if tm is not None:
+            gray_crop = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+            if gray_crop.shape[0] >= tm.shape[0] and gray_crop.shape[1] >= tm.shape[1]:
+                r = cv2.matchTemplate(gray_crop, tm, cv2.TM_CCOEFF_NORMED)
+                hit = cv2.minMaxLoc(r)[1] >= _TRIAL_REVEAL_TM_THR
+            else:
+                _note_shape_skip('find_trial_reveal_cards', idx, crop.shape[0], crop.shape[1],
+                                 tm.shape[0], tm.shape[1])
+        if not hit:
+            # 通道② 亮金发光占比(HSV 全帧算一次,逐槽只做裁片均值,便宜)
+            gr = glow_mask[rect.y1:rect.y2, rect.x1:rect.x2]
+            if gr.size and float((gr > 0).mean()) >= _TRIAL_GLOW_RATIO_THR:
+                hit = True
+        if hit:
+            out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+    return out
+
+
+def read_trial_reveal_cards(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
+    """备战栏试用角色揭示卡(``备战栏-1..9``)→ ``[(slot_idx, 槽 center)]``(点揭示用)。"""
+    return find_trial_reveal_cards(screen, _ctx_slots(ctx, '备战栏', 9))
 
 
 # 备战席溢出带(奖励角色悬浮位;2026-08-16 用户实证 star2__540a8be3):备战栏正上方
