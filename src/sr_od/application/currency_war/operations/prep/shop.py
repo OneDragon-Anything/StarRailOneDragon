@@ -685,12 +685,26 @@ class BuyShopCards(SrOperation):
                     # 缺陷类随之归零);构建失败静默跳过,不阻塞买牌。
                     _refresh_expect = None
                     _reconcile = None
+                    _pre_shop_names: list[str] | None = None
                     try:
                         from sr_od.application.currency_war.prep_director import (
                             build_refresh_expect,
                             refresh_reconcile_mismatches,
                         )
-                        _pre_gold = read_gold_opt(self.ctx, self.screenshot())
+                        # W592(ADR-0456 勘误):点击前一帧现读金 + 牌名集。
+                        # 刷前名集不得用 state.shop——那是本波 plan 期读数,
+                        # 波内买卡不从 state.shop 摘已买牌,而游戏画面买后
+                        # 即离场;买+刷新波里「plan 读 vs 点击后实读」集合
+                        # 必不等,刷新真落空会被误判成免费生效。
+                        _pre_shot = self.screenshot()
+                        _pre_gold = read_gold_opt(self.ctx, _pre_shot)
+                        # 本波已买槽位现读为空槽/未识别(''),是自身买卡
+                        # 所致、不含刷新证据,比较前剔除;刷后一侧不剔除
+                        # ——含 '' 仍按不可判不猜(语义同 refresh_effective)。
+                        _pre_shop_names = [c.name
+                                           for c in read_shop_cards(self.ctx,
+                                                                    _pre_shot)
+                                           if c.name]
                         _refresh_expect = build_refresh_expect(
                             _pre_gold, REFRESH_COST_BASE,
                             [(c.name, c.star) for c in state.shop],
@@ -748,9 +762,11 @@ class BuyShopCards(SrOperation):
                             'refresh', _new_shop, state.gold - _refresh_fee,
                             state.plane, state.round_num)
                         # 刷新有效性对拍(观测自检框架设计 §2.5):r97 刷后重读
-                        # (_new_shop)与刷前牌名集合(state.shop,本波 plan 读)
-                        # 全同 = 刷新未生效(点击落空/费金照扣没刷/动画误读)
-                        # → 落缺陷台账。shop_refresh 是决策关键面,「全同」按
+                        # (_new_shop)与刷前牌名集合全同 = 刷新未生效(点击落空/
+                        # 费金照扣没刷/动画帧误读)→ 落缺陷台账。刷前名集 =
+                        # 点击前现读(_pre_shop_names,W592 勘误:原 state.shop
+                        # plan 读会把买+刷新波的真落空洗成免费生效)。
+                        # shop_refresh 是决策关键面,「全同」按
                         # 硬失败形态传 gap_large;复现防抖在台账层(同特征首见
                         # L1、两连全同升 L0 初判)。纯记账留证,零决策行为变更
                         # (刷新照点、买牌照买,停机接线未启)。
@@ -759,7 +775,7 @@ class BuyShopCards(SrOperation):
                         # None=不可判(不可判不可当已变——会把真落空洗成免费,
                         # 安灯失去停线面),原样透传给分类器。
                         _refresh_board_changed = refresh_effective(
-                            [c.name for c in state.shop],
+                            _pre_shop_names or [],
                             [c.name for c in _new_shop])
                         if _refresh_board_changed is False:
                             _ineff_shot = None
@@ -769,7 +785,7 @@ class BuyShopCards(SrOperation):
                             cw_telemetry.record_defect(
                                 'shop_refresh', 'invariant_break',
                                 expected=('刷后牌面≠刷前:'
-                                          f'{sorted(c.name for c in state.shop)}'),
+                                          f'{sorted(_pre_shop_names or [])}'),
                                 observed=('刷新后5牌与刷前全同(点击落空/费金照扣未刷/'
                                           f'动画误读):{sorted(c.name for c in _new_shop)}'),
                                 plane=state.plane, round_num=state.round_num,
@@ -791,7 +807,8 @@ class BuyShopCards(SrOperation):
                             _gold_after = read_gold_opt(self.ctx, self.screenshot())
                             # W577 免费刷新事后正证据通道(ADR-0456,永久保留——
                             # 这是修正后的判定语义的一部分,非采证钩子):刷新已
-                            # 点击 ∧ 牌面已变 ∧ 点后金=点前金 → 免费刷新 proc 真实
+                            # 点击 ∧ 牌面已变(相对点击前现读,W592 勘误)∧
+                            # 点后金=点前金 → 免费刷新 proc 真实
                             # 发生(覆盖棱/策略/未知一切免费来源),截图+flag 留证
                             # (**不停机**——免费不是失败;与 W542 商店入口停机钩子
                             # 证据互补:通道证 proc 发生+频率,钩子证入口形态)。
@@ -815,7 +832,7 @@ class BuyShopCards(SrOperation):
                                         f'run={cw_telemetry.current_run_id()} '
                                         f'plane={state.plane} round={state.round_num} '
                                         f'wave={total_refresh} ts={_free_dt.now().isoformat(timespec="seconds")}\n'
-                                        f'前后牌面: {sorted(c.name for c in state.shop)} -> '
+                                        f'前后牌面: {sorted(_pre_shop_names or [])} -> '
                                         f'{sorted(c.name for c in _new_shop)}\n'
                                         f'gold: 前={_pre_gold} 后={_gold_after}(未扣=免费)\n'
                                         f'截图: {_free_shot}\n'
