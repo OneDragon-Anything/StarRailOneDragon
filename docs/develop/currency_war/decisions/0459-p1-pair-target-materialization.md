@@ -1,6 +1,8 @@
 # ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)
 
-- **Status**: accepted(2026-08-30,实机阶梯兑换=sim A/B 平局[结构不可测]+局22 实机锚 M1/M3 过·M2 方向成立·S 过,REAL_MACHINE_LADDER.md 预注册判定)
+# ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)
+
+- **Status**: accepted → **勘误重裁中(2026-08-30,W608 对抗审计)**。审计实证:①兑换引用的「成型标尺首次点亮」系事后判据——预注册 M3 原窗=r5-r7,局22 点亮在 p1r8,窗内仅 0.65;②「⑳+2 从未点亮」被证伪——基线局 run_20260829_025301(旧代码 target_comp 全程空串)p1r9 同样 fs=1.0+formed_stop 且板面同款,form_score 为 deployed 纯观测与补丁无关;③M2「买即上车」系选择性举证——姬子·启行×2 买入后躺 bench 至 p2r7 阵亡 8+ 轮未上板。**重裁协议**:补 1-2 局带补丁配方锁局,按预注册原窗(r5-r7)判 M3,M2 改量化指标「配方件躺 bench 轮数/局」;窗内仍 0 命中且 M2 无方向 → 按预注册 revert 链撤本 commit。commit 暂留依据=107 行纯增量、未被证明有害、物化本身(M1)过硬、判定先于 commit 时序干净。审计=W608(w608_ladder_adversarial/REPORT.md)
 ## Context
 
 ADR-0357 把 P1 意向锁定产物定为过渡配方体系对(`IntentionState.p1_pair`)、终局 comp 锁定移 P2+ 后,实机载体上出现断线:`session.target_comp` 唯一写端(decision_v2/strategy.update_target)只从 `ist.locked_comp` 取值,配方锁局该字段恒空 → `session.target_comp` 恒 None。既有 target 消费者(部署选人 `cw_deploy_logic.select_deployments` 的 target_factions/target_cores 注入、评分管线 `decision_v2/scoring._deploy_pipeline`、投资/补给/巨星/伙伴钩子)从此在 P1 配方锁局全盲。实机实证(局20/21/22,run_20260829_*):引擎件买入后躺 bench 至位面末、板面散脸 12-13 羁绊、r5 进窗成型 0/3(sim 基线 58-67%);decisions.target_comp 列全程空串。r100 配方机制(cw_recipe.decision_target)设计过同类载体,但只接在已退役的 default 栈;decision_v2 侧框架写入者(ADR-0442 保留休眠)默认关且非本断线前提。
