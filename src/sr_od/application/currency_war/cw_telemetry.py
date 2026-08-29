@@ -1502,8 +1502,10 @@ def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
 
 
 def l0_andon_flag_path() -> Path:
-    """安灯哨兵 flag 绝对路径(锚仓根;本文件 parents[4] = 仓库根)。"""
-    return Path(__file__).resolve().parents[4] / _L0_ANDON_FLAG_RELPATH
+    """安灯哨兵 flag 绝对路径(锚仓根;分包期 0a 起走 get_project_root 真源)。"""
+    from one_dragon.utils.file_utils import get_project_root
+
+    return get_project_root() / _L0_ANDON_FLAG_RELPATH
 
 
 def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
