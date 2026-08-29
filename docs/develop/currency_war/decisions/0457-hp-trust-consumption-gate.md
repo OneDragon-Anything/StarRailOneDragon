@@ -1,6 +1,6 @@
 # ADR-0457: hp 可信位消费门(血线谓词 fail-closed)+ hp 读链放大回退与覆盖值位同写
 
-- **Status**: draft(编排者审定后转 accepted)
+- **Status**: accepted(2026-08-30,编排者审定——Considered Options 论证核可,消费门/读链/写侧三件与实现 8f902840 一致)
 - **Date**: 2026-08-29
 
 ## Context
