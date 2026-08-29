@@ -25,7 +25,10 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_char_id import load_avatar_templates
-from sr_od.application.currency_war.cw_comps import equip_allocation
+from sr_od.application.currency_war.cw_comps import (
+    equip_alloc_empty_reason,
+    equip_allocation,
+)
 from sr_od.application.currency_war.cw_equipment import (
     EQUIPMENTS,
     load_equip_templates,
@@ -285,6 +288,40 @@ class EquipAll(SrOperation):
                                 Point(src_pv[0].x, src_pv[1]), cc, dst_pv)
         return None
 
+    def _zero_wear_sentinel(self, equipped: int, owned_names: list[str],
+                            stop_reason: str) -> None:
+        """零穿戴哨兵(W596/W593 方案②;纯观测,零行为变更)。
+
+        触发面(DESIGN §五):本 op 结束时 worn_added==0 且 owned 有**可穿**件
+        (工具类过滤,与穿戴决策同口径)且 state.round_num≥3 → defect_ledger 记
+        ``equip_zero_wear`` 一条(带 owned 名单与 stop 原因;severity 走通道缺省
+        L2 观测,不停机)。病灶出处:局22(r3~r9 连续零穿戴无一报警,排查靠
+        三段证据合围)——本哨兵让下次复发当轮可查台账归因。
+        round<3 不触发:r1~r2 开局 hold(ADR-0257)零穿戴是 by design。
+        无 state(run 上下文缺失/离线)静默跳过。
+        """
+        if equipped > 0:
+            return
+        wearable_owned = [n for n in owned_names
+                          if EQUIPMENTS.get(n) is not None
+                          and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+        if not wearable_owned:
+            return
+        from sr_od.application.currency_war import cw_telemetry
+        _match = getattr(self.ctx, 'cw_match', None)
+        st = getattr(getattr(_match, 'session', None), 'last_state', None)
+        if st is None or int(getattr(st, 'round_num', 0) or 0) < 3:
+            return
+        cw_telemetry.record_defect(
+            surface='equip', kind='equip_zero_wear',
+            expected='owned 有可穿件且 round>=3:本 op 至少穿 1 件',
+            observed=(f'worn_added=0 owned={wearable_owned} '
+                      f'stop_reason={stop_reason or "循环自然结束(stall)"}'),
+            plane=int(getattr(st, 'plane', 1) or 1),
+            round_num=int(st.round_num),
+            note=('观测面不停机;stop_reason=过渡期hold 为 by design 残留,'
+                  '其余原因(分配方案空/drag 落空/pool_empty)出现即查执行链'))
+
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -396,13 +433,17 @@ class EquipAll(SrOperation):
                     break
             equipped = 0
             stall = 0
+            _stop_reason = ''   # 零穿戴哨兵(W596)归因字段:本轮为何停手
+            _owned_last: list[str] = []   # 哨兵输入:循环内最后一次 owned 全量快照
             _snap_logged = False   # 每次装备只记一遍快照(循环重读不重复记)
             while stall < 2:
                 cur = self.screenshot()
                 if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
                     log.info('[cw-equip] 角色详情面板开 → 停')
+                    _stop_reason = '角色详情面板开'
                     break
                 hits = read_equips(cur, templates, equip_rect=equip_rect)
+                _owned_last = [n for n, _, _ in hits]
                 wearable = [(n, p) for n, p, _ in hits
                             if EQUIPMENTS.get(n) is not None
                             and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
@@ -438,6 +479,7 @@ class EquipAll(SrOperation):
                     _snap_logged = True
                 if not wearable:
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
+                    _stop_reason = 'pool_empty(无穿戴候选)'
                     break
                 alloc = equip_allocation(
                     _tgt_comp, deployed,
@@ -448,9 +490,16 @@ class EquipAll(SrOperation):
                     alloc = [a for a in alloc if a[1] in _keys]
                     if not alloc:
                         log.info('[cw-equip] 过渡期无 key_equips 命中(全攒着)→ 停')
+                        _stop_reason = '过渡期hold:无 key_equips 命中(全攒着)'
                         break
                 if not alloc:
-                    log.info('[cw-equip] 分配方案空(全满/无匹配)→ 停')
+                    # W596/W593 方案③:分配空做结构化归因(pool_empty/capacity_full/
+                    # pairing_guard/no_deployed/unknown),替旧的一句话两义日志。
+                    _empty_reason = equip_alloc_empty_reason(
+                        _tgt_comp, deployed, [n for n, _ in wearable], occupied_m7)
+                    log.info('[cw-equip] 分配方案空 原因=%s(owned=%s)→ 停',
+                             _empty_reason, [n for n, _ in wearable])
+                    _stop_reason = f'分配方案空:{_empty_reason}'
                     break
                 char_name, want = alloc[0]
                 ds = deployed_by_name.get(char_name) or []
@@ -463,6 +512,7 @@ class EquipAll(SrOperation):
                         break
                 if target_pv is None:
                     log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该角色', char_name)
+                    _stop_reason = f'{char_name} 槽位坐标缺失'
                     break
                 entry = next(((n, p) for n, p in wearable if n == want), None)
                 if entry is None:
@@ -485,7 +535,10 @@ class EquipAll(SrOperation):
                 else:
                     log.info('[cw-equip] %s retry 仍败(diff=%.1f)→ 停(bug#1 持续 or 后排坐标偏差)',
                              name, diff)
+                    _stop_reason = 'drag 落空 retry 仍败(bug#1 持续/坐标偏差)'
                     break
+            # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)
+            self._zero_wear_sentinel(equipped, _owned_last, _stop_reason)
             return self.round_success(f'M7 装备 {equipped} 件(角色级分配)')
         # ===== 旧 front-only 流程(身份读失败 fallback;原 ADR-0101 key_equips 优先)=====
         occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))

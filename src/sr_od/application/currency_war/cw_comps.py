@@ -1544,6 +1544,81 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
 EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49 布局约束)
 
 
+def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
+                      key_set: set[str], core_set: set[str], rq: set[str]) -> bool:
+    """防误合成配对守卫的纯判定(ADR-0391 纪律 1 的两例外;单源判定)。
+
+    ``equip_allocation`` 的内嵌 ``_pairing_ok`` 与 ``equip_alloc_empty_reason``
+    (分配空归因)共用本函数,保证「分配语义」与「分配空诊断」永不漂移。
+    ``worn_basics`` = char 名 → 已穿基础件名单(画面已穿 + 本趟已分配)。
+    """
+    from sr_od.application.currency_war.cw_synthesis import synthesize_target
+    for b2 in worn_basics.get(char, ()):
+        y = synthesize_target(basic, b2)
+        if y is None:
+            continue
+        if y in key_set and char in core_set:
+            return True     # 例外①:想要的配对,core 上穿着合成=快路径
+        return basic in rq and b2 in rq and char not in core_set   # 例外②:回收线有意 2合1
+    return True
+
+
+def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str],
+                             occupied: dict[tuple[str, int], list[str]] | None = None,
+                             ) -> str:
+    """``equip_allocation`` 返回空时的结构化归因(纯函数,零行为变更;W596/W593 方案③)。
+
+    返回值域:
+    - ``pool_empty``:owned 穿戴池空(调用方无货可分);
+    - ``no_deployed``:场上无可命名角色(无处可穿);
+    - ``capacity_full``:所有在场角色的装备容量都已占满;
+    - ``pairing_guard``:有货有空位,但每个 (角色, 装备) 组合都被防误合成配对守卫拦下;
+    - ``unknown``:存在可行组合但分配仍返回空(不该发生,出现即分配器与诊断漂移,优先查)。
+
+    归因前提:仅当 ``equip_allocation`` **返回空** 时调用才精确——分配一旦产出
+    件,容量/已穿基础件会随分配演进,诊断函数只复现「零分配起点」的状态。
+    与 ``equip_allocation`` 同输入口径(occupied/completed 前提下守卫状态一致:
+    空分配 ⇔ 无任何 ``_assign`` 发生)。
+    """
+    occ = occupied or {}
+    pool = list(owned)
+    if not pool:
+        return 'pool_empty'
+    from sr_od.application.currency_war.cw_synthesis import (
+        RESERVED_COMPONENTS,
+        recycle_qualified,
+    )
+    key_set = set(comp.key_equips) if comp is not None else set()
+    core_set = set(comp.core_chars) if comp is not None else set()
+    rq = recycle_qualified(list(comp.key_equips) if comp is not None else None)
+    is_basic = RESERVED_COMPONENTS.__contains__
+    worn_basics: dict[str, list[str]] = {}
+    capacity: dict[str, int] = {}
+    by_name: dict[str, list] = {}
+    for d in deployed:
+        n = getattr(d, 'char_id', None)
+        if n:
+            by_name.setdefault(n, []).append(d)
+            for w in occ.get((getattr(d, 'position_pref', '') or '',
+                              int(getattr(d, 'slot', 0) or 0)), []):
+                if is_basic(w):
+                    worn_basics.setdefault(n, []).append(w)
+    for n, ds in by_name.items():
+        used = sum(len(occ.get((getattr(d, 'position_pref', '') or '',
+                                int(getattr(d, 'slot', 0) or 0)), [])) for d in ds)
+        capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
+    if not any(v > 0 for v in capacity.values()):
+        return 'no_deployed' if not capacity else 'capacity_full'
+    for n, cap in capacity.items():
+        if cap <= 0:
+            continue
+        for e in pool:
+            if not is_basic(e) or _pairing_guard_ok(worn_basics, n, e,
+                                                    key_set, core_set, rq):
+                return 'unknown'    # 存在可行组合,分配器本不该返回空
+    return 'pairing_guard'
+
+
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                      occupied: dict[tuple[str, int], list[str]] | None = None,
                      ) -> list[tuple[str, str]]:
@@ -1602,7 +1677,6 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     from sr_od.application.currency_war.cw_synthesis import (
         RESERVED_COMPONENTS,
         recycle_qualified,
-        synthesize_target,
     )
     _key_set = set(comp.key_equips) if comp is not None else set()
     _core_set = set(comp.core_chars) if comp is not None else set()
@@ -1622,17 +1696,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 worn_basics.setdefault(n, []).append(w)
 
     def _pairing_ok(char: str, basic: str) -> bool:
-        """基础件 basic 发给 char 是否安全(见 docstring 纪律 1 的两例外)。"""
-        for b2 in worn_basics.get(char, ()):
-            y = synthesize_target(basic, b2)
-            if y is None:
-                continue
-            if y in _key_set and char in _core_set:
-                continue    # 例外①:想要的配对,core 上穿着合成=快路径
-            if basic in _rq and b2 in _rq and char not in _core_set:
-                continue    # 例外②:回收线有意 2合1(非 core 工具人)
-            return False
-        return True
+        """基础件 basic 发给 char 是否安全(判定单源在模块级 ``_pairing_guard_ok``)。"""
+        return _pairing_guard_ok(worn_basics, char, basic, _key_set, _core_set, _rq)
 
     def _assign(char: str, item: str) -> None:
         out.append((char, item))

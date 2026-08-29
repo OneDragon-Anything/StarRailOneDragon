@@ -94,6 +94,12 @@ async def _serve(host: str, port: int) -> None:
     # 日志分流必须最先做:后续所有 log.* 的落点由它决定
     # (切到 mcp_server.log + 关 console;见 _configure_server_logging 注释)。
     _configure_server_logging()
+    # 构建指纹守卫(W596/W593 方案①):启动首行记本进程运行的代码构建
+    # (git 短 hash+脏标记;另落盘 .debug/sr_od_mcp/build_fingerprint.txt)。
+    # 「改代码必须重启 server 才生效」——旧进程在飞时磁盘代码与行为错位,
+    # 此行让「哪个构建的进程在跑」随时可 grep(局22 worn=0 定位成本实证)。
+    from sr_od.backend.build_info import log_build_fingerprint
+    log_build_fingerprint()
     try:
         framework_log.info("SR 后端：初始化 SrContext（线程池，不阻塞事件循环）……")
         await backend.start()

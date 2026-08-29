@@ -921,6 +921,14 @@ def start_run(difficulty: str = "") -> str:
     _CURRENT_RUN_ID = datetime.now().strftime('run_%Y%m%d_%H%M%S')
     _CURRENT_DIFFICULTY = difficulty
     get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
+    # 构建指纹随局落日志(W596/W593 方案①):局后判读把本局行为对到
+    # 「哪个构建的进程」,消灭「整局构建性归零」这类跨局方差(局22 实证)。
+    try:
+        from sr_od.backend.build_info import get_build_fingerprint
+        log.info('[cw][build] run=%s 构建指纹=%s', _CURRENT_RUN_ID,
+                 get_build_fingerprint())
+    except Exception as e:   # noqa: BLE001  观测件,失败不阻塞开局
+        log.warning('[cw][build] 构建指纹读取失败(不阻塞): %s', e)
     return _CURRENT_RUN_ID
 
 
