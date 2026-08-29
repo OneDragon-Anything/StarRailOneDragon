@@ -6,7 +6,7 @@
 本模块是步② 的**授权核算单一源**:
 - ``interest_cost``:买/刷新的息机会成本(C_interest,W113 §3.2(b));
 - ``round_posture``/``build_round_posture``:轮姿态生产者(批 3 预算
-  收权后 = 确定性预算核的载体装配;原 DP 姿态查询随 cw_horizon 退役);
+  收权后 = 确定性预算核的载体装配;原 DP 姿态查询已随 DP 退役);
 - ``levelup_ev_authorized``:升级通道 EV 总账([12] 息引擎门的收编,
   A1/A2 镜像与 E6 latch 退场后的唯一裁决点);
 - ``reward_node_is_battle``:扑满守卫(ADR-0348)——「经济过热」类环境下
@@ -136,7 +136,8 @@ def battles_left_plane(state: GameState, session: StrategySession,
 battles_left_p2 = battles_left_plane
 
 
-def build_round_posture(state: GameState, session: StrategySession) -> Posture:
+def build_round_posture(state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry | None = None) -> Posture:
     """轮姿态生产者(批 3 预算收权;确定性预算核单一址)。
 
     level_up = economy_cycle.schedule_upgrade(查表核,含预告态);
@@ -144,16 +145,17 @@ def build_round_posture(state: GameState, session: StrategySession) -> Posture:
     契约见该函数)。三路消费方(排程/R*/arbiter 授权/scoring 窗)共调
     同两接缝(R4 单一址),本函数只负责把两个标量装进轮姿态载体 +
     打遥测标签(词汇表 v2 判前锁,见 decision_v2.posture.Posture)。
-    原 ``dp_posture``(cw_horizon._solved 姿态查询)随 DP 退役删除;
-    「查询不可达 → None → 各消费点保守回退」的级联面随之消灭(W623
-    D0:确定性核在任意帧恒有定义,无 None 形状)。
+    ``registry`` 显式透传(P6 注入面单源:与 prep_brain._budget 同一
+    实例,禁静默落缺省表)。原 ``dp_posture``(原 DP 求解面姿态
+    查询)随 DP 退役删除;「查询不可达 → None → 各消费点保守回退」的
+    级联面随之消灭(W623 D0:确定性核在任意帧恒有定义,无 None 形状)。
     """
     from sr_od.application.currency_war.decision_v2.economy_cycle import (
         refresh_ev_budget,
         schedule_upgrade,
     )
-    level_up = schedule_upgrade(state, session)
-    rolls = refresh_ev_budget(state, session)
+    level_up = schedule_upgrade(state, session, registry)
+    rolls = refresh_ev_budget(state, session, registry)
     if level_up:
         tag = '升级' + (f'+D{rolls}' if rolls else '')
     elif rolls:

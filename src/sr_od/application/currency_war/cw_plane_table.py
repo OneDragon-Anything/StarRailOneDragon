@@ -1,11 +1,11 @@
 """节点日程与标定表模块(纯常量/纯函数;零 DP、零 session 写端)。
 
-重构批 3 起,本模块是原 ``cw_horizon`` 中被生产路径消费的**真值/标定面**
+重构批 3 起,本模块是原 DP 模块(git prior art)中被生产路径消费的**真值/标定面**
 的保留归属(W623 D3:真值消费者迁保留表函数模块,禁内联常量置换——
 ``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应,ADR-0366),
 ``p_win_p2`` 是两态胜率函数(BLUEPRINT §3.1 N4 继续消费),内联任一处
 = ADR-0366 修掉的 P2 计 9 病灶成批回流)。原模块的日程感知 DP 规划器
-(solve/Posture/_horizon_node_goal 接缝)已按 BLUEPRINT §3 裁决退出生产
+(求解/姿态/节点目标接缝)已按 BLUEPRINT §3 裁决退出生产
 路径并整文件删除,git 历史为 prior art。
 
 承载面(按消费面划定的最小集):
@@ -14,7 +14,7 @@
 - 升级费用查询:clicks_to_level/level_cost(逐帧现读单价由消费方
   economy_cycle.upgrade_plan_fee 承担,本表只供次数);
 - 息闭式:interest/GOLD_CAP_INTEREST(min(g//10,5) 截断点);
-- 损血先验表:HP_LOSS_MU(原 cw_horizon.HP_LOSS_PRIOR,ADR-0183
+- 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,ADR-0183
   统一的单一源,消费方=cw_first_passage 分布模型);
 - P2 两态胜率映射:p_win_p2(registry.p_win_p2_by_rung 分段线性,
   阈值层与批 3 排程共用);
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
-# ===== 日程/经济先验(原 cw_horizon 常量,消费面逐位平移) =====
+# ===== 日程/经济先验(原 DP 模块常量平移,消费面逐位一致) =====
 NODES_PER_PLANE: int = 9
 TOTAL_NODES: int = NODES_PER_PLANE * 3
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)

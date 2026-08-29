@@ -162,7 +162,7 @@ class StartCurrencyWarMatch(SrOperation):
         # 难度确认:用 screen_info area 检测+点击(round_by_find_and_click_area),替代全屏 round_by_ocr。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
-        # → loop __init__ copy session → default_strategy 填 state → effective_hp_threshold D-32(3.5.1 接线)。
+        # → loop __init__ copy session → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)。
         # W289/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(

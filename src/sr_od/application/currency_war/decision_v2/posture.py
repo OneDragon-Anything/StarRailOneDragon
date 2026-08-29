@@ -1,4 +1,4 @@
-"""轮姿态载体(批 3 预算收权后的新供给形状;原 cw_horizon.Posture 平移)。
+"""轮姿态载体(批 3 预算收权后的新供给形状;原 DP 模块 Posture 形状平移)。
 
 字段形状与旧 DP 姿态载体逐位同构(save/level_up/refresh_budget/v/tag)
 ——消费方(arbiter/scoring/posture_release/遥测)接口零改动,只有

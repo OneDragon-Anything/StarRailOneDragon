@@ -190,7 +190,7 @@ COMMIT_SIGNAL_THRESHOLD: float = 5.0
 COMMIT_MIN_T: int = 7
 
 #: 定型边界(2026-08-18 P2-3 语义收口):**进位面 2 即定型**(t=10,P2-r1;消费方
-#: ``default_strategy._committed`` 的 ``state.plane >= 2``)。旧 COMMIT_DEADLINE_T=12
+#: 策略层定型判定的 ``state.plane >= 2``)。旧 COMMIT_DEADLINE_T=12
 #: (P2-3)分支被 plane>=2 恒短路(10 < 12)永不触发 = 死代码,已删 —— 保留的行为是
 #: 更严的 P2-r1 边界(ADR-0209「双轨期 = P1 且未定型」的原始设计,live 验证)。
 #: 文档口径「P2-3 是最后转型节点」仍成立:P2-r1 定型早于 P2-3,满足同一约束。

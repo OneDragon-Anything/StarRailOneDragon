@@ -930,7 +930,7 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
     AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
     保血阈值调高(D-32;cw_state.DIFFICULTY_HP_TABLE 代码常量,ADR-0204)。读不到 → ""(回退默认)。
     接线已通(3.5.1,d841d1a1):StartCurrencyWarMatch 难度确认段调本函数 → ctx.cw_selected_difficulty
-    → battle_loop copy session → default_strategy 填 state → effective_hp_threshold D-32 激活。
+    → battle_loop copy session → 策略层填 state → effective_hp_threshold D-32 激活。
     """
     rect = _area_rect(ctx, '标识-当前难度职级', _DIFFICULTY_CONFIRM_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]
@@ -1897,7 +1897,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # r358d(遥测全面性审计接线,ADR-0229 缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
-        # 连胜门)同源。注入点单一(此处),default_strategy 的
+        # 连胜门)同源。注入点单一(此处),策略层的
         # update_target 注入保留(两处都幂等:非空才覆)。
         _sess = _match.session
         if getattr(_sess, 'active_env', ''):

@@ -1109,7 +1109,7 @@ def progress(comp: Comp, state: GameState) -> float:
 def shop_supply(comp: Comp, state: GameState) -> float:
     """comp 核心阵营的**本回合** shop 可得性 [0,1](shop-aware,task#25 + I14)。
 
-    现仅用于 **drought bail 判定**(default_strategy:连续 N 回合 supply<1.0 → 弃不可达 target 重选),
+    现仅用于 **drought bail 判定**(连续 N 回合 supply<1.0 → 弃不可达 target 重选;default 栈 drought bail 已退役,本函数保留为挂账层消费面),
     **不再驱动 select_comp**(ADR-0092:select_comp 改用理论 acquirability_factor,刷新独立 → 观察/单回合
     shop 无预测力)。保留本函数因 drought 需「本回合 shop 是否供得上核心」的实时观察。
 

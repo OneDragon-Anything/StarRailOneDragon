@@ -46,7 +46,7 @@ from sr_od.application.currency_war.decision_v2.registry import (
 #: 更远的排程升级应即时执行而非长期储蓄,结构界非拍值)。
 RESERVE_WINDOW_ROUNDS: int = 3
 
-#: 刷新通道容量上界(刷数;原 cw_horizon._ACTION_ROLLS 的 DP 上限 6 刷
+#: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷
 #: 同源(git prior art),不另造第二把尺)。
 REFRESH_ROLL_CAP: int = 6
 
@@ -64,15 +64,20 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
 
-def _interest_floor_of(session: StrategySession) -> int:
+def _interest_floor_of(session: StrategySession,
+                       registry: DecisionV2Registry | None = None) -> int:
     """息线(守息线,interest_cap×10 同源派生,W611 §2.2 恒等式;
     接缝函数族共用的单一取址)。"""
-    return _registry_of(session).interest_cap * 10
+    return (registry or _registry_of(session)).interest_cap * 10
 
 
-def schedule_upgrade(state: GameState, session: StrategySession) -> bool:
+def schedule_upgrade(state: GameState, session: StrategySession,
+                     registry: DecisionV2Registry | None = None) -> bool:
     """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,批 3 预算收权)。
 
+    ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
+    必须传**同一个** registry 实例——prep_brain._budget 单源装配);
+    缺省落 _registry_of(session) → DEFAULT_REGISTRY。
     规则集 = W615 §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
     (W623 D1):排程只回答「要不要开始攒」,不以当帧可负担为前置——
     付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
@@ -109,13 +114,14 @@ def schedule_upgrade(state: GameState, session: StrategySession) -> bool:
     from sr_od.application.currency_war.cw_state import (
         deployed_occupied,
     )
+    reg = registry or _registry_of(session)
     # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a))
     if deployed_occupied(state.deployed or []) >= state.max_units() \
             and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
                     for b in (state.bench or [])):
         return True
     # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上
-    if (state.gold or 0) < _interest_floor_of(session):
+    if (state.gold or 0) < reg.interest_cap * 10:
         return False
     return _target_peak_level(state, session) > (state.level or 1)
 
@@ -152,11 +158,14 @@ def _schedule_target_core(session: StrategySession) -> str:
     return ''
 
 
-def refresh_ev_budget(state: GameState, session: StrategySession) -> int:
+def refresh_ev_budget(state: GameState, session: StrategySession,
+                      registry: DecisionV2Registry | None = None) -> int:
     """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,批 3 预算收权)。
 
+    ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
+    _registry_of(session) → DEFAULT_REGISTRY。
     预算 = min(6, ⌊(g − R*)/刷价⌋)——只花溢余(W615 §2-R3 预算式:
-    刷新后仍守储备线;6 刷帽单一源 = REFRESH_ROLL_CAP,原 cw_horizon
+    刷新后仍守储备线;6 刷帽单一源 = REFRESH_ROLL_CAP,原 DP 求解面
     _ACTION_ROLLS 的 DP 上限同源,不另造第二把尺)。
 
     合法 0 帧契约(W623 D2,判前锁;**辖域=应急带**,W635 F1 收口):
@@ -176,7 +185,7 @@ def refresh_ev_budget(state: GameState, session: StrategySession) -> int:
     from sr_od.application.currency_war.decision_v2.filters import (
         is_emergency,
     )
-    reg = _registry_of(session)
+    reg = registry or _registry_of(session)
     if is_emergency(state, reg):
         return 0
     over = (state.gold or 0) - reserve_cap(state, session, reg)
@@ -352,3 +361,34 @@ def obligation(state: GameState, session: StrategySession,
     if r <= 0:
         return 0
     return min(r, channel_capacity(state, session, registry))
+
+
+def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
+    """溢余消费的息档边界截断(纯金额;W645 提案 E-v2)。
+
+    利息 = gold//10 cap 5,按节点结算,当轮息损 = interest(轮初金) −
+    interest(轮末金),首末金量的纯函数、路径无关 → 花后不跨 10 的倍数
+    档则息损 0(P13/[11] 同档零息损)。本函数按「息档结构直接输出
+    ``gold % 10``」截断非必要溢余支出金额,零标定参数(数学先行硬门的
+    合格形态)。
+
+    - essential=True → 不截断,原样返回 want。两枝由消费点显式分类:
+      ①正账件(跨档/合成件,买账已过 scoring 单一裁决面)——一张牌
+      不可拆,截断即弃购,弃购代价归 P1 再遇窗口口径,不在本函数辖内;
+      ②M-A 定向刷新车道(arbiter 定向授权分支,directed_refresh_budget,
+      P1 末窗/boss 窗)——末窗没有下轮重摇,截断后残差不足一刷 = 定向
+      搜索永久丢失,截断代价是无穷大而非「推迟一轮」,弱占优前提对该
+      车道为假。函数自身不判车道(车道判定单一址留在 arbiter 分支结构)。
+    - essential=False(常态刷新逐笔、release 预算内的负分搜索等非必要
+      溢余支出)→ 截断为 min(want, gold % 10):花后不跨息档,息损 0;
+      不花的余量结转下轮(义务逐帧重算,R* 与 C_t 下帧重出,结转零成本、
+      不产生第二义务)。
+
+    调用契约:返回值 < want = 本笔不放行(消费不可拆,不花部分金额,
+    也不替调用方改写金额)——截断只裁「可不可花满」,放行裁决仍在既有
+    预算门(authorize_release_refresh 等);量级按严口径 1 金/档报
+    1-2 金/局,主判如实降级「方向披露」(提案 E-v2 §2 量级双口径)。
+    """
+    if essential:
+        return want
+    return min(want, gold % 10)

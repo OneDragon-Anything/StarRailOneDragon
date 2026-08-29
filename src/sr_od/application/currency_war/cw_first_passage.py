@@ -14,14 +14,14 @@
   P(win) 对 hp 的导数(λ_hp 峰形)解出;
 - ``p_win_lambda(board_tier, hp, nodes_left)``:λ_hp = P(win|hp+1) − P(win|hp)(峰形曲线)。
 
-升级路径(提案主张三,ADR-0155 并轨 V2):cw_horizon 掉血插件换桶分布转移矩阵、D 牌
+升级路径(提案主张三,ADR-0155 并轨 V2):原 DP 层掉血插件(已退役,git prior art)的换桶分布转移矩阵、D 牌
 Bernoulli 赌局化、hp 残值补丁删除 —— 本模块先立出口 API 供消费端(02/05/evidence 门),
 K1-K3 判据随后。
 """
 from __future__ import annotations
 
 # ⚖️ 单一源(49 号 J0 子承普查命中 → ADR-0183 统一):掉血先验基准表持有者 = cw_plane_table
-# (批 3 起 = 原 cw_horizon 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
+# (批 3 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
 # 本模块引用之并在此定义分布语义(CV/位面乘数)。
 # 旧 HP_LOSS_MU 本地副本(与基准表同值异名)删除,防双源漂移。
 from sr_od.application.currency_war.cw_plane_table import (
@@ -64,7 +64,7 @@ def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     (沿用位面维别名先例)。旧 PLANE_LOSS_SCALE={1:1.0,2:1.6,3:1.9}
     (v1 先验,0174 弱板锚)退役,退役锁=not hasattr。
 
-    边界声明(与原 cw_horizon DP 层——已退役,git prior art——的口径关系,「5× 差=语义差为主」判读
+    边界声明(与原 DP 层——已退役,git prior art——的口径关系,「5× 差=语义差为主」判读
     的落点):本层是分布模型 estimand(每节点无条件期望掉血 ± CV 抖动,
     喂首达生存卷积),DP 层是确定性期望递推——两者共用同一标定(胜率表
     +条件败面档)但函数不同,数值对齐 ≠ 函数同一;本层不再持有独立位面

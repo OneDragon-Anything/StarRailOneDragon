@@ -220,7 +220,7 @@ class SrContext(OneDragonContext):
         # (W518 briefing 行+W522 对账网真值源)
         self.cw_briefing_bosses: list[str] | None = None
         # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
-        # copy 到 session.selected_difficulty → default_strategy 填 state → effective_hp_threshold D-32;3.5.1)
+        # copy 到 session.selected_difficulty → 策略层填 state → effective_hp_threshold D-32;3.5.1)
         self.cw_selected_difficulty: str | None = None
         # 敌人难度数值(简报「敌人难度N」parse_enemy_difficulty 读 → loop copy session.enemy_difficulty
         # → read_game_state 填 state.enemy_difficulty;3.5.2 接线,danger_d 前置 + diagnostic)

@@ -1,8 +1,8 @@
 """货币战争 策略插件机制(CwStrategy ABC + StrategySession + CurrencyWarMatch)。
 
 把货币战争的「决策大脑」抽象成**可替换的 ``CwStrategy`` 对象**(对标 app 插件):
-换对象 = 换打法,不动框架。内置具现 ``DefaultCwStrategy``(``strategies/default_strategy.py``)
-= 今天打法(薄委托既有模块函数,P1 零行为变化)。
+换对象 = 换打法,不动框架。唯一内置具现 = ``DecisionV2Strategy``(注册桥在
+``strategies/decision_v2_strategy.py``;default 栈已退役,ADR-0466)。
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
@@ -60,9 +60,9 @@ class CwStrategy(ABC):
     新建、传入每个钩子、局终销毁)。收益:实例可反复 instantiate、可 unit 测(喂构造好的 state)、
     无隐藏实例状态 → 不会跨局泄漏。
 
-    本 ABC 的钩子**全 abstract**(纯接口,ABC 自身不含内置逻辑);内置具现见 ``DefaultCwStrategy``。
-    自定义策略两条路:① 继承 ``CwStrategy`` 自己实现全部钩子(完整自研打法);② 继承
-    ``DefaultCwStrategy`` 只覆盖关心的几个(其余继承内置,低门槛、比赛友好)。
+    本 ABC 的钩子**全 abstract**(纯接口,ABC 自身不含内置逻辑);唯一内置具现见
+    ``decision_v2/strategy.py``。自定义策略:继承 ``CwStrategy`` 实现全部钩子,或继承
+    ``DecisionV2Strategy`` 只覆盖关心的几个。
 
     **构造无参**(继承默认 ``object.__init__``):策略跨局跨账号复用,**不收 ctx/config** —— 配置每次
     调用按参传入;``StrategyManager`` 经 ``cls()`` 实例化。可变每局状态一律走 ``session``,非实例属性。
@@ -74,7 +74,7 @@ class CwStrategy(ABC):
     AUTHOR: str = ""             # 参赛者/作者
     VERSION: str = "0.1"         # 语义化版本
     DESCRIPTION: str = ""        # 一句话描述打法
-    # 扫描器内部:True = 中间辅助 ABC(如 RushBase(DefaultCwStrategy)),不注册;非展示元数据(§11.5)
+    # 扫描器内部:True = 中间辅助 ABC,不注册;非展示元数据(§11.5)
     _abstract: bool = False
 
     # ===== 生命周期钩子 =====
@@ -361,7 +361,7 @@ class StrategySession:
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
-    # default_strategy 填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
+    # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""
     # 敌人难度数值(简报「敌人难度N」读 → ctx.cw_enemy_difficulty → loop copy;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
@@ -448,7 +448,7 @@ def gated_hp(current_hp: int, session: StrategySession, now_t: int | None,
       如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
 
     消费点:shop.py(buy 前)+ prep_director(环入口,传 obs.state.hp_readable)+
-    default_strategy ``_pseudo_state`` —— 同门,否则先调方用假 hp 判 pivot、后调方真 hp
+    策略层 ``_pseudo_state`` —— 同门,否则先调方用假 hp 判 pivot、后调方真 hp
     反向 pivot,同节点两次方向相反换线(r68 实证)。
     """
     last_hp = getattr(session, 'last_hp', None)

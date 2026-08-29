@@ -682,7 +682,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         from sr_od.application.currency_war.decision_v2.economy_cycle import (
             refresh_ev_budget,
         )
-        if refresh_ev_budget(state, session) <= 0:
+        if refresh_ev_budget(state, session, registry) <= 0:
             return None
     elif goal is not None and goal.action == 'level_up':
         # W170/ADR-0369:level_plan 窗只辖 core 通道(core 让位给升,
@@ -1062,7 +1062,7 @@ def score_all(cands: list[Candidate], state: GameState,
 # 钩子消费面读表取值(数值原样迁移,行为零漂移;战场族条目推迟挂账)。
 @dataclass(frozen=True)
 class PickBiasTable:
-    """单帧单发采购拍值平表(R5;数值出处 = 原 default_strategy 钩子内联值)。"""
+    """单帧单发采购拍值平表(R5;数值出处 = 退役前策略钩子内联值,git prior art)。"""
     # 星徽秘典四选一(decide_star_tome)
     tome_target_faction: float = 40.0     # 终局线需要的阵营星徽
     tome_board_hit: float = 8.0           # 板上已有该阵营(每件;边际高)

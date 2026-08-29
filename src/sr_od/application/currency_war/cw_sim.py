@@ -1359,6 +1359,26 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
     return rotation_probs(level, rng.choice(tiers))
 
 
+def sim_decision_registry():
+    """sim 环境的决策层注册表视图:level_max 对齐执行层 LEVEL_CAP。
+
+    为什么:满级升级拒付空转的根源 = 决策层单一源 registry.level_max=10
+    (实机真值,lv9 付费升级有效)与 sim 执行层 LEVEL_CAP=9 的**声明性
+    建模分歧**(见 LEVEL_CAP 注释与 cw_state.xp_apply_clicks「勿混用」
+    注)——决策层的「等级未满」前置(candidates/remediation)在 sim 的
+    lv9 帧恒放行 → 执行层恒拒付(22+/局 level_cap_rejects 空转)。
+    本视图把 sim 的有效上限在**接线单一址**注入决策层,不造第二把尺
+    (值源自 LEVEL_CAP);实机路径不受影响(DEFAULT_REGISTRY 不改,
+    DEFAULT_REGISTRY.level_max 保持 10)。sim 拒付层保留作防线。
+    """
+    import dataclasses
+
+    from sr_od.application.currency_war.decision_v2.registry import (
+        DEFAULT_REGISTRY,
+    )
+    return dataclasses.replace(DEFAULT_REGISTRY, level_max=LEVEL_CAP)
+
+
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
                 pool: str | Path = 'auto',
@@ -1392,10 +1412,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     :param diamond_cap_prob: 财富宝钻获取通道(ADR-0286/批㉔ F4):每备战期
         以此概率获得 1 颗财富宝钻(cap = level + 宝钻数,可叠加)。**注入频率
         待实机语料统计,默认 0 = 通道建好但不注入**(baseline 与旧树可配对)。
-    :param config: 策略配置桩(默认 None)。decision_v2 栈不读 config;
-        A/B 对照臂 default 栈(DefaultCwStrategy)需要
-        ``faction_priority``/``character_priority`` 等字段——对照
-        runner 传 SimpleNamespace 桩(ADR-0336 对照臂方案)。
+    :param config: 策略配置桩(默认 None)。decision_v2 栈不读 config
+        (唯一策略载体;default 栈已退役,off 臂=冻结快照 worktree)。
     :param invest: 投资策略/环境注入(W162/ADR-0364;默认 False =
         不注入,**主路径逐位零漂移**)。True = 按 seed 确定性采样
         (plaza 实选频次表,见 cw_sim_invest);传 ``SimInvestProfile``
@@ -1437,7 +1455,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'sim 牌池被费用截断(4/5 费角色缺失)——ADR-0272 禁止;'
             '检查 cw_sim._Pool 构造')
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
-    strat = strategy or DecisionV2Strategy()
+    # 决策层注册表用 sim 视图(level_max=LEVEL_CAP,见 sim_decision_
+    # registry):满级帧决策层不再发起升级,执行层拒付层保留作防线。
+    strat = strategy or DecisionV2Strategy(registry=sim_decision_registry())
     if _p2_entry is not None:
         # W193/ADR-0377 案 b 臂:P1 段与开局 bench 采样跳过,直接从
         # 真值进场态起跑(rng 不耗 nodes/bench 采样——进场态是外生
@@ -1649,6 +1669,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 满级 LevelUp 拒付计数(执行层 cap 守卫披露;>0 = 决策层在
             # 满级态仍发升级,策略侧判读输入)
             _lv_cap_rejects = 0
+            # M-A 定向刷新轮归因基线(局级累计计数器只增不减;轮末差值 =
+            # 本轮被定向车道放行并执行的刷新数,刷帽检查 directed_refresh_
+            # game_cap_lock 的数据源。计数器在 arbiter 采纳处递增,本侧
+            # 只读——观测非指令)
+            _dir_used0 = int(getattr(sess, 'v3_dir_refresh_used', 0) or 0)
             # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
             # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
             # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
@@ -2335,7 +2360,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _prev_combat_lost = (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                                  and delta <= 0)
             # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
-            # = 结算「连胜×N」写 session(default_strategy.on_settlement),
+            # = 结算「连胜×N」写 session(策略层 on_round_end 观测段),
             # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
             # 只存本地变量算收入,决策侧连胜响应恒盲。
             sess.last_streak = streak
@@ -2647,6 +2672,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 满级 LevelUp 拒付次数(执行层 cap 守卫;>0 = 决策层
                     # 满级后仍发升级——防线拦金,策略病由本计数暴露)
                     'level_cap_rejects': _lv_cap_rejects,
+                    # M-A 定向刷新本轮执行数(轮末差值归因;刷帽检查
+                    # directed_refresh_game_cap_lock / refresh_roll_cap_
+                    # frame 的普通车道扣除项。其余车道:release/E2 臂
+                    # 预算另有界,计入普通车道口径——检查事件供归因)
+                    'dir_refreshes': max(
+                        0, int(getattr(sess, 'v3_dir_refresh_used', 0) or 0)
+                        - _dir_used0),
                     # 血预算停手·停升级拒付次数(决策层;设计件 12/
                     # ADR-0448):hp≤停升级线帧被门拦下的升级事件数
                     # (>0 = 本语义在该轮生效;决策侧判读输入)
@@ -3300,18 +3332,17 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
     import logging
     import statistics
 
-    from sr_od.application.currency_war.decision_v2.registry import (
-        DEFAULT_REGISTRY,
-    )
     from sr_od.application.currency_war.decision_v2.strategy import (
         DecisionV2Strategy,
     )
     logging.disable(logging.CRITICAL)   # 批量跑静音(决策日志逐段刷屏)
     try:
-        _strat_on = DecisionV2Strategy(registry=DEFAULT_REGISTRY)
+        # 两臂注册表都从 sim 视图派生(level_max 对齐 LEVEL_CAP;
+        # 见 sim_decision_registry)——A/B 臂与主路径同环境语义。
+        _reg_sim = sim_decision_registry()
+        _strat_on = DecisionV2Strategy(registry=_reg_sim)
         _strat_off = DecisionV2Strategy(
-            registry=dataclasses.replace(DEFAULT_REGISTRY,
-                                         vd_p2_enabled=False))
+            registry=dataclasses.replace(_reg_sim, vd_p2_enabled=False))
         res_a = [simulate_p1(seed_base + i, pool=pool, planes=planes,
                              strategy=_strat_on) for i in range(n)]
         res_b = [simulate_p1(seed_base + i, pool=pool, planes=planes,

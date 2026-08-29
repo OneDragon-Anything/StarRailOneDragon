@@ -50,7 +50,7 @@ def streak_gold(streak: int) -> int:
     return STREAK_GOLD_TABLE[idx]
 
 
-#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费;原 cw_horizon DP 日程收入消费随 DP 退役,防双源漂移条款保留)。
+#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费;原 DP 日程收入消费面已随 DP 退役删除,防双源漂移条款保留)。
 #: 边界:基础奖励实际随节点变(VLM 判读 1-1=3/1-2=4,见 docs/game/currency_war/research/economy.md
 #: 「基础奖励」行;守卫测试 sr-od-test test_cw_r305_reward_data)——5 是统一近似值,奖励采集成表后替换为查表。
 BASE_INCOME: int = 5
@@ -318,7 +318,7 @@ def get_node_goal(plane: int, round_num: int, *,
                   strategies: list[str] | None = None) -> NodeGoal:
     """查 (plane, round) → NodeGoal(批 3 预算收权:确定性预算核单一供给)。
 
-    姿态从预算收权核涌现(原 cw_horizon DP 解供给已退役,BLUEPRINT §3
+    姿态从预算收权核涌现(原 DP 解供给已退役,BLUEPRINT §3
     裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
     >0 → adaptive/d_search;两者皆无 → interest/hold。供给在任意帧恒有
     定义(W623 D0:None 级联面消灭),仅传参不全(迁移漏点)时退

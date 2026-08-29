@@ -1,14 +1,14 @@
-"""default_strategy → DirectorV2 决策适配器(W606 阶段2批③;设计单一源 =
+"""决策适配器(W606 阶段2批③;设计单一源 =
 ``.debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md``)。
 
 薄适配层:快照 → 现役 ``decide_prep_action`` 的输入视图(obs-like + 决策
 GameState)→ PrepAction → AtomOp/Decision 契约。**策略核零改**——
-``DefaultCwStrategy.decide_prep_action`` 原样消费(含 r412 息引擎 latch
+``DecisionV2Strategy.decide_prep_action`` 原样消费(含息引擎 latch
 采样),所有新旧语义差异收敛在本模块的映射表并逐条锁测试。
 
 三个映射面:
 - ``snapshot_to_obs`` / ``decision_state`` —— Snapshot → 决策输入(§3);
-  含 W598 义务清单四字段(dual_track_phase/active_strategies/equips/
+  含义务清单四字段(dual_track_phase/active_strategies/equips/
   refresh_probs)的 session 显式注入。``active_strategies`` 注入即修复
   现役 ``_pseudo_state`` 漏拷裂缝(持有策略判据在步级路径静默失效为空,
   消费点 = cw_intention._direct_line_qualified / cw_economy.level_up_gate
@@ -299,7 +299,7 @@ def action_to_atomop(action: PrepAction) -> AtomOp:
 # ------------------------------------------------------- decide 适配器(§5)
 
 class DecideAdapter:
-    """``decide(snapshot, session) -> Decision`` 的 default_strategy 具现。
+    """``decide(snapshot, session) -> Decision`` 的策略具现(现役 = DecisionV2Strategy)。
 
     - decide:构造 obs-like → 现役 ``strategy.decide_prep_action(obs, session,
       config)``(r412 latch 采样随原函数继承)→ 控制流/原子映射;

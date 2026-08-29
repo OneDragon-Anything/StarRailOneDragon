@@ -631,7 +631,7 @@ class BuyShopCards(SrOperation):
             }
             # W222 遥测缺口①(W220 判读实锤:两局 decisions.state.equips 恒空):
             # owned 穿戴池的唯一 session 写端在 equip_all,读端拷贝只接在
-            # _pseudo_state(default_strategy 决策内部 state)——record 用的
+            # _pseudo_state(策略层决策内部 state)——record 用的
             # 本 state 是 OCR 现读对象,equip reader 不填 state.equips →
             # 落盘链断在这里。record 前补拷(同 hp/node_type/dual_track 的
             # session 拷贝族)。⚠️ 位置必须在 decide_prep **之后**:
