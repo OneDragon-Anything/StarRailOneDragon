@@ -177,7 +177,7 @@ class IntentionState:
     """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     prev_lock_layer: int = 0
-    """被撤线的原锁层暂存(W665 DESIGN v3 §3-3 R-C/FM-11):撤销出口①/②
+    """被撤线的原锁层暂存(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-C/FM-11):撤销出口①/②
     降级 weak 时写入被撤的 lock_layer;门闩一次性回锁时恢复到 lock_layer,
     使出口②撤销面不被回锁信号( layer=1 )收窄。生命周期=回锁消费后保留
     至位面切换(闩清零时一并清零,陈旧值不跨位面);0=无暂存。"""
@@ -205,7 +205,7 @@ class IntentionState:
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
     pair_evicted: set[str] = field(default_factory=set)
-    """R3 断供驱逐(配方对域):断供超限移出候选的**体系键**集(批 3;
+    """R3 断供驱逐(配方对域):断供超限移出候选的**体系键**集(ADR-0465;
     蓝图 §4.3-R3 冻结驱逐语义从 LineTrack 推广到配方对)。与 ``evicted``
     分域:本集辖体系键(TRANSITION_TRAITS ∪ SEELE_SYSTEM),不与
     comp 套名混淆;驱逐后 pair 重派生时排除(消费面 = ``_derive_p1_pair``
@@ -371,7 +371,7 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
     词缀→机制归一走 ``AFFIX_MECHANIC_MAP`` 单一源(未知词缀原样透传,与
     ScoreContext.mechanics 同构);未入映射的词缀(如 灼热轰炸)按不命中
     处理(宁缺勿错,见 STRONG_ENV_MECHS 注释)。消费方=update_intention
-    的锁线信号过滤(行为无条件化,W628 开关清偿),已锁线不辖
+    的锁线信号过滤(行为无条件化,开关清偿决议(git 历史)),已锁线不辖
     (环境缺失只「不主动选」,不没收已锁线——accumulator_family §3 同义)。
     """
     comp = get_comp(comp_name)
@@ -390,7 +390,7 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
 
 
 # ===== P1 锁线资格门(W101/ADR-0341)=====
-# F5 清偿(批 3,蓝图 §6):原模块级 flag P1_FINAL_LINE_GATE/P1_RECIPE_LOCK/
+# F5 清偿(ADR-0465 后治理蓝图,git 历史):原模块级 flag P1_FINAL_LINE_GATE/P1_RECIPE_LOCK/
 # P1_LOCK_TRANSITION_PAIR 删除,行为无条件化——三门的 sim A/B 已终裁
 # (0341/0357/0367),开臂前置因冻结令消失=第 4 态清理;A/B 基线臂改由
 # git 冻结快照构造(flag=False 回退通道随之消失,回退=git revert)。
