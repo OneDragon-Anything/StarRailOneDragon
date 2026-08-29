@@ -97,6 +97,8 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 
 分配准入接 P14 期望模型(ADR-0391):**防误合成配对守卫**(全 plane)——同角色互为配方的两基础件拒发(穿着触发自动合成不可逆),例外=产物 ∈ key_equips 且穿者 core(快路径)或两件均回收合格且穿者非 core(回收线有意 2合1);**死库存回收去向**(P2/P3)——回收合格基础件(`cw_synthesis.recycle_qualified`,P14 定理 3)优先发非 core 工具人 ≤2 件/人,发不完留 owned 囤着,core 不吃死库存。遥测:每轮备战首次读板记 owned 快照与「缺什么囤什么」差集(`[cw!][grant]`/`[cw!][hoard]` 日志行;λ 标定与判读锚点数据源)。
 
+过渡期/opening 装备 hold 的辖域修饰(ADR-0461,开关与名单单一源 = `decision_v2.registry` W607 字段块,默认关=零漂移):**opening hold 收窄**(`opening_hold_battle_gate_enabled`)——P1 r≤2 的 hold 仅当当前节点非战斗类(`opening_hold_battle_nodes`,节点真值 = `GameState.node_type`,缺省回查节点序列台账 `ledger_node_type`;观察缺失维持 hold 的保守降级);**库藏生锈穿戴豁免**(`rust_wear_release_enabled`)——词条(`cw_comps.RUST_AFFIX_NAME`,机制语义 = docs/game/currency_war/data/competitors.md「库藏生锈」行)在场时豁免 hold 的「只穿 key_equips」过滤,分配序列全量穿戴(每件 owned 滞留 = 敌方双向增益,滞留代价随件数单调)。两修饰在 EquipAll 调用侧组合,`_transition_hold_active` 本体语义不变。
+
 ## 7. 边界
 
 - plan 是纯函数(可离线测/可对拍,`cw_plan_replay_audit`);执行器负责坐标与验证。

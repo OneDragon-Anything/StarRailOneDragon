@@ -120,11 +120,48 @@ def _transition_hold_active(tgt_comp, form: float, dual: bool, opening_round: bo
       为空;旧判 ``tgt_comp is not None`` 会让 r388/r70 两条 hold 全不
       生效,r388 所修的「开局乱穿」恰在这最高频窗口残留(ADR-0257)。
     - r70:已定型(target 在)且 0<form<COMMIT_FRAC 且非双轨 → hold。
+    - W607 起 ``opening_round`` 实参由 :func:`_opening_hold_active` 产出
+      (H3 收窄+H2② 生锈豁免在调用侧组合,本函数语义不变)。
     """
     if opening_round:
         return True
     from sr_od.application.currency_war.cw_comps import COMMIT_FRAC
     return tgt_comp is not None and 0.0 < form < COMMIT_FRAC and not dual
+
+
+def _opening_hold_active(round_num: int | None, node_type: str | None,
+                         battle_gate: bool, battle_nodes: frozenset[str]) -> bool:
+    """W607 H3:opening hold 收窄(ADR-0461)。
+
+    r388/ADR-0257 的 hold 辖域=P1 r≤2,by-design 前提=开局轮是奖励轮
+    无战斗——局22 r2 StartBattle 实证前提只对 r1 成立(r2 起是白板挨打,
+    W593 闸门①)。收窄后:hold 仅当 r≤2 **且当前节点非战斗类**;战斗类
+    名单=registry.opening_hold_battle_nodes(词汇表=GameState.node_type
+    顶部标签 OCR)。降级路径(有锁):``round_num`` 缺失(P1 之外/读不到)
+    → False(同旧「非开局轮」);``node_type`` 缺失(OCR/台账都空)→
+    **维持现状 hold**(观察缺失不改变既有行为,宁缺勿错);开关关
+    (battle_gate=False)→ 逐位旧行为(零漂移锚)。
+    """
+    if round_num is None or round_num > 2:
+        return False
+    if not battle_gate:
+        return True
+    if node_type is None:
+        return True
+    return node_type not in battle_nodes
+
+
+def _rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
+    """W607 H2②:库藏生锈在场时豁免装备 hold(ADR-0461)。
+
+    备战席每 1 件未穿装备 → 敌方造成伤害 +3%、受到伤害 -4%,最多 10 件
+    (competitors.md:45,游戏内实采)——滞留的边际代价随件数单调上升,
+    「攒给成型核心」的机会成本被压制。纯谓词;消费点=EquipAll hold 过滤
+    分支(开关=registry.rust_wear_release_enabled,默认关=零漂移)。
+    """
+    if not gate:
+        return False
+    return '库藏生锈' in set(enemy_affixes or [])
 
 
 class EquipAll(SrOperation):
@@ -375,14 +412,38 @@ class EquipAll(SrOperation):
         # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
         # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
         # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
-        _round_now = (getattr(_match.session, 'last_state', None).round_num
-                      if (_match is not None and getattr(_match.session, 'last_state', None) is not None
-                          and getattr(_match.session.last_state, 'plane', 1) == 1) else None)
-        _opening_round = _round_now is not None and _round_now <= 2
+        _st_hold = (getattr(_match.session, 'last_state', None)
+                    if _match is not None else None)
+        _round_now = (_st_hold.round_num
+                      if (_st_hold is not None
+                          and getattr(_st_hold, 'plane', 1) == 1) else None)
+        # W607 H3/H2②(ADR-0461):hold 收窄+生锈豁免,开关走策略 registry
+        # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
+        # =全关,零漂移)。
+        from sr_od.application.currency_war.cw_state import ledger_node_type
+        from sr_od.application.currency_war.decision_v2.registry import (
+            DEFAULT_REGISTRY,
+        )
+        _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
+                   or DEFAULT_REGISTRY)
+        _node_type = (getattr(_st_hold, 'node_type', None)
+                      if _st_hold is not None else None)
+        if _node_type is None and _st_hold is not None and _round_now is not None:
+            _node_type = ledger_node_type(_match.session,
+                                          getattr(_st_hold, 'plane', 1),
+                                          _round_now)
+        _opening_round = _opening_hold_active(
+            _round_now, _node_type,
+            _reg_eq.opening_hold_battle_gate_enabled,
+            _reg_eq.opening_hold_battle_nodes)
+        _rust_release = _rust_release_active(
+            list(getattr(_st_hold, 'enemy_affixes', []) or []) if _st_hold is not None else [],
+            _reg_eq.rust_wear_release_enabled)
         _transition_hold = _transition_hold_active(_tgt_comp, _form, _dual, _opening_round)
         if _transition_hold:
-            log.info('[cw-equip] 过渡期持有(opening=%s form=%.2f):非 key_equips 不穿(攒给成型核心)',
-                     _opening_round, _form)
+            log.info('[cw-equip] 过渡期持有(opening=%s node=%s rust_release=%s form=%.2f):'
+                     '非 key_equips 不穿(攒给成型核心)',
+                     _opening_round, _node_type, _rust_release, _form)
         if deployed:
             # W209g 断点③:后排装备读槽随布局选档(旧硬编码 10 与布局档自相
             # 矛盾——deploy 拖 8 格坐标、装备读固定槽;select_back_layout
@@ -484,7 +545,11 @@ class EquipAll(SrOperation):
                 alloc = equip_allocation(
                     _tgt_comp, deployed,
                     [n for n, _ in wearable], occupied_m7)
-                if _transition_hold:
+                if _transition_hold and _rust_release:
+                    # W607 H2②(ADR-0461):库藏生锈在场,owned 滞留=主动喂敌
+                    # (competitors.md:45)→ hold 豁免,分配序列全量穿戴。
+                    log.info('[cw-equip] 库藏生锈在场 → hold 豁免(owned 滞留喂敌),全量穿戴')
+                if _transition_hold and not _rust_release:
                     # 过渡期:过滤掉 gen 兜底项(分配序列中非 key_equips 命中的),只穿命脉件
                     _keys = set(_tgt_comp.key_equips) if _tgt_comp else set()
                     alloc = [a for a in alloc if a[1] in _keys]

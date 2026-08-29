@@ -46,7 +46,9 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_chars import CHARACTERS
 from sr_od.application.currency_war.cw_comps import (
+    AFFIX_MECHANIC_MAP,
     COMP_LIBRARY,
+    STRONG_ENV_MECHS,
     V2_FAMILIES,
     Comp,
     augment_affinity,
@@ -333,6 +335,41 @@ def _direct_line_qualified(state: GameState, comp_name: str) -> bool:
         if comp_name in augment_affinity(s):
             return True
     return comp_name in augment_env_affinity(state.active_env)
+
+
+def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
+    """累积型线强环境判据(W607 H1;ADR-0461)。
+
+    语义出处:「全局累积型角色越早越好,但需特定环境才强,**无环境不选**」
+    (user_playstyle [21] 例外条款)+ accumulator_family §3(万敌强环境=
+    敌方多动/反伤类)§4.2 前提②「当前/将遇敌方词缀 ∈ 该成员强环境集」。
+
+    返回三态:
+    - ``None`` = 判据不辖或信息缺失(comp 无 hp_charge_stack 累积成员 /
+      强环境集未建模 / ``state.enemy_affixes`` 空=词缀可信位缺失)——调用方
+      必须放行(ADR-0107 动态权重剔除同款:缺信息不造硬结论,不猜);
+    - ``True`` = 词缀机制 tag 与强环境集命中;
+    - ``False`` = 累积型线但环境不命中(「无环境不选」的事实面)。
+
+    词缀→机制归一走 ``AFFIX_MECHANIC_MAP`` 单一源(未知词缀原样透传,与
+    ScoreContext.mechanics 同构);未入映射的词缀(如 灼热轰炸)按不命中
+    处理(宁缺勿错,见 STRONG_ENV_MECHS 注释)。消费方=update_intention
+    的锁线信号过滤(开关=registry.line_env_gate_enabled),已锁线不辖
+    (环境缺失只「不主动选」,不没收已锁线——accumulator_family §3 同义)。
+    """
+    comp = get_comp(comp_name)
+    if comp is None:
+        return None
+    acc_types = set((comp.global_accumulators or {}).values())
+    if 'hp_charge_stack' not in acc_types:
+        return None
+    need = STRONG_ENV_MECHS.get('hp_charge_stack')
+    if not need:
+        return None
+    if not state.enemy_affixes:
+        return None
+    mech = {AFFIX_MECHANIC_MAP.get(a, a) for a in state.enemy_affixes}
+    return bool(mech & need)
 
 
 # ===== P1 锁线资格门(W101/ADR-0341;sim A/B 通道)=====
@@ -940,6 +977,20 @@ def update_intention(state: GameState, ist: IntentionState,
                 if pair else 'lock_pair:wait'
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
+        # W607 H1 锁线环境判据(开关=registry.line_env_gate_enabled,默认关
+        # =零漂移):累积型线强环境不命中(False)的信号本轮不锁(缓锁——
+        # 「无环境不选」只辖**主动选线**,已锁线与判据不辖(None)/信息缺失
+        # 帧不拦;观察期=line_env_lock_min_round)。已锁分支(上方 locked)
+        # 有意不过此滤:环境缺失不没收已锁线(accumulator_family §3 同义)。
+        _reg_env = registry or DEFAULT_REGISTRY
+        if _reg_env.line_env_gate_enabled \
+                and state.round_num >= _reg_env.line_env_lock_min_round:
+            _n0 = len(sigs)
+            sigs = [s for s in sigs
+                    if _line_env_qualified(state, s.comp_name) is not False]
+            if len(sigs) != _n0:
+                log.info('[cw][intention] 环境判据缓锁 %d→%d 信号(affixes=%s)',
+                         _n0, len(sigs), state.enemy_affixes)
         # P1 过渡配方锁(W145/ADR-0357):P1 的锁定产物=体系对;
         # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
         # 只保留①类资格通道(直通终局线资格,ADR-0338/0341 语义零改动)。

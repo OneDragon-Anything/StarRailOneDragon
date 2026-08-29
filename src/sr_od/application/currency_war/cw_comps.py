@@ -258,6 +258,23 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
 # comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
+# 累积型角色强环境机制 tag 集(W607 H1 锁线环境判据的数据层):
+# 「全局累积型阵容需特定环境才强,无环境不选」(user_playstyle [21] 例外条款);
+# 万敌强环境 = 敌方多动/反伤类(docs/game/currency_war/research/final_comps/
+# accumulator_family.md §3 表,证据高;§4.2 前提②「词缀 ∈ 该成员强环境集」
+# 判经 AFFIX_MECHANIC_MAP 归一后与本集求交)。「灼热轰炸」等未入
+# AFFIX_MECHANIC_MAP 的词缀按不命中处理(宁缺勿错,不猜映射)。
+# 键 = Comp.global_accumulators 的累积类型(非角色名——判据按类型辖)。
+STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
+    'hp_charge_stack': frozenset({'反伤', '多段惩罚'}),
+}
+
+# 库藏生锈词缀名(W607 H2 消费钩子的词条识别名):备战席每 1 件未穿装备 →
+# 敌方造成伤害 +3%、受到伤害 -4%,最多计 10 件
+# (docs/game/currency_war/data/competitors.md:45,2026-08-28 游戏内实采)。
+RUST_AFFIX_NAME: str = '库藏生锈'
+
+
 # ===== 中期护航三套(ADR-0140;难度攻略 22-34:6 级正式构筑,无需本体+极低造价+P2 稳定连胜)=====
 # 护航 = 中期临时 comp:服务真主 C(target),护到 2-7/3-1 结单退役;不适合成长型 comp(万敌/狼队/夜神/学者)。
 @dataclass(frozen=True)
