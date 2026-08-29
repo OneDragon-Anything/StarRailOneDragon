@@ -8,13 +8,6 @@ import random
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.cw_evaluate import (
-    _card_hits_target,
-    _close_factions,
-    _refresh_cap,
-    _should_save_for_interest,
-    evaluate,
-)
 from sr_od.application.currency_war.data.cw_factions import (
     FACTIONS,
     INTEREST_THRESHOLD,
@@ -60,6 +53,13 @@ from sr_od.application.currency_war.kernel.cw_state import (
     iter_occupied_deployed,  # ADR-0392 helper 导入
     sell_refund,
     simulate,
+)
+from sr_od.application.currency_war.strategy_v1.cw_evaluate import (
+    _card_hits_target,
+    _close_factions,
+    _refresh_cap,
+    _should_save_for_interest,
+    evaluate,
 )
 
 if TYPE_CHECKING:
@@ -783,10 +783,12 @@ def _best_improving_action(
 
     # 影子接缝(ADR-0156,06 号束优化):开关开 → 联合行动束优先(断点跳变/同名升星链的联合
     # 价值在束内可见,贪心单动作边际天然看不见);None/异常 → 落回下方贪心(现状栈,零改)。
-    from sr_od.application.currency_war.cw_bundle import BUNDLE_SEAM_ACTIVE
+    from sr_od.application.currency_war.strategy_v1.cw_bundle import BUNDLE_SEAM_ACTIVE
     if BUNDLE_SEAM_ACTIVE:
         try:
-            from sr_od.application.currency_war.cw_bundle import bundle_select
+            from sr_od.application.currency_war.strategy_v1.cw_bundle import (
+                bundle_select,
+            )
             _bundle = bundle_select(state, config, faction_priority, target_comp)
             if _bundle:
                 log.info('[cw][bundle] 束选择:%s(交互项联合价值)',

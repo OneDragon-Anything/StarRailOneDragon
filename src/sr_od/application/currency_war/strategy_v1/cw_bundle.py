@@ -94,8 +94,8 @@ def bundle_select(state: GameState, config, faction_priority: list[str],
 
     关交互项(interactions=False)→ 返回最优**单买**(与贪心同参对拍锚点)。
     """
-    from sr_od.application.currency_war.cw_evaluate import evaluate
-    from sr_od.application.currency_war.cw_plan import _concentration_delta
+    from sr_od.application.currency_war.strategy_v1.cw_evaluate import evaluate
+    from sr_od.application.currency_war.strategy_v1.cw_plan import _concentration_delta
     base = evaluate(state, config, faction_priority, target_comp)
     # 单买 delta(贪心同口径:eval 差 + 集中度项)
     singles: list[tuple[float, object]] = []

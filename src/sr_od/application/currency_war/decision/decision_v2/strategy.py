@@ -28,7 +28,6 @@ from __future__ import annotations
 from typing import Literal
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import cw_plan
 from sr_od.application.currency_war.decision.cw_strategy import (
     CwStrategy,
     StrategySession,
@@ -112,6 +111,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellDeployed,
     simulate,
 )
+from sr_od.application.currency_war.strategy_v1 import cw_plan
 
 #: 谷底回滚线(点6:转型中遭遇单场掉血 >15 → 回滚一件最弱替换位;
 #: 与点4 报警线 20/30 分层并存——15 管转型期单场,20/30 管全局累计)

@@ -260,12 +260,12 @@ def _refresh_cap(state: GameState, hp_threshold: int = HP_DANGER,
     # 影子安全:try/except 静默回退(判决不可用 → cap 原值); verdict amend/abandon → cap 压 0
     # (搜牌窗该停 —— 线活但附着计划该改);判决 hold → 原值。证据 = 时间线掉队(p(t) 曲线)。
     try:
-        from sr_od.application.currency_war.cw_line_tribunal import (
+        from sr_od.application.currency_war.strategy_v1.cw_line_tribunal import (
             LineHypothesis,
             timeline_lag_lr,
             verdict,
         )
-        from sr_od.application.currency_war.cw_progress_curves import (
+        from sr_od.application.currency_war.strategy_v1.cw_progress_curves import (
             expected_curve_for_carry,
         )
         if target_comp is not None and target_comp.plaza_carry:
