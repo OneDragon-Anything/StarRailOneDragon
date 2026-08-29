@@ -190,12 +190,12 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
 
 
 class BuyShopCards(SrOperation):
-    """备战阶段:开商店 → ``plan`` 驱动买牌/升等级 → 关商店。
+    """备战阶段:开商店 → 决策驱动买牌/升等级 → 关商店。
 
-    接战术层 ``cw_plan.plan``(阶段键控 eval + 硬门贪心 + 蒙特卡洛 D牌):OCR 读真实
-    ``gold/level/round/plane/board/shop`` → ``plan`` → 执行返回的 ``BuyCard``/``LevelUp``。
+    接战术层 ``match.strategy.decide_prep``(DecisionV2Strategy 四层:候选→过滤→评分→仲裁):
+    OCR 读真实 ``gold/level/round/plane/board/shop`` → 执行返回的 ``BuyCard``/``LevelUp``。
 
-    v1 接线范围(2026-08-03,见 ``docs/develop/currency_war/strategy/05_observation.md``):
+    接线范围(见 ``docs/develop/currency_war/strategy/05_observation.md``):
     - 执行 ``BuyCard``(点牌)/ ``LevelUp``(点「购买经验」)/ ``RefreshShop``(点「刷新」,两阶段 plan)。
     - **跳过** ``DeployMove`` —— deploy 走 ``DeployBench``(deploy-all,游戏按等级封顶;
       避开 plan 的 bench_idx→物理槽映射复杂度)。

@@ -16,7 +16,7 @@
   单一源 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
-供 ``cw_plan._refresh_expected_delta`` 的 D牌蒙特卡洛用(替代 ``_sample_shop`` 粗近似):
+供 D 牌蒙特卡洛估值用(替代粗近似采样):
 当期望刷新次数 × 刷新成本 < 买到目标牌的收益时才值得 D。
 """
 from __future__ import annotations
@@ -91,8 +91,8 @@ def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
 
 
 # 轮岗事件概率:生产 20% 决策行(361/1806,replay 2026-08-24 批㉓ F4)带轮岗翻倍
-# 概率条真值 → sim 每备战期以本概率掷轮岗事件(ADR-0286;机制 = cw_plan r77
-# 接线声明:投资环境轮岗每备战阶段随机翻倍一档费用概率,概率条直接印在商店上)。
+# 概率条真值 → sim 每备战期以本概率掷轮岗事件(ADR-0286;机制 = 投资环境轮岗
+# 每备战阶段随机翻倍一档费用概率,概率条直接印在商店上)。
 ROTATION_CHANCE: float = 0.2
 
 

@@ -164,9 +164,9 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
     """
     if state.level >= 10:
         return False
-    # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):committed 显式传参——None=挂账层旧口径
-    # (读 GameState 双轨标志,cw_plan.plan 内部消费面暂留,删除点=买层接管批);
-    # step 级调用方(level_up_gate 经 cw_plan.level_up_gate 透传)从
+    # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):committed 显式传参——None=旧口径
+    # (读 GameState 双轨标志;v1 消费面已随 strategy_v1 退役删除,ADR-0477);
+    # step 级调用方(kernel.cw_deploy_seat.level_up_gate 透传)从
     # prep_brain.committed_from 取权威值传入,堵「装配边界漏回填双轨标志 →
     # 缺省 False → committed 恒 True → fresh 帧按已定型激进化放升级」的病理。
     if committed is None:
@@ -333,8 +333,7 @@ def get_node_goal(plane: int, round_num: int, *,
 
     三档 spend_mode 与决策核同源:level/adaptive/interest 的判据单一址
     = 本模块两接缝(schedule_upgrade/refresh_ev_budget,期 0b 自
-    decision_v2.economy_cycle 下沉,R4)——本函数是其标量投影(原 DP
-    接缝形状,消费方 cw_evaluate/cw_plan 接口零改动);'release' 档
+    decision_v2.economy_cycle 下沉,R4)——本函数是其标量投影;'release' 档
     不经本函数(帧级态,单一源=decision_v2.posture_release 经 session
     通道)。
     """

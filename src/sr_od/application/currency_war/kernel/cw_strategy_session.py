@@ -68,9 +68,9 @@ class StrategySession:
     # 兼容残留——读点已归零(grep 守卫锁),写端(老栈 update_target/
     # shop 循环态/回放恢复)随老栈退役退役批(ADR-0466/0467/0469) 清除。
     dual_track_phase: bool = False
-    # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,plan 路径
-    # 1700/1706 行 None 实证 → boss 判定(cw_plan boss_spend/cw_evaluate 两处)全死码。Director 在
-    # shop 关态 heavy 读到时写此;shop.py 喂 plan 前拷入 —— 仿 last_hp 模式)。
+    # 最近 node_type 真值(r7 review P0-①:商店开态帧节点行被遮 → read_node_type 恒 None,
+    # boss 判定全死码实证。Director 在
+    # shop 关态 heavy 读到时写此;shop.py 喂决策前拷入 —— 仿 last_hp 模式)。
     last_node_type: str | None = None
     # r265:节点行 current 槽的识别类型(read_node_sequence: Hu 模板+OCR 标签,
     # 备战画面权威源)——prep_director 每次备战读节点行时写;battle_loop

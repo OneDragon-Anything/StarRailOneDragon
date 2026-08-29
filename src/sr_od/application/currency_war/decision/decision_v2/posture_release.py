@@ -27,7 +27,7 @@
 | 来源 | 语义 | 值 |
 | release 溢余预算 | 必须花的下界(地板) | g−R*(折刷数÷刷价) |
 | 排程预算 refresh_ev_budget | 预算核授权可刷上界(连续刷数,值域 [0,6]) | economy_cycle.refresh_ev_budget |
-| plan 层 _refresh_cap | 评分层可刷上界(自带 HP-gate 与档金表) | cw_evaluate._refresh_cap |
+| 评分层可刷上界 | 自带 HP-gate 与档金表 | kernel.cw_economy 档金表 |
 合并规则:FLIP 未命中帧维持现状(许可取交);FLIP 命中帧 release 预算覆盖
 ``budget = max(义务, 预算×刷价)``,_refresh_cap 的 HP-gate 让位
 (血量维度已由 FLIP 谓词评估,同一维度只评一次防双主),其档金表仍作刷价
@@ -55,10 +55,8 @@ slot 守卫与 rush_level 的同轮裁决(DESIGN §②规则1-3):
 ``NodeGoal.spend_mode='release'`` 不经 v1 投影(帧级态,单一源=本模块经
 session 通道;预算核投影只产 level/adaptive/interest);FLIP 是
 带 latch 的帧级态,不进投影纯函数(否则同轮多次查询随 gold/hp 快照
-翻转,且绕开唯一 latch 所有者造第二判定源)。v1 栈两消费点
-(``cw_evaluate._economy_mode_for``/``cw_plan._maybe_sell_for_interest``)
-不在活决策路径上(活栈 ``DecisionV2Strategy.decide_prep`` 全量覆写
-default 栈),其 release 档映射已删。
+翻转,且绕开唯一 latch 所有者造第二判定源)。v1 栈消费点已随
+strategy_v1 退役删除(ADR-0477;其 release 档映射随本体消亡)。
 """
 from __future__ import annotations
 

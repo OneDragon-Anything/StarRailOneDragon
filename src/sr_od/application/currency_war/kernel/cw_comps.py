@@ -16,7 +16,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
    反重力皮靴对昼神阿雅(需 2 靴)是命脉、对别的 comp 不一定;正当防卫词缀对万敌燃血是利、对阿雅是克。
 2. **debuff 可能是 buff** —— 同一词缀对不同阵容方向相反(mechanics_fit 双向:counter 降 + synergy 升)。
 3. **COMP_LIBRARY 多维打分 + 运行时按场面选** —— 不锁死一套,按成型难度/boss/环境/词缀灵活选易成型又够强的。
-4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy/cw_plan(ADR-0145 拆分))。
+4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy,ADR-0145 拆分)。
 
 **核心/弹性羁绊二分(ADR-0152)**:``factions`` = 核心羁绊(成型判定);``flex_factions`` = 弹性次要
 (plaza 实证「核心保证四列车即可,其他自由搭配」—— 板朝 flex 铺不罚,env/策略亲和照吃)。
@@ -431,7 +431,7 @@ def skeleton_factions() -> set[str]:
 
     plaza 实战开局组合(「3仙舟2DOT」「2dot2学者」「2贝洛伯格」)不是背出来的,是判据筛出来的:
     羁绊最低激活档 ≤3 人 **且** ≤2 费成员 ≥2 个(便宜+快激活+有人可买)。从 FACTIONS/CHARACTERS
-    注册表派生(单一真相源,版本更新自动传导);评估层(cw_evaluate.TRANSITION_FACTIONS)消费。
+    注册表派生(单一真相源,版本更新自动传导);过渡判据(kernel.cw_transition)消费。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_factions import FACTIONS

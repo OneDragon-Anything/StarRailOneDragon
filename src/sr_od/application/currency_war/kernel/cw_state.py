@@ -1,6 +1,7 @@
 """货币战争 策略状态模型(GameState + Action + 前瞻 simulate)。
 
-策略采用「评估函数 + 贪心改进」架构(见 cw_evaluate.evaluate / cw_plan.plan):
+策略采用「评估函数 + 贪心改进」架构(v2 决策链 = decision_v2 四层:
+候选生成→硬过滤→板面评分→预算仲裁;判据单一源 = kernel):
 - evaluate(state) 给局面打分(羁绊/经济/站位/角色质量);
 - 决策在硬规则门内,贪心选 eval 提升最大的动作;前瞻用 simulate(state, action)。
 
@@ -96,7 +97,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 
 # 保血阈值(策略校准参数,ADR-0203/0204 从 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
 # **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
-HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;= cw_evaluate.HP_DANGER 同值,语义「安全地板」)
+HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;语义「安全地板」,kernel 单一源)
 DIFFICULTY_HP_TABLE: dict[str, int] = {
     "A1": 40, "A2": 40, "A3": 40, "A4": 40,
     "A5": 45, "A6": 50, "A7": 52, "A8": 55,
@@ -258,7 +259,7 @@ class GameState:
     def max_units(self) -> int:
         """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;封顶 10(4前+6后)。
 
-        14 个消费点(cw_plan/cw_evaluate/cw_events)经本单点收口——cap 接线只改此处即全接。
+        全部消费点(decision_v2/kernel/operations)经本单点收口——cap 接线只改此处即全接。
         deploy_cap < level(防抖漏网噪声)视为不可信,兜底 level。
         """
         base = (self.deploy_cap

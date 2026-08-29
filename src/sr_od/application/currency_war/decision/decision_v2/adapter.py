@@ -12,7 +12,7 @@ DIRECTOR_ADAPTER_DESIGN.md``;三映射面中 ``snapshot_to_obs``/``decision_stat
 含义务清单四字段(dual_track_phase/active_strategies/equips/refresh_probs)
 的 session 显式注入——``active_strategies`` 注入即修复现役 ``_pseudo_state``
 漏拷裂缝(消费点 = cw_intention._direct_line_qualified /
-cw_economy.level_up_gate / cw_plan._sample_cost),该修复是相对现役的预期
+cw_economy.level_up_gate 语义链),该修复是相对现役的预期
 行为差,归对拍已知合法差异白名单。``action_to_atomop`` 的 AtomOp 契约无
 参数字段:op_key 携参数指纹(幂等/屏蔽键粒度 = 动作类型+参数)。
 
