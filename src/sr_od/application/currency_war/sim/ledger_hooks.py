@@ -17,7 +17,8 @@ from sr_od.application.currency_war.telemetry.query import (
     read_jsonl,
 )
 from sr_od.application.currency_war.telemetry.schema import RunSummary, append_jsonl
-from sr_od.application.currency_war.telemetry.state import get_recorder, log
+from sr_od.application.currency_war.telemetry import state as _telstate
+from sr_od.application.currency_war.telemetry.state import log
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
 # 写端三路径:① 3c 回大厅(正常终局 win/loss);② 迁移审计 w75(git 历史) after_operation_done
@@ -92,7 +93,7 @@ def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list
 
     returns 本次补写的 run_id 列表(已 summaried 的不重复;无 outcomes 的跳过)。
     """
-    d = Path(replay_dir) if replay_dir is not None else get_recorder().replay_dir
+    d = Path(replay_dir) if replay_dir is not None else _telstate.get_recorder().replay_dir
     if not (d / 'outcomes.jsonl').exists():
         return []
     known = _runs_summarized(d)
@@ -103,7 +104,7 @@ def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list
         if rid and rid not in known and rid not in _seen:
             _seen.add(rid)
             ids.append(rid)
-    rec = get_recorder()
+    rec = _telstate.get_recorder()
     recovered: list[str] = []
     for rid in ids:
         summary = build_recovered_summary(d, rid)
@@ -205,7 +206,9 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
       与逐局检查正交——它是「分母完整性」,先于一切逐局判读)。
     """
 
-    from sr_od.application.currency_war.sim.checks.ledger import check_coldstart_seed_squander
+    from sr_od.application.currency_war.sim.checks.ledger import (
+        check_coldstart_seed_squander,
+    )
     lines: list[str] = list(check_summary_write_path_coverage(replay_dir))
     # ADR-0260:engine_seed=P1 未持有引擎件放行通道(v2 栈
     # [line_v2/decision_v2] 合法词)

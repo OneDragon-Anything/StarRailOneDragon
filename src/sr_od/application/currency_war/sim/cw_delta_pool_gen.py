@@ -414,10 +414,10 @@ def regenerate_snapshot(src_dir: Path | None = None,
         raise RuntimeError(f'池为空: {src} 无可配对样本(decisions 板深 × outcomes 差分)')
 
 
-        from sr_od.application.currency_war.sim.pool import (
-            _SAMPLER_VERSION,
-            pool_fingerprint,
-        )
+    from sr_od.application.currency_war.sim.pool import (
+        _SAMPLER_VERSION,
+        pool_fingerprint,
+    )
     meta['sampler_version'] = _SAMPLER_VERSION
     fp = pool_fingerprint(pool)
     meta['fingerprint'] = fp

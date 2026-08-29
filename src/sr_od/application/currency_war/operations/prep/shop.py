@@ -841,6 +841,11 @@ class BuyShopCards(SrOperation):
                                     and _gold_after is not None
                                     and _gold_after == _pre_gold):
                                 with contextlib.suppress(Exception):
+                                    # 遥测模块须显式别名:裸 `state` 在本域是
+                                    # GameState 变量,期 6 U3 消费面重写曾把
+                                    # telemetry.state 误绑到它(AttributeError
+                                    # 被 suppress 吞掉 → 留证/执行事实静默断流)
+                                    from sr_od.application.currency_war.telemetry import state as _cw_tel
                                     _free_shot = self.save_screenshot(
                                         prefix='free_refresh_proc')
                                     # 局部 import:仅本证据段使用,不占模块级命名面
@@ -850,7 +855,7 @@ class BuyShopCards(SrOperation):
                                     _flag_p.parent.mkdir(parents=True, exist_ok=True)
                                     _flag_p.write_text(
                                         'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
-                                        f'run={state.current_run_id()} '
+                                        f'run={_cw_tel.current_run_id()} '
                                         f'plane={state.plane} round={state.round_num} '
                                         f'wave={total_refresh} ts={_free_dt.now().isoformat(timespec="seconds")}\n'
                                         f'前后牌面: {sorted(_pre_shop_names or [])} -> '
@@ -1189,7 +1194,10 @@ class BuyShopCards(SrOperation):
         if _plan_truncated or _refresh_attempted \
                 or _refresh_skipped is not None:
             with contextlib.suppress(Exception):
-                state.set_unit_exec_facts(
+                # 遥测模块显式别名(裸 state=GameState 变量,误绑会被
+                # suppress 吞成执行事实静默断流,同 free_refresh 留证段)
+                from sr_od.application.currency_war.telemetry import state as _cw_tel
+                _cw_tel.set_unit_exec_facts(
                     plan_truncated=_plan_truncated,
                     refresh_skipped=_refresh_skipped,
                     refresh_attempted=_refresh_attempted,
