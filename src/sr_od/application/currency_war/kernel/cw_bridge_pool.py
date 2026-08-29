@@ -73,7 +73,7 @@ BRIDGE_POOL: list[BridgeCombo] = [
     # W126/ADR-0350:dot_belog(2DOT+2贝)与 hunt3(3狼狩+2DOT)两桥已删
     # ——狼狩/贝洛伯格体系随 2026-08-24 四体系封闭裁定封存(W124-H2 债:
     # 桥池/评分层仍奖励已封存线),git 可查;贝洛伯格只在希儿系判据内
-    # 保留计数(cw_evaluate._seele_system_activated),不作独立伤害源。
+    # 保留计数(希儿系判定 `_seele_system_activated` 口径),不作独立伤害源。
 ]
 
 #: P2 桥(列车4+护盾3=40 篇验证的 P2→P3 平滑桥;r191 P2 榜)

@@ -1105,7 +1105,7 @@ def progress(comp: Comp, state: GameState) -> float:
     """comp_score 用:0.6 阵营 tier 进度 + 0.4 核心角色持有(归一化 0..1)。
 
     与 form_progress 区别:progress 加了 core_char 持有项(选 target 时评估契合用);
-    eval 驱动买牌用 target_progress(只度量剩余进度,详 cw_evaluate(ADR-0145 拆分))。
+    eval 驱动买牌用 target_progress(只度量剩余进度;详 ADR-0145 拆分史)。
     """
     fp = form_progress(comp, state)
     owned = _owned_chars(state)
