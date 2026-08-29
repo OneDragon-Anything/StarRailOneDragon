@@ -486,13 +486,19 @@ def _refresh_expected_delta(state: GameState, config, faction_priority: list[str
 
 
 
-def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
+def level_up_gate(state: GameState, target_comp: Comp | None = None,
+                  committed: bool | None = None) -> bool:
     """买经验硬门(plan()/PrepDirector 腾席链 b 步共用单一源;strategy/03(原 doc 15§5.2b) / §4.1;ADR-0129)。
 
     条件 = level<10 + 该买经验(_want_level_up)+ 存金允许(扣单击价后不破 _xp_gold_floor)。
     旧门要求 gold≥整级大金(36-60)→ 实际每击仅 4-8 金 → 过度保守 → 升级滞后(M15 live 实锤)。
     ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
     (PrepDirector: EnsureShopOpen 后重读;strategy/03(原 doc 15§5.2b) M2)。
+
+    committed 显式传参(批 4 C5 换源,ADR-0456 后设计件;蓝图 §4.3-R1):
+    None=挂账层旧口径(读 GameState 双轨标志);step 级调用方(dv 腾席链 b)
+    从 prep_brain.committed_from 取权威值传入——fresh 帧装配边界不再靠
+    双轨标志回填,堵「漏回填=恒按已定型激进化放升级」病理。
 
     **溢出金 XP 放行(r85,用户 50 金息律「>50 的每一分都无存钱意义,该升级就升级」)**:
     金 ≥ INTEREST_THRESHOLD + 单击价 时(息满溢出区),_want_level_up 的 False
@@ -502,7 +508,7 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None) -> bool:
     """
     if state.level >= 10:
         return False
-    want = _want_level_up(state, target_comp)
+    want = _want_level_up(state, target_comp, committed)
     if not want:
         # r85 溢出区放行:息满 + 够单击 + 花后不破 50 地板 → 姿态压制不拦溢出金
         return (state.gold >= INTEREST_THRESHOLD + xp_click_cost(state)

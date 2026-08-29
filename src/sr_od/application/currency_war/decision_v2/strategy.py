@@ -891,11 +891,18 @@ class DecisionV2Strategy(CwStrategy):
         # (director 环=同轮;跨轮重置)。
         if (st.level < 10 and not self._is_boss_round(st)
                 and self._cap_shortfall(st, target) >= 1):
+            # 批 4 C5 换源(蓝图 §4.3-R1):升级门 committed 从 committed_from
+            # 权威派生显式传入——fresh 帧不再依赖装配边界回填双轨标志
+            # (漏回填=恒按已定型激进化放升级的病理修复;方向=门收紧)。
+            from sr_od.application.currency_war.decision_v2.prep_brain import (
+                committed_from,
+            )
             _lk = getattr(session, 'free_bench_gold_wait', 0)
             if getattr(obs, 'state_gold_trusted', False) and obs.state is not None:
                 session.free_bench_gold_wait = 0
                 fresh = self._fresh_state(obs, session)
-                if (cw_plan.level_up_gate(fresh, target)
+                if (cw_plan.level_up_gate(
+                        fresh, target, committed=committed_from(session, fresh))
                         and self._levelup_engine_ok(fresh, session)):
                     log.info(f'[cw][prep] 腾席链b:升级 lv{fresh.level} gold={fresh.gold}(cap+1 → 回 a)')
                     return LevelUp()
@@ -912,7 +919,8 @@ class DecisionV2Strategy(CwStrategy):
                 # 链 c 卖牌。零下行:LevelUp 失败被框架 fail 链兜住。
                 _stale = self._pseudo_state(obs, session)
                 _stale.level_up_cost = getattr(_stale, 'level_up_cost', None) or 4
-                if (cw_plan.level_up_gate(_stale, target)
+                if (cw_plan.level_up_gate(
+                        _stale, target, committed=committed_from(session, _stale))
                         and self._levelup_engine_ok(_stale, session)):
                     log.info('[cw][prep] 腾席链b:等待 %d 次无真值 → stale gold=%s 试升级'
                              '(cap+1 破满席;失败自然落链 c)',

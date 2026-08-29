@@ -144,7 +144,8 @@ def clicks_to_next_level(state: GameState) -> int:
 
 
 
-def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
+def _want_level_up(state: GameState, target_comp: Comp | None,
+                   committed: bool | None = None) -> bool:
     """是否处于「该买经验」期:comp level_goal 说 level_up,或落后 NodeGoal.target_level 地板。
 
     ADR-0128(用户节奏 §7-7「不无脑停概率最高级,也不无脑推级」):comp 对**当前级**显式给了
@@ -156,6 +157,13 @@ def _want_level_up(state: GameState, target_comp: Comp | None) -> bool:
     """
     if state.level >= 10:
         return False
+    # 批 4 C5 换源(蓝图 §4.3-R1):committed 显式传参——None=挂账层旧口径
+    # (读 GameState 双轨标志,cw_plan.plan 内部消费面暂留,删除点=买层接管批);
+    # step 级调用方(level_up_gate 经 cw_plan.level_up_gate 透传)从
+    # prep_brain.committed_from 取权威值传入,堵「装配边界漏回填双轨标志 →
+    # 缺省 False → committed 恒 True → fresh 帧按已定型激进化放升级」的病理。
+    if committed is None:
+        committed = not getattr(state, 'dual_track_phase', False)
     # ADR-0149 P1 追级抑制(评审R3):息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
     # 买经验 —— M22 r7-r9 金≤35 全程追级零息病理)。⚠️ 语义边界(M31 实证修正):只拦「攒金
     # 追级」(金 < 单击价+10 = 连一次有效点击都做不了还想攒),**金够单击+保命地板(10)放行** ——
