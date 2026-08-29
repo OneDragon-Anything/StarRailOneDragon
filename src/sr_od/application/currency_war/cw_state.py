@@ -127,19 +127,19 @@ class BenchChar:
     faction: str = "?"   # 阵营
     star: int = 1        # 星级
     position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    # Sequence(批 3 W639:TurnState 快照拷贝侧固化为 tuple;session/state
+    # Sequence(快照拷贝批(.debug/temp/currency_war/w639_batch4_inventory/):TurnState 快照拷贝侧固化为 tuple;session/state
     # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
     # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
     equips: list[str] | tuple[str, ...] = field(default_factory=list)
 
 
 def snapshot_copy(bc: BenchChar) -> BenchChar:
-    """TurnState 快照语义的元素拷贝(W639 C 落码):浅拷贝 + equips 固化
+    """TurnState 快照语义的元素拷贝(快照拷贝落码(出处 w639_batch4_inventory/)):浅拷贝 + equips 固化
     为 tuple——视图/快照帧与 session.tracked_*(就地写端=shop.py
     mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
     对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
-    成本已量化(W639):每次 decide_prep ~19 元素 ×6 字段 <20µs,
-    占帧预算 <0.1%。隔离锁=test_cw_w633_migration_b3。"""
+    成本已量化(w639_batch4_inventory/):每次 decide_prep ~19 元素 ×6 字段 <20µs,
+    占帧预算 <0.1%。隔离锁=test_cw_w633_migration_b3(迁移哨兵)。"""
     from dataclasses import replace
     return replace(bc, equips=tuple(bc.equips or ()))
 
@@ -225,7 +225,7 @@ class GameState:
     match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
     shop_locked: bool = False                # 商店是否锁定
-    dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;批 2 起值源 = cw_intention 权威派生经装配边界回填,读端 committed_from)
+    dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;方向层接管起值源(ADR-0465) = cw_intention 权威派生经装配边界回填,读端 committed_from)
     focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(update_target 写入;evaluate 消费)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
