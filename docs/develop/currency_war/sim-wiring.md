@@ -1,7 +1,7 @@
-# sim 接线对照表(GameState ↔ cw_sim)
+# sim 接线对照表(GameState ↔ sim 引擎)
 
 > as-built 存量清查(2026-08-24,批 B 件3):GameState 36 个字段在
-> P1 模拟器(`cw_sim.simulate_p1`)中的接线状态,三档归类 + 逐字段
+> P1 模拟器(`engine_p1.simulate_p1`)中的接线状态,三档归类 + 逐字段
 > 一行。用途:新字段的「三消费面」检查(策略/遥测/sim 代理,ADR-0219
 > 纪律)以此为底账;改 sim 接线时更新对应行。
 >
@@ -134,3 +134,4 @@ JSON 快照重放)。
   时胜率 = ``node_win_p``(n=192,~0.05),不再随成型度 rung 变化;
   「大胜 boss」幅度未建模——hp 类 A/B 方向可信、点值 ±30% 浮动。
   主路径(Δ池)boss 深度桶采样不变。
+
