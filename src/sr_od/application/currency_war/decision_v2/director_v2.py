@@ -28,6 +28,7 @@ from sr_od.application.currency_war.decision_v2.contracts import (
     Decision,
     Defer,
     Snapshot,
+    require_schema_version,
 )
 
 if TYPE_CHECKING:
@@ -129,6 +130,11 @@ class DirectorV2:
             if self._steps > self.MAX_STEPS:
                 self._p.force_battle()
                 return LoopOutcome(LoopOutcomeKind.BATTLE_FORCED, '步数预算耗尽')
+
+            # —— schema_version 执行点(唯一指定写入点,契约
+            # require_schema_version):版本不匹配显式抛错,禁静默回退。
+            # 入口快照与本环内全部重观察结果都流经环顶,单查点全覆盖。
+            require_schema_version(snapshot)
 
             # —— 分类可信度门(W583 Schema §三):非 confident 不进 decide,
             # 有界重试(重观察)→ 耗尽 → 留证停机接口位。分类错误 = decide 的

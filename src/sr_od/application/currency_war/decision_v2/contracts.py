@@ -23,13 +23,60 @@
 """
 from __future__ import annotations
 
+import copy
+import dataclasses
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import Any
 
 from sr_od.application.currency_war.cw_state import BenchChar, ShopCard
 
 #: 快照 Schema 版本(字段只增不改删,废弃字段走两版过渡;不匹配显式报错,
 #: 替代静默回退——接口版本化决策,设计审计报告 §三.8)。
 SNAPSHOT_SCHEMA_VERSION = 1
+
+
+class SnapshotSchemaVersionError(ValueError):
+    """快照 ``schema_version`` 与契约当前版本不匹配(显式报错,禁静默回退)。
+
+    语义改判(字段含义变化而非字段集变化)形状上不可见,唯一防线 = 改判
+    必须动版本号;消费侧版本守卫拒绝旧语义快照,把静默错变成启动即炸。
+    """
+
+
+def require_schema_version(snapshot: Snapshot) -> None:
+    """schema_version 执行者:消费侧进入 decide 循环前必须调用。
+
+    「版本不匹配显式报错」不能停留在注释纪律——唯一指定执行点 =
+    DirectorV2 环顶(快照 → decide 的唯一框架入口);本函数即该纪律的
+    代码化,供执行点与测试直调。
+    """
+    if snapshot.schema_version != SNAPSHOT_SCHEMA_VERSION:
+        raise SnapshotSchemaVersionError(
+            f'快照 schema_version={snapshot.schema_version} != 契约版本 '
+            f'{SNAPSHOT_SCHEMA_VERSION}:拒绝消费(字段只增不改删;语义改判'
+            f'必须动版本——旧策略按旧语义读新快照是静默错)')
+
+
+def derive_snapshot(snap: Snapshot, **changes: Any) -> Snapshot:
+    """显式快照变换通道(唯一合法派生/覆写入口)。
+
+    快照是 frozen + 只读容器的纯数据值:框架派生/覆写(如「bench 满警告」
+    派生帧)必须经本函数得到新实例。``dataclasses.replace`` 对 frozen 本身
+    合法,禁的是绕过本通道内联调用——那会让容器拷贝纪律失守(派生帧与原帧
+    共享可变元素)。未显式覆写的容器字段做深拷贝,派生帧与原帧元素互不共享。
+    """
+    base: dict[str, Any] = {
+        'bench': tuple(copy.deepcopy(b) for b in snap.bench),
+        'deployed': tuple(copy.deepcopy(d) for d in snap.deployed),
+        'shop_cards': (tuple(copy.deepcopy(c) for c in snap.shop_cards)
+                       if snap.shop_cards is not None else None),
+        'board': (MappingProxyType(dict(snap.board))
+                  if snap.board is not None else None),
+    }
+    base.update(changes)
+    return dataclasses.replace(snap, **base)
 
 
 @dataclass(frozen=True)
@@ -85,13 +132,32 @@ class Snapshot:
     逐字段语义/None 语义/来源/消费钩子权威表 = SCHEMA_DRAFT.md §四;此处
     注释只写「权威表之外的当前值成立理由」。通用不变式:
 
-    - ``None = 本帧不确定``(观测失败/未读到),**禁兜底改值**——消费侧要
-      用保守值须显式声明(错值比 None 更毒:错值以「确定的假」进决策)。
-    - 槽位坐标系:bench/deployed 下标 = 各容器物理槽位 0-based;
-      front_occupied/back_occupied 元素 = 行内物理槽位号 0-based
-      (deployed 容器 0-3=前排/4-9=后排,与 cw_state.deployed_place 同坐标系)。
-    - frozen + 字段容器在合成侧做拷贝:快照派生/覆写必须走显式快照变换
-      (框架改写快照须可测试,禁内联 dataclasses.replace 破墙)。
+    - 空值表示总约定(消费侧按字段域取义,本条是唯一总注):``None`` =
+      本帧不确定(观测失败/未读到),**禁兜底改值**——消费侧要用保守值须
+      显式声明(错值比 None 更毒:错值以「确定的假」进决策);可选容器
+      字段(board/shop_cards)``None``=未读、空容器=观测真值(board 空
+      mapping=真清空);序列观测字段(spheres/boxes/tomes)空元组=「无,
+      观测事实非失读」。
+    - 槽位坐标系(**同一容器域内双基并存,消费 DeployMove 类动作参数时
+      防 off-by-one**):bench/deployed 的容器下标 = 各容器物理槽位
+      0-based(权威槽位,front_occupied/back_occupied 元素同系;
+      deployed 下标 0-3=前排/4-9=后排,与 cw_state.deployed_place 同
+      坐标系);元素 ``BenchChar.slot`` = **1-based 屏幕槽号**(信息位,
+      与容器下标相差 1)——动作参数取 slot、位置判据取下标。
+    - 不可变性防线:frozen + 容器字段为只读结构(bench/deployed/
+      shop_cards = tuple、board = 只读映射),合成侧对元素**深拷贝**——
+      快照与上游 GameState 无共享可变态(「snap.bench[0] is st.bench[0]」
+      恒 False,等价性用 == 断言)。快照派生/覆写唯一合法通道 =
+      ``derive_snapshot``(禁内联 dataclasses.replace 破墙)。
+    - 新鲜度维度:快照**不承载**字段级 stale 语义。理由 = 新鲜度是观察端
+      职责(现役 PrepObservation 的 heavy/light 分层归适配器),decide
+      循环每步重观察已把「heavy 可能陈旧」收敛在观察端;把帧龄数字漏进
+      纯数据契约会把观测职责转嫁给每个策略。
+    - 批③适配器映射义务清单(本快照刻意不含、适配器必须从 session/常量
+      **显式**映射,禁静默缺省——伪态拷贝漏拷持有策略集会使持有判据静默
+      失效为空,双源裂缝实证):``dual_track_phase``(双轨阶段)、
+      ``active_strategies``(持有策略集)、``equips``(持有装备池)、
+      ``refresh_probs``(刷新概率条)。
     """
     schema_version: int = SNAPSHOT_SCHEMA_VERSION
     classification: SubstateClassification = field(
@@ -110,9 +176,9 @@ class Snapshot:
     xp_progress: tuple[int, int] | None = None   # (当前, 升级所需);None=未读到
     level_up_cost: int | None = None        # None=未读到(禁兜底改值)
     # —— 单位域 ——
-    bench: list[BenchChar | None] = field(default_factory=list)
-    deployed: list[BenchChar | None] = field(default_factory=list)
-    board: dict[str, int] | None = None     # None=不可读;空 dict=真清空(严格分义)
+    bench: tuple[BenchChar | None, ...] = ()
+    deployed: tuple[BenchChar | None, ...] = ()
+    board: Mapping[str, int] | None = None  # None=不可读;空 mapping=真清空(严格分义)
     deploy_cap: int | None = None
     deploy_vacancy: int | None = None       # None=cap 未读(禁 0 兜底:0=无空位吞部署)
     free_bench_slots: int | None = None     # None=占用面读不到(禁 0 兜底:0=满 → 猜测)
@@ -122,7 +188,7 @@ class Snapshot:
     back_size: int = 6
     # —— 商店域 ——
     shop_open: bool = False
-    shop_cards: list[ShopCard] | None = None   # None=本帧未读;卡内 name=''/cost=0=该维未识别
+    shop_cards: tuple[ShopCard, ...] | None = None  # None=本帧未读;卡内 name=''/cost=0=该维未识别
     # —— 交互面域(空元组=无,观测事实非失读)——
     spheres: tuple[RewardSphere, ...] = ()
     boxes: tuple[SupplyBox, ...] = ()

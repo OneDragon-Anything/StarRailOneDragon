@@ -3517,8 +3517,14 @@ def synthesize_snapshot(st: GameState,
     - spheres/boxes/tomes 恒空元组、event_overlay=None、box_overlay_open=
       False(sim 无交互面实体,决策域在 shop 开态)。
 
-    只读保证:不 mutate ``st``(无损门含合成前后深比较反锁)。
+    只读保证:不 mutate ``st``(无损门含合成前后深比较反锁);容器字段对
+    元素**深拷贝**进快照(bench/deployed/shop_cards 元素与 board 映射均与
+    上游 GameState 无共享可变态——快照 frozen 不变式的结构性防线,快照内
+    变异不会回写上游;映射式不变,仅表示结构收紧为只读)。
     """
+    import copy
+    from types import MappingProxyType
+
     from sr_od.application.currency_war.cw_state import (
         BENCH_CAPACITY,
         DEPLOYED_FRONT_CAPACITY,
@@ -3530,8 +3536,8 @@ def synthesize_snapshot(st: GameState,
         SubstateClassification,
     )
 
-    bench = list(st.bench)
-    deployed = list(st.deployed)
+    bench = tuple(copy.deepcopy(b) for b in st.bench)
+    deployed = tuple(copy.deepcopy(d) for d in st.deployed)
     occupied = deployed_occupied(deployed)
     front = frozenset(i for i, d in enumerate(deployed)
                       if d is not None and i < DEPLOYED_FRONT_CAPACITY)
@@ -3554,7 +3560,8 @@ def synthesize_snapshot(st: GameState,
         level_up_cost=st.level_up_cost,
         bench=bench,
         deployed=deployed,
-        board=dict(st.board) if st.board_readable else None,
+        board=(MappingProxyType(dict(st.board))
+               if st.board_readable else None),
         deploy_cap=st.deploy_cap,
         deploy_vacancy=(st.deploy_cap - occupied
                         if st.deploy_cap is not None else None),
@@ -3564,7 +3571,7 @@ def synthesize_snapshot(st: GameState,
         front_size=st.front_max,
         back_size=st.back_max,
         shop_open=True,
-        shop_cards=list(st.shop),
+        shop_cards=tuple(copy.deepcopy(c) for c in st.shop),
         hp=st.hp if st.hp_readable else None,
         hp_readable=st.hp_readable,
     )
