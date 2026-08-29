@@ -35,6 +35,7 @@ from sr_od.application.currency_war.cw_horizon import NODES_PER_PLANE
 from sr_od.application.currency_war.cw_intention import (
     IntentionState,
     hoard_target_set,
+    pair_target_comp,
     update_intention,
 )
 from sr_od.application.currency_war.cw_state import (
@@ -208,6 +209,14 @@ class DecisionV2Strategy(DefaultCwStrategy):
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             update_intention(state, ist, session, registry=self.registry)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
+        # W578:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
+        # session.target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
+        # 既有 target 消费者全盲(实机断链:引擎件躺 bench、散脸占板)。
+        # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
+        # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
+        # (不越 ADR-0357 辖域)。
+        if comp is None and state.plane == 1 and ist.p1_pair:
+            comp = pair_target_comp(tuple(ist.p1_pair))
         session.target_comp = comp
         hoard = hoard_target_set(state, ist)
         session.v3_hoard = hoard

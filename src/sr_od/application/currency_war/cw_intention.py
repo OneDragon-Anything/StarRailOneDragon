@@ -523,6 +523,78 @@ def _pair_members(pair: tuple[str, ...]) -> set[str]:
     return out
 
 
+def _pair_bond_keys(pair: tuple[str, ...]) -> set[str]:
+    """体系对 → 板面羁绊键集(希儿系展开=量子同频+贝洛伯格;与
+    ``_pair_members``/``locked_faction_scope`` 同口径的键侧版本)。"""
+    bonds: set[str] = set()
+    for sys in pair:
+        if sys == SEELE_SYSTEM:
+            bonds |= {'量子同频', '贝洛伯格'}
+        else:
+            bonds.add(sys)
+    return bonds
+
+
+def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
+    """体系对 → 配方伪 comp(P1 配方锁帧的 target 载体物化;W578)。
+
+    语义:ADR-0357 把 P1 意向锁定产物定为体系对(p1_pair)后,
+    ``session.target_comp`` 在配方锁帧恒 None——部署选人/评分管线/
+    投资装备钩子等既有 target 消费者从此全盲(断线实锤:局20/22
+    引擎件躺 bench、散脸占板,decisions.target_comp 全程空串)。
+    本函数把已锁方向物化为伪 comp,写端单点 =
+    ``decision_v2.strategy.update_target``(locked_comp 空且 P1 配方锁
+    时调用);方向选择不动(ADR-0442 删除的 transition_focus 是
+    「从零选收敛方向」,与本物化不同层,非其变体复活)。
+
+    单一口径:
+    - factions = ``_pair_bond_keys`` 板面羁绊键;core_chars =
+      ``_pair_members`` 全成员(均序化,构造确定);
+    - form_tiers 分辨序:① ``cw_bridge_pool.BRIDGE_POOL`` 精确匹配
+      (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
+      单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
+      组合)→ 逐体系取桥池任一条的档 + 希儿系并 ``cw_recipe`` 量子配方
+      档(量子同频+贝洛伯格,希儿系板面键=量子系,口径同展开)。
+      ⚠️ 已知双源分歧:列车同行档桥池=2(train_dot)、cw_recipe
+      _RECIPES=4(框架单独成型档,语义不同层)——本函数取桥池;
+      分歧裁决与合流判据见 ADR(W578)。
+    - level_plan 不设:升级账退默认(升级通道的息引擎前置是独立
+      杠杆,不搭本批车)。
+    """
+    if not pair:
+        return None
+    from sr_od.application.currency_war.cw_bridge_pool import BRIDGE_POOL
+
+    bonds = _pair_bond_keys(pair)
+    tiers: dict[str, int] = {}
+    for combo in BRIDGE_POOL:
+        if set(combo.engine_bonds) == bonds:
+            tiers = dict(combo.engine_bonds)
+            break
+    else:
+        # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表);
+        # 希儿系补量子配方档后,只保留本对键(防兜底混入对外体系)。
+        for combo in BRIDGE_POOL:
+            for bond, tier in combo.engine_bonds.items():
+                tiers.setdefault(bond, tier)
+        if SEELE_SYSTEM in pair:
+            from sr_od.application.currency_war.cw_recipe import recipe_comp
+            _q = recipe_comp('量子')
+            if _q is not None:
+                tiers.update(_q.form_tiers)
+        tiers = {bond: tier for bond, tier in tiers.items() if bond in bonds}
+    if not tiers:
+        return None
+    return Comp(
+        name='过渡配方·' + '+'.join(pair),
+        factions=sorted(bonds),
+        core_chars=sorted(_pair_members(pair)),
+        form_tiers=dict(sorted(tiers.items())),
+        strength='A',
+        form_difficulty='easy',
+    )
+
+
 def detect_signals(state: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
