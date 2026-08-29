@@ -967,7 +967,7 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     return p1_exit_blood_short(state, registry)
 
 
-# ===== 血预算停手·终止分支(P1「止损转支出」;设计 W659 v2;ADR-0469)=====
+# ===== 血预算停手·终止分支(P1「止损转支出」;ADR-0470)=====
 # 机制:低血攥金等死域(守钱世界存活概率上界 S0≤ε)内,金留到死=零
 # 价值,停付防线让位给「当轮转化」支出路径。判据只用当前板面静态
 # 标定量(S0/rung/剩余节点表),不含「转支出后」假设——非循环;
@@ -977,7 +977,7 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
 
 def terminal_survival_upper_bound(state: GameState, session: StrategySession,
                                   registry: DecisionV2Registry) -> float:
-    """守钱世界存活概率上界 S0=Π_{i∈K} p_i(设计 W659 v2 §2.1;ADR-0469)。
+    """守钱世界存活概率上界 S0=Π_{i∈K} p_i(ADR-0470 §2-1)。
 
     - K = 单发穿透链:L_i ≥ hp 的剩余场(L_i=第 i 场条件败面伤害,
       一败即死 → 守钱世界必须全胜)。L_i/p_i 全走既有标定单一源:
@@ -1031,7 +1031,7 @@ def terminal_survival_upper_bound(state: GameState, session: StrategySession,
 
 def terminal_release(state: GameState, session: StrategySession | None,
                      registry: DecisionV2Registry) -> bool:
-    """P1 终止分支谓词(设计 W659 v2 §0/§2;ADR-0469):守钱世界存活
+    """P1 终止分支谓词(ADR-0470 §0/§2):守钱世界存活
     概率上界 S0≤``registry.terminal_survival_eps`` 时停付防线让位。
 
     判据链(缺一不可):
