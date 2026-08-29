@@ -1,6 +1,6 @@
 # 遥测判读方法论(看什么/怎么读/覆盖与缺口)
 
-> 实机局数据判读的细则。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。验收口径(什么算"打得好")的单一源 = strategy-work §2 + 当期进度树目标行判据;sim 批侧的数据判读见 sim-testing.md。
+> 实机局数据判读的细则。读者 = 智能体;适用于:局后判读、跨局对照、异常定位。验收口径(什么算"打得好")的单一源 = strategy-work §2 + 当期进度账本目标行判据;sim 批侧的数据判读见 sim-testing.md。
 
 ## 查询工具(遥测 CLI)
 
@@ -70,20 +70,20 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 ## 判读流程(局后必做)
 
-0. **先取尺子再看数**:验收口径取当期进度树目标行判据(没写判据=先补写再判读)+ strategy-work §2——**HP 从来不是验收指标,拿 HP 当验收=目标函数错**;
+0. **先取尺子再看数**:验收口径取当期进度账本目标行判据(没写判据=先补写再判读)+ strategy-work §2——**HP 从来不是验收指标,拿 HP 当验收=目标函数错**;
 1. `--recent N` 概览 → 锁定目标局;
 2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);
 3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
 4. **economy** 看滞留/收入核对;**supply** 看购买对错;
 5. **anomalies** 逐条定位根因(定位不了不进下一局);
 6. 按当期判读主题,直查 jsonl 补视图外维度(站位=deployed 的 position_pref;经验=xp_progress…);
-7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度树中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
+7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度账本中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
 
 ## 已知缺口(判读时心里有数)
 
 - **字段可信度分级(历史全面审计)**——可信白名单:outcomes.hp_after(conf≥0.9)/plane/round_num/progress_delta、decisions.actions/target_comp/candidate_scores、shop_snapshots 的 offer 波牌面(gold 除外)、sess_*/v2_* 快照族、obs_conflicts。**历史脏区(修复前的旧数据)**:node_type 三源混写(英文 token/中文/旧兜底并存,后统一中文)、中止局无 runs 行、refresh 快照 gold 是算的(非真读)、首轮的 node_type 恒「普通战斗」、level 非单调偶发、board_before 是阵营人次非板深(多标签角色重复计)。判读旧局时这些字段降权。
 - **视图缺口**:上表「无」标记——按「新复盘需求=新视图」纪律渐进补,别写一次性脚本。
-- **采集缺口→接线状态(历次迭代已补 5 项)**:active_env/plane_bosses/enemy_affixes(read_game_state 尾部 session→state 统一回写,注入点单一、两策略同源)、megastar_char/partner_char(handler 选择时落 session.chosen_*,同处回写)。**仍缺 reader 的 2 项**:plane_modifiers/shop_locked(观察基建未建,非回写问题,记进度树推进)。streak 一直是接好的(恒 0 是结算真值,非接线缺)。这些维度的复盘暂用 log/结算屏侧数据兜底。
+- **采集缺口→接线状态(历次迭代已补 5 项)**:active_env/plane_bosses/enemy_affixes(read_game_state 尾部 session→state 统一回写,注入点单一、两策略同源)、megastar_char/partner_char(handler 选择时落 session.chosen_*,同处回写)。**仍缺 reader 的 2 项**:plane_modifiers/shop_locked(观察基建未建,非回写问题,记进度账本推进)。streak 一直是接好的(恒 0 是结算真值,非接线缺)。这些维度的复盘暂用 log/结算屏侧数据兜底。
 
 ## 判读纪律
 
@@ -103,10 +103,10 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
   1. 先定界污染窗口(从采集 bug 引入的第一局起,不是发现日);
   2. 判修复/删除——真值可从别的源重算(如 decisions 逐轮行重算终值/日志回填)→ 修复;真值从未被捕获 → 删除;判不了先隔离标注,别在判读里裸奔;
   3. 派生物必须再生(replay 语料变了 → Δ 池快照重跑生成器、依赖它的 sim 基线作废重记);
-  4. 留证≠留语料(事故证据 = 日志/截图/sentinel 保留;删的是分析语料行;删除动作与理由记进度树);
+  4. 留证≠留语料(事故证据 = 日志/截图/sentinel 保留;删的是分析语料行;删除动作与理由记进度账本);
   5. 防再犯——修复落写端 schema,别靠一次性手工回填(手工回填漏网 = 下一轮伪值)。
   动手前先核语义:`loss+final_hp=100` 可能是放弃局合法值(中断保留当前 HP),不是伪值——把合法数据当脏数据删,比留着脏数据更糟。
 
 ## 反例论据(为什么判读纪律这么严)
 
-历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读流程与跨局对照纪律每条都有对应的实盘反例(存档于 design/decisions/ 与进度树历史)。
+历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读流程与跨局对照纪律每条都有对应的实盘反例(存档于 design/decisions/ 与进度账本历史)。

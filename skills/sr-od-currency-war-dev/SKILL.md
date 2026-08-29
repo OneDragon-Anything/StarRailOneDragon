@@ -1,6 +1,6 @@
 ---
 name: sr-od-currency-war-dev
-description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-gameplay-automation,通用任务树/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
+description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-gameplay-automation,通用任务账本/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
 ---
 
 # 货币战争开发·维护·自主推进
@@ -22,7 +22,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | ADR / as-built 维护 | §文档同步(三同步) | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
-开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度树/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
+开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度账本/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
 ## 单一源地图(知识在哪,别造第二源)
 
@@ -45,7 +45,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | `.debug/progress/` 根下的当前活跃迭代目录(未封存)入口 `进度.md`——多迭代三层结构(迭代目录→app→三池),规范=od-dev-progress-tracking §2.5。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针;单文件超 ~800 行即触发归档整理 |
 
-分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度树,一律不进共享文档。**
+分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度账本,一律不进共享文档。**
 
 ## 文档同步(行为变更三同步)
 
