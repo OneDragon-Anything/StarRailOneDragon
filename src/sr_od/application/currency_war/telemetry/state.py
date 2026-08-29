@@ -65,7 +65,7 @@ def set_last_supply_pick(char: str, equip: str, has_diamond: bool,
     """生产者:补给节点本轮选定并确认的选项(char/equip 读自 read_supply_options;
     refreshed=session._supply_refresh_used 时点值——刷新在确认前一轮发生,
     True=该选项来自重掷后的牌面)。
-    options(W306c):**实际识别到的逐列内容** [{char,equip,has_diamond}...],
+    options(迁移审计 w306c(git 历史)):**实际识别到的逐列内容** [{char,equip,has_diamond}...],
     列数动态探测不写死(通常 4,augment 可变 3-5);读不到选项目标路径可不传。"""
     global _LAST_SUPPLY_PICK
     _LAST_SUPPLY_PICK = {'char': str(char or ''), 'equip': str(equip or ''),

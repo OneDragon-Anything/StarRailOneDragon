@@ -43,7 +43,7 @@ def material_value(name: str) -> int:
 # ===== 拖动期望态对账(期望态层·逻辑版本)=====
 # 架构原则(用户 2026-08-28 裁决):指令发出时用纯函数从动作意图计算
 # 「执行后世界应有的增量」;动作完成后的定型帧实读逐槽对账;不一致落
-# 缺陷台账(复现升 L0,停线由 W515 分级安灯承接),一致不打扰,零决策
+# 缺陷台账(复现升 L0,停线由 迁移审计 w515(git 历史) 分级安灯承接),一致不打扰,零决策
 # 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
 # (.debug/temp/currency_war/w505_obs_audit/DESIGN.md)。
 # 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove)。
@@ -291,7 +291,7 @@ def compare_buy_expect(expect: BuyExpect,
                        deployed_read: list[BenchChar]) -> list[dict[str, str]]:
     """买牌期望态 vs 定型帧实读逐槽比对(纯函数;仅评增量槽位)。
 
-    判据(槽位级身份+星级比对,W530 同款宁缺勿造):实读中该槽无条目
+    判据(槽位级身份+星级比对,迁移审计 w530(git 历史) 同款宁缺勿造):实读中该槽无条目
     (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
     期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
     返回不一致项列表(空列表=全部可比项一致)。
@@ -332,7 +332,7 @@ def compare_buy_expect(expect: BuyExpect,
 
 
 
-# ===== 经验期望态账本(W552:XP/等级期望态对账;架构同 W536 买牌/W530 拖动)=====
+# ===== 经验期望态账本(迁移审计 w552(git 历史):XP/等级期望态对账;架构同 迁移审计 w536(git 历史) 买牌/迁移审计 w530(git 历史) 拖动)=====
 
 #: 台账 surface/kind(经验通道;复现计数按 (surface, kind, expected) 分档)。
 _XP_DEFECT_SURFACE = 'xp'

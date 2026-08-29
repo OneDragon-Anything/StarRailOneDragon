@@ -14,7 +14,7 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
 )
 from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
-# 血预算停手·终止分支账本决策位(设计 W659 v2 §5.1 R4;ADR-0469)——
+# 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
 # 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
 # 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
 from sr_od.application.currency_war.kernel.cw_investments import (

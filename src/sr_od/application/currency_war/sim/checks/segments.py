@@ -369,7 +369,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     无例外破息;
     ⑤ **刷新找牌通道**(spend.refresh>0):[3] 刷新找牌,授权面 =
     refresh_ev_budget 预算式([3] 花后保息线)/M-A 有界预算
-    (ADR-0409)/W332b 义务预算——按预算显式裁定搜索成本,破息
+    (ADR-0409)/迁移审计 w332b(git 历史) 义务预算——按预算显式裁定搜索成本,破息
     是授权语义内的代价。
     ④⑤同时把升级/刷新/买件花费分解(spend_breakdown)写进事件,
     归因不需人工分账(`w649_mutation/` B2)。
@@ -635,7 +635,7 @@ def seg_check_p1_blood_budget_levelup(rows: list[dict]) -> list[dict]:
 
 def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
     """血预算停手·末窗搜索型刷新停付(段级;设计件 12 §2.3-P1-c/§3.2;
-    ADR-0451;终止豁免改账本位判据=W659 v2 §5.1 R4;ADR-0469):P1 末窗
+    ADR-0451;终止豁免改账本位判据=迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469):P1 末窗
     (轮≥handoff_gate_min_round)∧ 血预算不足带(emergency_hp < 决策帧
     hp < P1_EXIT_BLOOD_TARGET——应急带内刷新=急救型豁免面,ALL IN 窗
     让位)出现 RefreshShop ∧ 账本终止位非真 = 搜索型停付未生效,违规。
@@ -681,7 +681,7 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
 
 
 def seg_terminal_release_ledger(rows: list[dict]) -> list[dict]:
-    """终止分支决策位一致性检查(段级;设计 W659 v2 §5.1 R4;ADR-0469)。
+    """终止分支决策位一致性检查(段级;设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)。
 
     与消费门两层分工(先例=seg_check_untrusted_hp_levelup「检查显形、
     门拒付」):门在 decision 层放行/拒付,本检查在 checks 层验「账本
@@ -737,7 +737,7 @@ def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
     .hp_decision_trusted;(False, True) 同节点沿用帧/(True, False)
     真读帧是消费门放行面(DESIGN 组3 锁),检查器同面放行不虚报)
     时出现 LevelUp 决策。与 decision_v2 消费门(discipline.blood_budget_
-    levelup_blocked,W580a)两层分工:消费门在 decision 层**拒付**
+    levelup_blocked,迁移审计 w580a(git 历史))两层分工:消费门在 decision 层**拒付**
     (不可信帧 fail-closed),本检查在 checks 层**显形**——若账本/
     回放里不可信帧仍出现 LevelUp(门旁路、账本错位、或未来合成器/
     策略变化引入不可信帧),检查器即刻命中,不依赖门被触发。

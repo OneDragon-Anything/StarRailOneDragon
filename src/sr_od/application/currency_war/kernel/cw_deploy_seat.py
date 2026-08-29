@@ -4,7 +4,7 @@
 decision_v2 腾席链(/部署/升级门)消费的判据不再经 strategy_v1 豁免边,
 统一消费本模块;strategy_v1 整桶退役后本模块是这些符号的唯一源。
 迁移为逐字符语义保持(函数体零改动,仅 import 面收拢到 kernel/data 合法向);
-等价性证据 = 平移前后同参 fuzz 对照(见 ADR-0477 与 w730 报告)。
+等价性证据 = 平移前后同参 fuzz 对照(见 ADR-0477;对照记录随迁移批存档,git 历史可溯)。
 """
 from __future__ import annotations
 
