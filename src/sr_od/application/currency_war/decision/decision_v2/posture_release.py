@@ -95,7 +95,9 @@ class ReleaseDirective:
     directed_only: bool = False
     find_ok: bool = True
     #: 义务来源(W611 判读面:''=W332b 旧臂未标注;'flip'=FLIP 义务;
-    #: 'third_path'=slot 守卫注入;'reserve_admission'=存息准入门)。
+    #: 'third_path'=slot 守卫注入;'reserve_admission'=存息准入门;
+    #: 'crisis'=危机金出口臂,ADR-0503——判读过滤若漏此值会把危机帧
+    #: 排除在 release 域统计外)。
     reason: str = ''
 
 
