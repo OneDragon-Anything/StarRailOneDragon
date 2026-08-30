@@ -361,13 +361,18 @@ def _residual_fill_deploy(
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
       docs/game/currency_war/research/proofs/p24-residual-fill-dominance.md)。
     - 显式保留集(消解互斥的本意 = 防「同一部署通道双写」):显式通道
-      **刻意**留在 bench 的件,两类:
-      ① 3合1 素材副本——同名同星副本全场计数 ≥2(合并进行中;与
-      cw_plan 卖保护/checks「第二张同名留 bench 是合法囤积」同口径);
-      ② final 买而不上件——session 持有名单(v3_hoard)在 locked/forced
-      模式的 char_targets([21] 窗口语义:羁绊组齐才替换上场;P1 过渡
-      模式(p1_pair/p1_transition/weak/fallback)的囤货集是买侧方向,
-      不构成部署保留——否则 F1 修复面被囤货全集吞掉)。
+      **刻意**留在 bench 的件,即 final 买而不上件——session 持有名单
+      (v3_hoard)在 locked/forced 模式的 char_targets([21] 窗口语义:
+      羁绊组齐才替换上场;P1 过渡模式(p1_pair/p1_transition/weak/
+      fallback)的囤货集是买侧方向,不构成部署保留——否则 F1 修复面
+      被囤货全集吞掉)。
+      「与在场(deployed)同名」的素材副本由围栏 dedup(r404-A2/5.1.7
+      在场唯一)自然 held,无需保留集;**bench 内同名对(无在场同名)
+      不保留**——3合1 合并域是全场(bench∪deployed),部署一对之一不
+      破坏合成进度,且生产 DeployBench 围栏同语义会上(首版把 bench 对
+      整对保留是过宽:642763/642795 实证 dep 停滞 4/7、5/7 而检查器
+      「可上货」口径(非在场同名)全数命中,即本缺失的 W748 重现根因;
+      cw_plan 同名对保护辖的是卖出不是部署)。
     - 补部署候选 = select_deployments(非保留 bench,行动后 deployed/board/
       cap,目标集同围栏主趟)的 up 集;与主趟同一纯函数(单一源)。
     - 统一 lag 口径:补部署后再重放围栏(输入剔除保留集——保留件是
@@ -379,32 +384,21 @@ def _residual_fill_deploy(
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
 
-    # —— 保留集:① 3合1 素材(同名同星全场 ≥2)+ ② locked 持有名单 ——
+    # —— 保留集:final 买而不上件(locked 持有名单);素材副本交围栏
+    # dedup(在场同名自然 held,见 docstring 的 W748 收窄裁决)——
     _hold_names: frozenset[str] = frozenset()
     _hoard = getattr(sess, 'v3_hoard', None)
     if _hoard is not None \
             and getattr(_hoard, 'mode', '') in ('locked', 'forced'):
         _hold_names = frozenset(
-            getattr(_hoard, 'char_targets', ()) or ())
-    _copy_counts: dict[tuple[str, int], int] = {}
-    for _d in iter_occupied_deployed(st.deployed):
-        if _d.char_id:
-            _k = (_d.char_id, int(getattr(_d, 'star', 1) or 1))
-            _copy_counts[_k] = _copy_counts.get(_k, 0) + 1
-    _occ = [(i, bc) for i, bc in enumerate(st.bench) if bc is not None]
-    for _, bc in _occ:
-        if bc.char_id:
-            _k = (bc.char_id, int(getattr(bc, 'star', 1) or 1))
-            _copy_counts[_k] = _copy_counts.get(_k, 0) + 1
+            getattr(_hoard, 'char_targets', ()) or [])
 
     def _reserved(bc: BenchChar) -> bool:
         if not bc.char_id:
             return False   # 未识别:围栏照旧上,保留集不管
-        if bc.char_id in _hold_names:
-            return True
-        return _copy_counts.get(
-            (bc.char_id, int(getattr(bc, 'star', 1) or 1)), 0) >= 2
+        return bc.char_id in _hold_names
 
+    _occ = [(i, bc) for i, bc in enumerate(st.bench) if bc is not None]
     _keep = [(i, bc) for i, bc in _occ if not _reserved(bc)]
     # residual_held = 被保留集扣下的件数(保留件不进围栏输入,故不能
     # 取 select_deployments 的 held 桶——那是围栏自身拦截,非保留集扣除)
