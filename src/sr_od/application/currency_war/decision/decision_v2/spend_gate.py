@@ -1,6 +1,6 @@
 """支出门(买侧收门,W829 v3 设计落码;策略开关生命周期第 1 态)。
 
-设计单一源 = ``.debug/temp/currency_war/w829_spend_gate_design/REPORT.md``
+设计单一源 = ``docs/develop/currency_war/prereg/w829_spend_gate_design/REPORT.md``
 v3(§1.4 判据形式化 / §3 落码规格 / §4 辖界切分);开臂判据挂账 = 同目录
 ``PREREG_v4.md``(判前锁,冻结后生效;禁悬置默认关)。
 

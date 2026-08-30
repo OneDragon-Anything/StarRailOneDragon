@@ -1,6 +1,6 @@
 """件价值模型 Phase 1(kernel 估值单一源;W831 v2 §4 落码规格)。
 
-设计单一源 = ``.debug/temp/currency_war/w831_piece_value_design/REPORT.md``
+设计单一源 = ``docs/develop/currency_war/prereg/w831_piece_value_design/REPORT.md``
 v2(§3.1 分量分解 / §3.3 可加性声明 / §4 落码规格 / §4.3 迁移表 /
 §5 判据)+ W833 轻复核三补丁(哨兵语义收敛 / Phase 1.5 对照臂 / G7 折算口径)。
 

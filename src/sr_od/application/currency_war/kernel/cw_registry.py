@@ -1271,7 +1271,7 @@ class DecisionV2Registry:
     tier_push_press_round_cap: int = 2
 
     # ===== 件价值模型 Phase 1(W831 v2 §4 落码规格;设计单一源=
-    # ===== .debug/temp/currency_war/w831_piece_value_design/REPORT.md v2
+    # ===== docs/develop/currency_war/prereg/w831_piece_value_design/REPORT.md v2
     # ===== + W833 轻复核三补丁)=====
     #: 伞开关+三消费点子旗标,生命周期第 1 态:默认关+零漂移锚
     #: (策略开关的生命周期)。权重面已标定(A=1.0/B=0.0 定谳,见
@@ -1449,7 +1449,7 @@ class DecisionV2Registry:
 
     # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
     # 生命周期第 1 态零漂移锚)=====
-    #: 设计单一源 = .debug/temp/currency_war/w829_spend_gate_design/
+    #: 设计单一源 = docs/develop/currency_war/prereg/w829_spend_gate_design/
     #: REPORT.md v3(§1.4 判据/§3 落码规格/§4 辖界切分);机制落点 =
     #: decision_v2.spend_gate(arbiter 约束链新增一节,拒因枚举
     #: d1_interest/d2_blood/d3_bench)。
