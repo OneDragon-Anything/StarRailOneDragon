@@ -233,11 +233,7 @@ class TelemetryRecorder:
                 # 写入端=spend_gate._block,伞关无写点恒 None)
                 _sg = getattr(_sess, 'v3_sg_block', None)
                 trace.sess_spend_gate_block = dict(_sg) if _sg else None
-                # 件价值·bench 预检硬门拒因计数(ADR-0497;
-                # session.v3_pv_block 透传,写入端=bench_gate_verdict,
-                # 伞关无写点恒 None)
-                _pv = getattr(_sess, 'v3_pv_block', None)
-                trace.sess_pv_bench_block = dict(_pv) if _pv else None
+                # (sess_pv_bench_block 透传已随件价值整机制删除,ADR-0497)
                 # w919 方向重估决策面观测(P1 辖域;采集失败静默跳过不炸主链)
                 _ist_live = getattr(_sess, 'v3_intention', None)
                 if int(getattr(state, 'plane', 0) or 0) == 1 \

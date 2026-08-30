@@ -34,3 +34,16 @@
 - off 零漂移:两旗标默认关,`bench_gate_verdict` 恒 None;`bench_front_full` 缺省参数对既有消费点(D3/P29 定性门)逐位不变。
 - 锁组:新锁 `test_cw_w854_bench_gate`(触发/reserve 边界/裁决序去重/让位/遥测/off 零漂移);`test_cw_w829_spend_gate` 锁 0 链序断言按锁的存在性纪律重推(spend_gate 不再是链尾,守卫先到先记语义不变);`test_cw_adr0293_calibration` 字段面/constraints/audit_matrix 回显锁同步。
 - 复验挂账:件价值 Phase 1 同格 PREREG 重验(a-only,G4/M1-L),编排者后续派;本批只声明判据。
+
+## 尾注(删码已执行,W927 批)
+
+本 ADR 与 ADR-0496 承载的件价值整机制已按策略开关生命周期第 4 态删码留档执行
+(commit 待填,本批禁 git commit)。W902 §4 删码范围表逐项清零:scoring.py 买侧
+加项块、decision_v2/piece_value.py(硬门+evaluate_piece)、registry 八个
+piece_value_* 字段与 constraints/audit_matrix 的 pv_bench_reserve 登记、遥测键
+sess_pv_bench_block(schema/recorder/sim 三处)全部删除;锁组 test_cw_piece_value
+/test_cw_w854_bench_gate 随码删,adr0293 面册反向操作(删条目)。删码安全性证明
+=零漂移:默认 registry 下 sim n=100(seeds 3,000,000..3,000,099,池指纹
+6400d5d8edeaf68d+eqg1)与删除前 HEAD 同 seed 逐位一致(证据=
+.debug/temp/currency_war/w927_pv_delete/)。终裁依据=W859 §2(delete_code_
+keep_adr0497)+W902 §4(buy 子机制活性但零疗效,54% 破息)。

@@ -57,7 +57,6 @@ battle_loop(主循环,屏幕级路由)
 | 演进引擎 | `cw_evolution` | 阵容替换通用法则:evolution_step 统一入口四步(propose→evaluate 三条件[③人口=信息位不阻断,发令枪=①∧②]→execute 整档 CompTransaction→fill 空位规则);中断恢复 pending 重校验/谷底回滚一件最弱(ADR-0319);换血保护:锁定目标件四件套(ADR-0360)+ 引擎下界守卫/末轮演进冻结(ADR-0363)+ 引擎补完守卫「拥有必上场」(ADR-0371) | [02 §10](02_comp.md) |
 | 终局意向 | `cw_intention` | 意向分层纯逻辑:信号五层/锁线撤销析取两出口(miss-N 窗口冻结逐出 / 高层信号过可达对照)/降格终局 absorbing;换线落锁前串联换线存活轮数门(C4,判据单一源 `cw_line_switch.survival_gate`);锁后只输出囤货目标集合写 v3_hoard(买侧唯一消费面,不改板上)(ADR-0319) | [02 §11](02_comp.md)+[0429](../decisions/0429-gate-v2-line-switch-wiring.md) |
 | 战术 | `kernel/cw_deploy_seat`(腾席判据+deploy 不变量)/`decision_v2`(备战四层)/`kernel/cw_junk_first`(变宝为废环境牺牲合成排序,ADR-0498) | 备战动作规划/腾席与升级门判据/环境感知合成排序 | [03](03_tactics.md) |
-| 估值 | `kernel/piece_value`(evaluate_piece 件价值单一源,Phase 1=a_activation+w_retention 标定值,ADR-0496/0497;买侧排序消费+bench 容量硬门) | 买/留/卖/合成时点共用的件价值分解与排序 | [02 §11](02_comp.md) |
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`telemetry.state`+`recorder`+`defects`(决策迹) | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |

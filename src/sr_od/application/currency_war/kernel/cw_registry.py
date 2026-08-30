@@ -1277,63 +1277,10 @@ class DecisionV2Registry:
     #: 压库豁免每帧张数上限(设计 §3④ 收口)。
     tier_push_press_round_cap: int = 2
 
-    # ===== 件价值模型 Phase 1(W831 v2 §4 落码规格;设计单一源=
-    # ===== docs/develop/currency_war/prereg/w831_piece_value_design/REPORT.md v2
-    # ===== + W833 轻复核三补丁)=====
-    #: 伞开关+三消费点子旗标,生命周期第 1 态:默认关+零漂移锚
-    #: (策略开关的生命周期)。权重面已标定(A=1.0/B=0.0 定谳,见
-    #: 两字段注释),但 W836 PREREG 主门在标定批判明「剂量不足且 B
-    #: 分量无可行标定值」→ **不开臂**,开臂判据 = B 辖域位置成本
-    #: 约束(硬门批)落地后按同格 PREREG 重验;不过则删码留 ADR
-    #: (第 4 态),禁悬置默认关。开臂翻默认时必须盘点「断言开关
-    #: 关闭行为」的锁组语义(第 3 态义务,test_cw_piece_value 每锁
-    #: 带 off 臂零漂移断言)。硬门已落码(ADR-0497,子旗标
-    #: piece_value_bench_gate_enabled 默认关),重验仍待跑 = 开臂
-    #: 判据挂账维持。
-    piece_value_enabled: bool = False
-    #: Phase 1 买侧试点子旗标(设计 §4.3 迁移表):买评分消费
-    #: evaluate_piece 的 A+B 分量作排序加项(锁定帧线外件辖域);
-    #: κ 通道零改动——W802 锁 #3 恒等式基线跨批可比性不受扰。
-    piece_value_buy_enabled: bool = False
-    #: Phase 2 留/卖侧(设计 §4.3;Phase 1 零消费点,占位声明)。
-    piece_value_keep_enabled: bool = False
-    #: Phase 2 合成时点侧(设计 §4.3;Phase 1 零消费点,占位声明)。
-    piece_value_merge_enabled: bool = False
-    #: 分量 A 权重,标定值 1.0(标定批 REPORT=
-    #: .debug/temp/currency_war/w852_weight_calibration/REPORT.md)。
-    #: 推导(数学先行):分量 A 的原值 = engine_jump_gold(e),即 e→e+1
-    #: 激活跳变的金值(ADR-0352 量纲);P20 已证 e0→1 次战边际战力为
-    #: 散件升星的 2.6-2.9 倍、辖域内排序首位——权重取 1 保持「分量值
-    #: =命题值」映射,无自由参数。数据面:sim 分量隔离(A-only,
-    #: n=200/臂)G4 满栏帧差 −0.5pp(cap +2pp)绿,无剂量病灶。
-    #: C/D/E/F 的权重字段在本 Phase 的 registry 上**不存在**(类型层
-    #: 收窄的 registry 侧半边,契约锁兜底断言面);全量权重组 Phase 2
-    #: 随全量 weight 类型引入。
-    piece_value_w_activation: float = 1.0
-    #: 分量 B 权重,标定定谳值 0.0(标定批 REPORT 同上;**非占位,是
-    #: 结论**)。标定批扫参判明:B 分量对权重的剂量响应是「全有全无」
-    #: 离散型——w_retention∈{0.05,0.2,0.4,0.7,1.0} 全部 G4 满栏帧差
-    #: ≈+10pp(cap +2pp)红、病灶②效应量 ≤6.6%(≪判前下界 30%);
-    #: 买入翻转发生在近零分候选密集带,任何非零加项都开火,权重量级
-    #: 不是可行标定维度。根因 = B 辖域缺位置成本约束(P29 持位成本 H
-    #: 未标定,「买前 bench 容量预检」硬门评估与重标挂账,见 REPORT
-    #: §硬门选项评估);挂账偿付前 0.0 是唯一两格可行值,零漂移另由
-    #: 伞旗标默认关双保险。
-    piece_value_w_retention: float = 0.0
-    #: 买前 bench 容量预检硬门子旗标(ADR-0497,件价值开臂前置件;
-    #: W852 REPORT §3 挂账偿付落码):bench 空位 ≤ 推导 reserve 时拒
-    #: 新买非合成件(经 spend_gate.bench_front_full 单一实现 reserve
-    #: 扩参;拒因进遥测 sess_pv_bench_block;与支出门 D3 链序先到先
-    #: 记零双计)。默认关 = 第 1 态零漂移;开臂判据 = W836 PREREG
-    #: 同格重验(a-only 双臂,G4/M1-L 两格)在硬门落地后重跑,不过
-    #: 则删码留 ADR(禁悬置默认关)。
-    piece_value_bench_gate_enabled: bool = False
-    #: reserve 上限扫描旋钮(缺省 2 = W852 扫描建议带 {1,2} 上沿;
-    #: reserve 本体禁拍死值,推导单一源 = piece_value.bench_reserve:
-    #: 基线 1 = P29 卡点保守禁囤阈值,开对项 = 线内 1★ 恰持 1 份的
-    #: 合成线开对数,链深 3 张的槽位需求峰值 2 − 已沉没 1)。本字段
-    #: 只截上限,下界恒 1(bench_front_full 硬不变式同款守卫)。
-    piece_value_bench_reserve_cap: int = 2
+    # (件价值模型 Phase 1 八字段(piece_value_enabled/buy/keep/merge/
+    #  w_activation/w_retention/bench_gate_enabled/bench_reserve_cap)已随
+    #  整机制定谳删除,删码留档 ADR-0496/0497;W902 终裁=活性但零疗效。
+    #  原「开臂判据挂账」随删码偿清,登记漂移不再存在。)
 
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
@@ -1505,10 +1452,8 @@ class DecisionV2Registry:
                                # 置于链尾:既有守卫先到先记,守卫已拒的
                                # 候选门不求值不产生门拒因;d3_bench 只记
                                # 「未满栏但前瞻挤占」)
-        'pv_bench_reserve',    # 件价值·买前 bench 容量预检硬门(ADR-0497;
-                               # 伞默认关=零漂移。置于 spend_gate 后:双门
-                               # 并存帧 d3_bench 先到先记,本门只记
-                               # 「未达 D3 带但 ≥ 容量−reserve」不重叠带)
+        # ('pv_bench_reserve' 已随件价值整机制删除,ADR-0497;
+        #  spend_gate 恢复链尾。)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
@@ -1621,15 +1566,14 @@ class DecisionV2Registry:
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
             # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            # ('gold', 'boss') / ('bench', 'boss') 格不含 spend_gate/
-            # pv_bench_reserve:两门在 boss 窗让位(W774⑤ 同仲裁语义)。
+            # (gold/boss 与 bench/boss 格不含 spend_gate:支出门在 boss
+            # 窗让位,W774⑤ 同仲裁语义;p1_iface_gate 已随定谳清理删除,
+            # ADR-0487;pv_bench_reserve 已随件价值整机制删除,ADR-0497)
             ('gold', 'emergency'): ('gold_floor', 'spend_gate'),
             ('gold', 'mode'): ('gold_floor', 'interest_rule', 'spend_gate'),
             ('bench', 'boss'): ('bench_capacity',),
-            ('bench', 'emergency'): ('bench_capacity', 'spend_gate',
-                                     'pv_bench_reserve'),
-            ('bench', 'mode'): ('bench_capacity', 'spend_gate',
-                                'pv_bench_reserve'),
+            ('bench', 'emergency'): ('bench_capacity', 'spend_gate'),
+            ('bench', 'mode'): ('bench_capacity', 'spend_gate'),
             # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
             # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
             ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),

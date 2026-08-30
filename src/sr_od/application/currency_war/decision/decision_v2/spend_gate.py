@@ -78,12 +78,11 @@ def bench_front_full(state: GameState,
                      reserve: int = 1) -> bool:
     """bench 挤占前瞻判据(占用 ≥ 容量−reserve;reserve 缺省 1)。
 
-    单一实现:支出门 D3 位置臂(缺省 reserve=1,占用 ≥ 容量−1)、
-    P29 囤牌加项的既有定性门(realization.p29_priority_term)与
-    件价值买前 bench 容量预检硬门(piece_value.bench_gate_verdict,
-    传推导 reserve)消费同一函数,禁第二处——这是 G4(存活挤席)
-    的直接落点。reserve 语义 = 为受保护类(合成/缺档/当轮可部署)
-    保留的空位数,推导单一源 = piece_value.bench_reserve;
+    单一实现:支出门 D3 位置臂(缺省 reserve=1,占用 ≥ 容量−1)与
+    P29 囤牌加项的既有定性门(realization.p29_priority_term)消费
+    同一函数,禁第二处——这是 G4(存活挤席)的直接落点。reserve
+    语义 = 为受保护类(合成/缺档/当轮可部署)保留的空位数
+    (件价值硬门消费点已随整机制删除,ADR-0497);
     ``reserve >= 1`` 是硬不变式(P29 卡点保守处理:占用 ≥ 容量−1
     即达禁囤阈值,reserve 再小不构成「预检」)。
     """
