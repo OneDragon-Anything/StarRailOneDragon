@@ -643,44 +643,37 @@ class PrepActionExecutor:
     # ===== 战斗域 =====
 
     def _start_battle(self) -> tuple[bool, str]:
-        """出战发射锁(两段式):常规发射 → 未落地强制激活窗口重发 → 仍败计连败。
+        """出战发射:常规发射 → 未落地原样重发(长按下) → 仍败计连败停机留证。
 
-        根因依据(两局同型停滞实证,main_server.log 备战环「强制出战失败(stall+
-        恢复试尽): 出战 click 未落地」;游戏只在前台处理鼠标输入,而前台报告
-        "已激活"时输入也可能已断——r9/r10「输入静默丢」家族):原实现失焦守卫只在
-        is_win_active=False 时补点,前台报告失真时点击落入真空,恢复链/强制出战
-        走同一死通道反复重试(每环 ~2min),直至人工 click_game(其入口先
-        active_window)解锁。治本 = 发射未落地后主动 active_window 重发(与人工
-        解锁同源),两段全败才算失败;连续多次 execute 级失败 → 停机留证
-        (防环重入僵尸循环,与 bail ping-pong 停机同款三要素)。
+        恢复语义(用户裁定 2026-08-30):禁用 active_window 激活——激活会抢占
+        用户桌面焦点,自主推进运行期不可接受,无例外;重发=同通道原样重试。
+        连续失败达限 → 停机留证(截图+flag+stop_running,与 bail ping-pong
+        停机同款三要素),根因判定交人工:留证线索=输入投递机制状态
+        (SendInput 落点 vs 真前台句柄)与游戏侧输入管线状态。
         """
         ok, detail = self._launch_attempt()
         if ok:
             self._launch_dead_reset()
             return True, detail
-        log.warning('[cw!][battle] 出战未落地(%s) → 强制激活窗口重发(输入静默丢自愈)', detail)
-        import contextlib
-        with contextlib.suppress(Exception):   # 激活失败不拦重发(与失焦守卫同 best-effort)
-            self._ctx.controller.active_window()
-        time.sleep(0.3)
+        log.warning('[cw!][battle] 出战未落地(%s) → 原样重发(长按下)', detail)
         # 重发段 press_time=0.15:人工解锁实证参数(2026-08-30 16:31 手动 click_game
         # 0.15 即生效)——输入管线半死态下短按下可能不被采样,重发放长按下加固。
         ok2, detail2 = self._launch_attempt(press_time=0.15)
         if ok2:
             self._launch_dead_reset()
-            return True, f'{detail2}(激活重发)'
+            return True, f'{detail2}(重发)'
         self._op.save_screenshot()   # 诊断存证(同 battle_prep:bug#1 drag vs overlay 挡 vs 坐标偏)
         if '未落地' not in detail2:
-            return False, f'出战失败(激活重发后): {detail2}'
+            return False, f'出战失败(重发后): {detail2}'
         escalated = self._launch_dead_escalate()
         if escalated is not None:
             return False, escalated
-        return False, f'出战 click 未落地(激活重发后仍在备战;首次: {detail})'
+        return False, f'出战 click 未落地(重发后仍在备战;首次: {detail})'
 
     def _launch_attempt(self, press_time: float = 0.1) -> tuple[bool, str]:
         """单次发射尝试:找按钮 → mouse_move+click+失焦守卫 → 轮询转移。
 
-        press_time:按下时长(秒);默认 0.1(框架 click 默认),激活重发段用
+        press_time:按下时长(秒);默认 0.1(框架 click 默认),重发段用
         0.15(人工解锁实证参数,防输入管线半死态短按下不被采样)。
         成功判据 = 备战标识消失(或未达上限警告弹出后确认完成且标识消失);
         轮询耗尽仍备战 = 未落地 → (False, detail),由调用方决定重发/失败。
@@ -777,11 +770,12 @@ class PrepActionExecutor:
             import time as _t
             from pathlib import Path as _P
             _P('.debug/temp/currency_war/launch_dead_hook.flag').write_text(
-                f'[HOOK-STOP] 出战发射连败停机(输入静默丢安全网,常驻)\n'
-                f'触发:出战 click 未落地 ×{streak}(激活重发仍败)——窗口输入通道死,\n'
-                f'激活重发自愈无效(非前台抖动,疑游戏侧输入管线挂起)。\n'
-                f'处理:1. 手动点击游戏画面确认输入是否恢复;2. 看 .debug/images/'
-                f'launch_dead_* 判画面;3. 处理完删本 flag 重启对局。\n'
+                f'[HOOK-STOP] 出战发射连败停机(常驻安全网,无激活自愈——用户裁定)\n'
+                f'触发:出战 click 未落地 ×{streak}(原样重发仍败)——根因未定,\n'
+                f'头号候选=真前台被其他进程抢占(SendInput 落点非游戏)/游戏侧输入管线挂起。\n'
+                f'取证:1. 对比 GetForegroundWindow 句柄与游戏句柄(谁在真前台);\n'
+                f'2. 手动点击游戏画面确认输入是否恢复;3. 看 .debug/images/launch_dead_*;\n'
+                f'4. 处理完删本 flag 重启对局。\n'
                 f'ts={_t.strftime("%m-%d %H:%M:%S")}\n', encoding='utf-8')
         rc = getattr(self._ctx, 'run_context', None)
         if rc is not None:
