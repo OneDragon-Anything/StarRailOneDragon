@@ -161,10 +161,11 @@ def apply_fill3(alloc: list[tuple[str, str]],
                     local_basics, t, item, key_set, core_set, set(rq)):
                 if t in core_set:
                     # 可行性守卫 > 排序轴(ADR-0502 辖域优先链):core 首选被
-                    # 守卫淘汰落次选属正常让位;debug 披露供实机挂账
-                    # 「让位事件频次与差分代价」(是否值得为 core 破例的数据)。
-                    log.debug('[cw-equip] fill3 pairing-guard yield: core=%s '
-                              'item=%s falls to next candidate', t, item)
+                    # 守卫淘汰落次选属正常让位;info 披露供实机挂账
+                    # 「让位事件频次与差分代价」的数据源(实机运行级=info,
+                    # debug 级收不到=挂账失效,审计 W922-P3)。
+                    log.info('[cw-equip] fill3 pairing-guard yield: core=%s '
+                             'item=%s falls to next candidate', t, item)
                 continue    # 该改派会触发非预期合成 → 换目标/放弃本件
             out[idx] = (t, item)
             assigned[t] += 1
