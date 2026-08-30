@@ -201,17 +201,8 @@ def _check_constraint(name: str, cand: Candidate,
         if p2_spend_auth_spend_authorized(cand, working, state, session,
                                           registry, auth):
             return None
-        # P1→P2 接口机制·③遭遇备战/④连败金流授权(W774 v2;ADR-0484):
-        # plane==1 授权帧(硬节点备战/连败金流)内授权目标买按各自预算
-        # 带放行金地板(③ 花后金≥rebirth_floor;④ 当场可上场体系件)。
-        # 本臂只做额外放行从不拒绝,False 即逐位回落既有裁决=零漂移。
-        # 升级永不在辖;p2 与本臂辖域 plane 正交,序不敏感。
-        from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
-            p1_iface_spend_authorized,
-        )
-        if p1_iface_spend_authorized(cand, working, state, session,
-                                     registry, auth):
-            return None
+        # (P1→P2 接口机制·③遭遇备战/④连败金流授权臂已随五开关定谳清理
+        # 删除,ADR-0487:W793 A/B 触发面全开火仍主判据双败,确认无效。)
         floor = _active_floor(state, session, registry)
         if cand.tag == 'o1_bench_fill':
             # W611 O1 备战空位填补(ADR-0463):逐笔花后金 ≥R*——只花
@@ -381,16 +372,6 @@ def _check_constraint(name: str, cand: Candidate,
         if p2_spend_auth_spend_authorized(cand, working, state, session,
                                           registry, auth):
             return None    # 加急层破息授权放行(预算带=保留金下限)
-        # P1→P2 接口机制·③④授权臂破息放行(W774 v2;ADR-0484):
-        # plane==1 授权帧内授权目标买破息至各自预算带(③ 花后金≥
-        # rebirth_floor;④ 当场可上场体系件溢余投)。只开门不收门,
-        # False 即回落既有 EV 裁决=零漂移;升级不辖(LevelUp 不进本分支)。
-        from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
-            p1_iface_spend_authorized,
-        )
-        if p1_iface_spend_authorized(cand, working, state, session,
-                                     registry, auth):
-            return None    # ③④授权破息放行(预算带各自单一源)
         return RejectReason('interest_rule', '', 0,
                             f'EV≤0 破息拒(V{v:.1f}-C{c}={ev:.1f},'
                             f'{working.gold}→{after})')
@@ -532,22 +513,8 @@ def _check_constraint(name: str, cand: Candidate,
                 return RejectReason('deploy_cap', 'slot', 1,
                                     f'上阵满 cap({working.max_units()})')
         return None
-    if name == 'p1_iface_gate':
-        # P1→P2 接口机制·收门面(W774 v2;ADR-0484):⑤血线三带禁令
-        # (预警带 40 禁纯囤件/应急带当轮转化豁免)+ ④触发帧纯散件不买
-        # ([31])+ ②禁无接收者的卸装。辖域 plane==1 全帧开关内;同帧
-        # 优先序 ⑤>④>③ 由 gate_blocked 内枚举序承载;boss/ALL IN 窗
-        # 豁免(既有行为零触碰)。拒绝计数=session.v3_p1_iface_blocks
-        # (R 族归因输入,协议 §3)。开关关恒 None=零漂移。
-        from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
-            p1_iface_gate_blocked,
-        )
-        _why = p1_iface_gate_blocked(cand, working, state, session, registry)
-        if _why is not None:
-            session.v3_p1_iface_blocks = getattr(
-                session, 'v3_p1_iface_blocks', 0) + 1
-            return RejectReason('p1_iface_gate', '', 0, _why)
-        return None
+    # (约束名 'p1_iface_gate' 已随五开关定谳清理删除,ADR-0487;
+    #  arbiter_matrix 检查按 constraints 清单锁,历史约束名不保留。)
     return None    # 未知约束名:放行(审计表锁名存在)
 
 

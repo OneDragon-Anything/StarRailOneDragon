@@ -552,6 +552,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         sess = session or StrategySession()
         sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
         streak = _p2_entry.streak
+        # 带符号 streak(生产口径:连胜 +/连败 −,结算「连胜×N」前缀=方向;
+        # 本地 `streak` 是收入侧无符号连胜计数,语义不同勿合并——收入分支
+        # `streak == 0 and _prev_combat_lost` 依赖无符号归零,改带符号会断
+        # ADR-0439 败轮金路径)。案 b 臂进场真值自带带符号值。
+        streak_signed = int(_p2_entry.streak or 0)
     else:
         st = GameState()
         st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
@@ -572,6 +577,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         sess = session or StrategySession()
         sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
         streak = 0
+        streak_signed = 0
+    # hp 决策可信位对齐生产真读帧口径(sim 无识别过程 = 恒真值帧;生产
+    # 真读帧两位皆 True,写入点语义 = operations/prep/shop.py `_apply_hp`
+    # 真读分支。hp_readable 本就恒 True,本位对齐后 hp_decision_trusted
+    # 读数不变,纯口径一致化零行为漂移)。
+    st.hp_trusted = True
+    # 开局帧带符号 streak 兜 0(生产备战帧 state.streak = session.last_streak,
+    # 默认 0 非 None;结算逐轮覆写见下方结算段)。案 b 臂 build_state 已带。
+    if st.streak is None:
+        st.streak = streak_signed
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
@@ -1465,6 +1480,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # ADR-0439 修正(奖励轮照发表,见收入段)。
             if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
                 streak = streak + 1 if delta > 0 else 0
+                # 带符号 streak(生产口径:连胜 +/连败 −;奖励/补给轮不动,
+                # 与无符号计数同规则)。备战帧 st.streak 恒 None 曾使 ④连败
+                # 金流与 ①连败门在 sim 成死输入(观测态补齐)。
+                streak_signed = (streak_signed + 1 if streak_signed > 0 else 1) \
+                    if delta > 0 \
+                    else (streak_signed - 1 if streak_signed < 0 else -1)
             # ADR-0439:败轮金路径的上一轮状态(败态判据与结算段一致
             # = delta<=0;奖励/补给轮不覆盖——败态跨奖励轮保留,
             # 但奖励轮收入分支不消费败态,仅下一战斗轮消费)
@@ -1475,7 +1496,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # = 结算「连胜×N」写 session(策略层 on_round_end 观测段),
             # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
             # 只存本地变量算收入,决策侧连胜响应恒盲。
-            sess.last_streak = streak
+            # 观测态补齐:改写带符号值并对齐备战帧 state.streak(生产
+            # 备战读 session.last_streak,带符号 连胜+/连败−;旧无符号
+            # 写法连败恒 0,连败侧消费面在 sim 永远读不到连败)。正值域
+            # 与旧写法逐位相同,唯一消费面差异在连败侧(补齐目标本身);
+            # v2 消费面核验:allocator._w_per_battle 负值钳 0、discipline
+            # _streak_floor streak<2 门负值不点火,均与旧 0 等价。
+            sess.last_streak = streak_signed
+            st.streak = streak_signed
             res.hp_trail.append(st.hp)
             # ADR-0362:P2 段事件用跨位面单调轮号(_ts);P1 段 _ts==rn
             # (零漂移);方向判据 P2 段=「P1 内已建立」
@@ -1627,6 +1655,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     st.equips.append(_adv)
                     _synth_events.append(_adv)
                     _equip_syntheses += 1   # `w614_sim_fidelity/` G1 合成落账
+            _duty = False
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.kernel.cw_comps import (
                     equip_allocation,
@@ -1641,6 +1670,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _occupied[(getattr(d, 'position_pref', '') or '',
                                int(getattr(d, 'slot', 0) or 0))
                               ] = list(getattr(d, 'equips', ()) or ())
+                # (②carry duty 的 sim 观测桩已随五开关定谳清理摘除,
+                # ADR-0487:谓词 p1_iface_carry_duty_active 已删;账本行
+                # p1_duty 键按披露稳定保留恒 False。)
                 _equipped_now = equip_allocation(
                     sess.target_comp, st.deployed, list(st.equips),
                     occupied=_occupied)
@@ -1709,6 +1741,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'release_budget': _round_release_budget,
                 'release_reason': _round_release_reason,
                 'piggy_reward': _round_piggy,
+                # ②carry 装备分配义务帧(键按披露稳定保留;谓词已随五开关
+                # 定谳清理删除,恒 False——历史账本字段只读口径,ADR-0487)
+                'p1_duty': _duty,
                 # 迁移审计 w146(git 历史) v3 意向状态(与生产 decisions 行同构;sim 分析批
                 # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
                 # 才能区分 unlocked/weak/locked)
@@ -1756,7 +1791,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           # +owned 余量——「开局零穿着/乱穿」检查项数据源。
                           'equipped': [{'char': w, 'equip': e}
                                        for w, e in _equipped_now],
-                          'owned_equips': list(st.equips)},
+                          'owned_equips': list(st.equips),
+                          # 观测态保真位入账本(带符号 streak + hp 可信
+                          # 两位;死输入哨兵检查 sim_streak_propagation_
+                          # live 与 replay 对拍的观测面)
+                          'streak': st.streak,
+                          'hp_readable': bool(st.hp_readable),
+                          'hp_trusted': bool(st.hp_trusted)},
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,
