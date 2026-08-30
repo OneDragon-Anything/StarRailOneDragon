@@ -867,10 +867,15 @@ class DecisionV2Registry:
     #: 危机金出口臂(ADR-0503;W907 病灶:hp≤emergency_hp 帧应急让位使
     #: release 恒 None,溢余金在死亡门口零兑换)。True=危机帧(应急带∧
     #: 溢余)产 reason='crisis' 泄息指令(预算=min(溢余,REFRESH_ROLL_CAP×
-    #: 刷价),posture 降级 tag='release');False=现行为(release 让位,
-    #: 零漂移锚)。默认关=开关生命周期第 1 态,开臂判据挂账
-    #: ADR-0503 §开臂(sim A/B 主判据+实机观察局锚)。
-    crisis_release_enabled: bool = False
+    #: 刷价),posture 降级 tag='release');False=让位现行为(release 让位,
+    #: 零漂移锚)。默认 True=开关生命周期第 3 态(开臂):开臂判据①sim A/B
+    #: 实花面通过(W917/W930 补判 on 28.33% vs off 22.00%,配对 +20/−1;
+    #: W933 病灶窗复测 on 27.20% vs off 22.00% 同向)+ 首局实机病灶复现
+    #: (复盘 g_20260831_032006 P2 r1/r2:hp≤25 持金 72/85 零兑换,病灶
+    #: 形态逐项吻合)——据此翻默认;实机观察局 ≥2(危机帧 release tag +
+    #: 实花分项账非全零 + hp 可信位)为**确认门**,非开臂门,进行中
+    #: 挂账 ADR-0503 §开臂判据(尾注)。
+    crisis_release_enabled: bool = True
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济

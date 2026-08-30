@@ -1,6 +1,6 @@
 # ADR-0503 危机金出口臂(危机态存息 posture 降级 + release 让位例外)
 
-- **Status**: accepted(默认关,开关生命周期第 1 态;开臂判据挂账 §5)
+- **Status**: accepted(默认开=开关生命周期第 3 态,2026-09-14 开臂批翻默认;判据②③实机观察局为确认门,进行中挂账见尾注)
 - **Date**: 2026-09-12
 
 ## Context(背景)
@@ -103,3 +103,25 @@ W907 sim 找问题批(`.debug/temp/currency_war/w907_sim_hunt/REPORT.md`)实证:
    (按 v3_release_spent 实际消费计,不按 sess_release_budget 记账面计;
    ADR-0426 增补二同款实机锚);
 3. 实机危机帧 hp 可信位核对(hp_trusted=True;兜底帧不触发的边界复核)。
+
+## 开臂记录(尾注,2026-09-14 开臂批)
+
+**已翻默认**:`crisis_release_enabled` 默认 False→True(开关生命周期第 1→3 态)。
+开臂依据=本节判据①(判据口径已按 W930 勘正为实花面:sim A/B on 28.33% vs
+off 22.00%,配对 +20/−1,W917 窗;W933 病灶窗 907xxx 复测 on 27.20% vs
+off 22.00%,配对 +15/−2,同向)+ 首局实机病灶复现正证据(复盘
+`g_20260831_032006` P2 r1/r2:hp≤25 持金 72/85 零兑换、alloc chosen 空,
+与 W907/W933 预测形态逐项吻合)。判据②③**不是开臂门,是确认门**,登记
+如下为「进行中」态:
+
+- **实机观察协议(进行中)**:开臂后实机对局 ≥2 局,逐局核对三点——
+  ①危机帧(overflow>0 ∧ hp≤25)出现 `sess_release_reason='crisis'` 姿态行;
+  ②实花分项账非全零,按 `sess_release_spent`(真实消费)计,不按
+  `sess_release_budget` 记账面计(遥测字段由开臂批补:recorder
+  sess_release_spent 透传;决策帧采样含轮内已花部分,跨段全额以
+  spend_ledger 对账);③危机帧 hp 可信位=hp_readable or hp_trusted 为
+  True(兜底帧不触发边界,由 `is_emergency` 的 fail-closed 守卫承载)。
+  任意一点连续不符 → 回查臂行为,必要时回退默认。
+- 判据①口径勘正(superseded 见 W917 REPORT §6.1 修正声明;最终口径=
+  W930 实花面补判):主判据=局占比 P(∃危机帧: overflow>0 ∧
+  hp≤emergency_hp ∧ v3_release_spent>0)。

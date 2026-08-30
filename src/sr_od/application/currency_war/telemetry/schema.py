@@ -260,8 +260,14 @@ class DecisionTrace:
     sess_reserve_overflow: int | None = None
     # 当轮 release 义务预算(金;0=无 release 帧或零预算结转帧)。
     sess_release_budget: int | None = None
-    # 义务来源(''/'flip'/'third_path'/'reserve_admission';判读兑现率分域)。
+    # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission';
+    # 'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏此值)。
     sess_release_reason: str | None = None
+    # 当轮 release 实际消费(金;session.v3_release_spent 透传,
+    # authorize_release_refresh 逐笔扣账的真实花销,每轮入口清零)。
+    # ADR-0503 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
+    # sess_release_budget 记账面(预算许可)不作兑现证据。
+    sess_release_spent: int | None = None
     # 位面 2 支出授权·历史数据字段(只读口径,ADR-0492 定谳清理):写入面
     # (strategy 披露键 + recorder 透传)已随机制删除,新数据恒 None;
     # 字段保留供存量 runs.jsonl 判读脚本消费。
