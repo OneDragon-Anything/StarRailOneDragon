@@ -5,32 +5,31 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 # 货币战争开发·维护·自主推进
 
-> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门);**每个域自带自己的必做 checklist**(策略改动在 strategy-work、sim 改动在 sim-testing)——开发循环轮没做完所属域的 checklist 不算完成。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读),决策依据在 `design/decisions/`。
+> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门),门指向各域 references 的主线(策略=strategy-work 流水线,sim=sim-testing 三步+边界)——没走完主线不算完成。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读),决策依据在 `design/decisions/`。
 
 ## 入口分诊(按当次任务定位;「门」=该任务的硬判据)
 
 | 当次任务 | 主节(门) | 细则 |
 |---|---|---|
-| 改策略 / 迭代算法 | strategy-work「策略改动 checklist」(判读→文档门→设计→验证阶梯→三同步) | strategy-work |
-| 出策略方案 / 策略分歧裁决 / 疑问该问谁 | strategy-work「疑问/分歧的裁决」(三滤网) | strategy-work |
-| 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据+strategy-work §2) | telemetry-reading |
+| 改策略 / 迭代算法 | strategy-work 按流水线走:改前(判读上局→读文档→定位→设计)→开关落地→验证→单帧锁 | strategy-work |
+| 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
-| sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work §4) | sim-testing |
+| sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
-| 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域 checklist 验收 | autonomous-loop |
+| 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域主线验收 | autonomous-loop |
 | ADR / as-built 维护 | §文档同步(三同步) | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
-开发循环轮从所属域的 checklist 进(分诊表路由);分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度账本/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
+开发循环轮从分诊表进,走所属域的主线;分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度账本/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
 
 ## 单一源地图(知识在哪,别造第二源)
 
 | 要什么 | 去哪 |
 |---|---|
-| **策略工作统一说明**(思路/核心骨架/改前必做/验证与单帧锁/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
+| **策略工作统一说明**(策略是什么与骨架/改前/开关落地/验证/单帧锁) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
-| **测试分层**(L1 快速集 `uv run pytest @sr-od-test/cw_quick.txt` ~3min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/` ~5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 各域 checklist 消费;策略验证阶梯单一源 = strategy-work §4 |
+| **测试分层**(L1 快速集 `uv run pytest @sr-od-test/cw_quick.txt` ~3min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/` ~5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
 | **单局复盘协议**(局终深度复盘:阅读理解→逐节点玩家对拍→位面三问;实机监控局终派单执行,45min 策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
