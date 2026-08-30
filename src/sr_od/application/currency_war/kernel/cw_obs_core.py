@@ -16,7 +16,9 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
-from sr_od.application.currency_war.obs.overlay_registry import derive_upper_screens
+from sr_od.application.currency_war.kernel.cw_overlay_registry import (
+    derive_upper_screens,
+)
 from sr_od.context.sr_context import SrContext
 
 # screen_info「货币战争-备战」(currency_war_battle_prep.yml)area 名

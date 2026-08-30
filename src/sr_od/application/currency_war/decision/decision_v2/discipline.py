@@ -739,6 +739,12 @@ def blood_budget_levelup_blocked(state: GameState, session: StrategySession,
         return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
     if not hp_decision_trusted(state):
         return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
+    if state.hp is None:
+        # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):
+        # GameState() 缺省 hp_readable=True(sim 恒真读帧约定)会骗过上面的
+        # 可信位门,但 hp=None 时停升级线无法判「线内/线外」——误放(线内
+        # 追级)与误拦(少升一级)代价非对称,按线内处理拒升级。
+        return True
     if state.plane == 2:
         return state.hp <= p2_levelup_stop_hp(registry)
     if state.plane == 1:
@@ -933,8 +939,11 @@ def terminal_release(state: GameState, session: StrategySession | None,
         return True     # 位面内触发闩(R7):邻域抖动不回退
     if plane_last_battle(state, session):
         return False    # ALL IN 窗既有豁免已让位,分支不重复辖
-    if not hp_decision_trusted(state):
-        return False    # 不可信 hp 帧 fail-closed:停付照旧
+    if not hp_decision_trusted(state) or state.hp is None:
+        return False    # 不可信/无真值 hp 帧 fail-closed:停付照旧(hp=None
+        # 会骗过可信位门——GameState() 缺省 hp_readable=True 的 sim 恒真读
+        # 约定下未观测帧 (hp, hp_readable)=(None, True),S0 判据无从算起,
+        # 误放(守钱世界误判死域)代价 > 误拦,ADR-0495 None 保守口径)
     if terminal_survival_upper_bound(state, session, registry) \
             > registry.terminal_survival_eps:
         return False
