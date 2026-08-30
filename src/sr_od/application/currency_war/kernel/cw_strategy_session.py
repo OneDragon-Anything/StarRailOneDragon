@@ -109,6 +109,11 @@ class StrategySession:
     # 游戏拒(同名在场/行限制等预检漏网的落点)→ 重试同目标 = 白烧环步(第14局 r9 藿藿
     # 5 连败实证);失败过的角色跳过,优先下一个候选(拖失败本身不消费 bench,下轮还在)。
     deploy_fail_counts: dict = field(default_factory=dict)
+    # 出战发射连败计数(prep_actions._start_battle 写;**跨环重入存活** —— 环级计数随
+    # Director 重建清零,挡不住 round_fail → 外环重入的僵尸循环)。只计「未落地」型
+    # 失败(激活窗口重发后仍不落地 = 窗口输入通道死);发射成功清零。达
+    # PrepActionExecutor.LAUNCH_DEAD_LIMIT → 停机留证(hook:cw_launch_dead)。
+    launch_dead_streak: int = 0
     # level 单调守卫(read_level OCR 间歇误读 5/6→4;等级局内只升不降,读出<上次=误读用上次)。新局默认 0。
     last_level_obs: int = 0
     # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。

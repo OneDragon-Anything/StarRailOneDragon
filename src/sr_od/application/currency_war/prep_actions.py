@@ -155,6 +155,7 @@ class PrepActionExecutor:
     BATTLE_FALLBACK: ClassVar[Point] = Point(1817, 749)   # 出战按钮兜底(同 battle_prep)
     CONFIRM_FALLBACK: ClassVar[Point] = Point(1159, 653)  # 未达上限确认兜底(同 battle_prep)
     CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 HandleDeployNotFull)
+    LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
         self._op = op
@@ -642,7 +643,43 @@ class PrepActionExecutor:
     # ===== 战斗域 =====
 
     def _start_battle(self) -> tuple[bool, str]:
-        """出战:mouse_move+click 出战 → 轮询(未达上限确认 / 备战标识消失)。失败存证(bug#1 诊断)。
+        """出战发射锁(两段式):常规发射 → 未落地强制激活窗口重发 → 仍败计连败。
+
+        根因依据(两局同型停滞实证,main_server.log 备战环「强制出战失败(stall+
+        恢复试尽): 出战 click 未落地」;游戏只在前台处理鼠标输入,而前台报告
+        "已激活"时输入也可能已断——r9/r10「输入静默丢」家族):原实现失焦守卫只在
+        is_win_active=False 时补点,前台报告失真时点击落入真空,恢复链/强制出战
+        走同一死通道反复重试(每环 ~2min),直至人工 click_game(其入口先
+        active_window)解锁。治本 = 发射未落地后主动 active_window 重发(与人工
+        解锁同源),两段全败才算失败;连续多次 execute 级失败 → 停机留证
+        (防环重入僵尸循环,与 bail ping-pong 停机同款三要素)。
+        """
+        ok, detail = self._launch_attempt()
+        if ok:
+            self._launch_dead_reset()
+            return True, detail
+        log.warning('[cw!][battle] 出战未落地(%s) → 强制激活窗口重发(输入静默丢自愈)', detail)
+        import contextlib
+        with contextlib.suppress(Exception):   # 激活失败不拦重发(与失焦守卫同 best-effort)
+            self._ctx.controller.active_window()
+        time.sleep(0.3)
+        ok2, detail2 = self._launch_attempt()
+        if ok2:
+            self._launch_dead_reset()
+            return True, f'{detail2}(激活重发)'
+        self._op.save_screenshot()   # 诊断存证(同 battle_prep:bug#1 drag vs overlay 挡 vs 坐标偏)
+        if '未落地' not in detail2:
+            return False, f'出战失败(激活重发后): {detail2}'
+        escalated = self._launch_dead_escalate()
+        if escalated is not None:
+            return False, escalated
+        return False, f'出战 click 未落地(激活重发后仍在备战;首次: {detail})'
+
+    def _launch_attempt(self) -> tuple[bool, str]:
+        """单次发射尝试:找按钮 → mouse_move+click+失焦守卫 → 轮询转移。
+
+        成功判据 = 备战标识消失(或未达上限警告弹出后确认完成且标识消失);
+        轮询耗尽仍备战 = 未落地 → (False, detail),由调用方决定重发/失败。
 
         子态(2026-08-17 M72 实锤建档):「免战牌」策略激活时出战按钮变「跳过(N/N)」(直跳战斗,
         免战 2 次)——查不到「出战」时查子态「按钮-跳过」,同语义点它(推进节点)。
@@ -702,8 +739,51 @@ class PrepActionExecutor:
             if not self._op.round_by_find_area(scr, SCREEN_NAME, '备战标识-购买经验').is_success:
                 log.info('[cw][battle] 出战成功 → 备战标识消失')
                 return True, '出战成功'
-        self._op.save_screenshot()   # 诊断存证(同 battle_prep:bug#1 drag vs overlay 挡 vs 坐标偏)
         return False, '出战 click 未落地(6×0.5s 轮询+失焦守卫后仍在备战)'
+
+    def _launch_dead_reset(self) -> None:
+        """发射成功/环内任何成功发射 → 清连败计数(输入通道已恢复的证据)。"""
+        match = getattr(self._ctx, 'cw_match', None)
+        session = getattr(match, 'session', None) if match is not None else None
+        if session is not None and getattr(session, 'launch_dead_streak', 0):
+            session.launch_dead_streak = 0
+
+    def _launch_dead_escalate(self) -> str | None:
+        """发射连败升级:未落地连发达限 → 停机留证(返回失败 detail);未达限返回 None。
+
+        只对「未落地」型失败计数(识别类失败如找不到按钮不是输入通道问题);
+        计数挂 session(跨环重入存活——环级计数随 Director 重建清零,挡不住
+        round_fail → 外环重入的 2min/次僵尸循环,两局实证)。
+        """
+        match = getattr(self._ctx, 'cw_match', None)
+        session = getattr(match, 'session', None) if match is not None else None
+        if session is None:
+            return None
+        streak = getattr(session, 'launch_dead_streak', 0) + 1
+        session.launch_dead_streak = streak
+        if streak < PrepActionExecutor.LAUNCH_DEAD_LIMIT:
+            log.warning('[cw!][battle] 出战未落地连败 %s/%s', streak,
+                        PrepActionExecutor.LAUNCH_DEAD_LIMIT)
+            return None
+        # 停机留证三要素(截图 + 自描述 flag + stop_running;与 bail ping-pong 同款)
+        import contextlib
+        with contextlib.suppress(Exception):
+            self._op.save_screenshot(prefix='launch_dead')
+        with contextlib.suppress(Exception):
+            import time as _t
+            from pathlib import Path as _P
+            _P('.debug/temp/currency_war/launch_dead_hook.flag').write_text(
+                f'[HOOK-STOP] 出战发射连败停机(输入静默丢安全网,常驻)\n'
+                f'触发:出战 click 未落地 ×{streak}(激活重发仍败)——窗口输入通道死,\n'
+                f'激活重发自愈无效(非前台抖动,疑游戏侧输入管线挂起)。\n'
+                f'处理:1. 手动点击游戏画面确认输入是否恢复;2. 看 .debug/images/'
+                f'launch_dead_* 判画面;3. 处理完删本 flag 重启对局。\n'
+                f'ts={_t.strftime("%m-%d %H:%M:%S")}\n', encoding='utf-8')
+        rc = getattr(self._ctx, 'run_context', None)
+        if rc is not None:
+            with contextlib.suppress(Exception):
+                rc.stop_running(reason='hook:cw_launch_dead')
+        return f'出战 click 未落地×{streak} → 停机留证(hook:cw_launch_dead)'
 
     # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
 
