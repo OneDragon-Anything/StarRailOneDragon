@@ -766,6 +766,7 @@ def p1_exit_blood_short(state: GameState,
     """
     return (state.plane == 1
             and state.round_num >= registry.handoff_gate_min_round
+            and state.hp is not None
             and state.hp < registry.p1_exit_blood_target)
 
 
@@ -831,7 +832,7 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     if terminal_release(state, session, registry) \
             and terminal_round_conversion_open(state, registry):
         return False    # 终止豁免(v2 §3.1;当轮转化双门,板满帧不辖)
-    if state.hp <= registry.emergency_hp:
+    if state.hp is not None and state.hp <= registry.emergency_hp:
         return False    # 急救型保留(应急带=搜牌补板当轮转化豁免面)
     return p1_exit_blood_short(state, registry)
 
@@ -892,8 +893,8 @@ def terminal_survival_upper_bound(state: GameState, session: StrategySession,
         else:
             intercept, slope = registry.streak_floor_loss_damage[kind]
             d = max(0.0, intercept + slope * rung)
-        if d < state.hp:
-            continue    # 非穿透场不入 K(累计失血约束不计 → 上界口径)
+        if state.hp is not None and d < state.hp:
+            continue    # 非穿透场不入 K(累计失血约束不计 → 上界口径;hp None=未知全计,上界更保守)
         s0 *= registry.streak_floor_win_rate[kind][rung]
     return s0
 
@@ -1064,7 +1065,7 @@ def assess_discipline(state: GameState, session: StrategySession,
       (连胜 EV 5);
     - ALL IN:仅 ``plane_last_battle``([18] 位面末最后一战限定)。
     """
-    if state.hp <= registry.emergency_hp:
+    if state.hp is not None and state.hp <= registry.emergency_hp:
         return DisciplineView(coverage='emergency', mode='war',
                               allin=plane_last_battle(state, session))
     tracker = getattr(session, 'v3_alarm', None)
@@ -1084,7 +1085,7 @@ def assess_discipline(state: GameState, session: StrategySession,
         # 过热局 reward 节点按战斗节点处理→保血通道辖)
         hard = _hard_node(state, session)
         escalated = (tracker.alarm_battles > BLOOD_GRADIENT_NATURAL_BATTLES
-                     or state.hp < BLOOD_MARGIN_LOW_HP)
+                     or (state.hp is not None and state.hp < BLOOD_MARGIN_LOW_HP))
         if escalated:
             return DisciplineView(
                 coverage='blood_alarm', mode='war',

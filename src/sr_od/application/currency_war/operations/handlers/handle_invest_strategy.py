@@ -129,7 +129,7 @@ class HandleInvestStrategy(SrOperation):
             if match is not None:
                 pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)  # ADR-0144:真状态替空 stub
             else:
-                pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100:ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤)
+                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。满血档语义改由构造点显式声明(W823 hp None 化后默认 None;ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤))
         else:
             pick = None
         # ADR-0146(缺口1):decide 建议刷新(PickEvent.refresh = 三张最优 < 50)且 OCR 到次数>0

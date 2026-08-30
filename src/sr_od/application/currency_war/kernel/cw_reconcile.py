@@ -318,7 +318,7 @@ def _reject_down(session, old: int, new_hp: int, node_t: int, screen,
 
 def reconcile_hp(session, new_hp: int | None, screen=None, *,
                  source: str = 'read_game_state',
-                 node_t: int | None = None) -> tuple[int, bool]:
+                 node_t: int | None = None) -> tuple[int | None, bool]:
     """hp 对账统一入口(ADR-0282,用户三层设计·对账层;run165501 毒化案根治)。
 
     hp 与 bench/deployed 不同源(SIFT 双源),它的「读失败」形态 = shop 开态
@@ -334,7 +334,8 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
       (ADR-0431:win/零损帧下行一律拒信,loss 帧按损血谱 p100 分档采信,
       无战斗事实帧拒信+复现确认通道 ≤2 节点自愈)。
     - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
-      安全(低血先验触发保血方向对);全无真值(开局)才兜底 100。
+      安全(低血先验触发保血方向对);全无真值(开局)→ None(诚实未知;
+      ADR-0282 兜底 100 由 ADR-0491 废止,GameState.hp None 化)。
     - **记录层**:遥测按返回的 readable 位分字段记(hp_readable=False=读不到,
       hp=沿用值),不把兜底/沿用值混进「真 100」。
 
@@ -350,8 +351,8 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(last_hp_real, False);
-        全无真值(开局)=(100, False) 健康先验兜底;被下行守卫拒信的帧
-        =(旧值, False)(SUSPECT 态,ADR-0431)。
+        全无真值(开局)=(None, False) 诚实未知(ADR-0491,不再 100 兜底);
+        被下行守卫拒信的帧=(旧值, False)(SUSPECT 态,ADR-0431)。
     """
     if new_hp is None:
         old = getattr(session, 'last_hp_real', None) if session is not None else None
@@ -359,7 +360,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
             log.info(f'[cw][{source}] hp 读不到(shop 开态/血量区空)→ '
                      f'沿用 last_hp_real={old}(保旧不写,ADR-0282)')
             return old, False
-        return 100, False   # 开局全无真值 → 兜底 100(健康先验;readable=False 披露)
+        return None, False   # 全无真值(开局)→ None 诚实未知(ADR-0491 废止 100 兜底)
     old = getattr(session, 'last_hp_real', None) if session is not None else None
     if old is not None and new_hp - old >= HP_REAL_JUMP_CONFLICT:
         _conflict('hp', old, new_hp, screen,

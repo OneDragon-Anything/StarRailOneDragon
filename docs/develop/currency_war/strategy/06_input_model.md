@@ -22,7 +22,7 @@
 | 双轨期(策略 v2,ADR-0209) | `dual_track_phase`(P1 未定型标记,update_target 每回合刷新)/ `focus_factions`(flex 收敛白名单;update_target 写入,evaluate 消费) |
 | 投资选择 | `active_env` / `active_strategies` / `megastar_char` / `partner_char` |
 | 装备/资源 | `equips`(持有装备名列表) |
-| 生命 | `hp`(备战 shop 关态才显示;读不到时经对账层 `reconcile_hp` 沿用 session 真值,开局无真值才兜底 100——ADR-0282) |
+| 生命 | `hp: int \| None`(备战 shop 关态才显示;读不到时经对账层 `reconcile_hp` 沿用 session 真值,全无真值=None 诚实未知,无兜底——ADR-0282/0491/0495) |
 
 ## 3. 注册表地图(游戏数据单一源,`src/sr_od/application/currency_war/`)
 

@@ -129,7 +129,7 @@ class HandleInvestEnv(SrOperation):
                 # 环境屏 overlay 下 board 不可读,但 HP 分档/持有策略该用真值(空 stub hp=100 恒满血)。
                 pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
             else:
-                pick = decide_event(names, config, GameState())  # 防御:无 match(局外独立跑)。GameState 空态 hp=100(满血档):ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤)
+                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。满血档语义改由构造点显式声明(W823 hp None 化后默认 None;ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤))
         else:
             pick = None
         # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性)。

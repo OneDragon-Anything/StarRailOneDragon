@@ -169,7 +169,7 @@ class GameState:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int = 100          # 小队生命值(锁血决策用;读不到时=沿用 last_hp_real / 开局兜底 100,ADR-0282。⚠ r1 备战帧例外:血量固定但不恒 100,默认 100 在 r1 是错误值——r1 读失败走诚实未知,不落本兜底,见 hp_readable)
+    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491;W823)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(ADR-0282「开局兜底 100」由 ADR-0491 正式废止:r1 开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 GameState()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)
     # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
     # 两来源,True 时可信度等同真读:
     # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入。

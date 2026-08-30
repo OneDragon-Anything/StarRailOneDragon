@@ -81,8 +81,9 @@ def extract_frame(ctx, img, templates) -> dict:
         if st is not None:
             # r92(redesign 101):hp_readable 保真位必带——recorder 是画面真值对拍语料,
             # 混入假 100 会污染 bot vs 人类 HP 曲线对拍(r68 hp 毒化同族)。
-            # ADR-0282:hp 失读时 read_game_state 已改为沿用 last_hp_real(开局才兜底
-            # 100),hp_readable=False 即「读不到」分字段标记;gold 同款带保真位。
+            # ADR-0282/0491:hp 失读时沿用 last_hp_real,全无真值帧 hp=None
+            # (W823 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
+            # gold 同款带保真位。
             rec.update(gold=st.gold, hp=st.hp, hp_readable=bool(st.hp_readable),
                        gold_readable=bool(getattr(st, 'gold_readable', True)),
                        level=st.level,

@@ -229,6 +229,6 @@ def is_run_dead(state: GameState, tracker: PerformanceTracker,
     trend = tracker.recent_hp_loss_trend(window=3)
     if trend is None:
         return False
-    if state.hp < DEAD_HP and trend > TREND_THRESHOLD:
+    if state.hp is not None and state.hp < DEAD_HP and trend > TREND_THRESHOLD:
         return next_node_type in LOCK_NODES
     return False

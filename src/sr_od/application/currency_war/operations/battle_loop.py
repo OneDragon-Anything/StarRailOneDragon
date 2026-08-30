@@ -376,7 +376,7 @@ class CurrencyWarRunLoop(SrOperation):
         # (44 号战斗帧观测钩子已删,迁移审计 w106(git 历史) 裁决:观测使命由结算遥测覆盖,产物
         #  battle_frames/ 10778 文件 24.39GB 零消费者;删钩子纪律=使命完成删整段)
 
-    def _last_true_hp(self, fallback_hp: int) -> int:
+    def _last_true_hp(self, fallback_hp: int | None) -> int | None:
         """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
 
         recorder 只存 gold 轨迹,hp 轨迹在此模块内存维持(record_outcome 时);
@@ -416,7 +416,7 @@ class CurrencyWarRunLoop(SrOperation):
             return   # 无最后已知态(理论上不可达:有 outcome 必有 state)
         try:
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
-            _final_hp = self._last_true_hp(_st.hp)
+            _final_hp = self._last_true_hp(_st.hp if _st.hp is not None else 0)
             state.record_run_summary(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane,
@@ -702,7 +702,7 @@ class CurrencyWarRunLoop(SrOperation):
             _session = _m.session
             _plane, _round = read_phase_round(self.ctx, screen)
             _st = _session.last_state
-            _hp = _st.hp if _st is not None else 0
+            _hp = (_st.hp if _st is not None and _st.hp is not None else 0)
             _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
             _comp_tag = _session.target_comp.name if _session.target_comp else '?'
             # 消费 run_supply_node 选定时暂存的选择快照,并附完成时点 gold
@@ -1520,7 +1520,8 @@ class CurrencyWarRunLoop(SrOperation):
                     won=(_st is not None and _st.plane == 3 and not _died_this_run),
                     final_plane=_st.plane if _st is not None else 1,
                     final_round=_st.round_num if _st is not None else 1,
-                    final_hp=_st.hp if _st is not None else 0,
+                    final_hp=(_st.hp if _st is not None
+                              and _st.hp is not None else 0),
                 )
                 self.ctx.cw_match.strategy.on_match_end(
                     self.ctx.cw_match.session, self._cw_config, _outcome)

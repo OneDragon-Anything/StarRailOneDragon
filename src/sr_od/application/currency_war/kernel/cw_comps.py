@@ -1923,7 +1923,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 性大步换线),不再是「有任何 progress 的最快 easy」——平级/略优不换,
     # 消除与定型的每步拉锯;血线危机交买牌/装备侧加速(不弃线)。
     _committed_target = (target is not None and target_committed(target, state))
-    if state.hp < _pivot_hp:
+    if state.hp is not None and state.hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
         # 冷却守卫已提函数顶(r91 不变量单一入口),危机路径不再自查。
         # r11 review #5(位面过滤):当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺(M55 实证)是首个案例。

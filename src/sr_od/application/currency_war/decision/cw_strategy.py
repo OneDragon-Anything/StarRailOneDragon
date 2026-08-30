@@ -213,13 +213,15 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     return True
 
 
-def gated_hp(current_hp: int, session: StrategySession, now_t: int | None,
-             current_readable: bool = True) -> int:
+def gated_hp(current_hp: int | None, session: StrategySession,
+             now_t: int | None,
+             current_readable: bool = True) -> int | None:
     """结算 HP 新鲜度门(r68/r69,单源 helper):结算真值仅在**可信窗口**内覆盖现读。
 
     - 现读可信(``current_readable=True``)→ 仅紧邻上一节点(gap==1)的结算值可覆盖
       (结算屏「小队生命值NN」权威;防陈 hp 冻结毒化)。
-    - 现读不可信(``False`` = 100 兜底,``hp_readable=False``)→ 放宽到 gap≤3:hp 只在
+    - 现读不可信(``False`` = 无真值/沿用帧,``hp_readable=False``;W823 None 化后
+      现读基准可为 None,门只决定「是否被结算值覆盖」,不产兜底值)→ 放宽到 gap≤3:hp 只在
       战斗结算变,非战斗节点(奖励/补给/选卡)隔断时结算值本就仍真(r69 实证:r5 非战斗
       + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
       如 boss conf=0 冻结场景)仍拒 → 保持兜底值。

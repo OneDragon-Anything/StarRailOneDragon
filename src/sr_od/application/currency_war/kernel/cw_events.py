@@ -157,7 +157,7 @@ def decide_event(options: list[str], config, state: GameState,
                 _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
                 if _floor > score:
                     score, reason = _floor, f'env-faction:{_env.faction}'
-            if state.hp < 40:
+            if state.hp is not None and state.hp < 40:
                 score += ENV_SURVIVAL_BONUS.get(_env.name, 0.0)
         # 用户转向轴(develop config.md §3):投资策略/环境 priority 软加分 + forbid 重罚。
         # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
@@ -171,7 +171,8 @@ def decide_event(options: list[str], config, state: GameState,
             score -= STEERING_FORBID_PENALTY
             reason = 'user-forbid'
         # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
-        if state.hp < 40 and _st is not None and _st.name in SURVIVAL_PICKS:
+        if (state.hp is not None and state.hp < 40
+                and _st is not None and _st.name in SURVIVAL_PICKS):
             score += 15.0
         # r255(P2 断崖装备缺失):P2 期装备流策略 +25——
         # 11 局实锤 P2 板面 equips 全空(裸件打仗,首战
@@ -187,9 +188,9 @@ def decide_event(options: list[str], config, state: GameState,
         # 的 LCS 兜底会让 env 名误中策略品质,列车同行概念股→列车同行星徽棱彩→-12 污染)。
         _rar = _st.rarity if _st is not None else ('' if _env is not None else _option_rarity(opt))
         if _rar == '棱彩':
-            score -= 12.0 if state.hp >= 40 else 24.0
+            score -= 12.0 if (state.hp is not None and state.hp >= 40) else 24.0
         elif _rar == '金':
-            score -= 6.0 if state.hp >= 40 else 12.0
+            score -= 6.0 if (state.hp is not None and state.hp >= 40) else 12.0
         if on_dot and _opt_counters_dot(opt):
             score -= penalty
         if score > best_score:
@@ -518,7 +519,7 @@ def decide_planner(options: list[PlannerOption], state: GameState,
                 reason += '-银狼不在场无处兑现'
         elif '弱化' in t or '降低敌人' in t:
             score, reason = 55.0, '全场弱化(即时战力)'
-            if state.hp < 40:
+            if state.hp is not None and state.hp < 40:
                 score += 20.0
                 reason += '+低血保命'
         else:

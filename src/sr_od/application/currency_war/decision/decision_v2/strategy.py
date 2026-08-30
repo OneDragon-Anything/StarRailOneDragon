@@ -1029,10 +1029,10 @@ class DecisionV2Strategy(CwStrategy):
             st.plane = session.last_state.plane
             st.round_num = session.last_state.round_num
         # r69 review:hp 过新鲜度门(陈旧 last_hp 不进 pseudo state;门单源 cw_strategy.gated_hp,
-        # 现读基准 = last_state.hp 框架末次读值,None 时 100 默认)。
+        # 现读基准 = last_state.hp 框架末次读值;无真值时 None(W823 None 化,不兜底)。
         from sr_od.application.currency_war.decision.cw_strategy import gated_hp
         _t = (st.plane - 1) * 9 + st.round_num if (st.plane and st.round_num) else None
-        _cur_hp = session.last_state.hp if session.last_state is not None else 100
+        _cur_hp = session.last_state.hp if session.last_state is not None else None
         st.hp = gated_hp(_cur_hp, session, _t)
         # r101 审计必修①(5ba9b0a6 T6 实证):漏拷 dual_track_phase → 腾席链的
         # decision_target 恒走非双轨分支退终局 comp,r100 必修①(步级路径迁移)

@@ -428,7 +428,7 @@ def _sell_tag(bc: BenchChar, state: GameState,
     protect = _target_names(state, session)
     name = bc.char_id or ''
     is_target = name in protect
-    emergency = state.hp <= registry.emergency_hp
+    emergency = state.hp is not None and state.hp <= registry.emergency_hp
     bench_full = bench_occupied(state.bench or []) >= registry.bench_capacity
     tag = None
     for t in registry.sell_tag_priority:

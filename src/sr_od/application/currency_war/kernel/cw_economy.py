@@ -178,7 +178,8 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
     # 卡到 P2)。lv<5 不拦(开场人口等级);boss/锁血豁免。
     if (state.plane == 1 and state.level >= 5
             and state.gold < INTEREST_THRESHOLD
-            and state.node_type not in ('boss',) and state.hp >= 30):
+            and state.node_type not in ('boss',)
+            and state.hp is not None and state.hp >= 30):
         # ADR-0275:旧「4+level」简算与生产 flat-4(XP_CLICK_COST_FALLBACK,OCR 实读
         # 优先)互相矛盾;实机对拍(VLM 三帧 lv4/lv7 均 4 金/击)裁决 flat-4 →
         # 统一走 xp_click_cost(单一源;商业间谍折扣同享)。
@@ -202,7 +203,8 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
                 # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(r4 团灭实证)。
                 # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;RC1 案例的病理是
                 # 「金 35 全烧经验」,由 XP 单击量控(花后地板)兜,非全量禁。
-                if state.hp < 30 and not (state.plane >= 2 and state.round_num <= 2):
+                if (state.hp is not None and state.hp < 30
+                        and not (state.plane >= 2 and state.round_num <= 2)):
                     return False
                 return bool(state.plane >= 2 and state.level < get_node_goal(
                     state.plane, state.round_num,
@@ -230,11 +232,11 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
     回合(round_num≥8,P1/P2 过半位面)保 **20**(P2 首回合一级利息档 + 搜牌本钱);
     hp<30 真濒死仍 10(保命绝对优先)。
     """
-    if state.hp < 30:
+    if state.hp is not None and state.hp < 30:
         return 10
     if state.round_num >= 8:
         return 20   # r24:位面末保本钱进下一位面(非 hp 危险分支的 10)
-    if state.hp < effective_hp_threshold(state):
+    if state.hp is not None and state.hp < effective_hp_threshold(state):
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
 
@@ -495,7 +497,7 @@ def is_emergency(state: GameState,
 
     单一源在本文件(kernel);decision_v2.filters.is_emergency 为 import
     重定向,消费方调用零改。"""
-    return state.hp <= registry.emergency_hp
+    return state.hp is not None and state.hp <= registry.emergency_hp
 
 
 def _registry_of(session: StrategySession) -> DecisionV2Registry:

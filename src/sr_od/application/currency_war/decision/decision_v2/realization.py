@@ -164,7 +164,7 @@ def p29_priority_term(cand, state: GameState, session: StrategySession,
         battles_left_plane,
     )
     r_rest = battles_left_plane(state, session, registry)
-    if (state.hp < registry.blood_margin_low_hp
+    if (state.hp is not None and state.hp < registry.blood_margin_low_hp
             and r_rest < registry.realization_p29_r_min):
         return 0.0   # 反向锁:血线辖域门未开 → 囤牌优先级不启用
     missing = missing_members(state, session, registry)
@@ -246,5 +246,5 @@ def d2_entry_frame(state: GameState, registry: DecisionV2Registry) -> bool:
     if not _chain_on(registry, registry.realization_d2_enabled):
         return False
     return (int(state.round_num or 0) <= 1
-            and state.hp <= registry.emergency_hp
+            and state.hp is not None and state.hp <= registry.emergency_hp
             and (state.gold or 0) > registry.interest_floor())

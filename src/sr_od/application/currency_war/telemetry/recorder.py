@@ -101,15 +101,10 @@ class TelemetryRecorder:
         gold(经济复盘),每回合一采样;PrepDirector 逐步记录(_record_step)传 False
         防每回合混入 N 条步进值拉歪轨迹。
         """
-        # r1 备战帧读失败的诚实未知(用户修正前提:r1 血量固定但不恒 100,
-        # 默认 100 兜底在 r1 是错误值):r1 且两位皆 False 的帧 trace.hp
-        # 置 None(不再把对账层兜底 100 写进语料);r2+ 沿用/结算帧与
+        # hp None 化(W823,ADR-0491):对账层已不再产 100 兜底——无真值帧
+        # state.hp 本身即 None,直通写入即可(r1 特例臂退役);沿用/结算/
         # 真读帧的值照旧。sim 帧恒真读,不受影响。
         _hp_out: int | None = state.hp
-        if (state.plane == 1 and state.round_num == 1
-                and not getattr(state, 'hp_readable', True)
-                and not getattr(state, 'hp_trusted', False)):
-            _hp_out = None
         trace = DecisionTrace(
             ts=datetime.now().isoformat(timespec="seconds"),
             run_id=run_id, difficulty=difficulty,

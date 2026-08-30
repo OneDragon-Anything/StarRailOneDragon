@@ -1617,7 +1617,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
-    # 先验触发保血方向对);全无真值(开局)才兜底 100。state.hp=决策用值,
+    # 先验触发保血方向对);全无真值(开局)= None 诚实未知(ADR-0491 废止
+    # 兜底 100,W823 GameState.hp None 化)。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
     # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0431 帧龄门收紧,
     # 派生式见下方帧龄门注释)——FLIP 类谓词据此把「本帧未 OCR 到」与
@@ -1652,7 +1653,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         _sess_hp, _hp_opt, screen, source='read_game_state', node_t=_node_t)
     # ADR-0431 帧龄门:同节点内沿用才可信(shop 开态帧间无战斗,值必然
     # 未变);跨节点沿用帧与被下行守卫拒信帧(SUSPECT)降 False;真读且
-    # 过守卫的帧可信;兜底 100 帧恒 False(ADR-0428 不变)。
+    # 过守卫的帧可信;全无真值帧(hp=None)恒 False(ADR-0428/0491)。
     _same_node_stale = (_had_real
                         and getattr(_sess_hp, 'last_hp_real_node', None) == _node_t)
     state.hp_trusted = (state.hp_readable and _hp_opt is not None) \

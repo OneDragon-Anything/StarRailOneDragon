@@ -232,7 +232,7 @@ def rounds_alive(state: GameState,
     (ra 先 +1 再判死)。hp≤0 → 0。复杂度 O(剩余节点 ≤9)×O(1) 查表。
     """
     reg = registry or DEFAULT_REGISTRY
-    if not state.hp or state.hp <= 0:
+    if state.hp is None or state.hp <= 0:   # None=无真值 → 0 期望轮(fail-closed,W823 None 化)
         return 0
     # 两态口径(M1b,开关=registry.rounds_two_state_enabled,默认关=
     # 零漂移锚):loss=(1−p_win)·条件败面档;开关关或 rung 缺档按

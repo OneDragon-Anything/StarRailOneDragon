@@ -146,7 +146,7 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     # hp 过现役同一新鲜度门(session 锚;None 现读=沿用链,禁 0/100 兜底改值)。
     _t = ((st.plane - 1) * 9 + st.round_num) if (st.plane and st.round_num) else None
     _cur = snapshot.hp if snapshot.hp is not None else (
-        last.hp if last is not None else 100)
+        last.hp if last is not None else None)   # 无真值=诚实未知(不兜底,W823)
     st.hp = gated_hp(_cur, session, _t, current_readable=snapshot.hp_readable)
     st.hp_readable = snapshot.hp_readable
     return st
