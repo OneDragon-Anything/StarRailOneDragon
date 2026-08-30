@@ -56,12 +56,13 @@ battle_loop(主循环,屏幕级路由)
 | 战略 | `cw_comps`(select_comp/pivot)/`cw_transition`(双轨过渡)/`cw_run_allocator`(跨局)/`cw_first_passage`(目标函数) | 打什么阵容、何时定型/转型、跨局选臂 | [02](02_comp.md) |
 | 演进引擎 | `cw_evolution` | 阵容替换通用法则:evolution_step 统一入口四步(propose→evaluate 三条件[③人口=信息位不阻断,发令枪=①∧②]→execute 整档 CompTransaction→fill 空位规则);中断恢复 pending 重校验/谷底回滚一件最弱(ADR-0319);换血保护:锁定目标件四件套(ADR-0360)+ 引擎下界守卫/末轮演进冻结(ADR-0363)+ 引擎补完守卫「拥有必上场」(ADR-0371) | [02 §10](02_comp.md) |
 | 终局意向 | `cw_intention` | 意向分层纯逻辑:信号五层/锁线撤销析取两出口(miss-N 窗口冻结逐出 / 高层信号过可达对照)/降格终局 absorbing;换线落锁前串联换线存活轮数门(C4,判据单一源 `cw_line_switch.survival_gate`);锁后只输出囤货目标集合写 v3_hoard(买侧唯一消费面,不改板上)(ADR-0319) | [02 §11](02_comp.md)+[0429](../decisions/0429-gate-v2-line-switch-wiring.md) |
-| 战术 | `kernel/cw_deploy_seat`(腾席判据+deploy 不变量)/`decision_v2`(备战四层) | 备战动作规划/腾席与升级门判据 | [03](03_tactics.md) |
+| 战术 | `kernel/cw_deploy_seat`(腾席判据+deploy 不变量)/`decision_v2`(备战四层)/`kernel/cw_junk_first`(变宝为废环境牺牲合成排序,ADR-0498) | 备战动作规划/腾席与升级门判据/环境感知合成排序 | [03](03_tactics.md) |
+| 估值 | `kernel/piece_value`(evaluate_piece 件价值单一源,Phase 1=a_activation+w_retention 标定值,ADR-0496/0497;买侧排序消费+bench 容量硬门) | 买/留/卖/合成时点共用的件价值分解与排序 | [02 §11](02_comp.md) |
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
 | 执行 | `prep_director`/`prep_actions`/`operations/`(battle_loop+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层 | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`telemetry.state`+`recorder`+`defects`(决策迹) | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |
 | sim/回放基建 | `sim/pool`+`sim/engine_p1`+`sim/engine_p2`+`sim/runner`(P1 全流程模拟器四模块:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`sim/checks/`八模块(账本检查,实机学费回灌载体;池新鲜度报警 ADR-0344)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_delta_pool_gen`(池生成核心+局终自动再生管线,ADR-0344;CLI 壳 tools/cw/gen_delta_pool_snapshot.py)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器,decisions.jsonl 写路径) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) |
-| 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/default_strategy`/`strategies/decision_v2_strategy`(现行生产 v2;旧 line_strategy 已删,ADR-0336) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
+| 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/decision_v2_strategy`(现行生产 v2;旧 line_strategy 已删 ADR-0336,default_strategy 已删 ADR-0466) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
 | 离线工具 | `cw_weight_search`(CEM 权重搜索)/`cw_divergence_stats`(姿态分歧频率) | 消费 telemetry 的离线分析,不进生产链 | [05](05_observation.md) |
 
 ## 分篇

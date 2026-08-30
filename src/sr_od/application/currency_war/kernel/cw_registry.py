@@ -1448,9 +1448,10 @@ class DecisionV2Registry:
     below_floor_spend_gate_enabled: bool = False
 
     # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
-    # 生命周期第 1 态零漂移锚)=====
+    # 生命周期第 1 态零漂移锚;三轮 A/B 终局定性见 ADR-0499)=====
     #: 设计单一源 = docs/develop/currency_war/prereg/w829_spend_gate_design/
-    #: REPORT.md v3(§1.4 判据/§3 落码规格/§4 辖界切分);机制落点 =
+    #: REPORT.md v3(§1.4 判据/§3 落码规格/§4 辖界切分;判前锁
+    #: PREREG_v4/v4.1 同目录);终局决策记录 = ADR-0499。机制落点 =
     #: decision_v2.spend_gate(arbiter 约束链新增一节,拒因枚举
     #: d1_interest/d2_blood/d3_bench)。
     #: D1 息线臂 = 真破息(花后 < 息线 ∧ ⌊g/10⌋ 下降)拒,豁免
@@ -1459,9 +1460,11 @@ class DecisionV2Registry:
     #: 既有血线常量单一源,零新参数零新状态源,随伞);D3 位置臂 =
     #: bench 占用 ≥ 容量−1 拒非合成非当轮可部署,挤占判据单一实现
     #: (= P29 消费同一函数)。
-    #: 开臂判据挂账(不执行):同目录 PREREG_v4.md(判前锁,三臂
-    #: off / on+gate / gate-only;主门 = 清账门 ∧ 传导格 ∧ 护栏),
-    #: 数据齐即跑,不过走定谳清理(第 4 态删码留 ADR),禁悬置默认关。
+    #: 开臂判据(已执行,ADR-0499):PREREG_v4 三臂判前锁三轮 A/B
+    #: (W840/W848)定谳 = 清账门绿 ∧ 传导格三度双败 → 维持关保留
+    #(语义按清账已证+传导归实机锚,禁第四态删码——W851 旧注释
+    #: 「不过走第 4 态」措辞已废)。恢复开臂前置=实机锚量化判据
+    #: (未定,见 ADR-0499 遗留挂账)。
     spend_gate_enabled: bool = False
     #: D1 息线臂子旗标(G7 归因消融用)
     spend_gate_interest_enabled: bool = False

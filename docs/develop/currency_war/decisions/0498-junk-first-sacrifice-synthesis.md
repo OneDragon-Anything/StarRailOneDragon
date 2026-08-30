@@ -48,7 +48,8 @@ bot 侧现状:装备分配器(`cw_comps.equip_allocation`,M7 角色级分配)
 
 - 新模块 `kernel/cw_junk_first.py`(纯函数排序器 + 包装入口
   `junk_first_allocation`:读 registry 开关 → 环境判据 → 后处理 →
-  推迟计数写 `session.junk_first_defers_used`);
+  位面记账写 `session.junk_first_done_plane`,同位面推迟预算
+  1 帧/位面;整局推迟计数字段已随粒度真值修正废止);
 - 消费点 `operations/prep/equip_all.py` 决策调用行换包装函数(输入输出
   形态不变;W849 拖拽/验穿执行链零改动);
 - sim 侧 `engine_p1` 继续直调 `equip_allocation`(基分配语义不变);

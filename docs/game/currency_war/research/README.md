@@ -22,6 +22,7 @@
    - [merge_mechanics.md](merge_mechanics.md) — 升星合成:买牌落点(备战→触发合成改落点)/场上吸收/备战最左/连锁合成(口述·权威;bot 期望态层与拖动对账的合成期望规格)
    - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据三级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,P14 生产化)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
+    - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策见 ADR-0498)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
 2. **玩家纪律**(人怎么打;机制之上的打法约束,直觉假设来源——策略命题以 math_proofs 证明与实证为准,ADR-0482):
    - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济息律 / 升级 / 阵容 / 装备纪律(条目 [1]-[34];**直觉假设登记簿**——策略命题以 [math_proofs](math_proofs.md) 证明与 sim/实机分布实证为准,ADR-0482;条目引用须区分已证/待证)
