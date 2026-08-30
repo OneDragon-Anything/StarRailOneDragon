@@ -49,3 +49,20 @@ accepted (2026-09-08)
 - 验证:sr-od-test `test_cw_match_archive.py`(分组/真值链/原子写/水位线/
   切片视图同源);游戏 G 实测装配与 W764 手工复盘逐轮对照一致,
   `--match` 四视图与 `--run` 聚合逐字节一致。
+
+## 附录:schema v2(match archive 二期;主仓 7a0c1002)
+
+加法式字段扩展,`SCHEMA_VERSION` 1→2,旧档案向后兼容:
+
+1. **决策流程明细入档**:`rounds[].decision_detail` = 该轮最优决策帧的
+   `v3_intention`/`candidate_scores`/`eval_breakdown`/`dp_posture`——全帧
+   本就在 `slices.decisions` 切片里,v2 只把判读高频字段提到逐轮表,免
+   「查明细先翻切片」;None = 该轮无决策帧。同批 `rounds[].bench`/`equips`
+   (备战席逐张/装备栏 owned)从 state 快照提到逐轮表,与 board/deployed
+   并读——阵容质量三维的 bench 维此前只能翻切片。
+2. **策略版本戳**:`telemetry/version_stamp.py` 单一源(git 短哈希 +
+   registry 指纹 sha256 前 12 位);`runs.jsonl` 加 `code_commit`/
+   `registry_fingerprint` 两列(recorder 局终写时点打戳——决策明细语义随
+   版本解读,戳必须是「跑这局的版本」而非装配时点版本;旧记录读端容忍缺列);
+   档案顶层 `strategy_version` 取自 runs 行**段序倒查**(末段优先=终局时点
+   版本),index 同步两列。**向后兼容语义:旧数据两值为空 = 版本未知,不冒认**。

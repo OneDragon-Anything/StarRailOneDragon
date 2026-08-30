@@ -42,7 +42,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 
 ## 4. cw_telemetry:决策迹采集
 
-三路 jsonl(`.debug/temp/currency_war/replay/`):**outcomes**(每节点结算;含板深快照 board_before/bench_count,r339)、**decisions**(每决策点 state 快照 + 候选分 + 选择 + 理由;live 扩容字段:active_strategies / dp_posture 影子 / ledger_fingerprint / megastar·encounter·supply pick)、**runs**(局摘要,含免费窗口登记字段)。默认 `enabled=False` 门控,config `debug_telemetry` 一开全收。外生事件(节点转换/弹窗)与执行失败事件各自落盘(能力画像/预案触发频率语料)。
+三路 jsonl(`.debug/temp/currency_war/replay/`):**outcomes**(每节点结算;含板深快照 board_before/bench_count,r339)、**decisions**(每决策点 state 快照 + 候选分 + 选择 + 理由;live 扩容字段:active_strategies / dp_posture 影子 / ledger_fingerprint / megastar·encounter·supply pick)、**runs**(局摘要,含免费窗口登记字段与策略版本戳两列 `code_commit`/`registry_fingerprint`——局终写时点打戳,单一源 `telemetry/version_stamp`,ADR-0486 附录;旧记录缺列读端容忍)。默认 `enabled=False` 门控,config `debug_telemetry` 一开全收。外生事件(节点转换/弹窗)与执行失败事件各自落盘(能力画像/预案触发频率语料)。
 
 **查询端(判读单一源,CLI)**:`python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|tiers|planexec|hp|economy|all`——rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买(配方件标★,refresh 波不丢);tiers=羁绊激活档+角色构成(星级)+装备分配三维同屏(ADR-0229);anomalies=异常标记(金滞留/单轮掉血过深/plan_error;阈值常量 `ABN_*` 见 cw_telemetry);hp=掉血×板深分解(与 sim hp_events 同构,r339);economy=金轨迹/滞留轮标记。**`checks` 子命令**(ADR-0245):`cw_telemetry checks --recent N`——生产局秒级自检(栈判别:v2 栈跑 coldstart 检查,default 栈跳过;违规带 run_id 溯源)。**`--sim-batch BATCH`**:查 sim 批次账本(目录结构与生产 replay 同构,视图零分叉;board 系字段恒空、ts=轮序号等 sim 语义差异见 `--help`)。复盘新需求 = 新视图/查询参数,不写一次性脚本。**判读方法论(看什么/三维/保真位先行)单一源 = `sr-od-currency-war-dev` skill 的 telemetry-reading。**
 
@@ -56,7 +56,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - `cw_weight_search`:CEM 权重搜索(防退化三件套);
 - `cw_divergence_stats`:影子 DP 姿态 vs 生产姿态分歧频率(人机问询触发门数据源);
 - `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。历史局审计通道 = decisions.jsonl(写路径在 telemetry recorder;live vs 旧 v1 plan 的对拍器已随 strategy_v1 退役,ADR-0477)。
-- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(记账未实现):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。
+- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(记账未实现):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。装配逐轮表含 hp 真值链/刷新波/配对/姿态外,还提该轮最优决策帧的决策明细(`decision_detail`:v3_intention/candidate_scores/eval_breakdown/dp_posture)与 `bench`/`equips`,顶层带 `strategy_version` 版本戳(schema v2,ADR-0486 附录;旧档案=版本未知)。
 
 ## 6. 日志格式标准(可检索;单一源)
 
