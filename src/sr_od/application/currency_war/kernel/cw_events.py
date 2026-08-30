@@ -434,9 +434,15 @@ class MegastarOption:
 @dataclass
 
 class MegastarPick:
-    """decide_megastar 返回:选第几个候选 + 原因。"""
+    """decide_megastar 返回:选第几个候选 + 原因。
+
+    enhance_char_id:巨星 overlay step2「强化角色」意向(我方角色名);
+    None = 未启用(``registry.megastar_enhance_enabled`` 默认关)/无可选——
+    决策意向输出,执行面未接(挂账见该开关注释)。
+    """
     idx: int
     reason: str = ""
+    enhance_char_id: str | None = None
 
 
 # ===== 选择伙伴节点(decide_partner;✅ 已派发 handle_select_partner:96,T#99;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====

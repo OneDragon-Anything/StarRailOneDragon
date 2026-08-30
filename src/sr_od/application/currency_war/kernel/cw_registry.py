@@ -1684,6 +1684,19 @@ class DecisionV2Registry:
     longterm_refresh_discount_enabled: bool = False
     longterm_refresh_threshold: int = 30
     longterm_refresh_price: int = 1
+    #: ===== 巨星强化角色决策维度(开关生命周期第 1 态:默认关)=====
+    #: 开 = ``decide_megastar`` 在巨星候选(既有 buff 契合路径,不受影响)之外
+    #: 追加输出「强化角色」意向(``MegastarPick.enhance_char_id``,绑定序 =
+    #: ``cw_comps.select_megastar_enhance``:target.core_chars 前排 → core 后台
+    #: → 首个前排 → None)。注意:本开关只启**决策层意向输出**(落 reason/遥测),
+    #: **执行面(巨星 overlay step2 点强化角色)未接**——巨星 step2 强化角色
+    #: 候选坐标未建档(伙伴 overlay 的中心立绘 (960,300) 只在伙伴屏实机验过,
+    #: 巨星屏无对应 ground truth),且巨星语境下强化角色的机制效果无文档真值
+    #: (docs/game/screens/currency_war_megastar.md:可选步骤,跳过不锁出战)。
+    #: 开臂判据挂账:①巨星 step2 画面建档(候选面/选中态/坐标 ground truth);
+    #: ②强化角色机制效果语义确认(改 run_megastar_node 接执行面前必须先做);
+    #: ③执行面接通后 sim/实机 A/B 正向 → 翻默认值;验证不过 → 删码留 ADR。
+    megastar_enhance_enabled: bool = False
 
     def __post_init__(self) -> None:
         """开臂约束构造期校验(策略开关生命周期纪律,非行为分支)。

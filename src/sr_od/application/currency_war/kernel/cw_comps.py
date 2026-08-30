@@ -2316,3 +2316,31 @@ def select_megastar(state: GameState, target: Comp | None,
             if star and star in available_megastars:
                 return star
     return available_megastars[0]
+
+
+def select_megastar_enhance(state: GameState, target: Comp | None) -> str | None:
+    """选巨星 overlay step2 的「强化角色」意向(我方角色,决策层纯函数)。
+
+    绑定序(与 select_megastar 同构:comp 引擎载体优先):
+    1. target.core_chars 在前排(deployed)者——强化资源给 carry 是默认假设;
+    2. target.core_chars 在后台(bench)者;
+    3. 首个前排角色(naive 兜底)。
+    无 target / 板上无角色 → None。
+
+    ⚠️ 机制语义**待证假设**(ADR-0482 权威序:未证口述按待证对待):「强化角色 =
+    巨星额外强化的载体、优先给 carry」无文档/实机真值,docs/game/screens/
+    currency_war_megastar.md 只确认该步骤可选、跳过不锁出战。本函数输出只作
+    决策意向(开关 megastar_enhance_enabled,默认关),执行面未接;机制真值
+    采集后重审绑定序。
+    """
+    deployed_names = [bc.char_id for bc in (state.deployed or []) if bc and bc.char_id]
+    if not deployed_names:
+        return None
+    if target is not None:
+        for c in target.core_chars:
+            if c in deployed_names:
+                return c
+        for bc in (state.bench or []):
+            if bc is not None and bc.char_id in target.core_chars:
+                return bc.char_id
+    return deployed_names[0]
