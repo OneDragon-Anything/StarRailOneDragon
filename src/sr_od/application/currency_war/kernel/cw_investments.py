@@ -218,11 +218,11 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '溜佩佩+': EconomyEffect(instant_gold=15),
     '保险': EconomyEffect(gold_per_20hp_lost=5),
     # —— v2 新建(ADR-0205 调研落地;API 文本明说的数值)——
-    # 批 1:等级触发
+    # 等级触发族
     '成长基金': EconomyEffect(gold_at_level=40, gold_at_level_target=9),
     '成长的快乐': EconomyEffect(xp_instant=4,
                                 xp_click_discount_from_level=1, xp_click_discount_from_level_at=8),
-    # 批 2:时点日程
+    # 时点日程族
     '超发货币': EconomyEffect(gold_at_node=70, gold_at_node_offset=5),
     # ↑ 负债部分(失去现有全部金)由消费端按持有金处理,数值侧只记回流 +70
     '固定理财': EconomyEffect(xp_per_node=0, free_refresh_burst=2),   # 位面开始部分(见下)
@@ -230,7 +230,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——v0 只建即时刷;位面日程挂台账批次
     '经验到账': EconomyEffect(xp_instant=10),
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
-    # 批 3:动态/血金互兑
+    # 动态/血金互兑族
     '狸财经狸': EconomyEffect(interest_flat_per_node=2),
     # ↑ API 全文:30 本金进不了字段(非给玩家);息+2/节点;金<20 取 10(流动性保险,
     #   行为条件流);P3 首领取全部存款(存款累计值消费端推)。数值侧先建固定息。
@@ -369,7 +369,7 @@ def _validate_strategy_effects() -> None:
 # ===== curated overlay:环境分类 + 阵营绑定(手维护)=====
 # 表值大多可由名字派生:类别 = 名字的类别后缀(概念股/邀请/契约)本身;阵营 = 名字去类别后缀。
 # 真正的手维护信息只有例外条与不可派生名单;派生结果在构建期与逐位对拍基准比对
-# (旧平铺表快照对拍绿证见 .debug/temp/currency_war/w660_hygiene_exec,派生化零行为变化)。
+# (派生化零行为变化,决策与逐位对拍记录见 ADR-0472)。
 _ENV_SUFFIX_DERIVED_NAMES: tuple[str, ...] = (
     # 概念股 15
     '追击概念股', '击破概念股', '群攻概念股', '能量概念股', '燃血概念股', '减益概念股',
@@ -513,7 +513,7 @@ def refresh_invest_active(state) -> bool:
 
     判据:任一持有投资策略的可数值化经济效果带刷新增益通道
     (免费刷新/每刷经验——淘金客/加油站/搜打撤族,与 operations.
-    prep.shop 免费刷新采证钩子同族判据)。消费面(批 3 预算收权):
+    prep.shop 免费刷新采证钩子同族判据)。消费面(ADR-0465 预算收权):
     ① ``economy_cycle.schedule_upgrade``——升级通道退役(W621 实证:
     LevelUp 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
     ② ``ev.levelup_ev_basis``——升级授权链同步关闭(含人口位臂,
@@ -691,7 +691,7 @@ def _derive_megastar_set_bindings(explicit: dict[str, tuple[frozenset[str], froz
 
     套组卡名单取自注册表(键以'星徽套组'结尾者);对应单件未建模 →
     ValueError(import 即炸,防新套组卡静默无绑定)。派生结果与改前
-    手写套组表逐位对拍绿证见 .debug/temp/currency_war/w660_hygiene_exec。
+    手写套组表逐位对拍一致(决策与对拍记录见 ADR-0472)。
     """
     out: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
     for name in INVESTMENT_STRATEGIES:

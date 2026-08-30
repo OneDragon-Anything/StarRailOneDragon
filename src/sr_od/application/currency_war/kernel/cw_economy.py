@@ -326,7 +326,7 @@ class NodeGoal:
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
                                 # 'release' 不经本投影(帧级态):生产单一源=
                                 # decision_v2.posture_release 经 session 通道;
-                                # 本函数只产 level/adaptive/interest(迁移迁移批 3(ADR-0465)(ADR-0465))
+                                # 本函数只产 level/adaptive/interest(ADR-0465)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
     #: DP 授权的可刷次数上界(W332b 三方预算合并:随 NodeGoal 下传,消费侧与
     #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
@@ -792,7 +792,7 @@ def reserve_cap(state: GameState, session: StrategySession,
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
     排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;W481
     A-4:误估最坏=一个升级费量级 ≤50 金,双向有界)。
-    排程判据单一址 = ``schedule_upgrade``(确定性查表核,批 3 预算
+    排程判据单一址 = ``schedule_upgrade``(确定性查表核,ADR-0465 预算
     收权;与 arbiter 授权/EV 授权 ② 臂共调同一函数,R4)。
 
     守息线取 `interest_cap × 10`(息帽同源派生,W611 §2.2 恒等式):

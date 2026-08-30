@@ -21,7 +21,7 @@ K1-K3 判据随后。
 from __future__ import annotations
 
 # ⚖️ 单一源(49 号 J0 子承普查命中 → ADR-0183 统一):掉血先验基准表持有者 = cw_plane_table
-# (迁移批 3(ADR-0465) 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
+# (ADR-0465 起 = 原 DP 标定面的保留归属,物理原语层,被 sim_env/economy 同源消费);
 # 本模块引用之并在此定义分布语义(CV/位面乘数)。
 # 旧 HP_LOSS_MU 本地副本(与基准表同值异名)删除,防双源漂移。
 from sr_od.application.currency_war.kernel.cw_plane_table import (

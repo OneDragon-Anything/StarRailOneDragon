@@ -1,6 +1,6 @@
 """节点日程与标定表模块(纯常量/纯函数;零 DP、零 session 写端)。
 
-重构迁移迁移批 3(ADR-0465)(ADR-0465) 起,本模块是原 DP 模块(git prior art)中被生产路径消费的**真值/标定面**
+ADR-0465 起,本模块是原 DP 模块(git prior art)中被生产路径消费的**真值/标定面**
 的保留归属(`w623_batch3_pre-mortem/` D3:真值消费者迁保留表函数模块,禁内联常量置换——
 ``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应,ADR-0366),
 ``p_win_p2`` 是两态胜率函数(BLUEPRINT §3.1 N4 继续消费),内联任一处
@@ -17,7 +17,7 @@
 - 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,ADR-0183
   统一的单一源,消费方=cw_first_passage 分布模型);
 - P2 两态胜率映射:p_win_p2(registry.p_win_p2_by_rung 分段线性,
-  阈值层与迁移迁移批 3(ADR-0465)(ADR-0465) 排程共用);
+  阈值层与 ADR-0465 排程共用);
 - 概率峰值级查表:peak_refresh_level(目标费用档 → 峰值级,`w615_rules_advocacy/` §1.3
   R4 排程判据的查表分量)。
 """
