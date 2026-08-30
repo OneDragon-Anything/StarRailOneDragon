@@ -1585,6 +1585,23 @@ class DecisionV2Registry:
     #: 两钥匙齐 → A/B 判据后翻默认值。
     junk_first_sacrifice_enabled: bool = False
 
+    # ===== 装备穿满族 fill-to-3(软弱无力+额外打击合并量变体;
+    # 机制真值单一源 = data/affix_effects_data.AFFIX_EFFECTS 游戏内原文实采:
+    # 「没有穿戴3件装备的角色及其忆灵,造成的伤害为原伤害的80%.」/
+    # 「我方队员每有1个空缺装备栏,受到敌人攻击后,额外受到本次攻击伤害8%的
+    # 真实伤害。」——排序器后处理 = kernel/cw_equip_env.py)=====
+    #: 策略开关生命周期第 1 态(默认关+零漂移锚:关=equip_allocation 基分配
+    #: 原样,fill 变体 inactive,执行链零改动)。
+    #: **开臂判据(挂账,设计件 .debug/temp/currency_war/w880_equip_env_design/
+    #: DESIGN.md §4.1)**:① 环境通道:实机 ≥2 局含软弱无力/额外打击零漏采
+    #: (state.enemy_affixes 命中,同 junk_first 判据①);② 行为对:fill 改派
+    #: 日志与画面穿戴事件对得上、误挪 key/主线凑件 0 次;③ sim A/B(同池配对)
+    #: 穿戴覆盖率/损血正向 → 翻默认值 + 同步改写行为锁组(第 3 态义务)。
+    #: 验证不过 → 第 4 态清理(删码留 ADR),不悬置。
+    equip_env_fill3_enabled: bool = False
+    #: 穿满阈值 = 机制常量(真值「穿戴3件装备」的 3;非拍死值,版本变更时改此)。
+    equip_fill_target: int = 3
+
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
     #: ('none', 显式声明原因)。「无约束覆盖」必须显式声明,禁止空格。

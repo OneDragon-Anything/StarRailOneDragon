@@ -521,6 +521,19 @@ class EquipAll(SrOperation):
             list(getattr(_st_hold, 'enemy_affixes', []) or []) if _st_hold is not None else [],
             _reg_eq.rust_wear_release_enabled)
         _transition_hold = _transition_hold_active(_tgt_comp, _form, _dual, _opening_round)
+        # W880 装备环境信号单源(软弱无力/额外打击 → fill-to-3 量变体,
+        # kernel/cw_equip_env):决策调用处构造一次打包传递,变体不再各自摸 state;
+        # state 缺失(离线/旧栈)= 空集 → 环境判据安全默认不启用。
+        from sr_od.application.currency_war.kernel.cw_equip_env import (
+            build_equip_env_signals,
+        )
+        from sr_od.application.currency_war.kernel.cw_equip_env import (
+            fill3_allocation as _fill3_allocation,
+        )
+        _equip_signals = build_equip_env_signals(_st_hold)
+        # fill 防线③(设计 §3.1):过渡期 hold(非生锈豁免态)不激活 fill——
+        # hold 语义(攒给成型核心)优先,防两套意图打架
+        _fill_hold = bool(_transition_hold and not _rust_release)
         if _transition_hold:
             log.info('[cw-equip] 过渡期持有(opening=%s node=%s rust_release=%s form=%.2f):'
                      '非 key_equips 不穿(攒给成型核心)',
@@ -633,6 +646,13 @@ class EquipAll(SrOperation):
                     [n for n, _ in wearable], occupied_m7,
                     list(getattr(_st_hold, 'enemy_affixes', []) or [])
                     if _st_hold is not None else [])
+                # W880 装备穿满族 fill-to-3 量变体(软弱无力/额外打击;开关默认
+                # 关=基分配原样零漂移):非命脉散件改派给差件凑满 3 的角色
+                # (前排先=承伤序,已穿多者先=集中度)。纯决策后处理,执行链零触碰;
+                # 追加在 junk_first(序)之后不改其既有排序成员,只添改派尾差。
+                alloc, _fill_action = _fill3_allocation(
+                    _reg_eq, _tgt_comp, deployed, alloc, occupied_m7,
+                    _equip_signals, hold_active=_fill_hold)
                 if _transition_hold and _rust_release:
                     # W607 H2②(ADR-0461):库藏生锈在场,owned 滞留=主动喂敌
                     # (competitors.md:45)→ hold 豁免,分配序列全量穿戴。
