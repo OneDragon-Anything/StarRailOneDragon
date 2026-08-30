@@ -49,6 +49,7 @@ from sr_od.application.currency_war.sim.checks.ledger import (
     check_refresh_roll_cap_frame,
     check_shop_slot_consumption,
     check_skip_fence_pairing,
+    check_streak_propagation_live,
     check_supply_pool_roster_purity,
 )
 from sr_od.application.currency_war.sim.checks.pool import check_engine_seed_not_resold
@@ -98,6 +99,8 @@ _BATCH_CHECKS = {
     'deployed_schema_filter': check_deployed_schema_filter,
     'engine_seed_not_resold': check_engine_seed_not_resold,
     'overflow_gold_zero_buy_streak': check_overflow_gold_zero_buy_streak,
+    # 观测态补齐哨兵(观测态补齐批):P1 带符号 streak 传播断线=死输入
+    'streak_propagation_live': check_streak_propagation_live,
     'buys_at_full_bench': check_buys_at_full_bench,
     'oscillation_xp_cap': check_oscillation_xp_cap,
     'levelup_flat4_lock': check_levelup_flat4_ledger_lock,

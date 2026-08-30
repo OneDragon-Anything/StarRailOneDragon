@@ -203,7 +203,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
-    static_ev}**。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
+    static_ev, p2_auth_xp}**。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
     (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
     时写入,单一源=``ev.levelup_ev_basis``)。
 
@@ -238,7 +238,8 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                 continue
             basis = a.get('auth', '')
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and basis not in ('pop_slot', 'dp', 'static_ev'):
+                    and basis not in ('pop_slot', 'dp', 'static_ev',
+                                      'p2_auth_xp'):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
@@ -421,6 +422,28 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
         return [f'{rid}: P1 溢出金断买 {worst} 连'
                 f'(r{worst_r} 起,金>50 零买零升级——[17] 溢余该花)']
     return []
+
+
+
+def check_streak_propagation_live(rows: list[dict]) -> list[str]:
+    """sim_streak_propagation_live(观测态补齐哨兵,`w793_sim_enable_rerun/`)。
+
+    判据:P1 段账本行 ``state.streak`` 恒非 None——结算段带符号 streak
+    传播(生产口径:连胜 +/连败 −,备战帧读 session.last_streak 同语义)
+    接线后恒成立;None = 传播断线,④连败金流/①连败门在 sim 退化为死
+    输入(W790 判定③的根因之一)。
+    变异证据:接线前 P1 决策帧 streak 100% None(30 局探针 6410/6410 帧,
+    本目录 probe_bits 实测);去掉结算段写入即复现违规——非空转检查。
+    """
+    out: list[str] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        st = row.get('state') or {}
+        if 'streak' in st and st.get('streak') is None:
+            out.append(f"r{row.get('round_num')} state.streak=None"
+                       '(带符号 streak 传播断线)')
+    return out
 
 
 
