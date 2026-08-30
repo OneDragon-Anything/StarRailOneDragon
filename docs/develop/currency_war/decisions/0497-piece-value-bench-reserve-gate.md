@@ -38,7 +38,7 @@
 ## 尾注(删码已执行,W927 批)
 
 本 ADR 与 ADR-0496 承载的件价值整机制已按策略开关生命周期第 4 态删码留档执行
-(commit 待填,本批禁 git commit)。W902 §4 删码范围表逐项清零:scoring.py 买侧
+(删码 commit 52c84277,本批禁 git commit)。W902 §4 删码范围表逐项清零:scoring.py 买侧
 加项块、decision_v2/piece_value.py(硬门+evaluate_piece)、registry 八个
 piece_value_* 字段与 constraints/audit_matrix 的 pv_bench_reserve 登记、遥测键
 sess_pv_bench_block(schema/recorder/sim 三处)全部删除;锁组 test_cw_piece_value
