@@ -96,6 +96,43 @@ def salvageable_1star_value(state: GameState) -> int:
 
 
 
+def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
+    """轮「战后终态」板面计数(档案逐轮 ``terminal`` 列的单一源;纯函数)。
+
+    - 背景(w936_deploy_fill 移交①):档案逐轮 deployed/bench/equips 列取自
+      「决策帧」(``_best_decision_frame``,决策时点快照),而 DeployBench/
+      EquipAll 在决策之后的同备战期执行——复盘把决策帧当战后板面读 =
+      快照时序误读(实证:g_20260831_032006 r9 决策帧 4/6,实机执行后 6/6)。
+      本函数与决策帧列并列,读端一眼区分「决策时」vs「执行后」。
+    - 取值时机:输入 = 该轮决策迹流内**最晚 ts 帧**的 state(该轮备战执行后、
+      战斗前);战斗不改板面,故该帧板面 = 该轮战后终态。取帧在装配端
+      (match_archive._last_decision_frame),本函数只做计数。
+    - 坐标系:deployed_count = state.deployed 定长槽位表占用数(None 剔除,
+      ADR-0392 紧缩口径);bench_count = state.bench 槽位表占用数(ADR-0316);
+      equips_worn = Σ deployed[].equips 件数(已穿上身);equips_owned =
+      state.equips 件数(list/dict 均按元素数;未穿上身 owned 池)。
+    - 输入是 serialize_state 产物 dict;缺键/非 dict 安全退化 0/空
+      (旧数据与残缺帧不炸)。
+    """
+    out: dict[str, Any] = {'deployed_count': 0, 'bench_count': 0,
+                           'equips_worn': 0, 'equips_owned': 0}
+    if not isinstance(st, dict):
+        return out
+    dep = st.get('deployed')
+    if isinstance(dep, list):
+        out['deployed_count'] = sum(1 for d in dep if d is not None)
+        out['equips_worn'] = sum(
+            len(d.get('equips') or []) if isinstance(d, dict) else 0
+            for d in dep if d is not None)
+    bench = st.get('bench')
+    if isinstance(bench, list):
+        out['bench_count'] = sum(1 for b in bench if b is not None)
+    owned = st.get('equips')
+    if isinstance(owned, (list, dict)):
+        out['equips_owned'] = len(owned)
+    return out
+
+
 def serialize_state(state: GameState) -> dict[str, Any]:
     """GameState → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
 

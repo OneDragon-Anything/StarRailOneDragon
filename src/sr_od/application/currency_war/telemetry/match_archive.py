@@ -42,6 +42,7 @@ from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
     read_jsonl,
 )
+from sr_od.application.currency_war.telemetry.schema import terminal_state_summary
 
 #: 档案 schema 版本(字段变更时递增;消费端按版本分支)
 #: v2(match archive 二期批):+rounds[].decision_detail(v3_intention/
@@ -49,7 +50,12 @@ from sr_od.application.currency_war.telemetry.query import (
 #: slices.decisions 切片里,v2 只是把判读高频字段提到逐轮表)+ rounds[].bench
 #: /equips(备战席逐张/装备栏 owned)+ 顶层 strategy_version(策略版本戳,
 #: 取自 runs 行;旧档案无此键 = 版本未知)。全部加法字段,旧档案向后兼容。
-SCHEMA_VERSION: int = 2
+#: v3(战后终态列,w936_deploy_fill 移交①):+rounds[].terminal/
+#: terminal_ts/terminal_source——「执行后」快照与决策帧列并列,根除
+#: 「把决策帧当战后板面读」的时序误读。terminal = 该轮决策迹流内最晚 ts
+#: 帧的板面计数(schema.terminal_state_summary 单一源),装配端派生、
+#: 零新运行时写入,故对存量档案同样生效。
+SCHEMA_VERSION: int = 3
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -182,6 +188,32 @@ def _best_decision_frame(dec_rows: list[dict[str, Any]],
     return best
 
 
+def _last_decision_frame(dec_rows: list[dict[str, Any]],
+                         key: tuple[int, int]) -> dict[str, Any] | None:
+    """同轮取 ts 最晚的决策迹帧(含执行步进帧)——「战后终态」的取帧端。
+
+    - 为什么不是 ``_best_decision_frame``:后者按「actions 最多、并列取
+      晚」选**决策帧**(计划动作最全的时点,先于 DeployBench/EquipAll
+      执行);终态要的恰是**执行后**的最晚账面,故只按 ts 取最晚帧。
+    - 取值时机边界:最晚帧落在本轮备战执行后、战斗前;战斗不改板面
+      (部署/装备/买卖只发生在备战期),故该帧板面 = 该轮战后终态。
+      帧值是 bot tracking 账面(与决策帧列同认知地位,非画面重读);
+      同轮中途的 tracking 翻转噪声按「以最晚帧为准」收敛。
+    - ts 并列取流内后见者(同秒多帧 = 执行步进密集,后见者更晚)。
+    """
+    best: dict[str, Any] | None = None
+    for d in dec_rows:
+        try:
+            k = (int(d.get('plane') or 0), int(d.get('round_num') or 0))
+        except (TypeError, ValueError):
+            continue
+        if k != key:
+            continue
+        if best is None or _row_ts(d) >= _row_ts(best):
+            best = d
+    return best
+
+
 def _hp_entry(dec_frame: dict[str, Any] | None,
               outcome: dict[str, Any] | None) -> dict[str, Any]:
     """逐轮 hp 真值链:结算屏(outcomes.hp_after)优先,备帧兜底,带可信位。
@@ -232,7 +264,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
     逐轮表键 = (plane, round_num)(位面内序,与全部视图同坐标系);
     每轮聚合:node_type(结算屏真值优先)/ hp 真值链 / 金 / 等级 / 动作
     (计数+全量序列化)/ shop 快照全波(offer/refresh)/ 配对(sess_p1_pair)/
-    姿态(dp_posture,decision_v2 决策帧口径)/ form_score / 证据链接。
+    姿态(dp_posture,decision_v2 决策帧口径)/ form_score / 证据链接 /
+    战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
     败场节点 = hp 链上掉血的轮(delta = 本轮 hp − 前轮 hp < 0;死因素材)。
     """
     dec = slice_rows['decisions.jsonl']
@@ -294,6 +327,10 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
                       'candidate_scores': frame.get('candidate_scores'),
                       'eval_breakdown': frame.get('eval_breakdown'),
                       'dp_posture': frame.get('dp_posture') or None}
+        # 战后终态取帧:该轮最晚 ts 决策迹帧(执行后;口径见函数注)
+        last_frame = _last_decision_frame(dec, key)
+        _terminal = (terminal_state_summary(last_frame.get('state'))
+                     if last_frame is not None else None)
         rounds.append({
             'plane': key[0], 'round': key[1],
             'node_type': nt_out or nt_state,
@@ -313,6 +350,11 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'form_ok': (frame or {}).get('form_ok'),
             'target_comp': (frame or {}).get('target_comp'),
             'board': st.get('board'),
+            # 以下 deployed/bench/equips/board 三四列 = **决策帧**快照
+            # (_best_decision_frame:决策时点,先于 DeployBench/EquipAll
+            # 执行)——判读「执行后板面」必须并读 terminal 列,勿把本列
+            # 当战后实况(w936_deploy_fill 移交①:g_20260831_032006 r9
+            # 决策帧 4/6 被误读为部署停驻,实机已填到 6/6)。
             'deployed': st.get('deployed'),
             # 备战席逐张 + 装备栏 owned(二期③⑤):帧 state 全量快照里本就
             # 有,提到逐轮表与 board/deployed 并读——阵容质量三维的 bench 维
@@ -320,6 +362,14 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'bench': st.get('bench'),
             'equips': st.get('equips'),
             'decision_detail': detail,
+            # —— 战后终态(v3):该轮最晚帧板面计数(执行后、战斗前;
+            # 战斗不改板面)= 「执行后」快照,与上方「决策时」列并列对照。
+            # None/terminal_source='none' = 该轮无决策迹帧(仅结算行轮,
+            # 旧数据容忍)。计数口径单一源 = schema.terminal_state_summary。
+            'terminal': _terminal,
+            'terminal_ts': _row_ts(last_frame) if last_frame else None,
+            'terminal_source': ('last_decision_frame' if last_frame
+                                else 'none'),
             'outcome': outcome,
             'evidence': _evidence_links(replay_dir, key),
         })
