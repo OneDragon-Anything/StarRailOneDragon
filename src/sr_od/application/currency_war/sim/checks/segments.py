@@ -536,7 +536,9 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
 
 
 
-_LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev', 'p2_auth_xp')
+_LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev')
+# ('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,ADR-0489;XP sink
+# 在 W785 sink 分解中 0 帧/0 金,供给面从未开火。)
 
 # 同 check_levelup_interest_engine_gate(ADR-0410 static_ev 并入)——
 # 常量此处镜像声明防跨表 import 私名;两侧语义漂移由测试仓双向锁辖。
@@ -548,8 +550,7 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
 
     授权依据观测(LevelUp.auth_basis,`w131_a2n_arm/`/ADR-0410)为准——白名单
     pop_slot([33] 人口位=有框架单位等待上场)/ dp(DP 授权)/
-    static_ev(EV 平台账)/ p2_auth_xp(位面 2 支出授权 XP sink 臂,
-    decision_v2.ev.levelup_auth_basis)外 = 凭空追级。[12] 主条(连 50 金都没凑到
+    static_ev(EV 平台账)外 = 凭空追级。[12] 主条(连 50 金都没凑到
     不急升级)落在授权门的金维:与 batch 表 check_levelup_interest_
     engine_gate 同谓词,差异只在输出粒度(那里=违规局数,这里=逐事件
     带 state 关键值供段级归因);豁免奖励/补给节点([16]② 买经验合法)。

@@ -215,16 +215,15 @@ class DecisionTrace:
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'third_path'/'reserve_admission';判读兑现率分域)。
     sess_release_reason: str | None = None
-    # 位面 2 支出授权·拦断面普查(W757 v3 设计 §3.5;ADR-0481):金堆积
-    # 候选帧逐帧拦截原因枚举(session.v3_p2_auth_intercept 透传;取值
+    # 位面 2 支出授权·历史数据字段(只读口径,ADR-0489 定谳清理):写入面
+    # (strategy 披露键 + recorder 透传)已随机制删除,新数据恒 None;
+    # 字段保留供存量 runs.jsonl 判读脚本消费。
+    # sess_p2_auth_intercept:金堆积候选帧逐帧拦截原因枚举(取值
     # ''/t1_locked/t2_form/no_t3/t4_gold/v6_active/authorized/
-    # hoard_invalid;''=开关关或非 P2 无授权语义)。协议 M0 分层归因
-    # 唯一数据源;None=无 decide_prep 写点(离线/测试/default 栈)。
+    # hoard_invalid);sess_p2_auth_water:滚动 3 备战帧窗水位
+    # {window_start_gold, window_end_gold, window_income, window_spend,
+    # rounds}。
     sess_p2_auth_intercept: str | None = None
-    # 位面 2 支出授权·窗级水位观测(W757 v3.3;协议 V4 M0b 判读数据源):
-    # 滚动 3 备战帧窗的 {window_start_gold, window_end_gold, window_income,
-    # window_spend, rounds}(session.v3_p2_auth_water 透传;plane==2 全帧
-    # 记账、开关无关,对照臂同源;None=无 decide_prep 写点/非 P2/离线)。
     sess_p2_auth_water: dict | None = None
 
 

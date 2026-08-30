@@ -262,8 +262,8 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     """升级通道 EV 总账裁决,返回**放行臂名**(授权依据单一源)。
 
     返回:'pop_slot'=① [33] 人口位 / 'dp'=② DP 花费授权 /
-    'static_ev'=③ 静态 EV 平台账 / 'p2_auth_xp'=④ 位面 2 支出授权
-    XP sink(v3.3,锁⑯) / ''=拒。消费点:arbiter 升级门与
+    'static_ev'=③ 静态 EV 平台账 / ''=拒。(臂④ 'p2_auth_xp' 位面 2
+    支出授权 XP sink 已随定谳清理删除,ADR-0489。)消费点:arbiter 升级门与
     remediation 补偿臂(放行时写入 ``LevelUp.auth_basis`` 观测字段→sim
     账本 LevelUp 行 auth 键→检查器 levelup_interest_engine_gate 判据
     重定义,`w131_a2n_arm/`/ADR-0354)、levelup_ev_authorized(bool 包装)。
@@ -348,20 +348,8 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     if schedule_upgrade(state, session) \
             and after >= registry.interest_floor():
         return 'dp'
-    # ④ 位面 2 支出授权·XP sink(W757 v3.3;[3] 提概率路径,单帧锁⑯):
-    # 授权帧内买经验至 carry 概率窗为大额金消耗合法出口(W779 审计③:
-    # sink 枯竭是单帧净>0 不可达的根,XP 是 D 之外的无界 sink)。本臂
-    # 与买侧 spend_authorized 同构——只取代**静态 EV 账③**(平台账),
-    # 血预算停手门(ADR-0448,arbiter.blood_budget_stop 独立约束 AND)
-    # 与 P21 濒死禁在授权谓词内显式 AND,授权不新增豁免;人口位①/DP②
-    # 优先级不变(④在②后③前,命中即短路)。判据单一源 =
-    # p2_spend_auth.p2_spend_auth_xp_authorized(开关关恒 False=零漂移;
-    # 淘金客姿态在上方 refresh_invest_active 早退,授权同样被其辖)。
-    from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (
-        p2_spend_auth_xp_authorized,
-    )
-    if p2_spend_auth_xp_authorized(state, session, registry):
-        return 'p2_auth_xp'
+    # (位面 2 支出授权·XP sink 臂④已随定谳清理删除,ADR-0489:
+    # W785 sink 分解 D 44 帧/XP 0 帧——XP 供给面从未开火,概念被数据否决。)
     # ③ 静态 EV 账(V−C≥0;V 含省刷金项,`w126_b_arm/`/P5 检验点②)
     v = val - int_emb + levelup_refresh_saving(state, session, registry)
     loss_now = _interest_at(working_gold, registry) \

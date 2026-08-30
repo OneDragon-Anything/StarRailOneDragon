@@ -198,16 +198,9 @@ class TelemetryRecorder:
                 trace.sess_release_budget = _w611_int('v3_release_budget')
                 _rs = getattr(_sess, 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
-                # 位面 2 支出授权·拦断面普查(ADR-0481):枚举透传;
-                # 无写点(default 栈/离线)= None 缺省,schema 不破坏。
-                _pai = getattr(_sess, 'v3_p2_auth_intercept', None)
-                trace.sess_p2_auth_intercept = (
-                    None if _pai is None else str(_pai))
-                # 位面 2 支出授权·窗级水位观测(W757 v3.3;协议 V4 M0b
-                # 判读数据源):dict 透传,无写点/非 P2 = None 缺省。
-                _paw = getattr(_sess, 'v3_p2_auth_water', None)
-                trace.sess_p2_auth_water = (
-                    None if _paw is None else _to_jsonable(dict(_paw)))
+                # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
+                # 定谳清理删除,ADR-0489;schema 字段按历史数据只读口径保留,
+                # 新数据恒 None。)
             _led = getattr(_sess, 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):
                 with contextlib.suppress(Exception):

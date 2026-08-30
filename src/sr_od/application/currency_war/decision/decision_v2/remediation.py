@@ -65,29 +65,6 @@ from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 
 _RESOURCE_ORDER: dict[str, int] = {'gold': 0, 'bench': 1, 'slot': 2}
 
 
-def _p2_auth_mustbuy_rescue(rej: Rejection, state: GameState,
-                            session: StrategySession,
-                            registry: DecisionV2Registry) -> bool:
-    """位面 2 支出授权·核心必买的补偿分数门豁免(W766 附带发现;ADR-0481)。
-
-    ``remedy_min_score`` 分数门对**授权帧核心必买候选**放行:负分核心
-    卡经授权豁免越过非正分门(``p2_spend_auth_core_must_buy``,[31]②
-    唯一最高优先级)后,若在满栏/金缺帧被资源约束拒,S6/S1 的分数门
-    会拒绝腾位/凑金——授权开、卡在架上、买不成(评分零维伪影在补偿
-    层复辟,与必买豁免同一 rationale)。豁免只拆分数门,其余守卫全部
-    照旧(r408/保护集/边际羁绊/未知费级——卖的仍是可弃垫层件,即设计
-    v3.1 保留槽条款「先卖可弃垫层件腾槽再买」的机械化)。开关关恒
-    False=零漂移。
-    """
-    if not registry.p2_spend_auth_enabled:
-        return False
-    from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (
-        p2_spend_auth_core_must_buy,
-    )
-    return p2_spend_auth_core_must_buy(rej.cand, state, state, session,
-                                       registry)
-
-
 @dataclass(frozen=True)
 class RejectReason:
     """结构化拒绝原因(层4 产出;``describe`` 兼容既有 log 格式)。
@@ -270,8 +247,9 @@ def _compensate_gold(working: GameState, state: GameState,
     占用守卫防陈旧提案)。
     """
     a = rej.cand.action
-    if rej.score <= registry.remedy_min_score \
-            and not _p2_auth_mustbuy_rescue(rej, state, session, registry):
+    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0489;
+    # 分数门恢复单一判据。)
+    if rej.score <= registry.remedy_min_score:
         return []    # 只救高价值买(§1.3 remedy_min_score 下沿)
     if isinstance(a, BuyCard):
         if a.card.name in (getattr(session, 'v2_round_sold', None) or ()):
@@ -399,8 +377,8 @@ def _compensate_bench(working: GameState, state: GameState,
     a = rej.cand.action
     if not isinstance(a, BuyCard):
         return []
-    if rej.score <= registry.remedy_min_score \
-            and not _p2_auth_mustbuy_rescue(rej, state, session, registry):
+    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0489。)
+    if rej.score <= registry.remedy_min_score:
         return []
     if a.card.name in (getattr(session, 'v2_round_sold', None) or ()):
         return []    # r408:同轮已卖不回买

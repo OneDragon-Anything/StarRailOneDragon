@@ -43,9 +43,6 @@ from sr_od.application.currency_war.decision.decision_v2.filters import (
 from sr_od.application.currency_war.decision.decision_v2.handoff import (
     directed_refresh_budget,
 )
-from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (
-    p2_spend_auth_core_must_buy,
-)
 from sr_od.application.currency_war.decision.decision_v2.phase import (
     Phase,
     derive_phase,
@@ -189,18 +186,8 @@ def _check_constraint(name: str, cand: Candidate,
         cost = _cost_of(cand, working)
         if cost <= 0:
             return None
-        # 位面 2 支出授权·加急预算放宽(W757 v3.1;ADR-0480/0481):
-        # 授权帧加急层(通道 A 加急/通道 B 止血共档)内授权目标买/定向
-        # 刷新按保留金下限放行金地板([18] 止损机械化)。v3 预算带对齐:
-        # 常授权层恒 False=既有地板逻辑全权裁决(「与既有门同判」,
-        # 不叠加独立地板,G1-A 破息反降的收门面已废除);本臂只做额外
-        # 放行从不拒绝,False 即逐位回落既有裁决=零漂移。升级永不在辖。
-        from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
-            p2_spend_auth_spend_authorized,
-        )
-        if p2_spend_auth_spend_authorized(cand, working, state, session,
-                                          registry, auth):
-            return None
+        # (位面 2 支出授权·加急预算放宽授权臂已随定谳清理删除,ADR-0489:
+        # 四轮 A/B M0b 四口径穷尽 0-4.1% → 授权窗内花费结构性死路。)
         # (P1→P2 接口机制·③遭遇备战/④连败金流授权臂已随五开关定谳清理
         # 删除,ADR-0487:W793 A/B 触发面全开火仍主判据双败,确认无效。)
         floor = _active_floor(state, session, registry)
@@ -360,18 +347,8 @@ def _check_constraint(name: str, cand: Candidate,
             if auth is not None:
                 auth['ev_auth'] = round(ev, 1)   # 授权依据 trace(放行)
             return None    # EV 授权放行(含破息)
-        # 位面 2 支出授权·加急破息豁免(W757 v3.1;ADR-0480/0481):
-        # 加急授权层(T3 命中)内授权目标买/定向 D 允许破息至保留金下限
-        # ([18] 止损落点;[31]②「保血急救」合法用途的机械化,P25 待证
-        # 标注见 registry 挂账注释)。常授权层恒 False:花完仍≥息线的买
-        # 已被上方 early-return,贴线带/破息带 EV≤0 维持既有 EV 裁决
-        # (v2 的授权层自设门槛收门面已废除——「只开门不收门」)。
-        from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
-            p2_spend_auth_spend_authorized,
-        )
-        if p2_spend_auth_spend_authorized(cand, working, state, session,
-                                          registry, auth):
-            return None    # 加急层破息授权放行(预算带=保留金下限)
+        # (位面 2 支出授权·加急破息豁免臂已随定谳清理删除,ADR-0489:
+        # 判定②sink 解锁失败,M0b-v4 水位不升 0.0%。)
         return RejectReason('interest_rule', '', 0,
                             f'EV≤0 破息拒(V{v:.1f}-C{c}={ev:.1f},'
                             f'{working.gold}→{after})')
@@ -824,17 +801,9 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 约束链照常辖,金可行性(g_after≥R*)在 gold_floor 的 o1
             # 地板加深处辖。
             _o1_ok = cand.tag == 'o1_bench_fill'
-            # 位面 2 支出授权·优先级 1 必买(W757 v3.1;ADR-0480/0481;
-            # [31]② 目标件刷新出现=唯一最高优先级):授权帧(通道 A 或
-            # 通道 B)内锁定线核心卡买候选凭授权越过非正分门(局3 希儿型
-            # 弃购的反向锁)。豁免≠必采纳:v3 预算带对齐后本豁免不做预算
-            # 预判,金地板/息账门按「与既有门同判」辖(加急层的破息放宽
-            # 在门侧授权臂),bench/copies_cap 照常;只辖核心名(优先级
-            # 2-4 不凭本豁免)。开关关/授权帧 None=恒假零漂移。
-            _p2_auth_ok = p2_spend_auth_core_must_buy(
-                cand, working, state, session, registry)
-            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok
-                    or _p2_auth_ok):
+            # (位面 2 支出授权·优先级 1 核心必买豁免已随定谳清理删除,
+            # ADR-0489:窗口内花费结构性死路,概念被数据否决。)
+            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
